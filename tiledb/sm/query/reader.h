@@ -49,7 +49,6 @@
 #include "tiledb/sm/query/result_coords.h"
 #include "tiledb/sm/query/result_space_tile.h"
 #include "tiledb/sm/query/validity_vector.h"
-#include "tiledb/sm/query/write_cell_slab_iter.h"
 #include "tiledb/sm/subarray/subarray_partitioner.h"
 
 using namespace tiledb::common;

@@ -44,7 +44,7 @@
 #include "tiledb/sm/misc/utils.h"
 #include "tiledb/sm/misc/uuid.h"
 #include "tiledb/sm/query/query_macros.h"
-#include "tiledb/sm/stats/stats.h"
+#include "tiledb/sm/stats/global_stats.h"
 #include "tiledb/sm/storage_manager/storage_manager.h"
 #include "tiledb/sm/tile/generic_tile_io.h"
 
@@ -75,6 +75,7 @@ Writer::Writer() {
   layout_ = Layout::ROW_MAJOR;
   storage_manager_ = nullptr;
   offsets_bitsize_ = constants::cell_var_offset_size * 8;
+  stats_ = stats::Stats("stats.Writer");
 }
 
 Writer::~Writer() {
@@ -163,13 +164,13 @@ QueryBuffer Writer::buffer(const std::string& name) const {
 }
 
 Status Writer::finalize() {
-  STATS_START_TIMER(stats::Stats::TimerType::WRITE_FINALIZE)
+  STATS_START_TIMER(stats::GlobalStats::TimerType::WRITE_FINALIZE)
 
   if (global_write_state_ != nullptr)
     return finalize_global_write_state();
   return Status::Ok();
 
-  STATS_END_TIMER(stats::Stats::TimerType::WRITE_FINALIZE)
+  STATS_END_TIMER(stats::GlobalStats::TimerType::WRITE_FINALIZE)
 }
 
 Status Writer::get_buffer(
@@ -421,10 +422,21 @@ Status Writer::init(const Layout& layout) {
         "Cannot initialize query; Storage manager not set"));
   if (array_schema_ == nullptr)
     return LOG_STATUS(
-        Status::WriterError("Cannot initialize query; Array schema not set"));
+        Status::WriterError("Cannot initialize writer; Array schema not set"));
   if (buffers_.empty())
     return LOG_STATUS(
-        Status::WriterError("Cannot initialize query; Buffers not set"));
+        Status::WriterError("Cannot initialize writer; Buffers not set"));
+  if (array_schema_->dense() &&
+      (layout == Layout::ROW_MAJOR || layout == Layout::COL_MAJOR)) {
+    for (const auto& b : buffers_) {
+      if (array_schema_->is_dim(b.first)) {
+        return LOG_STATUS(Status::WriterError(
+            "Cannot initialize writer; Sparse coordinates "
+            "for dense arrays cannot be provided "
+            "if the query layout is ROW_MAJOR or COL_MAJOR"));
+      }
+    }
+  }
 
   // Get configuration parameters
   const char *check_coord_dups, *check_coord_oob, *check_global_order;
@@ -845,8 +857,8 @@ const Subarray* Writer::subarray_ranges() const {
 Status Writer::write() {
   get_dim_attr_stats();
 
-  STATS_START_TIMER(stats::Stats::TimerType::WRITE)
-  STATS_ADD_COUNTER(stats::Stats::CounterType::WRITE_NUM, 1)
+  STATS_START_TIMER(stats::GlobalStats::TimerType::WRITE)
+  STATS_ADD_COUNTER(stats::GlobalStats::CounterType::WRITE_NUM, 1)
 
   // In case the user has provided a coordinates buffer
   RETURN_NOT_OK(split_coords_buffer());
@@ -864,9 +876,13 @@ Status Writer::write() {
     assert(false);
   }
 
+  // Set to global stats.
+  // Note: This will be refactored soon.
+  stats::all_stats.set_stats(stats_);
+
   return Status::Ok();
 
-  STATS_END_TIMER(stats::Stats::TimerType::WRITE)
+  STATS_END_TIMER(stats::GlobalStats::TimerType::WRITE)
 }
 
 const std::vector<WrittenFragmentInfo>& Writer::written_fragment_info() const {
@@ -956,7 +972,7 @@ Status Writer::check_buffer_sizes() const {
 }
 
 Status Writer::check_coord_dups(const std::vector<uint64_t>& cell_pos) const {
-  STATS_START_TIMER(stats::Stats::TimerType::WRITE_CHECK_COORD_DUPS)
+  STATS_START_TIMER(stats::GlobalStats::TimerType::WRITE_CHECK_COORD_DUPS)
 
   // Check if applicable
   if (array_schema_->allows_dups() || !check_coord_dups_ || dedup_coords_)
@@ -986,7 +1002,7 @@ Status Writer::check_coord_dups(const std::vector<uint64_t>& cell_pos) const {
     buffs_var_sizes[d] = buffers_.find(dim_name)->second.buffer_var_size_;
   }
 
-  auto statuses = parallel_for(
+  auto status = parallel_for(
       storage_manager_->compute_tp(), 1, coords_num_, [&](uint64_t i) {
         // Check for duplicate in adjacent cells
         bool found_dup = true;
@@ -1041,17 +1057,15 @@ Status Writer::check_coord_dups(const std::vector<uint64_t>& cell_pos) const {
         return Status::Ok();
       });
 
-  // Check all statuses
-  for (auto& st : statuses)
-    RETURN_NOT_OK_ELSE(st, LOG_STATUS(st));
+  RETURN_NOT_OK_ELSE(status, LOG_STATUS(status));
 
   return Status::Ok();
 
-  STATS_END_TIMER(stats::Stats::TimerType::WRITE_CHECK_COORD_DUPS)
+  STATS_END_TIMER(stats::GlobalStats::TimerType::WRITE_CHECK_COORD_DUPS)
 }
 
 Status Writer::check_coord_dups() const {
-  STATS_START_TIMER(stats::Stats::TimerType::WRITE_CHECK_COORD_DUPS)
+  STATS_START_TIMER(stats::GlobalStats::TimerType::WRITE_CHECK_COORD_DUPS)
 
   // Check if applicable
   if (array_schema_->allows_dups() || !check_coord_dups_ || dedup_coords_)
@@ -1081,7 +1095,7 @@ Status Writer::check_coord_dups() const {
     buffs_var_sizes[d] = buffers_.find(dim_name)->second.buffer_var_size_;
   }
 
-  auto statuses = parallel_for(
+  auto status = parallel_for(
       storage_manager_->compute_tp(), 1, coords_num_, [&](uint64_t i) {
         // Check for duplicate in adjacent cells
         bool found_dup = true;
@@ -1130,17 +1144,15 @@ Status Writer::check_coord_dups() const {
         return Status::Ok();
       });
 
-  // Check all statuses
-  for (auto& st : statuses)
-    RETURN_NOT_OK_ELSE(st, LOG_STATUS(st));
+  RETURN_NOT_OK(status);
 
   return Status::Ok();
 
-  STATS_END_TIMER(stats::Stats::TimerType::WRITE_CHECK_COORD_DUPS)
+  STATS_END_TIMER(stats::GlobalStats::TimerType::WRITE_CHECK_COORD_DUPS)
 }
 
 Status Writer::check_coord_oob() const {
-  STATS_START_TIMER(stats::Stats::TimerType::WRITE_CHECK_COORD_OOB)
+  STATS_START_TIMER(stats::GlobalStats::TimerType::WRITE_CHECK_COORD_OOB)
 
   // Applicable only to sparse writes - exit if coordinates do not exist
   if (!has_coords_)
@@ -1165,7 +1177,7 @@ Status Writer::check_coord_oob() const {
   }
 
   // Check if all coordinates fall in the domain in parallel
-  auto statuses = parallel_for_2d(
+  auto status = parallel_for_2d(
       storage_manager_->compute_tp(),
       0,
       coords_num_,
@@ -1178,18 +1190,16 @@ Status Writer::check_coord_oob() const {
         return dim->oob(buffs[d] + c * coord_sizes[d]);
       });
 
-  // Check all statuses
-  for (auto& st : statuses)
-    RETURN_NOT_OK_ELSE(st, LOG_STATUS(st));
+  RETURN_NOT_OK(status);
 
   // Success
   return Status::Ok();
 
-  STATS_END_TIMER(stats::Stats::TimerType::WRITE_CHECK_COORD_OOB)
+  STATS_END_TIMER(stats::GlobalStats::TimerType::WRITE_CHECK_COORD_OOB)
 }
 
 Status Writer::check_global_order() const {
-  STATS_START_TIMER(stats::Stats::TimerType::WRITE_CHECK_GLOBAL_ORDER)
+  STATS_START_TIMER(stats::GlobalStats::TimerType::WRITE_CHECK_GLOBAL_ORDER)
 
   // Check if applicable
   if (!check_global_order_)
@@ -1213,7 +1223,7 @@ Status Writer::check_global_order() const {
 
   // Check if all coordinates fall in the domain in parallel
   auto domain = array_schema_->domain();
-  auto statuses = parallel_for(
+  auto status = parallel_for(
       storage_manager_->compute_tp(), 0, coords_num_ - 1, [&](uint64_t i) {
         auto tile_cmp = domain->tile_order_cmp(buffs, i, i + 1);
         auto fail =
@@ -1232,13 +1242,11 @@ Status Writer::check_global_order() const {
         return Status::Ok();
       });
 
-  // Check all statuses
-  for (auto& st : statuses)
-    RETURN_NOT_OK_ELSE(st, LOG_STATUS(st));
+  RETURN_NOT_OK(status);
 
   return Status::Ok();
 
-  STATS_END_TIMER(stats::Stats::TimerType::WRITE_CHECK_GLOBAL_ORDER)
+  STATS_END_TIMER(stats::GlobalStats::TimerType::WRITE_CHECK_GLOBAL_ORDER)
 }
 
 Status Writer::check_global_order_hilbert() const {
@@ -1255,7 +1263,7 @@ Status Writer::check_global_order_hilbert() const {
   RETURN_NOT_OK(calculate_hilbert_values(buffs, &hilbert_values));
 
   // Check if all coordinates fall in the domain in parallel
-  auto statuses = parallel_for(
+  auto status = parallel_for(
       storage_manager_->compute_tp(), 0, coords_num_ - 1, [&](uint64_t i) {
         if (hilbert_values[i] > hilbert_values[i + 1]) {
           std::stringstream ss;
@@ -1267,9 +1275,7 @@ Status Writer::check_global_order_hilbert() const {
         return Status::Ok();
       });
 
-  // Check all statuses
-  for (auto& st : statuses)
-    RETURN_NOT_OK_ELSE(st, LOG_STATUS(st));
+  RETURN_NOT_OK(status);
 
   return Status::Ok();
 }
@@ -1322,16 +1328,14 @@ Status Writer::close_files(FragmentMetadata* meta) const {
       file_uris.emplace_back(meta->validity_uri(name));
   }
 
-  auto statuses = parallel_for(
+  auto status = parallel_for(
       storage_manager_->io_tp(), 0, file_uris.size(), [&](uint64_t i) {
         const auto& file_ur = file_uris[i];
         RETURN_NOT_OK(storage_manager_->close_file(file_ur));
         return Status::Ok();
       });
 
-  // Check all statuses
-  for (auto& st : statuses)
-    RETURN_NOT_OK(st);
+  RETURN_NOT_OK(status);
 
   return Status::Ok();
 }
@@ -1339,7 +1343,7 @@ Status Writer::close_files(FragmentMetadata* meta) const {
 Status Writer::compute_coord_dups(
     const std::vector<uint64_t>& cell_pos,
     std::set<uint64_t>* coord_dups) const {
-  STATS_START_TIMER(stats::Stats::TimerType::WRITE_COMPUTE_COORD_DUPS)
+  STATS_START_TIMER(stats::GlobalStats::TimerType::WRITE_COMPUTE_COORD_DUPS)
 
   if (!has_coords_) {
     return LOG_STATUS(
@@ -1366,7 +1370,7 @@ Status Writer::compute_coord_dups(
   }
 
   std::mutex mtx;
-  auto statuses = parallel_for(
+  auto status = parallel_for(
       storage_manager_->compute_tp(), 1, coords_num_, [&](uint64_t i) {
         // Check for duplicate in adjacent cells
         bool found_dup = true;
@@ -1419,17 +1423,15 @@ Status Writer::compute_coord_dups(
         return Status::Ok();
       });
 
-  // Check all statuses
-  for (auto& st : statuses)
-    RETURN_NOT_OK(st);
+  RETURN_NOT_OK(status);
 
   return Status::Ok();
 
-  STATS_END_TIMER(stats::Stats::TimerType::WRITE_COMPUTE_COORD_DUPS)
+  STATS_END_TIMER(stats::GlobalStats::TimerType::WRITE_COMPUTE_COORD_DUPS)
 }
 
 Status Writer::compute_coord_dups(std::set<uint64_t>* coord_dups) const {
-  STATS_START_TIMER(stats::Stats::TimerType::WRITE_COMPUTE_COORD_DUPS)
+  STATS_START_TIMER(stats::GlobalStats::TimerType::WRITE_COMPUTE_COORD_DUPS)
 
   if (!has_coords_) {
     return LOG_STATUS(
@@ -1456,7 +1458,7 @@ Status Writer::compute_coord_dups(std::set<uint64_t>* coord_dups) const {
   }
 
   std::mutex mtx;
-  auto statuses = parallel_for(
+  auto status = parallel_for(
       storage_manager_->compute_tp(), 1, coords_num_, [&](uint64_t i) {
         // Check for duplicate in adjacent cells
         bool found_dup = true;
@@ -1503,21 +1505,17 @@ Status Writer::compute_coord_dups(std::set<uint64_t>* coord_dups) const {
         return Status::Ok();
       });
 
-  // Check all statuses
-  for (auto& st : statuses) {
-    if (!st.ok())
-      return st;
-  }
+  RETURN_NOT_OK(status);
 
   return Status::Ok();
 
-  STATS_END_TIMER(stats::Stats::TimerType::WRITE_COMPUTE_COORD_DUPS)
+  STATS_END_TIMER(stats::GlobalStats::TimerType::WRITE_COMPUTE_COORD_DUPS)
 }
 
 Status Writer::compute_coords_metadata(
     const std::unordered_map<std::string, std::vector<Tile>>& tiles,
     FragmentMetadata* meta) const {
-  STATS_START_TIMER(stats::Stats::TimerType::WRITE_COMPUTE_COORD_META)
+  STATS_START_TIMER(stats::GlobalStats::TimerType::WRITE_COMPUTE_COORD_META)
 
   // Applicable only if there are coordinates
   if (!has_coords_)
@@ -1536,7 +1534,7 @@ Status Writer::compute_coords_metadata(
   auto dim_num = array_schema_->dim_num();
 
   // Compute MBRs
-  auto statuses = parallel_for(
+  auto status = parallel_for(
       storage_manager_->compute_tp(), 0, tile_num, [&](uint64_t i) {
         NDRange mbr(dim_num);
         std::vector<const void*> data(dim_num);
@@ -1556,9 +1554,7 @@ Status Writer::compute_coords_metadata(
         return Status::Ok();
       });
 
-  // Check all statuses
-  for (auto& st : statuses)
-    RETURN_NOT_OK(st);
+  RETURN_NOT_OK(status);
 
   // Set last tile cell number
   auto dim_0 = array_schema_->dimension(0);
@@ -1569,67 +1565,7 @@ Status Writer::compute_coords_metadata(
 
   return Status::Ok();
 
-  STATS_END_TIMER(stats::Stats::TimerType::WRITE_COMPUTE_COORD_META)
-}
-
-template <class T>
-Status Writer::compute_write_cell_ranges(
-    WriteCellSlabIter<T>* iter, WriteCellRangeVec* write_cell_ranges) const {
-  STATS_START_TIMER(stats::Stats::TimerType::WRITE_COMPUTE_CELL_RANGES)
-
-  auto domain = array_schema_->domain();
-  auto dim_num = array_schema_->dim_num();
-  assert(!subarray_flat_.empty());
-  auto subarray = (const T*)&subarray_flat_[0];
-  auto cell_order = array_schema_->cell_order();
-  bool same_layout = (cell_order == layout_);
-  uint64_t start, end, start_in_sub, end_in_sub;
-  const T* coords_start;
-
-  // Compute the offset needed in case there is a layout mismatch
-  uint64_t offset = 1;
-  if (!same_layout) {
-    if (layout_ == Layout::COL_MAJOR) {  // Subarray layout is col-major
-      for (unsigned i = 0; i < dim_num - 1; ++i)
-        offset *= subarray[2 * i + 1] - subarray[2 * i] + 1;
-    } else {  // Array layout is col-major, subarray layout is row-major
-      if (dim_num > 1) {
-        for (unsigned i = 1; i < dim_num; ++i)
-          offset *= subarray[2 * i + 1] - subarray[2 * i] + 1;
-      }
-    }
-  }
-
-  RETURN_NOT_OK(iter->begin());
-  while (!iter->end()) {
-    start = iter->slab_start();
-    end = iter->slab_end();
-    coords_start = iter->coords_start();
-
-    if (same_layout) {
-      start_in_sub = (layout_ == Layout::ROW_MAJOR) ?
-                         domain->get_cell_pos_row<T>(subarray, coords_start) :
-                         domain->get_cell_pos_col<T>(subarray, coords_start);
-      end_in_sub = start_in_sub + end - start;
-      write_cell_ranges->emplace_back(start, start_in_sub, end_in_sub);
-    } else {
-      start_in_sub = (layout_ == Layout::ROW_MAJOR) ?
-                         domain->get_cell_pos_row<T>(subarray, coords_start) :
-                         domain->get_cell_pos_col<T>(subarray, coords_start);
-      end_in_sub = start_in_sub;
-      write_cell_ranges->emplace_back(start, start_in_sub, end_in_sub);
-      for (++start; start <= end; ++start) {
-        start_in_sub += offset;
-        end_in_sub = start_in_sub;
-        write_cell_ranges->emplace_back(start, start_in_sub, end_in_sub);
-      }
-    }
-    ++(*iter);
-  }
-
-  return Status::Ok();
-
-  STATS_END_TIMER(stats::Stats::TimerType::WRITE_COMPUTE_CELL_RANGES)
+  STATS_END_TIMER(stats::GlobalStats::TimerType::WRITE_COMPUTE_COORD_META)
 }
 
 Status Writer::create_fragment(
@@ -1657,12 +1593,12 @@ Status Writer::create_fragment(
 }
 
 Status Writer::filter_tiles(
-    std::unordered_map<std::string, std::vector<Tile>>* tiles) const {
-  STATS_START_TIMER(stats::Stats::TimerType::WRITE_FILTER_TILES)
+    std::unordered_map<std::string, std::vector<Tile>>* tiles) {
+  STATS_START_TIMER(stats::GlobalStats::TimerType::WRITE_FILTER_TILES)
 
   // Coordinates
   auto num = buffers_.size();
-  auto statuses =
+  auto status =
       parallel_for(storage_manager_->compute_tp(), 0, num, [&](uint64_t i) {
         auto buff_it = buffers_.begin();
         std::advance(buff_it, i);
@@ -1671,17 +1607,14 @@ Status Writer::filter_tiles(
         return Status::Ok();
       });
 
-  // Check all statuses
-  for (auto& st : statuses)
-    RETURN_NOT_OK(st);
+  RETURN_NOT_OK(status);
 
   return Status::Ok();
 
-  STATS_END_TIMER(stats::Stats::TimerType::WRITE_FILTER_TILES)
+  STATS_END_TIMER(stats::GlobalStats::TimerType::WRITE_FILTER_TILES)
 }
 
-Status Writer::filter_tiles(
-    const std::string& name, std::vector<Tile>* tiles) const {
+Status Writer::filter_tiles(const std::string& name, std::vector<Tile>* tiles) {
   const bool var_size = array_schema_->var_size(name);
   const bool nullable = array_schema_->is_nullable(name);
 
@@ -1700,7 +1633,7 @@ Status Writer::filter_tiles(
       args.emplace_back(&(*tiles)[i++], false, true);
   }
 
-  auto statuses = parallel_for(
+  auto status = parallel_for(
       storage_manager_->compute_tp(), 0, tile_num, [&](uint64_t i) {
         RETURN_NOT_OK(filter_tile(
             name,
@@ -1710,8 +1643,7 @@ Status Writer::filter_tiles(
         return Status::Ok();
       });
 
-  for (auto& st : statuses)
-    RETURN_NOT_OK(st);
+  RETURN_NOT_OK(status);
 
   return Status::Ok();
 }
@@ -1720,7 +1652,10 @@ Status Writer::filter_tile(
     const std::string& name,
     Tile* const tile,
     const bool offsets,
-    const bool nullable) const {
+    const bool nullable) {
+  stats_.start_timer(std::string(__func__) + ".sec");
+  stats_.add_counter(std::string(__func__) + ".count", 1);
+
   const auto orig_size = tile->chunked_buffer()->size();
 
   // Get a copy of the appropriate filter pipeline.
@@ -1744,6 +1679,7 @@ Status Writer::filter_tile(
 
   tile->set_pre_filtered_size(orig_size);
 
+  stats_.end_timer(std::string(__func__) + ".sec");
   return Status::Ok();
 }
 
@@ -1846,8 +1782,10 @@ Status Writer::global_write() {
       cell_num +=
           var_size ? it->second[2 * t].cell_num() : it->second[t].cell_num();
     }
-    STATS_ADD_COUNTER(stats::Stats::CounterType::WRITE_CELL_NUM, cell_num);
-    STATS_ADD_COUNTER(stats::Stats::CounterType::WRITE_TILE_NUM, tile_num);
+    STATS_ADD_COUNTER(
+        stats::GlobalStats::CounterType::WRITE_CELL_NUM, cell_num);
+    STATS_ADD_COUNTER(
+        stats::GlobalStats::CounterType::WRITE_TILE_NUM, tile_num);
   }
 
   // No cells to be written
@@ -1906,14 +1844,14 @@ Status Writer::global_write_handle_last_tile() {
 }
 
 Status Writer::filter_last_tiles(
-    std::unordered_map<std::string, std::vector<Tile>>* tiles) const {
+    std::unordered_map<std::string, std::vector<Tile>>* tiles) {
   // Initialize attribute and coordinate tiles
   for (const auto& it : buffers_)
     (*tiles)[it.first] = std::vector<Tile>();
 
   // Prepare the tiles first
   uint64_t num = buffers_.size();
-  auto statuses =
+  auto status =
       parallel_for(storage_manager_->compute_tp(), 0, num, [&](uint64_t i) {
         auto buff_it = buffers_.begin();
         std::advance(buff_it, i);
@@ -1938,9 +1876,7 @@ Status Writer::filter_last_tiles(
         return Status::Ok();
       });
 
-  // Check statuses
-  for (auto& st : statuses)
-    RETURN_NOT_OK(st);
+  RETURN_NOT_OK(status);
 
   // Compute coordinates metadata
   auto meta = global_write_state_->frag_meta_.get();
@@ -1948,9 +1884,9 @@ Status Writer::filter_last_tiles(
 
   // Gather stats
   STATS_ADD_COUNTER(
-      stats::Stats::CounterType::WRITE_CELL_NUM,
+      stats::GlobalStats::CounterType::WRITE_CELL_NUM,
       tiles->begin()->second[0].cell_num());
-  STATS_ADD_COUNTER(stats::Stats::CounterType::WRITE_TILE_NUM, 1);
+  STATS_ADD_COUNTER(stats::GlobalStats::CounterType::WRITE_TILE_NUM, 1);
 
   // Filter tiles
   RETURN_NOT_OK(filter_tiles(tiles));
@@ -2114,67 +2050,6 @@ Status Writer::init_tile_nullable(
   return Status::Ok();
 }
 
-template <class T>
-Status Writer::init_tile_dense_cell_range_iters(
-    std::vector<WriteCellSlabIter<T>>* iters) const {
-  STATS_START_TIMER(stats::Stats::TimerType::WRITE_INIT_TILE_ITS)
-
-  // For easy reference
-  auto domain = array_schema_->domain();
-  auto dim_num = domain->dim_num();
-  std::vector<T> subarray;
-  subarray.resize(2 * dim_num);
-  assert(!subarray_flat_.empty());
-  for (unsigned i = 0; i < 2 * dim_num; ++i)
-    subarray[i] = ((T*)&subarray_flat_[0])[i];
-  auto cell_order = domain->cell_order();
-
-  // Compute tile domain and current tile coords
-  std::vector<T> tile_domain, tile_coords;
-  tile_domain.resize(2 * dim_num);
-  tile_coords.resize(dim_num);
-  domain->get_tile_domain(&subarray[0], &tile_domain[0]);
-  for (unsigned i = 0; i < dim_num; ++i)
-    tile_coords[i] = tile_domain[2 * i];
-
-  // TODO: fix
-  NDRange sub(dim_num);
-  for (unsigned d = 0; d < dim_num; ++d) {
-    Range r(&subarray[2 * d], 2 * sizeof(T));
-    sub[d] = std::move(r);
-  }
-  auto tile_num = domain->tile_num(sub);
-
-  // Iterate over all tiles in the tile domain
-  iters->clear();
-  std::vector<T> tile_subarray, subarray_in_tile;
-  std::vector<T> frag_subarray, frag_subarray_in_tile;
-  tile_subarray.resize(2 * dim_num);
-  subarray_in_tile.resize(2 * dim_num);
-  bool tile_overlap, in;
-  for (uint64_t i = 0; i < tile_num; ++i) {
-    // Compute subarray overlap with tile
-    domain->get_tile_subarray(&tile_coords[0], &tile_subarray[0]);
-    utils::geometry::overlap(
-        &subarray[0],
-        &tile_subarray[0],
-        dim_num,
-        &subarray_in_tile[0],
-        &tile_overlap);
-
-    // Create a new iter
-    iters->emplace_back(domain, subarray_in_tile, cell_order);
-
-    // Get next tile coordinates
-    domain->get_next_tile_coords(&tile_domain[0], &tile_coords[0], &in);
-    assert((i != tile_num - 1 && in) || (i == tile_num - 1 && !in));
-  }
-
-  return Status::Ok();
-
-  STATS_END_TIMER(stats::Stats::TimerType::WRITE_INIT_TILE_ITS)
-}
-
 Status Writer::init_tiles(
     const std::string& name,
     uint64_t tile_num,
@@ -2311,100 +2186,86 @@ Status Writer::ordered_write() {
 
 template <class T>
 Status Writer::ordered_write() {
+  stats_.start_timer(std::string(__func__) + ".sec");
+  stats_.add_counter(std::string(__func__) + ".count", 1);
+
   // Create new fragment
   tdb_shared_ptr<FragmentMetadata> frag_meta;
   RETURN_CANCEL_OR_ERROR(create_fragment(true, &frag_meta));
   const auto& uri = frag_meta->fragment_uri();
 
-  // Initialize dense cell range iterators for each tile in global order
-  std::vector<WriteCellSlabIter<T>> dense_cell_range_its;
-  RETURN_CANCEL_OR_ERROR_ELSE(
-      init_tile_dense_cell_range_iters<T>(&dense_cell_range_its),
-      clean_up(uri));
-  auto tile_num = dense_cell_range_its.size();
-  if (tile_num == 0)  // Nothing to write
-    return Status::Ok();
-
-  // Compute write cell ranges, one vector per overlapping tile
-  std::vector<WriteCellRangeVec> write_cell_ranges;
-  write_cell_ranges.resize(tile_num);
-  for (size_t i = 0; i < tile_num; ++i)
-    RETURN_CANCEL_OR_ERROR_ELSE(
-        compute_write_cell_ranges<T>(
-            &dense_cell_range_its[i], &write_cell_ranges[i]),
-        clean_up(uri));
-  dense_cell_range_its.clear();
+  // Create a dense tiler
+  DenseTiler<T> dense_tiler(
+      &buffers_,
+      &subarray_,
+      offsets_format_mode_,
+      offsets_bitsize_,
+      offsets_extra_element_);
+  auto tile_num = dense_tiler.tile_num();
 
   // Set number of tiles in the fragment metadata
   frag_meta->set_num_tiles(tile_num);
 
-  // Prepare tiles and filter attribute tiles
-  std::unordered_map<std::string, std::vector<Tile>> attr_tiles;
-  RETURN_NOT_OK_ELSE(
-      prepare_and_filter_attr_tiles(write_cell_ranges, &attr_tiles),
-      clean_up(uri));
+  // Prepare, filter and write tiles for all attributes
+  auto attr_num = buffers_.size();
+  auto compute_tp = storage_manager_->compute_tp();
+  auto thread_num = compute_tp->concurrency_level();
+  stats::Stats stats;
+  if (attr_num > tile_num) {  // Parallelize over attributes
+    auto st = parallel_for(compute_tp, 0, attr_num, [&](uint64_t i) {
+      auto buff_it = buffers_.begin();
+      std::advance(buff_it, i);
+      const auto& attr = buff_it->first;
+      return prepare_filter_and_write_tiles<T>(
+          attr, frag_meta.get(), &dense_tiler, 1);
+    });
+    RETURN_NOT_OK_ELSE(st, storage_manager_->vfs()->remove_dir(uri));
+  } else {  // Parallelize over tiles
+    size_t i = 0;
+    for (const auto& buff : buffers_) {
+      const auto& attr = buff.first;
+      RETURN_NOT_OK_ELSE(
+          prepare_filter_and_write_tiles<T>(
+              attr, frag_meta.get(), &dense_tiler, thread_num),
+          storage_manager_->vfs()->remove_dir(uri));
+      ++i;
+    }
+  }
 
-  // Write tiles for all attributes
-  RETURN_NOT_OK_ELSE(
-      write_all_tiles(frag_meta.get(), &attr_tiles),
-      storage_manager_->vfs()->remove_dir(uri));
+  // Append the dense tiler stats
+  stats_.append(dense_tiler.stats());
 
   // Write the fragment metadata
   RETURN_CANCEL_OR_ERROR_ELSE(
-      frag_meta->store(array_->get_encryption_key()), clean_up(uri));
+      frag_meta->store(array_->get_encryption_key()),
+      storage_manager_->vfs()->remove_dir(uri));
 
   // Add written fragment info
-  RETURN_NOT_OK_ELSE(add_written_fragment_info(uri), clean_up(uri));
+  RETURN_NOT_OK_ELSE(
+      add_written_fragment_info(uri), storage_manager_->vfs()->remove_dir(uri));
 
   // The following will make the fragment visible
   auto ok_uri =
       URI(uri.remove_trailing_slash().to_string() + constants::ok_file_suffix);
-  RETURN_NOT_OK_ELSE(storage_manager_->vfs()->touch(ok_uri), clean_up(uri));
+  RETURN_NOT_OK_ELSE(
+      storage_manager_->vfs()->touch(ok_uri),
+      storage_manager_->vfs()->remove_dir(uri));
 
+  stats_.end_timer(std::string(__func__) + ".sec");
   return Status::Ok();
-}
-
-Status Writer::prepare_and_filter_attr_tiles(
-    const std::vector<WriteCellRangeVec>& write_cell_ranges,
-    std::unordered_map<std::string, std::vector<Tile>>* attr_tiles) const {
-  STATS_START_TIMER(stats::Stats::TimerType::WRITE_PREPARE_AND_FILTER_TILES)
-
-  // Initialize attribute tiles
-  for (const auto& it : buffers_)
-    (*attr_tiles)[it.first] = std::vector<Tile>();
-
-  uint64_t attr_num = buffers_.size();
-  auto statuses = parallel_for(
-      storage_manager_->compute_tp(), 0, attr_num, [&](uint64_t i) {
-        auto buff_it = buffers_.begin();
-        std::advance(buff_it, i);
-        const auto& attr = buff_it->first;
-        auto& tiles = (*attr_tiles)[attr];
-        RETURN_CANCEL_OR_ERROR(prepare_tiles(attr, write_cell_ranges, &tiles));
-        RETURN_CANCEL_OR_ERROR(filter_tiles(attr, &tiles));
-        return Status::Ok();
-      });
-
-  // Check all statuses
-  for (auto& st : statuses)
-    RETURN_NOT_OK(st);
-
-  return Status::Ok();
-
-  STATS_END_TIMER(stats::Stats::TimerType::WRITE_PREPARE_AND_FILTER_TILES)
 }
 
 Status Writer::prepare_full_tiles(
     const std::set<uint64_t>& coord_dups,
     std::unordered_map<std::string, std::vector<Tile>>* tiles) const {
-  STATS_START_TIMER(stats::Stats::TimerType::WRITE_PREPARE_TILES)
+  STATS_START_TIMER(stats::GlobalStats::TimerType::WRITE_PREPARE_TILES)
 
   // Initialize attribute and coordinate tiles
   for (const auto& it : buffers_)
     (*tiles)[it.first] = std::vector<Tile>();
 
   auto num = buffers_.size();
-  auto statuses =
+  auto status =
       parallel_for(storage_manager_->compute_tp(), 0, num, [&](uint64_t i) {
         auto buff_it = buffers_.begin();
         std::advance(buff_it, i);
@@ -2414,13 +2275,11 @@ Status Writer::prepare_full_tiles(
         return Status::Ok();
       });
 
-  // Check all statuses
-  for (auto& st : statuses)
-    RETURN_NOT_OK(st);
+  RETURN_NOT_OK(status);
 
   return Status::Ok();
 
-  STATS_END_TIMER(stats::Stats::TimerType::WRITE_PREPARE_TILES)
+  STATS_END_TIMER(stats::GlobalStats::TimerType::WRITE_PREPARE_TILES)
 }
 
 Status Writer::prepare_full_tiles(
@@ -2813,145 +2672,10 @@ Status Writer::prepare_full_tiles_var(
 }
 
 Status Writer::prepare_tiles(
-    const std::string& attribute,
-    const std::vector<WriteCellRangeVec>& write_cell_ranges,
-    std::vector<Tile>* tiles) const {
-  // Trivial case
-  auto tile_num = write_cell_ranges.size();
-  if (tile_num == 0)
-    return Status::Ok();
-
-  // For easy reference
-  auto nullable = array_schema_->is_nullable(attribute);
-  auto var_size = array_schema_->var_size(attribute);
-  auto it = buffers_.find(attribute);
-  auto buffer = (uint64_t*)it->second.buffer_;
-  auto buffer_var = (uint64_t*)it->second.buffer_var_;
-  auto buffer_validity = (uint64_t*)it->second.validity_vector_.buffer();
-  auto buffer_size = var_size ?
-                         get_offset_buffer_size(*it->second.buffer_size_) :
-                         *it->second.buffer_size_;
-  auto buffer_var_size = it->second.buffer_var_size_;
-  auto buffer_validity_size = it->second.validity_vector_.buffer_size();
-  auto cell_val_num = array_schema_->cell_val_num(attribute);
-  auto attr_datatype_size = datatype_size(array_schema_->type(attribute));
-
-  // Initialize tiles and buffer
-  RETURN_NOT_OK(init_tiles(attribute, tile_num, tiles));
-  auto buff = tdb_make_shared(ConstBuffer, buffer, buffer_size);
-  auto buff_var =
-      (!var_size) ? nullptr :
-                    tdb_make_shared(ConstBuffer, buffer_var, *buffer_var_size);
-  auto buff_validity =
-      (!nullable) ?
-          nullptr :
-          tdb_make_shared(ConstBuffer, buffer_validity, *buffer_validity_size);
-
-  // Populate each tile with the write cell ranges
-  const uint64_t end_pos = array_schema_->domain()->cell_num_per_tile() - 1;
-  const uint64_t t_inc = 1 + (var_size ? 1 : 0) + (nullable ? 1 : 0);
-  for (size_t i = 0, t = 0; i < tile_num; ++i, t += t_inc) {
-    uint64_t pos = 0;
-    for (const auto& wcr : write_cell_ranges[i]) {
-      // Write empty range
-      if (wcr.pos_ > pos) {
-        if (var_size) {
-          if (nullable)
-            RETURN_NOT_OK(write_empty_cell_range_to_tile_var_nullable(
-                wcr.pos_ - pos,
-                &(*tiles)[t],
-                &(*tiles)[t + 1],
-                &(*tiles)[t + 2]));
-          else
-            RETURN_NOT_OK(write_empty_cell_range_to_tile_var(
-                wcr.pos_ - pos, &(*tiles)[t], &(*tiles)[t + 1]));
-        } else {
-          if (nullable)
-            RETURN_NOT_OK(write_empty_cell_range_to_tile_nullable(
-                (wcr.pos_ - pos),
-                cell_val_num,
-                &(*tiles)[t],
-                &(*tiles)[t + 1]));
-          else
-            RETURN_NOT_OK(write_empty_cell_range_to_tile(
-                (wcr.pos_ - pos), cell_val_num, &(*tiles)[t]));
-        }
-        pos = wcr.pos_;
-      }
-
-      // Write (non-empty) range
-      if (var_size) {
-        if (nullable) {
-          RETURN_NOT_OK(write_cell_range_to_tile_var_nullable(
-              buff.get(),
-              buff_var.get(),
-              buff_validity.get(),
-              wcr.start_,
-              wcr.end_,
-              attr_datatype_size,
-              &(*tiles)[t],
-              &(*tiles)[t + 1],
-              &(*tiles)[t + 2]));
-        } else
-          RETURN_NOT_OK(write_cell_range_to_tile_var(
-              buff.get(),
-              buff_var.get(),
-              wcr.start_,
-              wcr.end_,
-              attr_datatype_size,
-              &(*tiles)[t],
-              &(*tiles)[t + 1]));
-      } else {
-        if (nullable)
-          RETURN_NOT_OK(write_cell_range_to_tile_nullable(
-              buff.get(),
-              buff_validity.get(),
-              wcr.start_,
-              wcr.end_,
-              &(*tiles)[t],
-              &(*tiles)[t + 1]));
-        else
-          RETURN_NOT_OK(write_cell_range_to_tile(
-              buff.get(), wcr.start_, wcr.end_, &(*tiles)[t]));
-      }
-
-      pos += wcr.end_ - wcr.start_ + 1;
-    }
-
-    // Write empty range
-    if (pos <= end_pos) {
-      if (var_size) {
-        if (nullable)
-          RETURN_NOT_OK(write_empty_cell_range_to_tile_var_nullable(
-              end_pos - pos + 1,
-              &(*tiles)[t],
-              &(*tiles)[t + 1],
-              &(*tiles)[t + 2]));
-        else
-          RETURN_NOT_OK(write_empty_cell_range_to_tile_var(
-              end_pos - pos + 1, &(*tiles)[t], &(*tiles)[t + 1]));
-      } else {
-        if (nullable)
-          RETURN_NOT_OK(write_empty_cell_range_to_tile_nullable(
-              (end_pos - pos + 1),
-              cell_val_num,
-              &(*tiles)[t],
-              &(*tiles)[t + 1]));
-        else
-          RETURN_NOT_OK(write_empty_cell_range_to_tile(
-              (end_pos - pos + 1), cell_val_num, &(*tiles)[t]));
-      }
-    }
-  }
-
-  return Status::Ok();
-}
-
-Status Writer::prepare_tiles(
     const std::vector<uint64_t>& cell_pos,
     const std::set<uint64_t>& coord_dups,
     std::unordered_map<std::string, std::vector<Tile>>* tiles) const {
-  STATS_START_TIMER(stats::Stats::TimerType::WRITE_PREPARE_TILES)
+  STATS_START_TIMER(stats::GlobalStats::TimerType::WRITE_PREPARE_TILES)
 
   // Initialize attribute tiles
   tiles->clear();
@@ -2960,7 +2684,7 @@ Status Writer::prepare_tiles(
 
   // Prepare tiles for all attributes and coordinates
   auto buffer_num = buffers_.size();
-  auto statuses = parallel_for(
+  auto status = parallel_for(
       storage_manager_->compute_tp(), 0, buffer_num, [&](uint64_t i) {
         auto buff_it = buffers_.begin();
         std::advance(buff_it, i);
@@ -2970,13 +2694,11 @@ Status Writer::prepare_tiles(
         return Status::Ok();
       });
 
-  // Check all statuses
-  for (auto& st : statuses)
-    RETURN_NOT_OK(st);
+  RETURN_NOT_OK(status);
 
   return Status::Ok();
 
-  STATS_END_TIMER(stats::Stats::TimerType::WRITE_PREPARE_TILES)
+  STATS_END_TIMER(stats::GlobalStats::TimerType::WRITE_PREPARE_TILES)
 }
 
 Status Writer::prepare_tiles(
@@ -3153,7 +2875,7 @@ void Writer::reset() {
 }
 
 Status Writer::sort_coords(std::vector<uint64_t>* cell_pos) const {
-  STATS_START_TIMER(stats::Stats::TimerType::WRITE_SORT_COORDS)
+  STATS_START_TIMER(stats::GlobalStats::TimerType::WRITE_SORT_COORDS)
 
   // For easy reference
   auto domain = array_schema_->domain();
@@ -3191,11 +2913,11 @@ Status Writer::sort_coords(std::vector<uint64_t>* cell_pos) const {
 
   return Status::Ok();
 
-  STATS_END_TIMER(stats::Stats::TimerType::WRITE_SORT_COORDS)
+  STATS_END_TIMER(stats::GlobalStats::TimerType::WRITE_SORT_COORDS)
 }
 
 Status Writer::split_coords_buffer() {
-  STATS_START_TIMER(stats::Stats::TimerType::WRITE_SPLIT_COORDS_BUFF)
+  STATS_START_TIMER(stats::GlobalStats::TimerType::WRITE_SPLIT_COORDS_BUFF)
 
   // Do nothing if the coordinates buffer is not set
   if (coords_buffer_ == nullptr)
@@ -3240,7 +2962,7 @@ Status Writer::split_coords_buffer() {
 
   return Status::Ok();
 
-  STATS_END_TIMER(stats::Stats::TimerType::WRITE_SPLIT_COORDS_BUFF)
+  STATS_END_TIMER(stats::GlobalStats::TimerType::WRITE_SPLIT_COORDS_BUFF)
 }
 
 Status Writer::unordered_write() {
@@ -3284,8 +3006,9 @@ Status Writer::unordered_write() {
   auto tile_num = it->second.size() / tile_num_divisor;
   frag_meta->set_num_tiles(tile_num);
 
-  STATS_ADD_COUNTER(stats::Stats::CounterType::WRITE_TILE_NUM, tile_num);
-  STATS_ADD_COUNTER(stats::Stats::CounterType::WRITE_CELL_NUM, cell_pos.size());
+  STATS_ADD_COUNTER(stats::GlobalStats::CounterType::WRITE_TILE_NUM, tile_num);
+  STATS_ADD_COUNTER(
+      stats::GlobalStats::CounterType::WRITE_CELL_NUM, cell_pos.size());
 
   // Compute coordinates metadata
   RETURN_CANCEL_OR_ERROR_ELSE(
@@ -3493,15 +3216,15 @@ Status Writer::write_cell_range_to_tile_var_nullable(
 
 Status Writer::write_all_tiles(
     FragmentMetadata* frag_meta,
-    std::unordered_map<std::string, std::vector<Tile>>* const tiles) const {
-  STATS_START_TIMER(stats::Stats::TimerType::WRITE_TILES)
+    std::unordered_map<std::string, std::vector<Tile>>* const tiles) {
+  STATS_START_TIMER(stats::GlobalStats::TimerType::WRITE_TILES)
 
   assert(!tiles->empty());
 
   std::vector<ThreadPool::Task> tasks;
   for (auto& it : *tiles) {
     tasks.push_back(storage_manager_->io_tp()->execute([&, this]() {
-      RETURN_CANCEL_OR_ERROR(write_tiles(it.first, frag_meta, &it.second));
+      RETURN_CANCEL_OR_ERROR(write_tiles(it.first, frag_meta, 0, &it.second));
       return Status::Ok();
     }));
   }
@@ -3513,13 +3236,18 @@ Status Writer::write_all_tiles(
 
   return Status::Ok();
 
-  STATS_END_TIMER(stats::Stats::TimerType::WRITE_TILES)
+  STATS_END_TIMER(stats::GlobalStats::TimerType::WRITE_TILES)
 }
 
 Status Writer::write_tiles(
     const std::string& name,
     FragmentMetadata* frag_meta,
-    std::vector<Tile>* const tiles) const {
+    uint64_t start_tile_id,
+    std::vector<Tile>* const tiles,
+    bool close_files) {
+  stats_.start_timer(std::string(__func__) + ".sec");
+  stats_.add_counter(std::string(__func__) + ".count", 1);
+
   // Handle zero tiles
   if (tiles->empty())
     return Status::Ok();
@@ -3533,7 +3261,7 @@ Status Writer::write_tiles(
 
   // Write tiles
   auto tile_num = tiles->size();
-  for (size_t i = 0, tile_id = 0; i < tile_num; ++i, ++tile_id) {
+  for (size_t i = 0, tile_id = start_tile_id; i < tile_num; ++i, ++tile_id) {
     Tile* tile = &(*tiles)[i];
     RETURN_NOT_OK(storage_manager_->write(uri, tile->filtered_buffer()));
     frag_meta->set_tile_offset(name, tile_id, tile->filtered_buffer()->size());
@@ -3560,7 +3288,7 @@ Status Writer::write_tiles(
   }
 
   // Close files, except in the case of global order
-  if (layout_ != Layout::GLOBAL_ORDER) {
+  if (close_files && layout_ != Layout::GLOBAL_ORDER) {
     RETURN_NOT_OK(storage_manager_->close_file(frag_meta->uri(name)));
     if (var_size)
       RETURN_NOT_OK(storage_manager_->close_file(frag_meta->var_uri(name)));
@@ -3569,6 +3297,7 @@ Status Writer::write_tiles(
           storage_manager_->close_file(frag_meta->validity_uri(name)));
   }
 
+  stats_.end_timer(std::string(__func__) + ".sec");
   return Status::Ok();
 }
 
@@ -3613,25 +3342,30 @@ void Writer::get_dim_attr_stats() const {
     const auto& name = it.first;
     auto var_size = array_schema_->var_size(name);
     if (array_schema_->is_attr(name)) {
-      STATS_ADD_COUNTER(stats::Stats::CounterType::WRITE_ATTR_NUM, 1);
+      STATS_ADD_COUNTER(stats::GlobalStats::CounterType::WRITE_ATTR_NUM, 1);
       if (var_size) {
-        STATS_ADD_COUNTER(stats::Stats::CounterType::WRITE_ATTR_VAR_NUM, 1);
+        STATS_ADD_COUNTER(
+            stats::GlobalStats::CounterType::WRITE_ATTR_VAR_NUM, 1);
       } else {
-        STATS_ADD_COUNTER(stats::Stats::CounterType::WRITE_ATTR_FIXED_NUM, 1);
+        STATS_ADD_COUNTER(
+            stats::GlobalStats::CounterType::WRITE_ATTR_FIXED_NUM, 1);
       }
       if (array_schema_->is_nullable(name)) {
         STATS_ADD_COUNTER(
-            stats::Stats::CounterType::WRITE_ATTR_NULLABLE_NUM, 1);
+            stats::GlobalStats::CounterType::WRITE_ATTR_NULLABLE_NUM, 1);
       }
     } else {
-      STATS_ADD_COUNTER(stats::Stats::CounterType::WRITE_DIM_NUM, 1);
+      STATS_ADD_COUNTER(stats::GlobalStats::CounterType::WRITE_DIM_NUM, 1);
       if (var_size) {
-        STATS_ADD_COUNTER(stats::Stats::CounterType::WRITE_DIM_VAR_NUM, 1);
+        STATS_ADD_COUNTER(
+            stats::GlobalStats::CounterType::WRITE_DIM_VAR_NUM, 1);
       } else {
         if (name == constants::coords) {
-          STATS_ADD_COUNTER(stats::Stats::CounterType::WRITE_DIM_ZIPPED_NUM, 1);
+          STATS_ADD_COUNTER(
+              stats::GlobalStats::CounterType::WRITE_DIM_ZIPPED_NUM, 1);
         } else {
-          STATS_ADD_COUNTER(stats::Stats::CounterType::WRITE_DIM_FIXED_NUM, 1);
+          STATS_ADD_COUNTER(
+              stats::GlobalStats::CounterType::WRITE_DIM_FIXED_NUM, 1);
         }
       }
     }
@@ -3648,7 +3382,7 @@ Status Writer::calculate_hilbert_values(
 
   // Calculate Hilbert values in parallel
   assert(hilbert_values->size() >= coords_num_);
-  auto statuses = parallel_for(
+  auto status = parallel_for(
       storage_manager_->compute_tp(), 0, coords_num_, [&](uint64_t c) {
         std::vector<uint64_t> coords(dim_num);
         for (uint32_t d = 0; d < dim_num; ++d) {
@@ -3661,9 +3395,7 @@ Status Writer::calculate_hilbert_values(
         return Status::Ok();
       });
 
-  // Check all statuses
-  for (auto& st : statuses)
-    RETURN_NOT_OK_ELSE(st, LOG_STATUS(st));
+  RETURN_NOT_OK_ELSE(status, LOG_STATUS(status));
 
   return Status::Ok();
 }
@@ -3671,5 +3403,75 @@ Status Writer::calculate_hilbert_values(
 const Config* Writer::config() const {
   return &config_;
 }
+
+template <class T>
+Status Writer::prepare_filter_and_write_tiles(
+    const std::string& name,
+    FragmentMetadata* frag_meta,
+    DenseTiler<T>* dense_tiler,
+    uint64_t thread_num) {
+  stats_.start_timer(std::string(__func__) + ".sec");
+  stats_.add_counter(std::string(__func__) + ".count", 1);
+
+  // For easy reference
+  const bool var = array_schema_->var_size(name);
+  const bool nullable = array_schema_->is_nullable(name);
+
+  // Initialization
+  auto tile_num = dense_tiler->tile_num();
+  assert(tile_num > 0);
+  uint64_t batch_num = tile_num / thread_num;
+  uint64_t last_batch_size = tile_num % thread_num;
+  batch_num += (last_batch_size > 0);
+  last_batch_size = (last_batch_size == 0) ? thread_num : last_batch_size;
+
+  // Process batches
+  uint64_t frag_tile_id = 0;
+  bool close_files = false;
+  for (uint64_t b = 0; b < batch_num; ++b) {
+    auto batch_size = (b == batch_num - 1) ? last_batch_size : thread_num;
+    assert(batch_size > 0);
+    std::vector<Tile> tiles(batch_size * (1 + var + nullable));
+    std::vector<Stats> sub_stats(batch_size);
+    auto st = parallel_for(
+        storage_manager_->compute_tp(), 0, batch_size, [&](uint64_t i) {
+          // Prepare and filter tiles
+          auto tiles_id = i * (1 + var + nullable);
+          if (!var) {
+            RETURN_NOT_OK(dense_tiler->get_tile(
+                frag_tile_id + i, name, &tiles[tiles_id]));
+            RETURN_NOT_OK(filter_tile(name, &tiles[tiles_id], false, false));
+          } else {
+            RETURN_NOT_OK(dense_tiler->get_tile_var(
+                frag_tile_id + i,
+                name,
+                &tiles[tiles_id],
+                &tiles[tiles_id + 1]));
+            RETURN_NOT_OK(filter_tile(name, &tiles[tiles_id], true, false));
+            RETURN_NOT_OK(
+                filter_tile(name, &tiles[tiles_id + 1], false, false));
+          }
+          if (nullable) {
+            RETURN_NOT_OK(dense_tiler->get_tile_null(
+                frag_tile_id + i, name, &tiles[tiles_id + 1 + var]));
+            RETURN_NOT_OK(
+                filter_tile(name, &tiles[tiles_id + 1 + var], false, true));
+          }
+          return Status::Ok();
+        });
+    RETURN_NOT_OK(st);
+
+    // Write tiles
+    close_files = (b == batch_num - 1);
+    RETURN_NOT_OK(
+        write_tiles(name, frag_meta, frag_tile_id, &tiles, close_files));
+
+    frag_tile_id += batch_size;
+  }
+
+  stats_.end_timer(std::string(__func__) + ".sec");
+  return Status::Ok();
+}
+
 }  // namespace sm
 }  // namespace tiledb

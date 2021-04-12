@@ -39,7 +39,7 @@
 #include "tiledb/sm/enums/layout.h"
 #include "tiledb/sm/misc/hilbert.h"
 #include "tiledb/sm/misc/utils.h"
-#include "tiledb/sm/stats/stats.h"
+#include "tiledb/sm/stats/global_stats.h"
 
 #include <iomanip>
 
@@ -352,7 +352,7 @@ Status SubarrayPartitioner::get_memory_budget(
 }
 
 Status SubarrayPartitioner::next(bool* unsplittable) {
-  STATS_START_TIMER(stats::Stats::TimerType::READ_NEXT_PARTITION)
+  STATS_START_TIMER(stats::GlobalStats::TimerType::READ_NEXT_PARTITION)
 
   *unsplittable = false;
 
@@ -394,7 +394,7 @@ Status SubarrayPartitioner::next(bool* unsplittable) {
   // Must split a multi-range subarray slab
   return next_from_multi_range(unsplittable);
 
-  STATS_END_TIMER(stats::Stats::TimerType::READ_NEXT_PARTITION)
+  STATS_END_TIMER(stats::GlobalStats::TimerType::READ_NEXT_PARTITION)
 }
 
 Status SubarrayPartitioner::set_result_budget(
@@ -558,7 +558,7 @@ Status SubarrayPartitioner::set_memory_budget(
 }
 
 Status SubarrayPartitioner::split_current(bool* unsplittable) {
-  STATS_START_TIMER(stats::Stats::TimerType::READ_SPLIT_CURRENT_PARTITION)
+  STATS_START_TIMER(stats::GlobalStats::TimerType::READ_SPLIT_CURRENT_PARTITION)
 
   *unsplittable = false;
 
@@ -611,7 +611,7 @@ Status SubarrayPartitioner::split_current(bool* unsplittable) {
   split_top_single_range(unsplittable);
   return next_from_single_range(unsplittable);
 
-  STATS_END_TIMER(stats::Stats::TimerType::READ_SPLIT_CURRENT_PARTITION)
+  STATS_END_TIMER(stats::GlobalStats::TimerType::READ_SPLIT_CURRENT_PARTITION)
 }
 
 const SubarrayPartitioner::State* SubarrayPartitioner::state() const {

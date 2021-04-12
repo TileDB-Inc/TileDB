@@ -1918,6 +1918,9 @@ TEST_CASE_METHOD(
   CHECK(start == "a");
   CHECK(end == "ee");
 
+  // Free array
+  tiledb_array_free(&array);
+
   // Open array
   rc = tiledb_array_alloc(ctx_, array_name.c_str(), &array);
   CHECK(rc == TILEDB_OK);
@@ -2336,6 +2339,7 @@ TEST_CASE_METHOD(
   // Consolidate fragment metadata
   rc = tiledb_array_consolidate(ctx_, array_name.c_str(), config);
   CHECK(rc == TILEDB_OK);
+  tiledb_array_free(&array);
 
   // Open array
   rc = tiledb_array_alloc(ctx_, array_name.c_str(), &array);
@@ -2373,6 +2377,7 @@ TEST_CASE_METHOD(
   // Close array
   rc = tiledb_array_close(ctx_, array);
   CHECK(rc == TILEDB_OK);
+  tiledb_array_free(&array);
 
   // Consolidate
   rc = tiledb_array_consolidate(ctx_, array_name.c_str(), nullptr);

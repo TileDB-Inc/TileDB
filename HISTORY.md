@@ -6,6 +6,7 @@
 ## Breaking C API changes
 
 ## Breaking behavior
+* Removes TBB as an optional dependency [#2181](https://github.com/TileDB-Inc/TileDB/pull/2181)
 
 ## New features
 * Add support for serialization of config objects [#2164](https://github.com/TileDB-Inc/TileDB/pull/2164)
@@ -16,8 +17,12 @@
 * Smoke Test, remove nullable structs from global namespace. [#2078](https://github.com/TileDB-Inc/TileDB/pull/2078)
 
 ## Improvements
+* Consolidation support for nullable attributes [#2196](https://github.com/TileDB-Inc/TileDB/pull/2196)
+* Adjust unit tests to reduce memory leaks inside the tests. [#2179](https://github.com/TileDB-Inc/TileDB/pull/2179)
 * Reduces memory usage in multi-range range reads [#2165](https://github.com/TileDB-Inc/TileDB/pull/2165)
 * Add config option `sm.read_range_oob` to toggle bounding read ranges to domain or erroring [#2162](https://github.com/TileDB-Inc/TileDB/pull/2162)
+* Refactor dense writes [#2166](https://github.com/TileDB-Inc/TileDB/pull/2166)
+* Proposal on refactoring stats [#2166](https://github.com/TileDB-Inc/TileDB/pull/2166)
 * Windows msys2 build artifacts are no longer uploaded [#2159](https://github.com/TileDB-Inc/TileDB/pull/2159)
 * Add internal log functions to log at different log levels [#2161](https://github.com/TileDB-Inc/TileDB/pull/2161)
 * Parallelize Writer::filter_tiles [#2156](https://github.com/TileDB-Inc/TileDB/pull/2156)
@@ -32,10 +37,14 @@
 ## Deprecations
 
 ## Bug fixes
+* Fixes a potential memory leak in the filter pipeline [#2185](https://github.com/TileDB-Inc/TileDB/pull/2185)
+* Fixes misc memory leaks in the unit tests [#2183](https://github.com/TileDB-Inc/TileDB/pull/2183)
+* Fix memory leak of `tiledb_config_t` in error path of `tiledb_config_alloc`. [#2178](https://github.com/TileDB-Inc/TileDB/pull/2178)
 
 ## API additions
 
 ### C API
+* tiledb_query_get_array now returns a deep-copy [#2184](https://github.com/TileDB-Inc/TileDB/pull/2184)
 * Added `tiledb_serialize_config` and `tiledb_deserialize_config` [#2164](https://github.com/TileDB-Inc/TileDB/pull/2164)
 * Add new api,  to get a query's config. [#2167](https://github.com/TileDB-Inc/TileDB/pull/2167)
 * Removes non-default parameter in tiledb_config_unset. [#2099](https://github.com/TileDB-Inc/TileDB/pull/2099)

@@ -4361,7 +4361,7 @@ TEST_CASE_METHOD(
 TEST_CASE_METHOD(
     DenseArrayFx,
     "C API: Test dense array, read in col-major after updates",
-    "[capi], [dense], [dense-col-updates]") {
+    "[capi][dense][dense-col-updates]") {
   SECTION("- No serialization") {
     serialize_query_ = false;
   }
@@ -4503,7 +4503,7 @@ TEST_CASE_METHOD(
 TEST_CASE_METHOD(
     DenseArrayFx,
     "C API: Test dense array, encrypted",
-    "[capi], [dense], [encryption]") {
+    "[capi][dense][encryption]") {
   encryption_type = TILEDB_AES_256_GCM;
   encryption_key = "0123456789abcdeF0123456789abcdeF";
 

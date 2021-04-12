@@ -61,7 +61,7 @@
 #include "tiledb/sm/serialization/array_schema.h"
 #include "tiledb/sm/serialization/config.h"
 #include "tiledb/sm/serialization/query.h"
-#include "tiledb/sm/stats/stats.h"
+#include "tiledb/sm/stats/global_stats.h"
 #include "tiledb/sm/storage_manager/context.h"
 #include "tiledb/sm/subarray/subarray.h"
 #include "tiledb/sm/subarray/subarray_partitioner.h"
@@ -876,6 +876,8 @@ int32_t tiledb_config_alloc(tiledb_config_t** config, tiledb_error_t** error) {
         Status::Error("Cannot create config object; Memory allocation failed");
     LOG_STATUS(st);
     create_error(error, st);
+    if (*config != nullptr)
+      delete *config;
     return TILEDB_OOM;
   }
 
@@ -3010,12 +3012,31 @@ int32_t tiledb_query_get_array(
 
   // Create array datatype
   *array = new (std::nothrow) tiledb_array_t;
+  if (*array == nullptr) {
+    auto st = Status::Error(
+        "Failed to create TileDB array object; Memory allocation error");
+    LOG_STATUS(st);
+    save_error(ctx, st);
+    return TILEDB_OOM;
+  }
 
-  // Get array
-  (*array)->array_ = query->query_->array();
+  // Allocate an array object, copied from the query's array.
+  (*array)->array_ =
+      new (std::nothrow) tiledb::sm::Array(*query->query_->array());
+  if ((*array)->array_ == nullptr) {
+    delete *array;
+    *array = nullptr;
+    auto st = Status::Error(
+        "Failed to create TileDB array object; Memory allocation "
+        "error");
+    LOG_STATUS(st);
+    save_error(ctx, st);
+    return TILEDB_OOM;
+  }
 
   return TILEDB_OK;
 }
+
 int32_t tiledb_query_add_range(
     tiledb_ctx_t* ctx,
     tiledb_query_t* query,
@@ -4314,7 +4335,7 @@ int32_t tiledb_vfs_get_config(
   if (*config == nullptr)
     return TILEDB_OOM;
 
-  // Create storage manager
+  // Create a new config
   (*config)->config_ = new (std::nothrow) tiledb::sm::Config();
   if ((*config)->config_ == nullptr) {
     delete (*config);

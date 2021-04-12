@@ -936,13 +936,6 @@ TILEDB_EXPORT void tiledb_config_free(tiledb_config_t** config);
  * - `sm.io_concurrency_level` <br>
  *    Upper-bound on number of threads to allocate for IO-bound tasks. <br>
  *    **Default*: # cores
- * - `sm.num_tbb_threads` <br>
- *    The number of threads allocated for the TBB thread pool. Note: this
- *    is a whole-program setting. Usually this should not be modified from
- *    the default. See also the documentation for TBB's `task_scheduler_init`
- *    class. When TBB is disabled, this will be used to set the level of
- *    concurrency for generic threading where TBB is otherwise used. <br>
- *    **Default**: TBB automatic
  * - `sm.vacuum.mode` <br>
  *    The vacuuming mode, one of `fragments` (remove consolidated fragments),
  *    `fragment_meta` (remove only consolidated fragment metadata), or
