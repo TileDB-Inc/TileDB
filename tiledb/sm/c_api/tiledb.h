@@ -4607,7 +4607,7 @@ TILEDB_EXPORT int32_t tiledb_array_open(
  * @note This function is applicable only to read queries.
  * @note The config should be set before opening an array.
  */
-TILEDB_DEPRECATED_EXPORT int32_t tiledb_array_open_at(
+TILEDB_EXPORT int32_t tiledb_array_open_at(
     tiledb_ctx_t* ctx,
     tiledb_array_t* array,
     tiledb_query_type_t query_type,
@@ -4687,7 +4687,7 @@ TILEDB_EXPORT int32_t tiledb_array_open_with_key(
  * @note This function is applicable only to read queries.
  * @note The config should be set before opening an array.
  */
-TILEDB_DEPRECATED_EXPORT int32_t tiledb_array_open_at_with_key(
+TILEDB_EXPORT int32_t tiledb_array_open_at_with_key(
     tiledb_ctx_t* ctx,
     tiledb_array_t* array,
     tiledb_query_type_t query_type,
@@ -4760,7 +4760,7 @@ tiledb_array_reopen(tiledb_ctx_t* ctx, tiledb_array_t* array);
  *
  * @note This is applicable only to arrays opened for reads.
  */
-TILEDB_DEPRECATED_EXPORT int32_t tiledb_array_reopen_at(
+TILEDB_EXPORT int32_t tiledb_array_reopen_at(
     tiledb_ctx_t* ctx, tiledb_array_t* array, uint64_t timestamp);
 
 /**
