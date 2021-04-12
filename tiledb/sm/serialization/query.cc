@@ -44,6 +44,8 @@
 #include "tiledb/sm/query/query.h"
 #include "tiledb/sm/query/reader.h"
 #include "tiledb/sm/query/writer.h"
+#include "tiledb/sm/serialization/config.h"
+
 #include "tiledb/sm/serialization/capnp_utils.h"
 #include "tiledb/sm/subarray/subarray.h"
 #include "tiledb/sm/subarray/subarray_partitioner.h"
@@ -591,6 +593,11 @@ Status query_to_capnp(
     RETURN_NOT_OK(writer_to_capnp(*writer, &builder));
   }
 
+  // Serialize Config
+  const Config config = query.config();
+  auto config_builder = query_builder->initConfig();
+  RETURN_NOT_OK(config_to_capnp(&config, &config_builder));
+
   return Status::Ok();
 }
 
@@ -635,6 +642,16 @@ Status query_from_capnp(
 
   // Deserialize array instance.
   RETURN_NOT_OK(array_from_capnp(query_reader.getArray(), array));
+
+  // Deserialize Config
+  if (query_reader.hasConfig()) {
+    std::unique_ptr<Config> decoded_config = nullptr;
+    auto config_reader = query_reader.getConfig();
+    RETURN_NOT_OK(config_from_capnp(config_reader, &decoded_config));
+    if (decoded_config != nullptr) {
+      RETURN_NOT_OK(query->set_config(*decoded_config));
+    }
+  }
 
   // Deserialize and set attribute buffers.
   if (!query_reader.hasAttributeBufferHeaders())

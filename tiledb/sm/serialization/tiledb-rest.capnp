@@ -371,13 +371,16 @@ struct Query {
     # Total number of bytes in validity buffers
 
     varOffsetsMode @10 :Text;
-    # The offsets format (`bytes` or `elements`) to be used
+    # This field is not longer used, it is replaced by the config
 
     varOffsetsAddExtraElement @11 :Bool;
-    # `True` if an extra element is to be added to the end of the offsets buffer
+    # This field is not longer used, it is replaced by the config
 
     varOffsetsBitsize @12 :Int32;
-    # The offsets bitsize (`32` or `64`) to be used
+    # This field is not longer used, it is replaced by the config
+
+    config @13 :Config;
+    # Config set on query
 }
 
 struct NonEmptyDomain {

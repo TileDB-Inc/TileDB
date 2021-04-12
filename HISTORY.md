@@ -9,6 +9,7 @@
 ## New features
 
 * Add support for serialization of config objects [#2164](https://github.com/TileDB-Inc/TileDB/pull/2164)
+* Add support for serialization of query config [#2177](https://github.com/TileDB-Inc/TileDB/pull/2177)
 
 ## Improvements
 
