@@ -325,6 +325,9 @@ class Config {
   /** Use virtual addressing (false for minio, true for AWS S3). */
   static const std::string VFS_S3_USE_VIRTUAL_ADDRESSING;
 
+  /** S3 skip init. */
+  static const std::string VFS_S3_SKIP_INIT;
+
   /** Use virtual addressing (true). */
   static const std::string VFS_S3_USE_MULTIPART_UPLOAD;
 
