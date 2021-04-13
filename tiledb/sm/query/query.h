@@ -494,6 +494,13 @@ class Query {
   Status set_config(const Config& config);
 
   /**
+   * Get the config of the query.
+   *
+   * @return Config from query
+   */
+  const Config* config() const;
+
+  /**
    * Sets the buffer for a fixed-sized attribute/dimension.
    *
    * @param name The attribute/dimension to set the buffer for.

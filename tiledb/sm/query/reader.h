@@ -49,7 +49,6 @@
 #include "tiledb/sm/query/result_coords.h"
 #include "tiledb/sm/query/result_space_tile.h"
 #include "tiledb/sm/query/validity_vector.h"
-#include "tiledb/sm/query/write_cell_slab_iter.h"
 #include "tiledb/sm/subarray/subarray_partitioner.h"
 
 using namespace tiledb::common;
@@ -131,7 +130,7 @@ class Reader {
   const Array* array() const;
 
   /** Adds a range to the subarray on the input dimension. */
-  Status add_range(unsigned dim_idx, const Range& range);
+  Status add_range(unsigned dim_idx, Range&& range);
 
   /** Retrieves the number of ranges of the subarray for the given dimension. */
   Status get_range_num(unsigned dim_idx, uint64_t* range_num) const;
@@ -442,6 +441,9 @@ class Reader {
 
   /** Sets config for query-level parameters only. */
   Status set_config(const Config& config);
+
+  /** Returns the internal config. */
+  const Config* config() const;
 
   /**
    * Sets the cell layout of the query. The function will return an error

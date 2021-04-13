@@ -338,6 +338,8 @@ void SparseArrayFx::create_sparse_array_2D(
   REQUIRE(rc == TILEDB_OK);
 
   // Clean up
+  tiledb_filter_free(&filter);
+  tiledb_filter_list_free(&list);
   tiledb_attribute_free(&a);
   tiledb_dimension_free(&d1);
   tiledb_dimension_free(&d2);
@@ -2226,6 +2228,7 @@ void SparseArrayFx::check_sparse_array_no_results(
   // Clean up
   tiledb_array_free(&array);
   tiledb_query_free(&query);
+  delete[] buffer;
 }
 
 void SparseArrayFx::write_partial_sparse_array(const std::string& array_name) {
@@ -2802,6 +2805,8 @@ TEST_CASE_METHOD(
   free(a2_off);
   free(a2);
   free(a3);
+  free(coords_dim1);
+  free(coords_dim2);
   tiledb_query_free(&empty_query);
 
   // ---- Second READ query (non-empty)
@@ -2872,6 +2877,8 @@ TEST_CASE_METHOD(
   free(a2_off);
   free(a2);
   free(a3);
+  free(coords_dim1);
+  free(coords_dim2);
   tiledb_query_free(&query);
 
   // Clean up

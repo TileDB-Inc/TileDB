@@ -308,7 +308,7 @@ Status S3::disconnect() {
     for (auto& kv : multipart_upload_states_)
       states.emplace_back(&kv.second);
 
-    auto statuses =
+    auto status =
         parallel_for(vfs_thread_pool_, 0, states.size(), [&](uint64_t i) {
           const MultiPartUploadState* state = states[i];
           // Lock multipart state
@@ -342,9 +342,7 @@ Status S3::disconnect() {
           return Status::Ok();
         });
 
-    // check statuses
-    for (auto& st : statuses)
-      RETURN_NOT_OK(st);
+    RETURN_NOT_OK(status);
   }
 
   unique_rl.unlock();
@@ -755,13 +753,16 @@ Status S3::read(
       ("bytes=" + std::to_string(offset) + "-" +
        std::to_string(offset + length + read_ahead_length - 1))
           .c_str());
-  get_object_request.SetResponseStreamFactory(
-      [buffer, length, read_ahead_length]() {
-        auto streamBuf = new boost::interprocess::bufferbuf(
-            (char*)buffer, length + read_ahead_length);
-        return Aws::New<Aws::IOStream>(
-            constants::s3_allocation_tag.c_str(), streamBuf);
-      });
+  // Create a unique_ptr so that this will be freed at the end of the function
+  // call This only needs to live long enough for the request itself
+  auto streamBuf = tdb_unique_ptr<boost::interprocess::bufferbuf>(tdb_new(
+      boost::interprocess::bufferbuf,
+      (char*)buffer,
+      length + read_ahead_length));
+  get_object_request.SetResponseStreamFactory([&streamBuf]() {
+    return Aws::New<Aws::IOStream>(
+        constants::s3_allocation_tag.c_str(), streamBuf.get());
+  });
   if (request_payer_ != Aws::S3::Model::RequestPayer::NOT_SET)
     get_object_request.SetRequestPayer(request_payer_);
 

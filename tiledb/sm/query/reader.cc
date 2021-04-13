@@ -45,7 +45,7 @@
 #include "tiledb/sm/query/query_macros.h"
 #include "tiledb/sm/query/read_cell_slab_iter.h"
 #include "tiledb/sm/query/result_tile.h"
-#include "tiledb/sm/stats/stats.h"
+#include "tiledb/sm/stats/global_stats.h"
 #include "tiledb/sm/storage_manager/storage_manager.h"
 #include "tiledb/sm/subarray/cell_slab.h"
 #include "tiledb/sm/tile/generic_tile_io.h"
@@ -116,8 +116,19 @@ const Array* Reader::array() const {
   return array_;
 }
 
-Status Reader::add_range(unsigned dim_idx, const Range& range) {
-  return subarray_.add_range(dim_idx, range);
+Status Reader::add_range(unsigned dim_idx, Range&& range) {
+  // Get read_range_oob config setting
+  bool found = false;
+  std::string read_range_oob = config_.get("sm.read_range_oob", &found);
+  assert(found);
+
+  if (read_range_oob != "error" && read_range_oob != "warn")
+    return LOG_STATUS(Status::ReaderError(
+        "Invalid value " + read_range_oob +
+        " for sm.read_range_obb. Acceptable values are 'error' or 'warn'."));
+
+  return subarray_.add_range(
+      dim_idx, std::move(range), read_range_oob == "error");
 }
 
 Status Reader::get_range_num(unsigned dim_idx, uint64_t* range_num) const {
@@ -144,19 +155,19 @@ Status Reader::get_range_var_size(
 
 Status Reader::get_est_result_size(const char* name, uint64_t* size) {
   return subarray_.get_est_result_size(
-      name, size, storage_manager_->compute_tp());
+      name, size, &config_, storage_manager_->compute_tp());
 }
 
 Status Reader::get_est_result_size(
     const char* name, uint64_t* size_off, uint64_t* size_val) {
   return subarray_.get_est_result_size(
-      name, size_off, size_val, storage_manager_->compute_tp());
+      name, size_off, size_val, &config_, storage_manager_->compute_tp());
 }
 
 Status Reader::get_est_result_size_nullable(
     const char* name, uint64_t* size_val, uint64_t* size_validity) {
   return subarray_.get_est_result_size_nullable(
-      name, size_val, size_validity, storage_manager_->compute_tp());
+      name, size_val, size_validity, &config_, storage_manager_->compute_tp());
 }
 
 Status Reader::get_est_result_size_nullable(
@@ -165,7 +176,12 @@ Status Reader::get_est_result_size_nullable(
     uint64_t* size_val,
     uint64_t* size_validity) {
   return subarray_.get_est_result_size_nullable(
-      name, size_off, size_val, size_validity, storage_manager_->compute_tp());
+      name,
+      size_off,
+      size_val,
+      size_validity,
+      &config_,
+      storage_manager_->compute_tp());
 }
 
 const ArraySchema* Reader::array_schema() const {
@@ -342,8 +358,8 @@ Status Reader::complete_read_loop() {
 Status Reader::read() {
   get_dim_attr_stats();
 
-  STATS_START_TIMER(stats::Stats::TimerType::READ)
-  STATS_ADD_COUNTER(stats::Stats::CounterType::READ_NUM, 1)
+  STATS_START_TIMER(stats::GlobalStats::TimerType::READ)
+  STATS_ADD_COUNTER(stats::GlobalStats::CounterType::READ_NUM, 1)
 
   auto dense_mode = array_schema_->dense() && !sparse_mode_;
 
@@ -359,7 +375,7 @@ Status Reader::read() {
 
   // Loop until you find results, or unsplittable, or done
   do {
-    STATS_ADD_COUNTER(stats::Stats::CounterType::READ_LOOP_NUM, 1)
+    STATS_ADD_COUNTER(stats::GlobalStats::CounterType::READ_LOOP_NUM, 1)
 
     read_state_.overflowed_ = false;
     reset_buffer_sizes();
@@ -397,7 +413,7 @@ Status Reader::read() {
 
   return Status::Ok();
 
-  STATS_END_TIMER(stats::Stats::TimerType::READ)
+  STATS_END_TIMER(stats::GlobalStats::TimerType::READ)
 }
 
 void Reader::set_array(const Array* array) {
@@ -441,7 +457,7 @@ Status Reader::set_buffer(
 
   // Must not be nullable
   if (array_schema_->is_nullable(name))
-    return LOG_STATUS(Status::WriterError(
+    return LOG_STATUS(Status::ReaderError(
         std::string("Cannot set buffer; Input attribute/dimension '") + name +
         "' is nullable"));
 
@@ -517,7 +533,7 @@ Status Reader::set_buffer(
 
   // Must not be nullable
   if (array_schema_->is_nullable(name))
-    return LOG_STATUS(Status::WriterError(
+    return LOG_STATUS(Status::ReaderError(
         std::string("Cannot set buffer; Input attribute/dimension '") + name +
         "' is nullable"));
 
@@ -574,19 +590,19 @@ Status Reader::set_buffer(
 
   // Must be an attribute
   if (!array_schema_->is_attr(name))
-    return LOG_STATUS(Status::WriterError(
+    return LOG_STATUS(Status::ReaderError(
         std::string("Cannot set buffer; Buffer name '") + name +
         "' is not an attribute"));
 
   // Must be fixed-size
   if (array_schema_->var_size(name))
-    return LOG_STATUS(Status::WriterError(
+    return LOG_STATUS(Status::ReaderError(
         std::string("Cannot set buffer; Input attribute '") + name +
         "' is var-sized"));
 
   // Must be nullable
   if (!array_schema_->is_nullable(name))
-    return LOG_STATUS(Status::WriterError(
+    return LOG_STATUS(Status::ReaderError(
         std::string("Cannot set buffer; Input attribute '") + name +
         "' is not nullable"));
 
@@ -650,19 +666,19 @@ Status Reader::set_buffer(
 
   // Must be an attribute
   if (!array_schema_->is_attr(name))
-    return LOG_STATUS(Status::WriterError(
+    return LOG_STATUS(Status::ReaderError(
         std::string("Cannot set buffer; Buffer name '") + name +
         "' is not an attribute"));
 
   // Must be fixed-size
   if (!array_schema_->var_size(name))
-    return LOG_STATUS(Status::WriterError(
+    return LOG_STATUS(Status::ReaderError(
         std::string("Cannot set buffer; Input attribute '") + name +
         "' is fixed-sized"));
 
   // Must be nullable
   if (!array_schema_->is_nullable(name))
-    return LOG_STATUS(Status::WriterError(
+    return LOG_STATUS(Status::ReaderError(
         std::string("Cannot set buffer; Input attribute '") + name +
         "' is not nullable"));
 
@@ -850,8 +866,8 @@ void Reader::clear_tiles(
 Status Reader::compute_result_cell_slabs(
     const std::vector<ResultCoords>& result_coords,
     std::vector<ResultCellSlab>* result_cell_slabs) const {
-  STATS_START_TIMER(
-      stats::Stats::TimerType::READ_COMPUTE_SPARSE_RESULT_CELL_SLABS_SPARSE)
+  STATS_START_TIMER(stats::GlobalStats::TimerType::
+                        READ_COMPUTE_SPARSE_RESULT_CELL_SLABS_SPARSE)
 
   // Trivial case
   auto coords_num = (uint64_t)result_coords.size();
@@ -889,8 +905,8 @@ Status Reader::compute_result_cell_slabs(
 
   return Status::Ok();
 
-  STATS_END_TIMER(
-      stats::Stats::TimerType::READ_COMPUTE_SPARSE_RESULT_CELL_SLABS_SPARSE)
+  STATS_END_TIMER(stats::GlobalStats::TimerType::
+                      READ_COMPUTE_SPARSE_RESULT_CELL_SLABS_SPARSE)
 }
 
 Status Reader::compute_range_result_coords(
@@ -955,7 +971,8 @@ Status Reader::compute_range_result_coords(
     const std::map<std::pair<unsigned, uint64_t>, size_t>& result_tile_map,
     std::vector<ResultTile>* result_tiles,
     std::vector<std::vector<ResultCoords>>* range_result_coords) {
-  STATS_START_TIMER(stats::Stats::TimerType::READ_COMPUTE_RANGE_RESULT_COORDS)
+  STATS_START_TIMER(
+      stats::GlobalStats::TimerType::READ_COMPUTE_RANGE_RESULT_COORDS)
 
   auto range_num = subarray->range_num();
   range_result_coords->resize(range_num);
@@ -963,7 +980,7 @@ Status Reader::compute_range_result_coords(
   Layout layout = (layout_ == Layout::UNORDERED) ? cell_order : layout_;
   auto allows_dups = array_schema_->allows_dups();
 
-  auto statuses = parallel_for(
+  auto status = parallel_for(
       storage_manager_->compute_tp(), 0, range_num, [&](uint64_t r) {
         // Compute overlapping coordinates per range
         RETURN_NOT_OK(compute_range_result_coords(
@@ -988,12 +1005,12 @@ Status Reader::compute_range_result_coords(
         return Status::Ok();
       });
 
-  for (auto st : statuses)
-    RETURN_NOT_OK(st);
+  RETURN_NOT_OK(status);
 
   return Status::Ok();
 
-  STATS_END_TIMER(stats::Stats::TimerType::READ_COMPUTE_RANGE_RESULT_COORDS)
+  STATS_END_TIMER(
+      stats::GlobalStats::TimerType::READ_COMPUTE_RANGE_RESULT_COORDS)
 }
 
 Status Reader::compute_range_result_coords(
@@ -1003,21 +1020,16 @@ Status Reader::compute_range_result_coords(
     const std::map<std::pair<unsigned, uint64_t>, size_t>& result_tile_map,
     std::vector<ResultTile>* result_tiles,
     std::vector<ResultCoords>* range_result_coords) {
-  const auto& overlap = subarray->tile_overlap();
-
   // Skip dense fragments
   if (fragment_metadata_[fragment_idx]->dense())
     return Status::Ok();
 
-  const uint64_t overlap_range_offset = subarray->overlap_range_offset();
-  auto tr = overlap[fragment_idx][range_idx + overlap_range_offset]
-                .tile_ranges_.begin();
-  auto tr_end = overlap[fragment_idx][range_idx + overlap_range_offset]
-                    .tile_ranges_.end();
-  auto t =
-      overlap[fragment_idx][range_idx + overlap_range_offset].tiles_.begin();
-  auto t_end =
-      overlap[fragment_idx][range_idx + overlap_range_offset].tiles_.end();
+  auto tr =
+      subarray->tile_overlap(fragment_idx, range_idx)->tile_ranges_.begin();
+  auto tr_end =
+      subarray->tile_overlap(fragment_idx, range_idx)->tile_ranges_.end();
+  auto t = subarray->tile_overlap(fragment_idx, range_idx)->tiles_.begin();
+  auto t_end = subarray->tile_overlap(fragment_idx, range_idx)->tiles_.end();
 
   while (tr != tr_end || t != t_end) {
     // Handle tile range
@@ -1067,7 +1079,7 @@ Status Reader::compute_range_result_coords(
   // Gather result range coordinates per fragment
   auto fragment_num = fragment_metadata_.size();
   std::vector<std::vector<ResultCoords>> range_result_coords_vec(fragment_num);
-  auto statuses = parallel_for(
+  auto status = parallel_for(
       storage_manager_->compute_tp(), 0, fragment_num, [&](uint32_t f) {
         return compute_range_result_coords(
             subarray,
@@ -1077,8 +1089,7 @@ Status Reader::compute_range_result_coords(
             result_tiles,
             &range_result_coords_vec[f]);
       });
-  for (const auto& st : statuses)
-    RETURN_NOT_OK(st);
+  RETURN_NOT_OK(status);
 
   // Consolidate the result coordinates in the single result vector
   for (const auto& vec : range_result_coords_vec) {
@@ -1140,14 +1151,13 @@ Status Reader::compute_sparse_result_tiles(
     std::vector<ResultTile>* result_tiles,
     std::map<std::pair<unsigned, uint64_t>, size_t>* result_tile_map,
     std::vector<bool>* single_fragment) {
-  STATS_START_TIMER(stats::Stats::TimerType::READ_COMPUTE_SPARSE_RESULT_TILES)
+  STATS_START_TIMER(
+      stats::GlobalStats::TimerType::READ_COMPUTE_SPARSE_RESULT_TILES)
 
   // For easy reference
   auto domain = array_schema_->domain();
   auto& partitioner = read_state_.partitioner_;
   const auto& subarray = partitioner.current();
-  const auto& overlap = subarray.tile_overlap();
-  const uint64_t overlap_range_offset = subarray.overlap_range_offset();
   auto range_num = subarray.range_num();
   auto fragment_num = fragment_metadata_.size();
   std::vector<unsigned> first_fragment;
@@ -1167,8 +1177,7 @@ Status Reader::compute_sparse_result_tiles(
 
     for (uint64_t r = 0; r < range_num; ++r) {
       // Handle range of tiles (full overlap)
-      const auto& tile_ranges =
-          overlap[f][r + overlap_range_offset].tile_ranges_;
+      const auto& tile_ranges = subarray.tile_overlap(f, r)->tile_ranges_;
       for (const auto& tr : tile_ranges) {
         for (uint64_t t = tr.first; t <= tr.second; ++t) {
           auto pair = std::pair<unsigned, uint64_t>(f, t);
@@ -1186,7 +1195,7 @@ Status Reader::compute_sparse_result_tiles(
       }
 
       // Handle single tiles
-      const auto& o_tiles = overlap[f][r + overlap_range_offset].tiles_;
+      const auto& o_tiles = subarray.tile_overlap(f, r)->tiles_;
       for (const auto& o_tile : o_tiles) {
         auto t = o_tile.first;
         auto pair = std::pair<unsigned, uint64_t>(f, t);
@@ -1206,7 +1215,8 @@ Status Reader::compute_sparse_result_tiles(
 
   return Status::Ok();
 
-  STATS_END_TIMER(stats::Stats::TimerType::READ_COMPUTE_SPARSE_RESULT_TILES)
+  STATS_END_TIMER(
+      stats::GlobalStats::TimerType::READ_COMPUTE_SPARSE_RESULT_TILES)
 }
 
 Status Reader::copy_fixed_cells(
@@ -1216,9 +1226,10 @@ Status Reader::copy_fixed_cells(
     CopyFixedCellsContextCache* const ctx_cache) {
   assert(ctx_cache);
 
-  auto stat_type = (array_schema_->is_attr(name)) ?
-                       stats::Stats::TimerType::READ_COPY_FIXED_ATTR_VALUES :
-                       stats::Stats::TimerType::READ_COPY_FIXED_COORDS;
+  auto stat_type =
+      (array_schema_->is_attr(name)) ?
+          stats::GlobalStats::TimerType::READ_COPY_FIXED_ATTR_VALUES :
+          stats::GlobalStats::TimerType::READ_COPY_FIXED_COORDS;
   STATS_START_TIMER(stat_type)
 
   if (result_cell_slabs.empty()) {
@@ -1261,14 +1272,13 @@ Status Reader::copy_fixed_cells(
       &result_cell_slabs,
       *cs_offsets,
       *ctx_cache->cs_partitions());
-  auto statuses = parallel_for(
+  auto status = parallel_for(
       storage_manager_->compute_tp(),
       0,
       ctx_cache->cs_partitions()->size(),
       std::move(copy_fn));
 
-  for (auto st : statuses)
-    RETURN_NOT_OK(st);
+  RETURN_NOT_OK(status);
 
   // Update buffer offsets
   *(buffers_[name].buffer_size_) = buffer_offset;
@@ -1285,13 +1295,8 @@ Status Reader::copy_fixed_cells(
 void Reader::populate_cfc_ctx_cache(
     const std::vector<ResultCellSlab>& result_cell_slabs,
     CopyFixedCellsContextCache* const ctx_cache) {
-  // Fetch the number that we will use for copying. When TBB
-  // is enabled, it is the number of TBB threads. Otherwise, it
-  // is the concurrency level of the compute threadpool.
   const int num_copy_threads =
-      global_state::GlobalState::GetGlobalState().tbb_threads() > 0 ?
-          global_state::GlobalState::GetGlobalState().tbb_threads() :
-          storage_manager_->compute_tp()->concurrency_level();
+      storage_manager_->compute_tp()->concurrency_level();
 
   // Initialize the context cache. This is a no-op if already initialized.
   ctx_cache->initialize(result_cell_slabs, num_copy_threads);
@@ -1387,9 +1392,10 @@ Status Reader::copy_var_cells(
     CopyVarCellsContextCache* const ctx_cache) {
   assert(ctx_cache);
 
-  auto stat_type = (array_schema_->is_attr(name)) ?
-                       stats::Stats::TimerType::READ_COPY_VAR_ATTR_VALUES :
-                       stats::Stats::TimerType::READ_COPY_VAR_COORDS;
+  auto stat_type =
+      (array_schema_->is_attr(name)) ?
+          stats::GlobalStats::TimerType::READ_COPY_VAR_ATTR_VALUES :
+          stats::GlobalStats::TimerType::READ_COPY_VAR_COORDS;
   STATS_START_TIMER(stat_type);
 
   if (result_cell_slabs.empty()) {
@@ -1440,15 +1446,13 @@ Status Reader::copy_var_cells(
       offset_offsets_per_cs.get(),
       var_offsets_per_cs.get(),
       ctx_cache->cs_partitions());
-  auto statuses = parallel_for(
+  auto status = parallel_for(
       storage_manager_->compute_tp(),
       0,
       ctx_cache->cs_partitions()->size(),
       copy_fn);
 
-  // Check all statuses
-  for (auto st : statuses)
-    RETURN_NOT_OK(st);
+  RETURN_NOT_OK(status);
 
   // Update buffer offsets
   *(buffers_[name].buffer_size_) = total_offset_size;
@@ -1464,13 +1468,8 @@ Status Reader::copy_var_cells(
 void Reader::populate_cvc_ctx_cache(
     const std::vector<ResultCellSlab>& result_cell_slabs,
     CopyVarCellsContextCache* const ctx_cache) {
-  // Fetch the number that we will use for copying. When TBB
-  // is enabled, it is the number of TBB threads. Otherwise, it
-  // is the concurrency level of the compute threadpool.
   const int num_copy_threads =
-      global_state::GlobalState::GetGlobalState().tbb_threads() > 0 ?
-          global_state::GlobalState::GetGlobalState().tbb_threads() :
-          storage_manager_->compute_tp()->concurrency_level();
+      storage_manager_->compute_tp()->concurrency_level();
 
   // Initialize the context cache. This is a no-op if already initialized.
   ctx_cache->initialize(result_cell_slabs, num_copy_threads);
@@ -1721,8 +1720,8 @@ Status Reader::compute_result_cell_slabs(
     std::vector<ResultCoords>* result_coords,
     std::vector<ResultTile*>* result_tiles,
     std::vector<ResultCellSlab>* result_cell_slabs) const {
-  STATS_START_TIMER(
-      stats::Stats::TimerType::READ_COMPUTE_SPARSE_RESULT_CELL_SLABS_DENSE)
+  STATS_START_TIMER(stats::GlobalStats::TimerType::
+                        READ_COMPUTE_SPARSE_RESULT_CELL_SLABS_DENSE)
 
   auto layout = subarray.layout();
   if (layout == Layout::ROW_MAJOR || layout == Layout::COL_MAJOR) {
@@ -1749,8 +1748,8 @@ Status Reader::compute_result_cell_slabs(
 
   return Status::Ok();
 
-  STATS_END_TIMER(
-      stats::Stats::TimerType::READ_COMPUTE_SPARSE_RESULT_CELL_SLABS_DENSE)
+  STATS_END_TIMER(stats::GlobalStats::TimerType::
+                      READ_COMPUTE_SPARSE_RESULT_CELL_SLABS_DENSE)
 }
 
 template <class T>
@@ -1829,7 +1828,7 @@ Status Reader::compute_result_cell_slabs_global(
 Status Reader::compute_result_coords(
     std::vector<ResultTile>* result_tiles,
     std::vector<ResultCoords>* result_coords) {
-  STATS_START_TIMER(stats::Stats::TimerType::READ_COMPUTE_RESULT_COORDS)
+  STATS_START_TIMER(stats::GlobalStats::TimerType::READ_COMPUTE_RESULT_COORDS)
 
   // Get overlapping tile indexes
   typedef std::pair<unsigned, uint64_t> FragTileTuple;
@@ -1914,6 +1913,7 @@ Status Reader::compute_result_coords(
     // time complexity of O(N*log(N)).
     SubarrayPartitioner* const partitioner = &read_state_.partitioner_;
     SubarrayPartitioner sub_partitioner(
+        &config_,
         partitioner->current(),
         sub_partitioner_memory_budget,
         sub_partitioner_memory_budget_var,
@@ -2007,7 +2007,7 @@ Status Reader::compute_result_coords(
 
   return Status::Ok();
 
-  STATS_END_TIMER(stats::Stats::TimerType::READ_COMPUTE_RESULT_COORDS)
+  STATS_END_TIMER(stats::GlobalStats::TimerType::READ_COMPUTE_RESULT_COORDS)
 }
 
 Status Reader::dedup_result_coords(
@@ -2119,7 +2119,7 @@ Status Reader::dense_read() {
 
 template <class T>
 Status Reader::fill_dense_coords(const Subarray& subarray) {
-  STATS_START_TIMER(stats::Stats::TimerType::READ_FILL_DENSE_COORDS)
+  STATS_START_TIMER(stats::GlobalStats::TimerType::READ_FILL_DENSE_COORDS)
 
   // Prepare buffers
   std::vector<unsigned> dim_idx;
@@ -2156,7 +2156,7 @@ Status Reader::fill_dense_coords(const Subarray& subarray) {
 
   return Status::Ok();
 
-  STATS_END_TIMER(stats::Stats::TimerType::READ_FILL_DENSE_COORDS)
+  STATS_END_TIMER(stats::GlobalStats::TimerType::READ_FILL_DENSE_COORDS)
 }
 
 template <class T>
@@ -2328,8 +2328,8 @@ Status Reader::unfilter_tiles(
         ResultTile*,
         std::vector<std::pair<uint64_t, uint64_t>>>* const cs_ranges) const {
   auto stat_type = (array_schema_->is_attr(name)) ?
-                       stats::Stats::TimerType::READ_UNFILTER_ATTR_TILES :
-                       stats::Stats::TimerType::READ_UNFILTER_COORD_TILES;
+                       stats::GlobalStats::TimerType::READ_UNFILTER_ATTR_TILES :
+                       stats::GlobalStats::TimerType::READ_UNFILTER_COORD_TILES;
   STATS_START_TIMER(stat_type);
 
   auto var_size = array_schema_->var_size(name);
@@ -2337,7 +2337,7 @@ Status Reader::unfilter_tiles(
   auto num_tiles = static_cast<uint64_t>(result_tiles.size());
   auto encryption_key = array_->encryption_key();
 
-  auto statuses = parallel_for(
+  auto status = parallel_for(
       storage_manager_->compute_tp(), 0, num_tiles, [&, this](uint64_t i) {
         ResultTile* const tile = result_tiles[i];
 
@@ -2438,8 +2438,7 @@ Status Reader::unfilter_tiles(
         return Status::Ok();
       });
 
-  for (const auto& st : statuses)
-    RETURN_CANCEL_OR_ERROR(st);
+  RETURN_CANCEL_OR_ERROR(status);
 
   return Status::Ok();
 
@@ -2621,7 +2620,7 @@ bool Reader::has_separate_coords() const {
 }
 
 Status Reader::init_read_state() {
-  STATS_START_TIMER(stats::Stats::TimerType::READ_INIT_STATE)
+  STATS_START_TIMER(stats::GlobalStats::TimerType::READ_INIT_STATE)
 
   // Check subarray
   if (subarray_.layout() == Layout::GLOBAL_ORDER && subarray_.range_num() != 1)
@@ -2665,6 +2664,7 @@ Status Reader::init_read_state() {
 
   // Create read state
   read_state_.partitioner_ = SubarrayPartitioner(
+      &config_,
       subarray_,
       memory_budget,
       memory_budget_var,
@@ -2707,7 +2707,7 @@ Status Reader::init_read_state() {
 
   return Status::Ok();
 
-  STATS_END_TIMER(stats::Stats::TimerType::READ_INIT_STATE)
+  STATS_END_TIMER(stats::GlobalStats::TimerType::READ_INIT_STATE)
 }
 
 Status Reader::init_tile(
@@ -2798,7 +2798,7 @@ Status Reader::load_tile_offsets(const std::vector<std::string>& names) {
   const auto relevant_fragments =
       read_state_.partitioner_.current().relevant_fragments();
 
-  const auto statuses = parallel_for(
+  const auto status = parallel_for(
       storage_manager_->compute_tp(),
       0,
       relevant_fragments.size(),
@@ -2826,8 +2826,7 @@ Status Reader::load_tile_offsets(const std::vector<std::string>& names) {
         return Status::Ok();
       });
 
-  for (const auto& st : statuses)
-    RETURN_NOT_OK(st);
+  RETURN_NOT_OK(status);
 
   return Status::Ok();
 }
@@ -2835,17 +2834,17 @@ Status Reader::load_tile_offsets(const std::vector<std::string>& names) {
 Status Reader::read_attribute_tiles(
     const std::vector<std::string>& names,
     const std::vector<ResultTile*>& result_tiles) const {
-  STATS_START_TIMER(stats::Stats::TimerType::READ_ATTR_TILES);
+  STATS_START_TIMER(stats::GlobalStats::TimerType::READ_ATTR_TILES);
   return read_tiles(names, result_tiles);
-  STATS_END_TIMER(stats::Stats::TimerType::READ_ATTR_TILES);
+  STATS_END_TIMER(stats::GlobalStats::TimerType::READ_ATTR_TILES);
 }
 
 Status Reader::read_coordinate_tiles(
     const std::vector<std::string>& names,
     const std::vector<ResultTile*>& result_tiles) const {
-  STATS_START_TIMER(stats::Stats::TimerType::READ_COORD_TILES);
+  STATS_START_TIMER(stats::GlobalStats::TimerType::READ_COORD_TILES);
   return read_tiles(names, result_tiles);
-  STATS_END_TIMER(stats::Stats::TimerType::READ_COORD_TILES);
+  STATS_END_TIMER(stats::GlobalStats::TimerType::READ_COORD_TILES);
 }
 
 Status Reader::read_tiles(
@@ -2860,14 +2859,13 @@ Status Reader::read_tiles(
   if (names.size() == 1) {
     RETURN_NOT_OK(read_tiles(names[0], result_tiles));
   } else {
-    const auto statuses = parallel_for(
+    const auto status = parallel_for(
         storage_manager_->compute_tp(), 0, names.size(), [&](const uint64_t i) {
           RETURN_NOT_OK(read_tiles(names[i], result_tiles));
           return Status::Ok();
         });
 
-    for (const auto& st : statuses)
-      RETURN_NOT_OK(st);
+    RETURN_NOT_OK(status);
   }
 
   return Status::Ok();
@@ -3153,7 +3151,7 @@ Status Reader::sparse_read() {
 Status Reader::copy_coordinates(
     const std::vector<ResultTile*>& result_tiles,
     const std::vector<ResultCellSlab>& result_cell_slabs) {
-  STATS_START_TIMER(stats::Stats::TimerType::READ_COPY_COORDS);
+  STATS_START_TIMER(stats::GlobalStats::TimerType::READ_COPY_COORDS);
 
   if (result_cell_slabs.empty() && result_tiles.empty()) {
     zero_out_buffer_sizes();
@@ -3205,14 +3203,14 @@ Status Reader::copy_coordinates(
 
   return Status::Ok();
 
-  STATS_END_TIMER(stats::Stats::TimerType::READ_COPY_COORDS);
+  STATS_END_TIMER(stats::GlobalStats::TimerType::READ_COPY_COORDS);
 }
 
 Status Reader::copy_attribute_values(
     const uint64_t stride,
     const std::vector<ResultTile*>& result_tiles,
     const std::vector<ResultCellSlab>& result_cell_slabs) {
-  STATS_START_TIMER(stats::Stats::TimerType::READ_COPY_ATTR_VALUES);
+  STATS_START_TIMER(stats::GlobalStats::TimerType::READ_COPY_ATTR_VALUES);
 
   if (result_cell_slabs.empty() && result_tiles.empty()) {
     zero_out_buffer_sizes();
@@ -3325,7 +3323,7 @@ Status Reader::copy_attribute_values(
   }
 
   return Status::Ok();
-  STATS_END_TIMER(stats::Stats::TimerType::READ_COPY_ATTR_VALUES);
+  STATS_END_TIMER(stats::GlobalStats::TimerType::READ_COPY_ATTR_VALUES);
 }
 
 Status Reader::add_extra_offset() {
@@ -3398,21 +3396,26 @@ void Reader::get_dim_attr_stats() const {
     auto var_size = array_schema_->var_size(name);
     if (array_schema_->is_attr(name)) {
       if (var_size) {
-        STATS_ADD_COUNTER(stats::Stats::CounterType::READ_ATTR_VAR_NUM, 1);
+        STATS_ADD_COUNTER(
+            stats::GlobalStats::CounterType::READ_ATTR_VAR_NUM, 1);
       } else {
-        STATS_ADD_COUNTER(stats::Stats::CounterType::READ_ATTR_FIXED_NUM, 1);
+        STATS_ADD_COUNTER(
+            stats::GlobalStats::CounterType::READ_ATTR_FIXED_NUM, 1);
       }
       if (array_schema_->is_nullable(name)) {
-        STATS_ADD_COUNTER(stats::Stats::CounterType::READ_ATTR_NULLABLE_NUM, 1);
+        STATS_ADD_COUNTER(
+            stats::GlobalStats::CounterType::READ_ATTR_NULLABLE_NUM, 1);
       }
     } else {
       if (var_size) {
-        STATS_ADD_COUNTER(stats::Stats::CounterType::READ_DIM_VAR_NUM, 1);
+        STATS_ADD_COUNTER(stats::GlobalStats::CounterType::READ_DIM_VAR_NUM, 1);
       } else {
         if (name == constants::coords) {
-          STATS_ADD_COUNTER(stats::Stats::CounterType::READ_DIM_ZIPPED_NUM, 1);
+          STATS_ADD_COUNTER(
+              stats::GlobalStats::CounterType::READ_DIM_ZIPPED_NUM, 1);
         } else {
-          STATS_ADD_COUNTER(stats::Stats::CounterType::READ_DIM_FIXED_NUM, 1);
+          STATS_ADD_COUNTER(
+              stats::GlobalStats::CounterType::READ_DIM_FIXED_NUM, 1);
         }
       }
     }
@@ -3424,13 +3427,15 @@ void Reader::get_result_cell_stats(
   uint64_t result_num = 0;
   for (const auto& rc : result_cell_slabs)
     result_num += rc.length_;
-  STATS_ADD_COUNTER(stats::Stats::CounterType::READ_RESULT_NUM, result_num);
+  STATS_ADD_COUNTER(
+      stats::GlobalStats::CounterType::READ_RESULT_NUM, result_num);
 }
 
 void Reader::get_result_tile_stats(
     const std::vector<ResultTile*>& result_tiles) const {
   STATS_ADD_COUNTER(
-      stats::Stats::CounterType::READ_OVERLAP_TILE_NUM, result_tiles.size());
+      stats::GlobalStats::CounterType::READ_OVERLAP_TILE_NUM,
+      result_tiles.size());
 
   uint64_t cell_num = 0;
   for (const auto& rt : result_tiles) {
@@ -3439,13 +3444,17 @@ void Reader::get_result_tile_stats(
     else
       cell_num += array_schema_->domain()->cell_num_per_tile();
   }
-  STATS_ADD_COUNTER(stats::Stats::CounterType::READ_CELL_NUM, cell_num);
+  STATS_ADD_COUNTER(stats::GlobalStats::CounterType::READ_CELL_NUM, cell_num);
 }
 
 Status Reader::set_config(const Config& config) {
   config_ = config;
 
   return Status::Ok();
+}
+
+const Config* Reader::config() const {
+  return &config_;
 }
 
 Status Reader::set_est_result_size(
@@ -3456,7 +3465,8 @@ Status Reader::set_est_result_size(
 
 std::unordered_map<std::string, Subarray::ResultSize>
 Reader::get_est_result_size_map() {
-  return subarray_.get_est_result_size_map(storage_manager_->compute_tp());
+  return subarray_.get_est_result_size_map(
+      &config_, storage_manager_->compute_tp());
 }
 
 bool Reader::est_result_size_computed() {
@@ -3465,7 +3475,8 @@ bool Reader::est_result_size_computed() {
 
 std::unordered_map<std::string, Subarray::MemorySize>
 Reader::get_max_mem_size_map() {
-  return subarray_.get_max_mem_size_map(storage_manager_->compute_tp());
+  return subarray_.get_max_mem_size_map(
+      &config_, storage_manager_->compute_tp());
 }
 
 Status Reader::calculate_hilbert_values(
@@ -3478,7 +3489,7 @@ Status Reader::calculate_hilbert_values(
   auto coords_num = (uint64_t)hilbert_values->size();
 
   // Calculate Hilbert values in parallel
-  auto statuses = parallel_for(
+  auto status = parallel_for(
       storage_manager_->compute_tp(), 0, coords_num, [&](uint64_t c) {
         std::vector<uint64_t> coords(dim_num);
         for (uint32_t d = 0; d < dim_num; ++d) {
@@ -3491,9 +3502,7 @@ Status Reader::calculate_hilbert_values(
         return Status::Ok();
       });
 
-  // Check all statuses
-  for (auto& st : statuses)
-    RETURN_NOT_OK_ELSE(st, LOG_STATUS(st));
+  RETURN_NOT_OK_ELSE(status, LOG_STATUS(status));
 
   return Status::Ok();
 }

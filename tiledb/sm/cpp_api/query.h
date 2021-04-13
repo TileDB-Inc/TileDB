@@ -1116,6 +1116,17 @@ class Query {
   }
 
   /**
+   * Get the config
+   * @return Config
+   */
+  Config config() const {
+    tiledb_config_t* config;
+    tiledb_query_get_config(ctx_.get().ptr().get(), query_.get(), &config);
+
+    return Config(&config);
+  }
+
+  /**
    * Set the coordinate buffer.
    *
    * The coordinate buffer has been deprecated. Set the coordinates for

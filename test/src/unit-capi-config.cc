@@ -238,9 +238,10 @@ void check_save_to_file() {
   ss << "sm.enable_signal_handlers true\n";
   ss << "sm.io_concurrency_level " << std::thread::hardware_concurrency()
      << "\n";
+  ss << "sm.max_tile_overlap_size 314572800\n";
   ss << "sm.memory_budget 5368709120\n";
   ss << "sm.memory_budget_var 10737418240\n";
-  ss << "sm.num_tbb_threads -1\n";
+  ss << "sm.read_range_oob warn\n";
   ss << "sm.skip_checksum_validation false\n";
   ss << "sm.sub_partitioner_memory_budget 0\n";
   ss << "sm.tile_cache_size 10000000\n";
@@ -293,6 +294,8 @@ void check_save_to_file() {
 
   CHECK(ss.str() == ss_file.str());
   remove_file("test_config.txt");
+
+  tiledb_config_free(&config);
 }
 
 TEST_CASE("C API: Test config", "[capi], [config]") {
@@ -527,11 +530,8 @@ TEST_CASE("C API: Test config iter", "[capi], [config]") {
   all_param_values["sm.enable_signal_handlers"] = "true";
   all_param_values["sm.compute_concurrency_level"] =
       std::to_string(std::thread::hardware_concurrency());
-  ;
   all_param_values["sm.io_concurrency_level"] =
       std::to_string(std::thread::hardware_concurrency());
-  ;
-  all_param_values["sm.num_tbb_threads"] = "-1";
   all_param_values["sm.skip_checksum_validation"] = "false";
   all_param_values["sm.consolidation.amplification"] = "1.0";
   all_param_values["sm.consolidation.steps"] = "4294967295";
@@ -540,10 +540,12 @@ TEST_CASE("C API: Test config iter", "[capi], [config]") {
   all_param_values["sm.consolidation.buffer_size"] = "50000000";
   all_param_values["sm.consolidation.step_size_ratio"] = "0.0";
   all_param_values["sm.consolidation.mode"] = "fragments";
+  all_param_values["sm.read_range_oob"] = "warn";
   all_param_values["sm.vacuum.mode"] = "fragments";
   all_param_values["sm.var_offsets.bitsize"] = "32";
   all_param_values["sm.var_offsets.extra_element"] = "true";
   all_param_values["sm.var_offsets.mode"] = "elements";
+  all_param_values["sm.max_tile_overlap_size"] = "314572800";
 
   all_param_values["vfs.min_batch_gap"] = "512000";
   all_param_values["vfs.min_batch_size"] = "20971520";
@@ -928,6 +930,7 @@ TEST_CASE("C API: Test VFS config inheritance", "[capi][config][vfs-inherit]") {
 
   tiledb_config_free(&config);
   tiledb_config_free(&vfs_config);
+  tiledb_config_free(&vfs_config_get);
   tiledb_vfs_free(&vfs);
   tiledb_ctx_free(&ctx);
 }

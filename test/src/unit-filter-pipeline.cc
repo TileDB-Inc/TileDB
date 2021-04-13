@@ -715,6 +715,8 @@ TEST_CASE("Filter: Test simple in-place pipeline", "[filter]") {
       CHECK(elt == i);
     }
   }
+
+  chunked_buffer.free();
 }
 
 TEST_CASE("Filter: Test simple out-of-place pipeline", "[filter]") {
@@ -850,6 +852,8 @@ TEST_CASE("Filter: Test simple out-of-place pipeline", "[filter]") {
       CHECK(elt == i);
     }
   }
+
+  chunked_buffer.free();
 }
 
 TEST_CASE("Filter: Test mixed in- and out-of-place pipeline", "[filter]") {
@@ -939,6 +943,8 @@ TEST_CASE("Filter: Test mixed in- and out-of-place pipeline", "[filter]") {
               .ok());
     CHECK(elt == i);
   }
+
+  chunked_buffer.free();
 }
 
 TEST_CASE("Filter: Test compression", "[filter], [compression]") {
@@ -1058,6 +1064,8 @@ TEST_CASE("Filter: Test compression", "[filter], [compression]") {
       CHECK(elt == i);
     }
   }
+
+  chunked_buffer.free();
 }
 
 TEST_CASE("Filter: Test pseudo-checksum", "[filter]") {
@@ -1204,6 +1212,8 @@ TEST_CASE("Filter: Test pseudo-checksum", "[filter]") {
       CHECK(elt == i);
     }
   }
+
+  chunked_buffer.free();
 }
 
 TEST_CASE("Filter: Test pipeline modify filter", "[filter]") {
@@ -1290,6 +1300,8 @@ TEST_CASE("Filter: Test pipeline modify filter", "[filter]") {
               .ok());
     CHECK(elt == i);
   }
+
+  chunked_buffer.free();
 }
 
 TEST_CASE("Filter: Test pipeline copy", "[filter]") {
@@ -1387,6 +1399,8 @@ TEST_CASE("Filter: Test pipeline copy", "[filter]") {
               .ok());
     CHECK(elt == i);
   }
+
+  chunked_buffer.free();
 }
 
 TEST_CASE("Filter: Test random pipeline", "[filter]") {
@@ -1471,10 +1485,12 @@ TEST_CASE("Filter: Test random pipeline", "[filter]") {
         auto idx = (unsigned)rng_constructors_first(gen);
         Filter* filter = constructors_first[idx]();
         CHECK(pipeline.add_filter(*filter).ok());
+        delete filter;
       } else {
         auto idx = (unsigned)rng_constructors(gen);
         Filter* filter = constructors[idx]();
         CHECK(pipeline.add_filter(*filter).ok());
+        delete filter;
       }
     }
 
@@ -1493,6 +1509,8 @@ TEST_CASE("Filter: Test random pipeline", "[filter]") {
       CHECK(elt == n);
     }
   }
+
+  chunked_buffer.free();
 }
 
 TEST_CASE(
@@ -1567,6 +1585,8 @@ TEST_CASE(
               .ok());
     CHECK(elt == n);
   }
+
+  chunked_buffer.free();
 }
 
 TEST_CASE("Filter: Test bit width reduction", "[filter]") {
@@ -1718,6 +1738,8 @@ TEST_CASE("Filter: Test bit width reduction", "[filter]") {
                 .ok());
       CHECK((int64_t)elt == rng(gen_copy));
     }
+
+    chunked_buffer.free();
   }
 
   SECTION(" - Random signed values") {
@@ -1764,6 +1786,8 @@ TEST_CASE("Filter: Test bit width reduction", "[filter]") {
                 .ok());
       CHECK(elt == rng(gen_copy));
     }
+
+    chunked_buffer.free();
   }
 
   SECTION("- Byte overflow") {
@@ -1800,7 +1824,11 @@ TEST_CASE("Filter: Test bit width reduction", "[filter]") {
                 .ok());
       CHECK(elt == i % 257);
     }
+
+    chunked_buffer.free();
   }
+
+  chunked_buffer.free();
 }
 
 TEST_CASE("Filter: Test positive-delta encoding", "[filter]") {
@@ -1920,6 +1948,8 @@ TEST_CASE("Filter: Test positive-delta encoding", "[filter]") {
 
     CHECK(!pipeline.run_forward(&tile, &tp).ok());
   }
+
+  chunked_buffer.free();
 }
 
 TEST_CASE("Filter: Test bitshuffle", "[filter]") {
@@ -2010,7 +2040,11 @@ TEST_CASE("Filter: Test bitshuffle", "[filter]") {
                 .ok());
       CHECK(elt == i);
     }
+
+    chunked_buffer2.free();
   }
+
+  chunked_buffer.free();
 }
 
 TEST_CASE("Filter: Test byteshuffle", "[filter]") {
@@ -2101,7 +2135,11 @@ TEST_CASE("Filter: Test byteshuffle", "[filter]") {
                 .ok());
       CHECK(elt == i);
     }
+
+    chunked_buffer2.free();
   }
+
+  chunked_buffer.free();
 }
 
 TEST_CASE("Filter: Test encryption", "[filter], [encryption]") {
@@ -2190,4 +2228,6 @@ TEST_CASE("Filter: Test encryption", "[filter], [encryption]") {
       CHECK(elt == i);
     }
   }
+
+  chunked_buffer.free();
 }

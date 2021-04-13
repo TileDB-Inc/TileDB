@@ -66,6 +66,7 @@ const std::string Config::REST_RETRY_DELAY_FACTOR = "1.25";
 const std::string Config::SM_DEDUP_COORDS = "false";
 const std::string Config::SM_CHECK_COORD_DUPS = "true";
 const std::string Config::SM_CHECK_COORD_OOB = "true";
+const std::string Config::SM_READ_RANGE_OOB = "warn";
 const std::string Config::SM_CHECK_GLOBAL_ORDER = "true";
 const std::string Config::SM_TILE_CACHE_SIZE = "10000000";
 const std::string Config::SM_MEMORY_BUDGET = "5368709120";       // 5GB
@@ -76,12 +77,6 @@ const std::string Config::SM_COMPUTE_CONCURRENCY_LEVEL =
     utils::parse::to_str(std::thread::hardware_concurrency());
 const std::string Config::SM_IO_CONCURRENCY_LEVEL =
     utils::parse::to_str(std::thread::hardware_concurrency());
-#ifdef HAVE_TBB
-const std::string Config::SM_NUM_TBB_THREADS =
-    utils::parse::to_str((int)tbb::task_scheduler_init::automatic);
-#else
-const std::string Config::SM_NUM_TBB_THREADS = "-1";
-#endif
 const std::string Config::SM_SKIP_CHECKSUM_VALIDATION = "false";
 const std::string Config::SM_CONSOLIDATION_AMPLIFICATION = "1.0";
 const std::string Config::SM_CONSOLIDATION_BUFFER_SIZE = "50000000";
@@ -94,6 +89,7 @@ const std::string Config::SM_VACUUM_MODE = "fragments";
 const std::string Config::SM_OFFSETS_BITSIZE = "64";
 const std::string Config::SM_OFFSETS_EXTRA_ELEMENT = "false";
 const std::string Config::SM_OFFSETS_FORMAT_MODE = "bytes";
+const std::string Config::SM_MAX_TILE_OVERLAP_SIZE = "314572800";  // 300MiB
 const std::string Config::VFS_MIN_PARALLEL_SIZE = "10485760";
 const std::string Config::VFS_MIN_BATCH_GAP = "512000";
 const std::string Config::VFS_MIN_BATCH_SIZE = "20971520";
@@ -195,6 +191,7 @@ Config::Config() {
   param_values_["sm.dedup_coords"] = SM_DEDUP_COORDS;
   param_values_["sm.check_coord_dups"] = SM_CHECK_COORD_DUPS;
   param_values_["sm.check_coord_oob"] = SM_CHECK_COORD_OOB;
+  param_values_["sm.read_range_oob"] = SM_READ_RANGE_OOB;
   param_values_["sm.check_global_order"] = SM_CHECK_GLOBAL_ORDER;
   param_values_["sm.tile_cache_size"] = SM_TILE_CACHE_SIZE;
   param_values_["sm.memory_budget"] = SM_MEMORY_BUDGET;
@@ -204,7 +201,6 @@ Config::Config() {
   param_values_["sm.enable_signal_handlers"] = SM_ENABLE_SIGNAL_HANDLERS;
   param_values_["sm.compute_concurrency_level"] = SM_COMPUTE_CONCURRENCY_LEVEL;
   param_values_["sm.io_concurrency_level"] = SM_IO_CONCURRENCY_LEVEL;
-  param_values_["sm.num_tbb_threads"] = SM_NUM_TBB_THREADS;
   param_values_["sm.skip_checksum_validation"] = SM_SKIP_CHECKSUM_VALIDATION;
   param_values_["sm.consolidation.amplification"] =
       SM_CONSOLIDATION_AMPLIFICATION;
@@ -221,6 +217,7 @@ Config::Config() {
   param_values_["sm.var_offsets.bitsize"] = SM_OFFSETS_BITSIZE;
   param_values_["sm.var_offsets.extra_element"] = SM_OFFSETS_EXTRA_ELEMENT;
   param_values_["sm.var_offsets.mode"] = SM_OFFSETS_FORMAT_MODE;
+  param_values_["sm.max_tile_overlap_size"] = SM_MAX_TILE_OVERLAP_SIZE;
   param_values_["vfs.min_parallel_size"] = VFS_MIN_PARALLEL_SIZE;
   param_values_["vfs.min_batch_gap"] = VFS_MIN_BATCH_GAP;
   param_values_["vfs.min_batch_size"] = VFS_MIN_BATCH_SIZE;
@@ -431,6 +428,8 @@ Status Config::unset(const std::string& param) {
     param_values_["sm.check_coord_dups"] = SM_CHECK_COORD_DUPS;
   } else if (param == "sm.check_coord_oob") {
     param_values_["sm.check_coord_oob"] = SM_CHECK_COORD_OOB;
+  } else if (param == "sm.read_range_oob") {
+    param_values_["sm.read_range_oob"] = SM_READ_RANGE_OOB;
   } else if (param == "sm.check_global_order") {
     param_values_["sm.check_global_order"] = SM_CHECK_GLOBAL_ORDER;
   } else if (param == "sm.tile_cache_size") {
@@ -449,8 +448,6 @@ Status Config::unset(const std::string& param) {
         SM_COMPUTE_CONCURRENCY_LEVEL;
   } else if (param == "sm.io_concurrency_level") {
     param_values_["sm.io_concurrency_level"] = SM_IO_CONCURRENCY_LEVEL;
-  } else if (param == "sm.num_tbb_threads") {
-    param_values_["sm.num_tbb_threads"] = SM_NUM_TBB_THREADS;
   } else if (param == "sm.consolidation.amplification") {
     param_values_["sm.consolidation.amplification"] =
         SM_CONSOLIDATION_AMPLIFICATION;
@@ -478,6 +475,8 @@ Status Config::unset(const std::string& param) {
     param_values_["sm.var_offsets.extra_element"] = SM_OFFSETS_EXTRA_ELEMENT;
   } else if (param == "sm.var_offsets.mode") {
     param_values_["sm.var_offsets.mode"] = SM_OFFSETS_FORMAT_MODE;
+  } else if (param == "sm.max_tile_overlap_size") {
+    param_values_["sm.max_tile_overlap_size"] = SM_MAX_TILE_OVERLAP_SIZE;
   } else if (param == "vfs.min_parallel_size") {
     param_values_["vfs.min_parallel_size"] = VFS_MIN_PARALLEL_SIZE;
   } else if (param == "vfs.min_batch_gap") {
@@ -638,7 +637,6 @@ Status Config::sanity_check(
   uint32_t v32 = 0;
   float vf = 0.0f;
   int64_t vint64 = 0;
-  int vint = 0;
 
   if (param == "rest.server_serialization_format") {
     SerializationType serialization_type;
@@ -667,8 +665,6 @@ Status Config::sanity_check(
     RETURN_NOT_OK(utils::parse::convert(value, &vuint64));
   } else if (param == "sm.io_concurrency_level") {
     RETURN_NOT_OK(utils::parse::convert(value, &vuint64));
-  } else if (param == "sm.num_tbb_threads") {
-    RETURN_NOT_OK(utils::parse::convert(value, &vint));
   } else if (param == "sm.consolidation.amplification") {
     RETURN_NOT_OK(utils::parse::convert(value, &vf));
   } else if (param == "sm.consolidation.buffer_size") {

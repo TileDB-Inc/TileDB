@@ -115,8 +115,6 @@ option(TILEDB_MEMFS "Enables support of an in-memory filesystem." OFF)
 option(TILEDB_WERROR "Enables the -Werror flag during compilation." ON)
 option(TILEDB_CPP_API "Enables building of the TileDB C++ API." ON)
 option(TILEDB_CMAKE_IDE "(Used for CLion builds). Disables superbuild and sets the EP install dir." OFF)
-option(TILEDB_TBB "Enables use of TBB for parallelization." OFF)
-option(TILEDB_TBB_SHARED "If TBB is enabled, builds TBB as a shared library instead of static." OFF)
 option(TILEDB_STATS "Enables internal TileDB statistics gathering." ON)
 option(TILEDB_STATIC "Enables building TileDB as a static library." OFF)
 option(TILEDB_TESTS "If true, enables building the TileDB unit test suite" ON)
@@ -127,11 +125,6 @@ option(TILEDB_ARROW_TESTS "If true, enables building the arrow adapter unit test
 option(TILEDB_LOG_OUTPUT_ON_FAILURE "If true, print error logs if dependency sub-project build fails" ON)
 
 set(TILEDB_INSTALL_LIBDIR "" CACHE STRING "If non-empty, install TileDB library to this directory instead of CMAKE_INSTALL_LIBDIR.")
-
-if (MSVC AND NOT TILEDB_TBB_SHARED)
-  message(WARNING "Static TBB build not supported on Windows. Continuing with TILEDB_TBB_SHARED=ON.")
-  set(TILEDB_TBB_SHARED ON)
-endif()
 
 ############################################################
 # Superbuild setup

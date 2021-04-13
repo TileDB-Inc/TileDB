@@ -44,10 +44,6 @@
 #include <thread>
 #include <unordered_map>
 
-#ifdef HAVE_TBB
-#include <tbb/task_scheduler_init.h>
-#endif
-
 #include "tiledb/common/heap_memory.h"
 #include "tiledb/common/status.h"
 #include "tiledb/common/thread_pool.h"

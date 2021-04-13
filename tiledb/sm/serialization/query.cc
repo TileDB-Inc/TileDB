@@ -45,6 +45,7 @@
 #include "tiledb/sm/query/query.h"
 #include "tiledb/sm/query/reader.h"
 #include "tiledb/sm/query/writer.h"
+#include "tiledb/sm/serialization/config.h"
 
 #ifdef _WIN32
 #include "tiledb/sm/serialization/meet-capnproto-win32-include-expectations.h"
@@ -247,6 +248,7 @@ Status subarray_partitioner_to_capnp(
 }
 
 Status subarray_partitioner_from_capnp(
+    const Config* config,
     const Array* array,
     const capnp::SubarrayPartitioner::Reader& reader,
     SubarrayPartitioner* partitioner,
@@ -270,6 +272,7 @@ Status subarray_partitioner_from_capnp(
   Subarray subarray(array, layout, false);
   RETURN_NOT_OK(subarray_from_capnp(reader.getSubarray(), &subarray));
   *partitioner = SubarrayPartitioner(
+      config,
       subarray,
       memory_budget,
       memory_budget_var,
@@ -327,7 +330,12 @@ Status subarray_partitioner_from_capnp(
         partition_info_reader.getSubarray(), &partition_info->partition_));
 
     if (compute_current_tile_overlap) {
-      partition_info->partition_.compute_tile_overlap(compute_tp);
+      partition_info->partition_.precompute_tile_overlap(
+          partition_info->start_,
+          partition_info->end_,
+          config,
+          compute_tp,
+          true);
     }
   }
 
@@ -395,6 +403,7 @@ Status read_state_from_capnp(
   // Subarray partitioner
   if (read_state_reader.hasSubarrayPartitioner()) {
     RETURN_NOT_OK(subarray_partitioner_from_capnp(
+        reader->config(),
         array,
         read_state_reader.getSubarrayPartitioner(),
         &read_state->partitioner_,
@@ -597,6 +606,11 @@ Status query_to_capnp(
     RETURN_NOT_OK(writer_to_capnp(*writer, &builder));
   }
 
+  // Serialize Config
+  const Config* config = query.config();
+  auto config_builder = query_builder->initConfig();
+  RETURN_NOT_OK(config_to_capnp(config, &config_builder));
+
   return Status::Ok();
 }
 
@@ -641,6 +655,16 @@ Status query_from_capnp(
 
   // Deserialize array instance.
   RETURN_NOT_OK(array_from_capnp(query_reader.getArray(), array));
+
+  // Deserialize Config
+  if (query_reader.hasConfig()) {
+    tdb_unique_ptr<Config> decoded_config = nullptr;
+    auto config_reader = query_reader.getConfig();
+    RETURN_NOT_OK(config_from_capnp(config_reader, &decoded_config));
+    if (decoded_config != nullptr) {
+      RETURN_NOT_OK(query->set_config(*decoded_config));
+    }
+  }
 
   // Deserialize and set attribute buffers.
   if (!query_reader.hasAttributeBufferHeaders())
@@ -725,7 +749,7 @@ Status query_from_capnp(
 
           if (existing_offset_buffer_size_ptr != nullptr)
             existing_offset_buffer_size = *existing_offset_buffer_size_ptr;
-          if (existing_offset_buffer_size_ptr != nullptr)
+          if (existing_buffer_size_ptr != nullptr)
             existing_buffer_size = *existing_buffer_size_ptr;
         } else {
           RETURN_NOT_OK(query->get_buffer_vbytemap(

@@ -145,6 +145,7 @@ void StringEmptyFx::create_array(const std::string& array_name) {
   // Clean up
   tiledb_attribute_free(&a1);
   tiledb_attribute_free(&a2);
+  tiledb_attribute_free(&a3);
   tiledb_attribute_free(&a4);
   tiledb_dimension_free(&d1);
   tiledb_domain_free(&domain);

@@ -19,10 +19,8 @@ steps:
       $host.SetShouldExit(1)
     }
 
-    if ($env:TILEDB_S3 -eq "ON" -And $env:TILEDB_TBB -eq "ON") {
+    if ($env:TILEDB_S3 -eq "ON") {
       & "$env:BUILD_SOURCESDIRECTORY\bootstrap.ps1" -EnableS3 -EnableVerbose
-    } elseif ($env:TILEDB_S3 -eq "ON" -And $env:TILEDB_TBB -eq "OFF") {
-      & "$env:BUILD_SOURCESDIRECTORY\bootstrap.ps1" -EnableS3 -EnableVerbose -DisableTBB
     } else {
       & "$env:BUILD_SOURCESDIRECTORY\bootstrap.ps1" -EnableVerbose
     }

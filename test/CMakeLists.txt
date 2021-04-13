@@ -145,6 +145,7 @@ set(TILEDB_TEST_SOURCES
   src/unit-compression-rle.cc
   src/unit-crypto.cc
   src/unit-ctx.cc
+  src/unit-DenseTiler.cc
   src/unit-dimension.cc
   src/unit-empty-var-length.cc
   src/unit-filter-buffer.cc
@@ -164,7 +165,6 @@ set(TILEDB_TEST_SOURCES
   src/unit-SubarrayPartitioner-dense.cc
   src/unit-SubarrayPartitioner-error.cc
   src/unit-SubarrayPartitioner-sparse.cc
-  src/unit-tbb.cc
   src/unit-threadpool.cc
   src/unit-Tile.cc
   src/unit-TileDomain.cc
@@ -284,10 +284,6 @@ if (TILEDB_GCS)
   target_compile_definitions(tiledb_unit PRIVATE -DHAVE_GCS)
 endif()
 
-if (TILEDB_TBB)
-  target_compile_definitions(tiledb_unit PRIVATE -DHAVE_TBB -DTBB_SUPPRESS_DEPRECATED_MESSAGES)
-endif()
-
 if (TILEDB_SERIALIZATION)
   target_compile_definitions(tiledb_unit PRIVATE -DTILEDB_SERIALIZATION)
 endif()
@@ -319,16 +315,6 @@ add_test(
   COMMAND $<TARGET_FILE:tiledb_unit> --durations=yes
   WORKING_DIRECTORY ${CMAKE_CURRENT_SOURCE_DIR}
 )
-
-# Set the PATH on Windows so that the test executable can find the TBB library.
-if (TILEDB_TBB AND WIN32)
-  set(PATH_STRING "$ENV{PATH};${TBB_LIB_DIR}")
-  # Handle escaped semicolons. See
-  # https://cmake.org/pipermail/cmake/2010-December/041176.html
-  string(REPLACE "\\;" ";" PATH_STRING "${PATH_STRING}")
-  string(REPLACE ";" "\\;" PATH_STRING "${PATH_STRING}")
-  set_tests_properties("tiledb_unit" PROPERTIES ENVIRONMENT "PATH=${PATH_STRING}")
-endif()
 
 if(TILEDB_HDFS)
   # need to force flat namespace for the signal chaining to work on macOS

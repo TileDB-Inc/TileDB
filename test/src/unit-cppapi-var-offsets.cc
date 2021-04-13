@@ -236,6 +236,11 @@ void write_dense_array(
 
   if (config != nullptr) {
     query.set_config(*config);
+
+    // Validate we can retrieve set config
+    Config config2 = query.config();
+    bool same = *config == config2;
+    CHECK(same == true);
   }
 
   query.set_buffer("attr", data_offsets, data);
@@ -271,6 +276,11 @@ void write_dense_array(
 
   if (config != nullptr) {
     query.set_config(*config);
+
+    // Validate we can retrieve set config
+    Config config2 = query.config();
+    bool same = *config == config2;
+    CHECK(same == true);
   }
 
   // Write using a 32-bit vector, but cast it to 64-bit pointer so that the API
@@ -308,6 +318,11 @@ void read_and_check_dense_array(
 
   if (config != nullptr) {
     query.set_config(*config);
+
+    // Validate we can retrieve set config
+    Config config2 = query.config();
+    bool same = *config == config2;
+    CHECK(same == true);
   }
 
   std::vector<int32_t> attr_val(expected_data.size());
@@ -334,6 +349,11 @@ void read_and_check_dense_array(
 
   if (config != nullptr) {
     query.set_config(*config);
+
+    // Validate we can retrieve set config
+    Config config2 = query.config();
+    bool same = *config == config2;
+    CHECK(same == true);
   }
 
   std::vector<int32_t> attr_val(expected_data.size());
@@ -388,7 +408,7 @@ void partial_read_and_check_dense_array(
 
 TEST_CASE(
     "C++ API: Test element offsets : sparse array",
-    "[var-offsets][element-offset]") {
+    "[var-offsets][element-offset][sparse]") {
   std::string array_name = "test_element_offset";
   create_sparse_array(array_name);
 
@@ -440,7 +460,7 @@ TEST_CASE(
 
 TEST_CASE(
     "C++ API: Test element offsets : dense array",
-    "[var-offsets][element-offset]") {
+    "[var-offsets][element-offset][dense]") {
   std::string array_name = "test_element_offset";
   create_dense_array(array_name);
 
@@ -501,7 +521,7 @@ TEST_CASE(
 
 TEST_CASE(
     "C++ API: Test offsets extra element: sparse array",
-    "[var-offsets][extra-offset]") {
+    "[var-offsets][extra-offset][sparse]") {
   std::string array_name = "test_extra_offset";
   create_sparse_array(array_name);
 
@@ -813,7 +833,7 @@ TEST_CASE(
 
 TEST_CASE(
     "C++ API: Test offsets extra element: dense array",
-    "[var-offsets][extra-offset]") {
+    "[var-offsets][extra-offset][dense]") {
   std::string array_name = "test_extra_offset";
   create_dense_array(array_name);
 
@@ -1158,7 +1178,7 @@ TEST_CASE(
 
 TEST_CASE(
     "C++ API: Test 32-bit offsets: sparse array",
-    "[var-offsets][32bit-offset]") {
+    "[var-offsets][32bit-offset][sparse]") {
   std::string array_name = "test_32bit_offset";
   create_sparse_array(array_name);
 
@@ -1238,7 +1258,7 @@ TEST_CASE(
 
 TEST_CASE(
     "C++ API: Test 32-bit offsets: dense array",
-    "[var-offsets][32bit-offset]") {
+    "[var-offsets][32bit-offset][dense]") {
   std::string array_name = "test_32bit_offset";
   create_dense_array(array_name);
 
@@ -1355,7 +1375,7 @@ TEST_CASE(
 
 TEST_CASE(
     "C++ API: Test 32-bit offsets: sparse array with string dimension",
-    "[var-offsets-dim][32bit-offset]") {
+    "[var-offsets-dim][32bit-offset][sparse]") {
   std::string array_name = "test_32bit_offset_string_dim";
 
   /*

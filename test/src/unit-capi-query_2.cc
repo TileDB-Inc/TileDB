@@ -685,6 +685,17 @@ TEST_CASE_METHOD(
   rc = tiledb_query_alloc(ctx_, array, TILEDB_READ, &query);
   CHECK(rc == TILEDB_OK);
 
+  // Set config for `sm.read_range_oob` = `error`
+  tiledb_config_t* config = nullptr;
+  tiledb_error_t* error = nullptr;
+  REQUIRE(tiledb_config_alloc(&config, &error) == TILEDB_OK);
+  REQUIRE(error == nullptr);
+  rc = tiledb_config_set(config, "sm.read_range_oob", "error", &error);
+  REQUIRE(rc == TILEDB_OK);
+  REQUIRE(error == nullptr);
+  rc = tiledb_query_set_config(ctx_, query, config);
+  REQUIRE(rc == TILEDB_OK);
+
   // Set/Get layout
   rc = tiledb_query_set_layout(ctx_, query, TILEDB_UNORDERED);
   CHECK(rc == TILEDB_OK);
@@ -3049,6 +3060,17 @@ TEST_CASE_METHOD(
   rc = tiledb_query_set_config(ctx_, query, config);
   CHECK(rc == TILEDB_OK);
 
+  // Test getting config, it should be identical
+  tiledb_config_t* config2;
+  rc = tiledb_query_get_config(ctx_, query, &config2);
+  CHECK(rc == TILEDB_OK);
+
+  uint8_t equal;
+  rc = tiledb_config_compare(config, config2, &equal);
+  CHECK(rc == TILEDB_OK);
+  CHECK(equal == 1);
+  tiledb_config_free(&config2);
+
   // Test modified behavior
   std::vector<uint32_t> offsets = {0, 1, 2, 4, 7, 9, 10};
   // even in elements mode, we need to pass offsets size as if uint64
@@ -3120,6 +3142,8 @@ TEST_CASE_METHOD(
   CHECK(query2 == nullptr);
   tiledb_array_free(&array);
   CHECK(array == nullptr);
+
+  tiledb_config_free(&config);
 
   remove_array(array_name);
 }

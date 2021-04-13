@@ -40,13 +40,15 @@
 #include "tiledb/common/status.h"
 #include "tiledb/sm/fragment/written_fragment_info.h"
 #include "tiledb/sm/misc/types.h"
+#include "tiledb/sm/query/dense_tiler.h"
 #include "tiledb/sm/query/query_buffer.h"
 #include "tiledb/sm/query/validity_vector.h"
-#include "tiledb/sm/query/write_cell_slab_iter.h"
+#include "tiledb/sm/stats/stats.h"
 #include "tiledb/sm/subarray/subarray.h"
 #include "tiledb/sm/tile/tile.h"
 
 using namespace tiledb::common;
+using namespace tiledb::sm::stats;
 
 namespace tiledb {
 namespace sm {
@@ -87,26 +89,6 @@ class Writer {
     tdb_shared_ptr<FragmentMetadata> frag_meta_;
   };
 
-  /** Cell range to be written. */
-  struct WriteCellRange {
-    /** The position in the tile where the range will be copied. */
-    uint64_t pos_;
-    /** The starting cell in the user buffers. */
-    uint64_t start_;
-    /** The ending cell in the user buffers. */
-    uint64_t end_;
-
-    /** Constructor. */
-    WriteCellRange(uint64_t pos, uint64_t start, uint64_t end)
-        : pos_(pos)
-        , start_(start)
-        , end_(end) {
-    }
-  };
-
-  /** A vector of write cell ranges. */
-  typedef std::vector<WriteCellRange> WriteCellRangeVec;
-
   /* ********************************* */
   /*     CONSTRUCTORS & DESTRUCTORS    */
   /* ********************************* */
@@ -125,7 +107,7 @@ class Writer {
   const Array* array() const;
 
   /** Adds a range to the subarray on the input dimension. */
-  Status add_range(unsigned dim_idx, const Range& range);
+  Status add_range(unsigned dim_idx, Range&& range);
 
   /**
    * Disables checking the global order. Applicable only to writes.
@@ -340,6 +322,12 @@ class Writer {
   /** Sets config for query-level parameters only. */
   Status set_config(const Config& config);
 
+  /**
+   * Get the config of the writer
+   * @return Config
+   */
+  const Config* config() const;
+
   /** Sets current setting of check_coord_dups_ */
   void set_check_coord_dups(bool b);
 
@@ -514,6 +502,9 @@ class Writer {
   /** The offset bitsize used for variable-sized attributes. */
   uint32_t offsets_bitsize_;
 
+  /** The stats for the writer. */
+  Stats stats_;
+
   /* ********************************* */
   /*           PRIVATE METHODS         */
   /* ********************************* */
@@ -634,20 +625,6 @@ class Writer {
       FragmentMetadata* meta) const;
 
   /**
-   * Computes the cell ranges to be written, derived from a
-   * dense cell range iterator for a specific tile.
-   *
-   * @tparam T The domain type.
-   * @param iter The dense cell range iterator for one
-   *     tile overlapping with the write subarray.
-   * @param write_cell_ranges The write cell ranges to be created.
-   * @return Status
-   */
-  template <class T>
-  Status compute_write_cell_ranges(
-      WriteCellSlabIter<T>* iters, WriteCellRangeVec* write_cell_ranges) const;
-
-  /**
    * Creates a new fragment.
    *
    * @param dense Whether the fragment is dense or not.
@@ -663,14 +640,14 @@ class Writer {
    * of the pipeline.
    */
   Status filter_tiles(
-      std::unordered_map<std::string, std::vector<Tile>>* tiles) const;
+      std::unordered_map<std::string, std::vector<Tile>>* tiles);
 
   /**
    * Applicable only to global writes. Filters the last attribute and
    * coordinate tiles.
    */
   Status filter_last_tiles(
-      std::unordered_map<std::string, std::vector<Tile>>* tiles) const;
+      std::unordered_map<std::string, std::vector<Tile>>* tiles);
 
   /**
    * Runs the input tiles for the input attribute through the filter pipeline.
@@ -680,7 +657,7 @@ class Writer {
    * @param tile The tiles to be filtered.
    * @return Status
    */
-  Status filter_tiles(const std::string& name, std::vector<Tile>* tiles) const;
+  Status filter_tiles(const std::string& name, std::vector<Tile>* tiles);
 
   /**
    * Runs the input tile for the input attribute/dimension through the filter
@@ -695,7 +672,7 @@ class Writer {
    * @return Status
    */
   Status filter_tile(
-      const std::string& name, Tile* tile, bool offsets, bool nullable) const;
+      const std::string& name, Tile* tile, bool offsets, bool nullable);
 
   /** Finalizes the global write state. */
   Status finalize_global_write_state();
@@ -762,18 +739,6 @@ class Writer {
       Tile* tile,
       Tile* tile_var,
       Tile* tile_validity) const;
-
-  /**
-   * Initializes dense cell range iterators for the subarray to be writte,
-   * one per overlapping tile.
-   *
-   * @tparam T The domain type.
-   * @param iters The dense cell range iterators to be created.
-   * @return Status
-   */
-  template <class T>
-  Status init_tile_dense_cell_range_iters(
-      std::vector<WriteCellSlabIter<T>>* iters) const;
 
   /**
    * Initializes the tiles for writing for the input attribute/dimension.
@@ -931,33 +896,6 @@ class Writer {
   Status prepare_full_tiles_var(
       const std::string& name,
       const std::set<uint64_t>& coord_dups,
-      std::vector<Tile>* tiles) const;
-
-  /**
-   * It prepares and filters  attribute the tiles, copying from the user
-   * buffers into the tiles the values based on the input write cell ranges.
-   *
-   * @param write_cell_ranges The write cell ranges.
-   * @param tiles The tiles to be created.
-   * @return Status
-   */
-  Status prepare_and_filter_attr_tiles(
-      const std::vector<WriteCellRangeVec>& write_cell_ranges,
-      std::unordered_map<std::string, std::vector<Tile>>* attr_tiles) const;
-
-  /**
-   * It prepares the tiles, copying from the user buffers into the tiles
-   * the values based on the input write cell ranges, focusing on the
-   * input attribute.
-   *
-   * @param attribute The attribute to prepare the tiles for.
-   * @param write_cell_ranges The write cell ranges.
-   * @param tiles The tiles to be created.
-   * @return Status
-   */
-  Status prepare_tiles(
-      const std::string& attribute,
-      const std::vector<WriteCellRangeVec>& write_cell_ranges,
       std::vector<Tile>* tiles) const;
 
   /**
@@ -1207,20 +1145,26 @@ class Writer {
    */
   Status write_all_tiles(
       FragmentMetadata* frag_meta,
-      std::unordered_map<std::string, std::vector<Tile>>* tiles) const;
+      std::unordered_map<std::string, std::vector<Tile>>* tiles);
 
   /**
    * Writes the input tiles for the input attribute/dimension to storage.
    *
    * @param name The attribute/dimension the tiles belong to.
    * @param frag_meta The fragment metadata.
+   * @param start_tile_id The function will start writing tiles
+   *     with ids in the fragment that start with this value.
    * @param tiles The tiles to be written.
+   * @param close_files Whether to close the attribute/coordinate
+   *     file in the end of the function call.
    * @return Status
    */
   Status write_tiles(
       const std::string& name,
       FragmentMetadata* frag_meta,
-      std::vector<Tile>* tiles) const;
+      uint64_t start_tile_id,
+      std::vector<Tile>* tiles,
+      bool close_files = true);
 
   /**
    * Returns the i-th coordinates in the coordinate buffers in string
@@ -1257,6 +1201,23 @@ class Writer {
   Status calculate_hilbert_values(
       const std::vector<const QueryBuffer*>& buffs,
       std::vector<uint64_t>* hilbert_values) const;
+
+  /**
+   * Prepares, filters and writes dense tiles for the given attribute.
+   *
+   * @tparam T The array domain datatype.
+   * @param name The attribute name.
+   * @param frag_meta The metadata of the new fragment.
+   * @param dense_tiler The dense tiler that will prepare the tiles.
+   * @param thread_num The number of threads to be used for the function.
+   * @param stats Statistics to gather in the function.
+   */
+  template <class T>
+  Status prepare_filter_and_write_tiles(
+      const std::string& name,
+      FragmentMetadata* frag_meta,
+      DenseTiler<T>* dense_tiler,
+      uint64_t thread_num);
 };
 
 }  // namespace sm

@@ -700,6 +700,9 @@ TEST_CASE(
   CHECK(chunked_buffer2.internal_buffer(0, &chunked_buffer2_chunk_0).ok());
   CHECK(chunked_buffer1_chunk_0 != chunked_buffer2_chunk_0);
 
+  chunked_buffer1.free();
+  chunked_buffer2.free();
+
   free(write_buffer);
   free(read_buffer);
 }
@@ -757,6 +760,9 @@ TEST_CASE("ChunkedBuffer: Test assignment", "[ChunkedBuffer][assignment]") {
   CHECK(chunked_buffer1.internal_buffer(0, &chunked_buffer1_chunk_0).ok());
   CHECK(chunked_buffer2.internal_buffer(0, &chunked_buffer2_chunk_0).ok());
   CHECK(chunked_buffer1_chunk_0 != chunked_buffer2_chunk_0);
+
+  chunked_buffer1.free();
+  chunked_buffer2.free();
 
   free(write_buffer);
   free(read_buffer);
@@ -817,6 +823,8 @@ TEST_CASE("ChunkedBuffer: Test shallow copy", "[ChunkedBuffer][shallow_copy]") {
   // this test fails 'debug' build config with vs20-17/-19, see
   // https://github.com/TileDB-Inc/TileDB/issues/1939
   CHECK(chunked_buffer1_chunk_0 == chunked_buffer2_chunk_0);
+
+  chunked_buffer1.free();
 
   free(write_buffer);
   free(read_buffer);

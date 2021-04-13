@@ -39,7 +39,7 @@
 #include "tiledb/sm/enums/layout.h"
 #include "tiledb/sm/misc/hilbert.h"
 #include "tiledb/sm/misc/utils.h"
-#include "tiledb/sm/stats/stats.h"
+#include "tiledb/sm/stats/global_stats.h"
 
 #include <iomanip>
 
@@ -62,17 +62,18 @@ using namespace tiledb::sm;
 SubarrayPartitioner::SubarrayPartitioner() = default;
 
 SubarrayPartitioner::SubarrayPartitioner(
+    const Config* const config,
     const Subarray& subarray,
     uint64_t memory_budget,
     uint64_t memory_budget_var,
     uint64_t memory_budget_validity,
     ThreadPool* const compute_tp)
-    : subarray_(subarray)
+    : config_(config)
+    , subarray_(subarray)
     , memory_budget_(memory_budget)
     , memory_budget_var_(memory_budget_var)
     , memory_budget_validity_(memory_budget_validity)
     , compute_tp_(compute_tp) {
-  subarray_.compute_tile_overlap(compute_tp_);
   state_.start_ = 0;
   auto range_num = subarray_.range_num();
   state_.end_ = (range_num > 0) ? range_num - 1 : 0;
@@ -351,7 +352,7 @@ Status SubarrayPartitioner::get_memory_budget(
 }
 
 Status SubarrayPartitioner::next(bool* unsplittable) {
-  STATS_START_TIMER(stats::Stats::TimerType::READ_NEXT_PARTITION)
+  STATS_START_TIMER(stats::GlobalStats::TimerType::READ_NEXT_PARTITION)
 
   *unsplittable = false;
 
@@ -393,7 +394,7 @@ Status SubarrayPartitioner::next(bool* unsplittable) {
   // Must split a multi-range subarray slab
   return next_from_multi_range(unsplittable);
 
-  STATS_END_TIMER(stats::Stats::TimerType::READ_NEXT_PARTITION)
+  STATS_END_TIMER(stats::GlobalStats::TimerType::READ_NEXT_PARTITION)
 }
 
 Status SubarrayPartitioner::set_result_budget(
@@ -557,7 +558,7 @@ Status SubarrayPartitioner::set_memory_budget(
 }
 
 Status SubarrayPartitioner::split_current(bool* unsplittable) {
-  STATS_START_TIMER(stats::Stats::TimerType::READ_SPLIT_CURRENT_PARTITION)
+  STATS_START_TIMER(stats::GlobalStats::TimerType::READ_SPLIT_CURRENT_PARTITION)
 
   *unsplittable = false;
 
@@ -610,7 +611,7 @@ Status SubarrayPartitioner::split_current(bool* unsplittable) {
   split_top_single_range(unsplittable);
   return next_from_single_range(unsplittable);
 
-  STATS_END_TIMER(stats::Stats::TimerType::READ_SPLIT_CURRENT_PARTITION)
+  STATS_END_TIMER(stats::GlobalStats::TimerType::READ_SPLIT_CURRENT_PARTITION)
 }
 
 const SubarrayPartitioner::State* SubarrayPartitioner::state() const {
@@ -727,6 +728,7 @@ void SubarrayPartitioner::calibrate_current_start_end(bool* must_split_slab) {
 
 SubarrayPartitioner SubarrayPartitioner::clone() const {
   SubarrayPartitioner clone;
+  clone.config_ = config_;
   clone.subarray_ = subarray_;
   clone.budget_ = budget_;
   clone.current_ = current_;
@@ -740,6 +742,15 @@ SubarrayPartitioner SubarrayPartitioner::clone() const {
 }
 
 Status SubarrayPartitioner::compute_current_start_end(bool* found) {
+  // Compute the tile overlap. Note that the ranges in `tile_overlap` may have
+  // been truncated the ending bound due to memory constraints.
+  RETURN_NOT_OK(subarray_.precompute_tile_overlap(
+      state_.start_, state_.end_, config_, compute_tp_));
+  const SubarrayTileOverlap* const tile_overlap =
+      subarray_.subarray_tile_overlap();
+  assert(tile_overlap->range_idx_start() == state_.start_);
+  assert(tile_overlap->range_idx_end() <= state_.end_);
+
   // Preparation
   auto array = subarray_.array();
   auto meta = array->fragment_metadata();
@@ -761,16 +772,17 @@ Status SubarrayPartitioner::compute_current_start_end(bool* found) {
   std::vector<std::vector<Subarray::MemorySize>> memory_sizes;
   RETURN_NOT_OK(subarray_.compute_relevant_fragment_est_result_sizes(
       names,
-      state_.start_,
-      state_.end_,
+      tile_overlap->range_idx_start(),
+      tile_overlap->range_idx_end(),
       &result_sizes,
       &memory_sizes,
       compute_tp_));
 
-  current_.start_ = state_.start_;
-  for (current_.end_ = state_.start_; current_.end_ <= state_.end_;
+  current_.start_ = tile_overlap->range_idx_start();
+  for (current_.end_ = tile_overlap->range_idx_start();
+       current_.end_ <= tile_overlap->range_idx_end();
        ++current_.end_) {
-    size_t r = current_.end_ - state_.start_;
+    size_t r = current_.end_ - tile_overlap->range_idx_start();
     for (size_t i = 0; i < names.size(); ++i) {
       auto& cur_size = cur_sizes[i];
       auto& mem_size = mem_sizes[i];
@@ -1060,34 +1072,44 @@ bool SubarrayPartitioner::must_split(Subarray* partition) {
     if (var_size) {
       if (!nullable) {
         partition->get_est_result_size(
-            b.first.c_str(), &size_fixed, &size_var, compute_tp_);
+            b.first.c_str(), &size_fixed, &size_var, config_, compute_tp_);
         partition->get_max_memory_size(
-            b.first.c_str(), &mem_size_fixed, &mem_size_var, compute_tp_);
+            b.first.c_str(),
+            &mem_size_fixed,
+            &mem_size_var,
+            config_,
+            compute_tp_);
       } else {
         partition->get_est_result_size_nullable(
             b.first.c_str(),
             &size_fixed,
             &size_var,
             &size_validity,
+            config_,
             compute_tp_);
         partition->get_max_memory_size_nullable(
             b.first.c_str(),
             &mem_size_fixed,
             &mem_size_var,
             &mem_size_validity,
+            config_,
             compute_tp_);
       }
     } else {
       if (!nullable) {
         partition->get_est_result_size(
-            b.first.c_str(), &size_fixed, compute_tp_);
+            b.first.c_str(), &size_fixed, config_, compute_tp_);
         partition->get_max_memory_size(
-            b.first.c_str(), &mem_size_fixed, compute_tp_);
+            b.first.c_str(), &mem_size_fixed, config_, compute_tp_);
       } else {
         partition->get_est_result_size_nullable(
-            b.first.c_str(), &size_fixed, &size_validity, compute_tp_);
+            b.first.c_str(), &size_fixed, &size_validity, config_, compute_tp_);
         partition->get_max_memory_size_nullable(
-            b.first.c_str(), &mem_size_fixed, &mem_size_validity, compute_tp_);
+            b.first.c_str(),
+            &mem_size_fixed,
+            &mem_size_validity,
+            config_,
+            compute_tp_);
       }
     }
 
@@ -1244,6 +1266,7 @@ Status SubarrayPartitioner::split_top_multi_range(bool* unsplittable) {
 }
 
 void SubarrayPartitioner::swap(SubarrayPartitioner& partitioner) {
+  std::swap(config_, partitioner.config_);
   std::swap(subarray_, partitioner.subarray_);
   std::swap(budget_, partitioner.budget_);
   std::swap(current_, partitioner.current_);

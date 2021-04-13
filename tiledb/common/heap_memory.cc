@@ -40,16 +40,16 @@ namespace common {
 
 // Protects against races between memory management APIs
 // and the HeapProfiler API.
-std::mutex __tdb_heap_mem_lock;
+std::recursive_mutex __tdb_heap_mem_lock;
 
 void* tiledb_malloc(const size_t size, const std::string& label) {
   if (!heap_profiler.enabled()) {
-    return malloc(size);
+    return std::malloc(size);
   }
 
-  std::unique_lock<std::mutex> ul(__tdb_heap_mem_lock);
+  std::unique_lock<std::recursive_mutex> ul(__tdb_heap_mem_lock);
 
-  void* const p = malloc(size);
+  void* const p = std::malloc(size);
 
   if (!p)
     heap_profiler.dump_and_terminate();
@@ -62,12 +62,12 @@ void* tiledb_malloc(const size_t size, const std::string& label) {
 void* tiledb_calloc(
     const size_t num, const size_t size, const std::string& label) {
   if (!heap_profiler.enabled()) {
-    return calloc(num, size);
+    return std::calloc(num, size);
   }
 
-  std::unique_lock<std::mutex> ul(__tdb_heap_mem_lock);
+  std::unique_lock<std::recursive_mutex> ul(__tdb_heap_mem_lock);
 
-  void* const p = calloc(num, size);
+  void* const p = std::calloc(num, size);
 
   if (!p)
     heap_profiler.dump_and_terminate();
@@ -80,12 +80,12 @@ void* tiledb_calloc(
 void* tiledb_realloc(
     void* const p, const size_t size, const std::string& label) {
   if (!heap_profiler.enabled()) {
-    return realloc(p, size);
+    return std::realloc(p, size);
   }
 
-  std::unique_lock<std::mutex> ul(__tdb_heap_mem_lock);
+  std::unique_lock<std::recursive_mutex> ul(__tdb_heap_mem_lock);
 
-  void* const p_realloc = realloc(p, size);
+  void* const p_realloc = std::realloc(p, size);
 
   if (!p_realloc)
     heap_profiler.dump_and_terminate();
@@ -102,7 +102,7 @@ void tiledb_free(void* const p) {
     return;
   }
 
-  std::unique_lock<std::mutex> ul(__tdb_heap_mem_lock);
+  std::unique_lock<std::recursive_mutex> ul(__tdb_heap_mem_lock);
 
   free(p);
   heap_profiler.record_dealloc(p);

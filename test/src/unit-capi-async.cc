@@ -824,6 +824,10 @@ void AsyncFx::read_dense_async() {
   // Clean up
   tiledb_array_free(&array);
   tiledb_query_free(&query);
+  free(buffer_a1);
+  free(buffer_a2_off);
+  free(buffer_a2_val);
+  free(buffer_a3);
 }
 
 void AsyncFx::read_sparse_async() {

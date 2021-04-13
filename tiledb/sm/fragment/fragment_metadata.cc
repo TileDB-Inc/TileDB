@@ -42,7 +42,7 @@
 #include "tiledb/sm/filesystem/vfs.h"
 #include "tiledb/sm/misc/constants.h"
 #include "tiledb/sm/misc/utils.h"
-#include "tiledb/sm/stats/stats.h"
+#include "tiledb/sm/stats/global_stats.h"
 #include "tiledb/sm/storage_manager/storage_manager.h"
 #include "tiledb/sm/tile/generic_tile_io.h"
 #include "tiledb/sm/tile/tile.h"
@@ -484,7 +484,7 @@ Status FragmentMetadata::load(
 }
 
 Status FragmentMetadata::store(const EncryptionKey& encryption_key) {
-  STATS_START_TIMER(stats::Stats::TimerType::WRITE_STORE_FRAG_META)
+  STATS_START_TIMER(stats::GlobalStats::TimerType::WRITE_STORE_FRAG_META)
 
   auto array_uri = this->array_uri();
   auto fragment_metadata_uri =
@@ -541,7 +541,7 @@ Status FragmentMetadata::store(const EncryptionKey& encryption_key) {
   // Close file
   return storage_manager_->close_file(fragment_metadata_uri);
 
-  STATS_END_TIMER(stats::Stats::TimerType::WRITE_STORE_FRAG_META)
+  STATS_END_TIMER(stats::GlobalStats::TimerType::WRITE_STORE_FRAG_META)
 }
 
 const NDRange& FragmentMetadata::non_empty_domain() {
@@ -878,7 +878,8 @@ Status FragmentMetadata::load_rtree(const EncryptionKey& encryption_key) {
   RETURN_NOT_OK(
       read_generic_tile_from_file(encryption_key, gt_offsets_.rtree_, &buff));
 
-  STATS_ADD_COUNTER(stats::Stats::CounterType::READ_RTREE_SIZE, buff.size());
+  STATS_ADD_COUNTER(
+      stats::GlobalStats::CounterType::READ_RTREE_SIZE, buff.size());
 
   ConstBuffer cbuff(&buff);
   RETURN_NOT_OK(rtree_.deserialize(&cbuff, array_schema_->domain(), version_));
@@ -939,7 +940,7 @@ Status FragmentMetadata::get_footer_offset_and_size(
     RETURN_NOT_OK(buff.read(size, sizeof(uint64_t)));
     *offset = meta_file_size_ - *size - sizeof(uint64_t);
     STATS_ADD_COUNTER(
-        stats::Stats::CounterType::READ_FRAG_META_SIZE, sizeof(uint64_t));
+        stats::GlobalStats::CounterType::READ_FRAG_META_SIZE, sizeof(uint64_t));
   }
 
   return Status::Ok();
@@ -1212,7 +1213,7 @@ Status FragmentMetadata::load_tile_offsets(
       encryption_key, gt_offsets_.tile_offsets_[idx], &buff));
 
   STATS_ADD_COUNTER(
-      stats::Stats::CounterType::READ_TILE_OFFSETS_SIZE, buff.size());
+      stats::GlobalStats::CounterType::READ_TILE_OFFSETS_SIZE, buff.size());
 
   ConstBuffer cbuff(&buff);
   RETURN_NOT_OK(load_tile_offsets(idx, &cbuff));
@@ -1241,7 +1242,7 @@ Status FragmentMetadata::load_tile_var_offsets(
       encryption_key, gt_offsets_.tile_var_offsets_[idx], &buff));
 
   STATS_ADD_COUNTER(
-      stats::Stats::CounterType::READ_TILE_VAR_OFFSETS_SIZE, buff.size());
+      stats::GlobalStats::CounterType::READ_TILE_VAR_OFFSETS_SIZE, buff.size());
 
   ConstBuffer cbuff(&buff);
   RETURN_NOT_OK(load_tile_var_offsets(idx, &cbuff));
@@ -1266,7 +1267,7 @@ Status FragmentMetadata::load_tile_var_sizes(
       encryption_key, gt_offsets_.tile_var_sizes_[idx], &buff));
 
   STATS_ADD_COUNTER(
-      stats::Stats::CounterType::READ_TILE_VAR_SIZES_SIZE, buff.size());
+      stats::GlobalStats::CounterType::READ_TILE_VAR_SIZES_SIZE, buff.size());
 
   ConstBuffer cbuff(&buff);
   RETURN_NOT_OK(load_tile_var_sizes(idx, &cbuff));
@@ -1291,7 +1292,8 @@ Status FragmentMetadata::load_tile_validity_offsets(
       encryption_key, gt_offsets_.tile_validity_offsets_[idx], &buff));
 
   STATS_ADD_COUNTER(
-      stats::Stats::CounterType::READ_TILE_VALIDITY_OFFSETS_SIZE, buff.size());
+      stats::GlobalStats::CounterType::READ_TILE_VALIDITY_OFFSETS_SIZE,
+      buff.size());
 
   ConstBuffer cbuff(&buff);
   RETURN_NOT_OK(load_tile_validity_offsets(idx, &cbuff));
@@ -1962,7 +1964,7 @@ Status FragmentMetadata::load_v1_v2(const EncryptionKey& encryption_key) {
   tdb_delete(tile);
 
   STATS_ADD_COUNTER(
-      stats::Stats::CounterType::READ_FRAG_META_SIZE, buff.size());
+      stats::GlobalStats::CounterType::READ_FRAG_META_SIZE, buff.size());
 
   // Deserialize
   ConstBuffer cbuff(&buff);
@@ -2184,7 +2186,7 @@ Status FragmentMetadata::store_rtree(
 
   RETURN_NOT_OK(
       write_generic_tile_to_file(encryption_key, std::move(buff), nbytes));
-  STATS_ADD_COUNTER(stats::Stats::CounterType::WRITE_RTREE_SIZE, *nbytes);
+  STATS_ADD_COUNTER(stats::GlobalStats::CounterType::WRITE_RTREE_SIZE, *nbytes);
 
   return Status::Ok();
 }
@@ -2268,7 +2270,7 @@ Status FragmentMetadata::read_file_footer(
   RETURN_NOT_OK(get_footer_offset_and_size(footer_offset, footer_size));
 
   STATS_ADD_COUNTER(
-      stats::Stats::CounterType::READ_FRAG_META_SIZE, *footer_size);
+      stats::GlobalStats::CounterType::READ_FRAG_META_SIZE, *footer_size);
 
   // Read footer
   return storage_manager_->read(
@@ -2324,7 +2326,7 @@ Status FragmentMetadata::store_tile_offsets(
       write_generic_tile_to_file(encryption_key, std::move(buff), nbytes));
 
   STATS_ADD_COUNTER(
-      stats::Stats::CounterType::WRITE_TILE_OFFSETS_SIZE, *nbytes);
+      stats::GlobalStats::CounterType::WRITE_TILE_OFFSETS_SIZE, *nbytes);
 
   return Status::Ok();
 }
@@ -2362,7 +2364,7 @@ Status FragmentMetadata::store_tile_var_offsets(
       write_generic_tile_to_file(encryption_key, std::move(buff), nbytes));
 
   STATS_ADD_COUNTER(
-      stats::Stats::CounterType::WRITE_TILE_VAR_OFFSETS_SIZE, *nbytes);
+      stats::GlobalStats::CounterType::WRITE_TILE_VAR_OFFSETS_SIZE, *nbytes);
 
   return Status::Ok();
 }
@@ -2402,7 +2404,7 @@ Status FragmentMetadata::store_tile_var_sizes(
       write_generic_tile_to_file(encryption_key, std::move(buff), nbytes));
 
   STATS_ADD_COUNTER(
-      stats::Stats::CounterType::WRITE_TILE_VAR_SIZES_SIZE, *nbytes);
+      stats::GlobalStats::CounterType::WRITE_TILE_VAR_SIZES_SIZE, *nbytes);
 
   return Status::Ok();
 }
@@ -2440,7 +2442,8 @@ Status FragmentMetadata::store_tile_validity_offsets(
       write_generic_tile_to_file(encryption_key, std::move(buff), nbytes));
 
   STATS_ADD_COUNTER(
-      stats::Stats::CounterType::WRITE_TILE_VALIDITY_OFFSETS_SIZE, *nbytes);
+      stats::GlobalStats::CounterType::WRITE_TILE_VALIDITY_OFFSETS_SIZE,
+      *nbytes);
 
   return Status::Ok();
 }
@@ -2496,7 +2499,8 @@ Status FragmentMetadata::store_footer(const EncryptionKey& encryption_key) {
   RETURN_NOT_OK(write_footer_to_file(&buff));
 
   STATS_ADD_COUNTER(
-      stats::Stats::CounterType::WRITE_FRAG_META_FOOTER_SIZE, buff.size());
+      stats::GlobalStats::CounterType::WRITE_FRAG_META_FOOTER_SIZE,
+      buff.size());
 
   return Status::Ok();
 }

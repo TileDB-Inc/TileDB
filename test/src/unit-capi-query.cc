@@ -506,7 +506,7 @@ TEST_CASE_METHOD(
   tiledb_array_t* rarray;
   rc = tiledb_query_get_array(ctx_, query, &rarray);
   REQUIRE(rc == TILEDB_OK);
-  CHECK(rarray->array_ == array->array_);
+  CHECK(rarray->array_ != array->array_);
 
   tiledb_array_schema_t* rschema;
   rc = tiledb_array_get_schema(ctx_, rarray, &rschema);
@@ -530,7 +530,9 @@ TEST_CASE_METHOD(
   rc = tiledb_array_close(ctx_, array);
   REQUIRE(rc == TILEDB_OK);
 
+  tiledb_array_schema_free(&rschema);
   tiledb_query_free(&query);
   tiledb_array_free(&array);
+  tiledb_array_free(&rarray);
   remove_temp_dir(temp_dir);
 }

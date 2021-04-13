@@ -33,10 +33,6 @@
 #ifndef TILEDB_CONFIG_H
 #define TILEDB_CONFIG_H
 
-#ifdef HAVE_TBB
-#include <tbb/task_scheduler_init.h>
-#endif
-
 #include "tiledb/common/status.h"
 #include "tiledb/sm/misc/utils.h"
 
@@ -107,6 +103,13 @@ class Config {
   static const std::string SM_CHECK_COORD_OOB;
 
   /**
+   * If `true`, this will check ranges for read with out-of-bounds on the
+   * dimension domain's. If `false`, the ranges will be capped at the
+   * dimension's domain and a warning logged
+   */
+  static const std::string SM_READ_RANGE_OOB;
+
+  /**
    * If `true`, this will check if the cells upon writes in global order
    * are indeed provided in global order.
    */
@@ -145,9 +148,6 @@ class Config {
 
   /** The maximum concurrency level for io-bound operations. */
   static const std::string SM_IO_CONCURRENCY_LEVEL;
-
-  /** The number of threads allocated for TBB. */
-  static const std::string SM_NUM_TBB_THREADS;
 
   /** If `true`, checksum validation will be skipped on reads. */
   static const std::string SM_SKIP_CHECKSUM_VALIDATION;
@@ -218,6 +218,11 @@ class Config {
    *    - "elements": express offsets in number of elements
    */
   static const std::string SM_OFFSETS_FORMAT_MODE;
+
+  /**
+   * The maximum estimated size of the internal tile overlap structure.
+   */
+  static const std::string SM_MAX_TILE_OVERLAP_SIZE;
 
   /** The default minimum number of bytes in a parallel VFS operation. */
   static const std::string VFS_MIN_PARALLEL_SIZE;
