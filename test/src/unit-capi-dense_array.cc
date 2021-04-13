@@ -4542,3 +4542,244 @@ TEST_CASE_METHOD(
   read_dense_vector_mixed(array_name);
   remove_temp_dir(path);
 }
+
+TEST_CASE_METHOD(
+    DenseArrayFx,
+    "C API: Test dense vector, set_subarray sequential usage",
+    "[capi][dense][subarray][query_multiple_set_subarray") {
+  std::string path = SupportedFsLocal().temp_dir();
+
+  std::string array_name = path + "test_dense_mixed";
+
+  remove_temp_dir(path);
+
+  tiledb_ctx_t* ctx = nullptr;
+  REQUIRE(tiledb_ctx_alloc(nullptr, &ctx) == TILEDB_OK);
+
+  int rc;
+
+  auto create_array = [&]() {
+    // The array will be 4x4 with dimensions "rows" and "cols", with domain
+    // [1,4].
+    int dim_domain[] = {1, 4, 1, 4};
+    int tile_extents[] = {2, 2};
+    tiledb_dimension_t* d1;
+    rc = tiledb_dimension_alloc(
+        ctx, "rows", TILEDB_INT32, &dim_domain[0], &tile_extents[0], &d1);
+    CHECK(rc == TILEDB_OK);
+
+    tiledb_dimension_t* d2;
+    rc = tiledb_dimension_alloc(
+        ctx, "cols", TILEDB_INT32, &dim_domain[2], &tile_extents[1], &d2);
+    CHECK(rc == TILEDB_OK);
+
+    // Create domain
+    tiledb_domain_t* domain;
+    rc = tiledb_domain_alloc(ctx, &domain);
+    CHECK(rc == TILEDB_OK);
+    rc = tiledb_domain_add_dimension(ctx, domain, d1);
+    CHECK(rc == TILEDB_OK);
+    rc = tiledb_domain_add_dimension(ctx, domain, d2);
+    CHECK(rc == TILEDB_OK);
+
+    // Create a single attribute "a" so each (i,j) cell can store an integer
+    tiledb_attribute_t* a;
+    rc = tiledb_attribute_alloc(ctx, "a", TILEDB_INT32, &a);
+    CHECK(rc == TILEDB_OK);
+
+    // Create array schema
+    tiledb_array_schema_t* array_schema;
+    rc = tiledb_array_schema_alloc(ctx, TILEDB_DENSE, &array_schema);
+    CHECK(rc == TILEDB_OK);
+    rc =
+        tiledb_array_schema_set_cell_order(ctx, array_schema, TILEDB_ROW_MAJOR);
+    CHECK(rc == TILEDB_OK);
+    rc =
+        tiledb_array_schema_set_tile_order(ctx, array_schema, TILEDB_ROW_MAJOR);
+    CHECK(rc == TILEDB_OK);
+    rc = tiledb_array_schema_set_domain(ctx, array_schema, domain);
+    CHECK(rc == TILEDB_OK);
+    rc = tiledb_array_schema_add_attribute(ctx, array_schema, a);
+    CHECK(rc == TILEDB_OK);
+
+    // Create array
+    rc = tiledb_array_create(ctx, array_name.c_str(), array_schema);
+    CHECK(rc == TILEDB_OK);
+
+    // Clean up
+    tiledb_attribute_free(&a);
+    tiledb_dimension_free(&d1);
+    tiledb_dimension_free(&d2);
+    tiledb_domain_free(&domain);
+    tiledb_array_schema_free(&array_schema);
+  };
+
+  auto write_array_1_2 = [&](bool separate) {
+    // note: call with separate == false is the situation (below) implementing a
+    // set_subarray call sequence that was broken.
+
+    // Open array for writing
+    tiledb_array_t* array;
+    rc = tiledb_array_alloc(ctx, array_name.c_str(), &array);
+    CHECK(rc == TILEDB_OK);
+    rc = tiledb_array_open(ctx, array, TILEDB_WRITE);
+    CHECK(rc == TILEDB_OK);
+
+    // Prepare some data for the array
+    int data1[] = {1, 2, 3, 4};
+    uint64_t data1_size = sizeof(data1);
+
+    int subarray1[] = {1, 2, 1, 2};
+
+    // Create the query
+    tiledb_query_t* query;
+    rc = tiledb_query_alloc(ctx, array, TILEDB_WRITE, &query);
+    CHECK(rc == TILEDB_OK);
+    rc = tiledb_query_set_layout(ctx, query, TILEDB_ROW_MAJOR);
+    CHECK(rc == TILEDB_OK);
+    rc = tiledb_query_set_subarray(ctx, query, subarray1);
+    CHECK(rc == TILEDB_OK);
+    rc = tiledb_query_set_buffer(ctx, query, "a", data1, &data1_size);
+    CHECK(rc == TILEDB_OK);
+
+    /*
+    ...data being written...
+     x  1  2  3  4
+     1  1  2
+     2  3  4
+     3
+     4
+     */
+
+    // Submit query
+    rc = tiledb_query_submit(ctx, query);
+    CHECK(rc == TILEDB_OK);
+
+    if (separate) {
+      // Close array
+      tiledb_array_close(ctx, array);
+
+      // Clean up
+      tiledb_array_free(&array);
+      tiledb_query_free(&query);
+
+      // Open array for writing
+      rc = tiledb_array_alloc(ctx, array_name.c_str(), &array);
+      CHECK(rc == TILEDB_OK);
+      rc = tiledb_array_open(ctx, array, TILEDB_WRITE);
+      CHECK(rc == TILEDB_OK);
+
+      // Create the query
+      rc = tiledb_query_alloc(ctx, array, TILEDB_WRITE, &query);
+      CHECK(rc == TILEDB_OK);
+    }
+
+    // Prepare some data for the array
+    int data2[] = {5, 6, 7, 8, 9, 10, 11, 12};
+    uint64_t data2_size = sizeof(data2);
+
+    int subarray2[] = {2, 3, 1, 4};
+
+    rc = tiledb_query_set_layout(ctx, query, TILEDB_ROW_MAJOR);
+    CHECK(rc == TILEDB_OK);
+    rc = tiledb_query_set_subarray(ctx, query, subarray2);
+    CHECK(rc == TILEDB_OK);
+    rc = tiledb_query_set_buffer(ctx, query, "a", data2, &data2_size);
+    CHECK(rc == TILEDB_OK);
+
+    /*
+    ...data being written...
+     x  1  2  3  4
+     1
+     2  5  6  7  8
+     3  9 10 11 12
+     4
+     */
+
+    // Submit query
+    rc = tiledb_query_submit(ctx, query);
+    CHECK(rc == TILEDB_OK);
+
+    // Close array
+    rc = tiledb_array_close(ctx, array);
+    CHECK(rc == TILEDB_OK);
+
+    // Clean up
+    tiledb_array_free(&array);
+    tiledb_query_free(&query);
+  };
+
+  auto read_array = [&](std::vector<int>& data) {
+    // Open array for reading
+    tiledb_array_t* array;
+    rc = tiledb_array_alloc(ctx, array_name.c_str(), &array);
+    CHECK(rc == TILEDB_OK);
+    rc = tiledb_array_open(ctx, array, TILEDB_READ);
+    CHECK(rc == TILEDB_OK);
+
+    // Read entire array
+    int subarray[] = {1, 4, 1, 4};
+
+    // Prepare the vector that will hold the result (of size 16 elements)
+    data.resize(16);
+    uint64_t data_size = data.size() * sizeof(data[0]);
+    memset(data.data(), 0xff, data_size);
+
+    // Create query
+    tiledb_query_t* query;
+    rc = tiledb_query_alloc(ctx, array, TILEDB_READ, &query);
+    CHECK(rc == TILEDB_OK);
+    rc = tiledb_query_set_subarray(ctx, query, subarray);
+    CHECK(rc == TILEDB_OK);
+    rc = tiledb_query_set_layout(ctx, query, TILEDB_ROW_MAJOR);
+    CHECK(rc == TILEDB_OK);
+    rc = tiledb_query_set_buffer(ctx, query, "a", data.data(), &data_size);
+    CHECK(rc == TILEDB_OK);
+
+    // Submit query
+    rc = tiledb_query_submit(ctx, query);
+    // note: In the 'broken' state this test case is checking for, the array is
+    // corrupt and the read attempt results in a 'Memory allocation failed'
+    // error for a buffer, so with that failure rc is *not* ok.
+    CHECK(rc == TILEDB_OK);
+
+    if (rc == TILEDB_OK) {  // If the read failed, don't bother with this noise.
+      tiledb_query_status_t status;
+      rc = tiledb_query_get_status(ctx, query, &status);
+      CHECK(rc == TILEDB_OK);
+      CHECK(status == TILEDB_COMPLETED);
+    }
+
+    // Close array
+    rc = tiledb_array_close(ctx, array);
+    CHECK(rc == TILEDB_OK);
+
+    // Clean up
+    tiledb_array_free(&array);
+    tiledb_query_free(&query);
+  };
+
+  std::vector<int> data1;
+  std::vector<int> data2;
+
+  create_temp_dir(path);
+  create_array();
+  write_array_1_2(true);
+  read_array(data1);
+  remove_temp_dir(path);
+
+  create_temp_dir(path);
+  create_array();
+  write_array_1_2(false);
+  read_array(data2);
+  remove_temp_dir(path);
+
+  CHECK(data1.size() == data2.size());
+
+  if (data1.size() == data2.size()) {
+    for (auto ui = 0u; ui < data1.size(); ++ui)
+      CHECK(data1[ui] == data2[ui]);
+  }
+
+  tiledb_ctx_free(&ctx);
+}

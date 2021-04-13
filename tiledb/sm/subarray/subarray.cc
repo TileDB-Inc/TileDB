@@ -481,6 +481,8 @@ Status Subarray::to_byte_vec(std::vector<uint8_t>* byte_vec) const {
     return LOG_STATUS(Status::SubarrayError(
         "Cannot export to byte vector; The subarray must be unary"));
 
+  byte_vec->clear();
+
   for (const auto& r : ranges_) {
     auto offset = byte_vec->size();
     byte_vec->resize(offset + r[0].size());
