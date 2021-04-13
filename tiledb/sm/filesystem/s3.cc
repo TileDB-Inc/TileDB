@@ -600,11 +600,13 @@ Status S3::ls(
   list_objects_request.SetDelimiter(delimiter.c_str());
   if (request_payer_ != Aws::S3::Model::RequestPayer::NOT_SET)
     list_objects_request.SetRequestPayer(request_payer_);
-  if (max_paths != -1)
-    list_objects_request.SetMaxKeys(max_paths);
 
   bool is_done = false;
   while (!is_done) {
+    // Not requesting more items than needed
+    if (max_paths != -1)
+      list_objects_request.SetMaxKeys(
+          max_paths - static_cast<int>(paths->size()));
     auto list_objects_outcome = client_->ListObjects(list_objects_request);
 
     if (!list_objects_outcome.IsSuccess())
@@ -625,7 +627,9 @@ Status S3::ls(
           "s3://" + aws_auth + add_front_slash(remove_trailing_slash(file)));
     }
 
-    is_done = !list_objects_outcome.GetResult().GetIsTruncated();
+    is_done =
+        !list_objects_outcome.GetResult().GetIsTruncated() ||
+        (max_paths != -1 && paths->size() >= static_cast<size_t>(max_paths));
     if (!is_done) {
       // The documentation states that "GetNextMarker" will be non-empty only
       // when the delimiter in the request is non-empty. When the delimiter is
