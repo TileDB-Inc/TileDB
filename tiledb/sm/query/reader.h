@@ -76,13 +76,16 @@ class Reader {
      * the user buffers.
      */
     bool overflowed_ = false;
+
     /** The subarray partitioner. */
     SubarrayPartitioner partitioner_;
+
     /**
      * ``true`` if the next partition cannot be retrieved from the
      * partitioner, because it reaches a partition that is unsplittable.
      */
     bool unsplittable_ = false;
+
     /** True if the reader has been initialized. */
     bool initialized_ = false;
 
@@ -497,6 +500,9 @@ class Reader {
 
   /** Sets the bitsize of offsets */
   Status set_offsets_bitsize(const uint32_t bitsize);
+
+  /** Returns `stats_`. */
+  stats::Stats* stats();
 
   /* ********************************* */
   /*          STATIC FUNCTIONS         */
@@ -916,6 +922,9 @@ class Reader {
   /* ********************************* */
   /*         PRIVATE ATTRIBUTES        */
   /* ********************************* */
+
+  /** The class stats. */
+  tdb_shared_ptr<stats::Stats> stats_;
 
   /** The array. */
   const Array* array_;

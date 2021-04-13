@@ -37,6 +37,7 @@
 #include "tiledb/sm/array/array.h"
 #include "tiledb/sm/enums/layout.h"
 #include "tiledb/sm/enums/serialization_type.h"
+#include "tiledb/sm/stats/stats.h"
 #include "tiledb/sm/subarray/subarray.h"
 #include "tiledb_serialization.h"
 
@@ -69,6 +70,11 @@ class SubarrayPartitioner;
 }
 
 namespace test {
+
+// A dummy `Stats` instance. This is useful for constructing
+// objects that require a parent `Stats` object. These stats are
+// never used.
+static tiledb::sm::stats::Stats g_helper_stats("test");
 
 // For easy reference
 typedef std::pair<tiledb_filter_type_t, int> Compressor;

@@ -151,10 +151,6 @@ class Consolidator {
       const void* encryption_key,
       uint32_t key_length);
 
-  /* ********************************* */
-  /*          STATIC FUNCTIONS         */
-  /* ********************************* */
-
  private:
   /* ********************************* */
   /*        PRIVATE ATTRIBUTES         */

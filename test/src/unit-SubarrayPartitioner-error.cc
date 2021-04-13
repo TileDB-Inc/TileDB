@@ -133,7 +133,13 @@ TEST_CASE_METHOD(
   CHECK(tp.init(4).ok());
   Config config;
   SubarrayPartitioner subarray_partitioner(
-      &config, subarray, memory_budget_, memory_budget_var_, 0, &tp);
+      &config,
+      subarray,
+      memory_budget_,
+      memory_budget_var_,
+      0,
+      &tp,
+      &g_helper_stats);
   uint64_t budget, budget_off, budget_val;
 
   auto st = subarray_partitioner.get_result_budget("a", &budget);

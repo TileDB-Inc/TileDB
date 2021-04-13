@@ -39,6 +39,7 @@
 #include "tiledb/sm/tile/tile.h"
 
 using namespace tiledb::common;
+using namespace tiledb::sm::stats;
 
 namespace tiledb {
 namespace sm {
@@ -51,16 +52,17 @@ template <class T>
 DenseTiler<T>::DenseTiler(
     const std::unordered_map<std::string, QueryBuffer>* buffers,
     const Subarray* subarray,
+    Stats* const parent_stats,
     const std::string& offsets_format_mode,
     uint64_t offsets_bitsize,
     bool offsets_extra_element)
-    : array_schema_(subarray->array()->array_schema())
+    : stats_(parent_stats->create_child("DenseTiler"))
+    , array_schema_(subarray->array()->array_schema())
     , buffers_(buffers)
     , subarray_(subarray)
     , offsets_format_mode_(offsets_format_mode)
     , offsets_bytesize_(offsets_bitsize / 8)
-    , offsets_extra_element_(offsets_extra_element)
-    , stats_(stats::Stats("stats.DenseTiler")) {
+    , offsets_extra_element_(offsets_extra_element) {
   // Assertions
   assert(subarray != nullptr);
   assert(buffers != nullptr);
@@ -185,8 +187,8 @@ const typename DenseTiler<T>::CopyPlan DenseTiler<T>::copy_plan(
 template <class T>
 Status DenseTiler<T>::get_tile(
     uint64_t id, const std::string& name, Tile* tile) {
-  stats_.start_timer(std::string(__func__) + ".sec");
-  stats_.add_counter(std::string(__func__) + ".count", 1);
+  auto timer_se = stats_->start_timer("get_tile.sec");
+  stats_->add_counter("get_tile.count", 1);
 
   // Checks
   if (id >= tile_num_)
@@ -217,7 +219,6 @@ Status DenseTiler<T>::get_tile(
   // Copy tile from buffer
   RETURN_NOT_OK(copy_tile(id, cell_size, buff, tile));
 
-  stats_.end_timer(std::string(__func__) + ".sec");
   return Status::Ok();
 }
 
@@ -387,11 +388,6 @@ const std::vector<uint64_t>& DenseTiler<T>::sub_tile_coord_strides() const {
 template <class T>
 const std::vector<uint64_t>& DenseTiler<T>::first_sub_tile_coords() const {
   return first_sub_tile_coords_;
-}
-
-template <class T>
-const stats::Stats& DenseTiler<T>::stats() const {
-  return stats_;
 }
 
 /* ****************************** */

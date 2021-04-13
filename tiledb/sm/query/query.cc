@@ -44,6 +44,7 @@
 #include <sstream>
 
 using namespace tiledb::common;
+using namespace tiledb::sm::stats;
 
 namespace tiledb {
 namespace sm {
@@ -971,8 +972,14 @@ Status Query::set_subarray(const void* subarray) {
         Status::QueryError("Cannot set subarray; Function not applicable to "
                            "domains with variable-sized dimensions"));
 
+  // To construct the `Subarray` object, it needs the stats of
+  // the parent. Depending the type, the parent stats will either
+  // be from the `reader_` or `writer_`.
+  Stats* const parent_stats =
+      (type_ == QueryType::WRITE) ? writer_.stats() : reader_.stats();
+
   // Prepare a subarray object
-  Subarray sub(array_, layout_);
+  Subarray sub(array_, layout_, parent_stats);
   if (subarray != nullptr) {
     auto dim_num = array_->array_schema()->dim_num();
     auto s_ptr = (const unsigned char*)subarray;
@@ -1008,8 +1015,14 @@ Status Query::set_subarray(const void* subarray) {
 }
 
 Status Query::set_subarray_unsafe(const NDRange& subarray) {
+  // To construct the `Subarray` object, it needs the stats of
+  // the parent. Depending the type, the parent stats will either
+  // be from the `reader_` or `writer_`.
+  Stats* const parent_stats =
+      (type_ == QueryType::WRITE) ? writer_.stats() : reader_.stats();
+
   // Prepare a subarray object
-  Subarray sub(array_, layout_);
+  Subarray sub(array_, layout_, parent_stats);
   if (!subarray.empty()) {
     auto dim_num = array_->array_schema()->dim_num();
     for (unsigned d = 0; d < dim_num; ++d)

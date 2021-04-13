@@ -54,6 +54,7 @@
 using namespace tiledb;
 using namespace tiledb::common;
 using namespace tiledb::sm;
+using namespace tiledb::sm::stats;
 
 /* ****************************** */
 /*   CONSTRUCTORS & DESTRUCTORS   */
@@ -64,11 +65,13 @@ SubarrayPartitioner::SubarrayPartitioner() = default;
 SubarrayPartitioner::SubarrayPartitioner(
     const Config* const config,
     const Subarray& subarray,
-    uint64_t memory_budget,
-    uint64_t memory_budget_var,
-    uint64_t memory_budget_validity,
-    ThreadPool* const compute_tp)
-    : config_(config)
+    const uint64_t memory_budget,
+    const uint64_t memory_budget_var,
+    const uint64_t memory_budget_validity,
+    ThreadPool* const compute_tp,
+    Stats* const parent_stats)
+    : stats_(parent_stats->create_child("SubarrayPartitioner"))
+    , config_(config)
     , subarray_(subarray)
     , memory_budget_(memory_budget)
     , memory_budget_var_(memory_budget_var)
@@ -734,6 +737,7 @@ void SubarrayPartitioner::calibrate_current_start_end(bool* must_split_slab) {
 
 SubarrayPartitioner SubarrayPartitioner::clone() const {
   SubarrayPartitioner clone;
+  clone.stats_ = stats_;
   clone.config_ = config_;
   clone.subarray_ = subarray_;
   clone.budget_ = budget_;
@@ -785,6 +789,7 @@ Status SubarrayPartitioner::compute_current_start_end(bool* found) {
       &memory_sizes,
       compute_tp_));
 
+  bool done = false;
   current_.start_ = tile_overlap->range_idx_start();
   for (current_.end_ = tile_overlap->range_idx_start();
        current_.end_ <= tile_overlap->range_idx_end();
@@ -807,23 +812,52 @@ Status SubarrayPartitioner::compute_current_start_end(bool* found) {
           mem_size.size_fixed_ > memory_budget_ ||
           mem_size.size_var_ > memory_budget_var_ ||
           mem_size.size_validity_ > memory_budget_validity_) {
-        // Cannot find range that fits in the buffer
-        if (current_.end_ == current_.start_) {
-          *found = false;
-          return Status::Ok();
+        if (cur_size.size_fixed_ > budget.size_fixed_) {
+          stats_->add_counter(
+              "compute_current_start_end.fixed_result_size_overflow", 1);
+        } else if (cur_size.size_var_ > budget.size_var_) {
+          stats_->add_counter(
+              "compute_current_start_end.var_result_size_overflow", 1);
+        } else if (cur_size.size_validity_ > budget.size_validity_) {
+          stats_->add_counter(
+              "compute_current_start_end.validity_result_size_overflow", 1);
+        } else if (mem_size.size_fixed_ > memory_budget_) {
+          stats_->add_counter(
+              "compute_current_start_end.fixed_tile_size_overflow", 1);
+        } else if (mem_size.size_var_ > memory_budget_var_) {
+          stats_->add_counter(
+              "compute_current_start_end.var_tile_size_overflow", 1);
+        } else if (mem_size.size_validity_ > memory_budget_validity_) {
+          stats_->add_counter(
+              "compute_current_start_end.validity_tile_size_overflow", 1);
         }
 
-        // Range found, make it inclusive
-        current_.end_--;
-        *found = true;
-        return Status::Ok();
+        done = true;
+        break;
       }
+    }
+
+    if (done) {
+      break;
     }
   }
 
-  // Range found, make it inclusive
-  current_.end_--;
-  *found = true;
+  *found = current_.end_ != current_.start_;
+  if (*found) {
+    // If the range was found, make it inclusive before returning.
+    current_.end_--;
+
+    stats_->add_counter("compute_current_start_end.found", 1);
+    stats_->add_counter(
+        "compute_current_start_end.ranges",
+        tile_overlap->range_idx_end() - tile_overlap->range_idx_start() + 1);
+    stats_->add_counter(
+        "compute_current_start_end.adjusted_ranges",
+        current_.end_ - current_.start_ + 1);
+
+  } else {
+    stats_->add_counter("compute_current_start_end.not_found", 1);
+  }
 
   return Status::Ok();
 }
@@ -1275,6 +1309,7 @@ Status SubarrayPartitioner::split_top_multi_range(bool* unsplittable) {
 }
 
 void SubarrayPartitioner::swap(SubarrayPartitioner& partitioner) {
+  std::swap(stats_, partitioner.stats_);
   std::swap(config_, partitioner.config_);
   std::swap(subarray_, partitioner.subarray_);
   std::swap(budget_, partitioner.budget_);

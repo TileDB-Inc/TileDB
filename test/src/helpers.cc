@@ -481,7 +481,7 @@ void create_subarray(
     tiledb::sm::Layout layout,
     tiledb::sm::Subarray* subarray,
     bool coalesce_ranges) {
-  tiledb::sm::Subarray ret(array, layout, coalesce_ranges);
+  tiledb::sm::Subarray ret(array, layout, &g_helper_stats, coalesce_ranges);
 
   auto dim_num = (unsigned)ranges.size();
   for (unsigned d = 0; d < dim_num; ++d) {
