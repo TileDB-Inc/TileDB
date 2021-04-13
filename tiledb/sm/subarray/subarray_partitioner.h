@@ -356,6 +356,12 @@ class SubarrayPartitioner {
   /** The memory budget for the validity vectors. */
   uint64_t memory_budget_validity_;
 
+  /**
+   * If true, do not consider estimated result sizes when
+   * determining if a partition should be split.
+   */
+  bool skip_split_on_est_size_;
+
   /** The thread pool for compute-bound tasks. */
   ThreadPool* compute_tp_;
 
