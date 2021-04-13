@@ -14,10 +14,10 @@ stages:
     variables:
       BACKWARDS_COMPATIBILITY_ARRAYS: OFF
     jobs:
-    - job:
-      timeoutInMinutes: 90
-      strategy:
-        matrix:
+    #~ - job:
+      #~ timeoutInMinutes: 90
+      #~ strategy:
+        #~ matrix:
           #~ linux_s3:
             #~ imageName: 'ubuntu-16.04'
             #~ TILEDB_S3: ON
@@ -68,10 +68,10 @@ stages:
             #~ CXX: g++
             #~ BACKWARDS_COMPATIBILITY_ARRAYS: ON
 
-      pool:
-        vmImage: $(imageName)
-      steps:
-      - template: scripts/azure-linux_mac.yml
+      #~ pool:
+        #~ vmImage: $(imageName)
+      #~ steps:
+      #~ - template: scripts/azure-linux_mac.yml
 
     #- job: CentOS6_manylinux1
     #    container:
