@@ -243,6 +243,7 @@ void check_save_to_file() {
   ss << "sm.memory_budget_var 10737418240\n";
   ss << "sm.read_range_oob warn\n";
   ss << "sm.skip_checksum_validation false\n";
+  ss << "sm.skip_est_size_partitioning false\n";
   ss << "sm.sub_partitioner_memory_budget 0\n";
   ss << "sm.tile_cache_size 10000000\n";
   ss << "sm.vacuum.mode fragments\n";
@@ -524,6 +525,7 @@ TEST_CASE("C API: Test config iter", "[capi], [config]") {
   all_param_values["sm.check_coord_oob"] = "true";
   all_param_values["sm.check_global_order"] = "true";
   all_param_values["sm.tile_cache_size"] = "100";
+  all_param_values["sm.skip_est_size_partitioning"] = "false";
   all_param_values["sm.memory_budget"] = "5368709120";
   all_param_values["sm.memory_budget_var"] = "10737418240";
   all_param_values["sm.sub_partitioner_memory_budget"] = "0";
