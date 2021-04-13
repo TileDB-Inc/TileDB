@@ -2682,7 +2682,7 @@ int32_t tiledb_query_get_config(
     return TILEDB_OOM;
   }
 
-  *((*config)->config_) = query->query_->config();
+  *((*config)->config_) = *query->query_->config();
 
   // Success
   return TILEDB_OK;

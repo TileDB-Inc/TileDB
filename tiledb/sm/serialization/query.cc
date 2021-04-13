@@ -241,6 +241,7 @@ Status subarray_partitioner_to_capnp(
 }
 
 Status subarray_partitioner_from_capnp(
+    const Config* config,
     const Array* array,
     const capnp::SubarrayPartitioner::Reader& reader,
     SubarrayPartitioner* partitioner,
@@ -264,6 +265,7 @@ Status subarray_partitioner_from_capnp(
   Subarray subarray(array, layout, false);
   RETURN_NOT_OK(subarray_from_capnp(reader.getSubarray(), &subarray));
   *partitioner = SubarrayPartitioner(
+      config,
       subarray,
       memory_budget,
       memory_budget_var,
@@ -321,7 +323,12 @@ Status subarray_partitioner_from_capnp(
         partition_info_reader.getSubarray(), &partition_info->partition_));
 
     if (compute_current_tile_overlap) {
-      partition_info->partition_.compute_tile_overlap(compute_tp);
+      partition_info->partition_.precompute_tile_overlap(
+          partition_info->start_,
+          partition_info->end_,
+          config,
+          compute_tp,
+          true);
     }
   }
 
@@ -389,6 +396,7 @@ Status read_state_from_capnp(
   // Subarray partitioner
   if (read_state_reader.hasSubarrayPartitioner()) {
     RETURN_NOT_OK(subarray_partitioner_from_capnp(
+        reader->config(),
         array,
         read_state_reader.getSubarrayPartitioner(),
         &read_state->partitioner_,
