@@ -64,6 +64,7 @@ const std::string Config::SM_CHECK_COORD_OOB = "true";
 const std::string Config::SM_READ_RANGE_OOB = "error";
 const std::string Config::SM_CHECK_GLOBAL_ORDER = "true";
 const std::string Config::SM_TILE_CACHE_SIZE = "10000000";
+const std::string Config::SM_SKIP_EST_SIZE_PARTITIONING = "false";
 const std::string Config::SM_MEMORY_BUDGET = "5368709120";       // 5GB
 const std::string Config::SM_MEMORY_BUDGET_VAR = "10737418240";  // 10GB;
 const std::string Config::SM_SUB_PARTITIONER_MEMORY_BUDGET = "0";
@@ -194,6 +195,8 @@ Config::Config() {
   param_values_["sm.read_range_oob"] = SM_READ_RANGE_OOB;
   param_values_["sm.check_global_order"] = SM_CHECK_GLOBAL_ORDER;
   param_values_["sm.tile_cache_size"] = SM_TILE_CACHE_SIZE;
+  param_values_["sm.skip_est_size_partitioning"] =
+      SM_SKIP_EST_SIZE_PARTITIONING;
   param_values_["sm.memory_budget"] = SM_MEMORY_BUDGET;
   param_values_["sm.memory_budget_var"] = SM_MEMORY_BUDGET_VAR;
   param_values_["sm.sub_partitioner_memory_budget"] =

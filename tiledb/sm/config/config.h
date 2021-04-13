@@ -116,6 +116,9 @@ class Config {
   /** The tile cache size. */
   static const std::string SM_TILE_CACHE_SIZE;
 
+  /** If `true`, bypass partitioning on estimated result sizes. */
+  static const std::string SM_SKIP_EST_SIZE_PARTITIONING;
+
   /**
    * The maximum memory budget for producing the result (in bytes)
    * for a fixed-sized attribute or the offsets of a var-sized attribute.

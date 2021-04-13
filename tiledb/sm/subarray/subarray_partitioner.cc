@@ -77,6 +77,12 @@ SubarrayPartitioner::SubarrayPartitioner(
   state_.start_ = 0;
   auto range_num = subarray_.range_num();
   state_.end_ = (range_num > 0) ? range_num - 1 : 0;
+
+  bool found = false;
+  config_->get<bool>(
+      "sm.skip_est_size_partitioning", &skip_split_on_est_size_, &found);
+  (void)found;
+  assert(found);
 }
 
 SubarrayPartitioner::~SubarrayPartitioner() = default;
@@ -736,6 +742,7 @@ SubarrayPartitioner SubarrayPartitioner::clone() const {
   clone.memory_budget_ = memory_budget_;
   clone.memory_budget_var_ = memory_budget_var_;
   clone.memory_budget_validity_ = memory_budget_validity_;
+  clone.skip_split_on_est_size_ = skip_split_on_est_size_;
   clone.compute_tp_ = compute_tp_;
 
   return clone;
@@ -793,9 +800,10 @@ Status SubarrayPartitioner::compute_current_start_end(bool* found) {
       mem_size.size_fixed_ += memory_sizes[r][i].size_fixed_;
       mem_size.size_var_ += memory_sizes[r][i].size_var_;
       mem_size.size_validity_ += memory_sizes[r][i].size_validity_;
-      if (cur_size.size_fixed_ > budget.size_fixed_ ||
-          cur_size.size_var_ > budget.size_var_ ||
-          cur_size.size_validity_ > budget.size_validity_ ||
+      if ((!skip_split_on_est_size_ &&
+           (cur_size.size_fixed_ > budget.size_fixed_ ||
+            cur_size.size_var_ > budget.size_var_ ||
+            cur_size.size_validity_ > budget.size_validity_)) ||
           mem_size.size_fixed_ > memory_budget_ ||
           mem_size.size_var_ > memory_budget_var_ ||
           mem_size.size_validity_ > memory_budget_validity_) {
@@ -1114,8 +1122,9 @@ bool SubarrayPartitioner::must_split(Subarray* partition) {
     }
 
     // Check for budget overflow
-    if (size_fixed > b.second.size_fixed_ || size_var > b.second.size_var_ ||
-        size_validity > b.second.size_validity_ ||
+    if ((!skip_split_on_est_size_ &&
+         (size_fixed > b.second.size_fixed_ || size_var > b.second.size_var_ ||
+          size_validity > b.second.size_validity_)) ||
         mem_size_fixed > memory_budget_ || mem_size_var > memory_budget_var_ ||
         mem_size_validity > memory_budget_validity_) {
       must_split = true;
@@ -1274,6 +1283,7 @@ void SubarrayPartitioner::swap(SubarrayPartitioner& partitioner) {
   std::swap(memory_budget_, partitioner.memory_budget_);
   std::swap(memory_budget_var_, partitioner.memory_budget_var_);
   std::swap(memory_budget_validity_, partitioner.memory_budget_validity_);
+  std::swap(skip_split_on_est_size_, partitioner.skip_split_on_est_size_);
   std::swap(compute_tp_, partitioner.compute_tp_);
 }
 
