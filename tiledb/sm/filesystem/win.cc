@@ -575,7 +575,13 @@ std::string Win::path_from_uri(const std::string& uri) {
   }
 
   std::string uri_with_scheme =
-      utils::parse::starts_with(uri, "file:///") ? uri : "file:///" + uri;
+      (utils::parse::starts_with(uri, "file://") ||
+       // also accept 'file:/x...'
+       (utils::parse::starts_with(uri, "file:/") && uri.substr(6, 1) != "/")) ?
+          uri
+          // else treat as file: item on 'localhost' (empty host name)
+          :
+          "file:///" + uri;
 
   unsigned long path_length = MAX_PATH;
   char path[MAX_PATH];

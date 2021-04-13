@@ -74,8 +74,17 @@ TEST_CASE("URI: Test file URIs", "[uri]") {
   CHECK(!uri.is_invalid());
   CHECK(URI::is_file(uri.to_string()));
   CHECK(uri.to_string() == "file:///path");
+#ifndef _WIN32
   uri = URI("file://path");
   CHECK(uri.is_invalid());
+#else
+  // note: "file://path" is a valid URI form on windows tho' not a valid
+  // filesystem path. While it will pass on windows as a valid URI, attempts
+  // to create an array on such a path (attempted elsewhere in different unit
+  // test via  ArraySchemaFx::create_array(const std::string& path) )
+  // will fail with
+  //"Error: Cannot create directory '\\path': The specified path is invalid."
+#endif
   uri =
       URI("file:///path/is/quite/long/long/long/long/long/long/long/long/long/"
           "long/long/long/long/long/long/long/long/long/long/long/long/long/"

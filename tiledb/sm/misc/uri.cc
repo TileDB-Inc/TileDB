@@ -110,12 +110,24 @@ bool URI::is_invalid() const {
 }
 
 bool URI::is_file(const std::string& path) {
+#ifdef _WIN32
+  return utils::parse::starts_with(path, "file://") ||
+         path.find("://") == std::string::npos;
+#else
   return utils::parse::starts_with(path, "file:///") ||
          path.find("://") == std::string::npos;
+#endif
 }
 
 bool URI::is_file() const {
+#ifdef _WIN32
+  return is_file(uri_);
+#else
+  // Observed: semantics here differ from sibling
+  // is_file(const std::string& path), here is missing
+  // additional check using "://".
   return utils::parse::starts_with(uri_, "file:///");
+#endif
 }
 
 bool URI::is_hdfs(const std::string& path) {
