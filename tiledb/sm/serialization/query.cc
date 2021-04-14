@@ -31,12 +31,14 @@
  * This file defines serialization for the Query class
  */
 
+// clang-format off
 #ifdef TILEDB_SERIALIZATION
 #include <capnp/compat/json.h>
 #include <capnp/message.h>
 #include <capnp/serialize.h>
 #include "tiledb/sm/serialization/capnp_utils.h"
 #endif
+// clang-format on
 
 #include "tiledb/common/heap_memory.h"
 #include "tiledb/common/logger.h"
