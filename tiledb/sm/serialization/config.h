@@ -38,6 +38,12 @@
 #include "tiledb/common/status.h"
 
 #ifdef TILEDB_SERIALIZATION
+#if defined(min) || defined(max)
+#error "where are min/max defined, how to avoid for capnproto?"
+#endif
+#ifdef _WIN32
+#include "tiledb/sm/serialization/meet-capnproto-win32-include-expectations.h"
+#endif
 #include <capnp/compat/json.h>
 #include <capnp/serialize.h>
 #include "tiledb/sm/serialization/tiledb-rest.capnp.h"

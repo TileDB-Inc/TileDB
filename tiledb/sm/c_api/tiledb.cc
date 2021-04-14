@@ -3909,6 +3909,7 @@ int32_t tiledb_subarray_get_est_result_size_var(
               name,
               size_off,
               size_val,
+              &ctx->ctx_->storage_manager()->config(),
               ctx->ctx_->storage_manager()->compute_tp())))
     return TILEDB_ERR;
 
@@ -3931,6 +3932,7 @@ int32_t tiledb_subarray_get_est_result_size_nullable(
               name,
               size_val,
               size_validity,
+              &ctx->ctx_->storage_manager()->config(),
               ctx->ctx_->storage_manager()->compute_tp())))
     return TILEDB_ERR;
 
@@ -3955,6 +3957,7 @@ int32_t tiledb_subarray_get_est_result_size_var_nullable(
               size_off,
               size_val,
               size_validity,
+              &ctx->ctx_->storage_manager()->config(),
               ctx->ctx_->storage_manager()->compute_tp())))
     return TILEDB_ERR;
 

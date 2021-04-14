@@ -279,7 +279,7 @@ Status Subarray::add_range_var(
   // Add range
   Range r;
   r.set_range_var(start, start_size, end, end_size);
-  return this->add_range(dim_idx, r);
+  return this->add_range(dim_idx, std::move(r));
 }
 
 Status Subarray::add_range_var_by_name(
@@ -877,7 +877,8 @@ Status Subarray::get_est_result_size_querytype_audited(
   }
 #endif
 
-  return get_est_result_size(name, size, storage_manager->compute_tp());
+  return get_est_result_size(
+      name, size, &storage_manager->config(), storage_manager->compute_tp());
 }
 
 Status Subarray::get_est_result_size(

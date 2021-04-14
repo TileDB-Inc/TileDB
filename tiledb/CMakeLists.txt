@@ -211,6 +211,8 @@ if (TILEDB_SERIALIZATION)
       ${TILEDB_CORE_INCLUDE_DIR}/tiledb/sm/serialization/array_schema.cc
       ${TILEDB_CORE_INCLUDE_DIR}/tiledb/sm/serialization/query.cc
       ${TILEDB_CORE_INCLUDE_DIR}/tiledb/sm/serialization/tiledb-rest.capnp.c++
+      ${TILEDB_CORE_INCLUDE_DIR}/tiledb/sm/serialization/config.cc
+      ${TILEDB_CORE_INCLUDE_DIR}/tiledb/sm/serialization/tiledb.cc
       PROPERTIES
       #eventually, not yet in cmake 3.3, added in 3.11 - COMPILE_OPTIONS "/wd4267 /wd4100"
       #   C4267: 'argument': conversion from 'size_t' to '<various-lesser-types>', possible loss of data

@@ -43,6 +43,14 @@
 // will be defined with the correct values...
 #ifdef _WIN32
 
+#if defined(_WIN32)
+//capnproto defines template()d methods for min, windows min macro interferes.
+//note: There is a possibility this will not be soon enough for some source files, if
+//problems are encountered in kj\common.h, look for an earlier location in code
+//stream to do this.
+#define NOMINMAX  // avoid min/max macros from windows headers
+#endif
+
 #ifndef _INC_WINDOWS
 #include <windows.h>  //seems to still not find 'ERROR'
 #else
