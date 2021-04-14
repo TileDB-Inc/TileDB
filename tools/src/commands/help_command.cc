@@ -44,7 +44,7 @@ clipp::group HelpCommand::get_cli() {
 }
 
 void HelpCommand::run(const std::map<std::string, clipp::group>& group_help) {
-  auto cli_format = clipp::doc_formatting{}.start_column(4).doc_column(30);
+  auto cli_format = clipp::doc_formatting{}.first_column(4).doc_column(30);
   std::string description;
   if (command_ == "help") {
     description = "Displays help about a specific command.";

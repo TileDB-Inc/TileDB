@@ -130,6 +130,11 @@ set(TILEDB_INSTALL_LIBDIR "" CACHE STRING "If non-empty, install TileDB library 
 # Superbuild setup
 ############################################################
 
+# capnpproto requires C++14
+if (TILEDB_SERIALIZATION)
+  set(CMAKE_CXX_STANDARD 14)
+endif()
+
 # Set the variable used when calling find_package(), find_file() etc.
 # to determine if NO_DEFAULT_PATH should be passed.
 if (TILEDB_FORCE_ALL_DEPS)
@@ -212,13 +217,6 @@ else()
     add_compile_options(-DNDEBUG -O3 -g3 -ggdb3 -gdwarf-3)
   elseif (CMAKE_BUILD_TYPE MATCHES "Coverage")
     add_compile_options(-DDEBUG -g3 -gdwarf-3 --coverage)
-  endif()
-
-  if (TILEDB_SERIALIZATION OR
-     (CMAKE_COMPILER_IS_GNUCC AND CMAKE_CXX_COMPILER_VERSION VERSION_LESS 5.0))
-    # CapnProto 0.6.1 contains some unused parameter warnings that we need to
-    # ignore in order to allow for Werror builds.
-    add_compile_options(-Wno-unused-parameter)
   endif()
 
   # Use -Wno-literal-suffix on Linux with C++ sources.

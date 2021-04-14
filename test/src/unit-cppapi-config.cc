@@ -134,7 +134,10 @@ TEST_CASE("C++ API: Config Equality", "[cppapi], [cppapi-config]") {
 TEST_CASE(
     "C++ API: Config Serialization",
     "[cppapi], [cppapi-config], [serialization]") {
-  tiledb_serialization_type_t format;
+  // this variable is parameterized below, but we initialize
+  // here to avoid warning/error on MSVC
+  //   C4701: potentially uninitialized local variable 'format'
+  tiledb_serialization_type_t format = tiledb_serialization_type_t::TILEDB_JSON;
   SECTION("- json") {
     format = tiledb_serialization_type_t::TILEDB_JSON;
   }

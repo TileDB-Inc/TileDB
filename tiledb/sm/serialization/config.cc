@@ -30,7 +30,12 @@
  * This file defines serialization functions for Config.
  */
 
-#include "tiledb/sm/serialization/config.h"
+#ifdef TILEDB_SERIALIZATION
+#include <capnp/compat/json.h>
+#include <capnp/serialize.h>
+#include "tiledb/sm/serialization/capnp_utils.h"
+#endif
+
 #include "tiledb/common/heap_memory.h"
 #include "tiledb/common/logger.h"
 #include "tiledb/sm/array/array.h"
@@ -42,19 +47,9 @@
 #include "tiledb/sm/enums/layout.h"
 #include "tiledb/sm/enums/serialization_type.h"
 #include "tiledb/sm/misc/constants.h"
-
-#ifdef _WIN32
-#include "tiledb/sm/serialization/meet-capnproto-win32-include-expectations.h"
-#endif
-
-#include "tiledb/sm/serialization/capnp_utils.h"
+#include "tiledb/sm/serialization/config.h"
 
 #include <set>
-
-#ifdef TILEDB_SERIALIZATION
-#include <capnp/compat/json.h>
-#include <capnp/serialize.h>
-#endif
 
 using namespace tiledb::common;
 

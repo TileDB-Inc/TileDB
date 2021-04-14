@@ -38,6 +38,9 @@ steps:
       $bootstrapOptions = "-EnableGCS " + $bootstrapOptions
       #NOTE: GCS simulator not yet actually in place.
     }
+    if ($env:TILEDB_SERIALIZATION -eq "ON") {
+      $bootstrapOptions = "-EnableSerialization " + $bootstrapOptions
+    }
 
     $bootstrapExpression = "& $env:BUILD_SOURCESDIRECTORY\bootstrap.ps1 " + $bootstrapOptions
     Write-Host "bootstrapExpression: $bootstrapExpression"

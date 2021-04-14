@@ -31,7 +31,15 @@
  * This file defines serialization for the Query class
  */
 
-#include "tiledb/sm/serialization/query.h"
+// clang-format off
+#ifdef TILEDB_SERIALIZATION
+#include <capnp/compat/json.h>
+#include <capnp/message.h>
+#include <capnp/serialize.h>
+#include "tiledb/sm/serialization/capnp_utils.h"
+#endif
+// clang-format on
+
 #include "tiledb/common/heap_memory.h"
 #include "tiledb/common/logger.h"
 #include "tiledb/sm/array/array.h"
@@ -46,20 +54,9 @@
 #include "tiledb/sm/query/reader.h"
 #include "tiledb/sm/query/writer.h"
 #include "tiledb/sm/serialization/config.h"
-
-#ifdef _WIN32
-#include "tiledb/sm/serialization/meet-capnproto-win32-include-expectations.h"
-#endif
-
-#include "tiledb/sm/serialization/capnp_utils.h"
+#include "tiledb/sm/serialization/query.h"
 #include "tiledb/sm/subarray/subarray.h"
 #include "tiledb/sm/subarray/subarray_partitioner.h"
-
-#ifdef TILEDB_SERIALIZATION
-#include <capnp/compat/json.h>
-#include <capnp/message.h>
-#include <capnp/serialize.h>
-#endif
 
 using namespace tiledb::common;
 using namespace tiledb::sm::stats;
@@ -1454,6 +1451,7 @@ Status query_est_result_size_serialize(
     SerializationType serialize_type,
     bool clientside,
     Buffer* serialized_buffer) {
+  (void)clientside;
   try {
     ::capnp::MallocMessageBuilder message;
     capnp::EstimatedResultSize::Builder est_result_size_builder =
@@ -1505,6 +1503,7 @@ Status query_est_result_size_deserialize(
     SerializationType serialize_type,
     bool clientside,
     const Buffer& serialized_buffer) {
+  (void)clientside;
   try {
     switch (serialize_type) {
       case SerializationType::JSON: {

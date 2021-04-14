@@ -30,6 +30,15 @@
  * This file declares a REST client class.
  */
 
+// clang-format off
+#ifdef TILEDB_SERIALIZATION
+#include "tiledb/sm/serialization/capnp_utils.h"
+#include "tiledb/sm/serialization/query.h"
+#include "tiledb/sm/serialization/tiledb-rest.capnp.h"
+#include "tiledb/sm/rest/curl.h" // must be included last to avoid Windows.h
+#endif
+// clang-format on
+
 #include <cassert>
 
 #include "tiledb/common/logger.h"
@@ -40,18 +49,6 @@
 #include "tiledb/sm/query/query.h"
 #include "tiledb/sm/rest/rest_client.h"
 #include "tiledb/sm/serialization/array_schema.h"
-
-#ifdef _WIN32
-#include "tiledb/sm/serialization/meet-capnproto-win32-include-expectations.h"
-#endif
-
-#include "tiledb/sm/serialization/capnp_utils.h"
-#include "tiledb/sm/serialization/query.h"
-
-#ifdef TILEDB_SERIALIZATION
-#include "tiledb/sm/rest/curl.h"
-#include "tiledb/sm/serialization/tiledb-rest.capnp.h"
-#endif
 
 using namespace tiledb::common;
 
