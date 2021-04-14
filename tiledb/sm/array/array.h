@@ -206,25 +206,24 @@ class Array {
   Status reopen();
 
   /**
-   * Re-opens the array at a specific timestamp. If `timestamp_start` is
-   * provided, this will re-open the array between the two timestamps.
+   * Re-opens the array between two specific timestamps.
    *
    * @note Applicable only for reads, it errors if the array was opened
    *     for writes.
    */
-  Status reopen(uint64_t timestamp_end, uint64_t timestamp_start = 0);
+  Status reopen(uint64_t timestamp_start, uint64_t timestamp_end);
 
   /** Returns the timestamp at which the array was opened. */
-  uint64_t timestamp() const;
+  uint64_t timestamp_end() const;
 
   /** Directly set the timestamp value. */
-  Status set_timestamp(uint64_t timestamp);
+  Status set_timestamp_end(uint64_t timestamp_end);
 
   /** Directly set the array config. */
   Status set_config(Config config);
 
   /** Retrieves a reference to the array config. */
-  Config get_config() const;
+  Config config() const;
 
   /** Directly set the array URI. */
   Status set_uri(const std::string& uri);
@@ -355,15 +354,18 @@ class Array {
   QueryType query_type_;
 
   /**
-   * The timestamp at which the `open_array_` got opened. In TileDB,
-   * timestamps are in ms elapsed since 1970-01-01 00:00:00 +0000 (UTC).
-   */
-  uint64_t timestamp_end_;
-
-  /**
-   * The optional timestamp between which the `open_array_` got opened.
+   * The starting timestamp between which the `open_array_` got opened.
+   * In TileDB, timestamps are in ms elapsed since
+   * 1970-01-01 00:00:00 +0000 (UTC).
    */
   uint64_t timestamp_start_;
+
+  /**
+   * The ending timestamp between  which the `open_array_` got opened.
+   * In TileDB, timestamps are in ms elapsed since
+   * 1970-01-01 00:00:00 +0000 (UTC).
+   */
+  uint64_t timestamp_end_;
 
   /** TileDB storage manager. */
   StorageManager* storage_manager_;

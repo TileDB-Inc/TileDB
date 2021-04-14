@@ -131,8 +131,8 @@ TEST_CASE_METHOD(CPPArrayFx, "C++ API: Arrays", "[cppapi][basic]") {
     Array array(ctx1, "cpp_unit_array", TILEDB_READ);
 
     // Check that the config values are correct
-    CHECK((std::string)array.get_config()["a"] == "1");
-    CHECK((std::string)array.get_config()["b"] == "10");
+    CHECK((std::string)array.config()["a"] == "1");
+    CHECK((std::string)array.config()["b"] == "10");
 
     // Create a config for the array
     tiledb::Config cfg2;
@@ -140,8 +140,8 @@ TEST_CASE_METHOD(CPPArrayFx, "C++ API: Arrays", "[cppapi][basic]") {
     array.set_config(cfg2);
 
     // Check that the config values are correct
-    CHECK((std::string)array.get_config()["a"] == "1");
-    CHECK((std::string)array.get_config()["b"] == "5");
+    CHECK((std::string)array.config()["a"] == "1");
+    CHECK((std::string)array.config()["b"] == "5");
 
     array.close();
   }
@@ -818,7 +818,7 @@ TEST_CASE("C++ API: Open array at", "[cppapi][open-array-at]") {
 
   // Read from 0 timestamp
   Array array_r_at_0(ctx, array_name, TILEDB_READ, 0);
-  CHECK(array_r_at_0.timestamp() == 0);
+  CHECK(array_r_at_0.timestamp_end() == 0);
 
   SECTION("Testing Array::Array") {
     // Nothing to do - just for clarity
@@ -863,7 +863,7 @@ TEST_CASE("C++ API: Open array at", "[cppapi][open-array-at]") {
 
   // Reopen at first timestamp.
   array_r_at.reopen_at(first_timestamp);
-  CHECK(array_r_at.timestamp() == first_timestamp);
+  CHECK(array_r_at.timestamp_end() == first_timestamp);
   std::vector<int> a_r_reopen_at(4);
   Query query_r_reopen_at(ctx, array_r_at);
   query_r_reopen_at.set_subarray(subarray)

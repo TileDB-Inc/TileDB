@@ -26,7 +26,6 @@
 * Two new parameters have been added to the config, sm.array.timestamp_start and sm.array.timestamp_end, along with an edited tiledb_array_open that uses these config timestamps rather than the previously used timestamp arguments in tiledb_array_open_at. [#2142](https://github.com/TileDB-Inc/TileDB/pull/2142)
 * Windows msys2 build artifacts are no longer uploaded [#2159](https://github.com/TileDB-Inc/TileDB/pull/2159)
 * Add internal log functions to log at different log levels [#2161](https://github.com/TileDB-Inc/TileDB/pull/2161)
-* Two new parameters have been added to the config,  and , along with an edited  that uses these config timestamps rather than the previously used timestamp arguments in . [#2142](https://github.com/TileDB-Inc/TileDB/pull/2142)
 * Parallelize Writer::filter_tiles [#2156](https://github.com/TileDB-Inc/TileDB/pull/2156)
 * Added config option vfs.gcs.request_timeout_ms [#2148](https://github.com/TileDB-Inc/TileDB/pull/2148)
 * Cleanup the GHA CI scripts - put common code into external shell scripts. [#2124](https://github.com/TileDB-Inc/TileDB/pull/2124)
@@ -37,7 +36,7 @@
 * Consolidation functions now use the ctx's config if not config is passed [#2126](https://github.com/TileDB-Inc/TileDB/pull/2126)
 
 ## Deprecations
-* The following APIs have been deprecated: tiledb_array_open_at, tiledb_array_open_at_with_key, tiledb_array_reopen_at. [#2142](https://github.com/TileDB-Inc/TileDB/pull/2142)
+* The following C APIs have been deprecated: tiledb_array_open_at, tiledb_array_open_at_with_key, tiledb_array_reopen_at. Three C++ API constructors have been deprecated, along with three open and one reopen C++ APIs that use the above mentioned C APIs.[#2142](https://github.com/TileDB-Inc/TileDB/pull/2142)
 
 ## Bug fixes
 * Fixes a potential memory leak in the filter pipeline [#2185](https://github.com/TileDB-Inc/TileDB/pull/2185)
@@ -54,13 +53,7 @@
 * Removes non-default parameter in tiledb_config_unset. [#2099](https://github.com/TileDB-Inc/TileDB/pull/2099)
 
 ### C++ API
-* Add new api,  to get a query's config. [#2167](https://github.com/TileDB-Inc/TileDB/pull/2167)
-* Addition of  to directly assign a config to an array. [#2142](https://github.com/TileDB-Inc/TileDB/pull/2142)
-* Addition of tiledb_array_set_config to directly assign a config to an array. [#2142](https://github.com/TileDB-Inc/TileDB/pull/2142)
-* Removes non-default parameter in tiledb_config_unset. [#2099](https://github.com/TileDB-Inc/TileDB/pull/2099)
-
-### C++ API
-* Addition of tiledb_array_set_config to directly assign a config to an array. [#2142](https://github.com/TileDB-Inc/TileDB/pull/2142)
+* Addition of Array::set_config and Array::config(). [#2142](https://github.com/TileDB-Inc/TileDB/pull/2142)
 * Removes non-default parameter in Config::unset. [#2099](https://github.com/TileDB-Inc/TileDB/pull/2099)
 * Add new Config constructors for converting from STL map types [#2081](https://github.com/TileDB-Inc/TileDB/pull/2081)
 

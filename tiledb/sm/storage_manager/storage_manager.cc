@@ -201,8 +201,8 @@ Status StorageManager::array_open_for_reads(
     const EncryptionKey& enc_key,
     ArraySchema** array_schema,
     std::vector<FragmentMetadata*>* fragment_metadata,
-    uint64_t timestamp_end,
-    uint64_t timestamp_start) {
+    uint64_t timestamp_start,
+    uint64_t timestamp_end) {
   STATS_START_TIMER(stats::GlobalStats::TimerType::READ_ARRAY_OPEN)
 
   /* NOTE: these variables may be modified on a different thread
@@ -223,13 +223,13 @@ Status StorageManager::array_open_for_reads(
                                                           &fragment_uris,
                                                           &meta_uri,
                                                           &offsets,
-                                                          &timestamp_end,
                                                           &timestamp_start,
+                                                          &timestamp_end,
                                                           this]() {
     // Determine which fragments to load
     RETURN_NOT_OK(get_fragment_uris(array_uri, &fragment_uris, &meta_uri));
     RETURN_NOT_OK(get_sorted_uris(
-        fragment_uris, &fragments_to_load, timestamp_end, timestamp_start));
+        fragment_uris, &fragments_to_load, timestamp_start, timestamp_end));
     // Get the consolidated fragment metadata
     RETURN_NOT_OK(
         load_consolidated_fragment_meta(meta_uri, enc_key, &f_buff, &offsets));
@@ -441,8 +441,8 @@ Status StorageManager::array_reopen(
     const EncryptionKey& enc_key,
     ArraySchema** array_schema,
     std::vector<FragmentMetadata*>* fragment_metadata,
-    uint64_t timestamp_end,
-    uint64_t timestamp_start) {
+    uint64_t timestamp_start,
+    uint64_t timestamp_end) {
   STATS_START_TIMER(stats::GlobalStats::TimerType::READ_ARRAY_OPEN)
 
   auto open_array = (OpenArray*)nullptr;
@@ -471,7 +471,7 @@ Status StorageManager::array_reopen(
   URI meta_uri;
   RETURN_NOT_OK(get_fragment_uris(array_uri, &fragment_uris, &meta_uri));
   RETURN_NOT_OK(get_sorted_uris(
-      fragment_uris, &fragments_to_load, timestamp_end, timestamp_start));
+      fragment_uris, &fragments_to_load, timestamp_start, timestamp_end));
 
   // Get the consolidated fragment metadata
   Buffer f_buff;
@@ -1214,6 +1214,7 @@ Status StorageManager::get_fragment_info(
       encryption_key,
       &array_schema,
       &fragment_metadata,
+      0,
       timestamp_end));
 
   fragment_info->set_dim_info(
@@ -1627,7 +1628,7 @@ Status StorageManager::load_array_metadata(
       open_array->mtx_unlock());
   RETURN_NOT_OK_ELSE(
       get_sorted_uris(
-          array_metadata_uris, &array_metadata_to_load, timestamp_end),
+          array_metadata_uris, &array_metadata_to_load, 0, timestamp_end),
       open_array->mtx_unlock());
 
   // Get the array metadata
@@ -2336,8 +2337,8 @@ Status StorageManager::get_consolidated_fragment_meta_uri(
 Status StorageManager::get_sorted_uris(
     const std::vector<URI>& uris,
     std::vector<TimestampedURI>* sorted_uris,
-    uint64_t timestamp_end,
-    uint64_t timestamp_start) const {
+    uint64_t timestamp_start,
+    uint64_t timestamp_end) const {
   // Do nothing if there are not enough URIs
   if (uris.empty())
     return Status::Ok();

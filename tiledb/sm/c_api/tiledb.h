@@ -901,12 +901,12 @@ TILEDB_EXPORT void tiledb_config_free(tiledb_config_t** config);
  * **Parameters**
  *
  * - `sm.array.timestamp_start` <br>
- *    When set, an array will be opened betwen this value and
- *    `sm.array.timestamp_end` upon a read query. <br>
+ *    When set, an array will be opened between this value and
+ *    `sm.array.timestamp_end` (inclusive) upon a read query. <br>
  *    **Default**: UINT64_MAX
  * - `sm.array.timestamp_end` <br>
- *    When set, an array will be opened betwen `sm.array.timestamp_start`
- *    and this value upon a read query. <br>
+ *    When set, an array will be opened between `sm.array.timestamp_start`
+ *    and this value (inclusive) upon a read query. <br>
  *    **Default**: UINT64_MAX
  * - `sm.dedup_coords` <br>
  *    If `true`, cells with duplicate coordinates will be removed during sparse
@@ -4571,6 +4571,9 @@ TILEDB_EXPORT int32_t tiledb_array_alloc(
  * @note If the same array object is opened again without being closed,
  *     an error will be thrown.
  * @note The config should be set before opening an array.
+ * @note If the array is to be opened at a specfic time interval, the
+ *      `timestamp{start, end}` values should be set to a config that's set to
+ *       the array object before opening the array.
  */
 TILEDB_EXPORT int32_t tiledb_array_open(
     tiledb_ctx_t* ctx, tiledb_array_t* array, tiledb_query_type_t query_type);
@@ -4606,6 +4609,9 @@ TILEDB_EXPORT int32_t tiledb_array_open(
  *     an error will be thrown.
  * @note This function is applicable only to read queries.
  * @note The config should be set before opening an array.
+ * @note If the array is to be opened at a specfic time interval, the
+ *      `timestamp{start, end}` values should be set to a config that's set to
+ *       the array object before opening the array.
  */
 TILEDB_EXPORT int32_t tiledb_array_open_at(
     tiledb_ctx_t* ctx,
@@ -4732,6 +4738,9 @@ TILEDB_EXPORT int32_t tiledb_array_is_open(
  * @return `TILEDB_OK` for success and `TILEDB_ERR` for error.
  *
  * @note This is applicable only to arrays opened for reads.
+ * @note If the array is to be reopened after opening at a specfic time
+ *      interval, the `timestamp{start, end}` values and subsequent config
+ *      object should be reset for the array before reopening.
  */
 TILEDB_EXPORT int32_t
 tiledb_array_reopen(tiledb_ctx_t* ctx, tiledb_array_t* array);
@@ -4759,6 +4768,9 @@ tiledb_array_reopen(tiledb_ctx_t* ctx, tiledb_array_t* array);
  * @return `TILEDB_OK` for success and `TILEDB_ERR` for error.
  *
  * @note This is applicable only to arrays opened for reads.
+ * @note If the array is to be reopened after opening at a specfic time
+ *      interval, the `timestamp{start, end}` values and subsequent config
+ *      object should be reset for the array before reopening.
  */
 TILEDB_EXPORT int32_t tiledb_array_reopen_at(
     tiledb_ctx_t* ctx, tiledb_array_t* array, uint64_t timestamp);
@@ -4784,8 +4796,7 @@ TILEDB_EXPORT int32_t tiledb_array_reopen_at(
  * @param timestamp Set to the timestamp at which the array was opened.
  * @return `TILEDB_OK` for success and `TILEDB_ERR` for error.
  *
- * @note The array does not need to be opened via `tiledb_array_open_at` to use
- *      this function.
+ * @note The array does not need to be open to use this function.
  */
 TILEDB_EXPORT int32_t tiledb_array_get_timestamp(
     tiledb_ctx_t* ctx, tiledb_array_t* array, uint64_t* timestamp);

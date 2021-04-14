@@ -462,7 +462,7 @@ TEST_CASE_METHOD(
 
 TEST_CASE_METHOD(
     CMetadataFx,
-    "C API: Metadata, multiple metadata and cosnolidate",
+    "C API: Metadata, multiple metadata and consolidate",
     "[capi][metadata][multiple][consolidation]") {
   // Create default array
   create_default_array_1d();
@@ -893,8 +893,8 @@ TEST_CASE_METHOD(
 
 TEST_CASE_METHOD(
     CMetadataFx,
-    "C API: Metadata, timestamp_start",
-    "[capi][metadata][timestamp-start]") {
+    "C API: Metadata, timestamp_end",
+    "[capi][metadata][timestamp-end]") {
   // Create default array
   create_default_array_1d();
 

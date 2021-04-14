@@ -162,7 +162,6 @@ class Array {
   }
 
   /**
-   * This is a deprecated constructor.
    * @brief Constructor. This opens the array for the given query type at the
    * given timestamp_end. The destructor calls the `close()` method.
    *
@@ -190,6 +189,7 @@ class Array {
    * @param query_type Query type to open the array for.
    * @param timestamp_end The timestamp_end to open the array at.
    */
+  TILEDB_DEPRECATED
   Array(
       const Context& ctx,
       const std::string& array_uri,
@@ -207,7 +207,6 @@ class Array {
 
   // clang-format off
   /**
-   * This is a deprecated constructor.
    * @copybrief Array::Array(const Context&,const std::string&,tiledb_query_type_t,uint64_t)
    *
    * Same as @ref Array::Array(const Context&,const std::string&,tiledb_query_type_t,uint64_t) "Array::Array"
@@ -234,6 +233,7 @@ class Array {
    * @param timestamp_end The timestamp_end to open the array at.
    */
   // clang-format on
+  TILEDB_DEPRECATED
   Array(
       const Context& ctx,
       const std::string& array_uri,
@@ -248,6 +248,7 @@ class Array {
     tiledb_array_t* array;
     ctx.handle_error(tiledb_array_alloc(c_ctx, array_uri.c_str(), &array));
     array_ = std::shared_ptr<tiledb_array_t>(array, deleter_);
+
     ctx.handle_error(tiledb_array_open_at_with_key(
         c_ctx,
         array,
@@ -264,12 +265,12 @@ class Array {
 
   // clang-format off
   /**
-   * This is a deprecated constructor.
    * @copybrief Array::Array(const Context&,const std::string&,tiledb_query_type_t,tiledb_encryption_type_t,const void*,uint32_t,uint64_t)
    *
    * See @ref Array::Array(const Context&,const std::string&,tiledb_query_type_t,tiledb_encryption_type_t,const void*,uint32_t,uint64_t) "Array::Array"
    */
   // clang-format on
+  TILEDB_DEPRECATED
   Array(
       const Context& ctx,
       const std::string& array_uri,
@@ -463,7 +464,6 @@ class Array {
   }
 
   /**
-   * This is a deprecated API.
    * @brief Opens the array for a query type, at the given timestamp_end.
    *
    * This function takes as input a
@@ -489,12 +489,12 @@ class Array {
    * @param timestamp_end The timestamp_end to open the array at.
    * @throws TileDBError if the array is already open or other error occurred.
    */
+  TILEDB_DEPRECATED
   void open(tiledb_query_type_t query_type, uint64_t timestamp_end) {
     open(query_type, TILEDB_NO_ENCRYPTION, nullptr, 0, timestamp_end);
   }
 
   /**
-   * This is a deprecated API.
    * @copybrief Array::open(tiledb_query_type_t,uint64_t)
    *
    * Same as @ref Array::open(tiledb_query_type_t,uint64_t) "Array::open"
@@ -520,6 +520,7 @@ class Array {
    * @param key_length Length in bytes of the encryption key.
    * @param timestamp_end The timestamp_end to open the array at.
    */
+  TILEDB_DEPRECATED
   void open(
       tiledb_query_type_t query_type,
       tiledb_encryption_type_t encryption_type,
@@ -544,7 +545,6 @@ class Array {
 
   // clang-format off
   /**
-   * This is a deprecated API.
    * @copybrief Array::open(tiledb_query_type_t,tiledb_encryption_type_t,const void*,uint32_t,uint64_t)
    *
    * See @ref Array::open(tiledb_query_type_t,tiledb_encryption_type_t,const void*,uint32_t,uint64_t) "Array::open"
@@ -594,7 +594,6 @@ class Array {
   }
 
   /**
-   * This is a deprecated API.
    * Reopens the array at a specific timestamp_end.
    *
    * **Example:**
@@ -608,6 +607,7 @@ class Array {
    * @throws TileDBError if the array was not already open or other error
    * occurred.
    */
+  TILEDB_DEPRECATED
   void reopen_at(uint64_t timestamp_end) {
     auto& ctx = ctx_.get();
     tiledb_ctx_t* c_ctx = ctx.ptr().get();
@@ -620,12 +620,12 @@ class Array {
   }
 
   /** Returns the timestamp at which the array was opened. */
-  uint64_t timestamp() const {
+  uint64_t timestamp_end() const {
     auto& ctx = ctx_.get();
-    uint64_t timestamp;
-    ctx.handle_error(
-        tiledb_array_get_timestamp(ctx.ptr().get(), array_.get(), &timestamp));
-    return timestamp;
+    uint64_t timestamp_end;
+    ctx.handle_error(tiledb_array_get_timestamp(
+        ctx.ptr().get(), array_.get(), &timestamp_end));
+    return timestamp_end;
   }
 
   /** Sets the array config. */
@@ -636,7 +636,7 @@ class Array {
   }
 
   /** Retrieves the array config. */
-  Config get_config() const {
+  Config config() const {
     auto& ctx = ctx_.get();
     tiledb_config_t* config = nullptr;
     ctx.handle_error(
