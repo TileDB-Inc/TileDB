@@ -822,6 +822,15 @@ void ResultTile::set_compute_results_func() {
       case Datatype::DATETIME_PS:
       case Datatype::DATETIME_FS:
       case Datatype::DATETIME_AS:
+      case Datatype::TIME_HR:
+      case Datatype::TIME_MIN:
+      case Datatype::TIME_SEC:
+      case Datatype::TIME_MS:
+      case Datatype::TIME_US:
+      case Datatype::TIME_NS:
+      case Datatype::TIME_PS:
+      case Datatype::TIME_FS:
+      case Datatype::TIME_AS:
         compute_results_dense_func_[d] = compute_results_dense<int64_t>;
         compute_results_sparse_func_[d] = compute_results_sparse<int64_t>;
         break;

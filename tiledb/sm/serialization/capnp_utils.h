@@ -143,6 +143,15 @@ Status set_capnp_array_ptr(
     case tiledb::sm::Datatype::DATETIME_PS:
     case tiledb::sm::Datatype::DATETIME_FS:
     case tiledb::sm::Datatype::DATETIME_AS:
+    case tiledb::sm::Datatype::TIME_HR:
+    case tiledb::sm::Datatype::TIME_MIN:
+    case tiledb::sm::Datatype::TIME_SEC:
+    case tiledb::sm::Datatype::TIME_MS:
+    case tiledb::sm::Datatype::TIME_US:
+    case tiledb::sm::Datatype::TIME_NS:
+    case tiledb::sm::Datatype::TIME_PS:
+    case tiledb::sm::Datatype::TIME_FS:
+    case tiledb::sm::Datatype::TIME_AS:
     case tiledb::sm::Datatype::INT64:
       builder.setInt64(kj::arrayPtr(static_cast<const int64_t*>(ptr), size));
       break;
@@ -209,6 +218,15 @@ Status set_capnp_scalar(
     case tiledb::sm::Datatype::DATETIME_PS:
     case tiledb::sm::Datatype::DATETIME_FS:
     case tiledb::sm::Datatype::DATETIME_AS:
+    case tiledb::sm::Datatype::TIME_HR:
+    case tiledb::sm::Datatype::TIME_MIN:
+    case tiledb::sm::Datatype::TIME_SEC:
+    case tiledb::sm::Datatype::TIME_MS:
+    case tiledb::sm::Datatype::TIME_US:
+    case tiledb::sm::Datatype::TIME_NS:
+    case tiledb::sm::Datatype::TIME_PS:
+    case tiledb::sm::Datatype::TIME_FS:
+    case tiledb::sm::Datatype::TIME_AS:
     case tiledb::sm::Datatype::INT64:
       builder.setInt64(*static_cast<const int64_t*>(value));
       break;
@@ -312,6 +330,15 @@ Status copy_capnp_list(
     case tiledb::sm::Datatype::DATETIME_PS:
     case tiledb::sm::Datatype::DATETIME_FS:
     case tiledb::sm::Datatype::DATETIME_AS:
+    case tiledb::sm::Datatype::TIME_HR:
+    case tiledb::sm::Datatype::TIME_MIN:
+    case tiledb::sm::Datatype::TIME_SEC:
+    case tiledb::sm::Datatype::TIME_MS:
+    case tiledb::sm::Datatype::TIME_US:
+    case tiledb::sm::Datatype::TIME_NS:
+    case tiledb::sm::Datatype::TIME_PS:
+    case tiledb::sm::Datatype::TIME_FS:
+    case tiledb::sm::Datatype::TIME_AS:
     case tiledb::sm::Datatype::INT64:
       if (reader.hasInt64())
         RETURN_NOT_OK(copy_capnp_list<int64_t>(reader.getInt64(), buffer));

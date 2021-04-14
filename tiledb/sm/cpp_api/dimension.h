@@ -231,6 +231,15 @@ class Dimension {
       case TILEDB_DATETIME_PS:
       case TILEDB_DATETIME_FS:
       case TILEDB_DATETIME_AS:
+      case TILEDB_TIME_HR:
+      case TILEDB_TIME_MIN:
+      case TILEDB_TIME_SEC:
+      case TILEDB_TIME_MS:
+      case TILEDB_TIME_US:
+      case TILEDB_TIME_NS:
+      case TILEDB_TIME_PS:
+      case TILEDB_TIME_FS:
+      case TILEDB_TIME_AS:
         di64 = static_cast<const int64_t*>(domain);
         ss << di64[0] << "," << di64[1];
         break;
@@ -335,6 +344,15 @@ class Dimension {
       case TILEDB_DATETIME_PS:
       case TILEDB_DATETIME_FS:
       case TILEDB_DATETIME_AS:
+      case TILEDB_TIME_HR:
+      case TILEDB_TIME_MIN:
+      case TILEDB_TIME_SEC:
+      case TILEDB_TIME_MS:
+      case TILEDB_TIME_US:
+      case TILEDB_TIME_NS:
+      case TILEDB_TIME_PS:
+      case TILEDB_TIME_FS:
+      case TILEDB_TIME_AS:
         ti64 = static_cast<const int64_t*>(tile_extent);
         ss << *ti64;
         break;

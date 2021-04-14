@@ -797,6 +797,15 @@ void Domain::compute_cell_num_per_tile() {
     case Datatype::DATETIME_PS:
     case Datatype::DATETIME_FS:
     case Datatype::DATETIME_AS:
+    case Datatype::TIME_HR:
+    case Datatype::TIME_MIN:
+    case Datatype::TIME_SEC:
+    case Datatype::TIME_MS:
+    case Datatype::TIME_US:
+    case Datatype::TIME_NS:
+    case Datatype::TIME_PS:
+    case Datatype::TIME_FS:
+    case Datatype::TIME_AS:
       compute_cell_num_per_tile<int64_t>();
       break;
     default:
@@ -881,6 +890,15 @@ void Domain::set_tile_cell_order_cmp_funcs() {
       case Datatype::DATETIME_PS:
       case Datatype::DATETIME_FS:
       case Datatype::DATETIME_AS:
+      case Datatype::TIME_HR:
+      case Datatype::TIME_MIN:
+      case Datatype::TIME_SEC:
+      case Datatype::TIME_MS:
+      case Datatype::TIME_US:
+      case Datatype::TIME_NS:
+      case Datatype::TIME_PS:
+      case Datatype::TIME_FS:
+      case Datatype::TIME_AS:
         tile_order_cmp_func_[d] = tile_order_cmp<int64_t>;
         cell_order_cmp_func_[d] = cell_order_cmp<int64_t>;
         cell_order_cmp_func_2_[d] = cell_order_cmp_2<int64_t>;

@@ -387,6 +387,33 @@ extern const std::string datetime_fs_str;
 /** The string representation for type DATETIME_AS. */
 extern const std::string datetime_as_str;
 
+/** The string representation for type TIME_HR. */
+extern const std::string time_hr_str;
+
+/** The string representation for type TIME_MIN. */
+extern const std::string time_min_str;
+
+/** The string representation for type TIME_SEC. */
+extern const std::string time_sec_str;
+
+/** The string representation for type TIME_MS. */
+extern const std::string time_ms_str;
+
+/** The string representation for type TIME_US. */
+extern const std::string time_us_str;
+
+/** The string representation for type TIME_NS. */
+extern const std::string time_ns_str;
+
+/** The string representation for type TIME_PS. */
+extern const std::string time_ps_str;
+
+/** The string representation for type TIME_FS. */
+extern const std::string time_fs_str;
+
+/** The string representation for type TIME_AS. */
+extern const std::string time_as_str;
+
 /** The string representation for the dense array type. */
 extern const std::string dense_str;
 

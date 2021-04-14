@@ -277,6 +277,23 @@ inline bool tiledb_datetime_type(tiledb_datatype_t type) {
   }
 }
 
+inline bool tiledb_time_type(tiledb_datatype_t type) {
+  switch (type) {
+    case TILEDB_TIME_HR:
+    case TILEDB_TIME_MIN:
+    case TILEDB_TIME_SEC:
+    case TILEDB_TIME_MS:
+    case TILEDB_TIME_US:
+    case TILEDB_TIME_NS:
+    case TILEDB_TIME_PS:
+    case TILEDB_TIME_FS:
+    case TILEDB_TIME_AS:
+      return true;
+    default:
+      return false;
+  }
+}
+
 /**
  * A type handler provides a mapping from a C++ type to a TileDB
  * representation.

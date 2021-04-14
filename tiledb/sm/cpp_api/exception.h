@@ -94,6 +94,12 @@ inline void type_check(tiledb_datatype_t type, unsigned num = 0) {
           "Static type does not match expected container type int64_t for "
           "tiledb datetime type");
     }
+  } else if (tiledb_time_type(type)) {
+    if (!std::is_same<T, int64_t>::value) {
+      throw TypeError(
+          "Static type does not match expected container type int64_t for "
+          "tiledb time type");
+    }
   } else if (Handler::tiledb_type != type) {
     throw TypeError(
         "Static type (" + impl::type_to_str(Handler::tiledb_type) +
