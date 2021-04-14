@@ -50,7 +50,6 @@ namespace tiledb {
 namespace sm {
 namespace serialization {
 
-#ifdef TILEDB_SERIALIZATION
 /**
  * Serialize a config into a cap'n proto class
  * @param config config to serialize
@@ -68,7 +67,6 @@ Status config_to_capnp(
  */
 Status config_from_capnp(
     const capnp::Config::Reader& config_reader, tdb_unique_ptr<Config>* config);
-#endif
 
 };  // namespace serialization
 };  // namespace sm
