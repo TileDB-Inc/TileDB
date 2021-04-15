@@ -126,6 +126,7 @@ const std::string Config::VFS_S3_AWS_SESSION_NAME = "";
 const std::string Config::VFS_S3_SCHEME = "https";
 const std::string Config::VFS_S3_ENDPOINT_OVERRIDE = "";
 const std::string Config::VFS_S3_USE_VIRTUAL_ADDRESSING = "true";
+const std::string Config::VFS_S3_SKIP_INIT = "false";
 const std::string Config::VFS_S3_USE_MULTIPART_UPLOAD = "true";
 const std::string Config::VFS_S3_MAX_PARALLEL_OPS =
     Config::SM_IO_CONCURRENCY_LEVEL;
@@ -261,6 +262,7 @@ Config::Config() {
   param_values_["vfs.s3.endpoint_override"] = VFS_S3_ENDPOINT_OVERRIDE;
   param_values_["vfs.s3.use_virtual_addressing"] =
       VFS_S3_USE_VIRTUAL_ADDRESSING;
+  param_values_["vfs.s3.skip_init"] = VFS_S3_SKIP_INIT;
   param_values_["vfs.s3.use_multipart_upload"] = VFS_S3_USE_MULTIPART_UPLOAD;
   param_values_["vfs.s3.max_parallel_ops"] = VFS_S3_MAX_PARALLEL_OPS;
   param_values_["vfs.s3.multipart_part_size"] = VFS_S3_MULTIPART_PART_SIZE;
@@ -555,6 +557,8 @@ Status Config::unset(const std::string& param) {
   } else if (param == "vfs.s3.use_virtual_addressing") {
     param_values_["vfs.s3.use_virtual_addressing"] =
         VFS_S3_USE_VIRTUAL_ADDRESSING;
+  } else if (param == "vfs.s3.skip_init") {
+    param_values_["vfs.s3.skip_init"] = VFS_S3_SKIP_INIT;
   } else if (param == "vfs.s3.use_multipart_upload") {
     param_values_["vfs.s3.use_multipart_upload"] = VFS_S3_USE_MULTIPART_UPLOAD;
   } else if (param == "vfs.s3.max_parallel_ops") {
@@ -711,6 +715,8 @@ Status Config::sanity_check(
       return LOG_STATUS(
           Status::ConfigError("Invalid S3 scheme parameter value"));
   } else if (param == "vfs.s3.use_virtual_addressing") {
+    RETURN_NOT_OK(utils::parse::convert(value, &v));
+  } else if (param == "vfs.s3.skit_init") {
     RETURN_NOT_OK(utils::parse::convert(value, &v));
   } else if (param == "vfs.s3.use_multipart_upload") {
     RETURN_NOT_OK(utils::parse::convert(value, &v));

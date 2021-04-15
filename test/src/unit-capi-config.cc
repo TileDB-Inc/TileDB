@@ -283,6 +283,7 @@ void check_save_to_file() {
   ss << "vfs.s3.request_timeout_ms 3000\n";
   ss << "vfs.s3.requester_pays false\n";
   ss << "vfs.s3.scheme https\n";
+  ss << "vfs.s3.skip_init false\n";
   ss << "vfs.s3.use_multipart_upload true\n";
   ss << "vfs.s3.use_virtual_addressing true\n";
   ss << "vfs.s3.verify_ssl true\n";
@@ -584,6 +585,7 @@ TEST_CASE("C API: Test config iter", "[capi], [config]") {
   all_param_values["vfs.s3.aws_session_name"] = "";
   all_param_values["vfs.s3.endpoint_override"] = "";
   all_param_values["vfs.s3.use_virtual_addressing"] = "true";
+  all_param_values["vfs.s3.skip_init"] = "false";
   all_param_values["vfs.s3.use_multipart_upload"] = "true";
   all_param_values["vfs.s3.max_parallel_ops"] =
       std::to_string(std::thread::hardware_concurrency());
@@ -644,6 +646,7 @@ TEST_CASE("C API: Test config iter", "[capi], [config]") {
   vfs_param_values["s3.aws_session_name"] = "";
   vfs_param_values["s3.endpoint_override"] = "";
   vfs_param_values["s3.use_virtual_addressing"] = "true";
+  vfs_param_values["s3.skip_init"] = "false";
   vfs_param_values["s3.use_multipart_upload"] = "true";
   vfs_param_values["s3.max_parallel_ops"] =
       std::to_string(std::thread::hardware_concurrency());
@@ -698,6 +701,7 @@ TEST_CASE("C API: Test config iter", "[capi], [config]") {
   s3_param_values["aws_session_name"] = "";
   s3_param_values["endpoint_override"] = "";
   s3_param_values["use_virtual_addressing"] = "true";
+  s3_param_values["skip_init"] = "false";
   s3_param_values["use_multipart_upload"] = "true";
   s3_param_values["max_parallel_ops"] =
       std::to_string(std::thread::hardware_concurrency());
@@ -879,11 +883,19 @@ TEST_CASE(
   CHECK(rc == TILEDB_OK);
   rc = tiledb_config_set(config, "vfs.s3.use_virtual_addressing", "True", &err);
   CHECK(rc == TILEDB_OK);
+  rc = tiledb_config_set(config, "vfs.s3.skip_init", "FALSE", &err);
+  CHECK(rc == TILEDB_OK);
+  rc = tiledb_config_set(config, "vfs.s3.skip_init", "False", &err);
+  CHECK(rc == TILEDB_OK);
   rc =
       tiledb_config_set(config, "vfs.s3.use_virtual_addressing", "FALSE", &err);
   CHECK(rc == TILEDB_OK);
   rc =
       tiledb_config_set(config, "vfs.s3.use_virtual_addressing", "False", &err);
+  CHECK(rc == TILEDB_OK);
+  rc = tiledb_config_set(config, "vfs.s3.skit_init", "TRUE", &err);
+  CHECK(rc == TILEDB_OK);
+  rc = tiledb_config_set(config, "vfs.s3.skip_init", "True", &err);
   CHECK(rc == TILEDB_OK);
 
   rc = tiledb_config_set(config, "vfs.s3.use_multipart_upload", "TRUE", &err);

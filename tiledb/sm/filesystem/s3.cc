@@ -164,8 +164,13 @@ Status S3::init(const Config& config, ThreadPool* const thread_pool) {
   // unexpectedly.
   options_.httpOptions.installSigPipeHandler = true;
 
+  bool skip_init;
+  RETURN_NOT_OK(config.get<bool>("vfs.s3.skip_init", &skip_init, &found));
+  assert(found);
+
   // Initialize the library once per process.
-  std::call_once(aws_lib_initialized, [this]() { Aws::InitAPI(options_); });
+  if (!skip_init)
+    std::call_once(aws_lib_initialized, [this]() { Aws::InitAPI(options_); });
 
   if (options_.loggingOptions.logLevel != Aws::Utils::Logging::LogLevel::Off) {
     Aws::Utils::Logging::InitializeAWSLogging(
