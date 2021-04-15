@@ -178,9 +178,11 @@ Status Subarray::set_subarray(const void* subarray) {
     auto dim_num = array_->array_schema()->dim_num();
     auto s_ptr = (const unsigned char*)subarray;
     uint64_t offset = 0;
+
     for (unsigned d = 0; d < dim_num; ++d) {
       auto r_size = 2 * array_->array_schema()->dimension(d)->coord_size();
-      RETURN_NOT_OK(sub.add_range(d, Range(&s_ptr[offset], r_size)));
+      Range range(&s_ptr[offset], r_size);
+      RETURN_NOT_OK(sub.add_range(d, std::move(range), err_on_range_oob_));
       offset += r_size;
     }
   }
@@ -233,7 +235,8 @@ Status Subarray::add_range(
   std::memcpy(&range[coord_size], end, coord_size);
 
   // Add range
-  return this->add_range(dim_idx, Range(&range[0], 2 * coord_size));
+  return this->add_range(
+      dim_idx, Range(&range[0], 2 * coord_size), err_on_range_oob_);
 }
 
 Status Subarray::add_range_by_name(
@@ -279,7 +282,7 @@ Status Subarray::add_range_var(
   // Add range
   Range r;
   r.set_range_var(start, start_size, end, end_size);
-  return this->add_range(dim_idx, r);
+  return this->add_range(dim_idx, std::move(r), err_on_range_oob_);
 }
 
 Status Subarray::add_range_var_by_name(
@@ -720,6 +723,30 @@ void Subarray::set_layout(Layout layout) {
   layout_ = layout;
 }
 
+Status Subarray::set_config(const Config& config) {
+  config_ = config;
+
+  QueryType array_query_type;
+  RETURN_NOT_OK(array_->get_query_type(&array_query_type));
+
+  if (array_query_type == tiledb::sm::QueryType::READ) {
+    bool found = false;
+    std::string read_range_oob_str = config.get("sm.read_range_oob", &found);
+    assert(found);
+    if (read_range_oob_str != "error" && read_range_oob_str != "warn")
+      return LOG_STATUS(Status::QueryError(
+          "Invalid value " + read_range_oob_str +
+          " for sm.read_range_obb. Acceptable values are 'error' or 'warn'."));
+    err_on_range_oob_ = read_range_oob_str == "error";
+  }
+
+  return Status::Ok();
+};
+
+const Config* Subarray::config() const {
+  return &config_;
+}
+
 Status Subarray::set_coalesce_ranges(bool coalesce_ranges) {
   if (count_set())
     return LOG_STATUS(
@@ -837,7 +864,6 @@ Status Subarray::get_est_result_size_querytype_audited(
             "Cannot get estimated result size; Input attribute/dimension '") +
         name + "' is nullable"));
 
-#if 01
   // TBD: Figure out what does/can exercise the following code!!!
   if (array_->is_remote()) {
     // TBD: Should we somewhere (where?) try to remember if the remote call has
@@ -875,9 +901,9 @@ Status Subarray::get_est_result_size_querytype_audited(
     RETURN_NOT_OK(ret_rest_response);
     return ret_get_est_result_size;
   }
-#endif
 
-  return get_est_result_size(name, size, storage_manager->compute_tp());
+  return get_est_result_size(
+      name, size, &config_, storage_manager->compute_tp());
 }
 
 Status Subarray::get_est_result_size(

@@ -316,6 +316,32 @@ class Subarray {
   }
 
   /**
+   * Set the query config.
+   *
+   * Setting configuration with this function overrides the following
+   * Query-level parameters only:
+   *
+   * - `sm.memory_budget`
+   * - `sm.memory_budget_var`
+   * - `sm.sub_partitioner_memory_budget`
+   * - `sm.var_offsets.mode`
+   * - `sm.var_offsets.extra_element`
+   * - `sm.var_offsets.bitsize`
+   * - `sm.check_coord_dups`
+   * - `sm.check_coord_oob`
+   * - `sm.check_global_order`
+   * - `sm.dedup_coords`
+   */
+  Subarray& set_config(const Config& config) {
+    auto ctx = ctx_.get();
+
+    ctx.handle_error(tiledb_subarray_set_config(
+        ctx.ptr().get(), subarray_.get(), config.ptr().get()));
+
+    return *this;
+  }
+
+  /**
    * Sets a subarray, defined in the order dimensions were added.
    * Coordinates are inclusive. For the case of writes, this is meaningful only
    * for dense arrays, and specifically dense writes.

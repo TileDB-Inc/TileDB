@@ -211,7 +211,16 @@ class Subarray {
   /*                 API               */
   /* ********************************* */
 
-  // 'equivalent' for older Query::set_subarray(const void *subarray);
+  /** Sets config for query-level parameters only. */
+  Status set_config(const Config& config);
+
+  /**
+   * Get the config of the writer
+   * @return Config
+   */
+  const Config* config() const;
+
+  /** equivalent for older Query::set_subarray(const void *subarray); */
   Status set_subarray(const void* subarray);
 
   /** Adds a range along the dimension with the given index. */
@@ -966,6 +975,12 @@ class Subarray {
 
   /** A map (tile coords) -> (vector element position in `tile_coords_`). */
   std::map<std::vector<uint8_t>, size_t> tile_coords_map_;
+
+  /** The config for query-level parameters only. */
+  Config config_;
+
+  /** State of specific Config item needed from multiple locations. */
+  bool err_on_range_oob_ = true;
 
   /* ********************************* */
   /*           PRIVATE METHODS         */

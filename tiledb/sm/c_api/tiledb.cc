@@ -3121,6 +3121,10 @@ int32_t tiledb_query_add_range(
 
 #if 01  // && cppTILEDB_COND_SUB_SUBARRAY_FOR_QUERY
   tiledb_subarray_transient_local_t query_subarray(query);
+  tiledb_config_t loccfg;
+  // drop 'const'ness for local usage here
+  loccfg.config_ = (tiledb::sm::Config*)query->query_->config();
+  tiledb_subarray_set_config(ctx, &query_subarray, &loccfg);
   return tiledb_subarray_add_range(
       ctx, &query_subarray, dim_idx, start, end, stride);
 #endif
@@ -3594,6 +3598,21 @@ int32_t tiledb_subarray_alloc(
   return TILEDB_OK;
 }
 
+int32_t tiledb_subarray_set_config(
+    tiledb_ctx_t* ctx, tiledb_subarray_t* subarray, tiledb_config_t* config) {
+  // Sanity check
+  if (sanity_check(ctx) == TILEDB_ERR ||
+      sanity_check(ctx, subarray) == TILEDB_ERR ||
+      sanity_check(ctx, config) == TILEDB_ERR)
+    return TILEDB_ERR;
+
+  if (SAVE_ERROR_CATCH(
+          ctx, subarray->subarray_->set_config(*(config->config_))))
+    return TILEDB_ERR;
+
+  return TILEDB_OK;
+}
+
 void tiledb_subarray_free(tiledb_subarray_t** subarray) {
   if (subarray != nullptr && *subarray != nullptr) {
     delete (*subarray)->subarray_;
@@ -3909,6 +3928,7 @@ int32_t tiledb_subarray_get_est_result_size_var(
               name,
               size_off,
               size_val,
+              subarray->subarray_->config(),
               ctx->ctx_->storage_manager()->compute_tp())))
     return TILEDB_ERR;
 
@@ -3931,6 +3951,7 @@ int32_t tiledb_subarray_get_est_result_size_nullable(
               name,
               size_val,
               size_validity,
+              subarray->subarray_->config(),
               ctx->ctx_->storage_manager()->compute_tp())))
     return TILEDB_ERR;
 
@@ -3955,6 +3976,7 @@ int32_t tiledb_subarray_get_est_result_size_var_nullable(
               size_off,
               size_val,
               size_validity,
+              subarray->subarray_->config(),
               ctx->ctx_->storage_manager()->compute_tp())))
     return TILEDB_ERR;
 
