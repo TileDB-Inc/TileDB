@@ -42,6 +42,8 @@
 using namespace tiledb;
 using namespace tiledb::sm;
 
+namespace tdbcoreapi = tiledb::sm;
+
 struct DenseTilerFx {
   // Constants
   const int32_t fill_value = 0;
@@ -81,7 +83,7 @@ struct DenseTilerFx {
   void add_ranges(
       const std::vector<const void*>& ranges,
       uint64_t range_size,
-      Subarray* subarray);
+      tdbcoreapi::Subarray* subarray);
   template <class T>
   bool check_tile(Tile* tile, const std::vector<T>& data);
 };
@@ -144,7 +146,7 @@ void DenseTilerFx::create_array(
 void DenseTilerFx::add_ranges(
     const std::vector<const void*>& ranges,
     uint64_t range_size,
-    Subarray* subarray) {
+    tdbcoreapi::Subarray* subarray) {
   for (size_t i = 0; i < ranges.size(); ++i)
     CHECK(subarray->add_range((uint32_t)i, Range(ranges[i], range_size)).ok());
 }
@@ -203,7 +205,8 @@ TEST_CASE_METHOD(
   // Create subarray
   open_array(array_name, TILEDB_READ);
   int32_t sub1[] = {3, 6};
-  Subarray subarray1(array_->array_, Layout::ROW_MAJOR, &test::g_helper_stats);
+  tdbcoreapi::Subarray subarray1(
+      array_->array_, Layout::ROW_MAJOR, &test::g_helper_stats);
   add_ranges({sub1}, sizeof(sub1), &subarray1);
 
   // Create DenseTiler
@@ -220,7 +223,8 @@ TEST_CASE_METHOD(
   close_array();
   open_array(array_name, TILEDB_READ);
   int32_t sub2[] = {6, 9};
-  Subarray subarray2(array_->array_, Layout::ROW_MAJOR, &test::g_helper_stats);
+  tdbcoreapi::Subarray subarray2(
+      array_->array_, Layout::ROW_MAJOR, &test::g_helper_stats);
   add_ranges({sub2}, sizeof(sub2), &subarray2);
 
   // Create DenseTiler
@@ -262,7 +266,8 @@ TEST_CASE_METHOD(
   // Create subarray
   open_array(array_name, TILEDB_READ);
   int32_t sub1[] = {3, 6};
-  Subarray subarray1(array_->array_, Layout::ROW_MAJOR, &test::g_helper_stats);
+  tdbcoreapi::Subarray subarray1(
+      array_->array_, Layout::ROW_MAJOR, &test::g_helper_stats);
   add_ranges({sub1}, sizeof(sub1), &subarray1);
 
   // Create DenseTiler
@@ -294,7 +299,8 @@ TEST_CASE_METHOD(
   close_array();
   open_array(array_name, TILEDB_READ);
   int32_t sub2[] = {7, 8};
-  Subarray subarray2(array_->array_, Layout::ROW_MAJOR, &test::g_helper_stats);
+  tdbcoreapi::Subarray subarray2(
+      array_->array_, Layout::ROW_MAJOR, &test::g_helper_stats);
   add_ranges({sub2}, sizeof(sub2), &subarray2);
 
   // Create DenseTiler
@@ -314,7 +320,8 @@ TEST_CASE_METHOD(
   close_array();
   open_array(array_name, TILEDB_READ);
   int32_t sub3[] = {7, 8};
-  Subarray subarray3(array_->array_, Layout::COL_MAJOR, &test::g_helper_stats);
+  tdbcoreapi::Subarray subarray3(
+      array_->array_, Layout::COL_MAJOR, &test::g_helper_stats);
   add_ranges({sub3}, sizeof(sub3), &subarray3);
 
   // Create DenseTiler
@@ -359,7 +366,8 @@ TEST_CASE_METHOD(
   // Create subarray
   open_array(array_name, TILEDB_READ);
   int32_t sub1[] = {3, 6};
-  Subarray subarray1(array_->array_, Layout::ROW_MAJOR, &test::g_helper_stats);
+  tdbcoreapi::Subarray subarray1(
+      array_->array_, Layout::ROW_MAJOR, &test::g_helper_stats);
   add_ranges({sub1}, sizeof(sub1), &subarray1);
 
   // Create DenseTiler
@@ -384,7 +392,8 @@ TEST_CASE_METHOD(
   close_array();
   open_array(array_name, TILEDB_READ);
   int32_t sub2[] = {7, 10};
-  Subarray subarray2(array_->array_, Layout::ROW_MAJOR, &test::g_helper_stats);
+  tdbcoreapi::Subarray subarray2(
+      array_->array_, Layout::ROW_MAJOR, &test::g_helper_stats);
   add_ranges({sub2}, sizeof(sub2), &subarray2);
 
   // Create DenseTiler
@@ -400,7 +409,8 @@ TEST_CASE_METHOD(
   close_array();
   open_array(array_name, TILEDB_READ);
   int32_t sub3[] = {7, 10};
-  Subarray subarray3(array_->array_, Layout::COL_MAJOR, &test::g_helper_stats);
+  tdbcoreapi::Subarray subarray3(
+      array_->array_, Layout::COL_MAJOR, &test::g_helper_stats);
   add_ranges({sub3}, sizeof(sub3), &subarray3);
 
   // Create DenseTiler
@@ -441,7 +451,8 @@ TEST_CASE_METHOD(
   // Create subarray
   open_array(array_name, TILEDB_READ);
   int32_t sub1[] = {3, 6};
-  Subarray subarray1(array_->array_, Layout::ROW_MAJOR, &test::g_helper_stats);
+  tdbcoreapi::Subarray subarray1(
+      array_->array_, Layout::ROW_MAJOR, &test::g_helper_stats);
   add_ranges({sub1}, sizeof(sub1), &subarray1);
 
   // Create DenseTiler
@@ -491,7 +502,8 @@ TEST_CASE_METHOD(
   // Create subarray
   open_array(array_name, TILEDB_READ);
   int32_t sub1[] = {-2, 1};
-  Subarray subarray1(array_->array_, Layout::ROW_MAJOR, &test::g_helper_stats);
+  tdbcoreapi::Subarray subarray1(
+      array_->array_, Layout::ROW_MAJOR, &test::g_helper_stats);
   add_ranges({sub1}, sizeof(sub1), &subarray1);
 
   // Create DenseTiler
@@ -545,7 +557,8 @@ TEST_CASE_METHOD(
   open_array(array_name, TILEDB_READ);
   int32_t sub1_0[] = {4, 6};
   int32_t sub1_1[] = {18, 22};
-  Subarray subarray1(array_->array_, Layout::ROW_MAJOR, &test::g_helper_stats);
+  tdbcoreapi::Subarray subarray1(
+      array_->array_, Layout::ROW_MAJOR, &test::g_helper_stats);
   add_ranges({sub1_0, sub1_1}, sizeof(sub1_0), &subarray1);
 
   // Create DenseTiler
@@ -563,7 +576,8 @@ TEST_CASE_METHOD(
   open_array(array_name, TILEDB_READ);
   int32_t sub2_0[] = {7, 9};
   int32_t sub2_1[] = {23, 27};
-  Subarray subarray2(array_->array_, Layout::ROW_MAJOR, &test::g_helper_stats);
+  tdbcoreapi::Subarray subarray2(
+      array_->array_, Layout::ROW_MAJOR, &test::g_helper_stats);
   add_ranges({sub2_0, sub2_1}, sizeof(sub2_0), &subarray2);
 
   // Create DenseTiler
@@ -581,7 +595,8 @@ TEST_CASE_METHOD(
   open_array(array_name, TILEDB_READ);
   int32_t sub3_0[] = {4, 6};
   int32_t sub3_1[] = {18, 22};
-  Subarray subarray3(array_->array_, Layout::COL_MAJOR, &test::g_helper_stats);
+  tdbcoreapi::Subarray subarray3(
+      array_->array_, Layout::COL_MAJOR, &test::g_helper_stats);
   add_ranges({sub3_0, sub3_1}, sizeof(sub3_0), &subarray3);
 
   // Create DenseTiler
@@ -599,7 +614,8 @@ TEST_CASE_METHOD(
   open_array(array_name, TILEDB_READ);
   int32_t sub4_0[] = {7, 10};
   int32_t sub4_1[] = {23, 27};
-  Subarray subarray4(array_->array_, Layout::COL_MAJOR, &test::g_helper_stats);
+  tdbcoreapi::Subarray subarray4(
+      array_->array_, Layout::COL_MAJOR, &test::g_helper_stats);
   add_ranges({sub4_0, sub4_1}, sizeof(sub4_0), &subarray4);
 
   // Create DenseTiler
@@ -645,7 +661,8 @@ TEST_CASE_METHOD(
   open_array(array_name, TILEDB_READ);
   int32_t sub1_0[] = {4, 6};
   int32_t sub1_1[] = {18, 22};
-  Subarray subarray1(array_->array_, Layout::ROW_MAJOR, &test::g_helper_stats);
+  tdbcoreapi::Subarray subarray1(
+      array_->array_, Layout::ROW_MAJOR, &test::g_helper_stats);
   add_ranges({sub1_0, sub1_1}, sizeof(sub1_0), &subarray1);
 
   // Create DenseTiler
@@ -663,7 +680,8 @@ TEST_CASE_METHOD(
   open_array(array_name, TILEDB_READ);
   int32_t sub2_0[] = {7, 9};
   int32_t sub2_1[] = {23, 27};
-  Subarray subarray2(array_->array_, Layout::ROW_MAJOR, &test::g_helper_stats);
+  tdbcoreapi::Subarray subarray2(
+      array_->array_, Layout::ROW_MAJOR, &test::g_helper_stats);
   add_ranges({sub2_0, sub2_1}, sizeof(sub2_0), &subarray2);
 
   // Create DenseTiler
@@ -681,7 +699,8 @@ TEST_CASE_METHOD(
   open_array(array_name, TILEDB_READ);
   int32_t sub3_0[] = {4, 6};
   int32_t sub3_1[] = {18, 22};
-  Subarray subarray3(array_->array_, Layout::COL_MAJOR, &test::g_helper_stats);
+  tdbcoreapi::Subarray subarray3(
+      array_->array_, Layout::COL_MAJOR, &test::g_helper_stats);
   add_ranges({sub3_0, sub3_1}, sizeof(sub3_0), &subarray3);
 
   // Create DenseTiler
@@ -699,7 +718,8 @@ TEST_CASE_METHOD(
   open_array(array_name, TILEDB_READ);
   int32_t sub4_0[] = {7, 10};
   int32_t sub4_1[] = {23, 27};
-  Subarray subarray4(array_->array_, Layout::COL_MAJOR, &test::g_helper_stats);
+  tdbcoreapi::Subarray subarray4(
+      array_->array_, Layout::COL_MAJOR, &test::g_helper_stats);
   add_ranges({sub4_0, sub4_1}, sizeof(sub4_0), &subarray4);
 
   // Create DenseTiler
@@ -745,7 +765,8 @@ TEST_CASE_METHOD(
   open_array(array_name, TILEDB_READ);
   int32_t sub1_0[] = {4, 6};
   int32_t sub1_1[] = {18, 22};
-  Subarray subarray1(array_->array_, Layout::ROW_MAJOR, &test::g_helper_stats);
+  tdbcoreapi::Subarray subarray1(
+      array_->array_, Layout::ROW_MAJOR, &test::g_helper_stats);
   add_ranges({sub1_0, sub1_1}, sizeof(sub1_0), &subarray1);
 
   // Create DenseTiler
@@ -800,7 +821,8 @@ TEST_CASE_METHOD(
   open_array(array_name, TILEDB_READ);
   int32_t sub2_0[] = {3, 5};
   int32_t sub2_1[] = {13, 18};
-  Subarray subarray2(array_->array_, Layout::ROW_MAJOR, &test::g_helper_stats);
+  tdbcoreapi::Subarray subarray2(
+      array_->array_, Layout::ROW_MAJOR, &test::g_helper_stats);
   add_ranges({sub2_0, sub2_1}, sizeof(sub2_0), &subarray2);
 
   // Create DenseTiler
@@ -822,7 +844,8 @@ TEST_CASE_METHOD(
   open_array(array_name, TILEDB_READ);
   int32_t sub3_0[] = {4, 6};
   int32_t sub3_1[] = {18, 22};
-  Subarray subarray3(array_->array_, Layout::COL_MAJOR, &test::g_helper_stats);
+  tdbcoreapi::Subarray subarray3(
+      array_->array_, Layout::COL_MAJOR, &test::g_helper_stats);
   add_ranges({sub3_0, sub3_1}, sizeof(sub3_0), &subarray3);
 
   // Create DenseTiler
@@ -881,7 +904,8 @@ TEST_CASE_METHOD(
   open_array(array_name, TILEDB_READ);
   int32_t sub4_0[] = {3, 5};
   int32_t sub4_1[] = {13, 18};
-  Subarray subarray4(array_->array_, Layout::COL_MAJOR, &test::g_helper_stats);
+  tdbcoreapi::Subarray subarray4(
+      array_->array_, Layout::COL_MAJOR, &test::g_helper_stats);
   add_ranges({sub4_0, sub4_1}, sizeof(sub4_0), &subarray4);
 
   // Create DenseTiler
@@ -932,7 +956,8 @@ TEST_CASE_METHOD(
   open_array(array_name, TILEDB_READ);
   int32_t sub1_0[] = {4, 6};
   int32_t sub1_1[] = {18, 22};
-  Subarray subarray1(array_->array_, Layout::ROW_MAJOR, &test::g_helper_stats);
+  tdbcoreapi::Subarray subarray1(
+      array_->array_, Layout::ROW_MAJOR, &test::g_helper_stats);
   add_ranges({sub1_0, sub1_1}, sizeof(sub1_0), &subarray1);
 
   // Create DenseTiler
@@ -991,7 +1016,8 @@ TEST_CASE_METHOD(
   open_array(array_name, TILEDB_READ);
   int32_t sub2_0[] = {3, 5};
   int32_t sub2_1[] = {13, 18};
-  Subarray subarray2(array_->array_, Layout::ROW_MAJOR, &test::g_helper_stats);
+  tdbcoreapi::Subarray subarray2(
+      array_->array_, Layout::ROW_MAJOR, &test::g_helper_stats);
   add_ranges({sub2_0, sub2_1}, sizeof(sub2_0), &subarray2);
 
   // Create DenseTiler
@@ -1014,7 +1040,8 @@ TEST_CASE_METHOD(
   open_array(array_name, TILEDB_READ);
   int32_t sub3_0[] = {4, 6};
   int32_t sub3_1[] = {18, 22};
-  Subarray subarray3(array_->array_, Layout::COL_MAJOR, &test::g_helper_stats);
+  tdbcoreapi::Subarray subarray3(
+      array_->array_, Layout::COL_MAJOR, &test::g_helper_stats);
   add_ranges({sub3_0, sub3_1}, sizeof(sub3_0), &subarray3);
 
   // Create DenseTiler
@@ -1069,7 +1096,8 @@ TEST_CASE_METHOD(
   open_array(array_name, TILEDB_READ);
   int32_t sub4_0[] = {3, 5};
   int32_t sub4_1[] = {13, 18};
-  Subarray subarray4(array_->array_, Layout::COL_MAJOR, &test::g_helper_stats);
+  tdbcoreapi::Subarray subarray4(
+      array_->array_, Layout::COL_MAJOR, &test::g_helper_stats);
   add_ranges({sub4_0, sub4_1}, sizeof(sub4_0), &subarray4);
 
   // Create DenseTiler
@@ -1119,7 +1147,8 @@ TEST_CASE_METHOD(
   open_array(array_name, TILEDB_READ);
   int32_t sub1_0[] = {4, 9};
   int32_t sub1_1[] = {11, 20};
-  Subarray subarray1(array_->array_, Layout::ROW_MAJOR, &test::g_helper_stats);
+  tdbcoreapi::Subarray subarray1(
+      array_->array_, Layout::ROW_MAJOR, &test::g_helper_stats);
   add_ranges({sub1_0, sub1_1}, sizeof(sub1_0), &subarray1);
 
   // Create DenseTiler
@@ -1180,7 +1209,8 @@ TEST_CASE_METHOD(
   open_array(array_name, TILEDB_READ);
   int32_t sub1_0[] = {1, 5};
   int32_t sub1_1[] = {8, 12};
-  Subarray subarray1(array_->array_, Layout::COL_MAJOR, &test::g_helper_stats);
+  tdbcoreapi::Subarray subarray1(
+      array_->array_, Layout::COL_MAJOR, &test::g_helper_stats);
   add_ranges({sub1_0, sub1_1}, sizeof(sub1_0), &subarray1);
 
   // Create DenseTiler
@@ -1242,7 +1272,8 @@ TEST_CASE_METHOD(
   open_array(array_name, TILEDB_READ);
   int32_t sub1_0[] = {4, 6};
   int32_t sub1_1[] = {18, 22};
-  Subarray subarray1(array_->array_, Layout::ROW_MAJOR, &test::g_helper_stats);
+  tdbcoreapi::Subarray subarray1(
+      array_->array_, Layout::ROW_MAJOR, &test::g_helper_stats);
   add_ranges({sub1_0, sub1_1}, sizeof(sub1_0), &subarray1);
 
   // Create DenseTiler
@@ -1305,7 +1336,8 @@ TEST_CASE_METHOD(
   open_array(array_name, TILEDB_READ);
   int32_t sub2_0[] = {3, 5};
   int32_t sub2_1[] = {13, 18};
-  Subarray subarray2(array_->array_, Layout::ROW_MAJOR, &test::g_helper_stats);
+  tdbcoreapi::Subarray subarray2(
+      array_->array_, Layout::ROW_MAJOR, &test::g_helper_stats);
   add_ranges({sub2_0, sub2_1}, sizeof(sub2_0), &subarray2);
 
   // Create DenseTiler
@@ -1339,7 +1371,8 @@ TEST_CASE_METHOD(
   open_array(array_name, TILEDB_READ);
   int32_t sub3_0[] = {4, 6};
   int32_t sub3_1[] = {18, 22};
-  Subarray subarray3(array_->array_, Layout::COL_MAJOR, &test::g_helper_stats);
+  tdbcoreapi::Subarray subarray3(
+      array_->array_, Layout::COL_MAJOR, &test::g_helper_stats);
   add_ranges({sub3_0, sub3_1}, sizeof(sub3_0), &subarray3);
 
   // Create DenseTiler
@@ -1405,7 +1438,8 @@ TEST_CASE_METHOD(
   open_array(array_name, TILEDB_READ);
   int32_t sub4_0[] = {3, 5};
   int32_t sub4_1[] = {13, 18};
-  Subarray subarray4(array_->array_, Layout::COL_MAJOR, &test::g_helper_stats);
+  tdbcoreapi::Subarray subarray4(
+      array_->array_, Layout::COL_MAJOR, &test::g_helper_stats);
   add_ranges({sub4_0, sub4_1}, sizeof(sub4_0), &subarray4);
 
   // Create DenseTiler
@@ -1468,7 +1502,8 @@ TEST_CASE_METHOD(
   open_array(array_name, TILEDB_READ);
   int32_t sub1_0[] = {4, 6};
   int32_t sub1_1[] = {18, 22};
-  Subarray subarray1(array_->array_, Layout::ROW_MAJOR, &test::g_helper_stats);
+  tdbcoreapi::Subarray subarray1(
+      array_->array_, Layout::ROW_MAJOR, &test::g_helper_stats);
   add_ranges({sub1_0, sub1_1}, sizeof(sub1_0), &subarray1);
 
   // Create DenseTiler
@@ -1542,7 +1577,8 @@ TEST_CASE_METHOD(
   open_array(array_name, TILEDB_READ);
   int32_t sub2_0[] = {3, 5};
   int32_t sub2_1[] = {13, 18};
-  Subarray subarray2(array_->array_, Layout::ROW_MAJOR, &test::g_helper_stats);
+  tdbcoreapi::Subarray subarray2(
+      array_->array_, Layout::ROW_MAJOR, &test::g_helper_stats);
   add_ranges({sub2_0, sub2_1}, sizeof(sub2_0), &subarray2);
 
   // Create DenseTiler
@@ -1594,7 +1630,8 @@ TEST_CASE_METHOD(
   open_array(array_name, TILEDB_READ);
   int32_t sub3_0[] = {4, 6};
   int32_t sub3_1[] = {18, 22};
-  Subarray subarray3(array_->array_, Layout::COL_MAJOR, &test::g_helper_stats);
+  tdbcoreapi::Subarray subarray3(
+      array_->array_, Layout::COL_MAJOR, &test::g_helper_stats);
   add_ranges({sub3_0, sub3_1}, sizeof(sub3_0), &subarray3);
 
   // Create DenseTiler
@@ -1671,7 +1708,8 @@ TEST_CASE_METHOD(
   open_array(array_name, TILEDB_READ);
   int32_t sub4_0[] = {3, 5};
   int32_t sub4_1[] = {13, 18};
-  Subarray subarray4(array_->array_, Layout::COL_MAJOR, &test::g_helper_stats);
+  tdbcoreapi::Subarray subarray4(
+      array_->array_, Layout::COL_MAJOR, &test::g_helper_stats);
   add_ranges({sub4_0, sub4_1}, sizeof(sub4_0), &subarray4);
 
   // Create DenseTiler
@@ -1755,7 +1793,8 @@ TEST_CASE_METHOD(
   open_array(array_name, TILEDB_READ);
   int32_t sub1_0[] = {4, 9};
   int32_t sub1_1[] = {11, 20};
-  Subarray subarray1(array_->array_, Layout::ROW_MAJOR, &test::g_helper_stats);
+  tdbcoreapi::Subarray subarray1(
+      array_->array_, Layout::ROW_MAJOR, &test::g_helper_stats);
   add_ranges({sub1_0, sub1_1}, sizeof(sub1_0), &subarray1);
 
   // Create DenseTiler
@@ -1816,7 +1855,8 @@ TEST_CASE_METHOD(
   open_array(array_name, TILEDB_READ);
   int32_t sub1_0[] = {1, 5};
   int32_t sub1_1[] = {8, 12};
-  Subarray subarray1(array_->array_, Layout::COL_MAJOR, &test::g_helper_stats);
+  tdbcoreapi::Subarray subarray1(
+      array_->array_, Layout::COL_MAJOR, &test::g_helper_stats);
   add_ranges({sub1_0, sub1_1}, sizeof(sub1_0), &subarray1);
 
   // Create DenseTiler
@@ -1871,7 +1911,8 @@ TEST_CASE_METHOD(
   // Create subarray
   open_array(array_name, TILEDB_READ);
   int32_t sub1[] = {3, 6};
-  Subarray subarray1(array_->array_, Layout::ROW_MAJOR, &test::g_helper_stats);
+  tdbcoreapi::Subarray subarray1(
+      array_->array_, Layout::ROW_MAJOR, &test::g_helper_stats);
   add_ranges({sub1}, sizeof(sub1), &subarray1);
 
   // Create DenseTiler
@@ -1903,7 +1944,8 @@ TEST_CASE_METHOD(
   close_array();
   open_array(array_name, TILEDB_READ);
   int32_t sub2[] = {7, 10};
-  Subarray subarray2(array_->array_, Layout::ROW_MAJOR, &test::g_helper_stats);
+  tdbcoreapi::Subarray subarray2(
+      array_->array_, Layout::ROW_MAJOR, &test::g_helper_stats);
   add_ranges({sub2}, sizeof(sub2), &subarray2);
 
   // Create DenseTiler
@@ -1920,7 +1962,8 @@ TEST_CASE_METHOD(
   close_array();
   open_array(array_name, TILEDB_READ);
   int32_t sub3[] = {7, 10};
-  Subarray subarray3(array_->array_, Layout::COL_MAJOR, &test::g_helper_stats);
+  tdbcoreapi::Subarray subarray3(
+      array_->array_, Layout::COL_MAJOR, &test::g_helper_stats);
   add_ranges({sub3}, sizeof(sub3), &subarray3);
 
   // Create DenseTiler
@@ -1965,7 +2008,8 @@ TEST_CASE_METHOD(
   // Create subarray
   open_array(array_name, TILEDB_READ);
   int32_t sub1[] = {3, 6};
-  Subarray subarray1(array_->array_, Layout::ROW_MAJOR, &test::g_helper_stats);
+  tdbcoreapi::Subarray subarray1(
+      array_->array_, Layout::ROW_MAJOR, &test::g_helper_stats);
   add_ranges({sub1}, sizeof(sub1), &subarray1);
 
   // Create DenseTiler
@@ -2001,7 +2045,8 @@ TEST_CASE_METHOD(
   close_array();
   open_array(array_name, TILEDB_READ);
   int32_t sub2[] = {7, 10};
-  Subarray subarray2(array_->array_, Layout::ROW_MAJOR, &test::g_helper_stats);
+  tdbcoreapi::Subarray subarray2(
+      array_->array_, Layout::ROW_MAJOR, &test::g_helper_stats);
   add_ranges({sub2}, sizeof(sub2), &subarray2);
 
   // Create DenseTiler
@@ -2021,7 +2066,8 @@ TEST_CASE_METHOD(
   close_array();
   open_array(array_name, TILEDB_READ);
   int32_t sub3[] = {7, 10};
-  Subarray subarray3(array_->array_, Layout::COL_MAJOR, &test::g_helper_stats);
+  tdbcoreapi::Subarray subarray3(
+      array_->array_, Layout::COL_MAJOR, &test::g_helper_stats);
   add_ranges({sub3}, sizeof(sub3), &subarray3);
 
   // Create DenseTiler
@@ -2078,7 +2124,8 @@ TEST_CASE_METHOD(
   open_array(array_name, TILEDB_READ);
   int32_t sub1_0[] = {4, 6};
   int32_t sub1_1[] = {18, 22};
-  Subarray subarray1(array_->array_, Layout::ROW_MAJOR, &test::g_helper_stats);
+  tdbcoreapi::Subarray subarray1(
+      array_->array_, Layout::ROW_MAJOR, &test::g_helper_stats);
   add_ranges({sub1_0, sub1_1}, sizeof(sub1_0), &subarray1);
 
   // Create DenseTiler
@@ -2144,7 +2191,8 @@ TEST_CASE_METHOD(
   open_array(array_name, TILEDB_READ);
   int32_t sub2_0[] = {3, 5};
   int32_t sub2_1[] = {13, 18};
-  Subarray subarray2(array_->array_, Layout::ROW_MAJOR, &test::g_helper_stats);
+  tdbcoreapi::Subarray subarray2(
+      array_->array_, Layout::ROW_MAJOR, &test::g_helper_stats);
   add_ranges({sub2_0, sub2_1}, sizeof(sub2_0), &subarray2);
 
   // Create DenseTiler
@@ -2197,7 +2245,8 @@ TEST_CASE_METHOD(
   open_array(array_name, TILEDB_READ);
   int32_t sub3_0[] = {4, 6};
   int32_t sub3_1[] = {18, 22};
-  Subarray subarray3(array_->array_, Layout::COL_MAJOR, &test::g_helper_stats);
+  tdbcoreapi::Subarray subarray3(
+      array_->array_, Layout::COL_MAJOR, &test::g_helper_stats);
   add_ranges({sub3_0, sub3_1}, sizeof(sub3_0), &subarray3);
 
   // Create DenseTiler
@@ -2273,7 +2322,8 @@ TEST_CASE_METHOD(
   open_array(array_name, TILEDB_READ);
   int32_t sub4_0[] = {3, 5};
   int32_t sub4_1[] = {13, 18};
-  Subarray subarray4(array_->array_, Layout::COL_MAJOR, &test::g_helper_stats);
+  tdbcoreapi::Subarray subarray4(
+      array_->array_, Layout::COL_MAJOR, &test::g_helper_stats);
   add_ranges({sub4_0, sub4_1}, sizeof(sub4_0), &subarray4);
 
   // Create DenseTiler
@@ -2361,7 +2411,8 @@ TEST_CASE_METHOD(
   open_array(array_name, TILEDB_READ);
   int32_t sub1_0[] = {4, 6};
   int32_t sub1_1[] = {18, 22};
-  Subarray subarray1(array_->array_, Layout::ROW_MAJOR, &test::g_helper_stats);
+  tdbcoreapi::Subarray subarray1(
+      array_->array_, Layout::ROW_MAJOR, &test::g_helper_stats);
   add_ranges({sub1_0, sub1_1}, sizeof(sub1_0), &subarray1);
 
   // Create DenseTiler
@@ -2497,7 +2548,8 @@ TEST_CASE_METHOD(
   open_array(array_name, TILEDB_READ);
   int32_t sub2_0[] = {3, 5};
   int32_t sub2_1[] = {13, 18};
-  Subarray subarray2(array_->array_, Layout::ROW_MAJOR, &test::g_helper_stats);
+  tdbcoreapi::Subarray subarray2(
+      array_->array_, Layout::ROW_MAJOR, &test::g_helper_stats);
   add_ranges({sub2_0, sub2_1}, sizeof(sub2_0), &subarray2);
 
   // Create DenseTiler
@@ -2657,7 +2709,8 @@ TEST_CASE_METHOD(
   open_array(array_name, TILEDB_READ);
   int32_t sub1_0[] = {4, 6};
   int32_t sub1_1[] = {18, 22};
-  Subarray subarray1(array_->array_, Layout::ROW_MAJOR, &test::g_helper_stats);
+  tdbcoreapi::Subarray subarray1(
+      array_->array_, Layout::ROW_MAJOR, &test::g_helper_stats);
   add_ranges({sub1_0, sub1_1}, sizeof(sub1_0), &subarray1);
 
   // Create DenseTiler
@@ -2793,7 +2846,8 @@ TEST_CASE_METHOD(
   open_array(array_name, TILEDB_READ);
   int32_t sub2_0[] = {3, 5};
   int32_t sub2_1[] = {13, 18};
-  Subarray subarray2(array_->array_, Layout::ROW_MAJOR, &test::g_helper_stats);
+  tdbcoreapi::Subarray subarray2(
+      array_->array_, Layout::ROW_MAJOR, &test::g_helper_stats);
   add_ranges({sub2_0, sub2_1}, sizeof(sub2_0), &subarray2);
 
   // Create DenseTiler
@@ -2973,7 +3027,8 @@ TEST_CASE_METHOD(
   open_array(array_name, TILEDB_READ);
   int32_t sub1_0[] = {4, 6};
   int32_t sub1_1[] = {18, 22};
-  Subarray subarray1(array_->array_, Layout::ROW_MAJOR, &test::g_helper_stats);
+  tdbcoreapi::Subarray subarray1(
+      array_->array_, Layout::ROW_MAJOR, &test::g_helper_stats);
   add_ranges({sub1_0, sub1_1}, sizeof(sub1_0), &subarray1);
 
   // Create DenseTiler
@@ -3110,7 +3165,8 @@ TEST_CASE_METHOD(
   open_array(array_name, TILEDB_READ);
   int32_t sub2_0[] = {3, 5};
   int32_t sub2_1[] = {13, 18};
-  Subarray subarray2(array_->array_, Layout::ROW_MAJOR, &test::g_helper_stats);
+  tdbcoreapi::Subarray subarray2(
+      array_->array_, Layout::ROW_MAJOR, &test::g_helper_stats);
   add_ranges({sub2_0, sub2_1}, sizeof(sub2_0), &subarray2);
 
   // Create DenseTiler
@@ -3278,7 +3334,8 @@ TEST_CASE_METHOD(
   open_array(array_name, TILEDB_READ);
   int32_t sub1_0[] = {4, 6};
   int32_t sub1_1[] = {18, 22};
-  Subarray subarray1(array_->array_, Layout::ROW_MAJOR, &test::g_helper_stats);
+  tdbcoreapi::Subarray subarray1(
+      array_->array_, Layout::ROW_MAJOR, &test::g_helper_stats);
   add_ranges({sub1_0, sub1_1}, sizeof(sub1_0), &subarray1);
 
   // Create DenseTiler
@@ -3415,7 +3472,8 @@ TEST_CASE_METHOD(
   open_array(array_name, TILEDB_READ);
   int32_t sub2_0[] = {3, 5};
   int32_t sub2_1[] = {13, 18};
-  Subarray subarray2(array_->array_, Layout::ROW_MAJOR, &test::g_helper_stats);
+  tdbcoreapi::Subarray subarray2(
+      array_->array_, Layout::ROW_MAJOR, &test::g_helper_stats);
   add_ranges({sub2_0, sub2_1}, sizeof(sub2_0), &subarray2);
 
   // Create DenseTiler
@@ -3566,7 +3624,8 @@ TEST_CASE_METHOD(
   open_array(array_name, TILEDB_READ);
   int32_t sub1_0[] = {4, 6};
   int32_t sub1_1[] = {18, 22};
-  Subarray subarray1(array_->array_, Layout::ROW_MAJOR, &test::g_helper_stats);
+  tdbcoreapi::Subarray subarray1(
+      array_->array_, Layout::ROW_MAJOR, &test::g_helper_stats);
   add_ranges({sub1_0, sub1_1}, sizeof(sub1_0), &subarray1);
 
   // Create DenseTiler
@@ -3703,7 +3762,8 @@ TEST_CASE_METHOD(
   open_array(array_name, TILEDB_READ);
   int32_t sub2_0[] = {3, 5};
   int32_t sub2_1[] = {13, 18};
-  Subarray subarray2(array_->array_, Layout::ROW_MAJOR, &test::g_helper_stats);
+  tdbcoreapi::Subarray subarray2(
+      array_->array_, Layout::ROW_MAJOR, &test::g_helper_stats);
   add_ranges({sub2_0, sub2_1}, sizeof(sub2_0), &subarray2);
 
   // Create DenseTiler

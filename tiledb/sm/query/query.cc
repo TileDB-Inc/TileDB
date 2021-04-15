@@ -985,20 +985,25 @@ Status Query::set_subarray(const void* subarray) {
     auto s_ptr = (const unsigned char*)subarray;
     uint64_t offset = 0;
 
-    // Get read_range_oob config setting
-    bool found = false;
-    std::string read_range_oob = config()->get("sm.read_range_oob", &found);
-    assert(found);
-    if (read_range_oob != "error" && read_range_oob != "warn")
-      return LOG_STATUS(Status::QueryError(
-          "Invalid value " + read_range_oob +
-          " for sm.read_range_obb. Acceptable values are 'error' or 'warn'."));
+    bool err_on_range_oob = true;
+    if (type_ == QueryType::READ) {
+      // Get read_range_oob config setting
+      bool found = false;
+      std::string read_range_oob_str =
+          config()->get("sm.read_range_oob", &found);
+      assert(found);
+      if (read_range_oob_str != "error" && read_range_oob_str != "warn")
+        return LOG_STATUS(Status::QueryError(
+            "Invalid value " + read_range_oob_str +
+            " for sm.read_range_obb. Acceptable values are 'error' or "
+            "'warn'."));
+      err_on_range_oob = read_range_oob_str == "error";
+    }
 
     for (unsigned d = 0; d < dim_num; ++d) {
       auto r_size = 2 * array_->array_schema()->dimension(d)->coord_size();
       Range range(&s_ptr[offset], r_size);
-      RETURN_NOT_OK(
-          sub.add_range(d, std::move(range), read_range_oob == "error"));
+      RETURN_NOT_OK(sub.add_range(d, std::move(range), err_on_range_oob));
       offset += r_size;
     }
   }
@@ -1007,6 +1012,34 @@ Status Query::set_subarray(const void* subarray) {
     RETURN_NOT_OK(writer_.set_subarray(sub));
   } else if (type_ == QueryType::READ) {
     RETURN_NOT_OK(reader_.set_subarray(sub));
+  }
+
+  status_ = QueryStatus::UNINITIALIZED;
+
+  return Status::Ok();
+}
+
+Status Query::set_subarray(const tiledb::sm::Subarray* subarray) {
+  auto query_status = status();
+  if (query_status != tiledb::sm::QueryStatus::UNINITIALIZED &&
+      query_status != tiledb::sm::QueryStatus::COMPLETED) {
+    // note:
+    // Can be in this initialized state when query has been de-serialized
+    // server-side and are trying to perform local submit...
+    // Don't change anything and return indication of success.
+    return Status::Ok();
+  }
+
+  // Set subarray
+  if (!subarray->is_set())
+    // Nothing useful to set here, will leave query with its current
+    // settings and consider successful.
+    return Status::Ok();
+
+  if (type_ == QueryType::WRITE) {
+    RETURN_NOT_OK(writer_.set_subarray(*subarray));
+  } else if (type_ == QueryType::READ) {
+    RETURN_NOT_OK(reader_.set_subarray(*subarray));
   }
 
   status_ = QueryStatus::UNINITIALIZED;
@@ -1038,6 +1071,18 @@ Status Query::set_subarray_unsafe(const NDRange& subarray) {
   status_ = QueryStatus::UNINITIALIZED;
 
   return Status::Ok();
+}
+
+const Subarray& Query::subarray() const {
+  if (type_ == QueryType::WRITE)
+    return *writer_.subarray_ranges();
+  return *reader_.subarray();
+}
+
+Subarray* Query::subarray() {
+  if (type_ == QueryType::WRITE)
+    return const_cast<Subarray*>(writer_.subarray_ranges());
+  return const_cast<Subarray*>(reader_.subarray());
 }
 
 Status Query::submit() {
