@@ -239,7 +239,7 @@ TEST_CASE("C++ API: Test subarray (dense)", "[cppapi][dense][subarray]") {
     Config config;
     config.set("sm.read_range_oob", "warn");
     query.set_config(config);
-    // (dense) WRITE should ignore sm.read_range_oob config option 
+    // (dense) WRITE should ignore sm.read_range_oob config option
     // and err/throw on oob
     REQUIRE_THROWS(query.set_subarray({1, 4, -1, 3}));
   }
@@ -247,7 +247,6 @@ TEST_CASE("C++ API: Test subarray (dense)", "[cppapi][dense][subarray]") {
   if (vfs.is_dir(array_name))
     vfs.remove_dir(array_name);
 }
-
 
 TEST_CASE(
     "C++ API: Test subarray (incomplete)",
