@@ -71,7 +71,7 @@ TEST_CASE("C++ API: Test subarray", "[cppapi][sparse][subarray]") {
   query_w.finalize();
   array_w.close();
 
-  SECTION("- Read single cell - Subarray-internal") {
+  SECTION("- Read single cell - Subarray-query") {
     tiledb::Array array(ctx, array_name, TILEDB_READ);
     tiledb::Query query(ctx, array);
     int range[] = {0, 0};
@@ -107,7 +107,7 @@ TEST_CASE("C++ API: Test subarray", "[cppapi][sparse][subarray]") {
     REQUIRE(data[0] == 1);
   }
 
-  SECTION("- Read single range - Subarray-internal") {
+  SECTION("- Read single range - Subarray-query") {
     tiledb::Array array(ctx, array_name, TILEDB_READ);
     tiledb::Query query(ctx, array);
     int range[] = {1, 2};
@@ -147,7 +147,7 @@ TEST_CASE("C++ API: Test subarray", "[cppapi][sparse][subarray]") {
     REQUIRE(data[1] == 3);
   }
 
-  SECTION("- Read two cells - Subarray-internal") {
+  SECTION("- Read two cells - Subarray-query") {
     tiledb::Array array(ctx, array_name, TILEDB_READ);
     tiledb::Query query(ctx, array);
     int range0[] = {0, 0}, range1[] = {2, 2};
@@ -223,7 +223,7 @@ TEST_CASE("C++ API: Test subarray", "[cppapi][sparse][subarray]") {
     REQUIRE(data[1] == 3);
   }
 
-  SECTION("- Read two regions - Subarray-internal") {
+  SECTION("- Read two regions - Subarray-query") {
     tiledb::Array array(ctx, array_name, TILEDB_READ);
     tiledb::Query query(ctx, array);
     int range0[] = {0, 1}, range1[] = {2, 3};
@@ -265,7 +265,7 @@ TEST_CASE("C++ API: Test subarray", "[cppapi][sparse][subarray]") {
     REQUIRE(data[3] == 4);
   }
 
-  SECTION("- Read ranges oob error") {
+  SECTION("- Read ranges oob error - Subarray-query") {
     Array array(ctx, array_name, TILEDB_READ);
     Query query(ctx, array);
     Config config;
@@ -277,7 +277,34 @@ TEST_CASE("C++ API: Test subarray", "[cppapi][sparse][subarray]") {
     REQUIRE_THROWS(query.add_range(1, range2[0], range2[1]));
   }
 
-  SECTION("- Read ranges oob warn") {
+  SECTION("- Read ranges oob error - Subarray-cppapi") {
+    Array array(ctx, array_name, TILEDB_READ);
+    // Query query(ctx, array);
+    Subarray subarray(ctx, array);
+    Config config;
+    config.set("sm.read_range_oob", "error");
+    subarray.set_config(config);
+    int range[] = {1, 4};
+    int range2[] = {-1, 3};
+    REQUIRE_THROWS(subarray.add_range(0, range[0], range[1]));
+    REQUIRE_THROWS(subarray.add_range(1, range2[0], range2[1]));
+  }
+
+  SECTION("-  set_subarray Write ranges oob error - Subarray-cppapi") {
+    Array array(ctx, array_name, TILEDB_WRITE);
+    // Query query(ctx, array);
+    Subarray subarray(ctx, array);
+    // default expected to err. (currently errs because sparse)
+    REQUIRE_THROWS(subarray.set_subarray({1, 4, -1, 3}));
+    Config config;
+    // The config option should be ignored but we set anyway.
+    // (currently errs because sparse)
+    config.set("sm.read_range_oob", "error");
+    subarray.set_config(config);
+    REQUIRE_THROWS(subarray.set_subarray({1, 4, -1, 3}));
+  }
+
+  SECTION("- Read ranges oob warn - Subarray-query") {
     Array array(ctx, array_name, TILEDB_READ);
     Query query(ctx, array);
     Config config;
@@ -301,12 +328,122 @@ TEST_CASE("C++ API: Test subarray", "[cppapi][sparse][subarray]") {
     REQUIRE(data[1] == 3);
   }
 
+  SECTION("- set_subarray  Write ranges oob warn - Subarray-query") {
+    Array array(ctx, array_name, TILEDB_WRITE);
+    Query query(ctx, array);
+    // throws on sparse array (set_subarray not supported)
+    REQUIRE_THROWS(query.set_subarray({1, 4, -1, 3}));
+    Config config;
+    config.set("sm.read_range_oob", "warn");
+    query.set_config(config);
+    // throws on sparse array
+    REQUIRE_THROWS(query.set_subarray({1, 4, -1, 3}));
+  }
+
+  SECTION("- Read ranges oob warn - Subarray-cppapi") {
+    Array array(ctx, array_name, TILEDB_READ);
+    // Query query(ctx, array);
+    Subarray subarray(ctx, array);
+    Config config;
+    config.set("sm.read_range_oob", "warn");
+    subarray.set_config(config);
+    int range[] = {1, 4};
+    int range2[] = {-1, 3};
+    subarray.add_range(0, range[0], range[1]);
+    subarray.add_range(1, range2[0], range2[1]);
+
+    auto est_size = subarray.est_result_size("a");
+    REQUIRE(est_size == 12);
+    std::array<uint64_t, 2> est_size_var;
+    CHECK_THROWS(est_size_var = subarray.est_result_size_var("a"));
+
+    std::vector<int> data(est_size);
+    Query query(ctx, array);
+    query.set_layout(TILEDB_ROW_MAJOR).set_buffer("a", data);
+    query.set_subarray(subarray);
+    query.submit();
+    REQUIRE(query.result_buffer_elements()["a"].second == 3);
+    REQUIRE(data[0] == 2);
+    REQUIRE(data[1] == 3);
+  }
+
+  if (vfs.is_dir(array_name))
+    vfs.remove_dir(array_name);
+}
+
+TEST_CASE("C++ API: Test subarray (dense)", "[cppapi][dense][subarray]") {
+  const std::string array_name = "cpp_unit_array";
+  Config cfg;
+  cfg.set("config.logging_level", "3");
+  Context ctx(cfg);
+  VFS vfs(ctx);
+
+  if (vfs.is_dir(array_name))
+    vfs.remove_dir(array_name);
+
+  // Create
+  Domain domain(ctx);
+  domain.add_dimension(Dimension::create<int>(ctx, "rows", {{0, 3}}, 4))
+      .add_dimension(Dimension::create<int>(ctx, "cols", {{0, 3}}, 4));
+  ArraySchema schema(ctx, TILEDB_DENSE);
+  schema.set_domain(domain).set_order({{TILEDB_ROW_MAJOR, TILEDB_ROW_MAJOR}});
+  schema.add_attribute(Attribute::create<int>(ctx, "a"));
+  Array::create(array_name, schema);
+
+  // Write
+  std::vector<int> data_w = {1, 2, 3, 4};
+  std::vector<int> coords_w = {0, 0, 1, 1, 2, 2, 3, 3};
+  Array array_w(ctx, array_name, TILEDB_WRITE);
+  tiledb::Query query_w(ctx, array_w);
+  query_w.set_coordinates(coords_w)
+      .set_layout(TILEDB_UNORDERED)
+      .set_buffer("a", data_w);
+  query_w.submit();
+  query_w.finalize();
+  array_w.close();
+
+  SECTION("-  set_subarray Write ranges oob error - Subarray-cppapi") {
+    Array array(ctx, array_name, TILEDB_WRITE);
+    // Query query(ctx, array);
+    Subarray subarray(ctx, array);
+    // default expected to err.
+    REQUIRE_THROWS(subarray.set_subarray({1, 4, -1, 3}));
+    Config config;
+    // The config option should be ignored but we set anyway.
+    config.set("sm.read_range_oob", "error");
+    subarray.set_config(config);
+    REQUIRE_THROWS(subarray.set_subarray({1, 4, -1, 3}));
+  }
+
+  SECTION("- set_subarray Write ranges oob warn - Subarray-query") {
+    Array array(ctx, array_name, TILEDB_WRITE);
+    Query query(ctx, array);
+    // default (dense) WRITE should always err/throw on oob
+    REQUIRE_THROWS(query.set_subarray({1, 4, -1, 3}));
+    Config config;
+    config.set("sm.read_range_oob", "warn");
+    query.set_config(config);
+    // (dense) WRITE should ignore sm.read_range_oob config option
+    // and err/throw on oob
+    REQUIRE_THROWS(query.set_subarray({1, 4, -1, 3}));
+  }
+
+  SECTION("- set_subarray Write ranges oob warn - Subarray-cppapi") {
+    Array array(ctx, array_name, TILEDB_WRITE);
+    Subarray subarray(ctx, array);
+    REQUIRE_THROWS(subarray.set_subarray({1, 4, -1, 3}));
+    Config config;
+    config.set("sm.read_range_oob", "warn");
+    subarray.set_config(config);
+    REQUIRE_THROWS(subarray.set_subarray({1, 4, -1, 3}));
+  }
+
   if (vfs.is_dir(array_name))
     vfs.remove_dir(array_name);
 }
 
 TEST_CASE(
-    "C++ API: Test subarray (incomplete) - Subarray-internal",
+    "C++ API: Test subarray (incomplete) - Subarray-query",
     "[cppapi][sparse][subarray][incomplete]") {
   const std::string array_name = "cpp_unit_array";
   Context ctx;
@@ -649,7 +786,7 @@ TEST_CASE(
 }
 
 TEST_CASE(
-    "C++ API: Test subarray (incomplete overlapping) - Subarray-internal",
+    "C++ API: Test subarray (incomplete overlapping) - Subarray-query",
     "[cppapi][sparse][subarray][incomplete]") {
   const std::string array_name = "cpp_unit_array";
   Context ctx;

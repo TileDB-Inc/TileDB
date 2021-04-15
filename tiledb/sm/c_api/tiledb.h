@@ -4636,6 +4636,28 @@ TILEDB_EXPORT int32_t tiledb_subarray_alloc(
     tiledb_subarray_t** subarray);
 
 /**
+ * Set the query config
+ *
+ * Setting the configuration with this function overrides the following
+ * Query-level parameters only:
+ *
+ * - `sm..read_range_oob`
+ *........TBD: these not currently active Subarray, should they be?
+ * - `sm.memory_budget`
+ * - `sm.memory_budget_var`
+ * - `sm.sub_partitioner_memory_budget`
+ * - `sm.var_offsets.mode`
+ * - `sm.var_offsets.extra_element`
+ * - `sm.var_offsets.bitsize`
+ * - `sm.check_coord_dups`
+ * - `sm.check_coord_oob`
+ * - `sm.check_global_order`
+ * - `sm.dedup_coords`
+ */
+TILEDB_EXPORT int32_t tiledb_subarray_set_config(
+    tiledb_ctx_t* ctx, tiledb_subarray_t* subarray, tiledb_config_t* config);
+
+/**
  * Frees a TileDB subarray object.
  *
  * **Example:**
