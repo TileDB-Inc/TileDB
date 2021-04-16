@@ -3994,8 +3994,6 @@ int32_t tiledb_subarray_partitioner_alloc(
     tiledb_ctx_t* ctx,
     const tiledb_subarray_t* subarray,
     tiledb_subarray_partitioner_t** subarray_partitioner,
-    // TBD: require these here, or provide a separate set_memory_budget
-    // (subarray_partitioner::set_memory_budget() exists...)
     uint64_t memory_budget,
     uint64_t memory_budget_var,
     uint64_t memory_budget_validity) {  //,
@@ -4058,7 +4056,6 @@ int32_t tiledb_subarray_partitioner_set_layout(
       sanity_check(ctx, partitioner) == TILEDB_ERR)
     return TILEDB_ERR;
 
-  // TBD: any validation on 'layout'?
   partitioner->partitioner_->subarray()->set_layout(
       static_cast<tiledb::sm::Layout>(layout));
 
