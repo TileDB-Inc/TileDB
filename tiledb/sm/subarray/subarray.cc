@@ -2154,58 +2154,189 @@ Status Subarray::compute_relevant_fragments(
     ComputeRelevantFragmentsCtx* const fn_ctx) {
   STATS_START_TIMER(stats::Stats::TimerType::READ_COMPUTE_RELEVANT_FRAGS)
 
-  auto meta = array_->fragment_metadata();
-  auto fragment_num = meta.size();
-  auto range_num = tile_overlap->range_num();
+  // Fetch the calibrated, multi-dimensional coordinates from the
+  // flattened (total order) range indexes. In this context,
+  // "calibration" implies that the coordinates contain the minimum
+  // n-dimensional space to encapsulate all ranges within `tile_overlap`.
+  std::vector<uint64_t> start_coords;
+  std::vector<uint64_t> end_coords;
+  get_expanded_coordinates(
+      tile_overlap->range_idx_start(),
+      tile_overlap->range_idx_end(),
+      &start_coords,
+      &end_coords);
 
-  // Sanity check we have at least one fragment
-  // and one range to compute on.
-  if (fragment_num == 0 || range_num == 0) {
-    relevant_fragments_.clear();
-    relevant_fragments_.shrink_to_fit();
+  // If the calibrated coordinates have not changed from
+  // the last call to this function, the computed relevant
+  // fragments will not change.
+  if (fn_ctx->initialized_ && start_coords == fn_ctx->last_start_coords_ &&
+      end_coords == fn_ctx->last_end_coords_) {
     return Status::Ok();
   }
 
-  // If this is the first time this routine is invoked,
-  // initialize `fn_ctx`. Otherwise, set `range_idx_start`
-  // to start from the end of the last range we calculated.
-  uint64_t range_idx_start = 0;
-  if (fn_ctx->frag_bytemap_.empty()) {
-    fn_ctx->frag_bytemap_.resize(fragment_num, 0);
-  } else {
-    assert(fn_ctx->frag_bytemap_.size() == fragment_num);
-    range_idx_start = fn_ctx->range_num_;
+  // Perform lazy-initialization the context cache for this routine.
+  const size_t fragment_num = array_->fragment_metadata().size();
+  const uint32_t dim_num = array_->array_schema()->dim_num();
+  if (!fn_ctx->initialized_) {
+    fn_ctx->initialized_ = true;
+
+    // Create a fragment bytemap for each dimension. Each
+    // non-zero byte represents an overlap between a fragment
+    // and at least one range in the corresponding dimension.
+    fn_ctx->frag_bytemaps_.resize(dim_num);
+    for (uint32_t d = 0; d < dim_num; ++d) {
+      fn_ctx->frag_bytemaps_[d].resize(fragment_num, 0);
+    }
   }
 
-  fn_ctx->range_num_ = range_num;
+  // Store the current calibrated coordinates.
+  fn_ctx->last_start_coords_ = start_coords;
+  fn_ctx->last_end_coords_ = end_coords;
 
-  // Compute the relevant fragments
-  auto statuses = parallel_for_2d(
-      compute_tp,
-      0,
-      fragment_num,
-      range_idx_start,
-      fn_ctx->range_num_,
-      [&](unsigned f, uint64_t r) {
-        const uint64_t translated_r = r + tile_overlap->range_idx_start();
-        if (fn_ctx->frag_bytemap_[f] == 0 &&
-            meta[f]->overlaps_non_empty_domain(this->ndrange(translated_r)))
-          fn_ctx->frag_bytemap_[f] = 1;
-        return Status::Ok();
-      });
+  // Populate the fragment bytemap for each dimension in parallel.
+  auto statuses = parallel_for(compute_tp, 0, dim_num, [&](const uint32_t d) {
+    return compute_relevant_fragments_for_dim(
+        compute_tp,
+        d,
+        fragment_num,
+        start_coords,
+        end_coords,
+        &fn_ctx->frag_bytemaps_[d]);
+  });
 
-  // Copy to the result
-  relevant_fragments_.clear();
+  for (const auto& st : statuses)
+    RETURN_NOT_OK(st);
+
+  // Recalculate relevant fragments.
   relevant_fragments_.reserve(fragment_num);
+  relevant_fragments_.clear();
   for (unsigned f = 0; f < fragment_num; ++f) {
-    if (fn_ctx->frag_bytemap_[f])
+    bool relevant = true;
+    for (uint32_t d = 0; d < dim_num; ++d) {
+      if (fn_ctx->frag_bytemaps_[d][f] == 0) {
+        relevant = false;
+        break;
+      }
+    }
+
+    if (relevant) {
       relevant_fragments_.emplace_back(f);
+    }
   }
-  relevant_fragments_.shrink_to_fit();
 
   return Status::Ok();
 
   STATS_END_TIMER(stats::Stats::TimerType::READ_COMPUTE_RELEVANT_FRAGS)
+}
+
+void Subarray::get_expanded_coordinates(
+    const uint64_t range_idx_start,
+    const uint64_t range_idx_end,
+    std::vector<uint64_t>* const start_coords,
+    std::vector<uint64_t>* const end_coords) const {
+  // Fetch the multi-dimensional coordinates from the
+  // flattened (total order) range indexes.
+  *start_coords = get_range_coords(range_idx_start);
+  *end_coords = get_range_coords(range_idx_end);
+
+  // The rest of this routine is concerned with expanding
+  // the coordinates to ensure that the n-dimensional space
+  // between `start_coords` and `end_coords` encapsulates
+  // all ranges between the total-ordered start/end indexes.
+  // This is non-applicable to one-dimensional arrays.
+  const uint32_t dim_num = array_->array_schema()->dim_num();
+  assert(dim_num > 0);
+  if (dim_num == 1) {
+    return;
+  }
+
+  // This is only applicable to row-major, column-major, or unordered
+  // layouts. We will treat unordered layouts as the cell layout.
+  assert(
+      layout_ == Layout::ROW_MAJOR || layout_ == Layout::COL_MAJOR ||
+      layout_ == Layout::UNORDERED);
+  const Layout coords_layout =
+      (layout_ == Layout::UNORDERED) ? cell_order_ : layout_;
+  assert(
+      coords_layout == Layout::ROW_MAJOR || coords_layout == Layout::COL_MAJOR);
+
+  // If the n-dimensional space exists within the same index on
+  // all but the last dimension, we do not need to expand the
+  // coordinates.
+  bool expand = false;
+  if (coords_layout == Layout::ROW_MAJOR) {
+    for (uint32_t d = 0; d < dim_num - 1; ++d) {
+      if ((*start_coords)[d] != (*end_coords)[d]) {
+        expand = true;
+        break;
+      }
+    }
+  } else {
+    assert(coords_layout == Layout::COL_MAJOR);
+    for (uint32_t d = 1; d < dim_num; ++d) {
+      if ((*start_coords)[d] != (*end_coords)[d]) {
+        expand = true;
+        break;
+      }
+    }
+  }
+
+  // Expand the coordinates if necessary.
+  if (expand) {
+    if (coords_layout == Layout::ROW_MAJOR) {
+      for (uint32_t d = 1; d < dim_num; ++d) {
+        (*start_coords)[d] = 0;
+        (*end_coords)[d] = ranges_[d].size() - 1;
+      }
+    } else {
+      assert(coords_layout == Layout::COL_MAJOR);
+      for (uint32_t d = 0; d < dim_num - 1; ++d) {
+        (*start_coords)[d] = 0;
+        (*end_coords)[d] = ranges_[d].size() - 1;
+      }
+    }
+  }
+}
+
+Status Subarray::compute_relevant_fragments_for_dim(
+    ThreadPool* const compute_tp,
+    const uint32_t dim_idx,
+    const uint64_t fragment_num,
+    const std::vector<uint64_t>& start_coords,
+    const std::vector<uint64_t>& end_coords,
+    std::vector<uint8_t>* const frag_bytemap) const {
+  const std::vector<FragmentMetadata*> meta = array_->fragment_metadata();
+  const Dimension* const dim = array_->array_schema()->dimension(dim_idx);
+
+  auto statuses =
+      parallel_for(compute_tp, 0, fragment_num, [&](const uint64_t f) {
+        // We're done when we have already determined fragment `f` to
+        // be relevant for this dimension.
+        if ((*frag_bytemap)[f] == 1) {
+          return Status::Ok();
+        }
+
+        // The fragment `f` is relevant to this dimension's fragment bytemap
+        // if it overlaps with any range between the start and end coordinates
+        // on this dimension.
+        const Range& frag_range = meta[f]->non_empty_domain()[dim_idx];
+        for (uint64_t r = start_coords[dim_idx]; r <= end_coords[dim_idx];
+             ++r) {
+          const Range& query_range = ranges_[dim_idx][r];
+
+          if (dim->overlap(frag_range, query_range)) {
+            (*frag_bytemap)[f] = 1;
+            break;
+          }
+        }
+
+        return Status::Ok();
+      });
+
+  for (const auto& st : statuses)
+    RETURN_NOT_OK(st);
+
+  return Status::Ok();
 }
 
 Status Subarray::load_relevant_fragment_rtrees(
