@@ -71,6 +71,7 @@ void check_partitions(
 
   // Non-empty partitions
   // TBD: The correctness of this routine (seems in doubt).
+  // (Related code, find 'DIAGNOSING' #if block below)
   // A)
   // All current tests (build configuration with -EnableSerialization)
   // calling this routine with last_unsplittable==false pass one fewer

@@ -569,10 +569,8 @@ void AsyncFx::write_sparse_async_cancelled() {
     rc = tiledb_query_submit_async(ctx_, query, callback, &callback_made);
     CHECK(rc == TILEDB_OK);
 
-    bool query_submitted_ok;
     tiledb_query_status_t status = TILEDB_FAILED;
     if (rc == TILEDB_OK) {
-      query_submitted_ok = true;
       // Cancel it immediately, which sometimes in this test is fast enough to
       // cancel it and sometimes not.
       rc = tiledb_ctx_cancel_tasks(ctx_);
@@ -587,8 +585,6 @@ void AsyncFx::write_sparse_async_cancelled() {
 
       // If the query completed, check the callback was made.
       CHECK(callback_made == (status == TILEDB_COMPLETED ? 1 : 0));
-    } else {
-      query_submitted_ok = false;
     }
 
     // If it failed, run it again.
@@ -596,26 +592,20 @@ void AsyncFx::write_sparse_async_cancelled() {
       rc = tiledb_query_submit_async(ctx_, query, callback, &callback_made);
       CHECK(rc == TILEDB_OK);
       if (rc == TILEDB_OK) {
-        query_submitted_ok = true;
         do {
           rc = tiledb_query_get_status(ctx_, query, &status);
           CHECK(rc == TILEDB_OK);
         } while (status != TILEDB_COMPLETED && status != TILEDB_FAILED);
       }
-    } else {
-      query_submitted_ok = false;
     }
 
     CHECK(status == TILEDB_COMPLETED);
     CHECK(callback_made == 1);
 
-    // TBD: Can we still safely finalize if query wasn't even submitted
-    // successfully above?
-    if (query_submitted_ok) {
-      // Finalize query
-      rc = tiledb_query_finalize(ctx_, query);
-      CHECK(rc == TILEDB_OK);
-    }
+    // Finalize query whether successfully submitted or not
+    rc = tiledb_query_finalize(ctx_, query);
+    CHECK(rc == TILEDB_OK);
+
   } else {
     tiledb_subarray_t* query_subarray;
     tiledb_query_get_subarray(ctx_, query, &query_subarray);
@@ -625,10 +615,8 @@ void AsyncFx::write_sparse_async_cancelled() {
     rc = tiledb_query_submit_async(ctx_, query, callback, &callback_made);
     CHECK(rc == TILEDB_OK);
 
-    bool query_submitted_ok;
     tiledb_query_status_t status = TILEDB_FAILED;
     if (rc == TILEDB_OK) {
-      query_submitted_ok = true;
       // Cancel it immediately, which sometimes in this test is fast enough to
       // cancel it and sometimes not.
       rc = tiledb_ctx_cancel_tasks(ctx_);
@@ -643,8 +631,6 @@ void AsyncFx::write_sparse_async_cancelled() {
 
       // If the query completed, check the callback was made.
       CHECK(callback_made == (status == TILEDB_COMPLETED ? 1 : 0));
-    } else {
-      query_submitted_ok = false;
     }
 
     // If it failed, run it again.
@@ -652,24 +638,19 @@ void AsyncFx::write_sparse_async_cancelled() {
       rc = tiledb_query_submit_async(ctx_, query, callback, &callback_made);
       CHECK(rc == TILEDB_OK);
       if (rc == TILEDB_OK) {
-        query_submitted_ok = true;
         do {
           rc = tiledb_query_get_status(ctx_, query, &status);
           CHECK(rc == TILEDB_OK);
         } while (status != TILEDB_COMPLETED && status != TILEDB_FAILED);
       }
-    } else {
-      query_submitted_ok = false;
     }
 
     CHECK(status == TILEDB_COMPLETED);
     CHECK(callback_made == 1);
 
-    if (query_submitted_ok) {
-      // Finalize query
-      rc = tiledb_query_finalize(ctx_, query);
-      CHECK(rc == TILEDB_OK);
-    }
+    // Finalize query whether submitted successfully or not.
+    rc = tiledb_query_finalize(ctx_, query);
+    CHECK(rc == TILEDB_OK);
 
     tiledb_subarray_free(&query_subarray);
   }
