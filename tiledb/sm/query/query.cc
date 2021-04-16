@@ -985,20 +985,25 @@ Status Query::set_subarray(const void* subarray) {
     auto s_ptr = (const unsigned char*)subarray;
     uint64_t offset = 0;
 
-    // Get read_range_oob config setting
-    bool found = false;
-    std::string read_range_oob = config()->get("sm.read_range_oob", &found);
-    assert(found);
-    if (read_range_oob != "error" && read_range_oob != "warn")
-      return LOG_STATUS(Status::QueryError(
-          "Invalid value " + read_range_oob +
-          " for sm.read_range_obb. Acceptable values are 'error' or 'warn'."));
+    bool err_on_range_oob = true;
+    if (type_ == QueryType::READ) {
+      // Get read_range_oob config setting
+      bool found = false;
+      std::string read_range_oob_str =
+          config()->get("sm.read_range_oob", &found);
+      assert(found);
+      if (read_range_oob_str != "error" && read_range_oob_str != "warn")
+        return LOG_STATUS(Status::QueryError(
+            "Invalid value " + read_range_oob_str +
+            " for sm.read_range_obb. Acceptable values are 'error' or "
+            "'warn'."));
+      err_on_range_oob = read_range_oob_str == "error";
+    }
 
     for (unsigned d = 0; d < dim_num; ++d) {
       auto r_size = 2 * array_->array_schema()->dimension(d)->coord_size();
       Range range(&s_ptr[offset], r_size);
-      RETURN_NOT_OK(
-          sub.add_range(d, std::move(range), read_range_oob == "error"));
+      RETURN_NOT_OK(sub.add_range(d, std::move(range), err_on_range_oob));
       offset += r_size;
     }
   }
