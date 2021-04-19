@@ -474,14 +474,6 @@ Status Consolidator::consolidate_fragment_meta(
   // Write number of fragments
   RETURN_NOT_OK(buff.write(&fragment_num, sizeof(uint32_t)));
 
-  // Calculate offset of first fragment footer
-  uint64_t offset = sizeof(uint32_t);  // Fragment num
-  for (auto m : meta) {
-    offset += sizeof(uint64_t);                      // Name size
-    offset += m->fragment_uri().to_string().size();  // Name
-    offset += sizeof(uint64_t);                      // Offset
-  }
-
   // Compute new URI
   URI uri;
   auto first = meta.front()->fragment_uri();
@@ -496,10 +488,27 @@ Status Consolidator::consolidate_fragment_meta(
   uint32_t meta_version = 0;
   RETURN_NOT_OK(utils::parse::get_fragment_version(meta_name, &meta_version));
 
+  // Calculate offset of first fragment footer
+  uint64_t offset = sizeof(uint32_t);  // Fragment num
+  for (auto m : meta) {
+    offset += sizeof(uint64_t);  // Name size
+    if (meta_version >= 9) {
+      offset += m->fragment_uri().last_path_part().size();  // Name
+    } else {
+      offset += m->fragment_uri().to_string().size();  // Name
+    }
+    offset += sizeof(uint64_t);  // Offset
+  }
+
   // Serialize all fragment names and footer offsets into a single buffer
   for (auto m : meta) {
     // Write name size and name
-    auto name = m->fragment_uri().to_string();
+    std::string name;
+    if (meta_version >= 9) {
+      name = m->fragment_uri().last_path_part();
+    } else {
+      name = m->fragment_uri().to_string();
+    }
     auto name_size = (uint64_t)name.size();
     RETURN_NOT_OK(buff.write(&name_size, sizeof(uint64_t)));
     RETURN_NOT_OK(buff.write(name.c_str(), name_size));
