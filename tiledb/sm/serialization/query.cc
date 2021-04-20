@@ -602,9 +602,9 @@ Status query_to_capnp(
   }
 
   // Serialize Config
-  const Config config = query.config();
+  const Config* config = query.config();
   auto config_builder = query_builder->initConfig();
-  RETURN_NOT_OK(config_to_capnp(&config, &config_builder));
+  RETURN_NOT_OK(config_to_capnp(config, &config_builder));
 
   return Status::Ok();
 }
