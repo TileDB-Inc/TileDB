@@ -82,7 +82,8 @@ class Array {
   const URI& array_uri() const;
 
   /**
-   * Opens the array for reading/writing.
+   * Opens the array for reading at a timestamp retrieved from the config
+   * or for writing.
    *
    * @param query_type The mode in which the array is opened.
    * @param encryption_type The encryption type of the array
@@ -122,7 +123,7 @@ class Array {
       uint32_t key_length);
 
   /**
-   * Opens the array for reading at a given timestamp.
+   * Opens the array for reading at a timestamp retrieved from the config.
    *
    * @param query_type The query type. This should always be READ. It
    *    is here only for sanity check.
@@ -205,18 +206,24 @@ class Array {
   Status reopen();
 
   /**
-   * Re-opens the array at a specific timestamp.
+   * Re-opens the array between two specific timestamps.
    *
    * @note Applicable only for reads, it errors if the array was opened
    *     for writes.
    */
-  Status reopen(uint64_t timestamp);
+  Status reopen(uint64_t timestamp_start, uint64_t timestamp_end);
 
   /** Returns the timestamp at which the array was opened. */
-  uint64_t timestamp() const;
+  uint64_t timestamp_end() const;
 
   /** Directly set the timestamp value. */
-  Status set_timestamp(uint64_t timestamp);
+  Status set_timestamp_end(uint64_t timestamp_end);
+
+  /** Directly set the array config. */
+  Status set_config(Config config);
+
+  /** Retrieves a reference to the array config. */
+  Config config() const;
 
   /** Directly set the array URI. */
   Status set_uri(const std::string& uri);
@@ -347,13 +354,24 @@ class Array {
   QueryType query_type_;
 
   /**
-   * The timestamp at which the `open_array_` got opened. In TileDB,
-   * timestamps are in ms elapsed since 1970-01-01 00:00:00 +0000 (UTC).
+   * The starting timestamp between which the `open_array_` got opened.
+   * In TileDB, timestamps are in ms elapsed since
+   * 1970-01-01 00:00:00 +0000 (UTC).
    */
-  uint64_t timestamp_;
+  uint64_t timestamp_start_;
+
+  /**
+   * The ending timestamp between  which the `open_array_` got opened.
+   * In TileDB, timestamps are in ms elapsed since
+   * 1970-01-01 00:00:00 +0000 (UTC).
+   */
+  uint64_t timestamp_end_;
 
   /** TileDB storage manager. */
   StorageManager* storage_manager_;
+
+  /** The array config. */
+  Config config_;
 
   /** Stores the max buffer sizes requested last time by the user .*/
   std::unordered_map<std::string, std::pair<uint64_t, uint64_t>>

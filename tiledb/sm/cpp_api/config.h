@@ -262,9 +262,18 @@ class Config {
    *
    * **Parameters**
    *
-   *  * - `sm.dedup_coords` <br>
+   * - `sm.array.timestamp_start` <br>
+   *    When set, an array will be opened between this value and
+   *    `sm.array.timestamp_end` (inclusive) upon a read query. <br>
+   *    **Default**: UINT64_MAX
+   * - `sm.array.timestamp_end` <br>
+   *    When set, an array will be opened between
+   *    `sm.array.timestamp_start` and this value (inclusive) upon a read
+   *    query. <br>
+   *    **Default**: UINT64_MAX
+   * - `sm.dedup_coords` <br>
    *    If `true`, cells with duplicate coordinates will be removed during
-   * sparse fragment writes. Note that ties during deduplication are broken
+   *    sparse fragment writes. Note that ties during deduplication are broken
    *    arbitrarily. <br>
    *    **Default**: false
    * - `sm.check_coord_dups` <br>

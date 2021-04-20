@@ -72,7 +72,7 @@ enum class SerializationContext { CLIENT, SERVER, BACKUP };
 Status array_to_capnp(
     const Array& array, capnp::Array::Builder* array_builder) {
   array_builder->setUri(array.array_uri().to_string());
-  array_builder->setTimestamp(array.timestamp());
+  array_builder->setTimestamp(array.timestamp_end());
 
   return Status::Ok();
 }
@@ -80,7 +80,7 @@ Status array_to_capnp(
 Status array_from_capnp(
     const capnp::Array::Reader& array_reader, Array* array) {
   RETURN_NOT_OK(array->set_uri(array_reader.getUri().cStr()));
-  RETURN_NOT_OK(array->set_timestamp(array_reader.getTimestamp()));
+  RETURN_NOT_OK(array->set_timestamp_end(array_reader.getTimestamp()));
 
   return Status::Ok();
 }
