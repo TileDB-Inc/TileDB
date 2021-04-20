@@ -2248,7 +2248,13 @@ Status StorageManager::load_fragment_metadata(
       // metadata buffer
       Buffer* f_buff = nullptr;
       uint64_t offset = 0;
-      auto it = offsets.find(sf.uri_.to_string());
+
+      auto it = offsets.end();
+      if (metadata->format_version() >= 9) {
+        it = offsets.find(name);
+      } else {
+        it = offsets.find(sf.uri_.to_string());
+      }
       if (it != offsets.end()) {
         f_buff = meta_buff;
         offset = it->second;
