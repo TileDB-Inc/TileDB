@@ -60,8 +60,8 @@ jobs:
           source scripts/install-minio.sh;
           source scripts/run-minio.sh;
 
-          bootstrap_args="${bootstrap_args} --enable-s3";
-          bootstrap_args="${bootstrap_args} --enable-tools";
+          BOOTSTRAP_ARGS="${BOOTSTRAP_ARGS} --enable-s3";
+          BOOTSTRAP_ARGS="${BOOTSTRAP_ARGS} --enable-tools";
           
           source $GITHUB_WORKSPACE/scripts/ci/build_libtiledb.sh
 

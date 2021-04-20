@@ -1,25 +1,14 @@
-name: build-ubuntu-16.04-SERIALIZATION
-on:
-  push:
-    branches:
-      - dev
-      - release-*
-      - refs/tags/*
-  pull_request:
-    branches:
-      - '*'  # must quote since "*" is a YAML reserved character; we want a string
+name: build-ubuntu-16.04-ASAN
+on: push
 env:
-  TILEDB_SERIALIZATION: ON
-  TILEDB_S3: ON
-  CXX: g++
-  BACKWARDS_COMPATIBILITY_ARRAYS: ON
+  CXX: g++-9
 
 jobs:
   build:
     runs-on: ubuntu-16.04
     if: ${{ startsWith(github.ref , 'refs/tags') != true && startsWith(github.ref , 'build-') != true }}
     timeout-minutes: 90
-    name: Build - ubuntu-16.04 - SERIALIZATION
+    name: Build - ubuntu-16.04 - ASAN
     steps:
       - uses: actions/checkout@v2
       - name: 'Print env'
@@ -37,6 +26,7 @@ jobs:
       - uses: actions/setup-python@v2
         with:
           python-version: '3.8'
+
       - run: |
           set -e pipefail
           python -m pip install --upgrade pip virtualenv
@@ -60,19 +50,15 @@ jobs:
         id: test
         run: |
 
-          git clone https://github.com/TileDB-Inc/TileDB-Unit-Test-Arrays.git --branch 2.2.0 test/inputs/arrays/read_compatibility_test
-
-          #   name: 'Clone Unit-Test-Arrays'
-
+          BOOTSTRAP_ARGS="${BOOTSTRAP_ARGS} --enable-verbose";
+          BOOTSTRAP_ARGS="${BOOTSTRAP_ARGS} --enable-sanitizer=address";
+          BOOTSTRAP_ARGS="${BOOTSTRAP_ARGS} --enable-debug";
+          BOOTSTRAP_ARGS="${BOOTSTRAP_ARGS} --enable-static-tiledb";
           BOOTSTRAP_ARGS="${BOOTSTRAP_ARGS} --enable-serialization";
           source $GITHUB_WORKSPACE/scripts/ci/build_libtiledb.sh
 
-          # Bypass Catch2 Framework stdout interception with awk on test output
-          # make check | awk '/1: ::set-output/{sub(/.*1: /, ""); print; next} 1'
           ./tiledb/test/tiledb_unit -d yes | awk '/1: ::set-output/{sub(/.*1: /, ""); print; next} 1'
 
-
-          # - bash: |
           pushd $GITHUB_WORKSPACE/examples/cmake_project
           mkdir build && cd build
           cmake -DCMAKE_PREFIX_PATH=$GITHUB_WORKSPACE/dist .. && make
@@ -98,7 +84,6 @@ jobs:
           if [[ "${{ steps.test.outputs.TILEDB_CI_SUCCESS }}" -ne 1 ]]; then
             exit 1;
           fi
-      #
       - name: "Print log files (failed build only)"
         run: |
           source $GITHUB_WORKSPACE/scripts/ci/print_logs.sh

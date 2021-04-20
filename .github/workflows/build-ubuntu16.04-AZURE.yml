@@ -80,7 +80,7 @@ jobs:
           source scripts/install-azurite.sh;
           source scripts/run-azurite.sh;
 
-          bootstrap_args="${bootstrap_args} --enable-azure";
+          BOOTSTRAP_ARGS="${BOOTSTRAP_ARGS} --enable-azure";
           source $GITHUB_WORKSPACE/scripts/ci/build_libtiledb.sh
           
           # Bypass Catch2 Framework stdout interception with awk on test output

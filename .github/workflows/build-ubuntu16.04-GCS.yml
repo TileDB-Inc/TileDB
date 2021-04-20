@@ -66,7 +66,7 @@ jobs:
           source scripts/install-gcs-emu.sh;
           source scripts/run-gcs-emu.sh;
 
-          bootstrap_args="${bootstrap_args} --enable-gcs";
+          BOOTSTRAP_ARGS="${BOOTSTRAP_ARGS} --enable-gcs";
           source $GITHUB_WORKSPACE/scripts/ci/build_libtiledb.sh
 
           # Bypass Catch2 Framework stdout interception with awk on test output

@@ -26,15 +26,14 @@
 
 # Build and test libtiledb
 
-# Set up arguments for bootstrap.sh
-bootstrap_args="${boostrap_args} --enable=verbose";
+BOOTSTRAP_ARGS="${BOOTSTRAP_ARGS} --enable-verbose";
 
 mkdir -p $GITHUB_WORKSPACE/build
 cd $GITHUB_WORKSPACE/build
 
 # Configure and build TileDB
-echo "Bootstrapping with '$bootstrap_args'"
-$GITHUB_WORKSPACE/bootstrap $bootstrap_args
+echo "Bootstrapping with '$BOOTSTRAP_ARGS'"
+$GITHUB_WORKSPACE/bootstrap $BOOTSTRAP_ARGS
 
 make -j4
 make examples -j4
