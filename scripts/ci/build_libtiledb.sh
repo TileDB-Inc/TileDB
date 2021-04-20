@@ -27,9 +27,7 @@
 # Build and test libtiledb
 
 # Set up arguments for bootstrap.sh
-bootstrap_args="--enable=verbose";
-
-# name: 'Install dependencies'
+bootstrap_args="${boostrap_args} --enable=verbose";
 
 mkdir -p $GITHUB_WORKSPACE/build
 cd $GITHUB_WORKSPACE/build
