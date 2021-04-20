@@ -704,6 +704,22 @@ class Subarray {
    */
   std::vector<unsigned> relevant_fragments() const;
 
+  /**
+   * For flattened ("total order") start/end range indexes,
+   * return the starting and ending ND-range coordinates that
+   * contain the minimum space to contain all flattened ranges.
+   *
+   * @param range_idx_start flattened range starting index, inclusive.
+   * @param range_idx_end flattened range ending index, inclusive.
+   * @param start_coords mutated to contain the nd-range start coordinates.
+   * @param end_coords mutated to contain the nd-range end coordinates.
+   */
+  void get_expanded_coordinates(
+      uint64_t range_idx_start,
+      uint64_t range_idx_end,
+      std::vector<uint64_t>* start_coords,
+      std::vector<uint64_t>* end_coords) const;
+
  private:
   /* ********************************* */
   /*        PRIVATE DATA TYPES         */
@@ -715,17 +731,33 @@ class Subarray {
    */
   struct ComputeRelevantFragmentsCtx {
     ComputeRelevantFragmentsCtx()
-        : range_num_(0) {
+        : initialized_(false) {
     }
 
-    /** The bytemap, one byte per fragment. */
-    std::vector<uint8_t> frag_bytemap_;
+    /**
+     * This context cache is lazy initialized. This will be
+     * set to `true` when initialized in `compute_relevant_fragments()`.
+     */
+    bool initialized_;
 
     /**
-     * The total number of ranges computed with in the
-     * last invocation of `compute_relevant_fragments`.
+     * The last calibrated start coordinates.
      */
-    uint64_t range_num_;
+    std::vector<uint64_t> last_start_coords_;
+
+    /**
+     * The last calibrated end coordinates.
+     */
+    std::vector<uint64_t> last_end_coords_;
+
+    /**
+     * The fragment bytemaps for each dimension. The inner
+     * vector is the fragment bytemap that has a byte element
+     * for each fragment. Non-zero bytes represent relevant
+     * fragments for a specific dimension. Each dimension
+     * has its own fragment bytemap (the outer vector).
+     */
+    std::vector<std::vector<uint8_t>> frag_bytemaps_;
   };
 
   /**
@@ -912,6 +944,24 @@ class Subarray {
       ThreadPool* compute_tp,
       const SubarrayTileOverlap* tile_overlap,
       ComputeRelevantFragmentsCtx* fn_ctx);
+
+  /**
+   * Computes the relevant fragment bytemap for a specific dimension.
+   *
+   * @param compute_tp The thread pool for compute-bound tasks.
+   * @param dim_idx The index of the dimension to compute on.
+   * @param fragment_num The number of fragments to compute on.
+   * @param start_coords The starting range coordinates to compute between.
+   * @param end_coords The ending range coordinates to compute between.
+   * @param frag_bytemap The fragment bytemap to mutate.
+   */
+  Status compute_relevant_fragments_for_dim(
+      ThreadPool* compute_tp,
+      uint32_t dim_idx,
+      uint64_t fragment_num,
+      const std::vector<uint64_t>& start_coords,
+      const std::vector<uint64_t>& end_coords,
+      std::vector<uint8_t>* frag_bytemap) const;
 
   /** Loads the R-Trees of all relevant fragments in parallel. */
   Status load_relevant_fragment_rtrees(ThreadPool* compute_tp) const;
