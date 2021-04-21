@@ -360,6 +360,34 @@ class Query {
       const char* name, void** buffer, uint64_t** buffer_size) const;
 
   /**
+   * Retrieves the buffer of a fixed-sized attribute/dimension.
+   *
+   * @param name The buffer attribute/dimension name. An empty string means
+   *     the special default attribute/dimension.
+   * @param buffer The buffer to be retrieved.
+   * @param buffer_size A pointer to the buffer size to be retrieved.
+   * @return Status
+   */
+  Status get_buffer(
+      const char* name,
+      uint64_t** buffer_off,
+      uint64_t** buffer_off_size) const;
+
+  /**
+   * Retrieves the buffer of a fixed-sized attribute/dimension.
+   *
+   * @param name The buffer attribute/dimension name. An empty string means
+   *     the special default attribute/dimension.
+   * @param buffer The buffer to be retrieved.
+   * @param buffer_size A pointer to the buffer size to be retrieved.
+   * @return Status
+   */
+  Status get_buffer(
+      const char* name,
+      uint8_t** buffer_validity_bytemap,
+      uint64_t** buffer_validity_bytemap_size) const;
+
+  /**
    * Retrieves the offsets and values buffers of a var-sized
    * attribute/dimension.
    *
@@ -494,6 +522,23 @@ class Query {
    */
   Status set_config(const Config& config);
 
+  Status set_data_buffer(
+      const std::string& name,
+      void* const buffer,
+      uint64_t* const buffer_size,
+      const bool check_null_buffers = true);
+
+  Status set_off_buffer(
+      const std::string& name,
+      uint64_t* const buffer_off,
+      uint64_t* const buffer_off_size,
+      const bool check_null_buffers = true);
+
+  Status set_val_buffer(
+      const std::string& name,
+      uint8_t* const buffer_validity_bytemap,
+      uint64_t* const buffer_validity_bytemap_size,
+      const bool check_null_buffers = true);
   /**
    * Get the config of the query.
    *
@@ -743,6 +788,12 @@ class Query {
 
   Status check_set_fixed_buffer(const std::string& name);
 
+  /**
+  * Internal routine for checking the completeness of all attribute
+  * and dimensions buffers. Iteratively searches that all attributes & dimenstions
+  * buffers have been set correctly
+  */
+  Status check_buffers_validity();
   /**
    * Internal routine for setting fixed-sized, nullable attribute buffers with
    * a ValidityVector.

@@ -150,6 +150,39 @@ class Writer {
   Status finalize();
 
   /**
+   * Retrieves the data buffer of a fixed-sized attribute/dimension.
+   *
+   * @param name The buffer name.
+   * @param buffer The buffer to be retrieved.
+   * @param buffer_size A pointer to the buffer size to be retrieved.
+   * @return Status
+   */
+  Status get_buffer(
+      const std::string& name, void** buffer, uint64_t** buffer_size) const;
+
+  /**
+   * Retrieves the offset buffer of a fixed-sized attribute/dimension.
+   *
+   * @param name The buffer name.
+   * @param buffer The buffer to be retrieved.
+   * @param buffer_size A pointer to the buffer size to be retrieved.
+   * @return Status
+   */
+  Status get_buffer(
+      const std::string& name, uint64_t** buffer, uint64_t** buffer_size) const;
+
+  /**
+   * Retrieves the validity buffer of a fixed-sized attribute/dimension.
+   *
+   * @param name The buffer name.
+   * @param buffer The buffer to be retrieved.
+   * @param buffer_size A pointer to the buffer size to be retrieved.
+   * @return Status
+   */
+  Status get_buffer(
+      const std::string& name, const ValidityVector** validity_vector) const;
+
+  /**
    * Retrieves the buffer of a fixed-sized attribute/dimension.
    *
    * @param name The buffer name.
@@ -256,8 +289,8 @@ class Writer {
    * @param buffer_size The size of `buffer` in bytes.
    * @return Status
    */
-  Status set_buffer_agnostic(
-      const std::string& name, void* const buffer, uint64_t* const buffer_size);
+  Status set_buffer(
+      const std::string& name, void* buffer, uint64_t* buffer_size);
 
   /**
    * Sets the buffer for a fixed-sized attribute/dimension.
@@ -268,7 +301,18 @@ class Writer {
    * @return Status
    */
   Status set_buffer(
-      const std::string& name, void* buffer, uint64_t* buffer_size);
+      const std::string& name, uint64_t* buffer, uint64_t* buffer_size);
+
+  /**
+   * Sets the buffer for a fixed-sized attribute/dimension.
+   *
+   * @param name The attribute/dimension to set the buffer for.
+   * @param buffer The buffer that has the input data to be written.
+   * @param buffer_size The size of `buffer` in bytes.
+   * @return Status
+   */
+  Status set_buffer(
+      const std::string& name, uint8_t* buffer, uint64_t* buffer_size);
 
   /**
    * Sets the buffer for a var-sized attribute/dimension.
