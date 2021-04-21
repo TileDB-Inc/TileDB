@@ -218,8 +218,41 @@ Status Reader::get_buffer(
     *buffer = nullptr;
     *buffer_size = nullptr;
   } else {
-    *buffer = it->second.buffer_;
-    *buffer_size = it->second.buffer_size_;
+    if (!array_schema_->var_size(name)) {
+      *buffer = it->second.buffer_;
+      *buffer_size = it->second.buffer_size_;
+    } else {
+      *buffer = it->second.buffer_var_;
+      *buffer_size = it->second.buffer_var_size_;
+    }
+  }
+
+  return Status::Ok();
+}
+
+Status Reader::get_buffer(
+    const std::string& name,
+    uint64_t** buffer_off,
+    uint64_t** buffer_off_size) const {
+  auto it = buffers_.find(name);
+  if (it == buffers_.end()) {
+    *buffer_off = nullptr;
+    *buffer_off_size = nullptr;
+  } else {
+    *buffer_off = (uint64_t*)it->second.buffer_;
+    *buffer_off_size = it->second.buffer_size_;
+  }
+
+  return Status::Ok();
+}
+
+Status Reader::get_buffer(
+    const std::string& name, const ValidityVector** validity_vector) const {
+  auto it = buffers_.find(name);
+  if (it == buffers_.end()) {
+    *validity_vector = nullptr;
+  } else {
+    *validity_vector = &it->second.validity_vector_;
   }
 
   return Status::Ok();
@@ -437,93 +470,6 @@ void Reader::set_array_schema(const ArraySchema* array_schema) {
   array_schema_ = array_schema;
 }
 
-Status Reader::set_buffer_agnostic(
-    const std::string& name,
-    void* const buffer,
-    uint64_t* const buffer_size,
-    const bool check_null_buffers) {
-  // Check buffer
-  if (check_null_buffers && buffer == nullptr)
-    return LOG_STATUS(
-        Status::ReaderError("Cannot set buffer; " + name + " buffer is null"));
-
-  // Check buffer size
-  if (check_null_buffers && buffer_size == nullptr)
-    return LOG_STATUS(
-        Status::ReaderError("Cannot set buffer; " + name + " buffer is null"));
-
-  // Array schema must exist
-  if (array_schema_ == nullptr)
-    return LOG_STATUS(
-        Status::ReaderError("Cannot set buffer; Array schema not set"));
-
-  // For easy reference
-  const bool is_dim = array_schema_->is_dim(name);
-  const bool is_attr = array_schema_->is_attr(name);
-
-  // Check that attribute/dimension exists
-  if (name != constants::coords && !is_dim && !is_attr)
-    return LOG_STATUS(Status::ReaderError(
-        std::string("Cannot set buffer; Invalid attribute/dimension '") + name +
-        "'"));
-
-  // Check if zipped coordinates coexist with separate coordinate buffers
-  if ((is_dim && buffers_.find(constants::coords) != buffers_.end()) ||
-      (name == constants::coords && has_separate_coords()))
-    return LOG_STATUS(Status::ReaderError(
-        std::string("Cannot set separate coordinate buffers and "
-                    "a zipped coordinate buffer in the same query")));
-
-  // Error if setting a new attribute/dimension after initialization
-  const bool exists = buffers_.find(name) != buffers_.end();
-  if (read_state_.initialized_ && !exists)
-    return LOG_STATUS(Status::ReaderError(
-        std::string("Cannot set buffer for new attribute/dimension '") + name +
-        "' after initialization"));
-
-  // Check that attribute/dimension is fixed-sized
-  const bool var_size =
-      (name != constants::coords && array_schema_->var_size(name));
-  if (!var_size) {
-    if (!exists)
-      // Set attribute/dimension data buffer
-      buffers_[name] = QueryBuffer(buffer, nullptr, buffer_size, nullptr);
-    else {
-      // Add attribute/dimension data buffer to the existing
-      buffers_[name] += QueryBuffer(buffer, nullptr, buffer_size, nullptr);
-    }
-  }
-
-  // If is var-sized
-  if (array_schema_->var_size(name)) {
-    if (!exists)
-      // Set attribute/dimension offset buffer
-      buffers_[name] = QueryBuffer(nullptr, buffer, nullptr, buffer_size);
-    else {
-      // Add attribute/dimension offset buffer to the existing
-      buffers_[name] += QueryBuffer(nullptr, buffer, nullptr, buffer_size);
-    }
-  }
-
-  // If is nullable
-  if (array_schema_->is_nullable(name)) {
-    // Convert the bytemap into a ValidityVector.
-    ValidityVector vv;
-    RETURN_NOT_OK(vv.init_bytemap(static_cast<uint8_t*>(buffer), buffer_size));
-    if (!exists)
-      // Set attribute/dimension offset buffer
-      buffers_[name] =
-          QueryBuffer(nullptr, nullptr, nullptr, nullptr, std::move(vv));
-    else {
-      // Add attribute/dimension offset buffer to the existing
-      buffers_[name] +=
-          QueryBuffer(nullptr, nullptr, nullptr, nullptr, std::move(vv));
-    }
-  }
-
-  return Status::Ok();
-}
-
 Status Reader::set_buffer(
     const std::string& name,
     void* const buffer,
@@ -556,7 +502,7 @@ Status Reader::set_buffer(
 
   // Must not be nullable
   if (array_schema_->is_nullable(name))
-    return LOG_STATUS(Status::ReaderError(
+    return LOG_STATUS(Status::WriterError(
         std::string("Cannot set buffer; Input attribute/dimension '") + name +
         "' is nullable"));
 
@@ -584,6 +530,163 @@ Status Reader::set_buffer(
 
   // Set attribute buffer
   buffers_[name] = QueryBuffer(buffer, nullptr, buffer_size, nullptr);
+
+  return Status::Ok();
+}
+
+// DATA
+Status Reader::set_buffer(
+    const std::string& name,
+    void* const buffer,
+    uint64_t* const buffer_size,
+    bool check_null_buffers) {
+  // Check buffer
+  if (check_null_buffers && buffer == nullptr)
+    return LOG_STATUS(
+        Status::WriterError("Cannot set buffer; " + name + " buffer is null"));
+
+  // Check buffer size
+  if (check_null_buffers && buffer_size == nullptr)
+    return LOG_STATUS(Status::WriterError(
+        "Cannot set buffer; " + name + " buffer size is null"));
+
+  // Array schema must exist
+  if (array_schema_ == nullptr)
+    return LOG_STATUS(
+        Status::WriterError("Cannot set buffer; Array schema not set"));
+
+  // For easy reference
+  const bool is_dim = array_schema_->is_dim(name);
+  const bool is_attr = array_schema_->is_attr(name);
+
+  // Check that attribute/dimension exists
+  if (name != constants::coords && !is_dim && !is_attr)
+    return LOG_STATUS(Status::ReaderError(
+        std::string("Cannot set buffer; Invalid attribute/dimension '") + name +
+        "'"));
+  // Check if zipped coordinates coexist with separate coordinate buffers
+  if ((is_dim && buffers_.find(constants::coords) != buffers_.end()) ||
+      (name == constants::coords && has_separate_coords()))
+    return LOG_STATUS(Status::ReaderError(
+        std::string("Cannot set separate coordinate buffers and "
+                    "a zipped coordinate buffer in the same query")));
+
+  // Error if setting a new attribute/dimension after initialization
+  const bool exists = buffers_.find(name) != buffers_.end();
+  if (read_state_.initialized_ && !exists)
+    return LOG_STATUS(Status::ReaderError(
+        std::string("Cannot set buffer for new attribute/dimension '") + name +
+        "' after initialization"));
+
+  // Set attribute/dimension buffer on the appropriate buffer
+  if (!array_schema_->var_size(name))
+    // Fixed size data buffer
+    buffers_[name] += QueryBuffer(buffer, nullptr, buffer_size, nullptr);
+  else
+    // Var sized data buffer
+    buffers_[name] += QueryBuffer(nullptr, buffer, nullptr, buffer_size);
+
+  return Status::Ok();
+
+  return Status::Ok();
+}
+
+// OFFSET
+Status Reader::set_buffer(
+    const std::string& name,
+    uint64_t* const buffer_off,
+    uint64_t* const buffer_off_size,
+    bool check_null_buffers) {
+  // Check buffer
+  if (check_null_buffers && buffer_off == nullptr)
+    return LOG_STATUS(
+        Status::WriterError("Cannot set buffer; " + name + " buffer is null"));
+
+  // Check buffer size
+  if (check_null_buffers && buffer_off_size == nullptr)
+    return LOG_STATUS(Status::WriterError(
+        "Cannot set buffer; " + name + " buffer size is null"));
+
+  // Array schema must exist
+  if (array_schema_ == nullptr)
+    return LOG_STATUS(
+        Status::WriterError("Cannot set buffer; Array schema not set"));
+
+  // For easy reference
+  const bool is_dim = array_schema_->is_dim(name);
+  const bool is_attr = array_schema_->is_attr(name);
+
+  // Neither a dimension nor an attribute
+  if (!is_dim && !is_attr)
+    return LOG_STATUS(Status::WriterError(
+        std::string("Cannot set buffer; Invalid buffer name '") + name +
+        "' (it should be an attribute or dimension)"));
+
+  // Error if it is fixed-sized
+  if (!array_schema_->var_size(name))
+    return LOG_STATUS(Status::WriterError(
+        std::string("Cannot set buffer; Input attribute/dimension '") + name +
+        "' is fixed-sized"));
+
+  // Error if setting a new attribute/dimension after initialization
+  bool exists = buffers_.find(name) != buffers_.end();
+  if (read_state_.initialized_ && !exists)
+    return LOG_STATUS(Status::WriterError(
+        std::string("Cannot set buffer for new attribute/dimension '") + name +
+        "' after initialization"));
+
+  // Set attribute/dimension buffer
+  buffers_[name] += QueryBuffer(buffer_off, nullptr, buffer_off_size, nullptr);
+
+  return Status::Ok();
+}
+
+// VALIDITY
+Status Reader::set_buffer(
+    const std::string& name,
+    uint8_t* const buffer_validity_bytemap,
+    uint64_t* const buffer_validity_bytemap_size,
+    bool check_null_buffers) {
+  ValidityVector validity_vector;
+  RETURN_NOT_OK(validity_vector.init_bytemap(
+      buffer_validity_bytemap, buffer_validity_bytemap_size));
+  // Check validity buffer
+  if (check_null_buffers && validity_vector.buffer() == nullptr)
+    return LOG_STATUS(Status::WriterError(
+        "Cannot set buffer; " + name + " validity buffer is null"));
+
+  // Check validity buffer size
+  if (check_null_buffers && validity_vector.buffer_size() == nullptr)
+    return LOG_STATUS(Status::WriterError(
+        "Cannot set buffer; " + name + " validity buffer size is null"));
+
+  // Array schema must exist
+  if (array_schema_ == nullptr)
+    return LOG_STATUS(
+        Status::WriterError("Cannot set buffer; Array schema not set"));
+
+  // Must be an attribute
+  if (!array_schema_->is_attr(name))
+    return LOG_STATUS(Status::WriterError(
+        std::string("Cannot set buffer; Buffer name '") + name +
+        "' is not an attribute"));
+
+  // Must be nullable
+  if (!array_schema_->is_nullable(name))
+    return LOG_STATUS(Status::WriterError(
+        std::string("Cannot set buffer; Input attribute '") + name +
+        "' is not nullable"));
+
+  // Error if setting a new attribute after initialization
+  const bool exists = buffers_.find(name) != buffers_.end();
+  if (read_state_.initialized_ && !exists)
+    return LOG_STATUS(Status::WriterError(
+        std::string("Cannot set buffer for new attribute '") + name +
+        "' after initialization"));
+
+  // Set attribute/dimension buffer
+  buffers_[name] += QueryBuffer(
+      nullptr, nullptr, nullptr, nullptr, std::move(validity_vector));
 
   return Status::Ok();
 }

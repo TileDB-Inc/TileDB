@@ -3699,7 +3699,7 @@ TILEDB_EXPORT int32_t tiledb_query_set_offsets_buffer(
     tiledb_ctx_t* ctx,
     tiledb_query_t* query,
     const char* name,
-    void* buffer,
+    uint64_t* buffer,
     uint64_t* buffer_size);
 
 /**

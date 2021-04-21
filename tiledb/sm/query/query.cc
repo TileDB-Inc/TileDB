@@ -522,6 +522,54 @@ Status Query::finalize() {
   return Status::Ok();
 }
 
+// OFFSET
+Status Query::get_buffer(
+    const char* name, uint64_t** buffer_off, uint64_t** buffer_off_size) const {
+  // Check attribute
+  auto array_schema = this->array_schema();
+  if (name == constants::coords) {
+    return LOG_STATUS(
+        Status::QueryError("Cannot get buffer; Coordinates are not var-sized"));
+  }
+  if (array_schema->attribute(name) == nullptr &&
+      array_schema->dimension(name) == nullptr)
+    return LOG_STATUS(Status::QueryError(
+        std::string("Cannot get buffer; Invalid attribute/dimension name '") +
+        name + "'"));
+  if (!array_schema->var_size(name))
+    return LOG_STATUS(Status::QueryError(
+        std::string("Cannot get buffer; '") + name + "' is fixed-sized"));
+
+  if (type_ == QueryType::WRITE)
+    return writer_.get_buffer(name, buffer_off, buffer_off_size);
+  return reader_.get_buffer(name, buffer_off, buffer_off_size);
+}
+
+// VALIDITY
+Status Query::get_buffer(
+    const char* name,
+    uint8_t** buffer_validity_bytemap,
+    uint64_t** buffer_validity_bytemap_size) const {
+  const ValidityVector* vv = nullptr;
+
+  // Check attribute
+  auto array_schema = this->array_schema();
+  if (!array_schema->is_nullable(name))
+    return LOG_STATUS(Status::QueryError(
+        std::string("Cannot get buffer; '") + name + "' is non-nullable"));
+
+  if (type_ == QueryType::WRITE)
+    RETURN_NOT_OK(writer_.get_buffer(name, &vv));
+  RETURN_NOT_OK(reader_.get_buffer(name, &vv));
+
+  if (vv != nullptr) {
+    *buffer_validity_bytemap = vv->bytemap();
+    *buffer_validity_bytemap_size = vv->bytemap_size();
+  }
+
+  return Status::Ok();
+}
+
 Status Query::get_buffer(
     const char* name, void** buffer, uint64_t** buffer_size) const {
   // Check attribute
@@ -824,7 +872,8 @@ Status Query::set_config(const Config& config) {
   return Status::Ok();
 }
 
-Status Query::set_buffer(
+// API ADDITION
+Status Query::set_data_buffer(
     const std::string& name,
     void* const buffer,
     uint64_t* const buffer_size,
@@ -832,12 +881,43 @@ Status Query::set_buffer(
   RETURN_NOT_OK(check_set_fixed_buffer(name));
 
   if (type_ == QueryType::WRITE)
-    return writer_.set_buffer_agnostic(name, buffer, buffer_size);
-  return reader_.set_buffer_agnostic(
-      name, buffer, buffer_size, check_null_buffers);
+    return writer_.set_buffer(name, buffer, buffer_size);
+  return reader_.set_buffer(name, buffer, buffer_size, check_null_buffers);
 }
 
-// DEPRECATED ON OFFSET
+// API ADDITION
+Status Query::set_off_buffer(
+    const std::string& name,
+    uint64_t* const buffer_off,
+    uint64_t* const buffer_off_size,
+    const bool check_null_buffers) {
+  RETURN_NOT_OK(check_set_fixed_buffer(name));
+
+  if (type_ == QueryType::WRITE)
+    return writer_.set_buffer(name, buffer_off, buffer_off_size);
+  return reader_.set_buffer(
+      name, buffer_off, buffer_off_size, check_null_buffers);
+}
+
+// API ADDITION
+Status Query::set_val_buffer(
+    const std::string& name,
+    uint8_t* const buffer_validity_bytemap,
+    uint64_t* const buffer_validity_bytemap_size,
+    const bool check_null_buffers) {
+  RETURN_NOT_OK(check_set_fixed_buffer(name));
+
+  if (type_ == QueryType::WRITE)
+    return writer_.set_buffer(
+        name, buffer_validity_bytemap, buffer_validity_bytemap_size);
+  return reader_.set_buffer(
+      name,
+      buffer_validity_bytemap,
+      buffer_validity_bytemap_size,
+      check_null_buffers);
+}
+
+// DEPRECATED ON D,O - EXT
 Status Query::set_buffer(
     const std::string& name,
     uint64_t* const buffer_off,
@@ -857,6 +937,7 @@ Status Query::set_buffer(
       check_null_buffers);
 }
 
+// DEPRECATED ON D,V - EXT
 Status Query::set_buffer_vbytemap(
     const std::string& name,
     void* const buffer,
@@ -873,6 +954,7 @@ Status Query::set_buffer_vbytemap(
       name, buffer, buffer_size, std::move(vv), check_null_buffers);
 }
 
+// DEPRECATED ON D,O,V - EXT
 Status Query::set_buffer_vbytemap(
     const std::string& name,
     uint64_t* const buffer_off,
@@ -897,6 +979,7 @@ Status Query::set_buffer_vbytemap(
       check_null_buffers);
 }
 
+// DEPRECATED ON D,V (internal)
 Status Query::set_buffer(
     const std::string& name,
     void* const buffer,
@@ -916,6 +999,7 @@ Status Query::set_buffer(
       check_null_buffers);
 }
 
+// DEPRECATED ON D,O,V (internal)
 Status Query::set_buffer(
     const std::string& name,
     uint64_t* const buffer_off,
@@ -1065,11 +1149,82 @@ Status Query::set_subarray_unsafe(const NDRange& subarray) {
   return Status::Ok();
 }
 
+Status Query::check_buffers_validity() {
+  // Iterate through each attribute
+  for (auto& attr : buffer_names()) {
+    if (type_ == QueryType::WRITE) {
+      if (array_->array_schema()->var_size(attr)) {
+        // Var-sized
+        // Check for data buffer under buffer_var
+        bool exists_data = writer_.buffer(attr).buffer_var_ != nullptr;
+        bool exists_offset = writer_.buffer(attr).buffer_ != nullptr;
+        if (!exists_data || !exists_offset) {
+          return LOG_STATUS(Status::QueryError(
+              std::string("Var-Sized input attribute/dimension '") + attr +
+              "' is not set correctly"));
+        }
+      } else {
+        // Fixed sized
+        bool exists_data = writer_.buffer(attr).buffer_ != nullptr;
+        bool exists_offset = writer_.buffer(attr).buffer_var_ != nullptr;
+        if (!exists_data || exists_offset) {
+          return LOG_STATUS(Status::QueryError(
+              std::string("Fix-Sized input attribute/dimension '") + attr +
+              "' is not set correctly"));
+        }
+      }
+      if (array_->array_schema()->is_nullable(attr)) {
+        bool exists_validity =
+            writer_.buffer(attr).validity_vector_.buffer() != nullptr;
+        if (!exists_validity) {
+          return LOG_STATUS(Status::QueryError(
+              std::string("Nullable input attribute/dimension '") + attr +
+              "' is not set correctly"));
+        }
+      }
+    } else {
+      if (array_->array_schema()->var_size(attr)) {
+        // Var-sized
+        // Check for data buffer under buffer_var
+        bool exists_data = reader_.buffer(attr).buffer_var_ != nullptr;
+        bool exists_offset = reader_.buffer(attr).buffer_ != nullptr;
+        if (!exists_data || !exists_offset) {
+          return LOG_STATUS(Status::QueryError(
+              std::string("Var-Sized input attribute/dimension '") + attr +
+              "' is not set correctly"));
+        }
+      } else {
+        // Fixed sized
+        bool exists_data = reader_.buffer(attr).buffer_ != nullptr;
+        bool exists_offset = reader_.buffer(attr).buffer_var_ != nullptr;
+        if (!exists_data || exists_offset) {
+          return LOG_STATUS(Status::QueryError(
+              std::string("Fix-Sized input attribute/dimension '") + attr +
+              "' is not set correctly"));
+        }
+      }
+      if (array_->array_schema()->is_nullable(attr)) {
+        bool exists_validity =
+            reader_.buffer(attr).validity_vector_.buffer() != nullptr;
+        if (!exists_validity) {
+          return LOG_STATUS(Status::QueryError(
+              std::string("Nullable input attribute/dimension '") + attr +
+              "' is not set correctly"));
+        }
+      }
+    }
+  }
+  return Status::Ok();
+}
+
 Status Query::submit() {
   // Do not resubmit completed reads.
   if (type_ == QueryType::READ && status_ == QueryStatus::COMPLETED) {
     return Status::Ok();
   }
+  // Check attribute/dimensions buffers completeness before query submits
+  RETURN_NOT_OK(check_buffers_validity());
+
   if (array_->is_remote()) {
     auto rest_client = storage_manager_->rest_client();
     if (rest_client == nullptr)
