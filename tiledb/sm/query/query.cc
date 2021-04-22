@@ -884,7 +884,6 @@ Status Query::set_buffer(
   return reader_.set_buffer(name, buffer, buffer_size, check_null_buffers);
 }
 
-// API ADDITION
 Status Query::set_data_buffer(
     const std::string& name,
     void* const buffer,
@@ -897,7 +896,6 @@ Status Query::set_data_buffer(
   return reader_.set_buffer_data(name, buffer, buffer_size, check_null_buffers);
 }
 
-// API ADDITION
 Status Query::set_off_buffer(
     const std::string& name,
     uint64_t* const buffer_off,
@@ -911,7 +909,6 @@ Status Query::set_off_buffer(
       name, buffer_off, buffer_off_size, check_null_buffers);
 }
 
-// API ADDITION
 Status Query::set_val_buffer(
     const std::string& name,
     uint8_t* const buffer_validity_bytemap,
@@ -929,7 +926,6 @@ Status Query::set_val_buffer(
       check_null_buffers);
 }
 
-// DEPRECATED ON D,O - EXT
 Status Query::set_buffer(
     const std::string& name,
     uint64_t* const buffer_off,
@@ -949,7 +945,6 @@ Status Query::set_buffer(
       check_null_buffers);
 }
 
-// DEPRECATED ON D,V - EXT
 Status Query::set_buffer_vbytemap(
     const std::string& name,
     void* const buffer,
@@ -966,7 +961,6 @@ Status Query::set_buffer_vbytemap(
       name, buffer, buffer_size, std::move(vv), check_null_buffers);
 }
 
-// DEPRECATED ON D,O,V - EXT
 Status Query::set_buffer_vbytemap(
     const std::string& name,
     uint64_t* const buffer_off,
@@ -991,7 +985,6 @@ Status Query::set_buffer_vbytemap(
       check_null_buffers);
 }
 
-// DEPRECATED ON D,V (internal)
 Status Query::set_buffer(
     const std::string& name,
     void* const buffer,
@@ -1011,7 +1004,6 @@ Status Query::set_buffer(
       check_null_buffers);
 }
 
-// DEPRECATED ON D,O,V (internal)
 Status Query::set_buffer(
     const std::string& name,
     uint64_t* const buffer_off,

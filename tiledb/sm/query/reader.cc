@@ -534,7 +534,6 @@ Status Reader::set_buffer(
   return Status::Ok();
 }
 
-// DATA
 Status Reader::set_buffer_data(
     const std::string& name,
     void* const buffer,
@@ -591,7 +590,6 @@ Status Reader::set_buffer_data(
   return Status::Ok();
 }
 
-// OFFSET
 Status Reader::set_buffer(
     const std::string& name,
     uint64_t* const buffer_off,
@@ -641,7 +639,6 @@ Status Reader::set_buffer(
   return Status::Ok();
 }
 
-// VALIDITY
 Status Reader::set_buffer(
     const std::string& name,
     uint8_t* const buffer_validity_bytemap,
