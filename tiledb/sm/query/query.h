@@ -801,10 +801,10 @@ class Query {
   Status check_set_fixed_buffer(const std::string& name);
 
   /**
-  * Internal routine for checking the completeness of all attribute
-  * and dimensions buffers. Iteratively searches that all attributes & dimenstions
-  * buffers have been set correctly
-  */
+   * Internal routine for checking the completeness of all attribute
+   * and dimensions buffers. Iteratively searches that all attributes &
+   * dimenstions buffers have been set correctly
+   */
   Status check_buffers_validity();
   /**
    * Internal routine for setting fixed-sized, nullable attribute buffers with
