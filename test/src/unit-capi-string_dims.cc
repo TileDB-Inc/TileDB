@@ -251,6 +251,7 @@ int StringDimsFx::array_schema_load_wrapper(
 
   // Serialize the new array schema and deserialize into the original array
   // schema.
+  tiledb_array_schema_free(array_schema);
   tiledb_buffer_t* buff2;
   REQUIRE(
       tiledb_serialize_array_schema(
@@ -311,6 +312,7 @@ int StringDimsFx::array_create_wrapper(
   // Serialize the new array schema and deserialize into the original array
   // schema.
   tiledb_buffer_t* buff2;
+  tiledb_array_schema_t* new_array_schema2 = nullptr;
   REQUIRE(
       tiledb_serialize_array_schema(
           ctx_,
@@ -324,10 +326,11 @@ int StringDimsFx::array_create_wrapper(
           buff2,
           (tiledb_serialization_type_t)tiledb::sm::SerializationType::CAPNP,
           1,
-          &array_schema) == TILEDB_OK);
+          &new_array_schema2) == TILEDB_OK);
 
   // Clean up.
   tiledb_array_schema_free(&new_array_schema);
+  tiledb_array_schema_free(&new_array_schema2);
   tiledb_buffer_free(&buff);
   tiledb_buffer_free(&buff2);
 
@@ -788,6 +791,8 @@ int StringDimsFx::tiledb_array_get_non_empty_domain_from_name_wrapper(
           (tiledb_serialization_type_t)tiledb::sm::SerializationType::CAPNP,
           1) == TILEDB_OK);
 
+  tiledb_buffer_free(&buff);
+
   return tiledb_array_get_non_empty_domain_from_name(
       ctx, array, name, domain, is_empty);
 }
@@ -854,6 +859,8 @@ int StringDimsFx::tiledb_array_get_non_empty_domain_var_size_from_name_wrapper(
           (tiledb_serialization_type_t)tiledb::sm::SerializationType::CAPNP,
           1) == TILEDB_OK);
 
+  tiledb_buffer_free(&buff);
+
   return tiledb_array_get_non_empty_domain_var_size_from_name(
       ctx, array, name, start_size, end_size, is_empty);
 }
@@ -892,6 +899,8 @@ int StringDimsFx::tiledb_array_get_non_empty_domain_var_from_name_wrapper(
           buff,
           (tiledb_serialization_type_t)tiledb::sm::SerializationType::CAPNP,
           1) == TILEDB_OK);
+
+  tiledb_buffer_free(&buff);
 
   return tiledb_array_get_non_empty_domain_var_from_name(
       ctx, array, name, start, end, is_empty);

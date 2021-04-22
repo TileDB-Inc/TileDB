@@ -1103,6 +1103,8 @@ void SmokeTestFx::smoke_test(
     free(b_write_buffer);
   if (b_write_buffer_offset != nullptr)
     free(b_write_buffer_offset);
+  if (c_write_buffer != nullptr)
+    free(c_write_buffer);
 
   // Free the dimension write buffers.
   for (const auto& kv : d_write_buffers) {
@@ -1116,6 +1118,8 @@ void SmokeTestFx::smoke_test(
     free(b_read_buffer);
   if (b_read_buffer_offset != nullptr)
     free(b_read_buffer_offset);
+  if (c_read_buffer != nullptr)
+    free(c_read_buffer);
 
   // Free the dimension read buffers.
   for (const auto& kv : d_read_buffers) {
