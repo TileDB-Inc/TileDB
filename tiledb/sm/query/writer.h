@@ -293,7 +293,7 @@ class Writer {
       const std::string& name, void* const buffer, uint64_t* const buffer_size);
 
   /**
-   * Sets the buffer for a fixed-sized attribute/dimension.
+   * Sets the data buffer for a agnostic (fixed/var) sized attribute/dimension.
    *
    * @param name The attribute/dimension to set the buffer for.
    * @param buffer The buffer that has the input data to be written.
@@ -304,7 +304,7 @@ class Writer {
       const std::string& name, void* buffer, uint64_t* buffer_size);
 
   /**
-   * Sets the buffer for a fixed-sized attribute/dimension.
+   * Sets the offset buffer for a agnostic (fixed/var) sized attribute/dimension.
    *
    * @param name The attribute/dimension to set the buffer for.
    * @param buffer The buffer that has the input data to be written.
@@ -315,7 +315,7 @@ class Writer {
       const std::string& name, uint64_t* buffer, uint64_t* buffer_size);
 
   /**
-   * Sets the buffer for a fixed-sized attribute/dimension.
+   * Sets the validity buffer for a agnostic sized nullable attribute/dimension.
    *
    * @param name The attribute/dimension to set the buffer for.
    * @param buffer The buffer that has the input data to be written.

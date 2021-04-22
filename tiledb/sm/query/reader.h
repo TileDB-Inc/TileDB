@@ -386,7 +386,7 @@ class Reader {
       bool check_null_buffers = true);
 
   /**
-   * Sets the buffer for a fixed-sized attribute/dimension.
+   * Sets the data for a fixed/var-sized attribute/dimension.
    *
    * @param name The attribute/dimension to set the buffer for.
    * @param buffer The buffer that will hold the data to be read.
@@ -425,7 +425,7 @@ class Reader {
       bool check_null_buffers = true);
 
   /**
-   * Sets the validity buffer for a fixed-sized attribute/dimension.
+   * Sets the validity buffer for nullable attribute/dimension.
    *
    * @param name The attribute/dimension to set the buffer for.
    * @param buffer_validity_bytemap The buffer that either have the validity
