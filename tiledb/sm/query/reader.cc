@@ -535,7 +535,7 @@ Status Reader::set_buffer(
 }
 
 // DATA
-Status Reader::set_buffer(
+Status Reader::set_buffer_data(
     const std::string& name,
     void* const buffer,
     uint64_t* const buffer_size,

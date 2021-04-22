@@ -402,7 +402,7 @@ class Reader {
    * allowed.
    * @return Status
    */
-  Status set_buffer(
+  Status set_buffer_data(
       const std::string& name,
       void* buffer,
       uint64_t* buffer_size,

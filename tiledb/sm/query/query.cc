@@ -872,8 +872,7 @@ Status Query::set_config(const Config& config) {
   return Status::Ok();
 }
 
-// API ADDITION
-Status Query::set_data_buffer(
+Status Query::set_buffer(
     const std::string& name,
     void* const buffer,
     uint64_t* const buffer_size,
@@ -883,6 +882,19 @@ Status Query::set_data_buffer(
   if (type_ == QueryType::WRITE)
     return writer_.set_buffer(name, buffer, buffer_size);
   return reader_.set_buffer(name, buffer, buffer_size, check_null_buffers);
+}
+
+// API ADDITION
+Status Query::set_data_buffer(
+    const std::string& name,
+    void* const buffer,
+    uint64_t* const buffer_size,
+    const bool check_null_buffers) {
+  RETURN_NOT_OK(check_set_fixed_buffer(name));
+
+  if (type_ == QueryType::WRITE)
+    return writer_.set_buffer_data(name, buffer, buffer_size);
+  return reader_.set_buffer_data(name, buffer, buffer_size, check_null_buffers);
 }
 
 // API ADDITION

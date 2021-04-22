@@ -188,6 +188,30 @@ Status Writer::get_buffer(
   // Attribute or dimension
   auto it = buffers_.find(name);
   if (it != buffers_.end()) {
+    *buffer = it->second.buffer_;
+    *buffer_size = it->second.buffer_size_;
+    return Status::Ok();
+  }
+
+  // Named buffer does not exist
+  *buffer = nullptr;
+  *buffer_size = nullptr;
+
+  return Status::Ok();
+}
+
+Status Writer::get_buffer_data(
+    const std::string& name, void** buffer, uint64_t** buffer_size) const {
+  // Special zipped coordinates
+  if (name == constants::coords) {
+    *buffer = coords_buffer_;
+    *buffer_size = coords_buffer_size_;
+    return Status::Ok();
+  }
+
+  // Attribute or dimension
+  auto it = buffers_.find(name);
+  if (it != buffers_.end()) {
     if (!array_schema_->var_size(name)) {
       *buffer = it->second.buffer_;
       *buffer_size = it->second.buffer_size_;
@@ -546,8 +570,85 @@ void Writer::set_array_schema(const ArraySchema* array_schema) {
   array_schema_ = array_schema;
 }
 
-// DATA
 Status Writer::set_buffer(
+    const std::string& name, void* const buffer, uint64_t* const buffer_size) {
+  // Check buffer
+  if (buffer == nullptr)
+    return LOG_STATUS(
+        Status::WriterError("Cannot set buffer; " + name + " buffer is null"));
+
+  // Check buffer size
+  if (buffer_size == nullptr)
+    return LOG_STATUS(Status::WriterError(
+        "Cannot set buffer; " + name + " buffer size is null"));
+
+  // Array schema must exist
+  if (array_schema_ == nullptr)
+    return LOG_STATUS(
+        Status::WriterError("Cannot set buffer; Array schema not set"));
+
+  // Set special function for zipped coordinates buffer
+  if (name == constants::coords)
+    return set_coords_buffer(buffer, buffer_size);
+
+  // For easy reference
+  const bool is_dim = array_schema_->is_dim(name);
+  const bool is_attr = array_schema_->is_attr(name);
+
+  // Neither a dimension nor an attribute
+  if (!is_dim && !is_attr)
+    return LOG_STATUS(Status::WriterError(
+        std::string("Cannot set buffer; Invalid buffer name '") + name +
+        "' (it should be an attribute or dimension)"));
+
+  // Must not be nullable
+  if (array_schema_->is_nullable(name))
+    return LOG_STATUS(Status::WriterError(
+        std::string("Cannot set buffer; Input attribute/dimension '") + name +
+        "' is nullable"));
+
+  // Error if it is var-sized
+  if (array_schema_->var_size(name))
+    return LOG_STATUS(Status::WriterError(
+        std::string("Cannot set buffer; Input attribute/dimension '") + name +
+        "' is var-sized"));
+
+  // Error if setting a new attribute/dimension after initialization
+  bool exists = buffers_.find(name) != buffers_.end();
+  if (initialized_ && !exists)
+    return LOG_STATUS(Status::WriterError(
+        std::string("Cannot set buffer for new attribute/dimension '") + name +
+        "' after initialization"));
+
+  // Check if zipped coordinates coexist with separate coordinate buffers
+  if (is_dim && coords_buffer_ != nullptr)
+    return LOG_STATUS(Status::WriterError(
+        std::string("Cannot set separate coordinate buffers after "
+                    "having set the zipped coordinates buffer")));
+
+  if (is_dim) {
+    // Check number of coordinates
+    uint64_t coords_num = *buffer_size / array_schema_->cell_size(name);
+    if (coord_buffer_is_set_ && coords_num != coords_num_)
+      return LOG_STATUS(Status::WriterError(
+          std::string("Cannot set buffer; Input buffer for dimension '") +
+          name +
+          "' has a different number of coordinates than previously "
+          "set coordinate buffers"));
+
+    coords_num_ = coords_num;
+    coord_buffer_is_set_ = true;
+    has_coords_ = true;
+  }
+
+  // Set attribute/dimension buffer
+  buffers_[name] = QueryBuffer(buffer, nullptr, buffer_size, nullptr);
+
+  return Status::Ok();
+}
+
+// DATA
+Status Writer::set_buffer_data(
     const std::string& name, void* const buffer, uint64_t* const buffer_size) {
   // Check buffer
   if (buffer == nullptr)
@@ -3583,5 +3684,5 @@ Status Writer::prepare_filter_and_write_tiles(
   return Status::Ok();
 }
 
-}  // namespace sm
+}  // namespace tiledb
 }  // namespace tiledb
