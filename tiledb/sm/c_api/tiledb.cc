@@ -2839,7 +2839,8 @@ int32_t tiledb_query_set_offsets_buffer(
 
   // Set attribute buffer
   if (SAVE_ERROR_CATCH(
-          ctx, query->query_->set_off_buffer(name, buffer_off, buffer_off_size)))
+          ctx,
+          query->query_->set_off_buffer(name, buffer_off, buffer_off_size)))
     return TILEDB_ERR;
 
   return TILEDB_OK;

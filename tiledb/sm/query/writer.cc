@@ -3727,5 +3727,5 @@ Status Writer::prepare_filter_and_write_tiles(
   return Status::Ok();
 }
 
-}  // namespace tiledb
+}  // namespace sm
 }  // namespace tiledb
