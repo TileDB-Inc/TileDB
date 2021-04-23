@@ -922,7 +922,7 @@ TILEDB_EXPORT void tiledb_config_free(tiledb_config_t** config);
  * - `sm.array.timestamp_start` <br>
  *    When set, an array will be opened between this value and
  *    `sm.array.timestamp_end` (inclusive) upon a read query. <br>
- *    **Default**: UINT64_MAX
+ *    **Default**: 0
  * - `sm.array.timestamp_end` <br>
  *    When set, an array will be opened between `sm.array.timestamp_start`
  *    and this value (inclusive) upon a read query. <br>
@@ -968,6 +968,16 @@ TILEDB_EXPORT void tiledb_config_free(tiledb_config_t** config);
  *    `fragment_meta` (remove only consolidated fragment metadata), or
  *    `array_meta` (remove consolidated array metadata files). <br>
  *    **Default**: fragments
+ * - `sm.vacuum.timestamp_start` <br>
+ *    When set, an array will be vacuumed between this value and
+ *    `sm.vacuum.timestamp_end` (inclusive). <br>
+ *    Only for `fragments` and `array_meta` vacuum mode. <br>
+ *    **Default**: 0
+ * - `sm.vacuum.timestamp_end` <br>
+ *    When set, an array will be vacuumed between `sm.vacuum.timestamp_start`
+ *    and this value (inclusive). <br>
+ *    Only for `fragments` and `array_meta` vacuum mode. <br>
+ *    **Default**: UINT64_MAX
  * - `sm.consolidation_mode` <br>
  *    The consolidation mode, one of `fragments` (consolidate all fragments),
  *    `fragment_meta` (consolidate only fragment metadata footers to a single
@@ -1000,6 +1010,16 @@ TILEDB_EXPORT void tiledb_config_free(tiledb_config_t** config);
  *    The size ratio that two ("adjacent") fragments must satisfy to be
  *    considered for consolidation in a single step.<br>
  *    **Default**: 0.0
+ * - `sm.consolidation.timestamp_start` <br>
+ *    When set, an array will be consolidated between this value and
+ *    `sm.consolidation.timestamp_end` (inclusive). <br>
+ *    Only for `fragments` and `array_meta` consolidation mode. <br>
+ *    **Default**: 0
+ * - `sm.consolidation.timestamp_end` <br>
+ *    When set, an array will be consolidated between
+ *    `sm.consolidation.timestamp_start` and this value (inclusive). <br>
+ *    Only for `fragments` and `array_meta` consolidation mode. <br>
+ *    **Default**: UINT64_MAX
  * - `sm.memory_budget` <br>
  *    The memory budget for tiles of fixed-sized attributes (or offsets for
  *    var-sized attributes) to be fetched during reads.<br>
@@ -1227,10 +1247,7 @@ TILEDB_EXPORT void tiledb_config_free(tiledb_config_t** config);
  *    The logging level configured, possible values: "0": fatal, "1": error,
  *    "2": warn, "3": info "4": debug, "5": trace <br>
  *    **Default**: "1" if --enable-verbose bootstrap flag is provided,
- *    "0" otherwise
- *
- * <br>
- *
+ *    "0" otherwise <br>
  * - `rest.server_address` <br>
  *    URL for REST server to use for remote arrays. <br>
  *    **Default**: "https://api.tiledb.com"
@@ -1259,20 +1276,20 @@ TILEDB_EXPORT void tiledb_config_free(tiledb_config_t** config);
  *    The name of the registered access key to use for creation of the REST
  *    server. <br>
  *    **Default**: no default set
- * -  `rest.retry_http_codes` <br>
- *     CSV list of http status codes to automatically retry a REST request for
- * <br>
- *     **Default**: "503"
- * -  `rest.retry_count` <br>
- *     Number of times to retry failed REST requests <br>
- *     **Default**: 3
- * -  `rest.retry_initial_delay_ms` <br>
- *     Initial delay in milliseconds to wait until retrying a REST request <br>
- *     **Default**: 500
- * -  `rest.retry_delay_factor` <br>
- *     The delay factor to exponentially wait until further retries of a failed
- * REST request <br>
- *     **Default**: 1.25
+ * - `rest.retry_http_codes` <br>
+ *    CSV list of http status codes to automatically retry a REST request for
+ *    <br>
+ *    **Default**: "503"
+ * - `rest.retry_count` <br>
+ *    Number of times to retry failed REST requests <br>
+ *    **Default**: 3
+ * - `rest.retry_initial_delay_ms` <br>
+ *    Initial delay in milliseconds to wait until retrying a REST request <br>
+ *    **Default**: 500
+ * - `rest.retry_delay_factor` <br>
+ *    The delay factor to exponentially wait until further retries of a failed
+ *    REST request <br>
+ *    **Default**: 1.25
  *
  * **Example:**
  *

@@ -208,12 +208,32 @@ class Config {
   static const std::string SM_CONSOLIDATION_MODE;
 
   /**
+   * An array will consolidate between this value and timestamp_end.
+   * */
+  static const std::string SM_CONSOLIDATION_TIMESTAMP_START;
+
+  /**
+   * An array will consolidate between timestamp_start and this value.
+   *  */
+  static const std::string SM_CONSOLIDATION_TIMESTAMP_END;
+
+  /**
    * The vacuum mode. It can be one of:
    *     - "fragments": only the fragments will be vacuumed
    *     - "fragment_meta": only the fragment metadata will be vacuumed
    *     - "array_meta": only the array metadata will be vacuumed
    */
   static const std::string SM_VACUUM_MODE;
+
+  /**
+   * An array will vacuum between this value and timestamp_end.
+   * */
+  static const std::string SM_VACUUM_TIMESTAMP_START;
+
+  /**
+   * An array will vacuum between timestamp_start and this value.
+   *  */
+  static const std::string SM_VACUUM_TIMESTAMP_END;
 
   /**
    * The size of offsets in bits to be used for offset buffers of var-sized

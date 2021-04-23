@@ -551,15 +551,28 @@ Status StorageManager::array_vacuum(
   const char* mode;
   RETURN_NOT_OK(config->get("sm.vacuum.mode", &mode));
 
+  bool found = false;
+  uint64_t timestamp_start;
+  RETURN_NOT_OK(config->get<uint64_t>(
+      "sm.vacuum.timestamp_start", &timestamp_start, &found));
+  assert(found);
+
+  uint64_t timestamp_end;
+  RETURN_NOT_OK(
+      config->get<uint64_t>("sm.vacuum.timestamp_end", &timestamp_end, &found));
+  assert(found);
+
   if (mode == nullptr)
     return LOG_STATUS(Status::StorageManagerError(
         "Cannot vacuum array; Vacuum mode cannot be null"));
   else if (std::string(mode) == "fragments")
-    RETURN_NOT_OK(array_vacuum_fragments(array_name));
+    RETURN_NOT_OK(
+        array_vacuum_fragments(array_name, timestamp_start, timestamp_end));
   else if (std::string(mode) == "fragment_meta")
     RETURN_NOT_OK(array_vacuum_fragment_meta(array_name));
   else if (std::string(mode) == "array_meta")
-    RETURN_NOT_OK(array_vacuum_array_meta(array_name));
+    RETURN_NOT_OK(
+        array_vacuum_array_meta(array_name, timestamp_start, timestamp_end));
   else
     return LOG_STATUS(Status::StorageManagerError(
         "Cannot vacuum array; Invalid vacuum mode"));
@@ -567,7 +580,8 @@ Status StorageManager::array_vacuum(
   return Status::Ok();
 }
 
-Status StorageManager::array_vacuum_fragments(const char* array_name) {
+Status StorageManager::array_vacuum_fragments(
+    const char* array_name, uint64_t timestamp_start, uint64_t timestamp_end) {
   if (array_name == nullptr)
     return LOG_STATUS(Status::StorageManagerError(
         "Cannot vacuum fragments; Array name cannot be null"));
@@ -579,8 +593,8 @@ Status StorageManager::array_vacuum_fragments(const char* array_name) {
 
   // Get URIs to be vacuumed
   std::vector<URI> to_vacuum, vac_uris;
-  auto timestamp = utils::time::timestamp_now_ms();
-  RETURN_NOT_OK(get_uris_to_vacuum(uris, timestamp, &to_vacuum, &vac_uris));
+  RETURN_NOT_OK(get_uris_to_vacuum(
+      uris, timestamp_start, timestamp_end, &to_vacuum, &vac_uris));
 
   // Delete the ok files
   RETURN_NOT_OK(array_xlock(array_uri));
@@ -644,7 +658,8 @@ Status StorageManager::array_vacuum_fragment_meta(const char* array_name) {
   return Status::Ok();
 }
 
-Status StorageManager::array_vacuum_array_meta(const char* array_name) {
+Status StorageManager::array_vacuum_array_meta(
+    const char* array_name, uint64_t timestamp_start, uint64_t timestamp_end) {
   if (array_name == nullptr)
     return LOG_STATUS(Status::StorageManagerError(
         "Cannot vacuum array metadata; Array name cannot be null"));
@@ -657,8 +672,8 @@ Status StorageManager::array_vacuum_array_meta(const char* array_name) {
 
   // Get URIs to be vacuumed
   std::vector<URI> to_vacuum, vac_uris;
-  auto timestamp_end = utils::time::timestamp_now_ms();
-  RETURN_NOT_OK(get_uris_to_vacuum(uris, timestamp_end, &to_vacuum, &vac_uris));
+  RETURN_NOT_OK(get_uris_to_vacuum(
+      uris, timestamp_start, timestamp_end, &to_vacuum, &vac_uris));
 
   // Delete the array metadata files
   RETURN_NOT_OK(array_xlock(array_uri));
@@ -1200,6 +1215,7 @@ Status StorageManager::object_move(
 
 Status StorageManager::get_fragment_info(
     const URI& array_uri,
+    uint64_t timestamp_start,
     uint64_t timestamp_end,
     const EncryptionKey& encryption_key,
     FragmentInfo* fragment_info,
@@ -1214,7 +1230,7 @@ Status StorageManager::get_fragment_info(
       encryption_key,
       &array_schema,
       &fragment_metadata,
-      0,
+      timestamp_start,
       timestamp_end));
 
   fragment_info->set_dim_info(
@@ -1273,7 +1289,7 @@ Status StorageManager::get_fragment_info(
     URI meta_uri;
     RETURN_NOT_OK(get_fragment_uris(array_uri, &fragment_uris, &meta_uri));
     RETURN_NOT_OK(get_uris_to_vacuum(
-        fragment_uris, timestamp_end, &to_vacuum, &vac_uris));
+        fragment_uris, timestamp_start, timestamp_end, &to_vacuum, &vac_uris));
     fragment_info->set_to_vacuum(to_vacuum);
   }
 
@@ -1283,6 +1299,7 @@ Status StorageManager::get_fragment_info(
 
 Status StorageManager::get_fragment_info(
     const ArraySchema* array_schema,
+    uint64_t timestamp_start,
     uint64_t timestamp_end,
     const EncryptionKey& encryption_key,
     FragmentInfo* fragment_info,
@@ -1292,7 +1309,12 @@ Status StorageManager::get_fragment_info(
   // Open array for reading
   const auto& array_uri = array_schema->array_uri();
   return get_fragment_info(
-      array_uri, timestamp_end, encryption_key, fragment_info, get_to_vacuum);
+      array_uri,
+      timestamp_start,
+      timestamp_end,
+      encryption_key,
+      fragment_info,
+      get_to_vacuum);
 }
 
 Status StorageManager::get_fragment_uris(
@@ -1602,6 +1624,7 @@ Status StorageManager::load_array_schema(
 Status StorageManager::load_array_metadata(
     const URI& array_uri,
     const EncryptionKey& encryption_key,
+    uint64_t timestamp_start,
     uint64_t timestamp_end,
     Metadata* metadata) {
   STATS_START_TIMER(stats::GlobalStats::TimerType::READ_LOAD_ARRAY_META)
@@ -1628,7 +1651,10 @@ Status StorageManager::load_array_metadata(
       open_array->mtx_unlock());
   RETURN_NOT_OK_ELSE(
       get_sorted_uris(
-          array_metadata_uris, &array_metadata_to_load, 0, timestamp_end),
+          array_metadata_uris,
+          &array_metadata_to_load,
+          timestamp_start,
+          timestamp_end),
       open_array->mtx_unlock());
 
   // Get the array metadata
@@ -2351,7 +2377,8 @@ Status StorageManager::get_sorted_uris(
 
   // Get the URIs that must be ignored
   std::vector<URI> vac_uris, to_ignore;
-  RETURN_NOT_OK(get_uris_to_vacuum(uris, timestamp_end, &to_ignore, &vac_uris));
+  RETURN_NOT_OK(get_uris_to_vacuum(
+      uris, timestamp_start, timestamp_end, &to_ignore, &vac_uris));
   std::set<URI> to_ignore_set;
   for (const auto& uri : to_ignore)
     to_ignore_set.emplace(uri);
@@ -2385,6 +2412,7 @@ Status StorageManager::get_sorted_uris(
 
 Status StorageManager::get_uris_to_vacuum(
     const std::vector<URI>& uris,
+    uint64_t timestamp_start,
     uint64_t timestamp_end,
     std::vector<URI>* to_vacuum,
     std::vector<URI>* vac_uris) const {
@@ -2393,7 +2421,8 @@ Status StorageManager::get_uris_to_vacuum(
   for (size_t i = 0; i < uris.size(); ++i) {
     std::pair<uint64_t, uint64_t> timestamp_range;
     RETURN_NOT_OK(utils::parse::get_timestamp_range(uris[i], &timestamp_range));
-    if (timestamp_range.second > timestamp_end)
+    if (timestamp_range.first < timestamp_start ||
+        timestamp_range.second > timestamp_end)
       continue;
 
     if (this->is_vacuum_file(uris[i]))

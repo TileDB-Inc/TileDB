@@ -3576,6 +3576,7 @@ int32_t tiledb_array_open_at(
           ctx,
           array->array_->open(
               static_cast<tiledb::sm::QueryType>(query_type),
+              0,
               timestamp,
               static_cast<tiledb::sm::EncryptionType>(TILEDB_NO_ENCRYPTION),
               nullptr,
@@ -3624,6 +3625,7 @@ int32_t tiledb_array_open_at_with_key(
           ctx,
           array->array_->open(
               static_cast<tiledb::sm::QueryType>(query_type),
+              0,
               timestamp,
               static_cast<tiledb::sm::EncryptionType>(encryption_type),
               encryption_key,

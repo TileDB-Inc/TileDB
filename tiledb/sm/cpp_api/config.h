@@ -289,7 +289,7 @@ class Config {
    *    `sm.read_range_oob` <br>
    *    If `error`, this will check ranges for read with out-of-bounds on the
    *    dimension domain's and error. If `warn`, the ranges will be capped at
-   * the dimension's domain and a warning logged. <br>
+   *    the dimension's domain and a warning logged. <br>
    *    **Default**: warn
    * - `sm.check_global_order` <br>
    *    Checks if the coordinates obey the global array order. Applicable only
@@ -317,6 +317,16 @@ class Config {
    *    `fragment_meta` (remove only consolidated fragment metadata), or
    *    `array_meta` (remove consolidated array metadata files). <br>
    *    **Default**: fragments
+   * - `sm.vacuum.timestamp_start` <br>
+   *    When set, an array will be vacuumed between this value and
+   *    `sm.vacuum.timestamp_end` (inclusive). <br>
+   *    Only for `fragments` and `array_meta` vacuum mode. <br>
+   *    **Default**: 0
+   * - `sm.vacuum.timestamp_end` <br>
+   *    When set, an array will be vacuumed between `sm.vacuum.timestamp_start`
+   *    and this value (inclusive). <br>
+   *    Only for `fragments` and `array_meta` vacuum mode. <br>
+   *    **Default**: UINT64_MAX
    * - `sm.consolidation_mode` <br>
    *    The consolidation mode, one of `fragments` (consolidate all fragments),
    *    `fragment_meta` (consolidate only fragment metadata footers to a single
@@ -349,6 +359,16 @@ class Config {
    *    The size ratio that two ("adjacent") fragments must satisfy to be
    *    considered for consolidation in a single step.<br>
    *    **Default**: 0.0
+   * - `sm.consolidation.timestamp_start` <br>
+   *    When set, an array will be consolidated between this value and
+   *    `sm.consolidation.timestamp_end` (inclusive). <br>
+   *    Only for `fragments` and `array_meta` consolidation mode. <br>
+   *    **Default**: 0
+   * - `sm.consolidation.timestamp_end` <br>
+   *    When set, an array will be consolidated between
+   *    `sm.consolidation.timestamp_start` and this value (inclusive). <br>
+   *    Only for `fragments` and `array_meta` consolidation mode. <br>
+   *    **Default**: UINT64_MAX
    * - `sm.memory_budget` <br>
    *    The memory budget for tiles of fixed-sized attributes (or offsets for
    *    var-sized attributes) to be fetched during reads.<br>
@@ -379,7 +399,7 @@ class Config {
    *    **Default**: 102400
    * -  `vfs.read_ahead_cache_size` <br>
    *    The the total maximum size of the read-ahead cache, which is an LRU.
-   * <br>
+   *    <br>
    *    **Default**: 10485760
    * - `vfs.min_parallel_size` <br>
    *    The minimum number of bytes in a parallel VFS operation
@@ -577,10 +597,7 @@ class Config {
    *    The logging level configured, possible values: "0": fatal, "1": error,
    *    "2": warn, "3": info "4": debug, "5": trace <br>
    *    **Default**: "1" if --enable-verbose bootstrap flag is provided,
-   *    "0" otherwise
-   *
-   * <br>
-   *
+   *    "0" otherwise <br>
    * - `rest.server_address` <br>
    *    URL for REST server to use for remote arrays. <br>
    *    **Default**: "https://api.tiledb.com"
@@ -610,20 +627,20 @@ class Config {
    *    server. <br>
    *    **Default**: no default set
    * -  `rest.retry_http_codes` <br>
-   *     CSV list of http status codes to automatically retry a REST request for
-   * <br>
-   *     **Default**: "503"
-   * -  `rest.retry_count` <br>
-   *     Number of times to retry failed REST requests <br>
-   *     **Default**: 3
-   * -  `rest.retry_initial_delay_ms` <br>
-   *     Initial delay in milliseconds to wait until retrying a REST request
-   * <br>
-   *     **Default**: 500
-   * -  `rest.retry_delay_factor` <br>
-   *     The delay factor to exponentially wait until further retries of a
-   * failed REST request <br>
-   *     **Default**: 1.25
+   *    CSV list of http status codes to automatically retry a REST request for
+   *    <br>
+   *    **Default**: "503"
+   * - `rest.retry_count` <br>
+   *    Number of times to retry failed REST requests <br>
+   *    **Default**: 3
+   * - `rest.retry_initial_delay_ms` <br>
+   *    Initial delay in milliseconds to wait until retrying a REST request
+   *    <br>
+   *    **Default**: 500
+   * - `rest.retry_delay_factor` <br>
+   *    The delay factor to exponentially wait until further retries of a
+   *    failed REST request <br>
+   *    **Default**: 1.25
    */
   Config& set(const std::string& param, const std::string& value) {
     tiledb_error_t* err;

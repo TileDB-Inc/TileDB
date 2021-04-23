@@ -108,58 +108,6 @@ const EncryptionKey* Array::encryption_key() const {
   return encryption_key_.get();
 }
 
-Status Array::open(
-    QueryType query_type,
-    uint64_t timestamp,
-    EncryptionType encryption_type,
-    const void* encryption_key,
-    uint32_t key_length) {
-  std::unique_lock<std::mutex> lck(mtx_);
-
-  if (is_open_)
-    return LOG_STATUS(Status::ArrayError(
-        "Cannot open array at timestamp; Array already open"));
-
-  if (remote_ && encryption_type != EncryptionType::NO_ENCRYPTION)
-    return LOG_STATUS(Status::ArrayError(
-        "Cannot open array; encrypted remote arrays are not supported."));
-
-  // Copy the key bytes.
-  RETURN_NOT_OK(
-      encryption_key_->set_key(encryption_type, encryption_key, key_length));
-
-  timestamp_end_ = timestamp;
-  metadata_.clear();
-  metadata_loaded_ = false;
-  non_empty_domain_computed_ = false;
-
-  query_type_ = query_type;
-  if (remote_) {
-    auto rest_client = storage_manager_->rest_client();
-    if (rest_client == nullptr)
-      return LOG_STATUS(Status::ArrayError(
-          "Cannot open array; remote array with no REST client."));
-    RETURN_NOT_OK(
-        rest_client->get_array_schema_from_rest(array_uri_, &array_schema_));
-  } else if (query_type == QueryType::READ) {
-    RETURN_NOT_OK(storage_manager_->array_open_for_reads(
-        array_uri_,
-        *encryption_key_,
-        &array_schema_,
-        &fragment_metadata_,
-        0,
-        timestamp_end_));
-  } else {
-    RETURN_NOT_OK(storage_manager_->array_open_for_writes(
-        array_uri_, *encryption_key_, &array_schema_));
-    metadata_.reset(timestamp_end_);
-  }
-
-  is_open_ = true;
-
-  return Status::Ok();
-}
-
 // Used in Consolidator
 Status Array::open(
     QueryType query_type,
@@ -176,7 +124,7 @@ Status Array::open(
   if (query_type != QueryType::READ)
     return LOG_STATUS(
         Status::ArrayError("Cannot open array with fragments; The array can "
-                           "opened at a timestamp only in read mode"));
+                           "be opened at a timestamp only in read mode"));
 
   if (remote_ && encryption_type != EncryptionType::NO_ENCRYPTION)
     return LOG_STATUS(Status::ArrayError(
@@ -219,6 +167,33 @@ Status Array::open(
     EncryptionType encryption_type,
     const void* encryption_key,
     uint32_t key_length) {
+  bool found = false;
+  uint64_t timestamp_start = 0;
+  RETURN_NOT_OK(config_.get<uint64_t>(
+      "sm.array.timestamp_start", &timestamp_start, &found));
+  assert(found);
+
+  uint64_t timestamp_end = 0;
+  RETURN_NOT_OK(
+      config_.get<uint64_t>("sm.array.timestamp_end", &timestamp_end, &found));
+  assert(found);
+
+  return Array::open(
+      query_type,
+      timestamp_start,
+      timestamp_end,
+      encryption_type,
+      encryption_key,
+      key_length);
+}
+
+Status Array::open(
+    QueryType query_type,
+    uint64_t timestamp_start,
+    uint64_t timestamp_end,
+    EncryptionType encryption_type,
+    const void* encryption_key,
+    uint32_t key_length) {
   std::unique_lock<std::mutex> lck(mtx_);
 
   if (is_open_)
@@ -236,17 +211,6 @@ Status Array::open(
   metadata_.clear();
   metadata_loaded_ = false;
   non_empty_domain_computed_ = false;
-
-  bool found = false;
-  uint64_t timestamp_start = 0;
-  RETURN_NOT_OK(config_.get<uint64_t>(
-      "sm.array.timestamp_start", &timestamp_start, &found));
-  assert(found);
-
-  uint64_t timestamp_end = 0;
-  RETURN_NOT_OK(
-      config_.get<uint64_t>("sm.array.timestamp_end", &timestamp_end, &found));
-  assert(found);
 
   if (query_type == QueryType::READ) {
     timestamp_start_ = timestamp_start;
@@ -906,7 +870,11 @@ Status Array::load_metadata() {
         array_uri_, timestamp_end_, this));
   } else {
     RETURN_NOT_OK(storage_manager_->load_array_metadata(
-        array_uri_, *encryption_key_, timestamp_end_, &metadata_));
+        array_uri_,
+        *encryption_key_,
+        timestamp_start_,
+        timestamp_end_,
+        &metadata_));
   }
   metadata_loaded_ = true;
   return Status::Ok();

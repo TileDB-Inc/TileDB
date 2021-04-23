@@ -236,6 +236,8 @@ void check_save_to_file() {
   ss << "sm.consolidation.step_min_frags 4294967295\n";
   ss << "sm.consolidation.step_size_ratio 0.0\n";
   ss << "sm.consolidation.steps 4294967295\n";
+  ss << "sm.consolidation.timestamp_end " << std::to_string(UINT64_MAX) << "\n";
+  ss << "sm.consolidation.timestamp_start 0\n";
   ss << "sm.dedup_coords false\n";
   ss << "sm.enable_signal_handlers true\n";
   ss << "sm.io_concurrency_level " << std::thread::hardware_concurrency()
@@ -249,6 +251,8 @@ void check_save_to_file() {
   ss << "sm.sub_partitioner_memory_budget 0\n";
   ss << "sm.tile_cache_size 10000000\n";
   ss << "sm.vacuum.mode fragments\n";
+  ss << "sm.vacuum.timestamp_end " << std::to_string(UINT64_MAX) << "\n";
+  ss << "sm.vacuum.timestamp_start 0\n";
   ss << "sm.var_offsets.bitsize 64\n";
   ss << "sm.var_offsets.extra_element false\n";
   ss << "sm.var_offsets.mode bytes\n";
@@ -542,6 +546,9 @@ TEST_CASE("C API: Test config iter", "[capi], [config]") {
   all_param_values["sm.skip_checksum_validation"] = "false";
   all_param_values["sm.consolidation.amplification"] = "1.0";
   all_param_values["sm.consolidation.steps"] = "4294967295";
+  all_param_values["sm.consolidation.timestamp_start"] = "0";
+  all_param_values["sm.consolidation.timestamp_end"] =
+      std::to_string(UINT64_MAX);
   all_param_values["sm.consolidation.step_min_frags"] = "4294967295";
   all_param_values["sm.consolidation.step_max_frags"] = "4294967295";
   all_param_values["sm.consolidation.buffer_size"] = "50000000";
@@ -549,6 +556,8 @@ TEST_CASE("C API: Test config iter", "[capi], [config]") {
   all_param_values["sm.consolidation.mode"] = "fragments";
   all_param_values["sm.read_range_oob"] = "warn";
   all_param_values["sm.vacuum.mode"] = "fragments";
+  all_param_values["sm.vacuum.timestamp_start"] = "0";
+  all_param_values["sm.vacuum.timestamp_end"] = std::to_string(UINT64_MAX);
   all_param_values["sm.var_offsets.bitsize"] = "32";
   all_param_values["sm.var_offsets.extra_element"] = "true";
   all_param_values["sm.var_offsets.mode"] = "elements";

@@ -77,6 +77,7 @@ struct ArrayFx {
   void create_dense_vector(const std::string& path);
   void create_dense_array(const std::string& path);
   static std::string random_name(const std::string& prefix);
+  static int get_fragment_timestamps(const char* path, void* data);
 };
 
 static const std::string test_ca_path =
@@ -115,6 +116,20 @@ std::string ArrayFx::random_name(const std::string& prefix) {
   ss << prefix << "-" << std::this_thread::get_id() << "-"
      << TILEDB_TIMESTAMP_NOW_MS;
   return ss.str();
+}
+
+int ArrayFx::get_fragment_timestamps(const char* path, void* data) {
+  auto data_vec = (std::vector<uint64_t>*)data;
+  std::pair<uint64_t, uint64_t> timestamp_range;
+  if (tiledb::sm::utils::parse::ends_with(
+          path, tiledb::sm::constants::ok_file_suffix)) {
+    auto uri = tiledb::sm::URI(path);
+    if (tiledb::sm::utils::parse::get_timestamp_range(uri, &timestamp_range)
+            .ok())
+      data_vec->push_back(timestamp_range.first);
+  }
+
+  return 1;
 }
 
 void ArrayFx::create_sparse_vector(const std::string& path) {
@@ -747,10 +762,6 @@ TEST_CASE_METHOD(
   tiledb_array_free(&array);
   tiledb_query_free(&query);
 
-  // Get timestamp after first write
-  auto timestamp = TILEDB_TIMESTAMP_NOW_MS;
-  std::this_thread::sleep_for(std::chrono::milliseconds(1));
-
   // ---- UPDATE ----
   int buffer_upd[] = {50, 60, 70};
   uint64_t buffer_upd_size = sizeof(buffer_upd);
@@ -789,6 +800,15 @@ TEST_CASE_METHOD(
   CHECK(rc == TILEDB_OK);
   tiledb_array_free(&array);
   tiledb_query_free(&query);
+
+  std::vector<uint64_t> fragment_timestamps;
+  rc = tiledb_vfs_ls(
+      ctx_,
+      vfs_,
+      array_name.c_str(),
+      &get_fragment_timestamps,
+      &fragment_timestamps);
+  CHECK(rc == TILEDB_OK);
 
   // ---- NORMAL READ ----
   int buffer_read[10];
@@ -909,7 +929,10 @@ TEST_CASE_METHOD(
   REQUIRE(tiledb_config_alloc(&cfg, &err) == TILEDB_OK);
   REQUIRE(err == nullptr);
   rc = tiledb_config_set(
-      cfg, "sm.array.timestamp_end", std::to_string(timestamp).c_str(), &err);
+      cfg,
+      "sm.array.timestamp_end",
+      std::to_string(fragment_timestamps[0]).c_str(),
+      &err);
   REQUIRE(rc == TILEDB_OK);
   REQUIRE(err == nullptr);
   rc = tiledb_array_set_config(ctx_, array, cfg);
@@ -955,8 +978,6 @@ TEST_CASE_METHOD(
   CHECK(buffer_read_size == sizeof(buffer_read_at_c));
 
   // ---- READ AT LATER TIMESTAMP ----
-  uint64_t first_timestamp = timestamp;
-  timestamp = TILEDB_TIMESTAMP_NOW_MS;
   // Open array
   rc = tiledb_array_alloc(ctx_, array_name.c_str(), &array);
   CHECK(rc == TILEDB_OK);
@@ -964,7 +985,10 @@ TEST_CASE_METHOD(
   REQUIRE(tiledb_config_alloc(&cfg, &err) == TILEDB_OK);
   REQUIRE(err == nullptr);
   rc = tiledb_config_set(
-      cfg, "sm.array.timestamp_end", std::to_string(timestamp).c_str(), &err);
+      cfg,
+      "sm.array.timestamp_end",
+      std::to_string(fragment_timestamps[1]).c_str(),
+      &err);
   REQUIRE(rc == TILEDB_OK);
   REQUIRE(err == nullptr);
   rc = tiledb_array_set_config(ctx_, array, cfg);
@@ -991,7 +1015,7 @@ TEST_CASE_METHOD(
       tiledb_config_get(config, "sm.array.timestamp_end", &timestamp_get, &err);
   CHECK(rc == TILEDB_OK);
   CHECK(err == nullptr);
-  CHECK(!strcmp(timestamp_get, std::to_string(timestamp).c_str()));
+  CHECK(!strcmp(timestamp_get, std::to_string(fragment_timestamps[1]).c_str()));
 
   // Submit query
   rc = tiledb_query_alloc(ctx_, array, TILEDB_READ, &query);
@@ -1024,8 +1048,54 @@ TEST_CASE_METHOD(
   rc = tiledb_config_set(
       cfg,
       "sm.array.timestamp_end",
-      std::to_string(first_timestamp).c_str(),
+      std::to_string(fragment_timestamps[1] - 1).c_str(),
       &err);
+  REQUIRE(rc == TILEDB_OK);
+  REQUIRE(err == nullptr);
+  rc = tiledb_array_set_config(ctx_, array, cfg);
+  REQUIRE(rc == TILEDB_OK);
+  rc = tiledb_array_reopen(ctx_, array);
+  CHECK(rc == TILEDB_OK);
+
+  // Submit query
+  rc = tiledb_query_alloc(ctx_, array, TILEDB_READ, &query);
+  CHECK(rc == TILEDB_OK);
+  rc = tiledb_query_set_layout(ctx_, query, TILEDB_ROW_MAJOR);
+  CHECK(rc == TILEDB_OK);
+  rc = tiledb_query_set_subarray(ctx_, query, subarray_read);
+  CHECK(rc == TILEDB_OK);
+  rc =
+      tiledb_query_set_buffer(ctx_, query, "a", buffer_read, &buffer_read_size);
+  CHECK(rc == TILEDB_OK);
+  rc = tiledb_query_submit(ctx_, query);
+  CHECK(rc == TILEDB_OK);
+
+  // Clean up but don't close the array yet (we will reopen it).
+  tiledb_query_free(&query);
+
+  // Check correctness
+  int buffer_read_reopen_c[] = {1, 2, 3, 4, 5, 6, 7, 8, 9, 10};
+  CHECK(!std::memcmp(
+      buffer_read, buffer_read_reopen_c, sizeof(buffer_read_reopen_c)));
+  CHECK(buffer_read_size == sizeof(buffer_read_reopen_c));
+
+  // ---- REOPEN STARTING AT FIRST TIMESTAMP ----
+  buffer_read_size = sizeof(buffer_read);
+
+  // Reopen array
+  tiledb_config_free(&cfg);
+  err = nullptr;
+  REQUIRE(tiledb_config_alloc(&cfg, &err) == TILEDB_OK);
+  REQUIRE(err == nullptr);
+  rc = tiledb_config_set(
+      cfg,
+      "sm.array.timestamp_start",
+      std::to_string(fragment_timestamps[0] + 1).c_str(),
+      &err);
+  REQUIRE(rc == TILEDB_OK);
+  REQUIRE(err == nullptr);
+  rc = tiledb_config_set(
+      cfg, "sm.array.timestamp_end", std::to_string(UINT64_MAX).c_str(), &err);
   REQUIRE(rc == TILEDB_OK);
   REQUIRE(err == nullptr);
   rc = tiledb_array_set_config(ctx_, array, cfg);
@@ -1055,10 +1125,157 @@ TEST_CASE_METHOD(
   tiledb_config_free(&config);
 
   // Check correctness
-  int buffer_read_reopen_c[] = {1, 2, 3, 4, 5, 6, 7, 8, 9, 10};
+  int buffer_read_reopen_start_c[] = {INT_MIN,
+                                      INT_MIN,
+                                      INT_MIN,
+                                      INT_MIN,
+                                      50,
+                                      60,
+                                      70,
+                                      INT_MIN,
+                                      INT_MIN,
+                                      INT_MIN};
   CHECK(!std::memcmp(
-      buffer_read, buffer_read_reopen_c, sizeof(buffer_read_reopen_c)));
-  CHECK(buffer_read_size == sizeof(buffer_read_reopen_c));
+      buffer_read,
+      buffer_read_reopen_start_c,
+      sizeof(buffer_read_reopen_start_c)));
+  CHECK(buffer_read_size == sizeof(buffer_read_reopen_start_c));
+
+  // ---- OPEN STARTING AT FIRST TIMESTAMP ----
+  buffer_read_size = sizeof(buffer_read);
+
+  // Open array
+  rc = tiledb_array_alloc(ctx_, array_name.c_str(), &array);
+  CHECK(rc == TILEDB_OK);
+  err = nullptr;
+  REQUIRE(tiledb_config_alloc(&cfg, &err) == TILEDB_OK);
+  REQUIRE(err == nullptr);
+  rc = tiledb_config_set(
+      cfg,
+      "sm.array.timestamp_start",
+      std::to_string(fragment_timestamps[1]).c_str(),
+      &err);
+  REQUIRE(rc == TILEDB_OK);
+  REQUIRE(err == nullptr);
+  rc = tiledb_array_set_config(ctx_, array, cfg);
+  REQUIRE(rc == TILEDB_OK);
+  if (encryption_type_ == TILEDB_NO_ENCRYPTION) {
+    rc = tiledb_array_open(ctx_, array, TILEDB_READ);
+  } else {
+    rc = tiledb_array_open_with_key(
+        ctx_,
+        array,
+        TILEDB_READ,
+        encryption_type_,
+        encryption_key_,
+        (uint32_t)strlen(encryption_key_));
+  }
+  CHECK(rc == TILEDB_OK);
+
+  // Submit query
+  rc = tiledb_query_alloc(ctx_, array, TILEDB_READ, &query);
+  CHECK(rc == TILEDB_OK);
+  rc = tiledb_query_set_layout(ctx_, query, TILEDB_ROW_MAJOR);
+  CHECK(rc == TILEDB_OK);
+  rc = tiledb_query_set_subarray(ctx_, query, subarray_read);
+  CHECK(rc == TILEDB_OK);
+  rc =
+      tiledb_query_set_buffer(ctx_, query, "a", buffer_read, &buffer_read_size);
+  CHECK(rc == TILEDB_OK);
+  rc = tiledb_query_submit(ctx_, query);
+  CHECK(rc == TILEDB_OK);
+
+  // Close array and clean up
+  rc = tiledb_array_close(ctx_, array);
+  CHECK(rc == TILEDB_OK);
+  tiledb_query_free(&query);
+  tiledb_array_free(&array);
+  tiledb_config_free(&cfg);
+
+  // Check correctness
+  // Check correctness
+  int buffer_read_open_start_c[] = {INT_MIN,
+                                    INT_MIN,
+                                    INT_MIN,
+                                    INT_MIN,
+                                    50,
+                                    60,
+                                    70,
+                                    INT_MIN,
+                                    INT_MIN,
+                                    INT_MIN};
+  CHECK(!std::memcmp(
+      buffer_read, buffer_read_open_start_c, sizeof(buffer_read_open_start_c)));
+  CHECK(buffer_read_size == sizeof(buffer_read_open_start_c));
+
+  // ---- OPEN STARTING AT PAST LAST TIMESTAMP ----
+  buffer_read_size = sizeof(buffer_read);
+
+  // Open array
+  rc = tiledb_array_alloc(ctx_, array_name.c_str(), &array);
+  CHECK(rc == TILEDB_OK);
+  err = nullptr;
+  REQUIRE(tiledb_config_alloc(&cfg, &err) == TILEDB_OK);
+  REQUIRE(err == nullptr);
+  rc = tiledb_config_set(
+      cfg,
+      "sm.array.timestamp_start",
+      std::to_string(fragment_timestamps[1] + 1).c_str(),
+      &err);
+  REQUIRE(rc == TILEDB_OK);
+  REQUIRE(err == nullptr);
+  rc = tiledb_array_set_config(ctx_, array, cfg);
+  REQUIRE(rc == TILEDB_OK);
+  if (encryption_type_ == TILEDB_NO_ENCRYPTION) {
+    rc = tiledb_array_open(ctx_, array, TILEDB_READ);
+  } else {
+    rc = tiledb_array_open_with_key(
+        ctx_,
+        array,
+        TILEDB_READ,
+        encryption_type_,
+        encryption_key_,
+        (uint32_t)strlen(encryption_key_));
+  }
+  CHECK(rc == TILEDB_OK);
+
+  // Submit query
+  rc = tiledb_query_alloc(ctx_, array, TILEDB_READ, &query);
+  CHECK(rc == TILEDB_OK);
+  rc = tiledb_query_set_layout(ctx_, query, TILEDB_ROW_MAJOR);
+  CHECK(rc == TILEDB_OK);
+  rc = tiledb_query_set_subarray(ctx_, query, subarray_read);
+  CHECK(rc == TILEDB_OK);
+  rc =
+      tiledb_query_set_buffer(ctx_, query, "a", buffer_read, &buffer_read_size);
+  CHECK(rc == TILEDB_OK);
+  rc = tiledb_query_submit(ctx_, query);
+  CHECK(rc == TILEDB_OK);
+
+  // Close array and clean up
+  rc = tiledb_array_close(ctx_, array);
+  CHECK(rc == TILEDB_OK);
+  tiledb_query_free(&query);
+  tiledb_array_free(&array);
+  tiledb_config_free(&cfg);
+
+  // Check correctness
+  // Check correctness
+  int buffer_read_open_start_now_c[] = {INT_MIN,
+                                        INT_MIN,
+                                        INT_MIN,
+                                        INT_MIN,
+                                        INT_MIN,
+                                        INT_MIN,
+                                        INT_MIN,
+                                        INT_MIN,
+                                        INT_MIN,
+                                        INT_MIN};
+  CHECK(!std::memcmp(
+      buffer_read,
+      buffer_read_open_start_now_c,
+      sizeof(buffer_read_open_start_now_c)));
+  CHECK(buffer_read_size == sizeof(buffer_read_open_start_now_c));
 
   remove_temp_dir(temp_dir);
 }
