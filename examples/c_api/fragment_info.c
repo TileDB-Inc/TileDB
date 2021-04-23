@@ -158,14 +158,17 @@ void get_fragment_info() {
   uint64_t start;
   uint64_t end;
   tiledb_fragment_info_get_timestamp_range(ctx, fragment_info, 0, &start, &end);
-  printf("The fragment's timestamp range is {%u, %u}.\n", 
-    (uint32_t)start, (uint32_t)end);
+  printf(
+      "The fragment's timestamp range is {%u, %u}.\n",
+      (uint32_t)start,
+      (uint32_t)end);
 
   // Get the number of cells written to the fragment.
   uint64_t cell_num;
   tiledb_fragment_info_get_cell_num(ctx, fragment_info, 0, &cell_num);
-  printf("The number of cells written to the fragment is %u.\n", 
-    (uint32_t)cell_num);
+  printf(
+      "The number of cells written to the fragment is %u.\n",
+      (uint32_t)cell_num);
 
   // Get the format version of the fragment.
   uint32_t version;
