@@ -1,4 +1,4 @@
-# In Progress
+# TileDB v2.2.8 Release Notes
 
 ## Disk Format
 
@@ -12,6 +12,7 @@
 * Add support for serialization of query config [#2177](https://github.com/TileDB-Inc/TileDB/pull/2177)
 
 ## Improvements
+* Optimize `Subarray::compute_relevant_fragments` [#2218](https://github.com/TileDB-Inc/TileDB/pull/2218)
 
 * Reduces memory usage in multi-range range reads [#2165](https://github.com/TileDB-Inc/TileDB/pull/2165)
 * Add config option `sm.read_range_oob` to toggle bounding read ranges to domain or erroring [#2162](https://github.com/TileDB-Inc/TileDB/pull/2162)
@@ -26,6 +27,7 @@
 ## API additions
 
 ### C API
+* tiledb_query_get_array now returns a deep-copy [#2188](https://github.com/TileDB-Inc/TileDB/pull/2188)
 
 * Add new api,`tiledb_query_get_config` to get a query's config. [#2167](https://github.com/TileDB-Inc/TileDB/pull/2167)
 * Added `tiledb_serialize_config` and `tiledb_deserialize_config` [#2164](https://github.com/TileDB-Inc/TileDB/pull/2164)
