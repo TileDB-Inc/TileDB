@@ -178,6 +178,7 @@ int array_create_wrapper(
           &array_schema) == TILEDB_OK);
 
   // Clean up.
+  tiledb_array_schema_free(&array_schema);
   tiledb_array_schema_free(&new_array_schema);
   tiledb_buffer_free(&buff);
   tiledb_buffer_free(&buff2);

@@ -2260,6 +2260,7 @@ int32_t tiledb_array_schema_load_with_key(
     tiledb_array_schema_t** array_schema) {
   if (sanity_check(ctx) == TILEDB_ERR)
     return TILEDB_ERR;
+
   // Create array schema
   *array_schema = new (std::nothrow) tiledb_array_schema_t;
   if (*array_schema == nullptr) {

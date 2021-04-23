@@ -431,6 +431,7 @@ TEST_CASE_METHOD(
   rc = tiledb_array_close(ctx_, array);
   CHECK(rc == TILEDB_OK);
   tiledb_array_free(&array);
+  tiledb_config_free(&config);
   tiledb_query_free(&query);
 
   remove_temp_dir(local_fs.file_prefix() + local_fs.temp_dir());

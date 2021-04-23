@@ -1113,6 +1113,7 @@ void DenseArrayFx::check_sorted_reads(const std::string& path) {
 
   // Clean up
   tiledb_array_free(&array);
+  tiledb_config_free(&config);
   tiledb_query_free(&query);
 }
 

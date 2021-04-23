@@ -411,6 +411,7 @@ struct SerializationFx {
           validity,
           a2_validity_size));
       to_free.push_back(buff);
+      to_free.push_back(validity);
     }
 
     if (a3_size != nullptr) {
