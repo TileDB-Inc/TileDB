@@ -123,11 +123,12 @@ class Array {
       uint32_t key_length);
 
   /**
-   * Opens the array for reading at a timestamp retrieved from the config.
+   * Opens the array for reading.
    *
    * @param query_type The query type. This should always be READ. It
    *    is here only for sanity check.
-   * @param timestamp The timestamp at which to open the array.
+   * @param timestamp_start The start timestamp at which to open the array.
+   * @param timestamp_end The end timestamp at which to open the array.
    * @param encryption_type The encryption type of the array
    * @param encryption_key If the array is encrypted, the private encryption
    *    key. For unencrypted arrays, pass `nullptr`.
@@ -138,7 +139,8 @@ class Array {
    */
   Status open(
       QueryType query_type,
-      uint64_t timestamp,
+      uint64_t timestamp_start,
+      uint64_t timestamp_end,
       EncryptionType encryption_type,
       const void* encryption_key,
       uint32_t key_length);
