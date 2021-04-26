@@ -645,11 +645,11 @@ Status ArraySchema::set_domain(Domain* domain) {
           datatype_str(type) + "'"));
     }
   }
-  
+
   if (cell_order_ != Layout::HILBERT) {
     RETURN_NOT_OK(domain->set_null_tile_extents_to_range());
   }
-  
+
   // Set domain
   tdb_delete(domain_);
   domain_ = tdb_new(Domain, domain);
