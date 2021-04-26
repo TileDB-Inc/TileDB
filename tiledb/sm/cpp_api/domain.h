@@ -317,7 +317,7 @@ class Domain {
 
 /** Get a string representation of an attribute for an output stream. */
 inline std::ostream& operator<<(std::ostream& os, const Domain& d) {
-  os << "Domain<(" << impl::to_str(d.type()) << ")";
+  os << "Domain<"; // os << "Domain<(" << impl::to_str(d.type()) << ")";
   for (const auto& dimension : d.dimensions()) {
     os << " " << dimension;
   }
