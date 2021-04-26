@@ -327,8 +327,8 @@ void DenseVectorFx::check_duplicate_coords(const std::string& path) {
     int64_t update_buffer[] = {write_num, write_num, write_num};
     int64_t coords_buffer[] = {7, 8, 9};
     void* update_buffers[] = {update_buffer, coords_buffer};
-    uint64_t update_buffer_sizes[] = {
-        sizeof(update_buffer), sizeof(coords_buffer)};
+    uint64_t update_buffer_sizes[] = {sizeof(update_buffer),
+                                      sizeof(coords_buffer)};
 
     // Update
     tiledb_query_t* update_query;
