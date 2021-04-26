@@ -71,7 +71,7 @@ class QueryBuffer {
       , buffer_var_(buffer_var)
       , buffer_size_(buffer_size)
       , buffer_var_size_(buffer_var_size) {
-    original_buffer_size_ = *buffer_size;
+    original_buffer_size_ = (buffer_size != nullptr) ? *buffer_size : 0;
     original_buffer_var_size_ =
         (buffer_var_size_ != nullptr) ? *buffer_var_size_ : 0;
     original_validity_vector_size_ = 0;
@@ -89,7 +89,7 @@ class QueryBuffer {
       , buffer_size_(buffer_size)
       , buffer_var_size_(buffer_var_size)
       , validity_vector_(std::move(validity_vector)) {
-    original_buffer_size_ = *buffer_size;
+    original_buffer_size_ = (buffer_size_ != nullptr) ? *buffer_size_ : 0;
     original_buffer_var_size_ =
         (buffer_var_size_ != nullptr) ? *buffer_var_size_ : 0;
     original_validity_vector_size_ =
