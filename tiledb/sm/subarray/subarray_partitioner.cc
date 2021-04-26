@@ -379,7 +379,7 @@ Status SubarrayPartitioner::next(bool* unsplittable) {
 
   // An interval of whole ranges that may need calibration
   bool must_split_slab;
-  calibrate_current_start_end(&must_split_slab);
+  RETURN_NOT_OK(calibrate_current_start_end(&must_split_slab));
 
   // Handle case the next partition is composed of whole ND ranges
   if (interval_found && !must_split_slab) {
@@ -579,7 +579,7 @@ Status SubarrayPartitioner::split_current(bool* unsplittable) {
     current_.end_ = current_.start_ + (uint64_t)new_range_num - 1;
 
     bool must_split_slab;
-    calibrate_current_start_end(&must_split_slab);
+    RETURN_NOT_OK(calibrate_current_start_end(&must_split_slab));
 
     // If the range between `current_.start_` and `current_.end_`
     // will not fit within the memory contraints, `must_split_slab`
@@ -633,14 +633,14 @@ Subarray* SubarrayPartitioner::subarray() {
 /*          PRIVATE METHODS       */
 /* ****************************** */
 
-void SubarrayPartitioner::calibrate_current_start_end(bool* must_split_slab) {
+Status SubarrayPartitioner::calibrate_current_start_end(bool* must_split_slab) {
   // Initialize (may be reset below)
   *must_split_slab = false;
 
   // Special case of single range and global layout
   if (subarray_.layout() == Layout::GLOBAL_ORDER) {
     assert(current_.start_ == current_.end_);
-    return;
+    return Status::Ok();
   }
 
   auto start_coords = subarray_.get_range_coords(current_.start_);
@@ -650,7 +650,7 @@ void SubarrayPartitioner::calibrate_current_start_end(bool* must_split_slab) {
   auto dim_num = subarray_.dim_num();
   uint64_t num;
   for (unsigned i = 0; i < dim_num; ++i) {
-    subarray_.get_range_num(i, &num);
+    RETURN_NOT_OK(subarray_.get_range_num(i, &num));
     range_num.push_back(num);
   }
 
@@ -723,6 +723,7 @@ void SubarrayPartitioner::calibrate_current_start_end(bool* must_split_slab) {
 
   // Get current_.end_. based on end_coords
   current_.end_ = subarray_.range_idx(end_coords);
+  return Status::Ok();
 }
 
 SubarrayPartitioner SubarrayPartitioner::clone() const {
@@ -974,7 +975,7 @@ void SubarrayPartitioner::compute_splitting_value_single_range_hilbert(
   *normal_order = (hilbert_left < hilbert_right);
 }
 
-void SubarrayPartitioner::compute_splitting_value_multi_range(
+Status SubarrayPartitioner::compute_splitting_value_multi_range(
     unsigned* splitting_dim,
     uint64_t* splitting_range,
     ByteVecValue* splitting_value,
@@ -987,7 +988,7 @@ void SubarrayPartitioner::compute_splitting_value_multi_range(
   if (partition.range_num() == 1) {
     compute_splitting_value_single_range(
         partition, splitting_dim, splitting_value, normal_order, unsplittable);
-    return;
+    return Status::Ok();
   }
 
   // Multi-range partition
@@ -1012,7 +1013,7 @@ void SubarrayPartitioner::compute_splitting_value_multi_range(
   const Range* r;
   for (auto d : dims) {
     // Check if we need to split the multiple ranges
-    partition.get_range_num(d, &range_num);
+    RETURN_NOT_OK(partition.get_range_num(d, &range_num));
     if (range_num > 1) {
       assert(d == dims.back());
       *splitting_dim = d;
@@ -1032,6 +1033,7 @@ void SubarrayPartitioner::compute_splitting_value_multi_range(
   }
 
   assert(*splitting_dim != UINT32_MAX);
+  return Status::Ok();
 }
 
 bool SubarrayPartitioner::must_split(Subarray* partition) {
@@ -1214,12 +1216,12 @@ Status SubarrayPartitioner::split_top_multi_range(bool* unsplittable) {
   uint64_t splitting_range = UINT64_MAX;
   ByteVecValue splitting_value;
   bool normal_order;
-  compute_splitting_value_multi_range(
+  RETURN_NOT_OK(compute_splitting_value_multi_range(
       &splitting_dim,
       &splitting_range,
       &splitting_value,
       &normal_order,
-      unsplittable);
+      unsplittable));
 
   if (*unsplittable)
     return Status::Ok();
