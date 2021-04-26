@@ -7,15 +7,15 @@
 ## Breaking behavior
 
 ## New features
-
+* Support TILEDB_DATETIME_{SEC,MS,US,NS} in arrow_io_impl.h [#2229](https://github.com/TileDB-Inc/TileDB/pull/2229)
 * Add support for serialization of config objects [#2164](https://github.com/TileDB-Inc/TileDB/pull/2164)
 * Add support for serialization of query config [#2177](https://github.com/TileDB-Inc/TileDB/pull/2177)
 
 ## Improvements
 * Optimize `Subarray::compute_relevant_fragments` [#2218](https://github.com/TileDB-Inc/TileDB/pull/2218)
-
 * Reduces memory usage in multi-range range reads [#2165](https://github.com/TileDB-Inc/TileDB/pull/2165)
 * Add config option `sm.read_range_oob` to toggle bounding read ranges to domain or erroring [#2162](https://github.com/TileDB-Inc/TileDB/pull/2162)
+* Updates bzip2 to v1.0.8 on Linux/OSX [#2233](https://github.com/TileDB-Inc/TileDB/pull/2233)
 
 ## Deprecations
 
@@ -28,12 +28,10 @@
 
 ### C API
 * tiledb_query_get_array now returns a deep-copy [#2188](https://github.com/TileDB-Inc/TileDB/pull/2188)
-
 * Add new api,`tiledb_query_get_config` to get a query's config. [#2167](https://github.com/TileDB-Inc/TileDB/pull/2167)
 * Added `tiledb_serialize_config` and `tiledb_deserialize_config` [#2164](https://github.com/TileDB-Inc/TileDB/pull/2164)
 
 ### C++ API
-
 * Add new api, `Query.config()`  to get a query's config. [#2167](https://github.com/TileDB-Inc/TileDB/pull/2167)
 
 # TileDB v2.2.7 Release Notes
