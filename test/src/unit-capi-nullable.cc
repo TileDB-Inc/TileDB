@@ -144,6 +144,23 @@ class NullableArrayFx {
       tiledb_layout_t tile_order,
       tiledb_layout_t write_order);
 
+  /**
+   * Creates, writes, and reads nullable attributes using decoupled buffer
+   * setters & getters API
+   *
+   * @param test_attrs The nullable attributes to test.
+   * @param array_type The type of the array (dense/sparse).
+   * @param cell_order The cell order of the array.
+   * @param tile_order The tile order of the array.
+   * @param write_order The write layout.
+   */
+  void do_2d_nullable_test_decoupled_api(
+      const vector<test_attr_t>& test_attrs,
+      const tiledb_array_type_t array_type,
+      const tiledb_layout_t cell_order,
+      const tiledb_layout_t tile_order,
+      const tiledb_layout_t write_order);
+
  private:
   /** The C-API context object. */
   tiledb_ctx_t* ctx_;
@@ -196,6 +213,20 @@ class NullableArrayFx {
       tiledb_layout_t layout);
 
   /**
+   * Creates and executes a single write query using
+   * the api with separate getters and setters for attribute & dimension
+   * buffers
+   *
+   * @param array_name The name of the array.
+   * @param test_query_buffers The query buffers to write.
+   * @param layout The write layout.
+   */
+  void write_decoupled_api(
+      const string& array_name,
+      const vector<test_query_buffer_t>& test_query_buffers,
+      tiledb_layout_t layout);
+
+  /**
    * Creates and executes a single read query.
    *
    * @param array_name The name of the array.
@@ -206,6 +237,20 @@ class NullableArrayFx {
       const string& array_name,
       const vector<test_query_buffer_t>& test_query_buffers,
       const void* subarray);
+
+  /**
+   * Creates and executes a single read query using
+   * the api with separate getters and setters for attribute & dimension
+   * buffers
+   *
+   * @param array_name The name of the array.
+   * @param test_query_buffers The query buffers to read.
+   * @param subarray The subarray to read.
+   */
+  void read_decoupled_api(
+      const string& array_name,
+      const vector<test_query_buffer_t>& test_query_buffers,
+      const void* const subarray);
 };
 
 NullableArrayFx::NullableArrayFx() {
@@ -424,6 +469,111 @@ void NullableArrayFx::write(
   tiledb_query_free(&query);
 }
 
+void NullableArrayFx::write_decoupled_api(
+    const string& array_name,
+    const vector<test_query_buffer_t>& test_query_buffers,
+    const tiledb_layout_t layout) {
+  // Open the array for writing.
+  tiledb_array_t* array;
+  int rc =
+      tiledb_array_alloc(ctx_, (FILE_TEMP_DIR + array_name).c_str(), &array);
+  REQUIRE(rc == TILEDB_OK);
+  rc = tiledb_array_open(ctx_, array, TILEDB_WRITE);
+  REQUIRE(rc == TILEDB_OK);
+
+  // Create the write query.
+  tiledb_query_t* query;
+  rc = tiledb_query_alloc(ctx_, array, TILEDB_WRITE, &query);
+  REQUIRE(rc == TILEDB_OK);
+
+  // Set the query layout.
+  rc = tiledb_query_set_layout(ctx_, query, layout);
+  REQUIRE(rc == TILEDB_OK);
+
+  // Set the query buffers.
+  for (const auto& test_query_buffer : test_query_buffers) {
+    if (test_query_buffer.buffer_validity_size_ == nullptr) {
+      if (test_query_buffer.buffer_var_ == nullptr) {
+        rc = tiledb_query_set_data_buffer(
+            ctx_,
+            query,
+            test_query_buffer.name_.c_str(),
+            test_query_buffer.buffer_,
+            test_query_buffer.buffer_size_);
+        REQUIRE(rc == TILEDB_OK);
+      } else {
+        rc = tiledb_query_set_data_buffer(
+            ctx_,
+            query,
+            test_query_buffer.name_.c_str(),
+            test_query_buffer.buffer_var_,
+            test_query_buffer.buffer_var_size_);
+        REQUIRE(rc == TILEDB_OK);
+        rc = tiledb_query_set_offsets_buffer(
+            ctx_,
+            query,
+            test_query_buffer.name_.c_str(),
+            static_cast<uint64_t*>(test_query_buffer.buffer_),
+            test_query_buffer.buffer_size_);
+        REQUIRE(rc == TILEDB_OK);
+      }
+    } else {
+      if (test_query_buffer.buffer_var_ == nullptr) {
+        rc = tiledb_query_set_data_buffer(
+            ctx_,
+            query,
+            test_query_buffer.name_.c_str(),
+            test_query_buffer.buffer_,
+            test_query_buffer.buffer_size_);
+        REQUIRE(rc == TILEDB_OK);
+        rc = tiledb_query_set_validity_buffer(
+            ctx_,
+            query,
+            test_query_buffer.name_.c_str(),
+            test_query_buffer.buffer_validity_,
+            test_query_buffer.buffer_validity_size_);
+        REQUIRE(rc == TILEDB_OK);
+      } else {
+        rc = tiledb_query_set_data_buffer(
+            ctx_,
+            query,
+            test_query_buffer.name_.c_str(),
+            test_query_buffer.buffer_var_,
+            test_query_buffer.buffer_var_size_);
+        REQUIRE(rc == TILEDB_OK);
+        rc = tiledb_query_set_offsets_buffer(
+            ctx_,
+            query,
+            test_query_buffer.name_.c_str(),
+            static_cast<uint64_t*>(test_query_buffer.buffer_),
+            test_query_buffer.buffer_size_);
+        REQUIRE(rc == TILEDB_OK);
+        rc = tiledb_query_set_validity_buffer(
+            ctx_,
+            query,
+            test_query_buffer.name_.c_str(),
+            test_query_buffer.buffer_validity_,
+            test_query_buffer.buffer_validity_size_);
+        REQUIRE(rc == TILEDB_OK);
+      }
+    }
+  }
+
+  // Submit the query.
+  rc = tiledb_query_submit(ctx_, query);
+  REQUIRE(rc == TILEDB_OK);
+
+  // Finalize the query, a no-op for non-global writes.
+  rc = tiledb_query_finalize(ctx_, query);
+  REQUIRE(rc == TILEDB_OK);
+
+  // Clean up
+  rc = tiledb_array_close(ctx_, array);
+  REQUIRE(rc == TILEDB_OK);
+  tiledb_array_free(&array);
+  tiledb_query_free(&query);
+}
+
 void NullableArrayFx::read(
     const string& array_name,
     const vector<test_query_buffer_t>& test_query_buffers,
@@ -484,6 +634,112 @@ void NullableArrayFx::read(
             test_query_buffer.buffer_size_,
             test_query_buffer.buffer_var_,
             test_query_buffer.buffer_var_size_,
+            test_query_buffer.buffer_validity_,
+            test_query_buffer.buffer_validity_size_);
+        REQUIRE(rc == TILEDB_OK);
+      }
+    }
+  }
+
+  // Set the subarray to read.
+  rc = tiledb_query_set_subarray(ctx_, query, subarray);
+  REQUIRE(rc == TILEDB_OK);
+
+  // Submit the query.
+  rc = tiledb_query_submit(ctx_, query);
+  REQUIRE(rc == TILEDB_OK);
+
+  // Finalize the query, a no-op for non-global writes.
+  rc = tiledb_query_finalize(ctx_, query);
+  REQUIRE(rc == TILEDB_OK);
+
+  // Clean up
+  rc = tiledb_array_close(ctx_, array);
+  REQUIRE(rc == TILEDB_OK);
+  tiledb_array_free(&array);
+  tiledb_query_free(&query);
+}
+
+void NullableArrayFx::read_decoupled_api(
+    const string& array_name,
+    const vector<test_query_buffer_t>& test_query_buffers,
+    const void* const subarray) {
+  // Open the array for reading.
+  tiledb_array_t* array;
+  int rc =
+      tiledb_array_alloc(ctx_, (FILE_TEMP_DIR + array_name).c_str(), &array);
+  REQUIRE(rc == TILEDB_OK);
+  rc = tiledb_array_open(ctx_, array, TILEDB_READ);
+  REQUIRE(rc == TILEDB_OK);
+
+  // Create the read query.
+  tiledb_query_t* query;
+  rc = tiledb_query_alloc(ctx_, array, TILEDB_READ, &query);
+  REQUIRE(rc == TILEDB_OK);
+
+  // Set the query buffers.
+  for (size_t i = 0; i < test_query_buffers.size(); ++i) {
+    const test_query_buffer_t& test_query_buffer = test_query_buffers[i];
+    if (test_query_buffer.buffer_validity_size_ == nullptr) {
+      if (test_query_buffer.buffer_var_ == nullptr) {
+        rc = tiledb_query_set_data_buffer(
+            ctx_,
+            query,
+            test_query_buffer.name_.c_str(),
+            test_query_buffer.buffer_,
+            test_query_buffer.buffer_size_);
+        REQUIRE(rc == TILEDB_OK);
+      } else {
+        rc = tiledb_query_set_data_buffer(
+            ctx_,
+            query,
+            test_query_buffer.name_.c_str(),
+            test_query_buffer.buffer_var_,
+            test_query_buffer.buffer_var_size_);
+        REQUIRE(rc == TILEDB_OK);
+        rc = tiledb_query_set_offsets_buffer(
+            ctx_,
+            query,
+            test_query_buffer.name_.c_str(),
+            static_cast<uint64_t*>(test_query_buffer.buffer_),
+            test_query_buffer.buffer_size_);
+        REQUIRE(rc == TILEDB_OK);
+      }
+    } else {
+      if (test_query_buffer.buffer_var_ == nullptr) {
+        rc = tiledb_query_set_data_buffer(
+            ctx_,
+            query,
+            test_query_buffer.name_.c_str(),
+            test_query_buffer.buffer_,
+            test_query_buffer.buffer_size_);
+        REQUIRE(rc == TILEDB_OK);
+        rc = tiledb_query_set_validity_buffer(
+            ctx_,
+            query,
+            test_query_buffer.name_.c_str(),
+            test_query_buffer.buffer_validity_,
+            test_query_buffer.buffer_validity_size_);
+        REQUIRE(rc == TILEDB_OK);
+      } else {
+        rc = tiledb_query_set_data_buffer(
+            ctx_,
+            query,
+            test_query_buffer.name_.c_str(),
+            test_query_buffer.buffer_var_,
+            test_query_buffer.buffer_var_size_);
+        REQUIRE(rc == TILEDB_OK);
+        rc = tiledb_query_set_offsets_buffer(
+            ctx_,
+            query,
+            test_query_buffer.name_.c_str(),
+            static_cast<uint64_t*>(test_query_buffer.buffer_),
+            test_query_buffer.buffer_size_);
+        REQUIRE(rc == TILEDB_OK);
+        rc = tiledb_query_set_validity_buffer(
+            ctx_,
+            query,
+            test_query_buffer.name_.c_str(),
             test_query_buffer.buffer_validity_,
             test_query_buffer.buffer_validity_size_);
         REQUIRE(rc == TILEDB_OK);
@@ -821,6 +1077,317 @@ void NullableArrayFx::do_2d_nullable_test(
   }
 }
 
+void NullableArrayFx::do_2d_nullable_test_decoupled_api(
+    const vector<test_attr_t>& test_attrs,
+    const tiledb_array_type_t array_type,
+    const tiledb_layout_t cell_order,
+    const tiledb_layout_t tile_order,
+    const tiledb_layout_t write_order) {
+  const string array_name = "2d_nullable_array";
+
+  // Skip row-major and col-major writes for sparse arrays.
+  if (array_type == TILEDB_SPARSE &&
+      (write_order == TILEDB_ROW_MAJOR || write_order == TILEDB_COL_MAJOR)) {
+    return;
+  }
+
+  // Define the dimensions.
+  vector<test_dim_t> test_dims;
+  const uint64_t d1_domain[] = {1, 4};
+  const uint64_t d1_tile_extent = 2;
+  test_dims.emplace_back("d1", TILEDB_UINT64, d1_domain, d1_tile_extent);
+  const uint64_t d2_domain[] = {1, 4};
+  const uint64_t d2_tile_extent = 2;
+  test_dims.emplace_back("d2", TILEDB_UINT64, d2_domain, d2_tile_extent);
+
+  // Create the array.
+  create_array(
+      array_name, array_type, test_dims, test_attrs, cell_order, tile_order);
+
+  // Define the write query buffers for "a1".
+  vector<test_query_buffer_t> write_query_buffers;
+  int a1_write_buffer[16];
+  for (int i = 0; i < 16; ++i)
+    a1_write_buffer[i] = i;
+  uint64_t a1_write_buffer_size = sizeof(a1_write_buffer);
+  uint8_t a1_write_buffer_validity[16];
+  for (int i = 0; i < 16; ++i)
+    a1_write_buffer_validity[i] = rand() % 2;
+  uint64_t a1_write_buffer_validity_size = sizeof(a1_write_buffer_validity);
+  write_query_buffers.emplace_back(
+      "a1",
+      a1_write_buffer,
+      &a1_write_buffer_size,
+      nullptr,
+      nullptr,
+      a1_write_buffer_validity,
+      &a1_write_buffer_validity_size);
+
+  // Define the write query buffers for "a2".
+  int a2_write_buffer[16];
+  for (int i = 0; i < 16; ++i)
+    a2_write_buffer[i] = a1_write_buffer[16 - 1 - i];
+  uint64_t a2_write_buffer_size = sizeof(a2_write_buffer);
+  uint8_t a2_write_buffer_validity[16];
+  for (uint64_t i = 0; i < 16; ++i)
+    a2_write_buffer_validity[i] = a1_write_buffer_validity[16 - 1 - i];
+  uint64_t a2_write_buffer_validity_size = sizeof(a2_write_buffer_validity);
+  if (test_attrs.size() >= 2) {
+    write_query_buffers.emplace_back(
+        "a2",
+        a2_write_buffer,
+        &a2_write_buffer_size,
+        nullptr,
+        nullptr,
+        a2_write_buffer_validity,
+        &a2_write_buffer_validity_size);
+  }
+
+  // Define the write query buffers for "a3".
+  uint64_t a3_write_buffer[16];
+  for (uint64_t i = 0; i < 16; ++i)
+    a3_write_buffer[i] = i * sizeof(int) * 2;
+  uint64_t a3_write_buffer_size = sizeof(a3_write_buffer);
+  int a3_write_buffer_var[32];
+  for (int i = 0; i < 32; ++i)
+    a3_write_buffer_var[i] = i;
+  uint64_t a3_write_buffer_var_size = sizeof(a3_write_buffer_var);
+  uint8_t a3_write_buffer_validity[16];
+  for (int i = 0; i < 16; ++i)
+    a3_write_buffer_validity[i] = rand() % 2;
+  uint64_t a3_write_buffer_validity_size = sizeof(a3_write_buffer_validity);
+  if (test_attrs.size() >= 3) {
+    write_query_buffers.emplace_back(
+        "a3",
+        a3_write_buffer,
+        &a3_write_buffer_size,
+        a3_write_buffer_var,
+        &a3_write_buffer_var_size,
+        a3_write_buffer_validity,
+        &a3_write_buffer_validity_size);
+  }
+
+  // Define dimension query buffers for either sparse arrays or dense arrays
+  // with an unordered write order.
+  uint64_t d1_write_buffer[16];
+  uint64_t d2_write_buffer[16];
+  uint64_t d1_write_buffer_size;
+  uint64_t d2_write_buffer_size;
+  if (array_type == TILEDB_SPARSE || write_order == TILEDB_UNORDERED) {
+    vector<uint64_t> d1_write_vec;
+    vector<uint64_t> d2_write_vec;
+
+    // Coordinates for sparse arrays written in global order have unique
+    // ordering when either/both cell and tile ordering is col-major.
+    if (array_type == TILEDB_SPARSE && write_order == TILEDB_GLOBAL_ORDER &&
+        (cell_order == TILEDB_COL_MAJOR || tile_order == TILEDB_COL_MAJOR)) {
+      if (cell_order == TILEDB_ROW_MAJOR && tile_order == TILEDB_COL_MAJOR) {
+        d1_write_vec = {1, 1, 2, 2, 3, 3, 4, 4, 1, 1, 2, 2, 3, 3, 4, 4};
+        d2_write_vec = {1, 2, 1, 2, 1, 2, 1, 2, 3, 4, 3, 4, 3, 4, 3, 4};
+      } else if (
+          cell_order == TILEDB_COL_MAJOR && tile_order == TILEDB_ROW_MAJOR) {
+        d1_write_vec = {1, 2, 1, 2, 1, 2, 1, 2, 3, 4, 3, 4, 3, 4, 3, 4};
+        d2_write_vec = {1, 1, 2, 2, 3, 3, 4, 4, 1, 1, 2, 2, 3, 3, 4, 4};
+      } else {
+        REQUIRE(cell_order == TILEDB_COL_MAJOR);
+        REQUIRE(tile_order == TILEDB_COL_MAJOR);
+        d1_write_vec = {1, 2, 1, 2, 3, 4, 3, 4, 1, 2, 1, 2, 3, 4, 3, 4};
+        d2_write_vec = {1, 1, 2, 2, 1, 1, 2, 2, 3, 3, 4, 4, 3, 3, 4, 4};
+      }
+    } else {
+      d1_write_vec = {1, 1, 2, 2, 1, 1, 2, 2, 3, 3, 4, 4, 3, 3, 4, 4};
+      d2_write_vec = {1, 2, 1, 2, 3, 4, 3, 4, 1, 2, 1, 2, 3, 4, 3, 4};
+    }
+
+    REQUIRE(d1_write_vec.size() == 16);
+    for (size_t i = 0; i < 16; ++i)
+      d1_write_buffer[i] = d1_write_vec[i];
+    d1_write_buffer_size = sizeof(d1_write_buffer);
+    write_query_buffers.emplace_back(
+        "d1",
+        d1_write_buffer,
+        &d1_write_buffer_size,
+        nullptr,
+        nullptr,
+        nullptr,
+        nullptr);
+
+    REQUIRE(d2_write_vec.size() == 16);
+    for (size_t i = 0; i < 16; ++i)
+      d2_write_buffer[i] = d2_write_vec[i];
+    d2_write_buffer_size = sizeof(d2_write_buffer);
+    write_query_buffers.emplace_back(
+        "d2",
+        d2_write_buffer,
+        &d2_write_buffer_size,
+        nullptr,
+        nullptr,
+        nullptr,
+        nullptr);
+  }
+
+  // Execute the write query.
+  write_decoupled_api(array_name, write_query_buffers, write_order);
+
+  // Define the read query buffers for "a1".
+  vector<test_query_buffer_t> read_query_buffers;
+  int a1_read_buffer[16] = {0};
+  uint64_t a1_read_buffer_size = sizeof(a1_read_buffer);
+  uint8_t a1_read_buffer_validity[16] = {0};
+  uint64_t a1_read_buffer_validity_size = sizeof(a1_read_buffer_validity);
+  read_query_buffers.emplace_back(
+      "a1",
+      a1_read_buffer,
+      &a1_read_buffer_size,
+      nullptr,
+      nullptr,
+      a1_read_buffer_validity,
+      &a1_read_buffer_validity_size);
+
+  // Define the read query buffers for "a2".
+  int a2_read_buffer[16] = {0};
+  uint64_t a2_read_buffer_size = sizeof(a2_read_buffer);
+  uint8_t a2_read_buffer_validity[16] = {0};
+  uint64_t a2_read_buffer_validity_size = sizeof(a2_read_buffer_validity);
+  if (test_attrs.size() >= 2) {
+    read_query_buffers.emplace_back(
+        "a2",
+        a2_read_buffer,
+        &a2_read_buffer_size,
+        nullptr,
+        nullptr,
+        a2_read_buffer_validity,
+        &a2_read_buffer_validity_size);
+  }
+
+  // Define the read query buffers for "a3".
+  uint64_t a3_read_buffer[16] = {0};
+  uint64_t a3_read_buffer_size = sizeof(a3_read_buffer);
+  int a3_read_buffer_var[32] = {0};
+  uint64_t a3_read_buffer_var_size = sizeof(a3_read_buffer);
+  uint8_t a3_read_buffer_validity[16] = {0};
+  uint64_t a3_read_buffer_validity_size = sizeof(a3_read_buffer_validity);
+  if (test_attrs.size() >= 3) {
+    read_query_buffers.emplace_back(
+        "a3",
+        a3_read_buffer,
+        &a3_read_buffer_size,
+        a3_read_buffer_var,
+        &a3_read_buffer_var_size,
+        a3_read_buffer_validity,
+        &a3_read_buffer_validity_size);
+  }
+
+  // Execute a read query over the entire domain.
+  const uint64_t subarray_full[] = {1, 4, 1, 4};
+  read_decoupled_api(array_name, read_query_buffers, subarray_full);
+
+  // Each value in `a1_read_buffer` corresponds to its index in
+  // the original `a1_write_buffer`. Check that the ordering of
+  // the validity buffer matches the ordering in the value buffer.
+  REQUIRE(a1_read_buffer_size == a1_write_buffer_size);
+  REQUIRE(a1_read_buffer_validity_size == a1_write_buffer_validity_size);
+  uint8_t expected_a1_read_buffer_validity[16];
+  for (int i = 0; i < 16; ++i) {
+    const uint64_t idx = a1_read_buffer[i];
+    expected_a1_read_buffer_validity[i] = a1_write_buffer_validity[idx];
+  }
+
+  REQUIRE(!memcmp(
+      a1_read_buffer_validity,
+      expected_a1_read_buffer_validity,
+      a1_read_buffer_validity_size));
+
+  // Each value in `a2_read_buffer` corresponds to its reversed index in
+  // the original `a2_write_buffer`. Check that the ordering of
+  // the validity buffer matches the ordering in the value buffer.
+  if (test_attrs.size() >= 2) {
+    REQUIRE(a2_read_buffer_size == a2_write_buffer_size);
+    REQUIRE(a2_read_buffer_validity_size == a2_write_buffer_validity_size);
+    uint8_t expected_a2_read_buffer_validity[16];
+    for (int i = 0; i < 16; ++i) {
+      const uint64_t idx = a2_read_buffer[16 - 1 - i];
+      expected_a2_read_buffer_validity[i] = a2_write_buffer_validity[idx];
+    }
+    REQUIRE(!memcmp(
+        a2_read_buffer_validity,
+        expected_a2_read_buffer_validity,
+        a2_read_buffer_validity_size));
+  }
+
+  // Each value in `a3_read_buffer_var` corresponds to its index in
+  // the original `a3_write_buffer_var`. Check that the ordering of
+  // the validity buffer matches the ordering in the value buffer.
+  if (test_attrs.size() >= 3) {
+    REQUIRE(a3_read_buffer_size == a3_write_buffer_size);
+    REQUIRE(a3_read_buffer_var_size == a3_write_buffer_var_size);
+    REQUIRE(a3_read_buffer_validity_size == a3_write_buffer_validity_size);
+    uint8_t expected_a3_read_buffer_validity[16];
+    for (int i = 0; i < 16; ++i) {
+      const uint64_t idx = a3_read_buffer_var[i * 2] / 2;
+      expected_a3_read_buffer_validity[i] = a3_write_buffer_validity[idx];
+    }
+    REQUIRE(!memcmp(
+        a3_read_buffer_validity,
+        expected_a3_read_buffer_validity,
+        a3_read_buffer_validity_size));
+  }
+
+  // Execute a read query over a partial domain.
+  const uint64_t subarray_partial[] = {2, 3, 2, 3};
+  read_decoupled_api(array_name, read_query_buffers, subarray_partial);
+
+  // Each value in `a1_read_buffer` corresponds to its index in
+  // the original `a1_write_buffer`. Check that the ordering of
+  // the validity buffer matches the ordering in the value buffer.
+  REQUIRE(a1_read_buffer_size == a1_write_buffer_size / 4);
+  REQUIRE(a1_read_buffer_validity_size == a1_write_buffer_validity_size / 4);
+  for (int i = 0; i < 4; ++i) {
+    const uint64_t idx = a1_read_buffer[i];
+    expected_a1_read_buffer_validity[i] = a1_write_buffer_validity[idx];
+  }
+  REQUIRE(!memcmp(
+      a1_read_buffer_validity,
+      expected_a1_read_buffer_validity,
+      a1_read_buffer_validity_size));
+
+  // Each value in `a2_read_buffer` corresponds to its reversed index in
+  // the original `a2_write_buffer`. Check that the ordering of
+  // the validity buffer matches the ordering in the value buffer.
+  if (test_attrs.size() >= 2) {
+    REQUIRE(a2_read_buffer_size == a2_write_buffer_size / 4);
+    REQUIRE(a2_read_buffer_validity_size == a2_write_buffer_validity_size / 4);
+    uint8_t expected_a2_read_buffer_validity[4];
+    for (int i = 0; i < 4; ++i) {
+      const uint64_t idx = a2_read_buffer[4 - 1 - i];
+      expected_a2_read_buffer_validity[i] = a2_write_buffer_validity[idx];
+    }
+    REQUIRE(!memcmp(
+        a2_read_buffer_validity,
+        expected_a2_read_buffer_validity,
+        a2_read_buffer_validity_size));
+  }
+
+  // Each value in `a3_read_buffer_var` corresponds to its index in
+  // the original `a3_write_buffer_var`. Check that the ordering of
+  // the validity buffer matches the ordering in the value buffer.
+  if (test_attrs.size() >= 3) {
+    REQUIRE(a3_read_buffer_size == a3_write_buffer_size / 4);
+    REQUIRE(a3_read_buffer_var_size == a3_write_buffer_var_size / 4);
+    REQUIRE(a3_read_buffer_validity_size == a3_write_buffer_validity_size / 4);
+    uint8_t expected_a3_read_buffer_validity[4];
+    for (int i = 0; i < 4; ++i) {
+      const uint64_t idx = a3_read_buffer_var[i * 2] / 2;
+      expected_a3_read_buffer_validity[i] = a3_write_buffer_validity[idx];
+    }
+
+    REQUIRE(!memcmp(
+        a3_read_buffer_validity,
+        expected_a3_read_buffer_validity,
+        a3_read_buffer_validity_size));
+  }
+}
+
 TEST_CASE_METHOD(
     NullableArrayFx,
     "C API: Test 2D array with nullable attributes",
@@ -842,6 +1409,36 @@ TEST_CASE_METHOD(
                                                     TILEDB_UNORDERED,
                                                     TILEDB_GLOBAL_ORDER}) {
             do_2d_nullable_test(
+                test_attrs, array_type, cell_order, tile_order, write_order);
+          }
+        }
+      }
+    }
+  }
+}
+
+TEST_CASE_METHOD(
+    NullableArrayFx,
+    "C API: Test 2D array with nullable attributes using decoupled setters & "
+    "getters",
+    "[capi][2d][nullable][decoupled]") {
+  vector<test_attr_t> attrs;
+  attrs.emplace_back("a1", TILEDB_INT32, 1, true);
+  attrs.emplace_back("a2", TILEDB_INT32, 1, true);
+  attrs.emplace_back("a3", TILEDB_INT32, TILEDB_VAR_NUM, true);
+
+  for (auto attr_iter = attrs.begin(); attr_iter != attrs.end(); ++attr_iter) {
+    vector<test_attr_t> test_attrs(attrs.begin(), attr_iter + 1);
+    for (const tiledb_array_type_t array_type : {TILEDB_DENSE, TILEDB_SPARSE}) {
+      for (const tiledb_layout_t cell_order :
+           {TILEDB_ROW_MAJOR, TILEDB_COL_MAJOR}) {
+        for (const tiledb_layout_t tile_order :
+             {TILEDB_ROW_MAJOR, TILEDB_COL_MAJOR}) {
+          for (const tiledb_layout_t write_order : {TILEDB_ROW_MAJOR,
+                                                    TILEDB_COL_MAJOR,
+                                                    TILEDB_UNORDERED,
+                                                    TILEDB_GLOBAL_ORDER}) {
+            do_2d_nullable_test_decoupled_api(
                 test_attrs, array_type, cell_order, tile_order, write_order);
           }
         }
