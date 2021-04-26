@@ -100,22 +100,23 @@ void write_array() {
   tiledb_array_open(ctx, array, TILEDB_WRITE);
 
   // Prepare some data for the array
-  char a1[] = {'a',
-               'b',
-               'c',
-               'd',
-               'e',
-               'f',
-               'g',
-               'h',
-               'i',
-               'j',
-               'k',
-               'l',
-               'm',
-               'n',
-               'o',
-               'p'};
+  char a1[] = {
+      'a',
+      'b',
+      'c',
+      'd',
+      'e',
+      'f',
+      'g',
+      'h',
+      'i',
+      'j',
+      'k',
+      'l',
+      'm',
+      'n',
+      'o',
+      'p'};
   uint64_t a1_size = sizeof(a1);
   float a2[] = {1.1f,  1.2f,  2.1f,  2.2f,  3.1f,  3.2f,  4.1f,  4.2f,
                 5.1f,  5.2f,  6.1f,  6.2f,  7.1f,  7.2f,  8.1f,  8.2f,

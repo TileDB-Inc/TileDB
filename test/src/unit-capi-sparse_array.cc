@@ -424,30 +424,32 @@ void SparseArrayFx::write_sparse_array(const std::string& array_name) {
   int buffer_a1[] = {0, 1, 2, 3, 4, 5, 6, 7};
   uint64_t buffer_a2[] = {0, 1, 3, 6, 10, 11, 13, 16};
   char buffer_var_a2[] = "abbcccddddeffggghhhh";
-  float buffer_a3[] = {0.1f,
-                       0.2f,
-                       1.1f,
-                       1.2f,
-                       2.1f,
-                       2.2f,
-                       3.1f,
-                       3.2f,
-                       4.1f,
-                       4.2f,
-                       5.1f,
-                       5.2f,
-                       6.1f,
-                       6.2f,
-                       7.1f,
-                       7.2f};
+  float buffer_a3[] = {
+      0.1f,
+      0.2f,
+      1.1f,
+      1.2f,
+      2.1f,
+      2.2f,
+      3.1f,
+      3.2f,
+      4.1f,
+      4.2f,
+      5.1f,
+      5.2f,
+      6.1f,
+      6.2f,
+      7.1f,
+      7.2f};
   uint64_t buffer_coords_dim1[] = {1, 1, 1, 2, 3, 4, 3, 3};
   uint64_t buffer_coords_dim2[] = {1, 2, 4, 3, 1, 2, 3, 4};
-  void* buffers[] = {buffer_a1,
-                     buffer_a2,
-                     buffer_var_a2,
-                     buffer_a3,
-                     buffer_coords_dim1,
-                     buffer_coords_dim2};
+  void* buffers[] = {
+      buffer_a1,
+      buffer_a2,
+      buffer_var_a2,
+      buffer_a3,
+      buffer_coords_dim1,
+      buffer_coords_dim2};
   uint64_t buffer_sizes[] = {
       sizeof(buffer_a1),
       sizeof(buffer_a2),
@@ -516,18 +518,20 @@ void SparseArrayFx::write_sparse_array(
     const std::vector<uint64_t>& a2_off,
     const std::vector<char>& a2_val,
     const std::vector<float>& a3) {
-  const void* buffers[] = {a1.data(),
-                           a2_off.data(),
-                           a2_val.data(),
-                           a3.data(),
-                           coords_dim1.data(),
-                           coords_dim2.data()};
-  uint64_t buffer_sizes[] = {a1.size() * sizeof(int),
-                             a2_off.size() * sizeof(uint64_t),
-                             a2_val.size() * sizeof(char),
-                             a3.size() * sizeof(float),
-                             coords_dim1.size() * sizeof(uint64_t),
-                             coords_dim2.size() * sizeof(uint64_t)};
+  const void* buffers[] = {
+      a1.data(),
+      a2_off.data(),
+      a2_val.data(),
+      a3.data(),
+      coords_dim1.data(),
+      coords_dim2.data()};
+  uint64_t buffer_sizes[] = {
+      a1.size() * sizeof(int),
+      a2_off.size() * sizeof(uint64_t),
+      a2_val.size() * sizeof(char),
+      a3.size() * sizeof(float),
+      coords_dim1.size() * sizeof(uint64_t),
+      coords_dim2.size() * sizeof(uint64_t)};
 
   // Open array
   tiledb_array_t* array;
@@ -855,35 +859,38 @@ void SparseArrayFx::check_sparse_array_unordered_with_duplicates_error(
   int buffer_a1[] = {7, 5, 0, 6, 4, 3, 1, 2};
   uint64_t buffer_a2[] = {0, 4, 6, 7, 10, 11, 15, 17};
   char buffer_a2_var[] = "hhhhffagggeddddbbccc";
-  float buffer_a3[] = {7.1f,
-                       7.2f,
-                       5.1f,
-                       5.2f,
-                       0.1f,
-                       0.2f,
-                       6.1f,
-                       6.2f,
-                       4.1f,
-                       4.2f,
-                       3.1f,
-                       3.2f,
-                       1.1f,
-                       1.2f,
-                       2.1f,
-                       2.2f};
+  float buffer_a3[] = {
+      7.1f,
+      7.2f,
+      5.1f,
+      5.2f,
+      0.1f,
+      0.2f,
+      6.1f,
+      6.2f,
+      4.1f,
+      4.2f,
+      3.1f,
+      3.2f,
+      1.1f,
+      1.2f,
+      2.1f,
+      2.2f};
   uint64_t buffer_coords_dim1[] = {3, 4, 1, 3, 3, 2, 1, 1};
   uint64_t buffer_coords_dim2[] = {4, 2, 1, 3, 3, 3, 2, 4};
-  void* buffers[] = {buffer_a1,
-                     buffer_a2,
-                     buffer_a2_var,
-                     buffer_a3,
-                     buffer_coords_dim1,
-                     buffer_coords_dim2};
-  uint64_t buffer_sizes[] = {sizeof(buffer_a1),
-                             sizeof(buffer_a2),
-                             sizeof(buffer_a2_var) - 1,
-                             sizeof(buffer_a3),
-                             sizeof(buffer_coords_dim1)};
+  void* buffers[] = {
+      buffer_a1,
+      buffer_a2,
+      buffer_a2_var,
+      buffer_a3,
+      buffer_coords_dim1,
+      buffer_coords_dim2};
+  uint64_t buffer_sizes[] = {
+      sizeof(buffer_a1),
+      sizeof(buffer_a2),
+      sizeof(buffer_a2_var) - 1,
+      sizeof(buffer_a3),
+      sizeof(buffer_coords_dim1)};
 
   // Open array
   tiledb_array_t* array;
@@ -958,35 +965,38 @@ void SparseArrayFx::check_sparse_array_unordered_with_duplicates_no_check(
   int buffer_a1[] = {7, 5, 0, 6, 4, 3, 1, 2};
   uint64_t buffer_a2[] = {0, 4, 6, 7, 10, 11, 15, 17};
   char buffer_a2_var[] = "hhhhffagggeddddbbccc";
-  float buffer_a3[] = {7.1f,
-                       7.2f,
-                       5.1f,
-                       5.2f,
-                       0.1f,
-                       0.2f,
-                       6.1f,
-                       6.2f,
-                       4.1f,
-                       4.2f,
-                       3.1f,
-                       3.2f,
-                       1.1f,
-                       1.2f,
-                       2.1f,
-                       2.2f};
+  float buffer_a3[] = {
+      7.1f,
+      7.2f,
+      5.1f,
+      5.2f,
+      0.1f,
+      0.2f,
+      6.1f,
+      6.2f,
+      4.1f,
+      4.2f,
+      3.1f,
+      3.2f,
+      1.1f,
+      1.2f,
+      2.1f,
+      2.2f};
   uint64_t buffer_coords_dim1[] = {3, 4, 1, 3, 3, 2, 1, 1};
   uint64_t buffer_coords_dim2[] = {4, 2, 1, 3, 3, 3, 2, 4};
-  void* buffers[] = {buffer_a1,
-                     buffer_a2,
-                     buffer_a2_var,
-                     buffer_a3,
-                     buffer_coords_dim1,
-                     buffer_coords_dim2};
-  uint64_t buffer_sizes[] = {sizeof(buffer_a1),
-                             sizeof(buffer_a2),
-                             sizeof(buffer_a2_var) - 1,
-                             sizeof(buffer_a3),
-                             sizeof(buffer_coords_dim1)};
+  void* buffers[] = {
+      buffer_a1,
+      buffer_a2,
+      buffer_a2_var,
+      buffer_a3,
+      buffer_coords_dim1,
+      buffer_coords_dim2};
+  uint64_t buffer_sizes[] = {
+      sizeof(buffer_a1),
+      sizeof(buffer_a2),
+      sizeof(buffer_a2_var) - 1,
+      sizeof(buffer_a3),
+      sizeof(buffer_coords_dim1)};
 
   // Open array
   tiledb_array_t* array;
@@ -1060,35 +1070,38 @@ void SparseArrayFx::check_sparse_array_unordered_with_duplicates_dedup(
   int buffer_a1[] = {7, 5, 0, 6, 6, 3, 1, 2};
   uint64_t buffer_a2[] = {0, 4, 6, 7, 10, 13, 17, 19};
   char buffer_a2_var[] = "hhhhffaggggggddddbbccc";
-  float buffer_a3[] = {7.1f,
-                       7.2f,
-                       5.1f,
-                       5.2f,
-                       0.1f,
-                       0.2f,
-                       6.1f,
-                       6.2f,
-                       6.1f,
-                       6.2f,
-                       3.1f,
-                       3.2f,
-                       1.1f,
-                       1.2f,
-                       2.1f,
-                       2.2f};
+  float buffer_a3[] = {
+      7.1f,
+      7.2f,
+      5.1f,
+      5.2f,
+      0.1f,
+      0.2f,
+      6.1f,
+      6.2f,
+      6.1f,
+      6.2f,
+      3.1f,
+      3.2f,
+      1.1f,
+      1.2f,
+      2.1f,
+      2.2f};
   uint64_t buffer_coords_dim1[] = {3, 4, 1, 3, 3, 2, 1, 1};
   uint64_t buffer_coords_dim2[] = {4, 2, 1, 3, 3, 3, 2, 4};
-  void* buffers[] = {buffer_a1,
-                     buffer_a2,
-                     buffer_a2_var,
-                     buffer_a3,
-                     buffer_coords_dim1,
-                     buffer_coords_dim2};
-  uint64_t buffer_sizes[] = {sizeof(buffer_a1),
-                             sizeof(buffer_a2),
-                             sizeof(buffer_a2_var) - 1,
-                             sizeof(buffer_a3),
-                             sizeof(buffer_coords_dim1)};
+  void* buffers[] = {
+      buffer_a1,
+      buffer_a2,
+      buffer_a2_var,
+      buffer_a3,
+      buffer_coords_dim1,
+      buffer_coords_dim2};
+  uint64_t buffer_sizes[] = {
+      sizeof(buffer_a1),
+      sizeof(buffer_a2),
+      sizeof(buffer_a2_var) - 1,
+      sizeof(buffer_a3),
+      sizeof(buffer_coords_dim1)};
 
   // Open array
   tiledb_array_t* array;
@@ -1146,17 +1159,19 @@ void SparseArrayFx::check_sparse_array_unordered_with_duplicates_dedup(
   float r_buffer_a3[40];
   uint64_t r_buffer_coords_dim1[20];
   uint64_t r_buffer_coords_dim2[20];
-  void* r_buffers[] = {r_buffer_a1,
-                       r_buffer_a2,
-                       r_buffer_a2_var,
-                       r_buffer_a3,
-                       r_buffer_coords_dim1,
-                       r_buffer_coords_dim2};
-  uint64_t r_buffer_sizes[] = {sizeof(r_buffer_a1),
-                               sizeof(r_buffer_a2),
-                               sizeof(r_buffer_a2_var),
-                               sizeof(r_buffer_a3),
-                               sizeof(r_buffer_coords_dim1)};
+  void* r_buffers[] = {
+      r_buffer_a1,
+      r_buffer_a2,
+      r_buffer_a2_var,
+      r_buffer_a3,
+      r_buffer_coords_dim1,
+      r_buffer_coords_dim2};
+  uint64_t r_buffer_sizes[] = {
+      sizeof(r_buffer_a1),
+      sizeof(r_buffer_a2),
+      sizeof(r_buffer_a2_var),
+      sizeof(r_buffer_a3),
+      sizeof(r_buffer_coords_dim1)};
 
   // Open array
   rc = tiledb_array_open(ctx, array, TILEDB_READ);
@@ -1201,20 +1216,21 @@ void SparseArrayFx::check_sparse_array_unordered_with_duplicates_dedup(
   char c_buffer_a2_var[] = "abbcccddddggghhhhff";
   uint64_t c_buffer_coords_dim1[] = {1, 1, 1, 2, 3, 3, 4};
   uint64_t c_buffer_coords_dim2[] = {1, 2, 4, 3, 3, 4, 2};
-  float c_buffer_a3[] = {0.1f,
-                         0.2f,
-                         1.1f,
-                         1.2f,
-                         2.1f,
-                         2.2f,
-                         3.1f,
-                         3.2f,
-                         6.1f,
-                         6.2f,
-                         7.1f,
-                         7.2f,
-                         5.1f,
-                         5.2f};
+  float c_buffer_a3[] = {
+      0.1f,
+      0.2f,
+      1.1f,
+      1.2f,
+      2.1f,
+      2.2f,
+      3.1f,
+      3.2f,
+      6.1f,
+      6.2f,
+      7.1f,
+      7.2f,
+      5.1f,
+      5.2f};
   CHECK(!memcmp(r_buffer_a1, c_buffer_a1, sizeof(c_buffer_a1)));
   CHECK(!memcmp(r_buffer_a2, c_buffer_a2, sizeof(c_buffer_a2)));
   CHECK(!memcmp(r_buffer_a2_var, c_buffer_a2_var, sizeof(c_buffer_a2_var) - 1));
@@ -1258,35 +1274,38 @@ void SparseArrayFx::check_sparse_array_unordered_with_all_duplicates_dedup(
   int buffer_a1[] = {0, 0, 0, 0, 0, 0, 0, 0};
   uint64_t buffer_a2[] = {0, 1, 2, 3, 4, 5, 6, 7};
   char buffer_a2_var[] = "aaaaaaaa";
-  float buffer_a3[] = {0.1f,
-                       0.2f,
-                       0.1f,
-                       0.2f,
-                       0.1f,
-                       0.2f,
-                       0.1f,
-                       0.2f,
-                       0.1f,
-                       0.2f,
-                       0.1f,
-                       0.2f,
-                       0.1f,
-                       0.2f,
-                       0.1f,
-                       0.2f};
+  float buffer_a3[] = {
+      0.1f,
+      0.2f,
+      0.1f,
+      0.2f,
+      0.1f,
+      0.2f,
+      0.1f,
+      0.2f,
+      0.1f,
+      0.2f,
+      0.1f,
+      0.2f,
+      0.1f,
+      0.2f,
+      0.1f,
+      0.2f};
   uint64_t buffer_coords_dim1[] = {3, 3, 3, 3, 3, 3, 3, 3};
   uint64_t buffer_coords_dim2[] = {4, 4, 4, 4, 4, 4, 4, 4};
-  void* buffers[] = {buffer_a1,
-                     buffer_a2,
-                     buffer_a2_var,
-                     buffer_a3,
-                     buffer_coords_dim1,
-                     buffer_coords_dim2};
-  uint64_t buffer_sizes[] = {sizeof(buffer_a1),
-                             sizeof(buffer_a2),
-                             sizeof(buffer_a2_var) - 1,
-                             sizeof(buffer_a3),
-                             sizeof(buffer_coords_dim1)};
+  void* buffers[] = {
+      buffer_a1,
+      buffer_a2,
+      buffer_a2_var,
+      buffer_a3,
+      buffer_coords_dim1,
+      buffer_coords_dim2};
+  uint64_t buffer_sizes[] = {
+      sizeof(buffer_a1),
+      sizeof(buffer_a2),
+      sizeof(buffer_a2_var) - 1,
+      sizeof(buffer_a3),
+      sizeof(buffer_coords_dim1)};
 
   // Open array
   tiledb_array_t* array;
@@ -1344,17 +1363,19 @@ void SparseArrayFx::check_sparse_array_unordered_with_all_duplicates_dedup(
   float r_buffer_a3[40];
   uint64_t r_buffer_coords_dim1[20];
   uint64_t r_buffer_coords_dim2[20];
-  void* r_buffers[] = {r_buffer_a1,
-                       r_buffer_a2,
-                       r_buffer_a2_var,
-                       r_buffer_a3,
-                       r_buffer_coords_dim1,
-                       r_buffer_coords_dim2};
-  uint64_t r_buffer_sizes[] = {sizeof(r_buffer_a1),
-                               sizeof(r_buffer_a2),
-                               sizeof(r_buffer_a2_var),
-                               sizeof(r_buffer_a3),
-                               sizeof(r_buffer_coords_dim1)};
+  void* r_buffers[] = {
+      r_buffer_a1,
+      r_buffer_a2,
+      r_buffer_a2_var,
+      r_buffer_a3,
+      r_buffer_coords_dim1,
+      r_buffer_coords_dim2};
+  uint64_t r_buffer_sizes[] = {
+      sizeof(r_buffer_a1),
+      sizeof(r_buffer_a2),
+      sizeof(r_buffer_a2_var),
+      sizeof(r_buffer_a3),
+      sizeof(r_buffer_coords_dim1)};
 
   // Open array
   rc = tiledb_array_open(ctx, array, TILEDB_READ);
@@ -1430,35 +1451,38 @@ void SparseArrayFx::check_sparse_array_global_with_duplicates_error(
   int buffer_a1[] = {0, 1, 2, 3, 4, 5, 6, 7};
   uint64_t buffer_a2[] = {0, 1, 3, 6, 10, 11, 13, 16};
   char buffer_var_a2[] = "abbcccddddeffggghhhh";
-  float buffer_a3[] = {0.1f,
-                       0.2f,
-                       1.1f,
-                       1.2f,
-                       2.1f,
-                       2.2f,
-                       3.1f,
-                       3.2f,
-                       4.1f,
-                       4.2f,
-                       5.1f,
-                       5.2f,
-                       6.1f,
-                       6.2f,
-                       7.1f,
-                       7.2f};
+  float buffer_a3[] = {
+      0.1f,
+      0.2f,
+      1.1f,
+      1.2f,
+      2.1f,
+      2.2f,
+      3.1f,
+      3.2f,
+      4.1f,
+      4.2f,
+      5.1f,
+      5.2f,
+      6.1f,
+      6.2f,
+      7.1f,
+      7.2f};
   uint64_t buffer_coords_dim1[] = {1, 1, 1, 2, 4, 3, 3, 3};
   uint64_t buffer_coords_dim2[] = {1, 2, 4, 3, 2, 3, 3, 4};
-  void* buffers[] = {buffer_a1,
-                     buffer_a2,
-                     buffer_var_a2,
-                     buffer_a3,
-                     buffer_coords_dim1,
-                     buffer_coords_dim2};
-  uint64_t buffer_sizes[] = {sizeof(buffer_a1),
-                             sizeof(buffer_a2),
-                             sizeof(buffer_var_a2) - 1,
-                             sizeof(buffer_a3),
-                             sizeof(buffer_coords_dim1)};
+  void* buffers[] = {
+      buffer_a1,
+      buffer_a2,
+      buffer_var_a2,
+      buffer_a3,
+      buffer_coords_dim1,
+      buffer_coords_dim2};
+  uint64_t buffer_sizes[] = {
+      sizeof(buffer_a1),
+      sizeof(buffer_a2),
+      sizeof(buffer_var_a2) - 1,
+      sizeof(buffer_a3),
+      sizeof(buffer_coords_dim1)};
 
   // Open array
   tiledb_array_t* array;
@@ -1531,35 +1555,38 @@ void SparseArrayFx::check_sparse_array_global_with_duplicates_no_check(
   int buffer_a1[] = {0, 1, 2, 3, 4, 5, 6, 7};
   uint64_t buffer_a2[] = {0, 1, 3, 6, 10, 11, 13, 16};
   char buffer_var_a2[] = "abbcccddddeffggghhhh";
-  float buffer_a3[] = {0.1f,
-                       0.2f,
-                       1.1f,
-                       1.2f,
-                       2.1f,
-                       2.2f,
-                       3.1f,
-                       3.2f,
-                       4.1f,
-                       4.2f,
-                       5.1f,
-                       5.2f,
-                       6.1f,
-                       6.2f,
-                       7.1f,
-                       7.2f};
+  float buffer_a3[] = {
+      0.1f,
+      0.2f,
+      1.1f,
+      1.2f,
+      2.1f,
+      2.2f,
+      3.1f,
+      3.2f,
+      4.1f,
+      4.2f,
+      5.1f,
+      5.2f,
+      6.1f,
+      6.2f,
+      7.1f,
+      7.2f};
   uint64_t buffer_coords_dim1[] = {1, 1, 1, 2, 4, 3, 3, 3};
   uint64_t buffer_coords_dim2[] = {1, 2, 4, 3, 2, 3, 3, 4};
-  void* buffers[] = {buffer_a1,
-                     buffer_a2,
-                     buffer_var_a2,
-                     buffer_a3,
-                     buffer_coords_dim1,
-                     buffer_coords_dim2};
-  uint64_t buffer_sizes[] = {sizeof(buffer_a1),
-                             sizeof(buffer_a2),
-                             sizeof(buffer_var_a2) - 1,
-                             sizeof(buffer_a3),
-                             sizeof(buffer_coords_dim1)};
+  void* buffers[] = {
+      buffer_a1,
+      buffer_a2,
+      buffer_var_a2,
+      buffer_a3,
+      buffer_coords_dim1,
+      buffer_coords_dim2};
+  uint64_t buffer_sizes[] = {
+      sizeof(buffer_a1),
+      sizeof(buffer_a2),
+      sizeof(buffer_var_a2) - 1,
+      sizeof(buffer_a3),
+      sizeof(buffer_coords_dim1)};
 
   // Open array
   tiledb_array_t* array;
@@ -1635,35 +1662,38 @@ void SparseArrayFx::check_sparse_array_global_with_duplicates_dedup(
   int buffer_a1[] = {0, 1, 2, 3, 4, 5, 5, 7};
   uint64_t buffer_a2[] = {0, 1, 3, 6, 10, 11, 14, 17};
   char buffer_var_a2[] = "abbcccddddegggggghhhh";
-  float buffer_a3[] = {0.1f,
-                       0.2f,
-                       1.1f,
-                       1.2f,
-                       2.1f,
-                       2.2f,
-                       3.1f,
-                       3.2f,
-                       4.1f,
-                       4.2f,
-                       5.1f,
-                       5.2f,
-                       5.1f,
-                       5.2f,
-                       7.1f,
-                       7.2f};
+  float buffer_a3[] = {
+      0.1f,
+      0.2f,
+      1.1f,
+      1.2f,
+      2.1f,
+      2.2f,
+      3.1f,
+      3.2f,
+      4.1f,
+      4.2f,
+      5.1f,
+      5.2f,
+      5.1f,
+      5.2f,
+      7.1f,
+      7.2f};
   uint64_t buffer_coords_dim1[] = {1, 1, 1, 2, 4, 3, 3, 3};
   uint64_t buffer_coords_dim2[] = {1, 2, 4, 3, 2, 3, 3, 4};
-  void* buffers[] = {buffer_a1,
-                     buffer_a2,
-                     buffer_var_a2,
-                     buffer_a3,
-                     buffer_coords_dim1,
-                     buffer_coords_dim2};
-  uint64_t buffer_sizes[] = {sizeof(buffer_a1),
-                             sizeof(buffer_a2),
-                             sizeof(buffer_var_a2) - 1,
-                             sizeof(buffer_a3),
-                             sizeof(buffer_coords_dim1)};
+  void* buffers[] = {
+      buffer_a1,
+      buffer_a2,
+      buffer_var_a2,
+      buffer_a3,
+      buffer_coords_dim1,
+      buffer_coords_dim2};
+  uint64_t buffer_sizes[] = {
+      sizeof(buffer_a1),
+      sizeof(buffer_a2),
+      sizeof(buffer_var_a2) - 1,
+      sizeof(buffer_a3),
+      sizeof(buffer_coords_dim1)};
 
   // Open array
   tiledb_array_t* array;
@@ -1721,17 +1751,19 @@ void SparseArrayFx::check_sparse_array_global_with_duplicates_dedup(
   float r_buffer_a3[40];
   uint64_t r_buffer_coords_dim1[20];
   uint64_t r_buffer_coords_dim2[20];
-  void* r_buffers[] = {r_buffer_a1,
-                       r_buffer_a2,
-                       r_buffer_a2_var,
-                       r_buffer_a3,
-                       r_buffer_coords_dim1,
-                       r_buffer_coords_dim2};
-  uint64_t r_buffer_sizes[] = {sizeof(r_buffer_a1),
-                               sizeof(r_buffer_a2),
-                               sizeof(r_buffer_a2_var),
-                               sizeof(r_buffer_a3),
-                               sizeof(r_buffer_coords_dim1)};
+  void* r_buffers[] = {
+      r_buffer_a1,
+      r_buffer_a2,
+      r_buffer_a2_var,
+      r_buffer_a3,
+      r_buffer_coords_dim1,
+      r_buffer_coords_dim2};
+  uint64_t r_buffer_sizes[] = {
+      sizeof(r_buffer_a1),
+      sizeof(r_buffer_a2),
+      sizeof(r_buffer_a2_var),
+      sizeof(r_buffer_a3),
+      sizeof(r_buffer_coords_dim1)};
 
   // Open array
   rc = tiledb_array_open(ctx, array, TILEDB_READ);
@@ -1784,20 +1816,21 @@ void SparseArrayFx::check_sparse_array_global_with_duplicates_dedup(
   int c_buffer_a1[] = {0, 1, 2, 3, 5, 7, 4};
   uint64_t c_buffer_a2[] = {0, 1, 3, 6, 10, 13, 17};
   char c_buffer_a2_var[] = "abbcccddddggghhhhe";
-  float c_buffer_a3[] = {0.1f,
-                         0.2f,
-                         1.1f,
-                         1.2f,
-                         2.1f,
-                         2.2f,
-                         3.1f,
-                         3.2f,
-                         5.1f,
-                         5.2f,
-                         7.1f,
-                         7.2f,
-                         4.1f,
-                         4.2f};
+  float c_buffer_a3[] = {
+      0.1f,
+      0.2f,
+      1.1f,
+      1.2f,
+      2.1f,
+      2.2f,
+      3.1f,
+      3.2f,
+      5.1f,
+      5.2f,
+      7.1f,
+      7.2f,
+      4.1f,
+      4.2f};
   uint64_t c_buffer_coords_dim1[] = {1, 1, 1, 2, 3, 3, 4};
   uint64_t c_buffer_coords_dim2[] = {1, 2, 4, 3, 3, 4, 2};
 
@@ -1837,35 +1870,38 @@ void SparseArrayFx::check_sparse_array_global_with_all_duplicates_dedup(
   int buffer_a1[] = {0, 0, 0, 0, 0, 0, 0, 0};
   uint64_t buffer_a2[] = {0, 1, 2, 3, 4, 5, 6, 7};
   char buffer_var_a2[] = "aaaaaaaa";
-  float buffer_a3[] = {0.1f,
-                       0.2f,
-                       0.1f,
-                       0.2f,
-                       0.1f,
-                       0.2f,
-                       0.1f,
-                       0.2f,
-                       0.1f,
-                       0.2f,
-                       0.1f,
-                       0.2f,
-                       0.1f,
-                       0.2f,
-                       0.1f,
-                       0.2f};
+  float buffer_a3[] = {
+      0.1f,
+      0.2f,
+      0.1f,
+      0.2f,
+      0.1f,
+      0.2f,
+      0.1f,
+      0.2f,
+      0.1f,
+      0.2f,
+      0.1f,
+      0.2f,
+      0.1f,
+      0.2f,
+      0.1f,
+      0.2f};
   uint64_t buffer_coords_dim1[] = {1, 1, 1, 1, 1, 1, 1};
   uint64_t buffer_coords_dim2[] = {2, 2, 2, 2, 2, 2, 2};
-  void* buffers[] = {buffer_a1,
-                     buffer_a2,
-                     buffer_var_a2,
-                     buffer_a3,
-                     buffer_coords_dim1,
-                     buffer_coords_dim2};
-  uint64_t buffer_sizes[] = {sizeof(buffer_a1),
-                             sizeof(buffer_a2),
-                             sizeof(buffer_var_a2) - 1,
-                             sizeof(buffer_a3),
-                             sizeof(buffer_coords_dim1)};
+  void* buffers[] = {
+      buffer_a1,
+      buffer_a2,
+      buffer_var_a2,
+      buffer_a3,
+      buffer_coords_dim1,
+      buffer_coords_dim2};
+  uint64_t buffer_sizes[] = {
+      sizeof(buffer_a1),
+      sizeof(buffer_a2),
+      sizeof(buffer_var_a2) - 1,
+      sizeof(buffer_a3),
+      sizeof(buffer_coords_dim1)};
 
   // Open array
   tiledb_array_t* array;
@@ -1923,17 +1959,19 @@ void SparseArrayFx::check_sparse_array_global_with_all_duplicates_dedup(
   float r_buffer_a3[40];
   uint64_t r_buffer_coords_dim1[20];
   uint64_t r_buffer_coords_dim2[20];
-  void* r_buffers[] = {r_buffer_a1,
-                       r_buffer_a2,
-                       r_buffer_a2_var,
-                       r_buffer_a3,
-                       r_buffer_coords_dim1,
-                       r_buffer_coords_dim2};
-  uint64_t r_buffer_sizes[] = {sizeof(r_buffer_a1),
-                               sizeof(r_buffer_a2),
-                               sizeof(r_buffer_a2_var),
-                               sizeof(r_buffer_a3),
-                               sizeof(r_buffer_coords_dim1)};
+  void* r_buffers[] = {
+      r_buffer_a1,
+      r_buffer_a2,
+      r_buffer_a2_var,
+      r_buffer_a3,
+      r_buffer_coords_dim1,
+      r_buffer_coords_dim2};
+  uint64_t r_buffer_sizes[] = {
+      sizeof(r_buffer_a1),
+      sizeof(r_buffer_a2),
+      sizeof(r_buffer_a2_var),
+      sizeof(r_buffer_a3),
+      sizeof(r_buffer_coords_dim1)};
 
   // Open array
   rc = tiledb_array_open(ctx, array, TILEDB_READ);
@@ -2236,17 +2274,19 @@ void SparseArrayFx::write_partial_sparse_array(const std::string& array_name) {
   float buffer_a3[] = {7.1f, 7.2f, 5.1f, 5.2f, 0.1f, 0.2f};
   uint64_t buffer_coords_dim1[] = {3, 4, 3};
   uint64_t buffer_coords_dim2[] = {4, 2, 3};
-  void* buffers[] = {buffer_a1,
-                     buffer_a2,
-                     buffer_a2_var,
-                     buffer_a3,
-                     buffer_coords_dim1,
-                     buffer_coords_dim2};
-  uint64_t buffer_sizes[] = {sizeof(buffer_a1),
-                             sizeof(buffer_a2),
-                             sizeof(buffer_a2_var) - 1,
-                             sizeof(buffer_a3),
-                             sizeof(buffer_coords_dim1)};
+  void* buffers[] = {
+      buffer_a1,
+      buffer_a2,
+      buffer_a2_var,
+      buffer_a3,
+      buffer_coords_dim1,
+      buffer_coords_dim2};
+  uint64_t buffer_sizes[] = {
+      sizeof(buffer_a1),
+      sizeof(buffer_a2),
+      sizeof(buffer_a2_var) - 1,
+      sizeof(buffer_a3),
+      sizeof(buffer_coords_dim1)};
 
   // Open array
   tiledb_array_t* array;
@@ -2308,17 +2348,19 @@ void SparseArrayFx::write_sparse_array_missing_attributes(
   float buffer_a3[] = {7.1f, 7.2f, 5.1f, 5.2f, 0.1f, 0.2f};
   uint64_t buffer_coords_dim1[] = {3, 4, 3};
   uint64_t buffer_coords_dim2[] = {4, 2, 3};
-  void* buffers[] = {buffer_a1,
-                     buffer_a2,
-                     buffer_a2_var,
-                     buffer_a3,
-                     buffer_coords_dim1,
-                     buffer_coords_dim2};
-  uint64_t buffer_sizes[] = {sizeof(buffer_a1),
-                             sizeof(buffer_a2),
-                             sizeof(buffer_a2_var) - 1,
-                             sizeof(buffer_a3),
-                             sizeof(buffer_coords_dim1)};
+  void* buffers[] = {
+      buffer_a1,
+      buffer_a2,
+      buffer_a2_var,
+      buffer_a3,
+      buffer_coords_dim1,
+      buffer_coords_dim2};
+  uint64_t buffer_sizes[] = {
+      sizeof(buffer_a1),
+      sizeof(buffer_a2),
+      sizeof(buffer_a2_var) - 1,
+      sizeof(buffer_a3),
+      sizeof(buffer_coords_dim1)};
 
   // Open array
   tiledb_array_t* array;
@@ -5892,22 +5934,23 @@ TEST_CASE_METHOD(
   int buffer_a1[] = {0, 1, 2, 3, 4, 5, 6, 7};
   uint64_t buffer_a2[] = {0, 1, 3, 6, 10, 11, 13, 16};
   char buffer_var_a2[] = "abbcccddddeffggghhhh";
-  float buffer_a3[] = {0.1f,
-                       0.2f,
-                       1.1f,
-                       1.2f,
-                       2.1f,
-                       2.2f,
-                       3.1f,
-                       3.2f,
-                       4.1f,
-                       4.2f,
-                       5.1f,
-                       5.2f,
-                       6.1f,
-                       6.2f,
-                       7.1f,
-                       7.2f};
+  float buffer_a3[] = {
+      0.1f,
+      0.2f,
+      1.1f,
+      1.2f,
+      2.1f,
+      2.2f,
+      3.1f,
+      3.2f,
+      4.1f,
+      4.2f,
+      5.1f,
+      5.2f,
+      6.1f,
+      6.2f,
+      7.1f,
+      7.2f};
   uint64_t buffer_a1_size = sizeof(buffer_a1);
   uint64_t buffer_a2_size = sizeof(buffer_a2);
   // No need to store the last '\0' character
@@ -6032,22 +6075,23 @@ TEST_CASE_METHOD(
   int c_b_a1[] = {0, 1, 2, 3, 4, 5, 6, 7};
   uint64_t c_b_a2_off[] = {0, 1, 3, 6, 10, 11, 13, 16};
   char c_b_a2_val[] = "abbcccddddeffggghhhh";
-  float c_b_a3[] = {0.1f,
-                    0.2f,
-                    1.1f,
-                    1.2f,
-                    2.1f,
-                    2.2f,
-                    3.1f,
-                    3.2f,
-                    4.1f,
-                    4.2f,
-                    5.1f,
-                    5.2f,
-                    6.1f,
-                    6.2f,
-                    7.1f,
-                    7.2f};
+  float c_b_a3[] = {
+      0.1f,
+      0.2f,
+      1.1f,
+      1.2f,
+      2.1f,
+      2.2f,
+      3.1f,
+      3.2f,
+      4.1f,
+      4.2f,
+      5.1f,
+      5.2f,
+      6.1f,
+      6.2f,
+      7.1f,
+      7.2f};
   uint64_t c_b_coords_dim1[] = {1, 1, 1, 2, 3, 3, 3, 4};
   uint64_t c_b_coords_dim2[] = {1, 2, 4, 3, 1, 3, 4, 2};
   CHECK(!memcmp(c_b_a1, b_a1, b_a1_size));
@@ -6083,22 +6127,23 @@ TEST_CASE_METHOD(
   int buffer_a1[] = {0, 1, 2, 3, 4, 5, 6, 7};
   uint64_t buffer_a2[] = {0, 1, 3, 6, 10, 11, 13, 16};
   char buffer_var_a2[] = "abbcccddddeffggghhhh";
-  float buffer_a3[] = {0.1f,
-                       0.2f,
-                       1.1f,
-                       1.2f,
-                       2.1f,
-                       2.2f,
-                       3.1f,
-                       3.2f,
-                       4.1f,
-                       4.2f,
-                       5.1f,
-                       5.2f,
-                       6.1f,
-                       6.2f,
-                       7.1f,
-                       7.2f};
+  float buffer_a3[] = {
+      0.1f,
+      0.2f,
+      1.1f,
+      1.2f,
+      2.1f,
+      2.2f,
+      3.1f,
+      3.2f,
+      4.1f,
+      4.2f,
+      5.1f,
+      5.2f,
+      6.1f,
+      6.2f,
+      7.1f,
+      7.2f};
   uint64_t buffer_a1_size = sizeof(buffer_a1);
   uint64_t buffer_a2_size = sizeof(buffer_a2);
   // No need to store the last '\0' character
@@ -6223,22 +6268,23 @@ TEST_CASE_METHOD(
   int c_b_a1[] = {0, 1, 2, 3, 4, 5, 6, 7};
   uint64_t c_b_a2_off[] = {0, 1, 3, 6, 10, 11, 13, 16};
   char c_b_a2_val[] = "abbcccddddeffggghhhh";
-  float c_b_a3[] = {0.1f,
-                    0.2f,
-                    1.1f,
-                    1.2f,
-                    2.1f,
-                    2.2f,
-                    3.1f,
-                    3.2f,
-                    4.1f,
-                    4.2f,
-                    5.1f,
-                    5.2f,
-                    6.1f,
-                    6.2f,
-                    7.1f,
-                    7.2f};
+  float c_b_a3[] = {
+      0.1f,
+      0.2f,
+      1.1f,
+      1.2f,
+      2.1f,
+      2.2f,
+      3.1f,
+      3.2f,
+      4.1f,
+      4.2f,
+      5.1f,
+      5.2f,
+      6.1f,
+      6.2f,
+      7.1f,
+      7.2f};
   uint64_t c_b_coords_dim1[] = {1, 1, 1, 2, 3, 4, 3, 3};
   uint64_t c_b_coords_dim2[] = {1, 2, 4, 3, 1, 2, 3, 4};
   CHECK(!memcmp(c_b_a1, b_a1, b_a1_size));
@@ -6319,22 +6365,23 @@ TEST_CASE_METHOD(
   int buffer_a1[] = {0, 1, 2, 3, 4, 5, 6, 7};
   uint64_t buffer_a2[] = {0, 1, 3, 6, 10, 11, 13, 16};
   char buffer_var_a2[] = "abbcccddddeffggghhhh";
-  float buffer_a3[] = {0.1f,
-                       0.2f,
-                       1.1f,
-                       1.2f,
-                       2.1f,
-                       2.2f,
-                       3.1f,
-                       3.2f,
-                       4.1f,
-                       4.2f,
-                       5.1f,
-                       5.2f,
-                       6.1f,
-                       6.2f,
-                       7.1f,
-                       7.2f};
+  float buffer_a3[] = {
+      0.1f,
+      0.2f,
+      1.1f,
+      1.2f,
+      2.1f,
+      2.2f,
+      3.1f,
+      3.2f,
+      4.1f,
+      4.2f,
+      5.1f,
+      5.2f,
+      6.1f,
+      6.2f,
+      7.1f,
+      7.2f};
   uint64_t buffer_a1_size = sizeof(buffer_a1);
   uint64_t buffer_a2_size = sizeof(buffer_a2);
   // No need to store the last '\0' character
@@ -6452,22 +6499,23 @@ TEST_CASE_METHOD(
   int buffer_a1[] = {0, 1, 2, 3, 4, 5, 6, 7};
   uint64_t buffer_a2[] = {0, 1, 3, 6, 10, 11, 13, 16};
   char buffer_var_a2[] = "abbcccddddeffggghhhh";
-  float buffer_a3[] = {0.1f,
-                       0.2f,
-                       1.1f,
-                       1.2f,
-                       2.1f,
-                       2.2f,
-                       3.1f,
-                       3.2f,
-                       4.1f,
-                       4.2f,
-                       5.1f,
-                       5.2f,
-                       6.1f,
-                       6.2f,
-                       7.1f,
-                       7.2f};
+  float buffer_a3[] = {
+      0.1f,
+      0.2f,
+      1.1f,
+      1.2f,
+      2.1f,
+      2.2f,
+      3.1f,
+      3.2f,
+      4.1f,
+      4.2f,
+      5.1f,
+      5.2f,
+      6.1f,
+      6.2f,
+      7.1f,
+      7.2f};
   uint64_t buffer_a1_size = sizeof(buffer_a1);
   uint64_t buffer_a2_size = sizeof(buffer_a2);
   // No need to store the last '\0' character
@@ -6592,22 +6640,23 @@ TEST_CASE_METHOD(
   int c_b_a1[] = {0, 1, 2, 3, 4, 5, 6, 7};
   uint64_t c_b_a2_off[] = {0, 1, 3, 6, 10, 11, 13, 16};
   char c_b_a2_val[] = "abbcccddddeffggghhhh";
-  float c_b_a3[] = {0.1f,
-                    0.2f,
-                    1.1f,
-                    1.2f,
-                    2.1f,
-                    2.2f,
-                    3.1f,
-                    3.2f,
-                    4.1f,
-                    4.2f,
-                    5.1f,
-                    5.2f,
-                    6.1f,
-                    6.2f,
-                    7.1f,
-                    7.2f};
+  float c_b_a3[] = {
+      0.1f,
+      0.2f,
+      1.1f,
+      1.2f,
+      2.1f,
+      2.2f,
+      3.1f,
+      3.2f,
+      4.1f,
+      4.2f,
+      5.1f,
+      5.2f,
+      6.1f,
+      6.2f,
+      7.1f,
+      7.2f};
   uint64_t c_b_d1[] = {1, 1, 1, 2, 3, 3, 3, 4};
   uint64_t c_b_d2[] = {1, 2, 4, 3, 1, 3, 4, 2};
   CHECK(!memcmp(c_b_a1, b_a1, b_a1_size));
@@ -6644,22 +6693,23 @@ TEST_CASE_METHOD(
   int buffer_a1[] = {0, 1, 2, 3, 4, 5, 6, 7};
   uint64_t buffer_a2[] = {0, 1, 3, 6, 10, 11, 13, 16};
   char buffer_var_a2[] = "abbcccddddeffggghhhh";
-  float buffer_a3[] = {0.1f,
-                       0.2f,
-                       1.1f,
-                       1.2f,
-                       2.1f,
-                       2.2f,
-                       3.1f,
-                       3.2f,
-                       4.1f,
-                       4.2f,
-                       5.1f,
-                       5.2f,
-                       6.1f,
-                       6.2f,
-                       7.1f,
-                       7.2f};
+  float buffer_a3[] = {
+      0.1f,
+      0.2f,
+      1.1f,
+      1.2f,
+      2.1f,
+      2.2f,
+      3.1f,
+      3.2f,
+      4.1f,
+      4.2f,
+      5.1f,
+      5.2f,
+      6.1f,
+      6.2f,
+      7.1f,
+      7.2f};
   uint64_t buffer_a1_size = sizeof(buffer_a1);
   uint64_t buffer_a2_size = sizeof(buffer_a2);
   // No need to store the last '\0' character
@@ -6779,22 +6829,23 @@ TEST_CASE_METHOD(
   int c_b_a1[] = {0, 1, 2, 3, 4, 5, 6, 7};
   uint64_t c_b_a2_off[] = {0, 1, 3, 6, 10, 11, 13, 16};
   char c_b_a2_val[] = "abbcccddddeffggghhhh";
-  float c_b_a3[] = {0.1f,
-                    0.2f,
-                    1.1f,
-                    1.2f,
-                    2.1f,
-                    2.2f,
-                    3.1f,
-                    3.2f,
-                    4.1f,
-                    4.2f,
-                    5.1f,
-                    5.2f,
-                    6.1f,
-                    6.2f,
-                    7.1f,
-                    7.2f};
+  float c_b_a3[] = {
+      0.1f,
+      0.2f,
+      1.1f,
+      1.2f,
+      2.1f,
+      2.2f,
+      3.1f,
+      3.2f,
+      4.1f,
+      4.2f,
+      5.1f,
+      5.2f,
+      6.1f,
+      6.2f,
+      7.1f,
+      7.2f};
   uint64_t c_b_d1[] = {1, 1, 1, 2, 3, 3, 3, 4};
   CHECK(!memcmp(c_b_a1, b_a1, b_a1_size));
   CHECK(!memcmp(c_b_a2_off, b_a2_off, b_a2_off_size));

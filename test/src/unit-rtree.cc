@@ -878,18 +878,19 @@ TEST_CASE(
   // Build tree
   Domain dom1 =
       create_domain({"d"}, {Datatype::STRING_ASCII}, {nullptr}, {nullptr});
-  std::vector<NDRange> mbrs = create_str_mbrs<1>({"aa",
-                                                  "b",
-                                                  "eee",
-                                                  "g",
-                                                  "gggg",
-                                                  "ii",
-                                                  "jj",
-                                                  "l",
-                                                  "mm",
-                                                  "mmn",
-                                                  "oo",
-                                                  "oop"});
+  std::vector<NDRange> mbrs = create_str_mbrs<1>(
+      {"aa",
+       "b",
+       "eee",
+       "g",
+       "gggg",
+       "ii",
+       "jj",
+       "l",
+       "mm",
+       "mmn",
+       "oo",
+       "oop"});
 
   RTree rtree(&dom1, 3);
   rtree.set_leaves(mbrs);
@@ -970,18 +971,19 @@ TEST_CASE(
       {Datatype::STRING_ASCII, Datatype::STRING_ASCII},
       {nullptr, nullptr},
       {nullptr, nullptr});
-  std::vector<NDRange> mbrs = create_str_mbrs<2>({"aa",
-                                                  "b",
-                                                  "eee",
-                                                  "g",
-                                                  "gggg",
-                                                  "ii",
-                                                  "jj",
-                                                  "lll",
-                                                  "m",
-                                                  "n",
-                                                  "oo",
-                                                  "qqq"});
+  std::vector<NDRange> mbrs = create_str_mbrs<2>(
+      {"aa",
+       "b",
+       "eee",
+       "g",
+       "gggg",
+       "ii",
+       "jj",
+       "lll",
+       "m",
+       "n",
+       "oo",
+       "qqq"});
 
   RTree rtree(&dom, 3);
   rtree.set_leaves(mbrs);
