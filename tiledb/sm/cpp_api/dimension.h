@@ -259,10 +259,8 @@ class Dimension {
   T tile_extent() const {
     impl::type_check<T>(type(), 1);
     auto te = _tile_extent();
-    if (te == NULL)
-    {
-      T value = T();
-      return value;
+    if (te == NULL) {
+      return T();
     }
     return *(const T*)_tile_extent();
   }

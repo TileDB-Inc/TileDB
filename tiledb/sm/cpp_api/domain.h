@@ -315,9 +315,9 @@ class Domain {
 /*               MISC                */
 /* ********************************* */
 
-/** Get a string representation of an attribute for an output stream. */
+/** Get a string representation of the domain for an output stream. */
 inline std::ostream& operator<<(std::ostream& os, const Domain& d) {
-  os << "Domain<"; // os << "Domain<(" << impl::to_str(d.type()) << ")";
+  os << "Domain<";
   for (const auto& dimension : d.dimensions()) {
     os << " " << dimension;
   }
