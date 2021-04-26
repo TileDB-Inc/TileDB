@@ -258,12 +258,12 @@ class Dimension {
   template <typename T>
   T tile_extent() const {
     impl::type_check<T>(type(), 1);
-	auto te = _tile_extent();
-	if (te == NULL)
-	{
-		T value = T();
-		return value;
-	}
+    auto te = _tile_extent();
+    if (te == NULL)
+    {
+      T value = T();
+      return value;
+    }
     return *(const T*)_tile_extent();
   }
 
@@ -273,9 +273,9 @@ class Dimension {
    */
   std::string tile_extent_to_str() const {
     auto tile_extent = _tile_extent();
-	if (tile_extent == NULL) {
-		return "";
-	}
+    if (tile_extent == NULL) {
+      return "";
+    }
     auto type = this->type();
     const int8_t* ti8;
     const uint8_t* tui8;

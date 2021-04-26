@@ -566,10 +566,10 @@ Status Domain::init(Layout cell_order, Layout tile_order) {
 
   // Set tile_extent to empty if cell order is HILBERT
   if (cell_order_ == Layout::HILBERT) {
-	  ByteVecValue be;
-	  for (auto& d : dimensions_) {
-		  d->set_tile_extent(be);
-	  }
+    ByteVecValue be;
+    for (auto& d : dimensions_) {
+      d->set_tile_extent(be);
+    }
   }
 
   return Status::Ok();

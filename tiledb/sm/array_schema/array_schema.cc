@@ -647,7 +647,7 @@ Status ArraySchema::set_domain(Domain* domain) {
   }
   
   if (cell_order_ != Layout::HILBERT) {
-	  RETURN_NOT_OK(domain->set_null_tile_extents_to_range());
+    RETURN_NOT_OK(domain->set_null_tile_extents_to_range());
   }
   
   // Set domain
