@@ -95,8 +95,8 @@ if (NOT BZIP2_FOUND)
       # alongside TileDB.
       ExternalProject_Add(ep_bzip2
         PREFIX "externals"
-        URL "https://github.com/TileDB-Inc/bzip2/releases/download/1.0.6/bzip2-1.0.6.tar.gz"
-        URL_HASH SHA1=3f89f861209ce81a6bab1fd1998c0ef311712002
+        URL "https://sourceware.org/pub/bzip2/bzip2-1.0.8.tar.gz"
+        URL_HASH SHA1=bf7badf7e248e0ecf465d33c2f5aeec774209227
         CONFIGURE_COMMAND ""
         BUILD_IN_SOURCE TRUE
         BUILD_COMMAND ""
