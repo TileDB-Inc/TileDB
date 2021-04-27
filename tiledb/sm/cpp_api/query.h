@@ -485,8 +485,12 @@ class Query {
     for (const auto& b_it : buff_sizes_) {
       auto attr_name = b_it.first;
       auto size_tuple = b_it.second;
-      auto var = schema_.has_attribute(attr_name) &&
-                 schema_.attribute(attr_name).cell_val_num() == TILEDB_VAR_NUM;
+      auto var =
+          (schema_.has_attribute(attr_name) &&
+           schema_.attribute(attr_name).cell_val_num() == TILEDB_VAR_NUM) ||
+          (schema_.domain().has_dimension(attr_name) &&
+           schema_.domain().dimension(attr_name).cell_val_num() ==
+               TILEDB_VAR_NUM);
       auto element_size = element_sizes_.find(attr_name)->second;
       elements[attr_name] = var ?
                                 std::tuple<uint64_t, uint64_t, uint64_t>(

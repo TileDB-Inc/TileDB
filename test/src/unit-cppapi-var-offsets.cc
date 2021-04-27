@@ -626,6 +626,12 @@ TEST_CASE(
         std::vector<uint64_t> data_off_exp1 = {0, 4, 12, 0};
         CHECK(attr_off == data_off_exp1);
 
+        // check returned data with nullable API
+        auto result_els = query_r.result_buffer_elements_nullable()["attr"];
+        CHECK(std::get<0>(result_els) == 3);
+        CHECK(std::get<1>(result_els) == 3);
+        CHECK(std::get<2>(result_els) == 0);
+
         // Second partial read
         reset_read_buffers(attr_val, attr_off);
         CHECK_NOTHROW(query_r.submit());
