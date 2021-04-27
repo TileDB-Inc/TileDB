@@ -351,6 +351,18 @@ class Query {
   Status finalize();
 
   /**
+   * Retrieves the data buffer of a fixed/var-sized attribute/dimension.
+   *
+   * @param name The buffer attribute/dimension name. An empty string means
+   *     the special default attribute/dimension.
+   * @param buffer The buffer to be retrieved.
+   * @param buffer_size A pointer to the buffer size to be retrieved.
+   * @return Status
+   */
+  Status get_buffer_data(
+      const char* name, void** buffer, uint64_t** buffer_size) const;
+
+  /**
    * Retrieves the buffer of a fixed-sized attribute/dimension.
    *
    * @param name The buffer attribute/dimension name. An empty string means
