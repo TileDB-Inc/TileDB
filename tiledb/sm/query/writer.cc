@@ -191,30 +191,6 @@ Status Writer::get_buffer(
   // Attribute or dimension
   auto it = buffers_.find(name);
   if (it != buffers_.end()) {
-    *buffer = it->second.buffer_;
-    *buffer_size = it->second.buffer_size_;
-    return Status::Ok();
-  }
-
-  // Named buffer does not exist
-  *buffer = nullptr;
-  *buffer_size = nullptr;
-
-  return Status::Ok();
-}
-
-Status Writer::get_buffer_data(
-    const std::string& name, void** buffer, uint64_t** buffer_size) const {
-  // Special zipped coordinates
-  if (name == constants::coords) {
-    *buffer = coords_buffer_;
-    *buffer_size = coords_buffer_size_;
-    return Status::Ok();
-  }
-
-  // Attribute or dimension
-  auto it = buffers_.find(name);
-  if (it != buffers_.end()) {
     if (!array_schema_->var_size(name)) {
       *buffer = it->second.buffer_;
       *buffer_size = it->second.buffer_size_;

@@ -2973,7 +2973,7 @@ int32_t tiledb_query_get_data_buffer(
 
   // Set attribute buffer
   if (SAVE_ERROR_CATCH(
-          ctx, query->query_->get_buffer(name, buffer, buffer_size)))
+          ctx, query->query_->get_buffer_data(name, buffer, buffer_size)))
     return TILEDB_ERR;
 
   return TILEDB_OK;

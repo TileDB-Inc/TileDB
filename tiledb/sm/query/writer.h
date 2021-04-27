@@ -183,17 +183,6 @@ class Writer {
       const std::string& name, const ValidityVector** validity_vector) const;
 
   /**
-   * Retrieves the buffer of a fixed-sized attribute/dimension.
-   *
-   * @param name The buffer name.
-   * @param buffer The buffer to be retrieved.
-   * @param buffer_size A pointer to the buffer size to be retrieved.
-   * @return Status
-   */
-  Status get_buffer_data(
-      const std::string& name, void** buffer, uint64_t** buffer_size) const;
-
-  /**
    * Retrieves the offsets and values buffers of a var-sized
    * attribute/dimension.
    *
@@ -304,7 +293,8 @@ class Writer {
       const std::string& name, void* buffer, uint64_t* buffer_size);
 
   /**
-   * Sets the offset buffer for a agnostic (fixed/var) sized attribute/dimension.
+   * Sets the offset buffer for a agnostic (fixed/var) sized
+   * attribute/dimension.
    *
    * @param name The attribute/dimension to set the buffer for.
    * @param buffer The buffer that has the input data to be written.

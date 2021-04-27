@@ -542,6 +542,23 @@ Status Query::get_buffer(
   return reader_.get_buffer(name, buffer_off, buffer_off_size);
 }
 
+Status Query::get_buffer_data(
+    const char* name, void** buffer, uint64_t** buffer_size) const {
+  // Check attribute
+  auto array_schema = this->array_schema();
+  if (name != constants::coords) {
+    if (array_schema->attribute(name) == nullptr &&
+        array_schema->dimension(name) == nullptr)
+      return LOG_STATUS(Status::QueryError(
+          std::string("Cannot get buffer; Invalid attribute/dimension name '") +
+          name + "'"));
+  }
+
+  if (type_ == QueryType::WRITE)
+    return writer_.get_buffer(name, buffer, buffer_size);
+  return reader_.get_buffer(name, buffer, buffer_size);
+}
+
 // VALIDITY
 Status Query::get_buffer(
     const char* name,
