@@ -271,9 +271,6 @@ class Dimension {
    */
   std::string tile_extent_to_str() const {
     auto tile_extent = _tile_extent();
-    if (tile_extent == NULL) {
-      return "";
-    }
     auto type = this->type();
     const int8_t* ti8;
     const uint8_t* tui8;
@@ -285,6 +282,10 @@ class Dimension {
     const uint64_t* tui64;
     const float* tf32;
     const double* tf64;
+
+    if (tile_extent == NULL && type != TILEDB_STRING_ASCII) {
+      return "N/A";
+    }
 
     std::stringstream ss;
 
