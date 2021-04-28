@@ -76,7 +76,7 @@ TEST_CASE("URI: Test file URIs", "[uri]") {
   CHECK(uri.to_string() == "file:///path");
 #ifndef _WIN32
   // note: "file://path" is an accepted URI form on windows for UNC
-  // level share viewing,but expected .is_invalid() on *nx.
+  // level share viewing, but expected .is_invalid() on *nix.
   uri = URI("file://path");
   CHECK(uri.is_invalid());
 #endif
