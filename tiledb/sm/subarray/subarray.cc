@@ -898,8 +898,15 @@ Status Subarray::get_est_result_size_querytype_audited(
     // tmp_array.open(type, 0, array_->encryption_key(), ?);)
     auto enc_key_const_buff = array_->encryption_key()->key();
     uint64_t time_stamp = 0;
+    // TBD: Is this correct?
+    // Merging with dev, appears from use of .open() in tiledb.cc/tiledb_array_open_at(),
+    // the way to get earlier functionality is to pass 0 (zero) for start and the timestamp
+    // in use with old prototype as 'end', so let's try that...
+    // unfortunately, since this code has not yet been exercised, may be hard to tell if
+    // this is correct approach here or not...
     tmp_array.open(
         type,
+        0,
         time_stamp,
         array_->encryption_key()->encryption_type(),
         enc_key_const_buff.data(),
