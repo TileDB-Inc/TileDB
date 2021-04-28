@@ -279,7 +279,6 @@ TEST_CASE("C++ API: Test subarray", "[cppapi][sparse][subarray]") {
 
   SECTION("- Read ranges oob error - Subarray-cppapi") {
     Array array(ctx, array_name, TILEDB_READ);
-    // Query query(ctx, array);
     Subarray subarray(ctx, array);
     Config config;
     config.set("sm.read_range_oob", "error");
@@ -292,7 +291,6 @@ TEST_CASE("C++ API: Test subarray", "[cppapi][sparse][subarray]") {
 
   SECTION("-  set_subarray Write ranges oob error - Subarray-cppapi") {
     Array array(ctx, array_name, TILEDB_WRITE);
-    // Query query(ctx, array);
     Subarray subarray(ctx, array);
     // default expected to err. (currently errs because sparse)
     REQUIRE_THROWS(subarray.set_subarray({1, 4, -1, 3}));
@@ -342,7 +340,6 @@ TEST_CASE("C++ API: Test subarray", "[cppapi][sparse][subarray]") {
 
   SECTION("- Read ranges oob warn - Subarray-cppapi") {
     Array array(ctx, array_name, TILEDB_READ);
-    // Query query(ctx, array);
     Subarray subarray(ctx, array);
     Config config;
     config.set("sm.read_range_oob", "warn");
@@ -404,7 +401,6 @@ TEST_CASE("C++ API: Test subarray (dense)", "[cppapi][dense][subarray]") {
 
   SECTION("-  set_subarray Write ranges oob error - Subarray-cppapi") {
     Array array(ctx, array_name, TILEDB_WRITE);
-    // Query query(ctx, array);
     Subarray subarray(ctx, array);
     // default expected to err.
     REQUIRE_THROWS(subarray.set_subarray({1, 4, -1, 3}));
