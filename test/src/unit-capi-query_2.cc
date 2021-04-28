@@ -796,6 +796,8 @@ TEST_CASE_METHOD(
   CHECK(rc == TILEDB_OK);
   tiledb_array_free(&array);
   CHECK(array == nullptr);
+  tiledb_config_free(&config);
+  CHECK(config == nullptr);
   tiledb_query_free(&query);
   CHECK(query == nullptr);
 

@@ -45,6 +45,7 @@
 #include "tiledb/sm/misc/types.h"
 #include "tiledb/sm/misc/uri.h"
 #include "tiledb/sm/query/query_buffer.h"
+#include "tiledb/sm/query/query_condition.h"
 #include "tiledb/sm/query/result_cell_slab.h"
 #include "tiledb/sm/query/result_coords.h"
 #include "tiledb/sm/query/result_space_tile.h"
@@ -321,6 +322,9 @@ class Reader {
   /** Returns the cell layout. */
   Layout layout() const;
 
+  /** Returns the conditions. */
+  const QueryCondition* condition() const;
+
   /** Returns `true` if no results were retrieved after a query. */
   bool no_results() const;
 
@@ -454,6 +458,14 @@ class Reader {
    * layout for both reads and writes.
    */
   Status set_layout(Layout layout);
+
+  /**
+   * Sets the condition for filtering results.
+   *
+   * @param condition The condition object.
+   * @return Status
+   */
+  Status set_condition(const QueryCondition& condition);
 
   /**
    * This is applicable only to dense arrays (errors out for sparse arrays),
@@ -633,6 +645,16 @@ class Reader {
   /* ********************************* */
   /*         PRIVATE DATATYPES         */
   /* ********************************* */
+
+  /** Bitflags for individual dimension/attributes in `process_tiles()`. */
+  typedef uint8_t ProcessTileFlags;
+
+  /** Bitflag values applicable to `ProcessTileFlags`. */
+  enum ProcessTileFlag { READ = 1, COPY = 2, SELECTIVE_UNFILTERING = 4 };
+
+  typedef std::
+      unordered_map<ResultTile*, std::vector<std::pair<uint64_t, uint64_t>>>
+          ResultCellSlabsIndex;
 
   class CopyFixedCellsContextCache {
    public:
@@ -947,6 +969,9 @@ class Reader {
 
   /** The layout of the cells in the result of the subarray. */
   Layout layout_;
+
+  /** The query condition. */
+  QueryCondition condition_;
 
   /** Read state. */
   ReadState read_state_;
@@ -1445,10 +1470,7 @@ class Reader {
   Status unfilter_tiles(
       const std::string& name,
       const std::vector<ResultTile*>& result_tiles,
-      const std::unordered_map<
-          ResultTile*,
-          std::vector<std::pair<uint64_t, uint64_t>>>* const cs_ranges =
-          nullptr) const;
+      const ResultCellSlabsIndex* const rcs_index) const;
 
   /**
    * Runs the input fixed-sized tile for the input attribute or dimension
@@ -1710,6 +1732,65 @@ class Reader {
 
   /** Performs a read on a sparse array. */
   Status sparse_read();
+
+  /**
+   * Applies the query condition, `condition_`, to filter cell indexes
+   * within `result_cell_slabs`. This mutates `result_cell_slabs`.
+   *
+   * @param result_cell_slabs The unfiltered cell slabs.
+   * @param result_tiles The result tiles that must contain values for
+   *   attributes within `condition_`.
+   * @param stride The stride between cells, defaulting to UINT64_MAX
+   *   for contiguous cells.
+   * @return Status
+   */
+  Status apply_query_condition(
+      std::vector<ResultCellSlab>* result_cell_slabs,
+      const std::vector<ResultTile*>& result_tiles,
+      uint64_t stride = UINT64_MAX);
+
+  /**
+   * The work routine for `apply_query_condition` that operates on
+   * a partition of the `result_cell_slabs`.
+   *
+   * @param rcs_partition The partition to populate.
+   * @param partition_start The inclusive starting position of the
+   *   partition within `result_cell_slabs`.
+   * @param partition_end The exclusive starting position of the
+   *   partition within `result_cell_slabs`.
+   * @param result_cell_slabs The unfiltered cell slabs.
+   * @param stride The stride between cells.
+   * @return Status
+   */
+  Status apply_query_condition_partition(
+      std::vector<ResultCellSlab>* rcs_partition,
+      size_t partition_start,
+      size_t partition_end,
+      const std::vector<ResultCellSlab>& result_cell_slabs,
+      uint64_t stride);
+
+  /**
+   * For each dimension/attribute in `names`, performs the actions
+   * defined in the `ProcessTileFlags`.
+   *
+   * @param names The dimension/attribute names to process.
+   * @param result_tiles The retrieved tiles will be stored inside the
+   *   `ResultTile` instances in this vector.
+   * @param result_cell_slabs The cell slabs to process.
+   * @param stride The stride between cells, UINT64_MAX for contiguous.
+   */
+  Status process_tiles(
+      const std::unordered_map<std::string, ProcessTileFlags>& names,
+      const std::vector<ResultTile*>& result_tiles,
+      const std::vector<ResultCellSlab>& result_cell_slabs,
+      uint64_t stride);
+
+  /**
+   * Builds and returns an association from each tile in `result_cell_slabs`
+   * to the cell slabs it contains.
+   */
+  tdb_unique_ptr<ResultCellSlabsIndex> compute_rcs_index(
+      const std::vector<ResultCellSlab>& result_cell_slabs) const;
 
   /**
    * Copies the result coordinates to the user buffers.

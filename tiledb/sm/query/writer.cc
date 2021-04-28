@@ -1587,7 +1587,7 @@ Status Writer::compute_coords_metadata(
 Status Writer::create_fragment(
     bool dense, tdb_shared_ptr<FragmentMetadata>* frag_meta) const {
   URI uri;
-  uint64_t timestamp = array_->timestamp();
+  uint64_t timestamp = array_->timestamp_end();
   if (!fragment_uri_.to_string().empty()) {
     uri = fragment_uri_;
   } else {

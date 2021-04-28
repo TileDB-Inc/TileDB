@@ -393,7 +393,7 @@ class SubarrayPartitioner {
    * and needs splitting along the splitting dimension (that depends on
    * the layout).
    */
-  void calibrate_current_start_end(bool* must_split_slab);
+  Status calibrate_current_start_end(bool* must_split_slab);
 
   /** Returns a deep copy of this SubarrayPartitioner. */
   SubarrayPartitioner clone() const;
@@ -456,7 +456,7 @@ class SubarrayPartitioner {
    * the reverse order (this is used in global order reads when
    * the cell order is Hilbert).
    */
-  void compute_splitting_value_multi_range(
+  Status compute_splitting_value_multi_range(
       unsigned* splitting_dim,
       uint64_t* splitting_range,
       ByteVecValue* splitting_value,

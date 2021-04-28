@@ -1160,6 +1160,7 @@ void DenseArrayFx::check_sorted_reads(const std::string& path) {
 
   // Clean up
   tiledb_array_free(&array);
+  tiledb_config_free(&config);
   tiledb_query_free(&query);
 }
 
@@ -3560,6 +3561,10 @@ TEST_CASE_METHOD(
   std::string temp_dir = local_fs.file_prefix() + local_fs.temp_dir();
   create_temp_dir(temp_dir);
 
+  // Array configuration
+  tiledb_config_t* cfg;
+  tiledb_error_t* err;
+
   // Create and write dense array
   std::string array_name = temp_dir + "dense_reopen_array";
   create_dense_array(array_name);
@@ -3582,7 +3587,16 @@ TEST_CASE_METHOD(
   write_partial_dense_array(array_name);
 
   // Open array at a timestamp before the last fragment
-  rc = tiledb_array_open_at(ctx_, array, TILEDB_READ, timestamp);
+  err = nullptr;
+  REQUIRE(tiledb_config_alloc(&cfg, &err) == TILEDB_OK);
+  REQUIRE(err == nullptr);
+  rc = tiledb_config_set(
+      cfg, "sm.array.timestamp_end", std::to_string(timestamp).c_str(), &err);
+  REQUIRE(rc == TILEDB_OK);
+  REQUIRE(err == nullptr);
+  rc = tiledb_array_set_config(ctx_, array, cfg);
+  REQUIRE(rc == TILEDB_OK);
+  rc = tiledb_array_open(ctx_, array, TILEDB_READ);
   CHECK(rc == TILEDB_OK);
 
   // Prepare buffer
@@ -3606,6 +3620,19 @@ TEST_CASE_METHOD(
   CHECK(a1_buffer[0] == 13);
 
   // Reopen the array to see the new fragment
+  tiledb_config_free(&cfg);
+  err = nullptr;
+  REQUIRE(tiledb_config_alloc(&cfg, &err) == TILEDB_OK);
+  REQUIRE(err == nullptr);
+  rc = tiledb_config_set(
+      cfg,
+      "sm.array.timestamp_end",
+      std::to_string(tiledb::sm::utils::time::timestamp_now_ms()).c_str(),
+      &err);
+  REQUIRE(rc == TILEDB_OK);
+  REQUIRE(err == nullptr);
+  rc = tiledb_array_set_config(ctx_, array, cfg);
+  REQUIRE(rc == TILEDB_OK);
   rc = tiledb_array_reopen(ctx_, array);
   CHECK(rc == TILEDB_OK);
 
@@ -3639,6 +3666,12 @@ TEST_CASE_METHOD(
   CHECK(rc == TILEDB_OK);
 
   // Re-opening arrays for writes should fail
+  tiledb_config_free(&cfg);
+  err = nullptr;
+  REQUIRE(tiledb_config_alloc(&cfg, &err) == TILEDB_OK);
+  REQUIRE(err == nullptr);
+  rc = tiledb_array_set_config(ctx_, array, cfg);
+  REQUIRE(rc == TILEDB_OK);
   rc = tiledb_array_reopen(ctx_, array);
   CHECK(rc == TILEDB_ERR);
 
@@ -3648,6 +3681,7 @@ TEST_CASE_METHOD(
 
   // Clean up
   tiledb_array_free(&array);
+  tiledb_config_free(&cfg);
 
   remove_temp_dir(temp_dir);
 }

@@ -81,11 +81,24 @@ class Config {
   /** The prefix to use for checking for parameter environmental variables. */
   static const std::string CONFIG_ENVIRONMENT_VARIABLE_PREFIX;
 
-  /** The default logging level. It can be:
+  /**
+   * The default logging level. It can be:
    * - `1` i.e. `error` if bootstrap flag --enalbe-verbose is given
    * - `0` i.e. `fatal` if this bootstrap flag is missing
    */
   static const std::string CONFIG_LOGGING_LEVEL;
+
+  /**
+   * An array will open between this value and timestamp_end upon a
+   * read query.
+   * */
+  static const std::string SM_ARRAY_TIMESTAMP_START;
+
+  /**
+   * An array will open between timestamp_start and this value upon a
+   * read query.
+   *  */
+  static const std::string SM_ARRAY_TIMESTAMP_END;
 
   /** If `true`, this will deduplicate coordinates upon sparse writes. */
   static const std::string SM_DEDUP_COORDS;
@@ -195,12 +208,32 @@ class Config {
   static const std::string SM_CONSOLIDATION_MODE;
 
   /**
+   * An array will consolidate between this value and timestamp_end.
+   * */
+  static const std::string SM_CONSOLIDATION_TIMESTAMP_START;
+
+  /**
+   * An array will consolidate between timestamp_start and this value.
+   *  */
+  static const std::string SM_CONSOLIDATION_TIMESTAMP_END;
+
+  /**
    * The vacuum mode. It can be one of:
    *     - "fragments": only the fragments will be vacuumed
    *     - "fragment_meta": only the fragment metadata will be vacuumed
    *     - "array_meta": only the array metadata will be vacuumed
    */
   static const std::string SM_VACUUM_MODE;
+
+  /**
+   * An array will vacuum between this value and timestamp_end.
+   * */
+  static const std::string SM_VACUUM_TIMESTAMP_START;
+
+  /**
+   * An array will vacuum between timestamp_start and this value.
+   *  */
+  static const std::string SM_VACUUM_TIMESTAMP_END;
 
   /**
    * The size of offsets in bits to be used for offset buffers of var-sized

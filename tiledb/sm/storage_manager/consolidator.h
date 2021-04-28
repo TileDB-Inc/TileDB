@@ -95,6 +95,10 @@ class Consolidator {
      *     - "array_meta": only the array metadata will be consolidated
      */
     std::string mode_;
+    /** Start time for consolidation. */
+    uint64_t timestamp_start_;
+    /** End time for consolidation. */
+    uint64_t timestamp_end_;
   };
 
   /* ********************************* */

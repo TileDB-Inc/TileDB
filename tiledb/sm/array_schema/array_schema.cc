@@ -612,6 +612,7 @@ Status ArraySchema::set_cell_order(Layout cell_order) {
                                  "applicable to sparse arrays"));
 
   cell_order_ = cell_order;
+
   return Status::Ok();
 }
 
@@ -646,7 +647,9 @@ Status ArraySchema::set_domain(Domain* domain) {
     }
   }
 
-  RETURN_NOT_OK(domain->set_null_tile_extents_to_range());
+  if (cell_order_ != Layout::HILBERT) {
+    RETURN_NOT_OK(domain->set_null_tile_extents_to_range());
+  }
 
   // Set domain
   tdb_delete(domain_);

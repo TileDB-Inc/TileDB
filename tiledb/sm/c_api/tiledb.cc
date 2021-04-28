@@ -58,6 +58,7 @@
 #include "tiledb/sm/filter/filter_pipeline.h"
 #include "tiledb/sm/misc/utils.h"
 #include "tiledb/sm/query/query.h"
+#include "tiledb/sm/query/query_condition.h"
 #include "tiledb/sm/rest/rest_client.h"
 #include "tiledb/sm/serialization/array_schema.h"
 #include "tiledb/sm/serialization/config.h"
@@ -534,6 +535,17 @@ inline int32_t sanity_check(tiledb_ctx_t* ctx, const tiledb_domain_t* domain) {
 inline int32_t sanity_check(tiledb_ctx_t* ctx, const tiledb_query_t* query) {
   if (query == nullptr || query->query_ == nullptr) {
     auto st = Status::Error("Invalid TileDB query object");
+    LOG_STATUS(st);
+    save_error(ctx, st);
+    return TILEDB_ERR;
+  }
+  return TILEDB_OK;
+}
+
+inline int32_t sanity_check(
+    tiledb_ctx_t* ctx, const tiledb_query_condition_t* cond) {
+  if (cond == nullptr || cond->query_condition_ == nullptr) {
+    auto st = Status::Error("Invalid TileDB query condition object");
     LOG_STATUS(st);
     save_error(ctx, st);
     return TILEDB_ERR;
@@ -2272,6 +2284,7 @@ int32_t tiledb_array_schema_load_with_key(
     tiledb_array_schema_t** array_schema) {
   if (sanity_check(ctx) == TILEDB_ERR)
     return TILEDB_ERR;
+
   // Create array schema
   *array_schema = new (std::nothrow) tiledb_array_schema_t;
   if (*array_schema == nullptr) {
@@ -2959,6 +2972,24 @@ int32_t tiledb_query_set_layout(
   if (SAVE_ERROR_CATCH(
           ctx,
           query->query_->set_layout(static_cast<tiledb::sm::Layout>(layout))))
+    return TILEDB_ERR;
+
+  return TILEDB_OK;
+}
+
+int32_t tiledb_query_set_condition(
+    tiledb_ctx_t* const ctx,
+    tiledb_query_t* const query,
+    const tiledb_query_condition_t* const cond) {
+  // Sanity check
+  if (sanity_check(ctx) == TILEDB_ERR ||
+      sanity_check(ctx, query) == TILEDB_ERR ||
+      sanity_check(ctx, cond) == TILEDB_ERR)
+    return TILEDB_ERR;
+
+  // Set layout
+  if (SAVE_ERROR_CATCH(
+          ctx, query->query_->set_condition(*cond->query_condition_)))
     return TILEDB_ERR;
 
   return TILEDB_OK;
@@ -3884,6 +3915,108 @@ int32_t tiledb_subarray_get_est_result_size_var_nullable(
 }
 
 /* ****************************** */
+/*          QUERY CONDITION       */
+/* ****************************** */
+
+int32_t tiledb_query_condition_alloc(
+    tiledb_ctx_t* const ctx,
+    const char* const attribute_name,
+    const void* const condition_value,
+    const uint64_t condition_value_size,
+    const tiledb_query_condition_op_t op,
+    tiledb_query_condition_t** const cond) {
+  if (sanity_check(ctx) == TILEDB_ERR) {
+    *cond = nullptr;
+    return TILEDB_ERR;
+  }
+
+  // Create query condition struct
+  *cond = new (std::nothrow) tiledb_query_condition_t;
+  if (*cond == nullptr) {
+    auto st = Status::Error(
+        "Failed to create TileDB query condition object; Memory allocation "
+        "error");
+    LOG_STATUS(st);
+    save_error(ctx, st);
+    return TILEDB_OOM;
+  }
+
+  // Create QueryCondition object
+  (*cond)->query_condition_ = new (std::nothrow) tiledb::sm::QueryCondition(
+      std::string(attribute_name),
+      condition_value,
+      condition_value_size,
+      static_cast<tiledb::sm::QueryConditionOp>(op));
+  if ((*cond)->query_condition_ == nullptr) {
+    auto st = Status::Error("Failed to allocate TileDB query condition object");
+    LOG_STATUS(st);
+    save_error(ctx, st);
+    delete *cond;
+    return TILEDB_OOM;
+  }
+
+  // Success
+  return TILEDB_OK;
+}
+
+void tiledb_query_condition_free(tiledb_query_condition_t** cond) {
+  if (cond != nullptr && *cond != nullptr) {
+    delete (*cond)->query_condition_;
+    delete *cond;
+    *cond = nullptr;
+  }
+}
+
+int32_t tiledb_query_condition_combine(
+    tiledb_ctx_t* const ctx,
+    const tiledb_query_condition_t* const left_cond,
+    const tiledb_query_condition_t* const right_cond,
+    const tiledb_query_condition_combination_op_t combination_op,
+    tiledb_query_condition_t** const combined_cond) {
+  // Sanity check
+  if (sanity_check(ctx) == TILEDB_ERR ||
+      sanity_check(ctx, left_cond) == TILEDB_ERR ||
+      sanity_check(ctx, right_cond) == TILEDB_ERR)
+    return TILEDB_ERR;
+
+  // Create the combined query condition struct
+  *combined_cond = new (std::nothrow) tiledb_query_condition_t;
+  if (*combined_cond == nullptr) {
+    auto st = Status::Error(
+        "Failed to create TileDB query condition object; Memory allocation "
+        "error");
+    LOG_STATUS(st);
+    save_error(ctx, st);
+    return TILEDB_OOM;
+  }
+
+  // Create the combined QueryCondition object
+  (*combined_cond)->query_condition_ =
+      new (std::nothrow) tiledb::sm::QueryCondition();
+  if ((*combined_cond)->query_condition_ == nullptr) {
+    auto st = Status::Error("Failed to allocate TileDB query condition object");
+    LOG_STATUS(st);
+    save_error(ctx, st);
+    delete *combined_cond;
+    return TILEDB_OOM;
+  }
+
+  if (SAVE_ERROR_CATCH(
+          ctx,
+          left_cond->query_condition_->combine(
+              *right_cond->query_condition_,
+              static_cast<tiledb::sm::QueryConditionCombinationOp>(
+                  combination_op),
+              (*combined_cond)->query_condition_))) {
+    delete (*combined_cond)->query_condition_;
+    delete *combined_cond;
+    return TILEDB_ERR;
+  }
+
+  return TILEDB_OK;
+}
+
+/* ****************************** */
 /*              ARRAY             */
 /* ****************************** */
 
@@ -3965,6 +4098,7 @@ int32_t tiledb_array_open_at(
           ctx,
           array->array_->open(
               static_cast<tiledb::sm::QueryType>(query_type),
+              0,
               timestamp,
               static_cast<tiledb::sm::EncryptionType>(TILEDB_NO_ENCRYPTION),
               nullptr,
@@ -4013,6 +4147,7 @@ int32_t tiledb_array_open_at_with_key(
           ctx,
           array->array_->open(
               static_cast<tiledb::sm::QueryType>(query_type),
+              0,
               timestamp,
               static_cast<tiledb::sm::EncryptionType>(encryption_type),
               encryption_key,
@@ -4044,12 +4179,12 @@ int32_t tiledb_array_reopen(tiledb_ctx_t* ctx, tiledb_array_t* array) {
 }
 
 int32_t tiledb_array_reopen_at(
-    tiledb_ctx_t* ctx, tiledb_array_t* array, uint64_t timestamp) {
+    tiledb_ctx_t* ctx, tiledb_array_t* array, uint64_t timestamp_end) {
   if (sanity_check(ctx) == TILEDB_ERR || sanity_check(ctx, array) == TILEDB_ERR)
     return TILEDB_ERR;
 
   // Reopen array
-  if (SAVE_ERROR_CATCH(ctx, array->array_->reopen(timestamp)))
+  if (SAVE_ERROR_CATCH(ctx, array->array_->reopen(0, timestamp_end)))
     return TILEDB_ERR;
 
   return TILEDB_OK;
@@ -4060,7 +4195,43 @@ int32_t tiledb_array_get_timestamp(
   if (sanity_check(ctx) == TILEDB_ERR || sanity_check(ctx, array) == TILEDB_ERR)
     return TILEDB_ERR;
 
-  *timestamp = array->array_->timestamp();
+  *timestamp = array->array_->timestamp_end();
+
+  return TILEDB_OK;
+}
+
+int32_t tiledb_array_set_config(
+    tiledb_ctx_t* ctx, tiledb_array_t* array, tiledb_config_t* config) {
+  // Sanity check
+  if (sanity_check(ctx) == TILEDB_ERR ||
+      sanity_check(ctx, array) == TILEDB_ERR ||
+      sanity_check(ctx, config) == TILEDB_ERR)
+    return TILEDB_ERR;
+
+  if (SAVE_ERROR_CATCH(ctx, array->array_->set_config(*(config->config_))))
+    return TILEDB_ERR;
+
+  return TILEDB_OK;
+}
+
+int32_t tiledb_array_get_config(
+    tiledb_ctx_t* ctx, tiledb_array_t* array, tiledb_config_t** config) {
+  // Sanity check
+  if (sanity_check(ctx) == TILEDB_ERR || sanity_check(ctx, array) == TILEDB_ERR)
+    return TILEDB_ERR;
+
+  // Create a new config struct
+  *config = new (std::nothrow) tiledb_config_t;
+  if (*config == nullptr)
+    return TILEDB_OOM;
+
+  // Get the array config
+  (*config)->config_ = new (std::nothrow) tiledb::sm::Config();
+  *((*config)->config_) = array->array_->config();
+  if ((*config)->config_ == nullptr) {
+    delete (*config);
+    return TILEDB_OOM;
+  }
 
   return TILEDB_OK;
 }

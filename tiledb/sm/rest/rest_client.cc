@@ -346,7 +346,7 @@ Status RestClient::post_query_submit(
 
   // Remote array reads always supply the timestamp.
   if (query->type() == QueryType::READ)
-    url += "&open_at=" + std::to_string(array->timestamp());
+    url += "&open_at=" + std::to_string(array->timestamp_end());
 
   // Create the callback that will process the response buffers as they
   // are received.
@@ -708,7 +708,7 @@ Status RestClient::get_query_est_result_sizes(const URI& uri, Query* query) {
 
   // Remote array reads always supply the timestamp.
   if (query->type() == QueryType::READ)
-    url += "&open_at=" + std::to_string(array->timestamp());
+    url += "&open_at=" + std::to_string(array->timestamp_end());
 
   // Get the data
   Buffer returned_data;

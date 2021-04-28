@@ -462,7 +462,7 @@ TEST_CASE_METHOD(
 
 TEST_CASE_METHOD(
     CMetadataFx,
-    "C API: Metadata, multiple metadata and cosnolidate",
+    "C API: Metadata, multiple metadata and consolidate",
     "[capi][metadata][multiple][consolidation]") {
   // Create default array
   create_default_array_1d();
@@ -471,7 +471,16 @@ TEST_CASE_METHOD(
   tiledb_array_t* array;
   int rc = tiledb_array_alloc(ctx_, array_name_.c_str(), &array);
   REQUIRE(rc == TILEDB_OK);
-  rc = tiledb_array_open_at(ctx_, array, TILEDB_WRITE, 1);
+  tiledb_config_t* cfg;
+  tiledb_error_t* err = nullptr;
+  REQUIRE(tiledb_config_alloc(&cfg, &err) == TILEDB_OK);
+  REQUIRE(err == nullptr);
+  rc = tiledb_config_set(cfg, "sm.array.timestamp_end", "1", &err);
+  REQUIRE(rc == TILEDB_OK);
+  REQUIRE(err == nullptr);
+  rc = tiledb_array_set_config(ctx_, array, cfg);
+  REQUIRE(rc == TILEDB_OK);
+  rc = tiledb_array_open(ctx_, array, TILEDB_WRITE);
   REQUIRE(rc == TILEDB_OK);
 
   // Write items
@@ -486,11 +495,20 @@ TEST_CASE_METHOD(
   rc = tiledb_array_close(ctx_, array);
   REQUIRE(rc == TILEDB_OK);
   tiledb_array_free(&array);
+  tiledb_config_free(&cfg);
 
   // Update
   rc = tiledb_array_alloc(ctx_, array_name_.c_str(), &array);
   REQUIRE(rc == TILEDB_OK);
-  rc = tiledb_array_open_at(ctx_, array, TILEDB_WRITE, 2);
+  err = nullptr;
+  REQUIRE(tiledb_config_alloc(&cfg, &err) == TILEDB_OK);
+  REQUIRE(err == nullptr);
+  rc = tiledb_config_set(cfg, "sm.array.timestamp_end", "2", &err);
+  REQUIRE(rc == TILEDB_OK);
+  REQUIRE(err == nullptr);
+  rc = tiledb_array_set_config(ctx_, array, cfg);
+  REQUIRE(rc == TILEDB_OK);
+  rc = tiledb_array_open(ctx_, array, TILEDB_WRITE);
   REQUIRE(rc == TILEDB_OK);
   rc = tiledb_array_delete_metadata(ctx_, array, "aaa");
   CHECK(rc == TILEDB_OK);
@@ -500,6 +518,7 @@ TEST_CASE_METHOD(
   rc = tiledb_array_close(ctx_, array);
   REQUIRE(rc == TILEDB_OK);
   tiledb_array_free(&array);
+  tiledb_config_free(&cfg);
 
   // Open the array in read mode
   rc = tiledb_array_alloc(ctx_, array_name_.c_str(), &array);
@@ -577,7 +596,15 @@ TEST_CASE_METHOD(
   // Read at timestamp 1
   rc = tiledb_array_alloc(ctx_, array_name_.c_str(), &array);
   REQUIRE(rc == TILEDB_OK);
-  rc = tiledb_array_open_at(ctx_, array, TILEDB_READ, 1);
+  err = nullptr;
+  REQUIRE(tiledb_config_alloc(&cfg, &err) == TILEDB_OK);
+  REQUIRE(err == nullptr);
+  rc = tiledb_config_set(cfg, "sm.array.timestamp_end", "1", &err);
+  REQUIRE(rc == TILEDB_OK);
+  REQUIRE(err == nullptr);
+  rc = tiledb_array_set_config(ctx_, array, cfg);
+  REQUIRE(rc == TILEDB_OK);
+  rc = tiledb_array_open(ctx_, array, TILEDB_READ);
   REQUIRE(rc == TILEDB_OK);
   rc = tiledb_array_get_metadata(ctx_, array, "aaa", &v_type, &v_num, &v_r);
   CHECK(rc == TILEDB_OK);
@@ -587,6 +614,7 @@ TEST_CASE_METHOD(
   rc = tiledb_array_close(ctx_, array);
   REQUIRE(rc == TILEDB_OK);
   tiledb_array_free(&array);
+  tiledb_config_free(&cfg);
 
   // Vacuum
   tiledb_config_t* config_v = nullptr;
@@ -723,7 +751,17 @@ TEST_CASE_METHOD(
   // Open the array in read mode at a timestamp
   rc = tiledb_array_alloc(ctx_, array_name_.c_str(), &array);
   REQUIRE(rc == TILEDB_OK);
-  rc = tiledb_array_open_at(ctx_, array, TILEDB_READ, timestamp);
+  tiledb_config_t* cfg;
+  tiledb_error_t* err = nullptr;
+  REQUIRE(tiledb_config_alloc(&cfg, &err) == TILEDB_OK);
+  REQUIRE(err == nullptr);
+  rc = tiledb_config_set(
+      cfg, "sm.array.timestamp_end", std::to_string(timestamp).c_str(), &err);
+  REQUIRE(rc == TILEDB_OK);
+  REQUIRE(err == nullptr);
+  rc = tiledb_array_set_config(ctx_, array, cfg);
+  REQUIRE(rc == TILEDB_OK);
+  rc = tiledb_array_open(ctx_, array, TILEDB_READ);
   REQUIRE(rc == TILEDB_OK);
 
   // Read
@@ -745,6 +783,7 @@ TEST_CASE_METHOD(
   rc = tiledb_array_close(ctx_, array);
   REQUIRE(rc == TILEDB_OK);
   tiledb_array_free(&array);
+  tiledb_config_free(&cfg);
 }
 
 TEST_CASE_METHOD(
@@ -790,7 +829,17 @@ TEST_CASE_METHOD(
   // Open the array in read mode at a timestamp
   rc = tiledb_array_alloc(ctx_, array_name_.c_str(), &array);
   REQUIRE(rc == TILEDB_OK);
-  rc = tiledb_array_open_at(ctx_, array, TILEDB_READ, timestamp);
+  tiledb_config_t* cfg;
+  tiledb_error_t* err = nullptr;
+  REQUIRE(tiledb_config_alloc(&cfg, &err) == TILEDB_OK);
+  REQUIRE(err == nullptr);
+  rc = tiledb_config_set(
+      cfg, "sm.array.timestamp_end", std::to_string(timestamp).c_str(), &err);
+  REQUIRE(rc == TILEDB_OK);
+  REQUIRE(err == nullptr);
+  rc = tiledb_array_set_config(ctx_, array, cfg);
+  REQUIRE(rc == TILEDB_OK);
+  rc = tiledb_array_open(ctx_, array, TILEDB_READ);
   REQUIRE(rc == TILEDB_OK);
 
   // Read
@@ -809,6 +858,19 @@ TEST_CASE_METHOD(
   CHECK(num == 2);
 
   // Reopen
+  tiledb_config_free(&cfg);
+  err = nullptr;
+  REQUIRE(tiledb_config_alloc(&cfg, &err) == TILEDB_OK);
+  REQUIRE(err == nullptr);
+  rc = tiledb_config_set(
+      cfg,
+      "sm.array.timestamp_end",
+      std::to_string(tiledb::sm::utils::time::timestamp_now_ms()).c_str(),
+      &err);
+  REQUIRE(rc == TILEDB_OK);
+  REQUIRE(err == nullptr);
+  rc = tiledb_array_set_config(ctx_, array, cfg);
+  REQUIRE(rc == TILEDB_OK);
   rc = tiledb_array_reopen(ctx_, array);
   CHECK(rc == TILEDB_OK);
 
@@ -826,6 +888,163 @@ TEST_CASE_METHOD(
   rc = tiledb_array_close(ctx_, array);
   REQUIRE(rc == TILEDB_OK);
   tiledb_array_free(&array);
+  tiledb_config_free(&cfg);
+}
+
+TEST_CASE_METHOD(
+    CMetadataFx,
+    "C API: Metadata, timestamp_end",
+    "[capi][metadata][timestamp-end]") {
+  // Create default array
+  create_default_array_1d();
+
+  // Create and open array in write mode
+  tiledb_array_t* array;
+  int rc = tiledb_array_alloc(ctx_, array_name_.c_str(), &array);
+  REQUIRE(rc == TILEDB_OK);
+  rc = tiledb_array_open(ctx_, array, TILEDB_WRITE);
+  REQUIRE(rc == TILEDB_OK);
+
+  // Write items
+  int32_t v1 = 4;
+  rc = tiledb_array_put_metadata(ctx_, array, "aaa", TILEDB_INT32, 1, &v1);
+  CHECK(rc == TILEDB_OK);
+  float f1[] = {1.0f, 1.2f};
+  rc = tiledb_array_put_metadata(ctx_, array, "bb", TILEDB_FLOAT32, 2, f1);
+  CHECK(rc == TILEDB_OK);
+
+  // Close array
+  rc = tiledb_array_close(ctx_, array);
+  REQUIRE(rc == TILEDB_OK);
+  tiledb_array_free(&array);
+
+  // Prevent array metadata filename/timestamp conflicts
+  auto timestamp1 = tiledb::sm::utils::time::timestamp_now_ms();
+  std::this_thread::sleep_for(std::chrono::milliseconds(1));
+
+  // Update
+  rc = tiledb_array_alloc(ctx_, array_name_.c_str(), &array);
+  REQUIRE(rc == TILEDB_OK);
+  rc = tiledb_array_open(ctx_, array, TILEDB_WRITE);
+  REQUIRE(rc == TILEDB_OK);
+  rc = tiledb_array_delete_metadata(ctx_, array, "aaa");
+  CHECK(rc == TILEDB_OK);
+  rc = tiledb_array_close(ctx_, array);
+  REQUIRE(rc == TILEDB_OK);
+  tiledb_array_free(&array);
+
+  // Create and open array in write mode
+  rc = tiledb_array_alloc(ctx_, array_name_.c_str(), &array);
+  REQUIRE(rc == TILEDB_OK);
+  rc = tiledb_array_open(ctx_, array, TILEDB_WRITE);
+  REQUIRE(rc == TILEDB_OK);
+
+  // Write items
+  int32_t v2 = 5;
+  rc = tiledb_array_put_metadata(ctx_, array, "aaa", TILEDB_INT32, 1, &v2);
+  CHECK(rc == TILEDB_OK);
+  float f2[] = {1.1f, 1.2f};
+  rc = tiledb_array_put_metadata(ctx_, array, "bb", TILEDB_FLOAT32, 2, f2);
+  CHECK(rc == TILEDB_OK);
+
+  // Close array
+  rc = tiledb_array_close(ctx_, array);
+  REQUIRE(rc == TILEDB_OK);
+  tiledb_array_free(&array);
+
+  // Prevent array metadata filename/timestamp conflicts
+  auto timestamp2 = tiledb::sm::utils::time::timestamp_now_ms();
+  std::this_thread::sleep_for(std::chrono::milliseconds(1));
+
+  // Update
+  rc = tiledb_array_alloc(ctx_, array_name_.c_str(), &array);
+  REQUIRE(rc == TILEDB_OK);
+  rc = tiledb_array_open(ctx_, array, TILEDB_WRITE);
+  REQUIRE(rc == TILEDB_OK);
+  rc = tiledb_array_delete_metadata(ctx_, array, "aaa");
+  CHECK(rc == TILEDB_OK);
+  rc = tiledb_array_close(ctx_, array);
+  REQUIRE(rc == TILEDB_OK);
+  tiledb_array_free(&array);
+
+  // Create and open array in write mode
+  rc = tiledb_array_alloc(ctx_, array_name_.c_str(), &array);
+  REQUIRE(rc == TILEDB_OK);
+  rc = tiledb_array_open(ctx_, array, TILEDB_WRITE);
+  REQUIRE(rc == TILEDB_OK);
+
+  // Write items
+  int32_t v3 = 6;
+  rc = tiledb_array_put_metadata(ctx_, array, "aaa", TILEDB_INT32, 1, &v3);
+  CHECK(rc == TILEDB_OK);
+  float f3[] = {1.2f, 1.3f};
+  rc = tiledb_array_put_metadata(ctx_, array, "bb", TILEDB_FLOAT32, 2, f3);
+  CHECK(rc == TILEDB_OK);
+
+  // Close array
+  rc = tiledb_array_close(ctx_, array);
+  REQUIRE(rc == TILEDB_OK);
+  tiledb_array_free(&array);
+
+  // Prevent array metadata filename/timestamp conflicts
+  // auto timestamp3 = tiledb::sm::utils::time::timestamp_now_ms();
+  std::this_thread::sleep_for(std::chrono::milliseconds(1));
+
+  // Update
+  rc = tiledb_array_alloc(ctx_, array_name_.c_str(), &array);
+  REQUIRE(rc == TILEDB_OK);
+  rc = tiledb_array_open(ctx_, array, TILEDB_WRITE);
+  REQUIRE(rc == TILEDB_OK);
+  rc = tiledb_array_delete_metadata(ctx_, array, "aaa");
+  CHECK(rc == TILEDB_OK);
+  rc = tiledb_array_close(ctx_, array);
+  REQUIRE(rc == TILEDB_OK);
+  tiledb_array_free(&array);
+
+  // Open the array in read mode between timestamp1 and timestamp2
+  rc = tiledb_array_alloc(ctx_, array_name_.c_str(), &array);
+  REQUIRE(rc == TILEDB_OK);
+  tiledb_config_t* cfg;
+  tiledb_error_t* err = nullptr;
+  REQUIRE(tiledb_config_alloc(&cfg, &err) == TILEDB_OK);
+  REQUIRE(err == nullptr);
+  rc = tiledb_config_set(
+      cfg,
+      "sm.array.timestamp_start",
+      std::to_string(timestamp1).c_str(),
+      &err);
+  REQUIRE(rc == TILEDB_OK);
+  REQUIRE(err == nullptr);
+  rc = tiledb_config_set(
+      cfg, "sm.array.timestamp_end", std::to_string(timestamp2).c_str(), &err);
+  REQUIRE(rc == TILEDB_OK);
+  REQUIRE(err == nullptr);
+  rc = tiledb_array_set_config(ctx_, array, cfg);
+  REQUIRE(rc == TILEDB_OK);
+  rc = tiledb_array_open(ctx_, array, TILEDB_READ);
+  REQUIRE(rc == TILEDB_OK);
+
+  // Read - ensure that the data is only that written between
+  // timestamp1 and timestamp2
+  const void* v_r;
+  tiledb_datatype_t v_type;
+  uint32_t v_num;
+  rc = tiledb_array_get_metadata(ctx_, array, "aaa", &v_type, &v_num, &v_r);
+  CHECK(rc == TILEDB_OK);
+  CHECK(v_type == TILEDB_INT32);
+  CHECK(v_num == 1);
+  CHECK(*((const int32_t*)v_r) == 5);
+
+  uint64_t num = 0;
+  rc = tiledb_array_get_metadata_num(ctx_, array, &num);
+  CHECK(rc == TILEDB_OK);
+  CHECK(num == 2);
+
+  // Close array
+  rc = tiledb_array_close(ctx_, array);
+  REQUIRE(rc == TILEDB_OK);
+  tiledb_array_free(&array);
+  tiledb_config_free(&cfg);
 }
 
 TEST_CASE_METHOD(

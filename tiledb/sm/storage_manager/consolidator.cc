@@ -105,7 +105,12 @@ Status Consolidator::consolidate_array_meta(
   auto array_uri = URI(array_name);
   Array array_for_reads(array_uri, storage_manager_);
   RETURN_NOT_OK(array_for_reads.open(
-      QueryType::READ, encryption_type, encryption_key, key_length));
+      QueryType::READ,
+      config_.timestamp_start_,
+      config_.timestamp_end_,
+      encryption_type,
+      encryption_key,
+      key_length));
 
   // Open array for writing
   Array array_for_writes(array_uri, storage_manager_);
@@ -251,7 +256,6 @@ Status Consolidator::consolidate(
     const void* encryption_key,
     uint32_t key_length) {
   FragmentInfo to_consolidate;
-  auto timestamp = utils::time::timestamp_now_ms();
   auto array_uri = array_schema->array_uri();
   EncryptionKey enc_key;
   RETURN_NOT_OK(enc_key.set_key(encryption_type, encryption_key, key_length));
@@ -259,7 +263,11 @@ Status Consolidator::consolidate(
   // Get fragment info
   FragmentInfo fragment_info;
   RETURN_NOT_OK(storage_manager_->get_fragment_info(
-      array_schema, timestamp, enc_key, &fragment_info));
+      array_schema,
+      config_.timestamp_start_,
+      config_.timestamp_end_,
+      enc_key,
+      &fragment_info));
 
   uint32_t step = 0;
   do {
@@ -474,14 +482,6 @@ Status Consolidator::consolidate_fragment_meta(
   // Write number of fragments
   RETURN_NOT_OK(buff.write(&fragment_num, sizeof(uint32_t)));
 
-  // Calculate offset of first fragment footer
-  uint64_t offset = sizeof(uint32_t);  // Fragment num
-  for (auto m : meta) {
-    offset += sizeof(uint64_t);                      // Name size
-    offset += m->fragment_uri().to_string().size();  // Name
-    offset += sizeof(uint64_t);                      // Offset
-  }
-
   // Compute new URI
   URI uri;
   auto first = meta.front()->fragment_uri();
@@ -496,10 +496,27 @@ Status Consolidator::consolidate_fragment_meta(
   uint32_t meta_version = 0;
   RETURN_NOT_OK(utils::parse::get_fragment_version(meta_name, &meta_version));
 
+  // Calculate offset of first fragment footer
+  uint64_t offset = sizeof(uint32_t);  // Fragment num
+  for (auto m : meta) {
+    offset += sizeof(uint64_t);  // Name size
+    if (meta_version >= 9) {
+      offset += m->fragment_uri().last_path_part().size();  // Name
+    } else {
+      offset += m->fragment_uri().to_string().size();  // Name
+    }
+    offset += sizeof(uint64_t);  // Offset
+  }
+
   // Serialize all fragment names and footer offsets into a single buffer
   for (auto m : meta) {
     // Write name size and name
-    auto name = m->fragment_uri().to_string();
+    std::string name;
+    if (meta_version >= 9) {
+      name = m->fragment_uri().last_path_part();
+    } else {
+      name = m->fragment_uri().to_string();
+    }
     auto name_size = (uint64_t)name.size();
     RETURN_NOT_OK(buff.write(&name_size, sizeof(uint64_t)));
     RETURN_NOT_OK(buff.write(name.c_str(), name_size));
@@ -941,6 +958,12 @@ Status Consolidator::set_config(const Config* config) {
     return LOG_STATUS(Status::ConsolidatorError(
         "Cannot consolidate; Consolidation mode cannot be null"));
   config_.mode_ = mode;
+  RETURN_NOT_OK(merged_config.get<uint64_t>(
+      "sm.consolidation.timestamp_start", &config_.timestamp_start_, &found));
+  assert(found);
+  RETURN_NOT_OK(merged_config.get<uint64_t>(
+      "sm.consolidation.timestamp_end", &config_.timestamp_end_, &found));
+  assert(found);
 
   // Sanity checks
   if (config_.min_frags_ > config_.max_frags_)

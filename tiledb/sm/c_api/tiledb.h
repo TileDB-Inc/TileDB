@@ -78,6 +78,22 @@ typedef enum {
 #undef TILEDB_QUERY_STATUS_ENUM
 } tiledb_query_status_t;
 
+/** Query condition operator. */
+typedef enum {
+/** Helper macro for defining query condition operator enums. */
+#define TILEDB_QUERY_CONDITION_OP_ENUM(id) TILEDB_##id
+#include "tiledb_enum.h"
+#undef TILEDB_QUERY_CONDITION_OP_ENUM
+} tiledb_query_condition_op_t;
+
+/** Query condition combination operator. */
+typedef enum {
+/** Helper macro for defining query condition combination operator enums. */
+#define TILEDB_QUERY_CONDITION_COMBINATION_OP_ENUM(id) TILEDB_##id
+#include "tiledb_enum.h"
+#undef TILEDB_QUERY_CONDITION_COMBINATION_OP_ENUM
+} tiledb_query_condition_combination_op_t;
+
 /** Filesystem type. */
 typedef enum {
 /** Helper macro for defining filesystem enums. */
@@ -520,6 +536,9 @@ typedef struct tiledb_filter_list_t tiledb_filter_list_t;
 /** A TileDB query. */
 typedef struct tiledb_query_t tiledb_query_t;
 
+/** A TileDB query condition object. */
+typedef struct tiledb_query_condition_t tiledb_query_condition_t;
+
 /** A virtual filesystem object. */
 typedef struct tiledb_vfs_t tiledb_vfs_t;
 
@@ -903,6 +922,14 @@ TILEDB_EXPORT void tiledb_config_free(tiledb_config_t** config);
  *
  * **Parameters**
  *
+ * - `sm.array.timestamp_start` <br>
+ *    When set, an array will be opened between this value and
+ *    `sm.array.timestamp_end` (inclusive) upon a read query. <br>
+ *    **Default**: 0
+ * - `sm.array.timestamp_end` <br>
+ *    When set, an array will be opened between `sm.array.timestamp_start`
+ *    and this value (inclusive) upon a read query. <br>
+ *    **Default**: UINT64_MAX
  * - `sm.dedup_coords` <br>
  *    If `true`, cells with duplicate coordinates will be removed during sparse
  *    fragment writes. Note that ties during deduplication are broken
@@ -944,6 +971,16 @@ TILEDB_EXPORT void tiledb_config_free(tiledb_config_t** config);
  *    `fragment_meta` (remove only consolidated fragment metadata), or
  *    `array_meta` (remove consolidated array metadata files). <br>
  *    **Default**: fragments
+ * - `sm.vacuum.timestamp_start` <br>
+ *    When set, an array will be vacuumed between this value and
+ *    `sm.vacuum.timestamp_end` (inclusive). <br>
+ *    Only for `fragments` and `array_meta` vacuum mode. <br>
+ *    **Default**: 0
+ * - `sm.vacuum.timestamp_end` <br>
+ *    When set, an array will be vacuumed between `sm.vacuum.timestamp_start`
+ *    and this value (inclusive). <br>
+ *    Only for `fragments` and `array_meta` vacuum mode. <br>
+ *    **Default**: UINT64_MAX
  * - `sm.consolidation_mode` <br>
  *    The consolidation mode, one of `fragments` (consolidate all fragments),
  *    `fragment_meta` (consolidate only fragment metadata footers to a single
@@ -976,6 +1013,16 @@ TILEDB_EXPORT void tiledb_config_free(tiledb_config_t** config);
  *    The size ratio that two ("adjacent") fragments must satisfy to be
  *    considered for consolidation in a single step.<br>
  *    **Default**: 0.0
+ * - `sm.consolidation.timestamp_start` <br>
+ *    When set, an array will be consolidated between this value and
+ *    `sm.consolidation.timestamp_end` (inclusive). <br>
+ *    Only for `fragments` and `array_meta` consolidation mode. <br>
+ *    **Default**: 0
+ * - `sm.consolidation.timestamp_end` <br>
+ *    When set, an array will be consolidated between
+ *    `sm.consolidation.timestamp_start` and this value (inclusive). <br>
+ *    Only for `fragments` and `array_meta` consolidation mode. <br>
+ *    **Default**: UINT64_MAX
  * - `sm.memory_budget` <br>
  *    The memory budget for tiles of fixed-sized attributes (or offsets for
  *    var-sized attributes) to be fetched during reads.<br>
@@ -1203,10 +1250,7 @@ TILEDB_EXPORT void tiledb_config_free(tiledb_config_t** config);
  *    The logging level configured, possible values: "0": fatal, "1": error,
  *    "2": warn, "3": info "4": debug, "5": trace <br>
  *    **Default**: "1" if --enable-verbose bootstrap flag is provided,
- *    "0" otherwise
- *
- * <br>
- *
+ *    "0" otherwise <br>
  * - `rest.server_address` <br>
  *    URL for REST server to use for remote arrays. <br>
  *    **Default**: "https://api.tiledb.com"
@@ -1235,20 +1279,20 @@ TILEDB_EXPORT void tiledb_config_free(tiledb_config_t** config);
  *    The name of the registered access key to use for creation of the REST
  *    server. <br>
  *    **Default**: no default set
- * -  `rest.retry_http_codes` <br>
- *     CSV list of http status codes to automatically retry a REST request for
- * <br>
- *     **Default**: "503"
- * -  `rest.retry_count` <br>
- *     Number of times to retry failed REST requests <br>
- *     **Default**: 3
- * -  `rest.retry_initial_delay_ms` <br>
- *     Initial delay in milliseconds to wait until retrying a REST request <br>
- *     **Default**: 500
- * -  `rest.retry_delay_factor` <br>
- *     The delay factor to exponentially wait until further retries of a failed
- * REST request <br>
- *     **Default**: 1.25
+ * - `rest.retry_http_codes` <br>
+ *    CSV list of http status codes to automatically retry a REST request for
+ *    <br>
+ *    **Default**: "503"
+ * - `rest.retry_count` <br>
+ *    Number of times to retry failed REST requests <br>
+ *    **Default**: 3
+ * - `rest.retry_initial_delay_ms` <br>
+ *    Initial delay in milliseconds to wait until retrying a REST request <br>
+ *    **Default**: 500
+ * - `rest.retry_delay_factor` <br>
+ *    The delay factor to exponentially wait until further retries of a failed
+ *    REST request <br>
+ *    **Default**: 1.25
  *
  * **Example:**
  *
@@ -3836,6 +3880,28 @@ TILEDB_EXPORT int32_t tiledb_query_set_layout(
     tiledb_ctx_t* ctx, tiledb_query_t* query, tiledb_layout_t layout);
 
 /**
+ * Sets the query condition to be applied on a read.
+ *
+ * **Example:**
+ *
+ * @code{.c}
+ * uint32_t value = 5;
+ * tiledb_query_condition_t* query_condition;
+ * tiledb_query_condition_alloc(
+ *   ctx, "longitude", &value, sizeof(value), TILEDB_LT, &query_condition);
+ * tiledb_query_set_condition(ctx, query, query_condition);
+ * @endcode
+ *
+ * @param ctx The TileDB context.
+ * @param query The TileDB query.
+ * @param cond The TileDB query condition.
+ */
+TILEDB_EXPORT int32_t tiledb_query_set_condition(
+    tiledb_ctx_t* ctx,
+    tiledb_query_t* query,
+    const tiledb_query_condition_t* cond);
+
+/**
  * Flushes all internal state of a query object and finalizes the query.
  * This is applicable only to global layout writes. It has no effect for
  * any other query type.
@@ -4605,6 +4671,111 @@ int32_t tiledb_query_get_subarray(
     const tiledb_query_t* query,
     tiledb_subarray_t** subarray);
 
+/* ****************************** */
+/*          QUERY CONDITION       */
+/* ****************************** */
+
+/**
+ * Allocates a TileDB query condition object.
+ *
+ * **Example:**
+ *
+ * @code{.c}
+ * uint32_t value = 5;
+ * tiledb_query_condition_t* query_condition;
+ * tiledb_query_condition_alloc(
+ *   ctx, "longitude", &value, sizeof(value), TILEDB_LT, &query_condition);
+ * @endcode
+ *
+ * @param ctx The TileDB context.
+ * @param attribute_name The attribute name.
+ * @param condition_value The value to compare against an attribute value.
+ * @param condition_value_size The byte size of `condition_value`.
+ * @param op The comparison operator.
+ * @param cond The allocated query condition object.
+ * @return `TILEDB_OK` for success and `TILEDB_OOM` or `TILEDB_ERR` for error.
+ */
+TILEDB_EXPORT int32_t tiledb_query_condition_alloc(
+    tiledb_ctx_t* ctx,
+    const char* attribute_name,
+    const void* condition_value,
+    uint64_t condition_value_size,
+    tiledb_query_condition_op_t op,
+    tiledb_query_condition_t** cond);
+
+/**
+ * Frees a TileDB query condition object.
+ *
+ * **Example:**
+ *
+ * @code{.c}
+ * uint32_t value = 5;
+ * tiledb_query_condition_t* query_condition;
+ * tiledb_query_condition_alloc(
+ *   ctx, "longitude", &value, sizeof(value), TILEDB_LT, &query_condition);
+ * tiledb_query_set_condition(ctx, query, query_condition);
+ * tiledb_query_submit(ctx, query);
+ * tiledb_query_condition_free(&query_condition);
+ * @endcode
+ *
+ * @param cond The query condition object to be freed.
+ */
+TILEDB_EXPORT void tiledb_query_condition_free(tiledb_query_condition_t** cond);
+
+/**
+ * Combines two query condition objects into a newly allocated
+ * condition. Does not mutate or free the input condition objects.
+ *
+ * **Example:**
+ *
+ * @code{.c}
+ * uint32_t value_1 = 5;
+ * tiledb_query_condition_t* query_condition_1;
+ * tiledb_query_condition_alloc(
+ *   ctx,
+ *   "longitude",
+ *   &value_1,
+ *   sizeof(value_1),
+ *   TILEDB_LT,
+ *   &query_condition_1);
+ *
+ * uint32_t value_2 = 20;
+ * tiledb_query_condition_t* query_condition_2;
+ * tiledb_query_condition_alloc(
+ *   ctx,
+ *   "latitude",
+ *   &value_2,
+ *   sizeof(value_2),
+ *   TILEDB_GE,
+ *   &query_condition_2);
+ *
+ * tiledb_query_condition_t* query_condition_3;
+ * tiledb_query_condition_combine(
+ *   ctx, query_condition_1, query_condition_2, TILEDB_AND, &query_condition_3);
+ *
+ * tiledb_query_condition_free(&query_condition_1);
+ * tiledb_query_condition_free(&query_condition_2);
+ *
+ * tiledb_query_set_condition(ctx, query, query_condition_3);
+ * tiledb_query_submit(ctx, query);
+ * tiledb_query_condition_free(&query_condition_3);
+ * @endcode
+ *
+ * @param ctx The TileDB context.
+ * @param attribute_name The attribute name.
+ * @param condition_value The value to compare against an attribute value.
+ * @param condition_value_size The byte size of `condition_value`.
+ * @param op The comparison operator.
+ * @param cond The allocated query condition object.
+ * @return `TILEDB_OK` for success and `TILEDB_OOM` or `TILEDB_ERR` for error.
+ */
+TILEDB_EXPORT int32_t tiledb_query_condition_combine(
+    tiledb_ctx_t* ctx,
+    const tiledb_query_condition_t* left_cond,
+    const tiledb_query_condition_t* right_cond,
+    tiledb_query_condition_combination_op_t combination_op,
+    tiledb_query_condition_t** combined_cond);
+
 /* ********************************* */
 /*             SUBARRAY              */
 /* ********************************* */
@@ -5267,11 +5438,17 @@ TILEDB_EXPORT int32_t tiledb_array_alloc(
  *
  * @note If the same array object is opened again without being closed,
  *     an error will be thrown.
+ * @note The config should be set before opening an array.
+ * @note If the array is to be opened at a specfic time interval, the
+ *      `timestamp{start, end}` values should be set to a config that's set to
+ *       the array object before opening the array.
  */
 TILEDB_EXPORT int32_t tiledb_array_open(
     tiledb_ctx_t* ctx, tiledb_array_t* array, tiledb_query_type_t query_type);
 
 /**
+ * This is a deprecated API.
+ *
  * Similar to `tiledb_array_open`, but this function takes as input a
  * timestamp, representing time in milliseconds ellapsed since
  * 1970-01-01 00:00:00 +0000 (UTC). Opening the array at a
@@ -5299,6 +5476,10 @@ TILEDB_EXPORT int32_t tiledb_array_open(
  * @note If the same array object is opened again without being closed,
  *     an error will be thrown.
  * @note This function is applicable only to read queries.
+ * @note The config should be set before opening an array.
+ * @note If the array is to be opened at a specfic time interval, the
+ *      `timestamp{start, end}` values should be set to a config that's set to
+ *       the array object before opening the array.
  */
 TILEDB_EXPORT int32_t tiledb_array_open_at(
     tiledb_ctx_t* ctx,
@@ -5331,6 +5512,8 @@ TILEDB_EXPORT int32_t tiledb_array_open_at(
  * @param encryption_key The encryption key to use.
  * @param key_length Length in bytes of the encryption key.
  * @return `TILEDB_OK` for success and `TILEDB_ERR` for error.
+ *
+ * @note The config should be set before opening an array.
  */
 TILEDB_EXPORT int32_t tiledb_array_open_with_key(
     tiledb_ctx_t* ctx,
@@ -5341,6 +5524,8 @@ TILEDB_EXPORT int32_t tiledb_array_open_with_key(
     uint32_t key_length);
 
 /**
+ * This is a deprecated API.
+ *
  * Similar to `tiledb_array_open_with_key`, but this function takes as
  * input a timestamp, representing time in milliseconds ellapsed since
  * 1970-01-01 00:00:00 +0000 (UTC). Opening the array at a
@@ -5374,6 +5559,7 @@ TILEDB_EXPORT int32_t tiledb_array_open_with_key(
  * @note If the same array object is opened again without being closed,
  *     an error will be thrown.
  * @note This function is applicable only to read queries.
+ * @note The config should be set before opening an array.
  */
 TILEDB_EXPORT int32_t tiledb_array_open_at_with_key(
     tiledb_ctx_t* ctx,
@@ -5420,11 +5606,16 @@ TILEDB_EXPORT int32_t tiledb_array_is_open(
  * @return `TILEDB_OK` for success and `TILEDB_ERR` for error.
  *
  * @note This is applicable only to arrays opened for reads.
+ * @note If the array is to be reopened after opening at a specfic time
+ *      interval, the `timestamp{start, end}` values and subsequent config
+ *      object should be reset for the array before reopening.
  */
 TILEDB_EXPORT int32_t
 tiledb_array_reopen(tiledb_ctx_t* ctx, tiledb_array_t* array);
 
 /**
+ * This is a deprecated API.
+ *
  * Reopens a TileDB array (the array must be already open) at a specific
  * timestamp.
  *
@@ -5445,6 +5636,9 @@ tiledb_array_reopen(tiledb_ctx_t* ctx, tiledb_array_t* array);
  * @return `TILEDB_OK` for success and `TILEDB_ERR` for error.
  *
  * @note This is applicable only to arrays opened for reads.
+ * @note If the array is to be reopened after opening at a specfic time
+ *      interval, the `timestamp{start, end}` values and subsequent config
+ *      object should be reset for the array before reopening.
  */
 TILEDB_EXPORT int32_t tiledb_array_reopen_at(
     tiledb_ctx_t* ctx, tiledb_array_t* array, uint64_t timestamp);
@@ -5470,11 +5664,55 @@ TILEDB_EXPORT int32_t tiledb_array_reopen_at(
  * @param timestamp Set to the timestamp at which the array was opened.
  * @return `TILEDB_OK` for success and `TILEDB_ERR` for error.
  *
- * @note The array does not need to be opened via `tiledb_array_open_at` to use
- *      this function.
+ * @note The array does not need to be open to use this function.
  */
 TILEDB_EXPORT int32_t tiledb_array_get_timestamp(
     tiledb_ctx_t* ctx, tiledb_array_t* array, uint64_t* timestamp);
+
+/**
+ * Sets the array config.
+ *
+ * **Example:**
+ *
+ * @code{.c}
+ * tiledb_array_t* array;
+ * tiledb_array_alloc(ctx, "s3://tiledb_bucket/my_array", &array);
+ * tiledb_array_open(ctx, array, TILEDB_READ);
+ * // Set the config for the given array.
+ * tiledb_config_t* config;
+ * tiledb_array_set_config(ctx, array, config);
+ * @endcode
+ *
+ * @param ctx The TileDB context.
+ * @param array The array to set the config for.
+ * @param config The config to be set.
+ * @return `TILEDB_OK` for success and `TILEDB_ERR` for error.
+ *
+ * @note The array does not need to be opened via `tiledb_array_open_at` to use
+ *      this function.
+ * @note The config should be set before opening an array.
+ */
+TILEDB_EXPORT int32_t tiledb_array_set_config(
+    tiledb_ctx_t* ctx, tiledb_array_t* array, tiledb_config_t* config);
+
+/**
+ * Gets the array config.
+ *
+ * **Example:**
+ *
+ * @code{.c}
+ * // Retrieve the config for the given array.
+ * tiledb_config_t* config;
+ * tiledb_array_get_config(ctx, array, config);
+ * @endcode
+ *
+ * @param ctx The TileDB context.
+ * @param array The array to set the config for.
+ * @param config Set to the retrieved config.
+ * @return `TILEDB_OK` for success and `TILEDB_ERR` for error.
+ */
+TILEDB_EXPORT int32_t tiledb_array_get_config(
+    tiledb_ctx_t* ctx, tiledb_array_t* array, tiledb_config_t** config);
 
 /**
  * Closes a TileDB array.

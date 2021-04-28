@@ -440,7 +440,7 @@ Status FragmentInfo::load(const EncryptionKey& encryption_key) {
 
   auto timestamp = utils::time::timestamp_now_ms();
   RETURN_NOT_OK(storage_manager_->get_fragment_info(
-      array_uri_, timestamp, encryption_key, this, true));
+      array_uri_, 0, timestamp, encryption_key, this, true));
 
   unconsolidated_metadata_num_ = 0;
   for (const auto& f : fragments_)

@@ -42,6 +42,7 @@
 #include "deleter.h"
 #include "exception.h"
 #include "subarray.h"
+#include "query_condition.h"
 #include "tiledb.h"
 #include "type.h"
 #include "utils.h"
@@ -225,6 +226,24 @@ class Query {
     ctx.handle_error(
         tiledb_query_get_layout(ctx.ptr().get(), query_.get(), &query_layout));
     return query_layout;
+  }
+
+  /**
+   * Sets the read query condition.
+   *
+   * Note that only one query condition may be set on a query at a time. This
+   * overwrites any previously set query condition. To apply more than one
+   * condition at a time, use the `QueryCondition::combine` API to construct
+   * a single object.
+   *
+   * @param condition The query condition object.
+   * @return Reference to this Query
+   */
+  Query& set_condition(const QueryCondition& condition) {
+    auto& ctx = ctx_.get();
+    ctx.handle_error(tiledb_query_set_condition(
+        ctx.ptr().get(), query_.get(), condition.ptr().get()));
+    return *this;
   }
 
   /** Returns the array of the query. */
@@ -460,8 +479,12 @@ class Query {
     for (const auto& b_it : buff_sizes_) {
       auto attr_name = b_it.first;
       auto size_tuple = b_it.second;
-      auto var = schema_.has_attribute(attr_name) &&
-                 schema_.attribute(attr_name).cell_val_num() == TILEDB_VAR_NUM;
+      auto var =
+          (schema_.has_attribute(attr_name) &&
+           schema_.attribute(attr_name).cell_val_num() == TILEDB_VAR_NUM) ||
+          (schema_.domain().has_dimension(attr_name) &&
+           schema_.domain().dimension(attr_name).cell_val_num() ==
+               TILEDB_VAR_NUM);
       auto element_size = element_sizes_.find(attr_name)->second;
       elements[attr_name] = var ?
                                 std::tuple<uint64_t, uint64_t, uint64_t>(

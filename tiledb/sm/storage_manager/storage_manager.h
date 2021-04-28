@@ -144,23 +144,29 @@ class StorageManager {
    * Opens an array for reads at a timestamp. All the metadata of the
    * fragments created before or at the input timestamp are retrieved.
    *
+   * If a timestamp_start is provided, this API will open the array between
+   * `timestamp_start` and `timestamp_end`.
+   *
    * @param array_uri The array URI.
-   * @param timestamp The timestamp at which the array will be opened.
-   *     In TileDB, timestamps are in ms elapsed since
-   *     1970-01-01 00:00:00 +0000 (UTC).
    * @param enc_key The encryption key to use.
    * @param array_schema The array schema to be retrieved after the
    *     array is opened.
    * @param fragment_metadata The fragment metadata to be retrieved
    *     after the array is opened.
+   * @param timestamp_start The (optional) starting timestamp to open the array
+   * between, starting at this timestamp and ending at `timestamp_end`.
+   * @param timestamp_end The timestamp at which the array will be opened.
+   *     In TileDB, timestamps are in ms elapsed since
+   *     1970-01-01 00:00:00 +0000 (UTC).
    * @return Status
    */
   Status array_open_for_reads(
       const URI& array_uri,
-      uint64_t timestamp,
       const EncryptionKey& enc_key,
       ArraySchema** array_schema,
-      std::vector<FragmentMetadata*>* fragment_metadata);
+      std::vector<FragmentMetadata*>* fragment_metadata,
+      uint64_t timestamp_start,
+      uint64_t timestamp_end);
 
   /**
    * Opens an array for reads, focusing only on a given list of fragments.
@@ -201,22 +207,25 @@ class StorageManager {
    * in the array.
    *
    * @param array_uri The array URI.
-   * @param timestamp The timestamp at which the array will be opened.
-   *     In TileDB, timestamps are in ms elapsed since
-   *     1970-01-01 00:00:00 +0000 (UTC).
    * @param enc_key The encryption key to use.
    * @param array_schema The array schema to be retrieved after the
    *     array is opened.
    * @param fragment_metadata The fragment metadata to be retrieved
    *     after the array is opened.
+   * @param timestamp_start The optional first timestamp between which the
+   *     array will be opened.
+   * @param timestamp_end The timestamp at which the array will be opened.
+   *     In TileDB, timestamps are in ms elapsed since
+   *     1970-01-01 00:00:00 +0000 (UTC).
    * @return Status
    */
   Status array_reopen(
       const URI& array_uri,
-      uint64_t timestamp,
       const EncryptionKey& enc_key,
       ArraySchema** array_schema,
-      std::vector<FragmentMetadata*>* fragment_metadata);
+      std::vector<FragmentMetadata*>* fragment_metadata,
+      uint64_t timestamp_start,
+      uint64_t timestamp_end);
 
   /**
    * Consolidates the fragments of an array into a single one.
@@ -255,9 +264,12 @@ class StorageManager {
    * information).
    *
    * @param array_name The name of the array to be vacuumed.
+   * @param timestamp_start The timestamp to start vacuuming at.
+   * @param timestamp_end The timestamp to end vacuuming at.
    * @return Status
    */
-  Status array_vacuum_fragments(const char* array_name);
+  Status array_vacuum_fragments(
+      const char* array_name, uint64_t timestamp_start, uint64_t timestamp_end);
 
   /**
    * Cleans up consolidated fragment metadata (all except the last one).
@@ -271,9 +283,12 @@ class StorageManager {
    * Cleans up consolidated array metadata.
    *
    * @param array_name The name of the array to be consolidated.
+   * @param timestamp_start The timestamp to start vacuuming at.
+   * @param timestamp_end The timestamp to end vacuuming at.
    * @return Status
    */
-  Status array_vacuum_array_meta(const char* array_name);
+  Status array_vacuum_array_meta(
+      const char* array_name, uint64_t timestamp_start, uint64_t timestamp_end);
 
   /**
    * Consolidates the metadata of an array into a single file.
@@ -493,7 +508,9 @@ class StorageManager {
    * timestamp.
    *
    * @param array_schema The array schema.
-   * @param timestamp The function will consider fragments created
+   * @param timestamp_start The function will consider fragments created
+   *     at or after this timestamp.
+   * @param timestamp_end The function will consider fragments created
    *     at or before this timestamp.
    * @param encryption_key The encryption key in case the array is encrypted.
    * @param fragment_info The fragment information to be retrieved.
@@ -504,7 +521,8 @@ class StorageManager {
    */
   Status get_fragment_info(
       const ArraySchema* array_schema,
-      uint64_t timestamp,
+      uint64_t timestamp_start,
+      uint64_t timestamp_end,
       const EncryptionKey& encryption_key,
       FragmentInfo* fragment_info,
       bool get_to_vacuum = false);
@@ -514,7 +532,9 @@ class StorageManager {
    * timestamp.
    *
    * @param array_uri The array URI.
-   * @param timestamp The function will consider fragments created
+   * @param timestamp_start The function will consider fragments created
+   *     at or after this timestamp.
+   * @param timestamp_end The function will consider fragments created
    *     at or before this timestamp.
    * @param encryption_key The encryption key in case the array is encrypted.
    * @param fragment_info The fragment information to be retrieved.
@@ -525,7 +545,8 @@ class StorageManager {
    */
   Status get_fragment_info(
       const URI& array_uri,
-      uint64_t timestamp,
+      uint64_t timestamp_start,
+      uint64_t timestamp_end,
       const EncryptionKey& encryption_key,
       FragmentInfo* fragment_info,
       bool get_to_vacuum = false);
@@ -664,12 +685,13 @@ class StorageManager {
 
   /**
    * Loads the array metadata from persistent storage that were created
-   * at or before `timestamp`.
+   * at or before `timestamp_end` and at or after `timestamp_start`.
    */
   Status load_array_metadata(
       const URI& array_uri,
       const EncryptionKey& encryption_key,
-      uint64_t timestamp,
+      uint64_t timestamp_start,
+      uint64_t timestamp_end,
       Metadata* metadata);
 
   /** Removes a TileDB object (group, array). */
@@ -1123,24 +1145,27 @@ class StorageManager {
    *
    * Gets the sorted URIs in ascending first timestamp order,
    * breaking ties with lexicographic
-   * sorting of UUID. Only the URIs with timestamp smaller than or
-   * equal to `timestamp` are considered. The sorted URIs are
+   * sorting of UUID. Only the URIs with timestamp between `timestamp_start`
+   * and `timestamp_end` (inclusive) are considered. The sorted URIs are
    * stored in the last input, including their timestamps.
    */
   Status get_sorted_uris(
       const std::vector<URI>& uris,
-      uint64_t timestamp,
-      std::vector<TimestampedURI>* sorted_uris) const;
+      std::vector<TimestampedURI>* sorted_uris,
+      uint64_t timestamp_start,
+      uint64_t timestamp_end) const;
 
   /**
    * It computes the URIs `to_vacuum` from the input `uris`, considering
-   * only the URIs whose second timestamp is smaller than or equal to
-   * `timestamp`. The function also retrieves the `vac_uris` (files with
-   * `.vac` suffix) that were used to compute `to_vaccum`.
+   * only the URIs whose first timestamp is greater than or equal to
+   * `timestamp_start` or second timestamp is smaller than or equal to
+   * `timestamp_end`. The function also retrieves the `vac_uris` (files with
+   * `.vac` suffix) that were used to compute `to_vacuum`.
    */
   Status get_uris_to_vacuum(
       const std::vector<URI>& uris,
-      uint64_t timestamp,
+      uint64_t timestamp_start,
+      uint64_t timestamp_end,
       std::vector<URI>* to_vacuum,
       std::vector<URI>* vac_uris) const;
 
