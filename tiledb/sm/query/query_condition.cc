@@ -548,5 +548,23 @@ Status QueryCondition::apply(
   return Status::Ok();
 }
 
+void QueryCondition::set_clauses(std::vector<Clause>&& clauses) {
+  clauses_ = std::move(clauses);
+}
+
+void QueryCondition::set_combination_ops(
+    std::vector<QueryConditionCombinationOp>&& combination_ops) {
+  combination_ops_ = std::move(combination_ops);
+}
+
+std::vector<QueryCondition::Clause> QueryCondition::clauses() const {
+  return clauses_;
+}
+
+std::vector<QueryConditionCombinationOp> QueryCondition::combination_ops()
+    const {
+  return combination_ops_;
+}
+
 }  // namespace sm
 }  // namespace tiledb

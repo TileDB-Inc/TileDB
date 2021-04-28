@@ -52,6 +52,65 @@ enum class QueryConditionCombinationOp : uint8_t;
 class QueryCondition {
  public:
   /* ********************************* */
+  /*          PUBLIC DATATYPES         */
+  /* ********************************* */
+
+  /** Represents a single, conditional clause. */
+  struct Clause {
+    /** Value constructor. */
+    Clause(
+        std::string&& field_name,
+        const void* const condition_value,
+        const uint64_t condition_value_size,
+        const QueryConditionOp op)
+        : field_name_(std::move(field_name))
+        , op_(op) {
+      condition_value_.resize(condition_value_size);
+      std::memcpy(
+          condition_value_.data(), condition_value, condition_value_size);
+    };
+
+    /** Copy constructor. */
+    Clause(const Clause& rhs)
+        : field_name_(rhs.field_name_)
+        , condition_value_(rhs.condition_value_)
+        , op_(rhs.op_){};
+
+    /** Move constructor. */
+    Clause(Clause&& rhs)
+        : field_name_(std::move(rhs.field_name_))
+        , condition_value_(std::move(rhs.condition_value_))
+        , op_(rhs.op_){};
+
+    /** Assignment operator. */
+    Clause& operator=(const Clause& rhs) {
+      field_name_ = rhs.field_name_;
+      condition_value_ = rhs.condition_value_;
+      op_ = rhs.op_;
+
+      return *this;
+    }
+
+    /** Move-assignment operator. */
+    Clause& operator=(Clause&& rhs) {
+      field_name_ = std::move(rhs.field_name_);
+      condition_value_ = std::move(rhs.condition_value_);
+      op_ = rhs.op_;
+
+      return *this;
+    }
+
+    /** The attribute name. */
+    std::string field_name_;
+
+    /** The value to compare against. */
+    ByteVecValue condition_value_;
+
+    /** The comparison operator. */
+    QueryConditionOp op_;
+  };
+
+  /* ********************************* */
   /*     CONSTRUCTORS & DESTRUCTORS    */
   /* ********************************* */
 
@@ -146,65 +205,35 @@ class QueryCondition {
       std::vector<ResultCellSlab>* result_cell_slabs,
       uint64_t stride) const;
 
+  /**
+   * Sets the clauses. This is internal state to only be used in
+   * the serialization path.
+   */
+  void set_clauses(std::vector<Clause>&& clauses);
+
+  /**
+   * Sets the combination ops. This is internal state to only be used in
+   * the serialization path.
+   */
+  void set_combination_ops(
+      std::vector<QueryConditionCombinationOp>&& combination_ops);
+
+  /**
+   * Returns the clauses. This is internal state to only be used in
+   * the serialization path.
+   */
+  std::vector<Clause> clauses() const;
+
+  /**
+   * Returns the combination ops. This is internal state to only be used in
+   * the serialization path.
+   */
+  std::vector<QueryConditionCombinationOp> combination_ops() const;
+
  private:
   /* ********************************* */
   /*         PRIVATE DATATYPES         */
   /* ********************************* */
-
-  /** Represents a single, conditional clause. */
-  struct Clause {
-    /** Value constructor. */
-    Clause(
-        std::string&& field_name,
-        const void* const condition_value,
-        const uint64_t condition_value_size,
-        const QueryConditionOp op)
-        : field_name_(std::move(field_name))
-        , op_(op) {
-      condition_value_.resize(condition_value_size);
-      std::memcpy(
-          condition_value_.data(), condition_value, condition_value_size);
-    };
-
-    /** Copy constructor. */
-    Clause(const Clause& rhs)
-        : field_name_(rhs.field_name_)
-        , condition_value_(rhs.condition_value_)
-        , op_(rhs.op_){};
-
-    /** Move constructor. */
-    Clause(Clause&& rhs)
-        : field_name_(std::move(rhs.field_name_))
-        , condition_value_(std::move(rhs.condition_value_))
-        , op_(rhs.op_){};
-
-    /** Assignment operator. */
-    Clause& operator=(const Clause& rhs) {
-      field_name_ = rhs.field_name_;
-      condition_value_ = rhs.condition_value_;
-      op_ = rhs.op_;
-
-      return *this;
-    }
-
-    /** Move-assignment operator. */
-    Clause& operator=(Clause&& rhs) {
-      field_name_ = std::move(rhs.field_name_);
-      condition_value_ = std::move(rhs.condition_value_);
-      op_ = rhs.op_;
-
-      return *this;
-    }
-
-    /** The attribute name. */
-    std::string field_name_;
-
-    /** The value to compare against. */
-    ByteVecValue condition_value_;
-
-    /** The comparison operator. */
-    QueryConditionOp op_;
-  };
 
   /**
    * Performs a binary comparison between two primitive types.
