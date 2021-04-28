@@ -442,54 +442,6 @@ TEST_CASE("C++ API: Test subarray (dense)", "[cppapi][dense][subarray]") {
     vfs.remove_dir(array_name);
 }
 
-TEST_CASE("C++ API: Test subarray (dense)", "[cppapi][dense][subarray]") {
-  const std::string array_name = "cpp_unit_array";
-  Config cfg;
-  cfg.set("config.logging_level", "3");
-  Context ctx(cfg);
-  VFS vfs(ctx);
-
-  if (vfs.is_dir(array_name))
-    vfs.remove_dir(array_name);
-
-  // Create
-  Domain domain(ctx);
-  domain.add_dimension(Dimension::create<int>(ctx, "rows", {{0, 3}}, 4))
-      .add_dimension(Dimension::create<int>(ctx, "cols", {{0, 3}}, 4));
-  ArraySchema schema(ctx, TILEDB_DENSE);
-  schema.set_domain(domain).set_order({{TILEDB_ROW_MAJOR, TILEDB_ROW_MAJOR}});
-  schema.add_attribute(Attribute::create<int>(ctx, "a"));
-  Array::create(array_name, schema);
-
-  // Write
-  std::vector<int> data_w = {1, 2, 3, 4};
-  std::vector<int> coords_w = {0, 0, 1, 1, 2, 2, 3, 3};
-  Array array_w(ctx, array_name, TILEDB_WRITE);
-  tiledb::Query query_w(ctx, array_w);
-  query_w.set_coordinates(coords_w)
-      .set_layout(TILEDB_UNORDERED)
-      .set_buffer("a", data_w);
-  query_w.submit();
-  query_w.finalize();
-  array_w.close();
-
-  SECTION("- set_subarray Write ranges oob warn - Subarray-query") {
-    Array array(ctx, array_name, TILEDB_WRITE);
-    Query query(ctx, array);
-    // default (dense) WRITE should always err/throw on oob
-    REQUIRE_THROWS(query.set_subarray({1, 4, -1, 3}));
-    Config config;
-    config.set("sm.read_range_oob", "warn");
-    query.set_config(config);
-    // (dense) WRITE should ignore sm.read_range_oob config option
-    // and err/throw on oob
-    REQUIRE_THROWS(query.set_subarray({1, 4, -1, 3}));
-  }
-
-  if (vfs.is_dir(array_name))
-    vfs.remove_dir(array_name);
-}
-
 TEST_CASE(
     "C++ API: Test subarray (incomplete) - Subarray-query",
     "[cppapi][sparse][subarray][incomplete]") {
