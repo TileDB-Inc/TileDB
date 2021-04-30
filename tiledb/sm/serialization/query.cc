@@ -46,6 +46,7 @@
 #include "tiledb/sm/buffer/buffer_list.h"
 #include "tiledb/sm/config/config.h"
 #include "tiledb/sm/enums/layout.h"
+#include "tiledb/sm/enums/query_condition_combination_op.h"
 #include "tiledb/sm/enums/query_status.h"
 #include "tiledb/sm/enums/query_type.h"
 #include "tiledb/sm/enums/serialization_type.h"
@@ -418,6 +419,46 @@ Status read_state_from_capnp(
   return Status::Ok();
 }
 
+Status condition_to_capnp(
+    const QueryCondition& condition,
+    capnp::Condition::Builder* condition_builder) {
+  // Serialize the clauses.
+  const std::vector<QueryCondition::Clause> clauses = condition.clauses();
+  assert(!clauses.empty());
+  auto clause_builder = condition_builder->initClauses(clauses.size());
+  for (size_t i = 0; i < clauses.size(); ++i) {
+    clause_builder[i].setFieldName(clauses[i].field_name_);
+
+    // Copy the condition value into a capnp vector of bytes.
+    const ByteVecValue value = clauses[i].condition_value_;
+    auto capnpValue = kj::Vector<uint8_t>();
+    capnpValue.addAll(kj::ArrayPtr<uint8_t>(
+        const_cast<uint8_t*>(reinterpret_cast<const uint8_t*>(value.data())),
+        value.size()));
+
+    // Store the condition value vector of bytes.
+    clause_builder[i].setValue(capnpValue.asPtr());
+
+    const std::string op_str = query_condition_op_str(clauses[i].op_);
+    clause_builder[i].setOp(op_str);
+  }
+
+  // Serialize the combination ops.
+  const std::vector<QueryConditionCombinationOp> combination_ops =
+      condition.combination_ops();
+  if (!combination_ops.empty()) {
+    auto combination_ops_builder =
+        condition_builder->initClauseCombinationOps(combination_ops.size());
+    for (size_t i = 0; i < combination_ops.size(); ++i) {
+      const std::string op_str =
+          query_condition_combination_op_str(combination_ops[i]);
+      combination_ops_builder.set(i, op_str);
+    }
+  }
+
+  return Status::Ok();
+}
+
 Status reader_to_capnp(
     const Reader& reader, capnp::QueryReader::Builder* reader_builder) {
   auto array_schema = reader.array_schema();
@@ -433,6 +474,51 @@ Status reader_to_capnp(
 
   // Read state
   RETURN_NOT_OK(read_state_to_capnp(array_schema, reader, reader_builder));
+
+  const QueryCondition* condition = reader.condition();
+  if (!condition->empty()) {
+    auto condition_builder = reader_builder->initCondition();
+    RETURN_NOT_OK(condition_to_capnp(*condition, &condition_builder));
+  }
+
+  return Status::Ok();
+}
+
+Status condition_from_capnp(
+    const capnp::Condition::Reader& condition_reader,
+    QueryCondition* const condition) {
+  // Deserialize the clauses.
+  std::vector<QueryCondition::Clause> clauses;
+  assert(condition_reader.hasClauses());
+  for (const auto clause : condition_reader.getClauses()) {
+    std::string field_name = clause.getFieldName();
+
+    auto condition_value = clause.getValue();
+
+    QueryConditionOp op = QueryConditionOp::LT;
+    RETURN_NOT_OK(query_condition_op_enum(clause.getOp(), &op));
+
+    clauses.emplace_back(
+        std::move(field_name),
+        condition_value.asBytes().begin(),
+        condition_value.size(),
+        op);
+  }
+  condition->set_clauses(std::move(clauses));
+
+  // Deserialize the combination ops.
+  if (condition_reader.hasClauseCombinationOps()) {
+    std::vector<QueryConditionCombinationOp> combination_ops;
+    for (const auto combination_op_str :
+         condition_reader.getClauseCombinationOps()) {
+      QueryConditionCombinationOp combination_op =
+          QueryConditionCombinationOp::AND;
+      RETURN_NOT_OK(query_condition_combination_op_enum(
+          combination_op_str, &combination_op));
+      combination_ops.emplace_back(combination_op);
+    }
+    condition->set_combination_ops(std::move(combination_ops));
+  }
 
   return Status::Ok();
 }
@@ -458,6 +544,14 @@ Status reader_from_capnp(
   if (reader_reader.hasReadState())
     RETURN_NOT_OK(read_state_from_capnp(
         array, reader_reader.getReadState(), reader, compute_tp));
+
+  // Query condition
+  if (reader_reader.hasCondition()) {
+    auto condition_reader = reader_reader.getCondition();
+    QueryCondition condition;
+    RETURN_NOT_OK(condition_from_capnp(condition_reader, &condition));
+    RETURN_NOT_OK(reader->set_condition(condition));
+  }
 
   return Status::Ok();
 }
