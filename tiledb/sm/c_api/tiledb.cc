@@ -5562,18 +5562,13 @@ int32_t tiledb_fragment_info_load_with_key(
       sanity_check(ctx, fragment_info) == TILEDB_ERR)
     return TILEDB_ERR;
 
-  // Create key
-  tiledb::sm::EncryptionKey key;
+  // Load fragment info
   if (SAVE_ERROR_CATCH(
           ctx,
-          key.set_key(
+          fragment_info->fragment_info_->load(
               static_cast<tiledb::sm::EncryptionType>(encryption_type),
               encryption_key,
               key_length)))
-    return TILEDB_ERR;
-
-  // Load fragment info
-  if (SAVE_ERROR_CATCH(ctx, fragment_info->fragment_info_->load(key)))
     return TILEDB_ERR;
 
   return TILEDB_OK;

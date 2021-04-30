@@ -109,9 +109,7 @@ const EncryptionKey* Array::encryption_key() const {
 }
 
 // Used in Consolidator
-Status Array::open(
-    QueryType query_type,
-    const FragmentInfo& fragment_info,
+Status Array::open_without_fragments(
     EncryptionType encryption_type,
     const void* encryption_key,
     uint32_t key_length) {
@@ -119,12 +117,7 @@ Status Array::open(
 
   if (is_open_)
     return LOG_STATUS(Status::ArrayError(
-        "Cannot open array with fragments; Array already open"));
-
-  if (query_type != QueryType::READ)
-    return LOG_STATUS(
-        Status::ArrayError("Cannot open array with fragments; The array can "
-                           "be opened at a timestamp only in read mode"));
+        "Cannot open array without fragments; Array already open"));
 
   if (remote_ && encryption_type != EncryptionType::NO_ENCRYPTION)
     return LOG_STATUS(Status::ArrayError(
@@ -134,12 +127,10 @@ Status Array::open(
   RETURN_NOT_OK(
       encryption_key_->set_key(encryption_type, encryption_key, key_length));
 
-  timestamp_end_ = utils::time::timestamp_now_ms();
   metadata_.clear();
   metadata_loaded_ = false;
   non_empty_domain_computed_ = false;
 
-  query_type_ = QueryType::READ;
   if (remote_) {
     auto rest_client = storage_manager_->rest_client();
     if (rest_client == nullptr)
@@ -148,18 +139,19 @@ Status Array::open(
     RETURN_NOT_OK(
         rest_client->get_array_schema_from_rest(array_uri_, &array_schema_));
   } else {
-    // Open the array.
-    RETURN_NOT_OK(storage_manager_->array_open_for_reads(
-        array_uri_,
-        fragment_info,
-        *encryption_key_,
-        &array_schema_,
-        &fragment_metadata_));
+    RETURN_NOT_OK(storage_manager_->array_open_for_reads_without_fragments(
+        array_uri_, *encryption_key_, &array_schema_));
   }
 
   is_open_ = true;
+  query_type_ = QueryType::READ;
 
   return Status::Ok();
+}
+
+Status Array::load_fragments(const FragmentInfo& fragment_info) {
+  return storage_manager_->array_load_fragments(
+      array_uri_, *encryption_key_.get(), &fragment_metadata_, fragment_info);
 }
 
 Status Array::open(
