@@ -226,10 +226,17 @@ set(TILEDB_EXTERNALS_SOURCES
   ${CMAKE_CURRENT_SOURCE_DIR}/../external/src/md5/md5.cc
   ${CMAKE_CURRENT_SOURCE_DIR}/../external/src/bitshuffle/iochain.cc
   ${CMAKE_CURRENT_SOURCE_DIR}/../external/src/bitshuffle/bitshuffle_core.cc
-  ${CMAKE_CURRENT_SOURCE_DIR}/../external/src/blosc/shuffle.cc
-  ${CMAKE_CURRENT_SOURCE_DIR}/../external/src/blosc/shuffle-avx2.cc
-  ${CMAKE_CURRENT_SOURCE_DIR}/../external/src/blosc/shuffle-generic.cc
-  ${CMAKE_CURRENT_SOURCE_DIR}/../external/src/blosc/shuffle-sse2.cc
+  ${CMAKE_CURRENT_SOURCE_DIR}/../external/src/blosc/shuffle.c
+  ${CMAKE_CURRENT_SOURCE_DIR}/../external/src/blosc/shuffle-avx2.c
+  ${CMAKE_CURRENT_SOURCE_DIR}/../external/src/blosc/shuffle-generic.c
+  ${CMAKE_CURRENT_SOURCE_DIR}/../external/src/blosc/shuffle-sse2.c
+)
+# The blosc files are external and we ignore their warnings.
+set_source_files_properties(
+  ${CMAKE_CURRENT_SOURCE_DIR}/../external/src/blosc/shuffle.c
+  ${CMAKE_CURRENT_SOURCE_DIR}/../external/src/blosc/shuffle-avx2.c
+  ${CMAKE_CURRENT_SOURCE_DIR}/../external/src/blosc/shuffle-sse2.c
+  PROPERTIES COMPILE_FLAGS "-w"
 )
 
 ############################################################
