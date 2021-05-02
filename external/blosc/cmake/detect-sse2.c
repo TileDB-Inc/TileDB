@@ -1,5 +1,5 @@
 /**
- * @file   tiledb-shuffle.h
+ * @file detect-sse2.c
  *
  * @section LICENSE
  *
@@ -27,19 +27,10 @@
  *
  * @section DESCRIPTION
  *
- * Create function references in the namespace `blosc` for functions in the
- * blosc library with extern "C" linkage.
+ * Used by try_compile. Compilation succeeds if __SSE2__ is defined. Uses the
+ * same detection that shuffle-sse2.c does.
  */
 
-#ifndef TILEDB_SHUFFLE_H
-#define TILEDB_SHUFFLE_H
-
-// This blosc header contains an extern "C" statement, so we don't need to.
-#include "shuffle.h"
-
-namespace blosc {
-  const auto &shuffle = blosc_internal_shuffle;
-  const auto &unshuffle = blosc_internal_unshuffle;
-} // namespace blosc
-
-#endif // TILEDB_SHUFFLE_H
+#if !defined(__SSE2__)
+  #error __SSE2__ is not defined
+#endif

@@ -1,5 +1,5 @@
 /**
- * @file   tiledb-shuffle.h
+ * @file bitshuffle-stub.c
  *
  * @section LICENSE
  *
@@ -27,19 +27,23 @@
  *
  * @section DESCRIPTION
  *
- * Create function references in the namespace `blosc` for functions in the
- * blosc library with extern "C" linkage.
+ * Defines stubs for bitshuffle functions in blosc that we don't actually use,
+ * but pointers to which are required to initialize an implementation structure
+ * in shuffle.c
  */
+#include "bitshuffle-generic.h"
 
-#ifndef TILEDB_SHUFFLE_H
-#define TILEDB_SHUFFLE_H
+BLOSC_NO_EXPORT int64_t
+blosc_internal_bshuf_trans_bit_elem_scal(const void* in, void* out, const size_t size,
+                                         const size_t elem_size, void* tmp_buf)
+{
+  return 0;
+}
 
-// This blosc header contains an extern "C" statement, so we don't need to.
-#include "shuffle.h"
+BLOSC_NO_EXPORT int64_t
+blosc_internal_bshuf_untrans_bit_elem_scal(const void* in, void* out, const size_t size,
+                                         const size_t elem_size, void* tmp_buf)
+{
+  return 0;
+}
 
-namespace blosc {
-  const auto &shuffle = blosc_internal_shuffle;
-  const auto &unshuffle = blosc_internal_unshuffle;
-} // namespace blosc
-
-#endif // TILEDB_SHUFFLE_H
