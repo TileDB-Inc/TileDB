@@ -3006,7 +3006,7 @@ Status Writer::prepare_tiles_fixed(
   if (dups_num == 0) {
     for (uint64_t i = 0, tile_idx = 0; i < cell_num; ++i) {
       if ((*tiles)[tile_idx].full())
-        ++tile_idx;
+        tile_idx += t;
 
       RETURN_NOT_OK((*tiles)[tile_idx].write(
           buffer + cell_pos[i] * cell_size, cell_size));
@@ -3021,7 +3021,7 @@ Status Writer::prepare_tiles_fixed(
         continue;
 
       if ((*tiles)[tile_idx].full())
-        ++tile_idx;
+        tile_idx += t;
 
       RETURN_NOT_OK((*tiles)[tile_idx].write(
           buffer + cell_pos[i] * cell_size, cell_size));
