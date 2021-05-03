@@ -99,14 +99,8 @@ class Array {
       uint32_t key_length);
 
   /**
-   * Opens the array for reading, loading only the input fragments.
-   * Note that the order of the input fragments matters; later
-   * fragments in the list may overwrite earlier ones.
+   * Opens the array for reading without fragments.
    *
-   * @param query_type The query type. This should always be READ. It
-   *    is here only for sanity check.
-   * @param fragment_info Information about the fragments to open the
-   *     array with.
    * @param encryption_type The encryption type of the array
    * @param encryption_key If the array is encrypted, the private encryption
    *    key. For unencrypted arrays, pass `nullptr`.
@@ -115,12 +109,18 @@ class Array {
    *
    * @note Applicable only to reads.
    */
-  Status open(
-      QueryType query_type,
-      const FragmentInfo& fragment_info,
+  Status open_without_fragments(
       EncryptionType encryption_type,
       const void* encryption_key,
       uint32_t key_length);
+
+  /**
+   * Reload the array with the specified fragments.
+   *
+   * @param fragment_info The list of fragments to load.
+   * @return Status
+   */
+  Status load_fragments(const FragmentInfo& fragment_info);
 
   /**
    * Opens the array for reading.

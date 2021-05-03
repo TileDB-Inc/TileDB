@@ -171,7 +171,10 @@ class FragmentInfo {
    * Loads the fragment info from an array. The encryption key is used
    * only if the array is encrypted.
    */
-  Status load(const EncryptionKey& encryption_key);
+  Status load(
+      EncryptionType encryption_type,
+      const void* encryption_key,
+      uint32_t key_length);
 
   /** Set the dimension names and types to the object. */
   void set_dim_info(
