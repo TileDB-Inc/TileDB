@@ -679,6 +679,12 @@ void ArraySchema::set_version(uint32_t version) {
   version_ = version;
 }
 
+uint32_t ArraySchema::write_version() const {
+  return version_ < constants::back_compat_writes_min_format_version ?
+             constants::format_version :
+             version_;
+}
+
 uint32_t ArraySchema::version() const {
   return version_;
 }

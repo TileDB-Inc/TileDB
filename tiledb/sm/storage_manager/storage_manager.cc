@@ -283,75 +283,21 @@ Status StorageManager::array_open_for_reads(
   STATS_END_TIMER(stats::GlobalStats::TimerType::READ_ARRAY_OPEN)
 }
 
-Status StorageManager::array_open_for_reads(
+Status StorageManager::array_open_for_reads_without_fragments(
     const URI& array_uri,
-    const FragmentInfo& fragment_info,
     const EncryptionKey& enc_key,
-    ArraySchema** array_schema,
-    std::vector<FragmentMetadata*>* fragment_metadata) {
+    ArraySchema** array_schema) {
   STATS_START_TIMER(stats::GlobalStats::TimerType::READ_ARRAY_OPEN)
-
-  // Determine which fragments to load
-  std::vector<TimestampedURI> fragments_to_load;
-  const auto& fragments = fragment_info.fragments();
-  for (const auto& fragment : fragments)
-    fragments_to_load.emplace_back(fragment.uri(), fragment.timestamp_range());
-
-  /* NOTE: these variables may be modified on a different thread
-           in the load_array_fragments_task below.
-  */
-  URI meta_uri;
-  std::vector<URI> uris;
-  Buffer f_buff;
-  std::unordered_map<std::string, uint64_t> offsets;
-
-  std::vector<ThreadPool::Task> load_array_fragments_task;
-  load_array_fragments_task.emplace_back(io_tp_->execute(
-      [array_uri, &enc_key, &f_buff, &meta_uri, &offsets, &uris, this]() {
-        RETURN_NOT_OK(this->vfs_->ls(array_uri.add_trailing_slash(), &uris));
-        // Get the consolidated fragment metadata URI
-        RETURN_NOT_OK(get_consolidated_fragment_meta_uri(uris, &meta_uri));
-        // Get the consolidated fragment metadata
-        RETURN_NOT_OK(load_consolidated_fragment_meta(
-            meta_uri, enc_key, &f_buff, &offsets));
-        return Status::Ok();
-      }));
 
   auto open_array = (OpenArray*)nullptr;
   Status st = array_open_without_fragments(array_uri, enc_key, &open_array);
   if (!st.ok()) {
-    io_tp_->wait_all(load_array_fragments_task);
     *array_schema = nullptr;
     return st;
   }
 
-  // Wait for array schema to be loaded
-  st = io_tp_->wait_all(load_array_fragments_task);
-  if (!st.ok()) {
-    open_array->mtx_unlock();
-    array_close_for_reads(array_uri);
-    *array_schema = nullptr;
-    return st;
-  }
-
-  // Assign array schema
+  // Retrieve array schema
   *array_schema = open_array->array_schema();
-
-  // Get fragment metadata in the case of reads, if not fetched already
-  st = load_fragment_metadata(
-      open_array,
-      enc_key,
-      fragments_to_load,
-      &f_buff,
-      offsets,
-      fragment_metadata);
-
-  if (!st.ok()) {
-    open_array->mtx_unlock();
-    array_close_for_reads(array_uri);
-    *array_schema = nullptr;
-    return st;
-  }
 
   // Unlock the array mutex
   open_array->mtx_unlock();
@@ -434,6 +380,62 @@ Status StorageManager::array_open_for_writes(
   open_array->mtx_unlock();
 
   return Status::Ok();
+}
+
+Status StorageManager::array_load_fragments(
+    const URI& array_uri,
+    const EncryptionKey& enc_key,
+    std::vector<FragmentMetadata*>* fragment_metadata,
+    const FragmentInfo& fragment_info) {
+  STATS_START_TIMER(stats::GlobalStats::TimerType::READ_ARRAY_OPEN)
+
+  auto open_array = (OpenArray*)nullptr;
+  // Lock mutex
+  {
+    std::lock_guard<std::mutex> lock{open_array_for_reads_mtx_};
+
+    // Find the open array entry
+    auto it = open_arrays_for_reads_.find(array_uri.to_string());
+    if (it == open_arrays_for_reads_.end()) {
+      return LOG_STATUS(Status::StorageManagerError(
+          std::string("Cannot reopen array ") + array_uri.to_string() +
+          "; Array not open"));
+    }
+    RETURN_NOT_OK(it->second->set_encryption_key(enc_key));
+    open_array = it->second;
+
+    // Lock the array
+    open_array->mtx_lock();
+  }
+
+  // Determine which fragments to load
+  std::vector<TimestampedURI> fragments_to_load;
+  const auto& fragments = fragment_info.fragments();
+  for (const auto& fragment : fragments)
+    fragments_to_load.emplace_back(fragment.uri(), fragment.timestamp_range());
+
+  std::unordered_map<std::string, uint64_t> offsets;
+
+  // Get fragment metadata in the case of reads, if not fetched already
+  auto st = load_fragment_metadata(
+      open_array,
+      enc_key,
+      fragments_to_load,
+      nullptr,
+      offsets,
+      fragment_metadata);
+  if (!st.ok()) {
+    open_array->mtx_unlock();
+    array_close_for_reads(array_uri);
+    return st;
+  }
+
+  // Unlock the mutexes
+  open_array->mtx_unlock();
+
+  return st;
+
+  STATS_END_TIMER(stats::GlobalStats::TimerType::READ_ARRAY_OPEN)
 }
 
 Status StorageManager::array_reopen(
@@ -1214,35 +1216,35 @@ Status StorageManager::object_move(
 }
 
 Status StorageManager::get_fragment_info(
-    const URI& array_uri,
+    const Array& array,
     uint64_t timestamp_start,
     uint64_t timestamp_end,
-    const EncryptionKey& encryption_key,
     FragmentInfo* fragment_info,
     bool get_to_vacuum) {
   fragment_info->clear();
 
   // Open array for reading
-  auto array_schema = (ArraySchema*)nullptr;
+  auto array_schema = array.array_schema();
+
+  fragment_info->set_dim_info(
+      array_schema->dim_names(), array_schema->dim_types());
+
   std::vector<FragmentMetadata*> fragment_metadata;
-  RETURN_NOT_OK(array_open_for_reads(
-      array_uri,
-      encryption_key,
+  RETURN_NOT_OK(array_reopen(
+      array.array_uri(),
+      *array.encryption_key(),
       &array_schema,
       &fragment_metadata,
       timestamp_start,
       timestamp_end));
 
-  fragment_info->set_dim_info(
-      array_schema->dim_names(), array_schema->dim_types());
-
   // Return if array is empty
   if (fragment_metadata.empty())
-    return array_close_for_reads(array_uri);
+    return Status::Ok();
 
   std::vector<uint64_t> sizes(fragment_metadata.size());
 
-  auto status = parallel_for(
+  RETURN_NOT_OK(parallel_for(
       this->compute_tp_,
       0,
       fragment_metadata.size(),
@@ -1255,9 +1257,7 @@ Status StorageManager::get_fragment_info(
         sizes[i] = size;
 
         return Status::Ok();
-      });
-
-  RETURN_NOT_OK_ELSE(status, array_close_for_reads(array_uri));
+      }));
 
   for (uint64_t i = 0; i < fragment_metadata.size(); i++) {
     const auto meta = fragment_metadata[i];
@@ -1287,34 +1287,14 @@ Status StorageManager::get_fragment_info(
   if (get_to_vacuum) {
     std::vector<URI> to_vacuum, vac_uris, fragment_uris;
     URI meta_uri;
-    RETURN_NOT_OK(get_fragment_uris(array_uri, &fragment_uris, &meta_uri));
+    RETURN_NOT_OK(
+        get_fragment_uris(array.array_uri(), &fragment_uris, &meta_uri));
     RETURN_NOT_OK(get_uris_to_vacuum(
         fragment_uris, timestamp_start, timestamp_end, &to_vacuum, &vac_uris));
     fragment_info->set_to_vacuum(to_vacuum);
   }
 
-  // Close array
-  return array_close_for_reads(array_uri);
-}
-
-Status StorageManager::get_fragment_info(
-    const ArraySchema* array_schema,
-    uint64_t timestamp_start,
-    uint64_t timestamp_end,
-    const EncryptionKey& encryption_key,
-    FragmentInfo* fragment_info,
-    bool get_to_vacuum) {
-  fragment_info->clear();
-
-  // Open array for reading
-  const auto& array_uri = array_schema->array_uri();
-  return get_fragment_info(
-      array_uri,
-      timestamp_start,
-      timestamp_end,
-      encryption_key,
-      fragment_info,
-      get_to_vacuum);
+  return Status::Ok();
 }
 
 Status StorageManager::get_fragment_uris(
@@ -1369,8 +1349,7 @@ const std::unordered_map<std::string, std::string>& StorageManager::tags()
 }
 
 Status StorageManager::get_fragment_info(
-    const ArraySchema* array_schema,
-    const EncryptionKey& encryption_key,
+    const Array& array,
     const URI& fragment_uri,
     SingleFragmentInfo* fragment_info) {
   // Get timestamp range
@@ -1397,8 +1376,8 @@ Status StorageManager::get_fragment_info(
 
   // Get fragment non-empty domain
   FragmentMetadata meta(
-      this, array_schema, fragment_uri, timestamp_range, !sparse);
-  RETURN_NOT_OK(meta.load(encryption_key, nullptr, 0));
+      this, array.array_schema(), fragment_uri, timestamp_range, !sparse);
+  RETURN_NOT_OK(meta.load(*array.encryption_key(), nullptr, 0));
 
   // This is important for format version > 2
   sparse = !meta.dense();
@@ -1413,7 +1392,7 @@ Status StorageManager::get_fragment_info(
   const auto& non_empty_domain = meta.non_empty_domain();
   auto expanded_non_empty_domain = non_empty_domain;
   if (!sparse)
-    array_schema->domain()->expand_to_tiles(&expanded_non_empty_domain);
+    array.array_schema()->domain()->expand_to_tiles(&expanded_non_empty_domain);
 
   // Set fragment info
   *fragment_info = SingleFragmentInfo(

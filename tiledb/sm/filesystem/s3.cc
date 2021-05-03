@@ -1120,19 +1120,30 @@ Status S3::init_client() const {
           "Ambiguous authentication credentials; both permanent and temporary "
           "authentication credentials are configured");
   }
-  if (credentials_provider == nullptr) {
-    client_ = tdb_make_shared(
-        Aws::S3::S3Client,
-        *client_config_,
-        Aws::Client::AWSAuthV4Signer::PayloadSigningPolicy::Never,
-        use_virtual_addressing_);
-  } else {
-    client_ = tdb_make_shared(
-        Aws::S3::S3Client,
-        credentials_provider,
-        *client_config_,
-        Aws::Client::AWSAuthV4Signer::PayloadSigningPolicy::Never,
-        use_virtual_addressing_);
+
+  // The `Aws::S3::S3Client` constructor is not thread-safe. Although we
+  // currently hold `client_init_mtx_` that protects this routine from threads
+  // on this instance of `S3`, it is not sufficient protection from threads on
+  // another instance of `S3`. Use an additional, static mutex for this
+  // scenario.
+  static std::mutex static_client_init_mtx;
+  {
+    std::lock_guard<std::mutex> static_lck(static_client_init_mtx);
+
+    if (credentials_provider == nullptr) {
+      client_ = tdb_make_shared(
+          Aws::S3::S3Client,
+          *client_config_,
+          Aws::Client::AWSAuthV4Signer::PayloadSigningPolicy::Never,
+          use_virtual_addressing_);
+    } else {
+      client_ = tdb_make_shared(
+          Aws::S3::S3Client,
+          credentials_provider,
+          *client_config_,
+          Aws::Client::AWSAuthV4Signer::PayloadSigningPolicy::Never,
+          use_virtual_addressing_);
+    }
   }
 
   return Status::Ok();

@@ -222,26 +222,10 @@ class Consolidator {
       const NDRange& union_non_empty_domains) const;
 
   /**
-   * Consolidates the fragments of the input array.
-   *
-   * @param array_schema The schema of the array to consolidate.
-   * @param encryption_type The encryption type of the array
-   * @param encryption_key If the array is encrypted, the private encryption
-   *    key. For unencrypted arrays, pass `nullptr`.
-   * @param key_length The length in bytes of the encryption key.
-   * @return Status
-   */
-  Status consolidate(
-      const ArraySchema* array_schema,
-      EncryptionType encryption_type,
-      const void* encryption_key,
-      uint32_t key_length);
-
-  /**
    * Consolidates the input fragments of the input array. This function
    * implements a single consolidation step.
    *
-   * @param array_uri URI of array to consolidate.
+   * @param array_for_reads Array used for reads.
    * @param to_consolidate The fragments to consolidate in this consolidation
    *     step.
    * @param union_non_empty_domains The union of the non-empty domains of
@@ -256,12 +240,10 @@ class Consolidator {
    * @return Status
    */
   Status consolidate(
-      const URI& array_uri,
+      Array& array_for_reads,
+      Array& array_for_writes,
       const FragmentInfo& to_consolidate,
       const NDRange& union_non_empty_domains,
-      EncryptionType encryption_type,
-      const void* encryption_key,
-      uint32_t key_length,
       URI* new_fragment_uri);
 
   /**
@@ -377,7 +359,10 @@ class Consolidator {
    * as `__<first_URI_timestamp>_<last_URI_timestamp>_<uuid>`.
    */
   Status compute_new_fragment_uri(
-      const URI& first, const URI& last, URI* new_uri) const;
+      const URI& first,
+      const URI& last,
+      uint32_t format_version,
+      URI* new_uri) const;
 
   /** Checks and sets the input configuration parameters. */
   Status set_config(const Config* config);

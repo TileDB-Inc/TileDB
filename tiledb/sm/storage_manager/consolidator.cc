@@ -190,20 +190,90 @@ Status Consolidator::consolidate_fragments(
     uint32_t key_length) {
   STATS_START_TIMER(stats::GlobalStats::TimerType::CONSOLIDATE_FRAGS)
 
-  // Get array schema
-  URI array_uri = URI(array_name);
-  EncryptionKey enc_key;
-  RETURN_NOT_OK(enc_key.set_key(encryption_type, encryption_key, key_length));
-  auto array_schema = (ArraySchema*)nullptr;
-  RETURN_NOT_OK(
-      storage_manager_->load_array_schema(array_uri, enc_key, &array_schema));
+  // Open array for reading
+  Array array_for_reads(URI(array_name), storage_manager_);
+  RETURN_NOT_OK(array_for_reads.open_without_fragments(
+      encryption_type, encryption_key, key_length));
 
-  // Consolidate fragments
-  RETURN_NOT_OK_ELSE(
-      consolidate(array_schema, encryption_type, encryption_key, key_length),
-      tdb_delete(array_schema));
+  // Open array for writing
+  Array array_for_writes(array_for_reads.array_uri(), storage_manager_);
+  RETURN_NOT_OK(array_for_writes.open(
+      QueryType::WRITE, encryption_type, encryption_key, key_length));
 
-  tdb_delete(array_schema);
+  // Get fragment info
+  FragmentInfo fragment_info;
+  auto st = storage_manager_->get_fragment_info(
+      array_for_reads,
+      config_.timestamp_start_,
+      config_.timestamp_end_,
+      &fragment_info);
+  if (!st.ok()) {
+    array_for_reads.close();
+    array_for_writes.close();
+    return st;
+  }
+
+  uint32_t step = 0;
+  FragmentInfo to_consolidate;
+  do {
+    // No need to consolidate if no more than 1 fragment exist
+    if (fragment_info.fragment_num() <= 1)
+      break;
+
+    // Find the next fragments to be consolidated
+    NDRange union_non_empty_domains;
+    st = compute_next_to_consolidate(
+        array_for_reads.array_schema(),
+        fragment_info,
+        &to_consolidate,
+        &union_non_empty_domains);
+    if (!st.ok()) {
+      array_for_reads.close();
+      array_for_writes.close();
+      return st;
+    }
+
+    // Check if there is anything to consolidate
+    if (to_consolidate.fragment_num() <= 1)
+      break;
+
+    // Consolidate the selected fragments
+    URI new_fragment_uri;
+    st = consolidate(
+        array_for_reads,
+        array_for_writes,
+        to_consolidate,
+        union_non_empty_domains,
+        &new_fragment_uri);
+    if (!st.ok()) {
+      array_for_reads.close();
+      array_for_writes.close();
+      return st;
+    }
+
+    // Get fragment info of the consolidated fragment
+    SingleFragmentInfo new_fragment_info;
+    st = storage_manager_->get_fragment_info(
+        array_for_reads, new_fragment_uri, &new_fragment_info);
+    if (!st.ok()) {
+      array_for_reads.close();
+      array_for_writes.close();
+      return st;
+    }
+
+    // Update fragment info
+    update_fragment_info(to_consolidate, new_fragment_info, &fragment_info);
+
+    // Advance number of steps
+    ++step;
+
+  } while (step < config_.steps_);
+
+  RETURN_NOT_OK_ELSE(array_for_reads.close(), array_for_writes.close());
+  RETURN_NOT_OK(array_for_writes.close());
+
+  STATS_ADD_COUNTER(
+      stats::GlobalStats::CounterType::CONSOLIDATE_STEP_NUM, step);
 
   return Status::Ok();
 
@@ -251,102 +321,18 @@ bool Consolidator::are_consolidatable(
 }
 
 Status Consolidator::consolidate(
-    const ArraySchema* array_schema,
-    EncryptionType encryption_type,
-    const void* encryption_key,
-    uint32_t key_length) {
-  FragmentInfo to_consolidate;
-  auto array_uri = array_schema->array_uri();
-  EncryptionKey enc_key;
-  RETURN_NOT_OK(enc_key.set_key(encryption_type, encryption_key, key_length));
-
-  // Get fragment info
-  FragmentInfo fragment_info;
-  RETURN_NOT_OK(storage_manager_->get_fragment_info(
-      array_schema,
-      config_.timestamp_start_,
-      config_.timestamp_end_,
-      enc_key,
-      &fragment_info));
-
-  uint32_t step = 0;
-  do {
-    // No need to consolidate if no more than 1 fragment exist
-    if (fragment_info.fragment_num() <= 1)
-      break;
-
-    // Find the next fragments to be consolidated
-    NDRange union_non_empty_domains;
-    RETURN_NOT_OK(compute_next_to_consolidate(
-        array_schema,
-        fragment_info,
-        &to_consolidate,
-        &union_non_empty_domains));
-
-    // Check if there is anything to consolidate
-    if (to_consolidate.fragment_num() <= 1)
-      break;
-
-    // Consolidate the selected fragments
-    URI new_fragment_uri;
-    RETURN_NOT_OK(consolidate(
-        array_uri,
-        to_consolidate,
-        union_non_empty_domains,
-        encryption_type,
-        encryption_key,
-        key_length,
-        &new_fragment_uri));
-
-    // Get fragment info of the consolidated fragment
-    SingleFragmentInfo new_fragment_info;
-    RETURN_NOT_OK(storage_manager_->get_fragment_info(
-        array_schema, enc_key, new_fragment_uri, &new_fragment_info));
-
-    // Update fragment info
-    update_fragment_info(to_consolidate, new_fragment_info, &fragment_info);
-
-    // Advance number of steps
-    ++step;
-
-  } while (step < config_.steps_);
-
-  STATS_ADD_COUNTER(
-      stats::GlobalStats::CounterType::CONSOLIDATE_STEP_NUM, step);
-
-  return Status::Ok();
-}
-
-Status Consolidator::consolidate(
-    const URI& array_uri,
+    Array& array_for_reads,
+    Array& array_for_writes,
     const FragmentInfo& to_consolidate,
     const NDRange& union_non_empty_domains,
-    EncryptionType encryption_type,
-    const void* encryption_key,
-    uint32_t key_length,
     URI* new_fragment_uri) {
   STATS_START_TIMER(stats::GlobalStats::TimerType::CONSOLIDATE_MAIN)
 
-  // Open array for reading
-  Array array_for_reads(array_uri, storage_manager_);
-  RETURN_NOT_OK(array_for_reads.open(
-      QueryType::READ,
-      to_consolidate,
-      encryption_type,
-      encryption_key,
-      key_length));
+  RETURN_NOT_OK(array_for_reads.load_fragments(to_consolidate));
 
   if (array_for_reads.is_empty()) {
-    RETURN_NOT_OK(array_for_reads.close());
     return Status::Ok();
   }
-
-  // Open array for writing
-  Array array_for_writes(array_uri, storage_manager_);
-  RETURN_NOT_OK_ELSE(
-      array_for_writes.open(
-          QueryType::WRITE, encryption_type, encryption_key, key_length),
-      array_for_reads.close());
 
   // Get schema
   auto array_schema = array_for_reads.array_schema();
@@ -359,17 +345,13 @@ Status Consolidator::consolidate(
   // Prepare buffers
   std::vector<ByteVec> buffers;
   std::vector<uint64_t> buffer_sizes;
-  Status st = create_buffers(array_schema, all_sparse, &buffers, &buffer_sizes);
-  if (!st.ok()) {
-    array_for_reads.close();
-    array_for_writes.close();
-    return st;
-  }
+  RETURN_NOT_OK(
+      create_buffers(array_schema, all_sparse, &buffers, &buffer_sizes));
 
   // Create queries
   auto query_r = (Query*)nullptr;
   auto query_w = (Query*)nullptr;
-  st = create_queries(
+  auto st = create_queries(
       &array_for_reads,
       &array_for_writes,
       all_sparse,
@@ -378,8 +360,6 @@ Status Consolidator::consolidate(
       &query_w,
       new_fragment_uri);
   if (!st.ok()) {
-    array_for_reads.close();
-    array_for_writes.close();
     tdb_delete(query_r);
     tdb_delete(query_w);
     return st;
@@ -388,18 +368,6 @@ Status Consolidator::consolidate(
   // Read from one array and write to the other
   st = copy_array(query_r, query_w, &buffers, &buffer_sizes, all_sparse);
   if (!st.ok()) {
-    array_for_reads.close();
-    array_for_writes.close();
-    tdb_delete(query_r);
-    tdb_delete(query_w);
-    return st;
-  }
-
-  // Close array for reading
-  st = array_for_reads.close();
-  if (!st.ok()) {
-    array_for_writes.close();
-    storage_manager_->vfs()->remove_dir(*new_fragment_uri);
     tdb_delete(query_r);
     tdb_delete(query_w);
     return st;
@@ -407,20 +375,6 @@ Status Consolidator::consolidate(
 
   // Finalize write query
   st = query_w->finalize();
-  if (!st.ok()) {
-    array_for_writes.close();
-    tdb_delete(query_r);
-    tdb_delete(query_w);
-    bool is_dir = false;
-    auto st2 = storage_manager_->vfs()->is_dir(*new_fragment_uri, &is_dir);
-    (void)st2;  // Perhaps report this once we support an error stack
-    if (is_dir)
-      storage_manager_->vfs()->remove_dir(*new_fragment_uri);
-    return st;
-  }
-
-  // Close array
-  st = array_for_writes.close();
   if (!st.ok()) {
     tdb_delete(query_r);
     tdb_delete(query_w);
@@ -486,7 +440,8 @@ Status Consolidator::consolidate_fragment_meta(
   URI uri;
   auto first = meta.front()->fragment_uri();
   auto last = meta.back()->fragment_uri();
-  RETURN_NOT_OK(compute_new_fragment_uri(first, last, &uri));
+  RETURN_NOT_OK(compute_new_fragment_uri(
+      first, last, array.array_schema()->write_version(), &uri));
   uri = URI(uri.to_string() + constants::meta_file_suffix);
 
   // Get the consolidated fragment metadata version
@@ -666,7 +621,12 @@ Status Consolidator::create_queries(
   // Get last fragment URI, which will be the URI of the consolidated fragment
   auto first = (*query_r)->first_fragment_uri();
   auto last = (*query_r)->last_fragment_uri();
-  RETURN_NOT_OK(compute_new_fragment_uri(first, last, new_fragment_uri));
+
+  RETURN_NOT_OK(compute_new_fragment_uri(
+      first,
+      last,
+      array_for_reads->array_schema()->write_version(),
+      new_fragment_uri));
 
   // Create write query
   *query_w =
@@ -798,7 +758,10 @@ Status Consolidator::compute_next_to_consolidate(
 }
 
 Status Consolidator::compute_new_fragment_uri(
-    const URI& first, const URI& last, URI* new_uri) const {
+    const URI& first,
+    const URI& last,
+    uint32_t format_version,
+    URI* new_uri) const {
   // Get uuid
   std::string uuid;
   RETURN_NOT_OK(uuid::generate_uuid(&uuid, false));
@@ -813,7 +776,7 @@ Status Consolidator::compute_new_fragment_uri(
   // Create new URI
   std::stringstream ss;
   ss << first.parent().to_string() << "/__" << t_first.first << "_"
-     << t_last.second << "_" << uuid << "_" << constants::format_version;
+     << t_last.second << "_" << uuid << "_" << format_version;
 
   *new_uri = URI(ss.str());
 
