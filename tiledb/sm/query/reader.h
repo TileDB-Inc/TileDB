@@ -322,7 +322,10 @@ class Reader {
   /** Returns the cell layout. */
   Layout layout() const;
 
-  /** Returns the conditions. */
+  /**
+   * Returns a const-pointer to the internal condition.
+   * @return QueryCondition
+   */
   const QueryCondition* condition() const;
 
   /** Returns `true` if no results were retrieved after a query. */

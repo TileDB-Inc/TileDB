@@ -726,6 +726,12 @@ Layout Query::layout() const {
   return layout_;
 }
 
+const QueryCondition* Query::condition() const {
+  if (type_ == QueryType::WRITE)
+    return nullptr;
+  return reader_.condition();
+}
+
 Status Query::cancel() {
   status_ = QueryStatus::FAILED;
   return Status::Ok();
