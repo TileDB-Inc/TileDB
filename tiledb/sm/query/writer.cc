@@ -1582,7 +1582,8 @@ Status Writer::create_fragment(
     uri = fragment_uri_;
   } else {
     std::string new_fragment_str;
-    RETURN_NOT_OK(new_fragment_name(timestamp, &new_fragment_str));
+    RETURN_NOT_OK(new_fragment_name(
+        timestamp, array_->array_schema()->write_version(), &new_fragment_str));
     uri = array_schema_->array_uri().join_path(new_fragment_str);
   }
   auto timestamp_range = std::pair<uint64_t, uint64_t>(timestamp, timestamp);
@@ -1975,7 +1976,7 @@ Status Writer::init_tile(const std::string& name, Tile* tile) const {
 
   // Initialize
   RETURN_NOT_OK(tile->init_unfiltered(
-      constants::format_version, type, tile_size, cell_size, 0));
+      array_schema_->write_version(), type, tile_size, cell_size, 0));
 
   return Status::Ok();
 }
@@ -1991,13 +1992,13 @@ Status Writer::init_tile(
 
   // Initialize
   RETURN_NOT_OK(tile->init_unfiltered(
-      constants::format_version,
+      array_schema_->write_version(),
       constants::cell_var_offset_type,
       tile_size,
       constants::cell_var_offset_size,
       0));
   RETURN_NOT_OK(tile_var->init_unfiltered(
-      constants::format_version, type, tile_size, datatype_size(type), 0));
+      array_schema_->write_version(), type, tile_size, datatype_size(type), 0));
   return Status::Ok();
 }
 
@@ -2013,9 +2014,9 @@ Status Writer::init_tile_nullable(
 
   // Initialize
   RETURN_NOT_OK(tile->init_unfiltered(
-      constants::format_version, type, tile_size, cell_size, 0));
+      array_schema_->write_version(), type, tile_size, cell_size, 0));
   RETURN_NOT_OK(tile_validity->init_unfiltered(
-      constants::format_version,
+      array_schema_->write_version(),
       constants::cell_validity_type,
       tile_size,
       constants::cell_validity_size,
@@ -2038,15 +2039,15 @@ Status Writer::init_tile_nullable(
 
   // Initialize
   RETURN_NOT_OK(tile->init_unfiltered(
-      constants::format_version,
+      array_schema_->write_version(),
       constants::cell_var_offset_type,
       tile_size,
       constants::cell_var_offset_size,
       0));
   RETURN_NOT_OK(tile_var->init_unfiltered(
-      constants::format_version, type, tile_size, datatype_size(type), 0));
+      array_schema_->write_version(), type, tile_size, datatype_size(type), 0));
   RETURN_NOT_OK(tile_validity->init_unfiltered(
-      constants::format_version,
+      array_schema_->write_version(),
       constants::cell_validity_type,
       tile_size,
       constants::cell_validity_size,
@@ -2086,7 +2087,7 @@ Status Writer::init_tiles(
 }
 
 Status Writer::new_fragment_name(
-    uint64_t timestamp, std::string* frag_uri) const {
+    uint64_t timestamp, uint32_t format_version, std::string* frag_uri) const {
   timestamp = (timestamp != 0) ? timestamp : utils::time::timestamp_now_ms();
 
   if (frag_uri == nullptr)
@@ -2096,7 +2097,7 @@ Status Writer::new_fragment_name(
   RETURN_NOT_OK(uuid::generate_uuid(&uuid, false));
   std::stringstream ss;
   ss << "/__" << timestamp << "_" << timestamp << "_" << uuid << "_"
-     << constants::format_version;
+     << format_version;
 
   *frag_uri = ss.str();
   return Status::Ok();
