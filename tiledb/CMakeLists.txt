@@ -227,6 +227,7 @@ set(TILEDB_EXTERNALS_SOURCES
   ${CMAKE_CURRENT_SOURCE_DIR}/../external/src/bitshuffle/iochain.cc
   ${CMAKE_CURRENT_SOURCE_DIR}/../external/src/bitshuffle/bitshuffle_core.cc
 )
+# Delegate configuration and detection of platform-specific code generation to the subdirectory
 add_subdirectory(${CMAKE_CURRENT_SOURCE_DIR}/../external/blosc ${CMAKE_CURRENT_BINARY_DIR}/../external/blosc)
 list(APPEND TILEDB_EXTERNALS_INCLUDE_DIRS ${EXTERNAL_BLOSC_INCLUDES})
 list(APPEND TILEDB_EXTERNALS_SOURCES ${EXTERNAL_BLOSC_SOURCES})
