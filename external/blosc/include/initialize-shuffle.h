@@ -1,5 +1,5 @@
 /**
- * @file initialize-shuffle.cc
+ * @file initialize-shuffle.h
  *
  * @section LICENSE
  *
@@ -31,32 +31,16 @@
  * avoiding the use of pthreads for the same purpose.
  */
 
-#include "initialize-shuffle.h"
-/*
- * All the declarations in this block are copied from or derived from
- * shuffle.c. These are a substitute for including an alternate-reality
- * shuffle.h where initialization of host_implementation did not occur
- * entirely within that file.
- */
-extern "C"
-{
-  void set_host_implementation(void);
-}
-/*
- * Trickery afoot. We need to use C++ static initialization, but we need to run
- * an external initialization function. We accomplish by initializing a dummy
- * static variable with an initialization function that has the side-effect we
- * need.
- */
+#ifndef TILEDB_INITIALIZE_SHUFFLE_H
+#define TILEDB_INITIALIZE_SHUFFLE_H
+
 namespace blosc {
 namespace detail {
-  static short dummy_initializer() noexcept
+  class dummy_user
   {
-    set_host_implementation();
-    return 0;
-  }
-  static const short dummy_variable = dummy_initializer();
-  /* Never-instantiated function suppresses warning for unused variable */
-  template<class T>
-  short dummy_user::init() { return dummy_variable; }
+    template<class T>
+    short init();
+  };
 }}
+
+#endif  // TILEDB_INITIALIZE_SHUFFLE_H
