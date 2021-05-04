@@ -41,6 +41,7 @@
 #include "tiledb/sm/array/array.h"
 #include "tiledb/sm/array_schema/array_schema.h"
 #include "tiledb/sm/cache/buffer_lru_cache.h"
+#include "tiledb/sm/enums/array_type.h"
 #include "tiledb/sm/enums/layout.h"
 #include "tiledb/sm/enums/object_type.h"
 #include "tiledb/sm/enums/query_type.h"
@@ -1225,6 +1226,7 @@ Status StorageManager::get_fragment_info(
 
   // Open array for reading
   auto array_schema = array.array_schema();
+  auto array_type = array_schema->array_type();
 
   fragment_info->set_dim_info(
       array_schema->dim_names(), array_schema->dim_types());
@@ -1235,7 +1237,7 @@ Status StorageManager::get_fragment_info(
       *array.encryption_key(),
       &array_schema,
       &fragment_metadata,
-      timestamp_start,
+      array_type == ArrayType::SPARSE ? timestamp_start : 0,
       timestamp_end));
 
   // Return if array is empty
@@ -1261,26 +1263,32 @@ Status StorageManager::get_fragment_info(
 
   for (uint64_t i = 0; i < fragment_metadata.size(); i++) {
     const auto meta = fragment_metadata[i];
-    const auto& uri = meta->fragment_uri();
-    bool sparse = !meta->dense();
-    // Get non-empty domain, and compute expanded non-empty domain
-    // (only for dense fragments)
     const auto& non_empty_domain = meta->non_empty_domain();
-    auto expanded_non_empty_domain = non_empty_domain;
-    if (!sparse)
-      array_schema->domain()->expand_to_tiles(&expanded_non_empty_domain);
 
-    // Push new fragment info
-    fragment_info->append(SingleFragmentInfo(
-        uri,
-        meta->format_version(),
-        sparse,
-        meta->timestamp_range(),
-        meta->cell_num(),
-        sizes[i],
-        meta->has_consolidated_footer(),
-        non_empty_domain,
-        expanded_non_empty_domain));
+    if (meta->timestamp_range().first < timestamp_start) {
+      fragment_info->expand_anterior_ndrange(
+          array_schema->domain(), non_empty_domain);
+    } else {
+      const auto& uri = meta->fragment_uri();
+      bool sparse = !meta->dense();
+
+      // compute expanded non-empty domain (only for dense fragments)
+      auto expanded_non_empty_domain = non_empty_domain;
+      if (!sparse)
+        array_schema->domain()->expand_to_tiles(&expanded_non_empty_domain);
+
+      // Push new fragment info
+      fragment_info->append(SingleFragmentInfo(
+          uri,
+          meta->format_version(),
+          sparse,
+          meta->timestamp_range(),
+          meta->cell_num(),
+          sizes[i],
+          meta->has_consolidated_footer(),
+          non_empty_domain,
+          expanded_non_empty_domain));
+    }
   }
 
   // Optionally get the URIs to vacuum

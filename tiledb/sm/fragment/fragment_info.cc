@@ -86,8 +86,14 @@ void FragmentInfo::append(const SingleFragmentInfo& fragment) {
   fragments_.emplace_back(fragment);
 }
 
+void FragmentInfo::expand_anterior_ndrange(
+    const Domain* domain, const NDRange& range) {
+  domain->expand_ndrange(range, &anterior_ndrange_);
+}
+
 void FragmentInfo::clear() {
   fragments_.clear();
+  anterior_ndrange_.clear();
 }
 
 void FragmentInfo::dump(FILE* out) const {
@@ -475,6 +481,10 @@ const std::vector<SingleFragmentInfo>& FragmentInfo::fragments() const {
   return fragments_;
 }
 
+const NDRange& FragmentInfo::anterior_ndrange() const {
+  return anterior_ndrange_;
+}
+
 uint32_t FragmentInfo::to_vacuum_num() const {
   return (uint32_t)to_vacuum_.size();
 }
@@ -496,6 +506,7 @@ FragmentInfo FragmentInfo::clone() const {
   clone.storage_manager_ = storage_manager_;
   clone.to_vacuum_ = to_vacuum_;
   clone.unconsolidated_metadata_num_ = unconsolidated_metadata_num_;
+  clone.anterior_ndrange_ = anterior_ndrange_;
 
   return clone;
 }
@@ -509,4 +520,5 @@ void FragmentInfo::swap(FragmentInfo& fragment_info) {
   std::swap(to_vacuum_, fragment_info.to_vacuum_);
   std::swap(
       unconsolidated_metadata_num_, fragment_info.unconsolidated_metadata_num_);
+  std::swap(anterior_ndrange_, fragment_info.anterior_ndrange_);
 }
