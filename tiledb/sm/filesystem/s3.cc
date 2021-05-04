@@ -786,7 +786,8 @@ Status S3::read(
       static_cast<uint64_t>(get_object_outcome.GetResult().GetContentLength());
   if (*length_returned < length) {
     return LOG_STATUS(Status::S3Error(
-        std::string("Read operation returned different size of bytes.")));
+        std::string("Read operation returned different size of bytes ") +
+        std::to_string(*length_returned) + " vs " + std::to_string(length)));
   }
 
   return Status::Ok();
