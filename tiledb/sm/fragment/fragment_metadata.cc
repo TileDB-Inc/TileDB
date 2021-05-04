@@ -2212,8 +2212,20 @@ Status FragmentMetadata::read_generic_tile_from_file(
   // Read metadata
   GenericTileIO tile_io(storage_manager_, fragment_metadata_uri);
   Tile* tile = nullptr;
-  RETURN_NOT_OK(tile_io.read_generic(
-      &tile, offset, encryption_key, storage_manager_->config()));
+  //  RETURN_NOT_OK(tile_io.read_generic(
+  //      &tile, offset, encryption_key, storage_manager_->config()));
+  const auto& st = tile_io.read_generic(
+      &tile, offset, encryption_key, storage_manager_->config());
+  if (!st.ok()) {
+    std::stringstream ss;
+    ss << "FragmentMetadata::read_generic_tile_from_file failed "
+          "attempting to read "
+       << fragment_metadata_uri.c_str() << " with offset " << offset
+       << std::endl;
+    std::cerr << ss.str() << std::endl;
+    std::cout << ss.str() << std::endl;
+    return st;
+  }
 
   const auto chunked_buffer = tile->chunked_buffer();
   buff->realloc(chunked_buffer->size());
@@ -2237,8 +2249,19 @@ Status FragmentMetadata::read_file_footer(
       stats::Stats::CounterType::READ_FRAG_META_SIZE, *footer_size);
 
   // Read footer
-  return storage_manager_->read(
+  const auto& st = storage_manager_->read(
       fragment_metadata_uri, *footer_offset, buff, *footer_size);
+
+  if (!st.ok()) {
+    std::stringstream ss;
+    ss << "FragmentMetadata::read_file_footer failed attempting to read "
+       << fragment_metadata_uri.c_str() << " with offset " << *footer_offset
+       << " and size " << *footer_size << std::endl;
+    std::cerr << ss.str() << std::endl;
+    std::cout << ss.str() << std::endl;
+  }
+
+  return st;
 }
 
 Status FragmentMetadata::write_generic_tile_to_file(

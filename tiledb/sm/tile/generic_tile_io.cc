@@ -64,8 +64,19 @@ Status GenericTileIO::read_generic(
     const EncryptionKey& encryption_key,
     const Config& config) {
   GenericTileHeader header;
-  RETURN_NOT_OK(
-      read_generic_tile_header(storage_manager_, uri_, file_offset, &header));
+  //  RETURN_NOT_OK(
+  //      read_generic_tile_header(storage_manager_, uri_, file_offset,
+  //      &header));
+  auto st =
+      read_generic_tile_header(storage_manager_, uri_, file_offset, &header);
+  if (!st.ok()) {
+    std::stringstream ss;
+    ss << "GenericTileIO::read_generic_tile_header failed reading "
+       << uri_.c_str() << "with offset " << file_offset << std::endl;
+    std::cerr << ss.str() << std::endl;
+    std::cout << ss.str() << std::endl;
+    return st;
+  }
 
   if (encryption_key.encryption_type() !=
       (EncryptionType)header.encryption_type)
@@ -93,13 +104,28 @@ Status GenericTileIO::read_generic(
   // Read the tile.
   RETURN_NOT_OK_ELSE(
       (*tile)->filtered_buffer()->realloc(header.persisted_size), delete *tile);
-  RETURN_NOT_OK_ELSE(
-      storage_manager_->read(
-          uri_,
-          file_offset + tile_data_offset,
-          (*tile)->filtered_buffer(),
-          header.persisted_size),
-      delete *tile);
+  //  RETURN_NOT_OK_ELSE(
+  //      storage_manager_->read(
+  //          uri_,
+  //          file_offset + tile_data_offset,
+  //          (*tile)->filtered_buffer(),
+  //          header.persisted_size),
+  //      delete *tile);
+  st = storage_manager_->read(
+      uri_,
+      file_offset + tile_data_offset,
+      (*tile)->filtered_buffer(),
+      header.persisted_size);
+
+  if (!st.ok()) {
+    delete *tile;
+    std::stringstream ss;
+    ss << "GenericTileIO::read failed reading " << uri_.c_str()
+       << "with offset " << file_offset << std::endl;
+    std::cerr << ss.str() << std::endl;
+    std::cout << ss.str() << std::endl;
+    return st;
+  }
 
   // Unfilter
   assert((*tile)->filtered());
