@@ -4486,13 +4486,15 @@ int32_t tiledb_vfs_alloc(
   }
 
   // Initialize VFS object
+  auto stats = ctx->ctx_->storage_manager()->stats();
   auto compute_tp = ctx->ctx_->storage_manager()->compute_tp();
   auto io_tp = ctx->ctx_->storage_manager()->io_tp();
   auto vfs_config = config ? config->config_ : nullptr;
   auto ctx_config = ctx->ctx_->storage_manager()->config();
   if (SAVE_ERROR_CATCH(
           ctx,
-          (*vfs)->vfs_->init(compute_tp, io_tp, &ctx_config, vfs_config))) {
+          (*vfs)->vfs_->init(
+              stats, compute_tp, io_tp, &ctx_config, vfs_config))) {
     delete (*vfs)->vfs_;
     delete vfs;
     return TILEDB_ERR;
@@ -4956,7 +4958,7 @@ int32_t tiledb_stats_disable() {
 }
 
 int32_t tiledb_stats_reset() {
-  tiledb::sm::stats::all_stats.reset();
+  // no-op for backwards compataibility with the existing public reset API
   return TILEDB_OK;
 }
 

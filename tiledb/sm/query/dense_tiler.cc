@@ -187,8 +187,7 @@ const typename DenseTiler<T>::CopyPlan DenseTiler<T>::copy_plan(
 template <class T>
 Status DenseTiler<T>::get_tile(
     uint64_t id, const std::string& name, Tile* tile) {
-  auto timer_se = stats_->start_timer("get_tile.sec");
-  stats_->add_counter("get_tile.count", 1);
+  auto timer_se = stats_->start_timer("get_tile");
 
   // Checks
   if (id >= tile_num_)

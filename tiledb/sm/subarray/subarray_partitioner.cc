@@ -361,7 +361,7 @@ Status SubarrayPartitioner::get_memory_budget(
 }
 
 Status SubarrayPartitioner::next(bool* unsplittable) {
-  STATS_START_TIMER(stats::GlobalStats::TimerType::READ_NEXT_PARTITION)
+  auto timer_se = stats_->start_timer("read_next_partition");
 
   *unsplittable = false;
 
@@ -402,8 +402,6 @@ Status SubarrayPartitioner::next(bool* unsplittable) {
 
   // Must split a multi-range subarray slab
   return next_from_multi_range(unsplittable);
-
-  STATS_END_TIMER(stats::GlobalStats::TimerType::READ_NEXT_PARTITION)
 }
 
 Status SubarrayPartitioner::set_result_budget(
@@ -567,7 +565,7 @@ Status SubarrayPartitioner::set_memory_budget(
 }
 
 Status SubarrayPartitioner::split_current(bool* unsplittable) {
-  STATS_START_TIMER(stats::GlobalStats::TimerType::READ_SPLIT_CURRENT_PARTITION)
+  auto timer_se = stats_->start_timer("read_split_current_partition");
 
   *unsplittable = false;
 
@@ -619,8 +617,6 @@ Status SubarrayPartitioner::split_current(bool* unsplittable) {
   state_.single_range_.push_front(current_.partition_);
   split_top_single_range(unsplittable);
   return next_from_single_range(unsplittable);
-
-  STATS_END_TIMER(stats::GlobalStats::TimerType::READ_SPLIT_CURRENT_PARTITION)
 }
 
 const SubarrayPartitioner::State* SubarrayPartitioner::state() const {

@@ -34,6 +34,7 @@
 #define TILEDB_CONTEXT_H
 
 #include "tiledb/common/status.h"
+#include "tiledb/sm/stats/global_stats.h"
 #include "tiledb/sm/storage_manager/storage_manager.h"
 
 #include <mutex>
@@ -100,6 +101,9 @@ class Context {
 
   /** The thread pool for io-bound tasks. */
   mutable ThreadPool io_tp_;
+
+  /** The class stats. */
+  tdb_shared_ptr<stats::Stats> stats_;
 
   /* ********************************* */
   /*         PRIVATE METHODS           */

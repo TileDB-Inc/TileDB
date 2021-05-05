@@ -39,6 +39,7 @@
 #include "tiledb/common/status.h"
 #include "tiledb/common/thread_pool.h"
 #include "tiledb/sm/serialization/query.h"
+#include "tiledb/sm/stats/stats.h"
 
 using namespace tiledb::common;
 
@@ -57,7 +58,8 @@ class RestClient {
   RestClient();
 
   /** Initialize the REST client with the given config. */
-  Status init(const Config* config, ThreadPool* compute_tp);
+  Status init(
+      stats::Stats* parent_stats, const Config* config, ThreadPool* compute_tp);
 
   /** Sets a header that will be attached to all requests. */
   Status set_header(const std::string& name, const std::string& value);
@@ -163,6 +165,9 @@ class RestClient {
   /* ********************************* */
   /*        PRIVATE ATTRIBUTES         */
   /* ********************************* */
+
+  /** The class stats. */
+  stats::Stats* stats_;
 
   /** The TileDB config options (contains server and auth info). */
   const Config* config_;
