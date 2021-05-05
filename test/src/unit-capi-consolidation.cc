@@ -131,6 +131,7 @@ struct ConsolidationFx {
   bool is_array(const std::string& array_name);
   void get_array_meta_files_dense(std::vector<std::string>& files);
   void get_array_meta_vac_files_dense(std::vector<std::string>& files);
+  void get_vac_files_dense(std::vector<std::string>& files);
 
   // Used to get the number of directories or files of another directory
   struct get_num_struct {
@@ -143,6 +144,8 @@ struct ConsolidationFx {
   static int get_meta_num(const char* path, void* data);
   static int get_array_meta_files_callback(const char* path, void* data);
   static int get_array_meta_vac_files_callback(const char* path, void* data);
+  static int get_vac_files_callback(const char* path, void* data);
+  static int get_fragment_timestamps(const char* path, void* data);
 };
 
 ConsolidationFx::ConsolidationFx() {
@@ -4207,6 +4210,29 @@ int ConsolidationFx::get_array_meta_vac_files_callback(
   return 1;
 }
 
+int ConsolidationFx::get_vac_files_callback(const char* path, void* data) {
+  auto vec = static_cast<std::vector<std::string>*>(data);
+  if (tiledb::sm::utils::parse::ends_with(
+          path, tiledb::sm::constants::vacuum_file_suffix))
+    vec->emplace_back(path);
+
+  return 1;
+}
+
+int ConsolidationFx::get_fragment_timestamps(const char* path, void* data) {
+  auto data_vec = (std::vector<uint64_t>*)data;
+  std::pair<uint64_t, uint64_t> timestamp_range;
+  if (tiledb::sm::utils::parse::ends_with(
+          path, tiledb::sm::constants::ok_file_suffix)) {
+    auto uri = tiledb::sm::URI(path);
+    if (tiledb::sm::utils::parse::get_timestamp_range(uri, &timestamp_range)
+            .ok())
+      data_vec->push_back(timestamp_range.first);
+  }
+
+  return 1;
+}
+
 void ConsolidationFx::get_array_meta_files_dense(
     std::vector<std::string>& files) {
   files.clear();
@@ -4234,6 +4260,14 @@ void ConsolidationFx::get_array_meta_vac_files_dense(
           .c_str(),
       &get_array_meta_vac_files_callback,
       &files);
+  CHECK(rc == TILEDB_OK);
+}
+
+void ConsolidationFx::get_vac_files_dense(std::vector<std::string>& files) {
+  files.clear();
+  tiledb::sm::URI dense_array_uri(DENSE_ARRAY_NAME);
+  int rc = tiledb_vfs_ls(
+      ctx_, vfs_, dense_array_uri.c_str(), &get_vac_files_callback, &files);
   CHECK(rc == TILEDB_OK);
 }
 
@@ -5985,6 +6019,68 @@ TEST_CASE_METHOD(
     get_array_meta_files_dense(array_meta_files);
     CHECK(array_meta_files.size() == 3);
   }
+
+  // Clean up
+  remove_dense_array();
+}
+
+TEST_CASE_METHOD(
+    ConsolidationFx,
+    "C API: Test partial vacuuming and timestamps",
+    "[capi][partial][vacuuming][timestamps]") {
+  remove_dense_array();
+  create_dense_array();
+
+  write_dense_subarray();
+  std::this_thread::sleep_for(std::chrono::milliseconds(1));
+  write_dense_subarray(1, 2, 3, 4);
+  std::this_thread::sleep_for(std::chrono::milliseconds(1));
+  write_dense_subarray(1, 2, 1, 2);
+  std::this_thread::sleep_for(std::chrono::milliseconds(1));
+  write_dense_subarray(1, 2, 1, 2);
+
+  std::vector<uint64_t> fragment_timestamps;
+  auto rc = tiledb_vfs_ls(
+      ctx_,
+      vfs_,
+      DENSE_ARRAY_NAME,
+      &get_fragment_timestamps,
+      &fragment_timestamps);
+  CHECK(rc == TILEDB_OK);
+
+  consolidate_dense(
+      "fragments", fragment_timestamps[1], fragment_timestamps[3]);
+
+  std::vector<std::string> vac_files;
+  get_vac_files_dense(vac_files);
+  CHECK(vac_files.size() == 1);
+
+  vacuum_dense("fragments", fragment_timestamps[0], fragment_timestamps[0]);
+
+  get_num_struct data = {ctx_, vfs_, 0};
+  rc = tiledb_vfs_ls(ctx_, vfs_, DENSE_ARRAY_NAME, &get_dir_num, &data);
+  CHECK(rc == TILEDB_OK);
+  CHECK(data.num == 5);
+
+  vacuum_dense("fragments", fragment_timestamps[1], fragment_timestamps[1]);
+
+  data.num = 0;
+  rc = tiledb_vfs_ls(ctx_, vfs_, DENSE_ARRAY_NAME, &get_dir_num, &data);
+  CHECK(rc == TILEDB_OK);
+  CHECK(data.num == 4);
+
+  get_vac_files_dense(vac_files);
+  CHECK(vac_files.size() == 1);
+
+  vacuum_dense("fragments", fragment_timestamps[2], fragment_timestamps[3]);
+
+  data.num = 0;
+  rc = tiledb_vfs_ls(ctx_, vfs_, DENSE_ARRAY_NAME, &get_dir_num, &data);
+  CHECK(rc == TILEDB_OK);
+  CHECK(data.num == 2);
+
+  get_vac_files_dense(vac_files);
+  CHECK(vac_files.size() == 0);
 
   // Clean up
   remove_dense_array();

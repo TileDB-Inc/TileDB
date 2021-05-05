@@ -1150,7 +1150,8 @@ class StorageManager {
       uint64_t timestamp_start,
       uint64_t timestamp_end,
       std::vector<URI>* to_vacuum,
-      std::vector<URI>* vac_uris) const;
+      std::vector<URI>* vac_uris,
+      bool allow_partial = true) const;
 
   /** Block until there are zero in-progress queries. */
   void wait_for_zero_in_progress();

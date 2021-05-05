@@ -2365,7 +2365,7 @@ Status StorageManager::get_sorted_uris(
   // Get the URIs that must be ignored
   std::vector<URI> vac_uris, to_ignore;
   RETURN_NOT_OK(get_uris_to_vacuum(
-      uris, timestamp_start, timestamp_end, &to_ignore, &vac_uris));
+      uris, timestamp_start, timestamp_end, &to_ignore, &vac_uris, false));
   std::set<URI> to_ignore_set;
   for (const auto& uri : to_ignore)
     to_ignore_set.emplace(uri);
@@ -2402,37 +2402,61 @@ Status StorageManager::get_uris_to_vacuum(
     uint64_t timestamp_start,
     uint64_t timestamp_end,
     std::vector<URI>* to_vacuum,
-    std::vector<URI>* vac_uris) const {
+    std::vector<URI>* vac_uris,
+    bool allow_partial) const {
   // Get vacuum URIs
+  std::vector<URI> vac_files;
+  std::unordered_set<std::string> non_vac_uris_set;
   std::unordered_map<std::string, size_t> uris_map;
   for (size_t i = 0; i < uris.size(); ++i) {
     std::pair<uint64_t, uint64_t> timestamp_range;
     RETURN_NOT_OK(utils::parse::get_timestamp_range(uris[i], &timestamp_range));
-    if (timestamp_range.first < timestamp_start ||
-        timestamp_range.second > timestamp_end)
-      continue;
 
-    if (this->is_vacuum_file(uris[i]))
-      vac_uris->emplace_back(uris[i]);
-    else
-      uris_map[uris[i].to_string()] = i;
+    if (this->is_vacuum_file(uris[i])) {
+      if (allow_partial) {
+        if (timestamp_range.first <= timestamp_end &&
+            timestamp_range.second >= timestamp_start)
+          vac_files.emplace_back(uris[i]);
+      } else {
+        if (timestamp_range.first >= timestamp_start &&
+            timestamp_range.second <= timestamp_end)
+          vac_files.emplace_back(uris[i]);
+      }
+    } else {
+      if (timestamp_range.first < timestamp_start ||
+          timestamp_range.second > timestamp_end) {
+        non_vac_uris_set.emplace(uris[i].to_string());
+      } else {
+        uris_map[uris[i].to_string()] = i;
+      }
+    }
   }
 
   // Compute fragment URIs to vacuum as a bitmap vector
+  // Also determine which vac files to vacuum
   std::vector<int32_t> to_vacuum_vec(uris.size(), 0);
+  std::vector<int32_t> to_vacuum_vac_files_vec(vac_files.size(), 0);
   auto status =
-      parallel_for(compute_tp_, 0, vac_uris->size(), [&, this](size_t i) {
+      parallel_for(compute_tp_, 0, vac_files.size(), [&, this](size_t i) {
         uint64_t size = 0;
-        RETURN_NOT_OK(vfs_->file_size((*vac_uris)[i], &size));
+        RETURN_NOT_OK(vfs_->file_size(vac_files[i], &size));
         std::string names;
         names.resize(size);
-        RETURN_NOT_OK(vfs_->read((*vac_uris)[i], 0, &names[0], size));
+        RETURN_NOT_OK(vfs_->read(vac_files[i], 0, &names[0], size));
         std::stringstream ss(names);
+        bool vacuum_vac_file = true;
         for (std::string uri_str; std::getline(ss, uri_str);) {
           auto it = uris_map.find(uri_str);
           if (it != uris_map.end())
             to_vacuum_vec[it->second] = 1;
+
+          if (vacuum_vac_file &&
+              non_vac_uris_set.find(uri_str) != non_vac_uris_set.end()) {
+            vacuum_vac_file = false;
+          }
         }
+
+        to_vacuum_vac_files_vec[i] = vacuum_vac_file;
 
         return Status::Ok();
       });
@@ -2443,6 +2467,13 @@ Status StorageManager::get_uris_to_vacuum(
   for (size_t i = 0; i < uris.size(); ++i) {
     if (to_vacuum_vec[i] == 1)
       to_vacuum->emplace_back(uris[i]);
+  }
+
+  // Compute the vac URIs to vacuum
+  vac_uris->clear();
+  for (size_t i = 0; i < vac_files.size(); ++i) {
+    if (to_vacuum_vac_files_vec[i] == 1)
+      vac_uris->emplace_back(vac_files[i]);
   }
 
   return Status::Ok();
