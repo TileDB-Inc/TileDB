@@ -89,6 +89,8 @@ FragmentMetadata::FragmentMetadata(
     auto dim_name = array_schema_->dimension(i)->name();
     idx_map_[dim_name] = array_schema_->attribute_num() + 1 + i;
   }
+
+  array_schema_->get_name(array_schema_name_);
 }
 
 FragmentMetadata::~FragmentMetadata() = default;
@@ -870,7 +872,9 @@ Status FragmentMetadata::write_footer(Buffer* buff) const {
   RETURN_NOT_OK(write_file_var_sizes(buff));
   RETURN_NOT_OK(write_file_validity_sizes(buff));
   RETURN_NOT_OK(write_generic_tile_offsets(buff));
-
+  if (version_ >= 10) {
+    RETURN_NOT_OK(write_array_schema_name(buff));
+  }
   return Status::Ok();
 }
 
@@ -932,10 +936,10 @@ uint64_t FragmentMetadata::footer_size() const {
 
 Status FragmentMetadata::get_footer_offset_and_size(
     uint64_t* offset, uint64_t* size) const {
-  if (array_schema_->domain()->all_dims_fixed()) {
-    uint32_t f_version;
-    auto name = fragment_uri_.remove_trailing_slash().last_path_part();
-    RETURN_NOT_OK(utils::parse::get_fragment_name_version(name, &f_version));
+  uint32_t f_version;
+  auto name = fragment_uri_.remove_trailing_slash().last_path_part();
+  RETURN_NOT_OK(utils::parse::get_fragment_name_version(name, &f_version));
+  if (array_schema_->domain()->all_dims_fixed() && f_version < 5) {
     RETURN_NOT_OK(get_footer_size(f_version, size));
     *offset = meta_file_size_ - *size;
   } else {
@@ -1955,6 +1959,17 @@ Status FragmentMetadata::load_generic_tile_offsets_v7_or_higher(
   return Status::Ok();
 }
 
+Status FragmentMetadata::load_array_schema_name(ConstBuffer* buff) {
+  uint64_t size = 0;
+  RETURN_NOT_OK(buff->read(&size, sizeof(uint64_t)));
+  char* name = static_cast<char*>(std::malloc(sizeof(char) * size));
+  RETURN_NOT_OK(buff->read(name, size));
+
+  array_schema_name_ = std::string(name, size);
+  std::free(name);
+  return Status::Ok();
+}
+
 Status FragmentMetadata::load_v1_v2(const EncryptionKey& encryption_key) {
   URI fragment_metadata_uri = fragment_uri_.join_path(
       std::string(constants::fragment_metadata_filename));
@@ -2045,6 +2060,9 @@ Status FragmentMetadata::load_footer(
   loaded_metadata_.tile_validity_offsets_.resize(num, false);
 
   RETURN_NOT_OK(load_generic_tile_offsets(cbuff.get()));
+  if (version_ >= 10) {
+    RETURN_NOT_OK(load_array_schema_name(cbuff.get()));
+  }
 
   loaded_metadata_.footer_ = true;
 
@@ -2166,6 +2184,15 @@ Status FragmentMetadata::write_generic_tile_offsets(Buffer* buff) const {
   }
 
   return Status::Ok();
+}
+
+Status FragmentMetadata::write_array_schema_name(Buffer* buff) const {
+  uint64_t size = array_schema_name_.size();
+  Status status = buff->write(&size, sizeof(uint64_t));
+  if (!status.ok()) {
+    return status;
+  }
+  return buff->write(array_schema_name_.c_str(), size);
 }
 
 // ===== FORMAT =====
@@ -2322,7 +2349,7 @@ Status FragmentMetadata::write_footer_to_file(Buffer* buff) const {
       fragment_metadata_uri, buff->data(), buff->size()));
 
   // Write the size in the end if there is at least one var-sized dimension
-  if (!array_schema_->domain()->all_dims_fixed())
+  if (!array_schema_->domain()->all_dims_fixed() || version_ >= 10)
     return storage_manager_->write(fragment_metadata_uri, &size, sizeof(size));
   return Status::Ok();
 }

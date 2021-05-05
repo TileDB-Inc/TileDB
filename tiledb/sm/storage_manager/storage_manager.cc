@@ -751,6 +751,11 @@ Status StorageManager::array_create(
   // Create array directory
   RETURN_NOT_OK(vfs_->create_dir(array_uri));
 
+  // Create array schema
+  URI array_schema_folder_uri =
+      array_uri.join_path(constants::array_schema_folder_name);
+  RETURN_NOT_OK(vfs_->create_dir(array_schema_folder_uri));
+
   // Create array metadata directory
   URI array_metadata_uri =
       array_uri.join_path(constants::array_metadata_folder_name);
@@ -1042,7 +1047,8 @@ Status StorageManager::array_get_encryption(
     return LOG_STATUS(Status::StorageManagerError(
         "Cannot get array encryption; Invalid array URI"));
 
-  URI schema_uri = uri.join_path(constants::array_schema_filename);
+  URI schema_uri;
+  RETURN_NOT_OK(get_latest_array_schema_uri(uri, &schema_uri));
 
   // Read tile header.
   GenericTileIO::GenericTileHeader header;
@@ -1504,8 +1510,10 @@ void StorageManager::increment_in_progress() {
 }
 
 Status StorageManager::is_array(const URI& uri, bool* is_array) const {
-  RETURN_NOT_OK(
-      vfs_->is_file(uri.join_path(constants::array_schema_filename), is_array));
+  URI schema_uri;
+  RETURN_NOT_OK(get_latest_array_schema_uri(uri, &schema_uri));
+
+  RETURN_NOT_OK(vfs_->is_file(schema_uri, is_array));
   return Status::Ok();
 }
 
@@ -1560,6 +1568,40 @@ bool StorageManager::is_vacuum_file(const URI& uri) const {
   return false;
 }
 
+Status StorageManager::get_array_schema_uris(
+    const URI& array_uri, std::vector<URI>* uris) const {
+  STATS_START_TIMER(stats::GlobalStats::TimerType::READ_GET_ARRAY_SCHEMAS)
+
+  const URI schema_uri =
+      array_uri.join_path(constants::array_schema_folder_name);
+  RETURN_NOT_OK(vfs_->ls(schema_uri, uris));
+  // Sort schema URIs
+  std::sort(uris->begin(), uris->end());
+  return Status::Ok();
+
+  STATS_END_TIMER(stats::GlobalStats::TimerType::READ_GET_ARRAY_SCHEMAS)
+}
+
+Status StorageManager::get_latest_array_schema_uri(
+    const URI& array_uri, URI* uri) const {
+  STATS_START_TIMER(stats::GlobalStats::TimerType::READ_GET_LATEST_ARRAY_SCHEMA)
+  std::vector<URI> uris;
+  Status status = get_array_metadata_uris(array_uri, &uris);
+  if (status.ok() && (!uris.empty())) {
+    *uri = uris.back();
+  } else {
+    // For older version, array schema file is under the array folder
+    *uri = array_uri.join_path(constants::array_schema_filename);
+  }
+  if (uri->is_invalid()) {
+    return LOG_STATUS(
+        Status::StorageManagerError("Could not find array schema URI"));
+  }
+
+  return Status::Ok();
+  STATS_END_TIMER(stats::GlobalStats::TimerType::READ_GET_LATEST_ARRAY_SCHEMA)
+}
+
 Status StorageManager::load_array_schema(
     const URI& array_uri,
     const EncryptionKey& encryption_key,
@@ -1570,7 +1612,8 @@ Status StorageManager::load_array_schema(
     return LOG_STATUS(Status::StorageManagerError(
         "Cannot load array schema; Invalid array URI"));
 
-  URI schema_uri = array_uri.join_path(constants::array_schema_filename);
+  URI schema_uri;
+  RETURN_NOT_OK(get_latest_array_schema_uri(array_uri, &schema_uri));
 
   GenericTileIO tile_io(this, schema_uri);
   Tile* tile = nullptr;
@@ -1596,7 +1639,7 @@ Status StorageManager::load_array_schema(
     tdb_delete(*array_schema);
     *array_schema = nullptr;
   }
-
+  (*array_schema)->set_uri(schema_uri);
   return st;
 
   STATS_END_TIMER(stats::GlobalStats::TimerType::READ_LOAD_ARRAY_SCHEMA)
@@ -1681,6 +1724,10 @@ Status StorageManager::object_type(const URI& uri, ObjectType* type) const {
       return Status::Ok();
     } else if (utils::parse::ends_with(
                    uri_str, constants::array_schema_filename)) {
+      *type = ObjectType::ARRAY;
+      return Status::Ok();
+    } else if (utils::parse::ends_with(
+                   uri_str, constants::array_schema_folder_name)) {
       *type = ObjectType::ARRAY;
       return Status::Ok();
     }
@@ -1902,8 +1949,7 @@ Status StorageManager::set_tag(
 
 Status StorageManager::store_array_schema(
     ArraySchema* array_schema, const EncryptionKey& encryption_key) {
-  auto& array_uri = array_schema->array_uri();
-  URI schema_uri = array_uri.join_path(constants::array_schema_filename);
+  const URI schema_uri = array_schema->uri();
 
   // Serialize
   Buffer buff;
@@ -2027,9 +2073,12 @@ Status StorageManager::init_rest_client() {
 
 Status StorageManager::write_to_cache(
     const URI& uri, uint64_t offset, Buffer* buffer) const {
-  // Do not write metadata to cache
+  // Do not write metadata or array schema to cache
   std::string filename = uri.last_path_part();
+  std::string uri_str = uri.to_string();
   if (filename == constants::fragment_metadata_filename ||
+      (uri_str.find(constants::array_schema_folder_name) !=
+       std::string::npos) ||
       filename == constants::array_schema_filename) {
     return Status::Ok();
   }
