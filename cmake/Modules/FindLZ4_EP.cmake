@@ -77,28 +77,25 @@ FIND_PACKAGE_HANDLE_STANDARD_ARGS(LZ4
 if (NOT LZ4_FOUND)
   if (TILEDB_SUPERBUILD)
     message(STATUS "Adding LZ4 as an external project")
-    if (WIN32)
-      set(ARCH_SPEC -A X64)
-    endif()
     set(LZ4_CMAKE_DIR "${TILEDB_EP_SOURCE_DIR}/ep_lz4/build/cmake/")
+	propagate_cache_variables(FORWARDED_CMAKE_ARGUMENTS)
     ExternalProject_Add(ep_lz4
       PREFIX "externals"
       # Set download name to avoid collisions with only the version number in the filename
-      DOWNLOAD_NAME ep_lz4.zip
+      DOWNLOAD_NAME ep_lz4-v1.9.3.zip
       URL "https://github.com/lz4/lz4/archive/v1.9.3.zip"
       URL_HASH SHA1=3e28f6691ee45c468b5aba3943bf26528b030a55
-      CONFIGURE_COMMAND
-        ${CMAKE_COMMAND}
-          ${ARCH_SPEC}
-          -DLZ4_BUILD_LEGACY_LZ4C=OFF
-          -DLZ4_POSITION_INDEPENDENT_LIB=ON
-          -DBUILD_SHARED_LIBS=OFF
-          -DBUILD_STATIC_LIBS=ON
-          -DCMAKE_BUILD_TYPE=Release
-          -DCMAKE_INSTALL_PREFIX=${TILEDB_EP_INSTALL_PREFIX}
-          ${LZ4_CMAKE_DIR}
       UPDATE_COMMAND ""
-      LOG_DOWNLOAD TRUE
+	  CMAKE_ARGS
+	    ${FORWARDED_CMAKE_ARGUMENTS}
+		-DLZ4_BUILD_LEGACY_LZ4C=OFF
+		-DLZ4_POSITION_INDEPENDENT_LIB=ON
+		-DBUILD_SHARED_LIBS=OFF
+		-DBUILD_STATIC_LIBS=ON
+		-DCMAKE_BUILD_TYPE=Release
+		-DCMAKE_INSTALL_PREFIX=${TILEDB_EP_INSTALL_PREFIX}
+		${LZ4_CMAKE_DIR}
+	  LOG_DOWNLOAD TRUE
       LOG_CONFIGURE TRUE
       LOG_BUILD TRUE
       LOG_INSTALL TRUE

@@ -97,3 +97,35 @@ function(install_target_libs LIB_TARGET)
   endif()
 endfunction()
 
+#
+# Prepares arguments for an external-project invocation of cmake, forwarding a
+# designated list of variables to the project.
+#
+# This function is a workaround for a deficiency of CMake. When a generator is
+# specified, CMake forwards the generator spec to external projects. It does not,
+# however, forward any toolchain file (defined with CMAKE_TOOLCHAIN_FILE) or any 
+# cache variables set by non-default generators. A user should set any cache
+# variables early, either directly (-D) or with an initial cache script (-C), and
+# finally set TILEDB_FORWARDED_CACHE_VARIABLES to a list of these variable names.
+#
+# For each variable <VAR>, if <VAR>_TYPE is defined, it's used to set the cache
+# type of the variable. This allows the (hopefully rare) circumstance where a user
+# may have a need to manually examine or alter the cache of an external project
+# with CMake-GUI.
+#
+# [in] global TILEDB_FORWARDED_CACHE_VARIABLES. Contains the variable list.
+# [out] argument RESULT_VAR: Result assigned to RESULT_VAR in parent scope
+#
+function(propagate_cache_variables RESULT_VAR)
+  foreach (cv IN LISTS TILEDB_FORWARDED_CACHE_VARIABLES)
+    if (DEFINED ${cv})
+	  if (DEFINED ${cv}_TYPE)
+	    set (cv_type ${${cv}_TYPE})
+  	  else()
+	    set (cv_type STRING)
+	  endif()
+	  list (APPEND result "-D${cv}:${cv_type}=${${cv}}")
+    endif()
+  endforeach()
+  set (${RESULT_VAR} ${result} PARENT_SCOPE)
+endfunction()
