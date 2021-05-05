@@ -57,6 +57,10 @@ FragmentInfo::FragmentInfo(
 }
 
 FragmentInfo::~FragmentInfo() {
+  // if (array_) {
+  //   array_->close();
+  //   tdb_delete(array_);
+  // }
 }
 
 FragmentInfo::FragmentInfo(const FragmentInfo& fragment_info)
@@ -408,6 +412,238 @@ Status FragmentInfo::get_non_empty_domain_var(
   return get_non_empty_domain_var(fid, did, start, end);
 }
 
+Status FragmentInfo::get_mbr_num(uint32_t fid, uint64_t* mbr_num) const {
+  if (mbr_num == nullptr)
+    return LOG_STATUS(Status::FragmentInfoError(
+        "Cannot get fragment URI; mbr number argument cannot be null"));
+
+  if (fid >= fragments_.size())
+    return LOG_STATUS(Status::FragmentInfoError(
+        "Cannot get fragment URI; Invalid fragment index"));
+
+  auto meta = fragments_[fid].meta();
+  auto key = fragments_[fid].encryption_key();
+  // std::cout << meta->array_uri().c_str() << std::endl;
+  RETURN_NOT_OK(meta->load_rtree(*key));
+  *mbr_num = meta->mbrs().size();
+
+  return Status::Ok();
+}
+
+Status FragmentInfo::get_mbr(
+    uint32_t fid, uint32_t mid, uint32_t did, void* mbr) const {
+  if (mbr == nullptr)
+    return LOG_STATUS(
+        Status::FragmentInfoError("Cannot get mbr; mbr cannot be null"));
+
+  if (fid >= fragments_.size())
+    return LOG_STATUS(
+        Status::FragmentInfoError("Cannot get MBR; Invalid fragment index"));
+
+  auto meta = fragments_[fid].meta();
+  auto key = fragments_[fid].encryption_key();
+  RETURN_NOT_OK(meta->load_rtree(*key));
+  const auto& mbrs = meta->mbrs();
+
+  if (mid >= mbrs.size())
+    return LOG_STATUS(
+        Status::FragmentInfoError("Cannot get MBR; Invalid mbr index"));
+
+  const auto& minimum_bounding_rectangle = mbrs[mid];
+
+  if (did >= minimum_bounding_rectangle.size())
+    return LOG_STATUS(
+        Status::FragmentInfoError("Cannot get MBR; Invalid dimension index"));
+
+  if (minimum_bounding_rectangle[did].var_size())
+    return LOG_STATUS(Status::FragmentInfoError(
+        "Cannot get MBR; Dimension is variable-sized"));
+
+  assert(!minimum_bounding_rectangle[did].empty());
+  std::memcpy(
+      mbr,
+      minimum_bounding_rectangle[did].data(),
+      minimum_bounding_rectangle[did].size());
+
+  return Status::Ok();
+}
+
+Status FragmentInfo::get_mbr(
+    uint32_t fid, uint32_t mid, const char* dim_name, void* mbr) const {
+  if (dim_name == nullptr)
+    return LOG_STATUS(Status::FragmentInfoError(
+        "Cannot get non-empty domain; Dimension name argument cannot be null"));
+
+  uint32_t did;
+  for (did = 0; did < dim_names_.size(); ++did) {
+    if (dim_name == dim_names_[did]) {
+      break;
+    }
+  }
+
+  // Dimension name not found
+  if (did == dim_names_.size()) {
+    auto msg =
+        std::string("Cannot get non-empty domain; Invalid dimension name '") +
+        dim_name + "'";
+    return LOG_STATUS(Status::FragmentInfoError(msg));
+  }
+
+  return get_mbr(fid, mid, did, mbr);
+}
+
+Status FragmentInfo::get_mbr_var_size(
+    uint32_t fid,
+    uint32_t mid,
+    uint32_t did,
+    uint64_t* start_size,
+    uint64_t* end_size) const {
+  if (start_size == nullptr)
+    return LOG_STATUS(
+        Status::FragmentInfoError("Cannot get MBR var size; Start "
+                                  "size argument cannot be null"));
+
+  if (end_size == nullptr)
+    return LOG_STATUS(
+        Status::FragmentInfoError("Cannot get MBR var size; End "
+                                  "size argument cannot be null"));
+
+  if (fid >= fragments_.size())
+    return LOG_STATUS(Status::FragmentInfoError(
+        "Cannot get MBR var size; Invalid fragment index"));
+
+  auto meta = fragments_[fid].meta();
+  auto key = fragments_[fid].encryption_key();
+  RETURN_NOT_OK(meta->load_rtree(*key));
+  const auto& mbrs = meta->mbrs();
+
+  if (mid >= mbrs.size())
+    return LOG_STATUS(
+        Status::FragmentInfoError("Cannot get MBR; Invalid mbr index"));
+
+  const auto& minimum_bounding_rectangle = mbrs[mid];
+
+  if (did >= minimum_bounding_rectangle.size())
+    return LOG_STATUS(Status::FragmentInfoError(
+        "Cannot get MBR var size; Invalid dimension index"));
+
+  if (!minimum_bounding_rectangle[did].var_size())
+    return LOG_STATUS(Status::FragmentInfoError(
+        "Cannot get MBR var size; Dimension is fixed sized"));
+
+  assert(!minimum_bounding_rectangle[did].empty());
+  *start_size = minimum_bounding_rectangle[did].start_size();
+  *end_size = minimum_bounding_rectangle[did].end_size();
+
+  return Status::Ok();
+}
+
+Status FragmentInfo::get_mbr_var_size(
+    uint32_t fid,
+    uint32_t mid,
+    const char* dim_name,
+    uint64_t* start_size,
+    uint64_t* end_size) const {
+  if (dim_name == nullptr)
+    return LOG_STATUS(
+        Status::FragmentInfoError("Cannot get MBR var size; "
+                                  "Dimension name argument cannot be null"));
+
+  uint32_t did;
+  for (did = 0; did < dim_names_.size(); ++did) {
+    if (dim_name == dim_names_[did]) {
+      break;
+    }
+  }
+
+  // Dimension name not found
+  if (did == dim_names_.size()) {
+    auto msg =
+        std::string("Cannot get MBR var size; Invalid dimension name '") +
+        dim_name + "'";
+    return LOG_STATUS(Status::FragmentInfoError(msg));
+  }
+
+  return get_mbr_var_size(fid, mid, did, start_size, end_size);
+}
+
+Status FragmentInfo::get_mbr_var(
+    uint32_t fid, uint32_t mid, uint32_t did, void* start, void* end) const {
+  if (start == nullptr)
+    return LOG_STATUS(
+        Status::FragmentInfoError("Cannot get non-empty domain var; Domain "
+                                  "start argument cannot be null"));
+
+  if (end == nullptr)
+    return LOG_STATUS(Status::FragmentInfoError(
+        "Cannot get non-empty domain var; Domain end argument cannot be null"));
+
+  if (fid >= fragments_.size())
+    return LOG_STATUS(Status::FragmentInfoError(
+        "Cannot get non-empty domain var; Invalid fragment index"));
+
+  auto meta = fragments_[fid].meta();
+  auto key = fragments_[fid].encryption_key();
+  RETURN_NOT_OK(meta->load_rtree(*key));
+  const auto& mbrs = meta->mbrs();
+
+  if (mid >= mbrs.size())
+    return LOG_STATUS(
+        Status::FragmentInfoError("Cannot get MBR; Invalid mbr index"));
+
+  const auto& minimum_bounding_rectangle = mbrs[mid];
+
+  if (did >= minimum_bounding_rectangle.size())
+    return LOG_STATUS(Status::FragmentInfoError(
+        "Cannot get non-empty domain var; Invalid dimension index"));
+
+  if (!minimum_bounding_rectangle[did].var_size())
+    return LOG_STATUS(Status::FragmentInfoError(
+        "Cannot get non-empty domain var; Dimension is fixed-sized"));
+
+  assert(!minimum_bounding_rectangle[did].empty());
+  std::memcpy(
+      start,
+      minimum_bounding_rectangle[did].start(),
+      minimum_bounding_rectangle[did].start_size());
+  std::memcpy(
+      end,
+      minimum_bounding_rectangle[did].end(),
+      minimum_bounding_rectangle[did].end_size());
+
+  return Status::Ok();
+}
+
+Status FragmentInfo::get_mbr_var(
+    uint32_t fid,
+    uint32_t mid,
+    const char* dim_name,
+    void* start,
+    void* end) const {
+  if (dim_name == nullptr)
+    return LOG_STATUS(
+        Status::FragmentInfoError("Cannot get non-empty domain var; Dimension "
+                                  "name argument cannot be null"));
+
+  uint32_t did;
+  for (did = 0; did < dim_names_.size(); ++did) {
+    if (dim_name == dim_names_[did]) {
+      break;
+    }
+  }
+
+  // Dimension name not found
+  if (did == dim_names_.size()) {
+    auto msg =
+        std::string(
+            "Cannot get non-empty domain var; Invalid dimension name '") +
+        dim_name + "'";
+    return LOG_STATUS(Status::FragmentInfoError(msg));
+  }
+
+  return get_mbr_var(fid, mid, did, start, end);
+}
+
 Status FragmentInfo::get_version(uint32_t fid, uint32_t* version) const {
   if (version == nullptr)
     return LOG_STATUS(Status::FragmentInfoError(
@@ -477,8 +713,6 @@ Status FragmentInfo::load(
     return LOG_STATUS(Status::FragmentInfoError(msg));
   }
 
-  Array array(array_uri_, storage_manager_);
-
   if (encryption_type == EncryptionType::NO_ENCRYPTION) {
     bool found = false;
     std::string encryption_key_from_cfg =
@@ -507,21 +741,19 @@ Status FragmentInfo::load(
         }
       }
     }
-    RETURN_NOT_OK(array.open_without_fragments(
+    RETURN_NOT_OK(array->open_without_fragments(
         encryption_type,
         (const void*)encryption_key_from_cfg.c_str(),
         key_length));
   } else {
-    RETURN_NOT_OK(array.open_without_fragments(
+    RETURN_NOT_OK(array->open_without_fragments(
         encryption_type, encryption_key, key_length));
   }
 
   auto timestamp = utils::time::timestamp_now_ms();
   RETURN_NOT_OK_ELSE(
-      storage_manager_->get_fragment_info(array, 0, timestamp, this, true),
-      array.close());
-
-  RETURN_NOT_OK(array.close());
+      storage_manager_->get_fragment_info(*array_, 0, timestamp, this, true),
+      array_->close());
 
   unconsolidated_metadata_num_ = 0;
   for (const auto& f : fragments_)

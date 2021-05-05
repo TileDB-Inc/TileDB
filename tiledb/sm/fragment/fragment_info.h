@@ -163,6 +163,64 @@ class FragmentInfo {
   Status get_non_empty_domain_var(
       uint32_t fid, const char* dim_name, void* start, void* end) const;
 
+  /** Retrieves the number of MBRs in the fragment with the given index. */
+  Status get_mbr_num(uint32_t fid, uint64_t* mbr_num) const;
+
+  /**
+   * Retrieves the MBR of the fragment with the given index on the given
+   * dimension index.
+   */
+  Status get_mbr(uint32_t fid, uint32_t mid, uint32_t did, void* mbr) const;
+
+  /**
+   * Retrieves the MBR of the fragment with the given index on the given
+   * dimension name.
+   */
+  Status get_mbr(
+      uint32_t fid, uint32_t mid, const char* dim_name, void* mbr) const;
+
+  /**
+   * Retrieves the sizes of the start and end values of the MBR of the fragment
+   * with the given index on the given dimension index. Applicable only to
+   * var-sized dimensions.
+   */
+  Status get_mbr_var_size(
+      uint32_t fid,
+      uint32_t mid,
+      uint32_t did,
+      uint64_t* start_size,
+      uint64_t* end_size) const;
+
+  /**
+   * Retrieves the sizes of the start and end values of the MBR of the fragment
+   * with the given index on the given dimension name. Applicable only to
+   * var-sized dimensions.
+   */
+  Status get_mbr_var_size(
+      uint32_t fid,
+      uint32_t mid,
+      const char* dim_name,
+      uint64_t* start_size,
+      uint64_t* end_size) const;
+
+  /**
+   * Retrieves the MBR of the fragment with the given index on the given
+   * dimension index. Applicable to var-sized dimensions.
+   */
+  Status get_mbr_var(
+      uint32_t fid, uint32_t mid, uint32_t did, void* start, void* end) const;
+
+  /**
+   * Retrieves the MBR of the fragment with the given index on the given
+   * dimension name. Applicable to var-sized dimensions.
+   */
+  Status get_mbr_var(
+      uint32_t fid,
+      uint32_t mid,
+      const char* dim_name,
+      void* start,
+      void* end) const;
+
   /** Retrieves the version of the fragment with the given index. */
   Status get_version(uint32_t fid, uint32_t* version) const;
 
@@ -211,6 +269,9 @@ class FragmentInfo {
 
   /** The URI of the array the fragments belong to. */
   URI array_uri_;
+
+  /** The pointer to the opened array that the fragments belong to. */
+  Array* array_;
 
   /** Information about fragments in the array. */
   std::vector<SingleFragmentInfo> fragments_;
