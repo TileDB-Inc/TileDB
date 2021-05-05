@@ -386,7 +386,7 @@ Status StorageManager::array_load_fragments(
     const URI& array_uri,
     const EncryptionKey& enc_key,
     std::vector<FragmentMetadata*>* fragment_metadata,
-    const FragmentInfo& fragment_info) {
+    const std::vector<TimestampedURI>& fragments_to_load) {
   STATS_START_TIMER(stats::GlobalStats::TimerType::READ_ARRAY_OPEN)
 
   auto open_array = (OpenArray*)nullptr;
@@ -407,12 +407,6 @@ Status StorageManager::array_load_fragments(
     // Lock the array
     open_array->mtx_lock();
   }
-
-  // Determine which fragments to load
-  std::vector<TimestampedURI> fragments_to_load;
-  const auto& fragments = fragment_info.fragments();
-  for (const auto& fragment : fragments)
-    fragments_to_load.emplace_back(fragment.uri(), fragment.timestamp_range());
 
   std::unordered_map<std::string, uint64_t> offsets;
 
