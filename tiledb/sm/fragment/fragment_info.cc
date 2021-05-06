@@ -57,10 +57,6 @@ FragmentInfo::FragmentInfo(
 }
 
 FragmentInfo::~FragmentInfo() {
-  // if (array_) {
-  //   array_->close();
-  //   tdb_delete(array_);
-  // }
 }
 
 FragmentInfo::FragmentInfo(const FragmentInfo& fragment_info)
@@ -422,8 +418,13 @@ Status FragmentInfo::get_mbr_num(uint32_t fid, uint64_t* mbr_num) const {
         "Cannot get fragment URI; Invalid fragment index"));
 
   auto meta = fragments_[fid].meta();
+
+  if (!fragments_[fid].sparse()) {
+    *mbr_num = 0;
+    return Status::Ok();
+  }
+
   auto key = fragments_[fid].encryption_key();
-  // std::cout << meta->array_uri().c_str() << std::endl;
   RETURN_NOT_OK(meta->load_rtree(*key));
   *mbr_num = meta->mbrs().size();
 
@@ -440,7 +441,12 @@ Status FragmentInfo::get_mbr(
     return LOG_STATUS(
         Status::FragmentInfoError("Cannot get MBR; Invalid fragment index"));
 
+  if (!fragments_[fid].sparse())
+    return LOG_STATUS(
+        Status::FragmentInfoError("Cannot get MBR; Fragment is not sparse"));
+
   auto meta = fragments_[fid].meta();
+
   auto key = fragments_[fid].encryption_key();
   RETURN_NOT_OK(meta->load_rtree(*key));
   const auto& mbrs = meta->mbrs();
@@ -512,6 +518,10 @@ Status FragmentInfo::get_mbr_var_size(
     return LOG_STATUS(Status::FragmentInfoError(
         "Cannot get MBR var size; Invalid fragment index"));
 
+  if (!fragments_[fid].sparse())
+    return LOG_STATUS(
+        Status::FragmentInfoError("Cannot get MBR; Fragment is not sparse"));
+
   auto meta = fragments_[fid].meta();
   auto key = fragments_[fid].encryption_key();
   RETURN_NOT_OK(meta->load_rtree(*key));
@@ -581,6 +591,10 @@ Status FragmentInfo::get_mbr_var(
   if (fid >= fragments_.size())
     return LOG_STATUS(Status::FragmentInfoError(
         "Cannot get non-empty domain var; Invalid fragment index"));
+
+  if (!fragments_[fid].sparse())
+    return LOG_STATUS(
+        Status::FragmentInfoError("Cannot get MBR; Fragment is not sparse"));
 
   auto meta = fragments_[fid].meta();
   auto key = fragments_[fid].encryption_key();

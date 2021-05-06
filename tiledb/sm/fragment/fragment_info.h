@@ -271,7 +271,7 @@ class FragmentInfo {
   URI array_uri_;
 
   /** The pointer to the opened array that the fragments belong to. */
-  Array* array_;
+  tdb_shared_ptr<Array> array_;
 
   /** Information about fragments in the array. */
   std::vector<SingleFragmentInfo> fragments_;
