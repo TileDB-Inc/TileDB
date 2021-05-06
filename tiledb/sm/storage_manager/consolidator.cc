@@ -214,7 +214,8 @@ Status Consolidator::consolidate_fragments(
   }
 
   uint32_t step = 0;
-  FragmentInfo to_consolidate;
+  std::vector<TimestampedURI> to_consolidate;
+  bool all_sparse;
   do {
     // No need to consolidate if no more than 1 fragment exist
     if (fragment_info.fragment_num() <= 1)
@@ -226,6 +227,7 @@ Status Consolidator::consolidate_fragments(
         array_for_reads.array_schema(),
         fragment_info,
         &to_consolidate,
+        &all_sparse,
         &union_non_empty_domains);
     if (!st.ok()) {
       array_for_reads.close();
@@ -234,7 +236,7 @@ Status Consolidator::consolidate_fragments(
     }
 
     // Check if there is anything to consolidate
-    if (to_consolidate.fragment_num() <= 1)
+    if (to_consolidate.size() <= 1)
       break;
 
     // Consolidate the selected fragments
@@ -243,6 +245,7 @@ Status Consolidator::consolidate_fragments(
         array_for_reads,
         array_for_writes,
         to_consolidate,
+        all_sparse,
         union_non_empty_domains,
         &new_fragment_uri);
     if (!st.ok()) {
@@ -328,7 +331,8 @@ bool Consolidator::are_consolidatable(
 Status Consolidator::consolidate(
     Array& array_for_reads,
     Array& array_for_writes,
-    const FragmentInfo& to_consolidate,
+    const std::vector<TimestampedURI>& to_consolidate,
+    bool all_sparse,
     const NDRange& union_non_empty_domains,
     URI* new_fragment_uri) {
   STATS_START_TIMER(stats::GlobalStats::TimerType::CONSOLIDATE_MAIN)
@@ -341,11 +345,6 @@ Status Consolidator::consolidate(
 
   // Get schema
   auto array_schema = array_for_reads.array_schema();
-
-  // Compute if all fragments to consolidate are sparse
-  assert(to_consolidate.fragment_num() > 0);
-  bool all_sparse =
-      this->all_sparse(to_consolidate, 0, to_consolidate.fragment_num() - 1);
 
   // Prepare buffers
   std::vector<ByteVec> buffers;
@@ -649,11 +648,13 @@ Status Consolidator::create_queries(
 Status Consolidator::compute_next_to_consolidate(
     const ArraySchema* array_schema,
     const FragmentInfo& fragment_info,
-    FragmentInfo* to_consolidate,
+    std::vector<TimestampedURI>* to_consolidate,
+    bool* all_sparse,
     NDRange* union_non_empty_domains) const {
   STATS_START_TIMER(stats::GlobalStats::TimerType::CONSOLIDATE_COMPUTE_NEXT)
 
   // Preparation
+  *all_sparse = true;
   const auto& fragments = fragment_info.fragments();
   auto domain = array_schema->domain();
   to_consolidate->clear();
@@ -751,8 +752,11 @@ Status Consolidator::compute_next_to_consolidate(
       continue;
 
     // Results found
-    for (size_t f = min_col; f <= min_col + i; ++f)
-      to_consolidate->append(fragments[f]);
+    for (size_t f = min_col; f <= min_col + i; ++f) {
+      to_consolidate->emplace_back(
+          fragments[f].uri(), fragments[f].timestamp_range());
+      *all_sparse &= fragments[f].sparse();
+    }
     *union_non_empty_domains = m_union[i][min_col];
     break;
   }
@@ -859,19 +863,18 @@ Status Consolidator::set_query_buffers(
 }
 
 void Consolidator::update_fragment_info(
-    const FragmentInfo& to_consolidate,
+    const std::vector<TimestampedURI>& to_consolidate,
     const SingleFragmentInfo& new_fragment_info,
     FragmentInfo* fragment_info) const {
-  auto to_consolidate_it = to_consolidate.fragments().begin();
+  auto to_consolidate_it = to_consolidate.begin();
   auto fragment_it = fragment_info->fragments().begin();
   FragmentInfo updated_fragment_info;
   bool new_fragment_added = false;
 
   while (fragment_it != fragment_info->fragments().end()) {
     // No match - add the fragment info and advance `fragment_it`
-    if (to_consolidate_it == to_consolidate.fragments().end() ||
-        fragment_it->uri().to_string() !=
-            to_consolidate_it->uri().to_string()) {
+    if (to_consolidate_it == to_consolidate.end() ||
+        fragment_it->uri().to_string() != to_consolidate_it->uri_.to_string()) {
       updated_fragment_info.append(*fragment_it);
       ++fragment_it;
     } else {  // Match - add new fragment only once and advance both iterators
@@ -886,7 +889,7 @@ void Consolidator::update_fragment_info(
 
   assert(
       updated_fragment_info.fragment_num() ==
-      fragment_info->fragment_num() - to_consolidate.fragment_num() + 1);
+      fragment_info->fragment_num() - to_consolidate.size() + 1);
 
   *fragment_info = std::move(updated_fragment_info);
 }
@@ -951,13 +954,13 @@ Status Consolidator::set_config(const Config* config) {
 }
 
 Status Consolidator::write_vacuum_file(
-    const URI& new_uri, const FragmentInfo& to_consolidate) const {
+    const URI& new_uri,
+    const std::vector<TimestampedURI>& to_consolidate) const {
   URI vac_uri = URI(new_uri.to_string() + constants::vacuum_file_suffix);
 
   std::stringstream ss;
-  const auto& fragments = to_consolidate.fragments();
-  for (const auto& uri : fragments)
-    ss << uri.uri().to_string() << "\n";
+  for (const auto& timestampedURI : to_consolidate)
+    ss << timestampedURI.uri_.to_string() << "\n";
 
   auto data = ss.str();
   RETURN_NOT_OK(

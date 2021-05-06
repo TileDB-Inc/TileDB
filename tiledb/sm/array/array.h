@@ -117,10 +117,10 @@ class Array {
   /**
    * Reload the array with the specified fragments.
    *
-   * @param fragment_info The list of fragments to load.
+   * @param fragments_to_load The list of fragments to load.
    * @return Status
    */
-  Status load_fragments(const FragmentInfo& fragment_info);
+  Status load_fragments(const std::vector<TimestampedURI>& fragments_to_load);
 
   /**
    * Opens the array for reading.
