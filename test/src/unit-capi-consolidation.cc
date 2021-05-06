@@ -80,7 +80,11 @@ struct ConsolidationFx {
   void write_dense_vector_del_3();
   void write_dense_array_metadata();
   void write_dense_full();
-  void write_dense_subarray();
+  void write_dense_subarray(
+      uint64_t min1 = 3,
+      uint64_t max1 = 4,
+      uint64_t min2 = 3,
+      uint64_t max2 = 4);
   void write_dense_unordered();
   void write_sparse_full();
   void write_sparse_unordered();
@@ -1659,7 +1663,8 @@ void ConsolidationFx::write_dense_full() {
   tiledb_query_free(&query);
 }
 
-void ConsolidationFx::write_dense_subarray() {
+void ConsolidationFx::write_dense_subarray(
+    uint64_t min1, uint64_t max1, uint64_t min2, uint64_t max2) {
   // Prepare cell buffers
   int buffer_a1[] = {112, 113, 114, 115};
   uint64_t buffer_a2[] = {0, 1, 3, 6};
@@ -1693,7 +1698,7 @@ void ConsolidationFx::write_dense_subarray() {
   // Create query
   tiledb_query_t* query;
   const char* attributes[] = {"a1", "a2", "a3"};
-  uint64_t subarray[] = {3, 4, 3, 4};
+  uint64_t subarray[] = {min1, max1, min2, max2};
   rc = tiledb_query_alloc(ctx_, array, TILEDB_WRITE, &query);
   CHECK(rc == TILEDB_OK);
   rc = tiledb_query_set_layout(ctx_, query, TILEDB_GLOBAL_ORDER);
@@ -5283,11 +5288,13 @@ TEST_CASE_METHOD(
   remove_dense_vector();
 }
 
-// Test previous fragments overlap
+// Test previous fragments overlap, first two fragments will not consolidate due
+// to step ratio and last two because of overlapping non empty domains with
+// first fragment
 TEST_CASE_METHOD(
     ConsolidationFx,
-    "C API: Test advanced consolidation, consolidatable #1",
-    "[capi][consolidation][adv][consolidatable-1]") {
+    "C API: Test advanced consolidation, non-consolidatable",
+    "[capi][consolidation][adv][non-consolidatable]") {
   remove_dense_vector();
   create_dense_vector();
   write_dense_vector_consolidatable_1();
@@ -5339,8 +5346,8 @@ TEST_CASE_METHOD(
 // Test amplification
 TEST_CASE_METHOD(
     ConsolidationFx,
-    "C API: Test advanced consolidation, consolidatable #2",
-    "[capi][consolidation][adv][consolidatable-2]") {
+    "C API: Test advanced consolidation, consolidatable",
+    "[capi][consolidation][adv][consolidatable]") {
   remove_dense_vector();
   create_dense_vector();
   write_dense_vector_consolidatable_2();
@@ -5847,13 +5854,23 @@ TEST_CASE_METHOD(
   SECTION("- consolidate fragments with timestamps") {
     write_dense_subarray();
     auto start = tiledb::sm::utils::time::timestamp_now_ms();
-    write_dense_unordered();
-    write_dense_full();
+    write_dense_subarray(1, 2, 1, 2);
+    write_dense_subarray(1, 2, 1, 2);
     auto end = tiledb::sm::utils::time::timestamp_now_ms();
     consolidate_dense("fragments", start, end);
-    read_dense_subarray_unordered_full();
 
     CHECK(get_num_fragments_to_vacuum_dense() == 2);
+  }
+
+  SECTION("- consolidate fragments with timestamps, overlapping start") {
+    write_dense_subarray();
+    auto start = tiledb::sm::utils::time::timestamp_now_ms();
+    write_dense_subarray();
+    write_dense_subarray();
+    auto end = tiledb::sm::utils::time::timestamp_now_ms();
+    consolidate_dense("fragments", start, end);
+
+    CHECK(get_num_fragments_to_vacuum_dense() == 0);
   }
 
   SECTION("- consolidate array metadata with timestamps") {
@@ -5910,14 +5927,14 @@ TEST_CASE_METHOD(
     write_dense_subarray();
 
     auto start1 = tiledb::sm::utils::time::timestamp_now_ms();
-    write_dense_unordered();
-    write_dense_full();
+    write_dense_subarray(1, 2, 3, 4);
+    write_dense_subarray(1, 2, 3, 4);
     auto end1 = tiledb::sm::utils::time::timestamp_now_ms();
     consolidate_dense("fragments", start1, end1);
 
     auto start2 = tiledb::sm::utils::time::timestamp_now_ms();
-    write_dense_unordered();
-    write_dense_full();
+    write_dense_subarray(1, 2, 1, 2);
+    write_dense_subarray(1, 2, 1, 2);
     auto end2 = tiledb::sm::utils::time::timestamp_now_ms();
 
     consolidate_dense("fragments", start2, end2);
@@ -5925,8 +5942,6 @@ TEST_CASE_METHOD(
 
     vacuum_dense("fragments", start1, end1);
     CHECK(get_num_fragments_to_vacuum_dense() == 2);
-
-    read_dense_subarray_unordered_full();
 
     vacuum_dense("fragments", start2, end2);
     CHECK(get_num_fragments_to_vacuum_dense() == 0);

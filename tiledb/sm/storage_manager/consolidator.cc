@@ -302,6 +302,11 @@ bool Consolidator::are_consolidatable(
   if (all_sparse(fragment_info, start, end))
     return true;
 
+  auto anterior_ndrange = fragment_info.anterior_ndrange();
+  if (anterior_ndrange.size() != 0 &&
+      domain->overlap(union_non_empty_domains, anterior_ndrange))
+    return false;
+
   // Check overlap of union with earlier fragments
   const auto& fragments = fragment_info.fragments();
   for (size_t i = 0; i < start; ++i) {
