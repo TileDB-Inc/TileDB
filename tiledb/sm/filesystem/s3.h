@@ -56,6 +56,7 @@
 #include <aws/core/utils/UUID.h>
 #include <aws/core/utils/memory/stl/AWSStringStream.h>
 #include <aws/core/utils/ratelimiter/DefaultRateLimiter.h>
+#include <aws/core/utils/stream/PreallocatedStreamBuf.h>
 #include <aws/core/utils/threading/Executor.h>
 #include <aws/identity-management/auth/STSAssumeRoleCredentialsProvider.h>
 #include <aws/s3/S3Client.h>
@@ -506,6 +507,32 @@ class S3 {
 
     /** Mutex for thread safety */
     mutable std::mutex mtx;
+  };
+
+  /**
+   * Used to stream results from the GetObject request into
+   * a pre-allocated buffer.
+   */
+  class PreallocatedIOStream : public Aws::IOStream {
+   public:
+    /**
+     * Value constructor. Does not take ownership of the
+     * input buffer.
+     *
+     * @param buffer The pre-allocated underlying buffer.
+     * @param size The maximum size of the underlying buffer.
+     */
+    PreallocatedIOStream(void* const buffer, const size_t size)
+        : Aws::IOStream(new Aws::Utils::Stream::PreallocatedStreamBuf(
+              reinterpret_cast<unsigned char*>(buffer), size)) {
+    }
+
+    /** Destructor. */
+    ~PreallocatedIOStream() {
+      // Delete the unmanaged `Aws::Utils::Stream::PreallocatedStreamBuf`
+      // that was allocated in the constructor.
+      delete rdbuf();
+    }
   };
 
   /* ********************************* */
