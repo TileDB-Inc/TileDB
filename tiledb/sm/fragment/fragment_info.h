@@ -270,9 +270,6 @@ class FragmentInfo {
   /** The URI of the array the fragments belong to. */
   URI array_uri_;
 
-  /** The pointer to the opened array that the fragments belong to. */
-  tdb_shared_ptr<Array> array_;
-
   /** Information about fragments in the array. */
   std::vector<SingleFragmentInfo> fragments_;
 
@@ -284,6 +281,9 @@ class FragmentInfo {
 
   /** The storage manager. */
   StorageManager* storage_manager_;
+
+  /** The pointer to the opened array that the fragments belong to. */
+  Array* array_;
 
   /** The URIs of the fragments to vacuum. */
   std::vector<URI> to_vacuum_;

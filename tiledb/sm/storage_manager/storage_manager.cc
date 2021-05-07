@@ -1480,6 +1480,85 @@ Status StorageManager::get_fragment_info(
   return Status::Ok();
 }
 
+Status StorageManager::get_fragment_info(
+    Array* array,
+    uint64_t timestamp_start,
+    uint64_t timestamp_end,
+    FragmentInfo* fragment_info,
+    bool get_to_vacuum) {
+  fragment_info->clear();
+
+  // Open array for reading
+  RETURN_NOT_OK(array->reopen(timestamp_start, timestamp_end));
+
+  auto array_schema = array->array_schema();
+
+  fragment_info->set_dim_info(
+      array_schema->dim_names(), array_schema->dim_types());
+
+  std::vector<FragmentMetadata*> fragment_metadata = array->fragment_metadata();
+
+  // Return if array is empty
+  if (fragment_metadata.empty())
+    return Status::Ok();
+
+  std::vector<uint64_t> sizes(fragment_metadata.size());
+
+  RETURN_NOT_OK(parallel_for(
+      this->compute_tp_,
+      0,
+      fragment_metadata.size(),
+      [&fragment_metadata, &sizes](uint64_t i) {
+        const auto meta = fragment_metadata[i];
+
+        // Get fragment size
+        uint64_t size;
+        RETURN_NOT_OK(meta->fragment_size(&size));
+        sizes[i] = size;
+
+        return Status::Ok();
+      }));
+
+  for (uint64_t i = 0; i < fragment_metadata.size(); i++) {
+    auto meta = fragment_metadata[i];
+    const auto& uri = meta->fragment_uri();
+    bool sparse = !meta->dense();
+    // Get non-empty domain, and compute expanded non-empty domain
+    // (only for dense fragments)
+    const auto& non_empty_domain = meta->non_empty_domain();
+    auto expanded_non_empty_domain = non_empty_domain;
+    if (!sparse)
+      array_schema->domain()->expand_to_tiles(&expanded_non_empty_domain);
+
+    // Push new fragment info
+    fragment_info->append(SingleFragmentInfo(
+        uri,
+        meta->format_version(),
+        sparse,
+        meta->timestamp_range(),
+        meta->cell_num(),
+        sizes[i],
+        meta->has_consolidated_footer(),
+        non_empty_domain,
+        expanded_non_empty_domain,
+        array->encryption_key(),
+        meta));
+  }
+
+  // Optionally get the URIs to vacuum
+  if (get_to_vacuum) {
+    std::vector<URI> to_vacuum, vac_uris, fragment_uris;
+    URI meta_uri;
+    RETURN_NOT_OK(
+        get_fragment_uris(array->array_uri(), &fragment_uris, &meta_uri));
+    RETURN_NOT_OK(get_uris_to_vacuum(
+        fragment_uris, timestamp_start, timestamp_end, &to_vacuum, &vac_uris));
+    fragment_info->set_to_vacuum(to_vacuum);
+  }
+
+  return Status::Ok();
+}
+
 Status StorageManager::get_fragment_uris(
     const URI& array_uri,
     std::vector<URI>* fragment_uris,
