@@ -1574,6 +1574,12 @@ Status StorageManager::get_array_schema_uris(
 
   const URI schema_uri =
       array_uri.join_path(constants::array_schema_folder_name);
+  bool is_dir=false;
+  RETURN_NOT_OK(vfs_->is_dir(schema_uri,&is_dir));
+  if(!is_dir) {
+    return LOG_STATUS(
+      Status::StorageManagerError("Could not find array schema directory"));
+  }
   RETURN_NOT_OK(vfs_->ls(schema_uri, uris));
   // Sort schema URIs
   std::sort(uris->begin(), uris->end());
