@@ -1,3 +1,9 @@
+# TileDB v2.2.9 Release Notes
+
+## Bug fixes
+* Fix rare read corruption in S3 [#2254](https://github.com/TileDB-Inc/TileDB/pull/2254)
+* Write fix for unordered writes on nullable, fixed attributes [#2241](https://github.com/TileDB-Inc/TileDB/pull/2241)
+
 # TileDB v2.2.8 Release Notes
 
 ## Disk Format
