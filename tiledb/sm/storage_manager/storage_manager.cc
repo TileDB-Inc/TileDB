@@ -751,7 +751,7 @@ Status StorageManager::array_create(
   // Create array directory
   RETURN_NOT_OK(vfs_->create_dir(array_uri));
 
-  // Create array schema
+  // Create array schema directory
   URI array_schema_folder_uri =
       array_uri.join_path(constants::array_schema_folder_name);
   RETURN_NOT_OK(vfs_->create_dir(array_schema_folder_uri));
@@ -1586,7 +1586,7 @@ Status StorageManager::get_latest_array_schema_uri(
     const URI& array_uri, URI* uri) const {
   STATS_START_TIMER(stats::GlobalStats::TimerType::READ_GET_LATEST_ARRAY_SCHEMA)
   std::vector<URI> uris;
-  Status status = get_array_metadata_uris(array_uri, &uris);
+  Status status = get_array_schema_uris(array_uri, &uris);
   if (status.ok() && (!uris.empty())) {
     *uri = uris.back();
   } else {
