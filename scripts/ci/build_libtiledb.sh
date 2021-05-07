@@ -23,11 +23,12 @@
 # OUT OF OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE
 # SOFTWARE.
 #
+set -euo pipefail
 
 # Build and test libtiledb
 
 # Set up arguments for bootstrap.sh
-bootstrap_args="${boostrap_args} --enable=verbose";
+bootstrap_args="${bootstrap_args} --enable=verbose";
 
 mkdir -p $GITHUB_WORKSPACE/build
 cd $GITHUB_WORKSPACE/build
