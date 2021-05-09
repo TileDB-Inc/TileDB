@@ -69,16 +69,16 @@ struct CellSlab {
   }
 
   /** Default copy constructor. */
-  CellSlab(const CellSlab& cell_slab) = default;
+  CellSlab(const CellSlab& ) = default;
 
   /** Default move constructor. */
-  CellSlab(CellSlab&& cell_slab) = default;
+  CellSlab(CellSlab&& ) = default;
 
   /** Default copy-assign operator. */
-  CellSlab& operator=(const CellSlab& cell_slab) = default;
+  CellSlab& operator=(const CellSlab& ) = default;
 
   /** Default move-assign operator. */
-  CellSlab& operator=(CellSlab&& cell_slab) = default;
+  CellSlab& operator=(CellSlab&& ) = default;
 
   /** Simple initializer. */
   void init(unsigned int dim_num) {
