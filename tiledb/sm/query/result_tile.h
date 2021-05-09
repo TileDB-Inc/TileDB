@@ -84,20 +84,20 @@ class ResultTile {
   ~ResultTile() = default;
 
   /** Default copy constructor. */
-  ResultTile(const ResultTile& result_tile) = default;
+  ResultTile(const ResultTile& ) = default;
 
   /** Default move constructor. */
-  ResultTile(ResultTile&& result_tile) = default;
+  ResultTile(ResultTile&& ) = default;
 
   /* ********************************* */
   /*                API                */
   /* ********************************* */
 
   /** Default copy-assign operator. */
-  ResultTile& operator=(const ResultTile& result_tile) = default;
+  ResultTile& operator=(const ResultTile& ) = default;
 
   /** Default move-assign operator. */
-  ResultTile& operator=(ResultTile&& result_tile) = default;
+  ResultTile& operator=(ResultTile&& ) = default;
 
   /** Equality operator (mainly for debugging purposes). */
   bool operator==(const ResultTile& rt) const;
