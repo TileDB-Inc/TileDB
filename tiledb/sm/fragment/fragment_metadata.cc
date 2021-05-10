@@ -1962,11 +1962,10 @@ Status FragmentMetadata::load_generic_tile_offsets_v7_or_higher(
 Status FragmentMetadata::load_array_schema_name(ConstBuffer* buff) {
   uint64_t size = 0;
   RETURN_NOT_OK(buff->read(&size, sizeof(uint64_t)));
-  char* name = static_cast<char*>(std::malloc(sizeof(char) * size));
-  RETURN_NOT_OK(buff->read(name, size));
+  array_schema_name_.resize(size);
 
-  array_schema_name_ = std::string(name, size);
-  std::free(name);
+  RETURN_NOT_OK(buff->read(&array_schema_name_[0], size));
+
   return Status::Ok();
 }
 
