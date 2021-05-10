@@ -208,7 +208,7 @@ int StringDimsFx::get_dir_num(const char* path, void* data) {
   auto meta_dir =
       std::string("/") + tiledb::sm::constants::array_metadata_folder_name;
   auto schema_dir =
-      std::string("/") + tiledb::sm::constants::array_schema_folder_name;      
+      std::string("/") + tiledb::sm::constants::array_schema_folder_name;
   if (!tiledb::sm::utils::parse::ends_with(path, meta_dir) &&
       !tiledb::sm::utils::parse::ends_with(path, schema_dir)) {
     // Ignoring the meta folder and the schema folder
