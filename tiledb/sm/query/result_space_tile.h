@@ -62,17 +62,16 @@ class ResultSpaceTile {
   ~ResultSpaceTile() = default;
 
   /** Default copy constructor. */
-  ResultSpaceTile(const ResultSpaceTile& ) = default;
+  ResultSpaceTile(const ResultSpaceTile&) = default;
 
   /** Default move constructor. */
-  ResultSpaceTile(ResultSpaceTile&& ) = default;
+  ResultSpaceTile(ResultSpaceTile&&) = default;
 
   /** Default copy-assign operator. */
-  ResultSpaceTile& operator=(const ResultSpaceTile& ) =
-      default;
+  ResultSpaceTile& operator=(const ResultSpaceTile&) = default;
 
   /** Default move-assign operator. */
-  ResultSpaceTile& operator=(ResultSpaceTile&& ) = default;
+  ResultSpaceTile& operator=(ResultSpaceTile&&) = default;
 
   /** Returns the fragment domains. */
   const std::vector<std::pair<unsigned, NDRange>>& frag_domains() const {

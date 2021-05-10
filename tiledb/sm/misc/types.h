@@ -76,19 +76,19 @@ class Range {
   }
 
   /** Copy constructor. */
-  Range(const Range& ) = default;
+  Range(const Range&) = default;
 
   /** Move constructor. */
-  Range(Range&& ) = default;
+  Range(Range&&) = default;
 
   /** Destructor. */
   ~Range() = default;
 
   /** Copy-assign operator.*/
-  Range& operator=(const Range& ) = default;
+  Range& operator=(const Range&) = default;
 
   /** Move-assign operator. */
-  Range& operator=(Range&& ) = default;
+  Range& operator=(Range&&) = default;
 
   /** Sets a fixed-sized range serialized in `r`. */
   void set_range(const void* r, uint64_t r_size) {
