@@ -50,15 +50,6 @@ namespace sm {
 QueryCondition::QueryCondition() {
 }
 
-QueryCondition::QueryCondition(
-    std::string&& field_name,
-    const void* const condition_value,
-    const uint64_t condition_value_size,
-    const QueryConditionOp op) {
-  clauses_.emplace_back(
-      std::move(field_name), condition_value, condition_value_size, op);
-}
-
 QueryCondition::QueryCondition(const QueryCondition& rhs)
     : clauses_(rhs.clauses_)
     , combination_ops_(rhs.combination_ops_) {
@@ -84,6 +75,21 @@ QueryCondition& QueryCondition::operator=(QueryCondition&& rhs) {
   combination_ops_ = std::move(rhs.combination_ops_);
 
   return *this;
+}
+
+Status QueryCondition::init(
+    std::string&& field_name,
+    const void* const condition_value,
+    const uint64_t condition_value_size,
+    const QueryConditionOp op) {
+  if (!clauses_.empty()) {
+    return Status::QueryConditionError("Cannot reinitialize query condition");
+  }
+
+  clauses_.emplace_back(
+      std::move(field_name), condition_value, condition_value_size, op);
+
+  return Status::Ok();
 }
 
 Status QueryCondition::check(const ArraySchema* const array_schema) const {

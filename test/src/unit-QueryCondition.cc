@@ -56,14 +56,18 @@ TEST_CASE(
   REQUIRE(query_condition.apply(&array_schema, &result_cell_slabs, 1).ok());
 }
 
-TEST_CASE(
-    "QueryCondition: Test value constructor",
-    "[QueryCondition][value_constructor]") {
+TEST_CASE("QueryCondition: Test init", "[QueryCondition][value_constructor]") {
   std::string field_name = "foo";
   int value = 5;
 
-  QueryCondition query_condition(
-      std::string(field_name), &value, sizeof(value), QueryConditionOp::LT);
+  QueryCondition query_condition;
+  REQUIRE(query_condition
+              .init(
+                  std::string(field_name),
+                  &value,
+                  sizeof(value),
+                  QueryConditionOp::LT)
+              .ok());
   REQUIRE(!query_condition.empty());
   REQUIRE(!query_condition.field_names().empty());
   REQUIRE(query_condition.field_names().count(field_name) == 1);
@@ -75,8 +79,14 @@ TEST_CASE(
   std::string field_name = "foo";
   int value = 5;
 
-  QueryCondition query_condition1(
-      std::string(field_name), &value, sizeof(value), QueryConditionOp::LT);
+  QueryCondition query_condition1;
+  REQUIRE(query_condition1
+              .init(
+                  std::string(field_name),
+                  &value,
+                  sizeof(value),
+                  QueryConditionOp::LT)
+              .ok());
   QueryCondition query_condition2(query_condition1);
   REQUIRE(!query_condition2.empty());
   REQUIRE(!query_condition2.field_names().empty());
@@ -89,8 +99,14 @@ TEST_CASE(
   std::string field_name = "foo";
   int value = 5;
 
-  QueryCondition query_condition1(
-      std::string(field_name), &value, sizeof(value), QueryConditionOp::LT);
+  QueryCondition query_condition1;
+  REQUIRE(query_condition1
+              .init(
+                  std::string(field_name),
+                  &value,
+                  sizeof(value),
+                  QueryConditionOp::LT)
+              .ok());
   QueryCondition query_condition2(std::move(query_condition1));
   REQUIRE(!query_condition2.empty());
   REQUIRE(!query_condition2.field_names().empty());
@@ -103,8 +119,14 @@ TEST_CASE(
   std::string field_name = "foo";
   int value = 5;
 
-  QueryCondition query_condition1(
-      std::string(field_name), &value, sizeof(value), QueryConditionOp::LT);
+  QueryCondition query_condition1;
+  REQUIRE(query_condition1
+              .init(
+                  std::string(field_name),
+                  &value,
+                  sizeof(value),
+                  QueryConditionOp::LT)
+              .ok());
   QueryCondition query_condition2;
   query_condition2 = query_condition1;
   REQUIRE(!query_condition2.empty());
@@ -118,8 +140,14 @@ TEST_CASE(
   std::string field_name = "foo";
   int value = 5;
 
-  QueryCondition query_condition1(
-      std::string(field_name), &value, sizeof(value), QueryConditionOp::LT);
+  QueryCondition query_condition1;
+  REQUIRE(query_condition1
+              .init(
+                  std::string(field_name),
+                  &value,
+                  sizeof(value),
+                  QueryConditionOp::LT)
+              .ok());
   QueryCondition query_condition2;
   query_condition2 = std::move(query_condition1);
   REQUIRE(!query_condition2.empty());
@@ -157,8 +185,10 @@ void test_apply_cells<char*>(
     ResultTile* const result_tile,
     void* values) {
   const char* const cmp_value = "ae";
-  const QueryCondition query_condition(
-      std::string(field_name), cmp_value, 2 * sizeof(char), op);
+  QueryCondition query_condition;
+  REQUIRE(query_condition
+              .init(std::string(field_name), cmp_value, 2 * sizeof(char), op)
+              .ok());
 
   // Build expected indexes of cells that meet the query condition
   // criteria.
@@ -296,8 +326,10 @@ void test_apply_cells(
     ResultTile* const result_tile,
     void* values) {
   const T cmp_value = 5;
-  const QueryCondition query_condition(
-      std::string(field_name), &cmp_value, sizeof(T), op);
+  QueryCondition query_condition;
+  REQUIRE(
+      query_condition.init(std::string(field_name), &cmp_value, sizeof(T), op)
+          .ok());
 
   // Build expected indexes of cells that meet the query condition
   // criteria.
@@ -688,17 +720,23 @@ TEST_CASE(
 
   // Build a combined query for `> 3 AND <= 6`.
   uint64_t cmp_value_1 = 3;
-  const QueryCondition query_condition_1(
-      std::string(field_name),
-      &cmp_value_1,
-      sizeof(uint64_t),
-      QueryConditionOp::GT);
+  QueryCondition query_condition_1;
+  REQUIRE(query_condition_1
+              .init(
+                  std::string(field_name),
+                  &cmp_value_1,
+                  sizeof(uint64_t),
+                  QueryConditionOp::GT)
+              .ok());
   uint64_t cmp_value_2 = 6;
-  const QueryCondition query_condition_2(
-      std::string(field_name),
-      &cmp_value_2,
-      sizeof(uint64_t),
-      QueryConditionOp::LE);
+  QueryCondition query_condition_2;
+  REQUIRE(query_condition_2
+              .init(
+                  std::string(field_name),
+                  &cmp_value_2,
+                  sizeof(uint64_t),
+                  QueryConditionOp::LE)
+              .ok());
   QueryCondition query_condition_3;
   REQUIRE(query_condition_1
               .combine(

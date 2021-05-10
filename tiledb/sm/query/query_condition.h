@@ -117,21 +117,6 @@ class QueryCondition {
   /** Default constructor. */
   QueryCondition();
 
-  /**
-   * Value constructor.
-   *
-   * @param field_name The name of the field this operation applies to.
-   * @param condition_value The value to compare to.
-   * @param condition_value_size The byte size of condition_value.
-   * @param op The relational operation between the value of the field
-   *     and `condition_value`.
-   */
-  QueryCondition(
-      std::string&& field_name,
-      const void* condition_value,
-      uint64_t condition_value_size,
-      QueryConditionOp op);
-
   /** Copy constructor. */
   QueryCondition(const QueryCondition& rhs);
 
@@ -154,6 +139,21 @@ class QueryCondition {
   /* ********************************* */
   /*                API                */
   /* ********************************* */
+
+  /**
+   * Initializes the instance.
+   *
+   * @param field_name The name of the field this operation applies to.
+   * @param condition_value The value to compare to.
+   * @param condition_value_size The byte size of condition_value.
+   * @param op The relational operation between the value of the field
+   *     and `condition_value`.
+   */
+  Status init(
+      std::string&& field_name,
+      const void* condition_value,
+      uint64_t condition_value_size,
+      QueryConditionOp op);
 
   /**
    * Verifies that the current state contains supported comparison
