@@ -513,8 +513,8 @@ TEST_CASE_METHOD(
     query.set_buffer("a3", a3_offsets, a3_data);
 
     uint32_t cmp_value = 5;
-    QueryCondition condition(
-        ctx, "a1", &cmp_value, sizeof(uint32_t), TILEDB_LT);
+    QueryCondition condition(ctx);
+    condition.init("a1", &cmp_value, sizeof(uint32_t), TILEDB_LT);
     query.set_condition(condition);
 
     // Serialize into a copy (client side).

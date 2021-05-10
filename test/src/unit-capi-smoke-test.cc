@@ -651,13 +651,15 @@ void SmokeTestFx::read(
   tiledb_query_condition_t* combined_query_condition = nullptr;
   for (size_t i = 0; i < test_query_conditions.size(); ++i) {
     tiledb_query_condition_t* query_condition;
-    rc = tiledb_query_condition_alloc(
+    rc = tiledb_query_condition_alloc(ctx_, &query_condition);
+    REQUIRE(rc == TILEDB_OK);
+    rc = tiledb_query_condition_init(
         ctx_,
+        query_condition,
         test_query_conditions[i]->name_.c_str(),
         test_query_conditions[i]->value(),
         test_query_conditions[i]->value_size(),
-        test_query_conditions[i]->op_,
-        &query_condition);
+        test_query_conditions[i]->op_);
     REQUIRE(rc == TILEDB_OK);
 
     if (i == 0) {
