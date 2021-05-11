@@ -1577,8 +1577,10 @@ Status StorageManager::get_array_schema_uris(
   bool is_dir = false;
   RETURN_NOT_OK(vfs_->is_dir(schema_uri, &is_dir));
   if (!is_dir) {
-    return LOG_STATUS(
-        Status::StorageManagerError("Could not find array schema directory"));
+    // If it is not a directory, the array schema could be stored in the
+    // previous format
+    uris->clear();
+    return Status::Ok();
   }
   RETURN_NOT_OK(vfs_->ls(schema_uri, uris));
   // Sort schema URIs
