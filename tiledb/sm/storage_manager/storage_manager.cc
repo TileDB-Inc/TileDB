@@ -41,6 +41,7 @@
 #include "tiledb/sm/array/array.h"
 #include "tiledb/sm/array_schema/array_schema.h"
 #include "tiledb/sm/cache/buffer_lru_cache.h"
+#include "tiledb/sm/enums/array_type.h"
 #include "tiledb/sm/enums/layout.h"
 #include "tiledb/sm/enums/object_type.h"
 #include "tiledb/sm/enums/query_type.h"
@@ -386,7 +387,7 @@ Status StorageManager::array_load_fragments(
     const URI& array_uri,
     const EncryptionKey& enc_key,
     std::vector<FragmentMetadata*>* fragment_metadata,
-    const FragmentInfo& fragment_info) {
+    const std::vector<TimestampedURI>& fragments_to_load) {
   STATS_START_TIMER(stats::GlobalStats::TimerType::READ_ARRAY_OPEN)
 
   auto open_array = (OpenArray*)nullptr;
@@ -407,12 +408,6 @@ Status StorageManager::array_load_fragments(
     // Lock the array
     open_array->mtx_lock();
   }
-
-  // Determine which fragments to load
-  std::vector<TimestampedURI> fragments_to_load;
-  const auto& fragments = fragment_info.fragments();
-  for (const auto& fragment : fragments)
-    fragments_to_load.emplace_back(fragment.uri(), fragment.timestamp_range());
 
   std::unordered_map<std::string, uint64_t> offsets;
 
@@ -1225,6 +1220,7 @@ Status StorageManager::get_fragment_info(
 
   // Open array for reading
   auto array_schema = array.array_schema();
+  auto array_type = array_schema->array_type();
 
   fragment_info->set_dim_info(
       array_schema->dim_names(), array_schema->dim_types());
@@ -1235,7 +1231,7 @@ Status StorageManager::get_fragment_info(
       *array.encryption_key(),
       &array_schema,
       &fragment_metadata,
-      timestamp_start,
+      array_type == ArrayType::SPARSE ? timestamp_start : 0,
       timestamp_end));
 
   // Return if array is empty
@@ -1261,26 +1257,32 @@ Status StorageManager::get_fragment_info(
 
   for (uint64_t i = 0; i < fragment_metadata.size(); i++) {
     const auto meta = fragment_metadata[i];
-    const auto& uri = meta->fragment_uri();
-    bool sparse = !meta->dense();
-    // Get non-empty domain, and compute expanded non-empty domain
-    // (only for dense fragments)
     const auto& non_empty_domain = meta->non_empty_domain();
-    auto expanded_non_empty_domain = non_empty_domain;
-    if (!sparse)
-      array_schema->domain()->expand_to_tiles(&expanded_non_empty_domain);
 
-    // Push new fragment info
-    fragment_info->append(SingleFragmentInfo(
-        uri,
-        meta->format_version(),
-        sparse,
-        meta->timestamp_range(),
-        meta->cell_num(),
-        sizes[i],
-        meta->has_consolidated_footer(),
-        non_empty_domain,
-        expanded_non_empty_domain));
+    if (meta->timestamp_range().first < timestamp_start) {
+      fragment_info->expand_anterior_ndrange(
+          array_schema->domain(), non_empty_domain);
+    } else {
+      const auto& uri = meta->fragment_uri();
+      bool sparse = !meta->dense();
+
+      // compute expanded non-empty domain (only for dense fragments)
+      auto expanded_non_empty_domain = non_empty_domain;
+      if (!sparse)
+        array_schema->domain()->expand_to_tiles(&expanded_non_empty_domain);
+
+      // Push new fragment info
+      fragment_info->append(SingleFragmentInfo(
+          uri,
+          meta->format_version(),
+          sparse,
+          meta->timestamp_range(),
+          meta->cell_num(),
+          sizes[i],
+          meta->has_consolidated_footer(),
+          non_empty_domain,
+          expanded_non_empty_domain));
+    }
   }
 
   // Optionally get the URIs to vacuum
@@ -2357,7 +2359,7 @@ Status StorageManager::get_sorted_uris(
   // Get the URIs that must be ignored
   std::vector<URI> vac_uris, to_ignore;
   RETURN_NOT_OK(get_uris_to_vacuum(
-      uris, timestamp_start, timestamp_end, &to_ignore, &vac_uris));
+      uris, timestamp_start, timestamp_end, &to_ignore, &vac_uris, false));
   std::set<URI> to_ignore_set;
   for (const auto& uri : to_ignore)
     to_ignore_set.emplace(uri);
@@ -2394,37 +2396,61 @@ Status StorageManager::get_uris_to_vacuum(
     uint64_t timestamp_start,
     uint64_t timestamp_end,
     std::vector<URI>* to_vacuum,
-    std::vector<URI>* vac_uris) const {
+    std::vector<URI>* vac_uris,
+    bool allow_partial) const {
   // Get vacuum URIs
+  std::vector<URI> vac_files;
+  std::unordered_set<std::string> non_vac_uris_set;
   std::unordered_map<std::string, size_t> uris_map;
   for (size_t i = 0; i < uris.size(); ++i) {
     std::pair<uint64_t, uint64_t> timestamp_range;
     RETURN_NOT_OK(utils::parse::get_timestamp_range(uris[i], &timestamp_range));
-    if (timestamp_range.first < timestamp_start ||
-        timestamp_range.second > timestamp_end)
-      continue;
 
-    if (this->is_vacuum_file(uris[i]))
-      vac_uris->emplace_back(uris[i]);
-    else
-      uris_map[uris[i].to_string()] = i;
+    if (this->is_vacuum_file(uris[i])) {
+      if (allow_partial) {
+        if (timestamp_range.first <= timestamp_end &&
+            timestamp_range.second >= timestamp_start)
+          vac_files.emplace_back(uris[i]);
+      } else {
+        if (timestamp_range.first >= timestamp_start &&
+            timestamp_range.second <= timestamp_end)
+          vac_files.emplace_back(uris[i]);
+      }
+    } else {
+      if (timestamp_range.first < timestamp_start ||
+          timestamp_range.second > timestamp_end) {
+        non_vac_uris_set.emplace(uris[i].to_string());
+      } else {
+        uris_map[uris[i].to_string()] = i;
+      }
+    }
   }
 
   // Compute fragment URIs to vacuum as a bitmap vector
+  // Also determine which vac files to vacuum
   std::vector<int32_t> to_vacuum_vec(uris.size(), 0);
+  std::vector<int32_t> to_vacuum_vac_files_vec(vac_files.size(), 0);
   auto status =
-      parallel_for(compute_tp_, 0, vac_uris->size(), [&, this](size_t i) {
+      parallel_for(compute_tp_, 0, vac_files.size(), [&, this](size_t i) {
         uint64_t size = 0;
-        RETURN_NOT_OK(vfs_->file_size((*vac_uris)[i], &size));
+        RETURN_NOT_OK(vfs_->file_size(vac_files[i], &size));
         std::string names;
         names.resize(size);
-        RETURN_NOT_OK(vfs_->read((*vac_uris)[i], 0, &names[0], size));
+        RETURN_NOT_OK(vfs_->read(vac_files[i], 0, &names[0], size));
         std::stringstream ss(names);
+        bool vacuum_vac_file = true;
         for (std::string uri_str; std::getline(ss, uri_str);) {
           auto it = uris_map.find(uri_str);
           if (it != uris_map.end())
             to_vacuum_vec[it->second] = 1;
+
+          if (vacuum_vac_file &&
+              non_vac_uris_set.find(uri_str) != non_vac_uris_set.end()) {
+            vacuum_vac_file = false;
+          }
         }
+
+        to_vacuum_vac_files_vec[i] = vacuum_vac_file;
 
         return Status::Ok();
       });
@@ -2435,6 +2461,13 @@ Status StorageManager::get_uris_to_vacuum(
   for (size_t i = 0; i < uris.size(); ++i) {
     if (to_vacuum_vec[i] == 1)
       to_vacuum->emplace_back(uris[i]);
+  }
+
+  // Compute the vac URIs to vacuum
+  vac_uris->clear();
+  for (size_t i = 0; i < vac_files.size(); ++i) {
+    if (to_vacuum_vac_files_vec[i] == 1)
+      vac_uris->emplace_back(vac_files[i]);
   }
 
   return Status::Ok();

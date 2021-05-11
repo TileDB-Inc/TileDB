@@ -762,16 +762,14 @@ Status S3::read(
       ("bytes=" + std::to_string(offset) + "-" +
        std::to_string(offset + length + read_ahead_length - 1))
           .c_str());
-  // Create a unique_ptr so that this will be freed at the end of the function
-  // call This only needs to live long enough for the request itself
-  auto streamBuf = tdb_unique_ptr<boost::interprocess::bufferbuf>(tdb_new(
-      boost::interprocess::bufferbuf,
-      (char*)buffer,
-      length + read_ahead_length));
-  get_object_request.SetResponseStreamFactory([&streamBuf]() {
-    return Aws::New<Aws::IOStream>(
-        constants::s3_allocation_tag.c_str(), streamBuf.get());
-  });
+  get_object_request.SetResponseStreamFactory(
+      [buffer, length, read_ahead_length]() {
+        return Aws::New<PreallocatedIOStream>(
+            constants::s3_allocation_tag.c_str(),
+            buffer,
+            length + read_ahead_length);
+      });
+
   if (request_payer_ != Aws::S3::Model::RequestPayer::NOT_SET)
     get_object_request.SetRequestPayer(request_payer_);
 
@@ -786,7 +784,8 @@ Status S3::read(
       static_cast<uint64_t>(get_object_outcome.GetResult().GetContentLength());
   if (*length_returned < length) {
     return LOG_STATUS(Status::S3Error(
-        std::string("Read operation returned different size of bytes.")));
+        std::string("Read operation returned different size of bytes ") +
+        std::to_string(*length_returned) + " vs " + std::to_string(length)));
   }
 
   return Status::Ok();

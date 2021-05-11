@@ -3398,12 +3398,7 @@ int32_t tiledb_query_get_fragment_timestamp_range(
 /* ****************************** */
 
 int32_t tiledb_query_condition_alloc(
-    tiledb_ctx_t* const ctx,
-    const char* const attribute_name,
-    const void* const condition_value,
-    const uint64_t condition_value_size,
-    const tiledb_query_condition_op_t op,
-    tiledb_query_condition_t** const cond) {
+    tiledb_ctx_t* const ctx, tiledb_query_condition_t** const cond) {
   if (sanity_check(ctx) == TILEDB_ERR) {
     *cond = nullptr;
     return TILEDB_ERR;
@@ -3421,11 +3416,7 @@ int32_t tiledb_query_condition_alloc(
   }
 
   // Create QueryCondition object
-  (*cond)->query_condition_ = new (std::nothrow) tiledb::sm::QueryCondition(
-      std::string(attribute_name),
-      condition_value,
-      condition_value_size,
-      static_cast<tiledb::sm::QueryConditionOp>(op));
+  (*cond)->query_condition_ = new (std::nothrow) tiledb::sm::QueryCondition();
   if ((*cond)->query_condition_ == nullptr) {
     auto st = Status::Error("Failed to allocate TileDB query condition object");
     LOG_STATUS(st);
@@ -3444,6 +3435,34 @@ void tiledb_query_condition_free(tiledb_query_condition_t** cond) {
     delete *cond;
     *cond = nullptr;
   }
+}
+
+int32_t tiledb_query_condition_init(
+    tiledb_ctx_t* const ctx,
+    tiledb_query_condition_t* const cond,
+    const char* const attribute_name,
+    const void* const condition_value,
+    const uint64_t condition_value_size,
+    const tiledb_query_condition_op_t op) {
+  if (sanity_check(ctx) == TILEDB_ERR ||
+      sanity_check(ctx, cond) == TILEDB_ERR) {
+    return TILEDB_ERR;
+  }
+
+  // Initialize the QueryCondition object
+  auto st = cond->query_condition_->init(
+      std::string(attribute_name),
+      condition_value,
+      condition_value_size,
+      static_cast<tiledb::sm::QueryConditionOp>(op));
+  if (!st.ok()) {
+    LOG_STATUS(st);
+    save_error(ctx, st);
+    return TILEDB_ERR;
+  }
+
+  // Success
+  return TILEDB_OK;
 }
 
 int32_t tiledb_query_condition_combine(

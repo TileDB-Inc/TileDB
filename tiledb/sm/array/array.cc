@@ -149,9 +149,13 @@ Status Array::open_without_fragments(
   return Status::Ok();
 }
 
-Status Array::load_fragments(const FragmentInfo& fragment_info) {
+Status Array::load_fragments(
+    const std::vector<TimestampedURI>& fragments_to_load) {
   return storage_manager_->array_load_fragments(
-      array_uri_, *encryption_key_.get(), &fragment_metadata_, fragment_info);
+      array_uri_,
+      *encryption_key_.get(),
+      &fragment_metadata_,
+      fragments_to_load);
 }
 
 Status Array::open(

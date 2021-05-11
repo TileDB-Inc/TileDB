@@ -396,8 +396,13 @@ Status MemFilesystem::ls(
   for (auto& token : tokens) {
     assert(cur_lock.owns_lock());
     assert(cur_lock.mutex() == &cur->mutex_);
-
     dir = dir + token + "/";
+
+    if (cur->children_.count(token) != 1) {
+      return Status::MemFSError(
+          std::string("Unable to list on non-existent path ") + path);
+    }
+
     cur = cur->children_[token].get();
     cur_lock = std::unique_lock<std::mutex>(cur->mutex_);
   }
