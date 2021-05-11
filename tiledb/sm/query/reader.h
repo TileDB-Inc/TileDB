@@ -730,10 +730,12 @@ class Reader {
       if (!cs_offsets_cache_.empty()) {
         cs_offsets = std::move(cs_offsets_cache_.front());
         assert(cs_offsets->size() == num_cs_);
+        if (cs_offsets->size() != num_cs_)
+          __debugbreak();
         cs_offsets_cache_.pop();
       } else {
         cs_offsets =
-            tdb_unique_ptr<std::vector<uint64_t>>(new std::vector<uint64_t>());
+        tdb_unique_ptr<std::vector<uint64_t>>(tdb_new( std::vector<uint64_t>));
         cs_offsets->resize(num_cs_);
       }
 
@@ -866,7 +868,7 @@ class Reader {
         offset_offsets_per_cs_cache_.pop();
       } else {
         offset_offsets_per_cs =
-            tdb_unique_ptr<std::vector<uint64_t>>(new std::vector<uint64_t>());
+        tdb_unique_ptr<std::vector<uint64_t>>(tdb_new( std::vector<uint64_t>));
         offset_offsets_per_cs->resize(total_cs_length_);
       }
 
@@ -894,7 +896,7 @@ class Reader {
         var_offsets_per_cs_cache_.pop();
       } else {
         var_offsets_per_cs =
-            tdb_unique_ptr<std::vector<uint64_t>>(new std::vector<uint64_t>());
+        tdb_unique_ptr<std::vector<uint64_t>>(tdb_new( std::vector<uint64_t>));
         var_offsets_per_cs->resize(total_cs_length_);
       }
 

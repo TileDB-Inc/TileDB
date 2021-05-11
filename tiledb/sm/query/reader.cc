@@ -1266,10 +1266,12 @@ Status Reader::copy_fixed_cells(
   auto buffer_size = it->second.buffer_size_;
   auto cell_size = array_schema_->cell_size(name);
 
+  uint8_t bsentinel[16] = {"before12345"};
   // Precompute the cell range destination offsets in the buffer.
   uint64_t buffer_offset = 0;
   tdb_unique_ptr<std::vector<uint64_t>> cs_offsets =
       ctx_cache->get_cs_offsets();
+  uint8_t asentinel[16] = {"after54321"};
   for (uint64_t i = 0; i < cs_offsets->size(); i++) {
     const auto& cs = result_cell_slabs[i];
     auto bytes_to_copy = cs.length_ * cell_size;
@@ -1846,6 +1848,7 @@ Status Reader::compute_result_cell_slabs_global(
   return Status::Ok();
 }
 
+#pragma optimize("",off)
 Status Reader::compute_result_coords(
     std::vector<ResultTile>* result_tiles,
     std::vector<ResultCoords>* result_coords) {
@@ -1864,10 +1867,18 @@ Status Reader::compute_result_coords(
 
   // Create temporary vector with pointers to result tiles, so that
   // `read_tiles`, `unfilter_tiles` below can work without changes
+  unsigned marker1 = 0x12345678;
   std::vector<ResultTile*> tmp_result_tiles;
+  unsigned marker2 = 0xabcdef99;
   for (auto& result_tile : *result_tiles)
     tmp_result_tiles.push_back(&result_tile);
 
+  unsigned vsz1 = tmp_result_tiles.size();
+  printf(
+      "A: marker1 %u, marker2 %u, tmp_result_tiles.size() %u\n",
+      marker1,
+      marker2,
+      vsz1);
   // Preload zipped coordinate tile offsets. Note that this will
   // ignore fragments with a version >= 5.
   RETURN_CANCEL_OR_ERROR(load_tile_offsets({constants::coords}));
@@ -1881,22 +1892,61 @@ Status Reader::compute_result_coords(
     dim_names.emplace_back(array_schema_->dimension(d)->name());
   RETURN_CANCEL_OR_ERROR(load_tile_offsets(dim_names));
 
+  vsz1 = tmp_result_tiles.size();
+  printf(
+      "B: marker1 %u, marker2 %u, tmp_result_tiles.size() %u\n",
+      marker1,
+      marker2,
+      vsz1);
   // Read and unfilter zipped coordinate tiles. Note that
   // this will ignore fragments with a version >= 5. Unfilter
   // with a nullptr `rcs_index` argument to bypass selective
   // unfiltering.
   RETURN_CANCEL_OR_ERROR(
       read_coordinate_tiles({constants::coords}, tmp_result_tiles));
+  vsz1 = tmp_result_tiles.size();
+  printf(
+      "C: marker1 %u, marker2 %u, tmp_result_tiles.size() %u\n",
+      marker1,
+      marker2,
+      vsz1);
   RETURN_CANCEL_OR_ERROR(
       unfilter_tiles(constants::coords, tmp_result_tiles, nullptr));
+  vsz1 = tmp_result_tiles.size();
+  printf(
+      "D: marker1 %u, marker2 %u, tmp_result_tiles.size() %u\n",
+      marker1,
+      marker2,
+      vsz1);
 
   // Read and unfilter unzipped coordinate tiles. Note that
   // this will ignore fragments with a version < 5. Unfilter
   // with a nullptr `rcs_index` argument to bypass selective
   // unfiltering.
   RETURN_CANCEL_OR_ERROR(read_coordinate_tiles(dim_names, tmp_result_tiles));
+  vsz1 = tmp_result_tiles.size();
+  printf(
+      "E: marker1 %u, marker2 %u, tmp_result_tiles.size() %u\n",
+      marker1,
+      marker2,
+      vsz1);
   for (const auto& dim_name : dim_names) {
+    vsz1 = tmp_result_tiles.size();
+    printf(
+        "F: b4 dim_name %s, marker1 %u, marker2 %u, tmp_result_tiles.size() %u\n",
+        dim_name.c_str(),
+        marker1,
+        marker2,
+        vsz1);
     RETURN_CANCEL_OR_ERROR(unfilter_tiles(dim_name, tmp_result_tiles, nullptr));
+    vsz1 = tmp_result_tiles.size();
+    printf(
+        "G: aftr dim_name %s, marker1 %u, marker2 %u, tmp_result_tiles.size() "
+        "%u\n",
+        dim_name.c_str(),
+        marker1,
+        marker2,
+        vsz1);
   }
 
   // Fetch the sub partitioner's memory budget.
@@ -2036,6 +2086,7 @@ Status Reader::compute_result_coords(
 
   STATS_END_TIMER(stats::GlobalStats::TimerType::READ_COMPUTE_RESULT_COORDS)
 }
+#pragma optimize("", on)
 
 Status Reader::dedup_result_coords(
     std::vector<ResultCoords>* result_coords) const {
@@ -2503,9 +2554,9 @@ Status Reader::unfilter_tile(
       &filters, array_->get_encryption_key()));
 
   // Skip selective unfiltering on coordinate tiles.
-  if (name == constants::coords || tile->stores_coords()) {
-    result_cell_slab_ranges = nullptr;
-  }
+  //  if (name == constants::coords || tile->stores_coords()) {
+  result_cell_slab_ranges = nullptr;
+  //  }
 
   // Reverse the tile filters.
   RETURN_NOT_OK(filters.run_reverse(
@@ -2533,9 +2584,9 @@ Status Reader::unfilter_tile(
       &filters, array_->get_encryption_key()));
 
   // Skip selective unfiltering on coordinate tiles.
-  if (name == constants::coords || tile->stores_coords()) {
-    result_cell_slab_ranges = nullptr;
-  }
+  //  if (name == constants::coords || tile->stores_coords()) {
+  result_cell_slab_ranges = nullptr;
+  //  }
 
   // Reverse the tile filters, but do not use selective
   // unfiltering for offset tiles.
@@ -2567,9 +2618,9 @@ Status Reader::unfilter_tile_nullable(
       &validity_filters, array_->get_encryption_key()));
 
   // Skip selective unfiltering on coordinate tiles.
-  if (name == constants::coords || tile->stores_coords()) {
-    result_cell_slab_ranges = nullptr;
-  }
+  //  if (name == constants::coords || tile->stores_coords()) {
+  result_cell_slab_ranges = nullptr;
+  //  }
 
   // Reverse the tile filters.
   RETURN_NOT_OK(filters.run_reverse(

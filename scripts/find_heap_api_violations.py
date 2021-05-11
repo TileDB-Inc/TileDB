@@ -67,7 +67,9 @@ free_exceptions = {
 #  new Foo (
 #  new (std::nothro) Foo (
 #  new (std::nothro) Foo [
-regex_new = re.compile(r"new\s+(\(std::nothrow\)+)?[a-zA-Z_][a-zA-Z0-9_]*\s*(\(|\[)")
+#                                                v - why would we match more than one, why does this use '+'?
+#regex_new = re.compile(r"new\s+(\(std::nothrow\)+)?[a-zA-Z_][a-zA-Z0-9_]*\s*(\(|\[)")
+regex_new = re.compile(r"new\s+(\(std::nothrow\)+)?(std::)?[a-zA-Z_][a-zA-Z0-9_]*\s*(\(|\[)")
 
 # Match C++ delete operators, examples:
 #  delete Foo;

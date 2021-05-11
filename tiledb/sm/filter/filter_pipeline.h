@@ -282,6 +282,7 @@ class FilterPipeline {
 
   /** The max chunk size allowed within tiles. */
   uint32_t max_chunk_size_;
+  uint32_t max_chunk_size_prev_;
 
   /**
    * Run the given list of chunks forward through the pipeline.

@@ -760,7 +760,11 @@ Status FilterPipeline::deserialize(ConstBuffer* buff) {
   // Remove any old filters.
   clear();
 
+  auto max_chunk_size_prev = max_chunk_size_;
   RETURN_NOT_OK(buff->read(&max_chunk_size_, sizeof(uint32_t)));
+  if (max_chunk_size_ != max_chunk_size_prev)
+    __debugbreak();
+
   uint32_t num_filters;
   RETURN_NOT_OK(buff->read(&num_filters, sizeof(uint32_t)));
 
@@ -785,6 +789,10 @@ void FilterPipeline::dump(FILE* out) const {
 }
 
 void FilterPipeline::set_max_chunk_size(uint32_t max_chunk_size) {
+  if (max_chunk_size_ != max_chunk_size
+    || max_chunk_size != max_chunk_size_prev_)
+    __debugbreak();
+  max_chunk_size_prev_ = max_chunk_size_;
   max_chunk_size_ = max_chunk_size;
 }
 
@@ -807,6 +815,7 @@ void FilterPipeline::swap(FilterPipeline& other) {
 
   std::swap(current_tile_, other.current_tile_);
   std::swap(max_chunk_size_, other.max_chunk_size_);
+  std::swap(max_chunk_size_prev_, other.max_chunk_size_prev_);
 }
 
 Status FilterPipeline::append_encryption_filter(
