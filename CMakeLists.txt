@@ -126,6 +126,20 @@ option(TILEDB_LOG_OUTPUT_ON_FAILURE "If true, print error logs if dependency sub
 
 set(TILEDB_INSTALL_LIBDIR "" CACHE STRING "If non-empty, install TileDB library to this directory instead of CMAKE_INSTALL_LIBDIR.")
 
+# early WIN32 audit of path length for aws sdk build where 
+# insufficient available path length causes sdk build failure.
+if (WIN32)
+  if (TILEDB_SUPERBUILD)
+    if (TILEDB_S3)
+      string(LENGTH ${CMAKE_CURRENT_BINARY_DIR} LENGTH_CMAKE_CURRENT_BINARY_DIR)
+      if ( NOT (LENGTH_CMAKE_CURRENT_BINARY_DIR LESS 61))
+        message(FATAL_ERROR " build directory path likely too long for building awssdk/dependencies!")
+      return()
+      endif()
+    endif()
+  endif()
+endif()
+
 ############################################################
 # Superbuild setup
 ############################################################
