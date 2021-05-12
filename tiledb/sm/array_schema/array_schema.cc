@@ -721,12 +721,12 @@ void ArraySchema::set_uri(URI& uri) {
   utils::parse::get_timestamp_range(uri_, &timestamp_range_);
 }
 
-Status ArraySchema::get_uri(URI& uri) {
+Status ArraySchema::get_uri(URI* uri) {
   if (uri_.is_invalid()) {
     return LOG_STATUS(
         Status::ArraySchemaError("Error in ArraySchema; invalid URI"));
   }
-  uri = uri_;
+  *uri = uri_;
   return Status::Ok();
 }
 
@@ -738,12 +738,12 @@ const std::string& ArraySchema::name() {
   return name_;
 }
 
-Status ArraySchema::get_name(std::string& name) const {
+Status ArraySchema::get_name(std::string* name) const {
   if (name_.empty()) {
     return LOG_STATUS(
         Status::ArraySchemaError("Error in ArraySchema; Empty name"));
   }
-  name = name_;
+  *name = name_;
   return Status::Ok();
 }
 

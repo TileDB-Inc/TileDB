@@ -90,7 +90,7 @@ FragmentMetadata::FragmentMetadata(
     idx_map_[dim_name] = array_schema_->attribute_num() + 1 + i;
   }
 
-  array_schema_->get_name(array_schema_name_);
+  array_schema_->get_name(&array_schema_name_);
 }
 
 FragmentMetadata::~FragmentMetadata() = default;
@@ -2187,10 +2187,7 @@ Status FragmentMetadata::write_generic_tile_offsets(Buffer* buff) const {
 
 Status FragmentMetadata::write_array_schema_name(Buffer* buff) const {
   uint64_t size = array_schema_name_.size();
-  Status status = buff->write(&size, sizeof(uint64_t));
-  if (!status.ok()) {
-    return status;
-  }
+  RETURN_NOT_OK(buff->write(&size, sizeof(uint64_t)));
   return buff->write(array_schema_name_.c_str(), size);
 }
 

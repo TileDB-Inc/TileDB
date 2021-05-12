@@ -313,13 +313,13 @@ class ArraySchema {
   void set_uri(URI& uri);
 
   /** Get schema URI with return status */
-  Status get_uri(URI& uri);
+  Status get_uri(URI* uri);
 
   /** Returns the schema name. If it is not set, will build it */
   const std::string& name();
 
   /** Returns the schema name. If it is not set, will returns error status */
-  Status get_name(std::string& name) const;
+  Status get_name(std::string* name) const;
 
  private:
   /* ********************************* */

@@ -1572,19 +1572,18 @@ Status StorageManager::get_array_schema_uris(
     const URI& array_uri, std::vector<URI>* uris) const {
   STATS_START_TIMER(stats::GlobalStats::TimerType::READ_GET_ARRAY_SCHEMAS)
 
+  // Always add array_name/__array_schema.tdb as the first schema uri
+  uris->clear();
+  auto schema_uri_old = array_uri.join_path(constants::array_schema_filename);
+  uris->emplace_back(schema_uri_old);
+
+  // Add schema uris under directory array_name/__schema
   const URI schema_uri =
       array_uri.join_path(constants::array_schema_folder_name);
-  bool is_dir = false;
-  RETURN_NOT_OK(vfs_->is_dir(schema_uri, &is_dir));
-  if (!is_dir) {
-    // If it is not a directory, the array schema could be stored in the
-    // previous format
-    uris->clear();
-    return Status::Ok();
-  }
-  RETURN_NOT_OK(vfs_->ls(schema_uri, uris));
-  // Sort schema URIs
-  std::sort(uris->begin(), uris->end());
+
+  // Since ls could return NOT Ok status, we will not use RETURN_NOT_OK here
+  vfs_->ls(schema_uri, uris);
+
   return Status::Ok();
 
   STATS_END_TIMER(stats::GlobalStats::TimerType::READ_GET_ARRAY_SCHEMAS)
@@ -1594,13 +1593,12 @@ Status StorageManager::get_latest_array_schema_uri(
     const URI& array_uri, URI* uri) const {
   STATS_START_TIMER(stats::GlobalStats::TimerType::READ_GET_LATEST_ARRAY_SCHEMA)
   std::vector<URI> uris;
-  Status status = get_array_schema_uris(array_uri, &uris);
-  if (status.ok() && (!uris.empty())) {
-    *uri = uris.back();
-  } else {
-    // For older version, array schema file is under the array folder
-    *uri = array_uri.join_path(constants::array_schema_filename);
+  RETURN_NOT_OK(get_array_schema_uris(array_uri, &uris));
+  if (uris.size() == 0) {
+    return LOG_STATUS(Status::StorageManagerError(
+        "Can not get the latest array schema; Empty array schemas."));
   }
+  *uri = uris.back();
   if (uri->is_invalid()) {
     return LOG_STATUS(
         Status::StorageManagerError("Could not find array schema URI"));
