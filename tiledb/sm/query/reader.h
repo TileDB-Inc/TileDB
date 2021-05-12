@@ -40,6 +40,8 @@
 #include <queue>
 #include <vector>
 
+//#include "tiledb/common/heap_memory.h"
+
 #include "tiledb/common/status.h"
 #include "tiledb/sm/array_schema/tile_domain.h"
 #include "tiledb/sm/misc/types.h"
@@ -731,7 +733,7 @@ class Reader {
         cs_offsets = std::move(cs_offsets_cache_.front());
         assert(cs_offsets->size() == num_cs_);
         if (cs_offsets->size() != num_cs_)
-          __debugbreak();
+          BREAKDEBUG;
         cs_offsets_cache_.pop();
       } else {
         cs_offsets =

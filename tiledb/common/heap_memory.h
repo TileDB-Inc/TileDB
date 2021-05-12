@@ -49,6 +49,7 @@
 #include <memory>
 #include <string>
 #include <sstream>
+#include <cstring>
 
 #include "tiledb/common/heap_profiler.h"
 
@@ -69,6 +70,14 @@ void* tiledb_realloc(void* p, size_t size, const std::string& label);
 /** TileDB variant of `free`. */
 void tiledb_free(void* p);
 
+//Many variants of this can be found in the catch2 single_include catch.hpp header.
+#ifdef WIN32
+  #define BREAKDEBUG __debugbreak()
+#else
+  //assuming gcc, x86, arm architecture may need something different.
+  #define BREAKDEBUG asm("INT $3\n")
+#endif
+
 /** TileDB variant of `operator new`. */
 template <typename T, typename... Args>
 T* tiledb_new(const std::string& label, Args&&... args) {
@@ -76,7 +85,7 @@ T* tiledb_new(const std::string& label, Args&&... args) {
     char *memblock = (char*)tiledb_malloc(sizeof(T) + 2*sizeof(uint64_t), "dlh1");
     *(uint64_t*)memblock = sizeof(T);
     *((uint64_t*)memblock + 1) = ~(uint64_t)memblock;
-    memset(memblock+2*sizeof(uint64_t), 0xfc, sizeof(T));
+    std::memset(memblock+2*sizeof(uint64_t), 0xfc, sizeof(T));
     return new (memblock+2*sizeof(uint64_t)) T(std::forward<Args>(args)...);
 
   }
@@ -87,7 +96,7 @@ T* tiledb_new(const std::string& label, Args&&... args) {
   *(uint64_t*)memblock = sizeof(T);
   *((uint64_t*)memblock + 1) = ~(uint64_t)memblock;
   // May catch some uninit'd var use too
-  memset(memblock+2*sizeof(uint64_t), 0xfc, sizeof(T));
+  std::memset(memblock+2*sizeof(uint64_t), 0xfc, sizeof(T));
   T* const p = new (memblock + 2*sizeof(uint64_t)) T(std::forward<Args>(args)...);
 
   if (!p)
@@ -113,9 +122,9 @@ void tiledb_delete(T* const p) {
       msg << "chkvals saved " << std::hex << savedcheckval << " live "
         << livecheckval << " fillsize " << fillsize;
       printf("%s\n", msg.str().c_str());
-      __debugbreak();
+      BREAKDEBUG; 
     }
-    memset(porig, 0xbd, fillsize+2*sizeof(uint64_t));
+    std::memset(porig, 0xbd, fillsize+2*sizeof(uint64_t));
     delete porig;
     return;
   }
@@ -125,8 +134,8 @@ void tiledb_delete(T* const p) {
   char *porig = (char *)p - 2*sizeof(uint64_t);
   uint64_t fillsize = *(uint64_t*)porig;
   if (*((uint64_t*)porig + 1) != ~(uint64_t)porig)
-    __debugbreak();
-  memset(porig, 0xbd, fillsize+2*sizeof(uint64_t));
+    BREAKDEBUG;
+  std::memset(porig, 0xbd, fillsize+2*sizeof(uint64_t));
   delete porig;
   heap_profiler.record_dealloc(p);
 }
@@ -138,7 +147,7 @@ T* tiledb_new_array(const std::size_t size, const std::string& label) {
     char *memblock = (char*)tiledb_malloc(sizeof(T)*size + 2*sizeof(uint64_t), "dlh3");
     *(uint64_t*)memblock = sizeof(T);
     *((uint64_t*)memblock + 1) = ~(uint64_t)memblock;
-    memset(memblock + 2 * sizeof(uint64_t), 0xfc, sizeof(T));
+    std::memset(memblock + 2 * sizeof(uint64_t), 0xfc, sizeof(T));
     return new (memblock+2*sizeof(uint64_t)) T[size];
   }
 
@@ -147,7 +156,7 @@ T* tiledb_new_array(const std::size_t size, const std::string& label) {
   char *memblock = (char*)tiledb_malloc(sizeof(T)*size + 2*sizeof(uint64_t), "dlh4");
   *(uint64_t*)memblock = sizeof(T);
   *((uint64_t*)memblock + 1) = ~(uint64_t)memblock;
-  memset(memblock + 2 * sizeof(uint64_t), 0xfc, sizeof(T));
+  std::memset(memblock + 2 * sizeof(uint64_t), 0xfc, sizeof(T));
   T* const p = new (memblock + 2*sizeof(uint64_t)) T[size];
 
   if (!p)
@@ -167,8 +176,8 @@ void tiledb_delete_array(T* const p) {
     char *porig = (char *)p - 2*sizeof(uint64_t);
     uint64_t fillsize = *(uint64_t*)porig;
     if (*((uint64_t*)porig + 1) != ~(uint64_t)porig)
-      __debugbreak();
-    memset(porig, 0xda, fillsize+2*sizeof(uint64_t));
+      BREAKDEBUG;
+    std::memset(porig, 0xda, fillsize+2*sizeof(uint64_t));
     delete porig;
     return;
   }
@@ -178,8 +187,8 @@ void tiledb_delete_array(T* const p) {
   char *porig = (char *)p - 2*sizeof(uint64_t);
   uint64_t fillsize = *(uint64_t*)porig;
   if (*((uint64_t*)porig + 1) != ~(uint64_t)porig)
-    __debugbreak();
-  memset(porig, 0xda, fillsize+2*sizeof(uint64_t));
+    BREAKDEBUG;
+  std::memset(porig, 0xda, fillsize+2*sizeof(uint64_t));
   delete porig;
   heap_profiler.record_dealloc(p);
 }

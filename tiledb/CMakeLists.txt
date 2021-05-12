@@ -292,7 +292,7 @@ if (SANITIZER)
   else()
     message(STATUS "The TileDB library is compiled with sanitizer ${SANITIZER} enabled")
   endif()
-  if(WIN32)
+  if(MSVC) # msys builds may not like cl switch form(s)
     target_compile_options(TILEDB_CORE_OBJECTS
       PRIVATE
       	  #symbol info should already be avail by virtue of Debug/RelWithDebInfo build types
