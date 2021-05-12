@@ -282,8 +282,9 @@ endif()
 ############################################################
 
 if (SANITIZER)
-  if (NOT CMAKE_BUILD_TYPE MATCHES "Debug")
-    message(FATAL_ERROR "Sanitizers only enabled for Debug build")
+#  if (NOT (CMAKE_BUILD_TYPE MATCHES "Debug" AND CMAKE_BUILD_TYPE MATCHES "RelWithDebInfo"))
+  if (NOT CMAKE_BUILD_TYPE MATCHES "^(Debug|RelWithDebInfo)$")
+    message(FATAL_ERROR "Sanitizers only enabled for Debug/RelWithDebInfo build")
   endif()
   string(TOLOWER ${SANITIZER} SANITIZER)
   if (NOT SANITIZER MATCHES "^(address|memory|leak|thread|undefined)$")
@@ -291,10 +292,18 @@ if (SANITIZER)
   else()
     message(STATUS "The TileDB library is compiled with sanitizer ${SANITIZER} enabled")
   endif()
-  target_compile_options(TILEDB_CORE_OBJECTS
-    PRIVATE
-      -g -fno-omit-frame-pointer -fno-optimize-sibling-calls -fsanitize=${SANITIZER}
-  )
+  if(WIN32)
+    target_compile_options(TILEDB_CORE_OBJECTS
+      PRIVATE
+      	  #symbol info should already be avail by virtue of Debug/RelWithDebInfo build types
+      -fsanitize=${SANITIZER}
+    )
+  else()
+    target_compile_options(TILEDB_CORE_OBJECTS
+      PRIVATE
+        -g -fno-omit-frame-pointer -fno-optimize-sibling-calls -fsanitize=${SANITIZER}
+    )
+  endif()
 endif()
 
 if (TILEDB_VERBOSE)

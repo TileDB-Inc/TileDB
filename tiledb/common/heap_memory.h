@@ -1,3 +1,13 @@
+//contains hacks to implement 'poor man' address/memory sanitization, changes
+//mostly generic though current coded breaks are windows specific (could be
+//changed for *nix to ASM("INT $3") or similar.)
+//Could be augmented to implement delayed frees by adding a circular list of some
+//size and cycling items being deleted into/thru/out of that list as later delete's
+//occur.
+//Requires that paired tdb_new()s/tdb_delete()s are performed, there were several
+//instances when this implemented of tdb_unique_ptr usage involving mismatched pairs of
+//new/tdb_delete.
+
 /**
  * @file   heap_memory.h
  *
@@ -63,9 +73,8 @@ void tiledb_free(void* p);
 template <typename T, typename... Args>
 T* tiledb_new(const std::string& label, Args&&... args) {
   if (!heap_profiler.enabled()) {
-//    return new T(std::forward<Args>(args)...);
-	char *memblock = (char*)tiledb_malloc(sizeof(T) + 2*sizeof(uint64_t), "dlh1");
-	*(uint64_t*)memblock = sizeof(T);
+    char *memblock = (char*)tiledb_malloc(sizeof(T) + 2*sizeof(uint64_t), "dlh1");
+    *(uint64_t*)memblock = sizeof(T);
     *((uint64_t*)memblock + 1) = ~(uint64_t)memblock;
     memset(memblock+2*sizeof(uint64_t), 0xfc, sizeof(T));
     return new (memblock+2*sizeof(uint64_t)) T(std::forward<Args>(args)...);
@@ -74,7 +83,6 @@ T* tiledb_new(const std::string& label, Args&&... args) {
 
   std::unique_lock<std::recursive_mutex> ul(__tdb_heap_mem_lock);
 
-//  T* const p = new T(std::forward<Args>(args)...);
   char *memblock = (char*)tiledb_malloc(sizeof(T) + 2*sizeof(uint64_t), "dlh2");
   *(uint64_t*)memblock = sizeof(T);
   *((uint64_t*)memblock + 1) = ~(uint64_t)memblock;
@@ -96,36 +104,29 @@ void tiledb_delete(T* const p) {
   if (!p)
     return;
   if (!heap_profiler.enabled()) {
-//    delete p;
-	char *porig = (char *)p - 2*sizeof(uint64_t);
-	uint64_t fillsize = *(uint64_t*)porig;
-  //if (*((uint64_t*)porig + 1) != ~(uint64_t)porig)
-  //  __debugbreak();
-  uint64_t savedcheckval = *((uint64_t*)porig + 1);
-  uint64_t livecheckval = ~(uint64_t)porig;
-  if (savedcheckval != livecheckval) {
-    std::stringstream msg;
-    msg << "chkvals saved " << std::hex << savedcheckval << " live "
+    char *porig = (char *)p - 2*sizeof(uint64_t);
+    uint64_t fillsize = *(uint64_t*)porig;
+    uint64_t savedcheckval = *((uint64_t*)porig + 1);
+    uint64_t livecheckval = ~(uint64_t)porig;
+    if (savedcheckval != livecheckval) {
+      std::stringstream msg;
+      msg << "chkvals saved " << std::hex << savedcheckval << " live "
         << livecheckval << " fillsize " << fillsize;
-    //OutputDebugStringA(msg.str().c_str());
-    printf("%s\n", msg.str().c_str());
-    __debugbreak();
-  }
-  //	memset(p, 0xba, fillsize);
-	memset(porig, 0xba, fillsize+2*sizeof(uint64_t));
+      printf("%s\n", msg.str().c_str());
+      __debugbreak();
+    }
+    memset(porig, 0xbd, fillsize+2*sizeof(uint64_t));
     delete porig;
     return;
   }
 
   std::unique_lock<std::recursive_mutex> ul(__tdb_heap_mem_lock);
 
-//  delete p;
   char *porig = (char *)p - 2*sizeof(uint64_t);
   uint64_t fillsize = *(uint64_t*)porig;
   if (*((uint64_t*)porig + 1) != ~(uint64_t)porig)
     __debugbreak();
-  //  memset(p, 0xba, fillsize);
-  memset(porig, 0xba, fillsize+2*sizeof(uint64_t));
+  memset(porig, 0xbd, fillsize+2*sizeof(uint64_t));
   delete porig;
   heap_profiler.record_dealloc(p);
 }
@@ -134,17 +135,15 @@ void tiledb_delete(T* const p) {
 template <typename T>
 T* tiledb_new_array(const std::size_t size, const std::string& label) {
   if (!heap_profiler.enabled()) {
-//    return new T[size];
-	char *memblock = (char*)tiledb_malloc(sizeof(T)*size + 2*sizeof(uint64_t), "dlh3");
-	*(uint64_t*)memblock = sizeof(T);
-        *((uint64_t*)memblock + 1) = ~(uint64_t)memblock;
+    char *memblock = (char*)tiledb_malloc(sizeof(T)*size + 2*sizeof(uint64_t), "dlh3");
+    *(uint64_t*)memblock = sizeof(T);
+    *((uint64_t*)memblock + 1) = ~(uint64_t)memblock;
     memset(memblock + 2 * sizeof(uint64_t), 0xfc, sizeof(T));
     return new (memblock+2*sizeof(uint64_t)) T[size];
   }
 
   std::unique_lock<std::recursive_mutex> ul(__tdb_heap_mem_lock);
 
-//  T* const p = new T[size];
   char *memblock = (char*)tiledb_malloc(sizeof(T)*size + 2*sizeof(uint64_t), "dlh4");
   *(uint64_t*)memblock = sizeof(T);
   *((uint64_t*)memblock + 1) = ~(uint64_t)memblock;
@@ -165,28 +164,22 @@ void tiledb_delete_array(T* const p) {
   if (!p)
     return;
   if (!heap_profiler.enabled()) {
-//    delete[] p;
-    //if (p) {
-	    char *porig = (char *)p - 2*sizeof(uint64_t);
-	    uint64_t fillsize = *(uint64_t*)porig;
-      if (*((uint64_t*)porig + 1) != ~(uint64_t)porig)
-        __debugbreak();
-        //	memset(p, 0xba, fillsize);
-    	memset(porig, 0xba, fillsize+2*sizeof(uint64_t));
-      delete porig;
-    //}
+    char *porig = (char *)p - 2*sizeof(uint64_t);
+    uint64_t fillsize = *(uint64_t*)porig;
+    if (*((uint64_t*)porig + 1) != ~(uint64_t)porig)
+      __debugbreak();
+    memset(porig, 0xda, fillsize+2*sizeof(uint64_t));
+    delete porig;
     return;
   }
 
   std::unique_lock<std::recursive_mutex> ul(__tdb_heap_mem_lock);
 
-//  delete[] p;
   char *porig = (char *)p - 2*sizeof(uint64_t);
   uint64_t fillsize = *(uint64_t*)porig;
   if (*((uint64_t*)porig + 1) != ~(uint64_t)porig)
     __debugbreak();
-  //  memset(p, 0xba, fillsize);
-  memset(porig, 0xba, fillsize+2*sizeof(uint64_t));
+  memset(porig, 0xda, fillsize+2*sizeof(uint64_t));
   delete porig;
   heap_profiler.record_dealloc(p);
 }
