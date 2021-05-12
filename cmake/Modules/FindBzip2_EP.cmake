@@ -76,15 +76,15 @@ FIND_PACKAGE_HANDLE_STANDARD_ARGS(Bzip2
 if (NOT BZIP2_FOUND)
   if (TILEDB_SUPERBUILD)
     message(STATUS "Adding Bzip2 as an external project")
-	propagate_cache_variables(FORWARDED_CMAKE_ARGUMENTS)
+    propagate_cache_variables(FORWARDED_CMAKE_ARGUMENTS)
     if (WIN32)
       ExternalProject_Add(ep_bzip2
         PREFIX "externals"
         URL "https://github.com/TileDB-Inc/bzip2-windows/releases/download/v1.0.6/bzip2-1.0.6.zip"
         URL_HASH SHA1=d11c3f0be92805a4c35f384845beb99eb6a96f6e
         CMAKE_ARGS
-	      ${FORWARDED_CMAKE_ARGUMENTS}
-		  -DCMAKE_INSTALL_PREFIX=${TILEDB_EP_INSTALL_PREFIX}
+          ${FORWARDED_CMAKE_ARGUMENTS}
+          -DCMAKE_INSTALL_PREFIX=${TILEDB_EP_INSTALL_PREFIX}
           -DCMAKE_POSITION_INDEPENDENT_CODE=ON
         UPDATE_COMMAND ""
         LOG_DOWNLOAD TRUE

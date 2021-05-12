@@ -78,20 +78,19 @@ if (NOT ZSTD_FOUND)
   if (TILEDB_SUPERBUILD)
     message(STATUS "Adding Zstd as an external project")
 
-	propagate_cache_variables(FORWARDED_CMAKE_ARGUMENTS)
+    propagate_cache_variables(FORWARDED_CMAKE_ARGUMENTS)
     ExternalProject_Add(ep_zstd
       PREFIX "externals"
       # Set download name to avoid collisions with only the version number in the filename
       DOWNLOAD_NAME ep_zstd-v1.4.8.zip
       URL "https://github.com/facebook/zstd/archive/v1.4.8.zip"
       URL_HASH SHA1=8323c212a779ada25f5d587349326e84b047b536
-	  CMAKE_ARGS
-	    ${FORWARDED_CMAKE_ARGUMENTS}
-		-DCMAKE_POSITION_INDEPENDENT_CODE=ON
+      CMAKE_ARGS
+        ${FORWARDED_CMAKE_ARGUMENTS}
+        -DCMAKE_POSITION_INDEPENDENT_CODE=ON
         -DCMAKE_BUILD_TYPE=Release
         -DCMAKE_INSTALL_PREFIX=${TILEDB_EP_INSTALL_PREFIX}
         ${TILEDB_EP_BASE}/src/ep_zstd/build/cmake
-      CMAKE_CACHE_ARGS ${FORWARDED_CACHE_ARGUMENTS}
       UPDATE_COMMAND ""
       LOG_DOWNLOAD TRUE
       LOG_CONFIGURE TRUE

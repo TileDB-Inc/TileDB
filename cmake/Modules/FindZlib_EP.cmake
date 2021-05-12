@@ -75,15 +75,15 @@ if (NOT ZLIB_FOUND)
   if (TILEDB_SUPERBUILD)
     message(STATUS "Adding Zlib as an external project")
 
-	propagate_cache_variables(FORWARDED_CMAKE_ARGUMENTS)
+    propagate_cache_variables(FORWARDED_CMAKE_ARGUMENTS)
     ExternalProject_Add(ep_zlib
       PREFIX "externals"
       URL "http://prdownloads.sourceforge.net/libpng/zlib1211.zip?download"
       URL_HASH SHA1=bccd93ad3cee39c3d08eee68d45b3e11910299f2
       DOWNLOAD_NAME "zlib1211.zip"
       CMAKE_ARGS
-	    ${FORWARDED_CMAKE_ARGUMENTS}
-		-DCMAKE_POSITION_INDEPENDENT_CODE=ON
+        ${FORWARDED_CMAKE_ARGUMENTS}
+        -DCMAKE_POSITION_INDEPENDENT_CODE=ON
         -DCMAKE_INSTALL_PREFIX=${TILEDB_EP_INSTALL_PREFIX}
         -DCMAKE_BUILD_TYPE=Release
       UPDATE_COMMAND ""
