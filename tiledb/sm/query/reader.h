@@ -1014,6 +1014,9 @@ class Reader {
   /** Correctness checks for `subarray_`. */
   Status check_subarray() const;
 
+  /** Correctness checks validity buffer sizes in `buffers_`. */
+  Status check_validity_buffer_sizes() const;
+
   /**
    * Deletes the tiles on the input attribute/dimension from the result tiles.
    *
