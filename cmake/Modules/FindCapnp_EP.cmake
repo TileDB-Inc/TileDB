@@ -99,7 +99,6 @@ if (NOT CAPNP_FOUND)
   endif()
 else()
   add_definitions(${CAPNP_DEFINITIONS})
-  set(TILEDB_CAPNPEXEC_PATH "${CAPNP_EXECUTABLE}")
 endif()
 
 
