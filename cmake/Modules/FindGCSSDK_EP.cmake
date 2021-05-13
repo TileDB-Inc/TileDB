@@ -69,6 +69,28 @@ if (NOT GCSSDK_FOUND)
     # Fetch the number of CPUs on the this sytem.
     include(ProcessorCount)
     processorcount(NCPU)
+    
+    if(WIN32)
+      find_package(Git REQUIRED)
+      #set(CONDITIONAL_PATCH cd ${CMAKE_SOURCE_DIR} && ${GIT_EXECUTABLE} apply --ignore-whitespace -p1 --unsafe-paths --verbose --directory=${TILEDB_EP_SOURCE_DIR}/ep_capnp < ${TILEDB_CMAKE_INPUTS_DIR}/patches/ep_capnp/capnp_CMakeLists.txt.patch)
+      set(CONDITIONAL_PATCH cd ${CMAKE_SOURCE_DIR} &&
+        echo TILEDB_EP_SOURCE_DIR/ep_gcssdk is ${TILEDB_EP_SOURCE_DIR}/ep_gcssdk &&
+        ${GIT_EXECUTABLE} apply --check --apply --ignore-whitespace -p1 --unsafe-paths --verbose --directory=${TILEDB_EP_SOURCE_DIR}/ep_gcssdk < ${TILEDB_CMAKE_INPUTS_DIR}/patches/ep_gcssdk/build.patch &&
+        ${GIT_EXECUTABLE} apply --check --apply --ignore-whitespace -p1 --unsafe-paths --verbose --directory=${TILEDB_EP_SOURCE_DIR}/ep_gcssdk < ${TILEDB_CMAKE_INPUTS_DIR}/patches/ep_gcssdk/disable_tests.patch &&
+        ${GIT_EXECUTABLE} apply --check --apply --ignore-whitespace -p1 --unsafe-paths --verbose --directory=${TILEDB_EP_SOURCE_DIR}/ep_gcssdk < ${TILEDB_CMAKE_INPUTS_DIR}/patches/ep_gcssdk/disable_examples.patch
+      )
+#      set(TILEDB_BUILD_GCSSTUFF_COMMAND ${CMAKE_COMMAND} --build cmake-out -- /MP${NCPU} )
+      #vs2019 msbuild complaining about /MP12, so let's just let it default to whatever
+      set(TILEDB_BUILD_GCSSTUFF_COMMAND ${CMAKE_COMMAND} --build cmake-out -- )
+    else()
+      set(CONDITIONAL_PATCH
+        patch -N -p1 < ${TILEDB_CMAKE_INPUTS_DIR}/patches/ep_gcssdk/build.patch &&
+        patch -N -p1 < ${TILEDB_CMAKE_INPUTS_DIR}/patches/ep_gcssdk/disable_tests.patch &&
+        patch -N -p1 < ${TILEDB_CMAKE_INPUTS_DIR}/patches/ep_gcssdk/disable_examples.patch
+      )
+      set(TILEDB_BUILD_GCSSTUFF_COMMAND ${CMAKE_COMMAND} --build cmake-out -- -j${NCPU} )
+
+    endif()
 
     ExternalProject_Add(ep_gcssdk
       PREFIX "externals"
@@ -78,9 +100,13 @@ if (NOT GCSSDK_FOUND)
       URL_HASH SHA1=d4e14faef4095289b06f5ffe57d33a14574a7055
       BUILD_IN_SOURCE 1
       PATCH_COMMAND
-        patch -N -p1 < ${TILEDB_CMAKE_INPUTS_DIR}/patches/ep_gcssdk/build.patch &&
-        patch -N -p1 < ${TILEDB_CMAKE_INPUTS_DIR}/patches/ep_gcssdk/disable_tests.patch &&
-        patch -N -p1 < ${TILEDB_CMAKE_INPUTS_DIR}/patches/ep_gcssdk/disable_examples.patch
+        echo patching ep_gcssdk from &&
+        echo %cd% &&
+        echo ${CONDITIONAL_PATCH} &&
+        ${CONDITIONAL_PATCH}
+#        patch -N -p1 < ${TILEDB_CMAKE_INPUTS_DIR}/patches/ep_gcssdk/build.patch &&
+#        patch -N -p1 < ${TILEDB_CMAKE_INPUTS_DIR}/patches/ep_gcssdk/disable_tests.patch &&
+#        patch -N -p1 < ${TILEDB_CMAKE_INPUTS_DIR}/patches/ep_gcssdk/disable_examples.patch
       CONFIGURE_COMMAND
          ${CMAKE_COMMAND} -Hsuper -Bcmake-out
         -DCMAKE_BUILD_TYPE=${CMAKE_BUILD_TYPE}
@@ -101,7 +127,8 @@ if (NOT GCSSDK_FOUND)
         # Google uses their own variable instead of CMAKE_INSTALL_PREFIX
         -DGOOGLE_CLOUD_CPP_EXTERNAL_PREFIX=${TILEDB_EP_INSTALL_PREFIX}
         -DCMAKE_POSITION_INDEPENDENT_CODE=ON
-      BUILD_COMMAND ${CMAKE_COMMAND} --build cmake-out -- -j${NCPU}
+#      BUILD_COMMAND ${CMAKE_COMMAND} --build cmake-out -- -j${NCPU}
+      BUILD_COMMAND ${TILEDB_BUILD_GCSSTUFF_COMMAND}
       # There is no install command, the build process installs the libraries
       INSTALL_COMMAND ""
       LOG_DOWNLOAD TRUE
