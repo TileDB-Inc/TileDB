@@ -100,16 +100,16 @@ class TileDomain {
   ~TileDomain() = default;
 
   /** Default copy constructor. */
-  TileDomain(const TileDomain& tile_domain) = default;
+  TileDomain(const TileDomain&) = default;
 
   /** Default move constructor. */
-  TileDomain(TileDomain&& tile_domain) = default;
+  TileDomain(TileDomain&&) = default;
 
   /** Default copy-assign operator. */
-  TileDomain& operator=(const TileDomain& tile_domain) = default;
+  TileDomain& operator=(const TileDomain&) = default;
 
   /** Default move-assign operator. */
-  TileDomain& operator=(TileDomain&& tile_domain) = default;
+  TileDomain& operator=(TileDomain&&) = default;
 
   /* ********************************* */
   /*                 API               */
