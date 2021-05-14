@@ -1799,10 +1799,10 @@ Status Subarray::compute_relevant_fragment_est_result_sizes(
       } else {
         max_size_fixed =
             utils::math::safe_mul(cell_num, array_schema->cell_size(names[n]));
-        if (nullable[n])
-          max_size_validity =
-              utils::math::safe_mul(cell_num, constants::cell_validity_size);
       }
+      if (nullable[n])
+        max_size_validity =
+            utils::math::safe_mul(cell_num, constants::cell_validity_size);      
 
       (*result_sizes)[n].size_fixed_ =
           std::min<double>((*result_sizes)[n].size_fixed_, max_size_fixed);
