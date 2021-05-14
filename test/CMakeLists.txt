@@ -236,7 +236,7 @@ add_executable(
 )
 
 # TODO: Remove when KV API has been removed.
-if (NOT WIN32)
+if (NOT MVSC)
   target_compile_options(tiledb_unit PRIVATE -Wno-deprecated-declarations)
 endif()
 

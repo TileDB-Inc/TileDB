@@ -14,12 +14,10 @@
 #include "blosc-comp-features.h"
 #include <stdio.h>
 
-#if !defined(INITIALIZE_WITHOUT_PTHREAD)
-#if defined(_MSC_VER)
+#if defined(_WIN32)
 #include "win32/pthread.h"
 #else
 #include <pthread.h>
-#endif
 #endif
 
 /* Visual Studio < 2013 does not have stdbool.h so here it is a replacement: */
@@ -352,23 +350,18 @@ static shuffle_implementation_t get_shuffle_implementation(void) {
   return impl_generic;
 }
 
-#if !defined(INITIALIZE_WITHOUT_PTHREAD)
+
 /*  Flag indicating whether the implementation has been initialized. */
 static pthread_once_t implementation_initialized = PTHREAD_ONCE_INIT;
-#endif
 
 /*  The dynamically-chosen shuffle/unshuffle implementation.
     This is only safe to use once `implementation_initialized` is set. */
 static shuffle_implementation_t host_implementation;
 
-#if !defined(INITIALIZE_WITHOUT_PTHREAD)
-static
-#endif
-void set_host_implementation(void) {
+static void set_host_implementation(void) {
   host_implementation = get_shuffle_implementation();
 }
 
-#if !defined(INITIALIZE_WITHOUT_PTHREAD)
 /*  Initialize the shuffle implementation, if necessary. */
 #if defined(__GNUC__) || defined(__clang__)
 __attribute__((always_inline))
@@ -382,13 +375,6 @@ BLOSC_INLINE
 void init_shuffle_implementation(void) {
   pthread_once(&implementation_initialized, &set_host_implementation);
 }
-#else
-/*
- * `host_implementation` receives static initialization before main() executes,
- * so there's nothing to do at runtime and the init function can be null.
- */
-void init_shuffle_implementation(void) {}
-#endif
 
 /*  Shuffle a block by dynamically dispatching to the appropriate
     hardware-accelerated routine at run-time. */
