@@ -40,8 +40,12 @@ list(APPEND SOURCES
   ${CMAKE_CURRENT_SOURCE_DIR}/src/shuffle.c
   ${CMAKE_CURRENT_SOURCE_DIR}/src/shuffle-generic.c
   ${CMAKE_CURRENT_SOURCE_DIR}/src/bitshuffle-stub.c
-  ${CMAKE_CURRENT_SOURCE_DIR}/src/win32/pthread.c
 )
+if (WIN32)
+  list(APPEND SOURCES
+    ${CMAKE_CURRENT_SOURCE_DIR}/src/win32/pthread.c
+  )
+endif()
 
 try_compile(AVX2_DETECTED ${CMAKE_CURRENT_BINARY_DIR} ${CMAKE_CURRENT_SOURCE_DIR}/cmake/detect-avx2.c)
 if(AVX2_DETECTED)
@@ -66,9 +70,9 @@ set_source_files_properties(
 # Our modified shuffle.c needs a definition to trigger the modifications
 # We need to repeat -w because CMake does not have a way to append to source file properties
 set_source_files_properties(
-    ${CMAKE_CURRENT_SOURCE_DIR}/src/shuffle.c
-    DIRECTORY ${CMAKE_SOURCE_DIR}/tiledb    # set properties in the directory that compiles
-    PROPERTIES COMPILE_FLAGS "-w -DINITIALIZE_WITHOUT_PTHREAD"
+  ${CMAKE_CURRENT_SOURCE_DIR}/src/shuffle.c
+  DIRECTORY ${CMAKE_SOURCE_DIR}/tiledb    # set properties in the directory that compiles
+  PROPERTIES COMPILE_FLAGS "-w -DINITIALIZE_WITHOUT_PTHREAD"
 )
 
 # Return values to caller
