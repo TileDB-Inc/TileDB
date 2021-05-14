@@ -176,28 +176,27 @@ void read_array() {
   std::cout << std::endl;
 
   std::cout << "a2: " << std::endl;
-  for(i = 0; i<4; ++i) {
-    if(a2_validity_buf[i]>0) {
+  for (i = 0; i < 4; ++i) {
+    if (a2_validity_buf[i] > 0) {
       std::cout << "{";
-      int start_idx = a2_off[i]/(sizeof(int));
+      int start_idx = a2_off[i] / (sizeof(int));
       int end_idx = 0;
-      if(i == (a2_off.size()-1)) {
+      if (i == (a2_off.size() - 1)) {
         end_idx = a2_off.size();
-      }
-      else {
-        end_idx = a2_off[i+1]/(sizeof(int));
+      } else {
+        end_idx = a2_off[i + 1] / (sizeof(int));
       }
       int count = 0;
-      for(int j=start_idx; j<end_idx; ++j) {
-        if(count>0) {
-          std::cout <<",";
+      for (int j = start_idx; j < end_idx; ++j) {
+        if (count > 0) {
+          std::cout << ",";
         }
         std::cout << a2_data[j];
         ++count;
       }
       std::cout << "}";
     } else {
-      std::cout <<"{ NULL }";
+      std::cout << "{ NULL }";
     }
     std::cout << " ";
   }

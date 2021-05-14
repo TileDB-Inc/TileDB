@@ -68,8 +68,7 @@ class ResultSpaceTile {
   ResultSpaceTile(ResultSpaceTile&&) = default;
 
   /** Default copy-assign operator. */
-  ResultSpaceTile& operator=(const ResultSpaceTile&) =
-      default;
+  ResultSpaceTile& operator=(const ResultSpaceTile&) = default;
 
   /** Default move-assign operator. */
   ResultSpaceTile& operator=(ResultSpaceTile&&) = default;
