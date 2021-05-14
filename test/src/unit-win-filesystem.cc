@@ -158,7 +158,7 @@ TEST_CASE_METHOD(WinFx, "Test Windows filesystem", "[windows]") {
 
   const unsigned buffer_size = 100000;
   auto write_buffer = new char[buffer_size];
-  for (unsigned i = 0; i < buffer_size; i++) {
+  for (int i = 0; i < buffer_size; i++) {
     write_buffer[i] = 'a' + (i % 26);
   }
   st = win_.write(test_file.to_path(), write_buffer, buffer_size);
