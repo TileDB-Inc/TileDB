@@ -41,10 +41,24 @@ list(APPEND SOURCES
   ${CMAKE_CURRENT_SOURCE_DIR}/src/shuffle-generic.c
   ${CMAKE_CURRENT_SOURCE_DIR}/src/bitshuffle-stub.c
 )
-if (WIN32)
-  list(APPEND SOURCES
-    ${CMAKE_CURRENT_SOURCE_DIR}/src/win32/pthread.c
-  )
+
+#
+# Blosc requires a pthread library. There's a substitute one available for
+# Windows for use with Visual C++, which doesn't have it. Other compilers do,
+# however, and we use it if it's available. This avoids duplicate link symbols
+# in case something else has a pthread dependency.
+#
+try_compile(PTHREAD_DETECTED ${CMAKE_CURRENT_BINARY_DIR} ${CMAKE_CURRENT_SOURCE_DIR}/cmake/detect-pthread.c)
+if (PTHREAD_DETECTED)
+  # add to library dependency variable as output
+else()
+  if (WIN32)
+    list(APPEND SOURCES
+          ${CMAKE_CURRENT_SOURCE_DIR}/src/win32/pthread.c
+          )
+  else()
+    message(FATAL "No pthread header found. No substitute available other than for Win32.")
+  endif()
 endif()
 
 try_compile(AVX2_DETECTED ${CMAKE_CURRENT_BINARY_DIR} ${CMAKE_CURRENT_SOURCE_DIR}/cmake/detect-avx2.c)
@@ -65,14 +79,12 @@ endif()
 set_source_files_properties(
   ${SOURCES}
   DIRECTORY ${CMAKE_SOURCE_DIR}/tiledb    # set properties in the directory that compiles
-  PROPERTIES COMPILE_FLAGS "-w"           # -w is common to gcc and MSVC
+ PROPERTIES COMPILE_FLAGS "-w"           # -w is common to gcc and MSVC
 )
-# Our modified shuffle.c needs a definition to trigger the modifications
-# We need to repeat -w because CMake does not have a way to append to source file properties
 set_source_files_properties(
   ${CMAKE_CURRENT_SOURCE_DIR}/src/shuffle.c
   DIRECTORY ${CMAKE_SOURCE_DIR}/tiledb    # set properties in the directory that compiles
-  PROPERTIES COMPILE_FLAGS "-w -DINITIALIZE_WITHOUT_PTHREAD"
+  PROPERTIES COMPILE_FLAGS "-w -DPTHREAD_AVAILABLE"
 )
 
 # Return values to caller

@@ -14,10 +14,14 @@
 #include "blosc-comp-features.h"
 #include <stdio.h>
 
+#if defined(PTHREAD_AVAILABLE)
+#include <pthread.h>
+#else
 #if defined(_WIN32)
 #include "win32/pthread.h"
 #else
-#include <pthread.h>
+#error No pthread available
+#endif
 #endif
 
 /* Visual Studio < 2013 does not have stdbool.h so here it is a replacement: */
