@@ -1059,9 +1059,9 @@ uint64_t Dimension::map_to_uint64(
     uint64_t c,
     uint64_t coords_num,
     int bits,
-    uint64_t bucket_num) const {
+    uint64_t max_bucket_val) const {
   assert(map_to_uint64_func_ != nullptr);
-  return map_to_uint64_func_(this, buff, c, coords_num, bits, bucket_num);
+  return map_to_uint64_func_(this, buff, c, coords_num, bits, max_bucket_val);
 }
 
 template <class T>
@@ -1071,7 +1071,7 @@ uint64_t Dimension::map_to_uint64(
     uint64_t c,
     uint64_t coords_num,
     int bits,
-    uint64_t bucket_num) {
+    uint64_t max_bucket_val) {
   assert(dim != nullptr);
   assert(buff != nullptr);
   assert(!dim->domain().empty());
@@ -1080,9 +1080,9 @@ uint64_t Dimension::map_to_uint64(
 
   double dom_start_T = *(const T*)dim->domain().start();
   double dom_end_T = *(const T*)dim->domain().end();
-  auto dom_range_T = dom_end_T - dom_start_T + std::is_integral<T>::value;
+  auto dom_range_T = dom_end_T - dom_start_T;
   auto norm_coord_T = ((const T*)buff->buffer_)[c] - dom_start_T;
-  return (norm_coord_T / dom_range_T) * bucket_num;
+  return (norm_coord_T / dom_range_T) * max_bucket_val;
 }
 
 template <>
@@ -1092,13 +1092,13 @@ uint64_t Dimension::map_to_uint64<char>(
     uint64_t c,
     uint64_t coords_num,
     int bits,
-    uint64_t bucket_num) {
+    uint64_t max_bucket_val) {
   assert(dim != nullptr);
   assert(buff != nullptr);
   assert(buff->buffer_ != nullptr);
   assert(buff->buffer_var_ != nullptr);
   assert(buff->buffer_var_size_ != nullptr);
-  (void)bucket_num;  // Not needed here
+  (void)max_bucket_val;  // Not needed here
   (void)dim;
 
   auto offsets = (const uint64_t*)buff->buffer_;
@@ -1125,9 +1125,9 @@ uint64_t Dimension::map_to_uint64(
     const void* coord,
     uint64_t coord_size,
     int bits,
-    uint64_t bucket_num) const {
+    uint64_t max_bucket_val) const {
   assert(map_to_uint64_2_func_ != nullptr);
-  return map_to_uint64_2_func_(this, coord, coord_size, bits, bucket_num);
+  return map_to_uint64_2_func_(this, coord, coord_size, bits, max_bucket_val);
 }
 
 template <class T>
@@ -1136,7 +1136,7 @@ uint64_t Dimension::map_to_uint64_2(
     const void* coord,
     uint64_t coord_size,
     int bits,
-    uint64_t bucket_num) {
+    uint64_t max_bucket_val) {
   assert(dim != nullptr);
   assert(coord != nullptr);
   assert(!dim->domain().empty());
@@ -1145,9 +1145,9 @@ uint64_t Dimension::map_to_uint64_2(
 
   double dom_start_T = *(const T*)dim->domain().start();
   double dom_end_T = *(const T*)dim->domain().end();
-  auto dom_range_T = dom_end_T - dom_start_T + std::is_integral<T>::value;
+  auto dom_range_T = dom_end_T - dom_start_T;
   auto norm_coord_T = *(const T*)coord - dom_start_T;
-  return (norm_coord_T / dom_range_T) * bucket_num;
+  return (norm_coord_T / dom_range_T) * max_bucket_val;
 }
 
 template <>
@@ -1156,10 +1156,10 @@ uint64_t Dimension::map_to_uint64_2<char>(
     const void* coord,
     uint64_t coord_size,
     int bits,
-    uint64_t bucket_num) {
+    uint64_t max_bucket_val) {
   assert(dim != nullptr);
   assert(coord != nullptr);
-  (void)bucket_num;
+  (void)max_bucket_val;
   (void)dim;
 
   auto v_str = (const char*)coord;
@@ -1183,9 +1183,9 @@ uint64_t Dimension::map_to_uint64(
     const ResultCoords& coord,
     uint32_t dim_idx,
     int bits,
-    uint64_t bucket_num) const {
+    uint64_t max_bucket_val) const {
   assert(map_to_uint64_3_func_ != nullptr);
-  return map_to_uint64_3_func_(this, coord, dim_idx, bits, bucket_num);
+  return map_to_uint64_3_func_(this, coord, dim_idx, bits, max_bucket_val);
 }
 
 template <class T>
@@ -1194,16 +1194,16 @@ uint64_t Dimension::map_to_uint64_3(
     const ResultCoords& coord,
     uint32_t dim_idx,
     int bits,
-    uint64_t bucket_num) {
+    uint64_t max_bucket_val) {
   assert(dim != nullptr);
   assert(!dim->domain().empty());
   (void)bits;  // Not needed here
 
   double dom_start_T = *(const T*)dim->domain().start();
   double dom_end_T = *(const T*)dim->domain().end();
-  auto dom_range_T = dom_end_T - dom_start_T + std::is_integral<T>::value;
+  auto dom_range_T = dom_end_T - dom_start_T;
   auto norm_coord_T = *((const T*)coord.coord(dim_idx)) - dom_start_T;
-  return (norm_coord_T / dom_range_T) * bucket_num;
+  return (norm_coord_T / dom_range_T) * max_bucket_val;
 }
 
 template <>
@@ -1212,9 +1212,9 @@ uint64_t Dimension::map_to_uint64_3<char>(
     const ResultCoords& coord,
     uint32_t dim_idx,
     int bits,
-    uint64_t bucket_num) {
+    uint64_t max_bucket_val) {
   assert(dim != nullptr);
-  (void)bucket_num;  // Not needed here
+  (void)max_bucket_val;  // Not needed here
   (void)dim;
 
   auto v_str = coord.coord_string(dim_idx);
@@ -1235,14 +1235,14 @@ uint64_t Dimension::map_to_uint64_3<char>(
 }
 
 ByteVecValue Dimension::map_from_uint64(
-    uint64_t value, int bits, uint64_t bucket_num) const {
+    uint64_t value, int bits, uint64_t max_bucket_val) const {
   assert(map_from_uint64_func_ != nullptr);
-  return map_from_uint64_func_(this, value, bits, bucket_num);
+  return map_from_uint64_func_(this, value, bits, max_bucket_val);
 }
 
 template <class T>
 ByteVecValue Dimension::map_from_uint64(
-    const Dimension* dim, uint64_t value, int bits, uint64_t bucket_num) {
+    const Dimension* dim, uint64_t value, int bits, uint64_t max_bucket_val) {
   assert(dim != nullptr);
   assert(!dim->domain().empty());
   (void)bits;  // Not needed here
@@ -1255,15 +1255,16 @@ ByteVecValue Dimension::map_from_uint64(
 
   auto dom_start_T = *(const T*)dim->domain().start();
   auto dom_end_T = *(const T*)dim->domain().end();
-  double dom_range_T = dom_end_T - dom_start_T + std::is_integral<T>::value;
+  double dom_range_T = dom_end_T - dom_start_T;
 
   // Essentially take the largest value in the bucket
   if (std::is_integral<T>::value) {  // Integers
-    T norm_coord_T = ceil(((value + 1) / (double)bucket_num) * dom_range_T - 1);
+    T norm_coord_T =
+        ceil(((value + 1) / (double)max_bucket_val) * dom_range_T - 1);
     T coord_T = norm_coord_T + dom_start_T;
     std::memcpy(&ret[0], &coord_T, sizeof(T));
   } else {  // Floating point types
-    T norm_coord_T = ((value + 1) / (double)bucket_num) * dom_range_T;
+    T norm_coord_T = ((value + 1) / (double)max_bucket_val) * dom_range_T;
     norm_coord_T =
         std::nextafter(norm_coord_T, std::numeric_limits<T>::lowest());
     T coord_T = norm_coord_T + dom_start_T;
@@ -1275,10 +1276,10 @@ ByteVecValue Dimension::map_from_uint64(
 
 template <>
 ByteVecValue Dimension::map_from_uint64<char>(
-    const Dimension* dim, uint64_t value, int bits, uint64_t bucket_num) {
+    const Dimension* dim, uint64_t value, int bits, uint64_t max_bucket_val) {
   assert(dim != nullptr);
   (void)dim;
-  (void)bucket_num;  // Not needed here
+  (void)max_bucket_val;  // Not needed here
 
   ByteVecValue ret(sizeof(uint64_t));  // 8 bytes
 

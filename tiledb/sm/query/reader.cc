@@ -3652,7 +3652,7 @@ Status Reader::calculate_hilbert_values(
   auto dim_num = array_schema_->dim_num();
   Hilbert h(dim_num);
   auto bits = h.bits();
-  auto bucket_num = ((uint64_t)1 << bits) - 1;
+  auto max_bucket_val = ((uint64_t)1 << bits) - 1;
   auto coords_num = (uint64_t)hilbert_values->size();
 
   // Calculate Hilbert values in parallel
@@ -3662,7 +3662,7 @@ Status Reader::calculate_hilbert_values(
         for (uint32_t d = 0; d < dim_num; ++d) {
           auto dim = array_schema_->dimension(d);
           coords[d] =
-              dim->map_to_uint64(*(iter_begin + c), d, bits, bucket_num);
+              dim->map_to_uint64(*(iter_begin + c), d, bits, max_bucket_val);
         }
         (*hilbert_values)[c] =
             std::pair<uint64_t, uint64_t>(h.coords_to_hilbert(&coords[0]), c);
