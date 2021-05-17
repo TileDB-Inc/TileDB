@@ -229,8 +229,6 @@ set(TILEDB_EXTERNALS_SOURCES
 )
 # Delegate configuration and detection of platform-specific code generation to the subdirectory
 add_subdirectory(${CMAKE_CURRENT_SOURCE_DIR}/../external/blosc ${CMAKE_CURRENT_BINARY_DIR}/../external/blosc)
-list(APPEND TILEDB_EXTERNALS_INCLUDE_DIRS ${EXTERNAL_BLOSC_INCLUDES})
-list(APPEND TILEDB_EXTERNALS_SOURCES ${EXTERNAL_BLOSC_SOURCES})
 
 ############################################################
 # Build core objects as a reusable object library
@@ -240,6 +238,8 @@ add_library(TILEDB_CORE_OBJECTS OBJECT
     ${TILEDB_CORE_SOURCES}
     ${TILEDB_EXTERNALS_SOURCES}
 )
+#
+target_link_libraries(TILEDB_CORE_OBJECTS TileDB-blosc-modified)
 
 # Compile all core sources with PIC
 set_property(TARGET TILEDB_CORE_OBJECTS PROPERTY POSITION_INDEPENDENT_CODE ON)
@@ -260,6 +260,7 @@ if (WIN32 AND TILEDB_STATIC)
     ${TILEDB_CORE_SOURCES}
     ${TILEDB_EXTERNALS_SOURCES}
   )
+  target_link_libraries(TILEDB_CORE_OBJECTS_STATIC TileDB-blosc-modified)
 
   # Compile all core sources with PIC
   set_property(TARGET TILEDB_CORE_OBJECTS_STATIC PROPERTY POSITION_INDEPENDENT_CODE ON)

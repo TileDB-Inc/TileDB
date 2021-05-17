@@ -30,17 +30,27 @@
 #   directories, nor of passing argument for the callee in add_subdirectory(). Here we avoid premature modularization
 #   and hard-code the caller.
 # Outputs
-#   EXTERNAL_BLOSC_SOURCES -- a list of sources to compile
-#   EXTERNAL_BLOSC_INCLUDES -- a list of directories to include
-# Side effects
-#   Sets outputs in PARENT_SCOPE
-#   Sets compilation properties in ${CMAKE_SOURCE_DIR}/tiledb
+#   library TileDB-blosc-modified
+
+set(SOURCE_DIR ${CMAKE_CURRENT_SOURCE_DIR})
 
 list(APPEND SOURCES
-  ${CMAKE_CURRENT_SOURCE_DIR}/src/shuffle.c
-  ${CMAKE_CURRENT_SOURCE_DIR}/src/shuffle-generic.c
-  ${CMAKE_CURRENT_SOURCE_DIR}/src/bitshuffle-stub.c
+  ${SOURCE_DIR}/src/shuffle.c
+  ${SOURCE_DIR}/src/shuffle-generic.c
+  ${SOURCE_DIR}/src/bitshuffle-stub.c
 )
+try_compile(AVX2_DETECTED ${CMAKE_CURRENT_BINARY_DIR} ${SOURCE_DIR}/cmake/detect-avx2.c)
+if(AVX2_DETECTED)
+  list(APPEND SOURCES
+    ${CMAKE_CURRENT_SOURCE_DIR}/src/shuffle-avx2.c
+    )
+endif()
+try_compile(SSE2_DETECTED ${CMAKE_CURRENT_BINARY_DIR} ${SOURCE_DIR}/cmake/detect-sse2.c)
+if(SSE2_DETECTED)
+  list(APPEND SOURCES
+    ${CMAKE_CURRENT_SOURCE_DIR}/src/shuffle-sse2.c
+    )
+endif()
 
 #
 # Blosc requires a pthread library. There's a substitute one available for
@@ -48,46 +58,40 @@ list(APPEND SOURCES
 # however, and we use it if it's available. This avoids duplicate link symbols
 # in case something else has a pthread dependency.
 #
-try_compile(PTHREAD_DETECTED ${CMAKE_CURRENT_BINARY_DIR} ${CMAKE_CURRENT_SOURCE_DIR}/cmake/detect-pthread.c)
-if (PTHREAD_DETECTED)
-  # add to library dependency variable as output
+find_package(Threads REQUIRED)
+message(DEBUG "Threads_FOUND=${Threads_FOUND}")
+message(DEBUG "CMAKE_THREAD_LIBS_INIT=${CMAKE_THREAD_LIBS_INIT}")
+message(DEBUG "CMAKE_USE_WIN32_THREADS_INIT=${CMAKE_USE_WIN32_THREADS_INIT}")
+message(DEBUG "CMAKE_USE_PTHREADS_INIT=${CMAKE_USE_PTHREADS_INIT}")
+message(DEBUG "CMAKE_HP_PTHREADS_INIT=${CMAKE_HP_PTHREADS_INIT}")
+message(DEBUG "CMAKE_HAVE_PTHREAD_H=${CMAKE_HAVE_PTHREAD_H}")
+
+if (CMAKE_USE_PTHREADS_INIT)
+  message(VERBOSE "Using system-provided pthread")
+elseif(CMAKE_USE_WIN32_THREADS_INIT)
+  message(VERBOSE "Using blosc-provided pthread substitute for Win32")
+  list(APPEND SOURCES
+    ${SOURCE_DIR}/src/win32/pthread.c
+  )
 else()
-  if (WIN32)
-    list(APPEND SOURCES
-          ${CMAKE_CURRENT_SOURCE_DIR}/src/win32/pthread.c
-          )
-  else()
-    message(FATAL "No pthread header found. No substitute available other than for Win32.")
-  endif()
-endif()
-
-try_compile(AVX2_DETECTED ${CMAKE_CURRENT_BINARY_DIR} ${CMAKE_CURRENT_SOURCE_DIR}/cmake/detect-avx2.c)
-if(AVX2_DETECTED)
-  list(APPEND SOURCES
-    ${CMAKE_CURRENT_SOURCE_DIR}/src/shuffle-avx2.c
-  )
-endif()
-
-try_compile(SSE2_DETECTED ${CMAKE_CURRENT_BINARY_DIR} ${CMAKE_CURRENT_SOURCE_DIR}/cmake/detect-sse2.c)
-if(SSE2_DETECTED)
-  list(APPEND SOURCES
-    ${CMAKE_CURRENT_SOURCE_DIR}/src/shuffle-sse2.c
-  )
+  message(FATAL_ERROR "Thread package found, but not a supported one")
 endif()
 
 # The blosc files are external and we ignore their warnings.
+set(TILEDB_BLOSC_COMPILE_FLAGS "-w")
+# If we found pthreads, activate it by defining PTHREAD_AVAILABLE.
+if (CMAKE_USE_PTHREADS_INIT)
+  string(APPEND TILEDB_BLOSC_COMPILE_FLAGS " -DPTHREAD_AVAILABLE")
+endif()
 set_source_files_properties(
   ${SOURCES}
-  DIRECTORY ${CMAKE_SOURCE_DIR}/tiledb    # set properties in the directory that compiles
- PROPERTIES COMPILE_FLAGS "-w"           # -w is common to gcc and MSVC
-)
-set_source_files_properties(
-  ${CMAKE_CURRENT_SOURCE_DIR}/src/shuffle.c
-  DIRECTORY ${CMAKE_SOURCE_DIR}/tiledb    # set properties in the directory that compiles
-  PROPERTIES COMPILE_FLAGS "-w -DPTHREAD_AVAILABLE"
+#  DIRECTORY ${CMAKE_SOURCE_DIR}/tiledb    # set properties in the directory that compiles
+  PROPERTIES COMPILE_FLAGS "-w"           # -w is common to gcc and MSVC
 )
 
-# Return values to caller
-set(EXTERNAL_BLOSC_SOURCES ${SOURCES} PARENT_SCOPE)
-set(EXTERNAL_BLOSC_INCLUDES ${CMAKE_CURRENT_SOURCE_DIR}/include PARENT_SCOPE)
-
+#
+# Set up imported interface-library that acts as the output of this file
+#
+add_library(TileDB-blosc-modified OBJECT ${SOURCES})
+target_link_libraries(TileDB-blosc-modified INTERFACE Threads::Threads)
+target_include_directories(TileDB-blosc-modified PUBLIC ${SOURCE_DIR}/include)
