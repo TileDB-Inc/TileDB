@@ -1230,8 +1230,8 @@ TEST_CASE(
 
   // Write array
   std::vector<int32_t> buff_a = {2, 3, 1, 4};
-  std::vector<float> buff_d1 = {0.1f, 0.1f, 0.4f, 0.5f};
-  std::vector<float> buff_d2 = {0.3f, 0.1f, 0.2f, 0.4f};
+  std::vector<float> buff_d1 = {0.1f, 0.1f, 0.41f, 0.4f};
+  std::vector<float> buff_d2 = {0.3f, 0.1f, 0.41f, 0.4f};
   write_2d_array<float, float>(
       array_name, buff_d1, buff_d2, buff_a, TILEDB_UNORDERED);
 
@@ -1278,8 +1278,8 @@ TEST_CASE(
     CHECK(query_r.query_status() == Query::Status::INCOMPLETE);
     CHECK(query_r.result_buffer_elements()["a"].second == 2);
     c_buff_a = {1, 4};
-    c_buff_d1 = {0.4f, 0.5f};
-    c_buff_d2 = {0.2f, 0.4f};
+    c_buff_d1 = {0.41f, 0.4f};
+    c_buff_d2 = {0.41f, 0.4f};
     CHECK(r_buff_a == c_buff_a);
     CHECK(r_buff_d1 == c_buff_d1);
     CHECK(r_buff_d2 == c_buff_d2);
@@ -1336,8 +1336,8 @@ TEST_CASE(
     CHECK(query_r.query_status() == Query::Status::INCOMPLETE);
     CHECK(query_r.result_buffer_elements()["a"].second == 2);
     c_buff_a = {1, 4};
-    c_buff_d1 = {0.4f, 0.5f};
-    c_buff_d2 = {0.2f, 0.4f};
+    c_buff_d1 = {0.41f, 0.4f};
+    c_buff_d2 = {0.41f, 0.4f};
     CHECK(r_buff_a == c_buff_a);
     CHECK(r_buff_d1 == c_buff_d1);
     CHECK(r_buff_d2 == c_buff_d2);

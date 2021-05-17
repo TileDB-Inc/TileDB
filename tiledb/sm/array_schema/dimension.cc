@@ -1248,13 +1248,15 @@ ByteVecValue Dimension::map_from_uint64(
   auto dom_end_T = *(const T*)dim->domain().end();
   double dom_range_T = dom_end_T - dom_start_T + std::is_integral<T>::value;
 
+  // Essentially take the largest value in the bucket
   if (std::is_integral<T>::value) {  // Integers
-    // Essentially take the largest value in the bucket
-    T norm_coord_T = ((value + 1) / (double)bucket_num) * dom_range_T - 1;
+    T norm_coord_T = ceil(((value + 1) / (double)bucket_num) * dom_range_T - 1);
     T coord_T = norm_coord_T + dom_start_T;
     std::memcpy(&ret[0], &coord_T, sizeof(T));
   } else {  // Floating point types
-    T norm_coord_T = (value / (double)bucket_num) * dom_range_T;
+    T norm_coord_T = ((value + 1) / (double)bucket_num) * dom_range_T;
+    norm_coord_T =
+        std::nextafter(norm_coord_T, std::numeric_limits<T>::lowest());
     T coord_T = norm_coord_T + dom_start_T;
     std::memcpy(&ret[0], &coord_T, sizeof(T));
   }
