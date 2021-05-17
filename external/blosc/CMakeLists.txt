@@ -78,6 +78,7 @@ else()
 endif()
 
 # The blosc files are external and we ignore their warnings.
+# -w is common to gcc and MSVC
 set(TILEDB_BLOSC_COMPILE_FLAGS "-w")
 # If we found pthreads, activate it by defining PTHREAD_AVAILABLE.
 if (CMAKE_USE_PTHREADS_INIT)
@@ -85,8 +86,7 @@ if (CMAKE_USE_PTHREADS_INIT)
 endif()
 set_source_files_properties(
   ${SOURCES}
-#  DIRECTORY ${CMAKE_SOURCE_DIR}/tiledb    # set properties in the directory that compiles
-  PROPERTIES COMPILE_FLAGS "-w"           # -w is common to gcc and MSVC
+  PROPERTIES COMPILE_FLAGS ${TILEDB_BLOSC_COMPILE_FLAGS}
 )
 
 #
