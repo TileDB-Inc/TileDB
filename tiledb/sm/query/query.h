@@ -122,6 +122,9 @@ class Query {
   /** Destructor. */
   ~Query();
 
+  DISABLE_COPY_AND_COPY_ASSIGN(Query);
+  DISABLE_MOVE_AND_MOVE_ASSIGN(Query);
+
   /* ********************************* */
   /*                 API               */
   /* ********************************* */
@@ -733,6 +736,9 @@ class Query {
 
   /** The query type. */
   QueryType type_;
+
+  /** The class stats. */
+  stats::Stats* stats_;
 
   /** Query reader. */
   Reader reader_;

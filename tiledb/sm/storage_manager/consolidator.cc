@@ -60,7 +60,8 @@ namespace sm {
 /* ****************************** */
 
 Consolidator::Consolidator(StorageManager* storage_manager)
-    : storage_manager_(storage_manager) {
+    : storage_manager_(storage_manager)
+    , stats_(storage_manager_->stats()->create_child("Consolidator")) {
 }
 
 Consolidator::~Consolidator() = default;
@@ -99,7 +100,7 @@ Status Consolidator::consolidate_array_meta(
     EncryptionType encryption_type,
     const void* encryption_key,
     uint32_t key_length) {
-  STATS_START_TIMER(stats::GlobalStats::TimerType::CONSOLIDATE_ARRAY_META)
+  auto timer_se = stats_->start_timer("consolidate_array_meta");
 
   // Open array for reading
   auto array_uri = URI(array_name);
@@ -175,8 +176,6 @@ Status Consolidator::consolidate_array_meta(
   RETURN_NOT_OK(storage_manager_->vfs()->close_file(vac_uri));
 
   return Status::Ok();
-
-  STATS_END_TIMER(stats::GlobalStats::TimerType::CONSOLIDATE_ARRAY_META)
 }
 
 /* ****************************** */
@@ -188,7 +187,7 @@ Status Consolidator::consolidate_fragments(
     EncryptionType encryption_type,
     const void* encryption_key,
     uint32_t key_length) {
-  STATS_START_TIMER(stats::GlobalStats::TimerType::CONSOLIDATE_FRAGS)
+  auto timer_se = stats_->start_timer("consolidate_frags");
 
   // Open array for reading
   Array array_for_reads(URI(array_name), storage_manager_);
@@ -275,12 +274,9 @@ Status Consolidator::consolidate_fragments(
   RETURN_NOT_OK_ELSE(array_for_reads.close(), array_for_writes.close());
   RETURN_NOT_OK(array_for_writes.close());
 
-  STATS_ADD_COUNTER(
-      stats::GlobalStats::CounterType::CONSOLIDATE_STEP_NUM, step);
+  stats_->add_counter("consolidate_step_num", step);
 
   return Status::Ok();
-
-  STATS_END_TIMER(stats::GlobalStats::TimerType::CONSOLIDATE_FRAGS)
 }
 
 bool Consolidator::all_sparse(
@@ -335,7 +331,7 @@ Status Consolidator::consolidate(
     bool all_sparse,
     const NDRange& union_non_empty_domains,
     URI* new_fragment_uri) {
-  STATS_START_TIMER(stats::GlobalStats::TimerType::CONSOLIDATE_MAIN)
+  auto timer_se = stats_->start_timer("consolidate_main");
 
   RETURN_NOT_OK(array_for_reads.load_fragments(to_consolidate));
 
@@ -407,8 +403,6 @@ Status Consolidator::consolidate(
   tdb_delete(query_w);
 
   return st;
-
-  STATS_END_TIMER(stats::GlobalStats::TimerType::CONSOLIDATE_MAIN)
 }
 
 Status Consolidator::consolidate_fragment_meta(
@@ -416,7 +410,7 @@ Status Consolidator::consolidate_fragment_meta(
     EncryptionType encryption_type,
     const void* encryption_key,
     uint32_t key_length) {
-  STATS_START_TIMER(stats::GlobalStats::TimerType::CONSOLIDATE_FRAG_META)
+  auto timer_se = stats_->start_timer("consolidate_frag_meta");
 
   // Open array for reading
   Array array(array_uri, storage_manager_);
@@ -525,8 +519,6 @@ Status Consolidator::consolidate_fragment_meta(
   chunked_buffer.free();
 
   return Status::Ok();
-
-  STATS_END_TIMER(stats::GlobalStats::TimerType::CONSOLIDATE_FRAG_META)
 }
 
 Status Consolidator::copy_array(
@@ -535,7 +527,7 @@ Status Consolidator::copy_array(
     std::vector<ByteVec>* buffers,
     std::vector<uint64_t>* buffer_sizes,
     bool sparse_mode) {
-  STATS_START_TIMER(stats::GlobalStats::TimerType::CONSOLIDATE_COPY_ARRAY)
+  auto timer_se = stats_->start_timer("consolidate_copy_array");
 
   // Set the read query buffers outside the repeated submissions.
   // The Reader will reset the query buffer sizes to the original
@@ -557,8 +549,6 @@ Status Consolidator::copy_array(
   } while (query_r->status() == QueryStatus::INCOMPLETE);
 
   return Status::Ok();
-
-  STATS_END_TIMER(stats::GlobalStats::TimerType::CONSOLIDATE_COPY_ARRAY)
 }
 
 Status Consolidator::create_buffers(
@@ -566,7 +556,7 @@ Status Consolidator::create_buffers(
     bool sparse_mode,
     std::vector<ByteVec>* buffers,
     std::vector<uint64_t>* buffer_sizes) {
-  STATS_START_TIMER(stats::GlobalStats::TimerType::CONSOLIDATE_CREATE_BUFFERS)
+  auto timer_se = stats_->start_timer("consolidate_create_buffers");
 
   // For easy reference
   auto attribute_num = array_schema->attribute_num();
@@ -597,8 +587,6 @@ Status Consolidator::create_buffers(
 
   // Success
   return Status::Ok();
-
-  STATS_END_TIMER(stats::GlobalStats::TimerType::CONSOLIDATE_CREATE_BUFFERS)
 }
 
 Status Consolidator::create_queries(
@@ -609,7 +597,7 @@ Status Consolidator::create_queries(
     Query** query_r,
     Query** query_w,
     URI* new_fragment_uri) {
-  STATS_START_TIMER(stats::GlobalStats::TimerType::CONSOLIDATE_CREATE_QUERIES)
+  auto timer_se = stats_->start_timer("consolidate_create_queries");
 
   // Note: it is safe to use `set_subarray_safe` for `subarray` below
   // because the subarray is calculated by the TileDB algorithm (it
@@ -641,8 +629,6 @@ Status Consolidator::create_queries(
     RETURN_NOT_OK((*query_w)->set_subarray_unsafe(subarray));
 
   return Status::Ok();
-
-  STATS_END_TIMER(stats::GlobalStats::TimerType::CONSOLIDATE_CREATE_QUERIES)
 }
 
 Status Consolidator::compute_next_to_consolidate(
@@ -651,7 +637,7 @@ Status Consolidator::compute_next_to_consolidate(
     std::vector<TimestampedURI>* to_consolidate,
     bool* all_sparse,
     NDRange* union_non_empty_domains) const {
-  STATS_START_TIMER(stats::GlobalStats::TimerType::CONSOLIDATE_COMPUTE_NEXT)
+  auto timer_se = stats_->start_timer("consolidate_compute_next");
 
   // Preparation
   *all_sparse = true;
@@ -762,8 +748,6 @@ Status Consolidator::compute_next_to_consolidate(
   }
 
   return Status::Ok();
-
-  STATS_END_TIMER(stats::GlobalStats::TimerType::CONSOLIDATE_COMPUTE_NEXT)
 }
 
 Status Consolidator::compute_new_fragment_uri(

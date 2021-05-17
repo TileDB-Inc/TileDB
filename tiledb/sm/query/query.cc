@@ -56,7 +56,10 @@ namespace sm {
 
 Query::Query(StorageManager* storage_manager, Array* array, URI fragment_uri)
     : array_(array)
-    , storage_manager_(storage_manager) {
+    , storage_manager_(storage_manager)
+    , stats_(storage_manager_->stats()->create_child("Query"))
+    , reader_(stats_)
+    , writer_(stats_) {
   assert(array != nullptr && array->is_open());
 
   callback_ = nullptr;

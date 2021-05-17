@@ -118,13 +118,15 @@ class Reader {
   /**
    * Constructor.
    *
-   * @param array_schema The array schema.
-   * @param fragment_metadata The fragment metadata.
+   * @param parent_stats The parent stats to inherit from.
    */
-  Reader();
+  Reader(stats::Stats* parent_stats);
 
   /** Destructor. */
   ~Reader();
+
+  DISABLE_COPY_AND_COPY_ASSIGN(Reader);
+  DISABLE_MOVE_AND_MOVE_ASSIGN(Reader);
 
   /* ********************************* */
   /*                 API               */
@@ -949,7 +951,7 @@ class Reader {
   /* ********************************* */
 
   /** The class stats. */
-  tdb_shared_ptr<stats::Stats> stats_;
+  stats::Stats* stats_;
 
   /** The array. */
   const Array* array_;

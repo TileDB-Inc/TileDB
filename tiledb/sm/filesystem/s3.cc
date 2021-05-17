@@ -115,7 +115,8 @@ static std::once_flag aws_lib_initialized;
 /* ********************************* */
 
 S3::S3()
-    : state_(State::UNINITIALIZED)
+    : stats_(nullptr)
+    , state_(State::UNINITIALIZED)
     , file_buffer_size_(0)
     , max_parallel_ops_(1)
     , multipart_part_size_(0)
@@ -136,12 +137,17 @@ S3::~S3() {
 /*                 API               */
 /* ********************************* */
 
-Status S3::init(const Config& config, ThreadPool* const thread_pool) {
+Status S3::init(
+    stats::Stats* const parent_stats,
+    const Config& config,
+    ThreadPool* const thread_pool) {
   // already initialized
   if (state_ == State::DISCONNECTED)
     return Status::Ok();
 
   assert(state_ == State::UNINITIALIZED);
+
+  stats_ = parent_stats->create_child("S3");
 
   if (thread_pool == nullptr) {
     return LOG_STATUS(
@@ -1060,6 +1066,7 @@ Status S3::init_client() const {
 
   client_config.retryStrategy = Aws::MakeShared<S3RetryStrategy>(
       constants::s3_allocation_tag.c_str(),
+      stats_,
       connect_max_tries,
       connect_scale_factor);
 

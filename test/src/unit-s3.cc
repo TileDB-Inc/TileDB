@@ -33,6 +33,7 @@
 #ifdef HAVE_S3
 
 #include "catch.hpp"
+#include "test/src/helpers.h"
 #include "tiledb/common/thread_pool.h"
 #include "tiledb/sm/config/config.h"
 #include "tiledb/sm/filesystem/s3.h"
@@ -44,6 +45,7 @@
 
 using namespace tiledb::common;
 using namespace tiledb::sm;
+using namespace tiledb::test;
 
 struct S3Fx {
   const std::string S3_PREFIX = "s3://";
@@ -69,7 +71,7 @@ S3Fx::S3Fx() {
   REQUIRE(config.set("vfs.s3.verify_ssl", "false").ok());
 #endif
   REQUIRE(thread_pool_.init(2).ok());
-  REQUIRE(s3_.init(config, &thread_pool_).ok());
+  REQUIRE(s3_.init(&g_helper_stats, config, &thread_pool_).ok());
 
   // Create bucket
   bool exists;
