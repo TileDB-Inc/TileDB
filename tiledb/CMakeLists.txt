@@ -710,7 +710,11 @@ endif()
 # TileDB static and shared library targets
 ############################################################
 
-add_library(tiledb_shared SHARED $<TARGET_OBJECTS:TILEDB_CORE_OBJECTS>)
+add_library(tiledb_shared SHARED
+  $<TARGET_OBJECTS:TILEDB_CORE_OBJECTS>
+  # As of this writing, TARGET_OBJECTS is not transitive for object libraries
+  $<TARGET_OBJECTS:TileDB-blosc-modified>
+  )
 
 # Target properties
 set_target_properties(tiledb_shared
