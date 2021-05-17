@@ -1510,10 +1510,16 @@ void StorageManager::increment_in_progress() {
 }
 
 Status StorageManager::is_array(const URI& uri, bool* is_array) const {
-  URI schema_uri;
-  RETURN_NOT_OK(get_latest_array_schema_uri(uri, &schema_uri));
+  // Check if the schema directory exists or not
+  RETURN_NOT_OK(vfs_->is_dir(
+      uri.join_path(constants::array_schema_folder_name), is_array));
+  if (*is_array) {
+    return Status::Ok();
+  }
 
-  RETURN_NOT_OK(vfs_->is_file(schema_uri, is_array));
+  // If there is no schema directory, we check schema file
+  RETURN_NOT_OK(
+      vfs_->is_file(uri.join_path(constants::array_schema_filename), is_array));
   return Status::Ok();
 }
 
