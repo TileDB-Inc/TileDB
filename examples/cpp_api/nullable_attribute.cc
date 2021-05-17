@@ -178,7 +178,7 @@ void read_array() {
   std::cout << "a2: " << std::endl;
   for (i = 0; i < 4; ++i) {
     if (a2_validity_buf[i] > 0) {
-      std::cout << "{";
+      std::cout << "{ ";
       std::cout << std::to_string(a2_data[i * 2]);
       std::cout << ", ";
       std::cout << std::to_string(a2_data[i * 2 + 1]);
