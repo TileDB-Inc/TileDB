@@ -311,6 +311,10 @@ if (SANITIZER)
     PRIVATE
       -g -fno-omit-frame-pointer -fno-optimize-sibling-calls -fsanitize=${SANITIZER}
   )
+  target_link_options(TILEDB_CORE_OBJECTS
+    PRIVATE
+    -fsanitize=${SANITIZER} -shared-libasan
+    )
 endif()
 
 if (TILEDB_VERBOSE)
