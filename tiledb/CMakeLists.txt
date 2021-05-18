@@ -216,19 +216,27 @@ if (TILEDB_SERIALIZATION)
 
 endif()
 
+#
+# Delegate configuration and detection of platform-specific code generation to
+# the subdirectory. CMake isn't great at handling object libraries in
+# subdirectories, so we'll extract from the target TileDB-blosc-modified
+# directly.
+#
+add_subdirectory(${CMAKE_CURRENT_SOURCE_DIR}/../external/blosc ${CMAKE_CURRENT_BINARY_DIR}/../external/blosc)
+get_target_property(TILEDB_EXTERNALS_INCLUDE_DIRS TileDB-blosc-modified INCLUDE_DIRECTORIES)
+get_target_property(TILEDB_EXTERNALS_SOURCES TileDB-blosc-modified SOURCES)
+
 # 'External' source files included in the source tree.
-set(TILEDB_EXTERNALS_INCLUDE_DIRS
+list(APPEND TILEDB_EXTERNALS_INCLUDE_DIRS
   "${CMAKE_CURRENT_SOURCE_DIR}/../external/include"
   "${CMAKE_CURRENT_SOURCE_DIR}/../external/include/bitshuffle"
   "${CMAKE_CURRENT_SOURCE_DIR}/../external/include/blosc"
 )
-set(TILEDB_EXTERNALS_SOURCES
+list(APPEND TILEDB_EXTERNALS_SOURCES
   ${CMAKE_CURRENT_SOURCE_DIR}/../external/src/md5/md5.cc
   ${CMAKE_CURRENT_SOURCE_DIR}/../external/src/bitshuffle/iochain.cc
   ${CMAKE_CURRENT_SOURCE_DIR}/../external/src/bitshuffle/bitshuffle_core.cc
 )
-# Delegate configuration and detection of platform-specific code generation to the subdirectory
-add_subdirectory(${CMAKE_CURRENT_SOURCE_DIR}/../external/blosc ${CMAKE_CURRENT_BINARY_DIR}/../external/blosc)
 
 ############################################################
 # Build core objects as a reusable object library
@@ -238,8 +246,6 @@ add_library(TILEDB_CORE_OBJECTS OBJECT
     ${TILEDB_CORE_SOURCES}
     ${TILEDB_EXTERNALS_SOURCES}
 )
-#
-target_link_libraries(TILEDB_CORE_OBJECTS TileDB-blosc-modified)
 
 # Compile all core sources with PIC
 set_property(TARGET TILEDB_CORE_OBJECTS PROPERTY POSITION_INDEPENDENT_CODE ON)
@@ -260,7 +266,6 @@ if (WIN32 AND TILEDB_STATIC)
     ${TILEDB_CORE_SOURCES}
     ${TILEDB_EXTERNALS_SOURCES}
   )
-  target_link_libraries(TILEDB_CORE_OBJECTS_STATIC TileDB-blosc-modified)
 
   # Compile all core sources with PIC
   set_property(TARGET TILEDB_CORE_OBJECTS_STATIC PROPERTY POSITION_INDEPENDENT_CODE ON)
@@ -712,8 +717,6 @@ endif()
 
 add_library(tiledb_shared SHARED
   $<TARGET_OBJECTS:TILEDB_CORE_OBJECTS>
-  # As of this writing, TARGET_OBJECTS is not transitive for object libraries
-  $<TARGET_OBJECTS:TileDB-blosc-modified>
   )
 
 # Target properties

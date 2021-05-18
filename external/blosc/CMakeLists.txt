@@ -30,7 +30,7 @@
 #   directories, nor of passing argument for the callee in add_subdirectory(). Here we avoid premature modularization
 #   and hard-code the caller.
 # Outputs
-#   library TileDB-blosc-modified
+#   object library TileDB-blosc-modified
 
 set(SOURCE_DIR ${CMAKE_CURRENT_SOURCE_DIR})
 
@@ -84,8 +84,13 @@ set(TILEDB_BLOSC_COMPILE_FLAGS "-w")
 if (CMAKE_USE_PTHREADS_INIT)
   string(APPEND TILEDB_BLOSC_COMPILE_FLAGS " -DPTHREAD_AVAILABLE")
 endif()
+# Setting the directory property is a workaround. We're not using the library
+# "properly" because of a CMake version limitation (prior to
+# `target_link_libraries` working for object libraries). The caller adds our
+# sources to the main ones, so this code compiles from the `tiledb` directory.
 set_source_files_properties(
   ${SOURCES}
+  DIRECTORY ${CMAKE_SOURCE_DIR}/tiledb
   PROPERTIES COMPILE_FLAGS ${TILEDB_BLOSC_COMPILE_FLAGS}
 )
 
