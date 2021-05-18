@@ -79,10 +79,10 @@ endif()
 
 # The blosc files are external and we ignore their warnings.
 # -w is common to gcc and MSVC
-set(TILEDB_BLOSC_COMPILE_FLAGS "-w")
+set(TILEDB_BLOSC_COMPILE_OPTIONS "-w")
 # If we found pthreads, activate it by defining PTHREAD_AVAILABLE.
 if (CMAKE_USE_PTHREADS_INIT)
-  string(APPEND TILEDB_BLOSC_COMPILE_FLAGS " -DPTHREAD_AVAILABLE")
+  string(APPEND TILEDB_BLOSC_COMPILE_OPTIONS ";-DPTHREAD_AVAILABLE")
 endif()
 # Setting the directory property is a workaround. We're not using the library
 # "properly" because of a CMake version limitation (prior to
@@ -91,7 +91,7 @@ endif()
 set_source_files_properties(
   ${SOURCES}
   DIRECTORY ${CMAKE_SOURCE_DIR}/tiledb
-  PROPERTIES COMPILE_FLAGS ${TILEDB_BLOSC_COMPILE_FLAGS}
+  PROPERTIES COMPILE_OPTIONS "${TILEDB_BLOSC_COMPILE_OPTIONS}"
 )
 
 #
