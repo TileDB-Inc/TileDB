@@ -44,6 +44,7 @@
 #include "tiledb/sm/misc/constants.h"
 #include "tiledb/sm/misc/uri.h"
 #include "tiledb/sm/stats/global_stats.h"
+#include "tiledb/sm/stats/stats.h"
 
 #include <aws/core/Aws.h>
 #include <aws/core/auth/AWSCredentialsProviderChain.h>
@@ -98,6 +99,9 @@ class S3 {
   /** Destructor. */
   ~S3();
 
+  DISABLE_COPY_AND_COPY_ASSIGN(S3);
+  DISABLE_MOVE_AND_MOVE_ASSIGN(S3);
+
   /* ********************************* */
   /*                 API               */
   /* ********************************* */
@@ -105,11 +109,15 @@ class S3 {
   /**
    * Initializes and connects an S3 client.
    *
+   * @param parent_stats The parent stats.
    * @param config Configuration parameters.
    * @param thread_pool The parent VFS thread pool.
    * @return Status
    */
-  Status init(const Config& config, ThreadPool* thread_pool);
+  Status init(
+      stats::Stats* parent_stats,
+      const Config& config,
+      ThreadPool* thread_pool);
 
   /**
    * Creates a bucket.
@@ -353,8 +361,12 @@ class S3 {
   class S3RetryStrategy : public Aws::Client::RetryStrategy {
    public:
     /** Constructor. */
-    S3RetryStrategy(const uint64_t max_retries, const uint64_t scale_factor)
-        : max_retries_(max_retries)
+    S3RetryStrategy(
+        stats::Stats* const s3_stats,
+        const uint64_t max_retries,
+        const uint64_t scale_factor)
+        : s3_stats_(s3_stats)
+        , max_retries_(max_retries)
         , scale_factor_(scale_factor) {
     }
 
@@ -376,8 +388,7 @@ class S3 {
           return false;
         }
 
-        STATS_ADD_COUNTER(
-            stats::GlobalStats::CounterType::VFS_S3_SLOW_DOWN_RETRIES, 1)
+        s3_stats_->add_counter("vfs_s3_slow_down_retries", 1);
 
         return true;
       }
@@ -411,6 +422,9 @@ class S3 {
     }
 
    private:
+    /** The S3 `stats_`. */
+    stats::Stats* s3_stats_;
+
     /** The maximum number of retries after an error. */
     uint64_t max_retries_;
 
@@ -538,6 +552,9 @@ class S3 {
   /* ********************************* */
   /*         PRIVATE ATTRIBUTES        */
   /* ********************************* */
+
+  /** The class stats. */
+  stats::Stats* stats_;
 
   /** The current state. */
   State state_;

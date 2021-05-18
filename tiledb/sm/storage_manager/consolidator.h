@@ -115,6 +115,9 @@ class Consolidator {
   /** Destructor. */
   ~Consolidator();
 
+  DISABLE_COPY_AND_COPY_ASSIGN(Consolidator);
+  DISABLE_MOVE_AND_MOVE_ASSIGN(Consolidator);
+
   /* ********************************* */
   /*                API                */
   /* ********************************* */
@@ -165,6 +168,9 @@ class Consolidator {
 
   /** The storage manager. */
   StorageManager* storage_manager_;
+
+  /** The class stats. */
+  stats::Stats* stats_;
 
   /* ********************************* */
   /*          PRIVATE METHODS           */

@@ -41,6 +41,7 @@
 #include "tiledb/common/thread_pool.h"
 #include "tiledb/sm/filter/filter.h"
 #include "tiledb/sm/filter/filter_buffer.h"
+#include "tiledb/sm/stats/stats.h"
 #include "tiledb/sm/tile/chunked_buffer.h"
 
 using namespace tiledb::common;
@@ -177,7 +178,8 @@ class FilterPipeline {
    * @param compute_tp The thread pool for compute-bound tasks.
    * @return Status
    */
-  Status run_forward(Tile* tile, ThreadPool* compute_tp) const;
+  Status run_forward(
+      stats::Stats* writer_stats, Tile* tile, ThreadPool* compute_tp) const;
 
   /**
    * Runs the pipeline in reverse on the given filtered tile. This is used
@@ -220,6 +222,7 @@ class FilterPipeline {
    * @return Status
    */
   Status run_reverse(
+      stats::Stats* reader_stats,
       Tile* tile,
       ThreadPool* compute_tp,
       const Config& config,
@@ -230,6 +233,7 @@ class FilterPipeline {
    * The var-length overload of `run_reverse`.
    */
   Status run_reverse(
+      stats::Stats* reader_stats,
       Tile* tile,
       Tile* tile_var,
       ThreadPool* compute_tp,
@@ -394,6 +398,7 @@ class FilterPipeline {
    * @return Status
    */
   Status run_reverse_internal(
+      stats::Stats* reader_stats,
       Tile* tile,
       ThreadPool* compute_tp,
       const Config& config,

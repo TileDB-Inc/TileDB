@@ -524,15 +524,12 @@ TEST_CASE(
   auto bits = h.bits();
   auto bucket_num = ((uint64_t)1 << bits) - 1;
 
-  // Test - they are off by 1 as compared to the previous test
-  // due to rounding. That does not affect correctness of the
-  // partitioning algorith (where map_from_uint64 is used).
   auto val = d1.map_from_uint64(63786642, bits, bucket_num);
   auto val_int32 = *(const int32_t*)(&val[0]);
-  CHECK(val_int32 == 2);
+  CHECK(val_int32 == 3);
   val = d1.map_from_uint64(42524428, bits, bucket_num);
   val_int32 = *(const int32_t*)(&val[0]);
-  CHECK(val_int32 == 1);
+  CHECK(val_int32 == 2);
 }
 
 TEST_CASE(
@@ -548,15 +545,12 @@ TEST_CASE(
   auto bits = h.bits();
   auto bucket_num = ((uint64_t)1 << bits) - 1;
 
-  // Test - they are off by 1 as compared to the previous test
-  // due to rounding. That does not affect correctness of the
-  // partitioning algorith (where map_from_uint64 is used).
   auto val = d1.map_from_uint64(63786642, bits, bucket_num);
   auto val_int32 = *(const int32_t*)(&val[0]);
-  CHECK(val_int32 == -48);
+  CHECK(val_int32 == -47);
   val = d1.map_from_uint64(42524428, bits, bucket_num);
   val_int32 = *(const int32_t*)(&val[0]);
-  CHECK(val_int32 == -49);
+  CHECK(val_int32 == -48);
 }
 
 TEST_CASE(
@@ -574,10 +568,10 @@ TEST_CASE(
 
   auto val = d1.map_from_uint64(1503238527, bits, bucket_num);
   auto val_int32 = *(const float*)(&val[0]);
-  CHECK(val_int32 == 0.7f);
+  CHECK(round(100 * val_int32) == 70);
   val = d1.map_from_uint64(429496735, bits, bucket_num);
   val_int32 = *(const float*)(&val[0]);
-  CHECK(val_int32 == 0.2f);
+  CHECK(round(100 * val_int32) == 20);
 }
 
 TEST_CASE(
