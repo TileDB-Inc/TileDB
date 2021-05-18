@@ -1511,9 +1511,11 @@ void StorageManager::increment_in_progress() {
 
 Status StorageManager::is_array(const URI& uri, bool* is_array) const {
   // Check if the schema directory exists or not
-  RETURN_NOT_OK(vfs_->is_dir(
-      uri.join_path(constants::array_schema_folder_name), is_array));
-  if (*is_array) {
+  bool is_dir = false;
+  // Since is_dir could return NOT Ok status, we will not use RETURN_NOT_OK here
+  vfs_->is_dir(uri.join_path(constants::array_schema_folder_name), &is_dir);
+  if (is_dir) {
+    *is_array = true;
     return Status::Ok();
   }
 
