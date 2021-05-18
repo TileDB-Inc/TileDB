@@ -216,16 +216,6 @@ if (TILEDB_SERIALIZATION)
 
 endif()
 
-#
-# Delegate configuration and detection of platform-specific code generation to
-# the subdirectory. CMake isn't great at handling object libraries in
-# subdirectories, so we'll extract from the target TileDB-blosc-modified
-# directly.
-#
-add_subdirectory(${CMAKE_CURRENT_SOURCE_DIR}/../external/blosc ${CMAKE_CURRENT_BINARY_DIR}/../external/blosc)
-get_target_property(TILEDB_EXTERNALS_INCLUDE_DIRS TileDB-blosc-modified INCLUDE_DIRECTORIES)
-get_target_property(TILEDB_EXTERNALS_SOURCES TileDB-blosc-modified SOURCES)
-
 # 'External' source files included in the source tree.
 list(APPEND TILEDB_EXTERNALS_INCLUDE_DIRS
   "${CMAKE_CURRENT_SOURCE_DIR}/../external/include"
@@ -237,6 +227,26 @@ list(APPEND TILEDB_EXTERNALS_SOURCES
   ${CMAKE_CURRENT_SOURCE_DIR}/../external/src/bitshuffle/iochain.cc
   ${CMAKE_CURRENT_SOURCE_DIR}/../external/src/bitshuffle/bitshuffle_core.cc
 )
+
+#
+# Delegate configuration and detection of platform-specific code generation to
+# the subdirectory. CMake isn't great at handling object libraries in
+# subdirectories, so we'll extract from the target TileDB-blosc-modified
+# directly.
+#
+add_subdirectory(${CMAKE_CURRENT_SOURCE_DIR}/../external/blosc ${CMAKE_CURRENT_BINARY_DIR}/../external/blosc)
+list(APPEND TILEDB_EXTERNALS_INCLUDE_DIRS ${TileDB_blosc_INCLUDE_DIRS})
+list(APPEND TILEDB_EXTERNALS_SOURCES ${TileDB_blosc_SOURCES})
+
+message(***)
+message(***)
+message("TileDB_blosc_INCLUDE_DIRS=${TileDB_blosc_INCLUDE_DIRS}")
+message("TileDB_blosc_SOURCES=${TileDB_blosc_SOURCES}")
+set(name ${CMAKE_SOURCE_DIR}/external/blosc/src/shuffle.c)
+get_source_file_property(bar1 ${name} COMPILE_OPTIONS)
+message("Compile options for ${name} (current directory): ${bar1}")
+message(***)
+message(***)
 
 ############################################################
 # Build core objects as a reusable object library
@@ -926,3 +936,4 @@ configure_file(
 )
 install(FILES ${CMAKE_CURRENT_BINARY_DIR}/tiledb.pc
         DESTINATION ${CMAKE_INSTALL_LIBDIR}/pkgconfig)
+

@@ -26,11 +26,13 @@
 # THE SOFTWARE.
 #
 # Precondition
-#   Expects caller to be <top>/tiledb/CMakeLists.txt. CMake (as of 3.20) does not have a way of retrieving the caller's
-#   directories, nor of passing argument for the callee in add_subdirectory(). Here we avoid premature modularization
-#   and hard-code the caller.
+#   Expects caller to be <top>/tiledb/CMakeLists.txt. CMake (as of 3.20) does
+#   not have a way of retrieving the caller's directories, nor of passing
+#   argument for the callee in add_subdirectory(). Here we avoid premature
+#   modularization and hard-code the caller.
 # Outputs
-#   object library TileDB-blosc-modified
+#   TileDB_blosc_SOURCES, set in parent scope
+#   TileDB_blosc_INCLUDE_DIRS, set in parent scope
 
 set(SOURCE_DIR ${CMAKE_CURRENT_SOURCE_DIR})
 
@@ -95,8 +97,7 @@ set_source_files_properties(
 )
 
 #
-# Set up imported interface-library that acts as the output of this file
+# Set the outputs
 #
-add_library(TileDB-blosc-modified OBJECT ${SOURCES})
-target_link_libraries(TileDB-blosc-modified INTERFACE Threads::Threads)
-target_include_directories(TileDB-blosc-modified PUBLIC ${SOURCE_DIR}/include)
+set(TileDB_blosc_SOURCES ${SOURCES} PARENT_SCOPE)
+set(TileDB_blosc_INCLUDE_DIRS ${SOURCE_DIR}/include PARENT_SCOPE)
