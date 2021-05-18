@@ -204,9 +204,9 @@ void Stats::add_counter(const std::string& stat, uint64_t count) {
   (void)stat;
   (void)count;
 }
-
-void Stats::start_timer(const std::string& stat) {
+ScopedExecutor Stats::start_timer(const std::string& stat) {
   (void)stat;
+  return ScopedExecutor();
 }
 
 void Stats::end_timer(const std::string& stat) {
