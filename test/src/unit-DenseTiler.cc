@@ -2488,7 +2488,7 @@ TEST_CASE_METHOD(
   c_data1_3_val[6] = 'o';
   c_data1_3_val[7] = 'o';
   c_data1_3_val[8] = 'o';
-  for (int i = 9; i <= 57; ++i)
+  for (int i = 9; i < 57; ++i)
     c_data1_3_val[i] = 0;
   CHECK(check_tile<uint8_t>(&tile1_3_val, c_data1_3_val));
 

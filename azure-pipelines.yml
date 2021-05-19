@@ -60,6 +60,7 @@ stages:
             imageName: 'ubuntu-16.04'
             TILEDB_CI_ASAN: ON
             TILEDB_SERIALIZATION: ON
+            # Always run ASAN with matching compiler versions
             CXX: g++-9
             CC: gcc-9
           linux_serialization:
