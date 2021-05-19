@@ -620,7 +620,8 @@ class Array {
   }
 
   /** Returns the timestamp at which the array was opened. */
-  uint64_t timestamp_end() const {
+  TILEDB_DEPRECATED
+  uint64_t timestamp() const {
     auto& ctx = ctx_.get();
     uint64_t timestamp_end;
     ctx.handle_error(tiledb_array_get_timestamp(

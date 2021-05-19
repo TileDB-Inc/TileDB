@@ -208,17 +208,16 @@ Status Array::open(
   metadata_loaded_ = false;
   non_empty_domain_computed_ = false;
 
-  if (query_type == QueryType::READ) {
-    timestamp_start_ = timestamp_start;
-    timestamp_end_ = timestamp_end;
-  } else {
-    assert(query_type == QueryType::WRITE);
-    if (timestamp_end == UINT64_MAX) {
-      timestamp_end_ = 0;
+  timestamp_start_ = timestamp_start;
+  timestamp_end_ = timestamp_end;
+
+  if (timestamp_end_ == UINT64_MAX) {
+    if (query_type == QueryType::READ) {
+      timestamp_end_ = utils::time::timestamp_now_ms();
     } else {
-      timestamp_end_ = timestamp_end;
+      assert(query_type == QueryType::WRITE);
+      timestamp_end_ = 0;
     }
-    timestamp_start_ = timestamp_start;
   }
 
   if (remote_) {
@@ -496,6 +495,10 @@ Status Array::reopen(uint64_t timestamp_start, uint64_t timestamp_end) {
   metadata_loaded_ = false;
   non_empty_domain_.clear();
   non_empty_domain_computed_ = false;
+
+  if (timestamp_end_ == UINT64_MAX) {
+    timestamp_end_ = utils::time::timestamp_now_ms();
+  }
 
   if (remote_) {
     return open(
