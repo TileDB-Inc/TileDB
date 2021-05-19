@@ -90,11 +90,31 @@ endif()
 # "properly" because of a CMake version limitation (prior to
 # `target_link_libraries` working for object libraries). The caller adds our
 # sources to the main ones, so this code compiles from the `tiledb` directory.
+message(****)
+message("** external/blosc -- before set_source_files_properties **")
+message(****)
+message("SOURCES=${SOURCES}")
+message("CMAKE_SOURCE_DIR=${CMAKE_SOURCE_DIR}")
+message("TILEDB_BLOSC_COMPILE_OPTIONS=${TILEDB_BLOSC_COMPILE_OPTIONS}")
+set(name ${SOURCE_DIR}/src/shuffle.c)
+get_source_file_property(bar ${name} COMPILE_OPTIONS)
+message("Compile options for ${name} (current directory): ${bar}")
+get_source_file_property(bar ${name} DIRECTORY "${CMAKE_SOURCE_DIR}/tiledb" COMPILE_OPTIONS)
+message("Compile options for ${name} ('<top>/tiledb' directory): ${bar}")
+message(****)
 set_source_files_properties(
   ${SOURCES}
   DIRECTORY ${CMAKE_SOURCE_DIR}/tiledb
   PROPERTIES COMPILE_OPTIONS "${TILEDB_BLOSC_COMPILE_OPTIONS}"
 )
+message(****)
+message("** external/blosc -- after set_source_files_properties **")
+message(****)
+get_source_file_property(bar ${name} COMPILE_OPTIONS)
+message("Compile options for ${name} (current directory): ${bar}")
+get_source_file_property(bar ${name} DIRECTORY "${CMAKE_SOURCE_DIR}/tiledb" COMPILE_OPTIONS)
+message("Compile options for ${name} ('<top>/tiledb' directory): ${bar}")
+message(****)
 
 #
 # Set the outputs

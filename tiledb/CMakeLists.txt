@@ -238,15 +238,15 @@ add_subdirectory(${CMAKE_CURRENT_SOURCE_DIR}/../external/blosc ${CMAKE_CURRENT_B
 list(APPEND TILEDB_EXTERNALS_INCLUDE_DIRS ${TileDB_blosc_INCLUDE_DIRS})
 list(APPEND TILEDB_EXTERNALS_SOURCES ${TileDB_blosc_SOURCES})
 
-message(***)
-message(***)
+message("****")
+message("** tiledb -- after add_subdirectory(... blosc ...) **")
+message("****")
 message("TileDB_blosc_INCLUDE_DIRS=${TileDB_blosc_INCLUDE_DIRS}")
 message("TileDB_blosc_SOURCES=${TileDB_blosc_SOURCES}")
 set(name ${CMAKE_SOURCE_DIR}/external/blosc/src/shuffle.c)
 get_source_file_property(bar1 ${name} COMPILE_OPTIONS)
 message("Compile options for ${name} (current directory): ${bar1}")
-message(***)
-message(***)
+message("****")
 
 ############################################################
 # Build core objects as a reusable object library
