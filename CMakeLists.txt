@@ -161,7 +161,9 @@ if (TILEDB_SUPERBUILD)
   message(STATUS "Starting TileDB superbuild.")
   include("cmake/TileDB-Superbuild.cmake")
   message(STATUS "Install prefix is ${CMAKE_INSTALL_PREFIX}")
-  # Stop processing this file here.
+  # The superbuild file incorporates this file as an external project with the
+  # superbuild off. Thus we stop processing this file here, knowing that we'll
+  # come back later.
   return()
 endif()
 
@@ -170,6 +172,30 @@ message(STATUS "Starting TileDB regular build.")
 # Paths to locate the installed external projects.
 set(TILEDB_EP_SOURCE_DIR "${TILEDB_EP_BASE}/src")
 set(TILEDB_EP_INSTALL_PREFIX "${TILEDB_EP_BASE}/install")
+
+#######################################################
+# Validate build options and set compile/link options.
+#
+# This is after superbuild dispatch so that external projects are built in a
+# non-development context.
+#######################################################
+
+if (SANITIZER)
+  if (NOT CMAKE_BUILD_TYPE MATCHES "Debug")
+    message(FATAL_ERROR "Sanitizers only enabled for Debug build")
+  endif()
+  string(TOLOWER ${SANITIZER} SANITIZER)
+  if (NOT SANITIZER MATCHES "^(address|memory|leak|thread|undefined)$")
+    message(FATAL_ERROR "Unknown clang sanitizer: ${SANITIZER})")
+  else()
+    message(STATUS "TileDB compiling with sanitizer '${SANITIZER}' enabled")
+  endif()
+  add_compile_options(-g -fno-omit-frame-pointer -fno-optimize-sibling-calls -fsanitize=${SANITIZER})
+  add_link_options(-fsanitize=${SANITIZER})
+  if (SANITIZER MATCHES "^address$")
+    add_link_options(-shared-libasan)
+  endif()
+endif()
 
 ############################################################
 # Compile options/definitions for all targets
