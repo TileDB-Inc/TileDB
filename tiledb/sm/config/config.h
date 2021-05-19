@@ -100,6 +100,16 @@ class Config {
    *  */
   static const std::string SM_ARRAY_TIMESTAMP_END;
 
+  /**
+   * The key for encrypted arrays.
+   *  */
+  static const std::string SM_ENCRYPTION_KEY;
+
+  /**
+   * The type of encryption used for encrypted arrays.
+   *  */
+  static const std::string SM_ENCRYPTION_TYPE;
+
   /** If `true`, this will deduplicate coordinates upon sparse writes. */
   static const std::string SM_DEDUP_COORDS;
 
