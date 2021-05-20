@@ -4656,6 +4656,8 @@ TILEDB_EXPORT int32_t tiledb_query_condition_init(
     uint64_t condition_value_size,
     tiledb_query_condition_op_t op);
 
+TILEDB_EXPORT void tiledb_query_condition_dump(tiledb_query_condition_t* cond);
+
 /**
  * Combines two query condition objects into a newly allocated
  * condition. Does not mutate or free the input condition objects.
@@ -4687,7 +4689,8 @@ TILEDB_EXPORT int32_t tiledb_query_condition_init(
  *
  * tiledb_query_condition_t* query_condition_3;
  * tiledb_query_condition_combine(
- *   ctx, query_condition_1, query_condition_2, TILEDB_AND, &query_condition_3);
+ *   ctx, query_condition_1, query_condition_2, TILEDB_AND,
+ * &query_condition_3);
  *
  * tiledb_query_condition_free(&query_condition_1);
  * tiledb_query_condition_free(&query_condition_2);
@@ -4703,7 +4706,8 @@ TILEDB_EXPORT int32_t tiledb_query_condition_init(
  * @param condition_value_size The byte size of `condition_value`.
  * @param op The comparison operator.
  * @param cond The allocated query condition object.
- * @return `TILEDB_OK` for success and `TILEDB_OOM` or `TILEDB_ERR` for error.
+ * @return `TILEDB_OK` for success and `TILEDB_OOM` or `TILEDB_ERR` for
+ * error.
  */
 TILEDB_EXPORT int32_t tiledb_query_condition_combine(
     tiledb_ctx_t* ctx,

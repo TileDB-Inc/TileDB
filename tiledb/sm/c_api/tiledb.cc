@@ -3465,6 +3465,16 @@ int32_t tiledb_query_condition_init(
   return TILEDB_OK;
 }
 
+void tiledb_query_condition_dump(tiledb_query_condition_t* const cond) {
+  /* TODO this should dump more than just field names but it is the only
+     publically available attribute that can be retrieved ATM */
+  std::cout << "Clause Field Names:" << std::endl;
+  for (const auto& field_name : cond->query_condition_->field_names()) {
+    std::cout << "\t" << field_name << " ";
+    std::cout << std::endl;
+  }
+}
+
 int32_t tiledb_query_condition_combine(
     tiledb_ctx_t* const ctx,
     const tiledb_query_condition_t* const left_cond,

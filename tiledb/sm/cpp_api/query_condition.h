@@ -262,6 +262,10 @@ class QueryCondition {
     return qc;
   }
 
+  void dump() {
+    tiledb_query_condition_dump(query_condition_.get());
+  }
+
  private:
   /* ********************************* */
   /*        PRIVATE CONSTRUCTORS       */
