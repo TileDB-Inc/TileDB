@@ -3061,6 +3061,8 @@ TILEDB_EXPORT int32_t tiledb_array_schema_load(
     tiledb_array_schema_t** array_schema);
 
 /**
+ * This is a deprecated API.
+ *
  * Retrieves the schema of an encrypted array from the disk, creating an array
  * schema struct.
  *
@@ -4808,6 +4810,8 @@ TILEDB_EXPORT int32_t tiledb_array_open_at(
     uint64_t timestamp);
 
 /**
+ * This is a deprecated API.
+ *
  * Opens an encrypted array using the given encryption key. This function has
  * the same semantics as `tiledb_array_open()` but is used for encrypted arrays.
  *
@@ -5136,6 +5140,8 @@ TILEDB_EXPORT int32_t tiledb_array_create(
     const tiledb_array_schema_t* array_schema);
 
 /**
+ * This is a deprecated API.
+ *
  * Creates a new encrypted TileDB array given an input schema.
  *
  * Encrypted arrays can only be created through this function.
@@ -5194,6 +5200,8 @@ TILEDB_EXPORT int32_t tiledb_array_consolidate(
     tiledb_ctx_t* ctx, const char* array_uri, tiledb_config_t* config);
 
 /**
+ * This is a deprecated API.
+ *
  * Depending on the consoliation mode in the config, consolidates either the
  * fragment files, fragment metadata files, or array metadata files into a
  * single file.
@@ -5740,6 +5748,8 @@ TILEDB_DEPRECATED_EXPORT int32_t tiledb_array_consolidate_metadata(
     tiledb_ctx_t* ctx, const char* array_uri, tiledb_config_t* config);
 
 /**
+ * This is a deprecated API.
+ *
  * Consolidates the array metadata of an encrypted array into a single file.
  *
  * You must first finalize all queries to the array before consolidation can
@@ -6662,6 +6672,8 @@ TILEDB_EXPORT int32_t tiledb_fragment_info_load(
     tiledb_ctx_t* ctx, tiledb_fragment_info_t* fragment_info);
 
 /**
+ * This is a deprecated API.
+ *
  * Loads the fragment info from an encrypted array.
  *
  * **Example:**

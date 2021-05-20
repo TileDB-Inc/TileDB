@@ -112,6 +112,7 @@ class Array {
    * @param encryption_key The encryption key to use.
    * @param key_length Length in bytes of the encryption key.
    */
+  TILEDB_DEPRECATED
   Array(
       const Context& ctx,
       const std::string& array_uri,
@@ -425,6 +426,7 @@ class Array {
    * @param encryption_key The encryption key to use.
    * @param key_length Length in bytes of the encryption key.
    */
+  TILEDB_DEPRECATED
   void open(
       tiledb_query_type_t query_type,
       tiledb_encryption_type_t encryption_type,

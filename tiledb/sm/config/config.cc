@@ -65,6 +65,8 @@ const std::string Config::REST_RETRY_INITIAL_DELAY_MS = "500";
 const std::string Config::REST_RETRY_DELAY_FACTOR = "1.25";
 const std::string Config::SM_ARRAY_TIMESTAMP_START = "0";
 const std::string Config::SM_ARRAY_TIMESTAMP_END = std::to_string(UINT64_MAX);
+const std::string Config::SM_ENCRYPTION_KEY = "0";
+const std::string Config::SM_ENCRYPTION_TYPE = "NO_ENCRYPTION";
 const std::string Config::SM_DEDUP_COORDS = "false";
 const std::string Config::SM_CHECK_COORD_DUPS = "true";
 const std::string Config::SM_CHECK_COORD_OOB = "true";
@@ -199,6 +201,8 @@ Config::Config() {
   param_values_["config.logging_level"] = CONFIG_LOGGING_LEVEL;
   param_values_["sm.array.timestamp_start"] = SM_ARRAY_TIMESTAMP_START;
   param_values_["sm.array.timestamp_end"] = SM_ARRAY_TIMESTAMP_END;
+  param_values_["sm.encryption_key"] = SM_ENCRYPTION_KEY;
+  param_values_["sm.encryption_type"] = SM_ENCRYPTION_TYPE;
   param_values_["sm.dedup_coords"] = SM_DEDUP_COORDS;
   param_values_["sm.check_coord_dups"] = SM_CHECK_COORD_DUPS;
   param_values_["sm.check_coord_oob"] = SM_CHECK_COORD_OOB;
@@ -446,6 +450,10 @@ Status Config::unset(const std::string& param) {
     param_values_["sm.array.timestamp_start"] = SM_ARRAY_TIMESTAMP_START;
   } else if (param == "sm.array.timestamp_end") {
     param_values_["sm.array.timestamp_end"] = SM_ARRAY_TIMESTAMP_END;
+  } else if (param == "sm.encryption_key") {
+    param_values_["sm.encryption_key"] = SM_ENCRYPTION_KEY;
+  } else if (param == "sm.encryption_type") {
+    param_values_["sm.encryption_type"] = SM_ENCRYPTION_TYPE;
   } else if (param == "sm.dedup_coords") {
     param_values_["sm.dedup_coords"] = SM_DEDUP_COORDS;
   } else if (param == "sm.check_coord_dups") {

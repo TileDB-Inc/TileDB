@@ -100,13 +100,14 @@ void write_array() {
   // Open encrypted array for writing
   tiledb_array_t* array;
   tiledb_array_alloc(ctx, array_name, &array);
-  tiledb_array_open_with_key(
-      ctx,
-      array,
-      TILEDB_WRITE,
-      TILEDB_AES_256_GCM,
-      encryption_key,
-      (uint32_t)strlen(encryption_key));
+  tiledb_config_t* cfg;
+  tiledb_error_t* err;
+  tiledb_config_alloc(&cfg, &err);
+  tiledb_config_set(cfg, "sm.encryption_type", "TILEDB_AES_256_GCS", &err);
+  tiledb_config_set(cfg, "sm.encryption_key", encryption_key, &err);
+  tiledb_array_set_config(ctx, array, cfg);
+  tiledb_array_open(ctx, array, TILEDB_WRITE);
+  tiledb_config_free(&cfg);
 
   // Prepare some data for the array
   int data[] = {1, 2, 3, 4, 5, 6, 7, 8, 9, 10, 11, 12, 13, 14, 15, 16};
@@ -138,13 +139,14 @@ void read_array() {
   // Open encrypted array for reading
   tiledb_array_t* array;
   tiledb_array_alloc(ctx, array_name, &array);
-  tiledb_array_open_with_key(
-      ctx,
-      array,
-      TILEDB_READ,
-      TILEDB_AES_256_GCM,
-      encryption_key,
-      (uint32_t)strlen(encryption_key));
+  tiledb_config_t* cfg;
+  tiledb_error_t* err;
+  tiledb_config_alloc(&cfg, &err);
+  tiledb_config_set(cfg, "sm.encryption_type", "TILEDB_AES_256_GCM", &err);
+  tiledb_config_set(cfg, "sm.encryption_key", encryption_key, &err);
+  tiledb_array_set_config(ctx, array, cfg);
+  tiledb_array_open(ctx, array, TILEDB_READ);
+  tiledb_config_free(&cfg);
 
   // Slice only rows 1, 2 and cols 2, 3, 4
   int subarray[] = {1, 2, 2, 4};
