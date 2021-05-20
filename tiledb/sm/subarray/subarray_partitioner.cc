@@ -896,8 +896,11 @@ void SubarrayPartitioner::compute_splitting_value_on_tiles(
       *splitting_dim = d;
       dim->ceil_to_tile(
           *r, MAX(1, floor(tiles_apart / 2)) - 1, splitting_value);
-      *unsplittable = false;
-      break;
+
+      if (std::memcmp(splitting_value, r->end(), splitting_value->size())) {
+        *unsplittable = false;
+        break;
+      }
     }
   }
 }
