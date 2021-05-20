@@ -1106,7 +1106,8 @@ Status GCS::read(
   RETURN_NOT_OK(parse_gcs_uri(uri, &bucket_name, &object_path));
 
   google::cloud::storage::ObjectReadStream stream = client_->ReadObject(
-      bucket_name, object_path, google::cloud::storage::ReadFromOffset(offset));
+      bucket_name, object_path, google::cloud::storage::ReadRange(
+          offset, offset + length + read_ahead_length));
 
   if (!stream.status().ok()) {
     return LOG_STATUS(Status::GCSError(std::string(
