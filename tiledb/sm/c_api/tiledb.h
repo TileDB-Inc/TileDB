@@ -4964,6 +4964,9 @@ TILEDB_EXPORT int32_t tiledb_array_reopen_at(
     tiledb_ctx_t* ctx, tiledb_array_t* array, uint64_t timestamp);
 
 /**
+ * This is a deprecated API. The start/end timestamps for opening an array
+ * are now set in the config.
+ *
  * Returns the timestamp, representing time in milliseconds ellapsed since
  * 1970-01-01 00:00:00 +0000 (UTC), at which the array was opened. See also the
  * documentation of `tiledb_array_open_at`.
