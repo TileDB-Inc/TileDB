@@ -213,6 +213,7 @@ Status StorageManager::array_open_for_reads(
            in the load_array_fragments_task below.
   */
   std::vector<TimestampedURI> fragments_to_load;
+  std::vector<URI> ls_uris;
   std::vector<URI> fragment_uris;
   URI meta_uri;
   Buffer f_buff;
@@ -226,12 +227,13 @@ Status StorageManager::array_open_for_reads(
                                                           &fragments_to_load,
                                                           &fragment_uris,
                                                           &meta_uri,
+                                                          &ls_uris,
                                                           &offsets,
                                                           &timestamp_start,
                                                           &timestamp_end,
                                                           this]() {
     // Determine which fragments to load
-    RETURN_NOT_OK(get_fragment_uris(array_uri, &fragment_uris, &meta_uri));
+    RETURN_NOT_OK(get_fragment_uris(array_uri, &fragment_uris, &meta_uri, &ls_uris));
     RETURN_NOT_OK(get_sorted_uris(
         fragment_uris, &fragments_to_load, timestamp_start, timestamp_end));
     // Get the consolidated fragment metadata
@@ -240,8 +242,11 @@ Status StorageManager::array_open_for_reads(
     return Status::Ok();
   }));
 
+  // Wait for array fragments to be loaded. We want to reuse ls_uris in array_open_without_fragments
+  Status st = io_tp_->wait_all(load_array_fragments_task);
+
   auto open_array = (OpenArray*)nullptr;
-  Status st = array_open_without_fragments(array_uri, enc_key, &open_array);
+  st = array_open_without_fragments(array_uri, enc_key, &open_array, &ls_uris);
 
   if (!st.ok()) {
     io_tp_->wait_all(load_array_fragments_task);
@@ -249,8 +254,7 @@ Status StorageManager::array_open_for_reads(
     return st;
   }
 
-  // Wait for array fragments to be loaded
-  st = io_tp_->wait_all(load_array_fragments_task);
+
 
   if (!st.ok()) {
     open_array->mtx_unlock();
@@ -288,11 +292,12 @@ Status StorageManager::array_open_for_reads(
 Status StorageManager::array_open_for_reads_without_fragments(
     const URI& array_uri,
     const EncryptionKey& enc_key,
-    ArraySchema** array_schema) {
+    ArraySchema** array_schema,
+    std::vector<URI>* array_ls_uris) {
   auto timer_se = stats_->start_timer("read_array_open");
 
   auto open_array = (OpenArray*)nullptr;
-  Status st = array_open_without_fragments(array_uri, enc_key, &open_array);
+  Status st = array_open_without_fragments(array_uri, enc_key, &open_array, array_ls_uris);
   if (!st.ok()) {
     *array_schema = nullptr;
     return st;
@@ -352,7 +357,8 @@ Status StorageManager::array_open_for_writes(
 
   // Load array schema if not fetched already
   if (open_array->array_schema() == nullptr) {
-    auto st = load_array_schema(array_uri, open_array, encryption_key);
+    std::vector<URI> ls_uris;
+    auto st = load_array_schema(array_uri, open_array, encryption_key, &ls_uris);
     if (!st.ok()) {
       open_array->mtx_unlock();
       array_close_for_writes(array_uri, encryption_key, nullptr);
@@ -461,9 +467,10 @@ Status StorageManager::array_reopen(
 
   // Determine which fragments to load
   std::vector<TimestampedURI> fragments_to_load;
+  std::vector<URI> ls_uris;
   std::vector<URI> fragment_uris;
   URI meta_uri;
-  RETURN_NOT_OK(get_fragment_uris(array_uri, &fragment_uris, &meta_uri));
+  RETURN_NOT_OK(get_fragment_uris(array_uri, &fragment_uris, &meta_uri, &ls_uris));
   RETURN_NOT_OK(get_sorted_uris(
       fragment_uris, &fragments_to_load, timestamp_start, timestamp_end));
 
@@ -1043,7 +1050,8 @@ Status StorageManager::array_get_encryption(
         "Cannot get array encryption; Invalid array URI"));
 
   URI schema_uri;
-  RETURN_NOT_OK(get_latest_array_schema_uri(uri, &schema_uri));
+  std::vector<URI> array_ls_uris;
+  RETURN_NOT_OK(get_latest_array_schema_uri(uri, &schema_uri, &array_ls_uris));
 
   // Read tile header.
   GenericTileIO::GenericTileHeader header;
@@ -1288,10 +1296,10 @@ Status StorageManager::get_fragment_info(
 
   // Optionally get the URIs to vacuum
   if (get_to_vacuum) {
-    std::vector<URI> to_vacuum, vac_uris, fragment_uris;
+    std::vector<URI> to_vacuum, vac_uris, fragment_uris, ls_uris;
     URI meta_uri;
     RETURN_NOT_OK(
-        get_fragment_uris(array.array_uri(), &fragment_uris, &meta_uri));
+        get_fragment_uris(array.array_uri(), &fragment_uris, &meta_uri, &ls_uris));
     RETURN_NOT_OK(get_uris_to_vacuum(
         fragment_uris, timestamp_start, timestamp_end, &to_vacuum, &vac_uris));
     fragment_info->set_to_vacuum(to_vacuum);
@@ -1303,12 +1311,23 @@ Status StorageManager::get_fragment_info(
 Status StorageManager::get_fragment_uris(
     const URI& array_uri,
     std::vector<URI>* fragment_uris,
-    URI* meta_uri) const {
+    URI* meta_uri,
+    std::vector<URI>* array_ls_uris) const {
   auto timer_se = stats_->start_timer("read_get_fragment_uris");
   // Get all uris in the array directory
   std::vector<URI> uris;
-  RETURN_NOT_OK(vfs_->ls(array_uri.add_trailing_slash(), &uris));
-
+  if (array_ls_uris->size() == 0) {
+    RETURN_NOT_OK(vfs_->ls(array_uri.add_trailing_slash(), &uris));
+    for (auto& uri : uris) {
+      array_ls_uris->push_back(uri);
+    }
+  }
+  else {
+    for (size_t i = 0; i < array_ls_uris->size(); ++i) {
+      uris.push_back(array_ls_uris->at(i));
+    }
+  }
+ 
   // Get the fragments that have special "ok" URIs, which indicate
   // that fragments are "committed" for versions >= 5
   std::set<URI> ok_uris;
@@ -1570,35 +1589,68 @@ bool StorageManager::is_vacuum_file(const URI& uri) const {
 }
 
 Status StorageManager::get_array_schema_uris(
-    const URI& array_uri, std::vector<URI>* uris) const {
+    const URI& array_uri, std::vector<URI>* schema_uris, std::vector<URI>* array_ls_uris) const {
   auto timer_se = stats_->start_timer("read_get_array_schema_uris");
 
-  // Always add array_name/__array_schema.tdb as the first schema uri
-  uris->clear();
-  auto schema_uri_old = array_uri.join_path(constants::array_schema_filename);
-  uris->emplace_back(schema_uri_old);
+  // Check if array_ls_uris is empty or not, if it is empty, do ls
+  std::vector<URI> uris;
+  if (array_ls_uris->size() == 0) {
+    RETURN_NOT_OK(vfs_->ls(array_uri.add_trailing_slash(), &uris));
+    for (auto& uri : uris) {
+      array_ls_uris->push_back(uri);
+    }
+  }
+  else {
+    for (size_t i = 0; i < array_ls_uris->size(); ++i) {
+      uris.push_back(array_ls_uris->at(i));
+    }
+  }
+ 
+  schema_uris->clear();
+  // Check if older version of schema file <array_name>/__array_schema.tdb exists or not. If exists, put it as the first item in the vector
+  bool has_schema_folder = false;
+  URI schema_folder_uri;
+  for (auto& uri : uris) {
+    auto uri_str = uri.remove_trailing_slash().to_string();
+    if (utils::parse::ends_with(uri_str, constants::array_schema_filename)) {
+      schema_uris->push_back(uri);
+    }
+    else if (utils::parse::ends_with(uri_str, constants::array_schema_folder_name)) {
+      schema_folder_uri = uri;
+      has_schema_folder = true;
+    }
+  }
 
-  // Add schema uris under directory array_name/__schema
-  const URI schema_uri =
-      array_uri.join_path(constants::array_schema_folder_name);
+  // Add schema uris from schema_folder
+  if (has_schema_folder) {
+    std::vector<URI> array_schema_uris;
+    RETURN_NOT_OK(vfs_->ls(schema_folder_uri, &array_schema_uris));
+    if (array_schema_uris.size() > 0) {
+      schema_uris->reserve(schema_uris->size()+array_schema_uris.size());
+      std::copy(array_schema_uris.begin(), array_schema_uris.end(), std::back_inserter(*schema_uris));
+    }
+  }  
 
-  // Since ls could return NOT Ok status, we will not use RETURN_NOT_OK here
-  vfs_->ls(schema_uri, uris);
+  // Check if schema_uris is empty 
+  if (schema_uris->empty()) {
+    return LOG_STATUS(Status::StorageManagerError(
+        "Can not get the array schemas; No array schemas found."));
+  }
 
   return Status::Ok();
 }
 
 Status StorageManager::get_latest_array_schema_uri(
-    const URI& array_uri, URI* uri) const {
+    const URI& array_uri, URI* uri, std::vector<URI>* array_ls_uris) const {
   auto timer_se = stats_->start_timer("read_get_latest_array_schema_uri");
 
-  std::vector<URI> uris;
-  RETURN_NOT_OK(get_array_schema_uris(array_uri, &uris));
-  if (uris.size() == 0) {
+  std::vector<URI> schema_uris;
+  RETURN_NOT_OK(get_array_schema_uris(array_uri, &schema_uris, array_ls_uris));
+  if (schema_uris.size() == 0) {
     return LOG_STATUS(Status::StorageManagerError(
-        "Can not get the latest array schema; Empty array schemas."));
+        "Can not get the latest array schema; No array schemas found."));
   }
-  *uri = uris.back();
+  *uri = schema_uris.back();
   if (uri->is_invalid()) {
     return LOG_STATUS(
         Status::StorageManagerError("Could not find array schema URI"));
@@ -1610,7 +1662,8 @@ Status StorageManager::get_latest_array_schema_uri(
 Status StorageManager::load_array_schema(
     const URI& array_uri,
     const EncryptionKey& encryption_key,
-    ArraySchema** array_schema) {
+    ArraySchema** array_schema,
+    std::vector<URI>* array_ls_uris) {
   auto timer_se = stats_->start_timer("read_load_array_schema");
 
   if (array_uri.is_invalid())
@@ -1618,7 +1671,7 @@ Status StorageManager::load_array_schema(
         "Cannot load array schema; Invalid array URI"));
 
   URI schema_uri;
-  RETURN_NOT_OK(get_latest_array_schema_uri(array_uri, &schema_uri));
+  RETURN_NOT_OK(get_latest_array_schema_uri(array_uri, &schema_uri, array_ls_uris));
 
   GenericTileIO tile_io(this, schema_uri);
   Tile* tile = nullptr;
@@ -2110,7 +2163,8 @@ stats::Stats* StorageManager::stats() {
 Status StorageManager::array_open_without_fragments(
     const URI& array_uri,
     const EncryptionKey& encryption_key,
-    OpenArray** open_array) {
+    OpenArray** open_array,
+    std::vector<URI>* array_ls_uris) {
   auto timer_se = stats_->start_timer("read_array_open_without_fragments");
   if (!vfs_->supports_uri_scheme(array_uri))
     return LOG_STATUS(
@@ -2150,7 +2204,7 @@ Status StorageManager::array_open_without_fragments(
 
   // Load array schema if not fetched already
   if ((*open_array)->array_schema() == nullptr) {
-    auto st = load_array_schema(array_uri, *open_array, encryption_key);
+    auto st = load_array_schema(array_uri, *open_array, encryption_key, array_ls_uris);
     if (!st.ok()) {
       (*open_array)->mtx_unlock();
       array_close_for_reads(array_uri);
@@ -2191,13 +2245,14 @@ Status StorageManager::get_array_metadata_uris(
 Status StorageManager::load_array_schema(
     const URI& array_uri,
     OpenArray* open_array,
-    const EncryptionKey& encryption_key) {
+    const EncryptionKey& encryption_key,
+    std::vector<URI>* array_ls_uris) {
   // Do nothing if the array schema is already loaded
   if (open_array->array_schema() != nullptr)
     return Status::Ok();
 
   auto array_schema = (ArraySchema*)nullptr;
-  RETURN_NOT_OK(load_array_schema(array_uri, encryption_key, &array_schema));
+  RETURN_NOT_OK(load_array_schema(array_uri, encryption_key, &array_schema, array_ls_uris));
   open_array->set_array_schema(array_schema);
 
   return Status::Ok();
