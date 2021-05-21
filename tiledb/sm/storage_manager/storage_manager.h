@@ -530,7 +530,6 @@ class StorageManager {
    *     at or after this timestamp.
    * @param timestamp_end The function will consider fragments created
    *     at or before this timestamp.
-   * @param encryption_key The encryption key in case the array is encrypted.
    * @param fragment_info The fragment information to be retrieved.
    *     The fragments are sorted in chronological creation order.
    * @param get_to_vacuum Whether or not to receive information about
