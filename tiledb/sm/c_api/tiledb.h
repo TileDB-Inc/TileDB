@@ -919,14 +919,6 @@ TILEDB_EXPORT void tiledb_config_free(tiledb_config_t** config);
  *
  * **Parameters**
  *
- * - `sm.array.timestamp_start` <br>
- *    When set, an array will be opened between this value and
- *    `sm.array.timestamp_end` (inclusive) upon a read query. <br>
- *    **Default**: 0
- * - `sm.array.timestamp_end` <br>
- *    When set, an array will be opened between `sm.array.timestamp_start`
- *    and this value (inclusive) upon a read query. <br>
- *    **Default**: UINT64_MAX
  * - `sm.dedup_coords` <br>
  *    If `true`, cells with duplicate coordinates will be removed during sparse
  *    fragment writes. Note that ties during deduplication are broken
@@ -4733,6 +4725,103 @@ TILEDB_EXPORT int32_t tiledb_query_condition_combine(
  */
 TILEDB_EXPORT int32_t tiledb_array_alloc(
     tiledb_ctx_t* ctx, const char* array_uri, tiledb_array_t** array);
+
+/**
+ * Sets the starting timestamp to use when opening (and reopening) the array.
+ * This is an inclusive bound. The default value is `0`.
+ *
+ * **Example:**
+ *
+ * @code{.c}
+ * tiledb_array_t* array;
+ * tiledb_array_alloc(ctx, "s3://tiledb_bucket/my_array", &array);
+ * tiledb_array_set_open_timestamp_start(ctx, array, 1234);
+ * tiledb_array_open(ctx, array, TILEDB_READ);
+ * @endcode
+ *
+ * @param ctx The TileDB context.
+ * @param array The array to set the timestamp on.
+ * @param timestamp_start The epoch timestamp in milliseconds.
+ * @return `TILEDB_OK` for success or `TILEDB_ERR` for error.
+ */
+TILEDB_EXPORT int32_t tiledb_array_set_open_timestamp_start(
+    tiledb_ctx_t* ctx, tiledb_array_t* array, uint64_t timestamp_start);
+
+/**
+ * Sets the ending timestamp to use when opening (and reopening) the array.
+ * This is an inclusive bound. The UINT64_MAX timestamp is a reserved timestamp
+ * that will be interpretted as the current timestamp when an array is opened.
+ * The default value is `UINT64_MAX`.
+ *
+ * **Example:**
+ *
+ * @code{.c}
+ * tiledb_array_t* array;
+ * tiledb_array_alloc(ctx, "s3://tiledb_bucket/my_array", &array);
+ * tiledb_array_set_open_timestamp_end(ctx, array, 5678);
+ * tiledb_array_open(ctx, array, TILEDB_READ);
+ * @endcode
+ *
+ * @param ctx The TileDB context.
+ * @param array The array to set the timestamp on.
+ * @param timestamp_end The epoch timestamp in milliseconds. Use UINT64_MAX for
+ *   the current timestamp.
+ * @return `TILEDB_OK` for success or `TILEDB_ERR` for error.
+ */
+TILEDB_EXPORT int32_t tiledb_array_set_open_timestamp_end(
+    tiledb_ctx_t* ctx, tiledb_array_t* array, uint64_t timestamp_end);
+
+/**
+ * Gets the starting timestamp used when opening (and reopening) the array.
+ * This is an inclusive bound.
+ *
+ * **Example:**
+ *
+ * @code{.c}
+ * tiledb_array_t* array;
+ * tiledb_array_alloc(ctx, "s3://tiledb_bucket/my_array", &array);
+ * tiledb_array_set_open_timestamp_start(ctx, array, 1234);
+ * tiledb_array_open(ctx, array, TILEDB_READ);
+ *
+ * uint64_t timestamp_start;
+ * tiledb_array_get_open_timestamp_start(ctx, array, &timestamp_start);
+ * assert(timestamp_start == 1234);
+ * @endcode
+ *
+ * @param ctx The TileDB context.
+ * @param array The array to set the timestamp on.
+ * @param timestamp_start The output epoch timestamp in milliseconds.
+ * @return `TILEDB_OK` for success or `TILEDB_ERR` for error.
+ */
+TILEDB_EXPORT int32_t tiledb_array_get_open_timestamp_start(
+    tiledb_ctx_t* ctx, tiledb_array_t* array, uint64_t* timestamp_start);
+
+/**
+ * Gets the ending timestamp used when opening (and reopening) the array.
+ * This is an inclusive bound. If UINT64_MAX was set, this will return
+ * the timestamp at the time the array was opened. If the array has not
+ * yet been opened, it will return UINT64_MAX.`
+ *
+ * **Example:**
+ *
+ * @code{.c}
+ * tiledb_array_t* array;
+ * tiledb_array_alloc(ctx, "s3://tiledb_bucket/my_array", &array);
+ * tiledb_array_set_open_timestamp_end(ctx, array, 5678);
+ * tiledb_array_open(ctx, array, TILEDB_READ);
+ *
+ * uint64_t timestamp_end;
+ * tiledb_array_get_open_timestamp_end(ctx, array, &timestamp_end);
+ * assert(timestamp_start == 5678);
+ * @endcode
+ *
+ * @param ctx The TileDB context.
+ * @param array The array to set the timestamp on.
+ * @param timestamp_end The output epoch timestamp in milliseconds.
+ * @return `TILEDB_OK` for success or `TILEDB_ERR` for error.
+ */
+TILEDB_EXPORT int32_t tiledb_array_get_open_timestamp_end(
+    tiledb_ctx_t* ctx, tiledb_array_t* array, uint64_t* timestamp_end);
 
 /**
  * Opens a TileDB array. The array is opened using a query type as input.
