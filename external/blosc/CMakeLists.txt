@@ -30,9 +30,10 @@
 #   not have a way of retrieving the caller's directories, nor of passing
 #   argument for the callee in add_subdirectory(). Here we avoid premature
 #   modularization and hard-code the caller.
-# Outputs
-#   TileDB_blosc_SOURCES, set in parent scope
-#   TileDB_blosc_INCLUDE_DIRS, set in parent scope
+# Outputs, all variables set in parent scope
+#   TileDB_blosc_SOURCES
+#   TileDB_blosc_INCLUDE_DIRS
+#   TileDB_blosc_COMPILE_OPTIONS
 
 set(SOURCE_DIR ${CMAKE_CURRENT_SOURCE_DIR})
 
@@ -86,41 +87,42 @@ set(TILEDB_BLOSC_COMPILE_OPTIONS "-w")
 if (CMAKE_USE_PTHREADS_INIT)
   string(APPEND TILEDB_BLOSC_COMPILE_OPTIONS ";-DPTHREAD_AVAILABLE")
 endif()
-# Setting the directory property is a workaround. We're not using the library
-# "properly" because of a CMake version limitation (prior to
-# `target_link_libraries` working for object libraries). The caller adds our
-# sources to the main ones, so this code compiles from the `tiledb` directory.
-message(****)
-message("** external/blosc -- before set_source_files_properties **")
-message(****)
-message("SOURCES=${SOURCES}")
-message("CMAKE_SOURCE_DIR=${CMAKE_SOURCE_DIR}")
-message("TILEDB_BLOSC_COMPILE_OPTIONS=${TILEDB_BLOSC_COMPILE_OPTIONS}")
-set(name ${SOURCE_DIR}/src/shuffle.c)
-get_source_file_property(bar ${name} COMPILE_OPTIONS)
-message("Compile options for ${name} (current directory): ${bar}")
-get_source_file_property(bar ${name} DIRECTORY . COMPILE_OPTIONS)
-message("Compile options for ${name} (current directory, explicit syntax): ${bar}")
-message("executing: " "get_source_file_property(bar ${name} DIRECTORY \"${CMAKE_SOURCE_DIR}/tiledb\" COMPILE_OPTIONS)")
-get_source_file_property(bar ${name} DIRECTORY "${CMAKE_SOURCE_DIR}/tiledb" COMPILE_OPTIONS)
-message("Compile options for ${name} ('<top>/tiledb' directory): ${bar}")
-message(****)
-set_source_files_properties(
-  ${SOURCES}
-  DIRECTORY ${CMAKE_SOURCE_DIR}/tiledb
-  PROPERTIES COMPILE_OPTIONS "${TILEDB_BLOSC_COMPILE_OPTIONS}"
-)
-message(****)
-message("** external/blosc -- after set_source_files_properties **")
-message(****)
-get_source_file_property(bar ${name} COMPILE_OPTIONS)
-message("Compile options for ${name} (current directory): ${bar}")
-get_source_file_property(bar ${name} DIRECTORY "${CMAKE_SOURCE_DIR}/tiledb" COMPILE_OPTIONS)
-message("Compile options for ${name} ('<top>/tiledb' directory): ${bar}")
-message(****)
 
 #
 # Set the outputs
 #
+# CMake makes it difficult to have modular build files. We're trying hard
+# anyway. We can't get good encapsulation, but that doesn't mean we can't have
+# any.
+#
+# We can't return our results as an object library because (a) it's too new and
+# (b) it doesn't even work as we need it to. As of CMake 3.20, when targetA
+# depends on an object library target objB, $<TARGET_OBJECTS:objB> is not
+# incorporated into $<TARGET_OBJECTS:targetA>, meaning objB isn't encapsulated.
+# It would be an unacceptable maintenance burden to add objB everywhere
+# $<TARGET_OBJECTS:targetA> is used. So instead of using a library, we set
+# variables TileDB_blosc_SOURCES and TileDB_blosc_INCLUDE_DIRS in the parent
+# scope, where they are added to existing lists.
+#
+# blosc requires it's own, distinct compilation options. If we were able to use
+# a library, that would be the end of it. Instead we need to set compilation
+# options in the caller context. A draft of the present code had used the
+# following statement to set these properties in the absence of using a library.
+#
+#   set_source_files_properties(
+#    ${SOURCES}
+#    DIRECTORY ${CMAKE_SOURCE_DIR}/tiledb
+#    PROPERTIES COMPILE_OPTIONS "${TILEDB_BLOSC_COMPILE_OPTIONS}"
+#
+# The DIRECTORY option was introduced in CMake 3.18, too new for ubuntu-20.04,
+# which ships with 3.16. Note that even then there's no "DIRECTORY PARENT"
+# syntax available. Instead we return a variable holding the options and then
+# set them in the caller.
+#
+# There's one cheat here. We're not passing a link option here. At most it would
+# be for pthread, and that's already being linked.
+#
 set(TileDB_blosc_SOURCES ${SOURCES} PARENT_SCOPE)
 set(TileDB_blosc_INCLUDE_DIRS ${SOURCE_DIR}/include PARENT_SCOPE)
+set(TileDB_blosc_COMPILE_OPTIONS ${TILEDB_BLOSC_COMPILE_OPTIONS} PARENT_SCOPE)
+
