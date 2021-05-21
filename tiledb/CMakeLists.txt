@@ -217,20 +217,30 @@ if (TILEDB_SERIALIZATION)
 endif()
 
 # 'External' source files included in the source tree.
-set(TILEDB_EXTERNALS_INCLUDE_DIRS
+list(APPEND TILEDB_EXTERNALS_INCLUDE_DIRS
   "${CMAKE_CURRENT_SOURCE_DIR}/../external/include"
   "${CMAKE_CURRENT_SOURCE_DIR}/../external/include/bitshuffle"
   "${CMAKE_CURRENT_SOURCE_DIR}/../external/include/blosc"
 )
-set(TILEDB_EXTERNALS_SOURCES
+list(APPEND TILEDB_EXTERNALS_SOURCES
   ${CMAKE_CURRENT_SOURCE_DIR}/../external/src/md5/md5.cc
   ${CMAKE_CURRENT_SOURCE_DIR}/../external/src/bitshuffle/iochain.cc
   ${CMAKE_CURRENT_SOURCE_DIR}/../external/src/bitshuffle/bitshuffle_core.cc
-  ${CMAKE_CURRENT_SOURCE_DIR}/../external/src/blosc/shuffle.cc
-  ${CMAKE_CURRENT_SOURCE_DIR}/../external/src/blosc/shuffle-avx2.cc
-  ${CMAKE_CURRENT_SOURCE_DIR}/../external/src/blosc/shuffle-generic.cc
-  ${CMAKE_CURRENT_SOURCE_DIR}/../external/src/blosc/shuffle-sse2.cc
 )
+
+#
+# Delegate configuration and detection of platform-specific code generation to
+# the subdirectory. For why the separation isn't clean, see comments there.
+#
+add_subdirectory(
+  ${CMAKE_CURRENT_SOURCE_DIR}/../external/blosc
+  ${CMAKE_CURRENT_BINARY_DIR}/../external/blosc)
+list(APPEND TILEDB_EXTERNALS_INCLUDE_DIRS ${TileDB_blosc_INCLUDE_DIRS})
+list(APPEND TILEDB_EXTERNALS_SOURCES ${TileDB_blosc_SOURCES})
+set_source_files_properties(
+  ${TileDB_blosc_SOURCES}
+  PROPERTIES COMPILE_OPTIONS "${TileDB_blosc_COMPILE_OPTIONS}")
+
 
 ############################################################
 # Build core objects as a reusable object library
@@ -280,22 +290,6 @@ endif()
 ############################################################
 # Compile options/definitions
 ############################################################
-
-if (SANITIZER)
-  if (NOT CMAKE_BUILD_TYPE MATCHES "Debug")
-    message(FATAL_ERROR "Sanitizers only enabled for Debug build")
-  endif()
-  string(TOLOWER ${SANITIZER} SANITIZER)
-  if (NOT SANITIZER MATCHES "^(address|memory|leak|thread|undefined)$")
-    message(FATAL_ERROR "Unknown clang sanitizer: ${SANITIZER})")
-  else()
-    message(STATUS "The TileDB library is compiled with sanitizer ${SANITIZER} enabled")
-  endif()
-  target_compile_options(TILEDB_CORE_OBJECTS
-    PRIVATE
-      -g -fno-omit-frame-pointer -fno-optimize-sibling-calls -fsanitize=${SANITIZER}
-  )
-endif()
 
 if (TILEDB_VERBOSE)
   add_definitions(-DTILEDB_VERBOSE)
@@ -712,7 +706,9 @@ endif()
 # TileDB static and shared library targets
 ############################################################
 
-add_library(tiledb_shared SHARED $<TARGET_OBJECTS:TILEDB_CORE_OBJECTS>)
+add_library(tiledb_shared SHARED
+  $<TARGET_OBJECTS:TILEDB_CORE_OBJECTS>
+  )
 
 # Target properties
 set_target_properties(tiledb_shared
@@ -921,3 +917,4 @@ configure_file(
 )
 install(FILES ${CMAKE_CURRENT_BINARY_DIR}/tiledb.pc
         DESTINATION ${CMAKE_INSTALL_LIBDIR}/pkgconfig)
+

@@ -1,11 +1,9 @@
 /*********************************************************************
-  Blosc (v1.14.4) - Blocked Shuffling and Compression Library
+  Blosc - Blocked Shuffling and Compression Library
 
   Author: Francesc Alted <francesc@blosc.org>
 
   See LICENSES/BLOSC.txt for details about copyright and rights to use.
-
-  Modifications for TileDB by Tyler Denniston <tyler@tiledb.io>
 **********************************************************************/
 
 /*  Shuffle/unshuffle routines which dynamically dispatch to hardware-
@@ -19,7 +17,9 @@
 
 #include "blosc-common.h"
 
-namespace blosc {
+#ifdef __cplusplus
+extern "C" {
+#endif
 
 /**
   Primary shuffle and bitshuffle routines.
@@ -32,8 +32,13 @@ namespace blosc {
   platform and future-proof.
 */
 BLOSC_NO_EXPORT void
-shuffle(const size_t bytesoftype, const size_t blocksize,
-        const uint8_t* _src, const uint8_t* _dest);
+blosc_internal_shuffle(const size_t bytesoftype, const size_t blocksize,
+                       const uint8_t* _src, const uint8_t* _dest);
+
+BLOSC_NO_EXPORT int
+blosc_internal_bitshuffle(const size_t bytesoftype, const size_t blocksize,
+                          const uint8_t* const _src, const uint8_t* _dest,
+                          const uint8_t* _tmp);
 
 /**
   Primary unshuffle and bitunshuffle routine.
@@ -46,9 +51,17 @@ shuffle(const size_t bytesoftype, const size_t blocksize,
   platform and future-proof.
 */
 BLOSC_NO_EXPORT void
-unshuffle(const size_t bytesoftype, const size_t blocksize,
-          const uint8_t* _src, const uint8_t* _dest);
+blosc_internal_unshuffle(const size_t bytesoftype, const size_t blocksize,
+                         const uint8_t* _src, const uint8_t* _dest);
 
+
+BLOSC_NO_EXPORT int
+blosc_internal_bitunshuffle(const size_t bytesoftype, const size_t blocksize,
+                            const uint8_t* const _src, const uint8_t* _dest,
+                            const uint8_t* _tmp);
+
+#ifdef __cplusplus
 }
+#endif
 
 #endif /* SHUFFLE_H */
