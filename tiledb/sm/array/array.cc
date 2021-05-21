@@ -42,6 +42,7 @@
 #include "tiledb/sm/enums/query_type.h"
 #include "tiledb/sm/enums/serialization_type.h"
 #include "tiledb/sm/fragment/fragment_metadata.h"
+#include "tiledb/sm/global_state/unit_test_config.h"
 #include "tiledb/sm/misc/utils.h"
 #include "tiledb/sm/rest/rest_client.h"
 #include "tiledb/sm/storage_manager/storage_manager.h"
@@ -195,6 +196,37 @@ Status Array::open(
   if (is_open_)
     return LOG_STATUS(
         Status::ArrayError("Cannot open array; Array already open"));
+
+  std::string encryption_key_from_cfg;
+  if (!encryption_key) {
+    bool found = false;
+    encryption_key_from_cfg = config_.get("sm.encryption_key", &found);
+    assert(found);
+  }
+
+  if (!encryption_key_from_cfg.empty()) {
+    encryption_key = encryption_key_from_cfg.c_str();
+    std::string encryption_type_from_cfg;
+    bool found = false;
+    encryption_type_from_cfg = config_.get("sm.encryption_type", &found);
+    assert(found);
+    RETURN_NOT_OK(
+        encryption_type_enum(encryption_type_from_cfg, &encryption_type));
+
+    if (EncryptionKey::is_valid_key_length(
+            encryption_type,
+            static_cast<uint32_t>(encryption_key_from_cfg.size()))) {
+      const UnitTestConfig& unit_test_cfg = UnitTestConfig::instance();
+      if (unit_test_cfg.array_encryption_key_length.is_set()) {
+        key_length = unit_test_cfg.array_encryption_key_length.get();
+      } else {
+        key_length = static_cast<uint32_t>(encryption_key_from_cfg.size());
+      }
+    } else {
+      encryption_key = nullptr;
+      key_length = 0;
+    }
+  }
 
   if (remote_ && encryption_type != EncryptionType::NO_ENCRYPTION)
     return LOG_STATUS(Status::ArrayError(

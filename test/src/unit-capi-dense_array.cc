@@ -42,6 +42,7 @@
 #include "test/src/helpers.h"
 #include "tiledb/sm/c_api/tiledb.h"
 #include "tiledb/sm/c_api/tiledb_serialization.h"
+#include "tiledb/sm/enums/encryption_type.h"
 #include "tiledb/sm/misc/utils.h"
 #include "tiledb/sm/serialization/query.h"
 
@@ -524,19 +525,28 @@ int* DenseArrayFx::read_dense_array_2D(
   tiledb_array_t* array;
   rc = tiledb_array_alloc(ctx_, array_name.c_str(), &array);
   CHECK(rc == TILEDB_OK);
-  if (encryption_type == TILEDB_NO_ENCRYPTION) {
-    rc = tiledb_array_open(ctx_, array, query_type);
-    CHECK(rc == TILEDB_OK);
-  } else {
-    rc = tiledb_array_open_with_key(
-        ctx_,
-        array,
-        query_type,
-        encryption_type,
-        encryption_key,
-        (uint32_t)strlen(encryption_key));
-    CHECK(rc == TILEDB_OK);
+  if (encryption_type != TILEDB_NO_ENCRYPTION) {
+    tiledb_config_t* cfg;
+    tiledb_error_t* err = nullptr;
+    REQUIRE(tiledb_config_alloc(&cfg, &err) == TILEDB_OK);
+    REQUIRE(err == nullptr);
+    std::string encryption_type_string =
+        encryption_type_str((tiledb::sm::EncryptionType)encryption_type);
+    REQUIRE(
+        tiledb_config_set(
+            cfg, "sm.encryption_type", encryption_type_string.c_str(), &err) ==
+        TILEDB_OK);
+    REQUIRE(err == nullptr);
+    REQUIRE(
+        tiledb_config_set(cfg, "sm.encryption_key", encryption_key, &err) ==
+        TILEDB_OK);
+    REQUIRE(err == nullptr);
+    rc = tiledb_array_set_config(ctx_, array, cfg);
+    REQUIRE(rc == TILEDB_OK);
+    tiledb_config_free(&cfg);
   }
+  rc = tiledb_array_open(ctx_, array, query_type);
+  CHECK(rc == TILEDB_OK);
 
   // Create query
   tiledb_query_t* query;
@@ -690,17 +700,27 @@ void DenseArrayFx::write_dense_vector_mixed(const std::string& array_name) {
   tiledb_array_t* array;
   int rc = tiledb_array_alloc(ctx_, array_name.c_str(), &array);
   CHECK(rc == TILEDB_OK);
-  if (encryption_type == TILEDB_NO_ENCRYPTION) {
-    rc = tiledb_array_open(ctx_, array, TILEDB_WRITE);
-  } else {
-    rc = tiledb_array_open_with_key(
-        ctx_,
-        array,
-        TILEDB_WRITE,
-        encryption_type,
-        encryption_key,
-        (uint32_t)strlen(encryption_key));
+  if (encryption_type != TILEDB_NO_ENCRYPTION) {
+    tiledb_config_t* cfg;
+    tiledb_error_t* err = nullptr;
+    REQUIRE(tiledb_config_alloc(&cfg, &err) == TILEDB_OK);
+    REQUIRE(err == nullptr);
+    std::string encryption_type_string =
+        encryption_type_str((tiledb::sm::EncryptionType)encryption_type);
+    REQUIRE(
+        tiledb_config_set(
+            cfg, "sm.encryption_type", encryption_type_string.c_str(), &err) ==
+        TILEDB_OK);
+    REQUIRE(err == nullptr);
+    REQUIRE(
+        tiledb_config_set(cfg, "sm.encryption_key", encryption_key, &err) ==
+        TILEDB_OK);
+    REQUIRE(err == nullptr);
+    rc = tiledb_array_set_config(ctx_, array, cfg);
+    REQUIRE(rc == TILEDB_OK);
+    tiledb_config_free(&cfg);
   }
+  rc = tiledb_array_open(ctx_, array, TILEDB_WRITE);
   REQUIRE(rc == TILEDB_OK);
 
   // Submit query #1 - Dense
@@ -795,19 +815,28 @@ void DenseArrayFx::write_dense_array_by_tiles(
   tiledb_array_t* array;
   rc = tiledb_array_alloc(ctx_, array_name.c_str(), &array);
   CHECK(rc == TILEDB_OK);
-  if (encryption_type == TILEDB_NO_ENCRYPTION) {
-    rc = tiledb_array_open(ctx_, array, TILEDB_WRITE);
-    CHECK(rc == TILEDB_OK);
-  } else {
-    rc = tiledb_array_open_with_key(
-        ctx_,
-        array,
-        TILEDB_WRITE,
-        encryption_type,
-        encryption_key,
-        (uint32_t)strlen(encryption_key));
-    CHECK(rc == TILEDB_OK);
+  if (encryption_type != TILEDB_NO_ENCRYPTION) {
+    tiledb_config_t* cfg;
+    tiledb_error_t* err = nullptr;
+    REQUIRE(tiledb_config_alloc(&cfg, &err) == TILEDB_OK);
+    REQUIRE(err == nullptr);
+    std::string encryption_type_string =
+        encryption_type_str((tiledb::sm::EncryptionType)encryption_type);
+    REQUIRE(
+        tiledb_config_set(
+            cfg, "sm.encryption_type", encryption_type_string.c_str(), &err) ==
+        TILEDB_OK);
+    REQUIRE(err == nullptr);
+    REQUIRE(
+        tiledb_config_set(cfg, "sm.encryption_key", encryption_key, &err) ==
+        TILEDB_OK);
+    REQUIRE(err == nullptr);
+    rc = tiledb_array_set_config(ctx_, array, cfg);
+    REQUIRE(rc == TILEDB_OK);
+    tiledb_config_free(&cfg);
   }
+  rc = tiledb_array_open(ctx_, array, TILEDB_WRITE);
+  CHECK(rc == TILEDB_OK);
 
   // Create query
   tiledb_query_t* query;
@@ -1058,19 +1087,28 @@ void DenseArrayFx::check_sorted_reads(const std::string& path) {
   tiledb_array_t* array;
   int rc = tiledb_array_alloc(ctx_, array_name.c_str(), &array);
   CHECK(rc == TILEDB_OK);
-  if (encryption_type == TILEDB_NO_ENCRYPTION) {
-    rc = tiledb_array_open(ctx_, array, TILEDB_READ);
-    CHECK(rc == TILEDB_OK);
-  } else {
-    rc = tiledb_array_open_with_key(
-        ctx_,
-        array,
-        TILEDB_READ,
-        encryption_type,
-        encryption_key,
-        (uint32_t)strlen(encryption_key));
-    CHECK(rc == TILEDB_OK);
+  if (encryption_type != TILEDB_NO_ENCRYPTION) {
+    tiledb_config_t* cfg;
+    tiledb_error_t* err = nullptr;
+    REQUIRE(tiledb_config_alloc(&cfg, &err) == TILEDB_OK);
+    REQUIRE(err == nullptr);
+    std::string encryption_type_string =
+        encryption_type_str((tiledb::sm::EncryptionType)encryption_type);
+    REQUIRE(
+        tiledb_config_set(
+            cfg, "sm.encryption_type", encryption_type_string.c_str(), &err) ==
+        TILEDB_OK);
+    REQUIRE(err == nullptr);
+    REQUIRE(
+        tiledb_config_set(cfg, "sm.encryption_key", encryption_key, &err) ==
+        TILEDB_OK);
+    REQUIRE(err == nullptr);
+    rc = tiledb_array_set_config(ctx_, array, cfg);
+    REQUIRE(rc == TILEDB_OK);
+    tiledb_config_free(&cfg);
   }
+  rc = tiledb_array_open(ctx_, array, TILEDB_READ);
+  CHECK(rc == TILEDB_OK);
 
   // Check out of bounds subarray
   tiledb_query_t* query;
@@ -1917,17 +1955,27 @@ void DenseArrayFx::read_dense_vector_mixed(const std::string& array_name) {
   tiledb_array_t* array;
   int rc = tiledb_array_alloc(ctx_, array_name.c_str(), &array);
   CHECK(rc == TILEDB_OK);
-  if (encryption_type == TILEDB_NO_ENCRYPTION) {
-    rc = tiledb_array_open(ctx_, array, TILEDB_READ);
-  } else {
-    rc = tiledb_array_open_with_key(
-        ctx_,
-        array,
-        TILEDB_READ,
-        encryption_type,
-        encryption_key,
-        (uint32_t)strlen(encryption_key));
+  if (encryption_type != TILEDB_NO_ENCRYPTION) {
+    tiledb_config_t* cfg;
+    tiledb_error_t* err = nullptr;
+    REQUIRE(tiledb_config_alloc(&cfg, &err) == TILEDB_OK);
+    REQUIRE(err == nullptr);
+    std::string encryption_type_string =
+        encryption_type_str((tiledb::sm::EncryptionType)encryption_type);
+    REQUIRE(
+        tiledb_config_set(
+            cfg, "sm.encryption_type", encryption_type_string.c_str(), &err) ==
+        TILEDB_OK);
+    REQUIRE(err == nullptr);
+    REQUIRE(
+        tiledb_config_set(cfg, "sm.encryption_key", encryption_key, &err) ==
+        TILEDB_OK);
+    REQUIRE(err == nullptr);
+    rc = tiledb_array_set_config(ctx_, array, cfg);
+    REQUIRE(rc == TILEDB_OK);
+    tiledb_config_free(&cfg);
   }
+  rc = tiledb_array_open(ctx_, array, TILEDB_READ);
   REQUIRE(rc == TILEDB_OK);
 
   // Preparation
