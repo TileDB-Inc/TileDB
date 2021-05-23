@@ -322,10 +322,43 @@ class ThreadPool {
   /** Protects `blocked_tasks_`. */
   std::mutex blocked_tasks_mutex_;
 
-  /** Indexes thread ids to the ThreadPool instance they belong to. */
-  static std::unordered_map<std::thread::id, ThreadPool*> tp_index_;
+  /**
+   * The type of the thread-id map
+   *
+   * It's public only to satisfy visibility for definition.
+   */
+  typedef std::unordered_map<std::thread::id, ThreadPool*> tp_index_type_;
 
-  /** Protects 'tp_index_'. */
+  /**
+   * Index from a thread-id to the ThreadPool instance it belongs to.
+   *
+   *  @invariant
+   *  tp_index_singleton_.use_count() > 0 whenever a ThreadPool object exists
+   *  @post
+   *  The stored pointer in the return value is not null.
+   *  @post
+   *  The stored pointer in the return value points to the singleton
+   */
+  static std::weak_ptr<tp_index_type_> tp_index_singleton_;
+
+  /**
+   * Pointer to the singleton thread-id index.
+   *
+   * @invariant Stored pointer is not null
+   */
+  std::shared_ptr<tp_index_type_> tp_index_;
+
+  /**
+   * Constructor function that returns the singleton thread-id map
+   */
+  static std::shared_ptr<tp_index_type_> tp_index_factory_();
+
+  /**
+   * Protects the thread-id index.
+   *
+   * It's used both to manage lifespan of the underlying map and pointers to it
+   * as well as operations on the map.
+   */
   static std::mutex tp_index_lock_;
 
   /** Indexes thread ids to the task it is currently executing. */

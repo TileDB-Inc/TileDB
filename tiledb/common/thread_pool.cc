@@ -31,6 +31,7 @@
  */
 
 #include <cassert>
+#include <memory>
 
 #include "tiledb/common/logger.h"
 #include "tiledb/common/thread_pool.h"
@@ -39,7 +40,7 @@ namespace tiledb {
 namespace common {
 
 // Define the static ThreadPool member variables.
-std::unordered_map<std::thread::id, ThreadPool*> ThreadPool::tp_index_;
+std::weak_ptr<ThreadPool::tp_index_type_> ThreadPool::tp_index_singleton_;
 std::mutex ThreadPool::tp_index_lock_;
 std::unordered_map<std::thread::id, tdb_shared_ptr<ThreadPool::PackagedTask>>
     ThreadPool::task_index_;
@@ -49,7 +50,27 @@ ThreadPool::ThreadPool()
     : concurrency_level_(0)
     , task_stack_clock_(0)
     , idle_threads_(0)
-    , should_terminate_(false) {
+    , should_terminate_(false)
+    , tp_index_(tp_index_factory_()) {
+}
+
+std::shared_ptr<ThreadPool::tp_index_type_> ThreadPool::tp_index_factory_() {
+  std::lock_guard<std::mutex> lock(tp_index_lock_);
+  if (tp_index_singleton_.use_count() != 0) {
+    return tp_index_singleton_.lock();
+  }
+  /* Assert: tp_index_singleton_ has a null stored pointer */
+  auto the_singleton = std::make_shared<tp_index_type_>();
+  if (!the_singleton) {
+    /* Assert: the_singleton has a null stored pointer */
+    /*
+     * We can't return non-null by locking the singleton pointer and we just
+     * failed to allocate one, so we can't satisfy the postcondition.
+     */
+    throw std::runtime_error("ThreadPool: Cannot allocate tp_index_singleton_");
+  }
+  tp_index_singleton_ = the_singleton;
+  return the_singleton;
 }
 
 ThreadPool::~ThreadPool() {
@@ -401,19 +422,20 @@ void ThreadPool::worker(ThreadPool& pool) {
 void ThreadPool::add_tp_index() {
   std::lock_guard<std::mutex> lock(tp_index_lock_);
   for (const auto& thread : threads_)
-    tp_index_[thread.get_id()] = this;
+    (*tp_index_)[thread.get_id()] = this;
 }
 
 void ThreadPool::remove_tp_index() {
   std::lock_guard<std::mutex> lock(tp_index_lock_);
   for (const auto& thread : threads_)
-    tp_index_.erase(thread.get_id());
+    tp_index_->erase(thread.get_id());
 }
 
 ThreadPool* ThreadPool::lookup_tp(const std::thread::id tid) {
   std::lock_guard<std::mutex> lock(tp_index_lock_);
-  if (tp_index_.count(tid) == 1)
-    return tp_index_[tid];
+  auto tp_index = *tp_index_singleton_.lock();
+  if (tp_index.count(tid) == 1)
+    return tp_index[tid];
   return nullptr;
 }
 
