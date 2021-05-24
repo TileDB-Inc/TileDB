@@ -54,42 +54,41 @@ namespace common {
  */
 template <class T>
 struct class_singleton {
+  typedef T singleton_type;
+  typedef std::shared_ptr<T> member_type;
+  typedef std::weak_ptr<T> central_type;
 
-    typedef T singleton_type;
-    typedef std::shared_ptr<T> member_type;
-    typedef std::weak_ptr<T> central_type;
+  /**
+   * Central pointer to the singleton. Initialized on first use; does not
+   * mandate existence.
+   *
+   *  @invariant
+   *  singleton_central.use_count() > 0 whenever a central object exists
+   *  @post
+   *  The stored pointer in the return value is not null.
+   *  @post
+   *  The stored pointer in the return value points to the singleton
+   */
+  static central_type singleton_central;
 
-    /**
-     * Central pointer to the singleton. Initialized on first use; does not
-     * mandate existence.
-     *
-     *  @invariant
-     *  singleton_central.use_count() > 0 whenever a central object exists
-     *  @post
-     *  The stored pointer in the return value is not null.
-     *  @post
-     *  The stored pointer in the return value points to the singleton
-     */
-    static central_type singleton_central;
+  /**
+   * Protects the singleton life cycle. Available for use to protect singleton
+   * operations.
+   */
+  static std::mutex lock_central;
 
-    /**
-     * Protects the singleton life cycle. Available for use to protect singleton
-     * operations.
-     */
-    static std::mutex lock_central;
+  /**
+   * Constructor function to initialize a member pointer
+   */
+  static member_type member_factory();
 
-    /**
-     * Constructor function to initialize a member pointer
-     */
-    static member_type member_factory();
-
-    /**
-     * Member pointer to the singleton keeps the singleton in existence for
-     * the life span of the object.
-     *
-     * @invariant Stored pointer is not null
-     */
-    std::shared_ptr<T> singleton_member;
+  /**
+   * Member pointer to the singleton keeps the singleton in existence for
+   * the life span of the object.
+   *
+   * @invariant Stored pointer is not null
+   */
+  std::shared_ptr<T> singleton_member;
 };
 
 /**
@@ -367,14 +366,15 @@ class ThreadPool {
   std::mutex blocked_tasks_mutex_;
 
   typedef std::unordered_map<std::thread::id, ThreadPool*> tp_index_type_;
-  typedef class_singleton<tp_index_type_> tp_index_singleton_type ;
+  typedef class_singleton<tp_index_type_> tp_index_singleton_type;
   /**
    * Index from a thread-id to the ThreadPool instance it belongs to.
    */
   tp_index_singleton_type tp_index_;
 
-  typedef std::unordered_map<std::thread::id, tdb_shared_ptr<PackagedTask>> task_index_type;
-  typedef class_singleton<task_index_type> task_index_singleton_type ;
+  typedef std::unordered_map<std::thread::id, tdb_shared_ptr<PackagedTask>>
+      task_index_type;
+  typedef class_singleton<task_index_type> task_index_singleton_type;
 
   /** Indexes thread ids to the task it is currently executing. */
   task_index_singleton_type task_index_;

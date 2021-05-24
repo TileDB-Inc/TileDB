@@ -40,13 +40,19 @@ namespace tiledb {
 namespace common {
 
 // Define the static ThreadPool member variables.
-template<> ThreadPool::tp_index_singleton_type::central_type ThreadPool::tp_index_singleton_type::singleton_central;
-template<> std::mutex ThreadPool::tp_index_singleton_type::lock_central;
+template <>
+ThreadPool::tp_index_singleton_type::central_type
+    ThreadPool::tp_index_singleton_type::singleton_central;
+template <>
+std::mutex ThreadPool::tp_index_singleton_type::lock_central;
 
-template<> ThreadPool::task_index_singleton_type::central_type ThreadPool::task_index_singleton_type::singleton_central;
-template<> std::mutex ThreadPool::task_index_singleton_type::lock_central;
+template <>
+ThreadPool::task_index_singleton_type::central_type
+    ThreadPool::task_index_singleton_type::singleton_central;
+template <>
+std::mutex ThreadPool::task_index_singleton_type::lock_central;
 
-template<class T>
+template <class T>
 typename class_singleton<T>::member_type class_singleton<T>::member_factory() {
   std::lock_guard<std::mutex> lock(lock_central);
   if (singleton_central.use_count() != 0) {
@@ -67,13 +73,13 @@ typename class_singleton<T>::member_type class_singleton<T>::member_factory() {
 }
 
 ThreadPool::ThreadPool()
-        : concurrency_level_(0)
-        , task_stack_clock_(0)
-        , idle_threads_(0)
-        , should_terminate_(false)
-        , tp_index_({tp_index_singleton_type::member_factory()})
-        , task_index_({task_index_singleton_type::member_factory()})
-{}
+    : concurrency_level_(0)
+    , task_stack_clock_(0)
+    , idle_threads_(0)
+    , should_terminate_(false)
+    , tp_index_({tp_index_singleton_type::member_factory()})
+    , task_index_({task_index_singleton_type::member_factory()}) {
+}
 
 ThreadPool::~ThreadPool() {
   terminate();
@@ -455,7 +461,7 @@ void ThreadPool::remove_task_index() {
 
 tdb_shared_ptr<ThreadPool::PackagedTask> ThreadPool::lookup_task(
     const std::thread::id tid) {
-  std::lock_guard<std::mutex> lock( task_index_singleton_type::lock_central);
+  std::lock_guard<std::mutex> lock(task_index_singleton_type::lock_central);
   auto task_index = *task_index_singleton_type::singleton_central.lock();
   if (task_index.count(tid) == 1)
     return task_index[tid];
