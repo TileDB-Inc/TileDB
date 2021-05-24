@@ -89,18 +89,6 @@ class Config {
   static const std::string CONFIG_LOGGING_LEVEL;
 
   /**
-   * An array will open between this value and timestamp_end upon a
-   * read query.
-   * */
-  static const std::string SM_ARRAY_TIMESTAMP_START;
-
-  /**
-   * An array will open between timestamp_start and this value upon a
-   * read query.
-   *  */
-  static const std::string SM_ARRAY_TIMESTAMP_END;
-
-  /**
    * The key for encrypted arrays.
    *  */
   static const std::string SM_ENCRYPTION_KEY;

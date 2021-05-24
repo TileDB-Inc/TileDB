@@ -787,12 +787,10 @@ void write_array(
   tiledb_error_t* err = nullptr;
   REQUIRE(tiledb_config_alloc(&cfg, &err) == TILEDB_OK);
   REQUIRE(err == nullptr);
-  rc = tiledb_config_set(
-      cfg, "sm.array.timestamp_end", std::to_string(timestamp).c_str(), &err);
+
+  rc = tiledb_array_set_open_timestamp_end(ctx, array, timestamp);
   REQUIRE(rc == TILEDB_OK);
-  REQUIRE(err == nullptr);
-  rc = tiledb_array_set_config(ctx, array, cfg);
-  REQUIRE(rc == TILEDB_OK);
+
   // Open array
   if (encryption_type != TILEDB_NO_ENCRYPTION) {
     std::string encryption_type_string =
