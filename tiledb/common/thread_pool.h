@@ -49,6 +49,50 @@ namespace tiledb {
 namespace common {
 
 /**
+ * A class-scope singleton kept in existence by members, allocated on first
+ * use.
+ */
+template <class T>
+struct class_singleton {
+
+    typedef T singleton_type;
+    typedef std::shared_ptr<T> member_type;
+    typedef std::weak_ptr<T> central_type;
+
+    /**
+     * Central pointer to the singleton. Initialized on first use; does not
+     * mandate existence.
+     *
+     *  @invariant
+     *  singleton_central.use_count() > 0 whenever a central object exists
+     *  @post
+     *  The stored pointer in the return value is not null.
+     *  @post
+     *  The stored pointer in the return value points to the singleton
+     */
+    static central_type singleton_central;
+
+    /**
+     * Protects the singleton life cycle. Available for use to protect singleton
+     * operations.
+     */
+    static std::mutex lock_central;
+
+    /**
+     * Constructor function to initialize a member pointer
+     */
+    static member_type member_factory();
+
+    /**
+     * Member pointer to the singleton keeps the singleton in existence for
+     * the life span of the object.
+     *
+     * @invariant Stored pointer is not null
+     */
+    std::shared_ptr<T> singleton_member;
+};
+
+/**
  * A recusive-safe thread pool.
  */
 class ThreadPool {
@@ -76,12 +120,12 @@ class ThreadPool {
     }
 
     /** Move constructor. */
-    Task(Task&& rhs) {
+    Task(Task&& rhs) noexcept {
       task_state_ = std::move(rhs.task_state_);
     }
 
     /** Move-assign operator. */
-    Task& operator=(Task&& rhs) {
+    Task& operator=(Task&& rhs) noexcept {
       task_state_ = std::move(rhs.task_state_);
       return *this;
     }
@@ -93,7 +137,7 @@ class ThreadPool {
 
    private:
     /** Value constructor. */
-    Task(const tdb_shared_ptr<TaskState>& task_state)
+    explicit Task(const tdb_shared_ptr<TaskState>& task_state)
         : task_state_(std::move(task_state)) {
     }
 
@@ -322,44 +366,12 @@ class ThreadPool {
   /** Protects `blocked_tasks_`. */
   std::mutex blocked_tasks_mutex_;
 
-  /**
-   * The type of the thread-id map
-   *
-   * It's public only to satisfy visibility for definition.
-   */
   typedef std::unordered_map<std::thread::id, ThreadPool*> tp_index_type_;
-
+  typedef class_singleton<tp_index_type_> tp_index_singleton_type ;
   /**
    * Index from a thread-id to the ThreadPool instance it belongs to.
-   *
-   *  @invariant
-   *  tp_index_singleton_.use_count() > 0 whenever a ThreadPool object exists
-   *  @post
-   *  The stored pointer in the return value is not null.
-   *  @post
-   *  The stored pointer in the return value points to the singleton
    */
-  static std::weak_ptr<tp_index_type_> tp_index_singleton_;
-
-  /**
-   * Pointer to the singleton thread-id index.
-   *
-   * @invariant Stored pointer is not null
-   */
-  std::shared_ptr<tp_index_type_> tp_index_;
-
-  /**
-   * Constructor function that returns the singleton thread-id map
-   */
-  static std::shared_ptr<tp_index_type_> tp_index_factory_();
-
-  /**
-   * Protects the thread-id index.
-   *
-   * It's used both to manage lifespan of the underlying map and pointers to it
-   * as well as operations on the map.
-   */
-  static std::mutex tp_index_lock_;
+  tp_index_singleton_type tp_index_;
 
   /** Indexes thread ids to the task it is currently executing. */
   static std::unordered_map<std::thread::id, tdb_shared_ptr<PackagedTask>>

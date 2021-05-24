@@ -94,8 +94,8 @@ shared_ptr_exceptions = {
         "std::shared_ptr<azure::storage_lite::shared_key_credential>",
         "std::shared_ptr<azure::storage_lite::storage_account>",
     ],
-    "thread_pool.h": ["std::shared_ptr<tp_index_type_>"],
-    "thread_pool.cc": ["std::shared_ptr<tp_index_type_>"],
+    "thread_pool.h": ["std::shared_ptr<singleton_type>"],
+    "thread_pool.cc": ["std::shared_ptr<singleton_type>"],
 }
 
 # Match C++ make_shared routine.
@@ -115,7 +115,7 @@ make_shared_exceptions = {
         "std::make_shared<azure::storage_lite::tinyxml2_parser>",
         "std::make_shared<AzureRetryPolicy>",
     ],
-    "thread_pool.cc": ["std::make_shared<tp_index_type_>"],
+    "thread_pool.cc": ["std::make_shared<singleton_type>"],
 }
 
 # Match C++ unique_ptr objects.
