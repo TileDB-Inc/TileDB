@@ -88,18 +88,6 @@ class Config {
    */
   static const std::string CONFIG_LOGGING_LEVEL;
 
-  /**
-   * An array will open between this value and timestamp_end upon a
-   * read query.
-   * */
-  static const std::string SM_ARRAY_TIMESTAMP_START;
-
-  /**
-   * An array will open between timestamp_start and this value upon a
-   * read query.
-   *  */
-  static const std::string SM_ARRAY_TIMESTAMP_END;
-
   /** If `true`, this will deduplicate coordinates upon sparse writes. */
   static const std::string SM_DEDUP_COORDS;
 

@@ -3565,6 +3565,49 @@ int32_t tiledb_array_alloc(
   return TILEDB_OK;
 }
 
+int32_t tiledb_array_set_open_timestamp_start(
+    tiledb_ctx_t* ctx, tiledb_array_t* array, uint64_t timestamp_start) {
+  if (sanity_check(ctx) == TILEDB_ERR || sanity_check(ctx, array) == TILEDB_ERR)
+    return TILEDB_ERR;
+
+  if (SAVE_ERROR_CATCH(
+          ctx, array->array_->set_timestamp_start(timestamp_start)))
+    return TILEDB_ERR;
+
+  return TILEDB_OK;
+}
+
+int32_t tiledb_array_set_open_timestamp_end(
+    tiledb_ctx_t* ctx, tiledb_array_t* array, uint64_t timestamp_end) {
+  if (sanity_check(ctx) == TILEDB_ERR || sanity_check(ctx, array) == TILEDB_ERR)
+    return TILEDB_ERR;
+
+  if (SAVE_ERROR_CATCH(ctx, array->array_->set_timestamp_end(timestamp_end)))
+    return TILEDB_ERR;
+
+  return TILEDB_OK;
+}
+
+int32_t tiledb_array_get_open_timestamp_start(
+    tiledb_ctx_t* ctx, tiledb_array_t* array, uint64_t* timestamp_start) {
+  if (sanity_check(ctx) == TILEDB_ERR || sanity_check(ctx, array) == TILEDB_ERR)
+    return TILEDB_ERR;
+
+  *timestamp_start = array->array_->timestamp_start();
+
+  return TILEDB_OK;
+}
+
+int32_t tiledb_array_get_open_timestamp_end(
+    tiledb_ctx_t* ctx, tiledb_array_t* array, uint64_t* timestamp_end) {
+  if (sanity_check(ctx) == TILEDB_ERR || sanity_check(ctx, array) == TILEDB_ERR)
+    return TILEDB_ERR;
+
+  *timestamp_end = array->array_->timestamp_end_opened_at();
+
+  return TILEDB_OK;
+}
+
 int32_t tiledb_array_open(
     tiledb_ctx_t* ctx, tiledb_array_t* array, tiledb_query_type_t query_type) {
   if (sanity_check(ctx) == TILEDB_ERR || sanity_check(ctx, array) == TILEDB_ERR)
@@ -3693,7 +3736,7 @@ int32_t tiledb_array_get_timestamp(
   if (sanity_check(ctx) == TILEDB_ERR || sanity_check(ctx, array) == TILEDB_ERR)
     return TILEDB_ERR;
 
-  *timestamp = array->array_->timestamp_end();
+  *timestamp = array->array_->timestamp_end_opened_at();
 
   return TILEDB_OK;
 }
