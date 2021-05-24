@@ -366,7 +366,12 @@ class ThreadPool {
   std::mutex blocked_tasks_mutex_;
 
   typedef std::unordered_map<std::thread::id, ThreadPool*> tp_index_type_;
+  // public carve-out is a work-around for what seems to be a gcc defect
+  // static initialization of singleton members fail unless declared public
+public:
   typedef class_singleton<tp_index_type_> tp_index_singleton_type;
+private:
+
   /**
    * Index from a thread-id to the ThreadPool instance it belongs to.
    */
@@ -374,7 +379,9 @@ class ThreadPool {
 
   typedef std::unordered_map<std::thread::id, tdb_shared_ptr<PackagedTask>>
       task_index_type;
+public:
   typedef class_singleton<task_index_type> task_index_singleton_type;
+private:
 
   /** Indexes thread ids to the task it is currently executing. */
   task_index_singleton_type task_index_;
