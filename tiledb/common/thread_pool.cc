@@ -43,12 +43,11 @@ namespace common {
 template<> ThreadPool::tp_index_singleton_type::central_type ThreadPool::tp_index_singleton_type::singleton_central;
 template<> std::mutex ThreadPool::tp_index_singleton_type::lock_central;
 
-std::unordered_map<std::thread::id, tdb_shared_ptr<ThreadPool::PackagedTask>>
-    ThreadPool::task_index_;
-std::mutex ThreadPool::task_index_lock_;
+template<> ThreadPool::task_index_singleton_type::central_type ThreadPool::task_index_singleton_type::singleton_central;
+template<> std::mutex ThreadPool::task_index_singleton_type::lock_central;
 
-template<>
-ThreadPool::tp_index_singleton_type::member_type ThreadPool::tp_index_singleton_type::member_factory() {
+template<class T>
+typename class_singleton<T>::member_type class_singleton<T>::member_factory() {
   std::lock_guard<std::mutex> lock(lock_central);
   if (singleton_central.use_count() != 0) {
     return singleton_central.lock();
@@ -73,6 +72,7 @@ ThreadPool::ThreadPool()
         , idle_threads_(0)
         , should_terminate_(false)
         , tp_index_({tp_index_singleton_type::member_factory()})
+        , task_index_({task_index_singleton_type::member_factory()})
 {}
 
 ThreadPool::~ThreadPool() {
@@ -442,22 +442,23 @@ ThreadPool* ThreadPool::lookup_tp(const std::thread::id tid) {
 }
 
 void ThreadPool::add_task_index() {
-  std::lock_guard<std::mutex> lock(task_index_lock_);
+  std::lock_guard<std::mutex> lock(task_index_.lock_central);
   for (const auto& thread : threads_)
-    task_index_[thread.get_id()] = nullptr;
+    (*task_index_.singleton_member)[thread.get_id()] = nullptr;
 }
 
 void ThreadPool::remove_task_index() {
-  std::lock_guard<std::mutex> lock(task_index_lock_);
+  std::lock_guard<std::mutex> lock(task_index_.lock_central);
   for (const auto& thread : threads_)
-    task_index_.erase(thread.get_id());
+    task_index_.singleton_member->erase(thread.get_id());
 }
 
 tdb_shared_ptr<ThreadPool::PackagedTask> ThreadPool::lookup_task(
     const std::thread::id tid) {
-  std::lock_guard<std::mutex> lock(task_index_lock_);
-  if (task_index_.count(tid) == 1)
-    return task_index_[tid];
+  std::lock_guard<std::mutex> lock( task_index_singleton_type::lock_central);
+  auto task_index = *task_index_singleton_type::singleton_central.lock();
+  if (task_index.count(tid) == 1)
+    return task_index[tid];
   return nullptr;
 }
 
@@ -470,10 +471,11 @@ void ThreadPool::exec_packaged_task(tdb_shared_ptr<PackagedTask> const task) {
   // on the map are only ever accessed by the thread that the
   // element is keyed on, making it implicitly safe.
   tdb_shared_ptr<PackagedTask> tmp_task = nullptr;
-  std::unique_lock<std::mutex> ul(task_index_lock_);
-  if (task_index_.count(tid) == 1)
-    tmp_task = task_index_[tid];
-  task_index_[tid] = task;
+  std::unique_lock<std::mutex> ul(task_index_singleton_type::lock_central);
+  auto task_index = *task_index_singleton_type::singleton_central.lock();
+  if (task_index.count(tid) == 1)
+    tmp_task = task_index[tid];
+  task_index[tid] = task;
   ul.unlock();
 
   // Execute `task`.
@@ -482,7 +484,7 @@ void ThreadPool::exec_packaged_task(tdb_shared_ptr<PackagedTask> const task) {
   // Restore `task_index_` to the task that it was previously
   // executing, which may be null.
   ul.lock();
-  task_index_[tid] = tmp_task;
+  task_index[tid] = tmp_task;
   ul.unlock();
 }
 

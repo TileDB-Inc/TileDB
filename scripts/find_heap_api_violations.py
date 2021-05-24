@@ -94,8 +94,7 @@ shared_ptr_exceptions = {
         "std::shared_ptr<azure::storage_lite::shared_key_credential>",
         "std::shared_ptr<azure::storage_lite::storage_account>",
     ],
-    "thread_pool.h": ["std::shared_ptr<singleton_type>"],
-    "thread_pool.cc": ["std::shared_ptr<singleton_type>"],
+    "thread_pool.h": ["std::shared_ptr<T>"],
 }
 
 # Match C++ make_shared routine.

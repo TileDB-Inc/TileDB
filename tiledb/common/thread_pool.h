@@ -373,12 +373,11 @@ class ThreadPool {
    */
   tp_index_singleton_type tp_index_;
 
-  /** Indexes thread ids to the task it is currently executing. */
-  static std::unordered_map<std::thread::id, tdb_shared_ptr<PackagedTask>>
-      task_index_;
+  typedef std::unordered_map<std::thread::id, tdb_shared_ptr<PackagedTask>> task_index_type;
+  typedef class_singleton<task_index_type> task_index_singleton_type ;
 
-  /** Protects 'task_index_'. */
-  static std::mutex task_index_lock_;
+  /** Indexes thread ids to the task it is currently executing. */
+  task_index_singleton_type task_index_;
 
   /* ********************************* */
   /*          PRIVATE METHODS          */
