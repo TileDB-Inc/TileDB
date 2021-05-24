@@ -56,103 +56,103 @@ TEST_CASE(
   Hilbert h(2);
   auto bits = h.bits();
   uint64_t coords[2];
-  auto bucket_num = ((uint64_t)1 << bits) - 1;
+  auto max_bucket_val = ((uint64_t)1 << bits) - 1;
 
   // Map (1, 1)
   int32_t dv = 1;
-  auto v = d1.map_to_uint64(&dv, sizeof(int32_t), bits, bucket_num);
-  CHECK(v == 21262214);
+  auto v = d1.map_to_uint64(&dv, sizeof(int32_t), bits, max_bucket_val);
+  CHECK(v == 21474836);
   coords[0] = v;
   dv = 1;
-  v = d2.map_to_uint64(&dv, sizeof(int32_t), bits, bucket_num);
-  CHECK(v == 10683998);
+  v = d2.map_to_uint64(&dv, sizeof(int32_t), bits, max_bucket_val);
+  CHECK(v == 10737418);
   coords[1] = v;
   auto hv = h.coords_to_hilbert(coords);
-  CHECK(hv == 972199115346920);
+  CHECK(hv == 972175364522868);
 
   // Map (1, 3)
   dv = 1;
-  v = d1.map_to_uint64(&dv, sizeof(int32_t), bits, bucket_num);
-  CHECK(v == 21262214);
+  v = d1.map_to_uint64(&dv, sizeof(int32_t), bits, max_bucket_val);
+  CHECK(v == 21474836);
   coords[0] = v;
   dv = 3;
-  v = d2.map_to_uint64(&dv, sizeof(int32_t), bits, bucket_num);
-  CHECK(v == 32051994);
+  v = d2.map_to_uint64(&dv, sizeof(int32_t), bits, max_bucket_val);
+  CHECK(v == 32212254);
   coords[1] = v;
   hv = h.coords_to_hilbert(coords);
-  CHECK(hv == 673842753890680);
+  CHECK(hv == 673795214387276);
 
   // Map (4, 2)
   dv = 4;
-  v = d1.map_to_uint64(&dv, sizeof(int32_t), bits, bucket_num);
-  CHECK(v == 85048857);
+  v = d1.map_to_uint64(&dv, sizeof(int32_t), bits, max_bucket_val);
+  CHECK(v == 85899345);
   coords[0] = v;
   dv = 2;
-  v = d2.map_to_uint64(&dv, sizeof(int32_t), bits, bucket_num);
-  CHECK(v == 21367996);
+  v = d2.map_to_uint64(&dv, sizeof(int32_t), bits, max_bucket_val);
+  CHECK(v == 21474836);
   coords[1] = v;
   hv = h.coords_to_hilbert(coords);
-  CHECK(hv == 15960063827832505);
+  CHECK(hv == 15960414315352633);
 
   // Map (5, 4)
   dv = 5;
-  v = d1.map_to_uint64(&dv, sizeof(int32_t), bits, bucket_num);
-  CHECK(v == 106311071);
+  v = d1.map_to_uint64(&dv, sizeof(int32_t), bits, max_bucket_val);
+  CHECK(v == 107374182);
   coords[0] = v;
   dv = 4;
-  v = d2.map_to_uint64(&dv, sizeof(int32_t), bits, bucket_num);
-  CHECK(v == 42735992);
+  v = d2.map_to_uint64(&dv, sizeof(int32_t), bits, max_bucket_val);
+  CHECK(v == 42949672);
   coords[1] = v;
   hv = h.coords_to_hilbert(coords);
-  CHECK(hv == 14306049248121919);
+  CHECK(hv == 14307296941447292);
 
   // Map (2, 1)
   dv = 2;
-  v = d1.map_to_uint64(&dv, sizeof(int32_t), bits, bucket_num);
-  CHECK(v == 42524428);
+  v = d1.map_to_uint64(&dv, sizeof(int32_t), bits, max_bucket_val);
+  CHECK(v == 42949672);
   coords[0] = v;
   dv = 1;
-  v = d2.map_to_uint64(&dv, sizeof(int32_t), bits, bucket_num);
-  CHECK(v == 10683998);
+  v = d2.map_to_uint64(&dv, sizeof(int32_t), bits, max_bucket_val);
+  CHECK(v == 10737418);
   coords[1] = v;
   hv = h.coords_to_hilbert(coords);
-  CHECK(hv == 1282508796834212);
+  CHECK(hv == 1282377960629798);
 
   // Map (2, 2)
   dv = 2;
-  v = d1.map_to_uint64(&dv, sizeof(int32_t), bits, bucket_num);
-  CHECK(v == 42524428);
+  v = d1.map_to_uint64(&dv, sizeof(int32_t), bits, max_bucket_val);
+  CHECK(v == 42949672);
   coords[0] = v;
   dv = 2;
-  v = d2.map_to_uint64(&dv, sizeof(int32_t), bits, bucket_num);
-  CHECK(v == 21367996);
+  v = d2.map_to_uint64(&dv, sizeof(int32_t), bits, max_bucket_val);
+  CHECK(v == 21474836);
   coords[1] = v;
   hv = h.coords_to_hilbert(coords);
-  CHECK(hv == 2094006769413898);
+  CHECK(hv == 2093929125029754);
 
   // Map (3, 7)
   dv = 3;
-  v = d1.map_to_uint64(&dv, sizeof(int32_t), bits, bucket_num);
-  CHECK(v == 63786642);
+  v = d1.map_to_uint64(&dv, sizeof(int32_t), bits, max_bucket_val);
+  CHECK(v == 64424509);
   coords[0] = v;
   dv = 7;
-  v = d2.map_to_uint64(&dv, sizeof(int32_t), bits, bucket_num);
-  CHECK(v == 74787987);
+  v = d2.map_to_uint64(&dv, sizeof(int32_t), bits, max_bucket_val);
+  CHECK(v == 75161927);
   coords[1] = v;
   hv = h.coords_to_hilbert(coords);
-  CHECK(hv == 8953635051284643);
+  CHECK(hv == 8953131325824998);
 
   // Map (7, 7)
   dv = 7;
-  v = d1.map_to_uint64(&dv, sizeof(int32_t), bits, bucket_num);
-  CHECK(v == 148835500);
+  v = d1.map_to_uint64(&dv, sizeof(int32_t), bits, max_bucket_val);
+  CHECK(v == 150323855);
   coords[0] = v;
   dv = 7;
-  v = d2.map_to_uint64(&dv, sizeof(int32_t), bits, bucket_num);
-  CHECK(v == 74787987);
+  v = d2.map_to_uint64(&dv, sizeof(int32_t), bits, max_bucket_val);
+  CHECK(v == 75161927);
   coords[1] = v;
   hv = h.coords_to_hilbert(coords);
-  CHECK(hv == 34415049034468853);
+  CHECK(hv == 34410827116042986);
 }
 
 TEST_CASE(
@@ -170,103 +170,103 @@ TEST_CASE(
   Hilbert h(2);
   auto bits = h.bits();
   uint64_t coords[2];
-  auto bucket_num = ((uint64_t)1 << bits) - 1;
+  auto max_bucket_val = ((uint64_t)1 << bits) - 1;
 
   // Map (-49, -99)
   int32_t dv = -49;
-  auto v = d1.map_to_uint64(&dv, sizeof(int32_t), bits, bucket_num);
-  CHECK(v == 21262214);
+  auto v = d1.map_to_uint64(&dv, sizeof(int32_t), bits, max_bucket_val);
+  CHECK(v == 21474836);
   coords[0] = v;
   dv = -99;
-  v = d2.map_to_uint64(&dv, sizeof(int32_t), bits, bucket_num);
-  CHECK(v == 10683998);
+  v = d2.map_to_uint64(&dv, sizeof(int32_t), bits, max_bucket_val);
+  CHECK(v == 10737418);
   coords[1] = v;
   auto hv = h.coords_to_hilbert(coords);
-  CHECK(hv == 972199115346920);
+  CHECK(hv == 972175364522868);
 
   // Map (-49, -97)
   dv = -49;
-  v = d1.map_to_uint64(&dv, sizeof(int32_t), bits, bucket_num);
-  CHECK(v == 21262214);
+  v = d1.map_to_uint64(&dv, sizeof(int32_t), bits, max_bucket_val);
+  CHECK(v == 21474836);
   coords[0] = v;
   dv = -97;
-  v = d2.map_to_uint64(&dv, sizeof(int32_t), bits, bucket_num);
-  CHECK(v == 32051994);
+  v = d2.map_to_uint64(&dv, sizeof(int32_t), bits, max_bucket_val);
+  CHECK(v == 32212254);
   coords[1] = v;
   hv = h.coords_to_hilbert(coords);
-  CHECK(hv == 673842753890680);
+  CHECK(hv == 673795214387276);
 
   // Map (-46, -98)
   dv = -46;
-  v = d1.map_to_uint64(&dv, sizeof(int32_t), bits, bucket_num);
-  CHECK(v == 85048857);
+  v = d1.map_to_uint64(&dv, sizeof(int32_t), bits, max_bucket_val);
+  CHECK(v == 85899345);
   coords[0] = v;
   dv = -98;
-  v = d2.map_to_uint64(&dv, sizeof(int32_t), bits, bucket_num);
-  CHECK(v == 21367996);
+  v = d2.map_to_uint64(&dv, sizeof(int32_t), bits, max_bucket_val);
+  CHECK(v == 21474836);
   coords[1] = v;
   hv = h.coords_to_hilbert(coords);
-  CHECK(hv == 15960063827832505);
+  CHECK(hv == 15960414315352633);
 
   // Map (-45, -96)
   dv = -45;
-  v = d1.map_to_uint64(&dv, sizeof(int32_t), bits, bucket_num);
-  CHECK(v == 106311071);
+  v = d1.map_to_uint64(&dv, sizeof(int32_t), bits, max_bucket_val);
+  CHECK(v == 107374182);
   coords[0] = v;
   dv = -96;
-  v = d2.map_to_uint64(&dv, sizeof(int32_t), bits, bucket_num);
-  CHECK(v == 42735992);
+  v = d2.map_to_uint64(&dv, sizeof(int32_t), bits, max_bucket_val);
+  CHECK(v == 42949672);
   coords[1] = v;
   hv = h.coords_to_hilbert(coords);
-  CHECK(hv == 14306049248121919);
+  CHECK(hv == 14307296941447292);
 
   // Map (-48, -99)
   dv = -48;
-  v = d1.map_to_uint64(&dv, sizeof(int32_t), bits, bucket_num);
-  CHECK(v == 42524428);
+  v = d1.map_to_uint64(&dv, sizeof(int32_t), bits, max_bucket_val);
+  CHECK(v == 42949672);
   coords[0] = v;
   dv = -99;
-  v = d2.map_to_uint64(&dv, sizeof(int32_t), bits, bucket_num);
-  CHECK(v == 10683998);
+  v = d2.map_to_uint64(&dv, sizeof(int32_t), bits, max_bucket_val);
+  CHECK(v == 10737418);
   coords[1] = v;
   hv = h.coords_to_hilbert(coords);
-  CHECK(hv == 1282508796834212);
+  CHECK(hv == 1282377960629798);
 
   // Map (-48, -98)
   dv = -48;
-  v = d1.map_to_uint64(&dv, sizeof(int32_t), bits, bucket_num);
-  CHECK(v == 42524428);
+  v = d1.map_to_uint64(&dv, sizeof(int32_t), bits, max_bucket_val);
+  CHECK(v == 42949672);
   coords[0] = v;
   dv = -98;
-  v = d2.map_to_uint64(&dv, sizeof(int32_t), bits, bucket_num);
-  CHECK(v == 21367996);
+  v = d2.map_to_uint64(&dv, sizeof(int32_t), bits, max_bucket_val);
+  CHECK(v == 21474836);
   coords[1] = v;
   hv = h.coords_to_hilbert(coords);
-  CHECK(hv == 2094006769413898);
+  CHECK(hv == 2093929125029754);
 
   // Map (-47, -93)
   dv = -47;
-  v = d1.map_to_uint64(&dv, sizeof(int32_t), bits, bucket_num);
-  CHECK(v == 63786642);
+  v = d1.map_to_uint64(&dv, sizeof(int32_t), bits, max_bucket_val);
+  CHECK(v == 64424509);
   coords[0] = v;
   dv = -93;
-  v = d2.map_to_uint64(&dv, sizeof(int32_t), bits, bucket_num);
-  CHECK(v == 74787987);
+  v = d2.map_to_uint64(&dv, sizeof(int32_t), bits, max_bucket_val);
+  CHECK(v == 75161927);
   coords[1] = v;
   hv = h.coords_to_hilbert(coords);
-  CHECK(hv == 8953635051284643);
+  CHECK(hv == 8953131325824998);
 
   // Map (-43, -93)
   dv = -43;
-  v = d1.map_to_uint64(&dv, sizeof(int32_t), bits, bucket_num);
-  CHECK(v == 148835500);
+  v = d1.map_to_uint64(&dv, sizeof(int32_t), bits, max_bucket_val);
+  CHECK(v == 150323855);
   coords[0] = v;
   dv = -93;
-  v = d2.map_to_uint64(&dv, sizeof(int32_t), bits, bucket_num);
-  CHECK(v == 74787987);
+  v = d2.map_to_uint64(&dv, sizeof(int32_t), bits, max_bucket_val);
+  CHECK(v == 75161927);
   coords[1] = v;
   hv = h.coords_to_hilbert(coords);
-  CHECK(hv == 34415049034468853);
+  CHECK(hv == 34410827116042986);
 }
 
 TEST_CASE(
@@ -284,15 +284,15 @@ TEST_CASE(
   Hilbert h(2);
   auto bits = h.bits();
   uint64_t coords[2];
-  auto bucket_num = ((uint64_t)1 << bits) - 1;
+  auto max_bucket_val = ((uint64_t)1 << bits) - 1;
 
   // Map (0.1f, 0.3f)
   float dv = 0.1f;
-  auto v = d1.map_to_uint64(&dv, sizeof(float), bits, bucket_num);
+  auto v = d1.map_to_uint64(&dv, sizeof(float), bits, max_bucket_val);
   CHECK(v == 214748367);
   coords[0] = v;
   dv = 0.3f;
-  v = d2.map_to_uint64(&dv, sizeof(float), bits, bucket_num);
+  v = d2.map_to_uint64(&dv, sizeof(float), bits, max_bucket_val);
   CHECK(v == 322122559);
   coords[1] = v;
   auto hv = h.coords_to_hilbert(coords);
@@ -300,11 +300,11 @@ TEST_CASE(
 
   // Map (0.1f, 0.1f)
   dv = 0.1f;
-  v = d1.map_to_uint64(&dv, sizeof(float), bits, bucket_num);
+  v = d1.map_to_uint64(&dv, sizeof(float), bits, max_bucket_val);
   CHECK(v == 214748367);
   coords[0] = v;
   dv = 0.1f;
-  v = d2.map_to_uint64(&dv, sizeof(float), bits, bucket_num);
+  v = d2.map_to_uint64(&dv, sizeof(float), bits, max_bucket_val);
   CHECK(v == 107374183);
   coords[1] = v;
   hv = h.coords_to_hilbert(coords);
@@ -312,11 +312,11 @@ TEST_CASE(
 
   // Map (0.5f, 0.4f)
   dv = 0.5f;
-  v = d1.map_to_uint64(&dv, sizeof(float), bits, bucket_num);
+  v = d1.map_to_uint64(&dv, sizeof(float), bits, max_bucket_val);
   CHECK(v == 1073741823);
   coords[0] = v;
   dv = 0.4f;
-  v = d2.map_to_uint64(&dv, sizeof(float), bits, bucket_num);
+  v = d2.map_to_uint64(&dv, sizeof(float), bits, max_bucket_val);
   CHECK(v == 429496735);
   coords[1] = v;
   hv = h.coords_to_hilbert(coords);
@@ -324,11 +324,11 @@ TEST_CASE(
 
   // Map (0.4f, 0.2f)
   dv = 0.4f;
-  v = d1.map_to_uint64(&dv, sizeof(float), bits, bucket_num);
+  v = d1.map_to_uint64(&dv, sizeof(float), bits, max_bucket_val);
   CHECK(v == 858993471);
   coords[0] = v;
   dv = 0.2f;
-  v = d2.map_to_uint64(&dv, sizeof(float), bits, bucket_num);
+  v = d2.map_to_uint64(&dv, sizeof(float), bits, max_bucket_val);
   CHECK(v == 214748367);
   coords[1] = v;
   hv = h.coords_to_hilbert(coords);
@@ -336,11 +336,11 @@ TEST_CASE(
 
   // Map (0.2f, 0.1f)
   dv = 0.2f;
-  v = d1.map_to_uint64(&dv, sizeof(float), bits, bucket_num);
+  v = d1.map_to_uint64(&dv, sizeof(float), bits, max_bucket_val);
   CHECK(v == 429496735);
   coords[0] = v;
   dv = 0.1f;
-  v = d2.map_to_uint64(&dv, sizeof(float), bits, bucket_num);
+  v = d2.map_to_uint64(&dv, sizeof(float), bits, max_bucket_val);
   CHECK(v == 107374183);
   coords[1] = v;
   hv = h.coords_to_hilbert(coords);
@@ -348,11 +348,11 @@ TEST_CASE(
 
   // Map (0.2f, 0.2f)
   dv = 0.2f;
-  v = d1.map_to_uint64(&dv, sizeof(float), bits, bucket_num);
+  v = d1.map_to_uint64(&dv, sizeof(float), bits, max_bucket_val);
   CHECK(v == 429496735);
   coords[0] = v;
   dv = 0.2f;
-  v = d2.map_to_uint64(&dv, sizeof(float), bits, bucket_num);
+  v = d2.map_to_uint64(&dv, sizeof(float), bits, max_bucket_val);
   CHECK(v == 214748367);
   coords[1] = v;
   hv = h.coords_to_hilbert(coords);
@@ -360,11 +360,11 @@ TEST_CASE(
 
   // Map (0.3f, 0.7f)
   dv = 0.3f;
-  v = d1.map_to_uint64(&dv, sizeof(float), bits, bucket_num);
+  v = d1.map_to_uint64(&dv, sizeof(float), bits, max_bucket_val);
   CHECK(v == 644245119);
   coords[0] = v;
   dv = 0.7f;
-  v = d2.map_to_uint64(&dv, sizeof(float), bits, bucket_num);
+  v = d2.map_to_uint64(&dv, sizeof(float), bits, max_bucket_val);
   CHECK(v == 751619263);
   coords[1] = v;
   hv = h.coords_to_hilbert(coords);
@@ -372,11 +372,11 @@ TEST_CASE(
 
   // Map (0.7f, 0.7f)
   dv = 0.7f;
-  v = d1.map_to_uint64(&dv, sizeof(float), bits, bucket_num);
+  v = d1.map_to_uint64(&dv, sizeof(float), bits, max_bucket_val);
   CHECK(v == 1503238527);
   coords[0] = v;
   dv = 0.7f;
-  v = d2.map_to_uint64(&dv, sizeof(float), bits, bucket_num);
+  v = d2.map_to_uint64(&dv, sizeof(float), bits, max_bucket_val);
   CHECK(v == 751619263);
   coords[1] = v;
   hv = h.coords_to_hilbert(coords);
@@ -402,16 +402,16 @@ TEST_CASE(
   // Create 2D hilbert curve (auxiliary here)
   Hilbert h(2);
   auto bits = h.bits();
-  auto bucket_num = ((uint64_t)1 << bits) - 1;
+  auto max_bucket_val = ((uint64_t)1 << bits) - 1;
   uint64_t coords[2];
 
   // Map (1a, cat)
   std::string dv = "1a";
-  auto v = d1.map_to_uint64(dv.data(), dv.size(), bits, bucket_num);
+  auto v = d1.map_to_uint64(dv.data(), dv.size(), bits, max_bucket_val);
   CHECK(v == 414220288);
   coords[0] = v;
   dv = "cat";
-  v = d2.map_to_uint64(dv.data(), dv.size(), bits, bucket_num);
+  v = d2.map_to_uint64(dv.data(), dv.size(), bits, max_bucket_val);
   CHECK(v == 833665536);
   coords[1] = v;
   auto hv = h.coords_to_hilbert(coords);
@@ -419,11 +419,11 @@ TEST_CASE(
 
   // Map (dog, stop)
   dv = "dog";
-  v = d1.map_to_uint64(dv.data(), dv.size(), bits, bucket_num);
+  v = d1.map_to_uint64(dv.data(), dv.size(), bits, max_bucket_val);
   CHECK(v == 842511232);
   coords[0] = v;
   dv = "stop";
-  v = d2.map_to_uint64(dv.data(), dv.size(), bits, bucket_num);
+  v = d2.map_to_uint64(dv.data(), dv.size(), bits, max_bucket_val);
   CHECK(v == 968505272);
   coords[1] = v;
   hv = h.coords_to_hilbert(coords);
@@ -431,11 +431,11 @@ TEST_CASE(
 
   // Map (camel, stock)
   dv = "camel";
-  v = d1.map_to_uint64(dv.data(), dv.size(), bits, bucket_num);
+  v = d1.map_to_uint64(dv.data(), dv.size(), bits, max_bucket_val);
   CHECK(v == 833664690);
   coords[0] = v;
   dv = "stock";
-  v = d2.map_to_uint64(dv.data(), dv.size(), bits, bucket_num);
+  v = d2.map_to_uint64(dv.data(), dv.size(), bits, max_bucket_val);
   CHECK(v == 968505265);
   coords[1] = v;
   hv = h.coords_to_hilbert(coords);
@@ -443,11 +443,11 @@ TEST_CASE(
 
   // Map (33, t1)
   dv = "33";
-  v = d1.map_to_uint64(dv.data(), dv.size(), bits, bucket_num);
+  v = d1.map_to_uint64(dv.data(), dv.size(), bits, max_bucket_val);
   CHECK(v == 429490176);
   coords[0] = v;
   dv = "t1";
-  v = d2.map_to_uint64(dv.data(), dv.size(), bits, bucket_num);
+  v = d2.map_to_uint64(dv.data(), dv.size(), bits, max_bucket_val);
   CHECK(v == 974684160);
   coords[1] = v;
   hv = h.coords_to_hilbert(coords);
@@ -455,11 +455,11 @@ TEST_CASE(
 
   // Map (blue, ac3)
   dv = "blue";
-  v = d1.map_to_uint64(dv.data(), dv.size(), bits, bucket_num);
+  v = d1.map_to_uint64(dv.data(), dv.size(), bits, max_bucket_val);
   CHECK(v == 825637554);
   coords[0] = v;
   dv = "ace";
-  v = d2.map_to_uint64(dv.data(), dv.size(), bits, bucket_num);
+  v = d2.map_to_uint64(dv.data(), dv.size(), bits, max_bucket_val);
   CHECK(v == 816951936);
   coords[1] = v;
   hv = h.coords_to_hilbert(coords);
@@ -467,11 +467,11 @@ TEST_CASE(
 
   // Map (az, yellow)
   dv = "az";
-  v = d1.map_to_uint64(dv.data(), dv.size(), bits, bucket_num);
+  v = d1.map_to_uint64(dv.data(), dv.size(), bits, max_bucket_val);
   CHECK(v == 817692672);
   coords[0] = v;
   dv = "yellow";
-  v = d2.map_to_uint64(dv.data(), dv.size(), bits, bucket_num);
+  v = d2.map_to_uint64(dv.data(), dv.size(), bits, max_bucket_val);
   CHECK(v == 1018345014);
   coords[1] = v;
   hv = h.coords_to_hilbert(coords);
@@ -479,11 +479,11 @@ TEST_CASE(
 
   // Map (star, red)
   dv = "star";
-  v = d1.map_to_uint64(dv.data(), dv.size(), bits, bucket_num);
+  v = d1.map_to_uint64(dv.data(), dv.size(), bits, max_bucket_val);
   CHECK(v == 968503481);
   coords[0] = v;
   dv = "red";
-  v = d2.map_to_uint64(dv.data(), dv.size(), bits, bucket_num);
+  v = d2.map_to_uint64(dv.data(), dv.size(), bits, max_bucket_val);
   CHECK(v == 959623680);
   coords[1] = v;
   hv = h.coords_to_hilbert(coords);
@@ -491,11 +491,11 @@ TEST_CASE(
 
   // Map (urn, grey)
   dv = "urn";
-  v = d1.map_to_uint64(dv.data(), dv.size(), bits, bucket_num);
+  v = d1.map_to_uint64(dv.data(), dv.size(), bits, max_bucket_val);
   CHECK(v == 985216768);
   coords[0] = v;
   dv = "grey";
-  v = d2.map_to_uint64(dv.data(), dv.size(), bits, bucket_num);
+  v = d2.map_to_uint64(dv.data(), dv.size(), bits, max_bucket_val);
   CHECK(v == 867775164);
   coords[1] = v;
   hv = h.coords_to_hilbert(coords);
@@ -522,12 +522,12 @@ TEST_CASE(
   // Set number of buckets
   Hilbert h(2);
   auto bits = h.bits();
-  auto bucket_num = ((uint64_t)1 << bits) - 1;
+  auto max_bucket_val = ((uint64_t)1 << bits) - 1;
 
-  auto val = d1.map_from_uint64(63786642, bits, bucket_num);
+  auto val = d1.map_from_uint64(64424509, bits, max_bucket_val);
   auto val_int32 = *(const int32_t*)(&val[0]);
   CHECK(val_int32 == 3);
-  val = d1.map_from_uint64(42524428, bits, bucket_num);
+  val = d1.map_from_uint64(42949672, bits, max_bucket_val);
   val_int32 = *(const int32_t*)(&val[0]);
   CHECK(val_int32 == 2);
 }
@@ -543,12 +543,12 @@ TEST_CASE(
   // Set number of buckets
   Hilbert h(2);
   auto bits = h.bits();
-  auto bucket_num = ((uint64_t)1 << bits) - 1;
+  auto max_bucket_val = ((uint64_t)1 << bits) - 1;
 
-  auto val = d1.map_from_uint64(63786642, bits, bucket_num);
+  auto val = d1.map_from_uint64(64424509, bits, max_bucket_val);
   auto val_int32 = *(const int32_t*)(&val[0]);
   CHECK(val_int32 == -47);
-  val = d1.map_from_uint64(42524428, bits, bucket_num);
+  val = d1.map_from_uint64(42949672, bits, max_bucket_val);
   val_int32 = *(const int32_t*)(&val[0]);
   CHECK(val_int32 == -48);
 }
@@ -564,12 +564,12 @@ TEST_CASE(
   // Set number of buckets
   Hilbert h(2);
   auto bits = h.bits();
-  auto bucket_num = ((uint64_t)1 << bits) - 1;
+  auto max_bucket_val = ((uint64_t)1 << bits) - 1;
 
-  auto val = d1.map_from_uint64(1503238527, bits, bucket_num);
+  auto val = d1.map_from_uint64(1503238527, bits, max_bucket_val);
   auto val_int32 = *(const float*)(&val[0]);
   CHECK(round(100 * val_int32) == 70);
-  val = d1.map_from_uint64(429496735, bits, bucket_num);
+  val = d1.map_from_uint64(429496735, bits, max_bucket_val);
   val_int32 = *(const float*)(&val[0]);
   CHECK(round(100 * val_int32) == 20);
 }
@@ -583,23 +583,23 @@ TEST_CASE(
   // Set number of buckets
   Hilbert h(2);
   auto bits = h.bits();
-  auto bucket_num = ((uint64_t)1 << bits) - 1;
+  auto max_bucket_val = ((uint64_t)1 << bits) - 1;
 
   std::string v_str = std::string("star\0\0\0\0", 8);
-  auto v = d1.map_to_uint64(v_str.data(), v_str.size(), bits, bucket_num);
-  auto val = d1.map_from_uint64(v, bits, bucket_num);
+  auto v = d1.map_to_uint64(v_str.data(), v_str.size(), bits, max_bucket_val);
+  auto val = d1.map_from_uint64(v, bits, max_bucket_val);
   auto val_str = std::string((const char*)(&val[0]), 8);
   CHECK(val_str == v_str);
 
   v_str = std::string("blue\0\0\0\0", 8);
-  v = d1.map_to_uint64(v_str.data(), v_str.size(), bits, bucket_num);
-  val = d1.map_from_uint64(v, bits, bucket_num);
+  v = d1.map_to_uint64(v_str.data(), v_str.size(), bits, max_bucket_val);
+  val = d1.map_from_uint64(v, bits, max_bucket_val);
   val_str = std::string((const char*)(&val[0]), 4);
   CHECK(val_str == std::string("blud", 4));
 
   v_str = std::string("yellow\0\0", 8);
-  v = d1.map_to_uint64(v_str.data(), v_str.size(), bits, bucket_num);
-  val = d1.map_from_uint64(v, bits, bucket_num);
+  v = d1.map_to_uint64(v_str.data(), v_str.size(), bits, max_bucket_val);
+  val = d1.map_from_uint64(v, bits, max_bucket_val);
   val_str = std::string((const char*)(&val[0]), 4);
   CHECK(val_str == std::string("yell", 4));
 }
