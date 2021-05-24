@@ -1445,6 +1445,13 @@ Status Dimension::set_tile_extent(const void* tile_extent) {
 }
 
 Status Dimension::set_tile_extent(const ByteVecValue& tile_extent) {
+  if (type_ == Datatype::STRING_ASCII) {
+    if (tile_extent.empty())
+      return Status::Ok();
+    return LOG_STATUS(Status::DimensionError(
+        std::string("Setting the tile extent to a dimension with type '") +
+        datatype_str(type_) + "' is not supported"));
+  }
   if (domain_.empty())
     return LOG_STATUS(Status::DimensionError(
         "Cannot set tile extent; Domain must be set first"));

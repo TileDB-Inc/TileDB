@@ -549,7 +549,7 @@ Status Domain::init(Layout cell_order, Layout tile_order) {
   if (cell_order_ == Layout::HILBERT) {
     ByteVecValue be;
     for (auto& d : dimensions_) {
-      d->set_tile_extent(be);
+      RETURN_NOT_OK(d->set_tile_extent(be));
     }
   }
 
