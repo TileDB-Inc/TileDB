@@ -3343,7 +3343,7 @@ Status Writer::calculate_hilbert_values(
   auto dim_num = array_schema_->dim_num();
   Hilbert h(dim_num);
   auto bits = h.bits();
-  auto bucket_num = ((uint64_t)1 << bits) - 1;
+  auto max_bucket_val = ((uint64_t)1 << bits) - 1;
 
   // Calculate Hilbert values in parallel
   assert(hilbert_values->size() >= coords_num_);
@@ -3352,8 +3352,8 @@ Status Writer::calculate_hilbert_values(
         std::vector<uint64_t> coords(dim_num);
         for (uint32_t d = 0; d < dim_num; ++d) {
           auto dim = array_schema_->dimension(d);
-          coords[d] =
-              dim->map_to_uint64(buffs[d], c, coords_num_, bits, bucket_num);
+          coords[d] = dim->map_to_uint64(
+              buffs[d], c, coords_num_, bits, max_bucket_val);
         }
         (*hilbert_values)[c] = h.coords_to_hilbert(&coords[0]);
 
