@@ -67,6 +67,18 @@ class QueryCondition {
   /** Destructor. */
   ~QueryCondition() = default;
 
+  /**
+   * Constructs an instance directly from a C-API query condition object.
+   *
+   * @param ctx The TileDB context.
+   * @param qc The C-API query condition object.
+   */
+  QueryCondition(const Context& ctx, tiledb_query_condition_t* const qc)
+      : ctx_(ctx)
+      , query_condition_(
+            std::shared_ptr<tiledb_query_condition_t>(qc, deleter_)) {
+  }
+
   /* ********************************* */
   /*     CONSTRUCTORS & DESTRUCTORS    */
   /* ********************************* */
@@ -263,22 +275,6 @@ class QueryCondition {
   }
 
  private:
-  /* ********************************* */
-  /*        PRIVATE CONSTRUCTORS       */
-  /* ********************************* */
-
-  /**
-   * Constructs an instance directly from a C-API query condition object.
-   *
-   * @param ctx The TileDB context.
-   * @param qc The C-API query condition object.
-   */
-  QueryCondition(const Context& ctx, tiledb_query_condition_t* const qc)
-      : ctx_(ctx)
-      , query_condition_(
-            std::shared_ptr<tiledb_query_condition_t>(qc, deleter_)) {
-  }
-
   /* ********************************* */
   /*         PRIVATE ATTRIBUTES        */
   /* ********************************* */
