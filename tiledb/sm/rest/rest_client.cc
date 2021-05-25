@@ -371,7 +371,7 @@ Status RestClient::post_query_submit(
         st.message()));
   }
 
-  return Status::Ok();
+  return st;
 }
 
 size_t RestClient::post_data_write_cb(
