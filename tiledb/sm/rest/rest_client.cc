@@ -379,6 +379,7 @@ Status RestClient::post_query_submit(
       url,
       serialization_type_,
       &serialized,
+      &scratch,
       std::move(write_cb),
       cache_key);
 
