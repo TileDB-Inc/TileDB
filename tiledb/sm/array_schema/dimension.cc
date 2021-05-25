@@ -803,7 +803,7 @@ void Dimension::split_range<char>(
     assert(pos != 0);
     new_r2_start[pos] = 0;
     new_r2_start[--pos]++;
-  } while (pos >= 0 && (int)new_r2_start[pos] < 0);
+  } while (pos >= 0 && (int)(signed char)new_r2_start[pos] < 0);
   new_r2_start.resize(pos + 1);
 
   auto max_string = std::string("\x7F", 1);
