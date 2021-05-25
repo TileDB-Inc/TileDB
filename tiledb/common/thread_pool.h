@@ -53,7 +53,7 @@ namespace common {
  * use.
  */
 template <class T>
-struct class_singleton {
+struct ClassSingleton {
   typedef T singleton_type;
   typedef std::shared_ptr<T> member_type;
   typedef std::weak_ptr<T> central_type;
@@ -90,6 +90,11 @@ struct class_singleton {
    */
   std::shared_ptr<T> singleton_member;
 };
+
+template <class T>
+typename ClassSingleton<T>::central_type ClassSingleton<T>::singleton_central;
+template <class T>
+std::mutex ClassSingleton<T>::lock_central;
 
 /**
  * A recusive-safe thread pool.
@@ -366,12 +371,7 @@ class ThreadPool {
   std::mutex blocked_tasks_mutex_;
 
   typedef std::unordered_map<std::thread::id, ThreadPool*> tp_index_type_;
-  // public carve-out is a work-around for what seems to be a gcc defect
-  // static initialization of singleton members fail unless declared public
- public:
-  typedef class_singleton<tp_index_type_> tp_index_singleton_type;
-
- private:
+  typedef ClassSingleton<tp_index_type_> tp_index_singleton_type;
   /**
    * Index from a thread-id to the ThreadPool instance it belongs to.
    */
@@ -379,12 +379,10 @@ class ThreadPool {
 
   typedef std::unordered_map<std::thread::id, tdb_shared_ptr<PackagedTask>>
       task_index_type;
-
- public:
-  typedef class_singleton<task_index_type> task_index_singleton_type;
-
- private:
-  /** Indexes thread ids to the task it is currently executing. */
+  typedef ClassSingleton<task_index_type> task_index_singleton_type;
+  /**
+   * Index from a thread id to the task it is currently executing.
+   */
   task_index_singleton_type task_index_;
 
   /* ********************************* */

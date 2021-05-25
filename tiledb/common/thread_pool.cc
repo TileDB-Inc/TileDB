@@ -39,21 +39,8 @@
 namespace tiledb {
 namespace common {
 
-// Define the static ThreadPool member variables.
-template <>
-ThreadPool::tp_index_singleton_type::central_type
-    ThreadPool::tp_index_singleton_type::singleton_central;
-template <>
-std::mutex ThreadPool::tp_index_singleton_type::lock_central;
-
-template <>
-ThreadPool::task_index_singleton_type::central_type
-    ThreadPool::task_index_singleton_type::singleton_central;
-template <>
-std::mutex ThreadPool::task_index_singleton_type::lock_central;
-
 template <class T>
-typename class_singleton<T>::member_type class_singleton<T>::member_factory() {
+typename ClassSingleton<T>::member_type ClassSingleton<T>::member_factory() {
   std::lock_guard<std::mutex> lock(lock_central);
   if (singleton_central.use_count() != 0) {
     return singleton_central.lock();
