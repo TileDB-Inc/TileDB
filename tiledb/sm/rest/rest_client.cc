@@ -361,7 +361,13 @@ Status RestClient::post_query_submit(
       copy_state);
 
   const Status st = curlc.post_data(
-      url, serialization_type_, &serialized, std::move(write_cb), cache_key);
+      //stats_,
+      url,
+      serialization_type_,
+      &serialized,
+      &scratch,
+      std::move(write_cb),
+      cache_key);
 
   if (!st.ok() && copy_state->empty()) {
     return LOG_STATUS(Status::RestError(

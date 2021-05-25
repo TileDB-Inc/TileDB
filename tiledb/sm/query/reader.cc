@@ -765,6 +765,7 @@ bool Reader::offsets_extra_element() const {
 }
 
 Status Reader::set_offsets_extra_element(bool add_extra_element) {
+  //std::cerr << "set_offsets_extra-element: " << add_extra_element << std::endl;
   offsets_extra_element_ = add_extra_element;
 
   return Status::Ok();
