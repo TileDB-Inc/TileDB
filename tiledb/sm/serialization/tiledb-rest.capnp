@@ -28,14 +28,17 @@ struct Config {
 }
 
 struct Array {
-  timestamp @0 :UInt64;
-  # timestamp array was opened
+  endTimestamp @0 :UInt64;
+  # ending timestamp array was opened
 
   queryType @1 :Text;
   # Array opened for query type
 
   uri @2 :Text;
   # Array uri
+
+  startTimestamp @3 :UInt64;
+  # starting timestamp array was opened
 }
 
 struct ArraySchema {

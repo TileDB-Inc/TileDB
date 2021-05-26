@@ -184,7 +184,7 @@ Status RestClient::deregister_array_from_rest(const URI& uri) {
 }
 
 Status RestClient::get_array_non_empty_domain(
-    Array* array, uint64_t timestamp) {
+    Array* array, uint64_t timestamp_start, uint64_t timestamp_end) {
   if (array == nullptr)
     return LOG_STATUS(
         Status::RestError("Cannot get array non-empty domain; array is null"));
@@ -199,10 +199,11 @@ Status RestClient::get_array_non_empty_domain(
   const std::string cache_key = array_ns + ":" + array_uri;
   RETURN_NOT_OK(
       curlc.init(config_, extra_headers_, &redirect_meta_, &redirect_mtx_));
-  const std::string url =
-      redirect_uri(cache_key) + "/v2/arrays/" + array_ns + "/" +
-      curlc.url_escape(array_uri) +
-      "/non_empty_domain?timestamp=" + std::to_string(timestamp);
+  const std::string url = redirect_uri(cache_key) + "/v2/arrays/" + array_ns +
+                          "/" + curlc.url_escape(array_uri) +
+                          "/non_empty_domain?" +
+                          "start_timestamp=" + std::to_string(timestamp_start) +
+                          "&end_timestamp=" + std::to_string(timestamp_end);
 
   // Get the data
   Buffer returned_data;
@@ -258,7 +259,10 @@ Status RestClient::get_array_max_buffer_sizes(
 }
 
 Status RestClient::get_array_metadata_from_rest(
-    const URI& uri, uint64_t timestamp, Array* array) {
+    const URI& uri,
+    uint64_t timestamp_start,
+    uint64_t timestamp_end,
+    Array* array) {
   if (array == nullptr)
     return LOG_STATUS(Status::RestError(
         "Error getting array metadata from REST; array is null."));
@@ -270,10 +274,11 @@ Status RestClient::get_array_metadata_from_rest(
   const std::string cache_key = array_ns + ":" + array_uri;
   RETURN_NOT_OK(
       curlc.init(config_, extra_headers_, &redirect_meta_, &redirect_mtx_));
-  const std::string url =
-      redirect_uri(cache_key) + "/v1/arrays/" + array_ns + "/" +
-      curlc.url_escape(array_uri) +
-      "/array_metadata?timestamp=" + std::to_string(timestamp);
+  const std::string url = redirect_uri(cache_key) + "/v1/arrays/" + array_ns +
+                          "/" + curlc.url_escape(array_uri) +
+                          "/array_metadata?" +
+                          "start_timestamp=" + std::to_string(timestamp_start) +
+                          "&end_timestamp=" + std::to_string(timestamp_end);
 
   // Get the data
   Buffer returned_data;
@@ -357,8 +362,10 @@ Status RestClient::post_query_submit(
                     "&read_all=" + (resubmit_incomplete_ ? "true" : "false");
 
   // Remote array reads always supply the timestamp.
-  if (query->type() == QueryType::READ)
-    url += "&open_at=" + std::to_string(array->timestamp_end());
+  if (query->type() == QueryType::READ) {
+    url += "&start_timestamp=" + std::to_string(array->timestamp_start());
+    url += "&end_timestamp=" + std::to_string(array->timestamp_end());
+  }
 
   // Create the callback that will process the response buffers as they
   // are received.
@@ -730,8 +737,10 @@ Status RestClient::get_query_est_result_sizes(const URI& uri, Query* query) {
       "/query/est_result_sizes?type=" + query_type_str(query->type());
 
   // Remote array reads always supply the timestamp.
-  if (query->type() == QueryType::READ)
-    url += "&open_at=" + std::to_string(array->timestamp_end());
+  if (query->type() == QueryType::READ) {
+    url += "&start_timestamp=" + std::to_string(array->timestamp_start());
+    url += "&end_timestamp=" + std::to_string(array->timestamp_end());
+  }
 
   // Get the data
   Buffer returned_data;
@@ -791,7 +800,7 @@ Status RestClient::deregister_array_from_rest(const URI&) {
       Status::RestError("Cannot use rest client; serialization not enabled."));
 }
 
-Status RestClient::get_array_non_empty_domain(Array*, uint64_t) {
+Status RestClient::get_array_non_empty_domain(Array*, uint64_t, uint64_t) {
   return LOG_STATUS(
       Status::RestError("Cannot use rest client; serialization not enabled."));
 }
@@ -805,7 +814,8 @@ Status RestClient::get_array_max_buffer_sizes(
       Status::RestError("Cannot use rest client; serialization not enabled."));
 }
 
-Status RestClient::get_array_metadata_from_rest(const URI&, uint64_t, Array*) {
+Status RestClient::get_array_metadata_from_rest(
+    const URI&, uint64_t, uint64_t, Array*) {
   return LOG_STATUS(
       Status::RestError("Cannot use rest client; serialization not enabled."));
 }
