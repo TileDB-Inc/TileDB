@@ -866,7 +866,7 @@ Status Array::load_metadata() {
       return LOG_STATUS(Status::ArrayError(
           "Cannot load metadata; remote array with no REST client."));
     RETURN_NOT_OK(rest_client->get_array_metadata_from_rest(
-        array_uri_, timestamp_end_opened_at_, this));
+        array_uri_, timestamp_start_, timestamp_end_opened_at_, this));
   } else {
     RETURN_NOT_OK(storage_manager_->load_array_metadata(
         array_uri_,
@@ -886,7 +886,7 @@ Status Array::load_remote_non_empty_domain() {
       return LOG_STATUS(Status::ArrayError(
           "Cannot load metadata; remote array with no REST client."));
     RETURN_NOT_OK(rest_client->get_array_non_empty_domain(
-        this, timestamp_end_opened_at_));
+        this, timestamp_start_, timestamp_end_opened_at_));
     non_empty_domain_computed_ = true;
   }
   return Status::Ok();
