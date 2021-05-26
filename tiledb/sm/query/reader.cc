@@ -1036,8 +1036,19 @@ Status Reader::compute_range_result_coords(
   auto range_num = subarray->range_num();
   range_result_coords->resize(range_num);
   auto cell_order = array_schema_->cell_order();
-  Layout layout = (layout_ == Layout::UNORDERED) ? cell_order : layout_;
   auto allows_dups = array_schema_->allows_dups();
+
+  // To de-dupe the ranges, we may need to sort them. If the
+  // read layout is UNORDERED, we will sort by the cell layout.
+  // If the cell layout is hilbert, we will sort in row-major to
+  // avoid the expense of calculating hilbert values.
+  Layout sort_layout = layout_;
+  if (sort_layout == Layout::UNORDERED) {
+    sort_layout = cell_order;
+    if (sort_layout == Layout::HILBERT) {
+      sort_layout = Layout::ROW_MAJOR;
+    }
+  }
 
   auto status = parallel_for(
       storage_manager_->compute_tp(), 0, range_num, [&](uint64_t r) {
@@ -1056,7 +1067,7 @@ Status Reader::compute_range_result_coords(
               ((*range_result_coords)[r]).begin(),
               ((*range_result_coords)[r]).end(),
               ((*range_result_coords)[r]).size(),
-              layout));
+              sort_layout));
           RETURN_CANCEL_OR_ERROR(
               dedup_result_coords(&((*range_result_coords)[r])));
         }
