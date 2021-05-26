@@ -95,7 +95,7 @@ Status QueryCondition::init(
 Status QueryCondition::check(const ArraySchema* const array_schema) const {
   for (const auto& clause : clauses_) {
     const std::string field_name = clause.field_name_;
-    const uint64_t condition_value_size = clause.condition_value_.size();
+    const uint64_t condition_value_size = clause.condition_value_data_.size();
 
     const Attribute* const attribute = array_schema->attribute(field_name);
     if (!attribute) {
@@ -103,14 +103,23 @@ Status QueryCondition::check(const ArraySchema* const array_schema) const {
           "Clause field name is not an attribute " + field_name);
     }
 
-    if (attribute->var_size()) {
-      return Status::QueryConditionError(
-          "Clause attribute may not be var-sized: " + field_name);
+    if (clause.condition_value_ == nullptr) {
+      if (clause.op_ != QueryConditionOp::EQ &&
+          clause.op_ != QueryConditionOp::NE) {
+        return Status::QueryConditionError(
+            "Null value can only be used with equality operators");
+      }
+
+      if (!attribute->nullable()) {
+        return Status::QueryConditionError(
+            "Null value can only be used with nullable attributes");
+      }
     }
 
-    if (attribute->nullable()) {
+    if (attribute->var_size() && attribute->type() != Datatype::STRING_ASCII) {
       return Status::QueryConditionError(
-          "Clause attribute may not be nullable: " + field_name);
+          "Clause attribute may only be var-sized for ASCII strings: " +
+          field_name);
     }
 
     if (attribute->cell_val_num() != 1 &&
@@ -121,7 +130,8 @@ Status QueryCondition::check(const ArraySchema* const array_schema) const {
           field_name);
     }
 
-    if (attribute->cell_size() != condition_value_size) {
+    if (attribute->cell_size() != constants::var_size &&
+        attribute->cell_size() != condition_value_size) {
       return Status::QueryConditionError(
           "Clause condition value size mismatch: " +
           std::to_string(attribute->cell_size()) +
@@ -193,12 +203,17 @@ template <>
 struct QueryCondition::BinaryCmp<char*, QueryConditionOp::LT> {
   static inline bool cmp(
       const void* lhs, uint64_t lhs_size, const void* rhs, uint64_t rhs_size) {
+    if (lhs == nullptr) {
+      return false;
+    }
+
     const size_t min_size = std::min<size_t>(lhs_size, rhs_size);
     const int cmp = strncmp(
         static_cast<const char*>(lhs), static_cast<const char*>(rhs), min_size);
     if (cmp != 0) {
       return cmp < 0;
     }
+
     return lhs_size < rhs_size;
   }
 };
@@ -208,12 +223,17 @@ template <>
 struct QueryCondition::BinaryCmp<char*, QueryConditionOp::LE> {
   static inline bool cmp(
       const void* lhs, uint64_t lhs_size, const void* rhs, uint64_t rhs_size) {
+    if (lhs == nullptr) {
+      return false;
+    }
+
     const size_t min_size = std::min<size_t>(lhs_size, rhs_size);
     const int cmp = strncmp(
         static_cast<const char*>(lhs), static_cast<const char*>(rhs), min_size);
     if (cmp != 0) {
       return cmp < 0;
     }
+
     return lhs_size <= rhs_size;
   }
 };
@@ -223,12 +243,17 @@ template <>
 struct QueryCondition::BinaryCmp<char*, QueryConditionOp::GT> {
   static inline bool cmp(
       const void* lhs, uint64_t lhs_size, const void* rhs, uint64_t rhs_size) {
+    if (lhs == nullptr) {
+      return false;
+    }
+
     const size_t min_size = std::min<size_t>(lhs_size, rhs_size);
     const int cmp = strncmp(
         static_cast<const char*>(lhs), static_cast<const char*>(rhs), min_size);
     if (cmp != 0) {
       return cmp > 0;
     }
+
     return lhs_size > rhs_size;
   }
 };
@@ -238,12 +263,17 @@ template <>
 struct QueryCondition::BinaryCmp<char*, QueryConditionOp::GE> {
   static inline bool cmp(
       const void* lhs, uint64_t lhs_size, const void* rhs, uint64_t rhs_size) {
+    if (lhs == nullptr) {
+      return false;
+    }
+
     const size_t min_size = std::min<size_t>(lhs_size, rhs_size);
     const int cmp = strncmp(
         static_cast<const char*>(lhs), static_cast<const char*>(rhs), min_size);
     if (cmp != 0) {
       return cmp > 0;
     }
+
     return lhs_size >= rhs_size;
   }
 };
@@ -253,9 +283,18 @@ template <>
 struct QueryCondition::BinaryCmp<char*, QueryConditionOp::EQ> {
   static inline bool cmp(
       const void* lhs, uint64_t lhs_size, const void* rhs, uint64_t rhs_size) {
+    if (lhs == rhs) {
+      return true;
+    }
+
+    if (lhs == nullptr || rhs == nullptr) {
+      return false;
+    }
+
     if (lhs_size != rhs_size) {
       return false;
     }
+
     return strncmp(
                static_cast<const char*>(lhs),
                static_cast<const char*>(rhs),
@@ -268,9 +307,18 @@ template <>
 struct QueryCondition::BinaryCmp<char*, QueryConditionOp::NE> {
   static inline bool cmp(
       const void* lhs, uint64_t lhs_size, const void* rhs, uint64_t rhs_size) {
+    if (rhs == nullptr && lhs != nullptr) {
+      return true;
+    }
+
+    if (lhs == nullptr || rhs == nullptr) {
+      return false;
+    }
+
     if (lhs_size != rhs_size) {
       return true;
     }
+
     return strncmp(
                static_cast<const char*>(lhs),
                static_cast<const char*>(rhs),
@@ -282,7 +330,8 @@ struct QueryCondition::BinaryCmp<char*, QueryConditionOp::NE> {
 template <typename T>
 struct QueryCondition::BinaryCmp<T, QueryConditionOp::LT> {
   static inline bool cmp(const void* lhs, uint64_t, const void* rhs, uint64_t) {
-    return *static_cast<const T*>(lhs) < *static_cast<const T*>(rhs);
+    return lhs != nullptr &&
+           *static_cast<const T*>(lhs) < *static_cast<const T*>(rhs);
   }
 };
 
@@ -290,7 +339,8 @@ struct QueryCondition::BinaryCmp<T, QueryConditionOp::LT> {
 template <typename T>
 struct QueryCondition::BinaryCmp<T, QueryConditionOp::LE> {
   static inline bool cmp(const void* lhs, uint64_t, const void* rhs, uint64_t) {
-    return *static_cast<const T*>(lhs) <= *static_cast<const T*>(rhs);
+    return lhs != nullptr &&
+           *static_cast<const T*>(lhs) <= *static_cast<const T*>(rhs);
   }
 };
 
@@ -298,7 +348,8 @@ struct QueryCondition::BinaryCmp<T, QueryConditionOp::LE> {
 template <typename T>
 struct QueryCondition::BinaryCmp<T, QueryConditionOp::GT> {
   static inline bool cmp(const void* lhs, uint64_t, const void* rhs, uint64_t) {
-    return *static_cast<const T*>(lhs) > *static_cast<const T*>(rhs);
+    return lhs != nullptr &&
+           *static_cast<const T*>(lhs) > *static_cast<const T*>(rhs);
   }
 };
 
@@ -306,7 +357,8 @@ struct QueryCondition::BinaryCmp<T, QueryConditionOp::GT> {
 template <typename T>
 struct QueryCondition::BinaryCmp<T, QueryConditionOp::GE> {
   static inline bool cmp(const void* lhs, uint64_t, const void* rhs, uint64_t) {
-    return *static_cast<const T*>(lhs) >= *static_cast<const T*>(rhs);
+    return lhs != nullptr &&
+           *static_cast<const T*>(lhs) >= *static_cast<const T*>(rhs);
   }
 };
 
@@ -314,6 +366,14 @@ struct QueryCondition::BinaryCmp<T, QueryConditionOp::GE> {
 template <typename T>
 struct QueryCondition::BinaryCmp<T, QueryConditionOp::EQ> {
   static inline bool cmp(const void* lhs, uint64_t, const void* rhs, uint64_t) {
+    if (lhs == rhs) {
+      return true;
+    }
+
+    if (lhs == nullptr || rhs == nullptr) {
+      return false;
+    }
+
     return *static_cast<const T*>(lhs) == *static_cast<const T*>(rhs);
   }
 };
@@ -322,14 +382,43 @@ struct QueryCondition::BinaryCmp<T, QueryConditionOp::EQ> {
 template <typename T>
 struct QueryCondition::BinaryCmp<T, QueryConditionOp::NE> {
   static inline bool cmp(const void* lhs, uint64_t, const void* rhs, uint64_t) {
+    if (rhs == nullptr && lhs != nullptr) {
+      return true;
+    }
+
+    if (lhs == nullptr || rhs == nullptr) {
+      return false;
+    }
+
     return *static_cast<const T*>(lhs) != *static_cast<const T*>(rhs);
   }
 };
+
+/** Used to create a new result slab in QueryCondition::apply_clause. */
+uint64_t create_new_result_slab(
+    uint64_t start,
+    uint64_t pending_start,
+    uint64_t stride,
+    uint64_t current,
+    ResultTile* const result_tile,
+    std::vector<ResultCellSlab>* const out_result_cell_slabs) {
+  // Create a result cell slab if there are pending cells.
+  if (pending_start != start + current) {
+    const uint64_t rcs_start = start + ((pending_start - start) * stride);
+    const uint64_t rcs_length = current - (pending_start - start);
+    out_result_cell_slabs->emplace_back(result_tile, rcs_start, rcs_length);
+  }
+
+  // Return the new start of the pending result cell slab.
+  return start + current + 1;
+}
 
 template <typename T, QueryConditionOp Op>
 void QueryCondition::apply_clause(
     const QueryCondition::Clause& clause,
     const uint64_t stride,
+    const bool var_size,
+    const bool nullable,
     const ByteVecValue& fill_value,
     const std::vector<ResultCellSlab>& result_cell_slabs,
     std::vector<ResultCellSlab>* const out_result_cell_slabs) const {
@@ -341,66 +430,117 @@ void QueryCondition::apply_clause(
     const uint64_t length = rcs.length_;
 
     // Handle an empty range.
-    if (result_tile == nullptr) {
+    if (result_tile == nullptr && !nullable) {
       const bool cmp = BinaryCmp<T, Op>::cmp(
           fill_value.data(),
           fill_value.size(),
-          clause.condition_value_.data(),
-          clause.condition_value_.size());
+          clause.condition_value_,
+          clause.condition_value_data_.size());
       if (cmp) {
         out_result_cell_slabs->emplace_back(result_tile, start, length);
       }
     } else {
       const auto tile_tuple = result_tile->tile_tuple(field_name);
-      const auto& tile = std::get<0>(*tile_tuple);
-      const uint64_t cell_size = tile.cell_size();
-      ChunkedBuffer* const chunked_buffer = tile.chunked_buffer();
-      char* const buffer =
-          static_cast<char*>(chunked_buffer->get_contiguous_unsafe());
+      uint8_t* buffer_validity = nullptr;
+
+      if (nullable) {
+        const auto& tile_validity = std::get<2>(*tile_tuple);
+        buffer_validity = static_cast<uint8_t*>(
+            tile_validity.chunked_buffer()->get_contiguous_unsafe());
+      }
 
       // Start the pending result cell slab at the start position
       // of the current result cell slab.
       uint64_t pending_start = start;
-
-      // Iterate through each cell in this slab.
       uint64_t c = 0;
-      uint64_t buffer_offset = start * cell_size;
-      uint64_t buffer_offset_inc = stride * cell_size;
-      while (c < length) {
-        // Get the cell value.
-        const void* const cell_value = buffer + buffer_offset;
-        buffer_offset += buffer_offset_inc;
 
-        // Compare the cell value against the value in the clause.
-        const bool cmp = BinaryCmp<T, Op>::cmp(
-            cell_value,
-            cell_size,
-            clause.condition_value_.data(),
-            clause.condition_value_.size());
+      if (var_size) {
+        const auto& tile = std::get<1>(*tile_tuple);
+        const char* buffer =
+            static_cast<char*>(tile.chunked_buffer()->get_contiguous_unsafe());
+        const uint64_t buffer_size = tile.size();
 
-        if (!cmp) {
-          // Create a result cell slab if there are pending cells.
-          if (pending_start != start + c) {
-            const uint64_t rcs_start =
-                start + ((pending_start - start) * stride);
-            const uint64_t rcs_length = c - (pending_start - start);
-            out_result_cell_slabs->emplace_back(
-                result_tile, rcs_start, rcs_length);
+        const auto& tile_offsets = std::get<0>(*tile_tuple);
+        const uint64_t* buffer_offsets = static_cast<uint64_t*>(
+            tile_offsets.chunked_buffer()->get_contiguous_unsafe());
+        const uint64_t buffer_offsets_el =
+            tile_offsets.size() / constants::cell_var_offset_size;
+
+        // Iterate through each cell in this slab.
+        while (c < length) {
+          const uint64_t buffer_offset = buffer_offsets[start + c * stride];
+          const uint64_t next_cell_offset =
+              (start + c * stride + 1 < buffer_offsets_el) ?
+                  buffer_offsets[start + c * stride + 1] :
+                  buffer_size;
+          const uint64_t cell_size = next_cell_offset - buffer_offset;
+
+          const bool null_cell =
+              nullable && buffer_validity[start + c * stride] == 0;
+
+          // Get the cell value.
+          const void* const cell_value =
+              null_cell ? nullptr : buffer + buffer_offset;
+
+          // Compare the cell value against the value in the clause.
+          const bool cmp = BinaryCmp<T, Op>::cmp(
+              cell_value,
+              cell_size,
+              clause.condition_value_,
+              clause.condition_value_data_.size());
+          if (!cmp) {
+            pending_start = create_new_result_slab(
+                start,
+                pending_start,
+                stride,
+                c,
+                result_tile,
+                out_result_cell_slabs);
           }
 
-          // Set the start of the pending result cell slab.
-          pending_start = start + c + 1;
+          ++c;
         }
+      } else {
+        const auto& tile = std::get<0>(*tile_tuple);
+        const char* buffer =
+            static_cast<char*>(tile.chunked_buffer()->get_contiguous_unsafe());
+        const uint64_t cell_size = tile.cell_size();
+        uint64_t buffer_offset = start * cell_size;
+        const uint64_t buffer_offset_inc = stride * cell_size;
 
-        ++c;
+        // Iterate through each cell in this slab.
+        while (c < length) {
+          const bool null_cell =
+              nullable && buffer_validity[start + c * stride] == 0;
+
+          // Get the cell value.
+          const void* const cell_value =
+              null_cell ? nullptr : buffer + buffer_offset;
+          buffer_offset += buffer_offset_inc;
+
+          // Compare the cell value against the value in the clause.
+          const bool cmp = BinaryCmp<T, Op>::cmp(
+              cell_value,
+              cell_size,
+              clause.condition_value_,
+              clause.condition_value_data_.size());
+          if (!cmp) {
+            pending_start = create_new_result_slab(
+                start,
+                pending_start,
+                stride,
+                c,
+                result_tile,
+                out_result_cell_slabs);
+          }
+
+          ++c;
+        }
       }
 
       // Create the final result cell slab if there are pending cells.
-      if (pending_start != start + c) {
-        const uint64_t rcs_start = start + ((pending_start - start) * stride);
-        const uint64_t rcs_length = c - (pending_start - start);
-        out_result_cell_slabs->emplace_back(result_tile, rcs_start, rcs_length);
-      }
+      create_new_result_slab(
+          start, pending_start, stride, c, result_tile, out_result_cell_slabs);
     }
   }
 }
@@ -409,33 +549,71 @@ template <typename T>
 Status QueryCondition::apply_clause(
     const Clause& clause,
     const uint64_t stride,
+    const bool var_size,
+    const bool nullable,
     const ByteVecValue& fill_value,
     const std::vector<ResultCellSlab>& result_cell_slabs,
     std::vector<ResultCellSlab>* const out_result_cell_slabs) const {
   switch (clause.op_) {
     case QueryConditionOp::LT:
       apply_clause<T, QueryConditionOp::LT>(
-          clause, stride, fill_value, result_cell_slabs, out_result_cell_slabs);
+          clause,
+          stride,
+          var_size,
+          nullable,
+          fill_value,
+          result_cell_slabs,
+          out_result_cell_slabs);
       break;
     case QueryConditionOp::LE:
       apply_clause<T, QueryConditionOp::LE>(
-          clause, stride, fill_value, result_cell_slabs, out_result_cell_slabs);
+          clause,
+          stride,
+          var_size,
+          nullable,
+          fill_value,
+          result_cell_slabs,
+          out_result_cell_slabs);
       break;
     case QueryConditionOp::GT:
       apply_clause<T, QueryConditionOp::GT>(
-          clause, stride, fill_value, result_cell_slabs, out_result_cell_slabs);
+          clause,
+          stride,
+          var_size,
+          nullable,
+          fill_value,
+          result_cell_slabs,
+          out_result_cell_slabs);
       break;
     case QueryConditionOp::GE:
       apply_clause<T, QueryConditionOp::GE>(
-          clause, stride, fill_value, result_cell_slabs, out_result_cell_slabs);
+          clause,
+          stride,
+          var_size,
+          nullable,
+          fill_value,
+          result_cell_slabs,
+          out_result_cell_slabs);
       break;
     case QueryConditionOp::EQ:
       apply_clause<T, QueryConditionOp::EQ>(
-          clause, stride, fill_value, result_cell_slabs, out_result_cell_slabs);
+          clause,
+          stride,
+          var_size,
+          nullable,
+          fill_value,
+          result_cell_slabs,
+          out_result_cell_slabs);
       break;
     case QueryConditionOp::NE:
       apply_clause<T, QueryConditionOp::NE>(
-          clause, stride, fill_value, result_cell_slabs, out_result_cell_slabs);
+          clause,
+          stride,
+          var_size,
+          nullable,
+          fill_value,
+          result_cell_slabs,
+          out_result_cell_slabs);
       break;
     default:
       return Status::QueryConditionError(
@@ -460,43 +638,117 @@ Status QueryCondition::apply_clause(
   }
 
   const ByteVecValue fill_value = attribute->fill_value();
+  const bool var_size = attribute->var_size();
+  const bool nullable = attribute->nullable();
   switch (attribute->type()) {
     case Datatype::INT8:
       return apply_clause<int8_t>(
-          clause, stride, fill_value, result_cell_slabs, out_result_cell_slabs);
+          clause,
+          stride,
+          var_size,
+          nullable,
+          fill_value,
+          result_cell_slabs,
+          out_result_cell_slabs);
     case Datatype::UINT8:
       return apply_clause<uint8_t>(
-          clause, stride, fill_value, result_cell_slabs, out_result_cell_slabs);
+          clause,
+          stride,
+          var_size,
+          nullable,
+          fill_value,
+          result_cell_slabs,
+          out_result_cell_slabs);
     case Datatype::INT16:
       return apply_clause<int16_t>(
-          clause, stride, fill_value, result_cell_slabs, out_result_cell_slabs);
+          clause,
+          stride,
+          var_size,
+          nullable,
+          fill_value,
+          result_cell_slabs,
+          out_result_cell_slabs);
     case Datatype::UINT16:
       return apply_clause<uint16_t>(
-          clause, stride, fill_value, result_cell_slabs, out_result_cell_slabs);
+          clause,
+          stride,
+          var_size,
+          nullable,
+          fill_value,
+          result_cell_slabs,
+          out_result_cell_slabs);
     case Datatype::INT32:
       return apply_clause<int32_t>(
-          clause, stride, fill_value, result_cell_slabs, out_result_cell_slabs);
+          clause,
+          stride,
+          var_size,
+          nullable,
+          fill_value,
+          result_cell_slabs,
+          out_result_cell_slabs);
     case Datatype::UINT32:
       return apply_clause<uint32_t>(
-          clause, stride, fill_value, result_cell_slabs, out_result_cell_slabs);
+          clause,
+          stride,
+          var_size,
+          nullable,
+          fill_value,
+          result_cell_slabs,
+          out_result_cell_slabs);
     case Datatype::INT64:
       return apply_clause<int64_t>(
-          clause, stride, fill_value, result_cell_slabs, out_result_cell_slabs);
+          clause,
+          stride,
+          var_size,
+          nullable,
+          fill_value,
+          result_cell_slabs,
+          out_result_cell_slabs);
     case Datatype::UINT64:
       return apply_clause<uint64_t>(
-          clause, stride, fill_value, result_cell_slabs, out_result_cell_slabs);
+          clause,
+          stride,
+          var_size,
+          nullable,
+          fill_value,
+          result_cell_slabs,
+          out_result_cell_slabs);
     case Datatype::FLOAT32:
       return apply_clause<float>(
-          clause, stride, fill_value, result_cell_slabs, out_result_cell_slabs);
+          clause,
+          stride,
+          var_size,
+          nullable,
+          fill_value,
+          result_cell_slabs,
+          out_result_cell_slabs);
     case Datatype::FLOAT64:
       return apply_clause<double>(
-          clause, stride, fill_value, result_cell_slabs, out_result_cell_slabs);
+          clause,
+          stride,
+          var_size,
+          nullable,
+          fill_value,
+          result_cell_slabs,
+          out_result_cell_slabs);
     case Datatype::STRING_ASCII:
       return apply_clause<char*>(
-          clause, stride, fill_value, result_cell_slabs, out_result_cell_slabs);
+          clause,
+          stride,
+          var_size,
+          nullable,
+          fill_value,
+          result_cell_slabs,
+          out_result_cell_slabs);
     case Datatype::CHAR:
       return apply_clause<char>(
-          clause, stride, fill_value, result_cell_slabs, out_result_cell_slabs);
+          clause,
+          stride,
+          var_size,
+          nullable,
+          fill_value,
+          result_cell_slabs,
+          out_result_cell_slabs);
     case Datatype::DATETIME_YEAR:
     case Datatype::DATETIME_MONTH:
     case Datatype::DATETIME_WEEK:
@@ -511,7 +763,13 @@ Status QueryCondition::apply_clause(
     case Datatype::DATETIME_FS:
     case Datatype::DATETIME_AS:
       return apply_clause<int64_t>(
-          clause, stride, fill_value, result_cell_slabs, out_result_cell_slabs);
+          clause,
+          stride,
+          var_size,
+          nullable,
+          fill_value,
+          result_cell_slabs,
+          out_result_cell_slabs);
     case Datatype::ANY:
     case Datatype::STRING_UTF8:
     case Datatype::STRING_UTF16:

@@ -430,7 +430,7 @@ Status condition_to_capnp(
     clause_builder[i].setFieldName(clauses[i].field_name_);
 
     // Copy the condition value into a capnp vector of bytes.
-    const ByteVecValue value = clauses[i].condition_value_;
+    const ByteVecValue value = clauses[i].condition_value_data_;
     auto capnpValue = kj::Vector<uint8_t>();
     capnpValue.addAll(kj::ArrayPtr<uint8_t>(
         const_cast<uint8_t*>(reinterpret_cast<const uint8_t*>(value.data())),
