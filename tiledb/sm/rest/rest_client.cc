@@ -31,6 +31,9 @@
  */
 
 #include <cassert>
+#include <iomanip>
+#include <iostream>
+#include <sstream>
 
 #include "tiledb/common/logger.h"
 #include "tiledb/sm/array/array.h"
@@ -329,6 +332,27 @@ Status RestClient::post_query_submit(
   BufferList serialized;
   RETURN_NOT_OK(serialization::query_serialize(
       query, serialization_type_, true, &serialized));
+
+  {
+    auto size = serialized.total_size();
+    auto buf = new uint8_t[size];
+    serialized.reset_offset();
+    serialized.read(buf, size);
+    std::stringstream hexed;
+    for (uint64_t i = 0; i < size; i++) {
+      hexed << std::hex << std::setw(2) << std::setfill('0') << static_cast<unsigned int>(buf[i]);
+      if (i % 32 == 31) {
+        hexed << std::endl;
+      } else if (i % 8 == 7) {
+        hexed << " ";
+      }
+    }
+    std::cerr << "." << std::endl;
+    std::cerr << "sending query:" << std::endl;
+    std::cerr << hexed.str() << std::endl;
+    std::cerr << "." << std::endl;
+    delete[] buf;
+  }
 
   // Init curl and form the URL
   Curl curlc;
