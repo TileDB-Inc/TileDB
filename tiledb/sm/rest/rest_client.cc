@@ -386,6 +386,7 @@ Status RestClient::post_query_submit(
       url,
       serialization_type_,
       &serialized,
+      &scratch,
       std::move(write_cb),
       cache_key);
 
@@ -397,7 +398,7 @@ Status RestClient::post_query_submit(
         st.message()));
   }
 
-  return Status::Ok();
+  return st;
 }
 
 size_t RestClient::post_data_write_cb(
