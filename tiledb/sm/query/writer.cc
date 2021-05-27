@@ -1759,7 +1759,9 @@ Status Writer::global_write() {
   if (!tiles.empty()) {
     auto it = tiles.begin();
     bool var_size = array_schema_->var_size(it->first);
-    tile_num = var_size ? it->second.size() / 2 : it->second.size();
+    const uint64_t t = 1 + (array_schema_->var_size(it->first) ? 1 : 0) +
+                       (array_schema_->is_nullable(it->first) ? 1 : 0);
+    tile_num = it->second.size() / t;
 
     uint64_t cell_num = 0;
     for (size_t t = 0; t < tile_num; ++t) {
