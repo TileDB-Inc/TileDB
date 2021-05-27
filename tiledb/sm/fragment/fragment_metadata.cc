@@ -1958,6 +1958,10 @@ Status FragmentMetadata::load_generic_tile_offsets_v7_or_higher(
 Status FragmentMetadata::load_array_schema_name(ConstBuffer* buff) {
   uint64_t size = 0;
   RETURN_NOT_OK(buff->read(&size, sizeof(uint64_t)));
+  if (size == 0) {
+    return LOG_STATUS(Status::FragmentMetadataError(
+        "Cannot load array schema name; Size of shema name is zero"));
+  }
   array_schema_name_.resize(size);
 
   RETURN_NOT_OK(buff->read(&array_schema_name_[0], size));
@@ -2182,6 +2186,10 @@ Status FragmentMetadata::write_generic_tile_offsets(Buffer* buff) const {
 
 Status FragmentMetadata::write_array_schema_name(Buffer* buff) const {
   uint64_t size = array_schema_name_.size();
+  if (size == 0) {
+    return LOG_STATUS(Status::FragmentMetadataError(
+        "Cannot write array schema name; Size of shema name is zero"));
+  }
   RETURN_NOT_OK(buff->write(&size, sizeof(uint64_t)));
   return buff->write(array_schema_name_.c_str(), size);
 }

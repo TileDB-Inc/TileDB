@@ -303,22 +303,22 @@ class ArraySchema {
   Status set_timestamp_range(
       const std::pair<uint64_t, uint64_t>& timestamp_range);
 
-  /** Returns the timestamp range */
-  const std::pair<uint64_t, uint64_t>& timestamp_range() const;
+  /** Returns the timestamp range. */
+  std::pair<uint64_t, uint64_t> timestamp_range() const;
 
-  /** Returns the array schema uri */
-  const URI& uri();
+  /** Returns the array schema uri. */
+  URI uri();
 
-  /** Set schema URI, along with parsing out timestamp ranges and name */
+  /** Set schema URI, along with parsing out timestamp ranges and name. */
   void set_uri(URI& uri);
 
-  /** Get schema URI with return status */
+  /** Get schema URI with return status. */
   Status get_uri(URI* uri);
 
-  /** Returns the schema name. If it is not set, will build it */
-  const std::string& name();
+  /** Returns the schema name. If it is not set, will build it. */
+  std::string name();
 
-  /** Returns the schema name. If it is not set, will returns error status */
+  /** Returns the schema name. If it is not set, will returns error status. */
   Status get_name(std::string* name) const;
 
  private:

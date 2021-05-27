@@ -702,16 +702,18 @@ Status ArraySchema::set_timestamp_range(
   return Status::Ok();
 }
 
-const std::pair<uint64_t, uint64_t>& ArraySchema::timestamp_range() const {
-  return timestamp_range_;
+std::pair<uint64_t, uint64_t> ArraySchema::timestamp_range() const {
+  return std::pair<uint64_t, uint64_t>(
+      timestamp_range_.first, timestamp_range_.second);
 }
 
-const URI& ArraySchema::uri() {
+URI ArraySchema::uri() {
   std::lock_guard<std::mutex> lock(mtx_);
   if (uri_.is_invalid()) {
     generate_uri();
   }
-  return uri_;
+  URI result = uri_;
+  return result;
 }
 
 void ArraySchema::set_uri(URI& uri) {
@@ -730,7 +732,7 @@ Status ArraySchema::get_uri(URI* uri) {
   return Status::Ok();
 }
 
-const std::string& ArraySchema::name() {
+std::string ArraySchema::name() {
   std::lock_guard<std::mutex> lock(mtx_);
   if (name_.empty()) {
     generate_uri();

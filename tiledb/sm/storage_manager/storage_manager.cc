@@ -1470,7 +1470,7 @@ Status StorageManager::get_fragment_uris(
   std::vector<URI> uris;
   if (array_ls_uris->size() == 0) {
     RETURN_NOT_OK(vfs_->ls(array_uri.add_trailing_slash(), &uris));
-    for (auto& uri : uris) {
+    for (const auto& uri : uris) {
       array_ls_uris->push_back(uri);
     }
   } else {
@@ -1676,8 +1676,9 @@ Status StorageManager::is_array(const URI& uri, bool* is_array) const {
   // Check if the schema directory exists or not
   bool is_dir = false;
   // Since is_dir could return NOT Ok status, we will not use RETURN_NOT_OK here
-  vfs_->is_dir(uri.join_path(constants::array_schema_folder_name), &is_dir);
-  if (is_dir) {
+  Status st =
+      vfs_->is_dir(uri.join_path(constants::array_schema_folder_name), &is_dir);
+  if (!st.ok() || is_dir) {
     *is_array = true;
     return Status::Ok();
   }
@@ -1749,7 +1750,7 @@ Status StorageManager::get_array_schema_uris(
   std::vector<URI> uris;
   if (array_ls_uris->size() == 0) {
     RETURN_NOT_OK(vfs_->ls(array_uri.add_trailing_slash(), &uris));
-    for (auto& uri : uris) {
+    for (const auto& uri : uris) {
       array_ls_uris->push_back(uri);
     }
   } else {
@@ -1763,7 +1764,7 @@ Status StorageManager::get_array_schema_uris(
   // exists or not. If exists, put it as the first item in the vector
   bool has_schema_folder = false;
   URI schema_folder_uri;
-  for (auto& uri : uris) {
+  for (const auto& uri : uris) {
     auto uri_str = uri.remove_trailing_slash().to_string();
     if (utils::parse::ends_with(uri_str, constants::array_schema_filename)) {
       schema_uris->push_back(uri);
