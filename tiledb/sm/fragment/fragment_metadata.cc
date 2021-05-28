@@ -1179,10 +1179,12 @@ void FragmentMetadata::get_subarray_tile_domain(
     auto tile_extent =
         *(const T*)array_schema_->domain()->tile_extent(d).data();
     auto overlap = std::max(subarray[2 * d], domain[0]);
-    subarray_tile_domain[2 * d] = (overlap - domain[0]) / tile_extent;
+    subarray_tile_domain[2 * d] =
+        Dimension::tile_idx(overlap, domain[0], tile_extent);
 
     overlap = std::min(subarray[2 * d + 1], domain[1]);
-    subarray_tile_domain[2 * d + 1] = (overlap - domain[0]) / tile_extent;
+    subarray_tile_domain[2 * d + 1] =
+        Dimension::tile_idx(overlap, domain[0], tile_extent);
   }
 }
 

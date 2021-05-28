@@ -34,6 +34,7 @@
 #include "tiledb/common/logger.h"
 #include "tiledb/sm/array/array.h"
 #include "tiledb/sm/array_schema/array_schema.h"
+#include "tiledb/sm/array_schema/dimension.h"
 #include "tiledb/sm/enums/layout.h"
 
 #include <cassert>
@@ -127,7 +128,8 @@ void ReadCellSlabIter<T>::compute_cell_offsets_col() {
   cell_offsets_.push_back(1);
   for (unsigned d = 1; d < dim_num; ++d) {
     auto tile_extent = *(const T*)domain_->tile_extent(d - 1).data();
-    cell_offsets_.push_back(cell_offsets_.back() * tile_extent);
+    cell_offsets_.push_back(
+        Dimension::tile_extent_mult(cell_offsets_.back(), tile_extent));
   }
 }
 
@@ -141,7 +143,8 @@ void ReadCellSlabIter<T>::compute_cell_offsets_row() {
   if (dim_num > 1) {
     for (unsigned d = dim_num - 2;; --d) {
       auto tile_extent = *(const T*)domain_->tile_extent(d + 1).data();
-      cell_offsets_.push_back(cell_offsets_.back() * tile_extent);
+      cell_offsets_.push_back(
+          Dimension::tile_extent_mult(cell_offsets_.back(), tile_extent));
       if (d == 0)
         break;
     }

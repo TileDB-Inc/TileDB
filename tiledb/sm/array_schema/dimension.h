@@ -142,6 +142,172 @@ class Dimension {
   const std::string& name() const;
 
   /**
+   *  Returns the tile index for integer values.
+   *
+   * @param v The value.
+   * @param domain_low The minimum value for the domain.
+   * @param tile_extent The tile extent.
+   * @return The index of the tile.
+   */
+  template <
+      class T,
+      typename std::enable_if<std::is_integral<T>::value>::type* = nullptr>
+  static uint64_t tile_idx(
+      const T& v, const T& domain_low, const T& tile_extent) {
+    typedef typename std::make_unsigned<T>::type unsigned_t;
+    return ((unsigned_t)v - (unsigned_t)domain_low) / (unsigned_t)tile_extent;
+  }
+
+  /**
+   *  Returns the tile index for floating point values.
+   *
+   * @param v The value.
+   * @param domain_low The minimum value for the domain.
+   * @param tile_extent The tile extent.
+   * @return The index of the tile.
+   */
+  template <
+      class T,
+      typename std::enable_if<!std::is_integral<T>::value>::type* = nullptr>
+  static uint64_t tile_idx(
+      const T& v, const T& domain_low, const T& tile_extent) {
+    return (v - domain_low) / tile_extent;
+  }
+
+  /**
+   *  Rounds the value down to the tile boundary for integer values.
+   *
+   * @param v The value.
+   * @param domain_low The minimum value for the domain.
+   * @param tile_extent The tile extent.
+   * @return The value rounded down to the tile boundary.
+   */
+  template <
+      class T,
+      typename std::enable_if<std::is_integral<T>::value>::type* = nullptr>
+  static T round_to_tile(
+      const T& v, const T& domain_low, const T& tile_extent) {
+    typedef typename std::make_unsigned<T>::type unsigned_t;
+    return ((unsigned_t)v - (unsigned_t)domain_low) / (unsigned_t)tile_extent *
+               (unsigned_t)tile_extent +
+           (unsigned_t)domain_low;
+  }
+
+  /**
+   *  Rounds the value down to the tile boundary for floaring point values.
+   *
+   * @param v The value.
+   * @param domain_low The minimum value for the domain.
+   * @param tile_extent The tile extent.
+   * @return The value rounded down to the tile boundary.
+   */
+  template <
+      class T,
+      typename std::enable_if<!std::is_integral<T>::value>::type* = nullptr>
+  static T round_to_tile(
+      const T& v, const T& domain_low, const T& tile_extent) {
+    return (v - domain_low) / tile_extent * tile_extent + domain_low;
+  }
+
+  /**
+   * Returns the tile lower coordinate for integer values.
+   *
+   * @param tile_num The tile index.
+   * @param domain_low The minimum value for the domain.
+   * @param tile_extent The tile extent.
+   * @return The tile lower coordinate.
+   */
+  template <
+      class T,
+      typename std::enable_if<std::is_integral<T>::value>::type* = nullptr>
+  static T tile_coord_low(
+      uint64_t tile_num, const T& domain_low, const T& tile_extent) {
+    typedef typename std::make_unsigned<T>::type unsigned_t;
+    return (unsigned_t)domain_low + tile_num * (unsigned_t)tile_extent;
+  }
+
+  /**
+   * Returns the tile lower coordinate for floating point values.
+   *
+   * @param tile_num The tile index.
+   * @param domain_low The minimum value for the domain.
+   * @param tile_extent The tile extent.
+   * @return The tile lower coordinate.
+   */
+  template <
+      class T,
+      typename std::enable_if<!std::is_integral<T>::value>::type* = nullptr>
+  static T tile_coord_low(
+      uint64_t tile_num, const T& domain_low, const T& tile_extent) {
+    return domain_low + tile_num * tile_extent;
+  }
+
+  /**
+   * Returns the tile upper coordinate for integer values.
+   *
+   * @param tile_num The tile index.
+   * @param domain_low The minimum value for the domain.
+   * @param tile_extent The tile extent.
+   * @return The tile upper coordinate.
+   */
+  template <
+      class T,
+      typename std::enable_if<std::is_integral<T>::value>::type* = nullptr>
+  static T tile_coord_high(
+      uint64_t tile_num, const T& domain_low, const T& tile_extent) {
+    typedef typename std::make_unsigned<T>::type unsigned_t;
+    if ((unsigned_t)tile_extent == std::numeric_limits<unsigned_t>::max())
+      return std::numeric_limits<T>::max() -
+             (domain_low == std::numeric_limits<T>::min());
+    return (unsigned_t)domain_low + ++tile_num * (unsigned_t)tile_extent - 1;
+  }
+
+  /**
+   * Returns the tile upper coordinate for floating point values.
+   *
+   * @param tile_num The tile index.
+   * @param domain_low The minimum value for the domain.
+   * @param tile_extent The tile extent.
+   * @return The tile upper coordinate.
+   */
+  template <
+      class T,
+      typename std::enable_if<!std::is_integral<T>::value>::type* = nullptr>
+  static T tile_coord_high(
+      uint64_t tile_num, const T& domain_low, const T& tile_extent) {
+    return domain_low + ++tile_num * tile_extent - 1;
+  }
+
+  /**
+   * Used to multiply values by the tile extent for integer values.
+   *
+   * @param v The value to multiply.
+   * @param tile_extent The tile extent.
+   * @return The result of the multiplication.
+   */
+  template <
+      class T,
+      typename std::enable_if<std::is_integral<T>::value>::type* = nullptr>
+  static T tile_extent_mult(const T& v, const T& tile_extent) {
+    typedef typename std::make_unsigned<T>::type unsigned_t;
+    return (unsigned_t)v * (unsigned_t)tile_extent;
+  }
+
+  /**
+   * Used to multiply values by the tile extent for floating point values.
+   *
+   * @param v The value to multiply.
+   * @param tile_extent The tile extent.
+   * @return The result of the multiplication.
+   */
+  template <
+      class T,
+      typename std::enable_if<!std::is_integral<T>::value>::type* = nullptr>
+  static T tile_extent_mult(const T& v, const T& tile_extent) {
+    return v * tile_extent;
+  }
+
+  /**
    * Retrieves the value `v` that lies at the end (ceil) of the tile
    * that is `tile_num` tiles apart from the beginning of `r`.
    */
