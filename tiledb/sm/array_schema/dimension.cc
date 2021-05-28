@@ -750,18 +750,19 @@ double Dimension::overlap_ratio(const Range& r1, const Range& r2) {
   auto overlap_end = std::min(d1[1], d2[1]);
   auto overlap_range = overlap_end - overlap_start;
   auto mbr_range = d2[1] - d2[0];
-  auto max = std::numeric_limits<double>::max();
   if (std::numeric_limits<T>::is_integer) {
     overlap_range += 1;
     mbr_range += 1;
   } else {
+    constexpr auto max = std::numeric_limits<double>::max();
     if (overlap_range == 0)
       overlap_range = std::nextafter(overlap_range, max);
     if (mbr_range == 0)
       mbr_range = std::nextafter(mbr_range, max);
   }
-
-  return (double)overlap_range / mbr_range;
+  auto ratio = (double)overlap_range / mbr_range;
+  assert(0.0 <= ratio && ratio <= 1.0);
+  return ratio;
 }
 
 double Dimension::overlap_ratio(const Range& r1, const Range& r2) const {
