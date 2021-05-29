@@ -682,7 +682,7 @@ double Domain::overlap_ratio(const NDRange& r1, const NDRange& r2) const {
     if (ratio == 0)
       ratio = std::nextafter(0, max);
   }
-
+  assert(!isnan(ratio));
   return ratio;
 }
 
