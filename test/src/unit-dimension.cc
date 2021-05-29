@@ -30,10 +30,10 @@
  * Tests the `Dimension` class.
  */
 
+#include "test/src/helpers-dimension.h"
 #include "tiledb/sm/array_schema/dimension.h"
 #include "tiledb/sm/enums/datatype.h"
 #include "tiledb/sm/misc/hilbert.h"
-#include "test/src/helpers-dimension.h"
 
 #include <catch.hpp>
 #include <iostream>
@@ -607,8 +607,8 @@ TEST_CASE(
 }
 
 template <class T>
-double basic_verify_overlap_ratio(T range1_low, T range1_high, T range2_low, T range2_high)
-{
+double basic_verify_overlap_ratio(
+    T range1_low, T range1_high, T range2_low, T range2_high) {
   auto r1 = TypedRange<T>(range1_low, range1_high);
   auto r2 = TypedRange<T>(range2_low, range2_high);
   Dimension d("foo", RangeTraits<T>::datatype);
@@ -631,15 +631,15 @@ TEST_CASE(
   typedef int32_t T;
   auto min = std::numeric_limits<T>::min();
   auto max = std::numeric_limits<T>::max();
-  basic_verify_overlap_ratio<T>(min/3, 1, min + 1, max);
+  basic_verify_overlap_ratio<T>(min / 3, 1, min + 1, max);
 }
 
 /**
  * Denominator overflow for an unsigned integral type.
  */
 TEST_CASE(
-        "Range<uint32_t>.overlap_ratio: denominator overflow",
-        "[dimension][overlap_ratio][unsigned][integral]") {
+    "Range<uint32_t>.overlap_ratio: denominator overflow",
+    "[dimension][overlap_ratio][unsigned][integral]") {
   typedef uint32_t T;
   auto min = std::numeric_limits<T>::min();
   auto max = std::numeric_limits<T>::max();
@@ -650,8 +650,8 @@ TEST_CASE(
  * Denominator overflow for double.
  */
 TEST_CASE(
-        "Range<double>.overlap_ratio: denominator overflow",
-        "[dimension][overlap_ratio][signed][floating]") {
+    "Range<double>.overlap_ratio: denominator overflow",
+    "[dimension][overlap_ratio][signed][floating]") {
   typedef double T;
   auto min = std::numeric_limits<T>::min();
   auto max = std::numeric_limits<T>::max();
@@ -659,17 +659,17 @@ TEST_CASE(
 }
 
 TEST_CASE(
-        "Range<uint32_t>.overlap_ratio: max base range",
-        "[dimension][overlap_ratio][unsigned][integral]") {
+    "Range<uint32_t>.overlap_ratio: max base range",
+    "[dimension][overlap_ratio][unsigned][integral]") {
   typedef uint32_t T;
   auto min = std::numeric_limits<T>::min();
   auto max = std::numeric_limits<T>::max();
-  basic_verify_overlap_ratio<T>(min, min+1, min, max);
+  basic_verify_overlap_ratio<T>(min, min + 1, min, max);
 }
 
 TEST_CASE(
-        "Range<uint32_t>.overlap_ratio: max both ranges",
-        "[dimension][overlap_ratio][unsigned][integral]") {
+    "Range<uint32_t>.overlap_ratio: max both ranges",
+    "[dimension][overlap_ratio][unsigned][integral]") {
   typedef uint32_t T;
   auto min = std::numeric_limits<T>::min();
   auto max = std::numeric_limits<T>::max();
@@ -677,20 +677,17 @@ TEST_CASE(
 }
 
 TEST_CASE(
-        "Range<int32_t>.overlap_ratio: over-by-1 legit-max base range",
-        "[dimension][overlap_ratio][signed][integral]") {
+    "Range<int32_t>.overlap_ratio: over-by-1 legit-max base range",
+    "[dimension][overlap_ratio][signed][integral]") {
   typedef int32_t T;
   auto max = std::numeric_limits<T>::max();
   basic_verify_overlap_ratio<T>(0, 1, -1, max);
 }
 
-
 TEST_CASE(
-        "Range<int32_t>.overlap_ratio: legit-max base range",
-        "[dimension][overlap_ratio][signed][integral]") {
+    "Range<int32_t>.overlap_ratio: legit-max base range",
+    "[dimension][overlap_ratio][signed][integral]") {
   typedef int32_t T;
   auto max = std::numeric_limits<T>::max();
-  basic_verify_overlap_ratio<T>(0, 1, -2, max-2);
+  basic_verify_overlap_ratio<T>(0, 1, -2, max - 2);
 }
-
-
