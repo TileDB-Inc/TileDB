@@ -627,7 +627,7 @@ double basic_verify_overlap_ratio(T range1_low, T range1_high, T range2_low, T r
  */
 TEST_CASE(
     "Range<int32_t>.overlap_ratio: denominator overflow",
-    "[dimension][overlap_ratio]") {
+    "[dimension][overlap_ratio][signed][integral]") {
   typedef int32_t T;
   auto min = std::numeric_limits<T>::min();
   auto max = std::numeric_limits<T>::max();
@@ -639,7 +639,7 @@ TEST_CASE(
  */
 TEST_CASE(
         "Range<uint32_t>.overlap_ratio: denominator overflow",
-        "[dimension][overlap_ratio]") {
+        "[dimension][overlap_ratio][unsigned][integral]") {
   typedef uint32_t T;
   auto min = std::numeric_limits<T>::min();
   auto max = std::numeric_limits<T>::max();
@@ -651,7 +651,7 @@ TEST_CASE(
  */
 TEST_CASE(
         "Range<double>.overlap_ratio: denominator overflow",
-        "[dimension][overlap_ratio]") {
+        "[dimension][overlap_ratio][signed][floating]") {
   typedef double T;
   auto min = std::numeric_limits<T>::min();
   auto max = std::numeric_limits<T>::max();
@@ -660,7 +660,7 @@ TEST_CASE(
 
 TEST_CASE(
         "Range<uint32_t>.overlap_ratio: max base range",
-        "[dimension][overlap_ratio]") {
+        "[dimension][overlap_ratio][unsigned][integral]") {
   typedef uint32_t T;
   auto min = std::numeric_limits<T>::min();
   auto max = std::numeric_limits<T>::max();
@@ -669,7 +669,7 @@ TEST_CASE(
 
 TEST_CASE(
         "Range<uint32_t>.overlap_ratio: max both ranges",
-        "[dimension][overlap_ratio]") {
+        "[dimension][overlap_ratio][unsigned][integral]") {
   typedef uint32_t T;
   auto min = std::numeric_limits<T>::min();
   auto max = std::numeric_limits<T>::max();
@@ -678,7 +678,7 @@ TEST_CASE(
 
 TEST_CASE(
         "Range<int32_t>.overlap_ratio: over-by-1 legit-max base range",
-        "[dimension][overlap_ratio]") {
+        "[dimension][overlap_ratio][signed][integral]") {
   typedef int32_t T;
   auto max = std::numeric_limits<T>::max();
   basic_verify_overlap_ratio<T>(0, 1, -1, max);
@@ -687,7 +687,7 @@ TEST_CASE(
 
 TEST_CASE(
         "Range<int32_t>.overlap_ratio: legit-max base range",
-        "[dimension][overlap_ratio]") {
+        "[dimension][overlap_ratio][signed][integral]") {
   typedef int32_t T;
   auto max = std::numeric_limits<T>::max();
   basic_verify_overlap_ratio<T>(0, 1, -2, max-2);

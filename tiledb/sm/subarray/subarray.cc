@@ -1214,7 +1214,7 @@ Status Subarray::compute_relevant_fragment_est_result_sizes(
   auto status = parallel_for(compute_tp, 0, num_threads, [&](uint64_t t) {
     auto r_start = range_start + t * ranges_per_thread;
     auto r_end =
-        std::min(range_start + (t + 1) * ranges_per_thread - 1, num_threads);
+        std::min(range_start + (t + 1) * ranges_per_thread - 1, range_end);
     auto r_coords = get_range_coords(r_start);
     for (uint64_t r = r_start; r <= r_end; ++r) {
       RETURN_NOT_OK(compute_relevant_fragment_est_result_sizes(
