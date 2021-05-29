@@ -772,9 +772,9 @@ double Dimension::overlap_ratio(const Range& r1, const Range& r2) {
    * is zero. For signed types we need to check both.
    */
   const T safe_upper = std::nextafter(std::numeric_limits<T>::max() / 2, 0);
-  const T safe_lower = std::nextafter(std::numeric_limits<T>::min() / 2, 0);
   bool unsafe = safe_upper < r2_high;
   if (std::numeric_limits<T>::is_signed) {
+    const T safe_lower = std::nextafter(std::numeric_limits<T>::lowest() / 2, 0);
     unsafe = unsafe || r2_low < safe_lower;
   }
   if (unsafe) {
