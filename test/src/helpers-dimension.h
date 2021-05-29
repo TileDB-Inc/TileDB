@@ -30,14 +30,14 @@
  * Helpers for tests involving dimensions.
  */
 
-#include "tiledb/sm/misc/types.h"
 #include "tiledb/sm/enums/datatype.h"
+#include "tiledb/sm/misc/types.h"
 
 #ifndef TILEDB_HELPERS_DIMENSION_H
 #define TILEDB_HELPERS_DIMENSION_H
 
 namespace tiledb {
-namespace test{
+namespace test {
 
 /**
  * A typed version of the standard range class. Constructs Range objects without
@@ -46,8 +46,7 @@ namespace test{
  * @tparam T
  */
 template <class T>
-class TypedRange :
- public tiledb::sm::Range {
+class TypedRange : public tiledb::sm::Range {
  public:
   /**
    * Construct a Range from a single interval.
@@ -56,8 +55,8 @@ class TypedRange :
    * @pre low <= high
    */
   TypedRange(T low, T high) {
-    T x[2] = {low,high};
-    set_range(&x[0], 2*sizeof(T));
+    T x[2] = {low, high};
+    set_range(&x[0], 2 * sizeof(T));
     /* Commentary: There's no way of initializing a Range without copying from
      * existing memory. As a result any value-initializing constructor first
      * needs to build an array and then copy it.
@@ -67,44 +66,42 @@ class TypedRange :
 
 using Datatype = tiledb::sm::Datatype;
 
-template<class T>
+template <class T>
 struct RangeTraits {
   static Datatype datatype;
 };
 
-template<>
+template <>
 struct RangeTraits<int32_t> {
   static constexpr Datatype datatype = Datatype::INT32;
 };
 
-template<>
+template <>
 struct RangeTraits<int64_t> {
   static constexpr Datatype datatype = Datatype::INT64;
 };
 
-template<>
+template <>
 struct RangeTraits<uint32_t> {
   static constexpr Datatype datatype = Datatype::UINT32;
 };
 
-template<>
+template <>
 struct RangeTraits<uint64_t> {
   static constexpr Datatype datatype = Datatype::UINT64;
 };
 
-template<>
+template <>
 struct RangeTraits<float> {
   static constexpr Datatype datatype = Datatype::FLOAT32;
 };
 
-template<>
+template <>
 struct RangeTraits<double> {
   static constexpr Datatype datatype = Datatype::FLOAT64;
 };
 
+}  // namespace test
+}  // namespace tiledb
 
-}
-}
-
-
-#endif //TILEDB_HELPERS_DIMENSION_H
+#endif  // TILEDB_HELPERS_DIMENSION_H
