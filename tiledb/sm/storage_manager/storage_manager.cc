@@ -1725,7 +1725,7 @@ Status StorageManager::load_array_schema(
     std::string encryption_type_from_cfg =
         config_.get("sm.encryption_type", &found);
     assert(found);
-    EncryptionType encryption_type_cfg;
+    EncryptionType encryption_type_cfg = EncryptionType::NO_ENCRYPTION;
     RETURN_NOT_OK(
         encryption_type_enum(encryption_type_from_cfg, &encryption_type_cfg));
     EncryptionKey encryption_key_cfg;
