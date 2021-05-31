@@ -3849,6 +3849,26 @@ TILEDB_EXPORT int32_t tiledb_query_set_condition(
     const tiledb_query_condition_t* cond);
 
 /**
+ * Sets the datatype for attribute/dimentsion to be written or read.
+ *
+ * **Example:**
+ *
+ * @code{.c}
+ * bool var_length = false;
+ * tiledb_query_set_query_datatype(ctx, query, "a1",tiledb_datatype_t::TILEDB_INT32,&var_length);
+ * @endcode
+ *
+ * @param ctx The TileDB context.
+ * @param query The TileDB query.
+ * @param buffer_name The name for attribute or dimension 
+ * @param datatype The datatype of the read/write buffer
+ * @param var_length The buffer is for variable length or not
+ * * @return `TILEDB_OK` for success and `TILEDB_ERR` for error.
+ */
+TILEDB_EXPORT int32_t tiledb_query_set_query_datatype(
+    tiledb_ctx_t* ctx, tiledb_query_t* query, const char* buffer_name, tiledb_datatype_t datatype, bool* var_length);
+
+/**
  * Flushes all internal state of a query object and finalizes the query.
  * This is applicable only to global layout writes. It has no effect for
  * any other query type.

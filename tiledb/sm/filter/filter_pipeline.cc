@@ -40,6 +40,7 @@
 #include "tiledb/sm/filter/encryption_aes256gcm_filter.h"
 #include "tiledb/sm/filter/filter.h"
 #include "tiledb/sm/filter/filter_storage.h"
+#include "tiledb/sm/filter/conversion_filter.h"
 #include "tiledb/sm/filter/noop_filter.h"
 #include "tiledb/sm/misc/parallel_functions.h"
 #include "tiledb/sm/stats/global_stats.h"
@@ -84,6 +85,14 @@ Status FilterPipeline::add_filter(const Filter& filter) {
   tdb_unique_ptr<Filter> copy(filter.clone());
   copy->set_pipeline(this);
   filters_.push_back(std::move(copy));
+  return Status::Ok();
+}
+
+Status FilterPipeline::prepend_filter(const Filter& filter) {
+  tdb_unique_ptr<Filter> copy(filter.clone());
+  copy->set_pipeline(this);
+  // If prepend is used very often, we will change vector for filters to other containers, such as std::dequeue.
+  filters_.insert(filters_.begin(),std::move(copy));
   return Status::Ok();
 }
 
@@ -683,6 +692,12 @@ Status FilterPipeline::run_reverse_internal(
         filtered_buffer->read(&filtered_chunk_size, sizeof(uint32_t)));
     RETURN_NOT_OK(filtered_buffer->read(&metadata_size, sizeof(uint32_t)));
 
+    if (filters_.size() > 0 && filters_[0]->type() == FilterType::FILTER_CONVERSION) {
+      ConversionFilter* conversion_filter = dynamic_cast<ConversionFilter*>(filters_[0].get());
+      if (conversion_filter) {
+        orig_chunk_size = conversion_filter->calc_query_size(orig_chunk_size);
+      }
+    }
     total_orig_size += orig_chunk_size;
 
     // If 'skip_fn' was given, use it to selectively unfilter the chunk.
@@ -826,6 +841,23 @@ Status FilterPipeline::append_encryption_filter(
       return LOG_STATUS(Status::FilterError(
           "Error appending encryption filter; unknown type."));
   }
+}
+
+Status FilterPipeline::prepend_conversion_filter(
+  FilterPipeline* pipeline, Datatype query_datatype, Datatype store_datatype)
+{
+  if (query_datatype == store_datatype) {
+    // No need to convert if they are the same
+    return Status::Ok();
+  }
+
+  if (!ConversionFilter::is_convertible(query_datatype)) {
+    return LOG_STATUS(Status::FilterError(
+      "Error prepending conversion filter; unsupported type."));
+  }
+
+  return pipeline->prepend_filter(ConversionFilter(query_datatype, store_datatype));
+
 }
 
 }  // namespace sm

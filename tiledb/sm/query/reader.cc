@@ -437,6 +437,24 @@ void Reader::set_array_schema(const ArraySchema* array_schema) {
   array_schema_ = array_schema;
 }
 
+Status Reader::set_query_datatype(const std::string& buffer_name, const Datatype datatype, bool* var_length) {
+  query_datatypes_[buffer_name] = datatype;
+  if (*var_length) {
+    return LOG_STATUS(
+      Status::ReaderError("Variable length data conversion not supported yet."));
+  }
+  return Status::Ok();
+}
+
+double Reader::calc_query_size_ratio(const std::string& buffer_name) {
+  if (query_datatypes_.find(buffer_name) == query_datatypes_.end()) {
+    return 1.0;
+  }
+  auto query_datatype = query_datatypes_[buffer_name];
+  auto store_datatype = array_schema_->type(buffer_name);
+  return 1.0 * datatype_size(query_datatype) / datatype_size(store_datatype);
+}
+
 Status Reader::set_buffer(
     const std::string& name,
     void* const buffer,
@@ -1294,6 +1312,9 @@ Status Reader::copy_fixed_cells(
   auto it = buffers_.find(name);
   auto buffer_size = it->second.buffer_size_;
   auto cell_size = array_schema_->cell_size(name);
+  if (query_datatypes_.find(name) != query_datatypes_.end()) {
+    cell_size = (uint64_t)(cell_size * calc_query_size_ratio(name));
+  }
 
   // Precompute the cell range destination offsets in the buffer.
   uint64_t buffer_offset = 0;
@@ -1390,6 +1411,15 @@ Status Reader::copy_partitioned_fixed_cells(
   for (uint64_t cs_idx = cs_idx_start; cs_idx < cs_idx_end; ++cs_idx) {
     const auto& cs = (*result_cell_slabs)[cs_idx];
     uint64_t offset = cs_offsets[cs_idx];
+
+    if (query_datatypes_.find(*name) != query_datatypes_.end()) {
+      double query_size_ratio = calc_query_size_ratio(*name);
+      cell_size = (uint64_t)(query_size_ratio * cell_size);
+      fill_value_size = (uint64_t)(query_size_ratio * fill_value_size);
+      if (cs.tile_ != nullptr) {
+        cs.tile_->set_query_size_ratio(*name, query_size_ratio);
+      }
+    }
 
     // Copy
     if (cs.tile_ == nullptr) {  // Empty range
@@ -2513,6 +2543,13 @@ Status Reader::unfilter_tile(
   // Append an encryption unfilter when necessary.
   RETURN_NOT_OK(FilterPipeline::append_encryption_filter(
       &filters, array_->get_encryption_key()));
+  
+  // Append a conversion unfilter when necessary.
+  if (query_datatypes_.find(name) != query_datatypes_.end()) {
+    auto query_datatype = query_datatypes_.at(name);
+    auto store_datatype = array_schema_->type(name);
+    RETURN_NOT_OK(FilterPipeline::prepend_conversion_filter(&filters, query_datatype, store_datatype ));
+  }
 
   // Skip selective unfiltering on coordinate tiles.
   if (name == constants::coords || tile->stores_coords()) {
@@ -2544,6 +2581,13 @@ Status Reader::unfilter_tile(
       &offset_filters, array_->get_encryption_key()));
   RETURN_NOT_OK(FilterPipeline::append_encryption_filter(
       &filters, array_->get_encryption_key()));
+
+  // Append a conversion unfilter when necessary.
+  if (query_datatypes_.find(name) != query_datatypes_.end()) {
+    auto query_datatype = query_datatypes_.at(name);
+    auto store_datatype = array_schema_->type(name);
+    RETURN_NOT_OK(FilterPipeline::prepend_conversion_filter(&filters, query_datatype, store_datatype));
+  }
 
   // Skip selective unfiltering on coordinate tiles.
   if (name == constants::coords || tile->stores_coords()) {
@@ -2579,6 +2623,13 @@ Status Reader::unfilter_tile_nullable(
       &filters, array_->get_encryption_key()));
   RETURN_NOT_OK(FilterPipeline::append_encryption_filter(
       &validity_filters, array_->get_encryption_key()));
+
+  // Append a conversion unfilter when necessary.
+  if (query_datatypes_.find(name) != query_datatypes_.end()) {
+    auto query_datatype = query_datatypes_.at(name);
+    auto store_datatype = array_schema_->type(name);
+    RETURN_NOT_OK(FilterPipeline::prepend_conversion_filter(&filters, query_datatype, store_datatype));
+  }
 
   // Skip selective unfiltering on coordinate tiles.
   if (name == constants::coords || tile->stores_coords()) {
@@ -2623,6 +2674,13 @@ Status Reader::unfilter_tile_nullable(
       &filters, array_->get_encryption_key()));
   RETURN_NOT_OK(FilterPipeline::append_encryption_filter(
       &validity_filters, array_->get_encryption_key()));
+
+  // Append a conversion unfilter when necessary.
+  if (query_datatypes_.find(name) != query_datatypes_.end()) {
+    auto query_datatype = query_datatypes_.at(name);
+    auto store_datatype = array_schema_->type(name);
+    RETURN_NOT_OK(FilterPipeline::prepend_conversion_filter(&filters, query_datatype, store_datatype));
+  }
 
   // Skip selective unfiltering on coordinate tiles.
   if (name == constants::coords || tile->stores_coords()) {

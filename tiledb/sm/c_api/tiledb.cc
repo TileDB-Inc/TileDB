@@ -2940,6 +2940,27 @@ int32_t tiledb_query_set_condition(
   return TILEDB_OK;
 }
 
+int32_t tiledb_query_set_query_datatype(
+    tiledb_ctx_t* ctx, 
+    tiledb_query_t* query, 
+    const char* buffer_name, 
+    tiledb_datatype_t datatype, 
+    bool* var_length) {
+  // Sanity Check
+    if (sanity_check(ctx) == TILEDB_ERR ||
+        sanity_check(ctx, query) == TILEDB_ERR
+        )
+      return TILEDB_ERR;
+    // Set query datatype
+    if (SAVE_ERROR_CATCH(
+        ctx,
+        query->query_->set_query_datatype(buffer_name,(tiledb::sm::Datatype)datatype,var_length)))
+        return TILEDB_ERR;
+    
+    return TILEDB_OK;
+}
+
+
 int32_t tiledb_query_finalize(tiledb_ctx_t* ctx, tiledb_query_t* query) {
   // Trivial case
   if (query == nullptr)

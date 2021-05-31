@@ -275,6 +275,8 @@ class Filter {
         return "CHECKSUM_MD5";
       case TILEDB_FILTER_CHECKSUM_SHA256:
         return "CHECKSUM_SHA256";
+      case TILEDB_FILTER_CONVERSION:
+        return "CONVERSION";
     }
     return "";
   }

@@ -321,6 +321,9 @@ extern const std::string filter_option_bit_width_max_window_str;
  */
 extern const std::string filter_option_positive_delta_max_window_str;
 
+/** The string representation for FILTER_CONVERSION. */
+extern const std::string filter_conversion_str;
+
 /** The string representation for type int32. */
 extern const std::string int32_str;
 

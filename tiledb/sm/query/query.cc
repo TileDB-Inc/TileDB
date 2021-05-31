@@ -1063,6 +1063,18 @@ Status Query::set_subarray_unsafe(const NDRange& subarray) {
   return Status::Ok();
 }
 
+Status Query::set_query_datatype(const char* buffer_name, const Datatype datatype, bool* var_length) {
+  std::string name = std::string(buffer_name);
+  if (type_ == QueryType::READ) {
+    RETURN_NOT_OK(reader_.set_query_datatype(name, datatype, var_length));
+  }
+  else if (type_ == QueryType::WRITE) {
+    RETURN_NOT_OK(writer_.set_query_datatype(name, datatype, var_length));
+  }
+
+  return Status::Ok();
+}
+
 Status Query::submit() {
   // Do not resubmit completed reads.
   if (type_ == QueryType::READ && status_ == QueryStatus::COMPLETED) {

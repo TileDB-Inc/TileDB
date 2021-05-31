@@ -145,6 +145,15 @@ ResultTile::TileTuple* ResultTile::tile_tuple(const std::string& name) {
   return nullptr;
 }
 
+Status ResultTile::set_query_size_ratio(const std::string& buffer_name, double sizeratio) {
+  query_size_ratios_[buffer_name] = sizeratio;
+  return Status::Ok();
+}
+
+double ResultTile::query_size_ratio(const std::string& buffer_name) {
+  return (query_size_ratios_.find(buffer_name) == query_size_ratios_.end()) ? 1.0 : query_size_ratios_[buffer_name];
+}
+
 const void* ResultTile::unzipped_coord(uint64_t pos, unsigned dim_idx) const {
   const auto& coord_tile = std::get<0>(coord_tiles_[dim_idx].second);
   const uint64_t offset = pos * coord_tile.cell_size();
@@ -256,7 +265,7 @@ Status ResultTile::read(
       (is_dim && !coord_tiles_[0].first.empty()) ||
       (name == constants::coords && !std::get<0>(coords_tile_).empty())) {
     const auto& tile = std::get<0>(*this->tile_tuple(name));
-    auto cell_size = tile.cell_size();
+    auto cell_size = (uint64_t)(tile.cell_size() * query_size_ratio(name));
     auto nbytes = len * cell_size;
     auto offset = pos * cell_size;
     return tile.read(buffer, nbytes, offset);
@@ -272,7 +281,7 @@ Status ResultTile::read(
     for (uint64_t c = 0; c < len; ++c) {
       for (unsigned d = 0; d < dim_num; ++d) {
         auto coord_tile = std::get<0>(coord_tiles_[d].second);
-        auto cell_size = coord_tile.cell_size();
+        auto cell_size = (uint64_t)(coord_tile.cell_size() * query_size_ratio(name));
         auto tile_offset = (pos + c) * cell_size;
         RETURN_NOT_OK(
             coord_tile.read(buff + buff_offset, cell_size, tile_offset));
@@ -292,7 +301,7 @@ Status ResultTile::read(
       }
     }
     auto buff = static_cast<unsigned char*>(buffer);
-    auto cell_size = std::get<0>(coords_tile_).cell_size();
+    auto cell_size = (uint64_t)(std::get<0>(coords_tile_).cell_size() * query_size_ratio(name));
     auto dim_size = cell_size / domain_->dim_num();
     uint64_t offset = pos * cell_size + dim_size * dim_offset;
     for (uint64_t c = 0; c < len; ++c) {
@@ -315,7 +324,7 @@ Status ResultTile::read_nullable(
   const auto& tile = std::get<0>(*this->tile_tuple(name));
   const auto& tile_validity = std::get<2>(*this->tile_tuple(name));
 
-  auto cell_size = tile.cell_size();
+  auto cell_size = (uint64_t)(tile.cell_size() * query_size_ratio(name));
   auto validity_cell_size = tile_validity.cell_size();
 
   buffer = static_cast<char*>(buffer) + buffer_offset;

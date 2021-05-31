@@ -48,6 +48,8 @@
 #include "tiledb/sm/query/reader.h"
 #include "tiledb/sm/query/validity_vector.h"
 #include "tiledb/sm/query/writer.h"
+#include "tiledb/sm/enums/datatype.h"
+
 
 using namespace tiledb::common;
 
@@ -693,6 +695,16 @@ class Query {
 
   /** Sets the query subarray, without performing any checks. */
   Status set_subarray_unsafe(const NDRange& subarray);
+
+  /**
+ * Sets the datatype for attribute/dimentsion to be written or read.
+ *
+ * @param buffer_name The name for attribute or dimension
+ * @param datatype The datatype of the read/write buffer
+ * @param var_length The buffer is for variable length or not
+ * * @return `TILEDB_OK` for success and `TILEDB_ERR` for error.
+ */
+  Status set_query_datatype(const char* buffer_name, const Datatype datatype, bool* var_length);
 
   /** Submits the query to the storage manager. */
   Status submit();

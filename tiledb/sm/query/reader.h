@@ -352,6 +352,24 @@ class Reader {
   void set_array_schema(const ArraySchema* array_schema);
 
   /**
+   * Sets the datatype for attribute/dimentsion to be read.
+   *
+   * @param buffer_name The name for attribute or dimension
+   * @param datatype The datatype of the read buffer
+   * @param var_length The buffer is for variable length or not
+   * * @return `TILEDB_OK` for success and `TILEDB_ERR` for error.
+   */
+  Status set_query_datatype(const std::string& buffer_name, const Datatype datatype, bool* var_length);
+
+  /**
+   * Calculate query size ratio.
+   *
+   * @param buffer_name The name for attribute or dimension
+   * * @return The ratio of query_type_size/store_type_size.
+   */
+  double calc_query_size_ratio(const std::string& buffer_name);
+
+  /**
    * Sets the buffer for a fixed-sized attribute/dimension.
    *
    * @param name The attribute/dimension to set the buffer for.
@@ -968,6 +986,9 @@ class Reader {
    * buffer.
    * */
   std::unordered_map<std::string, QueryBuffer> buffers_;
+
+  /** Read result datatypes */
+  std::unordered_map<std::string, Datatype> query_datatypes_;
 
   /** The fragment metadata. */
   std::vector<FragmentMetadata*> fragment_metadata_;

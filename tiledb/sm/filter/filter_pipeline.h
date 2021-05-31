@@ -86,6 +86,14 @@ class FilterPipeline {
    */
   Status add_filter(const Filter& filter);
 
+  /**
+  * Adds a copy of the given filter to the end of this pipeline.
+  *
+  * @param filter Filter to add
+  * @return Status
+  */
+  Status prepend_filter(const Filter& filter);
+
   /** Clears the pipeline (removes all filters. */
   void clear();
 
@@ -270,6 +278,17 @@ class FilterPipeline {
    */
   static Status append_encryption_filter(
       FilterPipeline* pipeline, const EncryptionKey& encryption_key);
+
+  /**
+   * Helper method to prepend a conversion filter to the front of a given filter pipeline.
+   *
+   * @param pipeline Pipeline which may be modified.
+   * @param query_datatype The datatype for read or write.
+   * @param store_datatype The datatype for storage
+   * @return Status
+   */
+  static Status prepend_conversion_filter(
+    FilterPipeline* pipeline, Datatype query_datatype, Datatype store_datatype);
 
  private:
   /** A pair of FilterBuffers. */
