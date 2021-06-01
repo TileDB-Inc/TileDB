@@ -81,15 +81,11 @@ Subarray::Subarray(
     const Layout layout,
     Stats* const parent_stats,
     const bool coalesce_ranges)
-#if 0
-    : stats_(parent_stats->create_child("Subarray"))
-#else
     : sp_stats_(
           parent_stats ? nullptr : tdb_make_shared(Stats, "primarySubarray"))
     , stats_(
           parent_stats ? parent_stats->create_child("Subarray") :
                          sp_stats_->create_child("subSubarray"))
-#endif
     , array_(array)
     , layout_(layout)
     , cell_order_(array_->array_schema()->cell_order())

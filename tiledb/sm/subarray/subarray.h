@@ -287,7 +287,7 @@ class Subarray {
       const void* end,
       uint64_t end_size);
 
-  /** 
+  /**
    * Retrieves the number of ranges of the subarray for the given dimension
    * name.
    */

@@ -3487,9 +3487,7 @@ int32_t tiledb_subarray_alloc(
   // Create a new subarray object
   try {
     (*subarray)->subarray_ = new (std::nothrow) tiledb::sm::Subarray(
-        array->array_,
-        (tiledb::sm::stats::Stats*)nullptr,
-        true);
+        array->array_, (tiledb::sm::stats::Stats*)nullptr, true);
   } catch (...) {
   }
   if ((*subarray)->subarray_ == nullptr) {

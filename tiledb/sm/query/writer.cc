@@ -1310,7 +1310,7 @@ Status Writer::check_subarray() const {
       return LOG_STATUS(Status::WriterError(
           "Cannot initialize query; Setting a subarray in unordered writes for "
           "dense arrays is inapplicable"));
-  } else {  
+  } else {
     assert(!array_schema_->dense());
     if (subarray_.is_set())
       // Note: previously handled in Writer::add_range()

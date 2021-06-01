@@ -691,7 +691,7 @@ TEST_CASE(
   REQUIRE(data[1] == 'l');
 
   {
-    tiledb::Subarray query_subarray(query.ctx(),query.array());
+    tiledb::Subarray query_subarray(query.ctx(), query.array());
     auto range_num = subarray.range_num(0);
     CHECK(range_num == 1);
     range_num = subarray.range_num(1);

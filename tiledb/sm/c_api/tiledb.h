@@ -4870,7 +4870,7 @@ TILEDB_EXPORT int32_t tiledb_subarray_set_layout(
  * @code{.c}
  * tiledb_subarray_t* subarray;
  * //tiledb_subarray_alloc internally defaults to 'coalesce_ranges == true'
- * tiledb_subarray_alloc(ctx, array, &subarray);  
+ * tiledb_subarray_alloc(ctx, array, &subarray);
  * // so manually set to 'false' to match earlier behaviour with older
  * // tiledb_query_ subarray actions.
  * bool coalesce_ranges = false;

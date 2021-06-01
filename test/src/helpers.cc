@@ -32,11 +32,11 @@
 
 #include "helpers.h"
 #include "catch.hpp"
+#include "tiledb/sm/c_api/tiledb_struct_def.h"
 #include "tiledb/sm/cpp_api/tiledb"
 #include "tiledb/sm/misc/constants.h"
 #include "tiledb/sm/misc/tile_overlap.h"
 #include "tiledb/sm/misc/uri.h"
-#include "tiledb/sm/c_api/tiledb_struct_def.h"
 
 std::mutex catch2_macro_mutex;
 

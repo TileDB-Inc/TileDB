@@ -286,15 +286,6 @@ class Subarray {
     return *this;
   }
 
-#if 0 //TBD: REMOVEME:, subarraypartitioner may be ref'ing this, reminder 'til then, can use 'ptr()'
-  /**
-
-   */
-  tiledb_subarray_t* capi_subarray() const {
-    return subarray_.get();
-  }
-
-#endif
   /**
    * Sets a subarray, defined in the order dimensions were added.
    * Coordinates are inclusive. For the case of writes, this is meaningful only

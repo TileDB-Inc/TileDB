@@ -523,9 +523,8 @@ class Query {
    * @return Reference to this Query
    */
   template <class T>
-  TILEDB_DEPRECATED
-      Query&
-      add_range(uint32_t dim_idx, T start, T end, T stride = 0) {
+  TILEDB_DEPRECATED Query& add_range(
+      uint32_t dim_idx, T start, T end, T stride = 0) {
     impl::type_check<T>(schema_.domain().dimension(dim_idx).type());
     auto& ctx = ctx_.get();
     ctx.handle_error(tiledb_query_add_range(
