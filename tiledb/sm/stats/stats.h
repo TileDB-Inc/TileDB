@@ -90,8 +90,14 @@ class Stats {
   /** Enable or disable statistics gathering. */
   void set_enabled(bool enabled);
 
-  /** Dumps the stats for this instance and all children in ASCII format. */
-  std::string dump() const;
+  /**
+   * Dumps the stats for this instance as a JSON dictionary of
+   * timers and stats.
+   *
+   * @param indent_size The number of spaces in an indentation.
+   * @param num_indents The number of leading indentations.
+   */
+  std::string dump(uint64_t indent_size, uint64_t num_indents) const;
 
   /** Returns the parent that manages this instance. */
   Stats* parent();
