@@ -68,7 +68,7 @@ uint64_t ConversionFilter::calc_query_size(uint64_t orig_size) {
 }
 
 ConversionFilter* ConversionFilter::clone_impl() const {
-  return new ConversionFilter(query_datatype_, store_datatype_);
+  return tdb_new(ConversionFilter, query_datatype_, store_datatype_);
 }
 
 void ConversionFilter::dump(FILE* out) const {
