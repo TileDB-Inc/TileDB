@@ -359,7 +359,10 @@ class Reader {
    * @param var_length The buffer is for variable length or not
    * * @return `TILEDB_OK` for success and `TILEDB_ERR` for error.
    */
-  Status set_query_datatype(const std::string& buffer_name, const Datatype datatype, bool* var_length);
+  Status set_query_datatype(
+      const std::string& buffer_name,
+      const Datatype datatype,
+      bool* var_length);
 
   /**
    * Calculate query size ratio.

@@ -34,8 +34,8 @@
 #define TILEDB_CONVERSION_FILTER_H
 
 #include "tiledb/common/status.h"
-#include "tiledb/sm/filter/filter.h"
 #include "tiledb/sm/enums/datatype.h"
+#include "tiledb/sm/filter/filter.h"
 
 using namespace tiledb::common;
 
@@ -87,6 +87,7 @@ class ConversionFilter : public Filter {
 
   /** Check if the datatype is convertible or not. */
   static bool is_convertible(Datatype datatype);
+
  private:
   /** Returns a new clone of this filter. */
   ConversionFilter* clone_impl() const override;
@@ -94,40 +95,37 @@ class ConversionFilter : public Filter {
   Datatype query_datatype_;
   Datatype store_datatype_;
 
-
   /** Run_forward method templated on the query and store datatypes. */
   template <typename TQurey, typename TStore>
   Status run_forward(
-    FilterBuffer* input_metadata,
-    FilterBuffer* input,
-    FilterBuffer* output_metadata,
-    FilterBuffer* output) const;
+      FilterBuffer* input_metadata,
+      FilterBuffer* input,
+      FilterBuffer* output_metadata,
+      FilterBuffer* output) const;
 
   /** Run_forward method templated on the store datatypes. */
   template <typename TStore>
   Status run_forward(
-    FilterBuffer* input_metadata,
-    FilterBuffer* input,
-    FilterBuffer* output_metadata,
-    FilterBuffer* output) const;
-
+      FilterBuffer* input_metadata,
+      FilterBuffer* input,
+      FilterBuffer* output_metadata,
+      FilterBuffer* output) const;
 
   /** Run_reverse method templated on the query and store datatypes. */
   template <typename TQuery, typename TStore>
   Status run_reverse(
-    FilterBuffer* input_metadata,
-    FilterBuffer* input,
-    FilterBuffer* output_metadata,
-    FilterBuffer* output) const;
+      FilterBuffer* input_metadata,
+      FilterBuffer* input,
+      FilterBuffer* output_metadata,
+      FilterBuffer* output) const;
 
   /** Run_reverse method templated on the query datatype. */
   template <typename TQurey>
   Status run_reverse(
-    FilterBuffer* input_metadata,
-    FilterBuffer* input,
-    FilterBuffer* output_metadata,
-    FilterBuffer* output) const;
-
+      FilterBuffer* input_metadata,
+      FilterBuffer* input,
+      FilterBuffer* output_metadata,
+      FilterBuffer* output) const;
 };
 
 }  // namespace sm

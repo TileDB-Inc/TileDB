@@ -437,11 +437,12 @@ void Reader::set_array_schema(const ArraySchema* array_schema) {
   array_schema_ = array_schema;
 }
 
-Status Reader::set_query_datatype(const std::string& buffer_name, const Datatype datatype, bool* var_length) {
+Status Reader::set_query_datatype(
+    const std::string& buffer_name, const Datatype datatype, bool* var_length) {
   query_datatypes_[buffer_name] = datatype;
   if (*var_length) {
-    return LOG_STATUS(
-      Status::ReaderError("Variable length data conversion not supported yet."));
+    return LOG_STATUS(Status::ReaderError(
+        "Variable length data conversion not supported yet."));
   }
   return Status::Ok();
 }
@@ -2543,12 +2544,13 @@ Status Reader::unfilter_tile(
   // Append an encryption unfilter when necessary.
   RETURN_NOT_OK(FilterPipeline::append_encryption_filter(
       &filters, array_->get_encryption_key()));
-  
+
   // Append a conversion unfilter when necessary.
   if (query_datatypes_.find(name) != query_datatypes_.end()) {
     auto query_datatype = query_datatypes_.at(name);
     auto store_datatype = array_schema_->type(name);
-    RETURN_NOT_OK(FilterPipeline::prepend_conversion_filter(&filters, query_datatype, store_datatype ));
+    RETURN_NOT_OK(FilterPipeline::prepend_conversion_filter(
+        &filters, query_datatype, store_datatype));
   }
 
   // Skip selective unfiltering on coordinate tiles.
@@ -2586,7 +2588,8 @@ Status Reader::unfilter_tile(
   if (query_datatypes_.find(name) != query_datatypes_.end()) {
     auto query_datatype = query_datatypes_.at(name);
     auto store_datatype = array_schema_->type(name);
-    RETURN_NOT_OK(FilterPipeline::prepend_conversion_filter(&filters, query_datatype, store_datatype));
+    RETURN_NOT_OK(FilterPipeline::prepend_conversion_filter(
+        &filters, query_datatype, store_datatype));
   }
 
   // Skip selective unfiltering on coordinate tiles.
@@ -2628,7 +2631,8 @@ Status Reader::unfilter_tile_nullable(
   if (query_datatypes_.find(name) != query_datatypes_.end()) {
     auto query_datatype = query_datatypes_.at(name);
     auto store_datatype = array_schema_->type(name);
-    RETURN_NOT_OK(FilterPipeline::prepend_conversion_filter(&filters, query_datatype, store_datatype));
+    RETURN_NOT_OK(FilterPipeline::prepend_conversion_filter(
+        &filters, query_datatype, store_datatype));
   }
 
   // Skip selective unfiltering on coordinate tiles.
@@ -2679,7 +2683,8 @@ Status Reader::unfilter_tile_nullable(
   if (query_datatypes_.find(name) != query_datatypes_.end()) {
     auto query_datatype = query_datatypes_.at(name);
     auto store_datatype = array_schema_->type(name);
-    RETURN_NOT_OK(FilterPipeline::prepend_conversion_filter(&filters, query_datatype, store_datatype));
+    RETURN_NOT_OK(FilterPipeline::prepend_conversion_filter(
+        &filters, query_datatype, store_datatype));
   }
 
   // Skip selective unfiltering on coordinate tiles.

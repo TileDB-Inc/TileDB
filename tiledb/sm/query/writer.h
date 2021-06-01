@@ -252,16 +252,6 @@ class Writer {
   void set_array_schema(const ArraySchema* array_schema);
 
   /**
-* Sets the datatype for attribute/dimentsion to write.
-*
-* @param buffer_name The name for attribute or dimension
-* @param datatype The datatype of the read buffer
-* @param var_length The buffer is for variable length or not
-* * @return `TILEDB_OK` for success and `TILEDB_ERR` for error.
-*/
-  Status set_query_datatype(const std::string& buffer_name, const Datatype datatype, bool* var_length);
-
-  /**
    * Sets the buffer for a fixed-sized attribute/dimension.
    *
    * @param name The attribute/dimension to set the buffer for.
@@ -408,9 +398,6 @@ class Writer {
 
   /** Maps attribute/dimensions names to their buffers. */
   std::unordered_map<std::string, QueryBuffer> buffers_;
-
-  /** Write input datatypes */
-  std::unordered_map<std::string, Datatype> query_datatypes_;
 
   /** The coordinates buffer potentially set by the user. */
   void* coords_buffer_;

@@ -145,13 +145,16 @@ ResultTile::TileTuple* ResultTile::tile_tuple(const std::string& name) {
   return nullptr;
 }
 
-Status ResultTile::set_query_size_ratio(const std::string& buffer_name, double sizeratio) {
+Status ResultTile::set_query_size_ratio(
+    const std::string& buffer_name, double sizeratio) {
   query_size_ratios_[buffer_name] = sizeratio;
   return Status::Ok();
 }
 
 double ResultTile::query_size_ratio(const std::string& buffer_name) {
-  return (query_size_ratios_.find(buffer_name) == query_size_ratios_.end()) ? 1.0 : query_size_ratios_[buffer_name];
+  return (query_size_ratios_.find(buffer_name) == query_size_ratios_.end()) ?
+             1.0 :
+             query_size_ratios_[buffer_name];
 }
 
 const void* ResultTile::unzipped_coord(uint64_t pos, unsigned dim_idx) const {
@@ -281,7 +284,8 @@ Status ResultTile::read(
     for (uint64_t c = 0; c < len; ++c) {
       for (unsigned d = 0; d < dim_num; ++d) {
         auto coord_tile = std::get<0>(coord_tiles_[d].second);
-        auto cell_size = (uint64_t)(coord_tile.cell_size() * query_size_ratio(name));
+        auto cell_size =
+            (uint64_t)(coord_tile.cell_size() * query_size_ratio(name));
         auto tile_offset = (pos + c) * cell_size;
         RETURN_NOT_OK(
             coord_tile.read(buff + buff_offset, cell_size, tile_offset));
@@ -301,7 +305,8 @@ Status ResultTile::read(
       }
     }
     auto buff = static_cast<unsigned char*>(buffer);
-    auto cell_size = (uint64_t)(std::get<0>(coords_tile_).cell_size() * query_size_ratio(name));
+    auto cell_size = (uint64_t)(
+        std::get<0>(coords_tile_).cell_size() * query_size_ratio(name));
     auto dim_size = cell_size / domain_->dim_num();
     uint64_t offset = pos * cell_size + dim_size * dim_offset;
     for (uint64_t c = 0; c < len; ++c) {

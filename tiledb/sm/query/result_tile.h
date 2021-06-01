@@ -133,12 +133,12 @@ class ResultTile {
   TileTuple* tile_tuple(const std::string& name);
 
   /**
- * Sets the datatype for attribute/dimentsion to be read.
- *
- * @param buffer_name The name for attribute or dimension
- * @param sizeratio The ratio of size_query_datatype and size_store_datatype
- * * @return `TILEDB_OK` for success and `TILEDB_ERR` for error.
- */
+   * Sets the datatype for attribute/dimentsion to be read.
+   *
+   * @param buffer_name The name for attribute or dimension
+   * @param sizeratio The ratio of size_query_datatype and size_store_datatype
+   * * @return `TILEDB_OK` for success and `TILEDB_ERR` for error.
+   */
   Status set_query_size_ratio(const std::string& buffer_name, double sizeratio);
 
   /**
