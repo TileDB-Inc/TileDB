@@ -1083,8 +1083,8 @@ Status Query::set_subarray_unsafe(const NDRange& subarray) {
 
 const Subarray* Query::subarray() {
   if (type_ == QueryType::WRITE)
-    return const_cast<Subarray*>(writer_.subarray_ranges());
-  return const_cast<Subarray*>(reader_.subarray());
+    return writer_.subarray_ranges();
+  return reader_.subarray();
 }
 
 Status Query::submit() {
