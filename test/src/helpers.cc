@@ -367,12 +367,29 @@ void create_array(
   REQUIRE(rc == TILEDB_OK);
 
   // Create array
-  rc = tiledb_array_create_with_key(
-      ctx, array_name.c_str(), array_schema, enc_type, key, key_len);
+  tiledb_config_t* config;
+  tiledb_error_t* error = nullptr;
+  rc = tiledb_config_alloc(&config, &error);
+  REQUIRE(rc == TILEDB_OK);
+  REQUIRE(error == nullptr);
+  std::string encryption_type_string =
+      encryption_type_str((tiledb::sm::EncryptionType)enc_type);
+  rc = tiledb_config_set(
+      config, "sm.encryption_type", encryption_type_string.c_str(), &error);
+  REQUIRE(error == nullptr);
+  rc = tiledb_config_set(config, "sm.encryption_key", key, &error);
+  REQUIRE(rc == TILEDB_OK);
+  REQUIRE(error == nullptr);
+  tiledb::sm::UnitTestConfig::instance().array_encryption_key_length.set(
+      key_len);
+  tiledb_ctx_t* ctx_array;
+  REQUIRE(tiledb_ctx_alloc(config, &ctx_array) == TILEDB_OK);
+  rc = tiledb_array_create(ctx_array, array_name.c_str(), array_schema);
   REQUIRE(rc == TILEDB_OK);
 
   // Clean up
   tiledb_array_schema_free(&array_schema);
+  tiledb_ctx_free(&ctx_array);
 }
 
 void create_s3_bucket(

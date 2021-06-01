@@ -325,17 +325,26 @@ void SparseArrayFx::create_sparse_array_2D(
   REQUIRE(rc == TILEDB_OK);
 
   // Create the array
-  if (encryption_type == TILEDB_NO_ENCRYPTION) {
-    rc = tiledb_array_create(ctx_, array_name.c_str(), array_schema);
-  } else {
-    rc = tiledb_array_create_with_key(
-        ctx_,
-        array_name.c_str(),
-        array_schema,
-        encryption_type,
-        encryption_key,
-        (uint32_t)strlen(encryption_key));
+  if (encryption_type != TILEDB_NO_ENCRYPTION) {
+    tiledb_ctx_free(&ctx_);
+    tiledb_vfs_free(&vfs_);
+    tiledb_config_t* config;
+    tiledb_error_t* error = nullptr;
+    rc = tiledb_config_alloc(&config, &error);
+    REQUIRE(rc == TILEDB_OK);
+    REQUIRE(error == nullptr);
+    std::string encryption_type_string =
+        encryption_type_str((tiledb::sm::EncryptionType)encryption_type);
+    rc = tiledb_config_set(
+        config, "sm.encryption_type", encryption_type_string.c_str(), &error);
+    REQUIRE(error == nullptr);
+    rc = tiledb_config_set(config, "sm.encryption_key", encryption_key, &error);
+    REQUIRE(rc == TILEDB_OK);
+    REQUIRE(error == nullptr);
+    REQUIRE(vfs_test_init(fs_vec_, &ctx_, &vfs_, config).ok());
+    tiledb_config_free(&config);
   }
+  rc = tiledb_array_create(ctx_, array_name.c_str(), array_schema);
   REQUIRE(rc == TILEDB_OK);
 
   // Clean up
