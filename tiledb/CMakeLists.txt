@@ -580,7 +580,7 @@ if (CURL_APPEND_LIBS)
 endif()
 
 ############################################################
-# capnproto file generation
+# capnproto generated sources
 ############################################################
 
 # Serialization
@@ -593,51 +593,69 @@ if(TILEDB_SERIALIZATION)
           CapnProto::kj
           )
 
+  if (WIN32)
+    set(TILEDB_SERIALIZATION_GENERATED_SUBDIR win32)
+  else()
+    set(TILEDB_SERIALIZATION_GENERATED_SUBDIR posix)
+  endif()
+
+  target_sources(TILEDB_CORE_OBJECTS PUBLIC
+    ${CMAKE_CURRENT_SOURCE_DIR}/sm/serialization/${TILEDB_SERIALIZATION_GENERATED_SUBDIR}/tiledb-rest.capnp.c++
+  )
+  if (WIN32 AND TILEDB_STATIC)
+    target_sources(TILEDB_CORE_OBJECTS_STATIC PUBLIC
+      ${CMAKE_CURRENT_SOURCE_DIR}/sm/serialization/${TILEDB_SERIALIZATION_GENERATED_SUBDIR}/tiledb-rest.capnp.c++
+    )
+  endif()
+
+  ###################################
+  # capnproto generated files target
+  ###################################
+
+  # This target regenerates the checked-in generated source files for serialization
+  # support. It must be re-run whenever `tiledb-rest.capnp` is updated.
+
+  set(TILEDB_SERIALIZATION_GENERATED_DIR
+      ${CMAKE_CURRENT_SOURCE_DIR}/sm/serialization/${TILEDB_SERIALIZATION_GENERATED_SUBDIR})
+
   # We only need to override the include path and PATH env for EP builds
   if(TILEDB_CAPNP_EP_BUILT)
-    list(APPEND CAPNP_COMPILE_COMMAND ${CMAKE_COMMAND} -E env PATH=${TILEDB_EP_BASE}/install/bin ${CAPNP_EXECUTABLE} compile -I "${TILEDB_EP_BASE}/install/include" -oc++:"${CMAKE_CURRENT_BINARY_DIR}" ${CMAKE_CURRENT_SOURCE_DIR}/sm/serialization/tiledb-rest.capnp --src-prefix ${CMAKE_CURRENT_SOURCE_DIR})
+    list(APPEND CAPNP_COMPILE_COMMAND ${CMAKE_COMMAND} -E env PATH=${TILEDB_EP_BASE}/install/bin ${CAPNP_EXECUTABLE} compile -I "${TILEDB_EP_BASE}/install/include" -oc++:"${TILEDB_SERIALIZATION_GENERATED_DIR}" ${CMAKE_CURRENT_SOURCE_DIR}/sm/serialization/tiledb-rest.capnp --src-prefix=${CMAKE_CURRENT_SOURCE_DIR}/sm/serialization)
   else()
-    list(APPEND CAPNP_COMPILE_COMMAND ${CAPNP_EXECUTABLE} compile -oc++:"${CMAKE_CURRENT_BINARY_DIR}" ${CMAKE_CURRENT_SOURCE_DIR}/sm/serialization/tiledb-rest.capnp --src-prefix ${CMAKE_CURRENT_SOURCE_DIR})
+    list(APPEND CAPNP_COMPILE_COMMAND ${CAPNP_EXECUTABLE} compile -oc++:"${TILEDB_SERIALIZATION_GENERATED_DIR}" ${CMAKE_CURRENT_SOURCE_DIR}/sm/serialization/tiledb-rest.capnp --src-prefix ${CMAKE_CURRENT_SOURCE_DIR})
   endif()
 
   # note: run the compiler under `cmake -E env ...` because we need to run capnp executable
   #       the capnp driver needs to be able to find the plugin executables (eg capnpc-c++)
-  message(STATUS "CAPNP_COMPILE_COMMAND=${CAPNP_COMPILE_COMMAND}")
-  add_custom_command(
-	    DEPENDS ${TILEDB_CORE_INCLUDE_DIR}/tiledb/sm/serialization/tiledb-rest.capnp
-      OUTPUT
-        ${CMAKE_CURRENT_BINARY_DIR}/sm/serialization/tiledb-rest.capnp.c++
-        ${CMAKE_CURRENT_BINARY_DIR}/sm/serialization/tiledb-rest.capnp.h
-      WORKING_DIRECTORY
-        ${TILEDB_EP_BASE}/..
+  message(STATUS )
+  add_custom_target(
+      update-serialization
+      ${CMAKE_COMMAND} -E echo "CAPNP_COMPILE_COMMAND: '${CAPNP_COMPILE_COMMAND}'"
       COMMAND
         "${CAPNP_COMPILE_COMMAND}"
+      DEPENDS ${TILEDB_CORE_INCLUDE_DIR}/tiledb/sm/serialization/tiledb-rest.capnp
+      BYPRODUCTS
+        ${CMAKE_CURRENT_SOURCE_DIR}/sm/serialization/${TILEDB_SERIALIZATION_GENERATED_SUBDIR}/tiledb-rest.capnp.c++
+        ${CMAKE_CURRENT_SOURCE_DIR}/sm/serialization/${TILEDB_SERIALIZATION_GENERATED_SUBDIR}/tiledb-rest.capnp.h
+      WORKING_DIRECTORY
+        ${TILEDB_EP_BASE}/..
       COMMAND_EXPAND_LISTS
-      COMMENT "(re-)generate tiledb-rest.capnp.<h,c++>"
+      COMMENT "Re-generate tiledb-rest.capnp.<h,c++> files for serialization support"
     )
 
   set_source_files_properties(
-    "${CMAKE_CURRENT_BINARY_DIR}/sm/serialization/tiledb-rest.capnp.c++"
-    "${CMAKE_CURRENT_BINARY_DIR}/sm/serialization/tiledb-rest.capnp.h"
+    "${CMAKE_CURRENT_SOURCE_DIR}/sm/serialization/tiledb-rest.capnp.c++"
+    "${CMAKE_CURRENT_SOURCE_DIR}/sm/serialization/tiledb-rest.capnp.h"
     PROPERTIES GENERATED TRUE
     )
 
-  set_property(SOURCE ${CMAKE_CURRENT_BINARY_DIR}/sm/serialization/tiledb-rest.capnp.c++
+  set_property(SOURCE ${CMAKE_CURRENT_SOURCE_DIR}/sm/serialization/tiledb-rest.capnp.c++
 	  APPEND PROPERTY OBJECT_DEPENDS ${TILEDB_CORE_INCLUDE_DIR}/tiledb/sm/serialization/tiledb-rest.capnp
 	)
   set_property(
-    SOURCE ${CMAKE_CURRENT_BINARY_DIR}/sm/serialization/tiledb-rest.capnp.h
+    SOURCE ${CMAKE_CURRENT_SOURCE_DIR}/sm/serialization/tiledb-rest.capnp.h
 	  APPEND PROPERTY OBJECT_DEPENDS ${TILEDB_CORE_INCLUDE_DIR}/tiledb/sm/serialization/tiledb-rest.capnp
 	)
-
-  target_sources(TILEDB_CORE_OBJECTS PUBLIC
-    ${CMAKE_CURRENT_BINARY_DIR}/sm/serialization/tiledb-rest.capnp.c++
-  )
-  if (WIN32 AND TILEDB_STATIC)
-    target_sources(TILEDB_CORE_OBJECTS_STATIC PUBLIC
-      ${CMAKE_CURRENT_BINARY_DIR}/sm/serialization/tiledb-rest.capnp.c++
-    )
-  endif()
 endif()
 
 
