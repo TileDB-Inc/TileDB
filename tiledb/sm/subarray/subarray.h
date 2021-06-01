@@ -287,8 +287,10 @@ class Subarray {
       const void* end,
       uint64_t end_size);
 
-  /** Retrieves the number of ranges of the subarray for the given dimension
-   * name. */
+  /** 
+   * Retrieves the number of ranges of the subarray for the given dimension
+   * name.
+   */
   Status get_range_num_from_name(
       const std::string& dim_name, uint64_t* range_num) const;
 
@@ -533,7 +535,7 @@ class Subarray {
   bool is_set() const;
 
   /** Returns number of non-default (set) ranges */
-  int32_t count_set() const;
+  int32_t count_set_ranges() const;
 
   /** Returns `true` if the input dimension has non-default range set. */
   bool is_set(unsigned dim_idx) const;

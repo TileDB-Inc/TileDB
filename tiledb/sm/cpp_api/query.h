@@ -41,8 +41,8 @@
 #include "core_interface.h"
 #include "deleter.h"
 #include "exception.h"
-#include "subarray.h"
 #include "query_condition.h"
+#include "subarray.h"
 #include "tiledb.h"
 #include "type.h"
 #include "utils.h"
@@ -523,7 +523,7 @@ class Query {
    * @return Reference to this Query
    */
   template <class T>
-  TILEDB_DEPRECATED  // Or maybe shouldnot be???
+  TILEDB_DEPRECATED
       Query&
       add_range(uint32_t dim_idx, T start, T end, T stride = 0) {
     impl::type_check<T>(schema_.domain().dimension(dim_idx).type());
@@ -1107,7 +1107,7 @@ class Query {
   Query& set_subarray(const Subarray& subarray) {
     auto& ctx = ctx_.get();
     ctx.handle_error(tiledb_query_set_subarray_t(
-        ctx.ptr().get(), query_.get(), subarray.capi_subarray()));
+        ctx.ptr().get(), query_.get(), subarray.ptr().get()));
 
     return *this;
   }
@@ -1939,6 +1939,16 @@ class Query {
     return *this;
   }
 
+  Query& update_subarray_from_query(Subarray& subarray) {
+    tiledb_subarray_t* loc_subarray;
+    auto& ctx = ctx_.get();
+    auto& query = *this;
+    ctx.handle_error(tiledb_query_get_subarray(
+        ctx_.get().ptr().get(), query.ptr().get(), &loc_subarray));
+    subarray.replace_subarray_data(loc_subarray);
+    return *this;
+  }
+
   /* ********************************* */
   /*         STATIC FUNCTIONS          */
   /* ********************************* */
@@ -2188,19 +2198,6 @@ inline std::ostream& operator<<(std::ostream& os, const Query::Status& stat) {
       break;
   }
   return os;
-}
-
-// Note: defined here because definition of Query not visible to placement in
-// cpp_api/Subarray.h.
-inline Subarray::Subarray(const tiledb::Query& query)
-    : ctx_(query.ctx())
-    , array_(query.array())
-    , schema_(query.array().schema()) {
-  tiledb_subarray_t* loc_subarray;
-  auto& ctx = ctx_.get();
-  ctx.handle_error(tiledb_query_get_subarray(
-      ctx_.get().ptr().get(), query.ptr().get(), &loc_subarray));
-  subarray_ = std::shared_ptr<tiledb_subarray_t>(loc_subarray, deleter_);
 }
 
 }  // namespace tiledb

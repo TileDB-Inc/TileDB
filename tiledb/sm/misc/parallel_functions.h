@@ -224,11 +224,7 @@ Status parallel_for(
     const uint64_t subrange_end = begin + fn_iter + task_subrange_len;
     std::function<Status()> bound_fn =
         std::bind(execute_subrange, subrange_start, subrange_end);
-#if 01
     tasks.emplace_back(tp->execute(std::move(bound_fn)));
-#else
-    bound_fn();
-#endif
 
     fn_iter += task_subrange_len;
   }
@@ -346,11 +342,7 @@ Status parallel_for_2d(
           subrange_i.second,
           subrange_j.first,
           subrange_j.second);
-#if 01
       tasks.emplace_back(tp->execute(std::move(bound_fn)));
-#else
-      bound_fn();
-#endif
     }
   }
 

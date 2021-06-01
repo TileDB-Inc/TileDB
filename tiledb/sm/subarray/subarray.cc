@@ -81,11 +81,15 @@ Subarray::Subarray(
     const Layout layout,
     Stats* const parent_stats,
     const bool coalesce_ranges)
+#if 0
+    : stats_(parent_stats->create_child("Subarray"))
+#else
     : sp_stats_(
           parent_stats ? nullptr : tdb_make_shared(Stats, "primarySubarray"))
     , stats_(
           parent_stats ? parent_stats->create_child("Subarray") :
                          sp_stats_->create_child("subSubarray"))
+#endif
     , array_(array)
     , layout_(layout)
     , cell_order_(array_->array_schema()->cell_order())
@@ -186,9 +190,8 @@ Status Subarray::set_subarray(const void* subarray) {
         Status::QueryError("Cannot set subarray; Function not applicable to "
                            "domains with variable-sized dimensions"));
 
-  Subarray sub(this->clone());  // preserves ...stats_ relationships
-  sub.set_coalesce_ranges(
-      coalesce_ranges_);  // clear/reset some data to defaults
+  ranges_.clear();
+  add_default_ranges();
   if (subarray != nullptr) {
     auto dim_num = array_->array_schema()->dim_num();
     auto s_ptr = (const unsigned char*)subarray;
@@ -196,11 +199,10 @@ Status Subarray::set_subarray(const void* subarray) {
     for (unsigned d = 0; d < dim_num; ++d) {
       auto r_size = 2 * array_->array_schema()->dimension(d)->coord_size();
       Range range(&s_ptr[offset], r_size);
-      RETURN_NOT_OK(sub.add_range(d, std::move(range), err_on_range_oob_));
+      RETURN_NOT_OK(this->add_range(d, std::move(range), err_on_range_oob_));
       offset += r_size;
     }
   }
-  *this = std::move(sub);
 
   return Status::Ok();
 }
@@ -214,15 +216,11 @@ Status Subarray::add_range(
   QueryType array_query_type;
   RETURN_NOT_OK(array_->get_query_type(&array_query_type));
   if (array_query_type == tiledb::sm::QueryType::WRITE) {
-    //    array->array_schema();
     if (!array_->array_schema()->dense()) {
       return LOG_STATUS(
           Status::QueryError("Adding a subarray range to a write query is not "
                              "supported in sparse arrays"));
     }
-    // unsigned dim_idx;
-    // RETURN_NOT_OK(array_->array_schema()->domain()->get_dimension_index(
-    //    dim_name, &dim_idx));
     if (this->is_set(dim_idx))
       return LOG_STATUS(
           Status::QueryError("Cannot add range; Multi-range dense writes "
@@ -286,7 +284,6 @@ Status Subarray::add_range_var(
     return LOG_STATUS(
         Status::QueryError("Cannot add range; Range must be variable-sized"));
 
-  //... was in Status Query::add_range_var()...
   QueryType array_query_type;
   RETURN_NOT_OK(array_->get_query_type(&array_query_type));
   if (array_query_type == tiledb::sm::QueryType::WRITE)
@@ -692,7 +689,7 @@ bool Subarray::is_set() const {
   return false;
 }
 
-int32_t Subarray::count_set() const {
+int32_t Subarray::count_set_ranges() const {
   int32_t num_set = 0;
   for (auto d : is_default_)
     if (d == false)
@@ -762,7 +759,7 @@ const Config* Subarray::config() const {
 }
 
 Status Subarray::set_coalesce_ranges(bool coalesce_ranges) {
-  if (count_set())
+  if (count_set_ranges())
     return LOG_STATUS(
         Status::SubarrayError("non-default ranges have been set, cannot change "
                               "coalesce_ranges setting!"));
@@ -880,8 +877,12 @@ Status Subarray::get_est_result_size_querytype_audited(
             "Cannot get estimated result size; Input attribute/dimension '") +
         name + "' is nullable"));
 
-  // TBD: Figure out what does/can exercise the following code!!!
   if (array_->is_remote()) {
+#if 01
+    return LOG_STATUS(Status::SubarrayError(
+        std::string("Error in query estimate result size; remote/REST "
+                    "array functionality not implemented.")));
+#else
     // TBD: Should we somewhere (where?) try to remember if the remote call has
     // already been done?
     // Trying approach of temporary query (and dup array due to 'const'ness of
@@ -899,11 +900,12 @@ Status Subarray::get_est_result_size_querytype_audited(
     auto enc_key_const_buff = array_->encryption_key()->key();
     uint64_t time_stamp = 0;
     // TBD: Is this correct?
-    // Merging with dev, appears from use of .open() in tiledb.cc/tiledb_array_open_at(),
-    // the way to get earlier functionality is to pass 0 (zero) for start and the timestamp
-    // in use with old prototype as 'end', so let's try that...
-    // unfortunately, since this code has not yet been exercised, may be hard to tell if
-    // this is correct approach here or not...
+    // Merging with dev, appears from use of .open() in
+    // tiledb.cc/tiledb_array_open_at(), the way to get earlier functionality is
+    // to pass 0 (zero) for start and the timestamp in use with old prototype as
+    // 'end', so let's try that... unfortunately, since this code has not yet
+    // been exercised, may be hard to tell if this is correct approach here or
+    // not...
     tmp_array.open(
         type,
         0,
@@ -923,6 +925,7 @@ Status Subarray::get_est_result_size_querytype_audited(
     tmp_array.close();
     RETURN_NOT_OK(ret_rest_response);
     return ret_get_est_result_size;
+#endif
   }
 
   return get_est_result_size(
@@ -1886,9 +1889,9 @@ void Subarray::add_or_coalesce_range(
                                     *static_cast<const T*>(range.start());
 
   // Coalesce `range` with `last_range` if they are contiguous.
-  if (contiguous_after)
+  if (contiguous_after) {
     last_range.set_end(range.end());
-  else {
+  } else {
     ranges->emplace_back(range);
   }
 }

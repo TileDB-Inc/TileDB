@@ -3481,7 +3481,10 @@ TILEDB_EXPORT int32_t tiledb_query_set_subarray(
  *
  * @code{.c}
  * tiledb_subarray_t *subarray;
- * tiledb_query_set_subarray(ctx, query, subarray);
+ * tiledb_subarray_alloc(ctx, array, &subarray);
+ * uint64_t subarray_v[] = { 0, 10, 20, 30};
+ * tiledb_subarray_set_subarray(ctx, subarray, subarray_v);
+ * tiledb_query_set_subarray_t(ctx, query, subarray);
  * @endcode
  *
  * @param ctx The TileDB context.
@@ -4643,7 +4646,7 @@ TILEDB_EXPORT int32_t tiledb_query_get_fragment_timestamp_range(
     uint64_t* t2);
 
 /**
- * return a TileDB subarray object from the given query.
+ * Return a TileDB subarray object from the given query.
  *
  * **Example:**
  *
@@ -4656,14 +4659,6 @@ TILEDB_EXPORT int32_t tiledb_query_get_fragment_timestamp_range(
  * @param array An open array object.
  * @param subarray The retrieved subarray object if available.
  * @return `TILEDB_OK` for success or `TILEDB_OOM` or `TILEDB_ERR` for error.
- *
- * @note This leaves the returned subarray with references to everything
- * that was an active part of the query's contained subarray,
- * currently this consists of a raw pointer to an internal core entity,
- * (const tiledb::sm::Array* array_; )
- * so the receiving client should keep those alive as long as the
- * returned subarray is alive, possibly most easily tracked by keeping
- * the source query and its dependencies alive.
  */
 TILEDB_EXPORT
 int32_t tiledb_query_get_subarray(
@@ -4803,23 +4798,12 @@ TILEDB_EXPORT int32_t tiledb_subarray_alloc(
     tiledb_subarray_t** subarray);
 
 /**
- * Set the query config
+ * Set the query config.
  *
  * Setting the configuration with this function overrides the following
- * Query-level parameters only:
+ * Subarray-level parameters only:
  *
- * - `sm..read_range_oob`
- *........TBD: these not currently active Subarray, should they be?
- * - `sm.memory_budget`
- * - `sm.memory_budget_var`
- * - `sm.sub_partitioner_memory_budget`
- * - `sm.var_offsets.mode`
- * - `sm.var_offsets.extra_element`
- * - `sm.var_offsets.bitsize`
- * - `sm.check_coord_dups`
- * - `sm.check_coord_oob`
- * - `sm.check_global_order`
- * - `sm.dedup_coords`
+ * - `sm.read_range_oob`
  */
 TILEDB_EXPORT int32_t tiledb_subarray_set_config(
     tiledb_ctx_t* ctx, tiledb_subarray_t* subarray, tiledb_config_t* config);
@@ -4885,8 +4869,11 @@ TILEDB_EXPORT int32_t tiledb_subarray_set_layout(
  *
  * @code{.c}
  * tiledb_subarray_t* subarray;
- * tiledb_subarray_alloc(ctx, array, &subarray); //defaults to 'coalesce_ranges
- * == true' bool coalesce_ranges = false;
+ * //tiledb_subarray_alloc internally defaults to 'coalesce_ranges == true'
+ * tiledb_subarray_alloc(ctx, array, &subarray);  
+ * // so manually set to 'false' to match earlier behaviour with older
+ * // tiledb_query_ subarray actions.
+ * bool coalesce_ranges = false;
  * tiledb_subarray_set_coalesce_ranges(ctx, subarray, coalesce_ranges);
  * @endcode
  *
@@ -4922,16 +4909,9 @@ TILEDB_EXPORT int32_t tiledb_subarray_set_coalesce_ranges(
  *     array.
  * @return `TILEDB_OK` for success or `TILEDB_ERR` for error.
  */
-#if 01
-// REMOVEME: OR REINSTATEME:
-// Checking feasability removing this API... compare
-// prob. also search for cousin tiledb_query_set_subarray() to see pain imposed
-// on our code and users that you may wish to move to new 'outside' subarray
-// usage...
 TILEDB_EXPORT
 int32_t tiledb_subarray_set_subarray(
     tiledb_ctx_t* ctx, tiledb_subarray_t* subarray_s, const void* subarray_v);
-#endif
 
 /**
  * Adds a 1D range along a subarray dimension index, which is in the form
@@ -4977,8 +4957,8 @@ TILEDB_EXPORT int32_t tiledb_subarray_add_range(
  * char* dim_name = "rows";
  * int64_t start = 10;
  * int64_t end = 20;
- * tiledb_subarray_add_range_by_name(ctx, subarray, dim_name, &start, &end,
- * nullptr);
+ * tiledb_subarray_add_range_by_name(
+ *     ctx, subarray, dim_name, &start, &end, nullptr);
  * @endcode
  *
  * @param ctx The TileDB context.
@@ -5041,8 +5021,8 @@ TILEDB_EXPORT int32_t tiledb_subarray_add_range_var(
  * char* dim_name = "rows";
  * char start[] = "a";
  * char end[] = "bb";
- * tiledb_subarray_add_range_var_by_name(ctx, subarray, dim_name, start, 1, end,
- * 2);
+ * tiledb_subarray_add_range_var_by_name(
+ *     ctx, subarray, dim_name, start, 1, end, 2);
  * @endcode
  *
  * @param ctx The TileDB context.
@@ -5345,8 +5325,8 @@ TILEDB_EXPORT int32_t tiledb_subarray_get_est_result_size_var(
  * @code{.c}
  * uint64_t size_val;
  * uint64_t size_validity;
- * tiledb_subarray_get_est_result_size_nullable(ctx, subarray, "a", &size_val,
- * &size_validity);
+ * tiledb_subarray_get_est_result_size_nullable(
+ *     ctx, subarray, "a", &size_val, &size_validity);
  * @endcode
  *
  * @param ctx The TileDB context

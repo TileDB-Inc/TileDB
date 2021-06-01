@@ -619,17 +619,6 @@ inline int32_t check_filter_type(
     return save_error(ctx, _s);                                            \
   }()
 
-/**
- * Helper class to aid shimming access from _query... routines in this module to
- * _subarray... routines deprecating them.
- */
-
-struct tiledb_subarray_transient_local_t : public tiledb_subarray_t {
-  tiledb_subarray_transient_local_t(const tiledb_query_t* query) {
-    this->subarray_ = query->query_->subarray();
-  }
-};
-
 /** For debugging, use this definition instead to not catch exceptions. */
 //#define SAVE_ERROR_CATCH(ctx, stmt) save_error(ctx, (stmt))
 
@@ -2743,28 +2732,16 @@ int32_t tiledb_query_set_subarray_t(
     tiledb_ctx_t* ctx,
     tiledb_query_t* query,
     const tiledb_subarray_t* subarray) {
-#if 01
-#if defined(_WIN32)
-  if (subarray == nullptr)
-    __debugbreak();
-#endif
-#endif
   // Sanity check
   if (sanity_check(ctx) == TILEDB_ERR ||
       sanity_check(ctx, query) == TILEDB_ERR ||
       sanity_check(ctx, subarray) == TILEDB_ERR)
     return TILEDB_ERR;
 
-  // TBD:
-  // a (-useful-) Subarray was init'd with an Array;
-  // a (-useful-) Query was init'd with an Array;
-  // Should the Query.array() and Subarray.array() be validated for
-  // equivalence and this request rejected if not equivalent?
-
   // Changing this area?
   // Be careful that the correct ->set_subarray() is called, it's
   // easy to incorrectly call the one accepting a 'void *' parameter.
-  if (SAVE_ERROR_CATCH(ctx, query->query_->set_subarray(subarray->subarray_)))
+  if (SAVE_ERROR_CATCH(ctx, query->query_->set_subarray(*subarray->subarray_)))
     return TILEDB_ERR;
 
   return TILEDB_OK;
@@ -3457,7 +3434,7 @@ int32_t tiledb_query_get_subarray(
     return TILEDB_ERR;
   tiledb_array_t tdb_array;
   // drop 'const'ness leaving 'Array *' knowing use here is local/temporary and
-  // being passed into something that is not modifying it.
+  // being passed into tiledb_subarray_alloc() which is not modifying it.
   tdb_array.array_ =
       const_cast<tiledb::sm::Array*>(query->query_->subarray()->array());
   if (tiledb_subarray_alloc(ctx, &tdb_array, subarray) != TILEDB_OK) {
@@ -3466,7 +3443,7 @@ int32_t tiledb_query_get_subarray(
   // note: This leaves the returned subarray with references to everything
   // that was an active part of the query's 'inside' subarray,
   // currently this consists of a raw pointer to an internal core entity,
-  //(const tiledb::sm::Array* array_; )
+  // ( const tiledb::sm::Array* array_; )
   // so the receiving client should keep those alive as long as the
   // returned subarray is alive, possibly most easily tracked by keeping
   // the source query and its dependencies alive.
@@ -3512,10 +3489,8 @@ int32_t tiledb_subarray_alloc(
     (*subarray)->subarray_ = new (std::nothrow) tiledb::sm::Subarray(
         array->array_,
         (tiledb::sm::stats::Stats*)nullptr,
-        /*coalesce_ranges = */ true);
-  } catch (...) {  // in case Subarray constructor (or involved sub-members)
-                   // should throw.
-    //->subarray_ already nullptr from above.
+        true);
+  } catch (...) {
   }
   if ((*subarray)->subarray_ == nullptr) {
     delete *subarray;

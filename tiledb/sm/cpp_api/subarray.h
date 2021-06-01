@@ -87,6 +87,23 @@ class Query;
  */
 class Subarray {
  public:
+  /**
+   * Creates a TileDB Subarray object.
+   *
+   * **Example:**
+   *
+   * @code{.cpp}
+   * // Open the array for writing
+   * tiledb::Context ctx;
+   * tiledb::Array array(ctx, "my_array", TILEDB_WRITE);
+   * tiledb::Subarray subarray(ctx, array);
+   * @endcode
+   *
+   * @param ctx TileDB context
+   * @param array Open Array object
+   * @param coalesce_ranges When enabled, ranges will attempt to coalesce
+   *     with existing ranges as they are added.
+   */
   Subarray(
       const tiledb::Context& ctx,
       const tiledb::Array& array,
@@ -102,8 +119,6 @@ class Subarray {
     subarray_ = std::shared_ptr<tiledb_subarray_t>(capi_subarray, deleter_);
   }
 
-  Subarray(const tiledb::Query& query);  // defined in cppapi Query.h
-
   /** Set the layout for the subarray. */
   Subarray& set_layout(tiledb_layout_t layout) {
     ctx_.get().handle_error(tiledb_subarray_set_layout(
@@ -118,6 +133,10 @@ class Subarray {
     return *this;
   }
 
+  Subarray& replace_subarray_data(tiledb_subarray_t* capi_subarray) {
+    subarray_ = std::shared_ptr<tiledb_subarray_t>(capi_subarray, deleter_);
+    return *this;
+  }
   /**
    * Adds a 1D range along a subarray dimension index, in the form
    * (start, end, stride). The datatype of the range
@@ -267,6 +286,7 @@ class Subarray {
     return *this;
   }
 
+#if 0 //TBD: REMOVEME:, subarraypartitioner may be ref'ing this, reminder 'til then, can use 'ptr()'
   /**
 
    */
@@ -274,8 +294,8 @@ class Subarray {
     return subarray_.get();
   }
 
+#endif
   /**
-   *
    * Sets a subarray, defined in the order dimensions were added.
    * Coordinates are inclusive. For the case of writes, this is meaningful only
    * for dense arrays, and specifically dense writes.
@@ -665,6 +685,7 @@ class Subarray {
     return subarray_;
   }
 
+  /** Returns the array the subarray is associated with. */
   const Array& array() const {
     return array_.get();
   }
