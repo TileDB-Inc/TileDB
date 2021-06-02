@@ -609,7 +609,7 @@ if(TILEDB_SERIALIZATION)
   endif()
 
   ###################################
-  # capnproto generated files target
+  # capnproto file generation target
   ###################################
 
   # This target regenerates the checked-in generated source files for serialization
@@ -627,35 +627,18 @@ if(TILEDB_SERIALIZATION)
 
   # note: run the compiler under `cmake -E env ...` because we need to run capnp executable
   #       the capnp driver needs to be able to find the plugin executables (eg capnpc-c++)
-  message(STATUS )
   add_custom_target(
-      update-serialization
+    update-serialization
       ${CMAKE_COMMAND} -E echo "CAPNP_COMPILE_COMMAND: '${CAPNP_COMPILE_COMMAND}'"
-      COMMAND
-        "${CAPNP_COMPILE_COMMAND}"
-      DEPENDS ${TILEDB_CORE_INCLUDE_DIR}/tiledb/sm/serialization/tiledb-rest.capnp
-      BYPRODUCTS
-        ${CMAKE_CURRENT_SOURCE_DIR}/sm/serialization/${TILEDB_SERIALIZATION_GENERATED_SUBDIR}/tiledb-rest.capnp.c++
-        ${CMAKE_CURRENT_SOURCE_DIR}/sm/serialization/${TILEDB_SERIALIZATION_GENERATED_SUBDIR}/tiledb-rest.capnp.h
-      WORKING_DIRECTORY
-        ${TILEDB_EP_BASE}/..
-      COMMAND_EXPAND_LISTS
-      COMMENT "Re-generate tiledb-rest.capnp.<h,c++> files for serialization support"
+    COMMAND
+      "${CAPNP_COMPILE_COMMAND}"
+    DEPENDS ${TILEDB_CORE_INCLUDE_DIR}/tiledb/sm/serialization/tiledb-rest.capnp
+    WORKING_DIRECTORY
+      ${TILEDB_EP_BASE}/..
+    COMMAND_EXPAND_LISTS
+    COMMENT "Re-generate tiledb-rest.capnp.<h,c++> files for serialization support"
     )
 
-  set_source_files_properties(
-    "${CMAKE_CURRENT_SOURCE_DIR}/sm/serialization/tiledb-rest.capnp.c++"
-    "${CMAKE_CURRENT_SOURCE_DIR}/sm/serialization/tiledb-rest.capnp.h"
-    PROPERTIES GENERATED TRUE
-    )
-
-  set_property(SOURCE ${CMAKE_CURRENT_SOURCE_DIR}/sm/serialization/tiledb-rest.capnp.c++
-	  APPEND PROPERTY OBJECT_DEPENDS ${TILEDB_CORE_INCLUDE_DIR}/tiledb/sm/serialization/tiledb-rest.capnp
-	)
-  set_property(
-    SOURCE ${CMAKE_CURRENT_SOURCE_DIR}/sm/serialization/tiledb-rest.capnp.h
-	  APPEND PROPERTY OBJECT_DEPENDS ${TILEDB_CORE_INCLUDE_DIR}/tiledb/sm/serialization/tiledb-rest.capnp
-	)
 endif()
 
 
