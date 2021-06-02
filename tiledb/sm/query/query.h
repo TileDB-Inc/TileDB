@@ -351,18 +351,6 @@ class Query {
   Status finalize();
 
   /**
-   * Retrieves the data buffer of a fixed/var-sized attribute/dimension.
-   *
-   * @param name The buffer attribute/dimension name. An empty string means
-   *     the special default attribute/dimension.
-   * @param buffer The buffer to be retrieved.
-   * @param buffer_size A pointer to the buffer size to be retrieved.
-   * @return Status
-   */
-  Status get_buffer_data(
-      const char* name, void** buffer, uint64_t** buffer_size) const;
-
-  /**
    * Retrieves the buffer of a fixed-sized attribute/dimension.
    *
    * @param name The buffer attribute/dimension name. An empty string means
@@ -373,34 +361,6 @@ class Query {
    */
   Status get_buffer(
       const char* name, void** buffer, uint64_t** buffer_size) const;
-
-  /**
-   * Retrieves the buffer of a fixed-sized attribute/dimension.
-   *
-   * @param name The buffer attribute/dimension name. An empty string means
-   *     the special default attribute/dimension.
-   * @param buffer The buffer to be retrieved.
-   * @param buffer_size A pointer to the buffer size to be retrieved.
-   * @return Status
-   */
-  Status get_buffer(
-      const char* name,
-      uint64_t** buffer_off,
-      uint64_t** buffer_off_size) const;
-
-  /**
-   * Retrieves the buffer of a fixed-sized attribute/dimension.
-   *
-   * @param name The buffer attribute/dimension name. An empty string means
-   *     the special default attribute/dimension.
-   * @param buffer The buffer to be retrieved.
-   * @param buffer_size A pointer to the buffer size to be retrieved.
-   * @return Status
-   */
-  Status get_buffer(
-      const char* name,
-      uint8_t** buffer_validity_bytemap,
-      uint64_t** buffer_validity_bytemap_size) const;
 
   /**
    * Retrieves the offsets and values buffers of a var-sized
@@ -421,6 +381,46 @@ class Query {
       uint64_t** buffer_off_size,
       void** buffer_val,
       uint64_t** buffer_val_size) const;
+
+  /**
+   * Retrieves the data buffer of a fixed/var-sized attribute/dimension.
+   *
+   * @param name The buffer attribute/dimension name. An empty string means
+   *     the special default attribute/dimension.
+   * @param buffer The buffer to be retrieved.
+   * @param buffer_size A pointer to the buffer size to be retrieved.
+   * @return Status
+   */
+  Status get_buffer_data(
+      const char* name, void** buffer, uint64_t** buffer_size) const;
+
+  /**
+   * Retrieves the buffer of a fixed-sized attribute/dimension.
+   *
+   * @param name The buffer attribute/dimension name. An empty string means
+   *     the special default attribute/dimension.
+   * @param buffer The buffer to be retrieved.
+   * @param buffer_size A pointer to the buffer size to be retrieved.
+   * @return Status
+   */
+  Status get_buffer_offsets(
+      const char* name,
+      uint64_t** buffer_off,
+      uint64_t** buffer_off_size) const;
+
+  /**
+   * Retrieves the buffer of a fixed-sized attribute/dimension.
+   *
+   * @param name The buffer attribute/dimension name. An empty string means
+   *     the special default attribute/dimension.
+   * @param buffer The buffer to be retrieved.
+   * @param buffer_size A pointer to the buffer size to be retrieved.
+   * @return Status
+   */
+  Status get_buffer_validity(
+      const char* name,
+      uint8_t** buffer_validity_bytemap,
+      uint64_t** buffer_validity_bytemap_size) const;
 
   /**
    * Retrieves the buffer and validity bytemap of a fixed-sized, nullable

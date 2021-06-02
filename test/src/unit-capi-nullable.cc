@@ -492,7 +492,7 @@ void NullableArrayFx::write_decoupled_api(
 
   // Set the query buffers.
   for (const auto& test_query_buffer : test_query_buffers) {
-    if (test_query_buffer.buffer_validity_size_ == nullptr) {
+    if (test_query_buffer.buffer_validity_ == nullptr) {
       if (test_query_buffer.buffer_var_ == nullptr) {
         rc = tiledb_query_set_data_buffer(
             ctx_,

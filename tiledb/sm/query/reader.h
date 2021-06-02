@@ -254,7 +254,7 @@ class Reader {
    * @param buffer_size A pointer to the buffer size to be retrieved.
    * @return Status
    */
-  Status get_buffer(
+  Status get_buffer_data(
       const std::string& name, void** buffer, uint64_t** buffer_size) const;
 
   /**
@@ -265,7 +265,7 @@ class Reader {
    * @param buffer_size A pointer to the buffer size to be retrieved.
    * @return Status
    */
-  Status get_buffer(
+  Status get_buffer_offsets(
       const std::string& name, uint64_t** buffer, uint64_t** buffer_size) const;
 
   /**
@@ -276,7 +276,7 @@ class Reader {
    * @param buffer_size A pointer to the buffer size to be retrieved.
    * @return Status
    */
-  Status get_buffer(
+  Status get_buffer_validity(
       const std::string& name, const ValidityVector** validity_vector) const;
   /**
    * Retrieves the offsets and values buffers of a var-sized
@@ -423,7 +423,7 @@ class Reader {
    * allowed.
    * @return Status
    */
-  Status set_buffer(
+  Status set_buffer_offsets(
       const std::string& name,
       uint64_t* buffer_off,
       uint64_t* buffer_off_size,
@@ -445,7 +445,7 @@ class Reader {
    * allowed.
    * @return Status
    */
-  Status set_buffer(
+  Status set_buffer_validity(
       const std::string& name,
       uint8_t* buffer_validity_bytemap,
       uint64_t* buffer_validity_bytemap_size,

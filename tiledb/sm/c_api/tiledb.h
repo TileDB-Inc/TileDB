@@ -3815,7 +3815,7 @@ TILEDB_EXPORT int32_t tiledb_query_get_buffer_var(
  * uint64_t* a1_size;
  * uint8_t* a1_validity;
  * uint64_t* a1_validity_size;
- * tiledb_query_get_buffer(
+ * tiledb_query_get_buffer_nullable(
  *   ctx, query, "a1", &a1, &a1_size, &a1_validity, &a1_validity_size);
  * @endcode
  *
@@ -3856,7 +3856,7 @@ TILEDB_EXPORT int32_t tiledb_query_get_buffer_nullable(
  * uint64_t* a2_val_size;
  * uint8_t* a2_validity;
  * uint64_t* a2_validity_size;
- * tiledb_query_get_buffer_var(
+ * tiledb_query_get_buffer_var_nullable(
  *     ctx, query, "a2", &a2_off, &a2_off_size, &a2_val, &a2_val_size,
  *     &a2_validity, &a2_validity_size);
  * @endcode
@@ -3898,7 +3898,7 @@ TILEDB_EXPORT int32_t tiledb_query_get_buffer_var_nullable(
  * @code{.c}
  * int* a1;
  * uint64_t* a1_size;
- * tiledb_query_get_buffer(ctx, query, "a1", &a1, &a1_size);
+ * tiledb_query_get_data_buffer(ctx, query, "a1", &a1, &a1_size);
  * @endcode
  *
  * @param ctx The TileDB context.
@@ -3927,7 +3927,7 @@ TILEDB_EXPORT int32_t tiledb_query_get_data_buffer(
  * @code{.c}
  * int* a1;
  * uint64_t* a1_size;
- * tiledb_query_get_buffer(ctx, query, "a1", &a1, &a1_size);
+ * tiledb_query_get_offset_buffer(ctx, query, "a1", &a1, &a1_size);
  * @endcode
  *
  * @param ctx The TileDB context.
@@ -3956,7 +3956,7 @@ TILEDB_EXPORT int32_t tiledb_query_get_offset_buffer(
  * @code{.c}
  * int* a1;
  * uint64_t* a1_size;
- * tiledb_query_get_buffer(ctx, query, "a1", &a1, &a1_size);
+ * tiledb_query_get_validity_buffer(ctx, query, "a1", &a1, &a1_size);
  * @endcode
  *
  * @param ctx The TileDB context.

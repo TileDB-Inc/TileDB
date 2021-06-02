@@ -522,71 +522,6 @@ Status Query::finalize() {
   return Status::Ok();
 }
 
-// OFFSET
-Status Query::get_buffer(
-    const char* name, uint64_t** buffer_off, uint64_t** buffer_off_size) const {
-  // Check attribute
-  auto array_schema = this->array_schema();
-  if (name == constants::coords) {
-    return LOG_STATUS(
-        Status::QueryError("Cannot get buffer; Coordinates are not var-sized"));
-  }
-  if (array_schema->attribute(name) == nullptr &&
-      array_schema->dimension(name) == nullptr)
-    return LOG_STATUS(Status::QueryError(
-        std::string("Cannot get buffer; Invalid attribute/dimension name '") +
-        name + "'"));
-  if (!array_schema->var_size(name))
-    return LOG_STATUS(Status::QueryError(
-        std::string("Cannot get buffer; '") + name + "' is fixed-sized"));
-
-  if (type_ == QueryType::WRITE)
-    return writer_.get_buffer(name, buffer_off, buffer_off_size);
-  return reader_.get_buffer(name, buffer_off, buffer_off_size);
-}
-
-Status Query::get_buffer_data(
-    const char* name, void** buffer, uint64_t** buffer_size) const {
-  // Check attribute
-  auto array_schema = this->array_schema();
-  if (name != constants::coords) {
-    if (array_schema->attribute(name) == nullptr &&
-        array_schema->dimension(name) == nullptr)
-      return LOG_STATUS(Status::QueryError(
-          std::string("Cannot get buffer; Invalid attribute/dimension name '") +
-          name + "'"));
-  }
-
-  if (type_ == QueryType::WRITE)
-    return writer_.get_buffer(name, buffer, buffer_size);
-  return reader_.get_buffer(name, buffer, buffer_size);
-}
-
-// VALIDITY
-Status Query::get_buffer(
-    const char* name,
-    uint8_t** buffer_validity_bytemap,
-    uint64_t** buffer_validity_bytemap_size) const {
-  const ValidityVector* vv = nullptr;
-
-  // Check attribute
-  auto array_schema = this->array_schema();
-  if (!array_schema->is_nullable(name))
-    return LOG_STATUS(Status::QueryError(
-        std::string("Cannot get buffer; '") + name + "' is non-nullable"));
-
-  if (type_ == QueryType::WRITE)
-    RETURN_NOT_OK(writer_.get_buffer(name, &vv));
-  RETURN_NOT_OK(reader_.get_buffer(name, &vv));
-
-  if (vv != nullptr) {
-    *buffer_validity_bytemap = vv->bytemap();
-    *buffer_validity_bytemap_size = vv->bytemap_size();
-  }
-
-  return Status::Ok();
-}
-
 Status Query::get_buffer(
     const char* name, void** buffer, uint64_t** buffer_size) const {
   // Check attribute
@@ -603,8 +538,8 @@ Status Query::get_buffer(
         std::string("Cannot get buffer; '") + name + "' is var-sized"));
 
   if (type_ == QueryType::WRITE)
-    return writer_.get_buffer(name, buffer, buffer_size);
-  return reader_.get_buffer(name, buffer, buffer_size);
+    return writer_.get_buffer_data(name, buffer, buffer_size);
+  return reader_.get_buffer_data(name, buffer, buffer_size);
 }
 
 Status Query::get_buffer(
@@ -633,6 +568,69 @@ Status Query::get_buffer(
         name, buffer_off, buffer_off_size, buffer_val, buffer_val_size);
   return reader_.get_buffer(
       name, buffer_off, buffer_off_size, buffer_val, buffer_val_size);
+}
+
+Status Query::get_buffer_offsets(
+    const char* name, uint64_t** buffer_off, uint64_t** buffer_off_size) const {
+  // Check attribute
+  auto array_schema = this->array_schema();
+  if (name == constants::coords) {
+    return LOG_STATUS(
+        Status::QueryError("Cannot get buffer; Coordinates are not var-sized"));
+  }
+  if (array_schema->attribute(name) == nullptr &&
+      array_schema->dimension(name) == nullptr)
+    return LOG_STATUS(Status::QueryError(
+        std::string("Cannot get buffer; Invalid attribute/dimension name '") +
+        name + "'"));
+  if (!array_schema->var_size(name))
+    return LOG_STATUS(Status::QueryError(
+        std::string("Cannot get buffer; '") + name + "' is fixed-sized"));
+
+  if (type_ == QueryType::WRITE)
+    return writer_.get_buffer_offsets(name, buffer_off, buffer_off_size);
+  return reader_.get_buffer_offsets(name, buffer_off, buffer_off_size);
+}
+
+Status Query::get_buffer_data(
+    const char* name, void** buffer, uint64_t** buffer_size) const {
+  // Check attribute
+  auto array_schema = this->array_schema();
+  if (name != constants::coords) {
+    if (array_schema->attribute(name) == nullptr &&
+        array_schema->dimension(name) == nullptr)
+      return LOG_STATUS(Status::QueryError(
+          std::string("Cannot get buffer; Invalid attribute/dimension name '") +
+          name + "'"));
+  }
+
+  if (type_ == QueryType::WRITE)
+    return writer_.get_buffer_data(name, buffer, buffer_size);
+  return reader_.get_buffer_data(name, buffer, buffer_size);
+}
+
+Status Query::get_buffer_validity(
+    const char* name,
+    uint8_t** buffer_validity_bytemap,
+    uint64_t** buffer_validity_bytemap_size) const {
+  const ValidityVector* vv = nullptr;
+
+  // Check attribute
+  auto array_schema = this->array_schema();
+  if (!array_schema->is_nullable(name))
+    return LOG_STATUS(Status::QueryError(
+        std::string("Cannot get buffer; '") + name + "' is non-nullable"));
+
+  if (type_ == QueryType::WRITE)
+    RETURN_NOT_OK(writer_.get_buffer_validity(name, &vv));
+  RETURN_NOT_OK(reader_.get_buffer_validity(name, &vv));
+
+  if (vv != nullptr) {
+    *buffer_validity_bytemap = vv->bytemap();
+    *buffer_validity_bytemap_size = vv->bytemap_size();
+  }
+
+  return Status::Ok();
 }
 
 Status Query::get_buffer_vbytemap(
@@ -921,8 +919,8 @@ Status Query::set_off_buffer(
   RETURN_NOT_OK(check_set_fixed_buffer(name));
 
   if (type_ == QueryType::WRITE)
-    return writer_.set_buffer(name, buffer_off, buffer_off_size);
-  return reader_.set_buffer(
+    return writer_.set_buffer_offsets(name, buffer_off, buffer_off_size);
+  return reader_.set_buffer_offsets(
       name, buffer_off, buffer_off_size, check_null_buffers);
 }
 
@@ -934,9 +932,9 @@ Status Query::set_val_buffer(
   RETURN_NOT_OK(check_set_fixed_buffer(name));
 
   if (type_ == QueryType::WRITE)
-    return writer_.set_buffer(
+    return writer_.set_buffer_validity(
         name, buffer_validity_bytemap, buffer_validity_bytemap_size);
-  return reader_.set_buffer(
+  return reader_.set_buffer_validity(
       name,
       buffer_validity_bytemap,
       buffer_validity_bytemap_size,

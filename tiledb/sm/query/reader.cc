@@ -211,7 +211,7 @@ bool Reader::incomplete() const {
   return read_state_.overflowed_ || !read_state_.done();
 }
 
-Status Reader::get_buffer(
+Status Reader::get_buffer_data(
     const std::string& name, void** buffer, uint64_t** buffer_size) const {
   auto it = buffers_.find(name);
   if (it == buffers_.end()) {
@@ -230,7 +230,7 @@ Status Reader::get_buffer(
   return Status::Ok();
 }
 
-Status Reader::get_buffer(
+Status Reader::get_buffer_offsets(
     const std::string& name,
     uint64_t** buffer_off,
     uint64_t** buffer_off_size) const {
@@ -246,7 +246,7 @@ Status Reader::get_buffer(
   return Status::Ok();
 }
 
-Status Reader::get_buffer(
+Status Reader::get_buffer_validity(
     const std::string& name, const ValidityVector** validity_vector) const {
   auto it = buffers_.find(name);
   if (it == buffers_.end()) {
@@ -580,17 +580,19 @@ Status Reader::set_buffer_data(
   // Set attribute/dimension buffer on the appropriate buffer
   if (!array_schema_->var_size(name))
     // Fixed size data buffer
-    buffers_[name] += QueryBuffer(buffer, nullptr, buffer_size, nullptr);
+    buffers_[name].set_buffer_data(
+        QueryBuffer(buffer, nullptr, buffer_size, nullptr));
   else
     // Var sized data buffer
-    buffers_[name] += QueryBuffer(nullptr, buffer, nullptr, buffer_size);
+    buffers_[name].set_buffer_data(
+        QueryBuffer(nullptr, buffer, nullptr, buffer_size));
 
   return Status::Ok();
 
   return Status::Ok();
 }
 
-Status Reader::set_buffer(
+Status Reader::set_buffer_offsets(
     const std::string& name,
     uint64_t* const buffer_off,
     uint64_t* const buffer_off_size,
@@ -634,12 +636,13 @@ Status Reader::set_buffer(
         "' after initialization"));
 
   // Set attribute/dimension buffer
-  buffers_[name] += QueryBuffer(buffer_off, nullptr, buffer_off_size, nullptr);
+  buffers_[name].set_buffer_data(
+      QueryBuffer(buffer_off, nullptr, buffer_off_size, nullptr));
 
   return Status::Ok();
 }
 
-Status Reader::set_buffer(
+Status Reader::set_buffer_validity(
     const std::string& name,
     uint8_t* const buffer_validity_bytemap,
     uint64_t* const buffer_validity_bytemap_size,
@@ -682,8 +685,8 @@ Status Reader::set_buffer(
         "' after initialization"));
 
   // Set attribute/dimension buffer
-  buffers_[name] += QueryBuffer(
-      nullptr, nullptr, nullptr, nullptr, std::move(validity_vector));
+  buffers_[name].set_buffer_data(QueryBuffer(
+      nullptr, nullptr, nullptr, nullptr, std::move(validity_vector)));
 
   return Status::Ok();
 }
