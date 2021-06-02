@@ -620,9 +620,9 @@ if(TILEDB_SERIALIZATION)
 
   # We only need to override the include path and PATH env for EP builds
   if(TILEDB_CAPNP_EP_BUILT)
-    list(APPEND CAPNP_COMPILE_COMMAND ${CMAKE_COMMAND} -E env PATH=${TILEDB_EP_BASE}/install/bin ${CAPNP_EXECUTABLE} compile -I "${TILEDB_EP_BASE}/install/include" -oc++:"${TILEDB_SERIALIZATION_GENERATED_DIR}" ${CMAKE_CURRENT_SOURCE_DIR}/sm/serialization/tiledb-rest.capnp --src-prefix=${CMAKE_CURRENT_SOURCE_DIR}/sm/serialization)
+    list(APPEND CAPNP_COMPILE_COMMAND "${CMAKE_COMMAND}" -E env PATH="${TILEDB_EP_BASE}/install/bin" "${CAPNP_EXECUTABLE}" compile -I "${TILEDB_EP_BASE}/install/include" -oc++:"${TILEDB_SERIALIZATION_GENERATED_DIR}" "${CMAKE_CURRENT_SOURCE_DIR}/sm/serialization/tiledb-rest.capnp" --src-prefix="${CMAKE_CURRENT_SOURCE_DIR}/sm/serialization")
   else()
-    list(APPEND CAPNP_COMPILE_COMMAND ${CAPNP_EXECUTABLE} compile -oc++:"${TILEDB_SERIALIZATION_GENERATED_DIR}" ${CMAKE_CURRENT_SOURCE_DIR}/sm/serialization/tiledb-rest.capnp --src-prefix ${CMAKE_CURRENT_SOURCE_DIR})
+    list(APPEND CAPNP_COMPILE_COMMAND "${CAPNP_EXECUTABLE}" compile -oc++:"${TILEDB_SERIALIZATION_GENERATED_DIR}" "${CMAKE_CURRENT_SOURCE_DIR}/sm/serialization/tiledb-rest.capnp" --src-prefix "${CMAKE_CURRENT_SOURCE_DIR}/sm/serialization")
   endif()
 
   # note: run the compiler under `cmake -E env ...` because we need to run capnp executable
