@@ -115,6 +115,9 @@ class Consolidator {
   /** Destructor. */
   ~Consolidator();
 
+  DISABLE_COPY_AND_COPY_ASSIGN(Consolidator);
+  DISABLE_MOVE_AND_MOVE_ASSIGN(Consolidator);
+
   /* ********************************* */
   /*                API                */
   /* ********************************* */
@@ -165,6 +168,9 @@ class Consolidator {
 
   /** The storage manager. */
   StorageManager* storage_manager_;
+
+  /** The class stats. */
+  stats::Stats* stats_;
 
   /* ********************************* */
   /*          PRIVATE METHODS           */
@@ -222,46 +228,27 @@ class Consolidator {
       const NDRange& union_non_empty_domains) const;
 
   /**
-   * Consolidates the fragments of the input array.
-   *
-   * @param array_schema The schema of the array to consolidate.
-   * @param encryption_type The encryption type of the array
-   * @param encryption_key If the array is encrypted, the private encryption
-   *    key. For unencrypted arrays, pass `nullptr`.
-   * @param key_length The length in bytes of the encryption key.
-   * @return Status
-   */
-  Status consolidate(
-      const ArraySchema* array_schema,
-      EncryptionType encryption_type,
-      const void* encryption_key,
-      uint32_t key_length);
-
-  /**
    * Consolidates the input fragments of the input array. This function
    * implements a single consolidation step.
    *
-   * @param array_uri URI of array to consolidate.
+   * @param array_for_reads Array used for reads.
+   * @param array_for_writes Array used for writes.
    * @param to_consolidate The fragments to consolidate in this consolidation
    *     step.
+   * @param all_sparse If all the fragments to consolidate are sparse.
    * @param union_non_empty_domains The union of the non-empty domains of
    *     the fragments in `to_consolidate`. Applicable only when those
    *     fragments are *not* all sparse.
-   * @param encryption_type The encryption type of the array
-   * @param encryption_key If the array is encrypted, the private encryption
-   *    key. For unencrypted arrays, pass `nullptr`.
-   * @param key_length The length in bytes of the encryption key.
    * @param new_fragment_uri The URI of the fragment created after
    *     consolidating the `to_consolidate` fragments.
    * @return Status
    */
   Status consolidate(
-      const URI& array_uri,
-      const FragmentInfo& to_consolidate,
+      Array& array_for_reads,
+      Array& array_for_writes,
+      const std::vector<TimestampedURI>& to_consolidate,
+      bool all_sparse,
       const NDRange& union_non_empty_domains,
-      EncryptionType encryption_type,
-      const void* encryption_key,
-      uint32_t key_length,
       URI* new_fragment_uri);
 
   /**
@@ -362,6 +349,8 @@ class Consolidator {
    * @param array_schema The array schema.
    * @param fragment_info Information about all the fragments.
    * @param to_consolidate The fragments to consolidate in the next step.
+   * @param all_sparse The function will return here if all fragments to
+   *     consolidate are all sparse.
    * @param union_non_empty_domains The function will return here the
    *     union of the non-empty domains of the fragments in `to_consolidate`.
    * @return Status
@@ -369,7 +358,8 @@ class Consolidator {
   Status compute_next_to_consolidate(
       const ArraySchema* array_schema,
       const FragmentInfo& fragment_info,
-      FragmentInfo* to_consolidate,
+      std::vector<TimestampedURI>* to_consolidate,
+      bool* all_sparse,
       NDRange* union_non_empty_domains) const;
 
   /**
@@ -377,7 +367,10 @@ class Consolidator {
    * as `__<first_URI_timestamp>_<last_URI_timestamp>_<uuid>`.
    */
   Status compute_new_fragment_uri(
-      const URI& first, const URI& last, URI* new_uri) const;
+      const URI& first,
+      const URI& last,
+      uint32_t format_version,
+      URI* new_uri) const;
 
   /** Checks and sets the input configuration parameters. */
   Status set_config(const Config* config);
@@ -414,14 +407,15 @@ class Consolidator {
    *     `fragment_info` of size >=0.
    */
   void update_fragment_info(
-      const FragmentInfo& to_consolidate,
+      const std::vector<TimestampedURI>& to_consolidate,
       const SingleFragmentInfo& new_fragment_info,
       FragmentInfo* fragment_info) const;
 
   /** Writes the vacuum file that contains the URIs of the consolidated
    * fragments. */
   Status write_vacuum_file(
-      const URI& new_uri, const FragmentInfo& to_consolidate) const;
+      const URI& new_uri,
+      const std::vector<TimestampedURI>& to_consolidate) const;
 };
 
 }  // namespace sm

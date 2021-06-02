@@ -498,6 +498,57 @@ TEST_CASE_METHOD(
       std::free(b);
   }
 
+  SECTION("- Read all, with condition") {
+    Array array(ctx, array_uri, TILEDB_READ);
+    Query query(ctx, array);
+    std::vector<uint32_t> a1(1000);
+    std::vector<uint32_t> a2(1000);
+    std::vector<uint8_t> a2_nullable(500);
+    std::vector<char> a3_data(1000 * 100);
+    std::vector<uint64_t> a3_offsets(1000);
+    std::vector<int32_t> subarray = {1, 10, 1, 10};
+
+    query.set_subarray(subarray);
+    query.set_buffer("a1", a1);
+    query.set_buffer_nullable("a2", a2, a2_nullable);
+    query.set_buffer("a3", a3_offsets, a3_data);
+
+    uint32_t cmp_value = 5;
+    QueryCondition condition(ctx);
+    condition.init("a1", &cmp_value, sizeof(uint32_t), TILEDB_LT);
+    query.set_condition(condition);
+
+    // Serialize into a copy (client side).
+    std::vector<uint8_t> serialized;
+    serialize_query(ctx, query, &serialized, true);
+
+    // Deserialize into a new query and allocate buffers (server side).
+    Array array2(ctx, array_uri, TILEDB_READ);
+    Query query2(ctx, array2);
+    deserialize_query(ctx, serialized, &query2, false);
+    auto to_free = allocate_query_buffers(ctx, array2, &query2);
+
+    // Submit and serialize results (server side).
+    query2.submit();
+    serialize_query(ctx, query2, &serialized, false);
+
+    // Deserialize into original query (client side).
+    deserialize_query(ctx, serialized, &query, true);
+    REQUIRE(query.query_status() == Query::Status::COMPLETE);
+
+    // We expect all cells where `a1` >= `cmp_value` to be filtered
+    // out.
+    auto result_el = query.result_buffer_elements_nullable();
+    REQUIRE(std::get<1>(result_el["a1"]) == 5);
+    REQUIRE(std::get<1>(result_el["a2"]) == 10);
+    REQUIRE(std::get<2>(result_el["a2"]) == 5);
+    REQUIRE(std::get<0>(result_el["a3"]) == 5);
+    REQUIRE(std::get<1>(result_el["a3"]) == 15);
+
+    for (void* b : to_free)
+      std::free(b);
+  }
+
   SECTION("- Read subarray") {
     Array array(ctx, array_uri, TILEDB_READ);
     Query query(ctx, array);

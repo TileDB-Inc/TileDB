@@ -28,14 +28,17 @@ struct Config {
 }
 
 struct Array {
-  timestamp @0 :UInt64;
-  # timestamp array was opened
+  endTimestamp @0 :UInt64;
+  # ending timestamp array was opened
 
   queryType @1 :Text;
   # Array opened for query type
 
   uri @2 :Text;
   # Array uri
+
+  startTimestamp @3 :UInt64;
+  # starting timestamp array was opened
 }
 
 struct ArraySchema {
@@ -326,6 +329,29 @@ struct ReadState {
   # The subarray partitioner
 }
 
+struct ConditionClause {
+  # A clause within a condition
+
+  fieldName @0 :Text;
+  # The name of the field this clause applies to
+
+  value @1 :Data;
+  # The comparison value
+
+  op @2 :Text;
+  # The comparison operation
+}
+
+struct Condition {
+  # The query condition
+
+  clauses @0 :List(ConditionClause);
+  # All clauses in this condition
+
+  clauseCombinationOps @1 :List(Text);
+  # The operation that combines each condition
+}
+
 struct QueryReader {
   # Read struct (can't be called reader due to class name conflict)
 
@@ -337,6 +363,9 @@ struct QueryReader {
 
   readState @2 :ReadState;
   # Read state of reader
+
+  condition @3 :Condition;
+  # The query condition
 }
 
 struct Query {

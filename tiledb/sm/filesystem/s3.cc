@@ -115,7 +115,8 @@ static std::once_flag aws_lib_initialized;
 /* ********************************* */
 
 S3::S3()
-    : state_(State::UNINITIALIZED)
+    : stats_(nullptr)
+    , state_(State::UNINITIALIZED)
     , file_buffer_size_(0)
     , max_parallel_ops_(1)
     , multipart_part_size_(0)
@@ -136,12 +137,17 @@ S3::~S3() {
 /*                 API               */
 /* ********************************* */
 
-Status S3::init(const Config& config, ThreadPool* const thread_pool) {
+Status S3::init(
+    stats::Stats* const parent_stats,
+    const Config& config,
+    ThreadPool* const thread_pool) {
   // already initialized
   if (state_ == State::DISCONNECTED)
     return Status::Ok();
 
   assert(state_ == State::UNINITIALIZED);
+
+  stats_ = parent_stats->create_child("S3");
 
   if (thread_pool == nullptr) {
     return LOG_STATUS(
@@ -762,16 +768,14 @@ Status S3::read(
       ("bytes=" + std::to_string(offset) + "-" +
        std::to_string(offset + length + read_ahead_length - 1))
           .c_str());
-  // Create a unique_ptr so that this will be freed at the end of the function
-  // call This only needs to live long enough for the request itself
-  auto streamBuf = tdb_unique_ptr<boost::interprocess::bufferbuf>(tdb_new(
-      boost::interprocess::bufferbuf,
-      (char*)buffer,
-      length + read_ahead_length));
-  get_object_request.SetResponseStreamFactory([&streamBuf]() {
-    return Aws::New<Aws::IOStream>(
-        constants::s3_allocation_tag.c_str(), streamBuf.get());
-  });
+  get_object_request.SetResponseStreamFactory(
+      [buffer, length, read_ahead_length]() {
+        return Aws::New<PreallocatedIOStream>(
+            constants::s3_allocation_tag.c_str(),
+            buffer,
+            length + read_ahead_length);
+      });
+
   if (request_payer_ != Aws::S3::Model::RequestPayer::NOT_SET)
     get_object_request.SetRequestPayer(request_payer_);
 
@@ -786,7 +790,8 @@ Status S3::read(
       static_cast<uint64_t>(get_object_outcome.GetResult().GetContentLength());
   if (*length_returned < length) {
     return LOG_STATUS(Status::S3Error(
-        std::string("Read operation returned different size of bytes.")));
+        std::string("Read operation returned different size of bytes ") +
+        std::to_string(*length_returned) + " vs " + std::to_string(length)));
   }
 
   return Status::Ok();
@@ -1061,6 +1066,7 @@ Status S3::init_client() const {
 
   client_config.retryStrategy = Aws::MakeShared<S3RetryStrategy>(
       constants::s3_allocation_tag.c_str(),
+      stats_,
       connect_max_tries,
       connect_scale_factor);
 
@@ -1120,19 +1126,30 @@ Status S3::init_client() const {
           "Ambiguous authentication credentials; both permanent and temporary "
           "authentication credentials are configured");
   }
-  if (credentials_provider == nullptr) {
-    client_ = tdb_make_shared(
-        Aws::S3::S3Client,
-        *client_config_,
-        Aws::Client::AWSAuthV4Signer::PayloadSigningPolicy::Never,
-        use_virtual_addressing_);
-  } else {
-    client_ = tdb_make_shared(
-        Aws::S3::S3Client,
-        credentials_provider,
-        *client_config_,
-        Aws::Client::AWSAuthV4Signer::PayloadSigningPolicy::Never,
-        use_virtual_addressing_);
+
+  // The `Aws::S3::S3Client` constructor is not thread-safe. Although we
+  // currently hold `client_init_mtx_` that protects this routine from threads
+  // on this instance of `S3`, it is not sufficient protection from threads on
+  // another instance of `S3`. Use an additional, static mutex for this
+  // scenario.
+  static std::mutex static_client_init_mtx;
+  {
+    std::lock_guard<std::mutex> static_lck(static_client_init_mtx);
+
+    if (credentials_provider == nullptr) {
+      client_ = tdb_make_shared(
+          Aws::S3::S3Client,
+          *client_config_,
+          Aws::Client::AWSAuthV4Signer::PayloadSigningPolicy::Never,
+          use_virtual_addressing_);
+    } else {
+      client_ = tdb_make_shared(
+          Aws::S3::S3Client,
+          credentials_provider,
+          *client_config_,
+          Aws::Client::AWSAuthV4Signer::PayloadSigningPolicy::Never,
+          use_virtual_addressing_);
+    }
   }
 
   return Status::Ok();

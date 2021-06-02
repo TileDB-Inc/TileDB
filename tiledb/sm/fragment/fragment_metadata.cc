@@ -74,7 +74,7 @@ FragmentMetadata::FragmentMetadata(
   has_consolidated_footer_ = false;
   rtree_ = RTree(array_schema_->domain(), constants::rtree_fanout);
   meta_file_size_ = 0;
-  version_ = constants::format_version;
+  version_ = array_schema_->write_version();
   tile_index_base_ = 0;
   sparse_tile_num_ = 0;
   footer_size_ = 0;
@@ -493,7 +493,8 @@ Status FragmentMetadata::load(
 }
 
 Status FragmentMetadata::store(const EncryptionKey& encryption_key) {
-  STATS_START_TIMER(stats::GlobalStats::TimerType::WRITE_STORE_FRAG_META)
+  auto timer_se =
+      storage_manager_->stats()->start_timer("write_store_frag_meta");
 
   auto array_uri = this->array_uri();
   auto fragment_metadata_uri =
@@ -549,8 +550,6 @@ Status FragmentMetadata::store(const EncryptionKey& encryption_key) {
 
   // Close file
   return storage_manager_->close_file(fragment_metadata_uri);
-
-  STATS_END_TIMER(stats::GlobalStats::TimerType::WRITE_STORE_FRAG_META)
 }
 
 const NDRange& FragmentMetadata::non_empty_domain() {
@@ -887,8 +886,7 @@ Status FragmentMetadata::load_rtree(const EncryptionKey& encryption_key) {
   RETURN_NOT_OK(
       read_generic_tile_from_file(encryption_key, gt_offsets_.rtree_, &buff));
 
-  STATS_ADD_COUNTER(
-      stats::GlobalStats::CounterType::READ_RTREE_SIZE, buff.size());
+  storage_manager_->stats()->add_counter("read_rtree_size", buff.size());
 
   ConstBuffer cbuff(&buff);
   RETURN_NOT_OK(rtree_.deserialize(&cbuff, array_schema_->domain(), version_));
@@ -948,8 +946,8 @@ Status FragmentMetadata::get_footer_offset_and_size(
     buff.reset_offset();
     RETURN_NOT_OK(buff.read(size, sizeof(uint64_t)));
     *offset = meta_file_size_ - *size - sizeof(uint64_t);
-    STATS_ADD_COUNTER(
-        stats::GlobalStats::CounterType::READ_FRAG_META_SIZE, sizeof(uint64_t));
+    storage_manager_->stats()->add_counter(
+        "read_frag_meta_size", sizeof(uint64_t));
   }
 
   return Status::Ok();
@@ -1221,8 +1219,7 @@ Status FragmentMetadata::load_tile_offsets(
   RETURN_NOT_OK(read_generic_tile_from_file(
       encryption_key, gt_offsets_.tile_offsets_[idx], &buff));
 
-  STATS_ADD_COUNTER(
-      stats::GlobalStats::CounterType::READ_TILE_OFFSETS_SIZE, buff.size());
+  storage_manager_->stats()->add_counter("read_tile_offsets_size", buff.size());
 
   ConstBuffer cbuff(&buff);
   RETURN_NOT_OK(load_tile_offsets(idx, &cbuff));
@@ -1250,8 +1247,8 @@ Status FragmentMetadata::load_tile_var_offsets(
   RETURN_NOT_OK(read_generic_tile_from_file(
       encryption_key, gt_offsets_.tile_var_offsets_[idx], &buff));
 
-  STATS_ADD_COUNTER(
-      stats::GlobalStats::CounterType::READ_TILE_VAR_OFFSETS_SIZE, buff.size());
+  storage_manager_->stats()->add_counter(
+      "read_tile_var_offsets_size", buff.size());
 
   ConstBuffer cbuff(&buff);
   RETURN_NOT_OK(load_tile_var_offsets(idx, &cbuff));
@@ -1275,8 +1272,8 @@ Status FragmentMetadata::load_tile_var_sizes(
   RETURN_NOT_OK(read_generic_tile_from_file(
       encryption_key, gt_offsets_.tile_var_sizes_[idx], &buff));
 
-  STATS_ADD_COUNTER(
-      stats::GlobalStats::CounterType::READ_TILE_VAR_SIZES_SIZE, buff.size());
+  storage_manager_->stats()->add_counter(
+      "read_tile_var_sizes_size", buff.size());
 
   ConstBuffer cbuff(&buff);
   RETURN_NOT_OK(load_tile_var_sizes(idx, &cbuff));
@@ -1300,9 +1297,8 @@ Status FragmentMetadata::load_tile_validity_offsets(
   RETURN_NOT_OK(read_generic_tile_from_file(
       encryption_key, gt_offsets_.tile_validity_offsets_[idx], &buff));
 
-  STATS_ADD_COUNTER(
-      stats::GlobalStats::CounterType::READ_TILE_VALIDITY_OFFSETS_SIZE,
-      buff.size());
+  storage_manager_->stats()->add_counter(
+      "read_tile_validity_offsets_size", buff.size());
 
   ConstBuffer cbuff(&buff);
   RETURN_NOT_OK(load_tile_validity_offsets(idx, &cbuff));
@@ -1972,8 +1968,7 @@ Status FragmentMetadata::load_v1_v2(const EncryptionKey& encryption_key) {
       chunked_buffer->read(buff.data(), buff.size(), 0), tdb_delete(tile));
   tdb_delete(tile);
 
-  STATS_ADD_COUNTER(
-      stats::GlobalStats::CounterType::READ_FRAG_META_SIZE, buff.size());
+  storage_manager_->stats()->add_counter("read_frag_meta_size", buff.size());
 
   // Deserialize
   ConstBuffer cbuff(&buff);
@@ -2195,7 +2190,7 @@ Status FragmentMetadata::store_rtree(
 
   RETURN_NOT_OK(
       write_generic_tile_to_file(encryption_key, std::move(buff), nbytes));
-  STATS_ADD_COUNTER(stats::GlobalStats::CounterType::WRITE_RTREE_SIZE, *nbytes);
+  storage_manager_->stats()->add_counter("write_rtree_size", *nbytes);
 
   return Status::Ok();
 }
@@ -2278,8 +2273,7 @@ Status FragmentMetadata::read_file_footer(
   // Get footer offset
   RETURN_NOT_OK(get_footer_offset_and_size(footer_offset, footer_size));
 
-  STATS_ADD_COUNTER(
-      stats::GlobalStats::CounterType::READ_FRAG_META_SIZE, *footer_size);
+  storage_manager_->stats()->add_counter("read_frag_meta_size", *footer_size);
 
   // Read footer
   return storage_manager_->read(
@@ -2334,8 +2328,7 @@ Status FragmentMetadata::store_tile_offsets(
   RETURN_NOT_OK(
       write_generic_tile_to_file(encryption_key, std::move(buff), nbytes));
 
-  STATS_ADD_COUNTER(
-      stats::GlobalStats::CounterType::WRITE_TILE_OFFSETS_SIZE, *nbytes);
+  storage_manager_->stats()->add_counter("write_tile_offsets_size", *nbytes);
 
   return Status::Ok();
 }
@@ -2372,8 +2365,8 @@ Status FragmentMetadata::store_tile_var_offsets(
   RETURN_NOT_OK(
       write_generic_tile_to_file(encryption_key, std::move(buff), nbytes));
 
-  STATS_ADD_COUNTER(
-      stats::GlobalStats::CounterType::WRITE_TILE_VAR_OFFSETS_SIZE, *nbytes);
+  storage_manager_->stats()->add_counter(
+      "write_tile_var_offsets_size", *nbytes);
 
   return Status::Ok();
 }
@@ -2412,8 +2405,7 @@ Status FragmentMetadata::store_tile_var_sizes(
   RETURN_NOT_OK(
       write_generic_tile_to_file(encryption_key, std::move(buff), nbytes));
 
-  STATS_ADD_COUNTER(
-      stats::GlobalStats::CounterType::WRITE_TILE_VAR_SIZES_SIZE, *nbytes);
+  storage_manager_->stats()->add_counter("write_tile_var_sizes_size", *nbytes);
 
   return Status::Ok();
 }
@@ -2450,9 +2442,8 @@ Status FragmentMetadata::store_tile_validity_offsets(
   RETURN_NOT_OK(
       write_generic_tile_to_file(encryption_key, std::move(buff), nbytes));
 
-  STATS_ADD_COUNTER(
-      stats::GlobalStats::CounterType::WRITE_TILE_VALIDITY_OFFSETS_SIZE,
-      *nbytes);
+  storage_manager_->stats()->add_counter(
+      "write_tile_validity_offsets_size", *nbytes);
 
   return Status::Ok();
 }
@@ -2507,9 +2498,8 @@ Status FragmentMetadata::store_footer(const EncryptionKey& encryption_key) {
   RETURN_NOT_OK(write_footer(&buff));
   RETURN_NOT_OK(write_footer_to_file(&buff));
 
-  STATS_ADD_COUNTER(
-      stats::GlobalStats::CounterType::WRITE_FRAG_META_FOOTER_SIZE,
-      buff.size());
+  storage_manager_->stats()->add_counter(
+      "write_frag_meta_footer_size", buff.size());
 
   return Status::Ok();
 }

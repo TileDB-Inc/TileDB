@@ -922,14 +922,6 @@ TILEDB_EXPORT void tiledb_config_free(tiledb_config_t** config);
  *
  * **Parameters**
  *
- * - `sm.array.timestamp_start` <br>
- *    When set, an array will be opened between this value and
- *    `sm.array.timestamp_end` (inclusive) upon a read query. <br>
- *    **Default**: 0
- * - `sm.array.timestamp_end` <br>
- *    When set, an array will be opened between `sm.array.timestamp_start`
- *    and this value (inclusive) upon a read query. <br>
- *    **Default**: UINT64_MAX
  * - `sm.dedup_coords` <br>
  *    If `true`, cells with duplicate coordinates will be removed during sparse
  *    fragment writes. Note that ties during deduplication are broken
@@ -3064,6 +3056,8 @@ TILEDB_EXPORT int32_t tiledb_array_schema_load(
     tiledb_array_schema_t** array_schema);
 
 /**
+ * This is a deprecated API.
+ *
  * Retrieves the schema of an encrypted array from the disk, creating an array
  * schema struct.
  *
@@ -3888,10 +3882,11 @@ TILEDB_EXPORT int32_t tiledb_query_set_layout(
  * **Example:**
  *
  * @code{.c}
- * uint32_t value = 5;
  * tiledb_query_condition_t* query_condition;
- * tiledb_query_condition_alloc(
- *   ctx, "longitude", &value, sizeof(value), TILEDB_LT, &query_condition);
+ * tiledb_query_condition_alloc(ctx, &query_condition);
+ * uint32_t value = 5;
+ * tiledb_query_condition_init(
+ *   ctx, query_condition, "longitude", &value, sizeof(value), TILEDB_LT);
  * tiledb_query_set_condition(ctx, query, query_condition);
  * @endcode
  *
@@ -4676,27 +4671,16 @@ int32_t tiledb_query_get_subarray(
  * **Example:**
  *
  * @code{.c}
- * uint32_t value = 5;
  * tiledb_query_condition_t* query_condition;
- * tiledb_query_condition_alloc(
- *   ctx, "longitude", &value, sizeof(value), TILEDB_LT, &query_condition);
+ * tiledb_query_condition_alloc(ctx, &query_condition);
  * @endcode
  *
  * @param ctx The TileDB context.
- * @param attribute_name The attribute name.
- * @param condition_value The value to compare against an attribute value.
- * @param condition_value_size The byte size of `condition_value`.
- * @param op The comparison operator.
  * @param cond The allocated query condition object.
  * @return `TILEDB_OK` for success and `TILEDB_OOM` or `TILEDB_ERR` for error.
  */
 TILEDB_EXPORT int32_t tiledb_query_condition_alloc(
-    tiledb_ctx_t* ctx,
-    const char* attribute_name,
-    const void* condition_value,
-    uint64_t condition_value_size,
-    tiledb_query_condition_op_t op,
-    tiledb_query_condition_t** cond);
+    tiledb_ctx_t* ctx, tiledb_query_condition_t** cond);
 
 /**
  * Frees a TileDB query condition object.
@@ -4718,31 +4702,63 @@ TILEDB_EXPORT int32_t tiledb_query_condition_alloc(
 TILEDB_EXPORT void tiledb_query_condition_free(tiledb_query_condition_t** cond);
 
 /**
+ * Initializes a TileDB query condition object.
+ *
+ * **Example:**
+ *
+ * @code{.c}
+ * tiledb_query_condition_t* query_condition;
+ * tiledb_query_condition_alloc(ctx, &query_condition);
+ *
+ * uint32_t value = 5;
+ * tiledb_query_condition_init(
+ *   ctx, query_condition, "longitude", &value, sizeof(value), TILEDB_LT);
+ * @endcode
+ *
+ * @param ctx The TileDB context.
+ * @param cond The allocated query condition object.
+ * @param attribute_name The attribute name.
+ * @param condition_value The value to compare against an attribute value.
+ * @param condition_value_size The byte size of `condition_value`.
+ * @param op The comparison operator.
+ * @return `TILEDB_OK` for success and `TILEDB_ERR` for error.
+ */
+TILEDB_EXPORT int32_t tiledb_query_condition_init(
+    tiledb_ctx_t* ctx,
+    tiledb_query_condition_t* cond,
+    const char* attribute_name,
+    const void* condition_value,
+    uint64_t condition_value_size,
+    tiledb_query_condition_op_t op);
+
+/**
  * Combines two query condition objects into a newly allocated
  * condition. Does not mutate or free the input condition objects.
  *
  * **Example:**
  *
  * @code{.c}
- * uint32_t value_1 = 5;
  * tiledb_query_condition_t* query_condition_1;
- * tiledb_query_condition_alloc(
+ * tiledb_query_condition_alloc(ctx, &query_condition_1);
+ * uint32_t value_1 = 5;
+ * tiledb_query_condition_init(
  *   ctx,
+ *   query_condition_1,
  *   "longitude",
  *   &value_1,
  *   sizeof(value_1),
- *   TILEDB_LT,
- *   &query_condition_1);
+ *   TILEDB_LT);
  *
- * uint32_t value_2 = 20;
  * tiledb_query_condition_t* query_condition_2;
- * tiledb_query_condition_alloc(
+ * tiledb_query_condition_alloc(ctx, &query_condition_2);
+ * uint32_t value_2 = 20;
+ * tiledb_query_condition_init(
  *   ctx,
+ *   query_condition_2,
  *   "latitude",
  *   &value_2,
  *   sizeof(value_2),
- *   TILEDB_GE,
- *   &query_condition_2);
+ *   TILEDB_GE);
  *
  * tiledb_query_condition_t* query_condition_3;
  * tiledb_query_condition_combine(
@@ -5395,6 +5411,103 @@ TILEDB_EXPORT int32_t tiledb_array_alloc(
     tiledb_ctx_t* ctx, const char* array_uri, tiledb_array_t** array);
 
 /**
+ * Sets the starting timestamp to use when opening (and reopening) the array.
+ * This is an inclusive bound. The default value is `0`.
+ *
+ * **Example:**
+ *
+ * @code{.c}
+ * tiledb_array_t* array;
+ * tiledb_array_alloc(ctx, "s3://tiledb_bucket/my_array", &array);
+ * tiledb_array_set_open_timestamp_start(ctx, array, 1234);
+ * tiledb_array_open(ctx, array, TILEDB_READ);
+ * @endcode
+ *
+ * @param ctx The TileDB context.
+ * @param array The array to set the timestamp on.
+ * @param timestamp_start The epoch timestamp in milliseconds.
+ * @return `TILEDB_OK` for success or `TILEDB_ERR` for error.
+ */
+TILEDB_EXPORT int32_t tiledb_array_set_open_timestamp_start(
+    tiledb_ctx_t* ctx, tiledb_array_t* array, uint64_t timestamp_start);
+
+/**
+ * Sets the ending timestamp to use when opening (and reopening) the array.
+ * This is an inclusive bound. The UINT64_MAX timestamp is a reserved timestamp
+ * that will be interpretted as the current timestamp when an array is opened.
+ * The default value is `UINT64_MAX`.
+ *
+ * **Example:**
+ *
+ * @code{.c}
+ * tiledb_array_t* array;
+ * tiledb_array_alloc(ctx, "s3://tiledb_bucket/my_array", &array);
+ * tiledb_array_set_open_timestamp_end(ctx, array, 5678);
+ * tiledb_array_open(ctx, array, TILEDB_READ);
+ * @endcode
+ *
+ * @param ctx The TileDB context.
+ * @param array The array to set the timestamp on.
+ * @param timestamp_end The epoch timestamp in milliseconds. Use UINT64_MAX for
+ *   the current timestamp.
+ * @return `TILEDB_OK` for success or `TILEDB_ERR` for error.
+ */
+TILEDB_EXPORT int32_t tiledb_array_set_open_timestamp_end(
+    tiledb_ctx_t* ctx, tiledb_array_t* array, uint64_t timestamp_end);
+
+/**
+ * Gets the starting timestamp used when opening (and reopening) the array.
+ * This is an inclusive bound.
+ *
+ * **Example:**
+ *
+ * @code{.c}
+ * tiledb_array_t* array;
+ * tiledb_array_alloc(ctx, "s3://tiledb_bucket/my_array", &array);
+ * tiledb_array_set_open_timestamp_start(ctx, array, 1234);
+ * tiledb_array_open(ctx, array, TILEDB_READ);
+ *
+ * uint64_t timestamp_start;
+ * tiledb_array_get_open_timestamp_start(ctx, array, &timestamp_start);
+ * assert(timestamp_start == 1234);
+ * @endcode
+ *
+ * @param ctx The TileDB context.
+ * @param array The array to set the timestamp on.
+ * @param timestamp_start The output epoch timestamp in milliseconds.
+ * @return `TILEDB_OK` for success or `TILEDB_ERR` for error.
+ */
+TILEDB_EXPORT int32_t tiledb_array_get_open_timestamp_start(
+    tiledb_ctx_t* ctx, tiledb_array_t* array, uint64_t* timestamp_start);
+
+/**
+ * Gets the ending timestamp used when opening (and reopening) the array.
+ * This is an inclusive bound. If UINT64_MAX was set, this will return
+ * the timestamp at the time the array was opened. If the array has not
+ * yet been opened, it will return UINT64_MAX.`
+ *
+ * **Example:**
+ *
+ * @code{.c}
+ * tiledb_array_t* array;
+ * tiledb_array_alloc(ctx, "s3://tiledb_bucket/my_array", &array);
+ * tiledb_array_set_open_timestamp_end(ctx, array, 5678);
+ * tiledb_array_open(ctx, array, TILEDB_READ);
+ *
+ * uint64_t timestamp_end;
+ * tiledb_array_get_open_timestamp_end(ctx, array, &timestamp_end);
+ * assert(timestamp_start == 5678);
+ * @endcode
+ *
+ * @param ctx The TileDB context.
+ * @param array The array to set the timestamp on.
+ * @param timestamp_end The output epoch timestamp in milliseconds.
+ * @return `TILEDB_OK` for success or `TILEDB_ERR` for error.
+ */
+TILEDB_EXPORT int32_t tiledb_array_get_open_timestamp_end(
+    tiledb_ctx_t* ctx, tiledb_array_t* array, uint64_t* timestamp_end);
+
+/**
  * Opens a TileDB array. The array is opened using a query type as input.
  * This is to indicate that queries created for this `tiledb_array_t`
  * object will inherit the query type. In other words, `tiledb_array_t`
@@ -5468,6 +5581,8 @@ TILEDB_EXPORT int32_t tiledb_array_open_at(
     uint64_t timestamp);
 
 /**
+ * This is a deprecated API.
+ *
  * Opens an encrypted array using the given encryption key. This function has
  * the same semantics as `tiledb_array_open()` but is used for encrypted arrays.
  *
@@ -5624,6 +5739,9 @@ TILEDB_EXPORT int32_t tiledb_array_reopen_at(
     tiledb_ctx_t* ctx, tiledb_array_t* array, uint64_t timestamp);
 
 /**
+ * This is a deprecated API. The start/end timestamps for opening an array
+ * are now set in the config.
+ *
  * Returns the timestamp, representing time in milliseconds ellapsed since
  * 1970-01-01 00:00:00 +0000 (UTC), at which the array was opened. See also the
  * documentation of `tiledb_array_open_at`.
@@ -5796,6 +5914,8 @@ TILEDB_EXPORT int32_t tiledb_array_create(
     const tiledb_array_schema_t* array_schema);
 
 /**
+ * This is a deprecated API.
+ *
  * Creates a new encrypted TileDB array given an input schema.
  *
  * Encrypted arrays can only be created through this function.
@@ -5854,6 +5974,8 @@ TILEDB_EXPORT int32_t tiledb_array_consolidate(
     tiledb_ctx_t* ctx, const char* array_uri, tiledb_config_t* config);
 
 /**
+ * This is a deprecated API.
+ *
  * Depending on the consoliation mode in the config, consolidates either the
  * fragment files, fragment metadata files, or array metadata files into a
  * single file.
@@ -6400,6 +6522,8 @@ TILEDB_DEPRECATED_EXPORT int32_t tiledb_array_consolidate_metadata(
     tiledb_ctx_t* ctx, const char* array_uri, tiledb_config_t* config);
 
 /**
+ * This is a deprecated API.
+ *
  * Consolidates the array metadata of an encrypted array into a single file.
  *
  * You must first finalize all queries to the array before consolidation can
@@ -7322,6 +7446,8 @@ TILEDB_EXPORT int32_t tiledb_fragment_info_load(
     tiledb_ctx_t* ctx, tiledb_fragment_info_t* fragment_info);
 
 /**
+ * This is a deprecated API.
+ *
  * Loads the fragment info from an encrypted array.
  *
  * **Example:**

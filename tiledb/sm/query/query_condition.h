@@ -52,26 +52,91 @@ enum class QueryConditionCombinationOp : uint8_t;
 class QueryCondition {
  public:
   /* ********************************* */
+  /*          PUBLIC DATATYPES         */
+  /* ********************************* */
+
+  /** Represents a single, conditional clause. */
+  struct Clause {
+    /** Value constructor. */
+    Clause(
+        std::string&& field_name,
+        const void* const condition_value,
+        const uint64_t condition_value_size,
+        const QueryConditionOp op)
+        : field_name_(std::move(field_name))
+        , op_(op) {
+      condition_value_data_.resize(condition_value_size);
+      condition_value_ =
+          condition_value == nullptr ? nullptr : condition_value_data_.data();
+      if (condition_value != nullptr) {
+        memcpy(
+            condition_value_data_.data(),
+            condition_value,
+            condition_value_size);
+      }
+    };
+
+    /** Copy constructor. */
+    Clause(const Clause& rhs)
+        : field_name_(rhs.field_name_)
+        , condition_value_data_(rhs.condition_value_data_)
+        , condition_value_(
+              rhs.condition_value_ == nullptr ? nullptr :
+                                                condition_value_data_.data())
+        , op_(rhs.op_){};
+
+    /** Move constructor. */
+    Clause(Clause&& rhs)
+        : field_name_(std::move(rhs.field_name_))
+        , condition_value_data_(std::move(rhs.condition_value_data_))
+        , condition_value_(
+              rhs.condition_value_ == nullptr ? nullptr :
+                                                condition_value_data_.data())
+        , op_(rhs.op_){};
+
+    /** Assignment operator. */
+    Clause& operator=(const Clause& rhs) {
+      field_name_ = rhs.field_name_;
+      condition_value_data_ = rhs.condition_value_data_;
+      condition_value_ = rhs.condition_value_ == nullptr ?
+                             nullptr :
+                             condition_value_data_.data();
+      op_ = rhs.op_;
+
+      return *this;
+    }
+
+    /** Move-assignment operator. */
+    Clause& operator=(Clause&& rhs) {
+      field_name_ = std::move(rhs.field_name_);
+      condition_value_data_ = std::move(rhs.condition_value_data_);
+      condition_value_ = rhs.condition_value_ == nullptr ?
+                             nullptr :
+                             condition_value_data_.data();
+      op_ = rhs.op_;
+
+      return *this;
+    }
+
+    /** The attribute name. */
+    std::string field_name_;
+
+    /** The value data. */
+    ByteVecValue condition_value_data_;
+
+    /** The value to compare against. */
+    void* condition_value_;
+
+    /** The comparison operator. */
+    QueryConditionOp op_;
+  };
+
+  /* ********************************* */
   /*     CONSTRUCTORS & DESTRUCTORS    */
   /* ********************************* */
 
   /** Default constructor. */
   QueryCondition();
-
-  /**
-   * Value constructor.
-   *
-   * @param field_name The name of the field this operation applies to.
-   * @param condition_value The value to compare to.
-   * @param condition_value_size The byte size of condition_value.
-   * @param op The relational operation between the value of the field
-   *     and `condition_value`.
-   */
-  QueryCondition(
-      std::string&& field_name,
-      const void* condition_value,
-      uint64_t condition_value_size,
-      QueryConditionOp op);
 
   /** Copy constructor. */
   QueryCondition(const QueryCondition& rhs);
@@ -95,6 +160,21 @@ class QueryCondition {
   /* ********************************* */
   /*                API                */
   /* ********************************* */
+
+  /**
+   * Initializes the instance.
+   *
+   * @param field_name The name of the field this operation applies to.
+   * @param condition_value The value to compare to.
+   * @param condition_value_size The byte size of condition_value.
+   * @param op The relational operation between the value of the field
+   *     and `condition_value`.
+   */
+  Status init(
+      std::string&& field_name,
+      const void* condition_value,
+      uint64_t condition_value_size,
+      QueryConditionOp op);
 
   /**
    * Verifies that the current state contains supported comparison
@@ -146,65 +226,35 @@ class QueryCondition {
       std::vector<ResultCellSlab>* result_cell_slabs,
       uint64_t stride) const;
 
+  /**
+   * Sets the clauses. This is internal state to only be used in
+   * the serialization path.
+   */
+  void set_clauses(std::vector<Clause>&& clauses);
+
+  /**
+   * Sets the combination ops. This is internal state to only be used in
+   * the serialization path.
+   */
+  void set_combination_ops(
+      std::vector<QueryConditionCombinationOp>&& combination_ops);
+
+  /**
+   * Returns the clauses. This is internal state to only be used in
+   * the serialization path.
+   */
+  std::vector<Clause> clauses() const;
+
+  /**
+   * Returns the combination ops. This is internal state to only be used in
+   * the serialization path.
+   */
+  std::vector<QueryConditionCombinationOp> combination_ops() const;
+
  private:
   /* ********************************* */
   /*         PRIVATE DATATYPES         */
   /* ********************************* */
-
-  /** Represents a single, conditional clause. */
-  struct Clause {
-    /** Value constructor. */
-    Clause(
-        std::string&& field_name,
-        const void* const condition_value,
-        const uint64_t condition_value_size,
-        const QueryConditionOp op)
-        : field_name_(std::move(field_name))
-        , op_(op) {
-      condition_value_.resize(condition_value_size);
-      std::memcpy(
-          condition_value_.data(), condition_value, condition_value_size);
-    };
-
-    /** Copy constructor. */
-    Clause(const Clause& rhs)
-        : field_name_(rhs.field_name_)
-        , condition_value_(rhs.condition_value_)
-        , op_(rhs.op_){};
-
-    /** Move constructor. */
-    Clause(Clause&& rhs)
-        : field_name_(std::move(rhs.field_name_))
-        , condition_value_(std::move(rhs.condition_value_))
-        , op_(rhs.op_){};
-
-    /** Assignment operator. */
-    Clause& operator=(const Clause& rhs) {
-      field_name_ = rhs.field_name_;
-      condition_value_ = rhs.condition_value_;
-      op_ = rhs.op_;
-
-      return *this;
-    }
-
-    /** Move-assignment operator. */
-    Clause& operator=(Clause&& rhs) {
-      field_name_ = std::move(rhs.field_name_);
-      condition_value_ = std::move(rhs.condition_value_);
-      op_ = rhs.op_;
-
-      return *this;
-    }
-
-    /** The attribute name. */
-    std::string field_name_;
-
-    /** The value to compare against. */
-    ByteVecValue condition_value_;
-
-    /** The comparison operator. */
-    QueryConditionOp op_;
-  };
 
   /**
    * Performs a binary comparison between two primitive types.
@@ -241,6 +291,8 @@ class QueryCondition {
    *
    * @param clause The clause to apply.
    * @param stride The stride between cells.
+   * @param var_size The attribute is var sized or not.
+   * @param nullable The attribute is nullable or not.
    * @param fill_value The fill value for the cells.
    * @param result_cell_slabs The input cell slabs.
    * @param out_result_cell_slabs The filtered cell slabs.
@@ -249,6 +301,8 @@ class QueryCondition {
   void apply_clause(
       const Clause& clause,
       uint64_t stride,
+      const bool var_size,
+      const bool nullable,
       const ByteVecValue& fill_value,
       const std::vector<ResultCellSlab>& result_cell_slabs,
       std::vector<ResultCellSlab>* out_result_cell_slabs) const;
@@ -258,6 +312,8 @@ class QueryCondition {
    *
    * @param clause The clause to apply.
    * @param stride The stride between cells.
+   * @param var_size The attribute is var sized or not.
+   * @param nullable The attribute is nullable or not.
    * @param fill_value The fill value for the cells.
    * @param result_cell_slabs The input cell slabs.
    * @param out_result_cell_slabs The filtered cell slabs.
@@ -266,6 +322,8 @@ class QueryCondition {
   Status apply_clause(
       const Clause& clause,
       uint64_t stride,
+      const bool var_size,
+      const bool nullable,
       const ByteVecValue& fill_value,
       const std::vector<ResultCellSlab>& result_cell_slabs,
       std::vector<ResultCellSlab>* out_result_cell_slabs) const;

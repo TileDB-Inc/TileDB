@@ -118,13 +118,15 @@ class Reader {
   /**
    * Constructor.
    *
-   * @param array_schema The array schema.
-   * @param fragment_metadata The fragment metadata.
+   * @param parent_stats The parent stats to inherit from.
    */
-  Reader();
+  Reader(stats::Stats* parent_stats);
 
   /** Destructor. */
   ~Reader();
+
+  DISABLE_COPY_AND_COPY_ASSIGN(Reader);
+  DISABLE_MOVE_AND_MOVE_ASSIGN(Reader);
 
   /* ********************************* */
   /*                 API               */
@@ -322,7 +324,10 @@ class Reader {
   /** Returns the cell layout. */
   Layout layout() const;
 
-  /** Returns the conditions. */
+  /**
+   * Returns a const-pointer to the internal condition.
+   * @return QueryCondition
+   */
   const QueryCondition* condition() const;
 
   /** Returns `true` if no results were retrieved after a query. */
@@ -946,7 +951,7 @@ class Reader {
   /* ********************************* */
 
   /** The class stats. */
-  tdb_shared_ptr<stats::Stats> stats_;
+  stats::Stats* stats_;
 
   /** The array. */
   const Array* array_;
@@ -1010,6 +1015,9 @@ class Reader {
 
   /** Correctness checks for `subarray_`. */
   Status check_subarray() const;
+
+  /** Correctness checks validity buffer sizes in `buffers_`. */
+  Status check_validity_buffer_sizes() const;
 
   /**
    * Deletes the tiles on the input attribute/dimension from the result tiles.

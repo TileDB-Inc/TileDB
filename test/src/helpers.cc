@@ -34,6 +34,8 @@
 #include "catch.hpp"
 #include "tiledb/sm/c_api/tiledb_struct_def.h"
 #include "tiledb/sm/cpp_api/tiledb"
+#include "tiledb/sm/enums/encryption_type.h"
+#include "tiledb/sm/global_state/unit_test_config.h"
 #include "tiledb/sm/misc/constants.h"
 #include "tiledb/sm/misc/tile_overlap.h"
 #include "tiledb/sm/misc/uri.h"
@@ -1018,18 +1020,27 @@ void write_array(
   tiledb_error_t* err = nullptr;
   REQUIRE(tiledb_config_alloc(&cfg, &err) == TILEDB_OK);
   REQUIRE(err == nullptr);
-  rc = tiledb_config_set(
-      cfg, "sm.array.timestamp_end", std::to_string(timestamp).c_str(), &err);
+
+  rc = tiledb_array_set_open_timestamp_end(ctx, array, timestamp);
   REQUIRE(rc == TILEDB_OK);
-  REQUIRE(err == nullptr);
-  rc = tiledb_array_set_config(ctx, array, cfg);
-  REQUIRE(rc == TILEDB_OK);
+
   // Open array
-  if (encryption_type == TILEDB_NO_ENCRYPTION)
-    rc = tiledb_array_open(ctx, array, TILEDB_WRITE);
-  else
-    rc = tiledb_array_open_with_key(
-        ctx, array, TILEDB_WRITE, encryption_type, key, key_len);
+  if (encryption_type != TILEDB_NO_ENCRYPTION) {
+    std::string encryption_type_string =
+        encryption_type_str((tiledb::sm::EncryptionType)encryption_type);
+    rc = tiledb_config_set(
+        cfg, "sm.encryption_type", encryption_type_string.c_str(), &err);
+    REQUIRE(rc == TILEDB_OK);
+    REQUIRE(err == nullptr);
+    rc = tiledb_config_set(cfg, "sm.encryption_key", key, &err);
+    REQUIRE(rc == TILEDB_OK);
+    REQUIRE(err == nullptr);
+    rc = tiledb_array_set_config(ctx, array, cfg);
+    REQUIRE(rc == TILEDB_OK);
+    tiledb::sm::UnitTestConfig::instance().array_encryption_key_length.set(
+        key_len);
+  }
+  rc = tiledb_array_open(ctx, array, TILEDB_WRITE);
   CHECK(rc == TILEDB_OK);
 
   // Create query

@@ -170,6 +170,7 @@ class Subarray {
    * Constructor.
    *
    * @param array The array the subarray is associated with.
+   * @param parent_stats The parent stats to inherit from.
    * @param coalesce_ranges When enabled, ranges will attempt to coalesce
    *     with existing ranges as they are added.
    */
@@ -185,6 +186,7 @@ class Subarray {
    * @param layout The layout of the values of the subarray (of the results
    *     if the subarray is used for reads, or of the values provided
    *     by the user for writes).
+   * @param parent_stats The parent stats to inherit from.
    * @param coalesce_ranges When enabled, ranges will attempt to coalesce
    *     with existing ranges as they are added.
    */

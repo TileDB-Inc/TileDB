@@ -1,5 +1,5 @@
 /**
- * @file query_condition_condition_op.h
+ * @file query_condition_combination_op.h
  *
  * @section LICENSE
  *

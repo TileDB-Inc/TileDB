@@ -101,21 +101,26 @@ std::string Stats::dump() const {
   std::stringstream ss;
   ss << "--- Timers ---\n\n";
   for (const auto& timer : sorted_timers) {
-    ss << timer.first << ": " << timer.second << "\n";
     if (utils::parse::ends_with(timer.first, ".sum")) {
+      ss << timer.first << ": " << timer.second << "\n";
       auto stat = timer.first.substr(
-          0, timer.first.size() - std::string(".sec.sum").size());
-      auto it = flattened_counters.find(stat + ".count");
+          0, timer.first.size() - std::string(".sum").size());
+      auto it = flattened_counters.find(stat + ".timer_count");
       assert(it != flattened_counters.end());
       auto avg = timer.second / it->second;
-      ss << stat + ".sec.avg"
+      ss << stat + ".avg"
          << ": " << avg << "\n";
     }
   }
   ss << "\n";
   ss << "--- Counters ---\n\n";
-  for (const auto& counter : sorted_counters)
+  for (const auto& counter : sorted_counters) {
+    // Ignore the reserved "timer_count" counters.
+    if (utils::parse::ends_with(counter.first, ".timer_count")) {
+      continue;
+    }
     ss << counter.first << ": " << counter.second << "\n";
+  }
   ss << "\n";
 
   return ss.str();
@@ -183,6 +188,14 @@ void Stats::end_timer(const std::string& stat) {
     if (duration.count() > it3->second)
       it3->second = duration.count();
   }
+
+  // Increment the timer counter
+  auto it4 = counters_.find(new_stat + ".timer_count");
+  if (it4 == counters_.end()) {  // Timer not found
+    counters_[new_stat + ".timer_count"] = 1;
+  } else {  // Timer found
+    it4->second += 1;
+  }
 }
 
 #else
@@ -191,9 +204,9 @@ void Stats::add_counter(const std::string& stat, uint64_t count) {
   (void)stat;
   (void)count;
 }
-
-void Stats::start_timer(const std::string& stat) {
+ScopedExecutor Stats::start_timer(const std::string& stat) {
   (void)stat;
+  return ScopedExecutor();
 }
 
 void Stats::end_timer(const std::string& stat) {

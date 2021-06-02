@@ -291,6 +291,9 @@ class ArraySchema {
   /** Set version of schema, only used for serialization */
   void set_version(uint32_t version);
 
+  /** Returns the version to write in. */
+  uint32_t write_version() const;
+
   /** Returns the array schema version. */
   uint32_t version() const;
 

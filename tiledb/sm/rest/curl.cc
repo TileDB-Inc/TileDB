@@ -425,8 +425,12 @@ Status Curl::set_content_type(
 }
 
 Status Curl::make_curl_request(
-    const char* url, CURLcode* curl_code, Buffer* returned_data) const {
+    stats::Stats* const stats,
+    const char* url,
+    CURLcode* curl_code,
+    Buffer* returned_data) const {
   return make_curl_request_common(
+      stats,
       url,
       curl_code,
       &write_memory_callback,
@@ -434,12 +438,20 @@ Status Curl::make_curl_request(
 }
 
 Status Curl::make_curl_request(
-    const char* url, CURLcode* curl_code, PostResponseCb&& cb) const {
+    stats::Stats* const stats,
+    const char* url,
+    CURLcode* curl_code,
+    PostResponseCb&& cb) const {
   return make_curl_request_common(
-      url, curl_code, &write_memory_callback_cb, static_cast<void*>(&cb));
+      stats,
+      url,
+      curl_code,
+      &write_memory_callback_cb,
+      static_cast<void*>(&cb));
 }
 
 Status Curl::make_curl_request_common(
+    stats::Stats* const stats,
     const char* const url,
     CURLcode* const curl_code,
     size_t (*write_cb)(void*, size_t, size_t, void*),
@@ -542,9 +554,8 @@ Status Curl::make_curl_request_common(
           retry_delay,
           i);
       // Increment counter for number of retries
-      STATS_ADD_COUNTER(stats::GlobalStats::CounterType::REST_HTTP_RETRIES, 1);
-      STATS_ADD_COUNTER(
-          stats::GlobalStats::CounterType::REST_HTTP_RETRY_TIME, retry_delay)
+      stats->add_counter("rest_http_retries", 1);
+      stats->add_counter("rest_http_retry_time", retry_delay);
       // Sleep for retry delay
       std::this_thread::sleep_for(std::chrono::milliseconds(retry_delay));
       // Increment retry delay, cast to uint64_t and we can ignore any rounding
@@ -635,6 +646,7 @@ std::string Curl::get_curl_errstr(CURLcode curl_code) const {
 }
 
 Status Curl::post_data(
+    stats::Stats* const stats,
     const std::string& url,
     const SerializationType serialization_type,
     const BufferList* data,
@@ -645,7 +657,7 @@ Status Curl::post_data(
 
   CURLcode ret;
   headerData.uri = &res_uri;
-  auto st = make_curl_request(url.c_str(), &ret, returned_data);
+  auto st = make_curl_request(stats, url.c_str(), &ret, returned_data);
   curl_slist_free_all(headers);
   RETURN_NOT_OK(st);
 
@@ -656,9 +668,11 @@ Status Curl::post_data(
 }
 
 Status Curl::post_data(
+    stats::Stats* const stats,
     const std::string& url,
     const SerializationType serialization_type,
     const BufferList* data,
+    Buffer* const returned_data,
     PostResponseCb&& cb,
     const std::string& res_uri) {
   struct curl_slist* headers;
@@ -666,12 +680,12 @@ Status Curl::post_data(
 
   CURLcode ret;
   headerData.uri = &res_uri;
-  auto st = make_curl_request(url.c_str(), &ret, std::move(cb));
+  auto st = make_curl_request(stats, url.c_str(), &ret, std::move(cb));
   curl_slist_free_all(headers);
   RETURN_NOT_OK(st);
 
   // Check for errors
-  RETURN_NOT_OK(check_curl_errors(ret, "POST"));
+  RETURN_NOT_OK(check_curl_errors(ret, "POST", returned_data));
 
   return Status::Ok();
 }
@@ -716,6 +730,7 @@ Status Curl::post_data_common(
 }
 
 Status Curl::get_data(
+    stats::Stats* const stats,
     const std::string& url,
     SerializationType serialization_type,
     Buffer* returned_data,
@@ -737,7 +752,7 @@ Status Curl::get_data(
 
   CURLcode ret;
   headerData.uri = &res_ns_uri;
-  auto st = make_curl_request(url.c_str(), &ret, returned_data);
+  auto st = make_curl_request(stats, url.c_str(), &ret, returned_data);
   curl_slist_free_all(headers);
   RETURN_NOT_OK(st);
 
@@ -748,6 +763,7 @@ Status Curl::get_data(
 }
 
 Status Curl::delete_data(
+    stats::Stats* const stats,
     const std::string& url,
     SerializationType serialization_type,
     Buffer* returned_data,
@@ -772,7 +788,7 @@ Status Curl::delete_data(
 
   CURLcode ret;
   headerData.uri = &res_uri;
-  auto st = make_curl_request(url.c_str(), &ret, returned_data);
+  auto st = make_curl_request(stats, url.c_str(), &ret, returned_data);
 
   // Erase record in case of de-registered array
   std::unique_lock<std::mutex> rd_lck(*(headerData.redirect_uri_map_lock));

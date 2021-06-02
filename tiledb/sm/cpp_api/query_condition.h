@@ -49,77 +49,13 @@ class QueryCondition {
 
   /**
    * Creates a TileDB query condition object.
-   *
-   * **Example:**
-   *
-   * @code{.cpp}
-   * tiledb::Context ctx;
-   * tiledb::Array array(ctx, "my_array", TILEDB_READ);
-   * tiledb::Query query(ctx, array, TILEDB_READ);
-   *
-   * int cmp_value = 5;
-   * tiledb::QueryCondition qc(ctx, "a1", &cmp_value, sizeof(int), TILEDB_LT);
-   * query.set_condition(qc);
-   * @endcode
-   *
    * @param ctx TileDB context.
-   * @param attribute_name The name of the attribute to compare against.
-   * @param condition_value The fixed value to compare against.
-   * @param condition_value_size The byte size of `condition_value`.
-   * @param op The comparison operation between each cell value and
-   * `condition_value`.
    */
-  QueryCondition(
-      const Context& ctx,
-      const std::string& attribute_name,
-      const void* condition_value,
-      uint64_t condition_value_size,
-      tiledb_query_condition_op_t op)
+  QueryCondition(const Context& ctx)
       : ctx_(ctx) {
     tiledb_query_condition_t* qc;
-    ctx.handle_error(tiledb_query_condition_alloc(
-        ctx.ptr().get(),
-        attribute_name.c_str(),
-        condition_value,
-        condition_value_size,
-        op,
-        &qc));
+    ctx.handle_error(tiledb_query_condition_alloc(ctx.ptr().get(), &qc));
     query_condition_ = std::shared_ptr<tiledb_query_condition_t>(qc, deleter_);
-  }
-
-  /**
-   * Creates a TileDB query condition object.
-   *
-   * **Example:**
-   *
-   * @code{.cpp}
-   * tiledb::Context ctx;
-   * tiledb::Array array(ctx, "my_array", TILEDB_READ);
-   * tiledb::Query query(ctx, array, TILEDB_READ);
-   *
-   * int cmp_value = 5;
-   * tiledb::QueryCondition qc(ctx, "a1", &cmp_value, sizeof(int), TILEDB_LT);
-   * query.set_condition(qc);
-   * @endcode
-   *
-   * @param ctx TileDB context.
-   * @param attribute_name The name of the attribute to compare against.
-   * @param condition_value The fixed value to compare against.
-   * @param condition_value_size The byte size of `condition_value`.
-   * @param op The comparison operation between each cell value and
-   * `condition_value`.
-   */
-  QueryCondition(
-      const Context& ctx,
-      const std::string& attribute_name,
-      const std::string& condition_value,
-      tiledb_query_condition_op_t op)
-      : QueryCondition(
-            ctx,
-            attribute_name,
-            condition_value.c_str(),
-            condition_value.size(),
-            op) {
   }
 
   /** Copy constructor. */
@@ -130,6 +66,18 @@ class QueryCondition {
 
   /** Destructor. */
   ~QueryCondition() = default;
+
+  /**
+   * Constructs an instance directly from a C-API query condition object.
+   *
+   * @param ctx The TileDB context.
+   * @param qc The C-API query condition object.
+   */
+  QueryCondition(const Context& ctx, tiledb_query_condition_t* const qc)
+      : ctx_(ctx)
+      , query_condition_(
+            std::shared_ptr<tiledb_query_condition_t>(qc, deleter_)) {
+  }
 
   /* ********************************* */
   /*     CONSTRUCTORS & DESTRUCTORS    */
@@ -144,6 +92,81 @@ class QueryCondition {
   /* ********************************* */
   /*                API                */
   /* ********************************* */
+
+  /**
+   * Initialize a TileDB query condition object.
+   *
+   * **Example:**
+   *
+   * @code{.cpp}
+   * tiledb::Context ctx;
+   * tiledb::Array array(ctx, "my_array", TILEDB_READ);
+   * tiledb::Query query(ctx, array, TILEDB_READ);
+   *
+   * int cmp_value = 5;
+   * tiledb::QueryCondition qc;
+   * qc.init(ctx, "a1", &cmp_value, sizeof(int), TILEDB_LT);
+   * query.set_condition(qc);
+   * @endcode
+   *
+   * @param ctx TileDB context.
+   * @param attribute_name The name of the attribute to compare against.
+   * @param condition_value The fixed value to compare against.
+   * @param condition_value_size The byte size of `condition_value`.
+   * @param op The comparison operation between each cell value and
+   * `condition_value`.
+   */
+  void init(
+      const std::string& attribute_name,
+      const void* condition_value,
+      uint64_t condition_value_size,
+      tiledb_query_condition_op_t op) {
+    auto& ctx = ctx_.get();
+    ctx.handle_error(tiledb_query_condition_init(
+        ctx.ptr().get(),
+        query_condition_.get(),
+        attribute_name.c_str(),
+        condition_value,
+        condition_value_size,
+        op));
+  }
+
+  /**
+   * Initializes a TileDB query condition object.
+   *
+   * **Example:**
+   *
+   * @code{.cpp}
+   * tiledb::Context ctx;
+   * tiledb::Array array(ctx, "my_array", TILEDB_READ);
+   * tiledb::Query query(ctx, array, TILEDB_READ);
+   *
+   * int cmp_value = 5;
+   * tiledb::QueryCondition qc;
+   * qc.init(ctx, "a1", &cmp_value, sizeof(int), TILEDB_LT);
+   * query.set_condition(qc);
+   * @endcode
+   *
+   * @param ctx TileDB context.
+   * @param attribute_name The name of the attribute to compare against.
+   * @param condition_value The fixed value to compare against.
+   * @param condition_value_size The byte size of `condition_value`.
+   * @param op The comparison operation between each cell value and
+   * `condition_value`.
+   */
+  void init(
+      const std::string& attribute_name,
+      const std::string& condition_value,
+      tiledb_query_condition_op_t op) {
+    auto& ctx = ctx_.get();
+    ctx.handle_error(tiledb_query_condition_init(
+        ctx.ptr().get(),
+        query_condition_.get(),
+        attribute_name.c_str(),
+        condition_value.c_str(),
+        condition_value.size(),
+        op));
+  }
 
   /** Returns a shared pointer to the C TileDB query condition object. */
   std::shared_ptr<tiledb_query_condition_t> ptr() const {
@@ -214,7 +237,8 @@ class QueryCondition {
       const std::string& attribute_name,
       const std::string& value,
       tiledb_query_condition_op_t op) {
-    QueryCondition qc(ctx, attribute_name, value, op);
+    QueryCondition qc(ctx);
+    qc.init(attribute_name, value, op);
     return qc;
   }
 
@@ -245,27 +269,12 @@ class QueryCondition {
       const std::string& attribute_name,
       T value,
       tiledb_query_condition_op_t op) {
-    QueryCondition qc(ctx, attribute_name, &value, sizeof(T), op);
+    QueryCondition qc(ctx);
+    qc.init(attribute_name, &value, sizeof(T), op);
     return qc;
   }
 
  private:
-  /* ********************************* */
-  /*        PRIVATE CONSTRUCTORS       */
-  /* ********************************* */
-
-  /**
-   * Constructs an instance directly from a C-API query condition object.
-   *
-   * @param ctx The TileDB context.
-   * @param qc The C-API query condition object.
-   */
-  QueryCondition(const Context& ctx, tiledb_query_condition_t* const qc)
-      : ctx_(ctx)
-      , query_condition_(
-            std::shared_ptr<tiledb_query_condition_t>(qc, deleter_)) {
-  }
-
   /* ********************************* */
   /*         PRIVATE ATTRIBUTES        */
   /* ********************************* */

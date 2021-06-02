@@ -53,6 +53,7 @@
 #include "tiledb/sm/fragment/single_fragment_info.h"
 #include "tiledb/sm/misc/cancelable_tasks.h"
 #include "tiledb/sm/misc/uri.h"
+#include "tiledb/sm/stats/global_stats.h"
 
 using namespace tiledb::common;
 
@@ -109,10 +110,14 @@ class StorageManager {
   /* ********************************* */
 
   /** Constructor. */
-  StorageManager(ThreadPool* compute_tp, ThreadPool* io_tp);
+  StorageManager(
+      ThreadPool* compute_tp, ThreadPool* io_tp, stats::Stats* parent_stats);
 
   /** Destructor. */
   ~StorageManager();
+
+  DISABLE_COPY_AND_COPY_ASSIGN(StorageManager);
+  DISABLE_MOVE_AND_MOVE_ASSIGN(StorageManager);
 
   /* ********************************* */
   /*                API                */
@@ -169,24 +174,18 @@ class StorageManager {
       uint64_t timestamp_end);
 
   /**
-   * Opens an array for reads, focusing only on a given list of fragments.
-   * Only the metadata of the input fragments are retrieved.
+   * Opens an array for reads without fragments.
    *
    * @param array_uri The array URI.
-   * @param fragment_info Info about the fragments to open the array with.
    * @param enc_key The encryption key to use.
    * @param array_schema The array schema to be retrieved after the
    *     array is opened.
-   * @param fragment_metadata The fragment metadata to be retrieved
-   *     after the array is opened.
    * @return Status
    */
-  Status array_open_for_reads(
+  Status array_open_for_reads_without_fragments(
       const URI& array_uri,
-      const FragmentInfo& fragment_info,
       const EncryptionKey& enc_key,
-      ArraySchema** array_schema,
-      std::vector<FragmentMetadata*>* fragment_metadata);
+      ArraySchema** array_schema);
 
   /** Opens an array for writes.
    *
@@ -200,6 +199,22 @@ class StorageManager {
       const URI& array_uri,
       const EncryptionKey& enc_key,
       ArraySchema** array_schema);
+
+  /**
+   * Load fragments for an already open array.
+   *
+   * @param array_uri The array URI.
+   * @param enc_key The encryption key to use.
+   * @param fragment_metadata The fragment metadata to be retrieved
+   *     after the array is opened.
+   * @param fragment_info The list of fragment info.
+   * @return Status
+   */
+  Status array_load_fragments(
+      const URI& array_uri,
+      const EncryptionKey& enc_key,
+      std::vector<FragmentMetadata*>* fragment_metadata,
+      const std::vector<TimestampedURI>& fragment_info);
 
   /**
    * Reopens an already open array at a potentially new timestamp,
@@ -507,12 +522,11 @@ class StorageManager {
    * Gets the fragment information for a given array at a particular
    * timestamp.
    *
-   * @param array_schema The array schema.
+   * @param array The array.
    * @param timestamp_start The function will consider fragments created
    *     at or after this timestamp.
    * @param timestamp_end The function will consider fragments created
    *     at or before this timestamp.
-   * @param encryption_key The encryption key in case the array is encrypted.
    * @param fragment_info The fragment information to be retrieved.
    *     The fragments are sorted in chronological creation order.
    * @param get_to_vacuum Whether or not to receive information about
@@ -520,49 +534,22 @@ class StorageManager {
    * @return Status
    */
   Status get_fragment_info(
-      const ArraySchema* array_schema,
+      const Array& array,
       uint64_t timestamp_start,
       uint64_t timestamp_end,
-      const EncryptionKey& encryption_key,
-      FragmentInfo* fragment_info,
-      bool get_to_vacuum = false);
-
-  /**
-   * Gets the fragment information for a given array at a particular
-   * timestamp.
-   *
-   * @param array_uri The array URI.
-   * @param timestamp_start The function will consider fragments created
-   *     at or after this timestamp.
-   * @param timestamp_end The function will consider fragments created
-   *     at or before this timestamp.
-   * @param encryption_key The encryption key in case the array is encrypted.
-   * @param fragment_info The fragment information to be retrieved.
-   *     The fragments are sorted in chronological creation order.
-   * @param get_to_vacuum Whether or not to receive information about
-   *     fragments to vacuum.
-   * @return Status
-   */
-  Status get_fragment_info(
-      const URI& array_uri,
-      uint64_t timestamp_start,
-      uint64_t timestamp_end,
-      const EncryptionKey& encryption_key,
       FragmentInfo* fragment_info,
       bool get_to_vacuum = false);
 
   /**
    * Gets the fragment info for a single fragment URI.
    *
-   * @param array_schema The array schema.
-   * @param encryption_key The encryption key.
+   * @param array The array.
    * @param fragment_uri The fragment URI.
    * @param fragment_info The fragment info to retrieve.
    * @return Status
    */
   Status get_fragment_info(
-      const ArraySchema* array_schema,
-      const EncryptionKey& encryption_key,
+      const Array& array,
       const URI& fragment_uri,
       SingleFragmentInfo* fragment_info);
 
@@ -920,6 +907,9 @@ class StorageManager {
    */
   Status write(const URI& uri, void* data, uint64_t size) const;
 
+  /** Returns `stats_`. */
+  stats::Stats* stats();
+
  private:
   /* ********************************* */
   /*        PRIVATE DATATYPES          */
@@ -951,6 +941,9 @@ class StorageManager {
   /* ********************************* */
   /*        PRIVATE ATTRIBUTES         */
   /* ********************************* */
+
+  /** The class stats. */
+  stats::Stats* stats_;
 
   /** Set to true when tasks are being cancelled. */
   bool cancellation_in_progress_;
@@ -1167,7 +1160,8 @@ class StorageManager {
       uint64_t timestamp_start,
       uint64_t timestamp_end,
       std::vector<URI>* to_vacuum,
-      std::vector<URI>* vac_uris) const;
+      std::vector<URI>* vac_uris,
+      bool allow_partial = true) const;
 
   /** Block until there are zero in-progress queries. */
   void wait_for_zero_in_progress();

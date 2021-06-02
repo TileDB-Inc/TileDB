@@ -122,6 +122,9 @@ class Query {
   /** Destructor. */
   ~Query();
 
+  DISABLE_COPY_AND_COPY_ASSIGN(Query);
+  DISABLE_MOVE_AND_MOVE_ASSIGN(Query);
+
   /* ********************************* */
   /*                 API               */
   /* ********************************* */
@@ -461,6 +464,12 @@ class Query {
   /** Returns the cell layout. */
   Layout layout() const;
 
+  /**
+   * Returns the condition for filtering results in a read query.
+   * @return QueryCondition
+   */
+  const QueryCondition* condition() const;
+
   /** Processes a query. */
   Status process();
 
@@ -741,6 +750,9 @@ class Query {
 
   /** The query type. */
   QueryType type_;
+
+  /** The class stats. */
+  stats::Stats* stats_;
 
   /** Query reader. */
   Reader reader_;

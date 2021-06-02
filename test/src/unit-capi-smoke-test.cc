@@ -39,6 +39,7 @@
 #include "tiledb/sm/filesystem/posix.h"
 #endif
 #include "tiledb/sm/c_api/tiledb.h"
+#include "tiledb/sm/enums/encryption_type.h"
 #include "tiledb/sm/misc/utils.h"
 
 #include <iostream>
@@ -522,19 +523,27 @@ void SmokeTestFx::write(
   int rc =
       tiledb_array_alloc(ctx_, (FILE_TEMP_DIR + array_name).c_str(), &array);
   REQUIRE(rc == TILEDB_OK);
-  if (encryption_type == TILEDB_NO_ENCRYPTION) {
-    rc = tiledb_array_open(ctx_, array, TILEDB_WRITE);
+  if (encryption_type != TILEDB_NO_ENCRYPTION) {
+    tiledb_config_t* cfg;
+    tiledb_error_t* err = nullptr;
+    rc = tiledb_config_alloc(&cfg, &err);
     REQUIRE(rc == TILEDB_OK);
-  } else {
-    rc = tiledb_array_open_with_key(
-        ctx_,
-        array,
-        TILEDB_WRITE,
-        encryption_type,
-        encryption_key,
-        (uint32_t)strlen(encryption_key));
+    REQUIRE(err == nullptr);
+    std::string encryption_type_string =
+        encryption_type_str((tiledb::sm::EncryptionType)encryption_type);
+    rc = tiledb_config_set(
+        cfg, "sm.encryption_type", encryption_type_string.c_str(), &err);
     REQUIRE(rc == TILEDB_OK);
+    REQUIRE(err == nullptr);
+    rc = tiledb_config_set(cfg, "sm.encryption_key", encryption_key, &err);
+    REQUIRE(rc == TILEDB_OK);
+    REQUIRE(err == nullptr);
+    rc = tiledb_array_set_config(ctx_, array, cfg);
+    REQUIRE(rc == TILEDB_OK);
+    tiledb_config_free(&cfg);
   }
+  rc = tiledb_array_open(ctx_, array, TILEDB_WRITE);
+  REQUIRE(rc == TILEDB_OK);
 
   // Create the write query.
   tiledb_query_t* query;
@@ -600,19 +609,27 @@ void SmokeTestFx::read(
   int rc =
       tiledb_array_alloc(ctx_, (FILE_TEMP_DIR + array_name).c_str(), &array);
   REQUIRE(rc == TILEDB_OK);
-  if (encryption_type == TILEDB_NO_ENCRYPTION) {
-    rc = tiledb_array_open(ctx_, array, TILEDB_READ);
+  if (encryption_type != TILEDB_NO_ENCRYPTION) {
+    tiledb_config_t* cfg;
+    tiledb_error_t* err = nullptr;
+    rc = tiledb_config_alloc(&cfg, &err);
     REQUIRE(rc == TILEDB_OK);
-  } else {
-    rc = tiledb_array_open_with_key(
-        ctx_,
-        array,
-        TILEDB_READ,
-        encryption_type,
-        encryption_key,
-        (uint32_t)strlen(encryption_key));
+    REQUIRE(err == nullptr);
+    std::string encryption_type_string =
+        encryption_type_str((tiledb::sm::EncryptionType)encryption_type);
+    rc = tiledb_config_set(
+        cfg, "sm.encryption_type", encryption_type_string.c_str(), &err);
     REQUIRE(rc == TILEDB_OK);
+    REQUIRE(err == nullptr);
+    rc = tiledb_config_set(cfg, "sm.encryption_key", encryption_key, &err);
+    REQUIRE(rc == TILEDB_OK);
+    REQUIRE(err == nullptr);
+    rc = tiledb_array_set_config(ctx_, array, cfg);
+    REQUIRE(rc == TILEDB_OK);
+    tiledb_config_free(&cfg);
   }
+  rc = tiledb_array_open(ctx_, array, TILEDB_READ);
+  REQUIRE(rc == TILEDB_OK);
 
   // Create the read query.
   tiledb_query_t* query;
@@ -651,13 +668,15 @@ void SmokeTestFx::read(
   tiledb_query_condition_t* combined_query_condition = nullptr;
   for (size_t i = 0; i < test_query_conditions.size(); ++i) {
     tiledb_query_condition_t* query_condition;
-    rc = tiledb_query_condition_alloc(
+    rc = tiledb_query_condition_alloc(ctx_, &query_condition);
+    REQUIRE(rc == TILEDB_OK);
+    rc = tiledb_query_condition_init(
         ctx_,
+        query_condition,
         test_query_conditions[i]->name_.c_str(),
         test_query_conditions[i]->value(),
         test_query_conditions[i]->value_size(),
-        test_query_conditions[i]->op_,
-        &query_condition);
+        test_query_conditions[i]->op_);
     REQUIRE(rc == TILEDB_OK);
 
     if (i == 0) {
