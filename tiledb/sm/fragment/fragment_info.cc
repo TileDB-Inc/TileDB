@@ -34,6 +34,7 @@
 #include "tiledb/common/logger.h"
 #include "tiledb/sm/array/array.h"
 #include "tiledb/sm/enums/encryption_type.h"
+#include "tiledb/sm/enums/query_type.h"
 #include "tiledb/sm/global_state/unit_test_config.h"
 #include "tiledb/sm/misc/utils.h"
 
@@ -59,6 +60,8 @@ FragmentInfo::FragmentInfo(
 }
 
 FragmentInfo::~FragmentInfo() {
+  if (array_->is_open())
+    array_->close();
   tdb_delete(array_);
 }
 
@@ -730,6 +733,9 @@ Status FragmentInfo::load(
     return LOG_STATUS(Status::FragmentInfoError(msg));
   }
 
+  if (array_->is_open())
+    array_->close();
+
   if (encryption_type == EncryptionType::NO_ENCRYPTION) {
     bool found = false;
     std::string encryption_key_from_cfg =
@@ -769,8 +775,7 @@ Status FragmentInfo::load(
 
   auto timestamp = utils::time::timestamp_now_ms();
   RETURN_NOT_OK_ELSE(
-      storage_manager_->get_fragment_info(array_, 0, timestamp, this, true),
-      array_->close());
+      array_->get_fragment_info(0, timestamp, this, true), array_->close());
 
   unconsolidated_metadata_num_ = 0;
   for (const auto& f : fragments_)
