@@ -98,11 +98,25 @@ void GlobalStats::register_stats(const tdb_shared_ptr<Stats>& stats) {
 std::string GlobalStats::dump_registered_stats() const {
   std::stringstream ss;
 
-  for (const auto& stats : registered_stats_) {
-    const std::string stats_dump = stats->dump();
-    if (!stats_dump.empty())
+  ss << "[\n";
+
+  bool printed_first_stats = false;
+  auto iter = registered_stats_.begin();
+  while (iter != registered_stats_.end()) {
+    const uint64_t indent_size = 2;
+    const std::string stats_dump = (*iter)->dump(indent_size, 1);
+    if (!stats_dump.empty()) {
+      if (printed_first_stats) {
+        ss << ",\n";
+      }
       ss << stats_dump;
+      printed_first_stats = true;
+    }
+
+    ++iter;
   }
+
+  ss << "\n]\n";
 
   return ss.str();
 }
