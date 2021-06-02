@@ -1282,6 +1282,11 @@ Status Writer::check_subarray() const {
         Status::WriterError("Cannot check subarray; Array schema not set"));
 
   if (array_schema_->dense()) {
+    if (subarray_.range_num() != 1)
+      return LOG_STATUS(
+          Status::WriterError("Multi-range dense writes "
+                              "are not supported"));
+
     if (layout_ == Layout::GLOBAL_ORDER && !subarray_.coincides_with_tiles())
       return LOG_STATUS(
           Status::WriterError("Cannot initialize query; In global writes for "
@@ -1290,9 +1295,15 @@ Status Writer::check_subarray() const {
     if (layout_ == Layout::UNORDERED && subarray_.is_set())
       return LOG_STATUS(Status::WriterError(
           "Cannot initialize query; Setting a subarray in unordered writes for "
-          "dense arrays in inapplicable"));
+          "dense arrays is inapplicable"));
+  } else {
+    assert(!array_schema_->dense());
+    if (subarray_.is_set())
+      // Note: previously handled in Writer::add_range()
+      return LOG_STATUS(
+          Status::WriterError("Subarray range for a write query is not "
+                              "supported in sparse arrays"));
   }
-
   return Status::Ok();
 }
 

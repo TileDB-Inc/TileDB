@@ -1037,6 +1037,33 @@ Status Query::set_subarray(const void* subarray) {
   return Status::Ok();
 }
 
+Status Query::set_subarray(const tiledb::sm::Subarray& subarray) {
+  auto query_status = status();
+  if (query_status != tiledb::sm::QueryStatus::UNINITIALIZED &&
+      query_status != tiledb::sm::QueryStatus::COMPLETED) {
+    // Can be in this initialized state when query has been de-serialized
+    // server-side and are trying to perform local submit.
+    // Don't change anything and return indication of success.
+    return Status::Ok();
+  }
+
+  // Set subarray
+  if (!subarray.is_set())
+    // Nothing useful to set here, will leave query with its current
+    // settings and consider successful.
+    return Status::Ok();
+
+  if (type_ == QueryType::WRITE) {
+    RETURN_NOT_OK(writer_.set_subarray(subarray));
+  } else if (type_ == QueryType::READ) {
+    RETURN_NOT_OK(reader_.set_subarray(subarray));
+  }
+
+  status_ = QueryStatus::UNINITIALIZED;
+
+  return Status::Ok();
+}
+
 Status Query::set_subarray_unsafe(const NDRange& subarray) {
   // To construct the `Subarray` object, it needs the stats of
   // the parent. Depending the type, the parent stats will either
@@ -1061,6 +1088,12 @@ Status Query::set_subarray_unsafe(const NDRange& subarray) {
   status_ = QueryStatus::UNINITIALIZED;
 
   return Status::Ok();
+}
+
+const Subarray* Query::subarray() {
+  if (type_ == QueryType::WRITE)
+    return writer_.subarray_ranges();
+  return reader_.subarray();
 }
 
 Status Query::submit() {
