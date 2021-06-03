@@ -2784,7 +2784,7 @@ TEST_CASE_METHOD(
   c_data1_3_val[6] = 15;
   c_data1_3_val[7] = 15;
   c_data1_3_val[8] = 15;
-  for (int i = 9; i <= 57; ++i)
+  for (int i = 9; i < 57; ++i)
     c_data1_3_val[i] = 0;
   CHECK(check_tile<int32_t>(&tile1_3_val, c_data1_3_val));
 
@@ -3694,7 +3694,7 @@ TEST_CASE_METHOD(
   c_data1_3_val[6] = 15;
   c_data1_3_val[7] = 15;
   c_data1_3_val[8] = 15;
-  for (int i = 9; i <= 57; ++i)
+  for (int i = 9; i < 57; ++i)
     c_data1_3_val[i] = 0;
   CHECK(check_tile<int32_t>(&tile1_3_val, c_data1_3_val));
 
