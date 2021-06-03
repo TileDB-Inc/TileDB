@@ -92,6 +92,7 @@ Dimension::Dimension(const Dimension* dim) {
   type_ = dim->type_;
 
   // Set fuctions
+  adjust_range_oob_func_ = dim->adjust_range_oob_func_;
   ceil_to_tile_func_ = dim->ceil_to_tile_func_;
   check_range_func_ = dim->check_range_func_;
   coincides_with_tiles_func_ = dim->coincides_with_tiles_func_;
