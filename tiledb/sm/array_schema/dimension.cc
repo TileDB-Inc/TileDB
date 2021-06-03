@@ -1536,9 +1536,8 @@ Status Dimension::set_null_tile_extent_to_range() {
   T tile_extent;
 
   // Calculate the ratio of tile extent to max value of T
-  double tile_extent_ratio =
-      ((double)domain[1]) / std::numeric_limits<T>::max() -
-      ((double)domain[0]) / std::numeric_limits<T>::max();
+  double tile_extent_ratio = (1.0 * domain[1]) / std::numeric_limits<T>::max() -
+                             (1.0 * domain[0]) / std::numeric_limits<T>::max();
   if (tile_extent_ratio > 0.1) {
     tile_extent = std::numeric_limits<T>::max() / 10;
   } else {
