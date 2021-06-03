@@ -929,9 +929,21 @@ Status query_from_capnp(
           char* offset_dest = (char*)existing_offset_buffer + curr_offset_size;
           char* data_dest = (char*)existing_buffer + curr_data_size;
           char* validity_dest = (char*)existing_buffer + curr_validity_size;
+          uint64_t fixedlen_size_to_copy = fixedlen_size;
 
-          std::memcpy(offset_dest, attribute_buffer_start, fixedlen_size);
-          attribute_buffer_start += fixedlen_size;
+          // If the last query included an extra offset we will skip the first
+          // offset in this query The first offset is the 0 position which ends
+          // up the same as the extra offset in the last query 0th is converted
+          // below to curr_data_size which is also the n+1 offset in arrow mode
+          if (attr_copy_state != nullptr &&
+              attr_copy_state->last_query_added_extra_offset) {
+            attribute_buffer_start += sizeof(uint64_t);
+            fixedlen_size_to_copy -= sizeof(uint64_t);
+          }
+
+          std::memcpy(
+              offset_dest, attribute_buffer_start, fixedlen_size_to_copy);
+          attribute_buffer_start += fixedlen_size_to_copy;
           std::memcpy(data_dest, attribute_buffer_start, varlen_size);
           attribute_buffer_start += varlen_size;
           if (nullable) {
@@ -962,7 +974,8 @@ Status query_from_capnp(
           // to offsets of Buffer #2: [0, 12]. The `28` was calculated as
           // the byte size of the values in Buffer #1.
           if (curr_data_size > 0) {
-            for (uint64_t i = 0; i < (fixedlen_size / sizeof(uint64_t)); ++i) {
+            for (uint64_t i = 0; i < (fixedlen_size_to_copy / sizeof(uint64_t));
+                 ++i) {
               reinterpret_cast<uint64_t*>(offset_dest)[i] += curr_data_size;
             }
           }
@@ -971,7 +984,7 @@ Status query_from_capnp(
             // Set the size directly on the query (so user can introspect on
             // result size).
             if (existing_offset_buffer_size_ptr != nullptr)
-              *existing_offset_buffer_size_ptr = fixedlen_size;
+              *existing_offset_buffer_size_ptr = fixedlen_size_to_copy;
             if (existing_buffer_size_ptr != nullptr)
               *existing_buffer_size_ptr = varlen_size;
             if (nullable && existing_validity_buffer_size_ptr != nullptr)
@@ -979,10 +992,14 @@ Status query_from_capnp(
           } else {
             // Accumulate total bytes copied (caller's responsibility to
             // eventually update the query).
-            attr_copy_state->offset_size += fixedlen_size;
+            attr_copy_state->offset_size += fixedlen_size_to_copy;
             attr_copy_state->data_size += varlen_size;
             if (nullable)
               attr_copy_state->validity_size += validitylen_size;
+
+            // Set whether the extra offset was included or not
+            attr_copy_state->last_query_added_extra_offset =
+                query_reader.getVarOffsetsAddExtraElement();
           }
         } else {
           // Fixed size attribute; buffers already set.
