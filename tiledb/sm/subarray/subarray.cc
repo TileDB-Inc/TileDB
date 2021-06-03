@@ -67,7 +67,6 @@ Subarray::Subarray()
     , cell_order_(Layout::ROW_MAJOR)
     , est_result_size_computed_(false)
     , coalesce_ranges_(true) {
-  stats::all_stats.register_stats(stats_);
 }
 
 Subarray::Subarray(
