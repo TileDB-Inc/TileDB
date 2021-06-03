@@ -35,6 +35,7 @@
 
 #include "tiledb.h"
 #include "tiledb/sm/array/array.h"
+#include "tiledb/sm/cpp_api/tiledb"
 #include "tiledb/sm/enums/layout.h"
 #include "tiledb/sm/enums/serialization_type.h"
 #include "tiledb/sm/stats/stats.h"
@@ -130,6 +131,18 @@ void check_partitions(
 template <class T>
 void check_subarray(
     tiledb::sm::Subarray& subarray, const SubarrayRanges<T>& ranges);
+
+template <class T>
+void check_subarray(
+    tiledb::Subarray& subarray, const SubarrayRanges<T>& ranges);
+
+template <class T>
+void check_subarray_equiv(
+    tiledb::sm::Subarray& subarray1, tiledb::sm::Subarray& subarray2);
+
+template <class T>
+bool subarray_equiv(
+    tiledb::sm::Subarray& subarray1, tiledb::sm::Subarray& subarray2);
 
 /**
  * Closes an array.
@@ -287,6 +300,44 @@ void create_subarray(
     const SubarrayRanges<T>& ranges,
     tiledb::sm::Layout layout,
     tiledb::sm::Subarray* subarray,
+    bool coalesce_ranges = false);
+
+/**
+ * Creates a capi subarray for the input array.
+ *
+ * @tparam T The datatype of the subarray domain.
+ * @param array The input array.
+ * @param ranges The ranges of the subarray to be created.
+ * @param layout The layout of the subarray.
+ * @param subarray The subarray to be set.
+ * @param coalesce_ranges Whether the subarray should coalesce ranges.
+ */
+template <class T>
+void create_subarray(
+    tiledb_ctx_t* ctx,
+    tiledb::sm::Array* array,
+    const SubarrayRanges<T>& ranges,
+    tiledb::sm::Layout layout,
+    tiledb_subarray_t** subarray,
+    bool coalesce_ranges = false);
+
+/**
+ * Creates a c++ api subarray for the input array.
+ *
+ * @tparam T The datatype of the subarray domain.
+ * @param array The input array.
+ * @param ranges The ranges of the subarray to be created.
+ * @param layout The layout of the subarray.
+ * @param subarray The subarray to be set.
+ * @param coalesce_ranges Whether the subarray should coalesce ranges.
+ */
+template <class T>
+void create_subarray(
+    const tiledb::Context* ctx,
+    const tiledb::Array* array,
+    const SubarrayRanges<T>& ranges,
+    tiledb::sm::Layout layout,
+    tiledb::Subarray** subarray,
     bool coalesce_ranges = false);
 
 /**
