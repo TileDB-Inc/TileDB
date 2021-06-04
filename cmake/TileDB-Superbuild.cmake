@@ -121,9 +121,11 @@ endif()
 # Set up the regular build (i.e. non-superbuild).
 ############################################################
 
+propagate_cache_variables(FORWARDED_CMAKE_ARGUMENTS)
 ExternalProject_Add(tiledb
   SOURCE_DIR ${PROJECT_SOURCE_DIR}
   CMAKE_ARGS
+    ${FORWARDED_CMAKE_ARGUMENTS}
     -DTILEDB_SUPERBUILD=OFF
     ${INHERITED_CMAKE_ARGS}
     ${FORWARD_EP_CMAKE_ARGS}
