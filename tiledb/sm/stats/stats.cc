@@ -63,6 +63,19 @@ void Stats::set_enabled(bool enabled) {
   enabled_ = enabled;
 }
 
+void Stats::reset() {
+  // We will acquire the locks top-down in the tree and hold
+  // until the recursion terminates.
+  std::unique_lock<std::mutex> lck(mtx_);
+
+  timers_.clear();
+  counters_.clear();
+
+  for (auto& child : children_) {
+    child.reset();
+  }
+}
+
 std::string Stats::dump(
     const uint64_t indent_size, const uint64_t num_indents) const {
   std::unordered_map<std::string, double> flattened_timers;

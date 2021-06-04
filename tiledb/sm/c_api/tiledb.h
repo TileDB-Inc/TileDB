@@ -1606,6 +1606,25 @@ tiledb_ctx_alloc(tiledb_config_t* config, tiledb_ctx_t** ctx);
 TILEDB_EXPORT void tiledb_ctx_free(tiledb_ctx_t** ctx);
 
 /**
+ * Retrieves the stats from a TileDB context.
+ *
+ * **Example:**
+ *
+ * @code{.c}
+ * char* stats_json;
+ * tiledb_ctx_get_stats(ctx, &stats_json);
+ * // Make sure to free the retrieved `stats_json`
+ * @endcode
+ *
+ * @param ctx The TileDB context.
+ * @param stats_json The output json. The caller takes ownership
+ *   of the c-string.
+ * @return `TILEDB_OK` for success and `TILEDB_OOM` or `TILEDB_ERR` for error.
+ */
+TILEDB_EXPORT int32_t
+tiledb_ctx_get_stats(tiledb_ctx_t* ctx, char** stats_json);
+
+/**
  * Retrieves a copy of the config from a TileDB context.
  * Modifying this config will not affect the initialized
  * context configuration.
@@ -3381,6 +3400,26 @@ TILEDB_EXPORT int32_t tiledb_query_alloc(
     tiledb_query_t** query);
 
 /**
+ * Retrieves the stats from a Query.
+ *
+ * **Example:**
+ *
+ * @code{.c}
+ * char* stats_json;
+ * tiledb_query_get_stats(ctx, query, &stats_json);
+ * // Make sure to free the retrieved `stats_json`
+ * @endcode
+ *
+ * @param ctx The TileDB context.
+ * @param query The query object.
+ * @param stats_json The output json. The caller takes ownership
+ *   of the c-string.
+ * @return `TILEDB_OK` for success and `TILEDB_OOM` or `TILEDB_ERR` for error.
+ */
+TILEDB_EXPORT int32_t tiledb_query_get_stats(
+    tiledb_ctx_t* ctx, tiledb_query_t* query, char** stats_json);
+
+/**
  * Set the query config
  *
  * Setting the configuration with this function overrides the following
@@ -3397,7 +3436,6 @@ TILEDB_EXPORT int32_t tiledb_query_alloc(
  * - `sm.check_global_order`
  * - `sm.dedup_coords`
  */
-
 TILEDB_EXPORT int32_t tiledb_query_set_config(
     tiledb_ctx_t* ctx, tiledb_query_t* query, tiledb_config_t* config);
 

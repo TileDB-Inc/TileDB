@@ -1108,6 +1108,10 @@ QueryType Query::type() const {
   return type_;
 }
 
+Stats* Query::stats() const {
+  return stats_;
+}
+
 const Config* Query::config() const {
   if (type_ == QueryType::READ)
     return reader_.config();

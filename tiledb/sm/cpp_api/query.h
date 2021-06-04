@@ -1931,6 +1931,20 @@ class Query {
     return *this;
   }
 
+  /** Returns a JSON-formatted string of the stats. */
+  std::string stats() {
+    auto ctx = ctx_.get();
+    char* c_str;
+    ctx.handle_error(
+        tiledb_query_get_stats(ctx.ptr().get(), query_.get(), &c_str));
+
+    // Copy `c_str` into `str`.
+    std::string str(c_str);
+    free(c_str);
+
+    return str;
+  }
+
   /* ********************************* */
   /*         STATIC FUNCTIONS          */
   /* ********************************* */
