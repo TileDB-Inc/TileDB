@@ -41,7 +41,17 @@ namespace common {
 
 template <class T>
 typename ClassSingleton<T>::member_type ClassSingleton<T>::member_factory() {
-  std::lock_guard<std::mutex> lock(lock_central);
+  /*
+   * This mutex protects the creation of the singleton instance.
+   *
+   * We might have been able to reuse the class mutex for this, but some
+   * runtimes (e.g. Windows) effectively intialize static mutexes in the
+   * dynamic-initialization phase, not in the constant-initialization phase as
+   * might be implied by their `constexpr` declaration.
+   */
+  static std::mutex lock_creation;
+
+  std::lock_guard<std::mutex> lock(lock_creation);
   if (singleton_central.use_count() != 0) {
     return singleton_central.lock();
   }
