@@ -1250,23 +1250,10 @@ TEST_CASE(
 
     // Check results
     CHECK(query_r.query_status() == Query::Status::INCOMPLETE);
-    CHECK(query_r.result_buffer_elements()["a"].second == 1);
-    std::vector<int32_t> c_buff_a = {3};
-    std::vector<float> c_buff_d1 = {0.1f};
-    std::vector<float> c_buff_d2 = {0.1f};
-    CHECK(r_buff_a[0] == c_buff_a[0]);
-    CHECK(r_buff_d1[0] == c_buff_d1[0]);
-    CHECK(r_buff_d2[0] == c_buff_d2[0]);
-
-    // Read again
-    CHECK_NOTHROW(query_r.submit());
-
-    // Check results again
-    CHECK(query_r.query_status() == Query::Status::INCOMPLETE);
-    CHECK(query_r.result_buffer_elements()["a"].second == 1);
-    c_buff_a = {2};
-    c_buff_d1 = {0.1f};
-    c_buff_d2 = {0.3f};
+    CHECK(query_r.result_buffer_elements()["a"].second == 2);
+    std::vector<int32_t> c_buff_a = {3, 2};
+    std::vector<float> c_buff_d1 = {0.1f, 0.1f};
+    std::vector<float> c_buff_d2 = {0.1f, 0.3f};
     CHECK(r_buff_a[0] == c_buff_a[0]);
     CHECK(r_buff_d1[0] == c_buff_d1[0]);
     CHECK(r_buff_d2[0] == c_buff_d2[0]);
@@ -1308,23 +1295,10 @@ TEST_CASE(
 
     // Check results
     CHECK(query_r.query_status() == Query::Status::INCOMPLETE);
-    CHECK(query_r.result_buffer_elements()["a"].second == 1);
-    std::vector<int32_t> c_buff_a = {3};
-    std::vector<float> c_buff_d1 = {0.1f};
-    std::vector<float> c_buff_d2 = {0.1f};
-    CHECK(r_buff_a[0] == c_buff_a[0]);
-    CHECK(r_buff_d1[0] == c_buff_d1[0]);
-    CHECK(r_buff_d2[0] == c_buff_d2[0]);
-
-    // Read again
-    CHECK_NOTHROW(query_r.submit());
-
-    // Check results again
-    CHECK(query_r.query_status() == Query::Status::INCOMPLETE);
-    CHECK(query_r.result_buffer_elements()["a"].second == 1);
-    c_buff_a = {2};
-    c_buff_d1 = {0.1f};
-    c_buff_d2 = {0.3f};
+    CHECK(query_r.result_buffer_elements()["a"].second == 2);
+    std::vector<int32_t> c_buff_a = {3, 2};
+    std::vector<float> c_buff_d1 = {0.1f, 0.1f};
+    std::vector<float> c_buff_d2 = {0.1f, 0.3f};
     CHECK(r_buff_a[0] == c_buff_a[0]);
     CHECK(r_buff_d1[0] == c_buff_d1[0]);
     CHECK(r_buff_d2[0] == c_buff_d2[0]);
