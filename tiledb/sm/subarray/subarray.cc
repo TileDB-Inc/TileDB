@@ -2476,6 +2476,10 @@ std::vector<unsigned> Subarray::relevant_fragments() const {
   return relevant_fragments_;
 }
 
+stats::Stats* Subarray::stats() const {
+  return stats_;
+}
+
 // Explicit instantiations
 template Status Subarray::compute_tile_coords<int8_t>();
 template Status Subarray::compute_tile_coords<uint8_t>();

@@ -722,6 +722,9 @@ class Subarray {
       std::vector<uint64_t>* start_coords,
       std::vector<uint64_t>* end_coords) const;
 
+  /** Returns `stats_`. */
+  stats::Stats* stats() const;
+
  private:
   /* ********************************* */
   /*        PRIVATE DATA TYPES         */

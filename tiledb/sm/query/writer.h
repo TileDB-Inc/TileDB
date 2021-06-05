@@ -371,7 +371,7 @@ class Writer {
   const Subarray* subarray_ranges() const;
 
   /** Returns `stats_`. */
-  stats::Stats* stats();
+  stats::Stats* stats() const;
 
   /** Performs a write query using its set members. */
   Status write();

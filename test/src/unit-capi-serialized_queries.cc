@@ -83,6 +83,28 @@ struct SerializationFx {
       vfs.remove_dir(tmpdir);
   }
 
+  static void check_read_stats(const Query& query) {
+    auto stats = query.ptr()->query_->reader()->stats();
+    REQUIRE(stats != nullptr);
+    auto counters = stats->counters();
+    REQUIRE(counters != nullptr);
+    auto loop_num =
+        counters->find("Context.StorageManager.Query.Reader.loop_num");
+    REQUIRE((loop_num != counters->end()));
+    REQUIRE(loop_num->second > 0);
+  }
+
+  static void check_write_stats(const Query& query) {
+    auto stats = query.ptr()->query_->writer()->stats();
+    REQUIRE(stats != nullptr);
+    auto counters = stats->counters();
+    REQUIRE(counters != nullptr);
+    auto loop_num =
+        counters->find("Context.StorageManager.Query.Writer.attr_num");
+    REQUIRE((loop_num != counters->end()));
+    REQUIRE(loop_num->second > 0);
+  }
+
   void create_array(tiledb_array_type_t type) {
     ArraySchema schema(ctx, type);
     Domain domain(ctx);
@@ -136,8 +158,15 @@ struct SerializationFx {
     Query query2(ctx, array2);
     deserialize_query(ctx, serialized, &query2, false);
     query2.submit();
+
+    // Make sure query2 has logged stats
+    check_write_stats(query2);
+
     serialize_query(ctx, query2, &serialized, false);
     deserialize_query(ctx, serialized, &query, true);
+
+    // The deserialized query should also include the write stats
+    check_write_stats(query);
   }
 
   void write_dense_array_ranges() {
@@ -178,8 +207,15 @@ struct SerializationFx {
     Query query2(ctx, array2);
     deserialize_query(ctx, serialized, &query2, false);
     query2.submit();
+
+    // Make sure query2 has logged stats
+    check_write_stats(query2);
+
     serialize_query(ctx, query2, &serialized, false);
     deserialize_query(ctx, serialized, &query, true);
+
+    // The deserialized query should also include the write stats
+    check_write_stats(query);
   }
 
   void write_sparse_array() {
@@ -220,8 +256,14 @@ struct SerializationFx {
     Query query2(ctx, array2);
     deserialize_query(ctx, serialized, &query2, false);
     query2.submit();
+
+    // Make sure query2 has logged stats
+    check_write_stats(query2);
     serialize_query(ctx, query2, &serialized, false);
     deserialize_query(ctx, serialized, &query, true);
+
+    // The deserialized query should also include the write stats
+    check_write_stats(query);
   }
 
   void write_sparse_array_split_coords() {
@@ -265,8 +307,15 @@ struct SerializationFx {
     Query query2(ctx, array2);
     deserialize_query(ctx, serialized, &query2, false);
     query2.submit();
+
+    // Make sure query2 has logged stats
+    check_write_stats(query2);
+
     serialize_query(ctx, query2, &serialized, false);
     deserialize_query(ctx, serialized, &query, true);
+
+    // The deserialized query should also include the write stats
+    check_write_stats(query);
   }
 
   /**
@@ -482,9 +531,15 @@ TEST_CASE_METHOD(
     query2.submit();
     serialize_query(ctx, query2, &serialized, false);
 
+    // Make sure query2 has logged stats
+    check_read_stats(query2);
+
     // Deserialize into original query (client side).
     deserialize_query(ctx, serialized, &query, true);
     REQUIRE(query.query_status() == Query::Status::COMPLETE);
+
+    // The deserialized query should also include the write stats
+    check_read_stats(query);
 
     auto result_el = query.result_buffer_elements_nullable();
     REQUIRE(std::get<1>(result_el["a1"]) == 100);
@@ -531,9 +586,15 @@ TEST_CASE_METHOD(
     query2.submit();
     serialize_query(ctx, query2, &serialized, false);
 
+    // Make sure query2 has logged stats
+    check_read_stats(query2);
+
     // Deserialize into original query (client side).
     deserialize_query(ctx, serialized, &query, true);
     REQUIRE(query.query_status() == Query::Status::COMPLETE);
+
+    // The deserialized query should also include the write stats
+    check_read_stats(query);
 
     // We expect all cells where `a1` >= `cmp_value` to be filtered
     // out.
@@ -577,9 +638,15 @@ TEST_CASE_METHOD(
     query2.submit();
     serialize_query(ctx, query2, &serialized, false);
 
+    // Make sure query2 has logged stats
+    check_read_stats(query2);
+
     // Deserialize into original query (client side).
     deserialize_query(ctx, serialized, &query, true);
     REQUIRE(query.query_status() == Query::Status::COMPLETE);
+
+    // The deserialized query should also include the write stats
+    check_read_stats(query);
 
     auto result_el = query.result_buffer_elements_nullable();
     REQUIRE(std::get<1>(result_el["a1"]) == 4);
@@ -624,8 +691,14 @@ TEST_CASE_METHOD(
       query2.submit();
       serialize_query(ctx, query2, &serialized, false);
 
+      // Make sure query2 has logged stats
+      check_read_stats(query2);
+
       // Deserialize into original query (client side).
       deserialize_query(ctx, serialized, &q, true);
+
+      // The deserialized query should also include the write stats
+      check_read_stats(query);
 
       for (void* b : to_free)
         std::free(b);
@@ -703,9 +776,15 @@ TEST_CASE_METHOD(
     query2.submit();
     serialize_query(ctx, query2, &serialized, false);
 
+    // Make sure query2 has logged stats
+    check_read_stats(query2);
+
     // Deserialize into original query
     deserialize_query(ctx, serialized, &query, true);
     REQUIRE(query.query_status() == Query::Status::COMPLETE);
+
+    // The deserialized query should also include the write stats
+    check_read_stats(query);
 
     auto result_el = query.result_buffer_elements_nullable();
     REQUIRE(std::get<1>(result_el["a1"]) == 10);
@@ -753,9 +832,15 @@ TEST_CASE_METHOD(
     query2.submit();
     serialize_query(ctx, query2, &serialized, false);
 
+    // Make sure query2 has logged stats
+    check_read_stats(query2);
+
     // Deserialize into original query
     deserialize_query(ctx, serialized, &query, true);
     REQUIRE(query.query_status() == Query::Status::COMPLETE);
+
+    // The deserialized query should also include the write stats
+    check_read_stats(query);
 
     auto result_el = query.result_buffer_elements_nullable();
     REQUIRE(std::get<1>(result_el[TILEDB_COORDS]) == 20);
@@ -807,9 +892,15 @@ TEST_CASE_METHOD(
     query2.submit();
     serialize_query(ctx, query2, &serialized, false);
 
+    // Make sure query2 has logged stats
+    check_read_stats(query2);
+
     // Deserialize into original query (client side).
     deserialize_query(ctx, serialized, &query, true);
     REQUIRE(query.query_status() == Query::Status::COMPLETE);
+
+    // The deserialized query should also include the write stats
+    check_read_stats(query);
 
     auto result_el = query.result_buffer_elements_nullable();
     REQUIRE(std::get<1>(result_el["a1"]) == 100);
@@ -852,9 +943,15 @@ TEST_CASE_METHOD(
     query2.submit();
     serialize_query(ctx, query2, &serialized, false);
 
+    // Make sure query2 has logged stats
+    check_read_stats(query2);
+
     // Deserialize into original query (client side).
     deserialize_query(ctx, serialized, &query, true);
     REQUIRE(query.query_status() == Query::Status::COMPLETE);
+
+    // The deserialized query should also include the write stats
+    check_read_stats(query);
 
     auto result_el = query.result_buffer_elements_nullable();
     REQUIRE(std::get<1>(result_el["a1"]) == 4);
@@ -900,8 +997,14 @@ TEST_CASE_METHOD(
       query2.submit();
       serialize_query(ctx, query2, &serialized, false);
 
+      // Make sure query2 has logged stats
+      check_read_stats(query2);
+
       // Deserialize into original query (client side).
       deserialize_query(ctx, serialized, &q, true);
+
+      // The deserialized query should also include the write stats
+      check_read_stats(query);
 
       for (void* b : to_free)
         std::free(b);
