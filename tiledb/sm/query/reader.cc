@@ -803,7 +803,7 @@ Status Reader::set_offsets_bitsize(const uint32_t bitsize) {
   return Status::Ok();
 }
 
-Stats* Reader::stats() {
+Stats* Reader::stats() const {
   return stats_;
 }
 

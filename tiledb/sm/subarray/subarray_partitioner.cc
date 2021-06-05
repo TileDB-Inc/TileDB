@@ -635,6 +635,10 @@ Subarray* SubarrayPartitioner::subarray() {
   return &subarray_;
 }
 
+stats::Stats* SubarrayPartitioner::stats() const {
+  return stats_;
+}
+
 /* ****************************** */
 /*          PRIVATE METHODS       */
 /* ****************************** */

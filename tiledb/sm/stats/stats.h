@@ -105,6 +105,12 @@ class Stats {
   /** Creates a child instance, managed by this instance. */
   Stats* create_child(const std::string& prefix);
 
+  /** Return pointer to timers map, used for serialization only. */
+  std::unordered_map<std::string, double>* timers();
+
+  /** Return pointer to conters map, used for serialization only. */
+  std::unordered_map<std::string, uint64_t>* counters();
+
  private:
   /* ****************************** */
   /*       PRIVATE ATTRIBUTES       */
