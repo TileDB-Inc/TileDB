@@ -774,7 +774,8 @@ double Dimension::overlap_ratio(const Range& r1, const Range& r2) {
   const T safe_upper = std::nextafter(std::numeric_limits<T>::max() / 2, 0);
   bool unsafe = safe_upper < r2_high;
   if (std::numeric_limits<T>::is_signed) {
-    const T safe_lower = std::nextafter(std::numeric_limits<T>::lowest() / 2, 0);
+    const T safe_lower =
+        std::nextafter(std::numeric_limits<T>::lowest() / 2, 0);
     unsafe = unsafe || r2_low < safe_lower;
   }
   if (unsafe) {
@@ -794,12 +795,22 @@ double Dimension::overlap_ratio(const Range& r1, const Range& r2) {
   } else {
     if (denominator == 0) {
       /*
-       * If the denominator is zero, we have no easy-to-access information about
-       * the quotient, but the result must still be between 0 and 1. The
-       * denominator is larger than the numerator, so the numerator will also be
-       * zero. We could extract some information from the floating-point
-       * representation itself, but that's a lot of work. So tra-la-la, this is
-       * a tiny defect.
+       * If the variable `denominator` is zero, it's the result of rounding,
+       * since checking the "disjoint" and "subset" cases above has ensured that
+       * the endpoints of the denominator interval are distinct. Thus we have no
+       * easy-to-access information about the true quotient value, but
+       * mathematically it must be between 0 and 1, so we need either to return
+       * some value between 0 and 1 or to throw an exception stating that we
+       * don't support this case.
+       *
+       * The variable `denominator` is larger than the variable `numerator`, so
+       * the numerator is also be zero. We could extract some information from
+       * the floating-point representation itself, but that's a lot of work that
+       * doesn't seem justified at present. Throwing an exception would be
+       * better on principle, but the code in its current state now would not
+       * deal with that gracefully. As a compromise, therefore, we return a
+       * valid but non-computed value. It's a defect, but one that will rarely
+       * if ever arise in practice.
        */
       return 0.5;
     }

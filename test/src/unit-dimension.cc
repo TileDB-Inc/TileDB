@@ -619,8 +619,6 @@ double basic_verify_overlap_ratio(
 }
 
 /**
- * Exercises the defect at the root cause of clubhouse#7192
- *
  * The denominator of the ratio is computed as range2_high - range2_low. For a
  * k-bit signed integer, the largest this value can take is 2^k-1, which is
  * larger than the maximum signed value of 2^(k-1)-1.
