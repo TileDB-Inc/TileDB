@@ -519,7 +519,7 @@ class Reader {
   Status set_offsets_bitsize(const uint32_t bitsize);
 
   /** Returns `stats_`. */
-  stats::Stats* stats();
+  stats::Stats* stats() const;
 
   /* ********************************* */
   /*          STATIC FUNCTIONS         */

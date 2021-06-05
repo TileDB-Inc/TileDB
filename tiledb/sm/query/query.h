@@ -711,6 +711,9 @@ class Query {
   /** Returns the query type. */
   QueryType type() const;
 
+  /** Returns `stats_`. */
+  stats::Stats* stats() const;
+
  private:
   /* ********************************* */
   /*         PRIVATE ATTRIBUTES        */

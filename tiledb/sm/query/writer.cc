@@ -857,7 +857,7 @@ const Subarray* Writer::subarray_ranges() const {
   return &subarray_;
 }
 
-Stats* Writer::stats() {
+Stats* Writer::stats() const {
   return stats_;
 }
 
