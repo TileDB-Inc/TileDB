@@ -89,16 +89,14 @@ class Config {
   static const std::string CONFIG_LOGGING_LEVEL;
 
   /**
-   * An array will open between this value and timestamp_end upon a
-   * read query.
-   * */
-  static const std::string SM_ARRAY_TIMESTAMP_START;
+   * The key for encrypted arrays.
+   *  */
+  static const std::string SM_ENCRYPTION_KEY;
 
   /**
-   * An array will open between timestamp_start and this value upon a
-   * read query.
+   * The type of encryption used for encrypted arrays.
    *  */
-  static const std::string SM_ARRAY_TIMESTAMP_END;
+  static const std::string SM_ENCRYPTION_TYPE;
 
   /** If `true`, this will deduplicate coordinates upon sparse writes. */
   static const std::string SM_DEDUP_COORDS;

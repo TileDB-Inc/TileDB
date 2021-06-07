@@ -1148,6 +1148,25 @@ void tiledb_ctx_free(tiledb_ctx_t** ctx) {
   }
 }
 
+int32_t tiledb_ctx_get_stats(tiledb_ctx_t* ctx, char** stats_json) {
+  if (sanity_check(ctx) == TILEDB_ERR)
+    return TILEDB_ERR;
+
+  if (stats_json == nullptr)
+    return TILEDB_ERR;
+
+  const std::string str = ctx->ctx_->stats()->dump(2, 0);
+
+  *stats_json = static_cast<char*>(std::malloc(str.size() + 1));
+  if (*stats_json == nullptr)
+    return TILEDB_ERR;
+
+  std::memcpy(*stats_json, str.data(), str.size());
+  (*stats_json)[str.size()] = '\0';
+
+  return TILEDB_OK;
+}
+
 int32_t tiledb_ctx_get_config(tiledb_ctx_t* ctx, tiledb_config_t** config) {
   // Create a new config struct
   *config = new (std::nothrow) tiledb_config_t;
@@ -2665,6 +2684,26 @@ int32_t tiledb_query_alloc(
   return TILEDB_OK;
 }
 
+int32_t tiledb_query_get_stats(
+    tiledb_ctx_t* ctx, tiledb_query_t* query, char** stats_json) {
+  if (sanity_check(ctx) == TILEDB_ERR || sanity_check(ctx, query) == TILEDB_ERR)
+    return TILEDB_ERR;
+
+  if (stats_json == nullptr)
+    return TILEDB_ERR;
+
+  const std::string str = query->query_->stats()->dump(2, 0);
+
+  *stats_json = static_cast<char*>(std::malloc(str.size() + 1));
+  if (*stats_json == nullptr)
+    return TILEDB_ERR;
+
+  std::memcpy(*stats_json, str.data(), str.size());
+  (*stats_json)[str.size()] = '\0';
+
+  return TILEDB_OK;
+}
+
 int32_t tiledb_query_set_config(
     tiledb_ctx_t* ctx, tiledb_query_t* query, tiledb_config_t* config) {
   // Sanity check
@@ -3565,6 +3604,49 @@ int32_t tiledb_array_alloc(
   return TILEDB_OK;
 }
 
+int32_t tiledb_array_set_open_timestamp_start(
+    tiledb_ctx_t* ctx, tiledb_array_t* array, uint64_t timestamp_start) {
+  if (sanity_check(ctx) == TILEDB_ERR || sanity_check(ctx, array) == TILEDB_ERR)
+    return TILEDB_ERR;
+
+  if (SAVE_ERROR_CATCH(
+          ctx, array->array_->set_timestamp_start(timestamp_start)))
+    return TILEDB_ERR;
+
+  return TILEDB_OK;
+}
+
+int32_t tiledb_array_set_open_timestamp_end(
+    tiledb_ctx_t* ctx, tiledb_array_t* array, uint64_t timestamp_end) {
+  if (sanity_check(ctx) == TILEDB_ERR || sanity_check(ctx, array) == TILEDB_ERR)
+    return TILEDB_ERR;
+
+  if (SAVE_ERROR_CATCH(ctx, array->array_->set_timestamp_end(timestamp_end)))
+    return TILEDB_ERR;
+
+  return TILEDB_OK;
+}
+
+int32_t tiledb_array_get_open_timestamp_start(
+    tiledb_ctx_t* ctx, tiledb_array_t* array, uint64_t* timestamp_start) {
+  if (sanity_check(ctx) == TILEDB_ERR || sanity_check(ctx, array) == TILEDB_ERR)
+    return TILEDB_ERR;
+
+  *timestamp_start = array->array_->timestamp_start();
+
+  return TILEDB_OK;
+}
+
+int32_t tiledb_array_get_open_timestamp_end(
+    tiledb_ctx_t* ctx, tiledb_array_t* array, uint64_t* timestamp_end) {
+  if (sanity_check(ctx) == TILEDB_ERR || sanity_check(ctx, array) == TILEDB_ERR)
+    return TILEDB_ERR;
+
+  *timestamp_end = array->array_->timestamp_end_opened_at();
+
+  return TILEDB_OK;
+}
+
 int32_t tiledb_array_open(
     tiledb_ctx_t* ctx, tiledb_array_t* array, tiledb_query_type_t query_type) {
   if (sanity_check(ctx) == TILEDB_ERR || sanity_check(ctx, array) == TILEDB_ERR)
@@ -3693,7 +3775,7 @@ int32_t tiledb_array_get_timestamp(
   if (sanity_check(ctx) == TILEDB_ERR || sanity_check(ctx, array) == TILEDB_ERR)
     return TILEDB_ERR;
 
-  *timestamp = array->array_->timestamp_end();
+  *timestamp = array->array_->timestamp_end_opened_at();
 
   return TILEDB_OK;
 }
@@ -4958,7 +5040,7 @@ int32_t tiledb_stats_disable() {
 }
 
 int32_t tiledb_stats_reset() {
-  // no-op for backwards compataibility with the existing public reset API
+  tiledb::sm::stats::all_stats.reset();
   return TILEDB_OK;
 }
 
@@ -5583,10 +5665,14 @@ int32_t tiledb_fragment_info_load_with_key(
       sanity_check(ctx, fragment_info) == TILEDB_ERR)
     return TILEDB_ERR;
 
+  // Get config from ctx
+  tiledb::sm::Config config = ctx->ctx_->storage_manager()->config();
+
   // Load fragment info
   if (SAVE_ERROR_CATCH(
           ctx,
           fragment_info->fragment_info_->load(
+              config,
               static_cast<tiledb::sm::EncryptionType>(encryption_type),
               encryption_key,
               key_length)))

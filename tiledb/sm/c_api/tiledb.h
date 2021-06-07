@@ -919,14 +919,6 @@ TILEDB_EXPORT void tiledb_config_free(tiledb_config_t** config);
  *
  * **Parameters**
  *
- * - `sm.array.timestamp_start` <br>
- *    When set, an array will be opened between this value and
- *    `sm.array.timestamp_end` (inclusive) upon a read query. <br>
- *    **Default**: 0
- * - `sm.array.timestamp_end` <br>
- *    When set, an array will be opened between `sm.array.timestamp_start`
- *    and this value (inclusive) upon a read query. <br>
- *    **Default**: UINT64_MAX
  * - `sm.dedup_coords` <br>
  *    If `true`, cells with duplicate coordinates will be removed during sparse
  *    fragment writes. Note that ties during deduplication are broken
@@ -1612,6 +1604,25 @@ tiledb_ctx_alloc(tiledb_config_t* config, tiledb_ctx_t** ctx);
  * @param ctx The TileDB context to be freed.
  */
 TILEDB_EXPORT void tiledb_ctx_free(tiledb_ctx_t** ctx);
+
+/**
+ * Retrieves the stats from a TileDB context.
+ *
+ * **Example:**
+ *
+ * @code{.c}
+ * char* stats_json;
+ * tiledb_ctx_get_stats(ctx, &stats_json);
+ * // Make sure to free the retrieved `stats_json`
+ * @endcode
+ *
+ * @param ctx The TileDB context.
+ * @param stats_json The output json. The caller takes ownership
+ *   of the c-string.
+ * @return `TILEDB_OK` for success and `TILEDB_OOM` or `TILEDB_ERR` for error.
+ */
+TILEDB_EXPORT int32_t
+tiledb_ctx_get_stats(tiledb_ctx_t* ctx, char** stats_json);
 
 /**
  * Retrieves a copy of the config from a TileDB context.
@@ -3061,6 +3072,8 @@ TILEDB_EXPORT int32_t tiledb_array_schema_load(
     tiledb_array_schema_t** array_schema);
 
 /**
+ * This is a deprecated API.
+ *
  * Retrieves the schema of an encrypted array from the disk, creating an array
  * schema struct.
  *
@@ -3387,6 +3400,26 @@ TILEDB_EXPORT int32_t tiledb_query_alloc(
     tiledb_query_t** query);
 
 /**
+ * Retrieves the stats from a Query.
+ *
+ * **Example:**
+ *
+ * @code{.c}
+ * char* stats_json;
+ * tiledb_query_get_stats(ctx, query, &stats_json);
+ * // Make sure to free the retrieved `stats_json`
+ * @endcode
+ *
+ * @param ctx The TileDB context.
+ * @param query The query object.
+ * @param stats_json The output json. The caller takes ownership
+ *   of the c-string.
+ * @return `TILEDB_OK` for success and `TILEDB_OOM` or `TILEDB_ERR` for error.
+ */
+TILEDB_EXPORT int32_t tiledb_query_get_stats(
+    tiledb_ctx_t* ctx, tiledb_query_t* query, char** stats_json);
+
+/**
  * Set the query config
  *
  * Setting the configuration with this function overrides the following
@@ -3403,7 +3436,6 @@ TILEDB_EXPORT int32_t tiledb_query_alloc(
  * - `sm.check_global_order`
  * - `sm.dedup_coords`
  */
-
 TILEDB_EXPORT int32_t tiledb_query_set_config(
     tiledb_ctx_t* ctx, tiledb_query_t* query, tiledb_config_t* config);
 
@@ -4735,6 +4767,103 @@ TILEDB_EXPORT int32_t tiledb_array_alloc(
     tiledb_ctx_t* ctx, const char* array_uri, tiledb_array_t** array);
 
 /**
+ * Sets the starting timestamp to use when opening (and reopening) the array.
+ * This is an inclusive bound. The default value is `0`.
+ *
+ * **Example:**
+ *
+ * @code{.c}
+ * tiledb_array_t* array;
+ * tiledb_array_alloc(ctx, "s3://tiledb_bucket/my_array", &array);
+ * tiledb_array_set_open_timestamp_start(ctx, array, 1234);
+ * tiledb_array_open(ctx, array, TILEDB_READ);
+ * @endcode
+ *
+ * @param ctx The TileDB context.
+ * @param array The array to set the timestamp on.
+ * @param timestamp_start The epoch timestamp in milliseconds.
+ * @return `TILEDB_OK` for success or `TILEDB_ERR` for error.
+ */
+TILEDB_EXPORT int32_t tiledb_array_set_open_timestamp_start(
+    tiledb_ctx_t* ctx, tiledb_array_t* array, uint64_t timestamp_start);
+
+/**
+ * Sets the ending timestamp to use when opening (and reopening) the array.
+ * This is an inclusive bound. The UINT64_MAX timestamp is a reserved timestamp
+ * that will be interpretted as the current timestamp when an array is opened.
+ * The default value is `UINT64_MAX`.
+ *
+ * **Example:**
+ *
+ * @code{.c}
+ * tiledb_array_t* array;
+ * tiledb_array_alloc(ctx, "s3://tiledb_bucket/my_array", &array);
+ * tiledb_array_set_open_timestamp_end(ctx, array, 5678);
+ * tiledb_array_open(ctx, array, TILEDB_READ);
+ * @endcode
+ *
+ * @param ctx The TileDB context.
+ * @param array The array to set the timestamp on.
+ * @param timestamp_end The epoch timestamp in milliseconds. Use UINT64_MAX for
+ *   the current timestamp.
+ * @return `TILEDB_OK` for success or `TILEDB_ERR` for error.
+ */
+TILEDB_EXPORT int32_t tiledb_array_set_open_timestamp_end(
+    tiledb_ctx_t* ctx, tiledb_array_t* array, uint64_t timestamp_end);
+
+/**
+ * Gets the starting timestamp used when opening (and reopening) the array.
+ * This is an inclusive bound.
+ *
+ * **Example:**
+ *
+ * @code{.c}
+ * tiledb_array_t* array;
+ * tiledb_array_alloc(ctx, "s3://tiledb_bucket/my_array", &array);
+ * tiledb_array_set_open_timestamp_start(ctx, array, 1234);
+ * tiledb_array_open(ctx, array, TILEDB_READ);
+ *
+ * uint64_t timestamp_start;
+ * tiledb_array_get_open_timestamp_start(ctx, array, &timestamp_start);
+ * assert(timestamp_start == 1234);
+ * @endcode
+ *
+ * @param ctx The TileDB context.
+ * @param array The array to set the timestamp on.
+ * @param timestamp_start The output epoch timestamp in milliseconds.
+ * @return `TILEDB_OK` for success or `TILEDB_ERR` for error.
+ */
+TILEDB_EXPORT int32_t tiledb_array_get_open_timestamp_start(
+    tiledb_ctx_t* ctx, tiledb_array_t* array, uint64_t* timestamp_start);
+
+/**
+ * Gets the ending timestamp used when opening (and reopening) the array.
+ * This is an inclusive bound. If UINT64_MAX was set, this will return
+ * the timestamp at the time the array was opened. If the array has not
+ * yet been opened, it will return UINT64_MAX.`
+ *
+ * **Example:**
+ *
+ * @code{.c}
+ * tiledb_array_t* array;
+ * tiledb_array_alloc(ctx, "s3://tiledb_bucket/my_array", &array);
+ * tiledb_array_set_open_timestamp_end(ctx, array, 5678);
+ * tiledb_array_open(ctx, array, TILEDB_READ);
+ *
+ * uint64_t timestamp_end;
+ * tiledb_array_get_open_timestamp_end(ctx, array, &timestamp_end);
+ * assert(timestamp_start == 5678);
+ * @endcode
+ *
+ * @param ctx The TileDB context.
+ * @param array The array to set the timestamp on.
+ * @param timestamp_end The output epoch timestamp in milliseconds.
+ * @return `TILEDB_OK` for success or `TILEDB_ERR` for error.
+ */
+TILEDB_EXPORT int32_t tiledb_array_get_open_timestamp_end(
+    tiledb_ctx_t* ctx, tiledb_array_t* array, uint64_t* timestamp_end);
+
+/**
  * Opens a TileDB array. The array is opened using a query type as input.
  * This is to indicate that queries created for this `tiledb_array_t`
  * object will inherit the query type. In other words, `tiledb_array_t`
@@ -4808,6 +4937,8 @@ TILEDB_EXPORT int32_t tiledb_array_open_at(
     uint64_t timestamp);
 
 /**
+ * This is a deprecated API.
+ *
  * Opens an encrypted array using the given encryption key. This function has
  * the same semantics as `tiledb_array_open()` but is used for encrypted arrays.
  *
@@ -5139,6 +5270,8 @@ TILEDB_EXPORT int32_t tiledb_array_create(
     const tiledb_array_schema_t* array_schema);
 
 /**
+ * This is a deprecated API.
+ *
  * Creates a new encrypted TileDB array given an input schema.
  *
  * Encrypted arrays can only be created through this function.
@@ -5197,6 +5330,8 @@ TILEDB_EXPORT int32_t tiledb_array_consolidate(
     tiledb_ctx_t* ctx, const char* array_uri, tiledb_config_t* config);
 
 /**
+ * This is a deprecated API.
+ *
  * Depending on the consoliation mode in the config, consolidates either the
  * fragment files, fragment metadata files, or array metadata files into a
  * single file.
@@ -5743,6 +5878,8 @@ TILEDB_DEPRECATED_EXPORT int32_t tiledb_array_consolidate_metadata(
     tiledb_ctx_t* ctx, const char* array_uri, tiledb_config_t* config);
 
 /**
+ * This is a deprecated API.
+ *
  * Consolidates the array metadata of an encrypted array into a single file.
  *
  * You must first finalize all queries to the array before consolidation can
@@ -6665,6 +6802,8 @@ TILEDB_EXPORT int32_t tiledb_fragment_info_load(
     tiledb_ctx_t* ctx, tiledb_fragment_info_t* fragment_info);
 
 /**
+ * This is a deprecated API.
+ *
  * Loads the fragment info from an encrypted array.
  *
  * **Example:**

@@ -92,6 +92,7 @@ Dimension::Dimension(const Dimension* dim) {
   type_ = dim->type_;
 
   // Set fuctions
+  adjust_range_oob_func_ = dim->adjust_range_oob_func_;
   ceil_to_tile_func_ = dim->ceil_to_tile_func_;
   check_range_func_ = dim->check_range_func_;
   coincides_with_tiles_func_ = dim->coincides_with_tiles_func_;
@@ -734,35 +735,98 @@ double Dimension::overlap_ratio<char>(const Range& r1, const Range& r2) {
 
 template <class T>
 double Dimension::overlap_ratio(const Range& r1, const Range& r2) {
+  // Verify that we have two intervals
   assert(!r1.empty());
   assert(!r2.empty());
-
   auto d1 = (const T*)r1.data();
   auto d2 = (const T*)r2.data();
-  assert(d1[0] <= d1[1]);
-  assert(d2[0] <= d2[1]);
+  const auto r1_low = d1[0];
+  const auto r1_high = d1[1];
+  auto r2_low = d2[0];
+  auto r2_high = d2[1];
+  assert(r1_low <= r1_high);
+  assert(r2_low <= r2_high);
 
-  // No overlap
-  if (d1[0] > d2[1] || d1[1] < d2[0])
+  // Special case: No overlap, intervals are disjoint
+  if (r1_low > r2_high || r1_high < r2_low)
     return 0.0;
-
-  // Compute ratio
-  auto overlap_start = std::max(d1[0], d2[0]);
-  auto overlap_end = std::min(d1[1], d2[1]);
-  auto overlap_range = overlap_end - overlap_start;
-  auto mbr_range = d2[1] - d2[0];
-  auto max = std::numeric_limits<double>::max();
-  if (std::is_integral<T>::value) {
-    overlap_range += 1;
-    mbr_range += 1;
-  } else {
-    if (overlap_range == 0)
-      overlap_range = std::nextafter(overlap_range, max);
-    if (mbr_range == 0)
-      mbr_range = std::nextafter(mbr_range, max);
+  // Special case: All overlap, interval r2 is a subset of interval r1
+  if (r1_low <= r2_low && r2_high <= r1_high)
+    return 1.0;
+  /*
+   * At this point we know that r2_low < r2_high, because we would have returned
+   * by now otherwise. Note that for floating point types, however, we cannot
+   * conclude that r2_high - r2_low > 0 because of the possibility of underflow.
+   */
+  auto intersection_low = std::max(r1_low, r2_low);
+  auto intersection_high = std::min(r1_high, r2_high);
+  /*
+   * The intersection is a proper subset of interval r1, either the upper bounds
+   * are distinct, or lower bounds are distinct, or both. This means that any
+   * result has to be strictly greater than zero and strictly less than 1.
+   */
+  /*
+   * Guard against overflow. If the outer interval has a bound with an absolute
+   * value that's "too large", meaning that it might lead to an overflow, we
+   * apply a shrinking transformation that preserves the ratio. We only need to
+   * check the outer interval because the intersection is strictly smaller. For
+   * unsigned types we only need to check the upper bound, since the lower bound
+   * is zero. For signed types we need to check both.
+   */
+  const T safe_upper = std::nextafter(std::numeric_limits<T>::max() / 2, 0);
+  bool unsafe = safe_upper < r2_high;
+  if (std::numeric_limits<T>::is_signed) {
+    const T safe_lower =
+        std::nextafter(std::numeric_limits<T>::lowest() / 2, 0);
+    unsafe = unsafe || r2_low < safe_lower;
+  }
+  if (unsafe) {
+    r2_low /= 2;
+    r2_high /= 2;
+    intersection_low /= 2;
+    intersection_high /= 2;
   }
 
-  return (double)overlap_range / mbr_range;
+  // Compute ratio
+  auto numerator = intersection_high - intersection_low;
+  auto denominator = r2_high - r2_low;
+  if (std::numeric_limits<T>::is_integer) {
+    // integer types count elements; they don't measure length
+    numerator += 1;
+    denominator += 1;
+  } else {
+    if (denominator == 0) {
+      /*
+       * If the variable `denominator` is zero, it's the result of rounding,
+       * since checking the "disjoint" and "subset" cases above has ensured that
+       * the endpoints of the denominator interval are distinct. Thus we have no
+       * easy-to-access information about the true quotient value, but
+       * mathematically it must be between 0 and 1, so we need either to return
+       * some value between 0 and 1 or to throw an exception stating that we
+       * don't support this case.
+       *
+       * The variable `denominator` is larger than the variable `numerator`, so
+       * the numerator is also be zero. We could extract some information from
+       * the floating-point representation itself, but that's a lot of work that
+       * doesn't seem justified at present. Throwing an exception would be
+       * better on principle, but the code in its current state now would not
+       * deal with that gracefully. As a compromise, therefore, we return a
+       * valid but non-computed value. It's a defect, but one that will rarely
+       * if ever arise in practice.
+       */
+      return 0.5;
+    }
+    // The rounded-to-zero numerator is handled in the general case below.
+  }
+  auto ratio = (double)numerator / denominator;
+  // Round away from the endpoints if needed.
+  if (ratio == 0.0) {
+    ratio = std::nextafter(0, 1);
+  } else if (ratio == 1.0) {
+    ratio = std::nextafter(1, 0);
+  }
+  assert(0.0 < ratio && ratio < 1.0);
+  return ratio;
 }
 
 double Dimension::overlap_ratio(const Range& r1, const Range& r2) const {
@@ -804,7 +868,7 @@ void Dimension::split_range<char>(
     assert(pos != 0);
     new_r2_start[pos] = 0;
     new_r2_start[--pos]++;
-  } while (pos >= 0 && (int)new_r2_start[pos] < 0);
+  } while (pos >= 0 && (int)(signed char)new_r2_start[pos] < 0);
   new_r2_start.resize(pos + 1);
 
   auto max_string = std::string("\x7F", 1);
@@ -1052,9 +1116,9 @@ uint64_t Dimension::map_to_uint64(
     uint64_t c,
     uint64_t coords_num,
     int bits,
-    uint64_t bucket_num) const {
+    uint64_t max_bucket_val) const {
   assert(map_to_uint64_func_ != nullptr);
-  return map_to_uint64_func_(this, buff, c, coords_num, bits, bucket_num);
+  return map_to_uint64_func_(this, buff, c, coords_num, bits, max_bucket_val);
 }
 
 template <class T>
@@ -1064,7 +1128,7 @@ uint64_t Dimension::map_to_uint64(
     uint64_t c,
     uint64_t coords_num,
     int bits,
-    uint64_t bucket_num) {
+    uint64_t max_bucket_val) {
   assert(dim != nullptr);
   assert(buff != nullptr);
   assert(!dim->domain().empty());
@@ -1073,9 +1137,9 @@ uint64_t Dimension::map_to_uint64(
 
   double dom_start_T = *(const T*)dim->domain().start();
   double dom_end_T = *(const T*)dim->domain().end();
-  auto dom_range_T = dom_end_T - dom_start_T + std::is_integral<T>::value;
+  auto dom_range_T = dom_end_T - dom_start_T;
   auto norm_coord_T = ((const T*)buff->buffer_)[c] - dom_start_T;
-  return (norm_coord_T / dom_range_T) * bucket_num;
+  return (norm_coord_T / dom_range_T) * max_bucket_val;
 }
 
 template <>
@@ -1085,13 +1149,13 @@ uint64_t Dimension::map_to_uint64<char>(
     uint64_t c,
     uint64_t coords_num,
     int bits,
-    uint64_t bucket_num) {
+    uint64_t max_bucket_val) {
   assert(dim != nullptr);
   assert(buff != nullptr);
   assert(buff->buffer_ != nullptr);
   assert(buff->buffer_var_ != nullptr);
   assert(buff->buffer_var_size_ != nullptr);
-  (void)bucket_num;  // Not needed here
+  (void)max_bucket_val;  // Not needed here
   (void)dim;
 
   auto offsets = (const uint64_t*)buff->buffer_;
@@ -1118,9 +1182,9 @@ uint64_t Dimension::map_to_uint64(
     const void* coord,
     uint64_t coord_size,
     int bits,
-    uint64_t bucket_num) const {
+    uint64_t max_bucket_val) const {
   assert(map_to_uint64_2_func_ != nullptr);
-  return map_to_uint64_2_func_(this, coord, coord_size, bits, bucket_num);
+  return map_to_uint64_2_func_(this, coord, coord_size, bits, max_bucket_val);
 }
 
 template <class T>
@@ -1129,7 +1193,7 @@ uint64_t Dimension::map_to_uint64_2(
     const void* coord,
     uint64_t coord_size,
     int bits,
-    uint64_t bucket_num) {
+    uint64_t max_bucket_val) {
   assert(dim != nullptr);
   assert(coord != nullptr);
   assert(!dim->domain().empty());
@@ -1138,9 +1202,9 @@ uint64_t Dimension::map_to_uint64_2(
 
   double dom_start_T = *(const T*)dim->domain().start();
   double dom_end_T = *(const T*)dim->domain().end();
-  auto dom_range_T = dom_end_T - dom_start_T + std::is_integral<T>::value;
+  auto dom_range_T = dom_end_T - dom_start_T;
   auto norm_coord_T = *(const T*)coord - dom_start_T;
-  return (norm_coord_T / dom_range_T) * bucket_num;
+  return (norm_coord_T / dom_range_T) * max_bucket_val;
 }
 
 template <>
@@ -1149,10 +1213,10 @@ uint64_t Dimension::map_to_uint64_2<char>(
     const void* coord,
     uint64_t coord_size,
     int bits,
-    uint64_t bucket_num) {
+    uint64_t max_bucket_val) {
   assert(dim != nullptr);
   assert(coord != nullptr);
-  (void)bucket_num;
+  (void)max_bucket_val;
   (void)dim;
 
   auto v_str = (const char*)coord;
@@ -1176,9 +1240,9 @@ uint64_t Dimension::map_to_uint64(
     const ResultCoords& coord,
     uint32_t dim_idx,
     int bits,
-    uint64_t bucket_num) const {
+    uint64_t max_bucket_val) const {
   assert(map_to_uint64_3_func_ != nullptr);
-  return map_to_uint64_3_func_(this, coord, dim_idx, bits, bucket_num);
+  return map_to_uint64_3_func_(this, coord, dim_idx, bits, max_bucket_val);
 }
 
 template <class T>
@@ -1187,16 +1251,16 @@ uint64_t Dimension::map_to_uint64_3(
     const ResultCoords& coord,
     uint32_t dim_idx,
     int bits,
-    uint64_t bucket_num) {
+    uint64_t max_bucket_val) {
   assert(dim != nullptr);
   assert(!dim->domain().empty());
   (void)bits;  // Not needed here
 
   double dom_start_T = *(const T*)dim->domain().start();
   double dom_end_T = *(const T*)dim->domain().end();
-  auto dom_range_T = dom_end_T - dom_start_T + std::is_integral<T>::value;
+  auto dom_range_T = dom_end_T - dom_start_T;
   auto norm_coord_T = *((const T*)coord.coord(dim_idx)) - dom_start_T;
-  return (norm_coord_T / dom_range_T) * bucket_num;
+  return (norm_coord_T / dom_range_T) * max_bucket_val;
 }
 
 template <>
@@ -1205,9 +1269,9 @@ uint64_t Dimension::map_to_uint64_3<char>(
     const ResultCoords& coord,
     uint32_t dim_idx,
     int bits,
-    uint64_t bucket_num) {
+    uint64_t max_bucket_val) {
   assert(dim != nullptr);
-  (void)bucket_num;  // Not needed here
+  (void)max_bucket_val;  // Not needed here
   (void)dim;
 
   auto v_str = coord.coord_string(dim_idx);
@@ -1228,14 +1292,14 @@ uint64_t Dimension::map_to_uint64_3<char>(
 }
 
 ByteVecValue Dimension::map_from_uint64(
-    uint64_t value, int bits, uint64_t bucket_num) const {
+    uint64_t value, int bits, uint64_t max_bucket_val) const {
   assert(map_from_uint64_func_ != nullptr);
-  return map_from_uint64_func_(this, value, bits, bucket_num);
+  return map_from_uint64_func_(this, value, bits, max_bucket_val);
 }
 
 template <class T>
 ByteVecValue Dimension::map_from_uint64(
-    const Dimension* dim, uint64_t value, int bits, uint64_t bucket_num) {
+    const Dimension* dim, uint64_t value, int bits, uint64_t max_bucket_val) {
   assert(dim != nullptr);
   assert(!dim->domain().empty());
   (void)bits;  // Not needed here
@@ -1248,15 +1312,16 @@ ByteVecValue Dimension::map_from_uint64(
 
   auto dom_start_T = *(const T*)dim->domain().start();
   auto dom_end_T = *(const T*)dim->domain().end();
-  double dom_range_T = dom_end_T - dom_start_T + std::is_integral<T>::value;
+  double dom_range_T = dom_end_T - dom_start_T;
 
   // Essentially take the largest value in the bucket
   if (std::is_integral<T>::value) {  // Integers
-    T norm_coord_T = ceil(((value + 1) / (double)bucket_num) * dom_range_T - 1);
+    T norm_coord_T =
+        ceil(((value + 1) / (double)max_bucket_val) * dom_range_T - 1);
     T coord_T = norm_coord_T + dom_start_T;
     std::memcpy(&ret[0], &coord_T, sizeof(T));
   } else {  // Floating point types
-    T norm_coord_T = ((value + 1) / (double)bucket_num) * dom_range_T;
+    T norm_coord_T = ((value + 1) / (double)max_bucket_val) * dom_range_T;
     norm_coord_T =
         std::nextafter(norm_coord_T, std::numeric_limits<T>::lowest());
     T coord_T = norm_coord_T + dom_start_T;
@@ -1268,10 +1333,10 @@ ByteVecValue Dimension::map_from_uint64(
 
 template <>
 ByteVecValue Dimension::map_from_uint64<char>(
-    const Dimension* dim, uint64_t value, int bits, uint64_t bucket_num) {
+    const Dimension* dim, uint64_t value, int bits, uint64_t max_bucket_val) {
   assert(dim != nullptr);
   (void)dim;
-  (void)bucket_num;  // Not needed here
+  (void)max_bucket_val;  // Not needed here
 
   ByteVecValue ret(sizeof(uint64_t));  // 8 bytes
 
@@ -1437,6 +1502,13 @@ Status Dimension::set_tile_extent(const void* tile_extent) {
 }
 
 Status Dimension::set_tile_extent(const ByteVecValue& tile_extent) {
+  if (type_ == Datatype::STRING_ASCII) {
+    if (tile_extent.empty())
+      return Status::Ok();
+    return LOG_STATUS(Status::DimensionError(
+        std::string("Setting the tile extent to a dimension with type '") +
+        datatype_str(type_) + "' is not supported"));
+  }
   if (domain_.empty())
     return LOG_STATUS(Status::DimensionError(
         "Cannot set tile extent; Domain must be set first"));

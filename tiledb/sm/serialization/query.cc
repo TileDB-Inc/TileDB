@@ -70,10 +70,62 @@ namespace serialization {
 
 enum class SerializationContext { CLIENT, SERVER, BACKUP };
 
+Status stats_to_capnp(Stats& stats, capnp::Stats::Builder* stats_builder) {
+  // Build counters
+  const auto counters = stats.counters();
+  if (counters != nullptr && !counters->empty()) {
+    auto counters_builder = stats_builder->initCounters();
+    auto entries_builder = counters_builder.initEntries(counters->size());
+    uint64_t index = 0;
+    for (const auto& entry : *counters) {
+      entries_builder[index].setKey(entry.first);
+      entries_builder[index].setValue(entry.second);
+      ++index;
+    }
+  }
+
+  // Build timers
+  const auto timers = stats.timers();
+  if (timers != nullptr && !timers->empty()) {
+    auto timers_builder = stats_builder->initTimers();
+    auto entries_builder = timers_builder.initEntries(timers->size());
+    uint64_t index = 0;
+    for (const auto& entry : *timers) {
+      entries_builder[index].setKey(entry.first);
+      entries_builder[index].setValue(entry.second);
+      ++index;
+    }
+  }
+
+  return Status::Ok();
+}
+
+Status stats_from_capnp(
+    const capnp::Stats::Reader& stats_reader, Stats* stats) {
+  if (stats_reader.hasCounters()) {
+    auto counters = stats->counters();
+    auto counters_reader = stats_reader.getCounters();
+    for (const auto entry : counters_reader.getEntries()) {
+      (*counters)[std::string(entry.getKey().cStr())] = entry.getValue();
+    }
+  }
+
+  if (stats_reader.hasTimers()) {
+    auto timers = stats->timers();
+    auto timers_reader = stats_reader.getCounters();
+    for (const auto entry : timers_reader.getEntries()) {
+      (*timers)[std::string(entry.getKey().cStr())] = entry.getValue();
+    }
+  }
+
+  return Status::Ok();
+}
+
 Status array_to_capnp(
     const Array& array, capnp::Array::Builder* array_builder) {
   array_builder->setUri(array.array_uri().to_string());
-  array_builder->setTimestamp(array.timestamp_end());
+  array_builder->setStartTimestamp(array.timestamp_start());
+  array_builder->setEndTimestamp(array.timestamp_end());
 
   return Status::Ok();
 }
@@ -81,7 +133,8 @@ Status array_to_capnp(
 Status array_from_capnp(
     const capnp::Array::Reader& array_reader, Array* array) {
   RETURN_NOT_OK(array->set_uri(array_reader.getUri().cStr()));
-  RETURN_NOT_OK(array->set_timestamp_end(array_reader.getTimestamp()));
+  RETURN_NOT_OK(array->set_timestamp_start(array_reader.getStartTimestamp()));
+  RETURN_NOT_OK(array->set_timestamp_end(array_reader.getEndTimestamp()));
 
   return Status::Ok();
 }
@@ -117,6 +170,13 @@ Status subarray_to_capnp(
       ++range_idx;
     }
     range_builder.setBuffer(capnpVector.asPtr());
+  }
+
+  // If stats object exists set its cap'n proto object
+  stats::Stats* stats = subarray->stats();
+  if (stats != nullptr) {
+    auto stats_builder = builder->initStats();
+    RETURN_NOT_OK(stats_to_capnp(*stats, &stats_builder));
   }
 
   return Status::Ok();
@@ -160,6 +220,15 @@ Status subarray_from_capnp(
       Range range(data_ptr.begin(), data.size());
       RETURN_NOT_OK(subarray->set_ranges_for_dim(i, {range}));
       subarray->set_is_default(i, range_reader.getHasDefaultRange());
+    }
+  }
+
+  // If cap'n proto object has stats set it on c++ object
+  if (reader.hasStats()) {
+    stats::Stats* stats = subarray->stats();
+    // We should always have a stats here
+    if (stats != nullptr) {
+      RETURN_NOT_OK(stats_from_capnp(reader.getStats(), stats));
     }
   }
 
@@ -242,6 +311,13 @@ Status subarray_partitioner_to_capnp(
   builder->setMemoryBudget(mem_budget);
   builder->setMemoryBudgetVar(mem_budget_var);
   builder->setMemoryBudgetValidity(mem_budget_validity);
+
+  // If stats object exists set its cap'n proto object
+  stats::Stats* stats = partitioner.stats();
+  if (stats != nullptr) {
+    auto stats_builder = builder->initStats();
+    RETURN_NOT_OK(stats_to_capnp(*stats, &stats_builder));
+  }
 
   return Status::Ok();
 }
@@ -368,6 +444,15 @@ Status subarray_partitioner_from_capnp(
       reader.getMemoryBudgetVar(),
       reader.getMemoryBudgetValidity()));
 
+  // If cap'n proto object has stats set it on c++ object
+  if (reader.hasStats()) {
+    auto stats = partitioner->stats();
+    // We should always have stats
+    if (stats != nullptr) {
+      RETURN_NOT_OK(stats_from_capnp(reader.getStats(), stats));
+    }
+  }
+
   return Status::Ok();
 }
 
@@ -430,7 +515,7 @@ Status condition_to_capnp(
     clause_builder[i].setFieldName(clauses[i].field_name_);
 
     // Copy the condition value into a capnp vector of bytes.
-    const ByteVecValue value = clauses[i].condition_value_;
+    const ByteVecValue value = clauses[i].condition_value_data_;
     auto capnpValue = kj::Vector<uint8_t>();
     capnpValue.addAll(kj::ArrayPtr<uint8_t>(
         const_cast<uint8_t*>(reinterpret_cast<const uint8_t*>(value.data())),
@@ -479,6 +564,13 @@ Status reader_to_capnp(
   if (!condition->empty()) {
     auto condition_builder = reader_builder->initCondition();
     RETURN_NOT_OK(condition_to_capnp(*condition, &condition_builder));
+  }
+
+  // If stats object exists set its cap'n proto object
+  stats::Stats* stats = reader.stats();
+  if (stats != nullptr) {
+    auto stats_builder = reader_builder->initStats();
+    RETURN_NOT_OK(stats_to_capnp(*stats, &stats_builder));
   }
 
   return Status::Ok();
@@ -553,6 +645,15 @@ Status reader_from_capnp(
     RETURN_NOT_OK(reader->set_condition(condition));
   }
 
+  // If cap'n proto object has stats set it on c++ object
+  if (reader_reader.hasStats()) {
+    stats::Stats* stats = reader->stats();
+    // We should always have a stats here
+    if (stats != nullptr) {
+      RETURN_NOT_OK(stats_from_capnp(reader_reader.getStats(), stats));
+    }
+  }
+
   return Status::Ok();
 }
 
@@ -579,6 +680,13 @@ Status writer_to_capnp(
         subarray_to_capnp(array_schema, subarray_ranges, &subarray_builder));
   }
 
+  // If stats object exists set its cap'n proto object
+  stats::Stats* stats = writer.stats();
+  if (stats != nullptr) {
+    auto stats_builder = writer_builder->initStats();
+    RETURN_NOT_OK(stats_to_capnp(*stats, &stats_builder));
+  }
+
   return Status::Ok();
 }
 
@@ -587,6 +695,15 @@ Status writer_from_capnp(
   writer->set_check_coord_dups(writer_reader.getCheckCoordDups());
   writer->set_check_coord_oob(writer_reader.getCheckCoordOOB());
   writer->set_dedup_coords(writer_reader.getDedupCoords());
+
+  // If cap'n proto object has stats set it on c++ object
+  if (writer_reader.hasStats()) {
+    stats::Stats* stats = writer->stats();
+    // We should always have a stats here
+    if (stats != nullptr) {
+      RETURN_NOT_OK(stats_from_capnp(writer_reader.getStats(), stats));
+    }
+  }
 
   return Status::Ok();
 }
@@ -705,6 +822,13 @@ Status query_to_capnp(
   const Config* config = query.config();
   auto config_builder = query_builder->initConfig();
   RETURN_NOT_OK(config_to_capnp(config, &config_builder));
+
+  // If stats object exists set its cap'n proto object
+  stats::Stats* stats = query.stats();
+  if (stats != nullptr) {
+    auto stats_builder = query_builder->initStats();
+    RETURN_NOT_OK(stats_to_capnp(*stats, &stats_builder));
+  }
 
   return Status::Ok();
 }
@@ -927,9 +1051,21 @@ Status query_from_capnp(
           char* offset_dest = (char*)existing_offset_buffer + curr_offset_size;
           char* data_dest = (char*)existing_buffer + curr_data_size;
           char* validity_dest = (char*)existing_buffer + curr_validity_size;
+          uint64_t fixedlen_size_to_copy = fixedlen_size;
 
-          std::memcpy(offset_dest, attribute_buffer_start, fixedlen_size);
-          attribute_buffer_start += fixedlen_size;
+          // If the last query included an extra offset we will skip the first
+          // offset in this query The first offset is the 0 position which ends
+          // up the same as the extra offset in the last query 0th is converted
+          // below to curr_data_size which is also the n+1 offset in arrow mode
+          if (attr_copy_state != nullptr &&
+              attr_copy_state->last_query_added_extra_offset) {
+            attribute_buffer_start += sizeof(uint64_t);
+            fixedlen_size_to_copy -= sizeof(uint64_t);
+          }
+
+          std::memcpy(
+              offset_dest, attribute_buffer_start, fixedlen_size_to_copy);
+          attribute_buffer_start += fixedlen_size_to_copy;
           std::memcpy(data_dest, attribute_buffer_start, varlen_size);
           attribute_buffer_start += varlen_size;
           if (nullable) {
@@ -960,7 +1096,8 @@ Status query_from_capnp(
           // to offsets of Buffer #2: [0, 12]. The `28` was calculated as
           // the byte size of the values in Buffer #1.
           if (curr_data_size > 0) {
-            for (uint64_t i = 0; i < (fixedlen_size / sizeof(uint64_t)); ++i) {
+            for (uint64_t i = 0; i < (fixedlen_size_to_copy / sizeof(uint64_t));
+                 ++i) {
               reinterpret_cast<uint64_t*>(offset_dest)[i] += curr_data_size;
             }
           }
@@ -969,7 +1106,7 @@ Status query_from_capnp(
             // Set the size directly on the query (so user can introspect on
             // result size).
             if (existing_offset_buffer_size_ptr != nullptr)
-              *existing_offset_buffer_size_ptr = fixedlen_size;
+              *existing_offset_buffer_size_ptr = fixedlen_size_to_copy;
             if (existing_buffer_size_ptr != nullptr)
               *existing_buffer_size_ptr = varlen_size;
             if (nullable && existing_validity_buffer_size_ptr != nullptr)
@@ -977,10 +1114,14 @@ Status query_from_capnp(
           } else {
             // Accumulate total bytes copied (caller's responsibility to
             // eventually update the query).
-            attr_copy_state->offset_size += fixedlen_size;
+            attr_copy_state->offset_size += fixedlen_size_to_copy;
             attr_copy_state->data_size += varlen_size;
             if (nullable)
               attr_copy_state->validity_size += validitylen_size;
+
+            // Set whether the extra offset was included or not
+            attr_copy_state->last_query_added_extra_offset =
+                query_reader.getVarOffsetsAddExtraElement();
           }
         } else {
           // Fixed size attribute; buffers already set.
@@ -1235,6 +1376,15 @@ Status query_from_capnp(
   RETURN_NOT_OK(
       query_status_enum(query_reader.getStatus().cStr(), &query_status));
   query->set_status(query_status);
+
+  // If cap'n proto object has stats set it on c++ object
+  if (query_reader.hasStats()) {
+    stats::Stats* stats = query->stats();
+    // We should always have a stats here
+    if (stats != nullptr) {
+      RETURN_NOT_OK(stats_from_capnp(query_reader.getStats(), stats));
+    }
+  }
 
   return Status::Ok();
 }

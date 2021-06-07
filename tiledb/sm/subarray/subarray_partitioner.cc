@@ -635,6 +635,10 @@ Subarray* SubarrayPartitioner::subarray() {
   return &subarray_;
 }
 
+stats::Stats* SubarrayPartitioner::stats() const {
+  return stats_;
+}
+
 /* ****************************** */
 /*          PRIVATE METHODS       */
 /* ****************************** */
@@ -1332,7 +1336,7 @@ void SubarrayPartitioner::compute_range_uint64(
   range_uint64->resize(dim_num);
   Hilbert h(dim_num);
   auto bits = h.bits();
-  auto bucket_num = ((uint64_t)1 << bits) - 1;
+  auto max_bucket_val = ((uint64_t)1 << bits) - 1;
 
   // Default values for empty range start/end
   auto max_string = std::string("\x7F\x7F\x7F\x7F\x7F\x7F\x7F\x7F", 8);
@@ -1347,16 +1351,17 @@ void SubarrayPartitioner::compute_range_uint64(
     empty_end = var ? (r->end_size() == 0) : r->empty();
     auto max_default =
         var ? dim->map_to_uint64(
-                  max_string.data(), max_string.size(), bits, bucket_num) :
+                  max_string.data(), max_string.size(), bits, max_bucket_val) :
               (UINT64_MAX >> (64 - bits));
 
     (*range_uint64)[d][0] =
         empty_start ? 0 :  // min default
-            dim->map_to_uint64(r->start(), r->start_size(), bits, bucket_num);
+            dim->map_to_uint64(
+                r->start(), r->start_size(), bits, max_bucket_val);
     (*range_uint64)[d][1] =
         empty_end ?
             max_default :
-            dim->map_to_uint64(r->end(), r->end_size(), bits, bucket_num);
+            dim->map_to_uint64(r->end(), r->end_size(), bits, max_bucket_val);
 
     assert((*range_uint64)[d][0] <= (*range_uint64)[d][1]);
 
@@ -1481,9 +1486,9 @@ void SubarrayPartitioner::compute_splitting_value_hilbert(
   // Set real splitting value
   Hilbert h(dim_num);
   auto bits = h.bits();
-  auto bucket_num = ((uint64_t)1 << bits) - 1;
+  auto max_bucket_val = ((uint64_t)1 << bits) - 1;
 
   *splitting_value =
       array_schema->dimension(splitting_dim)
-          ->map_from_uint64(splitting_value_uint64, bits, bucket_num);
+          ->map_from_uint64(splitting_value_uint64, bits, max_bucket_val);
 }

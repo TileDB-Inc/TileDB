@@ -635,10 +635,10 @@ class Dimension {
   template <class T>
   static bool overlap(const Range& r1, const Range& r2);
 
-  /** Return ratio of the overalp of the two input 1D ranges over `r2`. */
+  /** Return ratio of the overlap of the two input 1D ranges over `r2`. */
   double overlap_ratio(const Range& r1, const Range& r2) const;
 
-  /** Return ratio of the overalp of the two input 1D ranges over `r2`. */
+  /** Return ratio of the overlap of the two input 1D ranges over `r2`. */
   template <class T>
   static double overlap_ratio(const Range& r1, const Range& r2);
 
@@ -688,7 +688,7 @@ class Dimension {
 
   /**
    * Maps the c-th cell in the input query buffer to a uint64 value,
-   * based on discretizing the domain into `bucket_num` buckets.
+   * based on discretizing the domain from 0 to `max_bucket_val`.
    * This value is used to compute a Hilbert value.
    */
   uint64_t map_to_uint64(
@@ -696,11 +696,11 @@ class Dimension {
       uint64_t c,
       uint64_t coords_num,
       int bits,
-      uint64_t bucket_num) const;
+      uint64_t max_bucket_val) const;
 
   /**
    * Maps the c-th cell in the input query buffer to a uint64 value,
-   * based on discretizing the domain into `bucket_num` buckets.
+   * based on discretizing the domain from 0 to `max_bucket_val`.
    * This value is used to compute a Hilbert value.
    */
   template <class T>
@@ -710,22 +710,22 @@ class Dimension {
       uint64_t c,
       uint64_t coords_num,
       int bits,
-      uint64_t bucket_num);
+      uint64_t max_bucket_val);
 
   /**
    * Maps the input coordinate to a uint64 value,
-   * based on discretizing the domain into `bucket_num` buckets.
+   * based on discretizing the domain from 0 to `max_bucket_val`.
    * This value is used to compute a Hilbert value.
    */
   uint64_t map_to_uint64(
       const void* coord,
       uint64_t coord_size,
       int bits,
-      uint64_t bucket_num) const;
+      uint64_t max_bucket_val) const;
 
   /**
    * Maps the input coordinate to a uint64 value,
-   * based on discretizing the domain into `bucket_num` buckets.
+   * based on discretizing the domain from 0 to `max_bucket_val`.
    * This value is used to compute a Hilbert value.
    */
   template <class T>
@@ -734,22 +734,22 @@ class Dimension {
       const void* coord,
       uint64_t coord_size,
       int bits,
-      uint64_t bucket_num);
+      uint64_t max_bucket_val);
 
   /**
    * Maps the input result coordinate to a uint64 value,
-   * based on discretizing the domain into `bucket_num` buckets.
+   * based on discretizing the domain from 0 to `max_bucket_val`.
    * This value is used to compute a Hilbert value.
    */
   uint64_t map_to_uint64(
       const ResultCoords& coord,
       uint32_t dim_idx,
       int bits,
-      uint64_t bucket_num) const;
+      uint64_t max_bucket_val) const;
 
   /**
    * Maps the input result coordinate to a uint64 value,
-   * based on discretizing the domain into `bucket_num` buckets.
+   * based on discretizing the domain from 0 to `max_bucket_val`.
    * This value is used to compute a Hilbert value.
    */
   template <class T>
@@ -758,24 +758,24 @@ class Dimension {
       const ResultCoords& coord,
       uint32_t dim_idx,
       int bits,
-      uint64_t bucket_num);
+      uint64_t max_bucket_val);
 
   /**
    * Maps a uint64 value (produced by `map_to_uint64`) to its corresponding
-   * value in the original dimension domain. `bucket_num` is the number
-   * of buckets used to discretize the original value.
+   * value in the original dimension domain. `max_bucket_val` is the maximum
+   * value used to discretize the original value.
    */
   ByteVecValue map_from_uint64(
-      uint64_t value, int bits, uint64_t bucket_num) const;
+      uint64_t value, int bits, uint64_t max_bucket_val) const;
 
   /**
    * Maps a uint64 value (produced by `map_to_uint64`) to its corresponding
-   * value in the original dimension domain. `bucket_num` is the number
-   * of buckets used to discretize the original value.
+   * value in the original dimension domain. `max_bucket_val` is the maximum
+   * value used to discretize the original value.
    */
   template <class T>
   static ByteVecValue map_from_uint64(
-      const Dimension* dim, uint64_t value, int bits, uint64_t bucket_num);
+      const Dimension* dim, uint64_t value, int bits, uint64_t max_bucket_val);
 
   /** Returns `true` if `value` is smaller than the start of `range`. */
   bool smaller_than(const ByteVecValue& value, const Range& range) const;

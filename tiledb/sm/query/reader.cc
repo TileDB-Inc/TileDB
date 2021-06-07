@@ -803,7 +803,7 @@ Status Reader::set_offsets_bitsize(const uint32_t bitsize) {
   return Status::Ok();
 }
 
-Stats* Reader::stats() {
+Stats* Reader::stats() const {
   return stats_;
 }
 
@@ -1036,8 +1036,19 @@ Status Reader::compute_range_result_coords(
   auto range_num = subarray->range_num();
   range_result_coords->resize(range_num);
   auto cell_order = array_schema_->cell_order();
-  Layout layout = (layout_ == Layout::UNORDERED) ? cell_order : layout_;
   auto allows_dups = array_schema_->allows_dups();
+
+  // To de-dupe the ranges, we may need to sort them. If the
+  // read layout is UNORDERED, we will sort by the cell layout.
+  // If the cell layout is hilbert, we will sort in row-major to
+  // avoid the expense of calculating hilbert values.
+  Layout sort_layout = layout_;
+  if (sort_layout == Layout::UNORDERED) {
+    sort_layout = cell_order;
+    if (sort_layout == Layout::HILBERT) {
+      sort_layout = Layout::ROW_MAJOR;
+    }
+  }
 
   auto status = parallel_for(
       storage_manager_->compute_tp(), 0, range_num, [&](uint64_t r) {
@@ -1056,7 +1067,7 @@ Status Reader::compute_range_result_coords(
               ((*range_result_coords)[r]).begin(),
               ((*range_result_coords)[r]).end(),
               ((*range_result_coords)[r]).size(),
-              layout));
+              sort_layout));
           RETURN_CANCEL_OR_ERROR(
               dedup_result_coords(&((*range_result_coords)[r])));
         }
@@ -3652,7 +3663,7 @@ Status Reader::calculate_hilbert_values(
   auto dim_num = array_schema_->dim_num();
   Hilbert h(dim_num);
   auto bits = h.bits();
-  auto bucket_num = ((uint64_t)1 << bits) - 1;
+  auto max_bucket_val = ((uint64_t)1 << bits) - 1;
   auto coords_num = (uint64_t)hilbert_values->size();
 
   // Calculate Hilbert values in parallel
@@ -3662,7 +3673,7 @@ Status Reader::calculate_hilbert_values(
         for (uint32_t d = 0; d < dim_num; ++d) {
           auto dim = array_schema_->dimension(d);
           coords[d] =
-              dim->map_to_uint64(*(iter_begin + c), d, bits, bucket_num);
+              dim->map_to_uint64(*(iter_begin + c), d, bits, max_bucket_val);
         }
         (*hilbert_values)[c] =
             std::pair<uint64_t, uint64_t>(h.coords_to_hilbert(&coords[0]), c);

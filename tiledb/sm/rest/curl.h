@@ -169,6 +169,7 @@ class Curl {
    * @param url URL to post to
    * @param serialization_type Serialization type to use
    * @param data Encoded data buffer for posting
+   * @param returned_data Buffer to store response data
    * @param write_cb Invoked as response body buffers are received.
    * @param res_ns_uri Array Namespace and URI
    * @return Status
@@ -178,6 +179,7 @@ class Curl {
       const std::string& url,
       SerializationType serialization_type,
       const BufferList* data,
+      Buffer* returned_data,
       PostResponseCb&& write_cb,
       const std::string& res_ns_uri);
 
