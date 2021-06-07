@@ -365,12 +365,21 @@ class Reader {
       bool* var_length);
 
   /**
-   * Calculate query size ratio.
+   * Return query store datatype size ratio in uint64_t pair.
    *
    * @param buffer_name The name for attribute or dimension
    * * @return The ratio of query_type_size/store_type_size.
    */
-  double calc_query_size_ratio(const std::string& buffer_name);
+  std::pair<uint64_t, uint64_t> query_store_size_ratio(
+      const std::string& buffer_name);
+
+  /**
+   * Returns the active cell size for attribute/dimentsion to be read.
+   *
+   * @param buffer_name The name for attribute or dimension
+   * * @return the cell size for buffer.
+   */
+  uint64_t active_cell_size(const std::string& buffer_name);
 
   /**
    * Sets the buffer for a fixed-sized attribute/dimension.

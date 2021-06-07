@@ -145,16 +145,28 @@ ResultTile::TileTuple* ResultTile::tile_tuple(const std::string& name) {
   return nullptr;
 }
 
-Status ResultTile::set_query_size_ratio(
-    const std::string& buffer_name, double sizeratio) {
-  query_size_ratios_[buffer_name] = sizeratio;
+Status ResultTile::set_query_store_datatypes(
+    const std::string& buffer_name,
+    Datatype query_datatype,
+    Datatype store_datatype) {
+  query_store_datatypes_[buffer_name] =
+      std::pair<Datatype, Datatype>(query_datatype, store_datatype);
   return Status::Ok();
 }
 
-double ResultTile::query_size_ratio(const std::string& buffer_name) {
-  return (query_size_ratios_.find(buffer_name) == query_size_ratios_.end()) ?
-             1.0 :
-             query_size_ratios_[buffer_name];
+std::pair<uint64_t, uint64_t> ResultTile::query_store_size_ratio(
+    const std::string& buffer_name) {
+  if (query_store_datatypes_.find(buffer_name) ==
+      query_store_datatypes_.end()) {
+    return std::pair<uint64_t, uint64_t>(1, 1);
+  } else {
+    Datatype query_datatype = query_store_datatypes_[buffer_name].first;
+    Datatype store_datatype = query_store_datatypes_[buffer_name].second;
+    uint64_t query_datatype_size = datatype_size(query_datatype);
+    uint64_t store_datatype_size = datatype_size(store_datatype);
+    return std::pair<uint64_t, uint64_t>(
+        query_datatype_size, store_datatype_size);
+  }
 }
 
 const void* ResultTile::unzipped_coord(uint64_t pos, unsigned dim_idx) const {
@@ -268,7 +280,8 @@ Status ResultTile::read(
       (is_dim && !coord_tiles_[0].first.empty()) ||
       (name == constants::coords && !std::get<0>(coords_tile_).empty())) {
     const auto& tile = std::get<0>(*this->tile_tuple(name));
-    auto cell_size = (uint64_t)(tile.cell_size() * query_size_ratio(name));
+    auto size_ratio = query_store_size_ratio(name);
+    auto cell_size = tile.cell_size() * size_ratio.first / size_ratio.second;
     auto nbytes = len * cell_size;
     auto offset = pos * cell_size;
     return tile.read(buffer, nbytes, offset);
@@ -284,8 +297,9 @@ Status ResultTile::read(
     for (uint64_t c = 0; c < len; ++c) {
       for (unsigned d = 0; d < dim_num; ++d) {
         auto coord_tile = std::get<0>(coord_tiles_[d].second);
+        auto size_ratio = query_store_size_ratio(name);
         auto cell_size =
-            (uint64_t)(coord_tile.cell_size() * query_size_ratio(name));
+            coord_tile.cell_size() * size_ratio.first / size_ratio.second;
         auto tile_offset = (pos + c) * cell_size;
         RETURN_NOT_OK(
             coord_tile.read(buff + buff_offset, cell_size, tile_offset));
@@ -305,8 +319,9 @@ Status ResultTile::read(
       }
     }
     auto buff = static_cast<unsigned char*>(buffer);
-    auto cell_size = (uint64_t)(
-        std::get<0>(coords_tile_).cell_size() * query_size_ratio(name));
+    auto size_ratio = query_store_size_ratio(name);
+    auto cell_size = std::get<0>(coords_tile_).cell_size() * size_ratio.first /
+                     size_ratio.second;
     auto dim_size = cell_size / domain_->dim_num();
     uint64_t offset = pos * cell_size + dim_size * dim_offset;
     for (uint64_t c = 0; c < len; ++c) {
@@ -328,8 +343,8 @@ Status ResultTile::read_nullable(
     void* buffer_validity) {
   const auto& tile = std::get<0>(*this->tile_tuple(name));
   const auto& tile_validity = std::get<2>(*this->tile_tuple(name));
-
-  auto cell_size = (uint64_t)(tile.cell_size() * query_size_ratio(name));
+  auto size_ratio = query_store_size_ratio(name);
+  auto cell_size = tile.cell_size() * size_ratio.first / size_ratio.second;
   auto validity_cell_size = tile_validity.cell_size();
 
   buffer = static_cast<char*>(buffer) + buffer_offset;

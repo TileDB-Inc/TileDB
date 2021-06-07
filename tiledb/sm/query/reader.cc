@@ -447,13 +447,31 @@ Status Reader::set_query_datatype(
   return Status::Ok();
 }
 
-double Reader::calc_query_size_ratio(const std::string& buffer_name) {
+std::pair<uint64_t, uint64_t> Reader::query_store_size_ratio(
+    const std::string& buffer_name) {
   if (query_datatypes_.find(buffer_name) == query_datatypes_.end()) {
-    return 1.0;
+    return std::pair<uint64_t, uint64_t>(1, 1);
+  } else {
+    Datatype query_datatype = query_datatypes_[buffer_name];
+    Datatype store_datatype = array_schema_->type(buffer_name);
+    ;
+    uint64_t query_datatype_size = datatype_size(query_datatype);
+    uint64_t store_datatype_size = datatype_size(store_datatype);
+    return std::pair<uint64_t, uint64_t>(
+        query_datatype_size, store_datatype_size);
   }
-  auto query_datatype = query_datatypes_[buffer_name];
-  auto store_datatype = array_schema_->type(buffer_name);
-  return 1.0 * datatype_size(query_datatype) / datatype_size(store_datatype);
+}
+
+uint64_t Reader::active_cell_size(const std::string& buffer_name) {
+  uint64_t cell_size = array_schema_->cell_size(buffer_name);
+  if (query_datatypes_.find(buffer_name) == query_datatypes_.end()) {
+    return cell_size;
+  } else {
+    auto query_datatype = query_datatypes_[buffer_name];
+    auto store_datatype = array_schema_->type(buffer_name);
+    return cell_size * datatype_size(query_datatype) /
+           datatype_size(store_datatype);
+  }
 }
 
 Status Reader::set_buffer(
@@ -1312,10 +1330,7 @@ Status Reader::copy_fixed_cells(
 
   auto it = buffers_.find(name);
   auto buffer_size = it->second.buffer_size_;
-  auto cell_size = array_schema_->cell_size(name);
-  if (query_datatypes_.find(name) != query_datatypes_.end()) {
-    cell_size = (uint64_t)(cell_size * calc_query_size_ratio(name));
-  }
+  auto cell_size = active_cell_size(name);
 
   // Precompute the cell range destination offsets in the buffer.
   uint64_t buffer_offset = 0;
@@ -1393,7 +1408,7 @@ Status Reader::copy_partitioned_fixed_cells(
   auto it = buffers_.find(*name);
   auto buffer = (unsigned char*)it->second.buffer_;
   auto buffer_validity = (unsigned char*)it->second.validity_vector_.buffer();
-  auto cell_size = array_schema_->cell_size(*name);
+  auto cell_size = active_cell_size(*name);
   ByteVecValue fill_value;
   uint8_t fill_value_validity = 0;
   if (array_schema_->is_attr(*name)) {
@@ -1414,11 +1429,13 @@ Status Reader::copy_partitioned_fixed_cells(
     uint64_t offset = cs_offsets[cs_idx];
 
     if (query_datatypes_.find(*name) != query_datatypes_.end()) {
-      double query_size_ratio = calc_query_size_ratio(*name);
-      cell_size = (uint64_t)(query_size_ratio * cell_size);
-      fill_value_size = (uint64_t)(query_size_ratio * fill_value_size);
+      auto size_ratio = query_store_size_ratio(*name);
+      fill_value_size = fill_value_size * size_ratio.first / size_ratio.second;
       if (cs.tile_ != nullptr) {
-        cs.tile_->set_query_size_ratio(*name, query_size_ratio);
+        Datatype query_datatype = query_datatypes_[*name];
+        Datatype store_datatype = array_schema_->type(*name);
+        cs.tile_->set_query_store_datatypes(
+            *name, query_datatype, store_datatype);
       }
     }
 

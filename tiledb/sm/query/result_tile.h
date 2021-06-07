@@ -136,18 +136,23 @@ class ResultTile {
    * Sets the datatype for attribute/dimentsion to be read.
    *
    * @param buffer_name The name for attribute or dimension
-   * @param sizeratio The ratio of size_query_datatype and size_store_datatype
+   * @param query_datatype The datatype for an attribute or dimension to query
+   * @param store_datatype The datatype for an attribute or dimension to store
    * * @return `TILEDB_OK` for success and `TILEDB_ERR` for error.
    */
-  Status set_query_size_ratio(const std::string& buffer_name, double sizeratio);
+  Status set_query_store_datatypes(
+      const std::string& buffer_name,
+      Datatype query_datatype,
+      Datatype store_datatype);
 
   /**
-   * Return query size ratio.
+   * Return query store datatype size ratio in uint64_t pair.
    *
    * @param buffer_name The name for attribute or dimension
    * * @return The ratio of query_type_size/store_type_size.
    */
-  double query_size_ratio(const std::string& buffer_name);
+  std::pair<uint64_t, uint64_t> query_store_size_ratio(
+      const std::string& buffer_name);
 
   /**
    * Returns a constant pointer to the coordinate at position `pos` for
@@ -288,8 +293,9 @@ class ResultTile {
   /** Maps attribute names to tiles. */
   std::unordered_map<std::string, TileTuple> attr_tiles_;
 
-  /** Maps attribute names to size ratios */
-  std::unordered_map<std::string, double> query_size_ratios_;
+  /** Maps attribute names to query and store datatypes pair */
+  std::unordered_map<std::string, std::pair<Datatype, Datatype>>
+      query_store_datatypes_;
 
   /** The zipped coordinates tile. */
   TileTuple coords_tile_;
