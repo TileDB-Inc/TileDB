@@ -462,12 +462,12 @@ std::pair<uint64_t, uint64_t> Reader::query_store_size_ratio(
   }
 }
 
-uint64_t Reader::active_cell_size(const std::string& buffer_name) {
+uint64_t Reader::active_cell_size(const std::string& buffer_name) const {
   uint64_t cell_size = array_schema_->cell_size(buffer_name);
   if (query_datatypes_.find(buffer_name) == query_datatypes_.end()) {
     return cell_size;
   } else {
-    auto query_datatype = query_datatypes_[buffer_name];
+    auto query_datatype = query_datatypes_.at(buffer_name);
     auto store_datatype = array_schema_->type(buffer_name);
     return cell_size * datatype_size(query_datatype) /
            datatype_size(store_datatype);
@@ -934,7 +934,7 @@ Status Reader::check_validity_buffer_sizes() const {
         if (offsets_extra_element_)
           min_cell_num = std::min<uint64_t>(0, min_cell_num - 1);
       } else {
-        min_cell_num = buffer_size / array_schema_->cell_size(name);
+        min_cell_num = buffer_size / active_cell_size(name);
       }
 
       const uint64_t buffer_validity_size =
@@ -1431,12 +1431,6 @@ Status Reader::copy_partitioned_fixed_cells(
     if (query_datatypes_.find(*name) != query_datatypes_.end()) {
       auto size_ratio = query_store_size_ratio(*name);
       fill_value_size = fill_value_size * size_ratio.first / size_ratio.second;
-      if (cs.tile_ != nullptr) {
-        Datatype query_datatype = query_datatypes_[*name];
-        Datatype store_datatype = array_schema_->type(*name);
-        cs.tile_->set_query_store_datatypes(
-            *name, query_datatype, store_datatype);
-      }
     }
 
     // Copy
@@ -2859,7 +2853,7 @@ Status Reader::init_read_state() {
 Status Reader::init_tile(
     uint32_t format_version, const std::string& name, Tile* tile) const {
   // For easy reference
-  auto cell_size = array_schema_->cell_size(name);
+  auto cell_size = active_cell_size(name);
   auto type = array_schema_->type(name);
   auto is_coords = (name == constants::coords);
   auto dim_num = (is_coords) ? array_schema_->dim_num() : 0;
@@ -2895,7 +2889,7 @@ Status Reader::init_tile_nullable(
     Tile* tile,
     Tile* tile_validity) const {
   // For easy reference
-  auto cell_size = array_schema_->cell_size(name);
+  auto cell_size = active_cell_size(name);
   auto type = array_schema_->type(name);
   auto is_coords = (name == constants::coords);
   auto dim_num = (is_coords) ? array_schema_->dim_num() : 0;

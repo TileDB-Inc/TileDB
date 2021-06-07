@@ -194,7 +194,7 @@ TEST_CASE("C API: Test filter list on attribute", "[capi], [filter]") {
 }
 
 TEST_CASE(
-    "C API: Test conversion filter for double and int attributes",
+    "C API: Test conversion filter on attribute",
     "[capi], [filter], [conversion]") {
   int rc = 0;
   const char* array_name = "conversion_filter_array";
@@ -228,11 +228,13 @@ TEST_CASE(
   tiledb_domain_add_dimension(ctx, domain, d1);
   tiledb_domain_add_dimension(ctx, domain, d2);
 
-  // Create two fixed-length attributes "a1" and "a2"
-  tiledb_attribute_t *a1, *a2;
+  // Create three fixed-length attributes "a1", "a2" and "a3"
+  tiledb_attribute_t *a1, *a2, *a3;
   rc = tiledb_attribute_alloc(ctx, "a1", TILEDB_FLOAT64, &a1);
   REQUIRE(rc == TILEDB_OK);
   rc = tiledb_attribute_alloc(ctx, "a2", TILEDB_INT32, &a2);
+  REQUIRE(rc == TILEDB_OK);
+  rc = tiledb_attribute_alloc(ctx, "a3", TILEDB_FLOAT32, &a3);
   REQUIRE(rc == TILEDB_OK);
 
   // Create array schema
@@ -244,6 +246,7 @@ TEST_CASE(
   tiledb_array_schema_set_domain(ctx, array_schema, domain);
   tiledb_array_schema_add_attribute(ctx, array_schema, a1);
   tiledb_array_schema_add_attribute(ctx, array_schema, a2);
+  tiledb_array_schema_add_attribute(ctx, array_schema, a3);
 
   int is_dir = 0;
   rc = tiledb_vfs_is_dir(ctx, vfs, array_name, &is_dir);
@@ -260,6 +263,7 @@ TEST_CASE(
   // Clean up
   tiledb_attribute_free(&a1);
   tiledb_attribute_free(&a2);
+  tiledb_attribute_free(&a3);
   tiledb_dimension_free(&d1);
   tiledb_dimension_free(&d2);
   tiledb_domain_free(&domain);
@@ -289,6 +293,8 @@ TEST_CASE(
   uint64_t data_a1_size = sizeof(data_a1);
   int32_t data_a2[] = {-21, -22, -23};
   uint64_t data_a2_size = sizeof(data_a2);
+  float data_a3[] = {100.1, -102.2, -103.3};
+  uint64_t data_a3_size = sizeof(data_a3);
 
   // Create the query
   tiledb_query_t* query;
@@ -297,6 +303,7 @@ TEST_CASE(
   tiledb_query_set_layout(ctx, query, TILEDB_UNORDERED);
   tiledb_query_set_buffer(ctx, query, "a1", data_a1, &data_a1_size);
   tiledb_query_set_buffer(ctx, query, "a2", data_a2, &data_a2_size);
+  tiledb_query_set_buffer(ctx, query, "a3", data_a3, &data_a3_size);
   tiledb_query_set_buffer(ctx, query, "rows", coords_rows, &coords_size);
   tiledb_query_set_buffer(ctx, query, "cols", coords_cols, &coords_size);
 
@@ -331,12 +338,14 @@ TEST_CASE(
   uint64_t read_coords_size = 12;
   uint64_t data1_size = 3 * sizeof(int);
   uint64_t data2_size = 3 * sizeof(double);
+  uint64_t data3_size = 3 * sizeof(double);
 
   // Prepare the vector that will hold the result
   int* read_coords_rows = (int*)malloc(read_coords_size);
   int* read_coords_cols = (int*)malloc(read_coords_size);
   int* data1 = (int*)malloc(data1_size);
   double* data2 = (double*)malloc(data2_size);
+  double* data3 = (double*)malloc(data3_size);
 
   // Create query
   rc = tiledb_query_alloc(ctx, array, TILEDB_READ, &query);
@@ -355,6 +364,11 @@ TEST_CASE(
   tiledb_query_set_buffer(ctx, query, "a2", data2, &data2_size);
   tiledb_query_set_query_datatype(
       ctx, query, "a2", tiledb_datatype_t::TILEDB_FLOAT64, &var_length);
+
+  // Read float attribute to double buffer
+  tiledb_query_set_buffer(ctx, query, "a3", data3, &data3_size);
+  tiledb_query_set_query_datatype(
+      ctx, query, "a3", tiledb_datatype_t::TILEDB_FLOAT64, &var_length);
 
   // Set buffer for corordinates
   tiledb_query_set_buffer(
@@ -375,12 +389,16 @@ TEST_CASE(
   REQUIRE(data1[0] == ((int)data_a1[2]));
   // data2 converted from -23 to -23.0
   REQUIRE(data2[0] == ((double)data_a2[2]));
+  // data2 converted from -23 to -23.0
+  REQUIRE(data3[0] == ((double)data_a3[2]));
 
   // Cell(2,4)
   // data1 converted from -12.2 to -12
   REQUIRE(data1[1] == ((int)data_a1[1]));
   // data2 converted from -22 to -22.0
-  REQUIRE(data2[0] == ((double)data_a2[2]));
+  REQUIRE(data2[1] == ((double)data_a2[1]));
+  // data3 converted from 32bit -102.2 to 64 bit -102.2
+  REQUIRE(data2[1] == ((double)data_a2[1]));
 
   // Delete array
   rc = tiledb_vfs_alloc(ctx, NULL, &vfs);
@@ -398,6 +416,7 @@ TEST_CASE(
   free((void*)read_coords_cols);
   free((void*)data1);
   free((void*)data2);
+  free((void*)data3);
   tiledb_array_free(&array);
   tiledb_query_free(&query);
   tiledb_ctx_free(&ctx);

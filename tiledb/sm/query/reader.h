@@ -379,7 +379,7 @@ class Reader {
    * @param buffer_name The name for attribute or dimension
    * * @return the cell size for buffer.
    */
-  uint64_t active_cell_size(const std::string& buffer_name);
+  uint64_t active_cell_size(const std::string& buffer_name) const;
 
   /**
    * Sets the buffer for a fixed-sized attribute/dimension.

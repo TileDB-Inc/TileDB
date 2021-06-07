@@ -133,28 +133,6 @@ class ResultTile {
   TileTuple* tile_tuple(const std::string& name);
 
   /**
-   * Sets the datatype for attribute/dimentsion to be read.
-   *
-   * @param buffer_name The name for attribute or dimension
-   * @param query_datatype The datatype for an attribute or dimension to query
-   * @param store_datatype The datatype for an attribute or dimension to store
-   * * @return `TILEDB_OK` for success and `TILEDB_ERR` for error.
-   */
-  Status set_query_store_datatypes(
-      const std::string& buffer_name,
-      Datatype query_datatype,
-      Datatype store_datatype);
-
-  /**
-   * Return query store datatype size ratio in uint64_t pair.
-   *
-   * @param buffer_name The name for attribute or dimension
-   * * @return The ratio of query_type_size/store_type_size.
-   */
-  std::pair<uint64_t, uint64_t> query_store_size_ratio(
-      const std::string& buffer_name);
-
-  /**
    * Returns a constant pointer to the coordinate at position `pos` for
    * dimension `dim_idx`. This will fetch from the zipped `coord_tile_`
    * unless at least one `init_coord_tile()` has been invoked on this
