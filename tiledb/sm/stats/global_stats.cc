@@ -87,7 +87,15 @@ void GlobalStats::set_enabled(bool enabled) {
   enabled_ = enabled;
 }
 
+void GlobalStats::reset() {
+  std::unique_lock<std::mutex> ul(mtx_);
+  for (auto& register_stat : registered_stats_) {
+    register_stat->reset();
+  }
+}
+
 void GlobalStats::register_stats(const tdb_shared_ptr<Stats>& stats) {
+  std::unique_lock<std::mutex> ul(mtx_);
   registered_stats_.emplace_back(stats);
 }
 
@@ -96,6 +104,8 @@ void GlobalStats::register_stats(const tdb_shared_ptr<Stats>& stats) {
 /* ****************************** */
 
 std::string GlobalStats::dump_registered_stats() const {
+  std::unique_lock<std::mutex> ul(mtx_);
+
   std::stringstream ss;
 
   ss << "[\n";
