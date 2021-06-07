@@ -90,6 +90,9 @@ class Stats {
   /** Enable or disable statistics gathering. */
   void set_enabled(bool enabled);
 
+  /** Reset all stats. */
+  void reset();
+
   /**
    * Dumps the stats for this instance as a JSON dictionary of
    * timers and stats.

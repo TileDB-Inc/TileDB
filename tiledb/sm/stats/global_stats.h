@@ -89,6 +89,9 @@ class GlobalStats {
   /** Enable or disable statistics gathering. */
   void set_enabled(bool enabled);
 
+  /** Reset all registered stats. */
+  void reset();
+
   /**
    * Registers a `Stats` instance. Stats in this instance
    * will be aggregated and dumped with the other registered
@@ -129,7 +132,7 @@ class GlobalStats {
   bool enabled_;
 
   /** Mutex to protext in multi-threading scenarios. */
-  std::mutex mtx_;
+  mutable std::mutex mtx_;
 
   /** The aggregated stats. */
   std::list<tdb_shared_ptr<stats::Stats>> registered_stats_;
