@@ -1,61 +1,44 @@
-# In Progress
+# TileDB v2.2.9 Release Notes
+
+## Bug fixes
+* Fix rare read corruption in S3 [#2254](https://github.com/TileDB-Inc/TileDB/pull/2254)
+* Write fix for unordered writes on nullable, fixed attributes [#2241](https://github.com/TileDB-Inc/TileDB/pull/2241)
+
+# TileDB v2.2.8 Release Notes
 
 ## Disk Format
-* Format version incremented to 9. [#2108](https://github.com/TileDB-Inc/TileDB/pull/2108)
 
 ## Breaking C API changes
 
 ## Breaking behavior
-* Removes TBB as an optional dependency [#2181](https://github.com/TileDB-Inc/TileDB/pull/2181)
 
 ## New features
+* Support TILEDB_DATETIME_{SEC,MS,US,NS} in arrow_io_impl.h [#2229](https://github.com/TileDB-Inc/TileDB/pull/2229)
 * Add support for serialization of config objects [#2164](https://github.com/TileDB-Inc/TileDB/pull/2164)
-* Add C and C++ examples to the  directory for the  APIs. [#2160](https://github.com/TileDB-Inc/TileDB/pull/2160)
-* supporting serialization (using capnproto) build on windows [#2100](https://github.com/TileDB-Inc/TileDB/pull/2100)
-* Config option vfs.s3.sse for S3 server-side encryption support [#2130](https://github.com/TileDB-Inc/TileDB/pull/2130)
-* Name attribute/dimension files by index. This is fragment-specific and updates the format version to version 9. [#2107](https://github.com/TileDB-Inc/TileDB/pull/2107)
-* Smoke Test, remove nullable structs from global namespace. [#2078](https://github.com/TileDB-Inc/TileDB/pull/2078)
+* Add support for serialization of query config [#2177](https://github.com/TileDB-Inc/TileDB/pull/2177)
 
 ## Improvements
-* Consolidation support for nullable attributes [#2196](https://github.com/TileDB-Inc/TileDB/pull/2196)
-* Adjust unit tests to reduce memory leaks inside the tests. [#2179](https://github.com/TileDB-Inc/TileDB/pull/2179)
+* Optimize `Subarray::compute_relevant_fragments` [#2218](https://github.com/TileDB-Inc/TileDB/pull/2218)
 * Reduces memory usage in multi-range range reads [#2165](https://github.com/TileDB-Inc/TileDB/pull/2165)
 * Add config option `sm.read_range_oob` to toggle bounding read ranges to domain or erroring [#2162](https://github.com/TileDB-Inc/TileDB/pull/2162)
-* Refactor dense writes [#2166](https://github.com/TileDB-Inc/TileDB/pull/2166)
-* Proposal on refactoring stats [#2166](https://github.com/TileDB-Inc/TileDB/pull/2166)
-* Two new parameters have been added to the config, sm.array.timestamp_start and sm.array.timestamp_end, along with an edited tiledb_array_open that uses these config timestamps rather than the previously used timestamp arguments in tiledb_array_open_at. [#2142](https://github.com/TileDB-Inc/TileDB/pull/2142)
-* Windows msys2 build artifacts are no longer uploaded [#2159](https://github.com/TileDB-Inc/TileDB/pull/2159)
-* Add internal log functions to log at different log levels [#2161](https://github.com/TileDB-Inc/TileDB/pull/2161)
-* Parallelize Writer::filter_tiles [#2156](https://github.com/TileDB-Inc/TileDB/pull/2156)
-* Added config option vfs.gcs.request_timeout_ms [#2148](https://github.com/TileDB-Inc/TileDB/pull/2148)
-* Cleanup the GHA CI scripts - put common code into external shell scripts. [#2124](https://github.com/TileDB-Inc/TileDB/pull/2124)
-* The latest version of  was leaving behind a . This ensures that the directory is removed when  is run. [#2113](https://github.com/TileDB-Inc/TileDB/pull/2113)
-* Migrating AZP CI to GA [#2111](https://github.com/TileDB-Inc/TileDB/pull/2111)
-* Places the in-memory filesystem under unit test [#1961](https://github.com/TileDB-Inc/TileDB/pull/1961)
-* Adds a Github Action to automate the HISTORY.md [#2075](https://github.com/TileDB-Inc/TileDB/pull/2075)
-* Consolidation functions now use the ctx's config if not config is passed [#2126](https://github.com/TileDB-Inc/TileDB/pull/2126)
+* Updates bzip2 to v1.0.8 on Linux/OSX [#2233](https://github.com/TileDB-Inc/TileDB/pull/2233)
 
 ## Deprecations
-* The following C APIs have been deprecated: tiledb_array_open_at, tiledb_array_open_at_with_key, tiledb_array_reopen_at. Three C++ API constructors have been deprecated, along with three open and one reopen C++ APIs that use the above mentioned C APIs.[#2142](https://github.com/TileDB-Inc/TileDB/pull/2142)
 
 ## Bug fixes
 * Fixes a potential memory leak in the filter pipeline [#2185](https://github.com/TileDB-Inc/TileDB/pull/2185)
 * Fixes misc memory leaks in the unit tests [#2183](https://github.com/TileDB-Inc/TileDB/pull/2183)
-* Change mutex from basic to recursive [#2180](https://github.com/TileDB-Inc/TileDB/pull/2180)
 * Fix memory leak of `tiledb_config_t` in error path of `tiledb_config_alloc`. [#2178](https://github.com/TileDB-Inc/TileDB/pull/2178)
 
 ## API additions
 
 ### C API
-* tiledb_query_get_array now returns a deep-copy [#2184](https://github.com/TileDB-Inc/TileDB/pull/2184)
+* tiledb_query_get_array now returns a deep-copy [#2188](https://github.com/TileDB-Inc/TileDB/pull/2188)
+* Add new api,`tiledb_query_get_config` to get a query's config. [#2167](https://github.com/TileDB-Inc/TileDB/pull/2167)
 * Added `tiledb_serialize_config` and `tiledb_deserialize_config` [#2164](https://github.com/TileDB-Inc/TileDB/pull/2164)
-* Add new api,  to get a query's config. [#2167](https://github.com/TileDB-Inc/TileDB/pull/2167)
-* Removes non-default parameter in tiledb_config_unset. [#2099](https://github.com/TileDB-Inc/TileDB/pull/2099)
 
 ### C++ API
-* Addition of Array::set_config and Array::config(). [#2142](https://github.com/TileDB-Inc/TileDB/pull/2142)
-* Removes non-default parameter in Config::unset. [#2099](https://github.com/TileDB-Inc/TileDB/pull/2099)
-* Add new Config constructors for converting from STL map types [#2081](https://github.com/TileDB-Inc/TileDB/pull/2081)
+* Add new api, `Query.config()`  to get a query's config. [#2167](https://github.com/TileDB-Inc/TileDB/pull/2167)
 
 # TileDB v2.2.7 Release Notes
 
@@ -126,7 +109,6 @@
 
 ## Improvements
 
-* Add additional timer statistics for openning array for reads [#2027](https://github.com/TileDB-Inc/TileDB/pull/2027)
 * Add `rest.creation_access_credentials_name` configuration parameter [#2025](https://github.com/TileDB-Inc/TileDB/pull/2025)
 
 ## Bug fixes
@@ -138,7 +120,6 @@
 
 ### C API
 * Add `tiledb_query_set_config` to apply a `tiledb_config_t` to query-level parameters [#2030](https://github.com/TileDB-Inc/TileDB/pull/2030)
-* Add `tiledb_heap_profiler_enable` to enable heap memory profiling [#2035](https://github.com/TileDB-Inc/TileDB/pull/2035)
 
 ### C++ API
 * Added `Query::set_config` to apply a `tiledb::Config` to query-level parameters [#2030](https://github.com/TileDB-Inc/TileDB/pull/2030)
