@@ -77,7 +77,7 @@ def find_prs(gh: Github, head: str, base: Optional[str] = None) -> Mapping[int, 
 def update_history(pr_number: int, pr_body: str) -> None:
     # If the reserved keyword "NO_HISTORY" is included anywhere
     # in the PR body, do not modify the history
-    if "NO_HISTORY" in body:
+    if "NO_HISTORY" in pr_body:
         return
 
     header_descriptions = parse_pr_body(pr_body)
