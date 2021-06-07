@@ -734,35 +734,98 @@ double Dimension::overlap_ratio<char>(const Range& r1, const Range& r2) {
 
 template <class T>
 double Dimension::overlap_ratio(const Range& r1, const Range& r2) {
+  // Verify that we have two intervals
   assert(!r1.empty());
   assert(!r2.empty());
-
   auto d1 = (const T*)r1.data();
   auto d2 = (const T*)r2.data();
-  assert(d1[0] <= d1[1]);
-  assert(d2[0] <= d2[1]);
+  const auto r1_low = d1[0];
+  const auto r1_high = d1[1];
+  auto r2_low = d2[0];
+  auto r2_high = d2[1];
+  assert(r1_low <= r1_high);
+  assert(r2_low <= r2_high);
 
-  // No overlap
-  if (d1[0] > d2[1] || d1[1] < d2[0])
+  // Special case: No overlap, intervals are disjoint
+  if (r1_low > r2_high || r1_high < r2_low)
     return 0.0;
-
-  // Compute ratio
-  auto overlap_start = std::max(d1[0], d2[0]);
-  auto overlap_end = std::min(d1[1], d2[1]);
-  auto overlap_range = overlap_end - overlap_start;
-  auto mbr_range = d2[1] - d2[0];
-  auto max = std::numeric_limits<double>::max();
-  if (std::numeric_limits<T>::is_integer) {
-    overlap_range += 1;
-    mbr_range += 1;
-  } else {
-    if (overlap_range == 0)
-      overlap_range = std::nextafter(overlap_range, max);
-    if (mbr_range == 0)
-      mbr_range = std::nextafter(mbr_range, max);
+  // Special case: All overlap, interval r2 is a subset of interval r1
+  if (r1_low <= r2_low && r2_high <= r1_high)
+    return 1.0;
+  /*
+   * At this point we know that r2_low < r2_high, because we would have returned
+   * by now otherwise. Note that for floating point types, however, we cannot
+   * conclude that r2_high - r2_low > 0 because of the possibility of underflow.
+   */
+  auto intersection_low = std::max(r1_low, r2_low);
+  auto intersection_high = std::min(r1_high, r2_high);
+  /*
+   * The intersection is a proper subset of interval r1, either the upper bounds
+   * are distinct, or lower bounds are distinct, or both. This means that any
+   * result has to be strictly greater than zero and strictly less than 1.
+   */
+  /*
+   * Guard against overflow. If the outer interval has a bound with an absolute
+   * value that's "too large", meaning that it might lead to an overflow, we
+   * apply a shrinking transformation that preserves the ratio. We only need to
+   * check the outer interval because the intersection is strictly smaller. For
+   * unsigned types we only need to check the upper bound, since the lower bound
+   * is zero. For signed types we need to check both.
+   */
+  const T safe_upper = std::nextafter(std::numeric_limits<T>::max() / 2, 0);
+  bool unsafe = safe_upper < r2_high;
+  if (std::numeric_limits<T>::is_signed) {
+    const T safe_lower =
+        std::nextafter(std::numeric_limits<T>::lowest() / 2, 0);
+    unsafe = unsafe || r2_low < safe_lower;
+  }
+  if (unsafe) {
+    r2_low /= 2;
+    r2_high /= 2;
+    intersection_low /= 2;
+    intersection_high /= 2;
   }
 
-  return (double)overlap_range / mbr_range;
+  // Compute ratio
+  auto numerator = intersection_high - intersection_low;
+  auto denominator = r2_high - r2_low;
+  if (std::numeric_limits<T>::is_integer) {
+    // integer types count elements; they don't measure length
+    numerator += 1;
+    denominator += 1;
+  } else {
+    if (denominator == 0) {
+      /*
+       * If the variable `denominator` is zero, it's the result of rounding,
+       * since checking the "disjoint" and "subset" cases above has ensured that
+       * the endpoints of the denominator interval are distinct. Thus we have no
+       * easy-to-access information about the true quotient value, but
+       * mathematically it must be between 0 and 1, so we need either to return
+       * some value between 0 and 1 or to throw an exception stating that we
+       * don't support this case.
+       *
+       * The variable `denominator` is larger than the variable `numerator`, so
+       * the numerator is also be zero. We could extract some information from
+       * the floating-point representation itself, but that's a lot of work that
+       * doesn't seem justified at present. Throwing an exception would be
+       * better on principle, but the code in its current state now would not
+       * deal with that gracefully. As a compromise, therefore, we return a
+       * valid but non-computed value. It's a defect, but one that will rarely
+       * if ever arise in practice.
+       */
+      return 0.5;
+    }
+    // The rounded-to-zero numerator is handled in the general case below.
+  }
+  auto ratio = (double)numerator / denominator;
+  // Round away from the endpoints if needed.
+  if (ratio == 0.0) {
+    ratio = std::nextafter(0, 1);
+  } else if (ratio == 1.0) {
+    ratio = std::nextafter(1, 0);
+  }
+  assert(0.0 < ratio && ratio < 1.0);
+  return ratio;
 }
 
 double Dimension::overlap_ratio(const Range& r1, const Range& r2) const {
