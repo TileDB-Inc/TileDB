@@ -309,11 +309,13 @@ class Config {
    *    `array_meta` (remove consolidated array metadata files). <br>
    *    **Default**: fragments
    * - `sm.vacuum.timestamp_start` <br>
+   *    **Experimental** <br>
    *    When set, an array will be vacuumed between this value and
    *    `sm.vacuum.timestamp_end` (inclusive). <br>
    *    Only for `fragments` and `array_meta` vacuum mode. <br>
    *    **Default**: 0
    * - `sm.vacuum.timestamp_end` <br>
+   *    **Experimental** <br>
    *    When set, an array will be vacuumed between `sm.vacuum.timestamp_start`
    *    and this value (inclusive). <br>
    *    Only for `fragments` and `array_meta` vacuum mode. <br>
@@ -351,11 +353,13 @@ class Config {
    *    considered for consolidation in a single step.<br>
    *    **Default**: 0.0
    * - `sm.consolidation.timestamp_start` <br>
+   *    **Experimental** <br>
    *    When set, an array will be consolidated between this value and
    *    `sm.consolidation.timestamp_end` (inclusive). <br>
    *    Only for `fragments` and `array_meta` consolidation mode. <br>
    *    **Default**: 0
    * - `sm.consolidation.timestamp_end` <br>
+   *    **Experimental** <br>
    *    When set, an array will be consolidated between
    *    `sm.consolidation.timestamp_start` and this value (inclusive). <br>
    *    Only for `fragments` and `array_meta` consolidation mode. <br>
