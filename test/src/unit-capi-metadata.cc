@@ -1133,8 +1133,15 @@ TEST_CASE_METHOD(
   rc = tiledb_config_set(config, "sm.consolidation.mode", "array_meta", &error);
   REQUIRE(rc == TILEDB_OK);
   REQUIRE(error == nullptr);
-  rc = tiledb_array_consolidate_with_key(
-      ctx_, array_name_.c_str(), enc_type_, key_, key_len_, config);
+  encryption_type_string =
+      encryption_type_str((tiledb::sm::EncryptionType)enc_type_);
+  rc = tiledb_config_set(
+      config, "sm.encryption_type", encryption_type_string.c_str(), &error);
+  REQUIRE(error == nullptr);
+  rc = tiledb_config_set(config, "sm.encryption_key", key_, &error);
+  REQUIRE(rc == TILEDB_OK);
+  REQUIRE(error == nullptr);
+  rc = tiledb_array_consolidate(ctx_, array_name_.c_str(), config);
   CHECK(rc == TILEDB_OK);
   tiledb_config_free(&config);
   tiledb_array_free(&array);
@@ -1192,8 +1199,16 @@ TEST_CASE_METHOD(
   rc = tiledb_config_set(config, "sm.consolidation.mode", "array_meta", &error);
   REQUIRE(rc == TILEDB_OK);
   REQUIRE(error == nullptr);
-  rc = tiledb_array_consolidate_with_key(
-      ctx_, array_name_.c_str(), enc_type_, key_, key_len_, config);
+  encryption_type_string =
+      encryption_type_str((tiledb::sm::EncryptionType)enc_type_);
+  rc = tiledb_config_set(
+      config, "sm.encryption_type", encryption_type_string.c_str(), &error);
+  REQUIRE(error == nullptr);
+  rc = tiledb_config_set(config, "sm.encryption_key", key_, &error);
+  REQUIRE(rc == TILEDB_OK);
+  REQUIRE(error == nullptr);
+
+  rc = tiledb_array_consolidate(ctx_, array_name_.c_str(), config);
   CHECK(rc == TILEDB_OK);
   tiledb_array_free(&array);
 

@@ -5665,10 +5665,14 @@ int32_t tiledb_fragment_info_load_with_key(
       sanity_check(ctx, fragment_info) == TILEDB_ERR)
     return TILEDB_ERR;
 
+  // Get config from ctx
+  tiledb::sm::Config config = ctx->ctx_->storage_manager()->config();
+
   // Load fragment info
   if (SAVE_ERROR_CATCH(
           ctx,
           fragment_info->fragment_info_->load(
+              config,
               static_cast<tiledb::sm::EncryptionType>(encryption_type),
               encryption_key,
               key_length)))

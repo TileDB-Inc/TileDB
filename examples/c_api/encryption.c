@@ -75,13 +75,14 @@ void create_array() {
   tiledb_array_schema_add_attribute(ctx, array_schema, a);
 
   // Create encrypted array with AES-256-GCM.
-  tiledb_array_create_with_key(
-      ctx,
-      array_name,
-      array_schema,
-      TILEDB_AES_256_GCM,
-      encryption_key,
-      (uint32_t)strlen(encryption_key));
+  tiledb_ctx_free(&ctx);
+  tiledb_config_t* config;
+  tiledb_error_t* error;
+  tiledb_config_alloc(&config, &error);
+  tiledb_config_set(config, "sm.encryption_type", "AES_256_GCM", &error);
+  tiledb_config_set(config, "sm.encryption_key", encryption_key, &error);
+  tiledb_ctx_alloc(config, &ctx);
+  tiledb_array_create(ctx, array_name, array_schema);
 
   // Clean up
   tiledb_attribute_free(&a);
@@ -89,6 +90,7 @@ void create_array() {
   tiledb_dimension_free(&d2);
   tiledb_domain_free(&domain);
   tiledb_array_schema_free(&array_schema);
+  tiledb_config_free(&config);
   tiledb_ctx_free(&ctx);
 }
 
