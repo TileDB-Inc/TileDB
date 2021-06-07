@@ -1148,6 +1148,25 @@ void tiledb_ctx_free(tiledb_ctx_t** ctx) {
   }
 }
 
+int32_t tiledb_ctx_get_stats(tiledb_ctx_t* ctx, char** stats_json) {
+  if (sanity_check(ctx) == TILEDB_ERR)
+    return TILEDB_ERR;
+
+  if (stats_json == nullptr)
+    return TILEDB_ERR;
+
+  const std::string str = ctx->ctx_->stats()->dump(2, 0);
+
+  *stats_json = static_cast<char*>(std::malloc(str.size() + 1));
+  if (*stats_json == nullptr)
+    return TILEDB_ERR;
+
+  std::memcpy(*stats_json, str.data(), str.size());
+  (*stats_json)[str.size()] = '\0';
+
+  return TILEDB_OK;
+}
+
 int32_t tiledb_ctx_get_config(tiledb_ctx_t* ctx, tiledb_config_t** config) {
   // Create a new config struct
   *config = new (std::nothrow) tiledb_config_t;
@@ -2662,6 +2681,26 @@ int32_t tiledb_query_alloc(
   }
 
   // Success
+  return TILEDB_OK;
+}
+
+int32_t tiledb_query_get_stats(
+    tiledb_ctx_t* ctx, tiledb_query_t* query, char** stats_json) {
+  if (sanity_check(ctx) == TILEDB_ERR || sanity_check(ctx, query) == TILEDB_ERR)
+    return TILEDB_ERR;
+
+  if (stats_json == nullptr)
+    return TILEDB_ERR;
+
+  const std::string str = query->query_->stats()->dump(2, 0);
+
+  *stats_json = static_cast<char*>(std::malloc(str.size() + 1));
+  if (*stats_json == nullptr)
+    return TILEDB_ERR;
+
+  std::memcpy(*stats_json, str.data(), str.size());
+  (*stats_json)[str.size()] = '\0';
+
   return TILEDB_OK;
 }
 
@@ -5001,7 +5040,7 @@ int32_t tiledb_stats_disable() {
 }
 
 int32_t tiledb_stats_reset() {
-  // no-op for backwards compataibility with the existing public reset API
+  tiledb::sm::stats::all_stats.reset();
   return TILEDB_OK;
 }
 

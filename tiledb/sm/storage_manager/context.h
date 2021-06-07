@@ -82,6 +82,9 @@ class Context {
   /** Returns the thread pool for io-bound tasks. */
   ThreadPool* io_tp() const;
 
+  /** Returns the internal stats object. */
+  stats::Stats* stats() const;
+
  private:
   /* ********************************* */
   /*         PRIVATE ATTRIBUTES        */
