@@ -288,6 +288,15 @@ void Stats::populate_flattened_stats(
   }
 }
 
+std::unordered_map<std::string, double>* Stats::timers() {
+  return &timers_;
+}
+
+/** Return pointer to conters map, used for serialization only. */
+std::unordered_map<std::string, uint64_t>* Stats::counters() {
+  return &counters_;
+}
+
 }  // namespace stats
 }  // namespace sm
 }  // namespace tiledb

@@ -326,6 +326,9 @@ class SubarrayPartitioner {
   /** Returns the subarray. */
   Subarray* subarray();
 
+  /** Returns `stats_`. */
+  stats::Stats* stats() const;
+
  private:
   /* ********************************* */
   /*         PRIVATE ATTRIBUTES        */

@@ -1119,6 +1119,10 @@ const Config* Query::config() const {
     return writer_.config();
 }
 
+stats::Stats* Query::stats() const {
+  return stats_;
+}
+
 /* ****************************** */
 /*          PRIVATE METHODS       */
 /* ****************************** */

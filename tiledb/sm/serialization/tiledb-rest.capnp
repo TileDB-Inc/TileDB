@@ -232,6 +232,32 @@ struct MapInt64 {
   }
 }
 
+struct MapUInt64 {
+  entries @0 :List(Entry);
+  struct Entry {
+    key @0 :Text;
+    value @1 :UInt64;
+  }
+}
+
+struct MapFloat64 {
+  entries @0 :List(Entry);
+  struct Entry {
+    key @0 :Text;
+    value @1 :Float64;
+  }
+}
+
+struct Stats {
+# Stats struct
+
+  timers @0 :MapFloat64;
+  # timer
+
+  counters @1 :MapUInt64;
+  # counters
+}
+
 struct Writer {
   # Write struct
   checkCoordDups @0 :Bool;
@@ -245,6 +271,9 @@ struct Writer {
 
   subarrayRanges @4 :Subarray;
   # The query subarray/ranges object, new style range object
+
+  stats @5 :Stats;
+  # Stats object
 }
 
 struct SubarrayRanges {
@@ -274,6 +303,9 @@ struct Subarray {
 
   ranges @1 :List(SubarrayRanges);
   # List of 1D ranges, one per dimension
+
+  stats @2 :Stats;
+  # Stats object
 }
 
 struct SubarrayPartitioner {
@@ -313,6 +345,9 @@ struct SubarrayPartitioner {
 
   memoryBudgetValidity @6 :UInt64;
   # The memory budget for the validity buffers
+
+  stats @7 :Stats;
+  # Stats object
 }
 
 struct ReadState {
@@ -366,6 +401,9 @@ struct QueryReader {
 
   condition @3 :Condition;
   # The query condition
+
+  stats @4 :Stats;
+  # Stats object
 }
 
 struct Query {
@@ -410,6 +448,9 @@ struct Query {
 
     config @13 :Config;
     # Config set on query
+
+    stats @14 :Stats;
+    # Stats object
 }
 
 struct NonEmptyDomain {
