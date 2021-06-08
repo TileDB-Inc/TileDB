@@ -286,14 +286,14 @@ TEST_CASE(
   REQUIRE(rc == TILEDB_OK);
 
   // Write some simple data to cells (1, 1), (2, 4) and (2, 3).
-  int coords_rows[] = {1, 2, 2};
-  int coords_cols[] = {1, 4, 3};
+  int coords_rows[3] = {1, 2, 2};
+  int coords_cols[3] = {1, 4, 3};
   uint64_t coords_size = sizeof(coords_rows);
-  double data_a1[] = {10.1, -12.2, 13.3};
+  double data_a1[3] = {10.1, -12.2, 13.3};
   uint64_t data_a1_size = sizeof(data_a1);
-  int32_t data_a2[] = {-21, -22, -23};
+  int32_t data_a2[3] = {-21, -22, -23};
   uint64_t data_a2_size = sizeof(data_a2);
-  float data_a3[] = {100.1, -102.2, -103.3};
+  float data_a3[3] = {(float)100.1, (float)(-102.2), (float)(-103.3)};
   uint64_t data_a3_size = sizeof(data_a3);
 
   // Create the query
