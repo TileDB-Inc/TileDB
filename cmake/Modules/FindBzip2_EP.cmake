@@ -81,7 +81,7 @@ if (NOT BZIP2_FOUND)
         PREFIX "externals"
         URL "https://sourceware.org/pub/bzip2/bzip2-1.0.8.tar.gz"
         URL_HASH SHA1=bf7badf7e248e0ecf465d33c2f5aeec774209227
-        CMAKE_ARGS -DCMAKE_INSTALL_PREFIX=${TILEDB_EP_INSTALL_PREFIX} "${CMAKE_CURRENT_BINARY_DIR}/externals/src/ep_bzip2"
+        CMAKE_ARGS -DCMAKE_INSTALL_PREFIX=${TILEDB_EP_INSTALL_PREFIX}
         UPDATE_COMMAND ""
         PATCH_COMMAND 
          curl https://raw.githubusercontent.com/TileDB-Inc/bzip2-windows/master/bzip2-1.0.6/CMakeLists.txt -o ${CMAKE_CURRENT_BINARY_DIR}/externals/src/ep_bzip2/CMakeLists.txt
