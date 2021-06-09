@@ -32,6 +32,7 @@
  */
 
 #include "tiledb/sm/buffer/buffer.h"
+#include "tiledb/sm/buffer/const_buffer.h"
 
 #include <catch.hpp>
 #include <iostream>
@@ -186,4 +187,26 @@ TEST_CASE("Buffer: Test move", "[buffer]") {
   CHECK(b.size() == 0);
   CHECK(b.alloced_size() == 0);
   CHECK(b.data() == nullptr);
+}
+
+TEST_CASE("ConstBuffer: Overflow on read", "[buffer][ConstBuffer]") {
+  char data[3] = {1, 2, 3};
+  auto buff = ConstBuffer( data, 3 );
+
+  CHECK(buff.size() == 3);
+  buff.advance_offset(2);
+  uint64_t n = std::numeric_limits<uint64_t>::max()-1;
+  auto st = buff.read(data, n);
+  REQUIRE(!st.ok());
+}
+
+TEST_CASE("Buffer: Overflow on read", "[buffer][Buffer]") {
+  char data[3] = {1, 2, 3};
+  auto buff = Buffer( data, 3 );
+
+  CHECK(buff.size() == 3);
+  buff.advance_offset(2);
+  uint64_t n = std::numeric_limits<uint64_t>::max()-1;
+  auto st = buff.read(data, n);
+  REQUIRE(!st.ok());
 }
