@@ -10,8 +10,9 @@ jobs:
     strategy:
       matrix:
         include: [
-          { msystem: mingw64, arch: x86_64 },
-          { msystem: mingw32, arch: i686 }
+          { msystem: MINGW64, toolchain: x86_64 },
+          { msystem: MINGW32, toolchain: i686 },
+          { msystem: ucrt64, toolchain: "ucrt-x86_64" }
         ]
       fail-fast: false
     steps:
@@ -32,5 +33,5 @@ jobs:
       - name: "Upload binaries"
         uses: actions/upload-artifact@v2
         with:
-          name: mingw-w64-${{ matrix.arch }}-tiledb
+          name: mingw-w64-${{ matrix.msystem }}-tiledb
           path: .github/workflows/mingw-w64-tiledb/*.pkg.tar.*
