@@ -79,10 +79,12 @@ if (NOT BZIP2_FOUND)
     if (WIN32)
       ExternalProject_Add(ep_bzip2
         PREFIX "externals"
-        URL "https://github.com/TileDB-Inc/bzip2-windows/releases/download/v1.0.6/bzip2-1.0.6.zip"
-        URL_HASH SHA1=d11c3f0be92805a4c35f384845beb99eb6a96f6e
+        URL "https://sourceware.org/pub/bzip2/bzip2-1.0.8.tar.gz"
+        URL_HASH SHA1=bf7badf7e248e0ecf465d33c2f5aeec774209227
         CMAKE_ARGS -DCMAKE_INSTALL_PREFIX=${TILEDB_EP_INSTALL_PREFIX}
         UPDATE_COMMAND ""
+        PATCH_COMMAND 
+          ${CMAKE_COMMAND} -E copy ${TILEDB_CMAKE_INPUTS_DIR}/patches/ep_bzip2/CMakeLists.txt ${CMAKE_CURRENT_BINARY_DIR}/externals/src/ep_bzip2
         LOG_DOWNLOAD TRUE
         LOG_CONFIGURE TRUE
         LOG_BUILD TRUE
