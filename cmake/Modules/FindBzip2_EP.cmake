@@ -84,7 +84,7 @@ if (NOT BZIP2_FOUND)
         CMAKE_ARGS -DCMAKE_INSTALL_PREFIX=${TILEDB_EP_INSTALL_PREFIX}
         UPDATE_COMMAND ""
         PATCH_COMMAND 
-         curl -L https://github.com/TileDB-Inc/bzip2-windows/blob/6aba012dd7503c6f61a70ff05395aff3d5d864ab/bzip2-1.0.8/CMakeLists.txt?raw=true -o ${CMAKE_CURRENT_BINARY_DIR}/externals/src/ep_bzip2/CMakeLists.txt
+          cmake -E copy ${TILEDB_CMAKE_INPUTS_DIR}/patches/ep_bzip/CMakeLists.txt ${CMAKE_CURRENT_BINARY_DIR}/externals/src/ep_bzip2
         LOG_DOWNLOAD TRUE
         LOG_CONFIGURE TRUE
         LOG_BUILD TRUE
