@@ -84,7 +84,7 @@ if (NOT BZIP2_FOUND)
         CMAKE_ARGS -DCMAKE_INSTALL_PREFIX=${TILEDB_EP_INSTALL_PREFIX}
         UPDATE_COMMAND ""
         PATCH_COMMAND 
-          cmake -E copy ${TILEDB_CMAKE_INPUTS_DIR}/patches/ep_bzip/CMakeLists.txt ${CMAKE_CURRENT_BINARY_DIR}/externals/src/ep_bzip2
+          cmake -E copy ${TILEDB_CMAKE_INPUTS_DIR}/patches/ep_bzip2/CMakeLists.txt ${CMAKE_CURRENT_BINARY_DIR}/externals/src/ep_bzip2
         LOG_DOWNLOAD TRUE
         LOG_CONFIGURE TRUE
         LOG_BUILD TRUE
