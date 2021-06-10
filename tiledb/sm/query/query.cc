@@ -538,8 +538,8 @@ Status Query::get_buffer(
         std::string("Cannot get buffer; '") + name + "' is var-sized"));
 
   if (type_ == QueryType::WRITE)
-    return writer_.get_buffer_data(name, buffer, buffer_size);
-  return reader_.get_buffer_data(name, buffer, buffer_size);
+    return writer_.get_data_buffer(name, buffer, buffer_size);
+  return reader_.get_data_buffer(name, buffer, buffer_size);
 }
 
 Status Query::get_buffer(
@@ -570,7 +570,7 @@ Status Query::get_buffer(
       name, buffer_off, buffer_off_size, buffer_val, buffer_val_size);
 }
 
-Status Query::get_buffer_offsets(
+Status Query::get_offsets_buffer(
     const char* name, uint64_t** buffer_off, uint64_t** buffer_off_size) const {
   // Check attribute
   auto array_schema = this->array_schema();
@@ -588,11 +588,11 @@ Status Query::get_buffer_offsets(
         std::string("Cannot get buffer; '") + name + "' is fixed-sized"));
 
   if (type_ == QueryType::WRITE)
-    return writer_.get_buffer_offsets(name, buffer_off, buffer_off_size);
-  return reader_.get_buffer_offsets(name, buffer_off, buffer_off_size);
+    return writer_.get_offsets_buffer(name, buffer_off, buffer_off_size);
+  return reader_.get_offsets_buffer(name, buffer_off, buffer_off_size);
 }
 
-Status Query::get_buffer_data(
+Status Query::get_data_buffer(
     const char* name, void** buffer, uint64_t** buffer_size) const {
   // Check attribute
   auto array_schema = this->array_schema();
@@ -605,11 +605,11 @@ Status Query::get_buffer_data(
   }
 
   if (type_ == QueryType::WRITE)
-    return writer_.get_buffer_data(name, buffer, buffer_size);
-  return reader_.get_buffer_data(name, buffer, buffer_size);
+    return writer_.get_data_buffer(name, buffer, buffer_size);
+  return reader_.get_data_buffer(name, buffer, buffer_size);
 }
 
-Status Query::get_buffer_validity(
+Status Query::get_validity_buffer(
     const char* name,
     uint8_t** buffer_validity_bytemap,
     uint64_t** buffer_validity_bytemap_size) const {
@@ -622,8 +622,8 @@ Status Query::get_buffer_validity(
         std::string("Cannot get buffer; '") + name + "' is non-nullable"));
 
   if (type_ == QueryType::WRITE)
-    RETURN_NOT_OK(writer_.get_buffer_validity(name, &vv));
-  RETURN_NOT_OK(reader_.get_buffer_validity(name, &vv));
+    RETURN_NOT_OK(writer_.get_validity_buffer(name, &vv));
+  RETURN_NOT_OK(reader_.get_validity_buffer(name, &vv));
 
   if (vv != nullptr) {
     *buffer_validity_bytemap = vv->bytemap();
@@ -907,8 +907,8 @@ Status Query::set_data_buffer(
   RETURN_NOT_OK(check_set_fixed_buffer(name));
 
   if (type_ == QueryType::WRITE)
-    return writer_.set_buffer_data(name, buffer, buffer_size);
-  return reader_.set_buffer_data(name, buffer, buffer_size, check_null_buffers);
+    return writer_.set_data_buffer(name, buffer, buffer_size);
+  return reader_.set_data_buffer(name, buffer, buffer_size, check_null_buffers);
 }
 
 Status Query::set_offsets_buffer(
@@ -919,9 +919,9 @@ Status Query::set_offsets_buffer(
   RETURN_NOT_OK(check_set_fixed_buffer(name));
 
   if (type_ == QueryType::WRITE)
-    return writer_.set_buffer_offsets(
+    return writer_.set_offsets_buffer(
         name, buffer_offsets, buffer_offsets_size);
-  return reader_.set_buffer_offsets(
+  return reader_.set_offsets_buffer(
       name, buffer_offsets, buffer_offsets_size, check_null_buffers);
 }
 
@@ -933,9 +933,9 @@ Status Query::set_validity_buffer(
   RETURN_NOT_OK(check_set_fixed_buffer(name));
 
   if (type_ == QueryType::WRITE)
-    return writer_.set_buffer_validity(
+    return writer_.set_validity_buffer(
         name, buffer_validity_bytemap, buffer_validity_bytemap_size);
-  return reader_.set_buffer_validity(
+  return reader_.set_validity_buffer(
       name,
       buffer_validity_bytemap,
       buffer_validity_bytemap_size,

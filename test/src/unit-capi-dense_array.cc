@@ -3408,13 +3408,8 @@ TEST_CASE_METHOD(
   rc = tiledb_query_set_offsets_buffer(ctx_, query, "foo", off, &off_size);
   CHECK(rc == TILEDB_ERR);
 
-  // Check non-fixed attribute
-  rc = tiledb_query_set_buffer(ctx_, query, "a2", a1, &a1_size);
-  CHECK(rc == TILEDB_ERR);
-
   // Check non-var attribute
-  rc = tiledb_query_set_buffer_var(
-      ctx_, query, "a1", off, &off_size, a1, &a1_size);
+  rc = tiledb_query_set_offsets_buffer(ctx_, query, "a1", off, &off_size);
   CHECK(rc == TILEDB_ERR);
 
   // Check no buffers set
@@ -4744,7 +4739,7 @@ TEST_CASE_METHOD(
     CHECK(rc == TILEDB_OK);
     rc = tiledb_query_set_subarray(ctx, query, subarray2);
     CHECK(rc == TILEDB_OK);
-    rc = tiledb_query_set_buffer(ctx, query, "a", data2, &data2_size);
+    rc = tiledb_query_set_data_buffer(ctx, query, "a", data2, &data2_size);
     CHECK(rc == TILEDB_OK);
 
     /*

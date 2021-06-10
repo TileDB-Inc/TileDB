@@ -716,7 +716,7 @@ void IncompleteFx::check_dense_shrink_buffer_size() {
 
   // Shrink buffer size
   buffer_sizes[0] = sizeof(int);
-  rc = tiledb_query_set_buffer(
+  rc = tiledb_query_set_data_buffer(
       ctx_, query, attributes[0], buffers[0], &buffer_sizes[0]);
   CHECK(rc == TILEDB_OK);
 

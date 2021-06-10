@@ -436,7 +436,7 @@ bool IncompleteFx2::is_array(const std::string& array_name) {
   return type == TILEDB_ARRAY;
 }
 
-/*void IncompleteFx2::check_dense_incomplete() {
+void IncompleteFx2::check_dense_incomplete() {
   // Initialize a subarray
   const uint64_t subarray[] = {1, 2, 1, 2};
 
@@ -566,7 +566,7 @@ void IncompleteFx2::check_dense_until_complete() {
   // Clean up
   tiledb_array_free(&array);
   tiledb_query_free(&query);
-}*/
+}
 
 void IncompleteFx2::check_dense_shrink_buffer_size() {
   // Initialize a subarray
@@ -619,9 +619,6 @@ void IncompleteFx2::check_dense_shrink_buffer_size() {
   rc = tiledb_query_set_data_buffer(
       ctx_, query, attributes[0], buffers[0], &buffer_sizes[0]);
   CHECK(rc == TILEDB_OK);
-  /*rc = tiledb_query_set_buffer(
-      ctx_, query, attributes[0], buffers[0], &buffer_sizes[0]);
-  CHECK(rc == TILEDB_OK);*/
 
   // Resubmit query
   rc = tiledb_query_submit(ctx_, query);
@@ -1107,8 +1104,8 @@ TEST_CASE_METHOD(
   remove_dense_array();
   create_dense_array();
   write_dense_full();
-  // check_dense_incomplete();
-  // check_dense_until_complete();
+  check_dense_incomplete();
+  check_dense_until_complete();
   check_dense_shrink_buffer_size();
   check_dense_unsplittable_overflow();
   check_dense_unsplittable_complete();

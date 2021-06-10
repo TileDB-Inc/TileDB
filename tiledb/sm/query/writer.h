@@ -160,7 +160,7 @@ class Writer {
    * @param buffer_size A pointer to the buffer size to be retrieved.
    * @return Status
    */
-  Status get_buffer_data(
+  Status get_data_buffer(
       const std::string& name, void** buffer, uint64_t** buffer_size) const;
 
   /**
@@ -171,7 +171,7 @@ class Writer {
    * @param buffer_size A pointer to the buffer size to be retrieved.
    * @return Status
    */
-  Status get_buffer_offsets(
+  Status get_offsets_buffer(
       const std::string& name, uint64_t** buffer, uint64_t** buffer_size) const;
 
   /**
@@ -182,7 +182,7 @@ class Writer {
    * @param buffer_size A pointer to the buffer size to be retrieved.
    * @return Status
    */
-  Status get_buffer_validity(
+  Status get_validity_buffer(
       const std::string& name, const ValidityVector** validity_vector) const;
 
   /**
@@ -292,7 +292,7 @@ class Writer {
    * @param buffer_size The size of `buffer` in bytes.
    * @return Status
    */
-  Status set_buffer_data(
+  Status set_data_buffer(
       const std::string& name, void* buffer, uint64_t* buffer_size);
 
   /**
@@ -304,7 +304,7 @@ class Writer {
    * @param buffer_size The size of `buffer` in bytes.
    * @return Status
    */
-  Status set_buffer_offsets(
+  Status set_offsets_buffer(
       const std::string& name, uint64_t* buffer, uint64_t* buffer_size);
 
   /**
@@ -315,7 +315,7 @@ class Writer {
    * @param buffer_size The size of `buffer` in bytes.
    * @return Status
    */
-  Status set_buffer_validity(
+  Status set_validity_buffer(
       const std::string& name, uint8_t* buffer, uint64_t* buffer_size);
 
   /**
@@ -471,8 +471,20 @@ class Writer {
   /** True if at least one separate coordinate buffer is set. */
   bool coord_buffer_is_set_;
 
+  /** True if at least one separate data coordinate buffer is set. */
+  bool coord_data_buffer_is_set_;
+
+  /** True if at least one separate offsets coordinate buffer is set. */
+  bool coord_offsets_buffer_is_set_;
+
   /** Keeps track of the number of coordinates across coordinate buffers. */
   uint64_t coords_num_;
+
+  /** Keeps track of the name of the data buffer once set. */
+  std::string data_buffer_name_;
+
+  /** Keeps track of the name of the offsets buffer once set. */
+  std::string offsets_buffer_name_;
 
   /**
    * If `true`, it will not check if the written coordinates are

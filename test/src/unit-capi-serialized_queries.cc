@@ -32,6 +32,7 @@
 
 #include "catch.hpp"
 
+#include "tiledb/sm/c_api/tiledb.h"
 #include "tiledb/sm/c_api/tiledb_serialization.h"
 #include "tiledb/sm/c_api/tiledb_struct_def.h"
 #include "tiledb/sm/cpp_api/tiledb"
@@ -367,25 +368,21 @@ struct SerializationFx {
     uint8_t* unused3;
     uint64_t *a1_size, *a2_size, *a2_validity_size, *a3_size, *a3_offset_size,
         *coords_size;
-    ctx.handle_error(tiledb_query_get_buffer(
+    ctx.handle_error(tiledb_query_get_data_buffer(
         ctx.ptr().get(), query->ptr().get(), "a1", &unused1, &a1_size));
-    ctx.handle_error(tiledb_query_get_buffer_nullable(
+    ctx.handle_error(tiledb_query_get_data_buffer(
+        ctx.ptr().get(), query->ptr().get(), "a2", &unused1, &a2_size));
+    ctx.handle_error(tiledb_query_get_validity_buffer(
         ctx.ptr().get(),
         query->ptr().get(),
         "a2",
-        &unused1,
-        &a2_size,
         &unused3,
         &a2_validity_size));
-    ctx.handle_error(tiledb_query_get_buffer_var(
-        ctx.ptr().get(),
-        query->ptr().get(),
-        "a3",
-        &unused2,
-        &a3_offset_size,
-        &unused1,
-        &a3_size));
-    ctx.handle_error(tiledb_query_get_buffer(
+    ctx.handle_error(tiledb_query_get_data_buffer(
+        ctx.ptr().get(), query->ptr().get(), "a3", &unused1, &a3_size));
+    ctx.handle_error(tiledb_query_get_offsets_buffer(
+        ctx.ptr().get(), query->ptr().get(), "a3", &unused2, &a3_offset_size));
+    ctx.handle_error(tiledb_query_get_data_buffer(
         ctx.ptr().get(),
         query->ptr().get(),
         TILEDB_COORDS,
@@ -394,7 +391,7 @@ struct SerializationFx {
 
     if (a1_size != nullptr) {
       void* buff = std::malloc(*a1_size);
-      ctx.handle_error(tiledb_query_set_buffer(
+      ctx.handle_error(tiledb_query_set_data_buffer(
           ctx.ptr().get(), query->ptr().get(), "a1", buff, a1_size));
       to_free.push_back(buff);
     }
@@ -402,12 +399,12 @@ struct SerializationFx {
     if (a2_size != nullptr) {
       void* buff = std::malloc(*a2_size);
       uint8_t* validity = (uint8_t*)std::malloc(*a2_validity_size);
-      ctx.handle_error(tiledb_query_set_buffer_nullable(
+      ctx.handle_error(tiledb_query_set_data_buffer(
+          ctx.ptr().get(), query->ptr().get(), "a2", buff, a2_size));
+      ctx.handle_error(tiledb_query_set_validity_buffer(
           ctx.ptr().get(),
           query->ptr().get(),
           "a2",
-          buff,
-          a2_size,
           validity,
           a2_validity_size));
       to_free.push_back(buff);
@@ -417,21 +414,17 @@ struct SerializationFx {
     if (a3_size != nullptr) {
       void* buff = std::malloc(*a3_size);
       uint64_t* offsets = (uint64_t*)std::malloc(*a3_offset_size);
-      ctx.handle_error(tiledb_query_set_buffer_var(
-          ctx.ptr().get(),
-          query->ptr().get(),
-          "a3",
-          offsets,
-          a3_offset_size,
-          buff,
-          a3_size));
+      ctx.handle_error(tiledb_query_set_data_buffer(
+          ctx.ptr().get(), query->ptr().get(), "a3", buff, a3_size));
+      ctx.handle_error(tiledb_query_set_offsets_buffer(
+          ctx.ptr().get(), query->ptr().get(), "a3", offsets, a3_offset_size));
       to_free.push_back(buff);
       to_free.push_back(offsets);
     }
 
     if (coords_size != nullptr) {
       void* buff = std::malloc(*coords_size);
-      ctx.handle_error(tiledb_query_set_buffer(
+      ctx.handle_error(tiledb_query_set_data_buffer(
           ctx.ptr().get(),
           query->ptr().get(),
           TILEDB_COORDS,

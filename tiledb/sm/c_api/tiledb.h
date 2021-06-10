@@ -3494,6 +3494,7 @@ TILEDB_EXPORT int32_t tiledb_query_set_buffer(
     uint64_t* buffer_size);
 
 /**
+ * This is a deprecated API.
  * Sets the buffer for a var-sized attribute/dimension to a query, which will
  * either hold the values to be written (if it is a write query), or will hold
  * the results from a read query.
@@ -3539,6 +3540,7 @@ TILEDB_EXPORT int32_t tiledb_query_set_buffer_var(
     uint64_t* buffer_val_size);
 
 /**
+ * This is a deprecated API.
  * Sets the buffer for a fixed-sized, nullable attribute to a query, which will
  * either hold the values to be written (if it is a write query), or will hold
  * the results from a read query. The validity buffer is a byte map, where each
@@ -3584,6 +3586,7 @@ TILEDB_EXPORT int32_t tiledb_query_set_buffer_nullable(
     uint64_t* buffer_validity_bytemap_size);
 
 /**
+ * This is a deprecated API.
  * Sets the buffer for a var-sized, nullable attribute to a query, which will
  * either hold the values to be written (if it is a write query), or will hold
  * the results from a read query.
@@ -3629,7 +3632,7 @@ TILEDB_EXPORT int32_t tiledb_query_set_buffer_nullable(
  *     useful (read) data in `buffer_validity_bytemap`.
  * @return `TILEDB_OK` for success and `TILEDB_ERR` for error.
  */
-TILEDB_DEPRECATED_EXPORT int32_t tiledb_query_set_buffer_var_nullable(
+TILEDB_EXPORT int32_t tiledb_query_set_buffer_var_nullable(
     tiledb_ctx_t* ctx,
     tiledb_query_t* query,
     const char* name,
@@ -3736,6 +3739,7 @@ TILEDB_EXPORT int32_t tiledb_query_set_validity_buffer(
     uint64_t* buffer_size);
 
 /**
+ * This is a deprecated API.
  * Gets the buffer of a fixed-sized attribute/dimension from a query. If the
  * buffer has not been set, then `buffer` is set to `nullptr`.
  *
@@ -3765,6 +3769,7 @@ TILEDB_EXPORT int32_t tiledb_query_get_buffer(
     uint64_t** buffer_size);
 
 /**
+ * This is a deprecated API.
  * Gets the values and offsets buffers for a var-sized attribute/dimension
  * to a query. If the buffers have not been set, then `buffer_off` and
  * `buffer_val` are set to `nullptr`.
@@ -3842,6 +3847,7 @@ TILEDB_EXPORT int32_t tiledb_query_get_buffer_nullable(
     uint64_t** buffer_validity_bytemap_size);
 
 /**
+ * This is a deprecated API.
  * Gets the values and offsets buffers for a var-sized, nullable attribute
  * to a query. If the buffers have not been set, then `buffer_off`,
  * `buffer_val`, and `buffer_validity_bytemap` are set to `nullptr`.
@@ -3971,7 +3977,7 @@ TILEDB_EXPORT int32_t tiledb_query_get_validity_buffer(
     tiledb_ctx_t* ctx,
     tiledb_query_t* query,
     const char* name,
-    void** buffer,
+    uint8_t** buffer,
     uint64_t** buffer_size);
 
 /**

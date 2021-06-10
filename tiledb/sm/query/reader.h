@@ -247,36 +247,40 @@ class Reader {
   bool incomplete() const;
 
   /**
-   * Retrieves the buffer of a fixed-sized attribute/dimension.
+   * Retrieves the buffer of a fixed/var-sized attribute/dimension.
    *
    * @param name The attribute/dimension name.
    * @param buffer The buffer to be retrieved.
    * @param buffer_size A pointer to the buffer size to be retrieved.
    * @return Status
    */
-  Status get_buffer_data(
+  Status get_data_buffer(
       const std::string& name, void** buffer, uint64_t** buffer_size) const;
 
   /**
-   * Retrieves the buffer of a fixed-sized attribute/dimension.
+   * Retrieves the offset buffer for a var-sized attribute/dimension.
    *
    * @param name The attribute/dimension name.
-   * @param buffer The buffer to be retrieved.
-   * @param buffer_size A pointer to the buffer size to be retrieved.
+   * @param buffer_off The offsets buffer to be retrieved. This buffer holds
+   * the starting offsets of each cell value in the data buffer.
+   * @param buffer_off_size A pointer to the buffer size to be retrieved.
    * @return Status
    */
-  Status get_buffer_offsets(
-      const std::string& name, uint64_t** buffer, uint64_t** buffer_size) const;
+  Status get_offsets_buffer(
+      const std::string& name,
+      uint64_t** buffer_off,
+      uint64_t** buffer_off_size) const;
 
   /**
-   * Retrieves the buffer of a fixed-sized attribute/dimension.
+   * Retrieves the validity buffer for a nullable attribute/dimension.
    *
    * @param name The attribute/dimension name.
-   * @param buffer The buffer to be retrieved.
-   * @param buffer_size A pointer to the buffer size to be retrieved.
+   * @param validity_vector The buffer that either have the validity
+   * bytemap associated with the input data to be written, or will hold the
+   * validity bytemap to be read.
    * @return Status
    */
-  Status get_buffer_validity(
+  Status get_validity_buffer(
       const std::string& name, const ValidityVector** validity_vector) const;
   /**
    * Retrieves the offsets and values buffers of a var-sized
@@ -285,7 +289,7 @@ class Reader {
    * @param name The attribute/dimension name.
    * @param buffer_off The offsets buffer to be retrieved.
    * @param buffer_off_size A pointer to the offsets buffer size to be
-   *     retrieved.
+   * retrieved.
    * @param buffer_val The values buffer to be retrieved.
    * @param buffer_val_size A pointer to the values buffer size to be retrieved.
    * @return Status
@@ -373,7 +377,7 @@ class Reader {
   void set_array_schema(const ArraySchema* array_schema);
 
   /**
-   * Sets the buffer for an fixed/var-sized attribute/dimension.
+   * Sets the buffer for a fixed/var-sized attribute/dimension.
    *
    * @param name The attribute/dimension to set the buffer for.
    * @param buffer The buffer that will hold the data to be read.
@@ -402,7 +406,7 @@ class Reader {
    * allowed.
    * @return Status
    */
-  Status set_buffer_data(
+  Status set_data_buffer(
       const std::string& name,
       void* buffer,
       uint64_t* buffer_size,
@@ -423,7 +427,7 @@ class Reader {
    * allowed.
    * @return Status
    */
-  Status set_buffer_offsets(
+  Status set_offsets_buffer(
       const std::string& name,
       uint64_t* buffer_off,
       uint64_t* buffer_off_size,
@@ -445,7 +449,7 @@ class Reader {
    * allowed.
    * @return Status
    */
-  Status set_buffer_validity(
+  Status set_validity_buffer(
       const std::string& name,
       uint8_t* buffer_validity_bytemap,
       uint64_t* buffer_validity_bytemap_size,

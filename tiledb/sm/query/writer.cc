@@ -69,7 +69,11 @@ Writer::Writer(stats::Stats* const parent_stats)
     , coords_buffer_(nullptr)
     , coords_buffer_size_(nullptr)
     , coord_buffer_is_set_(false)
+    , coord_data_buffer_is_set_(false)
+    , coord_offsets_buffer_is_set_(false)
     , coords_num_(0)
+    , data_buffer_name_("")
+    , offsets_buffer_name_("")
     , disable_check_global_order_(false)
     , has_coords_(false)
     , check_coord_dups_(false)
@@ -176,7 +180,7 @@ Status Writer::finalize() {
   return Status::Ok();
 }
 
-Status Writer::get_buffer_data(
+Status Writer::get_data_buffer(
     const std::string& name, void** buffer, uint64_t** buffer_size) const {
   // Special zipped coordinates
   if (name == constants::coords) {
@@ -205,7 +209,7 @@ Status Writer::get_buffer_data(
   return Status::Ok();
 }
 
-Status Writer::get_buffer_offsets(
+Status Writer::get_offsets_buffer(
     const std::string& name,
     uint64_t** buffer_off,
     uint64_t** buffer_off_size) const {
@@ -224,7 +228,7 @@ Status Writer::get_buffer_offsets(
   return Status::Ok();
 }
 
-Status Writer::get_buffer_validity(
+Status Writer::get_validity_buffer(
     const std::string& name, const ValidityVector** validity_vector) const {
   // Attribute or dimension
   auto it = buffers_.find(name);
@@ -623,7 +627,7 @@ Status Writer::set_buffer(
   return Status::Ok();
 }
 
-Status Writer::set_buffer_data(
+Status Writer::set_data_buffer(
     const std::string& name, void* const buffer, uint64_t* const buffer_size) {
   // Check buffer
   if (buffer == nullptr)
@@ -670,7 +674,8 @@ Status Writer::set_buffer_data(
   if (is_dim) {
     // Check number of coordinates
     uint64_t coords_num = *buffer_size / array_schema_->cell_size(name);
-    if (coord_buffer_is_set_ && coords_num != coords_num_)
+    if (coord_data_buffer_is_set_ && coords_num != coords_num_ &&
+        name == data_buffer_name_)
       return LOG_STATUS(Status::WriterError(
           std::string("Cannot set buffer; Input buffer for dimension '") +
           name +
@@ -678,22 +683,23 @@ Status Writer::set_buffer_data(
           "set coordinate buffers"));
 
     coords_num_ = coords_num;
-    coord_buffer_is_set_ = true;
+    coord_data_buffer_is_set_ = true;
+    data_buffer_name_ = name;
     has_coords_ = true;
   }
 
   // Set attribute/dimension buffer on the appropriate buffer
   if (!array_schema_->var_size(name))
     // Fixed size data buffer
-    buffers_[name].set_buffer_data(buffer, buffer_size);
+    buffers_[name].set_data_buffer(buffer, buffer_size);
   else
     // Var sized data buffer
-    buffers_[name].set_buffer_data_var(buffer, buffer_size);
+    buffers_[name].set_data_var_buffer(buffer, buffer_size);
 
   return Status::Ok();
 }
 
-Status Writer::set_buffer_offsets(
+Status Writer::set_offsets_buffer(
     const std::string& name,
     uint64_t* const buffer_off,
     uint64_t* const buffer_off_size) {
@@ -738,7 +744,8 @@ Status Writer::set_buffer_offsets(
   if (is_dim) {
     // Check number of coordinates
     uint64_t coords_num = *buffer_off_size / constants::cell_var_offset_size;
-    if (coords_num_ != 0 && coords_num != coords_num_)
+    if (coord_offsets_buffer_is_set_ && coords_num != coords_num_ &&
+        name != offsets_buffer_name_)
       return LOG_STATUS(Status::WriterError(
           std::string("Cannot set buffer; Input buffer for dimension '") +
           name +
@@ -746,17 +753,18 @@ Status Writer::set_buffer_offsets(
           "set coordinate buffers"));
 
     coords_num_ = coords_num;
-    coord_buffer_is_set_ = true;
+    coord_offsets_buffer_is_set_ = true;
     has_coords_ = true;
+    offsets_buffer_name_ = name;
   }
 
   // Set attribute/dimension buffer
-  buffers_[name].set_buffer_offsets(buffer_off, buffer_off_size);
+  buffers_[name].set_offsets_buffer(buffer_off, buffer_off_size);
 
   return Status::Ok();
 }
 
-Status Writer::set_buffer_validity(
+Status Writer::set_validity_buffer(
     const std::string& name,
     uint8_t* const buffer_validity_bytemap,
     uint64_t* const buffer_validity_bytemap_size) {
@@ -798,7 +806,7 @@ Status Writer::set_buffer_validity(
         "' after initialization"));
 
   // Set attribute/dimension buffer
-  buffers_[name].set_buffer_validity(std::move(validity_vector));
+  buffers_[name].set_validity_buffer(std::move(validity_vector));
 
   return Status::Ok();
 }
@@ -1133,7 +1141,10 @@ Status Writer::check_buffer_names() {
 
   // All attributes/dimensions must be provided
   auto expected_num = array_schema_->attribute_num();
-  expected_num += (coord_buffer_is_set_) ? array_schema_->dim_num() : 0;
+  expected_num += (coord_buffer_is_set_ || coord_data_buffer_is_set_ ||
+                   coord_offsets_buffer_is_set_) ?
+                      array_schema_->dim_num() :
+                      0;
   if (buffers_.size() != expected_num)
     return LOG_STATUS(
         Status::WriterError("Writes expect all attributes (and coordinates in "
@@ -1996,6 +2007,8 @@ Status Writer::global_write() {
     // reset coord buffer marker at end of global write
     // this will allow for the user to properly set the next write batch
     coord_buffer_is_set_ = false;
+    coord_data_buffer_is_set_ = false;
+    coord_offsets_buffer_is_set_ = false;
     return Status::Ok();
   }
 
@@ -2020,6 +2033,8 @@ Status Writer::global_write() {
   // reset coord buffer marker at end of global write
   // this will allow for the user to properly set the next write batch
   coord_buffer_is_set_ = false;
+  coord_data_buffer_is_set_ = false;
+  coord_offsets_buffer_is_set_ = false;
 
   return Status::Ok();
 }
@@ -3516,7 +3531,7 @@ void Writer::clean_up(const URI& uri) {
 }
 
 Status Writer::set_coords_buffer(void* buffer, uint64_t* buffer_size) {
-  if (coord_buffer_is_set_)
+  if (coord_data_buffer_is_set_)
     return LOG_STATUS(Status::WriterError(
         std::string("Cannot set zipped coordinates buffer after having set "
                     "separate coordinate buffers")));

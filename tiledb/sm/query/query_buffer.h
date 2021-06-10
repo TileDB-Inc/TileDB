@@ -206,10 +206,7 @@ class QueryBuffer {
   /*           PUBLIC METHODS         */
   /* ********************************* */
 
-  Status set_buffer_data(void* data_buffer, uint64_t* size) {
-    if (data_buffer == buffer_ && size == buffer_size_)
-      return Status::Ok();
-
+  Status set_data_buffer(void* data_buffer, uint64_t* size) {
     buffer_ = data_buffer;
     buffer_size_ = size;
     original_buffer_size_ = *size;
@@ -217,10 +214,7 @@ class QueryBuffer {
     return Status::Ok();
   }
 
-  Status set_buffer_data_var(void* data_var_buffer, uint64_t* size) {
-    if (data_var_buffer == buffer_var_ && size == buffer_var_size_)
-      return Status::Ok();
-
+  Status set_data_var_buffer(void* data_var_buffer, uint64_t* size) {
     buffer_var_ = data_var_buffer;
     buffer_var_size_ = size;
     original_buffer_var_size_ = *size;
@@ -228,10 +222,7 @@ class QueryBuffer {
     return Status::Ok();
   }
 
-  Status set_buffer_offsets(void* offsets_buffer, uint64_t* size) {
-    if (offsets_buffer == buffer_ && size == buffer_size_)
-      return Status::Ok();
-
+  Status set_offsets_buffer(void* offsets_buffer, uint64_t* size) {
     buffer_ = offsets_buffer;
     buffer_size_ = size;
     original_buffer_size_ = *size;
@@ -239,7 +230,7 @@ class QueryBuffer {
     return Status::Ok();
   }
 
-  Status set_buffer_validity(ValidityVector&& validity_vector) {
+  Status set_validity_buffer(ValidityVector&& validity_vector) {
     validity_vector_ = std::move(validity_vector);
     original_validity_vector_size_ = *validity_vector_.buffer_size();
 

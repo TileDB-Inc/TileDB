@@ -557,7 +557,7 @@ void SmokeTestFx::write(
   // Set the query buffers.
   for (const auto& test_query_buffer : test_query_buffers) {
     if (test_query_buffer.buffer_offset_ == nullptr) {
-      rc = tiledb_query_set_buffer(
+      rc = tiledb_query_set_data_buffer(
           ctx_,
           query,
           test_query_buffer.name_.c_str(),
@@ -565,14 +565,19 @@ void SmokeTestFx::write(
           test_query_buffer.buffer_size_);
       REQUIRE(rc == TILEDB_OK);
     } else {
-      rc = tiledb_query_set_buffer_var(
+      rc = tiledb_query_set_data_buffer(
+          ctx_,
+          query,
+          test_query_buffer.name_.c_str(),
+          test_query_buffer.buffer_,
+          test_query_buffer.buffer_size_);
+      REQUIRE(rc == TILEDB_OK);
+      rc = tiledb_query_set_offsets_buffer(
           ctx_,
           query,
           test_query_buffer.name_.c_str(),
           static_cast<uint64_t*>(test_query_buffer.buffer_offset_),
-          test_query_buffer.buffer_offset_size_,
-          test_query_buffer.buffer_,
-          test_query_buffer.buffer_size_);
+          test_query_buffer.buffer_offset_size_);
       REQUIRE(rc == TILEDB_OK);
     }
   }
@@ -640,7 +645,7 @@ void SmokeTestFx::read(
   for (size_t i = 0; i < test_query_buffers.size(); ++i) {
     const test_query_buffer_t& test_query_buffer = test_query_buffers[i];
     if (test_query_buffer.buffer_offset_ == nullptr) {
-      rc = tiledb_query_set_buffer(
+      rc = tiledb_query_set_data_buffer(
           ctx_,
           query,
           test_query_buffer.name_.c_str(),
@@ -648,14 +653,19 @@ void SmokeTestFx::read(
           test_query_buffer.buffer_size_);
       REQUIRE(rc == TILEDB_OK);
     } else {
-      rc = tiledb_query_set_buffer_var(
+      rc = tiledb_query_set_data_buffer(
+          ctx_,
+          query,
+          test_query_buffer.name_.c_str(),
+          test_query_buffer.buffer_,
+          test_query_buffer.buffer_size_);
+      REQUIRE(rc == TILEDB_OK);
+      rc = tiledb_query_set_offsets_buffer(
           ctx_,
           query,
           test_query_buffer.name_.c_str(),
           static_cast<uint64_t*>(test_query_buffer.buffer_offset_),
-          test_query_buffer.buffer_offset_size_,
-          test_query_buffer.buffer_,
-          test_query_buffer.buffer_size_);
+          test_query_buffer.buffer_offset_size_);
       REQUIRE(rc == TILEDB_OK);
     }
   }

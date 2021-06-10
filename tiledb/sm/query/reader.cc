@@ -211,7 +211,7 @@ bool Reader::incomplete() const {
   return read_state_.overflowed_ || !read_state_.done();
 }
 
-Status Reader::get_buffer_data(
+Status Reader::get_data_buffer(
     const std::string& name, void** buffer, uint64_t** buffer_size) const {
   auto it = buffers_.find(name);
   if (it == buffers_.end()) {
@@ -230,7 +230,7 @@ Status Reader::get_buffer_data(
   return Status::Ok();
 }
 
-Status Reader::get_buffer_offsets(
+Status Reader::get_offsets_buffer(
     const std::string& name,
     uint64_t** buffer_off,
     uint64_t** buffer_off_size) const {
@@ -246,7 +246,7 @@ Status Reader::get_buffer_offsets(
   return Status::Ok();
 }
 
-Status Reader::get_buffer_validity(
+Status Reader::get_validity_buffer(
     const std::string& name, const ValidityVector** validity_vector) const {
   auto it = buffers_.find(name);
   if (it == buffers_.end()) {
@@ -502,7 +502,7 @@ Status Reader::set_buffer(
 
   // Must not be nullable
   if (array_schema_->is_nullable(name))
-    return LOG_STATUS(Status::WriterError(
+    return LOG_STATUS(Status::ReaderError(
         std::string("Cannot set buffer; Input attribute/dimension '") + name +
         "' is nullable"));
 
@@ -534,7 +534,7 @@ Status Reader::set_buffer(
   return Status::Ok();
 }
 
-Status Reader::set_buffer_data(
+Status Reader::set_data_buffer(
     const std::string& name,
     void* const buffer,
     uint64_t* const buffer_size,
@@ -542,17 +542,17 @@ Status Reader::set_buffer_data(
   // Check buffer
   if (check_null_buffers && buffer == nullptr)
     return LOG_STATUS(
-        Status::WriterError("Cannot set buffer; " + name + " buffer is null"));
+        Status::ReaderError("Cannot set buffer; " + name + " buffer is null"));
 
   // Check buffer size
   if (check_null_buffers && buffer_size == nullptr)
-    return LOG_STATUS(Status::WriterError(
+    return LOG_STATUS(Status::ReaderError(
         "Cannot set buffer; " + name + " buffer size is null"));
 
   // Array schema must exist
   if (array_schema_ == nullptr)
     return LOG_STATUS(
-        Status::WriterError("Cannot set buffer; Array schema not set"));
+        Status::ReaderError("Cannot set buffer; Array schema not set"));
 
   // For easy reference
   const bool is_dim = array_schema_->is_dim(name);
@@ -580,15 +580,15 @@ Status Reader::set_buffer_data(
   // Set attribute/dimension buffer on the appropriate buffer
   if (!array_schema_->var_size(name))
     // Fixed size data buffer
-    buffers_[name].set_buffer_data(buffer, buffer_size);
+    buffers_[name].set_data_buffer(buffer, buffer_size);
   else
     // Var sized data buffer
-    buffers_[name].set_buffer_data_var(buffer, buffer_size);
+    buffers_[name].set_data_var_buffer(buffer, buffer_size);
 
   return Status::Ok();
 }
 
-Status Reader::set_buffer_offsets(
+Status Reader::set_offsets_buffer(
     const std::string& name,
     uint64_t* const buffer_off,
     uint64_t* const buffer_off_size,
@@ -596,17 +596,17 @@ Status Reader::set_buffer_offsets(
   // Check buffer
   if (check_null_buffers && buffer_off == nullptr)
     return LOG_STATUS(
-        Status::WriterError("Cannot set buffer; " + name + " buffer is null"));
+        Status::ReaderError("Cannot set buffer; " + name + " buffer is null"));
 
   // Check buffer size
   if (check_null_buffers && buffer_off_size == nullptr)
-    return LOG_STATUS(Status::WriterError(
+    return LOG_STATUS(Status::ReaderError(
         "Cannot set buffer; " + name + " buffer size is null"));
 
   // Array schema must exist
   if (array_schema_ == nullptr)
     return LOG_STATUS(
-        Status::WriterError("Cannot set buffer; Array schema not set"));
+        Status::ReaderError("Cannot set buffer; Array schema not set"));
 
   // For easy reference
   const bool is_dim = array_schema_->is_dim(name);
@@ -614,30 +614,30 @@ Status Reader::set_buffer_offsets(
 
   // Neither a dimension nor an attribute
   if (!is_dim && !is_attr)
-    return LOG_STATUS(Status::WriterError(
+    return LOG_STATUS(Status::ReaderError(
         std::string("Cannot set buffer; Invalid buffer name '") + name +
         "' (it should be an attribute or dimension)"));
 
   // Error if it is fixed-sized
   if (!array_schema_->var_size(name))
-    return LOG_STATUS(Status::WriterError(
+    return LOG_STATUS(Status::ReaderError(
         std::string("Cannot set buffer; Input attribute/dimension '") + name +
         "' is fixed-sized"));
 
   // Error if setting a new attribute/dimension after initialization
   bool exists = buffers_.find(name) != buffers_.end();
   if (read_state_.initialized_ && !exists)
-    return LOG_STATUS(Status::WriterError(
+    return LOG_STATUS(Status::ReaderError(
         std::string("Cannot set buffer for new attribute/dimension '") + name +
         "' after initialization"));
 
   // Set attribute/dimension buffer
-  buffers_[name].set_buffer_offsets(buffer_off, buffer_off_size);
+  buffers_[name].set_offsets_buffer(buffer_off, buffer_off_size);
 
   return Status::Ok();
 }
 
-Status Reader::set_buffer_validity(
+Status Reader::set_validity_buffer(
     const std::string& name,
     uint8_t* const buffer_validity_bytemap,
     uint64_t* const buffer_validity_bytemap_size,
@@ -647,40 +647,40 @@ Status Reader::set_buffer_validity(
       buffer_validity_bytemap, buffer_validity_bytemap_size));
   // Check validity buffer
   if (check_null_buffers && validity_vector.buffer() == nullptr)
-    return LOG_STATUS(Status::WriterError(
+    return LOG_STATUS(Status::ReaderError(
         "Cannot set buffer; " + name + " validity buffer is null"));
 
   // Check validity buffer size
   if (check_null_buffers && validity_vector.buffer_size() == nullptr)
-    return LOG_STATUS(Status::WriterError(
+    return LOG_STATUS(Status::ReaderError(
         "Cannot set buffer; " + name + " validity buffer size is null"));
 
   // Array schema must exist
   if (array_schema_ == nullptr)
     return LOG_STATUS(
-        Status::WriterError("Cannot set buffer; Array schema not set"));
+        Status::ReaderError("Cannot set buffer; Array schema not set"));
 
   // Must be an attribute
   if (!array_schema_->is_attr(name))
-    return LOG_STATUS(Status::WriterError(
+    return LOG_STATUS(Status::ReaderError(
         std::string("Cannot set buffer; Buffer name '") + name +
         "' is not an attribute"));
 
   // Must be nullable
   if (!array_schema_->is_nullable(name))
-    return LOG_STATUS(Status::WriterError(
+    return LOG_STATUS(Status::ReaderError(
         std::string("Cannot set buffer; Input attribute '") + name +
         "' is not nullable"));
 
   // Error if setting a new attribute after initialization
   const bool exists = buffers_.find(name) != buffers_.end();
   if (read_state_.initialized_ && !exists)
-    return LOG_STATUS(Status::WriterError(
+    return LOG_STATUS(Status::ReaderError(
         std::string("Cannot set buffer for new attribute '") + name +
         "' after initialization"));
 
   // Set attribute/dimension buffer
-  buffers_[name].set_buffer_validity(std::move(validity_vector));
+  buffers_[name].set_validity_buffer(std::move(validity_vector));
 
   return Status::Ok();
 }

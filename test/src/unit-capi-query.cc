@@ -203,16 +203,13 @@ void QueryFx::test_get_buffer_write(const std::string& path) {
   uint64_t* a2_off_got_size;
   void* a2_val_got;
   uint64_t* a2_val_got_size;
-  rc = tiledb_query_get_buffer(ctx_, query, "", &a1_got, &a1_got_size);
+  rc = tiledb_query_get_data_buffer(ctx_, query, "", &a1_got, &a1_got_size);
   CHECK(rc == TILEDB_OK);
-  rc = tiledb_query_get_buffer_var(
-      ctx_,
-      query,
-      "a2",
-      &a2_off_got,
-      &a2_off_got_size,
-      &a2_val_got,
-      &a2_val_got_size);
+  rc = tiledb_query_get_data_buffer(
+      ctx_, query, "a2", &a2_val_got, &a2_val_got_size);
+  CHECK(rc == TILEDB_OK);
+  rc = tiledb_query_get_offsets_buffer(
+      ctx_, query, "a2", &a2_off_got, &a2_off_got_size);
   CHECK(rc == TILEDB_OK);
   CHECK(a1_got == nullptr);
   CHECK(a1_got_size == nullptr);
@@ -222,64 +219,49 @@ void QueryFx::test_get_buffer_write(const std::string& path) {
   CHECK(a2_val_got_size == nullptr);
 
   // Set buffers
-  rc = tiledb_query_set_buffer(ctx_, query, "", a1, &a1_size);
+  rc = tiledb_query_set_data_buffer(ctx_, query, "", a1, &a1_size);
   CHECK(rc == TILEDB_OK);
-  rc = tiledb_query_set_buffer_var(
-      ctx_, query, "a2", a2_off, &a2_off_size, a2_val, &a2_val_size);
+  rc = tiledb_query_set_data_buffer(ctx_, query, "a2", a2_val, &a2_val_size);
+  CHECK(rc == TILEDB_OK);
+  rc = tiledb_query_set_offsets_buffer(ctx_, query, "a2", a2_off, &a2_off_size);
   CHECK(rc == TILEDB_OK);
 
-  // Get invalid fixed-sized / var-sized buffer
-  rc = tiledb_query_get_buffer(ctx_, query, "a2", &a1_got, &a1_got_size);
+  // Get invalid var-sized buffer
+  rc = tiledb_query_get_data_buffer(
+      ctx_, query, "a1", &a2_val_got, &a2_val_got_size);
   CHECK(rc == TILEDB_ERR);
-  rc = tiledb_query_get_buffer_var(
-      ctx_,
-      query,
-      "a1",
-      &a2_off_got,
-      &a2_off_got_size,
-      &a2_val_got,
-      &a2_val_got_size);
+  rc = tiledb_query_get_offsets_buffer(
+      ctx_, query, "a1", &a2_off_got, &a2_off_got_size);
   CHECK(rc == TILEDB_ERR);
 
   // Test getting the coords buffer
-  rc = tiledb_query_get_buffer(ctx_, query, "dim_1", &a1_got, &a1_got_size);
+  rc = tiledb_query_get_data_buffer(
+      ctx_, query, "dim_1", &a2_val_got, &a2_val_got_size);
   CHECK(rc == TILEDB_OK);
   CHECK(a1_got == nullptr);
   CHECK(a1_got_size == nullptr);
-  rc = tiledb_query_get_buffer_var(
-      ctx_,
-      query,
-      "dim_1",
-      &a2_off_got,
-      &a2_off_got_size,
-      &a2_val_got,
-      &a2_val_got_size);
+  rc = tiledb_query_get_offsets_buffer(
+      ctx_, query, "dim_1", &a2_off_got, &a2_off_got_size);
   CHECK(rc == TILEDB_ERR);
 
   // Test invalid attribute
-  rc = tiledb_query_get_buffer(ctx_, query, "foo", &a1_got, &a1_got_size);
+  rc = tiledb_query_get_data_buffer(ctx_, query, "foo", &a1_got, &a1_got_size);
   CHECK(rc == TILEDB_ERR);
-  rc = tiledb_query_get_buffer_var(
-      ctx_,
-      query,
-      "foo-var",
-      &a2_off_got,
-      &a2_off_got_size,
-      &a2_val_got,
-      &a2_val_got_size);
+  rc = tiledb_query_get_data_buffer(
+      ctx_, query, "foo-var", &a2_val_got, &a2_val_got_size);
+  CHECK(rc == TILEDB_ERR);
+  rc = tiledb_query_get_offsets_buffer(
+      ctx_, query, "foo-var", &a2_off_got, &a2_off_got_size);
   CHECK(rc == TILEDB_ERR);
 
   // Test correctly got buffers
-  rc = tiledb_query_get_buffer(ctx_, query, "", &a1_got, &a1_got_size);
+  rc = tiledb_query_get_data_buffer(ctx_, query, "", &a1_got, &a1_got_size);
   CHECK(rc == TILEDB_OK);
-  rc = tiledb_query_get_buffer_var(
-      ctx_,
-      query,
-      "a2",
-      &a2_off_got,
-      &a2_off_got_size,
-      &a2_val_got,
-      &a2_val_got_size);
+  rc = tiledb_query_get_data_buffer(
+      ctx_, query, "a2", &a2_val_got, &a2_val_got_size);
+  CHECK(rc == TILEDB_OK);
+  rc = tiledb_query_get_offsets_buffer(
+      ctx_, query, "a2", &a2_off_got, &a2_off_got_size);
   CHECK(rc == TILEDB_OK);
   CHECK(a1_got == a1);
   CHECK(a1_got_size == &a1_size);
@@ -333,7 +315,7 @@ void QueryFx::test_get_buffer_write_decoupled(const std::string& path) {
   rc = tiledb_query_get_data_buffer(
       ctx_, query, "a2", &a2_val_got, &a2_val_got_size);
   CHECK(rc == TILEDB_OK);
-  rc = tiledb_query_get_offset_buffer(
+  rc = tiledb_query_get_offsets_buffer(
       ctx_, query, "a2", &a2_off_got, &a2_off_got_size);
   CHECK(rc == TILEDB_OK);
   CHECK(a1_got == nullptr);
@@ -351,37 +333,13 @@ void QueryFx::test_get_buffer_write_decoupled(const std::string& path) {
   rc = tiledb_query_set_offsets_buffer(ctx_, query, "a2", a2_off, &a2_off_size);
   CHECK(rc == TILEDB_OK);
 
-  // Get invalid fixed-sized / var-sized buffer
-  //  rc = tiledb_query_get_data_buffer(ctx_, query, "a2", &a1_got,
-  //  &a1_got_size); CHECK(rc == TILEDB_ERR); rc = tiledb_query_get_data_buffer(
-  //      ctx_,
-  //      query,
-  //      "a1",
-  //      &a2_val_got,
-  //      &a2_val_got_size);
-  //  CHECK(rc == TILEDB_ERR);
-  //  rc = tiledb_query_get_offset_buffer(
-  //      ctx_,
-  //      query,
-  //      "a1",
-  //      &a2_off_got,
-  //      &a2_off_got_size);
-  //  CHECK(rc == TILEDB_ERR);
-
   // Test getting the coords buffer
   rc =
       tiledb_query_get_data_buffer(ctx_, query, "dim_1", &a1_got, &a1_got_size);
   CHECK(rc == TILEDB_OK);
   CHECK(a1_got == nullptr);
   CHECK(a1_got_size == nullptr);
-  //  rc = tiledb_query_get_data_buffer(
-  //      ctx_,
-  //      query,
-  //      "dim_1",
-  //      &a2_val_got,
-  //      &a2_val_got_size);
-  //  CHECK(rc == TILEDB_ERR);
-  rc = tiledb_query_get_offset_buffer(
+  rc = tiledb_query_get_offsets_buffer(
       ctx_, query, "dim_1", &a2_off_got, &a2_off_got_size);
   CHECK(rc == TILEDB_ERR);
 
@@ -391,7 +349,7 @@ void QueryFx::test_get_buffer_write_decoupled(const std::string& path) {
   rc = tiledb_query_get_data_buffer(
       ctx_, query, "foo-var", &a2_val_got, &a2_val_got_size);
   CHECK(rc == TILEDB_ERR);
-  rc = tiledb_query_get_offset_buffer(
+  rc = tiledb_query_get_offsets_buffer(
       ctx_, query, "foo-var", &a2_off_got, &a2_off_got_size);
   CHECK(rc == TILEDB_ERR);
 
@@ -401,7 +359,7 @@ void QueryFx::test_get_buffer_write_decoupled(const std::string& path) {
   rc = tiledb_query_get_data_buffer(
       ctx_, query, "a2", &a2_val_got, &a2_val_got_size);
   CHECK(rc == TILEDB_OK);
-  rc = tiledb_query_get_offset_buffer(
+  rc = tiledb_query_get_offsets_buffer(
       ctx_, query, "a2", &a2_off_got, &a2_off_got_size);
   CHECK(rc == TILEDB_OK);
   CHECK(a1_got == a1);
@@ -451,16 +409,13 @@ void QueryFx::test_get_buffer_read(const std::string& path) {
   uint64_t* a2_off_got_size;
   void* a2_val_got;
   uint64_t* a2_val_got_size;
-  rc = tiledb_query_get_buffer(ctx_, query, "", &a1_got, &a1_got_size);
+  rc = tiledb_query_get_data_buffer(ctx_, query, "", &a1_got, &a1_got_size);
   CHECK(rc == TILEDB_OK);
-  rc = tiledb_query_get_buffer_var(
-      ctx_,
-      query,
-      "a2",
-      &a2_off_got,
-      &a2_off_got_size,
-      &a2_val_got,
-      &a2_val_got_size);
+  rc = tiledb_query_get_data_buffer(
+      ctx_, query, "a2", &a2_val_got, &a2_val_got_size);
+  CHECK(rc == TILEDB_OK);
+  rc = tiledb_query_get_offsets_buffer(
+      ctx_, query, "a2", &a2_off_got, &a2_off_got_size);
   CHECK(rc == TILEDB_OK);
   CHECK(a1_got == nullptr);
   CHECK(a1_got_size == nullptr);
@@ -470,64 +425,54 @@ void QueryFx::test_get_buffer_read(const std::string& path) {
   CHECK(a2_val_got_size == nullptr);
 
   // Set buffers
-  rc = tiledb_query_set_buffer(ctx_, query, "", a1, &a1_size);
+  rc = tiledb_query_set_data_buffer(ctx_, query, "", a1, &a1_size);
   CHECK(rc == TILEDB_OK);
-  rc = tiledb_query_set_buffer_var(
-      ctx_, query, "a2", a2_off, &a2_off_size, a2_val, &a2_val_size);
+  rc = tiledb_query_set_data_buffer(ctx_, query, "a2", a2_val, &a2_val_size);
+  CHECK(rc == TILEDB_OK);
+  rc = tiledb_query_set_offsets_buffer(ctx_, query, "a2", a2_off, &a2_off_size);
   CHECK(rc == TILEDB_OK);
 
   // Get invalid fixed-sized / var-sized buffer
-  rc = tiledb_query_get_buffer(ctx_, query, "a2", &a1_got, &a1_got_size);
+  rc = tiledb_query_get_data_buffer(ctx_, query, "a2", &a1_got, &a1_got_size);
+  CHECK(rc == TILEDB_OK);
+  rc = tiledb_query_get_data_buffer(
+      ctx_, query, "a1", &a2_val_got, &a2_val_got_size);
   CHECK(rc == TILEDB_ERR);
-  rc = tiledb_query_get_buffer_var(
-      ctx_,
-      query,
-      "a1",
-      &a2_off_got,
-      &a2_off_got_size,
-      &a2_val_got,
-      &a2_val_got_size);
+  rc = tiledb_query_get_offsets_buffer(
+      ctx_, query, "a1", &a2_off_got, &a2_off_got_size);
   CHECK(rc == TILEDB_ERR);
 
   // Test getting the coords buffer
-  rc = tiledb_query_get_buffer(ctx_, query, "dim_1", &a1_got, &a1_got_size);
+  rc =
+      tiledb_query_get_data_buffer(ctx_, query, "dim_1", &a1_got, &a1_got_size);
   CHECK(rc == TILEDB_OK);
   CHECK(a1_got == nullptr);
   CHECK(a1_got_size == nullptr);
-  rc = tiledb_query_get_buffer_var(
-      ctx_,
-      query,
-      "dim_1",
-      &a2_off_got,
-      &a2_off_got_size,
-      &a2_val_got,
-      &a2_val_got_size);
+  rc = tiledb_query_get_data_buffer(
+      ctx_, query, "dim_1", &a2_val_got, &a2_val_got_size);
+  CHECK(rc == TILEDB_OK);
+  rc = tiledb_query_get_offsets_buffer(
+      ctx_, query, "dim_1", &a2_off_got, &a2_off_got_size);
   CHECK(rc == TILEDB_ERR);
 
   // Test invalid attribute
-  rc = tiledb_query_get_buffer(ctx_, query, "foo", &a1_got, &a1_got_size);
+  rc = tiledb_query_get_data_buffer(ctx_, query, "foo", &a1_got, &a1_got_size);
   CHECK(rc == TILEDB_ERR);
-  rc = tiledb_query_get_buffer_var(
-      ctx_,
-      query,
-      "foo-var",
-      &a2_off_got,
-      &a2_off_got_size,
-      &a2_val_got,
-      &a2_val_got_size);
+  rc = tiledb_query_get_data_buffer(
+      ctx_, query, "foo-var", &a2_val_got, &a2_val_got_size);
+  CHECK(rc == TILEDB_ERR);
+  rc = tiledb_query_get_offsets_buffer(
+      ctx_, query, "foo-var", &a2_off_got, &a2_off_got_size);
   CHECK(rc == TILEDB_ERR);
 
   // Test correctly got buffers
-  rc = tiledb_query_get_buffer(ctx_, query, "", &a1_got, &a1_got_size);
+  rc = tiledb_query_get_data_buffer(ctx_, query, "", &a1_got, &a1_got_size);
   CHECK(rc == TILEDB_OK);
-  rc = tiledb_query_get_buffer_var(
-      ctx_,
-      query,
-      "a2",
-      &a2_off_got,
-      &a2_off_got_size,
-      &a2_val_got,
-      &a2_val_got_size);
+  rc = tiledb_query_get_data_buffer(
+      ctx_, query, "a2", &a2_val_got, &a2_val_got_size);
+  CHECK(rc == TILEDB_OK);
+  rc = tiledb_query_get_offsets_buffer(
+      ctx_, query, "a2", &a2_off_got, &a2_off_got_size);
   CHECK(rc == TILEDB_OK);
   CHECK(a1_got == a1);
   CHECK(a1_got_size == &a1_size);
@@ -581,7 +526,7 @@ void QueryFx::test_get_buffer_read_decoupled(const std::string& path) {
   rc = tiledb_query_get_data_buffer(
       ctx_, query, "a2", &a2_val_got, &a2_val_got_size);
   CHECK(rc == TILEDB_OK);
-  rc = tiledb_query_get_offset_buffer(
+  rc = tiledb_query_get_offsets_buffer(
       ctx_, query, "a2", &a2_off_got, &a2_off_got_size);
   CHECK(rc == TILEDB_OK);
   CHECK(a1_got == nullptr);
@@ -599,14 +544,10 @@ void QueryFx::test_get_buffer_read_decoupled(const std::string& path) {
   rc = tiledb_query_set_offsets_buffer(ctx_, query, "a2", a2_off, &a2_off_size);
   CHECK(rc == TILEDB_OK);
 
-  // Get invalid fixed-sized / var-sized buffer
-  // TODO:  CHECK
-  //  rc = tiledb_query_get_data_buffer(ctx_, query, "a2", &a1_got,
-  //  &a1_got_size); CHECK(rc == TILEDB_ERR);
   rc = tiledb_query_get_data_buffer(
       ctx_, query, "a1", &a2_val_got, &a2_val_got_size);
   CHECK(rc == TILEDB_ERR);
-  rc = tiledb_query_get_offset_buffer(
+  rc = tiledb_query_get_offsets_buffer(
       ctx_, query, "a1", &a2_off_got, &a2_off_got_size);
   CHECK(rc == TILEDB_ERR);
 
@@ -617,29 +558,13 @@ void QueryFx::test_get_buffer_read_decoupled(const std::string& path) {
   CHECK(a1_got == nullptr);
   CHECK(a1_got_size == nullptr);
 
-  // TODO: CHECK
-  //  rc = tiledb_query_get_data_buffer(
-  //      ctx_,
-  //      query,
-  //      "dim_1",
-  //      &a2_val_got,
-  //      &a2_val_got_size);
-  //  CHECK(rc == TILEDB_ERR);
-  //  rc = tiledb_query_get_offset_buffer(
-  //      ctx_,
-  //      query,
-  //      "dim_1",
-  //      &a2_off_got,
-  //      &a2_off_got_size);
-  //  CHECK(rc == TILEDB_ERR);
-
   // Test invalid attribute
   rc = tiledb_query_get_data_buffer(ctx_, query, "foo", &a1_got, &a1_got_size);
   CHECK(rc == TILEDB_ERR);
   rc = tiledb_query_get_data_buffer(
       ctx_, query, "foo-var", &a2_val_got, &a2_val_got_size);
   CHECK(rc == TILEDB_ERR);
-  rc = tiledb_query_get_offset_buffer(
+  rc = tiledb_query_get_offsets_buffer(
       ctx_, query, "foo-var", &a2_off_got, &a2_off_got_size);
   CHECK(rc == TILEDB_ERR);
 
@@ -649,7 +574,7 @@ void QueryFx::test_get_buffer_read_decoupled(const std::string& path) {
   rc = tiledb_query_get_data_buffer(
       ctx_, query, "a2", &a2_val_got, &a2_val_got_size);
   CHECK(rc == TILEDB_OK);
-  rc = tiledb_query_get_offset_buffer(
+  rc = tiledb_query_get_offsets_buffer(
       ctx_, query, "a2", &a2_off_got, &a2_off_got_size);
   CHECK(rc == TILEDB_OK);
   CHECK(a1_got == a1);
