@@ -1006,11 +1006,49 @@ Status Reader::compute_range_result_coords(
 
     // Compute result and overwritten bitmap per dimension
     for (unsigned d = 0; d < dim_num; ++d) {
+      // JOE: If we have an unset range, we `continue` here to leave
+      // the current state of `result_bitmap` unmodified. The
+      // output of `compute_results_sparse` will only flip bits
+      // from `1` to `0`. Skipping this for the current dimension
+      // is semantically equivalent to finding that every cell is
+      // contained within the ranges of the dimension.
+
       // For col-major cell ordering, iterate the dimensions
       // in reverse.
       const unsigned dim_idx =
           cell_order == Layout::COL_MAJOR ? dim_num - d - 1 : d;
+
+      // JOE: currently, a single-element vector will be returned
+      // for an unset range, where the sinlg-element is a default
+      // range. For string types, this is an empty string. We can
+      // not use an empty string as a sentinel value. Instead, we
+      // need a first-class variable to let us know if the ranges
+      // are unset for `dim_idx`.
+      //
+      // I can think of a few approaches:
+      // 1. The individual `Range` element can have a `bool` that knows
+      //    if it is the default or not. When true, the range data is
+      //    unused/garbage. I don't like this design because:
+      //      a. There is a normalization problem where the vector may
+      //         have multiple `Range` elements. This forces an invariant
+      //         that when there is more than one element, all must be
+      //         non-default.
+      //      b. The range data is garbage/unused, creating unused state.
+      //
+      // 2. Instead of `ranges_for_dim` returning a `vector<Range>`, modify it
+      //    to return a struct with a bool, e.g.:
+      //      struct UnsettableRanges {
+      //        vector<Range> ranges_;
+      //        bool unset_;
+      //      };
+      //    This has a similar invariant problem where the `ranges_` state must
+      //    be empty if `unset_` is true.
+      // 3. Return an empty vector instead of a single-element vector. I find
+      // this
+      //    to be the best solution, but the source will needed to be modified
+      //    to handle all cases where an empty vector can be returned.
       const auto& ranges = subarray->ranges_for_dim(dim_idx);
+
       RETURN_NOT_OK(tile->compute_results_sparse(
           dim_idx, ranges[range_coords[dim_idx]], &result_bitmap, cell_order));
     }
@@ -1744,6 +1782,8 @@ void Reader::compute_result_space_tiles(
   if (fragment_num > 0) {
     for (int i = fragment_num - 1; i >= 0; --i) {
       if (fragment_metadata_[i]->dense()) {
+        // JOE: Also here, this may need to be aware of default-constructed
+        // strings.
         frag_tile_domains.emplace_back(
             i,
             domain,
@@ -3559,6 +3599,8 @@ bool Reader::sparse_tile_overwritten(
   auto domain = array_schema_->domain();
 
   for (unsigned f = frag_idx + 1; f < fragment_num; ++f) {
+    // JOE: I believe this is where Stavros mentioned that we should
+    // handle default-constructed MBR/non-empty domain checks.
     if (fragment_metadata_[f]->dense() &&
         domain->covered(mbr, fragment_metadata_[f]->non_empty_domain()))
       return true;

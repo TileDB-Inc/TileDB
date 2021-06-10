@@ -1521,6 +1521,13 @@ void Subarray::add_or_coalesce_range(
 /* ****************************** */
 
 void Subarray::add_default_ranges() {
+  // JOE: this routine adds the default ranges. For strings, this
+  // adds the empty string as the start/end. I would recommend removing
+  // this functions so that there are no default ranges. Again, all
+  // callers need to be aware of this change. Some callers may need to
+  // interpret the size as `1` if it is empty (for example, the implementation
+  // of `Subarray::range_num()`).
+
   auto array_schema = array_->array_schema();
   auto dim_num = array_schema->dim_num();
   auto domain = array_schema->domain()->domain();
