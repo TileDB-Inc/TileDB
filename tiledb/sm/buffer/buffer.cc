@@ -93,13 +93,19 @@ void BufferBase::reset_offset() {
 }
 
 void BufferBase::set_offset(const uint64_t offset) {
-  // DEFECT: offset may be > size_
+  // If the offset is invalid we ignore it.
+  // Arguably we should throw an exception, but that's too disruptive for now.
+  if (offset > size_) return;
   offset_ = offset;
 }
 
 void BufferBase::advance_offset(const uint64_t nbytes) {
-  offset_ += nbytes;
-  // DEFECT: offset_ may be > size_
+  if (nbytes >= size_ - offset_) {
+    // The argument puts us at the end or past it, which is still at the end.
+    offset_ = size_;
+  } else {
+    offset_ += nbytes;
+  }
 }
 
 bool BufferBase::end() const {
