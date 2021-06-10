@@ -27,7 +27,7 @@
  *
  * @section DESCRIPTION
  *
- * This file implements class Buffer.
+ * This file implements classes BufferBase and Buffer.
  */
 
 #include "tiledb/sm/buffer/buffer.h"
@@ -42,28 +42,91 @@ using namespace tiledb::common;
 namespace tiledb {
 namespace sm {
 
-/* ****************************** */
-/*             MACROS             */
-/* ****************************** */
+/* ************** */
+/*   BufferBase   */
+/* ************** */
+BufferBase::BufferBase()
+        : data_(nullptr), size_(0), offset_(0) {};
 
-#define MAX(a, b) ((a) > (b) ? (a) : (b))
+BufferBase::BufferBase(void* data, const uint64_t size)
+        : data_(data), size_(size), offset_(0) {};
+
+/*
+ * const_cast is safe here because BufferBase methods do not modify data.
+ */
+BufferBase::BufferBase(const void* data, const uint64_t size)
+        : data_(const_cast<void *>(data)), size_(size), offset_(0) {};
+
+uint64_t BufferBase::size() const {
+  return size_;
+}
+
+void* BufferBase::nonconst_data() const {
+  return data_;
+}
+
+/*
+ * const_cast is safe here because BufferBase methods do not modify data.
+ */
+const void* BufferBase::const_data() const {
+  return const_cast<const void*>(data_);
+}
+
+void* BufferBase::nonconst_unread_data() const {
+  if (data_ == nullptr) {
+    return nullptr;
+  }
+  // Cast to byte type because offset is measured in bytes
+  return static_cast<int8_t *>(data_) + offset_;
+}
+
+const void* BufferBase::const_unread_data() const {
+  return const_cast<const void*>(nonconst_unread_data());
+}
+
+uint64_t BufferBase::offset() const {
+  return offset_;
+}
+
+void BufferBase::reset_offset() {
+  offset_ = 0;
+}
+
+void BufferBase::set_offset(const uint64_t offset) {
+  // DEFECT: offset may be > size_
+  offset_ = offset;
+}
+
+void BufferBase::advance_offset(const uint64_t nbytes) {
+  offset_ += nbytes;
+  // DEFECT: offset_ may be > size_
+}
+
+bool BufferBase::end() const {
+  return offset_ == size_;
+}
+
+Status BufferBase::read(void* destination, const uint64_t nbytes) {
+  if (nbytes > size_ - offset_) {
+    return LOG_STATUS(
+            Status::BufferError("Read buffer overflow; may not read beyond buffer size"));
+  }
+  std::memcpy(destination, static_cast<char *>(data_) + offset_, nbytes);
+  offset_ += nbytes;
+  return Status::Ok();
+}
 
 /* ****************************** */
 /*   CONSTRUCTORS & DESTRUCTORS   */
 /* ****************************** */
 
 Buffer::Buffer()
-    : Buffer(nullptr, 0) {
-  owns_data_ = true;
-}
+  : BufferBase(), owns_data_(true), alloced_size_(0)
+{}
 
-Buffer::Buffer(void* data, const uint64_t size) {
-  offset_ = 0;
-  alloced_size_ = 0;
-  owns_data_ = false;
-  data_ = data;
-  size_ = size;
-}
+Buffer::Buffer(void* data, const uint64_t size)
+  : BufferBase(data, size), owns_data_(false), alloced_size_(0)
+{}
 
 Buffer::Buffer(const Buffer& buff) {
   alloced_size_ = buff.alloced_size_;
@@ -97,8 +160,8 @@ Buffer::~Buffer() {
 /*               API              */
 /* ****************************** */
 
-void Buffer::advance_offset(const uint64_t nbytes) {
-  offset_ += nbytes;
+void* Buffer::data() const {
+  return nonconst_data();
 }
 
 void Buffer::advance_size(const uint64_t nbytes) {
@@ -121,19 +184,15 @@ void Buffer::clear() {
 }
 
 void* Buffer::cur_data() const {
-  if (data_ == nullptr)
-    return nullptr;
-  return (char*)data_ + offset_;
-}
-
-void* Buffer::data() const {
-  return data_;
+  return nonconst_unread_data();
 }
 
 void* Buffer::data(const uint64_t offset) const {
-  if (data_ == nullptr)
+  auto data = static_cast<char *>(nonconst_data());
+  if (data == nullptr){
     return nullptr;
-  return (char*)data_ + offset;
+  }
+  return data + offset;
 }
 
 void Buffer::disown_data() {
@@ -145,22 +204,8 @@ uint64_t Buffer::free_space() const {
   return alloced_size_ - size_;
 }
 
-uint64_t Buffer::offset() const {
-  return offset_;
-}
-
 bool Buffer::owns_data() const {
   return owns_data_;
-}
-
-Status Buffer::read(void* buffer, const uint64_t nbytes) {
-  if (nbytes + offset_ > size_) {
-    return LOG_STATUS(
-        Status::BufferError("Read failed; Trying to read beyond buffer size"));
-  }
-  std::memcpy(buffer, (char*)data_ + offset_, nbytes);
-  offset_ += nbytes;
-  return Status::Ok();
 }
 
 Status Buffer::realloc(const uint64_t nbytes) {
@@ -189,25 +234,13 @@ Status Buffer::realloc(const uint64_t nbytes) {
   return Status::Ok();
 }
 
-void Buffer::reset_offset() {
-  offset_ = 0;
-}
-
 void Buffer::reset_size() {
   offset_ = 0;
   size_ = 0;
 }
 
-void Buffer::set_offset(const uint64_t offset) {
-  offset_ = offset;
-}
-
 void Buffer::set_size(const uint64_t size) {
   size_ = size;
-}
-
-uint64_t Buffer::size() const {
-  return size_;
 }
 
 Status Buffer::swap(Buffer& other) {

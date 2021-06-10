@@ -44,8 +44,79 @@ namespace sm {
 
 class ConstBuffer;
 
+/**
+ * Base class for `Buffer` and `ConstBuffer`
+ *
+ * Responsible for maintaining an read offset in the range [0..size_]. Not
+ * responsible for memory management.
+ */
+class BufferBase {
+ public:
+  /** Returns the buffer size. */
+  uint64_t size() const;
+
+  /** Returns the current read position, in bytes. */
+  uint64_t offset() const;
+
+  /** Resets the buffer offset to 0. */
+  void reset_offset();
+
+  /** Sets the buffer offset to the input offset. */
+  void set_offset(uint64_t offset);
+
+  /** Advances the offset by *nbytes*. */
+  void advance_offset(uint64_t nbytes);
+
+  /** Checks if reading has reached the end of the buffer. */
+  bool end() const;
+
+  /**
+   * Reads from the local data into the input buffer.
+   *
+   * @param destination The buffer to read the data into.
+   * @param nbytes The number of bytes to read.
+   * @return Status
+   */
+  Status read(void* destination, uint64_t nbytes);
+
+ protected:
+  BufferBase();
+  BufferBase(void* data, uint64_t size);
+  BufferBase(const void* data, uint64_t size);
+
+  /** Returns the buffer data. */
+  void* nonconst_data() const;
+
+  /** Returns the buffer data as a pointer to constant. */
+  const void* const_data() const;
+
+  /** Returns the buffer at the current read offset */
+  void* nonconst_unread_data() const;
+
+  /** Returns the buffer at the current read offset as a pointer to constant */
+  const void* const_unread_data() const;
+
+  /** The buffer data. */
+  /**
+   * @invariant If data_ does not change across a class method, then neither
+   * does data_[0..size_). In other words, the data is treated as constant.
+   */
+  void* data_;
+
+  /** Size of the buffer data. */
+  uint64_t size_;
+
+  /** The current buffer read position in bytes, i.e. sizeof(char). */
+  /**
+   * @invariant offset_ <= size_
+   */
+  uint64_t offset_;
+};
+
+
+
 /** Enables reading from and writing to a buffer. */
-class Buffer {
+class Buffer : public BufferBase {
  public:
   /* ********************************* */
   /*     CONSTRUCTORS & DESTRUCTORS    */
@@ -86,8 +157,8 @@ class Buffer {
   /*                API                */
   /* ********************************* */
 
-  /** Advances the offset by *nbytes*. */
-  void advance_offset(uint64_t nbytes);
+  /** Returns the buffer data. */
+  void* data() const;
 
   /** Advances the size by *nbytes*. */
   void advance_size(uint64_t nbytes);
@@ -101,9 +172,6 @@ class Buffer {
   /** Returns the buffer data pointer at the current offset. */
   void* cur_data() const;
 
-  /** Returns the buffer data. */
-  void* data() const;
-
   /** Returns the buffer data pointer at the input offset. */
   void* data(uint64_t offset) const;
 
@@ -116,20 +184,8 @@ class Buffer {
   /** Returns the number of byte of free space in the buffer. */
   uint64_t free_space() const;
 
-  /** Returns the current offset in the buffer. */
-  uint64_t offset() const;
-
   /** Returns `true` if the buffer owns its data buffer. */
   bool owns_data() const;
-
-  /**
-   * Reads from the local data into the input buffer.
-   *
-   * @param buffer The buffer to read the data into.
-   * @param nbytes The number of bytes to read.
-   * @return Status
-   */
-  Status read(void* buffer, uint64_t nbytes);
 
   /**
    * Reallocates memory for the buffer with the input size.
@@ -139,20 +195,11 @@ class Buffer {
    */
   Status realloc(uint64_t nbytes);
 
-  /** Resets the buffer offset to 0. */
-  void reset_offset();
-
   /** Resets the buffer size. */
   void reset_size();
 
-  /** Sets the buffer offset to the input offset. */
-  void set_offset(uint64_t offset);
-
   /** Sets the buffer size. */
   void set_size(uint64_t size);
-
-  /** Returns the buffer size. */
-  uint64_t size() const;
 
   /**
    * Swaps this buffer with the other one. After swapping, this buffer's
@@ -247,20 +294,11 @@ class Buffer {
   /** The allocated buffer size. */
   uint64_t alloced_size_;
 
-  /** The buffer data. */
-  void* data_;
-
-  /** The current buffer offset. */
-  uint64_t offset_;
-
   /**
    * True if the object owns the data buffer, which means that it is
    * responsible for allocating and freeing it.
    */
   bool owns_data_;
-
-  /** Size of the buffer useful data. */
-  uint64_t size_;
 
   /* ********************************* */
   /*          PRIVATE METHODS          */

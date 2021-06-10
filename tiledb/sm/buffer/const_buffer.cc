@@ -31,7 +31,6 @@
  */
 
 #include "tiledb/sm/buffer/const_buffer.h"
-#include "tiledb/sm/buffer/buffer.h"
 
 #include <iostream>
 
@@ -45,55 +44,25 @@ namespace sm {
 /* ****************************** */
 
 ConstBuffer::ConstBuffer(Buffer* buff)
-    : ConstBuffer(buff->data(), buff->size()) {
-}
+  : ConstBuffer(buff->data(), buff->size()) {}
 
 ConstBuffer::ConstBuffer(const void* data, const uint64_t size)
-    : data_(data)
-    , size_(size) {
-  offset_ = 0;
-}
+  : BufferBase(data,size) {}
 
 /* ****************************** */
 /*               API              */
 /* ****************************** */
 
-void ConstBuffer::advance_offset(const uint64_t nbytes) {
-  offset_ += nbytes;
+const void* ConstBuffer::data() const {
+  return const_data();
 }
 
 const void* ConstBuffer::cur_data() const {
-  return (char*)data_ + offset_;
-}
-
-const void* ConstBuffer::data() const {
-  return data_;
-}
-
-bool ConstBuffer::end() const {
-  return offset_ == size_;
+  return const_unread_data();
 }
 
 uint64_t ConstBuffer::nbytes_left_to_read() const {
   return size_ - offset_;
-}
-
-void ConstBuffer::set_offset(const uint64_t offset) {
-  offset_ = offset;
-}
-
-uint64_t ConstBuffer::offset() const {
-  return offset_;
-}
-
-Status ConstBuffer::read(void* buffer, const uint64_t nbytes) {
-  if (offset_ + nbytes > size_)
-    return Status::ConstBufferError("Read buffer overflow");
-
-  memcpy(buffer, (char*)data_ + offset_, nbytes);
-  offset_ += nbytes;
-
-  return Status::Ok();
 }
 
 void ConstBuffer::read_with_shift(
@@ -108,10 +77,6 @@ void ConstBuffer::read_with_shift(
     buffer[i] = offset + data[i];
 
   offset_ += nbytes;
-}
-
-uint64_t ConstBuffer::size() const {
-  return size_;
 }
 
 /* ****************************** */

@@ -33,9 +33,11 @@
 #ifndef TILEDB_CONST_BUFFER_H
 #define TILEDB_CONST_BUFFER_H
 
+#include "tiledb/common/status.h"
+#include "tiledb/sm/buffer/buffer.h"
+
 #include <cinttypes>
 
-#include "tiledb/common/status.h"
 
 using namespace tiledb::common;
 
@@ -45,7 +47,7 @@ namespace sm {
 class Buffer;
 
 /** Enables reading from a constant buffer. */
-class ConstBuffer {
+class ConstBuffer : public BufferBase {
  public:
   /* ********************************* */
   /*     CONSTRUCTORS & DESTRUCTORS    */
@@ -75,35 +77,14 @@ class ConstBuffer {
   /*                API                */
   /* ********************************* */
 
-  /** Advances the offset by *nbytes*. */
-  void advance_offset(uint64_t nbytes);
+  /** Returns the buffer data. */
+  const void* data() const;
 
   /** Returns pointer to data at the current offset. */
   const void* cur_data() const;
 
-  /** Returns the buffer data. */
-  const void* data() const;
-
-  /** Checks if reading has reached the end of the buffer. */
-  bool end() const;
-
   /** Returns the number of bytes left for reading. */
   uint64_t nbytes_left_to_read() const;
-
-  /** Sets the buffer offset. */
-  void set_offset(uint64_t offset);
-
-  /** Returns the buffer offset. */
-  uint64_t offset() const;
-
-  /**
-   * Reads from the internal buffer into the input buffer.
-   *
-   * @param buffer The buffer to write to when reading from the local buffer.
-   * @param nbytes The number of bytes to read.
-   * @return Status.
-   */
-  Status read(void* buffer, uint64_t nbytes);
 
   /**
    * This is a special function used for reading from a buffer that stores
@@ -117,9 +98,6 @@ class ConstBuffer {
    * @return void.
    */
   void read_with_shift(uint64_t* buf, uint64_t nbytes, uint64_t offset);
-
-  /** Returns the size of the buffer. */
-  uint64_t size() const;
 
   /**
    * Returns a value from the buffer of type T.
@@ -143,20 +121,6 @@ class ConstBuffer {
   inline T value() const {
     return ((const T*)(((const char*)data_) + offset_))[0];
   }
-
- private:
-  /* ********************************* */
-  /*         PRIVATE ATTRIBUTES        */
-  /* ********************************* */
-
-  /** The (read-only) buffer data. */
-  const void* data_;
-
-  /** The current offset in the buffer to read from. */
-  uint64_t offset_;
-
-  /** The size of the buffer. */
-  uint64_t size_;
 };
 
 }  // namespace sm
