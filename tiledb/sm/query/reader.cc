@@ -973,7 +973,11 @@ Status Reader::compute_range_result_coords(
           cell_order == Layout::COL_MAJOR ? dim_num - d - 1 : d;
       const auto& ranges = subarray->ranges_for_dim(dim_idx);
       RETURN_NOT_OK(tile->compute_results_sparse(
-          dim_idx, ranges[range_coords[dim_idx]], &result_bitmap, cell_order));
+          dim_idx,
+          ranges[range_coords[dim_idx]],
+          subarray->is_default(dim_idx), //<<=== new parameter
+          &result_bitmap,
+          cell_order));
     }
 
     // Gather results

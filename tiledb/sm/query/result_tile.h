@@ -220,6 +220,7 @@ class ResultTile {
       const ResultTile* result_tile,
       unsigned dim_idx,
       const Range& range,
+      bool  dim_default_range,
       std::vector<uint8_t>* result_bitmap,
       const Layout& cell_order);
 
@@ -251,6 +252,7 @@ class ResultTile {
   Status compute_results_sparse(
       unsigned dim_idx,
       const Range& range,
+      bool dim_default_range,
       std::vector<uint8_t>* result_bitmap,
       const Layout& cell_order) const;
 
@@ -309,6 +311,7 @@ class ResultTile {
       const ResultTile*,
       unsigned,
       const Range&,
+      bool dim_default_range,
       std::vector<uint8_t>*,
       const Layout&)>>
       compute_results_sparse_func_;
@@ -345,7 +348,8 @@ class ResultTile {
       const uint64_t c_size,
       const char* const buff_str,
       const std::string& range_start,
-      const std::string& range_end);
+      const std::string& range_end,
+      bool  dim_default_range);
 };
 
 }  // namespace sm
