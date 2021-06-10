@@ -606,6 +606,65 @@ TEST_CASE(
   CHECK(val_str == std::string("yell", 4));
 }
 
+template <typename T>
+void test_int_max_tile_extent_value() {
+  T min = std::numeric_limits<T>::min() + std::is_signed<T>::value;
+  T max = std::numeric_limits<T>::max() - !std::is_signed<T>::value;
+
+  typedef typename std::make_unsigned<T>::type tile_extent_t;
+  T max_extent = (tile_extent_t)max - (tile_extent_t)min + 1;
+
+  auto tile_idx = Dimension::tile_idx(max, min, max_extent);
+
+  CHECK(Dimension::tile_coord_low(tile_idx, min, max_extent) == min);
+  CHECK(Dimension::tile_coord_high(tile_idx, min, max_extent) == max);
+
+  CHECK(Dimension::round_to_tile(min, min, max_extent) == min);
+  CHECK(Dimension::round_to_tile(max, min, max_extent) == min);
+}
+
+template <typename T>
+void test_int_min_tile_extent_value() {
+  T min = std::numeric_limits<T>::min();
+  T max = std::numeric_limits<T>::max();
+
+  T min_extent = 1;
+
+  auto tile_idx = Dimension::tile_idx(max, min, min_extent);
+
+  CHECK(Dimension::tile_coord_low(0, min, min_extent) == min);
+  CHECK(Dimension::tile_coord_high(tile_idx, min, min_extent) == max);
+
+  CHECK(Dimension::round_to_tile(min, min, min_extent) == min);
+  CHECK(Dimension::round_to_tile(max, min, min_extent) == max);
+}
+
+TEST_CASE(
+    "test max tile extent for integer values",
+    "[dimension][integral][max][tile_extent]") {
+  test_int_max_tile_extent_value<int8_t>();
+  test_int_max_tile_extent_value<int16_t>();
+  test_int_max_tile_extent_value<int32_t>();
+  test_int_max_tile_extent_value<int64_t>();
+  test_int_max_tile_extent_value<uint8_t>();
+  test_int_max_tile_extent_value<uint16_t>();
+  test_int_max_tile_extent_value<uint32_t>();
+  test_int_max_tile_extent_value<uint64_t>();
+}
+
+TEST_CASE(
+    "test min tile extent for integer values",
+    "[dimension][integral][min][tile_extent]") {
+  test_int_min_tile_extent_value<int8_t>();
+  test_int_min_tile_extent_value<int16_t>();
+  test_int_min_tile_extent_value<int32_t>();
+  test_int_min_tile_extent_value<int64_t>();
+  test_int_min_tile_extent_value<uint8_t>();
+  test_int_min_tile_extent_value<uint16_t>();
+  test_int_min_tile_extent_value<uint32_t>();
+  test_int_min_tile_extent_value<uint64_t>();
+}
+
 template <class T>
 double basic_verify_overlap_ratio(
     T range1_low, T range1_high, T range2_low, T range2_high) {

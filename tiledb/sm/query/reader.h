@@ -41,6 +41,7 @@
 #include <vector>
 
 #include "tiledb/common/status.h"
+#include "tiledb/sm/array_schema/dimension.h"
 #include "tiledb/sm/array_schema/tile_domain.h"
 #include "tiledb/sm/misc/types.h"
 #include "tiledb/sm/misc/uri.h"
