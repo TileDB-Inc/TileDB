@@ -2832,15 +2832,16 @@ int32_t tiledb_query_set_offsets_buffer(
     tiledb_ctx_t* ctx,
     tiledb_query_t* query,
     const char* name,
-    uint64_t* buffer_off,
-    uint64_t* buffer_off_size) {  // Sanity check
+    uint64_t* buffer_offsets,
+    uint64_t* buffer_offsets_size) {  // Sanity check
   if (sanity_check(ctx) == TILEDB_ERR || sanity_check(ctx, query) == TILEDB_ERR)
     return TILEDB_ERR;
 
   // Set attribute buffer
   if (SAVE_ERROR_CATCH(
           ctx,
-          query->query_->set_off_buffer(name, buffer_off, buffer_off_size)))
+          query->query_->set_offsets_buffer(
+              name, buffer_offsets, buffer_offsets_size)))
     return TILEDB_ERR;
 
   return TILEDB_OK;
@@ -2858,7 +2859,7 @@ int32_t tiledb_query_set_validity_buffer(
   // Set attribute buffer
   if (SAVE_ERROR_CATCH(
           ctx,
-          query->query_->set_val_buffer(
+          query->query_->set_validity_buffer(
               name, buffer_validity, buffer_validity_size)))
     return TILEDB_ERR;
 
@@ -2979,7 +2980,7 @@ int32_t tiledb_query_get_data_buffer(
   return TILEDB_OK;
 }
 
-int32_t tiledb_query_get_offset_buffer(
+int32_t tiledb_query_get_offsets_buffer(
     tiledb_ctx_t* ctx,
     tiledb_query_t* query,
     const char* name,
