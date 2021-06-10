@@ -147,32 +147,6 @@ class QueryBuffer {
     return *this;
   }
 
-  /** Move-assignment Operator. */
-  Status set_buffer_data(QueryBuffer&& rhs) {
-    if (&rhs == this)
-      return Status::Ok();
-    if (rhs.buffer_ != nullptr)
-      std::swap(buffer_, rhs.buffer_);
-    if (rhs.buffer_var_ != nullptr)
-      std::swap(buffer_var_, rhs.buffer_var_);
-    if (rhs.buffer_size_ != nullptr)
-      std::swap(buffer_size_, rhs.buffer_size_);
-    if (rhs.buffer_var_size_ != nullptr)
-      std::swap(buffer_var_size_, rhs.buffer_var_size_);
-    if (rhs.original_buffer_size_ != 0)
-      std::swap(original_buffer_size_, rhs.original_buffer_size_);
-    if (rhs.original_buffer_var_size_ != 0)
-      std::swap(original_buffer_var_size_, rhs.original_buffer_var_size_);
-    if (rhs.original_validity_vector_size_ != 0)
-      std::swap(
-          original_validity_vector_size_, rhs.original_validity_vector_size_);
-    if (rhs.validity_vector_.buffer() != nullptr &&
-        rhs.validity_vector_.buffer_size() != nullptr)
-      validity_vector_ = std::move(rhs.validity_vector_);
-
-    return Status::Ok();
-  }
-
   DISABLE_COPY_ASSIGN(QueryBuffer);
 
   /* ********************************* */
@@ -227,6 +201,50 @@ class QueryBuffer {
    * attributes.
    */
   ValidityVector validity_vector_;
+
+  /* ********************************* */
+  /*           PUBLIC METHODS         */
+  /* ********************************* */
+
+  Status set_buffer_data(void* data_buffer, uint64_t* size) {
+    if (data_buffer == buffer_ && size == buffer_size_)
+      return Status::Ok();
+
+    buffer_ = data_buffer;
+    buffer_size_ = size;
+    original_buffer_size_ = *size;
+
+    return Status::Ok();
+  }
+
+  Status set_buffer_data_var(void* data_var_buffer, uint64_t* size) {
+    if (data_var_buffer == buffer_var_ && size == buffer_var_size_)
+      return Status::Ok();
+
+    buffer_var_ = data_var_buffer;
+    buffer_var_size_ = size;
+    original_buffer_var_size_ = *size;
+
+    return Status::Ok();
+  }
+
+  Status set_buffer_offsets(void* offsets_buffer, uint64_t* size) {
+    if (offsets_buffer == buffer_ && size == buffer_size_)
+      return Status::Ok();
+
+    buffer_ = offsets_buffer;
+    buffer_size_ = size;
+    original_buffer_size_ = *size;
+
+    return Status::Ok();
+  }
+
+  Status set_buffer_validity(ValidityVector&& validity_vector) {
+    validity_vector_ = std::move(validity_vector);
+    original_validity_vector_size_ = *validity_vector_.buffer_size();
+
+    return Status::Ok();
+  }
 };
 
 }  // namespace sm

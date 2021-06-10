@@ -580,14 +580,10 @@ Status Reader::set_buffer_data(
   // Set attribute/dimension buffer on the appropriate buffer
   if (!array_schema_->var_size(name))
     // Fixed size data buffer
-    buffers_[name].set_buffer_data(
-        QueryBuffer(buffer, nullptr, buffer_size, nullptr));
+    buffers_[name].set_buffer_data(buffer, buffer_size);
   else
     // Var sized data buffer
-    buffers_[name].set_buffer_data(
-        QueryBuffer(nullptr, buffer, nullptr, buffer_size));
-
-  return Status::Ok();
+    buffers_[name].set_buffer_data_var(buffer, buffer_size);
 
   return Status::Ok();
 }
@@ -636,8 +632,7 @@ Status Reader::set_buffer_offsets(
         "' after initialization"));
 
   // Set attribute/dimension buffer
-  buffers_[name].set_buffer_data(
-      QueryBuffer(buffer_off, nullptr, buffer_off_size, nullptr));
+  buffers_[name].set_buffer_offsets(buffer_off, buffer_off_size);
 
   return Status::Ok();
 }
@@ -685,8 +680,7 @@ Status Reader::set_buffer_validity(
         "' after initialization"));
 
   // Set attribute/dimension buffer
-  buffers_[name].set_buffer_data(QueryBuffer(
-      nullptr, nullptr, nullptr, nullptr, std::move(validity_vector)));
+  buffers_[name].set_buffer_validity(std::move(validity_vector));
 
   return Status::Ok();
 }

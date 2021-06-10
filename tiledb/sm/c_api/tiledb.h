@@ -3461,6 +3461,7 @@ TILEDB_EXPORT int32_t tiledb_query_set_subarray(
     tiledb_ctx_t* ctx, tiledb_query_t* query, const void* subarray);
 
 /**
+ * This is a deprecated API.
  * Sets the buffer for a fixed-sized attribute/dimension to a query, which will
  * either hold the values to be written (if it is a write query), or will hold
  * the results from a read query.
@@ -3628,7 +3629,7 @@ TILEDB_EXPORT int32_t tiledb_query_set_buffer_nullable(
  *     useful (read) data in `buffer_validity_bytemap`.
  * @return `TILEDB_OK` for success and `TILEDB_ERR` for error.
  */
-TILEDB_EXPORT int32_t tiledb_query_set_buffer_var_nullable(
+TILEDB_DEPRECATED_EXPORT int32_t tiledb_query_set_buffer_var_nullable(
     tiledb_ctx_t* ctx,
     tiledb_query_t* query,
     const char* name,
@@ -3640,7 +3641,7 @@ TILEDB_EXPORT int32_t tiledb_query_set_buffer_var_nullable(
     uint64_t* buffer_validity_bytemap_size);
 
 /**
- * Sets the buffer for a fixed-sized attribute/dimension to a query, which will
+ * Sets the buffer for an attribute/dimension to a query, which will
  * either hold the values to be written (if it is a write query), or will hold
  * the results from a read query.
  *
@@ -3670,10 +3671,9 @@ TILEDB_EXPORT int32_t tiledb_query_set_data_buffer(
     const char* name,
     void* buffer,
     uint64_t* buffer_size);
+
 /**
- * Sets the buffer for a fixed-sized attribute/dimension to a query, which will
- * either hold the values to be written (if it is a write query), or will hold
- * the results from a read query.
+ * Sets the starting offsets of each cell value in the data buffer.
  *
  * **Example:**
  *
@@ -3704,9 +3704,8 @@ TILEDB_EXPORT int32_t tiledb_query_set_offsets_buffer(
     uint64_t* buffer_size);
 
 /**
- * Sets the buffer for a fixed-sized attribute/dimension to a query, which will
- * either hold the values to be written (if it is a write query), or will hold
- * the results from a read query.
+ * Sets the validity byte map that has exactly one value for each value in the
+ * data buffer.
  *
  * **Example:**
  *
@@ -3919,15 +3918,14 @@ TILEDB_EXPORT int32_t tiledb_query_get_data_buffer(
     uint64_t** buffer_size);
 
 /**
- * Gets the buffer of a fixed-sized attribute/dimension from a query. If the
- * buffer has not been set, then `buffer` is set to `nullptr`.
+ * Gets the starting offsets of each cell value in the data buffer.
  *
  * **Example:**
  *
  * @code{.c}
  * int* a1;
  * uint64_t* a1_size;
- * tiledb_query_get_offset_buffer(ctx, query, "a1", &a1, &a1_size);
+ * tiledb_query_get_offsets_buffer(ctx, query, "a1", &a1, &a1_size);
  * @endcode
  *
  * @param ctx The TileDB context.
@@ -3940,7 +3938,7 @@ TILEDB_EXPORT int32_t tiledb_query_get_data_buffer(
  *     `set_buffer`.
  * @return `TILEDB_OK` for success and `TILEDB_ERR` for error.
  */
-TILEDB_EXPORT int32_t tiledb_query_get_offset_buffer(
+TILEDB_EXPORT int32_t tiledb_query_get_offsets_buffer(
     tiledb_ctx_t* ctx,
     tiledb_query_t* query,
     const char* name,
@@ -3948,8 +3946,8 @@ TILEDB_EXPORT int32_t tiledb_query_get_offset_buffer(
     uint64_t** buffer_size);
 
 /**
- * Gets the buffer of a fixed-sized attribute/dimension from a query. If the
- * buffer has not been set, then `buffer` is set to `nullptr`.
+ * Gets the validity byte map that has exactly one value for each value in the
+ * data buffer.
  *
  * **Example:**
  *

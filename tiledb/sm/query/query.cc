@@ -911,20 +911,21 @@ Status Query::set_data_buffer(
   return reader_.set_buffer_data(name, buffer, buffer_size, check_null_buffers);
 }
 
-Status Query::set_off_buffer(
+Status Query::set_offsets_buffer(
     const std::string& name,
-    uint64_t* const buffer_off,
-    uint64_t* const buffer_off_size,
+    uint64_t* const buffer_offsets,
+    uint64_t* const buffer_offsets_size,
     const bool check_null_buffers) {
   RETURN_NOT_OK(check_set_fixed_buffer(name));
 
   if (type_ == QueryType::WRITE)
-    return writer_.set_buffer_offsets(name, buffer_off, buffer_off_size);
+    return writer_.set_buffer_offsets(
+        name, buffer_offsets, buffer_offsets_size);
   return reader_.set_buffer_offsets(
-      name, buffer_off, buffer_off_size, check_null_buffers);
+      name, buffer_offsets, buffer_offsets_size, check_null_buffers);
 }
 
-Status Query::set_val_buffer(
+Status Query::set_validity_buffer(
     const std::string& name,
     uint8_t* const buffer_validity_bytemap,
     uint64_t* const buffer_validity_bytemap_size,
@@ -1168,10 +1169,13 @@ Status Query::set_subarray_unsafe(const NDRange& subarray) {
   return Status::Ok();
 }
 
-Status Query::check_buffers_validity() {
+Status Query::check_buffers_correctness() {
   // Iterate through each attribute
   for (auto& attr : buffer_names()) {
     if (type_ == QueryType::WRITE) {
+      if (writer_.buffer(attr).buffer_ == nullptr)
+        return LOG_STATUS(
+            Status::QueryError(std::string("Data buffer is not set")));
       if (array_->array_schema()->var_size(attr)) {
         // Var-sized
         // Check for data buffer under buffer_var
@@ -1180,7 +1184,7 @@ Status Query::check_buffers_validity() {
         if (!exists_data || !exists_offset) {
           return LOG_STATUS(Status::QueryError(
               std::string("Var-Sized input attribute/dimension '") + attr +
-              "' is not set correctly"));
+              "' is not set correctly \nOffsets buffer is not set"));
         }
       } else {
         // Fixed sized
@@ -1189,7 +1193,7 @@ Status Query::check_buffers_validity() {
         if (!exists_data || exists_offset) {
           return LOG_STATUS(Status::QueryError(
               std::string("Fix-Sized input attribute/dimension '") + attr +
-              "' is not set correctly"));
+              "' is not set correctly \nOffsets buffer is not set"));
         }
       }
       if (array_->array_schema()->is_nullable(attr)) {
@@ -1198,7 +1202,7 @@ Status Query::check_buffers_validity() {
         if (!exists_validity) {
           return LOG_STATUS(Status::QueryError(
               std::string("Nullable input attribute/dimension '") + attr +
-              "' is not set correctly"));
+              "' is not set correctly \nValidity buffer is not set"));
         }
       }
     } else {
@@ -1210,7 +1214,7 @@ Status Query::check_buffers_validity() {
         if (!exists_data || !exists_offset) {
           return LOG_STATUS(Status::QueryError(
               std::string("Var-Sized input attribute/dimension '") + attr +
-              "' is not set correctly"));
+              "' is not set correctly \nOffsets buffer is not set"));
         }
       } else {
         // Fixed sized
@@ -1219,7 +1223,7 @@ Status Query::check_buffers_validity() {
         if (!exists_data || exists_offset) {
           return LOG_STATUS(Status::QueryError(
               std::string("Fix-Sized input attribute/dimension '") + attr +
-              "' is not set correctly"));
+              "' is not set correctly \nOffsets buffer is not set"));
         }
       }
       if (array_->array_schema()->is_nullable(attr)) {
@@ -1228,7 +1232,7 @@ Status Query::check_buffers_validity() {
         if (!exists_validity) {
           return LOG_STATUS(Status::QueryError(
               std::string("Nullable input attribute/dimension '") + attr +
-              "' is not set correctly"));
+              "' is not set correctly \nValidity buffer is not set"));
         }
       }
     }
@@ -1242,7 +1246,7 @@ Status Query::submit() {
     return Status::Ok();
   }
   // Check attribute/dimensions buffers completeness before query submits
-  RETURN_NOT_OK(check_buffers_validity());
+  RETURN_NOT_OK(check_buffers_correctness());
 
   if (array_->is_remote()) {
     auto rest_client = storage_manager_->rest_client();
@@ -1251,7 +1255,6 @@ Status Query::submit() {
           "Error in query submission; remote array with no rest client."));
 
     array_->array_schema()->set_array_uri(array_->array_uri());
-
     return rest_client->submit_query_to_rest(array_->array_uri(), this);
   }
   RETURN_NOT_OK(init());

@@ -565,10 +565,10 @@ class Query {
    * Sets the offset buffer for a var-sized attribute/dimension.
    *
    * @param name The attribute/dimension to set the buffer for.
-   * @param buffer_off The buffer that will hold the data to be read.
+   * @param buffer_offsets The buffer that will hold the data to be read.
    *     This buffer holds the starting offsets of each cell value in
    *     `buffer_val`.
-   * @param buffer_off_size This initially contains
+   * @param buffer_offsets_size This initially contains
    *     the allocated size of `buffer_off`, but after the termination of the
    *     function it will contain the size of the useful (read) data in
    *     `buffer_off`.
@@ -576,10 +576,10 @@ class Query {
    * allowed.
    * @return Status
    */
-  Status set_off_buffer(
+  Status set_offsets_buffer(
       const std::string& name,
-      uint64_t* const buffer_off,
-      uint64_t* const buffer_off_size,
+      uint64_t* const buffer_offsets,
+      uint64_t* const buffer_offsets_size,
       const bool check_null_buffers = true);
 
   /**
@@ -598,7 +598,7 @@ class Query {
    * allowed.
    * @return Status
    */
-  Status set_val_buffer(
+  Status set_validity_buffer(
       const std::string& name,
       uint8_t* const buffer_validity_bytemap,
       uint64_t* const buffer_validity_bytemap_size,
@@ -861,7 +861,7 @@ class Query {
    * and dimensions buffers. Iteratively searches that all attributes &
    * dimenstions buffers have been set correctly
    */
-  Status check_buffers_validity();
+  Status check_buffers_correctness();
   /**
    * Internal routine for setting fixed-sized, nullable attribute buffers with
    * a ValidityVector.
