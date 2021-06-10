@@ -291,14 +291,14 @@ class Buffer : public BufferBase {
   /*         PRIVATE ATTRIBUTES        */
   /* ********************************* */
 
-  /** The allocated buffer size. */
-  uint64_t alloced_size_;
-
   /**
    * True if the object owns the data buffer, which means that it is
    * responsible for allocating and freeing it.
    */
   bool owns_data_;
+
+  /** The allocated buffer size. */
+  uint64_t alloced_size_;
 
   /* ********************************* */
   /*          PRIVATE METHODS          */

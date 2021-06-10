@@ -134,22 +134,16 @@ Buffer::Buffer(void* data, const uint64_t size)
   : BufferBase(data, size), owns_data_(false), alloced_size_(0)
 {}
 
-Buffer::Buffer(const Buffer& buff) {
-  alloced_size_ = buff.alloced_size_;
+Buffer::Buffer(const Buffer& buff)
+  : BufferBase(buff.data_, buff.size_) {
   offset_ = buff.offset_;
   owns_data_ = buff.owns_data_;
-  size_ = buff.size_;
+  alloced_size_ = buff.alloced_size_;
 
-  if (buff.owns_data_) {
-    if (buff.data_ == nullptr) {
-      data_ = nullptr;
-    } else {
+  if (buff.owns_data_ && buff.data_ != nullptr) {
       data_ = tdb_malloc(alloced_size_);
       assert(data_);
       std::memcpy(data_, buff.data_, buff.alloced_size_);
-    }
-  } else {
-    data_ = buff.data_;
   }
 }
 
