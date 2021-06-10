@@ -695,6 +695,8 @@ TEST_CASE_METHOD(
   tiledb_array_t* array;
   int rc = tiledb_array_alloc(ctx_, array_name_.c_str(), &array);
   REQUIRE(rc == TILEDB_OK);
+  rc = tiledb_array_set_open_timestamp_end(ctx_, array, 1);
+  REQUIRE(rc == TILEDB_OK);
   rc = tiledb_array_open(ctx_, array, TILEDB_WRITE);
   REQUIRE(rc == TILEDB_OK);
 
@@ -711,12 +713,10 @@ TEST_CASE_METHOD(
   REQUIRE(rc == TILEDB_OK);
   tiledb_array_free(&array);
 
-  // Prevent array metadata filename/timestamp conflicts
-  auto timestamp = tiledb::sm::utils::time::timestamp_now_ms();
-  std::this_thread::sleep_for(std::chrono::milliseconds(1));
-
   // Update
   rc = tiledb_array_alloc(ctx_, array_name_.c_str(), &array);
+  REQUIRE(rc == TILEDB_OK);
+  rc = tiledb_array_set_open_timestamp_end(ctx_, array, 2);
   REQUIRE(rc == TILEDB_OK);
   rc = tiledb_array_open(ctx_, array, TILEDB_WRITE);
   REQUIRE(rc == TILEDB_OK);
@@ -729,7 +729,7 @@ TEST_CASE_METHOD(
   // Open the array in read mode at a timestamp
   rc = tiledb_array_alloc(ctx_, array_name_.c_str(), &array);
   REQUIRE(rc == TILEDB_OK);
-  rc = tiledb_array_set_open_timestamp_end(ctx_, array, timestamp);
+  rc = tiledb_array_set_open_timestamp_end(ctx_, array, 1);
   REQUIRE(rc == TILEDB_OK);
   rc = tiledb_array_open(ctx_, array, TILEDB_READ);
   REQUIRE(rc == TILEDB_OK);
@@ -764,6 +764,8 @@ TEST_CASE_METHOD(
   tiledb_array_t* array;
   int rc = tiledb_array_alloc(ctx_, array_name_.c_str(), &array);
   REQUIRE(rc == TILEDB_OK);
+  rc = tiledb_array_set_open_timestamp_end(ctx_, array, 1);
+  REQUIRE(rc == TILEDB_OK);
   rc = tiledb_array_open(ctx_, array, TILEDB_WRITE);
   REQUIRE(rc == TILEDB_OK);
 
@@ -780,12 +782,10 @@ TEST_CASE_METHOD(
   REQUIRE(rc == TILEDB_OK);
   tiledb_array_free(&array);
 
-  // Prevent array metadata filename/timestamp conflicts
-  auto timestamp = tiledb::sm::utils::time::timestamp_now_ms();
-  std::this_thread::sleep_for(std::chrono::milliseconds(1));
-
   // Update
   rc = tiledb_array_alloc(ctx_, array_name_.c_str(), &array);
+  REQUIRE(rc == TILEDB_OK);
+  rc = tiledb_array_set_open_timestamp_end(ctx_, array, 2);
   REQUIRE(rc == TILEDB_OK);
   rc = tiledb_array_open(ctx_, array, TILEDB_WRITE);
   REQUIRE(rc == TILEDB_OK);
@@ -798,7 +798,7 @@ TEST_CASE_METHOD(
   // Open the array in read mode at a timestamp
   rc = tiledb_array_alloc(ctx_, array_name_.c_str(), &array);
   REQUIRE(rc == TILEDB_OK);
-  rc = tiledb_array_set_open_timestamp_end(ctx_, array, timestamp);
+  rc = tiledb_array_set_open_timestamp_end(ctx_, array, 1);
   REQUIRE(rc == TILEDB_OK);
   rc = tiledb_array_open(ctx_, array, TILEDB_READ);
   REQUIRE(rc == TILEDB_OK);
@@ -852,6 +852,8 @@ TEST_CASE_METHOD(
   tiledb_array_t* array;
   int rc = tiledb_array_alloc(ctx_, array_name_.c_str(), &array);
   REQUIRE(rc == TILEDB_OK);
+  rc = tiledb_array_set_open_timestamp_end(ctx_, array, 1);
+  REQUIRE(rc == TILEDB_OK);
   rc = tiledb_array_open(ctx_, array, TILEDB_WRITE);
   REQUIRE(rc == TILEDB_OK);
 
@@ -868,12 +870,10 @@ TEST_CASE_METHOD(
   REQUIRE(rc == TILEDB_OK);
   tiledb_array_free(&array);
 
-  // Prevent array metadata filename/timestamp conflicts
-  auto timestamp1 = tiledb::sm::utils::time::timestamp_now_ms();
-  std::this_thread::sleep_for(std::chrono::milliseconds(1));
-
   // Update
   rc = tiledb_array_alloc(ctx_, array_name_.c_str(), &array);
+  REQUIRE(rc == TILEDB_OK);
+  rc = tiledb_array_set_open_timestamp_end(ctx_, array, 2);
   REQUIRE(rc == TILEDB_OK);
   rc = tiledb_array_open(ctx_, array, TILEDB_WRITE);
   REQUIRE(rc == TILEDB_OK);
@@ -885,6 +885,8 @@ TEST_CASE_METHOD(
 
   // Create and open array in write mode
   rc = tiledb_array_alloc(ctx_, array_name_.c_str(), &array);
+  REQUIRE(rc == TILEDB_OK);
+  rc = tiledb_array_set_open_timestamp_end(ctx_, array, 3);
   REQUIRE(rc == TILEDB_OK);
   rc = tiledb_array_open(ctx_, array, TILEDB_WRITE);
   REQUIRE(rc == TILEDB_OK);
@@ -902,12 +904,10 @@ TEST_CASE_METHOD(
   REQUIRE(rc == TILEDB_OK);
   tiledb_array_free(&array);
 
-  // Prevent array metadata filename/timestamp conflicts
-  auto timestamp2 = tiledb::sm::utils::time::timestamp_now_ms();
-  std::this_thread::sleep_for(std::chrono::milliseconds(1));
-
   // Update
   rc = tiledb_array_alloc(ctx_, array_name_.c_str(), &array);
+  REQUIRE(rc == TILEDB_OK);
+  rc = tiledb_array_set_open_timestamp_end(ctx_, array, 4);
   REQUIRE(rc == TILEDB_OK);
   rc = tiledb_array_open(ctx_, array, TILEDB_WRITE);
   REQUIRE(rc == TILEDB_OK);
@@ -919,6 +919,8 @@ TEST_CASE_METHOD(
 
   // Create and open array in write mode
   rc = tiledb_array_alloc(ctx_, array_name_.c_str(), &array);
+  REQUIRE(rc == TILEDB_OK);
+  rc = tiledb_array_set_open_timestamp_end(ctx_, array, 5);
   REQUIRE(rc == TILEDB_OK);
   rc = tiledb_array_open(ctx_, array, TILEDB_WRITE);
   REQUIRE(rc == TILEDB_OK);
@@ -936,12 +938,10 @@ TEST_CASE_METHOD(
   REQUIRE(rc == TILEDB_OK);
   tiledb_array_free(&array);
 
-  // Prevent array metadata filename/timestamp conflicts
-  // auto timestamp3 = tiledb::sm::utils::time::timestamp_now_ms();
-  std::this_thread::sleep_for(std::chrono::milliseconds(1));
-
   // Update
   rc = tiledb_array_alloc(ctx_, array_name_.c_str(), &array);
+  REQUIRE(rc == TILEDB_OK);
+  rc = tiledb_array_set_open_timestamp_end(ctx_, array, 6);
   REQUIRE(rc == TILEDB_OK);
   rc = tiledb_array_open(ctx_, array, TILEDB_WRITE);
   REQUIRE(rc == TILEDB_OK);
@@ -953,9 +953,9 @@ TEST_CASE_METHOD(
 
   // Open the array in read mode between timestamp1 and timestamp2
   rc = tiledb_array_alloc(ctx_, array_name_.c_str(), &array);
-  rc = tiledb_array_set_open_timestamp_start(ctx_, array, timestamp1);
+  rc = tiledb_array_set_open_timestamp_start(ctx_, array, 2);
   REQUIRE(rc == TILEDB_OK);
-  rc = tiledb_array_set_open_timestamp_end(ctx_, array, timestamp2);
+  rc = tiledb_array_set_open_timestamp_end(ctx_, array, 3);
   REQUIRE(rc == TILEDB_OK);
   rc = tiledb_array_open(ctx_, array, TILEDB_READ);
   REQUIRE(rc == TILEDB_OK);
