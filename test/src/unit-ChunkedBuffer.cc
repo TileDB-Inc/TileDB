@@ -820,6 +820,7 @@ TEST_CASE("ChunkedBuffer: Test shallow copy", "[ChunkedBuffer][shallow_copy]") {
   void* chunked_buffer2_chunk_0;
   CHECK(chunked_buffer1.internal_buffer(0, &chunked_buffer1_chunk_0).ok());
   CHECK(chunked_buffer2.internal_buffer(0, &chunked_buffer2_chunk_0).ok());
+  //(vs debug build no RVO, this fails...)
   CHECK(chunked_buffer1_chunk_0 == chunked_buffer2_chunk_0);
 
   chunked_buffer1.free();

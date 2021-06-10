@@ -132,7 +132,8 @@ class Range {
 
   /** Returns a pointer to the start of the range. */
   const void* start() const {
-    return &range_[0];
+    //return range_.data();    //&range_[0];
+    return range_.empty() ? nullptr : &range_[0];
   }
 
   /** Copies 'start' into this range's start bytes for fixed-size ranges. */
@@ -214,6 +215,7 @@ class Range {
   bool unary() const {
     // If the range is empty, then it corresponds to strings
     // covering the whole domain (so it is not unary)
+    //TBD: unless the particular dimension had only 1 value in it...?
     if (range_.empty())
       return false;
 

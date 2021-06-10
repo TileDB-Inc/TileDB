@@ -1408,7 +1408,7 @@ class Query {
       impl::type_check<T>(schema_.domain().dimension(name).type());
 
     return set_buffer(
-        name, offsets.data(), offsets.size(), &data[0], data.size(), sizeof(T));
+        name, offsets.data(), offsets.size(), data.data()/*&data[0]*/, data.size(), sizeof(T));
   }
 
   /**

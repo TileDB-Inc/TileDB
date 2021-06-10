@@ -385,7 +385,8 @@ class Dimension {
 
   /**
    * Returns the domain range (high - low + 1) of the input
-   * 1D range. It returns 0 in case the dimension datatype
+   * 1D range. It returns std::numeric_limits<uint64_t>::max()
+   * in case the dimension datatype
    * is not integer or if there is an overflow.
    */
   uint64_t domain_range(const Range& range) const;

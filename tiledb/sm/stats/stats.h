@@ -79,7 +79,11 @@ class Stats {
    * Starts a timer for the input timer stat. The timer
    * ends when the returned `ScopedExecutor` object is destroyed.
    */
+//#if TILEDB_STATS
   common::ScopedExecutor start_timer(const std::string& stat);
+//#else
+//  void Stats::start_timer(const std::string& stat);
+//#endif
 
   /** Adds `count` to the input counter stat. */
   void add_counter(const std::string& stat, uint64_t count);

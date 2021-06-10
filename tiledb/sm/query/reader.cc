@@ -131,8 +131,43 @@ Status Reader::add_range(unsigned dim_idx, Range&& range) {
         "Invalid value " + read_range_oob +
         " for sm.read_range_obb. Acceptable values are 'error' or 'warn'."));
 
-  return subarray_.add_range(
-      dim_idx, std::move(range), read_range_oob == "error");
+  std::cout << "rdr::add_range 1 subarray_ " << std::endl;
+  // subarray_.compute_range_offsets_dump_coords();
+  std::cout << "rsta.part. start_ "
+            << read_state_.partitioner_.current_partition_info()->start_
+            << ".end_ "
+            << read_state_.partitioner_.current_partition_info()->end_
+            << std::endl;
+  std::cout << "rsta.part.state()-> start_ "
+            << read_state_.partitioner_.state()->start_ << " end_ "
+            << read_state_.partitioner_.state()->end_ << std::endl;
+
+  subarray_.compute_range_offsets(); //added as part of diags...
+  subarray_.dump_subarray_ranges_per_dim();
+  subarray_.dump_ranges_for_range_coords();
+  std::cout << std::endl;
+
+  //  return subarray_.add_range(
+  //      dim_idx, std::move(range), read_range_oob == "error");
+  auto rstat =
+      subarray_.add_range(dim_idx, std::move(range), read_range_oob == "error");
+
+  std::cout << "rdr::add_range 2 subarray_ " << std::endl;
+  // subarray_.compute_range_offsets_dump_coords();
+  std::cout << "rsta.part. start_ "
+            << read_state_.partitioner_.current_partition_info()->start_
+            << ".end_ "
+            << read_state_.partitioner_.current_partition_info()->end_
+            << std::endl;
+  std::cout << "rsta.part.state()-> start_ "
+            << read_state_.partitioner_.state()->start_ << " end_ "
+            << read_state_.partitioner_.state()->end_ << std::endl;
+  subarray_.compute_range_offsets();  // added as part of diags...
+  subarray_.dump_subarray_ranges_per_dim();
+  subarray_.dump_ranges_for_range_coords();
+  std::cout << std::endl;
+
+  return rstat;
 }
 
 Status Reader::get_range_num(unsigned dim_idx, uint64_t* range_num) const {
@@ -316,6 +351,11 @@ Status Reader::init(const Layout& layout) {
   // Initialize the read state
   RETURN_NOT_OK(init_read_state());
 
+  // Check the validity buffer sizes. This must be performed
+  // after `init_read_state` to ensure we have set the
+  // member state correctly from the config.
+  RETURN_NOT_OK(check_validity_buffer_sizes());
+
   return Status::Ok();
 }
 
@@ -374,9 +414,42 @@ Status Reader::read() {
 
   auto dense_mode = array_schema_->dense() && !sparse_mode_;
 
+  if (read_state_.partitioner_.current().array()) {
+    std::cout << "rdr::read initial sapart 1 cur() state" << std::endl;
+    std::cout << "rsta.part. 1 start_ "
+              << read_state_.partitioner_.current_partition_info()->start_
+              << ".end_ "
+              << read_state_.partitioner_.current_partition_info()->end_
+              << std::endl;
+    std::cout << "rsta.part.state()-> start_ "
+              << read_state_.partitioner_.state()->start_ << " end_ "
+              << read_state_.partitioner_.state()->end_ << std::endl;
+    read_state_.partitioner_.current().dump_subarray_ranges_per_dim();
+    read_state_.partitioner_.current().dump_ranges_for_range_coords();
+  } else {
+    // TBD: hardware breakpoint for 'start_.end_' tripping stepping across
+    // following output...
+    //    std::cout << "rdr::read NO initial sapart 1 cur() state" << std::endl;
+  }
   // Get next partition
-  if (!read_state_.unsplittable_)
+  if (!read_state_.unsplittable_) {
     RETURN_NOT_OK(read_state_.next());
+    if (read_state_.partitioner_.current().array()) {
+      std::cout << "rdr::read aftr .next() sapart 2 state" << std::endl;
+      std::cout << "rsta.part. 2 start_ "
+                << read_state_.partitioner_.current_partition_info()->start_
+                << ".end_ "
+                << read_state_.partitioner_.current_partition_info()->end_
+                << std::endl;
+      std::cout << "rsta.part.state()-> start_ "
+                << read_state_.partitioner_.state()->start_ << " end_ "
+                << read_state_.partitioner_.state()->end_ << std::endl;
+      read_state_.partitioner_.current().dump_subarray_ranges_per_dim();
+      read_state_.partitioner_.current().dump_ranges_for_range_coords();
+    } else {
+      std::cout << "rdr::read NO initial sapart 2 cur() state" << std::endl;
+    }
+  }
 
   // Handle empty array or empty/finished subarray
   if (!dense_mode && fragment_metadata_.empty()) {
@@ -391,20 +464,76 @@ Status Reader::read() {
     read_state_.overflowed_ = false;
     reset_buffer_sizes();
 
+    if (read_state_.partitioner_.current().array()) {
+      std::cout << "rdr::read b4 dens/sprsr read sapart 3 state" << std::endl;
+      std::cout << "rsta.part. 3 start_ "
+                << read_state_.partitioner_.current_partition_info()->start_
+                << ".end_ "
+                << read_state_.partitioner_.current_partition_info()->end_
+                << std::endl;
+      std::cout << "rsta.part.state()-> start_ "
+                << read_state_.partitioner_.state()->start_ << " end_ "
+                << read_state_.partitioner_.state()->end_ << std::endl;
+      read_state_.partitioner_.current().dump_subarray_ranges_per_dim();
+      read_state_.partitioner_.current().dump_ranges_for_range_coords();
+    } else {
+      std::cout
+          << "rdr::read b4 dens/sprsr read NO initial sapart 3 cur() state"
+          << std::endl;
+    }
     // Perform read
     if (dense_mode) {
       RETURN_NOT_OK(dense_read());
     } else {
       RETURN_NOT_OK(sparse_read());
     }
+    std::cout << "aftr dens/sprs read, results? " << !this->no_results()
+              << "(dense_mode " << dense_mode << ")" << std::endl;
 
+    if (read_state_.partitioner_.current().array()) {
+      std::cout << "rdr::read aftr dens/sprsr read sapart 4 state" << std::endl;
+      std::cout << "rsta.part. 4 start_ "
+                << read_state_.partitioner_.current_partition_info()->start_
+                << ".end_ "
+                << read_state_.partitioner_.current_partition_info()->end_
+                << std::endl;
+      std::cout << "rsta.part.state()-> start_ "
+                << read_state_.partitioner_.state()->start_ << " end_ "
+                << read_state_.partitioner_.state()->end_ << std::endl;
+      read_state_.partitioner_.current().dump_subarray_ranges_per_dim();
+      read_state_.partitioner_.current().dump_ranges_for_range_coords();
+    } else {
+      std::cout
+          << "rdr::read aftr dens/sprsr read NO initial sapart 4 cur() state"
+          << std::endl;
+    }
+
+    std::cout << "rdr::read rs.overflowed_ " << read_state_.overflowed_
+              << std::endl;
     // In the case of overflow, we need to split the current partition
     // without advancing to the next partition
     if (read_state_.overflowed_) {
       zero_out_buffer_sizes();
+      std::cout << "read b4 split_current() " << std::endl;
       RETURN_NOT_OK(read_state_.split_current());
+      std::cout << "rsta.part. 5 start_ "
+                << read_state_.partitioner_.current_partition_info()->start_
+                << ".end_ "
+                << read_state_.partitioner_.current_partition_info()->end_
+                << std::endl;
+      std::cout << "rsta.part.state()-> start_ "
+                << read_state_.partitioner_.state()->start_ << " end_ "
+                << read_state_.partitioner_.state()->end_ << std::endl;
+      if (read_state_.partitioner_.current().array()) {
+        std::cout << "rdr::read aftr .next() sapart 5 state" << std::endl;
+        read_state_.partitioner_.current().dump_subarray_ranges_per_dim();
+        read_state_.partitioner_.current().dump_ranges_for_range_coords();
+      } else {
+        std::cout << "rdr::read NO initial sapart 5 cur() state" << std::endl;
+      }
 
       if (read_state_.unsplittable_) {
+        std::cout << " b4 crl() 1" << std::endl;
         return complete_read_loop();
       }
     } else {
@@ -415,10 +544,26 @@ Status Reader::read() {
         read_state_.unsplittable_ = false;
 
       if (!no_results || read_state_.done()) {
+        std::cout << " b4 crl() 2" << std::endl;
         return complete_read_loop();
       }
 
       RETURN_NOT_OK(read_state_.next());
+      std::cout << "rdr::read aftr .next() sapart 6 state" << std::endl;
+      std::cout << "rsta.part. 6 start_ "
+                << read_state_.partitioner_.current_partition_info()->start_
+                << ".end_ "
+                << read_state_.partitioner_.current_partition_info()->end_
+                << std::endl;
+      std::cout << "rsta.part.state()-> start_ "
+                << read_state_.partitioner_.state()->start_ << " end_ "
+                << read_state_.partitioner_.state()->end_ << std::endl;
+      if (read_state_.partitioner_.current().array()) {
+        read_state_.partitioner_.current().dump_subarray_ranges_per_dim();
+        read_state_.partitioner_.current().dump_ranges_for_range_coords();
+      } else {
+        std::cout << "rdr::read NO initial sapart 6 cur() state" << std::endl;
+      }
     }
   } while (true);
 
@@ -430,6 +575,20 @@ Status Reader::read() {
 void Reader::set_array(const Array* array) {
   array_ = array;
   subarray_ = Subarray(array, Layout::ROW_MAJOR, stats_.get());
+  std::cout << "rdr::set_array subarray_ ";
+  // subarray_.compute_range_offsets_dump_coords();
+  std::cout << "rsta.part. start_ "
+            << read_state_.partitioner_.current_partition_info()->start_
+            << ".end_ "
+            << read_state_.partitioner_.current_partition_info()->end_
+            << std::endl;
+  std::cout << "rsta.part.state()-> start_ "
+            << read_state_.partitioner_.state()->start_ << " end_ "
+            << read_state_.partitioner_.state()->end_ << std::endl;
+  subarray_.compute_range_offsets(); //part of diag usage here...
+  subarray_.dump_subarray_ranges_per_dim();
+  subarray_.dump_ranges_for_range_coords();
+  std::cout << std::endl;
 }
 
 void Reader::set_array_schema(const ArraySchema* array_schema) {
@@ -719,6 +878,20 @@ void Reader::set_fragment_metadata(
 Status Reader::set_layout(Layout layout) {
   layout_ = layout;
   subarray_.set_layout(layout);
+  std::cout << "rdr::set_layout subarray_ " << __LINE__ << std::endl;
+  // subarray_.compute_range_offsets_dump_coords();
+  std::cout << "rsta.part. start_ "
+            << read_state_.partitioner_.current_partition_info()->start_
+            << ".end_ "
+            << read_state_.partitioner_.current_partition_info()->end_
+            << std::endl;
+  std::cout << "rsta.part.state()-> start_ "
+            << read_state_.partitioner_.state()->start_ << " end_ "
+            << read_state_.partitioner_.state()->end_ << std::endl;
+  subarray_.compute_range_offsets();  // added as part of diags...
+  subarray_.dump_subarray_ranges_per_dim();
+  subarray_.dump_ranges_for_range_coords();
+  std::cout << std::endl;
 
   return Status::Ok();
 }
@@ -758,6 +931,20 @@ void Reader::set_storage_manager(StorageManager* storage_manager) {
 
 Status Reader::set_subarray(const Subarray& subarray) {
   subarray_ = subarray;
+  std::cout << "rdr::set_subarray subarray_ ";
+  // subarray_.compute_range_offsets_dump_coords();
+  std::cout << "rsta.part. start_ "
+            << read_state_.partitioner_.current_partition_info()->start_
+            << ".end_ "
+            << read_state_.partitioner_.current_partition_info()->end_
+            << std::endl;
+  std::cout << "rsta.part.state()-> start_ "
+            << read_state_.partitioner_.state()->start_ << " end_ "
+            << read_state_.partitioner_.state()->end_ << std::endl;
+  subarray_.compute_range_offsets(); //part of diag additions
+  subarray_.dump_subarray_ranges_per_dim();
+  subarray_.dump_ranges_for_range_coords();
+  std::cout << std::endl;
   layout_ = subarray.layout();
 
   return Status::Ok();
@@ -877,6 +1064,47 @@ Status Reader::check_subarray() const {
   return Status::Ok();
 }
 
+Status Reader::check_validity_buffer_sizes() const {
+  // Verify that the validity buffer size for each
+  // nullable attribute is large enough to contain
+  // a validity value for each cell.
+  for (const auto& it : buffers_) {
+    const std::string& name = it.first;
+    if (array_schema_->is_nullable(name)) {
+      const uint64_t buffer_size = *it.second.buffer_size_;
+
+      uint64_t min_cell_num = 0;
+      if (array_schema_->var_size(name)) {
+        min_cell_num = buffer_size / constants::cell_var_offset_size;
+
+        // If the offsets buffer contains an extra element to mark
+        // the offset to the end of the data buffer, we do not need
+        // a validity value for that extra offset.
+        if (offsets_extra_element_)
+          min_cell_num = std::min<uint64_t>(0, min_cell_num - 1);
+      } else {
+        min_cell_num = buffer_size / array_schema_->cell_size(name);
+      }
+
+      const uint64_t buffer_validity_size =
+          *it.second.validity_vector_.buffer_size();
+      const uint64_t cell_validity_num =
+          buffer_validity_size / constants::cell_validity_size;
+
+      if (cell_validity_num < min_cell_num) {
+        std::stringstream ss;
+        ss << "Buffer sizes check failed; Invalid number of validity cells "
+              "given for ";
+        ss << "attribute '" << name << "'";
+        ss << " (" << cell_validity_num << " < " << min_cell_num << ")";
+        return LOG_STATUS(Status::ReaderError(ss.str()));
+      }
+    }
+  }
+
+  return Status::Ok();
+}
+
 void Reader::clear_tiles(
     const std::string& name,
     const std::vector<ResultTile*>& result_tiles) const {
@@ -936,10 +1164,18 @@ Status Reader::compute_range_result_coords(
     ResultTile* tile,
     uint64_t range_idx,
     std::vector<ResultCoords>* result_coords) {
+  std::cout << "crrc 0-0 " << __LINE__ << std::endl;
+
   auto coords_num = tile->cell_num();
   auto dim_num = array_schema_->dim_num();
   auto cell_order = array_schema_->cell_order();
   auto range_coords = subarray->get_range_coords(range_idx);
+
+  std::cout << "crrc 0-1 " << __LINE__ << " coords_num " << coords_num
+            << " dim_num " << dim_num /*<< " cell_order " << cell_order*/
+            << std::endl;
+  std::cout << " range_idx " << range_idx << std::endl;
+  subarray->dump_range_coords(range_coords);
 
   if (array_schema_->dense()) {
     std::vector<uint8_t> result_bitmap(coords_num, 1);
@@ -948,6 +1184,7 @@ Status Reader::compute_range_result_coords(
     // Compute result and overwritten bitmap per dimension
     for (unsigned d = 0; d < dim_num; ++d) {
       const auto& ranges = subarray->ranges_for_dim(d);
+      std::cout << "crrc 0-2 " << __LINE__ << " d " << d << std::endl;
       RETURN_NOT_OK(tile->compute_results_dense(
           d,
           ranges[range_coords[d]],
@@ -955,6 +1192,7 @@ Status Reader::compute_range_result_coords(
           frag_idx,
           &result_bitmap,
           &overwritten_bitmap));
+      std::cout << "crrc 0-3 " << __LINE__ << " d " << d << std::endl;
     }
 
     // Gather results
@@ -972,8 +1210,39 @@ Status Reader::compute_range_result_coords(
       const unsigned dim_idx =
           cell_order == Layout::COL_MAJOR ? dim_num - d - 1 : d;
       const auto& ranges = subarray->ranges_for_dim(dim_idx);
+      std::cout << "crrc 0-3a " << __LINE__ << " d " << d << " dim_idx "
+                << dim_idx << " (ranges) " << " dim is_default() " << subarray->is_default(dim_idx) << std::endl;
+      // auto domain = array_schema_->domain();
+      auto& dim = *array_schema_->domain()->dimension(dim_idx);
+      subarray->dump_ranges(ranges, dim.type());
+      const auto& ranges2 = ranges[range_coords[dim_idx]];
+      std::cout << "crrc 0-3b " << __LINE__ << " d " << d << " dim_idx "
+                << dim_idx << " (ranges2) " << std::endl;
+      subarray->dump_range(ranges2, dim.type());
+      //bool ranges_same = false;  // diagnostic check
+      //    ranges.size() == ranges2.size() && ranges.data() && ranges2.data() &&
+      //    std::memcmp(ranges.data(), ranges2.data(), ranges.size());
+      //std::cout << " ranges == ranges2 " << ranges_same << std::endl;
+      // subarray->dump_ranges_for_dim(dim_idx);
+
       RETURN_NOT_OK(tile->compute_results_sparse(
-          dim_idx, ranges[range_coords[dim_idx]], &result_bitmap, cell_order));
+          //          dim_idx, ranges[range_coords[dim_idx]], &result_bitmap,
+          //          cell_order));
+          dim_idx,
+          ranges2,
+          subarray->is_default(dim_idx),
+          &result_bitmap,
+          cell_order));
+      {
+        uint64_t cnt = 0;
+        for (uint64_t pos = 0; pos < coords_num; ++pos) {
+          if (result_bitmap[pos])
+            ++cnt;
+        }
+        std::cout << "crrc 0-4 " << __LINE__ << " d " << d << " dim_idx "
+                  << dim_idx << " result_bitmap.sz() " << result_bitmap.size()
+                  << " cnt " << cnt << std::endl;
+      }
     }
 
     // Gather results
@@ -981,6 +1250,8 @@ Status Reader::compute_range_result_coords(
       if (result_bitmap[pos])
         result_coords->emplace_back(tile, pos);
     }
+    std::cout << "crrc 0-5 " << __LINE__ << " rc.sz() " << result_coords->size()
+              << " result_bitmap.sz() " << result_bitmap.size() << std::endl;
   }
 
   return Status::Ok();
@@ -995,15 +1266,23 @@ Status Reader::compute_range_result_coords(
   STATS_START_TIMER(
       stats::GlobalStats::TimerType::READ_COMPUTE_RANGE_RESULT_COORDS)
 
+  std::cout << "crrc 1-0 " << __LINE__ << std::endl;
+
   auto range_num = subarray->range_num();
   range_result_coords->resize(range_num);
   auto cell_order = array_schema_->cell_order();
   Layout layout = (layout_ == Layout::UNORDERED) ? cell_order : layout_;
   auto allows_dups = array_schema_->allows_dups();
 
+  std::cout << "crrc 1-1 " << __LINE__ << " range_num "
+            << range_num
+            /*<< " cell_order " << cell_order << " layout " << layout*/
+            << " allows_dups " << allows_dups << std::endl;
+
   auto status = parallel_for(
       storage_manager_->compute_tp(), 0, range_num, [&](uint64_t r) {
         // Compute overlapping coordinates per range
+        std::cout << "crrc 1-2 " << __LINE__ << " r " << r << std::endl;
         RETURN_NOT_OK(compute_range_result_coords(
             subarray,
             r,
@@ -1011,22 +1290,29 @@ Status Reader::compute_range_result_coords(
             result_tiles,
             &((*range_result_coords)[r])));
 
+        std::cout << "crrc 1-3 " << __LINE__ << " r " << r << std::endl;
+
         // Dedup unless there is a single fragment or array schema allows
         // duplicates
         if (!single_fragment[r] && !allows_dups) {
+          std::cout << "crrc 1-4 " << __LINE__ << " r " << r << std::endl;
           RETURN_CANCEL_OR_ERROR(sort_result_coords(
               ((*range_result_coords)[r]).begin(),
               ((*range_result_coords)[r]).end(),
               ((*range_result_coords)[r]).size(),
               layout));
+          std::cout << "crrc 1-5 " << __LINE__ << " r " << r << std::endl;
           RETURN_CANCEL_OR_ERROR(
               dedup_result_coords(&((*range_result_coords)[r])));
+          std::cout << "crrc 1-6 " << __LINE__ << " r " << r << std::endl;
         }
 
         return Status::Ok();
       });
 
+  std::cout << "crrc 1-7 " << __LINE__ << std::endl;
   RETURN_NOT_OK(status);
+  std::cout << "crrc 1-8 " << __LINE__ << std::endl;
 
   return Status::Ok();
 
@@ -1041,10 +1327,19 @@ Status Reader::compute_range_result_coords(
     const std::map<std::pair<unsigned, uint64_t>, size_t>& result_tile_map,
     std::vector<ResultTile>* result_tiles,
     std::vector<ResultCoords>* range_result_coords) {
+  std::cout << "crrc 2-0 " << __LINE__ << std::endl;
+
   // Skip dense fragments
   if (fragment_metadata_[fragment_idx]->dense())
     return Status::Ok();
 
+  std::cout << "crrc 2-1 " << __LINE__ << std::endl;
+
+  // TBD: avoid repeatedly (4x here) calling ->tile_overlap((fragment_idx,
+  // range_idx) auto sato = subarray->tile_overlap(fragment_idx, range_idx);
+  // auto tr = sato-> tile_ranges_.begin(); auto tr_end = sato->
+  // tile_ranges_.end(); auto t = sato->tiles_.begin(); auto t_end =
+  // sato->tiles_.end();
   auto tr =
       subarray->tile_overlap(fragment_idx, range_idx)->tile_ranges_.begin();
   auto tr_end =
@@ -1055,6 +1350,7 @@ Status Reader::compute_range_result_coords(
   while (tr != tr_end || t != t_end) {
     // Handle tile range
     if (tr != tr_end && (t == t_end || tr->first < t->first)) {
+      std::cout << "crrc 2-2 " << __LINE__ << std::endl;
       for (uint64_t i = tr->first; i <= tr->second; ++i) {
         auto pair = std::pair<unsigned, uint64_t>(fragment_idx, i);
         auto tile_it = result_tile_map.find(pair);
@@ -1064,9 +1360,15 @@ Status Reader::compute_range_result_coords(
 
         // Add results only if the sparse tile MBR is not fully
         // covered by a more recent fragment's non-empty domain
-        if (!sparse_tile_overwritten(fragment_idx, i))
+        if (!sparse_tile_overwritten(fragment_idx, i)) {
+          std::cout << "crrc 2-2b " << __LINE__ << " rrc.sz() "
+                    << range_result_coords->size() << std::endl;
           RETURN_NOT_OK(get_all_result_coords(&tile, range_result_coords));
+          std::cout << "crrc 2-2c " << __LINE__ << " rrc.sz() "
+                    << range_result_coords->size() << std::endl;
+        }
       }
+      std::cout << "crrc 2-3 " << __LINE__ << std::endl;
       ++tr;
     } else {
       // Handle single tile
@@ -1076,17 +1378,55 @@ Status Reader::compute_range_result_coords(
       auto tile_idx = tile_it->second;
       auto& tile = (*result_tiles)[tile_idx];
       if (t->second == 1.0) {  // Full overlap
+        std::cout << "crrc 2-4 " << __LINE__ << std::endl;
         // Add results only if the sparse tile MBR is not fully
         // covered by a more recent fragment's non-empty domain
-        if (!sparse_tile_overwritten(fragment_idx, t->first))
+        if (!sparse_tile_overwritten(fragment_idx, t->first)) {
+          std::cout << "crrc 2-4b " << __LINE__ << std::endl;
           RETURN_NOT_OK(get_all_result_coords(&tile, range_result_coords));
+          std::cout << "crrc 2-4 " << __LINE__ << " rrc.sz() "
+                    << range_result_coords->size() << std::endl;
+        }
+        std::cout << "crrc 2-5 " << __LINE__ << std::endl;
       } else {  // Partial overlap
+        std::cout << "crrc 2-6 " << __LINE__ << " rrc.sz() "
+                  << range_result_coords->size() << std::endl;
+        subarray->dump_subarray_ranges_per_dim();
+        subarray_.dump_ranges_for_range_coords();
+#if 0
+        if (true) {
+
+        }
+        else
+        {
+          auto dim_num = array_schema_->dim_num();
+          auto cell_order = array_schema_->cell_order();
+          for (unsigned d = 0; d < dim_num; ++d) {
+            auto range_coords = subarray->get_range_coords(range_idx);
+            const unsigned dim_idx =
+                cell_order == Layout::COL_MAJOR ? dim_num - d - 1 : d;
+            const auto& ranges = subarray->ranges_for_dim(dim_idx);
+            auto& dim = *array_schema_->domain()->dimension(dim_idx);
+            subarray->dump_ranges(ranges, dim.type());
+            const auto& range = ranges[range_coords[dim_idx]];
+            subarray->dump_range(range, dim.type());
+          }
+        }
+#endif
+        std::cout << "crrc 2-7a " << __LINE__ << " rrc.sz() "
+                  << range_result_coords->size() << std::endl;
         RETURN_NOT_OK(compute_range_result_coords(
             subarray, fragment_idx, &tile, range_idx, range_result_coords));
+        std::cout << "crrc 2-7b " << __LINE__ << " rrc.sz() "
+                  << range_result_coords->size() << std::endl;
+        subarray->dump_subarray_ranges_per_dim();
+        subarray->dump_ranges_for_range_coords();
       }
       ++t;
     }
   }
+
+  std::cout << "crrc 2-8 " << __LINE__ << std::endl;
 
   return Status::Ok();
 }
@@ -1099,6 +1439,11 @@ Status Reader::compute_range_result_coords(
     std::vector<ResultCoords>* range_result_coords) {
   // Gather result range coordinates per fragment
   auto fragment_num = fragment_metadata_.size();
+  std::cout << "crrc 3-0 " << __LINE__ << " fm.size() " << fragment_num
+            << std::endl;
+  subarray->dump_subarray_ranges_per_dim();
+  std::cout << "crrc 3-0b " << __LINE__ << std::endl;
+  subarray->dump_ranges_for_range_coords();
   std::vector<std::vector<ResultCoords>> range_result_coords_vec(fragment_num);
   auto status = parallel_for(
       storage_manager_->compute_tp(), 0, fragment_num, [&](uint32_t f) {
@@ -1110,7 +1455,10 @@ Status Reader::compute_range_result_coords(
             result_tiles,
             &range_result_coords_vec[f]);
       });
+  std::cout << "crrc 3-1 " << __LINE__ << std::endl;
   RETURN_NOT_OK(status);
+
+  std::cout << "crrc 3-2 " << __LINE__ << std::endl;
 
   // Consolidate the result coordinates in the single result vector
   for (const auto& vec : range_result_coords_vec) {
@@ -1118,14 +1466,20 @@ Status Reader::compute_range_result_coords(
       range_result_coords->emplace_back(r);
   }
 
+  std::cout << "crrc 3-2 " << __LINE__ << " rrc.sz() "
+            << range_result_coords->size() << std::endl;
+
   return Status::Ok();
 }
 
 Status Reader::compute_subarray_coords(
     std::vector<std::vector<ResultCoords>>* range_result_coords,
     std::vector<ResultCoords>* result_coords) {
-  // The input 'result_coords' is already sorted. Save the current size
-  // before inserting new elements.
+  std::cout << "csac 0 rrc.sz() " << range_result_coords->size() << " rc.sz() "
+            << result_coords->size() << std::endl;
+  // The input 'result_coords' is already sorted. Save
+  // the current
+  // size before inserting new elements.
   const size_t result_coords_size = result_coords->size();
 
   // Add all valid ``range_result_coords`` to ``result_coords``
@@ -1136,9 +1490,14 @@ Status Reader::compute_subarray_coords(
     }
   }
 
+  std::cout << "csac 1 rrc.sz() " << range_result_coords->size() << " rc.sz() "
+            << result_coords->size() << std::endl;
+
   // No need to sort in UNORDERED layout
   if (layout_ == Layout::UNORDERED)
     return Status::Ok();
+
+  std::cout << "csac 2" << std::endl;
 
   // We should not sort if:
   // - there is a single fragment and global order
@@ -1157,13 +1516,20 @@ Status Reader::compute_subarray_coords(
         result_coords->begin() + result_coords_size, result_coords->end());
   }
 
+  std::cout << "csac 3 must_sort " << must_sort << " allows_dups "
+            << allows_dups << " single_range " << single_range << " (dim_num "
+            << dim_num << ")" << std::endl;
+
   if (must_sort) {
+    std::cout << "csac 3" << std::endl;
     RETURN_NOT_OK(sort_result_coords(
         result_coords->begin() + result_coords_size,
         result_coords->end(),
         result_coords->size() - result_coords_size,
         layout_));
+    std::cout << "csac 4" << std::endl;
   }
+  std::cout << "csac 5" << std::endl;
 
   return Status::Ok();
 }
@@ -1851,6 +2217,8 @@ Status Reader::compute_result_coords(
     std::vector<ResultCoords>* result_coords) {
   STATS_START_TIMER(stats::GlobalStats::TimerType::READ_COMPUTE_RESULT_COORDS)
 
+  std::cout << "crc entry" << std::endl;
+
   // Get overlapping tile indexes
   typedef std::pair<unsigned, uint64_t> FragTileTuple;
   std::map<FragTileTuple, size_t> result_tile_map;
@@ -1859,8 +2227,13 @@ Status Reader::compute_result_coords(
   RETURN_CANCEL_OR_ERROR(compute_sparse_result_tiles(
       result_tiles, &result_tile_map, &single_fragment));
 
+  std::cout << "crc 1 rtm.size() " << result_tile_map.size() << " sf.size() "
+            << single_fragment.size() << std::endl;
+
   if (result_tiles->empty())
     return Status::Ok();
+
+  std::cout << "crc 2 " << std::endl;
 
   // Create temporary vector with pointers to result tiles, so that
   // `read_tiles`, `unfilter_tiles` below can work without changes
@@ -1868,9 +2241,13 @@ Status Reader::compute_result_coords(
   for (auto& result_tile : *result_tiles)
     tmp_result_tiles.push_back(&result_tile);
 
+  std::cout << "crc 2b trt.size() " << tmp_result_tiles.size() << std::endl;
+
   // Preload zipped coordinate tile offsets. Note that this will
   // ignore fragments with a version >= 5.
   RETURN_CANCEL_OR_ERROR(load_tile_offsets({constants::coords}));
+
+  std::cout << "crc 3 " << std::endl;
 
   // Preload unzipped coordinate tile offsets. Note that this will
   // ignore fragments with a version < 5.
@@ -1879,7 +2256,11 @@ Status Reader::compute_result_coords(
   dim_names.reserve(dim_num);
   for (unsigned d = 0; d < dim_num; ++d)
     dim_names.emplace_back(array_schema_->dimension(d)->name());
+  std::cout << "crc 3 dim_names.size() " << dim_names.size() << std::endl;
+
   RETURN_CANCEL_OR_ERROR(load_tile_offsets(dim_names));
+
+  std::cout << "crc 4 " << std::endl;
 
   // Read and unfilter zipped coordinate tiles. Note that
   // this will ignore fragments with a version >= 5. Unfilter
@@ -1887,16 +2268,20 @@ Status Reader::compute_result_coords(
   // unfiltering.
   RETURN_CANCEL_OR_ERROR(
       read_coordinate_tiles({constants::coords}, tmp_result_tiles));
+  std::cout << "crc 5 " << std::endl;
   RETURN_CANCEL_OR_ERROR(
       unfilter_tiles(constants::coords, tmp_result_tiles, nullptr));
+  std::cout << "crc 6 " << std::endl;
 
   // Read and unfilter unzipped coordinate tiles. Note that
   // this will ignore fragments with a version < 5. Unfilter
   // with a nullptr `rcs_index` argument to bypass selective
   // unfiltering.
   RETURN_CANCEL_OR_ERROR(read_coordinate_tiles(dim_names, tmp_result_tiles));
+  std::cout << "crc 7 " << std::endl;
   for (const auto& dim_name : dim_names) {
     RETURN_CANCEL_OR_ERROR(unfilter_tiles(dim_name, tmp_result_tiles, nullptr));
+    std::cout << "crc 8 " << __LINE__ << " dim_name " << dim_name << std::endl;
   }
 
   // Fetch the sub partitioner's memory budget.
@@ -1906,23 +2291,55 @@ Status Reader::compute_result_coords(
       "sm.sub_partitioner_memory_budget", &cfg_sub_memory_budget, &found));
   assert(found);
 
+  // diag: both if/else in following branch ref
+  // read_state_.partitioner_.current() (tho via slightly different means).
+  // TBD: should we dump that here?
+  std::cout << "rdr::compute_result_coords 1 (9) ";
+  // read_state_.partitioner_.current().compute_range_offsets_dump_coords();
+  std::cout << "rsta.part. start_ "
+            << read_state_.partitioner_.current_partition_info()->start_
+            << ".end_ "
+            << read_state_.partitioner_.current_partition_info()->end_
+            << std::endl;
+  std::cout << "rsta.part.state()-> start_ "
+            << read_state_.partitioner_.state()->start_ << " end_ "
+            << read_state_.partitioner_.state()->end_ << std::endl;
+  read_state_.partitioner_.current().dump_subarray_ranges_per_dim();
+  std::cout << std::endl;
+
   // The a 0-value memory budget is used to bypass the sub-partitioner. The
   // sub-partitioner is only useful for scenarios where the sorting time is much
   // larger than the partitioning time.
   if (cfg_sub_memory_budget == 0) {
     // Compute the read coordinates for all fragments for each subarray range.
     std::vector<std::vector<ResultCoords>> range_result_coords;
+    std::cout << "crc 10a " << __LINE__ << " rrc.size() "
+              << range_result_coords.size() << std::endl;
+    {
+      auto& subarray = read_state_.partitioner_.current();
+      subarray.dump_subarray_ranges_per_dim();
+      std::cout << std::endl;
+    }
     RETURN_CANCEL_OR_ERROR(compute_range_result_coords(
         &read_state_.partitioner_.current(),
         single_fragment,
         result_tile_map,
         result_tiles,
         &range_result_coords));
+    std::cout << "crc 10b " << __LINE__ << " rrc.size() "
+              << range_result_coords.size() << std::endl;
+    {
+      auto& subarray = read_state_.partitioner_.current();
+      subarray.dump_subarray_ranges_per_dim();
+      std::cout << std::endl;
+    }
     result_tile_map.clear();
 
     // Compute final coords (sorted in the result layout) of the whole subarray.
     RETURN_CANCEL_OR_ERROR(
         compute_subarray_coords(&range_result_coords, result_coords));
+    std::cout << "crc 11 " << __LINE__ << " rrc.size() "
+              << range_result_coords.size() << std::endl;
     range_result_coords.clear();
   } else {
     // If the configured memory budget is too low (e.g. unsplittable), it
@@ -1946,6 +2363,17 @@ Status Reader::compute_result_coords(
         sub_partitioner_memory_budget_validity,
         storage_manager_->compute_tp(),
         stats_.get());
+
+    std::cout << "rdr::compute_result_coords 2 " << __LINE__ << " "
+              << std::endl;
+    // read_state_.partitioner_.current().compute_range_offsets_dump_coords();
+    std::cout << "sub_part. start_ "
+              << sub_partitioner.current_partition_info()->start_ << ".end_ "
+              << sub_partitioner.current_partition_info()->end_ << std::endl;
+    std::cout << "sub_part.state()-> start_ " << sub_partitioner.state()->start_
+              << " end_ " << sub_partitioner.state()->end_ << std::endl;
+    sub_partitioner.current().dump_subarray_ranges_per_dim();
+    std::cout << std::endl;
 
     // Set the individual attribute budgets in the sub-partitioner
     // to the same values as in the parent partitioner.
@@ -1978,8 +2406,18 @@ Status Reader::compute_result_coords(
       }
     }
 
+    std::cout << "rdr::compute_result_coords 3a " << std::endl;
     // Move to the first partition.
     RETURN_NOT_OK(sub_partitioner.next(&read_state_.unsplittable_));
+    std::cout << "rdr::compute_result_coords 3b ";
+    // read_state_.partitioner_.current().compute_range_offsets_dump_coords();
+    std::cout << "sub_part. start_ "
+              << sub_partitioner.current_partition_info()->start_ << ".end_ "
+              << sub_partitioner.current_partition_info()->end_ << std::endl;
+    std::cout << "sub_part.state()-> start_ " << sub_partitioner.state()->start_
+              << " end_ " << sub_partitioner.state()->end_ << std::endl;
+    sub_partitioner.current().dump_subarray_ranges_per_dim();
+    std::cout << std::endl;
 
     while (true) {
       // If the sub-partitioners memory budget was too low, we may
@@ -2009,26 +2447,56 @@ Status Reader::compute_result_coords(
             sub_partitioner_memory_budget_var,
             sub_partitioner_memory_budget_validity));
 
+        std::cout << "rdr::compute_result_coords 4a " << std::endl;
+
         RETURN_NOT_OK(sub_partitioner.next(&read_state_.unsplittable_));
+
+        std::cout << "rdr::compute_result_coords 4b ";
+        // read_state_.partitioner_.current().compute_range_offsets_dump_coords();
+        std::cout << "sub_part. start_ "
+                  << sub_partitioner.current_partition_info()->start_
+                  << ".end_ " << sub_partitioner.current_partition_info()->end_
+                  << std::endl;
+        std::cout << "sub_part.state()-> start_ "
+                  << sub_partitioner.state()->start_ << " end_ "
+                  << sub_partitioner.state()->end_ << std::endl;
+        sub_partitioner.current().dump_subarray_ranges_per_dim();
+        std::cout << std::endl;
       }
 
       std::vector<std::vector<ResultCoords>> range_result_coords;
+      std::cout << "rdr::compute_result_coords 4c " << std::endl;
       RETURN_CANCEL_OR_ERROR(compute_range_result_coords(
           &sub_partitioner.current(),
           single_fragment,
           result_tile_map,
           result_tiles,
           &range_result_coords));
+      std::cout << "rdr::compute_result_coords 4d " << std::endl;
 
       RETURN_CANCEL_OR_ERROR(
           compute_subarray_coords(&range_result_coords, result_coords));
+      std::cout << "rdr::compute_result_coords 4e rrc.sz() "
+                << range_result_coords.size() << std::endl;
       range_result_coords.clear();
 
       // We're done when we have processed all sub-partitions.
       if (sub_partitioner.done())
         break;
 
+      std::cout << "rdr::compute_result_coords 4f rrc.sz() " << std::endl;
+
       RETURN_NOT_OK(sub_partitioner.next(&read_state_.unsplittable_));
+      std::cout << "rdr::compute_result_coords 5 ";
+      // read_state_.partitioner_.current().compute_range_offsets_dump_coords();
+      std::cout << "sub_part. start_ "
+                << sub_partitioner.current_partition_info()->start_ << ".end_ "
+                << sub_partitioner.current_partition_info()->end_ << std::endl;
+      std::cout << "sub_part.state()-> start_ "
+                << sub_partitioner.state()->start_ << " end_ "
+                << sub_partitioner.state()->end_ << std::endl;
+      sub_partitioner.current().dump_subarray_ranges_per_dim();
+      std::cout << std::endl;
     }
   }
 
@@ -2708,6 +3176,19 @@ Status Reader::init_read_state() {
   // bitmap, this can be budgeted as `sm.memory_budget` / 8
   uint64_t memory_budget_validity = memory_budget;
 
+  std::cout << "rdr::init_read_state subarray_ " << std::endl;
+  // subarray_.compute_range_offsets_dump_coords();
+  std::cout << "rsta.part. start_ "
+            << read_state_.partitioner_.current_partition_info()->start_
+            << ".end_ "
+            << read_state_.partitioner_.current_partition_info()->end_
+            << std::endl;
+  std::cout << "rsta.part.state()-> start_ "
+            << read_state_.partitioner_.state()->start_ << " end_ "
+            << read_state_.partitioner_.state()->end_ << std::endl;
+  subarray_.dump_subarray_ranges_per_dim();
+  std::cout << std::endl;
+
   // Create read state
   read_state_.partitioner_ = SubarrayPartitioner(
       &config_,
@@ -2717,6 +3198,24 @@ Status Reader::init_read_state() {
       memory_budget_validity,
       storage_manager_->compute_tp(),
       stats_.get());
+  std::cout << "rdr::init_read_state sapart cur " << std::endl;
+  std::cout << "rsta.part. start_ "
+            << read_state_.partitioner_.current_partition_info()->start_
+            //              << ".end_ " << read_state_.partitioner_.end_ <<
+            //              std::endl;
+            << ".end_ "
+            << read_state_.partitioner_.current_partition_info()->end_
+            << std::endl;
+  std::cout << "rsta.part.state()-> start_ "
+            << read_state_.partitioner_.state()->start_ << " end_ "
+            << read_state_.partitioner_.state()->end_ << std::endl;
+  if (read_state_.partitioner_.current().array()) {
+    read_state_.partitioner_.current().dump_subarray_ranges_per_dim();
+  } else {
+    // TBD: apparently no 'current()' immediately after construction?
+    std::cout << "rdr::init_read_state NO sapart cur() nullptr " << std::endl;
+  }
+
   read_state_.overflowed_ = false;
   read_state_.unsplittable_ = false;
 
@@ -2748,9 +3247,74 @@ Status Reader::init_read_state() {
     }
   }
 
+  // TBD: .unsplittable_ and .overflowed_ were both set above, were they
+  // potentially unset somewhere in above budget processing?
   read_state_.unsplittable_ = false;
   read_state_.overflowed_ = false;
   read_state_.initialized_ = true;
+
+  {
+    // TBD: will this do a deep copy? I'm a bit doubtful, but maybe...
+    auto copy_read_state = read_state_;
+    // trying to understand SubarrayPartitioner/read_state_ functioning...
+    // pulling together here init'ing as above, and then subsequent processing
+    // with 'dump's of various items at various intermediate point in effort to
+    //see how it's all actually functioning together. decltype(read_state_)
+    // tmp_read_state_;
+#if 0
+    read_state_.partitioner_ = SubarrayPartitioner(
+        &config_,
+        subarray_,
+        memory_budget,
+        memory_budget_var,
+        memory_budget_validity,
+        storage_manager_->compute_tp(),
+        stats_.get());
+    read_state_.overflowed_ = false;
+    read_state_.unsplittable_ = false;
+
+    // Set result size budget
+    for (const auto& a : buffers_) {
+      auto attr_name = a.first;
+      auto buffer_size = a.second.buffer_size_;
+      auto buffer_var_size = a.second.buffer_var_size_;
+      auto buffer_validity_size = a.second.validity_vector_.buffer_size();
+      if (!array_schema_->var_size(attr_name)) {
+        if (!array_schema_->is_nullable(attr_name)) {
+          RETURN_NOT_OK(read_state_.partitioner_.set_result_budget(
+              attr_name.c_str(), *buffer_size));
+        } else {
+          RETURN_NOT_OK(read_state_.partitioner_.set_result_budget_nullable(
+              attr_name.c_str(), *buffer_size, *buffer_validity_size));
+        }
+      } else {
+        if (!array_schema_->is_nullable(attr_name)) {
+          RETURN_NOT_OK(read_state_.partitioner_.set_result_budget(
+              attr_name.c_str(), *buffer_size, *buffer_var_size));
+        } else {
+          RETURN_NOT_OK(read_state_.partitioner_.set_result_budget_nullable(
+              attr_name.c_str(),
+              *buffer_size,
+              *buffer_var_size,
+              *buffer_validity_size));
+        }
+      }
+    }
+
+    // TBD: .unsplittable_ and .overflowed_ were both set above, were they
+    // potentially unset somewhere in above budget processing?
+    read_state_.unsplittable_ = false;
+    read_state_.overflowed_ = false;
+    read_state_.initialized_ = true;
+#endif
+//    if (!read_state_.unsplittable_) {
+//      if (read_state_.next().ok())
+//        __debugbreak();
+//    }
+
+    // TBD: attempt deep copy back with unmodified original init'd version...
+    read_state_ = copy_read_state;
+  }
 
   return Status::Ok();
 
@@ -3168,6 +3732,7 @@ Status Reader::sort_result_coords(
 }
 
 Status Reader::sparse_read() {
+  std::cout << "sprs_read 0" << std::endl;
   // Compute result coordinates from the sparse fragments
   // `sparse_result_tiles` will hold all the relevant result tiles of
   // sparse fragments
@@ -3175,6 +3740,8 @@ Status Reader::sparse_read() {
   std::vector<ResultTile> sparse_result_tiles;
 
   RETURN_NOT_OK(compute_result_coords(&sparse_result_tiles, &result_coords));
+  std::cout << "sprs_read 1 srt.sz() " << sparse_result_tiles.size()
+            << " rc.sz() " << result_coords.size() << std::endl;
   std::vector<ResultTile*> result_tiles;
   for (auto& srt : sparse_result_tiles)
     result_tiles.push_back(&srt);
@@ -3183,6 +3750,8 @@ Status Reader::sparse_read() {
   std::vector<ResultCellSlab> result_cell_slabs;
   RETURN_CANCEL_OR_ERROR(
       compute_result_cell_slabs(result_coords, &result_cell_slabs));
+  std::cout << "sprs_read 2 rcs.sz() " << result_cell_slabs.size()
+            << "(rc.sz() " << result_coords.size() << ")" << std::endl;
   result_coords.clear();
 
   apply_query_condition(&result_cell_slabs, result_tiles);
@@ -3191,8 +3760,10 @@ Status Reader::sparse_read() {
   get_result_cell_stats(result_cell_slabs);
 
   RETURN_NOT_OK(copy_coordinates(result_tiles, result_cell_slabs));
+  std::cout << "sprs_read 3" << std::endl;
   RETURN_NOT_OK(
       copy_attribute_values(UINT64_MAX, result_tiles, result_cell_slabs));
+  std::cout << "sprs_read 4" << std::endl;
 
   return Status::Ok();
 }

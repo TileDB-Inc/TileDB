@@ -720,6 +720,21 @@ class Subarray {
       std::vector<uint64_t>* start_coords,
       std::vector<uint64_t>* end_coords) const;
 
+#if 01
+  void dump_ranges_for_range_coords() ;
+  //void dump_ranges_for_range_coords(std::vector<uint64_t>& coords);
+  void dump_ranges_for_range_indices(std::vector<uint64_t>& coords) const;
+  void dump_range_coords(const std::vector<uint64_t>& coords) const;
+  void dump_range(const Range& range, Datatype r_type) const;
+  void dump_ranges(const std::vector<Range>& dim_ranges, Datatype r_type) const;
+  void dump_ranges_for_dim(unsigned ud) const;
+  void compute_range_offsets_dump_coords();
+#endif
+
+#if 01
+  void dump_subarray_ranges_per_dim();
+#endif
+
  private:
   /* ********************************* */
   /*        PRIVATE DATA TYPES         */
@@ -811,6 +826,8 @@ class Subarray {
   Layout cell_order_;
 
   /** Stores a vector of 1D ranges per dimension. */
+  // TBD: NDRange is std::vector<Range>,
+  // so, this seems equiv. of std::vector<NDRange>, why not 'type'd that way?
   std::vector<std::vector<Range>> ranges_;
 
   /**
@@ -863,6 +880,9 @@ class Subarray {
 
   /** A map (tile coords) -> (vector element poistion in `tile_coords_`). */
   std::map<std::vector<uint8_t>, size_t> tile_coords_map_;
+
+  //diag, arbitrate multiple attemtpst oc ompute offsets coming from multiple threads when compute_.._results being done...
+  std::mutex compute_offsets_mtx_;
 
   /* ********************************* */
   /*           PRIVATE METHODS         */

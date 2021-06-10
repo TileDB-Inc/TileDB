@@ -471,23 +471,26 @@ inline uint8_t ResultTile::str_coord_intersects(
     const uint64_t c_size,
     const char* const buff_str,
     const std::string& range_start,
-    const std::string& range_end) {
+    const std::string& range_end,
+    bool dim_default_range) {
   // Test against start
   bool geq_start = true;
   bool all_chars_match = true;
   uint64_t min_size = std::min<uint64_t>(c_size, range_start.size());
-  for (uint64_t i = 0; i < min_size; ++i) {
-    if (buff_str[c_offset + i] < range_start[i]) {
+  if (!range_start.empty() || !dim_default_range) {
+    for (uint64_t i = 0; i < min_size; ++i) {
+      if (buff_str[c_offset + i] < range_start[i]) {
+        geq_start = false;
+        all_chars_match = false;
+        break;
+      } else if (buff_str[c_offset + i] > range_start[i]) {
+        all_chars_match = false;
+        break;
+      }  // Else characters match
+    }
+    if (geq_start && all_chars_match && c_size < range_start.size()) {
       geq_start = false;
-      all_chars_match = false;
-      break;
-    } else if (buff_str[c_offset + i] > range_start[i]) {
-      all_chars_match = false;
-      break;
-    }  // Else characters match
-  }
-  if (geq_start && all_chars_match && c_size < range_start.size()) {
-    geq_start = false;
+    }
   }
 
   // Test against end
@@ -496,17 +499,19 @@ inline uint8_t ResultTile::str_coord_intersects(
     seq_end = true;
     all_chars_match = true;
     min_size = std::min<uint64_t>(c_size, range_end.size());
-    for (uint64_t i = 0; i < min_size; ++i) {
-      if (buff_str[c_offset + i] > range_end[i]) {
-        geq_start = false;
-        break;
-      } else if (buff_str[c_offset + i] < range_end[i]) {
-        all_chars_match = false;
-        break;
-      }  // Else characters match
-    }
-    if (seq_end && all_chars_match && c_size > range_end.size()) {
-      seq_end = false;
+    if (!range_end.empty() || !dim_default_range) {
+      for (uint64_t i = 0; i < min_size; ++i) {
+        if (buff_str[c_offset + i] > range_end[i]) {
+          geq_start = false;
+          break;
+        } else if (buff_str[c_offset + i] < range_end[i]) {
+          all_chars_match = false;
+          break;
+        }  // Else characters match
+      }
+      if (seq_end && all_chars_match && c_size > range_end.size()) {
+        seq_end = false;
+      }
     }
   }
 
@@ -518,6 +523,7 @@ void ResultTile::compute_results_sparse<char>(
     const ResultTile* result_tile,
     unsigned dim_idx,
     const Range& range,
+    bool  dim_default_range,
     std::vector<uint8_t>* result_bitmap,
     const Layout& cell_order) {
   auto coords_num = result_tile->cell_num();
@@ -613,7 +619,7 @@ void ResultTile::compute_results_sparse<char>(
           strncmp(first_c_coord, second_coord, first_c_size) == 0) {
         assert(r_bitmap[first_c_pos] == 1);
         const uint8_t intersects = str_coord_intersects(
-            first_c_offset, first_c_size, buff_str, range_start, range_end);
+            first_c_offset, first_c_size, buff_str, range_start, range_end, dim_default_range);
         memset(&r_bitmap[first_c_pos], intersects, c_partition_size);
       } else {
         // Compute results
@@ -623,7 +629,7 @@ void ResultTile::compute_results_sparse<char>(
           c_size = (pos < coords_num) ? buff_off[pos + 1] - c_offset :
                                         buff_str_size - c_offset;
           r_bitmap[pos] = str_coord_intersects(
-              c_offset, c_size, buff_str, range_start, range_end);
+              c_offset, c_size, buff_str, range_start, range_end, dim_default_range);
         }
       }
     }
@@ -669,7 +675,7 @@ void ResultTile::compute_results_sparse<char>(
       c_size = (pos < coords_num - 1) ? buff_off[pos + 1] - c_offset :
                                         buff_str_size - c_offset;
       r_bitmap[pos] = str_coord_intersects(
-          c_offset, c_size, buff_str, range_start, range_end);
+          c_offset, c_size, buff_str, range_start, range_end, dim_default_range);
     }
   }
 }
@@ -679,6 +685,7 @@ void ResultTile::compute_results_sparse(
     const ResultTile* result_tile,
     unsigned dim_idx,
     const Range& range,
+    bool dim_default_range,
     std::vector<uint8_t>* result_bitmap,
     const Layout& cell_order) {
   // We do not use `cell_order` for this template type.
@@ -750,11 +757,12 @@ Status ResultTile::compute_results_dense(
 Status ResultTile::compute_results_sparse(
     unsigned dim_idx,
     const Range& range,
+    bool dim_default_range,
     std::vector<uint8_t>* result_bitmap,
     const Layout& cell_order) const {
   assert(compute_results_sparse_func_[dim_idx] != nullptr);
   compute_results_sparse_func_[dim_idx](
-      this, dim_idx, range, result_bitmap, cell_order);
+      this, dim_idx, range, dim_default_range, result_bitmap, cell_order);
   return Status::Ok();
 }
 

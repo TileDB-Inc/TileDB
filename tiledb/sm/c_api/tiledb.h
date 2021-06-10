@@ -5257,6 +5257,10 @@ TILEDB_EXPORT int32_t tiledb_array_vacuum(
  * **Example:**
  *
  * @code{.c}
+ ...//TBD: true/false, type of domain variable should/must match underlying type specified for domain of dimension(s)
+ ...//TBD: if all domain dimension are *not* the same, domains *will* be returned but are going to require processing
+ ...//not readily achieved with a fixed, common-type, domain array is presented here!!!
+ ...//see notes for tiledb_dimension_get_domain()
  * uint64_t domain[4]; // Assuming a 2D array, 2 [low, high] pairs
  * int32_t is_empty;
  * tiledb_array_t* array;

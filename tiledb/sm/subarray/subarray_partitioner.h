@@ -92,6 +92,11 @@ class SubarrayPartitioner {
    * deems it necessary (i.e., this will be used to update the
    * partitioner state as well).
    */
+  //dlhnotes: Seems the 'original subarray' for both PartitionInfo and State
+  //below is contained in member 'subarray_', which appears generally unchanging
+  //for the duration  of a '.next()' until '.done()' series is complete.  Seems
+  //to be init'd on construction and not changed afterwards, tho' there is one
+  //accessor method that returns a non-const pointer to it.
   struct PartitionInfo {
     /** The current partition. */
     Subarray partition_;
@@ -99,14 +104,14 @@ class SubarrayPartitioner {
      * The start range index from the original subarray that the
      * current partition has been constructed from.
      */
-    uint64_t start_;
+    uint64_t start_ = 0;
 
     /**
      * The end range index from the original subarray that the
      * current partition has been constructed from. This is an
      * inclusive index.
      */
-    uint64_t end_;
+    uint64_t end_ = 0;
 
     /**
      * ``true`` if the partition came from splitting a multi-range
@@ -131,12 +136,12 @@ class SubarrayPartitioner {
      * The start range index from the original subarray that the
      * next partition will be constructed from.
      */
-    uint64_t start_;
+    uint64_t start_ = 0;
     /**
      * The end range index from the original subarray that the
      * next partition will be constructed from.
      */
-    uint64_t end_;
+    uint64_t end_ = 0;
     /**
      * This is a list of subarrays that resulted from splitting a
      * single-range subarray to produce the current partition. The
@@ -198,6 +203,9 @@ class SubarrayPartitioner {
 
   /** Returns the current partition info. */
   PartitionInfo* current_partition_info();
+
+  void report_PIandState(const char* lbl);
+  void dump_stuff(const char* lbl);
 
   /**
    * Returns ``true`` if there are no more partitions, i.e., if the
@@ -263,6 +271,7 @@ class SubarrayPartitioner {
    * ``unsplittable`` to ``true``.
    */
   Status next(bool* unsplittable);
+  Status SubarrayPartitioner::next_worker(bool* unsplittable);
 
   /**
    * Sets the memory budget (in bytes).

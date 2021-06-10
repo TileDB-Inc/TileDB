@@ -609,3 +609,21 @@ TEST_CASE(
   val_str = std::string((const char*)(&val[0]), 4);
   CHECK(val_str == std::string("yell", 4));
 }
+
+TEST_CASE(
+    "Dimension: Test splitting_value, string",
+    "[dimension][splitting_value][string]") {
+  // Create dimensions
+  Dimension dim("d1", Datatype::STRING_ASCII);
+
+  Range range_end_prefix_of_start;
+  //range_end_prefix_of_start.set_start("endbeforestart");
+  //range_end_prefix_of_start.set_end("end");
+  range_end_prefix_of_start.set_str_range("endbeforestart", "end");
+
+  ByteVecValue splitting_value;
+
+  bool unsplittable = false;
+  dim.splitting_value(range_end_prefix_of_start, &splitting_value, &unsplittable);
+  CHECK(unsplittable);
+}

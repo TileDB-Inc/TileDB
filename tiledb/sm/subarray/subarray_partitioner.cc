@@ -86,9 +86,13 @@ SubarrayPartitioner::SubarrayPartitioner(
       "sm.skip_est_size_partitioning", &skip_split_on_est_size_, &found);
   (void)found;
   assert(found);
+  std::cout << "saprt ctr @ " << this << std::endl;
 }
 
-SubarrayPartitioner::~SubarrayPartitioner() = default;
+SubarrayPartitioner::~SubarrayPartitioner()  //= default;
+{
+  std::cout << "saprt dtr @ " << this << std::endl;
+}
 
 SubarrayPartitioner::SubarrayPartitioner(const SubarrayPartitioner& partitioner)
     : SubarrayPartitioner() {
@@ -360,7 +364,245 @@ Status SubarrayPartitioner::get_memory_budget(
   return Status::Ok();
 }
 
+void SubarrayPartitioner::report_PIandState(const char* lbl) {
+  // 'current_.partition_' is changed periodically via .get_subarray() which
+  // references the primary Subarray retained from construction to
+  // destruction in data member 'subarray_'.
+  // The start_/end_ members of PartitionInfo and State entities are
+  // references to that original Subarray contained in member 'subarray_'.
+  auto& PI = current_;
+  std::cout << lbl << " dumping 'current_' PartitionInfo" << std::endl;
+  std::cout
+            << "PI .start_ " << PI.start_ << " .end_ " << PI.end_ << std::endl;
+  if (PI.partition_.array()) {
+    PI.partition_.dump_subarray_ranges_per_dim();
+    PI.partition_.dump_ranges_for_range_coords();
+  } else {
+    std::cout << "sar::reportPIandState NO .array() needed for .dump_xxx routines" << std::endl;
+  }
+  std::cout << lbl << " dumping 'state_' info" << std::endl;
+  auto& S = state_;
+  std::cout << "S .start_ " << S.start_ << " .end_ " << S.end_ << std::endl;
+  auto show_subarray = [this](Subarray& sa) -> void {
+    // sa.compute_range_offsets_dump_coords();
+    sa.dump_subarray_ranges_per_dim();
+  };
+  std::cout << " sap/subarray_/[]:" << std::endl;
+  show_subarray(subarray_);
+
+  std::cout << " sap/state_.single_range_/subarray(s)/[]:" << std::endl;
+  for (auto srs : state_.single_range_) {
+    show_subarray(srs);
+  }
+  std::cout << std::endl;
+  std::cout << lbl << " state_.mr.sz() " << state_.multi_range_.size()
+            << std::endl;
+  std::cout << " multi_range_/subarray(s)/[]:" << std::endl;
+  for (auto mrs : state_.multi_range_) {
+    show_subarray(mrs);
+  }
+}
+
+void SubarrayPartitioner::dump_stuff(const char* lbl) {
+  std::cout << std::endl;
+  std::cout << lbl << " sr.empty() " << state_.single_range_.empty()
+            << std::endl;
+  std::cout << lbl << " mr.empty() " << state_.multi_range_.empty()
+            << std::endl;
+  std::cout
+      << "(remember to ignore 1st iter instance, is garbage, not yet init'd.)"
+      << std::endl;
+  std::cout << lbl << " state.start_ " << state_.start_ << ", state.end_ "
+            << state_.end_ << std::endl;
+  std::cout << lbl << " current_.start_ " << current_.start_
+            << ", current_.end_ " << current_.end_ << "(cur.par.array "
+            << current_.partition_.array() << ")" << std::endl;
+  std::cout << lbl << " state_.sr.sz() " << state_.single_range_.size()
+            << std::endl;
+  std::cout << lbl << " state_.mr.sz() " << state_.multi_range_.size()
+            << std::endl;
+  {  // diag
+    auto& subarray = current_.partition_;
+    if (subarray.array()) {
+      std::cout << "sads/current_.partition_ [subarray] " << __LINE__
+                << std::endl;
+      // read_state_.partitioner_.current();
+      subarray.dump_subarray_ranges_per_dim();
+    } else {
+      std::cout << "sads/current_.partition_ [subarray] NO array" << __LINE__
+                << std::endl;
+    }
+  }
+  auto show_subarray = [this](Subarray& sa) -> void {
+#if 01
+    // sa.compute_range_offsets_dump_coords();
+    sa.dump_subarray_ranges_per_dim();
+#else
+    sa.compute_range_offsets();
+    for (auto ui = 0u; ui < sa.range_num(); ++ui) {
+      auto coords = sa.get_range_coords(ui);
+      for (auto uj = 0u; uj < coords.size(); uj += 2) {
+        if (uj)
+          std::cout << ",";
+        std::cout << uj << "," << uj + 1 << ": [" << coords[uj] << ","
+                  << coords[uj + 1] << "]";
+        //<< std::endl;
+      }
+      std::cout << std::endl;
+    }
+#endif
+  };
+  std::cout << " sap/subarray_/[]:" << std::endl;
+  show_subarray(subarray_);
+
+  std::cout << " single_range_/subarray/[]:" << std::endl;
+  for (auto srs : state_.single_range_) {
+#if 01
+    show_subarray(srs);
+#else
+    srs.compute_range_offsets();
+    for (auto ui = 0u; ui < srs.range_num(); ++ui) {
+      auto coords = srs.get_range_coords(ui);
+      for (auto uj = 0u; uj < coords.size(); uj += 2) {
+        if (uj)
+          std::cout << ",";
+        std::cout << uj << "," << uj + 1 << ": [" << coords[uj] << ","
+                  << coords[uj + 1] << "]";
+        //<< std::endl;
+      }
+      std::cout << std::endl;
+    }
+#endif
+  }
+  std::cout << std::endl;
+  std::cout << lbl << " state_.mr.sz() " << state_.multi_range_.size()
+            << std::endl;
+  std::cout << " multi_range_/subarray/[]:" << std::endl;
+  for (auto mrs : state_.multi_range_) {
+#if 01
+    show_subarray(mrs);
+#else
+    mrs.compute_range_offsets();
+    for (auto ui = 0u; ui < mrs.range_num(); ++ui) {
+      auto coords = mrs.get_range_coords(ui);
+      for (auto uj = 0u; uj < coords.size(); uj += 2) {
+        if (uj)
+          std::cout << ",";
+        std::cout << uj << "," << uj + 1 << ": [" << coords[uj] << ","
+                  << coords[uj + 1] << "]";
+        //<< std::endl;
+      }
+      std::cout << std::endl;
+    }
+#endif
+  }
+}  // dump_stuff();
+
 Status SubarrayPartitioner::next(bool* unsplittable) {
+  auto show_stuff = [this](const char* lbl) -> void {
+    std::cout << std::endl;
+    std::cout << lbl << " sr.empty() " << state_.single_range_.empty()
+              << std::endl;
+    std::cout << lbl << " mr.empty() " << state_.multi_range_.empty()
+              << std::endl;
+    std::cout
+        << "(remember to ignore 1st iter instance, is garbage, not yet init'd.)"
+        << std::endl;
+    std::cout << lbl << " state.start_ " << state_.start_ << ", state.end_ "
+              << state_.end_ << std::endl;
+    std::cout << lbl << " current_.start_ " << current_.start_
+              << ", current_.end_ " << current_.end_ << "(cur.par.array "
+              << current_.partition_.array() << ")" << std::endl;
+    std::cout << lbl << " state_.sr.sz() " << state_.single_range_.size()
+              << std::endl;
+    std::cout << lbl << " state_.mr.sz() " << state_.multi_range_.size()
+              << std::endl;
+    auto show_subarray = [this](Subarray& sa) -> void {
+#if 01
+      // sa.compute_range_offsets_dump_coords();
+      sa.dump_subarray_ranges_per_dim();
+#else
+      sa.compute_range_offsets();
+      for (auto ui = 0u; ui < sa.range_num(); ++ui) {
+        auto coords = sa.get_range_coords(ui);
+        for (auto uj = 0u; uj < coords.size(); uj += 2) {
+          if (uj)
+            std::cout << ",";
+          std::cout << uj << "," << uj + 1 << ": [" << coords[uj] << ","
+                    << coords[uj + 1] << "]";
+          //<< std::endl;
+        }
+        std::cout << std::endl;
+      }
+#endif
+    };
+    std::cout << " sap/subarray_/[]:" << std::endl;
+    show_subarray(subarray_);
+
+    std::cout << " single_range_/subarray/[]:" << std::endl;
+    for (auto srs : state_.single_range_) {
+#if 01
+      show_subarray(srs);
+#else
+      srs.compute_range_offsets();
+      for (auto ui = 0u; ui < srs.range_num(); ++ui) {
+        auto coords = srs.get_range_coords(ui);
+        for (auto uj = 0u; uj < coords.size(); uj += 2) {
+          if (uj)
+            std::cout << ",";
+          std::cout << uj << "," << uj + 1 << ": [" << coords[uj] << ","
+                    << coords[uj + 1] << "]";
+          //<< std::endl;
+        }
+        std::cout << std::endl;
+      }
+#endif
+    }
+    std::cout << std::endl;
+    std::cout << lbl << " state_.mr.sz() " << state_.multi_range_.size()
+              << std::endl;
+    std::cout << " multi_range_/subarray/[]:" << std::endl;
+    for (auto mrs : state_.multi_range_) {
+#if 01
+      show_subarray(mrs);
+#else
+      mrs.compute_range_offsets();
+      for (auto ui = 0u; ui < mrs.range_num(); ++ui) {
+        auto coords = mrs.get_range_coords(ui);
+        for (auto uj = 0u; uj < coords.size(); uj += 2) {
+          if (uj)
+            std::cout << ",";
+          std::cout << uj << "," << uj + 1 << ": [" << coords[uj] << ","
+                    << coords[uj + 1] << "]";
+          //<< std::endl;
+        }
+        std::cout << std::endl;
+      }
+#endif
+    }
+  };
+
+  show_stuff("a");
+
+  auto rval = next_worker(unsplittable);
+
+  show_stuff("b");
+
+#if 0
+  std::cout << "a sr.empty() " << state_.single_range_.empty() << std::endl;
+  std::cout << "a mr.empty() " << state_.multi_range_.empty() << std::endl;
+  std::cout << "a state.start_ " << state_.start_ << ", state.end_ "
+            << state_.end_ << std::endl;
+  std::cout << "a current_.start_ " << current_.start_ << ", current_.end_ "
+            << current_.end_ << std::endl;
+  std::cout << "a state_.sr.sz() " << state_.single_range_.size() << std::endl;
+  std::cout << "a state_.mr.sz() " << state_.multi_range_.size() << std::endl;
+#endif
+
+  return rval;
+}
+
+Status SubarrayPartitioner::next_worker(bool* unsplittable) {
   STATS_START_TIMER(stats::GlobalStats::TimerType::READ_NEXT_PARTITION)
 
   *unsplittable = false;
@@ -369,39 +611,73 @@ Status SubarrayPartitioner::next(bool* unsplittable) {
     return Status::Ok();
 
   // Handle single range partitions, remaining from previous iteration
-  if (!state_.single_range_.empty())
+  if (!state_.single_range_.empty()) {
+    std::cout << "sap::next_worker nfsr1 " << __LINE__ << std::endl;
     return next_from_single_range(unsplittable);
+  }
 
   // Handle multi-range partitions, remaining from slab splits
-  if (!state_.multi_range_.empty())
+  if (!state_.multi_range_.empty()) {
+    std::cout << "sap::next_worker nfmr1 " << __LINE__ << std::endl;
     return next_from_multi_range(unsplittable);
+  }
 
   // Find the [start, end] of the subarray ranges that fit in the budget
   bool interval_found;
+  std::cout << "sap::next_worker sanw1 b4 ccse1 " << __LINE__ << std::endl;
+  std::cout << " current_.start_ " << current_.start_ << ", current_.end_ "
+            << current_.end_ << "(cur.par.array " << current_.partition_.array()
+            << ")" << std::endl;
   RETURN_NOT_OK(compute_current_start_end(&interval_found));
+  std::cout << "sanw2 aftr ccse1 " << __LINE__ << " interval_found "
+            << interval_found << std::endl;
+  std::cout << " current_.start_ " << current_.start_ << ", current_.end_ "
+            << current_.end_ << "(cur.par.array " << current_.partition_.array()
+            << ")" << std::endl;
+  dump_stuff(" ccse1b ");
 
   // Single-range partition that must be split
   // Note: this applies only to UNORDERED and GLOBAL_ORDER layouts,
   // since otherwise we may have to calibrate the range start and end
   if (!interval_found && (subarray_.layout() == Layout::UNORDERED ||
-                          subarray_.layout() == Layout::GLOBAL_ORDER))
+                          subarray_.layout() == Layout::GLOBAL_ORDER)) {
+    std::cout << "sap::next_worker nfsr2 " << __LINE__ << std::endl;
     return next_from_single_range(unsplittable);
+  }
 
   // An interval of whole ranges that may need calibration
   bool must_split_slab;
+  std::cout << "sap::next_worker cacse2 " << __LINE__ << std::endl;
   RETURN_NOT_OK(calibrate_current_start_end(&must_split_slab));
+
+  std::cout << "sap::next_worker cacse2b " << __LINE__ << " interval_found "
+            << interval_found << " must_split_slab " << must_split_slab
+            << std::endl;
 
   // Handle case the next partition is composed of whole ND ranges
   if (interval_found && !must_split_slab) {
+    std::cout << "sap::next_worker cacse2c ivfnd && !mss " << __LINE__
+              << std::endl;
     current_.partition_ =
         subarray_.get_subarray(current_.start_, current_.end_);
+    {  // diag
+      auto& subarray = current_.partition_;
+      // read_state_.partitioner_.current();
+      subarray.dump_subarray_ranges_per_dim();
+      dump_stuff("cacse2c");
+      std::cout << std::endl;
+    }
     current_.split_multi_range_ = false;
     state_.start_ = current_.end_ + 1;
     return Status::Ok();
   }
 
   // Must split a multi-range subarray slab
-  return next_from_multi_range(unsplittable);
+  std::cout << "sap::next_worker nfmr2 " << __LINE__ << std::endl;
+  // return next_from_multi_range(unsplittable);
+  auto rval = next_from_multi_range(unsplittable);
+  dump_stuff(" nfmr2b ");
+  return rval;
 
   STATS_END_TIMER(stats::GlobalStats::TimerType::READ_NEXT_PARTITION)
 }
@@ -571,13 +847,21 @@ Status SubarrayPartitioner::split_current(bool* unsplittable) {
 
   *unsplittable = false;
 
+  dump_stuff("splcur a");
+
   // Current came from splitting a multi-range partition
   if (current_.split_multi_range_) {
     if (state_.multi_range_.empty())
       state_.start_ = current_.start_;
     state_.multi_range_.push_front(current_.partition_);
+    dump_stuff("splcur b");
     split_top_multi_range(unsplittable);
-    return next_from_multi_range(unsplittable);
+    dump_stuff("splcur c");
+
+    // return next_from_multi_range(unsplittable);
+    auto rval = next_from_multi_range(unsplittable);
+    dump_stuff("splcur d");
+    return rval;
   }
 
   // Current came from retrieving a multi-range partition from subarray
@@ -602,13 +886,20 @@ Status SubarrayPartitioner::split_current(bool* unsplittable) {
       if (state_.multi_range_.empty())
         state_.start_ = current_.start_;
       state_.multi_range_.push_front(current_.partition_);
+      dump_stuff("splcur e");
       split_top_multi_range(unsplittable);
-      return next_from_multi_range(unsplittable);
+      dump_stuff("splcur f");
+
+      // return next_from_multi_range(unsplittable);
+      auto rval = next_from_multi_range(unsplittable);
+      dump_stuff("splcur g");
+      return rval;
     }
 
     current_.partition_ =
         subarray_.get_subarray(current_.start_, current_.end_);
     state_.start_ = current_.end_ + 1;
+    dump_stuff("splcur h");
 
     return Status::Ok();
   }
@@ -617,8 +908,14 @@ Status SubarrayPartitioner::split_current(bool* unsplittable) {
   if (state_.single_range_.empty())
     state_.start_--;
   state_.single_range_.push_front(current_.partition_);
+  dump_stuff("splcur i");
   split_top_single_range(unsplittable);
-  return next_from_single_range(unsplittable);
+  dump_stuff("splcur j");
+
+  // return next_from_single_range(unsplittable);
+  auto rval = next_from_single_range(unsplittable);
+  dump_stuff("splcur k");
+  return rval;
 
   STATS_END_TIMER(stats::GlobalStats::TimerType::READ_SPLIT_CURRENT_PARTITION)
 }
@@ -756,12 +1053,21 @@ SubarrayPartitioner SubarrayPartitioner::clone() const {
 Status SubarrayPartitioner::compute_current_start_end(bool* found) {
   // Compute the tile overlap. Note that the ranges in `tile_overlap` may have
   // been truncated the ending bound due to memory constraints.
+  std::cout << "ccse1 0 " << __LINE__ << " s.start_ " << state_.start_
+            << ", s.end_ " << state_.end_ << std::endl;
+
   RETURN_NOT_OK(subarray_.precompute_tile_overlap(
       state_.start_, state_.end_, config_, compute_tp_));
+  std::cout << "ccse2 "
+            << " s.start_ " << state_.start_ << ", s.end_ " << state_.end_
+            << std::endl;
   const SubarrayTileOverlap* const tile_overlap =
       subarray_.subarray_tile_overlap();
   assert(tile_overlap->range_idx_start() == state_.start_);
   assert(tile_overlap->range_idx_end() <= state_.end_);
+  std::cout << "ccse3 "
+            << " to->ris " << tile_overlap->range_idx_start() << ", to->rie "
+            << tile_overlap->range_idx_end() << std::endl;
 
   // Preparation
   auto array = subarray_.array();
@@ -779,6 +1085,13 @@ Status SubarrayPartitioner::compute_current_start_end(bool* found) {
     budgets.emplace_back(budget_it.second);
   }
 
+  {
+    auto toris1 = tile_overlap->range_idx_start();
+    auto torie1 = tile_overlap->range_idx_end();
+    std::cout << "ccse4 " << __LINE__ << " toris1 " << toris1 << ", torie1 "
+              << torie1 << std::endl;
+  }
+
   // Compute the estimated result sizes
   std::vector<std::vector<Subarray::ResultSize>> result_sizes;
   std::vector<std::vector<Subarray::MemorySize>> memory_sizes;
@@ -789,9 +1102,25 @@ Status SubarrayPartitioner::compute_current_start_end(bool* found) {
       &result_sizes,
       &memory_sizes,
       compute_tp_));
+  std::cout << "ccse4a " << __LINE__ << " names.size() " << names.size()
+            << " result_sizes.size() " << result_sizes.size()
+            << " memory_sizes.size() " << memory_sizes.size() << std::endl;
 
   bool done = false;
   current_.start_ = tile_overlap->range_idx_start();
+
+  {
+    auto toris2 = current_.start_;
+    // tile_overlap->range_idx_start();
+    auto torie2 = tile_overlap->range_idx_end();
+    std::cout << "ccse4b " << __LINE__
+              << " toris2 (current_.start_, to be initial current_.end_) "
+              << toris2 << ", torie2 (current_.end_ to be <= )" << torie2
+              << " names.size() " << names.size() << std::endl
+              << " skip_split_on_est_size_ " << skip_split_on_est_size_
+              << std::endl;
+  }
+
   for (current_.end_ = tile_overlap->range_idx_start();
        current_.end_ <= tile_overlap->range_idx_end();
        ++current_.end_) {
@@ -806,6 +1135,18 @@ Status SubarrayPartitioner::compute_current_start_end(bool* found) {
       mem_size.size_fixed_ += memory_sizes[r][i].size_fixed_;
       mem_size.size_var_ += memory_sizes[r][i].size_var_;
       mem_size.size_validity_ += memory_sizes[r][i].size_validity_;
+      {
+        std::cout << "ccse4d " << __LINE__ << " i " << i << " r " << r
+                  << " name " << names[i] << std::endl
+                  << "budget fixed " << budget.size_fixed_ << " var "
+                  << budget.size_var_ << std::endl;
+        std::cout << " cur_size fixed " << cur_size.size_fixed_ << " var "
+                  << cur_size.size_var_ << " val " << cur_size.size_validity_
+                  << std::endl;
+        std::cout << "mem_size fix " << mem_size.size_fixed_ << " var "
+                  << mem_size.size_var_ << " val " << mem_size.size_validity_
+                  << std::endl;
+      }
       if ((!skip_split_on_est_size_ &&
            (cur_size.size_fixed_ > budget.size_fixed_ ||
             cur_size.size_var_ > budget.size_var_ ||
@@ -833,6 +1174,29 @@ Status SubarrayPartitioner::compute_current_start_end(bool* found) {
               "compute_current_start_end.validity_tile_size_overflow", 1);
         }
 
+        {
+          std::cout << "ccse4c " << __LINE__ << "(!skip_split_on_est_size_ "
+                    << (!skip_split_on_est_size_) << " && " << std::endl
+                    << "(cur_size.size_fixed_ > budget.size_fixed_ "
+                    << (cur_size.size_fixed_ > budget.size_fixed_) << " || "
+                    << std::endl
+                    << "cur_size.size_var_ > budget.size_var_ "
+                    << (cur_size.size_var_ > budget.size_var_) << " || "
+                    << std::endl
+                    << "cur_size.size_validity_ > budget.size_validity_ "
+                    << (cur_size.size_validity_ > budget.size_validity_)
+                    << ")) ||" << std::endl
+                    << "mem_size.size_fixed_ > memory_budget_ "
+                    << (mem_size.size_fixed_ > memory_budget_) << " || "
+                    << std::endl
+                    << "mem_size.size_var_ > memory_budget_var_ "
+                    << (mem_size.size_var_ > memory_budget_var_) << " || "
+                    << std::endl
+                    << "mem_size.size_validity_ > memory_budget_validity_ "
+                    << (mem_size.size_validity_ > memory_budget_validity_)
+                    << ")" << std::endl
+                    << " [early exit] " << std::endl;
+        }
         done = true;
         break;
       }
@@ -844,6 +1208,11 @@ Status SubarrayPartitioner::compute_current_start_end(bool* found) {
   }
 
   *found = current_.end_ != current_.start_;
+
+  std::cout << "ccse5 " << __LINE__ << " current_.start_ " << current_.start_
+            << ", current_.end_ " << current_.end_ << " *found " << *found
+            << std::endl;
+
   if (*found) {
     // If the range was found, make it inclusive before returning.
     current_.end_--;

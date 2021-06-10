@@ -33,6 +33,13 @@
 #include "commands/info_command.h"
 #include "misc/common.h"
 
+//include this from here, 
+//because tiledb/sm/cpp_api/type.h includes a bare "tiledb.h", which
+//is somehow not found for the 'tiledb.exe' tool build process.
+//#include "tiledb/examples/tiledb/tiledb_export.h"
+//#include "tiledb/sm/c_api/tiledb.h"
+//#include "tiledb/sm/cpp_api/type.h"
+
 #include "tiledb/sm/array/array.h"
 #include "tiledb/sm/array_schema/array_schema.h"
 #include "tiledb/sm/array_schema/attribute.h"
@@ -544,9 +551,34 @@ std::vector<std::string> InfoCommand::mbr_to_string(
         result.push_back(std::to_string(rf64[0]));
         result.push_back(std::to_string(rf64[1]));
         break;
+	  case Datatype::DATETIME_SEC: 
+	    /* "Cannot get MBR; Unsupported coordinates type"
+		 *  not supported, but trying to not blow up 
+		 */
+        rf64 = (const double*)mbr[d].data();
+        result.push_back(std::to_string(rf64[0]));
+        result.push_back(std::to_string(rf64[1]));
+        break;
       default:
-        throw std::invalid_argument(
-            "Cannot get MBR; Unsupported coordinates type");
+        //throw std::invalid_argument(
+        //    "Cannot get MBR; Unsupported coordinates type");
+        // No doubt svg-mbrs will *not* be happy with this, but may yield something for
+        // text dump-mbrs instead of having program simply fail...
+        result.push_back("unsupp MBR ");
+		//const char* c_str;
+		//tiledb_datatype_to_str(type, &c_str);
+		//return std::string(c_str);
+
+        //const auto& strval = tiledb::sm::datatype_str((tiledb::sm::Datatype)datatype);
+        const auto& strval = tiledb::sm::datatype_str((tiledb::sm::Datatype)type);
+        //*str = strval.c_str();
+
+        std::stringstream s;
+        //s << "type " << type_to_string(type);
+        //s << "type " << std::string(c_str);
+        s << "type " << strval << std::endl;
+        result.push_back(s.str());
+        break;
     }
   }
 

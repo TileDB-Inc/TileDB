@@ -282,8 +282,18 @@ endif()
 ############################################################
 
 if (SANITIZER)
-  if (NOT CMAKE_BUILD_TYPE MATCHES "Debug")
+#  if (NOT (CMAKE_BUILD_TYPE MATCHES "Debug" AND CMAKE_BUILD_TYPE MATCHES "RelWithDebInfo"))
+  if (NOT WIN32 AND CMAKE_BUILD_TYPE MATCHES "^(RelWithDebInfo)$")
     message(FATAL_ERROR "Sanitizers only enabled for Debug build")
+  # else() RelWithDebInfo OK for WIN32 builds
+  endif()
+  if(MSVC)
+    if(CMAKE_CXX_COMPILER_VERSION VERSION_LESS "19.28.29915.0")
+      message(FATAL_ERROR "MSVC compiler version ${CMAKE_CXX_COMPILER_VERSION} too old to reliably support sanitizers.")
+    endif()
+  endif()
+  if (NOT CMAKE_BUILD_TYPE MATCHES "^(Debug|RelWithDebInfo)$")
+    message(FATAL_ERROR "Sanitizers only enabled for Debug/RelWithDebInfo build")
   endif()
   string(TOLOWER ${SANITIZER} SANITIZER)
   if (NOT SANITIZER MATCHES "^(address|memory|leak|thread|undefined)$")
@@ -291,10 +301,18 @@ if (SANITIZER)
   else()
     message(STATUS "The TileDB library is compiled with sanitizer ${SANITIZER} enabled")
   endif()
+  if(WIN32)
+  target_compile_options(TILEDB_CORE_OBJECTS
+    PRIVATE
+	  #symbol info should already be avail by virtue of Debug/RelWithDebInfo build types
+      -fsanitize=${SANITIZER}
+  )
+  else()
   target_compile_options(TILEDB_CORE_OBJECTS
     PRIVATE
       -g -fno-omit-frame-pointer -fno-optimize-sibling-calls -fsanitize=${SANITIZER}
   )
+  endif()
 endif()
 
 if (TILEDB_VERBOSE)
@@ -432,10 +450,12 @@ endif()
 
 # Sanitizer linker flags
 if (SANITIZER)
-  target_link_libraries(TILEDB_CORE_OBJECTS_ILIB
-    INTERFACE
-      -fsanitize=${SANITIZER}
-  )
+  if(NOT WIN32)
+    target_link_libraries(TILEDB_CORE_OBJECTS_ILIB
+      INTERFACE
+        -fsanitize=${SANITIZER}
+    )
+  endif()
 endif()
 
 # Coverage linker flags

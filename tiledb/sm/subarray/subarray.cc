@@ -928,6 +928,11 @@ Status Subarray::get_max_memory_size_nullable(
 }
 
 std::vector<uint64_t> Subarray::get_range_coords(uint64_t range_idx) const {
+
+  //TBD: assert(range_offsets_.size()); ?
+  if (!range_offsets_.size())
+    __debugbreak();
+
   std::vector<uint64_t> ret;
 
   uint64_t tmp_idx = range_idx;
@@ -936,6 +941,13 @@ std::vector<uint64_t> Subarray::get_range_coords(uint64_t range_idx) const {
 
   if (layout == Layout::ROW_MAJOR) {
     for (unsigned i = 0; i < dim_num; ++i) {
+      //so, remember from compute_range_offsets()...
+      // ro[ 0 ] == 1 
+      // ro[ 1 ] == ro [ 0 ] * sizeof(r[0])
+      // ro[ 2 ] == ro [ 1 ] * sizeof(r[1])
+      // ro[ 3 ] == ro [ 2 ] * sizeof(r[2])
+      // etc.
+      // and, be aware that initial 'tmp_idx' value *not* necessarily 0... not sure if it's *ever* actually not...
       ret.push_back(tmp_idx / range_offsets_[i]);
       tmp_idx %= range_offsets_[i];
     }
@@ -949,8 +961,11 @@ std::vector<uint64_t> Subarray::get_range_coords(uint64_t range_idx) const {
     std::reverse(ret.begin(), ret.end());
   } else {
     // Global order or Hilbert - single range
-    assert(layout == Layout::GLOBAL_ORDER || layout == Layout::HILBERT);
-    assert(range_num() == 1);
+    // assert(layout == Layout::GLOBAL_ORDER || layout == Layout::HILBERT);
+    // assert(range_num() == 1);
+    assert(
+        layout == Layout::GLOBAL_ORDER ||
+        (layout == Layout::HILBERT && range_num() == 1));
     for (unsigned i = 0; i < dim_num; ++i)
       ret.push_back(0);
   }
@@ -1530,11 +1545,26 @@ void Subarray::add_default_ranges() {
 
   ranges_.resize(dim_num);
   is_default_.resize(dim_num, true);
-  for (unsigned d = 0; d < dim_num; ++d)
-    ranges_[d].emplace_back(domain[d]);
+  for (unsigned d = 0; d < dim_num; ++d) {
+    // ranges_[d].emplace_back(domain[d]);
+    auto dom = domain[d];  // returns a ? NDRange (which is std::vector<Range>)
+                           // ?
+    // dom.dump(); //to stdout
+    ranges_[d].emplace_back(dom);
+  }
 }
 
 void Subarray::compute_range_offsets() {
+  //vvvvvvvvvdiagnostic
+  //<sigh>, so even if *this* no longer collides, doesn't stop us from .clear()ing out from under
+  //some other thread that made it through this and is then ref'ing the offets, which this will now
+  //clear out from under...
+  std::unique_lock<decltype(compute_offsets_mtx_)> ul(compute_offsets_mtx_);
+  //not sure if this is appropriate or not, original use *may* have wanted to RE-compute...
+  //maybe not approp., failed with wanting to access element beyond .size()...
+  //if (range_offsets_.size())
+  //  return;
+  //^^^^^^^^^diagnostic
   range_offsets_.clear();
 
   auto dim_num = this->dim_num();
@@ -1544,6 +1574,11 @@ void Subarray::compute_range_offsets() {
     range_offsets_.push_back(1);
     if (dim_num > 1) {
       for (unsigned int i = 1; i < dim_num; ++i)
+        //ro[ 0 ] == 1 //above before dim_num check above
+        //ro[ 1 ] == ro [ 0 ] * sizeof(r[0])
+        //ro[ 2 ] == ro [ 1 ] * sizeof(r[1])
+        //ro[ 3 ] == ro [ 2 ] * sizeof(r[2])
+        //etc.
         range_offsets_.push_back(range_offsets_.back() * ranges_[i - 1].size());
     }
   } else if (layout == Layout::ROW_MAJOR) {
@@ -1558,8 +1593,10 @@ void Subarray::compute_range_offsets() {
     std::reverse(range_offsets_.begin(), range_offsets_.end());
   } else {
     // Global order or Hilbert - single range
-    assert(layout == Layout::GLOBAL_ORDER || layout == Layout::HILBERT);
-    assert(range_num() == 1);
+    //assert(layout == Layout::GLOBAL_ORDER || layout == Layout::HILBERT);
+    //assert(range_num() == 1);
+    assert(layout == Layout::GLOBAL_ORDER || 
+      (layout == Layout::HILBERT && range_num() == 1));
     range_offsets_.push_back(1);
     if (dim_num > 1) {
       for (unsigned int i = 1; i < dim_num; ++i)
@@ -2491,6 +2528,280 @@ Status Subarray::load_relevant_fragment_tile_var_sizes(
 std::vector<unsigned> Subarray::relevant_fragments() const {
   return relevant_fragments_;
 }
+
+void Subarray::dump_range_coords(const std::vector<uint64_t>& coords) const {
+  std::cout << " [";
+  for (auto uj = 0u; uj < coords.size(); uj++) {
+    if (uj)
+      std::cout << "/";
+    // std::cout << " /" << uj << "," << uj + 1 << ":[" << coords[uj] << ","
+    //          << coords[uj + 1] << "]";
+    std::cout << coords[uj];
+    //<< std::endl;
+  }
+  std::cout << "]" << std::endl;
+}
+void Subarray::dump_ranges_for_range_coords() {
+  // being called from multiple threads, vs2017 seemed to survive, vs2019 not.
+  //any better with diag mutex? 
+  //return; 
+  auto& sa = *this;
+  // observed that any get_subarray()d item *should* have this done already...
+  // sa.compute_range_offsets();
+  for (auto range_idx = 0u; range_idx < sa.range_num(); ++range_idx) {
+    auto range_indices = sa.get_range_coords(range_idx);
+    dump_ranges_for_range_indices(range_indices);
+  }
+}
+
+//void Subarray::dump_ranges_for_range_coords(
+void Subarray::dump_ranges_for_range_indices(
+    std::vector<uint64_t>& range_indices) const {
+  auto& sa = *this;
+  auto array_schema = sa.array()->array_schema();
+  auto dim_num = array_schema->dim_num();
+  auto cell_order = array_schema->cell_order();
+
+  //auto& ranges_for_dim = sa.ranges_for_dim(ud);
+//  for (auto cui = 0u; cui < coords.size(); ++cui) {
+//  for (auto range_idx = 0u; range_idx < range_coords.size(); ++range_idx) {
+//  for (auto range_idx = 0u; range_idx < range_indices.size(); ++range_idx) {
+  for (auto ri = 0u; ri < range_indices.size(); ++ri) {
+    auto range_idx = range_indices[ri];
+    for (unsigned d = 0; d < dim_num; ++d) {
+      //auto range_coords = sa.get_range_coords(range_idx);
+      //TBD: What happens if we replace parameter range_indices with a looked up one?
+      auto range_indices = sa.get_range_coords(range_idx);
+      const unsigned dim_idx =
+          cell_order == Layout::COL_MAJOR ? dim_num - d - 1 : d;
+      //auto dim = array_schema->domain()->dimension(dim_idx);
+      const auto& ranges = sa.ranges_for_dim(dim_idx);
+      auto& dim = *array_schema->domain()->dimension(dim_idx);
+      sa.dump_ranges(ranges, dim.type());
+      //const auto& range = ranges[range_coords[dim_idx]];
+      const auto& range = ranges[range_indices[dim_idx]];
+      sa.dump_range(range, dim.type());
+    }
+  }
+}
+
+void Subarray::compute_range_offsets_dump_coords() {
+  //any better with added diag mutex? 
+  //return;
+  auto& sa = *this;
+  //observed that any get_subarray()d item *should* have this done already...
+  // sa.compute_range_offsets();
+  // for (auto ui = 0u; ui < sa.range_num(); ++ui) {
+  for (auto ui = 0u; ui < sa.range_num(); ++ui) {
+    auto coords = sa.get_range_coords(ui);
+    std::cout << "rngnum " << ui << " coords " << "/" << ui << ":";
+#if 01
+    dump_range_coords(coords);
+#else
+    // for (auto uj = 0u; uj < coords.size(); uj += 2) {
+    // std::cout << "/" << ui << ":" ;
+    std::cout << " [";
+    for (auto uj = 0u; uj < coords.size(); uj++) {
+      if (uj)
+        std::cout << "/";
+      // std::cout << " /" << uj << "," << uj + 1 << ":[" << coords[uj] << ","
+      //          << coords[uj + 1] << "]";
+      std::cout << coords[uj];
+      //<< std::endl;
+    }
+    std::cout << "]" << std::endl;
+#endif
+  }
+}
+void Subarray::dump_range(const Range& range, Datatype r_type) const {
+  std::string srstr, erstr;
+  // loc_to_str to treat variant types differently than
+  // utils::sm::parse::to_str() handles them.
+  auto loc_to_str = [](const void* value,
+                       uint64_t var_type_size,
+                       Datatype type) -> std::string {
+    std::stringstream ss;
+    switch (type) {
+      case Datatype::STRING_ASCII:
+      case Datatype::STRING_UTF8: {
+        // ss << *(const uint8_t*)value;
+        std::string s((char*)value, var_type_size);
+        ss << s;
+        break;
+      }
+    }
+    return ss.str();
+  };
+  switch (r_type) {  // dim->type()) {
+    case Datatype::STRING_ASCII:
+    case Datatype::STRING_UTF8:
+      srstr = loc_to_str(range.start(), range.start_size(), r_type);
+      erstr = loc_to_str(range.end(), range.end_size(), r_type);
+      break;
+    default:
+      srstr = tiledb::sm::utils::parse::to_str(range.start(), r_type);
+      erstr = tiledb::sm::utils::parse::to_str(range.end(), r_type);
+      break;
+  }
+  //std::cout << "/" << ur << ": [";
+  std::cout << "[";
+  std::cout << srstr << "," << erstr;
+  std::cout << "]" << std::endl;
+}
+void Subarray::dump_ranges(
+    const std::vector<Range>& dim_ranges, Datatype r_type) const {
+  for (auto ur = 0; ur < dim_ranges.size(); ++ur) {
+    auto& range = dim_ranges[ur];
+#if 01
+    std::cout << "/" << ur << "(rng.sz() " << range.size() << ")" << ": ";
+    dump_range(range, r_type);
+#else
+    std::string srstr, erstr;
+    // loc_to_str to treat variant types differently than
+    // utils::sm::parse::to_str() handles them.
+    auto loc_to_str = [](const void* value,
+                         uint64_t var_type_size,
+                         Datatype type) -> std::string {
+      std::stringstream ss;
+      switch (type) {
+        case Datatype::STRING_ASCII:
+        case Datatype::STRING_UTF8: {
+          // ss << *(const uint8_t*)value;
+          std::string s((char*)value, var_type_size);
+          ss << s;
+          break;
+        }
+      }
+      return ss.str();
+    };
+    switch (r_type) {  // dim->type()) {
+      case Datatype::STRING_ASCII:
+      case Datatype::STRING_UTF8:
+        srstr = loc_to_str(range.start(), range.start_size(), r_type);
+        erstr = loc_to_str(range.end(), range.end_size(), r_type);
+        break;
+      default:
+        srstr = tiledb::sm::utils::parse::to_str(range.start(), r_type);
+        erstr = tiledb::sm::utils::parse::to_str(range.end(), r_type);
+        break;
+    }
+    std::cout << "/" << ur << ": [";
+    std::cout << srstr << "," << erstr;
+    std::cout << "]" << std::endl;
+#endif
+  }
+}
+void Subarray::dump_ranges_for_dim(unsigned ud) const {
+  auto& sa = *this;
+
+  auto& ranges_for_dim = sa.ranges_for_dim(ud);
+  auto dim = sa.array()->array_schema()->domain()->dimension(ud);
+  // auto dim = sa.array().schema().domain().dimension()[ud];
+  std::cout << "dim " << ud << ":";
+  dump_ranges(ranges_for_dim, dim->type());
+  return;
+  for (auto udr = 0u; udr < ranges_for_dim.size(); ++udr) {
+    auto& ranges_dim = ranges_[udr];
+#if 01
+    dump_ranges(ranges_dim, dim->type());
+#else
+    for (auto ur = 0; ur < ranges_dim.size(); ++ur) {
+      auto& range = ranges_dim[ur];
+      std::string srstr, erstr;
+      // loc_to_str to treat variant types differently than
+      // utils::sm::parse::to_str() handles them.
+      auto loc_to_str = [](const void* value,
+                           uint64_t var_type_size,
+                           Datatype type) -> std::string {
+        std::stringstream ss;
+        switch (type) {
+          case Datatype::STRING_ASCII:
+          case Datatype::STRING_UTF8: {
+            // ss << *(const uint8_t*)value;
+            std::string s((char*)value, var_type_size);
+            ss << s;
+            break;
+          }
+        }
+        return ss.str();
+      };
+      switch (dim->type()) {
+        case Datatype::STRING_ASCII:
+        case Datatype::STRING_UTF8:
+          srstr = loc_to_str(range.start(), range.start_size(), dim->type());
+          erstr = loc_to_str(range.end(), range.end_size(), dim->type());
+          break;
+        default:
+          srstr = tiledb::sm::utils::parse::to_str(range.start(), dim->type());
+          erstr = tiledb::sm::utils::parse::to_str(range.end(), dim->type());
+          break;
+      }
+      std::cout << "/" << ur << ": [";
+      std::cout << srstr << "," << erstr;
+      std::cout << "]" << std::endl;
+    }
+#endif
+  }
+}
+
+void Subarray::dump_subarray_ranges_per_dim() {
+  auto& sa = *this;
+  // don't think this need for what's being done here...
+  // sa.compute_range_offsets();
+  // auto schema = array->schema();
+  // auto domain = schema.domain();
+  auto ndims = sa.array()->array_schema()->domain()->dim_num();
+  for (auto ud = 0u; ud < ndims; ++ud) {
+#if 01
+    dump_ranges_for_dim(ud);
+#else
+    auto& ranges_for_dim = sa.ranges_for_dim(ud);
+    auto dim = sa.array()->array_schema()->domain()->dimension(ud);
+    // auto dim = sa.array().schema().domain().dimension()[ud];
+    std::cout << "dim " << ud << ":";
+    for (auto udr = 0u; udr < ranges_for_dim.size(); ++udr) {
+      auto& ranges_dim = ranges_[udr];
+      for (auto ur = 0; ur < ranges_dim.size(); ++ur) {
+        auto& range = ranges_dim[ur];
+        std::string srstr, erstr;
+        // loc_to_str to treat variant types differently than
+        // utils::sm::parse::to_str() handles them.
+        auto loc_to_str = [](const void* value,
+                             uint64_t var_type_size,
+                             Datatype type) -> std::string {
+          std::stringstream ss;
+          switch (type) {
+            case Datatype::STRING_ASCII:
+            case Datatype::STRING_UTF8: {
+              // ss << *(const uint8_t*)value;
+              std::string s((char*)value, var_type_size);
+              ss << s;
+              break;
+            }
+          }
+          return ss.str();
+        };
+        switch (dim->type()) {
+          case Datatype::STRING_ASCII:
+          case Datatype::STRING_UTF8:
+            srstr = loc_to_str(range.start(), range.start_size(), dim->type());
+            erstr = loc_to_str(range.end(), range.end_size(), dim->type());
+            break;
+          default:
+            srstr =
+                tiledb::sm::utils::parse::to_str(range.start(), dim->type());
+            erstr = tiledb::sm::utils::parse::to_str(range.end(), dim->type());
+            break;
+        }
+        std::cout << "/" << ur << ": [";
+        std::cout << srstr << "," << erstr;
+        std::cout << "]" << std::endl;
+      }
+    }
+#endif
+  }  // for ndims
+
+}  // dump_subarray_ranges_per_dim()
 
 // Explicit instantiations
 template Status Subarray::compute_tile_coords<int8_t>();

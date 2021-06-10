@@ -406,8 +406,15 @@ void ThreadPool::add_tp_index() {
 
 void ThreadPool::remove_tp_index() {
   std::lock_guard<std::mutex> lock(tp_index_lock_);
-  for (const auto& thread : threads_)
-    tp_index_.erase(thread.get_id());
+  if (tp_index_.size())
+  for (const auto& thread : threads_) {
+    //auto thread_at_it = tp_index_.find(thread.get_id());
+    auto tid = thread.get_id();
+    auto thread_at_it = tp_index_.find(tid);
+    if (thread_at_it != tp_index_.end()) {
+      tp_index_.erase(thread_at_it);
+    }
+  }
 }
 
 ThreadPool* ThreadPool::lookup_tp(const std::thread::id tid) {
@@ -425,6 +432,7 @@ void ThreadPool::add_task_index() {
 
 void ThreadPool::remove_task_index() {
   std::lock_guard<std::mutex> lock(task_index_lock_);
+  if (task_index_.size())
   for (const auto& thread : threads_)
     task_index_.erase(thread.get_id());
 }
