@@ -352,10 +352,10 @@ void Dimension::ceil_to_tile(
   v->resize(sizeof(T));
   auto r_t = (const T*)r.data();
 
-  T mid = r_t[0] + (tile_num + 1) * tile_extent;
-  uint64_t div = (mid - dim_dom[0]) / tile_extent;
-  auto floored_mid = (T)div * tile_extent + dim_dom[0];
-  T sp = (std::numeric_limits<T>::is_integer) ?
+  T mid = tile_coord_low(tile_num + 1, r_t[0], tile_extent);
+  uint64_t div = tile_idx(mid, dim_dom[0], tile_extent);
+  T floored_mid = tile_coord_low(div, dim_dom[0], tile_extent);
+  T sp = (std::is_integral<T>::value) ?
              floored_mid - 1 :
              static_cast<T>(
                  std::nextafter(floored_mid, std::numeric_limits<T>::lowest()));
@@ -400,10 +400,10 @@ bool Dimension::coincides_with_tiles(const Dimension* dim, const Range& r) {
   auto dim_domain = (const T*)dim->domain().data();
   auto tile_extent = *(const T*)dim->tile_extent().data();
   auto d = (const T*)r.data();
-  auto norm_1 = uint64_t(d[0] - dim_domain[0]);
-  auto norm_2 = (uint64_t(d[1]) - dim_domain[0]) + 1;
-  return ((norm_1 / tile_extent) * tile_extent == norm_1) &&
-         ((norm_2 / tile_extent) * tile_extent == norm_2);
+  auto rounded_1 = Dimension::round_to_tile(d[0], dim_domain[0], tile_extent);
+  auto rounded_2 =
+      Dimension::round_to_tile(T(d[1] + 1), dim_domain[0], tile_extent);
+  return (rounded_1 == d[0]) && (rounded_2 == T(d[1] + 1));
 }
 
 bool Dimension::coincides_with_tiles(const Range& r) const {
@@ -594,11 +594,12 @@ void Dimension::expand_to_tile(const Dimension* dim, Range* range) {
   auto tile_extent = *(const T*)dim->tile_extent().data();
   auto dim_dom = (const T*)dim->domain().data();
   auto r = (const T*)range->data();
-  T res[2];
+  auto tile_idx1 = tile_idx(r[0], dim_dom[0], tile_extent);
+  auto tile_idx2 = tile_idx(r[1], dim_dom[0], tile_extent);
 
-  res[0] = ((r[0] - dim_dom[0]) / tile_extent * tile_extent) + dim_dom[0];
-  res[1] =
-      ((r[1] - dim_dom[0]) / tile_extent + 1) * tile_extent - 1 + dim_dom[0];
+  T res[2];
+  res[0] = tile_coord_low(tile_idx1, dim_dom[0], tile_extent);
+  res[1] = tile_coord_high(tile_idx2, dim_dom[0], tile_extent);
 
   range->set_range(res, sizeof(res));
 }
@@ -892,7 +893,7 @@ void Dimension::split_range(
   assert(r2 != nullptr);
 
   auto max = std::numeric_limits<T>::max();
-  bool int_domain = std::numeric_limits<T>::is_integer;
+  bool int_domain = std::is_integral<T>::value;
   auto r_t = (const T*)r.data();
   auto v_t = *(const T*)(&v[0]);
   assert(v_t >= r_t[0]);
@@ -1077,16 +1078,8 @@ uint64_t Dimension::tile_num(const Dimension* dim, const Range& range) {
   auto dim_dom = (const T*)dim->domain().data();
   auto r = (const T*)range.data();
 
-  uint64_t start;
-  uint64_t end;
-  if (std::is_integral<T>::value) {
-    start = ((uint64_t)r[0] - (uint64_t)dim_dom[0]) / tile_extent;
-    end = ((uint64_t)r[1] - (uint64_t)dim_dom[0]) / tile_extent;
-  } else {
-    start = floor((r[0] - dim_dom[0]) / tile_extent);
-    end = floor((r[1] - dim_dom[0]) / tile_extent);
-  }
-
+  uint64_t start = tile_idx(r[0], dim_dom[0], tile_extent);
+  uint64_t end = tile_idx(r[1], dim_dom[0], tile_extent);
   return end - start + 1;
 }
 
@@ -1750,20 +1743,25 @@ Status Dimension::check_tile_extent() const {
   auto domain = (const T*)domain_.data();
   bool is_int = std::is_integral<T>::value;
 
-  // Check if tile extent is negative or 0
-  if (*tile_extent <= 0)
-    return LOG_STATUS(Status::DimensionError(
-        "Tile extent check failed; Tile extent must be greater than 0"));
-
   // Check if tile extent exceeds domain
   if (!is_int) {
+    // Check if tile extent is negative or 0
+    if (*tile_extent <= 0)
+      return LOG_STATUS(Status::DimensionError(
+          "Tile extent check failed; Tile extent must be greater than 0"));
+
     if (*tile_extent > (domain[1] - domain[0] + 1))
       return LOG_STATUS(
           Status::DimensionError("Tile extent check failed; Tile extent "
                                  "exceeds dimension domain range"));
   } else {
+    // Check if tile extent is 0
+    if (*tile_extent == 0)
+      return LOG_STATUS(Status::DimensionError(
+          "Tile extent check failed; Tile extent must not be 0"));
+
     // Check if tile extent exceeds domain
-    uint64_t range = domain[1] - domain[0] + 1;
+    uint64_t range = (uint64_t)domain[1] - (uint64_t)domain[0] + 1;
     if (uint64_t(*tile_extent) > range)
       return LOG_STATUS(
           Status::DimensionError("Tile extent check failed; Tile extent "
@@ -1920,25 +1918,21 @@ std::string Dimension::tile_extent_str() const {
   if (tile_extent_.empty())
     return constants::null_str;
 
-  const int* tile_extent_int32;
-  const int64_t* tile_extent_int64;
   const float* tile_extent_float32;
   const double* tile_extent_float64;
-  const int8_t* tile_extent_int8;
   const uint8_t* tile_extent_uint8;
-  const int16_t* tile_extent_int16;
   const uint16_t* tile_extent_uint16;
   const uint32_t* tile_extent_uint32;
   const uint64_t* tile_extent_uint64;
 
   switch (type_) {
     case Datatype::INT32:
-      tile_extent_int32 = (const int32_t*)tile_extent_.data();
-      ss << *tile_extent_int32;
+      tile_extent_uint32 = (const uint32_t*)tile_extent_.data();
+      ss << *tile_extent_uint32;
       return ss.str();
     case Datatype::INT64:
-      tile_extent_int64 = (const int64_t*)tile_extent_.data();
-      ss << *tile_extent_int64;
+      tile_extent_uint64 = (const uint64_t*)tile_extent_.data();
+      ss << *tile_extent_uint64;
       return ss.str();
     case Datatype::FLOAT32:
       tile_extent_float32 = (const float*)tile_extent_.data();
@@ -1949,16 +1943,16 @@ std::string Dimension::tile_extent_str() const {
       ss << *tile_extent_float64;
       return ss.str();
     case Datatype::INT8:
-      tile_extent_int8 = (const int8_t*)tile_extent_.data();
-      ss << int(*tile_extent_int8);
+      tile_extent_uint8 = (const uint8_t*)tile_extent_.data();
+      ss << int(*tile_extent_uint8);
       return ss.str();
     case Datatype::UINT8:
       tile_extent_uint8 = (const uint8_t*)tile_extent_.data();
       ss << int(*tile_extent_uint8);
       return ss.str();
     case Datatype::INT16:
-      tile_extent_int16 = (const int16_t*)tile_extent_.data();
-      ss << *tile_extent_int16;
+      tile_extent_uint16 = (const uint16_t*)tile_extent_.data();
+      ss << *tile_extent_uint16;
       return ss.str();
     case Datatype::UINT16:
       tile_extent_uint16 = (const uint16_t*)tile_extent_.data();
@@ -1994,8 +1988,8 @@ std::string Dimension::tile_extent_str() const {
     case Datatype::TIME_PS:
     case Datatype::TIME_FS:
     case Datatype::TIME_AS:
-      tile_extent_int64 = (const int64_t*)tile_extent_.data();
-      ss << *tile_extent_int64;
+      tile_extent_uint64 = (const uint64_t*)tile_extent_.data();
+      ss << *tile_extent_uint64;
       return ss.str();
 
     case Datatype::CHAR:

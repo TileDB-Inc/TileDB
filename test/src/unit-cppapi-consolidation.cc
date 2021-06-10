@@ -202,3 +202,74 @@ TEST_CASE(
 
   remove_array(array_name);
 }
+
+TEST_CASE(
+    "C++ API: Test consolidation with timestamp and max domain",
+    "[cppapi][consolidation][timestamp][maxdomain]") {
+  Context ctx;
+  VFS vfs(ctx);
+  const std::string array_name = "consolidate_timestamp_max_domain";
+
+  int64_t domain1[] = {std::numeric_limits<int64_t>::min() + 1,
+                       std::numeric_limits<int64_t>::max()};
+  const uint8_t domain2[2] = {0, 1};
+  Domain domain(ctx);
+  domain
+      .add_dimension(
+          Dimension::create(ctx, "d1", TILEDB_DATETIME_MS, domain1, nullptr))
+      .add_dimension(
+          Dimension::create(ctx, "d2", TILEDB_INT8, domain2, nullptr));
+
+  // The array will be dense.
+  ArraySchema schema(ctx, TILEDB_SPARSE);
+  schema.set_domain(domain);
+
+  schema.add_attribute(Attribute::create<int64_t>(ctx, "a1"));
+
+  if (vfs.is_dir(array_name))
+    vfs.remove_dir(array_name);
+  Array::create(array_name, schema);
+
+  std::vector<int64_t> d1 = {0};
+  std::vector<int8_t> d2 = {0};
+  std::vector<int64_t> a1 = {0};
+
+  Array array(ctx, array_name, TILEDB_WRITE);
+  Query query(ctx, array, TILEDB_WRITE);
+  query.set_layout(TILEDB_UNORDERED)
+      .set_buffer("d1", d1)
+      .set_buffer("d2", d2)
+      .set_buffer("a1", a1);
+  query.submit();
+
+  d2[0] = 1;
+  a1[0] = 1;
+  Query query2(ctx, array, TILEDB_WRITE);
+  query2.set_layout(TILEDB_UNORDERED)
+      .set_buffer("d1", d1)
+      .set_buffer("d2", d2)
+      .set_buffer("a1", a1);
+  query2.submit();
+
+  array.close();
+
+  tiledb::Array::consolidate(ctx, array_name);
+
+  std::vector<int64_t> d1_r(2);
+  std::vector<int8_t> d2_r(2);
+  std::vector<int64_t> a1_r(2);
+  Array array_r(ctx, array_name, TILEDB_READ);
+  Query query_r(ctx, array_r);
+  query_r.set_buffer("d1", d1_r).set_buffer("d2", d2_r).set_buffer("a1", a1_r);
+  REQUIRE(query_r.submit() == Query::Status::COMPLETE);
+  array_r.close();
+
+  REQUIRE(d1_r[0] == 0);
+  REQUIRE(d1_r[1] == 0);
+  REQUIRE(d2_r[0] == 0);
+  REQUIRE(d2_r[1] == 1);
+  REQUIRE(a1_r[0] == 0);
+  REQUIRE(a1_r[1] == 1);
+  if (vfs.is_dir(array_name))
+    vfs.remove_dir(array_name);
+}
