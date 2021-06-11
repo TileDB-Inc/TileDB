@@ -27,63 +27,6 @@
  *
  * @section DESCRIPTION
  *
- * This file implements class ConstBuffer.
+ * This file does nothing
  */
 
-#include "tiledb/sm/buffer/const_buffer.h"
-
-#include <iostream>
-
-using namespace tiledb::common;
-
-namespace tiledb {
-namespace sm {
-
-/* ****************************** */
-/*   CONSTRUCTORS & DESTRUCTORS   */
-/* ****************************** */
-
-ConstBuffer::ConstBuffer(Buffer* buff)
-    : ConstBuffer(buff->data(), buff->size()) {
-}
-
-ConstBuffer::ConstBuffer(const void* data, const uint64_t size)
-    : BufferBase(data, size) {
-}
-
-/* ****************************** */
-/*               API              */
-/* ****************************** */
-
-const void* ConstBuffer::data() const {
-  return const_data();
-}
-
-const void* ConstBuffer::cur_data() const {
-  return const_unread_data();
-}
-
-uint64_t ConstBuffer::nbytes_left_to_read() const {
-  return size_ - offset_;
-}
-
-void ConstBuffer::read_with_shift(
-    uint64_t* buffer, const uint64_t nbytes, const uint64_t offset) {
-  // For easy reference
-  const uint64_t buffer_cell_num = nbytes / sizeof(uint64_t);
-  const void* data_c = static_cast<const char*>(data_) + offset_;
-  auto data = static_cast<const uint64_t*>(data_c);
-
-  // Write shifted offsets
-  for (uint64_t i = 0; i < buffer_cell_num; ++i)
-    buffer[i] = offset + data[i];
-
-  offset_ += nbytes;
-}
-
-/* ****************************** */
-/*          PRIVATE METHODS       */
-/* ****************************** */
-
-}  // namespace sm
-}  // namespace tiledb

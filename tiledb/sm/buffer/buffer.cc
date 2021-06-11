@@ -42,9 +42,10 @@ using namespace tiledb::common;
 namespace tiledb {
 namespace sm {
 
-/* ************** */
-/*   BufferBase   */
-/* ************** */
+// =======================================================
+//      BufferBase
+// =======================================================
+
 BufferBase::BufferBase()
     : data_(nullptr)
     , size_(0)
@@ -55,10 +56,8 @@ BufferBase::BufferBase(void* data, const uint64_t size)
     , size_(size)
     , offset_(0){};
 
-/*
- * const_cast is safe here because BufferBase methods do not modify data.
- */
 BufferBase::BufferBase(const void* data, const uint64_t size)
+    // const_cast is safe here because BufferBase methods do not modify storage
     : data_(const_cast<void*>(data))
     , size_(size)
     , offset_(0){};
@@ -71,10 +70,8 @@ void* BufferBase::nonconst_data() const {
   return data_;
 }
 
-/*
- * const_cast is safe here because BufferBase methods do not modify data.
- */
 const void* BufferBase::const_data() const {
+  // const_cast is safe here because BufferBase methods do not modify storage
   return const_cast<const void*>(data_);
 }
 
@@ -87,6 +84,7 @@ void* BufferBase::nonconst_unread_data() const {
 }
 
 const void* BufferBase::const_unread_data() const {
+  // const_cast is safe here because BufferBase methods do not modify storage
   return const_cast<const void*>(nonconst_unread_data());
 }
 
@@ -128,9 +126,9 @@ Status BufferBase::read(void* destination, const uint64_t nbytes) {
   return Status::Ok();
 }
 
-/* ****************************** */
-/*   CONSTRUCTORS & DESTRUCTORS   */
-/* ****************************** */
+// =======================================================
+//      Buffer
+// =======================================================
 
 Buffer::Buffer()
     : BufferBase()
@@ -157,7 +155,7 @@ Buffer::Buffer(const Buffer& buff)
   }
 }
 
-Buffer::Buffer(Buffer&& buff)
+Buffer::Buffer(Buffer&& buff) noexcept
     : Buffer() {
   swap(buff);
 }
@@ -165,10 +163,6 @@ Buffer::Buffer(Buffer&& buff)
 Buffer::~Buffer() {
   clear();
 }
-
-/* ****************************** */
-/*               API              */
-/* ****************************** */
 
 void* Buffer::data() const {
   return nonconst_data();
@@ -356,9 +350,71 @@ Status Buffer::ensure_alloced_size(const uint64_t nbytes) {
   return this->realloc(new_alloc_size);
 }
 
-/* ****************************** */
-/*          PRIVATE METHODS       */
-/* ****************************** */
+// =======================================================
+//      ConstBuffer
+// =======================================================
+ConstBuffer::ConstBuffer(Buffer* buff)
+        : ConstBuffer(buff->data(), buff->size()) {
+}
+
+ConstBuffer::ConstBuffer(const void* data, const uint64_t size)
+        : BufferBase(data, size) {
+}
+
+const void* ConstBuffer::data() const {
+  return const_data();
+}
+
+const void* ConstBuffer::cur_data() const {
+  return const_unread_data();
+}
+
+uint64_t ConstBuffer::nbytes_left_to_read() const {
+  return size_ - offset_;
+}
+
+void ConstBuffer::read_with_shift(
+        uint64_t* buffer, const uint64_t nbytes, const uint64_t offset) {
+  // For easy reference
+  const uint64_t buffer_cell_num = nbytes / sizeof(uint64_t);
+  const void* data_c = static_cast<const char*>(data_) + offset_;
+  auto data = static_cast<const uint64_t*>(data_c);
+
+  // Write shifted offsets
+  for (uint64_t i = 0; i < buffer_cell_num; ++i)
+    buffer[i] = offset + data[i];
+
+  offset_ += nbytes;
+}
+
+// =======================================================
+//      PreallocatedBuffer
+// =======================================================
+PreallocatedBuffer::PreallocatedBuffer(const void* data, const uint64_t size)
+        : BufferBase(data, size) {
+}
+
+void* PreallocatedBuffer::cur_data() const {
+  return nonconst_unread_data();
+}
+
+const void* PreallocatedBuffer::data() const {
+  return const_data();
+}
+
+uint64_t PreallocatedBuffer::free_space() const {
+  return size_ - offset_;
+}
+
+Status PreallocatedBuffer::write(const void* buffer, const uint64_t nbytes) {
+  if (offset_ + nbytes > size_)
+    return Status::PreallocatedBufferError("Write would overflow buffer.");
+
+  std::memcpy((char*)data_ + offset_, buffer, nbytes);
+  offset_ += nbytes;
+
+  return Status::Ok();
+}
 
 }  // namespace sm
 }  // namespace tiledb

@@ -27,54 +27,5 @@
  *
  * @section DESCRIPTION
  *
- * This file implements class PreallocatedBuffer.
+ * This file does nothing
  */
-
-#include "tiledb/sm/buffer/preallocated_buffer.h"
-#include "tiledb/common/logger.h"
-
-using namespace tiledb::common;
-
-namespace tiledb {
-namespace sm {
-
-/* ****************************** */
-/*   CONSTRUCTORS & DESTRUCTORS   */
-/* ****************************** */
-
-PreallocatedBuffer::PreallocatedBuffer(const void* data, const uint64_t size)
-    : BufferBase(data, size) {
-}
-
-/* ****************************** */
-/*               API              */
-/* ****************************** */
-
-void* PreallocatedBuffer::cur_data() const {
-  return nonconst_unread_data();
-}
-
-const void* PreallocatedBuffer::data() const {
-  return const_data();
-}
-
-uint64_t PreallocatedBuffer::free_space() const {
-  return size_ - offset_;
-}
-
-Status PreallocatedBuffer::write(const void* buffer, const uint64_t nbytes) {
-  if (offset_ + nbytes > size_)
-    return Status::PreallocatedBufferError("Write would overflow buffer.");
-
-  std::memcpy((char*)data_ + offset_, buffer, nbytes);
-  offset_ += nbytes;
-
-  return Status::Ok();
-}
-
-/* ****************************** */
-/*          PRIVATE METHODS       */
-/* ****************************** */
-
-}  // namespace sm
-}  // namespace tiledb

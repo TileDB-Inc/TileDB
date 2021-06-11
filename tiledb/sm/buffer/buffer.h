@@ -33,9 +33,8 @@
 #ifndef TILEDB_BUFFER_H
 #define TILEDB_BUFFER_H
 
-#include <cinttypes>
-
 #include "tiledb/common/status.h"
+#include <cinttypes>
 
 using namespace tiledb::common;
 
@@ -44,6 +43,9 @@ namespace sm {
 
 class ConstBuffer;
 
+// =======================================================
+//      BufferBase
+// =======================================================
 /**
  * Base class for `Buffer` and `ConstBuffer`
  *
@@ -113,18 +115,19 @@ class BufferBase {
   uint64_t offset_;
 };
 
-/** Enables reading from and writing to a buffer. */
+// =======================================================
+//      Buffer
+// =======================================================
+/**
+ * General-purpose buffer. Manages own memory. Writeable.
+ */
 class Buffer : public BufferBase {
  public:
-  /* ********************************* */
-  /*     CONSTRUCTORS & DESTRUCTORS    */
-  /* ********************************* */
-
-  /** Constructor. */
+  /** Default constructor. */
   Buffer();
 
   /**
-   * Constructor.
+   * Non-owning constructor.
    *
    * Initializes the buffer to "wrap" the input data and size. The buffer being
    * constructed does not make a copy of the input data, and thus does not own
@@ -146,14 +149,16 @@ class Buffer : public BufferBase {
   Buffer(const Buffer& buff);
 
   /** Move constructor. */
-  Buffer(Buffer&& buff);
+  Buffer(Buffer&& buff) noexcept;
+
+  /** Copy-assign operator. */
+  Buffer& operator=(const Buffer& buff);
+
+  /** Move-assign operator. */
+  Buffer& operator=(Buffer&& buff);
 
   /** Destructor. */
   ~Buffer();
-
-  /* ********************************* */
-  /*                API                */
-  /* ********************************* */
 
   /** Returns the buffer data. */
   void* data() const;
@@ -278,17 +283,7 @@ class Buffer : public BufferBase {
    */
   Status write_with_shift(ConstBuffer* buff, uint64_t offset);
 
-  /** Copy-assign operator. */
-  Buffer& operator=(const Buffer& buff);
-
-  /** Move-assign operator. */
-  Buffer& operator=(Buffer&& buff);
-
  private:
-  /* ********************************* */
-  /*         PRIVATE ATTRIBUTES        */
-  /* ********************************* */
-
   /**
    * True if the object owns the data buffer, which means that it is
    * responsible for allocating and freeing it.
@@ -298,10 +293,6 @@ class Buffer : public BufferBase {
   /** The allocated buffer size. */
   uint64_t alloced_size_;
 
-  /* ********************************* */
-  /*          PRIVATE METHODS          */
-  /* ********************************* */
-
   /**
    * Ensure that the allocation is equal to or larger than the given number of
    * bytes.
@@ -310,6 +301,148 @@ class Buffer : public BufferBase {
    * @return Status
    */
   Status ensure_alloced_size(uint64_t nbytes);
+};
+
+// =======================================================
+//      ConstBuffer
+// =======================================================
+/**
+ * A read-only buffer fully-initialized at construction. It does not manage
+ * memory; its storage is subordinate to some other object.
+ */
+class ConstBuffer : public BufferBase {
+ public:
+  /** Default constructor deleted. */
+  ConstBuffer() = delete;
+
+  /**
+   * Ordinary constructor.
+   *
+   * @param data The data of the buffer.
+   * @param size The size of the buffer.
+   */
+  ConstBuffer(const void* data, uint64_t size);
+
+  /**
+   * Constructor from a general-purpose buffer.
+   *
+   * @param buff The buffer the object will encapsulate, working on its
+   *     data and size, but using a separate local offset, without affecting
+   *     the input buffer.
+   */
+  explicit ConstBuffer(Buffer* buff);
+
+  /** Destructor. */
+  ~ConstBuffer() = default;
+
+  /** Returns the buffer data. */
+  const void* data() const;
+
+  /** Returns pointer to data at the current offset. */
+  const void* cur_data() const;
+
+  /** Returns the number of bytes left for reading. */
+  uint64_t nbytes_left_to_read() const;
+
+  /**
+   * This is a special function used for reading from a buffer that stores
+   * uint64_t values. It reads a number of bytes from the local buffer and
+   * writes them to the input buffer, after adding *offset* to each read
+   * uint64_t value.
+   *
+   * @param buf The buffer to write to when reading from the local buffer.
+   * @param nbytes The number of bytes to read.
+   * @param offset The offset to add to each uint64_t value.
+   * @return void.
+   */
+  void read_with_shift(uint64_t* buf, uint64_t nbytes, uint64_t offset);
+
+  /**
+   * Returns a value from the buffer of type T.
+   *
+   * @tparam T The type of the value to be read.
+   * @param offset The offset in the local buffer to read from.
+   * @return The desired value of type T.
+   */
+  template <class T>
+  inline T value(uint64_t offset) const {
+    return ((const T*)(((const char*)data_) + offset))[0];
+  }
+
+  /**
+   * Returns the value at the current offset of the buffer of type T.
+   *
+   * @tparam T The type of the value to be returned.
+   * @return The value to be returned of type T.
+   */
+  template <class T>
+  inline T value() const {
+    return ((const T*)(((const char*)data_) + offset_))[0];
+  }
+};
+
+// =======================================================
+//      PreallocatedBuffer
+// =======================================================
+/**
+ * Writeable buffer that uses pre-allocated storage provided externally. Does
+ * not expand storage on write.
+ */
+class PreallocatedBuffer : public BufferBase {
+ public:
+  /** Default constructor deleted. */
+  PreallocatedBuffer() = delete;
+
+  /**
+   * Constructor.
+   *
+   * @param data The data of the buffer.
+   * @param size The size of the buffer.
+   */
+  PreallocatedBuffer(const void* data, uint64_t size);
+
+  /** Returns the buffer data pointer at the current offset. */
+  void* cur_data() const;
+
+  /** Returns the buffer data. */
+  const void* data() const;
+
+  /** Returns the "free space" in the buffer, which is the size minus the
+   * current offset. */
+  uint64_t free_space() const;
+
+  /**
+   * Returns a value from the buffer of type T.
+   *
+   * @tparam T The type of the value to be read.
+   * @param offset The offset in the local buffer to read from.
+   * @return The desired value of type T.
+   */
+  template <class T>
+  inline T value(uint64_t offset) const {
+    return ((const T*)(((const char*)data_) + offset))[0];
+  }
+
+  /**
+   * Returns the value at the current offset of the buffer of type T.
+   *
+   * @tparam T The type of the value to be returned.
+   * @return The value to be returned of type T.
+   */
+  template <class T>
+  inline T value() const {
+    return ((const T*)(((const char*)data_) + offset_))[0];
+  }
+
+  /**
+   * Writes exactly *nbytes* into the local buffer by reading from the
+   * input buffer *buf*.
+   *
+   * @param buffer The buffer to read from.
+   * @param nbytes Number of bytes to write.
+   * @return Status.
+   */
+  Status write(const void* buffer, uint64_t nbytes);
 };
 
 }  // namespace sm
