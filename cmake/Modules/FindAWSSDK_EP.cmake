@@ -94,12 +94,21 @@ if (NOT AWSSDK_FOUND)
       set(CMAKE_GENERATOR_PLATFORM "")
     endif()
 
+    if (WIN32)
+      find_package(Git REQUIRED)
+      set(CONDITIONAL_PATCH cd ${CMAKE_SOURCE_DIR} && ${GIT_EXECUTABLE} apply --ignore-whitespace -p1 --unsafe-paths --verbose --directory=${TILEDB_EP_SOURCE_DIR}/ep_awssdk < ${TILEDB_CMAKE_INPUTS_DIR}/patches/ep_awssdk/awsccommon.patch)
+    else()
+      set(CONDITIONAL_PATCH patch -N -p1 < ${TILEDB_CMAKE_INPUTS_DIR}/patches/ep_awssdk/awsccommon.patch)
+    endif()
+
     ExternalProject_Add(ep_awssdk
       PREFIX "externals"
       # Set download name to avoid collisions with only the version number in the filename
       DOWNLOAD_NAME ep_awssdk.zip
       URL "https://github.com/aws/aws-sdk-cpp/archive/1.8.84.zip"
       URL_HASH SHA1=e32a53a01c75ca7fdfe9feed9c5bbcedd98708e3
+      PATCH_COMMAND
+        ${CONDITIONAL_PATCH}
       CMAKE_ARGS
         -DCMAKE_BUILD_TYPE=${AWS_CMAKE_BUILD_TYPE}
         -DENABLE_TESTING=OFF
