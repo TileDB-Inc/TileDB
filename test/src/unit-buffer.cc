@@ -211,7 +211,9 @@ TEST_CASE("Buffer: Overflow on read", "[buffer][Buffer]") {
   REQUIRE(!st.ok());
 }
 
-TEST_CASE("Buffer: Overflow on set_offset", "[buffer][Buffer]") {
+// Disabled by default with [.]
+// Test fails an `assert`. MSVC does not use std::exception for assert.
+TEST_CASE("Buffer: Overflow on set_offset", "[buffer][Buffer][.]") {
   char data[3] = {1, 2, 3};
   auto buff = Buffer(data, 3);
 

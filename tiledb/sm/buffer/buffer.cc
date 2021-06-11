@@ -99,10 +99,9 @@ void BufferBase::reset_offset() {
 }
 
 void BufferBase::set_offset(const uint64_t offset) {
-  // If the offset is invalid we ignore it.
-  // Arguably we should throw an exception, but that's too disruptive for now.
-  if (offset > size_)
-    return;
+  if (offset > size_) {
+    assert(offset <= size_);
+  }
   offset_ = offset;
 }
 
