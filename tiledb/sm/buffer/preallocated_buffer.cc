@@ -43,50 +43,23 @@ namespace sm {
 /* ****************************** */
 
 PreallocatedBuffer::PreallocatedBuffer(const void* data, const uint64_t size)
-    : data_(data)
-    , offset_(0)
-    , size_(size) {
+    : BufferBase(data, size) {
 }
 
 /* ****************************** */
 /*               API              */
 /* ****************************** */
 
-void PreallocatedBuffer::advance_offset(const uint64_t nbytes) {
-  assert(offset_ + nbytes <= size_);
-  offset_ += nbytes;
-}
-
 void* PreallocatedBuffer::cur_data() const {
-  if (data_ == nullptr)
-    return nullptr;
-  return (char*)data_ + offset_;
+  return nonconst_unread_data();
 }
 
 const void* PreallocatedBuffer::data() const {
-  return data_;
+  return const_data();
 }
 
 uint64_t PreallocatedBuffer::free_space() const {
   return size_ - offset_;
-}
-
-uint64_t PreallocatedBuffer::offset() const {
-  return offset_;
-}
-
-Status PreallocatedBuffer::read(void* buffer, const uint64_t nbytes) {
-  if (offset_ + nbytes > size_)
-    return Status::PreallocatedBufferError("Read buffer overflow");
-
-  memcpy(buffer, (char*)data_ + offset_, nbytes);
-  offset_ += nbytes;
-
-  return Status::Ok();
-}
-
-uint64_t PreallocatedBuffer::size() const {
-  return size_;
 }
 
 Status PreallocatedBuffer::write(const void* buffer, const uint64_t nbytes) {

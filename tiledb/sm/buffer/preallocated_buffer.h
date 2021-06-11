@@ -36,6 +36,7 @@
 #include <cinttypes>
 
 #include "tiledb/common/status.h"
+#include "tiledb/sm/buffer/buffer.h"
 
 using namespace tiledb::common;
 
@@ -46,7 +47,7 @@ namespace sm {
  * Convenience class wrapping a pre-allocated memory region in a class that
  * tracks an offset when reading and writing to the region.
  */
-class PreallocatedBuffer {
+class PreallocatedBuffer : public BufferBase {
  public:
   /* ********************************* */
   /*     CONSTRUCTORS & DESTRUCTORS    */
@@ -58,14 +59,11 @@ class PreallocatedBuffer {
    * @param data The data of the buffer.
    * @param size The size of the buffer.
    */
-  PreallocatedBuffer(const void* data, const uint64_t size);
+  PreallocatedBuffer(const void* data, uint64_t size);
 
   /* ********************************* */
   /*                API                */
   /* ********************************* */
-
-  /** Advances the offset by *nbytes*. */
-  void advance_offset(const uint64_t nbytes);
 
   /** Returns the buffer data pointer at the current offset. */
   void* cur_data() const;
@@ -77,21 +75,6 @@ class PreallocatedBuffer {
    * current offset. */
   uint64_t free_space() const;
 
-  /** Returns the buffer offset. */
-  uint64_t offset() const;
-
-  /**
-   * Reads from the internal buffer into the input buffer.
-   *
-   * @param buffer The buffer to write to when reading from the local buffer.
-   * @param nbytes The number of bytes to read.
-   * @return Status.
-   */
-  Status read(void* buffer, const uint64_t nbytes);
-
-  /** Returns the size of the buffer. */
-  uint64_t size() const;
-
   /**
    * Returns a value from the buffer of type T.
    *
@@ -100,7 +83,7 @@ class PreallocatedBuffer {
    * @return The desired value of type T.
    */
   template <class T>
-  inline T value(const uint64_t offset) const {
+  inline T value(uint64_t offset) const {
     return ((const T*)(((const char*)data_) + offset))[0];
   }
 
@@ -123,21 +106,7 @@ class PreallocatedBuffer {
    * @param nbytes Number of bytes to write.
    * @return Status.
    */
-  Status write(const void* buffer, const uint64_t nbytes);
-
- private:
-  /* ********************************* */
-  /*         PRIVATE ATTRIBUTES        */
-  /* ********************************* */
-
-  /** The (read-only) buffer data. */
-  const void* data_;
-
-  /** The current offset in the buffer to read from. */
-  uint64_t offset_;
-
-  /** The size of the buffer. */
-  uint64_t size_;
+  Status write(const void* buffer, uint64_t nbytes);
 };
 
 }  // namespace sm
