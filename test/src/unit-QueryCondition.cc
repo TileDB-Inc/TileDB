@@ -189,6 +189,8 @@ void test_apply_cells<char*>(
   REQUIRE(query_condition
               .init(std::string(field_name), cmp_value, 2 * sizeof(char), op)
               .ok());
+  // Run Check
+  REQUIRE(query_condition.check(array_schema).ok());
 
   bool nullable = array_schema->attribute(field_name)->nullable();
 
@@ -259,6 +261,8 @@ void test_apply_cells<char*>(
       REQUIRE(
           query_condition_eq_null.init(std::string(field_name), nullptr, 0, op)
               .ok());
+      // Run Check
+      REQUIRE(query_condition_eq_null.check(array_schema).ok());
 
       ResultCellSlab result_cell_slab_eq_null(result_tile, 0, cells);
       std::vector<ResultCellSlab> result_cell_slabs_eq_null;
@@ -361,6 +365,8 @@ void test_apply_cells(
   REQUIRE(
       query_condition.init(std::string(field_name), &cmp_value, sizeof(T), op)
           .ok());
+  // Run Check
+  REQUIRE(query_condition.check(array_schema).ok());
 
   // Build expected indexes of cells that meet the query condition
   // criteria.
@@ -814,6 +820,8 @@ TEST_CASE(
                   sizeof(uint64_t),
                   QueryConditionOp::GT)
               .ok());
+  // Run Check
+  REQUIRE(query_condition_1.check(&array_schema).ok());
   uint64_t cmp_value_2 = 6;
   QueryCondition query_condition_2;
   REQUIRE(query_condition_2
@@ -823,6 +831,8 @@ TEST_CASE(
                   sizeof(uint64_t),
                   QueryConditionOp::LE)
               .ok());
+  // Run Check
+  REQUIRE(query_condition_2.check(&array_schema).ok());
   QueryCondition query_condition_3;
   REQUIRE(query_condition_1
               .combine(
