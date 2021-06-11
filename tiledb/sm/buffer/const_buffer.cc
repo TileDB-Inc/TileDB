@@ -44,10 +44,12 @@ namespace sm {
 /* ****************************** */
 
 ConstBuffer::ConstBuffer(Buffer* buff)
-  : ConstBuffer(buff->data(), buff->size()) {}
+    : ConstBuffer(buff->data(), buff->size()) {
+}
 
 ConstBuffer::ConstBuffer(const void* data, const uint64_t size)
-  : BufferBase(data,size) {}
+    : BufferBase(data, size) {
+}
 
 /* ****************************** */
 /*               API              */

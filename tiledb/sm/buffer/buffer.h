@@ -113,8 +113,6 @@ class BufferBase {
   uint64_t offset_;
 };
 
-
-
 /** Enables reading from and writing to a buffer. */
 class Buffer : public BufferBase {
  public:

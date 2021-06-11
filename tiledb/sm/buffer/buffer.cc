@@ -46,16 +46,22 @@ namespace sm {
 /*   BufferBase   */
 /* ************** */
 BufferBase::BufferBase()
-        : data_(nullptr), size_(0), offset_(0) {};
+    : data_(nullptr)
+    , size_(0)
+    , offset_(0){};
 
 BufferBase::BufferBase(void* data, const uint64_t size)
-        : data_(data), size_(size), offset_(0) {};
+    : data_(data)
+    , size_(size)
+    , offset_(0){};
 
 /*
  * const_cast is safe here because BufferBase methods do not modify data.
  */
 BufferBase::BufferBase(const void* data, const uint64_t size)
-        : data_(const_cast<void *>(data)), size_(size), offset_(0) {};
+    : data_(const_cast<void*>(data))
+    , size_(size)
+    , offset_(0){};
 
 uint64_t BufferBase::size() const {
   return size_;
@@ -77,7 +83,7 @@ void* BufferBase::nonconst_unread_data() const {
     return nullptr;
   }
   // Cast to byte type because offset is measured in bytes
-  return static_cast<int8_t *>(data_) + offset_;
+  return static_cast<int8_t*>(data_) + offset_;
 }
 
 const void* BufferBase::const_unread_data() const {
@@ -95,7 +101,8 @@ void BufferBase::reset_offset() {
 void BufferBase::set_offset(const uint64_t offset) {
   // If the offset is invalid we ignore it.
   // Arguably we should throw an exception, but that's too disruptive for now.
-  if (offset > size_) return;
+  if (offset > size_)
+    return;
   offset_ = offset;
 }
 
@@ -114,10 +121,10 @@ bool BufferBase::end() const {
 
 Status BufferBase::read(void* destination, const uint64_t nbytes) {
   if (nbytes > size_ - offset_) {
-    return LOG_STATUS(
-            Status::BufferError("Read buffer overflow; may not read beyond buffer size"));
+    return LOG_STATUS(Status::BufferError(
+        "Read buffer overflow; may not read beyond buffer size"));
   }
-  std::memcpy(destination, static_cast<char *>(data_) + offset_, nbytes);
+  std::memcpy(destination, static_cast<char*>(data_) + offset_, nbytes);
   offset_ += nbytes;
   return Status::Ok();
 }
@@ -127,23 +134,27 @@ Status BufferBase::read(void* destination, const uint64_t nbytes) {
 /* ****************************** */
 
 Buffer::Buffer()
-  : BufferBase(), owns_data_(true), alloced_size_(0)
-{}
+    : BufferBase()
+    , owns_data_(true)
+    , alloced_size_(0) {
+}
 
 Buffer::Buffer(void* data, const uint64_t size)
-  : BufferBase(data, size), owns_data_(false), alloced_size_(0)
-{}
+    : BufferBase(data, size)
+    , owns_data_(false)
+    , alloced_size_(0) {
+}
 
 Buffer::Buffer(const Buffer& buff)
-  : BufferBase(buff.data_, buff.size_) {
+    : BufferBase(buff.data_, buff.size_) {
   offset_ = buff.offset_;
   owns_data_ = buff.owns_data_;
   alloced_size_ = buff.alloced_size_;
 
   if (buff.owns_data_ && buff.data_ != nullptr) {
-      data_ = tdb_malloc(alloced_size_);
-      assert(data_);
-      std::memcpy(data_, buff.data_, buff.alloced_size_);
+    data_ = tdb_malloc(alloced_size_);
+    assert(data_);
+    std::memcpy(data_, buff.data_, buff.alloced_size_);
   }
 }
 
@@ -188,8 +199,8 @@ void* Buffer::cur_data() const {
 }
 
 void* Buffer::data(const uint64_t offset) const {
-  auto data = static_cast<char *>(nonconst_data());
-  if (data == nullptr){
+  auto data = static_cast<char*>(nonconst_data());
+  if (data == nullptr) {
     return nullptr;
   }
   return data + offset;

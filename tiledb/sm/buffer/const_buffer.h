@@ -38,7 +38,6 @@
 
 #include <cinttypes>
 
-
 using namespace tiledb::common;
 
 namespace tiledb {
