@@ -191,6 +191,9 @@ class SubarrayPartitioner {
   /* ********************************* */
 
   /** Returns the current partition. */
+  const Subarray& current() const;
+
+  /** Returns the current partition. */
   Subarray& current();
 
   /** Returns the current partition info. */
