@@ -33,8 +33,8 @@
 #ifndef TILEDB_BUFFER_H
 #define TILEDB_BUFFER_H
 
-#include "tiledb/common/status.h"
 #include <cinttypes>
+#include "tiledb/common/status.h"
 
 using namespace tiledb::common;
 

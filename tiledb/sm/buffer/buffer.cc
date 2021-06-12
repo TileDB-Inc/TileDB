@@ -33,7 +33,6 @@
 #include "tiledb/sm/buffer/buffer.h"
 #include "tiledb/common/heap_memory.h"
 #include "tiledb/common/logger.h"
-#include "tiledb/sm/buffer/const_buffer.h"
 
 #include <iostream>
 
@@ -354,11 +353,11 @@ Status Buffer::ensure_alloced_size(const uint64_t nbytes) {
 //      ConstBuffer
 // =======================================================
 ConstBuffer::ConstBuffer(Buffer* buff)
-        : ConstBuffer(buff->data(), buff->size()) {
+    : ConstBuffer(buff->data(), buff->size()) {
 }
 
 ConstBuffer::ConstBuffer(const void* data, const uint64_t size)
-        : BufferBase(data, size) {
+    : BufferBase(data, size) {
 }
 
 const void* ConstBuffer::data() const {
@@ -374,7 +373,7 @@ uint64_t ConstBuffer::nbytes_left_to_read() const {
 }
 
 void ConstBuffer::read_with_shift(
-        uint64_t* buffer, const uint64_t nbytes, const uint64_t offset) {
+    uint64_t* buffer, const uint64_t nbytes, const uint64_t offset) {
   // For easy reference
   const uint64_t buffer_cell_num = nbytes / sizeof(uint64_t);
   const void* data_c = static_cast<const char*>(data_) + offset_;
@@ -391,7 +390,7 @@ void ConstBuffer::read_with_shift(
 //      PreallocatedBuffer
 // =======================================================
 PreallocatedBuffer::PreallocatedBuffer(const void* data, const uint64_t size)
-        : BufferBase(data, size) {
+    : BufferBase(data, size) {
 }
 
 void* PreallocatedBuffer::cur_data() const {

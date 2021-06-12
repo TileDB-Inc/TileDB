@@ -32,7 +32,6 @@
  */
 
 #include "tiledb/sm/buffer/buffer.h"
-#include "tiledb/sm/buffer/const_buffer.h"
 
 #include <catch.hpp>
 #include <iostream>
