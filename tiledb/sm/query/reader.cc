@@ -3337,8 +3337,12 @@ tdb_unique_ptr<Reader::ResultCellSlabsIndex> Reader::compute_rcs_index(
   // The result cell slab ranges must be sorted in ascending order for the
   // selective decompression intersection algorithm. For 1-dimensional arrays,
   // the result cell slab ranges are guaranteed to be sorted in ascending
-  // order. For arrays with more than one dimension, we must sort them.
-  if (array_schema_->dim_num() > 1) {
+  // order. For arrays with more than one dimension or multi range queries,
+  // we must sort them.
+  auto& partitioner = read_state_.partitioner_;
+  const auto& subarray = partitioner.current();
+  auto range_num = subarray.range_num();
+  if (array_schema_->dim_num() > 1 || range_num > 1) {
     struct RangeCompare {
       inline bool operator()(
           const std::pair<uint64_t, uint64_t>& a,
