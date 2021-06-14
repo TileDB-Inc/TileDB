@@ -129,6 +129,13 @@ if (NOT CURL_FOUND AND TILEDB_SUPERBUILD)
       set(WITH_ZLIB "--with-zlib")
     endif()
 
+    # Support cross compilation of MacOS
+    if (CMAKE_OSX_ARCHITECTURES STREQUAL arm64)
+      set(CURL_CROSS_COMPILATION_FLAGS "CFLAGS=${CFLAGS} -arch arm64" "LDFLAGS=${LDFLAGS} -arch arm64" --host=aarch64-apple-darwin)
+    elseif(CMAKE_OSX_ARCHITECTURES STREQUAL x86_64)
+      set(CURL_CROSS_COMPILATION_FLAGS "CFLAGS=${CFLAGS} -arch x86_64" "LDFLAGS=${LDFLAGS} -arch x86_64" --host=x86_64-apple-darwin)
+    endif()
+
     ExternalProject_Add(ep_curl
       PREFIX "externals"
       URL "https://curl.se/download/curl-7.74.0.tar.gz"
@@ -174,6 +181,7 @@ if (NOT CURL_FOUND AND TILEDB_SUPERBUILD)
           --disable-tftp
           ${WITH_SSL}
           ${WITH_ZLIB}
+          ${CURL_CROSS_COMPILATION_FLAGS}
       BUILD_IN_SOURCE TRUE
       BUILD_COMMAND $(MAKE)
       INSTALL_COMMAND $(MAKE) install
