@@ -1826,8 +1826,8 @@ Status Subarray::compute_tile_coords_col() {
     for (uint64_t j = 0; j < ranges_[d].size(); ++j) {
       auto dim_dom = (const T*)domain[d].data();
       auto r = (const T*)ranges_[d][j].data();
-      tile_start = (r[0] - dim_dom[0]) / tile_extent;
-      tile_end = (r[1] - dim_dom[0]) / tile_extent;
+      tile_start = Dimension::tile_idx(r[0], dim_dom[0], tile_extent);
+      tile_end = Dimension::tile_idx(r[1], dim_dom[0], tile_extent);
       for (uint64_t t = tile_start; t <= tile_end; ++t)
         coords_set[d].insert(t);
     }
@@ -1886,8 +1886,8 @@ Status Subarray::compute_tile_coords_row() {
     auto dim_dom = (const T*)domain[d].data();
     for (uint64_t j = 0; j < ranges_[d].size(); ++j) {
       auto r = (const T*)ranges_[d][j].data();
-      tile_start = (r[0] - dim_dom[0]) / tile_extent;
-      tile_end = (r[1] - dim_dom[0]) / tile_extent;
+      tile_start = Dimension::tile_idx(r[0], dim_dom[0], tile_extent);
+      tile_end = Dimension::tile_idx(r[1], dim_dom[0], tile_extent);
       for (uint64_t t = tile_start; t <= tile_end; ++t)
         coords_set[d].insert(t);
     }
