@@ -469,10 +469,10 @@ class Dimension {
   template <class T>
   static bool overlap(const Range& r1, const Range& r2);
 
-  /** Return ratio of the overalp of the two input 1D ranges over `r2`. */
+  /** Return ratio of the overlap of the two input 1D ranges over `r2`. */
   double overlap_ratio(const Range& r1, const Range& r2) const;
 
-  /** Return ratio of the overalp of the two input 1D ranges over `r2`. */
+  /** Return ratio of the overlap of the two input 1D ranges over `r2`. */
   template <class T>
   static double overlap_ratio(const Range& r1, const Range& r2);
 

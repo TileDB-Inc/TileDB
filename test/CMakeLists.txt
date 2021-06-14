@@ -98,6 +98,7 @@ list(APPEND TILEDB_CORE_INCLUDE_DIR "${CMAKE_CURRENT_SOURCE_DIR}/../tiledb/sm/c_
 set(TILEDB_TEST_SOURCES
   src/helpers.h
   src/helpers.cc
+  src/helpers-dimension.h
   src/unit-azure.cc
   src/unit-backwards_compat.cc
   src/unit-buffer.cc
