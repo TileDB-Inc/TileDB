@@ -83,7 +83,7 @@ if (NOT BZIP2_FOUND)
         URL_HASH SHA1=bf7badf7e248e0ecf465d33c2f5aeec774209227
         CMAKE_ARGS -DCMAKE_INSTALL_PREFIX=${TILEDB_EP_INSTALL_PREFIX}
         UPDATE_COMMAND ""
-        PATCH_COMMAND 
+        PATCH_COMMAND
           ${CMAKE_COMMAND} -E copy ${TILEDB_CMAKE_INPUTS_DIR}/patches/ep_bzip2/CMakeLists.txt ${CMAKE_CURRENT_BINARY_DIR}/externals/src/ep_bzip2
         LOG_DOWNLOAD TRUE
         LOG_CONFIGURE TRUE
@@ -92,6 +92,14 @@ if (NOT BZIP2_FOUND)
         LOG_OUTPUT_ON_FAILURE ${TILEDB_LOG_OUTPUT_ON_FAILURE}
       )
     else()
+      if (CMAKE_OSX_ARCHITECTURES STREQUAL arm64)
+        set(BZIP2_CFLAGS "-fPIC -target arm64-apple-darwin")
+      elseif(CMAKE_OSX_ARCHITECTURES STREQUAL x86_64)
+        set(BZIP2_CFLAGS "-fPIC -target x86_64-apple-darwin")
+      else()
+        set(BZIP2_CFLAGS "-fPIC")
+      endif()
+
       # We build bzip2 with -fPIC on non-Windows platforms so that we can link the static library
       # to the shared TileDB library. This allows us to avoid having to install the bzip2 libraries
       # alongside TileDB.
@@ -102,7 +110,7 @@ if (NOT BZIP2_FOUND)
         CONFIGURE_COMMAND ""
         BUILD_IN_SOURCE TRUE
         BUILD_COMMAND ""
-        INSTALL_COMMAND $(MAKE) CFLAGS=-fPIC PREFIX=${TILEDB_EP_INSTALL_PREFIX} install
+        INSTALL_COMMAND $(MAKE) CFLAGS=${BZIP2_CFLAGS} PREFIX=${TILEDB_EP_INSTALL_PREFIX} install
         UPDATE_COMMAND ""
         LOG_DOWNLOAD TRUE
         LOG_CONFIGURE TRUE
