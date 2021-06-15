@@ -86,10 +86,20 @@ stages:
              ARTIFACT_OS: 'linux'
              ARTIFACT_EXTRAS: 'full'
            macOS:
-             imageName: 'macOS-10.14'
+             imageName: 'macOS-10.15'
              CXX: clang++
              ARTIFACT_OS: 'macos'
              ARTIFACT_EXTRAS: 'full'
+             CMAKE_OSX_ARCHITECTURES: "x86_64"
+           macOS_arm64:
+             imageName: 'macOS-10.15'
+             CXX: clang++
+             ARTIFACT_OS: 'macos'
+             ARTIFACT_EXTRAS: 'full'
+             TILEDB_GCS: OFF
+             TILEDB_WERROR: OFF
+             CMAKE_OSX_ARCHITECTURES: "arm64"
+             MACOSX_DEPLOYMENT_TARGET: 11
        pool:
          vmImage: $(imageName)
        steps:
@@ -102,11 +112,11 @@ stages:
              imageName: 'vs2017-win2016'
              # Only S3 variable is currently supported in boostrap powershell
              TILEDB_S3: ON
-#             TILEDB_AZURE: OFF
+             TILEDB_AZURE: ON
 #             TILEDB_GCS: OFF
 #             TILEDB_HDFS: OFF
              TILEDB_STATIC: OFF
-#             TILEDB_SERIALIZATION: OFF
+             TILEDB_SERIALIZATION: ON
              TILEDB_FORCE_BUILD_DEPS: ON
              ARTIFACT_OS: 'windows'
              ARTIFACT_EXTRAS: 'full'
