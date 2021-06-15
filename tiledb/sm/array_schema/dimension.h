@@ -194,7 +194,7 @@ class Dimension {
   }
 
   /**
-   *  Rounds the value down to the tile boundary for floaring point values.
+   *  Rounds the value down to the tile boundary for floating point values.
    *
    * @param v The value.
    * @param domain_low The minimum value for the domain.
@@ -206,7 +206,7 @@ class Dimension {
       typename std::enable_if<!std::is_integral<T>::value>::type* = nullptr>
   static T round_to_tile(
       const T& v, const T& domain_low, const T& tile_extent) {
-    return (v - domain_low) / tile_extent * tile_extent + domain_low;
+    return floor((v - domain_low) / tile_extent) * tile_extent + domain_low;
   }
 
   /**
@@ -275,7 +275,8 @@ class Dimension {
       typename std::enable_if<!std::is_integral<T>::value>::type* = nullptr>
   static T tile_coord_high(
       uint64_t tile_num, const T& domain_low, const T& tile_extent) {
-    return domain_low + ++tile_num * tile_extent - 1;
+    return std::nextafter(
+        domain_low + ++tile_num * tile_extent, std::numeric_limits<T>::min());
   }
 
   /**
