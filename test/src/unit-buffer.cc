@@ -194,6 +194,7 @@ TEST_CASE("ConstBuffer: Overflow on read", "[buffer][ConstBuffer]") {
 
   CHECK(buff.size() == 3);
   buff.advance_offset(2);
+  CHECK(buff.offset() == 2);
   uint64_t n = std::numeric_limits<uint64_t>::max() - 1;
   auto st = buff.read(data, n);
   REQUIRE(!st.ok());
@@ -205,22 +206,30 @@ TEST_CASE("Buffer: Overflow on read", "[buffer][Buffer]") {
 
   CHECK(buff.size() == 3);
   buff.advance_offset(2);
+  CHECK(buff.offset() == 2);
   uint64_t n = std::numeric_limits<uint64_t>::max() - 1;
   auto st = buff.read(data, n);
   REQUIRE(!st.ok());
 }
 
-// Disabled by default with [.]
-// Test fails an `assert`. MSVC does not use std::exception for assert.
-TEST_CASE("Buffer: Overflow on set_offset", "[buffer][Buffer][.]") {
+TEST_CASE("Buffer: Overflow on set_offset 1", "[buffer][Buffer]") {
   char data[3] = {1, 2, 3};
   auto buff = Buffer(data, 3);
 
   CHECK(buff.size() == 3);
-  // This function invocation should be invalid, but legacy usage is not known
-  // to work with an exception. Instead, we only require the weaker
-  // postcondition that it not violate the invariant.
-  buff.set_offset(4);
+  CHECK(buff.offset() == 0);
+  REQUIRE_THROWS(buff.set_offset(4));
+  CHECK(buff.offset() <= buff.size());
+}
+
+TEST_CASE("Buffer: Overflow on set_offset 2", "[buffer][Buffer]") {
+  char data[3] = {1, 2, 3};
+  auto buff = Buffer(data, 3);
+
+  CHECK(buff.size() == 3);
+  buff.advance_offset(2);
+  CHECK(buff.offset() == 2);
+  REQUIRE_THROWS(buff.set_offset(4));
   CHECK(buff.offset() <= buff.size());
 }
 
@@ -228,7 +237,6 @@ TEST_CASE("Buffer: Overflow on set_offset", "[buffer][Buffer][.]") {
  * `advance_offset` did not have a legacy of documented behavior. Below we treat
  * it as if advancing past the end is the same as advancing to the end.
  */
-
 TEST_CASE("Buffer: advance_offset past end", "[buffer][Buffer]") {
   char data[3] = {1, 2, 3};
   auto buff = Buffer(data, 3);
@@ -240,8 +248,9 @@ TEST_CASE("Buffer: advance_offset past end", "[buffer][Buffer]") {
 TEST_CASE("Buffer: Overflow on advance_offset", "[buffer][Buffer]") {
   char data[3] = {1, 2, 3};
   auto buff = Buffer(data, 3);
-  CHECK(buff.size() == 3);
+  REQUIRE(buff.size() == 3);
   buff.advance_offset(1);
+  REQUIRE(buff.offset() == 1);
   // Max value acts as a signed value of -1 when naively added to the offset
   uint64_t n = std::numeric_limits<uint64_t>::max();
   buff.advance_offset(n);

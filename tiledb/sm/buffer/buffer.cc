@@ -27,7 +27,8 @@
  *
  * @section DESCRIPTION
  *
- * This file implements classes BufferBase and Buffer.
+ * This file implements classes BufferBase, Buffer, ConstBuffer, and
+ * PreallocatedBuffer.
  */
 
 #include "tiledb/sm/buffer/buffer.h"
@@ -41,9 +42,9 @@ using namespace tiledb::common;
 namespace tiledb {
 namespace sm {
 
-// =======================================================
-//      BufferBase
-// =======================================================
+//───────────────────────────────────────────────────────
+// BufferBase
+//───────────────────────────────────────────────────────
 
 BufferBase::BufferBase()
     : data_(nullptr)
@@ -96,9 +97,7 @@ void BufferBase::reset_offset() {
 }
 
 void BufferBase::set_offset(const uint64_t offset) {
-  if (offset > size_) {
-    assert(offset <= size_);
-  }
+  assert_offset_is_valid(offset);
   offset_ = offset;
 }
 
@@ -125,9 +124,15 @@ Status BufferBase::read(void* destination, const uint64_t nbytes) {
   return Status::Ok();
 }
 
-// =======================================================
-//      Buffer
-// =======================================================
+void BufferBase::assert_offset_is_valid(uint64_t offset) const {
+  if (offset > size_) {
+    throw std::out_of_range("BufferBase::set_offset");
+  }
+}
+
+//───────────────────────────────────────────────────────
+// Buffer
+//───────────────────────────────────────────────────────
 
 Buffer::Buffer()
     : BufferBase()
@@ -349,9 +354,10 @@ Status Buffer::ensure_alloced_size(const uint64_t nbytes) {
   return this->realloc(new_alloc_size);
 }
 
-// =======================================================
-//      ConstBuffer
-// =======================================================
+//───────────────────────────────────────────────────────
+// ConstBuffer
+//───────────────────────────────────────────────────────
+
 ConstBuffer::ConstBuffer(Buffer* buff)
     : ConstBuffer(buff->data(), buff->size()) {
 }
@@ -386,9 +392,10 @@ void ConstBuffer::read_with_shift(
   offset_ += nbytes;
 }
 
-// =======================================================
-//      PreallocatedBuffer
-// =======================================================
+//───────────────────────────────────────────────────────
+// PreallocatedBuffer
+//───────────────────────────────────────────────────────
+
 PreallocatedBuffer::PreallocatedBuffer(const void* data, const uint64_t size)
     : BufferBase(data, size) {
 }
@@ -406,7 +413,7 @@ uint64_t PreallocatedBuffer::free_space() const {
 }
 
 Status PreallocatedBuffer::write(const void* buffer, const uint64_t nbytes) {
-  if (offset_ + nbytes > size_)
+  if (nbytes > size_ - offset_)
     return Status::PreallocatedBufferError("Write would overflow buffer.");
 
   std::memcpy((char*)data_ + offset_, buffer, nbytes);

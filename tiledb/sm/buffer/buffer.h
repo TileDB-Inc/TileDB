@@ -27,7 +27,8 @@
  *
  * @section DESCRIPTION
  *
- * This file defines class Buffer.
+ * This file defines classes BufferBase, Buffer, ConstBuffer, and
+ * PreallocatedBuffer.
  */
 
 #ifndef TILEDB_BUFFER_H
@@ -43,11 +44,11 @@ namespace sm {
 
 class ConstBuffer;
 
-// =======================================================
-//      BufferBase
-// =======================================================
+//───────────────────────────────────────────────────────
+// BufferBase
+//───────────────────────────────────────────────────────
 /**
- * Base class for `Buffer` and `ConstBuffer`
+ * Base class for `Buffer`, `ConstBuffer`, and `PreallocatedBuffer`
  *
  * Responsible for maintaining an read offset in the range [0..size_]. Not
  * responsible for memory management.
@@ -69,7 +70,7 @@ class BufferBase {
   /** Advances the offset by *nbytes*. */
   void advance_offset(uint64_t nbytes);
 
-  /** Checks if reading has reached the end of the buffer. */
+  /** Predicate "offset is at the end of the buffer". */
   bool end() const;
 
   /**
@@ -92,11 +93,14 @@ class BufferBase {
   /** Returns the buffer data as a pointer to constant. */
   const void* const_data() const;
 
-  /** Returns the buffer at the current read offset */
+  /** Returns the buffer at the current offset */
   void* nonconst_unread_data() const;
 
-  /** Returns the buffer at the current read offset as a pointer to constant */
+  /** Returns the buffer at the current offset as a pointer to constant */
   const void* const_unread_data() const;
+
+  /** Throws range_error if offset is not valid. Does nothing otherwise. */
+  void assert_offset_is_valid(uint64_t offset) const;
 
   /** The buffer data. */
   /**
@@ -108,16 +112,16 @@ class BufferBase {
   /** Size of the buffer data. */
   uint64_t size_;
 
-  /** The current buffer read position in bytes, i.e. sizeof(char). */
+  /** The current buffer position in bytes, i.e. sizeof(char). */
   /**
    * @invariant offset_ <= size_
    */
   uint64_t offset_;
 };
 
-// =======================================================
-//      Buffer
-// =======================================================
+//───────────────────────────────────────────────────────
+// Buffer
+//───────────────────────────────────────────────────────
 /**
  * General-purpose buffer. Manages own memory. Writeable.
  */
@@ -223,6 +227,7 @@ class Buffer : public BufferBase {
    */
   template <class T>
   T value(uint64_t offset) const {
+    assert_offset_is_valid(offset);
     return ((T*)(((char*)data_) + offset))[0];
   }
 
@@ -233,6 +238,7 @@ class Buffer : public BufferBase {
    * @return The requested pointer.
    */
   void* value_ptr(uint64_t offset) const {
+    assert_offset_is_valid(offset);
     return ((void*)(((char*)data_) + offset));
   }
 
@@ -303,9 +309,9 @@ class Buffer : public BufferBase {
   Status ensure_alloced_size(uint64_t nbytes);
 };
 
-// =======================================================
-//      ConstBuffer
-// =======================================================
+//───────────────────────────────────────────────────────
+// ConstBuffer
+//───────────────────────────────────────────────────────
 /**
  * A read-only buffer fully-initialized at construction. It does not manage
  * memory; its storage is subordinate to some other object.
@@ -366,6 +372,7 @@ class ConstBuffer : public BufferBase {
    */
   template <class T>
   inline T value(uint64_t offset) const {
+    assert_offset_is_valid(offset);
     return ((const T*)(((const char*)data_) + offset))[0];
   }
 
@@ -381,9 +388,9 @@ class ConstBuffer : public BufferBase {
   }
 };
 
-// =======================================================
-//      PreallocatedBuffer
-// =======================================================
+//───────────────────────────────────────────────────────
+// PreallocatedBuffer
+//───────────────────────────────────────────────────────
 /**
  * Writeable buffer that uses pre-allocated storage provided externally. Does
  * not expand storage on write.
@@ -420,6 +427,7 @@ class PreallocatedBuffer : public BufferBase {
    */
   template <class T>
   inline T value(uint64_t offset) const {
+    assert_offset_is_valid(offset);
     return ((const T*)(((const char*)data_) + offset))[0];
   }
 
