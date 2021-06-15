@@ -222,43 +222,32 @@ void StringEmptyFx::write_array(const std::string& array_name) {
   REQUIRE(rc == TILEDB_OK);
   rc = tiledb_query_set_layout(ctx, query, TILEDB_GLOBAL_ORDER);
   REQUIRE(rc == TILEDB_OK);
-  rc = tiledb_query_set_buffer(ctx, query, "d1", buffer_d1, &buffer_size_d1);
+  rc = tiledb_query_set_data_buffer(
+      ctx, query, "d1", buffer_d1, &buffer_size_d1);
   REQUIRE(rc == TILEDB_OK);
-  rc = tiledb_query_set_buffer_var(
-      ctx,
-      query,
-      "a1",
-      buffer_a1_offsets,
-      &buffer_a1_offsets_size,
-      buffer_a1,
-      &buffer_a1_size);
+  rc = tiledb_query_set_data_buffer(
+      ctx, query, "a1", buffer_a1, &buffer_a1_size);
   REQUIRE(rc == TILEDB_OK);
-  rc = tiledb_query_set_buffer_var(
-      ctx,
-      query,
-      "a2",
-      buffer_a2_offsets,
-      &buffer_a2_offsets_size,
-      buffer_a2,
-      &buffer_a2_size);
+  rc = tiledb_query_set_offsets_buffer(
+      ctx, query, "a1", buffer_a1_offsets, &buffer_a1_offsets_size);
   REQUIRE(rc == TILEDB_OK);
-  rc = tiledb_query_set_buffer_var(
-      ctx,
-      query,
-      "a3",
-      buffer_a3_offsets,
-      &buffer_a3_offsets_size,
-      buffer_a3,
-      &buffer_a3_size);
+  rc = tiledb_query_set_data_buffer(
+      ctx, query, "a2", buffer_a2, &buffer_a2_size);
   REQUIRE(rc == TILEDB_OK);
-  rc = tiledb_query_set_buffer_var(
-      ctx,
-      query,
-      "a4",
-      buffer_a4_offsets,
-      &buffer_a4_offsets_size,
-      buffer_a4,
-      &buffer_a4_size);
+  rc = tiledb_query_set_offsets_buffer(
+      ctx, query, "a2", buffer_a2_offsets, &buffer_a2_offsets_size);
+  REQUIRE(rc == TILEDB_OK);
+  rc = tiledb_query_set_data_buffer(
+      ctx, query, "a3", buffer_a3, &buffer_a3_size);
+  REQUIRE(rc == TILEDB_OK);
+  rc = tiledb_query_set_offsets_buffer(
+      ctx, query, "a3", buffer_a3_offsets, &buffer_a3_offsets_size);
+  REQUIRE(rc == TILEDB_OK);
+  rc = tiledb_query_set_data_buffer(
+      ctx, query, "a4", buffer_a4, &buffer_a4_size);
+  REQUIRE(rc == TILEDB_OK);
+  rc = tiledb_query_set_offsets_buffer(
+      ctx, query, "a4", buffer_a4_offsets, &buffer_a4_offsets_size);
   REQUIRE(rc == TILEDB_OK);
 
   // Submit query
@@ -357,43 +346,32 @@ void StringEmptyFx::read_array(const std::string& array_name) {
   auto buffer_a4_off = (uint64_t*)std::malloc(buffer_a4_off_size);
   void* buffer_a4_val = std::malloc(buffer_a4_val_size);
 
-  rc = tiledb_query_set_buffer(ctx, query, "d1", buffer_d1, &buffer_d1_size);
+  rc = tiledb_query_set_data_buffer(
+      ctx, query, "d1", buffer_d1, &buffer_d1_size);
   REQUIRE(rc == TILEDB_OK);
-  rc = tiledb_query_set_buffer_var(
-      ctx,
-      query,
-      "a1",
-      buffer_a1_off,
-      &buffer_a1_off_size,
-      buffer_a1_val,
-      &buffer_a1_val_size);
+  rc = tiledb_query_set_data_buffer(
+      ctx, query, "a1", buffer_a1_val, &buffer_a1_val_size);
   REQUIRE(rc == TILEDB_OK);
-  rc = tiledb_query_set_buffer_var(
-      ctx,
-      query,
-      "a2",
-      buffer_a2_off,
-      &buffer_a2_off_size,
-      buffer_a2_val,
-      &buffer_a2_val_size);
+  rc = tiledb_query_set_offsets_buffer(
+      ctx, query, "a1", buffer_a1_off, &buffer_a1_off_size);
   REQUIRE(rc == TILEDB_OK);
-  rc = tiledb_query_set_buffer_var(
-      ctx,
-      query,
-      "a3",
-      buffer_a3_off,
-      &buffer_a3_off_size,
-      buffer_a3_val,
-      &buffer_a3_val_size);
+  rc = tiledb_query_set_data_buffer(
+      ctx, query, "a2", buffer_a2_val, &buffer_a2_val_size);
   REQUIRE(rc == TILEDB_OK);
-  rc = tiledb_query_set_buffer_var(
-      ctx,
-      query,
-      "a4",
-      buffer_a4_off,
-      &buffer_a4_off_size,
-      buffer_a4_val,
-      &buffer_a4_val_size);
+  rc = tiledb_query_set_offsets_buffer(
+      ctx, query, "a2", buffer_a2_off, &buffer_a2_off_size);
+  REQUIRE(rc == TILEDB_OK);
+  rc = tiledb_query_set_data_buffer(
+      ctx, query, "a3", buffer_a3_val, &buffer_a3_val_size);
+  REQUIRE(rc == TILEDB_OK);
+  rc = tiledb_query_set_offsets_buffer(
+      ctx, query, "a3", buffer_a3_off, &buffer_a3_off_size);
+  REQUIRE(rc == TILEDB_OK);
+  rc = tiledb_query_set_data_buffer(
+      ctx, query, "a4", buffer_a4_val, &buffer_a4_val_size);
+  REQUIRE(rc == TILEDB_OK);
+  rc = tiledb_query_set_offsets_buffer(
+      ctx, query, "a4", buffer_a4_off, &buffer_a4_off_size);
   REQUIRE(rc == TILEDB_OK);
 
   // Submit query

@@ -2850,6 +2850,61 @@ int32_t tiledb_query_set_buffer_var_nullable(
   return TILEDB_OK;
 }
 
+int32_t tiledb_query_set_data_buffer(
+    tiledb_ctx_t* ctx,
+    tiledb_query_t* query,
+    const char* name,
+    void* buffer,
+    uint64_t* buffer_size) {  // Sanity check
+  if (sanity_check(ctx) == TILEDB_ERR || sanity_check(ctx, query) == TILEDB_ERR)
+    return TILEDB_ERR;
+
+  // Set attribute buffer
+  if (SAVE_ERROR_CATCH(
+          ctx, query->query_->set_data_buffer(name, buffer, buffer_size)))
+    return TILEDB_ERR;
+
+  return TILEDB_OK;
+}
+
+int32_t tiledb_query_set_offsets_buffer(
+    tiledb_ctx_t* ctx,
+    tiledb_query_t* query,
+    const char* name,
+    uint64_t* buffer_offsets,
+    uint64_t* buffer_offsets_size) {  // Sanity check
+  if (sanity_check(ctx) == TILEDB_ERR || sanity_check(ctx, query) == TILEDB_ERR)
+    return TILEDB_ERR;
+
+  // Set attribute buffer
+  if (SAVE_ERROR_CATCH(
+          ctx,
+          query->query_->set_offsets_buffer(
+              name, buffer_offsets, buffer_offsets_size)))
+    return TILEDB_ERR;
+
+  return TILEDB_OK;
+}
+
+int32_t tiledb_query_set_validity_buffer(
+    tiledb_ctx_t* ctx,
+    tiledb_query_t* query,
+    const char* name,
+    uint8_t* buffer_validity,
+    uint64_t* buffer_validity_size) {  // Sanity check
+  if (sanity_check(ctx) == TILEDB_ERR || sanity_check(ctx, query) == TILEDB_ERR)
+    return TILEDB_ERR;
+
+  // Set attribute buffer
+  if (SAVE_ERROR_CATCH(
+          ctx,
+          query->query_->set_validity_buffer(
+              name, buffer_validity, buffer_validity_size)))
+    return TILEDB_ERR;
+
+  return TILEDB_OK;
+}
+
 int32_t tiledb_query_get_buffer(
     tiledb_ctx_t* ctx,
     tiledb_query_t* query,
@@ -2941,6 +2996,60 @@ int32_t tiledb_query_get_buffer_var_nullable(
               buffer_val_size,
               buffer_validity_bytemap,
               buffer_validity_bytemap_size)))
+    return TILEDB_ERR;
+
+  return TILEDB_OK;
+}
+
+int32_t tiledb_query_get_data_buffer(
+    tiledb_ctx_t* ctx,
+    tiledb_query_t* query,
+    const char* name,
+    void** buffer,
+    uint64_t** buffer_size) {
+  // Sanity check
+  if (sanity_check(ctx) == TILEDB_ERR || sanity_check(ctx, query) == TILEDB_ERR)
+    return TILEDB_ERR;
+
+  // Get attribute buffer
+  if (SAVE_ERROR_CATCH(
+          ctx, query->query_->get_data_buffer(name, buffer, buffer_size)))
+    return TILEDB_ERR;
+
+  return TILEDB_OK;
+}
+
+int32_t tiledb_query_get_offsets_buffer(
+    tiledb_ctx_t* ctx,
+    tiledb_query_t* query,
+    const char* name,
+    uint64_t** buffer,
+    uint64_t** buffer_size) {
+  // Sanity check
+  if (sanity_check(ctx) == TILEDB_ERR || sanity_check(ctx, query) == TILEDB_ERR)
+    return TILEDB_ERR;
+
+  // Get attribute buffer
+  if (SAVE_ERROR_CATCH(
+          ctx, query->query_->get_offsets_buffer(name, buffer, buffer_size)))
+    return TILEDB_ERR;
+
+  return TILEDB_OK;
+}
+
+int32_t tiledb_query_get_validity_buffer(
+    tiledb_ctx_t* ctx,
+    tiledb_query_t* query,
+    const char* name,
+    uint8_t** buffer,
+    uint64_t** buffer_size) {
+  // Sanity check
+  if (sanity_check(ctx) == TILEDB_ERR || sanity_check(ctx, query) == TILEDB_ERR)
+    return TILEDB_ERR;
+
+  // Get attribute buffer
+  if (SAVE_ERROR_CATCH(
+          ctx, query->query_->get_validity_buffer(name, buffer, buffer_size)))
     return TILEDB_ERR;
 
   return TILEDB_OK;

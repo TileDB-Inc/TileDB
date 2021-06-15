@@ -707,7 +707,7 @@ TEST_CASE_METHOD(
   // Set buffers
   int a[10];
   uint64_t a_size = sizeof(a);
-  rc = tiledb_query_set_buffer(ctx_, query, "a", a, &a_size);
+  rc = tiledb_query_set_data_buffer(ctx_, query, "a", a, &a_size);
   CHECK(rc == TILEDB_OK);
 
   // This should fail upon submit!
@@ -1029,7 +1029,7 @@ TEST_CASE_METHOD(
   // Set buffers
   for (const auto& b : buffers) {
     if (b.second.var_ == nullptr) {  // Fixed-sized
-      rc = tiledb_query_set_buffer(
+      rc = tiledb_query_set_data_buffer(
           ctx_,
           query,
           b.first.c_str(),
@@ -1037,14 +1037,19 @@ TEST_CASE_METHOD(
           (uint64_t*)&(b.second.fixed_size_));
       CHECK(rc == TILEDB_OK);
     } else {  // Var-sized
-      rc = tiledb_query_set_buffer_var(
+      rc = tiledb_query_set_data_buffer(
+          ctx_,
+          query,
+          b.first.c_str(),
+          b.second.var_,
+          (uint64_t*)&(b.second.var_size_));
+      CHECK(rc == TILEDB_OK);
+      rc = tiledb_query_set_offsets_buffer(
           ctx_,
           query,
           b.first.c_str(),
           (uint64_t*)b.second.fixed_,
-          (uint64_t*)&(b.second.fixed_size_),
-          b.second.var_,
-          (uint64_t*)&(b.second.var_size_));
+          (uint64_t*)&(b.second.fixed_size_));
       CHECK(rc == TILEDB_OK);
     }
   }
