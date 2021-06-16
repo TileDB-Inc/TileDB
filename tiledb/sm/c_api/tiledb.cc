@@ -2329,11 +2329,11 @@ int32_t tiledb_array_schema_load_with_key(
 
     // Load array schema
     auto storage_manager = ctx->ctx_->storage_manager();
-    std::vector<tiledb::sm::URI> ls_uris;
+
     if (SAVE_ERROR_CATCH(
             ctx,
             storage_manager->load_array_schema(
-                uri, key, &((*array_schema)->array_schema_), &ls_uris))) {
+                uri, key, &((*array_schema)->array_schema_)))) {
       delete *array_schema;
       return TILEDB_ERR;
     }

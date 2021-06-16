@@ -142,9 +142,8 @@ Status Array::open_without_fragments(
     RETURN_NOT_OK(
         rest_client->get_array_schema_from_rest(array_uri_, &array_schema_));
   } else {
-    std::vector<URI> ls_uris;
     RETURN_NOT_OK(storage_manager_->array_open_for_reads_without_fragments(
-        array_uri_, *encryption_key_, &array_schema_, &ls_uris));
+        array_uri_, *encryption_key_, &array_schema_));
   }
 
   is_open_ = true;

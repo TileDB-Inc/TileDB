@@ -180,15 +180,12 @@ class StorageManager {
    * @param enc_key The encryption key to use.
    * @param array_schema The array schema to be retrieved after the
    *     array is opened.
-   * @param array_ls_uris The vector of uris from ls of array directory, if it
-   * is not empty, will use it.
    * @return Status
    */
   Status array_open_for_reads_without_fragments(
       const URI& array_uri,
       const EncryptionKey& enc_key,
-      ArraySchema** array_schema,
-      std::vector<URI>* array_ls_uris);
+      ArraySchema** array_schema);
 
   /** Opens an array for writes.
    *
@@ -563,8 +560,7 @@ class StorageManager {
   Status get_fragment_uris(
       const URI& array_uri,
       std::vector<URI>* fragment_uris,
-      URI* meta_uri,
-      std::vector<URI>* array_ls_uris) const;
+      URI* meta_uri) const;
 
   /** Returns the current map of any set tags. */
   const std::unordered_map<std::string, std::string>& tags() const;
@@ -667,28 +663,20 @@ class StorageManager {
    * @param array_uri The URI path of the array.
    * @param uris The vector of array schema URIS sorted from earliest to the
    * latest.
-   * @param array_ls_uris The vector of uris from ls of array directory, if it
-   * is not empty, will use it.
    * @return Status
    */
   Status get_array_schema_uris(
-      const URI& array_uri,
-      std::vector<URI>* schema_uris,
-      std::vector<URI>* array_ls_uris) const;
+      const URI& array_uri, std::vector<URI>* schema_uris) const;
 
   /**
    * Get latest array schema for an array uri.
    *
    * @param array_uri The URI path of the array.
    * @param uri The latest array schema URI.
-   * @param array_ls_uris The vector of uris from ls of array directory, if it
-   * is not empty, will use it.
    * @return Status
    */
   Status get_latest_array_schema_uri(
-      const URI& array_uri,
-      URI* schema_uri,
-      std::vector<URI>* array_ls_uris) const;
+      const URI& array_uri, URI* schema_uri) const;
 
   /**
    * Loads the schema of an array from persistent storage into memory.
@@ -696,15 +684,12 @@ class StorageManager {
    * @param array_uri The URI path of the array.
    * @param encryption_key The encryption key to use.
    * @param array_schema The array schema to be retrieved.
-   * @param array_ls_uris The vector of uris from ls of array directory, if it
-   * is not empty, will use it.
    * @return Status
    */
   Status load_array_schema(
       const URI& array_uri,
       const EncryptionKey& encryption_key,
-      ArraySchema** array_schema,
-      std::vector<URI>* array_ls_uris);
+      ArraySchema** array_schema);
 
   /**
    * Loads the array metadata from persistent storage that were created
@@ -1067,15 +1052,12 @@ class StorageManager {
    * @param open_array The `OpenArray` instance retrieved after opening
    *      the array. Note that its mutex will be locked and its counter
    *      will have been incremented when the function returns.
-   * @param array_ls_uris The vector of uris from ls of array directory, if it
-   * is not empty, will use it.
    * @return Status
    */
   Status array_open_without_fragments(
       const URI& array_uri,
       const EncryptionKey& encryption_key,
-      OpenArray** open_array,
-      std::vector<URI>* array_ls_uris);
+      OpenArray** open_array);
 
   /** Decrement the count of in-progress queries. */
   void decrement_in_progress();
@@ -1093,15 +1075,12 @@ class StorageManager {
    * @param array_uri The array URI.
    * @param open_array The open array object.
    * @param encryption_key The encryption key to use.
-   * @param array_ls_uris The vector of uris from ls of array directory, if it
-   * is not empty, will use it.
    * @return Status
    */
   Status load_array_schema(
       const URI& array_uri,
       OpenArray* open_array,
-      const EncryptionKey& encryption_key,
-      std::vector<URI>* array_ls_uris);
+      const EncryptionKey& encryption_key);
 
   /**
    * Loads the array metadata whose URIs are specified in the input.
