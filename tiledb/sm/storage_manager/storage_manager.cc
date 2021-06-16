@@ -1690,14 +1690,20 @@ Status StorageManager::get_array_schema_uris(
 
   URI schema_folder_uri =
       array_uri.join_path(constants::array_schema_folder_name);
-  std::vector<URI> array_schema_uris;
-  RETURN_NOT_OK(vfs_->ls(schema_folder_uri, &array_schema_uris));
-  if (array_schema_uris.size() > 0) {
-    schema_uris->reserve(schema_uris->size() + array_schema_uris.size());
-    std::copy(
-        array_schema_uris.begin(),
-        array_schema_uris.end(),
-        std::back_inserter(*schema_uris));
+  // Check if schema_folder_uri exists. For some file systems, such as win, ls
+  // will return error if the folder does not exist.
+  bool has_dir = false;
+  RETURN_NOT_OK(vfs_->is_dir(schema_folder_uri, &has_dir));
+  if (has_dir) {
+    std::vector<URI> array_schema_uris;
+    RETURN_NOT_OK(vfs_->ls(schema_folder_uri, &array_schema_uris));
+    if (array_schema_uris.size() > 0) {
+      schema_uris->reserve(schema_uris->size() + array_schema_uris.size());
+      std::copy(
+          array_schema_uris.begin(),
+          array_schema_uris.end(),
+          std::back_inserter(*schema_uris));
+    }
   }
 
   // Check if schema_uris is empty
