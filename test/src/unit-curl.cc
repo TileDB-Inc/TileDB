@@ -46,8 +46,8 @@ TEST_CASE("CURL: Test curl's header parsing callback", "[curl]") {
   // RestClient
   char res_data[] =
       "Location: https://test.url.domain/v1/arrays/testns/test_arr";
-  size_t size = 50;
-  size_t count = 50;
+  size_t size = 1;
+  size_t count = sizeof(res_data);
 
   HeaderCbData userdata;
   std::string ns_array = "testns:test_arr";

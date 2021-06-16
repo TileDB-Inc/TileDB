@@ -367,12 +367,29 @@ void create_array(
   REQUIRE(rc == TILEDB_OK);
 
   // Create array
-  rc = tiledb_array_create_with_key(
-      ctx, array_name.c_str(), array_schema, enc_type, key, key_len);
+  tiledb_config_t* config;
+  tiledb_error_t* error = nullptr;
+  rc = tiledb_config_alloc(&config, &error);
+  REQUIRE(rc == TILEDB_OK);
+  REQUIRE(error == nullptr);
+  std::string encryption_type_string =
+      encryption_type_str((tiledb::sm::EncryptionType)enc_type);
+  rc = tiledb_config_set(
+      config, "sm.encryption_type", encryption_type_string.c_str(), &error);
+  REQUIRE(error == nullptr);
+  rc = tiledb_config_set(config, "sm.encryption_key", key, &error);
+  REQUIRE(rc == TILEDB_OK);
+  REQUIRE(error == nullptr);
+  tiledb::sm::UnitTestConfig::instance().array_encryption_key_length.set(
+      key_len);
+  tiledb_ctx_t* ctx_array;
+  REQUIRE(tiledb_ctx_alloc(config, &ctx_array) == TILEDB_OK);
+  rc = tiledb_array_create(ctx_array, array_name.c_str(), array_schema);
   REQUIRE(rc == TILEDB_OK);
 
   // Clean up
   tiledb_array_schema_free(&array_schema);
+  tiledb_ctx_free(&ctx_array);
 }
 
 void create_s3_bucket(
@@ -787,12 +804,10 @@ void write_array(
   tiledb_error_t* err = nullptr;
   REQUIRE(tiledb_config_alloc(&cfg, &err) == TILEDB_OK);
   REQUIRE(err == nullptr);
-  rc = tiledb_config_set(
-      cfg, "sm.array.timestamp_end", std::to_string(timestamp).c_str(), &err);
+
+  rc = tiledb_array_set_open_timestamp_end(ctx, array, timestamp);
   REQUIRE(rc == TILEDB_OK);
-  REQUIRE(err == nullptr);
-  rc = tiledb_array_set_config(ctx, array, cfg);
-  REQUIRE(rc == TILEDB_OK);
+
   // Open array
   if (encryption_type != TILEDB_NO_ENCRYPTION) {
     std::string encryption_type_string =
@@ -826,7 +841,7 @@ void write_array(
   // Set buffers
   for (const auto& b : buffers) {
     if (b.second.var_ == nullptr) {  // Fixed-sized
-      rc = tiledb_query_set_buffer(
+      rc = tiledb_query_set_data_buffer(
           ctx,
           query,
           b.first.c_str(),
@@ -834,14 +849,19 @@ void write_array(
           (uint64_t*)&(b.second.fixed_size_));
       CHECK(rc == TILEDB_OK);
     } else {  // Var-sized
-      rc = tiledb_query_set_buffer_var(
+      rc = tiledb_query_set_data_buffer(
+          ctx,
+          query,
+          b.first.c_str(),
+          b.second.var_,
+          (uint64_t*)&(b.second.var_size_));
+      CHECK(rc == TILEDB_OK);
+      rc = tiledb_query_set_offsets_buffer(
           ctx,
           query,
           b.first.c_str(),
           (uint64_t*)b.second.fixed_,
-          (uint64_t*)&(b.second.fixed_size_),
-          b.second.var_,
-          (uint64_t*)&(b.second.var_size_));
+          (uint64_t*)&(b.second.fixed_size_));
       CHECK(rc == TILEDB_OK);
     }
   }
@@ -897,7 +917,7 @@ void read_array(
   // Set buffers
   for (const auto& b : buffers) {
     if (b.second.var_ == nullptr) {  // Fixed-sized
-      rc = tiledb_query_set_buffer(
+      rc = tiledb_query_set_data_buffer(
           ctx,
           query,
           b.first.c_str(),
@@ -905,14 +925,19 @@ void read_array(
           (uint64_t*)&(b.second.fixed_size_));
       CHECK(rc == TILEDB_OK);
     } else {  // Var-sized
-      rc = tiledb_query_set_buffer_var(
+      rc = tiledb_query_set_data_buffer(
+          ctx,
+          query,
+          b.first.c_str(),
+          b.second.var_,
+          (uint64_t*)&(b.second.var_size_));
+      CHECK(rc == TILEDB_OK);
+      rc = tiledb_query_set_offsets_buffer(
           ctx,
           query,
           b.first.c_str(),
           (uint64_t*)b.second.fixed_,
-          (uint64_t*)&(b.second.fixed_size_),
-          b.second.var_,
-          (uint64_t*)&(b.second.var_size_));
+          (uint64_t*)&(b.second.fixed_size_));
       CHECK(rc == TILEDB_OK);
     }
   }

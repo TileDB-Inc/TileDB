@@ -32,6 +32,7 @@
 
 #include "test/src/helpers.h"
 #include "tiledb/sm/c_api/tiledb.h"
+#include "tiledb/sm/global_state/unit_test_config.h"
 
 #include <catch.hpp>
 #include <iostream>
@@ -81,9 +82,22 @@ TEST_CASE(
 
   // Array is not encrypted
   const char* key = "12345678901234567890123456789012";
-  rc = tiledb_fragment_info_load_with_key(
-      ctx, fragment_info, TILEDB_AES_256_GCM, key, 32);
+  tiledb_config_t* cfg;
+  tiledb_error_t* err = nullptr;
+  rc = tiledb_config_alloc(&cfg, &err);
+  REQUIRE(rc == TILEDB_OK);
+  REQUIRE(err == nullptr);
+  rc = tiledb_config_set(cfg, "sm.encryption_type", "AES_256_GCM", &err);
+  REQUIRE(err == nullptr);
+  rc = tiledb_config_set(cfg, "sm.encryption_key", key, &err);
+  REQUIRE(rc == TILEDB_OK);
+  REQUIRE(err == nullptr);
+  tiledb_ctx_t* ctx_array_not_encrypted;
+  REQUIRE(tiledb_ctx_alloc(cfg, &ctx_array_not_encrypted) == TILEDB_OK);
+  rc = tiledb_fragment_info_load(ctx_array_not_encrypted, fragment_info);
   CHECK(rc == TILEDB_ERR);
+  tiledb_config_free(&cfg);
+  tiledb_ctx_free(&ctx_array_not_encrypted);
 
   // Write a dense fragment
   QueryBuffers buffers;
@@ -353,14 +367,31 @@ TEST_CASE(
 
   // Test with wrong key
   const char* wrong_key = "12345678901234567890123456789013";
-  rc = tiledb_fragment_info_load_with_key(
-      ctx, fragment_info, TILEDB_AES_256_GCM, wrong_key, 32);
+  tiledb_config_t* cfg;
+  tiledb_error_t* err = nullptr;
+  rc = tiledb_config_alloc(&cfg, &err);
+  REQUIRE(rc == TILEDB_OK);
+  REQUIRE(err == nullptr);
+  rc = tiledb_config_set(cfg, "sm.encryption_type", "AES_256_GCM", &err);
+  REQUIRE(err == nullptr);
+  rc = tiledb_config_set(cfg, "sm.encryption_key", wrong_key, &err);
+  REQUIRE(rc == TILEDB_OK);
+  REQUIRE(err == nullptr);
+  tiledb_ctx_t* ctx_wrong_key;
+  REQUIRE(tiledb_ctx_alloc(cfg, &ctx_wrong_key) == TILEDB_OK);
+  rc = tiledb_fragment_info_load(ctx_wrong_key, fragment_info);
   CHECK(rc == TILEDB_ERR);
+  tiledb_ctx_free(&ctx_wrong_key);
 
   // Load fragment info
-  rc = tiledb_fragment_info_load_with_key(
-      ctx, fragment_info, TILEDB_AES_256_GCM, key, 32);
+  rc = tiledb_config_set(cfg, "sm.encryption_key", key, &err);
+  REQUIRE(rc == TILEDB_OK);
+  REQUIRE(err == nullptr);
+  tiledb_ctx_t* ctx_correct_key;
+  REQUIRE(tiledb_ctx_alloc(cfg, &ctx_correct_key) == TILEDB_OK);
+  rc = tiledb_fragment_info_load(ctx_correct_key, fragment_info);
   CHECK(rc == TILEDB_OK);
+  tiledb_config_free(&cfg);
 
   // No fragments yet
   uint32_t fragment_num;
@@ -386,8 +417,7 @@ TEST_CASE(
       buffers);
 
   // Load fragment info again
-  rc = tiledb_fragment_info_load_with_key(
-      ctx, fragment_info, TILEDB_AES_256_GCM, key, 32);
+  rc = tiledb_fragment_info_load(ctx_correct_key, fragment_info);
   CHECK(rc == TILEDB_OK);
 
   // Get fragment num again
@@ -432,9 +462,9 @@ TEST_CASE(
       buffers);
 
   // Load fragment info again
-  rc = tiledb_fragment_info_load_with_key(
-      ctx, fragment_info, TILEDB_AES_256_GCM, key, 32);
+  rc = tiledb_fragment_info_load(ctx_correct_key, fragment_info);
   CHECK(rc == TILEDB_OK);
+  tiledb_ctx_free(&ctx_correct_key);
 
   // Get fragment num again
   rc = tiledb_fragment_info_get_fragment_num(ctx, fragment_info, &fragment_num);

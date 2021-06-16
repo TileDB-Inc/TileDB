@@ -66,25 +66,32 @@ struct QueryBufferCopyState {
   /** Accumulated number of bytes copied into user's validity buffer. */
   uint64_t validity_size;
 
+  /** Track if the last query added the extra offset. If so we avoid the first
+   * 0th offset on the n+1 query. */
+  bool last_query_added_extra_offset;
+
   /** Constructor. */
   QueryBufferCopyState()
       : offset_size(0)
       , data_size(0)
-      , validity_size(0) {
+      , validity_size(0)
+      , last_query_added_extra_offset(false) {
   }
 
   /** Copy constructor. */
   QueryBufferCopyState(const QueryBufferCopyState& rhs)
       : offset_size(rhs.offset_size)
       , data_size(rhs.data_size)
-      , validity_size(rhs.validity_size) {
+      , validity_size(rhs.validity_size)
+      , last_query_added_extra_offset(rhs.last_query_added_extra_offset) {
   }
 
   /** Move constructor. */
   QueryBufferCopyState(QueryBufferCopyState&& rhs)
       : offset_size(rhs.offset_size)
       , data_size(rhs.data_size)
-      , validity_size(rhs.validity_size) {
+      , validity_size(rhs.validity_size)
+      , last_query_added_extra_offset(rhs.last_query_added_extra_offset) {
   }
 
   /** Destructor. */
@@ -96,6 +103,7 @@ struct QueryBufferCopyState {
     offset_size = rhs.offset_size;
     data_size = rhs.data_size;
     validity_size = rhs.validity_size;
+    last_query_added_extra_offset = rhs.last_query_added_extra_offset;
     return *this;
   }
 
@@ -104,6 +112,7 @@ struct QueryBufferCopyState {
     offset_size = rhs.offset_size;
     data_size = rhs.data_size;
     validity_size = rhs.validity_size;
+    last_query_added_extra_offset = rhs.last_query_added_extra_offset;
     return *this;
   }
 };

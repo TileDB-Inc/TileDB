@@ -520,13 +520,14 @@ void SparseHeterFx::write_sparse_array_float_int64(
   uint64_t d1_size = buff_d1.size() * sizeof(float);
   uint64_t d2_size = buff_d2.size() * sizeof(int64_t);
   uint64_t a_size = buff_a.size() * sizeof(int32_t);
-  rc = tiledb_query_set_buffer(
+  rc = tiledb_query_set_data_buffer(
       ctx_, query, "d1", (void*)buff_d1.data(), &d1_size);
   REQUIRE(rc == TILEDB_OK);
-  rc = tiledb_query_set_buffer(
+  rc = tiledb_query_set_data_buffer(
       ctx_, query, "d2", (void*)buff_d2.data(), &d2_size);
   REQUIRE(rc == TILEDB_OK);
-  rc = tiledb_query_set_buffer(ctx_, query, "a", (void*)buff_a.data(), &a_size);
+  rc = tiledb_query_set_data_buffer(
+      ctx_, query, "a", (void*)buff_a.data(), &a_size);
   REQUIRE(rc == TILEDB_OK);
   rc = tiledb_query_set_layout(ctx_, query, layout);
   REQUIRE(rc == TILEDB_OK);
@@ -564,13 +565,14 @@ void SparseHeterFx::write_sparse_array_int64_float(
   uint64_t d1_size = buff_d1.size() * sizeof(int64_t);
   uint64_t d2_size = buff_d2.size() * sizeof(float);
   uint64_t a_size = buff_a.size() * sizeof(int32_t);
-  rc = tiledb_query_set_buffer(
+  rc = tiledb_query_set_data_buffer(
       ctx_, query, "d1", (void*)buff_d1.data(), &d1_size);
   REQUIRE(rc == TILEDB_OK);
-  rc = tiledb_query_set_buffer(
+  rc = tiledb_query_set_data_buffer(
       ctx_, query, "d2", (void*)buff_d2.data(), &d2_size);
   REQUIRE(rc == TILEDB_OK);
-  rc = tiledb_query_set_buffer(ctx_, query, "a", (void*)buff_a.data(), &a_size);
+  rc = tiledb_query_set_data_buffer(
+      ctx_, query, "a", (void*)buff_a.data(), &a_size);
   REQUIRE(rc == TILEDB_OK);
   rc = tiledb_query_set_layout(ctx_, query, layout);
   REQUIRE(rc == TILEDB_OK);
@@ -614,11 +616,11 @@ void SparseHeterFx::check_read_sparse_array_float_int64(
   tiledb_query_t* query;
   rc = tiledb_query_alloc(ctx_, array, TILEDB_READ, &query);
   REQUIRE(rc == TILEDB_OK);
-  rc = tiledb_query_set_buffer(ctx_, query, "d1", buff_d1_r, &d1_size);
+  rc = tiledb_query_set_data_buffer(ctx_, query, "d1", buff_d1_r, &d1_size);
   REQUIRE(rc == TILEDB_OK);
-  rc = tiledb_query_set_buffer(ctx_, query, "d2", buff_d2_r, &d2_size);
+  rc = tiledb_query_set_data_buffer(ctx_, query, "d2", buff_d2_r, &d2_size);
   REQUIRE(rc == TILEDB_OK);
-  rc = tiledb_query_set_buffer(ctx_, query, "a", buff_a_r, &a_size);
+  rc = tiledb_query_set_data_buffer(ctx_, query, "a", buff_a_r, &a_size);
   REQUIRE(rc == TILEDB_OK);
   rc = tiledb_query_set_layout(ctx_, query, layout);
   REQUIRE(rc == TILEDB_OK);
@@ -678,11 +680,11 @@ void SparseHeterFx::check_read_sparse_array_int64_float(
   tiledb_query_t* query;
   rc = tiledb_query_alloc(ctx_, array, TILEDB_READ, &query);
   REQUIRE(rc == TILEDB_OK);
-  rc = tiledb_query_set_buffer(ctx_, query, "d1", buff_d1_r, &d1_size);
+  rc = tiledb_query_set_data_buffer(ctx_, query, "d1", buff_d1_r, &d1_size);
   REQUIRE(rc == TILEDB_OK);
-  rc = tiledb_query_set_buffer(ctx_, query, "d2", buff_d2_r, &d2_size);
+  rc = tiledb_query_set_data_buffer(ctx_, query, "d2", buff_d2_r, &d2_size);
   REQUIRE(rc == TILEDB_OK);
-  rc = tiledb_query_set_buffer(ctx_, query, "a", buff_a_r, &a_size);
+  rc = tiledb_query_set_data_buffer(ctx_, query, "a", buff_a_r, &a_size);
   REQUIRE(rc == TILEDB_OK);
   rc = tiledb_query_set_layout(ctx_, query, layout);
   REQUIRE(rc == TILEDB_OK);

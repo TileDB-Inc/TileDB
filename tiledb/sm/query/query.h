@@ -383,6 +383,53 @@ class Query {
       uint64_t** buffer_val_size) const;
 
   /**
+   * Retrieves the data buffer of a fixed/var-sized attribute/dimension.
+   *
+   * @param name The buffer attribute/dimension name. An empty string means
+   *     the special default attribute/dimension.
+   * @param buffer The buffer to be retrieved.
+   * @param buffer_size A pointer to the buffer size to be retrieved.
+   * @return Status
+   */
+  Status get_data_buffer(
+      const char* name, void** buffer, uint64_t** buffer_size) const;
+
+  /**
+   * Retrieves the offset buffer for a var-sized attribute/dimension.
+   *
+   * @param name The buffer attribute/dimension name. An empty string means
+   * the special default attribute/dimension.
+   * @param buffer_off The offsets buffer to be retrieved. This buffer holds
+   * the starting offsets of each cell value in the data buffer.
+   * @param buffer_off_size A pointer to the buffer size to be retrieved.
+   * @return Status
+   */
+  Status get_offsets_buffer(
+      const char* name,
+      uint64_t** buffer_off,
+      uint64_t** buffer_off_size) const;
+
+  /**
+   * Retrieves the validity buffer for a nullable attribute/dimension.
+   *
+   * @param name The buffer attribute/dimension name. An empty string means
+   * the special default attribute/dimension.
+   * @param buffer_validity_bytemap The buffer that either have the validity
+   * bytemap associated with the input data to be written, or will hold the
+   * validity bytemap to be read.
+   * @param buffer_validity_bytemap_size In the case of writes, this is the size
+   * of `buffer_validity_bytemap` in bytes. In the case of reads, this initially
+   * contains the allocated size of `buffer_validity_bytemap`, but after the
+   * termination of the query it will contain the size of the useful (read)
+   * data in `buffer_validity_bytemap`.
+   * @return Status
+   */
+  Status get_validity_buffer(
+      const char* name,
+      uint8_t** buffer_validity_bytemap,
+      uint64_t** buffer_validity_bytemap_size) const;
+
+  /**
    * Retrieves the buffer and validity bytemap of a fixed-sized, nullable
    * attribute.
    *
@@ -502,6 +549,67 @@ class Query {
    * Config parameters set here will *only* be applied within the Query.
    */
   Status set_config(const Config& config);
+
+  /**
+   * Sets the data for a fixed/var-sized attribute/dimension.
+   *
+   * @param name The attribute/dimension to set the buffer for.
+   * @param buffer The buffer that will hold the data to be read.
+   * @param buffer_size This initially contains the allocated
+   *     size of `buffer`, but after the termination of the function
+   *     it will contain the size of the useful (read) data in `buffer`.
+   * @param check_null_buffers If true (default), null buffers are not
+   * allowed.
+   * @return Status
+   */
+  Status set_data_buffer(
+      const std::string& name,
+      void* const buffer,
+      uint64_t* const buffer_size,
+      const bool check_null_buffers = true);
+
+  /**
+   * Sets the offset buffer for a var-sized attribute/dimension.
+   *
+   * @param name The attribute/dimension to set the buffer for.
+   * @param buffer_offsets The buffer that will hold the data to be read.
+   *     This buffer holds the starting offsets of each cell value in
+   *     `buffer_val`.
+   * @param buffer_offsets_size This initially contains
+   *     the allocated size of `buffer_off`, but after the termination of the
+   *     function it will contain the size of the useful (read) data in
+   *     `buffer_off`.
+   * @param check_null_buffers If true (default), null buffers are not
+   * allowed.
+   * @return Status
+   */
+  Status set_offsets_buffer(
+      const std::string& name,
+      uint64_t* const buffer_offsets,
+      uint64_t* const buffer_offsets_size,
+      const bool check_null_buffers = true);
+
+  /**
+   * Sets the validity buffer for nullable attribute/dimension.
+   *
+   * @param name The attribute/dimension to set the buffer for.
+   * @param buffer_validity_bytemap The buffer that either have the validity
+   * bytemap associated with the input data to be written, or will hold the
+   * validity bytemap to be read.
+   * @param buffer_validity_bytemap_size In the case of writes, this is the size
+   * of `buffer_validity_bytemap` in bytes. In the case of reads, this initially
+   * contains the allocated size of `buffer_validity_bytemap`, but after the
+   * termination of the query it will contain the size of the useful (read)
+   * data in `buffer_validity_bytemap`.
+   * @param check_null_buffers If true (default), null buffers are not
+   * allowed.
+   * @return Status
+   */
+  Status set_validity_buffer(
+      const std::string& name,
+      uint8_t* const buffer_validity_bytemap,
+      uint64_t* const buffer_validity_bytemap_size,
+      const bool check_null_buffers = true);
 
   /**
    * Get the config of the query.
@@ -711,6 +819,9 @@ class Query {
   /** Returns the query type. */
   QueryType type() const;
 
+  /** Returns the internal stats object. */
+  stats::Stats* stats() const;
+
  private:
   /* ********************************* */
   /*         PRIVATE ATTRIBUTES        */
@@ -754,6 +865,14 @@ class Query {
   /* ********************************* */
 
   Status check_set_fixed_buffer(const std::string& name);
+
+  /**
+   * Internal routine for checking the completeness of all attribute
+   * and dimensions buffers. Iteratively searches that all attributes &
+   * dimenstions buffers have been set correctly
+   * @return Status
+   */
+  Status check_buffers_correctness();
 
   /**
    * Internal routine for setting fixed-sized, nullable attribute buffers with

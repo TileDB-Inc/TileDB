@@ -262,15 +262,6 @@ class Config {
    *
    * **Parameters**
    *
-   * - `sm.array.timestamp_start` <br>
-   *    When set, an array will be opened between this value and
-   *    `sm.array.timestamp_end` (inclusive) upon a read query. <br>
-   *    **Default**: UINT64_MAX
-   * - `sm.array.timestamp_end` <br>
-   *    When set, an array will be opened between
-   *    `sm.array.timestamp_start` and this value (inclusive) upon a read
-   *    query. <br>
-   *    **Default**: UINT64_MAX
    * - `sm.dedup_coords` <br>
    *    If `true`, cells with duplicate coordinates will be removed during
    *    sparse fragment writes. Note that ties during deduplication are broken
@@ -318,11 +309,13 @@ class Config {
    *    `array_meta` (remove consolidated array metadata files). <br>
    *    **Default**: fragments
    * - `sm.vacuum.timestamp_start` <br>
+   *    **Experimental** <br>
    *    When set, an array will be vacuumed between this value and
    *    `sm.vacuum.timestamp_end` (inclusive). <br>
    *    Only for `fragments` and `array_meta` vacuum mode. <br>
    *    **Default**: 0
    * - `sm.vacuum.timestamp_end` <br>
+   *    **Experimental** <br>
    *    When set, an array will be vacuumed between `sm.vacuum.timestamp_start`
    *    and this value (inclusive). <br>
    *    Only for `fragments` and `array_meta` vacuum mode. <br>
@@ -360,11 +353,13 @@ class Config {
    *    considered for consolidation in a single step.<br>
    *    **Default**: 0.0
    * - `sm.consolidation.timestamp_start` <br>
+   *    **Experimental** <br>
    *    When set, an array will be consolidated between this value and
    *    `sm.consolidation.timestamp_end` (inclusive). <br>
    *    Only for `fragments` and `array_meta` consolidation mode. <br>
    *    **Default**: 0
    * - `sm.consolidation.timestamp_end` <br>
+   *    **Experimental** <br>
    *    When set, an array will be consolidated between
    *    `sm.consolidation.timestamp_start` and this value (inclusive). <br>
    *    Only for `fragments` and `array_meta` consolidation mode. <br>

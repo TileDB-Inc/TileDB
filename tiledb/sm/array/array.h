@@ -215,10 +215,19 @@ class Array {
    */
   Status reopen(uint64_t timestamp_start, uint64_t timestamp_end);
 
-  /** Returns the timestamp at which the array was opened. */
+  /** Returns the start timestamp. */
+  uint64_t timestamp_start() const;
+
+  /** Returns the end timestamp. */
   uint64_t timestamp_end() const;
 
-  /** Directly set the timestamp value. */
+  /** Returns the timestamp at which the array was opened. */
+  uint64_t timestamp_end_opened_at() const;
+
+  /** Directly set the timestamp start value. */
+  Status set_timestamp_start(uint64_t timestamp_start);
+
+  /** Directly set the timestamp end value. */
   Status set_timestamp_end(uint64_t timestamp_end);
 
   /** Directly set the array config. */
@@ -356,18 +365,28 @@ class Array {
   QueryType query_type_;
 
   /**
-   * The starting timestamp between which the `open_array_` got opened.
+   * The starting timestamp between to open `open_array_` at.
    * In TileDB, timestamps are in ms elapsed since
    * 1970-01-01 00:00:00 +0000 (UTC).
    */
   uint64_t timestamp_start_;
 
   /**
-   * The ending timestamp between  which the `open_array_` got opened.
+   * The ending timestamp between to open `open_array_` at.
    * In TileDB, timestamps are in ms elapsed since
-   * 1970-01-01 00:00:00 +0000 (UTC).
+   * 1970-01-01 00:00:00 +0000 (UTC). A value of UINT64_T
+   * will be interpretted as the current timestamp.
    */
   uint64_t timestamp_end_;
+
+  /**
+   * The ending timestamp that the array was last opened
+   * at. This is useful when `timestamp_end_` has been
+   * set to UINT64_T. In this scenario, this variable will
+   * store the timestamp for the time that the array was
+   * opened.
+   */
+  uint64_t timestamp_end_opened_at_;
 
   /** TileDB storage manager. */
   StorageManager* storage_manager_;

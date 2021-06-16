@@ -482,19 +482,27 @@ void SmokeTestFx::create_array(
   REQUIRE(rc == TILEDB_OK);
 
   // Create the array with or without encryption
-  if (encryption_type == TILEDB_NO_ENCRYPTION) {
-    rc = tiledb_array_create(
-        ctx_, (FILE_TEMP_DIR + array_name).c_str(), array_schema);
+  if (encryption_type != TILEDB_NO_ENCRYPTION) {
+    tiledb_ctx_free(&ctx_);
+    tiledb_config_t* config;
+    tiledb_error_t* error = nullptr;
+    rc = tiledb_config_alloc(&config, &error);
     REQUIRE(rc == TILEDB_OK);
-  } else {
-    tiledb_array_create_with_key(
-        ctx_,
-        (FILE_TEMP_DIR + array_name).c_str(),
-        array_schema,
-        encryption_type,
-        encryption_key,
-        (uint32_t)strlen(encryption_key));
+    REQUIRE(error == nullptr);
+    std::string encryption_type_string =
+        encryption_type_str((tiledb::sm::EncryptionType)encryption_type);
+    rc = tiledb_config_set(
+        config, "sm.encryption_type", encryption_type_string.c_str(), &error);
+    REQUIRE(error == nullptr);
+    rc = tiledb_config_set(config, "sm.encryption_key", encryption_key, &error);
+    REQUIRE(rc == TILEDB_OK);
+    REQUIRE(error == nullptr);
+    REQUIRE(tiledb_ctx_alloc(config, &ctx_) == TILEDB_OK);
+    tiledb_config_free(&config);
   }
+  rc = tiledb_array_create(
+      ctx_, (FILE_TEMP_DIR + array_name).c_str(), array_schema);
+  REQUIRE(rc == TILEDB_OK);
 
   // Free attributes.
   for (auto& attr : attrs) {
@@ -557,7 +565,7 @@ void SmokeTestFx::write(
   // Set the query buffers.
   for (const auto& test_query_buffer : test_query_buffers) {
     if (test_query_buffer.buffer_offset_ == nullptr) {
-      rc = tiledb_query_set_buffer(
+      rc = tiledb_query_set_data_buffer(
           ctx_,
           query,
           test_query_buffer.name_.c_str(),
@@ -565,14 +573,19 @@ void SmokeTestFx::write(
           test_query_buffer.buffer_size_);
       REQUIRE(rc == TILEDB_OK);
     } else {
-      rc = tiledb_query_set_buffer_var(
+      rc = tiledb_query_set_data_buffer(
+          ctx_,
+          query,
+          test_query_buffer.name_.c_str(),
+          test_query_buffer.buffer_,
+          test_query_buffer.buffer_size_);
+      REQUIRE(rc == TILEDB_OK);
+      rc = tiledb_query_set_offsets_buffer(
           ctx_,
           query,
           test_query_buffer.name_.c_str(),
           static_cast<uint64_t*>(test_query_buffer.buffer_offset_),
-          test_query_buffer.buffer_offset_size_,
-          test_query_buffer.buffer_,
-          test_query_buffer.buffer_size_);
+          test_query_buffer.buffer_offset_size_);
       REQUIRE(rc == TILEDB_OK);
     }
   }
@@ -640,7 +653,7 @@ void SmokeTestFx::read(
   for (size_t i = 0; i < test_query_buffers.size(); ++i) {
     const test_query_buffer_t& test_query_buffer = test_query_buffers[i];
     if (test_query_buffer.buffer_offset_ == nullptr) {
-      rc = tiledb_query_set_buffer(
+      rc = tiledb_query_set_data_buffer(
           ctx_,
           query,
           test_query_buffer.name_.c_str(),
@@ -648,14 +661,19 @@ void SmokeTestFx::read(
           test_query_buffer.buffer_size_);
       REQUIRE(rc == TILEDB_OK);
     } else {
-      rc = tiledb_query_set_buffer_var(
+      rc = tiledb_query_set_data_buffer(
+          ctx_,
+          query,
+          test_query_buffer.name_.c_str(),
+          test_query_buffer.buffer_,
+          test_query_buffer.buffer_size_);
+      REQUIRE(rc == TILEDB_OK);
+      rc = tiledb_query_set_offsets_buffer(
           ctx_,
           query,
           test_query_buffer.name_.c_str(),
           static_cast<uint64_t*>(test_query_buffer.buffer_offset_),
-          test_query_buffer.buffer_offset_size_,
-          test_query_buffer.buffer_,
-          test_query_buffer.buffer_size_);
+          test_query_buffer.buffer_offset_size_);
       REQUIRE(rc == TILEDB_OK);
     }
   }

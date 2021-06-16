@@ -153,15 +153,37 @@ class Writer {
   Status finalize();
 
   /**
-   * Retrieves the buffer of a fixed-sized attribute/dimension.
+   * Retrieves the data buffer of a fixed-sized attribute/dimension.
    *
    * @param name The buffer name.
    * @param buffer The buffer to be retrieved.
    * @param buffer_size A pointer to the buffer size to be retrieved.
    * @return Status
    */
-  Status get_buffer(
+  Status get_data_buffer(
       const std::string& name, void** buffer, uint64_t** buffer_size) const;
+
+  /**
+   * Retrieves the offset buffer of a fixed-sized attribute/dimension.
+   *
+   * @param name The buffer name.
+   * @param buffer The buffer to be retrieved.
+   * @param buffer_size A pointer to the buffer size to be retrieved.
+   * @return Status
+   */
+  Status get_offsets_buffer(
+      const std::string& name, uint64_t** buffer, uint64_t** buffer_size) const;
+
+  /**
+   * Retrieves the validity buffer of a fixed-sized attribute/dimension.
+   *
+   * @param name The buffer name.
+   * @param buffer The buffer to be retrieved.
+   * @param buffer_size A pointer to the buffer size to be retrieved.
+   * @return Status
+   */
+  Status get_validity_buffer(
+      const std::string& name, const ValidityVector** validity_vector) const;
 
   /**
    * Retrieves the offsets and values buffers of a var-sized
@@ -260,7 +282,41 @@ class Writer {
    * @return Status
    */
   Status set_buffer(
+      const std::string& name, void* const buffer, uint64_t* const buffer_size);
+
+  /**
+   * Sets the data buffer for a agnostic (fixed/var) sized attribute/dimension.
+   *
+   * @param name The attribute/dimension to set the buffer for.
+   * @param buffer The buffer that has the input data to be written.
+   * @param buffer_size The size of `buffer` in bytes.
+   * @return Status
+   */
+  Status set_data_buffer(
       const std::string& name, void* buffer, uint64_t* buffer_size);
+
+  /**
+   * Sets the offset buffer for a agnostic (fixed/var) sized
+   * attribute/dimension.
+   *
+   * @param name The attribute/dimension to set the buffer for.
+   * @param buffer The buffer that has the input data to be written.
+   * @param buffer_size The size of `buffer` in bytes.
+   * @return Status
+   */
+  Status set_offsets_buffer(
+      const std::string& name, uint64_t* buffer, uint64_t* buffer_size);
+
+  /**
+   * Sets the validity buffer for a agnostic sized nullable attribute/dimension.
+   *
+   * @param name The attribute/dimension to set the buffer for.
+   * @param buffer The buffer that has the input data to be written.
+   * @param buffer_size The size of `buffer` in bytes.
+   * @return Status
+   */
+  Status set_validity_buffer(
+      const std::string& name, uint8_t* buffer, uint64_t* buffer_size);
 
   /**
    * Sets the buffer for a var-sized attribute/dimension.
@@ -371,7 +427,7 @@ class Writer {
   const Subarray* subarray_ranges() const;
 
   /** Returns `stats_`. */
-  stats::Stats* stats();
+  stats::Stats* stats() const;
 
   /** Performs a write query using its set members. */
   Status write();
@@ -415,8 +471,20 @@ class Writer {
   /** True if at least one separate coordinate buffer is set. */
   bool coord_buffer_is_set_;
 
+  /** True if at least one separate data coordinate buffer is set. */
+  bool coord_data_buffer_is_set_;
+
+  /** True if at least one separate offsets coordinate buffer is set. */
+  bool coord_offsets_buffer_is_set_;
+
   /** Keeps track of the number of coordinates across coordinate buffers. */
   uint64_t coords_num_;
+
+  /** Keeps track of the name of the data buffer once set. */
+  std::string data_buffer_name_;
+
+  /** Keeps track of the name of the offsets buffer once set. */
+  std::string offsets_buffer_name_;
 
   /**
    * If `true`, it will not check if the written coordinates are

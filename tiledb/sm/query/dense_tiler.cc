@@ -408,7 +408,8 @@ void DenseTiler<T>::calculate_first_sub_tile_coords() {
     T dom_start = *(const T*)domain->dimension(d)->domain().start();
     T sub_start = *(const T*)subarray[d].start();
     T tile_extent = *(const T*)domain->tile_extent(d).data();
-    first_sub_tile_coords_[d] = (sub_start - dom_start) / tile_extent;
+    first_sub_tile_coords_[d] =
+        Dimension::tile_idx(sub_start, dom_start, tile_extent);
   }
 }
 
@@ -459,7 +460,8 @@ void DenseTiler<T>::calculate_tile_and_subarray_strides() {
       for (auto d = dim_num - 2; d >= 0; --d) {
         auto tile_extent = (const T*)(&domain->tile_extent(d + 1)[0]);
         assert(tile_extent != nullptr);
-        tile_strides_el_[d] = tile_strides_el_[d + 1] * *tile_extent;
+        tile_strides_el_[d] = Dimension::tile_extent_mult<T>(
+            tile_strides_el_[d + 1], *tile_extent);
       }
     }
   } else {  // COL_MAJOR
@@ -468,7 +470,8 @@ void DenseTiler<T>::calculate_tile_and_subarray_strides() {
       for (auto d = 1; d < dim_num; ++d) {
         auto tile_extent = (const T*)(&domain->tile_extent(d - 1)[0]);
         assert(tile_extent != nullptr);
-        tile_strides_el_[d] = tile_strides_el_[d - 1] * *tile_extent;
+        tile_strides_el_[d] = Dimension::tile_extent_mult<T>(
+            tile_strides_el_[d - 1], *tile_extent);
       }
     }
   }
@@ -546,8 +549,10 @@ std::vector<std::array<T, 2>> DenseTiler<T>::tile_subarray(uint64_t id) const {
   for (unsigned d = 0; d < dim_num; ++d) {
     auto dom_start = *(const T*)domain->dimension(d)->domain().start();
     auto tile_extent = *(const T*)domain->tile_extent(d).data();
-    ret[d][0] = tile_coords_in_dom[d] * tile_extent + dom_start;
-    ret[d][1] = ret[d][0] + tile_extent - 1;
+    ret[d][0] = Dimension::tile_coord_low(
+        tile_coords_in_dom[d], dom_start, tile_extent);
+    ret[d][1] = Dimension::tile_coord_high(
+        tile_coords_in_dom[d], dom_start, tile_extent);
   }
 
   return ret;

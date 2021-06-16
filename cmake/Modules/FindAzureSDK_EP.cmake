@@ -124,6 +124,7 @@ if (NOT AZURESDK_FOUND)
           -DCMAKE_INSTALL_PREFIX=${TILEDB_EP_INSTALL_PREFIX}
           -DCMAKE_CXX_FLAGS=${CXXFLAGS_DEF}
           -DCMAKE_C_FLAGS=${CFLAGS_DEF}
+          -DCMAKE_OSX_ARCHITECTURES=${CMAKE_OSX_ARCHITECTURES}
         PATCH_COMMAND
           cd ${CMAKE_SOURCE_DIR} &&
           ${GIT_EXECUTABLE} apply --ignore-whitespace -p1 --unsafe-paths --verbose --directory=${TILEDB_EP_SOURCE_DIR}/ep_azuresdk < ${TILEDB_CMAKE_INPUTS_DIR}/patches/ep_azuresdk/remove-uuid-dep.patch &&
@@ -151,6 +152,7 @@ if (NOT AZURESDK_FOUND)
           -DCMAKE_INSTALL_PREFIX=${TILEDB_EP_INSTALL_PREFIX}
           -DCMAKE_CXX_FLAGS=${CXXFLAGS_DEF}
           -DCMAKE_C_FLAGS=${CFLAGS_DEF}
+          -DCMAKE_OSX_ARCHITECTURES=${CMAKE_OSX_ARCHITECTURES}
         PATCH_COMMAND
           echo starting patching for azure &&
           ${PATCH} < ${TILEDB_CMAKE_INPUTS_DIR}/patches/ep_azuresdk/remove-uuid-dep.patch &&
