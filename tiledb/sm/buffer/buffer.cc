@@ -88,7 +88,6 @@ const void* BufferBase::cur_data() const {
   return const_cast<const void*>(nonconst_unread_data());
 }
 
-
 uint64_t BufferBase::offset() const {
   return offset_;
 }
