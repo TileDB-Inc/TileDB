@@ -73,6 +73,12 @@ class BufferBase {
   /** Predicate "offset is at the end of the buffer". */
   bool end() const;
 
+  /** Returns the buffer data as a pointer to constant. */
+  const void* data() const;
+
+  /** Returns pointer to data at the current offset. */
+  const void* cur_data() const;
+
   /**
    * Reads from the local data into the input buffer.
    *
@@ -90,14 +96,8 @@ class BufferBase {
   /** Returns the buffer data. */
   void* nonconst_data() const;
 
-  /** Returns the buffer data as a pointer to constant. */
-  const void* const_data() const;
-
   /** Returns the buffer at the current offset */
   void* nonconst_unread_data() const;
-
-  /** Returns the buffer at the current offset as a pointer to constant */
-  const void* const_unread_data() const;
 
   /** Throws range_error if offset is not valid. Does nothing otherwise. */
   void assert_offset_is_valid(uint64_t offset) const;
@@ -277,18 +277,6 @@ class Buffer : public BufferBase {
    */
   Status write(const void* buffer, uint64_t nbytes);
 
-  /**
-   * Writes as much data as possible read from the input buffer *buff*, but
-   * then adds the *offset* value to the read data. The type of each data
-   * value read is uint64_t. This is an auxiliary function used when
-   * reading variable-sized attribute offsets from the disk.
-   *
-   * @param buff The buffer to read from.
-   * @param offset The offset value to be added to the read values.
-   * @return Status
-   */
-  Status write_with_shift(ConstBuffer* buff, uint64_t offset);
-
  private:
   /**
    * True if the object owns the data buffer, which means that it is
@@ -341,27 +329,8 @@ class ConstBuffer : public BufferBase {
   /** Destructor. */
   ~ConstBuffer() = default;
 
-  /** Returns the buffer data. */
-  const void* data() const;
-
-  /** Returns pointer to data at the current offset. */
-  const void* cur_data() const;
-
   /** Returns the number of bytes left for reading. */
   uint64_t nbytes_left_to_read() const;
-
-  /**
-   * This is a special function used for reading from a buffer that stores
-   * uint64_t values. It reads a number of bytes from the local buffer and
-   * writes them to the input buffer, after adding *offset* to each read
-   * uint64_t value.
-   *
-   * @param buf The buffer to write to when reading from the local buffer.
-   * @param nbytes The number of bytes to read.
-   * @param offset The offset to add to each uint64_t value.
-   * @return void.
-   */
-  void read_with_shift(uint64_t* buf, uint64_t nbytes, uint64_t offset);
 
   /**
    * Returns a value from the buffer of type T.
@@ -410,9 +379,6 @@ class PreallocatedBuffer : public BufferBase {
 
   /** Returns the buffer data pointer at the current offset. */
   void* cur_data() const;
-
-  /** Returns the buffer data. */
-  const void* data() const;
 
   /** Returns the "free space" in the buffer, which is the size minus the
    * current offset. */

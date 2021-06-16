@@ -70,7 +70,7 @@ void* BufferBase::nonconst_data() const {
   return data_;
 }
 
-const void* BufferBase::const_data() const {
+const void* BufferBase::data() const {
   // const_cast is safe here because BufferBase methods do not modify storage
   return const_cast<const void*>(data_);
 }
@@ -83,10 +83,11 @@ void* BufferBase::nonconst_unread_data() const {
   return static_cast<int8_t*>(data_) + offset_;
 }
 
-const void* BufferBase::const_unread_data() const {
+const void* BufferBase::cur_data() const {
   // const_cast is safe here because BufferBase methods do not modify storage
   return const_cast<const void*>(nonconst_unread_data());
 }
+
 
 uint64_t BufferBase::offset() const {
   return offset_;
@@ -308,25 +309,6 @@ Status Buffer::write(const void* buffer, const uint64_t nbytes) {
   return Status::Ok();
 }
 
-Status Buffer::write_with_shift(ConstBuffer* buff, const uint64_t offset) {
-  // Sanity check
-  if (!owns_data_)
-    return LOG_STATUS(Status::BufferError(
-        "Cannot write to buffer; Buffer does not own the already stored data"));
-
-  const uint64_t bytes_left_to_write = alloced_size_ - offset_;
-  const uint64_t bytes_left_to_read = buff->nbytes_left_to_read();
-  const uint64_t bytes_to_copy =
-      std::min(bytes_left_to_write, bytes_left_to_read);
-  buff->read_with_shift(
-      (uint64_t*)(((char*)data_ + offset_)), bytes_to_copy, offset);
-
-  offset_ += bytes_to_copy;
-  size_ = offset_;
-
-  return Status::Ok();
-}
-
 Buffer& Buffer::operator=(const Buffer& buff) {
   // Clear any existing allocation.
   clear();
@@ -366,30 +348,8 @@ ConstBuffer::ConstBuffer(const void* data, const uint64_t size)
     : BufferBase(data, size) {
 }
 
-const void* ConstBuffer::data() const {
-  return const_data();
-}
-
-const void* ConstBuffer::cur_data() const {
-  return const_unread_data();
-}
-
 uint64_t ConstBuffer::nbytes_left_to_read() const {
   return size_ - offset_;
-}
-
-void ConstBuffer::read_with_shift(
-    uint64_t* buffer, const uint64_t nbytes, const uint64_t offset) {
-  // For easy reference
-  const uint64_t buffer_cell_num = nbytes / sizeof(uint64_t);
-  const void* data_c = static_cast<const char*>(data_) + offset_;
-  auto data = static_cast<const uint64_t*>(data_c);
-
-  // Write shifted offsets
-  for (uint64_t i = 0; i < buffer_cell_num; ++i)
-    buffer[i] = offset + data[i];
-
-  offset_ += nbytes;
 }
 
 //───────────────────────────────────────────────────────
@@ -402,10 +362,6 @@ PreallocatedBuffer::PreallocatedBuffer(const void* data, const uint64_t size)
 
 void* PreallocatedBuffer::cur_data() const {
   return nonconst_unread_data();
-}
-
-const void* PreallocatedBuffer::data() const {
-  return const_data();
 }
 
 uint64_t PreallocatedBuffer::free_space() const {
