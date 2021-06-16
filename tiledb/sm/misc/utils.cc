@@ -625,7 +625,7 @@ double coverage(const T* a, const T* b, unsigned dim_num) {
     } else {
       auto a_range = double(a[2 * i + 1]) - a[2 * i] + add;
       auto b_range = double(b[2 * i + 1]) - b[2 * i] + add;
-      if (std::numeric_limits<T>::is_integer) {
+      if (std::is_integral<T>::value) {
         auto max = std::numeric_limits<T>::max();
         if (a_range == 0)
           a_range = std::nextafter(a_range, max);

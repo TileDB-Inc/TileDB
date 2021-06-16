@@ -281,13 +281,9 @@ class Dimension {
   std::string tile_extent_to_str() const {
     auto tile_extent = _tile_extent();
     auto type = this->type();
-    const int8_t* ti8;
     const uint8_t* tui8;
-    const int16_t* ti16;
     const uint16_t* tui16;
-    const int32_t* ti32;
     const uint32_t* tui32;
-    const int64_t* ti64;
     const uint64_t* tui64;
     const float* tf32;
     const double* tf64;
@@ -300,32 +296,32 @@ class Dimension {
 
     switch (type) {
       case TILEDB_INT8:
-        ti8 = static_cast<const int8_t*>(tile_extent);
-        ss << *ti8;
+        tui8 = static_cast<const uint8_t*>(tile_extent);
+        ss << *tui8;
         break;
       case TILEDB_UINT8:
         tui8 = static_cast<const uint8_t*>(tile_extent);
         ss << *tui8;
         break;
       case TILEDB_INT16:
-        ti16 = static_cast<const int16_t*>(tile_extent);
-        ss << *ti16;
+        tui16 = static_cast<const uint16_t*>(tile_extent);
+        ss << *tui16;
         break;
       case TILEDB_UINT16:
         tui16 = static_cast<const uint16_t*>(tile_extent);
         ss << *tui16;
         break;
       case TILEDB_INT32:
-        ti32 = static_cast<const int32_t*>(tile_extent);
-        ss << *ti32;
+        tui32 = static_cast<const uint32_t*>(tile_extent);
+        ss << *tui32;
         break;
       case TILEDB_UINT32:
         tui32 = static_cast<const uint32_t*>(tile_extent);
         ss << *tui32;
         break;
       case TILEDB_INT64:
-        ti64 = static_cast<const int64_t*>(tile_extent);
-        ss << *ti64;
+        tui64 = static_cast<const uint64_t*>(tile_extent);
+        ss << *tui64;
         break;
       case TILEDB_UINT64:
         tui64 = static_cast<const uint64_t*>(tile_extent);
@@ -361,8 +357,8 @@ class Dimension {
       case TILEDB_TIME_PS:
       case TILEDB_TIME_FS:
       case TILEDB_TIME_AS:
-        ti64 = static_cast<const int64_t*>(tile_extent);
-        ss << *ti64;
+        tui64 = static_cast<const uint64_t*>(tile_extent);
+        ss << *tui64;
         break;
       case TILEDB_STRING_ASCII:
         // Strings have null tile extents so let's return an empty string

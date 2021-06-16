@@ -90,14 +90,29 @@ class Stats {
   /** Enable or disable statistics gathering. */
   void set_enabled(bool enabled);
 
-  /** Dumps the stats for this instance and all children in ASCII format. */
-  std::string dump() const;
+  /** Reset all stats. */
+  void reset();
+
+  /**
+   * Dumps the stats for this instance as a JSON dictionary of
+   * timers and stats.
+   *
+   * @param indent_size The number of spaces in an indentation.
+   * @param num_indents The number of leading indentations.
+   */
+  std::string dump(uint64_t indent_size, uint64_t num_indents) const;
 
   /** Returns the parent that manages this instance. */
   Stats* parent();
 
   /** Creates a child instance, managed by this instance. */
   Stats* create_child(const std::string& prefix);
+
+  /** Return pointer to timers map, used for serialization only. */
+  std::unordered_map<std::string, double>* timers();
+
+  /** Return pointer to conters map, used for serialization only. */
+  std::unordered_map<std::string, uint64_t>* counters();
 
  private:
   /* ****************************** */

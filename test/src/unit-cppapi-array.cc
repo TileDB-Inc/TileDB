@@ -818,7 +818,7 @@ TEST_CASE("C++ API: Open array at", "[cppapi][open-array-at]") {
 
   // Read from 0 timestamp
   Array array_r_at_0(ctx, array_name, TILEDB_READ, 0);
-  CHECK(array_r_at_0.timestamp_end() == 0);
+  CHECK(array_r_at_0.timestamp() == 0);
 
   SECTION("Testing Array::Array") {
     // Nothing to do - just for clarity
@@ -863,7 +863,7 @@ TEST_CASE("C++ API: Open array at", "[cppapi][open-array-at]") {
 
   // Reopen at first timestamp.
   array_r_at.reopen_at(first_timestamp);
-  CHECK(array_r_at.timestamp_end() == first_timestamp);
+  CHECK(array_r_at.timestamp() == first_timestamp);
   std::vector<int> a_r_reopen_at(4);
   Query query_r_reopen_at(ctx, array_r_at);
   query_r_reopen_at.set_subarray(subarray)

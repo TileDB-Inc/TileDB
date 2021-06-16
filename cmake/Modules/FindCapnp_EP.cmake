@@ -65,7 +65,7 @@ if (NOT CAPNP_FOUND)
 
     if (WIN32)
       find_package(Git REQUIRED)
-      set(CONDITIONAL_PATCH ${GIT_EXECUTABLE} apply --ignore-whitespace -p1 --unsafe-paths --verbose --directory=${TILEDB_EP_SOURCE_DIR}/ep_capnp < ${TILEDB_CMAKE_INPUTS_DIR}/patches/ep_capnp/capnp_CMakeLists.txt.patch)
+      set(CONDITIONAL_PATCH cd ${CMAKE_SOURCE_DIR} && ${GIT_EXECUTABLE} apply --ignore-whitespace -p1 --unsafe-paths --verbose --directory=${TILEDB_EP_SOURCE_DIR}/ep_capnp < ${TILEDB_CMAKE_INPUTS_DIR}/patches/ep_capnp/capnp_CMakeLists.txt.patch)
     else()
       set(CONDITIONAL_PATCH "")
     endif()
@@ -81,6 +81,7 @@ if (NOT CAPNP_FOUND)
          -DCMAKE_BUILD_TYPE=Release
          -DBUILD_TESTING=OFF
          -DCMAKE_POSITION_INDEPENDENT_CODE=ON
+         -DCMAKE_OSX_ARCHITECTURES=${CMAKE_OSX_ARCHITECTURES}
        PATCH_COMMAND
          ${CONDITIONAL_PATCH}
        LOG_DOWNLOAD TRUE
@@ -99,7 +100,6 @@ if (NOT CAPNP_FOUND)
   endif()
 else()
   add_definitions(${CAPNP_DEFINITIONS})
-  set(TILEDB_CAPNPEXEC_PATH "${CAPNP_EXECUTABLE}")
 endif()
 
 

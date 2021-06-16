@@ -32,6 +32,7 @@
 
 #include "catch.hpp"
 
+#include "tiledb/sm/c_api/tiledb.h"
 #include "tiledb/sm/c_api/tiledb_serialization.h"
 #include "tiledb/sm/c_api/tiledb_struct_def.h"
 #include "tiledb/sm/cpp_api/tiledb"
@@ -81,6 +82,28 @@ struct SerializationFx {
   ~SerializationFx() {
     if (vfs.is_dir(tmpdir))
       vfs.remove_dir(tmpdir);
+  }
+
+  static void check_read_stats(const Query& query) {
+    auto stats = query.ptr()->query_->reader()->stats();
+    REQUIRE(stats != nullptr);
+    auto counters = stats->counters();
+    REQUIRE(counters != nullptr);
+    auto loop_num =
+        counters->find("Context.StorageManager.Query.Reader.loop_num");
+    REQUIRE((loop_num != counters->end()));
+    REQUIRE(loop_num->second > 0);
+  }
+
+  static void check_write_stats(const Query& query) {
+    auto stats = query.ptr()->query_->writer()->stats();
+    REQUIRE(stats != nullptr);
+    auto counters = stats->counters();
+    REQUIRE(counters != nullptr);
+    auto loop_num =
+        counters->find("Context.StorageManager.Query.Writer.attr_num");
+    REQUIRE((loop_num != counters->end()));
+    REQUIRE(loop_num->second > 0);
   }
 
   void create_array(tiledb_array_type_t type) {
@@ -136,8 +159,15 @@ struct SerializationFx {
     Query query2(ctx, array2);
     deserialize_query(ctx, serialized, &query2, false);
     query2.submit();
+
+    // Make sure query2 has logged stats
+    check_write_stats(query2);
+
     serialize_query(ctx, query2, &serialized, false);
     deserialize_query(ctx, serialized, &query, true);
+
+    // The deserialized query should also include the write stats
+    check_write_stats(query);
   }
 
   void write_dense_array_ranges() {
@@ -178,8 +208,15 @@ struct SerializationFx {
     Query query2(ctx, array2);
     deserialize_query(ctx, serialized, &query2, false);
     query2.submit();
+
+    // Make sure query2 has logged stats
+    check_write_stats(query2);
+
     serialize_query(ctx, query2, &serialized, false);
     deserialize_query(ctx, serialized, &query, true);
+
+    // The deserialized query should also include the write stats
+    check_write_stats(query);
   }
 
   void write_sparse_array() {
@@ -220,8 +257,14 @@ struct SerializationFx {
     Query query2(ctx, array2);
     deserialize_query(ctx, serialized, &query2, false);
     query2.submit();
+
+    // Make sure query2 has logged stats
+    check_write_stats(query2);
     serialize_query(ctx, query2, &serialized, false);
     deserialize_query(ctx, serialized, &query, true);
+
+    // The deserialized query should also include the write stats
+    check_write_stats(query);
   }
 
   void write_sparse_array_split_coords() {
@@ -265,8 +308,15 @@ struct SerializationFx {
     Query query2(ctx, array2);
     deserialize_query(ctx, serialized, &query2, false);
     query2.submit();
+
+    // Make sure query2 has logged stats
+    check_write_stats(query2);
+
     serialize_query(ctx, query2, &serialized, false);
     deserialize_query(ctx, serialized, &query, true);
+
+    // The deserialized query should also include the write stats
+    check_write_stats(query);
   }
 
   /**
@@ -367,25 +417,21 @@ struct SerializationFx {
     uint8_t* unused3;
     uint64_t *a1_size, *a2_size, *a2_validity_size, *a3_size, *a3_offset_size,
         *coords_size;
-    ctx.handle_error(tiledb_query_get_buffer(
+    ctx.handle_error(tiledb_query_get_data_buffer(
         ctx.ptr().get(), query->ptr().get(), "a1", &unused1, &a1_size));
-    ctx.handle_error(tiledb_query_get_buffer_nullable(
+    ctx.handle_error(tiledb_query_get_data_buffer(
+        ctx.ptr().get(), query->ptr().get(), "a2", &unused1, &a2_size));
+    ctx.handle_error(tiledb_query_get_validity_buffer(
         ctx.ptr().get(),
         query->ptr().get(),
         "a2",
-        &unused1,
-        &a2_size,
         &unused3,
         &a2_validity_size));
-    ctx.handle_error(tiledb_query_get_buffer_var(
-        ctx.ptr().get(),
-        query->ptr().get(),
-        "a3",
-        &unused2,
-        &a3_offset_size,
-        &unused1,
-        &a3_size));
-    ctx.handle_error(tiledb_query_get_buffer(
+    ctx.handle_error(tiledb_query_get_data_buffer(
+        ctx.ptr().get(), query->ptr().get(), "a3", &unused1, &a3_size));
+    ctx.handle_error(tiledb_query_get_offsets_buffer(
+        ctx.ptr().get(), query->ptr().get(), "a3", &unused2, &a3_offset_size));
+    ctx.handle_error(tiledb_query_get_data_buffer(
         ctx.ptr().get(),
         query->ptr().get(),
         TILEDB_COORDS,
@@ -394,7 +440,7 @@ struct SerializationFx {
 
     if (a1_size != nullptr) {
       void* buff = std::malloc(*a1_size);
-      ctx.handle_error(tiledb_query_set_buffer(
+      ctx.handle_error(tiledb_query_set_data_buffer(
           ctx.ptr().get(), query->ptr().get(), "a1", buff, a1_size));
       to_free.push_back(buff);
     }
@@ -402,12 +448,12 @@ struct SerializationFx {
     if (a2_size != nullptr) {
       void* buff = std::malloc(*a2_size);
       uint8_t* validity = (uint8_t*)std::malloc(*a2_validity_size);
-      ctx.handle_error(tiledb_query_set_buffer_nullable(
+      ctx.handle_error(tiledb_query_set_data_buffer(
+          ctx.ptr().get(), query->ptr().get(), "a2", buff, a2_size));
+      ctx.handle_error(tiledb_query_set_validity_buffer(
           ctx.ptr().get(),
           query->ptr().get(),
           "a2",
-          buff,
-          a2_size,
           validity,
           a2_validity_size));
       to_free.push_back(buff);
@@ -417,21 +463,17 @@ struct SerializationFx {
     if (a3_size != nullptr) {
       void* buff = std::malloc(*a3_size);
       uint64_t* offsets = (uint64_t*)std::malloc(*a3_offset_size);
-      ctx.handle_error(tiledb_query_set_buffer_var(
-          ctx.ptr().get(),
-          query->ptr().get(),
-          "a3",
-          offsets,
-          a3_offset_size,
-          buff,
-          a3_size));
+      ctx.handle_error(tiledb_query_set_data_buffer(
+          ctx.ptr().get(), query->ptr().get(), "a3", buff, a3_size));
+      ctx.handle_error(tiledb_query_set_offsets_buffer(
+          ctx.ptr().get(), query->ptr().get(), "a3", offsets, a3_offset_size));
       to_free.push_back(buff);
       to_free.push_back(offsets);
     }
 
     if (coords_size != nullptr) {
       void* buff = std::malloc(*coords_size);
-      ctx.handle_error(tiledb_query_set_buffer(
+      ctx.handle_error(tiledb_query_set_data_buffer(
           ctx.ptr().get(),
           query->ptr().get(),
           TILEDB_COORDS,
@@ -482,9 +524,15 @@ TEST_CASE_METHOD(
     query2.submit();
     serialize_query(ctx, query2, &serialized, false);
 
+    // Make sure query2 has logged stats
+    check_read_stats(query2);
+
     // Deserialize into original query (client side).
     deserialize_query(ctx, serialized, &query, true);
     REQUIRE(query.query_status() == Query::Status::COMPLETE);
+
+    // The deserialized query should also include the write stats
+    check_read_stats(query);
 
     auto result_el = query.result_buffer_elements_nullable();
     REQUIRE(std::get<1>(result_el["a1"]) == 100);
@@ -531,9 +579,15 @@ TEST_CASE_METHOD(
     query2.submit();
     serialize_query(ctx, query2, &serialized, false);
 
+    // Make sure query2 has logged stats
+    check_read_stats(query2);
+
     // Deserialize into original query (client side).
     deserialize_query(ctx, serialized, &query, true);
     REQUIRE(query.query_status() == Query::Status::COMPLETE);
+
+    // The deserialized query should also include the write stats
+    check_read_stats(query);
 
     // We expect all cells where `a1` >= `cmp_value` to be filtered
     // out.
@@ -577,9 +631,15 @@ TEST_CASE_METHOD(
     query2.submit();
     serialize_query(ctx, query2, &serialized, false);
 
+    // Make sure query2 has logged stats
+    check_read_stats(query2);
+
     // Deserialize into original query (client side).
     deserialize_query(ctx, serialized, &query, true);
     REQUIRE(query.query_status() == Query::Status::COMPLETE);
+
+    // The deserialized query should also include the write stats
+    check_read_stats(query);
 
     auto result_el = query.result_buffer_elements_nullable();
     REQUIRE(std::get<1>(result_el["a1"]) == 4);
@@ -624,8 +684,14 @@ TEST_CASE_METHOD(
       query2.submit();
       serialize_query(ctx, query2, &serialized, false);
 
+      // Make sure query2 has logged stats
+      check_read_stats(query2);
+
       // Deserialize into original query (client side).
       deserialize_query(ctx, serialized, &q, true);
+
+      // The deserialized query should also include the write stats
+      check_read_stats(query);
 
       for (void* b : to_free)
         std::free(b);
@@ -703,9 +769,15 @@ TEST_CASE_METHOD(
     query2.submit();
     serialize_query(ctx, query2, &serialized, false);
 
+    // Make sure query2 has logged stats
+    check_read_stats(query2);
+
     // Deserialize into original query
     deserialize_query(ctx, serialized, &query, true);
     REQUIRE(query.query_status() == Query::Status::COMPLETE);
+
+    // The deserialized query should also include the write stats
+    check_read_stats(query);
 
     auto result_el = query.result_buffer_elements_nullable();
     REQUIRE(std::get<1>(result_el["a1"]) == 10);
@@ -753,9 +825,15 @@ TEST_CASE_METHOD(
     query2.submit();
     serialize_query(ctx, query2, &serialized, false);
 
+    // Make sure query2 has logged stats
+    check_read_stats(query2);
+
     // Deserialize into original query
     deserialize_query(ctx, serialized, &query, true);
     REQUIRE(query.query_status() == Query::Status::COMPLETE);
+
+    // The deserialized query should also include the write stats
+    check_read_stats(query);
 
     auto result_el = query.result_buffer_elements_nullable();
     REQUIRE(std::get<1>(result_el[TILEDB_COORDS]) == 20);
@@ -807,9 +885,15 @@ TEST_CASE_METHOD(
     query2.submit();
     serialize_query(ctx, query2, &serialized, false);
 
+    // Make sure query2 has logged stats
+    check_read_stats(query2);
+
     // Deserialize into original query (client side).
     deserialize_query(ctx, serialized, &query, true);
     REQUIRE(query.query_status() == Query::Status::COMPLETE);
+
+    // The deserialized query should also include the write stats
+    check_read_stats(query);
 
     auto result_el = query.result_buffer_elements_nullable();
     REQUIRE(std::get<1>(result_el["a1"]) == 100);
@@ -852,9 +936,15 @@ TEST_CASE_METHOD(
     query2.submit();
     serialize_query(ctx, query2, &serialized, false);
 
+    // Make sure query2 has logged stats
+    check_read_stats(query2);
+
     // Deserialize into original query (client side).
     deserialize_query(ctx, serialized, &query, true);
     REQUIRE(query.query_status() == Query::Status::COMPLETE);
+
+    // The deserialized query should also include the write stats
+    check_read_stats(query);
 
     auto result_el = query.result_buffer_elements_nullable();
     REQUIRE(std::get<1>(result_el["a1"]) == 4);
@@ -900,8 +990,14 @@ TEST_CASE_METHOD(
       query2.submit();
       serialize_query(ctx, query2, &serialized, false);
 
+      // Make sure query2 has logged stats
+      check_read_stats(query2);
+
       // Deserialize into original query (client side).
       deserialize_query(ctx, serialized, &q, true);
+
+      // The deserialized query should also include the write stats
+      check_read_stats(query);
 
       for (void* b : to_free)
         std::free(b);

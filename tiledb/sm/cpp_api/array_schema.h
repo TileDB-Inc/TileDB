@@ -147,6 +147,7 @@ class ArraySchema : public Schema {
    * @param encryption_key The encryption key to use.
    * @param key_length Length in bytes of the encryption key.
    */
+  TILEDB_DEPRECATED
   ArraySchema(
       const Context& ctx,
       const std::string& uri,

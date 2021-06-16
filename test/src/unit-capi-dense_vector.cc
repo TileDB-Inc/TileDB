@@ -172,7 +172,7 @@ void DenseVectorFx::create_dense_vector(
   tiledb_query_t* write_query;
   rc = tiledb_query_alloc(ctx_, array, TILEDB_WRITE, &write_query);
   REQUIRE(rc == TILEDB_OK);
-  rc = tiledb_query_set_buffer(
+  rc = tiledb_query_set_data_buffer(
       ctx_,
       write_query,
       attributes[0],
@@ -214,7 +214,7 @@ void DenseVectorFx::check_read(
 
   rc = tiledb_query_alloc(ctx_, array, TILEDB_READ, &read_query);
   REQUIRE(rc == TILEDB_OK);
-  rc = tiledb_query_set_buffer(
+  rc = tiledb_query_set_data_buffer(
       ctx_, read_query, attributes[0], read_buffers[0], &read_buffer_sizes[0]);
   REQUIRE(rc == TILEDB_OK);
   rc = tiledb_query_set_layout(ctx_, read_query, layout);
@@ -257,7 +257,7 @@ void DenseVectorFx::check_update(const std::string& path) {
   tiledb_query_t* update_query;
   rc = tiledb_query_alloc(ctx_, array, TILEDB_WRITE, &update_query);
   REQUIRE(rc == TILEDB_OK);
-  rc = tiledb_query_set_buffer(
+  rc = tiledb_query_set_data_buffer(
       ctx_,
       update_query,
       attributes[0],
@@ -291,7 +291,7 @@ void DenseVectorFx::check_update(const std::string& path) {
   tiledb_query_t* read_query = nullptr;
   rc = tiledb_query_alloc(ctx_, array, TILEDB_READ, &read_query);
   REQUIRE(rc == TILEDB_OK);
-  rc = tiledb_query_set_buffer(
+  rc = tiledb_query_set_data_buffer(
       ctx_, read_query, attributes[0], read_buffers[0], &read_buffer_sizes[0]);
   REQUIRE(rc == TILEDB_OK);
   rc = tiledb_query_set_layout(ctx_, read_query, TILEDB_COL_MAJOR);
@@ -335,14 +335,14 @@ void DenseVectorFx::check_duplicate_coords(const std::string& path) {
     tiledb_query_t* update_query;
     rc = tiledb_query_alloc(ctx_, array, TILEDB_WRITE, &update_query);
     REQUIRE(rc == TILEDB_OK);
-    rc = tiledb_query_set_buffer(
+    rc = tiledb_query_set_data_buffer(
         ctx_,
         update_query,
         attributes[0],
         update_buffers[0],
         &update_buffer_sizes[0]);
     REQUIRE(rc == TILEDB_OK);
-    rc = tiledb_query_set_buffer(
+    rc = tiledb_query_set_data_buffer(
         ctx_,
         update_query,
         attributes[1],
@@ -375,7 +375,7 @@ void DenseVectorFx::check_duplicate_coords(const std::string& path) {
   tiledb_query_t* read_query = nullptr;
   rc = tiledb_query_alloc(ctx_, array, TILEDB_READ, &read_query);
   REQUIRE(rc == TILEDB_OK);
-  rc = tiledb_query_set_buffer(
+  rc = tiledb_query_set_data_buffer(
       ctx_, read_query, attributes[0], read_buffers[0], &read_buffer_sizes[0]);
   REQUIRE(rc == TILEDB_OK);
   rc = tiledb_query_set_layout(ctx_, read_query, TILEDB_GLOBAL_ORDER);
@@ -533,7 +533,7 @@ TEST_CASE_METHOD(
   tiledb_query_t* write_query_0;
   rc = tiledb_query_alloc(ctx_, array, TILEDB_WRITE, &write_query_0);
   REQUIRE(rc == TILEDB_OK);
-  rc = tiledb_query_set_buffer(
+  rc = tiledb_query_set_data_buffer(
       ctx_,
       write_query_0,
       ATTR_NAME.c_str(),
@@ -574,7 +574,7 @@ TEST_CASE_METHOD(
   tiledb_query_t* write_query_1;
   rc = tiledb_query_alloc(ctx_, array, TILEDB_WRITE, &write_query_1);
   REQUIRE(rc == TILEDB_OK);
-  rc = tiledb_query_set_buffer(
+  rc = tiledb_query_set_data_buffer(
       ctx_,
       write_query_1,
       ATTR_NAME.c_str(),
@@ -614,7 +614,7 @@ TEST_CASE_METHOD(
   tiledb_query_t* write_query_2;
   rc = tiledb_query_alloc(ctx_, array, TILEDB_WRITE, &write_query_2);
   REQUIRE(rc == TILEDB_OK);
-  rc = tiledb_query_set_buffer(
+  rc = tiledb_query_set_data_buffer(
       ctx_,
       write_query_2,
       ATTR_NAME.c_str(),
@@ -653,7 +653,7 @@ TEST_CASE_METHOD(
   tiledb_query_t* write_query_3;
   rc = tiledb_query_alloc(ctx_, array, TILEDB_WRITE, &write_query_3);
   REQUIRE(rc == TILEDB_OK);
-  rc = tiledb_query_set_buffer(
+  rc = tiledb_query_set_data_buffer(
       ctx_,
       write_query_3,
       ATTR_NAME.c_str(),
@@ -693,7 +693,7 @@ TEST_CASE_METHOD(
 
   rc = tiledb_query_alloc(ctx_, array, TILEDB_READ, &read_query);
   REQUIRE(rc == TILEDB_OK);
-  rc = tiledb_query_set_buffer(
+  rc = tiledb_query_set_data_buffer(
       ctx_, read_query, ATTR_NAME.c_str(), read_buffer, &read_buffer_size);
   REQUIRE(rc == TILEDB_OK);
   rc = tiledb_query_set_layout(ctx_, read_query, TILEDB_ROW_MAJOR);

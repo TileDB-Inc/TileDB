@@ -118,7 +118,8 @@ void InfoCommand::run() {
 }
 
 void InfoCommand::print_tile_sizes() const {
-  StorageManager sm(&compute_tp_, &io_tp_);
+  stats::Stats stats("");
+  StorageManager sm(&compute_tp_, &io_tp_, &stats);
   THROW_NOT_OK(sm.init(nullptr));
 
   // Open the array
@@ -189,7 +190,8 @@ void InfoCommand::print_tile_sizes() const {
 }
 
 void InfoCommand::print_schema_info() const {
-  StorageManager sm(&compute_tp_, &io_tp_);
+  stats::Stats stats("");
+  StorageManager sm(&compute_tp_, &io_tp_, &stats);
   THROW_NOT_OK(sm.init(nullptr));
 
   // Open the array
@@ -205,7 +207,8 @@ void InfoCommand::print_schema_info() const {
 }
 
 void InfoCommand::write_svg_mbrs() const {
-  StorageManager sm(&compute_tp_, &io_tp_);
+  stats::Stats stats("");
+  StorageManager sm(&compute_tp_, &io_tp_, &stats);
   THROW_NOT_OK(sm.init(nullptr));
 
   // Open the array
@@ -279,7 +282,8 @@ void InfoCommand::write_svg_mbrs() const {
 }
 
 void InfoCommand::write_text_mbrs() const {
-  StorageManager sm(&compute_tp_, &io_tp_);
+  stats::Stats stats("");
+  StorageManager sm(&compute_tp_, &io_tp_, &stats);
   THROW_NOT_OK(sm.init(nullptr));
 
   // Open the array

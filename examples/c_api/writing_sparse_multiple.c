@@ -104,9 +104,11 @@ void write_array() {
   tiledb_query_t* query_1;
   tiledb_query_alloc(ctx, array, TILEDB_WRITE, &query_1);
   tiledb_query_set_layout(ctx, query_1, TILEDB_UNORDERED);
-  tiledb_query_set_buffer(ctx, query_1, "a", data_1, &data_size_1);
-  tiledb_query_set_buffer(ctx, query_1, "rows", coords_rows_1, &coords_size_1);
-  tiledb_query_set_buffer(ctx, query_1, "cols", coords_cols_1, &coords_size_1);
+  tiledb_query_set_data_buffer(ctx, query_1, "a", data_1, &data_size_1);
+  tiledb_query_set_data_buffer(
+      ctx, query_1, "rows", coords_rows_1, &coords_size_1);
+  tiledb_query_set_data_buffer(
+      ctx, query_1, "cols", coords_cols_1, &coords_size_1);
 
   // Submit the first query
   tiledb_query_submit(ctx, query_1);
@@ -122,9 +124,11 @@ void write_array() {
   tiledb_query_t* query_2;
   tiledb_query_alloc(ctx, array, TILEDB_WRITE, &query_2);
   tiledb_query_set_layout(ctx, query_2, TILEDB_UNORDERED);
-  tiledb_query_set_buffer(ctx, query_2, "a", data_2, &data_size_2);
-  tiledb_query_set_buffer(ctx, query_2, "rows", coords_rows_2, &coords_size_2);
-  tiledb_query_set_buffer(ctx, query_2, "cols", coords_cols_2, &coords_size_2);
+  tiledb_query_set_data_buffer(ctx, query_2, "a", data_2, &data_size_2);
+  tiledb_query_set_data_buffer(
+      ctx, query_2, "rows", coords_rows_2, &coords_size_2);
+  tiledb_query_set_data_buffer(
+      ctx, query_2, "cols", coords_cols_2, &coords_size_2);
 
   // Submit the second query
   tiledb_query_submit(ctx, query_2);
@@ -166,9 +170,9 @@ void read_array() {
   tiledb_query_alloc(ctx, array, TILEDB_READ, &query);
   tiledb_query_set_subarray(ctx, query, subarray);
   tiledb_query_set_layout(ctx, query, TILEDB_ROW_MAJOR);
-  tiledb_query_set_buffer(ctx, query, "a", data, &data_size);
-  tiledb_query_set_buffer(ctx, query, "rows", coords_rows, &coords_size);
-  tiledb_query_set_buffer(ctx, query, "cols", coords_cols, &coords_size);
+  tiledb_query_set_data_buffer(ctx, query, "a", data, &data_size);
+  tiledb_query_set_data_buffer(ctx, query, "rows", coords_rows, &coords_size);
+  tiledb_query_set_data_buffer(ctx, query, "cols", coords_cols, &coords_size);
 
   // Submit query
   tiledb_query_submit(ctx, query);

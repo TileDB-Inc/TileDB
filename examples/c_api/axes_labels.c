@@ -170,16 +170,11 @@ void write_axes_array(tiledb_ctx_t* ctx, const char* array_uri) {
   tiledb_query_t* query;
   tiledb_query_alloc(ctx, array, TILEDB_WRITE, &query);
   tiledb_query_set_layout(ctx, query, TILEDB_UNORDERED);
-  tiledb_query_set_buffer_var(
-      ctx,
-      query,
-      "color",
-      label_offsets,
-      &labels_offsets_size,
-      labels,
-      &labels_size);
-  tiledb_query_set_buffer(ctx, query, "id", ids, &ids_size);
-  tiledb_query_set_buffer(
+  tiledb_query_set_data_buffer(ctx, query, "color", labels, &labels_size);
+  tiledb_query_set_offsets_buffer(
+      ctx, query, "color", label_offsets, &labels_offsets_size);
+  tiledb_query_set_data_buffer(ctx, query, "id", ids, &ids_size);
+  tiledb_query_set_data_buffer(
       ctx, query, "timestamp", timestamps, &timestamps_size);
 
   // Perform the write and close the array.
@@ -213,17 +208,12 @@ void write_data_array(tiledb_ctx_t* ctx, const char* array_uri) {
   tiledb_query_t* query;
   tiledb_query_alloc(ctx, array, TILEDB_WRITE, &query);
   tiledb_query_set_layout(ctx, query, TILEDB_UNORDERED);
-  tiledb_query_set_buffer_var(
-      ctx,
-      query,
-      "element",
-      element_offsets,
-      &element_offsets_size,
-      elements,
-      &elements_size);
-  tiledb_query_set_buffer(ctx, query, "weight", weights, &weights_size);
-  tiledb_query_set_buffer(ctx, query, "id", ids, &ids_size);
-  tiledb_query_set_buffer(
+  tiledb_query_set_data_buffer(ctx, query, "element", elements, &elements_size);
+  tiledb_query_set_offsets_buffer(
+      ctx, query, "element", element_offsets, &element_offsets_size);
+  tiledb_query_set_data_buffer(ctx, query, "weight", weights, &weights_size);
+  tiledb_query_set_data_buffer(ctx, query, "id", ids, &ids_size);
+  tiledb_query_set_data_buffer(
       ctx, query, "timestamp", timestamps, &timestamps_size);
 
   // Perform the write and close the array.
@@ -270,8 +260,9 @@ void read_data_array_with_label(
   int64_t timestamps_coords[4];
   uint64_t timesamp_coords_size = sizeof(timestamps_coords);
   tiledb_query_set_layout(ctx, label_query, TILEDB_ROW_MAJOR);
-  tiledb_query_set_buffer(ctx, label_query, "id", ids_coords, &ids_coords_size);
-  tiledb_query_set_buffer(
+  tiledb_query_set_data_buffer(
+      ctx, label_query, "id", ids_coords, &ids_coords_size);
+  tiledb_query_set_data_buffer(
       ctx, label_query, "timestamp", timestamps_coords, &timesamp_coords_size);
 
   // Submit the query and close the array.
@@ -301,18 +292,15 @@ void read_data_array_with_label(
   uint64_t element_offsets[10];
   uint64_t element_offsets_size = sizeof(element_offsets);
   tiledb_query_set_layout(ctx, data_query, TILEDB_ROW_MAJOR);
-  tiledb_query_set_buffer(ctx, data_query, "id", ids, &ids_size);
-  tiledb_query_set_buffer(
+  tiledb_query_set_data_buffer(ctx, data_query, "id", ids, &ids_size);
+  tiledb_query_set_data_buffer(
       ctx, data_query, "timestamp", timestamps, &timestamps_size);
-  tiledb_query_set_buffer_var(
-      ctx,
-      data_query,
-      "element",
-      element_offsets,
-      &element_offsets_size,
-      elements,
-      &elements_size);
-  tiledb_query_set_buffer(ctx, data_query, "weight", weights, &weights_size);
+  tiledb_query_set_data_buffer(
+      ctx, data_query, "element", elements, &elements_size);
+  tiledb_query_set_offsets_buffer(
+      ctx, data_query, "element", element_offsets, &element_offsets_size);
+  tiledb_query_set_data_buffer(
+      ctx, data_query, "weight", weights, &weights_size);
 
   // Submit the query and close the array.
   tiledb_query_submit(ctx, data_query);

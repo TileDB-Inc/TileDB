@@ -37,6 +37,7 @@
 
 using namespace tiledb::common;
 using namespace tiledb::sm;
+using namespace tiledb::test;
 
 TEST_CASE("VFS: Test read batching", "[vfs]") {
   ThreadPool compute_tp;
@@ -46,7 +47,8 @@ TEST_CASE("VFS: Test read batching", "[vfs]") {
 
   URI testfile("vfs_unit_test_data");
   std::unique_ptr<VFS> vfs(new VFS);
-  REQUIRE(vfs->init(&compute_tp, &io_tp, nullptr, nullptr).ok());
+  REQUIRE(
+      vfs->init(&g_helper_stats, &compute_tp, &io_tp, nullptr, nullptr).ok());
 
   bool exists = false;
   REQUIRE(vfs->is_file(testfile, &exists).ok());
@@ -68,7 +70,8 @@ TEST_CASE("VFS: Test read batching", "[vfs]") {
     // Check reading in one batch: single read operation.
     std::memset(data_read, 0, nelts * sizeof(uint32_t));
     batches.emplace_back(0, data_read, nelts * sizeof(uint32_t));
-    REQUIRE(vfs->init(&compute_tp, &io_tp, nullptr, nullptr).ok());
+    REQUIRE(
+        vfs->init(&g_helper_stats, &compute_tp, &io_tp, nullptr, nullptr).ok());
     REQUIRE(vfs->read_all(testfile, batches, &io_tp, &tasks).ok());
     REQUIRE(io_tp.wait_all(tasks).ok());
     tasks.clear();
@@ -108,7 +111,13 @@ TEST_CASE("VFS: Test read batching", "[vfs]") {
     Config default_config, vfs_config;
     vfs_config.set("vfs.min_batch_size", "0");
     vfs_config.set("vfs.min_batch_gap", "0");
-    REQUIRE(vfs->init(&compute_tp, &io_tp, &default_config, &vfs_config).ok());
+    REQUIRE(vfs->init(
+                   &g_helper_stats,
+                   &compute_tp,
+                   &io_tp,
+                   &default_config,
+                   &vfs_config)
+                .ok());
 
     // Check large batches are not split up.
     std::memset(data_read, 0, nelts * sizeof(uint32_t));
@@ -151,7 +160,13 @@ TEST_CASE("VFS: Test read batching", "[vfs]") {
     // Set a smaller min batch size
     Config default_config, vfs_config;
     vfs_config.set("vfs.min_batch_size", "0");
-    REQUIRE(vfs->init(&compute_tp, &io_tp, &default_config, &vfs_config).ok());
+    REQUIRE(vfs->init(
+                   &g_helper_stats,
+                   &compute_tp,
+                   &io_tp,
+                   &default_config,
+                   &vfs_config)
+                .ok());
 
     // There should be a single read due to the gap
     std::memset(data_read, 0, nelts * sizeof(uint32_t));
@@ -171,7 +186,13 @@ TEST_CASE("VFS: Test read batching", "[vfs]") {
     // Set a smaller min batch size
     Config default_config, vfs_config;
     vfs_config.set("vfs.min_batch_gap", "0");
-    REQUIRE(vfs->init(&compute_tp, &io_tp, &default_config, &vfs_config).ok());
+    REQUIRE(vfs->init(
+                   &g_helper_stats,
+                   &compute_tp,
+                   &io_tp,
+                   &default_config,
+                   &vfs_config)
+                .ok());
 
     // There should be a single read due to the batch size
     std::memset(data_read, 0, nelts * sizeof(uint32_t));
@@ -188,7 +209,10 @@ TEST_CASE("VFS: Test read batching", "[vfs]") {
   }
 
   Config default_config, vfs_config;
-  REQUIRE(vfs->init(&compute_tp, &io_tp, &default_config, &vfs_config).ok());
+  REQUIRE(
+      vfs->init(
+             &g_helper_stats, &compute_tp, &io_tp, &default_config, &vfs_config)
+          .ok());
   REQUIRE(vfs->is_file(testfile, &exists).ok());
   if (exists)
     REQUIRE(vfs->remove_file(testfile).ok());
@@ -206,7 +230,8 @@ TEST_CASE("VFS: Test long paths (Win32)", "[vfs][windows]") {
 
   std::unique_ptr<VFS> vfs(new VFS);
   std::string tmpdir_base = tiledb::sm::Win::current_dir() + "\\tiledb_test\\";
-  REQUIRE(vfs->init(&compute_tp, &io_tp, nullptr, nullptr).ok());
+  REQUIRE(
+      vfs->init(&g_helper_stats, &compute_tp, &io_tp, nullptr, nullptr).ok());
   REQUIRE(vfs->create_dir(URI(tmpdir_base)).ok());
 
   SECTION("- Deep hierarchy") {
@@ -257,7 +282,8 @@ TEST_CASE("VFS: Test long posix paths", "[vfs]") {
   REQUIRE(io_tp.init(4).ok());
 
   std::unique_ptr<VFS> vfs(new VFS);
-  REQUIRE(vfs->init(&compute_tp, &io_tp, nullptr, nullptr).ok());
+  REQUIRE(
+      vfs->init(&g_helper_stats, &compute_tp, &io_tp, nullptr, nullptr).ok());
 
   std::string tmpdir_base = Posix::current_dir() + "/tiledb_test/";
   REQUIRE(vfs->create_dir(URI(tmpdir_base)).ok());
@@ -373,7 +399,8 @@ TEST_CASE("VFS: URI semantics", "[vfs][uri]") {
     const Config& config = root_pair.second;
 
     VFS vfs;
-    REQUIRE(vfs.init(&compute_tp, &io_tp, nullptr, &config).ok());
+    REQUIRE(
+        vfs.init(&g_helper_stats, &compute_tp, &io_tp, nullptr, &config).ok());
 
     bool exists = false;
     if (root.is_s3() || root.is_azure()) {

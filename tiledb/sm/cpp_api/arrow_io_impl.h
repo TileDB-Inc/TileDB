@@ -693,14 +693,18 @@ BufferInfo ArrowExporter::buffer_info(const std::string& name) {
     // `data_nbytes` below and leave `elem_size` untouched.
     uint64_t* offsets_nbytes = nullptr;
     uint64_t* data_nbytes = nullptr;
-    ctx_->handle_error(tiledb_query_get_buffer_var(
+    ctx_->handle_error(tiledb_query_get_data_buffer(
+        ctx_->ptr().get(),
+        query_->ptr().get(),
+        name.c_str(),
+        &data,
+        &data_nbytes));
+    ctx_->handle_error(tiledb_query_get_offsets_buffer(
         ctx_->ptr().get(),
         query_->ptr().get(),
         name.c_str(),
         &offsets,
-        &offsets_nbytes,
-        &data,
-        &data_nbytes));
+        &offsets_nbytes));
     offsets_nelem = *offsets_nbytes / offsets_elem_nbytes;
   } else {
     query_->get_buffer(name, &data, &data_nelem, &elem_size);

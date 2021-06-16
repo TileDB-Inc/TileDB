@@ -1408,7 +1408,12 @@ class Query {
       impl::type_check<T>(schema_.domain().dimension(name).type());
 
     return set_buffer(
-        name, offsets.data(), offsets.size(), &data[0], data.size(), sizeof(T));
+        name,
+        offsets.data(),
+        offsets.size(),
+        data.data(),
+        data.size(),
+        sizeof(T));
   }
 
   /**
@@ -1924,6 +1929,20 @@ class Query {
     *validity_bytemap_nelements = *validity_bytemap_nbytes / sizeof(uint8_t);
 
     return *this;
+  }
+
+  /** Returns a JSON-formatted string of the stats. */
+  std::string stats() {
+    auto ctx = ctx_.get();
+    char* c_str;
+    ctx.handle_error(
+        tiledb_query_get_stats(ctx.ptr().get(), query_.get(), &c_str));
+
+    // Copy `c_str` into `str`.
+    std::string str(c_str);
+    free(c_str);
+
+    return str;
   }
 
   /* ********************************* */

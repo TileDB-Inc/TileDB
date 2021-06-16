@@ -59,8 +59,7 @@ namespace sm {
 /* ****************************** */
 
 Subarray::Subarray()
-    : stats_(nullptr)
-    , array_(nullptr)
+    : array_(nullptr)
     , layout_(Layout::UNORDERED)
     , cell_order_(Layout::ROW_MAJOR)
     , est_result_size_computed_(false)
@@ -1151,13 +1150,11 @@ const std::vector<std::vector<uint8_t>>& Subarray::tile_coords() const {
 
 template <class T>
 Status Subarray::compute_tile_coords() {
-  STATS_START_TIMER(stats::GlobalStats::TimerType::READ_COMPUTE_TILE_COORDS)
+  auto timer_se = stats_->start_timer("read_compute_tile_coords");
 
   if (array_->array_schema()->tile_order() == Layout::ROW_MAJOR)
     return compute_tile_coords_row<T>();
   return compute_tile_coords_col<T>();
-
-  STATS_END_TIMER(stats::GlobalStats::TimerType::READ_COMPUTE_TILE_COORDS)
 }
 
 template <class T>
@@ -1570,7 +1567,7 @@ void Subarray::compute_range_offsets() {
 
 Status Subarray::compute_est_result_size(
     const Config* const config, ThreadPool* const compute_tp) {
-  STATS_START_TIMER(stats::GlobalStats::TimerType::READ_COMPUTE_EST_RESULT_SIZE)
+  auto timer_se = stats_->start_timer("read_compute_est_result_size");
   if (est_result_size_computed_)
     return Status::Ok();
 
@@ -1672,8 +1669,6 @@ Status Subarray::compute_est_result_size(
   est_result_size_computed_ = true;
 
   return Status::Ok();
-
-  STATS_END_TIMER(stats::GlobalStats::TimerType::READ_COMPUTE_EST_RESULT_SIZE)
 }
 
 bool Subarray::est_result_size_computed() {
@@ -1799,10 +1794,10 @@ Status Subarray::compute_relevant_fragment_est_result_sizes(
       } else {
         max_size_fixed =
             utils::math::safe_mul(cell_num, array_schema->cell_size(names[n]));
-        if (nullable[n])
-          max_size_validity =
-              utils::math::safe_mul(cell_num, constants::cell_validity_size);
       }
+      if (nullable[n])
+        max_size_validity =
+            utils::math::safe_mul(cell_num, constants::cell_validity_size);
 
       (*result_sizes)[n].size_fixed_ =
           std::min<double>((*result_sizes)[n].size_fixed_, max_size_fixed);
@@ -1831,8 +1826,8 @@ Status Subarray::compute_tile_coords_col() {
     for (uint64_t j = 0; j < ranges_[d].size(); ++j) {
       auto dim_dom = (const T*)domain[d].data();
       auto r = (const T*)ranges_[d][j].data();
-      tile_start = (r[0] - dim_dom[0]) / tile_extent;
-      tile_end = (r[1] - dim_dom[0]) / tile_extent;
+      tile_start = Dimension::tile_idx(r[0], dim_dom[0], tile_extent);
+      tile_end = Dimension::tile_idx(r[1], dim_dom[0], tile_extent);
       for (uint64_t t = tile_start; t <= tile_end; ++t)
         coords_set[d].insert(t);
     }
@@ -1891,8 +1886,8 @@ Status Subarray::compute_tile_coords_row() {
     auto dim_dom = (const T*)domain[d].data();
     for (uint64_t j = 0; j < ranges_[d].size(); ++j) {
       auto r = (const T*)ranges_[d][j].data();
-      tile_start = (r[0] - dim_dom[0]) / tile_extent;
-      tile_end = (r[1] - dim_dom[0]) / tile_extent;
+      tile_start = Dimension::tile_idx(r[0], dim_dom[0], tile_extent);
+      tile_end = Dimension::tile_idx(r[1], dim_dom[0], tile_extent);
       for (uint64_t t = tile_start; t <= tile_end; ++t)
         coords_set[d].insert(t);
     }
@@ -1942,8 +1937,7 @@ Status Subarray::precompute_tile_overlap(
     const Config* config,
     ThreadPool* const compute_tp,
     const bool override_memory_constraint) {
-  STATS_START_TIMER(stats::GlobalStats::TimerType::READ_COMPUTE_TILE_OVERLAP)
-  stats_->add_counter("precompute_tile_overlap.count", 1);
+  auto timer_se = stats_->start_timer("read_compute_tile_overlap");
 
   // If the `tile_overlap_` has already been precomputed and contains
   // the given range, re-use it with new range.
@@ -2026,8 +2020,6 @@ Status Subarray::precompute_tile_overlap(
       tile_overlap_.range_idx_end() - tile_overlap_.range_idx_start() + 1);
 
   return Status::Ok();
-
-  STATS_END_TIMER(stats::GlobalStats::TimerType::READ_COMPUTE_TILE_OVERLAP)
 }
 
 Subarray Subarray::clone() const {
@@ -2197,7 +2189,7 @@ Status Subarray::compute_relevant_fragments(
     ThreadPool* const compute_tp,
     const SubarrayTileOverlap* const tile_overlap,
     ComputeRelevantFragmentsCtx* const fn_ctx) {
-  STATS_START_TIMER(stats::GlobalStats::TimerType::READ_COMPUTE_RELEVANT_FRAGS)
+  auto timer_se = stats_->start_timer("read_compute_relevant_frags");
 
   // Fetch the calibrated, multi-dimensional coordinates from the
   // flattened (total order) range indexes. In this context,
@@ -2267,8 +2259,6 @@ Status Subarray::compute_relevant_fragments(
   }
 
   return Status::Ok();
-
-  STATS_END_TIMER(stats::GlobalStats::TimerType::READ_COMPUTE_RELEVANT_FRAGS)
 }
 
 void Subarray::get_expanded_coordinates(
@@ -2378,7 +2368,7 @@ Status Subarray::compute_relevant_fragments_for_dim(
 
 Status Subarray::load_relevant_fragment_rtrees(
     ThreadPool* const compute_tp) const {
-  STATS_START_TIMER(stats::GlobalStats::TimerType::READ_LOAD_RELEVANT_RTREES)
+  auto timer_se = stats_->start_timer("read_load_relevant_rtrees");
 
   auto meta = array_->fragment_metadata();
   auto encryption_key = array_->encryption_key();
@@ -2390,16 +2380,13 @@ Status Subarray::load_relevant_fragment_rtrees(
   RETURN_NOT_OK(status);
 
   return Status::Ok();
-
-  STATS_END_TIMER(stats::GlobalStats::TimerType::READ_LOAD_RELEVANT_RTREES)
 }
 
 Status Subarray::compute_relevant_fragment_tile_overlap(
     ThreadPool* const compute_tp,
     SubarrayTileOverlap* const tile_overlap,
     ComputeRelevantTileOverlapCtx* const fn_ctx) {
-  STATS_START_TIMER(
-      stats::GlobalStats::TimerType::READ_COMPUTE_RELEVANT_TILE_OVERLAP)
+  auto timer_se = stats_->start_timer("read_compute_relevant_tile_overlap");
 
   const auto range_num = tile_overlap->range_num();
   fn_ctx->range_idx_offset_ = fn_ctx->range_idx_offset_ + fn_ctx->range_len_;
@@ -2417,9 +2404,6 @@ Status Subarray::compute_relevant_fragment_tile_overlap(
   RETURN_NOT_OK(status);
 
   return Status::Ok();
-
-  STATS_END_TIMER(
-      stats::GlobalStats::TimerType::READ_COMPUTE_RELEVANT_TILE_OVERLAP)
 }
 
 Status Subarray::compute_relevant_fragment_tile_overlap(
@@ -2490,6 +2474,10 @@ Status Subarray::load_relevant_fragment_tile_var_sizes(
 
 std::vector<unsigned> Subarray::relevant_fragments() const {
   return relevant_fragments_;
+}
+
+stats::Stats* Subarray::stats() const {
+  return stats_;
 }
 
 // Explicit instantiations

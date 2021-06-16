@@ -53,6 +53,7 @@
 #include "tiledb/sm/fragment/single_fragment_info.h"
 #include "tiledb/sm/misc/cancelable_tasks.h"
 #include "tiledb/sm/misc/uri.h"
+#include "tiledb/sm/stats/global_stats.h"
 
 using namespace tiledb::common;
 
@@ -109,10 +110,14 @@ class StorageManager {
   /* ********************************* */
 
   /** Constructor. */
-  StorageManager(ThreadPool* compute_tp, ThreadPool* io_tp);
+  StorageManager(
+      ThreadPool* compute_tp, ThreadPool* io_tp, stats::Stats* parent_stats);
 
   /** Destructor. */
   ~StorageManager();
+
+  DISABLE_COPY_AND_COPY_ASSIGN(StorageManager);
+  DISABLE_MOVE_AND_MOVE_ASSIGN(StorageManager);
 
   /* ********************************* */
   /*                API                */
@@ -522,7 +527,6 @@ class StorageManager {
    *     at or after this timestamp.
    * @param timestamp_end The function will consider fragments created
    *     at or before this timestamp.
-   * @param encryption_key The encryption key in case the array is encrypted.
    * @param fragment_info The fragment information to be retrieved.
    *     The fragments are sorted in chronological creation order.
    * @param get_to_vacuum Whether or not to receive information about
@@ -903,6 +907,9 @@ class StorageManager {
    */
   Status write(const URI& uri, void* data, uint64_t size) const;
 
+  /** Returns `stats_`. */
+  stats::Stats* stats();
+
  private:
   /* ********************************* */
   /*        PRIVATE DATATYPES          */
@@ -934,6 +941,9 @@ class StorageManager {
   /* ********************************* */
   /*        PRIVATE ATTRIBUTES         */
   /* ********************************* */
+
+  /** The class stats. */
+  stats::Stats* stats_;
 
   /** Set to true when tasks are being cancelled. */
   bool cancellation_in_progress_;
