@@ -529,7 +529,7 @@ Status Reader::set_buffer(
         "' after initialization"));
 
   // Set attribute buffer
-  buffers_[name] = QueryBuffer(buffer, nullptr, buffer_size, nullptr);
+  buffers_[name].set_data_buffer(buffer, buffer_size);
 
   return Status::Ok();
 }
@@ -747,8 +747,8 @@ Status Reader::set_buffer(
         "' after initialization"));
 
   // Set attribute/dimension buffer
-  buffers_[name] =
-      QueryBuffer(buffer_off, buffer_val, buffer_off_size, buffer_val_size);
+  buffers_[name].set_data_var_buffer(buffer_val, buffer_val_size);
+  buffers_[name].set_offsets_buffer(buffer_off, buffer_off_size);
 
   return Status::Ok();
 }
@@ -810,8 +810,8 @@ Status Reader::set_buffer(
         "' after initialization"));
 
   // Set attribute buffer
-  buffers_[name] = QueryBuffer(
-      buffer, nullptr, buffer_size, nullptr, std::move(validity_vector));
+  buffers_[name].set_data_buffer(buffer, buffer_size);
+  buffers_[name].set_validity_buffer(std::move(validity_vector));
 
   return Status::Ok();
 }
@@ -886,12 +886,9 @@ Status Reader::set_buffer(
         "' after initialization"));
 
   // Set attribute/dimension buffer
-  buffers_[name] = QueryBuffer(
-      buffer_off,
-      buffer_val,
-      buffer_off_size,
-      buffer_val_size,
-      std::move(validity_vector));
+  buffers_[name].set_data_var_buffer(buffer_val, buffer_val_size);
+  buffers_[name].set_offsets_buffer(buffer_off, buffer_off_size);
+  buffers_[name].set_validity_buffer(std::move(validity_vector));
 
   return Status::Ok();
 }

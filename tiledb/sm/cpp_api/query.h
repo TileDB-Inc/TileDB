@@ -74,7 +74,7 @@ namespace tiledb {
  * Query query(ctx, array);
  * query.set_layout(TILEDB_GLOBAL_ORDER);
  * std::vector a1_data = {1, 2, 3};
- * query.set_buffer("a1", a1_data);
+ * query.set_data_buffer("a1", a1_data);
  * query.submit();
  * query.finalize();
  * array.close();
@@ -287,13 +287,13 @@ class Query {
    * flush any internal state. For the case of reads, if the returned status is
    * `TILEDB_INCOMPLETE`, TileDB could not fit the entire result in the user's
    * buffers. In this case, the user should consume the read results (if any),
-   * optionally reset the buffers with `set_buffer()`, and then
+   * optionally reset the buffers with `set_data_buffer()`, and then
    * resubmit the query until the status becomes `TILEDB_COMPLETED`. If all
    * buffer sizes after the termination of this function become 0, then this
    * means that **no** useful data was read into the buffers, implying that the
    * larger buffers are needed for the query to proceed. In this case, the users
    * must reallocate their buffers (increasing their size), reset the buffers
-   * with `set_buffer()`, and resubmit the query.
+   * with `set_data_buffer()`, and resubmit the query.
    *
    * @return Query status
    */
@@ -1162,7 +1162,7 @@ class Query {
   template <typename T>
   TILEDB_DEPRECATED Query& set_coordinates(T* buf, uint64_t size) {
     impl::type_check<T>(schema_.domain().type());
-    return set_buffer("__coords", buf, size);
+    return set_data_buffer("__coords", buf, size);
   }
 
   /**
@@ -1191,6 +1191,7 @@ class Query {
   }
 
   /**
+   * This is a deprecated API.
    * Sets a buffer for a fixed-sized attribute/dimension.
    *
    * **Example:**
@@ -1230,6 +1231,7 @@ class Query {
   }
 
   /**
+   * This is a deprecated API.
    * Sets a buffer for a fixed-sized attribute/dimension.
    *
    * **Example:**
@@ -1251,6 +1253,7 @@ class Query {
   }
 
   /**
+   * This is a deprecated API.
    * Sets a buffer for a fixed-sized attribute/dimension.
    *
    * @note This unsafe version does not perform type checking; the given buffer
@@ -1284,6 +1287,7 @@ class Query {
   }
 
   /**
+   * This is a deprecated API.
    * Sets a buffer for a variable-sized attribute/dimension.
    *
    * **Example:**
@@ -1333,6 +1337,7 @@ class Query {
   }
 
   /**
+   * This is a deprecated API.
    * Sets a buffer for a variable-sized attribute/dimension.
    *
    * @note This unsafe version does not perform type checking; the given buffer
@@ -1370,6 +1375,7 @@ class Query {
   }
 
   /**
+   * This is a deprecated API.
    * Sets a buffer for a variable-sized attribute/dimension.
    *
    * **Example:**
@@ -1417,6 +1423,7 @@ class Query {
   }
 
   /**
+   * This is a deprecated API.
    * Sets a buffer for a variable-sized attribute/dimension.
    *
    * @tparam T Attribute/Dimension value type
@@ -1443,6 +1450,7 @@ class Query {
   }
 
   /**
+   * This is a deprecated API.
    * Sets a buffer for a string-typed variable-sized attribute/dimension.
    *
    * @param name Attribute/Dimension name
@@ -1472,6 +1480,235 @@ class Query {
         &data[0],
         data.size(),
         sizeof(char));
+  }
+
+  /**
+   * Sets the data for a fixed/var-sized attribute/dimension.
+   *
+   * **Example:**
+   * @code{.cpp}
+   * tiledb::Context ctx;
+   * tiledb::Array array(ctx, array_name, TILEDB_WRITE);
+   * int data_a1[] = {0, 1, 2, 3};
+   * Query query(ctx, array);
+   * query.set_data_buffer("a1", data_a1, 4);
+   * @endcode
+   *
+   * @note set_data_buffer(std::string, std::vector) is preferred as it is
+   * safer.
+   *
+   * @tparam T Attribute/Dimension value type
+   * @param name Attribute/Dimension name
+   * @param buff Buffer array pointer with elements of the
+   *     attribute/dimension type.
+   * @param nelements Number of array elements
+   **/
+  template <typename T>
+  Query& set_data_buffer(const std::string& name, T* buff, uint64_t nelements) {
+    // Checks
+    auto is_attr = schema_.has_attribute(name);
+    auto is_dim = schema_.domain().has_dimension(name);
+    if (name != "__coords" && !is_attr && !is_dim)
+      throw TileDBError(
+          std::string("Cannot set buffer; Attribute/Dimension '") + name +
+          "' does not exist");
+    else if (is_attr)
+      impl::type_check<T>(schema_.attribute(name).type());
+    else if (is_dim)
+      impl::type_check<T>(schema_.domain().dimension(name).type());
+    else if (name == "__coords")
+      impl::type_check<T>(schema_.domain().type());
+
+    return set_data_buffer(name, buff, nelements, sizeof(T));
+  }
+
+  /**
+   * Sets the data for a fixed/var-sized attribute/dimension.
+   *
+   * **Example:**
+   * @code{.cpp}
+   * tiledb::Context ctx;
+   * tiledb::Array array(ctx, array_name, TILEDB_WRITE);
+   * std::vector<int> data_a1 = {0, 1, 2, 3};
+   * Query query(ctx, array);
+   * query.set_data_buffer("a1", data_a1);
+   * @endcode
+   *
+   * @tparam T Attribute/Dimension value type
+   * @param name Attribute/Dimension name
+   * @param buf Buffer vector with elements of the attribute/dimension type.
+   **/
+  template <typename T>
+  Query& set_data_buffer(const std::string& name, std::vector<T>& buf) {
+    return set_data_buffer(name, buf.data(), buf.size(), sizeof(T));
+  }
+
+  /**
+   * Sets the data for a fixed/var-sized attribute/dimension.
+   *
+   * @note This unsafe version does not perform type checking; the given buffer
+   * is assumed to be the correct type, and the size of an element in the given
+   * buffer is assumed to be the size of the datatype of the attribute.
+   *
+   * @param name Attribute/Dimension name
+   * @param buff Buffer array pointer with elements of the attribute type.
+   * @param nelements Number of array elements in buffer
+   **/
+  Query& set_data_buffer(
+      const std::string& name, void* buff, uint64_t nelements) {
+    // Checks
+    auto is_attr = schema_.has_attribute(name);
+    auto is_dim = schema_.domain().has_dimension(name);
+    if (name != "__coords" && !is_attr && !is_dim)
+      throw TileDBError(
+          std::string("Cannot set buffer; Attribute/Dimension '") + name +
+          "' does not exist");
+
+    // Compute element size (in bytes).
+    size_t element_size = 0;
+    if (name == "__coords")
+      element_size = tiledb_datatype_size(schema_.domain().type());
+    else if (is_attr)
+      element_size = tiledb_datatype_size(schema_.attribute(name).type());
+    else if (is_dim)
+      element_size =
+          tiledb_datatype_size(schema_.domain().dimension(name).type());
+
+    return set_data_buffer(name, buff, nelements, element_size);
+  }
+
+  /**
+   * Sets the data for a fixed/var-sized attribute/dimension.
+   *
+   * @param name Attribute/Dimension name
+   * @param data Pre-allocated string buffer.
+   **/
+  Query& set_data_buffer(const std::string& name, std::string& data) {
+    // Checks
+    auto is_attr = schema_.has_attribute(name);
+    auto is_dim = schema_.domain().has_dimension(name);
+    if (!is_attr && !is_dim)
+      throw TileDBError(
+          std::string("Cannot set buffer; Attribute/Dimension '") + name +
+          "' does not exist");
+    else if (is_attr)
+      impl::type_check<char>(schema_.attribute(name).type());
+    else if (is_dim)
+      impl::type_check<char>(schema_.domain().dimension(name).type());
+
+    return set_data_buffer(name, &data[0], data.size(), sizeof(char));
+  }
+
+  /**
+   * Sets the offset buffer for a var-sized attribute/dimension.
+   *
+   * **Example:**
+   *
+   * @code{.cpp}
+   * tiledb::Context ctx;
+   * tiledb::Array array(ctx, array_name, TILEDB_WRITE);
+   * uint64_t offsets_a1[] = {0, 8};
+   * Query query(ctx, array);
+   * query.set_offsets_buffer("a1", offsets_a1, 2);
+   * @endcode
+   *
+   * @note set_offsets_buffer(std::string, std::vector, std::vector) is
+   * preferred as it is safer.
+   *
+   * @param attr Attribute/Dimension name
+   * @param offsets Offsets array pointer where a new element begins in the data
+   *        buffer.
+   * @param offsets_nelements Number of elements in offsets buffer.
+   **/
+  Query& set_offsets_buffer(
+      const std::string& attr, uint64_t* offsets, uint64_t offset_nelements) {
+    auto ctx = ctx_.get();
+    auto offset_size = offset_nelements * sizeof(uint64_t);
+    buff_sizes_[attr] =
+        std::tuple<uint64_t, uint64_t, uint64_t>(offset_size, 0, 0);
+
+    ctx.handle_error(tiledb_query_set_offsets_buffer(
+        ctx.ptr().get(),
+        query_.get(),
+        attr.c_str(),
+        offsets,
+        &std::get<0>(buff_sizes_[attr])));
+    return *this;
+  }
+
+  /**
+   * Sets the offset buffer for a var-sized attribute/dimension.
+   *
+   * **Example:**
+   * @code{.cpp}
+   * tiledb::Context ctx;
+   * tiledb::Array array(ctx, array_name, TILEDB_WRITE);
+   * std::vector<uint64_t> offsets_a1 = {0, 8};
+   * Query query(ctx, array);
+   * query.set_offsets_buffer("a1", offsets_a1);
+   * @endcode
+   *
+   * @param name Attribute/Dimension name
+   * @param offsets Offsets where a new element begins in the data buffer.
+   **/
+  Query& set_offsets_buffer(
+      const std::string& name, std::vector<uint64_t>& offsets) {
+    return set_offsets_buffer(name, offsets.data(), offsets.size());
+  }
+
+  /**
+   * Sets the validity buffer for nullable attribute/dimension.
+   *
+   * @tparam T Attribute value type
+   * @param attr Attribute name
+   * @param validity_bytemap The validity bytemap buffer.
+   * @param validity_bytemap_nelements The number of values within
+   *     `validity_bytemap_nelements`
+   **/
+  Query& set_validity_buffer(
+      const std::string& attr,
+      uint8_t* validity_bytemap,
+      uint64_t validity_bytemap_nelements) {
+    auto ctx = ctx_.get();
+    size_t validity_size = validity_bytemap_nelements * sizeof(uint8_t);
+    buff_sizes_[attr] =
+        std::tuple<uint64_t, uint64_t, uint64_t>(0, 0, validity_size);
+
+    ctx.handle_error(tiledb_query_set_validity_buffer(
+        ctx.ptr().get(),
+        query_.get(),
+        attr.c_str(),
+        validity_bytemap,
+        &std::get<2>(buff_sizes_[attr])));
+    return *this;
+  }
+
+  /**
+   * Sets the validity buffer for nullable attribute/dimension.
+   *
+   * **Example:**
+   * @code{.cpp}
+   * tiledb::Context ctx;
+   * tiledb::Array array(ctx, array_name, TILEDB_WRITE);
+   * std::vector<uint8_t> validity_bytemap = {1, 1, 0, 1};
+   * Query query(ctx, array);
+   * query.set_validity_buffer("a1", validity_bytemap);
+   * @endcode
+   *
+   * @param name Attribute name
+   * @param validity_bytemap Buffer vector with elements of the attribute
+   *     validity values.
+   **/
+  Query& set_validity_buffer(
+      const std::string& name, std::vector<uint8_t>& validity_bytemap) {
+    // Checks
+    auto is_attr = schema_.has_attribute(name);
+    if (!is_attr)
+      throw TileDBError(
+          std::string("Cannot set buffer; Attribute '") + name +
+          "' does not exist");
+    return set_validity_buffer(
+        name, validity_bytemap.data(), validity_bytemap.size());
   }
 
   /**
@@ -1752,6 +1989,7 @@ class Query {
   }
 
   /**
+   * This is a deprecated API.
    * Gets a buffer for a fixed-sized attribute/dimension.
    *
    * @param name Attribute/dimension name
@@ -1785,6 +2023,7 @@ class Query {
   }
 
   /**
+   * This is a deprecated API.
    * Gets a buffer for a var-sized attribute/dimension.
    *
    * @param name Attribute/dimension name
@@ -1831,6 +2070,90 @@ class Query {
   }
 
   /**
+   * Retrieves the data buffer of a fixed/var-sized attribute/dimension.
+   *
+   * @param name Attribute/dimension name
+   * @param data Buffer array pointer with elements of the attribute type.
+   * @param data_nelements Number of array elements.
+   * @param element_size Size of array elements (in bytes).
+   **/
+  Query& get_data_buffer(
+      const std::string& name,
+      void** data,
+      uint64_t* data_nelements,
+      uint64_t* element_size) {
+    auto ctx = ctx_.get();
+    uint64_t* data_nbytes = nullptr;
+    auto elem_size_iter = element_sizes_.find(name);
+    if (elem_size_iter == element_sizes_.end()) {
+      throw TileDBError(
+          "[TileDB::C++API] Error: No buffer set for attribute '" + name +
+          "'!");
+    }
+
+    ctx.handle_error(tiledb_query_get_buffer(
+        ctx.ptr().get(), query_.get(), name.c_str(), data, &data_nbytes));
+
+    assert(*data_nbytes % elem_size_iter->second == 0);
+
+    *data_nelements = (*data_nbytes) / elem_size_iter->second;
+    *element_size = elem_size_iter->second;
+
+    return *this;
+  }
+
+  /**
+   * Retrieves the offset buffer for a var-sized attribute/dimension.
+   *
+   * @param name Attribute/dimension name
+   * @param offsets Offsets array pointer with elements of uint64_t type.
+   * @param offsets_nelements Number of array elements.
+   **/
+  Query& get_offsets_buffer(
+      const std::string& name,
+      uint64_t** offsets,
+      uint64_t* offsets_nelements) {
+    auto ctx = ctx_.get();
+    uint64_t* offsets_nbytes = nullptr;
+    ctx.handle_error(tiledb_query_get_offsets_buffer(
+        ctx.ptr().get(), query_.get(), name.c_str(), offsets, &offsets_nbytes));
+
+    assert(*offsets_nbytes % sizeof(uint64_t) == 0);
+
+    *offsets_nelements = (*offsets_nbytes) / sizeof(uint64_t);
+
+    return *this;
+  }
+
+  /**
+   * Retrieves the validity buffer for a nullable attribute/dimension.
+   *
+   * @param name Attribute name
+   * @param validity_bytemap Buffer array pointer with elements of the
+   *     attribute validity values.
+   * @param validity_bytemap_nelements Number of validity bytemap elements.
+   **/
+  Query& get_validity_buffer(
+      const std::string& name,
+      uint8_t** validity_bytemap,
+      uint64_t* validity_bytemap_nelements) {
+    auto ctx = ctx_.get();
+    uint64_t* validity_bytemap_nbytes = nullptr;
+
+    ctx.handle_error(tiledb_query_get_validity_buffer(
+        ctx.ptr().get(),
+        query_.get(),
+        name.c_str(),
+        validity_bytemap,
+        &validity_bytemap_nbytes));
+
+    *validity_bytemap_nelements = *validity_bytemap_nbytes / sizeof(uint8_t);
+
+    return *this;
+  }
+
+  /**
+   * This is a deprecated API.
    * Gets a buffer for a fixed-sized, nullable attribute.
    *
    * @param name Attribute name
@@ -1877,6 +2200,7 @@ class Query {
   }
 
   /**
+   * This is a deprecated API.
    * Gets a buffer for a var-sized, nullable attribute.
    *
    * @param name Attribute name
@@ -2024,6 +2348,7 @@ class Query {
   /* ********************************* */
 
   /**
+   * This is a deprecated API.
    * Sets a buffer for a fixed-sized attribute.
    *
    * @param attr Attribute name
@@ -2050,6 +2375,7 @@ class Query {
   }
 
   /**
+   * This is a deprecated API.
    * Sets a buffer for a variable-sized attribute.
    *
    * @tparam T Attribute value type
@@ -2082,6 +2408,32 @@ class Query {
         offsets,
         &std::get<0>(buff_sizes_[attr]),
         data,
+        &std::get<1>(buff_sizes_[attr])));
+    return *this;
+  }
+
+  /**
+   * Sets the data for a fixed/var-sized attribute/dimension.
+   *
+   * @param attr Attribute name
+   * @param buff Buffer array pointer with elements of the attribute type.
+   * @param nelements Number of array elements.
+   * @param element_size Size of array elements (in bytes).
+   **/
+  Query& set_data_buffer(
+      const std::string& attr,
+      void* buff,
+      uint64_t nelements,
+      size_t element_size) {
+    auto ctx = ctx_.get();
+    auto size = nelements * element_size;
+    element_sizes_[attr] = element_size;
+    buff_sizes_[attr] = std::tuple<uint64_t, uint64_t, uint64_t>(0, size, 0);
+    ctx.handle_error(tiledb_query_set_data_buffer(
+        ctx.ptr().get(),
+        query_.get(),
+        attr.c_str(),
+        buff,
         &std::get<1>(buff_sizes_[attr])));
     return *this;
   }
