@@ -294,7 +294,7 @@ steps:
 
 - task: PublishBuildArtifacts@1
   inputs:
-    pathtoPublish: '$(Build.ArtifactStagingDirectory)/$(ARTIFACT_OS)-build-dir.tar.gz'
+    pathToPublish: '$(Build.ArtifactStagingDirectory)/$(ARTIFACT_OS)-build-dir.tar.gz'
     artifactName: 'build-dirs'
   condition: and(failed(), eq(variables['Agent.OS'], 'Darwin')) # only run this job if the build step failed
 
