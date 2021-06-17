@@ -1170,6 +1170,7 @@ Status Reader::compute_range_result_coords(
 Status Reader::compute_subarray_coords(
     std::vector<std::vector<ResultCoords>>* range_result_coords,
     std::vector<ResultCoords>* result_coords) {
+  auto timer_se = stats_->start_timer("compute_subarray_coords");
   // The input 'result_coords' is already sorted. Save the current size
   // before inserting new elements.
   const size_t result_coords_size = result_coords->size();
@@ -2868,6 +2869,7 @@ Status Reader::init_tile_nullable(
 }
 
 Status Reader::load_tile_offsets(const std::vector<std::string>& names) {
+  auto timer_se = stats_->start_timer("load_tile_offsets");
   const auto encryption_key = array_->encryption_key();
 
   // Fetch relevant fragments so we load tile offsets only from intersecting
@@ -3163,6 +3165,7 @@ Status Reader::sort_result_coords(
     std::vector<ResultCoords>::iterator iter_end,
     size_t coords_num,
     Layout layout) const {
+  auto timer_se = stats_->start_timer("sort_result_coords");
   auto domain = array_schema_->domain();
 
   if (layout == Layout::ROW_MAJOR) {
@@ -3214,7 +3217,6 @@ Status Reader::sparse_read() {
   result_coords.clear();
 
   apply_query_condition(&result_cell_slabs, result_tiles);
-
   get_result_tile_stats(result_tiles);
   get_result_cell_stats(result_cell_slabs);
 
@@ -3664,6 +3666,7 @@ Reader::get_max_mem_size_map() {
 Status Reader::calculate_hilbert_values(
     std::vector<ResultCoords>::iterator iter_begin,
     std::vector<std::pair<uint64_t, uint64_t>>* hilbert_values) const {
+  auto timer_se = stats_->start_timer("calculate_hilbert_values");
   auto dim_num = array_schema_->dim_num();
   Hilbert h(dim_num);
   auto bits = h.bits();
@@ -3692,6 +3695,7 @@ Status Reader::calculate_hilbert_values(
 Status Reader::reorganize_result_coords(
     std::vector<ResultCoords>::iterator iter_begin,
     std::vector<std::pair<uint64_t, uint64_t>>* hilbert_values) const {
+  auto timer_se = stats_->start_timer("reorganize_result_coords");
   auto coords_num = hilbert_values->size();
   size_t i_src, i_dst;
   ResultCoords pending;
