@@ -62,12 +62,17 @@ def find_prs(gh: Github, head: str, base: Optional[str] = None) -> Mapping[int, 
     if comparison.behind_by != 0:
         raise ValueError(f"Head is {comparison.behind_by} commits behind base")
     if comparison.ahead_by == 0:
-        raise ValueError(f"Head is not ahead of base")
+        raise ValueError("Head is not ahead of base")
     logging.info(f"Head is {comparison.ahead_by} commits ahead of base")
 
-    prs = {
-        pr.number: pr.body for commit in comparison.commits for pr in commit.get_pulls()
-    }
+    prs = {}
+    for commit in comparison.commits:
+        for pr in commit.get_pulls():
+            backport = re.match(r"^backport-(\d+)", pr.head.ref)
+            if backport:
+                pr = repo.get_pull(int(backport.group(1)))
+            prs[pr.number] = pr.body
+
     logging.info(
         f"{len(prs)} unique PRs found related to commits between base and head: {sorted(prs)}"
     )
