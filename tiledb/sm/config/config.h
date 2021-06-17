@@ -425,6 +425,12 @@ class Config {
   /** HDFS default username. */
   static const std::string VFS_HDFS_USERNAME;
 
+  /** S3 default object canned ACL */
+  static const std::string Config::VFS_S3_OBJECT_CANNED_ACL;
+
+  /** S3 default bucket canned ACL */
+  static const std::string Config::VFS_S3_BUCKET_CANNED_ACL;
+
   /* ****************************** */
   /*        OTHER CONSTANTS         */
   /* ****************************** */
