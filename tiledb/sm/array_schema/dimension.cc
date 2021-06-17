@@ -1590,15 +1590,22 @@ Status Dimension::set_null_tile_extent_to_range() {
 
   // Calculate new tile extent equal to domain range
   auto domain = (const T*)domain_.data();
+
+  // For integral domain, we need to add 1, check for overflow before doing
+  // anything
+  if (std::is_integral<T>::value) {
+    if (domain[0] == std::numeric_limits<T>::min() &&
+        domain[1] == std::numeric_limits<T>::max()) {
+      return LOG_STATUS(Status::DimensionError(
+          "Cannot set null tile extent to domain range; "
+          "Domain range exceeds domain type max numeric limit"));
+    }
+  }
+
   T tile_extent = domain[1] - domain[0];
 
   // We need to add 1 for integral domains
   if (std::is_integral<T>::value) {
-    // Check overflow before adding 1
-    if (tile_extent == std::numeric_limits<T>::max())
-      return LOG_STATUS(Status::DimensionError(
-          "Cannot set null tile extent to domain range; "
-          "Domain range exceeds domain type max numeric limit"));
     ++tile_extent;
     // After this, tile_extent = domain[1] - domain[0] + 1, which is the correct
     // domain range
