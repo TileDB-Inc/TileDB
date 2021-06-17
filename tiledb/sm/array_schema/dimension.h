@@ -1043,13 +1043,20 @@ class Dimension {
           "Domain check failed; Upper domain bound should "
           "not be smaller than the lower one"));
 
-    // Domain range must not exceed the maximum uint64_t number
-    // for integer domains
-    if ((uint64_t)(domain[1] - domain[0]) ==
-        std::numeric_limits<uint64_t>::max())
+    // Bounds should fall within numeric limits for given datatype
+    if (domain[0] < std::numeric_limits<T>::min() or
+        domain[0] > std::numeric_limits<T>::max()) {
       return LOG_STATUS(Status::DimensionError(
-          "Domain check failed; Domain range (upper + lower + 1) is larger "
-          "than the maximum uint64 number"));
+          "Domain check failed; lower bound of domain range exceeds "
+          "numeric limits for data type."));
+    }
+
+    if (domain[1] < std::numeric_limits<T>::min() or
+        domain[1] > std::numeric_limits<T>::max()) {
+      return LOG_STATUS(Status::DimensionError(
+          "Domain check failed; upper bound of domain range exceeds "
+          "numeric limits for data type."));
+    }
 
     return Status::Ok();
   }
