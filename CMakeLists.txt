@@ -124,6 +124,7 @@ option(TILEDB_CCACHE "If true, enables use of 'ccache' (if present)" OFF)
 option(TILEDB_ARROW_TESTS "If true, enables building the arrow adapter unit tests" OFF)
 option(TILEDB_LOG_OUTPUT_ON_FAILURE "If true, print error logs if dependency sub-project build fails" ON)
 option(TILEDB_SKIP_S3AWSSDK_DIR_LENGTH_CHECK "If true, skip check needed path length for awssdk (TILEDB_S3) dependent builds" OFF)
+option(TILEDB_ARCH_ARM64 "If true, enables building with arm64 architecture" OFF)
 
 set(TILEDB_INSTALL_LIBDIR "" CACHE STRING "If non-empty, install TileDB library to this directory instead of CMAKE_INSTALL_LIBDIR.")
 
@@ -144,6 +145,12 @@ endif()
 ############################################################
 # Superbuild setup
 ############################################################
+
+# macos arm64
+if(TILEDB_ARCH_ARM64)
+  set(TILEDB_FORCE_ALL_DEPS ON CACHE INTERNAL "")
+  include(${CMAKE_CURRENT_SOURCE_DIR}/cmake/Modules/Toolchain_clang-arm64.cmake)
+endif()
 
 # capnpproto requires C++14
 if (TILEDB_SERIALIZATION)

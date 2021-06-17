@@ -17,7 +17,7 @@ set(FORWARD_EP_CMAKE_ARGS)
 # Variable that will hold a list of all the external projects added
 # as a part of the superbuild.
 set(TILEDB_EXTERNAL_PROJECTS)
-
+message(STATUS "TileDB-Superbuild:${CMAKE_OSX_ARCHITECTURES} ")
 # Forward any additional CMake args to the non-superbuild.
 set(INHERITED_CMAKE_ARGS
   -DCMAKE_INSTALL_PREFIX=${CMAKE_INSTALL_PREFIX}

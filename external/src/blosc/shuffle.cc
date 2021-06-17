@@ -275,9 +275,7 @@ static blosc_cpu_features blosc_get_cpu_features(void) {
 
 #else   /* No hardware acceleration supported for the target architecture. */
   #if defined(_MSC_VER)
-  #pragma message("Hardware-acceleration detection not implemented for the target architecture. Only the generic shuffle/unshuffle routines will be available.")
-  #else
-  #warning Hardware-acceleration detection not implemented for the target architecture. Only the generic shuffle/unshuffle routines will be available.
+    #pragma message("Hardware-acceleration detection not implemented for the target architecture. Only the generic shuffle/unshuffle routines will be available.")
   #endif
 
 static blosc_cpu_features blosc_get_cpu_features(void) {
@@ -312,6 +310,9 @@ static shuffle_implementation_t get_shuffle_implementation(void) {
 
   /*  Processor doesn't support any of the hardware-accelerated implementations,
       so use the generic implementation. */
+  if(cpu_features) {
+    #pragma message("Only the generic shuffle/unshuffle routines will be available.")
+  }
   impl_generic.name = "generic";
   impl_generic.shuffle = (shuffle_func)shuffle_generic;
   impl_generic.unshuffle = (unshuffle_func)unshuffle_generic;
