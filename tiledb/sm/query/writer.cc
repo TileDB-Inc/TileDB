@@ -622,7 +622,7 @@ Status Writer::set_buffer(
   }
 
   // Set attribute/dimension buffer
-  buffers_[name] = QueryBuffer(buffer, nullptr, buffer_size, nullptr);
+  buffers_[name].set_data_buffer(buffer, buffer_size);
 
   return Status::Ok();
 }
@@ -745,7 +745,7 @@ Status Writer::set_offsets_buffer(
     // Check number of coordinates
     uint64_t coords_num = *buffer_off_size / constants::cell_var_offset_size;
     if (coord_offsets_buffer_is_set_ && coords_num != coords_num_ &&
-        name != offsets_buffer_name_)
+        name == offsets_buffer_name_)
       return LOG_STATUS(Status::WriterError(
           std::string("Cannot set buffer; Input buffer for dimension '") +
           name +
@@ -887,8 +887,8 @@ Status Writer::set_buffer(
   }
 
   // Set attribute/dimension buffer
-  buffers_[name] =
-      QueryBuffer(buffer_off, buffer_val, buffer_off_size, buffer_val_size);
+  buffers_[name].set_data_var_buffer(buffer_val, buffer_val_size);
+  buffers_[name].set_offsets_buffer(buffer_off, buffer_off_size);
 
   return Status::Ok();
 }
@@ -949,8 +949,8 @@ Status Writer::set_buffer(
         "' after initialization"));
 
   // Set attribute/dimension buffer
-  buffers_[name] = QueryBuffer(
-      buffer, nullptr, buffer_size, nullptr, std::move(validity_vector));
+  buffers_[name].set_data_buffer(buffer, buffer_size);
+  buffers_[name].set_validity_buffer(std::move(validity_vector));
 
   return Status::Ok();
 }
@@ -1023,12 +1023,9 @@ Status Writer::set_buffer(
         "' after initialization"));
 
   // Set attribute/dimension buffer
-  buffers_[name] = QueryBuffer(
-      buffer_off,
-      buffer_val,
-      buffer_off_size,
-      buffer_val_size,
-      std::move(validity_vector));
+  buffers_[name].set_data_var_buffer(buffer_val, buffer_val_size);
+  buffers_[name].set_offsets_buffer(buffer_off, buffer_off_size);
+  buffers_[name].set_validity_buffer(std::move(validity_vector));
 
   return Status::Ok();
 }
@@ -1173,26 +1170,26 @@ Status Writer::check_buffer_sizes() const {
       expected_cell_num = buffer_size / array_schema_->cell_size(attr);
     }
 
-    if (expected_cell_num != cell_num) {
-      std::stringstream ss;
-      ss << "Buffer sizes check failed; Invalid number of cells given for ";
-      ss << "attribute '" << attr << "'";
-      ss << " (" << expected_cell_num << " != " << cell_num << ")";
-      return LOG_STATUS(Status::WriterError(ss.str()));
-    }
-
     if (array_schema_->is_nullable(attr)) {
       const uint64_t buffer_validity_size =
           *it.second.validity_vector_.buffer_size();
-      const uint64_t cell_validity_num =
+      const uint64_t expected_validity_num =
           buffer_validity_size / constants::cell_validity_size;
 
-      if (expected_cell_num != cell_validity_num) {
+      if (expected_validity_num != cell_num) {
         std::stringstream ss;
         ss << "Buffer sizes check failed; Invalid number of validity cells "
               "given for ";
         ss << "attribute '" << attr << "'";
-        ss << " (" << expected_cell_num << " != " << cell_validity_num << ")";
+        ss << " (" << expected_validity_num << " != " << cell_num << ")";
+        return LOG_STATUS(Status::WriterError(ss.str()));
+      }
+    } else {
+      if (expected_cell_num != cell_num) {
+        std::stringstream ss;
+        ss << "Buffer sizes check failed; Invalid number of cells given for ";
+        ss << "attribute '" << attr << "'";
+        ss << " (" << expected_cell_num << " != " << cell_num << ")";
         return LOG_STATUS(Status::WriterError(ss.str()));
       }
     }

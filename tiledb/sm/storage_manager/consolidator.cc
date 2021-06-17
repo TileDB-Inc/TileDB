@@ -789,7 +789,7 @@ Status Consolidator::set_query_buffers(
   for (const auto& attr : attributes) {
     if (!attr->var_size()) {
       if (!attr->nullable()) {
-        RETURN_NOT_OK(query->set_buffer(
+        RETURN_NOT_OK(query->set_data_buffer(
             attr->name(), (void*)&(*buffers)[bid][0], &(*buffer_sizes)[bid]));
         ++bid;
       } else {
@@ -803,12 +803,14 @@ Status Consolidator::set_query_buffers(
       }
     } else {
       if (!attr->nullable()) {
-        RETURN_NOT_OK(query->set_buffer(
+        RETURN_NOT_OK(query->set_data_buffer(
             attr->name(),
-            (uint64_t*)&(*buffers)[bid][0],
-            &(*buffer_sizes)[bid],
             (void*)&(*buffers)[bid + 1][0],
             &(*buffer_sizes)[bid + 1]));
+        RETURN_NOT_OK(query->set_offsets_buffer(
+            attr->name(),
+            (uint64_t*)&(*buffers)[bid][0],
+            &(*buffer_sizes)[bid]));
         bid += 2;
       } else {
         RETURN_NOT_OK(query->set_buffer_vbytemap(
@@ -828,16 +830,16 @@ Status Consolidator::set_query_buffers(
       auto dim = array_schema->dimension(d);
       auto dim_name = dim->name();
       if (!dim->var_size()) {
-        RETURN_NOT_OK(query->set_buffer(
+        RETURN_NOT_OK(query->set_data_buffer(
             dim_name, (void*)&(*buffers)[bid][0], &(*buffer_sizes)[bid]));
         ++bid;
       } else {
-        RETURN_NOT_OK(query->set_buffer(
+        RETURN_NOT_OK(query->set_data_buffer(
             dim_name,
-            (uint64_t*)&(*buffers)[bid][0],
-            &(*buffer_sizes)[bid],
             (void*)&(*buffers)[bid + 1][0],
             &(*buffer_sizes)[bid + 1]));
+        RETURN_NOT_OK(query->set_offsets_buffer(
+            dim_name, (uint64_t*)&(*buffers)[bid][0], &(*buffer_sizes)[bid]));
         bid += 2;
       }
     }

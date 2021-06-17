@@ -89,10 +89,10 @@ void write_array() {
   Array array(ctx, array_name, TILEDB_WRITE);
   Query query(ctx, array, TILEDB_WRITE);
   query.set_layout(TILEDB_UNORDERED)
-      .set_buffer("a1", data_a1)
-      .set_buffer("a2", data_a2)
-      .set_buffer("rows", coords_rows)
-      .set_buffer("cols", coords_cols);
+      .set_data_buffer("a1", data_a1)
+      .set_data_buffer("a2", data_a2)
+      .set_data_buffer("rows", coords_rows)
+      .set_data_buffer("cols", coords_cols);
 
   // Perform the write and close the array.
   query.submit();
@@ -119,9 +119,9 @@ void read_array() {
   Query query(ctx, array, TILEDB_READ);
   query.set_subarray(subarray)
       .set_layout(TILEDB_ROW_MAJOR)
-      .set_buffer("a1", data_a1)
-      .set_buffer("rows", coords_rows)
-      .set_buffer("cols", coords_cols);
+      .set_data_buffer("a1", data_a1)
+      .set_data_buffer("rows", coords_rows)
+      .set_data_buffer("cols", coords_cols);
 
   // Submit the query and close the array.
   query.submit();

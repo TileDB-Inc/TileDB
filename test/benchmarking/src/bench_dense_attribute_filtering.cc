@@ -60,7 +60,7 @@ class Benchmark : public BenchmarkBase {
     std::array<uint64_t, 2> subarray = {1ul, array_rows};
     query.set_subarray({subarray})
         .set_layout(TILEDB_ROW_MAJOR)
-        .set_buffer("a", data_);
+        .set_data_buffer("a", data_);
     query.submit();
     array.close();
   }
@@ -85,7 +85,7 @@ class Benchmark : public BenchmarkBase {
     query.set_subarray({subarray})
         .set_layout(TILEDB_ROW_MAJOR)
         .set_condition(condition)
-        .set_buffer("a", data_);
+        .set_data_buffer("a", data_);
     auto st = query.submit();
     array.close();
   }

@@ -76,18 +76,18 @@ void write_array() {
   std::vector<int> coords_rows_1 = {1, 2};
   std::vector<int> coords_cols_1 = {1, 4};
   std::vector<int> data_1 = {1, 2};
-  query.set_buffer("a", data_1)
-      .set_buffer("rows", coords_rows_1)
-      .set_buffer("cols", coords_cols_1);
+  query.set_data_buffer("a", data_1)
+      .set_data_buffer("rows", coords_rows_1)
+      .set_data_buffer("cols", coords_cols_1);
   query.submit();
 
   // Submit second query
   std::vector<int> coords_rows_2 = {2};
   std::vector<int> coords_cols_2 = {3};
   std::vector<int> data_2 = {3};
-  query.set_buffer("a", data_2)
-      .set_buffer("rows", coords_rows_2)
-      .set_buffer("cols", coords_cols_2);
+  query.set_data_buffer("a", data_2)
+      .set_data_buffer("rows", coords_rows_2)
+      .set_data_buffer("cols", coords_cols_2);
   query.submit();
 
   // Finalize - IMPORTANT!
@@ -117,9 +117,9 @@ void read_array() {
   Query query(ctx, array);
   query.set_subarray(subarray)
       .set_layout(TILEDB_ROW_MAJOR)
-      .set_buffer("a", data)
-      .set_buffer("rows", coords_rows)
-      .set_buffer("cols", coords_cols);
+      .set_data_buffer("a", data)
+      .set_data_buffer("rows", coords_rows)
+      .set_data_buffer("cols", coords_cols);
 
   // Submit the query and close the array.
   query.submit();

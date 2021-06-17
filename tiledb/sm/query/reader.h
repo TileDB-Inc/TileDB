@@ -283,7 +283,9 @@ class Reader {
    */
   Status get_validity_buffer(
       const std::string& name, const ValidityVector** validity_vector) const;
+
   /**
+   * This is a deprecated API.
    * Retrieves the offsets and values buffers of a var-sized
    * attribute/dimension.
    *
@@ -303,6 +305,7 @@ class Reader {
       uint64_t** buffer_val_size) const;
 
   /**
+   * This is a deprecated API.
    * Retrieves the buffer of a fixed-sized, nullable attribute.
    *
    * @param name The attribute name.
@@ -318,6 +321,7 @@ class Reader {
       const ValidityVector** validity_vector) const;
 
   /**
+   * This is a deprecated API.
    * Retrieves the offsets, values, and validity buffers of a var-sized,
    * nullable attribute.
    *
@@ -378,6 +382,7 @@ class Reader {
   void set_array_schema(const ArraySchema* array_schema);
 
   /**
+   * This is a deprecated API.
    * Sets the buffer for a fixed/var-sized attribute/dimension.
    *
    * @param name The attribute/dimension to set the buffer for.
@@ -457,6 +462,7 @@ class Reader {
       bool check_null_buffers = true);
 
   /**
+   * This is a deprecated API.
    * Sets the buffer for a var-sized attribute/dimension.
    *
    * @param name The name to set the buffer for.
@@ -485,6 +491,7 @@ class Reader {
       bool check_null_buffers = true);
 
   /**
+   * This is a deprecated API.
    * Sets the buffer for a fixed-sized, nullable attribute.
    *
    * @param name The attribute to set the buffer for.
@@ -505,6 +512,7 @@ class Reader {
       bool check_null_buffers = true);
 
   /**
+   * This is a deprecated API.
    * Sets the buffer for a var-sized, nullable attribute.
    *
    * @param name The name to set the buffer for.

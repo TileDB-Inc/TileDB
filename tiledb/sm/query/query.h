@@ -351,6 +351,7 @@ class Query {
   Status finalize();
 
   /**
+   * This is a deprecated API.
    * Retrieves the buffer of a fixed-sized attribute/dimension.
    *
    * @param name The buffer attribute/dimension name. An empty string means
@@ -363,6 +364,7 @@ class Query {
       const char* name, void** buffer, uint64_t** buffer_size) const;
 
   /**
+   * This is a deprecated API.
    * Retrieves the offsets and values buffers of a var-sized
    * attribute/dimension.
    *
@@ -430,6 +432,7 @@ class Query {
       uint64_t** buffer_validity_bytemap_size) const;
 
   /**
+   * This is a deprecated API.
    * Retrieves the buffer and validity bytemap of a fixed-sized, nullable
    * attribute.
    *
@@ -449,6 +452,7 @@ class Query {
       uint64_t** buffer_validity_bytemap_size) const;
 
   /**
+   * This is a deprecated API.
    * Retrieves the offsets, values, and validity bytemap buffers of
    * a var-sized, nullable attribute.
    *
@@ -619,6 +623,7 @@ class Query {
   const Config* config() const;
 
   /**
+   * This is a deprecated API.
    * Sets the buffer for a fixed-sized attribute/dimension.
    *
    * @param name The attribute/dimension to set the buffer for.
@@ -638,6 +643,7 @@ class Query {
       bool check_null_buffers = true);
 
   /**
+   * This is a deprecated API.
    * Sets the buffer for a var-sized attribute/dimension.
    *
    * @param name The attribute/dimension to set the buffer for.
@@ -669,6 +675,7 @@ class Query {
       bool check_null_buffers = true);
 
   /**
+   * This is a deprecated API.
    * Sets the buffer for a fixed-sized, nullable attribute with a validity
    * bytemap.
    *
@@ -699,6 +706,7 @@ class Query {
       bool check_null_buffers = true);
 
   /**
+   * This is a deprecated API.
    * Sets the buffer for a var-sized, nullable attribute with a validity
    * bytemap.
    *
@@ -875,6 +883,7 @@ class Query {
   Status check_buffers_correctness();
 
   /**
+   * This is a deprecated API.
    * Internal routine for setting fixed-sized, nullable attribute buffers with
    * a ValidityVector.
    */
@@ -886,6 +895,7 @@ class Query {
       bool check_null_buffers = true);
 
   /**
+   * This is a deprecated API.
    * Internal routine for setting var-sized, nullable attribute buffers with
    * a ValidityVector.
    */
@@ -899,6 +909,7 @@ class Query {
       bool check_null_buffers = true);
 
   /**
+   * This is a deprecated API.
    * Internal routine for getting fixed-sized, nullable attribute buffers with
    * a ValidityVector.
    */
@@ -909,6 +920,7 @@ class Query {
       const ValidityVector** validity_vector) const;
 
   /**
+   * This is a deprecated API.
    * Internal routine for getting fixed-sized, nullable attribute buffers with
    * a ValidityVector.
    */

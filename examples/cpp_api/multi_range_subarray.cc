@@ -69,7 +69,7 @@ void write_array() {
   // Open the array for writing and create the query.
   Array array(ctx, array_name, TILEDB_WRITE);
   Query query(ctx, array, TILEDB_WRITE);
-  query.set_layout(TILEDB_ROW_MAJOR).set_buffer("a", data);
+  query.set_layout(TILEDB_ROW_MAJOR).set_data_buffer("a", data);
 
   // Perform the write and close the array.
   query.submit();
@@ -87,7 +87,7 @@ void read_array() {
 
   // Prepare the query
   Query query(ctx, array, TILEDB_READ);
-  query.set_layout(TILEDB_ROW_MAJOR).set_buffer("a", data);
+  query.set_layout(TILEDB_ROW_MAJOR).set_data_buffer("a", data);
 
   // Add multi-range subarray to query
   int row_0_start = 1, row_0_end = 2;

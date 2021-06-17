@@ -186,6 +186,7 @@ class Writer {
       const std::string& name, const ValidityVector** validity_vector) const;
 
   /**
+   * This is a deprecated API.
    * Retrieves the offsets and values buffers of a var-sized
    * attribute/dimension.
    *
@@ -205,6 +206,7 @@ class Writer {
       uint64_t** buffer_val_size) const;
 
   /**
+   * This is a deprecated API.
    * Retrieves the buffer of a fixed-sized, nullable attribute.
    *
    * @param name The buffer name.
@@ -220,6 +222,7 @@ class Writer {
       const ValidityVector** validity_vector) const;
 
   /**
+   * This is a deprecated API.
    * Retrieves the offsets and values buffers of a var-sized,
    * nullable attribute.
    *
@@ -274,6 +277,7 @@ class Writer {
   void set_array_schema(const ArraySchema* array_schema);
 
   /**
+   * This is a deprecated API.
    * Sets the buffer for a fixed-sized attribute/dimension.
    *
    * @param name The attribute/dimension to set the buffer for.
@@ -319,6 +323,7 @@ class Writer {
       const std::string& name, uint8_t* buffer, uint64_t* buffer_size);
 
   /**
+   * This is a deprecated API.
    * Sets the buffer for a var-sized attribute/dimension.
    *
    * @param name The attribute/dimension to set the buffer for.
@@ -339,6 +344,7 @@ class Writer {
       uint64_t* buffer_val_size);
 
   /**
+   * This is a deprecated API.
    * Sets the buffer for a fixed-sized, nullable attribute.
    *
    * @param name The attribute to set the buffer for.
@@ -355,6 +361,7 @@ class Writer {
       ValidityVector&& validity_vector);
 
   /**
+   * This is a deprecated API.
    * Sets the buffer for a var-sized, nullable attribute.
    *
    * @param name The attribute to set the buffer for.
