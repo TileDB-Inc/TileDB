@@ -573,6 +573,22 @@ if (CURL_APPEND_LIBS)
   # End result, we remove the -lssl and -lcrypto from the list of curl extra libs
   # The same problem exists for libz, so we remove -lz also.
   list(REMOVE_ITEM CURL_APPEND_LIBS "-lssl" "-lcrypto" "-lz")
+
+  # If we are cross compiling curl likely includes the arch details in the linker
+  # commands. In this case we want to remove them from the link libs as cmake
+  # will handle any linker flags for cross compilation.
+  SET(index 0)
+  foreach(CURL_APPEND_LIB ${CURL_APPEND_LIBS})
+    if(${CURL_APPEND_LIB} STREQUAL "-arch")
+      # remove "-arch"
+      LIST(REMOVE_AT CURL_APPEND_LIBS ${index})
+      # remove arch i.e. arm64 or x86_64
+      # there are two items because we split on space above
+      LIST(REMOVE_AT CURL_APPEND_LIBS ${index})
+    endif()
+    MATH(EXPR index "${index}+1")
+  endforeach()
+
   message(STATUS "Adding final transitive Curl library links to TileDB targets: '${CURL_APPEND_LIBS}'")
   target_link_libraries(TILEDB_CORE_OBJECTS_ILIB
     INTERFACE
