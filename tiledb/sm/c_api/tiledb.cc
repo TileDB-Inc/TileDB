@@ -5222,6 +5222,11 @@ int32_t tiledb_heap_profiler_enable(
   return TILEDB_OK;
 }
 
+int32_t tiledb_heap_profiler_dump() {
+  tiledb::common::heap_profiler.dump();
+  return TILEDB_OK;
+}
+
 /* ****************************** */
 /*          Serialization         */
 /* ****************************** */
