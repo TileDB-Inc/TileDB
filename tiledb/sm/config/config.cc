@@ -157,7 +157,8 @@ const std::string Config::VFS_S3_VERIFY_SSL = "true";
 const std::string Config::VFS_HDFS_KERB_TICKET_CACHE_PATH = "";
 const std::string Config::VFS_HDFS_NAME_NODE_URI = "";
 const std::string Config::VFS_HDFS_USERNAME = "";
-
+const std::string Config::VFS_S3_OBJECT_CANNED_ACL = "NOT_SET";
+const std::string Config::VFS_S3_BUCKET_CANNED_ACL = "NOT_SET";
 /* ****************************** */
 /*        PRIVATE CONSTANTS       */
 /* ****************************** */
@@ -297,6 +298,8 @@ Config::Config() {
   param_values_["vfs.s3.proxy_password"] = VFS_S3_PROXY_PASSWORD;
   param_values_["vfs.s3.logging_level"] = VFS_S3_LOGGING_LEVEL;
   param_values_["vfs.s3.verify_ssl"] = VFS_S3_VERIFY_SSL;
+  param_values_["vfs.s3.object_canned_acl"] = VFS_S3_OBJECT_CANNED_ACL;
+  param_values_["vfs.s3.bucket_canned_acl"] = VFS_S3_BUCKET_CANNED_ACL;
   param_values_["vfs.hdfs.name_node_uri"] = VFS_HDFS_NAME_NODE_URI;
   param_values_["vfs.hdfs.username"] = VFS_HDFS_USERNAME;
   param_values_["vfs.hdfs.kerb_ticket_cache_path"] =
