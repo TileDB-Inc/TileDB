@@ -25,7 +25,7 @@ jobs:
         run: pip install PyGithub
 
       - name: Update version and history
-        run: python ./scripts/prepare_release.py ${{ github.event.inputs.version }}
+        run: python ./scripts/prepare_release.py ${{ github.event.inputs.version }} --token="${{ secrets.GITHUB_TOKEN }}"
 
       - name: Commit and push updates
         uses: test-room-7/action-update-file@v1
