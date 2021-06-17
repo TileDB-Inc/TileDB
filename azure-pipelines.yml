@@ -84,18 +84,18 @@ stages:
              imageName: 'ubuntu-16.04'
              CXX: g++
              ARTIFACT_OS: 'linux'
-             ARTIFACT_EXTRAS: 'full'
+             ARTIFACT_ARCH: 'x86_64'
            macOS:
              imageName: 'macOS-10.15'
              CXX: clang++
              ARTIFACT_OS: 'macos'
-             ARTIFACT_EXTRAS: 'full'
+             ARTIFACT_ARCH: 'x86_64'
              CMAKE_OSX_ARCHITECTURES: "x86_64"
            macOS_arm64:
              imageName: 'macOS-10.15'
              CXX: clang++
              ARTIFACT_OS: 'macos'
-             ARTIFACT_EXTRAS: 'full'
+             ARTIFACT_ARCH: 'arm64'
              TILEDB_GCS: OFF
              TILEDB_WERROR: OFF
              CMAKE_OSX_ARCHITECTURES: "arm64"
@@ -119,7 +119,7 @@ stages:
 #             TILEDB_SERIALIZATION: OFF
              TILEDB_FORCE_BUILD_DEPS: ON
              ARTIFACT_OS: 'windows'
-             ARTIFACT_EXTRAS: 'full'
+             ARTIFACT_ARCH: 'x86_64'
        pool:
          vmImage: $(imageName)
        steps:
@@ -152,4 +152,4 @@ stages:
            action: edit
            tag: $(Build.SourceBranchName)
            assets: |
-             $(Build.ArtifactStagingDirectory)/full/*
+             $(Build.ArtifactStagingDirectory)/built-libs/*
