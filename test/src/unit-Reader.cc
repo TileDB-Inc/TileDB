@@ -101,7 +101,20 @@ TEST_CASE_METHOD(
     ReaderFx,
     "Reader: Compute result space tiles, 2D",
     "[Reader][2d][compute_result_space_tiles]") {
-  Reader reader(&g_helper_stats);
+  Config config;
+  std::unordered_map<std::string, tiledb::sm::QueryBuffer> buffers;
+  Subarray subarray;
+  QueryCondition condition;
+  Reader reader(
+      &g_helper_stats,
+      nullptr,
+      nullptr,
+      config,
+      buffers,
+      subarray,
+      Layout::ROW_MAJOR,
+      condition,
+      false);
   unsigned dim_num = 2;
   auto size = 2 * sizeof(int32_t);
   int32_t domain_vec[] = {1, 10, 1, 15};
