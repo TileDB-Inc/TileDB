@@ -56,7 +56,7 @@ steps:
 
 - task: PublishBuildArtifacts@1
   inputs:
-    pathtoPublish: '$(Build.ArtifactStagingDirectory)/tiledb-$(ARTIFACT_OS)-$(ARTIFACT_ARCH)-build-dir.zip'
+    pathToPublish: '$(Build.ArtifactStagingDirectory)/tiledb-$(ARTIFACT_OS)-$(ARTIFACT_ARCH)-build-dir.zip'
     artifactName: 'build-dirs'
 
 # Archive files
@@ -73,6 +73,6 @@ steps:
 
 - task: PublishBuildArtifacts@1
   inputs:
-      pathtoPublish: '$(Build.ArtifactStagingDirectory)\tiledb-$(ARTIFACT_OS)-$(ARTIFACT_ARCH)-$(Build.SourceBranchName)-$(commitHash).zip'
+      pathToPublish: '$(Build.ArtifactStagingDirectory)\tiledb-$(ARTIFACT_OS)-$(ARTIFACT_ARCH)-$(Build.SourceBranchName)-$(commitHash).zip'
       artifactName: 'built-libs'
   condition: succeeded()
