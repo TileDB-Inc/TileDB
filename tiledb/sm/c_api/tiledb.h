@@ -6939,6 +6939,7 @@ TILEDB_EXPORT int32_t tiledb_heap_profiler_enable(
     uint64_t dump_threshold_bytes);
 
 TILEDB_EXPORT int32_t tiledb_heap_profiler_dump();
+TILEDB_EXPORT int32_t tiledb_heap_profiler_dump_all();
 
 /* ****************************** */
 /*          FRAGMENT INFO         */

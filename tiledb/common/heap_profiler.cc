@@ -171,9 +171,9 @@ void HeapProfiler::dump_and_terminate() {
   dump_and_terminate_internal();
 }
 
-void HeapProfiler::dump() {
+void HeapProfiler::dump(bool all) {
   std::unique_lock<std::mutex> ul(mutex_);
-  dump_internal();
+  dump_internal(all);
 }
 
 /* ****************************** */
@@ -279,7 +279,7 @@ void HeapProfiler::dump_and_terminate_internal() {
   exit(EXIT_FAILURE);
 }
 
-void HeapProfiler::dump_internal() {
+void HeapProfiler::dump_internal(bool all) {
   std::ofstream file_stream;
   if (!file_name_.empty()) {
     file_stream.open(file_name_, std::ofstream::out | std::ofstream::app);
@@ -309,7 +309,7 @@ void HeapProfiler::dump_internal() {
       // there are no other elements in `addr_to_alloc_` to sum.
       // Print this now to avoid consuming more memory within
       // `label_to_alloc`.
-      if (dump_threshold_bytes_ == 0 || bytes >= dump_threshold_bytes_)
+      if (dump_threshold_bytes_ == 0 || bytes >= dump_threshold_bytes_ || all)
         *out_stream << "[" << *label << "]"
                     << " " << bytes << std::endl;
     } else {
@@ -323,9 +323,9 @@ void HeapProfiler::dump_internal() {
   for (const auto& kv : label_to_alloc) {
     const std::string* const label = kv.first;
     const uint64_t bytes = kv.second;
-    if (dump_threshold_bytes_ == 0 || bytes >= dump_threshold_bytes_)
+    if (dump_threshold_bytes_ == 0 || bytes >= dump_threshold_bytes_ || all)
       *out_stream << "  [" << *label << "]"
-                  << " " << bytes << std::endl;
+                  << " " << bytes << " count: " << labels_cache_[*label] << std::endl;
   }
 
   if (!file_name_.empty())

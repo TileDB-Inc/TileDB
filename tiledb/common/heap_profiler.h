@@ -125,7 +125,7 @@ class HeapProfiler {
   void dump_and_terminate();
 
   /** Dumps the current stats. */
-  void dump();
+  void dump(bool all = false);
 
   /* ****************************** */
   /*       PRIVATE ATTRIBUTES       */
@@ -239,7 +239,7 @@ class HeapProfiler {
   void dump_and_terminate_internal();
 
   /* Dumps the current stats without locking on `mutex_`. */
-  void dump_internal();
+  void dump_internal(bool all = false);
 };
 
 /* ********************************* */
