@@ -225,6 +225,7 @@ class ThreadPool {
         , task_state_(nullptr)
         , parent_(nullptr) {
     }
+    ~PackagedTask() {}
 
     /** Value constructor. */
     template <class Fn_T>

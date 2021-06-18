@@ -30,6 +30,7 @@
  * This file defines the ThreadPool class.
  */
 
+#include <iostream>
 #include <cassert>
 
 #include "tiledb/common/logger.h"
@@ -53,7 +54,24 @@ ThreadPool::ThreadPool()
 }
 
 ThreadPool::~ThreadPool() {
+  std::cout << "ThreadPool::~ThreadPool" << std::flush << std::endl;
+  std::cout << "  this thread:: " << std::this_thread::get_id() << std::endl;
+  std::cout << "  thread ids before terminate: " << std::endl;
+  for (const auto& thread : threads_)
+    std::cout << " tid: " << thread.get_id();
+
+  std::cout << "* terminate()" << std::endl;
   terminate();
+
+  std::cout << "ThreadPool  tp_index count: " << tp_index_.size() << " max: " << tp_index_.max_size() << std::endl;
+  std::cout << "ThreadPool  task_index count: " << task_index_.size() << " max: " << task_index_.max_size() << std::endl;
+
+  std::cout << "live packaged task tids: " << std::endl;
+  std::lock_guard<std::mutex> lock(task_index_lock_);
+  for (auto& tt : task_index_) {
+    std::cout << "  tid: " << tt.first << " pt: " << tt.second.get() << std::endl;
+  }
+  std::cout << std::flush;
 }
 
 Status ThreadPool::init(const uint64_t concurrency_level) {
@@ -358,12 +376,11 @@ void ThreadPool::terminate() {
   }
 
   remove_tp_index();
+  remove_task_index();
 
   for (auto& t : threads_) {
     t.join();
   }
-
-  remove_task_index();
 
   threads_.clear();
 }
@@ -425,8 +442,11 @@ void ThreadPool::add_task_index() {
 
 void ThreadPool::remove_task_index() {
   std::lock_guard<std::mutex> lock(task_index_lock_);
-  for (const auto& thread : threads_)
-    task_index_.erase(thread.get_id());
+  for (const auto& thread : threads_) {
+    auto tid = thread.get_id();
+    std::cout << "    -- removing task tid: " << tid << std::endl;
+    task_index_.erase(tid);
+  }
 }
 
 tdb_shared_ptr<ThreadPool::PackagedTask> ThreadPool::lookup_task(
@@ -447,8 +467,12 @@ void ThreadPool::exec_packaged_task(tdb_shared_ptr<PackagedTask> const task) {
   // element is keyed on, making it implicitly safe.
   tdb_shared_ptr<PackagedTask> tmp_task = nullptr;
   std::unique_lock<std::mutex> ul(task_index_lock_);
-  if (task_index_.count(tid) == 1)
+  auto tcount = task_index_.count(tid);
+  if (tcount == 1)
     tmp_task = task_index_[tid];
+  if (tcount > 1) {
+    std::cout << "duplicate tid in map: " << tid << " count: " << tcount << std::endl;
+  }
   task_index_[tid] = task;
   ul.unlock();
 
