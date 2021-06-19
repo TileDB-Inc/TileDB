@@ -329,12 +329,6 @@ class ByteVecValue {
   template <class T>
   T rvalue_as() const;
 
-  template <>
-  std::string rvalue_as<std::string>() const {
-    return std::string(
-        reinterpret_cast<const std::string::value_type*>(x.data()), x.size());
-  }
-
   /// Forwarded from vector
   void resize(size_type count) {
     x.resize(count);
@@ -363,6 +357,12 @@ class ByteVecValue {
     return !x.empty();
   }
 };
+
+template <>
+std::string ByteVecValue::rvalue_as<std::string>() const {
+  return std::string(
+      reinterpret_cast<const std::string::value_type*>(x.data()), x.size());
+}
 
 /** A byte vector. */
 typedef std::vector<uint8_t> ByteVec;
