@@ -141,9 +141,9 @@ class QueryCondition {
    * tiledb::Array array(ctx, "my_array", TILEDB_READ);
    * tiledb::Query query(ctx, array, TILEDB_READ);
    *
-   * int cmp_value = 5;
+   * std::string cmp_value = "abc";
    * tiledb::QueryCondition qc;
-   * qc.init("a1", "abc", TILEDB_LT);
+   * qc.init("a1", cmp_value, TILEDB_LT);
    * query.set_condition(qc);
    * @endcode
    *
