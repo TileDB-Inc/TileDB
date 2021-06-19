@@ -358,12 +358,6 @@ class ByteVecValue {
   }
 };
 
-template <>
-std::string ByteVecValue::rvalue_as<std::string>() const {
-  return std::string(
-      reinterpret_cast<const std::string::value_type*>(x.data()), x.size());
-}
-
 /** A byte vector. */
 typedef std::vector<uint8_t> ByteVec;
 
