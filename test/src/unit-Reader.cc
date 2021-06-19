@@ -108,10 +108,8 @@ TEST_CASE_METHOD(
   NDRange domain = {Range(&domain_vec[0], size), Range(&domain_vec[2], size)};
   std::vector<int32_t> tile_extents_vec = {2, 5};
   std::vector<ByteVecValue> tile_extents(2);
-  tile_extents[0].resize(sizeof(int32_t));
-  std::memcpy(&tile_extents[0][0], &tile_extents_vec[0], sizeof(int32_t));
-  tile_extents[1].resize(sizeof(int32_t));
-  std::memcpy(&tile_extents[1][0], &tile_extents_vec[1], sizeof(int32_t));
+  tile_extents[0].assign_as<int32_t>(tile_extents_vec[0]);
+  tile_extents[1].assign_as<int32_t>(tile_extents_vec[1]);
   Layout layout = Layout::ROW_MAJOR;
 
   // Tile coords
