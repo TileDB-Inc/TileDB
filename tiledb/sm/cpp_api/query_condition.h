@@ -181,11 +181,11 @@ class QueryCondition {
    *
    * @code{.cpp}
    * int qc1_cmp_value = 10;
-   * tiledb::QueryCondition qc1(
-   *   ctx, "a1", &qc1_cmp_value, sizeof(int), ILEDB_LT);
+   * tiledb::QueryCondition qc1;
+   * qc1.init("a1", &qc1_cmp_value, sizeof(int), TILEDB_LT);
    * int qc2_cmp_value = 3;
-   * tiledb::QueryCondition qc2(
-   *   ctx, "a1", &qc2_cmp_value, sizeof(int), TILEDB_GE);
+   * tiledb::QueryCondition qc2;
+   * qc.init("a1", &qc2_cmp_value, sizeof(int), TILEDB_GE);
    *
    * tiledb::QueryCondition qc3 = qc1.combine(qc2, TILEDB_AND);
    * query.set_condition(qc3);
