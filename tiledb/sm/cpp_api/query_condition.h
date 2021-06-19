@@ -105,7 +105,7 @@ class QueryCondition {
    *
    * int cmp_value = 5;
    * tiledb::QueryCondition qc;
-   * qc.init(ctx, "a1", &cmp_value, sizeof(int), TILEDB_LT);
+   * qc.init("a1", &cmp_value, sizeof(int), TILEDB_LT);
    * query.set_condition(qc);
    * @endcode
    *
@@ -143,7 +143,7 @@ class QueryCondition {
    *
    * int cmp_value = 5;
    * tiledb::QueryCondition qc;
-   * qc.init(ctx, "a1", &cmp_value, sizeof(int), TILEDB_LT);
+   * qc.init("a1", "abc", TILEDB_LT);
    * query.set_condition(qc);
    * @endcode
    *
