@@ -1554,8 +1554,8 @@ TEST_CASE(
 
   // Write first fragment
   std::vector<int32_t> buff_a = {2, 3, 1, 4};
-  std::vector<float> buff_d1 = {0.1f, 0.1f, 0.4f, 0.5f};
-  std::vector<float> buff_d2 = {0.3f, 0.1f, 0.2f, 0.4f};
+  std::vector<float> buff_d1 = {0.1f, 0.100599997f, 0.4f, 0.5f};
+  std::vector<float> buff_d2 = {0.3f, 0.109373093f, 0.2f, 0.4f};
   write_2d_array<float, float>(
       array_name, buff_d1, buff_d2, buff_a, TILEDB_UNORDERED);
 

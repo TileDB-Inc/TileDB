@@ -748,3 +748,66 @@ TEST_CASE(
   auto max = std::numeric_limits<T>::max();
   basic_verify_overlap_ratio<T>(0, 1, -2, max - 2);
 }
+
+template <typename T>
+void test_hilbert_mapping_max_domain() {
+  Dimension d1("d1", RangeTraits<T>::datatype);
+  T dom1[] = {std::numeric_limits<T>::lowest(), std::numeric_limits<T>::max()};
+  d1.set_domain(dom1);
+
+  int bits_per_dimentions[3] = {32, 21, 16};
+  for (auto bits : bits_per_dimentions) {
+    auto max_bucket_val = ((uint64_t)1 << bits) - 1;
+
+    uint64_t bucket = max_bucket_val / 2;
+    auto v = d1.map_from_uint64(bucket, bits, max_bucket_val);
+    auto value = *(const T*)(&v[0]);
+    auto map_to = d1.map_to_uint64(&value, sizeof(value), bits, max_bucket_val);
+
+    T next_value = value;
+    if (std::is_integral<T>::value) {
+      next_value++;
+    } else {
+      next_value = std::nextafter(value, std::numeric_limits<T>::max());
+    }
+    auto map_to_next =
+        d1.map_to_uint64(&next_value, sizeof(next_value), bits, max_bucket_val);
+
+    CHECK(map_to + 1 == map_to_next);
+  }
+}
+
+TEST_CASE(
+    "Dimension: Hilbert map_from_uint64 max range tests",
+    "[dimension][hilbert][maxrange]") {
+  test_hilbert_mapping_max_domain<float>();
+  test_hilbert_mapping_max_domain<double>();
+}
+
+TEST_CASE(
+    "Dimension: Hilbert map_from_uint64 float 2D test",
+    "[dimension][hilbert][float][2D]") {
+  /** This will test that for float and two dimensions a value is always the
+   * biggest value in its bucket since the bucket precision (32 bits) is
+   * greater than the float mantissa precition (24). */
+  Dimension d1("d1", Datatype::FLOAT32);
+  float dom1[] = {-1, 1};
+  d1.set_domain(dom1);
+
+  // Test for two dimensions
+  int bits = 32;
+  auto max_bucket_val = ((uint64_t)1 << bits) - 1;
+
+  /** Start at -0.95 to avoid values around 0.0f With subnormal arithmetics we
+   * might not respect our assumption for precision here. */
+  for (float f = -0.95f; f <= 1; f += 0.1f) {
+    auto bucket = d1.map_to_uint64(&f, sizeof(f), bits, max_bucket_val);
+    auto v = d1.map_from_uint64(bucket, bits, max_bucket_val);
+    auto value = *(const float*)(&v[0]);
+
+    auto bucket2 =
+        d1.map_to_uint64(&value, sizeof(value), bits, max_bucket_val);
+    CHECK(bucket == bucket2);
+    CHECK(value == f);
+  }
+}

@@ -748,7 +748,7 @@ TEST_CASE_METHOD(
     rc = tiledb_array_alloc(ctx_, array_name.c_str(), &array);
     REQUIRE(rc == TILEDB_OK);
     // Check error with key
-    char key[32];
+    const char key[] = "0123456789abcdeF0123456789abcdeF";
     rc = tiledb_config_set(cfg, "sm.encryption_type", "AES_256_GCM", &err);
     REQUIRE(rc == TILEDB_OK);
     REQUIRE(err == nullptr);

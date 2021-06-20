@@ -1143,6 +1143,30 @@ uint64_t Dimension::map_to_uint64(
 }
 
 template <>
+uint64_t Dimension::map_to_uint64<double>(
+    const Dimension* dim,
+    const QueryBuffer* buff,
+    uint64_t c,
+    uint64_t coords_num,
+    int bits,
+    uint64_t max_bucket_val) {
+  assert(dim != nullptr);
+  assert(buff != nullptr);
+  assert(!dim->domain().empty());
+  (void)coords_num;  // Not used here
+  (void)bits;        // Not used here
+
+  /** For double values, we divide everything by 2 to avoid overflows.
+   * This will still preserve the ratios and data will fall into the same
+   * buckets for the most part. Loss of precision here is acceprable */
+  auto dom_start = *(const double*)dim->domain().start() / 2;
+  auto dom_end = *(const double*)dim->domain().end() / 2;
+  auto dom_range = dom_end - dom_start;
+  auto norm_coord = ((const double*)buff->buffer_)[c] / 2 - dom_start;
+  return (norm_coord / dom_range) * max_bucket_val;
+}
+
+template <>
 uint64_t Dimension::map_to_uint64<char>(
     const Dimension* dim,
     const QueryBuffer* buff,
@@ -1208,6 +1232,29 @@ uint64_t Dimension::map_to_uint64_2(
 }
 
 template <>
+uint64_t Dimension::map_to_uint64_2<double>(
+    const Dimension* dim,
+    const void* coord,
+    uint64_t coord_size,
+    int bits,
+    uint64_t max_bucket_val) {
+  assert(dim != nullptr);
+  assert(coord != nullptr);
+  assert(!dim->domain().empty());
+  (void)coord_size;  // Not needed here
+  (void)bits;        // Not needed here
+
+  /** For double values, we divide everything by 2 to avoid overflows.
+   * This will still preserve the ratios and data will fall into the same
+   * buckets for the most part. Loss of precision here is acceprable */
+  auto dom_start = *(const double*)dim->domain().start() / 2;
+  auto dom_end = *(const double*)dim->domain().end() / 2;
+  auto dom_range = dom_end - dom_start;
+  auto norm_coord = *(const double*)coord / 2 - dom_start;
+  return (norm_coord / dom_range) * max_bucket_val;
+}
+
+template <>
 uint64_t Dimension::map_to_uint64_2<char>(
     const Dimension* dim,
     const void* coord,
@@ -1264,6 +1311,27 @@ uint64_t Dimension::map_to_uint64_3(
 }
 
 template <>
+uint64_t Dimension::map_to_uint64_3<double>(
+    const Dimension* dim,
+    const ResultCoords& coord,
+    uint32_t dim_idx,
+    int bits,
+    uint64_t max_bucket_val) {
+  assert(dim != nullptr);
+  assert(!dim->domain().empty());
+  (void)bits;  // Not needed here
+
+  /** For double values, we divide everything by 2 to avoid overflows.
+   * This will still preserve the ratios and data will fall into the same
+   * buckets for the most part. Loss of precision here is acceprable */
+  auto dom_start = *(const double*)dim->domain().start() / 2;
+  auto dom_end = *(const double*)dim->domain().end() / 2;
+  auto dom_range = dom_end - dom_start;
+  auto norm_coord = *((const double*)coord.coord(dim_idx)) / 2 - dom_start;
+  return (norm_coord / dom_range) * max_bucket_val;
+}
+
+template <>
 uint64_t Dimension::map_to_uint64_3<char>(
     const Dimension* dim,
     const ResultCoords& coord,
@@ -1297,7 +1365,7 @@ ByteVecValue Dimension::map_from_uint64(
   return map_from_uint64_func_(this, value, bits, max_bucket_val);
 }
 
-template <class T>
+template <class T, typename std::enable_if<std::is_integral<T>::value>::type*>
 ByteVecValue Dimension::map_from_uint64(
     const Dimension* dim, uint64_t value, int bits, uint64_t max_bucket_val) {
   assert(dim != nullptr);
@@ -1306,27 +1374,89 @@ ByteVecValue Dimension::map_from_uint64(
 
   ByteVecValue ret(sizeof(T));
 
-  // Add domain start
-  auto value_T = static_cast<T>(value);
-  value_T += *(const T*)dim->domain().start();
-
   auto dom_start_T = *(const T*)dim->domain().start();
   auto dom_end_T = *(const T*)dim->domain().end();
   double dom_range_T = dom_end_T - dom_start_T;
 
   // Essentially take the largest value in the bucket
-  if (std::is_integral<T>::value) {  // Integers
-    T norm_coord_T =
-        ceil(((value + 1) / (double)max_bucket_val) * dom_range_T - 1);
-    T coord_T = norm_coord_T + dom_start_T;
-    std::memcpy(&ret[0], &coord_T, sizeof(T));
-  } else {  // Floating point types
-    T norm_coord_T = ((value + 1) / (double)max_bucket_val) * dom_range_T;
-    norm_coord_T =
-        std::nextafter(norm_coord_T, std::numeric_limits<T>::lowest());
-    T coord_T = norm_coord_T + dom_start_T;
-    std::memcpy(&ret[0], &coord_T, sizeof(T));
+  T norm_coord_T =
+      ceil(((value + 1) / (double)max_bucket_val) * dom_range_T - 1);
+  T coord_T = norm_coord_T + dom_start_T;
+  std::memcpy(&ret[0], &coord_T, sizeof(T));
+
+  return ret;
+}
+
+template <
+    class T,
+    typename std::enable_if<std::is_floating_point<T>::value>::type*>
+ByteVecValue Dimension::map_from_uint64(
+    const Dimension* dim, uint64_t value, int bits, uint64_t max_bucket_val) {
+  assert(dim != nullptr);
+  assert(!dim->domain().empty());
+  (void)bits;  // Not needed here
+
+  ByteVecValue ret(sizeof(T));
+
+  // For doubles, we divide by 2 to avoid overflows.
+  double div = std::is_same<double, T>::value ? 2 : 1;
+
+  double dom_start = *(const T*)dim->domain().start() / div;
+  double dom_end = *(const T*)dim->domain().end() / div;
+  auto dom_range = dom_end - dom_start;
+
+  /** Here, we need to return the maximum value that will lead to this bucket.
+   * Unfortunately, rounding errors won't allow us to be fully accurate.
+   * So we are going to take a value in the middle of this bucket, and a
+   * value in the middle of the next bucket, and do a bisection search. */
+  double norm_coord_low =
+      (((double)value + 0.5) / (double)max_bucket_val) * dom_range;
+  T coord_low = norm_coord_low + dom_start;
+
+  /** If we are using floats and there are more bits for the hilbert buckets
+   * than bits in the float mantissa (24), the next bucket value will be a
+   * power of two of the bits difference. */
+  double next_bucket_val = 1.5;
+  if (std::is_same<float, T>::value) {
+    if (bits > 24) {
+      next_bucket_val = 1 << (bits - 24);
+    }
   }
+
+  double norm_coord_high =
+      (((double)value + next_bucket_val) / (double)max_bucket_val) * dom_range;
+  T coord_high = norm_coord_high + dom_start;
+
+  /** Here, we always keep coord_low in the current bucket and coord_high in
+   * the next, when low is the value after high, we have found out value.
+   * i is used to garantee convergence, which should be done in 53 iterations
+   * as double representation has 53 bits mantissa. */
+  int i = 0;
+  do {
+    // Calculate the middle value.
+    T mid = (coord_high + coord_low) / 2;
+
+    auto norm_coord = mid - dom_start;
+    uint64_t mid_bucket = ((double)norm_coord / dom_range) * max_bucket_val;
+
+    if (mid_bucket == value) {
+      coord_low = mid;
+    } else {
+      coord_high = mid;
+    }
+    i++;
+    if (i > 53)
+      break;
+  } while (coord_low !=
+           std::nextafter(coord_high, std::numeric_limits<T>::lowest()));
+
+  assert(
+      coord_low ==
+      std::nextafter(coord_high, std::numeric_limits<T>::lowest()));
+
+  coord_low *= div;
+
+  std::memcpy(&ret[0], &coord_low, sizeof(T));
 
   return ret;
 }

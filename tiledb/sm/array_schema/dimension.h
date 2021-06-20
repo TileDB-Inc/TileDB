@@ -773,8 +773,24 @@ class Dimension {
    * Maps a uint64 value (produced by `map_to_uint64`) to its corresponding
    * value in the original dimension domain. `max_bucket_val` is the maximum
    * value used to discretize the original value.
+   * Applicable to integral values.
    */
-  template <class T>
+  template <
+      class T,
+      typename std::enable_if<std::is_integral<T>::value>::type* = nullptr>
+  static ByteVecValue map_from_uint64(
+      const Dimension* dim, uint64_t value, int bits, uint64_t max_bucket_val);
+
+  /**
+   * Maps a uint64 value (produced by `map_to_uint64`) to its corresponding
+   * value in the original dimension domain. `max_bucket_val` is the maximum
+   * value used to discretize the original value.
+   * Applicable to floating point values.
+   */
+  template <
+      class T,
+      typename std::enable_if<std::is_floating_point<T>::value>::type* =
+          nullptr>
   static ByteVecValue map_from_uint64(
       const Dimension* dim, uint64_t value, int bits, uint64_t max_bucket_val);
 
