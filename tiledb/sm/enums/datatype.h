@@ -52,7 +52,7 @@ enum class Datatype : uint8_t {
 };
 
 /** Returns the datatype size. */
-inline uint64_t datatype_size(Datatype type) {
+inline constexpr uint64_t datatype_size(Datatype type) {
   switch (type) {
     case Datatype::INT32:
       return sizeof(int);
