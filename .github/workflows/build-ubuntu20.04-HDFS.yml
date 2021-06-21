@@ -1,4 +1,4 @@
-name: build-ubuntu-16.04-SERIALIZATION
+name: build-ubuntu-ubuntu-20.04-HDFS
 on:
   push:
     branches:
@@ -9,17 +9,16 @@ on:
     branches:
       - '*'  # must quote since "*" is a YAML reserved character; we want a string
 env:
-  TILEDB_SERIALIZATION: ON
-  TILEDB_S3: ON
+  BACKWARDS_COMPATIBILITY_ARRAYS: OFF
+  TILEDB_HDFS: ON
   CXX: g++
-  BACKWARDS_COMPATIBILITY_ARRAYS: ON
 
 jobs:
   build:
-    runs-on: ubuntu-16.04
+    runs-on: ubuntu-ubuntu-20.04
     if: ${{ startsWith(github.ref , 'refs/tags') != true && startsWith(github.ref , 'build-') != true }}
     timeout-minutes: 90
-    name: Build - ubuntu-16.04 - SERIALIZATION
+    name: Build - ubuntu-ubuntu-20.04 - HDFS
     steps:
       - uses: actions/checkout@v2
       - name: 'Print env'
@@ -37,11 +36,11 @@ jobs:
       - uses: actions/setup-python@v2
         with:
           python-version: '3.8'
+
       - run: |
           set -e pipefail
           python -m pip install --upgrade pip virtualenv
         shell: bash
-
       - name: Check formatting (linux only)'
         run: |
           source $GITHUB_WORKSPACE/scripts/ci/check_formatting_linux.sh
@@ -55,24 +54,27 @@ jobs:
           sudo apt-get install doxygen
         shell: bash
         if: ${{ runner.os == 'Linux' }}
-
       - name: 'Build and test libtiledb'
         id: test
         run: |
 
-          git clone https://github.com/TileDB-Inc/TileDB-Unit-Test-Arrays.git --branch 2.2.0 test/inputs/arrays/read_compatibility_test
+          # - run: |
+          # Start HDFS server if enabled
+          # - ssh to localhost is required for HDFS launch...
+          # - /home/vsts has permissions g+w and is owned by user 'docker'
+          #   for VSTS purposes, so disable ssh strictness
+          sudo sed -i.bak 's/StrictModes\ yes/StrictModes\ no/g' /etc/ssh/sshd_config
 
-          #   name: 'Clone Unit-Test-Arrays'
+          source scripts/install-hadoop.sh
+          source scripts/run-hadoop.sh
 
-          bootstrap_args="${bootstrap_args} --enable-serialization";
+          bootstrap_args="${bootstrap_args} --enable-hdfs";
           source $GITHUB_WORKSPACE/scripts/ci/build_libtiledb.sh
 
           # Bypass Catch2 Framework stdout interception with awk on test output
           # make check | awk '/1: ::set-output/{sub(/.*1: /, ""); print; next} 1'
           ./tiledb/test/tiledb_unit -d yes | awk '/1: ::set-output/{sub(/.*1: /, ""); print; next} 1'
 
-
-          # - bash: |
           pushd $GITHUB_WORKSPACE/examples/cmake_project
           mkdir build && cd build
           cmake -DCMAKE_PREFIX_PATH=$GITHUB_WORKSPACE/dist .. && make

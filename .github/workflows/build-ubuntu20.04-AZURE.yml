@@ -1,4 +1,4 @@
-name: build-ubuntu-16.04-HDFS
+name: build-ubuntu-ubuntu-20.04-AZURE
 on:
   push:
     branches:
@@ -10,15 +10,17 @@ on:
       - '*'  # must quote since "*" is a YAML reserved character; we want a string
 env:
   BACKWARDS_COMPATIBILITY_ARRAYS: OFF
-  TILEDB_HDFS: ON
+  TILEDB_AZURE: ON
+  TILEDB_STATIC: OFF
+  TILEDB_ARROW_TESTS: ON
   CXX: g++
 
 jobs:
   build:
-    runs-on: ubuntu-16.04
+    runs-on: ubuntu-ubuntu-20.04
     if: ${{ startsWith(github.ref , 'refs/tags') != true && startsWith(github.ref , 'build-') != true }}
     timeout-minutes: 90
-    name: Build - ubuntu-16.04 - HDFS
+    name: Build - ubuntu-ubuntu-20.04 - AZURE
     steps:
       - uses: actions/checkout@v2
       - name: 'Print env'
@@ -40,7 +42,9 @@ jobs:
       - run: |
           set -e pipefail
           python -m pip install --upgrade pip virtualenv
+          pip install pyarrow pybind11 numpy
         shell: bash
+
       - name: Check formatting (linux only)'
         run: |
           source $GITHUB_WORKSPACE/scripts/ci/check_formatting_linux.sh
@@ -54,31 +58,44 @@ jobs:
           sudo apt-get install doxygen
         shell: bash
         if: ${{ runner.os == 'Linux' }}
+
       - name: 'Build and test libtiledb'
         id: test
         run: |
+          # Azure sets "SYSTEM=build" for unknown reasonas, which breaks the OpenSSL configure script
+          #   - openssl configure uses ENV{SYSTEM} if available:
+          #     https://github.com/openssl/openssl/blob/6d745d740d37d680ff696486218b650512bbbbc6/config#L56
+          #   - error description:
+          #     https://developercommunity.visualstudio.com/content/problem/602584/openssl-build-error-when-using-pipelines.htm
+          unset SYSTEM
 
-          # - run: |
-          # Start HDFS server if enabled
-          # - ssh to localhost is required for HDFS launch...
-          # - /home/vsts has permissions g+w and is owned by user 'docker'
-          #   for VSTS purposes, so disable ssh strictness
-          sudo sed -i.bak 's/StrictModes\ yes/StrictModes\ no/g' /etc/ssh/sshd_config
+          # azure run does not treat intermediate failure as error
+          # https://github.com/Microsoft/azure-pipelines-yaml/issues/135
+          set -e pipefail
 
-          source scripts/install-hadoop.sh
-          source scripts/run-hadoop.sh
+          git config --global user.name 'Azure Pipeline'
+          git config --global user.email 'no-reply@tiledb.io'
 
-          bootstrap_args="${bootstrap_args} --enable-hdfs";
+          # Start Azurite - Azure is enabled
+          source scripts/install-azurite.sh;
+          source scripts/run-azurite.sh;
+
+          bootstrap_args="${bootstrap_args} --enable-azure";
           source $GITHUB_WORKSPACE/scripts/ci/build_libtiledb.sh
-
+          
           # Bypass Catch2 Framework stdout interception with awk on test output
           # make check | awk '/1: ::set-output/{sub(/.*1: /, ""); print; next} 1'
           ./tiledb/test/tiledb_unit -d yes | awk '/1: ::set-output/{sub(/.*1: /, ""); print; next} 1'
 
+          # Kill the running Azurite server
+          kill -n 9 $AZURITE_PID
+
+          # - bash: |
           pushd $GITHUB_WORKSPACE/examples/cmake_project
           mkdir build && cd build
           cmake -DCMAKE_PREFIX_PATH=$GITHUB_WORKSPACE/dist .. && make
           ./ExampleExe
+
           popd
           # Build and run the PNG ingestion example.
           # libpng (example dependency)
