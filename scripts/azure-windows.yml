@@ -196,7 +196,6 @@ steps:
 
 - task: PublishBuildArtifacts@1
   inputs:
-    #pathtoPublish: '$(Build.ArtifactStagingDirectory)/tiledb-windows-x64-$(Build.SourceVersion).zip'
-    pathtoPublish: '$(Agent.BuildDirectory)\s\dist\'
+    pathToPublish: '$(Agent.BuildDirectory)\s\dist\'
     artifactName: 'tiledb-windows-x64-$(Build.SourceVersion)'
   condition: and(succeeded(), eq(variables['imageName'], 'vs2017-win2016'))

@@ -672,6 +672,7 @@ Status Curl::post_data(
     const std::string& url,
     const SerializationType serialization_type,
     const BufferList* data,
+    Buffer* const returned_data,
     PostResponseCb&& cb,
     const std::string& res_uri) {
   struct curl_slist* headers;
@@ -684,7 +685,7 @@ Status Curl::post_data(
   RETURN_NOT_OK(st);
 
   // Check for errors
-  RETURN_NOT_OK(check_curl_errors(ret, "POST"));
+  RETURN_NOT_OK(check_curl_errors(ret, "POST", returned_data));
 
   return Status::Ok();
 }

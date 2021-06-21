@@ -92,6 +92,7 @@ Dimension::Dimension(const Dimension* dim) {
   type_ = dim->type_;
 
   // Set fuctions
+  adjust_range_oob_func_ = dim->adjust_range_oob_func_;
   ceil_to_tile_func_ = dim->ceil_to_tile_func_;
   check_range_func_ = dim->check_range_func_;
   coincides_with_tiles_func_ = dim->coincides_with_tiles_func_;
@@ -351,10 +352,10 @@ void Dimension::ceil_to_tile(
   v->resize(sizeof(T));
   auto r_t = (const T*)r.data();
 
-  T mid = r_t[0] + (tile_num + 1) * tile_extent;
-  uint64_t div = (mid - dim_dom[0]) / tile_extent;
-  auto floored_mid = (T)div * tile_extent + dim_dom[0];
-  T sp = (std::numeric_limits<T>::is_integer) ?
+  T mid = tile_coord_low(tile_num + 1, r_t[0], tile_extent);
+  uint64_t div = tile_idx(mid, dim_dom[0], tile_extent);
+  T floored_mid = tile_coord_low(div, dim_dom[0], tile_extent);
+  T sp = (std::is_integral<T>::value) ?
              floored_mid - 1 :
              static_cast<T>(
                  std::nextafter(floored_mid, std::numeric_limits<T>::lowest()));
@@ -399,10 +400,10 @@ bool Dimension::coincides_with_tiles(const Dimension* dim, const Range& r) {
   auto dim_domain = (const T*)dim->domain().data();
   auto tile_extent = *(const T*)dim->tile_extent().data();
   auto d = (const T*)r.data();
-  auto norm_1 = uint64_t(d[0] - dim_domain[0]);
-  auto norm_2 = (uint64_t(d[1]) - dim_domain[0]) + 1;
-  return ((norm_1 / tile_extent) * tile_extent == norm_1) &&
-         ((norm_2 / tile_extent) * tile_extent == norm_2);
+  auto rounded_1 = Dimension::round_to_tile(d[0], dim_domain[0], tile_extent);
+  auto rounded_2 =
+      Dimension::round_to_tile(T(d[1] + 1), dim_domain[0], tile_extent);
+  return (rounded_1 == d[0]) && (rounded_2 == T(d[1] + 1));
 }
 
 bool Dimension::coincides_with_tiles(const Range& r) const {
@@ -593,11 +594,12 @@ void Dimension::expand_to_tile(const Dimension* dim, Range* range) {
   auto tile_extent = *(const T*)dim->tile_extent().data();
   auto dim_dom = (const T*)dim->domain().data();
   auto r = (const T*)range->data();
-  T res[2];
+  auto tile_idx1 = tile_idx(r[0], dim_dom[0], tile_extent);
+  auto tile_idx2 = tile_idx(r[1], dim_dom[0], tile_extent);
 
-  res[0] = ((r[0] - dim_dom[0]) / tile_extent * tile_extent) + dim_dom[0];
-  res[1] =
-      ((r[1] - dim_dom[0]) / tile_extent + 1) * tile_extent - 1 + dim_dom[0];
+  T res[2];
+  res[0] = tile_coord_low(tile_idx1, dim_dom[0], tile_extent);
+  res[1] = tile_coord_high(tile_idx2, dim_dom[0], tile_extent);
 
   range->set_range(res, sizeof(res));
 }
@@ -733,35 +735,98 @@ double Dimension::overlap_ratio<char>(const Range& r1, const Range& r2) {
 
 template <class T>
 double Dimension::overlap_ratio(const Range& r1, const Range& r2) {
+  // Verify that we have two intervals
   assert(!r1.empty());
   assert(!r2.empty());
-
   auto d1 = (const T*)r1.data();
   auto d2 = (const T*)r2.data();
-  assert(d1[0] <= d1[1]);
-  assert(d2[0] <= d2[1]);
+  const auto r1_low = d1[0];
+  const auto r1_high = d1[1];
+  auto r2_low = d2[0];
+  auto r2_high = d2[1];
+  assert(r1_low <= r1_high);
+  assert(r2_low <= r2_high);
 
-  // No overlap
-  if (d1[0] > d2[1] || d1[1] < d2[0])
+  // Special case: No overlap, intervals are disjoint
+  if (r1_low > r2_high || r1_high < r2_low)
     return 0.0;
-
-  // Compute ratio
-  auto overlap_start = std::max(d1[0], d2[0]);
-  auto overlap_end = std::min(d1[1], d2[1]);
-  auto overlap_range = overlap_end - overlap_start;
-  auto mbr_range = d2[1] - d2[0];
-  auto max = std::numeric_limits<double>::max();
-  if (std::numeric_limits<T>::is_integer) {
-    overlap_range += 1;
-    mbr_range += 1;
-  } else {
-    if (overlap_range == 0)
-      overlap_range = std::nextafter(overlap_range, max);
-    if (mbr_range == 0)
-      mbr_range = std::nextafter(mbr_range, max);
+  // Special case: All overlap, interval r2 is a subset of interval r1
+  if (r1_low <= r2_low && r2_high <= r1_high)
+    return 1.0;
+  /*
+   * At this point we know that r2_low < r2_high, because we would have returned
+   * by now otherwise. Note that for floating point types, however, we cannot
+   * conclude that r2_high - r2_low > 0 because of the possibility of underflow.
+   */
+  auto intersection_low = std::max(r1_low, r2_low);
+  auto intersection_high = std::min(r1_high, r2_high);
+  /*
+   * The intersection is a proper subset of interval r1, either the upper bounds
+   * are distinct, or lower bounds are distinct, or both. This means that any
+   * result has to be strictly greater than zero and strictly less than 1.
+   */
+  /*
+   * Guard against overflow. If the outer interval has a bound with an absolute
+   * value that's "too large", meaning that it might lead to an overflow, we
+   * apply a shrinking transformation that preserves the ratio. We only need to
+   * check the outer interval because the intersection is strictly smaller. For
+   * unsigned types we only need to check the upper bound, since the lower bound
+   * is zero. For signed types we need to check both.
+   */
+  const T safe_upper = std::nextafter(std::numeric_limits<T>::max() / 2, 0);
+  bool unsafe = safe_upper < r2_high;
+  if (std::numeric_limits<T>::is_signed) {
+    const T safe_lower =
+        std::nextafter(std::numeric_limits<T>::lowest() / 2, 0);
+    unsafe = unsafe || r2_low < safe_lower;
+  }
+  if (unsafe) {
+    r2_low /= 2;
+    r2_high /= 2;
+    intersection_low /= 2;
+    intersection_high /= 2;
   }
 
-  return (double)overlap_range / mbr_range;
+  // Compute ratio
+  auto numerator = intersection_high - intersection_low;
+  auto denominator = r2_high - r2_low;
+  if (std::numeric_limits<T>::is_integer) {
+    // integer types count elements; they don't measure length
+    numerator += 1;
+    denominator += 1;
+  } else {
+    if (denominator == 0) {
+      /*
+       * If the variable `denominator` is zero, it's the result of rounding,
+       * since checking the "disjoint" and "subset" cases above has ensured that
+       * the endpoints of the denominator interval are distinct. Thus we have no
+       * easy-to-access information about the true quotient value, but
+       * mathematically it must be between 0 and 1, so we need either to return
+       * some value between 0 and 1 or to throw an exception stating that we
+       * don't support this case.
+       *
+       * The variable `denominator` is larger than the variable `numerator`, so
+       * the numerator is also be zero. We could extract some information from
+       * the floating-point representation itself, but that's a lot of work that
+       * doesn't seem justified at present. Throwing an exception would be
+       * better on principle, but the code in its current state now would not
+       * deal with that gracefully. As a compromise, therefore, we return a
+       * valid but non-computed value. It's a defect, but one that will rarely
+       * if ever arise in practice.
+       */
+      return 0.5;
+    }
+    // The rounded-to-zero numerator is handled in the general case below.
+  }
+  auto ratio = (double)numerator / denominator;
+  // Round away from the endpoints if needed.
+  if (ratio == 0.0) {
+    ratio = std::nextafter(0, 1);
+  } else if (ratio == 1.0) {
+    ratio = std::nextafter(1, 0);
+  }
+  assert(0.0 < ratio && ratio < 1.0);
+  return ratio;
 }
 
 double Dimension::overlap_ratio(const Range& r1, const Range& r2) const {
@@ -828,7 +893,7 @@ void Dimension::split_range(
   assert(r2 != nullptr);
 
   auto max = std::numeric_limits<T>::max();
-  bool int_domain = std::numeric_limits<T>::is_integer;
+  bool int_domain = std::is_integral<T>::value;
   auto r_t = (const T*)r.data();
   auto v_t = *(const T*)(&v[0]);
   assert(v_t >= r_t[0]);
@@ -1013,16 +1078,8 @@ uint64_t Dimension::tile_num(const Dimension* dim, const Range& range) {
   auto dim_dom = (const T*)dim->domain().data();
   auto r = (const T*)range.data();
 
-  uint64_t start;
-  uint64_t end;
-  if (std::is_integral<T>::value) {
-    start = ((uint64_t)r[0] - (uint64_t)dim_dom[0]) / tile_extent;
-    end = ((uint64_t)r[1] - (uint64_t)dim_dom[0]) / tile_extent;
-  } else {
-    start = floor((r[0] - dim_dom[0]) / tile_extent);
-    end = floor((r[1] - dim_dom[0]) / tile_extent);
-  }
-
+  uint64_t start = tile_idx(r[0], dim_dom[0], tile_extent);
+  uint64_t end = tile_idx(r[1], dim_dom[0], tile_extent);
   return end - start + 1;
 }
 
@@ -1533,15 +1590,22 @@ Status Dimension::set_null_tile_extent_to_range() {
 
   // Calculate new tile extent equal to domain range
   auto domain = (const T*)domain_.data();
+
+  // For integral domain, we need to add 1, check for overflow before doing
+  // anything
+  if (std::is_integral<T>::value) {
+    if (domain[0] == std::numeric_limits<T>::min() &&
+        domain[1] == std::numeric_limits<T>::max()) {
+      return LOG_STATUS(Status::DimensionError(
+          "Cannot set null tile extent to domain range; "
+          "Domain range exceeds domain type max numeric limit"));
+    }
+  }
+
   T tile_extent = domain[1] - domain[0];
 
   // We need to add 1 for integral domains
   if (std::is_integral<T>::value) {
-    // Check overflow before adding 1
-    if (tile_extent == std::numeric_limits<T>::max())
-      return LOG_STATUS(Status::DimensionError(
-          "Cannot set null tile extent to domain range; "
-          "Domain range exceeds domain type max numeric limit"));
     ++tile_extent;
     // After this, tile_extent = domain[1] - domain[0] + 1, which is the correct
     // domain range
@@ -1686,20 +1750,25 @@ Status Dimension::check_tile_extent() const {
   auto domain = (const T*)domain_.data();
   bool is_int = std::is_integral<T>::value;
 
-  // Check if tile extent is negative or 0
-  if (*tile_extent <= 0)
-    return LOG_STATUS(Status::DimensionError(
-        "Tile extent check failed; Tile extent must be greater than 0"));
-
   // Check if tile extent exceeds domain
   if (!is_int) {
+    // Check if tile extent is negative or 0
+    if (*tile_extent <= 0)
+      return LOG_STATUS(Status::DimensionError(
+          "Tile extent check failed; Tile extent must be greater than 0"));
+
     if (*tile_extent > (domain[1] - domain[0] + 1))
       return LOG_STATUS(
           Status::DimensionError("Tile extent check failed; Tile extent "
                                  "exceeds dimension domain range"));
   } else {
+    // Check if tile extent is 0
+    if (*tile_extent == 0)
+      return LOG_STATUS(Status::DimensionError(
+          "Tile extent check failed; Tile extent must not be 0"));
+
     // Check if tile extent exceeds domain
-    uint64_t range = domain[1] - domain[0] + 1;
+    uint64_t range = (uint64_t)domain[1] - (uint64_t)domain[0] + 1;
     if (uint64_t(*tile_extent) > range)
       return LOG_STATUS(
           Status::DimensionError("Tile extent check failed; Tile extent "
@@ -1856,25 +1925,21 @@ std::string Dimension::tile_extent_str() const {
   if (tile_extent_.empty())
     return constants::null_str;
 
-  const int* tile_extent_int32;
-  const int64_t* tile_extent_int64;
   const float* tile_extent_float32;
   const double* tile_extent_float64;
-  const int8_t* tile_extent_int8;
   const uint8_t* tile_extent_uint8;
-  const int16_t* tile_extent_int16;
   const uint16_t* tile_extent_uint16;
   const uint32_t* tile_extent_uint32;
   const uint64_t* tile_extent_uint64;
 
   switch (type_) {
     case Datatype::INT32:
-      tile_extent_int32 = (const int32_t*)tile_extent_.data();
-      ss << *tile_extent_int32;
+      tile_extent_uint32 = (const uint32_t*)tile_extent_.data();
+      ss << *tile_extent_uint32;
       return ss.str();
     case Datatype::INT64:
-      tile_extent_int64 = (const int64_t*)tile_extent_.data();
-      ss << *tile_extent_int64;
+      tile_extent_uint64 = (const uint64_t*)tile_extent_.data();
+      ss << *tile_extent_uint64;
       return ss.str();
     case Datatype::FLOAT32:
       tile_extent_float32 = (const float*)tile_extent_.data();
@@ -1885,16 +1950,16 @@ std::string Dimension::tile_extent_str() const {
       ss << *tile_extent_float64;
       return ss.str();
     case Datatype::INT8:
-      tile_extent_int8 = (const int8_t*)tile_extent_.data();
-      ss << int(*tile_extent_int8);
+      tile_extent_uint8 = (const uint8_t*)tile_extent_.data();
+      ss << int(*tile_extent_uint8);
       return ss.str();
     case Datatype::UINT8:
       tile_extent_uint8 = (const uint8_t*)tile_extent_.data();
       ss << int(*tile_extent_uint8);
       return ss.str();
     case Datatype::INT16:
-      tile_extent_int16 = (const int16_t*)tile_extent_.data();
-      ss << *tile_extent_int16;
+      tile_extent_uint16 = (const uint16_t*)tile_extent_.data();
+      ss << *tile_extent_uint16;
       return ss.str();
     case Datatype::UINT16:
       tile_extent_uint16 = (const uint16_t*)tile_extent_.data();
@@ -1930,8 +1995,8 @@ std::string Dimension::tile_extent_str() const {
     case Datatype::TIME_PS:
     case Datatype::TIME_FS:
     case Datatype::TIME_AS:
-      tile_extent_int64 = (const int64_t*)tile_extent_.data();
-      ss << *tile_extent_int64;
+      tile_extent_uint64 = (const uint64_t*)tile_extent_.data();
+      ss << *tile_extent_uint64;
       return ss.str();
 
     case Datatype::CHAR:

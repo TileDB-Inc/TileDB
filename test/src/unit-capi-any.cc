@@ -156,14 +156,11 @@ void AnyFx::write_array(const std::string& array_name) {
   REQUIRE(rc == TILEDB_OK);
   rc = tiledb_query_set_layout(ctx, query, TILEDB_GLOBAL_ORDER);
   REQUIRE(rc == TILEDB_OK);
-  rc = tiledb_query_set_buffer_var(
-      ctx,
-      query,
-      attributes[0],
-      (uint64_t*)buffers[0],
-      &buffer_sizes[0],
-      buffers[1],
-      &buffer_sizes[1]);
+  rc = tiledb_query_set_data_buffer(
+      ctx, query, attributes[0], buffers[1], &buffer_sizes[1]);
+  REQUIRE(rc == TILEDB_OK);
+  rc = tiledb_query_set_offsets_buffer(
+      ctx, query, attributes[0], (uint64_t*)buffers[0], &buffer_sizes[0]);
   REQUIRE(rc == TILEDB_OK);
 
   // Submit query
@@ -210,8 +207,10 @@ void AnyFx::read_array(const std::string& array_name) {
   tiledb_query_t* query;
   rc = tiledb_query_alloc(ctx, array, TILEDB_READ, &query);
   REQUIRE(rc == TILEDB_OK);
-  rc = tiledb_query_set_buffer_var(
-      ctx, query, "a1", buffer_a1_off, &size_off, buffer_a1_val, &size_val);
+  rc = tiledb_query_set_data_buffer(ctx, query, "a1", buffer_a1_val, &size_val);
+  REQUIRE(rc == TILEDB_OK);
+  rc = tiledb_query_set_offsets_buffer(
+      ctx, query, "a1", buffer_a1_off, &size_off);
   REQUIRE(rc == TILEDB_OK);
   rc = tiledb_query_set_layout(ctx, query, TILEDB_GLOBAL_ORDER);
   REQUIRE(rc == TILEDB_OK);

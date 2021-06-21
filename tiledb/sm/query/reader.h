@@ -41,6 +41,7 @@
 #include <vector>
 
 #include "tiledb/common/status.h"
+#include "tiledb/sm/array_schema/dimension.h"
 #include "tiledb/sm/array_schema/tile_domain.h"
 #include "tiledb/sm/misc/types.h"
 #include "tiledb/sm/misc/uri.h"
@@ -247,16 +248,41 @@ class Reader {
   bool incomplete() const;
 
   /**
-   * Retrieves the buffer of a fixed-sized attribute/dimension.
+   * Retrieves the buffer of a fixed/var-sized attribute/dimension.
    *
    * @param name The attribute/dimension name.
    * @param buffer The buffer to be retrieved.
    * @param buffer_size A pointer to the buffer size to be retrieved.
    * @return Status
    */
-  Status get_buffer(
+  Status get_data_buffer(
       const std::string& name, void** buffer, uint64_t** buffer_size) const;
 
+  /**
+   * Retrieves the offset buffer for a var-sized attribute/dimension.
+   *
+   * @param name The attribute/dimension name.
+   * @param buffer_off The offsets buffer to be retrieved. This buffer holds
+   * the starting offsets of each cell value in the data buffer.
+   * @param buffer_off_size A pointer to the buffer size to be retrieved.
+   * @return Status
+   */
+  Status get_offsets_buffer(
+      const std::string& name,
+      uint64_t** buffer_off,
+      uint64_t** buffer_off_size) const;
+
+  /**
+   * Retrieves the validity buffer for a nullable attribute/dimension.
+   *
+   * @param name The attribute/dimension name.
+   * @param validity_vector The buffer that either have the validity
+   * bytemap associated with the input data to be written, or will hold the
+   * validity bytemap to be read.
+   * @return Status
+   */
+  Status get_validity_buffer(
+      const std::string& name, const ValidityVector** validity_vector) const;
   /**
    * Retrieves the offsets and values buffers of a var-sized
    * attribute/dimension.
@@ -264,7 +290,7 @@ class Reader {
    * @param name The attribute/dimension name.
    * @param buffer_off The offsets buffer to be retrieved.
    * @param buffer_off_size A pointer to the offsets buffer size to be
-   *     retrieved.
+   * retrieved.
    * @param buffer_val The values buffer to be retrieved.
    * @param buffer_val_size A pointer to the values buffer size to be retrieved.
    * @return Status
@@ -352,20 +378,82 @@ class Reader {
   void set_array_schema(const ArraySchema* array_schema);
 
   /**
-   * Sets the buffer for a fixed-sized attribute/dimension.
+   * Sets the buffer for a fixed/var-sized attribute/dimension.
    *
    * @param name The attribute/dimension to set the buffer for.
    * @param buffer The buffer that will hold the data to be read.
    * @param buffer_size This initially contains the allocated
    *     size of `buffer`, but after the termination of the function
    *     it will contain the size of the useful (read) data in `buffer`.
-   * @param check_null_buffers If true (default), null buffers are not allowed.
+   * @param check_null_buffers If true (default), null buffers are not
+   * allowed.
    * @return Status
    */
   Status set_buffer(
       const std::string& name,
       void* buffer,
       uint64_t* buffer_size,
+      bool check_null_buffers = true);
+
+  /**
+   * Sets the data for a fixed/var-sized attribute/dimension.
+   *
+   * @param name The attribute/dimension to set the buffer for.
+   * @param buffer The buffer that will hold the data to be read.
+   * @param buffer_size This initially contains the allocated
+   *     size of `buffer`, but after the termination of the function
+   *     it will contain the size of the useful (read) data in `buffer`.
+   * @param check_null_buffers If true (default), null buffers are not
+   * allowed.
+   * @return Status
+   */
+  Status set_data_buffer(
+      const std::string& name,
+      void* buffer,
+      uint64_t* buffer_size,
+      bool check_null_buffers = true);
+
+  /**
+   * Sets the offset buffer for a var-sized attribute/dimension.
+   *
+   * @param name The attribute/dimension to set the buffer for.
+   * @param buffer_off The buffer that will hold the data to be read.
+   *     This buffer holds the starting offsets of each cell value in
+   *     `buffer_val`.
+   * @param buffer_off_size This initially contains
+   *     the allocated size of `buffer_off`, but after the termination of the
+   *     function it will contain the size of the useful (read) data in
+   *     `buffer_off`.
+   * @param check_null_buffers If true (default), null buffers are not
+   * allowed.
+   * @return Status
+   */
+  Status set_offsets_buffer(
+      const std::string& name,
+      uint64_t* buffer_off,
+      uint64_t* buffer_off_size,
+      bool check_null_buffers = true);
+
+  /**
+   * Sets the validity buffer for nullable attribute/dimension.
+   *
+   * @param name The attribute/dimension to set the buffer for.
+   * @param buffer_validity_bytemap The buffer that either have the validity
+   * bytemap associated with the input data to be written, or will hold the
+   * validity bytemap to be read.
+   * @param buffer_validity_bytemap_size In the case of writes, this is the size
+   * of `buffer_validity_bytemap` in bytes. In the case of reads, this initially
+   * contains the allocated size of `buffer_validity_bytemap`, but after the
+   * termination of the query it will contain the size of the useful (read)
+   * data in `buffer_validity_bytemap`.
+   * @param check_null_buffers If true (default), null buffers are not
+   * allowed.
+   * @return Status
+   */
+  Status set_validity_buffer(
+      const std::string& name,
+      uint8_t* buffer_validity_bytemap,
+      uint64_t* buffer_validity_bytemap_size,
       bool check_null_buffers = true);
 
   /**
@@ -519,7 +607,7 @@ class Reader {
   Status set_offsets_bitsize(const uint32_t bitsize);
 
   /** Returns `stats_`. */
-  stats::Stats* stats();
+  stats::Stats* stats() const;
 
   /* ********************************* */
   /*          STATIC FUNCTIONS         */

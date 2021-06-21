@@ -191,6 +191,9 @@ class SubarrayPartitioner {
   /* ********************************* */
 
   /** Returns the current partition. */
+  const Subarray& current() const;
+
+  /** Returns the current partition. */
   Subarray& current();
 
   /** Returns the current partition info. */
@@ -325,6 +328,9 @@ class SubarrayPartitioner {
 
   /** Returns the subarray. */
   Subarray* subarray();
+
+  /** Returns `stats_`. */
+  stats::Stats* stats() const;
 
  private:
   /* ********************************* */

@@ -121,6 +121,10 @@ SubarrayPartitioner& SubarrayPartitioner::operator=(
 /*               API              */
 /* ****************************** */
 
+const Subarray& SubarrayPartitioner::current() const {
+  return current_.partition_;
+}
+
 Subarray& SubarrayPartitioner::current() {
   return current_.partition_;
 }
@@ -633,6 +637,10 @@ const Subarray* SubarrayPartitioner::subarray() const {
 
 Subarray* SubarrayPartitioner::subarray() {
   return &subarray_;
+}
+
+stats::Stats* SubarrayPartitioner::stats() const {
+  return stats_;
 }
 
 /* ****************************** */

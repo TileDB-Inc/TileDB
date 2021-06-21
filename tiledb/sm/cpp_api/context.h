@@ -218,6 +218,18 @@ class Context {
     handle_error(tiledb_ctx_set_tag(ctx_.get(), key.c_str(), value.c_str()));
   }
 
+  /** Returns a JSON-formatted string of the stats. */
+  std::string stats() {
+    char* c_str;
+    handle_error(tiledb_ctx_get_stats(ctx_.get(), &c_str));
+
+    // Copy `c_str` into `str`.
+    std::string str(c_str);
+    ::free(c_str);
+
+    return str;
+  }
+
   /* ********************************* */
   /*          STATIC FUNCTIONS         */
   /* ********************************* */
