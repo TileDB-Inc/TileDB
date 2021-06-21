@@ -25,11 +25,9 @@ stages:
             CXX: clang++
             ARTIFACT_OS: macOS_azure
           linux_asan:
-            imageName: 'ubuntu-16.04'
+            imageName: 'ubuntu-20.04'
             TILEDB_CI_ASAN: ON
             TILEDB_SERIALIZATION: ON
-            CXX: g++-9
-            CC: gcc-9   # Always run ASAN with matching compiler versions
 
       pool:
         vmImage: $(imageName)
@@ -81,7 +79,7 @@ stages:
        strategy:
          matrix:
            linux:
-             imageName: 'ubuntu-16.04'
+             imageName: 'ubuntu-20.04'
              CXX: g++
              ARTIFACT_OS: 'linux'
              ARTIFACT_EXTRAS: 'full'
