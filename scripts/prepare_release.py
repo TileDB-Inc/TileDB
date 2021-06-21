@@ -5,14 +5,14 @@ import logging
 import re
 import sys
 from subprocess import check_output
-from typing import Any, Mapping, Optional
+from typing import Any, Dict, List, Optional
 
 from github import Github
 
-from parse_pr import parse_pr_body
+from parse_pr import parse_pr_body, type_mapping
 
 
-def main():
+def main() -> None:
     parser = argparse.ArgumentParser(description="Prepare next TileDB release")
     parser.add_argument("version", help="New release version")
     parser.add_argument(
@@ -34,13 +34,12 @@ def main():
         sys.exit(f"Invalid version '{args.version}': must match '{version_re}'")
 
     prs = find_prs(Github(args.token), args.head, args.base)
-    for pr in prs.items():
-        update_history(*pr)
+    update_history(args.version, prs)
 
     update_version(args.version)
 
 
-def find_prs(gh: Github, head: str, base: Optional[str] = None) -> Mapping[int, str]:
+def find_prs(gh: Github, head: str, base: Optional[str] = None) -> Dict[int, str]:
     repo = gh.get_repo("TileDB-Inc/TileDB")
 
     if base is None:
@@ -71,49 +70,48 @@ def find_prs(gh: Github, head: str, base: Optional[str] = None) -> Mapping[int, 
             backport = re.match(r"^backport-(\d+)", pr.head.ref)
             if backport:
                 pr = repo.get_pull(int(backport.group(1)))
-            prs[pr.number] = pr.body
+            # If the reserved keyword "NO_HISTORY" is included anywhere in the PR body,
+            # ignore the PR
+            if "NO_HISTORY" not in pr.body:
+                prs[pr.number] = pr.body
 
     logging.info(
-        f"{len(prs)} unique PRs found related to commits between base and head: {sorted(prs)}"
+        f"{len(prs)} unique PRs with HISTORY notes found related to commits between "
+        f"base and head: {sorted(prs)}"
     )
     return prs
 
 
-def update_history(pr_number: int, pr_body: str) -> None:
-    # If the reserved keyword "NO_HISTORY" is included anywhere
-    # in the PR body, do not modify the history
-    if "NO_HISTORY" in pr_body:
-        return
-
-    header_descriptions = parse_pr_body(pr_body)
+def update_history(version: str, prs: Dict[int, str]) -> None:
+    sections: Dict[str, List[str]] = {header: [] for header in type_mapping.values()}
+    for pr_number, pr_body in prs.items():
+        pull_url = f"https://github.com/TileDB-Inc/TileDB/pull/{pr_number}"
+        for header, descriptions in parse_pr_body(pr_body).items():
+            for description in descriptions:
+                sections[header].append(f"* {description} [#{pr_number}]({pull_url})")
 
     # Read `HISTORY.md` into memory.
     with open("HISTORY.md") as f:
-        lines = f.read().rstrip("\n").split("\n")
+        current_history = f.read()
 
-    # Remove all existing lines for this pull request
-    pull_url = f"https://github.com/TileDB-Inc/TileDB/pull/{pr_number}"
-    new_lines = [line for line in lines if pull_url not in line]
-    for header, descriptions in header_descriptions.items():
-        # The HISTORY.md always starts with in-progress changes first.
-        # We will locate the first line that starts with `header`
-        # and insert the descriptions
-        for i, line in enumerate(new_lines):
-            if line.strip().startswith(header):
-                new_lines[i + 1 : i + 1] = [
-                    f"* {description} [#{pr_number}]({pull_url})"
-                    for description in descriptions
-                ]
-                break
-
-    if lines != new_lines:
-        # Overwrite `HISTORY.md` with the new lines
-        with open("HISTORY.md", "w") as f:
-            for line in new_lines:
+    # Overwrite `HISTORY.md` with the new lines
+    with open("HISTORY.md", "w") as f:
+        print(f"# TileDB v{version} Release Notes", file=f)
+        for header, lines in sections.items():
+            # ignore empty subsections
+            if header.startswith("###") and not lines:
+                continue
+            print(file=f)
+            print(header, file=f)
+            for line in lines:
                 print(line, file=f)
 
+        # append the current history
+        print(file=f)
+        f.write(current_history)
 
-def update_version(version):
+
+def update_version(version: str) -> None:
     # 1. Replace "In Progress" in HISTORY.md
     replace_in_file(
         "HISTORY.md",
@@ -155,7 +153,7 @@ def update_version(version):
     )
 
 
-def replace_in_file(path: str, *replacement_kwargs: Mapping[str, Any]) -> None:
+def replace_in_file(path: str, *replacement_kwargs: Dict[str, Any]) -> None:
     with open(path) as f:
         text = f.read()
 
