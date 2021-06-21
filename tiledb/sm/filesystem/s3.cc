@@ -117,7 +117,7 @@ static std::once_flag aws_lib_initialized;
 S3::S3()
     : stats_(nullptr)
     , state_(State::UNINITIALIZED)
-    , credentials_provider_(nullptr) 
+    , credentials_provider_(nullptr)
     , file_buffer_size_(0)
     , max_parallel_ops_(1)
     , multipart_part_size_(0)
