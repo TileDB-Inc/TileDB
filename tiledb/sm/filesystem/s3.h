@@ -566,7 +566,7 @@ class S3 {
   mutable tdb_shared_ptr<Aws::S3::S3Client> client_;
 
   /** The AWS credetial provider. */
-  mutable std::shared_ptr<Aws::Auth::AWSCredentialsProvider>
+  mutable tdb_shared_ptr<Aws::Auth::AWSCredentialsProvider>
       credentials_provider_;
 
   /**

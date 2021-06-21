@@ -1108,9 +1108,11 @@ Status S3::init_client() const {
       Aws::String secret_access_key(aws_secret_access_key.c_str());
       Aws::String session_token(
           !aws_session_token.empty() ? aws_session_token.c_str() : "");
-      credentials_provider_ =
-          std::make_shared<Aws::Auth::SimpleAWSCredentialsProvider>(
-              access_key_id, secret_access_key, session_token);
+      credentials_provider_ = tdb_make_shared(
+          Aws::Auth::SimpleAWSCredentialsProvider,
+          access_key_id,
+          secret_access_key,
+          session_token);
       break;
     }
     case 4: {
@@ -1125,9 +1127,13 @@ Status S3::init_client() const {
               Aws::Auth::DEFAULT_CREDS_LOAD_FREQ_SECONDS);
       Aws::String session_name(
           !aws_session_name.empty() ? aws_session_name.c_str() : "");
-      credentials_provider_ =
-          std::make_shared<Aws::Auth::STSAssumeRoleCredentialsProvider>(
-              role_arn, session_name, external_id, load_frequency, nullptr);
+      credentials_provider_ = tdb_make_shared(
+          Aws::Auth::STSAssumeRoleCredentialsProvider,
+          role_arn,
+          session_name,
+          external_id,
+          load_frequency,
+          nullptr);
       break;
     }
     default:
@@ -1154,7 +1160,7 @@ Status S3::init_client() const {
     } else {
       client_ = tdb_make_shared(
           Aws::S3::S3Client,
-          credentials_provider_,
+          credentials_provider_.inner_sp(),
           *client_config_,
           Aws::Client::AWSAuthV4Signer::PayloadSigningPolicy::Never,
           use_virtual_addressing_);
