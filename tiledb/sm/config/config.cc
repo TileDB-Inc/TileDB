@@ -775,23 +775,17 @@ Status Config::sanity_check(
     RETURN_NOT_OK(utils::parse::convert(value, &vint64));
   } else if (param == "vfs.s3.verify_ssl") {
     RETURN_NOT_OK(utils::parse::convert(value, &v));
-  } else if ( (chkno=1, param == "vfs.s3.bucket_canned_acl")
-           || (chkno=2, param == "vfs.s3.object_canned_acl") ) {
+  } else if (
+      (chkno = 1, param == "vfs.s3.bucket_canned_acl") ||
+      (chkno = 2, param == "vfs.s3.object_canned_acl")) {
     // first items valid for both ObjectCannedACL and BucketCannedACL
-    if( !( (value == "NOT_SET")
-        || (value == "private_")
-        || (value == "public_read")
-        || (value == "public_read_write")
-        || (value == "authenticated_read")
-        || // items only valid for ObjectCannedACL
+    if (!((value == "NOT_SET") || (value == "private_") ||
+          (value == "public_read") || (value == "public_read_write") ||
+          (value ==
+           "authenticated_read") ||  // items only valid for ObjectCannedACL
           (chkno == 2 &&
-            (  (value == "aws_exec_read")
-            || (value == "owner_read")
-            || (value == "bucket_owner_full_control")
-            )
-          )
-        ) 
-      ) {
+           ((value == "aws_exec_read") || (value == "owner_read") ||
+            (value == "bucket_owner_full_control"))))) {
       std::stringstream msg;
       msg << "value " << param << " invalid canned acl for " << param;
       return Status::Error(msg.str());

@@ -1242,9 +1242,8 @@ TILEDB_EXPORT void tiledb_config_free(tiledb_config_t** config);
  *    "public_read"
  *    "public_read_write"
  *    "authenticated_read"
- *    (The following three items are found only in Aws::S3::Model::ObjectCannedACL.)
- *    "aws_exec_read"
- *    "owner_read"
+ *    (The following three items are found only in
+ *     Aws::S3::Model::ObjectCannedACL.) "aws_exec_read" "owner_read"
  *    "bucket_owner_full_control"
  *    **Default**: "NOT_SET"
  * - `vfs.hdfs.name_node_uri"` <br>

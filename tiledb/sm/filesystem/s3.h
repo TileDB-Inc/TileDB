@@ -629,7 +629,7 @@ class S3 {
 
   /** Protects file_buffers map */
   std::mutex file_buffers_mtx_;
-  
+
   /** If !NOT_SET assign to object requests supporting SetACL() */
   Aws::S3::Model::ObjectCannedACL object_canned_acl_;
 

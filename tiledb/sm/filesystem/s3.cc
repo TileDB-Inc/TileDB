@@ -80,17 +80,16 @@ Aws::Utils::Logging::LogLevel aws_log_name_to_level(std::string loglevel) {
 /**
  * Return a S3 enum value for any recognized string or NOT_SET if
  * B) the string is not recognized to match any of the enum values
- * 
- * @param canned_acl_str A textual string naming one of the 
+ *
+ * @param canned_acl_str A textual string naming one of the
  *        Aws::S3::Model::ObjectCannedACL enum members.
  */
 Aws::S3::Model::ObjectCannedACL S3_ObjectCannedACL_from_str(
-  const std::string &canned_acl_str) {
-  if(canned_acl_str.empty())
+    const std::string& canned_acl_str) {
+  if (canned_acl_str.empty())
     return Aws::S3::Model::ObjectCannedACL::NOT_SET;
-    
 
-  if(canned_acl_str == "NOT_SET")
+  if (canned_acl_str == "NOT_SET")
     return Aws::S3::Model::ObjectCannedACL::NOT_SET;
   else if (canned_acl_str == "private_")
     return Aws::S3::Model::ObjectCannedACL::private_;
@@ -113,17 +112,16 @@ Aws::S3::Model::ObjectCannedACL S3_ObjectCannedACL_from_str(
 /**
  * Return a S3 enum value for any recognized string or NOT_SET if
  * B) the string is not recognized to match any of the enum values
- * 
- * @param canned_acl_str A textual string naming one of the 
+ *
+ * @param canned_acl_str A textual string naming one of the
  *        Aws::S3::Model::BucketCannedACL enum members.
  */
 Aws::S3::Model::BucketCannedACL S3_BucketCannedACL_from_str(
-  const std::string &canned_acl_str) {
-  if(canned_acl_str.empty())
+    const std::string& canned_acl_str) {
+  if (canned_acl_str.empty())
     return Aws::S3::Model::BucketCannedACL::NOT_SET;
-    
 
-  if(canned_acl_str == "NOT_SET")
+  if (canned_acl_str == "NOT_SET")
     return Aws::S3::Model::BucketCannedACL::NOT_SET;
   else if (canned_acl_str == "private_")
     return Aws::S3::Model::BucketCannedACL::private_;
@@ -275,16 +273,16 @@ Status S3::init(
 
   auto object_acl_str = config.get("vfs.s3.object_canned_acl", &found);
   assert(found);
-  if(found){
+  if (found) {
     object_canned_acl_ = S3_ObjectCannedACL_from_str(object_acl_str);
   }
-  
+
   auto bucket_acl_str = config.get("vfs.s3.bucket_canned_acl", &found);
   assert(found);
-  if(found){
+  if (found) {
     bucket_canned_acl_ = S3_BucketCannedACL_from_str(bucket_acl_str);
   }
-  
+
   auto sse = config.get("vfs.s3.sse", &found);
   assert(found);
 
@@ -345,8 +343,8 @@ Status S3::create_bucket(const URI& bucket) const {
     cfg.SetLocationConstraint(location_constraint);
     create_bucket_request.SetCreateBucketConfiguration(cfg);
   }
-  
-  if(bucket_canned_acl_ != Aws::S3::Model::BucketCannedACL::NOT_SET) {
+
+  if (bucket_canned_acl_ != Aws::S3::Model::BucketCannedACL::NOT_SET) {
     create_bucket_request.SetACL(bucket_canned_acl_);
   }
 
@@ -948,7 +946,7 @@ Status S3::touch(const URI& uri) const {
     put_object_request.SetServerSideEncryption(sse_);
   if (!sse_kms_key_id_.empty())
     put_object_request.SetSSEKMSKeyId(Aws::String(sse_kms_key_id_.c_str()));
-  if(object_canned_acl_ != Aws::S3::Model::ObjectCannedACL::NOT_SET) {
+  if (object_canned_acl_ != Aws::S3::Model::ObjectCannedACL::NOT_SET) {
     put_object_request.SetACL(object_canned_acl_);
   }
 
@@ -1270,7 +1268,7 @@ Status S3::copy_object(const URI& old_uri, const URI& new_uri) {
     copy_object_request.SetServerSideEncryption(sse_);
   if (!sse_kms_key_id_.empty())
     copy_object_request.SetSSEKMSKeyId(Aws::String(sse_kms_key_id_.c_str()));
-  if(object_canned_acl_ != Aws::S3::Model::ObjectCannedACL::NOT_SET) {
+  if (object_canned_acl_ != Aws::S3::Model::ObjectCannedACL::NOT_SET) {
     copy_object_request.SetACL(object_canned_acl_);
   }
 
@@ -1363,7 +1361,7 @@ Status S3::initiate_multipart_request(
   if (!sse_kms_key_id_.empty())
     multipart_upload_request.SetSSEKMSKeyId(
         Aws::String(sse_kms_key_id_.c_str()));
-  if(object_canned_acl_ != Aws::S3::Model::ObjectCannedACL::NOT_SET) {
+  if (object_canned_acl_ != Aws::S3::Model::ObjectCannedACL::NOT_SET) {
     multipart_upload_request.SetACL(object_canned_acl_);
   }
 
@@ -1494,7 +1492,7 @@ Status S3::flush_direct(const URI& uri) {
     put_object_request.SetServerSideEncryption(sse_);
   if (!sse_kms_key_id_.empty())
     put_object_request.SetSSEKMSKeyId(Aws::String(sse_kms_key_id_.c_str()));
-  if(object_canned_acl_ != Aws::S3::Model::ObjectCannedACL::NOT_SET) {
+  if (object_canned_acl_ != Aws::S3::Model::ObjectCannedACL::NOT_SET) {
     put_object_request.SetACL(object_canned_acl_);
   }
 

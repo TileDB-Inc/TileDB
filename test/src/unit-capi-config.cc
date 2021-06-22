@@ -210,7 +210,7 @@ void check_save_to_file() {
 
   std::stringstream ss;
   // Items here need to be assigned to 'ss' in alphabetical order as
-  // an std::[ordered_]map is where the comparison values saved to file 
+  // an std::[ordered_]map is where the comparison values saved to file
   // come from.
   ss << "config.env_var_prefix TILEDB_\n";
 #ifdef TILEDB_VERBOSE
@@ -774,14 +774,16 @@ TEST_CASE("C API: Test config iter", "[capi], [config]") {
     CHECK(error == nullptr);
   } while (!done);
   // highlight any difference to aid the poor developer in event CHECK() fails.
-  for(auto i1 = all_param_values.begin() ; i1 != all_param_values.end() ; ++i1) {
-    if(all_iter_map.find(i1->first) == all_iter_map.end()){
-      std::cout << "all_iter_map[\"" << i1->first << "\"] not found!" << std::endl;
+  for (auto i1 = all_param_values.begin(); i1 != all_param_values.end(); ++i1) {
+    if (all_iter_map.find(i1->first) == all_iter_map.end()) {
+      std::cout << "all_iter_map[\"" << i1->first << "\"] not found!"
+                << std::endl;
     }
   }
-  for(auto i1 = all_iter_map.begin() ; i1 != all_iter_map.end() ; ++i1) {
-    if(all_param_values.find(i1->first) == all_param_values.end()){
-      std::cout << "all_param_values[\"" << i1->first << "\"] not found!" << std::endl;
+  for (auto i1 = all_iter_map.begin(); i1 != all_iter_map.end(); ++i1) {
+    if (all_param_values.find(i1->first) == all_param_values.end()) {
+      std::cout << "all_param_values[\"" << i1->first << "\"] not found!"
+                << std::endl;
     }
   }
   CHECK(all_param_values == all_iter_map);
@@ -812,14 +814,16 @@ TEST_CASE("C API: Test config iter", "[capi], [config]") {
     CHECK(error == nullptr);
   } while (!done);
   // highlight any difference to aid the poor developer in event CHECK() fails.
-  for(auto i1 = vfs_param_values.begin() ; i1 != vfs_param_values.end() ; ++i1) {
-    if(vfs_iter_map.find(i1->first) == vfs_iter_map.end()){
-      std::cout << "vfs_iter_map[\"" << i1->first << "\"] not found!" << std::endl;
+  for (auto i1 = vfs_param_values.begin(); i1 != vfs_param_values.end(); ++i1) {
+    if (vfs_iter_map.find(i1->first) == vfs_iter_map.end()) {
+      std::cout << "vfs_iter_map[\"" << i1->first << "\"] not found!"
+                << std::endl;
     }
   }
-  for(auto i1 = vfs_iter_map.begin() ; i1 != vfs_iter_map.end() ; ++i1) {
-    if(vfs_param_values.find(i1->first) == vfs_param_values.end()){
-      std::cout << "vfs_param_values[\"" << i1->first << "\"] not found!" << std::endl;
+  for (auto i1 = vfs_iter_map.begin(); i1 != vfs_iter_map.end(); ++i1) {
+    if (vfs_param_values.find(i1->first) == vfs_param_values.end()) {
+      std::cout << "vfs_param_values[\"" << i1->first << "\"] not found!"
+                << std::endl;
     }
   }
   CHECK(vfs_param_values == vfs_iter_map);
@@ -903,14 +907,16 @@ TEST_CASE("C API: Test config iter", "[capi], [config]") {
     CHECK(error == nullptr);
   } while (!done);
   // highlight any difference to aid the poor developer in event CHECK() fails.
-  for(auto i1 = s3_param_values.begin() ; i1 != s3_param_values.end() ; ++i1) {
-    if(s3_iter_map.find(i1->first) == s3_iter_map.end()){
-      std::cout << "s3_iter_map[\"" << i1->first << "\"] not found!" << std::endl;
+  for (auto i1 = s3_param_values.begin(); i1 != s3_param_values.end(); ++i1) {
+    if (s3_iter_map.find(i1->first) == s3_iter_map.end()) {
+      std::cout << "s3_iter_map[\"" << i1->first << "\"] not found!"
+                << std::endl;
     }
   }
-  for(auto i1 = s3_iter_map.begin() ; i1 != s3_iter_map.end() ; ++i1) {
-    if(s3_param_values.find(i1->first) == s3_param_values.end()){
-      std::cout << "s3_param_values[\"" << i1->first << "\"] not found!" << std::endl;
+  for (auto i1 = s3_iter_map.begin(); i1 != s3_iter_map.end(); ++i1) {
+    if (s3_param_values.find(i1->first) == s3_param_values.end()) {
+      std::cout << "s3_param_values[\"" << i1->first << "\"] not found!"
+                << std::endl;
     }
   }
   CHECK(s3_param_values == s3_iter_map);
