@@ -511,7 +511,7 @@ inline uint8_t ResultTile::str_coord_intersects(
       if (seq_end && all_chars_match && c_size > range_end.size()) {
         seq_end = false;
       }
-	}
+    }
   }
 
   return geq_start && seq_end;
