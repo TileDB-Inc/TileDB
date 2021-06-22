@@ -1,4 +1,4 @@
-name: build-ubuntu-20.04-HDFS
+name: build-ubuntu-16.04-HDFS
 on:
   push:
     branches:
@@ -11,14 +11,15 @@ on:
 env:
   BACKWARDS_COMPATIBILITY_ARRAYS: OFF
   TILEDB_HDFS: ON
-  CXX: g++
+  CXX: g++-9
+  CC: gcc-9
 
 jobs:
   build:
-    runs-on: ubuntu-20.04
+    runs-on: ubuntu-16.04
     if: ${{ startsWith(github.ref , 'refs/tags') != true && startsWith(github.ref , 'build-') != true }}
     timeout-minutes: 90
-    name: Build - ubuntu-20.04 - HDFS
+    name: Build - ubuntu-16.04 - HDFS
     steps:
       - uses: actions/checkout@v2
       - name: 'Print env'
@@ -41,11 +42,6 @@ jobs:
           set -e pipefail
           python -m pip install --upgrade pip virtualenv
         shell: bash
-      - name: Check formatting (linux only)'
-        run: |
-          source $GITHUB_WORKSPACE/scripts/ci/check_formatting_linux.sh
-        shell: bash
-        if: ${{ runner.os == 'Linux' }}
 
       - name: 'Install doxygen (linux only)'
         run: |
