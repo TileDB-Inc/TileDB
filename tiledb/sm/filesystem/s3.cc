@@ -117,6 +117,7 @@ static std::once_flag aws_lib_initialized;
 S3::S3()
     : stats_(nullptr)
     , state_(State::UNINITIALIZED)
+    , credentials_provider_(nullptr)
     , file_buffer_size_(0)
     , max_parallel_ops_(1)
     , multipart_part_size_(0)
@@ -947,8 +948,18 @@ Status S3::init_client() const {
 
   std::lock_guard<std::mutex> lck(client_init_mtx_);
 
-  if (client_ != nullptr)
+  if (client_ != nullptr) {
+    // Check credentials. If expired, referesh it
+    if (credentials_provider_) {
+      Aws::Auth::AWSCredentials credentials =
+          credentials_provider_->GetAWSCredentials();
+      if (credentials.IsExpiredOrEmpty()) {
+        return LOG_STATUS(
+            Status::S3Error(std::string("Credentials is expired or empty.")));
+      }
+    }
     return Status::Ok();
+  }
 
   bool found;
   auto s3_endpoint_override = config_.get("vfs.s3.endpoint_override", &found);
@@ -1082,8 +1093,6 @@ Status S3::init_client() const {
   }
 #endif
 
-  std::shared_ptr<Aws::Auth::AWSCredentialsProvider> credentials_provider =
-      nullptr;
   switch ((!aws_access_key_id.empty() ? 1 : 0) +
           (!aws_secret_access_key.empty() ? 2 : 0) +
           (!aws_role_arn.empty() ? 4 : 0)) {
@@ -1099,9 +1108,11 @@ Status S3::init_client() const {
       Aws::String secret_access_key(aws_secret_access_key.c_str());
       Aws::String session_token(
           !aws_session_token.empty() ? aws_session_token.c_str() : "");
-      credentials_provider =
-          std::make_shared<Aws::Auth::SimpleAWSCredentialsProvider>(
-              access_key_id, secret_access_key, session_token);
+      credentials_provider_ = tdb_make_shared(
+          Aws::Auth::SimpleAWSCredentialsProvider,
+          access_key_id,
+          secret_access_key,
+          session_token);
       break;
     }
     case 4: {
@@ -1116,9 +1127,13 @@ Status S3::init_client() const {
               Aws::Auth::DEFAULT_CREDS_LOAD_FREQ_SECONDS);
       Aws::String session_name(
           !aws_session_name.empty() ? aws_session_name.c_str() : "");
-      credentials_provider =
-          std::make_shared<Aws::Auth::STSAssumeRoleCredentialsProvider>(
-              role_arn, session_name, external_id, load_frequency, nullptr);
+      credentials_provider_ = tdb_make_shared(
+          Aws::Auth::STSAssumeRoleCredentialsProvider,
+          role_arn,
+          session_name,
+          external_id,
+          load_frequency,
+          nullptr);
       break;
     }
     default:
@@ -1136,7 +1151,7 @@ Status S3::init_client() const {
   {
     std::lock_guard<std::mutex> static_lck(static_client_init_mtx);
 
-    if (credentials_provider == nullptr) {
+    if (credentials_provider_ == nullptr) {
       client_ = tdb_make_shared(
           Aws::S3::S3Client,
           *client_config_,
@@ -1145,7 +1160,7 @@ Status S3::init_client() const {
     } else {
       client_ = tdb_make_shared(
           Aws::S3::S3Client,
-          credentials_provider,
+          credentials_provider_.inner_sp(),
           *client_config_,
           Aws::Client::AWSAuthV4Signer::PayloadSigningPolicy::Never,
           use_virtual_addressing_);
