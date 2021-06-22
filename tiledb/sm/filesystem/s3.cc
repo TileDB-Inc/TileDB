@@ -101,7 +101,7 @@ Aws::S3::Model::ObjectCannedACL S3_ObjectCannedACL_from_str(
     return Aws::S3::Model::ObjectCannedACL::authenticated_read;
   else if (canned_acl_str == "aws_exec_read")
     return Aws::S3::Model::ObjectCannedACL::aws_exec_read;
-  else if (canned_acl_str == "owner_read")
+  else if (canned_acl_str == "bucket_owner_read")
     return Aws::S3::Model::ObjectCannedACL::bucket_owner_read;
   else if (canned_acl_str == "bucket_owner_full_control")
     return Aws::S3::Model::ObjectCannedACL::bucket_owner_full_control;
