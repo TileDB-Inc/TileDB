@@ -47,7 +47,10 @@ static constexpr bool is_valid_datatype(Datatype d) {
   return 0 <= x && x <= 39;
 }
 
-template class datatype_map<bool, dtm_is_valid>;
+template struct datatype_traits_map<bool, dtm_is_valid>;
+template struct new_datatype_traits_map<bool, dtm_is_valid>;
+
+static_assert(new_datatype_traits_map<bool, dtm_is_valid>::map[0],"");
 
 /*
  * One plus and one minus the limits of the datatype
@@ -69,16 +72,16 @@ static_assert(
  */
 
 constexpr bool is_valid_datatype_static(Datatype d) {
-  return datatype_map<bool, dtm_is_valid>::map[static_cast<uint8_t>(d)];
+  return datatype_traits_map<bool, dtm_is_valid>::map[static_cast<uint8_t>(d)];
 }
 
 constexpr bool does_datatype_match(Datatype d) {
   return d ==
-         datatype_map<Datatype, dtm_datatype>::map[static_cast<uint8_t>(d)];
+         datatype_traits_map<Datatype, dtm_datatype>::map[static_cast<uint8_t>(d)];
 }
 
 constexpr bool does_sizeof_value_type_match(Datatype d) {
-  return datatype_size(d) == datatype_map<uint64_t, dtm_sizeof_value_type>::map
+  return datatype_size(d) == datatype_traits_map<uint64_t, dtm_sizeof_value_type>::map
                                  [static_cast<uint8_t>(d)];
 }
 

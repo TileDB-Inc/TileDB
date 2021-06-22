@@ -476,8 +476,8 @@ static constexpr bool is_valid_datatype(Datatype d);
  * @tparam T the range of the map
  * @tparam M map template that provides values in the range
  */
-template <class T, template <typename> class M>
-class datatype_map {
+template <class T, template <Datatype> class M>
+class plain_datatype_map {
   static constexpr size_t array_length = 40;
 
  public:
@@ -487,46 +487,124 @@ class datatype_map {
    * @return
    */
   static constexpr T map[array_length] = {
-      M<datatype_traits<Datatype::INT32>>::value,
-      M<datatype_traits<Datatype::INT64>>::value,
-      M<datatype_traits<Datatype::FLOAT32>>::value,
-      M<datatype_traits<Datatype::FLOAT64>>::value,
-      M<datatype_traits<Datatype::CHAR>>::value,
-      M<datatype_traits<Datatype::INT8>>::value,
-      M<datatype_traits<Datatype::UINT8>>::value,
-      M<datatype_traits<Datatype::INT16>>::value,
-      M<datatype_traits<Datatype::UINT16>>::value,
-      M<datatype_traits<Datatype::UINT32>>::value,
-      M<datatype_traits<Datatype::UINT64>>::value,
-      M<datatype_traits<Datatype::STRING_ASCII>>::value,
-      M<datatype_traits<Datatype::STRING_UTF8>>::value,
-      M<datatype_traits<Datatype::STRING_UTF16>>::value,
-      M<datatype_traits<Datatype::STRING_UTF32>>::value,
-      M<datatype_traits<Datatype::STRING_UCS2>>::value,
-      M<datatype_traits<Datatype::STRING_UCS4>>::value,
-      M<datatype_traits<Datatype::ANY>>::value,
-      M<datatype_traits<Datatype::DATETIME_YEAR>>::value,
-      M<datatype_traits<Datatype::DATETIME_MONTH>>::value,
-      M<datatype_traits<Datatype::DATETIME_WEEK>>::value,
-      M<datatype_traits<Datatype::DATETIME_DAY>>::value,
-      M<datatype_traits<Datatype::DATETIME_HR>>::value,
-      M<datatype_traits<Datatype::DATETIME_MIN>>::value,
-      M<datatype_traits<Datatype::DATETIME_SEC>>::value,
-      M<datatype_traits<Datatype::DATETIME_MS>>::value,
-      M<datatype_traits<Datatype::DATETIME_US>>::value,
-      M<datatype_traits<Datatype::DATETIME_NS>>::value,
-      M<datatype_traits<Datatype::DATETIME_PS>>::value,
-      M<datatype_traits<Datatype::DATETIME_FS>>::value,
-      M<datatype_traits<Datatype::DATETIME_AS>>::value,
-      M<datatype_traits<Datatype::TIME_HR>>::value,
-      M<datatype_traits<Datatype::TIME_MIN>>::value,
-      M<datatype_traits<Datatype::TIME_SEC>>::value,
-      M<datatype_traits<Datatype::TIME_MS>>::value,
-      M<datatype_traits<Datatype::TIME_US>>::value,
-      M<datatype_traits<Datatype::TIME_NS>>::value,
-      M<datatype_traits<Datatype::TIME_PS>>::value,
-      M<datatype_traits<Datatype::TIME_FS>>::value,
-      M<datatype_traits<Datatype::TIME_AS>>::value,
+          M<Datatype::INT32>::value,
+          M<Datatype::INT64>::value,
+          M<Datatype::FLOAT32>::value,
+          M<Datatype::FLOAT64>::value,
+          M<Datatype::CHAR>::value,
+          M<Datatype::INT8>::value,
+          M<Datatype::UINT8>::value,
+          M<Datatype::INT16>::value,
+          M<Datatype::UINT16>::value,
+          M<Datatype::UINT32>::value,
+          M<Datatype::UINT64>::value,
+          M<Datatype::STRING_ASCII>::value,
+          M<Datatype::STRING_UTF8>::value,
+          M<Datatype::STRING_UTF16>::value,
+          M<Datatype::STRING_UTF32>::value,
+          M<Datatype::STRING_UCS2>::value,
+          M<Datatype::STRING_UCS4>::value,
+          M<Datatype::ANY>::value,
+          M<Datatype::DATETIME_YEAR>::value,
+          M<Datatype::DATETIME_MONTH>::value,
+          M<Datatype::DATETIME_WEEK>::value,
+          M<Datatype::DATETIME_DAY>::value,
+          M<Datatype::DATETIME_HR>::value,
+          M<Datatype::DATETIME_MIN>::value,
+          M<Datatype::DATETIME_SEC>::value,
+          M<Datatype::DATETIME_MS>::value,
+          M<Datatype::DATETIME_US>::value,
+          M<Datatype::DATETIME_NS>::value,
+          M<Datatype::DATETIME_PS>::value,
+          M<Datatype::DATETIME_FS>::value,
+          M<Datatype::DATETIME_AS>::value,
+          M<Datatype::TIME_HR>::value,
+          M<Datatype::TIME_MIN>::value,
+          M<Datatype::TIME_SEC>::value,
+          M<Datatype::TIME_MS>::value,
+          M<Datatype::TIME_US>::value,
+          M<Datatype::TIME_NS>::value,
+          M<Datatype::TIME_PS>::value,
+          M<Datatype::TIME_FS>::value,
+          M<Datatype::TIME_AS>::value,
+  };
+};
+
+template<template <typename> class M>
+struct map_from_datatype_traits {
+  template<Datatype d>
+  struct map {
+    static constexpr auto value = typename M<datatype_traits<d>>::value;
+  };
+};
+
+/* T value type -- the type of the value */
+/* M<trait_class>::value -- picks out a datatype trait in its value */
+template <class T, template <typename> class M>
+struct new_datatype_traits_map
+ : public plain_datatype_map<T, map_from_datatype_traits<M>::map /*template <Datatype> */>
+{
+};
+
+/**
+ * A constant map from a datatype to some type, that is, a function with domain
+ * Datatype and range T.
+ *
+ * These maps depend sensitively on the datatype enumeration values in
+ * tiledb_enum.h.
+ *
+ * @tparam T the range of the map
+ * @tparam M map template that provides values in the range
+ */
+template <class T, template <typename> class M>
+struct datatype_traits_map {
+  static constexpr size_t array_length = 40;
+  /**
+   *
+   * @param d
+   * @return
+   */
+  static constexpr T map[array_length] = {
+          M<datatype_traits<Datatype::INT32>>::value,
+          M<datatype_traits<Datatype::INT64>>::value,
+          M<datatype_traits<Datatype::FLOAT32>>::value,
+          M<datatype_traits<Datatype::FLOAT64>>::value,
+          M<datatype_traits<Datatype::CHAR>>::value,
+          M<datatype_traits<Datatype::INT8>>::value,
+          M<datatype_traits<Datatype::UINT8>>::value,
+          M<datatype_traits<Datatype::INT16>>::value,
+          M<datatype_traits<Datatype::UINT16>>::value,
+          M<datatype_traits<Datatype::UINT32>>::value,
+          M<datatype_traits<Datatype::UINT64>>::value,
+          M<datatype_traits<Datatype::STRING_ASCII>>::value,
+          M<datatype_traits<Datatype::STRING_UTF8>>::value,
+          M<datatype_traits<Datatype::STRING_UTF16>>::value,
+          M<datatype_traits<Datatype::STRING_UTF32>>::value,
+          M<datatype_traits<Datatype::STRING_UCS2>>::value,
+          M<datatype_traits<Datatype::STRING_UCS4>>::value,
+          M<datatype_traits<Datatype::ANY>>::value,
+          M<datatype_traits<Datatype::DATETIME_YEAR>>::value,
+          M<datatype_traits<Datatype::DATETIME_MONTH>>::value,
+          M<datatype_traits<Datatype::DATETIME_WEEK>>::value,
+          M<datatype_traits<Datatype::DATETIME_DAY>>::value,
+          M<datatype_traits<Datatype::DATETIME_HR>>::value,
+          M<datatype_traits<Datatype::DATETIME_MIN>>::value,
+          M<datatype_traits<Datatype::DATETIME_SEC>>::value,
+          M<datatype_traits<Datatype::DATETIME_MS>>::value,
+          M<datatype_traits<Datatype::DATETIME_US>>::value,
+          M<datatype_traits<Datatype::DATETIME_NS>>::value,
+          M<datatype_traits<Datatype::DATETIME_PS>>::value,
+          M<datatype_traits<Datatype::DATETIME_FS>>::value,
+          M<datatype_traits<Datatype::DATETIME_AS>>::value,
+          M<datatype_traits<Datatype::TIME_HR>>::value,
+          M<datatype_traits<Datatype::TIME_MIN>>::value,
+          M<datatype_traits<Datatype::TIME_SEC>>::value,
+          M<datatype_traits<Datatype::TIME_MS>>::value,
+          M<datatype_traits<Datatype::TIME_US>>::value,
+          M<datatype_traits<Datatype::TIME_NS>>::value,
+          M<datatype_traits<Datatype::TIME_PS>>::value,
+          M<datatype_traits<Datatype::TIME_FS>>::value,
+          M<datatype_traits<Datatype::TIME_AS>>::value,
   };
 };
 
@@ -546,6 +624,46 @@ template <class DT>
 struct dtm_sizeof_value_type {
   typedef uint64_t value_type;
   static constexpr value_type value = sizeof(DT::value_type);
+};
+
+
+/*
+ * class T -- the base type of all constructed objects
+ * template <Datatype d> class U -- types derived from T, parametric in a datatype
+ * T generic_factory(Datatype d) -- factory that returns an instance of U<d>.
+ *
+ * class V -- an argument instantiated by U<d>
+ */
+
+template<class T>
+class foo {
+  template <class DT>
+  struct dtm_typed_constructor {
+    typedef T value_type();
+  } ;
+
+};
+
+template<class T, class V, typename...args>
+T specific_factory(args...a)
+{
+  return V(a...);
+}
+
+template<class T, typename...args>
+class f1 {
+  /*
+   * type for a pointer to a specific_factory
+   */
+  typedef T (*ptr_specific_factory)(args...);
+};
+
+/**
+ * generic factory for default constructors
+ */
+template<class T>
+T generic_factory(Datatype d) {
+  datatype_traits_map<uint64_t, foo<T>::function>::map[static_cast<uint8_t>(d)]
 };
 
 }  // namespace sm
