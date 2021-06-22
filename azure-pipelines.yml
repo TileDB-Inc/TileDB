@@ -28,6 +28,8 @@ stages:
             imageName: 'ubuntu-20.04'
             TILEDB_CI_ASAN: ON
             TILEDB_SERIALIZATION: ON
+            CXX: g++
+            CC: gcc
 
       pool:
         vmImage: $(imageName)
