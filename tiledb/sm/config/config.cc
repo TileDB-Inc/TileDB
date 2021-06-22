@@ -781,10 +781,10 @@ Status Config::sanity_check(
     // first items valid for both ObjectCannedACL and BucketCannedACL
     if (!((value == "NOT_SET") || (value == "private_") ||
           (value == "public_read") || (value == "public_read_write") ||
-          (value ==
-           "authenticated_read") ||  // items only valid for ObjectCannedACL
+          (value == "authenticated_read") ||
+          // items only valid for ObjectCannedACL
           (chkno == 2 &&
-           ((value == "aws_exec_read") || (value == "owner_read") ||
+           ((value == "aws_exec_read") || (value == "bucket_owner_read") ||
             (value == "bucket_owner_full_control"))))) {
       std::stringstream msg;
       msg << "value " << param << " invalid canned acl for " << param;

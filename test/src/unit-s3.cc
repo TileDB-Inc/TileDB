@@ -320,7 +320,27 @@ TEST_CASE_METHOD(S3Fx, "Test S3 multiupload abort path", "[s3]") {
   }
 }
 
-TEST_CASE_METHOD(S3Fx, "Test S3 setting BucketCannedACL", "[s3]") {
+TEST_CASE_METHOD(
+    S3Fx, "Test S3 setting bucket/object canned acls", "[s3][config]") {
+  Config config;
+  REQUIRE(config.set("vfs.s3.bucket_canned_acl", "private_").ok());
+  REQUIRE(config.set("vfs.s3.bucket_canned_acl", "public_read").ok());
+  REQUIRE(config.set("vfs.s3.bucket_canned_acl", "public_read_write").ok());
+  REQUIRE(config.set("vfs.s3.bucket_canned_acl", "authenticated_read").ok());
+  REQUIRE(config.set("vfs.s3.bucket_canned_acl", "NOT_SET").ok());
+
+  REQUIRE(config.set("vfs.s3.object_canned_acl", "private_").ok());
+  REQUIRE(config.set("vfs.s3.object_canned_acl", "public_read").ok());
+  REQUIRE(config.set("vfs.s3.object_canned_acl", "public_read_write").ok());
+  REQUIRE(config.set("vfs.s3.object_canned_acl", "authenticated_read").ok());
+  REQUIRE(config.set("vfs.s3.object_canned_acl", "aws_exec_read").ok());
+  REQUIRE(config.set("vfs.s3.object_canned_acl", "bucket_owner_read").ok());
+  REQUIRE(
+      config.set("vfs.s3.object_canned_acl", "bucket_owner_full_control").ok());
+  REQUIRE(config.set("vfs.s3.object_canned_acl", "NOT_SET").ok());
+}
+
+TEST_CASE_METHOD(S3Fx, "Test S3 use BucketCannedACL", "[s3]") {
   /** Use local s3 definitions for trying various canned ACL settings. */
   const std::string S3_PREFIX = "s3://";
   const tiledb::sm::URI S3_BUCKET =
@@ -335,6 +355,7 @@ TEST_CASE_METHOD(S3Fx, "Test S3 setting BucketCannedACL", "[s3]") {
   REQUIRE(config.set("vfs.s3.use_virtual_addressing", "false").ok());
   REQUIRE(config.set("vfs.s3.verify_ssl", "false").ok());
 #endif
+
   REQUIRE(thread_pool_.init(2).ok());
 
   // function to try creating bucket with BucketCannedACL indicated
@@ -369,7 +390,7 @@ TEST_CASE_METHOD(S3Fx, "Test S3 setting BucketCannedACL", "[s3]") {
   try_with_bucket_canned_acl("authenticated_read");
 }
 
-TEST_CASE_METHOD(S3Fx, "Test S3 setting Bucket/Object CannedACL", "[s3]") {
+TEST_CASE_METHOD(S3Fx, "Test S3 use Bucket/Object CannedACL", "[s3]") {
   /** Use local s3 definitions for trying various canned ACL settings. */
   const std::string S3_PREFIX = "s3://";
   const tiledb::sm::URI S3_BUCKET =
@@ -531,7 +552,7 @@ TEST_CASE_METHOD(S3Fx, "Test S3 setting Bucket/Object CannedACL", "[s3]") {
   try_with_bucket_object_canned_acl("NOT_SET", "NOT_SET");
   try_with_bucket_object_canned_acl("private_", "private_");
   try_with_bucket_object_canned_acl("public_read", "public_read");
-  try_with_bucket_object_canned_acl("public_read_write", " public_read_write");
+  try_with_bucket_object_canned_acl("public_read_write", "public_read_write");
   try_with_bucket_object_canned_acl("authenticated_read", "authenticated_read");
 }
 #endif
