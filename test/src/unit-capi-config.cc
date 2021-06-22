@@ -209,6 +209,9 @@ void check_save_to_file() {
   REQUIRE(rc == TILEDB_OK);
 
   std::stringstream ss;
+  // Items here need to be assigned to 'ss' in alphabetical order as
+  // an std::[ordered_]map is where the comparison values saved to file 
+  // come from.
   ss << "config.env_var_prefix TILEDB_\n";
 #ifdef TILEDB_VERBOSE
   ss << "config.logging_level 1\n";
@@ -276,6 +279,7 @@ void check_save_to_file() {
   ss << "vfs.min_parallel_size 10485760\n";
   ss << "vfs.read_ahead_cache_size 10485760\n";
   ss << "vfs.read_ahead_size 102400\n";
+  ss << "vfs.s3.bucket_canned_acl NOT_SET\n";
   ss << "vfs.s3.connect_max_tries 5\n";
   ss << "vfs.s3.connect_scale_factor 25\n";
   ss << "vfs.s3.connect_timeout_ms 10800\n";
@@ -283,6 +287,7 @@ void check_save_to_file() {
   ss << "vfs.s3.max_parallel_ops " << std::thread::hardware_concurrency()
      << "\n";
   ss << "vfs.s3.multipart_part_size 5242880\n";
+  ss << "vfs.s3.object_canned_acl NOT_SET\n";
   ss << "vfs.s3.proxy_port 0\n";
   ss << "vfs.s3.proxy_scheme http\n";
   ss << "vfs.s3.region us-east-1\n";
@@ -622,6 +627,8 @@ TEST_CASE("C API: Test config iter", "[capi], [config]") {
   all_param_values["vfs.hdfs.username"] = "stavros";
   all_param_values["vfs.hdfs.kerb_ticket_cache_path"] = "";
   all_param_values["vfs.hdfs.name_node_uri"] = "";
+  all_param_values["vfs.s3.bucket_canned_acl"] = "NOT_SET";
+  all_param_values["vfs.s3.object_canned_acl"] = "NOT_SET";
 
   std::map<std::string, std::string> vfs_param_values;
   vfs_param_values["min_batch_gap"] = "512000";
@@ -680,6 +687,8 @@ TEST_CASE("C API: Test config iter", "[capi], [config]") {
   vfs_param_values["s3.proxy_scheme"] = "http";
   vfs_param_values["s3.proxy_username"] = "";
   vfs_param_values["s3.verify_ssl"] = "true";
+  vfs_param_values["s3.bucket_canned_acl"] = "NOT_SET";
+  vfs_param_values["s3.object_canned_acl"] = "NOT_SET";
   vfs_param_values["hdfs.username"] = "stavros";
   vfs_param_values["hdfs.kerb_ticket_cache_path"] = "";
   vfs_param_values["hdfs.name_node_uri"] = "";
@@ -735,6 +744,8 @@ TEST_CASE("C API: Test config iter", "[capi], [config]") {
   s3_param_values["proxy_scheme"] = "http";
   s3_param_values["proxy_username"] = "";
   s3_param_values["verify_ssl"] = "true";
+  s3_param_values["bucket_canned_acl"] = "NOT_SET";
+  s3_param_values["object_canned_acl"] = "NOT_SET";
 
   // Create an iterator and iterate over all parameters
   tiledb_config_iter_t* config_iter = nullptr;
@@ -762,6 +773,17 @@ TEST_CASE("C API: Test config iter", "[capi], [config]") {
     CHECK(rc == TILEDB_OK);
     CHECK(error == nullptr);
   } while (!done);
+  // highlight any difference to aid the poor developer in event CHECK() fails.
+  for(auto i1 = all_param_values.begin() ; i1 != all_param_values.end() ; ++i1) {
+    if(all_iter_map.find(i1->first) == all_iter_map.end()){
+      std::cout << "all_iter_map[\"" << i1->first << "\"] not found!" << std::endl;
+    }
+  }
+  for(auto i1 = all_iter_map.begin() ; i1 != all_iter_map.end() ; ++i1) {
+    if(all_param_values.find(i1->first) == all_param_values.end()){
+      std::cout << "all_param_values[\"" << i1->first << "\"] not found!" << std::endl;
+    }
+  }
   CHECK(all_param_values == all_iter_map);
   tiledb_config_iter_free(&config_iter);
   CHECK(error == nullptr);
@@ -789,6 +811,17 @@ TEST_CASE("C API: Test config iter", "[capi], [config]") {
     CHECK(rc == TILEDB_OK);
     CHECK(error == nullptr);
   } while (!done);
+  // highlight any difference to aid the poor developer in event CHECK() fails.
+  for(auto i1 = vfs_param_values.begin() ; i1 != vfs_param_values.end() ; ++i1) {
+    if(vfs_iter_map.find(i1->first) == vfs_iter_map.end()){
+      std::cout << "vfs_iter_map[\"" << i1->first << "\"] not found!" << std::endl;
+    }
+  }
+  for(auto i1 = vfs_iter_map.begin() ; i1 != vfs_iter_map.end() ; ++i1) {
+    if(vfs_param_values.find(i1->first) == vfs_param_values.end()){
+      std::cout << "vfs_param_values[\"" << i1->first << "\"] not found!" << std::endl;
+    }
+  }
   CHECK(vfs_param_values == vfs_iter_map);
   tiledb_config_iter_free(&config_iter);
 
@@ -869,6 +902,17 @@ TEST_CASE("C API: Test config iter", "[capi], [config]") {
     CHECK(rc == TILEDB_OK);
     CHECK(error == nullptr);
   } while (!done);
+  // highlight any difference to aid the poor developer in event CHECK() fails.
+  for(auto i1 = s3_param_values.begin() ; i1 != s3_param_values.end() ; ++i1) {
+    if(s3_iter_map.find(i1->first) == s3_iter_map.end()){
+      std::cout << "s3_iter_map[\"" << i1->first << "\"] not found!" << std::endl;
+    }
+  }
+  for(auto i1 = s3_iter_map.begin() ; i1 != s3_iter_map.end() ; ++i1) {
+    if(s3_param_values.find(i1->first) == s3_param_values.end()){
+      std::cout << "s3_param_values[\"" << i1->first << "\"] not found!" << std::endl;
+    }
+  }
   CHECK(s3_param_values == s3_iter_map);
   tiledb_config_iter_free(&config_iter);
   CHECK(error == nullptr);

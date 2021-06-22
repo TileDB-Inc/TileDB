@@ -320,4 +320,53 @@ TEST_CASE_METHOD(S3Fx, "Test S3 multiupload abort path", "[s3]") {
   }
 }
 
+TEST_CASE_METHOD(S3Fx, "Test S3 setting BucketCannedACL", "[s3]") {
+
+  /** Use local s3 definitions for trying various canned ACL settings. */
+  const std::string S3_PREFIX = "s3://";
+  const tiledb::sm::URI S3_BUCKET =
+      tiledb::sm::URI(S3_PREFIX + random_name("tiledb") + "/");
+  const std::string TEST_DIR = S3_BUCKET.to_string() + "tiledb_test_dir/";
+  ThreadPool thread_pool_;
+  
+  Config config;
+#ifndef TILEDB_TESTS_AWS_S3_CONFIG
+  REQUIRE(config.set("vfs.s3.endpoint_override", "localhost:9999").ok());
+  REQUIRE(config.set("vfs.s3.scheme", "https").ok());
+  REQUIRE(config.set("vfs.s3.use_virtual_addressing", "false").ok());
+  REQUIRE(config.set("vfs.s3.verify_ssl", "false").ok());
+#endif
+  REQUIRE(thread_pool_.init(2).ok());
+
+  // function to try creating bucket with BucketCannedACL indicated
+  // by string parameter.
+  auto try_with_bucket_canned_acl = [&](const char * bucket_acl_to_try) {
+    REQUIRE(config.set("vfs.s3.bucket_canned_acl", bucket_acl_to_try).ok());
+    tiledb::sm::S3 s3_;
+    REQUIRE(s3_.init(&g_helper_stats, config, &thread_pool_).ok());
+
+    // Create bucket
+    bool exists;
+    REQUIRE(s3_.is_bucket(S3_BUCKET, &exists).ok());
+    if (exists)
+      REQUIRE(s3_.remove_bucket(S3_BUCKET).ok());
+
+    REQUIRE(s3_.is_bucket(S3_BUCKET, &exists).ok());
+    REQUIRE(!exists);
+    REQUIRE(s3_.create_bucket(S3_BUCKET).ok());
+
+    // Check if bucket is empty
+    bool is_empty;
+    REQUIRE(s3_.is_empty_bucket(S3_BUCKET, &is_empty).ok());
+    CHECK(is_empty);
+
+    s3_.disconnect();
+  };
+
+  try_with_bucket_canned_acl("NOT_SET");
+  try_with_bucket_canned_acl("private_");
+  try_with_bucket_canned_acl("public_read");
+  try_with_bucket_canned_acl("public_read_write");
+  try_with_bucket_canned_acl("authenticated_read");
+}
 #endif

@@ -154,10 +154,11 @@ const std::string Config::VFS_S3_PROXY_USERNAME = "";
 const std::string Config::VFS_S3_PROXY_PASSWORD = "";
 const std::string Config::VFS_S3_LOGGING_LEVEL = "Off";
 const std::string Config::VFS_S3_VERIFY_SSL = "true";
+const std::string Config::VFS_S3_BUCKET_CANNED_ACL = "NOT_SET";
+const std::string Config::VFS_S3_OBJECT_CANNED_ACL = "NOT_SET";
 const std::string Config::VFS_HDFS_KERB_TICKET_CACHE_PATH = "";
 const std::string Config::VFS_HDFS_NAME_NODE_URI = "";
 const std::string Config::VFS_HDFS_USERNAME = "";
-
 /* ****************************** */
 /*        PRIVATE CONSTANTS       */
 /* ****************************** */
@@ -297,6 +298,8 @@ Config::Config() {
   param_values_["vfs.s3.proxy_password"] = VFS_S3_PROXY_PASSWORD;
   param_values_["vfs.s3.logging_level"] = VFS_S3_LOGGING_LEVEL;
   param_values_["vfs.s3.verify_ssl"] = VFS_S3_VERIFY_SSL;
+  param_values_["vfs.s3.bucket_canned_acl"] = VFS_S3_BUCKET_CANNED_ACL;
+  param_values_["vfs.s3.object_canned_acl"] = VFS_S3_OBJECT_CANNED_ACL;
   param_values_["vfs.hdfs.name_node_uri"] = VFS_HDFS_NAME_NODE_URI;
   param_values_["vfs.hdfs.username"] = VFS_HDFS_USERNAME;
   param_values_["vfs.hdfs.kerb_ticket_cache_path"] =
@@ -624,6 +627,10 @@ Status Config::unset(const std::string& param) {
     param_values_["vfs.s3.proxy_password"] = VFS_S3_PROXY_PASSWORD;
   } else if (param == "vfs.s3.verify_ssl") {
     param_values_["vfs.s3.verify_ssl"] = VFS_S3_VERIFY_SSL;
+  } else if (param == "vfs.s3.bucket_canned_acl") {
+    param_values_["vfs.s3.bucket_canned_acl"] = VFS_S3_BUCKET_CANNED_ACL;
+  } else if (param == "vfs.s3.object_canned_acl") {
+    param_values_["vfs.s3.object_canned_acl"] = VFS_S3_OBJECT_CANNED_ACL;
   } else if (param == "vfs.hdfs.name_node_uri") {
     param_values_["vfs.hdfs.name_node_uri"] = VFS_HDFS_NAME_NODE_URI;
   } else if (param == "vfs.hdfs.username") {
@@ -673,6 +680,7 @@ Status Config::sanity_check(
   uint32_t v32 = 0;
   float vf = 0.0f;
   int64_t vint64 = 0;
+  int chkno = -1;
 
   if (param == "rest.server_serialization_format") {
     SerializationType serialization_type;
@@ -767,6 +775,27 @@ Status Config::sanity_check(
     RETURN_NOT_OK(utils::parse::convert(value, &vint64));
   } else if (param == "vfs.s3.verify_ssl") {
     RETURN_NOT_OK(utils::parse::convert(value, &v));
+  } else if ( (chkno=1, param == "vfs.s3.bucket_canned_acl")
+           || (chkno=2, param == "vfs.s3.object_canned_acl") ) {
+    // first items valid for both ObjectCannedACL and BucketCannedACL
+    if( !( (value == "NOT_SET")
+        || (value == "private_")
+        || (value == "public_read")
+        || (value == "public_read_write")
+        || (value == "authenticated_read")
+        || // items only valid for ObjectCannedACL
+          (chkno == 2 &&
+            (  (value == "aws_exec_read")
+            || (value == "owner_read")
+            || (value == "bucket_owner_full_control")
+            )
+          )
+        ) 
+      ) {
+      std::stringstream msg;
+      msg << "value " << param << " invalid canned acl for " << param;
+      return Status::Error(msg.str());
+    }
   }
 
   return Status::Ok();
