@@ -55,10 +55,10 @@ steps:
       $bootstrapOptions = $bootstrapOptions + " -EnableDebug"
     }
     # if ($env:TILEDB_CI_ASAN -eq "ON") {
-    #  $bootstrapOptions = $bootstrapOptions + "-EnableSanitizer address -EnableDebug"
+    #  $bootstrapOptions = $bootstrapOptions + " -EnableSanitizer address -EnableDebug"
     # }
     # if ($env:TILEDB_CI_TSAN -eq "ON") {
-    #  $bootstrapOptions = $bootstrapOptions + "-EnableSanitizer thread -EnableDebug"
+    #  $bootstrapOptions = $bootstrapOptions + " -EnableSanitizer thread -EnableDebug"
     # }
     # static already added above as initial default
     # if ($env:TILEDB_FORCE_BUILD_DEPS" -eq "ON") {
@@ -67,7 +67,6 @@ steps:
     if ($env:TILEDB_WERROR -eq "OFF") {
       $bootstrapOptions = $bootstrapOptions + " -DisableWerror"
     }
-    
 
     $bootstrapExpression = "& $env:BUILD_SOURCESDIRECTORY\bootstrap.ps1 " + $bootstrapOptions
     Write-Host "bootstrapExpression: $bootstrapExpression"
