@@ -184,7 +184,7 @@ class FragmentMetadata {
       const T* subarray) const;
 
   /**
-   * Returns ture if the corresponding fragment is dense, and false if it
+   * Returns true if the corresponding fragment is dense, and false if it
    * is sparse.
    */
   bool dense() const;

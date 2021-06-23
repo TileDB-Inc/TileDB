@@ -525,6 +525,55 @@ TEST_CASE(
   CHECK(rc == TILEDB_OK);
   CHECK(non_empty_dom == std::vector<uint64_t>{1, 7});
 
+  // Get number of MBRs
+  uint64_t mbr_num;
+  rc = tiledb_fragment_info_get_mbr_num(ctx, fragment_info, 0, &mbr_num);
+  CHECK(rc == TILEDB_OK);
+  CHECK(mbr_num == 0);
+  rc = tiledb_fragment_info_get_mbr_num(ctx, fragment_info, 1, &mbr_num);
+  CHECK(rc == TILEDB_OK);
+  CHECK(mbr_num == 2);
+  rc = tiledb_fragment_info_get_mbr_num(ctx, fragment_info, 2, &mbr_num);
+  CHECK(rc == TILEDB_OK);
+  CHECK(mbr_num == 2);
+
+  // Get MBR from index
+  std::vector<uint64_t> mbr(2);
+  rc = tiledb_fragment_info_get_mbr_from_index(
+      ctx, fragment_info, 1, 0, 0, &mbr[0]);
+  CHECK(rc == TILEDB_OK);
+  CHECK(mbr == std::vector<uint64_t>{1, 3});
+  rc = tiledb_fragment_info_get_mbr_from_index(
+      ctx, fragment_info, 1, 1, 0, &mbr[0]);
+  CHECK(rc == TILEDB_OK);
+  CHECK(mbr == std::vector<uint64_t>{5, 7});
+  rc = tiledb_fragment_info_get_mbr_from_index(
+      ctx, fragment_info, 2, 0, 0, &mbr[0]);
+  CHECK(rc == TILEDB_OK);
+  CHECK(mbr == std::vector<uint64_t>{2, 4});
+  rc = tiledb_fragment_info_get_mbr_from_index(
+      ctx, fragment_info, 2, 1, 0, &mbr[0]);
+  CHECK(rc == TILEDB_OK);
+  CHECK(mbr == std::vector<uint64_t>{9, 9});
+
+  // Get MBR from name
+  rc = tiledb_fragment_info_get_mbr_from_name(
+      ctx, fragment_info, 1, 0, "d", &mbr[0]);
+  CHECK(rc == TILEDB_OK);
+  CHECK(mbr == std::vector<uint64_t>{1, 3});
+  rc = tiledb_fragment_info_get_mbr_from_name(
+      ctx, fragment_info, 1, 1, "d", &mbr[0]);
+  CHECK(rc == TILEDB_OK);
+  CHECK(mbr == std::vector<uint64_t>{5, 7});
+  rc = tiledb_fragment_info_get_mbr_from_name(
+      ctx, fragment_info, 2, 0, "d", &mbr[0]);
+  CHECK(rc == TILEDB_OK);
+  CHECK(mbr == std::vector<uint64_t>{2, 4});
+  rc = tiledb_fragment_info_get_mbr_from_name(
+      ctx, fragment_info, 2, 1, "d", &mbr[0]);
+  CHECK(rc == TILEDB_OK);
+  CHECK(mbr == std::vector<uint64_t>{9, 9});
+
   // Get number of cells
   uint64_t cell_num;
   rc = tiledb_fragment_info_get_cell_num(ctx, fragment_info, 0, &cell_num);
@@ -647,6 +696,42 @@ TEST_CASE(
   rc = tiledb_fragment_info_get_non_empty_domain_var_from_name(
       ctx, fragment_info, 0, "foo", start, end);
   CHECK(rc == TILEDB_ERR);
+
+  // Get number of MBRs
+  uint64_t mbr_num;
+  rc = tiledb_fragment_info_get_mbr_num(ctx, fragment_info, 0, &mbr_num);
+  CHECK(rc == TILEDB_OK);
+  CHECK(mbr_num == 2);
+
+  // Get MBR size
+  uint64_t mbr_start_size, mbr_end_size;
+  rc = tiledb_fragment_info_get_mbr_var_size_from_index(
+      ctx, fragment_info, 0, 0, 0, &mbr_start_size, &mbr_end_size);
+  CHECK(rc == TILEDB_OK);
+  CHECK(mbr_start_size == 1);
+  CHECK(mbr_end_size == 2);
+  rc = tiledb_fragment_info_get_mbr_var_size_from_name(
+      ctx, fragment_info, 0, 1, "d", &mbr_start_size, &mbr_end_size);
+  CHECK(rc == TILEDB_OK);
+  CHECK(mbr_start_size == 1);
+  CHECK(mbr_end_size == 3);
+
+  // Get MBR
+  char mbr0_start[1];
+  char mbr0_end[2];
+  rc = tiledb_fragment_info_get_mbr_var_from_index(
+      ctx, fragment_info, 0, 0, 0, mbr0_start, mbr0_end);
+  CHECK(rc == TILEDB_OK);
+  CHECK(std::string("a") == std::string(mbr0_start, 1));
+  CHECK(std::string("bb") == std::string(mbr0_end, 2));
+
+  char mbr1_start[1];
+  char mbr1_end[3];
+  rc = tiledb_fragment_info_get_mbr_var_from_name(
+      ctx, fragment_info, 0, 1, "d", mbr1_start, mbr1_end);
+  CHECK(rc == TILEDB_OK);
+  CHECK(std::string("c") == std::string(mbr1_start, 1));
+  CHECK(std::string("ddd") == std::string(mbr1_end, 3));
 
   // Clean up
   remove_dir(array_name, ctx, vfs);

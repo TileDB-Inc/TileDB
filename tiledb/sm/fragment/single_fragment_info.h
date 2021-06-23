@@ -34,7 +34,9 @@
 #ifndef TILEDB_SINGLE_FRAGMENT_INFO_H
 #define TILEDB_SINGLE_FRAGMENT_INFO_H
 
+#include "tiledb/sm/crypto/encryption_key.h"
 #include "tiledb/sm/enums/datatype.h"
+#include "tiledb/sm/fragment/fragment_metadata.h"
 #include "tiledb/sm/misc/types.h"
 #include "tiledb/sm/misc/uri.h"
 
@@ -70,7 +72,9 @@ class SingleFragmentInfo {
       uint64_t fragment_size,
       bool has_consolidated_footer,
       const NDRange& non_empty_domain,
-      const NDRange& expanded_non_empty_domain)
+      const NDRange& expanded_non_empty_domain,
+      const EncryptionKey* encryption_key,
+      FragmentMetadata* meta)
       : uri_(uri)
       , version_(version)
       , sparse_(sparse)
@@ -79,7 +83,14 @@ class SingleFragmentInfo {
       , fragment_size_(fragment_size)
       , has_consolidated_footer_(has_consolidated_footer)
       , non_empty_domain_(non_empty_domain)
-      , expanded_non_empty_domain_(expanded_non_empty_domain) {
+      , expanded_non_empty_domain_(expanded_non_empty_domain)
+      , encryption_key_(encryption_key)
+      , meta_(meta) {
+    // encryption_key_ = tdb_make_shared(EncryptionKey);
+    // encryption_key_->set_key(
+    //     encryption_key->encryption_type(),
+    //     encryption_key->key().data(),
+    //     encryption_key->key().size());
   }
 
   /** Copy constructor. */
@@ -172,6 +183,16 @@ class SingleFragmentInfo {
     return expanded_non_empty_domain_;
   }
 
+  /** Returns a pointer to the encryption key. */
+  const EncryptionKey* encryption_key() const {
+    return encryption_key_;
+  }
+
+  /** Returns a pointer to the fragment's metadata. */
+  FragmentMetadata* meta() const {
+    return meta_;
+  }
+
   /** Returns the non-empty domain in string format. */
   std::string non_empty_domain_str(
       const std::vector<Datatype>& dim_types) const {
@@ -261,20 +282,28 @@ class SingleFragmentInfo {
  private:
   /** The fragment URI. */
   URI uri_;
+
   /** The format version of the fragment. */
   uint32_t version_;
+
   /** True if the fragment is sparse, and false if it is dense. */
   bool sparse_;
+
   /** The timestamp range of the fragment. */
   std::pair<uint64_t, uint64_t> timestamp_range_;
+
   /** The number of cells written in the fragment. */
   uint64_t cell_num_;
+
   /** The size of the entire fragment directory. */
   uint64_t fragment_size_;
+
   /** Returns true if the fragment metadata footer is consolidated. */
   bool has_consolidated_footer_;
+
   /** The fragment's non-empty domain. */
   NDRange non_empty_domain_;
+
   /**
    * The fragment's expanded non-empty domain (in a way that
    * it coincides with tile boundaries. Applicable only to
@@ -282,6 +311,18 @@ class SingleFragmentInfo {
    * domain is the same as the non-empty domain.
    */
   NDRange expanded_non_empty_domain_;
+
+  /** The private encryption key used to encrypt the array.
+   *
+   * Note: The Array and SingleFragmentInfo classes are the only two places in
+   * TileDB where the user's private key bytes should be stored. Whenever a key
+   * is needed, a pointer to this memory region should be passed instead of a
+   * copy of the bytes.
+   */
+  const EncryptionKey* encryption_key_;
+
+  /** The fragment metadata. **/
+  FragmentMetadata* meta_;
 
   /**
    * Returns a deep copy of this FragmentInfo.
@@ -298,6 +339,8 @@ class SingleFragmentInfo {
     clone.has_consolidated_footer_ = has_consolidated_footer_;
     clone.non_empty_domain_ = non_empty_domain_;
     clone.expanded_non_empty_domain_ = expanded_non_empty_domain_;
+    clone.encryption_key_ = encryption_key_;
+    clone.meta_ = meta_;
     return clone;
   }
 
@@ -312,6 +355,8 @@ class SingleFragmentInfo {
     std::swap(has_consolidated_footer_, info.has_consolidated_footer_);
     std::swap(non_empty_domain_, info.non_empty_domain_);
     std::swap(expanded_non_empty_domain_, info.expanded_non_empty_domain_);
+    std::swap(encryption_key_, info.encryption_key_);
+    std::swap(meta_, info.meta_);
   }
 };
 

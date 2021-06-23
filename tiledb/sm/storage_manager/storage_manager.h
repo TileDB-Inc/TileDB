@@ -541,6 +541,28 @@ class StorageManager {
       bool get_to_vacuum = false);
 
   /**
+   * Gets the fragment information for a given array at a particular
+   * timestamp.
+   *
+   * @param array Pointer to the array.
+   * @param timestamp_start The function will consider fragments created
+   *     at or after this timestamp.
+   * @param timestamp_end The function will consider fragments created
+   *     at or before this timestamp.
+   * @param fragment_info The fragment information to be retrieved.
+   *     The fragments are sorted in chronological creation order.
+   * @param get_to_vacuum Whether or not to receive information about
+   *     fragments to vacuum.
+   * @return Status
+   */
+  Status get_fragment_info(
+      Array* array,
+      uint64_t timestamp_start,
+      uint64_t timestamp_end,
+      FragmentInfo* fragment_info,
+      bool get_to_vacuum = false);
+
+  /**
    * Gets the fragment info for a single fragment URI.
    *
    * @param array The array.
@@ -910,6 +932,21 @@ class StorageManager {
   /** Returns `stats_`. */
   stats::Stats* stats();
 
+  /**
+   * It computes the URIs `to_vacuum` from the input `uris`, considering
+   * only the URIs whose first timestamp is greater than or equal to
+   * `timestamp_start` or second timestamp is smaller than or equal to
+   * `timestamp_end`. The function also retrieves the `vac_uris` (files with
+   * `.vac` suffix) that were used to compute `to_vacuum`.
+   */
+  Status get_uris_to_vacuum(
+      const std::vector<URI>& uris,
+      uint64_t timestamp_start,
+      uint64_t timestamp_end,
+      std::vector<URI>* to_vacuum,
+      std::vector<URI>* vac_uris,
+      bool allow_partial = true) const;
+
  private:
   /* ********************************* */
   /*        PRIVATE DATATYPES          */
@@ -1147,21 +1184,6 @@ class StorageManager {
       std::vector<TimestampedURI>* sorted_uris,
       uint64_t timestamp_start,
       uint64_t timestamp_end) const;
-
-  /**
-   * It computes the URIs `to_vacuum` from the input `uris`, considering
-   * only the URIs whose first timestamp is greater than or equal to
-   * `timestamp_start` or second timestamp is smaller than or equal to
-   * `timestamp_end`. The function also retrieves the `vac_uris` (files with
-   * `.vac` suffix) that were used to compute `to_vacuum`.
-   */
-  Status get_uris_to_vacuum(
-      const std::vector<URI>& uris,
-      uint64_t timestamp_start,
-      uint64_t timestamp_end,
-      std::vector<URI>* to_vacuum,
-      std::vector<URI>* vac_uris,
-      bool allow_partial = true) const;
 
   /** Block until there are zero in-progress queries. */
   void wait_for_zero_in_progress();

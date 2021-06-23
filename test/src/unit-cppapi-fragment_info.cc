@@ -235,6 +235,35 @@ TEST_CASE(
   cell_num = fragment_info.cell_num(2);
   CHECK(cell_num == 3);
 
+  // Get number of MBRs
+  auto mbr_num = fragment_info.mbr_num(0);
+  CHECK(mbr_num == 0);
+  mbr_num = fragment_info.mbr_num(1);
+  CHECK(mbr_num == 2);
+  mbr_num = fragment_info.mbr_num(2);
+  CHECK(mbr_num == 2);
+
+  // Get MBR from index
+  std::vector<uint64_t> mbr(2);
+  fragment_info.get_mbr(1, 0, 0, &mbr[0]);
+  CHECK(mbr == std::vector<uint64_t>{1, 3});
+  fragment_info.get_mbr(1, 1, 0, &mbr[0]);
+  CHECK(mbr == std::vector<uint64_t>{5, 7});
+  fragment_info.get_mbr(2, 0, 0, &mbr[0]);
+  CHECK(mbr == std::vector<uint64_t>{2, 4});
+  fragment_info.get_mbr(2, 1, 0, &mbr[0]);
+  CHECK(mbr == std::vector<uint64_t>{9, 9});
+
+  // Get MBR from name
+  fragment_info.get_mbr(1, 0, "d", &mbr[0]);
+  CHECK(mbr == std::vector<uint64_t>{1, 3});
+  fragment_info.get_mbr(1, 1, "d", &mbr[0]);
+  CHECK(mbr == std::vector<uint64_t>{5, 7});
+  fragment_info.get_mbr(2, 0, "d", &mbr[0]);
+  CHECK(mbr == std::vector<uint64_t>{2, 4});
+  fragment_info.get_mbr(2, 1, "d", &mbr[0]);
+  CHECK(mbr == std::vector<uint64_t>{9, 9});
+
   // Get version
   auto version = fragment_info.version(0);
   CHECK(version == tiledb::sm::constants::format_version);
@@ -301,6 +330,18 @@ TEST_CASE(
   non_empty_domain_str = fragment_info.non_empty_domain_var(0, "d");
   CHECK(std::string("a") == non_empty_domain_str.first);
   CHECK(std::string("ddd") == non_empty_domain_str.second);
+
+  // Get number of MBRs
+  auto mbr_num = fragment_info.mbr_num(0);
+  CHECK(mbr_num == 2);
+
+  // Get MBR
+  auto mbr_str = fragment_info.mbr_var(0, 0, 0);
+  CHECK(std::string("a") == mbr_str.first);
+  CHECK(std::string("bb") == mbr_str.second);
+  mbr_str = fragment_info.mbr_var(0, 1, "d");
+  CHECK(std::string("c") == mbr_str.first);
+  CHECK(std::string("ddd") == mbr_str.second);
 
   // Clean up
   remove_dir(array_name, ctx.ptr().get(), vfs.ptr().get());
