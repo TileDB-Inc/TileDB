@@ -44,9 +44,9 @@ namespace sm {
 
 class ConstBuffer;
 
-//───────────────────────────────────────────────────────
+//=======================================================
 // BufferBase
-//───────────────────────────────────────────────────────
+//=======================================================
 /**
  * Base class for `Buffer`, `ConstBuffer`, and `PreallocatedBuffer`
  *
@@ -119,9 +119,9 @@ class BufferBase {
   uint64_t offset_;
 };
 
-//───────────────────────────────────────────────────────
+//=======================================================
 // Buffer
-//───────────────────────────────────────────────────────
+//=======================================================
 /**
  * General-purpose buffer. Manages own memory. Writeable.
  */
@@ -297,9 +297,9 @@ class Buffer : public BufferBase {
   Status ensure_alloced_size(uint64_t nbytes);
 };
 
-//───────────────────────────────────────────────────────
+//=======================================================
 // ConstBuffer
-//───────────────────────────────────────────────────────
+//=======================================================
 /**
  * A read-only buffer fully-initialized at construction. It does not manage
  * memory; its storage is subordinate to some other object.
@@ -357,9 +357,9 @@ class ConstBuffer : public BufferBase {
   }
 };
 
-//───────────────────────────────────────────────────────
+//=======================================================
 // PreallocatedBuffer
-//───────────────────────────────────────────────────────
+//=======================================================
 /**
  * Writeable buffer that uses pre-allocated storage provided externally. Does
  * not expand storage on write.
