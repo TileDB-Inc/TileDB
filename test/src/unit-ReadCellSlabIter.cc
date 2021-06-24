@@ -32,8 +32,10 @@
 
 #include "test/src/helpers.h"
 #include "test/src/vfs_helpers.h"
+#include "tiledb/sm/array_schema/tile_domain.h"
 #include "tiledb/sm/c_api/tiledb_struct_def.h"
 #include "tiledb/sm/query/read_cell_slab_iter.h"
+#include "tiledb/sm/query/reader.h"
 
 #ifdef _WIN32
 #include "tiledb/sm/filesystem/win.h"

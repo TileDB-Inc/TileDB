@@ -45,8 +45,10 @@
 #include "tiledb/sm/array_schema/tile_domain.h"
 #include "tiledb/sm/misc/types.h"
 #include "tiledb/sm/misc/uri.h"
+#include "tiledb/sm/query/iquery_strategy.h"
 #include "tiledb/sm/query/query_buffer.h"
 #include "tiledb/sm/query/query_condition.h"
+#include "tiledb/sm/query/reader_base.h"
 #include "tiledb/sm/query/result_cell_slab.h"
 #include "tiledb/sm/query/result_coords.h"
 #include "tiledb/sm/query/result_space_tile.h"
@@ -59,13 +61,11 @@ namespace tiledb {
 namespace sm {
 
 class Array;
-class ArraySchema;
-class FragmentMetadata;
 class StorageManager;
 class Tile;
 
 /** Processes read queries. */
-class Reader {
+class Reader : public ReaderBase, public IQueryStrategy {
  public:
   /* ********************************* */
   /*          TYPE DEFINITIONS         */
@@ -116,15 +116,20 @@ class Reader {
   /*     CONSTRUCTORS & DESTRUCTORS    */
   /* ********************************* */
 
-  /**
-   * Constructor.
-   *
-   * @param parent_stats The parent stats to inherit from.
-   */
-  Reader(stats::Stats* parent_stats);
+  /** Constructor. */
+  Reader(
+      stats::Stats* stats,
+      StorageManager* storage_manager,
+      Array* array,
+      Config& config,
+      std::unordered_map<std::string, QueryBuffer>& buffers,
+      Subarray& subarray,
+      Layout layout,
+      QueryCondition& condition,
+      bool sparse_mode);
 
   /** Destructor. */
-  ~Reader();
+  ~Reader() = default;
 
   DISABLE_COPY_AND_COPY_ASSIGN(Reader);
   DISABLE_MOVE_AND_MOVE_ASSIGN(Reader);
@@ -133,112 +138,8 @@ class Reader {
   /*                 API               */
   /* ********************************* */
 
-  /** Returns the array. */
-  const Array* array() const;
-
-  /** Adds a range to the subarray on the input dimension. */
-  Status add_range(unsigned dim_idx, Range&& range);
-
-  /** Retrieves the number of ranges of the subarray for the given dimension. */
-  Status get_range_num(unsigned dim_idx, uint64_t* range_num) const;
-
-  /**
-   * Retrieves a range from a dimension in the form (start, end, stride).
-   *
-   * @param dim_idx The dimension to retrieve the range from.
-   * @param range_idx The id of the range to retrieve.
-   * @param start The range start to retrieve.
-   * @param end The range end to retrieve.
-   * @param stride The range stride to retrieve.
-   * @return Status
-   */
-  Status get_range(
-      unsigned dim_idx,
-      uint64_t range_idx,
-      const void** start,
-      const void** end,
-      const void** stride) const;
-
-  /**
-   * Retrieves a range's sizes for a variable-length dimension
-   *
-   * @param dim_idx The dimension to retrieve the range from.
-   * @param range_idx The id of the range to retrieve.
-   * @param start_size range start size in bytes
-   * @param end_size range end size in bytes
-   * @return Status
-   */
-  Status get_range_var_size(
-      unsigned dim_idx,
-      uint64_t range_idx,
-      uint64_t* start_size,
-      uint64_t* end_size) const;
-
-  /**
-   * Gets the estimated result size (in bytes) for the input fixed-sized
-   * attribute/dimension.
-   */
-  Status get_est_result_size(const char* name, uint64_t* size);
-
-  /**
-   * Gets the estimated result size (in bytes) for the input var-sized
-   * attribute/dimension.
-   */
-  Status get_est_result_size(
-      const char* name, uint64_t* size_off, uint64_t* size_val);
-
-  /**
-   * Gets the estimated result size (in bytes) for the input fixed-sized,
-   * nullable attribute.
-   */
-  Status get_est_result_size_nullable(
-      const char* name, uint64_t* size_val, uint64_t* size_validity);
-
-  /**
-   * Gets the estimated result size (in bytes) for the input var-sized,
-   * nullable attribute.
-   */
-  Status get_est_result_size_nullable(
-      const char* name,
-      uint64_t* size_off,
-      uint64_t* size_val,
-      uint64_t* size_validity);
-
-  /**
-   * Used by serialization to get the map of result sizes
-   * @return
-   */
-  std::unordered_map<std::string, Subarray::ResultSize>
-  get_est_result_size_map();
-
-  /**
-   * Used by serialization to get the map of max mem sizes
-   * @return
-   */
-  std::unordered_map<std::string, Subarray::MemorySize> get_max_mem_size_map();
-
-  /**
-   * Used by serialization to set the estimated result size
-   *
-   * @param est_result_size map to set
-   * @param max_mem_size map to set
-   * @return Status
-   */
-  Status set_est_result_size(
-      std::unordered_map<std::string, Subarray::ResultSize>& est_result_size,
-      std::unordered_map<std::string, Subarray::MemorySize>& max_mem_size);
-
-  /** returns whether the estimated result size has been computed or not */
-  bool est_result_size_computed();
-
-  /** Returns the array schema. */
-  const ArraySchema* array_schema() const;
-
-  /** Returns the names of the buffers set by the user for the read query. */
-  std::vector<std::string> buffer_names() const;
-
-  /** Fetch QueryBuffer for the input attribute/dimension. */
-  QueryBuffer buffer(const std::string& name) const;
+  /** Finalizes the reader. */
+  Status finalize();
 
   /**
    * Returns `true` if the query was incomplete, i.e., if all subarray
@@ -247,117 +148,8 @@ class Reader {
    */
   bool incomplete() const;
 
-  /**
-   * Retrieves the buffer of a fixed/var-sized attribute/dimension.
-   *
-   * @param name The attribute/dimension name.
-   * @param buffer The buffer to be retrieved.
-   * @param buffer_size A pointer to the buffer size to be retrieved.
-   * @return Status
-   */
-  Status get_data_buffer(
-      const std::string& name, void** buffer, uint64_t** buffer_size) const;
-
-  /**
-   * Retrieves the offset buffer for a var-sized attribute/dimension.
-   *
-   * @param name The attribute/dimension name.
-   * @param buffer_off The offsets buffer to be retrieved. This buffer holds
-   * the starting offsets of each cell value in the data buffer.
-   * @param buffer_off_size A pointer to the buffer size to be retrieved.
-   * @return Status
-   */
-  Status get_offsets_buffer(
-      const std::string& name,
-      uint64_t** buffer_off,
-      uint64_t** buffer_off_size) const;
-
-  /**
-   * Retrieves the validity buffer for a nullable attribute/dimension.
-   *
-   * @param name The attribute/dimension name.
-   * @param validity_vector The buffer that either have the validity
-   * bytemap associated with the input data to be written, or will hold the
-   * validity bytemap to be read.
-   * @return Status
-   */
-  Status get_validity_buffer(
-      const std::string& name, const ValidityVector** validity_vector) const;
-  /**
-   * Retrieves the offsets and values buffers of a var-sized
-   * attribute/dimension.
-   *
-   * @param name The attribute/dimension name.
-   * @param buffer_off The offsets buffer to be retrieved.
-   * @param buffer_off_size A pointer to the offsets buffer size to be
-   * retrieved.
-   * @param buffer_val The values buffer to be retrieved.
-   * @param buffer_val_size A pointer to the values buffer size to be retrieved.
-   * @return Status
-   */
-  Status get_buffer(
-      const std::string& name,
-      uint64_t** buffer_off,
-      uint64_t** buffer_off_size,
-      void** buffer_val,
-      uint64_t** buffer_val_size) const;
-
-  /**
-   * Retrieves the buffer of a fixed-sized, nullable attribute.
-   *
-   * @param name The attribute name.
-   * @param buffer The buffer to be retrieved.
-   * @param buffer_size A pointer to the buffer size to be retrieved.
-   * @param ValidityVector The validity vector to be retrieved.
-   * @return Status
-   */
-  Status get_buffer_nullable(
-      const std::string& name,
-      void** buffer,
-      uint64_t** buffer_size,
-      const ValidityVector** validity_vector) const;
-
-  /**
-   * Retrieves the offsets, values, and validity buffers of a var-sized,
-   * nullable attribute.
-   *
-   * @param name The attribute/dimension name.
-   * @param buffer_off The offsets buffer to be retrieved.
-   * @param buffer_off_size A pointer to the offsets buffer size to be
-   *     retrieved.
-   * @param buffer_val The values buffer to be retrieved.
-   * @param buffer_val_size A pointer to the values buffer size to be retrieved.
-   * @param ValidityVector The validity vector to be retrieved.
-   * @return Status
-   */
-  Status get_buffer_nullable(
-      const std::string& name,
-      uint64_t** buffer_off,
-      uint64_t** buffer_off_size,
-      void** buffer_val,
-      uint64_t** buffer_val_size,
-      const ValidityVector** validity_vector) const;
-
-  /** Returns the first fragment uri. */
-  URI first_fragment_uri() const;
-
-  /** Returns the last fragment uri. */
-  URI last_fragment_uri() const;
-
   /** Initializes the reader with the subarray layout. */
   Status init(const Layout& layout);
-
-  /** Returns the cell layout. */
-  Layout layout() const;
-
-  /**
-   * Returns a const-pointer to the internal condition.
-   * @return QueryCondition
-   */
-  const QueryCondition* condition() const;
-
-  /** Returns `true` if no results were retrieved after a query. */
-  bool no_results() const;
 
   /** Returns the current read state. */
   const ReadState* read_state() const;
@@ -366,248 +158,10 @@ class Reader {
   ReadState* read_state();
 
   /** Performs a read query using its set members. */
-  Status read();
+  Status dowork();
 
-  /** Sets the array. */
-  void set_array(const Array* array);
-
-  /**
-   * Sets the array schema. If the array is a kv store, then this
-   * function also sets global order as the default layout.
-   */
-  void set_array_schema(const ArraySchema* array_schema);
-
-  /**
-   * Sets the buffer for a fixed/var-sized attribute/dimension.
-   *
-   * @param name The attribute/dimension to set the buffer for.
-   * @param buffer The buffer that will hold the data to be read.
-   * @param buffer_size This initially contains the allocated
-   *     size of `buffer`, but after the termination of the function
-   *     it will contain the size of the useful (read) data in `buffer`.
-   * @param check_null_buffers If true (default), null buffers are not
-   * allowed.
-   * @return Status
-   */
-  Status set_buffer(
-      const std::string& name,
-      void* buffer,
-      uint64_t* buffer_size,
-      bool check_null_buffers = true);
-
-  /**
-   * Sets the data for a fixed/var-sized attribute/dimension.
-   *
-   * @param name The attribute/dimension to set the buffer for.
-   * @param buffer The buffer that will hold the data to be read.
-   * @param buffer_size This initially contains the allocated
-   *     size of `buffer`, but after the termination of the function
-   *     it will contain the size of the useful (read) data in `buffer`.
-   * @param check_null_buffers If true (default), null buffers are not
-   * allowed.
-   * @return Status
-   */
-  Status set_data_buffer(
-      const std::string& name,
-      void* buffer,
-      uint64_t* buffer_size,
-      bool check_null_buffers = true);
-
-  /**
-   * Sets the offset buffer for a var-sized attribute/dimension.
-   *
-   * @param name The attribute/dimension to set the buffer for.
-   * @param buffer_off The buffer that will hold the data to be read.
-   *     This buffer holds the starting offsets of each cell value in
-   *     `buffer_val`.
-   * @param buffer_off_size This initially contains
-   *     the allocated size of `buffer_off`, but after the termination of the
-   *     function it will contain the size of the useful (read) data in
-   *     `buffer_off`.
-   * @param check_null_buffers If true (default), null buffers are not
-   * allowed.
-   * @return Status
-   */
-  Status set_offsets_buffer(
-      const std::string& name,
-      uint64_t* buffer_off,
-      uint64_t* buffer_off_size,
-      bool check_null_buffers = true);
-
-  /**
-   * Sets the validity buffer for nullable attribute/dimension.
-   *
-   * @param name The attribute/dimension to set the buffer for.
-   * @param buffer_validity_bytemap The buffer that either have the validity
-   * bytemap associated with the input data to be written, or will hold the
-   * validity bytemap to be read.
-   * @param buffer_validity_bytemap_size In the case of writes, this is the size
-   * of `buffer_validity_bytemap` in bytes. In the case of reads, this initially
-   * contains the allocated size of `buffer_validity_bytemap`, but after the
-   * termination of the query it will contain the size of the useful (read)
-   * data in `buffer_validity_bytemap`.
-   * @param check_null_buffers If true (default), null buffers are not
-   * allowed.
-   * @return Status
-   */
-  Status set_validity_buffer(
-      const std::string& name,
-      uint8_t* buffer_validity_bytemap,
-      uint64_t* buffer_validity_bytemap_size,
-      bool check_null_buffers = true);
-
-  /**
-   * Sets the buffer for a var-sized attribute/dimension.
-   *
-   * @param name The name to set the buffer for.
-   * @param buffer_off The buffer that will hold the data to be read.
-   *     This buffer holds the starting offsets of each cell value in
-   *     `buffer_val`.
-   * @param buffer_off_size This initially contains
-   *     the allocated size of `buffer_off`, but after the termination of the
-   *     function it will contain the size of the useful (read) data in
-   *     `buffer_off`.
-   * @param buffer_val The buffer that will hold the data to be read.
-   *     This buffer holds the actual var-sized cell values.
-   * @param buffer_val_size This initially contains
-   *     the allocated size of `buffer_val`, but after the termination of the
-   *     function it will contain the size of the useful (read) data in
-   *     `buffer_val`.
-   * @param check_null_buffers If true (default), null buffers are not allowed.
-   * @return Status
-   */
-  Status set_buffer(
-      const std::string& name,
-      uint64_t* buffer_off,
-      uint64_t* buffer_off_size,
-      void* buffer_val,
-      uint64_t* buffer_val_size,
-      bool check_null_buffers = true);
-
-  /**
-   * Sets the buffer for a fixed-sized, nullable attribute.
-   *
-   * @param name The attribute to set the buffer for.
-   * @param buffer The buffer that will hold the data to be read.
-   * @param buffer_size This initially contains the allocated
-   *     size of `buffer`, but after the termination of the function
-   *     it will contain the size of the useful (read) data in `buffer`.
-   * @param check_null_buffers If true (default), null buffers are not allowed.
-   * @param validity_vector The validity vector associated with values in
-   * `buffer`.
-   * @return Status
-   */
-  Status set_buffer(
-      const std::string& name,
-      void* buffer,
-      uint64_t* buffer_size,
-      ValidityVector&& validity_vector,
-      bool check_null_buffers = true);
-
-  /**
-   * Sets the buffer for a var-sized, nullable attribute.
-   *
-   * @param name The name to set the buffer for.
-   * @param buffer_off The buffer that will hold the data to be read.
-   *     This buffer holds the starting offsets of each cell value in
-   *     `buffer_val`.
-   * @param buffer_off_size This initially contains
-   *     the allocated size of `buffer_off`, but after the termination of the
-   *     function it will contain the size of the useful (read) data in
-   *     `buffer_off`.
-   * @param buffer_val The buffer that will hold the data to be read.
-   *     This buffer holds the actual var-sized cell values.
-   * @param buffer_val_size This initially contains
-   *     the allocated size of `buffer_val`, but after the termination of the
-   *     function it will contain the size of the useful (read) data in
-   *     `buffer_val`.
-   * @param validity_vector The validity vector associated with values in
-   * `buffer_val`.
-   * @param check_null_buffers If true (default), null buffers are not allowed.
-   * @return Status
-   */
-  Status set_buffer(
-      const std::string& name,
-      uint64_t* buffer_off,
-      uint64_t* buffer_off_size,
-      void* buffer_val,
-      uint64_t* buffer_val_size,
-      ValidityVector&& validity_vector,
-      bool check_null_buffers = true);
-
-  /** Sets the fragment metadata. */
-  void set_fragment_metadata(
-      const std::vector<FragmentMetadata*>& fragment_metadata);
-
-  /** Sets config for query-level parameters only. */
-  Status set_config(const Config& config);
-
-  /** Returns the internal config. */
-  const Config* config() const;
-
-  /**
-   * Sets the cell layout of the query. The function will return an error
-   * if the queried array is a key-value store (because it has its default
-   * layout for both reads and writes.
-   */
-  Status set_layout(Layout layout);
-
-  /**
-   * Sets the condition for filtering results.
-   *
-   * @param condition The condition object.
-   * @return Status
-   */
-  Status set_condition(const QueryCondition& condition);
-
-  /**
-   * This is applicable only to dense arrays (errors out for sparse arrays),
-   * and only in the case where the array is opened in a way that all its
-   * fragments are sparse. If the input is `true`, then the dense array
-   * will be read in "sparse mode", i.e., the sparse read algorithm will
-   * be executing, returning results only for the non-empty cells.
-   * The sparse mode is useful particularly in consolidation, when the
-   * algorithm determines that the subset of fragments to consolidate
-   * in the next step are all sparse. In that case, the consolidator
-   * needs to read only the non-empty cells of those fragments, which
-   * can be achieved by opening the dense array in the sparse mode
-   * (otherwise the dense array would return special values for all
-   * empty cells).
-   *
-   * @param sparse_mode This sets the sparse mode.
-   * @return Status
-   */
-  Status set_sparse_mode(bool sparse_mode);
-
-  /** Sets the storage manager. */
-  void set_storage_manager(StorageManager* storage_manager);
-
-  /** Sets the query subarray. */
-  Status set_subarray(const Subarray& subarray);
-
-  /** Returns the query subarray. */
-  const Subarray* subarray() const;
-
-  /** Returns the configured offsets format mode. */
-  std::string offsets_mode() const;
-
-  /** Sets the offsets format mode. */
-  Status set_offsets_mode(const std::string& offsets_mode);
-
-  /** Returns `True` if offsets are configured to have an extra element. */
-  bool offsets_extra_element() const;
-
-  /** Sets if offsets are configured to have an extra element. */
-  Status set_offsets_extra_element(bool add_extra_element);
-
-  /** Returns the configured offsets bitsize */
-  uint32_t offsets_bitsize() const;
-
-  /** Sets the bitsize of offsets */
-  Status set_offsets_bitsize(const uint32_t bitsize);
-
-  /** Returns `stats_`. */
-  stats::Stats* stats() const;
+  /** Resets the reader object. */
+  void reset();
 
   /* ********************************* */
   /*          STATIC FUNCTIONS         */
@@ -1038,34 +592,6 @@ class Reader {
   /*         PRIVATE ATTRIBUTES        */
   /* ********************************* */
 
-  /** The class stats. */
-  stats::Stats* stats_;
-
-  /** The array. */
-  const Array* array_;
-
-  /** The array schema. */
-  const ArraySchema* array_schema_;
-
-  /** The config for query-level parameters only. */
-  Config config_;
-
-  /**
-   * Maps attribute/dimension names to their buffers.
-   * `TILEDB_COORDS` may be used for the special zipped coordinates
-   * buffer.
-   * */
-  std::unordered_map<std::string, QueryBuffer> buffers_;
-
-  /** The fragment metadata. */
-  std::vector<FragmentMetadata*> fragment_metadata_;
-
-  /** The layout of the cells in the result of the subarray. */
-  Layout layout_;
-
-  /** The query condition. */
-  QueryCondition condition_;
-
   /** Read state. */
   ReadState read_state_;
 
@@ -1076,36 +602,12 @@ class Reader {
    */
   bool sparse_mode_;
 
-  /** The storage manager. */
-  StorageManager* storage_manager_;
-
-  /** The query subarray (initially the whole domain by default). */
-  Subarray subarray_;
-
-  /** The offset format used for variable-sized attributes. */
-  std::string offsets_format_mode_;
-
-  /**
-   * If `true`, an extra element that points to the end of the values buffer
-   * will be added in the end of the offsets buffer of var-sized attributes
-   */
-  bool offsets_extra_element_;
-
-  /** The offset bitsize used for variable-sized attributes. */
-  uint32_t offsets_bitsize_;
-
   /** Protects result tiles. */
   mutable std::mutex result_tiles_mutex_;
 
   /* ********************************* */
   /*           PRIVATE METHODS         */
   /* ********************************* */
-
-  /** Correctness checks for `subarray_`. */
-  Status check_subarray() const;
-
-  /** Correctness checks validity buffer sizes in `buffers_`. */
-  Status check_validity_buffer_sizes() const;
 
   /**
    * Deletes the tiles on the input attribute/dimension from the result tiles.
@@ -1805,13 +1307,6 @@ class Reader {
       std::vector<ThreadPool::Task>* tasks) const;
 
   /**
-   * Resets the buffer sizes to the original buffer sizes. This is because
-   * the read query may alter the buffer sizes to reflect the size of
-   * the useful data (results) written in the buffers.
-   */
-  void reset_buffer_sizes();
-
-  /**
    * Sorts the input result coordinates according to the subarray layout.
    *
    * @param iter_begin The start position of the coordinates to sort.
@@ -1911,9 +1406,6 @@ class Reader {
       const std::vector<ResultTile*>& result_tiles,
       const std::vector<ResultCellSlab>& result_cell_slabs);
 
-  /** Zeroes out the user buffer sizes, indicating an empty result. */
-  void zero_out_buffer_sizes();
-
   /**
    * Returns true if the input tile's MBR of the input fragment is fully
    * covered by the non-empty domain of a more recent fragment.
@@ -1925,12 +1417,6 @@ class Reader {
    * tiles.
    */
   void erase_coord_tiles(std::vector<ResultTile>* result_tiles) const;
-
-  /**
-   * Gets statistics about the number of attributes and dimensions in
-   * the read query.
-   */
-  void get_dim_attr_stats() const;
 
   /** Gets statistics about the result cells. */
   void get_result_cell_stats(

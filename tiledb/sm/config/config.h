@@ -154,6 +154,9 @@ class Config {
    */
   static const std::string SM_SUB_PARTITIONER_MEMORY_BUDGET;
 
+  /** Whether or not to use the refactored readers. */
+  static const std::string SM_USE_REFACTORED_READERS;
+
   /** Whether or not the signal handlers are installed. */
   static const std::string SM_ENABLE_SIGNAL_HANDLERS;
 

@@ -1041,6 +1041,9 @@ TILEDB_EXPORT void tiledb_config_free(tiledb_config_t** config);
  *    query range in case sorting is much slower than the partitioning
  *    overhead. <br>
  *    **Default**: 0
+ * - `sm.use_refactored_readers` <br>
+ *    Use the refactored readers or not. <br>
+ *    **Default**: false
  * - `vfs.read_ahead_size` <br>
  *    The maximum byte size to read-ahead from the backend. <br>
  *    **Default**: 102400
