@@ -236,8 +236,9 @@ add_executable(
   ${TILEDB_TEST_SOURCES}
 )
 
-# TODO: Remove when KV API has been removed.
-if (NOT WIN32)
+# We want tests to continue as normal even as the API is changing,
+# so don't warn for deprecations, since they'll be escalated to errors.
+if (NOT MSVC)
   target_compile_options(tiledb_unit PRIVATE -Wno-deprecated-declarations)
 endif()
 
