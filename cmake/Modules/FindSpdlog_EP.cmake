@@ -57,6 +57,13 @@ endif()
 
 if (NOT SPDLOG_FOUND)
   if(TILEDB_SUPERBUILD)
+    if (WIN32)
+      find_package(Git REQUIRED)
+      set(CONDITIONAL_PATCH cd ${CMAKE_SOURCE_DIR} && ${GIT_EXECUTABLE} apply --ignore-whitespace -p1 --unsafe-paths --verbose --directory=${TILEDB_EP_SOURCE_DIR}/ep_spdlog < ${TILEDB_CMAKE_INPUTS_DIR}/patches/ep_spdlog/spdlog.patch)
+    else()
+      set(CONDITIONAL_PATCH patch -N -p1 < ${TILEDB_CMAKE_INPUTS_DIR}/patches/ep_spdlog/spdlog.patch)
+    endif()
+
     message(STATUS "Adding spdlog as an external project")
     ExternalProject_Add(ep_spdlog
       PREFIX "externals"
@@ -64,6 +71,8 @@ if (NOT SPDLOG_FOUND)
       DOWNLOAD_NAME ep_spdlog.zip
       URL "https://github.com/gabime/spdlog/archive/v1.8.5.zip"
       URL_HASH SHA1=178f7858e4f2a3c12f4b130eb67a54bb149d2cca
+      PATCH_COMMAND
+        ${CONDITIONAL_PATCH}
       CMAKE_ARGS
         -DCMAKE_PREFIX_PATH=${TILEDB_EP_INSTALL_PREFIX}
         -DCMAKE_INSTALL_PREFIX=${TILEDB_EP_INSTALL_PREFIX}
