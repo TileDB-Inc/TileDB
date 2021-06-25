@@ -34,9 +34,12 @@
 
 #ifndef TILEDB_LOGGER_H
 #define TILEDB_LOGGER_H
-
-#include <spdlog/fmt/ostr.h>
+// clang-format off
+// Order here matters to avoid linker errors
 #include <spdlog/spdlog.h>
+#include <spdlog/fmt/fmt.h>
+#include <spdlog/fmt/ostr.h>
+// clang-format on
 
 #include "tiledb/common/heap_memory.h"
 #include "tiledb/common/status.h"
