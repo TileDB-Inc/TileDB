@@ -717,14 +717,6 @@ if (TILEDB_STATIC)
   append_dep_lib(GCSSDK::google_cloud_cpp_common)
   append_dep_lib(GCSSDK::crc32c)
   append_dep_lib(spdlog::spdlog_header_only)
-
-  # Spdlog is a special case because it is header-only.
-  string(CONCAT TILEDB_STATIC_DEP_STRING
-    "${TILEDB_STATIC_DEP_STRING}"
-    "if (NOT TARGET spdlog::spdlog_header_only)\n"
-    "  add_library(spdlog::spdlog_header_only INTERFACE IMPORTED)\n"
-    "endif()"
-  )
 endif()
 
 ############################################################
