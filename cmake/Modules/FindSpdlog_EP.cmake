@@ -30,6 +30,15 @@
 #   - SPDLOG_FOUND, whether Spdlog has been found
 #   - The spdlog::spdlog_header_only imported target
 
+# Include some common helper functions.
+include(TileDBCommon)
+
+# If the EP was built, it will install the storage_client-config.cmake file,
+# which we can use with find_package. CMake uses CMAKE_PREFIX_PATH to locate find
+# modules.
+set(CMAKE_PREFIX_PATH ${CMAKE_PREFIX_PATH} "${TILEDB_EP_INSTALL_PREFIX}")
+
+
 # First try the CMake find module.
 if (NOT TILEDB_FORCE_ALL_DEPS OR TILEDB_SPDLOG_EP_BUILT)
   if (TILEDB_SPDLOG_EP_BUILT)
@@ -56,6 +65,7 @@ if (NOT SPDLOG_FOUND)
       URL "https://github.com/gabime/spdlog/archive/v1.8.2.zip"
       URL_HASH SHA1=970d58ccd9ba0d2f86e3b5c405fedfcb82949906
       CMAKE_ARGS
+        -DCMAKE_PREFIX_PATH=${TILEDB_EP_INSTALL_PREFIX}
         -DCMAKE_INSTALL_PREFIX=${TILEDB_EP_INSTALL_PREFIX}
       LOG_DOWNLOAD TRUE
       LOG_OUTPUT_ON_FAILURE ${TILEDB_LOG_OUTPUT_ON_FAILURE}
