@@ -90,6 +90,16 @@ steps:
       Write-Host "Installation failed."
       $host.SetShouldExit($LastExitCode)
     }
+    
+    echo "is '...\dist' present?"
+    ls $env:AGENT_BUILDDIRECTORY\dist
+    echo "is '...\s\dist' present?"
+    ls $env:AGENT_BUILDDIRECTORY\s\dist
+    echo "is '...\examples' present?"
+    ls $env:AGENT_BUILDDIRECTORY\examples
+    echo "is '...\s\examples' present?"
+    ls $env:AGENT_BUILDDIRECTORY\s\examples
+    
   displayName: "Build"
 
 - powershell: |
@@ -147,6 +157,7 @@ steps:
       $host.SetShouldExit($LastExitCode)
     }
 
+    # TBD: Does'\s' component need to be removed from that first path?
     $env:Path += ";$env:AGENT_BUILDDIRECTORY\s\dist\bin;$env:AGENT_BUILDDIRECTORY\build\externals\install\bin"
 
     ls $env:AGENT_BUILDDIRECTORY\build\tiledb\examples\c_api\Release
@@ -173,15 +184,19 @@ steps:
       $host.SetShouldExit($LastExitCode)
     }
 
+    ls $env:AGENT_BUILDDIRECTORY\build\tiledb\examples\c_api\Release
+
     # Build examples
-    cd $env:AGENT_BUILDDIRECTORY\s\examples\cmake_project
+    # cd $env:AGENT_BUILDDIRECTORY\s\examples\cmake_project
+    cd $env:AGENT_BUILDDIRECTORY\examples\cmake_project
 
     mkdir build
 
     cd build
 
     # Build zip artifact
-    cmake -A X64 -DCMAKE_PREFIX_PATH="$env:AGENT_BUILDDIRECTORY\s\dist" ..
+    # cmake -A X64 -DCMAKE_PREFIX_PATH="$env:AGENT_BUILDDIRECTORY\s\dist" ..
+    cmake -A X64 -DCMAKE_PREFIX_PATH="$env:AGENT_BUILDDIRECTORY\dist" ..
 
     cmake --build . --config Release -- /verbosity:minimal
 
