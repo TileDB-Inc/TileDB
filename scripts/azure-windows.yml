@@ -124,6 +124,31 @@ steps:
     $env:AWS_ACCESS_KEY_ID = "minio"
     $env:AWS_SECRET_ACCESS_KEY = "miniosecretkey"
 
+    try {
+      echo "is '...\s\dist' present?"
+      ls $env:AGENT_BUILDDIRECTORY\s\dist
+    } catch {
+      Write-Host "failed, ls $env:AGENT_BUILDDIRECTORY\s\dist"
+    }
+    try {
+      echo "is '...\s\examples' present?"
+      ls $env:AGENT_BUILDDIRECTORY\s\examples
+    } catch {
+      Write-Host "failed, $env:AGENT_BUILDDIRECTORY\s\examples"
+    }
+    try {
+      echo "is '...\dist' present?"
+      ls $env:AGENT_BUILDDIRECTORY\dist
+    } catch {
+      Write-Host "failed, ls $env:AGENT_BUILDDIRECTORY\dist"
+    }
+    try {
+      echo "is '...\examples' present?"
+      ls $env:AGENT_BUILDDIRECTORY\examples
+    } catch {
+      Write-Host "failed, $env:AGENT_BUILDDIRECTORY\examples"
+    }
+    
     # Clone backwards compatibility test arrays
     if ($env:BACKWARDS_COMPATIBILITY_ARRAYS -eq "ON") {
       git clone https://github.com/TileDB-Inc/TileDB-Unit-Test-Arrays.git --branch 2.2.3 $env:BUILD_SOURCESDIRECTORY/test/inputs/arrays/read_compatibility_test
@@ -202,9 +227,11 @@ steps:
 
     ls $env:AGENT_BUILDDIRECTORY\build\tiledb\examples\c_api\Release
 
+    # ls $env:AGENT_BUILDDIRECTORY\examples\cmake_project
+
     # Build examples
-    # cd $env:AGENT_BUILDDIRECTORY\s\examples\cmake_project
-    cd $env:AGENT_BUILDDIRECTORY\examples\cmake_project
+    cd $env:AGENT_BUILDDIRECTORY\s\examples\cmake_project
+    # cd $env:AGENT_BUILDDIRECTORY\examples\cmake_project
 
     mkdir build
 
