@@ -91,14 +91,30 @@ steps:
       $host.SetShouldExit($LastExitCode)
     }
     
-    echo "is '...\dist' present?"
-    ls $env:AGENT_BUILDDIRECTORY\dist
-    echo "is '...\s\dist' present?"
-    ls $env:AGENT_BUILDDIRECTORY\s\dist
-    echo "is '...\examples' present?"
-    ls $env:AGENT_BUILDDIRECTORY\examples
-    echo "is '...\s\examples' present?"
-    ls $env:AGENT_BUILDDIRECTORY\s\examples
+    try {
+      echo "is '...\s\dist' present?"
+      ls $env:AGENT_BUILDDIRECTORY\s\dist
+    } catch {
+      Write-Host "failed, ls $env:AGENT_BUILDDIRECTORY\s\dist"
+    }
+    try {
+      echo "is '...\s\examples' present?"
+      ls $env:AGENT_BUILDDIRECTORY\s\examples
+    } catch {
+      Write-Host "failed, $env:AGENT_BUILDDIRECTORY\s\examples"
+    }
+    try {
+      echo "is '...\dist' present?"
+      ls $env:AGENT_BUILDDIRECTORY\dist
+    } catch {
+      Write-Host "failed, ls $env:AGENT_BUILDDIRECTORY\dist"
+    }
+    try {
+      echo "is '...\examples' present?"
+      ls $env:AGENT_BUILDDIRECTORY\examples
+    } catch {
+      Write-Host "failed, $env:AGENT_BUILDDIRECTORY\examples"
+    }
     
   displayName: "Build"
 
