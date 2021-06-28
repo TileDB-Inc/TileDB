@@ -239,9 +239,11 @@ steps:
 
     # Build zip artifact
     # cmake -A X64 -DCMAKE_PREFIX_PATH="$env:AGENT_BUILDDIRECTORY\s\dist" ..
-    cmake -A X64 -DCMAKE_PREFIX_PATH="$env:AGENT_BUILDDIRECTORY\dist" ..
+    cmake --trace -A X64 -DCMAKE_PREFIX_PATH="$env:AGENT_BUILDDIRECTORY\s\dist" ..
+    # cmake -A X64 -DCMAKE_PREFIX_PATH="$env:AGENT_BUILDDIRECTORY\dist" ..
 
-    cmake --build . --config Release -- /verbosity:minimal
+    # cmake --build . --config Release -- /verbosity:minimal
+    cmake --build . --config Release -- /verbosity:diagnostic
 
     .\Release\ExampleExe.exe
 
