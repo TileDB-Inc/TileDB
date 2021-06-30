@@ -48,9 +48,6 @@
 #include "tiledb/sm/storage_manager/storage_manager.h"
 #include "tiledb/sm/tile/generic_tile_io.h"
 
-#include <iostream>
-#include <sstream>
-
 using namespace tiledb;
 using namespace tiledb::common;
 using namespace tiledb::sm::stats;
@@ -205,7 +202,7 @@ Status Writer::check_var_attr_offsets() const {
   return Status::Ok();
 }
 
-Status Writer::init(const Layout& layout) {
+Status Writer::init() {
   // Sanity checks
   if (storage_manager_ == nullptr)
     return LOG_STATUS(Status::WriterError(
@@ -217,7 +214,7 @@ Status Writer::init(const Layout& layout) {
     return LOG_STATUS(
         Status::WriterError("Cannot initialize writer; Buffers not set"));
   if (array_schema_->dense() &&
-      (layout == Layout::ROW_MAJOR || layout == Layout::COL_MAJOR)) {
+      (layout_ == Layout::ROW_MAJOR || layout_ == Layout::COL_MAJOR)) {
     for (const auto& b : buffers_) {
       if (array_schema_->is_dim(b.first)) {
         return LOG_STATUS(Status::WriterError(
@@ -263,13 +260,10 @@ Status Writer::init(const Layout& layout) {
 
   // Set a default subarray
   if (!subarray_.is_set())
-    subarray_ = Subarray(array_, layout, stats_);
+    subarray_ = Subarray(array_, layout_, stats_);
 
   if (offsets_extra_element_)
     RETURN_NOT_OK(check_extra_element());
-
-  layout_ = layout;
-  subarray_.set_layout(layout);
 
   RETURN_NOT_OK(check_subarray());
   RETURN_NOT_OK(check_buffer_sizes());

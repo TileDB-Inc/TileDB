@@ -776,9 +776,12 @@ class Query {
       std::unordered_map<std::string, Subarray::MemorySize>& max_mem_size);
 
   /**
-   * Sets the cell layout of the query. The function will return an error
-   * if the queried array is a key-value store (because it has its default
-   * layout for both reads and writes.
+   * Sets the cell layout of the query without performing any checks.
+   */
+  Status set_layout_unsafe(Layout layout);
+
+  /**
+   * Sets the cell layout of the query.
    */
   Status set_layout(Layout layout);
 

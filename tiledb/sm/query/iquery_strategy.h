@@ -46,8 +46,8 @@ class IQueryStrategy {
   /** Destructor. */
   virtual ~IQueryStrategy() = default;
 
-  /** Initializes the strategy with the subarray layout. */
-  virtual Status init(const Layout& layout) = 0;
+  /** Initializes the strategy. */
+  virtual Status init() = 0;
 
   /** Performs a query using its set members. */
   virtual Status dowork() = 0;

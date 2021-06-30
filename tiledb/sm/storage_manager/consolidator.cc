@@ -606,7 +606,12 @@ Status Consolidator::create_queries(
   // Create read query
   *query_r = tdb_new(Query, storage_manager_, array_for_reads);
   RETURN_NOT_OK((*query_r)->set_layout(Layout::GLOBAL_ORDER));
-  RETURN_NOT_OK((*query_r)->set_subarray_unsafe(subarray));
+
+  // Refactored reader optimizes for no subarray.
+  if (!config_.use_refactored_readers_ ||
+      array_for_reads->array_schema()->dense())
+    RETURN_NOT_OK((*query_r)->set_subarray_unsafe(subarray));
+
   if (array_for_reads->array_schema()->dense() && sparse_mode)
     RETURN_NOT_OK((*query_r)->set_sparse_mode(true));
 
@@ -918,6 +923,9 @@ Status Consolidator::set_config(const Config* config) {
   assert(found);
   RETURN_NOT_OK(merged_config.get<uint64_t>(
       "sm.consolidation.timestamp_end", &config_.timestamp_end_, &found));
+  assert(found);
+  RETURN_NOT_OK(merged_config.get<bool>(
+      "sm.use_refactored_readers", &config_.use_refactored_readers_, &found));
   assert(found);
 
   // Sanity checks

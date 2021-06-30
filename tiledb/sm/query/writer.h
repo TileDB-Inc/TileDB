@@ -33,10 +33,6 @@
 #ifndef TILEDB_WRITER_H
 #define TILEDB_WRITER_H
 
-#include <memory>
-#include <set>
-#include <unordered_map>
-
 #include "tiledb/common/status.h"
 #include "tiledb/sm/fragment/written_fragment_info.h"
 #include "tiledb/sm/misc/types.h"
@@ -45,7 +41,6 @@
 #include "tiledb/sm/query/query.h"
 #include "tiledb/sm/query/query_buffer.h"
 #include "tiledb/sm/query/strategy_base.h"
-#include "tiledb/sm/query/validity_vector.h"
 #include "tiledb/sm/stats/stats.h"
 #include "tiledb/sm/tile/tile.h"
 
@@ -137,8 +132,8 @@ class Writer : public StrategyBase, public IQueryStrategy {
   /** Returns current setting of dedup_coords_ */
   bool get_dedup_coords() const;
 
-  /** Initializes the writer with the subarray layout. */
-  Status init(const Layout& layout);
+  /** Initializes the writer. */
+  Status init();
 
   /** Sets current setting of check_coord_dups_ */
   void set_check_coord_dups(bool b);

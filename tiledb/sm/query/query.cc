@@ -39,6 +39,7 @@
 #include "tiledb/sm/fragment/fragment_metadata.h"
 #include "tiledb/sm/query/query_condition.h"
 #include "tiledb/sm/query/reader.h"
+#include "tiledb/sm/query/sparse_global_order_reader.h"
 #include "tiledb/sm/query/writer.h"
 #include "tiledb/sm/rest/rest_client.h"
 #include "tiledb/sm/storage_manager/storage_manager.h"
@@ -908,11 +909,8 @@ Status Query::init() {
     }
 
     RETURN_NOT_OK(check_buffer_names());
-
-    if (strategy_ == nullptr)
-      RETURN_NOT_OK(create_strategy());
-
-    RETURN_NOT_OK(strategy_->init(layout_));
+    RETURN_NOT_OK(create_strategy());
+    RETURN_NOT_OK(strategy_->init());
   }
 
   status_ = QueryStatus::INPROGRESS;
@@ -1007,17 +1005,36 @@ Status Query::create_strategy() {
         "sm.use_refactored_readers", &use_refactored_readers, &found));
     assert(found);
 
-    strategy_ = tdb_unique_ptr<IQueryStrategy>(tdb_new(
-        Reader,
-        stats_->create_child("Reader"),
-        storage_manager_,
-        array_,
-        config_,
-        buffers_,
-        subarray_,
-        layout_,
-        condition_,
-        sparse_mode_));
+    bool use_default = true;
+    if (use_refactored_readers) {
+      if (!array_schema_->dense() && layout_ == Layout::GLOBAL_ORDER) {
+        use_default = false;
+        strategy_ = tdb_unique_ptr<IQueryStrategy>(tdb_new(
+            SparseGlobalOrderReader,
+            stats_->create_child("Reader"),
+            storage_manager_,
+            array_,
+            config_,
+            buffers_,
+            subarray_,
+            layout_,
+            condition_));
+      }
+    }
+
+    if (use_default) {
+      strategy_ = tdb_unique_ptr<IQueryStrategy>(tdb_new(
+          Reader,
+          stats_->create_child("Reader"),
+          storage_manager_,
+          array_,
+          config_,
+          buffers_,
+          subarray_,
+          layout_,
+          condition_,
+          sparse_mode_));
+    }
   }
 
   if (strategy_ == nullptr)
@@ -1680,7 +1697,17 @@ Status Query::set_est_result_size(
   return subarray_.set_est_result_size(est_result_size, max_mem_size);
 }
 
+Status Query::set_layout_unsafe(Layout layout) {
+  layout_ = layout;
+  subarray_.set_layout(layout);
+  return Status::Ok();
+}
+
 Status Query::set_layout(Layout layout) {
+  if (type_ == QueryType::READ && status_ != QueryStatus::UNINITIALIZED)
+    return LOG_STATUS(
+        Status::QueryError("Cannot set layout after initialization"));
+
   if (layout == Layout::HILBERT)
     return LOG_STATUS(Status::QueryError(
         "Cannot set layout; Hilbert order is not applicable to queries"));

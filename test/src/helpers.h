@@ -106,6 +106,13 @@ struct QueryBuffer {
 typedef std::map<std::string, QueryBuffer> QueryBuffers;
 
 /**
+ * Get the config for using the refactored readers.
+ *
+ * @return Using the refactored readers or not.
+ */
+bool use_refactored_readers();
+
+/**
  * Checks that the input partitioner produces the input partitions
  * (i.e., subarrays).
  *

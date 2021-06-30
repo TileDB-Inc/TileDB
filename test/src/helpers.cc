@@ -47,6 +47,25 @@ namespace test {
 // Command line arguments.
 extern std::string g_vfs;
 
+bool use_refactored_readers() {
+  const char* value = nullptr;
+  tiledb_config_t* cfg;
+  tiledb_error_t* err = nullptr;
+  auto rc = tiledb_config_alloc(&cfg, &err);
+  REQUIRE(rc == TILEDB_OK);
+  REQUIRE(err == nullptr);
+
+  rc = tiledb_config_get(cfg, "sm.use_refactored_readers", &value, &err);
+  CHECK(rc == TILEDB_OK);
+  CHECK(err == nullptr);
+
+  bool use_refactored_readers = strcmp(value, "true") == 0;
+
+  tiledb_config_free(&cfg);
+
+  return use_refactored_readers;
+}
+
 template <class T>
 void check_partitions(
     tiledb::sm::SubarrayPartitioner& partitioner,

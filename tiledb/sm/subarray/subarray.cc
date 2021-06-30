@@ -1603,7 +1603,6 @@ Status Subarray::compute_est_result_size(
   // Compute the estimated result and max memory sizes
   std::vector<std::vector<ResultSize>> result_sizes;
   std::vector<std::vector<MemorySize>> mem_sizes;
-  std::vector<std::set<std::pair<unsigned, uint64_t>>> frag_tiles;
   RETURN_NOT_OK(compute_relevant_fragment_est_result_sizes(
       names, 0, range_num - 1, &result_sizes, &mem_sizes, compute_tp));
 

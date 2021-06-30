@@ -674,19 +674,6 @@ class Dimension {
   template <class T>
   static uint64_t tile_num(const Dimension* dim, const Range& range);
 
-  /** Returns `true` if `value` is within the 1D `range`. */
-  template <class T>
-  static bool value_in_range(const void* value, const Range& range);
-
-  /** Returns `true` if `value` is within the 1D `range`. */
-  bool value_in_range(const void* value, const Range& range) const;
-
-  /**
-   * Returns `true` if `value` is within the 1D `range`.
-   * Applicable only to string dimensions.
-   */
-  bool value_in_range(const std::string& value, const Range& range) const;
-
   /**
    * Maps the c-th cell in the input query buffer to a uint64 value,
    * based on discretizing the domain from 0 to `max_bucket_val`.
@@ -976,12 +963,6 @@ class Dimension {
   std::function<uint64_t(const Dimension* dim, const Range&)> tile_num_func_;
 
   /**
-   * Stores the appropriate templated value_in_range() function based on the
-   * dimension datatype.
-   */
-  std::function<bool(const void*, const Range&)> value_in_range_func_;
-
-  /**
    * Stores the appropriate templated map_to_uint64() function based on
    * the dimension datatype.
    */
@@ -1160,9 +1141,6 @@ class Dimension {
 
   /** Sets the templated tile_num() function. */
   void set_tile_num_func();
-
-  /** Sets the templated value_in_range() function. */
-  void set_value_in_range_func();
 
   /** Sets the templated map_to_uint64() function. */
   void set_map_to_uint64_func();

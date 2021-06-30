@@ -75,7 +75,6 @@ Dimension::Dimension(const std::string& name, Datatype type)
   set_split_range_func();
   set_splitting_value_func();
   set_tile_num_func();
-  set_value_in_range_func();
   set_map_to_uint64_func();
   set_map_to_uint64_2_func();
   set_map_to_uint64_3_func();
@@ -109,7 +108,6 @@ Dimension::Dimension(const Dimension* dim) {
   split_range_func_ = dim->split_range_func_;
   splitting_value_func_ = dim->splitting_value_func_;
   tile_num_func_ = dim->tile_num_func_;
-  value_in_range_func_ = dim->value_in_range_func_;
   map_to_uint64_func_ = dim->map_to_uint64_func_;
   map_to_uint64_2_func_ = dim->map_to_uint64_2_func_;
   map_to_uint64_3_func_ = dim->map_to_uint64_3_func_;
@@ -295,7 +293,6 @@ Status Dimension::deserialize(
   set_split_range_func();
   set_splitting_value_func();
   set_tile_num_func();
-  set_value_in_range_func();
   set_map_to_uint64_func();
   set_map_to_uint64_2_func();
   set_map_to_uint64_3_func();
@@ -1086,29 +1083,6 @@ uint64_t Dimension::tile_num(const Dimension* dim, const Range& range) {
 uint64_t Dimension::tile_num(const Range& range) const {
   assert(tile_num_func_ != nullptr);
   return tile_num_func_(this, range);
-}
-
-template <class T>
-bool Dimension::value_in_range(const void* value, const Range& range) {
-  assert(value != nullptr);
-  assert(!range.empty());
-  auto v = (const T*)value;
-  auto r = (const T*)(range.data());
-  return *v >= r[0] && *v <= r[1];
-}
-
-bool Dimension::value_in_range(const void* value, const Range& range) const {
-  assert(value_in_range_func_ != nullptr);
-  return value_in_range_func_(value, range);
-}
-
-bool Dimension::value_in_range(
-    const std::string& value, const Range& range) const {
-  assert(type_ == Datatype::STRING_ASCII);
-  assert(!value.empty());
-  assert(!range.empty());
-
-  return value >= range.start_str() && value <= range.end_str();
 }
 
 uint64_t Dimension::map_to_uint64(
@@ -3091,68 +3065,6 @@ void Dimension::set_tile_num_func() {
       break;
     default:
       tile_num_func_ = nullptr;
-      break;
-  }
-}
-
-void Dimension::set_value_in_range_func() {
-  switch (type_) {
-    case Datatype::INT32:
-      value_in_range_func_ = value_in_range<int32_t>;
-      break;
-    case Datatype::INT64:
-      value_in_range_func_ = value_in_range<int64_t>;
-      break;
-    case Datatype::INT8:
-      value_in_range_func_ = value_in_range<int8_t>;
-      break;
-    case Datatype::UINT8:
-      value_in_range_func_ = value_in_range<uint8_t>;
-      break;
-    case Datatype::INT16:
-      value_in_range_func_ = value_in_range<int16_t>;
-      break;
-    case Datatype::UINT16:
-      value_in_range_func_ = value_in_range<uint16_t>;
-      break;
-    case Datatype::UINT32:
-      value_in_range_func_ = value_in_range<uint32_t>;
-      break;
-    case Datatype::UINT64:
-      value_in_range_func_ = value_in_range<uint64_t>;
-      break;
-    case Datatype::FLOAT32:
-      value_in_range_func_ = value_in_range<float>;
-      break;
-    case Datatype::FLOAT64:
-      value_in_range_func_ = value_in_range<double>;
-      break;
-    case Datatype::DATETIME_YEAR:
-    case Datatype::DATETIME_MONTH:
-    case Datatype::DATETIME_WEEK:
-    case Datatype::DATETIME_DAY:
-    case Datatype::DATETIME_HR:
-    case Datatype::DATETIME_MIN:
-    case Datatype::DATETIME_SEC:
-    case Datatype::DATETIME_MS:
-    case Datatype::DATETIME_US:
-    case Datatype::DATETIME_NS:
-    case Datatype::DATETIME_PS:
-    case Datatype::DATETIME_FS:
-    case Datatype::DATETIME_AS:
-    case Datatype::TIME_HR:
-    case Datatype::TIME_MIN:
-    case Datatype::TIME_SEC:
-    case Datatype::TIME_MS:
-    case Datatype::TIME_US:
-    case Datatype::TIME_NS:
-    case Datatype::TIME_PS:
-    case Datatype::TIME_FS:
-    case Datatype::TIME_AS:
-      value_in_range_func_ = value_in_range<int64_t>;
-      break;
-    default:
-      value_in_range_func_ = nullptr;
       break;
   }
 }

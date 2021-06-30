@@ -75,6 +75,15 @@ struct ResultCoords {
       , valid_(true) {
   }
 
+  /** Moves to the next cell */
+  bool next() {
+    if (pos_ == tile_->cell_num() - 1)
+      return false;
+
+    pos_++;
+    return true;
+  }
+
   /** Invalidate this instance. */
   void invalidate() {
     valid_ = false;

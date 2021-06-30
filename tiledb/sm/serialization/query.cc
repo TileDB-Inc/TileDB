@@ -628,7 +628,7 @@ Status reader_from_capnp(
   // Layout
   Layout layout = Layout::ROW_MAJOR;
   RETURN_NOT_OK(layout_enum(reader_reader.getLayout(), &layout));
-  RETURN_NOT_OK(query->set_layout(layout));
+  RETURN_NOT_OK(query->set_layout_unsafe(layout));
 
   // Subarray
   Subarray subarray(array, layout, reader->stats(), false);
@@ -876,7 +876,7 @@ Status query_from_capnp(
   // Deserialize layout.
   Layout layout = Layout::UNORDERED;
   RETURN_NOT_OK(layout_enum(query_reader.getLayout().cStr(), &layout));
-  RETURN_NOT_OK(query->set_layout(layout));
+  RETURN_NOT_OK(query->set_layout_unsafe(layout));
 
   // Deserialize array instance.
   RETURN_NOT_OK(array_from_capnp(query_reader.getArray(), array));
