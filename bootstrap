@@ -44,7 +44,7 @@ Configuration:
     --disable-stats                 disables internal TileDB statistics
     --disable-avx2                  disables use of AVX2 instructions
     --enable-static-tiledb          enables building TileDB as a static library
-    --enable-sanitizer=SAN          enable sanitizer (clang only)
+    --enable-sanitizer=SAN          enable sanitizer
                                     (address|memory|leak|thread|undefined)
     --enable-debug                  enable debug build
     --enable-release-symbols        enable create symbols for release build

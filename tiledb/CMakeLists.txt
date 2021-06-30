@@ -26,6 +26,8 @@
 # THE SOFTWARE.
 #
 
+include(Sanitizers)
+
 ############################################################
 # CMake policies
 ############################################################
@@ -243,6 +245,12 @@ add_library(TILEDB_CORE_OBJECTS OBJECT
     ${TILEDB_EXTERNALS_SOURCES}
 )
 
+# Set sanitizer options first, before all other options standard or otherwise
+if (SANITIZER)
+  target_sanitizer(TILEDB_CORE_OBJECTS PUBLIC ${SANITIZER})
+  message(STATUS "Enable sanitizer \"${SANITIZER}\" for TileDB library itself.")
+endif()
+
 # Compile all core sources with PIC
 set_property(TARGET TILEDB_CORE_OBJECTS PROPERTY POSITION_INDEPENDENT_CODE ON)
 
@@ -282,22 +290,6 @@ endif()
 ############################################################
 # Compile options/definitions
 ############################################################
-
-if (SANITIZER)
-  if (NOT CMAKE_BUILD_TYPE MATCHES "Debug")
-    message(FATAL_ERROR "Sanitizers only enabled for Debug build")
-  endif()
-  string(TOLOWER ${SANITIZER} SANITIZER)
-  if (NOT SANITIZER MATCHES "^(address|memory|leak|thread|undefined)$")
-    message(FATAL_ERROR "Unknown clang sanitizer: ${SANITIZER})")
-  else()
-    message(STATUS "The TileDB library is compiled with sanitizer ${SANITIZER} enabled")
-  endif()
-  target_compile_options(TILEDB_CORE_OBJECTS
-    PRIVATE
-      -g -fno-omit-frame-pointer -fno-optimize-sibling-calls -fsanitize=${SANITIZER}
-  )
-endif()
 
 if (TILEDB_VERBOSE)
   add_definitions(-DTILEDB_VERBOSE)
@@ -423,10 +415,7 @@ endif()
 
 # Sanitizer linker flags
 if (SANITIZER)
-  target_link_libraries(TILEDB_CORE_OBJECTS_ILIB
-    INTERFACE
-      -fsanitize=${SANITIZER}
-  )
+  target_sanitizer(TILEDB_CORE_OBJECTS_ILIB INTERFACE ${SANITIZER})
 endif()
 
 # Coverage linker flags
