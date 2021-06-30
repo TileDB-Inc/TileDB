@@ -32,7 +32,6 @@
 
 #include "tiledb/sm/crypto/encryption_key_validation.h"
 #include "tiledb/common/logger.h"
-#include "tiledb/sm/buffer/preallocated_buffer.h"
 #include "tiledb/sm/crypto/crypto.h"
 #include "tiledb/sm/crypto/encryption_key.h"
 #include "tiledb/sm/enums/encryption_type.h"

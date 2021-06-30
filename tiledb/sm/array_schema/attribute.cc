@@ -32,7 +32,6 @@
 
 #include "tiledb/sm/array_schema/attribute.h"
 #include "tiledb/common/logger.h"
-#include "tiledb/sm/buffer/const_buffer.h"
 #include "tiledb/sm/enums/compressor.h"
 #include "tiledb/sm/enums/datatype.h"
 #include "tiledb/sm/enums/filter_type.h"
