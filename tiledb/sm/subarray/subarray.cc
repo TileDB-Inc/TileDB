@@ -1072,6 +1072,7 @@ Status Subarray::split(
     const ByteVecValue& splitting_value,
     Subarray* r1,
     Subarray* r2) const {
+  TRACE_ENTER();
   assert(r1 != nullptr);
   assert(r2 != nullptr);
   *r1 = Subarray(array_, layout_, stats_->parent(), coalesce_ranges_);
@@ -1085,15 +1086,15 @@ Status Subarray::split(
     if (d == splitting_dim) {
       auto dim = array_->array_schema()->dimension(d);
       dim->split_range(r, splitting_value, &sr1, &sr2);
-      RETURN_NOT_OK(r1->add_range_unsafe(d, sr1));
-      RETURN_NOT_OK(r2->add_range_unsafe(d, sr2));
+      TRACE_RETURN_NOT_OK(r1->add_range_unsafe(d, sr1));
+      TRACE_RETURN_NOT_OK(r2->add_range_unsafe(d, sr2));
     } else {
-      RETURN_NOT_OK(r1->add_range_unsafe(d, r));
-      RETURN_NOT_OK(r2->add_range_unsafe(d, r));
+      TRACE_RETURN_NOT_OK(r1->add_range_unsafe(d, r));
+      TRACE_RETURN_NOT_OK(r2->add_range_unsafe(d, r));
     }
   }
 
-  return Status::Ok();
+  TRACE_RETURN(Status::Ok());
 }
 
 Status Subarray::split(
@@ -1102,6 +1103,7 @@ Status Subarray::split(
     const ByteVecValue& splitting_value,
     Subarray* r1,
     Subarray* r2) const {
+  TRACE_ENTER();
   assert(r1 != nullptr);
   assert(r2 != nullptr);
   *r1 = Subarray(array_, layout_, stats_->parent(), coalesce_ranges_);
@@ -1114,34 +1116,34 @@ Status Subarray::split(
   Range sr1, sr2;
 
   for (unsigned d = 0; d < dim_num; ++d) {
-    RETURN_NOT_OK(this->get_range_num(d, &range_num));
+    TRACE_RETURN_NOT_OK(this->get_range_num(d, &range_num));
     if (d != splitting_dim) {
       for (uint64_t j = 0; j < range_num; ++j) {
         const auto& r = ranges_[d][j];
-        RETURN_NOT_OK(r1->add_range_unsafe(d, r));
-        RETURN_NOT_OK(r2->add_range_unsafe(d, r));
+        TRACE_RETURN_NOT_OK(r1->add_range_unsafe(d, r));
+        TRACE_RETURN_NOT_OK(r2->add_range_unsafe(d, r));
       }
     } else {                                // d == splitting_dim
       if (splitting_range != UINT64_MAX) {  // Need to split multiple ranges
         for (uint64_t j = 0; j <= splitting_range; ++j) {
           const auto& r = ranges_[d][j];
-          RETURN_NOT_OK(r1->add_range_unsafe(d, r));
+          TRACE_RETURN_NOT_OK(r1->add_range_unsafe(d, r));
         }
         for (uint64_t j = splitting_range + 1; j < range_num; ++j) {
           const auto& r = ranges_[d][j];
-          RETURN_NOT_OK(r2->add_range_unsafe(d, r));
+          TRACE_RETURN_NOT_OK(r2->add_range_unsafe(d, r));
         }
       } else {  // Need to split a single range
         const auto& r = ranges_[d][0];
         auto dim = array_schema->dimension(d);
         dim->split_range(r, splitting_value, &sr1, &sr2);
-        RETURN_NOT_OK(r1->add_range_unsafe(d, sr1));
-        RETURN_NOT_OK(r2->add_range_unsafe(d, sr2));
+        TRACE_RETURN_NOT_OK(r1->add_range_unsafe(d, sr1));
+        TRACE_RETURN_NOT_OK(r2->add_range_unsafe(d, sr2));
       }
     }
   }
 
-  return Status::Ok();
+  TRACE_RETURN(Status::Ok());
 }
 
 const std::vector<std::vector<uint8_t>>& Subarray::tile_coords() const {
@@ -1150,11 +1152,13 @@ const std::vector<std::vector<uint8_t>>& Subarray::tile_coords() const {
 
 template <class T>
 Status Subarray::compute_tile_coords() {
+  TRACE_ENTER();
   auto timer_se = stats_->start_timer("read_compute_tile_coords");
 
-  if (array_->array_schema()->tile_order() == Layout::ROW_MAJOR)
-    return compute_tile_coords_row<T>();
-  return compute_tile_coords_col<T>();
+  if (array_->array_schema()->tile_order() == Layout::ROW_MAJOR) {
+    TRACE_RETURN(compute_tile_coords_row<T>());
+  }
+  TRACE_RETURN(compute_tile_coords_col<T>());
 }
 
 template <class T>
@@ -1873,6 +1877,7 @@ Status Subarray::compute_tile_coords_col() {
 
 template <class T>
 Status Subarray::compute_tile_coords_row() {
+  TRACE_ENTER();
   std::vector<std::set<T>> coords_set;
   auto array_schema = array_->array_schema();
   auto domain = array_schema->domain()->domain();
@@ -1928,7 +1933,7 @@ Status Subarray::compute_tile_coords_row() {
   for (size_t i = 0; i < tile_coords_.size(); ++i, ++tile_coords_pos)
     tile_coords_map_[tile_coords_[i]] = i;
 
-  return Status::Ok();
+  TRACE_RETURN(Status::Ok());
 }
 
 Status Subarray::precompute_tile_overlap(
@@ -1937,6 +1942,7 @@ Status Subarray::precompute_tile_overlap(
     const Config* config,
     ThreadPool* const compute_tp,
     const bool override_memory_constraint) {
+  TRACE_ENTER();
   auto timer_se = stats_->start_timer("read_compute_tile_overlap");
 
   // If the `tile_overlap_` has already been precomputed and contains
@@ -1946,7 +1952,7 @@ Status Subarray::precompute_tile_overlap(
   if (tile_overlap_computed) {
     stats_->add_counter("precompute_tile_overlap.tile_overlap_cache_hit", 1);
     tile_overlap_.update_range(start_range_idx, end_range_idx);
-    return Status::Ok();
+    TRACE_RETURN(Status::Ok());
   }
 
   stats_->add_counter(
@@ -1961,7 +1967,7 @@ Status Subarray::precompute_tile_overlap(
   // Lookup the target maximum tile overlap size.
   bool found = false;
   uint64_t max_tile_overlap_size = 0;
-  RETURN_NOT_OK(config->get<uint64_t>(
+  TRACE_RETURN_NOT_OK(config->get<uint64_t>(
       "sm.max_tile_overlap_size", &max_tile_overlap_size, &found));
   assert(found);
 
@@ -1990,10 +1996,10 @@ Status Subarray::precompute_tile_overlap(
   SubarrayTileOverlap tile_overlap(
       fragment_num, tile_overlap_start, tmp_tile_overlap_end);
   do {
-    RETURN_NOT_OK(compute_relevant_fragments(
+    TRACE_RETURN_NOT_OK(compute_relevant_fragments(
         compute_tp, &tile_overlap, &relevant_fragment_ctx));
-    RETURN_NOT_OK(load_relevant_fragment_rtrees(compute_tp));
-    RETURN_NOT_OK(compute_relevant_fragment_tile_overlap(
+    TRACE_RETURN_NOT_OK(load_relevant_fragment_rtrees(compute_tp));
+    TRACE_RETURN_NOT_OK(compute_relevant_fragment_tile_overlap(
         compute_tp, &tile_overlap, &tile_overlap_ctx));
 
     if (tmp_tile_overlap_end == tile_overlap_end ||
@@ -2019,7 +2025,7 @@ Status Subarray::precompute_tile_overlap(
       "precompute_tile_overlap.ranges_computed",
       tile_overlap_.range_idx_end() - tile_overlap_.range_idx_start() + 1);
 
-  return Status::Ok();
+  TRACE_RETURN(Status::Ok());
 }
 
 Subarray Subarray::clone() const {

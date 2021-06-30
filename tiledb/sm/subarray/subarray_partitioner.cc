@@ -365,35 +365,40 @@ Status SubarrayPartitioner::get_memory_budget(
 }
 
 Status SubarrayPartitioner::next(bool* unsplittable) {
+  TRACE_ENTER();
   auto timer_se = stats_->start_timer("read_next_partition");
 
   *unsplittable = false;
 
-  if (done())
-    return Status::Ok();
+  if (done()) {
+    TRACE_RETURN(Status::Ok());
+  }
 
   // Handle single range partitions, remaining from previous iteration
-  if (!state_.single_range_.empty())
-    return next_from_single_range(unsplittable);
+  if (!state_.single_range_.empty()) {
+    TRACE_RETURN(next_from_single_range(unsplittable));
+  }
 
   // Handle multi-range partitions, remaining from slab splits
-  if (!state_.multi_range_.empty())
-    return next_from_multi_range(unsplittable);
+  if (!state_.multi_range_.empty()) {
+    TRACE_RETURN(next_from_multi_range(unsplittable));
+  }
 
   // Find the [start, end] of the subarray ranges that fit in the budget
   bool interval_found;
-  RETURN_NOT_OK(compute_current_start_end(&interval_found));
+  TRACE_RETURN_NOT_OK(compute_current_start_end(&interval_found));
 
   // Single-range partition that must be split
   // Note: this applies only to UNORDERED and GLOBAL_ORDER layouts,
   // since otherwise we may have to calibrate the range start and end
   if (!interval_found && (subarray_.layout() == Layout::UNORDERED ||
-                          subarray_.layout() == Layout::GLOBAL_ORDER))
-    return next_from_single_range(unsplittable);
+                          subarray_.layout() == Layout::GLOBAL_ORDER)) {
+    TRACE_RETURN(next_from_single_range(unsplittable));
+  }
 
   // An interval of whole ranges that may need calibration
   bool must_split_slab;
-  RETURN_NOT_OK(calibrate_current_start_end(&must_split_slab));
+  TRACE_RETURN_NOT_OK((calibrate_current_start_end(&must_split_slab)));
 
   // Handle case the next partition is composed of whole ND ranges
   if (interval_found && !must_split_slab) {
@@ -401,11 +406,11 @@ Status SubarrayPartitioner::next(bool* unsplittable) {
         subarray_.get_subarray(current_.start_, current_.end_);
     current_.split_multi_range_ = false;
     state_.start_ = current_.end_ + 1;
-    return Status::Ok();
+    TRACE_RETURN(Status::Ok());
   }
 
   // Must split a multi-range subarray slab
-  return next_from_multi_range(unsplittable);
+  TRACE_RETURN(next_from_multi_range(unsplittable));
 }
 
 Status SubarrayPartitioner::set_result_budget(
@@ -569,6 +574,7 @@ Status SubarrayPartitioner::set_memory_budget(
 }
 
 Status SubarrayPartitioner::split_current(bool* unsplittable) {
+  TRACE_ENTER();
   auto timer_se = stats_->start_timer("read_split_current_partition");
 
   *unsplittable = false;
@@ -579,7 +585,7 @@ Status SubarrayPartitioner::split_current(bool* unsplittable) {
       state_.start_ = current_.start_;
     state_.multi_range_.push_front(current_.partition_);
     split_top_multi_range(unsplittable);
-    return next_from_multi_range(unsplittable);
+    TRACE_RETURN(next_from_multi_range(unsplittable));
   }
 
   // Current came from retrieving a multi-range partition from subarray
@@ -591,7 +597,7 @@ Status SubarrayPartitioner::split_current(bool* unsplittable) {
     current_.end_ = current_.start_ + (uint64_t)new_range_num - 1;
 
     bool must_split_slab;
-    RETURN_NOT_OK(calibrate_current_start_end(&must_split_slab));
+    TRACE_RETURN_NOT_OK(calibrate_current_start_end(&must_split_slab));
 
     // If the range between `current_.start_` and `current_.end_`
     // will not fit within the memory contraints, `must_split_slab`
@@ -605,14 +611,14 @@ Status SubarrayPartitioner::split_current(bool* unsplittable) {
         state_.start_ = current_.start_;
       state_.multi_range_.push_front(current_.partition_);
       split_top_multi_range(unsplittable);
-      return next_from_multi_range(unsplittable);
+      TRACE_RETURN(next_from_multi_range(unsplittable));
     }
 
     current_.partition_ =
         subarray_.get_subarray(current_.start_, current_.end_);
     state_.start_ = current_.end_ + 1;
 
-    return Status::Ok();
+    TRACE_RETURN(Status::Ok());
   }
 
   // Current came from splitting a single-range partition
@@ -620,7 +626,7 @@ Status SubarrayPartitioner::split_current(bool* unsplittable) {
     state_.start_--;
   state_.single_range_.push_front(current_.partition_);
   split_top_single_range(unsplittable);
-  return next_from_single_range(unsplittable);
+  TRACE_RETURN(next_from_single_range(unsplittable));
 }
 
 const SubarrayPartitioner::State* SubarrayPartitioner::state() const {
@@ -648,13 +654,14 @@ stats::Stats* SubarrayPartitioner::stats() const {
 /* ****************************** */
 
 Status SubarrayPartitioner::calibrate_current_start_end(bool* must_split_slab) {
+  TRACE_ENTER();
   // Initialize (may be reset below)
   *must_split_slab = false;
 
   // Special case of single range and global layout
   if (subarray_.layout() == Layout::GLOBAL_ORDER) {
     assert(current_.start_ == current_.end_);
-    return Status::Ok();
+    TRACE_RETURN(Status::Ok());
   }
 
   auto start_coords = subarray_.get_range_coords(current_.start_);
@@ -664,7 +671,7 @@ Status SubarrayPartitioner::calibrate_current_start_end(bool* must_split_slab) {
   auto dim_num = subarray_.dim_num();
   uint64_t num;
   for (unsigned i = 0; i < dim_num; ++i) {
-    RETURN_NOT_OK(subarray_.get_range_num(i, &num));
+    TRACE_RETURN_NOT_OK(subarray_.get_range_num(i, &num));
     range_num.push_back(num);
   }
 
@@ -737,7 +744,7 @@ Status SubarrayPartitioner::calibrate_current_start_end(bool* must_split_slab) {
 
   // Get current_.end_. based on end_coords
   current_.end_ = subarray_.range_idx(end_coords);
-  return Status::Ok();
+  TRACE_RETURN(Status::Ok());
 }
 
 SubarrayPartitioner SubarrayPartitioner::clone() const {
@@ -1101,6 +1108,7 @@ Status SubarrayPartitioner::compute_splitting_value_multi_range(
 }
 
 bool SubarrayPartitioner::must_split(Subarray* partition) {
+  TRACE_ENTER();
   auto array_schema = subarray_.array()->array_schema();
   bool must_split = false;
 
@@ -1178,10 +1186,11 @@ bool SubarrayPartitioner::must_split(Subarray* partition) {
     }
   }
 
-  return must_split;
+  TRACE_RETURN(must_split);
 }
 
 Status SubarrayPartitioner::next_from_multi_range(bool* unsplittable) {
+  TRACE_ENTER();
   // A new multi-range subarray may need to be put in the list and split
   if (state_.multi_range_.empty()) {
     auto s = subarray_.get_subarray(current_.start_, current_.end_);
@@ -1211,6 +1220,7 @@ Status SubarrayPartitioner::next_from_multi_range(bool* unsplittable) {
 }
 
 Status SubarrayPartitioner::next_from_single_range(bool* unsplittable) {
+  TRACE_ENTER();
   // Handle case where a new single range must be put in the list and split
   if (state_.single_range_.empty()) {
     auto s = subarray_.get_subarray(current_.start_, current_.end_);
@@ -1225,7 +1235,7 @@ Status SubarrayPartitioner::next_from_single_range(bool* unsplittable) {
       auto& partition = state_.single_range_.front();
       must_split = this->must_split(&partition);
       if (must_split)
-        RETURN_NOT_OK(split_top_single_range(unsplittable));
+        TRACE_RETURN_NOT_OK(split_top_single_range(unsplittable));
     } while (must_split && !*unsplittable);
   }
 
@@ -1236,17 +1246,18 @@ Status SubarrayPartitioner::next_from_single_range(bool* unsplittable) {
   if (state_.single_range_.empty())
     state_.start_++;
 
-  return Status::Ok();
+  TRACE_RETURN(Status::Ok());
 }
 
 Status SubarrayPartitioner::split_top_single_range(bool* unsplittable) {
+  TRACE_ENTER();
   // For easy reference
   const auto& range = state_.single_range_.front();
 
   // Check if unsplittable
   if (range.is_unary()) {
     *unsplittable = true;
-    return Status::Ok();
+    TRACE_RETURN(Status::Ok());
   }
 
   // Finding splitting value
@@ -1256,12 +1267,13 @@ Status SubarrayPartitioner::split_top_single_range(bool* unsplittable) {
   compute_splitting_value_single_range(
       range, &splitting_dim, &splitting_value, &normal_order, unsplittable);
 
-  if (*unsplittable)
-    return Status::Ok();
+  if (*unsplittable) {
+    TRACE_RETURN(Status::Ok());
+  }
 
   // Split remaining range into two ranges
   Subarray r1, r2;
-  RETURN_NOT_OK(range.split(splitting_dim, splitting_value, &r1, &r2));
+  TRACE_RETURN_NOT_OK(range.split(splitting_dim, splitting_value, &r1, &r2));
 
   // Update list
   state_.single_range_.pop_front();
@@ -1273,17 +1285,18 @@ Status SubarrayPartitioner::split_top_single_range(bool* unsplittable) {
     state_.single_range_.push_front(std::move(r2));
   }
 
-  return Status::Ok();
+  TRACE_RETURN(Status::Ok());
 }
 
 Status SubarrayPartitioner::split_top_multi_range(bool* unsplittable) {
+  TRACE_ENTER();
   // For easy reference
   const auto& partition = state_.multi_range_.front();
 
   // Check if unsplittable
   if (partition.is_unary()) {
     *unsplittable = true;
-    return Status::Ok();
+    TRACE_RETURN(Status::Ok());
   }
 
   // Finding splitting value
@@ -1291,20 +1304,21 @@ Status SubarrayPartitioner::split_top_multi_range(bool* unsplittable) {
   uint64_t splitting_range = UINT64_MAX;
   ByteVecValue splitting_value;
   bool normal_order;
-  RETURN_NOT_OK(compute_splitting_value_multi_range(
+  TRACE_RETURN_NOT_OK(compute_splitting_value_multi_range(
       &splitting_dim,
       &splitting_range,
       &splitting_value,
       &normal_order,
       unsplittable));
 
-  if (*unsplittable)
-    return Status::Ok();
+  if (*unsplittable) {
+    TRACE_RETURN(Status::Ok());
+  }
 
   // Split partition into two partitions
   Subarray p1;
   Subarray p2;
-  RETURN_NOT_OK(partition.split(
+  TRACE_RETURN_NOT_OK(partition.split(
       splitting_range, splitting_dim, splitting_value, &p1, &p2));
 
   // Update list
@@ -1317,7 +1331,7 @@ Status SubarrayPartitioner::split_top_multi_range(bool* unsplittable) {
     state_.multi_range_.push_front(std::move(p2));
   }
 
-  return Status::Ok();
+  TRACE_RETURN(Status::Ok());
 }
 
 void SubarrayPartitioner::swap(SubarrayPartitioner& partitioner) {

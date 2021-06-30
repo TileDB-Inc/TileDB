@@ -92,29 +92,36 @@ class Range {
 
   /** Sets a fixed-sized range serialized in `r`. */
   void set_range(const void* r, uint64_t r_size) {
+    TRACE_ENTER();
     range_.resize(r_size);
     std::memcpy(&range_[0], r, r_size);
+    TRACE_RETURN_VOID();
   }
 
   /** Sets a var-sized range serialized in `r`. */
   void set_range(const void* r, uint64_t r_size, uint64_t range_start_size) {
+    TRACE_ENTER();
     range_.resize(r_size);
     std::memcpy(&range_[0], r, r_size);
     range_start_size_ = range_start_size;
+    TRACE_RETURN_VOID();
   }
 
   /** Sets a var-sized range `[r1, r2]`. */
   void set_range_var(
       const void* r1, uint64_t r1_size, const void* r2, uint64_t r2_size) {
+    TRACE_ENTER();
     range_.resize(r1_size + r2_size);
     std::memcpy(&range_[0], r1, r1_size);
     auto c = (char*)(&range_[0]);
     std::memcpy(c + r1_size, r2, r2_size);
     range_start_size_ = r1_size;
+    TRACE_RETURN_VOID();
   }
 
   /** Sets a string range. */
   void set_str_range(const std::string& s1, const std::string& s2) {
+    TRACE_ENTER();
     auto size = s1.size() + s2.size();
     if (size == 0) {
       range_.clear();
@@ -123,6 +130,7 @@ class Range {
     }
 
     set_range_var(s1.data(), s1.size(), s2.data(), s2.size());
+    TRACE_RETURN_VOID();
   }
 
   /** Returns the pointer to the range flattened bytes. */

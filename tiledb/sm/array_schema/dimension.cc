@@ -837,6 +837,7 @@ double Dimension::overlap_ratio(const Range& r1, const Range& r2) const {
 template <>
 void Dimension::split_range<char>(
     const Range& r, const ByteVecValue& v, Range* r1, Range* r2) {
+  TRACE_ENTER();
   assert(!v.empty());
   assert(r1 != nullptr);
   assert(r2 != nullptr);
@@ -882,6 +883,7 @@ void Dimension::split_range<char>(
   // the range they were split from.
   r1->set_partition_depth(r.partition_depth() + 1);
   r2->set_partition_depth(r.partition_depth() + 1);
+  TRACE_RETURN_VOID();
 }
 
 template <class T>
@@ -915,8 +917,10 @@ void Dimension::split_range(
 
 void Dimension::split_range(
     const Range& r, const ByteVecValue& v, Range* r1, Range* r2) const {
+  TRACE_ENTER();
   assert(split_range_func_ != nullptr);
   split_range_func_(r, v, r1, r2);
+  TRACE_RETURN_VOID();
 }
 
 template <>

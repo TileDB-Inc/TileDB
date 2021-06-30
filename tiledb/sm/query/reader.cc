@@ -86,10 +86,11 @@ namespace {
  */
 template <typename IterT>
 inline IterT skip_invalid_elements(IterT it, const IterT& end) {
+  TRACE_ENTER();
   while (it != end && !it->valid()) {
     ++it;
   }
-  return it;
+  TRACE_RETURN(it);
 }
 }  // namespace
 
@@ -368,6 +369,7 @@ Status Reader::complete_read_loop() {
 }
 
 Status Reader::read() {
+  TRACE_ENTER();
   // Check that the query condition is valid.
   RETURN_NOT_OK(condition_.check(array_schema_));
 
@@ -379,7 +381,7 @@ Status Reader::read() {
 
   // Get next partition
   if (!read_state_.unsplittable_)
-    RETURN_NOT_OK(read_state_.next());
+    TRACE_RETURN_NOT_OK(read_state_.next());
 
   // Handle empty array or empty/finished subarray
   if (!dense_mode && fragment_metadata_.empty()) {
@@ -396,16 +398,16 @@ Status Reader::read() {
 
     // Perform read
     if (dense_mode) {
-      RETURN_NOT_OK(dense_read());
+      TRACE_RETURN_NOT_OK(dense_read());
     } else {
-      RETURN_NOT_OK(sparse_read());
+      TRACE_RETURN_NOT_OK(sparse_read());
     }
 
     // In the case of overflow, we need to split the current partition
     // without advancing to the next partition
     if (read_state_.overflowed_) {
       zero_out_buffer_sizes();
-      RETURN_NOT_OK(read_state_.split_current());
+      TRACE_RETURN_NOT_OK(read_state_.split_current());
 
       if (read_state_.unsplittable_) {
         return complete_read_loop();
@@ -421,11 +423,11 @@ Status Reader::read() {
         return complete_read_loop();
       }
 
-      RETURN_NOT_OK(read_state_.next());
+      TRACE_RETURN_NOT_OK(read_state_.next());
     }
   } while (true);
 
-  return Status::Ok();
+  TRACE_RETURN(Status::Ok());
 }
 
 void Reader::set_array(const Array* array) {
@@ -922,13 +924,17 @@ Status Reader::check_validity_buffer_sizes() const {
 void Reader::clear_tiles(
     const std::string& name,
     const std::vector<ResultTile*>& result_tiles) const {
+  TRACE_ENTER();
   for (auto& result_tile : result_tiles)
     result_tile->erase_tile(name);
+
+  TRACE_RETURN_VOID();
 }
 
 Status Reader::compute_result_cell_slabs(
     const std::vector<ResultCoords>& result_coords,
     std::vector<ResultCellSlab>* result_cell_slabs) const {
+  TRACE_ENTER();
   auto timer_se =
       stats_->start_timer("compute_sparse_result_cell_slabs_sparse");
 
@@ -941,7 +947,8 @@ Status Reader::compute_result_cell_slabs(
   auto coords_end = result_coords.end();
   auto it = skip_invalid_elements(result_coords.begin(), coords_end);
   if (it == coords_end) {
-    return LOG_STATUS(Status::ReaderError("Unexpected empty cell range."));
+    TRACE_RETURN(
+        LOG_STATUS(Status::ReaderError("Unexpected empty cell range.")));
   }
   uint64_t start_pos = it->pos_;
   uint64_t end_pos = start_pos;
@@ -966,7 +973,7 @@ Status Reader::compute_result_cell_slabs(
   // Append the last range
   result_cell_slabs->emplace_back(tile, start_pos, end_pos - start_pos + 1);
 
-  return Status::Ok();
+  TRACE_RETURN(Status::Ok());
 }
 
 Status Reader::compute_range_result_coords(
@@ -1170,6 +1177,7 @@ Status Reader::compute_range_result_coords(
 Status Reader::compute_subarray_coords(
     std::vector<std::vector<ResultCoords>>* range_result_coords,
     std::vector<ResultCoords>* result_coords) {
+  TRACE_ENTER();
   auto timer_se = stats_->start_timer("compute_subarray_coords");
   // The input 'result_coords' is already sorted. Save the current size
   // before inserting new elements.
@@ -1184,8 +1192,9 @@ Status Reader::compute_subarray_coords(
   }
 
   // No need to sort in UNORDERED layout
-  if (layout_ == Layout::UNORDERED)
-    return Status::Ok();
+  if (layout_ == Layout::UNORDERED) {
+    TRACE_RETURN(Status::Ok());
+  }
 
   // We should not sort if:
   // - there is a single fragment and global order
@@ -1205,20 +1214,21 @@ Status Reader::compute_subarray_coords(
   }
 
   if (must_sort) {
-    RETURN_NOT_OK(sort_result_coords(
+    TRACE_RETURN_NOT_OK(sort_result_coords(
         result_coords->begin() + result_coords_size,
         result_coords->end(),
         result_coords->size() - result_coords_size,
         layout_));
   }
 
-  return Status::Ok();
+  TRACE_RETURN(Status::Ok());
 }
 
 Status Reader::compute_sparse_result_tiles(
     std::vector<ResultTile>* result_tiles,
     std::map<std::pair<unsigned, uint64_t>, size_t>* result_tile_map,
     std::vector<bool>* single_fragment) {
+  TRACE_ENTER();
   auto timer_se = stats_->start_timer("compute_sparse_result_tiles");
 
   // For easy reference
@@ -1813,6 +1823,7 @@ Status Reader::compute_result_cell_slabs_row_col(
     std::vector<ResultTile*>* result_tiles,
     std::set<std::pair<unsigned, uint64_t>>* frag_tile_set,
     std::vector<ResultCellSlab>* result_cell_slabs) const {
+  TRACE_ENTER();
   // Compute result space tiles. The result space tiles hold all the
   // relevant result tiles of the dense fragments
   compute_result_space_tiles<T>(subarray, result_space_tiles);
@@ -1841,7 +1852,7 @@ Status Reader::compute_result_cell_slabs_row_col(
   }
   *result_coords_pos = rcs_it.result_coords_pos();
 
-  return Status::Ok();
+  TRACE_RETURN(Status::Ok());
 }
 
 template <class T>
@@ -1851,6 +1862,7 @@ Status Reader::compute_result_cell_slabs_global(
     std::vector<ResultCoords>* result_coords,
     std::vector<ResultTile*>* result_tiles,
     std::vector<ResultCellSlab>* result_cell_slabs) const {
+  TRACE_ENTER();
   const auto& tile_coords = subarray.tile_coords();
   auto cell_order = array_schema_->cell_order();
   std::vector<Subarray> tile_subarrays;
@@ -1864,7 +1876,7 @@ Status Reader::compute_result_cell_slabs_global(
     auto& tile_subarray = tile_subarrays.back();
     tile_subarray.template compute_tile_coords<T>();
 
-    RETURN_NOT_OK(compute_result_cell_slabs_row_col<T>(
+    TRACE_RETURN_NOT_OK(compute_result_cell_slabs_row_col<T>(
         tile_subarray,
         result_space_tiles,
         result_coords,
@@ -1874,12 +1886,13 @@ Status Reader::compute_result_cell_slabs_global(
         result_cell_slabs));
   }
 
-  return Status::Ok();
+  TRACE_RETURN(Status::Ok());
 }
 
 Status Reader::compute_result_coords(
     std::vector<ResultTile>* result_tiles,
     std::vector<ResultCoords>* result_coords) {
+  TRACE_ENTER();
   auto timer_se = stats_->start_timer("compute_result_coords");
 
   // Get overlapping tile indexes
@@ -1887,11 +1900,12 @@ Status Reader::compute_result_coords(
   std::map<FragTileTuple, size_t> result_tile_map;
   std::vector<bool> single_fragment;
 
-  RETURN_CANCEL_OR_ERROR(compute_sparse_result_tiles(
+  TRACE_RETURN_CANCEL_OR_ERROR(compute_sparse_result_tiles(
       result_tiles, &result_tile_map, &single_fragment));
 
-  if (result_tiles->empty())
-    return Status::Ok();
+  if (result_tiles->empty()) {
+    TRACE_RETURN(Status::Ok());
+  }
 
   // Create temporary vector with pointers to result tiles, so that
   // `read_tiles`, `unfilter_tiles` below can work without changes
@@ -1901,7 +1915,7 @@ Status Reader::compute_result_coords(
 
   // Preload zipped coordinate tile offsets. Note that this will
   // ignore fragments with a version >= 5.
-  RETURN_CANCEL_OR_ERROR(load_tile_offsets({constants::coords}));
+  TRACE_RETURN_CANCEL_OR_ERROR(load_tile_offsets({constants::coords}));
 
   // Preload unzipped coordinate tile offsets. Note that this will
   // ignore fragments with a version < 5.
@@ -1910,30 +1924,32 @@ Status Reader::compute_result_coords(
   dim_names.reserve(dim_num);
   for (unsigned d = 0; d < dim_num; ++d)
     dim_names.emplace_back(array_schema_->dimension(d)->name());
-  RETURN_CANCEL_OR_ERROR(load_tile_offsets(dim_names));
+  TRACE_RETURN_CANCEL_OR_ERROR(load_tile_offsets(dim_names));
 
   // Read and unfilter zipped coordinate tiles. Note that
   // this will ignore fragments with a version >= 5. Unfilter
   // with a nullptr `rcs_index` argument to bypass selective
   // unfiltering.
-  RETURN_CANCEL_OR_ERROR(
+  TRACE_RETURN_CANCEL_OR_ERROR(
       read_coordinate_tiles({constants::coords}, tmp_result_tiles));
-  RETURN_CANCEL_OR_ERROR(
+  TRACE_RETURN_CANCEL_OR_ERROR(
       unfilter_tiles(constants::coords, tmp_result_tiles, nullptr));
 
   // Read and unfilter unzipped coordinate tiles. Note that
   // this will ignore fragments with a version < 5. Unfilter
   // with a nullptr `rcs_index` argument to bypass selective
   // unfiltering.
-  RETURN_CANCEL_OR_ERROR(read_coordinate_tiles(dim_names, tmp_result_tiles));
+  TRACE_RETURN_CANCEL_OR_ERROR(
+      read_coordinate_tiles(dim_names, tmp_result_tiles));
   for (const auto& dim_name : dim_names) {
-    RETURN_CANCEL_OR_ERROR(unfilter_tiles(dim_name, tmp_result_tiles, nullptr));
+    TRACE_RETURN_CANCEL_OR_ERROR(
+        unfilter_tiles(dim_name, tmp_result_tiles, nullptr));
   }
 
   // Fetch the sub partitioner's memory budget.
   bool found = false;
   uint64_t cfg_sub_memory_budget = 0;
-  RETURN_NOT_OK(config_.get<uint64_t>(
+  TRACE_RETURN_NOT_OK(config_.get<uint64_t>(
       "sm.sub_partitioner_memory_budget", &cfg_sub_memory_budget, &found));
   assert(found);
 
@@ -1943,7 +1959,7 @@ Status Reader::compute_result_coords(
   if (cfg_sub_memory_budget == 0) {
     // Compute the read coordinates for all fragments for each subarray range.
     std::vector<std::vector<ResultCoords>> range_result_coords;
-    RETURN_CANCEL_OR_ERROR(compute_range_result_coords(
+    TRACE_RETURN_CANCEL_OR_ERROR(compute_range_result_coords(
         &read_state_.partitioner_.current(),
         single_fragment,
         result_tile_map,
@@ -1952,7 +1968,7 @@ Status Reader::compute_result_coords(
     result_tile_map.clear();
 
     // Compute final coords (sorted in the result layout) of the whole subarray.
-    RETURN_CANCEL_OR_ERROR(
+    TRACE_RETURN_CANCEL_OR_ERROR(
         compute_subarray_coords(&range_result_coords, result_coords));
     range_result_coords.clear();
   } else {
@@ -1985,22 +2001,22 @@ Status Reader::compute_result_coords(
       const SubarrayPartitioner::ResultBudget& result_budget = kv.second;
       if (!array_schema_->var_size(attr_name)) {
         if (!array_schema_->is_nullable(attr_name)) {
-          RETURN_NOT_OK(sub_partitioner.set_result_budget(
+          TRACE_RETURN_NOT_OK(sub_partitioner.set_result_budget(
               attr_name.c_str(), result_budget.size_fixed_));
         } else {
-          RETURN_NOT_OK(sub_partitioner.set_result_budget_nullable(
+          TRACE_RETURN_NOT_OK(sub_partitioner.set_result_budget_nullable(
               attr_name.c_str(),
               result_budget.size_fixed_,
               result_budget.size_validity_));
         }
       } else {
         if (!array_schema_->is_nullable(attr_name)) {
-          RETURN_NOT_OK(sub_partitioner.set_result_budget(
+          TRACE_RETURN_NOT_OK(sub_partitioner.set_result_budget(
               attr_name.c_str(),
               result_budget.size_fixed_,
               result_budget.size_var_));
         } else {
-          RETURN_NOT_OK(sub_partitioner.set_result_budget_nullable(
+          TRACE_RETURN_NOT_OK(sub_partitioner.set_result_budget_nullable(
               attr_name.c_str(),
               result_budget.size_fixed_,
               result_budget.size_var_,
@@ -2010,7 +2026,7 @@ Status Reader::compute_result_coords(
     }
 
     // Move to the first partition.
-    RETURN_NOT_OK(sub_partitioner.next(&read_state_.unsplittable_));
+    TRACE_RETURN_NOT_OK(sub_partitioner.next(&read_state_.unsplittable_));
 
     while (true) {
       // If the sub-partitioners memory budget was too low, we may
@@ -2021,7 +2037,7 @@ Status Reader::compute_result_coords(
         uint64_t partitioner_memory_budget;
         uint64_t partitioner_memory_budget_var;
         uint64_t partitioner_memory_budget_validity;
-        RETURN_NOT_OK(partitioner->get_memory_budget(
+        TRACE_RETURN_NOT_OK(partitioner->get_memory_budget(
             &partitioner_memory_budget,
             &partitioner_memory_budget_var,
             &partitioner_memory_budget_validity));
@@ -2035,23 +2051,23 @@ Status Reader::compute_result_coords(
             partitioner_memory_budget_validity,
             sub_partitioner_memory_budget_validity * 2);
 
-        RETURN_NOT_OK(sub_partitioner.set_memory_budget(
+        TRACE_RETURN_NOT_OK(sub_partitioner.set_memory_budget(
             sub_partitioner_memory_budget,
             sub_partitioner_memory_budget_var,
             sub_partitioner_memory_budget_validity));
 
-        RETURN_NOT_OK(sub_partitioner.next(&read_state_.unsplittable_));
+        TRACE_RETURN_NOT_OK(sub_partitioner.next(&read_state_.unsplittable_));
       }
 
       std::vector<std::vector<ResultCoords>> range_result_coords;
-      RETURN_CANCEL_OR_ERROR(compute_range_result_coords(
+      TRACE_RETURN_CANCEL_OR_ERROR(compute_range_result_coords(
           &sub_partitioner.current(),
           single_fragment,
           result_tile_map,
           result_tiles,
           &range_result_coords));
 
-      RETURN_CANCEL_OR_ERROR(
+      TRACE_RETURN_CANCEL_OR_ERROR(
           compute_subarray_coords(&range_result_coords, result_coords));
       range_result_coords.clear();
 
@@ -2059,7 +2075,7 @@ Status Reader::compute_result_coords(
       if (sub_partitioner.done())
         break;
 
-      RETURN_NOT_OK(sub_partitioner.next(&read_state_.unsplittable_));
+      TRACE_RETURN_NOT_OK(sub_partitioner.next(&read_state_.unsplittable_));
     }
   }
 
@@ -2869,6 +2885,7 @@ Status Reader::init_tile_nullable(
 }
 
 Status Reader::load_tile_offsets(const std::vector<std::string>& names) {
+  TRACE_ENTER();
   auto timer_se = stats_->start_timer("load_tile_offsets");
   const auto encryption_key = array_->encryption_key();
 
@@ -2882,6 +2899,7 @@ Status Reader::load_tile_offsets(const std::vector<std::string>& names) {
       0,
       relevant_fragments.size(),
       [&](const uint64_t i) {
+        TRACE_ENTER();
         auto& fragment = fragment_metadata_[relevant_fragments[i]];
         const auto format_version = fragment->format_version();
 
@@ -2902,78 +2920,88 @@ Status Reader::load_tile_offsets(const std::vector<std::string>& names) {
         }
 
         fragment->load_tile_offsets(*encryption_key, std::move(filtered_names));
-        return Status::Ok();
+        TRACE_RETURN(Status::Ok());
       });
 
-  RETURN_NOT_OK(status);
+  TRACE_RETURN_NOT_OK(status);
 
-  return Status::Ok();
+  TRACE_RETURN(Status::Ok());
 }
 
 Status Reader::read_attribute_tiles(
     const std::vector<std::string>& names,
     const std::vector<ResultTile*>& result_tiles) const {
+  TRACE_ENTER();
   auto timer_se = stats_->start_timer("attr_tiles");
-  return read_tiles(names, result_tiles);
+  TRACE_RETURN(read_tiles(names, result_tiles));
 }
 
 Status Reader::read_coordinate_tiles(
     const std::vector<std::string>& names,
     const std::vector<ResultTile*>& result_tiles) const {
+  TRACE_ENTER();
   auto timer_se = stats_->start_timer("coord_tiles");
-  return read_tiles(names, result_tiles);
+  TRACE_RETURN(read_tiles(names, result_tiles));
 }
 
 Status Reader::read_tiles(
     const std::vector<std::string>& names,
     const std::vector<ResultTile*>& result_tiles) const {
+  TRACE_ENTER();
   // Shortcut for empty tile vec
-  if (result_tiles.empty())
-    return Status::Ok();
+  if (result_tiles.empty()) {
+    TRACE_RETURN(Status::Ok());
+  }
 
   // Reading tiles are thread safe. However, we will perform
   // them on this thread if there is only one read to perform.
   if (names.size() == 1) {
-    RETURN_NOT_OK(read_tiles(names[0], result_tiles));
+    TRACE_RETURN_NOT_OK(read_tiles(names[0], result_tiles));
   } else {
     const auto status = parallel_for(
         storage_manager_->compute_tp(), 0, names.size(), [&](const uint64_t i) {
-          RETURN_NOT_OK(read_tiles(names[i], result_tiles));
-          return Status::Ok();
+          TRACE_ENTER();
+          TRACE_RETURN_NOT_OK(read_tiles(names[i], result_tiles));
+          TRACE_RETURN(Status::Ok());
         });
 
-    RETURN_NOT_OK(status);
+    TRACE_RETURN_NOT_OK(status);
   }
 
-  return Status::Ok();
+  TRACE_RETURN(Status::Ok());
 }
 
 Status Reader::read_tiles(
     const std::string& name,
     const std::vector<ResultTile*>& result_tiles) const {
+  TRACE_ENTER();
   // Shortcut for empty tile vec
-  if (result_tiles.empty())
-    return Status::Ok();
+  if (result_tiles.empty()) {
+    TRACE_RETURN(Status::Ok());
+  }
 
   // Read the tiles asynchronously
   std::vector<ThreadPool::Task> tasks;
-  RETURN_CANCEL_OR_ERROR(read_tiles(name, result_tiles, &tasks));
+  TRACE_RETURN_CANCEL_OR_ERROR(read_tiles(name, result_tiles, &tasks));
 
   // Wait for the reads to finish and check statuses.
   auto statuses = storage_manager_->io_tp()->wait_all_status(tasks);
   for (const auto& st : statuses)
-    RETURN_CANCEL_OR_ERROR(st);
+    TRACE_RETURN_CANCEL_OR_ERROR(st);
 
-  return Status::Ok();
+  TRACE_RETURN(Status::Ok());
 }
 
 Status Reader::read_tiles(
     const std::string& name,
     const std::vector<ResultTile*>& result_tiles,
     std::vector<ThreadPool::Task>* const tasks) const {
+  TRACE_ENTER();
+
   // Shortcut for empty tile vec
-  if (result_tiles.empty())
-    return Status::Ok();
+  if (result_tiles.empty()) {
+    TRACE_RETURN(Status::Ok());
+  }
 
   // For each tile, read from its fragment.
   const bool var_size = array_schema_->var_size(name);
@@ -3029,30 +3057,31 @@ Status Reader::read_tiles(
     Tile* const t_validity = &std::get<2>(*tile_tuple);
     if (!var_size) {
       if (nullable)
-        RETURN_NOT_OK(init_tile_nullable(format_version, name, t, t_validity));
+        TRACE_RETURN_NOT_OK(
+            init_tile_nullable(format_version, name, t, t_validity));
       else
-        RETURN_NOT_OK(init_tile(format_version, name, t));
+        TRACE_RETURN_NOT_OK(init_tile(format_version, name, t));
     } else {
       if (nullable)
-        RETURN_NOT_OK(
+        TRACE_RETURN_NOT_OK(
             init_tile_nullable(format_version, name, t, t_var, t_validity));
       else
-        RETURN_NOT_OK(init_tile(format_version, name, t, t_var));
+        TRACE_RETURN_NOT_OK(init_tile(format_version, name, t, t_var));
     }
 
     // Get information about the tile in its fragment
     auto tile_attr_uri = fragment->uri(name);
     auto tile_idx = tile->tile_idx();
     uint64_t tile_attr_offset;
-    RETURN_NOT_OK(fragment->file_offset(
+    TRACE_RETURN_NOT_OK(fragment->file_offset(
         *encryption_key, name, tile_idx, &tile_attr_offset));
     uint64_t tile_persisted_size;
-    RETURN_NOT_OK(fragment->persisted_tile_size(
+    TRACE_RETURN_NOT_OK(fragment->persisted_tile_size(
         *encryption_key, name, tile_idx, &tile_persisted_size));
 
     // Try the cache first.
     bool cache_hit;
-    RETURN_NOT_OK(storage_manager_->read_from_cache(
+    TRACE_RETURN_NOT_OK(storage_manager_->read_from_cache(
         tile_attr_uri,
         tile_attr_offset,
         t->filtered_buffer(),
@@ -3061,7 +3090,7 @@ Status Reader::read_tiles(
 
     if (!cache_hit) {
       // Add the region of the fragment to be read.
-      RETURN_NOT_OK(t->filtered_buffer()->realloc(tile_persisted_size));
+      TRACE_RETURN_NOT_OK(t->filtered_buffer()->realloc(tile_persisted_size));
       t->filtered_buffer()->set_size(tile_persisted_size);
       t->filtered_buffer()->reset_offset();
       all_regions[tile_attr_uri].emplace_back(
@@ -3071,14 +3100,14 @@ Status Reader::read_tiles(
     if (var_size) {
       auto tile_attr_var_uri = fragment->var_uri(name);
       uint64_t tile_attr_var_offset;
-      RETURN_NOT_OK(fragment->file_var_offset(
+      TRACE_RETURN_NOT_OK(fragment->file_var_offset(
           *encryption_key, name, tile_idx, &tile_attr_var_offset));
       uint64_t tile_var_persisted_size;
-      RETURN_NOT_OK(fragment->persisted_tile_var_size(
+      TRACE_RETURN_NOT_OK(fragment->persisted_tile_var_size(
           *encryption_key, name, tile_idx, &tile_var_persisted_size));
 
       Buffer cached_var_buffer;
-      RETURN_NOT_OK(storage_manager_->read_from_cache(
+      TRACE_RETURN_NOT_OK(storage_manager_->read_from_cache(
           tile_attr_var_uri,
           tile_attr_var_offset,
           t_var->filtered_buffer(),
@@ -3087,7 +3116,7 @@ Status Reader::read_tiles(
 
       if (!cache_hit) {
         // Add the region of the fragment to be read.
-        RETURN_NOT_OK(
+        TRACE_RETURN_NOT_OK(
             t_var->filtered_buffer()->realloc(tile_var_persisted_size));
         t_var->filtered_buffer()->set_size(tile_var_persisted_size);
         t_var->filtered_buffer()->reset_offset();
@@ -3101,14 +3130,14 @@ Status Reader::read_tiles(
     if (nullable) {
       auto tile_validity_attr_uri = fragment->validity_uri(name);
       uint64_t tile_attr_validity_offset;
-      RETURN_NOT_OK(fragment->file_validity_offset(
+      TRACE_RETURN_NOT_OK(fragment->file_validity_offset(
           *encryption_key, name, tile_idx, &tile_attr_validity_offset));
       uint64_t tile_validity_persisted_size;
-      RETURN_NOT_OK(fragment->persisted_tile_validity_size(
+      TRACE_RETURN_NOT_OK(fragment->persisted_tile_validity_size(
           *encryption_key, name, tile_idx, &tile_validity_persisted_size));
 
       Buffer cached_valdity_buffer;
-      RETURN_NOT_OK(storage_manager_->read_from_cache(
+      TRACE_RETURN_NOT_OK(storage_manager_->read_from_cache(
           tile_validity_attr_uri,
           tile_attr_validity_offset,
           t_validity->filtered_buffer(),
@@ -3117,7 +3146,7 @@ Status Reader::read_tiles(
 
       if (!cache_hit) {
         // Add the region of the fragment to be read.
-        RETURN_NOT_OK(t_validity->filtered_buffer()->realloc(
+        TRACE_RETURN_NOT_OK(t_validity->filtered_buffer()->realloc(
             tile_validity_persisted_size));
         t_validity->filtered_buffer()->set_size(tile_validity_persisted_size);
         t_validity->filtered_buffer()->reset_offset();
@@ -3138,7 +3167,7 @@ Status Reader::read_tiles(
 
   // Enqueue all regions to be read.
   for (const auto& item : all_regions) {
-    RETURN_NOT_OK(storage_manager_->vfs()->read_all(
+    TRACE_RETURN_NOT_OK(storage_manager_->vfs()->read_all(
         item.first,
         item.second,
         storage_manager_->io_tp(),
@@ -3146,7 +3175,7 @@ Status Reader::read_tiles(
         use_read_ahead));
   }
 
-  return Status::Ok();
+  TRACE_RETURN(Status::Ok());
 }
 
 void Reader::reset_buffer_sizes() {
@@ -3199,20 +3228,22 @@ Status Reader::sort_result_coords(
 }
 
 Status Reader::sparse_read() {
+  TRACE_ENTER();
   // Compute result coordinates from the sparse fragments
   // `sparse_result_tiles` will hold all the relevant result tiles of
   // sparse fragments
   std::vector<ResultCoords> result_coords;
   std::vector<ResultTile> sparse_result_tiles;
 
-  RETURN_NOT_OK(compute_result_coords(&sparse_result_tiles, &result_coords));
+  TRACE_RETURN_NOT_OK(
+      compute_result_coords(&sparse_result_tiles, &result_coords));
   std::vector<ResultTile*> result_tiles;
   for (auto& srt : sparse_result_tiles)
     result_tiles.push_back(&srt);
 
   // Compute result cell slabs
   std::vector<ResultCellSlab> result_cell_slabs;
-  RETURN_CANCEL_OR_ERROR(
+  TRACE_RETURN_CANCEL_OR_ERROR(
       compute_result_cell_slabs(result_coords, &result_cell_slabs));
   result_coords.clear();
 
@@ -3220,21 +3251,22 @@ Status Reader::sparse_read() {
   get_result_tile_stats(result_tiles);
   get_result_cell_stats(result_cell_slabs);
 
-  RETURN_NOT_OK(copy_coordinates(result_tiles, result_cell_slabs));
-  RETURN_NOT_OK(
+  TRACE_RETURN_NOT_OK(copy_coordinates(result_tiles, result_cell_slabs));
+  TRACE_RETURN_NOT_OK(
       copy_attribute_values(UINT64_MAX, result_tiles, result_cell_slabs));
 
-  return Status::Ok();
+  TRACE_RETURN(Status::Ok());
 }
 
 Status Reader::copy_coordinates(
     const std::vector<ResultTile*>& result_tiles,
     const std::vector<ResultCellSlab>& result_cell_slabs) {
+  TRACE_ENTER();
   auto timer_se = stats_->start_timer("copy_coords");
 
   if (result_cell_slabs.empty() && result_tiles.empty()) {
     zero_out_buffer_sizes();
-    return Status::Ok();
+    TRACE_RETURN(Status::Ok());
   }
 
   const uint64_t stride = UINT64_MAX;
@@ -3264,7 +3296,7 @@ Status Reader::copy_coordinates(
   if (!fixed_names.empty()) {
     CopyFixedCellsContextCache ctx_cache;
     for (const auto& name : fixed_names) {
-      RETURN_CANCEL_OR_ERROR(
+      TRACE_RETURN_CANCEL_OR_ERROR(
           copy_fixed_cells(name, stride, result_cell_slabs, &ctx_cache));
       clear_tiles(name, result_tiles);
     }
@@ -3274,21 +3306,23 @@ Status Reader::copy_coordinates(
   if (!var_names.empty()) {
     CopyVarCellsContextCache ctx_cache;
     for (const auto& name : var_names) {
-      RETURN_CANCEL_OR_ERROR(
+      TRACE_RETURN_CANCEL_OR_ERROR(
           copy_var_cells(name, stride, result_cell_slabs, &ctx_cache));
       clear_tiles(name, result_tiles);
     }
   }
 
-  return Status::Ok();
+  TRACE_RETURN(Status::Ok());
 }
 
 Status Reader::apply_query_condition(
     std::vector<ResultCellSlab>* const result_cell_slabs,
     const std::vector<ResultTile*>& result_tiles,
     uint64_t stride) {
-  if (condition_.empty() || result_cell_slabs->empty())
-    return Status::Ok();
+  TRACE_ENTER();
+  if (condition_.empty() || result_cell_slabs->empty()) {
+    TRACE_RETURN(Status::Ok());
+  }
 
   // To evaluate the query condition, we need to read tiles for the
   // attributes used in the query condition. Build a map of attribute
@@ -3371,6 +3405,7 @@ Status Reader::process_tiles(
     const std::vector<ResultTile*>& result_tiles,
     const std::vector<ResultCellSlab>& result_cell_slabs,
     const uint64_t stride) {
+  TRACE_ENTER();
   // If a name needs to be read, we put it on `read_names` vector (it may
   // contain other flags). Otherwise, we put the name on the `copy_names`
   // vector if it needs to be copied back to the user buffer.
@@ -3411,10 +3446,10 @@ Status Reader::process_tiles(
   // not need to be read.
   for (const auto& copy_name : copy_names) {
     if (!array_schema_->var_size(copy_name))
-      RETURN_CANCEL_OR_ERROR(copy_fixed_cells(
+      TRACE_RETURN_CANCEL_OR_ERROR(copy_fixed_cells(
           copy_name, stride, result_cell_slabs, &fixed_ctx_cache));
     else
-      RETURN_CANCEL_OR_ERROR(
+      TRACE_RETURN_CANCEL_OR_ERROR(
           copy_var_cells(copy_name, stride, result_cell_slabs, &var_ctx_cache));
     clear_tiles(copy_name, result_tiles);
   }
@@ -3424,6 +3459,7 @@ Status Reader::process_tiles(
   uint64_t idx = 0;
   tdb_unique_ptr<ResultCellSlabsIndex> rcs_index = nullptr;
   while (idx < read_names.size()) {
+    TRACE_CHECKPOINT(idx);
     // We will perform `concurrent_reads` unless we have a smaller
     // number of remaining attributes to process.
     const uint64_t num_reads =
@@ -3435,7 +3471,8 @@ Status Reader::process_tiles(
 
     // Read the tiles for the names in `inner_names`. Each attribute
     // name will be read concurrently.
-    RETURN_CANCEL_OR_ERROR(read_attribute_tiles(inner_names, result_tiles));
+    TRACE_RETURN_CANCEL_OR_ERROR(
+        read_attribute_tiles(inner_names, result_tiles));
 
     // Copy the cells into the associated `buffers_`, and then clear the cells
     // from the tiles. The cell copies are not thread safe. Clearing tiles are
@@ -3449,19 +3486,19 @@ Status Reader::process_tiles(
         if (!rcs_index)
           rcs_index = compute_rcs_index(result_cell_slabs);
 
-        RETURN_CANCEL_OR_ERROR(
+        TRACE_RETURN_CANCEL_OR_ERROR(
             unfilter_tiles(inner_name, result_tiles, rcs_index.get()));
       } else {
-        RETURN_CANCEL_OR_ERROR(
+        TRACE_RETURN_CANCEL_OR_ERROR(
             unfilter_tiles(inner_name, result_tiles, nullptr));
       }
 
       if (flags & ProcessTileFlag::COPY) {
         if (!array_schema_->var_size(inner_name)) {
-          RETURN_CANCEL_OR_ERROR(copy_fixed_cells(
+          TRACE_RETURN_CANCEL_OR_ERROR(copy_fixed_cells(
               inner_name, stride, result_cell_slabs, &fixed_ctx_cache));
         } else {
-          RETURN_CANCEL_OR_ERROR(copy_var_cells(
+          TRACE_RETURN_CANCEL_OR_ERROR(copy_var_cells(
               inner_name, stride, result_cell_slabs, &var_ctx_cache));
         }
         clear_tiles(inner_name, result_tiles);
@@ -3471,18 +3508,19 @@ Status Reader::process_tiles(
     idx += inner_names.size();
   }
 
-  return Status::Ok();
+  TRACE_RETURN(Status::Ok());
 }
 
 Status Reader::copy_attribute_values(
     const uint64_t stride,
     const std::vector<ResultTile*>& result_tiles,
     const std::vector<ResultCellSlab>& result_cell_slabs) {
+  TRACE_ENTER();
   auto timer_se = stats_->start_timer("copy_attr_values");
 
   if (result_cell_slabs.empty() && result_tiles.empty()) {
     zero_out_buffer_sizes();
-    return Status::Ok();
+    TRACE_RETURN(Status::Ok());
   }
 
   const std::unordered_set<std::string>& condition_names =
@@ -3513,12 +3551,14 @@ Status Reader::copy_attribute_values(
     names[name] = flags;
   }
 
-  RETURN_NOT_OK(process_tiles(names, result_tiles, result_cell_slabs, stride));
+  TRACE_RETURN_NOT_OK(
+      process_tiles(names, result_tiles, result_cell_slabs, stride));
 
-  return Status::Ok();
+  TRACE_RETURN(Status::Ok());
 }
 
 Status Reader::add_extra_offset() {
+  TRACE_ENTER();
   for (const auto& it : buffers_) {
     const auto& name = it.first;
     if (!array_schema_->var_size(name))
@@ -3543,7 +3583,7 @@ Status Reader::add_extra_offset() {
     }
   }
 
-  return Status::Ok();
+  TRACE_RETURN(Status::Ok());
 }
 
 void Reader::zero_out_buffer_sizes() {
@@ -3611,14 +3651,17 @@ void Reader::get_dim_attr_stats() const {
 
 void Reader::get_result_cell_stats(
     const std::vector<ResultCellSlab>& result_cell_slabs) const {
+  TRACE_ENTER();
   uint64_t result_num = 0;
   for (const auto& rc : result_cell_slabs)
     result_num += rc.length_;
   stats_->add_counter("result_num", result_num);
+  TRACE_RETURN_VOID();
 }
 
 void Reader::get_result_tile_stats(
     const std::vector<ResultTile*>& result_tiles) const {
+  TRACE_ENTER();
   stats_->add_counter("overlap_tile_num", result_tiles.size());
 
   uint64_t cell_num = 0;
@@ -3629,6 +3672,8 @@ void Reader::get_result_tile_stats(
       cell_num += array_schema_->domain()->cell_num_per_tile();
   }
   stats_->add_counter("cell_num", cell_num);
+
+  TRACE_RETURN_VOID();
 }
 
 Status Reader::set_config(const Config& config) {
