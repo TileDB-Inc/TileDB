@@ -275,22 +275,22 @@ typedef std::vector<Range> NDRange;
 
 class ByteVecValue {
   typedef std::vector<uint8_t> Base;
-  std::vector<uint8_t> x;
+  std::vector<uint8_t> x_;
 
  public:
   typedef Base::size_type size_type;
   typedef Base::reference reference;
   /** Default constructor */
   ByteVecValue()
-      : x() {
+      : x_() {
   }
   /** Fixed-size constructor */
   explicit ByteVecValue(Base::size_type n)
-      : x(n) {
+      : x_(n) {
   }
   /** Move constructor from underlying vector type */
   explicit ByteVecValue(std::vector<uint8_t>&& y)
-      : x(std::move(y)) {
+      : x_(std::move(y)) {
   }
 
   /**
@@ -305,7 +305,7 @@ class ByteVecValue {
   template <class T>
   T& assign_as(T val = T()) {
     if (size() < sizeof(T))
-      x.resize(sizeof(T));
+      x_.resize(sizeof(T));
     T& a = *reinterpret_cast<T*>(data());
     a = val;
     return a;
@@ -313,7 +313,7 @@ class ByteVecValue {
 
   /// Remove any existing value.
   void assign_as_void() noexcept {
-    x.clear();
+    x_.clear();
   }
 
   /**
@@ -331,30 +331,30 @@ class ByteVecValue {
 
   /// Forwarded from vector
   void resize(size_type count) {
-    x.resize(count);
+    x_.resize(count);
   }
   /// Forwarded from vector
   void shrink_to_fit() {
-    x.shrink_to_fit();
+    x_.shrink_to_fit();
   }
   /// Forwarded from vector
   uint8_t* data() noexcept {
-    return x.data();
+    return x_.data();
   }
   /// Forwarded from vector
   const uint8_t* data() const noexcept {
-    return x.data();
+    return x_.data();
   }
   /// Forwarded from vector
   Base::size_type size() const noexcept {
-    return x.size();
+    return x_.size();
   }
   /**
    * Conversion to boolean in the style of std::optional.
    * @return True if a value is present, false otherwise.
    */
   explicit operator bool() const noexcept {
-    return !x.empty();
+    return !x_.empty();
   }
 };
 

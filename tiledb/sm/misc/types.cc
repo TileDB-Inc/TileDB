@@ -38,7 +38,7 @@ namespace sm {
 template <>
 std::string ByteVecValue::rvalue_as<std::string>() const {
   return std::string(
-      reinterpret_cast<const std::string::value_type*>(x.data()), x.size());
+      reinterpret_cast<const std::string::value_type*>(x_.data()), x_.size());
 }
 
 }  // namespace sm
