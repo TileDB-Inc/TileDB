@@ -247,7 +247,7 @@ add_library(TILEDB_CORE_OBJECTS OBJECT
 
 # Set sanitizer options first, before all other options standard or otherwise
 if (SANITIZER)
-  target_sanitizer(TILEDB_CORE_OBJECTS PUBLIC ${SANITIZER})
+  target_sanitizer(TILEDB_CORE_OBJECTS PRIVATE ${SANITIZER})
   message(STATUS "Enable sanitizer \"${SANITIZER}\" for TileDB library itself.")
 endif()
 
