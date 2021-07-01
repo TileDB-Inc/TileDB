@@ -1624,8 +1624,15 @@ class Query {
       const std::string& attr, uint64_t* offsets, uint64_t offset_nelements) {
     auto ctx = ctx_.get();
     auto offset_size = offset_nelements * sizeof(uint64_t);
-    buff_sizes_[attr] =
-        std::tuple<uint64_t, uint64_t, uint64_t>(offset_size, 0, 0);
+    auto buff_sizes_iter = buff_sizes_.find(attr);
+    if (buff_sizes_iter == buff_sizes_.end()) {
+      buff_sizes_[attr] =
+          std::tuple<uint64_t, uint64_t, uint64_t>(offset_size, 0, 0);
+    } else {
+      auto& second = buff_sizes_iter->second;
+      buff_sizes_[attr] =
+          std::tuple<uint64_t, uint64_t, uint64_t>(offset_size, std::get<1>(second), std::get<2>(second));
+    }
 
     ctx.handle_error(tiledb_query_set_offsets_buffer(
         ctx.ptr().get(),
@@ -2363,7 +2370,14 @@ class Query {
       size_t element_size) {
     auto ctx = ctx_.get();
     size_t size = nelements * element_size;
-    buff_sizes_[attr] = std::tuple<uint64_t, uint64_t, uint64_t>(0, size, 0);
+    auto buff_sizes_iter = buff_sizes_.find(attr);
+    if (buff_sizes_iter == buff_sizes_.end()) {
+      buff_sizes_[attr] = std::tuple<uint64_t, uint64_t, uint64_t>(0, size, 0);
+    } else {
+      auto& second = buff_sizes_iter->second;
+      buff_sizes_[attr] = std::tuple<uint64_t, uint64_t, uint64_t>(
+          std::get<0>(second), size, std::get<2>(second));
+    }
     element_sizes_[attr] = element_size;
     ctx.handle_error(tiledb_query_set_buffer(
         ctx.ptr().get(),
