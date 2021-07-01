@@ -149,6 +149,7 @@ set(TILEDB_CORE_SOURCES
   ${TILEDB_CORE_INCLUDE_DIR}/tiledb/sm/metadata/metadata.cc
   ${TILEDB_CORE_INCLUDE_DIR}/tiledb/sm/misc/cancelable_tasks.cc
   ${TILEDB_CORE_INCLUDE_DIR}/tiledb/sm/misc/constants.cc
+  ${TILEDB_CORE_INCLUDE_DIR}/tiledb/sm/misc/types.cc
   ${TILEDB_CORE_INCLUDE_DIR}/tiledb/sm/misc/uri.cc
   ${TILEDB_CORE_INCLUDE_DIR}/tiledb/sm/misc/utils.cc
   ${TILEDB_CORE_INCLUDE_DIR}/tiledb/sm/misc/uuid.cc
