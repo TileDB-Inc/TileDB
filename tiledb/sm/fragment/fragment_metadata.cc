@@ -681,6 +681,7 @@ URI FragmentMetadata::validity_uri(const std::string& name) const {
 
 Status FragmentMetadata::load_tile_offsets(
     const EncryptionKey& encryption_key, std::vector<std::string>&& names) {
+  TRACE_ENTER();
   // Sort 'names' in ascending order of their index. The
   // motivation is to load the offsets in order of their
   // layout for sequential reads to the file.
@@ -697,22 +698,24 @@ Status FragmentMetadata::load_tile_offsets(
   // var offsets. Load all of the fixed offsets
   // first.
   for (const auto& name : names) {
-    RETURN_NOT_OK(load_tile_offsets(encryption_key, idx_map_[name]));
+    TRACE_RETURN_NOT_OK(load_tile_offsets(encryption_key, idx_map_[name]));
   }
 
   // Load all of the var offsets.
   for (const auto& name : names) {
     if (array_schema_->var_size(name))
-      RETURN_NOT_OK(load_tile_var_offsets(encryption_key, idx_map_[name]));
+      TRACE_RETURN_NOT_OK(
+          load_tile_var_offsets(encryption_key, idx_map_[name]));
   }
 
   // Load all of the var offsets.
   for (const auto& name : names) {
     if (array_schema_->is_nullable(name))
-      RETURN_NOT_OK(load_tile_validity_offsets(encryption_key, idx_map_[name]));
+      TRACE_RETURN_NOT_OK(
+          load_tile_validity_offsets(encryption_key, idx_map_[name]));
   }
 
-  return Status::Ok();
+  TRACE_RETURN(Status::Ok());
 }
 
 Status FragmentMetadata::file_offset(
@@ -1205,12 +1208,15 @@ Status FragmentMetadata::expand_non_empty_domain(const NDRange& mbr) {
 
 Status FragmentMetadata::load_tile_offsets(
     const EncryptionKey& encryption_key, unsigned idx) {
-  if (version_ <= 2)
-    return Status::Ok();
+  TRACE_ENTER();
+  if (version_ <= 2) {
+    TRACE_RETURN(Status::Ok());
+  }
 
   // If the tile offset is already loaded, exit early to avoid the lock
-  if (loaded_metadata_.tile_offsets_[idx])
-    return Status::Ok();
+  if (loaded_metadata_.tile_offsets_[idx]) {
+    TRACE_RETURN(Status::Ok());
+  }
 
   std::lock_guard<std::mutex> lock(tile_offsets_mtx_[idx]);
 
@@ -1218,57 +1224,64 @@ Status FragmentMetadata::load_tile_offsets(
     return Status::Ok();
 
   Buffer buff;
-  RETURN_NOT_OK(read_generic_tile_from_file(
+  TRACE_RETURN_NOT_OK(read_generic_tile_from_file(
       encryption_key, gt_offsets_.tile_offsets_[idx], &buff));
 
   storage_manager_->stats()->add_counter("read_tile_offsets_size", buff.size());
 
   ConstBuffer cbuff(&buff);
-  RETURN_NOT_OK(load_tile_offsets(idx, &cbuff));
+  TRACE_RETURN_NOT_OK(load_tile_offsets(idx, &cbuff));
 
   loaded_metadata_.tile_offsets_[idx] = true;
 
-  return Status::Ok();
+  TRACE_RETURN(Status::Ok());
 }
 
 Status FragmentMetadata::load_tile_var_offsets(
     const EncryptionKey& encryption_key, unsigned idx) {
-  if (version_ <= 2)
-    return Status::Ok();
+  TRACE_ENTER();
+  if (version_ <= 2) {
+    TRACE_RETURN(Status::Ok());
+  }
 
   // If the tile var offset is already loaded, exit early to avoid the lock
-  if (loaded_metadata_.tile_var_offsets_[idx])
-    return Status::Ok();
+  if (loaded_metadata_.tile_var_offsets_[idx]) {
+    TRACE_RETURN(Status::Ok());
+  }
 
   std::lock_guard<std::mutex> lock(tile_var_offsets_mtx_[idx]);
 
-  if (loaded_metadata_.tile_var_offsets_[idx])
-    return Status::Ok();
+  if (loaded_metadata_.tile_var_offsets_[idx]) {
+    TRACE_RETURN(Status::Ok());
+  }
 
   Buffer buff;
-  RETURN_NOT_OK(read_generic_tile_from_file(
+  TRACE_RETURN_NOT_OK(read_generic_tile_from_file(
       encryption_key, gt_offsets_.tile_var_offsets_[idx], &buff));
 
   storage_manager_->stats()->add_counter(
       "read_tile_var_offsets_size", buff.size());
 
   ConstBuffer cbuff(&buff);
-  RETURN_NOT_OK(load_tile_var_offsets(idx, &cbuff));
+  TRACE_RETURN_NOT_OK(load_tile_var_offsets(idx, &cbuff));
 
   loaded_metadata_.tile_var_offsets_[idx] = true;
 
-  return Status::Ok();
+  TRACE_RETURN(Status::Ok());
 }
 
 Status FragmentMetadata::load_tile_var_sizes(
     const EncryptionKey& encryption_key, unsigned idx) {
-  if (version_ <= 2)
-    return Status::Ok();
+  TRACE_ENTER();
+  if (version_ <= 2) {
+    TRACE_RETURN(Status::Ok());
+  }
 
   std::lock_guard<std::mutex> lock(mtx_);
 
-  if (loaded_metadata_.tile_var_sizes_[idx])
-    return Status::Ok();
+  if (loaded_metadata_.tile_var_sizes_[idx]) {
+    TRACE_RETURN(Status::Ok());
+  }
 
   Buffer buff;
   RETURN_NOT_OK(read_generic_tile_from_file(
@@ -1282,32 +1295,35 @@ Status FragmentMetadata::load_tile_var_sizes(
 
   loaded_metadata_.tile_var_sizes_[idx] = true;
 
-  return Status::Ok();
+  TRACE_RETURN(Status::Ok());
 }
 
 Status FragmentMetadata::load_tile_validity_offsets(
     const EncryptionKey& encryption_key, unsigned idx) {
-  if (version_ <= 6)
-    return Status::Ok();
+  TRACE_ENTER();
+  if (version_ <= 6) {
+    TRACE_RETURN(Status::Ok());
+  }
 
   std::lock_guard<std::mutex> lock(mtx_);
 
-  if (loaded_metadata_.tile_validity_offsets_[idx])
-    return Status::Ok();
+  if (loaded_metadata_.tile_validity_offsets_[idx]) {
+    TRACE_RETURN(Status::Ok());
+  }
 
   Buffer buff;
-  RETURN_NOT_OK(read_generic_tile_from_file(
+  TRACE_RETURN_NOT_OK(read_generic_tile_from_file(
       encryption_key, gt_offsets_.tile_validity_offsets_[idx], &buff));
 
   storage_manager_->stats()->add_counter(
       "read_tile_validity_offsets_size", buff.size());
 
   ConstBuffer cbuff(&buff);
-  RETURN_NOT_OK(load_tile_validity_offsets(idx, &cbuff));
+  TRACE_RETURN_NOT_OK(load_tile_validity_offsets(idx, &cbuff));
 
   loaded_metadata_.tile_validity_offsets_[idx] = true;
 
-  return Status::Ok();
+  TRACE_RETURN(Status::Ok());
 }
 
 // ===== FORMAT =====
@@ -1704,15 +1720,16 @@ Status FragmentMetadata::load_tile_var_offsets(ConstBuffer* buff) {
 
 Status FragmentMetadata::load_tile_var_offsets(
     unsigned idx, ConstBuffer* buff) {
+  TRACE_ENTER();
   Status st;
   uint64_t tile_var_offsets_num = 0;
 
   // Get number of tile offsets
   st = buff->read(&tile_var_offsets_num, sizeof(uint64_t));
   if (!st.ok()) {
-    return LOG_STATUS(Status::FragmentMetadataError(
+    TRACE_RETURN(LOG_STATUS(Status::FragmentMetadataError(
         "Cannot load fragment metadata; Reading number of variable tile "
-        "offsets failed"));
+        "offsets failed")));
   }
 
   // Get variable tile offsets
@@ -1721,13 +1738,13 @@ Status FragmentMetadata::load_tile_var_offsets(
     st = buff->read(
         &tile_var_offsets_[idx][0], tile_var_offsets_num * sizeof(uint64_t));
     if (!st.ok()) {
-      return LOG_STATUS(Status::FragmentMetadataError(
+      TRACE_RETURN(LOG_STATUS(Status::FragmentMetadataError(
           "Cannot load fragment metadata; Reading variable tile offsets "
-          "failed"));
+          "failed")));
     }
   }
 
-  return Status::Ok();
+  TRACE_RETURN(Status::Ok());
 }
 
 // ===== FORMAT =====
@@ -1803,16 +1820,17 @@ Status FragmentMetadata::load_tile_var_sizes(unsigned idx, ConstBuffer* buff) {
 
 Status FragmentMetadata::load_tile_validity_offsets(
     unsigned idx, ConstBuffer* buff) {
+  TRACE_ENTER();
   Status st;
   uint64_t tile_validity_offsets_num = 0;
 
   // Get number of tile offsets
   st = buff->read(&tile_validity_offsets_num, sizeof(uint64_t));
   if (!st.ok()) {
-    return LOG_STATUS(
+    TRACE_RETURN(LOG_STATUS(
         Status::FragmentMetadataError("Cannot load fragment metadata; Reading "
                                       "number of validity tile offsets "
-                                      "failed"));
+                                      "failed")));
   }
 
   // Get tile offsets
@@ -1823,13 +1841,13 @@ Status FragmentMetadata::load_tile_validity_offsets(
         tile_validity_offsets_num * sizeof(uint64_t));
 
     if (!st.ok()) {
-      return LOG_STATUS(Status::FragmentMetadataError(
+      TRACE_RETURN(LOG_STATUS(Status::FragmentMetadataError(
           "Cannot load fragment metadata; Reading validity tile offsets "
-          "failed"));
+          "failed")));
     }
   }
 
-  return Status::Ok();
+  TRACE_RETURN(Status::Ok());
 }
 
 Status FragmentMetadata::load_version(ConstBuffer* buff) {
@@ -2248,23 +2266,24 @@ Status FragmentMetadata::write_non_empty_domain(Buffer* buff) const {
 
 Status FragmentMetadata::read_generic_tile_from_file(
     const EncryptionKey& encryption_key, uint64_t offset, Buffer* buff) const {
+  TRACE_ENTER();
   URI fragment_metadata_uri = fragment_uri_.join_path(
       std::string(constants::fragment_metadata_filename));
 
   // Read metadata
   GenericTileIO tile_io(storage_manager_, fragment_metadata_uri);
   Tile* tile = nullptr;
-  RETURN_NOT_OK(tile_io.read_generic(
+  TRACE_RETURN_NOT_OK(tile_io.read_generic(
       &tile, offset, encryption_key, storage_manager_->config()));
 
   const auto chunked_buffer = tile->chunked_buffer();
   buff->realloc(chunked_buffer->size());
   buff->set_size(chunked_buffer->size());
-  RETURN_NOT_OK_ELSE(
+  TRACE_RETURN_NOT_OK_ELSE(
       chunked_buffer->read(buff->data(), buff->size(), 0), tdb_delete(tile));
   tdb_delete(tile);
 
-  return Status::Ok();
+  TRACE_RETURN(Status::Ok());
 }
 
 Status FragmentMetadata::read_file_footer(

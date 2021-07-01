@@ -64,8 +64,9 @@ Status GenericTileIO::read_generic(
     uint64_t file_offset,
     const EncryptionKey& encryption_key,
     const Config& config) {
+  TRACE_ENTER();
   GenericTileHeader header;
-  RETURN_NOT_OK(
+  TRACE_RETURN_NOT_OK(
       read_generic_tile_header(storage_manager_, uri_, file_offset, &header));
 
   if (encryption_key.encryption_type() !=
@@ -76,14 +77,14 @@ Status GenericTileIO::read_generic(
         " but given key is for " +
         encryption_type_str(encryption_key.encryption_type())));
 
-  RETURN_NOT_OK(configure_encryption_filter(&header, encryption_key));
+  TRACE_RETURN_NOT_OK(configure_encryption_filter(&header, encryption_key));
 
   const auto tile_data_offset =
       GenericTileHeader::BASE_SIZE + header.filter_pipeline_size;
 
   assert(tile);
   *tile = tdb_new(Tile);
-  RETURN_NOT_OK_ELSE(
+  TRACE_RETURN_NOT_OK_ELSE(
       (*tile)->init_filtered(
           header.version_number,
           (Datatype)header.datatype,
@@ -92,10 +93,10 @@ Status GenericTileIO::read_generic(
       tdb_delete(*tile));
 
   // Read the tile.
-  RETURN_NOT_OK_ELSE(
+  TRACE_RETURN_NOT_OK_ELSE(
       (*tile)->filtered_buffer()->realloc(header.persisted_size),
       tdb_delete(*tile));
-  RETURN_NOT_OK_ELSE(
+  TRACE_RETURN_NOT_OK_ELSE(
       storage_manager_->read(
           uri_,
           file_offset + tile_data_offset,
@@ -105,7 +106,7 @@ Status GenericTileIO::read_generic(
 
   // Unfilter
   assert((*tile)->filtered());
-  RETURN_NOT_OK_ELSE(
+  TRACE_RETURN_NOT_OK_ELSE(
       header.filters.run_reverse(
           storage_manager_->stats(),
           *tile,
@@ -114,7 +115,7 @@ Status GenericTileIO::read_generic(
       tdb_delete(*tile));
   assert(!(*tile)->filtered());
 
-  return Status::Ok();
+  TRACE_RETURN(Status::Ok());
 }
 
 Status GenericTileIO::read_generic_tile_header(

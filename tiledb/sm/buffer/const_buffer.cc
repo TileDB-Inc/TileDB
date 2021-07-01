@@ -31,6 +31,7 @@
  */
 
 #include "tiledb/sm/buffer/const_buffer.h"
+#include "tiledb/common/logger.h"
 #include "tiledb/sm/buffer/buffer.h"
 
 #include <iostream>
@@ -87,13 +88,15 @@ uint64_t ConstBuffer::offset() const {
 }
 
 Status ConstBuffer::read(void* buffer, const uint64_t nbytes) {
-  if (offset_ + nbytes > size_)
-    return Status::ConstBufferError("Read buffer overflow");
+  TRACE_ENTER();
+  if (offset_ + nbytes > size_) {
+    TRACE_RETURN(Status::ConstBufferError("Read buffer overflow"));
+  }
 
   memcpy(buffer, (char*)data_ + offset_, nbytes);
   offset_ += nbytes;
 
-  return Status::Ok();
+  TRACE_RETURN(Status::Ok());
 }
 
 void ConstBuffer::read_with_shift(
