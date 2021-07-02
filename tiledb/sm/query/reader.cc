@@ -3005,7 +3005,6 @@ Status Reader::load_tile_offsets(const std::vector<std::string>& names) {
       0,
       relevant_fragments.size(),
       [&](const uint64_t i) {
-        TRACE_ENTER();
         auto& fragment = fragment_metadata_[relevant_fragments[i]];
         const auto format_version = fragment->format_version();
 
@@ -3026,7 +3025,7 @@ Status Reader::load_tile_offsets(const std::vector<std::string>& names) {
         }
 
         fragment->load_tile_offsets(*encryption_key, std::move(filtered_names));
-        TRACE_RETURN(Status::Ok());
+        return Status::Ok();
       });
 
   TRACE_RETURN_NOT_OK(status);
