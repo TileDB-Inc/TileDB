@@ -101,8 +101,6 @@ set(TILEDB_CORE_SOURCES
   ${TILEDB_CORE_INCLUDE_DIR}/tiledb/sm/array_schema/domain.cc
   ${TILEDB_CORE_INCLUDE_DIR}/tiledb/sm/buffer/buffer.cc
   ${TILEDB_CORE_INCLUDE_DIR}/tiledb/sm/buffer/buffer_list.cc
-  ${TILEDB_CORE_INCLUDE_DIR}/tiledb/sm/buffer/const_buffer.cc
-  ${TILEDB_CORE_INCLUDE_DIR}/tiledb/sm/buffer/preallocated_buffer.cc
   ${TILEDB_CORE_INCLUDE_DIR}/tiledb/sm/c_api/tiledb.cc
   ${TILEDB_CORE_INCLUDE_DIR}/tiledb/sm/cache/buffer_lru_cache.cc
   ${TILEDB_CORE_INCLUDE_DIR}/tiledb/sm/compressors/bzip_compressor.cc
@@ -151,6 +149,7 @@ set(TILEDB_CORE_SOURCES
   ${TILEDB_CORE_INCLUDE_DIR}/tiledb/sm/metadata/metadata.cc
   ${TILEDB_CORE_INCLUDE_DIR}/tiledb/sm/misc/cancelable_tasks.cc
   ${TILEDB_CORE_INCLUDE_DIR}/tiledb/sm/misc/constants.cc
+  ${TILEDB_CORE_INCLUDE_DIR}/tiledb/sm/misc/types.cc
   ${TILEDB_CORE_INCLUDE_DIR}/tiledb/sm/misc/uri.cc
   ${TILEDB_CORE_INCLUDE_DIR}/tiledb/sm/misc/utils.cc
   ${TILEDB_CORE_INCLUDE_DIR}/tiledb/sm/misc/uuid.cc
@@ -160,8 +159,10 @@ set(TILEDB_CORE_SOURCES
   ${TILEDB_CORE_INCLUDE_DIR}/tiledb/sm/query/query.cc
   ${TILEDB_CORE_INCLUDE_DIR}/tiledb/sm/query/query_condition.cc
   ${TILEDB_CORE_INCLUDE_DIR}/tiledb/sm/query/reader.cc
+  ${TILEDB_CORE_INCLUDE_DIR}/tiledb/sm/query/reader_base.cc
   ${TILEDB_CORE_INCLUDE_DIR}/tiledb/sm/query/result_tile.cc
   ${TILEDB_CORE_INCLUDE_DIR}/tiledb/sm/query/read_cell_slab_iter.cc
+  ${TILEDB_CORE_INCLUDE_DIR}/tiledb/sm/query/strategy_base.cc
   ${TILEDB_CORE_INCLUDE_DIR}/tiledb/sm/query/writer.cc
   ${TILEDB_CORE_INCLUDE_DIR}/tiledb/sm/rest/rest_client.cc
   ${TILEDB_CORE_INCLUDE_DIR}/tiledb/sm/rtree/rtree.cc
@@ -573,6 +574,22 @@ if (CURL_APPEND_LIBS)
   # End result, we remove the -lssl and -lcrypto from the list of curl extra libs
   # The same problem exists for libz, so we remove -lz also.
   list(REMOVE_ITEM CURL_APPEND_LIBS "-lssl" "-lcrypto" "-lz")
+
+  # If we are cross compiling curl likely includes the arch details in the linker
+  # commands. In this case we want to remove them from the link libs as cmake
+  # will handle any linker flags for cross compilation.
+  SET(index 0)
+  foreach(CURL_APPEND_LIB ${CURL_APPEND_LIBS})
+    if(${CURL_APPEND_LIB} STREQUAL "-arch")
+      # remove "-arch"
+      LIST(REMOVE_AT CURL_APPEND_LIBS ${index})
+      # remove arch i.e. arm64 or x86_64
+      # there are two items because we split on space above
+      LIST(REMOVE_AT CURL_APPEND_LIBS ${index})
+    endif()
+    MATH(EXPR index "${index}+1")
+  endforeach()
+
   message(STATUS "Adding final transitive Curl library links to TileDB targets: '${CURL_APPEND_LIBS}'")
   target_link_libraries(TILEDB_CORE_OBJECTS_ILIB
     INTERFACE

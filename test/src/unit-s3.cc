@@ -320,4 +320,239 @@ TEST_CASE_METHOD(S3Fx, "Test S3 multiupload abort path", "[s3]") {
   }
 }
 
+TEST_CASE_METHOD(
+    S3Fx, "Test S3 setting bucket/object canned acls", "[s3][config]") {
+  Config config;
+  REQUIRE(config.set("vfs.s3.bucket_canned_acl", "private_").ok());
+  REQUIRE(config.set("vfs.s3.bucket_canned_acl", "public_read").ok());
+  REQUIRE(config.set("vfs.s3.bucket_canned_acl", "public_read_write").ok());
+  REQUIRE(config.set("vfs.s3.bucket_canned_acl", "authenticated_read").ok());
+  REQUIRE(config.set("vfs.s3.bucket_canned_acl", "NOT_SET").ok());
+
+  REQUIRE(config.set("vfs.s3.object_canned_acl", "private_").ok());
+  REQUIRE(config.set("vfs.s3.object_canned_acl", "public_read").ok());
+  REQUIRE(config.set("vfs.s3.object_canned_acl", "public_read_write").ok());
+  REQUIRE(config.set("vfs.s3.object_canned_acl", "authenticated_read").ok());
+  REQUIRE(config.set("vfs.s3.object_canned_acl", "aws_exec_read").ok());
+  REQUIRE(config.set("vfs.s3.object_canned_acl", "bucket_owner_read").ok());
+  REQUIRE(
+      config.set("vfs.s3.object_canned_acl", "bucket_owner_full_control").ok());
+  REQUIRE(config.set("vfs.s3.object_canned_acl", "NOT_SET").ok());
+}
+
+TEST_CASE_METHOD(S3Fx, "Test S3 use BucketCannedACL", "[s3]") {
+  /** Use local s3 definitions for trying various canned ACL settings. */
+  const std::string S3_PREFIX = "s3://";
+  const tiledb::sm::URI S3_BUCKET =
+      tiledb::sm::URI(S3_PREFIX + random_name("tiledb") + "/");
+  const std::string TEST_DIR = S3_BUCKET.to_string() + "tiledb_test_dir/";
+  ThreadPool thread_pool_;
+
+  Config config;
+#ifndef TILEDB_TESTS_AWS_S3_CONFIG
+  REQUIRE(config.set("vfs.s3.endpoint_override", "localhost:9999").ok());
+  REQUIRE(config.set("vfs.s3.scheme", "https").ok());
+  REQUIRE(config.set("vfs.s3.use_virtual_addressing", "false").ok());
+  REQUIRE(config.set("vfs.s3.verify_ssl", "false").ok());
+#endif
+
+  REQUIRE(thread_pool_.init(2).ok());
+
+  // function to try creating bucket with BucketCannedACL indicated
+  // by string parameter.
+  auto try_with_bucket_canned_acl = [&](const char* bucket_acl_to_try) {
+    REQUIRE(config.set("vfs.s3.bucket_canned_acl", bucket_acl_to_try).ok());
+    tiledb::sm::S3 s3_;
+    REQUIRE(s3_.init(&g_helper_stats, config, &thread_pool_).ok());
+
+    // Create bucket
+    bool exists;
+    REQUIRE(s3_.is_bucket(S3_BUCKET, &exists).ok());
+    if (exists)
+      REQUIRE(s3_.remove_bucket(S3_BUCKET).ok());
+
+    REQUIRE(s3_.is_bucket(S3_BUCKET, &exists).ok());
+    REQUIRE(!exists);
+    REQUIRE(s3_.create_bucket(S3_BUCKET).ok());
+
+    // Check if bucket is empty
+    bool is_empty;
+    REQUIRE(s3_.is_empty_bucket(S3_BUCKET, &is_empty).ok());
+    CHECK(is_empty);
+
+    s3_.disconnect();
+  };
+
+  try_with_bucket_canned_acl("NOT_SET");
+  try_with_bucket_canned_acl("private_");
+  try_with_bucket_canned_acl("public_read");
+  try_with_bucket_canned_acl("public_read_write");
+  try_with_bucket_canned_acl("authenticated_read");
+}
+
+TEST_CASE_METHOD(S3Fx, "Test S3 use Bucket/Object CannedACL", "[s3]") {
+  /** Use local s3 definitions for trying various canned ACL settings. */
+  const std::string S3_PREFIX = "s3://";
+  const tiledb::sm::URI S3_BUCKET =
+      tiledb::sm::URI(S3_PREFIX + random_name("tiledb") + "/");
+  const std::string TEST_DIR = S3_BUCKET.to_string() + "tiledb_test_dir/";
+  ThreadPool thread_pool_;
+
+  Config config;
+#ifndef TILEDB_TESTS_AWS_S3_CONFIG
+  REQUIRE(config.set("vfs.s3.endpoint_override", "localhost:9999").ok());
+  REQUIRE(config.set("vfs.s3.scheme", "https").ok());
+  REQUIRE(config.set("vfs.s3.use_virtual_addressing", "false").ok());
+  REQUIRE(config.set("vfs.s3.verify_ssl", "false").ok());
+#endif
+  REQUIRE(thread_pool_.init(2).ok());
+
+  // function exercising SetACL() for objects
+  // using functionality cloned from file management test case.
+  auto exercise_object_canned_acl = [&]() {
+    /* Create the following file hierarchy:
+     *
+     * TEST_DIR/dir/subdir/file1
+     * TEST_DIR/dir/subdir/file2
+     * TEST_DIR/dir/file3
+     * TEST_DIR/file4
+     * TEST_DIR/file5
+     */
+    auto dir = TEST_DIR + "dir/";
+    auto dir2 = TEST_DIR + "dir2/";
+    auto subdir = dir + "subdir/";
+    auto file1 = subdir + "file1";
+    auto file2 = subdir + "file2";
+    auto file3 = dir + "file3";
+    auto file4 = TEST_DIR + "file4";
+    auto file5 = TEST_DIR + "file5";
+    auto file6 = TEST_DIR + "file6";
+
+    // Check that bucket is empty
+    bool is_empty;
+    CHECK(s3_.is_empty_bucket(S3_BUCKET, &is_empty).ok());
+    CHECK(is_empty);
+
+    // Continue building the hierarchy
+    bool exists = false;
+    CHECK(s3_.touch(URI(file1)).ok());
+    CHECK(s3_.is_object(URI(file1), &exists).ok());
+    CHECK(exists);
+    CHECK(s3_.touch(URI(file2)).ok());
+    CHECK(s3_.is_object(URI(file2), &exists).ok());
+    CHECK(exists);
+    CHECK(s3_.touch(URI(file3)).ok());
+    CHECK(s3_.is_object(URI(file3), &exists).ok());
+    CHECK(exists);
+    CHECK(s3_.touch(URI(file4)).ok());
+    CHECK(s3_.is_object(URI(file4), &exists).ok());
+    CHECK(exists);
+    CHECK(s3_.touch(URI(file5)).ok());
+    CHECK(s3_.is_object(URI(file5), &exists).ok());
+    CHECK(exists);
+
+    // Check that the bucket is not empty
+    CHECK(s3_.is_empty_bucket(S3_BUCKET, &is_empty).ok());
+    CHECK(!is_empty);
+
+    // Check invalid file
+    CHECK(s3_.is_object(URI(TEST_DIR + "foo"), &exists).ok());
+    CHECK(!exists);
+
+    // List with prefix
+    std::vector<std::string> paths;
+    CHECK(s3_.ls(URI(TEST_DIR), &paths).ok());
+    CHECK(paths.size() == 3);
+    paths.clear();
+    CHECK(s3_.ls(URI(dir), &paths).ok());
+    CHECK(paths.size() == 2);
+    paths.clear();
+    CHECK(s3_.ls(URI(subdir), &paths).ok());
+    CHECK(paths.size() == 2);
+    paths.clear();
+    CHECK(s3_.ls(S3_BUCKET, &paths, "").ok());  // No delimiter
+    CHECK(paths.size() == 5);
+
+    // Check if a directory exists
+    bool is_dir = false;
+    CHECK(s3_.is_dir(URI(file1), &is_dir).ok());
+    CHECK(!is_dir);  // Not a dir
+    CHECK(s3_.is_dir(URI(file4), &is_dir).ok());
+    CHECK(!is_dir);  // Not a dir
+    CHECK(s3_.is_dir(URI(dir), &is_dir).ok());
+    CHECK(is_dir);  // This is viewed as a dir
+    CHECK(s3_.is_dir(URI(TEST_DIR + "dir"), &is_dir).ok());
+    CHECK(is_dir);  // This is viewed as a dir
+
+    // Move file
+    CHECK(s3_.move_object(URI(file5), URI(file6)).ok());
+    CHECK(s3_.is_object(URI(file5), &exists).ok());
+    CHECK(!exists);
+    CHECK(s3_.is_object(URI(file6), &exists).ok());
+    CHECK(exists);
+    paths.clear();
+    CHECK(s3_.ls(S3_BUCKET, &paths, "").ok());  // No delimiter
+    CHECK(paths.size() == 5);
+
+    // Move directory
+    CHECK(s3_.move_dir(URI(dir), URI(dir2)).ok());
+    CHECK(s3_.is_dir(URI(dir), &is_dir).ok());
+    CHECK(!is_dir);
+    CHECK(s3_.is_dir(URI(dir2), &is_dir).ok());
+    CHECK(is_dir);
+    paths.clear();
+    CHECK(s3_.ls(S3_BUCKET, &paths, "").ok());  // No delimiter
+    CHECK(paths.size() == 5);
+
+    // Remove files
+    CHECK(s3_.remove_object(URI(file4)).ok());
+    CHECK(s3_.is_object(URI(file4), &exists).ok());
+    CHECK(!exists);
+
+    // Remove directories
+    CHECK(s3_.remove_dir(URI(dir2)).ok());
+    CHECK(s3_.is_object(URI(file1), &exists).ok());
+    CHECK(!exists);
+    CHECK(s3_.is_object(URI(file2), &exists).ok());
+    CHECK(!exists);
+    CHECK(s3_.is_object(URI(file3), &exists).ok());
+    CHECK(!exists);
+  };
+  // function to try creating bucket with BucketCannedACL indicated
+  // by string parameter.
+  auto try_with_bucket_object_canned_acl = [&](const char* bucket_acl_to_try,
+                                               const char* object_acl_to_try) {
+    REQUIRE(config.set("vfs.s3.bucket_canned_acl", bucket_acl_to_try).ok());
+    REQUIRE(config.set("vfs.s3.object_canned_acl", object_acl_to_try).ok());
+
+    tiledb::sm::S3 s3_;
+    REQUIRE(s3_.init(&g_helper_stats, config, &thread_pool_).ok());
+
+    // Create bucket
+    bool exists;
+    REQUIRE(s3_.is_bucket(S3_BUCKET, &exists).ok());
+    if (exists)
+      REQUIRE(s3_.remove_bucket(S3_BUCKET).ok());
+
+    REQUIRE(s3_.is_bucket(S3_BUCKET, &exists).ok());
+    REQUIRE(!exists);
+    REQUIRE(s3_.create_bucket(S3_BUCKET).ok());
+
+    // Check if bucket is empty
+    bool is_empty;
+    REQUIRE(s3_.is_empty_bucket(S3_BUCKET, &is_empty).ok());
+    CHECK(is_empty);
+
+    exercise_object_canned_acl();
+
+    s3_.disconnect();
+  };
+
+  // basic test, not trying all combinations
+  try_with_bucket_object_canned_acl("NOT_SET", "NOT_SET");
+  try_with_bucket_object_canned_acl("private_", "private_");
+  try_with_bucket_object_canned_acl("public_read", "public_read");
+  try_with_bucket_object_canned_acl("public_read_write", "public_read_write");
+  try_with_bucket_object_canned_acl("authenticated_read", "authenticated_read");
+}
 #endif

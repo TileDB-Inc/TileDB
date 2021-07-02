@@ -32,7 +32,6 @@
 
 #include "tiledb/sm/array_schema/dimension.h"
 #include "tiledb/sm/buffer/buffer.h"
-#include "tiledb/sm/buffer/const_buffer.h"
 #include "tiledb/sm/enums/datatype.h"
 #include "tiledb/sm/enums/filter_type.h"
 #include "tiledb/sm/misc/utils.h"
@@ -270,12 +269,12 @@ Status Dimension::deserialize(
   }
 
   // Load tile extent
-  tile_extent_.clear();
+  tile_extent_.assign_as_void();
   uint8_t null_tile_extent;
   RETURN_NOT_OK(buff->read(&null_tile_extent, sizeof(uint8_t)));
   if (null_tile_extent == 0) {
     tile_extent_.resize(coord_size());
-    RETURN_NOT_OK(buff->read(&tile_extent_[0], coord_size()));
+    RETURN_NOT_OK(buff->read(tile_extent_.data(), coord_size()));
   }
 
   set_ceil_to_tile_func();
@@ -344,22 +343,21 @@ void Dimension::ceil_to_tile(
     const Dimension* dim, const Range& r, uint64_t tile_num, ByteVecValue* v) {
   assert(dim != nullptr);
   assert(!r.empty());
-  assert(v != nullptr);
-  assert(!dim->tile_extent().empty());
+  assert(dim->tile_extent());
 
   auto tile_extent = *(const T*)dim->tile_extent().data();
   auto dim_dom = (const T*)dim->domain().data();
-  v->resize(sizeof(T));
   auto r_t = (const T*)r.data();
 
   T mid = tile_coord_low(tile_num + 1, r_t[0], tile_extent);
   uint64_t div = tile_idx(mid, dim_dom[0], tile_extent);
   T floored_mid = tile_coord_low(div, dim_dom[0], tile_extent);
-  T sp = (std::is_integral<T>::value) ?
-             floored_mid - 1 :
-             static_cast<T>(
-                 std::nextafter(floored_mid, std::numeric_limits<T>::lowest()));
-  std::memcpy(&(*v)[0], &sp, sizeof(T));
+  assert(v != nullptr);
+  v->assign_as<T>(
+      (std::is_integral<T>::value) ?
+          floored_mid - 1 :
+          static_cast<T>(
+              std::nextafter(floored_mid, std::numeric_limits<T>::lowest())));
 }
 
 void Dimension::ceil_to_tile(
@@ -395,7 +393,7 @@ template <class T>
 bool Dimension::coincides_with_tiles(const Dimension* dim, const Range& r) {
   assert(dim != nullptr);
   assert(!r.empty());
-  assert(!dim->tile_extent().empty());
+  assert(dim->tile_extent());
 
   auto dim_domain = (const T*)dim->domain().data();
   auto tile_extent = *(const T*)dim->tile_extent().data();
@@ -588,7 +586,7 @@ void Dimension::expand_to_tile(const Dimension* dim, Range* range) {
   assert(!range->empty());
 
   // Applicable only to regular tiles and integral domains
-  if (dim->tile_extent().empty() || !std::is_integral<T>::value)
+  if (!dim->tile_extent() || !std::is_integral<T>::value)
     return;
 
   auto tile_extent = *(const T*)dim->tile_extent().data();
@@ -837,14 +835,14 @@ double Dimension::overlap_ratio(const Range& r1, const Range& r2) const {
 template <>
 void Dimension::split_range<char>(
     const Range& r, const ByteVecValue& v, Range* r1, Range* r2) {
-  assert(!v.empty());
+  assert(v);
   assert(r1 != nullptr);
   assert(r2 != nullptr);
 
   // First range
   auto min_string = std::string("\x0", 1);
   auto new_r1_start = !r.start_str().empty() ? r.start_str() : min_string;
-  auto new_r1_end = std::string((const char*)v.data(), v.size());
+  auto new_r1_end = v.rvalue_as<std::string>();
   auto new_r1_end_size = (int)new_r1_end.size();
   int pos;
   for (pos = 0; pos < new_r1_end_size; ++pos) {
@@ -858,7 +856,7 @@ void Dimension::split_range<char>(
   r1->set_str_range(new_r1_start, new_r1_end);
 
   // Second range
-  auto new_r2_start = std::string((const char*)v.data(), v.size());
+  auto new_r2_start = v.rvalue_as<std::string>();
   // The following will make "a b -1 -4 0" -> "a c"
   for (pos = 0; pos < new_r1_end_size; ++pos) {
     if ((int)(signed char)new_r2_start[pos] < 0)
@@ -888,14 +886,14 @@ template <class T>
 void Dimension::split_range(
     const Range& r, const ByteVecValue& v, Range* r1, Range* r2) {
   assert(!r.empty());
-  assert(!v.empty());
+  assert(v);
   assert(r1 != nullptr);
   assert(r2 != nullptr);
 
   auto max = std::numeric_limits<T>::max();
   bool int_domain = std::is_integral<T>::value;
   auto r_t = (const T*)r.data();
-  auto v_t = *(const T*)(&v[0]);
+  auto v_t = *(const T*)(v.data());
   assert(v_t >= r_t[0]);
   assert(v_t < r_t[1]);
 
@@ -1010,8 +1008,7 @@ void Dimension::splitting_value(
   // the split value.
   const T sp = r_t[0] + static_cast<T>(r_t1.to_ullong());
 
-  v->resize(sizeof(T));
-  std::memcpy(&(*v)[0], &sp, sizeof(T));
+  v->assign_as<T>(sp);
   *unsplittable = !std::memcmp(&sp, &r_t[1], sizeof(T));
 }
 
@@ -1028,8 +1025,7 @@ void Dimension::splitting_value<float>(
   // dividing by 2.
   const float sp = r_t[0] + ((double)r_t[1] - (double)r_t[0]) / 2;
 
-  v->resize(sizeof(float));
-  std::memcpy(&(*v)[0], &sp, sizeof(float));
+  v->assign_as<float>(sp);
   *unsplittable = !std::memcmp(&sp, &r_t[1], sizeof(float));
 }
 
@@ -1046,8 +1042,7 @@ void Dimension::splitting_value<double>(
   // before dividing by 2.
   const double sp = r_t[0] + ((long double)r_t[1] - (long double)r_t[0]) / 2;
 
-  v->resize(sizeof(double));
-  std::memcpy(&(*v)[0], &sp, sizeof(double));
+  v->assign_as<double>(sp);
   *unsplittable = !std::memcmp(&sp, &r_t[1], sizeof(double));
 }
 
@@ -1071,7 +1066,7 @@ uint64_t Dimension::tile_num(const Dimension* dim, const Range& range) {
   assert(!range.empty());
 
   // Trivial cases
-  if (dim->tile_extent().empty())
+  if (!dim->tile_extent())
     return 1;
 
   auto tile_extent = *(const T*)dim->tile_extent().data();
@@ -1319,13 +1314,13 @@ ByteVecValue Dimension::map_from_uint64(
     T norm_coord_T =
         ceil(((value + 1) / (double)max_bucket_val) * dom_range_T - 1);
     T coord_T = norm_coord_T + dom_start_T;
-    std::memcpy(&ret[0], &coord_T, sizeof(T));
+    std::memcpy(ret.data(), &coord_T, sizeof(T));
   } else {  // Floating point types
     T norm_coord_T = ((value + 1) / (double)max_bucket_val) * dom_range_T;
     norm_coord_T =
         std::nextafter(norm_coord_T, std::numeric_limits<T>::lowest());
     T coord_T = norm_coord_T + dom_start_T;
-    std::memcpy(&ret[0], &coord_T, sizeof(T));
+    std::memcpy(ret.data(), &coord_T, sizeof(T));
   }
 
   return ret;
@@ -1338,7 +1333,7 @@ ByteVecValue Dimension::map_from_uint64<char>(
   (void)dim;
   (void)max_bucket_val;  // Not needed here
 
-  ByteVecValue ret(sizeof(uint64_t));  // 8 bytes
+  std::vector<uint8_t> ret(sizeof(uint64_t));  // 8 bytes
 
   uint64_t ret_uint64 = (value << (64 - bits));
   int ret_c;
@@ -1355,7 +1350,7 @@ ByteVecValue Dimension::map_from_uint64<char>(
   if (ret.back() != 128)
     ret.push_back(128);
 
-  return ret;
+  return ByteVecValue(std::move(ret));
 }
 
 bool Dimension::smaller_than(
@@ -1369,9 +1364,9 @@ bool Dimension::smaller_than(
     const Dimension* dim, const ByteVecValue& value, const Range& range) {
   assert(dim != nullptr);
   (void)dim;
-  assert(!value.empty());
+  assert(value);
 
-  auto value_T = *(const T*)(&value[0]);
+  auto value_T = *(const T*)(value.data());
   auto range_start_T = *(const T*)range.start();
   return value_T < range_start_T;
 }
@@ -1380,10 +1375,10 @@ template <>
 bool Dimension::smaller_than<char>(
     const Dimension* dim, const ByteVecValue& value, const Range& range) {
   assert(dim != nullptr);
-  assert(!value.empty());
+  assert(value);
   (void)dim;
 
-  auto value_str = std::string((const char*)&value[0], value.size());
+  auto value_str = value.rvalue_as<std::string>();
   auto range_start_str = range.start_str();
   auto range_end_str = range.end_str();
 
@@ -1432,9 +1427,9 @@ Status Dimension::serialize(Buffer* buff, uint32_t version) {
   RETURN_NOT_OK(buff->write(&domain_size, sizeof(uint64_t)));
   RETURN_NOT_OK(buff->write(domain_.data(), domain_size));
 
-  auto null_tile_extent = (uint8_t)((tile_extent_.empty()) ? 1 : 0);
+  auto null_tile_extent = (uint8_t)(tile_extent_ ? 0 : 1);
   RETURN_NOT_OK(buff->write(&null_tile_extent, sizeof(uint8_t)));
-  if (!tile_extent_.empty())
+  if (tile_extent_)
     RETURN_NOT_OK(buff->write(tile_extent_.data(), tile_extent_.size()));
 
   return Status::Ok();
@@ -1495,7 +1490,7 @@ Status Dimension::set_tile_extent(const void* tile_extent) {
   if (tile_extent != nullptr) {
     auto size = coord_size();
     te.resize(size);
-    std::memcpy(&te[0], tile_extent, size);
+    std::memcpy(te.data(), tile_extent, size);
   }
 
   return set_tile_extent(te);
@@ -1503,7 +1498,7 @@ Status Dimension::set_tile_extent(const void* tile_extent) {
 
 Status Dimension::set_tile_extent(const ByteVecValue& tile_extent) {
   if (type_ == Datatype::STRING_ASCII) {
-    if (tile_extent.empty())
+    if (!tile_extent)
       return Status::Ok();
     return LOG_STATUS(Status::DimensionError(
         std::string("Setting the tile extent to a dimension with type '") +
@@ -1580,7 +1575,7 @@ Status Dimension::set_null_tile_extent_to_range() {
 template <class T>
 Status Dimension::set_null_tile_extent_to_range() {
   // Applicable only to null extents
-  if (!tile_extent_.empty())
+  if (tile_extent_)
     return Status::Ok();
 
   // Check empty domain
@@ -1590,25 +1585,28 @@ Status Dimension::set_null_tile_extent_to_range() {
 
   // Calculate new tile extent equal to domain range
   auto domain = (const T*)domain_.data();
+
+  // For integral domain, we need to add 1, check for overflow before doing
+  // anything
+  if (std::is_integral<T>::value) {
+    if (domain[0] == std::numeric_limits<T>::min() &&
+        domain[1] == std::numeric_limits<T>::max()) {
+      return LOG_STATUS(Status::DimensionError(
+          "Cannot set null tile extent to domain range; "
+          "Domain range exceeds domain type max numeric limit"));
+    }
+  }
+
   T tile_extent = domain[1] - domain[0];
 
   // We need to add 1 for integral domains
   if (std::is_integral<T>::value) {
-    // Check overflow before adding 1
-    if (tile_extent == std::numeric_limits<T>::max())
-      return LOG_STATUS(Status::DimensionError(
-          "Cannot set null tile extent to domain range; "
-          "Domain range exceeds domain type max numeric limit"));
     ++tile_extent;
     // After this, tile_extent = domain[1] - domain[0] + 1, which is the correct
     // domain range
   }
 
-  // Allocate space
-  uint64_t type_size = sizeof(T);
-  tile_extent_.resize(type_size);
-  std::memcpy(&tile_extent_[0], &tile_extent, type_size);
-
+  tile_extent_.assign_as<T>(tile_extent);
   return Status::Ok();
 }
 
@@ -1736,7 +1734,7 @@ Status Dimension::check_tile_extent() const {
     return LOG_STATUS(
         Status::DimensionError("Tile extent check failed; Domain not set"));
 
-  if (tile_extent_.empty())
+  if (!tile_extent_)
     return Status::Ok();
 
   auto tile_extent = (const T*)tile_extent_.data();
@@ -1915,7 +1913,7 @@ std::string Dimension::domain_str() const {
 std::string Dimension::tile_extent_str() const {
   std::stringstream ss;
 
-  if (tile_extent_.empty())
+  if (!tile_extent_)
     return constants::null_str;
 
   const float* tile_extent_float32;

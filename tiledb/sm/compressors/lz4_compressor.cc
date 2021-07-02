@@ -33,8 +33,6 @@
 #include "tiledb/sm/compressors/lz4_compressor.h"
 #include "tiledb/common/logger.h"
 #include "tiledb/sm/buffer/buffer.h"
-#include "tiledb/sm/buffer/const_buffer.h"
-#include "tiledb/sm/buffer/preallocated_buffer.h"
 
 #include <lz4.h>
 #include <limits>

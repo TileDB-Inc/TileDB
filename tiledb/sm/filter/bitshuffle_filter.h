@@ -36,7 +36,7 @@
 #include <vector>
 
 #include "tiledb/common/status.h"
-#include "tiledb/sm/buffer/const_buffer.h"
+#include "tiledb/sm/buffer/buffer.h"
 #include "tiledb/sm/filter/filter.h"
 
 using namespace tiledb::common;

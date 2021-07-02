@@ -94,234 +94,41 @@ inline IterT skip_invalid_elements(IterT it, const IterT& end) {
 }  // namespace
 
 /* ****************************** */
-/*   CONSTRUCTORS & DESTRUCTORS   */
+/*          CONSTRUCTORS          */
 /* ****************************** */
 
-Reader::Reader(stats::Stats* const parent_stats)
-    : stats_(parent_stats->create_child("Reader"))
-    , array_(nullptr)
-    , array_schema_(nullptr)
-    , layout_(Layout::ROW_MAJOR)
-    , sparse_mode_(false)
-    , storage_manager_(nullptr)
-    , offsets_extra_element_(false)
-    , offsets_bitsize_(constants::cell_var_offset_size * 8) {
-}
-
-Reader::~Reader() {
+Reader::Reader(
+    stats::Stats* stats,
+    StorageManager* storage_manager,
+    Array* array,
+    Config& config,
+    std::unordered_map<std::string, QueryBuffer>& buffers,
+    Subarray& subarray,
+    Layout layout,
+    QueryCondition& condition,
+    bool sparse_mode)
+    : ReaderBase(
+          stats,
+          storage_manager,
+          array,
+          config,
+          buffers,
+          subarray,
+          layout,
+          condition)
+    , sparse_mode_(sparse_mode) {
 }
 
 /* ****************************** */
 /*               API              */
 /* ****************************** */
 
-const Array* Reader::array() const {
-  return array_;
-}
-
-Status Reader::add_range(unsigned dim_idx, Range&& range) {
-  // Get read_range_oob config setting
-  bool found = false;
-  std::string read_range_oob = config_.get("sm.read_range_oob", &found);
-  assert(found);
-
-  if (read_range_oob != "error" && read_range_oob != "warn")
-    return LOG_STATUS(Status::ReaderError(
-        "Invalid value " + read_range_oob +
-        " for sm.read_range_obb. Acceptable values are 'error' or 'warn'."));
-
-  return subarray_.add_range(
-      dim_idx, std::move(range), read_range_oob == "error");
-}
-
-Status Reader::get_range_num(unsigned dim_idx, uint64_t* range_num) const {
-  return subarray_.get_range_num(dim_idx, range_num);
-}
-
-Status Reader::get_range(
-    unsigned dim_idx,
-    uint64_t range_idx,
-    const void** start,
-    const void** end,
-    const void** stride) const {
-  *stride = nullptr;
-  return subarray_.get_range(dim_idx, range_idx, start, end);
-}
-
-Status Reader::get_range_var_size(
-    unsigned dim_idx,
-    uint64_t range_idx,
-    uint64_t* start_size,
-    uint64_t* end_size) const {
-  return subarray_.get_range_var_size(dim_idx, range_idx, start_size, end_size);
-}
-
-Status Reader::get_est_result_size(const char* name, uint64_t* size) {
-  return subarray_.get_est_result_size(
-      name, size, &config_, storage_manager_->compute_tp());
-}
-
-Status Reader::get_est_result_size(
-    const char* name, uint64_t* size_off, uint64_t* size_val) {
-  return subarray_.get_est_result_size(
-      name, size_off, size_val, &config_, storage_manager_->compute_tp());
-}
-
-Status Reader::get_est_result_size_nullable(
-    const char* name, uint64_t* size_val, uint64_t* size_validity) {
-  return subarray_.get_est_result_size_nullable(
-      name, size_val, size_validity, &config_, storage_manager_->compute_tp());
-}
-
-Status Reader::get_est_result_size_nullable(
-    const char* name,
-    uint64_t* size_off,
-    uint64_t* size_val,
-    uint64_t* size_validity) {
-  return subarray_.get_est_result_size_nullable(
-      name,
-      size_off,
-      size_val,
-      size_validity,
-      &config_,
-      storage_manager_->compute_tp());
-}
-
-const ArraySchema* Reader::array_schema() const {
-  return array_schema_;
-}
-
-std::vector<std::string> Reader::buffer_names() const {
-  std::vector<std::string> ret;
-  ret.reserve(buffers_.size());
-  for (const auto& it : buffers_)
-    ret.push_back(it.first);
-
-  return ret;
-}
-
-QueryBuffer Reader::buffer(const std::string& name) const {
-  auto buf = buffers_.find(name);
-  if (buf == buffers_.end())
-    return QueryBuffer{};
-  return buf->second;
+Status Reader::finalize() {
+  return Status::Ok();
 }
 
 bool Reader::incomplete() const {
   return read_state_.overflowed_ || !read_state_.done();
-}
-
-Status Reader::get_data_buffer(
-    const std::string& name, void** buffer, uint64_t** buffer_size) const {
-  auto it = buffers_.find(name);
-  if (it == buffers_.end()) {
-    *buffer = nullptr;
-    *buffer_size = nullptr;
-  } else {
-    if (!array_schema_->var_size(name)) {
-      *buffer = it->second.buffer_;
-      *buffer_size = it->second.buffer_size_;
-    } else {
-      *buffer = it->second.buffer_var_;
-      *buffer_size = it->second.buffer_var_size_;
-    }
-  }
-
-  return Status::Ok();
-}
-
-Status Reader::get_offsets_buffer(
-    const std::string& name,
-    uint64_t** buffer_off,
-    uint64_t** buffer_off_size) const {
-  auto it = buffers_.find(name);
-  if (it == buffers_.end()) {
-    *buffer_off = nullptr;
-    *buffer_off_size = nullptr;
-  } else {
-    *buffer_off = (uint64_t*)it->second.buffer_;
-    *buffer_off_size = it->second.buffer_size_;
-  }
-
-  return Status::Ok();
-}
-
-Status Reader::get_validity_buffer(
-    const std::string& name, const ValidityVector** validity_vector) const {
-  auto it = buffers_.find(name);
-  if (it == buffers_.end()) {
-    *validity_vector = nullptr;
-  } else {
-    *validity_vector = &it->second.validity_vector_;
-  }
-
-  return Status::Ok();
-}
-
-Status Reader::get_buffer(
-    const std::string& name,
-    uint64_t** buffer_off,
-    uint64_t** buffer_off_size,
-    void** buffer_val,
-    uint64_t** buffer_val_size) const {
-  auto it = buffers_.find(name);
-  if (it == buffers_.end()) {
-    *buffer_off = nullptr;
-    *buffer_off_size = nullptr;
-    *buffer_val = nullptr;
-    *buffer_val_size = nullptr;
-  } else {
-    *buffer_off = (uint64_t*)it->second.buffer_;
-    *buffer_off_size = it->second.buffer_size_;
-    *buffer_val = it->second.buffer_var_;
-    *buffer_val_size = it->second.buffer_var_size_;
-  }
-
-  return Status::Ok();
-}
-
-Status Reader::get_buffer_nullable(
-    const std::string& name,
-    void** buffer,
-    uint64_t** buffer_size,
-    const ValidityVector** valdity_vector) const {
-  auto it = buffers_.find(name);
-  if (it == buffers_.end()) {
-    *buffer = nullptr;
-    *buffer_size = nullptr;
-    *valdity_vector = nullptr;
-  } else {
-    *buffer = it->second.buffer_;
-    *buffer_size = it->second.buffer_size_;
-    *valdity_vector = &it->second.validity_vector_;
-  }
-
-  return Status::Ok();
-}
-
-Status Reader::get_buffer_nullable(
-    const std::string& name,
-    uint64_t** buffer_off,
-    uint64_t** buffer_off_size,
-    void** buffer_val,
-    uint64_t** buffer_val_size,
-    const ValidityVector** valdity_vector) const {
-  auto it = buffers_.find(name);
-  if (it == buffers_.end()) {
-    *buffer_off = nullptr;
-    *buffer_off_size = nullptr;
-    *buffer_val = nullptr;
-    *buffer_val_size = nullptr;
-    *valdity_vector = nullptr;
-  } else {
-    *buffer_off = (uint64_t*)it->second.buffer_;
-    *buffer_off_size = it->second.buffer_size_;
-    *buffer_val = it->second.buffer_var_;
-    *buffer_val_size = it->second.buffer_var_size_;
-    *valdity_vector = &it->second.validity_vector_;
-  }
-
-  return Status::Ok();
 }
 
 Status Reader::init(const Layout& layout) {
@@ -340,7 +147,8 @@ Status Reader::init(const Layout& layout) {
         "Cannot initialize reader; Dense reads must have a subarray set"));
 
   // Set layout
-  RETURN_NOT_OK(set_layout(layout));
+  layout_ = layout;
+  subarray_.set_layout(layout);
 
   // Check subarray
   RETURN_NOT_OK(check_subarray());
@@ -354,34 +162,6 @@ Status Reader::init(const Layout& layout) {
   RETURN_NOT_OK(check_validity_buffer_sizes());
 
   return Status::Ok();
-}
-
-URI Reader::first_fragment_uri() const {
-  if (fragment_metadata_.empty())
-    return URI();
-  return fragment_metadata_.front()->fragment_uri();
-}
-
-URI Reader::last_fragment_uri() const {
-  if (fragment_metadata_.empty())
-    return URI();
-  return fragment_metadata_.back()->fragment_uri();
-}
-
-Layout Reader::layout() const {
-  return layout_;
-}
-
-const QueryCondition* Reader::condition() const {
-  return &condition_;
-}
-
-bool Reader::no_results() const {
-  for (const auto& it : buffers_) {
-    if (*(it.second.buffer_size_) != 0)
-      return false;
-  }
-  return true;
 }
 
 const Reader::ReadState* Reader::read_state() const {
@@ -400,7 +180,7 @@ Status Reader::complete_read_loop() {
   return Status::Ok();
 }
 
-Status Reader::read() {
+Status Reader::dowork() {
   // Check that the query condition is valid.
   RETURN_NOT_OK(condition_.check(array_schema_));
 
@@ -444,13 +224,17 @@ Status Reader::read() {
         return complete_read_loop();
       }
     } else {
-      bool no_results = this->no_results();
+      bool has_results = false;
+      for (const auto& it : buffers_) {
+        if (*(it.second.buffer_size_) != 0)
+          has_results = true;
+      }
 
       // Need to reset unsplittable if the results fit after all
-      if (!no_results)
+      if (has_results)
         read_state_.unsplittable_ = false;
 
-      if (!no_results || read_state_.done()) {
+      if (has_results || read_state_.done()) {
         return complete_read_loop();
       }
 
@@ -461,94 +245,25 @@ Status Reader::read() {
   return Status::Ok();
 }
 
-void Reader::set_array(const Array* array) {
-  array_ = array;
-  subarray_ = Subarray(array, Layout::ROW_MAJOR, stats_);
-}
-
-void Reader::set_array_schema(const ArraySchema* array_schema) {
-  array_schema_ = array_schema;
-}
-
-Status Reader::set_buffer(
-    const std::string& name,
-    void* const buffer,
-    uint64_t* const buffer_size,
-    const bool check_null_buffers) {
-  // Check buffer
-  if (check_null_buffers && buffer == nullptr)
-    return LOG_STATUS(
-        Status::ReaderError("Cannot set buffer; " + name + " buffer is null"));
-
-  // Check buffer size
-  if (check_null_buffers && buffer_size == nullptr)
-    return LOG_STATUS(
-        Status::ReaderError("Cannot set buffer; " + name + " buffer is null"));
-
-  // Array schema must exist
-  if (array_schema_ == nullptr)
-    return LOG_STATUS(
-        Status::ReaderError("Cannot set buffer; Array schema not set"));
-
-  // For easy reference
-  const bool is_dim = array_schema_->is_dim(name);
-  const bool is_attr = array_schema_->is_attr(name);
-
-  // Check that attribute/dimension exists
-  if (name != constants::coords && !is_dim && !is_attr)
-    return LOG_STATUS(Status::ReaderError(
-        std::string("Cannot set buffer; Invalid attribute/dimension '") + name +
-        "'"));
-
-  // Must not be nullable
-  if (array_schema_->is_nullable(name))
-    return LOG_STATUS(Status::ReaderError(
-        std::string("Cannot set buffer; Input attribute/dimension '") + name +
-        "' is nullable"));
-
-  // Check that attribute/dimension is fixed-sized
-  const bool var_size =
-      (name != constants::coords && array_schema_->var_size(name));
-  if (var_size)
-    return LOG_STATUS(Status::ReaderError(
-        std::string("Cannot set buffer; Input attribute/dimension '") + name +
-        "' is var-sized"));
-
-  // Check if zipped coordinates coexist with separate coordinate buffers
-  if ((is_dim && buffers_.find(constants::coords) != buffers_.end()) ||
-      (name == constants::coords && has_separate_coords()))
-    return LOG_STATUS(Status::ReaderError(
-        std::string("Cannot set separate coordinate buffers and "
-                    "a zipped coordinate buffer in the same query")));
-
-  // Error if setting a new attribute/dimension after initialization
-  const bool exists = buffers_.find(name) != buffers_.end();
-  if (read_state_.initialized_ && !exists)
-    return LOG_STATUS(Status::ReaderError(
-        std::string("Cannot set buffer for new attribute/dimension '") + name +
-        "' after initialization"));
-
-  // Set attribute buffer
-  buffers_[name].set_data_buffer(buffer, buffer_size);
-
-  return Status::Ok();
+void Reader::reset() {
 }
 
 Status Reader::set_data_buffer(
+
     const std::string& name,
-    void* const buffer,
     uint64_t* const buffer_size,
+    void* const buffer,
     bool check_null_buffers) {
   // Check buffer
   if (check_null_buffers && buffer == nullptr)
     return LOG_STATUS(
         Status::ReaderError("Cannot set buffer; " + name + " buffer is null"));
-
   // Check buffer size
+
   if (check_null_buffers && buffer_size == nullptr)
     return LOG_STATUS(Status::ReaderError(
-        "Cannot set buffer; " + name + " buffer size is null"));
 
+        "Cannot set buffer; " + name + " buffer size is null"));
   // Array schema must exist
   if (array_schema_ == nullptr)
     return LOG_STATUS(
@@ -557,12 +272,11 @@ Status Reader::set_data_buffer(
   // For easy reference
   const bool is_dim = array_schema_->is_dim(name);
   const bool is_attr = array_schema_->is_attr(name);
-
   // Check that attribute/dimension exists
-  if (name != constants::coords && !is_dim && !is_attr)
-    return LOG_STATUS(Status::ReaderError(
-        std::string("Cannot set buffer; Invalid attribute/dimension '") + name +
-        "'"));
+  return LOG_STATUS(Status::ReaderError(
+      if (name != constants::coords && !is_dim && !is_attr)
+          std::string("Cannot set buffer; Invalid attribute/dimension '") +
+      name + "'"));
   // Check if zipped coordinates coexist with separate coordinate buffers
   if ((is_dim && buffers_.find(constants::coords) != buffers_.end()) ||
       (name == constants::coords && has_separate_coords()))
@@ -642,29 +356,31 @@ Status Reader::set_validity_buffer(
     uint8_t* const buffer_validity_bytemap,
     uint64_t* const buffer_validity_bytemap_size,
     bool check_null_buffers) {
-  ValidityVector validity_vector;
-  RETURN_NOT_OK(validity_vector.init_bytemap(
-      buffer_validity_bytemap, buffer_validity_bytemap_size));
+  RETURN_NOT_OK(validity_vector.init_bytemap(ValidityVector validity_vector;
+                                             buffer_validity_bytemap,
+                                             buffer_validity_bytemap_size));
   // Check validity buffer
   if (check_null_buffers && validity_vector.buffer() == nullptr)
-    return LOG_STATUS(Status::ReaderError(
         "Cannot set buffer; " + name + " validity buffer is null"));
+  return LOG_STATUS(Status::ReaderError(
 
-  // Check validity buffer size
-  if (check_null_buffers && validity_vector.buffer_size() == nullptr)
-    return LOG_STATUS(Status::ReaderError(
-        "Cannot set buffer; " + name + " validity buffer size is null"));
+      // Check validity buffer size
+      if (check_null_buffers &&
+          validity_vector.buffer_size() ==
+              nullptr) return LOG_STATUS(Status::
+                                             ReaderError(
+                                                 "Cannot set buffer; " + name +
+                                                 " validity buffer size is "
+                                                 "null"));
 
-  // Array schema must exist
-  if (array_schema_ == nullptr)
-    return LOG_STATUS(
-        Status::ReaderError("Cannot set buffer; Array schema not set"));
+      // Array schema must exist
+      if (array_schema_ == nullptr) return LOG_STATUS(
+          Status::ReaderError("Cannot set buffer; Array schema not set"));
 
-  // Must be an attribute
-  if (!array_schema_->is_attr(name))
-    return LOG_STATUS(Status::ReaderError(
+      // Must be an attribute
+      if (!array_schema_->is_attr(name)) "' is not an attribute"));
         std::string("Cannot set buffer; Buffer name '") + name +
-        "' is not an attribute"));
+    return LOG_STATUS(Status::ReaderError(
 
   // Must be nullable
   if (!array_schema_->is_nullable(name))
@@ -684,310 +400,6 @@ Status Reader::set_validity_buffer(
 
   return Status::Ok();
 }
-
-Status Reader::set_buffer(
-    const std::string& name,
-    uint64_t* const buffer_off,
-    uint64_t* const buffer_off_size,
-    void* const buffer_val,
-    uint64_t* const buffer_val_size,
-    const bool check_null_buffers) {
-  // Check buffer
-  if (check_null_buffers && buffer_val == nullptr)
-    return LOG_STATUS(
-        Status::ReaderError("Cannot set buffer; " + name + " buffer is null"));
-
-  // Check buffer size
-  if (check_null_buffers && buffer_val_size == nullptr)
-    return LOG_STATUS(Status::ReaderError(
-        "Cannot set buffer; " + name + " buffer size is null"));
-
-  // Check offset buffer
-  if (check_null_buffers && buffer_off == nullptr)
-    return LOG_STATUS(Status::ReaderError(
-        "Cannot set buffer; " + name + " offset buffer is null"));
-
-  // Check offset buffer size
-  if (check_null_buffers && buffer_off_size == nullptr)
-    return LOG_STATUS(Status::ReaderError(
-        "Cannot set buffer; " + name + " offset buffer size is null"));
-
-  // Array schema must exist
-  if (array_schema_ == nullptr)
-    return LOG_STATUS(
-        Status::ReaderError("Cannot set buffer; Array schema not set"));
-
-  // For easy reference
-  const bool is_dim = array_schema_->is_dim(name);
-  const bool is_attr = array_schema_->is_attr(name);
-
-  // Check that attribute/dimension exists
-  if (!is_dim && !is_attr)
-    return LOG_STATUS(Status::ReaderError(
-        std::string("Cannot set buffer; Invalid attribute/dimension '") + name +
-        "'"));
-
-  // Must not be nullable
-  if (array_schema_->is_nullable(name))
-    return LOG_STATUS(Status::ReaderError(
-        std::string("Cannot set buffer; Input attribute/dimension '") + name +
-        "' is nullable"));
-
-  // Check that attribute/dimension is var-sized
-  if (!array_schema_->var_size(name))
-    return LOG_STATUS(Status::ReaderError(
-        std::string("Cannot set buffer; Input attribute/dimension '") + name +
-        "' is fixed-sized"));
-
-  // Error if setting a new attribute/dimension after initialization
-  const bool exists = buffers_.find(name) != buffers_.end();
-  if (read_state_.initialized_ && !exists)
-    return LOG_STATUS(Status::ReaderError(
-        std::string("Cannot set buffer for new attribute/dimension '") + name +
-        "' after initialization"));
-
-  // Set attribute/dimension buffer
-  buffers_[name].set_data_var_buffer(buffer_val, buffer_val_size);
-  buffers_[name].set_offsets_buffer(buffer_off, buffer_off_size);
-
-  return Status::Ok();
-}
-
-Status Reader::set_buffer(
-    const std::string& name,
-    void* const buffer,
-    uint64_t* const buffer_size,
-    ValidityVector&& validity_vector,
-    const bool check_null_buffers) {
-  // Check buffer
-  if (check_null_buffers && buffer == nullptr)
-    return LOG_STATUS(
-        Status::ReaderError("Cannot set buffer; " + name + " buffer is null"));
-
-  // Check buffer size
-  if (check_null_buffers && buffer_size == nullptr)
-    return LOG_STATUS(Status::ReaderError(
-        "Cannot set buffer; " + name + " buffer size is null"));
-
-  // Check validity buffer offset
-  if (check_null_buffers && validity_vector.buffer() == nullptr)
-    return LOG_STATUS(Status::ReaderError(
-        "Cannot set buffer; " + name + " validity buffer is null"));
-
-  // Check validity buffer size
-  if (check_null_buffers && validity_vector.buffer_size() == nullptr)
-    return LOG_STATUS(Status::ReaderError(
-        "Cannot set buffer; " + name + " validity buffer size is null"));
-
-  // Array schema must exist
-  if (array_schema_ == nullptr)
-    return LOG_STATUS(
-        Status::ReaderError("Cannot set buffer; Array schema not set"));
-
-  // Must be an attribute
-  if (!array_schema_->is_attr(name))
-    return LOG_STATUS(Status::ReaderError(
-        std::string("Cannot set buffer; Buffer name '") + name +
-        "' is not an attribute"));
-
-  // Must be fixed-size
-  if (array_schema_->var_size(name))
-    return LOG_STATUS(Status::ReaderError(
-        std::string("Cannot set buffer; Input attribute '") + name +
-        "' is var-sized"));
-
-  // Must be nullable
-  if (!array_schema_->is_nullable(name))
-    return LOG_STATUS(Status::ReaderError(
-        std::string("Cannot set buffer; Input attribute '") + name +
-        "' is not nullable"));
-
-  // Error if setting a new attribute/dimension after initialization
-  const bool exists = buffers_.find(name) != buffers_.end();
-  if (read_state_.initialized_ && !exists)
-    return LOG_STATUS(Status::ReaderError(
-        std::string("Cannot set buffer for new attribute '") + name +
-        "' after initialization"));
-
-  // Set attribute buffer
-  buffers_[name].set_data_buffer(buffer, buffer_size);
-  buffers_[name].set_validity_buffer(std::move(validity_vector));
-
-  return Status::Ok();
-}
-
-Status Reader::set_buffer(
-    const std::string& name,
-    uint64_t* const buffer_off,
-    uint64_t* const buffer_off_size,
-    void* const buffer_val,
-    uint64_t* const buffer_val_size,
-    ValidityVector&& validity_vector,
-    const bool check_null_buffers) {
-  // Check buffer
-  if (check_null_buffers && buffer_val == nullptr)
-    return LOG_STATUS(
-        Status::ReaderError("Cannot set buffer; " + name + " buffer is null"));
-
-  // Check buffer size
-  if (check_null_buffers && buffer_val_size == nullptr)
-    return LOG_STATUS(Status::ReaderError(
-        "Cannot set buffer; " + name + " buffer size is null"));
-
-  // Check buffer offset
-  if (check_null_buffers && buffer_off == nullptr)
-    return LOG_STATUS(Status::ReaderError(
-        "Cannot set buffer; " + name + " offset buffer is null"));
-
-  // Check buffer offset size
-  if (check_null_buffers && buffer_off_size == nullptr)
-    return LOG_STATUS(Status::ReaderError(
-        "Cannot set buffer; " + name + " offset buffer size is null"));
-  ;
-
-  // Check validity buffer offset
-  if (check_null_buffers && validity_vector.buffer() == nullptr)
-    return LOG_STATUS(Status::ReaderError(
-        "Cannot set buffer; " + name + " validity buffer is null"));
-
-  // Check validity buffer size
-  if (check_null_buffers && validity_vector.buffer_size() == nullptr)
-    return LOG_STATUS(Status::ReaderError(
-        "Cannot set buffer; " + name + " validity buffer size is null"));
-
-  // Array schema must exist
-  if (array_schema_ == nullptr)
-    return LOG_STATUS(
-        Status::ReaderError("Cannot set buffer; Array schema not set"));
-
-  // Must be an attribute
-  if (!array_schema_->is_attr(name))
-    return LOG_STATUS(Status::ReaderError(
-        std::string("Cannot set buffer; Buffer name '") + name +
-        "' is not an attribute"));
-
-  // Must be fixed-size
-  if (!array_schema_->var_size(name))
-    return LOG_STATUS(Status::ReaderError(
-        std::string("Cannot set buffer; Input attribute '") + name +
-        "' is fixed-sized"));
-
-  // Must be nullable
-  if (!array_schema_->is_nullable(name))
-    return LOG_STATUS(Status::ReaderError(
-        std::string("Cannot set buffer; Input attribute '") + name +
-        "' is not nullable"));
-
-  // Error if setting a new attribute after initialization
-  const bool exists = buffers_.find(name) != buffers_.end();
-  if (read_state_.initialized_ && !exists)
-    return LOG_STATUS(Status::ReaderError(
-        std::string("Cannot set buffer for new attribute '") + name +
-        "' after initialization"));
-
-  // Set attribute/dimension buffer
-  buffers_[name].set_data_var_buffer(buffer_val, buffer_val_size);
-  buffers_[name].set_offsets_buffer(buffer_off, buffer_off_size);
-  buffers_[name].set_validity_buffer(std::move(validity_vector));
-
-  return Status::Ok();
-}
-
-void Reader::set_fragment_metadata(
-    const std::vector<FragmentMetadata*>& fragment_metadata) {
-  fragment_metadata_ = fragment_metadata;
-}
-
-Status Reader::set_layout(Layout layout) {
-  layout_ = layout;
-  subarray_.set_layout(layout);
-
-  return Status::Ok();
-}
-
-Status Reader::set_condition(const QueryCondition& condition) {
-  condition_ = condition;
-
-  return Status::Ok();
-}
-
-Status Reader::set_sparse_mode(bool sparse_mode) {
-  if (!array_schema_->dense())
-    return LOG_STATUS(Status::ReaderError(
-        "Cannot set sparse mode; Only applicable to dense arrays"));
-
-  bool all_sparse = true;
-  for (const auto& f : fragment_metadata_) {
-    if (f->dense()) {
-      all_sparse = false;
-      break;
-    }
-  }
-
-  if (!all_sparse)
-    return LOG_STATUS(
-        Status::ReaderError("Cannot set sparse mode; Only applicable to opened "
-                            "dense arrays having only sparse fragments"));
-
-  sparse_mode_ = sparse_mode;
-  return Status::Ok();
-}
-
-void Reader::set_storage_manager(StorageManager* storage_manager) {
-  storage_manager_ = storage_manager;
-  set_config(storage_manager->config());
-}
-
-Status Reader::set_subarray(const Subarray& subarray) {
-  subarray_ = subarray;
-  layout_ = subarray.layout();
-
-  return Status::Ok();
-}
-
-const Subarray* Reader::subarray() const {
-  return &subarray_;
-}
-
-std::string Reader::offsets_mode() const {
-  return offsets_format_mode_;
-}
-
-Status Reader::set_offsets_mode(const std::string& offsets_mode) {
-  offsets_format_mode_ = offsets_mode;
-
-  return Status::Ok();
-}
-
-bool Reader::offsets_extra_element() const {
-  return offsets_extra_element_;
-}
-
-Status Reader::set_offsets_extra_element(bool add_extra_element) {
-  offsets_extra_element_ = add_extra_element;
-
-  return Status::Ok();
-}
-
-uint32_t Reader::offsets_bitsize() const {
-  return offsets_bitsize_;
-}
-
-Status Reader::set_offsets_bitsize(const uint32_t bitsize) {
-  if (bitsize != 32 && bitsize != 64) {
-    return LOG_STATUS(Status::ReaderError(
-        "Cannot set offset bitsize to " + std::to_string(bitsize) +
-        "; Only 32 and 64 are acceptable bitsize values"));
-  }
-
-  offsets_bitsize_ = bitsize;
-  return Status::Ok();
-}
-
-Stats* Reader::stats() const {
-  return stats_;
-}
-
 /* ********************************* */
 /*          STATIC FUNCTIONS         */
 /* ********************************* */
@@ -1047,58 +459,8 @@ void Reader::compute_result_space_tiles(
 }
 
 /* ****************************** */
-/*          PRIVATE METHODS       */
+/*         PRIVATE METHODS        */
 /* ****************************** */
-
-Status Reader::check_subarray() const {
-  if (subarray_.layout() == Layout::GLOBAL_ORDER && subarray_.range_num() != 1)
-    return LOG_STATUS(Status::ReaderError(
-        "Cannot initialize reader; Multi-range subarrays with "
-        "global order layout are not supported"));
-
-  return Status::Ok();
-}
-
-Status Reader::check_validity_buffer_sizes() const {
-  // Verify that the validity buffer size for each
-  // nullable attribute is large enough to contain
-  // a validity value for each cell.
-  for (const auto& it : buffers_) {
-    const std::string& name = it.first;
-    if (array_schema_->is_nullable(name)) {
-      const uint64_t buffer_size = *it.second.buffer_size_;
-
-      uint64_t min_cell_num = 0;
-      if (array_schema_->var_size(name)) {
-        min_cell_num = buffer_size / constants::cell_var_offset_size;
-
-        // If the offsets buffer contains an extra element to mark
-        // the offset to the end of the data buffer, we do not need
-        // a validity value for that extra offset.
-        if (offsets_extra_element_)
-          min_cell_num = std::min<uint64_t>(0, min_cell_num - 1);
-      } else {
-        min_cell_num = buffer_size / array_schema_->cell_size(name);
-      }
-
-      const uint64_t buffer_validity_size =
-          *it.second.validity_vector_.buffer_size();
-      const uint64_t cell_validity_num =
-          buffer_validity_size / constants::cell_validity_size;
-
-      if (cell_validity_num < min_cell_num) {
-        std::stringstream ss;
-        ss << "Buffer sizes check failed; Invalid number of validity cells "
-              "given for ";
-        ss << "attribute '" << name << "'";
-        ss << " (" << cell_validity_num << " < " << min_cell_num << ")";
-        return LOG_STATUS(Status::ReaderError(ss.str()));
-      }
-    }
-  }
-
-  return Status::Ok();
-}
 
 void Reader::clear_tiles(
     const std::string& name,
@@ -1351,6 +713,7 @@ Status Reader::compute_range_result_coords(
 Status Reader::compute_subarray_coords(
     std::vector<std::vector<ResultCoords>>* range_result_coords,
     std::vector<ResultCoords>* result_coords) {
+  auto timer_se = stats_->start_timer("compute_subarray_coords");
   // The input 'result_coords' is already sorted. Save the current size
   // before inserting new elements.
   const size_t result_coords_size = result_coords->size();
@@ -3049,6 +2412,7 @@ Status Reader::init_tile_nullable(
 }
 
 Status Reader::load_tile_offsets(const std::vector<std::string>& names) {
+  auto timer_se = stats_->start_timer("load_tile_offsets");
   const auto encryption_key = array_->encryption_key();
 
   // Fetch relevant fragments so we load tile offsets only from intersecting
@@ -3328,22 +2692,12 @@ Status Reader::read_tiles(
   return Status::Ok();
 }
 
-void Reader::reset_buffer_sizes() {
-  for (auto& it : buffers_) {
-    *(it.second.buffer_size_) = it.second.original_buffer_size_;
-    if (it.second.buffer_var_size_ != nullptr)
-      *(it.second.buffer_var_size_) = it.second.original_buffer_var_size_;
-    if (it.second.validity_vector_.buffer_size() != nullptr)
-      *(it.second.validity_vector_.buffer_size()) =
-          it.second.original_validity_vector_size_;
-  }
-}
-
 Status Reader::sort_result_coords(
     std::vector<ResultCoords>::iterator iter_begin,
     std::vector<ResultCoords>::iterator iter_end,
     size_t coords_num,
     Layout layout) const {
+  auto timer_se = stats_->start_timer("sort_result_coords");
   auto domain = array_schema_->domain();
 
   if (layout == Layout::ROW_MAJOR) {
@@ -3395,7 +2749,6 @@ Status Reader::sparse_read() {
   result_coords.clear();
 
   apply_query_condition(&result_cell_slabs, result_tiles);
-
   get_result_tile_stats(result_tiles);
   get_result_cell_stats(result_cell_slabs);
 
@@ -3725,17 +3078,6 @@ Status Reader::add_extra_offset() {
   return Status::Ok();
 }
 
-void Reader::zero_out_buffer_sizes() {
-  for (auto& buffer : buffers_) {
-    if (buffer.second.buffer_size_ != nullptr)
-      *(buffer.second.buffer_size_) = 0;
-    if (buffer.second.buffer_var_size_ != nullptr)
-      *(buffer.second.buffer_var_size_) = 0;
-    if (buffer.second.validity_vector_.buffer_size() != nullptr)
-      *(buffer.second.validity_vector_.buffer_size()) = 0;
-  }
-}
-
 bool Reader::sparse_tile_overwritten(
     unsigned frag_idx, uint64_t tile_idx) const {
   const auto& mbr = fragment_metadata_[frag_idx]->mbr(tile_idx);
@@ -3761,33 +3103,6 @@ void Reader::erase_coord_tiles(std::vector<ResultTile>* result_tiles) const {
   }
 }
 
-void Reader::get_dim_attr_stats() const {
-  for (const auto& it : buffers_) {
-    const auto& name = it.first;
-    auto var_size = array_schema_->var_size(name);
-    if (array_schema_->is_attr(name)) {
-      if (var_size) {
-        stats_->add_counter("attr_var_num", 1);
-      } else {
-        stats_->add_counter("attr_fixed_num", 1);
-      }
-      if (array_schema_->is_nullable(name)) {
-        stats_->add_counter("attr_nullable_num", 1);
-      }
-    } else {
-      if (var_size) {
-        stats_->add_counter("dim_var_num", 1);
-      } else {
-        if (name == constants::coords) {
-          stats_->add_counter("dim_zipped_num", 1);
-        } else {
-          stats_->add_counter("dim_fixed_num", 1);
-        }
-      }
-    }
-  }
-}
-
 void Reader::get_result_cell_stats(
     const std::vector<ResultCellSlab>& result_cell_slabs) const {
   uint64_t result_num = 0;
@@ -3810,41 +3125,10 @@ void Reader::get_result_tile_stats(
   stats_->add_counter("cell_num", cell_num);
 }
 
-Status Reader::set_config(const Config& config) {
-  config_ = config;
-
-  return Status::Ok();
-}
-
-const Config* Reader::config() const {
-  return &config_;
-}
-
-Status Reader::set_est_result_size(
-    std::unordered_map<std::string, Subarray::ResultSize>& est_result_size,
-    std::unordered_map<std::string, Subarray::MemorySize>& max_mem_size) {
-  return subarray_.set_est_result_size(est_result_size, max_mem_size);
-}
-
-std::unordered_map<std::string, Subarray::ResultSize>
-Reader::get_est_result_size_map() {
-  return subarray_.get_est_result_size_map(
-      &config_, storage_manager_->compute_tp());
-}
-
-bool Reader::est_result_size_computed() {
-  return subarray_.est_result_size_computed();
-}
-
-std::unordered_map<std::string, Subarray::MemorySize>
-Reader::get_max_mem_size_map() {
-  return subarray_.get_max_mem_size_map(
-      &config_, storage_manager_->compute_tp());
-}
-
 Status Reader::calculate_hilbert_values(
     std::vector<ResultCoords>::iterator iter_begin,
     std::vector<std::pair<uint64_t, uint64_t>>* hilbert_values) const {
+  auto timer_se = stats_->start_timer("calculate_hilbert_values");
   auto dim_num = array_schema_->dim_num();
   Hilbert h(dim_num);
   auto bits = h.bits();
@@ -3873,6 +3157,7 @@ Status Reader::calculate_hilbert_values(
 Status Reader::reorganize_result_coords(
     std::vector<ResultCoords>::iterator iter_begin,
     std::vector<std::pair<uint64_t, uint64_t>>* hilbert_values) const {
+  auto timer_se = stats_->start_timer("reorganize_result_coords");
   auto coords_num = hilbert_values->size();
   size_t i_src, i_dst;
   ResultCoords pending;

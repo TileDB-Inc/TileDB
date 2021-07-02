@@ -33,8 +33,6 @@
 #include "tiledb/sm/compressors/zstd_compressor.h"
 #include "tiledb/common/logger.h"
 #include "tiledb/sm/buffer/buffer.h"
-#include "tiledb/sm/buffer/const_buffer.h"
-#include "tiledb/sm/buffer/preallocated_buffer.h"
 
 #include <zstd.h>
 #include <iostream>

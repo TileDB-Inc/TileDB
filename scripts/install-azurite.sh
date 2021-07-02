@@ -31,7 +31,7 @@ die() {
 }
 
 install_apt_pkgs() {
-  sudo apt-get -y install nodejs-dev node-gyp libssl1.0 npm || die "could not install nodejs dependency"
+  sudo apt-get -y install libnode-dev node-gyp libssl1.0 npm || die "could not install nodejs dependency"
 }
 
 install_yum_pkgs() {
