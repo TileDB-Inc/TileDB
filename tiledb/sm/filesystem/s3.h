@@ -34,7 +34,6 @@
 #define TILEDB_S3_H
 
 #ifdef HAVE_S3
-#include "tiledb/common/logger.h"
 #include "tiledb/common/rwlock.h"
 #include "tiledb/common/status.h"
 #include "tiledb/common/thread_pool.h"

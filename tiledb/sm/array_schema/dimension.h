@@ -34,12 +34,13 @@
 #define TILEDB_DIMENSION_H
 
 #include <bitset>
+#include <cmath>
 #include <iomanip>
 #include <iostream>
 #include <sstream>
 #include <string>
 
-#include "tiledb/common/logger.h"
+#include "tiledb/common/logger_public.h"
 #include "tiledb/common/status.h"
 #include "tiledb/sm/misc/types.h"
 #include "tiledb/sm/misc/utils.h"
@@ -445,7 +446,7 @@ class Dimension {
          << domain[0] << ", " << domain[1]
          << "]. Adjusting range lower bound to be " << domain[0]
          << " on dimension '" << dim->name() << "'";
-      global_logger().warn(ss.str().c_str());
+      LOG_WARN(ss.str());
 
       r[0] = domain[0];
     }
@@ -456,7 +457,7 @@ class Dimension {
          << domain[0] << ", " << domain[1]
          << "]. Adjusting range upper bound to be " << domain[1]
          << " on dimension '" << dim->name() << "'";
-      global_logger().warn(ss.str().c_str());
+      LOG_WARN(ss.str());
 
       r[1] = domain[1];
     }
@@ -485,7 +486,7 @@ class Dimension {
          << domain[0] << ", " << domain[1]
          << "]. Adjusting range lower bound to be " << domain[0]
          << " on dimension '" << dim->name() << "'";
-      global_logger().warn(ss.str().c_str());
+      LOG_WARN(ss.str());
 
       r[0] = domain[0];
     }
@@ -496,7 +497,7 @@ class Dimension {
          << domain[0] << ", " << domain[1]
          << "]. Adjusting range upper bound to be " << domain[1]
          << " on dimension '" << dim->name() << "'";
-      global_logger().warn(ss.str().c_str());
+      LOG_WARN(ss.str());
 
       r[1] = domain[1];
     }

@@ -33,6 +33,7 @@
 #include "tiledb/sm/stats/stats.h"
 #include "tiledb/sm/misc/utils.h"
 
+#include <algorithm>
 #include <cassert>
 #include <sstream>
 #include <vector>

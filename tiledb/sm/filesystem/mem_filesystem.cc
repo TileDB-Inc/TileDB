@@ -30,6 +30,7 @@
  * This file implements the in-memory filesystem class
  */
 
+#include <algorithm>
 #include <mutex>
 #include <sstream>
 #include <unordered_set>
@@ -292,7 +293,7 @@ class MemFilesystem::Directory : public MemFilesystem::FSNode {
       names.emplace_back(full_path + child.first);
     }
 
-    sort(names.begin(), names.end());
+    std::sort(names.begin(), names.end());
     *children = names;
 
     return Status::Ok();

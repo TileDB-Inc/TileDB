@@ -39,6 +39,11 @@
 #endif
 // clang-format on
 
+// Something, somewhere seems to be defining TIME_MS as a macro
+#if defined(TIME_MS)
+#undef TIME_MS
+#endif
+
 #include <cassert>
 
 #include "tiledb/common/logger.h"

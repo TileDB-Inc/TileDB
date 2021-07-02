@@ -33,7 +33,6 @@
 #ifndef TILEDB_SUBARRAY_H
 #define TILEDB_SUBARRAY_H
 
-#include "tiledb/common/logger.h"
 #include "tiledb/common/thread_pool.h"
 #include "tiledb/sm/buffer/buffer.h"
 #include "tiledb/sm/config/config.h"

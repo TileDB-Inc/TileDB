@@ -35,6 +35,7 @@
 #include "tiledb/sm/buffer/buffer.h"
 
 #include <lz4.h>
+#include <cmath>
 #include <limits>
 
 using namespace tiledb::common;
@@ -104,7 +105,7 @@ Status LZ4::decompress(
 uint64_t LZ4::overhead(uint64_t nbytes) {
   // So that we avoid overflow
   auto half_bound =
-      static_cast<uint64_t>(LZ4_compressBound((int)ceil(nbytes / 2.0)));
+      static_cast<uint64_t>(LZ4_compressBound((int)std::ceil(nbytes / 2.0)));
   return 2 * half_bound - nbytes;
 }
 

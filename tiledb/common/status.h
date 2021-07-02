@@ -53,7 +53,10 @@
 
 #include <cstdint>
 #include <cstring>
+#include <optional>
 #include <string>
+#include <tuple>
+using std::tuple, std::optional, std::nullopt;
 
 #include "tiledb/common/heap_memory.h"
 

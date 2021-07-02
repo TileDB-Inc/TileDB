@@ -540,8 +540,9 @@ Status StorageManager::array_consolidate(
     bool found = false;
     encryption_type_from_cfg = config->get("sm.encryption_type", &found);
     assert(found);
-    RETURN_NOT_OK(
-        encryption_type_enum(encryption_type_from_cfg, &encryption_type));
+    auto [st, et] = encryption_type_enum(encryption_type_from_cfg);
+    RETURN_NOT_OK(st);
+    encryption_type = et.value();
 
     if (EncryptionKey::is_valid_key_length(
             encryption_type,
@@ -762,8 +763,9 @@ Status StorageManager::array_metadata_consolidate(
     bool found = false;
     encryption_type_from_cfg = config->get("sm.encryption_type", &found);
     assert(found);
-    RETURN_NOT_OK(
-        encryption_type_enum(encryption_type_from_cfg, &encryption_type));
+    auto [st, et] = encryption_type_enum(encryption_type_from_cfg);
+    RETURN_NOT_OK(st);
+    encryption_type = et.value();
 
     if (EncryptionKey::is_valid_key_length(
             encryption_type,
@@ -826,11 +828,11 @@ Status StorageManager::array_create(
     std::string encryption_type_from_cfg =
         config_.get("sm.encryption_type", &found);
     assert(found);
-    EncryptionType encryption_type_cfg;
-    RETURN_NOT_OK(
-        encryption_type_enum(encryption_type_from_cfg, &encryption_type_cfg));
-    EncryptionKey encryption_key_cfg;
+    auto [st, etc] = encryption_type_enum(encryption_type_from_cfg);
+    RETURN_NOT_OK(st);
+    EncryptionType encryption_type_cfg = etc.value();
 
+    EncryptionKey encryption_key_cfg;
     if (encryption_key_from_cfg.empty()) {
       RETURN_NOT_OK(
           encryption_key_cfg.set_key(encryption_type_cfg, nullptr, 0));
@@ -1682,11 +1684,11 @@ Status StorageManager::load_array_schema(
     std::string encryption_type_from_cfg =
         config_.get("sm.encryption_type", &found);
     assert(found);
-    EncryptionType encryption_type_cfg;
-    RETURN_NOT_OK(
-        encryption_type_enum(encryption_type_from_cfg, &encryption_type_cfg));
-    EncryptionKey encryption_key_cfg;
+    auto [st, etc] = encryption_type_enum(encryption_type_from_cfg);
+    RETURN_NOT_OK(st);
+    EncryptionType encryption_type_cfg = etc.value();
 
+    EncryptionKey encryption_key_cfg;
     if (encryption_key_from_cfg.empty()) {
       RETURN_NOT_OK(
           encryption_key_cfg.set_key(encryption_type_cfg, nullptr, 0));

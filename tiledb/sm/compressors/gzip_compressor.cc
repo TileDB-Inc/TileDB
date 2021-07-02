@@ -35,6 +35,7 @@
 #include "tiledb/sm/buffer/buffer.h"
 
 #include <zlib.h>
+#include <cmath>
 #include <iostream>
 
 using namespace tiledb::common;
@@ -135,7 +136,7 @@ Status GZip::decompress(
 }
 
 uint64_t GZip::overhead(uint64_t buffer_size) {
-  return 6 + 5 * uint64_t((ceil(buffer_size / 16834.0)));
+  return 6 + 5 * uint64_t((std::ceil(buffer_size / 16834.0)));
 }
 
 };  // namespace sm

@@ -31,6 +31,7 @@
  */
 
 #include "tiledb/sm/query/dense_tiler.h"
+#include "tiledb/common/logger.h"
 #include "tiledb/sm/array/array.h"
 #include "tiledb/sm/array_schema/dimension.h"
 #include "tiledb/sm/array_schema/domain.h"

@@ -31,6 +31,7 @@
  */
 
 #include "tiledb/sm/subarray/subarray_partitioner.h"
+#include "tiledb/common/logger.h"
 #include "tiledb/sm/array/array.h"
 #include "tiledb/sm/array_schema/array_schema.h"
 #include "tiledb/sm/array_schema/attribute.h"

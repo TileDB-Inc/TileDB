@@ -31,6 +31,7 @@
  */
 
 #include "tiledb/sm/fragment/fragment_info.h"
+#include "tiledb/common/logger.h"
 #include "tiledb/sm/array/array.h"
 #include "tiledb/sm/enums/encryption_type.h"
 #include "tiledb/sm/global_state/unit_test_config.h"
@@ -461,8 +462,9 @@ Status FragmentInfo::load(
     std::string encryption_type_from_cfg =
         config.get("sm.encryption_type", &found);
     assert(found);
-    RETURN_NOT_OK(
-        encryption_type_enum(encryption_type_from_cfg, &encryption_type));
+    auto [st, et] = encryption_type_enum(encryption_type_from_cfg);
+    RETURN_NOT_OK(st);
+    encryption_type = et.value();
     EncryptionKey encryption_key_cfg;
     uint32_t key_length = 0;
 

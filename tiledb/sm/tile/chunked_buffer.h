@@ -70,7 +70,6 @@
 #ifndef TILEDB_CHUNKED_BUFFER_H
 #define TILEDB_CHUNKED_BUFFER_H
 
-#include "tiledb/common/logger.h"
 #include "tiledb/common/status.h"
 
 #include <cinttypes>
