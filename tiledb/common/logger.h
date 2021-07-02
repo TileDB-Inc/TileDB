@@ -67,6 +67,20 @@
       __LINE__,                                                                \
       std::to_string(x).c_str())
 
+#define TRACE_CHECKPOINT_STR(x)                                                  \
+  do {                                                                           \
+    std::time_t checkpoint_time =                                                \
+        std::chrono::system_clock::to_time_t(std::chrono::system_clock::now());  \
+    std::string checkpoint_time_str = std::ctime(&checkpoint_time);              \
+   fprintf(                                                                      \
+        stderr,                                                                  \
+        "[%s] %s:%d: checkpoint: %s\n",                                          \
+        checkpoint_time_str.substr(0, checkpoint_time_str.length() - 1).c_str(), \
+        __FILENAME__,                                                            \
+        __LINE__,                                                                \
+        x);                                                                      \
+  } while (false)
+
 #define TRACE_RETURN(x)                                                       \
   std::time_t end_time =                                                      \
       std::chrono::system_clock::to_time_t(std::chrono::system_clock::now()); \
@@ -86,10 +100,11 @@
   std::string end_time_str = std::ctime(&end_time);                           \
   fprintf(                                                                    \
       stderr,                                                                 \
-      "[%s] %s:%d: exit\n",                                                   \
+      "[%s] %s:%d: exit %s\n",                                                \
       end_time_str.substr(0, end_time_str.length() - 1).c_str(),              \
       __FILENAME__,                                                           \
-      __LINE__);                                                              \
+      __LINE__,                                                               \
+      __func__);                                                              \
   return
 
 #define TRACE_RETURN_NOT_OK(s)                                       \
@@ -101,10 +116,11 @@
       std::string end_time_str = std::ctime(&end_time);              \
       fprintf(                                                       \
           stderr,                                                    \
-          "[%s] %s:%d: exit\n",                                      \
+          "[%s] %s:%d: exit %s\n",                                   \
           end_time_str.substr(0, end_time_str.length() - 1).c_str(), \
           __FILENAME__,                                              \
-          __LINE__);                                                 \
+          __LINE__,                                                  \
+          __func__);                                                 \
       return _s;                                                     \
     }                                                                \
   } while (false)
@@ -120,10 +136,11 @@
       std::string end_time_str = std::ctime(&end_time);              \
       fprintf(                                                       \
           stderr,                                                    \
-          "[%s] %s:%d: exit\n",                                      \
+          "[%s] %s:%d: exit %s\n",                                   \
           end_time_str.substr(0, end_time_str.length() - 1).c_str(), \
           __FILENAME__,                                              \
-          __LINE__);                                                 \
+          __LINE__,                                                  \
+          __func__);                                                 \
       return _s;                                                     \
     }                                                                \
   } while (false)
@@ -137,10 +154,11 @@
       std::string end_time_str = std::ctime(&end_time);              \
       fprintf(                                                       \
           stderr,                                                    \
-          "[%s] %s:%d: exit\n",                                      \
+          "[%s] %s:%d: exit %s\n",                                   \
           end_time_str.substr(0, end_time_str.length() - 1).c_str(), \
           __FILENAME__,                                              \
-          __LINE__);                                                 \
+          __LINE__,                                                  \
+          __func__);                                                 \
       return _s;                                                     \
       return _s;                                                     \
     } else if (storage_manager_->cancellation_in_progress()) {       \
@@ -149,10 +167,11 @@
       std::string end_time_str = std::ctime(&end_time);              \
       fprintf(                                                       \
           stderr,                                                    \
-          "[%s] %s:%d: exit\n",                                      \
+          "[%s] %s:%d: exit %s\n",                                   \
           end_time_str.substr(0, end_time_str.length() - 1).c_str(), \
           __FILENAME__,                                              \
-          __LINE__);                                                 \
+          __LINE__,                                                  \
+          __func__);                                                 \
       return _s;                                                     \
       return Status::QueryError("Query cancelled.");                 \
     }                                                                \

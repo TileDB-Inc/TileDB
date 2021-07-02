@@ -881,6 +881,7 @@ void SubarrayPartitioner::compute_splitting_value_on_tiles(
     bool* unsplittable) {
   assert(range.layout() == Layout::GLOBAL_ORDER);
   *unsplittable = true;
+  TRACE_CHECKPOINT_STR("Unsplittable");
 
   // Inapplicable to Hilbert cell order
   if (subarray_.array()->array_schema()->cell_order() == Layout::HILBERT)
@@ -1026,6 +1027,7 @@ void SubarrayPartitioner::compute_splitting_value_single_range_hilbert(
   range.get_range(*splitting_dim, 0, &r);
   if (dim->smaller_than(*splitting_value, *r)) {
     *unsplittable = true;
+    TRACE_CHECKPOINT_STR("Unsplittable");
     return;
   }
 
@@ -1249,6 +1251,82 @@ Status SubarrayPartitioner::next_from_single_range(bool* unsplittable) {
   TRACE_RETURN(Status::Ok());
 }
 
+std::string str_to_string(std::string s) {
+  std::string ret;
+  for (char c : s) {
+    if (c < 32 || c > 0x7e) {
+      ret += std::string("\\") + std::to_string((uint8_t)c);
+    } else {
+      ret += c;
+    }
+  }
+  return ret;
+}
+
+std::string value_to_string(
+    const ByteVecValue& v, const Dimension* dim) {
+  const int8_t* r8;
+  const uint8_t* ru8;
+  const int16_t* r16;
+  const uint16_t* ru16;
+  const int32_t* r32;
+  const uint32_t* ru32;
+  const int64_t* r64;
+  const uint64_t* ru64;
+  const float* rf32;
+  const double* rf64;
+  switch (dim->type()) {
+    case sm::Datatype::STRING_ASCII:
+      return str_to_string(std::string((char*)v.data(), v.size()).c_str());
+      break;
+    case Datatype::INT8:
+      r8 = (const int8_t*)v.data();
+      return std::to_string(r8[0]);
+      break;
+    case Datatype::UINT8:
+      ru8 = (const uint8_t*)v.data();
+      return std::to_string(ru8[0]);
+      break;
+    case Datatype::INT16:
+      r16 = (const int16_t*)v.data();
+      return std::to_string(r16[0]);
+      break;
+    case Datatype::UINT16:
+      ru16 = (const uint16_t*)v.data();
+      return std::to_string(ru16[0]);
+      break;
+    case Datatype::INT32:
+      r32 = (const int32_t*)v.data();
+      return std::to_string(r32[0]);
+      break;
+    case Datatype::UINT32:
+      ru32 = (const uint32_t*)v.data();
+      return std::to_string(ru32[0]);
+      break;
+    case Datatype::INT64:
+      r64 = (const int64_t*)v.data();
+      return std::to_string(r64[0]);
+      break;
+    case Datatype::UINT64:
+      ru64 = (const uint64_t*)v.data();
+      return std::to_string(ru64[0]);
+      break;
+    case Datatype::FLOAT32:
+      rf32 = (const float*)v.data();
+      return std::to_string(rf32[0]);
+      break;
+    case Datatype::FLOAT64:
+      rf64 = (const double*)v.data();
+      return std::to_string(rf64[0]);
+      break;
+    default:
+      throw std::invalid_argument(
+          "Cannot get MBR; Unsupported coordinates type");
+  }
+
+  return std::string();
+}
+
 Status SubarrayPartitioner::split_top_single_range(bool* unsplittable) {
   TRACE_ENTER();
   // For easy reference
@@ -1257,6 +1335,7 @@ Status SubarrayPartitioner::split_top_single_range(bool* unsplittable) {
   // Check if unsplittable
   if (range.is_unary()) {
     *unsplittable = true;
+    TRACE_CHECKPOINT_STR("Unsplittable");
     TRACE_RETURN(Status::Ok());
   }
 
@@ -1270,6 +1349,14 @@ Status SubarrayPartitioner::split_top_single_range(bool* unsplittable) {
   if (*unsplittable) {
     TRACE_RETURN(Status::Ok());
   }
+
+  auto dim = subarray_.array()->array_schema()->domain()->dimension(splitting_dim);
+  auto log = 
+      std::string("Splitting on dimension: ") + 
+      std::to_string(splitting_dim) +
+      std::string(" value: ") +
+      value_to_string(splitting_value, dim);
+  TRACE_CHECKPOINT_STR(log.c_str());
 
   // Split remaining range into two ranges
   Subarray r1, r2;
@@ -1296,6 +1383,7 @@ Status SubarrayPartitioner::split_top_multi_range(bool* unsplittable) {
   // Check if unsplittable
   if (partition.is_unary()) {
     *unsplittable = true;
+    TRACE_CHECKPOINT_STR("Unsplittable");
     TRACE_RETURN(Status::Ok());
   }
 
@@ -1391,6 +1479,10 @@ void SubarrayPartitioner::compute_range_uint64(
 
     if ((*range_uint64)[d][0] != (*range_uint64)[d][1])
       *unsplittable = false;
+  }
+
+  if (*unsplittable == true) {
+    TRACE_CHECKPOINT_STR("Unsplittable");
   }
 }
 
