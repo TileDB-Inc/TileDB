@@ -1181,10 +1181,11 @@ bool SubarrayPartitioner::must_split(Subarray* partition) {
       TRACE_CHECKPOINT_STR("skip_split_on_est_size_ not set");
 
     auto log = 
-        std::string("Memory sizes: ") +
-        std::to_string(mem_size_fixed) + std::string("/") + std::to_string(memory_budget_) + std::string(" ") + 
-        std::to_string(mem_size_var) + std::string("/") + std::to_string(memory_budget_var_) + std::string(" ") + 
-        std::to_string(mem_size_validity) + std::string("/") + std::to_string(memory_budget_validity_);
+        std::string("Memory sizes for ") +
+        b.first + " - fixed:" +
+        std::to_string(mem_size_fixed) + std::string("/") + std::to_string(memory_budget_) + std::string(" ") +
+        ", var: " + std::to_string(mem_size_var) + std::string("/") + std::to_string(memory_budget_var_) + std::string(" ") +
+        ", validity: " + std::to_string(mem_size_validity) + std::string("/") + std::to_string(memory_budget_validity_);
     TRACE_CHECKPOINT_STR(log.c_str());
 
     // Check for budget overflow
