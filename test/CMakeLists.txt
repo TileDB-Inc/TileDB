@@ -26,6 +26,7 @@
 # THE SOFTWARE.
 #
 
+include(Sanitizers)
 find_package(Catch_EP REQUIRED)
 
 # These options not exposed in bootstrap script.
@@ -235,6 +236,12 @@ add_executable(
   $<TARGET_OBJECTS:TILEDB_CORE_OBJECTS>
   ${TILEDB_TEST_SOURCES}
 )
+
+# Set sanitizer options first, before all other options standard or otherwise
+if (SANITIZER)
+  target_sanitizer(tiledb_unit PUBLIC ${SANITIZER})
+  message(STATUS "Enable sanitizer \"${SANITIZER}\" for TileDB library tests.")
+endif()
 
 # We want tests to continue as normal even as the API is changing,
 # so don't warn for deprecations, since they'll be escalated to errors.
