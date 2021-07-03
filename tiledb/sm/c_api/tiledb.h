@@ -1041,6 +1041,9 @@ TILEDB_EXPORT void tiledb_config_free(tiledb_config_t** config);
  *    query range in case sorting is much slower than the partitioning
  *    overhead. <br>
  *    **Default**: 0
+ * - `sm.use_refactored_readers` <br>
+ *    Use the refactored readers or not. <br>
+ *    **Default**: false
  * - `vfs.read_ahead_size` <br>
  *    The maximum byte size to read-ahead from the backend. <br>
  *    **Default**: 102400
@@ -1226,6 +1229,26 @@ TILEDB_EXPORT void tiledb_config_free(tiledb_config_t** config);
  *    The server-side encryption algorithm to use. Supported non-empty
  *    values are "aes256" and "kms" (AWS key management service). <br>
  *    **Default**: ""
+ * - `vfs.s3.bucket_canned_acl` <br>
+ *    Names of values found in Aws::S3::Model::BucketCannedACL enumeration.
+ *    "NOT_SET"
+ *    "private_"
+ *    "public_read"
+ *    "public_read_write"
+ *    "authenticated_read"
+ *    **Default**: "NOT_SET"
+ * - `vfs.s3.object_canned_acl` <br>
+ *    Names of values found in Aws::S3::Model::ObjectCannedACL enumeration.
+ *    (The first 5 are the same as for "vfs.s3.bucket_canned_acl".)
+ *    "NOT_SET"
+ *    "private_"
+ *    "public_read"
+ *    "public_read_write"
+ *    "authenticated_read"
+ *    (The following three items are found only in
+ *     Aws::S3::Model::ObjectCannedACL.) "aws_exec_read" "owner_read"
+ *    "bucket_owner_full_control"
+ *    **Default**: "NOT_SET"
  * - `vfs.hdfs.name_node_uri"` <br>
  *    Name node for HDFS. <br>
  *    **Default**: ""

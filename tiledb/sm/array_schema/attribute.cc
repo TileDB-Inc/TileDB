@@ -32,7 +32,6 @@
 
 #include "tiledb/sm/array_schema/attribute.h"
 #include "tiledb/common/logger.h"
-#include "tiledb/sm/buffer/const_buffer.h"
 #include "tiledb/sm/enums/compressor.h"
 #include "tiledb/sm/enums/datatype.h"
 #include "tiledb/sm/enums/filter_type.h"
@@ -118,7 +117,7 @@ Status Attribute::deserialize(ConstBuffer* buff, const uint32_t version) {
     assert(fill_value_size > 0);
     fill_value_.resize(fill_value_size);
     fill_value_.shrink_to_fit();
-    RETURN_NOT_OK(buff->read(&fill_value_[0], fill_value_size));
+    RETURN_NOT_OK(buff->read(fill_value_.data(), fill_value_size));
   } else {
     set_default_fill_value();
   }
@@ -196,7 +195,7 @@ Status Attribute::serialize(Buffer* buff, const uint32_t version) {
     auto fill_value_size = (uint64_t)fill_value_.size();
     assert(fill_value_size != 0);
     RETURN_NOT_OK(buff->write(&fill_value_size, sizeof(uint64_t)));
-    RETURN_NOT_OK(buff->write(&fill_value_[0], fill_value_.size()));
+    RETURN_NOT_OK(buff->write(fill_value_.data(), fill_value_.size()));
   }
 
   // Write nullable
@@ -277,7 +276,7 @@ Status Attribute::set_fill_value(const void* value, uint64_t size) {
 
   fill_value_.resize(size);
   fill_value_.shrink_to_fit();
-  std::memcpy(&fill_value_[0], value, size);
+  std::memcpy(fill_value_.data(), value, size);
 
   return Status::Ok();
 }
@@ -328,7 +327,7 @@ Status Attribute::set_fill_value(
 
   fill_value_.resize(size);
   fill_value_.shrink_to_fit();
-  std::memcpy(&fill_value_[0], value, size);
+  std::memcpy(fill_value_.data(), value, size);
   fill_value_validity_ = valid;
 
   return Status::Ok();
@@ -390,7 +389,7 @@ void Attribute::set_default_fill_value() {
   fill_value_.resize(cell_num * fill_size);
   fill_value_.shrink_to_fit();
   uint64_t offset = 0;
-  auto buff = (unsigned char*)&fill_value_[0];
+  auto buff = (unsigned char*)fill_value_.data();
   for (uint64_t i = 0; i < cell_num; ++i) {
     std::memcpy(buff + offset, fill_value, fill_size);
     offset += fill_size;

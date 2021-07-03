@@ -947,7 +947,7 @@ void DenseArrayFx::write_dense_subarray_2D(
 
   // Close array
   rc = tiledb_array_close(ctx_, array);
-  CHECK(rc == TILEDB_OK);
+  CHECK_SAFE(rc == TILEDB_OK);
 
   // Clean up
   tiledb_array_free(&array);

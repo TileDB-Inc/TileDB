@@ -43,11 +43,12 @@
 #include "tiledb/sm/array_schema/array_schema.h"
 #include "tiledb/sm/array_schema/dimension.h"
 #include "tiledb/sm/array_schema/domain.h"
+#include "tiledb/sm/fragment/written_fragment_info.h"
 #include "tiledb/sm/misc/utils.h"
+#include "tiledb/sm/query/iquery_strategy.h"
 #include "tiledb/sm/query/query_condition.h"
-#include "tiledb/sm/query/reader.h"
 #include "tiledb/sm/query/validity_vector.h"
-#include "tiledb/sm/query/writer.h"
+#include "tiledb/sm/subarray/subarray.h"
 
 using namespace tiledb::common;
 
@@ -55,7 +56,6 @@ namespace tiledb {
 namespace sm {
 
 class Array;
-class Subarray;
 class StorageManager;
 
 enum class QueryStatus : uint8_t;
@@ -100,6 +100,26 @@ class Query {
 
     /** Serialization state per attribute. */
     std::unordered_map<std::string, AttrState> attribute_states;
+  };
+
+  /**
+   * Contains current state related to coords of this query.
+   */
+  struct CoordsInfo {
+    /**
+     * True if either zipped coordinates buffer or separate coordinate
+     * buffers are set.
+     */
+    bool has_coords_;
+
+    /** The zipped coordinates buffer potentially set by the user. */
+    void* coords_buffer_;
+
+    /** The zipped coordinates buffer size potentially set by the user. */
+    uint64_t* coords_buffer_size_;
+
+    /** Keeps track of the number of coordinates across coordinate buffers. */
+    uint64_t coords_num_;
   };
 
   /* ********************************* */
@@ -520,17 +540,11 @@ class Query {
   /** Processes a query. */
   Status process();
 
-  /** Returns the Reader. */
-  const Reader* reader() const;
+  /** Create the strategy. */
+  Status create_strategy();
 
-  /** Returns the Reader. */
-  Reader* reader();
-
-  /** Returns the Writer. */
-  const Writer* writer() const;
-
-  /** Returns the Writer. */
-  Writer* writer();
+  /** Gets the strategy of the query. */
+  IQueryStrategy* strategy();
 
   /**
    * Disables checking the global order. Applicable only to writes.
@@ -549,6 +563,16 @@ class Query {
    * Config parameters set here will *only* be applied within the Query.
    */
   Status set_config(const Config& config);
+
+  /**
+   * Sets the (zipped) coordinates buffer (set with TILEDB_COORDS as the
+   * buffer name).
+   *
+   * @param buffer The buffer that has the input data to be written.
+   * @param buffer_size The size of `buffer` in bytes.
+   * @return Status
+   */
+  Status set_coords_buffer(void* buffer, uint64_t* buffer_size);
 
   /**
    * Sets the data for a fixed/var-sized attribute/dimension.
@@ -799,6 +823,12 @@ class Query {
    */
   Status set_subarray(const void* subarray);
 
+  /** Returns the query subarray. */
+  const Subarray* subarray() const;
+
+  /** Sets the query subarray, without performing any checks. */
+  Status set_subarray_unsafe(const Subarray& subarray);
+
   /** Sets the query subarray, without performing any checks. */
   Status set_subarray_unsafe(const NDRange& subarray);
 
@@ -830,6 +860,12 @@ class Query {
   /** The array the query is associated with. */
   Array* array_;
 
+  /** The array schema. */
+  ArraySchema* array_schema_;
+
+  /** The config for query-level parameters only. */
+  Config config_;
+
   /** A function that will be called upon the completion of an async query. */
   std::function<void(void*)> callback_;
 
@@ -838,6 +874,9 @@ class Query {
 
   /** The layout of the cells in the result of the subarray. */
   Layout layout_;
+
+  /** The query subarray (initially the whole domain by default). */
+  Subarray subarray_;
 
   /** The query status. */
   QueryStatus status_;
@@ -848,23 +887,79 @@ class Query {
   /** The query type. */
   QueryType type_;
 
+  /** The query strategy. */
+  tdb_unique_ptr<IQueryStrategy> strategy_;
+
   /** The class stats. */
   stats::Stats* stats_;
 
-  /** Query reader. */
-  Reader reader_;
+  /**
+   * Maps attribute/dimension names to their buffers.
+   * `TILEDB_COORDS` may be used for the special zipped coordinates
+   * buffer.
+   * */
+  std::unordered_map<std::string, QueryBuffer> buffers_;
 
-  /** Query writer. */
-  Writer writer_;
+  /** Keeps track of the coords data. */
+  CoordsInfo coords_info_;
+
+  /** Stores information about the written fragments. */
+  std::vector<WrittenFragmentInfo> written_fragment_info_;
+
+  /** The query condition. */
+  QueryCondition condition_;
+
+  /** The fragment metadata that this query will focus on. */
+  std::vector<FragmentMetadata*> fragment_metadata_;
 
   /** The current serialization state. */
   SerializationState serialization_state_;
+
+  /** If the query has coords buffer set or not. */
+  bool has_coords_buffer_;
+
+  /** If the query has zipped coords buffer set or not. */
+  bool has_zipped_coords_buffer_;
+
+  /** True if at least one separate coordinate buffer is set. */
+  bool coord_buffer_is_set_;
+
+  /** True if at least one separate data coordinate buffer is set. */
+  bool coord_data_buffer_is_set_;
+
+  /** True if at least one separate offsets coordinate buffer is set. */
+  bool coord_offsets_buffer_is_set_;
+
+  /** Keeps track of the name of the data buffer once set. */
+  std::string data_buffer_name_;
+
+  /** Keeps track of the name of the offsets buffer once set. */
+  std::string offsets_buffer_name_;
+
+  /**
+   * If `true`, it will not check if the written coordinates are
+   * in the global order. This supercedes the config.
+   */
+  bool disable_check_global_order_;
+
+  /**
+   * If `true`, then the dense array will be read in "sparse mode", i.e.,
+   * the sparse read algorithm will be executing, returning results only
+   * for the non-empty cells.
+   */
+  bool sparse_mode_;
+
+  /** The name of the new fragment to be created for writes. */
+  URI fragment_uri_;
 
   /* ********************************* */
   /*           PRIVATE METHODS         */
   /* ********************************* */
 
   Status check_set_fixed_buffer(const std::string& name);
+
+  /** Checks if the buffers names have been appropriately set for the query. */
+  Status check_buffer_names();
 
   /**
    * Internal routine for checking the completeness of all attribute

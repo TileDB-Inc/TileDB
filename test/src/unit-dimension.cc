@@ -527,10 +527,10 @@ TEST_CASE(
   auto max_bucket_val = ((uint64_t)1 << bits) - 1;
 
   auto val = d1.map_from_uint64(64424509, bits, max_bucket_val);
-  auto val_int32 = *(const int32_t*)(&val[0]);
+  auto val_int32 = *(const int32_t*)(val.data());
   CHECK(val_int32 == 3);
   val = d1.map_from_uint64(42949672, bits, max_bucket_val);
-  val_int32 = *(const int32_t*)(&val[0]);
+  val_int32 = *(const int32_t*)(val.data());
   CHECK(val_int32 == 2);
 }
 
@@ -548,10 +548,10 @@ TEST_CASE(
   auto max_bucket_val = ((uint64_t)1 << bits) - 1;
 
   auto val = d1.map_from_uint64(64424509, bits, max_bucket_val);
-  auto val_int32 = *(const int32_t*)(&val[0]);
+  auto val_int32 = *(const int32_t*)(val.data());
   CHECK(val_int32 == -47);
   val = d1.map_from_uint64(42949672, bits, max_bucket_val);
-  val_int32 = *(const int32_t*)(&val[0]);
+  val_int32 = *(const int32_t*)(val.data());
   CHECK(val_int32 == -48);
 }
 
@@ -569,10 +569,10 @@ TEST_CASE(
   auto max_bucket_val = ((uint64_t)1 << bits) - 1;
 
   auto val = d1.map_from_uint64(1503238527, bits, max_bucket_val);
-  auto val_int32 = *(const float*)(&val[0]);
+  auto val_int32 = *(const float*)(val.data());
   CHECK(round(100 * val_int32) == 70);
   val = d1.map_from_uint64(429496735, bits, max_bucket_val);
-  val_int32 = *(const float*)(&val[0]);
+  val_int32 = *(const float*)(val.data());
   CHECK(round(100 * val_int32) == 20);
 }
 
@@ -590,19 +590,19 @@ TEST_CASE(
   std::string v_str = std::string("star\0\0\0\0", 8);
   auto v = d1.map_to_uint64(v_str.data(), v_str.size(), bits, max_bucket_val);
   auto val = d1.map_from_uint64(v, bits, max_bucket_val);
-  auto val_str = std::string((const char*)(&val[0]), 8);
+  auto val_str = std::string((const char*)(val.data()), 8);
   CHECK(val_str == v_str);
 
   v_str = std::string("blue\0\0\0\0", 8);
   v = d1.map_to_uint64(v_str.data(), v_str.size(), bits, max_bucket_val);
   val = d1.map_from_uint64(v, bits, max_bucket_val);
-  val_str = std::string((const char*)(&val[0]), 4);
+  val_str = std::string((const char*)(val.data()), 4);
   CHECK(val_str == std::string("blud", 4));
 
   v_str = std::string("yellow\0\0", 8);
   v = d1.map_to_uint64(v_str.data(), v_str.size(), bits, max_bucket_val);
   val = d1.map_from_uint64(v, bits, max_bucket_val);
-  val_str = std::string((const char*)(&val[0]), 4);
+  val_str = std::string((const char*)(val.data()), 4);
   CHECK(val_str == std::string("yell", 4));
 }
 

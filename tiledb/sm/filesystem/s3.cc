@@ -76,6 +76,65 @@ Aws::Utils::Logging::LogLevel aws_log_name_to_level(std::string loglevel) {
   else
     return Aws::Utils::Logging::LogLevel::Off;
 }
+
+/**
+ * Return a S3 enum value for any recognized string or NOT_SET if
+ * B) the string is not recognized to match any of the enum values
+ *
+ * @param canned_acl_str A textual string naming one of the
+ *        Aws::S3::Model::ObjectCannedACL enum members.
+ */
+Aws::S3::Model::ObjectCannedACL S3_ObjectCannedACL_from_str(
+    const std::string& canned_acl_str) {
+  if (canned_acl_str.empty())
+    return Aws::S3::Model::ObjectCannedACL::NOT_SET;
+
+  if (canned_acl_str == "NOT_SET")
+    return Aws::S3::Model::ObjectCannedACL::NOT_SET;
+  else if (canned_acl_str == "private_")
+    return Aws::S3::Model::ObjectCannedACL::private_;
+  else if (canned_acl_str == "public_read")
+    return Aws::S3::Model::ObjectCannedACL::public_read;
+  else if (canned_acl_str == "public_read_write")
+    return Aws::S3::Model::ObjectCannedACL::public_read_write;
+  else if (canned_acl_str == "authenticated_read")
+    return Aws::S3::Model::ObjectCannedACL::authenticated_read;
+  else if (canned_acl_str == "aws_exec_read")
+    return Aws::S3::Model::ObjectCannedACL::aws_exec_read;
+  else if (canned_acl_str == "bucket_owner_read")
+    return Aws::S3::Model::ObjectCannedACL::bucket_owner_read;
+  else if (canned_acl_str == "bucket_owner_full_control")
+    return Aws::S3::Model::ObjectCannedACL::bucket_owner_full_control;
+  else
+    return Aws::S3::Model::ObjectCannedACL::NOT_SET;
+}
+
+/**
+ * Return a S3 enum value for any recognized string or NOT_SET if
+ * B) the string is not recognized to match any of the enum values
+ *
+ * @param canned_acl_str A textual string naming one of the
+ *        Aws::S3::Model::BucketCannedACL enum members.
+ */
+Aws::S3::Model::BucketCannedACL S3_BucketCannedACL_from_str(
+    const std::string& canned_acl_str) {
+  if (canned_acl_str.empty())
+    return Aws::S3::Model::BucketCannedACL::NOT_SET;
+
+  if (canned_acl_str == "NOT_SET")
+    return Aws::S3::Model::BucketCannedACL::NOT_SET;
+  else if (canned_acl_str == "private_")
+    return Aws::S3::Model::BucketCannedACL::private_;
+  else if (canned_acl_str == "public_read")
+    return Aws::S3::Model::BucketCannedACL::public_read;
+  else if (canned_acl_str == "public_read_write")
+    return Aws::S3::Model::BucketCannedACL::public_read_write;
+  else if (canned_acl_str == "authenticated_read")
+    return Aws::S3::Model::BucketCannedACL::authenticated_read;
+  else
+    return Aws::S3::Model::BucketCannedACL::NOT_SET;
+}
+
 }  // namespace
 
 using namespace tiledb::common;
@@ -117,6 +176,7 @@ static std::once_flag aws_lib_initialized;
 S3::S3()
     : stats_(nullptr)
     , state_(State::UNINITIALIZED)
+    , credentials_provider_(nullptr)
     , file_buffer_size_(0)
     , max_parallel_ops_(1)
     , multipart_part_size_(0)
@@ -124,7 +184,9 @@ S3::S3()
     , use_virtual_addressing_(false)
     , use_multipart_upload_(true)
     , request_payer_(Aws::S3::Model::RequestPayer::NOT_SET)
-    , sse_(Aws::S3::Model::ServerSideEncryption::NOT_SET) {
+    , sse_(Aws::S3::Model::ServerSideEncryption::NOT_SET)
+    , object_canned_acl_(Aws::S3::Model::ObjectCannedACL::NOT_SET)
+    , bucket_canned_acl_(Aws::S3::Model::BucketCannedACL::NOT_SET) {
 }
 
 S3::~S3() {
@@ -209,6 +271,18 @@ Status S3::init(
   if (request_payer)
     request_payer_ = Aws::S3::Model::RequestPayer::requester;
 
+  auto object_acl_str = config.get("vfs.s3.object_canned_acl", &found);
+  assert(found);
+  if (found) {
+    object_canned_acl_ = S3_ObjectCannedACL_from_str(object_acl_str);
+  }
+
+  auto bucket_acl_str = config.get("vfs.s3.bucket_canned_acl", &found);
+  assert(found);
+  if (found) {
+    bucket_canned_acl_ = S3_BucketCannedACL_from_str(bucket_acl_str);
+  }
+
   auto sse = config.get("vfs.s3.sse", &found);
   assert(found);
 
@@ -268,6 +342,10 @@ Status S3::create_bucket(const URI& bucket) const {
         GetBucketLocationConstraintForName(region_str);
     cfg.SetLocationConstraint(location_constraint);
     create_bucket_request.SetCreateBucketConfiguration(cfg);
+  }
+
+  if (bucket_canned_acl_ != Aws::S3::Model::BucketCannedACL::NOT_SET) {
+    create_bucket_request.SetACL(bucket_canned_acl_);
   }
 
   auto create_bucket_outcome = client_->CreateBucket(create_bucket_request);
@@ -868,6 +946,9 @@ Status S3::touch(const URI& uri) const {
     put_object_request.SetServerSideEncryption(sse_);
   if (!sse_kms_key_id_.empty())
     put_object_request.SetSSEKMSKeyId(Aws::String(sse_kms_key_id_.c_str()));
+  if (object_canned_acl_ != Aws::S3::Model::ObjectCannedACL::NOT_SET) {
+    put_object_request.SetACL(object_canned_acl_);
+  }
 
   auto put_object_outcome = client_->PutObject(put_object_request);
   if (!put_object_outcome.IsSuccess()) {
@@ -947,8 +1028,18 @@ Status S3::init_client() const {
 
   std::lock_guard<std::mutex> lck(client_init_mtx_);
 
-  if (client_ != nullptr)
+  if (client_ != nullptr) {
+    // Check credentials. If expired, referesh it
+    if (credentials_provider_) {
+      Aws::Auth::AWSCredentials credentials =
+          credentials_provider_->GetAWSCredentials();
+      if (credentials.IsExpiredOrEmpty()) {
+        return LOG_STATUS(
+            Status::S3Error(std::string("Credentials is expired or empty.")));
+      }
+    }
     return Status::Ok();
+  }
 
   bool found;
   auto s3_endpoint_override = config_.get("vfs.s3.endpoint_override", &found);
@@ -1082,8 +1173,6 @@ Status S3::init_client() const {
   }
 #endif
 
-  std::shared_ptr<Aws::Auth::AWSCredentialsProvider> credentials_provider =
-      nullptr;
   switch ((!aws_access_key_id.empty() ? 1 : 0) +
           (!aws_secret_access_key.empty() ? 2 : 0) +
           (!aws_role_arn.empty() ? 4 : 0)) {
@@ -1099,9 +1188,11 @@ Status S3::init_client() const {
       Aws::String secret_access_key(aws_secret_access_key.c_str());
       Aws::String session_token(
           !aws_session_token.empty() ? aws_session_token.c_str() : "");
-      credentials_provider =
-          std::make_shared<Aws::Auth::SimpleAWSCredentialsProvider>(
-              access_key_id, secret_access_key, session_token);
+      credentials_provider_ = tdb_make_shared(
+          Aws::Auth::SimpleAWSCredentialsProvider,
+          access_key_id,
+          secret_access_key,
+          session_token);
       break;
     }
     case 4: {
@@ -1116,9 +1207,13 @@ Status S3::init_client() const {
               Aws::Auth::DEFAULT_CREDS_LOAD_FREQ_SECONDS);
       Aws::String session_name(
           !aws_session_name.empty() ? aws_session_name.c_str() : "");
-      credentials_provider =
-          std::make_shared<Aws::Auth::STSAssumeRoleCredentialsProvider>(
-              role_arn, session_name, external_id, load_frequency, nullptr);
+      credentials_provider_ = tdb_make_shared(
+          Aws::Auth::STSAssumeRoleCredentialsProvider,
+          role_arn,
+          session_name,
+          external_id,
+          load_frequency,
+          nullptr);
       break;
     }
     default:
@@ -1136,7 +1231,7 @@ Status S3::init_client() const {
   {
     std::lock_guard<std::mutex> static_lck(static_client_init_mtx);
 
-    if (credentials_provider == nullptr) {
+    if (credentials_provider_ == nullptr) {
       client_ = tdb_make_shared(
           Aws::S3::S3Client,
           *client_config_,
@@ -1145,7 +1240,7 @@ Status S3::init_client() const {
     } else {
       client_ = tdb_make_shared(
           Aws::S3::S3Client,
-          credentials_provider,
+          credentials_provider_.inner_sp(),
           *client_config_,
           Aws::Client::AWSAuthV4Signer::PayloadSigningPolicy::Never,
           use_virtual_addressing_);
@@ -1173,6 +1268,9 @@ Status S3::copy_object(const URI& old_uri, const URI& new_uri) {
     copy_object_request.SetServerSideEncryption(sse_);
   if (!sse_kms_key_id_.empty())
     copy_object_request.SetSSEKMSKeyId(Aws::String(sse_kms_key_id_.c_str()));
+  if (object_canned_acl_ != Aws::S3::Model::ObjectCannedACL::NOT_SET) {
+    copy_object_request.SetACL(object_canned_acl_);
+  }
 
   auto copy_object_outcome = client_->CopyObject(copy_object_request);
   if (!copy_object_outcome.IsSuccess()) {
@@ -1263,6 +1361,9 @@ Status S3::initiate_multipart_request(
   if (!sse_kms_key_id_.empty())
     multipart_upload_request.SetSSEKMSKeyId(
         Aws::String(sse_kms_key_id_.c_str()));
+  if (object_canned_acl_ != Aws::S3::Model::ObjectCannedACL::NOT_SET) {
+    multipart_upload_request.SetACL(object_canned_acl_);
+  }
 
   auto multipart_upload_outcome =
       client_->CreateMultipartUpload(multipart_upload_request);
@@ -1391,6 +1492,9 @@ Status S3::flush_direct(const URI& uri) {
     put_object_request.SetServerSideEncryption(sse_);
   if (!sse_kms_key_id_.empty())
     put_object_request.SetSSEKMSKeyId(Aws::String(sse_kms_key_id_.c_str()));
+  if (object_canned_acl_ != Aws::S3::Model::ObjectCannedACL::NOT_SET) {
+    put_object_request.SetACL(object_canned_acl_);
+  }
 
   auto put_object_outcome = client_->PutObject(put_object_request);
   if (!put_object_outcome.IsSuccess()) {

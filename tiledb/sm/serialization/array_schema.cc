@@ -260,7 +260,7 @@ Status dimension_to_capnp(
 
   dimension_builder->setName(dimension->name());
   dimension_builder->setType(datatype_str(dimension->type()));
-  dimension_builder->setNullTileExtent(dimension->tile_extent().empty());
+  dimension_builder->setNullTileExtent(!dimension->tile_extent());
 
   // Only set the domain if its not empty/null. String dimensions have null
   // domains
@@ -271,7 +271,7 @@ Status dimension_to_capnp(
   }
 
   // Only set the tile extent if its not empty
-  if (!dimension->tile_extent().empty()) {
+  if (dimension->tile_extent()) {
     auto tile_extent_builder = dimension_builder->initTileExtent();
     RETURN_NOT_OK(utils::set_capnp_scalar(
         tile_extent_builder,

@@ -39,8 +39,7 @@ using namespace tiledb::sm;
 TEST_CASE("TileDomain: Test 1D", "[TileDomain][1d]") {
   int32_t tile_extent_v = 10;
   std::vector<ByteVecValue> tile_extents(1);
-  tile_extents[0].resize(sizeof(int32_t));
-  std::memcpy(&tile_extents[0][0], &tile_extent_v, sizeof(int32_t));
+  tile_extents[0].assign_as<int32_t>(tile_extent_v);
   Layout layout = Layout::ROW_MAJOR;
 
   auto size = 2 * sizeof(int32_t);
@@ -75,10 +74,8 @@ TEST_CASE(
   std::vector<int32_t> domain_slice = {1, 10, 1, 10};
   std::vector<int32_t> tile_extents_vec = {2, 5};
   std::vector<ByteVecValue> tile_extents(2);
-  tile_extents[0].resize(sizeof(int32_t));
-  std::memcpy(&tile_extents[0][0], &tile_extents_vec[0], sizeof(int32_t));
-  tile_extents[1].resize(sizeof(int32_t));
-  std::memcpy(&tile_extents[1][0], &tile_extents_vec[1], sizeof(int32_t));
+  tile_extents[0].assign_as<int32_t>(tile_extents_vec[0]);
+  tile_extents[1].assign_as<int32_t>(tile_extents_vec[1]);
   Layout layout = Layout::ROW_MAJOR;
 
   auto size = 2 * (sizeof(int32_t));
@@ -120,10 +117,8 @@ TEST_CASE(
   std::vector<int32_t> domain_slice = {4, 10, 2, 8};
   std::vector<int32_t> tile_extents_vec = {2, 5};
   std::vector<ByteVecValue> tile_extents(2);
-  tile_extents[0].resize(sizeof(int32_t));
-  std::memcpy(&tile_extents[0][0], &tile_extents_vec[0], sizeof(int32_t));
-  tile_extents[1].resize(sizeof(int32_t));
-  std::memcpy(&tile_extents[1][0], &tile_extents_vec[1], sizeof(int32_t));
+  tile_extents[0].assign_as<int32_t>(tile_extents_vec[0]);
+  tile_extents[1].assign_as<int32_t>(tile_extents_vec[1]);
   Layout layout = Layout::ROW_MAJOR;
 
   auto size = 2 * (sizeof(int32_t));
@@ -160,10 +155,8 @@ TEST_CASE(
   std::vector<int32_t> domain_slice = {1, 10, 1, 10};
   std::vector<int32_t> tile_extents_vec = {2, 5};
   std::vector<ByteVecValue> tile_extents(2);
-  tile_extents[0].resize(sizeof(int32_t));
-  std::memcpy(&tile_extents[0][0], &tile_extents_vec[0], sizeof(int32_t));
-  tile_extents[1].resize(sizeof(int32_t));
-  std::memcpy(&tile_extents[1][0], &tile_extents_vec[1], sizeof(int32_t));
+  tile_extents[0].assign_as<int32_t>(tile_extents_vec[0]);
+  tile_extents[1].assign_as<int32_t>(tile_extents_vec[1]);
   Layout layout = Layout::COL_MAJOR;
 
   auto size = 2 * (sizeof(int32_t));
@@ -200,10 +193,8 @@ TEST_CASE(
   std::vector<int32_t> domain_slice = {4, 10, 2, 8};
   std::vector<int32_t> tile_extents_vec = {2, 5};
   std::vector<ByteVecValue> tile_extents(2);
-  tile_extents[0].resize(sizeof(int32_t));
-  std::memcpy(&tile_extents[0][0], &tile_extents_vec[0], sizeof(int32_t));
-  tile_extents[1].resize(sizeof(int32_t));
-  std::memcpy(&tile_extents[1][0], &tile_extents_vec[1], sizeof(int32_t));
+  tile_extents[0].assign_as<int32_t>(tile_extents_vec[0]);
+  tile_extents[1].assign_as<int32_t>(tile_extents_vec[1]);
   Layout layout = Layout::COL_MAJOR;
 
   auto size = 2 * (sizeof(int32_t));
@@ -239,10 +230,8 @@ TEST_CASE(
   std::vector<int32_t> domain_slice = {4, 10, 12, 18};
   std::vector<int32_t> tile_extents_vec = {2, 5};
   std::vector<ByteVecValue> tile_extents(2);
-  tile_extents[0].resize(sizeof(int32_t));
-  std::memcpy(&tile_extents[0][0], &tile_extents_vec[0], sizeof(int32_t));
-  tile_extents[1].resize(sizeof(int32_t));
-  std::memcpy(&tile_extents[1][0], &tile_extents_vec[1], sizeof(int32_t));
+  tile_extents[0].assign_as<int32_t>(tile_extents_vec[0]);
+  tile_extents[1].assign_as<int32_t>(tile_extents_vec[1]);
   Layout layout = Layout::COL_MAJOR;
 
   auto size = 2 * (sizeof(int32_t));
@@ -273,10 +262,8 @@ TEST_CASE(
   std::vector<int32_t> domain_slice = {2, 10, 12, 18};
   std::vector<int32_t> tile_extents_vec = {2, 5};
   std::vector<ByteVecValue> tile_extents(2);
-  tile_extents[0].resize(sizeof(int32_t));
-  std::memcpy(&tile_extents[0][0], &tile_extents_vec[0], sizeof(int32_t));
-  tile_extents[1].resize(sizeof(int32_t));
-  std::memcpy(&tile_extents[1][0], &tile_extents_vec[1], sizeof(int32_t));
+  tile_extents[0].assign_as<int32_t>(tile_extents_vec[0]);
+  tile_extents[1].assign_as<int32_t>(tile_extents_vec[1]);
   Layout layout = Layout::COL_MAJOR;
 
   auto size = 2 * (sizeof(int32_t));
@@ -312,10 +299,8 @@ TEST_CASE(
   std::vector<int32_t> domain_slice = {2, 10, 12, 18};
   std::vector<int32_t> tile_extents_vec = {2, 5};
   std::vector<ByteVecValue> tile_extents(2);
-  tile_extents[0].resize(sizeof(int32_t));
-  std::memcpy(&tile_extents[0][0], &tile_extents_vec[0], sizeof(int32_t));
-  tile_extents[1].resize(sizeof(int32_t));
-  std::memcpy(&tile_extents[1][0], &tile_extents_vec[1], sizeof(int32_t));
+  tile_extents[0].assign_as<int32_t>(tile_extents_vec[0]);
+  tile_extents[1].assign_as<int32_t>(tile_extents_vec[1]);
   Layout layout = Layout::COL_MAJOR;
 
   auto size = 2 * (sizeof(int32_t));
@@ -340,10 +325,8 @@ TEST_CASE("TileDomain: Test 2D, covers", "[TileDomain][2d][covers]") {
   std::vector<int32_t> domain_slice_2 = {3, 6, 1, 7};
   std::vector<int32_t> tile_extents_vec = {2, 5};
   std::vector<ByteVecValue> tile_extents(2);
-  tile_extents[0].resize(sizeof(int32_t));
-  std::memcpy(&tile_extents[0][0], &tile_extents_vec[0], sizeof(int32_t));
-  tile_extents[1].resize(sizeof(int32_t));
-  std::memcpy(&tile_extents[1][0], &tile_extents_vec[1], sizeof(int32_t));
+  tile_extents[0].assign_as<int32_t>(tile_extents_vec[0]);
+  tile_extents[1].assign_as<int32_t>(tile_extents_vec[1]);
   Layout layout = Layout::COL_MAJOR;
 
   auto size = 2 * (sizeof(int32_t));
