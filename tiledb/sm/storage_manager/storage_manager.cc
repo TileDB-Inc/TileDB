@@ -1614,7 +1614,7 @@ Status StorageManager::is_array(const URI& uri, bool* is_array) const {
   // Since is_dir could return NOT Ok status, we will not use RETURN_NOT_OK here
   Status st =
       vfs_->is_dir(uri.join_path(constants::array_schema_folder_name), &is_dir);
-  if (!st.ok() || is_dir) {
+  if (st.ok() && is_dir) {
     *is_array = true;
     return Status::Ok();
   }
