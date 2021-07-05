@@ -2329,6 +2329,7 @@ int32_t tiledb_array_schema_load_with_key(
 
     // Load array schema
     auto storage_manager = ctx->ctx_->storage_manager();
+
     if (SAVE_ERROR_CATCH(
             ctx,
             storage_manager->load_array_schema(

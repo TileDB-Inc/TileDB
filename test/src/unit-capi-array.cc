@@ -514,6 +514,8 @@ TEST_CASE_METHOD(
     REQUIRE(rc == TILEDB_ERR);
     tiledb_ctx_free(&ctx_invalid_key_len_2);
     tiledb_vfs_free(&vfs_invalid_key_len_2);
+    // remove the empty array directory
+    remove_temp_dir(array_name);
 
     // Create array with proper key
     rc = tiledb_config_set(cfg, "sm.encryption_type", "AES_256_GCM", &err);
