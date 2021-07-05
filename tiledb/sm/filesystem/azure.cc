@@ -32,7 +32,7 @@
 
 #ifdef HAVE_AZURE
 
-#if defined(_WIN32)
+#if !defined(NOMINMAX)
 #define NOMINMAX  // avoid min/max macros from windows headers
 #endif
 

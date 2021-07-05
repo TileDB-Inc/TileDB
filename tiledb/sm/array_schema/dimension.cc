@@ -31,6 +31,7 @@
  */
 
 #include "tiledb/sm/array_schema/dimension.h"
+#include "tiledb/common/logger.h"
 #include "tiledb/sm/buffer/buffer.h"
 #include "tiledb/sm/enums/datatype.h"
 #include "tiledb/sm/enums/filter_type.h"
@@ -38,6 +39,7 @@
 
 #include <bitset>
 #include <cassert>
+#include <cmath>
 #include <iostream>
 
 using namespace tiledb::common;
@@ -1312,7 +1314,7 @@ ByteVecValue Dimension::map_from_uint64(
   // Essentially take the largest value in the bucket
   if (std::is_integral<T>::value) {  // Integers
     T norm_coord_T =
-        ceil(((value + 1) / (double)max_bucket_val) * dom_range_T - 1);
+        std::ceil(((value + 1) / (double)max_bucket_val) * dom_range_T - 1);
     T coord_T = norm_coord_T + dom_start_T;
     std::memcpy(ret.data(), &coord_T, sizeof(T));
   } else {  // Floating point types

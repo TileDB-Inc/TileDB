@@ -38,7 +38,6 @@
 #include <utility>
 #include <vector>
 
-#include "tiledb/common/logger.h"
 #include "tiledb/common/status.h"
 #include "tiledb/sm/array_schema/array_schema.h"
 #include "tiledb/sm/array_schema/dimension.h"

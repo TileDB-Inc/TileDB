@@ -49,7 +49,9 @@
 
 #include <dlfcn.h>
 #include <cassert>
+#include <climits>
 #include <fstream>
+#include <functional>
 #include <iostream>
 #include <sstream>
 

@@ -49,6 +49,9 @@
 #include "tiledb/sm/misc/utils.h"
 
 #ifdef _WIN32
+#if !defined(NOMINMAX)
+#define NOMINMAX
+#endif
 #include <Windows.h>
 #undef GetMessage  // workaround for
                    // https://github.com/aws/aws-sdk-cpp/issues/402

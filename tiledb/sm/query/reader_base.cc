@@ -31,6 +31,7 @@
  */
 
 #include "tiledb/sm/query/reader_base.h"
+#include "tiledb/common/logger.h"
 #include "tiledb/sm/array/array.h"
 #include "tiledb/sm/array_schema/array_schema.h"
 #include "tiledb/sm/query/strategy_base.h"

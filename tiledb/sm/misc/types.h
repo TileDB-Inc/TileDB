@@ -35,11 +35,9 @@
 
 #include <cassert>
 #include <cstring>
+#include <string>
 #include <vector>
-
-#include "tiledb/common/logger.h"
-
-using namespace tiledb::common;
+#include "tiledb/common/logger_public.h"
 
 namespace tiledb {
 namespace sm {

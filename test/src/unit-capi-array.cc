@@ -51,6 +51,7 @@
 #include "tiledb/sm/misc/utils.h"
 
 #include <chrono>
+#include <climits>
 #include <iostream>
 #include <sstream>
 #include <thread>

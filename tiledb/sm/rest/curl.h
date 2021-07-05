@@ -35,6 +35,9 @@
 
 #ifdef TILEDB_SERIALIZATION
 
+#if !defined(NOMINMAX)
+#define NOMINMAX  // curl may include windows headers
+#endif
 #include <curl/curl.h>
 #include <cstdlib>
 #include <functional>

@@ -38,6 +38,7 @@
 #include "tiledb/sm/misc/constants.h"
 #include "tiledb/sm/misc/uri.h"
 
+#include <algorithm>
 #include <iostream>
 #include <set>
 #include <sstream>
