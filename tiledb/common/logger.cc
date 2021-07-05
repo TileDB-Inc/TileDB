@@ -33,6 +33,7 @@
 
 #include "tiledb/common/logger.h"
 
+#include <spdlog/fmt/fmt.h>
 #include <spdlog/fmt/ostr.h>
 #include <spdlog/sinks/stdout_sinks.h>
 #ifndef _WIN32
