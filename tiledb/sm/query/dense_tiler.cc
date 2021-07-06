@@ -31,6 +31,7 @@
  */
 
 #include "tiledb/sm/query/dense_tiler.h"
+#include "tiledb/common/logger.h"
 #include "tiledb/sm/array/array.h"
 #include "tiledb/sm/array_schema/dimension.h"
 #include "tiledb/sm/array_schema/domain.h"
@@ -458,7 +459,7 @@ void DenseTiler<T>::calculate_tile_and_subarray_strides() {
     tile_strides_el_[dim_num - 1] = 1;
     if (dim_num > 1) {
       for (auto d = dim_num - 2; d >= 0; --d) {
-        auto tile_extent = (const T*)(&domain->tile_extent(d + 1)[0]);
+        auto tile_extent = (const T*)(domain->tile_extent(d + 1).data());
         assert(tile_extent != nullptr);
         tile_strides_el_[d] = Dimension::tile_extent_mult<T>(
             tile_strides_el_[d + 1], *tile_extent);
@@ -468,7 +469,7 @@ void DenseTiler<T>::calculate_tile_and_subarray_strides() {
     tile_strides_el_[0] = 1;
     if (dim_num > 1) {
       for (auto d = 1; d < dim_num; ++d) {
-        auto tile_extent = (const T*)(&domain->tile_extent(d - 1)[0]);
+        auto tile_extent = (const T*)(domain->tile_extent(d - 1).data());
         assert(tile_extent != nullptr);
         tile_strides_el_[d] = Dimension::tile_extent_mult<T>(
             tile_strides_el_[d - 1], *tile_extent);

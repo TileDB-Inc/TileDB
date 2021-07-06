@@ -34,7 +34,6 @@
 #define TILEDB_S3_H
 
 #ifdef HAVE_S3
-#include "tiledb/common/logger.h"
 #include "tiledb/common/rwlock.h"
 #include "tiledb/common/status.h"
 #include "tiledb/common/thread_pool.h"
@@ -565,6 +564,10 @@ class S3 {
    */
   mutable tdb_shared_ptr<Aws::S3::S3Client> client_;
 
+  /** The AWS credetial provider. */
+  mutable tdb_shared_ptr<Aws::Auth::AWSCredentialsProvider>
+      credentials_provider_;
+
   /**
    * Mutex protecting client initialization. This is mutable so that nominally
    * const functions can call init_client().
@@ -625,6 +628,12 @@ class S3 {
 
   /** Protects file_buffers map */
   std::mutex file_buffers_mtx_;
+
+  /** If !NOT_SET assign to object requests supporting SetACL() */
+  Aws::S3::Model::ObjectCannedACL object_canned_acl_;
+
+  /** If !NOT_SET assign to bucket requests supporting SetACL() */
+  Aws::S3::Model::BucketCannedACL bucket_canned_acl_;
 
   /* ********************************* */
   /*          PRIVATE METHODS          */

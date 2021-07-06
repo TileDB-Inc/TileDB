@@ -35,10 +35,12 @@
 #include "tiledb/sm/c_api/tiledb.h"
 
 #include <climits>
+#include <cmath>
 #include <cstring>
 #include <iostream>
 
 using namespace tiledb::test;
+using std::ceil;
 
 const uint64_t DIM_DOMAIN[4] = {1, 10, 1, 10};
 

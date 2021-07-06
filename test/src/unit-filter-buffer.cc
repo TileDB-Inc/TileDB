@@ -415,8 +415,9 @@ TEST_CASE("FilterBuffer: Test fixed allocation", "[filter], [filter-buffer]") {
     fbuf.reset_offset();
     for (unsigned i = 0; i < nelts; i++)
       CHECK(fbuf.write(&i, sizeof(unsigned)).ok());
+    ConstBuffer first_buffer = fbuf.buffers()[0];
     for (unsigned i = 0; i < nelts; i++)
-      CHECK(fixed.value<unsigned>(i * sizeof(unsigned)) == i);
+      CHECK(first_buffer.value<unsigned>(i * sizeof(unsigned)) == i);
 
     // Error writing past fixed alloc
     unsigned v = 101;
@@ -440,18 +441,19 @@ TEST_CASE("FilterBuffer: Test fixed allocation", "[filter], [filter-buffer]") {
   SECTION("- Append view") {
     // Set up data to view
     FilterBuffer fbuf2(&storage);
-    CHECK(fbuf2.prepend_buffer(fixed.alloced_size()).ok());
+    CHECK(fbuf2.prepend_buffer(fbuf.size()).ok());
     fbuf2.reset_offset();
     for (unsigned i = 0; i < nelts; i++)
       CHECK(fbuf2.write(&i, sizeof(unsigned)).ok());
 
     // Check that append copies data from the view.
     CHECK(fbuf.append_view(&fbuf2, 0, (nelts / 2) * sizeof(unsigned)).ok());
+    ConstBuffer first_buffer = fbuf.buffers()[0];
     for (unsigned i = 0; i < nelts; i++) {
       if (i < nelts / 2)
-        CHECK(fixed.value<unsigned>(i * sizeof(unsigned)) == i);
+        CHECK(first_buffer.value<unsigned>(i * sizeof(unsigned)) == i);
       else
-        CHECK(fixed.value<unsigned>(i * sizeof(unsigned)) == 0);
+        CHECK(first_buffer.value<unsigned>(i * sizeof(unsigned)) == 0);
     }
 
     // Error appending multiple times

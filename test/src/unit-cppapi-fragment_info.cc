@@ -199,7 +199,7 @@ TEST_CASE(
 
   // Get fragment size
   auto size = fragment_info.fragment_size(1);
-  CHECK(size == 1708);
+  CHECK(size == 1786);
 
   // Get dense / sparse
   auto dense = fragment_info.dense(0);
@@ -625,17 +625,17 @@ TEST_CASE(
       "- Unconsolidated metadata num: 3\n" + "- To vacuum num: 0\n" +
       "- Fragment #1:\n" + "  > URI: " + written_frag_uri_1 + "\n" +
       "  > Type: dense\n" + "  > Non-empty domain: [1, 6]\n" +
-      "  > Size: 1584\n" + "  > Cell num: 10\n" +
-      "  > Timestamp range: [1, 1]\n" + "  > Format version: 9\n" +
+      "  > Size: 1662\n" + "  > Cell num: 10\n" +
+      "  > Timestamp range: [1, 1]\n" + "  > Format version: 10\n" +
       "  > Has consolidated metadata: no\n" + "- Fragment #2:\n" +
       "  > URI: " + written_frag_uri_2 + "\n" + "  > Type: sparse\n" +
-      "  > Non-empty domain: [1, 7]\n" + "  > Size: 1708\n" +
+      "  > Non-empty domain: [1, 7]\n" + "  > Size: 1786\n" +
       "  > Cell num: 4\n" + "  > Timestamp range: [2, 2]\n" +
-      "  > Format version: 9\n" + "  > Has consolidated metadata: no\n" +
+      "  > Format version: 10\n" + "  > Has consolidated metadata: no\n" +
       "- Fragment #3:\n" + "  > URI: " + written_frag_uri_3 + "\n" +
       "  > Type: sparse\n" + "  > Non-empty domain: [2, 9]\n" +
-      "  > Size: 1696\n" + "  > Cell num: 3\n" +
-      "  > Timestamp range: [3, 3]\n" + "  > Format version: 9\n" +
+      "  > Size: 1774\n" + "  > Cell num: 3\n" +
+      "  > Timestamp range: [3, 3]\n" + "  > Format version: 10\n" +
       "  > Has consolidated metadata: no\n";
   FILE* gold_fout = fopen("gold_fout.txt", "w");
   const char* dump = dump_str.c_str();

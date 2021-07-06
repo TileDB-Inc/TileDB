@@ -658,6 +658,27 @@ class StorageManager {
   bool is_vacuum_file(const URI& uri) const;
 
   /**
+   * Retrieve all array schemas for an array uri under its __schema directory.
+   *
+   * @param array_uri The URI path of the array.
+   * @param uris The vector of array schema URIS sorted from earliest to the
+   * latest.
+   * @return Status
+   */
+  Status get_array_schema_uris(
+      const URI& array_uri, std::vector<URI>* schema_uris) const;
+
+  /**
+   * Get latest array schema for an array uri.
+   *
+   * @param array_uri The URI path of the array.
+   * @param uri The latest array schema URI.
+   * @return Status
+   */
+  Status get_latest_array_schema_uri(
+      const URI& array_uri, URI* schema_uri) const;
+
+  /**
    * Loads the schema of an array from persistent storage into memory.
    *
    * @param array_uri The URI path of the array.

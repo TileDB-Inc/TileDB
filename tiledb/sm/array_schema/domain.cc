@@ -34,8 +34,6 @@
 #include "tiledb/common/heap_memory.h"
 #include "tiledb/common/logger.h"
 #include "tiledb/sm/array_schema/dimension.h"
-#include "tiledb/sm/buffer/buffer.h"
-#include "tiledb/sm/buffer/const_buffer.h"
 #include "tiledb/sm/enums/datatype.h"
 #include "tiledb/sm/enums/layout.h"
 #include "tiledb/sm/misc/utils.h"
@@ -565,7 +563,7 @@ Status Domain::init(Layout cell_order, Layout tile_order) {
 
 bool Domain::null_tile_extents() const {
   for (unsigned d = 0; d < dim_num_; ++d) {
-    if (tile_extent(d).empty())
+    if (!tile_extent(d))
       return true;
   }
 
@@ -698,7 +696,7 @@ double Domain::overlap_ratio(const NDRange& r1, const NDRange& r2) const {
 template <class T>
 int Domain::tile_order_cmp(
     const Dimension* dim, const void* coord_a, const void* coord_b) {
-  if (dim->tile_extent().empty())
+  if (!dim->tile_extent())
     return 0;
 
   auto tile_extent = *(const T*)dim->tile_extent().data();
@@ -722,8 +720,8 @@ int Domain::tile_order_cmp(
     for (unsigned d = 0; d < dim_num_; ++d) {
       auto dim = dimension(d);
 
-      // Inapplicable to var-sized dimensions or empty tile extents
-      if (dim->var_size() || dim->tile_extent().empty())
+      // Inapplicable to var-sized dimensions or absent tile extents
+      if (dim->var_size() || !dim->tile_extent())
         continue;
 
       auto coord_size = dim->coord_size();
@@ -739,8 +737,8 @@ int Domain::tile_order_cmp(
     for (unsigned d = dim_num_ - 1;; --d) {
       auto dim = dimension(d);
 
-      // Inapplicable to var-sized dimensions or empty tile extents
-      if (!dim->var_size() && !dim->tile_extent().empty()) {
+      // Inapplicable to var-sized dimensions or absent tile extents
+      if (!dim->var_size() && dim->tile_extent()) {
         auto coord_size = dim->coord_size();
         auto ca = &(((unsigned char*)coord_buffs[d]->buffer_)[a * coord_size]);
         auto cb = &(((unsigned char*)coord_buffs[d]->buffer_)[b * coord_size]);

@@ -51,6 +51,7 @@
 #include "tiledb/sm/misc/utils.h"
 
 #include <chrono>
+#include <climits>
 #include <iostream>
 #include <sstream>
 #include <thread>
@@ -513,6 +514,8 @@ TEST_CASE_METHOD(
     REQUIRE(rc == TILEDB_ERR);
     tiledb_ctx_free(&ctx_invalid_key_len_2);
     tiledb_vfs_free(&vfs_invalid_key_len_2);
+    // remove the empty array directory
+    remove_temp_dir(array_name);
 
     // Create array with proper key
     rc = tiledb_config_set(cfg, "sm.encryption_type", "AES_256_GCM", &err);
@@ -748,7 +751,7 @@ TEST_CASE_METHOD(
     rc = tiledb_array_alloc(ctx_, array_name.c_str(), &array);
     REQUIRE(rc == TILEDB_OK);
     // Check error with key
-    char key[32];
+    const char key[] = "0123456789abcdeF0123456789abcdeF";
     rc = tiledb_config_set(cfg, "sm.encryption_type", "AES_256_GCM", &err);
     REQUIRE(rc == TILEDB_OK);
     REQUIRE(err == nullptr);

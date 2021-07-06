@@ -39,7 +39,9 @@
 #include "tiledb/common/status.h"
 #include "tiledb/sm/filter/filter_pipeline.h"
 #include "tiledb/sm/misc/constants.h"
+#include "tiledb/sm/misc/hilbert.h"
 #include "tiledb/sm/misc/uri.h"
+#include "tiledb/sm/misc/uuid.h"
 
 using namespace tiledb::common;
 
@@ -297,6 +299,28 @@ class ArraySchema {
   /** Returns the array schema version. */
   uint32_t version() const;
 
+  /** Set a timestamp range for the array schema */
+  Status set_timestamp_range(
+      const std::pair<uint64_t, uint64_t>& timestamp_range);
+
+  /** Returns the timestamp range. */
+  std::pair<uint64_t, uint64_t> timestamp_range() const;
+
+  /** Returns the array schema uri. */
+  URI uri();
+
+  /** Set schema URI, along with parsing out timestamp ranges and name. */
+  void set_uri(URI& uri);
+
+  /** Get schema URI with return status. */
+  Status get_uri(URI* uri);
+
+  /** Returns the schema name. If it is not set, will build it. */
+  std::string name();
+
+  /** Returns the schema name. If it is not set, will returns error status. */
+  Status get_name(std::string* name) const;
+
  private:
   /* ********************************* */
   /*         PRIVATE ATTRIBUTES        */
@@ -356,6 +380,23 @@ class ArraySchema {
   /** The format version of this array schema. */
   uint32_t version_;
 
+  /** Mutex for thread-safety. */
+  mutable std::mutex mtx_;
+
+  /**
+   * The timestamp the array schema was written.
+   * This is used to determine the array schema file name.
+   * The two timestamps are identical.
+   * It is stored as a pair to keep the usage consistent with metadata
+   */
+  std::pair<uint64_t, uint64_t> timestamp_range_;
+
+  /** The URI of the array schema file. */
+  URI uri_;
+
+  /** The file name of array schema in the format of timestamp_timestamp_uuid */
+  std::string name_;
+
   /* ********************************* */
   /*           PRIVATE METHODS         */
   /* ********************************* */
@@ -374,6 +415,9 @@ class ArraySchema {
 
   /** Clears all members. Use with caution! */
   void clear();
+
+  /** Generates a new array schema URI. */
+  Status generate_uri();
 };
 
 }  // namespace sm

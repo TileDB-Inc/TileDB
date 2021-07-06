@@ -4490,8 +4490,11 @@ int ConsolidationFx::get_dir_num(const char* path, void* data) {
   CHECK(rc == TILEDB_OK);
   auto meta_dir =
       std::string("/") + tiledb::sm::constants::array_metadata_folder_name;
-  if (!tiledb::sm::utils::parse::ends_with(path, meta_dir)) {
-    // Ignoring the meta folder
+  auto schema_dir =
+      std::string("/") + tiledb::sm::constants::array_schema_folder_name;
+  if (!tiledb::sm::utils::parse::ends_with(path, meta_dir) &&
+      !tiledb::sm::utils::parse::ends_with(path, schema_dir)) {
+    // Ignoring the meta folder and the schema folder
     data_struct->num += is_dir;
   }
 
@@ -5668,7 +5671,7 @@ TEST_CASE_METHOD(
   REQUIRE(rc == TILEDB_OK);
   REQUIRE(error == nullptr);
   rc = tiledb_config_set(
-      config, "sm.consolidation.step_size_ratio", "0.75", &error);
+      config, "sm.consolidation.step_size_ratio", "0.78", &error);
   REQUIRE(rc == TILEDB_OK);
   REQUIRE(error == nullptr);
 

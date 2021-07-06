@@ -968,6 +968,7 @@ int32_t num_fragments(const std::string& array_name) {
   for (const auto& uri : uris) {
     auto name = tiledb::sm::URI(uri).remove_trailing_slash().last_path_part();
     if (name != tiledb::sm::constants::array_metadata_folder_name &&
+        name != tiledb::sm::constants::array_schema_folder_name &&
         name.find_first_of('.') == std::string::npos)
       ++ret;
   }

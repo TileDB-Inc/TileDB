@@ -6,7 +6,7 @@ from operator import itemgetter
 from typing import Mapping, Sequence
 
 
-_type_mapping = {
+type_mapping = {
     "FORMAT": "## Disk Format",
     "BREAKING_API": "## Breaking C API changes",
     "BREAKING_BEHAVIOR": "## Breaking behavior",
@@ -14,6 +14,7 @@ _type_mapping = {
     "IMPROVEMENT": "## Improvements",
     "DEPRECATION": "## Deprecations",
     "BUG": "## Bug fixes",
+    "API": "## API additions",
     "C_API": "### C API",
     "CPP_API": "### C++ API",
 }
@@ -29,7 +30,7 @@ def parse_pr_body(
         if line.startswith(type_tag):
             change_type = line[len(type_tag) :].strip()
             try:
-                headers.append(_type_mapping[change_type])
+                headers.append(type_mapping[change_type])
             except KeyError:
                 raise ValueError(f"Unknown history type: {change_type}")
 

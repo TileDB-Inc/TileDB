@@ -35,11 +35,13 @@
 #define TILEDB_UTILS_H
 
 #include <cassert>
+#include <cmath>
 #include <string>
 #include <type_traits>
 #include <vector>
 
 #include "constants.h"
+#include "tiledb/common/logger_public.h"
 #include "tiledb/common/status.h"
 #include "tiledb/sm/misc/types.h"
 

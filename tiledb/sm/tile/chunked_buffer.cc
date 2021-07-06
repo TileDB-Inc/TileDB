@@ -32,6 +32,7 @@
 
 #include "tiledb/sm/tile/chunked_buffer.h"
 #include "tiledb/common/heap_memory.h"
+#include "tiledb/common/logger.h"
 #include "tiledb/sm/misc/utils.h"
 
 #include <cstdlib>

@@ -33,7 +33,7 @@
 #include "tiledb/sm/filter/checksum_sha256_filter.h"
 #include "tiledb/common/heap_memory.h"
 #include "tiledb/common/logger.h"
-#include "tiledb/sm/buffer/preallocated_buffer.h"
+#include "tiledb/sm/buffer/buffer.h"
 #include "tiledb/sm/crypto/crypto.h"
 #include "tiledb/sm/enums/filter_type.h"
 #include "tiledb/sm/tile/tile.h"

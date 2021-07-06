@@ -34,12 +34,13 @@
 #define TILEDB_DIMENSION_H
 
 #include <bitset>
+#include <cmath>
 #include <iomanip>
 #include <iostream>
 #include <sstream>
 #include <string>
 
-#include "tiledb/common/logger.h"
+#include "tiledb/common/logger_public.h"
 #include "tiledb/common/status.h"
 #include "tiledb/sm/misc/types.h"
 #include "tiledb/sm/misc/utils.h"
@@ -445,7 +446,7 @@ class Dimension {
          << domain[0] << ", " << domain[1]
          << "]. Adjusting range lower bound to be " << domain[0]
          << " on dimension '" << dim->name() << "'";
-      global_logger().warn(ss.str().c_str());
+      LOG_WARN(ss.str());
 
       r[0] = domain[0];
     }
@@ -456,7 +457,7 @@ class Dimension {
          << domain[0] << ", " << domain[1]
          << "]. Adjusting range upper bound to be " << domain[1]
          << " on dimension '" << dim->name() << "'";
-      global_logger().warn(ss.str().c_str());
+      LOG_WARN(ss.str());
 
       r[1] = domain[1];
     }
@@ -485,7 +486,7 @@ class Dimension {
          << domain[0] << ", " << domain[1]
          << "]. Adjusting range lower bound to be " << domain[0]
          << " on dimension '" << dim->name() << "'";
-      global_logger().warn(ss.str().c_str());
+      LOG_WARN(ss.str());
 
       r[0] = domain[0];
     }
@@ -496,7 +497,7 @@ class Dimension {
          << domain[0] << ", " << domain[1]
          << "]. Adjusting range upper bound to be " << domain[1]
          << " on dimension '" << dim->name() << "'";
-      global_logger().warn(ss.str().c_str());
+      LOG_WARN(ss.str());
 
       r[1] = domain[1];
     }
@@ -1043,13 +1044,13 @@ class Dimension {
           "Domain check failed; Upper domain bound should "
           "not be smaller than the lower one"));
 
-    // Domain range must not exceed the maximum uint64_t number
+    // Domain range must not exceed the maximum unsigned number
     // for integer domains
-    if ((uint64_t)(domain[1] - domain[0]) ==
-        std::numeric_limits<uint64_t>::max())
+    if (domain[0] == std::numeric_limits<T>::min() &&
+        domain[1] == std::numeric_limits<T>::max())
       return LOG_STATUS(Status::DimensionError(
           "Domain check failed; Domain range (upper + lower + 1) is larger "
-          "than the maximum uint64 number"));
+          "than the maximum unsigned number"));
 
     return Status::Ok();
   }

@@ -2098,7 +2098,7 @@ class Query {
           "'!");
     }
 
-    ctx.handle_error(tiledb_query_get_buffer(
+    ctx.handle_error(tiledb_query_get_data_buffer(
         ctx.ptr().get(), query_.get(), name.c_str(), data, &data_nbytes));
 
     assert(*data_nbytes % elem_size_iter->second == 0);

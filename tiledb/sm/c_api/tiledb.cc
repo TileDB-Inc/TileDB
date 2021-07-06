@@ -217,10 +217,10 @@ int32_t tiledb_encryption_type_to_str(
 
 int32_t tiledb_encryption_type_from_str(
     const char* str, tiledb_encryption_type_t* encryption_type) {
-  tiledb::sm::EncryptionType val = tiledb::sm::EncryptionType::NO_ENCRYPTION;
-  if (!tiledb::sm::encryption_type_enum(str, &val).ok())
+  auto [st, et] = tiledb::sm::encryption_type_enum(str);
+  if (!st.ok())
     return TILEDB_ERR;
-  *encryption_type = (tiledb_encryption_type_t)val;
+  *encryption_type = (tiledb_encryption_type_t)et.value();
   return TILEDB_OK;
 }
 
@@ -2329,6 +2329,7 @@ int32_t tiledb_array_schema_load_with_key(
 
     // Load array schema
     auto storage_manager = ctx->ctx_->storage_manager();
+
     if (SAVE_ERROR_CATCH(
             ctx,
             storage_manager->load_array_schema(

@@ -28,9 +28,9 @@
 cmake_minimum_required(VERSION 2.8)
 project(TileDBExampleProj)
 
-# Set C++11 as required standard for all C++ targets (required to use the TileDB
+# Set C++17 as required standard for all C++ targets (required to use the TileDB
 # C++ API).
-set(CMAKE_CXX_STANDARD 11)
+set(CMAKE_CXX_STANDARD 17)
 set(CMAKE_CXX_STANDARD_REQUIRED ON)
 
 # Find TileDB.

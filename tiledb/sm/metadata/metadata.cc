@@ -33,7 +33,6 @@
 #include "tiledb/sm/metadata/metadata.h"
 #include "tiledb/common/logger.h"
 #include "tiledb/sm/buffer/buffer.h"
-#include "tiledb/sm/buffer/const_buffer.h"
 #include "tiledb/sm/enums/datatype.h"
 #include "tiledb/sm/misc/utils.h"
 #include "tiledb/sm/misc/uuid.h"

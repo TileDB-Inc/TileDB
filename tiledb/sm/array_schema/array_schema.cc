@@ -37,7 +37,7 @@
 #include "tiledb/sm/array_schema/attribute.h"
 #include "tiledb/sm/array_schema/dimension.h"
 #include "tiledb/sm/array_schema/domain.h"
-#include "tiledb/sm/buffer/const_buffer.h"
+#include "tiledb/sm/buffer/buffer.h"
 #include "tiledb/sm/enums/array_type.h"
 #include "tiledb/sm/enums/compressor.h"
 #include "tiledb/sm/enums/datatype.h"
@@ -68,11 +68,15 @@ ArraySchema::ArraySchema(ArrayType array_type)
     : array_type_(array_type) {
   allows_dups_ = false;
   array_uri_ = URI();
+  uri_ = URI();
+  name_ = "";
   capacity_ = constants::capacity;
   cell_order_ = Layout::ROW_MAJOR;
   domain_ = nullptr;
   tile_order_ = Layout::ROW_MAJOR;
   version_ = constants::format_version;
+  auto timestamp = utils::time::timestamp_now_ms();
+  timestamp_range_ = std::make_pair(timestamp, timestamp);
 
   // Set up default filter pipelines for coords, offsets, and validity values.
   coords_filters_.add_filter(CompressionFilter(
@@ -88,8 +92,11 @@ ArraySchema::ArraySchema(ArrayType array_type)
 ArraySchema::ArraySchema(const ArraySchema* array_schema) {
   allows_dups_ = array_schema->allows_dups_;
   array_uri_ = array_schema->array_uri_;
+  uri_ = array_schema->uri_;
+  name_ = array_schema->name_;
   array_type_ = array_schema->array_type_;
   domain_ = nullptr;
+  timestamp_range_ = array_schema->timestamp_range_;
 
   capacity_ = array_schema->capacity_;
   cell_order_ = array_schema->cell_order_;
@@ -689,6 +696,59 @@ uint32_t ArraySchema::version() const {
   return version_;
 }
 
+Status ArraySchema::set_timestamp_range(
+    const std::pair<uint64_t, uint64_t>& timestamp_range) {
+  timestamp_range_ = timestamp_range;
+  return Status::Ok();
+}
+
+std::pair<uint64_t, uint64_t> ArraySchema::timestamp_range() const {
+  return std::pair<uint64_t, uint64_t>(
+      timestamp_range_.first, timestamp_range_.second);
+}
+
+URI ArraySchema::uri() {
+  std::lock_guard<std::mutex> lock(mtx_);
+  if (uri_.is_invalid()) {
+    generate_uri();
+  }
+  URI result = uri_;
+  return result;
+}
+
+void ArraySchema::set_uri(URI& uri) {
+  std::lock_guard<std::mutex> lock(mtx_);
+  uri_ = uri;
+  name_ = uri_.last_path_part();
+  utils::parse::get_timestamp_range(uri_, &timestamp_range_);
+}
+
+Status ArraySchema::get_uri(URI* uri) {
+  if (uri_.is_invalid()) {
+    return LOG_STATUS(
+        Status::ArraySchemaError("Error in ArraySchema; invalid URI"));
+  }
+  *uri = uri_;
+  return Status::Ok();
+}
+
+std::string ArraySchema::name() {
+  std::lock_guard<std::mutex> lock(mtx_);
+  if (name_.empty()) {
+    generate_uri();
+  }
+  return name_;
+}
+
+Status ArraySchema::get_name(std::string* name) const {
+  if (name_.empty()) {
+    return LOG_STATUS(
+        Status::ArraySchemaError("Error in ArraySchema; Empty name"));
+  }
+  *name = name_;
+  return Status::Ok();
+}
+
 /* ****************************** */
 /*         PRIVATE METHODS        */
 /* ****************************** */
@@ -736,6 +796,8 @@ Status ArraySchema::check_double_delta_compressor() const {
 
 void ArraySchema::clear() {
   array_uri_ = URI();
+  uri_ = URI();
+  name_.clear();
   array_type_ = ArrayType::DENSE;
   capacity_ = constants::capacity;
   cell_order_ = Layout::ROW_MAJOR;
@@ -747,6 +809,21 @@ void ArraySchema::clear() {
 
   tdb_delete(domain_);
   domain_ = nullptr;
+  timestamp_range_ = std::make_pair(0, 0);
+}
+
+Status ArraySchema::generate_uri() {
+  std::string uuid;
+  RETURN_NOT_OK(uuid::generate_uuid(&uuid, false));
+
+  std::stringstream ss;
+  ss << "__" << timestamp_range_.first << "_" << timestamp_range_.second << "_"
+     << uuid;
+  name_ = ss.str();
+  uri_ = array_uri_.join_path(constants::array_schema_folder_name)
+             .join_path(name_);
+
+  return Status::Ok();
 }
 
 }  // namespace sm

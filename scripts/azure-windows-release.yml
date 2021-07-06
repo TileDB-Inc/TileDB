@@ -19,11 +19,51 @@ steps:
       $host.SetShouldExit(1)
     }
 
+    $bootstrapOptions = "-EnableVerbose -EnableStaticTileDB -EnableBuildDeps"
     if ($env:TILEDB_S3 -eq "ON") {
-      & "$env:BUILD_SOURCESDIRECTORY\bootstrap.ps1" -EnableS3 -EnableVerbose
-    } else {
-      & "$env:BUILD_SOURCESDIRECTORY\bootstrap.ps1" -EnableVerbose
+      $bootstrapOptions = "-EnableS3 " + $bootstrapOptions
     }
+    if ($env:TILEDB_AZURE -eq "ON") {
+      $bootstrapOptions = "-EnableAzure " + $bootstrapOptions
+    }
+    if ($env:TILEDB_GCS -eq "ON") {
+      $bootstrapOptions = "-EnableGCS " + $bootstrapOptions
+      #NOTE: GCS simulator not yet actually in place.
+    }
+    if ($env:TILEDB_SERIALIZATION -eq "ON") {
+      $bootstrapOptions = "-EnableSerialization " + $bootstrapOptions
+    }
+    # static already added above as initial default
+    # if ($env:TILEDB_STATIC -eq "ON") {
+    #  $bootstrapOptions = $bootstrapOptions + " -EnableStaticTileDB"
+    # }
+    # if ($env:TILEDB_HDFS -eq "ON") {
+    #  $bootstrapOptions = $bootstrapOptions + " -EnableHDFS"
+    #}
+    if ($env:TILEDB_TOOLS -eq "ON") {
+      $bootstrapOptions = $bootstrapOptions + " -EnableTools"
+    }
+    if ($env:TILEDB_DEBUG -eq "ON") {
+      $bootstrapOptions = $bootstrapOptions + " -EnableDebug"
+    }
+    # if ($env:TILEDB_CI_ASAN -eq "ON") {
+    #  $bootstrapOptions = $bootstrapOptions + " -EnableSanitizer address -EnableDebug"
+    # }
+    # if ($env:TILEDB_CI_TSAN -eq "ON") {
+    #  $bootstrapOptions = $bootstrapOptions + " -EnableSanitizer thread -EnableDebug"
+    # }
+    # static already added above as initial default
+    # if ($env:TILEDB_FORCE_BUILD_DEPS" -eq "ON") {
+    #   $bootstrapOptions = $bootstrapOptions + " -EnableBuildDeps"
+    # }
+    if ($env:TILEDB_WERROR -eq "OFF") {
+      $bootstrapOptions = $bootstrapOptions + " -DisableWerror"
+    }
+
+    $bootstrapExpression = "& $env:BUILD_SOURCESDIRECTORY\bootstrap.ps1 " + $bootstrapOptions
+    Write-Host "bootstrapExpression: $bootstrapExpression"
+    Invoke-Expression $bootstrapExpression
+
     if ($LastExitCode -ne 0) {
        Write-Host "Bootstrap failed."
        $host.SetShouldExit($LastExitCode)
@@ -43,6 +83,21 @@ steps:
       $host.SetShouldExit($LastExitCode)
     }
   displayName: "Build"
+  continueOnError: true
+
+- task: ArchiveFiles@2
+  inputs:
+    rootFolderOrFile: '$(Agent.BuildDirectory)\s\'
+    includeRootFolder: false
+    archiveType: 'zip' # Options: zip, 7z, tar, wim
+    archiveFile: $(Build.ArtifactStagingDirectory)/tiledb-$(ARTIFACT_OS)-$(ARTIFACT_ARCH)-build-dir.zip
+    replaceExistingArchive: true
+    verbose: true # Optional
+
+- task: PublishBuildArtifacts@1
+  inputs:
+    pathToPublish: '$(Build.ArtifactStagingDirectory)/tiledb-$(ARTIFACT_OS)-$(ARTIFACT_ARCH)-build-dir.zip'
+    artifactName: 'build-dirs'
 
 # Archive files
 # Compress files into .7z, .tar.gz, or .zip
@@ -51,29 +106,13 @@ steps:
       rootFolderOrFile: '$(Agent.BuildDirectory)\s\dist\'
       includeRootFolder: false
       archiveType: 'zip' # Options: zip, 7z, tar, wim
-      archiveFile: $(Build.ArtifactStagingDirectory)/tiledb-$(ARTIFACT_OS)-$(Build.SourceBranchName)-$(commitHash)-$(ARTIFACT_EXTRAS).zip
+      archiveFile: $(Build.ArtifactStagingDirectory)/tiledb-$(ARTIFACT_OS)-$(ARTIFACT_ARCH)-$(Build.SourceBranchName)-$(commitHash).zip
       replaceExistingArchive: true
       verbose: true # Optional
   condition: succeeded()
 
-- task: ArchiveFiles@2
-  inputs:
-    rootFolderOrFile: '$(Agent.BuildDirectory)\s\'
-    includeRootFolder: false
-    archiveType: 'zip' # Options: zip, 7z, tar, wim
-    archiveFile: $(Build.ArtifactStagingDirectory)/tiledb-$(ARTIFACT_OS)-build-dir-$(ARTIFACT_EXTRAS).zip
-    replaceExistingArchive: true
-    verbose: true # Optional
-  condition: succeeded()
-
 - task: PublishBuildArtifacts@1
   inputs:
-      pathtoPublish: '$(Build.ArtifactStagingDirectory)\tiledb-$(ARTIFACT_OS)-$(Build.SourceBranchName)-$(commitHash)-$(ARTIFACT_EXTRAS).zip'
-      artifactName: '$(ARTIFACT_EXTRAS)'
-  condition: succeeded()
-
-- task: PublishBuildArtifacts@1
-  inputs:
-    pathtoPublish: '$(Build.ArtifactStagingDirectory)/tiledb-$(ARTIFACT_OS)-build-dir-$(ARTIFACT_EXTRAS).zip'
-    artifactName: 'build-dirs'
+      pathToPublish: '$(Build.ArtifactStagingDirectory)\tiledb-$(ARTIFACT_OS)-$(ARTIFACT_ARCH)-$(Build.SourceBranchName)-$(commitHash).zip'
+      artifactName: 'built-libs'
   condition: succeeded()

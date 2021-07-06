@@ -166,7 +166,7 @@ Status QueryCondition::combine(
   if (combination_op != QueryConditionCombinationOp::AND) {
     return Status::QueryConditionError(
         "Cannot combine query conditions; Only the 'AND' "
-        "comination op is supported");
+        "combination op is supported");
   }
 
   combined_cond->clauses_ = clauses_;
