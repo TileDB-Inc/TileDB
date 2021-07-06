@@ -2204,6 +2204,34 @@ Status StorageManager::store_array_metadata(
   return st;
 }
 
+Status StorageManager::remove_attribute(
+    const URI& array_uri,
+    const std::string& attr_name,
+    const EncryptionKey& encryption_key) {
+  ArraySchema* array_schema;
+  RETURN_NOT_OK(load_array_schema(array_uri, encryption_key, &array_schema));
+
+  Status st = array_schema->remove_attribute(attr_name);
+  if (!st.ok()) {
+    tdb_delete(array_schema);
+    array_schema = nullptr;
+    return LOG_STATUS(Status::StorageManagerError(
+        "Cannot remove attribute; Invalid attribute name."));
+  }
+
+  st = store_array_schema(array_schema, encryption_key);
+  if (!st.ok()) {
+    tdb_delete(array_schema);
+    array_schema = nullptr;
+    return LOG_STATUS(Status::StorageManagerError(
+        "Cannot remove attribute;  Not able to store array schema."));
+  }
+
+  tdb_delete(array_schema);
+  array_schema = nullptr;
+  return Status::Ok();
+}
+
 Status StorageManager::close_file(const URI& uri) {
   return vfs_->close_file(uri);
 }

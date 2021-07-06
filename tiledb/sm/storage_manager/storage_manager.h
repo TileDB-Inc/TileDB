@@ -886,6 +886,18 @@ class StorageManager {
       const EncryptionKey& encryption_key,
       Metadata* array_metadata);
 
+  /**
+   * Removes an attribute from an array.
+   *
+   * @param array_uri The array URI.
+   * @param encryption_key The encryption key to use.
+   * @return Status
+   */
+  Status remove_attribute(
+      const URI& array_uri,
+      const std::string& attr_name,
+      const EncryptionKey& encryption_key);
+
   /** Closes a file, flushing its contents to persistent storage. */
   Status close_file(const URI& uri);
 
