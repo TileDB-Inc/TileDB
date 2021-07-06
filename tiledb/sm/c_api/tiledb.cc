@@ -217,7 +217,7 @@ int32_t tiledb_encryption_type_to_str(
 
 int32_t tiledb_encryption_type_from_str(
     const char* str, tiledb_encryption_type_t* encryption_type) {
-  auto[st, et] = tiledb::sm::encryption_type_enum(str);
+  auto [st, et] = tiledb::sm::encryption_type_enum(str);
   if (!st.ok())
     return TILEDB_ERR;
   *encryption_type = (tiledb_encryption_type_t)et.value();
