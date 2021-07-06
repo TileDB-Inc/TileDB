@@ -111,13 +111,8 @@ stages:
            VS2017:
              imageName: 'vs2017-win2016'
              # Only S3 variable is currently supported in boostrap powershell
-             TILEDB_S3: ON
-#             TILEDB_AZURE: OFF
-#             TILEDB_GCS: OFF
-#             TILEDB_HDFS: OFF
-             TILEDB_STATIC: OFF
-#             TILEDB_SERIALIZATION: OFF
-             TILEDB_FORCE_BUILD_DEPS: ON
+             TILEDB_GCS: OFF
+             TILEDB_HDFS: OFF
              ARTIFACT_OS: 'windows'
              ARTIFACT_ARCH: 'x86_64'
        pool:
