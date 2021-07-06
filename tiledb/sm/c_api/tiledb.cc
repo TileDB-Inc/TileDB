@@ -217,7 +217,7 @@ int32_t tiledb_encryption_type_to_str(
 
 int32_t tiledb_encryption_type_from_str(
     const char* str, tiledb_encryption_type_t* encryption_type) {
-  auto [st, et] = tiledb::sm::encryption_type_enum(str);
+  auto[st, et] = tiledb::sm::encryption_type_enum(str);
   if (!st.ok())
     return TILEDB_ERR;
   *encryption_type = (tiledb_encryption_type_t)et.value();
@@ -2338,6 +2338,68 @@ int32_t tiledb_array_schema_load_with_key(
       return TILEDB_ERR;
     }
   }
+  return TILEDB_OK;
+}
+
+int32_t tiledb_array_remove_attribute(
+    tiledb_ctx_t* ctx,
+    const char* array_uri,
+    const char* attr_name,
+    tiledb_encryption_type_t encryption_type,
+    const void* encryption_key,
+    uint32_t key_length) {
+  if (sanity_check(ctx) == TILEDB_ERR)
+    return TILEDB_ERR;
+
+  // Check array name
+  tiledb::sm::URI uri(array_uri);
+  if (uri.is_invalid()) {
+    auto st = Status::Error("Failed to load array schema; Invalid array URI");
+    LOG_STATUS(st);
+    save_error(ctx, st);
+    return TILEDB_ERR;
+  }
+  // Create key
+  tiledb::sm::EncryptionKey key;
+  if (SAVE_ERROR_CATCH(
+          ctx,
+          key.set_key(
+              static_cast<tiledb::sm::EncryptionType>(encryption_type),
+              encryption_key,
+              key_length)))
+    return TILEDB_ERR;
+
+  tiledb_array_schema_t* array_schema;
+  int rc = tiledb_array_schema_load_with_key(
+      ctx,
+      array_uri,
+      encryption_type,
+      encryption_key,
+      key_length,
+      &array_schema);
+  if (rc == TILEDB_ERR || array_schema == nullptr) {
+    return rc;
+  }
+
+  Status st =
+      array_schema->array_schema_->remove_attribute(std::string(attr_name));
+  if (!st.ok()) {
+    tdb_delete(array_schema);
+    return TILEDB_ERR;
+  }
+
+  // Get storage_manager
+  const auto& storage_manager = ctx->ctx_->storage_manager();
+
+  if (SAVE_ERROR_CATCH(
+          ctx,
+          storage_manager->store_array_schema(
+              (array_schema)->array_schema_, key))) {
+    tdb_delete(array_schema);
+    return TILEDB_ERR;
+  }
+
+  tdb_delete(array_schema);
   return TILEDB_OK;
 }
 

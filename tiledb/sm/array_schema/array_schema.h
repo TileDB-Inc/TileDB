@@ -239,6 +239,14 @@ class ArraySchema {
   Status add_attribute(const Attribute* attr, bool check_special = true);
 
   /**
+   * Removes an attribute.
+   *
+   * @param attr_name The name of the attribute to be removed.
+   * @return Status
+   */
+  Status remove_attribute(const std::string& attr_name);
+
+  /**
    * It assigns values to the members of the object from the input buffer.
    *
    * @param buff The binary representation of the object to read from.
@@ -396,6 +404,9 @@ class ArraySchema {
 
   /** The file name of array schema in the format of timestamp_timestamp_uuid */
   std::string name_;
+
+  /** The flag for new uri, true when a new uri needs to be generated */
+  bool new_uri_needed_;
 
   /* ********************************* */
   /*           PRIVATE METHODS         */

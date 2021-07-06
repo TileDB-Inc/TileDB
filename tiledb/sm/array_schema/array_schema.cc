@@ -70,6 +70,7 @@ ArraySchema::ArraySchema(ArrayType array_type)
   array_uri_ = URI();
   uri_ = URI();
   name_ = "";
+  new_uri_needed_ = false;
   capacity_ = constants::capacity;
   cell_order_ = Layout::ROW_MAJOR;
   domain_ = nullptr;
@@ -94,6 +95,7 @@ ArraySchema::ArraySchema(const ArraySchema* array_schema) {
   array_uri_ = array_schema->array_uri_;
   uri_ = array_schema->uri_;
   name_ = array_schema->name_;
+  new_uri_needed_ = array_schema->new_uri_needed_;
   array_type_ = array_schema->array_type_;
   domain_ = nullptr;
   timestamp_range_ = array_schema->timestamp_range_;
@@ -501,7 +503,34 @@ Status ArraySchema::add_attribute(const Attribute* attr, bool check_special) {
   auto new_attr = tdb_new(Attribute, attr);
   attributes_.emplace_back(new_attr);
   attribute_map_[new_attr->name()] = new_attr;
+  new_uri_needed_ = true;
+  return Status::Ok();
+}
 
+Status ArraySchema::remove_attribute(const std::string& attr_name) {
+  if (attr_name.empty()) {
+    return LOG_STATUS(
+        Status::ArraySchemaError("Cannot remove an empty name attribute"));
+  }
+
+  if (attribute_map_.find(attr_name) == attribute_map_.end()) {
+    // Not exists.
+    return LOG_STATUS(
+        Status::ArraySchemaError("Cannot remove a non-exist attribute"));
+  }
+  attribute_map_.erase(attr_name);
+
+  // Iterate backwards and remove the attribute pointer, it should be slightly
+  // faster than iterating forward.
+  std::vector<Attribute*>::iterator it;
+  for (it = attributes_.end(); it != attributes_.begin();) {
+    --it;
+    if ((*it)->name() == attr_name) {
+      tdb_delete(*it);
+      it = attributes_.erase(it);
+    }
+  }
+  new_uri_needed_ = true;
   return Status::Ok();
 }
 
@@ -709,7 +738,7 @@ std::pair<uint64_t, uint64_t> ArraySchema::timestamp_range() const {
 
 URI ArraySchema::uri() {
   std::lock_guard<std::mutex> lock(mtx_);
-  if (uri_.is_invalid()) {
+  if (uri_.is_invalid() || new_uri_needed_) {
     generate_uri();
   }
   URI result = uri_;
@@ -815,14 +844,15 @@ void ArraySchema::clear() {
 Status ArraySchema::generate_uri() {
   std::string uuid;
   RETURN_NOT_OK(uuid::generate_uuid(&uuid, false));
-
+  auto timestamp = utils::time::timestamp_now_ms();
+  timestamp_range_ = std::make_pair(timestamp, timestamp);
   std::stringstream ss;
   ss << "__" << timestamp_range_.first << "_" << timestamp_range_.second << "_"
      << uuid;
   name_ = ss.str();
   uri_ = array_uri_.join_path(constants::array_schema_folder_name)
              .join_path(name_);
-
+  new_uri_needed_ = false;
   return Status::Ok();
 }
 

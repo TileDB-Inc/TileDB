@@ -540,7 +540,7 @@ Status StorageManager::array_consolidate(
     bool found = false;
     encryption_type_from_cfg = config->get("sm.encryption_type", &found);
     assert(found);
-    auto [st, et] = encryption_type_enum(encryption_type_from_cfg);
+    auto[st, et] = encryption_type_enum(encryption_type_from_cfg);
     RETURN_NOT_OK(st);
     encryption_type = et.value();
 
@@ -763,7 +763,7 @@ Status StorageManager::array_metadata_consolidate(
     bool found = false;
     encryption_type_from_cfg = config->get("sm.encryption_type", &found);
     assert(found);
-    auto [st, et] = encryption_type_enum(encryption_type_from_cfg);
+    auto[st, et] = encryption_type_enum(encryption_type_from_cfg);
     RETURN_NOT_OK(st);
     encryption_type = et.value();
 
@@ -833,7 +833,7 @@ Status StorageManager::array_create(
     std::string encryption_type_from_cfg =
         config_.get("sm.encryption_type", &found);
     assert(found);
-    auto [st, etc] = encryption_type_enum(encryption_type_from_cfg);
+    auto[st, etc] = encryption_type_enum(encryption_type_from_cfg);
     RETURN_NOT_OK(st);
     EncryptionType encryption_type_cfg = etc.value();
 
@@ -1761,7 +1761,7 @@ Status StorageManager::load_array_schema(
     std::string encryption_type_from_cfg =
         config_.get("sm.encryption_type", &found);
     assert(found);
-    auto [st, etc] = encryption_type_enum(encryption_type_from_cfg);
+    auto[st, etc] = encryption_type_enum(encryption_type_from_cfg);
     RETURN_NOT_OK(st);
     EncryptionType encryption_type_cfg = etc.value();
 

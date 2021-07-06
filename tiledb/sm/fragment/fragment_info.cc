@@ -462,7 +462,7 @@ Status FragmentInfo::load(
     std::string encryption_type_from_cfg =
         config.get("sm.encryption_type", &found);
     assert(found);
-    auto [st, et] = encryption_type_enum(encryption_type_from_cfg);
+    auto[st, et] = encryption_type_enum(encryption_type_from_cfg);
     RETURN_NOT_OK(st);
     encryption_type = et.value();
     EncryptionKey encryption_key_cfg;
