@@ -717,7 +717,6 @@ if (TILEDB_STATIC)
   append_dep_lib(GCSSDK::storage_client)
   append_dep_lib(GCSSDK::google_cloud_cpp_common)
   append_dep_lib(GCSSDK::crc32c)
-  append_dep_lib(spdlog::spdlog_header_only)
 endif()
 
 ############################################################
