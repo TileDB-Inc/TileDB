@@ -405,9 +405,6 @@ class ArraySchema {
   /** The file name of array schema in the format of timestamp_timestamp_uuid */
   std::string name_;
 
-  /** The flag for new uri, true when a new uri needs to be generated */
-  bool new_uri_needed_;
-
   /* ********************************* */
   /*           PRIVATE METHODS         */
   /* ********************************* */

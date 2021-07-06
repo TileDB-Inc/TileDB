@@ -70,7 +70,6 @@ ArraySchema::ArraySchema(ArrayType array_type)
   array_uri_ = URI();
   uri_ = URI();
   name_ = "";
-  new_uri_needed_ = false;
   capacity_ = constants::capacity;
   cell_order_ = Layout::ROW_MAJOR;
   domain_ = nullptr;
@@ -95,7 +94,6 @@ ArraySchema::ArraySchema(const ArraySchema* array_schema) {
   array_uri_ = array_schema->array_uri_;
   uri_ = array_schema->uri_;
   name_ = array_schema->name_;
-  new_uri_needed_ = array_schema->new_uri_needed_;
   array_type_ = array_schema->array_type_;
   domain_ = nullptr;
   timestamp_range_ = array_schema->timestamp_range_;
@@ -487,6 +485,7 @@ bool ArraySchema::var_size(const std::string& name) const {
 }
 
 Status ArraySchema::add_attribute(const Attribute* attr, bool check_special) {
+  std::lock_guard<std::mutex> lock(mtx_);
   // Sanity check
   if (attr == nullptr)
     return LOG_STATUS(Status::ArraySchemaError(
@@ -503,11 +502,12 @@ Status ArraySchema::add_attribute(const Attribute* attr, bool check_special) {
   auto new_attr = tdb_new(Attribute, attr);
   attributes_.emplace_back(new_attr);
   attribute_map_[new_attr->name()] = new_attr;
-  new_uri_needed_ = true;
+
   return Status::Ok();
 }
 
 Status ArraySchema::remove_attribute(const std::string& attr_name) {
+  std::lock_guard<std::mutex> lock(mtx_);
   if (attr_name.empty()) {
     return LOG_STATUS(
         Status::ArraySchemaError("Cannot remove an empty name attribute"));
@@ -530,7 +530,7 @@ Status ArraySchema::remove_attribute(const std::string& attr_name) {
       it = attributes_.erase(it);
     }
   }
-  new_uri_needed_ = true;
+  RETURN_NOT_OK(generate_uri());
   return Status::Ok();
 }
 
@@ -738,7 +738,7 @@ std::pair<uint64_t, uint64_t> ArraySchema::timestamp_range() const {
 
 URI ArraySchema::uri() {
   std::lock_guard<std::mutex> lock(mtx_);
-  if (uri_.is_invalid() || new_uri_needed_) {
+  if (uri_.is_invalid()) {
     generate_uri();
   }
   URI result = uri_;
@@ -852,7 +852,6 @@ Status ArraySchema::generate_uri() {
   name_ = ss.str();
   uri_ = array_uri_.join_path(constants::array_schema_folder_name)
              .join_path(name_);
-  new_uri_needed_ = false;
   return Status::Ok();
 }
 
