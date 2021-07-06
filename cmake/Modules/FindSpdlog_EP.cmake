@@ -28,7 +28,7 @@
 # This module defines:
 #   - SPDLOG_INCLUDE_DIR, directory containing headers
 #   - SPDLOG_FOUND, whether Spdlog has been found
-#   - The spdlog::spdlog_header_only imported target
+#   - The spdlog::spdlog imported target
 
 # Include some common helper functions.
 include(TileDBCommon)
@@ -77,6 +77,12 @@ if (NOT SPDLOG_FOUND)
         -DCMAKE_PREFIX_PATH=${TILEDB_EP_INSTALL_PREFIX}
         -DCMAKE_INSTALL_PREFIX=${TILEDB_EP_INSTALL_PREFIX}
         -DCMAKE_OSX_ARCHITECTURES=${CMAKE_OSX_ARCHITECTURES}
+        -DCMAKE_BUILD_TYPE=${CMAKE_BUILD_TYPE}
+        -DCMAKE_CXX_COMPILER=${CMAKE_CXX_COMPILER}
+        -DCMAKE_C_COMPILER=${CMAKE_C_COMPILER}
+        -DCMAKE_TOOLCHAIN_FILE=${CMAKE_TOOLCHAIN_FILE}
+        -DCMAKE_POSITION_INDEPENDENT_CODE=ON
+        -DSPDLOG_BUILD_SHARED=OFF
       LOG_DOWNLOAD TRUE
       LOG_CONFIGURE TRUE
       LOG_BUILD TRUE
@@ -92,23 +98,28 @@ if (NOT SPDLOG_FOUND)
   endif()
 endif()
 
-if (spdlog_FOUND AND NOT TARGET spdlog::spdlog_header_only)
-  add_library(spdlog::spdlog_header_only INTERFACE IMPORTED)
+if (spdlog_FOUND AND NOT TARGET spdlog::spdlog)
+  add_library(spdlog::spdlog INTERFACE IMPORTED)
   find_package(fmt QUIET)
   if (${fmt_FOUND})
-    target_link_libraries(spdlog::spdlog_header_only INTERFACE fmt::fmt)
+    target_link_libraries(spdlog::spdlog INTERFACE fmt::fmt)
   endif()
-  set_target_properties(spdlog::spdlog_header_only PROPERTIES
+  set_target_properties(spdlog::spdlog PROPERTIES
           INTERFACE_INCLUDE_DIRECTORIES "${SPDLOG_INCLUDE_DIR}"
           )
   # If the target is defined we need to handle external fmt build types
-elseif(TARGET spdlog::spdlog_header_only)
+elseif(TARGET spdlog::spdlog)
   if (SPDLOG_FMT_EXTERNAL)
     # Since we are using header only we need to define this
     add_definitions("-DSPDLOG_FMT_EXTERNAL=1")
     find_package(fmt REQUIRED)
     if (${fmt_FOUND})
-      target_link_libraries(spdlog::spdlog_header_only INTERFACE fmt::fmt)
+      target_link_libraries(spdlog::spdlog INTERFACE fmt::fmt)
     endif()
   endif()
+endif()
+
+# If we built a static EP, install it if required.
+if (TILEDB_SPDLOG_EP_BUILT AND TILEDB_INSTALL_STATIC_DEPS)
+  install_target_libs(spdlog::spdlog)
 endif()

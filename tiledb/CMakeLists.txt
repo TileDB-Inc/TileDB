@@ -448,7 +448,7 @@ target_link_libraries(TILEDB_CORE_OBJECTS_ILIB
   INTERFACE
     Bzip2::Bzip2
     LZ4::LZ4
-    spdlog::spdlog_header_only
+    spdlog::spdlog
     Zlib::Zlib
     Zstd::Zstd
 )
@@ -716,6 +716,7 @@ if (TILEDB_STATIC)
   append_dep_lib(GCSSDK::storage_client)
   append_dep_lib(GCSSDK::google_cloud_cpp_common)
   append_dep_lib(GCSSDK::crc32c)
+  append_dep_lib(spdlog::spdlog)
 endif()
 
 ############################################################
