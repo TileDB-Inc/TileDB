@@ -3133,6 +3133,25 @@ TILEDB_EXPORT int32_t tiledb_array_schema_load_with_key(
     tiledb_array_schema_t** array_schema);
 
 /**
+ * Adds an attribute to an array.
+ *
+ * @param ctx The TileDB context.
+ * @param array_uri The array whose schema will be retrieved.
+ * @param attr The attribute to be removed.
+ * @param encryption_type The encryption type to use.
+ * @param encryption_key The encryption key to use.
+ * @param key_length Length in bytes of the encryption key.*
+ * @return `TILEDB_OK` for success and `TILEDB_ERR` for error.
+ */
+TILEDB_EXPORT int32_t tiledb_array_add_attribute(
+    tiledb_ctx_t* ctx,
+    const char* array_uri,
+    tiledb_attribute_t* attr,
+    tiledb_encryption_type_t encryption_type,
+    const void* encryption_key,
+    uint32_t key_length);
+
+/**
  * Retrieves the array type.
  *
  * **Example:**

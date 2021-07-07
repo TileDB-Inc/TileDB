@@ -2341,6 +2341,42 @@ int32_t tiledb_array_schema_load_with_key(
   return TILEDB_OK;
 }
 
+int32_t tiledb_array_add_attribute(
+    tiledb_ctx_t* ctx,
+    const char* array_uri,
+    tiledb_attribute_t* attr,
+    tiledb_encryption_type_t encryption_type,
+    const void* encryption_key,
+    uint32_t key_length) {
+  if (sanity_check(ctx) == TILEDB_ERR)
+    return TILEDB_ERR;
+
+  // Check array name
+  tiledb::sm::URI uri(array_uri);
+  if (uri.is_invalid()) {
+    auto st = Status::Error("Failed to load array schema; Invalid array URI");
+    LOG_STATUS(st);
+    save_error(ctx, st);
+    return TILEDB_ERR;
+  }
+  // Create key
+  tiledb::sm::EncryptionKey key;
+  if (SAVE_ERROR_CATCH(
+          ctx,
+          key.set_key(
+              static_cast<tiledb::sm::EncryptionType>(encryption_type),
+              encryption_key,
+              key_length)))
+    return TILEDB_ERR;
+
+  if (SAVE_ERROR_CATCH(
+          ctx,
+          ctx->ctx_->storage_manager()->add_attribute(uri, attr->attr_, key)))
+    return TILEDB_ERR;
+
+  return TILEDB_OK;
+}
+
 int32_t tiledb_array_schema_get_array_type(
     tiledb_ctx_t* ctx,
     const tiledb_array_schema_t* array_schema,

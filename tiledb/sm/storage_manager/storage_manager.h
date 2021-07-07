@@ -62,6 +62,7 @@ namespace sm {
 
 class Array;
 class ArraySchema;
+class Attribute;
 class Buffer;
 class BufferLRUCache;
 class ChunkedBuffer;
@@ -885,6 +886,19 @@ class StorageManager {
       const URI& array_uri,
       const EncryptionKey& encryption_key,
       Metadata* array_metadata);
+
+  /**
+   * Adds an attribute to an array.
+   *
+   * @param array_uri The array URI.
+   * @param attr The attribute.
+   * @param encryption_key The encryption key to use.
+   * @return Status
+   */
+  Status add_attribute(
+      const URI& array_uri,
+      const Attribute* attr,
+      const EncryptionKey& encryption_key);
 
   /** Closes a file, flushing its contents to persistent storage. */
   Status close_file(const URI& uri);

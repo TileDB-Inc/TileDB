@@ -2204,6 +2204,51 @@ Status StorageManager::store_array_metadata(
   return st;
 }
 
+Status StorageManager::add_attribute(
+    const URI& array_uri,
+    const Attribute* attr,
+    const EncryptionKey& encryption_key) {
+  ArraySchema* array_schema;
+  RETURN_NOT_OK(load_array_schema(array_uri, encryption_key, &array_schema));
+
+  Status st = array_schema->add_attribute(attr, true);
+  if (!st.ok()) {
+    tdb_delete(array_schema);
+    array_schema = nullptr;
+    return LOG_STATUS(Status::StorageManagerError(
+        "Cannot add attribute; Invalid attribute."));
+  }
+
+  std::string uuid;
+  st = (uuid::generate_uuid(&uuid, false));
+  if (!st.ok()) {
+    tdb_delete(array_schema);
+    array_schema = nullptr;
+    return LOG_STATUS(Status::StorageManagerError(
+        "Cannot add attribute; Not able to generate uuid."));
+  }
+  auto timestamp = utils::time::timestamp_now_ms();
+  std::stringstream ss;
+  ss << "__" << timestamp << "_" << timestamp << "_" << uuid;
+  std::string schema_name = ss.str();
+  auto schema_uri = array_uri.join_path(constants::array_schema_folder_name)
+                        .join_path(schema_name);
+
+  array_schema->set_uri(schema_uri);
+
+  st = store_array_schema(array_schema, encryption_key);
+  if (!st.ok()) {
+    tdb_delete(array_schema);
+    array_schema = nullptr;
+    return LOG_STATUS(Status::StorageManagerError(
+        "Cannot add attribute;  Not able to store array schema."));
+  }
+
+  tdb_delete(array_schema);
+  array_schema = nullptr;
+  return Status::Ok();
+}
+
 Status StorageManager::close_file(const URI& uri) {
   return vfs_->close_file(uri);
 }
