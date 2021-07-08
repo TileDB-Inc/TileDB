@@ -802,6 +802,9 @@ class Dimension {
   /** Sets the domain. */
   Status set_domain(const Range& domain);
 
+  /** Sets the domain without type, null, or bounds checks. */
+  Status set_domain_unsafe(const void* domain);
+
   /** Sets the filter pipeline for this dimension. */
   Status set_filter_pipeline(const FilterPipeline* pipeline);
 
