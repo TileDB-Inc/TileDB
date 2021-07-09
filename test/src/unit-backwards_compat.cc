@@ -154,23 +154,25 @@ void set_buffer_wrapper(
         std::tuple<uint64_t*, void*, uint8_t*>>* const buffers) {
   if (var_sized) {
     if (!nullable) {
-      query->set_buffer(attribute_name, offsets, 1, static_cast<T*>(values), 1);
+      query->set_data_buffer(attribute_name, static_cast<T*>(values), 1);
+      query->set_offsets_buffer(attribute_name, offsets, 1);
       buffers->emplace(
           attribute_name, std::make_tuple(offsets, values, nullptr));
     } else {
-      query->set_buffer_nullable(
-          attribute_name, offsets, 1, static_cast<T*>(values), 1, validity, 1);
+      query->set_data_buffer(attribute_name, static_cast<T*>(values), 1);
+      query->set_offsets_buffer(attribute_name, offsets, 1);
+      query->set_validity_buffer(attribute_name, validity, 1);
       buffers->emplace(
           attribute_name, std::make_tuple(offsets, values, validity));
     }
   } else {
     if (!nullable) {
-      query->set_buffer(attribute_name, static_cast<T*>(values), 1);
+      query->set_data_buffer(attribute_name, static_cast<T*>(values), 1);
       buffers->emplace(
           attribute_name, std::make_tuple(nullptr, values, nullptr));
     } else {
-      query->set_buffer_nullable(
-          attribute_name, static_cast<T*>(values), 1, validity, 1);
+      query->set_data_buffer(attribute_name, static_cast<T*>(values), 1);
+      query->set_validity_buffer(attribute_name, validity, 1);
       buffers->emplace(
           attribute_name, std::make_tuple(nullptr, values, validity));
     }
@@ -192,7 +194,7 @@ TEST_CASE(
   Query query_r(ctx, array);
   query_r.set_subarray(subarray)
       .set_layout(TILEDB_ROW_MAJOR)
-      .set_buffer("a", a_read)
+      .set_data_buffer("a", a_read)
       .set_coordinates(coords_read);
   query_r.submit();
   array.close();
@@ -663,7 +665,7 @@ TEST_CASE(
     std::vector<int> coords_write = {1, 10};
     Query query_w(ctx, old_array);
     query_w.set_layout(TILEDB_UNORDERED)
-        .set_buffer("a", a_write)
+        .set_data_buffer("a", a_write)
         .set_coordinates(coords_write);
     query_w.submit();
     fragment_uri = query_w.fragment_uri(0);
@@ -678,7 +680,7 @@ TEST_CASE(
     Query query_r(ctx, array);
     query_r.set_subarray(subarray)
         .set_layout(TILEDB_ROW_MAJOR)
-        .set_buffer("a", a_read)
+        .set_data_buffer("a", a_read)
         .set_coordinates(coords_read);
     query_r.submit();
     array.close();

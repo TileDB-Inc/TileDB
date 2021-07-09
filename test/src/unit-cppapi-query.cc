@@ -197,7 +197,7 @@ TEST_CASE(
   Query query_w(ctx, array_w);
   query_w.set_coordinates(coords_w)
       .set_layout(TILEDB_UNORDERED)
-      .set_buffer("a", data_w);
+      .set_data_buffer("a", data_w);
   query_w.submit();
   query_w.finalize();
   array_w.close();
@@ -209,7 +209,7 @@ TEST_CASE(
   query1.add_range(0, range[0], range[1]).add_range(1, range[0], range[1]);
   auto est_size = query1.est_result_size("a");
   std::vector<int> data(est_size);
-  query1.set_layout(TILEDB_ROW_MAJOR).set_buffer("a", data);
+  query1.set_layout(TILEDB_ROW_MAJOR).set_data_buffer("a", data);
   query1.submit();
   REQUIRE(query1.result_buffer_elements()["a"].second == 2);
   REQUIRE(data[0] == 2);
@@ -221,7 +221,7 @@ TEST_CASE(
   Query query2(ctx, array2);
   query2.set_coordinates(coords_w)
       .set_layout(TILEDB_UNORDERED)
-      .set_buffer("a", data_w);
+      .set_data_buffer("a", data_w);
   query2.submit();
   query2.finalize();
 
@@ -259,8 +259,9 @@ TEST_CASE(
   uint64_t d1_off[] = {0, 1, 3, 5};
   uint64_t d1_off_size = 4;
   Query query(ctx, array, TILEDB_READ);
-  CHECK_NOTHROW(query.set_buffer(
-      "d1", d1_off, d1_off_size, (void*)d1_data.c_str(), d1_data.size()));
+  CHECK_NOTHROW(
+      query.set_data_buffer("d1", (void*)d1_data.c_str(), d1_data.size()));
+  CHECK_NOTHROW(query.set_offsets_buffer("d1", d1_off, d1_off_size));
 
   // Add 1 range per dimension
   std::string s1("a", 1);

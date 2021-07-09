@@ -77,9 +77,10 @@ void write_array() {
   Array array(ctx, array_name, TILEDB_WRITE);
   Query query(ctx, array, TILEDB_WRITE);
   query.set_layout(TILEDB_UNORDERED)
-      .set_buffer("a", data)
-      .set_buffer("rows", rows_offsets, rows)
-      .set_buffer("cols", cols);
+      .set_data_buffer("a", data)
+      .set_data_buffer("rows", rows)
+      .set_offsets_buffer("rows", rows_offsets)
+      .set_data_buffer("cols", cols);
 
   // Perform the write and close the array.
   query.submit();
@@ -106,9 +107,10 @@ void read_array() {
   std::vector<uint64_t> rows_offsets(3);
   std::vector<int32_t> cols(3);
   query.set_layout(TILEDB_ROW_MAJOR)
-      .set_buffer("a", data)
-      .set_buffer("rows", rows_offsets, rows)
-      .set_buffer("cols", cols);
+      .set_data_buffer("a", data)
+      .set_data_buffer("rows", rows)
+      .set_offsets_buffer("rows", rows_offsets)
+      .set_data_buffer("cols", cols);
 
   // Submit the query and close the array.
   query.submit();

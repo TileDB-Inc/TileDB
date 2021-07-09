@@ -509,12 +509,10 @@ void StringEmptyFx2::write_array(const std::string& array_name) {
   auto array = tiledb::Array(ctx, array_name, TILEDB_WRITE);
 
   Query query(ctx, array, TILEDB_WRITE);
-  query.set_buffer(
-      "",
-      StringEmptyFx2::offsets.data(),
-      StringEmptyFx2::offsets.size(),
-      (char*)StringEmptyFx2::data.data(),
-      StringEmptyFx2::data.size());
+  query.set_data_buffer(
+      "", (char*)StringEmptyFx2::data.data(), StringEmptyFx2::data.size());
+  query.set_offsets_buffer(
+      "", StringEmptyFx2::offsets.data(), StringEmptyFx2::offsets.size());
 
   query.submit();
 
@@ -532,7 +530,8 @@ void StringEmptyFx2::read_array(const std::string& array_name) {
 
   auto array = tiledb::Array(ctx, array_name, TILEDB_READ);
   Query query(ctx, array, TILEDB_READ);
-  query.set_buffer("", r_offsets, r_data);
+  query.set_data_buffer("", r_data);
+  query.set_offsets_buffer("", r_offsets);
 
   query.add_range(0, (uint64_t)0, (uint64_t)3);
   query.add_range(1, (uint64_t)0, (uint64_t)3);
@@ -612,12 +611,10 @@ TEST_CASE_METHOD(
     auto array = tiledb::Array(ctx, array_name, TILEDB_WRITE);
 
     Query query(ctx, array, TILEDB_WRITE);
-    query.set_buffer(
-        "",
-        StringEmptyFx3::offsets.data(),
-        StringEmptyFx3::offsets.size(),
-        (char*)StringEmptyFx3::data.data(),
-        StringEmptyFx3::data.size());
+    query.set_data_buffer(
+        "", (char*)StringEmptyFx3::data.data(), StringEmptyFx3::data.size());
+    query.set_offsets_buffer(
+        "", StringEmptyFx3::offsets.data(), StringEmptyFx3::offsets.size());
 
     query.submit();
   }
@@ -632,7 +629,8 @@ TEST_CASE_METHOD(
 
     auto array = tiledb::Array(ctx, array_name, TILEDB_READ);
     Query query(ctx, array, TILEDB_READ);
-    query.set_buffer("", r_offsets, r_data);
+    query.set_data_buffer("", r_data);
+    query.set_offsets_buffer("", r_offsets);
 
     query.add_range(0, (uint64_t)0, (uint64_t)3);
     query.add_range(1, (uint64_t)0, (uint64_t)3);
@@ -659,7 +657,8 @@ TEST_CASE_METHOD(
 
     auto array = tiledb::Array(ctx, array_name, TILEDB_READ);
     Query query(ctx, array, TILEDB_READ);
-    query.set_buffer("", r_offsets, r_data);
+    query.set_data_buffer("", r_data);
+    query.set_offsets_buffer("", r_offsets);
 
     query.add_range(0, (uint64_t)0, (uint64_t)1);
     query.add_range(1, (uint64_t)1, (uint64_t)2);

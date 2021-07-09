@@ -1461,6 +1461,12 @@ Status Dimension::set_domain(const Range& domain) {
   return Status::Ok();
 }
 
+Status Dimension::set_domain_unsafe(const void* domain) {
+  domain_ = Range(domain, 2 * coord_size());
+
+  return Status::Ok();
+}
+
 Status Dimension::set_filter_pipeline(const FilterPipeline* pipeline) {
   if (pipeline == nullptr)
     return LOG_STATUS(Status::DimensionError(

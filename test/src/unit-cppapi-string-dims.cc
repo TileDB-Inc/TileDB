@@ -67,9 +67,10 @@ TEST_CASE(
   Array array_write(ctx, array_name, TILEDB_WRITE);
   Query query_write(ctx, array_write, TILEDB_WRITE);
   query_write.set_layout(TILEDB_UNORDERED)
-      .set_buffer("a1", a1_data)
-      .set_buffer("dim1", dim1_offsets, dim1)
-      .set_buffer("dim2", dim2);
+      .set_data_buffer("a1", a1_data)
+      .set_data_buffer("dim1", dim1)
+      .set_offsets_buffer("dim1", dim1_offsets)
+      .set_data_buffer("dim2", dim2);
 
   // Perform the write and close the array.
   query_write.submit();
@@ -93,9 +94,10 @@ TEST_CASE(
   dim2 = std::vector<int32_t>(1);
 
   query_read.set_layout(TILEDB_ROW_MAJOR)
-      .set_buffer("a1", a1_data)
-      .set_buffer("dim1", dim1_offsets, dim1)
-      .set_buffer("dim2", dim2);
+      .set_data_buffer("a1", a1_data)
+      .set_data_buffer("dim1", dim1)
+      .set_offsets_buffer("dim1", dim1_offsets)
+      .set_data_buffer("dim2", dim2);
 
   // Submit the query and ensure it does not hang on an infinite loop.
   tiledb::Query::Status status = tiledb::Query::Status::UNINITIALIZED;

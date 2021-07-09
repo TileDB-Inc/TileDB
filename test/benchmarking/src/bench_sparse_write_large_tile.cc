@@ -87,7 +87,7 @@ class Benchmark : public BenchmarkBase {
     Array array(ctx_, array_uri_, TILEDB_WRITE);
     Query query(ctx_, array);
     query.set_layout(TILEDB_UNORDERED)
-        .set_buffer("a", data_)
+        .set_data_buffer("a", data_)
         .set_coordinates(coords_);
     query.submit();
     array.close();

@@ -965,24 +965,26 @@ Status query_from_capnp(
       // For writes we need to use get_buffer and clientside
       if (var_size) {
         if (!nullable) {
-          RETURN_NOT_OK(query->get_buffer(
+          RETURN_NOT_OK(query->get_data_buffer(
+              name.c_str(), &existing_buffer, &existing_buffer_size_ptr));
+          RETURN_NOT_OK(query->get_offsets_buffer(
               name.c_str(),
               &existing_offset_buffer,
-              &existing_offset_buffer_size_ptr,
-              &existing_buffer,
-              &existing_buffer_size_ptr));
+              &existing_offset_buffer_size_ptr));
 
           if (existing_offset_buffer_size_ptr != nullptr)
             existing_offset_buffer_size = *existing_offset_buffer_size_ptr;
           if (existing_buffer_size_ptr != nullptr)
             existing_buffer_size = *existing_buffer_size_ptr;
         } else {
-          RETURN_NOT_OK(query->get_buffer_vbytemap(
+          RETURN_NOT_OK(query->get_data_buffer(
+              name.c_str(), &existing_buffer, &existing_buffer_size_ptr));
+          RETURN_NOT_OK(query->get_offsets_buffer(
               name.c_str(),
               &existing_offset_buffer,
-              &existing_offset_buffer_size_ptr,
-              &existing_buffer,
-              &existing_buffer_size_ptr,
+              &existing_offset_buffer_size_ptr));
+          RETURN_NOT_OK(query->get_validity_buffer(
+              name.c_str(),
               &existing_validity_buffer,
               &existing_validity_buffer_size_ptr));
 
@@ -995,16 +997,16 @@ Status query_from_capnp(
         }
       } else {
         if (!nullable) {
-          RETURN_NOT_OK(query->get_buffer(
+          RETURN_NOT_OK(query->get_data_buffer(
               name.c_str(), &existing_buffer, &existing_buffer_size_ptr));
 
           if (existing_buffer_size_ptr != nullptr)
             existing_buffer_size = *existing_buffer_size_ptr;
         } else {
-          RETURN_NOT_OK(query->get_buffer_vbytemap(
+          RETURN_NOT_OK(query->get_data_buffer(
+              name.c_str(), &existing_buffer, &existing_buffer_size_ptr));
+          RETURN_NOT_OK(query->get_validity_buffer(
               name.c_str(),
-              &existing_buffer,
-              &existing_buffer_size_ptr,
               &existing_validity_buffer,
               &existing_validity_buffer_size_ptr));
 
@@ -1205,13 +1207,10 @@ Status query_from_capnp(
         attr_state->validity_len_data.swap(validitylen_buff);
         if (var_size) {
           if (!nullable) {
-            RETURN_NOT_OK(query->set_buffer(
-                name,
-                nullptr,
-                &attr_state->fixed_len_size,
-                nullptr,
-                &attr_state->var_len_size,
-                false));
+            RETURN_NOT_OK(query->set_data_buffer(
+                name, nullptr, &attr_state->var_len_size, false));
+            RETURN_NOT_OK(query->set_offsets_buffer(
+                name, nullptr, &attr_state->fixed_len_size, false));
           } else {
             RETURN_NOT_OK(query->set_buffer_vbytemap(
                 name,
@@ -1225,7 +1224,7 @@ Status query_from_capnp(
           }
         } else {
           if (!nullable) {
-            RETURN_NOT_OK(query->set_buffer(
+            RETURN_NOT_OK(query->set_data_buffer(
                 name, nullptr, &attr_state->fixed_len_size, false));
           } else {
             RETURN_NOT_OK(query->set_buffer_vbytemap(
@@ -1262,12 +1261,10 @@ Status query_from_capnp(
           attr_state->validity_len_data.swap(validity_buff);
 
           if (!nullable) {
-            RETURN_NOT_OK(query->set_buffer(
-                name,
-                offsets,
-                &attr_state->fixed_len_size,
-                varlen_data,
-                &attr_state->var_len_size));
+            RETURN_NOT_OK(query->set_data_buffer(
+                name, varlen_data, &attr_state->var_len_size));
+            RETURN_NOT_OK(query->set_offsets_buffer(
+                name, offsets, &attr_state->fixed_len_size));
           } else {
             RETURN_NOT_OK(query->set_buffer_vbytemap(
                 name,
@@ -1299,8 +1296,8 @@ Status query_from_capnp(
           attr_state->validity_len_data.swap(validity_buff);
 
           if (!nullable) {
-            RETURN_NOT_OK(
-                query->set_buffer(name, data, &attr_state->fixed_len_size));
+            RETURN_NOT_OK(query->set_data_buffer(
+                name, data, &attr_state->fixed_len_size));
           } else {
             RETURN_NOT_OK(query->set_buffer_vbytemap(
                 name,

@@ -62,7 +62,7 @@ TEST_CASE("C++ API: Test subarray", "[cppapi][sparse][subarray]") {
   Query query_w(ctx, array_w);
   query_w.set_coordinates(coords_w)
       .set_layout(TILEDB_UNORDERED)
-      .set_buffer("a", data_w);
+      .set_data_buffer("a", data_w);
   query_w.submit();
   query_w.finalize();
   array_w.close();
@@ -78,7 +78,7 @@ TEST_CASE("C++ API: Test subarray", "[cppapi][sparse][subarray]") {
     REQUIRE(est_size == 4);
 
     std::vector<int> data(est_size);
-    query.set_layout(TILEDB_ROW_MAJOR).set_buffer("a", data);
+    query.set_layout(TILEDB_ROW_MAJOR).set_data_buffer("a", data);
     query.submit();
     REQUIRE(query.result_buffer_elements()["a"].second == 1);
     REQUIRE(data[0] == 1);
@@ -96,7 +96,7 @@ TEST_CASE("C++ API: Test subarray", "[cppapi][sparse][subarray]") {
     CHECK_THROWS(est_size_var = query.est_result_size_var("a"));
 
     std::vector<int> data(est_size);
-    query.set_layout(TILEDB_ROW_MAJOR).set_buffer("a", data);
+    query.set_layout(TILEDB_ROW_MAJOR).set_data_buffer("a", data);
     query.submit();
     REQUIRE(query.result_buffer_elements()["a"].second == 2);
     REQUIRE(data[0] == 2);
@@ -133,7 +133,7 @@ TEST_CASE("C++ API: Test subarray", "[cppapi][sparse][subarray]") {
     REQUIRE(est_size == 4);
 
     std::vector<int> data(est_size);
-    query.set_layout(TILEDB_UNORDERED).set_buffer("a", data);
+    query.set_layout(TILEDB_UNORDERED).set_data_buffer("a", data);
     query.submit();
     REQUIRE(query.result_buffer_elements()["a"].second == 2);
     REQUIRE(data[0] == 1);
@@ -151,7 +151,7 @@ TEST_CASE("C++ API: Test subarray", "[cppapi][sparse][subarray]") {
 
     auto est_size = query.est_result_size("a");
     std::vector<int> data(est_size);
-    query.set_layout(TILEDB_UNORDERED).set_buffer("a", data);
+    query.set_layout(TILEDB_UNORDERED).set_data_buffer("a", data);
     query.submit();
     REQUIRE(query.result_buffer_elements()["a"].second == 4);
     REQUIRE(data[0] == 1);
@@ -189,7 +189,7 @@ TEST_CASE("C++ API: Test subarray", "[cppapi][sparse][subarray]") {
     CHECK_THROWS(est_size_var = query.est_result_size_var("a"));
 
     std::vector<int> data(est_size);
-    query.set_layout(TILEDB_ROW_MAJOR).set_buffer("a", data);
+    query.set_layout(TILEDB_ROW_MAJOR).set_data_buffer("a", data);
     query.submit();
     REQUIRE(query.result_buffer_elements()["a"].second == 3);
     REQUIRE(data[0] == 2);
@@ -226,7 +226,7 @@ TEST_CASE("C++ API: Test subarray (dense)", "[cppapi][dense][subarray]") {
   tiledb::Query query_w(ctx, array_w);
   query_w.set_coordinates(coords_w)
       .set_layout(TILEDB_UNORDERED)
-      .set_buffer("a", data_w);
+      .set_data_buffer("a", data_w);
   query_w.submit();
   query_w.finalize();
   array_w.close();
@@ -280,7 +280,7 @@ TEST_CASE(
   Query query_w(ctx, array_w);
   query_w.set_coordinates(coords_w)
       .set_layout(TILEDB_UNORDERED)
-      .set_buffer("a", data_w);
+      .set_data_buffer("a", data_w);
   query_w.submit();
   query_w.finalize();
   array_w.close();
@@ -308,7 +308,7 @@ TEST_CASE(
   // Allocate buffers large enough to hold 2 cells at a time.
   std::vector<char> data(2, '\0');
   std::vector<int> coords(4);
-  query.set_coordinates(coords).set_buffer("a", data);
+  query.set_coordinates(coords).set_data_buffer("a", data);
 
   // Submit query
   auto st = query.submit();
@@ -426,7 +426,7 @@ TEST_CASE(
   Query query_w(ctx, array_w);
   query_w.set_coordinates(coords_w)
       .set_layout(TILEDB_UNORDERED)
-      .set_buffer("a", data_w);
+      .set_data_buffer("a", data_w);
   query_w.submit();
   query_w.finalize();
   array_w.close();
@@ -447,7 +447,7 @@ TEST_CASE(
   // Allocate buffers large enough to hold 2 cells at a time.
   std::vector<char> data(2, '\0');
   std::vector<int> coords(4);
-  query.set_coordinates(coords).set_buffer("a", data);
+  query.set_coordinates(coords).set_data_buffer("a", data);
 
   // Submit query
   auto st = query.submit();

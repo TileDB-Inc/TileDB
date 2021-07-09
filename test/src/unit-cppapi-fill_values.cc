@@ -116,13 +116,18 @@ void write_array_1d_partial(
   Array array(ctx, array_name, TILEDB_WRITE);
   Query query(ctx, array, TILEDB_WRITE);
   if (!nullable_attributes) {
-    CHECK_NOTHROW(query.set_buffer("a1", a1));
-    CHECK_NOTHROW(query.set_buffer("a2", a2_off, a2_val));
-    CHECK_NOTHROW(query.set_buffer("a3", a3));
+    CHECK_NOTHROW(query.set_data_buffer("a1", a1));
+    CHECK_NOTHROW(query.set_data_buffer("a2", a2_val));
+    CHECK_NOTHROW(query.set_offsets_buffer("a2", a2_off));
+    CHECK_NOTHROW(query.set_data_buffer("a3", a3));
   } else {
-    CHECK_NOTHROW(query.set_buffer_nullable("a1", a1, a1_validity));
-    CHECK_NOTHROW(query.set_buffer_nullable("a2", a2_off, a2_val, a2_validity));
-    CHECK_NOTHROW(query.set_buffer_nullable("a3", a3, a3_validity));
+    CHECK_NOTHROW(query.set_data_buffer("a1", a1));
+    CHECK_NOTHROW(query.set_validity_buffer("a1", a1_validity));
+    CHECK_NOTHROW(query.set_data_buffer("a2", a2_val));
+    CHECK_NOTHROW(query.set_offsets_buffer("a2", a2_off));
+    CHECK_NOTHROW(query.set_validity_buffer("a2", a2_validity));
+    CHECK_NOTHROW(query.set_data_buffer("a3", a3));
+    CHECK_NOTHROW(query.set_validity_buffer("a3", a3_validity));
   }
   CHECK_NOTHROW(query.set_subarray<int32_t>({3, 4}));
   CHECK_NOTHROW(query.set_layout(TILEDB_ROW_MAJOR));
@@ -151,13 +156,18 @@ void read_array_1d_partial(
   Array array(ctx, array_name, TILEDB_READ);
   Query query(ctx, array, TILEDB_READ);
   if (!nullable_attributes) {
-    CHECK_NOTHROW(query.set_buffer("a1", a1));
-    CHECK_NOTHROW(query.set_buffer("a2", a2_off, a2_val));
-    CHECK_NOTHROW(query.set_buffer("a3", a3));
+    CHECK_NOTHROW(query.set_data_buffer("a1", a1));
+    CHECK_NOTHROW(query.set_data_buffer("a2", a2_val));
+    CHECK_NOTHROW(query.set_offsets_buffer("a2", a2_off));
+    CHECK_NOTHROW(query.set_data_buffer("a3", a3));
   } else {
-    CHECK_NOTHROW(query.set_buffer_nullable("a1", a1, a1_validity));
-    CHECK_NOTHROW(query.set_buffer_nullable("a2", a2_off, a2_val, a2_validity));
-    CHECK_NOTHROW(query.set_buffer_nullable("a3", a3, a3_validity));
+    CHECK_NOTHROW(query.set_data_buffer("a1", a1));
+    CHECK_NOTHROW(query.set_validity_buffer("a1", a1_validity));
+    CHECK_NOTHROW(query.set_data_buffer("a2", a2_val));
+    CHECK_NOTHROW(query.set_offsets_buffer("a2", a2_off));
+    CHECK_NOTHROW(query.set_validity_buffer("a2", a2_validity));
+    CHECK_NOTHROW(query.set_data_buffer("a3", a3));
+    CHECK_NOTHROW(query.set_validity_buffer("a3", a3_validity));
   }
   CHECK_NOTHROW(query.set_subarray<int32_t>({1, 10}));
 
@@ -261,9 +271,10 @@ void read_array_1d_empty(
 
   Array array(ctx, array_name, TILEDB_READ);
   Query query(ctx, array, TILEDB_READ);
-  CHECK_NOTHROW(query.set_buffer("a1", a1));
-  CHECK_NOTHROW(query.set_buffer("a2", a2_off, a2_val));
-  CHECK_NOTHROW(query.set_buffer("a3", a3));
+  CHECK_NOTHROW(query.set_data_buffer("a1", a1));
+  CHECK_NOTHROW(query.set_data_buffer("a2", a2_val));
+  CHECK_NOTHROW(query.set_offsets_buffer("a2", a2_off));
+  CHECK_NOTHROW(query.set_data_buffer("a3", a3));
   CHECK_NOTHROW(query.set_subarray<int32_t>({1, 10}));
 
   REQUIRE(query.submit() == Query::Status::COMPLETE);
