@@ -181,8 +181,9 @@ TEST_CASE("C++ API: Filter lists on array", "[cppapi], [filter]") {
   std::vector<int> coords = {0, 0, 10, 10};
   Array array(ctx, array_name, TILEDB_WRITE);
   Query query(ctx, array);
-  query.set_buffer("a1", a1_data)
-      .set_buffer("a2", a2buf)
+  query.set_data_buffer("a1", a1_data)
+      .set_data_buffer("a2", a2buf.second)
+      .set_offsets_buffer("a2", a2buf.first)
       .set_coordinates(coords)
       .set_layout(TILEDB_UNORDERED);
   REQUIRE(query.submit() == Query::Status::COMPLETE);
@@ -198,8 +199,9 @@ TEST_CASE("C++ API: Filter lists on array", "[cppapi], [filter]") {
   Query query_r(ctx, array);
   query_r.set_subarray(subarray)
       .set_layout(TILEDB_ROW_MAJOR)
-      .set_buffer("a1", a1_read)
-      .set_buffer("a2", a2_read_off, a2_read_data);
+      .set_data_buffer("a1", a1_read)
+      .set_data_buffer("a2", a2_read_data)
+      .set_offsets_buffer("a2", a2_read_off);
   REQUIRE(query_r.submit() == Query::Status::COMPLETE);
   array.close();
   auto ret = query_r.result_buffer_elements();

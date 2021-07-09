@@ -64,7 +64,7 @@ void write_array(
   Query query(ctx, array, TILEDB_WRITE);
   query.set_layout(TILEDB_ROW_MAJOR);
   query.set_subarray(subarray);
-  query.set_buffer("a", values);
+  query.set_data_buffer("a", values);
   query.submit();
   array.close();
 }
@@ -79,7 +79,7 @@ void read_array(
   query.set_layout(TILEDB_ROW_MAJOR);
   query.set_subarray(subarray);
   std::vector<int> values(10);
-  query.set_buffer("a", values);
+  query.set_data_buffer("a", values);
   query.submit();
   array.close();
   values.resize(query.result_buffer_elements()["a"].second);
@@ -140,13 +140,13 @@ TEST_CASE(
 
   query.set_layout(TILEDB_ROW_MAJOR);
   query.set_subarray({10, 109});
-  query.set_buffer("a", a1);
+  query.set_data_buffer("a", a1);
   query.submit();
 
   query = Query(ctx, array, TILEDB_WRITE);
   query.set_layout(TILEDB_ROW_MAJOR);
   query.set_subarray({110, 110});
-  query.set_buffer("a", a2);
+  query.set_data_buffer("a", a2);
   query.submit();
   array.close();
 
@@ -156,7 +156,7 @@ TEST_CASE(
   query_r.set_layout(TILEDB_ROW_MAJOR);
   query_r.set_subarray({10, 110});
   std::vector<float> a_r(101);
-  query_r.set_buffer("a", a_r);
+  query_r.set_data_buffer("a", a_r);
   query_r.submit();
   array_r.close();
 
@@ -172,7 +172,7 @@ TEST_CASE(
   query_r = Query(ctx, array_c, TILEDB_READ);
   query_r.set_layout(TILEDB_ROW_MAJOR);
   query_r.set_subarray({10, 110});
-  query_r.set_buffer("a", a_r);
+  query_r.set_data_buffer("a", a_r);
   query_r.submit();
   array_c.close();
   CHECK(a_r == c_a);
@@ -237,18 +237,18 @@ TEST_CASE(
   Array array(ctx, array_name, TILEDB_WRITE);
   Query query(ctx, array, TILEDB_WRITE);
   query.set_layout(TILEDB_UNORDERED)
-      .set_buffer("d1", d1)
-      .set_buffer("d2", d2)
-      .set_buffer("a1", a1);
+      .set_data_buffer("d1", d1)
+      .set_data_buffer("d2", d2)
+      .set_data_buffer("a1", a1);
   query.submit();
 
   d2[0] = 1;
   a1[0] = 1;
   Query query2(ctx, array, TILEDB_WRITE);
   query2.set_layout(TILEDB_UNORDERED)
-      .set_buffer("d1", d1)
-      .set_buffer("d2", d2)
-      .set_buffer("a1", a1);
+      .set_data_buffer("d1", d1)
+      .set_data_buffer("d2", d2)
+      .set_data_buffer("a1", a1);
   query2.submit();
 
   array.close();
@@ -260,7 +260,9 @@ TEST_CASE(
   std::vector<int64_t> a1_r(2);
   Array array_r(ctx, array_name, TILEDB_READ);
   Query query_r(ctx, array_r);
-  query_r.set_buffer("d1", d1_r).set_buffer("d2", d2_r).set_buffer("a1", a1_r);
+  query_r.set_data_buffer("d1", d1_r)
+      .set_data_buffer("d2", d2_r)
+      .set_data_buffer("a1", a1_r);
   REQUIRE(query_r.submit() == Query::Status::COMPLETE);
   array_r.close();
 

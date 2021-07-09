@@ -81,8 +81,10 @@ void write_array() {
   Array array(ctx, array_name, TILEDB_WRITE);
   Query query(ctx, array);
   query.set_layout(TILEDB_ROW_MAJOR)
-      .set_buffer("a1", a1_off, a1_data)
-      .set_buffer("a2", a2_off, a2_data);
+      .set_data_buffer("a1", a1_data)
+      .set_offsets_buffer("a1", a1_off)
+      .set_data_buffer("a2", a2_data)
+      .set_offsets_buffer("a2", a2_off);
 
   // Perform the write and close the array.
   query.submit();
@@ -109,8 +111,10 @@ void read_array() {
   Query query(ctx, array);
   query.set_subarray(subarray)
       .set_layout(TILEDB_ROW_MAJOR)
-      .set_buffer("a1", a1_off, a1_data)
-      .set_buffer("a2", a2_off, a2_data);
+      .set_data_buffer("a1", a1_data)
+      .set_offsets_buffer("a1", a1_off)
+      .set_data_buffer("a2", a2_data)
+      .set_offsets_buffer("a2", a2_off);
   query.submit();
   array.close();
 
