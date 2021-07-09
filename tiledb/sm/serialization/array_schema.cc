@@ -299,7 +299,7 @@ Status dimension_from_capnp(
     Buffer domain_buffer;
     RETURN_NOT_OK(
         utils::copy_capnp_list(domain_reader, dim_type, &domain_buffer));
-    RETURN_NOT_OK((*dimension)->set_domain(domain_buffer.data()));
+    RETURN_NOT_OK((*dimension)->set_domain_unsafe(domain_buffer.data()));
   }
 
   if (dimension_reader.hasFilterPipeline()) {
