@@ -87,7 +87,7 @@ class Benchmark : public BenchmarkBase {
     Array write_array(*ctx_, array_uri_, TILEDB_WRITE);
     Query write_query(*ctx_, write_array);
     write_query.set_layout(TILEDB_UNORDERED)
-        .set_buffer("a", data_)
+        .set_data_buffer("a", data_)
         .set_coordinates(coords_);
     write_query.submit();
     write_array.close();
@@ -116,7 +116,7 @@ class Benchmark : public BenchmarkBase {
     Query read_query(*ctx_, read_array);
     read_query.set_subarray(subarray_)
         .set_layout(TILEDB_ROW_MAJOR)
-        .set_buffer("a", data_)
+        .set_data_buffer("a", data_)
         .set_coordinates(coords_);
     read_query.submit();
     read_array.close();
@@ -130,7 +130,7 @@ class Benchmark : public BenchmarkBase {
       Query query(*ctx_, array);
       query.set_subarray(subarray_)
           .set_layout(TILEDB_ROW_MAJOR)
-          .set_buffer("a", data_)
+          .set_data_buffer("a", data_)
           .set_coordinates(coords_);
       query.submit();
       array.close();

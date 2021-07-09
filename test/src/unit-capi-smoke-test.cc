@@ -100,10 +100,12 @@ class SmokeTestFx {
     test_attr_t(
         const string& name,
         const tiledb_datatype_t type,
-        const uint32_t cell_val_num)
+        const uint32_t cell_val_num,
+        const bool nullable)
         : name_(name)
         , type_(type)
-        , cell_val_num_(cell_val_num) {
+        , cell_val_num_(cell_val_num)
+        , nullable_(nullable) {
     }
 
     /** Attribute name. */
@@ -114,6 +116,9 @@ class SmokeTestFx {
 
     /** Values per cell. */
     uint32_t cell_val_num_;
+
+    /** True if attribute is nullable.  */
+    bool nullable_;
   };
 
   /**
@@ -165,12 +170,16 @@ class SmokeTestFx {
         void* const buffer,
         uint64_t* const buffer_size,
         void* const buffer_offset,
-        uint64_t* const buffer_offset_size)
+        uint64_t* const buffer_offset_size,
+        uint8_t* const buffer_validity,
+        uint64_t* const buffer_validity_size)
         : name_(name)
         , buffer_(buffer)
         , buffer_size_(buffer_size)
         , buffer_offset_(buffer_offset)
-        , buffer_offset_size_(buffer_offset_size) {
+        , buffer_offset_size_(buffer_offset_size)
+        , buffer_validity_(buffer_validity)
+        , buffer_validity_size_(buffer_validity_size) {
     }
 
     string name_;
@@ -178,6 +187,8 @@ class SmokeTestFx {
     uint64_t* buffer_size_;
     void* buffer_offset_;
     uint64_t* buffer_offset_size_;
+    uint8_t* buffer_validity_;
+    uint64_t* buffer_validity_size_;
   };
 
   /** Constructor. */
@@ -459,6 +470,11 @@ void SmokeTestFx::create_array(
     rc = tiledb_attribute_set_cell_val_num(ctx_, attr, test_attr.cell_val_num_);
     REQUIRE(rc == TILEDB_OK);
 
+    if (test_attr.nullable_) {
+      rc = tiledb_attribute_set_nullable(ctx_, attr, 1);
+      REQUIRE(rc == TILEDB_OK);
+    }
+
     attrs.emplace_back(attr);
   }
 
@@ -564,29 +580,70 @@ void SmokeTestFx::write(
 
   // Set the query buffers.
   for (const auto& test_query_buffer : test_query_buffers) {
-    if (test_query_buffer.buffer_offset_ == nullptr) {
-      rc = tiledb_query_set_data_buffer(
-          ctx_,
-          query,
-          test_query_buffer.name_.c_str(),
-          test_query_buffer.buffer_,
-          test_query_buffer.buffer_size_);
-      REQUIRE(rc == TILEDB_OK);
+    if (test_query_buffer.buffer_validity_size_ == nullptr) {
+      if (test_query_buffer.buffer_offset_ == nullptr) {
+        rc = tiledb_query_set_data_buffer(
+            ctx_,
+            query,
+            test_query_buffer.name_.c_str(),
+            test_query_buffer.buffer_,
+            test_query_buffer.buffer_size_);
+        REQUIRE(rc == TILEDB_OK);
+      } else {
+        rc = tiledb_query_set_data_buffer(
+            ctx_,
+            query,
+            test_query_buffer.name_.c_str(),
+            test_query_buffer.buffer_,
+            test_query_buffer.buffer_size_);
+        REQUIRE(rc == TILEDB_OK);
+        rc = tiledb_query_set_offsets_buffer(
+            ctx_,
+            query,
+            test_query_buffer.name_.c_str(),
+            static_cast<uint64_t*>(test_query_buffer.buffer_offset_),
+            test_query_buffer.buffer_offset_size_);
+        REQUIRE(rc == TILEDB_OK);
+      }
     } else {
-      rc = tiledb_query_set_data_buffer(
-          ctx_,
-          query,
-          test_query_buffer.name_.c_str(),
-          test_query_buffer.buffer_,
-          test_query_buffer.buffer_size_);
-      REQUIRE(rc == TILEDB_OK);
-      rc = tiledb_query_set_offsets_buffer(
-          ctx_,
-          query,
-          test_query_buffer.name_.c_str(),
-          static_cast<uint64_t*>(test_query_buffer.buffer_offset_),
-          test_query_buffer.buffer_offset_size_);
-      REQUIRE(rc == TILEDB_OK);
+      if (test_query_buffer.buffer_offset_ == nullptr) {
+        rc = tiledb_query_set_data_buffer(
+            ctx_,
+            query,
+            test_query_buffer.name_.c_str(),
+            test_query_buffer.buffer_,
+            test_query_buffer.buffer_size_);
+        REQUIRE(rc == TILEDB_OK);
+        rc = tiledb_query_set_validity_buffer(
+            ctx_,
+            query,
+            test_query_buffer.name_.c_str(),
+            test_query_buffer.buffer_validity_,
+            test_query_buffer.buffer_validity_size_);
+        REQUIRE(rc == TILEDB_OK);
+      } else {
+        rc = tiledb_query_set_data_buffer(
+            ctx_,
+            query,
+            test_query_buffer.name_.c_str(),
+            test_query_buffer.buffer_offset_,
+            test_query_buffer.buffer_offset_size_);
+        REQUIRE(rc == TILEDB_OK);
+        rc = tiledb_query_set_offsets_buffer(
+            ctx_,
+            query,
+            test_query_buffer.name_.c_str(),
+            static_cast<uint64_t*>(test_query_buffer.buffer_),
+            test_query_buffer.buffer_size_);
+        REQUIRE(rc == TILEDB_OK);
+        rc = tiledb_query_set_validity_buffer(
+            ctx_,
+            query,
+            test_query_buffer.name_.c_str(),
+            test_query_buffer.buffer_validity_,
+            test_query_buffer.buffer_validity_size_);
+        REQUIRE(rc == TILEDB_OK);
+      }
     }
   }
 
@@ -652,29 +709,70 @@ void SmokeTestFx::read(
   // Set the query buffers.
   for (size_t i = 0; i < test_query_buffers.size(); ++i) {
     const test_query_buffer_t& test_query_buffer = test_query_buffers[i];
-    if (test_query_buffer.buffer_offset_ == nullptr) {
-      rc = tiledb_query_set_data_buffer(
-          ctx_,
-          query,
-          test_query_buffer.name_.c_str(),
-          test_query_buffer.buffer_,
-          test_query_buffer.buffer_size_);
-      REQUIRE(rc == TILEDB_OK);
+    if (test_query_buffer.buffer_validity_size_ == nullptr) {
+      if (test_query_buffer.buffer_offset_ == nullptr) {
+        rc = tiledb_query_set_data_buffer(
+            ctx_,
+            query,
+            test_query_buffer.name_.c_str(),
+            test_query_buffer.buffer_,
+            test_query_buffer.buffer_size_);
+        REQUIRE(rc == TILEDB_OK);
+      } else {
+        rc = tiledb_query_set_data_buffer(
+            ctx_,
+            query,
+            test_query_buffer.name_.c_str(),
+            test_query_buffer.buffer_,
+            test_query_buffer.buffer_size_);
+        REQUIRE(rc == TILEDB_OK);
+        rc = tiledb_query_set_offsets_buffer(
+            ctx_,
+            query,
+            test_query_buffer.name_.c_str(),
+            static_cast<uint64_t*>(test_query_buffer.buffer_offset_),
+            test_query_buffer.buffer_offset_size_);
+        REQUIRE(rc == TILEDB_OK);
+      }
     } else {
-      rc = tiledb_query_set_data_buffer(
-          ctx_,
-          query,
-          test_query_buffer.name_.c_str(),
-          test_query_buffer.buffer_,
-          test_query_buffer.buffer_size_);
-      REQUIRE(rc == TILEDB_OK);
-      rc = tiledb_query_set_offsets_buffer(
-          ctx_,
-          query,
-          test_query_buffer.name_.c_str(),
-          static_cast<uint64_t*>(test_query_buffer.buffer_offset_),
-          test_query_buffer.buffer_offset_size_);
-      REQUIRE(rc == TILEDB_OK);
+      if (test_query_buffer.buffer_offset_ == nullptr) {
+        rc = tiledb_query_set_data_buffer(
+            ctx_,
+            query,
+            test_query_buffer.name_.c_str(),
+            test_query_buffer.buffer_,
+            test_query_buffer.buffer_size_);
+        REQUIRE(rc == TILEDB_OK);
+        rc = tiledb_query_set_validity_buffer(
+            ctx_,
+            query,
+            test_query_buffer.name_.c_str(),
+            test_query_buffer.buffer_validity_,
+            test_query_buffer.buffer_validity_size_);
+        REQUIRE(rc == TILEDB_OK);
+      } else {
+        rc = tiledb_query_set_data_buffer(
+            ctx_,
+            query,
+            test_query_buffer.name_.c_str(),
+            test_query_buffer.buffer_offset_,
+            test_query_buffer.buffer_offset_size_);
+        REQUIRE(rc == TILEDB_OK);
+        rc = tiledb_query_set_offsets_buffer(
+            ctx_,
+            query,
+            test_query_buffer.name_.c_str(),
+            static_cast<uint64_t*>(test_query_buffer.buffer_),
+            test_query_buffer.buffer_size_);
+        REQUIRE(rc == TILEDB_OK);
+        rc = tiledb_query_set_validity_buffer(
+            ctx_,
+            query,
+            test_query_buffer.name_.c_str(),
+            test_query_buffer.buffer_validity_,
+            test_query_buffer.buffer_validity_size_);
+        REQUIRE(rc == TILEDB_OK);
+      }
     }
   }
 
@@ -818,12 +916,21 @@ void SmokeTestFx::smoke_test(
   for (uint64_t i = 0; i < total_cells; i++) {
     a_write_buffer[i] = i;
   }
+  uint64_t a_write_buffer_validity_size = total_cells;
+  uint8_t* a_write_buffer_validity =
+      (uint8_t*)malloc(a_write_buffer_validity_size);
+  for (uint64_t i = 0; i < total_cells; i++) {
+    a_write_buffer_validity[i] = rand() % 2;
+  }
+
   write_query_buffers.emplace_back(
       test_attrs[0].name_,
       a_write_buffer,
       &a_write_buffer_size,
       nullptr,
-      nullptr);
+      nullptr,
+      a_write_buffer_validity,
+      &a_write_buffer_validity_size);
 
   // Create the write buffers for attribute "b".
   uint64_t b_write_buffer_size = 0;
@@ -851,7 +958,9 @@ void SmokeTestFx::smoke_test(
         b_write_buffer,
         &b_write_buffer_size,
         b_write_buffer_offset,
-        &b_write_buffer_offset_size);
+        &b_write_buffer_offset_size,
+        nullptr,
+        nullptr);
   }
 
   // Create the write buffer for attribute "c".
@@ -875,6 +984,8 @@ void SmokeTestFx::smoke_test(
         test_attrs[2].name_,
         c_write_buffer,
         &c_write_buffer_size,
+        nullptr,
+        nullptr,
         nullptr,
         nullptr);
   }
@@ -913,6 +1024,8 @@ void SmokeTestFx::smoke_test(
           d_write_buffers.back().first,
           &d_write_buffers.back().second,
           nullptr,
+          nullptr,
+          nullptr,
           nullptr);
 
       ranges.emplace_back(range);
@@ -932,12 +1045,20 @@ void SmokeTestFx::smoke_test(
   for (uint64_t i = 0; i < total_cells; i++) {
     a_read_buffer[i] = 0;
   }
+  uint64_t a_read_buffer_validity_size = total_cells;
+  uint8_t* a_read_buffer_validity =
+      (uint8_t*)malloc(a_read_buffer_validity_size);
+  for (uint64_t i = 0; i < total_cells; i++) {
+    a_read_buffer_validity[i] = 0;
+  }
   read_query_buffers.emplace_back(
       test_attrs[0].name_,
       a_read_buffer,
       &a_read_buffer_size,
       nullptr,
-      nullptr);
+      nullptr,
+      a_read_buffer_validity,
+      &a_read_buffer_validity_size);
 
   // Create the read buffers for attribute "b".
   uint64_t b_read_buffer_size = 0;
@@ -962,7 +1083,9 @@ void SmokeTestFx::smoke_test(
         b_read_buffer,
         &b_read_buffer_size,
         b_read_buffer_offset,
-        &b_read_buffer_offset_size);
+        &b_read_buffer_offset_size,
+        nullptr,
+        nullptr);
   }
 
   // Create the read buffers for attribute "c".
@@ -982,6 +1105,8 @@ void SmokeTestFx::smoke_test(
         test_attrs[2].name_,
         c_read_buffer,
         &c_read_buffer_size,
+        nullptr,
+        nullptr,
         nullptr,
         nullptr);
   }
@@ -1012,6 +1137,8 @@ void SmokeTestFx::smoke_test(
           test_dim.name_,
           d_read_buffers.back().first,
           &d_read_buffers.back().second,
+          nullptr,
+          nullptr,
           nullptr,
           nullptr);
     }
@@ -1136,6 +1263,8 @@ void SmokeTestFx::smoke_test(
   // Free the write buffers.
   if (a_write_buffer != nullptr)
     free(a_write_buffer);
+  if (a_write_buffer_validity != nullptr)
+    free(a_write_buffer_validity);
   if (b_write_buffer != nullptr)
     free(b_write_buffer);
   if (b_write_buffer_offset != nullptr)
@@ -1151,6 +1280,8 @@ void SmokeTestFx::smoke_test(
   // Free the read buffers.
   if (a_read_buffer != nullptr)
     free(a_read_buffer);
+  if (a_read_buffer_validity != nullptr)
+    free(a_read_buffer_validity);
   if (b_read_buffer != nullptr)
     free(b_read_buffer);
   if (b_read_buffer_offset != nullptr)
@@ -1171,9 +1302,9 @@ TEST_CASE_METHOD(
     SmokeTestFx, "C API: Test a dynamic range of arrays", "[capi][smoke]") {
   // Build a vector of attributes.
   vector<test_attr_t> attrs;
-  attrs.emplace_back("a", TILEDB_INT32, 1);
-  attrs.emplace_back("b", TILEDB_INT32, TILEDB_VAR_NUM);
-  attrs.emplace_back("c", TILEDB_STRING_ASCII, 2);
+  attrs.emplace_back("a", TILEDB_INT32, 1, true);
+  attrs.emplace_back("b", TILEDB_INT32, TILEDB_VAR_NUM, false);
+  attrs.emplace_back("c", TILEDB_STRING_ASCII, 2, false);
 
   // Build a vector of query conditions.
   vector<vector<shared_ptr<test_query_condition_t>>> query_conditions_vec;

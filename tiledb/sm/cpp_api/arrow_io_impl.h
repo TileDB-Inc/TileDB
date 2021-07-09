@@ -620,12 +620,9 @@ void ArrowImporter::import_(
 
     // Set the TileDB buffer, adding `1` to `num_offsets` to account for
     // the expected, extra offset.
-    query_->set_buffer(
-        name,
-        static_cast<uint64_t*>(p_offsets),
-        num_offsets + 1,
-        p_data,
-        data_nbytes);
+    query_->set_data_buffer(name, p_data, data_nbytes);
+    query_->set_offsets_buffer(
+        name, static_cast<uint64_t*>(p_offsets), num_offsets + 1);
   } else {
     // fixed-size attribute (not TILEDB_VAR_NUM)
     assert(arw_array->n_buffers == 2);
@@ -633,7 +630,7 @@ void ArrowImporter::import_(
     void* p_data = const_cast<void*>(arw_array->buffers[1]);
     uint64_t data_num = arw_array->length;
 
-    query_->set_buffer(name, static_cast<void*>(p_data), data_num);
+    query_->set_data_buffer(name, static_cast<void*>(p_data), data_num);
   }
 }
 
@@ -682,8 +679,8 @@ BufferInfo ArrowExporter::buffer_info(const std::string& name) {
 
   // NOTE: result sizes are in bytes
   if (is_var) {
-    query_->get_buffer(
-        name, &offsets, &offsets_nelem, &data, &data_nelem, &elem_size);
+    query_->get_data_buffer(name, &data, &data_nelem, &elem_size);
+    query_->get_offsets_buffer(name, &offsets, &offsets_nelem);
 
     // The C++ API Query::get_buffer returns an incorrect `offsets_nelemn`
     // when we read 32-bit offsets from the core. As a work-around, we will
@@ -707,7 +704,7 @@ BufferInfo ArrowExporter::buffer_info(const std::string& name) {
         &offsets_nbytes));
     offsets_nelem = *offsets_nbytes / offsets_elem_nbytes;
   } else {
-    query_->get_buffer(name, &data, &data_nelem, &elem_size);
+    query_->get_data_buffer(name, &data, &data_nelem, &elem_size);
   }
 
   auto retval = BufferInfo();

@@ -1192,7 +1192,7 @@ Status Query::set_buffer(
   has_coords_buffer_ |= is_dim;
 
   // Set attribute buffer
-  buffers_[name] = QueryBuffer(buffer, nullptr, buffer_size, nullptr);
+  buffers_[name].set_data_buffer(buffer, buffer_size);
 
   return Status::Ok();
 }
@@ -1331,7 +1331,7 @@ Status Query::set_offsets_buffer(
     uint64_t coords_num =
         *buffer_offsets_size / constants::cell_var_offset_size;
     if (coord_offsets_buffer_is_set_ &&
-        coords_num != coords_info_.coords_num_ && name != offsets_buffer_name_)
+        coords_num != coords_info_.coords_num_ && name == offsets_buffer_name_)
       return LOG_STATUS(Status::QueryError(
           std::string("Cannot set buffer; Input buffer for dimension '") +
           name +
@@ -1479,8 +1479,8 @@ Status Query::set_buffer(
   }
 
   // Set attribute/dimension buffer
-  buffers_[name] =
-      QueryBuffer(buffer_off, buffer_val, buffer_off_size, buffer_val_size);
+  buffers_[name].set_data_var_buffer(buffer_val, buffer_val_size);
+  buffers_[name].set_offsets_buffer(buffer_off, buffer_off_size);
 
   return Status::Ok();
 }
@@ -1584,8 +1584,8 @@ Status Query::set_buffer(
         "' after initialization"));
 
   // Set attribute buffer
-  buffers_[name] = QueryBuffer(
-      buffer, nullptr, buffer_size, nullptr, std::move(validity_vector));
+  buffers_[name].set_data_buffer(buffer, buffer_size);
+  buffers_[name].set_validity_buffer(std::move(validity_vector));
 
   return Status::Ok();
 }
@@ -1660,12 +1660,9 @@ Status Query::set_buffer(
         "' after initialization"));
 
   // Set attribute/dimension buffer
-  buffers_[name] = QueryBuffer(
-      buffer_off,
-      buffer_val,
-      buffer_off_size,
-      buffer_val_size,
-      std::move(validity_vector));
+  buffers_[name].set_data_var_buffer(buffer_val, buffer_val_size);
+  buffers_[name].set_offsets_buffer(buffer_off, buffer_off_size);
+  buffers_[name].set_validity_buffer(std::move(validity_vector));
 
   return Status::Ok();
 }

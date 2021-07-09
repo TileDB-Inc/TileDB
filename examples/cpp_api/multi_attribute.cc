@@ -95,7 +95,9 @@ void write_array() {
   // Open the array for writing and create the query.
   Array array(ctx, array_name, TILEDB_WRITE);
   Query query(ctx, array);
-  query.set_layout(TILEDB_ROW_MAJOR).set_buffer("a1", a1).set_buffer("a2", a2);
+  query.set_layout(TILEDB_ROW_MAJOR)
+      .set_data_buffer("a1", a1)
+      .set_data_buffer("a2", a2);
 
   // Perform the write and close the array.
   query.submit();
@@ -121,8 +123,8 @@ void read_array() {
   Query query(ctx, array);
   query.set_subarray(subarray)
       .set_layout(TILEDB_ROW_MAJOR)
-      .set_buffer("a1", data_a1)
-      .set_buffer("a2", data_a2);
+      .set_data_buffer("a1", data_a1)
+      .set_data_buffer("a2", data_a2);
 
   // Submit the query and close the array.
   query.submit();
@@ -153,7 +155,7 @@ void read_array_subselect() {
   Query query(ctx, array);
   query.set_subarray(subarray)
       .set_layout(TILEDB_ROW_MAJOR)
-      .set_buffer("a1", data_a1);
+      .set_data_buffer("a1", data_a1);
 
   // Submit the query and close the array.
   query.submit();

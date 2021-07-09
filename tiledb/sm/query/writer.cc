@@ -336,26 +336,26 @@ Status Writer::check_buffer_sizes() const {
       expected_cell_num = buffer_size / array_schema_->cell_size(attr);
     }
 
-    if (expected_cell_num != cell_num) {
-      std::stringstream ss;
-      ss << "Buffer sizes check failed; Invalid number of cells given for ";
-      ss << "attribute '" << attr << "'";
-      ss << " (" << expected_cell_num << " != " << cell_num << ")";
-      return LOG_STATUS(Status::WriterError(ss.str()));
-    }
-
     if (array_schema_->is_nullable(attr)) {
       const uint64_t buffer_validity_size =
           *it.second.validity_vector_.buffer_size();
-      const uint64_t cell_validity_num =
+      const uint64_t expected_validity_num =
           buffer_validity_size / constants::cell_validity_size;
 
-      if (expected_cell_num != cell_validity_num) {
+      if (expected_validity_num != cell_num) {
         std::stringstream ss;
         ss << "Buffer sizes check failed; Invalid number of validity cells "
               "given for ";
         ss << "attribute '" << attr << "'";
-        ss << " (" << expected_cell_num << " != " << cell_validity_num << ")";
+        ss << " (" << expected_validity_num << " != " << cell_num << ")";
+        return LOG_STATUS(Status::WriterError(ss.str()));
+      }
+    } else {
+      if (expected_cell_num != cell_num) {
+        std::stringstream ss;
+        ss << "Buffer sizes check failed; Invalid number of cells given for ";
+        ss << "attribute '" << attr << "'";
+        ss << " (" << expected_cell_num << " != " << cell_num << ")";
         return LOG_STATUS(Status::WriterError(ss.str()));
       }
     }

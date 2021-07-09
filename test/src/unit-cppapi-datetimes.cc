@@ -63,7 +63,7 @@ TEST_CASE("C++ API: Datetime attribute", "[cppapi][datetime]") {
   Array array_w(ctx, array_name, TILEDB_WRITE);
   Query query_w(ctx, array_w);
   query_w.set_layout(TILEDB_UNORDERED)
-      .set_buffer("a", data_w)
+      .set_data_buffer("a", data_w)
       .set_coordinates(coords_w)
       .submit();
   query_w.finalize();
@@ -75,7 +75,7 @@ TEST_CASE("C++ API: Datetime attribute", "[cppapi][datetime]") {
   Array array_r(ctx, array_name, TILEDB_READ);
   Query query_r(ctx, array_r);
   query_r.set_layout(TILEDB_ROW_MAJOR)
-      .set_buffer("a", data_r)
+      .set_data_buffer("a", data_r)
       .set_coordinates(coords_r);
   REQUIRE(query_r.submit() == Query::Status::COMPLETE);
 
@@ -117,7 +117,7 @@ TEST_CASE("C++ API: Datetime dimension", "[cppapi][datetime]") {
   Array array_w(ctx, array_name, TILEDB_WRITE);
   Query query_w(ctx, array_w);
   query_w.set_layout(TILEDB_UNORDERED)
-      .set_buffer("a", data_w)
+      .set_data_buffer("a", data_w)
       .set_coordinates(coords_w)
       .submit();
   query_w.finalize();
@@ -129,7 +129,7 @@ TEST_CASE("C++ API: Datetime dimension", "[cppapi][datetime]") {
   Array array_r(ctx, array_name, TILEDB_READ);
   Query query_r(ctx, array_r);
   query_r.set_layout(TILEDB_ROW_MAJOR)
-      .set_buffer("a", data_r)
+      .set_data_buffer("a", data_r)
       .set_subarray(subarray_r);
   REQUIRE(query_r.submit() == Query::Status::COMPLETE);
 

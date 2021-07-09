@@ -98,9 +98,10 @@ class Benchmark : public BenchmarkBase {
     Query d_write_query(*ctx_, d_write_array, TILEDB_WRITE);
     d_write_query.set_subarray({1u, dense_array_rows, 1u, dense_array_cols})
         .set_layout(TILEDB_ROW_MAJOR)
-        .set_buffer("a", data_a)
-        .set_buffer("b", data_b)
-        .set_buffer("c", off_c, data_c);
+        .set_data_buffer("a", data_a)
+        .set_data_buffer("b", data_b)
+        .set_data_buffer("c", data_c)
+        .set_offsets_buffer("c", off_c);
     d_write_query.submit();
     d_write_array.close();
   }
@@ -136,9 +137,10 @@ class Benchmark : public BenchmarkBase {
       }
 
       query.set_layout(TILEDB_ROW_MAJOR)
-          .set_buffer("a", data_a)
-          .set_buffer("b", data_b)
-          .set_buffer("c", off_c, data_c);
+          .set_data_buffer("a", data_a)
+          .set_data_buffer("b", data_b)
+          .set_data_buffer("c", data_c)
+          .set_offsets_buffer("c", off_c);
       query.submit();
       array.close();
     }
