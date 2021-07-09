@@ -1126,11 +1126,12 @@ Status query_from_capnp(
         } else {
           // Fixed size attribute; buffers already set.
           char* data_dest = (char*)existing_buffer + curr_data_size;
-          char* validity_dest = (char*)existing_buffer + curr_validity_size;
 
           std::memcpy(data_dest, attribute_buffer_start, fixedlen_size);
           attribute_buffer_start += fixedlen_size;
           if (nullable) {
+            char* validity_dest =
+                (char*)existing_validity_buffer + curr_validity_size;
             std::memcpy(
                 validity_dest, attribute_buffer_start, validitylen_size);
             attribute_buffer_start += validitylen_size;
