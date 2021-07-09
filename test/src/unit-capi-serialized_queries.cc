@@ -46,7 +46,12 @@
 #include "tiledb/sm/filesystem/posix.h"
 #endif
 
+#include <any>
+#include <cassert>
+#include <map>
+
 using namespace tiledb;
+using ResultSetType = std::map<std::string, std::any>;
 
 namespace {
 
@@ -61,6 +66,33 @@ static std::string current_dir() {
   return sm::Posix::current_dir();
 }
 #endif
+
+template <class T>
+bool check_result(const T a, const T b, size_t start, size_t end) {
+  auto a_exp = T(a.begin() + start, a.begin() + end);
+  auto b_exp = T(b.begin() + start, b.begin() + end);
+  return a_exp == b_exp;
+}
+
+template <class TResult, class TExpected>
+bool check_result(
+    const TResult a,
+    const TExpected b,
+    std::optional<size_t> start = nullopt,
+    std::optional<size_t> end = nullopt) {
+  TResult b_typed;
+  if constexpr (std::is_same<TExpected, std::any>::value) {
+    b_typed = std::any_cast<TResult>(b);
+  } else {
+    b_typed = b;
+  }
+  if (start.has_value()) {
+    assert(end.has_value());
+    return check_result(a, b_typed, *start, *end);
+  } else {
+    return check_result(a, b_typed, 0, b_typed.size());
+  }
+}
 
 struct SerializationFx {
   const std::string tmpdir = "serialization_test_dir";
@@ -124,7 +156,7 @@ struct SerializationFx {
     Array::create(array_uri, schema);
   }
 
-  void write_dense_array() {
+  ResultSetType write_dense_array() {
     std::vector<int32_t> subarray = {1, 10, 1, 10};
     std::vector<uint32_t> a1;
     std::vector<uint32_t> a2;
@@ -146,6 +178,13 @@ struct SerializationFx {
       a3_offsets.push_back(a3_data.size());
       a3_data.insert(a3_data.end(), a3.begin(), a3.end());
     }
+
+    ResultSetType results;
+    results["a1"] = a1;
+    results["a2"] = a2;
+    results["a2_nullable"] = a2_nullable;
+    results["a3_data"] = a3_data;
+    results["a3_offsets"] = a3_offsets;
 
     Array array(ctx, array_uri, TILEDB_WRITE);
     Query query(ctx, array);
@@ -172,6 +211,8 @@ struct SerializationFx {
 
     // The deserialized query should also include the write stats
     check_write_stats(query);
+
+    return results;
   }
 
   void write_dense_array_ranges() {
@@ -503,7 +544,7 @@ TEST_CASE_METHOD(
     "Query serialization, dense",
     "[query][dense][serialization]") {
   create_array(TILEDB_DENSE);
-  write_dense_array();
+  auto expected_results = write_dense_array();
 
   SECTION("- Read all") {
     Array array(ctx, array_uri, TILEDB_READ);
@@ -552,6 +593,12 @@ TEST_CASE_METHOD(
     REQUIRE(std::get<2>(result_el["a2"]) == 100);
     REQUIRE(std::get<0>(result_el["a3"]) == 100);
     REQUIRE(std::get<1>(result_el["a3"]) == 5050);
+
+    REQUIRE(check_result(a1, expected_results["a1"]));
+    REQUIRE(check_result(a2, expected_results["a2"]));
+    REQUIRE(check_result(a2_nullable, expected_results["a2_nullable"]));
+    REQUIRE(check_result(a3_data, expected_results["a3_data"]));
+    REQUIRE(check_result(a3_offsets, expected_results["a3_offsets"]));
 
     for (void* b : to_free)
       std::free(b);
@@ -612,6 +659,12 @@ TEST_CASE_METHOD(
     REQUIRE(std::get<0>(result_el["a3"]) == 5);
     REQUIRE(std::get<1>(result_el["a3"]) == 15);
 
+    REQUIRE(check_result(a1, expected_results["a1"], 0, 5));
+    REQUIRE(check_result(a2, expected_results["a2"], 0, 10));
+    REQUIRE(check_result(a2_nullable, expected_results["a2_nullable"], 0, 5));
+    REQUIRE(check_result(a3_data, expected_results["a3_data"], 0, 15));
+    REQUIRE(check_result(a3_offsets, expected_results["a3_offsets"], 0, 5));
+
     for (void* b : to_free)
       std::free(b);
   }
@@ -663,6 +716,20 @@ TEST_CASE_METHOD(
     REQUIRE(std::get<2>(result_el["a2"]) == 4);
     REQUIRE(std::get<0>(result_el["a3"]) == 4);
     REQUIRE(std::get<1>(result_el["a3"]) == 114);
+
+    a1.resize(4);
+    a2.resize(8);
+    a2_nullable.resize(4);
+    a3_offsets.resize(4);
+    a3_data.resize(114);
+    auto a3_exp = std::any_cast<decltype(a3_data)>(expected_results["a3_data"]);
+    a3_exp.resize(114);
+    REQUIRE(a1 == decltype(a1)({22, 23, 32, 33}));
+    REQUIRE(a2 == decltype(a2)({22, 44, 23, 46, 32, 64, 33, 66}));
+    REQUIRE(
+        a2_nullable == decltype(a2_nullable)({'\x01', '\x01', '\x01', '\x01'}));
+    REQUIRE(a3_data == a3_exp);
+    REQUIRE(a3_offsets == decltype(a3_offsets)({0, 23, 47, 80}));
 
     for (void* b : to_free)
       std::free(b);
@@ -739,6 +806,8 @@ TEST_CASE_METHOD(
     REQUIRE(std::get<0>(result_el["a3"]) == 1);
     REQUIRE(std::get<1>(result_el["a3"]) == 33);
 
+    // TODO: check results
+
     // Reset buffers, serialize and resubmit
     set_buffers(query);
     serialize_and_submit(query);
@@ -750,6 +819,8 @@ TEST_CASE_METHOD(
     REQUIRE(std::get<2>(result_el["a2"]) == 1);
     REQUIRE(std::get<0>(result_el["a3"]) == 1);
     REQUIRE(std::get<1>(result_el["a3"]) == 34);
+
+    // TODO: check results
   }
 }
 
@@ -805,6 +876,8 @@ TEST_CASE_METHOD(
     REQUIRE(std::get<2>(result_el["a2"]) == 10);
     REQUIRE(std::get<0>(result_el["a3"]) == 10);
     REQUIRE(std::get<1>(result_el["a3"]) == 55);
+
+    // TODO: check results
 
     for (void* b : to_free)
       std::free(b);
@@ -864,6 +937,8 @@ TEST_CASE_METHOD(
     REQUIRE(std::get<2>(result_el["a2"]) == 10);
     REQUIRE(std::get<0>(result_el["a3"]) == 10);
     REQUIRE(std::get<1>(result_el["a3"]) == 55);
+
+    // TODO: check results
 
     for (void* b : to_free)
       std::free(b);
@@ -926,6 +1001,8 @@ TEST_CASE_METHOD(
     REQUIRE(std::get<0>(result_el["a3"]) == 100);
     REQUIRE(std::get<1>(result_el["a3"]) == 5050);
 
+    // TODO: check results
+
     for (void* b : to_free)
       std::free(b);
   }
@@ -978,6 +1055,8 @@ TEST_CASE_METHOD(
     REQUIRE(std::get<2>(result_el["a2"]) == 4);
     REQUIRE(std::get<0>(result_el["a3"]) == 4);
     REQUIRE(std::get<1>(result_el["a3"]) == 114);
+
+    // TODO: check results
 
     for (void* b : to_free)
       std::free(b);
@@ -1066,5 +1145,7 @@ TEST_CASE_METHOD(
     REQUIRE(std::get<2>(result_el["a2"]) == 1);
     REQUIRE(std::get<0>(result_el["a3"]) == 1);
     REQUIRE(std::get<1>(result_el["a3"]) == 34);
+
+    // TODO: check results
   }
 }
