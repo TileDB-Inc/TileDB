@@ -3133,6 +3133,33 @@ TILEDB_EXPORT int32_t tiledb_array_schema_load_with_key(
     tiledb_array_schema_t** array_schema);
 
 /**
+ * Removes an attribute from an array.
+ *
+ * **Example:**
+ *
+ * @code{.c}
+ * std::string array_uri="test_array";
+ * std::string attr_name="a1";
+ * tiledb_array_remove_attribute(ctx, array_uri.c_str(), attr_name.c_str());
+ * @endcode
+ *
+ * @param ctx The TileDB context.
+ * @param array_uri The array whose schema will be retrieved.
+ * @param attr_name The attribute to be removed.
+ * @param encryption_type The encryption type to use.
+ * @param encryption_key The encryption key to use.
+ * @param key_length Length in bytes of the encryption key.*
+ * @return `TILEDB_OK` for success and `TILEDB_ERR` for error.
+ */
+TILEDB_EXPORT int32_t tiledb_array_remove_attribute(
+    tiledb_ctx_t* ctx,
+    const char* array_uri,
+    const char* attr_name,
+    tiledb_encryption_type_t encryption_type,
+    const void* encryption_key,
+    uint32_t key_length);
+
+/**
  * Retrieves the array type.
  *
  * **Example:**

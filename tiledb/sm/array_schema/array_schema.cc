@@ -485,6 +485,7 @@ bool ArraySchema::var_size(const std::string& name) const {
 }
 
 Status ArraySchema::add_attribute(const Attribute* attr, bool check_special) {
+  std::lock_guard<std::mutex> lock(mtx_);
   // Sanity check
   if (attr == nullptr)
     return LOG_STATUS(Status::ArraySchemaError(
@@ -502,6 +503,34 @@ Status ArraySchema::add_attribute(const Attribute* attr, bool check_special) {
   attributes_.emplace_back(new_attr);
   attribute_map_[new_attr->name()] = new_attr;
 
+  return Status::Ok();
+}
+
+Status ArraySchema::remove_attribute(const std::string& attr_name) {
+  std::lock_guard<std::mutex> lock(mtx_);
+  if (attr_name.empty()) {
+    return LOG_STATUS(
+        Status::ArraySchemaError("Cannot remove an empty name attribute"));
+  }
+
+  if (attribute_map_.find(attr_name) == attribute_map_.end()) {
+    // Not exists.
+    return LOG_STATUS(
+        Status::ArraySchemaError("Cannot remove a non-exist attribute"));
+  }
+  attribute_map_.erase(attr_name);
+
+  // Iterate backwards and remove the attribute pointer, it should be slightly
+  // faster than iterating forward.
+  std::vector<Attribute*>::iterator it;
+  for (it = attributes_.end(); it != attributes_.begin();) {
+    --it;
+    if ((*it)->name() == attr_name) {
+      tdb_delete(*it);
+      it = attributes_.erase(it);
+    }
+  }
+  RETURN_NOT_OK(generate_uri());
   return Status::Ok();
 }
 
@@ -815,14 +844,14 @@ void ArraySchema::clear() {
 Status ArraySchema::generate_uri() {
   std::string uuid;
   RETURN_NOT_OK(uuid::generate_uuid(&uuid, false));
-
+  auto timestamp = utils::time::timestamp_now_ms();
+  timestamp_range_ = std::make_pair(timestamp, timestamp);
   std::stringstream ss;
   ss << "__" << timestamp_range_.first << "_" << timestamp_range_.second << "_"
      << uuid;
   name_ = ss.str();
   uri_ = array_uri_.join_path(constants::array_schema_folder_name)
              .join_path(name_);
-
   return Status::Ok();
 }
 
