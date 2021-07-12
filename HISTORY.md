@@ -1,3 +1,14 @@
+# TileDB v2.3.2 Release Notes
+
+## Improvements
+* Support more env selectable options in both azure-windows.yml and azure-windows-release.yml [#2384](https://github.com/TileDB-Inc/TileDB/pull/2384)
+* Enable Azure/Serialization for windows CI artifacts [#2400](https://github.com/TileDB-Inc/TileDB/pull/2400)
+
+## Bug fixes
+* Correct check for last offset position so that undefined memory is not accessed. [#2390](https://github.com/TileDB-Inc/TileDB/pull/2390)
+* Fix ch8416, failure to read array written with tiledb 2.2 via REST [#2404](https://github.com/TileDB-Inc/TileDB/pull/2404)
+* Fix ch7582: use the correct buffer for validity deserialization [#2407](https://github.com/TileDB-Inc/TileDB/pull/2407)
+
 # TileDB v2.3.1 Release Notes
 
 ## Improvements
