@@ -384,11 +384,6 @@ class Config {
    *    The offsets format (`bytes` or `elements`) to be used for
    *    var-sized attributes.<br>
    *    **Default**: bytes
-   * - `sm.sub_partitioner_memory_budget` <br>
-   *    The memory budget used by the read algorithm to force partition the
-   *    query range in case sorting is much slower than the partitioning
-   *    overhead. <br>
-   *    **Default**: 0
    * - `sm.use_refactored_readers` <br>
    *    Use the refactored readers or not. <br>
    *    **Default**: false

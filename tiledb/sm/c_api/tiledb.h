@@ -1036,11 +1036,6 @@ TILEDB_EXPORT void tiledb_config_free(tiledb_config_t** config);
  *    The offsets format (`bytes` or `elements`) to be used for
  *    var-sized attributes.<br>
  *    **Default**: bytes
- * - `sm.sub_partitioner_memory_budget` <br>
- *    The memory budget used by the read algorithm to force partition the
- *    query range in case sorting is much slower than the partitioning
- *    overhead. <br>
- *    **Default**: 0
  * - `sm.use_refactored_readers` <br>
  *    Use the refactored readers or not. <br>
  *    **Default**: false
@@ -3457,7 +3452,6 @@ TILEDB_EXPORT int32_t tiledb_query_get_stats(
  *
  * - `sm.memory_budget`
  * - `sm.memory_budget_var`
- * - `sm.sub_partitioner_memory_budget`
  * - `sm.var_offsets.mode`
  * - `sm.var_offsets.extra_element`
  * - `sm.var_offsets.bitsize`

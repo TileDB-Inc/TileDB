@@ -1107,7 +1107,6 @@ class Query {
    *
    * - `sm.memory_budget`
    * - `sm.memory_budget_var`
-   * - `sm.sub_partitioner_memory_budget`
    * - `sm.var_offsets.mode`
    * - `sm.var_offsets.extra_element`
    * - `sm.var_offsets.bitsize`
