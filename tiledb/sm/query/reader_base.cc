@@ -523,8 +523,7 @@ Status ReaderBase::read_tiles(
 
 Status ReaderBase::unfilter_tiles(
     const std::string& name,
-    const std::vector<ResultTile*>* result_tiles,
-    const ResultCellSlabsIndex* const rcs_index) const {
+    const std::vector<ResultTile*>* result_tiles) const {
   auto stat_type = (array_schema_->is_attr(name)) ? "unfilter_attr_tiles" :
                                                     "unfilter_coord_tiles";
   auto timer_se = stats_->start_timer(stat_type);
@@ -565,20 +564,6 @@ Status ReaderBase::unfilter_tiles(
           auto& t_var = std::get<1>(*tile_tuple);
           auto& t_validity = std::get<2>(*tile_tuple);
 
-          // If we're performing selective unfiltering, lookup the result
-          // cell slab ranges associated with this tile. If we do not have
-          // any ranges, use an empty list to indicate that this tile doesn't
-          // contain any results.
-          const std::vector<std::pair<uint64_t, uint64_t>>*
-              result_cell_slab_ranges = nullptr;
-          static const std::vector<std::pair<uint64_t, uint64_t>> empty_ranges;
-          if (rcs_index) {
-            result_cell_slab_ranges =
-                rcs_index->find(tile) != rcs_index->end() ?
-                    &rcs_index->at(tile) :
-                    &empty_ranges;
-          }
-
           // Cache 't'.
           if (t.filtered()) {
             // Store the filtered buffer in the tile cache.
@@ -618,17 +603,15 @@ Status ReaderBase::unfilter_tiles(
           // 't_var' for var-sized tiles.
           if (!var_size) {
             if (!nullable)
-              RETURN_NOT_OK(unfilter_tile(name, &t, result_cell_slab_ranges));
+              RETURN_NOT_OK(unfilter_tile(name, &t));
             else
-              RETURN_NOT_OK(unfilter_tile_nullable(
-                  name, &t, &t_validity, result_cell_slab_ranges));
+              RETURN_NOT_OK(unfilter_tile_nullable(name, &t, &t_validity));
           } else {
             if (!nullable)
-              RETURN_NOT_OK(
-                  unfilter_tile(name, &t, &t_var, result_cell_slab_ranges));
+              RETURN_NOT_OK(unfilter_tile(name, &t, &t_var));
             else
-              RETURN_NOT_OK(unfilter_tile_nullable(
-                  name, &t, &t_var, &t_validity, result_cell_slab_ranges));
+              RETURN_NOT_OK(
+                  unfilter_tile_nullable(name, &t, &t_var, &t_validity));
           }
         }
 
@@ -640,39 +623,25 @@ Status ReaderBase::unfilter_tiles(
   return Status::Ok();
 }
 
-Status ReaderBase::unfilter_tile(
-    const std::string& name,
-    Tile* tile,
-    const std::vector<std::pair<uint64_t, uint64_t>>* result_cell_slab_ranges)
-    const {
+Status ReaderBase::unfilter_tile(const std::string& name, Tile* tile) const {
   FilterPipeline filters = array_schema_->filters(name);
 
   // Append an encryption unfilter when necessary.
   RETURN_NOT_OK(FilterPipeline::append_encryption_filter(
       &filters, array_->get_encryption_key()));
 
-  // Skip selective unfiltering on coordinate tiles.
-  if (name == constants::coords || tile->stores_coords()) {
-    result_cell_slab_ranges = nullptr;
-  }
-
   // Reverse the tile filters.
   RETURN_NOT_OK(filters.run_reverse(
       stats_,
       tile,
       storage_manager_->compute_tp(),
-      storage_manager_->config(),
-      result_cell_slab_ranges));
+      storage_manager_->config()));
 
   return Status::Ok();
 }
 
 Status ReaderBase::unfilter_tile(
-    const std::string& name,
-    Tile* tile,
-    Tile* tile_var,
-    const std::vector<std::pair<uint64_t, uint64_t>>* result_cell_slab_ranges)
-    const {
+    const std::string& name, Tile* tile, Tile* tile_var) const {
   FilterPipeline offset_filters = array_schema_->cell_var_offsets_filters();
   FilterPipeline filters = array_schema_->filters(name);
 
@@ -682,32 +651,17 @@ Status ReaderBase::unfilter_tile(
   RETURN_NOT_OK(FilterPipeline::append_encryption_filter(
       &filters, array_->get_encryption_key()));
 
-  // Skip selective unfiltering on coordinate tiles.
-  if (name == constants::coords || tile->stores_coords()) {
-    result_cell_slab_ranges = nullptr;
-  }
-
-  // Reverse the tile filters, but do not use selective
-  // unfiltering for offset tiles.
+  // Reverse the tile filters.
   RETURN_NOT_OK(offset_filters.run_reverse(
-      stats_, tile, storage_manager_->compute_tp(), config_, nullptr));
+      stats_, tile, storage_manager_->compute_tp(), config_));
   RETURN_NOT_OK(filters.run_reverse(
-      stats_,
-      tile,
-      tile_var,
-      storage_manager_->compute_tp(),
-      config_,
-      result_cell_slab_ranges));
+      stats_, tile_var, storage_manager_->compute_tp(), config_));
 
   return Status::Ok();
 }
 
 Status ReaderBase::unfilter_tile_nullable(
-    const std::string& name,
-    Tile* tile,
-    Tile* tile_validity,
-    const std::vector<std::pair<uint64_t, uint64_t>>* result_cell_slab_ranges)
-    const {
+    const std::string& name, Tile* tile, Tile* tile_validity) const {
   FilterPipeline filters = array_schema_->filters(name);
   FilterPipeline validity_filters = array_schema_->cell_validity_filters();
 
@@ -717,27 +671,19 @@ Status ReaderBase::unfilter_tile_nullable(
   RETURN_NOT_OK(FilterPipeline::append_encryption_filter(
       &validity_filters, array_->get_encryption_key()));
 
-  // Skip selective unfiltering on coordinate tiles.
-  if (name == constants::coords || tile->stores_coords()) {
-    result_cell_slab_ranges = nullptr;
-  }
-
   // Reverse the tile filters.
   RETURN_NOT_OK(filters.run_reverse(
       stats_,
       tile,
       storage_manager_->compute_tp(),
-      storage_manager_->config(),
-      result_cell_slab_ranges));
+      storage_manager_->config()));
 
-  // Reverse the validity tile filters, without
-  // selective decompression.
+  // Reverse the validity tile filters.
   RETURN_NOT_OK(validity_filters.run_reverse(
       stats_,
       tile_validity,
       storage_manager_->compute_tp(),
-      storage_manager_->config(),
-      nullptr));
+      storage_manager_->config()));
 
   return Status::Ok();
 }
@@ -746,9 +692,7 @@ Status ReaderBase::unfilter_tile_nullable(
     const std::string& name,
     Tile* tile,
     Tile* tile_var,
-    Tile* tile_validity,
-    const std::vector<std::pair<uint64_t, uint64_t>>* result_cell_slab_ranges)
-    const {
+    Tile* tile_validity) const {
   FilterPipeline offset_filters = array_schema_->cell_var_offsets_filters();
   FilterPipeline filters = array_schema_->filters(name);
   FilterPipeline validity_filters = array_schema_->cell_validity_filters();
@@ -761,35 +705,24 @@ Status ReaderBase::unfilter_tile_nullable(
   RETURN_NOT_OK(FilterPipeline::append_encryption_filter(
       &validity_filters, array_->get_encryption_key()));
 
-  // Skip selective unfiltering on coordinate tiles.
-  if (name == constants::coords || tile->stores_coords()) {
-    result_cell_slab_ranges = nullptr;
-  }
-
-  // Reverse the tile filters, but do not use selective
-  // unfiltering for offset tiles.
+  // Reverse the tile filters.
   RETURN_NOT_OK(offset_filters.run_reverse(
       stats_,
       tile,
       storage_manager_->compute_tp(),
-      storage_manager_->config(),
-      nullptr));
+      storage_manager_->config()));
   RETURN_NOT_OK(filters.run_reverse(
       stats_,
-      tile,
       tile_var,
       storage_manager_->compute_tp(),
-      storage_manager_->config(),
-      result_cell_slab_ranges));
+      storage_manager_->config()));
 
-  // Reverse the validity tile filters, without
-  // selective decompression.
+  // Reverse the validity tile filters.
   RETURN_NOT_OK(validity_filters.run_reverse(
       stats_,
       tile_validity,
       storage_manager_->compute_tp(),
-      storage_manager_->config(),
-      nullptr));
+      storage_manager_->config()));
 
   return Status::Ok();
 }
@@ -896,7 +829,6 @@ Status ReaderBase::copy_attribute_values(
     ProcessTileFlags flags = ProcessTileFlag::COPY;
     if (condition_names.count(name) == 0) {
       flags |= ProcessTileFlag::READ;
-      flags |= ProcessTileFlag::SELECTIVE_UNFILTERING;
     }
 
     names[name] = flags;
@@ -1550,17 +1482,7 @@ Status ReaderBase::process_tiles(
     for (const auto& inner_name : inner_names) {
       const ProcessTileFlags flags = names.at(inner_name);
 
-      if (flags & ProcessTileFlag::SELECTIVE_UNFILTERING) {
-        // Lazily compute the result cell slabs index.
-        if (!rcs_index)
-          rcs_index = compute_rcs_index(result_cell_slabs, subarray);
-
-        RETURN_CANCEL_OR_ERROR(
-            unfilter_tiles(inner_name, result_tiles, rcs_index.get()));
-      } else {
-        RETURN_CANCEL_OR_ERROR(
-            unfilter_tiles(inner_name, result_tiles, nullptr));
-      }
+      RETURN_CANCEL_OR_ERROR(unfilter_tiles(inner_name, result_tiles));
 
       if (flags & ProcessTileFlag::COPY) {
         if (!array_schema_->var_size(inner_name)) {
@@ -1585,8 +1507,7 @@ Status ReaderBase::process_tiles(
 }
 
 tdb_unique_ptr<ReaderBase::ResultCellSlabsIndex> ReaderBase::compute_rcs_index(
-    const std::vector<ResultCellSlab>* result_cell_slabs,
-    Subarray& subarray) const {
+    const std::vector<ResultCellSlab>* result_cell_slabs) const {
   // Build an association from the result tile to the cell slab ranges
   // that it contains.
   tdb_unique_ptr<ReaderBase::ResultCellSlabsIndex> rcs_index =
@@ -1604,32 +1525,6 @@ tdb_unique_ptr<ReaderBase::ResultCellSlabsIndex> ReaderBase::compute_rcs_index(
       (*rcs_index)[it->tile_].emplace_back(std::move(range));
     }
     ++it;
-  }
-
-  // TODO this need to move to a better location.
-  // The result cell slab ranges must be sorted in ascending order for the
-  // selective decompression intersection algorithm. For 1-dimensional arrays,
-  // the result cell slab ranges are guaranteed to be sorted in ascending
-  // order. For arrays with more than one dimension or multi range queries,
-  // we must sort them.
-  auto range_num = subarray.range_num();
-  if (array_schema_->dim_num() > 1 || range_num > 1) {
-    struct RangeCompare {
-      inline bool operator()(
-          const std::pair<uint64_t, uint64_t>& a,
-          const std::pair<uint64_t, uint64_t>& b) const {
-        return a.first < b.first;
-      }
-    };
-
-    // Sort each range, per tile.
-    for (auto& kv : *rcs_index) {
-      parallel_sort(
-          storage_manager_->compute_tp(),
-          kv.second.begin(),
-          kv.second.end(),
-          RangeCompare());
-    }
   }
 
   return rcs_index;
