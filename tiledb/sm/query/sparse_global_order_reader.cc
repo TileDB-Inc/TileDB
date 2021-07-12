@@ -438,22 +438,16 @@ Status SparseGlobalOrderReader::compute_result_cell_slab() {
       tmp_result_tiles_.push_back(&result_tile);
 
   // Read and unfilter zipped coordinate tiles. Note that
-  // this will ignore fragments with a version >= 5. Unfilter
-  // with a nullptr `rcs_index` argument to bypass selective
-  // unfiltering.
+  // this will ignore fragments with a version >= 5.
   RETURN_CANCEL_OR_ERROR(
       read_coordinate_tiles({constants::coords}, tmp_result_tiles_));
-  RETURN_CANCEL_OR_ERROR(
-      unfilter_tiles(constants::coords, tmp_result_tiles_, nullptr));
+  RETURN_CANCEL_OR_ERROR(unfilter_tiles(constants::coords, tmp_result_tiles_));
 
   // Read and unfilter unzipped coordinate tiles. Note that
-  // this will ignore fragments with a version < 5. Unfilter
-  // with a nullptr `rcs_index` argument to bypass selective
-  // unfiltering.
+  // this will ignore fragments with a version < 5.
   RETURN_CANCEL_OR_ERROR(read_coordinate_tiles(dim_names_, tmp_result_tiles_));
   for (const auto& dim_name : dim_names_) {
-    RETURN_CANCEL_OR_ERROR(
-        unfilter_tiles(dim_name, tmp_result_tiles_, nullptr));
+    RETURN_CANCEL_OR_ERROR(unfilter_tiles(dim_name, tmp_result_tiles_));
   }
 
   // Compute the result cell slabs with the loaded coordinate tiles.
