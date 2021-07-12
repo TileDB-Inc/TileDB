@@ -449,7 +449,7 @@ target_link_libraries(TILEDB_CORE_OBJECTS_ILIB
   INTERFACE
     Bzip2::Bzip2
     LZ4::LZ4
-    Spdlog::Spdlog
+    spdlog::spdlog
     Zlib::Zlib
     Zstd::Zstd
 )
@@ -717,14 +717,7 @@ if (TILEDB_STATIC)
   append_dep_lib(GCSSDK::storage_client)
   append_dep_lib(GCSSDK::google_cloud_cpp_common)
   append_dep_lib(GCSSDK::crc32c)
-
-  # Spdlog is a special case because it is header-only.
-  string(CONCAT TILEDB_STATIC_DEP_STRING
-    "${TILEDB_STATIC_DEP_STRING}"
-    "if (NOT TARGET Spdlog::Spdlog)\n"
-    "  add_library(Spdlog::Spdlog INTERFACE IMPORTED)\n"
-    "endif()"
-  )
+  append_dep_lib(spdlog::spdlog)
 endif()
 
 ############################################################

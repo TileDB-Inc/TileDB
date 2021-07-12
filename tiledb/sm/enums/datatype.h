@@ -39,6 +39,35 @@
 
 #include <cassert>
 
+// Azure on windows seems to define these
+#ifdef TIME_HR
+#undef TIME_HR
+#endif
+#ifdef TIME_MIN
+#undef TIME_MIN
+#endif
+#ifdef TIME_SEC
+#undef TIME_SEC
+#endif
+#ifdef TIME_MS
+#undef TIME_MS
+#endif
+#ifdef TIME_US
+#undef TIME_US
+#endif
+#ifdef TIME_NS
+#undef TIME_NS
+#endif
+#ifdef TIME_PS
+#undef TIME_PS
+#endif
+#ifdef TIME_FS
+#undef TIME_FS
+#endif
+#ifdef TIME_AS
+#undef TIME_AS
+#endif
+
 using namespace tiledb::common;
 
 namespace tiledb {
