@@ -1045,7 +1045,7 @@ TILEDB_EXPORT void tiledb_config_free(tiledb_config_t** config);
  *    Use the refactored readers or not. <br>
  *    **Default**: false
  * - `sm.mem.total_budget` <br>
- *    Memory budget for the sparse global order reader. <br>
+ *    Memory budget for readers and writers. <br>
  *    **Default**: \10GB
  * - `vfs.read_ahead_size` <br>
  *    The maximum byte size to read-ahead from the backend. <br>

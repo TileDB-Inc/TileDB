@@ -157,7 +157,7 @@ class Config {
   /** Whether or not to use the refactored readers. */
   static const std::string SM_USE_REFACTORED_READERS;
 
-  /** Maximum memory budget for the sparse global order reader. */
+  /** Maximum memory budget for readers and writers. */
   static const std::string SM_MEM_TOTAL_BUDGET;
 
   /** Whether or not the signal handlers are installed. */
