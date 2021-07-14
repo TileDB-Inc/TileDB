@@ -476,18 +476,21 @@ inline uint8_t ResultTile::str_coord_intersects(
   bool geq_start = true;
   bool all_chars_match = true;
   uint64_t min_size = std::min<uint64_t>(c_size, range_start.size());
-  for (uint64_t i = 0; i < min_size; ++i) {
-    if (buff_str[c_offset + i] < range_start[i]) {
+  //if (!range_start.empty()) 
+  {
+    for (uint64_t i = 0; i < min_size; ++i) {
+      if (buff_str[c_offset + i] < range_start[i]) {
+        geq_start = false;
+        all_chars_match = false;
+        break;
+      } else if (buff_str[c_offset + i] > range_start[i]) {
+        all_chars_match = false;
+        break;
+      }  // Else characters match
+    }
+    if (geq_start && all_chars_match && c_size < range_start.size()) {
       geq_start = false;
-      all_chars_match = false;
-      break;
-    } else if (buff_str[c_offset + i] > range_start[i]) {
-      all_chars_match = false;
-      break;
-    }  // Else characters match
-  }
-  if (geq_start && all_chars_match && c_size < range_start.size()) {
-    geq_start = false;
+    }
   }
 
   // Test against end
@@ -496,17 +499,20 @@ inline uint8_t ResultTile::str_coord_intersects(
     seq_end = true;
     all_chars_match = true;
     min_size = std::min<uint64_t>(c_size, range_end.size());
-    for (uint64_t i = 0; i < min_size; ++i) {
-      if (buff_str[c_offset + i] > range_end[i]) {
-        geq_start = false;
-        break;
-      } else if (buff_str[c_offset + i] < range_end[i]) {
-        all_chars_match = false;
-        break;
-      }  // Else characters match
-    }
-    if (seq_end && all_chars_match && c_size > range_end.size()) {
-      seq_end = false;
+//    if (!range_end.empty()) 
+    {
+      for (uint64_t i = 0; i < min_size; ++i) {
+        if (buff_str[c_offset + i] > range_end[i]) {
+          geq_start = false;
+          break;
+        } else if (buff_str[c_offset + i] < range_end[i]) {
+          all_chars_match = false;
+          break;
+        }  // Else characters match
+      }
+      if (seq_end && all_chars_match && c_size > range_end.size()) {
+        seq_end = false;
+      }
     }
   }
 
@@ -620,6 +626,8 @@ void ResultTile::compute_results_sparse<char>(
         uint64_t c_offset = 0, c_size = 0;
         for (uint64_t pos = first_c_pos; pos <= last_c_pos; ++pos) {
           c_offset = buff_off[pos];
+          //c_size = (pos < coords_num) ? buff_off[pos + 1] - c_offset :
+          // TBD: fix for ch7558, might this affect ch7331? No, no difference.
           c_size = (pos < coords_num - 1) ? buff_off[pos + 1] - c_offset :
                                             buff_str_size - c_offset;
           r_bitmap[pos] = str_coord_intersects(
@@ -662,6 +670,13 @@ void ResultTile::compute_results_sparse<char>(
     // each value for an intersection.
     uint64_t c_offset = 0, c_size = 0;
     for (uint64_t pos = i; pos < i + partition_size; ++pos) {
+      assert(pos < coords_num);
+      if (pos >= coords_num)
+#ifdef WIN32
+        __debugbreak();
+#else
+        asm volatile("int $3");
+#endif
       if (r_bitmap[pos] == 0)
         continue;
 

@@ -526,6 +526,8 @@ class Subarray {
    */
   Subarray get_subarray(uint64_t start, uint64_t end) const;
 
+  bool was_get_subarrayed = false;
+
   /**
    * Set default indicator for dimension subarray. Used by serialization only
    * @param dim_index

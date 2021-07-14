@@ -136,6 +136,14 @@ Status Subarray::add_range(
   // Remove the default range
   if (is_default_[dim_idx]) {
     ranges_[dim_idx].clear();
+    {//TBD: REMOVEME!
+    if (this->was_get_subarrayed)
+#ifdef WIN32
+      __debugbreak();
+#else
+      asm volatile("int $3");
+#endif
+    }
     is_default_[dim_idx] = false;
   }
 
@@ -426,7 +434,18 @@ Subarray Subarray::get_subarray(uint64_t start, uint64_t end) const {
     for (uint64_t r = start_coords[d]; r <= end_coords[d]; ++r) {
       ret.add_range_unsafe(d, ranges_[d][r]);
     }
+    if (this->is_default(d))
+      ;
+     //__debugbreak();  // Are we actually seeing any defaults in here? yes, we
+                     // did...
+    //EXPERIMENTAL:! Along with change in split()...
+    //(The changes in split()s were NOT appropriate and diasbled.)
+    ret.set_is_default(d, this->is_default(d));
   }
+
+  // set *after* may have set_is_default(), only want to find what else
+  // may be non-defaulting... apparently something somewhere is...
+  ret.was_get_subarrayed = true;
 
   ret.tile_overlap_ = tile_overlap_;
   ret.tile_overlap_.update_range(start, end);
@@ -478,6 +497,15 @@ bool Subarray::is_unary(uint64_t range_idx) const {
 }
 
 void Subarray::set_is_default(uint32_t dim_index, bool is_default) {
+  {
+  //TBD: REMOVEME!
+  if (this->was_get_subarrayed && !is_default)
+#ifdef WIN32
+    __debugbreak();
+#else
+    asm volatile("int $3");
+#endif
+  }
   is_default_[dim_index] = is_default;
 }
 
@@ -1099,6 +1127,12 @@ Status Subarray::split(
     }
   }
 
+  {
+  // TBD: EXPERIMENTAL:! along with change in get_subarray()
+//  r1->set_is_default(d, this->is_default(d));
+//  r2->set_is_default(d, this->is_default(d));
+  }
+
   return Status::Ok();
 }
 
@@ -1144,6 +1178,11 @@ Status Subarray::split(
         RETURN_NOT_OK(r1->add_range_unsafe(d, sr1));
         RETURN_NOT_OK(r2->add_range_unsafe(d, sr2));
       }
+    }
+    {
+    // TBD: EXPERIMENTAL:! along with change in get_subarray()
+//    r1->set_is_default(d, this->is_default(d));
+//    r2->set_is_default(d, this->is_default(d));
     }
   }
 
@@ -2043,6 +2082,7 @@ Subarray Subarray::clone() const {
   clone.est_result_size_ = est_result_size_;
   clone.max_mem_size_ = max_mem_size_;
   clone.relevant_fragments_ = relevant_fragments_;
+  clone.was_get_subarrayed = was_get_subarrayed;
 
   return clone;
 }

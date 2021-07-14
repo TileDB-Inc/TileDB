@@ -362,6 +362,18 @@ Status Reader::compute_range_result_coords(
 
     // Compute result and overwritten bitmap per dimension
     for (unsigned d = 0; d < dim_num; ++d) {
+      if(subarray->is_default(d)) {
+        // There *were* no 'is_default' with partitioned subarrays before, 
+        // are we seeing some with get_subarray() change?
+        // TBD: ***So far, with basic build config, we do *NOT* seem to arrive here (in dense path)...
+#ifdef WIN32
+        __debugbreak();
+#else
+        asm volatile ("int $3");
+#endif
+        continue;
+      }
+      //DLH: TBD: why does layout order affect 'sparse' branch but not this one?
       const auto& ranges = subarray->ranges_for_dim(d);
       RETURN_NOT_OK(tile->compute_results_dense(
           d,
@@ -373,6 +385,7 @@ Status Reader::compute_range_result_coords(
     }
 
     // Gather results
+    //tbd:? result_coords->reserve(coords_num);
     for (uint64_t pos = 0; pos < coords_num; ++pos) {
       if (result_bitmap[pos] && !overwritten_bitmap[pos])
         result_coords->emplace_back(tile, pos);
@@ -382,16 +395,46 @@ Status Reader::compute_range_result_coords(
 
     // Compute result and overwritten bitmap per dimension
     for (unsigned d = 0; d < dim_num; ++d) {
+      if(subarray->is_default(d)) {
+        // There *were* no 'is_default' with partitioned subarrays before, 
+        // are we seeing some with get_subarray() change?
+        // Yes, when was set in enuf places...
+//        __debugbreak();
+//        continue;
+      }
       // For col-major cell ordering, iterate the dimensions
       // in reverse.
       const unsigned dim_idx =
           cell_order == Layout::COL_MAJOR ? dim_num - d - 1 : d;
+      if (subarray->is_default(dim_idx)) {
+        // There *were* no 'is_default' with partitioned subarrays before,
+        // are we seeing some with get_subarray() change?
+        // Yes, when was set in enuf places...
+        //        __debugbreak();
+        continue;
+        //ok, so, it's been suggested we can avoid the 'compute_results_sparse()' if a default
+        //range is specified, but attempts to do so are resulting in 'bad things', and having
+        //traced some, seems that the 'default range' for the entire dimension is
+        //somehow different than that 'range_for_dim(dim_idx)' extracted below...
+        //not quite sure how that works...
+        //hmm, could it be that in 'splitting' process, the get_subarray()d 'subarray' we're 
+        //provided with here is constrained by (memory budget, or ?) and thus less 
+        //than the total dimension for this read, thus doing nasty things to buffers
+        //when we return with result_bitmap containing more items than were part of
+        //the range, hmm... ?
+        auto rfd = subarray->ranges_for_dim(dim_idx);
+
+      }
       const auto& ranges = subarray->ranges_for_dim(dim_idx);
       RETURN_NOT_OK(tile->compute_results_sparse(
           dim_idx, ranges[range_coords[dim_idx]], &result_bitmap, cell_order));
     }
 
     // Gather results
+//tbd: would the following be helpful?  seems this routine may be called from multiple threads
+//and this would contribute some to fragmentation as those various threads may result in
+    //inter-leaved (re-)allocations as items are added...
+//    result_coords->reserve(coords_num);
     for (uint64_t pos = 0; pos < coords_num; ++pos) {
       if (result_bitmap[pos])
         result_coords->emplace_back(tile, pos);
