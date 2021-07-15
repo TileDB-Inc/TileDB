@@ -70,30 +70,6 @@ void check_partitions(
   }
 
   // Non-empty partitions
-  // TBD: The correctness of this routine (seems in doubt).
-  // (Related code, find 'DIAGNOSING' #if block below)
-  // A)
-  // All current tests (build configuration with -EnableSerialization)
-  // calling this routine with last_unsplittable==false pass one fewer
-  // partitions than the number of 'next()' calls made.  The final
-  //'next()' call made returns Ok(), but the 'current()' partition
-  // available after that last call is the same as the 'current()' partition
-  // that was available after the 'next()' call prior to the last one (i.e.
-  //'current()' partition is the same for the last two 'next()' calls made.)
-  // This can be demonstrated by adding a check for 'done()' before that last
-  //'next()' in the else clause and seeing that flow is 'done()' before that
-  //'next()' call.
-  // B)
-  // If a caller passes one -fewer- partitions
-  // than are available by next()ing (with last_unsplittable==false), and
-  //'splitability' is maintained through all next() calls, the presence of
-  // the 'extra' (via /next()ing) partition will not be
-  // detected, as in the else{} below, that final 'next()' will return '.ok()
-  // whether there was an additional partition or whether 'done()' occurred in
-  // the previous 'next()' call made (done in the last loop iteration). Can
-  // demonstrate this (uncaught) failure in test "SubarrayPartitioner (Dense):
-  // 1D, single-range, memory budget", by eliminating the last partition element
-  // from both assignments, and observe that the test(s) still pass.
   for (const auto& p : partitions) {
     CHECK(!partitioner.done());
     CHECK(!unsplittable);
@@ -107,18 +83,6 @@ void check_partitions(
     CHECK(unsplittable);
   } else {
     CHECK(!unsplittable);
-#if 0  //&& DIAGNOSING
-    // TBD: 
-    //For all tests tried, are always already 'done()' at this point,
-    //before the following, 'next()' call is made and returns 'Ok()' (as
-    //it finds 'done()' close to entry and returns 'Ok()'.)
-    if (partitioner.done())
-      std::cout << "***already done, why are we about to call next()?"
-                << std::endl;
-    else
-      std::cout << "***NOT already done, call next() reasonable?"
-                << std::endl;
-#endif
     CHECK(partitioner.next(&unsplittable).ok());
     CHECK(!unsplittable);
     CHECK(partitioner.done());
@@ -230,8 +194,7 @@ template <class T>
 void check_subarray(
     tiledb::Subarray& subarray, const SubarrayRanges<T>& ranges) {
   auto as = subarray.array().schema();
-  auto dom = as.domain();
-  auto ndims = dom.ndim();
+  auto ndims = as.domain().ndim();
   uint64_t nranges = 1;
   for (auto ui = 0u; ui < ndims; ++ui) {
     auto range_num_dim = subarray.range_num(ui);

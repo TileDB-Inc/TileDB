@@ -178,12 +178,12 @@ Status Subarray::add_range_unsafe(uint32_t dim_idx, const Range& range) {
 Status Subarray::set_subarray(const void* subarray) {
   if (!array_->array_schema()->domain()->all_dims_same_type())
     return LOG_STATUS(
-        Status::QueryError("Cannot set subarray; Function not applicable to "
+        Status::SubarrayError("Cannot set subarray; Function not applicable to "
                            "heterogeneous domains"));
 
   if (!array_->array_schema()->domain()->all_dims_fixed())
     return LOG_STATUS(
-        Status::QueryError("Cannot set subarray; Function not applicable to "
+        Status::SubarrayError("Cannot set subarray; Function not applicable to "
                            "domains with variable-sized dimensions"));
 
   Subarray sub(this->clone());  // preserves ...stats_ relationships
@@ -217,7 +217,7 @@ Status Subarray::add_range(
     //    array->array_schema();
     if (!array_->array_schema()->dense()) {
       return LOG_STATUS(
-          Status::QueryError("Adding a subarray range to a write query is not "
+          Status::SubarrayError("Adding a subarray range to a write query is not "
                              "supported in sparse arrays"));
     }
     // unsigned dim_idx;
@@ -225,7 +225,7 @@ Status Subarray::add_range(
     //    dim_name, &dim_idx));
     if (this->is_set(dim_idx))
       return LOG_STATUS(
-          Status::QueryError("Cannot add range; Multi-range dense writes "
+          Status::SubarrayError("Cannot add range; Multi-range dense writes "
                              "are not supported"));
   }
 
@@ -273,24 +273,24 @@ Status Subarray::add_range_var(
     uint64_t end_size) {
   if (dim_idx >= array_->array_schema()->dim_num())
     return LOG_STATUS(
-        Status::QueryError("Cannot add range; Invalid dimension index"));
+        Status::SubarrayError("Cannot add range; Invalid dimension index"));
 
   if (start == nullptr || end == nullptr)
-    return LOG_STATUS(Status::QueryError("Cannot add range; Invalid range"));
+    return LOG_STATUS(Status::SubarrayError("Cannot add range; Invalid range"));
 
   if (start_size == 0 || end_size == 0)
-    return LOG_STATUS(Status::QueryError(
+    return LOG_STATUS(Status::SubarrayError(
         "Cannot add range; Range start/end cannot have zero length"));
 
   if (!array_->array_schema()->domain()->dimension(dim_idx)->var_size())
     return LOG_STATUS(
-        Status::QueryError("Cannot add range; Range must be variable-sized"));
+        Status::SubarrayError("Cannot add range; Range must be variable-sized"));
 
   //... was in Status Query::add_range_var()...
   QueryType array_query_type;
   RETURN_NOT_OK(array_->get_query_type(&array_query_type));
   if (array_query_type == tiledb::sm::QueryType::WRITE)
-    return LOG_STATUS(Status::QueryError(
+    return LOG_STATUS(Status::SubarrayError(
         "Cannot add range; Function applicable only to reads"));
 
   // Add range
@@ -317,7 +317,7 @@ Status Subarray::get_range_var(
   QueryType array_query_type;
   RETURN_NOT_OK(array_->get_query_type(&array_query_type));
   if (array_query_type == tiledb::sm::QueryType::WRITE)
-    return LOG_STATUS(Status::QueryError(
+    return LOG_STATUS(Status::SubarrayError(
         "Getting a var range for a write query is not applicable"));
 
   uint64_t start_size = 0;
@@ -356,7 +356,7 @@ Status Subarray::get_range(
   if (array_query_type == tiledb::sm::QueryType::WRITE) {
     if (!array_->array_schema()->dense())
       return LOG_STATUS(
-          Status::QueryError("Getting a range from a write query is not "
+          Status::SubarrayError("Getting a range from a write query is not "
                              "applicable to sparse arrays"));
   }
 
@@ -650,7 +650,7 @@ Status Subarray::get_range_num(uint32_t dim_idx, uint64_t* range_num) const {
   if (array_query_type == tiledb::sm::QueryType::WRITE &&
       !array_->array_schema()->dense()) {
     return LOG_STATUS(
-        Status::QueryError("Getting the number of ranges from a write query "
+        Status::SubarrayError("Getting the number of ranges from a write query "
                            "is not applicable to sparse arrays"));
   }
 
@@ -748,7 +748,7 @@ Status Subarray::set_config(const Config& config) {
     std::string read_range_oob_str = config.get("sm.read_range_oob", &found);
     assert(found);
     if (read_range_oob_str != "error" && read_range_oob_str != "warn")
-      return LOG_STATUS(Status::QueryError(
+      return LOG_STATUS(Status::SubarrayError(
           "Invalid value " + read_range_oob_str +
           " for sm.read_range_obb. Acceptable values are 'error' or 'warn'."));
     err_on_range_oob_ = read_range_oob_str == "error";
@@ -854,23 +854,23 @@ Status Subarray::get_est_result_size_querytype_audited(
   RETURN_NOT_OK(array_->get_query_type(&type));
 
   if (type == QueryType::WRITE)
-    return LOG_STATUS(Status::QueryError(
+    return LOG_STATUS(Status::SubarrayError(
         "Cannot get estimated result size; Operation currently "
         "unsupported for write queries"));
 
   if (name == nullptr)
-    return LOG_STATUS(Status::QueryError(
+    return LOG_STATUS(Status::SubarrayError(
         "Cannot get estimated result size; Name cannot be null"));
 
   if (name == constants::coords &&
       !array_->array_schema()->domain()->all_dims_same_type())
-    return LOG_STATUS(Status::QueryError(
+    return LOG_STATUS(Status::SubarrayError(
         "Cannot get estimated result size; Not applicable to zipped "
         "coordinates in arrays with heterogeneous domain"));
 
   if (name == constants::coords &&
       !array_->array_schema()->domain()->all_dims_fixed())
-    return LOG_STATUS(Status::QueryError(
+    return LOG_STATUS(Status::SubarrayError(
         "Cannot get estimated result size; Not applicable to zipped "
         "coordinates in arrays with domains with variable-sized dimensions"));
 
@@ -890,7 +890,7 @@ Status Subarray::get_est_result_size_querytype_audited(
     auto rest_client = storage_manager->rest_client();
     if (rest_client == nullptr)
       return LOG_STATUS(
-          Status::QueryError("Error in query estimate result size; remote "
+          Status::SubarrayError("Error in query estimate result size; remote "
                              "array with no rest client."));
 
     // TBD: Can an array be opened twice? or maybe just some circumstances?

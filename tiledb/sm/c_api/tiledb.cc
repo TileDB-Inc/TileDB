@@ -2760,15 +2760,6 @@ int32_t tiledb_query_set_subarray_t(
       sanity_check(ctx, subarray) == TILEDB_ERR)
     return TILEDB_ERR;
 
-  // TBD:
-  // a (-useful-) Subarray was init'd with an Array;
-  // a (-useful-) Query was init'd with an Array;
-  // Should the Query.array() and Subarray.array() be validated for
-  // equivalence and this request rejected if not equivalent?
-
-  // Changing this area?
-  // Be careful that the correct ->set_subarray() is called, it's
-  // easy to incorrectly call the one accepting a 'void *' parameter.
   if (SAVE_ERROR_CATCH(ctx, query->query_->set_subarray(subarray->subarray_)))
     return TILEDB_ERR;
 
@@ -3534,14 +3525,6 @@ int32_t tiledb_query_get_subarray(
   if (tiledb_subarray_alloc(ctx, &tdb_array, subarray) != TILEDB_OK) {
     return TILEDB_ERR;
   }
-  // note: This leaves the returned subarray with references to everything
-  // that was an active part of the query's 'inside' subarray,
-  // currently this consists of a raw pointer to an internal core entity,
-  //(const tiledb::sm::Array* array_; )
-  // so the receiving client should keep those alive as long as the
-  // returned subarray is alive, possibly most easily tracked by keeping
-  // the source query and its dependencies alive.
-  // Any changes to this situation should be noted in the api notes as well.
   *(*subarray)->subarray_ = *query->query_->subarray();
   return TILEDB_OK;
 }
