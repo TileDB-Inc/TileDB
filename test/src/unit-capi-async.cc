@@ -310,7 +310,7 @@ void AsyncFx::write_dense_async() {
       ctx_, query, attributes[2], buffers[3], &buffer_sizes[3]);
   CHECK(rc == TILEDB_OK);
 
-  auto proc_query = [&]()-> void {
+  auto proc_query = [&]() -> void {
     // Submit query asynchronously
     int callback_made = 0;
     rc = tiledb_query_submit_async(ctx_, query, callback, &callback_made);
@@ -423,7 +423,7 @@ void AsyncFx::write_sparse_async() {
       ctx_, query, attributes[4], buffers[5], &buffer_sizes[4]);
   CHECK(rc == TILEDB_OK);
 
-  auto proc_query = [&]()->void {
+  auto proc_query = [&]() -> void {
     // Submit query asynchronously
     int callback_made = 0;
     rc = tiledb_query_submit_async(ctx_, query, callback, &callback_made);
@@ -819,7 +819,7 @@ void AsyncFx::read_sparse_async() {
         c_buffer_coords_dim2,
         sizeof(c_buffer_coords_dim2)));
   };
-  
+
   if (!use_external_subarray_) {
     proc_query();
   } else {

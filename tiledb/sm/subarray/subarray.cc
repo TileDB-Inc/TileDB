@@ -179,12 +179,12 @@ Status Subarray::set_subarray(const void* subarray) {
   if (!array_->array_schema()->domain()->all_dims_same_type())
     return LOG_STATUS(
         Status::SubarrayError("Cannot set subarray; Function not applicable to "
-                           "heterogeneous domains"));
+                              "heterogeneous domains"));
 
   if (!array_->array_schema()->domain()->all_dims_fixed())
     return LOG_STATUS(
         Status::SubarrayError("Cannot set subarray; Function not applicable to "
-                           "domains with variable-sized dimensions"));
+                              "domains with variable-sized dimensions"));
 
   Subarray sub(this->clone());  // preserves ...stats_ relationships
   sub.set_coalesce_ranges(
@@ -216,9 +216,9 @@ Status Subarray::add_range(
   if (array_query_type == tiledb::sm::QueryType::WRITE) {
     //    array->array_schema();
     if (!array_->array_schema()->dense()) {
-      return LOG_STATUS(
-          Status::SubarrayError("Adding a subarray range to a write query is not "
-                             "supported in sparse arrays"));
+      return LOG_STATUS(Status::SubarrayError(
+          "Adding a subarray range to a write query is not "
+          "supported in sparse arrays"));
     }
     // unsigned dim_idx;
     // RETURN_NOT_OK(array_->array_schema()->domain()->get_dimension_index(
@@ -226,7 +226,7 @@ Status Subarray::add_range(
     if (this->is_set(dim_idx))
       return LOG_STATUS(
           Status::SubarrayError("Cannot add range; Multi-range dense writes "
-                             "are not supported"));
+                                "are not supported"));
   }
 
   if (start == nullptr || end == nullptr)
@@ -283,8 +283,8 @@ Status Subarray::add_range_var(
         "Cannot add range; Range start/end cannot have zero length"));
 
   if (!array_->array_schema()->domain()->dimension(dim_idx)->var_size())
-    return LOG_STATUS(
-        Status::SubarrayError("Cannot add range; Range must be variable-sized"));
+    return LOG_STATUS(Status::SubarrayError(
+        "Cannot add range; Range must be variable-sized"));
 
   //... was in Status Query::add_range_var()...
   QueryType array_query_type;
@@ -357,7 +357,7 @@ Status Subarray::get_range(
     if (!array_->array_schema()->dense())
       return LOG_STATUS(
           Status::SubarrayError("Getting a range from a write query is not "
-                             "applicable to sparse arrays"));
+                                "applicable to sparse arrays"));
   }
 
   *stride = nullptr;
@@ -651,7 +651,7 @@ Status Subarray::get_range_num(uint32_t dim_idx, uint64_t* range_num) const {
       !array_->array_schema()->dense()) {
     return LOG_STATUS(
         Status::SubarrayError("Getting the number of ranges from a write query "
-                           "is not applicable to sparse arrays"));
+                              "is not applicable to sparse arrays"));
   }
 
   *range_num = ranges_[dim_idx].size();
@@ -891,7 +891,7 @@ Status Subarray::get_est_result_size_querytype_audited(
     if (rest_client == nullptr)
       return LOG_STATUS(
           Status::SubarrayError("Error in query estimate result size; remote "
-                             "array with no rest client."));
+                                "array with no rest client."));
 
     // TBD: Can an array be opened twice? or maybe just some circumstances?
     Array tmp_array(array_->array_uri(), storage_manager);
