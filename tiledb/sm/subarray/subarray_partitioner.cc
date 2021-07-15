@@ -1137,7 +1137,7 @@ bool SubarrayPartitioner::must_split(Subarray* partition) {
       }
     } else {
       if (!nullable) {
-        partition->get_est_result_size(
+        partition->get_est_result_size_unsafe(
             b.first.c_str(), &size_fixed, config_, compute_tp_);
         partition->get_max_memory_size(
             b.first.c_str(), &mem_size_fixed, config_, compute_tp_);

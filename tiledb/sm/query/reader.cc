@@ -157,7 +157,7 @@ Status Reader::get_range_var_size(
 }
 
 Status Reader::get_est_result_size(const char* name, uint64_t* size) {
-  return subarray_.get_est_result_size(
+  return subarray_.get_est_result_size_unsafe(
       name, size, &config_, storage_manager_->compute_tp());
 }
 

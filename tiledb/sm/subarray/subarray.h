@@ -559,7 +559,7 @@ class Subarray {
    * Gets the estimated result size (in bytes) for the input fixed-sized
    * attribute/dimension.
    */
-  Status get_est_result_size(
+  Status get_est_result_size_unsafe(
       const char* name,
       uint64_t* size,
       const Config* config,
@@ -569,7 +569,7 @@ class Subarray {
    * Gets the estimated result size (in bytes) for the input fixed-sized
    * attribute/dimension if audit passes.
    */
-  Status get_est_result_size_querytype_audited(
+  Status get_est_result_size(
       const char* name, uint64_t* size, StorageManager* storage_manager);
 
   /**

@@ -3799,7 +3799,7 @@ int32_t tiledb_subarray_get_est_result_size(
     return TILEDB_ERR;
   if (SAVE_ERROR_CATCH(
           ctx,
-          subarray->subarray_->get_est_result_size_querytype_audited(
+          subarray->subarray_->get_est_result_size(
               name, size, ctx->ctx_->storage_manager())))
     return TILEDB_ERR;
   return TILEDB_OK;

@@ -785,7 +785,7 @@ Layout Subarray::layout() const {
   return layout_;
 }
 
-Status Subarray::get_est_result_size(
+Status Subarray::get_est_result_size_unsafe(
     const char* name,
     uint64_t* size,
     const Config* const config,
@@ -837,7 +837,7 @@ Status Subarray::get_est_result_size(
   return Status::Ok();
 }
 
-Status Subarray::get_est_result_size_querytype_audited(
+Status Subarray::get_est_result_size(
     const char* name, uint64_t* size, StorageManager* storage_manager) {
   QueryType type;
   // Note: various items below expect array open, get_query_type() providing
@@ -922,7 +922,7 @@ Status Subarray::get_est_result_size_querytype_audited(
 #endif
   }
 
-  return get_est_result_size(
+  return get_est_result_size_unsafe(
       name, size, &config_, storage_manager->compute_tp());
 }
 
