@@ -129,7 +129,8 @@ enum class StatusCode : char {
   ChecksumError,
   ThreadPoolError,
   FragmentInfoError,
-  DenseTilerError
+  DenseTilerError,
+  QueryConditionError
 };
 
 class Status {
@@ -420,6 +421,11 @@ class Status {
   /** Return a DenseTilerError error class Status with a given message **/
   static Status DenseTilerError(const std::string& msg) {
     return Status(StatusCode::DenseTilerError, msg, -1);
+  }
+
+  /** Return a QueryConditionError error class Status with a given message **/
+  static Status QueryConditionError(const std::string& msg) {
+    return Status(StatusCode::QueryConditionError, msg, -1);
   }
 
   /** Returns true iff the status indicates success **/

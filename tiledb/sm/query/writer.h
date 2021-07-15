@@ -93,10 +93,13 @@ class Writer {
   /* ********************************* */
 
   /** Constructor. */
-  Writer();
+  Writer(stats::Stats* parent_stats);
 
   /** Destructor. */
   ~Writer();
+
+  DISABLE_COPY_AND_COPY_ASSIGN(Writer);
+  DISABLE_MOVE_AND_MOVE_ASSIGN(Writer);
 
   /* ********************************* */
   /*                 API               */
@@ -382,7 +385,7 @@ class Writer {
   /* ********************************* */
 
   /** The class stats. */
-  tdb_shared_ptr<stats::Stats> stats_;
+  stats::Stats* stats_;
 
   /** The array. */
   const Array* array_;
@@ -769,7 +772,8 @@ class Writer {
    * @param frag_uri Will store the new special fragment name
    * @return Status
    */
-  Status new_fragment_name(uint64_t timestamp, std::string* frag_uri) const;
+  Status new_fragment_name(
+      uint64_t timestamp, uint32_t format_version, std::string* frag_uri) const;
 
   /**
    * This deletes the global write state and deletes the potentially

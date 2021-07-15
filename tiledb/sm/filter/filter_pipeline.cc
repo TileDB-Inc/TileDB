@@ -50,9 +50,9 @@ using namespace tiledb::common;
 namespace tiledb {
 namespace sm {
 
-FilterPipeline::FilterPipeline() {
-  current_tile_ = nullptr;
-  max_chunk_size_ = constants::max_tile_chunk_size;
+FilterPipeline::FilterPipeline()
+    : current_tile_(nullptr)
+    , max_chunk_size_(constants::max_tile_chunk_size) {
 }
 
 FilterPipeline::FilterPipeline(const FilterPipeline& other) {
@@ -405,11 +405,12 @@ uint32_t FilterPipeline::max_chunk_size() const {
 }
 
 Status FilterPipeline::run_forward(
-    Tile* const tile, ThreadPool* const compute_tp) const {
+    stats::Stats* const writer_stats,
+    Tile* const tile,
+    ThreadPool* const compute_tp) const {
   current_tile_ = tile;
 
-  STATS_ADD_COUNTER(
-      stats::GlobalStats::CounterType::WRITE_FILTERED_BYTE_NUM, tile->size());
+  writer_stats->add_counter("write_filtered_byte_num", tile->size());
 
   // Run the filters over all the chunks and store the result in
   // 'filtered_buffer_chunks'.
@@ -426,6 +427,7 @@ Status FilterPipeline::run_forward(
 }
 
 Status FilterPipeline::run_reverse(
+    stats::Stats* const reader_stats,
     Tile* const tile,
     ThreadPool* const compute_tp,
     const Config& config,
@@ -434,7 +436,8 @@ Status FilterPipeline::run_reverse(
   assert(tile->filtered());
 
   if (!result_cell_slab_ranges) {
-    return run_reverse_internal(tile, compute_tp, config, nullptr);
+    return run_reverse_internal(
+        reader_stats, tile, compute_tp, config, nullptr);
   } else {
     uint64_t cells_processed = 0;
     std::vector<std::pair<uint64_t, uint64_t>>::const_iterator cs_it =
@@ -452,11 +455,13 @@ Status FilterPipeline::run_reverse(
         cs_end,
         std::placeholders::_2);
 
-    return run_reverse_internal(tile, compute_tp, config, &skip_fn);
+    return run_reverse_internal(
+        reader_stats, tile, compute_tp, config, &skip_fn);
   }
 }
 
 Status FilterPipeline::run_reverse(
+    stats::Stats* const reader_stats,
     Tile* const tile,
     Tile* const tile_var,
     ThreadPool* const compute_tp,
@@ -467,7 +472,8 @@ Status FilterPipeline::run_reverse(
   assert(tile_var->filtered());
 
   if (!result_cell_slab_ranges) {
-    return run_reverse_internal(tile_var, compute_tp, config, nullptr);
+    return run_reverse_internal(
+        reader_stats, tile_var, compute_tp, config, nullptr);
   } else {
     ChunkedBuffer* const chunked_buffer_off = tile->chunked_buffer();
     void* tmp_buffer;
@@ -495,7 +501,8 @@ Status FilterPipeline::run_reverse(
         cs_end,
         std::placeholders::_2);
 
-    return run_reverse_internal(tile_var, compute_tp, config, &skip_fn);
+    return run_reverse_internal(
+        reader_stats, tile_var, compute_tp, config, &skip_fn);
   }
 }
 
@@ -643,6 +650,7 @@ Status FilterPipeline::skip_chunk_reversal_common(
 }
 
 Status FilterPipeline::run_reverse_internal(
+    stats::Stats* const reader_stats,
     Tile* tile,
     ThreadPool* const compute_tp,
     const Config& config,
@@ -696,9 +704,7 @@ Status FilterPipeline::run_reverse_internal(
   }
   assert(filtered_buffer->offset() == filtered_buffer->size());
 
-  STATS_ADD_COUNTER(
-      stats::GlobalStats::CounterType::READ_UNFILTERED_BYTE_NUM,
-      total_orig_size);
+  reader_stats->add_counter("read_unfiltered_byte_num", total_orig_size);
 
   const Status st = filter_chunks_reverse(
       filtered_chunks,

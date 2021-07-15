@@ -279,7 +279,6 @@ TEST_CASE("C++ API: Test subarray", "[cppapi][sparse][subarray]") {
 
   SECTION("- Read ranges oob error - Subarray-cppapi") {
     Array array(ctx, array_name, TILEDB_READ);
-    // Query query(ctx, array);
     Subarray subarray(ctx, array);
     Config config;
     config.set("sm.read_range_oob", "error");
@@ -292,7 +291,6 @@ TEST_CASE("C++ API: Test subarray", "[cppapi][sparse][subarray]") {
 
   SECTION("-  set_subarray Write ranges oob error - Subarray-cppapi") {
     Array array(ctx, array_name, TILEDB_WRITE);
-    // Query query(ctx, array);
     Subarray subarray(ctx, array);
     // default expected to err. (currently errs because sparse)
     REQUIRE_THROWS(subarray.set_subarray({1, 4, -1, 3}));
@@ -342,7 +340,6 @@ TEST_CASE("C++ API: Test subarray", "[cppapi][sparse][subarray]") {
 
   SECTION("- Read ranges oob warn - Subarray-cppapi") {
     Array array(ctx, array_name, TILEDB_READ);
-    // Query query(ctx, array);
     Subarray subarray(ctx, array);
     Config config;
     config.set("sm.read_range_oob", "warn");
@@ -404,7 +401,6 @@ TEST_CASE("C++ API: Test subarray (dense)", "[cppapi][dense][subarray]") {
 
   SECTION("-  set_subarray Write ranges oob error - Subarray-cppapi") {
     Array array(ctx, array_name, TILEDB_WRITE);
-    // Query query(ctx, array);
     Subarray subarray(ctx, array);
     // default expected to err.
     REQUIRE_THROWS(subarray.set_subarray({1, 4, -1, 3}));
@@ -662,19 +658,20 @@ TEST_CASE(
 
   {
     tiledb::Query query(ctx, array);
-    tiledb::Subarray default_subarray_from_query(query);
+    tiledb::Subarray default_subarray_from_query(query.ctx(), query.array());
     // Check against 'default' subarray here and non-default subarray below to
     // verify that we've actually made a difference by the query.set_subarray()
     // since the other CHECKS(range_num == 1) succeed whether or not the
     //.set_subarray() was done (accidental discovery.)
     CHECK(!subarray_equiv<int>(
-        *default_subarray_from_query.capi_subarray()->subarray_,
-        *subarray.capi_subarray()->subarray_));
+        *default_subarray_from_query.ptr().get()->subarray_,
+        *subarray.ptr().get()->subarray_));
     query.set_subarray(subarray);
-    tiledb::Subarray retrieved_query_subarray(query);
+    tiledb::Subarray retrieved_query_subarray(query.ctx(), query.array());
+    query.update_subarray_from_query(retrieved_query_subarray);
     CHECK(subarray_equiv<int>(
-        *retrieved_query_subarray.capi_subarray()->subarray_,
-        *subarray.capi_subarray()->subarray_));
+        *retrieved_query_subarray.ptr().get()->subarray_,
+        *subarray.ptr().get()->subarray_));
     // Test range num
     auto range_num = retrieved_query_subarray.range_num(0);
     CHECK(range_num == 1);
@@ -694,7 +691,7 @@ TEST_CASE(
   REQUIRE(data[1] == 'l');
 
   {
-    tiledb::Subarray query_subarray(query);
+    tiledb::Subarray query_subarray(query.ctx(), query.array());
     auto range_num = subarray.range_num(0);
     CHECK(range_num == 1);
     range_num = subarray.range_num(1);

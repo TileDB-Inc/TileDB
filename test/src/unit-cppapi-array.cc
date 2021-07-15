@@ -120,6 +120,32 @@ TEST_CASE_METHOD(CPPArrayFx, "C++ API: Arrays", "[cppapi][basic]") {
     array.close();
   }
 
+  SECTION("Set Config") {
+    // Create a config for the context
+    tiledb::Config cfg;
+    cfg["a"] = "1";
+    cfg["b"] = "10";
+    Context ctx1(cfg);
+
+    // Create an array with ctx
+    Array array(ctx1, "cpp_unit_array", TILEDB_READ);
+
+    // Check that the config values are correct
+    CHECK((std::string)array.config()["a"] == "1");
+    CHECK((std::string)array.config()["b"] == "10");
+
+    // Create a config for the array
+    tiledb::Config cfg2;
+    cfg2["b"] = "5";
+    array.set_config(cfg2);
+
+    // Check that the config values are correct
+    CHECK((std::string)array.config()["a"] == "1");
+    CHECK((std::string)array.config()["b"] == "5");
+
+    array.close();
+  }
+
   SECTION("Read/Write") {
     std::vector<int> a1 = {1, 2};
     std::vector<std::string> a2 = {"abc", "defg"};

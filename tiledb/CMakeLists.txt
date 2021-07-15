@@ -73,6 +73,7 @@ if (TILEDB_CPP_API)
     ${TILEDB_CORE_INCLUDE_DIR}/tiledb/sm/cpp_api/object.h
     ${TILEDB_CORE_INCLUDE_DIR}/tiledb/sm/cpp_api/object_iter.h
     ${TILEDB_CORE_INCLUDE_DIR}/tiledb/sm/cpp_api/query.h
+    ${TILEDB_CORE_INCLUDE_DIR}/tiledb/sm/cpp_api/query_condition.h
     ${TILEDB_CORE_INCLUDE_DIR}/tiledb/sm/cpp_api/schema_base.h
     ${TILEDB_CORE_INCLUDE_DIR}/tiledb/sm/cpp_api/stats.h
     ${TILEDB_CORE_INCLUDE_DIR}/tiledb/sm/cpp_api/subarray.h
@@ -158,6 +159,7 @@ set(TILEDB_CORE_SOURCES
   ${TILEDB_CORE_INCLUDE_DIR}/tiledb/sm/misc/work_arounds.cc
   ${TILEDB_CORE_INCLUDE_DIR}/tiledb/sm/query/dense_tiler.cc
   ${TILEDB_CORE_INCLUDE_DIR}/tiledb/sm/query/query.cc
+  ${TILEDB_CORE_INCLUDE_DIR}/tiledb/sm/query/query_condition.cc
   ${TILEDB_CORE_INCLUDE_DIR}/tiledb/sm/query/reader.cc
   ${TILEDB_CORE_INCLUDE_DIR}/tiledb/sm/query/result_tile.cc
   ${TILEDB_CORE_INCLUDE_DIR}/tiledb/sm/query/read_cell_slab_iter.cc
@@ -418,17 +420,6 @@ if (TILEDB_HDFS)
   endif()
 endif()
 
-# Serialization
-if (TILEDB_SERIALIZATION)
-  find_package(Capnp_EP REQUIRED)
-  target_link_libraries(TILEDB_CORE_OBJECTS_ILIB
-    INTERFACE
-      CapnProto::capnp
-      CapnProto::capnp-json
-      CapnProto::kj
-  )
-endif()
-
 # Sanitizer linker flags
 if (SANITIZER)
   target_link_libraries(TILEDB_CORE_OBJECTS_ILIB
@@ -593,13 +584,26 @@ endif()
 # capnproto file generation
 ############################################################
 
+# Serialization
 if(TILEDB_SERIALIZATION)
-  find_package(CapnProto 0.8.0 REQUIRED
-      PATHS  ${TILEDB_EP_INSTALL_PREFIX} ${TILEDB_DEPS_NO_DEFAULT_PATH}
-    )
+  find_package(Capnp_EP REQUIRED)
+  target_link_libraries(TILEDB_CORE_OBJECTS_ILIB
+          INTERFACE
+          CapnProto::capnp
+          CapnProto::capnp-json
+          CapnProto::kj
+          )
+
+  # We only need to override the include path and PATH env for EP builds
+  if(TILEDB_CAPNP_EP_BUILT)
+    list(APPEND CAPNP_COMPILE_COMMAND ${CMAKE_COMMAND} -E env PATH=${TILEDB_EP_BASE}/install/bin ${CAPNP_EXECUTABLE} compile -I "${TILEDB_EP_BASE}/install/include" -oc++:"${CMAKE_CURRENT_BINARY_DIR}" ${CMAKE_CURRENT_SOURCE_DIR}/sm/serialization/tiledb-rest.capnp --src-prefix ${CMAKE_CURRENT_SOURCE_DIR})
+  else()
+    list(APPEND CAPNP_COMPILE_COMMAND ${CAPNP_EXECUTABLE} compile -oc++:"${CMAKE_CURRENT_BINARY_DIR}" ${CMAKE_CURRENT_SOURCE_DIR}/sm/serialization/tiledb-rest.capnp --src-prefix ${CMAKE_CURRENT_SOURCE_DIR})
+  endif()
 
   # note: run the compiler under `cmake -E env ...` because we need to run capnp executable
   #       the capnp driver needs to be able to find the plugin executables (eg capnpc-c++)
+  message(STATUS "CAPNP_COMPILE_COMMAND=${CAPNP_COMPILE_COMMAND}")
   add_custom_command(
 	    DEPENDS ${TILEDB_CORE_INCLUDE_DIR}/tiledb/sm/serialization/tiledb-rest.capnp
       OUTPUT
@@ -608,7 +612,8 @@ if(TILEDB_SERIALIZATION)
       WORKING_DIRECTORY
         ${TILEDB_EP_BASE}/..
       COMMAND
-        cmake -E env PATH=${TILEDB_EP_BASE}/install/bin ${CAPNP_EXECUTABLE} compile -I "${TILEDB_EP_BASE}/install/include" -oc++:"${CMAKE_CURRENT_BINARY_DIR}" ${CMAKE_CURRENT_SOURCE_DIR}/sm/serialization/tiledb-rest.capnp --src-prefix ${CMAKE_CURRENT_SOURCE_DIR}
+        "${CAPNP_COMPILE_COMMAND}"
+      COMMAND_EXPAND_LISTS
       COMMENT "(re-)generate tiledb-rest.capnp.<h,c++>"
     )
 

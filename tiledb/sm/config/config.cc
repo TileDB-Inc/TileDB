@@ -63,6 +63,8 @@ const std::string Config::REST_RETRY_HTTP_CODES = "503";
 const std::string Config::REST_RETRY_COUNT = "3";
 const std::string Config::REST_RETRY_INITIAL_DELAY_MS = "500";
 const std::string Config::REST_RETRY_DELAY_FACTOR = "1.25";
+const std::string Config::SM_ENCRYPTION_KEY = "0";
+const std::string Config::SM_ENCRYPTION_TYPE = "NO_ENCRYPTION";
 const std::string Config::SM_DEDUP_COORDS = "false";
 const std::string Config::SM_CHECK_COORD_DUPS = "true";
 const std::string Config::SM_CHECK_COORD_OOB = "true";
@@ -86,7 +88,12 @@ const std::string Config::SM_CONSOLIDATION_STEP_MIN_FRAGS = "4294967295";
 const std::string Config::SM_CONSOLIDATION_STEP_MAX_FRAGS = "4294967295";
 const std::string Config::SM_CONSOLIDATION_STEP_SIZE_RATIO = "0.0";
 const std::string Config::SM_CONSOLIDATION_MODE = "fragments";
+const std::string Config::SM_CONSOLIDATION_TIMESTAMP_START = "0";
+const std::string Config::SM_CONSOLIDATION_TIMESTAMP_END =
+    std::to_string(UINT64_MAX);
 const std::string Config::SM_VACUUM_MODE = "fragments";
+const std::string Config::SM_VACUUM_TIMESTAMP_START = "0";
+const std::string Config::SM_VACUUM_TIMESTAMP_END = std::to_string(UINT64_MAX);
 const std::string Config::SM_OFFSETS_BITSIZE = "64";
 const std::string Config::SM_OFFSETS_EXTRA_ELEMENT = "false";
 const std::string Config::SM_OFFSETS_FORMAT_MODE = "bytes";
@@ -190,6 +197,8 @@ Config::Config() {
   param_values_["rest.retry_delay_factor"] = REST_RETRY_DELAY_FACTOR;
   param_values_["config.env_var_prefix"] = CONFIG_ENVIRONMENT_VARIABLE_PREFIX;
   param_values_["config.logging_level"] = CONFIG_LOGGING_LEVEL;
+  param_values_["sm.encryption_key"] = SM_ENCRYPTION_KEY;
+  param_values_["sm.encryption_type"] = SM_ENCRYPTION_TYPE;
   param_values_["sm.dedup_coords"] = SM_DEDUP_COORDS;
   param_values_["sm.check_coord_dups"] = SM_CHECK_COORD_DUPS;
   param_values_["sm.check_coord_oob"] = SM_CHECK_COORD_OOB;
@@ -217,7 +226,13 @@ Config::Config() {
       SM_CONSOLIDATION_STEP_SIZE_RATIO;
   param_values_["sm.consolidation.steps"] = SM_CONSOLIDATION_STEPS;
   param_values_["sm.consolidation.mode"] = SM_CONSOLIDATION_MODE;
+  param_values_["sm.consolidation.timestamp_start"] =
+      SM_CONSOLIDATION_TIMESTAMP_START;
+  param_values_["sm.consolidation.timestamp_end"] =
+      SM_CONSOLIDATION_TIMESTAMP_END;
   param_values_["sm.vacuum.mode"] = SM_VACUUM_MODE;
+  param_values_["sm.vacuum.timestamp_start"] = SM_VACUUM_TIMESTAMP_START;
+  param_values_["sm.vacuum.timestamp_end"] = SM_VACUUM_TIMESTAMP_END;
   param_values_["sm.var_offsets.bitsize"] = SM_OFFSETS_BITSIZE;
   param_values_["sm.var_offsets.extra_element"] = SM_OFFSETS_EXTRA_ELEMENT;
   param_values_["sm.var_offsets.mode"] = SM_OFFSETS_FORMAT_MODE;
@@ -427,6 +442,10 @@ Status Config::unset(const std::string& param) {
     param_values_["config.env_var_prefix"] = CONFIG_ENVIRONMENT_VARIABLE_PREFIX;
   } else if (param == "config.logging_level") {
     param_values_["config.logging_level"] = CONFIG_LOGGING_LEVEL;
+  } else if (param == "sm.encryption_key") {
+    param_values_["sm.encryption_key"] = SM_ENCRYPTION_KEY;
+  } else if (param == "sm.encryption_type") {
+    param_values_["sm.encryption_type"] = SM_ENCRYPTION_TYPE;
   } else if (param == "sm.dedup_coords") {
     param_values_["sm.dedup_coords"] = SM_DEDUP_COORDS;
   } else if (param == "sm.check_coord_dups") {
@@ -472,8 +491,18 @@ Status Config::unset(const std::string& param) {
         SM_CONSOLIDATION_STEP_SIZE_RATIO;
   } else if (param == "sm.consolidation.mode") {
     param_values_["sm.consolidation.mode"] = SM_CONSOLIDATION_MODE;
+  } else if (param == "sm.consolidation.timestamp_start") {
+    param_values_["sm.consolidation.timestamp_start"] =
+        SM_CONSOLIDATION_TIMESTAMP_START;
+  } else if (param == "sm.consolidation.timestamp_end") {
+    param_values_["sm.consolidation.timestamp_end"] =
+        SM_CONSOLIDATION_TIMESTAMP_END;
   } else if (param == "sm.vacuum.mode") {
     param_values_["sm.vacuum.mode"] = SM_VACUUM_MODE;
+  } else if (param == "sm.vacuum.timestamp_start") {
+    param_values_["sm.vacuum.timestamp_start"] = SM_VACUUM_TIMESTAMP_START;
+  } else if (param == "sm.vacuum.timestamp_end") {
+    param_values_["sm.vacuum.timestamp_end"] = SM_VACUUM_TIMESTAMP_END;
   } else if (param == "sm.var_offsets.bitsize") {
     param_values_["sm.var_offsets.bitsize"] = SM_OFFSETS_BITSIZE;
   } else if (param == "sm.var_offsets.extra_element") {

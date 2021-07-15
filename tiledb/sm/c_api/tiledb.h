@@ -1,5 +1,3 @@
-#define DEVING_SUBARRAY_PARTITIONER 0
-
 /**
  * @file   tiledb.h
  *
@@ -79,6 +77,22 @@ typedef enum {
 #include "tiledb_enum.h"
 #undef TILEDB_QUERY_STATUS_ENUM
 } tiledb_query_status_t;
+
+/** Query condition operator. */
+typedef enum {
+/** Helper macro for defining query condition operator enums. */
+#define TILEDB_QUERY_CONDITION_OP_ENUM(id) TILEDB_##id
+#include "tiledb_enum.h"
+#undef TILEDB_QUERY_CONDITION_OP_ENUM
+} tiledb_query_condition_op_t;
+
+/** Query condition combination operator. */
+typedef enum {
+/** Helper macro for defining query condition combination operator enums. */
+#define TILEDB_QUERY_CONDITION_COMBINATION_OP_ENUM(id) TILEDB_##id
+#include "tiledb_enum.h"
+#undef TILEDB_QUERY_CONDITION_COMBINATION_OP_ENUM
+} tiledb_query_condition_combination_op_t;
 
 /** Filesystem type. */
 typedef enum {
@@ -483,11 +497,6 @@ typedef struct tiledb_array_t tiledb_array_t;
 /** A subarray object. */
 typedef struct tiledb_subarray_t tiledb_subarray_t;
 
-#if DEVING_SUBARRAY_PARTITIONER
-/** A subarray partitioner object. */
-typedef struct tiledb_subarray_partitioner_t tiledb_subarray_partitioner_t;
-#endif
-
 /** A generic buffer object. */
 typedef struct tiledb_buffer_t tiledb_buffer_t;
 
@@ -526,6 +535,9 @@ typedef struct tiledb_filter_list_t tiledb_filter_list_t;
 
 /** A TileDB query. */
 typedef struct tiledb_query_t tiledb_query_t;
+
+/** A TileDB query condition object. */
+typedef struct tiledb_query_condition_t tiledb_query_condition_t;
 
 /** A virtual filesystem object. */
 typedef struct tiledb_vfs_t tiledb_vfs_t;
@@ -951,6 +963,16 @@ TILEDB_EXPORT void tiledb_config_free(tiledb_config_t** config);
  *    `fragment_meta` (remove only consolidated fragment metadata), or
  *    `array_meta` (remove consolidated array metadata files). <br>
  *    **Default**: fragments
+ * - `sm.vacuum.timestamp_start` <br>
+ *    When set, an array will be vacuumed between this value and
+ *    `sm.vacuum.timestamp_end` (inclusive). <br>
+ *    Only for `fragments` and `array_meta` vacuum mode. <br>
+ *    **Default**: 0
+ * - `sm.vacuum.timestamp_end` <br>
+ *    When set, an array will be vacuumed between `sm.vacuum.timestamp_start`
+ *    and this value (inclusive). <br>
+ *    Only for `fragments` and `array_meta` vacuum mode. <br>
+ *    **Default**: UINT64_MAX
  * - `sm.consolidation_mode` <br>
  *    The consolidation mode, one of `fragments` (consolidate all fragments),
  *    `fragment_meta` (consolidate only fragment metadata footers to a single
@@ -983,6 +1005,16 @@ TILEDB_EXPORT void tiledb_config_free(tiledb_config_t** config);
  *    The size ratio that two ("adjacent") fragments must satisfy to be
  *    considered for consolidation in a single step.<br>
  *    **Default**: 0.0
+ * - `sm.consolidation.timestamp_start` <br>
+ *    When set, an array will be consolidated between this value and
+ *    `sm.consolidation.timestamp_end` (inclusive). <br>
+ *    Only for `fragments` and `array_meta` consolidation mode. <br>
+ *    **Default**: 0
+ * - `sm.consolidation.timestamp_end` <br>
+ *    When set, an array will be consolidated between
+ *    `sm.consolidation.timestamp_start` and this value (inclusive). <br>
+ *    Only for `fragments` and `array_meta` consolidation mode. <br>
+ *    **Default**: UINT64_MAX
  * - `sm.memory_budget` <br>
  *    The memory budget for tiles of fixed-sized attributes (or offsets for
  *    var-sized attributes) to be fetched during reads.<br>
@@ -1210,10 +1242,7 @@ TILEDB_EXPORT void tiledb_config_free(tiledb_config_t** config);
  *    The logging level configured, possible values: "0": fatal, "1": error,
  *    "2": warn, "3": info "4": debug, "5": trace <br>
  *    **Default**: "1" if --enable-verbose bootstrap flag is provided,
- *    "0" otherwise
- *
- * <br>
- *
+ *    "0" otherwise <br>
  * - `rest.server_address` <br>
  *    URL for REST server to use for remote arrays. <br>
  *    **Default**: "https://api.tiledb.com"
@@ -1242,20 +1271,20 @@ TILEDB_EXPORT void tiledb_config_free(tiledb_config_t** config);
  *    The name of the registered access key to use for creation of the REST
  *    server. <br>
  *    **Default**: no default set
- * -  `rest.retry_http_codes` <br>
- *     CSV list of http status codes to automatically retry a REST request for
- * <br>
- *     **Default**: "503"
- * -  `rest.retry_count` <br>
- *     Number of times to retry failed REST requests <br>
- *     **Default**: 3
- * -  `rest.retry_initial_delay_ms` <br>
- *     Initial delay in milliseconds to wait until retrying a REST request <br>
- *     **Default**: 500
- * -  `rest.retry_delay_factor` <br>
- *     The delay factor to exponentially wait until further retries of a failed
- * REST request <br>
- *     **Default**: 1.25
+ * - `rest.retry_http_codes` <br>
+ *    CSV list of http status codes to automatically retry a REST request for
+ *    <br>
+ *    **Default**: "503"
+ * - `rest.retry_count` <br>
+ *    Number of times to retry failed REST requests <br>
+ *    **Default**: 3
+ * - `rest.retry_initial_delay_ms` <br>
+ *    Initial delay in milliseconds to wait until retrying a REST request <br>
+ *    **Default**: 500
+ * - `rest.retry_delay_factor` <br>
+ *    The delay factor to exponentially wait until further retries of a failed
+ *    REST request <br>
+ *    **Default**: 1.25
  *
  * **Example:**
  *
@@ -3027,6 +3056,8 @@ TILEDB_EXPORT int32_t tiledb_array_schema_load(
     tiledb_array_schema_t** array_schema);
 
 /**
+ * This is a deprecated API.
+ *
  * Retrieves the schema of an encrypted array from the disk, creating an array
  * schema struct.
  *
@@ -3444,7 +3475,10 @@ TILEDB_EXPORT int32_t tiledb_query_set_subarray(
  *
  * @code{.c}
  * tiledb_subarray_t *subarray;
- * tiledb_query_set_subarray(ctx, query, subarray);
+ * tiledb_subarray_alloc(ctx, array, &subarray);
+ * uint64_t subarray_v[] = { 0, 10, 20, 30};
+ * tiledb_subarray_set_subarray(ctx, subarray, subarray_v);
+ * tiledb_query_set_subarray_t(ctx, query, subarray);
  * @endcode
  *
  * @param ctx The TileDB context.
@@ -3841,6 +3875,29 @@ TILEDB_EXPORT int32_t tiledb_query_get_buffer_var_nullable(
  */
 TILEDB_EXPORT int32_t tiledb_query_set_layout(
     tiledb_ctx_t* ctx, tiledb_query_t* query, tiledb_layout_t layout);
+
+/**
+ * Sets the query condition to be applied on a read.
+ *
+ * **Example:**
+ *
+ * @code{.c}
+ * tiledb_query_condition_t* query_condition;
+ * tiledb_query_condition_alloc(ctx, &query_condition);
+ * uint32_t value = 5;
+ * tiledb_query_condition_init(
+ *   ctx, query_condition, "longitude", &value, sizeof(value), TILEDB_LT);
+ * tiledb_query_set_condition(ctx, query, query_condition);
+ * @endcode
+ *
+ * @param ctx The TileDB context.
+ * @param query The TileDB query.
+ * @param cond The TileDB query condition.
+ */
+TILEDB_EXPORT int32_t tiledb_query_set_condition(
+    tiledb_ctx_t* ctx,
+    tiledb_query_t* query,
+    const tiledb_query_condition_t* cond);
 
 /**
  * Flushes all internal state of a query object and finalizes the query.
@@ -4584,7 +4641,7 @@ TILEDB_EXPORT int32_t tiledb_query_get_fragment_timestamp_range(
     uint64_t* t2);
 
 /**
- * return a TileDB subarray object from the given query.
+ * Return a TileDB subarray object from the given query.
  *
  * **Example:**
  *
@@ -4597,20 +4654,138 @@ TILEDB_EXPORT int32_t tiledb_query_get_fragment_timestamp_range(
  * @param array An open array object.
  * @param subarray The retrieved subarray object if available.
  * @return `TILEDB_OK` for success or `TILEDB_OOM` or `TILEDB_ERR` for error.
- *
- * @note This leaves the returned subarray with references to everything
- * that was an active part of the query's contained subarray,
- * currently this consists of a raw pointer to an internal core entity,
- * (const tiledb::sm::Array* array_; )
- * so the receiving client should keep those alive as long as the
- * returned subarray is alive, possibly most easily tracked by keeping
- * the source query and its dependencies alive.
  */
 TILEDB_EXPORT
 int32_t tiledb_query_get_subarray(
     tiledb_ctx_t* ctx,
     const tiledb_query_t* query,
     tiledb_subarray_t** subarray);
+
+/* ****************************** */
+/*          QUERY CONDITION       */
+/* ****************************** */
+
+/**
+ * Allocates a TileDB query condition object.
+ *
+ * **Example:**
+ *
+ * @code{.c}
+ * tiledb_query_condition_t* query_condition;
+ * tiledb_query_condition_alloc(ctx, &query_condition);
+ * @endcode
+ *
+ * @param ctx The TileDB context.
+ * @param cond The allocated query condition object.
+ * @return `TILEDB_OK` for success and `TILEDB_OOM` or `TILEDB_ERR` for error.
+ */
+TILEDB_EXPORT int32_t tiledb_query_condition_alloc(
+    tiledb_ctx_t* ctx, tiledb_query_condition_t** cond);
+
+/**
+ * Frees a TileDB query condition object.
+ *
+ * **Example:**
+ *
+ * @code{.c}
+ * uint32_t value = 5;
+ * tiledb_query_condition_t* query_condition;
+ * tiledb_query_condition_alloc(
+ *   ctx, "longitude", &value, sizeof(value), TILEDB_LT, &query_condition);
+ * tiledb_query_set_condition(ctx, query, query_condition);
+ * tiledb_query_submit(ctx, query);
+ * tiledb_query_condition_free(&query_condition);
+ * @endcode
+ *
+ * @param cond The query condition object to be freed.
+ */
+TILEDB_EXPORT void tiledb_query_condition_free(tiledb_query_condition_t** cond);
+
+/**
+ * Initializes a TileDB query condition object.
+ *
+ * **Example:**
+ *
+ * @code{.c}
+ * tiledb_query_condition_t* query_condition;
+ * tiledb_query_condition_alloc(ctx, &query_condition);
+ *
+ * uint32_t value = 5;
+ * tiledb_query_condition_init(
+ *   ctx, query_condition, "longitude", &value, sizeof(value), TILEDB_LT);
+ * @endcode
+ *
+ * @param ctx The TileDB context.
+ * @param cond The allocated query condition object.
+ * @param attribute_name The attribute name.
+ * @param condition_value The value to compare against an attribute value.
+ * @param condition_value_size The byte size of `condition_value`.
+ * @param op The comparison operator.
+ * @return `TILEDB_OK` for success and `TILEDB_ERR` for error.
+ */
+TILEDB_EXPORT int32_t tiledb_query_condition_init(
+    tiledb_ctx_t* ctx,
+    tiledb_query_condition_t* cond,
+    const char* attribute_name,
+    const void* condition_value,
+    uint64_t condition_value_size,
+    tiledb_query_condition_op_t op);
+
+/**
+ * Combines two query condition objects into a newly allocated
+ * condition. Does not mutate or free the input condition objects.
+ *
+ * **Example:**
+ *
+ * @code{.c}
+ * tiledb_query_condition_t* query_condition_1;
+ * tiledb_query_condition_alloc(ctx, &query_condition_1);
+ * uint32_t value_1 = 5;
+ * tiledb_query_condition_init(
+ *   ctx,
+ *   query_condition_1,
+ *   "longitude",
+ *   &value_1,
+ *   sizeof(value_1),
+ *   TILEDB_LT);
+ *
+ * tiledb_query_condition_t* query_condition_2;
+ * tiledb_query_condition_alloc(ctx, &query_condition_2);
+ * uint32_t value_2 = 20;
+ * tiledb_query_condition_init(
+ *   ctx,
+ *   query_condition_2,
+ *   "latitude",
+ *   &value_2,
+ *   sizeof(value_2),
+ *   TILEDB_GE);
+ *
+ * tiledb_query_condition_t* query_condition_3;
+ * tiledb_query_condition_combine(
+ *   ctx, query_condition_1, query_condition_2, TILEDB_AND, &query_condition_3);
+ *
+ * tiledb_query_condition_free(&query_condition_1);
+ * tiledb_query_condition_free(&query_condition_2);
+ *
+ * tiledb_query_set_condition(ctx, query, query_condition_3);
+ * tiledb_query_submit(ctx, query);
+ * tiledb_query_condition_free(&query_condition_3);
+ * @endcode
+ *
+ * @param ctx The TileDB context.
+ * @param attribute_name The attribute name.
+ * @param condition_value The value to compare against an attribute value.
+ * @param condition_value_size The byte size of `condition_value`.
+ * @param op The comparison operator.
+ * @param cond The allocated query condition object.
+ * @return `TILEDB_OK` for success and `TILEDB_OOM` or `TILEDB_ERR` for error.
+ */
+TILEDB_EXPORT int32_t tiledb_query_condition_combine(
+    tiledb_ctx_t* ctx,
+    const tiledb_query_condition_t* left_cond,
+    const tiledb_query_condition_t* right_cond,
+    tiledb_query_condition_combination_op_t combination_op,
+    tiledb_query_condition_t** combined_cond);
 
 /* ********************************* */
 /*             SUBARRAY              */
@@ -4639,23 +4814,12 @@ TILEDB_EXPORT int32_t tiledb_subarray_alloc(
     tiledb_subarray_t** subarray);
 
 /**
- * Set the query config
+ * Set the query config.
  *
  * Setting the configuration with this function overrides the following
- * Query-level parameters only:
+ * Subarray-level parameters only:
  *
- * - `sm..read_range_oob`
- *........TBD: these not currently active Subarray, should they be?
- * - `sm.memory_budget`
- * - `sm.memory_budget_var`
- * - `sm.sub_partitioner_memory_budget`
- * - `sm.var_offsets.mode`
- * - `sm.var_offsets.extra_element`
- * - `sm.var_offsets.bitsize`
- * - `sm.check_coord_dups`
- * - `sm.check_coord_oob`
- * - `sm.check_global_order`
- * - `sm.dedup_coords`
+ * - `sm.read_range_oob`
  */
 TILEDB_EXPORT int32_t tiledb_subarray_set_config(
     tiledb_ctx_t* ctx, tiledb_subarray_t* subarray, tiledb_config_t* config);
@@ -4721,8 +4885,11 @@ TILEDB_EXPORT int32_t tiledb_subarray_set_layout(
  *
  * @code{.c}
  * tiledb_subarray_t* subarray;
- * tiledb_subarray_alloc(ctx, array, &subarray); //defaults to 'coalesce_ranges
- * == true' bool coalesce_ranges = false;
+ * //tiledb_subarray_alloc internally defaults to 'coalesce_ranges == true'
+ * tiledb_subarray_alloc(ctx, array, &subarray);
+ * // so manually set to 'false' to match earlier behaviour with older
+ * // tiledb_query_ subarray actions.
+ * bool coalesce_ranges = false;
  * tiledb_subarray_set_coalesce_ranges(ctx, subarray, coalesce_ranges);
  * @endcode
  *
@@ -4758,16 +4925,9 @@ TILEDB_EXPORT int32_t tiledb_subarray_set_coalesce_ranges(
  *     array.
  * @return `TILEDB_OK` for success or `TILEDB_ERR` for error.
  */
-#if 01
-// REMOVEME: OR REINSTATEME:
-// Checking feasability removing this API... compare
-// prob. also search for cousin tiledb_query_set_subarray() to see pain imposed
-// on our code and users that you may wish to move to new 'outside' subarray
-// usage...
 TILEDB_EXPORT
 int32_t tiledb_subarray_set_subarray(
     tiledb_ctx_t* ctx, tiledb_subarray_t* subarray_s, const void* subarray_v);
-#endif
 
 /**
  * Adds a 1D range along a subarray dimension index, which is in the form
@@ -4813,8 +4973,8 @@ TILEDB_EXPORT int32_t tiledb_subarray_add_range(
  * char* dim_name = "rows";
  * int64_t start = 10;
  * int64_t end = 20;
- * tiledb_subarray_add_range_by_name(ctx, subarray, dim_name, &start, &end,
- * nullptr);
+ * tiledb_subarray_add_range_by_name(
+ *     ctx, subarray, dim_name, &start, &end, nullptr);
  * @endcode
  *
  * @param ctx The TileDB context.
@@ -4877,8 +5037,8 @@ TILEDB_EXPORT int32_t tiledb_subarray_add_range_var(
  * char* dim_name = "rows";
  * char start[] = "a";
  * char end[] = "bb";
- * tiledb_subarray_add_range_var_by_name(ctx, subarray, dim_name, start, 1, end,
- * 2);
+ * tiledb_subarray_add_range_var_by_name(
+ *     ctx, subarray, dim_name, start, 1, end, 2);
  * @endcode
  *
  * @param ctx The TileDB context.
@@ -5181,8 +5341,8 @@ TILEDB_EXPORT int32_t tiledb_subarray_get_est_result_size_var(
  * @code{.c}
  * uint64_t size_val;
  * uint64_t size_validity;
- * tiledb_subarray_get_est_result_size_nullable(ctx, subarray, "a", &size_val,
- * &size_validity);
+ * tiledb_subarray_get_est_result_size_nullable(
+ *     ctx, subarray, "a", &size_val, &size_validity);
  * @endcode
  *
  * @param ctx The TileDB context
@@ -5228,432 +5388,6 @@ TILEDB_EXPORT int32_t tiledb_subarray_get_est_result_size_var_nullable(
     uint64_t* size_val,
     uint64_t* size_validity);
 
-#if DEVING_SUBARRAY_PARTITIONER
-/* ********************************* */
-/*        SUBARRAY PARTITIONER       */
-/* ********************************* */
-
-/**
- * Allocates a TileDB subarray partitioner object.
- *
- * **Example:**
- *
- * @code{.c}
- * tiledb_subarray_partitioner_t* subarray_partitioner;
- * tiledb_subarray_alloc(ctx, array, &subarray_partitioner);
- * @endcode
- *
- * @param ctx The TileDB context.
- * @param array An open array object.
- * @param subarray The subarray_partitioner object to be created.
- * @return `TILEDB_OK` for success and `TILEDB_OOM` or `TILEDB_ERR` for error.
- */
-TILEDB_EXPORT int32_t tiledb_subarray_partitioner_alloc(
-    tiledb_ctx_t* ctx,
-    const tiledb_subarray_t* subarray,
-    tiledb_subarray_partitioner_t** subarray_partitioner,
-    uint64_t memory_budget,
-    uint64_t memory_budget_var,
-    uint64_t memory_budget_validity);
-
-/**
- * Frees a TileDB subarray partitioner object.
- *
- * **Example:**
- *
- * @code{.c}
- * tiledb_subarray_t* subarray;
- * tiledb_subarray_partitioner_t *subarray_partitioner;
- * tiledb_subarray_partitioner_alloc(ctx, subarray, &subarray_partitioner);
- * tiledb_subarray_partitioner_free(&subarray_partitioner);
- * @endcode
- *
- * @param subarray_partitioner The subarray partitioner object to be freed.
- */
-TILEDB_EXPORT void tiledb_subarray_partitioner_free(
-    tiledb_subarray_partitioner_t** subarray_partitioner);
-
-/**
- * Set the layout of the subarray associated with a subarray partitioner object.
- *
- * **Example:**
- *
- * @code{.c}
- * tiledb_subarray_t* subarray;
- * tiledb_subarray_partitioner_t *subarray_partitioner;
- * tiledb_subarray_partitioner_set_layout(ctx, layout, subarray_partitioner);
- * @endcode
- *
- * @param layout The layout to set into the subarray partioner object's
- * subarray.
- *    - `TILEDB_COL_MAJOR`:
- *      This means column-major order with respect to the subarray.
- *    - `TILEDB_ROW_MAJOR`:
- *      This means row-major order with respect to the subarray.
- *    - `TILEDB_GLOBAL_ORDER`:
- *      This means that cells are stored or retrieved in the array global
- *      cell order.
- *    - `TILEDB_UNORDERED`:
- *      This is applicable only to reads and writes for sparse arrays, or for
- *      sparse writes to dense arrays. For writes, it specifies that the cells
- *      are unordered and, hence, TileDB must sort the cells in the global cell
- *      order prior to writing. For reads, TileDB will return the cells without
- *      any particular order, which will often lead to better performance.
- * * @return `TILEDB_OK` for success or `TILEDB_ERR` for error.
- */
-TILEDB_EXPORT int32_t tiledb_subarray_partitioner_set_layout(
-    tiledb_ctx_t* ctx,
-    tiledb_layout_t layout,
-    tiledb_subarray_partitioner_t* partitioner);
-
-/**
- * Compute the complete series of partitions/subarrays leaving them stored
- * internally in the object.
- *
- * These partitions can then be retrieved via
- * tiledb_subarray_partitioner_get_partition().
- *
- * **Example:**
- *
- * @code{.c}
- * tiledb_subarray_partitioner_t *subarray_partitioner;
- * tiledb_subarray_partitioner_compute(ctx, subarray_partitioner);
- * @endcode
- *
- * @param The partitioner for which to compute the complete series of (sub)
- * partitions
- * @return `TILEDB_OK` for success or `TILEDB_ERR` for error.
- */
-TILEDB_EXPORT int32_t tiledb_subarray_partitioner_compute(
-    tiledb_ctx_t* ctx, tiledb_subarray_partitioner_t* partitioner);
-
-/**
- * Gets number of computed partitions available to be retrieved via
- * tiledb_subarray_partitioner_get_partition().
- *
- * **Example:**
- *
- * @code{.c}
- * tiledb_subarray_partitioner_t *subarray_partitioner;
- * tiledb_subarray_partitioner_compute(ctx, subarray_partitioner);
- * @endcode
- *
- * @param layout The layout to set into the subarray partioner object's
- * subarray.
- * @return `TILEDB_OK` for success or `TILEDB_ERR` for error.
- */
-TILEDB_EXPORT int32_t tiledb_subarray_partitioner_get_partition_num(
-    tiledb_ctx_t* ctx,
-    uint64_t* num,
-    tiledb_subarray_partitioner_t* partitioner);
-
-/**
- * Retrieve the part-id(th) partition subarray from the partitioner's computed
- * subarray partitions.
- *
- * **Example:**
- *
- * @code{.c}
- * uint64_t part_id; //# of partition to retrieve, must be less than # computed
- * partitions tiledb_subarray_t *retrieved_subarray;
- * tiledb_subarray_partitioner_t *subarray_partitioner;
- * tiledb_subarray_partitioner_get_partition(ctx, subarray_partitioner,
- * partition_id, retrieved_subarray);
- * @endcode
- *
- * @param part_id The index of a partition to retrieve from a prior
- * tiledb_subarray_partitioner_compute(), must be less than the number
- * of computed partitions.
- * @return `TILEDB_OK` for success or `TILEDB_ERR` for error.
- *
- * @note Any returned subarray object was allocated within this call and is to
- * be freed by the caller.
- */
-TILEDB_EXPORT int32_t tiledb_subarray_partitioner_get_partition(
-    tiledb_ctx_t* ctx,
-    tiledb_subarray_partitioner_t* partitioner,
-    uint64_t part_id,
-    tiledb_subarray_t* subarray);
-
-/**
- * Set memory partitioning budget (in bytes) for fixed size attribute/dimension.
- *
- * **Example:**
- *
- * @code{.c}
- * tiledb_subarray_partitioner_t *partitioner;
- * tiledb_ctx_t *ctx;
- * uint64_t budget;
- * char* attrname;
- * tiledb_subarray_partitioner_set_result_budget(ctx, attrname, budget,
- * partitioner);
- * @endcode
- *
- * @param budget - byte count specifying memory budget for the specified
- * attribute.
- * @return `TILEDB_OK` for success or `TILEDB_ERR` for error.
- */
-TILEDB_EXPORT int32_t tiledb_subarray_partitioner_set_result_budget(
-    tiledb_ctx_t* ctx,
-    const char* attrname,
-    uint64_t budget,
-    tiledb_subarray_partitioner_t* partitioner);
-
-/**
- * Gets result size budget (in bytes) for the input fixed-sized
- * attribute/dimension.
- *
- * **Example:**
- *
- * @code{.c}
- * tiledb_subarray_partitioner_t *partitioner;
- * tiledb_ctx_t *ctx;
- * uint64_t *budget;
- * char *attrname;
- * tiledb_subarray_partitioner_get_result_budget_fixed(ctx, attrname, budget,
- * partitioner);
- * @endcode
- *
- * @param budget - byte count memory budget for the specified attribute.
- * @return `TILEDB_OK` for success or `TILEDB_ERR` for error.
- */
-TILEDB_EXPORT int32_t tiledb_subarray_partitioner_get_result_budget_fixed(
-    tiledb_ctx_t* ctx,
-    const char* attrname,
-    uint64_t* budget,
-    tiledb_subarray_partitioner_t* partitioner);
-
-/**
- * Gets result size budget (in bytes) for the input var-sized
- * attribute/dimension.
- *
- * **Example:**
- *
- * @code{.c}
- * tiledb_subarray_partitioner_t *partitioner;
- * tiledb_ctx_t *ctx;
- * uint64_t *budget_off;
- * uint64_t *budget_val;
- * char *attrname;
- * tiledb_subarray_partitioner_get_result_budget_var(ctx, attrname, budget_off,
- * budget_val, partitioner);
- * @endcode
- *
- * @param budget_off - The budget in bytes for offsets of var attributes
- * @param budget_val - The budget in bytes for var sized attribute values
- * @return `TILEDB_OK` for success or `TILEDB_ERR` for error.
- */
-TILEDB_EXPORT int32_t tiledb_subarray_partitioner_get_result_budget_var(
-    tiledb_ctx_t* ctx,
-    const char* name,
-    uint64_t* budget_off,
-    uint64_t* budget_val,
-    tiledb_subarray_partitioner_t* partitioner);
-
-/**
- * Sets result size budget (in bytes) for the input fixed-sized
- * nullable attribute.
- *
- * **Example:**
- *
- * @code{.c}
- * tiledb_subarray_partitioner_t *partitioner;
- * tiledb_ctx_t *ctx;
- * uint64_t budget;
- * uint64_t budget_validity
- * char *attrname;
- * tiledb_subarray_partitioner_get_result_budget_nullable(ctx, attrname, budget,
- * budget_validity, partitioner);
- * @endcode
- *
- * @param budget The budget in bytes for the (fixed size) nullable attribute's
- * values
- * @param budget_validity The budget in bytes for validity vectors for the attr
- * @return `TILEDB_OK` for success or `TILEDB_ERR` for error.
- */
-TILEDB_EXPORT int32_t
-tiledb_subarray_partitioner_set_result_budget_nullable_fixed(
-    tiledb_ctx_t* ctx,
-    const char* name,
-    uint64_t budget,
-    uint64_t budget_validity,
-    tiledb_subarray_partitioner_t* partitioner);
-
-/**
- * Sets result size budget (in bytes) for the input var-sized
- * nullable attribute.
- *
- * **Example:**
- *
- * @code{.c}
- * tiledb_subarray_partitioner_t *partitioner;
- * tiledb_ctx_t *ctx;
- * uint64_t budget_off;
- * uint64_t budget_val;
- * uint64_t budget_validity;
- * char *attrname;
- * tiledb_subarray_partitioner_set_result_budget_nullable(ctx, attrname,
- * budget_off, budget_val, budget_validity, partitioner);
- * @endcode
- *
- * @param budget_off - The budget in bytes for offsets of var attributes
- * @param budget_val - The budget in bytes for var sized attribute values
- * @param budget_validity The budget in bytes for validity vectors.
- * @return `TILEDB_OK` for success or `TILEDB_ERR` for error.
- */
-TILEDB_EXPORT int32_t
-tiledb_subarray_partitioner_set_result_budget_nullable_var(
-    tiledb_ctx_t* ctx,
-    const char* name,
-    uint64_t budget_off,
-    uint64_t budget_val,
-    uint64_t budget_validity,
-    tiledb_subarray_partitioner_t* partitioner);
-
-/**
- * Gets result size budget (in bytes) for the input fixed-sized
- * nullable attribute.
- *
- * **Example:**
- *
- * @code{.c}
- * tiledb_subarray_partitioner_t *partitioner;
- * tiledb_ctx_t *ctx;
- * uint64_t *budget;
- * uint64_t *budget_validity;
- * char *attrname;
- * tiledb_subarray_partitioner_get_result_budget_nullable(ctx, attrname, budget,
- * budget_validity, partitioner);
- * @endcode
- *
- * @param budget The budget in bytes for the (fixed size) nullable attribute's
- * values
- * @param budget_validity The budget in bytes for validity vectors for the attr
- * @return `TILEDB_OK` for success or `TILEDB_ERR` for error.
- */
-TILEDB_EXPORT int32_t
-tiledb_subarray_partitioner_get_result_budget_nullable_fixed(
-    tiledb_ctx_t* ctx,
-    const char* name,
-    uint64_t* budget,
-    uint64_t* budget_validity,
-    tiledb_subarray_partitioner_t* partitioner);
-
-/**
- * Gets result size budget (in bytes) for the input var-sized
- * nullable attribute.
- *
- * **Example:**
- *
- * @code{.c}
- * tiledb_subarray_partitioner_t *partitioner;
- * tiledb_ctx_t *ctx;
- * uint64_t *budget_off;
- * uint64_t *budget_val;
- * uint64_t *budget_validity;
- * char *attrname;
- * tiledb_subarray_partitioner_get_result_budget_nullable(ctx, attrname,
- * budget_off, budget_val, budget_validity, partitioner);
- * @endcode
- *
- * @param budget_off - The budget in bytes for offsets of var attributes
- * @param budget_val - The budget in bytes for var sized attribute values
- * @param budget_validity The budget in bytes for validity vectors.
- * @return `TILEDB_OK` for success or `TILEDB_ERR` for error.
- */
-TILEDB_EXPORT int32_t
-tiledb_subarray_partitioner_get_result_budget_nullable_var(
-    tiledb_ctx_t* ctx,
-    const char* name,
-    uint64_t* budget_off,
-    uint64_t* budget_val,
-    uint64_t* budget_validity,
-    tiledb_subarray_partitioner_t* partitioner);
-
-/**
- * Set partitioning budget for var sized attribute.
- *
- * **Example:**
- *
- * @code{.c}
- * tiledb_subarray_partitioner_t *partitioner;
- * tiledb_ctx_t *ctx;
- * uint64_t budget_off;
- * uint64_t budget_val;
- * char *attrname;
- * tiledb_subarray_partitioner_set_result_budget_var(ctx, attrname, budget_off,
- * budget_val, partitioner);
- * @endcode
- *
- * @param budget_off The budget in bytes for offsets
- * @param budget_val The budget for validity vectors
- * @return `TILEDB_OK` for success or `TILEDB_ERR` for error.
- */
-TILEDB_EXPORT int32_t tiledb_subarray_partitioner_set_result_budget_var_attr(
-    tiledb_ctx_t* ctx,
-    const char* attrname,
-    uint64_t budget_off,
-    uint64_t budget_val,
-    tiledb_subarray_partitioner_t* partitioner);
-
-/**
- * Set partitioning memory budget values (in bytes).
- *
- * **Example:**
- *
- * @code{.c}
- * tiledb_subarray_partitioner_t *partitioner;
- * tiledb_ctx_t *ctx;
- * uint64_t budget;
- * uint64_t budget_var;
- * uint64_t budget_validity;
- * tiledb_subarray_partitioner_set_memory_budget
- *     (ctx, budget, budget_var, budget_validity, partitioner);
- * @endcode
- *
- * @param budget The budget for the fixed-sized attributes and the
- *     offsets of the var-sized attributes.
- * @param budget_var The budget for the var-sized attributes.
- * @param budget_validity The budget for validity vectors.
- * @return `TILEDB_OK` for success or `TILEDB_ERR` for error.
- */
-TILEDB_EXPORT int32_t tiledb_subarray_partitioner_set_memory_budget(
-    tiledb_ctx_t* ctx,
-    uint64_t budget,
-    uint64_t budget_var,
-    uint64_t budget_validity,
-    tiledb_subarray_partitioner_t* partitioner);
-
-/**
- * Get partitioning memory budget values (in bytes).
- *
- * **Example:**
- *
- * @code{.c}
- * tiledb_subarray_partitioner_t *partitioner;
- * tiledb_ctx_t *ctx;
- * uint64_t budget;
- * uint64_t budget_var;
- * uint64_t budget_validity;
- * tiledb_subarray_partitioner_set_memory_budget
- *     (ctx, &budget, &budget_var, &budget_validity, partitioner);
- * @endcode
- *
- * @param budget The budget for the fixed-sized attributes and the
- *     offsets of the var-sized attributes.
- * @param budget_var The budget for the var-sized attributes.
- * @param budget_validity The budget for validity vectors.
- * @return `TILEDB_OK` for success or `TILEDB_ERR` for error.
- */
-TILEDB_EXPORT int32_t tiledb_subarray_partitioner_get_memory_budget(
-    tiledb_ctx_t* ctx,
-    uint64_t* budget,
-    uint64_t* budget_var,
-    uint64_t* budget_validity,
-    tiledb_subarray_partitioner_t* partitioner);
-
-#endif
-
 /* ********************************* */
 /*               ARRAY               */
 /* ********************************* */
@@ -5675,6 +5409,103 @@ TILEDB_EXPORT int32_t tiledb_subarray_partitioner_get_memory_budget(
  */
 TILEDB_EXPORT int32_t tiledb_array_alloc(
     tiledb_ctx_t* ctx, const char* array_uri, tiledb_array_t** array);
+
+/**
+ * Sets the starting timestamp to use when opening (and reopening) the array.
+ * This is an inclusive bound. The default value is `0`.
+ *
+ * **Example:**
+ *
+ * @code{.c}
+ * tiledb_array_t* array;
+ * tiledb_array_alloc(ctx, "s3://tiledb_bucket/my_array", &array);
+ * tiledb_array_set_open_timestamp_start(ctx, array, 1234);
+ * tiledb_array_open(ctx, array, TILEDB_READ);
+ * @endcode
+ *
+ * @param ctx The TileDB context.
+ * @param array The array to set the timestamp on.
+ * @param timestamp_start The epoch timestamp in milliseconds.
+ * @return `TILEDB_OK` for success or `TILEDB_ERR` for error.
+ */
+TILEDB_EXPORT int32_t tiledb_array_set_open_timestamp_start(
+    tiledb_ctx_t* ctx, tiledb_array_t* array, uint64_t timestamp_start);
+
+/**
+ * Sets the ending timestamp to use when opening (and reopening) the array.
+ * This is an inclusive bound. The UINT64_MAX timestamp is a reserved timestamp
+ * that will be interpretted as the current timestamp when an array is opened.
+ * The default value is `UINT64_MAX`.
+ *
+ * **Example:**
+ *
+ * @code{.c}
+ * tiledb_array_t* array;
+ * tiledb_array_alloc(ctx, "s3://tiledb_bucket/my_array", &array);
+ * tiledb_array_set_open_timestamp_end(ctx, array, 5678);
+ * tiledb_array_open(ctx, array, TILEDB_READ);
+ * @endcode
+ *
+ * @param ctx The TileDB context.
+ * @param array The array to set the timestamp on.
+ * @param timestamp_end The epoch timestamp in milliseconds. Use UINT64_MAX for
+ *   the current timestamp.
+ * @return `TILEDB_OK` for success or `TILEDB_ERR` for error.
+ */
+TILEDB_EXPORT int32_t tiledb_array_set_open_timestamp_end(
+    tiledb_ctx_t* ctx, tiledb_array_t* array, uint64_t timestamp_end);
+
+/**
+ * Gets the starting timestamp used when opening (and reopening) the array.
+ * This is an inclusive bound.
+ *
+ * **Example:**
+ *
+ * @code{.c}
+ * tiledb_array_t* array;
+ * tiledb_array_alloc(ctx, "s3://tiledb_bucket/my_array", &array);
+ * tiledb_array_set_open_timestamp_start(ctx, array, 1234);
+ * tiledb_array_open(ctx, array, TILEDB_READ);
+ *
+ * uint64_t timestamp_start;
+ * tiledb_array_get_open_timestamp_start(ctx, array, &timestamp_start);
+ * assert(timestamp_start == 1234);
+ * @endcode
+ *
+ * @param ctx The TileDB context.
+ * @param array The array to set the timestamp on.
+ * @param timestamp_start The output epoch timestamp in milliseconds.
+ * @return `TILEDB_OK` for success or `TILEDB_ERR` for error.
+ */
+TILEDB_EXPORT int32_t tiledb_array_get_open_timestamp_start(
+    tiledb_ctx_t* ctx, tiledb_array_t* array, uint64_t* timestamp_start);
+
+/**
+ * Gets the ending timestamp used when opening (and reopening) the array.
+ * This is an inclusive bound. If UINT64_MAX was set, this will return
+ * the timestamp at the time the array was opened. If the array has not
+ * yet been opened, it will return UINT64_MAX.`
+ *
+ * **Example:**
+ *
+ * @code{.c}
+ * tiledb_array_t* array;
+ * tiledb_array_alloc(ctx, "s3://tiledb_bucket/my_array", &array);
+ * tiledb_array_set_open_timestamp_end(ctx, array, 5678);
+ * tiledb_array_open(ctx, array, TILEDB_READ);
+ *
+ * uint64_t timestamp_end;
+ * tiledb_array_get_open_timestamp_end(ctx, array, &timestamp_end);
+ * assert(timestamp_start == 5678);
+ * @endcode
+ *
+ * @param ctx The TileDB context.
+ * @param array The array to set the timestamp on.
+ * @param timestamp_end The output epoch timestamp in milliseconds.
+ * @return `TILEDB_OK` for success or `TILEDB_ERR` for error.
+ */
+TILEDB_EXPORT int32_t tiledb_array_get_open_timestamp_end(
+    tiledb_ctx_t* ctx, tiledb_array_t* array, uint64_t* timestamp_end);
 
 /**
  * Opens a TileDB array. The array is opened using a query type as input.
@@ -5700,11 +5531,17 @@ TILEDB_EXPORT int32_t tiledb_array_alloc(
  *
  * @note If the same array object is opened again without being closed,
  *     an error will be thrown.
+ * @note The config should be set before opening an array.
+ * @note If the array is to be opened at a specfic time interval, the
+ *      `timestamp{start, end}` values should be set to a config that's set to
+ *       the array object before opening the array.
  */
 TILEDB_EXPORT int32_t tiledb_array_open(
     tiledb_ctx_t* ctx, tiledb_array_t* array, tiledb_query_type_t query_type);
 
 /**
+ * This is a deprecated API.
+ *
  * Similar to `tiledb_array_open`, but this function takes as input a
  * timestamp, representing time in milliseconds ellapsed since
  * 1970-01-01 00:00:00 +0000 (UTC). Opening the array at a
@@ -5732,6 +5569,10 @@ TILEDB_EXPORT int32_t tiledb_array_open(
  * @note If the same array object is opened again without being closed,
  *     an error will be thrown.
  * @note This function is applicable only to read queries.
+ * @note The config should be set before opening an array.
+ * @note If the array is to be opened at a specfic time interval, the
+ *      `timestamp{start, end}` values should be set to a config that's set to
+ *       the array object before opening the array.
  */
 TILEDB_EXPORT int32_t tiledb_array_open_at(
     tiledb_ctx_t* ctx,
@@ -5740,6 +5581,8 @@ TILEDB_EXPORT int32_t tiledb_array_open_at(
     uint64_t timestamp);
 
 /**
+ * This is a deprecated API.
+ *
  * Opens an encrypted array using the given encryption key. This function has
  * the same semantics as `tiledb_array_open()` but is used for encrypted arrays.
  *
@@ -5764,6 +5607,8 @@ TILEDB_EXPORT int32_t tiledb_array_open_at(
  * @param encryption_key The encryption key to use.
  * @param key_length Length in bytes of the encryption key.
  * @return `TILEDB_OK` for success and `TILEDB_ERR` for error.
+ *
+ * @note The config should be set before opening an array.
  */
 TILEDB_EXPORT int32_t tiledb_array_open_with_key(
     tiledb_ctx_t* ctx,
@@ -5774,6 +5619,8 @@ TILEDB_EXPORT int32_t tiledb_array_open_with_key(
     uint32_t key_length);
 
 /**
+ * This is a deprecated API.
+ *
  * Similar to `tiledb_array_open_with_key`, but this function takes as
  * input a timestamp, representing time in milliseconds ellapsed since
  * 1970-01-01 00:00:00 +0000 (UTC). Opening the array at a
@@ -5807,6 +5654,7 @@ TILEDB_EXPORT int32_t tiledb_array_open_with_key(
  * @note If the same array object is opened again without being closed,
  *     an error will be thrown.
  * @note This function is applicable only to read queries.
+ * @note The config should be set before opening an array.
  */
 TILEDB_EXPORT int32_t tiledb_array_open_at_with_key(
     tiledb_ctx_t* ctx,
@@ -5853,11 +5701,16 @@ TILEDB_EXPORT int32_t tiledb_array_is_open(
  * @return `TILEDB_OK` for success and `TILEDB_ERR` for error.
  *
  * @note This is applicable only to arrays opened for reads.
+ * @note If the array is to be reopened after opening at a specfic time
+ *      interval, the `timestamp{start, end}` values and subsequent config
+ *      object should be reset for the array before reopening.
  */
 TILEDB_EXPORT int32_t
 tiledb_array_reopen(tiledb_ctx_t* ctx, tiledb_array_t* array);
 
 /**
+ * This is a deprecated API.
+ *
  * Reopens a TileDB array (the array must be already open) at a specific
  * timestamp.
  *
@@ -5878,11 +5731,17 @@ tiledb_array_reopen(tiledb_ctx_t* ctx, tiledb_array_t* array);
  * @return `TILEDB_OK` for success and `TILEDB_ERR` for error.
  *
  * @note This is applicable only to arrays opened for reads.
+ * @note If the array is to be reopened after opening at a specfic time
+ *      interval, the `timestamp{start, end}` values and subsequent config
+ *      object should be reset for the array before reopening.
  */
 TILEDB_EXPORT int32_t tiledb_array_reopen_at(
     tiledb_ctx_t* ctx, tiledb_array_t* array, uint64_t timestamp);
 
 /**
+ * This is a deprecated API. The start/end timestamps for opening an array
+ * are now set in the config.
+ *
  * Returns the timestamp, representing time in milliseconds ellapsed since
  * 1970-01-01 00:00:00 +0000 (UTC), at which the array was opened. See also the
  * documentation of `tiledb_array_open_at`.
@@ -5903,11 +5762,55 @@ TILEDB_EXPORT int32_t tiledb_array_reopen_at(
  * @param timestamp Set to the timestamp at which the array was opened.
  * @return `TILEDB_OK` for success and `TILEDB_ERR` for error.
  *
- * @note The array does not need to be opened via `tiledb_array_open_at` to use
- *      this function.
+ * @note The array does not need to be open to use this function.
  */
 TILEDB_EXPORT int32_t tiledb_array_get_timestamp(
     tiledb_ctx_t* ctx, tiledb_array_t* array, uint64_t* timestamp);
+
+/**
+ * Sets the array config.
+ *
+ * **Example:**
+ *
+ * @code{.c}
+ * tiledb_array_t* array;
+ * tiledb_array_alloc(ctx, "s3://tiledb_bucket/my_array", &array);
+ * tiledb_array_open(ctx, array, TILEDB_READ);
+ * // Set the config for the given array.
+ * tiledb_config_t* config;
+ * tiledb_array_set_config(ctx, array, config);
+ * @endcode
+ *
+ * @param ctx The TileDB context.
+ * @param array The array to set the config for.
+ * @param config The config to be set.
+ * @return `TILEDB_OK` for success and `TILEDB_ERR` for error.
+ *
+ * @note The array does not need to be opened via `tiledb_array_open_at` to use
+ *      this function.
+ * @note The config should be set before opening an array.
+ */
+TILEDB_EXPORT int32_t tiledb_array_set_config(
+    tiledb_ctx_t* ctx, tiledb_array_t* array, tiledb_config_t* config);
+
+/**
+ * Gets the array config.
+ *
+ * **Example:**
+ *
+ * @code{.c}
+ * // Retrieve the config for the given array.
+ * tiledb_config_t* config;
+ * tiledb_array_get_config(ctx, array, config);
+ * @endcode
+ *
+ * @param ctx The TileDB context.
+ * @param array The array to set the config for.
+ * @param config Set to the retrieved config.
+ * @return `TILEDB_OK` for success and `TILEDB_ERR` for error.
+ */
+TILEDB_EXPORT int32_t tiledb_array_get_config(
+    tiledb_ctx_t* ctx, tiledb_array_t* array, tiledb_config_t** config);
 
 /**
  * Closes a TileDB array.
@@ -6011,6 +5914,8 @@ TILEDB_EXPORT int32_t tiledb_array_create(
     const tiledb_array_schema_t* array_schema);
 
 /**
+ * This is a deprecated API.
+ *
  * Creates a new encrypted TileDB array given an input schema.
  *
  * Encrypted arrays can only be created through this function.
@@ -6069,6 +5974,8 @@ TILEDB_EXPORT int32_t tiledb_array_consolidate(
     tiledb_ctx_t* ctx, const char* array_uri, tiledb_config_t* config);
 
 /**
+ * This is a deprecated API.
+ *
  * Depending on the consoliation mode in the config, consolidates either the
  * fragment files, fragment metadata files, or array metadata files into a
  * single file.
@@ -6615,6 +6522,8 @@ TILEDB_DEPRECATED_EXPORT int32_t tiledb_array_consolidate_metadata(
     tiledb_ctx_t* ctx, const char* array_uri, tiledb_config_t* config);
 
 /**
+ * This is a deprecated API.
+ *
  * Consolidates the array metadata of an encrypted array into a single file.
  *
  * You must first finalize all queries to the array before consolidation can
@@ -7537,6 +7446,8 @@ TILEDB_EXPORT int32_t tiledb_fragment_info_load(
     tiledb_ctx_t* ctx, tiledb_fragment_info_t* fragment_info);
 
 /**
+ * This is a deprecated API.
+ *
  * Loads the fragment info from an encrypted array.
  *
  * **Example:**

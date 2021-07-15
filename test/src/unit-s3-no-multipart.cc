@@ -33,6 +33,7 @@
 #ifdef HAVE_S3
 
 #include "catch.hpp"
+#include "test/src/helpers.h"
 #include "tiledb/common/thread_pool.h"
 #include "tiledb/sm/config/config.h"
 #include "tiledb/sm/filesystem/s3.h"
@@ -42,6 +43,7 @@
 #include <fstream>
 #include <thread>
 
+using namespace tiledb::test;
 using namespace tiledb::common;
 using namespace tiledb::sm;
 
@@ -73,7 +75,7 @@ S3DirectFx::S3DirectFx() {
   REQUIRE(config.set("vfs.s3.multipart_part_size", "10000000").ok());
   REQUIRE(config.set("vfs.s3.use_multipart_upload", "false").ok());
   REQUIRE(thread_pool_.init(2).ok());
-  REQUIRE(s3_.init(config, &thread_pool_).ok());
+  REQUIRE(s3_.init(&g_helper_stats, config, &thread_pool_).ok());
 
   // Create bucket
   bool exists;

@@ -62,13 +62,11 @@ namespace sm {
 /* ****************************** */
 
 Subarray::Subarray()
-    : stats_(nullptr)
-    , array_(nullptr)
+    : array_(nullptr)
     , layout_(Layout::UNORDERED)
     , cell_order_(Layout::ROW_MAJOR)
     , est_result_size_computed_(false)
     , coalesce_ranges_(true) {
-  stats::all_stats.register_stats(stats_);
 }
 
 Subarray::Subarray(
@@ -186,9 +184,8 @@ Status Subarray::set_subarray(const void* subarray) {
         Status::SubarrayError("Cannot set subarray; Function not applicable to "
                               "domains with variable-sized dimensions"));
 
-  Subarray sub(this->clone());  // preserves ...stats_ relationships
-  sub.set_coalesce_ranges(
-      coalesce_ranges_);  // clear/reset some data to defaults
+  ranges_.clear();
+  add_default_ranges();
   if (subarray != nullptr) {
     auto dim_num = array_->array_schema()->dim_num();
     auto s_ptr = (const unsigned char*)subarray;
@@ -196,11 +193,10 @@ Status Subarray::set_subarray(const void* subarray) {
     for (unsigned d = 0; d < dim_num; ++d) {
       auto r_size = 2 * array_->array_schema()->dimension(d)->coord_size();
       Range range(&s_ptr[offset], r_size);
-      RETURN_NOT_OK(sub.add_range(d, std::move(range), err_on_range_oob_));
+      RETURN_NOT_OK(this->add_range(d, std::move(range), err_on_range_oob_));
       offset += r_size;
     }
   }
-  *this = std::move(sub);
 
   return Status::Ok();
 }
@@ -214,15 +210,11 @@ Status Subarray::add_range(
   QueryType array_query_type;
   RETURN_NOT_OK(array_->get_query_type(&array_query_type));
   if (array_query_type == tiledb::sm::QueryType::WRITE) {
-    //    array->array_schema();
     if (!array_->array_schema()->dense()) {
       return LOG_STATUS(Status::SubarrayError(
           "Adding a subarray range to a write query is not "
           "supported in sparse arrays"));
     }
-    // unsigned dim_idx;
-    // RETURN_NOT_OK(array_->array_schema()->domain()->get_dimension_index(
-    //    dim_name, &dim_idx));
     if (this->is_set(dim_idx))
       return LOG_STATUS(
           Status::SubarrayError("Cannot add range; Multi-range dense writes "
@@ -286,7 +278,6 @@ Status Subarray::add_range_var(
     return LOG_STATUS(Status::SubarrayError(
         "Cannot add range; Range must be variable-sized"));
 
-  //... was in Status Query::add_range_var()...
   QueryType array_query_type;
   RETURN_NOT_OK(array_->get_query_type(&array_query_type));
   if (array_query_type == tiledb::sm::QueryType::WRITE)
@@ -692,7 +683,7 @@ bool Subarray::is_set() const {
   return false;
 }
 
-int32_t Subarray::count_set() const {
+int32_t Subarray::count_set_ranges() const {
   int32_t num_set = 0;
   for (auto d : is_default_)
     if (d == false)
@@ -762,7 +753,7 @@ const Config* Subarray::config() const {
 }
 
 Status Subarray::set_coalesce_ranges(bool coalesce_ranges) {
-  if (count_set())
+  if (count_set_ranges())
     return LOG_STATUS(
         Status::SubarrayError("non-default ranges have been set, cannot change "
                               "coalesce_ranges setting!"));
@@ -880,8 +871,12 @@ Status Subarray::get_est_result_size_querytype_audited(
             "Cannot get estimated result size; Input attribute/dimension '") +
         name + "' is nullable"));
 
-  // TBD: Figure out what does/can exercise the following code!!!
   if (array_->is_remote()) {
+#if 01
+    return LOG_STATUS(Status::SubarrayError(
+        std::string("Error in query estimate result size; remote/REST "
+                    "array functionality not implemented.")));
+#else
     // TBD: Should we somewhere (where?) try to remember if the remote call has
     // already been done?
     // Trying approach of temporary query (and dup array due to 'const'ness of
@@ -898,8 +893,16 @@ Status Subarray::get_est_result_size_querytype_audited(
     // tmp_array.open(type, 0, array_->encryption_key(), ?);)
     auto enc_key_const_buff = array_->encryption_key()->key();
     uint64_t time_stamp = 0;
+    // TBD: Is this correct?
+    // Merging with dev, appears from use of .open() in
+    // tiledb.cc/tiledb_array_open_at(), the way to get earlier functionality is
+    // to pass 0 (zero) for start and the timestamp in use with old prototype as
+    // 'end', so let's try that... unfortunately, since this code has not yet
+    // been exercised, may be hard to tell if this is correct approach here or
+    // not...
     tmp_array.open(
         type,
+        0,
         time_stamp,
         array_->encryption_key()->encryption_type(),
         enc_key_const_buff.data(),
@@ -916,6 +919,7 @@ Status Subarray::get_est_result_size_querytype_audited(
     tmp_array.close();
     RETURN_NOT_OK(ret_rest_response);
     return ret_get_est_result_size;
+#endif
   }
 
   return get_est_result_size(
@@ -1517,13 +1521,11 @@ const std::vector<std::vector<uint8_t>>& Subarray::tile_coords() const {
 
 template <class T>
 Status Subarray::compute_tile_coords() {
-  STATS_START_TIMER(stats::GlobalStats::TimerType::READ_COMPUTE_TILE_COORDS)
+  auto timer_se = stats_->start_timer("read_compute_tile_coords");
 
   if (array_->array_schema()->tile_order() == Layout::ROW_MAJOR)
     return compute_tile_coords_row<T>();
   return compute_tile_coords_col<T>();
-
-  STATS_END_TIMER(stats::GlobalStats::TimerType::READ_COMPUTE_TILE_COORDS)
 }
 
 template <class T>
@@ -1879,9 +1881,9 @@ void Subarray::add_or_coalesce_range(
                                     *static_cast<const T*>(range.start());
 
   // Coalesce `range` with `last_range` if they are contiguous.
-  if (contiguous_after)
+  if (contiguous_after) {
     last_range.set_end(range.end());
-  else {
+  } else {
     ranges->emplace_back(range);
   }
 }
@@ -1937,7 +1939,7 @@ void Subarray::compute_range_offsets() {
 
 Status Subarray::compute_est_result_size(
     const Config* const config, ThreadPool* const compute_tp) {
-  STATS_START_TIMER(stats::GlobalStats::TimerType::READ_COMPUTE_EST_RESULT_SIZE)
+  auto timer_se = stats_->start_timer("read_compute_est_result_size");
   if (est_result_size_computed_)
     return Status::Ok();
 
@@ -2039,8 +2041,6 @@ Status Subarray::compute_est_result_size(
   est_result_size_computed_ = true;
 
   return Status::Ok();
-
-  STATS_END_TIMER(stats::GlobalStats::TimerType::READ_COMPUTE_EST_RESULT_SIZE)
 }
 
 bool Subarray::est_result_size_computed() {
@@ -2166,10 +2166,10 @@ Status Subarray::compute_relevant_fragment_est_result_sizes(
       } else {
         max_size_fixed =
             utils::math::safe_mul(cell_num, array_schema->cell_size(names[n]));
-        if (nullable[n])
-          max_size_validity =
-              utils::math::safe_mul(cell_num, constants::cell_validity_size);
       }
+      if (nullable[n])
+        max_size_validity =
+            utils::math::safe_mul(cell_num, constants::cell_validity_size);
 
       (*result_sizes)[n].size_fixed_ =
           std::min<double>((*result_sizes)[n].size_fixed_, max_size_fixed);
@@ -2309,8 +2309,7 @@ Status Subarray::precompute_tile_overlap(
     const Config* config,
     ThreadPool* const compute_tp,
     const bool override_memory_constraint) {
-  STATS_START_TIMER(stats::GlobalStats::TimerType::READ_COMPUTE_TILE_OVERLAP)
-  stats_->add_counter("precompute_tile_overlap.count", 1);
+  auto timer_se = stats_->start_timer("read_compute_tile_overlap");
 
   // If the `tile_overlap_` has already been precomputed and contains
   // the given range, re-use it with new range.
@@ -2393,8 +2392,6 @@ Status Subarray::precompute_tile_overlap(
       tile_overlap_.range_idx_end() - tile_overlap_.range_idx_start() + 1);
 
   return Status::Ok();
-
-  STATS_END_TIMER(stats::GlobalStats::TimerType::READ_COMPUTE_TILE_OVERLAP)
 }
 
 Subarray Subarray::clone() const {
@@ -2566,65 +2563,186 @@ Status Subarray::compute_relevant_fragments(
     ThreadPool* const compute_tp,
     const SubarrayTileOverlap* const tile_overlap,
     ComputeRelevantFragmentsCtx* const fn_ctx) {
-  STATS_START_TIMER(stats::GlobalStats::TimerType::READ_COMPUTE_RELEVANT_FRAGS)
+  auto timer_se = stats_->start_timer("read_compute_relevant_frags");
 
-  auto meta = array_->fragment_metadata();
-  auto fragment_num = meta.size();
-  auto range_num = tile_overlap->range_num();
+  // Fetch the calibrated, multi-dimensional coordinates from the
+  // flattened (total order) range indexes. In this context,
+  // "calibration" implies that the coordinates contain the minimum
+  // n-dimensional space to encapsulate all ranges within `tile_overlap`.
+  std::vector<uint64_t> start_coords;
+  std::vector<uint64_t> end_coords;
+  get_expanded_coordinates(
+      tile_overlap->range_idx_start(),
+      tile_overlap->range_idx_end(),
+      &start_coords,
+      &end_coords);
 
-  // Sanity check we have at least one fragment
-  // and one range to compute on.
-  if (fragment_num == 0 || range_num == 0) {
-    relevant_fragments_.clear();
-    relevant_fragments_.shrink_to_fit();
+  // If the calibrated coordinates have not changed from
+  // the last call to this function, the computed relevant
+  // fragments will not change.
+  if (fn_ctx->initialized_ && start_coords == fn_ctx->last_start_coords_ &&
+      end_coords == fn_ctx->last_end_coords_) {
     return Status::Ok();
   }
 
-  // If this is the first time this routine is invoked,
-  // initialize `fn_ctx`. Otherwise, set `range_idx_start`
-  // to start from the end of the last range we calculated.
-  uint64_t range_idx_start = 0;
-  if (fn_ctx->frag_bytemap_.empty()) {
-    fn_ctx->frag_bytemap_.resize(fragment_num, 0);
-  } else {
-    assert(fn_ctx->frag_bytemap_.size() == fragment_num);
-    range_idx_start = fn_ctx->range_num_;
+  // Perform lazy-initialization the context cache for this routine.
+  const size_t fragment_num = array_->fragment_metadata().size();
+  const uint32_t dim_num = array_->array_schema()->dim_num();
+  if (!fn_ctx->initialized_) {
+    fn_ctx->initialized_ = true;
+
+    // Create a fragment bytemap for each dimension. Each
+    // non-zero byte represents an overlap between a fragment
+    // and at least one range in the corresponding dimension.
+    fn_ctx->frag_bytemaps_.resize(dim_num);
+    for (uint32_t d = 0; d < dim_num; ++d) {
+      fn_ctx->frag_bytemaps_[d].resize(fragment_num, 0);
+    }
   }
 
-  fn_ctx->range_num_ = range_num;
+  // Store the current calibrated coordinates.
+  fn_ctx->last_start_coords_ = start_coords;
+  fn_ctx->last_end_coords_ = end_coords;
 
-  // Compute the relevant fragments
-  auto status = parallel_for_2d(
-      compute_tp,
-      0,
-      fragment_num,
-      range_idx_start,
-      fn_ctx->range_num_,
-      [&](unsigned f, uint64_t r) {
-        const uint64_t translated_r = r + tile_overlap->range_idx_start();
-        if (fn_ctx->frag_bytemap_[f] == 0 &&
-            meta[f]->overlaps_non_empty_domain(this->ndrange(translated_r)))
-          fn_ctx->frag_bytemap_[f] = 1;
-        return Status::Ok();
-      });
+  // Populate the fragment bytemap for each dimension in parallel.
+  RETURN_NOT_OK(parallel_for(compute_tp, 0, dim_num, [&](const uint32_t d) {
+    return compute_relevant_fragments_for_dim(
+        compute_tp,
+        d,
+        fragment_num,
+        start_coords,
+        end_coords,
+        &fn_ctx->frag_bytemaps_[d]);
+  }));
 
-  // Copy to the result
+  // Recalculate relevant fragments.
   relevant_fragments_.clear();
   relevant_fragments_.reserve(fragment_num);
   for (unsigned f = 0; f < fragment_num; ++f) {
-    if (fn_ctx->frag_bytemap_[f])
+    bool relevant = true;
+    for (uint32_t d = 0; d < dim_num; ++d) {
+      if (fn_ctx->frag_bytemaps_[d][f] == 0) {
+        relevant = false;
+        break;
+      }
+    }
+
+    if (relevant) {
       relevant_fragments_.emplace_back(f);
+    }
   }
-  relevant_fragments_.shrink_to_fit();
 
   return Status::Ok();
+}
 
-  STATS_END_TIMER(stats::GlobalStats::TimerType::READ_COMPUTE_RELEVANT_FRAGS)
+void Subarray::get_expanded_coordinates(
+    const uint64_t range_idx_start,
+    const uint64_t range_idx_end,
+    std::vector<uint64_t>* const start_coords,
+    std::vector<uint64_t>* const end_coords) const {
+  // Fetch the multi-dimensional coordinates from the
+  // flattened (total order) range indexes.
+  *start_coords = get_range_coords(range_idx_start);
+  *end_coords = get_range_coords(range_idx_end);
+
+  // This is only applicable to row-major, column-major, or unordered
+  // layouts. We will treat unordered layouts as the cell layout.
+  const Layout coords_layout =
+      (layout_ == Layout::UNORDERED) ? cell_order_ : layout_;
+  if (coords_layout == Layout::GLOBAL_ORDER ||
+      coords_layout == Layout::HILBERT) {
+    assert(*start_coords == *end_coords);
+    return;
+  }
+
+  assert(
+      coords_layout == Layout::ROW_MAJOR || coords_layout == Layout::COL_MAJOR);
+
+  const uint32_t dim_num = array_->array_schema()->dim_num();
+
+  // Locate the first dimension where the start/end coordinates deviate.
+  int64_t deviation_d;
+  if (coords_layout == Layout::ROW_MAJOR) {
+    deviation_d = 0;
+    while (deviation_d < dim_num - 1) {
+      if ((*start_coords)[deviation_d] != (*end_coords)[deviation_d])
+        break;
+      ++deviation_d;
+    }
+  } else {
+    assert(coords_layout == Layout::COL_MAJOR);
+    deviation_d = dim_num - 1;
+    while (deviation_d > 0) {
+      if ((*start_coords)[deviation_d] != (*end_coords)[deviation_d])
+        break;
+      --deviation_d;
+    }
+  }
+
+  // Calculate the first dimension to start the expansion. This is the
+  // the dimension that immediately follows the dimension where the
+  // coordinates deviate.
+  int64_t expand_d;
+  if (coords_layout == Layout::ROW_MAJOR) {
+    expand_d = deviation_d + 1;
+  } else {
+    assert(coords_layout == Layout::COL_MAJOR);
+    expand_d = deviation_d - 1;
+  }
+
+  // Expand each dimension at-and-after the expansion dimension so that
+  // the coordinates align with the first and last ranges.
+  if (coords_layout == Layout::ROW_MAJOR) {
+    for (int64_t d = expand_d; d < dim_num; ++d) {
+      (*start_coords)[d] = 0;
+      (*end_coords)[d] = ranges_[d].size() - 1;
+    }
+  } else {
+    assert(coords_layout == Layout::COL_MAJOR);
+    for (int64_t d = expand_d; d >= 0; --d) {
+      (*start_coords)[d] = 0;
+      (*end_coords)[d] = ranges_[d].size() - 1;
+    }
+  }
+}
+
+Status Subarray::compute_relevant_fragments_for_dim(
+    ThreadPool* const compute_tp,
+    const uint32_t dim_idx,
+    const uint64_t fragment_num,
+    const std::vector<uint64_t>& start_coords,
+    const std::vector<uint64_t>& end_coords,
+    std::vector<uint8_t>* const frag_bytemap) const {
+  const std::vector<FragmentMetadata*> meta = array_->fragment_metadata();
+  const Dimension* const dim = array_->array_schema()->dimension(dim_idx);
+
+  return parallel_for(compute_tp, 0, fragment_num, [&](const uint64_t f) {
+    // We're done when we have already determined fragment `f` to
+    // be relevant for this dimension.
+    if ((*frag_bytemap)[f] == 1) {
+      return Status::Ok();
+    }
+
+    // The fragment `f` is relevant to this dimension's fragment bytemap
+    // if it overlaps with any range between the start and end coordinates
+    // on this dimension.
+    const Range& frag_range = meta[f]->non_empty_domain()[dim_idx];
+    for (uint64_t r = start_coords[dim_idx]; r <= end_coords[dim_idx]; ++r) {
+      const Range& query_range = ranges_[dim_idx][r];
+
+      if (dim->overlap(frag_range, query_range)) {
+        (*frag_bytemap)[f] = 1;
+        break;
+      }
+    }
+
+    return Status::Ok();
+  });
 }
 
 Status Subarray::load_relevant_fragment_rtrees(
     ThreadPool* const compute_tp) const {
-  STATS_START_TIMER(stats::GlobalStats::TimerType::READ_LOAD_RELEVANT_RTREES)
+  auto timer_se = stats_->start_timer("read_load_relevant_rtrees");
 
   auto meta = array_->fragment_metadata();
   auto encryption_key = array_->encryption_key();
@@ -2636,16 +2754,13 @@ Status Subarray::load_relevant_fragment_rtrees(
   RETURN_NOT_OK(status);
 
   return Status::Ok();
-
-  STATS_END_TIMER(stats::GlobalStats::TimerType::READ_LOAD_RELEVANT_RTREES)
 }
 
 Status Subarray::compute_relevant_fragment_tile_overlap(
     ThreadPool* const compute_tp,
     SubarrayTileOverlap* const tile_overlap,
     ComputeRelevantTileOverlapCtx* const fn_ctx) {
-  STATS_START_TIMER(
-      stats::GlobalStats::TimerType::READ_COMPUTE_RELEVANT_TILE_OVERLAP)
+  auto timer_se = stats_->start_timer("read_compute_relevant_tile_overlap");
 
   const auto range_num = tile_overlap->range_num();
   fn_ctx->range_idx_offset_ = fn_ctx->range_idx_offset_ + fn_ctx->range_len_;
@@ -2663,9 +2778,6 @@ Status Subarray::compute_relevant_fragment_tile_overlap(
   RETURN_NOT_OK(status);
 
   return Status::Ok();
-
-  STATS_END_TIMER(
-      stats::GlobalStats::TimerType::READ_COMPUTE_RELEVANT_TILE_OVERLAP)
 }
 
 Status Subarray::compute_relevant_fragment_tile_overlap(

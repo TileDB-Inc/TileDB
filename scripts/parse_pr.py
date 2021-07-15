@@ -53,8 +53,8 @@ def main():
     else:
         body = sys.stdin.read()
 
-    # If the reserved keyword "NO_HISTORY" is included anywhere in the PR body,
-    # do not check it for validity or modify the history
+    # If the reserved keyword "NO_HISTORY" is included anywhere
+    # in the PR body, do not check it for validity
     if "NO_HISTORY" in body:
         return
 

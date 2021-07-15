@@ -36,6 +36,7 @@
 #include "tiledb/sm/array/array.h"
 #include "tiledb/sm/enums/query_status.h"
 #include "tiledb/sm/enums/query_type.h"
+#include "tiledb/sm/query/query_condition.h"
 #include "tiledb/sm/rest/rest_client.h"
 #include "tiledb/sm/storage_manager/storage_manager.h"
 
@@ -55,7 +56,10 @@ namespace sm {
 
 Query::Query(StorageManager* storage_manager, Array* array, URI fragment_uri)
     : array_(array)
-    , storage_manager_(storage_manager) {
+    , storage_manager_(storage_manager)
+    , stats_(storage_manager_->stats()->create_child("Query"))
+    , reader_(stats_)
+    , writer_(stats_) {
   assert(array != nullptr && array->is_open());
 
   callback_ = nullptr;
@@ -725,6 +729,12 @@ Layout Query::layout() const {
   return layout_;
 }
 
+const QueryCondition* Query::condition() const {
+  if (type_ == QueryType::WRITE)
+    return nullptr;
+  return reader_.condition();
+}
+
 Status Query::cancel() {
   status_ = QueryStatus::FAILED;
   return Status::Ok();
@@ -949,6 +959,14 @@ Status Query::set_layout(Layout layout) {
   return Status::Ok();
 }
 
+Status Query::set_condition(const QueryCondition& condition) {
+  if (type_ == QueryType::WRITE)
+    return LOG_STATUS(Status::QueryError(
+        "Cannot set query condition; Operation only applicable "
+        "to read queries"));
+  return reader_.set_condition(condition);
+}
+
 Status Query::set_sparse_mode(bool sparse_mode) {
   if (type_ != QueryType::READ)
     return LOG_STATUS(Status::QueryError(
@@ -1019,27 +1037,26 @@ Status Query::set_subarray(const void* subarray) {
   return Status::Ok();
 }
 
-Status Query::set_subarray(const tiledb::sm::Subarray* subarray) {
+Status Query::set_subarray(const tiledb::sm::Subarray& subarray) {
   auto query_status = status();
   if (query_status != tiledb::sm::QueryStatus::UNINITIALIZED &&
       query_status != tiledb::sm::QueryStatus::COMPLETED) {
-    // note:
     // Can be in this initialized state when query has been de-serialized
-    // server-side and are trying to perform local submit...
+    // server-side and are trying to perform local submit.
     // Don't change anything and return indication of success.
     return Status::Ok();
   }
 
   // Set subarray
-  if (!subarray->is_set())
+  if (!subarray.is_set())
     // Nothing useful to set here, will leave query with its current
     // settings and consider successful.
     return Status::Ok();
 
   if (type_ == QueryType::WRITE) {
-    RETURN_NOT_OK(writer_.set_subarray(*subarray));
+    RETURN_NOT_OK(writer_.set_subarray(subarray));
   } else if (type_ == QueryType::READ) {
-    RETURN_NOT_OK(reader_.set_subarray(*subarray));
+    RETURN_NOT_OK(reader_.set_subarray(subarray));
   }
 
   status_ = QueryStatus::UNINITIALIZED;
@@ -1073,16 +1090,10 @@ Status Query::set_subarray_unsafe(const NDRange& subarray) {
   return Status::Ok();
 }
 
-const Subarray& Query::subarray() const {
+const Subarray* Query::subarray() {
   if (type_ == QueryType::WRITE)
-    return *writer_.subarray_ranges();
-  return *reader_.subarray();
-}
-
-Subarray* Query::subarray() {
-  if (type_ == QueryType::WRITE)
-    return const_cast<Subarray*>(writer_.subarray_ranges());
-  return const_cast<Subarray*>(reader_.subarray());
+    return writer_.subarray_ranges();
+  return reader_.subarray();
 }
 
 Status Query::submit() {

@@ -612,6 +612,7 @@ Status ArraySchema::set_cell_order(Layout cell_order) {
                                  "applicable to sparse arrays"));
 
   cell_order_ = cell_order;
+
   return Status::Ok();
 }
 
@@ -646,7 +647,9 @@ Status ArraySchema::set_domain(Domain* domain) {
     }
   }
 
-  RETURN_NOT_OK(domain->set_null_tile_extents_to_range());
+  if (cell_order_ != Layout::HILBERT) {
+    RETURN_NOT_OK(domain->set_null_tile_extents_to_range());
+  }
 
   // Set domain
   tdb_delete(domain_);
@@ -674,6 +677,12 @@ Status ArraySchema::set_tile_order(Layout tile_order) {
 
 void ArraySchema::set_version(uint32_t version) {
   version_ = version;
+}
+
+uint32_t ArraySchema::write_version() const {
+  return version_ < constants::back_compat_writes_min_format_version ?
+             constants::format_version :
+             version_;
 }
 
 uint32_t ArraySchema::version() const {

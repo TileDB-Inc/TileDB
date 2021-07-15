@@ -42,8 +42,6 @@
 using namespace tiledb;
 using namespace tiledb::sm;
 
-namespace tdbcoreapi = tiledb::sm;
-
 struct DenseTilerFx {
   // Constants
   const int32_t fill_value = 0;
@@ -83,7 +81,7 @@ struct DenseTilerFx {
   void add_ranges(
       const std::vector<const void*>& ranges,
       uint64_t range_size,
-      tdbcoreapi::Subarray* subarray);
+      tiledb::sm::Subarray* subarray);
   template <class T>
   bool check_tile(Tile* tile, const std::vector<T>& data);
 };
@@ -146,7 +144,7 @@ void DenseTilerFx::create_array(
 void DenseTilerFx::add_ranges(
     const std::vector<const void*>& ranges,
     uint64_t range_size,
-    tdbcoreapi::Subarray* subarray) {
+    tiledb::sm::Subarray* subarray) {
   for (size_t i = 0; i < ranges.size(); ++i)
     CHECK(subarray->add_range((uint32_t)i, Range(ranges[i], range_size)).ok());
 }
@@ -205,7 +203,7 @@ TEST_CASE_METHOD(
   // Create subarray
   open_array(array_name, TILEDB_READ);
   int32_t sub1[] = {3, 6};
-  tdbcoreapi::Subarray subarray1(
+  tiledb::sm::Subarray subarray1(
       array_->array_, Layout::ROW_MAJOR, &test::g_helper_stats);
   add_ranges({sub1}, sizeof(sub1), &subarray1);
 
@@ -223,7 +221,7 @@ TEST_CASE_METHOD(
   close_array();
   open_array(array_name, TILEDB_READ);
   int32_t sub2[] = {6, 9};
-  tdbcoreapi::Subarray subarray2(
+  tiledb::sm::Subarray subarray2(
       array_->array_, Layout::ROW_MAJOR, &test::g_helper_stats);
   add_ranges({sub2}, sizeof(sub2), &subarray2);
 
@@ -266,7 +264,7 @@ TEST_CASE_METHOD(
   // Create subarray
   open_array(array_name, TILEDB_READ);
   int32_t sub1[] = {3, 6};
-  tdbcoreapi::Subarray subarray1(
+  tiledb::sm::Subarray subarray1(
       array_->array_, Layout::ROW_MAJOR, &test::g_helper_stats);
   add_ranges({sub1}, sizeof(sub1), &subarray1);
 
@@ -299,7 +297,7 @@ TEST_CASE_METHOD(
   close_array();
   open_array(array_name, TILEDB_READ);
   int32_t sub2[] = {7, 8};
-  tdbcoreapi::Subarray subarray2(
+  tiledb::sm::Subarray subarray2(
       array_->array_, Layout::ROW_MAJOR, &test::g_helper_stats);
   add_ranges({sub2}, sizeof(sub2), &subarray2);
 
@@ -320,7 +318,7 @@ TEST_CASE_METHOD(
   close_array();
   open_array(array_name, TILEDB_READ);
   int32_t sub3[] = {7, 8};
-  tdbcoreapi::Subarray subarray3(
+  tiledb::sm::Subarray subarray3(
       array_->array_, Layout::COL_MAJOR, &test::g_helper_stats);
   add_ranges({sub3}, sizeof(sub3), &subarray3);
 
@@ -366,7 +364,7 @@ TEST_CASE_METHOD(
   // Create subarray
   open_array(array_name, TILEDB_READ);
   int32_t sub1[] = {3, 6};
-  tdbcoreapi::Subarray subarray1(
+  tiledb::sm::Subarray subarray1(
       array_->array_, Layout::ROW_MAJOR, &test::g_helper_stats);
   add_ranges({sub1}, sizeof(sub1), &subarray1);
 
@@ -392,7 +390,7 @@ TEST_CASE_METHOD(
   close_array();
   open_array(array_name, TILEDB_READ);
   int32_t sub2[] = {7, 10};
-  tdbcoreapi::Subarray subarray2(
+  tiledb::sm::Subarray subarray2(
       array_->array_, Layout::ROW_MAJOR, &test::g_helper_stats);
   add_ranges({sub2}, sizeof(sub2), &subarray2);
 
@@ -409,7 +407,7 @@ TEST_CASE_METHOD(
   close_array();
   open_array(array_name, TILEDB_READ);
   int32_t sub3[] = {7, 10};
-  tdbcoreapi::Subarray subarray3(
+  tiledb::sm::Subarray subarray3(
       array_->array_, Layout::COL_MAJOR, &test::g_helper_stats);
   add_ranges({sub3}, sizeof(sub3), &subarray3);
 
@@ -451,7 +449,7 @@ TEST_CASE_METHOD(
   // Create subarray
   open_array(array_name, TILEDB_READ);
   int32_t sub1[] = {3, 6};
-  tdbcoreapi::Subarray subarray1(
+  tiledb::sm::Subarray subarray1(
       array_->array_, Layout::ROW_MAJOR, &test::g_helper_stats);
   add_ranges({sub1}, sizeof(sub1), &subarray1);
 
@@ -502,7 +500,7 @@ TEST_CASE_METHOD(
   // Create subarray
   open_array(array_name, TILEDB_READ);
   int32_t sub1[] = {-2, 1};
-  tdbcoreapi::Subarray subarray1(
+  tiledb::sm::Subarray subarray1(
       array_->array_, Layout::ROW_MAJOR, &test::g_helper_stats);
   add_ranges({sub1}, sizeof(sub1), &subarray1);
 
@@ -557,7 +555,7 @@ TEST_CASE_METHOD(
   open_array(array_name, TILEDB_READ);
   int32_t sub1_0[] = {4, 6};
   int32_t sub1_1[] = {18, 22};
-  tdbcoreapi::Subarray subarray1(
+  tiledb::sm::Subarray subarray1(
       array_->array_, Layout::ROW_MAJOR, &test::g_helper_stats);
   add_ranges({sub1_0, sub1_1}, sizeof(sub1_0), &subarray1);
 
@@ -576,7 +574,7 @@ TEST_CASE_METHOD(
   open_array(array_name, TILEDB_READ);
   int32_t sub2_0[] = {7, 9};
   int32_t sub2_1[] = {23, 27};
-  tdbcoreapi::Subarray subarray2(
+  tiledb::sm::Subarray subarray2(
       array_->array_, Layout::ROW_MAJOR, &test::g_helper_stats);
   add_ranges({sub2_0, sub2_1}, sizeof(sub2_0), &subarray2);
 
@@ -595,7 +593,7 @@ TEST_CASE_METHOD(
   open_array(array_name, TILEDB_READ);
   int32_t sub3_0[] = {4, 6};
   int32_t sub3_1[] = {18, 22};
-  tdbcoreapi::Subarray subarray3(
+  tiledb::sm::Subarray subarray3(
       array_->array_, Layout::COL_MAJOR, &test::g_helper_stats);
   add_ranges({sub3_0, sub3_1}, sizeof(sub3_0), &subarray3);
 
@@ -614,7 +612,7 @@ TEST_CASE_METHOD(
   open_array(array_name, TILEDB_READ);
   int32_t sub4_0[] = {7, 10};
   int32_t sub4_1[] = {23, 27};
-  tdbcoreapi::Subarray subarray4(
+  tiledb::sm::Subarray subarray4(
       array_->array_, Layout::COL_MAJOR, &test::g_helper_stats);
   add_ranges({sub4_0, sub4_1}, sizeof(sub4_0), &subarray4);
 
@@ -661,7 +659,7 @@ TEST_CASE_METHOD(
   open_array(array_name, TILEDB_READ);
   int32_t sub1_0[] = {4, 6};
   int32_t sub1_1[] = {18, 22};
-  tdbcoreapi::Subarray subarray1(
+  tiledb::sm::Subarray subarray1(
       array_->array_, Layout::ROW_MAJOR, &test::g_helper_stats);
   add_ranges({sub1_0, sub1_1}, sizeof(sub1_0), &subarray1);
 
@@ -680,7 +678,7 @@ TEST_CASE_METHOD(
   open_array(array_name, TILEDB_READ);
   int32_t sub2_0[] = {7, 9};
   int32_t sub2_1[] = {23, 27};
-  tdbcoreapi::Subarray subarray2(
+  tiledb::sm::Subarray subarray2(
       array_->array_, Layout::ROW_MAJOR, &test::g_helper_stats);
   add_ranges({sub2_0, sub2_1}, sizeof(sub2_0), &subarray2);
 
@@ -699,7 +697,7 @@ TEST_CASE_METHOD(
   open_array(array_name, TILEDB_READ);
   int32_t sub3_0[] = {4, 6};
   int32_t sub3_1[] = {18, 22};
-  tdbcoreapi::Subarray subarray3(
+  tiledb::sm::Subarray subarray3(
       array_->array_, Layout::COL_MAJOR, &test::g_helper_stats);
   add_ranges({sub3_0, sub3_1}, sizeof(sub3_0), &subarray3);
 
@@ -718,7 +716,7 @@ TEST_CASE_METHOD(
   open_array(array_name, TILEDB_READ);
   int32_t sub4_0[] = {7, 10};
   int32_t sub4_1[] = {23, 27};
-  tdbcoreapi::Subarray subarray4(
+  tiledb::sm::Subarray subarray4(
       array_->array_, Layout::COL_MAJOR, &test::g_helper_stats);
   add_ranges({sub4_0, sub4_1}, sizeof(sub4_0), &subarray4);
 
@@ -765,7 +763,7 @@ TEST_CASE_METHOD(
   open_array(array_name, TILEDB_READ);
   int32_t sub1_0[] = {4, 6};
   int32_t sub1_1[] = {18, 22};
-  tdbcoreapi::Subarray subarray1(
+  tiledb::sm::Subarray subarray1(
       array_->array_, Layout::ROW_MAJOR, &test::g_helper_stats);
   add_ranges({sub1_0, sub1_1}, sizeof(sub1_0), &subarray1);
 
@@ -821,7 +819,7 @@ TEST_CASE_METHOD(
   open_array(array_name, TILEDB_READ);
   int32_t sub2_0[] = {3, 5};
   int32_t sub2_1[] = {13, 18};
-  tdbcoreapi::Subarray subarray2(
+  tiledb::sm::Subarray subarray2(
       array_->array_, Layout::ROW_MAJOR, &test::g_helper_stats);
   add_ranges({sub2_0, sub2_1}, sizeof(sub2_0), &subarray2);
 
@@ -844,7 +842,7 @@ TEST_CASE_METHOD(
   open_array(array_name, TILEDB_READ);
   int32_t sub3_0[] = {4, 6};
   int32_t sub3_1[] = {18, 22};
-  tdbcoreapi::Subarray subarray3(
+  tiledb::sm::Subarray subarray3(
       array_->array_, Layout::COL_MAJOR, &test::g_helper_stats);
   add_ranges({sub3_0, sub3_1}, sizeof(sub3_0), &subarray3);
 
@@ -904,7 +902,7 @@ TEST_CASE_METHOD(
   open_array(array_name, TILEDB_READ);
   int32_t sub4_0[] = {3, 5};
   int32_t sub4_1[] = {13, 18};
-  tdbcoreapi::Subarray subarray4(
+  tiledb::sm::Subarray subarray4(
       array_->array_, Layout::COL_MAJOR, &test::g_helper_stats);
   add_ranges({sub4_0, sub4_1}, sizeof(sub4_0), &subarray4);
 
@@ -956,7 +954,7 @@ TEST_CASE_METHOD(
   open_array(array_name, TILEDB_READ);
   int32_t sub1_0[] = {4, 6};
   int32_t sub1_1[] = {18, 22};
-  tdbcoreapi::Subarray subarray1(
+  tiledb::sm::Subarray subarray1(
       array_->array_, Layout::ROW_MAJOR, &test::g_helper_stats);
   add_ranges({sub1_0, sub1_1}, sizeof(sub1_0), &subarray1);
 
@@ -1016,7 +1014,7 @@ TEST_CASE_METHOD(
   open_array(array_name, TILEDB_READ);
   int32_t sub2_0[] = {3, 5};
   int32_t sub2_1[] = {13, 18};
-  tdbcoreapi::Subarray subarray2(
+  tiledb::sm::Subarray subarray2(
       array_->array_, Layout::ROW_MAJOR, &test::g_helper_stats);
   add_ranges({sub2_0, sub2_1}, sizeof(sub2_0), &subarray2);
 
@@ -1040,7 +1038,7 @@ TEST_CASE_METHOD(
   open_array(array_name, TILEDB_READ);
   int32_t sub3_0[] = {4, 6};
   int32_t sub3_1[] = {18, 22};
-  tdbcoreapi::Subarray subarray3(
+  tiledb::sm::Subarray subarray3(
       array_->array_, Layout::COL_MAJOR, &test::g_helper_stats);
   add_ranges({sub3_0, sub3_1}, sizeof(sub3_0), &subarray3);
 
@@ -1096,7 +1094,7 @@ TEST_CASE_METHOD(
   open_array(array_name, TILEDB_READ);
   int32_t sub4_0[] = {3, 5};
   int32_t sub4_1[] = {13, 18};
-  tdbcoreapi::Subarray subarray4(
+  tiledb::sm::Subarray subarray4(
       array_->array_, Layout::COL_MAJOR, &test::g_helper_stats);
   add_ranges({sub4_0, sub4_1}, sizeof(sub4_0), &subarray4);
 
@@ -1147,7 +1145,7 @@ TEST_CASE_METHOD(
   open_array(array_name, TILEDB_READ);
   int32_t sub1_0[] = {4, 9};
   int32_t sub1_1[] = {11, 20};
-  tdbcoreapi::Subarray subarray1(
+  tiledb::sm::Subarray subarray1(
       array_->array_, Layout::ROW_MAJOR, &test::g_helper_stats);
   add_ranges({sub1_0, sub1_1}, sizeof(sub1_0), &subarray1);
 
@@ -1209,7 +1207,7 @@ TEST_CASE_METHOD(
   open_array(array_name, TILEDB_READ);
   int32_t sub1_0[] = {1, 5};
   int32_t sub1_1[] = {8, 12};
-  tdbcoreapi::Subarray subarray1(
+  tiledb::sm::Subarray subarray1(
       array_->array_, Layout::COL_MAJOR, &test::g_helper_stats);
   add_ranges({sub1_0, sub1_1}, sizeof(sub1_0), &subarray1);
 
@@ -1272,7 +1270,7 @@ TEST_CASE_METHOD(
   open_array(array_name, TILEDB_READ);
   int32_t sub1_0[] = {4, 6};
   int32_t sub1_1[] = {18, 22};
-  tdbcoreapi::Subarray subarray1(
+  tiledb::sm::Subarray subarray1(
       array_->array_, Layout::ROW_MAJOR, &test::g_helper_stats);
   add_ranges({sub1_0, sub1_1}, sizeof(sub1_0), &subarray1);
 
@@ -1336,7 +1334,7 @@ TEST_CASE_METHOD(
   open_array(array_name, TILEDB_READ);
   int32_t sub2_0[] = {3, 5};
   int32_t sub2_1[] = {13, 18};
-  tdbcoreapi::Subarray subarray2(
+  tiledb::sm::Subarray subarray2(
       array_->array_, Layout::ROW_MAJOR, &test::g_helper_stats);
   add_ranges({sub2_0, sub2_1}, sizeof(sub2_0), &subarray2);
 
@@ -1371,7 +1369,7 @@ TEST_CASE_METHOD(
   open_array(array_name, TILEDB_READ);
   int32_t sub3_0[] = {4, 6};
   int32_t sub3_1[] = {18, 22};
-  tdbcoreapi::Subarray subarray3(
+  tiledb::sm::Subarray subarray3(
       array_->array_, Layout::COL_MAJOR, &test::g_helper_stats);
   add_ranges({sub3_0, sub3_1}, sizeof(sub3_0), &subarray3);
 
@@ -1438,7 +1436,7 @@ TEST_CASE_METHOD(
   open_array(array_name, TILEDB_READ);
   int32_t sub4_0[] = {3, 5};
   int32_t sub4_1[] = {13, 18};
-  tdbcoreapi::Subarray subarray4(
+  tiledb::sm::Subarray subarray4(
       array_->array_, Layout::COL_MAJOR, &test::g_helper_stats);
   add_ranges({sub4_0, sub4_1}, sizeof(sub4_0), &subarray4);
 
@@ -1502,7 +1500,7 @@ TEST_CASE_METHOD(
   open_array(array_name, TILEDB_READ);
   int32_t sub1_0[] = {4, 6};
   int32_t sub1_1[] = {18, 22};
-  tdbcoreapi::Subarray subarray1(
+  tiledb::sm::Subarray subarray1(
       array_->array_, Layout::ROW_MAJOR, &test::g_helper_stats);
   add_ranges({sub1_0, sub1_1}, sizeof(sub1_0), &subarray1);
 
@@ -1577,7 +1575,7 @@ TEST_CASE_METHOD(
   open_array(array_name, TILEDB_READ);
   int32_t sub2_0[] = {3, 5};
   int32_t sub2_1[] = {13, 18};
-  tdbcoreapi::Subarray subarray2(
+  tiledb::sm::Subarray subarray2(
       array_->array_, Layout::ROW_MAJOR, &test::g_helper_stats);
   add_ranges({sub2_0, sub2_1}, sizeof(sub2_0), &subarray2);
 
@@ -1630,7 +1628,7 @@ TEST_CASE_METHOD(
   open_array(array_name, TILEDB_READ);
   int32_t sub3_0[] = {4, 6};
   int32_t sub3_1[] = {18, 22};
-  tdbcoreapi::Subarray subarray3(
+  tiledb::sm::Subarray subarray3(
       array_->array_, Layout::COL_MAJOR, &test::g_helper_stats);
   add_ranges({sub3_0, sub3_1}, sizeof(sub3_0), &subarray3);
 
@@ -1708,7 +1706,7 @@ TEST_CASE_METHOD(
   open_array(array_name, TILEDB_READ);
   int32_t sub4_0[] = {3, 5};
   int32_t sub4_1[] = {13, 18};
-  tdbcoreapi::Subarray subarray4(
+  tiledb::sm::Subarray subarray4(
       array_->array_, Layout::COL_MAJOR, &test::g_helper_stats);
   add_ranges({sub4_0, sub4_1}, sizeof(sub4_0), &subarray4);
 
@@ -1793,7 +1791,7 @@ TEST_CASE_METHOD(
   open_array(array_name, TILEDB_READ);
   int32_t sub1_0[] = {4, 9};
   int32_t sub1_1[] = {11, 20};
-  tdbcoreapi::Subarray subarray1(
+  tiledb::sm::Subarray subarray1(
       array_->array_, Layout::ROW_MAJOR, &test::g_helper_stats);
   add_ranges({sub1_0, sub1_1}, sizeof(sub1_0), &subarray1);
 
@@ -1855,7 +1853,7 @@ TEST_CASE_METHOD(
   open_array(array_name, TILEDB_READ);
   int32_t sub1_0[] = {1, 5};
   int32_t sub1_1[] = {8, 12};
-  tdbcoreapi::Subarray subarray1(
+  tiledb::sm::Subarray subarray1(
       array_->array_, Layout::COL_MAJOR, &test::g_helper_stats);
   add_ranges({sub1_0, sub1_1}, sizeof(sub1_0), &subarray1);
 
@@ -1911,7 +1909,7 @@ TEST_CASE_METHOD(
   // Create subarray
   open_array(array_name, TILEDB_READ);
   int32_t sub1[] = {3, 6};
-  tdbcoreapi::Subarray subarray1(
+  tiledb::sm::Subarray subarray1(
       array_->array_, Layout::ROW_MAJOR, &test::g_helper_stats);
   add_ranges({sub1}, sizeof(sub1), &subarray1);
 
@@ -1944,7 +1942,7 @@ TEST_CASE_METHOD(
   close_array();
   open_array(array_name, TILEDB_READ);
   int32_t sub2[] = {7, 10};
-  tdbcoreapi::Subarray subarray2(
+  tiledb::sm::Subarray subarray2(
       array_->array_, Layout::ROW_MAJOR, &test::g_helper_stats);
   add_ranges({sub2}, sizeof(sub2), &subarray2);
 
@@ -1962,7 +1960,7 @@ TEST_CASE_METHOD(
   close_array();
   open_array(array_name, TILEDB_READ);
   int32_t sub3[] = {7, 10};
-  tdbcoreapi::Subarray subarray3(
+  tiledb::sm::Subarray subarray3(
       array_->array_, Layout::COL_MAJOR, &test::g_helper_stats);
   add_ranges({sub3}, sizeof(sub3), &subarray3);
 
@@ -2008,7 +2006,7 @@ TEST_CASE_METHOD(
   // Create subarray
   open_array(array_name, TILEDB_READ);
   int32_t sub1[] = {3, 6};
-  tdbcoreapi::Subarray subarray1(
+  tiledb::sm::Subarray subarray1(
       array_->array_, Layout::ROW_MAJOR, &test::g_helper_stats);
   add_ranges({sub1}, sizeof(sub1), &subarray1);
 
@@ -2045,7 +2043,7 @@ TEST_CASE_METHOD(
   close_array();
   open_array(array_name, TILEDB_READ);
   int32_t sub2[] = {7, 10};
-  tdbcoreapi::Subarray subarray2(
+  tiledb::sm::Subarray subarray2(
       array_->array_, Layout::ROW_MAJOR, &test::g_helper_stats);
   add_ranges({sub2}, sizeof(sub2), &subarray2);
 
@@ -2066,7 +2064,7 @@ TEST_CASE_METHOD(
   close_array();
   open_array(array_name, TILEDB_READ);
   int32_t sub3[] = {7, 10};
-  tdbcoreapi::Subarray subarray3(
+  tiledb::sm::Subarray subarray3(
       array_->array_, Layout::COL_MAJOR, &test::g_helper_stats);
   add_ranges({sub3}, sizeof(sub3), &subarray3);
 
@@ -2124,7 +2122,7 @@ TEST_CASE_METHOD(
   open_array(array_name, TILEDB_READ);
   int32_t sub1_0[] = {4, 6};
   int32_t sub1_1[] = {18, 22};
-  tdbcoreapi::Subarray subarray1(
+  tiledb::sm::Subarray subarray1(
       array_->array_, Layout::ROW_MAJOR, &test::g_helper_stats);
   add_ranges({sub1_0, sub1_1}, sizeof(sub1_0), &subarray1);
 
@@ -2191,7 +2189,7 @@ TEST_CASE_METHOD(
   open_array(array_name, TILEDB_READ);
   int32_t sub2_0[] = {3, 5};
   int32_t sub2_1[] = {13, 18};
-  tdbcoreapi::Subarray subarray2(
+  tiledb::sm::Subarray subarray2(
       array_->array_, Layout::ROW_MAJOR, &test::g_helper_stats);
   add_ranges({sub2_0, sub2_1}, sizeof(sub2_0), &subarray2);
 
@@ -2245,7 +2243,7 @@ TEST_CASE_METHOD(
   open_array(array_name, TILEDB_READ);
   int32_t sub3_0[] = {4, 6};
   int32_t sub3_1[] = {18, 22};
-  tdbcoreapi::Subarray subarray3(
+  tiledb::sm::Subarray subarray3(
       array_->array_, Layout::COL_MAJOR, &test::g_helper_stats);
   add_ranges({sub3_0, sub3_1}, sizeof(sub3_0), &subarray3);
 
@@ -2322,7 +2320,7 @@ TEST_CASE_METHOD(
   open_array(array_name, TILEDB_READ);
   int32_t sub4_0[] = {3, 5};
   int32_t sub4_1[] = {13, 18};
-  tdbcoreapi::Subarray subarray4(
+  tiledb::sm::Subarray subarray4(
       array_->array_, Layout::COL_MAJOR, &test::g_helper_stats);
   add_ranges({sub4_0, sub4_1}, sizeof(sub4_0), &subarray4);
 
@@ -2411,7 +2409,7 @@ TEST_CASE_METHOD(
   open_array(array_name, TILEDB_READ);
   int32_t sub1_0[] = {4, 6};
   int32_t sub1_1[] = {18, 22};
-  tdbcoreapi::Subarray subarray1(
+  tiledb::sm::Subarray subarray1(
       array_->array_, Layout::ROW_MAJOR, &test::g_helper_stats);
   add_ranges({sub1_0, sub1_1}, sizeof(sub1_0), &subarray1);
 
@@ -2539,7 +2537,7 @@ TEST_CASE_METHOD(
   c_data1_3_val[6] = 'o';
   c_data1_3_val[7] = 'o';
   c_data1_3_val[8] = 'o';
-  for (int i = 9; i <= 57; ++i)
+  for (int i = 9; i < 57; ++i)
     c_data1_3_val[i] = 0;
   CHECK(check_tile<uint8_t>(&tile1_3_val, c_data1_3_val));
 
@@ -2548,7 +2546,7 @@ TEST_CASE_METHOD(
   open_array(array_name, TILEDB_READ);
   int32_t sub2_0[] = {3, 5};
   int32_t sub2_1[] = {13, 18};
-  tdbcoreapi::Subarray subarray2(
+  tiledb::sm::Subarray subarray2(
       array_->array_, Layout::ROW_MAJOR, &test::g_helper_stats);
   add_ranges({sub2_0, sub2_1}, sizeof(sub2_0), &subarray2);
 
@@ -2709,7 +2707,7 @@ TEST_CASE_METHOD(
   open_array(array_name, TILEDB_READ);
   int32_t sub1_0[] = {4, 6};
   int32_t sub1_1[] = {18, 22};
-  tdbcoreapi::Subarray subarray1(
+  tiledb::sm::Subarray subarray1(
       array_->array_, Layout::ROW_MAJOR, &test::g_helper_stats);
   add_ranges({sub1_0, sub1_1}, sizeof(sub1_0), &subarray1);
 
@@ -2846,7 +2844,7 @@ TEST_CASE_METHOD(
   open_array(array_name, TILEDB_READ);
   int32_t sub2_0[] = {3, 5};
   int32_t sub2_1[] = {13, 18};
-  tdbcoreapi::Subarray subarray2(
+  tiledb::sm::Subarray subarray2(
       array_->array_, Layout::ROW_MAJOR, &test::g_helper_stats);
   add_ranges({sub2_0, sub2_1}, sizeof(sub2_0), &subarray2);
 
@@ -3027,7 +3025,7 @@ TEST_CASE_METHOD(
   open_array(array_name, TILEDB_READ);
   int32_t sub1_0[] = {4, 6};
   int32_t sub1_1[] = {18, 22};
-  tdbcoreapi::Subarray subarray1(
+  tiledb::sm::Subarray subarray1(
       array_->array_, Layout::ROW_MAJOR, &test::g_helper_stats);
   add_ranges({sub1_0, sub1_1}, sizeof(sub1_0), &subarray1);
 
@@ -3156,7 +3154,7 @@ TEST_CASE_METHOD(
   c_data1_3_val[6] = 15;
   c_data1_3_val[7] = 15;
   c_data1_3_val[8] = 15;
-  for (int i = 9; i <= 57; ++i)
+  for (int i = 9; i < 57; ++i)
     c_data1_3_val[i] = 0;
   CHECK(check_tile<int32_t>(&tile1_3_val, c_data1_3_val));
 
@@ -3165,7 +3163,7 @@ TEST_CASE_METHOD(
   open_array(array_name, TILEDB_READ);
   int32_t sub2_0[] = {3, 5};
   int32_t sub2_1[] = {13, 18};
-  tdbcoreapi::Subarray subarray2(
+  tiledb::sm::Subarray subarray2(
       array_->array_, Layout::ROW_MAJOR, &test::g_helper_stats);
   add_ranges({sub2_0, sub2_1}, sizeof(sub2_0), &subarray2);
 
@@ -3334,7 +3332,7 @@ TEST_CASE_METHOD(
   open_array(array_name, TILEDB_READ);
   int32_t sub1_0[] = {4, 6};
   int32_t sub1_1[] = {18, 22};
-  tdbcoreapi::Subarray subarray1(
+  tiledb::sm::Subarray subarray1(
       array_->array_, Layout::ROW_MAJOR, &test::g_helper_stats);
   add_ranges({sub1_0, sub1_1}, sizeof(sub1_0), &subarray1);
 
@@ -3463,7 +3461,7 @@ TEST_CASE_METHOD(
   c_data1_3_val[6] = 15;
   c_data1_3_val[7] = 15;
   c_data1_3_val[8] = 15;
-  for (int i = 9; i <= 57; ++i)
+  for (int i = 9; i < 57; ++i)
     c_data1_3_val[i] = 0;
   CHECK(check_tile<int32_t>(&tile1_3_val, c_data1_3_val));
 
@@ -3472,7 +3470,7 @@ TEST_CASE_METHOD(
   open_array(array_name, TILEDB_READ);
   int32_t sub2_0[] = {3, 5};
   int32_t sub2_1[] = {13, 18};
-  tdbcoreapi::Subarray subarray2(
+  tiledb::sm::Subarray subarray2(
       array_->array_, Layout::ROW_MAJOR, &test::g_helper_stats);
   add_ranges({sub2_0, sub2_1}, sizeof(sub2_0), &subarray2);
 
@@ -3624,7 +3622,7 @@ TEST_CASE_METHOD(
   open_array(array_name, TILEDB_READ);
   int32_t sub1_0[] = {4, 6};
   int32_t sub1_1[] = {18, 22};
-  tdbcoreapi::Subarray subarray1(
+  tiledb::sm::Subarray subarray1(
       array_->array_, Layout::ROW_MAJOR, &test::g_helper_stats);
   add_ranges({sub1_0, sub1_1}, sizeof(sub1_0), &subarray1);
 
@@ -3762,7 +3760,7 @@ TEST_CASE_METHOD(
   open_array(array_name, TILEDB_READ);
   int32_t sub2_0[] = {3, 5};
   int32_t sub2_1[] = {13, 18};
-  tdbcoreapi::Subarray subarray2(
+  tiledb::sm::Subarray subarray2(
       array_->array_, Layout::ROW_MAJOR, &test::g_helper_stats);
   add_ranges({sub2_0, sub2_1}, sizeof(sub2_0), &subarray2);
 

@@ -46,6 +46,8 @@
 #include "tiledb/sm/filesystem/posix.h"
 #endif
 #include "tiledb/sm/c_api/tiledb.h"
+#include "tiledb/sm/enums/encryption_type.h"
+#include "tiledb/sm/global_state/unit_test_config.h"
 #include "tiledb/sm/misc/utils.h"
 
 #include <chrono>
@@ -77,6 +79,7 @@ struct ArrayFx {
   void create_dense_vector(const std::string& path);
   void create_dense_array(const std::string& path);
   static std::string random_name(const std::string& prefix);
+  static int get_fragment_timestamps(const char* path, void* data);
 };
 
 static const std::string test_ca_path =
@@ -115,6 +118,20 @@ std::string ArrayFx::random_name(const std::string& prefix) {
   ss << prefix << "-" << std::this_thread::get_id() << "-"
      << TILEDB_TIMESTAMP_NOW_MS;
   return ss.str();
+}
+
+int ArrayFx::get_fragment_timestamps(const char* path, void* data) {
+  auto data_vec = (std::vector<uint64_t>*)data;
+  std::pair<uint64_t, uint64_t> timestamp_range;
+  if (tiledb::sm::utils::parse::ends_with(
+          path, tiledb::sm::constants::ok_file_suffix)) {
+    auto uri = tiledb::sm::URI(path);
+    if (tiledb::sm::utils::parse::get_timestamp_range(uri, &timestamp_range)
+            .ok())
+      data_vec->push_back(timestamp_range.first);
+  }
+
+  return 1;
 }
 
 void ArrayFx::create_sparse_vector(const std::string& path) {
@@ -326,7 +343,7 @@ void ArrayFx::create_dense_array(const std::string& path) {
 }
 
 TEST_CASE_METHOD(
-    ArrayFx, "C API: Test getting array URI", "[capi], [array], [array-uri]") {
+    ArrayFx, "C API: Test getting array URI", "[capi][array][array-uri]") {
   SupportedFsLocal local_fs;
   std::string array_name =
       local_fs.file_prefix() + local_fs.temp_dir() + "array_uri";
@@ -370,7 +387,7 @@ TEST_CASE_METHOD(
 }
 
 TEST_CASE_METHOD(
-    ArrayFx, "C API: Set null URI", "[capi], [array], [array-null-uri]") {
+    ArrayFx, "C API: Set null URI", "[capi][array][array-null-uri]") {
   // Create context
   tiledb_array_t* array;
   int rc = tiledb_array_alloc(ctx_, nullptr, &array);
@@ -378,7 +395,7 @@ TEST_CASE_METHOD(
 }
 
 TEST_CASE_METHOD(
-    ArrayFx, "C API: Set invalid URI", "[capi], [array], [array-invalid-uri]") {
+    ArrayFx, "C API: Set invalid URI", "[capi][array][array-invalid-uri]") {
   std::string array_name = "this_is_not_a_valid_array_uri";
   tiledb_array_t* array;
   int rc = tiledb_array_alloc(ctx_, array_name.c_str(), &array);
@@ -393,9 +410,7 @@ TEST_CASE_METHOD(
 }
 
 TEST_CASE_METHOD(
-    ArrayFx,
-    "C API: Test array with encryption",
-    "[capi], [array], [encryption]") {
+    ArrayFx, "C API: Test array with encryption", "[capi][array][encryption]") {
   // Create array schema
   tiledb_array_schema_t* array_schema;
   int rc = tiledb_array_schema_alloc(ctx_, TILEDB_SPARSE, &array_schema);
@@ -496,37 +511,71 @@ TEST_CASE_METHOD(
     rc = tiledb_array_is_open(ctx_, array, &is_open);
     REQUIRE(rc == TILEDB_OK);
     REQUIRE(is_open == 0);
+
     // Check error with wrong algorithm
-    rc = tiledb_array_open_with_key(
-        ctx_, array, TILEDB_READ, TILEDB_NO_ENCRYPTION, key, key_len);
+    tiledb_config_t* cfg;
+    tiledb_error_t* err = nullptr;
+    REQUIRE(tiledb_config_alloc(&cfg, &err) == TILEDB_OK);
+    REQUIRE(err == nullptr);
+    rc = tiledb_config_set(cfg, "sm.encryption_type", "NO_ENCRYPTION", &err);
+    REQUIRE(rc == TILEDB_OK);
+    REQUIRE(err == nullptr);
+    rc = tiledb_config_set(cfg, "sm.encryption_key", key, &err);
+    REQUIRE(rc == TILEDB_OK);
+    REQUIRE(err == nullptr);
+    rc = tiledb_array_set_config(ctx_, array, cfg);
+    REQUIRE(rc == TILEDB_OK);
+    rc = tiledb_array_open(ctx_, array, TILEDB_READ);
     REQUIRE(rc == TILEDB_ERR);
     rc = tiledb_array_is_open(ctx_, array, &is_open);
     REQUIRE(rc == TILEDB_OK);
     REQUIRE(is_open == 0);
+
     // Check error with bad key
     char bad_key[32];
-    rc = tiledb_array_open_with_key(
-        ctx_, array, TILEDB_READ, TILEDB_AES_256_GCM, bad_key, key_len);
+    rc = tiledb_config_set(cfg, "sm.encryption_type", "AES_256_GCM", &err);
+    REQUIRE(rc == TILEDB_OK);
+    REQUIRE(err == nullptr);
+    rc = tiledb_config_set(cfg, "sm.encryption_key", bad_key, &err);
+    REQUIRE(rc == TILEDB_OK);
+    REQUIRE(err == nullptr);
+    rc = tiledb_array_set_config(ctx_, array, cfg);
+    REQUIRE(rc == TILEDB_OK);
+    rc = tiledb_array_open(ctx_, array, TILEDB_READ);
     REQUIRE(rc == TILEDB_ERR);
     rc = tiledb_array_is_open(ctx_, array, &is_open);
     REQUIRE(rc == TILEDB_OK);
     REQUIRE(is_open == 0);
+
     // Check error with bad key length
-    rc = tiledb_array_open_with_key(
-        ctx_, array, TILEDB_READ, TILEDB_AES_256_GCM, key, key_len - 1);
+    REQUIRE(
+        tiledb_config_set(cfg, "sm.encryption_key", key, &err) == TILEDB_OK);
+    REQUIRE(err == nullptr);
+    rc = tiledb_array_set_config(ctx_, array, cfg);
+    REQUIRE(rc == TILEDB_OK);
+    tiledb::sm::UnitTestConfig::instance().array_encryption_key_length.set(
+        key_len - 1);
+    rc = tiledb_array_open(ctx_, array, TILEDB_READ);
     REQUIRE(rc == TILEDB_ERR);
     rc = tiledb_array_is_open(ctx_, array, &is_open);
     REQUIRE(rc == TILEDB_OK);
     REQUIRE(is_open == 0);
+
     // Use correct key
-    rc = tiledb_array_open_with_key(
-        ctx_, array, TILEDB_READ, TILEDB_AES_256_GCM, key, key_len);
+    tiledb::sm::UnitTestConfig::instance().array_encryption_key_length.set(
+        key_len);
+    rc = tiledb_array_open(ctx_, array, TILEDB_READ);
     REQUIRE(rc == TILEDB_OK);
     rc = tiledb_array_is_open(ctx_, array, &is_open);
     REQUIRE(rc == TILEDB_OK);
     REQUIRE(is_open == 1);
     tiledb_array_schema_t* read_schema;
     rc = tiledb_array_get_schema(ctx_, array, &read_schema);
+    REQUIRE(rc == TILEDB_OK);
+    rc = tiledb_config_set(cfg, "sm.encryption_key", bad_key, &err);
+    REQUIRE(rc == TILEDB_OK);
+    REQUIRE(err == nullptr);
+    rc = tiledb_array_set_config(ctx_, array, cfg);
     REQUIRE(rc == TILEDB_OK);
 
     // Opening an already open array without a key should fail
@@ -537,8 +586,9 @@ TEST_CASE_METHOD(
     REQUIRE(rc == TILEDB_ERR);
 
     // Opening an array with a bad key should fail
-    rc = tiledb_array_open_with_key(
-        ctx_, array2, TILEDB_READ, TILEDB_AES_256_GCM, bad_key, key_len);
+    rc = tiledb_array_set_config(ctx_, array2, cfg);
+    REQUIRE(rc == TILEDB_OK);
+    rc = tiledb_array_open(ctx_, array2, TILEDB_READ);
     REQUIRE(rc == TILEDB_ERR);
 
     // Check reopening works
@@ -580,14 +630,19 @@ TEST_CASE_METHOD(
     rc = tiledb_array_is_open(ctx_, array, &is_open);
     REQUIRE(rc == TILEDB_OK);
     REQUIRE(is_open == 0);
-    rc = tiledb_array_open_with_key(
-        ctx_, array, TILEDB_READ, TILEDB_AES_256_GCM, bad_key, key_len);
+    rc = tiledb_array_set_config(ctx_, array, cfg);
+    REQUIRE(rc == TILEDB_OK);
+    rc = tiledb_array_open(ctx_, array, TILEDB_READ);
     REQUIRE(rc == TILEDB_ERR);
     rc = tiledb_array_is_open(ctx_, array, &is_open);
     REQUIRE(rc == TILEDB_OK);
     REQUIRE(is_open == 0);
-    rc = tiledb_array_open_with_key(
-        ctx_, array, TILEDB_READ, TILEDB_AES_256_GCM, key, key_len);
+    rc = tiledb_config_set(cfg, "sm.encryption_key", key, &err);
+    REQUIRE(rc == TILEDB_OK);
+    REQUIRE(err == nullptr);
+    rc = tiledb_array_set_config(ctx_, array, cfg);
+    REQUIRE(rc == TILEDB_OK);
+    rc = tiledb_array_open(ctx_, array, TILEDB_READ);
     REQUIRE(rc == TILEDB_OK);
     rc = tiledb_array_is_open(ctx_, array, &is_open);
     REQUIRE(rc == TILEDB_OK);
@@ -599,6 +654,7 @@ TEST_CASE_METHOD(
     tiledb_array_schema_free(&read_schema);
     tiledb_array_free(&array);
     tiledb_array_free(&array2);
+    tiledb_config_free(&cfg);
     remove_temp_dir(local_fs.file_prefix() + local_fs.temp_dir());
   }
 
@@ -636,16 +692,37 @@ TEST_CASE_METHOD(
     // Check error with key
     char key[32];
     uint32_t key_len = 32;
-    rc = tiledb_array_open_with_key(
-        ctx_, array, TILEDB_READ, TILEDB_AES_256_GCM, key, key_len);
+    tiledb_config_t* cfg;
+    tiledb_error_t* err = nullptr;
+    rc = tiledb_config_alloc(&cfg, &err);
+    REQUIRE(rc == TILEDB_OK);
+    REQUIRE(err == nullptr);
+    rc = tiledb_config_set(cfg, "sm.encryption_type", "AES_256_GCM", &err);
+    REQUIRE(rc == TILEDB_OK);
+    REQUIRE(err == nullptr);
+    rc = tiledb_config_set(cfg, "sm.encryption_key", key, &err);
+    REQUIRE(rc == TILEDB_OK);
+    REQUIRE(err == nullptr);
+    rc = tiledb_array_set_config(ctx_, array, cfg);
+    REQUIRE(rc == TILEDB_OK);
+    rc = tiledb_array_open(ctx_, array, TILEDB_READ);
     REQUIRE(rc == TILEDB_ERR);
     int is_open;
     rc = tiledb_array_is_open(ctx_, array, &is_open);
     REQUIRE(rc == TILEDB_OK);
     REQUIRE(is_open == 0);
+
     // Check ok with null key
-    rc = tiledb_array_open_with_key(
-        ctx_, array, TILEDB_READ, TILEDB_NO_ENCRYPTION, nullptr, 0);
+    rc = tiledb_config_set(cfg, "sm.encryption_type", "NO_ENCRYPTION", &err);
+    REQUIRE(rc == TILEDB_OK);
+    REQUIRE(err == nullptr);
+    rc = tiledb_config_set(cfg, "sm.encryption_key", "0", &err);
+    REQUIRE(rc == TILEDB_OK);
+    REQUIRE(err == nullptr);
+    rc = tiledb_array_set_config(ctx_, array, cfg);
+    REQUIRE(rc == TILEDB_OK);
+    tiledb::sm::UnitTestConfig::instance().array_encryption_key_length.set(0);
+    rc = tiledb_array_open(ctx_, array, TILEDB_READ);
     REQUIRE(rc == TILEDB_OK);
     rc = tiledb_array_is_open(ctx_, array, &is_open);
     REQUIRE(rc == TILEDB_OK);
@@ -680,6 +757,7 @@ TEST_CASE_METHOD(
     // Clean up
     tiledb_array_schema_free(&read_schema);
     tiledb_array_free(&array);
+    tiledb_config_free(&cfg);
     remove_temp_dir(local_fs.file_prefix() + local_fs.temp_dir());
   }
 }
@@ -715,17 +793,29 @@ TEST_CASE_METHOD(
   tiledb_array_t* array;
   int rc = tiledb_array_alloc(ctx_, array_name.c_str(), &array);
   CHECK(rc == TILEDB_OK);
-  if (encryption_type_ == TILEDB_NO_ENCRYPTION) {
-    rc = tiledb_array_open(ctx_, array, TILEDB_WRITE);
-  } else {
-    rc = tiledb_array_open_with_key(
-        ctx_,
-        array,
-        TILEDB_WRITE,
-        encryption_type_,
-        encryption_key_,
-        (uint32_t)strlen(encryption_key_));
+  if (encryption_type_ != TILEDB_NO_ENCRYPTION) {
+    tiledb_config_t* cfg;
+    tiledb_error_t* err = nullptr;
+    rc = tiledb_config_alloc(&cfg, &err);
+    CHECK(rc == TILEDB_OK);
+    REQUIRE(err == nullptr);
+    std::string encryption_type_string =
+        encryption_type_str((tiledb::sm::EncryptionType)encryption_type_);
+    rc = tiledb_config_set(
+        cfg, "sm.encryption_type", encryption_type_string.c_str(), &err);
+    CHECK(rc == TILEDB_OK);
+    REQUIRE(err == nullptr);
+    rc = tiledb_config_set(cfg, "sm.encryption_key", encryption_key_, &err);
+    CHECK(rc == TILEDB_OK);
+    REQUIRE(err == nullptr);
+    rc = tiledb_array_set_config(ctx_, array, cfg);
+    CHECK(rc == TILEDB_OK);
+    tiledb_config_free(&cfg);
+    uint32_t key_len = (uint32_t)strlen(encryption_key_);
+    tiledb::sm::UnitTestConfig::instance().array_encryption_key_length.set(
+        key_len);
   }
+  rc = tiledb_array_open(ctx_, array, TILEDB_WRITE);
   CHECK(rc == TILEDB_OK);
 
   // Submit query
@@ -747,10 +837,6 @@ TEST_CASE_METHOD(
   tiledb_array_free(&array);
   tiledb_query_free(&query);
 
-  // Get timestamp after first write
-  auto timestamp = TILEDB_TIMESTAMP_NOW_MS;
-  std::this_thread::sleep_for(std::chrono::milliseconds(1));
-
   // ---- UPDATE ----
   int buffer_upd[] = {50, 60, 70};
   uint64_t buffer_upd_size = sizeof(buffer_upd);
@@ -759,17 +845,26 @@ TEST_CASE_METHOD(
   // Open array
   rc = tiledb_array_alloc(ctx_, array_name.c_str(), &array);
   CHECK(rc == TILEDB_OK);
-  if (encryption_type_ == TILEDB_NO_ENCRYPTION) {
-    rc = tiledb_array_open(ctx_, array, TILEDB_WRITE);
-  } else {
-    rc = tiledb_array_open_with_key(
-        ctx_,
-        array,
-        TILEDB_WRITE,
-        encryption_type_,
-        encryption_key_,
-        (uint32_t)strlen(encryption_key_));
+  if (encryption_type_ != TILEDB_NO_ENCRYPTION) {
+    tiledb_config_t* cfg;
+    tiledb_error_t* err = nullptr;
+    rc = tiledb_config_alloc(&cfg, &err);
+    CHECK(rc == TILEDB_OK);
+    REQUIRE(err == nullptr);
+    std::string encryption_type_string =
+        encryption_type_str((tiledb::sm::EncryptionType)encryption_type_);
+    rc = tiledb_config_set(
+        cfg, "sm.encryption_type", encryption_type_string.c_str(), &err);
+    CHECK(rc == TILEDB_OK);
+    REQUIRE(err == nullptr);
+    rc = tiledb_config_set(cfg, "sm.encryption_key", encryption_key_, &err);
+    CHECK(rc == TILEDB_OK);
+    REQUIRE(err == nullptr);
+    rc = tiledb_array_set_config(ctx_, array, cfg);
+    CHECK(rc == TILEDB_OK);
+    tiledb_config_free(&cfg);
   }
+  rc = tiledb_array_open(ctx_, array, TILEDB_WRITE);
   CHECK(rc == TILEDB_OK);
 
   // Submit query
@@ -790,6 +885,15 @@ TEST_CASE_METHOD(
   tiledb_array_free(&array);
   tiledb_query_free(&query);
 
+  std::vector<uint64_t> fragment_timestamps;
+  rc = tiledb_vfs_ls(
+      ctx_,
+      vfs_,
+      array_name.c_str(),
+      &get_fragment_timestamps,
+      &fragment_timestamps);
+  CHECK(rc == TILEDB_OK);
+
   // ---- NORMAL READ ----
   int buffer_read[10];
   uint64_t buffer_read_size = sizeof(buffer_read);
@@ -797,17 +901,26 @@ TEST_CASE_METHOD(
   // Open array
   rc = tiledb_array_alloc(ctx_, array_name.c_str(), &array);
   CHECK(rc == TILEDB_OK);
-  if (encryption_type_ == TILEDB_NO_ENCRYPTION) {
-    rc = tiledb_array_open(ctx_, array, TILEDB_READ);
-  } else {
-    rc = tiledb_array_open_with_key(
-        ctx_,
-        array,
-        TILEDB_READ,
-        encryption_type_,
-        encryption_key_,
-        (uint32_t)strlen(encryption_key_));
+  if (encryption_type_ != TILEDB_NO_ENCRYPTION) {
+    tiledb_config_t* cfg;
+    tiledb_error_t* err = nullptr;
+    rc = tiledb_config_alloc(&cfg, &err);
+    CHECK(rc == TILEDB_OK);
+    REQUIRE(err == nullptr);
+    std::string encryption_type_string =
+        encryption_type_str((tiledb::sm::EncryptionType)encryption_type_);
+    rc = tiledb_config_set(
+        cfg, "sm.encryption_type", encryption_type_string.c_str(), &err);
+    CHECK(rc == TILEDB_OK);
+    REQUIRE(err == nullptr);
+    rc = tiledb_config_set(cfg, "sm.encryption_key", encryption_key_, &err);
+    CHECK(rc == TILEDB_OK);
+    REQUIRE(err == nullptr);
+    rc = tiledb_array_set_config(ctx_, array, cfg);
+    CHECK(rc == TILEDB_OK);
+    tiledb_config_free(&cfg);
   }
+  rc = tiledb_array_open(ctx_, array, TILEDB_READ);
   CHECK(rc == TILEDB_OK);
 
   // Submit query
@@ -836,26 +949,36 @@ TEST_CASE_METHOD(
   CHECK(buffer_read_size == sizeof(buffer_read_c));
 
   // ---- READ AT ZERO TIMESTAMP ----
-  // Open array
+
+  tiledb_config_t* cfg;
+  tiledb_error_t* err = nullptr;
   rc = tiledb_array_alloc(ctx_, array_name.c_str(), &array);
   CHECK(rc == TILEDB_OK);
-  if (encryption_type_ == TILEDB_NO_ENCRYPTION) {
-    rc = tiledb_array_open_at(ctx_, array, TILEDB_READ, 0);
-  } else {
-    rc = tiledb_array_open_at_with_key(
-        ctx_,
-        array,
-        TILEDB_READ,
-        encryption_type_,
-        encryption_key_,
-        (uint32_t)strlen(encryption_key_),
-        0);
+  REQUIRE(tiledb_config_alloc(&cfg, &err) == TILEDB_OK);
+  REQUIRE(err == nullptr);
+  rc = tiledb_array_set_open_timestamp_end(ctx_, array, 0);
+  REQUIRE(rc == TILEDB_OK);
+
+  // Open array
+  if (encryption_type_ != TILEDB_NO_ENCRYPTION) {
+    std::string encryption_type_string =
+        encryption_type_str((tiledb::sm::EncryptionType)encryption_type_);
+    rc = tiledb_config_set(
+        cfg, "sm.encryption_type", encryption_type_string.c_str(), &err);
+    CHECK(rc == TILEDB_OK);
+    REQUIRE(err == nullptr);
+    rc = tiledb_config_set(cfg, "sm.encryption_key", encryption_key_, &err);
+    CHECK(rc == TILEDB_OK);
+    REQUIRE(err == nullptr);
+    rc = tiledb_array_set_config(ctx_, array, cfg);
+    CHECK(rc == TILEDB_OK);
   }
+  rc = tiledb_array_open(ctx_, array, TILEDB_READ);
   CHECK(rc == TILEDB_OK);
 
   // Check timestamp
   uint64_t timestamp_get;
-  rc = tiledb_array_get_timestamp(ctx_, array, &timestamp_get);
+  rc = tiledb_array_get_open_timestamp_end(ctx_, array, &timestamp_get);
   CHECK(rc == TILEDB_OK);
   CHECK(timestamp_get == 0);
 
@@ -877,6 +1000,7 @@ TEST_CASE_METHOD(
   CHECK(rc == TILEDB_OK);
   tiledb_array_free(&array);
   tiledb_query_free(&query);
+  tiledb_config_free(&cfg);
 
   // Check correctness
   // Empty array still returns fill values
@@ -885,21 +1009,28 @@ TEST_CASE_METHOD(
   // ---- READ AT TIMESTAMP BEFORE UPDATE ----
   buffer_read_size = sizeof(buffer_read);
 
-  // Open array
   rc = tiledb_array_alloc(ctx_, array_name.c_str(), &array);
   CHECK(rc == TILEDB_OK);
-  if (encryption_type_ == TILEDB_NO_ENCRYPTION) {
-    rc = tiledb_array_open_at(ctx_, array, TILEDB_READ, timestamp);
-  } else {
-    rc = tiledb_array_open_at_with_key(
-        ctx_,
-        array,
-        TILEDB_READ,
-        encryption_type_,
-        encryption_key_,
-        (uint32_t)strlen(encryption_key_),
-        timestamp);
+  rc = tiledb_array_set_open_timestamp_end(ctx_, array, fragment_timestamps[0]);
+  REQUIRE(rc == TILEDB_OK);
+
+  // Open array
+  REQUIRE(tiledb_config_alloc(&cfg, &err) == TILEDB_OK);
+  REQUIRE(err == nullptr);
+  if (encryption_type_ != TILEDB_NO_ENCRYPTION) {
+    std::string encryption_type_string =
+        encryption_type_str((tiledb::sm::EncryptionType)encryption_type_);
+    rc = tiledb_config_set(
+        cfg, "sm.encryption_type", encryption_type_string.c_str(), &err);
+    CHECK(rc == TILEDB_OK);
+    REQUIRE(err == nullptr);
+    rc = tiledb_config_set(cfg, "sm.encryption_key", encryption_key_, &err);
+    CHECK(rc == TILEDB_OK);
+    REQUIRE(err == nullptr);
+    rc = tiledb_array_set_config(ctx_, array, cfg);
+    CHECK(rc == TILEDB_OK);
   }
+  rc = tiledb_array_open(ctx_, array, TILEDB_READ);
   CHECK(rc == TILEDB_OK);
 
   // Submit query
@@ -920,6 +1051,7 @@ TEST_CASE_METHOD(
   CHECK(rc == TILEDB_OK);
   tiledb_array_free(&array);
   tiledb_query_free(&query);
+  tiledb_config_free(&cfg);
 
   // Check correctness
   int buffer_read_at_c[] = {1, 2, 3, 4, 5, 6, 7, 8, 9, 10};
@@ -927,29 +1059,67 @@ TEST_CASE_METHOD(
   CHECK(buffer_read_size == sizeof(buffer_read_at_c));
 
   // ---- READ AT LATER TIMESTAMP ----
-  uint64_t first_timestamp = timestamp;
-  timestamp = TILEDB_TIMESTAMP_NOW_MS;
   // Open array
   rc = tiledb_array_alloc(ctx_, array_name.c_str(), &array);
   CHECK(rc == TILEDB_OK);
-  if (encryption_type_ == TILEDB_NO_ENCRYPTION) {
-    rc = tiledb_array_open_at(ctx_, array, TILEDB_READ, timestamp);
-  } else {
-    rc = tiledb_array_open_at_with_key(
-        ctx_,
-        array,
-        TILEDB_READ,
-        encryption_type_,
-        encryption_key_,
-        (uint32_t)strlen(encryption_key_),
-        timestamp);
+
+  rc = tiledb_array_set_open_timestamp_end(ctx_, array, fragment_timestamps[1]);
+  REQUIRE(rc == TILEDB_OK);
+
+  REQUIRE(tiledb_config_alloc(&cfg, &err) == TILEDB_OK);
+  REQUIRE(err == nullptr);
+  if (encryption_type_ != TILEDB_NO_ENCRYPTION) {
+    std::string encryption_type_string =
+        encryption_type_str((tiledb::sm::EncryptionType)encryption_type_);
+    rc = tiledb_config_set(
+        cfg, "sm.encryption_type", encryption_type_string.c_str(), &err);
+    CHECK(rc == TILEDB_OK);
+    REQUIRE(err == nullptr);
+    rc = tiledb_config_set(cfg, "sm.encryption_key", encryption_key_, &err);
+    CHECK(rc == TILEDB_OK);
+    REQUIRE(err == nullptr);
+    rc = tiledb_array_set_config(ctx_, array, cfg);
+    CHECK(rc == TILEDB_OK);
   }
+
+  rc = tiledb_array_open(ctx_, array, TILEDB_READ);
   CHECK(rc == TILEDB_OK);
 
   // Check timestamp
-  rc = tiledb_array_get_timestamp(ctx_, array, &timestamp_get);
+  rc = tiledb_array_get_open_timestamp_end(ctx_, array, &timestamp_get);
   CHECK(rc == TILEDB_OK);
-  CHECK(timestamp_get == timestamp);
+  CHECK(timestamp_get == fragment_timestamps[1]);
+
+  // Submit query
+  rc = tiledb_query_alloc(ctx_, array, TILEDB_READ, &query);
+  CHECK(rc == TILEDB_OK);
+  rc = tiledb_query_set_layout(ctx_, query, TILEDB_ROW_MAJOR);
+  CHECK(rc == TILEDB_OK);
+  rc = tiledb_query_set_subarray(ctx_, query, subarray_read);
+  CHECK(rc == TILEDB_OK);
+  rc =
+      tiledb_query_set_buffer(ctx_, query, "a", buffer_read, &buffer_read_size);
+  CHECK(rc == TILEDB_OK);
+  rc = tiledb_query_submit(ctx_, query);
+  CHECK(rc == TILEDB_OK);
+
+  // Clean up but don't close the array yet (we will reopen it).
+  tiledb_query_free(&query);
+  tiledb_config_free(&cfg);
+
+  // Check correctness
+  CHECK(!std::memcmp(buffer_read, buffer_read_c, sizeof(buffer_read_c)));
+  CHECK(buffer_read_size == sizeof(buffer_read_c));
+
+  // ---- REOPEN AT FIRST TIMESTAMP ----
+  buffer_read_size = sizeof(buffer_read);
+
+  rc = tiledb_array_set_open_timestamp_end(
+      ctx_, array, fragment_timestamps[1] - 1);
+  REQUIRE(rc == TILEDB_OK);
+
+  rc = tiledb_array_reopen(ctx_, array);
+  CHECK(rc == TILEDB_OK);
 
   // Submit query
   rc = tiledb_query_alloc(ctx_, array, TILEDB_READ, &query);
@@ -968,14 +1138,21 @@ TEST_CASE_METHOD(
   tiledb_query_free(&query);
 
   // Check correctness
-  CHECK(!std::memcmp(buffer_read, buffer_read_c, sizeof(buffer_read_c)));
-  CHECK(buffer_read_size == sizeof(buffer_read_c));
+  int buffer_read_reopen_c[] = {1, 2, 3, 4, 5, 6, 7, 8, 9, 10};
+  CHECK(!std::memcmp(
+      buffer_read, buffer_read_reopen_c, sizeof(buffer_read_reopen_c)));
+  CHECK(buffer_read_size == sizeof(buffer_read_reopen_c));
 
-  // ---- REOPEN AT FIRST TIMESTAMP ----
+  // ---- REOPEN STARTING AT FIRST TIMESTAMP ----
   buffer_read_size = sizeof(buffer_read);
 
   // Reopen array
-  rc = tiledb_array_reopen_at(ctx_, array, first_timestamp);
+  rc = tiledb_array_set_open_timestamp_start(
+      ctx_, array, fragment_timestamps[0] + 1);
+  REQUIRE(rc == TILEDB_OK);
+  rc = tiledb_array_set_open_timestamp_end(ctx_, array, UINT64_MAX);
+  REQUIRE(rc == TILEDB_OK);
+  rc = tiledb_array_reopen(ctx_, array);
   CHECK(rc == TILEDB_OK);
 
   // Submit query
@@ -998,10 +1175,149 @@ TEST_CASE_METHOD(
   tiledb_array_free(&array);
 
   // Check correctness
-  int buffer_read_reopen_c[] = {1, 2, 3, 4, 5, 6, 7, 8, 9, 10};
+  int buffer_read_reopen_start_c[] = {INT_MIN,
+                                      INT_MIN,
+                                      INT_MIN,
+                                      INT_MIN,
+                                      50,
+                                      60,
+                                      70,
+                                      INT_MIN,
+                                      INT_MIN,
+                                      INT_MIN};
   CHECK(!std::memcmp(
-      buffer_read, buffer_read_reopen_c, sizeof(buffer_read_reopen_c)));
-  CHECK(buffer_read_size == sizeof(buffer_read_reopen_c));
+      buffer_read,
+      buffer_read_reopen_start_c,
+      sizeof(buffer_read_reopen_start_c)));
+  CHECK(buffer_read_size == sizeof(buffer_read_reopen_start_c));
+
+  // ---- OPEN STARTING AT FIRST TIMESTAMP ----
+  buffer_read_size = sizeof(buffer_read);
+
+  // Open array
+  rc = tiledb_array_alloc(ctx_, array_name.c_str(), &array);
+  CHECK(rc == TILEDB_OK);
+  rc = tiledb_array_set_open_timestamp_start(
+      ctx_, array, fragment_timestamps[1]);
+  REQUIRE(rc == TILEDB_OK);
+  REQUIRE(tiledb_config_alloc(&cfg, &err) == TILEDB_OK);
+  REQUIRE(err == nullptr);
+  if (encryption_type_ != TILEDB_NO_ENCRYPTION) {
+    std::string encryption_type_string =
+        encryption_type_str((tiledb::sm::EncryptionType)encryption_type_);
+    rc = tiledb_config_set(
+        cfg, "sm.encryption_type", encryption_type_string.c_str(), &err);
+    CHECK(rc == TILEDB_OK);
+    REQUIRE(err == nullptr);
+    rc = tiledb_config_set(cfg, "sm.encryption_key", encryption_key_, &err);
+    CHECK(rc == TILEDB_OK);
+    REQUIRE(err == nullptr);
+    rc = tiledb_array_set_config(ctx_, array, cfg);
+    CHECK(rc == TILEDB_OK);
+  }
+  rc = tiledb_array_open(ctx_, array, TILEDB_READ);
+  CHECK(rc == TILEDB_OK);
+
+  // Submit query
+  rc = tiledb_query_alloc(ctx_, array, TILEDB_READ, &query);
+  CHECK(rc == TILEDB_OK);
+  rc = tiledb_query_set_layout(ctx_, query, TILEDB_ROW_MAJOR);
+  CHECK(rc == TILEDB_OK);
+  rc = tiledb_query_set_subarray(ctx_, query, subarray_read);
+  CHECK(rc == TILEDB_OK);
+  rc =
+      tiledb_query_set_buffer(ctx_, query, "a", buffer_read, &buffer_read_size);
+  CHECK(rc == TILEDB_OK);
+  rc = tiledb_query_submit(ctx_, query);
+  CHECK(rc == TILEDB_OK);
+
+  // Close array and clean up
+  rc = tiledb_array_close(ctx_, array);
+  CHECK(rc == TILEDB_OK);
+  tiledb_query_free(&query);
+  tiledb_array_free(&array);
+  tiledb_config_free(&cfg);
+
+  // Check correctness
+  // Check correctness
+  int buffer_read_open_start_c[] = {INT_MIN,
+                                    INT_MIN,
+                                    INT_MIN,
+                                    INT_MIN,
+                                    50,
+                                    60,
+                                    70,
+                                    INT_MIN,
+                                    INT_MIN,
+                                    INT_MIN};
+  CHECK(!std::memcmp(
+      buffer_read, buffer_read_open_start_c, sizeof(buffer_read_open_start_c)));
+  CHECK(buffer_read_size == sizeof(buffer_read_open_start_c));
+
+  // ---- OPEN STARTING AT PAST LAST TIMESTAMP ----
+  buffer_read_size = sizeof(buffer_read);
+
+  // Open array
+  rc = tiledb_array_alloc(ctx_, array_name.c_str(), &array);
+  CHECK(rc == TILEDB_OK);
+  rc = tiledb_array_set_open_timestamp_start(
+      ctx_, array, fragment_timestamps[1] + 1);
+  REQUIRE(rc == TILEDB_OK);
+  REQUIRE(tiledb_config_alloc(&cfg, &err) == TILEDB_OK);
+  REQUIRE(err == nullptr);
+  if (encryption_type_ != TILEDB_NO_ENCRYPTION) {
+    std::string encryption_type_string =
+        encryption_type_str((tiledb::sm::EncryptionType)encryption_type_);
+    rc = tiledb_config_set(
+        cfg, "sm.encryption_type", encryption_type_string.c_str(), &err);
+    CHECK(rc == TILEDB_OK);
+    REQUIRE(err == nullptr);
+    rc = tiledb_config_set(cfg, "sm.encryption_key", encryption_key_, &err);
+    CHECK(rc == TILEDB_OK);
+    REQUIRE(err == nullptr);
+    rc = tiledb_array_set_config(ctx_, array, cfg);
+    CHECK(rc == TILEDB_OK);
+  }
+  rc = tiledb_array_open(ctx_, array, TILEDB_READ);
+  CHECK(rc == TILEDB_OK);
+
+  // Submit query
+  rc = tiledb_query_alloc(ctx_, array, TILEDB_READ, &query);
+  CHECK(rc == TILEDB_OK);
+  rc = tiledb_query_set_layout(ctx_, query, TILEDB_ROW_MAJOR);
+  CHECK(rc == TILEDB_OK);
+  rc = tiledb_query_set_subarray(ctx_, query, subarray_read);
+  CHECK(rc == TILEDB_OK);
+  rc =
+      tiledb_query_set_buffer(ctx_, query, "a", buffer_read, &buffer_read_size);
+  CHECK(rc == TILEDB_OK);
+  rc = tiledb_query_submit(ctx_, query);
+  CHECK(rc == TILEDB_OK);
+
+  // Close array and clean up
+  rc = tiledb_array_close(ctx_, array);
+  CHECK(rc == TILEDB_OK);
+  tiledb_query_free(&query);
+  tiledb_array_free(&array);
+  tiledb_config_free(&cfg);
+
+  // Check correctness
+  // Check correctness
+  int buffer_read_open_start_now_c[] = {INT_MIN,
+                                        INT_MIN,
+                                        INT_MIN,
+                                        INT_MIN,
+                                        INT_MIN,
+                                        INT_MIN,
+                                        INT_MIN,
+                                        INT_MIN,
+                                        INT_MIN,
+                                        INT_MIN};
+  CHECK(!std::memcmp(
+      buffer_read,
+      buffer_read_open_start_now_c,
+      sizeof(buffer_read_open_start_now_c)));
+  CHECK(buffer_read_size == sizeof(buffer_read_open_start_now_c));
 
   remove_temp_dir(temp_dir);
 }
@@ -1036,22 +1352,32 @@ TEST_CASE_METHOD(
   // Some timestamp, it could be anything
   uint64_t timestamp = 1000;
 
-  // Open array
   tiledb_array_t* array;
   int rc = tiledb_array_alloc(ctx_, array_name.c_str(), &array);
   CHECK(rc == TILEDB_OK);
-  if (encryption_type_ == TILEDB_NO_ENCRYPTION) {
-    rc = tiledb_array_open_at(ctx_, array, TILEDB_WRITE, timestamp);
-  } else {
-    rc = tiledb_array_open_at_with_key(
-        ctx_,
-        array,
-        TILEDB_WRITE,
-        encryption_type_,
-        encryption_key_,
-        (uint32_t)strlen(encryption_key_),
-        timestamp);
+  tiledb_config_t* cfg = nullptr;
+  tiledb_error_t* err = nullptr;
+  REQUIRE(tiledb_config_alloc(&cfg, &err) == TILEDB_OK);
+  REQUIRE(err == nullptr);
+
+  rc = tiledb_array_set_open_timestamp_end(ctx_, array, timestamp);
+  REQUIRE(rc == TILEDB_OK);
+
+  // Open array
+  if (encryption_type_ != TILEDB_NO_ENCRYPTION) {
+    std::string encryption_type_string =
+        encryption_type_str((tiledb::sm::EncryptionType)encryption_type_);
+    rc = tiledb_config_set(
+        cfg, "sm.encryption_type", encryption_type_string.c_str(), &err);
+    CHECK(rc == TILEDB_OK);
+    REQUIRE(err == nullptr);
+    rc = tiledb_config_set(cfg, "sm.encryption_key", encryption_key_, &err);
+    CHECK(rc == TILEDB_OK);
+    REQUIRE(err == nullptr);
+    rc = tiledb_array_set_config(ctx_, array, cfg);
+    CHECK(rc == TILEDB_OK);
   }
+  rc = tiledb_array_open(ctx_, array, TILEDB_WRITE);
   CHECK(rc == TILEDB_OK);
 
   // Submit query
@@ -1068,39 +1394,51 @@ TEST_CASE_METHOD(
   CHECK(rc == TILEDB_OK);
 
   // Get written timestamp
+  uint64_t timestamp_get;
+  rc = tiledb_array_get_open_timestamp_end(ctx_, array, &timestamp_get);
+  CHECK(rc == TILEDB_OK);
+
   uint64_t t1, t2;
   rc = tiledb_query_get_fragment_timestamp_range(ctx_, query, 0, &t1, &t2);
   CHECK(rc == TILEDB_OK);
-  CHECK(t1 == timestamp);
-  CHECK(t2 == timestamp);
+  CHECK(timestamp_get == t1);
+  CHECK(timestamp_get == t2);
 
   // Close array and clean up
   rc = tiledb_array_close(ctx_, array);
   CHECK(rc == TILEDB_OK);
   tiledb_array_free(&array);
   tiledb_query_free(&query);
+  tiledb_config_free(&cfg);
 
   // ---- READ AT ZERO TIMESTAMP ----
-  // Open array
+
   rc = tiledb_array_alloc(ctx_, array_name.c_str(), &array);
   CHECK(rc == TILEDB_OK);
-  if (encryption_type_ == TILEDB_NO_ENCRYPTION) {
-    rc = tiledb_array_open_at(ctx_, array, TILEDB_READ, 0);
-  } else {
-    rc = tiledb_array_open_at_with_key(
-        ctx_,
-        array,
-        TILEDB_READ,
-        encryption_type_,
-        encryption_key_,
-        (uint32_t)strlen(encryption_key_),
-        0);
+  rc = tiledb_array_set_open_timestamp_end(ctx_, array, 0);
+  REQUIRE(rc == TILEDB_OK);
+
+  // Open array
+  REQUIRE(tiledb_config_alloc(&cfg, &err) == TILEDB_OK);
+  REQUIRE(err == nullptr);
+  if (encryption_type_ != TILEDB_NO_ENCRYPTION) {
+    std::string encryption_type_string =
+        encryption_type_str((tiledb::sm::EncryptionType)encryption_type_);
+    rc = tiledb_config_set(
+        cfg, "sm.encryption_type", encryption_type_string.c_str(), &err);
+    CHECK(rc == TILEDB_OK);
+    REQUIRE(err == nullptr);
+    rc = tiledb_config_set(cfg, "sm.encryption_key", encryption_key_, &err);
+    CHECK(rc == TILEDB_OK);
+    REQUIRE(err == nullptr);
+    rc = tiledb_array_set_config(ctx_, array, cfg);
+    CHECK(rc == TILEDB_OK);
   }
+  rc = tiledb_array_open(ctx_, array, TILEDB_READ);
   CHECK(rc == TILEDB_OK);
 
   // Check timestamp
-  uint64_t timestamp_get;
-  rc = tiledb_array_get_timestamp(ctx_, array, &timestamp_get);
+  rc = tiledb_array_get_open_timestamp_end(ctx_, array, &timestamp_get);
   CHECK(rc == TILEDB_OK);
   CHECK(timestamp_get == 0);
 
@@ -1125,6 +1463,7 @@ TEST_CASE_METHOD(
   CHECK(rc == TILEDB_OK);
   tiledb_array_free(&array);
   tiledb_query_free(&query);
+  tiledb_config_free(&cfg);
 
   // Check correctness
   // Empty array still returns fill values
@@ -1133,21 +1472,28 @@ TEST_CASE_METHOD(
   // ---- READ AT THE WRITTEN TIMESTAMP ----
   buffer_read_size = sizeof(buffer_read);
 
-  // Open array
   rc = tiledb_array_alloc(ctx_, array_name.c_str(), &array);
   CHECK(rc == TILEDB_OK);
-  if (encryption_type_ == TILEDB_NO_ENCRYPTION) {
-    rc = tiledb_array_open_at(ctx_, array, TILEDB_READ, timestamp);
-  } else {
-    rc = tiledb_array_open_at_with_key(
-        ctx_,
-        array,
-        TILEDB_READ,
-        encryption_type_,
-        encryption_key_,
-        (uint32_t)strlen(encryption_key_),
-        timestamp);
+  rc = tiledb_array_set_open_timestamp_end(ctx_, array, timestamp);
+  REQUIRE(rc == TILEDB_OK);
+
+  // Open array
+  REQUIRE(tiledb_config_alloc(&cfg, &err) == TILEDB_OK);
+  REQUIRE(err == nullptr);
+  if (encryption_type_ != TILEDB_NO_ENCRYPTION) {
+    std::string encryption_type_string =
+        encryption_type_str((tiledb::sm::EncryptionType)encryption_type_);
+    rc = tiledb_config_set(
+        cfg, "sm.encryption_type", encryption_type_string.c_str(), &err);
+    CHECK(rc == TILEDB_OK);
+    REQUIRE(err == nullptr);
+    rc = tiledb_config_set(cfg, "sm.encryption_key", encryption_key_, &err);
+    CHECK(rc == TILEDB_OK);
+    REQUIRE(err == nullptr);
+    rc = tiledb_array_set_config(ctx_, array, cfg);
+    CHECK(rc == TILEDB_OK);
   }
+  rc = tiledb_array_open(ctx_, array, TILEDB_READ);
   CHECK(rc == TILEDB_OK);
 
   // Submit query
@@ -1168,6 +1514,7 @@ TEST_CASE_METHOD(
   CHECK(rc == TILEDB_OK);
   tiledb_array_free(&array);
   tiledb_query_free(&query);
+  tiledb_config_free(&cfg);
 
   // Check correctness
   int buffer_read_at_c[] = {1, 2, 3, 4, 5, 6, 7, 8, 9, 10};
@@ -1180,7 +1527,7 @@ TEST_CASE_METHOD(
 TEST_CASE_METHOD(
     ArrayFx,
     "C API: Check writing coordinates out of bounds",
-    "[capi], [array], [array-write-coords-oob]") {
+    "[capi][array][array-write-coords-oob]") {
   SupportedFsLocal local_fs;
   std::string temp_dir = local_fs.file_prefix() + local_fs.temp_dir();
   std::string array_name = temp_dir + "array-write-coords-oob";
@@ -1353,7 +1700,7 @@ TEST_CASE_METHOD(
 }
 
 TEST_CASE_METHOD(
-    ArrayFx, "C API: Test empty array", "[capi], [array], [array-empty]") {
+    ArrayFx, "C API: Test empty array", "[capi][array][array-empty]") {
   SupportedFsLocal local_fs;
   std::string array_name =
       local_fs.file_prefix() + local_fs.temp_dir() + "array_empty";
@@ -1406,7 +1753,7 @@ TEST_CASE_METHOD(
 TEST_CASE_METHOD(
     ArrayFx,
     "C API: Test array with no filelocks",
-    "[capi], [array], [array-no-filelocks]") {
+    "[capi][array][array-no-filelocks]") {
   // TODO: refactor for each supported FS.
   std::string temp_dir = fs_vec_[0]->temp_dir();
 

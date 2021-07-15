@@ -545,6 +545,14 @@ Status Domain::init(Layout cell_order, Layout tile_order) {
   // Compute the tile/cell order cmp functions
   set_tile_cell_order_cmp_funcs();
 
+  // Set tile_extent to empty if cell order is HILBERT
+  if (cell_order_ == Layout::HILBERT) {
+    ByteVecValue be;
+    for (auto& d : dimensions_) {
+      RETURN_NOT_OK(d->set_tile_extent(be));
+    }
+  }
+
   return Status::Ok();
 }
 

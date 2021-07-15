@@ -39,6 +39,7 @@
 #include "tiledb/common/status.h"
 #include "tiledb/common/thread_pool.h"
 #include "tiledb/sm/serialization/query.h"
+#include "tiledb/sm/stats/stats.h"
 
 using namespace tiledb::common;
 
@@ -57,7 +58,8 @@ class RestClient {
   RestClient();
 
   /** Initialize the REST client with the given config. */
-  Status init(const Config* config, ThreadPool* compute_tp);
+  Status init(
+      stats::Stats* parent_stats, const Config* config, ThreadPool* compute_tp);
 
   /** Sets a header that will be attached to all requests. */
   Status set_header(const std::string& name, const std::string& value);
@@ -92,9 +94,12 @@ class RestClient {
    * Get array's non_empty domain from rest server
    *
    * @param array Array model to fetch and set non empty domain on
+   * @param timestamp_start Inclusive starting timestamp at which to open array
+   * @param timestamp_end Inclusive ending timestamp at which to open array
    * @return Status Ok() on success Error() on failures
    */
-  Status get_array_non_empty_domain(Array* array, uint64_t timestamp);
+  Status get_array_non_empty_domain(
+      Array* array, uint64_t timestamp_start, uint64_t timestamp_end);
 
   /**
    * Get array's max buffer sizes from rest server.
@@ -117,12 +122,16 @@ class RestClient {
    * Metadata of the array to match the returned values).
    *
    * @param uri Array URI
-   * @param timestamp Timestamp at which to open array
+   * @param timestamp_start Inclusive starting timestamp at which to open array
+   * @param timestamp_end Inclusive ending timestamp at which to open array
    * @param array Array to fetch metadata for
    * @return Status
    */
   Status get_array_metadata_from_rest(
-      const URI& uri, uint64_t timestamp, Array* array);
+      const URI& uri,
+      uint64_t timestamp_start,
+      uint64_t timestamp_end,
+      Array* array);
 
   /**
    * Posts the array's metadata to the REST server.
@@ -163,6 +172,9 @@ class RestClient {
   /* ********************************* */
   /*        PRIVATE ATTRIBUTES         */
   /* ********************************* */
+
+  /** The class stats. */
+  stats::Stats* stats_;
 
   /** The TileDB config options (contains server and auth info). */
   const Config* config_;

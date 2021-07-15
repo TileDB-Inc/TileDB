@@ -42,6 +42,7 @@
 #include "tiledb/sm/enums/query_type.h"
 #include "tiledb/sm/enums/serialization_type.h"
 #include "tiledb/sm/fragment/fragment_metadata.h"
+#include "tiledb/sm/global_state/unit_test_config.h"
 #include "tiledb/sm/misc/utils.h"
 #include "tiledb/sm/rest/rest_client.h"
 #include "tiledb/sm/storage_manager/storage_manager.h"
@@ -59,16 +60,18 @@ namespace sm {
 /* ********************************* */
 
 Array::Array(const URI& array_uri, StorageManager* storage_manager)
-    : array_uri_(array_uri)
+    : array_schema_(nullptr)
+    , array_uri_(array_uri)
     , encryption_key_(tdb_make_shared(EncryptionKey))
-    , storage_manager_(storage_manager) {
-  is_open_ = false;
-  array_schema_ = nullptr;
-  timestamp_ = 0;
-  remote_ = array_uri.is_tiledb();
-  metadata_loaded_ = false;
-  non_empty_domain_computed_ = false;
-};
+    , is_open_(false)
+    , timestamp_start_(0)
+    , timestamp_end_(UINT64_MAX)
+    , timestamp_end_opened_at_(UINT64_MAX)
+    , storage_manager_(storage_manager)
+    , config_(storage_manager_->config())
+    , remote_(array_uri.is_tiledb())
+    , metadata_loaded_(false)
+    , non_empty_domain_computed_(false){};
 
 Array::Array(const Array& rhs)
     : array_schema_(rhs.array_schema_)
@@ -77,8 +80,11 @@ Array::Array(const Array& rhs)
     , fragment_metadata_(rhs.fragment_metadata_)
     , is_open_(rhs.is_open_.load())
     , query_type_(rhs.query_type_)
-    , timestamp_(rhs.timestamp_)
+    , timestamp_start_(rhs.timestamp_start_)
+    , timestamp_end_(rhs.timestamp_end_)
+    , timestamp_end_opened_at_(rhs.timestamp_end_opened_at_)
     , storage_manager_(rhs.storage_manager_)
+    , config_(rhs.config_)
     , last_max_buffer_sizes_(rhs.last_max_buffer_sizes_)
     , remote_(rhs.remote_)
     , metadata_(rhs.metadata_)
@@ -105,61 +111,8 @@ const EncryptionKey* Array::encryption_key() const {
   return encryption_key_.get();
 }
 
-Status Array::open(
-    QueryType query_type,
-    uint64_t timestamp,
-    EncryptionType encryption_type,
-    const void* encryption_key,
-    uint32_t key_length) {
-  std::unique_lock<std::mutex> lck(mtx_);
-
-  if (is_open_)
-    return LOG_STATUS(Status::ArrayError(
-        "Cannot open array at timestamp; Array already open"));
-
-  if (remote_ && encryption_type != EncryptionType::NO_ENCRYPTION)
-    return LOG_STATUS(Status::ArrayError(
-        "Cannot open array; encrypted remote arrays are not supported."));
-
-  // Copy the key bytes.
-  RETURN_NOT_OK(
-      encryption_key_->set_key(encryption_type, encryption_key, key_length));
-
-  timestamp_ = timestamp;
-  metadata_.clear();
-  metadata_loaded_ = false;
-  non_empty_domain_computed_ = false;
-
-  query_type_ = query_type;
-  if (remote_) {
-    auto rest_client = storage_manager_->rest_client();
-    if (rest_client == nullptr)
-      return LOG_STATUS(Status::ArrayError(
-          "Cannot open array; remote array with no REST client."));
-    RETURN_NOT_OK(
-        rest_client->get_array_schema_from_rest(array_uri_, &array_schema_));
-  } else if (query_type == QueryType::READ) {
-    RETURN_NOT_OK(storage_manager_->array_open_for_reads(
-        array_uri_,
-        timestamp_,
-        *encryption_key_,
-        &array_schema_,
-        &fragment_metadata_));
-  } else {
-    RETURN_NOT_OK(storage_manager_->array_open_for_writes(
-        array_uri_, *encryption_key_, &array_schema_));
-    metadata_.reset(timestamp_);
-  }
-
-  is_open_ = true;
-
-  return Status::Ok();
-}
-
 // Used in Consolidator
-Status Array::open(
-    QueryType query_type,
-    const FragmentInfo& fragment_info,
+Status Array::open_without_fragments(
     EncryptionType encryption_type,
     const void* encryption_key,
     uint32_t key_length) {
@@ -167,12 +120,7 @@ Status Array::open(
 
   if (is_open_)
     return LOG_STATUS(Status::ArrayError(
-        "Cannot open array with fragments; Array already open"));
-
-  if (query_type != QueryType::READ)
-    return LOG_STATUS(
-        Status::ArrayError("Cannot open array with fragments; The array can "
-                           "opened at a timestamp only in read mode"));
+        "Cannot open array without fragments; Array already open"));
 
   if (remote_ && encryption_type != EncryptionType::NO_ENCRYPTION)
     return LOG_STATUS(Status::ArrayError(
@@ -182,12 +130,10 @@ Status Array::open(
   RETURN_NOT_OK(
       encryption_key_->set_key(encryption_type, encryption_key, key_length));
 
-  timestamp_ = utils::time::timestamp_now_ms();
   metadata_.clear();
   metadata_loaded_ = false;
   non_empty_domain_computed_ = false;
 
-  query_type_ = QueryType::READ;
   if (remote_) {
     auto rest_client = storage_manager_->rest_client();
     if (rest_client == nullptr)
@@ -196,22 +142,43 @@ Status Array::open(
     RETURN_NOT_OK(
         rest_client->get_array_schema_from_rest(array_uri_, &array_schema_));
   } else {
-    // Open the array.
-    RETURN_NOT_OK(storage_manager_->array_open_for_reads(
-        array_uri_,
-        fragment_info,
-        *encryption_key_,
-        &array_schema_,
-        &fragment_metadata_));
+    RETURN_NOT_OK(storage_manager_->array_open_for_reads_without_fragments(
+        array_uri_, *encryption_key_, &array_schema_));
   }
 
   is_open_ = true;
+  query_type_ = QueryType::READ;
 
   return Status::Ok();
 }
 
+Status Array::load_fragments(
+    const std::vector<TimestampedURI>& fragments_to_load) {
+  return storage_manager_->array_load_fragments(
+      array_uri_,
+      *encryption_key_.get(),
+      &fragment_metadata_,
+      fragments_to_load);
+}
+
 Status Array::open(
     QueryType query_type,
+    EncryptionType encryption_type,
+    const void* encryption_key,
+    uint32_t key_length) {
+  return Array::open(
+      query_type,
+      timestamp_start_,
+      timestamp_end_,
+      encryption_type,
+      encryption_key,
+      key_length);
+}
+
+Status Array::open(
+    QueryType query_type,
+    uint64_t timestamp_start,
+    uint64_t timestamp_end,
     EncryptionType encryption_type,
     const void* encryption_key,
     uint32_t key_length) {
@@ -221,6 +188,37 @@ Status Array::open(
     return LOG_STATUS(
         Status::ArrayError("Cannot open array; Array already open"));
 
+  std::string encryption_key_from_cfg;
+  if (!encryption_key) {
+    bool found = false;
+    encryption_key_from_cfg = config_.get("sm.encryption_key", &found);
+    assert(found);
+  }
+
+  if (!encryption_key_from_cfg.empty()) {
+    encryption_key = encryption_key_from_cfg.c_str();
+    std::string encryption_type_from_cfg;
+    bool found = false;
+    encryption_type_from_cfg = config_.get("sm.encryption_type", &found);
+    assert(found);
+    RETURN_NOT_OK(
+        encryption_type_enum(encryption_type_from_cfg, &encryption_type));
+
+    if (EncryptionKey::is_valid_key_length(
+            encryption_type,
+            static_cast<uint32_t>(encryption_key_from_cfg.size()))) {
+      const UnitTestConfig& unit_test_cfg = UnitTestConfig::instance();
+      if (unit_test_cfg.array_encryption_key_length.is_set()) {
+        key_length = unit_test_cfg.array_encryption_key_length.get();
+      } else {
+        key_length = static_cast<uint32_t>(encryption_key_from_cfg.size());
+      }
+    } else {
+      encryption_key = nullptr;
+      key_length = 0;
+    }
+  }
+
   if (remote_ && encryption_type != EncryptionType::NO_ENCRYPTION)
     return LOG_STATUS(Status::ArrayError(
         "Cannot open array; encrypted remote arrays are not supported."));
@@ -229,11 +227,21 @@ Status Array::open(
   RETURN_NOT_OK(
       encryption_key_->set_key(encryption_type, encryption_key, key_length));
 
-  timestamp_ =
-      (query_type == QueryType::READ) ? utils::time::timestamp_now_ms() : 0;
   metadata_.clear();
   metadata_loaded_ = false;
   non_empty_domain_computed_ = false;
+
+  timestamp_start_ = timestamp_start;
+
+  timestamp_end_opened_at_ = timestamp_end;
+  if (timestamp_end_opened_at_ == UINT64_MAX) {
+    if (query_type == QueryType::READ) {
+      timestamp_end_opened_at_ = utils::time::timestamp_now_ms();
+    } else {
+      assert(query_type == QueryType::WRITE);
+      timestamp_end_opened_at_ = 0;
+    }
+  }
 
   if (remote_) {
     auto rest_client = storage_manager_->rest_client();
@@ -245,14 +253,15 @@ Status Array::open(
   } else if (query_type == QueryType::READ) {
     RETURN_NOT_OK(storage_manager_->array_open_for_reads(
         array_uri_,
-        timestamp_,
         *encryption_key_,
         &array_schema_,
-        &fragment_metadata_));
+        &fragment_metadata_,
+        timestamp_start_,
+        timestamp_end_opened_at_));
   } else {
     RETURN_NOT_OK(storage_manager_->array_open_for_writes(
         array_uri_, *encryption_key_, &array_schema_));
-    metadata_.reset(timestamp_);
+    metadata_.reset(timestamp_end_opened_at_);
   }
 
   query_type_ = query_type;
@@ -471,10 +480,17 @@ const EncryptionKey& Array::get_encryption_key() const {
 }
 
 Status Array::reopen() {
-  return reopen(utils::time::timestamp_now_ms());
+  if (timestamp_end_ == timestamp_end_opened_at_) {
+    // The user has not set `timestamp_end_` since it was last opened.
+    // In this scenario, re-open at the current timestamp.
+    return reopen(timestamp_start_, utils::time::timestamp_now_ms());
+  } else {
+    // The user has set `timestamp_end_`. Reopen at that time stamp.
+    return reopen(timestamp_start_, timestamp_end_);
+  }
 }
 
-Status Array::reopen(uint64_t timestamp) {
+Status Array::reopen(uint64_t timestamp_start, uint64_t timestamp_end) {
   std::unique_lock<std::mutex> lck(mtx_);
 
   if (!is_open_)
@@ -488,12 +504,17 @@ Status Array::reopen(uint64_t timestamp) {
 
   clear_last_max_buffer_sizes();
 
-  timestamp_ = timestamp;
+  timestamp_start_ = timestamp_start;
+  timestamp_end_opened_at_ = timestamp_end;
   fragment_metadata_.clear();
   metadata_.clear();
   metadata_loaded_ = false;
   non_empty_domain_.clear();
   non_empty_domain_computed_ = false;
+
+  if (timestamp_end_opened_at_ == UINT64_MAX) {
+    timestamp_end_opened_at_ = utils::time::timestamp_now_ms();
+  }
 
   if (remote_) {
     return open(
@@ -505,23 +526,49 @@ Status Array::reopen(uint64_t timestamp) {
 
   RETURN_NOT_OK(storage_manager_->array_reopen(
       array_uri_,
-      timestamp_,
       *encryption_key_,
       &array_schema_,
-      &fragment_metadata_));
+      &fragment_metadata_,
+      timestamp_start_,
+      timestamp_end_opened_at_));
 
   return Status::Ok();
 }
 
-uint64_t Array::timestamp() const {
+Status Array::set_timestamp_start(const uint64_t timestamp_start) {
   std::unique_lock<std::mutex> lck(mtx_);
-  return timestamp_;
+  timestamp_start_ = timestamp_start;
+  return Status::Ok();
 }
 
-Status Array::set_timestamp(uint64_t timestamp) {
+uint64_t Array::timestamp_start() const {
   std::unique_lock<std::mutex> lck(mtx_);
-  timestamp_ = timestamp;
+  return timestamp_start_;
+}
+
+Status Array::set_timestamp_end(const uint64_t timestamp_end) {
+  std::unique_lock<std::mutex> lck(mtx_);
+  timestamp_end_ = timestamp_end;
   return Status::Ok();
+}
+
+uint64_t Array::timestamp_end() const {
+  std::unique_lock<std::mutex> lck(mtx_);
+  return timestamp_end_;
+}
+
+uint64_t Array::timestamp_end_opened_at() const {
+  std::unique_lock<std::mutex> lck(mtx_);
+  return timestamp_end_opened_at_;
+}
+
+Status Array::set_config(Config config) {
+  config_.inherit(config);
+  return Status::Ok();
+}
+
+Config Array::config() const {
+  return config_;
 }
 
 Status Array::set_uri(const std::string& uri) {
@@ -851,10 +898,14 @@ Status Array::load_metadata() {
       return LOG_STATUS(Status::ArrayError(
           "Cannot load metadata; remote array with no REST client."));
     RETURN_NOT_OK(rest_client->get_array_metadata_from_rest(
-        array_uri_, timestamp_, this));
+        array_uri_, timestamp_start_, timestamp_end_opened_at_, this));
   } else {
     RETURN_NOT_OK(storage_manager_->load_array_metadata(
-        array_uri_, *encryption_key_, timestamp_, &metadata_));
+        array_uri_,
+        *encryption_key_,
+        timestamp_start_,
+        timestamp_end_opened_at_,
+        &metadata_));
   }
   metadata_loaded_ = true;
   return Status::Ok();
@@ -866,7 +917,8 @@ Status Array::load_remote_non_empty_domain() {
     if (rest_client == nullptr)
       return LOG_STATUS(Status::ArrayError(
           "Cannot load metadata; remote array with no REST client."));
-    RETURN_NOT_OK(rest_client->get_array_non_empty_domain(this, timestamp_));
+    RETURN_NOT_OK(rest_client->get_array_non_empty_domain(
+        this, timestamp_start_, timestamp_end_opened_at_));
     non_empty_domain_computed_ = true;
   }
   return Status::Ok();

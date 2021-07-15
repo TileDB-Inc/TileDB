@@ -44,6 +44,7 @@
 #include "tiledb/sm/array_schema/dimension.h"
 #include "tiledb/sm/array_schema/domain.h"
 #include "tiledb/sm/misc/utils.h"
+#include "tiledb/sm/query/query_condition.h"
 #include "tiledb/sm/query/reader.h"
 #include "tiledb/sm/query/validity_vector.h"
 #include "tiledb/sm/query/writer.h"
@@ -120,6 +121,9 @@ class Query {
 
   /** Destructor. */
   ~Query();
+
+  DISABLE_COPY_AND_COPY_ASSIGN(Query);
+  DISABLE_MOVE_AND_MOVE_ASSIGN(Query);
 
   /* ********************************* */
   /*                 API               */
@@ -448,7 +452,7 @@ class Query {
    */
   bool has_results() const;
 
-  /** Initializes the query (on submission, called from submit() et al.). */
+  /** Initializes the query. */
   Status init();
 
   /** Returns the first fragment uri. */
@@ -459,6 +463,12 @@ class Query {
 
   /** Returns the cell layout. */
   Layout layout() const;
+
+  /**
+   * Returns the condition for filtering results in a read query.
+   * @return QueryCondition
+   */
+  const QueryCondition* condition() const;
 
   /** Processes a query. */
   Status process();
@@ -641,6 +651,14 @@ class Query {
   Status set_layout(Layout layout);
 
   /**
+   * Sets the condition for filtering results in a read query.
+   *
+   * @param condition The condition object.
+   * @return Status
+   */
+  Status set_condition(const QueryCondition& condition);
+
+  /**
    * This is applicable only to dense arrays (errors out for sparse arrays),
    * and only in the case where the array is opened in a way that all its
    * fragments are sparse. Also it is only applicable to read queries.
@@ -679,18 +697,16 @@ class Query {
    * @param subarray The subarray to be set.
    * @return Status
    *
-   * @note Setting a subarray for sparse arrays, or for dense arrays
-   *     when performing unordered (sparse) writes, has no effect
-   *     (will be ingnored).
+   * @note Calling set_subarray for sparse arrays, or for dense arrays
+   *     when performing unordered (sparse) writes, has no effect.
    */
-  Status set_subarray(const tiledb::sm::Subarray* subarray);
+  Status set_subarray(const tiledb::sm::Subarray& subarray);
 
   /** Sets the query subarray, without performing any checks. */
   Status set_subarray_unsafe(const NDRange& subarray);
 
   /** Reference current Reader/Writer subarray according to query type */
-  const Subarray& subarray() const;
-  Subarray* subarray();
+  const Subarray* subarray();
 
   /** Submits the query to the storage manager. */
   Status submit();
@@ -734,6 +750,9 @@ class Query {
 
   /** The query type. */
   QueryType type_;
+
+  /** The class stats. */
+  stats::Stats* stats_;
 
   /** Query reader. */
   Reader reader_;

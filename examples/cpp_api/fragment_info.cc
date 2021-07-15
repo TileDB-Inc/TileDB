@@ -91,49 +91,52 @@ void get_fragment_info() {
 
   // Get number of written fragments.
   uint32_t num = fragment_info.fragment_num();
-  printf("The number of written fragments is %d.\n", num);
+  std::cout << "The number of written fragments is " << num << ".\n"
+            << std::endl;
 
   // Get fragment URI
   std::string uri = fragment_info.fragment_uri(0);
-  printf("The fragment URI is %s.\n", uri.c_str());
+  std::cout << "The fragment URI is " << uri.c_str() << ".\n" << std::endl;
 
   // Get fragment size
   uint64_t size = fragment_info.fragment_size(0);
-  printf("The fragment size is %llu.\n", size);
+  std::cout << "The fragment size is " << size << ".\n" << std::endl;
 
   // Check if the fragment is dense or sparse.
   bool dense = fragment_info.dense(0);
   if (dense == 1)
-    printf("The fragment is dense.\n");
+    std::cout << "The fragment is dense.\n" << std::endl;
   else
-    printf("The fragment is sparse.\n");
+    std::cout << "The fragment is sparse.\n" << std::endl;
 
   // Get the fragment timestamp range
   std::pair<uint64_t, uint64_t> timestamps = fragment_info.timestamp_range(0);
-  printf(
-      "The fragment's timestamp range is {%llu, %llu}.\n",
-      timestamps.first,
-      timestamps.second);
+  std::cout << "The fragment's timestamp range is {" << timestamps.first << " ,"
+            << timestamps.second << "}.\n"
+            << std::endl;
 
   // Get the number of cells written to the fragment.
   uint64_t cell_num = fragment_info.cell_num(0);
-  printf("The number of cells written to the fragment is %llu.\n", cell_num);
+  std::cout << "The number of cells written to the fragment is " << cell_num
+            << ".\n"
+            << std::endl;
 
   // Get the format version of the fragment.
   uint32_t version = fragment_info.version(0);
-  printf("The fragment's format version is %d.\n", version);
+  std::cout << "The fragment's format version is " << version << ".\n"
+            << std::endl;
 
   // Check if fragment has consolidated metadata.
   // If not, get the number of fragments with unconsolidated metadata
   //  in the fragment info object.
   bool consolidated = fragment_info.has_consolidated_metadata(0);
   if (consolidated != 0) {
-    printf("The fragment has consolidated metadata.\n");
+    std::cout << "The fragment has consolidated metadata.\n" << std::endl;
   } else {
     uint32_t unconsolidated = fragment_info.unconsolidated_metadata_num();
-    printf(
-        "The fragment has %d unconsolidated metadata fragments.\n",
-        unconsolidated);
+    std::cout << "The fragment has " << unconsolidated
+              << " unconsolidated metadata fragments.\n"
+              << std::endl;
   }
 
   // Get non-empty domain from index

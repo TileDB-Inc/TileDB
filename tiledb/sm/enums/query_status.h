@@ -42,7 +42,7 @@
 namespace tiledb {
 namespace sm {
 
-/** Defines the query states (used in asynchronous queries). */
+/** Defines the query statuses. */
 enum class QueryStatus : uint8_t {
 #define TILEDB_QUERY_STATUS_ENUM(id) id
 #include "tiledb/sm/c_api/tiledb_enum.h"

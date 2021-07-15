@@ -344,6 +344,7 @@ int ArraySchemaFx::array_create_wrapper(
           &array_schema) == TILEDB_OK);
 
   // Clean up.
+  tiledb_array_schema_free(&array_schema);
   tiledb_array_schema_free(&new_array_schema);
   tiledb_buffer_free(&buff);
   tiledb_buffer_free(&buff2);
@@ -387,6 +388,7 @@ int ArraySchemaFx::array_schema_load_wrapper(
 
   // Serialize the new array schema and deserialize into the original array
   // schema.
+  tiledb_array_schema_free(array_schema);
   tiledb_buffer_t* buff2;
   REQUIRE(
       tiledb_serialize_array_schema(
@@ -446,6 +448,7 @@ int ArraySchemaFx::array_get_schema_wrapper(
 
   // Serialize the new array schema and deserialize into the original array
   // schema.
+  tiledb_array_schema_free(array_schema);
   tiledb_buffer_t* buff2;
   REQUIRE(
       tiledb_serialize_array_schema(

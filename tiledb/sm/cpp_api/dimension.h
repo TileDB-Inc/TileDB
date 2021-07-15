@@ -267,6 +267,10 @@ class Dimension {
   template <typename T>
   T tile_extent() const {
     impl::type_check<T>(type(), 1);
+    auto te = _tile_extent();
+    if (te == NULL) {
+      return T();
+    }
     return *(const T*)_tile_extent();
   }
 
@@ -287,6 +291,10 @@ class Dimension {
     const uint64_t* tui64;
     const float* tf32;
     const double* tf64;
+
+    if (tile_extent == NULL && type != TILEDB_STRING_ASCII) {
+      return "N/A";
+    }
 
     std::stringstream ss;
 

@@ -361,7 +361,7 @@ Status SubarrayPartitioner::get_memory_budget(
 }
 
 Status SubarrayPartitioner::next(bool* unsplittable) {
-  STATS_START_TIMER(stats::GlobalStats::TimerType::READ_NEXT_PARTITION)
+  auto timer_se = stats_->start_timer("read_next_partition");
 
   *unsplittable = false;
 
@@ -389,7 +389,7 @@ Status SubarrayPartitioner::next(bool* unsplittable) {
 
   // An interval of whole ranges that may need calibration
   bool must_split_slab;
-  calibrate_current_start_end(&must_split_slab);
+  RETURN_NOT_OK(calibrate_current_start_end(&must_split_slab));
 
   // Handle case the next partition is composed of whole ND ranges
   if (interval_found && !must_split_slab) {
@@ -402,8 +402,6 @@ Status SubarrayPartitioner::next(bool* unsplittable) {
 
   // Must split a multi-range subarray slab
   return next_from_multi_range(unsplittable);
-
-  STATS_END_TIMER(stats::GlobalStats::TimerType::READ_NEXT_PARTITION)
 }
 
 Status SubarrayPartitioner::set_result_budget(
@@ -567,7 +565,7 @@ Status SubarrayPartitioner::set_memory_budget(
 }
 
 Status SubarrayPartitioner::split_current(bool* unsplittable) {
-  STATS_START_TIMER(stats::GlobalStats::TimerType::READ_SPLIT_CURRENT_PARTITION)
+  auto timer_se = stats_->start_timer("read_split_current_partition");
 
   *unsplittable = false;
 
@@ -589,7 +587,7 @@ Status SubarrayPartitioner::split_current(bool* unsplittable) {
     current_.end_ = current_.start_ + (uint64_t)new_range_num - 1;
 
     bool must_split_slab;
-    calibrate_current_start_end(&must_split_slab);
+    RETURN_NOT_OK(calibrate_current_start_end(&must_split_slab));
 
     // If the range between `current_.start_` and `current_.end_`
     // will not fit within the memory contraints, `must_split_slab`
@@ -619,8 +617,6 @@ Status SubarrayPartitioner::split_current(bool* unsplittable) {
   state_.single_range_.push_front(current_.partition_);
   split_top_single_range(unsplittable);
   return next_from_single_range(unsplittable);
-
-  STATS_END_TIMER(stats::GlobalStats::TimerType::READ_SPLIT_CURRENT_PARTITION)
 }
 
 const SubarrayPartitioner::State* SubarrayPartitioner::state() const {
@@ -643,14 +639,14 @@ Subarray* SubarrayPartitioner::subarray() {
 /*          PRIVATE METHODS       */
 /* ****************************** */
 
-void SubarrayPartitioner::calibrate_current_start_end(bool* must_split_slab) {
+Status SubarrayPartitioner::calibrate_current_start_end(bool* must_split_slab) {
   // Initialize (may be reset below)
   *must_split_slab = false;
 
   // Special case of single range and global layout
   if (subarray_.layout() == Layout::GLOBAL_ORDER) {
     assert(current_.start_ == current_.end_);
-    return;
+    return Status::Ok();
   }
 
   auto start_coords = subarray_.get_range_coords(current_.start_);
@@ -660,7 +656,7 @@ void SubarrayPartitioner::calibrate_current_start_end(bool* must_split_slab) {
   auto dim_num = subarray_.dim_num();
   uint64_t num;
   for (unsigned i = 0; i < dim_num; ++i) {
-    subarray_.get_range_num(i, &num);
+    RETURN_NOT_OK(subarray_.get_range_num(i, &num));
     range_num.push_back(num);
   }
 
@@ -733,6 +729,7 @@ void SubarrayPartitioner::calibrate_current_start_end(bool* must_split_slab) {
 
   // Get current_.end_. based on end_coords
   current_.end_ = subarray_.range_idx(end_coords);
+  return Status::Ok();
 }
 
 SubarrayPartitioner SubarrayPartitioner::clone() const {
@@ -1028,7 +1025,7 @@ void SubarrayPartitioner::compute_splitting_value_single_range_hilbert(
   *normal_order = (hilbert_left < hilbert_right);
 }
 
-void SubarrayPartitioner::compute_splitting_value_multi_range(
+Status SubarrayPartitioner::compute_splitting_value_multi_range(
     unsigned* splitting_dim,
     uint64_t* splitting_range,
     ByteVecValue* splitting_value,
@@ -1041,7 +1038,7 @@ void SubarrayPartitioner::compute_splitting_value_multi_range(
   if (partition.range_num() == 1) {
     compute_splitting_value_single_range(
         partition, splitting_dim, splitting_value, normal_order, unsplittable);
-    return;
+    return Status::Ok();
   }
 
   // Multi-range partition
@@ -1066,7 +1063,7 @@ void SubarrayPartitioner::compute_splitting_value_multi_range(
   const Range* r;
   for (auto d : dims) {
     // Check if we need to split the multiple ranges
-    partition.get_range_num(d, &range_num);
+    RETURN_NOT_OK(partition.get_range_num(d, &range_num));
     if (range_num > 1) {
       assert(d == dims.back());
       *splitting_dim = d;
@@ -1086,6 +1083,7 @@ void SubarrayPartitioner::compute_splitting_value_multi_range(
   }
 
   assert(*splitting_dim != UINT32_MAX);
+  return Status::Ok();
 }
 
 bool SubarrayPartitioner::must_split(Subarray* partition) {
@@ -1279,12 +1277,12 @@ Status SubarrayPartitioner::split_top_multi_range(bool* unsplittable) {
   uint64_t splitting_range = UINT64_MAX;
   ByteVecValue splitting_value;
   bool normal_order;
-  compute_splitting_value_multi_range(
+  RETURN_NOT_OK(compute_splitting_value_multi_range(
       &splitting_dim,
       &splitting_range,
       &splitting_value,
       &normal_order,
-      unsplittable);
+      unsplittable));
 
   if (*unsplittable)
     return Status::Ok();
@@ -1334,7 +1332,7 @@ void SubarrayPartitioner::compute_range_uint64(
   range_uint64->resize(dim_num);
   Hilbert h(dim_num);
   auto bits = h.bits();
-  auto bucket_num = ((uint64_t)1 << bits) - 1;
+  auto max_bucket_val = ((uint64_t)1 << bits) - 1;
 
   // Default values for empty range start/end
   auto max_string = std::string("\x7F\x7F\x7F\x7F\x7F\x7F\x7F\x7F", 8);
@@ -1349,16 +1347,17 @@ void SubarrayPartitioner::compute_range_uint64(
     empty_end = var ? (r->end_size() == 0) : r->empty();
     auto max_default =
         var ? dim->map_to_uint64(
-                  max_string.data(), max_string.size(), bits, bucket_num) :
+                  max_string.data(), max_string.size(), bits, max_bucket_val) :
               (UINT64_MAX >> (64 - bits));
 
     (*range_uint64)[d][0] =
         empty_start ? 0 :  // min default
-            dim->map_to_uint64(r->start(), r->start_size(), bits, bucket_num);
+            dim->map_to_uint64(
+                r->start(), r->start_size(), bits, max_bucket_val);
     (*range_uint64)[d][1] =
         empty_end ?
             max_default :
-            dim->map_to_uint64(r->end(), r->end_size(), bits, bucket_num);
+            dim->map_to_uint64(r->end(), r->end_size(), bits, max_bucket_val);
 
     assert((*range_uint64)[d][0] <= (*range_uint64)[d][1]);
 
@@ -1447,39 +1446,45 @@ void SubarrayPartitioner::compute_splitting_value_hilbert(
     ByteVecValue* splitting_value) const {
   auto array_schema = subarray_.array()->array_schema();
   auto dim_num = array_schema->dim_num();
-  uint64_t splitting_value_uint64;   // Splitting value
-  uint64_t left_p2_m1, right_p2_m1;  // Left/right powers of 2 minus 1
+  uint64_t splitting_value_uint64 = range_uint64[0];  // Splitting value
+  if (range_uint64[0] + 1 != range_uint64[1]) {
+    uint64_t left_p2_m1, right_p2_m1;  // Left/right powers of 2 minus 1
 
-  // Compute left and right (2^i-1) enclosing the uint64 range
-  left_p2_m1 = utils::math::left_p2_m1(range_uint64[0]);
-  right_p2_m1 = utils::math::right_p2_m1(range_uint64[1]);
-  assert(left_p2_m1 != right_p2_m1);  // Cannot be unary
+    // Compute left and right (2^i-1) enclosing the uint64 range
+    left_p2_m1 = utils::math::left_p2_m1(range_uint64[0]);
+    right_p2_m1 = utils::math::right_p2_m1(range_uint64[1]);
+    assert(left_p2_m1 != right_p2_m1);  // Cannot be unary
 
-  // Compute splitting value
-  uint64_t splitting_offset = 0;
-  auto range_uint64_start = range_uint64[0];
-  auto range_uint64_end = range_uint64[1];
-  while (true) {
-    if (((left_p2_m1 << 1) + 1) != right_p2_m1) {
-      // More than one power of 2 apart, split at largest power of 2 in between
-      splitting_value_uint64 = splitting_offset + (right_p2_m1 >> 1);
-      break;
-    } else {  // One power apart - need to normalize and repeat
-      range_uint64_start -= (left_p2_m1 + 1);
-      range_uint64_end -= (left_p2_m1 + 1);
-      left_p2_m1 = utils::math::left_p2_m1(range_uint64_start);
-      right_p2_m1 = utils::math::right_p2_m1(range_uint64_end);
-      assert(left_p2_m1 != right_p2_m1);  // Cannot be unary
-      splitting_offset += left_p2_m1 + 1;
+    // Compute splitting value
+    uint64_t splitting_offset = 0;
+    auto range_uint64_start = range_uint64[0];
+    auto range_uint64_end = range_uint64[1];
+    while (true) {
+      if (((left_p2_m1 << 1) + 1) != right_p2_m1) {
+        // More than one power of 2 apart, split at largest power of 2 in
+        // between
+        splitting_value_uint64 = splitting_offset + (right_p2_m1 >> 1);
+        break;
+      } else if (left_p2_m1 == range_uint64_start) {
+        splitting_value_uint64 = splitting_offset + left_p2_m1;
+        break;
+      } else {  // One power apart - need to normalize and repeat
+        range_uint64_start -= (left_p2_m1 + 1);
+        range_uint64_end -= (left_p2_m1 + 1);
+        splitting_offset += (left_p2_m1 + 1);
+        left_p2_m1 = utils::math::left_p2_m1(range_uint64_start);
+        right_p2_m1 = utils::math::right_p2_m1(range_uint64_end);
+        assert(left_p2_m1 != right_p2_m1);  // Cannot be unary
+      }
     }
   }
 
   // Set real splitting value
   Hilbert h(dim_num);
   auto bits = h.bits();
-  auto bucket_num = ((uint64_t)1 << bits) - 1;
+  auto max_bucket_val = ((uint64_t)1 << bits) - 1;
 
   *splitting_value =
       array_schema->dimension(splitting_dim)
-          ->map_from_uint64(splitting_value_uint64, bits, bucket_num);
+          ->map_from_uint64(splitting_value_uint64, bits, max_bucket_val);
 }

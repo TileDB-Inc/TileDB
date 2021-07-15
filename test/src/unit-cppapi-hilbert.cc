@@ -616,14 +616,14 @@ TEST_CASE(
   array_r.close();
 
   // Check results. Here is the hilbert value order:
-  // (1, 3) ->   673842753890680
-  // (1, 1) ->   972199115346920
-  // (2, 1) ->  1282508796834212
-  // (2, 2) ->  2094006769413898
-  // (3, 7) ->  8953635051284643
-  // (5, 4) -> 14306049248121919
-  // (4, 2) -> 15960063827832505
-  // (7, 7) -> 34415049034468853
+  // (1, 3) ->   673795214387276
+  // (1, 1) ->   972175364522868
+  // (2, 1) ->  1282377960629798
+  // (2, 2) ->  2093929125029754
+  // (3, 7) ->  8953131325824998
+  // (5, 4) -> 14307296941447292
+  // (4, 2) -> 15960414315352633
+  // (7, 7) -> 34410827116042986
   std::vector<int32_t> c_buff_a = {2, 3, 5, 6, 7, 4, 1, 8};
   std::vector<int32_t> c_buff_d1 = {1, 1, 2, 2, 3, 5, 4, 7};
   std::vector<int32_t> c_buff_d2 = {3, 1, 1, 2, 7, 4, 2, 7};
@@ -726,14 +726,14 @@ TEST_CASE(
   array_r.close();
 
   // Check results. Here is the hilbert value order:
-  // (1, 3) ->   673842753890680
-  // (1, 1) ->   972199115346920
-  // (2, 1) ->  1282508796834212
-  // (2, 2) ->  2094006769413898
-  // (3, 7) ->  8953635051284643
-  // (5, 4) -> 14306049248121919
-  // (4, 2) -> 15960063827832505
-  // (7, 7) -> 34415049034468853
+  // (1, 3) ->   673795214387276
+  // (1, 1) ->   972175364522868
+  // (2, 1) ->  1282377960629798
+  // (2, 2) ->  2093929125029754
+  // (3, 7) ->  8953131325824998
+  // (5, 4) -> 14307296941447292
+  // (4, 2) -> 15960414315352633
+  // (7, 7) -> 34410827116042986
   std::vector<int32_t> c_buff_a = {2, 3, 5, 6, 7, 4, 1, 8};
   std::vector<int32_t> c_buff_d1 = {1, 1, 2, 2, 3, 5, 4, 7};
   std::vector<int32_t> c_buff_d2 = {3, 1, 1, 2, 7, 4, 2, 7};
@@ -1230,8 +1230,8 @@ TEST_CASE(
 
   // Write array
   std::vector<int32_t> buff_a = {2, 3, 1, 4};
-  std::vector<float> buff_d1 = {0.1f, 0.1f, 0.4f, 0.5f};
-  std::vector<float> buff_d2 = {0.3f, 0.1f, 0.2f, 0.4f};
+  std::vector<float> buff_d1 = {0.1f, 0.1f, 0.41f, 0.4f};
+  std::vector<float> buff_d2 = {0.3f, 0.1f, 0.41f, 0.4f};
   write_2d_array<float, float>(
       array_name, buff_d1, buff_d2, buff_a, TILEDB_UNORDERED);
 
@@ -1278,8 +1278,8 @@ TEST_CASE(
     CHECK(query_r.query_status() == Query::Status::INCOMPLETE);
     CHECK(query_r.result_buffer_elements()["a"].second == 2);
     c_buff_a = {1, 4};
-    c_buff_d1 = {0.4f, 0.5f};
-    c_buff_d2 = {0.2f, 0.4f};
+    c_buff_d1 = {0.41f, 0.4f};
+    c_buff_d2 = {0.41f, 0.4f};
     CHECK(r_buff_a == c_buff_a);
     CHECK(r_buff_d1 == c_buff_d1);
     CHECK(r_buff_d2 == c_buff_d2);
@@ -1336,8 +1336,8 @@ TEST_CASE(
     CHECK(query_r.query_status() == Query::Status::INCOMPLETE);
     CHECK(query_r.result_buffer_elements()["a"].second == 2);
     c_buff_a = {1, 4};
-    c_buff_d1 = {0.4f, 0.5f};
-    c_buff_d2 = {0.2f, 0.4f};
+    c_buff_d1 = {0.41f, 0.4f};
+    c_buff_d2 = {0.41f, 0.4f};
     CHECK(r_buff_a == c_buff_a);
     CHECK(r_buff_d1 == c_buff_d1);
     CHECK(r_buff_d2 == c_buff_d2);
