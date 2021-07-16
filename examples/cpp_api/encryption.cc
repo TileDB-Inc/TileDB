@@ -44,8 +44,11 @@ std::string array_name("encrypted_array");
 const char encryption_key[32 + 1] = "0123456789abcdeF0123456789abcdeF";
 
 void create_array() {
-  // Create a TileDB context.
-  Context ctx;
+  // Create a TileDB context with AES-256_GCM encryption.
+  tiledb::Config cfg;
+  cfg["sm.encryption_type"] = "AES_256_GCM";
+  cfg["sm.encryption_key"] = encryption_key;
+  Context ctx(cfg);
 
   // The array will be 4x4 with dimensions "rows" and "cols", with domain [1,4].
   Domain domain(ctx);
@@ -59,13 +62,8 @@ void create_array() {
   // Add a single attribute "a" so each (i,j) cell can store an integer.
   schema.add_attribute(Attribute::create<int>(ctx, "a"));
 
-  // Create the (empty) encrypted array with AES-256-GCM.
-  Array::create(
-      array_name,
-      schema,
-      TILEDB_AES_256_GCM,
-      encryption_key,
-      (uint32_t)strlen(encryption_key));
+  // Create the (empty) encrypted array.
+  Array::create(array_name, schema);
 }
 
 void write_array() {
