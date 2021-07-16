@@ -866,7 +866,7 @@ Status Subarray::get_est_result_size(
         "coordinates in arrays with domains with variable-sized dimensions"));
 
   if (array_->array_schema()->is_nullable(name))
-    return LOG_STATUS(Status::WriterError(
+    return LOG_STATUS(Status::SubarrayError(
         std::string(
             "Cannot get estimated result size; Input attribute/dimension '") +
         name + "' is nullable"));
