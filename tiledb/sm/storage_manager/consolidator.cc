@@ -606,7 +606,12 @@ Status Consolidator::create_queries(
   // Create read query
   *query_r = tdb_new(Query, storage_manager_, array_for_reads);
   RETURN_NOT_OK((*query_r)->set_layout(Layout::GLOBAL_ORDER));
-  RETURN_NOT_OK((*query_r)->set_subarray_unsafe(subarray));
+
+  // Refactored reader optimizes for no subarray.
+  if (!config_.use_refactored_readers_ ||
+      array_for_reads->array_schema()->dense())
+    RETURN_NOT_OK((*query_r)->set_subarray_unsafe(subarray));
+
   if (array_for_reads->array_schema()->dense() && sparse_mode)
     RETURN_NOT_OK((*query_r)->set_sparse_mode(true));
 
@@ -789,7 +794,7 @@ Status Consolidator::set_query_buffers(
   for (const auto& attr : attributes) {
     if (!attr->var_size()) {
       if (!attr->nullable()) {
-        RETURN_NOT_OK(query->set_buffer(
+        RETURN_NOT_OK(query->set_data_buffer(
             attr->name(), (void*)&(*buffers)[bid][0], &(*buffer_sizes)[bid]));
         ++bid;
       } else {
@@ -803,12 +808,14 @@ Status Consolidator::set_query_buffers(
       }
     } else {
       if (!attr->nullable()) {
-        RETURN_NOT_OK(query->set_buffer(
+        RETURN_NOT_OK(query->set_data_buffer(
             attr->name(),
-            (uint64_t*)&(*buffers)[bid][0],
-            &(*buffer_sizes)[bid],
             (void*)&(*buffers)[bid + 1][0],
             &(*buffer_sizes)[bid + 1]));
+        RETURN_NOT_OK(query->set_offsets_buffer(
+            attr->name(),
+            (uint64_t*)&(*buffers)[bid][0],
+            &(*buffer_sizes)[bid]));
         bid += 2;
       } else {
         RETURN_NOT_OK(query->set_buffer_vbytemap(
@@ -828,16 +835,16 @@ Status Consolidator::set_query_buffers(
       auto dim = array_schema->dimension(d);
       auto dim_name = dim->name();
       if (!dim->var_size()) {
-        RETURN_NOT_OK(query->set_buffer(
+        RETURN_NOT_OK(query->set_data_buffer(
             dim_name, (void*)&(*buffers)[bid][0], &(*buffer_sizes)[bid]));
         ++bid;
       } else {
-        RETURN_NOT_OK(query->set_buffer(
+        RETURN_NOT_OK(query->set_data_buffer(
             dim_name,
-            (uint64_t*)&(*buffers)[bid][0],
-            &(*buffer_sizes)[bid],
             (void*)&(*buffers)[bid + 1][0],
             &(*buffer_sizes)[bid + 1]));
+        RETURN_NOT_OK(query->set_offsets_buffer(
+            dim_name, (uint64_t*)&(*buffers)[bid][0], &(*buffer_sizes)[bid]));
         bid += 2;
       }
     }
@@ -918,6 +925,9 @@ Status Consolidator::set_config(const Config* config) {
   assert(found);
   RETURN_NOT_OK(merged_config.get<uint64_t>(
       "sm.consolidation.timestamp_end", &config_.timestamp_end_, &found));
+  assert(found);
+  RETURN_NOT_OK(merged_config.get<bool>(
+      "sm.use_refactored_readers", &config_.use_refactored_readers_, &found));
   assert(found);
 
   // Sanity checks

@@ -48,6 +48,25 @@ namespace test {
 // Command line arguments.
 extern std::string g_vfs;
 
+bool use_refactored_readers() {
+  const char* value = nullptr;
+  tiledb_config_t* cfg;
+  tiledb_error_t* err = nullptr;
+  auto rc = tiledb_config_alloc(&cfg, &err);
+  REQUIRE(rc == TILEDB_OK);
+  REQUIRE(err == nullptr);
+
+  rc = tiledb_config_get(cfg, "sm.use_refactored_readers", &value, &err);
+  CHECK(rc == TILEDB_OK);
+  CHECK(err == nullptr);
+
+  bool use_refactored_readers = strcmp(value, "true") == 0;
+
+  tiledb_config_free(&cfg);
+
+  return use_refactored_readers;
+}
+
 template <class T>
 void check_partitions(
     tiledb::sm::SubarrayPartitioner& partitioner,
@@ -507,12 +526,29 @@ void create_array(
   REQUIRE(rc == TILEDB_OK);
 
   // Create array
-  rc = tiledb_array_create_with_key(
-      ctx, array_name.c_str(), array_schema, enc_type, key, key_len);
+  tiledb_config_t* config;
+  tiledb_error_t* error = nullptr;
+  rc = tiledb_config_alloc(&config, &error);
+  REQUIRE(rc == TILEDB_OK);
+  REQUIRE(error == nullptr);
+  std::string encryption_type_string =
+      encryption_type_str((tiledb::sm::EncryptionType)enc_type);
+  rc = tiledb_config_set(
+      config, "sm.encryption_type", encryption_type_string.c_str(), &error);
+  REQUIRE(error == nullptr);
+  rc = tiledb_config_set(config, "sm.encryption_key", key, &error);
+  REQUIRE(rc == TILEDB_OK);
+  REQUIRE(error == nullptr);
+  tiledb::sm::UnitTestConfig::instance().array_encryption_key_length.set(
+      key_len);
+  tiledb_ctx_t* ctx_array;
+  REQUIRE(tiledb_ctx_alloc(config, &ctx_array) == TILEDB_OK);
+  rc = tiledb_array_create(ctx_array, array_name.c_str(), array_schema);
   REQUIRE(rc == TILEDB_OK);
 
   // Clean up
   tiledb_array_schema_free(&array_schema);
+  tiledb_ctx_free(&ctx_array);
 }
 
 void create_s3_bucket(
@@ -1020,7 +1056,7 @@ void write_array(
   // Set buffers
   for (const auto& b : buffers) {
     if (b.second.var_ == nullptr) {  // Fixed-sized
-      rc = tiledb_query_set_buffer(
+      rc = tiledb_query_set_data_buffer(
           ctx,
           query,
           b.first.c_str(),
@@ -1028,14 +1064,19 @@ void write_array(
           (uint64_t*)&(b.second.fixed_size_));
       CHECK(rc == TILEDB_OK);
     } else {  // Var-sized
-      rc = tiledb_query_set_buffer_var(
+      rc = tiledb_query_set_data_buffer(
+          ctx,
+          query,
+          b.first.c_str(),
+          b.second.var_,
+          (uint64_t*)&(b.second.var_size_));
+      CHECK(rc == TILEDB_OK);
+      rc = tiledb_query_set_offsets_buffer(
           ctx,
           query,
           b.first.c_str(),
           (uint64_t*)b.second.fixed_,
-          (uint64_t*)&(b.second.fixed_size_),
-          b.second.var_,
-          (uint64_t*)&(b.second.var_size_));
+          (uint64_t*)&(b.second.fixed_size_));
       CHECK(rc == TILEDB_OK);
     }
   }
@@ -1091,7 +1132,7 @@ void read_array(
   // Set buffers
   for (const auto& b : buffers) {
     if (b.second.var_ == nullptr) {  // Fixed-sized
-      rc = tiledb_query_set_buffer(
+      rc = tiledb_query_set_data_buffer(
           ctx,
           query,
           b.first.c_str(),
@@ -1099,14 +1140,19 @@ void read_array(
           (uint64_t*)&(b.second.fixed_size_));
       CHECK(rc == TILEDB_OK);
     } else {  // Var-sized
-      rc = tiledb_query_set_buffer_var(
+      rc = tiledb_query_set_data_buffer(
+          ctx,
+          query,
+          b.first.c_str(),
+          b.second.var_,
+          (uint64_t*)&(b.second.var_size_));
+      CHECK(rc == TILEDB_OK);
+      rc = tiledb_query_set_offsets_buffer(
           ctx,
           query,
           b.first.c_str(),
           (uint64_t*)b.second.fixed_,
-          (uint64_t*)&(b.second.fixed_size_),
-          b.second.var_,
-          (uint64_t*)&(b.second.var_size_));
+          (uint64_t*)&(b.second.fixed_size_));
       CHECK(rc == TILEDB_OK);
     }
   }
@@ -1137,6 +1183,7 @@ int32_t num_fragments(const std::string& array_name) {
   for (const auto& uri : uris) {
     auto name = tiledb::sm::URI(uri).remove_trailing_slash().last_path_part();
     if (name != tiledb::sm::constants::array_metadata_folder_name &&
+        name != tiledb::sm::constants::array_schema_folder_name &&
         name.find_first_of('.') == std::string::npos)
       ++ret;
   }

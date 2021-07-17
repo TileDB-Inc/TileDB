@@ -207,8 +207,11 @@ int StringDimsFx::get_dir_num(const char* path, void* data) {
   CHECK(rc == TILEDB_OK);
   auto meta_dir =
       std::string("/") + tiledb::sm::constants::array_metadata_folder_name;
-  if (!tiledb::sm::utils::parse::ends_with(path, meta_dir)) {
-    // Ignoring the meta folder
+  auto schema_dir =
+      std::string("/") + tiledb::sm::constants::array_schema_folder_name;
+  if (!tiledb::sm::utils::parse::ends_with(path, meta_dir) &&
+      !tiledb::sm::utils::parse::ends_with(path, schema_dir)) {
+    // Ignoring the meta folder and the schema folder
     data_struct->num += is_dir;
   }
 
@@ -427,14 +430,12 @@ int StringDimsFx::tiledb_query_submit_wrapper(
         uint64_t* offset_buff;
         uint64_t* offset_buff_size;
         REQUIRE(
-            tiledb_query_get_buffer_var(
-                ctx,
-                new_query,
-                name,
-                &offset_buff,
-                &offset_buff_size,
-                &buff,
-                &buff_size) == TILEDB_OK);
+            tiledb_query_get_data_buffer(
+                ctx, new_query, name, &buff, &buff_size) == TILEDB_OK);
+        REQUIRE(
+            tiledb_query_get_offsets_buffer(
+                ctx, new_query, name, &offset_buff, &offset_buff_size) ==
+            TILEDB_OK);
         // Buffers will always be null after deserialization on server side
         REQUIRE(buff == nullptr);
         REQUIRE(offset_buff == nullptr);
@@ -447,21 +448,19 @@ int StringDimsFx::tiledb_query_submit_wrapper(
           to_free.push_back(offset_buff);
 
           REQUIRE(
-              tiledb_query_set_buffer_var(
-                  ctx,
-                  new_query,
-                  name,
-                  offset_buff,
-                  offset_buff_size,
-                  buff,
-                  buff_size) == TILEDB_OK);
+              tiledb_query_set_data_buffer(
+                  ctx, new_query, name, buff, buff_size) == TILEDB_OK);
+          REQUIRE(
+              tiledb_query_set_offsets_buffer(
+                  ctx, new_query, name, offset_buff, offset_buff_size) ==
+              TILEDB_OK);
         }
       } else {
         void* buff;
         uint64_t* buff_size;
         REQUIRE(
-            tiledb_query_get_buffer(ctx, new_query, name, &buff, &buff_size) ==
-            TILEDB_OK);
+            tiledb_query_get_data_buffer(
+                ctx, new_query, name, &buff, &buff_size) == TILEDB_OK);
         // Buffers will always be null after deserialization on server side
         REQUIRE(buff == nullptr);
         if (buff_size != nullptr) {
@@ -470,8 +469,8 @@ int StringDimsFx::tiledb_query_submit_wrapper(
           buff = std::malloc(*buff_size);
           to_free.push_back(buff);
           REQUIRE(
-              tiledb_query_set_buffer(ctx, new_query, name, buff, buff_size) ==
-              TILEDB_OK);
+              tiledb_query_set_data_buffer(
+                  ctx, new_query, name, buff, buff_size) == TILEDB_OK);
         }
       }
 
@@ -482,13 +481,13 @@ int StringDimsFx::tiledb_query_submit_wrapper(
     void* buff;
     uint64_t* buff_size;
     REQUIRE(
-        tiledb_query_get_buffer(
+        tiledb_query_get_data_buffer(
             ctx, new_query, TILEDB_COORDS, &buff, &buff_size) == TILEDB_OK);
     if (buff_size != nullptr) {
       buff = std::malloc(*buff_size);
       to_free.push_back(buff);
       REQUIRE(
-          tiledb_query_set_buffer(
+          tiledb_query_set_data_buffer(
               ctx, new_query, TILEDB_COORDS, buff, buff_size) == TILEDB_OK);
     }
 
@@ -518,18 +517,16 @@ int StringDimsFx::tiledb_query_submit_wrapper(
 
       if (cell_val_num == TILEDB_VAR_NUM) {
         REQUIRE(
-            tiledb_query_get_buffer_var(
-                ctx,
-                new_query,
-                name,
-                &offset_buff,
-                &offset_buff_size,
-                &buff,
-                &buff_size) == TILEDB_OK);
+            tiledb_query_get_data_buffer(
+                ctx, new_query, name, &buff, &buff_size) == TILEDB_OK);
+        REQUIRE(
+            tiledb_query_get_offsets_buffer(
+                ctx, new_query, name, &offset_buff, &offset_buff_size) ==
+            TILEDB_OK);
       } else {
         REQUIRE(
-            tiledb_query_get_buffer(ctx, new_query, name, &buff, &buff_size) ==
-            TILEDB_OK);
+            tiledb_query_get_data_buffer(
+                ctx, new_query, name, &buff, &buff_size) == TILEDB_OK);
       }
       // Buffers will always be null after deserialization on server side
       REQUIRE(buff == nullptr);
@@ -542,22 +539,20 @@ int StringDimsFx::tiledb_query_submit_wrapper(
         buff = std::malloc(*buff_size);
         to_free.push_back(buff);
         REQUIRE(
-            tiledb_query_set_buffer_var(
-                ctx,
-                new_query,
-                name,
-                offset_buff,
-                offset_buff_size,
-                buff,
-                buff_size) == TILEDB_OK);
+            tiledb_query_set_data_buffer(
+                ctx, new_query, name, buff, buff_size) == TILEDB_OK);
+        REQUIRE(
+            tiledb_query_set_offsets_buffer(
+                ctx, new_query, name, offset_buff, offset_buff_size) ==
+            TILEDB_OK);
       } else if (buff_size != nullptr) {
         // Buffer size was set for the attribute; allocate one of the
         // appropriate size.
         buff = std::malloc(*buff_size);
         to_free.push_back(buff);
         REQUIRE(
-            tiledb_query_set_buffer(ctx, new_query, name, buff, buff_size) ==
-            TILEDB_OK);
+            tiledb_query_set_data_buffer(
+                ctx, new_query, name, buff, buff_size) == TILEDB_OK);
       }
       tiledb_dimension_free(&dim);
     }
@@ -632,12 +627,13 @@ void StringDimsFx::write_array_ascii(const std::string& array_name) {
   uint64_t d_off_size = sizeof(d_off);
   int32_t a_data[] = {1, 2, 3, 4};
   uint64_t a_size = sizeof(a_data);
-  rc = tiledb_query_set_buffer(ctx_, query, "d", d_data, &d_data_size);
+  rc = tiledb_query_set_data_buffer(ctx_, query, "d", d_data, &d_data_size);
   REQUIRE(rc == TILEDB_ERR);
-  rc = tiledb_query_set_buffer_var(
-      ctx_, query, "d", d_off, &d_off_size, d_data, &d_data_size);
+  rc = tiledb_query_set_data_buffer(ctx_, query, "d", d_data, &d_data_size);
   REQUIRE(rc == TILEDB_OK);
-  rc = tiledb_query_set_buffer(ctx_, query, "a", a_data, &a_size);
+  rc = tiledb_query_set_offsets_buffer(ctx_, query, "d", d_off, &d_off_size);
+  REQUIRE(rc == TILEDB_OK);
+  rc = tiledb_query_set_data_buffer(ctx_, query, "a", a_data, &a_size);
   REQUIRE(rc == TILEDB_OK);
   rc = tiledb_query_set_layout(ctx_, query, TILEDB_GLOBAL_ORDER);
   REQUIRE(rc == TILEDB_OK);
@@ -677,16 +673,13 @@ void StringDimsFx::write_array_1d(
   uint64_t d_off_size = d_off.size() * sizeof(uint64_t);
   uint64_t d_val_size = d_val.size();
   uint64_t a_size = a.size() * sizeof(int32_t);
-  rc = tiledb_query_set_buffer_var(
-      ctx,
-      query,
-      "d",
-      (uint64_t*)&d_off[0],
-      &d_off_size,
-      (void*)&d_val[0],
-      &d_val_size);
+  rc = tiledb_query_set_data_buffer(
+      ctx, query, "d", (void*)&d_val[0], &d_val_size);
   REQUIRE(rc == TILEDB_OK);
-  rc = tiledb_query_set_buffer(ctx, query, "a", (void*)a.data(), &a_size);
+  rc = tiledb_query_set_offsets_buffer(
+      ctx, query, "d", (uint64_t*)&d_off[0], &d_off_size);
+  REQUIRE(rc == TILEDB_OK);
+  rc = tiledb_query_set_data_buffer(ctx, query, "a", (void*)a.data(), &a_size);
   REQUIRE(rc == TILEDB_OK);
   rc = tiledb_query_set_layout(ctx, query, layout);
   REQUIRE(rc == TILEDB_OK);
@@ -728,18 +721,16 @@ void StringDimsFx::write_array_2d(
   uint64_t d1_val_size = d1_val.size();
   uint64_t d2_size = d2.size() * sizeof(int32_t);
   uint64_t a_size = a.size() * sizeof(int32_t);
-  rc = tiledb_query_set_buffer_var(
-      ctx,
-      query,
-      "d1",
-      (uint64_t*)&d1_off[0],
-      &d1_off_size,
-      (void*)&d1_val[0],
-      &d1_val_size);
+  rc = tiledb_query_set_data_buffer(
+      ctx, query, "d1", (void*)&d1_val[0], &d1_val_size);
   REQUIRE(rc == TILEDB_OK);
-  rc = tiledb_query_set_buffer(ctx, query, "d2", (void*)d2.data(), &d2_size);
+  rc = tiledb_query_set_offsets_buffer(
+      ctx, query, "d1", (uint64_t*)&d1_off[0], &d1_off_size);
   REQUIRE(rc == TILEDB_OK);
-  rc = tiledb_query_set_buffer(ctx, query, "a", (void*)a.data(), &a_size);
+  rc = tiledb_query_set_data_buffer(
+      ctx, query, "d2", (void*)d2.data(), &d2_size);
+  REQUIRE(rc == TILEDB_OK);
+  rc = tiledb_query_set_data_buffer(ctx, query, "a", (void*)a.data(), &a_size);
   REQUIRE(rc == TILEDB_OK);
   rc = tiledb_query_set_layout(ctx, query, layout);
   REQUIRE(rc == TILEDB_OK);
@@ -1011,16 +1002,13 @@ void StringDimsFx::read_array_1d(
   uint64_t d_off_size = d_off->size() * sizeof(uint64_t);
   uint64_t d_val_size = d_val->size();
   uint64_t a_size = a->size() * sizeof(int32_t);
-  rc = tiledb_query_set_buffer_var(
-      ctx,
-      query,
-      "d",
-      (uint64_t*)d_off->data(),
-      &d_off_size,
-      (void*)d_val->data(),
-      &d_val_size);
+  rc = tiledb_query_set_data_buffer(
+      ctx, query, "d", (void*)d_val->data(), &d_val_size);
   REQUIRE(rc == TILEDB_OK);
-  rc = tiledb_query_set_buffer(ctx, query, "a", a->data(), &a_size);
+  rc = tiledb_query_set_offsets_buffer(
+      ctx, query, "d", (uint64_t*)d_off->data(), &d_off_size);
+  REQUIRE(rc == TILEDB_OK);
+  rc = tiledb_query_set_data_buffer(ctx, query, "a", a->data(), &a_size);
   REQUIRE(rc == TILEDB_OK);
 
   // Set layout
@@ -1122,18 +1110,15 @@ void StringDimsFx::read_array_2d(
   uint64_t d1_val_size = d1_val->size();
   uint64_t d2_size = d2->size() * sizeof(int32_t);
   uint64_t a_size = a->size() * sizeof(int32_t);
-  rc = tiledb_query_set_buffer_var(
-      ctx,
-      query,
-      "d1",
-      (uint64_t*)d1_off->data(),
-      &d1_off_size,
-      (void*)d1_val->data(),
-      &d1_val_size);
+  rc = tiledb_query_set_data_buffer(
+      ctx, query, "d1", (void*)d1_val->data(), &d1_val_size);
   REQUIRE(rc == TILEDB_OK);
-  rc = tiledb_query_set_buffer(ctx, query, "d2", d2->data(), &d2_size);
+  rc = tiledb_query_set_offsets_buffer(
+      ctx, query, "d1", (uint64_t*)d1_off->data(), &d1_off_size);
   REQUIRE(rc == TILEDB_OK);
-  rc = tiledb_query_set_buffer(ctx, query, "a", a->data(), &a_size);
+  rc = tiledb_query_set_data_buffer(ctx, query, "d2", d2->data(), &d2_size);
+  REQUIRE(rc == TILEDB_OK);
+  rc = tiledb_query_set_data_buffer(ctx, query, "a", a->data(), &a_size);
   REQUIRE(rc == TILEDB_OK);
 
   // Set layout
@@ -1320,12 +1305,10 @@ TEST_CASE_METHOD(
   uint64_t d_off_size = sizeof(d_off);
   int32_t a_data[] = {1, 2, 3, 4};
   uint64_t a_size = sizeof(a_data);
-  rc = tiledb_query_set_buffer(ctx_, query, "d", d_data, &d_data_size);
-  REQUIRE(rc == TILEDB_ERR);
-  rc = tiledb_query_set_buffer_var(
-      ctx_, query, "d", d_off, &d_off_size, d_data, &d_data_size);
+  rc = tiledb_query_set_data_buffer(ctx_, query, "d", d_data, &d_data_size);
   REQUIRE(rc == TILEDB_OK);
-  rc = tiledb_query_set_buffer(ctx_, query, "a", a_data, &a_size);
+  rc = tiledb_query_set_offsets_buffer(ctx_, query, "d", d_off, &d_off_size);
+  rc = tiledb_query_set_data_buffer(ctx_, query, "a", a_data, &a_size);
   REQUIRE(rc == TILEDB_OK);
   rc = tiledb_query_set_layout(ctx_, query, TILEDB_GLOBAL_ORDER);
   REQUIRE(rc == TILEDB_OK);
@@ -1395,12 +1378,11 @@ TEST_CASE_METHOD(
   uint64_t d_off_size = sizeof(d_off);
   int32_t a_data[] = {1, 2, 3, 4};
   uint64_t a_size = sizeof(a_data);
-  rc = tiledb_query_set_buffer(ctx_, query, "d", d_data, &d_data_size);
-  REQUIRE(rc == TILEDB_ERR);
-  rc = tiledb_query_set_buffer_var(
-      ctx_, query, "d", d_off, &d_off_size, d_data, &d_data_size);
+  rc = tiledb_query_set_data_buffer(ctx_, query, "d", d_data, &d_data_size);
   REQUIRE(rc == TILEDB_OK);
-  rc = tiledb_query_set_buffer(ctx_, query, "a", a_data, &a_size);
+  rc = tiledb_query_set_offsets_buffer(ctx_, query, "d", d_off, &d_off_size);
+  REQUIRE(rc == TILEDB_OK);
+  rc = tiledb_query_set_data_buffer(ctx_, query, "a", a_data, &a_size);
   REQUIRE(rc == TILEDB_OK);
   rc = tiledb_query_set_layout(ctx_, query, TILEDB_UNORDERED);
   REQUIRE(rc == TILEDB_OK);
@@ -1470,12 +1452,11 @@ TEST_CASE_METHOD(
   uint64_t d_off_size = sizeof(d_off);
   int32_t a_data[] = {1, 2, 3, 4};
   uint64_t a_size = sizeof(a_data);
-  rc = tiledb_query_set_buffer(ctx_, query, "d", d_data, &d_data_size);
-  REQUIRE(rc == TILEDB_ERR);
-  rc = tiledb_query_set_buffer_var(
-      ctx_, query, "d", d_off, &d_off_size, d_data, &d_data_size);
+  rc = tiledb_query_set_data_buffer(ctx_, query, "d", d_data, &d_data_size);
   REQUIRE(rc == TILEDB_OK);
-  rc = tiledb_query_set_buffer(ctx_, query, "a", a_data, &a_size);
+  rc = tiledb_query_set_offsets_buffer(ctx_, query, "d", d_off, &d_off_size);
+  REQUIRE(rc == TILEDB_OK);
+  rc = tiledb_query_set_data_buffer(ctx_, query, "a", a_data, &a_size);
   REQUIRE(rc == TILEDB_OK);
   rc = tiledb_query_set_layout(ctx_, query, TILEDB_GLOBAL_ORDER);
   REQUIRE(rc == TILEDB_OK);
@@ -1547,12 +1528,11 @@ TEST_CASE_METHOD(
   uint64_t d_off_size = sizeof(d_off);
   int32_t a_data[] = {3, 2, 4, 1};
   uint64_t a_size = sizeof(a_data);
-  rc = tiledb_query_set_buffer(ctx_, query, "d", d_data, &d_data_size);
-  REQUIRE(rc == TILEDB_ERR);
-  rc = tiledb_query_set_buffer_var(
-      ctx_, query, "d", d_off, &d_off_size, d_data, &d_data_size);
+  rc = tiledb_query_set_data_buffer(ctx_, query, "d", d_data, &d_data_size);
   REQUIRE(rc == TILEDB_OK);
-  rc = tiledb_query_set_buffer(ctx_, query, "a", a_data, &a_size);
+  rc = tiledb_query_set_offsets_buffer(ctx_, query, "d", d_off, &d_off_size);
+  REQUIRE(rc == TILEDB_OK);
+  rc = tiledb_query_set_data_buffer(ctx_, query, "a", a_data, &a_size);
   REQUIRE(rc == TILEDB_OK);
   rc = tiledb_query_set_layout(ctx_, query, TILEDB_UNORDERED);
   REQUIRE(rc == TILEDB_OK);
@@ -1588,12 +1568,13 @@ TEST_CASE_METHOD(
   REQUIRE(rc == TILEDB_ERR);
   int32_t buff[10];
   uint64_t buff_size = sizeof(buff);
-  rc = tiledb_query_set_buffer(ctx_, query, TILEDB_COORDS, buff, &buff_size);
+  rc = tiledb_query_set_data_buffer(
+      ctx_, query, TILEDB_COORDS, buff, &buff_size);
   REQUIRE(rc == TILEDB_ERR);
   int data[1];
   uint64_t data_size;
-  rc = tiledb_query_set_buffer(ctx_, query, "d", data, &data_size);
-  REQUIRE(rc == TILEDB_ERR);
+  rc = tiledb_query_set_data_buffer(ctx_, query, "d", data, &data_size);
+  REQUIRE(rc == TILEDB_OK);
 
   // Get estimated buffer size
   rc = tiledb_query_get_est_result_size(ctx_, query, TILEDB_COORDS, &size);

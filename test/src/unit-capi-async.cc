@@ -294,19 +294,16 @@ void AsyncFx::write_dense_async() {
   CHECK(rc == TILEDB_OK);
   rc = tiledb_query_set_layout(ctx_, query, TILEDB_GLOBAL_ORDER);
   CHECK(rc == TILEDB_OK);
-  rc = tiledb_query_set_buffer(
+  rc = tiledb_query_set_data_buffer(
       ctx_, query, attributes[0], buffers[0], &buffer_sizes[0]);
   CHECK(rc == TILEDB_OK);
-  rc = tiledb_query_set_buffer_var(
-      ctx_,
-      query,
-      attributes[1],
-      (uint64_t*)buffers[1],
-      &buffer_sizes[1],
-      buffers[2],
-      &buffer_sizes[2]);
+  rc = tiledb_query_set_data_buffer(
+      ctx_, query, attributes[1], buffers[2], &buffer_sizes[2]);
   CHECK(rc == TILEDB_OK);
-  rc = tiledb_query_set_buffer(
+  rc = tiledb_query_set_offsets_buffer(
+      ctx_, query, attributes[1], (uint64_t*)buffers[1], &buffer_sizes[1]);
+  CHECK(rc == TILEDB_OK);
+  rc = tiledb_query_set_data_buffer(
       ctx_, query, attributes[2], buffers[3], &buffer_sizes[3]);
   CHECK(rc == TILEDB_OK);
 
@@ -401,25 +398,22 @@ void AsyncFx::write_sparse_async() {
   CHECK(rc == TILEDB_OK);
   rc = tiledb_query_set_layout(ctx_, query, TILEDB_GLOBAL_ORDER);
   CHECK(rc == TILEDB_OK);
-  rc = tiledb_query_set_buffer(
+  rc = tiledb_query_set_data_buffer(
       ctx_, query, attributes[0], buffers[0], &buffer_sizes[0]);
   CHECK(rc == TILEDB_OK);
-  rc = tiledb_query_set_buffer_var(
-      ctx_,
-      query,
-      attributes[1],
-      (uint64_t*)buffers[1],
-      &buffer_sizes[1],
-      buffers[2],
-      &buffer_sizes[2]);
+  rc = tiledb_query_set_data_buffer(
+      ctx_, query, attributes[1], buffers[2], &buffer_sizes[2]);
   CHECK(rc == TILEDB_OK);
-  rc = tiledb_query_set_buffer(
+  rc = tiledb_query_set_offsets_buffer(
+      ctx_, query, attributes[1], (uint64_t*)buffers[1], &buffer_sizes[1]);
+  CHECK(rc == TILEDB_OK);
+  rc = tiledb_query_set_data_buffer(
       ctx_, query, attributes[2], buffers[3], &buffer_sizes[3]);
   CHECK(rc == TILEDB_OK);
-  rc = tiledb_query_set_buffer(
+  rc = tiledb_query_set_data_buffer(
       ctx_, query, attributes[3], buffers[4], &buffer_sizes[4]);
   CHECK(rc == TILEDB_OK);
-  rc = tiledb_query_set_buffer(
+  rc = tiledb_query_set_data_buffer(
       ctx_, query, attributes[4], buffers[5], &buffer_sizes[4]);
   CHECK(rc == TILEDB_OK);
 
@@ -515,25 +509,22 @@ void AsyncFx::write_sparse_async_cancelled() {
   CHECK(rc == TILEDB_OK);
   rc = tiledb_query_set_layout(ctx_, query, TILEDB_UNORDERED);
   CHECK(rc == TILEDB_OK);
-  rc = tiledb_query_set_buffer(
+  rc = tiledb_query_set_data_buffer(
       ctx_, query, attributes[0], buffers[0], &buffer_sizes[0]);
   CHECK(rc == TILEDB_OK);
-  rc = tiledb_query_set_buffer_var(
-      ctx_,
-      query,
-      attributes[1],
-      (uint64_t*)buffers[1],
-      &buffer_sizes[1],
-      buffers[2],
-      &buffer_sizes[2]);
+  rc = tiledb_query_set_data_buffer(
+      ctx_, query, attributes[1], buffers[2], &buffer_sizes[2]);
   CHECK(rc == TILEDB_OK);
-  rc = tiledb_query_set_buffer(
+  rc = tiledb_query_set_offsets_buffer(
+      ctx_, query, attributes[1], (uint64_t*)buffers[1], &buffer_sizes[1]);
+  CHECK(rc == TILEDB_OK);
+  rc = tiledb_query_set_data_buffer(
       ctx_, query, attributes[2], buffers[3], &buffer_sizes[3]);
   CHECK(rc == TILEDB_OK);
-  rc = tiledb_query_set_buffer(
+  rc = tiledb_query_set_data_buffer(
       ctx_, query, attributes[3], buffers[4], &buffer_sizes[4]);
   CHECK(rc == TILEDB_OK);
-  rc = tiledb_query_set_buffer(
+  rc = tiledb_query_set_data_buffer(
       ctx_, query, attributes[4], buffers[5], &buffer_sizes[4]);
   CHECK(rc == TILEDB_OK);
 
@@ -631,18 +622,17 @@ void AsyncFx::read_dense_async() {
   CHECK(rc == TILEDB_OK);
   rc = tiledb_query_set_subarray(ctx_, query, subarray);
   CHECK(rc == TILEDB_OK);
-  rc = tiledb_query_set_buffer(ctx_, query, "a1", buffer_a1, &buffer_a1_size);
+  rc = tiledb_query_set_data_buffer(
+      ctx_, query, "a1", buffer_a1, &buffer_a1_size);
   CHECK(rc == TILEDB_OK);
-  rc = tiledb_query_set_buffer_var(
-      ctx_,
-      query,
-      "a2",
-      buffer_a2_off,
-      &buffer_a2_off_size,
-      buffer_a2_val,
-      &buffer_a2_val_size);
+  rc = tiledb_query_set_data_buffer(
+      ctx_, query, "a2", buffer_a2_val, &buffer_a2_val_size);
   CHECK(rc == TILEDB_OK);
-  rc = tiledb_query_set_buffer(ctx_, query, "a3", buffer_a3, &buffer_a3_size);
+  rc = tiledb_query_set_offsets_buffer(
+      ctx_, query, "a2", buffer_a2_off, &buffer_a2_off_size);
+  CHECK(rc == TILEDB_OK);
+  rc = tiledb_query_set_data_buffer(
+      ctx_, query, "a3", buffer_a3, &buffer_a3_size);
   CHECK(rc == TILEDB_OK);
 
   auto proc_query = [&]() -> void {
@@ -743,23 +733,22 @@ void AsyncFx::read_sparse_async() {
   CHECK(rc == TILEDB_OK);
   rc = tiledb_query_set_layout(ctx_, query, TILEDB_GLOBAL_ORDER);
   CHECK(rc == TILEDB_OK);
-  rc = tiledb_query_set_buffer(ctx_, query, "a1", buffer_a1, &buffer_a1_size);
+  rc = tiledb_query_set_data_buffer(
+      ctx_, query, "a1", buffer_a1, &buffer_a1_size);
   CHECK(rc == TILEDB_OK);
-  rc = tiledb_query_set_buffer_var(
-      ctx_,
-      query,
-      "a2",
-      buffer_a2_off,
-      &buffer_a2_off_size,
-      buffer_a2_val,
-      &buffer_a2_val_size);
+  rc = tiledb_query_set_data_buffer(
+      ctx_, query, "a2", buffer_a2_val, &buffer_a2_val_size);
   CHECK(rc == TILEDB_OK);
-  rc = tiledb_query_set_buffer(ctx_, query, "a3", buffer_a3, &buffer_a3_size);
+  rc = tiledb_query_set_offsets_buffer(
+      ctx_, query, "a2", buffer_a2_off, &buffer_a2_off_size);
   CHECK(rc == TILEDB_OK);
-  rc = tiledb_query_set_buffer(
+  rc = tiledb_query_set_data_buffer(
+      ctx_, query, "a3", buffer_a3, &buffer_a3_size);
+  CHECK(rc == TILEDB_OK);
+  rc = tiledb_query_set_data_buffer(
       ctx_, query, "d1", buffer_coords_dim1, &buffer_coords_dim1_size);
   CHECK(rc == TILEDB_OK);
-  rc = tiledb_query_set_buffer(
+  rc = tiledb_query_set_data_buffer(
       ctx_, query, "d2", buffer_coords_dim2, &buffer_coords_dim2_size);
   CHECK(rc == TILEDB_OK);
 

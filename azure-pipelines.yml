@@ -18,56 +18,18 @@ stages:
       timeoutInMinutes: 90
       strategy:
         matrix:
-          linux_s3:
-            imageName: 'ubuntu-16.04'
-            TILEDB_S3: ON
-            TILEDB_STATIC: OFF
-            TILEDB_TOOLS: ON
-            CXX: g++
-          linux_hdfs:
-            imageName: 'ubuntu-16.04'
-            TILEDB_HDFS: ON
-            CXX: g++
-          linux_azure:
-            imageName: 'ubuntu-16.04'
-            TILEDB_AZURE: ON
-            TILEDB_STATIC: OFF
-            TILEDB_ARROW_TESTS: ON
-            CXX: g++
-          linux_gcs:
-            imageName: 'ubuntu-16.04'
-            TILEDB_GCS: ON
-            TILEDB_STATIC: OFF
-            CXX: g++
-          macOS:
-            imageName: 'macOS-10.14'
-            TILEDB_S3: ON
-            TILEDB_ARROW_TESTS: ON
-            CXX: clang++
-            ARTIFACT_OS: macOS
           macOS_azure:
             imageName: 'macOS-10.15'
             TILEDB_AZURE: ON
             TILEDB_SERIALIZATION: ON
             CXX: clang++
             ARTIFACT_OS: macOS_azure
-          macOS_gcs:
-            imageName: 'macOS-10.14'
-            TILEDB_GCS: ON
-            CXX: clang++
-            ARTIFACT_OS: macOS_gcs
           linux_asan:
-            imageName: 'ubuntu-16.04'
+            imageName: 'ubuntu-20.04'
             TILEDB_CI_ASAN: ON
             TILEDB_SERIALIZATION: ON
-            CXX: g++-9
-            CC: gcc-9   # Always run ASAN with matching compiler versions
-          linux_serialization:
-            imageName: 'ubuntu-16.04'
-            TILEDB_SERIALIZATION: ON
-            TILEDB_S3: ON
             CXX: g++
-            BACKWARDS_COMPATIBILITY_ARRAYS: ON
+            CC: gcc
 
       pool:
         vmImage: $(imageName)
@@ -113,21 +75,31 @@ stages:
       TILEDB_STATIC: OFF
       TILEDB_SERIALIZATION: ON
       TILEDB_FORCE_BUILD_DEPS: ON
-      MACOSX_DEPLOYMENT_TARGET: 10.13
+      MACOSX_DEPLOYMENT_TARGET: 10.14
     jobs:
      - job:
        strategy:
          matrix:
            linux:
-             imageName: 'ubuntu-16.04'
+             imageName: 'ubuntu-20.04'
              CXX: g++
              ARTIFACT_OS: 'linux'
-             ARTIFACT_EXTRAS: 'full'
+             ARTIFACT_ARCH: 'x86_64'
            macOS:
-             imageName: 'macOS-10.14'
+             imageName: 'macOS-10.15'
              CXX: clang++
              ARTIFACT_OS: 'macos'
-             ARTIFACT_EXTRAS: 'full'
+             ARTIFACT_ARCH: 'x86_64'
+             CMAKE_OSX_ARCHITECTURES: "x86_64"
+           macOS_arm64:
+             imageName: 'macOS-10.15'
+             CXX: clang++
+             ARTIFACT_OS: 'macos'
+             ARTIFACT_ARCH: 'arm64'
+             TILEDB_GCS: OFF
+             TILEDB_WERROR: OFF
+             CMAKE_OSX_ARCHITECTURES: "arm64"
+             MACOSX_DEPLOYMENT_TARGET: 11
        pool:
          vmImage: $(imageName)
        steps:
@@ -139,15 +111,10 @@ stages:
            VS2017:
              imageName: 'vs2017-win2016'
              # Only S3 variable is currently supported in boostrap powershell
-             TILEDB_S3: ON
-#             TILEDB_AZURE: OFF
-#             TILEDB_GCS: OFF
-#             TILEDB_HDFS: OFF
-             TILEDB_STATIC: OFF
-#             TILEDB_SERIALIZATION: OFF
-             TILEDB_FORCE_BUILD_DEPS: ON
+             TILEDB_GCS: OFF
+             TILEDB_HDFS: OFF
              ARTIFACT_OS: 'windows'
-             ARTIFACT_EXTRAS: 'full'
+             ARTIFACT_ARCH: 'x86_64'
        pool:
          vmImage: $(imageName)
        steps:
@@ -180,4 +147,4 @@ stages:
            action: edit
            tag: $(Build.SourceBranchName)
            assets: |
-             $(Build.ArtifactStagingDirectory)/full/*
+             $(Build.ArtifactStagingDirectory)/built-libs/*

@@ -30,6 +30,7 @@
  * Tests the `Dimension` class.
  */
 
+#include "test/src/helpers-dimension.h"
 #include "tiledb/sm/array_schema/dimension.h"
 #include "tiledb/sm/enums/datatype.h"
 #include "tiledb/sm/misc/hilbert.h"
@@ -40,6 +41,7 @@
 using namespace tiledb;
 using namespace tiledb::common;
 using namespace tiledb::sm;
+using namespace tiledb::test;
 
 TEST_CASE(
     "Dimension: Test map_to_uint64, integers",
@@ -525,10 +527,10 @@ TEST_CASE(
   auto max_bucket_val = ((uint64_t)1 << bits) - 1;
 
   auto val = d1.map_from_uint64(64424509, bits, max_bucket_val);
-  auto val_int32 = *(const int32_t*)(&val[0]);
+  auto val_int32 = *(const int32_t*)(val.data());
   CHECK(val_int32 == 3);
   val = d1.map_from_uint64(42949672, bits, max_bucket_val);
-  val_int32 = *(const int32_t*)(&val[0]);
+  val_int32 = *(const int32_t*)(val.data());
   CHECK(val_int32 == 2);
 }
 
@@ -546,10 +548,10 @@ TEST_CASE(
   auto max_bucket_val = ((uint64_t)1 << bits) - 1;
 
   auto val = d1.map_from_uint64(64424509, bits, max_bucket_val);
-  auto val_int32 = *(const int32_t*)(&val[0]);
+  auto val_int32 = *(const int32_t*)(val.data());
   CHECK(val_int32 == -47);
   val = d1.map_from_uint64(42949672, bits, max_bucket_val);
-  val_int32 = *(const int32_t*)(&val[0]);
+  val_int32 = *(const int32_t*)(val.data());
   CHECK(val_int32 == -48);
 }
 
@@ -567,10 +569,10 @@ TEST_CASE(
   auto max_bucket_val = ((uint64_t)1 << bits) - 1;
 
   auto val = d1.map_from_uint64(1503238527, bits, max_bucket_val);
-  auto val_int32 = *(const float*)(&val[0]);
+  auto val_int32 = *(const float*)(val.data());
   CHECK(round(100 * val_int32) == 70);
   val = d1.map_from_uint64(429496735, bits, max_bucket_val);
-  val_int32 = *(const float*)(&val[0]);
+  val_int32 = *(const float*)(val.data());
   CHECK(round(100 * val_int32) == 20);
 }
 
@@ -588,18 +590,161 @@ TEST_CASE(
   std::string v_str = std::string("star\0\0\0\0", 8);
   auto v = d1.map_to_uint64(v_str.data(), v_str.size(), bits, max_bucket_val);
   auto val = d1.map_from_uint64(v, bits, max_bucket_val);
-  auto val_str = std::string((const char*)(&val[0]), 8);
+  auto val_str = std::string((const char*)(val.data()), 8);
   CHECK(val_str == v_str);
 
   v_str = std::string("blue\0\0\0\0", 8);
   v = d1.map_to_uint64(v_str.data(), v_str.size(), bits, max_bucket_val);
   val = d1.map_from_uint64(v, bits, max_bucket_val);
-  val_str = std::string((const char*)(&val[0]), 4);
+  val_str = std::string((const char*)(val.data()), 4);
   CHECK(val_str == std::string("blud", 4));
 
   v_str = std::string("yellow\0\0", 8);
   v = d1.map_to_uint64(v_str.data(), v_str.size(), bits, max_bucket_val);
   val = d1.map_from_uint64(v, bits, max_bucket_val);
-  val_str = std::string((const char*)(&val[0]), 4);
+  val_str = std::string((const char*)(val.data()), 4);
   CHECK(val_str == std::string("yell", 4));
+}
+
+template <typename T>
+void test_int_max_tile_extent_value() {
+  T min = std::numeric_limits<T>::min() + std::is_signed<T>::value;
+  T max = std::numeric_limits<T>::max() - !std::is_signed<T>::value;
+
+  typedef typename std::make_unsigned<T>::type tile_extent_t;
+  T max_extent = (tile_extent_t)max - (tile_extent_t)min + 1;
+
+  auto tile_idx = Dimension::tile_idx(max, min, max_extent);
+
+  CHECK(Dimension::tile_coord_low(tile_idx, min, max_extent) == min);
+  CHECK(Dimension::tile_coord_high(tile_idx, min, max_extent) == max);
+
+  CHECK(Dimension::round_to_tile(min, min, max_extent) == min);
+  CHECK(Dimension::round_to_tile(max, min, max_extent) == min);
+}
+
+template <typename T>
+void test_int_min_tile_extent_value() {
+  T min = std::numeric_limits<T>::min();
+  T max = std::numeric_limits<T>::max();
+
+  T min_extent = 1;
+
+  auto tile_idx = Dimension::tile_idx(max, min, min_extent);
+
+  CHECK(Dimension::tile_coord_low(0, min, min_extent) == min);
+  CHECK(Dimension::tile_coord_high(tile_idx, min, min_extent) == max);
+
+  CHECK(Dimension::round_to_tile(min, min, min_extent) == min);
+  CHECK(Dimension::round_to_tile(max, min, min_extent) == max);
+}
+
+TEST_CASE(
+    "test max tile extent for integer values",
+    "[dimension][integral][max][tile_extent]") {
+  test_int_max_tile_extent_value<int8_t>();
+  test_int_max_tile_extent_value<int16_t>();
+  test_int_max_tile_extent_value<int32_t>();
+  test_int_max_tile_extent_value<int64_t>();
+  test_int_max_tile_extent_value<uint8_t>();
+  test_int_max_tile_extent_value<uint16_t>();
+  test_int_max_tile_extent_value<uint32_t>();
+  test_int_max_tile_extent_value<uint64_t>();
+}
+
+TEST_CASE(
+    "test min tile extent for integer values",
+    "[dimension][integral][min][tile_extent]") {
+  test_int_min_tile_extent_value<int8_t>();
+  test_int_min_tile_extent_value<int16_t>();
+  test_int_min_tile_extent_value<int32_t>();
+  test_int_min_tile_extent_value<int64_t>();
+  test_int_min_tile_extent_value<uint8_t>();
+  test_int_min_tile_extent_value<uint16_t>();
+  test_int_min_tile_extent_value<uint32_t>();
+  test_int_min_tile_extent_value<uint64_t>();
+}
+
+template <class T>
+double basic_verify_overlap_ratio(
+    T range1_low, T range1_high, T range2_low, T range2_high) {
+  auto r1 = TypedRange<T>(range1_low, range1_high);
+  auto r2 = TypedRange<T>(range2_low, range2_high);
+  Dimension d("foo", RangeTraits<T>::datatype);
+  auto ratio = d.overlap_ratio(r1, r2);
+  CHECK(0.0 <= ratio);
+  CHECK(ratio <= 1.0);
+  return ratio;
+}
+
+/**
+ * The denominator of the ratio is computed as range2_high - range2_low. For a
+ * k-bit signed integer, the largest this value can take is 2^k-1, which is
+ * larger than the maximum signed value of 2^(k-1)-1.
+ */
+TEST_CASE(
+    "Range<int32_t>.overlap_ratio: denominator overflow",
+    "[dimension][overlap_ratio][signed][integral]") {
+  typedef int32_t T;
+  auto min = std::numeric_limits<T>::min();
+  auto max = std::numeric_limits<T>::max();
+  basic_verify_overlap_ratio<T>(min / 3, 1, min + 1, max);
+}
+
+/**
+ * Denominator overflow for an unsigned integral type.
+ */
+TEST_CASE(
+    "Range<uint32_t>.overlap_ratio: denominator overflow",
+    "[dimension][overlap_ratio][unsigned][integral]") {
+  typedef uint32_t T;
+  auto min = std::numeric_limits<T>::min();
+  auto max = std::numeric_limits<T>::max();
+  basic_verify_overlap_ratio<T>(0, 1, min + 1, max);
+}
+
+/**
+ * Denominator overflow for double.
+ */
+TEST_CASE(
+    "Range<double>.overlap_ratio: denominator overflow",
+    "[dimension][overlap_ratio][signed][floating]") {
+  typedef double T;
+  auto min = std::numeric_limits<T>::min();
+  auto max = std::numeric_limits<T>::max();
+  basic_verify_overlap_ratio<T>(0, 1, min + 1, max);
+}
+
+TEST_CASE(
+    "Range<uint32_t>.overlap_ratio: max base range",
+    "[dimension][overlap_ratio][unsigned][integral]") {
+  typedef uint32_t T;
+  auto min = std::numeric_limits<T>::min();
+  auto max = std::numeric_limits<T>::max();
+  basic_verify_overlap_ratio<T>(min, min + 1, min, max);
+}
+
+TEST_CASE(
+    "Range<uint32_t>.overlap_ratio: max both ranges",
+    "[dimension][overlap_ratio][unsigned][integral]") {
+  typedef uint32_t T;
+  auto min = std::numeric_limits<T>::min();
+  auto max = std::numeric_limits<T>::max();
+  basic_verify_overlap_ratio<T>(min, max, min, max);
+}
+
+TEST_CASE(
+    "Range<int32_t>.overlap_ratio: over-by-1 legit-max base range",
+    "[dimension][overlap_ratio][signed][integral]") {
+  typedef int32_t T;
+  auto max = std::numeric_limits<T>::max();
+  basic_verify_overlap_ratio<T>(0, 1, -1, max);
+}
+
+TEST_CASE(
+    "Range<int32_t>.overlap_ratio: legit-max base range",
+    "[dimension][overlap_ratio][signed][integral]") {
+  typedef int32_t T;
+  auto max = std::numeric_limits<T>::max();
+  basic_verify_overlap_ratio<T>(0, 1, -2, max - 2);
 }

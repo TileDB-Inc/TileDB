@@ -33,10 +33,9 @@
 #include "tiledb/sm/compressors/bzip_compressor.h"
 #include "tiledb/common/logger.h"
 #include "tiledb/sm/buffer/buffer.h"
-#include "tiledb/sm/buffer/const_buffer.h"
-#include "tiledb/sm/buffer/preallocated_buffer.h"
 
 #include <bzlib.h>
+#include <cmath>
 
 using namespace tiledb::common;
 
@@ -144,7 +143,7 @@ uint64_t BZip::overhead(uint64_t nbytes) {
   // To guarantee that the compressed data will fit in its buffer, allocate an
   // output buffer of size 1% larger than the uncompressed data, plus six
   // hundred extra bytes.
-  return static_cast<uint64_t>(ceil(nbytes * 0.01) + 600);
+  return uint64_t(std::ceil(nbytes * 0.01) + 600);
 }
 
 }  // namespace sm

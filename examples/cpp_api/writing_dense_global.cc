@@ -69,7 +69,7 @@ void write_array() {
   // First submission
   std::vector<int> data = {1, 2, 3, 4};
   query.set_layout(TILEDB_GLOBAL_ORDER)
-      .set_buffer("a", data)
+      .set_data_buffer("a", data)
       .set_subarray(subarray);
   query.submit();
 
@@ -100,7 +100,7 @@ void read_array() {
   Query query(ctx, array);
   query.set_subarray(subarray)
       .set_layout(TILEDB_ROW_MAJOR)
-      .set_buffer("a", data);
+      .set_data_buffer("a", data);
 
   // Submit the query and close the array.
   query.submit();

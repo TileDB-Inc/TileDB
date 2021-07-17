@@ -65,6 +65,9 @@ extern const std::string filelock_name;
 /** The array schema file name. */
 extern const std::string array_schema_filename;
 
+/** The array schema folder name. */
+extern const std::string array_schema_folder_name;
+
 /** The array metadata folder name. */
 extern const std::string array_metadata_folder_name;
 

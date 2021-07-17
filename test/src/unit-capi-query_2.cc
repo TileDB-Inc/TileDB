@@ -38,10 +38,12 @@
 #include "tiledb/sm/c_api/tiledb.h"
 
 #include <climits>
+#include <cmath>
 #include <cstring>
 #include <iostream>
 
 using namespace tiledb::test;
+using std::ceil;
 
 const uint64_t DIM_DOMAIN[4] = {1, 10, 1, 10};
 
@@ -572,16 +574,13 @@ void Query2Fx::write_dense_array(
   CHECK(rc == TILEDB_OK);
   rc = tiledb_query_set_layout(ctx_, query, TILEDB_ROW_MAJOR);
   CHECK(rc == TILEDB_OK);
-  rc = tiledb_query_set_buffer(ctx_, query, "a", (void*)a.data(), &a_size);
+  rc = tiledb_query_set_data_buffer(ctx_, query, "a", (void*)a.data(), &a_size);
   CHECK(rc == TILEDB_OK);
-  rc = tiledb_query_set_buffer_var(
-      ctx_,
-      query,
-      attr_b_name,
-      (uint64_t*)b_off.data(),
-      &b_off_size,
-      (void*)b_val.data(),
-      &b_val_size);
+  rc = tiledb_query_set_data_buffer(
+      ctx_, query, attr_b_name, (void*)b_val.data(), &b_val_size);
+  CHECK(rc == TILEDB_OK);
+  rc = tiledb_query_set_offsets_buffer(
+      ctx_, query, attr_b_name, (uint64_t*)b_off.data(), &b_off_size);
   CHECK(rc == TILEDB_OK);
 
   // Submit query
@@ -625,18 +624,15 @@ void Query2Fx::write_sparse_array(
   CHECK(rc == TILEDB_OK);
   rc = tiledb_query_set_layout(ctx_, query, TILEDB_UNORDERED);
   CHECK(rc == TILEDB_OK);
-  rc = tiledb_query_set_buffer(ctx_, query, "a", (void*)a.data(), &a_size);
+  rc = tiledb_query_set_data_buffer(ctx_, query, "a", (void*)a.data(), &a_size);
   CHECK(rc == TILEDB_OK);
-  rc = tiledb_query_set_buffer_var(
-      ctx_,
-      query,
-      "b",
-      (uint64_t*)b_off.data(),
-      &b_off_size,
-      (void*)b_val.data(),
-      &b_val_size);
+  rc = tiledb_query_set_data_buffer(
+      ctx_, query, "b", (void*)b_val.data(), &b_val_size);
   CHECK(rc == TILEDB_OK);
-  rc = tiledb_query_set_buffer(
+  rc = tiledb_query_set_offsets_buffer(
+      ctx_, query, "b", (uint64_t*)b_off.data(), &b_off_size);
+  CHECK(rc == TILEDB_OK);
+  rc = tiledb_query_set_data_buffer(
       ctx_, query, TILEDB_COORDS, (void*)coords.data(), &coords_size);
   CHECK(rc == TILEDB_OK);
 
@@ -2850,16 +2846,13 @@ TEST_CASE_METHOD(
   CHECK(rc == TILEDB_OK);
   rc = tiledb_query_set_layout(ctx_, query, TILEDB_ROW_MAJOR);
   CHECK(rc == TILEDB_OK);
-  rc = tiledb_query_set_buffer(ctx_, query, "a", (void*)a.data(), &a_size);
+  rc = tiledb_query_set_data_buffer(ctx_, query, "a", (void*)a.data(), &a_size);
   CHECK(rc == TILEDB_OK);
-  rc = tiledb_query_set_buffer_var(
-      ctx_,
-      query,
-      "b",
-      (uint64_t*)b_off.data(),
-      &b_off_size,
-      (void*)b_val.data(),
-      &b_val_size);
+  rc = tiledb_query_set_data_buffer(
+      ctx_, query, "b", (void*)b_val.data(), &b_val_size);
+  CHECK(rc == TILEDB_OK);
+  rc = tiledb_query_set_offsets_buffer(
+      ctx_, query, "b", (uint64_t*)b_off.data(), &b_off_size);
   CHECK(rc == TILEDB_OK);
 
   // No fragments written yet
@@ -2951,8 +2944,9 @@ TEST_CASE_METHOD(
   uint64_t d1_data_size = sizeof(d1_data) - 1;  // Ignore '\0'
   uint64_t d1_off[] = {0, 1, 3, 5};
   uint64_t d1_off_size = sizeof(d1_off);
-  rc = tiledb_query_set_buffer_var(
-      ctx_, query, "d1", d1_off, &d1_off_size, d1_data, &d1_data_size);
+  rc = tiledb_query_set_data_buffer(ctx_, query, "d1", d1_data, &d1_data_size);
+  REQUIRE(rc == TILEDB_OK);
+  rc = tiledb_query_set_offsets_buffer(ctx_, query, "d1", d1_off, &d1_off_size);
   REQUIRE(rc == TILEDB_OK);
 
   // Add 1 range per dimension
@@ -3080,14 +3074,10 @@ TEST_CASE_METHOD(
   std::vector<int32_t> data = {0, 1, 2, 3, 4, 5, 6, 7, 8, 9};
   uint64_t data_size = data.size() * sizeof(int32_t);
 
-  rc = tiledb_query_set_buffer_var(
-      ctx_,
-      query,
-      "a",
-      (uint64_t*)offsets.data(),
-      &offsets_size,
-      data.data(),
-      &data_size);
+  rc = tiledb_query_set_data_buffer(ctx_, query, "a", data.data(), &data_size);
+  CHECK(rc == TILEDB_OK);
+  rc = tiledb_query_set_offsets_buffer(
+      ctx_, query, "a", (uint64_t*)offsets.data(), &offsets_size);
   CHECK(rc == TILEDB_OK);
 
   rc = tiledb_query_submit(ctx_, query);
@@ -3118,14 +3108,11 @@ TEST_CASE_METHOD(
   data2.resize(data.size());
   offsets2.resize(offsets.size());
 
-  rc = tiledb_query_set_buffer_var(
-      ctx_,
-      query2,
-      "a",
-      (uint64_t*)offsets2.data(),
-      &offsets_size,
-      data2.data(),
-      &data_size);
+  rc =
+      tiledb_query_set_data_buffer(ctx_, query2, "a", data2.data(), &data_size);
+  CHECK(rc == TILEDB_OK);
+  rc = tiledb_query_set_offsets_buffer(
+      ctx_, query2, "a", (uint64_t*)offsets2.data(), &offsets_size);
   CHECK(rc == TILEDB_OK);
 
   rc = tiledb_query_set_subarray(ctx_, query2, &dom);

@@ -35,11 +35,9 @@
 
 #include <cassert>
 #include <cstring>
+#include <string>
 #include <vector>
-
-#include "tiledb/common/logger.h"
-
-using namespace tiledb::common;
+#include "tiledb/common/logger_public.h"
 
 namespace tiledb {
 namespace sm {
@@ -260,14 +258,108 @@ class Range {
 /** An N-dimensional range, consisting of a vector of 1D ranges. */
 typedef std::vector<Range> NDRange;
 
-/** A value as a vector of bytes. */
-typedef std::vector<uint8_t> ByteVecValue;
+/** An untyped value, barely more than raw storage. This class is only
+ * transitional. All uses should be rewritten to use ordinary types. Consider
+ * it deprecated at creation.
+ *
+ * This class started off as a typedef for a byte vector. In its current state,
+ * it provides methods that capture common patterns of usage, avoiding bleeding
+ * all its abstraction into calling code. It's not perfect, and never will be.
+ *
+ * A minimal number of vector methods are forwarded outside the class to allow
+ * not-yet-converted code its legacy behavior. The incremental goal is to remove
+ * such functions as the code base evolves away from untyped variables entirely.
+ */
+
+class ByteVecValue {
+  typedef std::vector<uint8_t> Base;
+  std::vector<uint8_t> x_;
+
+ public:
+  typedef Base::size_type size_type;
+  typedef Base::reference reference;
+  /** Default constructor */
+  ByteVecValue()
+      : x_() {
+  }
+  /** Fixed-size constructor */
+  explicit ByteVecValue(Base::size_type n)
+      : x_(n) {
+  }
+  /** Move constructor from underlying vector type */
+  explicit ByteVecValue(std::vector<uint8_t>&& y)
+      : x_(std::move(y)) {
+  }
+
+  /**
+   * Performs an assignment as if a variable of type T were located at the
+   * beginning of storage.
+   *
+   * @post size() >= sizeof(T)
+   *
+   * @tparam T
+   * @return A reference to the phantom variable which was assigned.
+   */
+  template <class T>
+  T& assign_as(T val = T()) {
+    if (size() < sizeof(T))
+      x_.resize(sizeof(T));
+    T& a = *reinterpret_cast<T*>(data());
+    a = val;
+    return a;
+  }
+
+  /// Remove any existing value.
+  void assign_as_void() noexcept {
+    x_.clear();
+  }
+
+  /**
+   * Returns the value of a variable of type T as if it were located at the
+   * beginning of storage.
+   *
+   * Intentionally unimplemented in general and only certain specializations
+   * are available.
+   *
+   * @tparam T
+   * @return
+   */
+  template <class T>
+  T rvalue_as() const;
+
+  /// Forwarded from vector
+  void resize(size_type count) {
+    x_.resize(count);
+  }
+  /// Forwarded from vector
+  void shrink_to_fit() {
+    x_.shrink_to_fit();
+  }
+  /// Forwarded from vector
+  uint8_t* data() noexcept {
+    return x_.data();
+  }
+  /// Forwarded from vector
+  const uint8_t* data() const noexcept {
+    return x_.data();
+  }
+  /// Forwarded from vector
+  Base::size_type size() const noexcept {
+    return x_.size();
+  }
+  /**
+   * Conversion to boolean in the style of std::optional.
+   * @return True if a value is present, false otherwise.
+   */
+  explicit operator bool() const noexcept {
+    return !x_.empty();
+  }
+};
 
 /** A byte vector. */
 typedef std::vector<uint8_t> ByteVec;
 
 }  // namespace sm
-
 }  // namespace tiledb
 
 #endif  // TILEDB_TYPES_H

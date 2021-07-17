@@ -176,6 +176,7 @@ class FragmentInfo {
    * only if the array is encrypted.
    */
   Status load(
+      const Config config,
       EncryptionType encryption_type,
       const void* encryption_key,
       uint32_t key_length);

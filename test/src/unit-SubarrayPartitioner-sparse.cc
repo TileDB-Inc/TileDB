@@ -2237,10 +2237,11 @@ TEST_CASE_METHOD(
   uint64_t d_off_size = sizeof(d_off);
   int32_t a_data[] = {3, 2, 4, 1};
   uint64_t a_size = sizeof(a_data);
-  rc = tiledb_query_set_buffer_var(
-      ctx_, query, "d", d_off, &d_off_size, d_data, &d_data_size);
+  rc = tiledb_query_set_data_buffer(ctx_, query, "d", d_data, &d_data_size);
   REQUIRE(rc == TILEDB_OK);
-  rc = tiledb_query_set_buffer(ctx_, query, "a", a_data, &a_size);
+  rc = tiledb_query_set_offsets_buffer(ctx_, query, "d", d_off, &d_off_size);
+  REQUIRE(rc == TILEDB_OK);
+  rc = tiledb_query_set_data_buffer(ctx_, query, "a", a_data, &a_size);
   REQUIRE(rc == TILEDB_OK);
   rc = tiledb_query_set_layout(ctx_, query, TILEDB_UNORDERED);
   REQUIRE(rc == TILEDB_OK);
@@ -2496,10 +2497,11 @@ TEST_CASE_METHOD(
   uint64_t d_off_size = sizeof(d_off);
   int32_t a_data[] = {3, 2, 4, 1};
   uint64_t a_size = sizeof(a_data);
-  rc = tiledb_query_set_buffer_var(
-      ctx_, query, "d", d_off, &d_off_size, d_data, &d_data_size);
+  rc = tiledb_query_set_data_buffer(ctx_, query, "d", d_data, &d_data_size);
   REQUIRE(rc == TILEDB_OK);
-  rc = tiledb_query_set_buffer(ctx_, query, "a", a_data, &a_size);
+  rc = tiledb_query_set_offsets_buffer(ctx_, query, "d", d_off, &d_off_size);
+  REQUIRE(rc == TILEDB_OK);
+  rc = tiledb_query_set_data_buffer(ctx_, query, "a", a_data, &a_size);
   REQUIRE(rc == TILEDB_OK);
   rc = tiledb_query_set_layout(ctx_, query, TILEDB_UNORDERED);
   REQUIRE(rc == TILEDB_OK);

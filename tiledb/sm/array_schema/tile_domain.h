@@ -36,6 +36,7 @@
 #include <algorithm>
 #include <vector>
 
+#include "tiledb/sm/array_schema/dimension.h"
 #include "tiledb/sm/enums/layout.h"
 #include "tiledb/sm/misc/types.h"
 
@@ -135,7 +136,8 @@ class TileDomain {
     for (unsigned d = 0; d < dim_num_; ++d) {
       auto dim_dom = (const T*)domain_[d].data();
       auto tile_extent = *(const T*)tile_extents_[d].data();
-      ret[d] = dim_dom[0] + tile_coords[d] * tile_extent;
+      ret[d] =
+          Dimension::tile_coord_low(tile_coords[d], dim_dom[0], tile_extent);
     }
 
     return ret;
@@ -166,8 +168,10 @@ class TileDomain {
     for (unsigned d = 0; d < dim_num_; ++d) {
       auto dim_dom = (const T*)domain_[d].data();
       auto tile_extent = *(const T*)tile_extents_[d].data();
-      ret[2 * d] = tile_coords[d] * tile_extent + dim_dom[0];
-      ret[2 * d + 1] = ret[2 * d] + tile_extent - 1;
+      ret[2 * d] =
+          Dimension::tile_coord_low(tile_coords[d], dim_dom[0], tile_extent);
+      ret[2 * d + 1] =
+          Dimension::tile_coord_high(tile_coords[d], dim_dom[0], tile_extent);
     }
 
     return ret;
@@ -308,8 +312,9 @@ class TileDomain {
       auto tile_extent = *(const T*)tile_extents[d].data();
       assert(ds[0] <= ds[1]);
       assert(ds[0] >= dim_dom[0] && ds[1] <= dim_dom[1]);
-      tile_domain_[2 * d] = (ds[0] - dim_dom[0]) / tile_extent;
-      tile_domain_[2 * d + 1] = (ds[1] - dim_dom[0]) / tile_extent;
+      tile_domain_[2 * d] = Dimension::tile_idx(ds[0], dim_dom[0], tile_extent);
+      tile_domain_[2 * d + 1] =
+          Dimension::tile_idx(ds[1], dim_dom[0], tile_extent);
     }
   }
 

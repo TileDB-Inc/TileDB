@@ -34,10 +34,15 @@
 #ifdef TILEDB_SERIALIZATION
 #include "tiledb/sm/serialization/capnp_utils.h"
 #include "tiledb/sm/serialization/query.h"
-#include "tiledb/sm/serialization/tiledb-rest.capnp.h"
+#include "tiledb/sm/serialization/tiledb-rest.h"
 #include "tiledb/sm/rest/curl.h" // must be included last to avoid Windows.h
 #endif
 // clang-format on
+
+// Something, somewhere seems to be defining TIME_MS as a macro
+#if defined(TIME_MS)
+#undef TIME_MS
+#endif
 
 #include <cassert>
 

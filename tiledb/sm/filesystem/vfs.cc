@@ -972,7 +972,7 @@ Status VFS::init(
   }
 #endif
 
-#ifdef WIN32
+#ifdef _WIN32
   win_.init(config_, io_tp_);
 #else
   posix_.init(config_, io_tp_);

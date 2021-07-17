@@ -121,9 +121,10 @@ void write_axes_array(tiledb::Context& ctx, const std::string& array_uri) {
   tiledb::Array array(ctx, array_uri, TILEDB_WRITE);
   tiledb::Query query(ctx, array, TILEDB_WRITE);
   query.set_layout(TILEDB_UNORDERED)
-      .set_buffer("color", label_offsets, labels)
-      .set_buffer("id", ids)
-      .set_buffer("timestamp", timestamps);
+      .set_data_buffer("color", labels)
+      .set_offsets_buffer("color", label_offsets)
+      .set_data_buffer("id", ids)
+      .set_data_buffer("timestamp", timestamps);
 
   // Perform the write and close the array.
   query.submit();
@@ -147,10 +148,11 @@ void write_data_array(tiledb::Context& ctx, const std::string& array_uri) {
   tiledb::Array array(ctx, array_uri, TILEDB_WRITE);
   tiledb::Query query(ctx, array, TILEDB_WRITE);
   query.set_layout(TILEDB_UNORDERED)
-      .set_buffer("id", ids)
-      .set_buffer("timestamp", timestamps)
-      .set_buffer("weight", weights)
-      .set_buffer("element", element_offsets, elements);
+      .set_data_buffer("id", ids)
+      .set_data_buffer("timestamp", timestamps)
+      .set_data_buffer("weight", weights)
+      .set_data_buffer("element", elements)
+      .set_offsets_buffer("element", element_offsets);
 
   // Perform the write and close the array.
   query.submit();
@@ -183,8 +185,8 @@ void read_data_array_with_label(
   std::vector<int32_t> ids_coords(4);
   std::vector<int64_t> timestamps_coords(4);
   label_query.set_layout(TILEDB_ROW_MAJOR)
-      .set_buffer("id", ids_coords)
-      .set_buffer("timestamp", timestamps_coords);
+      .set_data_buffer("id", ids_coords)
+      .set_data_buffer("timestamp", timestamps_coords);
 
   // Submit the query and close the array.
   label_query.submit();
@@ -208,10 +210,11 @@ void read_data_array_with_label(
   std::vector<float> weights(10);
   std::vector<char> elements(256);
   std::vector<uint64_t> element_offsets(10);
-  data_query.set_buffer("id", ids)
-      .set_buffer("timestamp", timestamps)
-      .set_buffer("weight", weights)
-      .set_buffer("element", element_offsets, elements);
+  data_query.set_data_buffer("id", ids)
+      .set_data_buffer("timestamp", timestamps)
+      .set_data_buffer("weight", weights)
+      .set_data_buffer("element", elements)
+      .set_offsets_buffer("element", element_offsets);
 
   // Submit the query and close the array.
   data_query.submit();

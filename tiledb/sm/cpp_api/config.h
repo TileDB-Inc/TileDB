@@ -309,11 +309,13 @@ class Config {
    *    `array_meta` (remove consolidated array metadata files). <br>
    *    **Default**: fragments
    * - `sm.vacuum.timestamp_start` <br>
+   *    **Experimental** <br>
    *    When set, an array will be vacuumed between this value and
    *    `sm.vacuum.timestamp_end` (inclusive). <br>
    *    Only for `fragments` and `array_meta` vacuum mode. <br>
    *    **Default**: 0
    * - `sm.vacuum.timestamp_end` <br>
+   *    **Experimental** <br>
    *    When set, an array will be vacuumed between `sm.vacuum.timestamp_start`
    *    and this value (inclusive). <br>
    *    Only for `fragments` and `array_meta` vacuum mode. <br>
@@ -351,11 +353,13 @@ class Config {
    *    considered for consolidation in a single step.<br>
    *    **Default**: 0.0
    * - `sm.consolidation.timestamp_start` <br>
+   *    **Experimental** <br>
    *    When set, an array will be consolidated between this value and
    *    `sm.consolidation.timestamp_end` (inclusive). <br>
    *    Only for `fragments` and `array_meta` consolidation mode. <br>
    *    **Default**: 0
    * - `sm.consolidation.timestamp_end` <br>
+   *    **Experimental** <br>
    *    When set, an array will be consolidated between
    *    `sm.consolidation.timestamp_start` and this value (inclusive). <br>
    *    Only for `fragments` and `array_meta` consolidation mode. <br>
@@ -380,11 +384,12 @@ class Config {
    *    The offsets format (`bytes` or `elements`) to be used for
    *    var-sized attributes.<br>
    *    **Default**: bytes
-   * - `sm.sub_partitioner_memory_budget` <br>
-   *    The memory budget used by the read algorithm to force partition the
-   *    query range in case sorting is much slower than the partitioning
-   *    overhead. <br>
-   *    **Default**: 0
+   * - `sm.use_refactored_readers` <br>
+   *    Use the refactored readers or not. <br>
+   *    **Default**: false
+   * - `sm.mem.total_budget` <br>
+   *    Memory budget for the sparse global order reader. <br>
+   *    **Default**: \10GB
    * - `vfs.read_ahead_size` <br>
    *    The maximum byte size to read-ahead from the backend. <br>
    *    **Default**: 102400
@@ -571,6 +576,26 @@ class Config {
    *    The server-side encryption algorithm to use. Supported non-empty
    *    values are "aes256" and "kms" (AWS key management service). <br>
    *    **Default**: ""
+   * - `vfs.s3.bucket_canned_acl` <br>
+   *    Names of values found in Aws::S3::Model::BucketCannedACL enumeration.
+   *    "NOT_SET"
+   *    "private_"
+   *    "public_read"
+   *    "public_read_write"
+   *    "authenticated_read"
+   *    **Default**: "NOT_SET"
+   * - `vfs.s3.object_canned_acl` <br>
+   *    Names of values found in Aws::S3::Model::ObjectCannedACL enumeration.
+   *    (The first 5 are the same as for "vfs.s3.bucket_canned_acl".)
+   *    "NOT_SET"
+   *    "private_"
+   *    "public_read"
+   *    "public_read_write"
+   *    "authenticated_read"
+   *    (The following three items are found only in
+   *     Aws::S3::Model::ObjectCannedACL.) "aws_exec_read" "owner_read"
+   *    "bucket_owner_full_control"
+   *    **Default**: "NOT_SET"
    * - `vfs.hdfs.name_node_uri"` <br>
    *    Name node for HDFS. <br>
    *    **Default**: ""

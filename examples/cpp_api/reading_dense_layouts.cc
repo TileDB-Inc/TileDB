@@ -70,7 +70,7 @@ void write_array() {
   // Open the array for writing and create the query.
   Array array(ctx, array_name, TILEDB_WRITE);
   Query query(ctx, array);
-  query.set_layout(TILEDB_GLOBAL_ORDER).set_buffer("a", data);
+  query.set_layout(TILEDB_GLOBAL_ORDER).set_data_buffer("a", data);
 
   // Perform the write and close the array.
   query.submit();
@@ -104,9 +104,9 @@ void read_array(tiledb_layout_t layout) {
   Query query(ctx, array);
   query.set_subarray(subarray)
       .set_layout(layout)
-      .set_buffer("a", data)
-      .set_buffer("rows", coords_rows)
-      .set_buffer("cols", coords_cols);
+      .set_data_buffer("a", data)
+      .set_data_buffer("rows", coords_rows)
+      .set_data_buffer("cols", coords_cols);
 
   // Submit the query and close the array.
   query.submit();

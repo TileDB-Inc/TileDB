@@ -82,6 +82,7 @@ class FragmentInfo {
   }
 
   /** Loads the fragment info from an encrypted array. */
+  TILEDB_DEPRECATED
   void load(
       tiledb_encryption_type_t encryption_type,
       const std::string& encryption_key) const {

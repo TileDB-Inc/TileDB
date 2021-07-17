@@ -70,6 +70,57 @@ namespace serialization {
 
 enum class SerializationContext { CLIENT, SERVER, BACKUP };
 
+Status stats_to_capnp(Stats& stats, capnp::Stats::Builder* stats_builder) {
+  // Build counters
+  const auto counters = stats.counters();
+  if (counters != nullptr && !counters->empty()) {
+    auto counters_builder = stats_builder->initCounters();
+    auto entries_builder = counters_builder.initEntries(counters->size());
+    uint64_t index = 0;
+    for (const auto& entry : *counters) {
+      entries_builder[index].setKey(entry.first);
+      entries_builder[index].setValue(entry.second);
+      ++index;
+    }
+  }
+
+  // Build timers
+  const auto timers = stats.timers();
+  if (timers != nullptr && !timers->empty()) {
+    auto timers_builder = stats_builder->initTimers();
+    auto entries_builder = timers_builder.initEntries(timers->size());
+    uint64_t index = 0;
+    for (const auto& entry : *timers) {
+      entries_builder[index].setKey(entry.first);
+      entries_builder[index].setValue(entry.second);
+      ++index;
+    }
+  }
+
+  return Status::Ok();
+}
+
+Status stats_from_capnp(
+    const capnp::Stats::Reader& stats_reader, Stats* stats) {
+  if (stats_reader.hasCounters()) {
+    auto counters = stats->counters();
+    auto counters_reader = stats_reader.getCounters();
+    for (const auto entry : counters_reader.getEntries()) {
+      (*counters)[std::string(entry.getKey().cStr())] = entry.getValue();
+    }
+  }
+
+  if (stats_reader.hasTimers()) {
+    auto timers = stats->timers();
+    auto timers_reader = stats_reader.getCounters();
+    for (const auto entry : timers_reader.getEntries()) {
+      (*timers)[std::string(entry.getKey().cStr())] = entry.getValue();
+    }
+  }
+
+  return Status::Ok();
+}
+
 Status array_to_capnp(
     const Array& array, capnp::Array::Builder* array_builder) {
   array_builder->setUri(array.array_uri().to_string());
@@ -121,6 +172,13 @@ Status subarray_to_capnp(
     range_builder.setBuffer(capnpVector.asPtr());
   }
 
+  // If stats object exists set its cap'n proto object
+  stats::Stats* stats = subarray->stats();
+  if (stats != nullptr) {
+    auto stats_builder = builder->initStats();
+    RETURN_NOT_OK(stats_to_capnp(*stats, &stats_builder));
+  }
+
   return Status::Ok();
 }
 
@@ -162,6 +220,15 @@ Status subarray_from_capnp(
       Range range(data_ptr.begin(), data.size());
       RETURN_NOT_OK(subarray->set_ranges_for_dim(i, {range}));
       subarray->set_is_default(i, range_reader.getHasDefaultRange());
+    }
+  }
+
+  // If cap'n proto object has stats set it on c++ object
+  if (reader.hasStats()) {
+    stats::Stats* stats = subarray->stats();
+    // We should always have a stats here
+    if (stats != nullptr) {
+      RETURN_NOT_OK(stats_from_capnp(reader.getStats(), stats));
     }
   }
 
@@ -244,6 +311,13 @@ Status subarray_partitioner_to_capnp(
   builder->setMemoryBudget(mem_budget);
   builder->setMemoryBudgetVar(mem_budget_var);
   builder->setMemoryBudgetValidity(mem_budget_validity);
+
+  // If stats object exists set its cap'n proto object
+  stats::Stats* stats = partitioner.stats();
+  if (stats != nullptr) {
+    auto stats_builder = builder->initStats();
+    RETURN_NOT_OK(stats_to_capnp(*stats, &stats_builder));
+  }
 
   return Status::Ok();
 }
@@ -370,6 +444,15 @@ Status subarray_partitioner_from_capnp(
       reader.getMemoryBudgetVar(),
       reader.getMemoryBudgetValidity()));
 
+  // If cap'n proto object has stats set it on c++ object
+  if (reader.hasStats()) {
+    auto stats = partitioner->stats();
+    // We should always have stats
+    if (stats != nullptr) {
+      RETURN_NOT_OK(stats_from_capnp(reader.getStats(), stats));
+    }
+  }
+
   return Status::Ok();
 }
 
@@ -395,6 +478,7 @@ Status read_state_to_capnp(
 Status read_state_from_capnp(
     const Array* array,
     const capnp::ReadState::Reader& read_state_reader,
+    Query* query,
     Reader* reader,
     ThreadPool* compute_tp) {
   auto read_state = reader->read_state();
@@ -407,7 +491,7 @@ Status read_state_from_capnp(
   if (read_state_reader.hasSubarrayPartitioner()) {
     RETURN_NOT_OK(subarray_partitioner_from_capnp(
         reader->stats(),
-        reader->config(),
+        query->config(),
         array,
         read_state_reader.getSubarrayPartitioner(),
         &read_state->partitioner_,
@@ -462,25 +546,34 @@ Status condition_to_capnp(
 }
 
 Status reader_to_capnp(
-    const Reader& reader, capnp::QueryReader::Builder* reader_builder) {
-  auto array_schema = reader.array_schema();
+    const Query& query,
+    const Reader& reader,
+    capnp::QueryReader::Builder* reader_builder) {
+  auto array_schema = query.array_schema();
 
   // Subarray layout
-  const auto& layout = layout_str(reader.layout());
+  const auto& layout = layout_str(query.layout());
   reader_builder->setLayout(layout);
 
   // Subarray
   auto subarray_builder = reader_builder->initSubarray();
   RETURN_NOT_OK(
-      subarray_to_capnp(array_schema, reader.subarray(), &subarray_builder));
+      subarray_to_capnp(array_schema, query.subarray(), &subarray_builder));
 
   // Read state
   RETURN_NOT_OK(read_state_to_capnp(array_schema, reader, reader_builder));
 
-  const QueryCondition* condition = reader.condition();
+  const QueryCondition* condition = query.condition();
   if (!condition->empty()) {
     auto condition_builder = reader_builder->initCondition();
     RETURN_NOT_OK(condition_to_capnp(*condition, &condition_builder));
+  }
+
+  // If stats object exists set its cap'n proto object
+  stats::Stats* stats = reader.stats();
+  if (stats != nullptr) {
+    auto stats_builder = reader_builder->initStats();
+    RETURN_NOT_OK(stats_to_capnp(*stats, &stats_builder));
   }
 
   return Status::Ok();
@@ -527,58 +620,78 @@ Status condition_from_capnp(
 
 Status reader_from_capnp(
     const capnp::QueryReader::Reader& reader_reader,
+    Query* query,
     Reader* reader,
     ThreadPool* compute_tp) {
-  auto array = reader->array();
+  auto array = query->array();
 
   // Layout
   Layout layout = Layout::ROW_MAJOR;
   RETURN_NOT_OK(layout_enum(reader_reader.getLayout(), &layout));
-  RETURN_NOT_OK(reader->set_layout(layout));
+  RETURN_NOT_OK(query->set_layout_unsafe(layout));
 
   // Subarray
   Subarray subarray(array, layout, reader->stats(), false);
   auto subarray_reader = reader_reader.getSubarray();
   RETURN_NOT_OK(subarray_from_capnp(subarray_reader, &subarray));
-  RETURN_NOT_OK(reader->set_subarray(subarray));
+  RETURN_NOT_OK(query->set_subarray_unsafe(subarray));
 
   // Read state
   if (reader_reader.hasReadState())
     RETURN_NOT_OK(read_state_from_capnp(
-        array, reader_reader.getReadState(), reader, compute_tp));
+        array, reader_reader.getReadState(), query, reader, compute_tp));
 
   // Query condition
   if (reader_reader.hasCondition()) {
     auto condition_reader = reader_reader.getCondition();
     QueryCondition condition;
     RETURN_NOT_OK(condition_from_capnp(condition_reader, &condition));
-    RETURN_NOT_OK(reader->set_condition(condition));
+    RETURN_NOT_OK(query->set_condition(condition));
+  }
+
+  // If cap'n proto object has stats set it on c++ object
+  if (reader_reader.hasStats()) {
+    stats::Stats* stats = reader->stats();
+    // We should always have a stats here
+    if (stats != nullptr) {
+      RETURN_NOT_OK(stats_from_capnp(reader_reader.getStats(), stats));
+    }
   }
 
   return Status::Ok();
 }
 
 Status writer_to_capnp(
-    const Writer& writer, capnp::Writer::Builder* writer_builder) {
+    const Query& query,
+    Writer& writer,
+    capnp::Writer::Builder* writer_builder) {
   writer_builder->setCheckCoordDups(writer.get_check_coord_dups());
   writer_builder->setCheckCoordOOB(writer.get_check_coord_oob());
   writer_builder->setDedupCoords(writer.get_dedup_coords());
 
-  const auto* schema = writer.array_schema();
-  const auto* subarray = writer.subarray();
-  if (subarray != nullptr) {
+  const auto* array_schema = query.array_schema();
+
+  if (array_schema->dense()) {
+    std::vector<uint8_t> subarray_flat;
+    RETURN_NOT_OK(query.subarray()->to_byte_vec(&subarray_flat));
     auto subarray_builder = writer_builder->initSubarray();
-    RETURN_NOT_OK(
-        utils::serialize_subarray(subarray_builder, schema, subarray));
+    RETURN_NOT_OK(utils::serialize_subarray(
+        subarray_builder, array_schema, &subarray_flat[0]));
   }
 
   // Subarray
-  const auto subarray_ranges = writer.subarray_ranges();
+  const auto subarray_ranges = query.subarray();
   if (!subarray_ranges->empty()) {
     auto subarray_builder = writer_builder->initSubarrayRanges();
-    const ArraySchema* array_schema = writer.array_schema();
     RETURN_NOT_OK(
         subarray_to_capnp(array_schema, subarray_ranges, &subarray_builder));
+  }
+
+  // If stats object exists set its cap'n proto object
+  stats::Stats* stats = writer.stats();
+  if (stats != nullptr) {
+    auto stats_builder = writer_builder->initStats();
+    RETURN_NOT_OK(stats_to_capnp(*stats, &stats_builder));
   }
 
   return Status::Ok();
@@ -590,11 +703,19 @@ Status writer_from_capnp(
   writer->set_check_coord_oob(writer_reader.getCheckCoordOOB());
   writer->set_dedup_coords(writer_reader.getDedupCoords());
 
+  // If cap'n proto object has stats set it on c++ object
+  if (writer_reader.hasStats()) {
+    stats::Stats* stats = writer->stats();
+    // We should always have a stats here
+    if (stats != nullptr) {
+      RETURN_NOT_OK(stats_from_capnp(writer_reader.getStats(), stats));
+    }
+  }
+
   return Status::Ok();
 }
 
-Status query_to_capnp(
-    const Query& query, capnp::Query::Builder* query_builder) {
+Status query_to_capnp(Query& query, capnp::Query::Builder* query_builder) {
   // For easy reference
   auto layout = query.layout();
   auto type = query.type();
@@ -685,28 +806,35 @@ Status query_to_capnp(
 
   if (type == QueryType::READ) {
     auto builder = query_builder->initReader();
-    auto reader = query.reader();
+    auto reader = (Reader*)query.strategy();
 
     query_builder->setVarOffsetsMode(reader->offsets_mode());
     query_builder->setVarOffsetsAddExtraElement(
         reader->offsets_extra_element());
     query_builder->setVarOffsetsBitsize(reader->offsets_bitsize());
-    RETURN_NOT_OK(reader_to_capnp(*reader, &builder));
+    RETURN_NOT_OK(reader_to_capnp(query, *reader, &builder));
   } else {
     auto builder = query_builder->initWriter();
-    auto writer = query.writer();
+    auto writer = (Writer*)query.strategy();
 
-    query_builder->setVarOffsetsMode(writer->get_offsets_mode());
+    query_builder->setVarOffsetsMode(writer->offsets_mode());
     query_builder->setVarOffsetsAddExtraElement(
-        writer->get_offsets_extra_element());
-    query_builder->setVarOffsetsBitsize(writer->get_offsets_bitsize());
-    RETURN_NOT_OK(writer_to_capnp(*writer, &builder));
+        writer->offsets_extra_element());
+    query_builder->setVarOffsetsBitsize(writer->offsets_bitsize());
+    RETURN_NOT_OK(writer_to_capnp(query, *writer, &builder));
   }
 
   // Serialize Config
   const Config* config = query.config();
   auto config_builder = query_builder->initConfig();
   RETURN_NOT_OK(config_to_capnp(config, &config_builder));
+
+  // If stats object exists set its cap'n proto object
+  stats::Stats* stats = query.stats();
+  if (stats != nullptr) {
+    auto stats_builder = query_builder->initStats();
+    RETURN_NOT_OK(stats_to_capnp(*stats, &stats_builder));
+  }
 
   return Status::Ok();
 }
@@ -748,7 +876,7 @@ Status query_from_capnp(
   // Deserialize layout.
   Layout layout = Layout::UNORDERED;
   RETURN_NOT_OK(layout_enum(query_reader.getLayout().cStr(), &layout));
-  RETURN_NOT_OK(query->set_layout(layout));
+  RETURN_NOT_OK(query->set_layout_unsafe(layout));
 
   // Deserialize array instance.
   RETURN_NOT_OK(array_from_capnp(query_reader.getArray(), array));
@@ -837,24 +965,26 @@ Status query_from_capnp(
       // For writes we need to use get_buffer and clientside
       if (var_size) {
         if (!nullable) {
-          RETURN_NOT_OK(query->get_buffer(
+          RETURN_NOT_OK(query->get_data_buffer(
+              name.c_str(), &existing_buffer, &existing_buffer_size_ptr));
+          RETURN_NOT_OK(query->get_offsets_buffer(
               name.c_str(),
               &existing_offset_buffer,
-              &existing_offset_buffer_size_ptr,
-              &existing_buffer,
-              &existing_buffer_size_ptr));
+              &existing_offset_buffer_size_ptr));
 
           if (existing_offset_buffer_size_ptr != nullptr)
             existing_offset_buffer_size = *existing_offset_buffer_size_ptr;
           if (existing_buffer_size_ptr != nullptr)
             existing_buffer_size = *existing_buffer_size_ptr;
         } else {
-          RETURN_NOT_OK(query->get_buffer_vbytemap(
+          RETURN_NOT_OK(query->get_data_buffer(
+              name.c_str(), &existing_buffer, &existing_buffer_size_ptr));
+          RETURN_NOT_OK(query->get_offsets_buffer(
               name.c_str(),
               &existing_offset_buffer,
-              &existing_offset_buffer_size_ptr,
-              &existing_buffer,
-              &existing_buffer_size_ptr,
+              &existing_offset_buffer_size_ptr));
+          RETURN_NOT_OK(query->get_validity_buffer(
+              name.c_str(),
               &existing_validity_buffer,
               &existing_validity_buffer_size_ptr));
 
@@ -867,16 +997,16 @@ Status query_from_capnp(
         }
       } else {
         if (!nullable) {
-          RETURN_NOT_OK(query->get_buffer(
+          RETURN_NOT_OK(query->get_data_buffer(
               name.c_str(), &existing_buffer, &existing_buffer_size_ptr));
 
           if (existing_buffer_size_ptr != nullptr)
             existing_buffer_size = *existing_buffer_size_ptr;
         } else {
-          RETURN_NOT_OK(query->get_buffer_vbytemap(
+          RETURN_NOT_OK(query->get_data_buffer(
+              name.c_str(), &existing_buffer, &existing_buffer_size_ptr));
+          RETURN_NOT_OK(query->get_validity_buffer(
               name.c_str(),
-              &existing_buffer,
-              &existing_buffer_size_ptr,
               &existing_validity_buffer,
               &existing_validity_buffer_size_ptr));
 
@@ -929,9 +1059,21 @@ Status query_from_capnp(
           char* offset_dest = (char*)existing_offset_buffer + curr_offset_size;
           char* data_dest = (char*)existing_buffer + curr_data_size;
           char* validity_dest = (char*)existing_buffer + curr_validity_size;
+          uint64_t fixedlen_size_to_copy = fixedlen_size;
 
-          std::memcpy(offset_dest, attribute_buffer_start, fixedlen_size);
-          attribute_buffer_start += fixedlen_size;
+          // If the last query included an extra offset we will skip the first
+          // offset in this query The first offset is the 0 position which ends
+          // up the same as the extra offset in the last query 0th is converted
+          // below to curr_data_size which is also the n+1 offset in arrow mode
+          if (attr_copy_state != nullptr &&
+              attr_copy_state->last_query_added_extra_offset) {
+            attribute_buffer_start += sizeof(uint64_t);
+            fixedlen_size_to_copy -= sizeof(uint64_t);
+          }
+
+          std::memcpy(
+              offset_dest, attribute_buffer_start, fixedlen_size_to_copy);
+          attribute_buffer_start += fixedlen_size_to_copy;
           std::memcpy(data_dest, attribute_buffer_start, varlen_size);
           attribute_buffer_start += varlen_size;
           if (nullable) {
@@ -962,7 +1104,8 @@ Status query_from_capnp(
           // to offsets of Buffer #2: [0, 12]. The `28` was calculated as
           // the byte size of the values in Buffer #1.
           if (curr_data_size > 0) {
-            for (uint64_t i = 0; i < (fixedlen_size / sizeof(uint64_t)); ++i) {
+            for (uint64_t i = 0; i < (fixedlen_size_to_copy / sizeof(uint64_t));
+                 ++i) {
               reinterpret_cast<uint64_t*>(offset_dest)[i] += curr_data_size;
             }
           }
@@ -971,7 +1114,7 @@ Status query_from_capnp(
             // Set the size directly on the query (so user can introspect on
             // result size).
             if (existing_offset_buffer_size_ptr != nullptr)
-              *existing_offset_buffer_size_ptr = fixedlen_size;
+              *existing_offset_buffer_size_ptr = fixedlen_size_to_copy;
             if (existing_buffer_size_ptr != nullptr)
               *existing_buffer_size_ptr = varlen_size;
             if (nullable && existing_validity_buffer_size_ptr != nullptr)
@@ -979,19 +1122,24 @@ Status query_from_capnp(
           } else {
             // Accumulate total bytes copied (caller's responsibility to
             // eventually update the query).
-            attr_copy_state->offset_size += fixedlen_size;
+            attr_copy_state->offset_size += fixedlen_size_to_copy;
             attr_copy_state->data_size += varlen_size;
             if (nullable)
               attr_copy_state->validity_size += validitylen_size;
+
+            // Set whether the extra offset was included or not
+            attr_copy_state->last_query_added_extra_offset =
+                query_reader.getVarOffsetsAddExtraElement();
           }
         } else {
           // Fixed size attribute; buffers already set.
           char* data_dest = (char*)existing_buffer + curr_data_size;
-          char* validity_dest = (char*)existing_buffer + curr_validity_size;
 
           std::memcpy(data_dest, attribute_buffer_start, fixedlen_size);
           attribute_buffer_start += fixedlen_size;
           if (nullable) {
+            char* validity_dest =
+                (char*)existing_validity_buffer + curr_validity_size;
             std::memcpy(
                 validity_dest, attribute_buffer_start, validitylen_size);
             attribute_buffer_start += validitylen_size;
@@ -1060,13 +1208,10 @@ Status query_from_capnp(
         attr_state->validity_len_data.swap(validitylen_buff);
         if (var_size) {
           if (!nullable) {
-            RETURN_NOT_OK(query->set_buffer(
-                name,
-                nullptr,
-                &attr_state->fixed_len_size,
-                nullptr,
-                &attr_state->var_len_size,
-                false));
+            RETURN_NOT_OK(query->set_data_buffer(
+                name, nullptr, &attr_state->var_len_size, false));
+            RETURN_NOT_OK(query->set_offsets_buffer(
+                name, nullptr, &attr_state->fixed_len_size, false));
           } else {
             RETURN_NOT_OK(query->set_buffer_vbytemap(
                 name,
@@ -1080,7 +1225,7 @@ Status query_from_capnp(
           }
         } else {
           if (!nullable) {
-            RETURN_NOT_OK(query->set_buffer(
+            RETURN_NOT_OK(query->set_data_buffer(
                 name, nullptr, &attr_state->fixed_len_size, false));
           } else {
             RETURN_NOT_OK(query->set_buffer_vbytemap(
@@ -1117,12 +1262,10 @@ Status query_from_capnp(
           attr_state->validity_len_data.swap(validity_buff);
 
           if (!nullable) {
-            RETURN_NOT_OK(query->set_buffer(
-                name,
-                offsets,
-                &attr_state->fixed_len_size,
-                varlen_data,
-                &attr_state->var_len_size));
+            RETURN_NOT_OK(query->set_data_buffer(
+                name, varlen_data, &attr_state->var_len_size));
+            RETURN_NOT_OK(query->set_offsets_buffer(
+                name, offsets, &attr_state->fixed_len_size));
           } else {
             RETURN_NOT_OK(query->set_buffer_vbytemap(
                 name,
@@ -1154,8 +1297,8 @@ Status query_from_capnp(
           attr_state->validity_len_data.swap(validity_buff);
 
           if (!nullable) {
-            RETURN_NOT_OK(
-                query->set_buffer(name, data, &attr_state->fixed_len_size));
+            RETURN_NOT_OK(query->set_data_buffer(
+                name, data, &attr_state->fixed_len_size));
           } else {
             RETURN_NOT_OK(query->set_buffer_vbytemap(
                 name,
@@ -1175,7 +1318,7 @@ Status query_from_capnp(
   // heterogeneous coordinate changes
   if (type == QueryType::READ) {
     auto reader_reader = query_reader.getReader();
-    auto reader = query->reader();
+    auto reader = (Reader*)query->strategy();
 
     if (query_reader.hasVarOffsetsMode()) {
       RETURN_NOT_OK(reader->set_offsets_mode(query_reader.getVarOffsetsMode()));
@@ -1189,10 +1332,10 @@ Status query_from_capnp(
           reader->set_offsets_bitsize(query_reader.getVarOffsetsBitsize()));
     }
 
-    RETURN_NOT_OK(reader_from_capnp(reader_reader, reader, compute_tp));
+    RETURN_NOT_OK(reader_from_capnp(reader_reader, query, reader, compute_tp));
   } else {
     auto writer_reader = query_reader.getWriter();
-    auto writer = query->writer();
+    auto writer = (Writer*)query->strategy();
 
     if (query_reader.hasVarOffsetsMode()) {
       RETURN_NOT_OK(writer->set_offsets_mode(query_reader.getVarOffsetsMode()));
@@ -1223,10 +1366,10 @@ Status query_from_capnp(
 
       // Subarray
       if (writer_reader.hasSubarrayRanges()) {
-        Subarray subarray(array, layout, query->writer()->stats(), false);
+        Subarray subarray(array, layout, writer->stats(), false);
         auto subarray_reader = writer_reader.getSubarrayRanges();
         RETURN_NOT_OK(subarray_from_capnp(subarray_reader, &subarray));
-        RETURN_NOT_OK(query->writer()->set_subarray(subarray));
+        RETURN_NOT_OK(query->set_subarray_unsafe(subarray));
       }
     }
   }
@@ -1237,6 +1380,15 @@ Status query_from_capnp(
   RETURN_NOT_OK(
       query_status_enum(query_reader.getStatus().cStr(), &query_status));
   query->set_status(query_status);
+
+  // If cap'n proto object has stats set it on c++ object
+  if (query_reader.hasStats()) {
+    stats::Stats* stats = query->stats();
+    // We should always have a stats here
+    if (stats != nullptr) {
+      RETURN_NOT_OK(stats_from_capnp(query_reader.getStats(), stats));
+    }
+  }
 
   return Status::Ok();
 }

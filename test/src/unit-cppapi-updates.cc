@@ -75,7 +75,8 @@ TEST_CASE(
   Query query_w1(ctx, array_w1);
   query_w1.set_subarray({rowmin, rowmax, colmin, colmax})
       .set_layout(TILEDB_ROW_MAJOR)
-      .set_buffer("a1", offsets_a1, data_a1);
+      .set_data_buffer("a1", data_a1)
+      .set_offsets_buffer("a1", offsets_a1);
   query_w1.submit();
   query_w1.finalize();
   array_w1.close();
@@ -85,7 +86,8 @@ TEST_CASE(
   Query query_w2(ctx, array_w2);
   query_w2.set_subarray({rowmin, rowmax, colmin, colmax})
       .set_layout(TILEDB_ROW_MAJOR)
-      .set_buffer("a1", offsets_a1, data_a1);
+      .set_data_buffer("a1", data_a1)
+      .set_offsets_buffer("a1", offsets_a1);
   query_w2.submit();
   query_w2.finalize();
   array_w2.close();
@@ -102,7 +104,8 @@ TEST_CASE(
 
   query.set_subarray(subarray)
       .set_layout(TILEDB_ROW_MAJOR)
-      .set_buffer("a1", r_offsets_a1, r_data_a1);
+      .set_data_buffer("a1", r_data_a1)
+      .set_offsets_buffer("a1", r_offsets_a1);
   query.submit();
   REQUIRE(query.query_status() == Query::Status::COMPLETE);
   array.close();

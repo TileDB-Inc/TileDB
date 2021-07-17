@@ -31,6 +31,7 @@
  */
 
 #include "tiledb/sm/subarray/subarray.h"
+#include "tiledb/common/logger.h"
 #include "tiledb/sm/array/array.h"
 #include "tiledb/sm/array_schema/array_schema.h"
 #include "tiledb/sm/array_schema/attribute.h"
@@ -47,6 +48,7 @@
 #include "tiledb/sm/stats/global_stats.h"
 
 #include <algorithm>
+#include <cmath>
 #include <iomanip>
 #include <sstream>
 #include <unordered_set>
@@ -826,7 +828,7 @@ Status Subarray::get_est_result_size_unsafe(
 
   // Compute tile overlap for each fragment
   RETURN_NOT_OK(compute_est_result_size(config, compute_tp));
-  *size = static_cast<uint64_t>(ceil(est_result_size_[name].size_fixed_));
+  *size = static_cast<uint64_t>(std::ceil(est_result_size_[name].size_fixed_));
 
   // If the size is non-zero, ensure it is large enough to
   // contain at least one cell.
@@ -968,8 +970,10 @@ Status Subarray::get_est_result_size(
 
   // Compute tile overlap for each fragment
   RETURN_NOT_OK(compute_est_result_size(config, compute_tp));
-  *size_off = static_cast<uint64_t>(ceil(est_result_size_[name].size_fixed_));
-  *size_val = static_cast<uint64_t>(ceil(est_result_size_[name].size_var_));
+  *size_off =
+      static_cast<uint64_t>(std::ceil(est_result_size_[name].size_fixed_));
+  *size_val =
+      static_cast<uint64_t>(std::ceil(est_result_size_[name].size_var_));
 
   // If the value size is non-zero, ensure both it and the offset size
   // are large enough to contain at least one cell. Otherwise, ensure
@@ -1030,9 +1034,9 @@ Status Subarray::get_est_result_size_nullable(
 
   // Compute tile overlap for each fragment
   RETURN_NOT_OK(compute_est_result_size(config, compute_tp));
-  *size = static_cast<uint64_t>(ceil(est_result_size_[name].size_fixed_));
+  *size = static_cast<uint64_t>(std::ceil(est_result_size_[name].size_fixed_));
   *size_validity =
-      static_cast<uint64_t>(ceil(est_result_size_[name].size_validity_));
+      static_cast<uint64_t>(std::ceil(est_result_size_[name].size_validity_));
 
   // If the size is non-zero, ensure it is large enough to
   // contain at least one cell.
@@ -1087,10 +1091,12 @@ Status Subarray::get_est_result_size_nullable(
 
   // Compute tile overlap for each fragment
   RETURN_NOT_OK(compute_est_result_size(config, compute_tp));
-  *size_off = static_cast<uint64_t>(ceil(est_result_size_[name].size_fixed_));
-  *size_val = static_cast<uint64_t>(ceil(est_result_size_[name].size_var_));
+  *size_off =
+      static_cast<uint64_t>(std::ceil(est_result_size_[name].size_fixed_));
+  *size_val =
+      static_cast<uint64_t>(std::ceil(est_result_size_[name].size_var_));
   *size_validity =
-      static_cast<uint64_t>(ceil(est_result_size_[name].size_validity_));
+      static_cast<uint64_t>(std::ceil(est_result_size_[name].size_validity_));
 
   // If the value size is non-zero, ensure both it and the offset and
   // validity sizes are large enough to contain at least one cell. Otherwise,
@@ -1581,7 +1587,7 @@ Status Subarray::compute_relevant_fragment_est_result_sizes(
   auto all_dims_same_type = array_schema->domain()->all_dims_same_type();
   auto all_dims_fixed = array_schema->domain()->all_dims_fixed();
   auto num_threads = compute_tp->concurrency_level();
-  auto ranges_per_thread = (uint64_t)ceil((double)range_num / num_threads);
+  auto ranges_per_thread = (uint64_t)std::ceil((double)range_num / num_threads);
   auto status = parallel_for(compute_tp, 0, num_threads, [&](uint64_t t) {
     auto r_start = range_start + t * ranges_per_thread;
     auto r_end =
@@ -1975,7 +1981,6 @@ Status Subarray::compute_est_result_size(
   // Compute the estimated result and max memory sizes
   std::vector<std::vector<ResultSize>> result_sizes;
   std::vector<std::vector<MemorySize>> mem_sizes;
-  std::vector<std::set<std::pair<unsigned, uint64_t>>> frag_tiles;
   RETURN_NOT_OK(compute_relevant_fragment_est_result_sizes(
       names, 0, range_num - 1, &result_sizes, &mem_sizes, compute_tp));
 
@@ -2198,8 +2203,8 @@ Status Subarray::compute_tile_coords_col() {
     for (uint64_t j = 0; j < ranges_[d].size(); ++j) {
       auto dim_dom = (const T*)domain[d].data();
       auto r = (const T*)ranges_[d][j].data();
-      tile_start = (r[0] - dim_dom[0]) / tile_extent;
-      tile_end = (r[1] - dim_dom[0]) / tile_extent;
+      tile_start = Dimension::tile_idx(r[0], dim_dom[0], tile_extent);
+      tile_end = Dimension::tile_idx(r[1], dim_dom[0], tile_extent);
       for (uint64_t t = tile_start; t <= tile_end; ++t)
         coords_set[d].insert(t);
     }
@@ -2258,8 +2263,8 @@ Status Subarray::compute_tile_coords_row() {
     auto dim_dom = (const T*)domain[d].data();
     for (uint64_t j = 0; j < ranges_[d].size(); ++j) {
       auto r = (const T*)ranges_[d][j].data();
-      tile_start = (r[0] - dim_dom[0]) / tile_extent;
-      tile_end = (r[1] - dim_dom[0]) / tile_extent;
+      tile_start = Dimension::tile_idx(r[0], dim_dom[0], tile_extent);
+      tile_end = Dimension::tile_idx(r[1], dim_dom[0], tile_extent);
       for (uint64_t t = tile_start; t <= tile_end; ++t)
         coords_set[d].insert(t);
     }
@@ -2791,7 +2796,7 @@ Status Subarray::compute_relevant_fragment_tile_overlap(
   const auto range_num = fn_ctx->range_len_;
 
   const auto ranges_per_thread =
-      (uint64_t)ceil((double)range_num / num_threads);
+      (uint64_t)std::ceil((double)range_num / num_threads);
   const auto status = parallel_for(compute_tp, 0, num_threads, [&](uint64_t t) {
     const auto r_start = fn_ctx->range_idx_offset_ + (t * ranges_per_thread);
     const auto r_end = fn_ctx->range_idx_offset_ +
@@ -2848,6 +2853,10 @@ Status Subarray::load_relevant_fragment_tile_var_sizes(
 
 std::vector<unsigned> Subarray::relevant_fragments() const {
   return relevant_fragments_;
+}
+
+stats::Stats* Subarray::stats() const {
+  return stats_;
 }
 
 // Explicit instantiations

@@ -34,6 +34,9 @@
 #define TILEDB_AZURE_H
 
 #ifdef HAVE_AZURE
+#if !defined(NOMINMAX)
+#define NOMINMAX  // avoid min/max macros from windows headers
+#endif
 #include <base64.h>
 #include <blob/blob_client.h>
 #include <retry.h>

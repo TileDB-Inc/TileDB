@@ -752,6 +752,7 @@ class Array {
    * @param key_length Length in bytes of the encryption key.
    * @param config Configuration parameters for the consolidation.
    */
+  TILEDB_DEPRECATED
   static void consolidate(
       const Context& ctx,
       const std::string& uri,
@@ -874,6 +875,7 @@ class Array {
    * @param key_length Length in bytes of the encryption key.
    * @return The loaded ArraySchema object.
    */
+  TILEDB_DEPRECATED
   static ArraySchema load_schema(
       const Context& ctx,
       const std::string& uri,
@@ -908,6 +910,7 @@ class Array {
    * @param encryption_key The encryption key to use.
    * @param key_length Length in bytes of the encryption key.
    */
+  TILEDB_DEPRECATED
   static void create(
       const std::string& uri,
       const ArraySchema& schema,

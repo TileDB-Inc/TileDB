@@ -37,9 +37,13 @@
 #include "tiledb/sm/misc/constants.h"
 #include "tiledb/sm/misc/utils.h"
 
+#if !defined(NOMINMAX)
+#define NOMINMAX  // suppress definition of min/max macros in Windows headers
+#endif
 #include <Shlwapi.h>
 #include <Windows.h>
 #include <wininet.h>  // For INTERNET_MAX_URL_LENGTH
+#include <algorithm>
 #include <cassert>
 #include <fstream>
 #include <iostream>

@@ -31,7 +31,10 @@
  */
 
 #include "tiledb/sm/fragment/fragment_info.h"
+#include "tiledb/common/logger.h"
 #include "tiledb/sm/array/array.h"
+#include "tiledb/sm/enums/encryption_type.h"
+#include "tiledb/sm/global_state/unit_test_config.h"
 #include "tiledb/sm/misc/utils.h"
 
 using namespace tiledb::sm;
@@ -437,6 +440,7 @@ Status FragmentInfo::has_consolidated_metadata(
 }
 
 Status FragmentInfo::load(
+    const Config config,
     EncryptionType encryption_type,
     const void* encryption_key,
     uint32_t key_length) {
@@ -449,8 +453,43 @@ Status FragmentInfo::load(
   }
 
   Array array(array_uri_, storage_manager_);
-  RETURN_NOT_OK(array.open_without_fragments(
-      encryption_type, encryption_key, key_length));
+
+  if (encryption_type == EncryptionType::NO_ENCRYPTION) {
+    bool found = false;
+    std::string encryption_key_from_cfg =
+        config.get("sm.encryption_key", &found);
+    assert(found);
+    std::string encryption_type_from_cfg =
+        config.get("sm.encryption_type", &found);
+    assert(found);
+    auto [st, et] = encryption_type_enum(encryption_type_from_cfg);
+    RETURN_NOT_OK(st);
+    encryption_type = et.value();
+    EncryptionKey encryption_key_cfg;
+    uint32_t key_length = 0;
+
+    if (encryption_key_from_cfg.empty()) {
+      RETURN_NOT_OK(encryption_key_cfg.set_key(encryption_type, nullptr, 0));
+    } else {
+      if (EncryptionKey::is_valid_key_length(
+              encryption_type,
+              static_cast<uint32_t>(encryption_key_from_cfg.size()))) {
+        const UnitTestConfig& unit_test_cfg = UnitTestConfig::instance();
+        if (unit_test_cfg.array_encryption_key_length.is_set()) {
+          key_length = unit_test_cfg.array_encryption_key_length.get();
+        } else {
+          key_length = static_cast<uint32_t>(encryption_key_from_cfg.size());
+        }
+      }
+    }
+    RETURN_NOT_OK(array.open_without_fragments(
+        encryption_type,
+        (const void*)encryption_key_from_cfg.c_str(),
+        key_length));
+  } else {
+    RETURN_NOT_OK(array.open_without_fragments(
+        encryption_type, encryption_key, key_length));
+  }
 
   auto timestamp = utils::time::timestamp_now_ms();
   RETURN_NOT_OK_ELSE(

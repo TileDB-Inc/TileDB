@@ -31,6 +31,7 @@
  */
 
 #include "catch.hpp"
+#include "test/src/helpers.h"
 #include "tiledb/sm/cpp_api/tiledb"
 
 using namespace tiledb;
@@ -109,9 +110,9 @@ void write_2d_array(
   Context ctx;
   Array array_w(ctx, array_name, TILEDB_WRITE);
   Query query_w(ctx, array_w, TILEDB_WRITE);
-  query_w.set_buffer("a", buff_a);
-  query_w.set_buffer("d1", buff_d1);
-  query_w.set_buffer("d2", buff_d2);
+  query_w.set_data_buffer("a", buff_a);
+  query_w.set_data_buffer("d1", buff_d1);
+  query_w.set_data_buffer("d2", buff_d2);
   query_w.set_layout(layout);
   CHECK_NOTHROW(query_w.submit());
   array_w.close();
@@ -128,9 +129,11 @@ void write_2d_array(
   Context ctx;
   Array array_w(ctx, array_name, TILEDB_WRITE);
   Query query_w(ctx, array_w, TILEDB_WRITE);
-  query_w.set_buffer("a", buff_a);
-  query_w.set_buffer("d1", off_d1, buff_d1);
-  query_w.set_buffer("d2", off_d2, buff_d2);
+  query_w.set_data_buffer("a", buff_a);
+  query_w.set_data_buffer("d1", buff_d1);
+  query_w.set_offsets_buffer("d1", off_d1);
+  query_w.set_data_buffer("d2", buff_d2);
+  query_w.set_offsets_buffer("d2", off_d2);
   query_w.set_layout(layout);
   CHECK_NOTHROW(query_w.submit());
   array_w.close();
@@ -216,9 +219,9 @@ TEST_CASE("C++ API: Test Hilbert, errors", "[cppapi][hilbert][error]") {
   std::vector<int32_t> buff_d1 = {1, 1, 4, 5};
   std::vector<int32_t> buff_d2 = {1, 3, 2, 4};
   Query query_w(ctx, array_w, TILEDB_WRITE);
-  query_w.set_buffer("a", buff_a);
-  query_w.set_buffer("d1", buff_d1);
-  query_w.set_buffer("d2", buff_d2);
+  query_w.set_data_buffer("a", buff_a);
+  query_w.set_data_buffer("d1", buff_d1);
+  query_w.set_data_buffer("d2", buff_d2);
   CHECK_THROWS(query_w.set_layout(TILEDB_HILBERT));
   array_w.close();
 
@@ -228,9 +231,9 @@ TEST_CASE("C++ API: Test Hilbert, errors", "[cppapi][hilbert][error]") {
   std::vector<int32_t> r_buff_a(4);
   std::vector<int32_t> r_buff_d1(4);
   std::vector<int32_t> r_buff_d2(4);
-  query_r.set_buffer("a", r_buff_a);
-  query_r.set_buffer("d1", r_buff_d1);
-  query_r.set_buffer("d2", r_buff_d2);
+  query_r.set_data_buffer("a", r_buff_a);
+  query_r.set_data_buffer("d1", r_buff_d1);
+  query_r.set_data_buffer("d2", r_buff_d2);
   CHECK_THROWS(query_r.set_layout(TILEDB_HILBERT));
   array_r.close();
 
@@ -267,9 +270,9 @@ TEST_CASE(
     std::vector<int32_t> r_buff_a(4);
     std::vector<int32_t> r_buff_d1(4);
     std::vector<int32_t> r_buff_d2(4);
-    query_r.set_buffer("a", r_buff_a);
-    query_r.set_buffer("d1", r_buff_d1);
-    query_r.set_buffer("d2", r_buff_d2);
+    query_r.set_data_buffer("a", r_buff_a);
+    query_r.set_data_buffer("d1", r_buff_d1);
+    query_r.set_data_buffer("d2", r_buff_d2);
     query_r.set_layout(TILEDB_GLOBAL_ORDER);
     CHECK_NOTHROW(query_r.submit());
     array_r.close();
@@ -289,9 +292,9 @@ TEST_CASE(
     std::vector<int32_t> r_buff_a(4);
     std::vector<int32_t> r_buff_d1(4);
     std::vector<int32_t> r_buff_d2(4);
-    query_r.set_buffer("a", r_buff_a);
-    query_r.set_buffer("d1", r_buff_d1);
-    query_r.set_buffer("d2", r_buff_d2);
+    query_r.set_data_buffer("a", r_buff_a);
+    query_r.set_data_buffer("d1", r_buff_d1);
+    query_r.set_data_buffer("d2", r_buff_d2);
     query_r.set_layout(TILEDB_ROW_MAJOR);
     CHECK_NOTHROW(query_r.submit());
     array_r.close();
@@ -311,9 +314,9 @@ TEST_CASE(
     std::vector<int32_t> r_buff_a(4);
     std::vector<int32_t> r_buff_d1(4);
     std::vector<int32_t> r_buff_d2(4);
-    query_r.set_buffer("a", r_buff_a);
-    query_r.set_buffer("d1", r_buff_d1);
-    query_r.set_buffer("d2", r_buff_d2);
+    query_r.set_data_buffer("a", r_buff_a);
+    query_r.set_data_buffer("d1", r_buff_d1);
+    query_r.set_data_buffer("d2", r_buff_d2);
     query_r.set_layout(TILEDB_COL_MAJOR);
     CHECK_NOTHROW(query_r.submit());
     array_r.close();
@@ -334,9 +337,9 @@ TEST_CASE(
     std::vector<int32_t> r_buff_a(4);
     std::vector<int32_t> r_buff_d1(4);
     std::vector<int32_t> r_buff_d2(4);
-    query_r.set_buffer("a", r_buff_a);
-    query_r.set_buffer("d1", r_buff_d1);
-    query_r.set_buffer("d2", r_buff_d2);
+    query_r.set_data_buffer("a", r_buff_a);
+    query_r.set_data_buffer("d1", r_buff_d1);
+    query_r.set_data_buffer("d2", r_buff_d2);
     query_r.set_layout(TILEDB_UNORDERED);
     CHECK_NOTHROW(query_r.submit());
     array_r.close();
@@ -383,9 +386,9 @@ TEST_CASE(
     std::vector<int32_t> r_buff_a(2);
     std::vector<int32_t> r_buff_d1(2);
     std::vector<int32_t> r_buff_d2(2);
-    query_r.set_buffer("a", r_buff_a);
-    query_r.set_buffer("d1", r_buff_d1);
-    query_r.set_buffer("d2", r_buff_d2);
+    query_r.set_data_buffer("a", r_buff_a);
+    query_r.set_data_buffer("d1", r_buff_d1);
+    query_r.set_data_buffer("d2", r_buff_d2);
     query_r.set_layout(TILEDB_GLOBAL_ORDER);
     CHECK_NOTHROW(query_r.submit());
 
@@ -403,7 +406,10 @@ TEST_CASE(
     CHECK_NOTHROW(query_r.submit());
 
     // Check results again
-    CHECK(query_r.query_status() == Query::Status::INCOMPLETE);
+    CHECK(
+        query_r.query_status() == (test::use_refactored_readers() ?
+                                       Query::Status::COMPLETE :
+                                       Query::Status::INCOMPLETE));
     CHECK(query_r.result_buffer_elements()["a"].second == 2);
     c_buff_a = {4, 1};
     c_buff_d1 = {5, 4};
@@ -412,10 +418,16 @@ TEST_CASE(
     CHECK(r_buff_d1 == c_buff_d1);
     CHECK(r_buff_d2 == c_buff_d2);
 
-    // Read until complete
-    CHECK_NOTHROW(query_r.submit());
-    CHECK(query_r.query_status() == Query::Status::COMPLETE);
-    CHECK(query_r.result_buffer_elements()["a"].second == 0);
+    /**
+     * Old reader needs an extra round here to finish processing all the
+     * partitions in the subarray. New reader is done earlier.
+     */
+    if (!test::use_refactored_readers()) {
+      // Read until complete
+      CHECK_NOTHROW(query_r.submit());
+      CHECK(query_r.query_status() == Query::Status::COMPLETE);
+      CHECK(query_r.result_buffer_elements()["a"].second == 0);
+    }
 
     array_r.close();
   }
@@ -427,9 +439,9 @@ TEST_CASE(
     std::vector<int32_t> r_buff_a(2);
     std::vector<int32_t> r_buff_d1(2);
     std::vector<int32_t> r_buff_d2(2);
-    query_r.set_buffer("a", r_buff_a);
-    query_r.set_buffer("d1", r_buff_d1);
-    query_r.set_buffer("d2", r_buff_d2);
+    query_r.set_data_buffer("a", r_buff_a);
+    query_r.set_data_buffer("d1", r_buff_d1);
+    query_r.set_data_buffer("d2", r_buff_d2);
     query_r.set_layout(TILEDB_GLOBAL_ORDER);
     query_r.set_subarray({1, 5, 1, 7});
     CHECK_NOTHROW(query_r.submit());
@@ -485,9 +497,9 @@ TEST_CASE(
   std::vector<int32_t> buff_d2 = {1, 3, 2, 4};
   Array array_w(ctx, array_name, TILEDB_WRITE);
   Query query_w(ctx, array_w, TILEDB_WRITE);
-  query_w.set_buffer("a", buff_a);
-  query_w.set_buffer("d1", buff_d1);
-  query_w.set_buffer("d2", buff_d2);
+  query_w.set_data_buffer("a", buff_a);
+  query_w.set_data_buffer("d1", buff_d1);
+  query_w.set_data_buffer("d2", buff_d2);
   query_w.set_layout(TILEDB_GLOBAL_ORDER);
   CHECK_THROWS(query_w.submit());
 
@@ -530,9 +542,9 @@ TEST_CASE(
     std::vector<int32_t> r_buff_a(3);
     std::vector<int32_t> r_buff_d1(3);
     std::vector<int32_t> r_buff_d2(3);
-    query_r.set_buffer("a", r_buff_a);
-    query_r.set_buffer("d1", r_buff_d1);
-    query_r.set_buffer("d2", r_buff_d2);
+    query_r.set_data_buffer("a", r_buff_a);
+    query_r.set_data_buffer("d1", r_buff_d1);
+    query_r.set_data_buffer("d2", r_buff_d2);
     query_r.set_subarray({1, 4, 1, 4});
     query_r.set_layout(TILEDB_ROW_MAJOR);
     CHECK_NOTHROW(query_r.submit());
@@ -553,9 +565,9 @@ TEST_CASE(
     std::vector<int32_t> r_buff_a(3);
     std::vector<int32_t> r_buff_d1(3);
     std::vector<int32_t> r_buff_d2(3);
-    query_r.set_buffer("a", r_buff_a);
-    query_r.set_buffer("d1", r_buff_d1);
-    query_r.set_buffer("d2", r_buff_d2);
+    query_r.set_data_buffer("a", r_buff_a);
+    query_r.set_data_buffer("d1", r_buff_d1);
+    query_r.set_data_buffer("d2", r_buff_d2);
     query_r.set_subarray({1, 4, 1, 4});
     query_r.set_layout(TILEDB_GLOBAL_ORDER);
     CHECK_NOTHROW(query_r.submit());
@@ -608,9 +620,9 @@ TEST_CASE(
   std::vector<int32_t> r_buff_a(8);
   std::vector<int32_t> r_buff_d1(8);
   std::vector<int32_t> r_buff_d2(8);
-  query_r.set_buffer("a", r_buff_a);
-  query_r.set_buffer("d1", r_buff_d1);
-  query_r.set_buffer("d2", r_buff_d2);
+  query_r.set_data_buffer("a", r_buff_a);
+  query_r.set_data_buffer("d1", r_buff_d1);
+  query_r.set_data_buffer("d2", r_buff_d2);
   query_r.set_layout(TILEDB_GLOBAL_ORDER);
   CHECK_NOTHROW(query_r.submit());
   array_r.close();
@@ -662,9 +674,9 @@ TEST_CASE(
   std::vector<int32_t> r_buff_a(8);
   int32_t r_buff_d1[2];
   int32_t r_buff_d2[2];
-  query_r.set_buffer("a", r_buff_a);
-  query_r.set_buffer("d1", r_buff_d1, 0);
-  query_r.set_buffer("d2", r_buff_d2, 0);
+  query_r.set_data_buffer("a", r_buff_a);
+  query_r.set_data_buffer("d1", r_buff_d1, 0);
+  query_r.set_data_buffer("d2", r_buff_d2, 0);
   query_r.set_layout(TILEDB_GLOBAL_ORDER);
   CHECK_NOTHROW(query_r.submit());
   CHECK(query_r.query_status() == Query::Status::INCOMPLETE);
@@ -718,9 +730,9 @@ TEST_CASE(
   std::vector<int32_t> r_buff_a(8);
   std::vector<int32_t> r_buff_d1(8);
   std::vector<int32_t> r_buff_d2(8);
-  query_r.set_buffer("a", r_buff_a);
-  query_r.set_buffer("d1", r_buff_d1);
-  query_r.set_buffer("d2", r_buff_d2);
+  query_r.set_data_buffer("a", r_buff_a);
+  query_r.set_data_buffer("d1", r_buff_d1);
+  query_r.set_data_buffer("d2", r_buff_d2);
   query_r.set_layout(TILEDB_GLOBAL_ORDER);
   CHECK_NOTHROW(query_r.submit());
   array_r.close();
@@ -766,9 +778,9 @@ TEST_CASE(
   std::vector<int32_t> buff_d2 = {-99, -97, -98, -96};
   Array array_w(ctx, array_name, TILEDB_WRITE);
   Query query_w(ctx, array_w, TILEDB_WRITE);
-  query_w.set_buffer("a", buff_a);
-  query_w.set_buffer("d1", buff_d1);
-  query_w.set_buffer("d2", buff_d2);
+  query_w.set_data_buffer("a", buff_a);
+  query_w.set_data_buffer("d1", buff_d1);
+  query_w.set_data_buffer("d2", buff_d2);
   query_w.set_layout(TILEDB_GLOBAL_ORDER);
   CHECK_THROWS(query_w.submit());
 
@@ -786,9 +798,9 @@ TEST_CASE(
   std::vector<int32_t> r_buff_a(4);
   std::vector<int32_t> r_buff_d1(4);
   std::vector<int32_t> r_buff_d2(4);
-  query_r.set_buffer("a", r_buff_a);
-  query_r.set_buffer("d1", r_buff_d1);
-  query_r.set_buffer("d2", r_buff_d2);
+  query_r.set_data_buffer("a", r_buff_a);
+  query_r.set_data_buffer("d1", r_buff_d1);
+  query_r.set_data_buffer("d2", r_buff_d2);
   query_r.set_layout(TILEDB_GLOBAL_ORDER);
   CHECK_NOTHROW(query_r.submit());
 
@@ -836,9 +848,9 @@ TEST_CASE(
     std::vector<int32_t> r_buff_a(2);
     std::vector<int32_t> r_buff_d1(2);
     std::vector<int32_t> r_buff_d2(2);
-    query_r.set_buffer("a", r_buff_a);
-    query_r.set_buffer("d1", r_buff_d1);
-    query_r.set_buffer("d2", r_buff_d2);
+    query_r.set_data_buffer("a", r_buff_a);
+    query_r.set_data_buffer("d1", r_buff_d1);
+    query_r.set_data_buffer("d2", r_buff_d2);
     query_r.set_layout(TILEDB_GLOBAL_ORDER);
     CHECK_NOTHROW(query_r.submit());
 
@@ -856,7 +868,10 @@ TEST_CASE(
     CHECK_NOTHROW(query_r.submit());
 
     // Check results again
-    CHECK(query_r.query_status() == Query::Status::INCOMPLETE);
+    CHECK(
+        query_r.query_status() == (test::use_refactored_readers() ?
+                                       Query::Status::COMPLETE :
+                                       Query::Status::INCOMPLETE));
     CHECK(query_r.result_buffer_elements()["a"].second == 2);
     c_buff_a = {4, 1};
     c_buff_d1 = {-45, -46};
@@ -865,10 +880,16 @@ TEST_CASE(
     CHECK(r_buff_d1 == c_buff_d1);
     CHECK(r_buff_d2 == c_buff_d2);
 
-    // Read until complete
-    CHECK_NOTHROW(query_r.submit());
-    CHECK(query_r.query_status() == Query::Status::COMPLETE);
-    CHECK(query_r.result_buffer_elements()["a"].second == 0);
+    /**
+     * Old reader needs an extra round here to finish processing all the
+     * partitions in the subarray. New reader is done earlier.
+     */
+    if (!test::use_refactored_readers()) {
+      // Read until complete
+      CHECK_NOTHROW(query_r.submit());
+      CHECK(query_r.query_status() == Query::Status::COMPLETE);
+      CHECK(query_r.result_buffer_elements()["a"].second == 0);
+    }
 
     array_r.close();
   }
@@ -880,9 +901,9 @@ TEST_CASE(
     std::vector<int32_t> r_buff_a(2);
     std::vector<int32_t> r_buff_d1(2);
     std::vector<int32_t> r_buff_d2(2);
-    query_r.set_buffer("a", r_buff_a);
-    query_r.set_buffer("d1", r_buff_d1);
-    query_r.set_buffer("d2", r_buff_d2);
+    query_r.set_data_buffer("a", r_buff_a);
+    query_r.set_data_buffer("d1", r_buff_d1);
+    query_r.set_data_buffer("d2", r_buff_d2);
     query_r.set_layout(TILEDB_GLOBAL_ORDER);
     query_r.set_subarray({-49, -45, -99, -93});
     CHECK_NOTHROW(query_r.submit());
@@ -945,9 +966,9 @@ TEST_CASE(
     std::vector<int32_t> r_buff_a(3);
     std::vector<int32_t> r_buff_d1(3);
     std::vector<int32_t> r_buff_d2(3);
-    query_r.set_buffer("a", r_buff_a);
-    query_r.set_buffer("d1", r_buff_d1);
-    query_r.set_buffer("d2", r_buff_d2);
+    query_r.set_data_buffer("a", r_buff_a);
+    query_r.set_data_buffer("d1", r_buff_d1);
+    query_r.set_data_buffer("d2", r_buff_d2);
     query_r.set_subarray({-49, -46, -99, -96});
     query_r.set_layout(TILEDB_ROW_MAJOR);
     CHECK_NOTHROW(query_r.submit());
@@ -968,9 +989,9 @@ TEST_CASE(
     std::vector<int32_t> r_buff_a(3);
     std::vector<int32_t> r_buff_d1(3);
     std::vector<int32_t> r_buff_d2(3);
-    query_r.set_buffer("a", r_buff_a);
-    query_r.set_buffer("d1", r_buff_d1);
-    query_r.set_buffer("d2", r_buff_d2);
+    query_r.set_data_buffer("a", r_buff_a);
+    query_r.set_data_buffer("d1", r_buff_d1);
+    query_r.set_data_buffer("d2", r_buff_d2);
     query_r.set_subarray({-49, -46, -99, -96});
     query_r.set_layout(TILEDB_GLOBAL_ORDER);
     CHECK_NOTHROW(query_r.submit());
@@ -1025,9 +1046,9 @@ TEST_CASE(
   std::vector<int32_t> r_buff_a(8);
   std::vector<int32_t> r_buff_d1(8);
   std::vector<int32_t> r_buff_d2(8);
-  query_r.set_buffer("a", r_buff_a);
-  query_r.set_buffer("d1", r_buff_d1);
-  query_r.set_buffer("d2", r_buff_d2);
+  query_r.set_data_buffer("a", r_buff_a);
+  query_r.set_data_buffer("d1", r_buff_d1);
+  query_r.set_data_buffer("d2", r_buff_d2);
   query_r.set_layout(TILEDB_GLOBAL_ORDER);
   CHECK_NOTHROW(query_r.submit());
   array_r.close();
@@ -1087,9 +1108,9 @@ TEST_CASE(
   std::vector<int32_t> r_buff_a(8);
   std::vector<int32_t> r_buff_d1(8);
   std::vector<int32_t> r_buff_d2(8);
-  query_r.set_buffer("a", r_buff_a);
-  query_r.set_buffer("d1", r_buff_d1);
-  query_r.set_buffer("d2", r_buff_d2);
+  query_r.set_data_buffer("a", r_buff_a);
+  query_r.set_data_buffer("d1", r_buff_d1);
+  query_r.set_data_buffer("d2", r_buff_d2);
   query_r.set_layout(TILEDB_GLOBAL_ORDER);
   CHECK_NOTHROW(query_r.submit());
   array_r.close();
@@ -1133,9 +1154,9 @@ TEST_CASE(
   std::vector<int32_t> r_buff_a(8);
   int32_t r_buff_d1[2];
   int32_t r_buff_d2[2];
-  query_r.set_buffer("a", r_buff_a);
-  query_r.set_buffer("d1", r_buff_d1, 0);
-  query_r.set_buffer("d2", r_buff_d2, 0);
+  query_r.set_data_buffer("a", r_buff_a);
+  query_r.set_data_buffer("d1", r_buff_d1, 0);
+  query_r.set_data_buffer("d2", r_buff_d2, 0);
   query_r.set_layout(TILEDB_GLOBAL_ORDER);
   CHECK_NOTHROW(query_r.submit());
   CHECK(query_r.query_status() == Query::Status::INCOMPLETE);
@@ -1167,9 +1188,9 @@ TEST_CASE(
   std::vector<float> buff_d2 = {0.3f, 0.1f, 0.2f, 0.4f};
   Array array_w(ctx, array_name, TILEDB_WRITE);
   Query query_w(ctx, array_w, TILEDB_WRITE);
-  query_w.set_buffer("a", buff_a);
-  query_w.set_buffer("d1", buff_d1);
-  query_w.set_buffer("d2", buff_d2);
+  query_w.set_data_buffer("a", buff_a);
+  query_w.set_data_buffer("d1", buff_d1);
+  query_w.set_data_buffer("d2", buff_d2);
   query_w.set_layout(TILEDB_GLOBAL_ORDER);
   CHECK_THROWS(query_w.submit());
 
@@ -1187,9 +1208,9 @@ TEST_CASE(
   std::vector<int32_t> r_buff_a(4);
   std::vector<float> r_buff_d1(4);
   std::vector<float> r_buff_d2(4);
-  query_r.set_buffer("a", r_buff_a);
-  query_r.set_buffer("d1", r_buff_d1);
-  query_r.set_buffer("d2", r_buff_d2);
+  query_r.set_data_buffer("a", r_buff_a);
+  query_r.set_data_buffer("d1", r_buff_d1);
+  query_r.set_data_buffer("d2", r_buff_d2);
   query_r.set_layout(TILEDB_GLOBAL_ORDER);
   CHECK_NOTHROW(query_r.submit());
 
@@ -1242,18 +1263,18 @@ TEST_CASE(
     std::vector<int32_t> r_buff_a(2);
     std::vector<float> r_buff_d1(2);
     std::vector<float> r_buff_d2(2);
-    query_r.set_buffer("a", r_buff_a);
-    query_r.set_buffer("d1", r_buff_d1);
-    query_r.set_buffer("d2", r_buff_d2);
+    query_r.set_data_buffer("a", r_buff_a);
+    query_r.set_data_buffer("d1", r_buff_d1);
+    query_r.set_data_buffer("d2", r_buff_d2);
     query_r.set_layout(TILEDB_GLOBAL_ORDER);
     CHECK_NOTHROW(query_r.submit());
 
     // Check results
     CHECK(query_r.query_status() == Query::Status::INCOMPLETE);
-    CHECK(query_r.result_buffer_elements()["a"].second == 1);
-    std::vector<int32_t> c_buff_a = {3};
-    std::vector<float> c_buff_d1 = {0.1f};
-    std::vector<float> c_buff_d2 = {0.1f};
+    CHECK(query_r.result_buffer_elements()["a"].second == 2);
+    std::vector<int32_t> c_buff_a = {3, 2};
+    std::vector<float> c_buff_d1 = {0.1f, 0.1f};
+    std::vector<float> c_buff_d2 = {0.1f, 0.3f};
     CHECK(r_buff_a[0] == c_buff_a[0]);
     CHECK(r_buff_d1[0] == c_buff_d1[0]);
     CHECK(r_buff_d2[0] == c_buff_d2[0]);
@@ -1262,20 +1283,10 @@ TEST_CASE(
     CHECK_NOTHROW(query_r.submit());
 
     // Check results again
-    CHECK(query_r.query_status() == Query::Status::INCOMPLETE);
-    CHECK(query_r.result_buffer_elements()["a"].second == 1);
-    c_buff_a = {2};
-    c_buff_d1 = {0.1f};
-    c_buff_d2 = {0.3f};
-    CHECK(r_buff_a[0] == c_buff_a[0]);
-    CHECK(r_buff_d1[0] == c_buff_d1[0]);
-    CHECK(r_buff_d2[0] == c_buff_d2[0]);
-
-    // Read again
-    CHECK_NOTHROW(query_r.submit());
-
-    // Check results again
-    CHECK(query_r.query_status() == Query::Status::INCOMPLETE);
+    CHECK(
+        query_r.query_status() == (test::use_refactored_readers() ?
+                                       Query::Status::COMPLETE :
+                                       Query::Status::INCOMPLETE));
     CHECK(query_r.result_buffer_elements()["a"].second == 2);
     c_buff_a = {1, 4};
     c_buff_d1 = {0.41f, 0.4f};
@@ -1284,10 +1295,16 @@ TEST_CASE(
     CHECK(r_buff_d1 == c_buff_d1);
     CHECK(r_buff_d2 == c_buff_d2);
 
-    // Read until complete
-    CHECK_NOTHROW(query_r.submit());
-    CHECK(query_r.query_status() == Query::Status::COMPLETE);
-    CHECK(query_r.result_buffer_elements()["a"].second == 0);
+    /**
+     * Old reader needs an extra round here to finish processing all the
+     * partitions in the subarray. New reader is done earlier.
+     */
+    if (!test::use_refactored_readers()) {
+      // Read until complete
+      CHECK_NOTHROW(query_r.submit());
+      CHECK(query_r.query_status() == Query::Status::COMPLETE);
+      CHECK(query_r.result_buffer_elements()["a"].second == 0);
+    }
 
     array_r.close();
   }
@@ -1299,19 +1316,19 @@ TEST_CASE(
     std::vector<int32_t> r_buff_a(2);
     std::vector<float> r_buff_d1(2);
     std::vector<float> r_buff_d2(2);
-    query_r.set_buffer("a", r_buff_a);
-    query_r.set_buffer("d1", r_buff_d1);
-    query_r.set_buffer("d2", r_buff_d2);
+    query_r.set_data_buffer("a", r_buff_a);
+    query_r.set_data_buffer("d1", r_buff_d1);
+    query_r.set_data_buffer("d2", r_buff_d2);
     query_r.set_layout(TILEDB_GLOBAL_ORDER);
     query_r.set_subarray({0.1f, 0.6f, 0.1f, 0.7f});
     CHECK_NOTHROW(query_r.submit());
 
     // Check results
     CHECK(query_r.query_status() == Query::Status::INCOMPLETE);
-    CHECK(query_r.result_buffer_elements()["a"].second == 1);
-    std::vector<int32_t> c_buff_a = {3};
-    std::vector<float> c_buff_d1 = {0.1f};
-    std::vector<float> c_buff_d2 = {0.1f};
+    CHECK(query_r.result_buffer_elements()["a"].second == 2);
+    std::vector<int32_t> c_buff_a = {3, 2};
+    std::vector<float> c_buff_d1 = {0.1f, 0.1f};
+    std::vector<float> c_buff_d2 = {0.1f, 0.3f};
     CHECK(r_buff_a[0] == c_buff_a[0]);
     CHECK(r_buff_d1[0] == c_buff_d1[0]);
     CHECK(r_buff_d2[0] == c_buff_d2[0]);
@@ -1320,20 +1337,10 @@ TEST_CASE(
     CHECK_NOTHROW(query_r.submit());
 
     // Check results again
-    CHECK(query_r.query_status() == Query::Status::INCOMPLETE);
-    CHECK(query_r.result_buffer_elements()["a"].second == 1);
-    c_buff_a = {2};
-    c_buff_d1 = {0.1f};
-    c_buff_d2 = {0.3f};
-    CHECK(r_buff_a[0] == c_buff_a[0]);
-    CHECK(r_buff_d1[0] == c_buff_d1[0]);
-    CHECK(r_buff_d2[0] == c_buff_d2[0]);
-
-    // Read again
-    CHECK_NOTHROW(query_r.submit());
-
-    // Check results again
-    CHECK(query_r.query_status() == Query::Status::INCOMPLETE);
+    CHECK(
+        query_r.query_status() == (test::use_refactored_readers() ?
+                                       Query::Status::COMPLETE :
+                                       Query::Status::INCOMPLETE));
     CHECK(query_r.result_buffer_elements()["a"].second == 2);
     c_buff_a = {1, 4};
     c_buff_d1 = {0.41f, 0.4f};
@@ -1342,10 +1349,16 @@ TEST_CASE(
     CHECK(r_buff_d1 == c_buff_d1);
     CHECK(r_buff_d2 == c_buff_d2);
 
-    // Read until complete
-    CHECK_NOTHROW(query_r.submit());
-    CHECK(query_r.query_status() == Query::Status::COMPLETE);
-    CHECK(query_r.result_buffer_elements()["a"].second == 0);
+    /**
+     * Old reader needs an extra round here to finish processing all the
+     * partitions in the subarray. New reader is done earlier.
+     */
+    if (!test::use_refactored_readers()) {
+      // Read until complete
+      CHECK_NOTHROW(query_r.submit());
+      CHECK(query_r.query_status() == Query::Status::COMPLETE);
+      CHECK(query_r.result_buffer_elements()["a"].second == 0);
+    }
 
     array_r.close();
   }
@@ -1382,9 +1395,9 @@ TEST_CASE(
     std::vector<int32_t> r_buff_a(3);
     std::vector<float> r_buff_d1(3);
     std::vector<float> r_buff_d2(3);
-    query_r.set_buffer("a", r_buff_a);
-    query_r.set_buffer("d1", r_buff_d1);
-    query_r.set_buffer("d2", r_buff_d2);
+    query_r.set_data_buffer("a", r_buff_a);
+    query_r.set_data_buffer("d1", r_buff_d1);
+    query_r.set_data_buffer("d2", r_buff_d2);
     query_r.set_subarray({0.1f, 0.4f, 0.1f, 0.6f});
     query_r.set_layout(TILEDB_COL_MAJOR);
     CHECK_NOTHROW(query_r.submit());
@@ -1405,9 +1418,9 @@ TEST_CASE(
     std::vector<int32_t> r_buff_a(3);
     std::vector<float> r_buff_d1(3);
     std::vector<float> r_buff_d2(3);
-    query_r.set_buffer("a", r_buff_a);
-    query_r.set_buffer("d1", r_buff_d1);
-    query_r.set_buffer("d2", r_buff_d2);
+    query_r.set_data_buffer("a", r_buff_a);
+    query_r.set_data_buffer("d1", r_buff_d1);
+    query_r.set_data_buffer("d2", r_buff_d2);
     query_r.set_subarray({0.1f, 0.4f, 0.1f, 0.6f});
     query_r.set_layout(TILEDB_GLOBAL_ORDER);
     CHECK_NOTHROW(query_r.submit());
@@ -1462,9 +1475,9 @@ TEST_CASE(
   std::vector<int32_t> r_buff_a(8);
   std::vector<float> r_buff_d1(8);
   std::vector<float> r_buff_d2(8);
-  query_r.set_buffer("a", r_buff_a);
-  query_r.set_buffer("d1", r_buff_d1);
-  query_r.set_buffer("d2", r_buff_d2);
+  query_r.set_data_buffer("a", r_buff_a);
+  query_r.set_data_buffer("d1", r_buff_d1);
+  query_r.set_data_buffer("d2", r_buff_d2);
   query_r.set_layout(TILEDB_GLOBAL_ORDER);
   CHECK_NOTHROW(query_r.submit());
   array_r.close();
@@ -1534,9 +1547,9 @@ TEST_CASE(
   std::vector<int32_t> r_buff_a(8);
   std::vector<float> r_buff_d1(8);
   std::vector<float> r_buff_d2(8);
-  query_r.set_buffer("a", r_buff_a);
-  query_r.set_buffer("d1", r_buff_d1);
-  query_r.set_buffer("d2", r_buff_d2);
+  query_r.set_data_buffer("a", r_buff_a);
+  query_r.set_data_buffer("d1", r_buff_d1);
+  query_r.set_data_buffer("d2", r_buff_d2);
   query_r.set_layout(TILEDB_GLOBAL_ORDER);
   CHECK_NOTHROW(query_r.submit());
   array_r.close();
@@ -1590,9 +1603,9 @@ TEST_CASE(
   std::vector<int32_t> r_buff_a(8);
   float r_buff_d1[2];
   float r_buff_d2[2];
-  query_r.set_buffer("a", r_buff_a);
-  query_r.set_buffer("d1", r_buff_d1, 0);
-  query_r.set_buffer("d2", r_buff_d2, 0);
+  query_r.set_data_buffer("a", r_buff_a);
+  query_r.set_data_buffer("d1", r_buff_d1, 0);
+  query_r.set_data_buffer("d2", r_buff_d2, 0);
   query_r.set_layout(TILEDB_GLOBAL_ORDER);
   CHECK_NOTHROW(query_r.submit());
   CHECK(query_r.query_status() == Query::Status::INCOMPLETE);
@@ -1626,9 +1639,11 @@ TEST_CASE(
   std::vector<uint64_t> off_d2 = {0, 3, 7, 12};
   Array array_w(ctx, array_name, TILEDB_WRITE);
   Query query_w(ctx, array_w, TILEDB_WRITE);
-  query_w.set_buffer("a", buff_a);
-  query_w.set_buffer("d1", off_d1, buff_d1);
-  query_w.set_buffer("d2", off_d2, buff_d2);
+  query_w.set_data_buffer("a", buff_a);
+  query_w.set_data_buffer("d1", buff_d1);
+  query_w.set_offsets_buffer("d1", off_d1);
+  query_w.set_data_buffer("d2", buff_d2);
+  query_w.set_offsets_buffer("d2", off_d2);
   query_w.set_layout(TILEDB_GLOBAL_ORDER);
   CHECK_THROWS(query_w.submit());
 
@@ -1637,8 +1652,10 @@ TEST_CASE(
   off_d1 = {0, 3, 8, 10};
   buff_d2 = std::string("stopstockt1cat");
   off_d2 = {0, 4, 9, 11};
-  query_w.set_buffer("d1", off_d1, buff_d1);
-  query_w.set_buffer("d2", off_d2, buff_d2);
+  query_w.set_data_buffer("d1", buff_d1);
+  query_w.set_offsets_buffer("d1", off_d1);
+  query_w.set_data_buffer("d2", buff_d2);
+  query_w.set_offsets_buffer("d2", off_d2);
   CHECK_NOTHROW(query_w.submit());
   query_w.finalize();
   array_w.close();
@@ -1653,9 +1670,11 @@ TEST_CASE(
   std::string r_buff_d2;
   r_buff_d2.resize(20);
   std::vector<uint64_t> r_off_d2(4);
-  query_r.set_buffer("a", r_buff_a);
-  query_r.set_buffer("d1", r_off_d1, r_buff_d1);
-  query_r.set_buffer("d2", r_off_d2, r_buff_d2);
+  query_r.set_data_buffer("a", r_buff_a);
+  query_r.set_data_buffer("d1", r_buff_d1);
+  query_r.set_offsets_buffer("d1", r_off_d1);
+  query_r.set_data_buffer("d2", r_buff_d2);
+  query_r.set_offsets_buffer("d2", r_off_d2);
   query_r.set_layout(TILEDB_GLOBAL_ORDER);
   CHECK_NOTHROW(query_r.submit());
 
@@ -1729,9 +1748,11 @@ TEST_CASE(
   std::string r_buff_d2;
   r_buff_d2.resize(100);
   std::vector<uint64_t> r_off_d2(8);
-  query_r.set_buffer("a", r_buff_a);
-  query_r.set_buffer("d1", r_off_d1, r_buff_d1);
-  query_r.set_buffer("d2", r_off_d2, r_buff_d2);
+  query_r.set_data_buffer("a", r_buff_a);
+  query_r.set_data_buffer("d1", r_buff_d1);
+  query_r.set_offsets_buffer("d1", r_off_d1);
+  query_r.set_data_buffer("d2", r_buff_d2);
+  query_r.set_offsets_buffer("d2", r_off_d2);
   query_r.set_layout(TILEDB_GLOBAL_ORDER);
   CHECK_NOTHROW(query_r.submit());
   array_r.close();
@@ -1816,9 +1837,11 @@ TEST_CASE(
   std::string r_buff_d2;
   r_buff_d2.resize(100);
   std::vector<uint64_t> r_off_d2(8);
-  query_r.set_buffer("a", r_buff_a);
-  query_r.set_buffer("d1", r_off_d1, r_buff_d1);
-  query_r.set_buffer("d2", r_off_d2, r_buff_d2);
+  query_r.set_data_buffer("a", r_buff_a);
+  query_r.set_data_buffer("d1", r_buff_d1);
+  query_r.set_offsets_buffer("d1", r_off_d1);
+  query_r.set_data_buffer("d2", r_buff_d2);
+  query_r.set_offsets_buffer("d2", r_off_d2);
   query_r.set_layout(TILEDB_GLOBAL_ORDER);
   CHECK_NOTHROW(query_r.submit());
   array_r.close();
@@ -1885,9 +1908,11 @@ TEST_CASE(
     std::string r_buff_d2;
     r_buff_d2.resize(20);
     std::vector<uint64_t> r_off_d2(4);
-    query_r.set_buffer("a", r_buff_a);
-    query_r.set_buffer("d1", r_off_d1, r_buff_d1);
-    query_r.set_buffer("d2", r_off_d2, r_buff_d2);
+    query_r.set_data_buffer("a", r_buff_a);
+    query_r.set_data_buffer("d1", r_buff_d1);
+    query_r.set_offsets_buffer("d1", r_off_d1);
+    query_r.set_data_buffer("d2", r_buff_d2);
+    query_r.set_offsets_buffer("d2", r_off_d2);
     query_r.set_layout(TILEDB_ROW_MAJOR);
     query_r.add_range(0, std::string("3"), std::string("z"));
     query_r.add_range(1, std::string("a"), std::string("vase"));
@@ -1924,9 +1949,11 @@ TEST_CASE(
     std::string r_buff_d2;
     r_buff_d2.resize(20);
     std::vector<uint64_t> r_off_d2(4);
-    query_r.set_buffer("a", r_buff_a);
-    query_r.set_buffer("d1", r_off_d1, r_buff_d1);
-    query_r.set_buffer("d2", r_off_d2, r_buff_d2);
+    query_r.set_data_buffer("a", r_buff_a);
+    query_r.set_data_buffer("d1", r_buff_d1);
+    query_r.set_offsets_buffer("d1", r_off_d1);
+    query_r.set_data_buffer("d2", r_buff_d2);
+    query_r.set_offsets_buffer("d2", r_off_d2);
     query_r.set_layout(TILEDB_GLOBAL_ORDER);
     query_r.add_range(0, std::string("3"), std::string("z"));
     query_r.add_range(1, std::string("a"), std::string("vase"));
@@ -1994,9 +2021,11 @@ TEST_CASE(
     std::string r_buff_d2;
     r_buff_d2.resize(13);
     std::vector<uint64_t> r_off_d2(4);
-    query_r.set_buffer("a", r_buff_a);
-    query_r.set_buffer("d1", r_off_d1, r_buff_d1);
-    query_r.set_buffer("d2", r_off_d2, r_buff_d2);
+    query_r.set_data_buffer("a", r_buff_a);
+    query_r.set_data_buffer("d1", r_buff_d1);
+    query_r.set_offsets_buffer("d1", r_off_d1);
+    query_r.set_data_buffer("d2", r_buff_d2);
+    query_r.set_offsets_buffer("d2", r_off_d2);
     query_r.set_layout(TILEDB_GLOBAL_ORDER);
     CHECK_NOTHROW(query_r.submit());
 
@@ -2006,17 +2035,37 @@ TEST_CASE(
     // (33, t1)       ->     877430626372812800
     // (1a, cat)      ->     919167533801450154
     CHECK(query_r.query_status() == Query::Status::INCOMPLETE);
-    CHECK(query_r.result_buffer_elements()["a"].second == 2);
     r_buff_d1.resize(query_r.result_buffer_elements()["d1"].second);
     r_buff_d2.resize(query_r.result_buffer_elements()["d2"].second);
     r_off_d1.resize(query_r.result_buffer_elements()["d1"].first);
     r_off_d2.resize(query_r.result_buffer_elements()["d2"].first);
     r_buff_a.resize(query_r.result_buffer_elements()["a"].second);
-    std::vector<int32_t> c_buff_a = {3, 2};
-    std::string c_buff_d1("dogcamel");
-    std::vector<uint64_t> c_off_d1 = {0, 3};
-    std::string c_buff_d2("stopstock");
-    std::vector<uint64_t> c_off_d2 = {0, 4};
+    std::vector<int32_t> c_buff_a;
+    std::string c_buff_d1;
+    std::vector<uint64_t> c_off_d1;
+    std::string c_buff_d2;
+    std::vector<uint64_t> c_off_d2;
+
+    /**
+     * Refactored reader tries to fill as much as possible.
+     * Old reader splits partition in two.
+     */
+    if (test::use_refactored_readers()) {
+      CHECK(query_r.result_buffer_elements()["a"].second == 3);
+      c_buff_a = {3, 2, 1};
+      c_buff_d1 = std::string("dogcamel33");
+      c_off_d1 = {0, 3, 8};
+      c_buff_d2 = std::string("stopstockt1");
+      c_off_d2 = {0, 4, 9};
+    } else {
+      CHECK(query_r.result_buffer_elements()["a"].second == 2);
+      c_buff_a = {3, 2};
+      c_buff_d1 = std::string("dogcamel");
+      c_off_d1 = {0, 3};
+      c_buff_d2 = std::string("stopstock");
+      c_off_d2 = {0, 4};
+    }
+
     CHECK(r_buff_a == c_buff_a);
     CHECK(r_buff_d1 == c_buff_d1);
     CHECK(r_off_d1 == c_off_d1);
@@ -2032,17 +2081,28 @@ TEST_CASE(
     // (33, t1)       ->     877430626372812800
     // (1a, cat)      ->     919167533801450154
     CHECK(query_r.query_status() == Query::Status::COMPLETE);
-    CHECK(query_r.result_buffer_elements()["a"].second == 2);
     r_buff_d1.resize(query_r.result_buffer_elements()["d1"].second);
     r_buff_d2.resize(query_r.result_buffer_elements()["d2"].second);
     r_off_d1.resize(query_r.result_buffer_elements()["d1"].first);
     r_off_d2.resize(query_r.result_buffer_elements()["d2"].first);
     r_buff_a.resize(query_r.result_buffer_elements()["a"].second);
-    c_buff_a = {1, 4};
-    c_buff_d1 = std::string("331a");
-    c_off_d1 = {0, 2};
-    c_buff_d2 = std::string("t1cat");
-    c_off_d2 = {0, 2};
+
+    if (test::use_refactored_readers()) {
+      CHECK(query_r.result_buffer_elements()["a"].second == 1);
+      c_buff_a = {4};
+      c_buff_d1 = std::string("1a");
+      c_off_d1 = {0};
+      c_buff_d2 = std::string("cat");
+      c_off_d2 = {0};
+    } else {
+      CHECK(query_r.result_buffer_elements()["a"].second == 2);
+      c_buff_a = {1, 4};
+      c_buff_d1 = std::string("331a");
+      c_off_d1 = {0, 2};
+      c_buff_d2 = std::string("t1cat");
+      c_off_d2 = {0, 2};
+    }
+
     CHECK(r_buff_a == c_buff_a);
     CHECK(r_buff_d1 == c_buff_d1);
     CHECK(r_off_d1 == c_off_d1);
@@ -2063,9 +2123,11 @@ TEST_CASE(
     std::string r_buff_d2;
     r_buff_d2.resize(13);
     std::vector<uint64_t> r_off_d2(4);
-    query_r.set_buffer("a", r_buff_a);
-    query_r.set_buffer("d1", r_off_d1, r_buff_d1);
-    query_r.set_buffer("d2", r_off_d2, r_buff_d2);
+    query_r.set_data_buffer("a", r_buff_a);
+    query_r.set_data_buffer("d1", r_buff_d1);
+    query_r.set_offsets_buffer("d1", r_off_d1);
+    query_r.set_data_buffer("d2", r_buff_d2);
+    query_r.set_offsets_buffer("d2", r_off_d2);
     query_r.add_range(0, std::string("1a", 2), std::string("w", 1));
     query_r.add_range(1, std::string("ca", 2), std::string("t1", 2));
     query_r.set_layout(TILEDB_GLOBAL_ORDER);
@@ -2077,17 +2139,37 @@ TEST_CASE(
     // (33, t1)       ->     877430626372812800
     // (1a, cat)      ->     919167533801450154
     CHECK(query_r.query_status() == Query::Status::INCOMPLETE);
-    CHECK(query_r.result_buffer_elements()["a"].second == 2);
     r_buff_d1.resize(query_r.result_buffer_elements()["d1"].second);
     r_buff_d2.resize(query_r.result_buffer_elements()["d2"].second);
     r_off_d1.resize(query_r.result_buffer_elements()["d1"].first);
     r_off_d2.resize(query_r.result_buffer_elements()["d2"].first);
     r_buff_a.resize(query_r.result_buffer_elements()["a"].second);
-    std::vector<int32_t> c_buff_a = {3, 2};
-    std::string c_buff_d1("dogcamel");
-    std::vector<uint64_t> c_off_d1 = {0, 3};
-    std::string c_buff_d2("stopstock");
-    std::vector<uint64_t> c_off_d2 = {0, 4};
+    std::vector<int32_t> c_buff_a;
+    std::string c_buff_d1;
+    std::vector<uint64_t> c_off_d1;
+    std::string c_buff_d2;
+    std::vector<uint64_t> c_off_d2;
+
+    /**
+     * Refactored reader tries to fill as much as possible.
+     * Old reader splits partition in two.
+     */
+    if (test::use_refactored_readers()) {
+      CHECK(query_r.result_buffer_elements()["a"].second == 3);
+      c_buff_a = {3, 2, 1};
+      c_buff_d1 = std::string("dogcamel33");
+      c_off_d1 = {0, 3, 8};
+      c_buff_d2 = std::string("stopstockt1");
+      c_off_d2 = {0, 4, 9};
+    } else {
+      CHECK(query_r.result_buffer_elements()["a"].second == 2);
+      c_buff_a = {3, 2};
+      c_buff_d1 = std::string("dogcamel");
+      c_off_d1 = {0, 3};
+      c_buff_d2 = std::string("stopstock");
+      c_off_d2 = {0, 4};
+    }
+
     CHECK(r_buff_a == c_buff_a);
     CHECK(r_buff_d1 == c_buff_d1);
     CHECK(r_off_d1 == c_off_d1);
@@ -2103,17 +2185,28 @@ TEST_CASE(
     // (33, t1)       ->     877430626372812800
     // (1a, cat)      ->     919167533801450154
     CHECK(query_r.query_status() == Query::Status::COMPLETE);
-    CHECK(query_r.result_buffer_elements()["a"].second == 2);
     r_buff_d1.resize(query_r.result_buffer_elements()["d1"].second);
     r_buff_d2.resize(query_r.result_buffer_elements()["d2"].second);
     r_off_d1.resize(query_r.result_buffer_elements()["d1"].first);
     r_off_d2.resize(query_r.result_buffer_elements()["d2"].first);
     r_buff_a.resize(query_r.result_buffer_elements()["a"].second);
-    c_buff_a = {1, 4};
-    c_buff_d1 = std::string("331a");
-    c_off_d1 = {0, 2};
-    c_buff_d2 = std::string("t1cat");
-    c_off_d2 = {0, 2};
+
+    if (test::use_refactored_readers()) {
+      CHECK(query_r.result_buffer_elements()["a"].second == 1);
+      c_buff_a = {4};
+      c_buff_d1 = std::string("1a");
+      c_off_d1 = {0};
+      c_buff_d2 = std::string("cat");
+      c_off_d2 = {0};
+    } else {
+      CHECK(query_r.result_buffer_elements()["a"].second == 2);
+      c_buff_a = {1, 4};
+      c_buff_d1 = std::string("331a");
+      c_off_d1 = {0, 2};
+      c_buff_d2 = std::string("t1cat");
+      c_off_d2 = {0, 2};
+    }
+
     CHECK(r_buff_a == c_buff_a);
     CHECK(r_buff_d1 == c_buff_d1);
     CHECK(r_off_d1 == c_off_d1);
@@ -2161,9 +2254,11 @@ TEST_CASE(
   std::string r_buff_d2;
   r_buff_d2.resize(1);
   std::vector<uint64_t> r_off_d2(1);
-  query_r.set_buffer("a", r_buff_a);
-  query_r.set_buffer("d1", r_off_d1, r_buff_d1);
-  query_r.set_buffer("d2", r_off_d2, r_buff_d2);
+  query_r.set_data_buffer("a", r_buff_a);
+  query_r.set_data_buffer("d1", r_buff_d1);
+  query_r.set_offsets_buffer("d1", r_off_d1);
+  query_r.set_data_buffer("d2", r_buff_d2);
+  query_r.set_offsets_buffer("d2", r_off_d2);
   query_r.set_layout(TILEDB_GLOBAL_ORDER);
   CHECK_NOTHROW(query_r.submit());
   CHECK(query_r.query_status() == Query::Status::INCOMPLETE);

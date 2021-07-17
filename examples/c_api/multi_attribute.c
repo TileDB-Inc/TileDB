@@ -127,8 +127,8 @@ void write_array() {
   tiledb_query_t* query;
   tiledb_query_alloc(ctx, array, TILEDB_WRITE, &query);
   tiledb_query_set_layout(ctx, query, TILEDB_ROW_MAJOR);
-  tiledb_query_set_buffer(ctx, query, "a1", a1, &a1_size);
-  tiledb_query_set_buffer(ctx, query, "a2", a2, &a2_size);
+  tiledb_query_set_data_buffer(ctx, query, "a1", a1, &a1_size);
+  tiledb_query_set_data_buffer(ctx, query, "a2", a2, &a2_size);
 
   // Submit query
   tiledb_query_submit(ctx, query);
@@ -166,8 +166,8 @@ void read_array() {
   tiledb_query_alloc(ctx, array, TILEDB_READ, &query);
   tiledb_query_set_subarray(ctx, query, subarray);
   tiledb_query_set_layout(ctx, query, TILEDB_ROW_MAJOR);
-  tiledb_query_set_buffer(ctx, query, "a1", a1, &a1_size);
-  tiledb_query_set_buffer(ctx, query, "a2", a2, &a2_size);
+  tiledb_query_set_data_buffer(ctx, query, "a1", a1, &a1_size);
+  tiledb_query_set_data_buffer(ctx, query, "a2", a2, &a2_size);
 
   // Submit query
   tiledb_query_submit(ctx, query);
@@ -209,7 +209,7 @@ void read_array_subselect() {
   tiledb_query_alloc(ctx, array, TILEDB_READ, &query);
   tiledb_query_set_subarray(ctx, query, subarray);
   tiledb_query_set_layout(ctx, query, TILEDB_ROW_MAJOR);
-  tiledb_query_set_buffer(ctx, query, "a1", a1, &a1_size);
+  tiledb_query_set_data_buffer(ctx, query, "a1", a1, &a1_size);
 
   // Submit query
   tiledb_query_submit(ctx, query);

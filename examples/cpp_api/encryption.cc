@@ -84,7 +84,7 @@ void write_array() {
       encryption_key,
       (uint32_t)strlen(encryption_key));
   Query query(ctx, array);
-  query.set_layout(TILEDB_ROW_MAJOR).set_buffer("a", data);
+  query.set_layout(TILEDB_ROW_MAJOR).set_data_buffer("a", data);
 
   // Perform the write and close the array.
   query.submit();
@@ -113,7 +113,7 @@ void read_array() {
   Query query(ctx, array);
   query.set_subarray(subarray)
       .set_layout(TILEDB_ROW_MAJOR)
-      .set_buffer("a", data);
+      .set_data_buffer("a", data);
 
   // Submit the query and close the array.
   query.submit();

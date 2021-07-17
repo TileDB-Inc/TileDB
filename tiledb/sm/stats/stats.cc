@@ -33,6 +33,7 @@
 #include "tiledb/sm/stats/stats.h"
 #include "tiledb/sm/misc/utils.h"
 
+#include <algorithm>
 #include <cassert>
 #include <sstream>
 #include <vector>
@@ -63,7 +64,21 @@ void Stats::set_enabled(bool enabled) {
   enabled_ = enabled;
 }
 
-std::string Stats::dump() const {
+void Stats::reset() {
+  // We will acquire the locks top-down in the tree and hold
+  // until the recursion terminates.
+  std::unique_lock<std::mutex> lck(mtx_);
+
+  timers_.clear();
+  counters_.clear();
+
+  for (auto& child : children_) {
+    child.reset();
+  }
+}
+
+std::string Stats::dump(
+    const uint64_t indent_size, const uint64_t num_indents) const {
   std::unordered_map<std::string, double> flattened_timers;
   std::unordered_map<std::string, uint64_t> flattened_counters;
 
@@ -98,30 +113,58 @@ std::string Stats::dump() const {
         return a.first > b.first;
       });
 
+  // Build the indentation literal and the leading indentation literal.
+  const std::string indent(indent_size, ' ');
+  const std::string l_indent(indent_size * num_indents, ' ');
+
   std::stringstream ss;
-  ss << "--- Timers ---\n\n";
+  ss << l_indent << "{\n";
+
+  ss << l_indent << indent << "\"timers\": {\n";
+  bool printed_first_timer = false;
   for (const auto& timer : sorted_timers) {
     if (utils::parse::ends_with(timer.first, ".sum")) {
-      ss << timer.first << ": " << timer.second << "\n";
+      if (printed_first_timer) {
+        ss << ",\n";
+      }
+      ss << l_indent << indent << indent << "\"" << timer.first
+         << "\": " << timer.second << ",\n";
       auto stat = timer.first.substr(
           0, timer.first.size() - std::string(".sum").size());
       auto it = flattened_counters.find(stat + ".timer_count");
       assert(it != flattened_counters.end());
       auto avg = timer.second / it->second;
-      ss << stat + ".avg"
-         << ": " << avg << "\n";
+      ss << l_indent << indent << indent << "\"" << stat + ".avg"
+         << "\": " << avg;
+      printed_first_timer = true;
     }
   }
-  ss << "\n";
-  ss << "--- Counters ---\n\n";
+  if (printed_first_timer) {
+    ss << "\n";
+  }
+
+  ss << l_indent << indent << "},\n";
+  ss << l_indent << indent << "\"counters\": {\n";
+  bool printed_first_counter = false;
   for (const auto& counter : sorted_counters) {
     // Ignore the reserved "timer_count" counters.
     if (utils::parse::ends_with(counter.first, ".timer_count")) {
       continue;
     }
-    ss << counter.first << ": " << counter.second << "\n";
+
+    if (printed_first_counter) {
+      ss << ",\n";
+    }
+    ss << l_indent << indent << indent << "\"" << counter.first
+       << "\": " << counter.second;
+    printed_first_counter = true;
   }
-  ss << "\n";
+  if (printed_first_counter) {
+    ss << "\n";
+  }
+  ss << l_indent << indent << "}\n";
+
+  ss << l_indent << "}";
 
   return ss.str();
 }
@@ -244,6 +287,15 @@ void Stats::populate_flattened_stats(
   for (const auto& child : children_) {
     child.populate_flattened_stats(flattened_timers, flattened_counters);
   }
+}
+
+std::unordered_map<std::string, double>* Stats::timers() {
+  return &timers_;
+}
+
+/** Return pointer to conters map, used for serialization only. */
+std::unordered_map<std::string, uint64_t>* Stats::counters() {
+  return &counters_;
 }
 
 }  // namespace stats

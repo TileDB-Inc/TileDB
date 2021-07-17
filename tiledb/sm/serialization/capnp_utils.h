@@ -34,9 +34,11 @@
 #define TILEDB_CAPNP_UTILS_H
 
 #ifdef TILEDB_SERIALIZATION
-#include "tiledb/sm/serialization/tiledb-rest.capnp.h"
+
+#include "tiledb-rest.h"
 
 #include "tiledb/common/heap_memory.h"
+#include "tiledb/common/logger_public.h"
 #include "tiledb/common/status.h"
 #include "tiledb/sm/array/array.h"
 #include "tiledb/sm/array_schema/array_schema.h"

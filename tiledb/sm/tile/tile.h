@@ -36,7 +36,6 @@
 #include "tiledb/common/status.h"
 #include "tiledb/sm/array_schema/attribute.h"
 #include "tiledb/sm/buffer/buffer.h"
-#include "tiledb/sm/buffer/const_buffer.h"
 #include "tiledb/sm/tile/chunked_buffer.h"
 
 #include <cinttypes>

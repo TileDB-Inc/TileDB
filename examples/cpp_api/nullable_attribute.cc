@@ -102,9 +102,14 @@ void write_array() {
   std::vector<uint8_t> a3_validity_buf = {1, 0, 0, 1};
 
   // Set the query buffers specifying the validity for each data
-  query.set_buffer_nullable("a1", a1_data, a1_validity_buf)
-      .set_buffer_nullable("a2", a2_off, a2_data, a2_validity_buf)
-      .set_buffer_nullable("a3", a3_off, a3_data, a3_validity_buf);
+  query.set_data_buffer("a1", a1_data)
+      .set_validity_buffer("a1", a1_validity_buf)
+      .set_data_buffer("a2", a2_data)
+      .set_offsets_buffer("a2", a2_off)
+      .set_validity_buffer("a2", a2_validity_buf)
+      .set_data_buffer("a3", a3_data)
+      .set_offsets_buffer("a3", a3_off)
+      .set_validity_buffer("a3", a3_validity_buf);
 
   // Perform the write and close the array.
   query.submit();
@@ -138,9 +143,14 @@ void read_array() {
   query.set_subarray(subarray_full);
 
   // Set the query buffers specifying the validity for each data
-  query.set_buffer_nullable("a1", a1_data, a1_validity_buf)
-      .set_buffer_nullable("a2", a2_off, a2_data, a2_validity_buf)
-      .set_buffer_nullable("a3", a3_off, a3_data, a3_validity_buf);
+  query.set_data_buffer("a1", a1_data)
+      .set_validity_buffer("a1", a1_validity_buf)
+      .set_data_buffer("a2", a2_data)
+      .set_offsets_buffer("a2", a2_off)
+      .set_validity_buffer("a2", a2_validity_buf)
+      .set_data_buffer("a3", a3_data)
+      .set_offsets_buffer("a3", a3_off)
+      .set_validity_buffer("a3", a3_validity_buf);
   query.submit();
 
   if (query.query_status() == tiledb::Query::Status::INCOMPLETE) {

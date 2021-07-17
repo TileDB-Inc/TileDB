@@ -31,6 +31,7 @@
  */
 
 #include "tiledb/sm/subarray/subarray_partitioner.h"
+#include "tiledb/common/logger.h"
 #include "tiledb/sm/array/array.h"
 #include "tiledb/sm/array_schema/array_schema.h"
 #include "tiledb/sm/array_schema/attribute.h"
@@ -120,6 +121,10 @@ SubarrayPartitioner& SubarrayPartitioner::operator=(
 /* ****************************** */
 /*               API              */
 /* ****************************** */
+
+const Subarray& SubarrayPartitioner::current() const {
+  return current_.partition_;
+}
 
 Subarray& SubarrayPartitioner::current() {
   return current_.partition_;
@@ -635,6 +640,10 @@ Subarray* SubarrayPartitioner::subarray() {
   return &subarray_;
 }
 
+stats::Stats* SubarrayPartitioner::stats() const {
+  return stats_;
+}
+
 /* ****************************** */
 /*          PRIVATE METHODS       */
 /* ****************************** */
@@ -931,9 +940,13 @@ void SubarrayPartitioner::compute_splitting_value_single_range(
   auto cell_order = array_schema->cell_order();
   assert(!range.is_unary());
   auto layout = subarray_.layout();
-  layout = (layout == Layout::UNORDERED || layout == Layout::GLOBAL_ORDER) ?
-               cell_order :
-               layout;
+  if (layout == Layout::UNORDERED && cell_order == Layout::HILBERT) {
+    cell_order = Layout::ROW_MAJOR;
+  } else {
+    layout = (layout == Layout::UNORDERED || layout == Layout::GLOBAL_ORDER) ?
+                 cell_order :
+                 layout;
+  }
   *splitting_dim = UINT32_MAX;
 
   // Special case for Hilbert cell order
@@ -1045,7 +1058,9 @@ Status SubarrayPartitioner::compute_splitting_value_multi_range(
   auto layout = subarray_.layout();
   auto array_schema = subarray_.array()->array_schema();
   auto dim_num = array_schema->dim_num();
-  auto cell_order = array_schema->cell_order();
+  auto cell_order = (array_schema->cell_order() == Layout::HILBERT) ?
+                        Layout::ROW_MAJOR :
+                        array_schema->cell_order();
   layout = (layout == Layout::UNORDERED) ? cell_order : layout;
   *splitting_dim = UINT32_MAX;
   uint64_t range_num;

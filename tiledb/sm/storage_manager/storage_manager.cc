@@ -241,17 +241,17 @@ Status StorageManager::array_open_for_reads(
     return Status::Ok();
   }));
 
+  // Wait for array fragments to be loaded.
+  Status st = io_tp_->wait_all(load_array_fragments_task);
+
   auto open_array = (OpenArray*)nullptr;
-  Status st = array_open_without_fragments(array_uri, enc_key, &open_array);
+  st = array_open_without_fragments(array_uri, enc_key, &open_array);
 
   if (!st.ok()) {
     io_tp_->wait_all(load_array_fragments_task);
     *array_schema = nullptr;
     return st;
   }
-
-  // Wait for array fragments to be loaded
-  st = io_tp_->wait_all(load_array_fragments_task);
 
   if (!st.ok()) {
     open_array->mtx_unlock();
@@ -540,8 +540,9 @@ Status StorageManager::array_consolidate(
     bool found = false;
     encryption_type_from_cfg = config->get("sm.encryption_type", &found);
     assert(found);
-    RETURN_NOT_OK(
-        encryption_type_enum(encryption_type_from_cfg, &encryption_type));
+    auto [st, et] = encryption_type_enum(encryption_type_from_cfg);
+    RETURN_NOT_OK(st);
+    encryption_type = et.value();
 
     if (EncryptionKey::is_valid_key_length(
             encryption_type,
@@ -762,8 +763,9 @@ Status StorageManager::array_metadata_consolidate(
     bool found = false;
     encryption_type_from_cfg = config->get("sm.encryption_type", &found);
     assert(found);
-    RETURN_NOT_OK(
-        encryption_type_enum(encryption_type_from_cfg, &encryption_type));
+    auto [st, et] = encryption_type_enum(encryption_type_from_cfg);
+    RETURN_NOT_OK(st);
+    encryption_type = et.value();
 
     if (EncryptionKey::is_valid_key_length(
             encryption_type,
@@ -811,6 +813,11 @@ Status StorageManager::array_create(
   // Create array directory
   RETURN_NOT_OK(vfs_->create_dir(array_uri));
 
+  // Create array schema directory
+  URI array_schema_folder_uri =
+      array_uri.join_path(constants::array_schema_folder_name);
+  RETURN_NOT_OK(vfs_->create_dir(array_schema_folder_uri));
+
   // Create array metadata directory
   URI array_metadata_uri =
       array_uri.join_path(constants::array_metadata_folder_name);
@@ -826,11 +833,11 @@ Status StorageManager::array_create(
     std::string encryption_type_from_cfg =
         config_.get("sm.encryption_type", &found);
     assert(found);
-    EncryptionType encryption_type_cfg;
-    RETURN_NOT_OK(
-        encryption_type_enum(encryption_type_from_cfg, &encryption_type_cfg));
-    EncryptionKey encryption_key_cfg;
+    auto [st, etc] = encryption_type_enum(encryption_type_from_cfg);
+    RETURN_NOT_OK(st);
+    EncryptionType encryption_type_cfg = etc.value();
 
+    EncryptionKey encryption_key_cfg;
     if (encryption_key_from_cfg.empty()) {
       RETURN_NOT_OK(
           encryption_key_cfg.set_key(encryption_type_cfg, nullptr, 0));
@@ -1141,7 +1148,8 @@ Status StorageManager::array_get_encryption(
     return LOG_STATUS(Status::StorageManagerError(
         "Cannot get array encryption; Invalid array URI"));
 
-  URI schema_uri = uri.join_path(constants::array_schema_filename);
+  URI schema_uri;
+  RETURN_NOT_OK(get_latest_array_schema_uri(uri, &schema_uri));
 
   // Read tile header.
   GenericTileIO::GenericTileHeader header;
@@ -1327,56 +1335,13 @@ Status StorageManager::get_fragment_info(
   std::vector<FragmentMetadata*> fragment_metadata;
 
   // Get encryption key from config
-  const EncryptionKey& encryption_key = *array.encryption_key();
-  if (encryption_key.encryption_type() == EncryptionType::NO_ENCRYPTION) {
-    bool found = false;
-    std::string encryption_key_from_cfg =
-        config_.get("sm.encryption_key", &found);
-    assert(found);
-    std::string encryption_type_from_cfg =
-        config_.get("sm.encryption_type", &found);
-    assert(found);
-    EncryptionType encryption_type_cfg;
-    RETURN_NOT_OK(
-        encryption_type_enum(encryption_type_from_cfg, &encryption_type_cfg));
-    EncryptionKey encryption_key_cfg;
-
-    if (encryption_key_from_cfg.empty()) {
-      RETURN_NOT_OK(
-          encryption_key_cfg.set_key(encryption_type_cfg, nullptr, 0));
-    } else {
-      uint32_t key_length = 0;
-      if (EncryptionKey::is_valid_key_length(
-              encryption_type_cfg,
-              static_cast<uint32_t>(encryption_key_from_cfg.size()))) {
-        const UnitTestConfig& unit_test_cfg = UnitTestConfig::instance();
-        if (unit_test_cfg.array_encryption_key_length.is_set()) {
-          key_length = unit_test_cfg.array_encryption_key_length.get();
-        } else {
-          key_length = static_cast<uint32_t>(encryption_key_from_cfg.size());
-        }
-      }
-      RETURN_NOT_OK(encryption_key_cfg.set_key(
-          encryption_type_cfg,
-          (const void*)encryption_key_from_cfg.c_str(),
-          key_length));
-    }
-    RETURN_NOT_OK(array_reopen(
-        array.array_uri(),
-        encryption_key_cfg,
-        &array_schema,
-        &fragment_metadata,
-        array_type == ArrayType::SPARSE ? timestamp_start : 0,
-        timestamp_end));
-  } else {
-    RETURN_NOT_OK(array_reopen(
-        array.array_uri(),
-        encryption_key,
-        &array_schema,
-        &fragment_metadata,
-        array_type == ArrayType::SPARSE ? timestamp_start : 0,
-        timestamp_end));
-  }
+  RETURN_NOT_OK(array_reopen(
+      array.array_uri(),
+      *array.encryption_key(),
+      &array_schema,
+      &fragment_metadata,
+      array_type == ArrayType::SPARSE ? timestamp_start : 0,
+      timestamp_end));
 
   // Return if array is empty
   if (fragment_metadata.empty())
@@ -1646,6 +1611,17 @@ void StorageManager::increment_in_progress() {
 }
 
 Status StorageManager::is_array(const URI& uri, bool* is_array) const {
+  // Check if the schema directory exists or not
+  bool is_dir = false;
+  // Since is_dir could return NOT Ok status, we will not use RETURN_NOT_OK here
+  Status st =
+      vfs_->is_dir(uri.join_path(constants::array_schema_folder_name), &is_dir);
+  if (st.ok() && is_dir) {
+    *is_array = true;
+    return Status::Ok();
+  }
+
+  // If there is no schema directory, we check schema file
   RETURN_NOT_OK(
       vfs_->is_file(uri.join_path(constants::array_schema_filename), is_array));
   return Status::Ok();
@@ -1702,6 +1678,64 @@ bool StorageManager::is_vacuum_file(const URI& uri) const {
   return false;
 }
 
+Status StorageManager::get_array_schema_uris(
+    const URI& array_uri, std::vector<URI>* schema_uris) const {
+  auto timer_se = stats_->start_timer("read_get_array_schema_uris");
+
+  schema_uris->clear();
+  URI old_schema_uri = array_uri.join_path(constants::array_schema_filename);
+  bool has_file = false;
+  RETURN_NOT_OK(vfs_->is_file(old_schema_uri, &has_file));
+  if (has_file) {
+    schema_uris->push_back(old_schema_uri);
+  }
+
+  URI schema_folder_uri =
+      array_uri.join_path(constants::array_schema_folder_name);
+  // Check if schema_folder_uri exists. For some file systems, such as win, ls
+  // will return error if the folder does not exist.
+  bool has_dir = false;
+  RETURN_NOT_OK(vfs_->is_dir(schema_folder_uri, &has_dir));
+  if (has_dir) {
+    std::vector<URI> array_schema_uris;
+    RETURN_NOT_OK(vfs_->ls(schema_folder_uri, &array_schema_uris));
+    if (array_schema_uris.size() > 0) {
+      schema_uris->reserve(schema_uris->size() + array_schema_uris.size());
+      std::copy(
+          array_schema_uris.begin(),
+          array_schema_uris.end(),
+          std::back_inserter(*schema_uris));
+    }
+  }
+
+  // Check if schema_uris is empty
+  if (schema_uris->empty()) {
+    return LOG_STATUS(Status::StorageManagerError(
+        "Can not get the array schemas; No array schemas found."));
+  }
+
+  return Status::Ok();
+}
+
+Status StorageManager::get_latest_array_schema_uri(
+    const URI& array_uri, URI* uri) const {
+  auto timer_se = stats_->start_timer("read_get_latest_array_schema_uri");
+
+  std::vector<URI> schema_uris;
+  RETURN_NOT_OK(get_array_schema_uris(array_uri, &schema_uris));
+  if (schema_uris.size() == 0) {
+    return LOG_STATUS(Status::StorageManagerError(
+        "Can not get the latest array schema; No array schemas found."));
+  }
+  *uri = schema_uris.back();
+  if (uri->is_invalid()) {
+    return LOG_STATUS(
+        Status::StorageManagerError("Could not find array schema URI"));
+  }
+
+  return Status::Ok();
+}
+
 Status StorageManager::load_array_schema(
     const URI& array_uri,
     const EncryptionKey& encryption_key,
@@ -1712,7 +1746,9 @@ Status StorageManager::load_array_schema(
     return LOG_STATUS(Status::StorageManagerError(
         "Cannot load array schema; Invalid array URI"));
 
-  URI schema_uri = array_uri.join_path(constants::array_schema_filename);
+  URI schema_uri;
+  RETURN_NOT_OK(get_latest_array_schema_uri(array_uri, &schema_uri));
+
   GenericTileIO tile_io(this, schema_uri);
   Tile* tile = nullptr;
 
@@ -1725,11 +1761,11 @@ Status StorageManager::load_array_schema(
     std::string encryption_type_from_cfg =
         config_.get("sm.encryption_type", &found);
     assert(found);
-    EncryptionType encryption_type_cfg;
-    RETURN_NOT_OK(
-        encryption_type_enum(encryption_type_from_cfg, &encryption_type_cfg));
-    EncryptionKey encryption_key_cfg;
+    auto [st, etc] = encryption_type_enum(encryption_type_from_cfg);
+    RETURN_NOT_OK(st);
+    EncryptionType encryption_type_cfg = etc.value();
 
+    EncryptionKey encryption_key_cfg;
     if (encryption_key_from_cfg.empty()) {
       RETURN_NOT_OK(
           encryption_key_cfg.set_key(encryption_type_cfg, nullptr, 0));
@@ -1774,7 +1810,7 @@ Status StorageManager::load_array_schema(
     tdb_delete(*array_schema);
     *array_schema = nullptr;
   }
-
+  (*array_schema)->set_uri(schema_uri);
   return st;
 }
 
@@ -1855,6 +1891,10 @@ Status StorageManager::object_type(const URI& uri, ObjectType* type) const {
       return Status::Ok();
     } else if (utils::parse::ends_with(
                    uri_str, constants::array_schema_filename)) {
+      *type = ObjectType::ARRAY;
+      return Status::Ok();
+    } else if (utils::parse::ends_with(
+                   uri_str, constants::array_schema_folder_name)) {
       *type = ObjectType::ARRAY;
       return Status::Ok();
     }
@@ -2076,8 +2116,7 @@ Status StorageManager::set_tag(
 
 Status StorageManager::store_array_schema(
     ArraySchema* array_schema, const EncryptionKey& encryption_key) {
-  auto& array_uri = array_schema->array_uri();
-  URI schema_uri = array_uri.join_path(constants::array_schema_filename);
+  const URI schema_uri = array_schema->uri();
 
   // Serialize
   Buffer buff;
@@ -2196,9 +2235,12 @@ Status StorageManager::init_rest_client() {
 
 Status StorageManager::write_to_cache(
     const URI& uri, uint64_t offset, Buffer* buffer) const {
-  // Do not write metadata to cache
+  // Do not write metadata or array schema to cache
   std::string filename = uri.last_path_part();
+  std::string uri_str = uri.to_string();
   if (filename == constants::fragment_metadata_filename ||
+      (uri_str.find(constants::array_schema_folder_name) !=
+       std::string::npos) ||
       filename == constants::array_schema_filename) {
     return Status::Ok();
   }

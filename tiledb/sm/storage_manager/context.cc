@@ -103,6 +103,10 @@ ThreadPool* Context::io_tp() const {
   return &io_tp_;
 }
 
+stats::Stats* Context::stats() const {
+  return stats_.get();
+}
+
 Status Context::init_thread_pools(Config* const config) {
   // If `config` is null, use a default-constructed config.
   Config tmp_config;
