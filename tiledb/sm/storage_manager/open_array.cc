@@ -118,6 +118,10 @@ FragmentMetadata* OpenArray::fragment_metadata(const URI& uri) const {
   return (it == fragment_metadata_set_.end()) ? nullptr : it->second;
 }
 
+OpenArrayMemoryTracker* OpenArray::memory_tracker() {
+  return &memory_tracker_;
+}
+
 tdb_shared_ptr<Buffer> OpenArray::array_metadata(const URI& uri) const {
   std::lock_guard<std::mutex> lock(local_mtx_);
   auto it = array_metadata_.find(uri.to_string());

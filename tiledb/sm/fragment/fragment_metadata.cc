@@ -43,6 +43,7 @@
 #include "tiledb/sm/misc/constants.h"
 #include "tiledb/sm/misc/utils.h"
 #include "tiledb/sm/stats/global_stats.h"
+#include "tiledb/sm/storage_manager/open_array_memory_tracker.h"
 #include "tiledb/sm/storage_manager/storage_manager.h"
 #include "tiledb/sm/tile/generic_tile_io.h"
 #include "tiledb/sm/tile/tile.h"
@@ -65,12 +66,14 @@ FragmentMetadata::FragmentMetadata(
     const ArraySchema* array_schema,
     const URI& fragment_uri,
     const std::pair<uint64_t, uint64_t>& timestamp_range,
+    OpenArrayMemoryTracker* memory_tracker,
     bool dense)
     : storage_manager_(storage_manager)
     , array_schema_(array_schema)
     , dense_(dense)
     , fragment_uri_(fragment_uri)
-    , timestamp_range_(timestamp_range) {
+    , timestamp_range_(timestamp_range)
+    , memory_tracker_(memory_tracker) {
   has_consolidated_footer_ = false;
   rtree_ = RTree(array_schema_->domain(), constants::rtree_fanout);
   meta_file_size_ = 0;
@@ -892,12 +895,24 @@ Status FragmentMetadata::load_rtree(const EncryptionKey& encryption_key) {
 
   storage_manager_->stats()->add_counter("read_rtree_size", buff.size());
 
+  // Use the serialized buffer size to approximate memory usage of the rtree.
+  if (!memory_tracker_->take_memory(buff.size())) {
+    return LOG_STATUS(Status::FragmentMetadataError(
+        "Cannot load R-tree; Insufficient memory budget"));
+  }
+
   ConstBuffer cbuff(&buff);
   RETURN_NOT_OK(rtree_.deserialize(&cbuff, array_schema_->domain(), version_));
 
   loaded_metadata_.rtree_ = true;
 
   return Status::Ok();
+}
+
+void FragmentMetadata::free_rtree() {
+  auto freed = rtree_.free_memory();
+  memory_tracker_->release_memory(freed);
+  loaded_metadata_.rtree_ = false;
 }
 
 Status FragmentMetadata::load_tile_var_sizes(
@@ -1618,9 +1633,15 @@ Status FragmentMetadata::load_tile_offsets(ConstBuffer* buff) {
     if (tile_offsets_num == 0)
       continue;
 
+    auto size = tile_offsets_num * sizeof(uint64_t);
+    if (!memory_tracker_->take_memory(size)) {
+      return LOG_STATUS(Status::FragmentMetadataError(
+          "Cannot load tile offsets; Insufficient memory budget"));
+    }
+
     // Get tile offsets
     tile_offsets_[i].resize(tile_offsets_num);
-    st = buff->read(&tile_offsets_[i][0], tile_offsets_num * sizeof(uint64_t));
+    st = buff->read(&tile_offsets_[i][0], size);
     if (!st.ok()) {
       return LOG_STATUS(Status::FragmentMetadataError(
           "Cannot load fragment metadata; Reading tile offsets failed"));
@@ -1647,9 +1668,14 @@ Status FragmentMetadata::load_tile_offsets(unsigned idx, ConstBuffer* buff) {
 
   // Get tile offsets
   if (tile_offsets_num != 0) {
+    auto size = tile_offsets_num * sizeof(uint64_t);
+    if (!memory_tracker_->take_memory(size)) {
+      return LOG_STATUS(Status::FragmentMetadataError(
+          "Cannot load tile offsets; Insufficient memory budget"));
+    }
+
     tile_offsets_[idx].resize(tile_offsets_num);
-    st =
-        buff->read(&tile_offsets_[idx][0], tile_offsets_num * sizeof(uint64_t));
+    st = buff->read(&tile_offsets_[idx][0], size);
     if (!st.ok()) {
       return LOG_STATUS(Status::FragmentMetadataError(
           "Cannot load fragment metadata; Reading tile offsets failed"));
@@ -1689,10 +1715,15 @@ Status FragmentMetadata::load_tile_var_offsets(ConstBuffer* buff) {
     if (tile_var_offsets_num == 0)
       continue;
 
+    auto size = tile_var_offsets_num * sizeof(uint64_t);
+    if (!memory_tracker_->take_memory(size)) {
+      return LOG_STATUS(Status::FragmentMetadataError(
+          "Cannot load tile var offsets; Insufficient memory budget"));
+    }
+
     // Get variable tile offsets
     tile_var_offsets_[i].resize(tile_var_offsets_num);
-    st = buff->read(
-        &tile_var_offsets_[i][0], tile_var_offsets_num * sizeof(uint64_t));
+    st = buff->read(&tile_var_offsets_[i][0], size);
     if (!st.ok()) {
       return LOG_STATUS(Status::FragmentMetadataError(
           "Cannot load fragment metadata; Reading variable tile offsets "
@@ -1721,9 +1752,14 @@ Status FragmentMetadata::load_tile_var_offsets(
 
   // Get variable tile offsets
   if (tile_var_offsets_num != 0) {
+    auto size = tile_var_offsets_num * sizeof(uint64_t);
+    if (!memory_tracker_->take_memory(size)) {
+      return LOG_STATUS(Status::FragmentMetadataError(
+          "Cannot load tile var offsets; Insufficient memory budget"));
+    }
+
     tile_var_offsets_[idx].resize(tile_var_offsets_num);
-    st = buff->read(
-        &tile_var_offsets_[idx][0], tile_var_offsets_num * sizeof(uint64_t));
+    st = buff->read(&tile_var_offsets_[idx][0], size);
     if (!st.ok()) {
       return LOG_STATUS(Status::FragmentMetadataError(
           "Cannot load fragment metadata; Reading variable tile offsets "
@@ -1762,10 +1798,15 @@ Status FragmentMetadata::load_tile_var_sizes(ConstBuffer* buff) {
     if (tile_var_sizes_num == 0)
       continue;
 
+    auto size = tile_var_sizes_num * sizeof(uint64_t);
+    if (!memory_tracker_->take_memory(size)) {
+      return LOG_STATUS(Status::FragmentMetadataError(
+          "Cannot load tile var sizes; Insufficient memory budget"));
+    }
+
     // Get variable tile sizes
     tile_var_sizes_[i].resize(tile_var_sizes_num);
-    st = buff->read(
-        &tile_var_sizes_[i][0], tile_var_sizes_num * sizeof(uint64_t));
+    st = buff->read(&tile_var_sizes_[i][0], size);
     if (!st.ok()) {
       return LOG_STATUS(Status::FragmentMetadataError(
           "Cannot load fragment metadata; Reading variable tile sizes "
@@ -1792,9 +1833,14 @@ Status FragmentMetadata::load_tile_var_sizes(unsigned idx, ConstBuffer* buff) {
 
   // Get variable tile sizes
   if (tile_var_sizes_num != 0) {
+    auto size = tile_var_sizes_num * sizeof(uint64_t);
+    if (!memory_tracker_->take_memory(size)) {
+      return LOG_STATUS(Status::FragmentMetadataError(
+          "Cannot load tile var sizes; Insufficient memory budget"));
+    }
+
     tile_var_sizes_[idx].resize(tile_var_sizes_num);
-    st = buff->read(
-        &tile_var_sizes_[idx][0], tile_var_sizes_num * sizeof(uint64_t));
+    st = buff->read(&tile_var_sizes_[idx][0], size);
     if (!st.ok()) {
       return LOG_STATUS(Status::FragmentMetadataError(
           "Cannot load fragment metadata; Reading variable tile sizes "
@@ -1821,10 +1867,14 @@ Status FragmentMetadata::load_tile_validity_offsets(
 
   // Get tile offsets
   if (tile_validity_offsets_num != 0) {
+    auto size = tile_validity_offsets_num * sizeof(uint64_t);
+    if (!memory_tracker_->take_memory(size)) {
+      return LOG_STATUS(Status::FragmentMetadataError(
+          "Cannot load tile validity offsets; Insufficient memory budget"));
+    }
+
     tile_validity_offsets_[idx].resize(tile_validity_offsets_num);
-    st = buff->read(
-        &tile_validity_offsets_[idx][0],
-        tile_validity_offsets_num * sizeof(uint64_t));
+    st = buff->read(&tile_validity_offsets_[idx][0], size);
 
     if (!st.ok()) {
       return LOG_STATUS(Status::FragmentMetadataError(
@@ -2307,6 +2357,11 @@ Status FragmentMetadata::read_file_footer(
   RETURN_NOT_OK(get_footer_offset_and_size(footer_offset, footer_size));
 
   storage_manager_->stats()->add_counter("read_frag_meta_size", *footer_size);
+
+  if (!memory_tracker_->take_memory(*footer_size)) {
+    return LOG_STATUS(Status::FragmentMetadataError(
+        "Cannot load file footer; Insufficient memory budget"));
+  }
 
   // Read footer
   return storage_manager_->read(

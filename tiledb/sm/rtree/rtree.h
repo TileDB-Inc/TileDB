@@ -89,6 +89,9 @@ class RTree {
   /** Builds the RTree bottom-up on the current leaf level. */
   Status build_tree();
 
+  /** Frees the memory associated with the rtree. */
+  uint64_t free_memory();
+
   /** The number of dimensions of the R-tree. */
   unsigned dim_num() const;
 
@@ -211,6 +214,12 @@ class RTree {
    * always consists of a single MBR.
    */
   std::vector<Level> levels_;
+
+  /**
+   * Stores the size of the buffer used to deserialize the data, used for
+   * memory tracking pusposes on reads.
+   */
+  uint64_t deserialized_buffer_size_;
 
   /* ********************************* */
   /*           PRIVATE METHODS         */

@@ -71,6 +71,7 @@ class FragmentMetadata;
 class FragmentInfo;
 class Metadata;
 class OpenArray;
+class OpenArrayMemoryTracker;
 class Query;
 class RestClient;
 class VFS;
@@ -338,6 +339,14 @@ class StorageManager {
       const URI& array_uri,
       ArraySchema* array_schema,
       const EncryptionKey& encryption_key);
+
+  /**
+   * Gets the memory tracker for an open array.
+   *
+   * @param array_uri The array URI.
+   * @return The memory tracker.
+   */
+  OpenArrayMemoryTracker* array_get_memory_tracker(const URI& array_uri);
 
   /**
    * Retrieves the non-empty domain from an array. This is the union of the
