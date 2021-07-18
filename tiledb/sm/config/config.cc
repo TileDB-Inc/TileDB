@@ -74,8 +74,8 @@ const std::string Config::SM_TILE_CACHE_SIZE = "10000000";
 const std::string Config::SM_SKIP_EST_SIZE_PARTITIONING = "false";
 const std::string Config::SM_MEMORY_BUDGET = "5368709120";       // 5GB
 const std::string Config::SM_MEMORY_BUDGET_VAR = "10737418240";  // 10GB;
-const std::string Config::SM_SUB_PARTITIONER_MEMORY_BUDGET = "0";
 const std::string Config::SM_USE_REFACTORED_READERS = "false";
+const std::string Config::SM_MEM_TOTAL_BUDGET = "10737418240";  // 10GB;
 const std::string Config::SM_ENABLE_SIGNAL_HANDLERS = "true";
 const std::string Config::SM_COMPUTE_CONCURRENCY_LEVEL =
     utils::parse::to_str(std::thread::hardware_concurrency());
@@ -211,9 +211,8 @@ Config::Config() {
       SM_SKIP_EST_SIZE_PARTITIONING;
   param_values_["sm.memory_budget"] = SM_MEMORY_BUDGET;
   param_values_["sm.memory_budget_var"] = SM_MEMORY_BUDGET_VAR;
-  param_values_["sm.sub_partitioner_memory_budget"] =
-      SM_SUB_PARTITIONER_MEMORY_BUDGET;
   param_values_["sm.use_refactored_readers"] = SM_USE_REFACTORED_READERS;
+  param_values_["sm.mem.total_budget"] = SM_MEM_TOTAL_BUDGET;
   param_values_["sm.enable_signal_handlers"] = SM_ENABLE_SIGNAL_HANDLERS;
   param_values_["sm.compute_concurrency_level"] = SM_COMPUTE_CONCURRENCY_LEVEL;
   param_values_["sm.io_concurrency_level"] = SM_IO_CONCURRENCY_LEVEL;
@@ -467,11 +466,10 @@ Status Config::unset(const std::string& param) {
     param_values_["sm.memory_budget"] = SM_MEMORY_BUDGET;
   } else if (param == "sm.memory_budget_var") {
     param_values_["sm.memory_budget_var"] = SM_MEMORY_BUDGET_VAR;
-  } else if (param == "sm.sub_partitioner_memory_budget") {
-    param_values_["sm.sub_partitioner_memory_budget"] =
-        SM_SUB_PARTITIONER_MEMORY_BUDGET;
   } else if (param == "sm.use_refactored_readers") {
     param_values_["sm.use_refactored_readers"] = SM_USE_REFACTORED_READERS;
+  } else if (param == "sm.mem.total_budget") {
+    param_values_["sm.mem.total_budget"] = SM_MEM_TOTAL_BUDGET;
   } else if (param == "sm.enable_signal_handlers") {
     param_values_["sm.enable_signal_handlers"] = SM_ENABLE_SIGNAL_HANDLERS;
   } else if (param == "sm.compute_concurrency_level") {
@@ -704,8 +702,6 @@ Status Config::sanity_check(
   } else if (param == "sm.memory_budget") {
     RETURN_NOT_OK(utils::parse::convert(value, &vuint64));
   } else if (param == "sm.memory_budget_var") {
-    RETURN_NOT_OK(utils::parse::convert(value, &vuint64));
-  } else if (param == "sm.sub_partitioner_memory_budget") {
     RETURN_NOT_OK(utils::parse::convert(value, &vuint64));
   } else if (param == "sm.enable_signal_handlers") {
     RETURN_NOT_OK(utils::parse::convert(value, &v));

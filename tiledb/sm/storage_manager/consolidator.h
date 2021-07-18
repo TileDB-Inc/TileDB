@@ -99,6 +99,8 @@ class Consolidator {
     uint64_t timestamp_start_;
     /** End time for consolidation. */
     uint64_t timestamp_end_;
+    /** Are the refactored readers in use or not */
+    bool use_refactored_readers_;
   };
 
   /* ********************************* */

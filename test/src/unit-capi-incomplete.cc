@@ -1048,24 +1048,32 @@ void IncompleteFx::check_sparse_until_complete() {
   // Check status
   rc = tiledb_query_get_status(ctx_, query, &status);
   CHECK(rc == TILEDB_OK);
-  CHECK(status == TILEDB_INCOMPLETE);
+  CHECK(
+      status ==
+      (use_refactored_readers() ? TILEDB_COMPLETED : TILEDB_INCOMPLETE));
 
   // Check buffer
   c_buffer_a1[0] = 1;
   CHECK(!memcmp(buffer_a1, c_buffer_a1, sizeof(c_buffer_a1)));
   CHECK(buffer_sizes[0] == sizeof(int));
 
-  // Submit query
-  rc = tiledb_query_submit(ctx_, query);
-  REQUIRE(rc == TILEDB_OK);
+  /**
+   * Old reader needs an extra round here to finish processing all the
+   * partitions in the subarray. New reader is done earlier.
+   */
+  if (!use_refactored_readers()) {
+    // Submit query
+    rc = tiledb_query_submit(ctx_, query);
+    REQUIRE(rc == TILEDB_OK);
 
-  // Check status
-  rc = tiledb_query_get_status(ctx_, query, &status);
-  CHECK(rc == TILEDB_OK);
-  CHECK(status == TILEDB_COMPLETED);
+    // Check status
+    rc = tiledb_query_get_status(ctx_, query, &status);
+    CHECK(rc == TILEDB_OK);
+    CHECK(status == TILEDB_COMPLETED);
 
-  // Check buffer
-  CHECK(buffer_sizes[0] == 0);
+    // Check buffer
+    CHECK(buffer_sizes[0] == 0);
+  }
 
   // Close array
   rc = tiledb_array_close(ctx_, array);
@@ -1193,7 +1201,7 @@ void IncompleteFx::check_sparse_unsplittable_complete() {
 TEST_CASE_METHOD(
     IncompleteFx,
     "C API: Test incomplete read queries, dense",
-    "[capi], [incomplete], [dense-incomplete]") {
+    "[capi][incomplete][dense-incomplete]") {
   remove_dense_array();
   create_dense_array();
   write_dense_full();
