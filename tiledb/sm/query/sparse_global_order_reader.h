@@ -205,10 +205,12 @@ class SparseGlobalOrderReader : public ReaderBase, public IQueryStrategy {
   Status add_next_tile_to_queue(
       bool subarray_set,
       unsigned int frag_idx,
+      uint64_t cell_idx,
       std::vector<std::list<ResultTile>::iterator>& result_tiles_it,
       std::vector<std::vector<uint8_t>>& coord_tiles_result_bitmap,
       std::priority_queue<ResultCoords, std::vector<ResultCoords>, T>&
           tile_queue,
+      std::mutex& tile_queue_mutex,
       T& cmp,
       bool* need_more_tiles);
 
@@ -227,7 +229,6 @@ class SparseGlobalOrderReader : public ReaderBase, public IQueryStrategy {
       std::vector<std::vector<uint8_t>>& coord_tiles_result_bitmap);
 
   /** Compute the result cell slabs once tiles are loaded. */
-  // TODO Get rid of ResultCoords?
   template <class T>
   Status merge_result_cell_slabs(uint64_t memory_budget, T cmp);
 

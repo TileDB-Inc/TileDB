@@ -517,15 +517,17 @@ template <class T>
 Status SparseGlobalOrderReader::add_next_tile_to_queue(
     bool subarray_set,
     unsigned int frag_idx,
+    uint64_t cell_idx,
     std::vector<std::list<ResultTile>::iterator>& result_tiles_it,
     std::vector<std::vector<uint8_t>>& coord_tiles_result_bitmap,
     std::priority_queue<ResultCoords, std::vector<ResultCoords>, T>& tile_queue,
+    std::mutex& tile_queue_mutex,
     T& cmp,
     bool* need_more_tiles) {
-  result_tiles_it[frag_idx]++;
+  bool found = false;
 
-  // There was more tiles in this fragment, insert it in the queue.
-  if (result_tiles_it[frag_idx] != result_tiles_[frag_idx].end()) {
+  while (!found && result_tiles_it[frag_idx] != result_tiles_[frag_idx].end()) {
+    found = !subarray_set;
     auto tile = &*result_tiles_it[frag_idx];
 
     // Calculate the bitmap for the cells.
@@ -536,10 +538,34 @@ Status SparseGlobalOrderReader::add_next_tile_to_queue(
     RETURN_NOT_OK(calculate_hilbert_values(
         subarray_set, tile, coord_tiles_result_bitmap, cmp));
 
-    read_state_.frag_tile_idx_[tile->frag_idx()] =
-        std::pair<uint64_t, uint64_t>(tile->tile_idx(), 0);
-    tile_queue.emplace(tile, 0);
-  } else {
+    // Find a cell that's in the subarray.
+    if (subarray_set) {
+      while (cell_idx < tile->cell_num()) {
+        if (coord_tiles_result_bitmap[frag_idx][cell_idx]) {
+          found = true;
+          break;
+        }
+
+        cell_idx++;
+      }
+    }
+
+    // There was more tiles in this fragment, insert it in the queue.
+    if (found) {
+      read_state_.frag_tile_idx_[tile->frag_idx()] =
+          std::pair<uint64_t, uint64_t>(tile->tile_idx(), cell_idx);
+
+      std::unique_lock<std::mutex> ul(tile_queue_mutex);
+      tile_queue.emplace(tile, cell_idx);
+    }
+
+    result_tiles_it[frag_idx]++;
+
+    // Once we move to the next tile, the saved cell index doesn't matter.
+    cell_idx = 0;
+  }
+
+  if (!found) {
     // This fragment has more tiles potentially.
     if (!all_tiles_loaded_[frag_idx]) {
       // Try to find a next tile.
@@ -615,7 +641,6 @@ Status SparseGlobalOrderReader::calculate_hilbert_values<HilbertCmpReverse>(
         }
         return Status::Ok();
       });
-
   RETURN_NOT_OK_ELSE(status, LOG_STATUS(status));
 
   // Set the values in the comparator.
@@ -668,8 +693,15 @@ Status SparseGlobalOrderReader::merge_result_cell_slabs(
   auto allows_dups = array_schema_->allows_dups();
 
   // A tile min heap, contains one Result coords per fragment.
+  std::vector<ResultCoords> container;
+  container.reserve(result_tiles_.size());
   std::priority_queue<ResultCoords, std::vector<ResultCoords>, T> tile_queue(
-      cmp);
+      cmp, std::move(container));
+
+  std::mutex tile_queue_mutex;
+
+  // If any fragments needs to load more tiles.
+  bool need_more_tiles = false;
 
   // Tile iterators, per fragments.
   std::vector<std::list<ResultTile>::iterator> result_tiles_it(
@@ -680,146 +712,168 @@ Status SparseGlobalOrderReader::merge_result_cell_slabs(
       result_tiles_.size());
 
   // For all fragments, get the first tile.
-  for (unsigned int frag_idx = 0; frag_idx < result_tiles_.size(); frag_idx++) {
-    if (result_tiles_[frag_idx].size() > 0) {
-      // Initialize the iterator for this fragment.
-      result_tiles_it[frag_idx] = result_tiles_[frag_idx].begin();
-      auto tile = &*result_tiles_it[frag_idx];
+  auto status = parallel_for(
+      storage_manager_->compute_tp(), 0, result_tiles_.size(), [&](uint64_t f) {
+        if (result_tiles_[f].size() > 0) {
+          // Initialize the iterator for this fragment.
+          result_tiles_it[f] = result_tiles_[f].begin();
 
-      // Get the cell index we were processing.
-      auto cell_idx = read_state_.frag_tile_idx_[frag_idx].second;
+          // Get the cell index we were processing.
+          auto cell_idx = read_state_.frag_tile_idx_[f].second;
 
-      // Calculate the bitmap for the cells.
-      RETURN_NOT_OK(compute_coord_tiles_result_bitmap(
-          subarray_set, tile, coord_tiles_result_bitmap));
-
-      // Calculate hilbert values, this is templated out for non hilbert code.
-      RETURN_NOT_OK(calculate_hilbert_values(
-          subarray_set, tile, coord_tiles_result_bitmap, cmp));
-
-      // Add the tile to the queue.
-      tile_queue.emplace(tile, cell_idx);
-    }
-  }
-
-  // The result cell slab in progress.
-  ResultTile* tile = tile_queue.top().tile_;
-  uint64_t start = tile_queue.top().pos_;
-  uint64_t length = 0;
-
-  // Used to store cells that have the same coordinate as the one in process.
-  std::stack<ResultCoords> same_coords_stack;
-
-  // Process all elements.
-  // TODO Implement parallelization here.
-  bool need_more_tiles = false;
-  while (!tile_queue.empty() && !need_more_tiles) {
-    auto next_tile = tile_queue.top();
-    tile_queue.pop();
-
-    // See if the cell is in the subarray, if set.
-    bool cell_in_subarray = true;
-    if (subarray_set) {
-      cell_in_subarray = coord_tiles_result_bitmap[next_tile.tile_->frag_idx()]
-                                                  [next_tile.pos_];
-    }
-
-    // Process all cells with the same coordinates at once.
-    while (!tile_queue.empty() && next_tile.same_coords(tile_queue.top())) {
-      // Potentially the next cell.
-      auto next_tile_tmp = tile_queue.top();
-      tile_queue.pop();
-
-      // If we allow duplicates, create one slab for all the dups.
-      if (allows_dups && cell_in_subarray) {
-        if (length != 0) {
-          read_state_.result_cell_slabs_.emplace_back(tile, start, length);
-          memory_used_rcs_ += sizeof(ResultCellSlab);
+          // Add the tile to the queue.
+          RETURN_NOT_OK(add_next_tile_to_queue(
+              subarray_set,
+              f,
+              cell_idx,
+              result_tiles_it,
+              coord_tiles_result_bitmap,
+              tile_queue,
+              tile_queue_mutex,
+              cmp,
+              &need_more_tiles));
         }
 
-        tile = next_tile_tmp.tile_;
-        start = next_tile_tmp.pos_;
-        length = 1;
-      }
+        return Status::Ok();
+      });
+  RETURN_NOT_OK_ELSE(status, LOG_STATUS(status));
+
+  // Process all elements.
+  while (!tile_queue.empty() && !need_more_tiles) {
+    auto to_process = tile_queue.top();
+    tile_queue.pop();
+
+    // Process all cells with the same coordinates at once.
+    while (!tile_queue.empty() && to_process.same_coords(tile_queue.top())) {
+      // Potentially the next cell.
+      auto next_tile = tile_queue.top();
+      tile_queue.pop();
 
       // Take the cell with the highest fagment index.
-      if (next_tile.tile_->frag_idx() < next_tile_tmp.tile_->frag_idx()) {
-        same_coords_stack.push(std::move(next_tile));
-        next_tile = std::move(next_tile_tmp);
-      } else {
-        same_coords_stack.push(std::move(next_tile_tmp));
+      if (to_process.tile_->frag_idx() < next_tile.tile_->frag_idx()) {
+        std::swap(to_process, next_tile);
       }
-    }
 
-    // New tile or cell not in subarray, time for a new result cell slab.
-    if (tile != next_tile.tile_ || !cell_in_subarray) {
-      if (length != 0) {
-        read_state_.result_cell_slabs_.emplace_back(tile, start, length);
+      // If we allow duplicates, create one slab for all the dups.
+      if (allows_dups) {
+        read_state_.result_cell_slabs_.emplace_back(
+            next_tile.tile_, next_tile.pos_, 1);
         memory_used_rcs_ += sizeof(ResultCellSlab);
       }
 
-      // If the coord is not in range the possible rcs starts at the next index.
-      tile = next_tile.tile_;
-      start = next_tile.pos_ + !cell_in_subarray;
-      length = 0;
-    }
-
-    // Increment the result cell slab length if the cell is in the subarray.
-    if (cell_in_subarray) {
-      length++;
-    }
-
-    // Done with this tile, fetch another.
-    if (!next_tile.next()) {
-      RETURN_NOT_OK(add_next_tile_to_queue(
-          subarray_set,
-          next_tile.tile_->frag_idx(),
-          result_tiles_it,
-          coord_tiles_result_bitmap,
-          tile_queue,
-          cmp,
-          &need_more_tiles));
-    } else {
-      // Put the next cell on the queue to be resorted.
-      tile_queue.emplace(std::move(next_tile));
-      read_state_.frag_tile_idx_[next_tile.tile_->frag_idx()] =
-          std::pair<uint64_t, uint64_t>(
-              next_tile.tile_->tile_idx(), next_tile.pos_);
-    }
-
-    // Purge the cells with same coords, adding their next cell to the heap.
-    while (!same_coords_stack.empty()) {
-      auto rc = same_coords_stack.top();
-      same_coords_stack.pop();
-
-      // Done with this tile, fetch another.
-      if (!rc.next()) {
+      // Put the next cell in the queue.
+      if (!next_tile.next()) {
+        // Done with this tile, fetch another.
         RETURN_NOT_OK(add_next_tile_to_queue(
             subarray_set,
-            rc.tile_->frag_idx(),
+            next_tile.tile_->frag_idx(),
+            0,
             result_tiles_it,
             coord_tiles_result_bitmap,
             tile_queue,
+            tile_queue_mutex,
             cmp,
             &need_more_tiles));
       } else {
-        // put the next cell on the queue again to be resorted.
-        tile_queue.emplace(std::move(rc));
-        read_state_.frag_tile_idx_[next_tile.tile_->frag_idx()] =
+        // Put the next cell on the queue again to be resorted.
+        tile_queue.emplace(std::move(next_tile));
+        read_state_.frag_tile_idx_[to_process.tile_->frag_idx()] =
             std::pair<uint64_t, uint64_t>(
                 next_tile.tile_->tile_idx(), next_tile.pos_);
       }
     }
 
+    // Find how many cells to process using the top of the queue.
+    auto& next_tile = tile_queue.top();
+
+    // Temp result coord used to find the last position.
+    ResultCoords temp_rc = to_process;
+
+    // Check the top of the queue against last cell of the current tile.
+    temp_rc.pos_ = to_process.tile_->cell_num() - 1;
+
+    // If there is more than one fragment and we can't add the whole tile,
+    // find the last possible cell in this tile smaller than the top of the
+    // queue. Otherwise we are adding the whole tile.
+    if (!tile_queue.empty() && cmp(temp_rc, next_tile)) {
+      // TODO Parallelize.
+
+      // Run a bisection seach on to find the last cell.
+      uint64_t left = to_process.pos_;
+      uint64_t right = temp_rc.pos_;
+      while (left != right - 1) {
+        // Check against mid.
+        temp_rc.pos_ = left + (right - left) / 2;
+
+        if (!cmp(temp_rc, next_tile))
+          left = temp_rc.pos_;
+        else
+          right = temp_rc.pos_;
+      }
+
+      // Left is the last position smaller than the top of the queue.
+      temp_rc.pos_ = left;
+    }
+
+    // Generate the result cell slabs.
+    auto start = to_process.pos_;
+    const auto& tile = to_process.tile_;
+
+    // If no subarray is set, add all cells.
+    if (!subarray_set) {
+      auto length = temp_rc.pos_ - to_process.pos_ + 1;
+      read_state_.result_cell_slabs_.emplace_back(tile, start, length);
+      memory_used_rcs_ += sizeof(ResultCellSlab);
+    } else {
+      // Process all cells, when there is a "hole" in the cell contiguity,
+      // push a new cell slab.
+      uint64_t length = 0;
+      for (auto c = to_process.pos_; c <= temp_rc.pos_; c++) {
+        if (!coord_tiles_result_bitmap[tile->frag_idx()][c]) {
+          if (length != 0) {
+            read_state_.result_cell_slabs_.emplace_back(tile, start, length);
+            memory_used_rcs_ += sizeof(ResultCellSlab);
+            start = c + 1;
+            length = 0;
+          }
+        } else {
+          length++;
+        }
+      }
+
+      // Add the last cell slab.
+      if (length != 0) {
+        read_state_.result_cell_slabs_.emplace_back(tile, start, length);
+        memory_used_rcs_ += sizeof(ResultCellSlab);
+      }
+    }
+
+    // Update the position in the tile.
+    to_process.pos_ = temp_rc.pos_;
+
+    // Put the next cell in the queue.
+    if (!to_process.next()) {
+      // Done with this tile, fetch another.
+      RETURN_NOT_OK(add_next_tile_to_queue(
+          subarray_set,
+          tile->frag_idx(),
+          0,
+          result_tiles_it,
+          coord_tiles_result_bitmap,
+          tile_queue,
+          tile_queue_mutex,
+          cmp,
+          &need_more_tiles));
+    } else {
+      // Put the next cell on the queue to be resorted.
+      tile_queue.emplace(std::move(to_process));
+      read_state_.frag_tile_idx_[tile->frag_idx()] =
+          std::pair<uint64_t, uint64_t>(tile->tile_idx(), to_process.pos_);
+    }
+
     // If we busted our memory budget, exit.
     if (memory_used_rcs_ >= memory_budget)
       break;
-  }
-
-  // Add the final result cell slab, and done.
-  if (length != 0) {
-    read_state_.result_cell_slabs_.emplace_back(tile, start, length);
-    memory_used_rcs_ += sizeof(ResultCellSlab);
   }
 
   return Status::Ok();
