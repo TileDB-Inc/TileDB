@@ -146,6 +146,15 @@ class HilbertCmp {
     dim_num_ = domain->dim_num();
   }
 
+  /** Constructor. */
+  HilbertCmp(
+      const Domain* domain,
+      std::vector<std::vector<uint64_t>>* fragments_hilbert_values)
+      : domain_(domain)
+      , fragment_hilbert_values_(fragments_hilbert_values) {
+    dim_num_ = domain->dim_num();
+  }
+
   /**
    * Positional comparison operator.
    *
@@ -200,6 +209,45 @@ class HilbertCmp {
     return false;
   }
 
+  /**
+   * Positional comparison operator.
+   *
+   * @param a The first coordinate.
+   * @param b The second coordinate.
+   * @return `true` if `a` precedes `b` and `false` otherwise.
+   */
+  bool operator()(const ResultCoords& a, const ResultCoords& b) const {
+    auto hilbert_a = (*fragment_hilbert_values_)[a.tile_->frag_idx()][a.pos_];
+    auto hilbert_b = (*fragment_hilbert_values_)[b.tile_->frag_idx()][b.pos_];
+    if (hilbert_a < hilbert_b)
+      return true;
+    else if (hilbert_a > hilbert_b)
+      return false;
+    // else the hilbert values are equal
+
+    // Compare cell order on row-major to break the tie
+    for (unsigned d = 0; d < dim_num_; ++d) {
+      auto res = domain_->cell_order_cmp(d, a, b);
+      if (res == -1)
+        return true;
+      if (res == 1)
+        return false;
+      // else same tile on dimension d --> continue
+    }
+
+    return false;
+  }
+
+  /**
+   * Sets the values for the coordinates comparator.
+   *
+   * @param f The fragment index.
+   * @param v The values vector for the tile in process.
+   */
+  void set_values_for_fragment(unsigned int f, std::vector<uint64_t>& v) {
+    (*fragment_hilbert_values_)[f] = std::move(v);
+  }
+
  private:
   /**
    * The coordinate buffers, one per dimension, sorted in the order the
@@ -214,6 +262,54 @@ class HilbertCmp {
   std::vector<ResultCoords>::iterator iter_begin_;
   /** The Hilbert values vector. */
   const std::vector<uint64_t>* hilbert_values_;
+  /** The Hilbert values vectors per fragments. */
+  std::vector<std::vector<uint64_t>>* fragment_hilbert_values_;
+};
+
+/**
+ * Wrapper of comparison function for sorting coords on Hilbert values
+ * in reverse order.
+ */
+class HilbertCmpReverse {
+ public:
+  /**
+   * Constructor.
+   *
+   * @param domain The array domain.
+   * @param buff The buffer containing the actual values, used
+   *     in positional comparisons.
+   */
+  HilbertCmpReverse(
+      const Domain* domain,
+      std::vector<std::vector<uint64_t>>* fragments_hilbert_values)
+      : cmp_(domain, fragments_hilbert_values) {
+  }
+
+  /**
+   * Comparison operator for a vector of `ResultCoords`.
+   *
+   * @param a The first coordinate.
+   * @param b The second coordinate.
+   * @return `true` if `a` precedes `b` and `false` otherwise.
+   */
+  bool operator()(const ResultCoords& a, const ResultCoords& b) const {
+    return !cmp_.operator()(a, b);
+  }
+
+  /**
+   * Sets the values for the coordinates comparator.
+   *
+   * @param f The fragment index.
+   * @param v The values vector for the tile in process.
+   * @return `true` if `a` precedes `b` and `false` otherwise.
+   */
+  void set_values_for_fragment(unsigned int f, std::vector<uint64_t>& v) {
+    cmp_.set_values_for_fragment(f, v);
+  }
+
+ private:
+  /** GlobalCmp. */
+  HilbertCmp cmp_;
 };
 
 /**
@@ -357,6 +453,39 @@ class GlobalCmp {
    * dimensions are defined in the array schema.
    */
   const std::vector<const QueryBuffer*>* buffs_;
+};
+
+/**
+ * Wrapper of comparison function for sorting coords on the global order
+ * of some domain in reverse order.
+ */
+class GlobalCmpReverse {
+ public:
+  /**
+   * Constructor.
+   *
+   * @param domain The array domain.
+   * @param buff The buffer containing the actual values, used
+   *     in positional comparisons.
+   */
+  GlobalCmpReverse(const Domain* domain)
+      : cmp_(domain) {
+  }
+
+  /**
+   * Comparison operator for a vector of `ResultCoords`.
+   *
+   * @param a The first coordinate.
+   * @param b The second coordinate.
+   * @return `true` if `a` precedes `b` and `false` otherwise.
+   */
+  bool operator()(const ResultCoords& a, const ResultCoords& b) const {
+    return !cmp_.operator()(a, b);
+  }
+
+ private:
+  /** GlobalCmp. */
+  GlobalCmp cmp_;
 };
 
 }  // namespace sm

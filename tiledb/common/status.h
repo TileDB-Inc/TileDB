@@ -115,6 +115,7 @@ enum class StatusCode : char {
   FS_MEM,
   Attribute,
   WriteCellSlabIter,
+  SparseGlobalOrderReaderError,
   Reader,
   Writer,
   PreallocatedBuffer,
@@ -337,6 +338,12 @@ class Status {
    * **/
   static Status WriteCellSlabIterError(const std::string& msg) {
     return Status(StatusCode::WriteCellSlabIter, msg, -1);
+  }
+
+  /** Return a SparseGlobalOrderReaderError error class Status with a given
+   * message **/
+  static Status SparseGlobalOrderReaderError(const std::string& msg) {
+    return Status(StatusCode::SparseGlobalOrderReaderError, msg, -1);
   }
 
   /** Return a ReaderError error class Status with a given message **/
