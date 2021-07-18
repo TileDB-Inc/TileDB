@@ -193,7 +193,8 @@ class Subarray {
       const Array* array,
       Layout layout,
       stats::Stats* parent_stats,
-      bool coalesce_ranges = true);
+      bool coalesce_ranges = true,
+      StorageManager* storage_manager = nullptr);
 
   /**
    * Copy constructor. This performs a deep copy (including memcpy of

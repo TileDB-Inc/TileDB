@@ -331,7 +331,8 @@ void AsyncFx::write_dense_async() {
     proc_query();
   } else {
     tiledb_subarray_t* query_subarray;
-    tiledb_query_get_subarray(ctx_, query, &query_subarray);
+    rc = tiledb_query_get_subarray(ctx_, query, &query_subarray);
+    CHECK(rc == TILEDB_OK);
     rc = tiledb_query_set_subarray_t(ctx_, query, query_subarray);
     CHECK(rc == TILEDB_OK);
 
