@@ -1797,7 +1797,6 @@ Status StorageManager::load_array_schema_uri(
   // Deserialize
   ConstBuffer cbuff(&buff);
   *array_schema = tdb_new(ArraySchema);
-  //  (*array_schema)->set_array_uri(array_uri);
   Status st = (*array_schema)->deserialize(&cbuff);
   if (!st.ok()) {
     tdb_delete(*array_schema);
@@ -1829,8 +1828,8 @@ Status StorageManager::load_array_schema(
 Status StorageManager::load_all_array_schemas(
     const URI& array_uri,
     const EncryptionKey& encryption_key,
-    std::map<std::string, ArraySchema*>* array_schemas) {
-  auto timer_se = stats_->start_timer("read_load_array_schema");
+    std::unordered_map<std::string, ArraySchema*>* array_schemas) {
+  auto timer_se = stats_->start_timer("read_load_all_array_schemas");
 
   if (array_uri.is_invalid())
     return LOG_STATUS(Status::StorageManagerError(
@@ -1856,6 +1855,7 @@ Status StorageManager::load_all_array_schemas(
         schema_vector[schema_ith] = array_schema;
         return Status::Ok();
       });
+  RETURN_NOT_OK(status);
 
   array_schemas->clear();
   for (size_t i = 0; i < schema_vector.size(); ++i) {

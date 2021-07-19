@@ -715,7 +715,7 @@ class StorageManager {
   Status load_all_array_schemas(
       const URI& array_uri,
       const EncryptionKey& encryption_key,
-      std::map<std::string, ArraySchema*>* array_schemas);
+      std::unordered_map<std::string, ArraySchema*>* array_schemas);
 
   /**
    * Loads the array metadata from persistent storage that were created

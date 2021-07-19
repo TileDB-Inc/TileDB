@@ -88,7 +88,7 @@ class OpenArray {
   ArraySchema* array_schema() const;
 
   /** Returns array schemas map. */
-  std::map<std::string, ArraySchema*>& array_schemas();
+  std::unordered_map<std::string, ArraySchema*>& array_schemas();
 
   /** Returns the array schema given a array schema name. */
   ArraySchema* get_array_schema(const std::string& schema_name);
@@ -186,7 +186,7 @@ class OpenArray {
   /**
    * A map of all array_schemas
    */
-  std::map<std::string, ArraySchema*> array_schemas_;
+  std::unordered_map<std::string, ArraySchema*> array_schemas_;
 
   /** The array URI. */
   URI array_uri_;

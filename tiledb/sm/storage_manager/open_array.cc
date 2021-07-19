@@ -69,7 +69,7 @@ ArraySchema* OpenArray::array_schema() const {
   return array_schema_;
 }
 
-std::map<std::string, ArraySchema*>& OpenArray::array_schemas() {
+std::unordered_map<std::string, ArraySchema*>& OpenArray::array_schemas() {
   return array_schemas_;
 }
 
