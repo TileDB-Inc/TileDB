@@ -325,6 +325,14 @@ class FragmentMetadata {
   void set_tile_validity_offset(
       const std::string& name, uint64_t tid, uint64_t step);
 
+  /**
+   * Sets array schema pointer.
+   *
+   * @param array_schema The schema pointer.
+   * @return void
+   */
+  void set_array_schema(const ArraySchema* array_schema);
+
   /** Returns the tile index base value. */
   uint64_t tile_index_base() const;
 
@@ -339,6 +347,9 @@ class FragmentMetadata {
 
   /** Returns the validity URI of the input nullable attribute. */
   URI validity_uri(const std::string& name) const;
+
+  /** Return the array schema name. */
+  const std::string& array_schema_name();
 
   /**
    * Retrieves the starting offset of the input tile of the input attribute

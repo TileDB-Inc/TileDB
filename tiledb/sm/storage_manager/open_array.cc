@@ -69,6 +69,16 @@ ArraySchema* OpenArray::array_schema() const {
   return array_schema_;
 }
 
+std::map<std::string, ArraySchema*>& OpenArray::array_schemas() {
+  return array_schemas_;
+}
+
+ArraySchema* OpenArray::get_array_schema(const std::string& schema_name) {
+  return (array_schemas_.find(schema_name) == array_schemas_.end()) ?
+             nullptr :
+             array_schemas_[schema_name];
+}
+
 const URI& OpenArray::array_uri() const {
   return array_uri_;
 }

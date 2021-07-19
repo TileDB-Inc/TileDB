@@ -679,6 +679,19 @@ class StorageManager {
       const URI& array_uri, URI* schema_uri) const;
 
   /**
+   * Loads the schema of a schema uri from persistent storage into memory.
+   *
+   * @param array_schema_uri The URI path of the array.
+   * @param encryption_key The encryption key to use.
+   * @param array_schema The array schema to be retrieved.
+   * @return Status
+   */
+  Status load_array_schema_uri(
+      const URI& array_uri,
+      const EncryptionKey& encryption_key,
+      ArraySchema** array_schema);
+
+  /**
    * Loads the schema of an array from persistent storage into memory.
    *
    * @param array_uri The URI path of the array.
@@ -690,6 +703,19 @@ class StorageManager {
       const URI& array_uri,
       const EncryptionKey& encryption_key,
       ArraySchema** array_schema);
+
+  /**
+   * Loads all schemas of an array from persistent storage into memory.
+   *
+   * @param array_uri The URI path of the array.
+   * @param encryption_key The encryption key to use.
+   * @param array_schemas The array schema pointermap to be retrieved.
+   * @return Status
+   */
+  Status load_all_array_schemas(
+      const URI& array_uri,
+      const EncryptionKey& encryption_key,
+      std::map<std::string, ArraySchema*>* array_schemas);
 
   /**
    * Loads the array metadata from persistent storage that were created
