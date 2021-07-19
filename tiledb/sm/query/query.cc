@@ -1847,7 +1847,8 @@ Status Query::set_subarray(const tiledb::sm::Subarray& subarray) {
     return Status::Ok();
 
   subarray_ = subarray;
-  layout_ = subarray.layout();
+  if (type_ == QueryType::READ)
+    layout_ = subarray.layout();
 
   status_ = QueryStatus::UNINITIALIZED;
 
@@ -1863,6 +1864,9 @@ Status Query::set_subarray_unsafe(const NDRange& subarray) {
       RETURN_NOT_OK(sub.add_range_unsafe(d, subarray[d]));
   }
 
+  assert(layout_ == sub.layout());
+  if (layout_ != sub.layout())
+    __debugbreak();
   subarray_ = sub;
 
   status_ = QueryStatus::UNINITIALIZED;
