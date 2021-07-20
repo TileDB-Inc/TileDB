@@ -142,6 +142,10 @@ The footer is a simple blob \(i.e., _not a generic tile_\) with the following in
 | Tile validity offset for attribute/dimension 1 | `uint64_t` | The offset to the generic tile storing the tile validity offsets for attribute/dimension 1. |
 | … | … | … |
 | Tile validity offset for attribute/dimension N | `uint64_t` | The offset to the generic tile storing the tile validity offsets for attribute/dimension N |
+| Array schema name size | `uint64_t` | The total number of characters of the array schema name. |
+| Array schema name character 1 | `char` | The first character of the array schema name. |
+| … | … | … |
+| Array schema name character N | `char` | The last character of the array schema name. |
 | Footer length | `uint64_t` | Sum of bytes of the above fields. Only present when there is at least one var-sized dimension. |
 
 ## Data File 
