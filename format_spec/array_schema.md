@@ -1,6 +1,29 @@
-#Array Schema File
+# Array Schema
 
-The array schema file has name `__array_schema.tdb` and is located here:
+## Current Array Schema Version
+
+The current array schema version(`>=10`) is a folder called `__schema` located here:
+
+```
+my_array                            # array folder
+   |  ...
+   |_ __schema                      # array schema folder
+         |_ <timestamped_name>      # array schema file
+         |_ ...  
+```
+
+`<timestamped_name>` has format `__timestamp_timestamp_uuid`, where:
+* `timestamp` is timestamp in milliseconds elapsed since 1970-01-01 00:00:00 +0000 (UTC)
+* `uuid` is a unique identifier
+
+
+The array schema folder can contain:
+* Any number of [array schema files](#array-schema-file)
+
+
+## Previous Array Schema Version
+
+The previous array schema version(`<=9`) has a file named `__array_schema.tdb` and is located here:
 
 ```
 my_array                   # array folder
@@ -9,7 +32,7 @@ my_array                   # array folder
    |_ ...
 ```
 
-## Main Structure
+## Array Schema File
 
 The array schema file consists of a single [generic tile](./generic_tile.md), with the following data:
 
