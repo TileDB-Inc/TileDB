@@ -45,7 +45,6 @@
 #include <list>
 #include <unordered_map>
 
-#include "tiledb/common/common.h"
 #include "tiledb/common/status.h"
 #include "tiledb/common/thread_pool.h"
 #include "tiledb/sm/buffer/buffer.h"

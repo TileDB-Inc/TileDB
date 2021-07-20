@@ -39,7 +39,6 @@
 #include <put_block_list_request_base.h>
 #include <future>
 
-#include "tiledb/common/common.h"
 #include "tiledb/common/logger.h"
 #include "tiledb/sm/filesystem/azure.h"
 #include "tiledb/sm/global_state/global_state.h"

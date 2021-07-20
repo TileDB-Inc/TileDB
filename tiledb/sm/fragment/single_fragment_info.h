@@ -34,7 +34,6 @@
 #ifndef TILEDB_SINGLE_FRAGMENT_INFO_H
 #define TILEDB_SINGLE_FRAGMENT_INFO_H
 
-#include "tiledb/common/common.h"
 #include "tiledb/sm/enums/datatype.h"
 #include "tiledb/sm/misc/types.h"
 #include "tiledb/sm/misc/uri.h"

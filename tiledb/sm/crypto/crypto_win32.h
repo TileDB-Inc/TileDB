@@ -41,7 +41,6 @@
 #include <windows.h>
 
 #include <bcrypt.h>
-#include "tiledb/common/common.h"
 #include "tiledb/common/status.h"
 
 using namespace tiledb::common;

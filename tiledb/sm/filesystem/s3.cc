@@ -57,7 +57,6 @@
                    // https://github.com/aws/aws-sdk-cpp/issues/402
 #endif
 
-#include "tiledb/common/common.h"
 #include "tiledb/sm/filesystem/s3.h"
 #include "tiledb/sm/misc/parallel_functions.h"
 
