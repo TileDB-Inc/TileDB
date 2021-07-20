@@ -72,25 +72,29 @@ Subarray::Subarray()
 }
 
 Subarray::Subarray(
-    const Array* array, Stats* const parent_stats, const bool coalesce_ranges)
-    : Subarray(array, Layout::UNORDERED, parent_stats, coalesce_ranges) {
+    const Array* array,
+    Stats* const parent_stats,
+    const bool coalesce_ranges,
+    StorageManager* storage_manager)
+    : Subarray(array, Layout::UNORDERED, parent_stats, coalesce_ranges, storage_manager) {
 }
 
 Subarray::Subarray(
     const Array* const array,
     const Layout layout,
     Stats* const parent_stats,
-    const bool coalesce_ranges)
-    : sp_stats_(
-          parent_stats ? nullptr : tdb_make_shared(Stats, "primarySubarray"))
-    , stats_(
+    const bool coalesce_ranges,
+    StorageManager* storage_manager)
+    : stats_(
           parent_stats ? parent_stats->create_child("Subarray") :
-                         sp_stats_->create_child("subSubarray"))
+                         storage_manager ? storage_manager->stats()->create_child("subSubarray") : nullptr)
     , array_(array)
     , layout_(layout)
     , cell_order_(array_->array_schema()->cell_order())
     , est_result_size_computed_(false)
     , coalesce_ranges_(coalesce_ranges) {
+  if (!parent_stats && !storage_manager)
+    throw std::exception("Subarray(): missing parent_stats requires live storage_manager!");
   add_default_ranges();
   set_add_or_coalesce_range_func();
 }
@@ -2401,7 +2405,6 @@ Status Subarray::precompute_tile_overlap(
 
 Subarray Subarray::clone() const {
   Subarray clone;
-  clone.sp_stats_ = sp_stats_;
   clone.stats_ = stats_;
   clone.array_ = array_;
   clone.layout_ = layout_;
@@ -2547,7 +2550,6 @@ TileOverlap Subarray::compute_tile_overlap(
 }
 
 void Subarray::swap(Subarray& subarray) {
-  sp_stats_.swap(subarray.sp_stats_);
   std::swap(stats_, subarray.stats_);
   std::swap(array_, subarray.array_);
   std::swap(layout_, subarray.layout_);

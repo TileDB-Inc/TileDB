@@ -176,7 +176,8 @@ class Subarray {
   Subarray(
       const Array* array,
       stats::Stats* parent_stats,
-      bool coalesce_ranges = true);
+      bool coalesce_ranges = true,
+      StorageManager* storage_manager = nullptr);
 
   /**
    * Constructor.
@@ -193,7 +194,8 @@ class Subarray {
       const Array* array,
       Layout layout,
       stats::Stats* parent_stats,
-      bool coalesce_ranges = true);
+      bool coalesce_ranges = true,
+      StorageManager* storage_manager = nullptr);
 
   /**
    * Copy constructor. This performs a deep copy (including memcpy of
@@ -950,8 +952,6 @@ class Subarray {
   /* ********************************* */
 
   /** The class stats. */
-  tdb_shared_ptr<stats::Stats> sp_stats_;
-  // stats_ must come after sp_stats_ as sp_stats_ may be used to init stats_
   stats::Stats* stats_;
 
   /** The array the subarray object is associated with. */
