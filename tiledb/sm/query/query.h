@@ -853,9 +853,6 @@ class Query {
   /** Sets the query subarray, without performing any checks. */
   Status set_subarray_unsafe(const NDRange& subarray);
 
-  /** Reference current Reader/Writer subarray according to query type */
-  //const Subarray* subarray();
-
   /** Submits the query to the storage manager. */
   Status submit();
 

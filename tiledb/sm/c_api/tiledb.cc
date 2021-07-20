@@ -628,7 +628,8 @@ inline int32_t check_filter_type(
 #if FORCE_QUERY_EXTERNAL_SUBARRAY_USE
 struct tiledb_subarray_transient_local_t : public tiledb_subarray_t {
   tiledb_subarray_transient_local_t(const tiledb_query_t* query) {
-    this->subarray_ = const_cast<tiledb::sm::Subarray*>(query->query_->subarray());
+    this->subarray_ =
+        const_cast<tiledb::sm::Subarray*>(query->query_->subarray());
   }
 };
 #endif

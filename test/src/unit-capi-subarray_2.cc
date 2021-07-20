@@ -3373,8 +3373,7 @@ TEST_CASE_METHOD(
   tiledb_layout_t query2_layout;
   rc = tiledb_query_get_layout(ctx_, query2, &query2_layout);
   CHECK(rc == TILEDB_OK);
-  rc = tiledb_subarray_set_layout(
-      ctx_, subarray, query2_layout);
+  rc = tiledb_subarray_set_layout(ctx_, subarray, query2_layout);
   CHECK(rc == TILEDB_OK);
 
   // Set override config

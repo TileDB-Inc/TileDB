@@ -76,7 +76,12 @@ Subarray::Subarray(
     Stats* const parent_stats,
     const bool coalesce_ranges,
     StorageManager* storage_manager)
-    : Subarray(array, Layout::UNORDERED, parent_stats, coalesce_ranges, storage_manager) {
+    : Subarray(
+          array,
+          Layout::UNORDERED,
+          parent_stats,
+          coalesce_ranges,
+          storage_manager) {
 }
 
 Subarray::Subarray(
@@ -87,14 +92,17 @@ Subarray::Subarray(
     StorageManager* storage_manager)
     : stats_(
           parent_stats ? parent_stats->create_child("Subarray") :
-                         storage_manager ? storage_manager->stats()->create_child("subSubarray") : nullptr)
+                         storage_manager ?
+                         storage_manager->stats()->create_child("subSubarray") :
+                         nullptr)
     , array_(array)
     , layout_(layout)
     , cell_order_(array_->array_schema()->cell_order())
     , est_result_size_computed_(false)
     , coalesce_ranges_(coalesce_ranges) {
   if (!parent_stats && !storage_manager)
-    throw std::exception("Subarray(): missing parent_stats requires live storage_manager!");
+    throw std::exception(
+        "Subarray(): missing parent_stats requires live storage_manager!");
   add_default_ranges();
   set_add_or_coalesce_range_func();
 }
