@@ -45,6 +45,7 @@
 #include <mutex>
 #include <string>
 #include <unordered_map>
+#include "tiledb/common/common.h"
 #include "tiledb/sm/buffer/buffer.h"
 #include "tiledb/sm/buffer/buffer_list.h"
 #include "tiledb/sm/config/config.h"

@@ -49,6 +49,8 @@
 #include <iostream>
 #include <sstream>
 
+#include "tiledb/common/common.h"
+
 using namespace tiledb::common;
 
 namespace tiledb {
