@@ -3100,8 +3100,15 @@ TEST_CASE_METHOD(
 
   rc = tiledb_subarray_set_subarray(ctx_, subarray, &domain[0]);
   CHECK(rc == TILEDB_OK);
-//  rc = tiledb_subarray_set_layout(ctx_, subarray, TILEDB_ROW_MAJOR);
-//  CHECK(rc == TILEDB_OK);
+  //... since merge, not setting layout on the subarray causes failure below on tiledb_query_submit() at
+  /*
+void DenseTiler<T>::calculate_tile_and_subarray_strides() {
+  // For easy reference
+  auto sub_layout = subarray_->layout();
+  assert(sub_layout == Layout::ROW_MAJOR || sub_layout == Layout::COL_MAJOR);
+  */
+  rc = tiledb_subarray_set_layout(ctx_, subarray, TILEDB_ROW_MAJOR);
+  CHECK(rc == TILEDB_OK);
   rc = tiledb_query_set_layout(ctx_, query, TILEDB_ROW_MAJOR);
   CHECK(rc == TILEDB_OK);
   rc = tiledb_query_set_buffer(ctx_, query, "a", (void*)a.data(), &a_size);
