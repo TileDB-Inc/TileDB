@@ -234,9 +234,6 @@ class Subarray {
   /** equivalent for older Query::set_subarray(const void *subarray); */
   Status set_subarray(const void* subarray);
 
-  /** Returns `stats_`. */
-  stats::Stats* stats();
-
   /** Adds a range along the dimension with the given index. */
   Status add_range(
       uint32_t dim_idx, Range&& range, const bool read_range_oob_error = true);
