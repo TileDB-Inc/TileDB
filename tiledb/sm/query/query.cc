@@ -375,7 +375,7 @@ Status Query::get_est_result_size(const char* name, uint64_t* size) {
         rest_client->get_query_est_result_sizes(array_->array_uri(), this));
   }
 
-  return subarray_.get_est_result_size_unsafe(
+  return subarray_.get_est_result_size_internal(
       name, size, &config_, storage_manager_->compute_tp());
 }
 

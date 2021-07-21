@@ -560,7 +560,7 @@ class Subarray {
    * Gets the estimated result size (in bytes) for the input fixed-sized
    * attribute/dimension.
    */
-  Status get_est_result_size_unsafe(
+  Status get_est_result_size_internal(
       const char* name,
       uint64_t* size,
       const Config* config,

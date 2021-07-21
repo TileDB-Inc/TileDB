@@ -101,7 +101,7 @@ Subarray::Subarray(
     , est_result_size_computed_(false)
     , coalesce_ranges_(coalesce_ranges) {
   if (!parent_stats && !storage_manager)
-    throw std::exception(
+    throw std::runtime_error(
         "Subarray(): missing parent_stats requires live storage_manager!");
   add_default_ranges();
   set_add_or_coalesce_range_func();
@@ -799,7 +799,7 @@ Layout Subarray::layout() const {
   return layout_;
 }
 
-Status Subarray::get_est_result_size_unsafe(
+Status Subarray::get_est_result_size_internal(
     const char* name,
     uint64_t* size,
     const Config* const config,
@@ -936,7 +936,7 @@ Status Subarray::get_est_result_size(
 #endif
   }
 
-  return get_est_result_size_unsafe(
+  return get_est_result_size_internal(
       name, size, &config_, storage_manager->compute_tp());
 }
 
