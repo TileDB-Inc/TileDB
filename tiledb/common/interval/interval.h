@@ -400,21 +400,23 @@ struct TypeTraits<
 struct IntervalBase {
   /** Marks a constructor for the empty set */
   static constexpr class empty_set_t {
-  } empty_set;
+  } empty_set = empty_set_t();
   /** Marks a constructor for a single-point set */
   static constexpr class single_point_t {
-  } single_point;
+  } single_point = single_point_t();
   /** Marks a boundary as open in a constructor */
   static constexpr class open_t {
-  } open;
+  } open = open_t();
   /** Marks a boundary as closed in a constructor */
   static constexpr class closed_t {
-  } closed;
+  } closed = closed_t();
   /** Mark a lower boundary as infinite (i.e. not present) */
   static constexpr class minus_infinity_t {
-  } minus_infinity;
+  } minus_infinity = minus_infinity_t();
   /** Mark an upper boundary as infinite (i.e. not present) */
-  static constexpr class plus_infinity_t { } plus_infinity; };
+  static constexpr class plus_infinity_t {
+  } plus_infinity = plus_infinity_t();
+};
 
 }  // namespace detail
 
