@@ -37,8 +37,6 @@
 #include "tiledb/common/status.h"
 #include "tiledb/sm/misc/constants.h"
 
-#include "tiledb/common/common.h"
-
 #include <cassert>
 
 using namespace tiledb::common;
