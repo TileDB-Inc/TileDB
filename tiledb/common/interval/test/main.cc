@@ -74,9 +74,9 @@ TEMPLATE_LIST_TEST_CASE(
 }
 
 TEMPLATE_LIST_TEST_CASE(
-        "Interval/TestTypeTraits - Floating-point not-finite elements",
-        "[interval]",
-        TypesUnderTest) {
+    "Interval/TestTypeTraits - Floating-point not-finite elements",
+    "[interval]",
+    TypesUnderTest) {
   typedef TestType T;
   typedef Interval<T> I;
   typedef TestTypeTraits<T> Tr;
@@ -90,4 +90,3 @@ TEMPLATE_LIST_TEST_CASE(
     CHECK(isnan(Tr::NaN));
   }
 }
-
