@@ -331,7 +331,7 @@ class FragmentMetadata {
    * @param array_schema The schema pointer.
    * @return void
    */
-  void set_array_schema(const ArraySchema* array_schema);
+  void set_array_schema(ArraySchema* array_schema);
 
   /** Returns the tile index base value. */
   uint64_t tile_index_base() const;

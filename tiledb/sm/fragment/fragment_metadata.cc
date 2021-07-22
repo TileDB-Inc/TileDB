@@ -157,7 +157,7 @@ void FragmentMetadata::set_tile_validity_offset(
   file_validity_sizes_[idx] += step;
 }
 
-void FragmentMetadata::set_array_schema(const ArraySchema* array_schema) {
+void FragmentMetadata::set_array_schema(ArraySchema* array_schema) {
   array_schema_ = array_schema;
 }
 

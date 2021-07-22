@@ -1801,6 +1801,7 @@ Status StorageManager::load_array_schema_uri(
   if (!st.ok()) {
     tdb_delete(*array_schema);
     *array_schema = nullptr;
+    return st;
   }
   (*array_schema)->set_uri(schema_uri);
   return st;
@@ -1828,7 +1829,8 @@ Status StorageManager::load_array_schema(
 Status StorageManager::load_all_array_schemas(
     const URI& array_uri,
     const EncryptionKey& encryption_key,
-    std::unordered_map<std::string, ArraySchema*>* array_schemas) {
+    std::unordered_map<std::string, tdb_shared_ptr<ArraySchema>>&
+        array_schemas) {
   auto timer_se = stats_->start_timer("read_load_all_array_schemas");
 
   if (array_uri.is_invalid())
@@ -1857,10 +1859,11 @@ Status StorageManager::load_all_array_schemas(
       });
   RETURN_NOT_OK(status);
 
-  array_schemas->clear();
+  array_schemas.clear();
   for (size_t i = 0; i < schema_vector.size(); ++i) {
     auto array_schema = schema_vector[i];
-    (*array_schemas)[array_schema->name()] = array_schema;
+    array_schemas[array_schema->name()] =
+        tdb_shared_ptr<ArraySchema>(array_schema);
   }
 
   return Status::Ok();
@@ -2420,7 +2423,7 @@ Status StorageManager::load_array_schema(
   open_array->set_array_schema(array_schema);
 
   RETURN_NOT_OK(load_all_array_schemas(
-      array_uri, encryption_key, &open_array->array_schemas()));
+      array_uri, encryption_key, open_array->array_schemas()));
 
   return Status::Ok();
 }
@@ -2542,7 +2545,7 @@ Status StorageManager::load_fragment_metadata(
     }
     auto array_schema_name = metadata->array_schema_name();
     auto frag_array_schema = open_array->get_array_schema(array_schema_name);
-    metadata->set_array_schema(frag_array_schema);
+    metadata->set_array_schema(frag_array_schema.get());
     (*fragment_metadata)[f] = metadata;
     return Status::Ok();
   });
