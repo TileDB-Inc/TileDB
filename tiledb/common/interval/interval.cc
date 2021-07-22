@@ -37,11 +37,11 @@ namespace tiledb::common::detail {
 /*
  * Instantiations for marker class objects.
  */
-static constexpr IntervalBase::empty_set_t empty_set;
-static constexpr IntervalBase::single_point_t single_point;
-static constexpr IntervalBase::open_t open;
-static constexpr IntervalBase::closed_t closed;
-static constexpr IntervalBase::minus_infinity_t minus_infinity;
-static constexpr IntervalBase::plus_infinity_t plus_infinity;
+static constexpr IntervalBase::empty_set_t empty_set();
+static constexpr IntervalBase::single_point_t single_point();
+static constexpr IntervalBase::open_t open();
+static constexpr IntervalBase::closed_t closed();
+static constexpr IntervalBase::minus_infinity_t minus_infinity();
+static constexpr IntervalBase::plus_infinity_t plus_infinity();
 
 }  // namespace tiledb::common::detail
