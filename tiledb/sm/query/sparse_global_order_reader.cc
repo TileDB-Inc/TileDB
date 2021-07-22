@@ -648,9 +648,11 @@ Status SparseGlobalOrderReader::compute_coord_tiles_result_bitmap(
     // in reverse.
     const unsigned dim_idx =
         cell_order == Layout::COL_MAJOR ? dim_num - d - 1 : d;
-    const auto& ranges = subarray_.ranges_for_dim(dim_idx);
-    RETURN_NOT_OK(tile->compute_results_sparse(
-        dim_idx, ranges[range_coords[dim_idx]], &result_bitmap, cell_order));
+    if (!subarray_.is_default(dim_idx)) {
+      const auto& ranges = subarray_.ranges_for_dim(dim_idx);
+      RETURN_NOT_OK(tile->compute_results_sparse(
+          dim_idx, ranges[range_coords[dim_idx]], &result_bitmap, cell_order));
+    }
   }
 
   coord_tiles_result_bitmap[tile->frag_idx()] = std::move(result_bitmap);

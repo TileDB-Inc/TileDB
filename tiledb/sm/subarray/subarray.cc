@@ -301,16 +301,18 @@ Subarray Subarray::crop_to_tile(const T* tile_coords, Layout layout) const {
   for (unsigned d = 0; d < dim_num(); ++d) {
     auto r_size = 2 * array_schema->dimension(d)->coord_size();
     for (size_t r = 0; r < ranges_[d].size(); ++r) {
-      const auto& range = ranges_[d][r];
-      utils::geometry::overlap(
-          (const T*)range.data(),
-          &tile_subarray[2 * d],
-          1,
-          new_range,
-          &overlaps);
+      if (!is_default_[d]) {
+        const auto& range = ranges_[d][r];
+        utils::geometry::overlap(
+            (const T*)range.data(),
+            &tile_subarray[2 * d],
+            1,
+            new_range,
+            &overlaps);
 
-      if (overlaps)
-        ret.add_range_unsafe(d, Range(new_range, r_size));
+        if (overlaps)
+          ret.add_range_unsafe(d, Range(new_range, r_size));
+      }
     }
   }
 
@@ -423,8 +425,10 @@ Subarray Subarray::get_subarray(uint64_t start, uint64_t end) const {
 
   auto dim_num = this->dim_num();
   for (unsigned d = 0; d < dim_num; ++d) {
-    for (uint64_t r = start_coords[d]; r <= end_coords[d]; ++r) {
-      ret.add_range_unsafe(d, ranges_[d][r]);
+    if (!is_default_[d]) {
+      for (uint64_t r = start_coords[d]; r <= end_coords[d]; ++r) {
+        ret.add_range_unsafe(d, ranges_[d][r]);
+      }
     }
   }
 
@@ -1094,8 +1098,10 @@ Status Subarray::split(
       RETURN_NOT_OK(r1->add_range_unsafe(d, sr1));
       RETURN_NOT_OK(r2->add_range_unsafe(d, sr2));
     } else {
-      RETURN_NOT_OK(r1->add_range_unsafe(d, r));
-      RETURN_NOT_OK(r2->add_range_unsafe(d, r));
+      if (!is_default_[d]) {
+        RETURN_NOT_OK(r1->add_range_unsafe(d, r));
+        RETURN_NOT_OK(r2->add_range_unsafe(d, r));
+      }
     }
   }
 
@@ -1122,10 +1128,12 @@ Status Subarray::split(
   for (unsigned d = 0; d < dim_num; ++d) {
     RETURN_NOT_OK(this->get_range_num(d, &range_num));
     if (d != splitting_dim) {
-      for (uint64_t j = 0; j < range_num; ++j) {
-        const auto& r = ranges_[d][j];
-        RETURN_NOT_OK(r1->add_range_unsafe(d, r));
-        RETURN_NOT_OK(r2->add_range_unsafe(d, r));
+      if (!is_default_[d]) {
+        for (uint64_t j = 0; j < range_num; ++j) {
+          const auto& r = ranges_[d][j];
+          RETURN_NOT_OK(r1->add_range_unsafe(d, r));
+          RETURN_NOT_OK(r2->add_range_unsafe(d, r));
+        }
       }
     } else {                                // d == splitting_dim
       if (splitting_range != UINT64_MAX) {  // Need to split multiple ranges

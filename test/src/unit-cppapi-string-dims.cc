@@ -110,3 +110,171 @@ TEST_CASE(
   if (vfs.is_dir(array_name))
     vfs.remove_dir(array_name);
 }
+
+TEST_CASE(
+    "C++ API: Test default string dimensions",
+    "[cppapi][string-dim][default]") {
+  const std::string array_name = "cpp_unit_array";
+  Context ctx;
+  VFS vfs(ctx);
+
+  if (vfs.is_dir(array_name))
+    vfs.remove_dir(array_name);
+
+  // Define a sparse, 3D array where the first and third dimension is a string.
+  Domain domain(ctx);
+  domain
+      .add_dimension(
+          Dimension::create(ctx, "dim1", TILEDB_STRING_ASCII, nullptr, nullptr))
+      .add_dimension(Dimension::create<int32_t>(ctx, "dim2", {{0, 9}}, 10))
+      .add_dimension(Dimension::create(
+          ctx, "dim3", TILEDB_STRING_ASCII, nullptr, nullptr));
+  ArraySchema schema(ctx, TILEDB_SPARSE);
+  schema.set_domain(domain).set_order({{TILEDB_ROW_MAJOR, TILEDB_ROW_MAJOR}});
+  schema.add_attribute(Attribute::create<int32_t>(ctx, "a1"));
+  Array::create(array_name, schema);
+
+  // Write data to the array.
+  std::vector<char> dim1 = {'a', 'b', 'b', 'c', 'a', 'b', 'b', 'c'};
+  std::vector<uint64_t> dim1_offsets = {0, 1, 3, 4, 5, 7};
+  std::vector<int32_t> dim2 = {1, 1, 1, 2, 2, 2};
+  std::vector<char> dim3 = {'g', 'h', 'h', 'i', 'j', 'k', 'k', 'l'};
+  std::vector<uint64_t> dim3_offsets = {0, 1, 3, 4, 5, 7};
+  std::vector<int32_t> a1_data = {1, 2, 3, 4, 5, 6};
+  Array array_write(ctx, array_name, TILEDB_WRITE);
+  Query query_write(ctx, array_write, TILEDB_WRITE);
+  query_write.set_layout(TILEDB_UNORDERED)
+      .set_data_buffer("a1", a1_data)
+      .set_data_buffer("dim1", dim1)
+      .set_offsets_buffer("dim1", dim1_offsets)
+      .set_data_buffer("dim2", dim2)
+      .set_data_buffer("dim3", dim3)
+      .set_offsets_buffer("dim3", dim3_offsets);
+
+  // Perform the write and close the array.
+  query_write.submit();
+  array_write.close();
+
+  // Prepare a read query. Do not set a range for the last string dimension.
+  Array array_read(ctx, array_name, TILEDB_READ);
+  Query query_read(ctx, array_read, TILEDB_READ);
+  auto dim1_non_empty_domain = array_read.non_empty_domain_var(0);
+  auto dim2_non_empty_domain = array_read.non_empty_domain<int32_t>(1);
+  query_read.add_range(
+      0, dim1_non_empty_domain.first, dim1_non_empty_domain.second);
+  query_read.add_range<int32_t>(
+      1, dim2_non_empty_domain.first, dim2_non_empty_domain.second);
+
+  // Prepare buffers.
+  a1_data = std::vector<int32_t>(10);
+  dim1 = std::vector<char>(10);
+  dim1_offsets = std::vector<uint64_t>(10);
+  dim2 = std::vector<int32_t>(10);
+  dim3 = std::vector<char>(10);
+  dim3_offsets = std::vector<uint64_t>(10);
+
+  query_read.set_layout(TILEDB_ROW_MAJOR)
+      .set_data_buffer("a1", a1_data)
+      .set_data_buffer("dim1", dim1)
+      .set_offsets_buffer("dim1", dim1_offsets)
+      .set_data_buffer("dim2", dim2)
+      .set_data_buffer("dim3", dim3)
+      .set_offsets_buffer("dim3", dim3_offsets);
+
+  query_read.submit();
+  REQUIRE(query_read.query_status() == Query::Status::COMPLETE);
+
+  auto result_buffers = query_read.result_buffer_elements();
+  auto result_num = result_buffers["a1"].second;
+
+  REQUIRE(result_num == 6);
+
+  array_read.close();
+
+  if (vfs.is_dir(array_name))
+    vfs.remove_dir(array_name);
+}
+
+TEST_CASE(
+    "C++ API: Test default string dimensions with partitioning",
+    "[cppapi][string-dim][default][partitioning]") {
+  const std::string array_name = "cpp_unit_array";
+  Context ctx;
+  VFS vfs(ctx);
+
+  if (vfs.is_dir(array_name))
+    vfs.remove_dir(array_name);
+
+  // Define a sparse, 3D array where the first and third dimension is a string.
+  Domain domain(ctx);
+  domain
+      .add_dimension(
+          Dimension::create(ctx, "dim1", TILEDB_STRING_ASCII, nullptr, nullptr))
+      .add_dimension(Dimension::create<int32_t>(ctx, "dim2", {{0, 9}}, 10))
+      .add_dimension(Dimension::create(
+          ctx, "dim3", TILEDB_STRING_ASCII, nullptr, nullptr));
+  ArraySchema schema(ctx, TILEDB_SPARSE);
+  schema.set_domain(domain).set_order({{TILEDB_ROW_MAJOR, TILEDB_ROW_MAJOR}});
+  schema.add_attribute(Attribute::create<int32_t>(ctx, "a1"));
+  Array::create(array_name, schema);
+
+  // Write data to the array.
+  std::vector<char> dim1 = {'a', 'b', 'b', 'c', 'a', 'b', 'b', 'c'};
+  std::vector<uint64_t> dim1_offsets = {0, 1, 3, 4, 5, 7};
+  std::vector<int32_t> dim2 = {1, 1, 1, 2, 2, 2};
+  std::vector<char> dim3 = {'g', 'h', 'h', 'i', 'j', 'k', 'k', 'l'};
+  std::vector<uint64_t> dim3_offsets = {0, 1, 3, 4, 5, 7};
+  std::vector<int32_t> a1_data = {1, 2, 3, 4, 5, 6};
+  Array array_write(ctx, array_name, TILEDB_WRITE);
+  Query query_write(ctx, array_write, TILEDB_WRITE);
+  query_write.set_layout(TILEDB_UNORDERED)
+      .set_data_buffer("a1", a1_data)
+      .set_data_buffer("dim1", dim1)
+      .set_offsets_buffer("dim1", dim1_offsets)
+      .set_data_buffer("dim2", dim2)
+      .set_data_buffer("dim3", dim3)
+      .set_offsets_buffer("dim3", dim3_offsets);
+
+  // Perform the write and close the array.
+  query_write.submit();
+  array_write.close();
+
+  // Prepare a read query. Do not set a range for the last string dimension.
+  Array array_read(ctx, array_name, TILEDB_READ);
+  Query query_read(ctx, array_read, TILEDB_READ);
+  auto dim1_non_empty_domain = array_read.non_empty_domain_var(0);
+  auto dim2_non_empty_domain = array_read.non_empty_domain<int32_t>(1);
+  query_read.add_range(
+      0, dim1_non_empty_domain.first, dim1_non_empty_domain.second);
+  query_read.add_range<int32_t>(
+      1, dim2_non_empty_domain.first, dim2_non_empty_domain.second);
+
+  // Prepare buffers with small enough sizes to ensure the query must split.
+  a1_data = std::vector<int32_t>(3);
+  dim1 = std::vector<char>(10);
+  dim1_offsets = std::vector<uint64_t>(10);
+  dim2 = std::vector<int32_t>(10);
+  dim3 = std::vector<char>(10);
+  dim3_offsets = std::vector<uint64_t>(10);
+
+  query_read.set_layout(TILEDB_ROW_MAJOR)
+      .set_data_buffer("a1", a1_data)
+      .set_data_buffer("dim1", dim1)
+      .set_offsets_buffer("dim1", dim1_offsets)
+      .set_data_buffer("dim2", dim2)
+      .set_data_buffer("dim3", dim3)
+      .set_offsets_buffer("dim3", dim3_offsets);
+
+  query_read.submit();
+  REQUIRE(query_read.query_status() == Query::Status::INCOMPLETE);
+
+  auto result_buffers = query_read.result_buffer_elements();
+  auto result_num = result_buffers["a1"].second;
+
+  REQUIRE(result_num == 2);
+
+  array_read.close();
+
+  if (vfs.is_dir(array_name))
+    vfs.remove_dir(array_name);
+}
