@@ -162,9 +162,8 @@ class TestTypeTraits;
 template <class T>
 class TestTypeTraits<
     T,
-    typename std::enable_if<
-        std::is_integral_v<T> && std::is_unsigned_v<T>,
-        T>::type> {
+    typename std::enable_if<std::is_integral_v<T> && std::is_unsigned_v<T>, T>::
+        type> {
   static constexpr auto max = std::numeric_limits<T>::max();
 
  public:
@@ -181,9 +180,8 @@ class TestTypeTraits<
 template <class T>
 class TestTypeTraits<
     T,
-    typename std::enable_if<
-        std::is_integral_v<T> && std::is_signed_v<T>,
-        T>::type> {
+    typename std::enable_if<std::is_integral_v<T> && std::is_signed_v<T>, T>::
+        type> {
   static constexpr auto min = std::numeric_limits<T>::min();
   static constexpr auto max = std::numeric_limits<T>::max();
 

@@ -269,13 +269,13 @@ TEMPLATE_LIST_TEST_CASE(
        * Bounds equivalent to ...,i-1] and [j+1,... Adjacency happens when
        * `(i-1)+1==j+1`, that is `i==j+1`
        */
-      if ( j == std::numeric_limits<T>::max() ) {
+      if (j == std::numeric_limits<T>::max()) {
         // Can't add 1 to 'j', but every `i` is less than `j+1`
         expected = -1;
-      }  else {
-        expected = (i < j+1) ? -1 : (i == j+1) ? 0 : +1;
+      } else {
+        expected = (i < j + 1) ? -1 : (i == j + 1) ? 0 : +1;
       }
-    } else if constexpr(std::is_floating_point_v<T>) {
+    } else if constexpr (std::is_floating_point_v<T>) {
       expected = i <= j ? -1 : +1;
     } else {
       REQUIRE((false && "unsupported type"));
@@ -286,14 +286,14 @@ TEMPLATE_LIST_TEST_CASE(
     auto x = WI::finite_bound(i, false);
     auto y = WI::finite_bound(j, true);
     int c = x.compare_as_mixed(y);
-    int expected = (i < j) ? -1 : (i == j) ? 0 : +1 ;
+    int expected = (i < j) ? -1 : (i == j) ? 0 : +1;
     CHECK(c == expected);
   }
   DYNAMIC_SECTION("Bound...," << i << "] < Bound(" << j << ",...") {
     auto x = WI::finite_bound(i, true);
     auto y = WI::finite_bound(j, false);
     int c = x.compare_as_mixed(y);
-    int expected = (i < j) ? -1 : (i == j) ? 0 : +1 ;
+    int expected = (i < j) ? -1 : (i == j) ? 0 : +1;
     CHECK(c == expected);
   }
   DYNAMIC_SECTION("Bound...," << i << "] < Bound[" << j << ",...") {
@@ -305,13 +305,13 @@ TEMPLATE_LIST_TEST_CASE(
       /*
        * Adjacency happens when `i+1==j`
        */
-      if ( i == std::numeric_limits<T>::max() ) {
+      if (i == std::numeric_limits<T>::max()) {
         // Can't add 1 to 'i', but every `j` is less than `i+1`
         expected = +1;
-      }  else {
-        expected = (i+1 < j) ? -1 : (i+1 == j) ? 0 : +1;
+      } else {
+        expected = (i + 1 < j) ? -1 : (i + 1 == j) ? 0 : +1;
       }
-    } else if constexpr(std::is_floating_point_v<T>) {
+    } else if constexpr (std::is_floating_point_v<T>) {
       expected = (i < j) ? -1 : +1;
     } else {
       REQUIRE((false && "unsupported type"));
