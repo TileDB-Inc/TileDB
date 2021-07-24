@@ -115,6 +115,7 @@ if (NOT AZURESDK_FOUND)
         PREFIX "externals"
         URL "https://github.com/Azure/azure-storage-cpplite/archive/v0.3.0.zip"
         URL_HASH SHA1=ce865daac9e540455c2d942d954bdbd3f293dcca
+        DOWNLOAD_NAME azure-storage-lite-v0.3.0.zip
         CMAKE_ARGS
           -DCMAKE_BUILD_TYPE=${CMAKE_BUILD_TYPE}
           -DBUILD_SHARED_LIBS=OFF
@@ -140,6 +141,7 @@ if (NOT AZURESDK_FOUND)
         PREFIX "externals"
         URL "https://github.com/Azure/azure-storage-cpplite/archive/v0.3.0.zip"
         URL_HASH SHA1=ce865daac9e540455c2d942d954bdbd3f293dcca
+        DOWNLOAD_NAME azure-storage-lite-v0.3.0.zip
         CMAKE_ARGS
           -DCMAKE_BUILD_TYPE=${CMAKE_BUILD_TYPE}
           -DBUILD_SHARED_LIBS=OFF

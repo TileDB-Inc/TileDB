@@ -121,15 +121,9 @@ Status Azure::init(const Config& config, ThreadPool* const thread_pool) {
 
   write_cache_max_size_ = max_parallel_ops_ * block_list_block_size_;
 
-  // The Azurite default test account name is 'devstoreaccount1'. If this
-  // is the account name, we must flag the credential constructor that
-  // it must authenticate with a storage emulator instead of a production
-  // instance of Azure.
-  const bool under_test = account_name == "devstoreaccount1" ? true : false;
-
   std::shared_ptr<azure::storage_lite::shared_key_credential> credential =
       std::make_shared<azure::storage_lite::shared_key_credential>(
-          account_name, account_key, under_test);
+          account_name, account_key);
 
   std::shared_ptr<azure::storage_lite::storage_account> account =
       std::make_shared<azure::storage_lite::storage_account>(
