@@ -2545,6 +2545,10 @@ Status StorageManager::load_fragment_metadata(
     }
     auto array_schema_name = metadata->array_schema_name();
     auto frag_array_schema = open_array->get_array_schema(array_schema_name);
+    if (!frag_array_schema) {
+      return LOG_STATUS(Status::StorageManagerError(
+          "Cannot load fragment metadata; Null fragment array schema"));
+    }
     metadata->set_array_schema(frag_array_schema.get());
     (*fragment_metadata)[f] = metadata;
     return Status::Ok();
