@@ -78,15 +78,14 @@ TEMPLATE_LIST_TEST_CASE(
     "[interval]",
     TypesUnderTest) {
   typedef TestType T;
-  typedef Interval<T> I;
   typedef TestTypeTraits<T> Tr;
 
   if constexpr (std::is_floating_point_v<T>) {
     // Verify that we've defined non-numeric traits correctly
-    CHECK(isinf(T(Tr::positive_infinity)));
+    CHECK(std::isinf(T(Tr::positive_infinity)));
     CHECK(Tr::positive_infinity > 0);
-    CHECK(isinf(Tr::negative_infinity));
+    CHECK(std::isinf(Tr::negative_infinity));
     CHECK(Tr::negative_infinity < 0);
-    CHECK(isnan(Tr::NaN));
+    CHECK(std::isnan(Tr::NaN));
   }
 }

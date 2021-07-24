@@ -35,7 +35,6 @@
 
 TEMPLATE_LIST_TEST_CASE("TypeTraits", "[interval]", TypesUnderTest) {
   typedef TestType T;
-  typedef Interval<T> I;
   typedef detail::TypeTraits<T> Traits;
   typedef TestTypeTraits<T> Tr;
 

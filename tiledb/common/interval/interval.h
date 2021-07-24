@@ -232,11 +232,13 @@
 #ifndef TILEDB_INTERVAL_H
 #define TILEDB_INTERVAL_H
 
+#include <cmath>
 #include <optional>
 #include <stdexcept>
 #include <tuple>
 
-using std::tuple, std::optional, std::nullopt;
+using std::tuple, std::optional, std::nullopt, std::isnan, std::isinf,
+    std::isfinite;
 
 namespace tiledb::common {
 namespace detail {
@@ -1200,7 +1202,6 @@ class Interval : public detail::IntervalBase {
    * Has much of the same logic as `interval_union`, but neither is reducible
    * to the other.
    */
-  template <class T>
   tuple<int, bool> compare(const Interval<T>& y) const {
     if (is_empty_) {
       throw std::domain_error(

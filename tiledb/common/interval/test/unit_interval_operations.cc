@@ -59,7 +59,6 @@ TEMPLATE_LIST_TEST_CASE(
     "Interval::intersection", "[interval][intersection]", TypesUnderTest) {
   typedef TestType T;
   typedef Interval<T> I;
-  typedef WhiteboxInterval<T> WI;
   typedef TestTypeTraits<T> Tr;
   const I empty(I::empty_set);
 

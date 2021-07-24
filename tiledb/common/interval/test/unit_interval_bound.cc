@@ -41,7 +41,6 @@
 TEMPLATE_LIST_TEST_CASE(
     "Interval::Bound::compare_as_lower", "[interval]", TypesUnderTest) {
   typedef TestType T;
-  typedef Interval<T> I;
   typedef WhiteboxInterval<T> WI;
   typedef TestTypeTraits<T> Tr;
 
@@ -140,7 +139,6 @@ TEMPLATE_LIST_TEST_CASE(
 TEMPLATE_LIST_TEST_CASE(
     "Interval::Bound::compare_as_upper", "[interval]", TypesUnderTest) {
   typedef TestType T;
-  typedef Interval<T> I;
   typedef WhiteboxInterval<T> WI;
   typedef TestTypeTraits<T> Tr;
 
@@ -231,7 +229,6 @@ TEMPLATE_LIST_TEST_CASE(
 TEMPLATE_LIST_TEST_CASE(
     "Interval::Bound::compare_as_mixed", "[interval]", TypesUnderTest) {
   typedef TestType T;
-  typedef Interval<T> I;
   typedef WhiteboxInterval<T> WI;
   typedef TestTypeTraits<T> Tr;
 

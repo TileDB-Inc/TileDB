@@ -34,9 +34,10 @@
 #ifndef TILEDB_UNIT_INTERVAL_H
 #define TILEDB_UNIT_INTERVAL_H
 
-#include <cmath>
-
 #include <catch.hpp>
+#include <cmath>
+#include <optional>
+
 #include "../interval.h"
 using namespace tiledb::common;
 
@@ -243,8 +244,9 @@ class TestTypeTraits<
 /**
  * Independent access to adjacency testing
  */
+
 template <class T>
-bool is_adjacent(T x, T y) {
+bool is_adjacent([[maybe_unused]] T x, [[maybe_unused]] T y) {
   if constexpr (std::is_integral_v<T>) {
     return (x < std::numeric_limits<T>::max()) && x + 1 == y;
   } else if constexpr (std::is_floating_point_v<T>) {
@@ -295,8 +297,8 @@ class ChooseGenerator : public Catch::Generators::IGenerator<std::vector<T>> {
       , list_(list)
       , finished(false)
       , n_(list.size())
-      , it(k_ + 1)
-      , rv(k_) {
+      , rv(k_)
+      , it(k_ + 1) {
     if (n_ < k) {
       // We can't choose more elements than we have.
       throw std::invalid_argument(
@@ -341,7 +343,7 @@ class ChooseGenerator : public Catch::Generators::IGenerator<std::vector<T>> {
     return true;
   }
 
-  value_type const& get() const {
+  value_type const& get() const override {
     if constexpr (true) {
       for (unsigned int j = 0; j < k_; ++j) {
         rv[j] = T();
