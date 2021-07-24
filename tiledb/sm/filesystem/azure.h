@@ -34,6 +34,13 @@
 #define TILEDB_AZURE_H
 
 #ifdef HAVE_AZURE
+#include "tiledb/common/status.h"
+#include "tiledb/common/thread_pool.h"
+#include "tiledb/sm/buffer/buffer.h"
+#include "tiledb/sm/config/config.h"
+#include "tiledb/sm/misc/constants.h"
+#include "tiledb/sm/misc/uri.h"
+
 #if !defined(NOMINMAX)
 #define NOMINMAX  // avoid min/max macros from windows headers
 #endif
@@ -45,12 +52,10 @@
 #include <list>
 #include <unordered_map>
 
-#include "tiledb/common/status.h"
-#include "tiledb/common/thread_pool.h"
-#include "tiledb/sm/buffer/buffer.h"
-#include "tiledb/sm/config/config.h"
-#include "tiledb/sm/misc/constants.h"
-#include "tiledb/sm/misc/uri.h"
+// azure sdk transitively includes mmtime.h which defines TIME_MS
+#ifdef TIME_MS
+#undef TIME_MS
+#endif
 
 using namespace tiledb::common;
 

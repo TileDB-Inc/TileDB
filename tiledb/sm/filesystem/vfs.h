@@ -57,10 +57,6 @@
 #include "tiledb/sm/filesystem/posix.h"
 #endif
 
-#ifdef HAVE_AZURE
-#include "tiledb/sm/filesystem/azure.h"
-#endif
-
 #ifdef HAVE_GCS
 #include "tiledb/sm/filesystem/gcs.h"
 #endif
@@ -71,6 +67,10 @@
 
 #ifdef HAVE_HDFS
 #include "tiledb/sm/filesystem/hdfs_filesystem.h"
+#endif
+
+#ifdef HAVE_AZURE
+#include "tiledb/sm/filesystem/azure.h"
 #endif
 
 using namespace tiledb::common;
