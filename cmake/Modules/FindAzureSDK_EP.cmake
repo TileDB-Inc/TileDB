@@ -113,8 +113,8 @@ if (NOT AZURESDK_FOUND)
     if(WIN32)
       ExternalProject_Add(ep_azuresdk
         PREFIX "externals"
-        URL "https://github.com/Azure/azure-storage-cpplite/archive/v0.2.0.zip"
-        URL_HASH SHA1=058975ccac9b60b522c9f7fd044a3d2aaec9f893
+        URL "https://github.com/Azure/azure-storage-cpplite/archive/v0.3.0.zip"
+        URL_HASH SHA1=ce865daac9e540455c2d942d954bdbd3f293dcca
         CMAKE_ARGS
           -DCMAKE_BUILD_TYPE=${CMAKE_BUILD_TYPE}
           -DBUILD_SHARED_LIBS=OFF
@@ -141,8 +141,8 @@ if (NOT AZURESDK_FOUND)
     else()
       ExternalProject_Add(ep_azuresdk
         PREFIX "externals"
-        URL "https://github.com/Azure/azure-storage-cpplite/archive/v0.2.0.zip"
-        URL_HASH SHA1=058975ccac9b60b522c9f7fd044a3d2aaec9f893
+        URL "https://github.com/Azure/azure-storage-cpplite/archive/v0.3.0.zip"
+        URL_HASH SHA1=ce865daac9e540455c2d942d954bdbd3f293dcca
         CMAKE_ARGS
           -DCMAKE_BUILD_TYPE=${CMAKE_BUILD_TYPE}
           -DBUILD_SHARED_LIBS=OFF
