@@ -49,6 +49,7 @@ namespace tiledb {
 namespace sm {
 
 class Array;
+class OpenArrayMemoryTracker;
 class StorageManager;
 
 /** Processes sparse global order read queries. */
@@ -139,8 +140,8 @@ class SparseGlobalOrderReader : public ReaderBase, public IQueryStrategy {
   /** Have ve loaded the initial data. */
   bool initial_data_loaded_;
 
-  /** Bit vector of the tiles in the subarray, if set. */
-  std::vector<std::vector<char>> result_tile_set_;
+  /** Sorted list, per fragments of tiles ranges in the subarray, if set. */
+  std::vector<std::list<std::pair<uint64_t, uint64_t>>> result_tile_ranges_;
 
   /** Dimension names. */
   std::vector<std::string> dim_names_;
@@ -151,6 +152,9 @@ class SparseGlobalOrderReader : public ReaderBase, public IQueryStrategy {
   /** Total memory budget. */
   uint64_t memory_budget_;
 
+  /** Memory tracker object for the array. */
+  OpenArrayMemoryTracker* array_memory_tracker_;
+
   /** Memory used for coordinates tiles per fragment. */
   std::vector<uint64_t> memory_used_for_coords_;
 
@@ -159,6 +163,9 @@ class SparseGlobalOrderReader : public ReaderBase, public IQueryStrategy {
 
   /** Memory used for result tiles. */
   uint64_t memory_used_result_tiles_;
+
+  /** Memory used for result tile ranges. */
+  uint64_t memory_used_result_tile_ranges_;
 
   // TODO Make configurable.
   /** How much of the memory budget is reserved for coords */
@@ -181,7 +188,7 @@ class SparseGlobalOrderReader : public ReaderBase, public IQueryStrategy {
   /** Load a coordinate tile, making sure maximum budget is respected. */
   Status add_result_tile(
       unsigned dim_num,
-      uint64_t per_fragment_memory,
+      uint64_t memory_budget,
       unsigned f,
       uint64_t t,
       const Domain* domain,
@@ -193,9 +200,11 @@ class SparseGlobalOrderReader : public ReaderBase, public IQueryStrategy {
   /** Populate a result cell slab to process. */
   Status compute_result_cell_slab();
 
-  /** Computes info about the which tiles are in subarray. */
-  Status compute_result_tiles_set(
-      Subarray& subarray, std::vector<std::vector<char>>& result_tile_set);
+  /**
+   * Computes info about the which tiles are in subarray,
+   * making sure maximum budget is respected.
+   */
+  Status compute_result_tiles_ranges(uint64_t memory_budget);
 
   /**
    * Add a new tile to the queue of tiles currently being processed
