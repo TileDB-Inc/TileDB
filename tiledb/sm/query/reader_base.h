@@ -75,12 +75,11 @@ class ReaderBase : public StrategyBase {
   /*        PROTECTED DATATYPES        */
   /* ********************************* */
 
-  // TODO Remove selective unfiltering.
   /** Bitflags for individual dimension/attributes in `process_tiles()`. */
   typedef uint8_t ProcessTileFlags;
 
   /** Bitflag values applicable to `ProcessTileFlags`. */
-  enum ProcessTileFlag { READ = 1, COPY = 2, SELECTIVE_UNFILTERING = 4 };
+  enum ProcessTileFlag { READ = 1, COPY = 2 };
 
   typedef std::
       unordered_map<ResultTile*, std::vector<std::pair<uint64_t, uint64_t>>>
@@ -292,15 +291,11 @@ class ReaderBase : public StrategyBase {
    *
    * @param name Attribute/dimension whose tiles will be unfiltered.
    * @param result_tiles Vector containing the tiles to be unfiltered.
-   * @param cs_ranges An optional association from the result tile to
-   *   the cell slab ranges that it contains. If given, this will be
-   *   used for selective unfiltering.
    * @return Status
    */
   Status unfilter_tiles(
       const std::string& name,
-      const std::vector<ResultTile*>* result_tiles,
-      const ResultCellSlabsIndex* const rcs_index) const;
+      const std::vector<ResultTile*>* result_tiles) const;
 
   /**
    * Runs the input fixed-sized tile for the input attribute or dimension
@@ -309,15 +304,9 @@ class ReaderBase : public StrategyBase {
    *
    * @param name The attribute/dimension the tile belong to.
    * @param tile The tile to be unfiltered.
-   * @param result_cell_slab_ranges Result cell slab ranges sorted in ascending
-   *    order.
    * @return Status
    */
-  Status unfilter_tile(
-      const std::string& name,
-      Tile* tile,
-      const std::vector<std::pair<uint64_t, uint64_t>>* result_cell_slab_ranges)
-      const;
+  Status unfilter_tile(const std::string& name, Tile* tile) const;
 
   /**
    * Runs the input var-sized tile for the input attribute or dimension through
@@ -327,16 +316,10 @@ class ReaderBase : public StrategyBase {
    * @param name The attribute/dimension the tile belong to.
    * @param tile The offsets tile to be unfiltered.
    * @param tile_var The value tile to be unfiltered.
-   * @param result_cell_slab_ranges Result cell slab ranges sorted in ascending
-   *    order.
    * @return Status
    */
   Status unfilter_tile(
-      const std::string& name,
-      Tile* tile,
-      Tile* tile_var,
-      const std::vector<std::pair<uint64_t, uint64_t>>* result_cell_slab_ranges)
-      const;
+      const std::string& name, Tile* tile, Tile* tile_var) const;
 
   /**
    * Runs the input fixed-sized tile for the input nullable attribute
@@ -346,16 +329,10 @@ class ReaderBase : public StrategyBase {
    * @param name The attribute/dimension the tile belong to.
    * @param tile The tile to be unfiltered.
    * @param tile_validity The validity tile to be unfiltered.
-   * @param result_cell_slab_ranges Result cell slab ranges sorted in ascending
-   *    order.
    * @return Status
    */
   Status unfilter_tile_nullable(
-      const std::string& name,
-      Tile* tile,
-      Tile* tile_validity,
-      const std::vector<std::pair<uint64_t, uint64_t>>* result_cell_slab_ranges)
-      const;
+      const std::string& name, Tile* tile, Tile* tile_validity) const;
 
   /**
    * Runs the input var-sized tile for the input nullable attribute through
@@ -366,17 +343,13 @@ class ReaderBase : public StrategyBase {
    * @param tile The offsets tile to be unfiltered.
    * @param tile_var The value tile to be unfiltered.
    * @param tile_validity The validity tile to be unfiltered.
-   * @param result_cell_slab_ranges Result cell slab ranges sorted in ascending
-   *    order.
    * @return Status
    */
   Status unfilter_tile_nullable(
       const std::string& name,
       Tile* tile,
       Tile* tile_var,
-      Tile* tile_validity,
-      const std::vector<std::pair<uint64_t, uint64_t>>* result_cell_slab_ranges)
-      const;
+      Tile* tile_validity) const;
 
   /**
    * Copies the result coordinates to the user buffers.
@@ -568,8 +541,7 @@ class ReaderBase : public StrategyBase {
    * to the cell slabs it contains.
    */
   tdb_unique_ptr<ResultCellSlabsIndex> compute_rcs_index(
-      const std::vector<ResultCellSlab>* result_cell_slabs,
-      Subarray& subarray) const;
+      const std::vector<ResultCellSlab>* result_cell_slabs) const;
 
   /**
    * Applies the query condition, `condition_`, to filter cell indexes

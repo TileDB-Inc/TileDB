@@ -844,22 +844,16 @@ Status Reader::compute_result_coords(
   RETURN_CANCEL_OR_ERROR(load_tile_offsets(subarray, &dim_names));
 
   // Read and unfilter zipped coordinate tiles. Note that
-  // this will ignore fragments with a version >= 5. Unfilter
-  // with a nullptr `rcs_index` argument to bypass selective
-  // unfiltering.
+  // this will ignore fragments with a version >= 5.
   RETURN_CANCEL_OR_ERROR(
       read_coordinate_tiles(&zipped_coords_names, &tmp_result_tiles));
-  RETURN_CANCEL_OR_ERROR(
-      unfilter_tiles(constants::coords, &tmp_result_tiles, nullptr));
+  RETURN_CANCEL_OR_ERROR(unfilter_tiles(constants::coords, &tmp_result_tiles));
 
   // Read and unfilter unzipped coordinate tiles. Note that
-  // this will ignore fragments with a version < 5. Unfilter
-  // with a nullptr `rcs_index` argument to bypass selective
-  // unfiltering.
+  // this will ignore fragments with a version < 5.
   RETURN_CANCEL_OR_ERROR(read_coordinate_tiles(&dim_names, &tmp_result_tiles));
   for (const auto& dim_name : dim_names) {
-    RETURN_CANCEL_OR_ERROR(
-        unfilter_tiles(dim_name, &tmp_result_tiles, nullptr));
+    RETURN_CANCEL_OR_ERROR(unfilter_tiles(dim_name, &tmp_result_tiles));
   }
 
   // Compute the read coordinates for all fragments for each subarray range.
