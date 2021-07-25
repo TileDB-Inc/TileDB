@@ -194,22 +194,24 @@ Status SparseGlobalOrderReader::dowork() {
     return Status::Ok();
   }
 
-  // TODO Get rid of the copy here by keeping an end index in resultbase.
-  // Try to make a result cell slab that will fit in the user's buffers, at
-  // least for fixed sized attributes. Since the copy code might modify the
-  // result cell slabs, this is also good to have a copy.
+  // Compute an initial boundary for the copy.
   auto it = read_state_.result_cell_slabs_.begin();
-  std::vector<ResultCellSlab> to_copy;
-  while (num_cells && it != read_state_.result_cell_slabs_.end()) {
-    auto tile = it->tile_;
+  copy_end_.first = 0;
+  while (it != read_state_.result_cell_slabs_.end()) {
     if (it->length_ > num_cells) {
-      to_copy.emplace_back(tile, it->start_, num_cells);
+      copy_end_.first++;
+      copy_end_.second = it->start_ + num_cells;
+      break;
     } else {
-      to_copy.push_back(*it);
+      copy_end_.first++;
+      num_cells -= it->length_;
       it++;
     }
+  }
 
-    num_cells -= to_copy.back().length_;
+  if (it == read_state_.result_cell_slabs_.end()) {
+    auto& last_rcs = read_state_.result_cell_slabs_.back();
+    copy_end_.second = last_rcs.length_;
   }
 
   // TODO Calculate/maintain memory budget for copy operations.
@@ -218,36 +220,36 @@ Status SparseGlobalOrderReader::dowork() {
   //      list, this way we will prevent reading tiles we don't need on
   //      future reads.
 
-  // Copy the coordinates data. The input vector will be adjusted to reflect
-  // only the data that was copied of there was an overflow.
-  RETURN_NOT_OK(copy_coordinates(tmp_result_tiles_, to_copy));
+  // Copy the coordinates data.
+  RETURN_NOT_OK(
+      copy_coordinates(&tmp_result_tiles_, &read_state_.result_cell_slabs_));
 
   // copy_coordinates will only have an unrecoverable overflow if a single cell
-  // is too big for the user's buffers. Otherwise, the result cell slab vector
-  // will be adjusted to reflect only what was copied.
+  // is too big for the user's buffers.
   if (copy_overflowed_) {
     zero_out_buffer_sizes();
     return Status::Ok();
   }
 
-  // Copy the attributes data. The input vector will be adjusted to reflect
-  // only the data that was copied of there was an overflow.
-  RETURN_NOT_OK(
-      copy_attribute_values(UINT64_MAX, tmp_result_tiles_, to_copy, subarray_));
+  // Copy the attributes data.
+  RETURN_NOT_OK(copy_attribute_values(
+      UINT64_MAX,
+      &tmp_result_tiles_,
+      &read_state_.result_cell_slabs_,
+      subarray_));
 
   // copy_coordinates will only have an unrecoverable overflow if a single cell
-  // is too big for the user's buffers. Otherwise, the result cell slab vector
-  // will be adjusted to reflect only what was copied.
+  // is too big for the user's buffers.
   if (copy_overflowed_) {
     zero_out_buffer_sizes();
     return Status::Ok();
   }
 
   // Fix the output buffer sizes.
-  RETURN_NOT_OK(resize_output_buffers(to_copy));
+  RETURN_NOT_OK(resize_output_buffers());
 
   // End the iteration.
-  RETURN_NOT_OK(end_iteration(to_copy));
+  RETURN_NOT_OK(end_iteration());
 
   return Status::Ok();
 }
@@ -280,7 +282,8 @@ Status SparseGlobalOrderReader::load_initial_data() {
   // TODO Account for tile offsets in memory budget.
   // Preload zipped coordinate tile offsets. Note that this will
   // ignore fragments with a version >= 5.
-  RETURN_CANCEL_OR_ERROR(load_tile_offsets(subarray_, {constants::coords}));
+  std::vector<std::string> zipped_coords_names = {constants::coords};
+  RETURN_CANCEL_OR_ERROR(load_tile_offsets(subarray_, &zipped_coords_names));
 
   // Preload unzipped coordinate tile offsets. Note that this will
   // ignore fragments with a version < 5.
@@ -291,7 +294,7 @@ Status SparseGlobalOrderReader::load_initial_data() {
     dim_names_.emplace_back(array_schema_->dimension(d)->name());
     is_dim_var_size_[d] = array_schema_->var_size(dim_names_[d]);
   }
-  RETURN_CANCEL_OR_ERROR(load_tile_offsets(subarray_, dim_names_));
+  RETURN_CANCEL_OR_ERROR(load_tile_offsets(subarray_, &dim_names_));
 
   // Make sure we have enough space for tiles data.
   result_tiles_.resize(fragment_num);
@@ -441,19 +444,21 @@ Status SparseGlobalOrderReader::compute_result_cell_slab() {
   // this will ignore fragments with a version >= 5. Unfilter
   // with a nullptr `rcs_index` argument to bypass selective
   // unfiltering.
+  std::vector<std::string> zipped_coords_names = {constants::coords};
   RETURN_CANCEL_OR_ERROR(
-      read_coordinate_tiles({constants::coords}, tmp_result_tiles_));
+      read_coordinate_tiles(&zipped_coords_names, &tmp_result_tiles_));
   RETURN_CANCEL_OR_ERROR(
-      unfilter_tiles(constants::coords, tmp_result_tiles_, nullptr));
+      unfilter_tiles(constants::coords, &tmp_result_tiles_, nullptr));
 
   // Read and unfilter unzipped coordinate tiles. Note that
   // this will ignore fragments with a version < 5. Unfilter
   // with a nullptr `rcs_index` argument to bypass selective
   // unfiltering.
-  RETURN_CANCEL_OR_ERROR(read_coordinate_tiles(dim_names_, tmp_result_tiles_));
+  RETURN_CANCEL_OR_ERROR(
+      read_coordinate_tiles(&dim_names_, &tmp_result_tiles_));
   for (const auto& dim_name : dim_names_) {
     RETURN_CANCEL_OR_ERROR(
-        unfilter_tiles(dim_name, tmp_result_tiles_, nullptr));
+        unfilter_tiles(dim_name, &tmp_result_tiles_, nullptr));
   }
 
   // Compute the result cell slabs with the loaded coordinate tiles.
@@ -473,7 +478,7 @@ Status SparseGlobalOrderReader::compute_result_cell_slab() {
   // TODO This can be moved before calculating result cell slabs.
   // Finally apply the query condition.
   RETURN_CANCEL_OR_ERROR(apply_query_condition(
-      &read_state_.result_cell_slabs_, tmp_result_tiles_, subarray_));
+      &read_state_.result_cell_slabs_, &tmp_result_tiles_, subarray_));
 
   return Status::Ok();
 }
@@ -825,14 +830,14 @@ Status SparseGlobalOrderReader::merge_result_cell_slabs(
   return Status::Ok();
 };
 
-Status SparseGlobalOrderReader::resize_output_buffers(
-    std::vector<ResultCellSlab>& copied) {
-  // Copy might truncate the result cell slab.
+Status SparseGlobalOrderReader::resize_output_buffers() {
   // Count number of elements actually copied.
   uint64_t cells_copied = 0;
-  for (auto rcs : copied) {
-    cells_copied += rcs.length_;
+  for (uint64_t i = 0; i < copy_end_.first - 1; i++) {
+    cells_copied += read_state_.result_cell_slabs_[i].length_;
   }
+
+  cells_copied += copy_end_.second;
 
   // Resize buffers if the result cell slabs was truncated.
   for (auto& it : buffers_) {
@@ -877,27 +882,23 @@ Status SparseGlobalOrderReader::resize_output_buffers(
   return Status::Ok();
 }
 
-Status SparseGlobalOrderReader::end_iteration(
-    std::vector<ResultCellSlab>& copied) {
+Status SparseGlobalOrderReader::end_iteration() {
   // For easy reference.
   auto dim_num = array_schema_->dim_num();
   auto fragment_num = fragment_metadata_.size();
 
   // Remove the processed cell slabs.
-  uint64_t num_cs_to_del = copied.size();
-  auto& new_front = read_state_.result_cell_slabs_[num_cs_to_del - 1];
+  auto& new_front = read_state_.result_cell_slabs_[copy_end_.first - 1];
 
   // If the last cell slab processed wasn't processed fully, split it.
-  if (new_front.tile_ == copied.back().tile_ &&
-      new_front.start_ == copied.back().start_ &&
-      new_front.length_ != copied.back().length_) {
-    new_front.start_ += copied.back().length_;
-    new_front.length_ -= copied.back().length_;
-    num_cs_to_del--;
+  if (new_front.length_ != copy_end_.second) {
+    new_front.start_ += copy_end_.second;
+    new_front.length_ -= copy_end_.second;
+    copy_end_.first--;
   }
 
   // Clear result tiles that are not necessary anymore.
-  auto cs_to_del_end = read_state_.result_cell_slabs_.begin() + num_cs_to_del;
+  auto cs_to_del_end = read_state_.result_cell_slabs_.begin() + copy_end_.first;
 
   // Last tile processed, initialized to the first tile in each fragments.
   std::vector<uint64_t> last_tile_processed(fragment_num);
@@ -933,7 +934,10 @@ Status SparseGlobalOrderReader::end_iteration(
   // Erase from the vector.
   read_state_.result_cell_slabs_.erase(
       read_state_.result_cell_slabs_.begin(),
-      read_state_.result_cell_slabs_.begin() + num_cs_to_del);
+      read_state_.result_cell_slabs_.begin() + copy_end_.first);
+
+  auto uint64_t_max = std::numeric_limits<uint64_t>::max();
+  copy_end_ = std::pair<uint64_t, uint64_t>(uint64_t_max, uint64_t_max);
 
   return Status::Ok();
 }

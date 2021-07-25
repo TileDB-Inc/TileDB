@@ -232,11 +232,11 @@ class SparseGlobalOrderReader : public ReaderBase, public IQueryStrategy {
   Status merge_result_cell_slabs(uint64_t memory_budget, T cmp);
 
   /** Resize the output buffers to the correct size after copying. */
-  Status resize_output_buffers(std::vector<ResultCellSlab>& copied);
+  Status resize_output_buffers();
 
   /** Clean up processed data after copying and get ready for the next
    * iteration. */
-  Status end_iteration(std::vector<ResultCellSlab>& copied);
+  Status end_iteration();
 };
 
 }  // namespace sm
