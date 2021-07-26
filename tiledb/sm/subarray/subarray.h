@@ -565,7 +565,7 @@ class Subarray {
 
   /**
    * Gets the estimated result size (in bytes) for the input fixed-sized
-   * attribute/dimension if audit passes.
+   * attribute/dimension.
    */
   Status get_est_result_size(
       const char* name, uint64_t* size, StorageManager* storage_manager);

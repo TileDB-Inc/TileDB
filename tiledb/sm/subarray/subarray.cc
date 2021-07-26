@@ -886,54 +886,9 @@ Status Subarray::get_est_result_size(
         name + "' is nullable"));
 
   if (array_->is_remote()) {
-#if 01
     return LOG_STATUS(Status::SubarrayError(
         std::string("Error in query estimate result size; remote/REST "
                     "array functionality not implemented.")));
-#else
-    // TBD: Should we somewhere (where?) try to remember if the remote call has
-    // already been done?
-    // Trying approach of temporary query (and dup array due to 'const'ness of
-    // array_ not being liked to define query)
-    // TBD: will it work even if messy?
-    auto rest_client = storage_manager->rest_client();
-    if (rest_client == nullptr)
-      return LOG_STATUS(
-          Status::SubarrayError("Error in query estimate result size; remote "
-                                "array with no rest client."));
-
-    // TBD: Can an array be opened twice? or maybe just some circumstances?
-    Array tmp_array(array_->array_uri(), storage_manager);
-    // tmp_array.open(type, 0, array_->encryption_key(), ?);)
-    auto enc_key_const_buff = array_->encryption_key()->key();
-    uint64_t time_stamp = 0;
-    // TBD: Is this correct?
-    // Merging with dev, appears from use of .open() in
-    // tiledb.cc/tiledb_array_open_at(), the way to get earlier functionality is
-    // to pass 0 (zero) for start and the timestamp in use with old prototype as
-    // 'end', so let's try that... unfortunately, since this code has not yet
-    // been exercised, may be hard to tell if this is correct approach here or
-    // not...
-    tmp_array.open(
-        type,
-        0,
-        time_stamp,
-        array_->encryption_key()->encryption_type(),
-        enc_key_const_buff.data(),
-        enc_key_const_buff.nbytes_left_to_read());
-    Query tmp_query(storage_manager, &tmp_array);
-
-    array_->array_schema()->set_array_uri(array_->array_uri());
-
-    auto ret_rest_response = rest_client->get_query_est_result_sizes(
-        array_->array_uri(), &tmp_query);
-    Status ret_get_est_result_size;
-    if (ret_rest_response.ok())
-      ret_get_est_result_size = tmp_query.get_est_result_size(name, size);
-    tmp_array.close();
-    RETURN_NOT_OK(ret_rest_response);
-    return ret_get_est_result_size;
-#endif
   }
 
   return get_est_result_size_internal(
