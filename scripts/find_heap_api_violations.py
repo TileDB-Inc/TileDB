@@ -91,8 +91,9 @@ shared_ptr_exceptions = {
     ],
     "s3.h": ["std::shared_ptr<S3ThreadPoolExecutor>"],
     "azure.cc": [
-        "std::shared_ptr<azure::storage_lite::shared_key_credential>",
+        "std::shared_ptr<azure::storage_lite::storage_credential>",
         "std::shared_ptr<azure::storage_lite::storage_account>",
+        "azure::storage_lite::shared_access_signature_credential>"
     ],
 }
 
@@ -112,6 +113,7 @@ make_shared_exceptions = {
         "std::make_shared<azure::storage_lite::storage_account>",
         "std::make_shared<azure::storage_lite::tinyxml2_parser>",
         "std::make_shared<AzureRetryPolicy>",
+        "std::make_shared<"
     ],
 }
 
