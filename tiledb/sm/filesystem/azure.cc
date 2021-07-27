@@ -92,6 +92,13 @@ Status Azure::init(const Config& config, ThreadPool* const thread_pool) {
     account_key = std::string(getenv("AZURE_STORAGE_KEY"));
   }
 
+  std::string sas_token = config.get("vfs.azure.storage_sas_token", &found);
+  assert(found);
+  if (sas_token.empty() &&
+      ((tmp = getenv("AZURE_STORAGE_SAS_TOKEN")) != NULL)) {
+    sas_token = std::string(getenv("AZURE_STORAGE_SAS_TOKEN"));
+  }
+
   std::string blob_endpoint = config.get("vfs.azure.blob_endpoint", &found);
   assert(found);
   if (blob_endpoint.empty() &&
@@ -121,9 +128,16 @@ Status Azure::init(const Config& config, ThreadPool* const thread_pool) {
 
   write_cache_max_size_ = max_parallel_ops_ * block_list_block_size_;
 
-  std::shared_ptr<azure::storage_lite::shared_key_credential> credential =
+  // Initialize a credential object
+  std::shared_ptr<azure::storage_lite::storage_credential> credential =
       std::make_shared<azure::storage_lite::shared_key_credential>(
           account_name, account_key);
+
+  // Use the SAS token, if provided.
+  if (!sas_token.empty()) {
+    credential = std::make_shared<
+        azure::storage_lite::shared_access_signature_credential>(sas_token);
+  }
 
   std::shared_ptr<azure::storage_lite::storage_account> account =
       std::make_shared<azure::storage_lite::storage_account>(

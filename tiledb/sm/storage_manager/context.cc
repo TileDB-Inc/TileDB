@@ -75,7 +75,7 @@ Status Context::init(Config* const config) {
       tiledb::sm::StorageManager(&compute_tp_, &io_tp_, stats_.get());
   if (storage_manager_ == nullptr)
     return LOG_STATUS(Status::ContextError(
-        "Cannot initialize contextl Storage manager allocation failed"));
+        "Cannot initialize context Storage manager allocation failed"));
 
   // Initialize storage manager
   return storage_manager_->init(config);
