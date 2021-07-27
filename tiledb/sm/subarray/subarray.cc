@@ -1010,9 +1010,9 @@ Status Subarray::get_est_result_size_nullable_internal(
                               "Attribute must be nullable"));
 
   if (array_->is_remote() && !this->est_result_size_computed()) {
-    return LOG_STATUS(
-        Status::SubarrayError("Error in query estimate result size; unimplemented "
-                           "for nullable attributes in remote arrays."));
+    return LOG_STATUS(Status::SubarrayError(
+        "Error in query estimate result size; unimplemented "
+        "for nullable attributes in remote arrays."));
   }
 
   // Compute tile overlap for each fragment
