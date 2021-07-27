@@ -1022,35 +1022,7 @@ void DenseArrayFx::write_dense_subarray_2D_with_cancel(
     // written.
     // TODO: this doesn't trigger the cancelled path very often.
     for (unsigned i = 0; i < num_writes; i++) {
-#if 01
       proc_query(i);
-#else
-      rc = tiledb_query_submit_async(ctx_, query, NULL, NULL);
-      REQUIRE(rc == TILEDB_OK);
-      // Cancel it immediately.
-      if (i < num_writes - 1) {
-        rc = tiledb_ctx_cancel_tasks(ctx_);
-        REQUIRE(rc == TILEDB_OK);
-      }
-
-      tiledb_query_status_t status;
-      do {
-        rc = tiledb_query_get_status(ctx_, query, &status);
-        CHECK(rc == TILEDB_OK);
-      } while (status != TILEDB_COMPLETED && status != TILEDB_FAILED);
-      CHECK((status == TILEDB_COMPLETED || status == TILEDB_FAILED));
-
-      // If it failed, run it again.
-      if (status == TILEDB_FAILED) {
-        rc = tiledb_query_submit_async(ctx_, query, NULL, NULL);
-        CHECK(rc == TILEDB_OK);
-        do {
-          rc = tiledb_query_get_status(ctx_, query, &status);
-          CHECK(rc == TILEDB_OK);
-        } while (status != TILEDB_COMPLETED && status != TILEDB_FAILED);
-      }
-      REQUIRE(status == TILEDB_COMPLETED);
-#endif
     }
 
     rc = tiledb_query_finalize(ctx_, query);
@@ -1065,35 +1037,7 @@ void DenseArrayFx::write_dense_subarray_2D_with_cancel(
     for (unsigned i = 0; i < num_writes; i++) {
       rc = tiledb_query_set_subarray_t(ctx_, query, query_subarray);
       CHECK(rc == TILEDB_OK);
-#if 01
       proc_query(i);
-#else
-      rc = tiledb_query_submit_async(ctx_, query, NULL, NULL);
-      REQUIRE(rc == TILEDB_OK);
-      // Cancel it immediately.
-      if (i < num_writes - 1) {
-        rc = tiledb_ctx_cancel_tasks(ctx_);
-        REQUIRE(rc == TILEDB_OK);
-      }
-
-      tiledb_query_status_t status;
-      do {
-        rc = tiledb_query_get_status(ctx_, query, &status);
-        CHECK(rc == TILEDB_OK);
-      } while (status != TILEDB_COMPLETED && status != TILEDB_FAILED);
-      CHECK((status == TILEDB_COMPLETED || status == TILEDB_FAILED));
-
-      // If it failed, run it again.
-      if (status == TILEDB_FAILED) {
-        rc = tiledb_query_submit_async(ctx_, query, NULL, NULL);
-        CHECK(rc == TILEDB_OK);
-        do {
-          rc = tiledb_query_get_status(ctx_, query, &status);
-          CHECK(rc == TILEDB_OK);
-        } while (status != TILEDB_COMPLETED && status != TILEDB_FAILED);
-      }
-      REQUIRE(status == TILEDB_COMPLETED);
-#endif
     }
 
     rc = tiledb_query_finalize(ctx_, query);
