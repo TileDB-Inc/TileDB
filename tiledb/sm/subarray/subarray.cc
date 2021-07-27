@@ -960,12 +960,22 @@ Status Subarray::get_est_result_size(
   return Status::Ok();
 }
 
-Status Subarray::get_est_result_size_nullable(
+Status Subarray::get_est_result_size_nullable_internal(
     const char* name,
     uint64_t* size,
     uint64_t* size_validity,
     const Config* const config,
     ThreadPool* const compute_tp) {
+  QueryType type;
+  // Note: various items below expect array open, get_query_type() providing
+  // that audit.
+  RETURN_NOT_OK(array_->get_query_type(&type));
+
+  if (type == QueryType::WRITE)
+    return LOG_STATUS(Status::SubarrayError(
+        "Cannot get estimated result size; Operation currently "
+        "unsupported for write queries"));
+
   // Check attribute/dimension name
   if (name == nullptr)
     return LOG_STATUS(
@@ -999,6 +1009,12 @@ Status Subarray::get_est_result_size_nullable(
         Status::SubarrayError("Cannot get estimated result size; "
                               "Attribute must be nullable"));
 
+  if (array_->is_remote() && !this->est_result_size_computed()) {
+    return LOG_STATUS(
+        Status::SubarrayError("Error in query estimate result size; unimplemented "
+                           "for nullable attributes in remote arrays."));
+  }
+
   // Compute tile overlap for each fragment
   RETURN_NOT_OK(compute_est_result_size(config, compute_tp));
   *size = static_cast<uint64_t>(std::ceil(est_result_size_[name].size_fixed_));
@@ -1016,13 +1032,23 @@ Status Subarray::get_est_result_size_nullable(
   return Status::Ok();
 }
 
-Status Subarray::get_est_result_size_nullable(
+Status Subarray::get_est_result_size_nullable_internal(
     const char* name,
     uint64_t* size_off,
     uint64_t* size_val,
     uint64_t* size_validity,
     const Config* const config,
     ThreadPool* const compute_tp) {
+  QueryType type;
+  // Note: various items below expect array open, get_query_type() providing
+  // that audit.
+  RETURN_NOT_OK(array_->get_query_type(&type));
+
+  if (type == QueryType::WRITE)
+    return LOG_STATUS(Status::SubarrayError(
+        "Cannot get estimated result size; Operation currently "
+        "unsupported for write queries"));
+
   // Check attribute/dimension name
   if (name == nullptr)
     return LOG_STATUS(
@@ -1055,6 +1081,12 @@ Status Subarray::get_est_result_size_nullable(
     return LOG_STATUS(
         Status::SubarrayError("Cannot get estimated result size; "
                               "Attribute must be nullable"));
+
+  if (array_->is_remote() && !this->est_result_size_computed()) {
+    return LOG_STATUS(Status::SubarrayError(
+        "Error in query estimate result size; unimplemented "
+        "for nullable attributes in remote arrays."));
+  }
 
   // Compute tile overlap for each fragment
   RETURN_NOT_OK(compute_est_result_size(config, compute_tp));

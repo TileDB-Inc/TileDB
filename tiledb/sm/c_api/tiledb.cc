@@ -4091,7 +4091,7 @@ int32_t tiledb_subarray_get_est_result_size_nullable(
 
   if (SAVE_ERROR_CATCH(
           ctx,
-          subarray->subarray_->get_est_result_size_nullable(
+          subarray->subarray_->get_est_result_size_nullable_internal(
               name,
               size_val,
               size_validity,
@@ -4115,7 +4115,7 @@ int32_t tiledb_subarray_get_est_result_size_var_nullable(
 
   if (SAVE_ERROR_CATCH(
           ctx,
-          subarray->subarray_->get_est_result_size_nullable(
+          subarray->subarray_->get_est_result_size_nullable_internal(
               name,
               size_off,
               size_val,

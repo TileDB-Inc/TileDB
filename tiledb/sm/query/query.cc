@@ -411,38 +411,7 @@ Status Query::get_est_result_size(
 
 Status Query::get_est_result_size_nullable(
     const char* name, uint64_t* size_val, uint64_t* size_validity) {
-  if (type_ == QueryType::WRITE)
-    return LOG_STATUS(Status::QueryError(
-        "Cannot get estimated result size; Operation currently "
-        "unsupported for write queries"));
-
-  if (name == nullptr)
-    return LOG_STATUS(Status::QueryError(
-        "Cannot get estimated result size; Name cannot be null"));
-
-  if (!array_schema_->attribute(name))
-    return LOG_STATUS(Status::QueryError(
-        "Cannot get estimated result size; Nullable API is only"
-        "applicable to attributes"));
-
-  if (!array_schema_->is_nullable(name))
-    return LOG_STATUS(Status::QueryError(
-        std::string("Cannot get estimated result size; Input attribute '") +
-        name + "' is not nullable"));
-
-  if (array_->is_remote() && !subarray_.est_result_size_computed()) {
-    auto rest_client = storage_manager_->rest_client();
-    if (rest_client == nullptr)
-      return LOG_STATUS(
-          Status::QueryError("Error in query estimate result size; remote "
-                             "array with no rest client."));
-
-    return LOG_STATUS(
-        Status::QueryError("Error in query estimate result size; unimplemented "
-                           "for nullable attributes in remote arrays."));
-  }
-
-  return subarray_.get_est_result_size_nullable(
+  return subarray_.get_est_result_size_nullable_internal(
       name, size_val, size_validity, &config_, storage_manager_->compute_tp());
 }
 
@@ -451,34 +420,7 @@ Status Query::get_est_result_size_nullable(
     uint64_t* size_off,
     uint64_t* size_val,
     uint64_t* size_validity) {
-  if (type_ == QueryType::WRITE)
-    return LOG_STATUS(Status::QueryError(
-        "Cannot get estimated result size; Operation currently "
-        "unsupported for write queries"));
-
-  if (!array_schema_->attribute(name))
-    return LOG_STATUS(Status::QueryError(
-        "Cannot get estimated result size; Nullable API is only"
-        "applicable to attributes"));
-
-  if (!array_schema_->is_nullable(name))
-    return LOG_STATUS(Status::QueryError(
-        std::string("Cannot get estimated result size; Input attribute '") +
-        name + "' is not nullable"));
-
-  if (array_->is_remote() && !subarray_.est_result_size_computed()) {
-    auto rest_client = storage_manager_->rest_client();
-    if (rest_client == nullptr)
-      return LOG_STATUS(
-          Status::QueryError("Error in query estimate result size; remote "
-                             "array with no rest client."));
-
-    return LOG_STATUS(
-        Status::QueryError("Error in query estimate result size; unimplemented "
-                           "for nullable attributes in remote arrays."));
-  }
-
-  return subarray_.get_est_result_size_nullable(
+  return subarray_.get_est_result_size_nullable_internal(
       name,
       size_off,
       size_val,
