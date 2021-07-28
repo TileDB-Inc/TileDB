@@ -135,8 +135,9 @@ Status Azure::init(const Config& config, ThreadPool* const thread_pool) {
 
   // Use the SAS token, if provided.
   if (!sas_token.empty()) {
-    credential = std::make_shared<
-        azure::storage_lite::shared_access_signature_credential>(sas_token);
+    // clang-format off
+    credential = std::make_shared<azure::storage_lite::shared_access_signature_credential>(sas_token);
+    // clang-format on
   }
 
   std::shared_ptr<azure::storage_lite::storage_account> account =

@@ -113,7 +113,7 @@ make_shared_exceptions = {
         "std::make_shared<azure::storage_lite::storage_account>",
         "std::make_shared<azure::storage_lite::tinyxml2_parser>",
         "std::make_shared<AzureRetryPolicy>",
-        "std::make_shared<azure::storage_lite::storage_account>"
+        "std::make_shared<azure::storage_lite::shared_access_signature_credential>"
     ],
 }
 
