@@ -30,27 +30,30 @@
 # Include some common helper functions.
 include(TileDBCommon)
 
+# This is the install subdirectory for azure headers and libs, to avoid pollution
+set(TILEDB_EP_AZURE_INSTALL_PREFIX "${TILEDB_EP_INSTALL_PREFIX}/azurecpplite")
+
 # First check for a static version in the EP prefix.
 find_library(AZURESDK_LIBRARIES
   NAMES
     libazure-storage-lite${CMAKE_STATIC_LIBRARY_SUFFIX}
     azure-storage-lite${CMAKE_STATIC_LIBRARY_SUFFIX}
-  PATHS ${TILEDB_EP_INSTALL_PREFIX}
+  PATHS "${TILEDB_EP_AZURE_INSTALL_PREFIX}"
   PATH_SUFFIXES lib
   NO_DEFAULT_PATH
 )
 
 #on win32... '.lib' also used for lib ref'ing .dll!!!
 #So, if perchance, in some environments, a .lib existed along with its corresponding .dll,
-#then we could be incorrectly assuming/attempting a static build and probably will fail to 
-#appropriately include/package the .dll, since the code is (incorrectly) assuming .lib is indicative of a 
+#then we could be incorrectly assuming/attempting a static build and probably will fail to
+#appropriately include/package the .dll, since the code is (incorrectly) assuming .lib is indicative of a
 #static library being used.
 
 if (AZURESDK_LIBRARIES)
   set(AZURESDK_STATIC_EP_FOUND TRUE)
   find_path(AZURESDK_INCLUDE_DIR
     NAMES get_blob_request_base.h
-    PATHS ${TILEDB_EP_INSTALL_PREFIX}
+    PATHS "${TILEDB_EP_AZURE_INSTALL_PREFIX}"
     PATH_SUFFIXES include
     NO_DEFAULT_PATH
   )
@@ -92,15 +95,15 @@ if (NOT AZURESDK_FOUND)
 
     if (WIN32)
       if(MSVC)
-        set(CXXFLAGS_DEF " -I${TILEDB_EP_INSTALL_PREFIX}/include /Dazure_storage_lite_EXPORTS /DCURL_STATICLIB=1 ${CMAKE_CXX_FLAGS}")
-        set(CFLAGS_DEF " -I${TILEDB_EP_INSTALL_PREFIX}/include /Dazure_storage_lite_EXPORTS                  ${CMAKE_C_FLAGS}")
+        set(CXXFLAGS_DEF " -I${TILEDB_EP_AZURE_INSTALL_PREFIX}/include /Dazure_storage_lite_EXPORTS /DCURL_STATICLIB=1 ${CMAKE_CXX_FLAGS}")
+        set(CFLAGS_DEF " -I${TILEDB_EP_INSTALL_PREFIX}/azure/include /Dazure_storage_lite_EXPORTS                  ${CMAKE_C_FLAGS}")
       endif()
     else()
       #put our switch first in case other items are empty, leaving problematic blank space at beginning
       set(CFLAGS_DEF "-fPIC ${CMAKE_C_FLAGS}")
       set(CXXFLAGS_DEF "-fPIC ${CMAKE_CXX_FLAGS}")
     endif()
-    
+
     if (WIN32)
         # needed for applying patches on windows
         find_package(Git REQUIRED)
@@ -109,7 +112,7 @@ if (NOT AZURESDK_FOUND)
     else()
         set(PATCH patch -N -p1)
     endif()
-    
+
     if(WIN32)
       ExternalProject_Add(ep_azuresdk
         PREFIX "externals"
@@ -122,7 +125,7 @@ if (NOT AZURESDK_FOUND)
           -DBUILD_TESTS=OFF
           -DBUILD_SAMPLES=OFF
           -DCMAKE_PREFIX_PATH=${TILEDB_EP_INSTALL_PREFIX}
-          -DCMAKE_INSTALL_PREFIX=${TILEDB_EP_INSTALL_PREFIX}
+          -DCMAKE_INSTALL_PREFIX=${TILEDB_EP_AZURE_INSTALL_PREFIX}
           -DCMAKE_CXX_FLAGS=${CXXFLAGS_DEF}
           -DCMAKE_C_FLAGS=${CFLAGS_DEF}
           -DCMAKE_OSX_ARCHITECTURES=${CMAKE_OSX_ARCHITECTURES}
@@ -148,7 +151,7 @@ if (NOT AZURESDK_FOUND)
           -DBUILD_TESTS=OFF
           -DBUILD_SAMPLES=OFF
           -DCMAKE_PREFIX_PATH=${TILEDB_EP_INSTALL_PREFIX}
-          -DCMAKE_INSTALL_PREFIX=${TILEDB_EP_INSTALL_PREFIX}
+          -DCMAKE_INSTALL_PREFIX=${TILEDB_EP_AZURE_INSTALL_PREFIX}
           -DCMAKE_CXX_FLAGS=${CXXFLAGS_DEF}
           -DCMAKE_C_FLAGS=${CFLAGS_DEF}
           -DCMAKE_OSX_ARCHITECTURES=${CMAKE_OSX_ARCHITECTURES}
