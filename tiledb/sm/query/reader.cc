@@ -832,7 +832,7 @@ Status Reader::compute_result_coords(
   // ignore fragments with a version >= 5.
   auto& subarray = read_state_.partitioner_.current();
   std::vector<std::string> zipped_coords_names = {constants::coords};
-  RETURN_CANCEL_OR_ERROR(load_tile_offsets(subarray, &zipped_coords_names));
+  RETURN_CANCEL_OR_ERROR(load_tile_offsets(&subarray, &zipped_coords_names));
 
   // Preload unzipped coordinate tile offsets. Note that this will
   // ignore fragments with a version < 5.
@@ -841,7 +841,7 @@ Status Reader::compute_result_coords(
   dim_names.reserve(dim_num);
   for (unsigned d = 0; d < dim_num; ++d)
     dim_names.emplace_back(array_schema_->dimension(d)->name());
-  RETURN_CANCEL_OR_ERROR(load_tile_offsets(subarray, &dim_names));
+  RETURN_CANCEL_OR_ERROR(load_tile_offsets(&subarray, &dim_names));
 
   // Read and unfilter zipped coordinate tiles. Note that
   // this will ignore fragments with a version >= 5.
@@ -974,7 +974,7 @@ Status Reader::dense_read() {
       &result_cell_slabs));
 
   auto stride = array_schema_->domain()->stride<T>(subarray.layout());
-  apply_query_condition(&result_cell_slabs, &result_tiles, subarray, stride);
+  apply_query_condition(&result_cell_slabs, &result_tiles, &subarray, stride);
 
   get_result_tile_stats(result_tiles);
   get_result_cell_stats(result_cell_slabs);
@@ -1383,7 +1383,7 @@ Status Reader::sparse_read() {
   result_coords.clear();
 
   auto& subarray = read_state_.partitioner_.current();
-  apply_query_condition(&result_cell_slabs, &result_tiles, subarray);
+  apply_query_condition(&result_cell_slabs, &result_tiles, &subarray);
   get_result_tile_stats(result_tiles);
   get_result_cell_stats(result_cell_slabs);
 
