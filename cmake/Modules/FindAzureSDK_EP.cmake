@@ -94,17 +94,6 @@ if (NOT AZURESDK_FOUND)
     endif()
 
     if (WIN32)
-      if(MSVC)
-        set(CXXFLAGS_DEF " -I${TILEDB_EP_AZURE_INSTALL_PREFIX}/include /Dazure_storage_lite_EXPORTS /DCURL_STATICLIB=1 ${CMAKE_CXX_FLAGS}")
-        set(CFLAGS_DEF " -I${TILEDB_EP_INSTALL_PREFIX}/azure/include /Dazure_storage_lite_EXPORTS                  ${CMAKE_C_FLAGS}")
-      endif()
-    else()
-      #put our switch first in case other items are empty, leaving problematic blank space at beginning
-      set(CFLAGS_DEF "-fPIC ${CMAKE_C_FLAGS}")
-      set(CXXFLAGS_DEF "-fPIC ${CMAKE_CXX_FLAGS}")
-    endif()
-
-    if (WIN32)
         # needed for applying patches on windows
         find_package(Git REQUIRED)
         #see comment on this answer - https://stackoverflow.com/a/45698220
@@ -112,6 +101,12 @@ if (NOT AZURESDK_FOUND)
     else()
         set(PATCH patch -N -p1)
     endif()
+
+    # NOTE:
+    # - CURL_NO_CURL_CMAKE (CMake 3.17+) is used because azure-cpp-lite only uses
+    #   CURL_LIBRARIES/CURL_INCLUDE_DIRS, not `curl::curl` target.
+    #   In CMake 3.17+, CMake's built-in FindCURL defers to the curl-installed
+    #   CMake config file, which *does not* set `CURL_*` variables.
 
     if(WIN32)
       ExternalProject_Add(ep_azuresdk
@@ -124,14 +119,13 @@ if (NOT AZURESDK_FOUND)
           -DBUILD_SHARED_LIBS=OFF
           -DBUILD_TESTS=OFF
           -DBUILD_SAMPLES=OFF
+          -DCURL_NO_CURL_CMAKE=ON
           -DCMAKE_PREFIX_PATH=${TILEDB_EP_INSTALL_PREFIX}
           -DCMAKE_INSTALL_PREFIX=${TILEDB_EP_AZURE_INSTALL_PREFIX}
-          -DCMAKE_CXX_FLAGS=${CXXFLAGS_DEF}
-          -DCMAKE_C_FLAGS=${CFLAGS_DEF}
           -DCMAKE_OSX_ARCHITECTURES=${CMAKE_OSX_ARCHITECTURES}
         PATCH_COMMAND
           cd ${CMAKE_SOURCE_DIR} &&
-          ${GIT_EXECUTABLE} apply --ignore-whitespace -p1 --unsafe-paths --verbose --directory=${TILEDB_EP_SOURCE_DIR}/ep_azuresdk < ${TILEDB_CMAKE_INPUTS_DIR}/patches/ep_azuresdk/remove-uuid-dep.patch
+          ${GIT_EXECUTABLE} apply --ignore-whitespace -p1 --unsafe-paths --verbose --directory=${TILEDB_EP_SOURCE_DIR}/ep_azuresdk < ${TILEDB_CMAKE_INPUTS_DIR}/patches/ep_azuresdk/v0.3.0-patchset.patch
         LOG_DOWNLOAD TRUE
         LOG_CONFIGURE TRUE
         LOG_BUILD TRUE
@@ -148,12 +142,12 @@ if (NOT AZURESDK_FOUND)
         CMAKE_ARGS
           -DCMAKE_BUILD_TYPE=${CMAKE_BUILD_TYPE}
           -DBUILD_SHARED_LIBS=OFF
+          -DCMAKE_POSITION_INDEPENDENT_CODE=ON
           -DBUILD_TESTS=OFF
           -DBUILD_SAMPLES=OFF
+          -DCURL_NO_CURL_CMAKE=ON
           -DCMAKE_PREFIX_PATH=${TILEDB_EP_INSTALL_PREFIX}
           -DCMAKE_INSTALL_PREFIX=${TILEDB_EP_AZURE_INSTALL_PREFIX}
-          -DCMAKE_CXX_FLAGS=${CXXFLAGS_DEF}
-          -DCMAKE_C_FLAGS=${CFLAGS_DEF}
           -DCMAKE_OSX_ARCHITECTURES=${CMAKE_OSX_ARCHITECTURES}
         PATCH_COMMAND
           echo starting patching for azure &&
