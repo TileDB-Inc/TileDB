@@ -62,6 +62,7 @@ namespace sm {
 
 class Array;
 class ArraySchema;
+class SchemaEvolution;
 class Buffer;
 class BufferLRUCache;
 class ChunkedBuffer;
@@ -338,6 +339,19 @@ class StorageManager {
   Status array_create(
       const URI& array_uri,
       ArraySchema* array_schema,
+      const EncryptionKey& encryption_key);
+
+  /**
+   * Evolve a TileDB array schema and store its new schema.
+   *
+   * @param array_uri The URI of the array to be evolved.
+   * @param schema_evolution The schema evolution.
+   * @param encryption_key The encryption key to use.
+   * @return Status
+   */
+  Status array_evolve_schema(
+      const URI& array_uri,
+      SchemaEvolution* array_schema,
       const EncryptionKey& encryption_key);
 
   /**
