@@ -128,17 +128,17 @@ int32_t Subarray2Fx::tiledb_subarray_get_est_result_size_wrapper(
     const char* name,
     uint64_t* size,
     tiledb_query_t* serialization_query) {
-  int ret = tiledb_subarray_get_est_result_size(ctx, subarray, name, size);
+  REQUIRE(
+      tiledb_query_set_subarray_t(ctx, serialization_query, subarray) ==
+      TILEDB_OK);
+  int ret =
+      tiledb_query_get_est_result_size(ctx, serialization_query, name, size);
 #ifndef TILEDB_SERIALIZATION
   return ret;
 #endif
 
   if (ret != TILEDB_OK || !serialize_)
     return ret;
-
-  REQUIRE(
-      tiledb_query_set_subarray_t(ctx, serialization_query, subarray) ==
-      TILEDB_OK);
 
   // Serialize the non_empty_domain
   tiledb_buffer_t* buff;
@@ -170,8 +170,8 @@ int32_t Subarray2Fx::tiledb_subarray_get_est_result_size_var_wrapper(
     uint64_t* size_off,
     uint64_t* size_val,
     tiledb_query_t* serialization_query) {
-  int ret = tiledb_subarray_get_est_result_size_var(
-      ctx, subarray, name, size_off, size_val);
+  int ret = tiledb_query_get_est_result_size_var(
+    ctx, serialization_query, name, size_off, size_val);
 #ifndef TILEDB_SERIALIZATION
   return ret;
 #endif

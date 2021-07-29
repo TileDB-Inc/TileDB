@@ -623,54 +623,6 @@ class Subarray {
     return ret;
   }
 
-  /**
-   * Retrieves the estimated result size for a fixed-size attribute.
-   *
-   * **Example:**
-   *
-   * @code{.cpp}
-   * uint64_t est_size = subarray.est_result_size("attr1");
-   * @endcode
-   *
-   * @param attr_name The attribute name.
-   * @return The estimated size in bytes.
-   */
-  uint64_t est_result_size(const std::string& attr_name) const {
-    auto& ctx = ctx_.get();
-    uint64_t size = 0;
-    ctx.handle_error(tiledb_subarray_get_est_result_size(
-        ctx.ptr().get(), subarray_.get(), attr_name.c_str(), &size));
-    return size;
-  }
-
-  /**
-   * Retrieves the estimated result size for a variable-size attribute.
-   *
-   * **Example:**
-   *
-   * @code{.cpp}
-   * std::array<uint64_t, 2> est_size =
-   *     subarray.est_result_size_var("attr1");
-   * @endcode
-   *
-   * @param attr_name The attribute name.
-   * @return An array with first element containing the estimated size of
-   *    the result offsets in bytes, and second element containing the
-   *    estimated size of the result values in bytes.
-   */
-  std::array<uint64_t, 2> est_result_size_var(
-      const std::string& attr_name) const {
-    auto& ctx = ctx_.get();
-    uint64_t size_off = 0, size_val = 0;
-    ctx.handle_error(tiledb_subarray_get_est_result_size_var(
-        ctx.ptr().get(),
-        subarray_.get(),
-        attr_name.c_str(),
-        &size_off,
-        &size_val));
-    return {size_off, size_val};
-  }
-
   /** Returns the C TileDB subarray object. */
   std::shared_ptr<tiledb_subarray_t> ptr() const {
     return subarray_;
