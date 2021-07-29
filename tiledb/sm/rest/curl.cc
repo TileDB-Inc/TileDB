@@ -92,7 +92,7 @@ size_t write_memory_callback(
 
   if (write_cb_state->reset) {
     buffer->set_size(0);
-    buffer->set_offset(0);
+    buffer->reset_offset();
     write_cb_state->reset = false;
   }
 

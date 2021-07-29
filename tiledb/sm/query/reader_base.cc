@@ -1197,14 +1197,9 @@ Status ReaderBase::compute_var_cell_destinations(
       const auto& tile_var = std::get<1>(*tile_tuple);
 
       // Get the internal buffer to the offset values.
-      ChunkedBuffer* const chunked_buffer = tile.chunked_buffer();
+      Buffer* const buffer = tile.buffer();
 
-      // Offset tiles are always contiguously allocated.
-      assert(
-          chunked_buffer->buffer_addressing() ==
-          ChunkedBuffer::BufferAddressing::CONTIGUOUS);
-
-      tile_offsets = (uint64_t*)chunked_buffer->get_contiguous_unsafe();
+      tile_offsets = (uint64_t*)buffer->data();
       tile_cell_num = tile.cell_num();
       tile_var_size = tile_var.size();
     }
@@ -1335,14 +1330,9 @@ Status ReaderBase::copy_partitioned_var_cells(
       tile_validity = &std::get<2>(*tile_tuple);
 
       // Get the internal buffer to the offset values.
-      ChunkedBuffer* const chunked_buffer = tile->chunked_buffer();
+      Buffer* const buffer = tile->buffer();
 
-      // Offset tiles are always contiguously allocated.
-      assert(
-          chunked_buffer->buffer_addressing() ==
-          ChunkedBuffer::BufferAddressing::CONTIGUOUS);
-
-      tile_offsets = (uint64_t*)chunked_buffer->get_contiguous_unsafe();
+      tile_offsets = (uint64_t*)buffer->data();
       tile_cell_num = tile->cell_num();
     }
 

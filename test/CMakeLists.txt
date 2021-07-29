@@ -140,7 +140,6 @@ set(TILEDB_TEST_SOURCES
   src/unit-capi-version.cc
   src/unit-capi-vfs.cc
   src/unit-CellSlabIter.cc
-  src/unit-ChunkedBuffer.cc
   src/unit-compression-dd.cc
   src/unit-compression-rle.cc
   src/unit-crypto.cc

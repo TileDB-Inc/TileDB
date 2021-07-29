@@ -1809,12 +1809,11 @@ Status StorageManager::load_array_schema(
     RETURN_NOT_OK(tile_io.read_generic(&tile, 0, encryption_key, config_));
   }
 
-  auto chunked_buffer = tile->chunked_buffer();
+  auto buffer = tile->buffer();
   Buffer buff;
-  buff.realloc(chunked_buffer->size());
-  buff.set_size(chunked_buffer->size());
-  RETURN_NOT_OK_ELSE(
-      chunked_buffer->read(buff.data(), buff.size(), 0), tdb_delete(tile));
+  buff.realloc(buffer->size());
+  buff.set_size(buffer->size());
+  RETURN_NOT_OK_ELSE(buffer->read(buff.data(), buff.size()), tdb_delete(tile));
   tdb_delete(tile);
 
   stats_->add_counter("read_array_schema_size", buff.size());
@@ -2148,18 +2147,14 @@ Status StorageManager::store_array_schema(
   if (exists)
     RETURN_NOT_OK(vfs_->remove_file(schema_uri));
 
-  ChunkedBuffer chunked_buffer;
-  RETURN_NOT_OK(Tile::buffer_to_contiguous_fixed_chunks(
-      buff, 0, constants::generic_tile_cell_size, &chunked_buffer));
-  buff.disown_data();
-
   // Write to file
   Tile tile(
       constants::generic_tile_datatype,
       constants::generic_tile_cell_size,
       0,
-      &chunked_buffer,
+      &buff,
       false);
+  buff.disown_data();
   GenericTileIO tile_io(this, schema_uri);
   uint64_t nbytes;
   Status st = tile_io.write_generic(&tile, encryption_key, &nbytes);
@@ -2167,7 +2162,7 @@ Status StorageManager::store_array_schema(
   if (st.ok())
     st = close_file(schema_uri);
 
-  chunked_buffer.free();
+  buff.clear();
 
   return st;
 }
@@ -2196,19 +2191,13 @@ Status StorageManager::store_array_metadata(
   URI array_metadata_uri;
   RETURN_NOT_OK(array_metadata->get_uri(array_uri, &array_metadata_uri));
 
-  ChunkedBuffer* const chunked_buffer = tdb_new(ChunkedBuffer);
-  RETURN_NOT_OK_ELSE(
-      Tile::buffer_to_contiguous_fixed_chunks(
-          metadata_buff, 0, constants::generic_tile_cell_size, chunked_buffer),
-      tdb_delete(chunked_buffer));
-  metadata_buff.disown_data();
-
   Tile tile(
       constants::generic_tile_datatype,
       constants::generic_tile_cell_size,
       0,
-      chunked_buffer,
-      true);
+      &metadata_buff,
+      false);
+  metadata_buff.disown_data();
 
   GenericTileIO tile_io(this, array_metadata_uri);
   uint64_t nbytes;
@@ -2408,12 +2397,13 @@ Status StorageManager::load_array_metadata(
       auto tile = (Tile*)nullptr;
       RETURN_NOT_OK(tile_io.read_generic(&tile, 0, encryption_key, config_));
 
-      auto chunked_buffer = tile->chunked_buffer();
+      auto buffer = tile->buffer();
       metadata_buff = tdb_make_shared(Buffer);
-      RETURN_NOT_OK(metadata_buff->realloc(chunked_buffer->size()));
-      metadata_buff->set_size(chunked_buffer->size());
+      RETURN_NOT_OK(metadata_buff->realloc(buffer->size()));
+      metadata_buff->set_size(buffer->size());
+      buffer->reset_offset();
       RETURN_NOT_OK_ELSE(
-          chunked_buffer->read(metadata_buff->data(), metadata_buff->size(), 0),
+          buffer->read(metadata_buff->data(), metadata_buff->size()),
           tdb_delete(tile));
       tdb_delete(tile);
 
@@ -2532,12 +2522,12 @@ Status StorageManager::load_consolidated_fragment_meta(
   Tile* tile = nullptr;
   RETURN_NOT_OK(tile_io.read_generic(&tile, 0, enc_key, config_));
 
-  auto chunked_buffer = tile->chunked_buffer();
-  f_buff->realloc(chunked_buffer->size());
-  f_buff->set_size(chunked_buffer->size());
+  auto buffer = tile->buffer();
+  f_buff->realloc(buffer->size());
+  f_buff->set_size(buffer->size());
+  buffer->reset_offset();
   RETURN_NOT_OK_ELSE(
-      chunked_buffer->read(f_buff->data(), f_buff->size(), 0),
-      tdb_delete(tile));
+      buffer->read(f_buff->data(), f_buff->size()), tdb_delete(tile));
   tdb_delete(tile);
 
   stats_->add_counter("consolidated_frag_meta_size", f_buff->size());

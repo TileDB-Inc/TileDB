@@ -57,7 +57,6 @@ regex_free = re.compile(r"[^_^>^\.^:]free\(")
 # Contains per-file exceptions to violations of "free".
 free_exceptions = {
     "*": ["tdb_free", "tiledb_free"],
-    "chunked_buffer.h": ["void free()"],
 }
 
 # Match C++ new operators, examples:

@@ -57,7 +57,7 @@ TEST_CASE("Tile: Test basic IO", "[Tile][basic_io]") {
   CHECK(tile.empty());
   CHECK(!tile.full());
   CHECK(tile.size() == 0);
-  CHECK(tile.chunked_buffer()->capacity() == tile_size);
+  CHECK(tile.buffer()->alloced_size() == tile_size);
   CHECK(tile.owns_buff());
 
   // Create a buffer to write to the test Tile.
@@ -75,19 +75,8 @@ TEST_CASE("Tile: Test basic IO", "[Tile][basic_io]") {
   CHECK(tile.full());
   CHECK(tile.size() == tile_size);
 
-  // Verify that we are testing a sufficiently large buffer to test
-  // multiple internal buffer chunks.
-  CHECK(tile.chunked_buffer());
-  CHECK(tile.chunked_buffer()->nchunks() > 1);
-
-  // Verify that the internal chunk buffers are contiguous
-  CHECK(
-      tile.chunked_buffer()->buffer_addressing() ==
-      ChunkedBuffer::BufferAddressing::CONTIGUOUS);
-
   // Ensure the internal data was deep-copied:
-  void* tile_chunk_0;
-  CHECK(tile.chunked_buffer()->internal_buffer(0, &tile_chunk_0).ok());
+  void* tile_chunk_0 = tile.buffer()->data();
   CHECK(tile_chunk_0 != static_cast<void*>(write_buffer));
 
   // Test a partial read at offset 8, which should be a uint32_t with
@@ -118,7 +107,7 @@ TEST_CASE("Tile: Test basic IO", "[Tile][basic_io]") {
   CHECK(tile.offset() == 12);
 
   // Test a write at a non-zero offset. Overwrite the two at offset 8.
-  tile.set_offset(0);
+  tile.reset_offset();
   tile.advance_offset(8);
   uint32_t magic = 5234549;
   CHECK(tile.write(&magic, sizeof(uint32_t)).ok());
@@ -187,11 +176,6 @@ TEST_CASE("Tile: Test copy constructor", "[Tile][copy_constructor]") {
   // Write the buffer to the first test Tile.
   CHECK(tile1.write(buffer, tile_size).ok());
 
-  // Verify that we are testing a sufficiently large buffer to test
-  // multiple internal buffer chunks.
-  CHECK(tile1.chunked_buffer());
-  CHECK(tile1.chunked_buffer()->nchunks() > 1);
-
   // Instantiate a second test tile with the copy constructor.
   Tile tile2(tile1);
 
@@ -219,12 +203,10 @@ TEST_CASE("Tile: Test copy constructor", "[Tile][copy_constructor]") {
   CHECK(memcmp(read_buffer, buffer, tile_size) == 0);
 
   // Ensure the internal data was deep-copied:
-  CHECK(tile1.chunked_buffer());
-  CHECK(tile2.chunked_buffer());
-  void* tile1_chunk_0;
-  void* tile2_chunk_0;
-  CHECK(tile1.chunked_buffer()->internal_buffer(0, &tile1_chunk_0).ok());
-  CHECK(tile2.chunked_buffer()->internal_buffer(0, &tile2_chunk_0).ok());
+  CHECK(tile1.buffer());
+  CHECK(tile2.buffer());
+  void* tile1_chunk_0 = tile1.buffer()->data();
+  void* tile2_chunk_0 = tile2.buffer()->data();
   CHECK(tile1_chunk_0 != tile2_chunk_0);
 
   free(buffer);
@@ -253,11 +235,6 @@ TEST_CASE("Tile: Test move constructor", "[Tile][move_constructor]") {
 
   // Write the buffer to the first test Tile.
   CHECK(tile1.write(buffer, tile_size).ok());
-
-  // Verify that we are testing a sufficiently large buffer to test
-  // multiple internal buffer chunks.
-  CHECK(tile1.chunked_buffer());
-  CHECK(tile1.chunked_buffer()->nchunks() > 1);
 
   // Instantiate a second test tile with the copy constructor.
   Tile tile2(tile1);
@@ -315,11 +292,6 @@ TEST_CASE("Tile: Test assignment", "[Tile][assignment]") {
   // Write the buffer to the first test Tile.
   CHECK(tile1.write(buffer, tile_size).ok());
 
-  // Verify that we are testing a sufficiently large buffer to test
-  // multiple internal buffer chunks.
-  CHECK(tile1.chunked_buffer());
-  CHECK(tile1.chunked_buffer()->nchunks() > 1);
-
   // Assign the first test Tile to a second test Tile.
   Tile tile2 = tile1;
 
@@ -347,12 +319,10 @@ TEST_CASE("Tile: Test assignment", "[Tile][assignment]") {
   CHECK(memcmp(read_buffer, buffer, tile_size) == 0);
 
   // Ensure the internal data was deep-copied:
-  CHECK(tile1.chunked_buffer());
-  CHECK(tile2.chunked_buffer());
-  void* tile1_chunk_0;
-  void* tile2_chunk_0;
-  CHECK(tile1.chunked_buffer()->internal_buffer(0, &tile1_chunk_0).ok());
-  CHECK(tile2.chunked_buffer()->internal_buffer(0, &tile2_chunk_0).ok());
+  CHECK(tile1.buffer());
+  CHECK(tile2.buffer());
+  void* tile1_chunk_0 = tile1.buffer()->data();
+  void* tile2_chunk_0 = tile2.buffer()->data();
   CHECK(tile1_chunk_0 != tile2_chunk_0);
 
   free(buffer);
@@ -381,11 +351,6 @@ TEST_CASE("Tile: Test move-assignment", "[Tile][move_assignment]") {
 
   // Write the buffer to the first test Tile.
   CHECK(tile1.write(buffer, tile_size).ok());
-
-  // Verify that we are testing a sufficiently large buffer to test
-  // multiple internal buffer chunks.
-  CHECK(tile1.chunked_buffer());
-  CHECK(tile1.chunked_buffer()->nchunks() > 1);
 
   // Instantiate a second test tile with the copy constructor.
   Tile tile2(tile1);
@@ -438,49 +403,15 @@ TEST_CASE(
   }
   CHECK(buffer.size() == tile_size);
 
-  ChunkedBuffer* const chunked_buffer = new ChunkedBuffer();
-  CHECK(Tile::buffer_to_contiguous_fixed_chunks(
-            buffer, dim_num, cell_size, chunked_buffer)
-            .ok());
-
-  // Instantiate the first test tile that does NOT own 'chunked_buffer'.
+  // Instantiate the first test tile that does NOT own 'buffer'.
   bool owns_buff = false;
   std::unique_ptr<Tile> tile1(
-      new Tile(data_type, cell_size, dim_num, chunked_buffer, owns_buff));
+      new Tile(data_type, cell_size, dim_num, &buffer, owns_buff));
   CHECK(tile1);
   CHECK(tile1->size() == tile_size);
   CHECK(!tile1->full());
-  CHECK(tile1->chunked_buffer()->capacity() == tile_size);
+  CHECK(tile1->buffer()->size() == tile_size);
   CHECK(!tile1->owns_buff());
-
-  // Verify that we are testing a sufficiently large buffer to test
-  // multiple internal buffer chunks.
-  CHECK(tile1->chunked_buffer());
-  CHECK(tile1->chunked_buffer()->nchunks() > 1);
-
-  // Verify that the internal chunk buffers are backed by a single,
-  // contiguous buffer.
-  CHECK(
-      tile1->chunked_buffer()->buffer_addressing() ==
-      ChunkedBuffer::BufferAddressing::CONTIGUOUS);
-
-  // Verify that the internal buffer chunks are virtually contiguous and
-  // that their addresses exactly match 'buffer'.
-  uint64_t offset = 0;
-  for (size_t i = 0; i < tile1->chunked_buffer()->nchunks(); ++i) {
-    void* chunk_buffer = nullptr;
-    CHECK(tile1->chunked_buffer()->internal_buffer(i, &chunk_buffer).ok());
-    CHECK(chunk_buffer);
-    uint32_t chunk_buffer_size = 0;
-    CHECK(tile1->chunked_buffer()
-              ->internal_buffer_size(i, &chunk_buffer_size)
-              .ok());
-    CHECK(chunk_buffer_size > 0);
-    CHECK(
-        static_cast<char*>(chunk_buffer) ==
-        static_cast<char*>(buffer.data()) + offset);
-    offset += chunk_buffer_size;
-  }
 
   // Test a full read.
   uint32_t* const read_buffer = static_cast<uint32_t*>(malloc(tile_size));
@@ -495,42 +426,27 @@ TEST_CASE(
   tile1.reset();
   CHECK(memcmp(buffer_copy, buffer.data(), tile_size) == 0);
 
-  // Instantiate the second test tile that does own 'chunked_buffer'.
+  Buffer* const alloced_buffer = tdb_new(Buffer);
+  alloced_buffer->swap(buffer);
+
+  // Instantiate the second test tile that does own 'buffer'.
   owns_buff = true;
   std::unique_ptr<Tile> tile2(
-      new Tile(data_type, cell_size, dim_num, chunked_buffer, owns_buff));
+      new Tile(data_type, cell_size, dim_num, alloced_buffer, owns_buff));
   CHECK(tile2);
   CHECK(!tile2->empty());
   CHECK(!tile2->full());
   CHECK(tile2->size() == tile_size);
   CHECK(tile2->owns_buff());
 
-  // Verify that the internal buffer chunks are virtually contiguous and
-  // that their addresses exactly match 'buffer'.
-  offset = 0;
-  for (size_t i = 0; i < tile2->chunked_buffer()->nchunks(); ++i) {
-    void* chunk_buffer = nullptr;
-    CHECK(tile2->chunked_buffer()->internal_buffer(i, &chunk_buffer).ok());
-    CHECK(chunk_buffer);
-    uint32_t chunk_buffer_size = 0;
-    CHECK(tile2->chunked_buffer()
-              ->internal_buffer_size(i, &chunk_buffer_size)
-              .ok());
-    CHECK(chunk_buffer_size > 0);
-    CHECK(
-        static_cast<char*>(chunk_buffer) ==
-        static_cast<char*>(buffer.data()) + offset);
-    offset += chunk_buffer_size;
-  }
-
   // Test a full read.
   memset(read_buffer, 0, tile_size);
   read_offset = 0;
   CHECK(tile2->read(read_buffer, tile_size, read_offset).ok());
-  CHECK(memcmp(read_buffer, buffer.data(), tile_size) == 0);
+  CHECK(memcmp(read_buffer, alloced_buffer->data(), tile_size) == 0);
 
   // Disown 'buffer' because the destructor of 'tile2' will delete it.
-  buffer.disown_data();
+  alloced_buffer->disown_data();
   tile2.reset();
 
   free(buffer_copy);
