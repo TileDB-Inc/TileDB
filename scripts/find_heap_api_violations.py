@@ -93,7 +93,7 @@ shared_ptr_exceptions = {
     "azure.cc": [
         "std::shared_ptr<azure::storage_lite::storage_credential>",
         "std::shared_ptr<azure::storage_lite::storage_account>",
-        "azure::storage_lite::shared_access_signature_credential>"
+        "azure::storage_lite::shared_access_signature_credential>",
     ],
 }
 
@@ -113,7 +113,7 @@ make_shared_exceptions = {
         "std::make_shared<azure::storage_lite::storage_account>",
         "std::make_shared<azure::storage_lite::tinyxml2_parser>",
         "std::make_shared<AzureRetryPolicy>",
-        "std::make_shared<azure::storage_lite::shared_access_signature_credential>"
+        "std::make_shared<azure::storage_lite::shared_access_signature_credential>",
     ],
 }
 
@@ -130,41 +130,24 @@ unique_ptr_exceptions = {
     "curl.h": ["std::unique_ptr<CURL, decltype(&curl_easy_cleanup)>"],
 }
 
-# Reports a violation to stdout.
-def report_violation(file_path, linenum, line, substr):
-    print(
-        "["
-        + os.path.basename(__file__)
-        + "]: "
-        + "Detected '"
-        + substr
-        + "' heap memory API violation:"
-    )
-    print("  " + file_path + ":" + str(linenum))
-    print("  " + line)
-
 
 # Checks if a given line contains a violation.
 def check_line(file_path, line, linenum, substr, compiled_regex, exceptions):
     if substr not in line:
-        return
-
-    line = line.strip()
-
-    file_name = os.path.basename(file_path)
+        return False
 
     if exceptions is not None:
-        if "*" in exceptions:
-            for exception in exceptions["*"]:
+        for key in "*", os.path.basename(file_path):
+            for exception in exceptions.get(key, ()):
                 if exception in line:
-                    return
-        if file_name in exceptions:
-            for exception in exceptions[file_name]:
-                if exception in line:
-                    return
+                    return False
 
     if compiled_regex.search(line) is not None:
-        report_violation(file_path, linenum, line, substr)
+        print(
+            f"[{os.path.basename(__file__)}]: Detected {substr!r} heap memory API violation:"
+        )
+        print(f"  {file_path}:{linenum}")
+        print(f"  {line}")
         return True
 
     return False
@@ -174,20 +157,27 @@ def check_line(file_path, line, linenum, substr, compiled_regex, exceptions):
 def check_file(file_path):
     found_violation = False
     with open(file_path) as f:
-        for linenum,line in enumerate(f):
-            if check_line(file_path, line, linenum, "malloc", regex_malloc, malloc_exceptions):
-                found_violation = True
-            if check_line(file_path, line, linenum, "calloc", regex_calloc, calloc_exceptions):
-                found_violation = True
+        for linenum, line in enumerate(f):
+            line = line.strip()
             if check_line(
-                file_path, line,  linenum,"realloc", regex_realloc, realloc_exceptions
+                file_path, line, linenum, "malloc", regex_malloc, malloc_exceptions
             ):
                 found_violation = True
-            if check_line(file_path, line,  linenum, "free", regex_free, free_exceptions):
+            if check_line(
+                file_path, line, linenum, "calloc", regex_calloc, calloc_exceptions
+            ):
                 found_violation = True
-            if check_line(file_path, line,  linenum, "new", regex_new, None):
+            if check_line(
+                file_path, line, linenum, "realloc", regex_realloc, realloc_exceptions
+            ):
                 found_violation = True
-            if check_line(file_path, line,  linenum, "delete", regex_delete, None):
+            if check_line(
+                file_path, line, linenum, "free", regex_free, free_exceptions
+            ):
+                found_violation = True
+            if check_line(file_path, line, linenum, "new", regex_new, None):
+                found_violation = True
+            if check_line(file_path, line, linenum, "delete", regex_delete, None):
                 found_violation = True
             if check_line(
                 file_path,
@@ -219,36 +209,33 @@ def check_file(file_path):
     return found_violation
 
 
-if len(sys.argv) < 2:
-    print("Usage: <root dir>")
-    sys.exit(1)
-root_dir = os.path.abspath(sys.argv[1])
-found_violation = False
-print("Checking for heap memory API violations in " + root_dir)
-for directory, subdirlist, file_names in os.walk(root_dir):
-    if os.path.basename(os.path.normpath(directory)) in ignored_dirs:
-        continue
+if __name__ == "__main__":
+    if len(sys.argv) < 2:
+        sys.exit("Usage: <root dir>")
 
-    for file_name in file_names:
-        if file_name in ignored_files:
+    root_dir = os.path.abspath(sys.argv[1])
+    found_violation = False
+    print("Checking for heap memory API violations in " + root_dir)
+    for directory, subdirlist, file_names in os.walk(root_dir):
+        if os.path.basename(os.path.normpath(directory)) in ignored_dirs:
             continue
 
-        if not file_name.endswith(".h") and not file_name.endswith(".cc"):
-            continue
+        for file_name in file_names:
+            if file_name in ignored_files:
+                continue
 
-        file_path = os.path.join(directory, file_name)
-        if check_file(file_path):
-            found_violation = True
+            if not file_name.endswith(".h") and not file_name.endswith(".cc"):
+                continue
 
-if found_violation:
-    error_msg = (
-        "Detected heap memory API violations!\n"
-        "Source files within TileDB must use the heap memory APIs "
-        "defined in tiledb/common/heap_memory.h\n"
-        "Either correct your changes or add an exception within " + __file__
-    )
-    print(error_msg)
-    exit(1)
-else:
-    print("Did not detect heap memory API violations.")
-    sys.exit(0)
+            if check_file(os.path.join(directory, file_name)):
+                found_violation = True
+
+    if found_violation:
+        sys.exit(
+            "Detected heap memory API violations!\n"
+            "Source files within TileDB must use the heap memory APIs "
+            "defined in tiledb/common/heap_memory.h\n"
+            "Either correct your changes or add an exception within " + __file__
+        )
+    else:
+        print("Did not detect heap memory API violations.")
