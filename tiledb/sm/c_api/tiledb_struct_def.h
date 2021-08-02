@@ -80,7 +80,7 @@ struct tiledb_error_t {
 };
 
 struct tiledb_attribute_t {
-  tiledb::sm::Attribute* attr_ = nullptr;
+  tiledb::sm::AttributeBuilder* attr_builder_ = nullptr;
 };
 
 struct tiledb_array_schema_t {
