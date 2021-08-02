@@ -51,6 +51,7 @@ namespace sm {
 class ArraySchema;
 class Buffer;
 class EncryptionKey;
+class OpenArrayMemoryTracker;
 class StorageManager;
 
 /** Stores the metadata structures of a fragment. */
@@ -69,6 +70,7 @@ class FragmentMetadata {
    * @param timestamp_range The timestamp range of the fragment.
    *     In TileDB, timestamps are in ms elapsed since
    *     1970-01-01 00:00:00 +0000 (UTC).
+   * @param memory_tracker Memory tracker for all fragment metadatas.
    * @param dense Indicates whether the fragment is dense or sparse.
    */
   FragmentMetadata(
@@ -76,6 +78,7 @@ class FragmentMetadata {
       const ArraySchema* array_schema,
       const URI& fragment_uri,
       const std::pair<uint64_t, uint64_t>& timestamp_range,
+      OpenArrayMemoryTracker* memory_tracker,
       bool dense = true);
 
   /** Destructor. */
@@ -510,6 +513,9 @@ class FragmentMetadata {
   /** Loads the R-tree from storage. */
   Status load_rtree(const EncryptionKey& encryption_key);
 
+  /** Frees the memory associated with the rtree. */
+  void free_rtree();
+
   /**
    * Loads the variable tile sizes for the input attribute or dimension idx
    * from storage.
@@ -685,6 +691,9 @@ class FragmentMetadata {
 
   /** Stores the generic tile offsets, facilitating loading. */
   GenericTileOffsets gt_offsets_;
+
+  /** Pointer to the memory tracking structure maintained by the array. */
+  OpenArrayMemoryTracker* memory_tracker_;
 
   /* ********************************* */
   /*           PRIVATE METHODS         */

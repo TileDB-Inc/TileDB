@@ -91,8 +91,9 @@ shared_ptr_exceptions = {
     ],
     "s3.h": ["std::shared_ptr<S3ThreadPoolExecutor>"],
     "azure.cc": [
-        "std::shared_ptr<azure::storage_lite::shared_key_credential>",
+        "std::shared_ptr<azure::storage_lite::storage_credential>",
         "std::shared_ptr<azure::storage_lite::storage_account>",
+        "azure::storage_lite::shared_access_signature_credential>"
     ],
 }
 
@@ -112,6 +113,7 @@ make_shared_exceptions = {
         "std::make_shared<azure::storage_lite::storage_account>",
         "std::make_shared<azure::storage_lite::tinyxml2_parser>",
         "std::make_shared<AzureRetryPolicy>",
+        "std::make_shared<azure::storage_lite::shared_access_signature_credential>"
     ],
 }
 
@@ -129,7 +131,7 @@ unique_ptr_exceptions = {
 }
 
 # Reports a violation to stdout.
-def report_violation(file_path, line, substr):
+def report_violation(file_path, linenum, line, substr):
     print(
         "["
         + os.path.basename(__file__)
@@ -138,12 +140,12 @@ def report_violation(file_path, line, substr):
         + substr
         + "' heap memory API violation:"
     )
-    print("  " + file_path)
+    print("  " + file_path + ":" + str(linenum))
     print("  " + line)
 
 
 # Checks if a given line contains a violation.
-def check_line(file_path, line, substr, compiled_regex, exceptions):
+def check_line(file_path, line, linenum, substr, compiled_regex, exceptions):
     if substr not in line:
         return
 
@@ -162,7 +164,7 @@ def check_line(file_path, line, substr, compiled_regex, exceptions):
                     return
 
     if compiled_regex.search(line) is not None:
-        report_violation(file_path, line, substr)
+        report_violation(file_path, linenum, line, substr)
         return True
 
     return False
@@ -172,24 +174,25 @@ def check_line(file_path, line, substr, compiled_regex, exceptions):
 def check_file(file_path):
     found_violation = False
     with open(file_path) as f:
-        for line in f:
-            if check_line(file_path, line, "malloc", regex_malloc, malloc_exceptions):
+        for linenum,line in enumerate(f):
+            if check_line(file_path, line, linenum, "malloc", regex_malloc, malloc_exceptions):
                 found_violation = True
-            if check_line(file_path, line, "calloc", regex_calloc, calloc_exceptions):
+            if check_line(file_path, line, linenum, "calloc", regex_calloc, calloc_exceptions):
                 found_violation = True
             if check_line(
-                file_path, line, "realloc", regex_realloc, realloc_exceptions
+                file_path, line,  linenum,"realloc", regex_realloc, realloc_exceptions
             ):
                 found_violation = True
-            if check_line(file_path, line, "free", regex_free, free_exceptions):
+            if check_line(file_path, line,  linenum, "free", regex_free, free_exceptions):
                 found_violation = True
-            if check_line(file_path, line, "new", regex_new, None):
+            if check_line(file_path, line,  linenum, "new", regex_new, None):
                 found_violation = True
-            if check_line(file_path, line, "delete", regex_delete, None):
+            if check_line(file_path, line,  linenum, "delete", regex_delete, None):
                 found_violation = True
             if check_line(
                 file_path,
                 line,
+                linenum,
                 "shared_ptr<",
                 regex_shared_ptr,
                 shared_ptr_exceptions,
@@ -198,6 +201,7 @@ def check_file(file_path):
             if check_line(
                 file_path,
                 line,
+                linenum,
                 "make_shared<",
                 regex_make_shared,
                 make_shared_exceptions,
@@ -206,6 +210,7 @@ def check_file(file_path):
             if check_line(
                 file_path,
                 line,
+                linenum,
                 "unique_ptr<",
                 regex_unique_ptr,
                 unique_ptr_exceptions,

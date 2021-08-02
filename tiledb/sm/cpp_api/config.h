@@ -388,7 +388,7 @@ class Config {
    *    Use the refactored readers or not. <br>
    *    **Default**: false
    * - `sm.mem.total_budget` <br>
-   *    Memory budget for the sparse global order reader. <br>
+   *    Memory budget for readers and writers. <br>
    *    **Default**: \10GB
    * - `vfs.read_ahead_size` <br>
    *    The maximum byte size to read-ahead from the backend. <br>
@@ -427,6 +427,9 @@ class Config {
    *    **Default**: ""
    * - `vfs.azure.storage_account_key` <br>
    *    Set the Azure Storage Account key. <br>
+   *    **Default**: ""
+   * - `vfs.azure.storage_sas_token` <br>
+   *    Set the Azure Storage SAS (shared access signature) token. <br>
    *    **Default**: ""
    * - `vfs.azure.blob_endpoint` <br>
    *    Overrides the default Azure Storage Blob endpoint. If empty, the

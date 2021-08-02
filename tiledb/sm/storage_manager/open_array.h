@@ -44,6 +44,7 @@
 #include "tiledb/sm/filesystem/filelock.h"
 #include "tiledb/sm/fragment/fragment_metadata.h"
 #include "tiledb/sm/misc/uri.h"
+#include "tiledb/sm/storage_manager/open_array_memory_tracker.h"
 
 using namespace tiledb::common;
 
@@ -131,6 +132,9 @@ class OpenArray {
    */
   FragmentMetadata* fragment_metadata(const URI& uri) const;
 
+  /** Returns the memory tracker to be used by all fragment metadatas. */
+  OpenArrayMemoryTracker* memory_tracker();
+
   /**
    * Returns the constant buffer storing the serialized array metadata
    * of the input URI, or `nullptr` if the array metadata do not exist.
@@ -208,6 +212,9 @@ class OpenArray {
    * loaded in `fragment_metadata_`.
    */
   std::unordered_map<std::string, FragmentMetadata*> fragment_metadata_set_;
+
+  /** The memory tracker for the fragment metadata. */
+  OpenArrayMemoryTracker memory_tracker_;
 
   /**
    * A map of URI strings to array metadata. The map stores the serialized

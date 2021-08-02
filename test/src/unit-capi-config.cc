@@ -177,9 +177,15 @@ void check_save_to_file() {
   REQUIRE(rc == TILEDB_OK);
   CHECK(error == nullptr);
 
-  // Check that aws secret access key is not serialized.
+  // Check that azure account key is not serialized.
   rc = tiledb_config_set(
       config, "vfs.azure.storage_account_key", "secret", &error);
+  REQUIRE(rc == TILEDB_OK);
+  CHECK(error == nullptr);
+
+  // Check that azure SAS token is not serialized.
+  rc = tiledb_config_set(
+      config, "vfs.azure.storage_sas_token", "secret", &error);
   REQUIRE(rc == TILEDB_OK);
   CHECK(error == nullptr);
 
@@ -219,7 +225,7 @@ void check_save_to_file() {
   ss << "config.logging_level 0\n";
 #endif
   ss << "rest.http_compressor any\n";
-  ss << "rest.retry_count 3\n";
+  ss << "rest.retry_count 25\n";
   ss << "rest.retry_delay_factor 1.25\n";
   ss << "rest.retry_http_codes 503\n";
   ss << "rest.retry_initial_delay_ms 500\n";
@@ -529,7 +535,7 @@ TEST_CASE("C API: Test config iter", "[capi], [config]") {
   all_param_values["rest.server_address"] = "https://api.tiledb.com";
   all_param_values["rest.server_serialization_format"] = "CAPNP";
   all_param_values["rest.http_compressor"] = "any";
-  all_param_values["rest.retry_count"] = "3";
+  all_param_values["rest.retry_count"] = "25";
   all_param_values["rest.retry_delay_factor"] = "1.25";
   all_param_values["rest.retry_initial_delay_ms"] = "500";
   all_param_values["rest.retry_http_codes"] = "503";
@@ -583,6 +589,7 @@ TEST_CASE("C API: Test config iter", "[capi], [config]") {
   all_param_values["vfs.gcs.request_timeout_ms"] = "3000";
   all_param_values["vfs.azure.storage_account_name"] = "";
   all_param_values["vfs.azure.storage_account_key"] = "";
+  all_param_values["vfs.azure.storage_sas_token"] = "";
   all_param_values["vfs.azure.blob_endpoint"] = "";
   all_param_values["vfs.azure.block_list_block_size"] = "5242880";
   all_param_values["vfs.azure.max_parallel_ops"] =
@@ -646,6 +653,7 @@ TEST_CASE("C API: Test config iter", "[capi], [config]") {
   vfs_param_values["gcs.request_timeout_ms"] = "3000";
   vfs_param_values["azure.storage_account_name"] = "";
   vfs_param_values["azure.storage_account_key"] = "";
+  vfs_param_values["azure.storage_sas_token"] = "";
   vfs_param_values["azure.blob_endpoint"] = "";
   vfs_param_values["azure.block_list_block_size"] = "5242880";
   vfs_param_values["azure.max_parallel_ops"] =
@@ -706,6 +714,7 @@ TEST_CASE("C API: Test config iter", "[capi], [config]") {
   std::map<std::string, std::string> azure_param_values;
   azure_param_values["storage_account_name"] = "";
   azure_param_values["storage_account_key"] = "";
+  azure_param_values["storage_sas_token"] = "";
   azure_param_values["blob_endpoint"] = "";
   azure_param_values["block_list_block_size"] = "5242880";
   azure_param_values["max_parallel_ops"] =

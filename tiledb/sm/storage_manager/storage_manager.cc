@@ -880,6 +880,19 @@ Status StorageManager::array_create(
   return Status::Ok();
 }
 
+OpenArrayMemoryTracker* StorageManager::array_get_memory_tracker(
+    const URI& array_uri) {
+  // Lock mutex
+  std::lock_guard<std::mutex> lock{open_array_for_reads_mtx_};
+
+  // Find the open array to retrieve the memory tracker.
+  auto it = open_arrays_for_reads_.find(array_uri.to_string());
+  if (it == open_arrays_for_reads_.end())
+    return nullptr;
+
+  return it->second->memory_tracker();
+}
+
 Status StorageManager::array_get_non_empty_domain(
     Array* array, NDRange* domain, bool* is_empty) {
   if (domain == nullptr)
@@ -1485,7 +1498,12 @@ Status StorageManager::get_fragment_info(
 
   // Get fragment non-empty domain
   FragmentMetadata meta(
-      this, array.array_schema(), fragment_uri, timestamp_range, !sparse);
+      this,
+      array.array_schema(),
+      fragment_uri,
+      timestamp_range,
+      array_get_memory_tracker(array.array_uri()),
+      !sparse);
   RETURN_NOT_OK(meta.load(*array.encryption_key(), nullptr, 0));
 
   // This is important for format version > 2
@@ -2516,10 +2534,16 @@ Status StorageManager::load_fragment_metadata(
             array_schema,
             sf.uri_,
             sf.timestamp_range_,
+            open_array->memory_tracker(),
             !sparse);
       } else {  // Format version > 2
         metadata = tdb_new(
-            FragmentMetadata, this, array_schema, sf.uri_, sf.timestamp_range_);
+            FragmentMetadata,
+            this,
+            array_schema,
+            sf.uri_,
+            sf.timestamp_range_,
+            open_array->memory_tracker());
       }
 
       // Potentially find the basic fragment metadata in the consolidated

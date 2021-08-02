@@ -997,6 +997,7 @@ Status Writer::create_fragment(
       array_schema_,
       uri,
       timestamp_range,
+      nullptr,
       dense);
 
   RETURN_NOT_OK((*frag_meta)->init(subarray_.ndrange(0)));
