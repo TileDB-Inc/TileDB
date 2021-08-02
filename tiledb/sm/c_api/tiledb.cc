@@ -36,6 +36,7 @@
 #include "tiledb/common/logger.h"
 #include "tiledb/sm/array/array.h"
 #include "tiledb/sm/array_schema/array_schema.h"
+#include "tiledb/sm/array_schema/attribute_builder.h"
 #include "tiledb/sm/c_api/tiledb_serialization.h"
 #include "tiledb/sm/c_api/tiledb_struct_def.h"
 #include "tiledb/sm/config/config.h"
@@ -458,7 +459,7 @@ inline int32_t sanity_check(tiledb_ctx_t* ctx, const tiledb_error_t* err) {
 }
 
 inline int32_t sanity_check(tiledb_ctx_t* ctx, const tiledb_attribute_t* attr) {
-  if (attr == nullptr || attr->attr_ == nullptr) {
+  if (attr == nullptr || attr->attr_builder_ == nullptr) {
     auto st = Status::Error("Invalid TileDB attribute object");
     LOG_STATUS(st);
     save_error(ctx, st);
@@ -1519,9 +1520,10 @@ int32_t tiledb_attribute_alloc(
   }
 
   // Create a new Attribute object
-  (*attr)->attr_ = new (std::nothrow)
-      tiledb::sm::Attribute(name, static_cast<tiledb::sm::Datatype>(type));
-  if ((*attr)->attr_ == nullptr) {
+  (*attr)->attr_builder_ = new (std::nothrow) tiledb::sm::AttributeBuilder(
+      name, static_cast<tiledb::sm::Datatype>(type));
+
+  if ((*attr)->attr_builder_ == nullptr) {
     delete *attr;
     auto st = Status::Error("Failed to allocate TileDB attribute object");
     LOG_STATUS(st);
@@ -1535,7 +1537,7 @@ int32_t tiledb_attribute_alloc(
 
 void tiledb_attribute_free(tiledb_attribute_t** attr) {
   if (attr != nullptr && *attr != nullptr) {
-    delete (*attr)->attr_;
+    delete (*attr)->attr_builder_;
     delete (*attr);
     *attr = nullptr;
   }
@@ -1547,7 +1549,8 @@ int32_t tiledb_attribute_set_nullable(
     return TILEDB_ERR;
 
   if (SAVE_ERROR_CATCH(
-          ctx, attr->attr_->set_nullable(static_cast<bool>(nullable))))
+          ctx,
+          (*attr).attr_builder_->set_nullable(static_cast<bool>(nullable))))
     return TILEDB_ERR;
 
   return TILEDB_OK;
@@ -1563,7 +1566,8 @@ int32_t tiledb_attribute_set_filter_list(
     return TILEDB_ERR;
 
   if (SAVE_ERROR_CATCH(
-          ctx, attr->attr_->set_filter_pipeline(filter_list->pipeline_)))
+          ctx,
+          attr->attr_builder_->set_filter_pipeline(filter_list->pipeline_)))
     return TILEDB_ERR;
 
   return TILEDB_OK;
@@ -1573,7 +1577,8 @@ int32_t tiledb_attribute_set_cell_val_num(
     tiledb_ctx_t* ctx, tiledb_attribute_t* attr, uint32_t cell_val_num) {
   if (sanity_check(ctx) == TILEDB_ERR || sanity_check(ctx, attr) == TILEDB_ERR)
     return TILEDB_ERR;
-  if (SAVE_ERROR_CATCH(ctx, attr->attr_->set_cell_val_num(cell_val_num)))
+  if (SAVE_ERROR_CATCH(
+          ctx, attr->attr_builder_->set_cell_val_num(cell_val_num)))
     return TILEDB_ERR;
   return TILEDB_OK;
 }
@@ -1583,7 +1588,7 @@ int32_t tiledb_attribute_get_name(
   if (sanity_check(ctx) == TILEDB_ERR || sanity_check(ctx, attr) == TILEDB_ERR)
     return TILEDB_ERR;
 
-  *name = attr->attr_->name().c_str();
+  *name = attr->attr_builder_->name().c_str();
 
   return TILEDB_OK;
 }
@@ -1594,7 +1599,7 @@ int32_t tiledb_attribute_get_type(
     tiledb_datatype_t* type) {
   if (sanity_check(ctx) == TILEDB_ERR || sanity_check(ctx, attr) == TILEDB_ERR)
     return TILEDB_ERR;
-  *type = static_cast<tiledb_datatype_t>(attr->attr_->type());
+  *type = static_cast<tiledb_datatype_t>(attr->attr_builder_->type());
   return TILEDB_OK;
 }
 
@@ -1604,7 +1609,8 @@ int32_t tiledb_attribute_get_nullable(
     return TILEDB_ERR;
 
   if (SAVE_ERROR_CATCH(
-          ctx, attr->attr_->get_nullable(reinterpret_cast<bool*>(nullable))))
+          ctx,
+          attr->attr_builder_->get_nullable(reinterpret_cast<bool*>(nullable))))
     return TILEDB_ERR;
 
   return TILEDB_OK;
@@ -1627,8 +1633,8 @@ int32_t tiledb_attribute_get_filter_list(
   }
 
   // Create a new FilterPipeline object
-  (*filter_list)->pipeline_ =
-      new (std::nothrow) tiledb::sm::FilterPipeline(attr->attr_->filters());
+  (*filter_list)->pipeline_ = new (std::nothrow)
+      tiledb::sm::FilterPipeline(attr->attr_builder_->filters());
   if ((*filter_list)->pipeline_ == nullptr) {
     delete *filter_list;
     auto st = Status::Error("Failed to allocate TileDB filter list object");
@@ -1644,7 +1650,7 @@ int32_t tiledb_attribute_get_cell_val_num(
     tiledb_ctx_t* ctx, const tiledb_attribute_t* attr, uint32_t* cell_val_num) {
   if (sanity_check(ctx) == TILEDB_ERR || sanity_check(ctx, attr) == TILEDB_ERR)
     return TILEDB_ERR;
-  *cell_val_num = attr->attr_->cell_val_num();
+  *cell_val_num = attr->attr_builder_->cell_val_num();
   return TILEDB_OK;
 }
 
@@ -1652,7 +1658,7 @@ int32_t tiledb_attribute_get_cell_size(
     tiledb_ctx_t* ctx, const tiledb_attribute_t* attr, uint64_t* cell_size) {
   if (sanity_check(ctx) == TILEDB_ERR || sanity_check(ctx, attr) == TILEDB_ERR)
     return TILEDB_ERR;
-  *cell_size = attr->attr_->cell_size();
+  *cell_size = attr->attr_builder_->cell_size();
   return TILEDB_OK;
 }
 
@@ -1660,7 +1666,7 @@ int32_t tiledb_attribute_dump(
     tiledb_ctx_t* ctx, const tiledb_attribute_t* attr, FILE* out) {
   if (sanity_check(ctx) == TILEDB_ERR || sanity_check(ctx, attr) == TILEDB_ERR)
     return TILEDB_ERR;
-  attr->attr_->dump(out);
+  attr->attr_builder_->dump(out);
   return TILEDB_OK;
 }
 
@@ -1672,7 +1678,7 @@ int32_t tiledb_attribute_set_fill_value(
   if (sanity_check(ctx) == TILEDB_ERR || sanity_check(ctx, attr) == TILEDB_ERR)
     return TILEDB_ERR;
 
-  if (SAVE_ERROR_CATCH(ctx, attr->attr_->set_fill_value(value, size)))
+  if (SAVE_ERROR_CATCH(ctx, attr->attr_builder_->set_fill_value(value, size)))
     return TILEDB_ERR;
 
   return TILEDB_OK;
@@ -1686,7 +1692,7 @@ int32_t tiledb_attribute_get_fill_value(
   if (sanity_check(ctx) == TILEDB_ERR || sanity_check(ctx, attr) == TILEDB_ERR)
     return TILEDB_ERR;
 
-  if (SAVE_ERROR_CATCH(ctx, attr->attr_->get_fill_value(value, size)))
+  if (SAVE_ERROR_CATCH(ctx, attr->attr_builder_->get_fill_value(value, size)))
     return TILEDB_ERR;
 
   return TILEDB_OK;
@@ -1701,7 +1707,8 @@ int32_t tiledb_attribute_set_fill_value_nullable(
   if (sanity_check(ctx) == TILEDB_ERR || sanity_check(ctx, attr) == TILEDB_ERR)
     return TILEDB_ERR;
 
-  if (SAVE_ERROR_CATCH(ctx, attr->attr_->set_fill_value(value, size, valid)))
+  if (SAVE_ERROR_CATCH(
+          ctx, attr->attr_builder_->set_fill_value(value, size, valid)))
     return TILEDB_ERR;
 
   return TILEDB_OK;
@@ -1716,7 +1723,8 @@ int32_t tiledb_attribute_get_fill_value_nullable(
   if (sanity_check(ctx) == TILEDB_ERR || sanity_check(ctx, attr) == TILEDB_ERR)
     return TILEDB_ERR;
 
-  if (SAVE_ERROR_CATCH(ctx, attr->attr_->get_fill_value(value, size, valid)))
+  if (SAVE_ERROR_CATCH(
+          ctx, attr->attr_builder_->get_fill_value(value, size, valid)))
     return TILEDB_ERR;
 
   return TILEDB_OK;
@@ -2137,7 +2145,7 @@ int32_t tiledb_array_schema_add_attribute(
       sanity_check(ctx, attr) == TILEDB_ERR)
     return TILEDB_ERR;
   if (SAVE_ERROR_CATCH(
-          ctx, array_schema->array_schema_->add_attribute(attr->attr_)))
+          ctx, array_schema->array_schema_->add_attribute(attr->attr_builder_)))
     return TILEDB_ERR;
   return TILEDB_OK;
 }
@@ -2537,11 +2545,12 @@ int32_t tiledb_array_schema_get_attribute_from_index(
     return TILEDB_OOM;
   }
 
-  // Create an attribute object
-  (*attr)->attr_ = new (std::nothrow) tiledb::sm::Attribute(found_attr);
+  // Create an attribute builder object
+  (*attr)->attr_builder_ = new (std::nothrow) tiledb::sm::AttributeBuilder(
+      const_cast<tiledb::sm::Attribute*>(found_attr));
 
   // Check for allocation error
-  if ((*attr)->attr_ == nullptr) {
+  if ((*attr)->attr_builder_ == nullptr) {
     delete *attr;
     auto st = Status::Error("Failed to allocate TileDB attribute");
     LOG_STATUS(st);
@@ -2584,10 +2593,11 @@ int32_t tiledb_array_schema_get_attribute_from_name(
     save_error(ctx, st);
     return TILEDB_OOM;
   }
-  // Create an attribute object
-  (*attr)->attr_ = new (std::nothrow) tiledb::sm::Attribute(found_attr);
+  // Create an attribute builder object
+  (*attr)->attr_builder_ = new (std::nothrow) tiledb::sm::AttributeBuilder(
+      const_cast<tiledb::sm::Attribute*>(found_attr));
   // Check for allocation error
-  if ((*attr)->attr_ == nullptr) {
+  if ((*attr)->attr_builder_ == nullptr) {
     delete *attr;
     auto st = Status::Error("Failed to allocate TileDB attribute");
     LOG_STATUS(st);

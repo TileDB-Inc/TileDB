@@ -37,6 +37,7 @@
 #include <unordered_map>
 
 #include "tiledb/common/status.h"
+#include "tiledb/sm/array_schema/attribute_builder.h"
 #include "tiledb/sm/filter/filter_pipeline.h"
 #include "tiledb/sm/misc/constants.h"
 #include "tiledb/sm/misc/hilbert.h"
@@ -237,6 +238,20 @@ class ArraySchema {
    * @return Status
    */
   Status add_attribute(const Attribute* attr, bool check_special = true);
+
+  /**
+   * Adds an attribute, copying the input.
+   *
+   * @param attr The attribute to be added
+   * @param check_special If `true` this function will check if the attribute
+   *     is special (starting with `__`) and error if that's the case. Setting
+   *     to `false` will allow adding attributes starting with `__`, noting
+   *     that particular care must be taken (i.e., the user must know what
+   *     they are doing in this case).
+   * @return Status
+   */
+  Status add_attribute(
+      AttributeBuilder* attr_builder, bool check_special = true);
 
   /**
    * It assigns values to the members of the object from the input buffer.

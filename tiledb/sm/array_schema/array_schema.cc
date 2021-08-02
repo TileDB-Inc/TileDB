@@ -502,6 +502,36 @@ Status ArraySchema::add_attribute(const Attribute* attr, bool check_special) {
   attributes_.emplace_back(new_attr);
   attribute_map_[new_attr->name()] = new_attr;
 
+  // assert(false);
+
+  return Status::Ok();
+}
+
+Status ArraySchema::add_attribute(
+    AttributeBuilder* attr_builder, bool check_special) {
+  // Sanity check
+  if (attr_builder == nullptr)
+    return LOG_STATUS(Status::ArraySchemaError(
+        "Cannot add attribute; Input attribute is null"));
+
+  // Do not allow attributes with special names
+  if (check_special &&
+      attr_builder->name().find(constants::special_name_prefix) == 0) {
+    std::string msg = "Cannot add attribute; Attribute names starting with '";
+    msg += std::string(constants::special_name_prefix) + "' are reserved";
+    return LOG_STATUS(Status::ArraySchemaError(msg));
+  }
+
+  if (attr_builder->built()) {
+    return LOG_STATUS(Status::ArraySchemaError(
+        "[AttributeBuilder]: "
+        "This TileDB attribute object has already been "
+        "allocated and cannot be reused."));
+  }
+
+  Attribute* attr = attr_builder->build();
+  add_attribute(attr, check_special);
+
   return Status::Ok();
 }
 
