@@ -142,15 +142,15 @@ class ViolationChecker:
     exceptions: Mapping[str, Collection[str]] = field(default_factory=dict)
 
     def __call__(self, file_path: str, line: str) -> bool:
-        return (
-            self.substr in line
-            and self.regex.search(line) is not None
-            and not any(
-                exception in line
-                for key in ("*", os.path.basename(file_path))
-                for exception in self.exceptions.get(key, ())
-            )
-        )
+        if self.substr not in line:
+            return False
+
+        for key in "*", os.path.basename(file_path):
+            for exception in self.exceptions.get(key, ()):
+                if exception in line:
+                    return False
+
+        return self.regex.search(line) is not None
 
 
 @dataclass
