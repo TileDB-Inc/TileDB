@@ -3,15 +3,17 @@ import re
 import sys
 
 # Do not check for violations in these directories.
-ignored_dirs = ["c_api", "cpp_api"]
+ignored_dirs = frozenset(["c_api", "cpp_api"])
 
 # Do not check for violations in these files.
-ignored_files = [
-    "heap_profiler.h",
-    "heap_profiler.cc",
-    "heap_memory.h",
-    "heap_memory.cc",
-]
+ignored_files = frozenset(
+    [
+        "heap_profiler.h",
+        "heap_profiler.cc",
+        "heap_memory.h",
+        "heap_memory.cc",
+    ]
+)
 
 # Match C API malloc:
 regex_malloc = re.compile(r"malloc\(")
@@ -209,28 +211,26 @@ def check_file(file_path):
     return found_violation
 
 
+def check_dir(dir_path):
+    found_violation = False
+    for directory, subdirlist, file_names in os.walk(dir_path):
+        if os.path.basename(directory) in ignored_dirs:
+            continue
+        for file_name in file_names:
+            if file_name not in ignored_files and file_name.endswith((".h", ".cc")):
+                if check_file(os.path.join(directory, file_name)):
+                    found_violation = True
+
+    return found_violation
+
+
 if __name__ == "__main__":
     if len(sys.argv) < 2:
         sys.exit("Usage: <root dir>")
 
     root_dir = os.path.abspath(sys.argv[1])
-    found_violation = False
-    print("Checking for heap memory API violations in " + root_dir)
-    for directory, subdirlist, file_names in os.walk(root_dir):
-        if os.path.basename(os.path.normpath(directory)) in ignored_dirs:
-            continue
-
-        for file_name in file_names:
-            if file_name in ignored_files:
-                continue
-
-            if not file_name.endswith(".h") and not file_name.endswith(".cc"):
-                continue
-
-            if check_file(os.path.join(directory, file_name)):
-                found_violation = True
-
-    if found_violation:
+    print(f"Checking for heap memory API violations in {root_dir}")
+    if check_dir(root_dir):
         sys.exit(
             "Detected heap memory API violations!\n"
             "Source files within TileDB must use the heap memory APIs "
