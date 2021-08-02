@@ -2,7 +2,7 @@ import os
 import re
 import sys
 from dataclasses import dataclass, field
-from typing import Collection, Mapping, Pattern
+from typing import Collection, Iterable, Mapping, Pattern
 
 # Do not check for violations in these directories.
 ignored_dirs = frozenset(["c_api", "cpp_api"])
@@ -138,10 +138,10 @@ unique_ptr_exceptions = {
 @dataclass
 class ViolationChecker:
     substr: str
-    regex: Pattern
+    regex: Pattern[str]
     exceptions: Mapping[str, Collection[str]] = field(default_factory=dict)
 
-    def __call__(self, file_path, line):
+    def __call__(self, file_path: str, line: str) -> bool:
         if self.substr not in line:
             return False
 
@@ -153,7 +153,15 @@ class ViolationChecker:
         return self.regex.search(line) is not None
 
 
-VIOLATION_CHECKERS = [
+@dataclass
+class Violation:
+    file_path: str
+    line_num: int
+    line: str
+    checker: ViolationChecker
+
+
+violation_checkers = [
     ViolationChecker("malloc", regex_malloc, malloc_exceptions),
     ViolationChecker("calloc", regex_calloc, calloc_exceptions),
     ViolationChecker("realloc", regex_realloc, realloc_exceptions),
@@ -166,34 +174,21 @@ VIOLATION_CHECKERS = [
 ]
 
 
-# Checks if any lines in a file contains a violation.
-def check_file(file_path):
-    found_violation = False
+def iter_file_violations(file_path: str) -> Iterable[Violation]:
     with open(file_path) as f:
-        for linenum, line in enumerate(f):
+        for line_num, line in enumerate(f):
             line = line.strip()
-            for checker in VIOLATION_CHECKERS:
+            for checker in violation_checkers:
                 if checker(file_path, line):
-                    print(
-                        f"[{os.path.basename(__file__)}]: Detected {checker.substr!r} heap memory API violation:"
-                    )
-                    print(f"  {file_path}:{linenum}")
-                    print(f"  {line}")
-                    found_violation = True
-    return found_violation
+                    yield Violation(file_path, line_num, line, checker)
 
 
-def check_dir(dir_path):
-    found_violation = False
+def iter_dir_violations(dir_path: str) -> Iterable[Violation]:
     for directory, subdirlist, file_names in os.walk(dir_path):
-        if os.path.basename(directory) in ignored_dirs:
-            continue
-        for file_name in file_names:
-            if file_name not in ignored_files and file_name.endswith((".h", ".cc")):
-                if check_file(os.path.join(directory, file_name)):
-                    found_violation = True
-
-    return found_violation
+        if os.path.basename(directory) not in ignored_dirs:
+            for file_name in file_names:
+                if file_name not in ignored_files and file_name.endswith((".h", ".cc")):
+                    yield from iter_file_violations(os.path.join(directory, file_name))
 
 
 if __name__ == "__main__":
@@ -202,7 +197,15 @@ if __name__ == "__main__":
 
     root_dir = os.path.abspath(sys.argv[1])
     print(f"Checking for heap memory API violations in {root_dir}")
-    if check_dir(root_dir):
+    violations = list(iter_dir_violations(root_dir))
+    if violations:
+        this_filename = os.path.basename(__file__)
+        for violation in violations:
+            print(
+                f"[{this_filename}]: Detected {violation.checker.substr!r} heap memory API violation:"
+            )
+            print(f"  {violation.file_path}:{violation.line_num}")
+            print(f"  {violation.line}")
         sys.exit(
             "Detected heap memory API violations!\n"
             "Source files within TileDB must use the heap memory APIs "
