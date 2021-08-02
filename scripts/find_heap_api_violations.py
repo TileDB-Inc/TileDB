@@ -38,7 +38,7 @@ calloc_exceptions = {"*": ["tdb_calloc", "tiledb_calloc"]}
 # .realloc(   # e.g. member access, `foo.realloc(`
 # >realloc(   # e.g. pointer member access, `foo->realloc(`
 # :realloc(   # e.g. member routine defintion, `Class::realloc()`
-regex_realloc = re.compile(r"[^>^\.^:]realloc\(")
+regex_realloc = re.compile(r"[^>.:]realloc\(")
 
 # Contains per-file exceptions to violations of "realloc".
 realloc_exceptions = {
@@ -56,7 +56,7 @@ realloc_exceptions = {
 # .free(   # e.g. member access, `foo.free(`
 # >free(   # e.g. pointer member access, `foo->free(`
 # :free(   # e.g. member routine defintion, `Class::free()`
-regex_free = re.compile(r"[^_^>^\.^:]free\(")
+regex_free = re.compile(r"[^_>.:]free\(")
 
 # Contains per-file exceptions to violations of "free".
 free_exceptions = {
@@ -66,12 +66,12 @@ free_exceptions = {
 
 # Match C++ new operators, examples:
 #  new Foo(
-#  new (std::nothro) Foo(
-#  new (std::nothro) Foo[
+#  new (std::nothrow) Foo(
+#  new (std::nothrow) Foo[
 #  new Foo (
-#  new (std::nothro) Foo (
-#  new (std::nothro) Foo [
-regex_new = re.compile(r"new\s+(\(std::nothrow\)+)?[a-zA-Z_][a-zA-Z0-9_]*\s*(\(|\[)")
+#  new (std::nothrow) Foo (
+#  new (std::nothrow) Foo [
+regex_new = re.compile(r"new\s+(\(std::nothrow\))?\w+\s*[([]")
 
 # Match C++ delete operators, examples:
 #  delete Foo;
@@ -79,7 +79,7 @@ regex_new = re.compile(r"new\s+(\(std::nothrow\)+)?[a-zA-Z_][a-zA-Z0-9_]*\s*(\(|
 #  delete Foo)
 #  delete [] Foo)
 #  delete *Foo;
-regex_delete = re.compile(r"delete\s*(\[\])?\s+(\*)?[a-zA-Z_][a-zA-Z0-9_]*\s*(;|\))")
+regex_delete = re.compile(r"delete\s*(\[\])?\s+\*?\w+\s*[;)]")
 
 # Match C++ shared_ptr objects.
 regex_shared_ptr = re.compile(r"shared_ptr<")
