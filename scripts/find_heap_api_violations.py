@@ -1,6 +1,8 @@
 import os
 import re
 import sys
+from dataclasses import dataclass, field
+from typing import Collection, Mapping, Pattern
 
 # Do not check for violations in these directories.
 ignored_dirs = frozenset(["c_api", "cpp_api"])
@@ -133,26 +135,35 @@ unique_ptr_exceptions = {
 }
 
 
-# Checks if a given line contains a violation.
-def check_line(file_path, line, linenum, substr, compiled_regex, exceptions):
-    if substr not in line:
-        return False
+@dataclass
+class ViolationChecker:
+    substr: str
+    regex: Pattern
+    exceptions: Mapping[str, Collection[str]] = field(default_factory=dict)
 
-    if exceptions is not None:
+    def __call__(self, file_path, line):
+        if self.substr not in line:
+            return False
+
         for key in "*", os.path.basename(file_path):
-            for exception in exceptions.get(key, ()):
+            for exception in self.exceptions.get(key, ()):
                 if exception in line:
                     return False
 
-    if compiled_regex.search(line) is not None:
-        print(
-            f"[{os.path.basename(__file__)}]: Detected {substr!r} heap memory API violation:"
-        )
-        print(f"  {file_path}:{linenum}")
-        print(f"  {line}")
-        return True
+        return self.regex.search(line) is not None
 
-    return False
+
+VIOLATION_CHECKERS = [
+    ViolationChecker("malloc", regex_malloc, malloc_exceptions),
+    ViolationChecker("calloc", regex_calloc, calloc_exceptions),
+    ViolationChecker("realloc", regex_realloc, realloc_exceptions),
+    ViolationChecker("free", regex_free, free_exceptions),
+    ViolationChecker("new", regex_new),
+    ViolationChecker("delete", regex_delete),
+    ViolationChecker("shared_ptr<", regex_shared_ptr, shared_ptr_exceptions),
+    ViolationChecker("make_shared<", regex_make_shared, make_shared_exceptions),
+    ViolationChecker("unique_ptr<", regex_unique_ptr, unique_ptr_exceptions),
+]
 
 
 # Checks if any lines in a file contains a violation.
@@ -161,53 +172,14 @@ def check_file(file_path):
     with open(file_path) as f:
         for linenum, line in enumerate(f):
             line = line.strip()
-            if check_line(
-                file_path, line, linenum, "malloc", regex_malloc, malloc_exceptions
-            ):
-                found_violation = True
-            if check_line(
-                file_path, line, linenum, "calloc", regex_calloc, calloc_exceptions
-            ):
-                found_violation = True
-            if check_line(
-                file_path, line, linenum, "realloc", regex_realloc, realloc_exceptions
-            ):
-                found_violation = True
-            if check_line(
-                file_path, line, linenum, "free", regex_free, free_exceptions
-            ):
-                found_violation = True
-            if check_line(file_path, line, linenum, "new", regex_new, None):
-                found_violation = True
-            if check_line(file_path, line, linenum, "delete", regex_delete, None):
-                found_violation = True
-            if check_line(
-                file_path,
-                line,
-                linenum,
-                "shared_ptr<",
-                regex_shared_ptr,
-                shared_ptr_exceptions,
-            ):
-                found_violation = True
-            if check_line(
-                file_path,
-                line,
-                linenum,
-                "make_shared<",
-                regex_make_shared,
-                make_shared_exceptions,
-            ):
-                found_violation = True
-            if check_line(
-                file_path,
-                line,
-                linenum,
-                "unique_ptr<",
-                regex_unique_ptr,
-                unique_ptr_exceptions,
-            ):
-                found_violation = True
+            for checker in VIOLATION_CHECKERS:
+                if checker(file_path, line):
+                    print(
+                        f"[{os.path.basename(__file__)}]: Detected {checker.substr!r} heap memory API violation:"
+                    )
+                    print(f"  {file_path}:{linenum}")
+                    print(f"  {line}")
+                    found_violation = True
     return found_violation
 
 
