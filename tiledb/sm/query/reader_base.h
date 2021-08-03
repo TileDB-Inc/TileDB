@@ -154,7 +154,7 @@ class ReaderBase : public StrategyBase {
    * @return Status
    */
   Status load_tile_offsets(
-      Subarray& subarray, const std::vector<std::string>* names);
+      Subarray* subarray, const std::vector<std::string>* names);
 
   /**
    * Initializes a fixed-sized tile.
@@ -365,9 +365,10 @@ class ReaderBase : public StrategyBase {
    */
   Status copy_attribute_values(
       uint64_t stride,
-      const std::vector<ResultTile*>* result_tiles,
+      std::vector<ResultTile*>* result_tiles,
       std::vector<ResultCellSlab>* result_cell_slabs,
-      Subarray& subarray);
+      Subarray& subarray,
+      uint64_t memory_budget = UINT64_MAX);
 
   /**
    * Copies the cells for the input **fixed-sized** attribute/dimension and
@@ -528,13 +529,18 @@ class ReaderBase : public StrategyBase {
    * @param result_cell_slabs The cell slabs to process.
    * @param subarray Specifies the current subarray.
    * @param stride The stride between cells, UINT64_MAX for contiguous.
+   * @param memory_budget The memory budget, UINT64_MAX for unlimited.
+   * @param memory_used_for_tiles The memory used for tiles that will not be
+   * unloaded.
    */
   Status process_tiles(
-      const std::unordered_map<std::string, ProcessTileFlags>& names,
-      const std::vector<ResultTile*>* result_tiles,
+      const std::unordered_map<std::string, ProcessTileFlags>* names,
+      std::vector<ResultTile*>* result_tiles,
       std::vector<ResultCellSlab>* result_cell_slabs,
-      Subarray& subarray,
-      uint64_t stride);
+      Subarray* subarray,
+      uint64_t stride,
+      uint64_t memory_budget,
+      uint64_t* memory_used_for_tiles);
 
   /**
    * Builds and returns an association from each tile in `result_cell_slabs`
@@ -553,13 +559,33 @@ class ReaderBase : public StrategyBase {
    * @param subarray Specifies the current subarray.
    * @param stride The stride between cells, defaulting to UINT64_MAX
    *   for contiguous cells.
+   * @param memory_budget_rcs The memory budget for tiles, defaulting
+   *   to UINT64_MAX for unlimited budget.
+   * @param memory_budget_tiles The memory budget for result cell slabs,
+   *   defaulting to UINT64_MAX for unlimited budget.
+   * @param memory_used_for_tiles The memory used for tiles that will
+   *   not be unloaded.
    * @return Status
    */
   Status apply_query_condition(
       std::vector<ResultCellSlab>* result_cell_slabs,
-      const std::vector<ResultTile*>* result_tiles,
-      Subarray& subarray,
-      uint64_t stride = UINT64_MAX);
+      std::vector<ResultTile*>* result_tiles,
+      Subarray* subarray,
+      uint64_t stride = UINT64_MAX,
+      uint64_t memory_budget_rcs = UINT64_MAX,
+      uint64_t memory_budget_tiles = UINT64_MAX,
+      uint64_t* memory_used_for_tiles = nullptr);
+
+  /**
+   * Get the size of an attribute tile.
+   *
+   * @param name The attribute name.
+   * @param result_tile The result tile.
+   * @param tile_size The return tile size.
+   * @return Status
+   */
+  Status get_attribute_tile_size(
+      const std::string& name, ResultTile* result_tile, uint64_t* tile_size);
 };
 
 }  // namespace sm

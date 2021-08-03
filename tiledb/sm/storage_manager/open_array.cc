@@ -90,7 +90,7 @@ void OpenArray::cnt_incr() {
 }
 
 bool OpenArray::is_empty(uint64_t timestamp) const {
-  std::lock_guard<std::mutex> lck(local_mtx_);
+  std::lock_guard<std::mutex> lock(local_mtx_);
   return fragment_metadata_.empty() ||
          (*fragment_metadata_.cbegin())->first_timestamp() > timestamp;
 }
