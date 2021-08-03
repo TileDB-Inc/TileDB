@@ -790,7 +790,8 @@ Status QueryCondition::apply_clause(
 Status QueryCondition::apply(
     const ArraySchema* const array_schema,
     std::vector<ResultCellSlab>* const result_cell_slabs,
-    const uint64_t stride) const {
+    const uint64_t stride,
+    uint64_t memory_budget) const {
   if (clauses_.empty()) {
     return Status::Ok();
   }
@@ -807,6 +808,15 @@ Status QueryCondition::apply(
         stride,
         *result_cell_slabs,
         &tmp_result_cell_slabs));
+    if (tmp_result_cell_slabs.size() > result_cell_slabs->size()) {
+      uint64_t memory_increase =
+          tmp_result_cell_slabs.size() - result_cell_slabs->size();
+      memory_increase *= sizeof(ResultCellSlab);
+      if (memory_increase > memory_budget) {
+        return Status::QueryConditionError(
+            "Exceeded result cell slab budget applying query condition");
+      }
+    }
     *result_cell_slabs = tmp_result_cell_slabs;
   }
 

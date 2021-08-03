@@ -150,6 +150,20 @@ class Config {
   /** Maximum memory budget for readers and writers. */
   static const std::string SM_MEM_TOTAL_BUDGET;
 
+  /** Ratio of the sparse global order reader budget used for coords. */
+  static const std::string SM_MEM_SPARSE_GLOBAL_ORDER_RATIO_COORDS;
+
+  /**
+   * Ratio of the sparse global order reader budget used for query condition.
+   */
+  static const std::string SM_MEM_SPARSE_GLOBAL_ORDER_RATIO_QUERY_CONDITION;
+
+  /** Ratio of the sparse global order reader budget used for tile ranges. */
+  static const std::string SM_MEM_SPARSE_GLOBAL_ORDER_RATIO_TILE_RANGES;
+
+  /** Ratio of the sparse global order reader budget used for array data. */
+  static const std::string SM_MEM_SPARSE_GLOBAL_ORDER_RATIO_ARRAY_DATA;
+
   /** Whether or not the signal handlers are installed. */
   static const std::string SM_ENABLE_SIGNAL_HANDLERS;
 
