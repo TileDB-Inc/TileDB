@@ -133,7 +133,7 @@ class Logger {
   void debug(const std::stringstream& msg);
 
   /**
-   * A formatted debug statment.
+   * A formatted debug statement.
    *
    * @param fmt A fmtlib format string, see http://fmtlib.net/latest/ for
    *     details.

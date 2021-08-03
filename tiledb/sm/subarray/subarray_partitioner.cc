@@ -395,6 +395,7 @@ Status SubarrayPartitioner::next(bool* unsplittable) {
   // An interval of whole ranges that may need calibration
   bool must_split_slab;
   RETURN_NOT_OK(calibrate_current_start_end(&must_split_slab));
+  global_logger().debug("must_split_slab={}", must_split_slab);
 
   // Handle case the next partition is composed of whole ND ranges
   if (interval_found && !must_split_slab) {
@@ -593,6 +594,7 @@ Status SubarrayPartitioner::split_current(bool* unsplittable) {
 
     bool must_split_slab;
     RETURN_NOT_OK(calibrate_current_start_end(&must_split_slab));
+    global_logger().debug("must_split_slab={}", must_split_slab);
 
     // If the range between `current_.start_` and `current_.end_`
     // will not fit within the memory contraints, `must_split_slab`
@@ -795,6 +797,7 @@ Status SubarrayPartitioner::compute_current_start_end(bool* found) {
       &memory_sizes,
       compute_tp_));
 
+  global_logger().debug("skip_split_on_est_size_={}", skip_split_on_est_size_);
   bool done = false;
   current_.start_ = tile_overlap->range_idx_start();
   for (current_.end_ = tile_overlap->range_idx_start();
@@ -819,21 +822,45 @@ Status SubarrayPartitioner::compute_current_start_end(bool* found) {
           mem_size.size_var_ > memory_budget_var_ ||
           mem_size.size_validity_ > memory_budget_validity_) {
         if (cur_size.size_fixed_ > budget.size_fixed_) {
+          global_logger().debug(
+              "{} cur_size.size_fixed_ ({}) > budget.size_fixed_ ({})",
+              cur_size.size_fixed_,
+              budget.size_fixed_);
           stats_->add_counter(
               "compute_current_start_end.fixed_result_size_overflow", 1);
         } else if (cur_size.size_var_ > budget.size_var_) {
+          global_logger().debug(
+              "{} cur_size.size_var_ ({}) > budget.size_var_ ({})",
+              cur_size.size_var_,
+              budget.size_var_);
           stats_->add_counter(
               "compute_current_start_end.var_result_size_overflow", 1);
         } else if (cur_size.size_validity_ > budget.size_validity_) {
+          global_logger().debug(
+              "{} cur_size.size_validity_ ({}) > budget.size_validity_ ({})",
+              cur_size.size_validity_,
+              budget.size_validity_);
           stats_->add_counter(
               "compute_current_start_end.validity_result_size_overflow", 1);
         } else if (mem_size.size_fixed_ > memory_budget_) {
+          global_logger().debug(
+              "{} mem_size.size_fixed_ ({}) > memory_budget_ ({})",
+              mem_size.size_fixed_,
+              memory_budget_);
           stats_->add_counter(
               "compute_current_start_end.fixed_tile_size_overflow", 1);
         } else if (mem_size.size_var_ > memory_budget_var_) {
+          global_logger().debug(
+              "{} mem_size.size_var_ ({}) > memory_budget_var_ ({})",
+              mem_size.size_var_,
+              memory_budget_var_);
           stats_->add_counter(
               "compute_current_start_end.var_tile_size_overflow", 1);
         } else if (mem_size.size_validity_ > memory_budget_validity_) {
+          global_logger().debug(
+              "{} mem_size.size_validity_ ({}) > budget.size_fixed_ ({})",
+              mem_size.size_validity_,
+              memory_budget_validity_);
           stats_->add_counter(
               "compute_current_start_end.validity_tile_size_overflow", 1);
         }
@@ -1105,6 +1132,8 @@ bool SubarrayPartitioner::must_split(Subarray* partition) {
   auto array_schema = subarray_.array()->array_schema();
   bool must_split = false;
 
+  global_logger().debug("skip_split_on_est_size_={}", skip_split_on_est_size_);
+
   uint64_t size_fixed;
   uint64_t size_var;
   uint64_t size_validity;
@@ -1124,6 +1153,7 @@ bool SubarrayPartitioner::must_split(Subarray* partition) {
     mem_size_fixed = 0;
     mem_size_var = 0;
     mem_size_validity = 0;
+
     // Compute max memory sizes
     if (var_size) {
       if (!nullable) {
@@ -1192,6 +1222,38 @@ bool SubarrayPartitioner::must_split(Subarray* partition) {
           size_validity > b.second.size_validity_)) ||
         mem_size_fixed > memory_budget_ || mem_size_var > memory_budget_var_ ||
         mem_size_validity > memory_budget_validity_) {
+      if (size_fixed > b.second.size_fixed_) {
+        global_logger().debug(
+            "{} size_fixed ({}) > b.second.size_fixed_ ({})",
+            size_fixed,
+            b.second.size_fixed_);
+      } else if (size_var > b.second.size_var_) {
+        global_logger().debug(
+            "{} size_var_ ({}) > b.second.size_var_ ({})",
+            size_var,
+            b.second.size_var_);
+      } else if (size_validity > b.second.size_validity_) {
+        global_logger().debug(
+            "{} size_validity_ ({}) > b.second.size_validity_ ({})",
+            size_validity,
+            b.second.size_validity_);
+      } else if (mem_size_fixed > memory_budget_) {
+        global_logger().debug(
+            "{} mem_size_fixed ({}) > memory_budget_ ({})",
+            mem_size_fixed,
+            memory_budget_);
+      } else if (mem_size_var > memory_budget_var_) {
+        global_logger().debug(
+            "{} mem_size_var ({}) > memory_budget_var_ ({})",
+            mem_size_var,
+            memory_budget_var_);
+      } else if (mem_size_validity > memory_budget_validity_) {
+        global_logger().debug(
+            "{} mem_size_validity ({}) > memory_budget_validity_ ({})",
+            mem_size_validity,
+            memory_budget_validity_);
+      }
+
       must_split = true;
       break;
     }
@@ -1214,6 +1276,7 @@ Status SubarrayPartitioner::next_from_multi_range(bool* unsplittable) {
     do {
       auto& partition = state_.multi_range_.front();
       must_split = this->must_split(&partition);
+      global_logger().debug("must_split={}", must_split);
       if (must_split)
         RETURN_NOT_OK(split_top_multi_range(unsplittable));
     } while (must_split && !*unsplittable);
@@ -1243,6 +1306,7 @@ Status SubarrayPartitioner::next_from_single_range(bool* unsplittable) {
     do {
       auto& partition = state_.single_range_.front();
       must_split = this->must_split(&partition);
+      global_logger().debug("must_split={}", must_split);
       if (must_split)
         RETURN_NOT_OK(split_top_single_range(unsplittable));
     } while (must_split && !*unsplittable);

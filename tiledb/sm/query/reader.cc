@@ -209,10 +209,12 @@ Status Reader::dowork() {
     // In the case of overflow, we need to split the current partition
     // without advancing to the next partition
     if (read_state_.overflowed_) {
+      global_logger().debug("read overflowed");
       zero_out_buffer_sizes();
       RETURN_NOT_OK(read_state_.split_current());
 
       if (read_state_.unsplittable_) {
+        global_logger().debug("read unsplittable");
         return complete_read_loop();
       }
     } else {
