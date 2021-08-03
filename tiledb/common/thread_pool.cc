@@ -425,8 +425,9 @@ void ThreadPool::add_task_index() {
 
 void ThreadPool::remove_task_index() {
   std::lock_guard<std::mutex> lock(task_index_lock_);
-  for (const auto& thread : threads_)
-    task_index_.erase(thread.get_id());
+  for (const auto& tid_to_task : task_index_) {
+    task_index_.erase(tid_to_task.first);
+  }
 }
 
 tdb_shared_ptr<ThreadPool::PackagedTask> ThreadPool::lookup_task(
