@@ -86,7 +86,7 @@ enum class StatusCode : char {
   StorageManager,
   FragmentMetadata,
   ArraySchema,
-  SchemaEvolution,
+  ArraySchemaEvolution,
   Metadata,
   IO,
   Mem,
@@ -190,9 +190,9 @@ class Status {
     return Status(StatusCode::ArraySchema, msg, -1);
   }
 
-  /** Return a SchemaEvolution error class Status with a given message **/
-  static Status SchemaEvolutionError(const std::string& msg) {
-    return Status(StatusCode::SchemaEvolution, msg, -1);
+  /** Return a ArraySchemaEvolution error class Status with a given message **/
+  static Status ArraySchemaEvolutionError(const std::string& msg) {
+    return Status(StatusCode::ArraySchemaEvolution, msg, -1);
   }
 
   /** Return a Metadata error class Status with a given message **/

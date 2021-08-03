@@ -1,5 +1,5 @@
 /**
- * @file   schema_evolution.cc
+ * @file   array_schema_evolution.cc
  *
  * @section LICENSE
  *
@@ -28,10 +28,10 @@
  *
  * @section DESCRIPTION
  *
- * This file implements the SchemaEvolution class.
+ * This file implements the ArraySchemaEvolution class.
  */
 
-#include "tiledb/sm/array_schema/schema_evolution.h"
+#include "tiledb/sm/array_schema/array_schema_evolution.h"
 #include "tiledb/common/heap_memory.h"
 #include "tiledb/common/logger.h"
 #include "tiledb/sm/array_schema/array_schema.h"
@@ -61,10 +61,10 @@ namespace sm {
 /*   CONSTRUCTORS & DESTRUCTORS   */
 /* ****************************** */
 
-SchemaEvolution::SchemaEvolution() {
+ArraySchemaEvolution::ArraySchemaEvolution() {
 }
 
-SchemaEvolution::~SchemaEvolution() {
+ArraySchemaEvolution::~ArraySchemaEvolution() {
   clear();
 }
 
@@ -72,11 +72,11 @@ SchemaEvolution::~SchemaEvolution() {
 /*               API              */
 /* ****************************** */
 
-Status SchemaEvolution::evolve_schema(
+Status ArraySchemaEvolution::evolve_schema(
     const ArraySchema* orig_schema, ArraySchema** new_schema) {
   std::lock_guard<std::mutex> lock(mtx_);
   if (orig_schema == nullptr) {
-    return LOG_STATUS(Status::SchemaEvolutionError(
+    return LOG_STATUS(Status::ArraySchemaEvolutionError(
         "Cannot evolve schema; Input array schema is null"));
   }
 
@@ -103,11 +103,11 @@ Status SchemaEvolution::evolve_schema(
   return Status::Ok();
 }
 
-Status SchemaEvolution::add_attribute(const Attribute* attr) {
+Status ArraySchemaEvolution::add_attribute(const Attribute* attr) {
   std::lock_guard<std::mutex> lock(mtx_);
   // Sanity check
   if (attr == nullptr)
-    return LOG_STATUS(Status::SchemaEvolutionError(
+    return LOG_STATUS(Status::ArraySchemaEvolutionError(
         "Cannot add attribute; Input attribute is null"));
 
   // Create new attribute and potentially set a default name
@@ -117,7 +117,7 @@ Status SchemaEvolution::add_attribute(const Attribute* attr) {
   return Status::Ok();
 }
 
-Status SchemaEvolution::drop_attribute(const std::string& attribute_name) {
+Status ArraySchemaEvolution::drop_attribute(const std::string& attribute_name) {
   std::lock_guard<std::mutex> lock(mtx_);
   attributes_to_drop_.insert(attribute_name);
   return Status::Ok();
@@ -127,7 +127,7 @@ Status SchemaEvolution::drop_attribute(const std::string& attribute_name) {
 /*         PRIVATE METHODS        */
 /* ****************************** */
 
-void SchemaEvolution::clear() {
+void ArraySchemaEvolution::clear() {
   for (auto& attr : attributes_to_add_map_) {
     tdb_delete(attr.second);
   }

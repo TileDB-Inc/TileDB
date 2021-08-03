@@ -1,5 +1,5 @@
 /**
- * @file   array_schema.h
+ * @file   array_schema_evolution.h
  *
  * @section LICENSE
  *
@@ -28,11 +28,11 @@
  *
  * @section DESCRIPTION
  *
- * This file defines class SchemaEvolution.
+ * This file defines class ArraySchemaEvolution.
  */
 
-#ifndef TILEDB_SCHEMA_EVOLUTION_H
-#define TILEDB_SCHEMA_EVOLUTION_H
+#ifndef TILEDB_ARRAY_SCHEMA_EVOLUTION_H
+#define TILEDB_ARRAY_SCHEMA_EVOLUTION_H
 
 #include <unordered_map>
 #include <unordered_set>
@@ -62,17 +62,17 @@ enum class Datatype : uint8_t;
 enum class Layout : uint8_t;
 
 /** Specifies the array schema evolution. */
-class SchemaEvolution {
+class ArraySchemaEvolution {
  public:
   /* ********************************* */
   /*     CONSTRUCTORS & DESTRUCTORS    */
   /* ********************************* */
 
   /** Constructor. */
-  SchemaEvolution();
+  ArraySchemaEvolution();
 
   /** Destructor. */
-  ~SchemaEvolution();
+  ~ArraySchemaEvolution();
 
   /* ********************************* */
   /*               API                 */

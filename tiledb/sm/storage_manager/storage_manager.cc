@@ -40,7 +40,7 @@
 #include "tiledb/common/logger.h"
 #include "tiledb/sm/array/array.h"
 #include "tiledb/sm/array_schema/array_schema.h"
-#include "tiledb/sm/array_schema/schema_evolution.h"
+#include "tiledb/sm/array_schema/array_schema_evolution.h"
 #include "tiledb/sm/cache/buffer_lru_cache.h"
 #include "tiledb/sm/enums/array_type.h"
 #include "tiledb/sm/enums/layout.h"
@@ -883,7 +883,7 @@ Status StorageManager::array_create(
 
 Status StorageManager::array_evolve_schema(
     const URI& array_uri,
-    SchemaEvolution* schema_evolution,
+    ArraySchemaEvolution* schema_evolution,
     const EncryptionKey& encryption_key) {
   // Check array schema
   if (schema_evolution == nullptr) {

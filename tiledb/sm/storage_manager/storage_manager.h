@@ -62,7 +62,7 @@ namespace sm {
 
 class Array;
 class ArraySchema;
-class SchemaEvolution;
+class ArraySchemaEvolution;
 class Buffer;
 class BufferLRUCache;
 class ChunkedBuffer;
@@ -346,12 +346,11 @@ class StorageManager {
    *
    * @param array_uri The URI of the array to be evolved.
    * @param schema_evolution The schema evolution.
-   * @param encryption_key The encryption key to use.
    * @return Status
    */
   Status array_evolve_schema(
       const URI& array_uri,
-      SchemaEvolution* array_schema,
+      ArraySchemaEvolution* array_schema,
       const EncryptionKey& encryption_key);
 
   /**
