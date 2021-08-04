@@ -218,12 +218,14 @@ class QueryCondition {
    * @param result_cell_slabs The cell slabs to filter. Mutated to remove cell
    *   slabs that do not meet the criteria in this query condition.
    * @param stride The stride between cells.
+   * @param memory_budget The memory_budget.
    * @return Status
    */
   Status apply(
       const ArraySchema* array_schema,
       std::vector<ResultCellSlab>* result_cell_slabs,
-      uint64_t stride) const;
+      uint64_t stride,
+      uint64_t memory_budget = UINT64_MAX) const;
 
   /**
    * Sets the clauses. This is internal state to only be used in

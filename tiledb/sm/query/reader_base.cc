@@ -154,15 +154,15 @@ Status ReaderBase::check_validity_buffer_sizes() const {
 }
 
 Status ReaderBase::load_tile_offsets(
-    Subarray& subarray, const std::vector<std::string>* names) {
+    Subarray* subarray, const std::vector<std::string>* names) {
   auto timer_se = stats_->start_timer("load_tile_offsets");
   const auto encryption_key = array_->encryption_key();
 
   // Fetch relevant fragments so we load tile offsets only from intersecting
   // fragments
-  const auto relevant_fragments = subarray.relevant_fragments();
+  const auto relevant_fragments = subarray->relevant_fragments();
 
-  bool all_frag = !subarray.is_set();
+  bool all_frag = !subarray->is_set();
 
   const auto status = parallel_for(
       storage_manager_->compute_tp(),
@@ -797,9 +797,10 @@ Status ReaderBase::copy_coordinates(
 
 Status ReaderBase::copy_attribute_values(
     const uint64_t stride,
-    const std::vector<ResultTile*>* result_tiles,
+    std::vector<ResultTile*>* result_tiles,
     std::vector<ResultCellSlab>* result_cell_slabs,
-    Subarray& subarray) {
+    Subarray& subarray,
+    uint64_t memory_budget) {
   auto timer_se = stats_->start_timer("copy_attr_values");
 
   if (result_cell_slabs->empty() && result_tiles->empty()) {
@@ -834,8 +835,14 @@ Status ReaderBase::copy_attribute_values(
     names[name] = flags;
   }
 
-  RETURN_NOT_OK(
-      process_tiles(names, result_tiles, result_cell_slabs, subarray, stride));
+  RETURN_NOT_OK(process_tiles(
+      &names,
+      result_tiles,
+      result_cell_slabs,
+      &subarray,
+      stride,
+      memory_budget,
+      nullptr));
 
   return Status::Ok();
 }
@@ -1232,7 +1239,6 @@ Status ReaderBase::compute_var_cell_destinations(
            *total_validity_size + constants::cell_validity_size >
                *buffer_validity_size)) {
         // Try to fix the overflow by reducing the result cell slabs to copy.
-        // TODO Consider fixing the partitions.
         if (fix_var_sized_overflows_) {
           copy_end_ = std::pair<uint64_t, uint64_t>(cs_idx + 1, cell_idx);
 
@@ -1395,11 +1401,13 @@ Status ReaderBase::copy_partitioned_var_cells(
 }
 
 Status ReaderBase::process_tiles(
-    const std::unordered_map<std::string, ProcessTileFlags>& names,
-    const std::vector<ResultTile*>* result_tiles,
+    const std::unordered_map<std::string, ProcessTileFlags>* names,
+    std::vector<ResultTile*>* result_tiles,
     std::vector<ResultCellSlab>* result_cell_slabs,
-    Subarray& subarray,
-    const uint64_t stride) {
+    Subarray* subarray,
+    const uint64_t stride,
+    uint64_t memory_budget,
+    uint64_t* memory_used_for_tiles) {
   // If a name needs to be read, we put it on `read_names` vector (it may
   // contain other flags). Otherwise, we put the name on the `copy_names`
   // vector if it needs to be copied back to the user buffer.
@@ -1407,20 +1415,91 @@ Status ReaderBase::process_tiles(
   // separately from `copy_names`.
   std::vector<std::string> read_names;
   std::vector<std::string> copy_names;
-  read_names.reserve(names.size());
-  for (const auto& name_pair : names) {
+  bool is_apply_query_condition = true;
+  read_names.reserve(names->size());
+  for (const auto& name_pair : *names) {
     const std::string name = name_pair.first;
     const ProcessTileFlags flags = name_pair.second;
     if (flags & ProcessTileFlag::READ) {
+      if (flags & ProcessTileFlag::COPY)
+        is_apply_query_condition = false;
       read_names.push_back(name);
     } else if (flags & ProcessTileFlag::COPY) {
       copy_names.push_back(name);
+      is_apply_query_condition = false;
     }
   }
 
   // Pre-load all attribute offsets into memory for attributes
   // to be read.
   load_tile_offsets(subarray, &read_names);
+
+  // Respect the memory budget if it is set.
+  if (memory_budget != std::numeric_limits<uint64_t>::max()) {
+    // For query condition, make sure all tiles fit in memory budget.
+    if (is_apply_query_condition) {
+      for (const auto& name_pair : *names) {
+        const std::string name = name_pair.first;
+        assert(name_pair.second == ProcessTileFlag::READ);
+
+        for (const auto& rt : *result_tiles) {
+          uint64_t tile_size = 0;
+          RETURN_NOT_OK(get_attribute_tile_size(name, rt, &tile_size));
+          *memory_used_for_tiles += tile_size;
+        }
+      }
+
+      if (*memory_used_for_tiles > memory_budget) {
+        return Status::ReaderError(
+            "Exceeded tile memory budget applying query condition");
+      }
+    } else {
+      // Make sure that for each attribute, all tiles can fit in the budget.
+      uint64_t new_result_tile_size = result_tiles->size();
+      for (const auto& name_pair : *names) {
+        uint64_t mem_usage = 0;
+        for (uint64_t i = 0;
+             i < result_tiles->size() && i < new_result_tile_size;
+             i++) {
+          const auto& rt = result_tiles->at(i);
+          uint64_t tile_size = 0;
+          RETURN_NOT_OK(
+              get_attribute_tile_size(name_pair.first, rt, &tile_size));
+          if (mem_usage + tile_size > memory_budget) {
+            new_result_tile_size = i;
+            break;
+          }
+          mem_usage += tile_size;
+        }
+      }
+
+      if (new_result_tile_size != result_tiles->size()) {
+        // Erase tiles from result tiles.
+        result_tiles->erase(
+            result_tiles->begin() + new_result_tile_size - 1,
+            result_tiles->end());
+
+        // Find the result cell slab index to end the copy opeation.
+        auto& last_tile = result_tiles->back();
+        uint64_t last_idx = 0;
+        for (uint64_t i = 0; i < result_cell_slabs->size(); i++) {
+          if (result_cell_slabs->at(i).tile_ == last_tile) {
+            if (i == 0) {
+              return Status::ReaderError(
+                  "Unable to copy one tile with current budget");
+            }
+            last_idx = i;
+          }
+        }
+
+        // Adjust copy_end_
+        if (copy_end_.first > last_idx + 1) {
+          copy_end_.first = last_idx + 1;
+          copy_end_.second = result_cell_slabs->at(last_idx).length_;
+        }
+      }
+    }
+  }
 
   // Get the maximum number of attributes to read and unfilter in parallel.
   // Each attribute requires additional memory to buffer reads into
@@ -1431,8 +1510,7 @@ Status ReaderBase::process_tiles(
   // this number will have diminishing returns on performance.
   const uint64_t concurrent_reads = constants::concurrent_attr_reads;
 
-  // Instantiate context caches for copying fixed and variable
-  // cells.
+  // Instantiate partitions for copying fixed and variable cells.
   std::vector<size_t> fixed_cs_partitions;
   compute_fixed_cs_partitions(result_cell_slabs, &fixed_cs_partitions);
 
@@ -1454,7 +1532,11 @@ Status ReaderBase::process_tiles(
           result_cell_slabs,
           &var_cs_partitions,
           total_var_cs_length));
-    clear_tiles(copy_name, result_tiles);
+
+    // Copy only here should be attributes in the query condition. They should
+    // be treated as coordinates.
+    if (clear_coords_tiles_on_copy_)
+      clear_tiles(copy_name, result_tiles);
   }
 
   // Iterate through all of the attribute names. This loop
@@ -1480,7 +1562,7 @@ Status ReaderBase::process_tiles(
     // thread safe, but quick enough that they do not justify scheduling on
     // separate threads.
     for (const auto& inner_name : inner_names) {
-      const ProcessTileFlags flags = names.at(inner_name);
+      const ProcessTileFlags flags = names->at(inner_name);
 
       RETURN_CANCEL_OR_ERROR(unfilter_tiles(inner_name, result_tiles));
 
@@ -1532,9 +1614,12 @@ tdb_unique_ptr<ReaderBase::ResultCellSlabsIndex> ReaderBase::compute_rcs_index(
 
 Status ReaderBase::apply_query_condition(
     std::vector<ResultCellSlab>* const result_cell_slabs,
-    const std::vector<ResultTile*>* result_tiles,
-    Subarray& subarray,
-    uint64_t stride) {
+    std::vector<ResultTile*>* result_tiles,
+    Subarray* subarray,
+    uint64_t stride,
+    uint64_t memory_budget_rcs,
+    uint64_t memory_budget_tiles,
+    uint64_t* memory_used_for_tiles) {
   if (condition_.empty() || result_cell_slabs->empty())
     return Status::Ok();
 
@@ -1550,7 +1635,14 @@ Status ReaderBase::apply_query_condition(
 
   // Each element in `names` has been flagged with `ProcessTileFlag::READ`.
   // This will read the tiles, but will not copy them into the user buffers.
-  process_tiles(names, result_tiles, result_cell_slabs, subarray, stride);
+  process_tiles(
+      &names,
+      result_tiles,
+      result_cell_slabs,
+      subarray,
+      stride,
+      memory_budget_tiles,
+      memory_used_for_tiles);
 
   // The `UINT64_MAX` is a sentinel value to indicate that we do not
   // use a stride in the cell index calculation. To simplify our logic,
@@ -1558,7 +1650,29 @@ Status ReaderBase::apply_query_condition(
   if (stride == UINT64_MAX)
     stride = 1;
 
-  RETURN_NOT_OK(condition_.apply(array_schema_, result_cell_slabs, stride));
+  RETURN_NOT_OK(condition_.apply(
+      array_schema_, result_cell_slabs, stride, memory_budget_rcs));
+
+  return Status::Ok();
+}
+
+Status ReaderBase::get_attribute_tile_size(
+    const std::string& name, ResultTile* result_tile, uint64_t* tile_size) {
+  *tile_size = 0;
+  auto f = result_tile->frag_idx();
+  auto t = result_tile->tile_idx();
+  *tile_size += fragment_metadata_[f]->tile_size(name, t);
+
+  if (array_schema_->var_size(name)) {
+    uint64_t temp = 0;
+    RETURN_NOT_OK(fragment_metadata_[f]->tile_var_size(
+        *array_->encryption_key(), name, t, &temp));
+    *tile_size += temp;
+  }
+
+  if (array_schema_->is_nullable(name)) {
+    *tile_size += result_tile->cell_num() * constants::cell_validity_size;
+  }
 
   return Status::Ok();
 }
