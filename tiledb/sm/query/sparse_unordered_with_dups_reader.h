@@ -1,5 +1,5 @@
 /**
- * @file   sparse_global_order_reader.h
+ * @file   sparse_unordered_with_dups_reader.h
  *
  * @section LICENSE
  *
@@ -27,11 +27,11 @@
  *
  * @section DESCRIPTION
  *
- * This file defines class SparseGlobalOrderReader.
+ * This file defines class SparseUnorderedWithDupsReader.
  */
 
-#ifndef TILEDB_SPARSE_GLOBAL_ORDER_READER
-#define TILEDB_SPARSE_GLOBAL_ORDER_READER
+#ifndef TILEDB_SPARSE_UNORDERED_WITH_DUPS_READER
+#define TILEDB_SPARSE_UNORDERED_WITH_DUPS_READER
 
 #include "tiledb/common/status.h"
 #include "tiledb/sm/array_schema/dimension.h"
@@ -52,16 +52,16 @@ namespace sm {
 class Array;
 class StorageManager;
 
-/** Processes sparse global order read queries. */
-class SparseGlobalOrderReader : public SparseIndexReaderBase,
-                                public IQueryStrategy {
+/** Processes sparse unordered with duplicates read queries. */
+class SparseUnorderedWithDupsReader : public SparseIndexReaderBase,
+                                      public IQueryStrategy {
  public:
   /* ********************************* */
   /*     CONSTRUCTORS & DESTRUCTORS    */
   /* ********************************* */
 
   /** Constructor. */
-  SparseGlobalOrderReader(
+  SparseUnorderedWithDupsReader(
       stats::Stats* stats,
       StorageManager* storage_manager,
       Array* array,
@@ -72,10 +72,10 @@ class SparseGlobalOrderReader : public SparseIndexReaderBase,
       QueryCondition& condition);
 
   /** Destructor. */
-  ~SparseGlobalOrderReader() = default;
+  ~SparseUnorderedWithDupsReader() = default;
 
-  DISABLE_COPY_AND_COPY_ASSIGN(SparseGlobalOrderReader);
-  DISABLE_MOVE_AND_MOVE_ASSIGN(SparseGlobalOrderReader);
+  DISABLE_COPY_AND_COPY_ASSIGN(SparseUnorderedWithDupsReader);
+  DISABLE_MOVE_AND_MOVE_ASSIGN(SparseUnorderedWithDupsReader);
 
   /* ********************************* */
   /*                 API               */
@@ -108,13 +108,7 @@ class SparseGlobalOrderReader : public SparseIndexReaderBase,
   /* ********************************* */
 
   /** The result tiles currently loaded. */
-  std::vector<std::list<ResultTile>> result_tiles_;
-
-  /** Memory used for coordinates tiles per fragment. */
-  std::vector<uint64_t> memory_used_for_coords_;
-
-  /** Memory budget per fragment. */
-  double per_fragment_memory_;
+  std::list<ResultTile> result_tiles_;
 
   /* ********************************* */
   /*           PRIVATE METHODS         */
@@ -124,6 +118,7 @@ class SparseGlobalOrderReader : public SparseIndexReaderBase,
   Status add_result_tile(
       unsigned dim_num,
       uint64_t memory_budget_result_tiles,
+      uint64_t memory_budget_qc_tiles,
       uint64_t memory_budget_coords_tiles,
       unsigned f,
       uint64_t t,
@@ -136,35 +131,8 @@ class SparseGlobalOrderReader : public SparseIndexReaderBase,
   /** Populate a result cell slab to process. */
   Status compute_result_cell_slab();
 
-  /**
-   * Add a new tile to the queue of tiles currently being processed
-   *  for a specific fragment.
-   */
-  template <class T>
-  Status add_next_tile_to_queue(
-      bool subarray_set,
-      unsigned int frag_idx,
-      uint64_t cell_idx,
-      std::vector<std::list<ResultTile>::iterator>& result_tiles_it,
-      std::vector<bool>& result_tile_used,
-      std::vector<std::vector<uint8_t>>& coord_tiles_result_bitmap,
-      std::priority_queue<ResultCoords, std::vector<ResultCoords>, T>&
-          tile_queue,
-      std::mutex& tile_queue_mutex,
-      T& cmp,
-      bool* need_more_tiles);
-
-  /** Computes a tile's Hilbert values, stores them in the comparator. */
-  template <class T>
-  Status calculate_hilbert_values(
-      bool subarray_set,
-      ResultTile* tile,
-      std::vector<std::vector<uint8_t>>& coord_tiles_result_bitmap,
-      T& cmp);
-
-  /** Compute the result cell slabs once tiles are loaded. */
-  template <class T>
-  Status merge_result_cell_slabs(uint64_t memory_budget, T cmp);
+  /** Create the result cell slabs once tiles are loaded. */
+  Status create_result_cell_slabs(uint64_t memory_budget);
 
   /** Remove a result tile from memory */
   Status remove_result_tile(
@@ -178,4 +146,4 @@ class SparseGlobalOrderReader : public SparseIndexReaderBase,
 }  // namespace sm
 }  // namespace tiledb
 
-#endif  // TILEDB_SPARSE_GLOBAL_ORDER_READER
+#endif  // TILEDB_SPARSE_UNORDERED_WITH_DUPS_READER
