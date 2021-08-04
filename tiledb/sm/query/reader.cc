@@ -192,8 +192,17 @@ Status Reader::dowork() {
   }
 
   // Loop until you find results, or unsplittable, or done
+  uint64_t loop_num = 0;
   do {
+    ++loop_num;
     stats_->add_counter("loop_num", 1);
+    global_logger().debug("loop_num {}", loop_num);
+    std::cout << "loop_num " << loop_num << std::endl;
+    bool found;
+    uint32_t level = static_cast<unsigned int>(Logger::Level::ERR);
+    RETURN_NOT_OK(config_.get<uint32_t>("config.logging_level", &level, &found));
+    std::cout << "runtime2 level: " << level << std::endl;
+    std::cout << static_cast<int>(global_logger().level()) << std::endl;
 
     read_state_.overflowed_ = false;
     copy_overflowed_ = false;

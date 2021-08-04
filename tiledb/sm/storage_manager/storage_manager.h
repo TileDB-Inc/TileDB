@@ -1085,6 +1085,9 @@ class StorageManager {
   /** The rest client (may be null if none was configured). */
   tdb_unique_ptr<RestClient> rest_client_;
 
+  /** Logger for use on context; */
+  Logger logger_;
+
   /* ********************************* */
   /*         PRIVATE METHODS           */
   /* ********************************* */

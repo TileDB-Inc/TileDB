@@ -166,6 +166,31 @@ void Logger::set_level(Logger::Level lvl) {
   }
 }
 
+Logger::Level Logger::level() {
+  switch(logger_->level()) {
+    case spdlog::level::critical:
+      return Logger::Level::FATAL;
+    case spdlog::level::err:
+      return Logger::Level::ERR;
+    case spdlog::level::warn:
+      return Logger::Level::WARN;
+    case spdlog::level::info:
+      return Logger::Level::INFO;
+    case spdlog::level::debug:
+      return Logger::Level::DBG;
+    case spdlog::level::trace:
+      return Logger::Level::TRACE;
+    case spdlog::level::off:
+      return Logger::Level::FATAL;
+    default:
+      return Logger::Level::ERR;
+  }
+}
+
+Logger Logger::clone(const std::string& name) {
+  logger_->clone(name);
+}
+
 /* ********************************* */
 /*              GLOBAL               */
 /* ********************************* */

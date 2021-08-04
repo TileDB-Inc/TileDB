@@ -298,6 +298,14 @@ class Logger {
    */
   void set_level(Logger::Level lvl);
 
+  /**
+   * Get log level
+   * @return level
+   */
+  Logger::Level level();
+
+  Logger clone(const std::string& name);
+
  private:
   /* ********************************* */
   /*         PRIVATE ATTRIBUTES        */
