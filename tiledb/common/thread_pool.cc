@@ -359,11 +359,14 @@ void ThreadPool::terminate() {
 
   remove_tp_index();
 
+  std::vector <std::thread::id> tids;
+
   for (auto& t : threads_) {
+    tids.push_back(t.get_id());
     t.join();
   }
 
-  remove_task_index();
+  remove_task_index(tids);
 
   threads_.clear();
 }
@@ -423,10 +426,10 @@ void ThreadPool::add_task_index() {
     task_index_[thread.get_id()] = nullptr;
 }
 
-void ThreadPool::remove_task_index() {
+void ThreadPool::remove_task_index(std::vector <std::thread::id> ids) {
   std::lock_guard<std::mutex> lock(task_index_lock_);
-  for (const auto& tid_to_task : task_index_) {
-    task_index_.erase(tid_to_task.first);
+  for (const auto& id : ids) {
+    task_index_.erase(id);
   }
 }
 

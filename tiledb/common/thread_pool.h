@@ -366,7 +366,7 @@ class ThreadPool {
   void add_task_index();
 
   // Remove indexes for each thread on the `task_index_`.
-  void remove_task_index();
+  void remove_task_index(std::vector<std::thread::id>);
 
   // Lookup the task executing on `tid`.
   static tdb_shared_ptr<PackagedTask> lookup_task(std::thread::id tid);
