@@ -307,7 +307,7 @@ class ArraySchema {
   std::pair<uint64_t, uint64_t> timestamp_range() const;
 
   /** Returns the the first timestamp. */
-  uint64_t timestamp() const;
+  uint64_t timestamp_start() const;
 
   /** Returns the array schema uri. */
   URI uri();

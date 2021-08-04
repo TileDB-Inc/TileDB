@@ -690,13 +690,13 @@ class StorageManager {
   /**
    * Loads the schema of a schema uri from persistent storage into memory.
    *
-   * @param array_schema_uri The URI path of the array.
+   * @param array_schema_uri The URI path of the array schema.
    * @param encryption_key The encryption key to use.
    * @param array_schema The array schema to be retrieved.
    * @return Status
    */
-  Status load_array_schema_uri(
-      const URI& array_uri,
+  Status load_array_schema_from_uri(
+      const URI& array_schema_uri,
       const EncryptionKey& encryption_key,
       ArraySchema** array_schema);
 

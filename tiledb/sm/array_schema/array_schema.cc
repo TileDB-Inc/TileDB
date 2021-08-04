@@ -707,7 +707,7 @@ std::pair<uint64_t, uint64_t> ArraySchema::timestamp_range() const {
       timestamp_range_.first, timestamp_range_.second);
 }
 
-uint64_t ArraySchema::timestamp() const {
+uint64_t ArraySchema::timestamp_start() const {
   return timestamp_range_.first;
 }
 

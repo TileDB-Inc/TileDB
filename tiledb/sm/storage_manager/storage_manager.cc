@@ -1754,11 +1754,11 @@ Status StorageManager::get_latest_array_schema_uri(
   return Status::Ok();
 }
 
-Status StorageManager::load_array_schema_uri(
+Status StorageManager::load_array_schema_from_uri(
     const URI& schema_uri,
     const EncryptionKey& encryption_key,
     ArraySchema** array_schema) {
-  auto timer_se = stats_->start_timer("read_load_array_schema_uri");
+  auto timer_se = stats_->start_timer("read_load_array_schema_from_uri");
 
   GenericTileIO tile_io(this, schema_uri);
   Tile* tile = nullptr;
@@ -1839,7 +1839,7 @@ Status StorageManager::load_array_schema(
   RETURN_NOT_OK(get_latest_array_schema_uri(array_uri, &schema_uri));
 
   RETURN_NOT_OK(
-      load_array_schema_uri(schema_uri, encryption_key, array_schema));
+      load_array_schema_from_uri(schema_uri, encryption_key, array_schema));
   (*array_schema)->set_array_uri(array_uri);
   return Status::Ok();
 }
@@ -1870,8 +1870,8 @@ Status StorageManager::load_all_array_schemas(
       parallel_for(compute_tp_, 0, schema_num, [&](size_t schema_ith) {
         auto& schema_uri = schema_uris[schema_ith];
         auto array_schema = (ArraySchema*)nullptr;
-        RETURN_NOT_OK(
-            load_array_schema_uri(schema_uri, encryption_key, &array_schema));
+        RETURN_NOT_OK(load_array_schema_from_uri(
+            schema_uri, encryption_key, &array_schema));
         schema_vector[schema_ith] = array_schema;
         return Status::Ok();
       });
@@ -2568,7 +2568,9 @@ Status StorageManager::load_fragment_metadata(
       open_array->insert_fragment_metadata(metadata);
     }
     auto array_schema_name = metadata->array_schema_name();
-    auto frag_array_schema = open_array->get_array_schema(array_schema_name);
+    tdb_shared_ptr<ArraySchema> frag_array_schema(nullptr);
+    RETURN_NOT_OK(
+        open_array->get_array_schema(array_schema_name, &frag_array_schema));
     if (!frag_array_schema) {
       return LOG_STATUS(Status::StorageManagerError(
           "Cannot load fragment metadata; Null fragment array schema"));

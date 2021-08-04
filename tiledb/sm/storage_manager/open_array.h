@@ -91,8 +91,10 @@ class OpenArray {
   /** Returns array schemas map. */
   std::unordered_map<std::string, tdb_shared_ptr<ArraySchema>>& array_schemas();
 
-  /** Returns the array schema given a array schema name. */
-  tdb_shared_ptr<ArraySchema> get_array_schema(const std::string& schema_name);
+  /** Gets the array schema given a array schema name. */
+  Status get_array_schema(
+      const std::string& schema_name,
+      tdb_shared_ptr<ArraySchema>* array_schema);
 
   /** Returns the array URI. */
   const URI& array_uri() const;
