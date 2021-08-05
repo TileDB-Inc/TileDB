@@ -151,7 +151,7 @@ if (NOT AZURESDK_FOUND)
           -DCMAKE_OSX_ARCHITECTURES=${CMAKE_OSX_ARCHITECTURES}
         PATCH_COMMAND
           echo starting patching for azure &&
-          ${PATCH} < ${TILEDB_CMAKE_INPUTS_DIR}/patches/ep_azuresdk/remove-uuid-dep.patch &&
+          ${PATCH} < ${TILEDB_CMAKE_INPUTS_DIR}/patches/ep_azuresdk/v0.3.0-patchset.patch &&
           echo done patches for azure
         LOG_DOWNLOAD TRUE
         LOG_CONFIGURE TRUE
