@@ -45,6 +45,7 @@
 #include <unordered_map>
 
 #include "tiledb/common/heap_memory.h"
+#include "tiledb/common/logger.h"
 #include "tiledb/common/status.h"
 #include "tiledb/common/thread_pool.h"
 #include "tiledb/sm/config/config.h"
@@ -1085,8 +1086,8 @@ class StorageManager {
   /** The rest client (may be null if none was configured). */
   tdb_unique_ptr<RestClient> rest_client_;
 
-  /** Logger for use on context; */
-  Logger logger_;
+  /** Logger */
+  tdb_shared_ptr<Logger> logger_;
 
   /* ********************************* */
   /*         PRIVATE METHODS           */

@@ -49,6 +49,7 @@ namespace sm {
 /* ****************************** */
 
 ReaderBase::ReaderBase(
+    const tiledb_shared_ptr<Logger>& logger,
     stats::Stats* stats,
     StorageManager* storage_manager,
     Array* array,
@@ -68,6 +69,9 @@ ReaderBase::ReaderBase(
 
   auto uint64_t_max = std::numeric_limits<uint64_t>::max();
   copy_end_ = std::pair<uint64_t, uint64_t>(uint64_t_max, uint64_t_max);
+
+  //  logger_ = tdb_make_shared(Logger, logger);
+  logger_ = logger;
 }
 
 /* ****************************** */

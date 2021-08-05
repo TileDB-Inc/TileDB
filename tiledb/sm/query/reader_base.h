@@ -35,6 +35,7 @@
 
 #include <queue>
 #include "strategy_base.h"
+#include "tiledb/common/logger.h"
 #include "tiledb/common/status.h"
 #include "tiledb/sm/array_schema/dimension.h"
 #include "tiledb/sm/misc/types.h"
@@ -58,6 +59,7 @@ class ReaderBase : public StrategyBase {
 
   /** Constructor. */
   ReaderBase(
+      const tiledb_shared_ptr<Logger>& logger,
       stats::Stats* stats,
       StorageManager* storage_manager,
       Array* array,
@@ -113,6 +115,9 @@ class ReaderBase : public StrategyBase {
    * the length of the last result cell slab.
    */
   std::pair<uint64_t, uint64_t> copy_end_;
+
+  /** Logger */
+  tdb_shared_ptr<Logger> logger_;
 
   /* ********************************* */
   /*         PROTECTED METHODS         */

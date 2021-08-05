@@ -38,6 +38,8 @@
 #include <spdlog/sinks/stdout_sinks.h>
 #ifndef _WIN32
 #include <spdlog/sinks/stdout_color_sinks.h>
+
+#include <utility>
 #endif
 
 namespace tiledb::common {
@@ -65,6 +67,10 @@ Logger::Logger() {
   logger_->set_pattern(
       "[%Y-%m-%d %H:%M:%S.%e] [%n] [Process: %P] [Thread: %t] [%l] %v");
   logger_->set_level(spdlog::level::critical);
+}
+
+Logger::Logger(std::shared_ptr<spdlog::logger> logger) {
+  logger_ = std::move(logger);
 }
 
 Logger::~Logger() {
@@ -167,7 +173,7 @@ void Logger::set_level(Logger::Level lvl) {
 }
 
 Logger::Level Logger::level() {
-  switch(logger_->level()) {
+  switch (logger_->level()) {
     case spdlog::level::critical:
       return Logger::Level::FATAL;
     case spdlog::level::err:
@@ -187,8 +193,12 @@ Logger::Level Logger::level() {
   }
 }
 
-Logger Logger::clone(const std::string& name) {
-  logger_->clone(name);
+// Logger Logger::clone(const std::string& name) {
+//  return Logger(logger_->clone(name));
+//}
+
+tdb_shared_ptr<Logger> Logger::clone(const std::string& name) {
+  return tdb_make_shared(Logger, Logger(logger_->clone(name)));
 }
 
 /* ********************************* */

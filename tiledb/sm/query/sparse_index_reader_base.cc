@@ -50,6 +50,7 @@ namespace sm {
 /* ****************************** */
 
 SparseIndexReaderBase::SparseIndexReaderBase(
+    const tiledb_shared_ptr<Logger>& logger,
     stats::Stats* stats,
     StorageManager* storage_manager,
     Array* array,
@@ -59,6 +60,7 @@ SparseIndexReaderBase::SparseIndexReaderBase(
     Layout layout,
     QueryCondition& condition)
     : ReaderBase(
+          logger,
           stats,
           storage_manager,
           array,

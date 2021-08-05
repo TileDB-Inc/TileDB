@@ -1628,7 +1628,7 @@ Status StorageManager::init(const Config* config) {
   }
 
   global_logger().set_level(static_cast<Logger::Level>(level));
-  logger_.set_level(static_cast<Logger::Level>(level));
+  logger_->set_level(static_cast<Logger::Level>(level));
 
   // Get config params
   uint64_t tile_cache_size = 0;

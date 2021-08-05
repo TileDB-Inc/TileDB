@@ -1021,6 +1021,7 @@ Status Query::create_strategy() {
         use_default = false;
         strategy_ = tdb_unique_ptr<IQueryStrategy>(tdb_new(
             SparseGlobalOrderReader,
+            logger_->clone("Reader"),
             stats_->create_child("Reader"),
             storage_manager_,
             array_,
@@ -1035,6 +1036,7 @@ Status Query::create_strategy() {
         use_default = false;
         strategy_ = tdb_unique_ptr<IQueryStrategy>(tdb_new(
             SparseUnorderedWithDupsReader,
+            logger_->clone("Reader"),
             stats_->create_child("Reader"),
             storage_manager_,
             array_,
@@ -1049,6 +1051,7 @@ Status Query::create_strategy() {
     if (use_default) {
       strategy_ = tdb_unique_ptr<IQueryStrategy>(tdb_new(
           Reader,
+          logger_->clone("Reader"),
           stats_->create_child("Reader"),
           storage_manager_,
           array_,

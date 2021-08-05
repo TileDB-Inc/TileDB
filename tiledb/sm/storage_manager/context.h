@@ -37,6 +37,7 @@
 #include "tiledb/sm/stats/global_stats.h"
 #include "tiledb/sm/storage_manager/storage_manager.h"
 
+#include <tiledb/common/logger.h>
 #include <mutex>
 
 using namespace tiledb::common;
@@ -107,6 +108,9 @@ class Context {
 
   /** The class stats. */
   tdb_shared_ptr<stats::Stats> stats_;
+
+  /** Logger. */
+  tdb_shared_ptr<Logger> logger_;
 
   /* ********************************* */
   /*         PRIVATE METHODS           */

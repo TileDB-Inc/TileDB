@@ -31,6 +31,8 @@
  */
 
 #include "tiledb/sm/query/reader.h"
+
+#include <utility>
 #include "tiledb/common/logger.h"
 #include "tiledb/sm/array/array.h"
 #include "tiledb/sm/array_schema/array_schema.h"
@@ -93,6 +95,7 @@ inline IterT skip_invalid_elements(IterT it, const IterT& end) {
 /* ****************************** */
 
 Reader::Reader(
+    const tiledb_shared_ptr<Logger>& logger,
     stats::Stats* stats,
     StorageManager* storage_manager,
     Array* array,
@@ -103,6 +106,7 @@ Reader::Reader(
     QueryCondition& condition,
     bool sparse_mode)
     : ReaderBase(
+          logger,
           stats,
           storage_manager,
           array,
@@ -196,13 +200,14 @@ Status Reader::dowork() {
   do {
     ++loop_num;
     stats_->add_counter("loop_num", 1);
-    global_logger().debug("loop_num {}", loop_num);
+    logger_->debug("loop_num {}", loop_num);
     std::cout << "loop_num " << loop_num << std::endl;
     bool found;
     uint32_t level = static_cast<unsigned int>(Logger::Level::ERR);
-    RETURN_NOT_OK(config_.get<uint32_t>("config.logging_level", &level, &found));
+    RETURN_NOT_OK(
+        config_.get<uint32_t>("config.logging_level", &level, &found));
     std::cout << "runtime2 level: " << level << std::endl;
-    std::cout << static_cast<int>(global_logger().level()) << std::endl;
+    std::cout << static_cast<int>(logger_->level()) << std::endl;
 
     read_state_.overflowed_ = false;
     copy_overflowed_ = false;
@@ -218,12 +223,12 @@ Status Reader::dowork() {
     // In the case of overflow, we need to split the current partition
     // without advancing to the next partition
     if (read_state_.overflowed_) {
-      global_logger().debug("read overflowed");
+      logger_->debug("read overflowed");
       zero_out_buffer_sizes();
       RETURN_NOT_OK(read_state_.split_current());
 
       if (read_state_.unsplittable_) {
-        global_logger().debug("read unsplittable");
+        logger_->debug("read unsplittable");
         return complete_read_loop();
       }
     } else {

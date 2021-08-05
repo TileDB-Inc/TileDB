@@ -70,6 +70,8 @@ class Logger {
   /** Constructor. */
   Logger();
 
+  Logger(std::shared_ptr<spdlog::logger> logger);
+
   /** Destructor. */
   ~Logger();
 
@@ -304,7 +306,9 @@ class Logger {
    */
   Logger::Level level();
 
-  Logger clone(const std::string& name);
+  //  Logger clone(const std::string& name);
+
+  tdb_shared_ptr<Logger> clone(const std::string& name);
 
  private:
   /* ********************************* */

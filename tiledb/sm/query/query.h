@@ -38,6 +38,7 @@
 #include <utility>
 #include <vector>
 
+#include "tiledb/common/logger.h"
 #include "tiledb/common/status.h"
 #include "tiledb/sm/array_schema/array_schema.h"
 #include "tiledb/sm/array_schema/dimension.h"
@@ -961,6 +962,9 @@ class Query {
 
   /** The name of the new fragment to be created for writes. */
   URI fragment_uri_;
+
+  /** Logger for use on context; */
+  tdb_shared_ptr<Logger> logger_;
 
   /* ********************************* */
   /*           PRIVATE METHODS         */

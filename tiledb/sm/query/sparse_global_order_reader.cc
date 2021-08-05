@@ -31,6 +31,8 @@
  */
 
 #include "tiledb/sm/query/sparse_global_order_reader.h"
+
+#include <utility>
 #include "tiledb/sm/array/array.h"
 #include "tiledb/sm/array_schema/array_schema.h"
 #include "tiledb/sm/array_schema/dimension.h"
@@ -58,6 +60,7 @@ namespace sm {
 /* ****************************** */
 
 SparseGlobalOrderReader::SparseGlobalOrderReader(
+    const tiledb_shared_ptr<Logger>& logger,
     stats::Stats* stats,
     StorageManager* storage_manager,
     Array* array,
@@ -67,6 +70,7 @@ SparseGlobalOrderReader::SparseGlobalOrderReader(
     Layout layout,
     QueryCondition& condition)
     : SparseIndexReaderBase(
+          logger,
           stats,
           storage_manager,
           array,

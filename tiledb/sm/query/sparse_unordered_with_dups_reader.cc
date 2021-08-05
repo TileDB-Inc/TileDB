@@ -58,6 +58,7 @@ namespace sm {
 /* ****************************** */
 
 SparseUnorderedWithDupsReader::SparseUnorderedWithDupsReader(
+    const tiledb_shared_ptr<Logger>& logger,
     stats::Stats* stats,
     StorageManager* storage_manager,
     Array* array,
@@ -67,6 +68,7 @@ SparseUnorderedWithDupsReader::SparseUnorderedWithDupsReader(
     Layout layout,
     QueryCondition& condition)
     : SparseIndexReaderBase(
+          logger,
           stats,
           storage_manager,
           array,

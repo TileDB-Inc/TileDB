@@ -72,6 +72,7 @@ class SparseIndexReaderBase : public ReaderBase {
 
   /** Constructor. */
   SparseIndexReaderBase(
+      const tiledb_shared_ptr<Logger>& logger,
       stats::Stats* stats,
       StorageManager* storage_manager,
       Array* array,
