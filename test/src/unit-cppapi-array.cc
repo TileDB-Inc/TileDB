@@ -578,15 +578,16 @@ TEST_CASE(
 }
 
 TEST_CASE("C++ API: Encrypted array", "[cppapi][encryption]") {
-  Context ctx;
+  const char key[] = "0123456789abcdeF0123456789abcdeF";
+  tiledb::Config cfg;
+  cfg["sm.encryption_type"] = "AES_256_GCM";
+  cfg["sm.encryption_key"] = key;
+  Context ctx(cfg);
   VFS vfs(ctx);
   const std::string array_name = "cpp_unit_array";
 
   if (vfs.is_dir(array_name))
     vfs.remove_dir(array_name);
-
-  const char key[] = "0123456789abcdeF0123456789abcdeF";
-  uint32_t key_len = (uint32_t)strlen(key);
 
   Domain domain(ctx);
   domain.add_dimension(Dimension::create<int>(ctx, "d", {{0, 3}}, 1));
@@ -596,26 +597,16 @@ TEST_CASE("C++ API: Encrypted array", "[cppapi][encryption]") {
 
   REQUIRE_THROWS_AS(
       Array::encryption_type(ctx, array_name), tiledb::TileDBError);
-  Array::create(array_name, schema, TILEDB_AES_256_GCM, key, key_len);
+  Array::create(array_name, schema);
   REQUIRE(Array::encryption_type(ctx, array_name) == TILEDB_AES_256_GCM);
 
-  REQUIRE_THROWS_AS(
-      [&]() { ArraySchema schema_read(ctx, array_name); }(),
-      tiledb::TileDBError);
-  REQUIRE_NOTHROW([&]() {
-    ArraySchema schema_read(ctx, array_name, TILEDB_AES_256_GCM, key, key_len);
-  }());
+  ArraySchema schema_read(ctx, array_name);
 
-  REQUIRE_THROWS_AS(
-      [&]() { Array array(ctx, array_name, TILEDB_WRITE); }(),
-      tiledb::TileDBError);
-
-  Array array(ctx, array_name, TILEDB_WRITE, TILEDB_AES_256_GCM, key, key_len);
+  Array array(ctx, array_name, TILEDB_WRITE);
   REQUIRE(Array::encryption_type(ctx, array_name) == TILEDB_AES_256_GCM);
   array.close();
 
-  REQUIRE_THROWS_AS(array.open(TILEDB_WRITE), tiledb::TileDBError);
-  array.open(TILEDB_WRITE, TILEDB_AES_256_GCM, key, key_len);
+  array.open(TILEDB_WRITE);
   REQUIRE(Array::encryption_type(ctx, array_name) == TILEDB_AES_256_GCM);
 
   Query query(ctx, array);
@@ -628,19 +619,16 @@ TEST_CASE("C++ API: Encrypted array", "[cppapi][encryption]") {
   // Write a second time, as consolidation needs at least two fragments
   // to trigger an error with encryption (consolidation is a noop for
   // single-fragment arrays and, thus, always succeeds)
-  Array array_2(
-      ctx, array_name, TILEDB_WRITE, TILEDB_AES_256_GCM, key, key_len);
+  Array array_2(ctx, array_name, TILEDB_WRITE);
   Query query_2(ctx, array_2);
   query_2.set_layout(TILEDB_ROW_MAJOR);
   query_2.set_data_buffer("a", a_values);
   query_2.submit();
   array_2.close();
 
-  REQUIRE_THROWS_AS(Array::consolidate(ctx, array_name), tiledb::TileDBError);
-  REQUIRE_NOTHROW(
-      Array::consolidate(ctx, array_name, TILEDB_AES_256_GCM, key, key_len));
+  Array::consolidate(ctx, array_name);
 
-  array.open(TILEDB_READ, TILEDB_AES_256_GCM, key, key_len);
+  array.open(TILEDB_READ);
   array.reopen();
 
   std::vector<int> subarray = {0, 3};
@@ -655,9 +643,7 @@ TEST_CASE("C++ API: Encrypted array", "[cppapi][encryption]") {
   for (unsigned i = 0; i < 4; i++)
     REQUIRE(a_values[i] == a_read[i]);
 
-  // Open with equivalent string key
-  const std::string str_key = "0123456789abcdeF0123456789abcdeF";
-  Array array_3(ctx, array_name, TILEDB_READ, TILEDB_AES_256_GCM, str_key);
+  Array array_3(ctx, array_name, TILEDB_READ);
   a_read = std::vector<int>(4, 0);
   Query query_r2(ctx, array_3);
   query_r2.set_subarray(subarray)
@@ -674,14 +660,16 @@ TEST_CASE("C++ API: Encrypted array", "[cppapi][encryption]") {
 }
 
 TEST_CASE("C++ API: Encrypted array, std::string key", "[cppapi][encryption]") {
-  Context ctx;
+  const std::string key = "0123456789abcdeF0123456789abcdeF";
+  tiledb::Config cfg;
+  cfg["sm.encryption_type"] = "AES_256_GCM";
+  cfg["sm.encryption_key"] = key.c_str();
+  Context ctx(cfg);
   VFS vfs(ctx);
   const std::string array_name = "cpp_unit_array";
 
   if (vfs.is_dir(array_name))
     vfs.remove_dir(array_name);
-
-  const std::string key = "0123456789abcdeF0123456789abcdeF";
 
   Domain domain(ctx);
   domain.add_dimension(Dimension::create<int>(ctx, "d", {{0, 3}}, 1));
@@ -691,30 +679,18 @@ TEST_CASE("C++ API: Encrypted array, std::string key", "[cppapi][encryption]") {
 
   REQUIRE_THROWS_AS(
       Array::encryption_type(ctx, array_name), tiledb::TileDBError);
-  Array::create(array_name, schema, TILEDB_AES_256_GCM, key);
+  Array::create(array_name, schema);
   REQUIRE(Array::encryption_type(ctx, array_name) == TILEDB_AES_256_GCM);
 
-  REQUIRE_THROWS_AS(
-      [&]() { ArraySchema schema_read(ctx, array_name); }(),
-      tiledb::TileDBError);
-  REQUIRE_NOTHROW([&]() {
-    ArraySchema schema_read(ctx, array_name, TILEDB_AES_256_GCM, key);
-  }());
+  ArraySchema schema_read(ctx, array_name);
 
-  REQUIRE_THROWS_AS(
-      [&]() { Array array(ctx, array_name, TILEDB_WRITE); }(),
-      tiledb::TileDBError);
-
-  Array array(ctx, array_name, TILEDB_WRITE, TILEDB_AES_256_GCM, key);
+  Array array(ctx, array_name, TILEDB_WRITE);
   REQUIRE(Array::encryption_type(ctx, array_name) == TILEDB_AES_256_GCM);
   array.close();
-  REQUIRE_THROWS_AS(array.open(TILEDB_WRITE), tiledb::TileDBError);
-  array.open(TILEDB_WRITE, TILEDB_AES_256_GCM, key);
+  array.open(TILEDB_WRITE);
   REQUIRE(Array::encryption_type(ctx, array_name) == TILEDB_AES_256_GCM);
 
-  REQUIRE_THROWS_AS(
-      [&]() { Array array2(ctx, array_name, TILEDB_WRITE); }(),
-      tiledb::TileDBError);
+  Array array2(ctx, array_name, TILEDB_WRITE);
 
   Query query(ctx, array);
   query.set_layout(TILEDB_ROW_MAJOR);
@@ -726,17 +702,16 @@ TEST_CASE("C++ API: Encrypted array, std::string key", "[cppapi][encryption]") {
   // Write a second time, as consolidation needs at least two fragments
   // to trigger an error with encryption (consolidation is a noop for
   // single-fragment arrays and, thus, always succeeds)
-  Array array_2(ctx, array_name, TILEDB_WRITE, TILEDB_AES_256_GCM, key);
+  Array array_2(ctx, array_name, TILEDB_WRITE);
   Query query_2(ctx, array_2);
   query_2.set_layout(TILEDB_ROW_MAJOR);
   query_2.set_data_buffer("a", a_values);
   query_2.submit();
   array_2.close();
 
-  REQUIRE_THROWS_AS(Array::consolidate(ctx, array_name), tiledb::TileDBError);
-  REQUIRE_NOTHROW(Array::consolidate(ctx, array_name, TILEDB_AES_256_GCM, key));
+  Array::consolidate(ctx, array_name);
 
-  array.open(TILEDB_READ, TILEDB_AES_256_GCM, key);
+  array.open(TILEDB_READ);
   array.reopen();
 
   std::vector<int> subarray = {0, 3};
@@ -822,8 +797,11 @@ TEST_CASE("C++ API: Open array at", "[cppapi][open-array-at]") {
   CHECK(std::equal(a_r.begin(), a_r.end(), a_w.begin()));
 
   // Read from 0 timestamp
-  Array array_r_at_0(ctx, array_name, TILEDB_READ, 0);
-  CHECK(array_r_at_0.timestamp() == 0);
+  Array array_r_at_0(ctx, array_name, TILEDB_READ);
+  array_r_at_0.close();
+  array_r_at_0.set_open_timestamp_end(0);
+  array_r_at_0.open(TILEDB_READ);
+  CHECK(array_r_at_0.open_timestamp_end() == 0);
 
   SECTION("Testing Array::Array") {
     // Nothing to do - just for clarity
@@ -831,7 +809,7 @@ TEST_CASE("C++ API: Open array at", "[cppapi][open-array-at]") {
 
   SECTION("Testing Array::open") {
     array_r_at_0.close();
-    array_r_at_0.open(TILEDB_READ, 0);
+    array_r_at_0.open(TILEDB_READ);
   }
 
   std::vector<int> a_r_at_0(4);
@@ -847,7 +825,11 @@ TEST_CASE("C++ API: Open array at", "[cppapi][open-array-at]") {
 
   // Read from later timestamp
   auto timestamp = TILEDB_TIMESTAMP_NOW_MS;
-  Array array_r_at(ctx, array_name, TILEDB_READ, timestamp);
+  Array array_r_at(ctx, array_name, TILEDB_READ);
+  array_r_at.close();
+  array_r_at.set_open_timestamp_end(timestamp);
+  array_r_at.open(TILEDB_READ);
+  CHECK(array_r_at.open_timestamp_end() == timestamp);
 
   SECTION("Testing Array::Array") {
     // Nothing to do - just for clarity
@@ -855,7 +837,7 @@ TEST_CASE("C++ API: Open array at", "[cppapi][open-array-at]") {
 
   SECTION("Testing Array::open") {
     array_r_at.close();
-    array_r_at.open(TILEDB_READ, timestamp);
+    array_r_at.open(TILEDB_READ);
   }
 
   std::vector<int> a_r_at(4);
@@ -865,18 +847,21 @@ TEST_CASE("C++ API: Open array at", "[cppapi][open-array-at]") {
       .set_data_buffer("a", a_r_at_0);
   query_r_at.submit();
   CHECK(!std::equal(a_r_at.begin(), a_r_at.end(), a_w.begin()));
+  array_r_at.close();
 
   // Reopen at first timestamp.
-  array_r_at.reopen_at(first_timestamp);
-  CHECK(array_r_at.timestamp() == first_timestamp);
+  Array array_reopen_at(ctx, array_name, TILEDB_READ);
+  array_reopen_at.set_open_timestamp_end(first_timestamp);
+  array_reopen_at.reopen();
+  CHECK(array_reopen_at.open_timestamp_end() == first_timestamp);
   std::vector<int> a_r_reopen_at(4);
-  Query query_r_reopen_at(ctx, array_r_at);
+  Query query_r_reopen_at(ctx, array_reopen_at);
   query_r_reopen_at.set_subarray(subarray)
       .set_layout(TILEDB_ROW_MAJOR)
       .set_data_buffer("a", a_r_reopen_at);
   query_r_reopen_at.submit();
   CHECK(std::equal(a_r_reopen_at.begin(), a_r_reopen_at.end(), a_w.begin()));
-  array_r_at.close();
+  array_reopen_at.close();
 
   if (vfs.is_dir(array_name))
     vfs.remove_dir(array_name);
@@ -885,9 +870,10 @@ TEST_CASE("C++ API: Open array at", "[cppapi][open-array-at]") {
 TEST_CASE(
     "C++ API: Open encrypted array at", "[cppapi][open-encrypted-array-at]") {
   const char key[] = "0123456789abcdeF0123456789abcdeF";
-  uint32_t key_len = (uint32_t)strlen(key);
-
-  Context ctx;
+  tiledb::Config cfg;
+  cfg["sm.encryption_type"] = "AES_256_GCM";
+  cfg["sm.encryption_key"] = key;
+  Context ctx(cfg);
   VFS vfs(ctx);
   const std::string array_name = "cppapi_open_encrypted_array_at";
   if (vfs.is_dir(array_name))
@@ -899,11 +885,10 @@ TEST_CASE(
   ArraySchema schema(ctx, TILEDB_DENSE);
   schema.set_domain(domain);
   schema.add_attribute(Attribute::create<int>(ctx, "a"));
-  Array::create(array_name, schema, TILEDB_AES_256_GCM, key, key_len);
+  Array::create(array_name, schema);
 
   // Write array
-  Array array_w(
-      ctx, array_name, TILEDB_WRITE, TILEDB_AES_256_GCM, key, key_len);
+  Array array_w(ctx, array_name, TILEDB_WRITE);
   Query query_w(ctx, array_w);
   query_w.set_layout(TILEDB_ROW_MAJOR);
   std::vector<int> a_w = {1, 2, 3, 4};
@@ -912,7 +897,7 @@ TEST_CASE(
   array_w.close();
 
   // Normal read
-  Array array_r(ctx, array_name, TILEDB_READ, TILEDB_AES_256_GCM, key, key_len);
+  Array array_r(ctx, array_name, TILEDB_READ);
   std::vector<int> subarray = {1, 4};
   std::vector<int> a_r(4);
   Query query_r(ctx, array_r);
@@ -924,8 +909,10 @@ TEST_CASE(
   CHECK(std::equal(a_r.begin(), a_r.end(), a_w.begin()));
 
   // Read from 0 timestamp
-  Array array_r_at_0(
-      ctx, array_name, TILEDB_READ, TILEDB_AES_256_GCM, key, key_len, 0);
+  Array array_r_at_0(ctx, array_name, TILEDB_READ);
+  array_r_at_0.close();
+  array_r_at_0.set_open_timestamp_end(0);
+  array_r_at_0.open(TILEDB_READ);
 
   SECTION("Testing Array::Array") {
     // Nothing to do - just for clarity
@@ -933,7 +920,7 @@ TEST_CASE(
 
   SECTION("Testing Array::open") {
     array_r_at_0.close();
-    array_r_at_0.open(TILEDB_READ, TILEDB_AES_256_GCM, key, key_len, 0);
+    array_r_at_0.open(TILEDB_READ);
   }
 
   std::vector<int> a_r_at_0(4);
@@ -949,14 +936,10 @@ TEST_CASE(
 
   // Read from later timestamp
   auto timestamp = TILEDB_TIMESTAMP_NOW_MS;
-  Array array_r_at(
-      ctx,
-      array_name,
-      TILEDB_READ,
-      TILEDB_AES_256_GCM,
-      key,
-      key_len,
-      timestamp);
+  Array array_r_at(ctx, array_name, TILEDB_READ);
+  array_r_at.close();
+  array_r_at.set_open_timestamp_end(timestamp);
+  array_r_at.open(TILEDB_READ);
 
   SECTION("Testing Array::Array") {
     // Nothing to do - just for clarity
@@ -964,7 +947,7 @@ TEST_CASE(
 
   SECTION("Testing Array::open") {
     array_r_at.close();
-    array_r_at.open(TILEDB_READ, TILEDB_AES_256_GCM, key, key_len, timestamp);
+    array_r_at.open(TILEDB_READ);
   }
 
   std::vector<int> a_r_at(4);

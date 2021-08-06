@@ -1226,7 +1226,7 @@ class Query {
     else if (name == "__coords")
       impl::type_check<T>(schema_.domain().type());
 
-    return set_buffer(name, buff, nelements, sizeof(T));
+    return set_data_buffer(name, buff, nelements, sizeof(T));
   }
 
   /**
@@ -1248,7 +1248,7 @@ class Query {
   template <typename T>
   TILEDB_DEPRECATED Query& set_buffer(
       const std::string& name, std::vector<T>& buf) {
-    return set_buffer(name, buf.data(), buf.size(), sizeof(T));
+    return set_data_buffer(name, buf.data(), buf.size(), sizeof(T));
   }
 
   /**
@@ -1282,7 +1282,7 @@ class Query {
       element_size =
           tiledb_datatype_size(schema_.domain().dimension(name).type());
 
-    return set_buffer(name, buff, nelements, element_size);
+    return set_data_buffer(name, buff, nelements, element_size);
   }
 
   /**
@@ -1330,8 +1330,9 @@ class Query {
     else if (is_dim)
       impl::type_check<T>(schema_.domain().dimension(name).type());
 
-    return set_buffer(
-        name, offsets, offset_nelements, data, data_nelements, sizeof(T));
+    set_data_buffer(name, data, data_nelements, sizeof(T));
+    set_offsets_buffer(name, offsets, offset_nelements);
+    return *this;
   }
 
   /**
@@ -1367,8 +1368,9 @@ class Query {
                           schema_.domain().dimension(name).type();
     size_t element_size = tiledb_datatype_size(type);
 
-    return set_buffer(
-        name, offsets, offset_nelements, data, data_nelements, element_size);
+    set_data_buffer(name, data, data_nelements, element_size);
+    set_offsets_buffer(name, offsets, offset_nelements);
+    return *this;
   }
 
   /**
@@ -1409,13 +1411,9 @@ class Query {
     else if (is_dim)
       impl::type_check<T>(schema_.domain().dimension(name).type());
 
-    return set_buffer(
-        name,
-        offsets.data(),
-        offsets.size(),
-        data.data(),
-        data.size(),
-        sizeof(T));
+    set_data_buffer(name, data.data(), data.size(), sizeof(T));
+    set_offsets_buffer(name, offsets.data(), offsets.size());
+    return *this;
   }
 
   /**
@@ -1441,7 +1439,9 @@ class Query {
     else if (is_dim)
       impl::type_check<T>(schema_.domain().dimension(name).type());
 
-    return set_buffer(name, buf.first, buf.second);
+    set_data_buffer(name, buf.second);
+    set_offsets_buffer(name, buf.first);
+    return *this;
   }
 
   /**
@@ -1467,13 +1467,9 @@ class Query {
     else if (is_dim)
       impl::type_check<char>(schema_.domain().dimension(name).type());
 
-    return set_buffer(
-        name,
-        offsets.data(),
-        offsets.size(),
-        &data[0],
-        data.size(),
-        sizeof(char));
+    set_data_buffer(name, &data[0], data.size(), sizeof(char));
+    set_offsets_buffer(name, offsets.data(), offsets.size());
+    return *this;
   }
 
   /**
@@ -1760,13 +1756,9 @@ class Query {
     else
       impl::type_check<T>(schema_.attribute(name).type());
 
-    return set_buffer_nullable(
-        name,
-        data,
-        data_nelements,
-        sizeof(T),
-        validity_bytemap,
-        validity_bytemap_nelements);
+    set_data_buffer(name, data, data_nelements);
+    set_validity_buffer(name, validity_bytemap, validity_bytemap_nelements);
+    return *this;
   }
 
   /**
@@ -1793,13 +1785,9 @@ class Query {
       const std::string& name,
       std::vector<T>& buf,
       std::vector<uint8_t>& validity_bytemap) {
-    return set_buffer_nullable(
-        name,
-        buf.data(),
-        buf.size(),
-        sizeof(T),
-        validity_bytemap.data(),
-        validity_bytemap.size());
+    set_data_buffer(name, buf.data(), buf.size(), sizeof(T));
+    set_validity_buffer(name, validity_bytemap.data(), validity_bytemap.size());
+    return *this;
   }
 
   /**
@@ -1832,13 +1820,9 @@ class Query {
     // Compute element size (in bytes).
     size_t element_size = tiledb_datatype_size(schema_.attribute(name).type());
 
-    return set_buffer_nullable(
-        name,
-        data,
-        data_nelements,
-        element_size,
-        validity_bytemap,
-        validity_bytemap_nelements);
+    set_data_buffer(name, data, data_nelements, element_size);
+    set_validity_buffer(name, validity_bytemap, validity_bytemap_nelements);
+    return *this;
   }
 
   /**
@@ -1877,15 +1861,10 @@ class Query {
     auto type = schema_.attribute(name).type();
     size_t element_size = tiledb_datatype_size(type);
 
-    return set_buffer_nullable(
-        name,
-        offsets,
-        offset_nelements,
-        data,
-        data_nelements,
-        element_size,
-        validity_bytemap,
-        validity_bytemap_nelements);
+    set_data_buffer(name, data, data_nelements, element_size);
+    set_offsets_buffer(name, offsets, offset_nelements);
+    set_validity_buffer(name, validity_bytemap, validity_bytemap_nelements);
+    return *this;
   }
 
   /**
@@ -1927,15 +1906,10 @@ class Query {
     else
       impl::type_check<T>(schema_.attribute(name).type());
 
-    return set_buffer_nullable(
-        name,
-        offsets.data(),
-        offsets.size(),
-        data.data(),
-        data.size(),
-        sizeof(T),
-        validity_bytemap.data(),
-        validity_bytemap.size());
+    set_data_buffer(name, data.data(), data.size(), sizeof(T));
+    set_offsets_buffer(name, offsets.data(), offsets.size());
+    set_validity_buffer(name, validity_bytemap.data(), validity_bytemap.size());
+    return *this;
   }
 
   /**
@@ -1958,8 +1932,10 @@ class Query {
           "' does not exist");
     impl::type_check<T>(schema_.attribute(name).type());
 
-    return set_buffer_nullable(
-        name, std::get<0>(buf), std::get<1>(buf), std::get<2>(buf));
+    set_data_buffer(name, std::get<1>(buf));
+    set_offsets_buffer(name, std::get<0>(buf));
+    set_validity_buffer(name, std::get<2>(buf));
+    return *this;
   }
 
   /**
@@ -1985,15 +1961,10 @@ class Query {
     else
       impl::type_check<char>(schema_.attribute(name).type());
 
-    return set_buffer_nullable(
-        name,
-        offsets.data(),
-        offsets.size(),
-        &data[0],
-        data.size(),
-        sizeof(char),
-        validity_bytemap.data(),
-        validity_bytemap.size());
+    set_data_buffer(name, &data[0], data.size(), sizeof(char));
+    set_offsets_buffer(name, offsets.data(), offsets.size());
+    set_validity_buffer(name, validity_bytemap.data(), validity_bytemap.size());
+    return *this;
   }
 
   /**
@@ -2018,7 +1989,7 @@ class Query {
           "'!");
     }
 
-    ctx.handle_error(tiledb_query_get_buffer(
+    ctx.handle_error(tiledb_query_get_data_buffer(
         ctx.ptr().get(), query_.get(), name.c_str(), data, &data_nbytes));
 
     assert(*data_nbytes % elem_size_iter->second == 0);
@@ -2056,14 +2027,10 @@ class Query {
           "'!");
     }
 
-    ctx.handle_error(tiledb_query_get_buffer_var(
-        ctx.ptr().get(),
-        query_.get(),
-        name.c_str(),
-        offsets,
-        &offsets_nbytes,
-        data,
-        &data_nbytes));
+    ctx.handle_error(tiledb_query_get_data_buffer(
+        ctx.ptr().get(), query_.get(), name.c_str(), data, &data_nbytes));
+    ctx.handle_error(tiledb_query_get_offsets_buffer(
+        ctx.ptr().get(), query_.get(), name.c_str(), offsets, &offsets_nbytes));
 
     assert(*data_nbytes % elem_size_iter->second == 0);
     assert(*offsets_nbytes % sizeof(uint64_t) == 0);
@@ -2186,12 +2153,12 @@ class Query {
           "'!");
     }
 
-    ctx.handle_error(tiledb_query_get_buffer_nullable(
+    ctx.handle_error(tiledb_query_get_data_buffer(
+        ctx.ptr().get(), query_.get(), name.c_str(), data, &data_nbytes));
+    ctx.handle_error(tiledb_query_get_validity_buffer(
         ctx.ptr().get(),
         query_.get(),
         name.c_str(),
-        data,
-        &data_nbytes,
         validity_bytemap,
         &validity_bytemap_nbytes));
 
@@ -2237,14 +2204,14 @@ class Query {
           "'!");
     }
 
-    ctx.handle_error(tiledb_query_get_buffer_var_nullable(
+    ctx.handle_error(tiledb_query_get_data_buffer(
+        ctx.ptr().get(), query_.get(), name.c_str(), data, &data_nbytes));
+    ctx.handle_error(tiledb_query_get_offsets_buffer(
+        ctx.ptr().get(), query_.get(), name.c_str(), offsets, &offsets_nbytes));
+    ctx.handle_error(tiledb_query_get_validity_buffer(
         ctx.ptr().get(),
         query_.get(),
         name.c_str(),
-        offsets,
-        &offsets_nbytes,
-        data,
-        &data_nbytes,
         validity_bytemap,
         &validity_bytemap_nbytes));
 
@@ -2368,7 +2335,7 @@ class Query {
     size_t size = nelements * element_size;
     buff_sizes_[attr] = std::tuple<uint64_t, uint64_t, uint64_t>(0, size, 0);
     element_sizes_[attr] = element_size;
-    ctx.handle_error(tiledb_query_set_buffer(
+    ctx.handle_error(tiledb_query_set_data_buffer(
         ctx.ptr().get(),
         query_.get(),
         attr.c_str(),
@@ -2403,14 +2370,18 @@ class Query {
     element_sizes_[attr] = data_element_size;
     buff_sizes_[attr] =
         std::tuple<uint64_t, uint64_t, uint64_t>(offset_size, data_size, 0);
-    ctx.handle_error(tiledb_query_set_buffer_var(
+    ctx.handle_error(tiledb_query_set_data_buffer(
+        ctx.ptr().get(),
+        query_.get(),
+        attr.c_str(),
+        data,
+        &std::get<1>(buff_sizes_[attr])));
+    ctx.handle_error(tiledb_query_set_offsets_buffer(
         ctx.ptr().get(),
         query_.get(),
         attr.c_str(),
         offsets,
-        &std::get<0>(buff_sizes_[attr]),
-        data,
-        &std::get<1>(buff_sizes_[attr])));
+        &std::get<0>(buff_sizes_[attr])));
     return *this;
   }
 
@@ -2472,12 +2443,16 @@ class Query {
     buff_sizes_[attr] =
         std::tuple<uint64_t, uint64_t, uint64_t>(0, data_size, validity_size);
     element_sizes_[attr] = data_element_size;
-    ctx.handle_error(tiledb_query_set_buffer_nullable(
+    ctx.handle_error(tiledb_query_set_data_buffer(
         ctx.ptr().get(),
         query_.get(),
         attr.c_str(),
         data,
-        &std::get<1>(buff_sizes_[attr]),
+        &std::get<1>(buff_sizes_[attr])));
+    ctx.handle_error(tiledb_query_set_validity_buffer(
+        ctx.ptr().get(),
+        query_.get(),
+        attr.c_str(),
         validity_bytemap,
         &std::get<2>(buff_sizes_[attr])));
     return *this;
@@ -2514,14 +2489,22 @@ class Query {
     element_sizes_[attr] = data_element_size;
     buff_sizes_[attr] = std::tuple<uint64_t, uint64_t, uint64_t>(
         offset_size, data_size, validity_size);
-    ctx.handle_error(tiledb_query_set_buffer_var_nullable(
+    ctx.handle_error(tiledb_query_set_data_buffer(
+        ctx.ptr().get(),
+        query_.get(),
+        attr.c_str(),
+        data,
+        &std::get<1>(buff_sizes_[attr])));
+    ctx.handle_error(tiledb_query_set_offsets_buffer(
         ctx.ptr().get(),
         query_.get(),
         attr.c_str(),
         offsets,
-        &std::get<0>(buff_sizes_[attr]),
-        data,
-        &std::get<1>(buff_sizes_[attr]),
+        &std::get<0>(buff_sizes_[attr])));
+    ctx.handle_error(tiledb_query_set_validity_buffer(
+        ctx.ptr().get(),
+        query_.get(),
+        attr.c_str(),
         validity_bytemap,
         &std::get<2>(buff_sizes_[attr])));
     return *this;

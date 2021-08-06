@@ -36,6 +36,7 @@
 #include "tiledb/sm/c_api/tiledb_struct_def.h"
 #include "tiledb/sm/config/config.h"
 #include "tiledb/sm/cpp_api/tiledb"
+#include "tiledb/sm/enums/encryption_type.h"
 
 #ifdef _WIN32
 #include "tiledb/sm/filesystem/win.h"
@@ -179,9 +180,6 @@ TEST_CASE_METHOD(
 
   // Close array
   array.close();
-
-  // Open with key
-  CHECK_THROWS(array.open(TILEDB_READ, enc_type_, key_, key_len_));
 }
 
 TEST_CASE_METHOD(
@@ -509,7 +507,8 @@ TEST_CASE_METHOD(
   array.close();
 
   // Open the array in read mode at a timestamp
-  array.open(TILEDB_READ, timestamp);
+  array.set_open_timestamp_end(timestamp);
+  array.open(TILEDB_READ);
 
   // Read
   const void* v_r;
@@ -555,7 +554,8 @@ TEST_CASE_METHOD(
   array.close();
 
   // Open the array in read mode at a timestamp
-  array.open(TILEDB_READ, timestamp);
+  array.set_open_timestamp_end(timestamp);
+  array.open(TILEDB_READ);
 
   // Read
   const void* v_r;
@@ -591,8 +591,13 @@ TEST_CASE_METHOD(
   create_default_array_1d_with_key();
 
   // Create and open array in write mode
-  Context ctx;
-  Array array(ctx, array_name_, TILEDB_WRITE, enc_type_, key_, key_len_);
+  tiledb::Config cfg;
+  std::string enc_type_str =
+      encryption_type_str((tiledb::sm::EncryptionType)enc_type_);
+  cfg["sm.encryption_type"] = enc_type_str.c_str();
+  cfg["sm.encryption_key"] = key_;
+  Context ctx(cfg);
+  Array array(ctx, array_name_, TILEDB_WRITE);
 
   // Write items
   int32_t v = 5;
@@ -607,14 +612,14 @@ TEST_CASE_METHOD(
   std::this_thread::sleep_for(std::chrono::milliseconds(1));
 
   // Update
-  array.open(TILEDB_WRITE, enc_type_, key_, key_len_);
+  array.open(TILEDB_WRITE);
   array.delete_metadata("aaa");
   v = 10;
   array.put_metadata("cccc", TILEDB_INT32, 1, &v);
   array.close();
 
   // Open the array in read mode
-  array.open(TILEDB_READ, enc_type_, key_, key_len_);
+  array.open(TILEDB_READ);
 
   // Read
   const void* v_r;
@@ -650,16 +655,18 @@ TEST_CASE_METHOD(
   array.close();
 
   // Consolidate without key - error
-  Config consolidation_cfg;
-  consolidation_cfg["sm.consolidation.mode"] = "array_meta";
-  CHECK_THROWS(Array::consolidate(ctx, array_name_, &consolidation_cfg));
+  Config consolidate_without_key;
+  Context ctx_without_key(consolidate_without_key);
+  CHECK_THROWS(Array::consolidate(
+      ctx_without_key, array_name_, &consolidate_without_key));
 
   // Consolidate with key - ok
-  Array::consolidate(
-      ctx, array_name_, enc_type_, key_, key_len_, &consolidation_cfg);
+  Config consolidation_cfg;
+  consolidation_cfg["sm.consolidation.mode"] = "array_meta";
+  Array::consolidate(ctx, array_name_, &consolidation_cfg);
 
   // Open the array in read mode
-  array.open(TILEDB_READ, enc_type_, key_, key_len_);
+  array.open(TILEDB_READ);
 
   num = array.metadata_num();
   CHECK(num == 2);
@@ -668,7 +675,7 @@ TEST_CASE_METHOD(
   array.close();
 
   // Write once more
-  array.open(TILEDB_WRITE, enc_type_, key_, key_len_);
+  array.open(TILEDB_WRITE);
 
   // Write items
   v = 50;
@@ -678,11 +685,10 @@ TEST_CASE_METHOD(
   array.close();
 
   // Consolidate again
-  Array::consolidate_metadata(
-      ctx, array_name_, enc_type_, key_, key_len_, &consolidation_cfg);
+  Array::consolidate_metadata(ctx, array_name_, &consolidation_cfg);
 
   // Open the array in read mode
-  array.open(TILEDB_READ, enc_type_, key_, key_len_);
+  array.open(TILEDB_READ);
 
   num = array.metadata_num();
   CHECK(num == 3);
