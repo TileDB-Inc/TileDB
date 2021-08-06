@@ -45,3 +45,9 @@ target_sources(unit_interval PUBLIC
         test/unit_interval_predicates.cc
         test/unit_interval_types.cc
 )
+
+add_test(
+        NAME "unit_interval"
+        COMMAND $<TARGET_FILE:unit_interval>
+        WORKING_DIRECTORY ${CMAKE_CURRENT_SOURCE_DIR}
+)
