@@ -69,6 +69,19 @@ ArraySchema* OpenArray::array_schema() const {
   return array_schema_;
 }
 
+std::unordered_map<std::string, tdb_shared_ptr<ArraySchema>>&
+OpenArray::array_schemas() {
+  return array_schemas_;
+}
+
+Status OpenArray::get_array_schema(
+    const std::string& schema_name, tdb_shared_ptr<ArraySchema>* array_schema) {
+  (*array_schema) = (array_schemas_.find(schema_name) == array_schemas_.end()) ?
+                        tdb_shared_ptr<ArraySchema>(nullptr) :
+                        array_schemas_[schema_name];
+  return Status::Ok();
+}
+
 const URI& OpenArray::array_uri() const {
   return array_uri_;
 }

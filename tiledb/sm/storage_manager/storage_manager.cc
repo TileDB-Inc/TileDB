@@ -352,7 +352,7 @@ Status StorageManager::array_open_for_writes(
 
   // No shared filelock needed to be acquired
 
-  // Load array schema if not fetched already
+  // Load latest array schema if not fetched already
   if (open_array->array_schema() == nullptr) {
     auto st = load_array_schema(array_uri, open_array, encryption_key);
     if (!st.ok()) {
@@ -1796,18 +1796,11 @@ Status StorageManager::get_latest_array_schema_uri(
   return Status::Ok();
 }
 
-Status StorageManager::load_array_schema(
-    const URI& array_uri,
+Status StorageManager::load_array_schema_from_uri(
+    const URI& schema_uri,
     const EncryptionKey& encryption_key,
     ArraySchema** array_schema) {
-  auto timer_se = stats_->start_timer("read_load_array_schema");
-
-  if (array_uri.is_invalid())
-    return LOG_STATUS(Status::StorageManagerError(
-        "Cannot load array schema; Invalid array URI"));
-
-  URI schema_uri;
-  RETURN_NOT_OK(get_latest_array_schema_uri(array_uri, &schema_uri));
+  auto timer_se = stats_->start_timer("read_load_array_schema_from_uri");
 
   GenericTileIO tile_io(this, schema_uri);
   Tile* tile = nullptr;
@@ -1864,14 +1857,76 @@ Status StorageManager::load_array_schema(
   // Deserialize
   ConstBuffer cbuff(&buff);
   *array_schema = tdb_new(ArraySchema);
-  (*array_schema)->set_array_uri(array_uri);
   Status st = (*array_schema)->deserialize(&cbuff);
   if (!st.ok()) {
     tdb_delete(*array_schema);
     *array_schema = nullptr;
+    return st;
   }
   (*array_schema)->set_uri(schema_uri);
   return st;
+}
+
+Status StorageManager::load_array_schema(
+    const URI& array_uri,
+    const EncryptionKey& encryption_key,
+    ArraySchema** array_schema) {
+  auto timer_se = stats_->start_timer("read_load_array_schema");
+
+  if (array_uri.is_invalid())
+    return LOG_STATUS(Status::StorageManagerError(
+        "Cannot load array schema; Invalid array URI"));
+
+  URI schema_uri;
+  RETURN_NOT_OK(get_latest_array_schema_uri(array_uri, &schema_uri));
+
+  RETURN_NOT_OK(
+      load_array_schema_from_uri(schema_uri, encryption_key, array_schema));
+  (*array_schema)->set_array_uri(array_uri);
+  return Status::Ok();
+}
+
+Status StorageManager::load_all_array_schemas(
+    const URI& array_uri,
+    const EncryptionKey& encryption_key,
+    std::unordered_map<std::string, tdb_shared_ptr<ArraySchema>>&
+        array_schemas) {
+  auto timer_se = stats_->start_timer("read_load_all_array_schemas");
+
+  if (array_uri.is_invalid())
+    return LOG_STATUS(Status::StorageManagerError(
+        "Cannot load all array schemas; Invalid array URI"));
+
+  std::vector<URI> schema_uris;
+  RETURN_NOT_OK(get_array_schema_uris(array_uri, &schema_uris));
+  if (schema_uris.size() == 0) {
+    return LOG_STATUS(Status::StorageManagerError(
+        "Can not get the array schema vector; No array schemas found."));
+  }
+
+  std::vector<ArraySchema*> schema_vector;
+  auto schema_num = schema_uris.size();
+  schema_vector.resize(schema_num);
+
+  auto status =
+      parallel_for(compute_tp_, 0, schema_num, [&](size_t schema_ith) {
+        auto& schema_uri = schema_uris[schema_ith];
+        auto array_schema = (ArraySchema*)nullptr;
+        RETURN_NOT_OK(load_array_schema_from_uri(
+            schema_uri, encryption_key, &array_schema));
+        schema_vector[schema_ith] = array_schema;
+        return Status::Ok();
+      });
+  RETURN_NOT_OK(status);
+
+  array_schemas.clear();
+  for (size_t i = 0; i < schema_vector.size(); ++i) {
+    auto array_schema = schema_vector[i];
+    array_schemas[array_schema->name()] =
+        tdb_shared_ptr<ArraySchema>(array_schema);
+  }
+
+  return Status::Ok();
 }
 
 Status StorageManager::load_array_metadata(
@@ -2427,6 +2482,9 @@ Status StorageManager::load_array_schema(
   RETURN_NOT_OK(load_array_schema(array_uri, encryption_key, &array_schema));
   open_array->set_array_schema(array_schema);
 
+  RETURN_NOT_OK(load_all_array_schemas(
+      array_uri, encryption_key, open_array->array_schemas()));
+
   return Status::Ok();
 }
 
@@ -2551,6 +2609,15 @@ Status StorageManager::load_fragment_metadata(
           metadata->load(encryption_key, f_buff, offset), tdb_delete(metadata));
       open_array->insert_fragment_metadata(metadata);
     }
+    auto array_schema_name = metadata->array_schema_name();
+    tdb_shared_ptr<ArraySchema> frag_array_schema(nullptr);
+    RETURN_NOT_OK(
+        open_array->get_array_schema(array_schema_name, &frag_array_schema));
+    if (!frag_array_schema) {
+      return LOG_STATUS(Status::StorageManagerError(
+          "Cannot load fragment metadata; Null fragment array schema"));
+    }
+    metadata->set_array_schema(frag_array_schema.get());
     (*fragment_metadata)[f] = metadata;
     return Status::Ok();
   });

@@ -160,6 +160,10 @@ void FragmentMetadata::set_tile_validity_offset(
   file_validity_sizes_[idx] += step;
 }
 
+void FragmentMetadata::set_array_schema(ArraySchema* array_schema) {
+  array_schema_ = array_schema;
+}
+
 uint64_t FragmentMetadata::cell_num() const {
   auto tile_num = this->tile_num();
   assert(tile_num != 0);
@@ -682,6 +686,10 @@ URI FragmentMetadata::var_uri(const std::string& name) const {
 URI FragmentMetadata::validity_uri(const std::string& name) const {
   return fragment_uri_.join_path(
       encode_name(name) + "_validity" + constants::file_suffix);
+}
+
+const std::string& FragmentMetadata::array_schema_name() {
+  return array_schema_name_;
 }
 
 Status FragmentMetadata::load_tile_offsets(
