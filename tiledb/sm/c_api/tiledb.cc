@@ -2756,6 +2756,15 @@ int32_t tiledb_array_schema_evolution_alloc(
   return TILEDB_OK;
 }
 
+void tiledb_array_schema_evolution_free(
+    tiledb_array_schema_evolution_t** array_schema_evolution) {
+  if (array_schema_evolution != nullptr && *array_schema_evolution != nullptr) {
+    delete (*array_schema_evolution)->array_schema_evolution_;
+    delete *array_schema_evolution;
+    *array_schema_evolution = nullptr;
+  }
+}
+
 int32_t tiledb_array_schema_evolution_add_attribute(
     tiledb_ctx_t* ctx,
     tiledb_array_schema_evolution_t* array_schema_evolution,

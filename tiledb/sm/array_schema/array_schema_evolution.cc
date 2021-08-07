@@ -92,8 +92,7 @@ Status ArraySchemaEvolution::evolve_schema(
     bool has_attr = false;
     RETURN_NOT_OK(schema->has_attribute(attr_name, &has_attr));
     if (has_attr) {
-      // TODO in another branch
-      // RETURN_NOT_OK(schema->drop_attribute(attr_name));
+      RETURN_NOT_OK(schema->drop_attribute(attr_name));
     }
   }
 

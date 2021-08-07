@@ -3435,6 +3435,20 @@ TILEDB_EXPORT int32_t tiledb_array_schema_evolution_alloc(
     tiledb_array_schema_evolution_t** array_schema_evolution);
 
 /**
+ * Destroys an array schema evolution, freeing associated memory.
+ *
+ * **Example:**
+ *
+ * @code{.c}
+ * tiledb_array_schema_evolution_free(&array_schema_evolution);
+ * @endcode
+ *
+ * @param array_schema_evolution The array schema evolution to be destroyed.
+ */
+TILEDB_EXPORT void tiledb_array_schema_evolution_free(
+    tiledb_array_schema_evolution_t** array_schema_evolution);
+
+/**
  * Adds an attribute to an array schema evolution.
  *
  * **Example:**
