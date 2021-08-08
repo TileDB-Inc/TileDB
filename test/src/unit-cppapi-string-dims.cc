@@ -37,7 +37,6 @@ using namespace tiledb;
 
 static bool active_diags = false;
 
-#pragma optimize("", off)
 std::vector<std::string> dataAndOffsetToStrings(
     Query query,
     std::string col,
@@ -51,13 +50,11 @@ std::vector<std::string> dataAndOffsetToStrings(
     for (size_t i = 0; i < result_el_off - 1; ++i) {
       if (active_diags && i >= offsets.size()) {
         std::cout << "i " << i << ", offsets.size() " << offsets.size();
-        __debugbreak();
       }
       str_sizes.push_back(offsets[i + 1] - offsets[i]);
       if (active_diags && str_sizes.size() > data.size()) {
         std::cout << "str_sizes.size() " << str_sizes.size() << ", data.size() "
                   << data.size();
-        __debugbreak();
       }
     }
   }
@@ -224,15 +221,12 @@ TEST_CASE(
     auto dim2_non_empty_domain = array_read.non_empty_domain<int32_t>(1);
     auto dim3_non_empty_domain = array_read.non_empty_domain_var(2);
 
-    int expected_result_num = -1;
-
     // Each case section has the same .add_range possibilities,
     // some active some inactive, to make visual comparison of what's
     // different between them a bit easier, at least with some colorizing
     // editors.
     switch (option) {
       case 1:  // ch7065 reported to have failed
-        expected_result_num = 4;
         // query_read.add_range(
         //     0, dim1_non_empty_domain.first, dim1_non_empty_domain.second);
         // query_read.add_range(0,
@@ -249,7 +243,6 @@ TEST_CASE(
         expected_a1_data = {2, 3, 4};
         break;
       case 2:  // ch7065 reported to have succeeded
-        expected_result_num = 2;
         // query_read.add_range(0, dim1_non_empty_domain.first,
         //   dim1_non_empty_domain.second);
         // query_read.add_range(0, std::string("c"),
@@ -266,7 +259,6 @@ TEST_CASE(
         expected_a1_data = {3, 4};
         break;
       case 3:  // ch7065 reported to have succeeded
-        expected_result_num = 6;
         query_read.add_range(
             0, dim1_non_empty_domain.first, dim1_non_empty_domain.second);
         // query_read.add_range(0, std::string("c"),
@@ -283,7 +275,6 @@ TEST_CASE(
         expected_a1_data = {1, 2, 3, 4, 5, 6};
         break;
       case 4:
-        expected_result_num = 2;
         // reported to have failed - 'cept seems to be same as case 3 that
         // succeeded
         // query_read.add_range(
@@ -301,7 +292,6 @@ TEST_CASE(
         expected_a1_data = {3, 4};
         break;
       case 5:  // ch7065 reported to have failed
-        expected_result_num = 2;
         // query_read.add_range(
         //     0, dim1_non_empty_domain.first, dim1_non_empty_domain.second);
         query_read.add_range(0, std::string("c"), std::string("d"));
@@ -317,7 +307,6 @@ TEST_CASE(
         expected_a1_data = {3, 4};
         break;
       case 6:
-        expected_result_num = 4;
         // query_read.add_range(
         //    0, dim1_non_empty_domain.first, dim1_non_empty_domain.second);
         // query_read.add_range(0, std::string("c"),
@@ -334,7 +323,6 @@ TEST_CASE(
         expected_a1_data = {2, 3, 4};
         break;
       case 7:
-        expected_result_num = 2;
         // query_read.add_range(
         //    0, dim1_non_empty_domain.first, dim1_non_empty_domain.second);
         // query_read.add_range(0, std::string("c"), std::string("d"));
@@ -350,7 +338,6 @@ TEST_CASE(
         expected_a1_data = {3, 4};
         break;
       case 8:
-        expected_result_num = 1;
         // query_read.add_range(
         //    0, dim1_non_empty_domain.first,
         //    dim1_non_empty_domain.second);
@@ -367,7 +354,6 @@ TEST_CASE(
         expected_a1_data = {3, 4};
         break;
       case 9:
-        expected_result_num = 3;
         query_read.add_range(
             0, dim1_non_empty_domain.first, dim1_non_empty_domain.second);
         // query_read.add_range(0, std::string("c"), std::string("d"));
@@ -383,7 +369,6 @@ TEST_CASE(
         expected_a1_data = {3, 4, 5};
         break;
       case 10:  // maybe intended... reported to have failed
-        expected_result_num = 3;
         // query_read.add_range(
         //     0, dim1_non_empty_domain.first, dim1_non_empty_domain.second);
         // query_read.add_range(0, std::string("c"), std::string("d"));
@@ -437,7 +422,7 @@ TEST_CASE(
           dataAndOffsetToStrings(query_read, "dim1", dim1_offsets, dim1s);
       std::vector<std::string> d3 =
           dataAndOffsetToStrings(query_read, "dim3", dim3_offsets, dim3s);
-      for (auto i = 0; i < result_num; i++) {
+      for (auto i = 0u; i < result_num; i++) {
         if (active_diags) {
           std::cout << d1[i] << "\t" << dim2[i] << "\t" << d3[i] << "\t"
                     << a1_data[i] << std::endl;
@@ -495,8 +480,8 @@ TEST_CASE(
 
     decltype(query_read.query_status()) initial_expected_read_status =
         tiledb::Query::Status::UNINITIALIZED;
-    int expected_result_num = -1;
-    int initial_result_num = 2;
+    unsigned expected_result_num = std::numeric_limits<unsigned>::max();
+    unsigned initial_result_num = 2;
 
     // Each case section has the same .add_range possibilities,
     // some active some inactive, to make visual comparison of what's
@@ -677,7 +662,7 @@ TEST_CASE(
 
     // try for bufcnt expected to force split.
     // initial_result_num is initial expected number of results to be returned
-    int bufcnt = 3;
+    unsigned bufcnt = 3;
     a1_data = std::vector<int32_t>(bufcnt);
     dim1 = std::vector<char>(10);
     dim1_offsets = std::vector<uint64_t>(10);
@@ -716,7 +701,7 @@ TEST_CASE(
           dataAndOffsetToStrings(query_read, "dim1", dim1_offsets, dim1s);
       std::vector<std::string> d3 =
           dataAndOffsetToStrings(query_read, "dim3", dim3_offsets, dim3s);
-      for (auto i = 0; i < result_num; i++) {
+      for (auto i = 0u; i < result_num; i++) {
         if (active_diags) {
           std::cout << d1[i] << "\t" << dim2[i] << "\t" << d3[i] << "\t"
                     << a1_data[i] << std::endl;
@@ -731,7 +716,7 @@ TEST_CASE(
 
     REQUIRE(result_num == initial_result_num);
 
-    int tot_result_num = 0;
+    unsigned tot_result_num = 0;
     while (query_read.query_status() == Query::Status::INCOMPLETE) {
       tot_result_num += result_num;
       query_read.submit();
@@ -785,7 +770,7 @@ TEST_CASE(
     auto dim1_non_empty_domain = array_read.non_empty_domain_var(0);
     auto dim2_non_empty_domain = array_read.non_empty_domain<int32_t>(1);
 
-    int expected_result_num = -1;
+    unsigned expected_result_num = std::numeric_limits<unsigned>::max();
 
     // Each case section has the same .add_range possibilities,
     // some active some inactive, to make visual comparison of what's
@@ -1008,7 +993,7 @@ TEST_CASE(
           dataAndOffsetToStrings(query_read, "dim1", dim1_offsets, dim1s);
       std::vector<std::string> d3 =
           dataAndOffsetToStrings(query_read, "dim3", dim3_offsets, dim3s);
-      for (auto i = 0; i < result_num; i++) {
+      for (auto i = 0u; i < result_num; i++) {
         if (active_diags) {
           std::cout << d1[i] << "\t" << dim2[i] << "\t" << d3[i] << "\t"
                     << a1_data[i] << std::endl;
@@ -1029,7 +1014,7 @@ TEST_CASE(
     // here.)
     //    REQUIRE(result_num == expect_what);
 
-    int tot_result_num = 0;
+    unsigned tot_result_num = 0;
     while (query_read.query_status() == Query::Status::INCOMPLETE) {
       tot_result_num += result_num;
       query_read.submit();
