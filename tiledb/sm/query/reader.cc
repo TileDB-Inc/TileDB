@@ -836,7 +836,8 @@ Status Reader::compute_result_coords(
   // Preload zipped coordinate tile offsets. Note that this will
   // ignore fragments with a version >= 5.
   auto& subarray = read_state_.partitioner_.current();
-  RETURN_CANCEL_OR_ERROR(load_tile_offsets(subarray, {constants::coords}));
+  std::vector<std::string> zipped_coords_names = {constants::coords};
+  RETURN_CANCEL_OR_ERROR(load_tile_offsets(&subarray, &zipped_coords_names));
 
   // Preload unzipped coordinate tile offsets. Note that this will
   // ignore fragments with a version < 5.
@@ -845,158 +846,35 @@ Status Reader::compute_result_coords(
   dim_names.reserve(dim_num);
   for (unsigned d = 0; d < dim_num; ++d)
     dim_names.emplace_back(array_schema_->dimension(d)->name());
-  RETURN_CANCEL_OR_ERROR(load_tile_offsets(subarray, dim_names));
+  RETURN_CANCEL_OR_ERROR(load_tile_offsets(&subarray, &dim_names));
 
   // Read and unfilter zipped coordinate tiles. Note that
-  // this will ignore fragments with a version >= 5. Unfilter
-  // with a nullptr `rcs_index` argument to bypass selective
-  // unfiltering.
+  // this will ignore fragments with a version >= 5.
   RETURN_CANCEL_OR_ERROR(
-      read_coordinate_tiles({constants::coords}, tmp_result_tiles));
-  RETURN_CANCEL_OR_ERROR(
-      unfilter_tiles(constants::coords, tmp_result_tiles, nullptr));
+      read_coordinate_tiles(&zipped_coords_names, &tmp_result_tiles));
+  RETURN_CANCEL_OR_ERROR(unfilter_tiles(constants::coords, &tmp_result_tiles));
 
   // Read and unfilter unzipped coordinate tiles. Note that
-  // this will ignore fragments with a version < 5. Unfilter
-  // with a nullptr `rcs_index` argument to bypass selective
-  // unfiltering.
-  RETURN_CANCEL_OR_ERROR(read_coordinate_tiles(dim_names, tmp_result_tiles));
+  // this will ignore fragments with a version < 5.
+  RETURN_CANCEL_OR_ERROR(read_coordinate_tiles(&dim_names, &tmp_result_tiles));
   for (const auto& dim_name : dim_names) {
-    RETURN_CANCEL_OR_ERROR(unfilter_tiles(dim_name, tmp_result_tiles, nullptr));
+    RETURN_CANCEL_OR_ERROR(unfilter_tiles(dim_name, &tmp_result_tiles));
   }
 
-  // Fetch the sub partitioner's memory budget.
-  bool found = false;
-  uint64_t cfg_sub_memory_budget = 0;
-  RETURN_NOT_OK(config_.get<uint64_t>(
-      "sm.sub_partitioner_memory_budget", &cfg_sub_memory_budget, &found));
-  assert(found);
+  // Compute the read coordinates for all fragments for each subarray range.
+  std::vector<std::vector<ResultCoords>> range_result_coords;
+  RETURN_CANCEL_OR_ERROR(compute_range_result_coords(
+      &subarray,
+      single_fragment,
+      result_tile_map,
+      result_tiles,
+      &range_result_coords));
+  result_tile_map.clear();
 
-  // The a 0-value memory budget is used to bypass the sub-partitioner. The
-  // sub-partitioner is only useful for scenarios where the sorting time is much
-  // larger than the partitioning time.
-  if (cfg_sub_memory_budget == 0) {
-    // Compute the read coordinates for all fragments for each subarray range.
-    std::vector<std::vector<ResultCoords>> range_result_coords;
-    RETURN_CANCEL_OR_ERROR(compute_range_result_coords(
-        &subarray,
-        single_fragment,
-        result_tile_map,
-        result_tiles,
-        &range_result_coords));
-    result_tile_map.clear();
-
-    // Compute final coords (sorted in the result layout) of the whole subarray.
-    RETURN_CANCEL_OR_ERROR(
-        compute_subarray_coords(&range_result_coords, result_coords));
-    range_result_coords.clear();
-  } else {
-    // If the configured memory budget is too low (e.g. unsplittable), it
-    // will be corrected in a retry.
-    uint64_t sub_partitioner_memory_budget = cfg_sub_memory_budget;
-    uint64_t sub_partitioner_memory_budget_var = cfg_sub_memory_budget;
-    uint64_t sub_partitioner_memory_budget_validity = cfg_sub_memory_budget;
-
-    // Create a sub-partitioner to partition the current subarray in
-    // `read_state_.partitioner_`. This allows us to compute the range
-    // result coords and subarray coords on a smaller set of elements.
-    // The motiviation for this is primarily to avoid sorting a large
-    // number of elements within a `parallel_sort` because it has a
-    // time complexity of O(N*log(N)).
-    SubarrayPartitioner* const partitioner = &read_state_.partitioner_;
-    SubarrayPartitioner sub_partitioner(
-        &config_,
-        subarray,
-        sub_partitioner_memory_budget,
-        sub_partitioner_memory_budget_var,
-        sub_partitioner_memory_budget_validity,
-        storage_manager_->compute_tp(),
-        stats_);
-
-    // Set the individual attribute budgets in the sub-partitioner
-    // to the same values as in the parent partitioner.
-    for (const auto& kv : *partitioner->get_result_budgets()) {
-      const std::string& attr_name = kv.first;
-      const SubarrayPartitioner::ResultBudget& result_budget = kv.second;
-      if (!array_schema_->var_size(attr_name)) {
-        if (!array_schema_->is_nullable(attr_name)) {
-          RETURN_NOT_OK(sub_partitioner.set_result_budget(
-              attr_name.c_str(), result_budget.size_fixed_));
-        } else {
-          RETURN_NOT_OK(sub_partitioner.set_result_budget_nullable(
-              attr_name.c_str(),
-              result_budget.size_fixed_,
-              result_budget.size_validity_));
-        }
-      } else {
-        if (!array_schema_->is_nullable(attr_name)) {
-          RETURN_NOT_OK(sub_partitioner.set_result_budget(
-              attr_name.c_str(),
-              result_budget.size_fixed_,
-              result_budget.size_var_));
-        } else {
-          RETURN_NOT_OK(sub_partitioner.set_result_budget_nullable(
-              attr_name.c_str(),
-              result_budget.size_fixed_,
-              result_budget.size_var_,
-              result_budget.size_validity_));
-        }
-      }
-    }
-
-    // Move to the first partition.
-    RETURN_NOT_OK(sub_partitioner.next(&read_state_.unsplittable_));
-
-    while (true) {
-      // If the sub-partitioners memory budget was too low, we may
-      // have been unable to split. In this scenario, double the
-      // budget and retry. In the worst-case scenario, the budget
-      // will equal the parent partitioner's budget.
-      while (read_state_.unsplittable_) {
-        uint64_t partitioner_memory_budget;
-        uint64_t partitioner_memory_budget_var;
-        uint64_t partitioner_memory_budget_validity;
-        RETURN_NOT_OK(partitioner->get_memory_budget(
-            &partitioner_memory_budget,
-            &partitioner_memory_budget_var,
-            &partitioner_memory_budget_validity));
-
-        sub_partitioner_memory_budget = std::min(
-            partitioner_memory_budget, sub_partitioner_memory_budget * 2);
-        sub_partitioner_memory_budget_var = std::min(
-            partitioner_memory_budget_var,
-            sub_partitioner_memory_budget_var * 2);
-        sub_partitioner_memory_budget_validity = std::min(
-            partitioner_memory_budget_validity,
-            sub_partitioner_memory_budget_validity * 2);
-
-        RETURN_NOT_OK(sub_partitioner.set_memory_budget(
-            sub_partitioner_memory_budget,
-            sub_partitioner_memory_budget_var,
-            sub_partitioner_memory_budget_validity));
-
-        RETURN_NOT_OK(sub_partitioner.next(&read_state_.unsplittable_));
-      }
-
-      std::vector<std::vector<ResultCoords>> range_result_coords;
-      RETURN_CANCEL_OR_ERROR(compute_range_result_coords(
-          &sub_partitioner.current(),
-          single_fragment,
-          result_tile_map,
-          result_tiles,
-          &range_result_coords));
-
-      RETURN_CANCEL_OR_ERROR(
-          compute_subarray_coords(&range_result_coords, result_coords));
-      range_result_coords.clear();
-
-      // We're done when we have processed all sub-partitions.
-      if (sub_partitioner.done())
-        break;
-
-      RETURN_NOT_OK(sub_partitioner.next(&read_state_.unsplittable_));
-    }
-  }
+  // Compute final coords (sorted in the result layout) of the whole subarray.
+  RETURN_CANCEL_OR_ERROR(
+      compute_subarray_coords(&range_result_coords, result_coords));
+  range_result_coords.clear();
 
   return Status::Ok();
 }
@@ -1101,7 +979,7 @@ Status Reader::dense_read() {
       &result_cell_slabs));
 
   auto stride = array_schema_->domain()->stride<T>(subarray.layout());
-  apply_query_condition(&result_cell_slabs, result_tiles, subarray, stride);
+  apply_query_condition(&result_cell_slabs, &result_tiles, &subarray, stride);
 
   get_result_tile_stats(result_tiles);
   get_result_cell_stats(result_cell_slabs);
@@ -1110,8 +988,8 @@ Status Reader::dense_read() {
   erase_coord_tiles(&sparse_result_tiles);
 
   // Needed when copying the cells
-  RETURN_NOT_OK(
-      copy_attribute_values(stride, result_tiles, result_cell_slabs, subarray));
+  RETURN_NOT_OK(copy_attribute_values(
+      stride, &result_tiles, &result_cell_slabs, subarray));
   read_state_.overflowed_ = copy_overflowed_;
 
   // Fill coordinates if the user requested them
@@ -1510,13 +1388,13 @@ Status Reader::sparse_read() {
   result_coords.clear();
 
   auto& subarray = read_state_.partitioner_.current();
-  apply_query_condition(&result_cell_slabs, result_tiles, subarray);
+  apply_query_condition(&result_cell_slabs, &result_tiles, &subarray);
   get_result_tile_stats(result_tiles);
   get_result_cell_stats(result_cell_slabs);
 
-  RETURN_NOT_OK(copy_coordinates(result_tiles, result_cell_slabs));
+  RETURN_NOT_OK(copy_coordinates(&result_tiles, &result_cell_slabs));
   RETURN_NOT_OK(copy_attribute_values(
-      UINT64_MAX, result_tiles, result_cell_slabs, subarray));
+      UINT64_MAX, &result_tiles, &result_cell_slabs, subarray));
   read_state_.overflowed_ = copy_overflowed_;
 
   return Status::Ok();

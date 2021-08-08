@@ -218,17 +218,17 @@ TEST_CASE(
   for (const auto& group_versions : versions_iter) {
     tiledb::ObjectIter obj_iter(ctx, group_versions.uri());
     for (const auto& object : obj_iter) {
+      tiledb::Config cfg;
+      cfg["sm.encryption_type"] = "AES_256_GCM";
+      cfg["sm.encryption_key"] = encryption_key.c_str();
+      Context ctx_cfg(cfg);
+      bool encrypted = false;
       Array* array;
 
       // Check for if array is encrypted based on name for now
       if (object.uri().find("_encryption_AES_256_GCM") != std::string::npos) {
-        array = new Array(
-            ctx,
-            object.uri(),
-            TILEDB_READ,
-            TILEDB_AES_256_GCM,
-            encryption_key.c_str(),
-            static_cast<uint32_t>(encryption_key.size() * sizeof(char)));
+        encrypted = true;
+        array = new Array(ctx_cfg, object.uri(), TILEDB_READ);
       } else {
         array = new Array(ctx, object.uri(), TILEDB_READ);
       }
@@ -253,7 +253,7 @@ TEST_CASE(
         continue;
       }
 
-      Query query(ctx, *array);
+      auto query = new Query(encrypted ? ctx_cfg : ctx, *array);
 
       std::unordered_map<std::string, std::tuple<uint64_t*, void*, uint8_t*>>
           buffers;
@@ -268,7 +268,7 @@ TEST_CASE(
         switch (attr.second.type()) {
           case TILEDB_INT8: {
             set_buffer_wrapper<int8_t>(
-                &query,
+                query,
                 attribute_name,
                 var_sized,
                 nullable,
@@ -280,7 +280,7 @@ TEST_CASE(
           }
           case TILEDB_UINT8: {
             set_buffer_wrapper<uint8_t>(
-                &query,
+                query,
                 attribute_name,
                 var_sized,
                 nullable,
@@ -292,7 +292,7 @@ TEST_CASE(
           }
           case TILEDB_INT16: {
             set_buffer_wrapper<int16_t>(
-                &query,
+                query,
                 attribute_name,
                 var_sized,
                 nullable,
@@ -304,7 +304,7 @@ TEST_CASE(
           }
           case TILEDB_UINT16: {
             set_buffer_wrapper<uint16_t>(
-                &query,
+                query,
                 attribute_name,
                 var_sized,
                 nullable,
@@ -316,7 +316,7 @@ TEST_CASE(
           }
           case TILEDB_INT32: {
             set_buffer_wrapper<int32_t>(
-                &query,
+                query,
                 attribute_name,
                 var_sized,
                 nullable,
@@ -328,7 +328,7 @@ TEST_CASE(
           }
           case TILEDB_UINT32: {
             set_buffer_wrapper<uint32_t>(
-                &query,
+                query,
                 attribute_name,
                 var_sized,
                 nullable,
@@ -340,7 +340,7 @@ TEST_CASE(
           }
           case TILEDB_INT64: {
             set_buffer_wrapper<int64_t>(
-                &query,
+                query,
                 attribute_name,
                 var_sized,
                 nullable,
@@ -352,7 +352,7 @@ TEST_CASE(
           }
           case TILEDB_UINT64: {
             set_buffer_wrapper<uint64_t>(
-                &query,
+                query,
                 attribute_name,
                 var_sized,
                 nullable,
@@ -364,7 +364,7 @@ TEST_CASE(
           }
           case TILEDB_FLOAT32: {
             set_buffer_wrapper<float>(
-                &query,
+                query,
                 attribute_name,
                 var_sized,
                 nullable,
@@ -376,7 +376,7 @@ TEST_CASE(
           }
           case TILEDB_FLOAT64: {
             set_buffer_wrapper<double>(
-                &query,
+                query,
                 attribute_name,
                 var_sized,
                 nullable,
@@ -409,7 +409,7 @@ TEST_CASE(
           case TILEDB_TIME_FS:
           case TILEDB_TIME_AS: {
             set_buffer_wrapper<int64_t>(
-                &query,
+                query,
                 attribute_name,
                 var_sized,
                 nullable,
@@ -424,7 +424,7 @@ TEST_CASE(
           case TILEDB_STRING_UTF8:
           case TILEDB_ANY: {
             set_buffer_wrapper<char>(
-                &query,
+                query,
                 attribute_name,
                 var_sized,
                 nullable,
@@ -437,7 +437,7 @@ TEST_CASE(
           case TILEDB_STRING_UTF16:
           case TILEDB_STRING_UCS2: {
             set_buffer_wrapper<char16_t>(
-                &query,
+                query,
                 attribute_name,
                 var_sized,
                 nullable,
@@ -450,7 +450,7 @@ TEST_CASE(
           case TILEDB_STRING_UTF32:
           case TILEDB_STRING_UCS4: {
             set_buffer_wrapper<char32_t>(
-                &query,
+                query,
                 attribute_name,
                 var_sized,
                 nullable,
@@ -471,43 +471,43 @@ TEST_CASE(
       switch (domain.type()) {
         case TILEDB_INT8:
           set_query_coords<int8_t>(
-              domain, &query, &coordinates, &expected_coordinates);
+              domain, query, &coordinates, &expected_coordinates);
           break;
         case TILEDB_UINT8:
           set_query_coords<uint8_t>(
-              domain, &query, &coordinates, &expected_coordinates);
+              domain, query, &coordinates, &expected_coordinates);
           break;
         case TILEDB_INT16:
           set_query_coords<int16_t>(
-              domain, &query, &coordinates, &expected_coordinates);
+              domain, query, &coordinates, &expected_coordinates);
           break;
         case TILEDB_UINT16:
           set_query_coords<uint16_t>(
-              domain, &query, &coordinates, &expected_coordinates);
+              domain, query, &coordinates, &expected_coordinates);
           break;
         case TILEDB_INT32:
           set_query_coords<int32_t>(
-              domain, &query, &coordinates, &expected_coordinates);
+              domain, query, &coordinates, &expected_coordinates);
           break;
         case TILEDB_UINT32:
           set_query_coords<uint32_t>(
-              domain, &query, &coordinates, &expected_coordinates);
+              domain, query, &coordinates, &expected_coordinates);
           break;
         case TILEDB_INT64:
           set_query_coords<int64_t>(
-              domain, &query, &coordinates, &expected_coordinates);
+              domain, query, &coordinates, &expected_coordinates);
           break;
         case TILEDB_UINT64:
           set_query_coords<uint64_t>(
-              domain, &query, &coordinates, &expected_coordinates);
+              domain, query, &coordinates, &expected_coordinates);
           break;
         case TILEDB_FLOAT32:
           set_query_coords<float>(
-              domain, &query, &coordinates, &expected_coordinates);
+              domain, query, &coordinates, &expected_coordinates);
           break;
         case TILEDB_FLOAT64:
           set_query_coords<double>(
-              domain, &query, &coordinates, &expected_coordinates);
+              domain, query, &coordinates, &expected_coordinates);
           break;
         case TILEDB_DATETIME_YEAR:
         case TILEDB_DATETIME_MONTH:
@@ -532,14 +532,15 @@ TEST_CASE(
         case TILEDB_TIME_FS:
         case TILEDB_TIME_AS:
           set_query_coords<int64_t>(
-              domain, &query, &coordinates, &expected_coordinates);
+              domain, query, &coordinates, &expected_coordinates);
           break;
         default:
           REQUIRE(false);
       }
 
       // Submit query
-      query.submit();
+      query->submit();
+      delete query;
 
       REQUIRE(memcmp(coordinates, expected_coordinates, coords_size) == 0);
       std::free(coordinates);
@@ -713,22 +714,22 @@ TEST_CASE(
   for (const auto& group_versions : versions_iter) {
     tiledb::ObjectIter obj_iter(ctx, group_versions.uri());
     for (const auto& object : obj_iter) {
+      tiledb::Config cfg;
+      cfg["sm.encryption_type"] = "AES_256_GCM";
+      cfg["sm.encryption_key"] = encryption_key.c_str();
+      Context ctx_cfg(cfg);
+      bool encrypted = false;
       Array* array;
 
       // Check for if array is encrypted based on name for now
       if (object.uri().find("_encryption_AES_256_GCM") != std::string::npos) {
-        array = new Array(
-            ctx,
-            object.uri(),
-            TILEDB_READ,
-            TILEDB_AES_256_GCM,
-            encryption_key.c_str(),
-            static_cast<uint32_t>(encryption_key.size() * sizeof(char)));
+        encrypted = true;
+        array = new Array(ctx_cfg, object.uri(), TILEDB_READ);
       } else {
         array = new Array(ctx, object.uri(), TILEDB_READ);
       }
 
-      Query query(ctx, *array);
+      auto query = new Query(encrypted ? ctx_cfg : ctx, *array);
 
       std::unordered_map<std::string, std::tuple<uint64_t*, void*, uint8_t*>>
           buffers;
@@ -741,7 +742,7 @@ TEST_CASE(
         switch (attr.second.type()) {
           case TILEDB_INT8: {
             set_buffer_wrapper<int8_t>(
-                &query,
+                query,
                 attribute_name,
                 attr.second.variable_sized(),
                 attr.second.nullable(),
@@ -753,7 +754,7 @@ TEST_CASE(
           }
           case TILEDB_UINT8: {
             set_buffer_wrapper<uint8_t>(
-                &query,
+                query,
                 attribute_name,
                 attr.second.variable_sized(),
                 attr.second.nullable(),
@@ -765,7 +766,7 @@ TEST_CASE(
           }
           case TILEDB_INT16: {
             set_buffer_wrapper<int16_t>(
-                &query,
+                query,
                 attribute_name,
                 attr.second.variable_sized(),
                 attr.second.nullable(),
@@ -777,7 +778,7 @@ TEST_CASE(
           }
           case TILEDB_UINT16: {
             set_buffer_wrapper<uint16_t>(
-                &query,
+                query,
                 attribute_name,
                 attr.second.variable_sized(),
                 attr.second.nullable(),
@@ -789,7 +790,7 @@ TEST_CASE(
           }
           case TILEDB_INT32: {
             set_buffer_wrapper<int32_t>(
-                &query,
+                query,
                 attribute_name,
                 attr.second.variable_sized(),
                 attr.second.nullable(),
@@ -801,7 +802,7 @@ TEST_CASE(
           }
           case TILEDB_UINT32: {
             set_buffer_wrapper<uint32_t>(
-                &query,
+                query,
                 attribute_name,
                 attr.second.variable_sized(),
                 attr.second.nullable(),
@@ -813,7 +814,7 @@ TEST_CASE(
           }
           case TILEDB_INT64: {
             set_buffer_wrapper<int64_t>(
-                &query,
+                query,
                 attribute_name,
                 attr.second.variable_sized(),
                 attr.second.nullable(),
@@ -825,7 +826,7 @@ TEST_CASE(
           }
           case TILEDB_UINT64: {
             set_buffer_wrapper<uint64_t>(
-                &query,
+                query,
                 attribute_name,
                 attr.second.variable_sized(),
                 attr.second.nullable(),
@@ -837,7 +838,7 @@ TEST_CASE(
           }
           case TILEDB_FLOAT32: {
             set_buffer_wrapper<float>(
-                &query,
+                query,
                 attribute_name,
                 attr.second.variable_sized(),
                 attr.second.nullable(),
@@ -849,7 +850,7 @@ TEST_CASE(
           }
           case TILEDB_FLOAT64: {
             set_buffer_wrapper<double>(
-                &query,
+                query,
                 attribute_name,
                 attr.second.variable_sized(),
                 attr.second.nullable(),
@@ -882,7 +883,7 @@ TEST_CASE(
           case TILEDB_TIME_FS:
           case TILEDB_TIME_AS: {
             set_buffer_wrapper<int64_t>(
-                &query,
+                query,
                 attribute_name,
                 attr.second.variable_sized(),
                 attr.second.nullable(),
@@ -898,7 +899,7 @@ TEST_CASE(
           case TILEDB_STRING_UTF8:
           case TILEDB_ANY: {
             set_buffer_wrapper<char>(
-                &query,
+                query,
                 attribute_name,
                 attr.second.variable_sized(),
                 attr.second.nullable(),
@@ -911,7 +912,7 @@ TEST_CASE(
           case TILEDB_STRING_UTF16:
           case TILEDB_STRING_UCS2: {
             set_buffer_wrapper<char16_t>(
-                &query,
+                query,
                 attribute_name,
                 attr.second.variable_sized(),
                 attr.second.nullable(),
@@ -924,7 +925,7 @@ TEST_CASE(
           case TILEDB_STRING_UTF32:
           case TILEDB_STRING_UCS4: {
             set_buffer_wrapper<char32_t>(
-                &query,
+                query,
                 attribute_name,
                 attr.second.variable_sized(),
                 attr.second.nullable(),
@@ -954,43 +955,43 @@ TEST_CASE(
         switch (dim.type()) {
           case TILEDB_INT8:
             set_query_dimension_buffer<int8_t>(
-                domain, i, &query, &buffer, &expected_results);
+                domain, i, query, &buffer, &expected_results);
             break;
           case TILEDB_UINT8:
             set_query_dimension_buffer<uint8_t>(
-                domain, i, &query, &buffer, &expected_results);
+                domain, i, query, &buffer, &expected_results);
             break;
           case TILEDB_INT16:
             set_query_dimension_buffer<int16_t>(
-                domain, i, &query, &buffer, &expected_results);
+                domain, i, query, &buffer, &expected_results);
             break;
           case TILEDB_UINT16:
             set_query_dimension_buffer<uint16_t>(
-                domain, i, &query, &buffer, &expected_results);
+                domain, i, query, &buffer, &expected_results);
             break;
           case TILEDB_INT32:
             set_query_dimension_buffer<int32_t>(
-                domain, i, &query, &buffer, &expected_results);
+                domain, i, query, &buffer, &expected_results);
             break;
           case TILEDB_UINT32:
             set_query_dimension_buffer<uint32_t>(
-                domain, i, &query, &buffer, &expected_results);
+                domain, i, query, &buffer, &expected_results);
             break;
           case TILEDB_INT64:
             set_query_dimension_buffer<int64_t>(
-                domain, i, &query, &buffer, &expected_results);
+                domain, i, query, &buffer, &expected_results);
             break;
           case TILEDB_UINT64:
             set_query_dimension_buffer<uint64_t>(
-                domain, i, &query, &buffer, &expected_results);
+                domain, i, query, &buffer, &expected_results);
             break;
           case TILEDB_FLOAT32:
             set_query_dimension_buffer<float>(
-                domain, i, &query, &buffer, &expected_results);
+                domain, i, query, &buffer, &expected_results);
             break;
           case TILEDB_FLOAT64:
             set_query_dimension_buffer<double>(
-                domain, i, &query, &buffer, &expected_results);
+                domain, i, query, &buffer, &expected_results);
             break;
           case TILEDB_DATETIME_YEAR:
           case TILEDB_DATETIME_MONTH:
@@ -1015,13 +1016,13 @@ TEST_CASE(
           case TILEDB_TIME_FS:
           case TILEDB_TIME_AS:
             set_query_dimension_buffer<int64_t>(
-                domain, i, &query, &buffer, &expected_results);
+                domain, i, query, &buffer, &expected_results);
             break;
           case TILEDB_STRING_ASCII: {
             set_query_var_dimension_buffer<char>(
                 domain,
                 i,
-                &query,
+                query,
                 &offsets,
                 &buffer,
                 &expected_offsets,
@@ -1038,7 +1039,8 @@ TEST_CASE(
       }
 
       // Submit query
-      query.submit();
+      query->submit();
+      delete query;
 
       for (uint64_t i = 0; i < ndim; ++i) {
         auto& offsets = dim_offsets[i];

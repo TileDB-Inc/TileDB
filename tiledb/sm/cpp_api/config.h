@@ -384,17 +384,28 @@ class Config {
    *    The offsets format (`bytes` or `elements`) to be used for
    *    var-sized attributes.<br>
    *    **Default**: bytes
-   * - `sm.sub_partitioner_memory_budget` <br>
-   *    The memory budget used by the read algorithm to force partition the
-   *    query range in case sorting is much slower than the partitioning
-   *    overhead. <br>
-   *    **Default**: 0
    * - `sm.use_refactored_readers` <br>
    *    Use the refactored readers or not. <br>
    *    **Default**: false
    * - `sm.mem.total_budget` <br>
-   *    Memory budget for the sparse global order reader. <br>
-   *    **Default**: \10GB
+   *    Memory budget for readers and writers. <br>
+   *    **Default**: 10GB
+   * - `sm.mem.reader.sparse_global_order.ratio_coords` <br>
+   *    Ratio of the budget allocated for coordinates in the sparse global
+   *    order reader. <br>
+   *    **Default**: 0.5
+   * - `sm.mem.reader.sparse_global_order.ratio_query_condition` <br>
+   *    Ratio of the budget allocated for the query condition in the sparse
+   *    global order reader. <br>
+   *    **Default**: 0.25
+   * - `sm.mem.reader.sparse_global_order.ratio_tile_ranges` <br>
+   *    Ratio of the budget allocated for tile ranges in the sparse global
+   *    order reader. <br>
+   *    **Default**: 0.1
+   * - `sm.mem.reader.sparse_global_order.ratio_array_data` <br>
+   *    Ratio of the budget allocated for array data in the sparse global
+   *    order reader. <br>
+   *    **Default**: 0.1
    * - `vfs.read_ahead_size` <br>
    *    The maximum byte size to read-ahead from the backend. <br>
    *    **Default**: 102400
@@ -432,6 +443,9 @@ class Config {
    *    **Default**: ""
    * - `vfs.azure.storage_account_key` <br>
    *    Set the Azure Storage Account key. <br>
+   *    **Default**: ""
+   * - `vfs.azure.storage_sas_token` <br>
+   *    Set the Azure Storage SAS (shared access signature) token. <br>
    *    **Default**: ""
    * - `vfs.azure.blob_endpoint` <br>
    *    Overrides the default Azure Storage Blob endpoint. If empty, the

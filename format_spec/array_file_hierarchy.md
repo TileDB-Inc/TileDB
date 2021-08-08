@@ -4,7 +4,7 @@ An array is a folder with the following structure:
 
 ```
 my_array                          # array folder
-    |_ __array_schema.tdb         # array schema file
+    |_ __schema                   # array schema folder
     |_ __lock.tdb                 # empty lock file
     |_ <timestamped_name>         # fragment folder
     |_ <timestamped_name>.ok      # fragment ok file
@@ -24,7 +24,7 @@ A `<timestamped_name>` above has format `__t1_t2_uuid_v`, where
 
 Inside the array folder, you can find the following:
 
-* [Array schema file](./array_schema.md) `__array_schema.tdb`.
+* [Array schema](./array_schema.md) folder `__schema`.
 * Empty file `__lock.tdb`, used for process-safety on filesystems that support file locking.
 * Any number of [fragment folders](./fragment.md) `<timestamped_name>`.
 * An empty file `<timestamped_name>.ok` associated with every fragment folder `<timestamped_name>`, where `<timestamped_name>` is common for the folder and the OK file. This is used to indicate that fragment `<timestamped_name>` has been *committed* (i.e., its write process finished successfully) and it is ready for use by TileDB. If the OK file does not exist, the corresponding fragment folder is ignored by TileDB during the reads.

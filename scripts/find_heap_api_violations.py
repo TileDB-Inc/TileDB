@@ -1,17 +1,21 @@
 import os
 import re
 import sys
+from dataclasses import dataclass, field
+from typing import Collection, Iterable, Mapping, Pattern
 
 # Do not check for violations in these directories.
-ignored_dirs = ["c_api", "cpp_api"]
+ignored_dirs = frozenset(["c_api", "cpp_api"])
 
 # Do not check for violations in these files.
-ignored_files = [
-    "heap_profiler.h",
-    "heap_profiler.cc",
-    "heap_memory.h",
-    "heap_memory.cc",
-]
+ignored_files = frozenset(
+    [
+        "heap_profiler.h",
+        "heap_profiler.cc",
+        "heap_memory.h",
+        "heap_memory.cc",
+    ]
+)
 
 # Match C API malloc:
 regex_malloc = re.compile(r"malloc\(")
@@ -34,7 +38,7 @@ calloc_exceptions = {"*": ["tdb_calloc", "tiledb_calloc"]}
 # .realloc(   # e.g. member access, `foo.realloc(`
 # >realloc(   # e.g. pointer member access, `foo->realloc(`
 # :realloc(   # e.g. member routine defintion, `Class::realloc()`
-regex_realloc = re.compile(r"[^>^\.^:]realloc\(")
+regex_realloc = re.compile(r"[^>.:]realloc\(")
 
 # Contains per-file exceptions to violations of "realloc".
 realloc_exceptions = {
@@ -52,7 +56,7 @@ realloc_exceptions = {
 # .free(   # e.g. member access, `foo.free(`
 # >free(   # e.g. pointer member access, `foo->free(`
 # :free(   # e.g. member routine defintion, `Class::free()`
-regex_free = re.compile(r"[^_^>^\.^:]free\(")
+regex_free = re.compile(r"[^_>.:]free\(")
 
 # Contains per-file exceptions to violations of "free".
 free_exceptions = {
@@ -62,12 +66,12 @@ free_exceptions = {
 
 # Match C++ new operators, examples:
 #  new Foo(
-#  new (std::nothro) Foo(
-#  new (std::nothro) Foo[
+#  new (std::nothrow) Foo(
+#  new (std::nothrow) Foo[
 #  new Foo (
-#  new (std::nothro) Foo (
-#  new (std::nothro) Foo [
-regex_new = re.compile(r"new\s+(\(std::nothrow\)+)?[a-zA-Z_][a-zA-Z0-9_]*\s*(\(|\[)")
+#  new (std::nothrow) Foo (
+#  new (std::nothrow) Foo [
+regex_new = re.compile(r"new\s+(\(std::nothrow\))?\w+\s*[([]")
 
 # Match C++ delete operators, examples:
 #  delete Foo;
@@ -75,7 +79,7 @@ regex_new = re.compile(r"new\s+(\(std::nothrow\)+)?[a-zA-Z_][a-zA-Z0-9_]*\s*(\(|
 #  delete Foo)
 #  delete [] Foo)
 #  delete *Foo;
-regex_delete = re.compile(r"delete\s*(\[\])?\s+(\*)?[a-zA-Z_][a-zA-Z0-9_]*\s*(;|\))")
+regex_delete = re.compile(r"delete\s*(\[\])?\s+\*?\w+\s*[;)]")
 
 # Match C++ shared_ptr objects.
 regex_shared_ptr = re.compile(r"shared_ptr<")
@@ -91,8 +95,9 @@ shared_ptr_exceptions = {
     ],
     "s3.h": ["std::shared_ptr<S3ThreadPoolExecutor>"],
     "azure.cc": [
-        "std::shared_ptr<azure::storage_lite::shared_key_credential>",
+        "std::shared_ptr<azure::storage_lite::storage_credential>",
         "std::shared_ptr<azure::storage_lite::storage_account>",
+        "azure::storage_lite::shared_access_signature_credential>",
     ],
 }
 
@@ -112,6 +117,7 @@ make_shared_exceptions = {
         "std::make_shared<azure::storage_lite::storage_account>",
         "std::make_shared<azure::storage_lite::tinyxml2_parser>",
         "std::make_shared<AzureRetryPolicy>",
+        "std::make_shared<azure::storage_lite::shared_access_signature_credential>",
     ],
 }
 
@@ -128,122 +134,83 @@ unique_ptr_exceptions = {
     "curl.h": ["std::unique_ptr<CURL, decltype(&curl_easy_cleanup)>"],
 }
 
-# Reports a violation to stdout.
-def report_violation(file_path, line, substr):
-    print(
-        "["
-        + os.path.basename(__file__)
-        + "]: "
-        + "Detected '"
-        + substr
-        + "' heap memory API violation:"
-    )
-    print("  " + file_path)
-    print("  " + line)
 
+@dataclass
+class ViolationChecker:
+    substr: str
+    regex: Pattern[str]
+    exceptions: Mapping[str, Collection[str]] = field(default_factory=dict)
 
-# Checks if a given line contains a violation.
-def check_line(file_path, line, substr, compiled_regex, exceptions):
-    if substr not in line:
-        return
+    def __call__(self, file_path: str, line: str) -> bool:
+        if self.substr not in line:
+            return False
 
-    line = line.strip()
-
-    file_name = os.path.basename(file_path)
-
-    if exceptions is not None:
-        if "*" in exceptions:
-            for exception in exceptions["*"]:
+        for key in "*", os.path.basename(file_path):
+            for exception in self.exceptions.get(key, ()):
                 if exception in line:
-                    return
-        if file_name in exceptions:
-            for exception in exceptions[file_name]:
-                if exception in line:
-                    return
+                    return False
 
-    if compiled_regex.search(line) is not None:
-        report_violation(file_path, line, substr)
-        return True
-
-    return False
+        return self.regex.search(line) is not None
 
 
-# Checks if any lines in a file contains a violation.
-def check_file(file_path):
-    found_violation = False
+@dataclass
+class Violation:
+    file_path: str
+    line_num: int
+    line: str
+    checker: ViolationChecker
+
+
+violation_checkers = [
+    ViolationChecker("malloc", regex_malloc, malloc_exceptions),
+    ViolationChecker("calloc", regex_calloc, calloc_exceptions),
+    ViolationChecker("realloc", regex_realloc, realloc_exceptions),
+    ViolationChecker("free", regex_free, free_exceptions),
+    ViolationChecker("new", regex_new),
+    ViolationChecker("delete", regex_delete),
+    ViolationChecker("shared_ptr<", regex_shared_ptr, shared_ptr_exceptions),
+    ViolationChecker("make_shared<", regex_make_shared, make_shared_exceptions),
+    ViolationChecker("unique_ptr<", regex_unique_ptr, unique_ptr_exceptions),
+]
+
+
+def iter_file_violations(file_path: str) -> Iterable[Violation]:
     with open(file_path) as f:
-        for line in f:
-            if check_line(file_path, line, "malloc", regex_malloc, malloc_exceptions):
-                found_violation = True
-            if check_line(file_path, line, "calloc", regex_calloc, calloc_exceptions):
-                found_violation = True
-            if check_line(
-                file_path, line, "realloc", regex_realloc, realloc_exceptions
-            ):
-                found_violation = True
-            if check_line(file_path, line, "free", regex_free, free_exceptions):
-                found_violation = True
-            if check_line(file_path, line, "new", regex_new, None):
-                found_violation = True
-            if check_line(file_path, line, "delete", regex_delete, None):
-                found_violation = True
-            if check_line(
-                file_path,
-                line,
-                "shared_ptr<",
-                regex_shared_ptr,
-                shared_ptr_exceptions,
-            ):
-                found_violation = True
-            if check_line(
-                file_path,
-                line,
-                "make_shared<",
-                regex_make_shared,
-                make_shared_exceptions,
-            ):
-                found_violation = True
-            if check_line(
-                file_path,
-                line,
-                "unique_ptr<",
-                regex_unique_ptr,
-                unique_ptr_exceptions,
-            ):
-                found_violation = True
-    return found_violation
+        for line_num, line in enumerate(f):
+            line = line.strip()
+            for checker in violation_checkers:
+                if checker(file_path, line):
+                    yield Violation(file_path, line_num, line, checker)
 
 
-if len(sys.argv) < 2:
-    print("Usage: <root dir>")
-    sys.exit(1)
-root_dir = os.path.abspath(sys.argv[1])
-found_violation = False
-print("Checking for heap memory API violations in " + root_dir)
-for directory, subdirlist, file_names in os.walk(root_dir):
-    if os.path.basename(os.path.normpath(directory)) in ignored_dirs:
-        continue
+def iter_dir_violations(dir_path: str) -> Iterable[Violation]:
+    for directory, subdirlist, file_names in os.walk(dir_path):
+        if os.path.basename(directory) not in ignored_dirs:
+            for file_name in file_names:
+                if file_name not in ignored_files and file_name.endswith((".h", ".cc")):
+                    yield from iter_file_violations(os.path.join(directory, file_name))
 
-    for file_name in file_names:
-        if file_name in ignored_files:
-            continue
 
-        if not file_name.endswith(".h") and not file_name.endswith(".cc"):
-            continue
+if __name__ == "__main__":
+    if len(sys.argv) < 2:
+        sys.exit("Usage: <root dir>")
 
-        file_path = os.path.join(directory, file_name)
-        if check_file(file_path):
-            found_violation = True
-
-if found_violation:
-    error_msg = (
-        "Detected heap memory API violations!\n"
-        "Source files within TileDB must use the heap memory APIs "
-        "defined in tiledb/common/heap_memory.h\n"
-        "Either correct your changes or add an exception within " + __file__
-    )
-    print(error_msg)
-    exit(1)
-else:
-    print("Did not detect heap memory API violations.")
-    sys.exit(0)
+    root_dir = os.path.abspath(sys.argv[1])
+    print(f"Checking for heap memory API violations in {root_dir}")
+    violations = list(iter_dir_violations(root_dir))
+    if violations:
+        this_filename = os.path.basename(__file__)
+        for violation in violations:
+            print(
+                f"[{this_filename}]: Detected {violation.checker.substr!r} heap memory API violation:"
+            )
+            print(f"  {violation.file_path}:{violation.line_num}")
+            print(f"  {violation.line}")
+        sys.exit(
+            "Detected heap memory API violations!\n"
+            "Source files within TileDB must use the heap memory APIs "
+            "defined in tiledb/common/heap_memory.h\n"
+            "Either correct your changes or add an exception within " + __file__
+        )
+    else:
+        print("Did not detect heap memory API violations.")
