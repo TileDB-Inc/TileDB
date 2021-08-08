@@ -450,7 +450,7 @@ TEST_CASE(
     };
     if (active_diags) {
       std::cout << "option " << option << ", num results " << result_num
-              << std::endl;
+                << std::endl;
     }
     collect_data();
     REQUIRE(expected_dim1 == collect_results_dim1);
@@ -576,7 +576,7 @@ TEST_CASE(
         expected_dim3 = {"i", "l"};
         expected_a1_data = {3, 6};
         break;
-      case 5:  //ch7065 reported to have failed
+      case 5:  // ch7065 reported to have failed
         expected_result_num = 2;
         initial_expected_read_status = Query::Status::COMPLETE;
         // query_read.add_range(
@@ -976,13 +976,10 @@ TEST_CASE(
     auto result_buffers = query_read.result_buffer_elements();
     auto result_num = result_buffers["a1"].second;
     if (active_diags) {
-      std::cout << "option " << option 
-                << " current read_status() "
-                << query_read.query_status() 
-                << ", (initial) result_num " << result_num 
-                << ", final expected_result_num " << expected_result_num 
-                << ", bufcnt " << bufcnt
-                << std::endl;
+      std::cout << "option " << option << " current read_status() "
+                << query_read.query_status() << ", (initial) result_num "
+                << result_num << ", final expected_result_num "
+                << expected_result_num << ", bufcnt " << bufcnt << std::endl;
     }
 
     // ch9473
@@ -993,8 +990,8 @@ TEST_CASE(
     // will fit within a1_data with 2 elements. However, in SubarrayPartitioner
     // compute_current_start_end(), *estimates* of (potential) result size are
     // used as a max memory size for some audits, and in this case it concludes
-    // the data will not fit, presumably leading to only one item being returned 
-    // from the initial read. 
+    // the data will not fit, presumably leading to only one item being returned
+    // from the initial read.
     // This raises the question of how/where it eventually
     // determines the single item could be returned, apparently it is not
     // restricted by that estimate elsewhere...? Or maybe it always allows an
@@ -1028,7 +1025,8 @@ TEST_CASE(
     // int expect_what = bufcnt < expected_result_num ? bufcnt :
     // expected_result_num;
     // failing on option 2, bufcnt 2 (others unknown)...
-    // (see comment above where status checking was failing before reaching here.)
+    // (see comment above where status checking was failing before reaching
+    // here.)
     //    REQUIRE(result_num == expect_what);
 
     int tot_result_num = 0;
