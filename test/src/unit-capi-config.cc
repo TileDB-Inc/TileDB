@@ -797,8 +797,8 @@ TEST_CASE("C API: Test config iter", "[capi], [config]") {
   } while (!done);
   // highlight any difference to aid the poor developer in event CHECK() fails.
   // If tiledb environment config variables have been set to something different
-  // from default configuration (such as 
-  // "set/export TILEDB_VFS_S3_AWS_ACCESS_KEY_ID=minio"), 
+  // from default configuration (such as
+  // "set/export TILEDB_VFS_S3_AWS_ACCESS_KEY_ID=minio"),
   // these can legitimately differ from the defaults expected!
   for (auto i1 = all_param_values.begin(); i1 != all_param_values.end(); ++i1) {
     if (auto i2 = all_iter_map.find(i1->first); i2 == all_iter_map.end()) {
@@ -810,14 +810,14 @@ TEST_CASE("C API: Test config iter", "[capi], [config]") {
                   << "\" vs \"" << i2->first << std::endl;
       } else if (i2->second != i1->second) {
         std::cout << "values for key \"" << i1->first << "\", "
-                                      << "\"" << i2->second << "\" != "
-                                      << "\"" << i1->second << "\"" << std::endl;
-      } else if( all_param_values[i1->first] != all_iter_map[i1->first]) {
-        // if i1->first == i2->first, then should not be possible to be here, but just in case...
-        std::cout << " apv[k] != aim[k], k \""
-            << i1->first << "\", "
-            << "\"" << all_param_values[i1->first] << "\" != \""
-            << all_iter_map[i1->first] << "\"" << std::endl;
+                  << "\"" << i2->second << "\" != "
+                  << "\"" << i1->second << "\"" << std::endl;
+      } else if (all_param_values[i1->first] != all_iter_map[i1->first]) {
+        // if i1->first == i2->first, then should not be possible to be here,
+        // but just in case...
+        std::cout << " apv[k] != aim[k], k \"" << i1->first << "\", "
+                  << "\"" << all_param_values[i1->first] << "\" != \""
+                  << all_iter_map[i1->first] << "\"" << std::endl;
       }
     }
   }
@@ -826,7 +826,8 @@ TEST_CASE("C API: Test config iter", "[capi], [config]") {
       std::cout << "all_param_values[\"" << i1->first << "\"] not found!"
                 << std::endl;
     }
-    //else, for all like keys, unlike values should have been reported in previous loop.
+    // else, for all like keys, unlike values should have been reported in
+    // previous loop.
   }
   CHECK(all_param_values == all_iter_map);
   tiledb_config_iter_free(&config_iter);
