@@ -960,22 +960,12 @@ Status Subarray::get_est_result_size(
   return Status::Ok();
 }
 
-Status Subarray::get_est_result_size_nullable_internal(
+Status Subarray::get_est_result_size_nullable(
     const char* name,
     uint64_t* size,
     uint64_t* size_validity,
     const Config* const config,
     ThreadPool* const compute_tp) {
-  QueryType type;
-  // Note: various items below expect array open, get_query_type() providing
-  // that audit.
-  RETURN_NOT_OK(array_->get_query_type(&type));
-
-  if (type == QueryType::WRITE)
-    return LOG_STATUS(Status::SubarrayError(
-        "Cannot get estimated result size; Operation currently "
-        "unsupported for write queries"));
-
   // Check attribute/dimension name
   if (name == nullptr)
     return LOG_STATUS(
@@ -1032,23 +1022,13 @@ Status Subarray::get_est_result_size_nullable_internal(
   return Status::Ok();
 }
 
-Status Subarray::get_est_result_size_nullable_internal(
+Status Subarray::get_est_result_size_nullable(
     const char* name,
     uint64_t* size_off,
     uint64_t* size_val,
     uint64_t* size_validity,
     const Config* const config,
     ThreadPool* const compute_tp) {
-  QueryType type;
-  // Note: various items below expect array open, get_query_type() providing
-  // that audit.
-  RETURN_NOT_OK(array_->get_query_type(&type));
-
-  if (type == QueryType::WRITE)
-    return LOG_STATUS(Status::SubarrayError(
-        "Cannot get estimated result size; Operation currently "
-        "unsupported for write queries"));
-
   // Check attribute/dimension name
   if (name == nullptr)
     return LOG_STATUS(
