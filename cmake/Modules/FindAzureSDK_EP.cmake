@@ -157,6 +157,7 @@ if (NOT AZURESDK_FOUND)
           echo starting patching for azure &&
           ${PATCH} < ${TILEDB_CMAKE_INPUTS_DIR}/patches/ep_azuresdk/remove-uuid-dep.patch &&
           ${PATCH} < ${TILEDB_CMAKE_INPUTS_DIR}/patches/ep_azuresdk/azurite-support.patch &&
+              ${PATCH} < ${TILEDB_CMAKE_INPUTS_DIR}/patches/ep_azuresdk/azure-storage-lite-base64.patch &&
           echo done patches for azure
         LOG_DOWNLOAD TRUE
         LOG_CONFIGURE TRUE
