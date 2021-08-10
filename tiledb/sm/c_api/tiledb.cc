@@ -625,14 +625,12 @@ inline int32_t check_filter_type(
  * _subarray... routines deprecating them.
  */
 
-#if FORCE_QUERY_EXTERNAL_SUBARRAY_USE
 struct tiledb_subarray_transient_local_t : public tiledb_subarray_t {
   tiledb_subarray_transient_local_t(const tiledb_query_t* query) {
     this->subarray_ =
         const_cast<tiledb::sm::Subarray*>(query->query_->subarray());
   }
 };
-#endif
 
 /** For debugging, use this definition instead to not catch exceptions. */
 //#define SAVE_ERROR_CATCH(ctx, stmt) save_error(ctx, (stmt))
@@ -3270,7 +3268,6 @@ int32_t tiledb_query_add_range(
   if (sanity_check(ctx) == TILEDB_ERR || sanity_check(ctx, query) == TILEDB_ERR)
     return TILEDB_ERR;
 
-#if FORCE_QUERY_EXTERNAL_SUBARRAY_USE
   tiledb_subarray_transient_local_t query_subarray(query);
   tiledb_config_t loccfg;
   // Drop 'const'ness for local usage here
@@ -3278,12 +3275,6 @@ int32_t tiledb_query_add_range(
   tiledb_subarray_set_config(ctx, &query_subarray, &loccfg);
   return tiledb_subarray_add_range(
       ctx, &query_subarray, dim_idx, start, end, stride);
-#endif
-  if (SAVE_ERROR_CATCH(
-          ctx, query->query_->add_range(dim_idx, start, end, stride)))
-    return TILEDB_ERR;
-
-  return TILEDB_OK;
 }
 
 int32_t tiledb_query_add_range_by_name(
@@ -3296,16 +3287,9 @@ int32_t tiledb_query_add_range_by_name(
   if (sanity_check(ctx) == TILEDB_ERR || sanity_check(ctx, query) == TILEDB_ERR)
     return TILEDB_ERR;
 
-#if FORCE_QUERY_EXTERNAL_SUBARRAY_USE
   tiledb_subarray_transient_local_t query_subarray(query);
   return tiledb_subarray_add_range_by_name(
       ctx, &query_subarray, dim_name, start, end, stride);
-#endif
-  if (SAVE_ERROR_CATCH(
-          ctx, query->query_->add_range_by_name(dim_name, start, end, stride)))
-    return TILEDB_ERR;
-
-  return TILEDB_OK;
 }
 
 int32_t tiledb_query_add_range_var(
@@ -3318,19 +3302,10 @@ int32_t tiledb_query_add_range_var(
     uint64_t end_size) {
   if (sanity_check(ctx) == TILEDB_ERR || sanity_check(ctx, query) == TILEDB_ERR)
     return TILEDB_ERR;
-#if FORCE_QUERY_EXTERNAL_SUBARRAY_USE
+
   tiledb_subarray_transient_local_t query_subarray(query);
   return tiledb_subarray_add_range_var(
       ctx, &query_subarray, dim_idx, start, start_size, end, end_size);
-#endif
-
-  if (SAVE_ERROR_CATCH(
-          ctx,
-          query->query_->add_range_var(
-              dim_idx, start, start_size, end, end_size)))
-    return TILEDB_ERR;
-
-  return TILEDB_OK;
 }
 
 int32_t tiledb_query_add_range_var_by_name(
@@ -3344,18 +3319,9 @@ int32_t tiledb_query_add_range_var_by_name(
   if (sanity_check(ctx) == TILEDB_ERR || sanity_check(ctx, query) == TILEDB_ERR)
     return TILEDB_ERR;
 
-#if FORCE_QUERY_EXTERNAL_SUBARRAY_USE
   tiledb_subarray_transient_local_t query_subarray(query);
   return tiledb_subarray_add_range_var_by_name(
       ctx, &query_subarray, dim_name, start, start_size, end, end_size);
-#endif
-  if (SAVE_ERROR_CATCH(
-          ctx,
-          query->query_->add_range_var_by_name(
-              dim_name, start, start_size, end, end_size)))
-    return TILEDB_ERR;
-
-  return TILEDB_OK;
 }
 
 int32_t tiledb_query_get_range_num(
