@@ -663,6 +663,7 @@ class Query {
    * @param dim_idx The dimension index.
    * @return The number of ranges.
    */
+  TILEDB_DEPRECATED
   uint64_t range_num(unsigned dim_idx) const {
     auto& ctx = ctx_.get();
     uint64_t range_num;
@@ -684,6 +685,7 @@ class Query {
    * @param dim_name The dimension name.
    * @return The number of ranges.
    */
+  TILEDB_DEPRECATED
   uint64_t range_num(const std::string& dim_name) const {
     auto& ctx = ctx_.get();
     uint64_t range_num;
@@ -711,7 +713,8 @@ class Query {
    * @return A triplet of the form (start, end, stride).
    */
   template <class T>
-  std::array<T, 3> range(unsigned dim_idx, uint64_t range_idx) {
+  TILEDB_DEPRECATED std::array<T, 3> range(
+      unsigned dim_idx, uint64_t range_idx) {
     impl::type_check<T>(schema_.domain().dimension(dim_idx).type());
     auto& ctx = ctx_.get();
     const void *start, *end, *stride;
@@ -748,7 +751,8 @@ class Query {
    * @return A triplet of the form (start, end, stride).
    */
   template <class T>
-  std::array<T, 3> range(const std::string& dim_name, uint64_t range_idx) {
+  TILEDB_DEPRECATED std::array<T, 3> range(
+      const std::string& dim_name, uint64_t range_idx) {
     impl::type_check<T>(schema_.domain().dimension(dim_name).type());
     auto& ctx = ctx_.get();
     const void *start, *end, *stride;
@@ -782,6 +786,7 @@ class Query {
    * @param range_idx The range index.
    * @return A pair of the form (start, end).
    */
+  TILEDB_DEPRECATED
   std::array<std::string, 2> range(unsigned dim_idx, uint64_t range_idx) {
     impl::type_check<char>(schema_.domain().dimension(dim_idx).type());
     auto& ctx = ctx_.get();
@@ -820,6 +825,7 @@ class Query {
    * @param range_idx The range index.
    * @return A pair of the form (start, end).
    */
+  TILEDB_DEPRECATED
   std::array<std::string, 2> range(
       const std::string& dim_name, uint64_t range_idx) {
     impl::type_check<char>(schema_.domain().dimension(dim_name).type());

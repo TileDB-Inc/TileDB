@@ -171,7 +171,7 @@ int32_t Subarray2Fx::tiledb_subarray_get_est_result_size_var_wrapper(
     uint64_t* size_val,
     tiledb_query_t* serialization_query) {
   int ret = tiledb_query_get_est_result_size_var(
-    ctx, serialization_query, name, size_off, size_val);
+      ctx, serialization_query, name, size_off, size_val);
 #ifndef TILEDB_SERIALIZATION
   return ret;
 #endif
