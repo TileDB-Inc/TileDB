@@ -209,7 +209,7 @@ TEST_CASE(
   std::vector<std::string> expected_dim3, collect_results_dim3;
   std::vector<int32_t> expected_a1_data, collect_results_a1;
 
-  auto perform_read = [&](int option = 5) {
+  auto perform_read = [&](int option) {
     collect_results_dim1.clear();
     collect_results_dim2.clear();
     collect_results_dim3.clear();
