@@ -1115,11 +1115,13 @@ Status query_from_capnp(
             // Set the size directly on the query (so user can introspect on
             // result size).
             if (existing_offset_buffer_size_ptr != nullptr)
-              *existing_offset_buffer_size_ptr = fixedlen_size_to_copy;
+              *existing_offset_buffer_size_ptr =
+                  curr_offset_size + fixedlen_size_to_copy;
             if (existing_buffer_size_ptr != nullptr)
-              *existing_buffer_size_ptr = varlen_size;
+              *existing_buffer_size_ptr = curr_data_size + varlen_size;
             if (nullable && existing_validity_buffer_size_ptr != nullptr)
-              *existing_validity_buffer_size_ptr = validitylen_size;
+              *existing_validity_buffer_size_ptr =
+                  curr_validity_size + validitylen_size;
           } else {
             // Accumulate total bytes copied (caller's responsibility to
             // eventually update the query).
@@ -1148,9 +1150,10 @@ Status query_from_capnp(
 
           if (attr_copy_state == nullptr) {
             if (existing_buffer_size_ptr != nullptr)
-              *existing_buffer_size_ptr = fixedlen_size;
+              *existing_buffer_size_ptr = curr_data_size + fixedlen_size;
             if (nullable && existing_validity_buffer_size_ptr != nullptr)
-              *existing_validity_buffer_size_ptr = validitylen_size;
+              *existing_validity_buffer_size_ptr =
+                  curr_validity_size + validitylen_size;
           } else {
             attr_copy_state->data_size += fixedlen_size;
             if (nullable)
