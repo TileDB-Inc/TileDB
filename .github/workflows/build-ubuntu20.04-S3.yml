@@ -43,20 +43,6 @@ jobs:
           python -m pip install --upgrade pip virtualenv
         shell: bash
 
-      - name: Check formatting (linux only)'
-        run: |
-          source $GITHUB_WORKSPACE/scripts/ci/check_formatting_linux.sh
-        shell: bash
-        if: ${{ runner.os == 'Linux' }}
-
-      - name: 'Install doxygen (linux only)'
-        run: |
-          set -e pipefail
-          # Install doxygen *before* running cmake
-          sudo apt-get install doxygen
-        shell: bash
-        if: ${{ runner.os == 'Linux' }}
-
       - name: 'Build and test libtiledb'
         id: test
         run: |
@@ -100,12 +86,8 @@ jobs:
           if [[ "${{ steps.test.outputs.TILEDB_CI_SUCCESS }}" -ne 1 ]]; then
             exit 1;
           fi
+
       - name: "Print log files (failed build only)"
         run: |
           source $GITHUB_WORKSPACE/scripts/ci/print_logs.sh
         if: ${{ failure() }} # only run this job if the build step failed
-
-      - name: 'Build docs (no deployment)'
-        run: |
-          source $GITHUB_WORKSPACE/scripts/ci/build_docs.sh
-        if: ${{ runner.os == 'Linux' }}
