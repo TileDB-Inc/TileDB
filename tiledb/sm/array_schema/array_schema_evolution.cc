@@ -84,7 +84,7 @@ Status ArraySchemaEvolution::evolve_schema(
 
   // Add attributes.
   for (auto& attr : attributes_to_add_map_) {
-    RETURN_NOT_OK(schema->add_attribute(attr.second, false));
+    RETURN_NOT_OK(schema->add_attribute(attr.second.get(), false));
   }
 
   // Drop attributes.
@@ -109,9 +109,18 @@ Status ArraySchemaEvolution::add_attribute(const Attribute* attr) {
     return LOG_STATUS(Status::ArraySchemaEvolutionError(
         "Cannot add attribute; Input attribute is null"));
 
+  if (attributes_to_add_map_.find(attr->name()) !=
+      attributes_to_add_map_.end()) {
+    return LOG_STATUS(Status::ArraySchemaEvolutionError(
+        "Cannot add attribute; Input attribute name is already there"));
+  }
+
   // Create new attribute and potentially set a default name
-  auto new_attr = tdb_new(Attribute, attr);
-  attributes_to_add_map_[new_attr->name()] = new_attr;
+  attributes_to_add_map_[attr->name()] =
+      tdb_unique_ptr<Attribute>(new Attribute(attr));
+  if (attributes_to_drop_.find(attr->name()) != attributes_to_drop_.end()) {
+    attributes_to_drop_.erase(attr->name());
+  }
 
   return Status::Ok();
 }
@@ -119,6 +128,12 @@ Status ArraySchemaEvolution::add_attribute(const Attribute* attr) {
 Status ArraySchemaEvolution::drop_attribute(const std::string& attribute_name) {
   std::lock_guard<std::mutex> lock(mtx_);
   attributes_to_drop_.insert(attribute_name);
+  if (attributes_to_add_map_.find(attribute_name) !=
+      attributes_to_add_map_.end()) {
+    // Reset the pointer and erase it
+    attributes_to_add_map_[attribute_name].reset(nullptr);
+    attributes_to_add_map_.erase(attribute_name);
+  }
   return Status::Ok();
 }
 
@@ -128,7 +143,7 @@ Status ArraySchemaEvolution::drop_attribute(const std::string& attribute_name) {
 
 void ArraySchemaEvolution::clear() {
   for (auto& attr : attributes_to_add_map_) {
-    tdb_delete(attr.second);
+    attr.second.reset(nullptr);
   }
   attributes_to_add_map_.clear();
 
