@@ -119,12 +119,14 @@ class Subarray {
     subarray_ = std::shared_ptr<tiledb_subarray_t>(capi_subarray, deleter_);
   }
 
+#if 0
   /** Set the layout for the subarray. */
   Subarray& set_layout(tiledb_layout_t layout) {
     ctx_.get().handle_error(tiledb_subarray_set_layout(
         ctx_.get().ptr().get(), subarray_.get(), layout));
     return *this;
   }
+#endif
 
   /** Set the coalesce_ranges flag for the subarray. */
   Subarray& set_coalesce_ranges(bool coalesce_ranges) {

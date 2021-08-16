@@ -585,8 +585,8 @@ void Subarray2Fx::write_dense_array(
   CHECK(rc == TILEDB_OK);
   rc = tiledb_subarray_set_subarray(ctx_, subarray, &domain[0]);
   CHECK(rc == TILEDB_OK);
-  rc = tiledb_subarray_set_layout(ctx_, subarray, TILEDB_ROW_MAJOR);
-  CHECK(rc == TILEDB_OK);
+  //rc = tiledb_subarray_set_layout(ctx_, subarray, TILEDB_ROW_MAJOR);
+  //CHECK(rc == TILEDB_OK);
   rc = tiledb_query_set_layout(ctx_, query, TILEDB_ROW_MAJOR);
   CHECK(rc == TILEDB_OK);
   rc = tiledb_query_set_buffer(ctx_, query, "a", (void*)a.data(), &a_size);
@@ -3100,8 +3100,8 @@ TEST_CASE_METHOD(
 
   rc = tiledb_subarray_set_subarray(ctx_, subarray, &domain[0]);
   CHECK(rc == TILEDB_OK);
-  rc = tiledb_subarray_set_layout(ctx_, subarray, TILEDB_ROW_MAJOR);
-  CHECK(rc == TILEDB_OK);
+  //rc = tiledb_subarray_set_layout(ctx_, subarray, TILEDB_ROW_MAJOR);
+  //CHECK(rc == TILEDB_OK);
   rc = tiledb_query_set_layout(ctx_, query, TILEDB_ROW_MAJOR);
   CHECK(rc == TILEDB_OK);
   rc = tiledb_query_set_buffer(ctx_, query, "a", (void*)a.data(), &a_size);
@@ -3373,8 +3373,8 @@ TEST_CASE_METHOD(
   tiledb_layout_t query2_layout;
   rc = tiledb_query_get_layout(ctx_, query2, &query2_layout);
   CHECK(rc == TILEDB_OK);
-  rc = tiledb_subarray_set_layout(ctx_, subarray, query2_layout);
-  CHECK(rc == TILEDB_OK);
+  //rc = tiledb_subarray_set_layout(ctx_, subarray, query2_layout);
+  //CHECK(rc == TILEDB_OK);
 
   // Set override config
   rc = tiledb_query_set_config(ctx_, query2, config);

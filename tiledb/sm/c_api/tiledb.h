@@ -5087,6 +5087,7 @@ TILEDB_EXPORT int32_t tiledb_subarray_set_config(
  */
 TILEDB_EXPORT void tiledb_subarray_free(tiledb_subarray_t** subarray);
 
+#if 0
 /**
  * Sets the layout of the cells to be written or read.
  *
@@ -5119,6 +5120,7 @@ TILEDB_EXPORT void tiledb_subarray_free(tiledb_subarray_t** subarray);
  */
 TILEDB_EXPORT int32_t tiledb_subarray_set_layout(
     tiledb_ctx_t* ctx, tiledb_subarray_t* subarray, tiledb_layout_t layout);
+#endif
 
 /**
  * Set coalesce_ranges property on a TileDB subarray object.

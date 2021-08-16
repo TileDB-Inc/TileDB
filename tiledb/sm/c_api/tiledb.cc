@@ -3646,6 +3646,7 @@ void tiledb_subarray_free(tiledb_subarray_t** subarray) {
   }
 }
 
+#if 0
 int32_t tiledb_subarray_set_layout(
     tiledb_ctx_t* ctx, tiledb_subarray_t* subarray, tiledb_layout_t layout) {
   // Sanity check
@@ -3658,6 +3659,7 @@ int32_t tiledb_subarray_set_layout(
 
   return TILEDB_OK;
 }
+#endif
 
 int32_t tiledb_subarray_set_coalesce_ranges(
     tiledb_ctx_t* ctx, tiledb_subarray_t* subarray, int coalesce_ranges) {
