@@ -29,8 +29,8 @@ die() {
 }
 
 install_apt_pkg() {
-  add-apt-repository 'deb http://apt.llvm.org/focal/ llvm-toolchain-focal-9 main' &&
   wget -O - https://apt.llvm.org/llvm-snapshot.gpg.key | sudo apt-key add -
+  add-apt-repository 'deb http://apt.llvm.org/focal/ llvm-toolchain-focal-9 main' &&
   apt-get update -qq && apt-get install -qq -y clang-format-9
 }
 
