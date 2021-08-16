@@ -2036,9 +2036,9 @@ TEST_CASE_METHOD(
 }
 
 TEST_CASE_METHOD(
-  ArraySchemaFx,
-  "C API: Test array schema attribute drop and add",
-  "[capi], [array-schema], [attribute-drop], [attribute-add]") {
+    ArraySchemaFx,
+    "C API: Test array schema attribute drop and add",
+    "[capi], [array-schema], [attribute-drop], [attribute-add]") {
   // Create array schema
   tiledb_array_schema_t* array_schema;
   int rc = tiledb_array_schema_alloc(ctx_, TILEDB_SPARSE, &array_schema);
@@ -2047,7 +2047,7 @@ TEST_CASE_METHOD(
   // Create dimensions
   tiledb_dimension_t* d1;
   rc = tiledb_dimension_alloc(
-    ctx_, "", TILEDB_INT64, &DIM_DOMAIN[0], &TILE_EXTENTS[0], &d1);
+      ctx_, "", TILEDB_INT64, &DIM_DOMAIN[0], &TILE_EXTENTS[0], &d1);
   REQUIRE(rc == TILEDB_OK);
 
   // Set domain
@@ -2072,8 +2072,6 @@ TEST_CASE_METHOD(
   rc = tiledb_array_schema_add_attribute(ctx_, array_schema, attr2);
   REQUIRE(rc == TILEDB_OK);
 
-
-
   // Set schema members
   rc = tiledb_array_schema_set_capacity(ctx_, array_schema, CAPACITY);
   REQUIRE(rc == TILEDB_OK);
@@ -2091,7 +2089,7 @@ TEST_CASE_METHOD(
 
   // Create array
   std::string array_name =
-    local_fs.file_prefix() + local_fs.temp_dir() + ARRAY_NAME;
+      local_fs.file_prefix() + local_fs.temp_dir() + ARRAY_NAME;
   create_temp_dir(local_fs.file_prefix() + local_fs.temp_dir());
   rc = array_create_wrapper(array_name, array_schema);
   REQUIRE(rc == TILEDB_OK);
@@ -2111,14 +2109,15 @@ TEST_CASE_METHOD(
   tiledb_attribute_t* attr3;
   rc = tiledb_attribute_alloc(ctx_, "a3", TILEDB_INT32, &attr3);
   REQUIRE(rc == TILEDB_OK);
-  rc = tiledb_array_schema_evolution_add_attribute(ctx_,array_schema_evolution,attr3);
+  rc = tiledb_array_schema_evolution_add_attribute(
+      ctx_, array_schema_evolution, attr3);
 
   REQUIRE(rc == TILEDB_OK);
 
   // Remove atrribute a1
-  rc = tiledb_array_schema_evolution_drop_attribute(ctx_, array_schema_evolution, "a1");
+  rc = tiledb_array_schema_evolution_drop_attribute(
+      ctx_, array_schema_evolution, "a1");
   REQUIRE(rc == TILEDB_OK);
-
 
   // Evolve schema
   rc = tiledb_array_evolve(ctx_, array_name.c_str(), array_schema_evolution);
@@ -2144,7 +2143,8 @@ TEST_CASE_METHOD(
   REQUIRE(attr_num == 2);
 
   tiledb_attribute_t* read_attr;
-  rc = tiledb_array_schema_get_attribute_from_index(ctx_, read_schema, 0, &read_attr);
+  rc = tiledb_array_schema_get_attribute_from_index(
+      ctx_, read_schema, 0, &read_attr);
   REQUIRE(rc == TILEDB_OK);
   const char* attr_name;
   rc = tiledb_attribute_get_name(ctx_, read_attr, &attr_name);
@@ -2152,7 +2152,8 @@ TEST_CASE_METHOD(
   CHECK_THAT(attr_name, Catch::Equals("a2"));
 
   tiledb_attribute_t* read_attr1;
-  rc = tiledb_array_schema_get_attribute_from_index(ctx_, read_schema, 1, &read_attr1);
+  rc = tiledb_array_schema_get_attribute_from_index(
+      ctx_, read_schema, 1, &read_attr1);
   REQUIRE(rc == TILEDB_OK);
   const char* attr_name1;
   rc = tiledb_attribute_get_name(ctx_, read_attr1, &attr_name1);
