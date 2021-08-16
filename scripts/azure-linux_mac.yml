@@ -36,12 +36,6 @@ steps:
   displayName: 'Install system headers (OSX 10.14 only)'
 
 - bash: |
-    set -e pipefail
-    python scripts/find_heap_api_violations.py tiledb
-  condition: eq(variables['Agent.OS'], 'Linux')
-  displayName: 'Check heap memory API violations (linux only)'
-
-- bash: |
     # enable core dumps
     ulimit -c               # should output 0 if disabled
     ulimit -c unlimited     # Enable core dumps to be captured (must be in same run block)
