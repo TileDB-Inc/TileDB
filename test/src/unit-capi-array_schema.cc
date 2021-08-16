@@ -2111,8 +2111,15 @@ TEST_CASE_METHOD(
   REQUIRE(rc == TILEDB_OK);
   rc = tiledb_array_schema_evolution_add_attribute(
       ctx_, array_schema_evolution, attr3);
-
   REQUIRE(rc == TILEDB_OK);
+
+  tiledb_attribute_t* attr4;
+  rc = tiledb_attribute_alloc(ctx_, "a3", TILEDB_INT32, &attr4);
+  REQUIRE(rc == TILEDB_OK);
+  // Will fail when try to add an attribute which already has the name
+  rc = tiledb_array_schema_evolution_add_attribute(
+      ctx_, array_schema_evolution, attr4);
+  REQUIRE(rc == TILEDB_ERR);
 
   // Remove atrribute a1
   rc = tiledb_array_schema_evolution_drop_attribute(

@@ -117,7 +117,7 @@ Status ArraySchemaEvolution::add_attribute(const Attribute* attr) {
 
   // Create new attribute and potentially set a default name
   attributes_to_add_map_[attr->name()] =
-      tdb_unique_ptr<Attribute>(new Attribute(attr));
+      tdb_unique_ptr<Attribute>(tdb_new(Attribute, attr));
   if (attributes_to_drop_.find(attr->name()) != attributes_to_drop_.end()) {
     attributes_to_drop_.erase(attr->name());
   }
