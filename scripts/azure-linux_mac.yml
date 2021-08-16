@@ -23,13 +23,6 @@ steps:
 
 - bash: |
     set -e pipefail
-    # Install doxygen *before* running cmake
-    sudo apt-get install doxygen
-  condition: eq(variables['Agent.OS'], 'Linux')
-  displayName: 'Install doxygen (linux only)'
-
-- bash: |
-    set -e pipefail
     open /Library/Developer/CommandLineTools/Packages/macOS_SDK_headers_for_macOS_10.14.pkg
     sudo installer -pkg /Library/Developer/CommandLineTools/Packages/macOS_SDK_headers_for_macOS_10.14.pkg -allowUntrusted -target /
   condition: and(eq(variables['Agent.OS'], 'Darwin'), eq(variables['imageName'], 'macOS-10.14'))
@@ -246,14 +239,3 @@ steps:
       done;
   condition: failed() # only run this job if the build step failed
   displayName: "Print log files (failed build only)"
-
-- bash: |
-    set -e pipefail
-    python -m pip install --upgrade pip virtualenv
-
-    # Build the documentation (this does not deploy to RTD).
-    pushd $BUILD_REPOSITORY_LOCALPATH/doc;
-    ./local-build.sh;
-    popd;
-  condition: eq(variables['Agent.OS'], 'Linux')
-  displayName: 'Build docs (no deployment)'
