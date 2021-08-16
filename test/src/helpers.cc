@@ -183,7 +183,6 @@ template <class T>
 void check_subarray_equiv(
     tiledb::sm::Subarray& subarray1, tiledb::sm::Subarray& subarray2) {
   CHECK(subarray1.range_num() == subarray2.range_num());
-  CHECK(subarray1.layout() == subarray2.layout());
   // Check dim num
   auto dim_num1 = subarray1.dim_num();
   auto dim_num2 = subarray2.dim_num();
@@ -232,8 +231,8 @@ bool subarray_equiv(
     tiledb::sm::Subarray& subarray1, tiledb::sm::Subarray& subarray2) {
   bool equiv_state = 1;  // assume true
 
+
   equiv_state &= (subarray1.range_num() == subarray2.range_num());
-  equiv_state &= (subarray1.layout() == subarray2.layout());
   // Check dim num
   auto dim_num1 = subarray1.dim_num();
   auto dim_num2 = subarray2.dim_num();
@@ -688,8 +687,6 @@ void create_subarray(
   rc = tiledb_subarray_alloc(ctx, &tdb_array, subarray);
   REQUIRE(rc == TILEDB_OK);
   if (rc == TILEDB_OK) {
-    rc = tiledb_subarray_set_layout(ctx, *subarray, (tiledb_layout_t)layout);
-    REQUIRE(rc == TILEDB_OK);
     rc = tiledb_subarray_set_coalesce_ranges(ctx, *subarray, coalesce_ranges);
     REQUIRE(rc == TILEDB_OK);
 
@@ -717,7 +714,7 @@ void create_subarray(
       new tiledb::Subarray(*ctx, *array, coalesce_ranges);
   tiledb::Subarray& subarray = *psubarray;
 
-  subarray.set_layout((tiledb_layout_t)layout);
+  (void*)layout;
   subarray.set_coalesce_ranges(coalesce_ranges);
 
   auto dim_num = (unsigned)ranges.size();

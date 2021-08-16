@@ -471,7 +471,6 @@ TEST_CASE_METHOD(
     std::vector<int32_t> subarray = {1, 10, 1, 10};
 
     Subarray cppapi_subarray(ctx, array);
-    cppapi_subarray.set_layout(query.query_layout());
     cppapi_subarray.set_subarray(subarray);
     query.set_subarray(cppapi_subarray);
     query.set_buffer("a1", a1);
@@ -518,7 +517,6 @@ TEST_CASE_METHOD(
     std::vector<int32_t> subarray = {3, 4, 3, 4};
 
     Subarray cppapi_subarray(ctx, array);
-    cppapi_subarray.set_layout(query.query_layout());
     cppapi_subarray.set_subarray(subarray);
     query.set_subarray(cppapi_subarray);
     query.set_buffer("a1", a1);
@@ -564,7 +562,6 @@ TEST_CASE_METHOD(
     std::vector<uint64_t> a3_offsets(4);
     std::vector<int32_t> subarray = {3, 4, 3, 4};
     Subarray cppapi_subarray(ctx, array);
-    cppapi_subarray.set_layout(query.query_layout());
     cppapi_subarray.set_subarray(subarray);
     query.set_subarray(cppapi_subarray);
 
@@ -758,7 +755,6 @@ TEST_CASE_METHOD(
     std::vector<int32_t> subarray = {1, 10, 1, 10};
 
     Subarray cppapi_subarray(ctx, array);
-    cppapi_subarray.set_layout(query.query_layout());
     cppapi_subarray.add_range(0, subarray[0], subarray[1]);
     cppapi_subarray.add_range(1, subarray[2], subarray[3]);
     query.set_subarray(cppapi_subarray);
@@ -806,7 +802,6 @@ TEST_CASE_METHOD(
     std::vector<int32_t> subarray = {3, 4, 3, 4};
 
     Subarray cppapi_subarray(ctx, array);
-    cppapi_subarray.set_layout(query.query_layout());
     cppapi_subarray.add_range(0, subarray[0], subarray[1]);
     cppapi_subarray.add_range(1, subarray[2], subarray[3]);
     query.set_subarray(cppapi_subarray);
@@ -853,7 +848,6 @@ TEST_CASE_METHOD(
     std::vector<uint64_t> a3_offsets(4);
     std::vector<int32_t> subarray = {3, 4, 3, 4};
     Subarray cppapi_subarray(ctx, array);
-    cppapi_subarray.set_layout(query.query_layout());
     cppapi_subarray.add_range(0, subarray[0], subarray[1]);
     cppapi_subarray.add_range(1, subarray[2], subarray[3]);
     query.set_subarray(cppapi_subarray);

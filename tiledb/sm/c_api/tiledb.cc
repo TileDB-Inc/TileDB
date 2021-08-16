@@ -3646,19 +3646,6 @@ void tiledb_subarray_free(tiledb_subarray_t** subarray) {
   }
 }
 
-int32_t tiledb_subarray_set_layout(
-    tiledb_ctx_t* ctx, tiledb_subarray_t* subarray, tiledb_layout_t layout) {
-  // Sanity check
-  if (sanity_check(ctx) == TILEDB_ERR ||
-      sanity_check(ctx, subarray) == TILEDB_ERR)
-    return TILEDB_ERR;
-
-  // Set layout
-  subarray->subarray_->set_layout(static_cast<tiledb::sm::Layout>(layout));
-
-  return TILEDB_OK;
-}
-
 int32_t tiledb_subarray_set_coalesce_ranges(
     tiledb_ctx_t* ctx, tiledb_subarray_t* subarray, int coalesce_ranges) {
   // Sanity check
