@@ -231,7 +231,6 @@ bool subarray_equiv(
     tiledb::sm::Subarray& subarray1, tiledb::sm::Subarray& subarray2) {
   bool equiv_state = 1;  // assume true
 
-
   equiv_state &= (subarray1.range_num() == subarray2.range_num());
   // Check dim num
   auto dim_num1 = subarray1.dim_num();
