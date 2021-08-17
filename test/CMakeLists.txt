@@ -136,7 +136,6 @@ set(TILEDB_TEST_SOURCES
   src/unit-capi-sparse_real_2.cc
   src/unit-capi-string.cc
   src/unit-capi-string_dims.cc
-  src/unit-capi-subarray_2.cc
   src/unit-capi-uri.cc
   src/unit-capi-version.cc
   src/unit-capi-vfs.cc
