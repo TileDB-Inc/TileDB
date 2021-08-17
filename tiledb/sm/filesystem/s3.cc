@@ -49,6 +49,9 @@
 #include "tiledb/sm/misc/utils.h"
 
 #ifdef _WIN32
+#if !defined(NOMINMAX)
+#define NOMINMAX
+#endif
 #include <Windows.h>
 #undef GetMessage  // workaround for
                    // https://github.com/aws/aws-sdk-cpp/issues/402
@@ -76,6 +79,65 @@ Aws::Utils::Logging::LogLevel aws_log_name_to_level(std::string loglevel) {
   else
     return Aws::Utils::Logging::LogLevel::Off;
 }
+
+/**
+ * Return a S3 enum value for any recognized string or NOT_SET if
+ * B) the string is not recognized to match any of the enum values
+ *
+ * @param canned_acl_str A textual string naming one of the
+ *        Aws::S3::Model::ObjectCannedACL enum members.
+ */
+Aws::S3::Model::ObjectCannedACL S3_ObjectCannedACL_from_str(
+    const std::string& canned_acl_str) {
+  if (canned_acl_str.empty())
+    return Aws::S3::Model::ObjectCannedACL::NOT_SET;
+
+  if (canned_acl_str == "NOT_SET")
+    return Aws::S3::Model::ObjectCannedACL::NOT_SET;
+  else if (canned_acl_str == "private_")
+    return Aws::S3::Model::ObjectCannedACL::private_;
+  else if (canned_acl_str == "public_read")
+    return Aws::S3::Model::ObjectCannedACL::public_read;
+  else if (canned_acl_str == "public_read_write")
+    return Aws::S3::Model::ObjectCannedACL::public_read_write;
+  else if (canned_acl_str == "authenticated_read")
+    return Aws::S3::Model::ObjectCannedACL::authenticated_read;
+  else if (canned_acl_str == "aws_exec_read")
+    return Aws::S3::Model::ObjectCannedACL::aws_exec_read;
+  else if (canned_acl_str == "bucket_owner_read")
+    return Aws::S3::Model::ObjectCannedACL::bucket_owner_read;
+  else if (canned_acl_str == "bucket_owner_full_control")
+    return Aws::S3::Model::ObjectCannedACL::bucket_owner_full_control;
+  else
+    return Aws::S3::Model::ObjectCannedACL::NOT_SET;
+}
+
+/**
+ * Return a S3 enum value for any recognized string or NOT_SET if
+ * B) the string is not recognized to match any of the enum values
+ *
+ * @param canned_acl_str A textual string naming one of the
+ *        Aws::S3::Model::BucketCannedACL enum members.
+ */
+Aws::S3::Model::BucketCannedACL S3_BucketCannedACL_from_str(
+    const std::string& canned_acl_str) {
+  if (canned_acl_str.empty())
+    return Aws::S3::Model::BucketCannedACL::NOT_SET;
+
+  if (canned_acl_str == "NOT_SET")
+    return Aws::S3::Model::BucketCannedACL::NOT_SET;
+  else if (canned_acl_str == "private_")
+    return Aws::S3::Model::BucketCannedACL::private_;
+  else if (canned_acl_str == "public_read")
+    return Aws::S3::Model::BucketCannedACL::public_read;
+  else if (canned_acl_str == "public_read_write")
+    return Aws::S3::Model::BucketCannedACL::public_read_write;
+  else if (canned_acl_str == "authenticated_read")
+    return Aws::S3::Model::BucketCannedACL::authenticated_read;
+  else
+    return Aws::S3::Model::BucketCannedACL::NOT_SET;
+}
+
 }  // namespace
 
 using namespace tiledb::common;
@@ -115,7 +177,9 @@ static std::once_flag aws_lib_initialized;
 /* ********************************* */
 
 S3::S3()
-    : state_(State::UNINITIALIZED)
+    : stats_(nullptr)
+    , state_(State::UNINITIALIZED)
+    , credentials_provider_(nullptr)
     , file_buffer_size_(0)
     , max_parallel_ops_(1)
     , multipart_part_size_(0)
@@ -123,7 +187,9 @@ S3::S3()
     , use_virtual_addressing_(false)
     , use_multipart_upload_(true)
     , request_payer_(Aws::S3::Model::RequestPayer::NOT_SET)
-    , sse_(Aws::S3::Model::ServerSideEncryption::NOT_SET) {
+    , sse_(Aws::S3::Model::ServerSideEncryption::NOT_SET)
+    , object_canned_acl_(Aws::S3::Model::ObjectCannedACL::NOT_SET)
+    , bucket_canned_acl_(Aws::S3::Model::BucketCannedACL::NOT_SET) {
 }
 
 S3::~S3() {
@@ -136,12 +202,17 @@ S3::~S3() {
 /*                 API               */
 /* ********************************* */
 
-Status S3::init(const Config& config, ThreadPool* const thread_pool) {
+Status S3::init(
+    stats::Stats* const parent_stats,
+    const Config& config,
+    ThreadPool* const thread_pool) {
   // already initialized
   if (state_ == State::DISCONNECTED)
     return Status::Ok();
 
   assert(state_ == State::UNINITIALIZED);
+
+  stats_ = parent_stats->create_child("S3");
 
   if (thread_pool == nullptr) {
     return LOG_STATUS(
@@ -164,8 +235,13 @@ Status S3::init(const Config& config, ThreadPool* const thread_pool) {
   // unexpectedly.
   options_.httpOptions.installSigPipeHandler = true;
 
+  bool skip_init;
+  RETURN_NOT_OK(config.get<bool>("vfs.s3.skip_init", &skip_init, &found));
+  assert(found);
+
   // Initialize the library once per process.
-  std::call_once(aws_lib_initialized, [this]() { Aws::InitAPI(options_); });
+  if (!skip_init)
+    std::call_once(aws_lib_initialized, [this]() { Aws::InitAPI(options_); });
 
   if (options_.loggingOptions.logLevel != Aws::Utils::Logging::LogLevel::Off) {
     Aws::Utils::Logging::InitializeAWSLogging(
@@ -197,6 +273,18 @@ Status S3::init(const Config& config, ThreadPool* const thread_pool) {
 
   if (request_payer)
     request_payer_ = Aws::S3::Model::RequestPayer::requester;
+
+  auto object_acl_str = config.get("vfs.s3.object_canned_acl", &found);
+  assert(found);
+  if (found) {
+    object_canned_acl_ = S3_ObjectCannedACL_from_str(object_acl_str);
+  }
+
+  auto bucket_acl_str = config.get("vfs.s3.bucket_canned_acl", &found);
+  assert(found);
+  if (found) {
+    bucket_canned_acl_ = S3_BucketCannedACL_from_str(bucket_acl_str);
+  }
 
   auto sse = config.get("vfs.s3.sse", &found);
   assert(found);
@@ -259,6 +347,10 @@ Status S3::create_bucket(const URI& bucket) const {
     create_bucket_request.SetCreateBucketConfiguration(cfg);
   }
 
+  if (bucket_canned_acl_ != Aws::S3::Model::BucketCannedACL::NOT_SET) {
+    create_bucket_request.SetACL(bucket_canned_acl_);
+  }
+
   auto create_bucket_outcome = client_->CreateBucket(create_bucket_request);
   if (!create_bucket_outcome.IsSuccess()) {
     return LOG_STATUS(Status::S3Error(
@@ -308,7 +400,7 @@ Status S3::disconnect() {
     for (auto& kv : multipart_upload_states_)
       states.emplace_back(&kv.second);
 
-    auto statuses =
+    auto status =
         parallel_for(vfs_thread_pool_, 0, states.size(), [&](uint64_t i) {
           const MultiPartUploadState* state = states[i];
           // Lock multipart state
@@ -342,9 +434,7 @@ Status S3::disconnect() {
           return Status::Ok();
         });
 
-    // check statuses
-    for (auto& st : statuses)
-      RETURN_NOT_OK(st);
+    RETURN_NOT_OK(status);
   }
 
   unique_rl.unlock();
@@ -602,11 +692,13 @@ Status S3::ls(
   list_objects_request.SetDelimiter(delimiter.c_str());
   if (request_payer_ != Aws::S3::Model::RequestPayer::NOT_SET)
     list_objects_request.SetRequestPayer(request_payer_);
-  if (max_paths != -1)
-    list_objects_request.SetMaxKeys(max_paths);
 
   bool is_done = false;
   while (!is_done) {
+    // Not requesting more items than needed
+    if (max_paths != -1)
+      list_objects_request.SetMaxKeys(
+          max_paths - static_cast<int>(paths->size()));
     auto list_objects_outcome = client_->ListObjects(list_objects_request);
 
     if (!list_objects_outcome.IsSuccess())
@@ -627,7 +719,9 @@ Status S3::ls(
           "s3://" + aws_auth + add_front_slash(remove_trailing_slash(file)));
     }
 
-    is_done = !list_objects_outcome.GetResult().GetIsTruncated();
+    is_done =
+        !list_objects_outcome.GetResult().GetIsTruncated() ||
+        (max_paths != -1 && paths->size() >= static_cast<size_t>(max_paths));
     if (!is_done) {
       // The documentation states that "GetNextMarker" will be non-empty only
       // when the delimiter in the request is non-empty. When the delimiter is
@@ -757,11 +851,12 @@ Status S3::read(
           .c_str());
   get_object_request.SetResponseStreamFactory(
       [buffer, length, read_ahead_length]() {
-        auto streamBuf = new boost::interprocess::bufferbuf(
-            (char*)buffer, length + read_ahead_length);
-        return Aws::New<Aws::IOStream>(
-            constants::s3_allocation_tag.c_str(), streamBuf);
+        return Aws::New<PreallocatedIOStream>(
+            constants::s3_allocation_tag.c_str(),
+            buffer,
+            length + read_ahead_length);
       });
+
   if (request_payer_ != Aws::S3::Model::RequestPayer::NOT_SET)
     get_object_request.SetRequestPayer(request_payer_);
 
@@ -776,7 +871,8 @@ Status S3::read(
       static_cast<uint64_t>(get_object_outcome.GetResult().GetContentLength());
   if (*length_returned < length) {
     return LOG_STATUS(Status::S3Error(
-        std::string("Read operation returned different size of bytes.")));
+        std::string("Read operation returned different size of bytes ") +
+        std::to_string(*length_returned) + " vs " + std::to_string(length)));
   }
 
   return Status::Ok();
@@ -853,6 +949,9 @@ Status S3::touch(const URI& uri) const {
     put_object_request.SetServerSideEncryption(sse_);
   if (!sse_kms_key_id_.empty())
     put_object_request.SetSSEKMSKeyId(Aws::String(sse_kms_key_id_.c_str()));
+  if (object_canned_acl_ != Aws::S3::Model::ObjectCannedACL::NOT_SET) {
+    put_object_request.SetACL(object_canned_acl_);
+  }
 
   auto put_object_outcome = client_->PutObject(put_object_request);
   if (!put_object_outcome.IsSuccess()) {
@@ -932,8 +1031,18 @@ Status S3::init_client() const {
 
   std::lock_guard<std::mutex> lck(client_init_mtx_);
 
-  if (client_ != nullptr)
+  if (client_ != nullptr) {
+    // Check credentials. If expired, referesh it
+    if (credentials_provider_) {
+      Aws::Auth::AWSCredentials credentials =
+          credentials_provider_->GetAWSCredentials();
+      if (credentials.IsExpiredOrEmpty()) {
+        return LOG_STATUS(
+            Status::S3Error(std::string("Credentials is expired or empty.")));
+      }
+    }
     return Status::Ok();
+  }
 
   bool found;
   auto s3_endpoint_override = config_.get("vfs.s3.endpoint_override", &found);
@@ -1051,6 +1160,7 @@ Status S3::init_client() const {
 
   client_config.retryStrategy = Aws::MakeShared<S3RetryStrategy>(
       constants::s3_allocation_tag.c_str(),
+      stats_,
       connect_max_tries,
       connect_scale_factor);
 
@@ -1066,8 +1176,6 @@ Status S3::init_client() const {
   }
 #endif
 
-  std::shared_ptr<Aws::Auth::AWSCredentialsProvider> credentials_provider =
-      nullptr;
   switch ((!aws_access_key_id.empty() ? 1 : 0) +
           (!aws_secret_access_key.empty() ? 2 : 0) +
           (!aws_role_arn.empty() ? 4 : 0)) {
@@ -1083,9 +1191,11 @@ Status S3::init_client() const {
       Aws::String secret_access_key(aws_secret_access_key.c_str());
       Aws::String session_token(
           !aws_session_token.empty() ? aws_session_token.c_str() : "");
-      credentials_provider =
-          std::make_shared<Aws::Auth::SimpleAWSCredentialsProvider>(
-              access_key_id, secret_access_key, session_token);
+      credentials_provider_ = tdb_make_shared(
+          Aws::Auth::SimpleAWSCredentialsProvider,
+          access_key_id,
+          secret_access_key,
+          session_token);
       break;
     }
     case 4: {
@@ -1100,9 +1210,13 @@ Status S3::init_client() const {
               Aws::Auth::DEFAULT_CREDS_LOAD_FREQ_SECONDS);
       Aws::String session_name(
           !aws_session_name.empty() ? aws_session_name.c_str() : "");
-      credentials_provider =
-          std::make_shared<Aws::Auth::STSAssumeRoleCredentialsProvider>(
-              role_arn, session_name, external_id, load_frequency, nullptr);
+      credentials_provider_ = tdb_make_shared(
+          Aws::Auth::STSAssumeRoleCredentialsProvider,
+          role_arn,
+          session_name,
+          external_id,
+          load_frequency,
+          nullptr);
       break;
     }
     default:
@@ -1110,19 +1224,30 @@ Status S3::init_client() const {
           "Ambiguous authentication credentials; both permanent and temporary "
           "authentication credentials are configured");
   }
-  if (credentials_provider == nullptr) {
-    client_ = tdb_make_shared(
-        Aws::S3::S3Client,
-        *client_config_,
-        Aws::Client::AWSAuthV4Signer::PayloadSigningPolicy::Never,
-        use_virtual_addressing_);
-  } else {
-    client_ = tdb_make_shared(
-        Aws::S3::S3Client,
-        credentials_provider,
-        *client_config_,
-        Aws::Client::AWSAuthV4Signer::PayloadSigningPolicy::Never,
-        use_virtual_addressing_);
+
+  // The `Aws::S3::S3Client` constructor is not thread-safe. Although we
+  // currently hold `client_init_mtx_` that protects this routine from threads
+  // on this instance of `S3`, it is not sufficient protection from threads on
+  // another instance of `S3`. Use an additional, static mutex for this
+  // scenario.
+  static std::mutex static_client_init_mtx;
+  {
+    std::lock_guard<std::mutex> static_lck(static_client_init_mtx);
+
+    if (credentials_provider_ == nullptr) {
+      client_ = tdb_make_shared(
+          Aws::S3::S3Client,
+          *client_config_,
+          Aws::Client::AWSAuthV4Signer::PayloadSigningPolicy::Never,
+          use_virtual_addressing_);
+    } else {
+      client_ = tdb_make_shared(
+          Aws::S3::S3Client,
+          credentials_provider_.inner_sp(),
+          *client_config_,
+          Aws::Client::AWSAuthV4Signer::PayloadSigningPolicy::Never,
+          use_virtual_addressing_);
+    }
   }
 
   return Status::Ok();
@@ -1146,6 +1271,9 @@ Status S3::copy_object(const URI& old_uri, const URI& new_uri) {
     copy_object_request.SetServerSideEncryption(sse_);
   if (!sse_kms_key_id_.empty())
     copy_object_request.SetSSEKMSKeyId(Aws::String(sse_kms_key_id_.c_str()));
+  if (object_canned_acl_ != Aws::S3::Model::ObjectCannedACL::NOT_SET) {
+    copy_object_request.SetACL(object_canned_acl_);
+  }
 
   auto copy_object_outcome = client_->CopyObject(copy_object_request);
   if (!copy_object_outcome.IsSuccess()) {
@@ -1236,6 +1364,9 @@ Status S3::initiate_multipart_request(
   if (!sse_kms_key_id_.empty())
     multipart_upload_request.SetSSEKMSKeyId(
         Aws::String(sse_kms_key_id_.c_str()));
+  if (object_canned_acl_ != Aws::S3::Model::ObjectCannedACL::NOT_SET) {
+    multipart_upload_request.SetACL(object_canned_acl_);
+  }
 
   auto multipart_upload_outcome =
       client_->CreateMultipartUpload(multipart_upload_request);
@@ -1364,6 +1495,9 @@ Status S3::flush_direct(const URI& uri) {
     put_object_request.SetServerSideEncryption(sse_);
   if (!sse_kms_key_id_.empty())
     put_object_request.SetSSEKMSKeyId(Aws::String(sse_kms_key_id_.c_str()));
+  if (object_canned_acl_ != Aws::S3::Model::ObjectCannedACL::NOT_SET) {
+    put_object_request.SetACL(object_canned_acl_);
+  }
 
   auto put_object_outcome = client_->PutObject(put_object_request);
   if (!put_object_outcome.IsSuccess()) {

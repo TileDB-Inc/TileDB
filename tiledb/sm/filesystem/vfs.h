@@ -49,15 +49,12 @@
 #include "tiledb/sm/filesystem/mem_filesystem.h"
 #include "tiledb/sm/misc/cancelable_tasks.h"
 #include "tiledb/sm/misc/uri.h"
+#include "tiledb/sm/stats/stats.h"
 
 #ifdef _WIN32
 #include "tiledb/sm/filesystem/win.h"
 #else
 #include "tiledb/sm/filesystem/posix.h"
-#endif
-
-#ifdef HAVE_AZURE
-#include "tiledb/sm/filesystem/azure.h"
 #endif
 
 #ifdef HAVE_GCS
@@ -70,6 +67,10 @@
 
 #ifdef HAVE_HDFS
 #include "tiledb/sm/filesystem/hdfs_filesystem.h"
+#endif
+
+#ifdef HAVE_AZURE
+#include "tiledb/sm/filesystem/azure.h"
 #endif
 
 using namespace tiledb::common;
@@ -95,6 +96,9 @@ class VFS {
 
   /** Destructor. */
   ~VFS() = default;
+
+  DISABLE_COPY_AND_COPY_ASSIGN(VFS);
+  DISABLE_MOVE_AND_MOVE_ASSIGN(VFS);
 
   /* ********************************* */
   /*               API                 */
@@ -265,10 +269,12 @@ class VFS {
   /**
    * Initializes the virtual filesystem with the given configuration.
    *
+   * @param parent_stats The parent stats to inherit from.
    * @param config Configuration parameters
    * @return Status
    */
   Status init(
+      stats::Stats* parent_stats,
       ThreadPool* compute_tp,
       ThreadPool* io_tp,
       const Config* ctx_config,
@@ -623,6 +629,9 @@ class VFS {
 #ifdef HAVE_HDFS
   tdb_unique_ptr<hdfs::HDFS> hdfs_;
 #endif
+
+  /** The class stats. */
+  stats::Stats* stats_;
 
   /** The in-memory filesystem which is always supported */
   MemFilesystem memfs_;

@@ -38,6 +38,35 @@ steps:
       $bootstrapOptions = "-EnableGCS " + $bootstrapOptions
       #NOTE: GCS simulator not yet actually in place.
     }
+    if ($env:TILEDB_SERIALIZATION -eq "ON") {
+      $bootstrapOptions = "-EnableSerialization " + $bootstrapOptions
+    }
+    # static already added above as initial default
+    # if ($env:TILEDB_STATIC -eq "ON") {
+    #  $bootstrapOptions = $bootstrapOptions + " -EnableStaticTileDB"
+    # }
+    # if ($env:TILEDB_HDFS -eq "ON") {
+    #  $bootstrapOptions = $bootstrapOptions + " -EnableHDFS"
+    #}
+    if ($env:TILEDB_TOOLS -eq "ON") {
+      $bootstrapOptions = $bootstrapOptions + " -EnableTools"
+    }
+    if ($env:TILEDB_DEBUG -eq "ON") {
+      $bootstrapOptions = $bootstrapOptions + " -EnableDebug"
+    }
+    # if ($env:TILEDB_CI_ASAN -eq "ON") {
+    #  $bootstrapOptions = $bootstrapOptions + " -EnableSanitizer address -EnableDebug"
+    # }
+    # if ($env:TILEDB_CI_TSAN -eq "ON") {
+    #  $bootstrapOptions = $bootstrapOptions + " -EnableSanitizer thread -EnableDebug"
+    # }
+    # static already added above as initial default
+    # if ($env:TILEDB_FORCE_BUILD_DEPS" -eq "ON") {
+    #   $bootstrapOptions = $bootstrapOptions + " -EnableBuildDeps"
+    # }
+    if ($env:TILEDB_WERROR -eq "OFF") {
+      $bootstrapOptions = $bootstrapOptions + " -DisableWerror"
+    }
 
     $bootstrapExpression = "& $env:BUILD_SOURCESDIRECTORY\bootstrap.ps1 " + $bootstrapOptions
     Write-Host "bootstrapExpression: $bootstrapExpression"
@@ -193,7 +222,6 @@ steps:
 
 - task: PublishBuildArtifacts@1
   inputs:
-    #pathtoPublish: '$(Build.ArtifactStagingDirectory)/tiledb-windows-x64-$(Build.SourceVersion).zip'
-    pathtoPublish: '$(Agent.BuildDirectory)\s\dist\'
+    pathToPublish: '$(Agent.BuildDirectory)\s\dist\'
     artifactName: 'tiledb-windows-x64-$(Build.SourceVersion)'
   condition: and(succeeded(), eq(variables['imageName'], 'vs2017-win2016'))

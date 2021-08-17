@@ -34,11 +34,11 @@
 #include "tiledb/common/logger.h"
 #include "tiledb/sm/array_schema/dimension.h"
 #include "tiledb/sm/buffer/buffer.h"
-#include "tiledb/sm/buffer/const_buffer.h"
 #include "tiledb/sm/enums/datatype.h"
 #include "tiledb/sm/misc/utils.h"
 
 #include <cassert>
+#include <cmath>
 #include <iostream>
 #include <list>
 
@@ -54,6 +54,7 @@ namespace sm {
 RTree::RTree() {
   domain_ = nullptr;
   fanout_ = 0;
+  deserialized_buffer_size_ = 0;
 }
 
 RTree::RTree(const Domain* domain, unsigned fanout)
@@ -103,7 +104,7 @@ Status RTree::build_tree() {
     return Status::Ok();
 
   // Build the tree bottom up
-  auto height = (size_t)ceil(utils::math::log(fanout_, leaf_num)) + 1;
+  auto height = (size_t)std::ceil(utils::math::log(fanout_, leaf_num)) + 1;
   for (size_t i = 0; i < height - 1; ++i) {
     auto new_level = build_level(levels_.back());
     levels_.emplace_back(new_level);
@@ -113,6 +114,13 @@ Status RTree::build_tree() {
   std::reverse(std::begin(levels_), std::end(levels_));
 
   return Status::Ok();
+}
+
+uint64_t RTree::free_memory() {
+  auto ret = deserialized_buffer_size_;
+  levels_.clear();
+  deserialized_buffer_size_ = 0;
+  return ret;
 }
 
 unsigned RTree::dim_num() const {
@@ -285,7 +293,7 @@ Status RTree::deserialize(
 
 RTree::Level RTree::build_level(const Level& level) {
   auto cur_mbr_num = (uint64_t)level.size();
-  Level new_level((uint64_t)ceil((double)cur_mbr_num / fanout_));
+  Level new_level((uint64_t)std::ceil((double)cur_mbr_num / fanout_));
   auto new_mbr_num = (uint64_t)new_level.size();
 
   uint64_t mbrs_visited = 0;
@@ -336,6 +344,7 @@ Status RTree::deserialize_v1_v4(ConstBuffer* cbuff, const Domain* domain) {
   }
 
   domain_ = domain;
+  deserialized_buffer_size_ = cbuff->size();
 
   return Status::Ok();
 }
@@ -376,6 +385,7 @@ Status RTree::deserialize_v5(ConstBuffer* cbuff, const Domain* domain) {
   }
 
   domain_ = domain;
+  deserialized_buffer_size_ = cbuff->size();
 
   return Status::Ok();
 }

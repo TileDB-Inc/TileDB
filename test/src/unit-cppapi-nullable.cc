@@ -265,25 +265,27 @@ void NullableArrayCppFx::write(
   for (const auto& test_query_buffer : test_query_buffers) {
     if (!test_query_buffer.validity_bytemap_) {
       if (!test_query_buffer.offsets_) {
-        query.set_buffer(test_query_buffer.name_, *test_query_buffer.data_);
+        query.set_data_buffer(
+            test_query_buffer.name_, *test_query_buffer.data_);
       } else {
-        query.set_buffer(
-            test_query_buffer.name_,
-            *test_query_buffer.offsets_,
-            *test_query_buffer.data_);
+        query.set_data_buffer(
+            test_query_buffer.name_, *test_query_buffer.data_);
+        query.set_offsets_buffer(
+            test_query_buffer.name_, *test_query_buffer.offsets_);
       }
     } else {
       if (!test_query_buffer.offsets_) {
-        query.set_buffer_nullable(
-            test_query_buffer.name_,
-            *test_query_buffer.data_,
-            *test_query_buffer.validity_bytemap_);
+        query.set_data_buffer(
+            test_query_buffer.name_, *test_query_buffer.data_);
+        query.set_validity_buffer(
+            test_query_buffer.name_, *test_query_buffer.validity_bytemap_);
       } else {
-        query.set_buffer_nullable(
-            test_query_buffer.name_,
-            *test_query_buffer.offsets_,
-            *test_query_buffer.data_,
-            *test_query_buffer.validity_bytemap_);
+        query.set_data_buffer(
+            test_query_buffer.name_, *test_query_buffer.data_);
+        query.set_offsets_buffer(
+            test_query_buffer.name_, *test_query_buffer.offsets_);
+        query.set_validity_buffer(
+            test_query_buffer.name_, *test_query_buffer.validity_bytemap_);
       }
     }
   }
@@ -314,25 +316,27 @@ void NullableArrayCppFx::read(
   for (const auto& test_query_buffer : test_query_buffers) {
     if (!test_query_buffer.validity_bytemap_) {
       if (!test_query_buffer.offsets_) {
-        query.set_buffer(test_query_buffer.name_, *test_query_buffer.data_);
+        query.set_data_buffer(
+            test_query_buffer.name_, *test_query_buffer.data_);
       } else {
-        query.set_buffer(
-            test_query_buffer.name_,
-            *test_query_buffer.offsets_,
-            *test_query_buffer.data_);
+        query.set_data_buffer(
+            test_query_buffer.name_, *test_query_buffer.data_);
+        query.set_offsets_buffer(
+            test_query_buffer.name_, *test_query_buffer.offsets_);
       }
     } else {
       if (!test_query_buffer.offsets_) {
-        query.set_buffer_nullable(
-            test_query_buffer.name_,
-            *test_query_buffer.data_,
-            *test_query_buffer.validity_bytemap_);
+        query.set_data_buffer(
+            test_query_buffer.name_, *test_query_buffer.data_);
+        query.set_validity_buffer(
+            test_query_buffer.name_, *test_query_buffer.validity_bytemap_);
       } else {
-        query.set_buffer_nullable(
-            test_query_buffer.name_,
-            *test_query_buffer.offsets_,
-            *test_query_buffer.data_,
-            *test_query_buffer.validity_bytemap_);
+        query.set_data_buffer(
+            test_query_buffer.name_, *test_query_buffer.data_);
+        query.set_offsets_buffer(
+            test_query_buffer.name_, *test_query_buffer.offsets_);
+        query.set_validity_buffer(
+            test_query_buffer.name_, *test_query_buffer.validity_bytemap_);
       }
     }
   }

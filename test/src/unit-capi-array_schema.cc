@@ -101,6 +101,15 @@ struct ArraySchemaFx {
   // Vector of supported filsystems
   const std::vector<std::unique_ptr<SupportedFs>> fs_vec_;
 
+  // struct for information of another directory
+  struct schema_file_struct {
+    tiledb_ctx_t* ctx;
+    tiledb_vfs_t* vfs;
+    std::string path;
+  };
+
+  static int get_schema_file_struct(const char* path, void* data);
+
   // Functions
   ArraySchemaFx();
   ~ArraySchemaFx();
@@ -344,6 +353,7 @@ int ArraySchemaFx::array_create_wrapper(
           &array_schema) == TILEDB_OK);
 
   // Clean up.
+  tiledb_array_schema_free(&array_schema);
   tiledb_array_schema_free(&new_array_schema);
   tiledb_buffer_free(&buff);
   tiledb_buffer_free(&buff2);
@@ -387,6 +397,7 @@ int ArraySchemaFx::array_schema_load_wrapper(
 
   // Serialize the new array schema and deserialize into the original array
   // schema.
+  tiledb_array_schema_free(array_schema);
   tiledb_buffer_t* buff2;
   REQUIRE(
       tiledb_serialize_array_schema(
@@ -446,6 +457,7 @@ int ArraySchemaFx::array_get_schema_wrapper(
 
   // Serialize the new array schema and deserialize into the original array
   // schema.
+  tiledb_array_schema_free(array_schema);
   tiledb_buffer_t* buff2;
   REQUIRE(
       tiledb_serialize_array_schema(
@@ -900,6 +912,18 @@ std::string ArraySchemaFx::random_name(const std::string& prefix) {
   return ss.str();
 }
 
+int ArraySchemaFx::get_schema_file_struct(const char* path, void* data) {
+  auto data_struct = (ArraySchemaFx::schema_file_struct*)data;
+  auto ctx = data_struct->ctx;
+  auto vfs = data_struct->vfs;
+  int is_dir;
+  int rc = tiledb_vfs_is_dir(ctx, vfs, path, &is_dir);
+  CHECK(rc == TILEDB_OK);
+
+  data_struct->path = path;
+  return 1;
+}
+
 TEST_CASE_METHOD(
     ArraySchemaFx,
     "C API: Test array schema creation and retrieval",
@@ -1026,6 +1050,7 @@ TEST_CASE_METHOD(
   rc = tiledb_dimension_get_tile_extent(ctx_, d1, &extent);
   CHECK(rc == TILEDB_OK);
   CHECK(extent == nullptr);
+  tiledb_dimension_free(&d1);
 
   // Create dimension with huge range and tile extent - error
   tiledb_dimension_t* d2;
@@ -1229,6 +1254,8 @@ TEST_CASE_METHOD(
   REQUIRE(rc == TILEDB_OK);
 
   // Clean up
+  tiledb_filter_free(&filter);
+  tiledb_filter_list_free(&filter_list);
   tiledb_attribute_free(&attr1);
   tiledb_dimension_free(&d1);
   tiledb_domain_free(&domain);
@@ -1359,9 +1386,15 @@ TEST_CASE_METHOD(
   tiledb_array_schema_free(&array_schema);
 
   // Corrupt the array schema
-  std::string schema_path = array_name + "/__array_schema.tdb";
+  std::string schema_path =
+      array_name + "/" + tiledb::sm::constants::array_schema_folder_name;
   std::string to_write = "garbage";
   tiledb_vfs_fh_t* fh;
+  schema_file_struct data_struct = {ctx_, vfs_, ""};
+  rc = tiledb_vfs_ls(
+      ctx_, vfs_, schema_path.c_str(), &get_schema_file_struct, &data_struct);
+  schema_path = data_struct.path;
+
   rc = tiledb_vfs_open(ctx_, vfs_, schema_path.c_str(), TILEDB_VFS_WRITE, &fh);
   REQUIRE(rc == TILEDB_OK);
   rc = tiledb_vfs_write(ctx_, fh, to_write.c_str(), to_write.size());
@@ -1370,6 +1403,7 @@ TEST_CASE_METHOD(
   REQUIRE(rc == TILEDB_OK);
   rc = tiledb_vfs_close(ctx_, fh);
   REQUIRE(rc == TILEDB_OK);
+  tiledb_vfs_fh_free(&fh);
 
   // Check for failure opening the array.
   tiledb_array_t* array;
@@ -1849,18 +1883,20 @@ TEST_CASE_METHOD(
   REQUIRE(rc == TILEDB_ERR);
   void* buff = nullptr;
   uint64_t size = 1024;
-  rc = tiledb_query_set_buffer(ctx_, query, "buff", buff, &size);
+  rc = tiledb_query_set_data_buffer(ctx_, query, "buff", buff, &size);
   REQUIRE(rc == TILEDB_ERR);
 
   rc = tiledb_array_close(ctx_, array);
   REQUIRE(rc == TILEDB_OK);
 
   // Clean up
+  tiledb_attribute_free(&a);
   tiledb_dimension_free(&d1);
   tiledb_dimension_free(&d2);
   tiledb_dimension_free(&r_d1);
   tiledb_dimension_free(&r_d2);
   tiledb_domain_free(&domain);
+  tiledb_domain_free(&read_dom);
   tiledb_array_free(&array);
   tiledb_query_free(&query);
   tiledb_array_schema_free(&array_schema);

@@ -49,8 +49,9 @@ function install_hadoop {
     sudo chown -R $(whoami) /usr/local/hadoop || die "could not create local hadoop directory"
   pushd /usr/local/hadoop
   # download from closest mirror
-  sudo curl -G -L -d "action=download" -d "filename=hadoop/common/hadoop-${HADOOP_VERSION}/hadoop-${HADOOP_VERSION}.tar.gz" \
-	  https://www.apache.org/dyn/mirrors/mirrors.cgi -o hadoop-${HADOOP_VERSION}.tar.gz
+  curl -G -L -d "action=download" \
+    "https://www.apache.org/dyn/closer.cgi/hadoop/common/hadoop-${HADOOP_VERSION}/hadoop-${HADOOP_VERSION}.tar.gz" \
+    -o hadoop-${HADOOP_VERSION}.tar.gz
   if [ $? -ne 0 ]; then
     die "error downloading hadoop from apache mirror"
   fi;

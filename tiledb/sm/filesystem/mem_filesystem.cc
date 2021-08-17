@@ -30,6 +30,7 @@
  * This file implements the in-memory filesystem class
  */
 
+#include <algorithm>
 #include <mutex>
 #include <sstream>
 #include <unordered_set>
@@ -292,7 +293,7 @@ class MemFilesystem::Directory : public MemFilesystem::FSNode {
       names.emplace_back(full_path + child.first);
     }
 
-    sort(names.begin(), names.end());
+    std::sort(names.begin(), names.end());
     *children = names;
 
     return Status::Ok();
@@ -396,8 +397,13 @@ Status MemFilesystem::ls(
   for (auto& token : tokens) {
     assert(cur_lock.owns_lock());
     assert(cur_lock.mutex() == &cur->mutex_);
-
     dir = dir + token + "/";
+
+    if (cur->children_.count(token) != 1) {
+      return Status::MemFSError(
+          std::string("Unable to list on non-existent path ") + path);
+    }
+
     cur = cur->children_[token].get();
     cur_lock = std::unique_lock<std::mutex>(cur->mutex_);
   }

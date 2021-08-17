@@ -60,32 +60,32 @@ const std::string Config::REST_SERVER_DEFAULT_ADDRESS =
 const std::string Config::REST_SERIALIZATION_DEFAULT_FORMAT = "CAPNP";
 const std::string Config::REST_SERVER_DEFAULT_HTTP_COMPRESSOR = "any";
 const std::string Config::REST_RETRY_HTTP_CODES = "503";
-const std::string Config::REST_RETRY_COUNT = "3";
+const std::string Config::REST_RETRY_COUNT = "25";
 const std::string Config::REST_RETRY_INITIAL_DELAY_MS = "500";
 const std::string Config::REST_RETRY_DELAY_FACTOR = "1.25";
+const std::string Config::SM_ENCRYPTION_KEY = "0";
+const std::string Config::SM_ENCRYPTION_TYPE = "NO_ENCRYPTION";
 const std::string Config::SM_DEDUP_COORDS = "false";
 const std::string Config::SM_CHECK_COORD_DUPS = "true";
 const std::string Config::SM_CHECK_COORD_OOB = "true";
+const std::string Config::SM_READ_RANGE_OOB = "warn";
 const std::string Config::SM_CHECK_GLOBAL_ORDER = "true";
 const std::string Config::SM_TILE_CACHE_SIZE = "10000000";
+const std::string Config::SM_SKIP_EST_SIZE_PARTITIONING = "false";
 const std::string Config::SM_MEMORY_BUDGET = "5368709120";       // 5GB
 const std::string Config::SM_MEMORY_BUDGET_VAR = "10737418240";  // 10GB;
-const std::string Config::SM_SUB_PARTITIONER_MEMORY_BUDGET = "0";
-const std::string Config::SP_SUBARRAY_PARTITIONER_MODE = "count";
-const std::string Config::SP_SUBARRAY_PARTITIONER_RESULT_COUNT = "0";
-const std::string Config::SP_SUBARRAY_PARTITIONER_MEMORY_SIZE = "0";
-const std::string Config::SP_SUBARRAY_PARTITIONER_COUNT = "0";
+const std::string Config::SM_USE_REFACTORED_READERS = "false";
+const std::string Config::SM_MEM_TOTAL_BUDGET = "10737418240";  // 10GB;
+const std::string Config::SM_MEM_SPARSE_GLOBAL_ORDER_RATIO_COORDS = "0.5";
+const std::string Config::SM_MEM_SPARSE_GLOBAL_ORDER_RATIO_QUERY_CONDITION =
+    "0.25";
+const std::string Config::SM_MEM_SPARSE_GLOBAL_ORDER_RATIO_TILE_RANGES = "0.1";
+const std::string Config::SM_MEM_SPARSE_GLOBAL_ORDER_RATIO_ARRAY_DATA = "0.1";
 const std::string Config::SM_ENABLE_SIGNAL_HANDLERS = "true";
 const std::string Config::SM_COMPUTE_CONCURRENCY_LEVEL =
     utils::parse::to_str(std::thread::hardware_concurrency());
 const std::string Config::SM_IO_CONCURRENCY_LEVEL =
     utils::parse::to_str(std::thread::hardware_concurrency());
-#ifdef HAVE_TBB
-const std::string Config::SM_NUM_TBB_THREADS =
-    utils::parse::to_str((int)tbb::task_scheduler_init::automatic);
-#else
-const std::string Config::SM_NUM_TBB_THREADS = "-1";
-#endif
 const std::string Config::SM_SKIP_CHECKSUM_VALIDATION = "false";
 const std::string Config::SM_CONSOLIDATION_AMPLIFICATION = "1.0";
 const std::string Config::SM_CONSOLIDATION_BUFFER_SIZE = "50000000";
@@ -94,10 +94,16 @@ const std::string Config::SM_CONSOLIDATION_STEP_MIN_FRAGS = "4294967295";
 const std::string Config::SM_CONSOLIDATION_STEP_MAX_FRAGS = "4294967295";
 const std::string Config::SM_CONSOLIDATION_STEP_SIZE_RATIO = "0.0";
 const std::string Config::SM_CONSOLIDATION_MODE = "fragments";
+const std::string Config::SM_CONSOLIDATION_TIMESTAMP_START = "0";
+const std::string Config::SM_CONSOLIDATION_TIMESTAMP_END =
+    std::to_string(UINT64_MAX);
 const std::string Config::SM_VACUUM_MODE = "fragments";
+const std::string Config::SM_VACUUM_TIMESTAMP_START = "0";
+const std::string Config::SM_VACUUM_TIMESTAMP_END = std::to_string(UINT64_MAX);
 const std::string Config::SM_OFFSETS_BITSIZE = "64";
 const std::string Config::SM_OFFSETS_EXTRA_ELEMENT = "false";
 const std::string Config::SM_OFFSETS_FORMAT_MODE = "bytes";
+const std::string Config::SM_MAX_TILE_OVERLAP_SIZE = "314572800";  // 300MiB
 const std::string Config::VFS_MIN_PARALLEL_SIZE = "10485760";
 const std::string Config::VFS_MIN_BATCH_GAP = "512000";
 const std::string Config::VFS_MIN_BATCH_SIZE = "20971520";
@@ -110,6 +116,7 @@ const std::string Config::VFS_READ_AHEAD_SIZE = "102400";          // 100KiB
 const std::string Config::VFS_READ_AHEAD_CACHE_SIZE = "10485760";  // 10MiB;
 const std::string Config::VFS_AZURE_STORAGE_ACCOUNT_NAME = "";
 const std::string Config::VFS_AZURE_STORAGE_ACCOUNT_KEY = "";
+const std::string Config::VFS_AZURE_STORAGE_SAS_TOKEN = "";
 const std::string Config::VFS_AZURE_BLOB_ENDPOINT = "";
 const std::string Config::VFS_AZURE_USE_HTTPS = "true";
 const std::string Config::VFS_AZURE_MAX_PARALLEL_OPS =
@@ -133,6 +140,7 @@ const std::string Config::VFS_S3_AWS_SESSION_NAME = "";
 const std::string Config::VFS_S3_SCHEME = "https";
 const std::string Config::VFS_S3_ENDPOINT_OVERRIDE = "";
 const std::string Config::VFS_S3_USE_VIRTUAL_ADDRESSING = "true";
+const std::string Config::VFS_S3_SKIP_INIT = "false";
 const std::string Config::VFS_S3_USE_MULTIPART_UPLOAD = "true";
 const std::string Config::VFS_S3_MAX_PARALLEL_OPS =
     Config::SM_IO_CONCURRENCY_LEVEL;
@@ -153,10 +161,11 @@ const std::string Config::VFS_S3_PROXY_USERNAME = "";
 const std::string Config::VFS_S3_PROXY_PASSWORD = "";
 const std::string Config::VFS_S3_LOGGING_LEVEL = "Off";
 const std::string Config::VFS_S3_VERIFY_SSL = "true";
+const std::string Config::VFS_S3_BUCKET_CANNED_ACL = "NOT_SET";
+const std::string Config::VFS_S3_OBJECT_CANNED_ACL = "NOT_SET";
 const std::string Config::VFS_HDFS_KERB_TICKET_CACHE_PATH = "";
 const std::string Config::VFS_HDFS_NAME_NODE_URI = "";
 const std::string Config::VFS_HDFS_USERNAME = "";
-
 /* ****************************** */
 /*        PRIVATE CONSTANTS       */
 /* ****************************** */
@@ -166,6 +175,7 @@ const char Config::COMMENT_START = '#';
 const std::set<std::string> Config::unserialized_params_ = {
     "vfs.azure.storage_account_name",
     "vfs.azure.storage_account_key",
+    "vfs.azure.storage_sas_token",
     "vfs.s3.proxy_username",
     "vfs.s3.proxy_password",
     "vfs.s3.aws_access_key_id",
@@ -196,19 +206,31 @@ Config::Config() {
   param_values_["rest.retry_delay_factor"] = REST_RETRY_DELAY_FACTOR;
   param_values_["config.env_var_prefix"] = CONFIG_ENVIRONMENT_VARIABLE_PREFIX;
   param_values_["config.logging_level"] = CONFIG_LOGGING_LEVEL;
+  param_values_["sm.encryption_key"] = SM_ENCRYPTION_KEY;
+  param_values_["sm.encryption_type"] = SM_ENCRYPTION_TYPE;
   param_values_["sm.dedup_coords"] = SM_DEDUP_COORDS;
   param_values_["sm.check_coord_dups"] = SM_CHECK_COORD_DUPS;
   param_values_["sm.check_coord_oob"] = SM_CHECK_COORD_OOB;
+  param_values_["sm.read_range_oob"] = SM_READ_RANGE_OOB;
   param_values_["sm.check_global_order"] = SM_CHECK_GLOBAL_ORDER;
   param_values_["sm.tile_cache_size"] = SM_TILE_CACHE_SIZE;
+  param_values_["sm.skip_est_size_partitioning"] =
+      SM_SKIP_EST_SIZE_PARTITIONING;
   param_values_["sm.memory_budget"] = SM_MEMORY_BUDGET;
   param_values_["sm.memory_budget_var"] = SM_MEMORY_BUDGET_VAR;
-  param_values_["sm.sub_partitioner_memory_budget"] =
-      SM_SUB_PARTITIONER_MEMORY_BUDGET;
+  param_values_["sm.use_refactored_readers"] = SM_USE_REFACTORED_READERS;
+  param_values_["sm.mem.total_budget"] = SM_MEM_TOTAL_BUDGET;
+  param_values_["sm.mem.reader.sparse_global_order.ratio_coords"] =
+      SM_MEM_SPARSE_GLOBAL_ORDER_RATIO_COORDS;
+  param_values_["sm.mem.reader.sparse_global_order.ratio_query_condition"] =
+      SM_MEM_SPARSE_GLOBAL_ORDER_RATIO_QUERY_CONDITION;
+  param_values_["sm.mem.reader.sparse_global_order.ratio_tile_ranges"] =
+      SM_MEM_SPARSE_GLOBAL_ORDER_RATIO_TILE_RANGES;
+  param_values_["sm.mem.reader.sparse_global_order.ratio_array_data"] =
+      SM_MEM_SPARSE_GLOBAL_ORDER_RATIO_ARRAY_DATA;
   param_values_["sm.enable_signal_handlers"] = SM_ENABLE_SIGNAL_HANDLERS;
   param_values_["sm.compute_concurrency_level"] = SM_COMPUTE_CONCURRENCY_LEVEL;
   param_values_["sm.io_concurrency_level"] = SM_IO_CONCURRENCY_LEVEL;
-  param_values_["sm.num_tbb_threads"] = SM_NUM_TBB_THREADS;
   param_values_["sm.skip_checksum_validation"] = SM_SKIP_CHECKSUM_VALIDATION;
   param_values_["sm.consolidation.amplification"] =
       SM_CONSOLIDATION_AMPLIFICATION;
@@ -221,10 +243,17 @@ Config::Config() {
       SM_CONSOLIDATION_STEP_SIZE_RATIO;
   param_values_["sm.consolidation.steps"] = SM_CONSOLIDATION_STEPS;
   param_values_["sm.consolidation.mode"] = SM_CONSOLIDATION_MODE;
+  param_values_["sm.consolidation.timestamp_start"] =
+      SM_CONSOLIDATION_TIMESTAMP_START;
+  param_values_["sm.consolidation.timestamp_end"] =
+      SM_CONSOLIDATION_TIMESTAMP_END;
   param_values_["sm.vacuum.mode"] = SM_VACUUM_MODE;
+  param_values_["sm.vacuum.timestamp_start"] = SM_VACUUM_TIMESTAMP_START;
+  param_values_["sm.vacuum.timestamp_end"] = SM_VACUUM_TIMESTAMP_END;
   param_values_["sm.var_offsets.bitsize"] = SM_OFFSETS_BITSIZE;
   param_values_["sm.var_offsets.extra_element"] = SM_OFFSETS_EXTRA_ELEMENT;
   param_values_["sm.var_offsets.mode"] = SM_OFFSETS_FORMAT_MODE;
+  param_values_["sm.max_tile_overlap_size"] = SM_MAX_TILE_OVERLAP_SIZE;
   param_values_["vfs.min_parallel_size"] = VFS_MIN_PARALLEL_SIZE;
   param_values_["vfs.min_batch_gap"] = VFS_MIN_BATCH_GAP;
   param_values_["vfs.min_batch_size"] = VFS_MIN_BATCH_SIZE;
@@ -240,6 +269,7 @@ Config::Config() {
       VFS_AZURE_STORAGE_ACCOUNT_NAME;
   param_values_["vfs.azure.storage_account_key"] =
       VFS_AZURE_STORAGE_ACCOUNT_KEY;
+  param_values_["vfs.azure.storage_sas_token"] = VFS_AZURE_STORAGE_SAS_TOKEN;
   param_values_["vfs.azure.blob_endpoint"] = VFS_AZURE_BLOB_ENDPOINT;
   param_values_["vfs.azure.use_https"] = VFS_AZURE_USE_HTTPS;
   param_values_["vfs.azure.max_parallel_ops"] = VFS_AZURE_MAX_PARALLEL_OPS;
@@ -265,6 +295,7 @@ Config::Config() {
   param_values_["vfs.s3.endpoint_override"] = VFS_S3_ENDPOINT_OVERRIDE;
   param_values_["vfs.s3.use_virtual_addressing"] =
       VFS_S3_USE_VIRTUAL_ADDRESSING;
+  param_values_["vfs.s3.skip_init"] = VFS_S3_SKIP_INIT;
   param_values_["vfs.s3.use_multipart_upload"] = VFS_S3_USE_MULTIPART_UPLOAD;
   param_values_["vfs.s3.max_parallel_ops"] = VFS_S3_MAX_PARALLEL_OPS;
   param_values_["vfs.s3.multipart_part_size"] = VFS_S3_MULTIPART_PART_SIZE;
@@ -284,6 +315,8 @@ Config::Config() {
   param_values_["vfs.s3.proxy_password"] = VFS_S3_PROXY_PASSWORD;
   param_values_["vfs.s3.logging_level"] = VFS_S3_LOGGING_LEVEL;
   param_values_["vfs.s3.verify_ssl"] = VFS_S3_VERIFY_SSL;
+  param_values_["vfs.s3.bucket_canned_acl"] = VFS_S3_BUCKET_CANNED_ACL;
+  param_values_["vfs.s3.object_canned_acl"] = VFS_S3_OBJECT_CANNED_ACL;
   param_values_["vfs.hdfs.name_node_uri"] = VFS_HDFS_NAME_NODE_URI;
   param_values_["vfs.hdfs.username"] = VFS_HDFS_USERNAME;
   param_values_["vfs.hdfs.kerb_ticket_cache_path"] =
@@ -429,12 +462,18 @@ Status Config::unset(const std::string& param) {
     param_values_["config.env_var_prefix"] = CONFIG_ENVIRONMENT_VARIABLE_PREFIX;
   } else if (param == "config.logging_level") {
     param_values_["config.logging_level"] = CONFIG_LOGGING_LEVEL;
+  } else if (param == "sm.encryption_key") {
+    param_values_["sm.encryption_key"] = SM_ENCRYPTION_KEY;
+  } else if (param == "sm.encryption_type") {
+    param_values_["sm.encryption_type"] = SM_ENCRYPTION_TYPE;
   } else if (param == "sm.dedup_coords") {
     param_values_["sm.dedup_coords"] = SM_DEDUP_COORDS;
   } else if (param == "sm.check_coord_dups") {
     param_values_["sm.check_coord_dups"] = SM_CHECK_COORD_DUPS;
   } else if (param == "sm.check_coord_oob") {
     param_values_["sm.check_coord_oob"] = SM_CHECK_COORD_OOB;
+  } else if (param == "sm.read_range_oob") {
+    param_values_["sm.read_range_oob"] = SM_READ_RANGE_OOB;
   } else if (param == "sm.check_global_order") {
     param_values_["sm.check_global_order"] = SM_CHECK_GLOBAL_ORDER;
   } else if (param == "sm.tile_cache_size") {
@@ -443,9 +482,23 @@ Status Config::unset(const std::string& param) {
     param_values_["sm.memory_budget"] = SM_MEMORY_BUDGET;
   } else if (param == "sm.memory_budget_var") {
     param_values_["sm.memory_budget_var"] = SM_MEMORY_BUDGET_VAR;
-  } else if (param == "sm.sub_partitioner_memory_budget") {
-    param_values_["sm.sub_partitioner_memory_budget"] =
-        SM_SUB_PARTITIONER_MEMORY_BUDGET;
+  } else if (param == "sm.use_refactored_readers") {
+    param_values_["sm.use_refactored_readers"] = SM_USE_REFACTORED_READERS;
+  } else if (param == "sm.mem.total_budget") {
+    param_values_["sm.mem.total_budget"] = SM_MEM_TOTAL_BUDGET;
+  } else if (param == "sm.mem.reader.sparse_global_order.ratio_coords") {
+    param_values_["sm.mem.reader.sparse_global_order.ratio_coords"] =
+        SM_MEM_SPARSE_GLOBAL_ORDER_RATIO_COORDS;
+  } else if (
+      param == "sm.mem.reader.sparse_global_order.ratio_query_condition") {
+    param_values_["sm.mem.reader.sparse_global_order.ratio_query_condition"] =
+        SM_MEM_SPARSE_GLOBAL_ORDER_RATIO_QUERY_CONDITION;
+  } else if (param == "sm.mem.reader.sparse_global_order.ratio_tile_ranges") {
+    param_values_["sm.mem.reader.sparse_global_order.ratio_tile_ranges"] =
+        SM_MEM_SPARSE_GLOBAL_ORDER_RATIO_TILE_RANGES;
+  } else if (param == "sm.mem.reader.sparse_global_order.ratio_array_data") {
+    param_values_["sm.mem.reader.sparse_global_order.ratio_array_data"] =
+        SM_MEM_SPARSE_GLOBAL_ORDER_RATIO_ARRAY_DATA;
   } else if (param == "sm.enable_signal_handlers") {
     param_values_["sm.enable_signal_handlers"] = SM_ENABLE_SIGNAL_HANDLERS;
   } else if (param == "sm.compute_concurrency_level") {
@@ -453,8 +506,6 @@ Status Config::unset(const std::string& param) {
         SM_COMPUTE_CONCURRENCY_LEVEL;
   } else if (param == "sm.io_concurrency_level") {
     param_values_["sm.io_concurrency_level"] = SM_IO_CONCURRENCY_LEVEL;
-  } else if (param == "sm.num_tbb_threads") {
-    param_values_["sm.num_tbb_threads"] = SM_NUM_TBB_THREADS;
   } else if (param == "sm.consolidation.amplification") {
     param_values_["sm.consolidation.amplification"] =
         SM_CONSOLIDATION_AMPLIFICATION;
@@ -474,14 +525,26 @@ Status Config::unset(const std::string& param) {
         SM_CONSOLIDATION_STEP_SIZE_RATIO;
   } else if (param == "sm.consolidation.mode") {
     param_values_["sm.consolidation.mode"] = SM_CONSOLIDATION_MODE;
+  } else if (param == "sm.consolidation.timestamp_start") {
+    param_values_["sm.consolidation.timestamp_start"] =
+        SM_CONSOLIDATION_TIMESTAMP_START;
+  } else if (param == "sm.consolidation.timestamp_end") {
+    param_values_["sm.consolidation.timestamp_end"] =
+        SM_CONSOLIDATION_TIMESTAMP_END;
   } else if (param == "sm.vacuum.mode") {
     param_values_["sm.vacuum.mode"] = SM_VACUUM_MODE;
+  } else if (param == "sm.vacuum.timestamp_start") {
+    param_values_["sm.vacuum.timestamp_start"] = SM_VACUUM_TIMESTAMP_START;
+  } else if (param == "sm.vacuum.timestamp_end") {
+    param_values_["sm.vacuum.timestamp_end"] = SM_VACUUM_TIMESTAMP_END;
   } else if (param == "sm.var_offsets.bitsize") {
     param_values_["sm.var_offsets.bitsize"] = SM_OFFSETS_BITSIZE;
   } else if (param == "sm.var_offsets.extra_element") {
     param_values_["sm.var_offsets.extra_element"] = SM_OFFSETS_EXTRA_ELEMENT;
   } else if (param == "sm.var_offsets.mode") {
     param_values_["sm.var_offsets.mode"] = SM_OFFSETS_FORMAT_MODE;
+  } else if (param == "sm.max_tile_overlap_size") {
+    param_values_["sm.max_tile_overlap_size"] = SM_MAX_TILE_OVERLAP_SIZE;
   } else if (param == "vfs.min_parallel_size") {
     param_values_["vfs.min_parallel_size"] = VFS_MIN_PARALLEL_SIZE;
   } else if (param == "vfs.min_batch_gap") {
@@ -508,6 +571,8 @@ Status Config::unset(const std::string& param) {
   } else if (param == "vfs.azure.storage_account_key") {
     param_values_["vfs.azure.storage_account_key"] =
         VFS_AZURE_STORAGE_ACCOUNT_KEY;
+  } else if (param == "vfs.azure.storage_sas_token") {
+    param_values_["vfs.azure.storage_sas_token"] = VFS_AZURE_STORAGE_SAS_TOKEN;
   } else if (param == "vfs.azure.blob_endpoint") {
     param_values_["vfs.azure.blob_endpoint"] = VFS_AZURE_BLOB_ENDPOINT;
   } else if (param == "vfs.azure.use_https") {
@@ -557,6 +622,8 @@ Status Config::unset(const std::string& param) {
   } else if (param == "vfs.s3.use_virtual_addressing") {
     param_values_["vfs.s3.use_virtual_addressing"] =
         VFS_S3_USE_VIRTUAL_ADDRESSING;
+  } else if (param == "vfs.s3.skip_init") {
+    param_values_["vfs.s3.skip_init"] = VFS_S3_SKIP_INIT;
   } else if (param == "vfs.s3.use_multipart_upload") {
     param_values_["vfs.s3.use_multipart_upload"] = VFS_S3_USE_MULTIPART_UPLOAD;
   } else if (param == "vfs.s3.max_parallel_ops") {
@@ -593,6 +660,10 @@ Status Config::unset(const std::string& param) {
     param_values_["vfs.s3.proxy_password"] = VFS_S3_PROXY_PASSWORD;
   } else if (param == "vfs.s3.verify_ssl") {
     param_values_["vfs.s3.verify_ssl"] = VFS_S3_VERIFY_SSL;
+  } else if (param == "vfs.s3.bucket_canned_acl") {
+    param_values_["vfs.s3.bucket_canned_acl"] = VFS_S3_BUCKET_CANNED_ACL;
+  } else if (param == "vfs.s3.object_canned_acl") {
+    param_values_["vfs.s3.object_canned_acl"] = VFS_S3_OBJECT_CANNED_ACL;
   } else if (param == "vfs.hdfs.name_node_uri") {
     param_values_["vfs.hdfs.name_node_uri"] = VFS_HDFS_NAME_NODE_URI;
   } else if (param == "vfs.hdfs.username") {
@@ -642,7 +713,7 @@ Status Config::sanity_check(
   uint32_t v32 = 0;
   float vf = 0.0f;
   int64_t vint64 = 0;
-  int vint = 0;
+  int chkno = -1;
 
   if (param == "rest.server_serialization_format") {
     SerializationType serialization_type;
@@ -663,16 +734,12 @@ Status Config::sanity_check(
     RETURN_NOT_OK(utils::parse::convert(value, &vuint64));
   } else if (param == "sm.memory_budget_var") {
     RETURN_NOT_OK(utils::parse::convert(value, &vuint64));
-  } else if (param == "sm.sub_partitioner_memory_budget") {
-    RETURN_NOT_OK(utils::parse::convert(value, &vuint64));
   } else if (param == "sm.enable_signal_handlers") {
     RETURN_NOT_OK(utils::parse::convert(value, &v));
   } else if (param == "sm.compute_concurrency_level") {
     RETURN_NOT_OK(utils::parse::convert(value, &vuint64));
   } else if (param == "sm.io_concurrency_level") {
     RETURN_NOT_OK(utils::parse::convert(value, &vuint64));
-  } else if (param == "sm.num_tbb_threads") {
-    RETURN_NOT_OK(utils::parse::convert(value, &vint));
   } else if (param == "sm.consolidation.amplification") {
     RETURN_NOT_OK(utils::parse::convert(value, &vf));
   } else if (param == "sm.consolidation.buffer_size") {
@@ -717,6 +784,8 @@ Status Config::sanity_check(
           Status::ConfigError("Invalid S3 scheme parameter value"));
   } else if (param == "vfs.s3.use_virtual_addressing") {
     RETURN_NOT_OK(utils::parse::convert(value, &v));
+  } else if (param == "vfs.s3.skit_init") {
+    RETURN_NOT_OK(utils::parse::convert(value, &v));
   } else if (param == "vfs.s3.use_multipart_upload") {
     RETURN_NOT_OK(utils::parse::convert(value, &v));
   } else if (param == "vfs.s3.max_parallel_ops") {
@@ -737,6 +806,21 @@ Status Config::sanity_check(
     RETURN_NOT_OK(utils::parse::convert(value, &vint64));
   } else if (param == "vfs.s3.verify_ssl") {
     RETURN_NOT_OK(utils::parse::convert(value, &v));
+  } else if (
+      (chkno = 1, param == "vfs.s3.bucket_canned_acl") ||
+      (chkno = 2, param == "vfs.s3.object_canned_acl")) {
+    // first items valid for both ObjectCannedACL and BucketCannedACL
+    if (!((value == "NOT_SET") || (value == "private_") ||
+          (value == "public_read") || (value == "public_read_write") ||
+          (value == "authenticated_read") ||
+          // items only valid for ObjectCannedACL
+          (chkno == 2 &&
+           ((value == "aws_exec_read") || (value == "bucket_owner_read") ||
+            (value == "bucket_owner_full_control"))))) {
+      std::stringstream msg;
+      msg << "value " << param << " invalid canned acl for " << param;
+      return Status::Error(msg.str());
+    }
   }
 
   return Status::Ok();

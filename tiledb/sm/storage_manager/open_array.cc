@@ -69,6 +69,19 @@ ArraySchema* OpenArray::array_schema() const {
   return array_schema_;
 }
 
+std::unordered_map<std::string, tdb_shared_ptr<ArraySchema>>&
+OpenArray::array_schemas() {
+  return array_schemas_;
+}
+
+Status OpenArray::get_array_schema(
+    const std::string& schema_name, tdb_shared_ptr<ArraySchema>* array_schema) {
+  (*array_schema) = (array_schemas_.find(schema_name) == array_schemas_.end()) ?
+                        tdb_shared_ptr<ArraySchema>(nullptr) :
+                        array_schemas_[schema_name];
+  return Status::Ok();
+}
+
 const URI& OpenArray::array_uri() const {
   return array_uri_;
 }
@@ -90,7 +103,7 @@ void OpenArray::cnt_incr() {
 }
 
 bool OpenArray::is_empty(uint64_t timestamp) const {
-  std::lock_guard<std::mutex> lck(local_mtx_);
+  std::lock_guard<std::mutex> lock(local_mtx_);
   return fragment_metadata_.empty() ||
          (*fragment_metadata_.cbegin())->first_timestamp() > timestamp;
 }
@@ -116,6 +129,10 @@ FragmentMetadata* OpenArray::fragment_metadata(const URI& uri) const {
   std::lock_guard<std::mutex> lock(local_mtx_);
   auto it = fragment_metadata_set_.find(uri.to_string());
   return (it == fragment_metadata_set_.end()) ? nullptr : it->second;
+}
+
+OpenArrayMemoryTracker* OpenArray::memory_tracker() {
+  return &memory_tracker_;
 }
 
 tdb_shared_ptr<Buffer> OpenArray::array_metadata(const URI& uri) const {

@@ -117,9 +117,10 @@ class Benchmark : public BenchmarkBase {
     Query d_write_query(ctx_, d_write_array, TILEDB_WRITE);
     d_write_query.set_subarray({1u, dense_array_rows, 1u, dense_array_cols})
         .set_layout(TILEDB_ROW_MAJOR)
-        .set_buffer("a", data_a_)
-        .set_buffer("b", data_b_)
-        .set_buffer("c", off_c_, data_c_);
+        .set_data_buffer("a", data_a_)
+        .set_data_buffer("b", data_b_)
+        .set_data_buffer("c", data_c_)
+        .set_offsets_buffer("c", off_c_);
     d_write_query.submit();
     d_write_array.close();
 
@@ -127,9 +128,10 @@ class Benchmark : public BenchmarkBase {
     Array s_write_array(ctx_, sparse_array_uri_, TILEDB_WRITE);
     Query s_write_query(ctx_, s_write_array);
     s_write_query.set_layout(TILEDB_UNORDERED)
-        .set_buffer("a", data_a_)
-        .set_buffer("b", data_b_)
-        .set_buffer("c", off_c_, data_c_)
+        .set_data_buffer("a", data_a_)
+        .set_data_buffer("b", data_b_)
+        .set_data_buffer("c", data_c_)
+        .set_offsets_buffer("c", off_c_)
         .set_coordinates(sparse_coords_);
     s_write_query.submit();
     s_write_array.close();
@@ -140,9 +142,10 @@ class Benchmark : public BenchmarkBase {
       Query query(ctx_, array);
       query.set_subarray({1u, dense_array_rows, 1u, dense_array_cols})
           .set_layout(TILEDB_ROW_MAJOR)
-          .set_buffer("a", data_a_)
-          .set_buffer("b", data_b_)
-          .set_buffer("c", off_c_, data_c_);
+          .set_data_buffer("a", data_a_)
+          .set_data_buffer("b", data_b_)
+          .set_data_buffer("c", data_c_)
+          .set_offsets_buffer("c", off_c_);
       query.submit();
       array.close();
     }
@@ -163,9 +166,10 @@ class Benchmark : public BenchmarkBase {
       Query query(ctx_, array);
       query.set_subarray(subarray)
           .set_layout(TILEDB_ROW_MAJOR)
-          .set_buffer("a", data_a_)
-          .set_buffer("b", data_b_)
-          .set_buffer("c", off_c_, data_c_)
+          .set_data_buffer("a", data_a_)
+          .set_data_buffer("b", data_b_)
+          .set_data_buffer("c", data_c_)
+          .set_offsets_buffer("c", off_c_)
           .set_coordinates(sparse_coords_);
       query.submit();
       array.close();

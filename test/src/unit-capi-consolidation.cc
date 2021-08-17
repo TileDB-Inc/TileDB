@@ -33,6 +33,7 @@
 #include "catch.hpp"
 #include "test/src/helpers.h"
 #include "tiledb/sm/c_api/tiledb.h"
+#include "tiledb/sm/enums/encryption_type.h"
 #include "tiledb/sm/misc/utils.h"
 
 #include <climits>
@@ -78,8 +79,13 @@ struct ConsolidationFx {
   void write_dense_vector_del_1();
   void write_dense_vector_del_2();
   void write_dense_vector_del_3();
+  void write_dense_array_metadata();
   void write_dense_full();
-  void write_dense_subarray();
+  void write_dense_subarray(
+      uint64_t min1 = 3,
+      uint64_t max1 = 4,
+      uint64_t min2 = 3,
+      uint64_t max2 = 4);
   void write_dense_unordered();
   void write_sparse_full();
   void write_sparse_unordered();
@@ -87,6 +93,7 @@ struct ConsolidationFx {
   void write_sparse_heterogeneous_unordered();
   void write_sparse_string_full();
   void write_sparse_string_unordered();
+  void read_dense_array_metadata();
   void read_dense_vector(uint64_t timestamp = UINT64_MAX);
   void read_dense_vector_with_gaps();
   void read_dense_vector_mixed();
@@ -104,10 +111,18 @@ struct ConsolidationFx {
   void read_sparse_heterogeneous_unordered_full();
   void read_sparse_string_full_unordered();
   void read_sparse_string_unordered_full();
-  void consolidate_dense();
+  uint32_t get_num_fragments_to_vacuum_dense();
+  void consolidate_dense(
+      const std::string& mode = "fragments",
+      uint64_t start = 0,
+      uint64_t end = UINT64_MAX);
   void consolidate_sparse();
   void consolidate_sparse_heterogeneous();
   void consolidate_sparse_string();
+  void vacuum_dense(
+      const std::string& mode = "fragments",
+      uint64_t start = 0,
+      uint64_t end = UINT64_MAX);
   void remove_dense_vector();
   void remove_dense_array();
   void remove_sparse_array();
@@ -115,6 +130,9 @@ struct ConsolidationFx {
   void remove_sparse_string_array();
   void remove_array(const std::string& array_name);
   bool is_array(const std::string& array_name);
+  void get_array_meta_files_dense(std::vector<std::string>& files);
+  void get_array_meta_vac_files_dense(std::vector<std::string>& files);
+  void get_vac_files_dense(std::vector<std::string>& files);
 
   // Used to get the number of directories or files of another directory
   struct get_num_struct {
@@ -125,6 +143,10 @@ struct ConsolidationFx {
 
   static int get_dir_num(const char* path, void* data);
   static int get_meta_num(const char* path, void* data);
+  static int get_array_meta_files_callback(const char* path, void* data);
+  static int get_array_meta_vac_files_callback(const char* path, void* data);
+  static int get_vac_files_callback(const char* path, void* data);
+  static int get_fragment_timestamps(const char* path, void* data);
 };
 
 ConsolidationFx::ConsolidationFx() {
@@ -178,17 +200,27 @@ void ConsolidationFx::create_dense_vector() {
   CHECK(rc == TILEDB_OK);
 
   // Create array
-  if (encryption_type_ == TILEDB_NO_ENCRYPTION) {
-    rc = tiledb_array_create(ctx_, DENSE_VECTOR_NAME, array_schema);
-  } else {
-    rc = tiledb_array_create_with_key(
-        ctx_,
-        DENSE_VECTOR_NAME,
-        array_schema,
-        encryption_type_,
-        encryption_key_,
-        (uint32_t)strlen(encryption_key_));
+  if (encryption_type_ != TILEDB_NO_ENCRYPTION) {
+    tiledb_ctx_free(&ctx_);
+    tiledb_vfs_free(&vfs_);
+    tiledb_config_t* cfg;
+    tiledb_error_t* err = nullptr;
+    rc = tiledb_config_alloc(&cfg, &err);
+    REQUIRE(rc == TILEDB_OK);
+    REQUIRE(err == nullptr);
+    std::string encryption_type_string =
+        encryption_type_str((tiledb::sm::EncryptionType)encryption_type_);
+    rc = tiledb_config_set(
+        cfg, "sm.encryption_type", encryption_type_string.c_str(), &err);
+    REQUIRE(err == nullptr);
+    rc = tiledb_config_set(cfg, "sm.encryption_key", encryption_key_, &err);
+    REQUIRE(rc == TILEDB_OK);
+    REQUIRE(err == nullptr);
+    REQUIRE(tiledb_ctx_alloc(cfg, &ctx_) == TILEDB_OK);
+    REQUIRE(tiledb_vfs_alloc(ctx_, cfg, &vfs_) == TILEDB_OK);
+    tiledb_config_free(&cfg);
   }
+  rc = tiledb_array_create(ctx_, DENSE_VECTOR_NAME, array_schema);
   CHECK(rc == TILEDB_OK);
 
   // Clean up
@@ -267,17 +299,27 @@ void ConsolidationFx::create_dense_array() {
   CHECK(rc == TILEDB_OK);
 
   // Create array
-  if (encryption_type_ == TILEDB_NO_ENCRYPTION) {
-    rc = tiledb_array_create(ctx_, DENSE_ARRAY_NAME, array_schema);
-  } else {
-    rc = tiledb_array_create_with_key(
-        ctx_,
-        DENSE_ARRAY_NAME,
-        array_schema,
-        encryption_type_,
-        encryption_key_,
-        (uint32_t)strlen(encryption_key_));
+  if (encryption_type_ != TILEDB_NO_ENCRYPTION) {
+    tiledb_ctx_free(&ctx_);
+    tiledb_vfs_free(&vfs_);
+    tiledb_config_t* cfg;
+    tiledb_error_t* err = nullptr;
+    rc = tiledb_config_alloc(&cfg, &err);
+    REQUIRE(rc == TILEDB_OK);
+    REQUIRE(err == nullptr);
+    std::string encryption_type_string =
+        encryption_type_str((tiledb::sm::EncryptionType)encryption_type_);
+    rc = tiledb_config_set(
+        cfg, "sm.encryption_type", encryption_type_string.c_str(), &err);
+    REQUIRE(err == nullptr);
+    rc = tiledb_config_set(cfg, "sm.encryption_key", encryption_key_, &err);
+    REQUIRE(rc == TILEDB_OK);
+    REQUIRE(err == nullptr);
+    REQUIRE(tiledb_ctx_alloc(cfg, &ctx_) == TILEDB_OK);
+    REQUIRE(tiledb_vfs_alloc(ctx_, cfg, &vfs_) == TILEDB_OK);
+    tiledb_config_free(&cfg);
   }
+  rc = tiledb_array_create(ctx_, DENSE_ARRAY_NAME, array_schema);
   CHECK(rc == TILEDB_OK);
 
   // Clean up
@@ -359,18 +401,28 @@ void ConsolidationFx::create_sparse_array() {
   CHECK(rc == TILEDB_OK);
 
   // Create array
-  if (encryption_type_ == TILEDB_NO_ENCRYPTION) {
-    rc = tiledb_array_create(ctx_, SPARSE_ARRAY_NAME, array_schema);
-  } else {
-    rc = tiledb_array_create_with_key(
-        ctx_,
-        SPARSE_ARRAY_NAME,
-        array_schema,
-        encryption_type_,
-        encryption_key_,
-        (uint32_t)strlen(encryption_key_));
+  if (encryption_type_ != TILEDB_NO_ENCRYPTION) {
+    tiledb_ctx_free(&ctx_);
+    tiledb_vfs_free(&vfs_);
+    tiledb_config_t* cfg;
+    tiledb_error_t* err = nullptr;
+    rc = tiledb_config_alloc(&cfg, &err);
+    REQUIRE(rc == TILEDB_OK);
+    REQUIRE(err == nullptr);
+    std::string encryption_type_string =
+        encryption_type_str((tiledb::sm::EncryptionType)encryption_type_);
+    rc = tiledb_config_set(
+        cfg, "sm.encryption_type", encryption_type_string.c_str(), &err);
+    REQUIRE(err == nullptr);
+    rc = tiledb_config_set(cfg, "sm.encryption_key", encryption_key_, &err);
+    REQUIRE(rc == TILEDB_OK);
+    REQUIRE(err == nullptr);
+    REQUIRE(tiledb_ctx_alloc(cfg, &ctx_) == TILEDB_OK);
+    REQUIRE(tiledb_vfs_alloc(ctx_, cfg, &vfs_) == TILEDB_OK);
+    tiledb_config_free(&cfg);
   }
-  CHECK(rc == TILEDB_OK);
+  rc = tiledb_array_create(ctx_, SPARSE_ARRAY_NAME, array_schema);
+  REQUIRE(rc == TILEDB_OK);
 
   // Clean up
   tiledb_attribute_free(&a1);
@@ -453,19 +505,28 @@ void ConsolidationFx::create_sparse_heterogeneous_array() {
   CHECK(rc == TILEDB_OK);
 
   // Create array
-  if (encryption_type_ == TILEDB_NO_ENCRYPTION) {
-    rc = tiledb_array_create(
-        ctx_, SPARSE_HETEROGENEOUS_ARRAY_NAME, array_schema);
-  } else {
-    rc = tiledb_array_create_with_key(
-        ctx_,
-        SPARSE_HETEROGENEOUS_ARRAY_NAME,
-        array_schema,
-        encryption_type_,
-        encryption_key_,
-        (uint32_t)strlen(encryption_key_));
+  if (encryption_type_ != TILEDB_NO_ENCRYPTION) {
+    tiledb_ctx_free(&ctx_);
+    tiledb_vfs_free(&vfs_);
+    tiledb_config_t* cfg;
+    tiledb_error_t* err = nullptr;
+    rc = tiledb_config_alloc(&cfg, &err);
+    REQUIRE(rc == TILEDB_OK);
+    REQUIRE(err == nullptr);
+    std::string encryption_type_string =
+        encryption_type_str((tiledb::sm::EncryptionType)encryption_type_);
+    rc = tiledb_config_set(
+        cfg, "sm.encryption_type", encryption_type_string.c_str(), &err);
+    REQUIRE(err == nullptr);
+    rc = tiledb_config_set(cfg, "sm.encryption_key", encryption_key_, &err);
+    REQUIRE(rc == TILEDB_OK);
+    REQUIRE(err == nullptr);
+    REQUIRE(tiledb_ctx_alloc(cfg, &ctx_) == TILEDB_OK);
+    REQUIRE(tiledb_vfs_alloc(ctx_, cfg, &vfs_) == TILEDB_OK);
+    tiledb_config_free(&cfg);
   }
-  CHECK(rc == TILEDB_OK);
+  rc = tiledb_array_create(ctx_, SPARSE_HETEROGENEOUS_ARRAY_NAME, array_schema);
+  REQUIRE(rc == TILEDB_OK);
 
   // Clean up
   tiledb_attribute_free(&a1);
@@ -546,18 +607,28 @@ void ConsolidationFx::create_sparse_string_array() {
   CHECK(rc == TILEDB_OK);
 
   // Create array
-  if (encryption_type_ == TILEDB_NO_ENCRYPTION) {
-    rc = tiledb_array_create(ctx_, SPARSE_STRING_ARRAY_NAME, array_schema);
-  } else {
-    rc = tiledb_array_create_with_key(
-        ctx_,
-        SPARSE_STRING_ARRAY_NAME,
-        array_schema,
-        encryption_type_,
-        encryption_key_,
-        (uint32_t)strlen(encryption_key_));
+  if (encryption_type_ != TILEDB_NO_ENCRYPTION) {
+    tiledb_ctx_free(&ctx_);
+    tiledb_vfs_free(&vfs_);
+    tiledb_config_t* cfg;
+    tiledb_error_t* err = nullptr;
+    rc = tiledb_config_alloc(&cfg, &err);
+    REQUIRE(rc == TILEDB_OK);
+    REQUIRE(err == nullptr);
+    std::string encryption_type_string =
+        encryption_type_str((tiledb::sm::EncryptionType)encryption_type_);
+    rc = tiledb_config_set(
+        cfg, "sm.encryption_type", encryption_type_string.c_str(), &err);
+    REQUIRE(err == nullptr);
+    rc = tiledb_config_set(cfg, "sm.encryption_key", encryption_key_, &err);
+    REQUIRE(rc == TILEDB_OK);
+    REQUIRE(err == nullptr);
+    REQUIRE(tiledb_ctx_alloc(cfg, &ctx_) == TILEDB_OK);
+    REQUIRE(tiledb_vfs_alloc(ctx_, cfg, &vfs_) == TILEDB_OK);
+    tiledb_config_free(&cfg);
   }
-  CHECK(rc == TILEDB_OK);
+  rc = tiledb_array_create(ctx_, SPARSE_STRING_ARRAY_NAME, array_schema);
+  REQUIRE(rc == TILEDB_OK);
 
   // Clean up
   tiledb_attribute_free(&a1);
@@ -588,22 +659,32 @@ void ConsolidationFx::write_dense_vector_4_fragments(uint64_t timestamp) {
     a_4[i] = 310 + i;
   uint64_t a_4_size = sizeof(a_4);
 
-  // Open array
   tiledb_array_t* array;
   int rc = tiledb_array_alloc(ctx_, DENSE_VECTOR_NAME, &array);
   CHECK(rc == TILEDB_OK);
-  if (encryption_type_ == TILEDB_NO_ENCRYPTION) {
-    rc = tiledb_array_open_at(ctx_, array, TILEDB_WRITE, timestamp + 1);
-  } else {
-    rc = tiledb_array_open_at_with_key(
-        ctx_,
-        array,
-        TILEDB_WRITE,
-        encryption_type_,
-        encryption_key_,
-        (uint32_t)strlen(encryption_key_),
-        timestamp + 1);
+  tiledb_config_t* cfg;
+  tiledb_error_t* err = nullptr;
+  REQUIRE(tiledb_config_alloc(&cfg, &err) == TILEDB_OK);
+  REQUIRE(err == nullptr);
+
+  rc = tiledb_array_set_open_timestamp_end(ctx_, array, timestamp + 1);
+  CHECK(rc == TILEDB_OK);
+
+  // Open array
+  if (encryption_type_ != TILEDB_NO_ENCRYPTION) {
+    std::string encryption_type_string =
+        encryption_type_str((tiledb::sm::EncryptionType)encryption_type_);
+    rc = tiledb_config_set(
+        cfg, "sm.encryption_type", encryption_type_string.c_str(), &err);
+    REQUIRE(rc == TILEDB_OK);
+    REQUIRE(err == nullptr);
+    rc = tiledb_config_set(cfg, "sm.encryption_key", encryption_key_, &err);
+    REQUIRE(rc == TILEDB_OK);
+    REQUIRE(err == nullptr);
+    rc = tiledb_array_set_config(ctx_, array, cfg);
+    REQUIRE(rc == TILEDB_OK);
   }
+  rc = tiledb_array_open(ctx_, array, TILEDB_WRITE);
   REQUIRE(rc == TILEDB_OK);
 
   // Submit query #1
@@ -615,7 +696,7 @@ void ConsolidationFx::write_dense_vector_4_fragments(uint64_t timestamp) {
   CHECK(rc == TILEDB_OK);
   rc = tiledb_query_set_subarray(ctx_, query_1, subarray);
   CHECK(rc == TILEDB_OK);
-  rc = tiledb_query_set_buffer(ctx_, query_1, "a", a_1, &a_1_size);
+  rc = tiledb_query_set_data_buffer(ctx_, query_1, "a", a_1, &a_1_size);
   CHECK(rc == TILEDB_OK);
   rc = tiledb_query_submit(ctx_, query_1);
   CHECK(rc == TILEDB_OK);
@@ -623,18 +704,27 @@ void ConsolidationFx::write_dense_vector_4_fragments(uint64_t timestamp) {
   // Close and re-open at a new timestamp
   rc = tiledb_array_close(ctx_, array);
   CHECK(rc == TILEDB_OK);
-  if (encryption_type_ == TILEDB_NO_ENCRYPTION) {
-    rc = tiledb_array_open_at(ctx_, array, TILEDB_WRITE, timestamp + 2);
-  } else {
-    rc = tiledb_array_open_at_with_key(
-        ctx_,
-        array,
-        TILEDB_WRITE,
-        encryption_type_,
-        encryption_key_,
-        (uint32_t)strlen(encryption_key_),
-        timestamp + 2);
+  tiledb_config_free(&cfg);
+  err = nullptr;
+  REQUIRE(tiledb_config_alloc(&cfg, &err) == TILEDB_OK);
+  REQUIRE(err == nullptr);
+  rc = tiledb_array_set_open_timestamp_end(ctx_, array, timestamp + 2);
+  CHECK(rc == TILEDB_OK);
+
+  if (encryption_type_ != TILEDB_NO_ENCRYPTION) {
+    std::string encryption_type_string =
+        encryption_type_str((tiledb::sm::EncryptionType)encryption_type_);
+    rc = tiledb_config_set(
+        cfg, "sm.encryption_type", encryption_type_string.c_str(), &err);
+    REQUIRE(rc == TILEDB_OK);
+    REQUIRE(err == nullptr);
+    rc = tiledb_config_set(cfg, "sm.encryption_key", encryption_key_, &err);
+    REQUIRE(rc == TILEDB_OK);
+    REQUIRE(err == nullptr);
+    rc = tiledb_array_set_config(ctx_, array, cfg);
+    REQUIRE(rc == TILEDB_OK);
   }
+  rc = tiledb_array_open(ctx_, array, TILEDB_WRITE);
   REQUIRE(rc == TILEDB_OK);
 
   // Submit query #2
@@ -647,7 +737,7 @@ void ConsolidationFx::write_dense_vector_4_fragments(uint64_t timestamp) {
   CHECK(rc == TILEDB_OK);
   rc = tiledb_query_set_subarray(ctx_, query_2, subarray);
   CHECK(rc == TILEDB_OK);
-  rc = tiledb_query_set_buffer(ctx_, query_2, "a", a_2, &a_2_size);
+  rc = tiledb_query_set_data_buffer(ctx_, query_2, "a", a_2, &a_2_size);
   CHECK(rc == TILEDB_OK);
   rc = tiledb_query_submit(ctx_, query_2);
   CHECK(rc == TILEDB_OK);
@@ -655,18 +745,26 @@ void ConsolidationFx::write_dense_vector_4_fragments(uint64_t timestamp) {
   // Close and re-open at a new timestamp
   rc = tiledb_array_close(ctx_, array);
   CHECK(rc == TILEDB_OK);
-  if (encryption_type_ == TILEDB_NO_ENCRYPTION) {
-    rc = tiledb_array_open_at(ctx_, array, TILEDB_WRITE, timestamp + 3);
-  } else {
-    rc = tiledb_array_open_at_with_key(
-        ctx_,
-        array,
-        TILEDB_WRITE,
-        encryption_type_,
-        encryption_key_,
-        (uint32_t)strlen(encryption_key_),
-        timestamp + 3);
+  tiledb_config_free(&cfg);
+  rc = tiledb_array_set_open_timestamp_end(ctx_, array, timestamp + 3);
+  CHECK(rc == TILEDB_OK);
+
+  REQUIRE(tiledb_config_alloc(&cfg, &err) == TILEDB_OK);
+  REQUIRE(err == nullptr);
+  if (encryption_type_ != TILEDB_NO_ENCRYPTION) {
+    std::string encryption_type_string =
+        encryption_type_str((tiledb::sm::EncryptionType)encryption_type_);
+    rc = tiledb_config_set(
+        cfg, "sm.encryption_type", encryption_type_string.c_str(), &err);
+    REQUIRE(rc == TILEDB_OK);
+    REQUIRE(err == nullptr);
+    rc = tiledb_config_set(cfg, "sm.encryption_key", encryption_key_, &err);
+    REQUIRE(rc == TILEDB_OK);
+    REQUIRE(err == nullptr);
+    rc = tiledb_array_set_config(ctx_, array, cfg);
+    REQUIRE(rc == TILEDB_OK);
   }
+  rc = tiledb_array_open(ctx_, array, TILEDB_WRITE);
   REQUIRE(rc == TILEDB_OK);
 
   // Submit query #3
@@ -679,7 +777,7 @@ void ConsolidationFx::write_dense_vector_4_fragments(uint64_t timestamp) {
   CHECK(rc == TILEDB_OK);
   rc = tiledb_query_set_subarray(ctx_, query_3, subarray);
   CHECK(rc == TILEDB_OK);
-  rc = tiledb_query_set_buffer(ctx_, query_3, "a", a_3, &a_3_size);
+  rc = tiledb_query_set_data_buffer(ctx_, query_3, "a", a_3, &a_3_size);
   CHECK(rc == TILEDB_OK);
   rc = tiledb_query_submit(ctx_, query_3);
   CHECK(rc == TILEDB_OK);
@@ -687,18 +785,27 @@ void ConsolidationFx::write_dense_vector_4_fragments(uint64_t timestamp) {
   // Close and re-open at a new timestamp
   rc = tiledb_array_close(ctx_, array);
   CHECK(rc == TILEDB_OK);
-  if (encryption_type_ == TILEDB_NO_ENCRYPTION) {
-    rc = tiledb_array_open_at(ctx_, array, TILEDB_WRITE, timestamp + 4);
-  } else {
-    rc = tiledb_array_open_at_with_key(
-        ctx_,
-        array,
-        TILEDB_WRITE,
-        encryption_type_,
-        encryption_key_,
-        (uint32_t)strlen(encryption_key_),
-        timestamp + 4);
+  rc = tiledb_array_set_open_timestamp_end(ctx_, array, timestamp + 4);
+  CHECK(rc == TILEDB_OK);
+
+  tiledb_config_free(&cfg);
+  err = nullptr;
+  REQUIRE(tiledb_config_alloc(&cfg, &err) == TILEDB_OK);
+  REQUIRE(err == nullptr);
+  if (encryption_type_ != TILEDB_NO_ENCRYPTION) {
+    std::string encryption_type_string =
+        encryption_type_str((tiledb::sm::EncryptionType)encryption_type_);
+    rc = tiledb_config_set(
+        cfg, "sm.encryption_type", encryption_type_string.c_str(), &err);
+    REQUIRE(rc == TILEDB_OK);
+    REQUIRE(err == nullptr);
+    rc = tiledb_config_set(cfg, "sm.encryption_key", encryption_key_, &err);
+    REQUIRE(rc == TILEDB_OK);
+    REQUIRE(err == nullptr);
+    rc = tiledb_array_set_config(ctx_, array, cfg);
+    REQUIRE(rc == TILEDB_OK);
   }
+  rc = tiledb_array_open(ctx_, array, TILEDB_WRITE);
   REQUIRE(rc == TILEDB_OK);
 
   // Submit query #4
@@ -711,7 +818,7 @@ void ConsolidationFx::write_dense_vector_4_fragments(uint64_t timestamp) {
   CHECK(rc == TILEDB_OK);
   rc = tiledb_query_set_subarray(ctx_, query_4, subarray);
   CHECK(rc == TILEDB_OK);
-  rc = tiledb_query_set_buffer(ctx_, query_4, "a", a_4, &a_4_size);
+  rc = tiledb_query_set_data_buffer(ctx_, query_4, "a", a_4, &a_4_size);
   CHECK(rc == TILEDB_OK);
   rc = tiledb_query_submit(ctx_, query_4);
   CHECK(rc == TILEDB_OK);
@@ -726,6 +833,7 @@ void ConsolidationFx::write_dense_vector_4_fragments(uint64_t timestamp) {
   tiledb_query_free(&query_2);
   tiledb_query_free(&query_3);
   tiledb_query_free(&query_4);
+  tiledb_config_free(&cfg);
 }
 
 void ConsolidationFx::write_dense_vector_4_fragments_not_coinciding() {
@@ -763,7 +871,7 @@ void ConsolidationFx::write_dense_vector_4_fragments_not_coinciding() {
   CHECK(rc == TILEDB_OK);
   rc = tiledb_query_set_subarray(ctx_, query_1, subarray);
   CHECK(rc == TILEDB_OK);
-  rc = tiledb_query_set_buffer(ctx_, query_1, "a", a_1, &a_1_size);
+  rc = tiledb_query_set_data_buffer(ctx_, query_1, "a", a_1, &a_1_size);
   CHECK(rc == TILEDB_OK);
   rc = tiledb_query_submit(ctx_, query_1);
   CHECK(rc == TILEDB_OK);
@@ -778,7 +886,7 @@ void ConsolidationFx::write_dense_vector_4_fragments_not_coinciding() {
   CHECK(rc == TILEDB_OK);
   rc = tiledb_query_set_subarray(ctx_, query_2, subarray);
   CHECK(rc == TILEDB_OK);
-  rc = tiledb_query_set_buffer(ctx_, query_2, "a", a_2, &a_2_size);
+  rc = tiledb_query_set_data_buffer(ctx_, query_2, "a", a_2, &a_2_size);
   CHECK(rc == TILEDB_OK);
   rc = tiledb_query_submit(ctx_, query_2);
   CHECK(rc == TILEDB_OK);
@@ -793,7 +901,7 @@ void ConsolidationFx::write_dense_vector_4_fragments_not_coinciding() {
   CHECK(rc == TILEDB_OK);
   rc = tiledb_query_set_subarray(ctx_, query_3, subarray);
   CHECK(rc == TILEDB_OK);
-  rc = tiledb_query_set_buffer(ctx_, query_3, "a", a_3, &a_3_size);
+  rc = tiledb_query_set_data_buffer(ctx_, query_3, "a", a_3, &a_3_size);
   CHECK(rc == TILEDB_OK);
   rc = tiledb_query_submit(ctx_, query_3);
   CHECK(rc == TILEDB_OK);
@@ -808,7 +916,7 @@ void ConsolidationFx::write_dense_vector_4_fragments_not_coinciding() {
   CHECK(rc == TILEDB_OK);
   rc = tiledb_query_set_subarray(ctx_, query_4, subarray);
   CHECK(rc == TILEDB_OK);
-  rc = tiledb_query_set_buffer(ctx_, query_4, "a", a_4, &a_4_size);
+  rc = tiledb_query_set_data_buffer(ctx_, query_4, "a", a_4, &a_4_size);
   CHECK(rc == TILEDB_OK);
   rc = tiledb_query_submit(ctx_, query_4);
   CHECK(rc == TILEDB_OK);
@@ -861,7 +969,7 @@ void ConsolidationFx::
   CHECK(rc == TILEDB_OK);
   rc = tiledb_query_set_subarray(ctx_, query_1, subarray);
   CHECK(rc == TILEDB_OK);
-  rc = tiledb_query_set_buffer(ctx_, query_1, "a", a_1, &a_1_size);
+  rc = tiledb_query_set_data_buffer(ctx_, query_1, "a", a_1, &a_1_size);
   CHECK(rc == TILEDB_OK);
   rc = tiledb_query_submit(ctx_, query_1);
   CHECK(rc == TILEDB_OK);
@@ -876,7 +984,7 @@ void ConsolidationFx::
   CHECK(rc == TILEDB_OK);
   rc = tiledb_query_set_subarray(ctx_, query_2, subarray);
   CHECK(rc == TILEDB_OK);
-  rc = tiledb_query_set_buffer(ctx_, query_2, "a", a_2, &a_2_size);
+  rc = tiledb_query_set_data_buffer(ctx_, query_2, "a", a_2, &a_2_size);
   CHECK(rc == TILEDB_OK);
   rc = tiledb_query_submit(ctx_, query_2);
   CHECK(rc == TILEDB_OK);
@@ -891,7 +999,7 @@ void ConsolidationFx::
   CHECK(rc == TILEDB_OK);
   rc = tiledb_query_set_subarray(ctx_, query_3, subarray);
   CHECK(rc == TILEDB_OK);
-  rc = tiledb_query_set_buffer(ctx_, query_3, "a", a_3, &a_3_size);
+  rc = tiledb_query_set_data_buffer(ctx_, query_3, "a", a_3, &a_3_size);
   CHECK(rc == TILEDB_OK);
   rc = tiledb_query_submit(ctx_, query_3);
   CHECK(rc == TILEDB_OK);
@@ -906,7 +1014,7 @@ void ConsolidationFx::
   CHECK(rc == TILEDB_OK);
   rc = tiledb_query_set_subarray(ctx_, query_4, subarray);
   CHECK(rc == TILEDB_OK);
-  rc = tiledb_query_set_buffer(ctx_, query_4, "a", a_4, &a_4_size);
+  rc = tiledb_query_set_data_buffer(ctx_, query_4, "a", a_4, &a_4_size);
   CHECK(rc == TILEDB_OK);
   rc = tiledb_query_submit(ctx_, query_4);
   CHECK(rc == TILEDB_OK);
@@ -946,17 +1054,26 @@ void ConsolidationFx::write_dense_vector_4_fragments_mixed() {
   tiledb_array_t* array;
   int rc = tiledb_array_alloc(ctx_, DENSE_VECTOR_NAME, &array);
   CHECK(rc == TILEDB_OK);
-  if (encryption_type_ == TILEDB_NO_ENCRYPTION) {
-    rc = tiledb_array_open(ctx_, array, TILEDB_WRITE);
-  } else {
-    rc = tiledb_array_open_with_key(
-        ctx_,
-        array,
-        TILEDB_WRITE,
-        encryption_type_,
-        encryption_key_,
-        (uint32_t)strlen(encryption_key_));
+  if (encryption_type_ != TILEDB_NO_ENCRYPTION) {
+    tiledb_config_t* cfg;
+    tiledb_error_t* err = nullptr;
+    rc = tiledb_config_alloc(&cfg, &err);
+    REQUIRE(rc == TILEDB_OK);
+    REQUIRE(err == nullptr);
+    std::string encryption_type_string =
+        encryption_type_str((tiledb::sm::EncryptionType)encryption_type_);
+    rc = tiledb_config_set(
+        cfg, "sm.encryption_type", encryption_type_string.c_str(), &err);
+    REQUIRE(rc == TILEDB_OK);
+    REQUIRE(err == nullptr);
+    rc = tiledb_config_set(cfg, "sm.encryption_key", encryption_key_, &err);
+    REQUIRE(rc == TILEDB_OK);
+    REQUIRE(err == nullptr);
+    rc = tiledb_array_set_config(ctx_, array, cfg);
+    REQUIRE(rc == TILEDB_OK);
+    tiledb_config_free(&cfg);
   }
+  rc = tiledb_array_open(ctx_, array, TILEDB_WRITE);
   REQUIRE(rc == TILEDB_OK);
 
   // Submit query #1 - Dense
@@ -968,7 +1085,7 @@ void ConsolidationFx::write_dense_vector_4_fragments_mixed() {
   CHECK(rc == TILEDB_OK);
   rc = tiledb_query_set_subarray(ctx_, query_1, subarray);
   CHECK(rc == TILEDB_OK);
-  rc = tiledb_query_set_buffer(ctx_, query_1, "a", a_1, &a_1_size);
+  rc = tiledb_query_set_data_buffer(ctx_, query_1, "a", a_1, &a_1_size);
   CHECK(rc == TILEDB_OK);
   rc = tiledb_query_submit(ctx_, query_1);
   CHECK(rc == TILEDB_OK);
@@ -980,9 +1097,10 @@ void ConsolidationFx::write_dense_vector_4_fragments_mixed() {
   CHECK(rc == TILEDB_OK);
   rc = tiledb_query_set_layout(ctx_, query_2, TILEDB_UNORDERED);
   CHECK(rc == TILEDB_OK);
-  rc = tiledb_query_set_buffer(ctx_, query_2, "a", a_2, &a_2_size);
+  rc = tiledb_query_set_data_buffer(ctx_, query_2, "a", a_2, &a_2_size);
   CHECK(rc == TILEDB_OK);
-  rc = tiledb_query_set_buffer(ctx_, query_2, "d", coords_2, &coords_2_size);
+  rc = tiledb_query_set_data_buffer(
+      ctx_, query_2, "d", coords_2, &coords_2_size);
   CHECK(rc == TILEDB_OK);
   rc = tiledb_query_submit(ctx_, query_2);
   CHECK(rc == TILEDB_OK);
@@ -994,9 +1112,10 @@ void ConsolidationFx::write_dense_vector_4_fragments_mixed() {
   CHECK(rc == TILEDB_OK);
   rc = tiledb_query_set_layout(ctx_, query_3, TILEDB_UNORDERED);
   CHECK(rc == TILEDB_OK);
-  rc = tiledb_query_set_buffer(ctx_, query_3, "a", a_3, &a_3_size);
+  rc = tiledb_query_set_data_buffer(ctx_, query_3, "a", a_3, &a_3_size);
   CHECK(rc == TILEDB_OK);
-  rc = tiledb_query_set_buffer(ctx_, query_3, "d", coords_3, &coords_3_size);
+  rc = tiledb_query_set_data_buffer(
+      ctx_, query_3, "d", coords_3, &coords_3_size);
   CHECK(rc == TILEDB_OK);
   rc = tiledb_query_submit(ctx_, query_3);
   CHECK(rc == TILEDB_OK);
@@ -1012,7 +1131,7 @@ void ConsolidationFx::write_dense_vector_4_fragments_mixed() {
   CHECK(rc == TILEDB_OK);
   rc = tiledb_query_set_subarray(ctx_, query_4, subarray);
   CHECK(rc == TILEDB_OK);
-  rc = tiledb_query_set_buffer(ctx_, query_4, "a", a_4, &a_4_size);
+  rc = tiledb_query_set_data_buffer(ctx_, query_4, "a", a_4, &a_4_size);
   CHECK(rc == TILEDB_OK);
   rc = tiledb_query_submit(ctx_, query_4);
   CHECK(rc == TILEDB_OK);
@@ -1041,17 +1160,26 @@ void ConsolidationFx::write_dense_vector_consolidatable_1() {
   tiledb_array_t* array;
   int rc = tiledb_array_alloc(ctx_, DENSE_VECTOR_NAME, &array);
   CHECK(rc == TILEDB_OK);
-  if (encryption_type_ == TILEDB_NO_ENCRYPTION) {
-    rc = tiledb_array_open(ctx_, array, TILEDB_WRITE);
-  } else {
-    rc = tiledb_array_open_with_key(
-        ctx_,
-        array,
-        TILEDB_WRITE,
-        encryption_type_,
-        encryption_key_,
-        (uint32_t)strlen(encryption_key_));
+  if (encryption_type_ != TILEDB_NO_ENCRYPTION) {
+    tiledb_config_t* cfg;
+    tiledb_error_t* err = nullptr;
+    rc = tiledb_config_alloc(&cfg, &err);
+    REQUIRE(rc == TILEDB_OK);
+    REQUIRE(err == nullptr);
+    std::string encryption_type_string =
+        encryption_type_str((tiledb::sm::EncryptionType)encryption_type_);
+    rc = tiledb_config_set(
+        cfg, "sm.encryption_type", encryption_type_string.c_str(), &err);
+    REQUIRE(rc == TILEDB_OK);
+    REQUIRE(err == nullptr);
+    rc = tiledb_config_set(cfg, "sm.encryption_key", encryption_key_, &err);
+    REQUIRE(rc == TILEDB_OK);
+    REQUIRE(err == nullptr);
+    rc = tiledb_array_set_config(ctx_, array, cfg);
+    REQUIRE(rc == TILEDB_OK);
+    tiledb_config_free(&cfg);
   }
+  rc = tiledb_array_open(ctx_, array, TILEDB_WRITE);
   REQUIRE(rc == TILEDB_OK);
 
   // Submit query #1
@@ -1063,7 +1191,7 @@ void ConsolidationFx::write_dense_vector_consolidatable_1() {
   CHECK(rc == TILEDB_OK);
   rc = tiledb_query_set_subarray(ctx_, query_1, subarray);
   CHECK(rc == TILEDB_OK);
-  rc = tiledb_query_set_buffer(ctx_, query_1, "a", a_1, &a_1_size);
+  rc = tiledb_query_set_data_buffer(ctx_, query_1, "a", a_1, &a_1_size);
   CHECK(rc == TILEDB_OK);
   rc = tiledb_query_submit(ctx_, query_1);
   CHECK(rc == TILEDB_OK);
@@ -1075,9 +1203,10 @@ void ConsolidationFx::write_dense_vector_consolidatable_1() {
   CHECK(rc == TILEDB_OK);
   rc = tiledb_query_set_layout(ctx_, query_2, TILEDB_UNORDERED);
   CHECK(rc == TILEDB_OK);
-  rc = tiledb_query_set_buffer(ctx_, query_2, "a", a_2, &a_2_size);
+  rc = tiledb_query_set_data_buffer(ctx_, query_2, "a", a_2, &a_2_size);
   CHECK(rc == TILEDB_OK);
-  rc = tiledb_query_set_buffer(ctx_, query_2, "d", coords_2, &coords_2_size);
+  rc = tiledb_query_set_data_buffer(
+      ctx_, query_2, "d", coords_2, &coords_2_size);
   CHECK(rc == TILEDB_OK);
   rc = tiledb_query_submit(ctx_, query_2);
   CHECK(rc == TILEDB_OK);
@@ -1093,7 +1222,7 @@ void ConsolidationFx::write_dense_vector_consolidatable_1() {
   CHECK(rc == TILEDB_OK);
   rc = tiledb_query_set_subarray(ctx_, query_3, subarray);
   CHECK(rc == TILEDB_OK);
-  rc = tiledb_query_set_buffer(ctx_, query_3, "a", a_3, &a_3_size);
+  rc = tiledb_query_set_data_buffer(ctx_, query_3, "a", a_3, &a_3_size);
   CHECK(rc == TILEDB_OK);
   rc = tiledb_query_submit(ctx_, query_3);
   CHECK(rc == TILEDB_OK);
@@ -1120,17 +1249,26 @@ void ConsolidationFx::write_dense_vector_consolidatable_2() {
   tiledb_array_t* array;
   int rc = tiledb_array_alloc(ctx_, DENSE_VECTOR_NAME, &array);
   CHECK(rc == TILEDB_OK);
-  if (encryption_type_ == TILEDB_NO_ENCRYPTION) {
-    rc = tiledb_array_open(ctx_, array, TILEDB_WRITE);
-  } else {
-    rc = tiledb_array_open_with_key(
-        ctx_,
-        array,
-        TILEDB_WRITE,
-        encryption_type_,
-        encryption_key_,
-        (uint32_t)strlen(encryption_key_));
+  if (encryption_type_ != TILEDB_NO_ENCRYPTION) {
+    tiledb_config_t* cfg;
+    tiledb_error_t* err = nullptr;
+    rc = tiledb_config_alloc(&cfg, &err);
+    REQUIRE(rc == TILEDB_OK);
+    REQUIRE(err == nullptr);
+    std::string encryption_type_string =
+        encryption_type_str((tiledb::sm::EncryptionType)encryption_type_);
+    rc = tiledb_config_set(
+        cfg, "sm.encryption_type", encryption_type_string.c_str(), &err);
+    REQUIRE(rc == TILEDB_OK);
+    REQUIRE(err == nullptr);
+    rc = tiledb_config_set(cfg, "sm.encryption_key", encryption_key_, &err);
+    REQUIRE(rc == TILEDB_OK);
+    REQUIRE(err == nullptr);
+    rc = tiledb_array_set_config(ctx_, array, cfg);
+    REQUIRE(rc == TILEDB_OK);
+    tiledb_config_free(&cfg);
   }
+  rc = tiledb_array_open(ctx_, array, TILEDB_WRITE);
   REQUIRE(rc == TILEDB_OK);
 
   // Submit query #1
@@ -1142,7 +1280,7 @@ void ConsolidationFx::write_dense_vector_consolidatable_2() {
   CHECK(rc == TILEDB_OK);
   rc = tiledb_query_set_subarray(ctx_, query_1, subarray);
   CHECK(rc == TILEDB_OK);
-  rc = tiledb_query_set_buffer(ctx_, query_1, "a", a_1, &a_1_size);
+  rc = tiledb_query_set_data_buffer(ctx_, query_1, "a", a_1, &a_1_size);
   CHECK(rc == TILEDB_OK);
   rc = tiledb_query_submit(ctx_, query_1);
   CHECK(rc == TILEDB_OK);
@@ -1158,7 +1296,7 @@ void ConsolidationFx::write_dense_vector_consolidatable_2() {
   CHECK(rc == TILEDB_OK);
   rc = tiledb_query_set_subarray(ctx_, query_2, subarray);
   CHECK(rc == TILEDB_OK);
-  rc = tiledb_query_set_buffer(ctx_, query_2, "a", a_2, &a_2_size);
+  rc = tiledb_query_set_data_buffer(ctx_, query_2, "a", a_2, &a_2_size);
   CHECK(rc == TILEDB_OK);
   rc = tiledb_query_submit(ctx_, query_2);
   CHECK(rc == TILEDB_OK);
@@ -1193,17 +1331,26 @@ void ConsolidationFx::write_dense_vector_del_1() {
   tiledb_array_t* array;
   int rc = tiledb_array_alloc(ctx_, DENSE_VECTOR_NAME, &array);
   CHECK(rc == TILEDB_OK);
-  if (encryption_type_ == TILEDB_NO_ENCRYPTION) {
-    rc = tiledb_array_open(ctx_, array, TILEDB_WRITE);
-  } else {
-    rc = tiledb_array_open_with_key(
-        ctx_,
-        array,
-        TILEDB_WRITE,
-        encryption_type_,
-        encryption_key_,
-        (uint32_t)strlen(encryption_key_));
+  if (encryption_type_ != TILEDB_NO_ENCRYPTION) {
+    tiledb_config_t* cfg;
+    tiledb_error_t* err = nullptr;
+    rc = tiledb_config_alloc(&cfg, &err);
+    REQUIRE(rc == TILEDB_OK);
+    REQUIRE(err == nullptr);
+    std::string encryption_type_string =
+        encryption_type_str((tiledb::sm::EncryptionType)encryption_type_);
+    rc = tiledb_config_set(
+        cfg, "sm.encryption_type", encryption_type_string.c_str(), &err);
+    REQUIRE(rc == TILEDB_OK);
+    REQUIRE(err == nullptr);
+    rc = tiledb_config_set(cfg, "sm.encryption_key", encryption_key_, &err);
+    REQUIRE(rc == TILEDB_OK);
+    REQUIRE(err == nullptr);
+    rc = tiledb_array_set_config(ctx_, array, cfg);
+    REQUIRE(rc == TILEDB_OK);
+    tiledb_config_free(&cfg);
   }
+  rc = tiledb_array_open(ctx_, array, TILEDB_WRITE);
   REQUIRE(rc == TILEDB_OK);
 
   // Submit query #1 - Dense
@@ -1215,7 +1362,7 @@ void ConsolidationFx::write_dense_vector_del_1() {
   CHECK(rc == TILEDB_OK);
   rc = tiledb_query_set_subarray(ctx_, query_1, subarray);
   CHECK(rc == TILEDB_OK);
-  rc = tiledb_query_set_buffer(ctx_, query_1, "a", a_1, &a_1_size);
+  rc = tiledb_query_set_data_buffer(ctx_, query_1, "a", a_1, &a_1_size);
   CHECK(rc == TILEDB_OK);
   rc = tiledb_query_submit(ctx_, query_1);
   CHECK(rc == TILEDB_OK);
@@ -1227,9 +1374,10 @@ void ConsolidationFx::write_dense_vector_del_1() {
   CHECK(rc == TILEDB_OK);
   rc = tiledb_query_set_layout(ctx_, query_2, TILEDB_UNORDERED);
   CHECK(rc == TILEDB_OK);
-  rc = tiledb_query_set_buffer(ctx_, query_2, "a", a_2, &a_2_size);
+  rc = tiledb_query_set_data_buffer(ctx_, query_2, "a", a_2, &a_2_size);
   CHECK(rc == TILEDB_OK);
-  rc = tiledb_query_set_buffer(ctx_, query_2, "d", coords_2, &coords_2_size);
+  rc = tiledb_query_set_data_buffer(
+      ctx_, query_2, "d", coords_2, &coords_2_size);
   CHECK(rc == TILEDB_OK);
   rc = tiledb_query_submit(ctx_, query_2);
   CHECK(rc == TILEDB_OK);
@@ -1241,9 +1389,10 @@ void ConsolidationFx::write_dense_vector_del_1() {
   CHECK(rc == TILEDB_OK);
   rc = tiledb_query_set_layout(ctx_, query_3, TILEDB_UNORDERED);
   CHECK(rc == TILEDB_OK);
-  rc = tiledb_query_set_buffer(ctx_, query_3, "a", a_3, &a_3_size);
+  rc = tiledb_query_set_data_buffer(ctx_, query_3, "a", a_3, &a_3_size);
   CHECK(rc == TILEDB_OK);
-  rc = tiledb_query_set_buffer(ctx_, query_3, "d", coords_3, &coords_3_size);
+  rc = tiledb_query_set_data_buffer(
+      ctx_, query_3, "d", coords_3, &coords_3_size);
   CHECK(rc == TILEDB_OK);
   rc = tiledb_query_submit(ctx_, query_3);
   CHECK(rc == TILEDB_OK);
@@ -1259,7 +1408,7 @@ void ConsolidationFx::write_dense_vector_del_1() {
   CHECK(rc == TILEDB_OK);
   rc = tiledb_query_set_subarray(ctx_, query_4, subarray);
   CHECK(rc == TILEDB_OK);
-  rc = tiledb_query_set_buffer(ctx_, query_4, "a", a_4, &a_4_size);
+  rc = tiledb_query_set_data_buffer(ctx_, query_4, "a", a_4, &a_4_size);
   CHECK(rc == TILEDB_OK);
   rc = tiledb_query_submit(ctx_, query_4);
   CHECK(rc == TILEDB_OK);
@@ -1294,17 +1443,26 @@ void ConsolidationFx::write_dense_vector_del_2() {
   tiledb_array_t* array;
   int rc = tiledb_array_alloc(ctx_, DENSE_VECTOR_NAME, &array);
   CHECK(rc == TILEDB_OK);
-  if (encryption_type_ == TILEDB_NO_ENCRYPTION) {
-    rc = tiledb_array_open(ctx_, array, TILEDB_WRITE);
-  } else {
-    rc = tiledb_array_open_with_key(
-        ctx_,
-        array,
-        TILEDB_WRITE,
-        encryption_type_,
-        encryption_key_,
-        (uint32_t)strlen(encryption_key_));
+  if (encryption_type_ != TILEDB_NO_ENCRYPTION) {
+    tiledb_config_t* cfg;
+    tiledb_error_t* err = nullptr;
+    rc = tiledb_config_alloc(&cfg, &err);
+    REQUIRE(rc == TILEDB_OK);
+    REQUIRE(err == nullptr);
+    std::string encryption_type_string =
+        encryption_type_str((tiledb::sm::EncryptionType)encryption_type_);
+    rc = tiledb_config_set(
+        cfg, "sm.encryption_type", encryption_type_string.c_str(), &err);
+    REQUIRE(rc == TILEDB_OK);
+    REQUIRE(err == nullptr);
+    rc = tiledb_config_set(cfg, "sm.encryption_key", encryption_key_, &err);
+    REQUIRE(rc == TILEDB_OK);
+    REQUIRE(err == nullptr);
+    rc = tiledb_array_set_config(ctx_, array, cfg);
+    REQUIRE(rc == TILEDB_OK);
+    tiledb_config_free(&cfg);
   }
+  rc = tiledb_array_open(ctx_, array, TILEDB_WRITE);
   REQUIRE(rc == TILEDB_OK);
 
   // Submit query #1 - Dense
@@ -1316,7 +1474,7 @@ void ConsolidationFx::write_dense_vector_del_2() {
   CHECK(rc == TILEDB_OK);
   rc = tiledb_query_set_subarray(ctx_, query_1, subarray);
   CHECK(rc == TILEDB_OK);
-  rc = tiledb_query_set_buffer(ctx_, query_1, "a", a_1, &a_1_size);
+  rc = tiledb_query_set_data_buffer(ctx_, query_1, "a", a_1, &a_1_size);
   CHECK(rc == TILEDB_OK);
   rc = tiledb_query_submit(ctx_, query_1);
   CHECK(rc == TILEDB_OK);
@@ -1328,9 +1486,10 @@ void ConsolidationFx::write_dense_vector_del_2() {
   CHECK(rc == TILEDB_OK);
   rc = tiledb_query_set_layout(ctx_, query_2, TILEDB_UNORDERED);
   CHECK(rc == TILEDB_OK);
-  rc = tiledb_query_set_buffer(ctx_, query_2, "a", a_2, &a_2_size);
+  rc = tiledb_query_set_data_buffer(ctx_, query_2, "a", a_2, &a_2_size);
   CHECK(rc == TILEDB_OK);
-  rc = tiledb_query_set_buffer(ctx_, query_2, "d", coords_2, &coords_2_size);
+  rc = tiledb_query_set_data_buffer(
+      ctx_, query_2, "d", coords_2, &coords_2_size);
   CHECK(rc == TILEDB_OK);
   rc = tiledb_query_submit(ctx_, query_2);
   CHECK(rc == TILEDB_OK);
@@ -1342,9 +1501,10 @@ void ConsolidationFx::write_dense_vector_del_2() {
   CHECK(rc == TILEDB_OK);
   rc = tiledb_query_set_layout(ctx_, query_3, TILEDB_UNORDERED);
   CHECK(rc == TILEDB_OK);
-  rc = tiledb_query_set_buffer(ctx_, query_3, "a", a_3, &a_3_size);
+  rc = tiledb_query_set_data_buffer(ctx_, query_3, "a", a_3, &a_3_size);
   CHECK(rc == TILEDB_OK);
-  rc = tiledb_query_set_buffer(ctx_, query_3, "d", coords_3, &coords_3_size);
+  rc = tiledb_query_set_data_buffer(
+      ctx_, query_3, "d", coords_3, &coords_3_size);
   CHECK(rc == TILEDB_OK);
   rc = tiledb_query_submit(ctx_, query_3);
   CHECK(rc == TILEDB_OK);
@@ -1360,7 +1520,7 @@ void ConsolidationFx::write_dense_vector_del_2() {
   CHECK(rc == TILEDB_OK);
   rc = tiledb_query_set_subarray(ctx_, query_4, subarray);
   CHECK(rc == TILEDB_OK);
-  rc = tiledb_query_set_buffer(ctx_, query_4, "a", a_4, &a_4_size);
+  rc = tiledb_query_set_data_buffer(ctx_, query_4, "a", a_4, &a_4_size);
   CHECK(rc == TILEDB_OK);
   rc = tiledb_query_submit(ctx_, query_4);
   CHECK(rc == TILEDB_OK);
@@ -1395,17 +1555,26 @@ void ConsolidationFx::write_dense_vector_del_3() {
   tiledb_array_t* array;
   int rc = tiledb_array_alloc(ctx_, DENSE_VECTOR_NAME, &array);
   CHECK(rc == TILEDB_OK);
-  if (encryption_type_ == TILEDB_NO_ENCRYPTION) {
-    rc = tiledb_array_open(ctx_, array, TILEDB_WRITE);
-  } else {
-    rc = tiledb_array_open_with_key(
-        ctx_,
-        array,
-        TILEDB_WRITE,
-        encryption_type_,
-        encryption_key_,
-        (uint32_t)strlen(encryption_key_));
+  if (encryption_type_ != TILEDB_NO_ENCRYPTION) {
+    tiledb_config_t* cfg;
+    tiledb_error_t* err = nullptr;
+    rc = tiledb_config_alloc(&cfg, &err);
+    REQUIRE(rc == TILEDB_OK);
+    REQUIRE(err == nullptr);
+    std::string encryption_type_string =
+        encryption_type_str((tiledb::sm::EncryptionType)encryption_type_);
+    rc = tiledb_config_set(
+        cfg, "sm.encryption_type", encryption_type_string.c_str(), &err);
+    REQUIRE(rc == TILEDB_OK);
+    REQUIRE(err == nullptr);
+    rc = tiledb_config_set(cfg, "sm.encryption_key", encryption_key_, &err);
+    REQUIRE(rc == TILEDB_OK);
+    REQUIRE(err == nullptr);
+    rc = tiledb_array_set_config(ctx_, array, cfg);
+    REQUIRE(rc == TILEDB_OK);
+    tiledb_config_free(&cfg);
   }
+  rc = tiledb_array_open(ctx_, array, TILEDB_WRITE);
   REQUIRE(rc == TILEDB_OK);
 
   // Submit query #1 - Dense
@@ -1417,7 +1586,7 @@ void ConsolidationFx::write_dense_vector_del_3() {
   CHECK(rc == TILEDB_OK);
   rc = tiledb_query_set_subarray(ctx_, query_1, subarray);
   CHECK(rc == TILEDB_OK);
-  rc = tiledb_query_set_buffer(ctx_, query_1, "a", a_1, &a_1_size);
+  rc = tiledb_query_set_data_buffer(ctx_, query_1, "a", a_1, &a_1_size);
   CHECK(rc == TILEDB_OK);
   rc = tiledb_query_submit(ctx_, query_1);
   CHECK(rc == TILEDB_OK);
@@ -1429,9 +1598,10 @@ void ConsolidationFx::write_dense_vector_del_3() {
   CHECK(rc == TILEDB_OK);
   rc = tiledb_query_set_layout(ctx_, query_2, TILEDB_UNORDERED);
   CHECK(rc == TILEDB_OK);
-  rc = tiledb_query_set_buffer(ctx_, query_2, "a", a_2, &a_2_size);
+  rc = tiledb_query_set_data_buffer(ctx_, query_2, "a", a_2, &a_2_size);
   CHECK(rc == TILEDB_OK);
-  rc = tiledb_query_set_buffer(ctx_, query_2, "d", coords_2, &coords_2_size);
+  rc = tiledb_query_set_data_buffer(
+      ctx_, query_2, "d", coords_2, &coords_2_size);
   CHECK(rc == TILEDB_OK);
   rc = tiledb_query_submit(ctx_, query_2);
   CHECK(rc == TILEDB_OK);
@@ -1447,7 +1617,7 @@ void ConsolidationFx::write_dense_vector_del_3() {
   CHECK(rc == TILEDB_OK);
   rc = tiledb_query_set_subarray(ctx_, query_3, subarray);
   CHECK(rc == TILEDB_OK);
-  rc = tiledb_query_set_buffer(ctx_, query_3, "a", a_3, &a_3_size);
+  rc = tiledb_query_set_data_buffer(ctx_, query_3, "a", a_3, &a_3_size);
   CHECK(rc == TILEDB_OK);
   rc = tiledb_query_submit(ctx_, query_3);
   CHECK(rc == TILEDB_OK);
@@ -1459,9 +1629,10 @@ void ConsolidationFx::write_dense_vector_del_3() {
   CHECK(rc == TILEDB_OK);
   rc = tiledb_query_set_layout(ctx_, query_4, TILEDB_UNORDERED);
   CHECK(rc == TILEDB_OK);
-  rc = tiledb_query_set_buffer(ctx_, query_4, "a", a_4, &a_4_size);
+  rc = tiledb_query_set_data_buffer(ctx_, query_4, "a", a_4, &a_4_size);
   CHECK(rc == TILEDB_OK);
-  rc = tiledb_query_set_buffer(ctx_, query_4, "d", coords_4, &coords_4_size);
+  rc = tiledb_query_set_data_buffer(
+      ctx_, query_4, "d", coords_4, &coords_4_size);
   CHECK(rc == TILEDB_OK);
   rc = tiledb_query_submit(ctx_, query_4);
   CHECK(rc == TILEDB_OK);
@@ -1470,6 +1641,44 @@ void ConsolidationFx::write_dense_vector_del_3() {
   // Close array
   rc = tiledb_array_close(ctx_, array);
   CHECK(rc == TILEDB_OK);
+  tiledb_array_free(&array);
+}
+
+void ConsolidationFx::write_dense_array_metadata() {
+  // Open array
+  tiledb_array_t* array;
+  int rc = tiledb_array_alloc(ctx_, DENSE_ARRAY_NAME, &array);
+  REQUIRE(rc == TILEDB_OK);
+  if (encryption_type_ != TILEDB_NO_ENCRYPTION) {
+    tiledb_config_t* cfg;
+    tiledb_error_t* err = nullptr;
+    rc = tiledb_config_alloc(&cfg, &err);
+    REQUIRE(rc == TILEDB_OK);
+    REQUIRE(err == nullptr);
+    std::string encryption_type_string =
+        encryption_type_str((tiledb::sm::EncryptionType)encryption_type_);
+    rc = tiledb_config_set(
+        cfg, "sm.encryption_type", encryption_type_string.c_str(), &err);
+    REQUIRE(rc == TILEDB_OK);
+    REQUIRE(err == nullptr);
+    rc = tiledb_config_set(cfg, "sm.encryption_key", encryption_key_, &err);
+    REQUIRE(rc == TILEDB_OK);
+    REQUIRE(err == nullptr);
+    rc = tiledb_array_set_config(ctx_, array, cfg);
+    REQUIRE(rc == TILEDB_OK);
+    tiledb_config_free(&cfg);
+  }
+  rc = tiledb_array_open(ctx_, array, TILEDB_WRITE);
+  REQUIRE(rc == TILEDB_OK);
+
+  // Write items
+  int32_t v = 5;
+  rc = tiledb_array_put_metadata(ctx_, array, "aaa", TILEDB_INT32, 1, &v);
+  CHECK(rc == TILEDB_OK);
+
+  // Close array
+  rc = tiledb_array_close(ctx_, array);
+  REQUIRE(rc == TILEDB_OK);
   tiledb_array_free(&array);
 }
 
@@ -1512,17 +1721,26 @@ void ConsolidationFx::write_dense_full() {
   tiledb_array_t* array;
   int rc = tiledb_array_alloc(ctx_, DENSE_ARRAY_NAME, &array);
   CHECK(rc == TILEDB_OK);
-  if (encryption_type_ == TILEDB_NO_ENCRYPTION) {
-    rc = tiledb_array_open(ctx_, array, TILEDB_WRITE);
-  } else {
-    rc = tiledb_array_open_with_key(
-        ctx_,
-        array,
-        TILEDB_WRITE,
-        encryption_type_,
-        encryption_key_,
-        (uint32_t)strlen(encryption_key_));
+  if (encryption_type_ != TILEDB_NO_ENCRYPTION) {
+    tiledb_config_t* cfg;
+    tiledb_error_t* err = nullptr;
+    rc = tiledb_config_alloc(&cfg, &err);
+    REQUIRE(rc == TILEDB_OK);
+    REQUIRE(err == nullptr);
+    std::string encryption_type_string =
+        encryption_type_str((tiledb::sm::EncryptionType)encryption_type_);
+    rc = tiledb_config_set(
+        cfg, "sm.encryption_type", encryption_type_string.c_str(), &err);
+    REQUIRE(rc == TILEDB_OK);
+    REQUIRE(err == nullptr);
+    rc = tiledb_config_set(cfg, "sm.encryption_key", encryption_key_, &err);
+    REQUIRE(rc == TILEDB_OK);
+    REQUIRE(err == nullptr);
+    rc = tiledb_array_set_config(ctx_, array, cfg);
+    REQUIRE(rc == TILEDB_OK);
+    tiledb_config_free(&cfg);
   }
+  rc = tiledb_array_open(ctx_, array, TILEDB_WRITE);
   REQUIRE(rc == TILEDB_OK);
 
   // Create query
@@ -1531,19 +1749,16 @@ void ConsolidationFx::write_dense_full() {
   CHECK(rc == TILEDB_OK);
   rc = tiledb_query_set_layout(ctx_, query, TILEDB_GLOBAL_ORDER);
   CHECK(rc == TILEDB_OK);
-  rc = tiledb_query_set_buffer(
+  rc = tiledb_query_set_data_buffer(
       ctx_, query, attributes[0], buffers[0], &buffer_sizes[0]);
   CHECK(rc == TILEDB_OK);
-  rc = tiledb_query_set_buffer_var(
-      ctx_,
-      query,
-      attributes[1],
-      (uint64_t*)buffers[1],
-      &buffer_sizes[1],
-      buffers[2],
-      &buffer_sizes[2]);
+  rc = tiledb_query_set_data_buffer(
+      ctx_, query, attributes[1], buffers[2], &buffer_sizes[2]);
   CHECK(rc == TILEDB_OK);
-  rc = tiledb_query_set_buffer(
+  rc = tiledb_query_set_offsets_buffer(
+      ctx_, query, attributes[1], (uint64_t*)buffers[1], &buffer_sizes[1]);
+  CHECK(rc == TILEDB_OK);
+  rc = tiledb_query_set_data_buffer(
       ctx_, query, attributes[2], buffers[3], &buffer_sizes[3]);
   CHECK(rc == TILEDB_OK);
 
@@ -1564,7 +1779,8 @@ void ConsolidationFx::write_dense_full() {
   tiledb_query_free(&query);
 }
 
-void ConsolidationFx::write_dense_subarray() {
+void ConsolidationFx::write_dense_subarray(
+    uint64_t min1, uint64_t max1, uint64_t min2, uint64_t max2) {
   // Prepare cell buffers
   int buffer_a1[] = {112, 113, 114, 115};
   uint64_t buffer_a2[] = {0, 1, 3, 6};
@@ -1582,42 +1798,48 @@ void ConsolidationFx::write_dense_subarray() {
   tiledb_array_t* array;
   int rc = tiledb_array_alloc(ctx_, DENSE_ARRAY_NAME, &array);
   CHECK(rc == TILEDB_OK);
-  if (encryption_type_ == TILEDB_NO_ENCRYPTION) {
-    rc = tiledb_array_open(ctx_, array, TILEDB_WRITE);
-  } else {
-    rc = tiledb_array_open_with_key(
-        ctx_,
-        array,
-        TILEDB_WRITE,
-        encryption_type_,
-        encryption_key_,
-        (uint32_t)strlen(encryption_key_));
+  if (encryption_type_ != TILEDB_NO_ENCRYPTION) {
+    tiledb_config_t* cfg;
+    tiledb_error_t* err = nullptr;
+    rc = tiledb_config_alloc(&cfg, &err);
+    REQUIRE(rc == TILEDB_OK);
+    REQUIRE(err == nullptr);
+    std::string encryption_type_string =
+        encryption_type_str((tiledb::sm::EncryptionType)encryption_type_);
+    rc = tiledb_config_set(
+        cfg, "sm.encryption_type", encryption_type_string.c_str(), &err);
+    REQUIRE(rc == TILEDB_OK);
+    REQUIRE(err == nullptr);
+    rc = tiledb_config_set(cfg, "sm.encryption_key", encryption_key_, &err);
+    REQUIRE(rc == TILEDB_OK);
+    REQUIRE(err == nullptr);
+    rc = tiledb_array_set_config(ctx_, array, cfg);
+    REQUIRE(rc == TILEDB_OK);
+    tiledb_config_free(&cfg);
   }
+  rc = tiledb_array_open(ctx_, array, TILEDB_WRITE);
   REQUIRE(rc == TILEDB_OK);
 
   // Create query
   tiledb_query_t* query;
   const char* attributes[] = {"a1", "a2", "a3"};
-  uint64_t subarray[] = {3, 4, 3, 4};
+  uint64_t subarray[] = {min1, max1, min2, max2};
   rc = tiledb_query_alloc(ctx_, array, TILEDB_WRITE, &query);
   CHECK(rc == TILEDB_OK);
   rc = tiledb_query_set_layout(ctx_, query, TILEDB_GLOBAL_ORDER);
   CHECK(rc == TILEDB_OK);
   rc = tiledb_query_set_subarray(ctx_, query, subarray);
   CHECK(rc == TILEDB_OK);
-  rc = tiledb_query_set_buffer(
+  rc = tiledb_query_set_data_buffer(
       ctx_, query, attributes[0], buffers[0], &buffer_sizes[0]);
   CHECK(rc == TILEDB_OK);
-  rc = tiledb_query_set_buffer_var(
-      ctx_,
-      query,
-      attributes[1],
-      (uint64_t*)buffers[1],
-      &buffer_sizes[1],
-      buffers[2],
-      &buffer_sizes[2]);
+  rc = tiledb_query_set_data_buffer(
+      ctx_, query, attributes[1], buffers[2], &buffer_sizes[2]);
   CHECK(rc == TILEDB_OK);
-  rc = tiledb_query_set_buffer(
+  rc = tiledb_query_set_offsets_buffer(
+      ctx_, query, attributes[1], (uint64_t*)buffers[1], &buffer_sizes[1]);
+  CHECK(rc == TILEDB_OK);
+  rc = tiledb_query_set_data_buffer(
       ctx_, query, attributes[2], buffers[3], &buffer_sizes[3]);
   CHECK(rc == TILEDB_OK);
 
@@ -1665,17 +1887,26 @@ void ConsolidationFx::write_dense_unordered() {
   tiledb_array_t* array;
   int rc = tiledb_array_alloc(ctx_, DENSE_ARRAY_NAME, &array);
   CHECK(rc == TILEDB_OK);
-  if (encryption_type_ == TILEDB_NO_ENCRYPTION) {
-    rc = tiledb_array_open(ctx_, array, TILEDB_WRITE);
-  } else {
-    rc = tiledb_array_open_with_key(
-        ctx_,
-        array,
-        TILEDB_WRITE,
-        encryption_type_,
-        encryption_key_,
-        (uint32_t)strlen(encryption_key_));
+  if (encryption_type_ != TILEDB_NO_ENCRYPTION) {
+    tiledb_config_t* cfg;
+    tiledb_error_t* err = nullptr;
+    rc = tiledb_config_alloc(&cfg, &err);
+    REQUIRE(rc == TILEDB_OK);
+    REQUIRE(err == nullptr);
+    std::string encryption_type_string =
+        encryption_type_str((tiledb::sm::EncryptionType)encryption_type_);
+    rc = tiledb_config_set(
+        cfg, "sm.encryption_type", encryption_type_string.c_str(), &err);
+    REQUIRE(rc == TILEDB_OK);
+    REQUIRE(err == nullptr);
+    rc = tiledb_config_set(cfg, "sm.encryption_key", encryption_key_, &err);
+    REQUIRE(rc == TILEDB_OK);
+    REQUIRE(err == nullptr);
+    rc = tiledb_array_set_config(ctx_, array, cfg);
+    REQUIRE(rc == TILEDB_OK);
+    tiledb_config_free(&cfg);
   }
+  rc = tiledb_array_open(ctx_, array, TILEDB_WRITE);
   REQUIRE(rc == TILEDB_OK);
 
   // Create query
@@ -1685,25 +1916,22 @@ void ConsolidationFx::write_dense_unordered() {
   CHECK(rc == TILEDB_OK);
   rc = tiledb_query_set_layout(ctx_, query, TILEDB_UNORDERED);
   CHECK(rc == TILEDB_OK);
-  rc = tiledb_query_set_buffer(
+  rc = tiledb_query_set_data_buffer(
       ctx_, query, attributes[0], buffers[0], &buffer_sizes[0]);
   CHECK(rc == TILEDB_OK);
-  rc = tiledb_query_set_buffer_var(
-      ctx_,
-      query,
-      attributes[1],
-      (uint64_t*)buffers[1],
-      &buffer_sizes[1],
-      buffers[2],
-      &buffer_sizes[2]);
+  rc = tiledb_query_set_data_buffer(
+      ctx_, query, attributes[1], buffers[2], &buffer_sizes[2]);
   CHECK(rc == TILEDB_OK);
-  rc = tiledb_query_set_buffer(
+  rc = tiledb_query_set_offsets_buffer(
+      ctx_, query, attributes[1], (uint64_t*)buffers[1], &buffer_sizes[1]);
+  CHECK(rc == TILEDB_OK);
+  rc = tiledb_query_set_data_buffer(
       ctx_, query, attributes[2], buffers[3], &buffer_sizes[3]);
   CHECK(rc == TILEDB_OK);
-  rc = tiledb_query_set_buffer(
+  rc = tiledb_query_set_data_buffer(
       ctx_, query, attributes[3], buffers[4], &buffer_sizes[4]);
   CHECK(rc == TILEDB_OK);
-  rc = tiledb_query_set_buffer(
+  rc = tiledb_query_set_data_buffer(
       ctx_, query, attributes[4], buffers[5], &buffer_sizes[4]);
   CHECK(rc == TILEDB_OK);
 
@@ -1765,17 +1993,26 @@ void ConsolidationFx::write_sparse_full() {
   tiledb_array_t* array;
   int rc = tiledb_array_alloc(ctx_, SPARSE_ARRAY_NAME, &array);
   CHECK(rc == TILEDB_OK);
-  if (encryption_type_ == TILEDB_NO_ENCRYPTION) {
-    rc = tiledb_array_open(ctx_, array, TILEDB_WRITE);
-  } else {
-    rc = tiledb_array_open_with_key(
-        ctx_,
-        array,
-        TILEDB_WRITE,
-        encryption_type_,
-        encryption_key_,
-        (uint32_t)strlen(encryption_key_));
+  if (encryption_type_ != TILEDB_NO_ENCRYPTION) {
+    tiledb_config_t* cfg;
+    tiledb_error_t* err = nullptr;
+    rc = tiledb_config_alloc(&cfg, &err);
+    REQUIRE(rc == TILEDB_OK);
+    REQUIRE(err == nullptr);
+    std::string encryption_type_string =
+        encryption_type_str((tiledb::sm::EncryptionType)encryption_type_);
+    rc = tiledb_config_set(
+        cfg, "sm.encryption_type", encryption_type_string.c_str(), &err);
+    REQUIRE(rc == TILEDB_OK);
+    REQUIRE(err == nullptr);
+    rc = tiledb_config_set(cfg, "sm.encryption_key", encryption_key_, &err);
+    REQUIRE(rc == TILEDB_OK);
+    REQUIRE(err == nullptr);
+    rc = tiledb_array_set_config(ctx_, array, cfg);
+    REQUIRE(rc == TILEDB_OK);
+    tiledb_config_free(&cfg);
   }
+  rc = tiledb_array_open(ctx_, array, TILEDB_WRITE);
   REQUIRE(rc == TILEDB_OK);
 
   // Create query
@@ -1785,25 +2022,22 @@ void ConsolidationFx::write_sparse_full() {
   CHECK(rc == TILEDB_OK);
   rc = tiledb_query_set_layout(ctx_, query, TILEDB_GLOBAL_ORDER);
   CHECK(rc == TILEDB_OK);
-  rc = tiledb_query_set_buffer(
+  rc = tiledb_query_set_data_buffer(
       ctx_, query, attributes[0], buffers[0], &buffer_sizes[0]);
   CHECK(rc == TILEDB_OK);
-  rc = tiledb_query_set_buffer_var(
-      ctx_,
-      query,
-      attributes[1],
-      (uint64_t*)buffers[1],
-      &buffer_sizes[1],
-      buffers[2],
-      &buffer_sizes[2]);
+  rc = tiledb_query_set_data_buffer(
+      ctx_, query, attributes[1], buffers[2], &buffer_sizes[2]);
   CHECK(rc == TILEDB_OK);
-  rc = tiledb_query_set_buffer(
+  rc = tiledb_query_set_offsets_buffer(
+      ctx_, query, attributes[1], (uint64_t*)buffers[1], &buffer_sizes[1]);
+  CHECK(rc == TILEDB_OK);
+  rc = tiledb_query_set_data_buffer(
       ctx_, query, attributes[2], buffers[3], &buffer_sizes[3]);
   CHECK(rc == TILEDB_OK);
-  rc = tiledb_query_set_buffer(
+  rc = tiledb_query_set_data_buffer(
       ctx_, query, attributes[3], buffers[4], &buffer_sizes[4]);
   CHECK(rc == TILEDB_OK);
-  rc = tiledb_query_set_buffer(
+  rc = tiledb_query_set_data_buffer(
       ctx_, query, attributes[4], buffers[5], &buffer_sizes[4]);
   CHECK(rc == TILEDB_OK);
 
@@ -1851,17 +2085,26 @@ void ConsolidationFx::write_sparse_unordered() {
   tiledb_array_t* array;
   int rc = tiledb_array_alloc(ctx_, SPARSE_ARRAY_NAME, &array);
   CHECK(rc == TILEDB_OK);
-  if (encryption_type_ == TILEDB_NO_ENCRYPTION) {
-    rc = tiledb_array_open(ctx_, array, TILEDB_WRITE);
-  } else {
-    rc = tiledb_array_open_with_key(
-        ctx_,
-        array,
-        TILEDB_WRITE,
-        encryption_type_,
-        encryption_key_,
-        (uint32_t)strlen(encryption_key_));
+  if (encryption_type_ != TILEDB_NO_ENCRYPTION) {
+    tiledb_config_t* cfg;
+    tiledb_error_t* err = nullptr;
+    rc = tiledb_config_alloc(&cfg, &err);
+    REQUIRE(rc == TILEDB_OK);
+    REQUIRE(err == nullptr);
+    std::string encryption_type_string =
+        encryption_type_str((tiledb::sm::EncryptionType)encryption_type_);
+    rc = tiledb_config_set(
+        cfg, "sm.encryption_type", encryption_type_string.c_str(), &err);
+    REQUIRE(rc == TILEDB_OK);
+    REQUIRE(err == nullptr);
+    rc = tiledb_config_set(cfg, "sm.encryption_key", encryption_key_, &err);
+    REQUIRE(rc == TILEDB_OK);
+    REQUIRE(err == nullptr);
+    rc = tiledb_array_set_config(ctx_, array, cfg);
+    REQUIRE(rc == TILEDB_OK);
+    tiledb_config_free(&cfg);
   }
+  rc = tiledb_array_open(ctx_, array, TILEDB_WRITE);
   REQUIRE(rc == TILEDB_OK);
 
   // Create query
@@ -1871,25 +2114,22 @@ void ConsolidationFx::write_sparse_unordered() {
   CHECK(rc == TILEDB_OK);
   rc = tiledb_query_set_layout(ctx_, query, TILEDB_UNORDERED);
   CHECK(rc == TILEDB_OK);
-  rc = tiledb_query_set_buffer(
+  rc = tiledb_query_set_data_buffer(
       ctx_, query, attributes[0], buffers[0], &buffer_sizes[0]);
   CHECK(rc == TILEDB_OK);
-  rc = tiledb_query_set_buffer_var(
-      ctx_,
-      query,
-      attributes[1],
-      (uint64_t*)buffers[1],
-      &buffer_sizes[1],
-      buffers[2],
-      &buffer_sizes[2]);
+  rc = tiledb_query_set_data_buffer(
+      ctx_, query, attributes[1], buffers[2], &buffer_sizes[2]);
   CHECK(rc == TILEDB_OK);
-  rc = tiledb_query_set_buffer(
+  rc = tiledb_query_set_offsets_buffer(
+      ctx_, query, attributes[1], (uint64_t*)buffers[1], &buffer_sizes[1]);
+  CHECK(rc == TILEDB_OK);
+  rc = tiledb_query_set_data_buffer(
       ctx_, query, attributes[2], buffers[3], &buffer_sizes[3]);
   CHECK(rc == TILEDB_OK);
-  rc = tiledb_query_set_buffer(
+  rc = tiledb_query_set_data_buffer(
       ctx_, query, attributes[3], buffers[4], &buffer_sizes[4]);
   CHECK(rc == TILEDB_OK);
-  rc = tiledb_query_set_buffer(
+  rc = tiledb_query_set_data_buffer(
       ctx_, query, attributes[4], buffers[5], &buffer_sizes[4]);
   CHECK(rc == TILEDB_OK);
 
@@ -1952,17 +2192,26 @@ void ConsolidationFx::write_sparse_heterogeneous_full() {
   tiledb_array_t* array;
   int rc = tiledb_array_alloc(ctx_, SPARSE_HETEROGENEOUS_ARRAY_NAME, &array);
   CHECK(rc == TILEDB_OK);
-  if (encryption_type_ == TILEDB_NO_ENCRYPTION) {
-    rc = tiledb_array_open(ctx_, array, TILEDB_WRITE);
-  } else {
-    rc = tiledb_array_open_with_key(
-        ctx_,
-        array,
-        TILEDB_WRITE,
-        encryption_type_,
-        encryption_key_,
-        (uint32_t)strlen(encryption_key_));
+  if (encryption_type_ != TILEDB_NO_ENCRYPTION) {
+    tiledb_config_t* cfg;
+    tiledb_error_t* err = nullptr;
+    rc = tiledb_config_alloc(&cfg, &err);
+    REQUIRE(rc == TILEDB_OK);
+    REQUIRE(err == nullptr);
+    std::string encryption_type_string =
+        encryption_type_str((tiledb::sm::EncryptionType)encryption_type_);
+    rc = tiledb_config_set(
+        cfg, "sm.encryption_type", encryption_type_string.c_str(), &err);
+    REQUIRE(rc == TILEDB_OK);
+    REQUIRE(err == nullptr);
+    rc = tiledb_config_set(cfg, "sm.encryption_key", encryption_key_, &err);
+    REQUIRE(rc == TILEDB_OK);
+    REQUIRE(err == nullptr);
+    rc = tiledb_array_set_config(ctx_, array, cfg);
+    REQUIRE(rc == TILEDB_OK);
+    tiledb_config_free(&cfg);
   }
+  rc = tiledb_array_open(ctx_, array, TILEDB_WRITE);
   REQUIRE(rc == TILEDB_OK);
 
   // Create query
@@ -1972,25 +2221,22 @@ void ConsolidationFx::write_sparse_heterogeneous_full() {
   CHECK(rc == TILEDB_OK);
   rc = tiledb_query_set_layout(ctx_, query, TILEDB_GLOBAL_ORDER);
   CHECK(rc == TILEDB_OK);
-  rc = tiledb_query_set_buffer(
+  rc = tiledb_query_set_data_buffer(
       ctx_, query, attributes[0], buffers[0], &buffer_sizes[0]);
   CHECK(rc == TILEDB_OK);
-  rc = tiledb_query_set_buffer_var(
-      ctx_,
-      query,
-      attributes[1],
-      (uint64_t*)buffers[1],
-      &buffer_sizes[1],
-      buffers[2],
-      &buffer_sizes[2]);
+  rc = tiledb_query_set_data_buffer(
+      ctx_, query, attributes[1], buffers[2], &buffer_sizes[2]);
   CHECK(rc == TILEDB_OK);
-  rc = tiledb_query_set_buffer(
+  rc = tiledb_query_set_offsets_buffer(
+      ctx_, query, attributes[1], (uint64_t*)buffers[1], &buffer_sizes[1]);
+  CHECK(rc == TILEDB_OK);
+  rc = tiledb_query_set_data_buffer(
       ctx_, query, attributes[2], buffers[3], &buffer_sizes[3]);
   CHECK(rc == TILEDB_OK);
-  rc = tiledb_query_set_buffer(
+  rc = tiledb_query_set_data_buffer(
       ctx_, query, attributes[3], buffers[4], &buffer_sizes[4]);
   CHECK(rc == TILEDB_OK);
-  rc = tiledb_query_set_buffer(
+  rc = tiledb_query_set_data_buffer(
       ctx_, query, attributes[4], buffers[5], &buffer_sizes[5]);
   CHECK(rc == TILEDB_OK);
 
@@ -2039,17 +2285,26 @@ void ConsolidationFx::write_sparse_heterogeneous_unordered() {
   tiledb_array_t* array;
   int rc = tiledb_array_alloc(ctx_, SPARSE_HETEROGENEOUS_ARRAY_NAME, &array);
   CHECK(rc == TILEDB_OK);
-  if (encryption_type_ == TILEDB_NO_ENCRYPTION) {
-    rc = tiledb_array_open(ctx_, array, TILEDB_WRITE);
-  } else {
-    rc = tiledb_array_open_with_key(
-        ctx_,
-        array,
-        TILEDB_WRITE,
-        encryption_type_,
-        encryption_key_,
-        (uint32_t)strlen(encryption_key_));
+  if (encryption_type_ != TILEDB_NO_ENCRYPTION) {
+    tiledb_config_t* cfg;
+    tiledb_error_t* err = nullptr;
+    rc = tiledb_config_alloc(&cfg, &err);
+    REQUIRE(rc == TILEDB_OK);
+    REQUIRE(err == nullptr);
+    std::string encryption_type_string =
+        encryption_type_str((tiledb::sm::EncryptionType)encryption_type_);
+    rc = tiledb_config_set(
+        cfg, "sm.encryption_type", encryption_type_string.c_str(), &err);
+    REQUIRE(rc == TILEDB_OK);
+    REQUIRE(err == nullptr);
+    rc = tiledb_config_set(cfg, "sm.encryption_key", encryption_key_, &err);
+    REQUIRE(rc == TILEDB_OK);
+    REQUIRE(err == nullptr);
+    rc = tiledb_array_set_config(ctx_, array, cfg);
+    REQUIRE(rc == TILEDB_OK);
+    tiledb_config_free(&cfg);
   }
+  rc = tiledb_array_open(ctx_, array, TILEDB_WRITE);
   REQUIRE(rc == TILEDB_OK);
 
   // Create query
@@ -2059,25 +2314,22 @@ void ConsolidationFx::write_sparse_heterogeneous_unordered() {
   CHECK(rc == TILEDB_OK);
   rc = tiledb_query_set_layout(ctx_, query, TILEDB_UNORDERED);
   CHECK(rc == TILEDB_OK);
-  rc = tiledb_query_set_buffer(
+  rc = tiledb_query_set_data_buffer(
       ctx_, query, attributes[0], buffers[0], &buffer_sizes[0]);
   CHECK(rc == TILEDB_OK);
-  rc = tiledb_query_set_buffer_var(
-      ctx_,
-      query,
-      attributes[1],
-      (uint64_t*)buffers[1],
-      &buffer_sizes[1],
-      buffers[2],
-      &buffer_sizes[2]);
+  rc = tiledb_query_set_data_buffer(
+      ctx_, query, attributes[1], buffers[2], &buffer_sizes[2]);
   CHECK(rc == TILEDB_OK);
-  rc = tiledb_query_set_buffer(
+  rc = tiledb_query_set_offsets_buffer(
+      ctx_, query, attributes[1], (uint64_t*)buffers[1], &buffer_sizes[1]);
+  CHECK(rc == TILEDB_OK);
+  rc = tiledb_query_set_data_buffer(
       ctx_, query, attributes[2], buffers[3], &buffer_sizes[3]);
   CHECK(rc == TILEDB_OK);
-  rc = tiledb_query_set_buffer(
+  rc = tiledb_query_set_data_buffer(
       ctx_, query, attributes[3], buffers[4], &buffer_sizes[4]);
   CHECK(rc == TILEDB_OK);
-  rc = tiledb_query_set_buffer(
+  rc = tiledb_query_set_data_buffer(
       ctx_, query, attributes[4], buffers[5], &buffer_sizes[5]);
   CHECK(rc == TILEDB_OK);
 
@@ -2145,17 +2397,26 @@ void ConsolidationFx::write_sparse_string_full() {
   tiledb_array_t* array;
   int rc = tiledb_array_alloc(ctx_, SPARSE_STRING_ARRAY_NAME, &array);
   CHECK(rc == TILEDB_OK);
-  if (encryption_type_ == TILEDB_NO_ENCRYPTION) {
-    rc = tiledb_array_open(ctx_, array, TILEDB_WRITE);
-  } else {
-    rc = tiledb_array_open_with_key(
-        ctx_,
-        array,
-        TILEDB_WRITE,
-        encryption_type_,
-        encryption_key_,
-        (uint32_t)strlen(encryption_key_));
+  if (encryption_type_ != TILEDB_NO_ENCRYPTION) {
+    tiledb_config_t* cfg;
+    tiledb_error_t* err = nullptr;
+    rc = tiledb_config_alloc(&cfg, &err);
+    REQUIRE(rc == TILEDB_OK);
+    REQUIRE(err == nullptr);
+    std::string encryption_type_string =
+        encryption_type_str((tiledb::sm::EncryptionType)encryption_type_);
+    rc = tiledb_config_set(
+        cfg, "sm.encryption_type", encryption_type_string.c_str(), &err);
+    REQUIRE(rc == TILEDB_OK);
+    REQUIRE(err == nullptr);
+    rc = tiledb_config_set(cfg, "sm.encryption_key", encryption_key_, &err);
+    REQUIRE(rc == TILEDB_OK);
+    REQUIRE(err == nullptr);
+    rc = tiledb_array_set_config(ctx_, array, cfg);
+    REQUIRE(rc == TILEDB_OK);
+    tiledb_config_free(&cfg);
   }
+  rc = tiledb_array_open(ctx_, array, TILEDB_WRITE);
   REQUIRE(rc == TILEDB_OK);
 
   // Create query
@@ -2165,32 +2426,26 @@ void ConsolidationFx::write_sparse_string_full() {
   CHECK(rc == TILEDB_OK);
   rc = tiledb_query_set_layout(ctx_, query, TILEDB_GLOBAL_ORDER);
   CHECK(rc == TILEDB_OK);
-  rc = tiledb_query_set_buffer(
+  rc = tiledb_query_set_data_buffer(
       ctx_, query, attributes[0], buffers[0], &buffer_sizes[0]);
   CHECK(rc == TILEDB_OK);
-  rc = tiledb_query_set_buffer_var(
-      ctx_,
-      query,
-      attributes[1],
-      (uint64_t*)buffers[1],
-      &buffer_sizes[1],
-      buffers[2],
-      &buffer_sizes[2]);
+  rc = tiledb_query_set_data_buffer(
+      ctx_, query, attributes[1], buffers[2], &buffer_sizes[2]);
   CHECK(rc == TILEDB_OK);
-  rc = tiledb_query_set_buffer(
+  rc = tiledb_query_set_offsets_buffer(
+      ctx_, query, attributes[1], (uint64_t*)buffers[1], &buffer_sizes[1]);
+  CHECK(rc == TILEDB_OK);
+  rc = tiledb_query_set_data_buffer(
       ctx_, query, attributes[2], buffers[3], &buffer_sizes[3]);
   CHECK(rc == TILEDB_OK);
-  rc = tiledb_query_set_buffer(
+  rc = tiledb_query_set_data_buffer(
       ctx_, query, attributes[3], buffers[4], &buffer_sizes[4]);
   CHECK(rc == TILEDB_OK);
-  rc = tiledb_query_set_buffer_var(
-      ctx_,
-      query,
-      attributes[4],
-      (uint64_t*)buffers[5],
-      &buffer_sizes[5],
-      buffers[6],
-      &buffer_sizes[6]);
+  rc = tiledb_query_set_data_buffer(
+      ctx_, query, attributes[4], buffers[6], &buffer_sizes[6]);
+  CHECK(rc == TILEDB_OK);
+  rc = tiledb_query_set_offsets_buffer(
+      ctx_, query, attributes[4], (uint64_t*)buffers[5], &buffer_sizes[5]);
   CHECK(rc == TILEDB_OK);
 
   // Submit query
@@ -2241,17 +2496,26 @@ void ConsolidationFx::write_sparse_string_unordered() {
   tiledb_array_t* array;
   int rc = tiledb_array_alloc(ctx_, SPARSE_STRING_ARRAY_NAME, &array);
   CHECK(rc == TILEDB_OK);
-  if (encryption_type_ == TILEDB_NO_ENCRYPTION) {
-    rc = tiledb_array_open(ctx_, array, TILEDB_WRITE);
-  } else {
-    rc = tiledb_array_open_with_key(
-        ctx_,
-        array,
-        TILEDB_WRITE,
-        encryption_type_,
-        encryption_key_,
-        (uint32_t)strlen(encryption_key_));
+  if (encryption_type_ != TILEDB_NO_ENCRYPTION) {
+    tiledb_config_t* cfg;
+    tiledb_error_t* err = nullptr;
+    rc = tiledb_config_alloc(&cfg, &err);
+    REQUIRE(rc == TILEDB_OK);
+    REQUIRE(err == nullptr);
+    std::string encryption_type_string =
+        encryption_type_str((tiledb::sm::EncryptionType)encryption_type_);
+    rc = tiledb_config_set(
+        cfg, "sm.encryption_type", encryption_type_string.c_str(), &err);
+    REQUIRE(rc == TILEDB_OK);
+    REQUIRE(err == nullptr);
+    rc = tiledb_config_set(cfg, "sm.encryption_key", encryption_key_, &err);
+    REQUIRE(rc == TILEDB_OK);
+    REQUIRE(err == nullptr);
+    rc = tiledb_array_set_config(ctx_, array, cfg);
+    REQUIRE(rc == TILEDB_OK);
+    tiledb_config_free(&cfg);
   }
+  rc = tiledb_array_open(ctx_, array, TILEDB_WRITE);
   REQUIRE(rc == TILEDB_OK);
 
   // Create query
@@ -2261,32 +2525,26 @@ void ConsolidationFx::write_sparse_string_unordered() {
   CHECK(rc == TILEDB_OK);
   rc = tiledb_query_set_layout(ctx_, query, TILEDB_UNORDERED);
   CHECK(rc == TILEDB_OK);
-  rc = tiledb_query_set_buffer(
+  rc = tiledb_query_set_data_buffer(
       ctx_, query, attributes[0], buffers[0], &buffer_sizes[0]);
   CHECK(rc == TILEDB_OK);
-  rc = tiledb_query_set_buffer_var(
-      ctx_,
-      query,
-      attributes[1],
-      (uint64_t*)buffers[1],
-      &buffer_sizes[1],
-      buffers[2],
-      &buffer_sizes[2]);
+  rc = tiledb_query_set_data_buffer(
+      ctx_, query, attributes[1], buffers[2], &buffer_sizes[2]);
   CHECK(rc == TILEDB_OK);
-  rc = tiledb_query_set_buffer(
+  rc = tiledb_query_set_offsets_buffer(
+      ctx_, query, attributes[1], (uint64_t*)buffers[1], &buffer_sizes[1]);
+  CHECK(rc == TILEDB_OK);
+  rc = tiledb_query_set_data_buffer(
       ctx_, query, attributes[2], buffers[3], &buffer_sizes[3]);
   CHECK(rc == TILEDB_OK);
-  rc = tiledb_query_set_buffer(
+  rc = tiledb_query_set_data_buffer(
       ctx_, query, attributes[3], buffers[4], &buffer_sizes[4]);
   CHECK(rc == TILEDB_OK);
-  rc = tiledb_query_set_buffer_var(
-      ctx_,
-      query,
-      attributes[4],
-      (uint64_t*)buffers[5],
-      &buffer_sizes[5],
-      buffers[6],
-      &buffer_sizes[6]);
+  rc = tiledb_query_set_data_buffer(
+      ctx_, query, attributes[4], buffers[6], &buffer_sizes[6]);
+  CHECK(rc == TILEDB_OK);
+  rc = tiledb_query_set_offsets_buffer(
+      ctx_, query, attributes[4], (uint64_t*)buffers[5], &buffer_sizes[5]);
   CHECK(rc == TILEDB_OK);
 
   // Submit query
@@ -2304,6 +2562,50 @@ void ConsolidationFx::write_sparse_string_unordered() {
   // Clean up
   tiledb_array_free(&array);
   tiledb_query_free(&query);
+}
+
+void ConsolidationFx::read_dense_array_metadata() {
+  // Open array
+  tiledb_array_t* array;
+  int rc = tiledb_array_alloc(ctx_, DENSE_ARRAY_NAME, &array);
+  REQUIRE(rc == TILEDB_OK);
+  tiledb_config_t* cfg;
+  tiledb_error_t* err = nullptr;
+  rc = tiledb_config_alloc(&cfg, &err);
+
+  if (encryption_type_ != TILEDB_NO_ENCRYPTION) {
+    REQUIRE(rc == TILEDB_OK);
+    REQUIRE(err == nullptr);
+    std::string encryption_type_string =
+        encryption_type_str((tiledb::sm::EncryptionType)encryption_type_);
+    rc = tiledb_config_set(
+        cfg, "sm.encryption_type", encryption_type_string.c_str(), &err);
+    REQUIRE(rc == TILEDB_OK);
+    REQUIRE(err == nullptr);
+    rc = tiledb_config_set(cfg, "sm.encryption_key", encryption_key_, &err);
+    REQUIRE(rc == TILEDB_OK);
+    REQUIRE(err == nullptr);
+    rc = tiledb_array_set_config(ctx_, array, cfg);
+    REQUIRE(rc == TILEDB_OK);
+  }
+  rc = tiledb_array_open(ctx_, array, TILEDB_READ);
+  REQUIRE(rc == TILEDB_OK);
+
+  // Read
+  const void* v_r;
+  tiledb_datatype_t v_type;
+  uint32_t v_num;
+  rc = tiledb_array_get_metadata(ctx_, array, "aaa", &v_type, &v_num, &v_r);
+  CHECK(rc == TILEDB_OK);
+  CHECK(v_type == TILEDB_INT32);
+  CHECK(v_num == 1);
+  CHECK(*((const int32_t*)v_r) == 5);
+
+  // Close array
+  rc = tiledb_array_close(ctx_, array);
+  REQUIRE(rc == TILEDB_OK);
+  tiledb_array_free(&array);
+  tiledb_config_free(&cfg);
 }
 
 void ConsolidationFx::read_dense_vector(uint64_t timestamp) {
@@ -2334,22 +2636,34 @@ void ConsolidationFx::read_dense_vector(uint64_t timestamp) {
       c_a[i] = -2147483648;
   }
 
-  // Open array
+  // Set array configuration
   tiledb_array_t* array;
   int rc = tiledb_array_alloc(ctx_, DENSE_VECTOR_NAME, &array);
   CHECK(rc == TILEDB_OK);
-  if (encryption_type_ == TILEDB_NO_ENCRYPTION) {
-    rc = tiledb_array_open_at(ctx_, array, TILEDB_READ, timestamp);
-  } else {
-    rc = tiledb_array_open_at_with_key(
-        ctx_,
-        array,
-        TILEDB_READ,
-        encryption_type_,
-        encryption_key_,
-        (uint32_t)strlen(encryption_key_),
-        timestamp);
+  rc = tiledb_array_set_open_timestamp_end(ctx_, array, timestamp);
+  CHECK(rc == TILEDB_OK);
+
+  // Open array
+  if (encryption_type_ != TILEDB_NO_ENCRYPTION) {
+    tiledb_config_t* cfg;
+    tiledb_error_t* err = nullptr;
+    rc = tiledb_config_alloc(&cfg, &err);
+    REQUIRE(rc == TILEDB_OK);
+    REQUIRE(err == nullptr);
+    std::string encryption_type_string =
+        encryption_type_str((tiledb::sm::EncryptionType)encryption_type_);
+    rc = tiledb_config_set(
+        cfg, "sm.encryption_type", encryption_type_string.c_str(), &err);
+    REQUIRE(rc == TILEDB_OK);
+    REQUIRE(err == nullptr);
+    rc = tiledb_config_set(cfg, "sm.encryption_key", encryption_key_, &err);
+    REQUIRE(rc == TILEDB_OK);
+    REQUIRE(err == nullptr);
+    rc = tiledb_array_set_config(ctx_, array, cfg);
+    REQUIRE(rc == TILEDB_OK);
+    tiledb_config_free(&cfg);
   }
+  rc = tiledb_array_open(ctx_, array, TILEDB_READ);
   REQUIRE(rc == TILEDB_OK);
 
   // Preparation
@@ -2365,7 +2679,7 @@ void ConsolidationFx::read_dense_vector(uint64_t timestamp) {
   CHECK(rc == TILEDB_OK);
   rc = tiledb_query_set_subarray(ctx_, query, subarray);
   CHECK(rc == TILEDB_OK);
-  rc = tiledb_query_set_buffer(ctx_, query, "a", a, &a_size);
+  rc = tiledb_query_set_data_buffer(ctx_, query, "a", a, &a_size);
   CHECK(rc == TILEDB_OK);
   rc = tiledb_query_submit(ctx_, query);
   CHECK(rc == TILEDB_OK);
@@ -2402,17 +2716,26 @@ void ConsolidationFx::read_dense_vector_with_gaps() {
   tiledb_array_t* array;
   int rc = tiledb_array_alloc(ctx_, DENSE_VECTOR_NAME, &array);
   CHECK(rc == TILEDB_OK);
-  if (encryption_type_ == TILEDB_NO_ENCRYPTION) {
-    rc = tiledb_array_open(ctx_, array, TILEDB_READ);
-  } else {
-    rc = tiledb_array_open_with_key(
-        ctx_,
-        array,
-        TILEDB_READ,
-        encryption_type_,
-        encryption_key_,
-        (uint32_t)strlen(encryption_key_));
+  if (encryption_type_ != TILEDB_NO_ENCRYPTION) {
+    tiledb_config_t* cfg;
+    tiledb_error_t* err = nullptr;
+    rc = tiledb_config_alloc(&cfg, &err);
+    REQUIRE(rc == TILEDB_OK);
+    REQUIRE(err == nullptr);
+    std::string encryption_type_string =
+        encryption_type_str((tiledb::sm::EncryptionType)encryption_type_);
+    rc = tiledb_config_set(
+        cfg, "sm.encryption_type", encryption_type_string.c_str(), &err);
+    REQUIRE(rc == TILEDB_OK);
+    REQUIRE(err == nullptr);
+    rc = tiledb_config_set(cfg, "sm.encryption_key", encryption_key_, &err);
+    REQUIRE(rc == TILEDB_OK);
+    REQUIRE(err == nullptr);
+    rc = tiledb_array_set_config(ctx_, array, cfg);
+    REQUIRE(rc == TILEDB_OK);
+    tiledb_config_free(&cfg);
   }
+  rc = tiledb_array_open(ctx_, array, TILEDB_READ);
   REQUIRE(rc == TILEDB_OK);
 
   // Preparation
@@ -2428,7 +2751,7 @@ void ConsolidationFx::read_dense_vector_with_gaps() {
   CHECK(rc == TILEDB_OK);
   rc = tiledb_query_set_subarray(ctx_, query, subarray);
   CHECK(rc == TILEDB_OK);
-  rc = tiledb_query_set_buffer(ctx_, query, "a", a, &a_size);
+  rc = tiledb_query_set_data_buffer(ctx_, query, "a", a, &a_size);
   CHECK(rc == TILEDB_OK);
   rc = tiledb_query_submit(ctx_, query);
   CHECK(rc == TILEDB_OK);
@@ -2467,17 +2790,26 @@ void ConsolidationFx::read_dense_vector_mixed() {
   tiledb_array_t* array;
   int rc = tiledb_array_alloc(ctx_, DENSE_VECTOR_NAME, &array);
   CHECK(rc == TILEDB_OK);
-  if (encryption_type_ == TILEDB_NO_ENCRYPTION) {
-    rc = tiledb_array_open(ctx_, array, TILEDB_READ);
-  } else {
-    rc = tiledb_array_open_with_key(
-        ctx_,
-        array,
-        TILEDB_READ,
-        encryption_type_,
-        encryption_key_,
-        (uint32_t)strlen(encryption_key_));
+  if (encryption_type_ != TILEDB_NO_ENCRYPTION) {
+    tiledb_config_t* cfg;
+    tiledb_error_t* err = nullptr;
+    rc = tiledb_config_alloc(&cfg, &err);
+    REQUIRE(rc == TILEDB_OK);
+    REQUIRE(err == nullptr);
+    std::string encryption_type_string =
+        encryption_type_str((tiledb::sm::EncryptionType)encryption_type_);
+    rc = tiledb_config_set(
+        cfg, "sm.encryption_type", encryption_type_string.c_str(), &err);
+    REQUIRE(rc == TILEDB_OK);
+    REQUIRE(err == nullptr);
+    rc = tiledb_config_set(cfg, "sm.encryption_key", encryption_key_, &err);
+    REQUIRE(rc == TILEDB_OK);
+    REQUIRE(err == nullptr);
+    rc = tiledb_array_set_config(ctx_, array, cfg);
+    REQUIRE(rc == TILEDB_OK);
+    tiledb_config_free(&cfg);
   }
+  rc = tiledb_array_open(ctx_, array, TILEDB_READ);
   REQUIRE(rc == TILEDB_OK);
 
   // Preparation
@@ -2493,7 +2825,7 @@ void ConsolidationFx::read_dense_vector_mixed() {
   CHECK(rc == TILEDB_OK);
   rc = tiledb_query_set_subarray(ctx_, query, subarray);
   CHECK(rc == TILEDB_OK);
-  rc = tiledb_query_set_buffer(ctx_, query, "a", a, &a_size);
+  rc = tiledb_query_set_data_buffer(ctx_, query, "a", a, &a_size);
   CHECK(rc == TILEDB_OK);
   rc = tiledb_query_submit(ctx_, query);
   CHECK(rc == TILEDB_OK);
@@ -2527,17 +2859,26 @@ void ConsolidationFx::read_dense_vector_consolidatable_1() {
   tiledb_array_t* array;
   int rc = tiledb_array_alloc(ctx_, DENSE_VECTOR_NAME, &array);
   CHECK(rc == TILEDB_OK);
-  if (encryption_type_ == TILEDB_NO_ENCRYPTION) {
-    rc = tiledb_array_open(ctx_, array, TILEDB_READ);
-  } else {
-    rc = tiledb_array_open_with_key(
-        ctx_,
-        array,
-        TILEDB_READ,
-        encryption_type_,
-        encryption_key_,
-        (uint32_t)strlen(encryption_key_));
+  if (encryption_type_ != TILEDB_NO_ENCRYPTION) {
+    tiledb_config_t* cfg;
+    tiledb_error_t* err = nullptr;
+    rc = tiledb_config_alloc(&cfg, &err);
+    REQUIRE(rc == TILEDB_OK);
+    REQUIRE(err == nullptr);
+    std::string encryption_type_string =
+        encryption_type_str((tiledb::sm::EncryptionType)encryption_type_);
+    rc = tiledb_config_set(
+        cfg, "sm.encryption_type", encryption_type_string.c_str(), &err);
+    REQUIRE(rc == TILEDB_OK);
+    REQUIRE(err == nullptr);
+    rc = tiledb_config_set(cfg, "sm.encryption_key", encryption_key_, &err);
+    REQUIRE(rc == TILEDB_OK);
+    REQUIRE(err == nullptr);
+    rc = tiledb_array_set_config(ctx_, array, cfg);
+    REQUIRE(rc == TILEDB_OK);
+    tiledb_config_free(&cfg);
   }
+  rc = tiledb_array_open(ctx_, array, TILEDB_READ);
   REQUIRE(rc == TILEDB_OK);
 
   // Preparation
@@ -2553,7 +2894,7 @@ void ConsolidationFx::read_dense_vector_consolidatable_1() {
   CHECK(rc == TILEDB_OK);
   rc = tiledb_query_set_subarray(ctx_, query, subarray);
   CHECK(rc == TILEDB_OK);
-  rc = tiledb_query_set_buffer(ctx_, query, "a", a, &a_size);
+  rc = tiledb_query_set_data_buffer(ctx_, query, "a", a, &a_size);
   CHECK(rc == TILEDB_OK);
   rc = tiledb_query_submit(ctx_, query);
   CHECK(rc == TILEDB_OK);
@@ -2590,17 +2931,26 @@ void ConsolidationFx::read_dense_vector_consolidatable_2() {
   tiledb_array_t* array;
   int rc = tiledb_array_alloc(ctx_, DENSE_VECTOR_NAME, &array);
   CHECK(rc == TILEDB_OK);
-  if (encryption_type_ == TILEDB_NO_ENCRYPTION) {
-    rc = tiledb_array_open(ctx_, array, TILEDB_READ);
-  } else {
-    rc = tiledb_array_open_with_key(
-        ctx_,
-        array,
-        TILEDB_READ,
-        encryption_type_,
-        encryption_key_,
-        (uint32_t)strlen(encryption_key_));
+  if (encryption_type_ != TILEDB_NO_ENCRYPTION) {
+    tiledb_config_t* cfg;
+    tiledb_error_t* err = nullptr;
+    rc = tiledb_config_alloc(&cfg, &err);
+    REQUIRE(rc == TILEDB_OK);
+    REQUIRE(err == nullptr);
+    std::string encryption_type_string =
+        encryption_type_str((tiledb::sm::EncryptionType)encryption_type_);
+    rc = tiledb_config_set(
+        cfg, "sm.encryption_type", encryption_type_string.c_str(), &err);
+    REQUIRE(rc == TILEDB_OK);
+    REQUIRE(err == nullptr);
+    rc = tiledb_config_set(cfg, "sm.encryption_key", encryption_key_, &err);
+    REQUIRE(rc == TILEDB_OK);
+    REQUIRE(err == nullptr);
+    rc = tiledb_array_set_config(ctx_, array, cfg);
+    REQUIRE(rc == TILEDB_OK);
+    tiledb_config_free(&cfg);
   }
+  rc = tiledb_array_open(ctx_, array, TILEDB_READ);
   REQUIRE(rc == TILEDB_OK);
 
   // Preparation
@@ -2616,7 +2966,7 @@ void ConsolidationFx::read_dense_vector_consolidatable_2() {
   CHECK(rc == TILEDB_OK);
   rc = tiledb_query_set_subarray(ctx_, query, subarray);
   CHECK(rc == TILEDB_OK);
-  rc = tiledb_query_set_buffer(ctx_, query, "a", a, &a_size);
+  rc = tiledb_query_set_data_buffer(ctx_, query, "a", a, &a_size);
   CHECK(rc == TILEDB_OK);
   rc = tiledb_query_submit(ctx_, query);
   CHECK(rc == TILEDB_OK);
@@ -2649,17 +2999,26 @@ void ConsolidationFx::read_dense_vector_del_1() {
   tiledb_array_t* array;
   int rc = tiledb_array_alloc(ctx_, DENSE_VECTOR_NAME, &array);
   CHECK(rc == TILEDB_OK);
-  if (encryption_type_ == TILEDB_NO_ENCRYPTION) {
-    rc = tiledb_array_open(ctx_, array, TILEDB_READ);
-  } else {
-    rc = tiledb_array_open_with_key(
-        ctx_,
-        array,
-        TILEDB_READ,
-        encryption_type_,
-        encryption_key_,
-        (uint32_t)strlen(encryption_key_));
+  if (encryption_type_ != TILEDB_NO_ENCRYPTION) {
+    tiledb_config_t* cfg;
+    tiledb_error_t* err = nullptr;
+    rc = tiledb_config_alloc(&cfg, &err);
+    REQUIRE(rc == TILEDB_OK);
+    REQUIRE(err == nullptr);
+    std::string encryption_type_string =
+        encryption_type_str((tiledb::sm::EncryptionType)encryption_type_);
+    rc = tiledb_config_set(
+        cfg, "sm.encryption_type", encryption_type_string.c_str(), &err);
+    REQUIRE(rc == TILEDB_OK);
+    REQUIRE(err == nullptr);
+    rc = tiledb_config_set(cfg, "sm.encryption_key", encryption_key_, &err);
+    REQUIRE(rc == TILEDB_OK);
+    REQUIRE(err == nullptr);
+    rc = tiledb_array_set_config(ctx_, array, cfg);
+    REQUIRE(rc == TILEDB_OK);
+    tiledb_config_free(&cfg);
   }
+  rc = tiledb_array_open(ctx_, array, TILEDB_READ);
   REQUIRE(rc == TILEDB_OK);
 
   // Preparation
@@ -2675,7 +3034,7 @@ void ConsolidationFx::read_dense_vector_del_1() {
   CHECK(rc == TILEDB_OK);
   rc = tiledb_query_set_subarray(ctx_, query, subarray);
   CHECK(rc == TILEDB_OK);
-  rc = tiledb_query_set_buffer(ctx_, query, "a", a, &a_size);
+  rc = tiledb_query_set_data_buffer(ctx_, query, "a", a, &a_size);
   CHECK(rc == TILEDB_OK);
   rc = tiledb_query_submit(ctx_, query);
   CHECK(rc == TILEDB_OK);
@@ -2708,17 +3067,26 @@ void ConsolidationFx::read_dense_vector_del_2() {
   tiledb_array_t* array;
   int rc = tiledb_array_alloc(ctx_, DENSE_VECTOR_NAME, &array);
   CHECK(rc == TILEDB_OK);
-  if (encryption_type_ == TILEDB_NO_ENCRYPTION) {
-    rc = tiledb_array_open(ctx_, array, TILEDB_READ);
-  } else {
-    rc = tiledb_array_open_with_key(
-        ctx_,
-        array,
-        TILEDB_READ,
-        encryption_type_,
-        encryption_key_,
-        (uint32_t)strlen(encryption_key_));
+  if (encryption_type_ != TILEDB_NO_ENCRYPTION) {
+    tiledb_config_t* cfg;
+    tiledb_error_t* err = nullptr;
+    rc = tiledb_config_alloc(&cfg, &err);
+    REQUIRE(rc == TILEDB_OK);
+    REQUIRE(err == nullptr);
+    std::string encryption_type_string =
+        encryption_type_str((tiledb::sm::EncryptionType)encryption_type_);
+    rc = tiledb_config_set(
+        cfg, "sm.encryption_type", encryption_type_string.c_str(), &err);
+    REQUIRE(rc == TILEDB_OK);
+    REQUIRE(err == nullptr);
+    rc = tiledb_config_set(cfg, "sm.encryption_key", encryption_key_, &err);
+    REQUIRE(rc == TILEDB_OK);
+    REQUIRE(err == nullptr);
+    rc = tiledb_array_set_config(ctx_, array, cfg);
+    REQUIRE(rc == TILEDB_OK);
+    tiledb_config_free(&cfg);
   }
+  rc = tiledb_array_open(ctx_, array, TILEDB_READ);
   REQUIRE(rc == TILEDB_OK);
 
   // Preparation
@@ -2734,7 +3102,7 @@ void ConsolidationFx::read_dense_vector_del_2() {
   CHECK(rc == TILEDB_OK);
   rc = tiledb_query_set_subarray(ctx_, query, subarray);
   CHECK(rc == TILEDB_OK);
-  rc = tiledb_query_set_buffer(ctx_, query, "a", a, &a_size);
+  rc = tiledb_query_set_data_buffer(ctx_, query, "a", a, &a_size);
   CHECK(rc == TILEDB_OK);
   rc = tiledb_query_submit(ctx_, query);
   CHECK(rc == TILEDB_OK);
@@ -2772,17 +3140,26 @@ void ConsolidationFx::read_dense_vector_del_3() {
   tiledb_array_t* array;
   int rc = tiledb_array_alloc(ctx_, DENSE_VECTOR_NAME, &array);
   CHECK(rc == TILEDB_OK);
-  if (encryption_type_ == TILEDB_NO_ENCRYPTION) {
-    rc = tiledb_array_open(ctx_, array, TILEDB_READ);
-  } else {
-    rc = tiledb_array_open_with_key(
-        ctx_,
-        array,
-        TILEDB_READ,
-        encryption_type_,
-        encryption_key_,
-        (uint32_t)strlen(encryption_key_));
+  if (encryption_type_ != TILEDB_NO_ENCRYPTION) {
+    tiledb_config_t* cfg;
+    tiledb_error_t* err = nullptr;
+    rc = tiledb_config_alloc(&cfg, &err);
+    REQUIRE(rc == TILEDB_OK);
+    REQUIRE(err == nullptr);
+    std::string encryption_type_string =
+        encryption_type_str((tiledb::sm::EncryptionType)encryption_type_);
+    rc = tiledb_config_set(
+        cfg, "sm.encryption_type", encryption_type_string.c_str(), &err);
+    REQUIRE(rc == TILEDB_OK);
+    REQUIRE(err == nullptr);
+    rc = tiledb_config_set(cfg, "sm.encryption_key", encryption_key_, &err);
+    REQUIRE(rc == TILEDB_OK);
+    REQUIRE(err == nullptr);
+    rc = tiledb_array_set_config(ctx_, array, cfg);
+    REQUIRE(rc == TILEDB_OK);
+    tiledb_config_free(&cfg);
   }
+  rc = tiledb_array_open(ctx_, array, TILEDB_READ);
   REQUIRE(rc == TILEDB_OK);
 
   // Preparation
@@ -2798,7 +3175,7 @@ void ConsolidationFx::read_dense_vector_del_3() {
   CHECK(rc == TILEDB_OK);
   rc = tiledb_query_set_subarray(ctx_, query, subarray);
   CHECK(rc == TILEDB_OK);
-  rc = tiledb_query_set_buffer(ctx_, query, "a", a, &a_size);
+  rc = tiledb_query_set_data_buffer(ctx_, query, "a", a, &a_size);
   CHECK(rc == TILEDB_OK);
   rc = tiledb_query_submit(ctx_, query);
   CHECK(rc == TILEDB_OK);
@@ -2843,17 +3220,26 @@ void ConsolidationFx::read_dense_full_subarray_unordered() {
   tiledb_array_t* array;
   int rc = tiledb_array_alloc(ctx_, DENSE_ARRAY_NAME, &array);
   CHECK(rc == TILEDB_OK);
-  if (encryption_type_ == TILEDB_NO_ENCRYPTION) {
-    rc = tiledb_array_open(ctx_, array, TILEDB_READ);
-  } else {
-    rc = tiledb_array_open_with_key(
-        ctx_,
-        array,
-        TILEDB_READ,
-        encryption_type_,
-        encryption_key_,
-        (uint32_t)strlen(encryption_key_));
+  if (encryption_type_ != TILEDB_NO_ENCRYPTION) {
+    tiledb_config_t* cfg;
+    tiledb_error_t* err = nullptr;
+    rc = tiledb_config_alloc(&cfg, &err);
+    REQUIRE(rc == TILEDB_OK);
+    REQUIRE(err == nullptr);
+    std::string encryption_type_string =
+        encryption_type_str((tiledb::sm::EncryptionType)encryption_type_);
+    rc = tiledb_config_set(
+        cfg, "sm.encryption_type", encryption_type_string.c_str(), &err);
+    REQUIRE(rc == TILEDB_OK);
+    REQUIRE(err == nullptr);
+    rc = tiledb_config_set(cfg, "sm.encryption_key", encryption_key_, &err);
+    REQUIRE(rc == TILEDB_OK);
+    REQUIRE(err == nullptr);
+    rc = tiledb_array_set_config(ctx_, array, cfg);
+    REQUIRE(rc == TILEDB_OK);
+    tiledb_config_free(&cfg);
   }
+  rc = tiledb_array_open(ctx_, array, TILEDB_READ);
   REQUIRE(rc == TILEDB_OK);
 
   // Compute max buffer sizes
@@ -2877,18 +3263,17 @@ void ConsolidationFx::read_dense_full_subarray_unordered() {
   CHECK(rc == TILEDB_OK);
   rc = tiledb_query_set_subarray(ctx_, query, subarray);
   CHECK(rc == TILEDB_OK);
-  rc = tiledb_query_set_buffer(ctx_, query, "a1", buffer_a1, &buffer_a1_size);
+  rc = tiledb_query_set_data_buffer(
+      ctx_, query, "a1", buffer_a1, &buffer_a1_size);
   CHECK(rc == TILEDB_OK);
-  rc = tiledb_query_set_buffer_var(
-      ctx_,
-      query,
-      "a2",
-      buffer_a2_off,
-      &buffer_a2_off_size,
-      buffer_a2_val,
-      &buffer_a2_val_size);
+  rc = tiledb_query_set_data_buffer(
+      ctx_, query, "a2", buffer_a2_val, &buffer_a2_val_size);
   CHECK(rc == TILEDB_OK);
-  rc = tiledb_query_set_buffer(ctx_, query, "a3", buffer_a3, &buffer_a3_size);
+  rc = tiledb_query_set_offsets_buffer(
+      ctx_, query, "a2", buffer_a2_off, &buffer_a2_off_size);
+  CHECK(rc == TILEDB_OK);
+  rc = tiledb_query_set_data_buffer(
+      ctx_, query, "a3", buffer_a3, &buffer_a3_size);
   CHECK(rc == TILEDB_OK);
 
   // Submit query
@@ -2948,17 +3333,26 @@ void ConsolidationFx::read_dense_subarray_full_unordered() {
   tiledb_array_t* array;
   int rc = tiledb_array_alloc(ctx_, DENSE_ARRAY_NAME, &array);
   CHECK(rc == TILEDB_OK);
-  if (encryption_type_ == TILEDB_NO_ENCRYPTION) {
-    rc = tiledb_array_open(ctx_, array, TILEDB_READ);
-  } else {
-    rc = tiledb_array_open_with_key(
-        ctx_,
-        array,
-        TILEDB_READ,
-        encryption_type_,
-        encryption_key_,
-        (uint32_t)strlen(encryption_key_));
+  if (encryption_type_ != TILEDB_NO_ENCRYPTION) {
+    tiledb_config_t* cfg;
+    tiledb_error_t* err = nullptr;
+    rc = tiledb_config_alloc(&cfg, &err);
+    REQUIRE(rc == TILEDB_OK);
+    REQUIRE(err == nullptr);
+    std::string encryption_type_string =
+        encryption_type_str((tiledb::sm::EncryptionType)encryption_type_);
+    rc = tiledb_config_set(
+        cfg, "sm.encryption_type", encryption_type_string.c_str(), &err);
+    REQUIRE(rc == TILEDB_OK);
+    REQUIRE(err == nullptr);
+    rc = tiledb_config_set(cfg, "sm.encryption_key", encryption_key_, &err);
+    REQUIRE(rc == TILEDB_OK);
+    REQUIRE(err == nullptr);
+    rc = tiledb_array_set_config(ctx_, array, cfg);
+    REQUIRE(rc == TILEDB_OK);
+    tiledb_config_free(&cfg);
   }
+  rc = tiledb_array_open(ctx_, array, TILEDB_READ);
   REQUIRE(rc == TILEDB_OK);
 
   // Compute max buffer sizes
@@ -2982,18 +3376,17 @@ void ConsolidationFx::read_dense_subarray_full_unordered() {
   CHECK(rc == TILEDB_OK);
   rc = tiledb_query_set_subarray(ctx_, query, subarray);
   CHECK(rc == TILEDB_OK);
-  rc = tiledb_query_set_buffer(ctx_, query, "a1", buffer_a1, &buffer_a1_size);
+  rc = tiledb_query_set_data_buffer(
+      ctx_, query, "a1", buffer_a1, &buffer_a1_size);
   CHECK(rc == TILEDB_OK);
-  rc = tiledb_query_set_buffer_var(
-      ctx_,
-      query,
-      "a2",
-      buffer_a2_off,
-      &buffer_a2_off_size,
-      buffer_a2_val,
-      &buffer_a2_val_size);
+  rc = tiledb_query_set_data_buffer(
+      ctx_, query, "a2", buffer_a2_val, &buffer_a2_val_size);
   CHECK(rc == TILEDB_OK);
-  rc = tiledb_query_set_buffer(ctx_, query, "a3", buffer_a3, &buffer_a3_size);
+  rc = tiledb_query_set_offsets_buffer(
+      ctx_, query, "a2", buffer_a2_off, &buffer_a2_off_size);
+  CHECK(rc == TILEDB_OK);
+  rc = tiledb_query_set_data_buffer(
+      ctx_, query, "a3", buffer_a3, &buffer_a3_size);
   CHECK(rc == TILEDB_OK);
 
   // Submit query
@@ -3044,17 +3437,26 @@ void ConsolidationFx::read_dense_subarray_unordered_full() {
   tiledb_array_t* array;
   int rc = tiledb_array_alloc(ctx_, DENSE_ARRAY_NAME, &array);
   CHECK(rc == TILEDB_OK);
-  if (encryption_type_ == TILEDB_NO_ENCRYPTION) {
-    rc = tiledb_array_open(ctx_, array, TILEDB_READ);
-  } else {
-    rc = tiledb_array_open_with_key(
-        ctx_,
-        array,
-        TILEDB_READ,
-        encryption_type_,
-        encryption_key_,
-        (uint32_t)strlen(encryption_key_));
+  if (encryption_type_ != TILEDB_NO_ENCRYPTION) {
+    tiledb_config_t* cfg;
+    tiledb_error_t* err = nullptr;
+    rc = tiledb_config_alloc(&cfg, &err);
+    REQUIRE(rc == TILEDB_OK);
+    REQUIRE(err == nullptr);
+    std::string encryption_type_string =
+        encryption_type_str((tiledb::sm::EncryptionType)encryption_type_);
+    rc = tiledb_config_set(
+        cfg, "sm.encryption_type", encryption_type_string.c_str(), &err);
+    REQUIRE(rc == TILEDB_OK);
+    REQUIRE(err == nullptr);
+    rc = tiledb_config_set(cfg, "sm.encryption_key", encryption_key_, &err);
+    REQUIRE(rc == TILEDB_OK);
+    REQUIRE(err == nullptr);
+    rc = tiledb_array_set_config(ctx_, array, cfg);
+    REQUIRE(rc == TILEDB_OK);
+    tiledb_config_free(&cfg);
   }
+  rc = tiledb_array_open(ctx_, array, TILEDB_READ);
   REQUIRE(rc == TILEDB_OK);
 
   // Compute max buffer sizes
@@ -3078,18 +3480,17 @@ void ConsolidationFx::read_dense_subarray_unordered_full() {
   CHECK(rc == TILEDB_OK);
   rc = tiledb_query_set_subarray(ctx_, query, subarray);
   CHECK(rc == TILEDB_OK);
-  rc = tiledb_query_set_buffer(ctx_, query, "a1", buffer_a1, &buffer_a1_size);
+  rc = tiledb_query_set_data_buffer(
+      ctx_, query, "a1", buffer_a1, &buffer_a1_size);
   CHECK(rc == TILEDB_OK);
-  rc = tiledb_query_set_buffer_var(
-      ctx_,
-      query,
-      "a2",
-      buffer_a2_off,
-      &buffer_a2_off_size,
-      buffer_a2_val,
-      &buffer_a2_val_size);
+  rc = tiledb_query_set_data_buffer(
+      ctx_, query, "a2", buffer_a2_val, &buffer_a2_val_size);
   CHECK(rc == TILEDB_OK);
-  rc = tiledb_query_set_buffer(ctx_, query, "a3", buffer_a3, &buffer_a3_size);
+  rc = tiledb_query_set_offsets_buffer(
+      ctx_, query, "a2", buffer_a2_off, &buffer_a2_off_size);
+  CHECK(rc == TILEDB_OK);
+  rc = tiledb_query_set_data_buffer(
+      ctx_, query, "a3", buffer_a3, &buffer_a3_size);
   CHECK(rc == TILEDB_OK);
 
   // Submit query
@@ -3134,17 +3535,26 @@ void ConsolidationFx::read_sparse_full_unordered() {
   tiledb_array_t* array;
   int rc = tiledb_array_alloc(ctx_, SPARSE_ARRAY_NAME, &array);
   CHECK(rc == TILEDB_OK);
-  if (encryption_type_ == TILEDB_NO_ENCRYPTION) {
-    rc = tiledb_array_open(ctx_, array, TILEDB_READ);
-  } else {
-    rc = tiledb_array_open_with_key(
-        ctx_,
-        array,
-        TILEDB_READ,
-        encryption_type_,
-        encryption_key_,
-        (uint32_t)strlen(encryption_key_));
+  if (encryption_type_ != TILEDB_NO_ENCRYPTION) {
+    tiledb_config_t* cfg;
+    tiledb_error_t* err = nullptr;
+    rc = tiledb_config_alloc(&cfg, &err);
+    REQUIRE(rc == TILEDB_OK);
+    REQUIRE(err == nullptr);
+    std::string encryption_type_string =
+        encryption_type_str((tiledb::sm::EncryptionType)encryption_type_);
+    rc = tiledb_config_set(
+        cfg, "sm.encryption_type", encryption_type_string.c_str(), &err);
+    REQUIRE(rc == TILEDB_OK);
+    REQUIRE(err == nullptr);
+    rc = tiledb_config_set(cfg, "sm.encryption_key", encryption_key_, &err);
+    REQUIRE(rc == TILEDB_OK);
+    REQUIRE(err == nullptr);
+    rc = tiledb_array_set_config(ctx_, array, cfg);
+    REQUIRE(rc == TILEDB_OK);
+    tiledb_config_free(&cfg);
   }
+  rc = tiledb_array_open(ctx_, array, TILEDB_READ);
   REQUIRE(rc == TILEDB_OK);
 
   // Compute max buffer sizes
@@ -3169,23 +3579,22 @@ void ConsolidationFx::read_sparse_full_unordered() {
   CHECK(rc == TILEDB_OK);
   rc = tiledb_query_set_layout(ctx_, query, TILEDB_GLOBAL_ORDER);
   CHECK(rc == TILEDB_OK);
-  rc = tiledb_query_set_buffer(ctx_, query, "a1", buffer_a1, &buffer_a1_size);
+  rc = tiledb_query_set_data_buffer(
+      ctx_, query, "a1", buffer_a1, &buffer_a1_size);
   CHECK(rc == TILEDB_OK);
-  rc = tiledb_query_set_buffer_var(
-      ctx_,
-      query,
-      "a2",
-      buffer_a2_off,
-      &buffer_a2_off_size,
-      buffer_a2_val,
-      &buffer_a2_val_size);
+  rc = tiledb_query_set_data_buffer(
+      ctx_, query, "a2", buffer_a2_val, &buffer_a2_val_size);
   CHECK(rc == TILEDB_OK);
-  rc = tiledb_query_set_buffer(ctx_, query, "a3", buffer_a3, &buffer_a3_size);
+  rc = tiledb_query_set_offsets_buffer(
+      ctx_, query, "a2", buffer_a2_off, &buffer_a2_off_size);
   CHECK(rc == TILEDB_OK);
-  rc = tiledb_query_set_buffer(
+  rc = tiledb_query_set_data_buffer(
+      ctx_, query, "a3", buffer_a3, &buffer_a3_size);
+  CHECK(rc == TILEDB_OK);
+  rc = tiledb_query_set_data_buffer(
       ctx_, query, "d1", buffer_coords_dim1, &buffer_coords_dim1_size);
   CHECK(rc == TILEDB_OK);
-  rc = tiledb_query_set_buffer(
+  rc = tiledb_query_set_data_buffer(
       ctx_, query, "d2", buffer_coords_dim2, &buffer_coords_dim2_size);
   CHECK(rc == TILEDB_OK);
 
@@ -3237,17 +3646,26 @@ void ConsolidationFx::read_sparse_unordered_full() {
   tiledb_array_t* array;
   int rc = tiledb_array_alloc(ctx_, SPARSE_ARRAY_NAME, &array);
   CHECK(rc == TILEDB_OK);
-  if (encryption_type_ == TILEDB_NO_ENCRYPTION) {
-    rc = tiledb_array_open(ctx_, array, TILEDB_READ);
-  } else {
-    rc = tiledb_array_open_with_key(
-        ctx_,
-        array,
-        TILEDB_READ,
-        encryption_type_,
-        encryption_key_,
-        (uint32_t)strlen(encryption_key_));
+  if (encryption_type_ != TILEDB_NO_ENCRYPTION) {
+    tiledb_config_t* cfg;
+    tiledb_error_t* err = nullptr;
+    rc = tiledb_config_alloc(&cfg, &err);
+    REQUIRE(rc == TILEDB_OK);
+    REQUIRE(err == nullptr);
+    std::string encryption_type_string =
+        encryption_type_str((tiledb::sm::EncryptionType)encryption_type_);
+    rc = tiledb_config_set(
+        cfg, "sm.encryption_type", encryption_type_string.c_str(), &err);
+    REQUIRE(rc == TILEDB_OK);
+    REQUIRE(err == nullptr);
+    rc = tiledb_config_set(cfg, "sm.encryption_key", encryption_key_, &err);
+    REQUIRE(rc == TILEDB_OK);
+    REQUIRE(err == nullptr);
+    rc = tiledb_array_set_config(ctx_, array, cfg);
+    REQUIRE(rc == TILEDB_OK);
+    tiledb_config_free(&cfg);
   }
+  rc = tiledb_array_open(ctx_, array, TILEDB_READ);
   REQUIRE(rc == TILEDB_OK);
 
   // Compute max buffer sizes
@@ -3272,23 +3690,22 @@ void ConsolidationFx::read_sparse_unordered_full() {
   CHECK(rc == TILEDB_OK);
   rc = tiledb_query_set_layout(ctx_, query, TILEDB_GLOBAL_ORDER);
   CHECK(rc == TILEDB_OK);
-  rc = tiledb_query_set_buffer(ctx_, query, "a1", buffer_a1, &buffer_a1_size);
+  rc = tiledb_query_set_data_buffer(
+      ctx_, query, "a1", buffer_a1, &buffer_a1_size);
   CHECK(rc == TILEDB_OK);
-  rc = tiledb_query_set_buffer_var(
-      ctx_,
-      query,
-      "a2",
-      buffer_a2_off,
-      &buffer_a2_off_size,
-      buffer_a2_val,
-      &buffer_a2_val_size);
+  rc = tiledb_query_set_data_buffer(
+      ctx_, query, "a2", buffer_a2_val, &buffer_a2_val_size);
   CHECK(rc == TILEDB_OK);
-  rc = tiledb_query_set_buffer(ctx_, query, "a3", buffer_a3, &buffer_a3_size);
+  rc = tiledb_query_set_offsets_buffer(
+      ctx_, query, "a2", buffer_a2_off, &buffer_a2_off_size);
   CHECK(rc == TILEDB_OK);
-  rc = tiledb_query_set_buffer(
+  rc = tiledb_query_set_data_buffer(
+      ctx_, query, "a3", buffer_a3, &buffer_a3_size);
+  CHECK(rc == TILEDB_OK);
+  rc = tiledb_query_set_data_buffer(
       ctx_, query, "d1", buffer_coords_dim1, &buffer_coords_dim1_size);
   CHECK(rc == TILEDB_OK);
-  rc = tiledb_query_set_buffer(
+  rc = tiledb_query_set_data_buffer(
       ctx_, query, "d2", buffer_coords_dim2, &buffer_coords_dim2_size);
   CHECK(rc == TILEDB_OK);
 
@@ -3340,17 +3757,26 @@ void ConsolidationFx::read_sparse_heterogeneous_full_unordered() {
   tiledb_array_t* array;
   int rc = tiledb_array_alloc(ctx_, SPARSE_HETEROGENEOUS_ARRAY_NAME, &array);
   CHECK(rc == TILEDB_OK);
-  if (encryption_type_ == TILEDB_NO_ENCRYPTION) {
-    rc = tiledb_array_open(ctx_, array, TILEDB_READ);
-  } else {
-    rc = tiledb_array_open_with_key(
-        ctx_,
-        array,
-        TILEDB_READ,
-        encryption_type_,
-        encryption_key_,
-        (uint32_t)strlen(encryption_key_));
+  if (encryption_type_ != TILEDB_NO_ENCRYPTION) {
+    tiledb_config_t* cfg;
+    tiledb_error_t* err = nullptr;
+    rc = tiledb_config_alloc(&cfg, &err);
+    REQUIRE(rc == TILEDB_OK);
+    REQUIRE(err == nullptr);
+    std::string encryption_type_string =
+        encryption_type_str((tiledb::sm::EncryptionType)encryption_type_);
+    rc = tiledb_config_set(
+        cfg, "sm.encryption_type", encryption_type_string.c_str(), &err);
+    REQUIRE(rc == TILEDB_OK);
+    REQUIRE(err == nullptr);
+    rc = tiledb_config_set(cfg, "sm.encryption_key", encryption_key_, &err);
+    REQUIRE(rc == TILEDB_OK);
+    REQUIRE(err == nullptr);
+    rc = tiledb_array_set_config(ctx_, array, cfg);
+    REQUIRE(rc == TILEDB_OK);
+    tiledb_config_free(&cfg);
   }
+  rc = tiledb_array_open(ctx_, array, TILEDB_READ);
   REQUIRE(rc == TILEDB_OK);
 
   // Compute max buffer sizes
@@ -3375,23 +3801,22 @@ void ConsolidationFx::read_sparse_heterogeneous_full_unordered() {
   CHECK(rc == TILEDB_OK);
   rc = tiledb_query_set_layout(ctx_, query, TILEDB_GLOBAL_ORDER);
   CHECK(rc == TILEDB_OK);
-  rc = tiledb_query_set_buffer(ctx_, query, "a1", buffer_a1, &buffer_a1_size);
+  rc = tiledb_query_set_data_buffer(
+      ctx_, query, "a1", buffer_a1, &buffer_a1_size);
   CHECK(rc == TILEDB_OK);
-  rc = tiledb_query_set_buffer_var(
-      ctx_,
-      query,
-      "a2",
-      buffer_a2_off,
-      &buffer_a2_off_size,
-      buffer_a2_val,
-      &buffer_a2_val_size);
+  rc = tiledb_query_set_data_buffer(
+      ctx_, query, "a2", buffer_a2_val, &buffer_a2_val_size);
   CHECK(rc == TILEDB_OK);
-  rc = tiledb_query_set_buffer(ctx_, query, "a3", buffer_a3, &buffer_a3_size);
+  rc = tiledb_query_set_offsets_buffer(
+      ctx_, query, "a2", buffer_a2_off, &buffer_a2_off_size);
   CHECK(rc == TILEDB_OK);
-  rc = tiledb_query_set_buffer(
+  rc = tiledb_query_set_data_buffer(
+      ctx_, query, "a3", buffer_a3, &buffer_a3_size);
+  CHECK(rc == TILEDB_OK);
+  rc = tiledb_query_set_data_buffer(
       ctx_, query, "d1", buffer_coords_dim1, &buffer_coords_dim1_size);
   CHECK(rc == TILEDB_OK);
-  rc = tiledb_query_set_buffer(
+  rc = tiledb_query_set_data_buffer(
       ctx_, query, "d2", buffer_coords_dim2, &buffer_coords_dim2_size);
   CHECK(rc == TILEDB_OK);
 
@@ -3443,17 +3868,26 @@ void ConsolidationFx::read_sparse_heterogeneous_unordered_full() {
   tiledb_array_t* array;
   int rc = tiledb_array_alloc(ctx_, SPARSE_HETEROGENEOUS_ARRAY_NAME, &array);
   CHECK(rc == TILEDB_OK);
-  if (encryption_type_ == TILEDB_NO_ENCRYPTION) {
-    rc = tiledb_array_open(ctx_, array, TILEDB_READ);
-  } else {
-    rc = tiledb_array_open_with_key(
-        ctx_,
-        array,
-        TILEDB_READ,
-        encryption_type_,
-        encryption_key_,
-        (uint32_t)strlen(encryption_key_));
+  if (encryption_type_ != TILEDB_NO_ENCRYPTION) {
+    tiledb_config_t* cfg;
+    tiledb_error_t* err = nullptr;
+    rc = tiledb_config_alloc(&cfg, &err);
+    REQUIRE(rc == TILEDB_OK);
+    REQUIRE(err == nullptr);
+    std::string encryption_type_string =
+        encryption_type_str((tiledb::sm::EncryptionType)encryption_type_);
+    rc = tiledb_config_set(
+        cfg, "sm.encryption_type", encryption_type_string.c_str(), &err);
+    REQUIRE(rc == TILEDB_OK);
+    REQUIRE(err == nullptr);
+    rc = tiledb_config_set(cfg, "sm.encryption_key", encryption_key_, &err);
+    REQUIRE(rc == TILEDB_OK);
+    REQUIRE(err == nullptr);
+    rc = tiledb_array_set_config(ctx_, array, cfg);
+    REQUIRE(rc == TILEDB_OK);
+    tiledb_config_free(&cfg);
   }
+  rc = tiledb_array_open(ctx_, array, TILEDB_READ);
   REQUIRE(rc == TILEDB_OK);
 
   // Compute max buffer sizes
@@ -3478,23 +3912,22 @@ void ConsolidationFx::read_sparse_heterogeneous_unordered_full() {
   CHECK(rc == TILEDB_OK);
   rc = tiledb_query_set_layout(ctx_, query, TILEDB_GLOBAL_ORDER);
   CHECK(rc == TILEDB_OK);
-  rc = tiledb_query_set_buffer(ctx_, query, "a1", buffer_a1, &buffer_a1_size);
+  rc = tiledb_query_set_data_buffer(
+      ctx_, query, "a1", buffer_a1, &buffer_a1_size);
   CHECK(rc == TILEDB_OK);
-  rc = tiledb_query_set_buffer_var(
-      ctx_,
-      query,
-      "a2",
-      buffer_a2_off,
-      &buffer_a2_off_size,
-      buffer_a2_val,
-      &buffer_a2_val_size);
+  rc = tiledb_query_set_data_buffer(
+      ctx_, query, "a2", buffer_a2_val, &buffer_a2_val_size);
   CHECK(rc == TILEDB_OK);
-  rc = tiledb_query_set_buffer(ctx_, query, "a3", buffer_a3, &buffer_a3_size);
+  rc = tiledb_query_set_offsets_buffer(
+      ctx_, query, "a2", buffer_a2_off, &buffer_a2_off_size);
   CHECK(rc == TILEDB_OK);
-  rc = tiledb_query_set_buffer(
+  rc = tiledb_query_set_data_buffer(
+      ctx_, query, "a3", buffer_a3, &buffer_a3_size);
+  CHECK(rc == TILEDB_OK);
+  rc = tiledb_query_set_data_buffer(
       ctx_, query, "d1", buffer_coords_dim1, &buffer_coords_dim1_size);
   CHECK(rc == TILEDB_OK);
-  rc = tiledb_query_set_buffer(
+  rc = tiledb_query_set_data_buffer(
       ctx_, query, "d2", buffer_coords_dim2, &buffer_coords_dim2_size);
   CHECK(rc == TILEDB_OK);
 
@@ -3548,17 +3981,26 @@ void ConsolidationFx::read_sparse_string_full_unordered() {
   tiledb_array_t* array;
   int rc = tiledb_array_alloc(ctx_, SPARSE_STRING_ARRAY_NAME, &array);
   CHECK(rc == TILEDB_OK);
-  if (encryption_type_ == TILEDB_NO_ENCRYPTION) {
-    rc = tiledb_array_open(ctx_, array, TILEDB_READ);
-  } else {
-    rc = tiledb_array_open_with_key(
-        ctx_,
-        array,
-        TILEDB_READ,
-        encryption_type_,
-        encryption_key_,
-        (uint32_t)strlen(encryption_key_));
+  if (encryption_type_ != TILEDB_NO_ENCRYPTION) {
+    tiledb_config_t* cfg;
+    tiledb_error_t* err = nullptr;
+    rc = tiledb_config_alloc(&cfg, &err);
+    REQUIRE(rc == TILEDB_OK);
+    REQUIRE(err == nullptr);
+    std::string encryption_type_string =
+        encryption_type_str((tiledb::sm::EncryptionType)encryption_type_);
+    rc = tiledb_config_set(
+        cfg, "sm.encryption_type", encryption_type_string.c_str(), &err);
+    REQUIRE(rc == TILEDB_OK);
+    REQUIRE(err == nullptr);
+    rc = tiledb_config_set(cfg, "sm.encryption_key", encryption_key_, &err);
+    REQUIRE(rc == TILEDB_OK);
+    REQUIRE(err == nullptr);
+    rc = tiledb_array_set_config(ctx_, array, cfg);
+    REQUIRE(rc == TILEDB_OK);
+    tiledb_config_free(&cfg);
   }
+  rc = tiledb_array_open(ctx_, array, TILEDB_READ);
   REQUIRE(rc == TILEDB_OK);
 
   // Compute max buffer sizes
@@ -3585,30 +4027,26 @@ void ConsolidationFx::read_sparse_string_full_unordered() {
   CHECK(rc == TILEDB_OK);
   rc = tiledb_query_set_layout(ctx_, query, TILEDB_GLOBAL_ORDER);
   CHECK(rc == TILEDB_OK);
-  rc = tiledb_query_set_buffer(ctx_, query, "a1", buffer_a1, &buffer_a1_size);
+  rc = tiledb_query_set_data_buffer(
+      ctx_, query, "a1", buffer_a1, &buffer_a1_size);
   CHECK(rc == TILEDB_OK);
-  rc = tiledb_query_set_buffer_var(
-      ctx_,
-      query,
-      "a2",
-      buffer_a2_off,
-      &buffer_a2_off_size,
-      buffer_a2_val,
-      &buffer_a2_val_size);
+  rc = tiledb_query_set_data_buffer(
+      ctx_, query, "a2", buffer_a2_val, &buffer_a2_val_size);
   CHECK(rc == TILEDB_OK);
-  rc = tiledb_query_set_buffer(ctx_, query, "a3", buffer_a3, &buffer_a3_size);
+  rc = tiledb_query_set_offsets_buffer(
+      ctx_, query, "a2", buffer_a2_off, &buffer_a2_off_size);
   CHECK(rc == TILEDB_OK);
-  rc = tiledb_query_set_buffer(
+  rc = tiledb_query_set_data_buffer(
+      ctx_, query, "a3", buffer_a3, &buffer_a3_size);
+  CHECK(rc == TILEDB_OK);
+  rc = tiledb_query_set_data_buffer(
       ctx_, query, "d1", buffer_coords_dim1, &buffer_coords_dim1_size);
   CHECK(rc == TILEDB_OK);
-  rc = tiledb_query_set_buffer_var(
-      ctx_,
-      query,
-      "d2",
-      buffer_coords_dim2_off,
-      &buffer_coords_dim2_off_size,
-      buffer_coords_dim2,
-      &buffer_coords_dim2_size);
+  rc = tiledb_query_set_data_buffer(
+      ctx_, query, "d2", buffer_coords_dim2, &buffer_coords_dim2_size);
+  CHECK(rc == TILEDB_OK);
+  rc = tiledb_query_set_offsets_buffer(
+      ctx_, query, "d2", buffer_coords_dim2_off, &buffer_coords_dim2_off_size);
   CHECK(rc == TILEDB_OK);
 
   // Submit query
@@ -3666,17 +4104,26 @@ void ConsolidationFx::read_sparse_string_unordered_full() {
   tiledb_array_t* array;
   int rc = tiledb_array_alloc(ctx_, SPARSE_STRING_ARRAY_NAME, &array);
   CHECK(rc == TILEDB_OK);
-  if (encryption_type_ == TILEDB_NO_ENCRYPTION) {
-    rc = tiledb_array_open(ctx_, array, TILEDB_READ);
-  } else {
-    rc = tiledb_array_open_with_key(
-        ctx_,
-        array,
-        TILEDB_READ,
-        encryption_type_,
-        encryption_key_,
-        (uint32_t)strlen(encryption_key_));
+  if (encryption_type_ != TILEDB_NO_ENCRYPTION) {
+    tiledb_config_t* cfg;
+    tiledb_error_t* err = nullptr;
+    rc = tiledb_config_alloc(&cfg, &err);
+    REQUIRE(rc == TILEDB_OK);
+    REQUIRE(err == nullptr);
+    std::string encryption_type_string =
+        encryption_type_str((tiledb::sm::EncryptionType)encryption_type_);
+    rc = tiledb_config_set(
+        cfg, "sm.encryption_type", encryption_type_string.c_str(), &err);
+    REQUIRE(rc == TILEDB_OK);
+    REQUIRE(err == nullptr);
+    rc = tiledb_config_set(cfg, "sm.encryption_key", encryption_key_, &err);
+    REQUIRE(rc == TILEDB_OK);
+    REQUIRE(err == nullptr);
+    rc = tiledb_array_set_config(ctx_, array, cfg);
+    REQUIRE(rc == TILEDB_OK);
+    tiledb_config_free(&cfg);
   }
+  rc = tiledb_array_open(ctx_, array, TILEDB_READ);
   REQUIRE(rc == TILEDB_OK);
 
   // Compute max buffer sizes
@@ -3703,30 +4150,26 @@ void ConsolidationFx::read_sparse_string_unordered_full() {
   CHECK(rc == TILEDB_OK);
   rc = tiledb_query_set_layout(ctx_, query, TILEDB_GLOBAL_ORDER);
   CHECK(rc == TILEDB_OK);
-  rc = tiledb_query_set_buffer(ctx_, query, "a1", buffer_a1, &buffer_a1_size);
+  rc = tiledb_query_set_data_buffer(
+      ctx_, query, "a1", buffer_a1, &buffer_a1_size);
   CHECK(rc == TILEDB_OK);
-  rc = tiledb_query_set_buffer_var(
-      ctx_,
-      query,
-      "a2",
-      buffer_a2_off,
-      &buffer_a2_off_size,
-      buffer_a2_val,
-      &buffer_a2_val_size);
+  rc = tiledb_query_set_data_buffer(
+      ctx_, query, "a2", buffer_a2_val, &buffer_a2_val_size);
   CHECK(rc == TILEDB_OK);
-  rc = tiledb_query_set_buffer(ctx_, query, "a3", buffer_a3, &buffer_a3_size);
+  rc = tiledb_query_set_offsets_buffer(
+      ctx_, query, "a2", buffer_a2_off, &buffer_a2_off_size);
   CHECK(rc == TILEDB_OK);
-  rc = tiledb_query_set_buffer(
+  rc = tiledb_query_set_data_buffer(
+      ctx_, query, "a3", buffer_a3, &buffer_a3_size);
+  CHECK(rc == TILEDB_OK);
+  rc = tiledb_query_set_data_buffer(
       ctx_, query, "d1", buffer_coords_dim1, &buffer_coords_dim1_size);
   CHECK(rc == TILEDB_OK);
-  rc = tiledb_query_set_buffer_var(
-      ctx_,
-      query,
-      "d2",
-      buffer_coords_dim2_off,
-      &buffer_coords_dim2_off_size,
-      buffer_coords_dim2,
-      &buffer_coords_dim2_size);
+  rc = tiledb_query_set_data_buffer(
+      ctx_, query, "d2", buffer_coords_dim2, &buffer_coords_dim2_size);
+  CHECK(rc == TILEDB_OK);
+  rc = tiledb_query_set_offsets_buffer(
+      ctx_, query, "d2", buffer_coords_dim2_off, &buffer_coords_dim2_off_size);
   CHECK(rc == TILEDB_OK);
 
   // Submit query
@@ -3767,69 +4210,161 @@ void ConsolidationFx::read_sparse_string_unordered_full() {
   free(buffer_coords_dim2_off);
 }
 
-void ConsolidationFx::consolidate_dense() {
+uint32_t ConsolidationFx::get_num_fragments_to_vacuum_dense() {
+  uint32_t to_vacuum_num = 0;
+
+  // Create fragment info object
+  tiledb_fragment_info_t* fragment_info = nullptr;
+  int rc = tiledb_fragment_info_alloc(ctx_, DENSE_ARRAY_NAME, &fragment_info);
+  CHECK(rc == TILEDB_OK);
+
+  // Load fragment info
+  rc = tiledb_fragment_info_load(ctx_, fragment_info);
+  CHECK(rc == TILEDB_OK);
+
+  // Get number of fragments to vacuum
+  rc = tiledb_fragment_info_get_to_vacuum_num(
+      ctx_, fragment_info, &to_vacuum_num);
+  CHECK(rc == TILEDB_OK);
+
+  tiledb_fragment_info_free(&fragment_info);
+
+  return to_vacuum_num;
+}
+
+void ConsolidationFx::consolidate_dense(
+    const std::string& mode, uint64_t start, uint64_t end) {
   int rc;
-  if (encryption_type_ == TILEDB_NO_ENCRYPTION) {
-    rc = tiledb_array_consolidate(ctx_, DENSE_ARRAY_NAME, nullptr);
-  } else {
-    rc = tiledb_array_consolidate_with_key(
-        ctx_,
-        DENSE_ARRAY_NAME,
-        encryption_type_,
-        encryption_key_,
-        (uint32_t)strlen(encryption_key_),
-        nullptr);
-  }
+  tiledb_config_t* cfg;
+  tiledb_error_t* err = nullptr;
+  REQUIRE(tiledb_config_alloc(&cfg, &err) == TILEDB_OK);
+  REQUIRE(err == nullptr);
+  rc = tiledb_config_set(cfg, "sm.consolidation.mode", mode.c_str(), &err);
   REQUIRE(rc == TILEDB_OK);
+  REQUIRE(err == nullptr);
+  rc = tiledb_config_set(
+      cfg,
+      "sm.consolidation.timestamp_start",
+      std::to_string(start).c_str(),
+      &err);
+  REQUIRE(rc == TILEDB_OK);
+  REQUIRE(err == nullptr);
+  rc = tiledb_config_set(
+      cfg, "sm.consolidation.timestamp_end", std::to_string(end).c_str(), &err);
+  REQUIRE(rc == TILEDB_OK);
+  REQUIRE(err == nullptr);
+
+  if (encryption_type_ != TILEDB_NO_ENCRYPTION) {
+    std::string encryption_type_string =
+        encryption_type_str((tiledb::sm::EncryptionType)encryption_type_);
+    rc = tiledb_config_set(
+        cfg, "sm.encryption_type", encryption_type_string.c_str(), &err);
+    REQUIRE(err == nullptr);
+    rc = tiledb_config_set(cfg, "sm.encryption_key", encryption_key_, &err);
+    REQUIRE(rc == TILEDB_OK);
+    REQUIRE(err == nullptr);
+  }
+  rc = tiledb_array_consolidate(ctx_, DENSE_ARRAY_NAME, cfg);
+  REQUIRE(rc == TILEDB_OK);
+  tiledb_config_free(&cfg);
 }
 
 void ConsolidationFx::consolidate_sparse() {
   int rc;
-  if (encryption_type_ == TILEDB_NO_ENCRYPTION) {
-    rc = tiledb_array_consolidate(ctx_, SPARSE_ARRAY_NAME, nullptr);
+  if (encryption_type_ != TILEDB_NO_ENCRYPTION) {
+    tiledb_config_t* cfg;
+    tiledb_error_t* err = nullptr;
+    rc = tiledb_config_alloc(&cfg, &err);
+    REQUIRE(rc == TILEDB_OK);
+    REQUIRE(err == nullptr);
+    std::string encryption_type_string =
+        encryption_type_str((tiledb::sm::EncryptionType)encryption_type_);
+    rc = tiledb_config_set(
+        cfg, "sm.encryption_type", encryption_type_string.c_str(), &err);
+    REQUIRE(err == nullptr);
+    rc = tiledb_config_set(cfg, "sm.encryption_key", encryption_key_, &err);
+    REQUIRE(rc == TILEDB_OK);
+    REQUIRE(err == nullptr);
+    rc = tiledb_array_consolidate(ctx_, SPARSE_ARRAY_NAME, cfg);
+    tiledb_config_free(&cfg);
   } else {
-    rc = tiledb_array_consolidate_with_key(
-        ctx_,
-        SPARSE_ARRAY_NAME,
-        encryption_type_,
-        encryption_key_,
-        (uint32_t)strlen(encryption_key_),
-        nullptr);
+    rc = tiledb_array_consolidate(ctx_, SPARSE_ARRAY_NAME, nullptr);
   }
   REQUIRE(rc == TILEDB_OK);
 }
 
 void ConsolidationFx::consolidate_sparse_heterogeneous() {
   int rc;
-  if (encryption_type_ == TILEDB_NO_ENCRYPTION) {
+  if (encryption_type_ != TILEDB_NO_ENCRYPTION) {
+    tiledb_config_t* cfg;
+    tiledb_error_t* err = nullptr;
+    rc = tiledb_config_alloc(&cfg, &err);
+    REQUIRE(rc == TILEDB_OK);
+    REQUIRE(err == nullptr);
+    std::string encryption_type_string =
+        encryption_type_str((tiledb::sm::EncryptionType)encryption_type_);
+    rc = tiledb_config_set(
+        cfg, "sm.encryption_type", encryption_type_string.c_str(), &err);
+    REQUIRE(err == nullptr);
+    rc = tiledb_config_set(cfg, "sm.encryption_key", encryption_key_, &err);
+    REQUIRE(rc == TILEDB_OK);
+    REQUIRE(err == nullptr);
+    rc = tiledb_array_consolidate(ctx_, SPARSE_HETEROGENEOUS_ARRAY_NAME, cfg);
+    tiledb_config_free(&cfg);
+  } else {
     rc = tiledb_array_consolidate(
         ctx_, SPARSE_HETEROGENEOUS_ARRAY_NAME, nullptr);
-  } else {
-    rc = tiledb_array_consolidate_with_key(
-        ctx_,
-        SPARSE_HETEROGENEOUS_ARRAY_NAME,
-        encryption_type_,
-        encryption_key_,
-        (uint32_t)strlen(encryption_key_),
-        nullptr);
   }
   REQUIRE(rc == TILEDB_OK);
 }
 
 void ConsolidationFx::consolidate_sparse_string() {
   int rc;
-  if (encryption_type_ == TILEDB_NO_ENCRYPTION) {
-    rc = tiledb_array_consolidate(ctx_, SPARSE_STRING_ARRAY_NAME, nullptr);
+  if (encryption_type_ != TILEDB_NO_ENCRYPTION) {
+    tiledb_config_t* cfg;
+    tiledb_error_t* err = nullptr;
+    rc = tiledb_config_alloc(&cfg, &err);
+    REQUIRE(rc == TILEDB_OK);
+    REQUIRE(err == nullptr);
+    std::string encryption_type_string =
+        encryption_type_str((tiledb::sm::EncryptionType)encryption_type_);
+    rc = tiledb_config_set(
+        cfg, "sm.encryption_type", encryption_type_string.c_str(), &err);
+    REQUIRE(err == nullptr);
+    rc = tiledb_config_set(cfg, "sm.encryption_key", encryption_key_, &err);
+    REQUIRE(rc == TILEDB_OK);
+    REQUIRE(err == nullptr);
+    rc = tiledb_array_consolidate(ctx_, SPARSE_STRING_ARRAY_NAME, cfg);
+    tiledb_config_free(&cfg);
   } else {
-    rc = tiledb_array_consolidate_with_key(
-        ctx_,
-        SPARSE_STRING_ARRAY_NAME,
-        encryption_type_,
-        encryption_key_,
-        (uint32_t)strlen(encryption_key_),
-        nullptr);
+    rc = tiledb_array_consolidate(ctx_, SPARSE_STRING_ARRAY_NAME, nullptr);
   }
   REQUIRE(rc == TILEDB_OK);
+}
+
+void ConsolidationFx::vacuum_dense(
+    const std::string& mode, uint64_t start, uint64_t end) {
+  int rc;
+  tiledb_config_t* cfg;
+  tiledb_error_t* err = nullptr;
+  REQUIRE(tiledb_config_alloc(&cfg, &err) == TILEDB_OK);
+  REQUIRE(err == nullptr);
+  rc = tiledb_config_set(cfg, "sm.vacuum.mode", mode.c_str(), &err);
+  REQUIRE(rc == TILEDB_OK);
+  REQUIRE(err == nullptr);
+  rc = tiledb_config_set(
+      cfg, "sm.vacuum.timestamp_start", std::to_string(start).c_str(), &err);
+  REQUIRE(rc == TILEDB_OK);
+  REQUIRE(err == nullptr);
+  rc = tiledb_config_set(
+      cfg, "sm.vacuum.timestamp_end", std::to_string(end).c_str(), &err);
+  REQUIRE(rc == TILEDB_OK);
+  REQUIRE(err == nullptr);
+
+  rc = tiledb_array_vacuum(ctx_, DENSE_ARRAY_NAME, cfg);
+  REQUIRE(rc == TILEDB_OK);
+
+  tiledb_config_free(&cfg);
 }
 
 void ConsolidationFx::remove_array(const std::string& array_name) {
@@ -3955,8 +4490,11 @@ int ConsolidationFx::get_dir_num(const char* path, void* data) {
   CHECK(rc == TILEDB_OK);
   auto meta_dir =
       std::string("/") + tiledb::sm::constants::array_metadata_folder_name;
-  if (!tiledb::sm::utils::parse::ends_with(path, meta_dir)) {
-    // Ignoring the meta folder
+  auto schema_dir =
+      std::string("/") + tiledb::sm::constants::array_schema_folder_name;
+  if (!tiledb::sm::utils::parse::ends_with(path, meta_dir) &&
+      !tiledb::sm::utils::parse::ends_with(path, schema_dir)) {
+    // Ignoring the meta folder and the schema folder
     data_struct->num += is_dir;
   }
 
@@ -3970,6 +4508,87 @@ int ConsolidationFx::get_meta_num(const char* path, void* data) {
     ++data_struct->num;
 
   return 1;
+}
+
+int ConsolidationFx::get_array_meta_files_callback(
+    const char* path, void* data) {
+  auto vec = static_cast<std::vector<std::string>*>(data);
+  if (!tiledb::sm::utils::parse::ends_with(
+          path, tiledb::sm::constants::vacuum_file_suffix))
+    vec->emplace_back(path);
+
+  return 1;
+}
+
+int ConsolidationFx::get_array_meta_vac_files_callback(
+    const char* path, void* data) {
+  auto vec = static_cast<std::vector<std::string>*>(data);
+  if (tiledb::sm::utils::parse::ends_with(
+          path, tiledb::sm::constants::vacuum_file_suffix))
+    vec->emplace_back(path);
+
+  return 1;
+}
+
+int ConsolidationFx::get_vac_files_callback(const char* path, void* data) {
+  auto vec = static_cast<std::vector<std::string>*>(data);
+  if (tiledb::sm::utils::parse::ends_with(
+          path, tiledb::sm::constants::vacuum_file_suffix))
+    vec->emplace_back(path);
+
+  return 1;
+}
+
+int ConsolidationFx::get_fragment_timestamps(const char* path, void* data) {
+  auto data_vec = (std::vector<uint64_t>*)data;
+  std::pair<uint64_t, uint64_t> timestamp_range;
+  if (tiledb::sm::utils::parse::ends_with(
+          path, tiledb::sm::constants::ok_file_suffix)) {
+    auto uri = tiledb::sm::URI(path);
+    if (tiledb::sm::utils::parse::get_timestamp_range(uri, &timestamp_range)
+            .ok())
+      data_vec->push_back(timestamp_range.first);
+  }
+
+  return 1;
+}
+
+void ConsolidationFx::get_array_meta_files_dense(
+    std::vector<std::string>& files) {
+  files.clear();
+  tiledb::sm::URI dense_array_uri(DENSE_ARRAY_NAME);
+  int rc = tiledb_vfs_ls(
+      ctx_,
+      vfs_,
+      dense_array_uri.add_trailing_slash()
+          .join_path(tiledb::sm::constants::array_metadata_folder_name)
+          .c_str(),
+      &get_array_meta_files_callback,
+      &files);
+  CHECK(rc == TILEDB_OK);
+}
+
+void ConsolidationFx::get_array_meta_vac_files_dense(
+    std::vector<std::string>& files) {
+  files.clear();
+  tiledb::sm::URI dense_array_uri(DENSE_ARRAY_NAME);
+  int rc = tiledb_vfs_ls(
+      ctx_,
+      vfs_,
+      dense_array_uri.add_trailing_slash()
+          .join_path(tiledb::sm::constants::array_metadata_folder_name)
+          .c_str(),
+      &get_array_meta_vac_files_callback,
+      &files);
+  CHECK(rc == TILEDB_OK);
+}
+
+void ConsolidationFx::get_vac_files_dense(std::vector<std::string>& files) {
+  files.clear();
+  tiledb::sm::URI dense_array_uri(DENSE_ARRAY_NAME);
+  int rc = tiledb_vfs_ls(
+      ctx_, vfs_, dense_array_uri.c_str(), &get_vac_files_callback, &files);
+  CHECK(rc == TILEDB_OK);
 }
 
 // Test valid configuration parameters
@@ -4702,36 +5321,35 @@ TEST_CASE_METHOD(
   write_dense_vector_4_fragments();
   read_dense_vector();
 
-  tiledb_config_t* config = nullptr;
-  tiledb_error_t* error = nullptr;
-  REQUIRE(tiledb_config_alloc(&config, &error) == TILEDB_OK);
-  REQUIRE(error == nullptr);
+  tiledb_config_t* cfg = nullptr;
+  tiledb_error_t* err = nullptr;
+  REQUIRE(tiledb_config_alloc(&cfg, &err) == TILEDB_OK);
+  REQUIRE(err == nullptr);
 
   // Configure test
-  int rc = tiledb_config_set(config, "sm.consolidation.steps", "2", &error);
+  int rc = tiledb_config_set(cfg, "sm.consolidation.steps", "2", &err);
   REQUIRE(rc == TILEDB_OK);
-  REQUIRE(error == nullptr);
-  rc =
-      tiledb_config_set(config, "sm.consolidation.step_min_frags", "2", &error);
+  REQUIRE(err == nullptr);
+  rc = tiledb_config_set(cfg, "sm.consolidation.step_min_frags", "2", &err);
   REQUIRE(rc == TILEDB_OK);
-  REQUIRE(error == nullptr);
-  rc =
-      tiledb_config_set(config, "sm.consolidation.step_max_frags", "2", &error);
+  REQUIRE(err == nullptr);
+  rc = tiledb_config_set(cfg, "sm.consolidation.step_max_frags", "2", &err);
   REQUIRE(rc == TILEDB_OK);
-  REQUIRE(error == nullptr);
-  rc = tiledb_config_set(
-      config, "sm.consolidation.step_size_ratio", "0.0", &error);
+  REQUIRE(err == nullptr);
+  rc = tiledb_config_set(cfg, "sm.consolidation.step_size_ratio", "0.0", &err);
   REQUIRE(rc == TILEDB_OK);
-  REQUIRE(error == nullptr);
+  REQUIRE(err == nullptr);
 
   // Consolidate
-  rc = tiledb_array_consolidate_with_key(
-      ctx_,
-      DENSE_VECTOR_NAME,
-      encryption_type_,
-      encryption_key_,
-      (uint32_t)strlen(encryption_key_),
-      config);
+  std::string encryption_type_string =
+      encryption_type_str((tiledb::sm::EncryptionType)encryption_type_);
+  rc = tiledb_config_set(
+      cfg, "sm.encryption_type", encryption_type_string.c_str(), &err);
+  REQUIRE(err == nullptr);
+  rc = tiledb_config_set(cfg, "sm.encryption_key", encryption_key_, &err);
+  REQUIRE(rc == TILEDB_OK);
+  REQUIRE(err == nullptr);
+  rc = tiledb_array_consolidate(ctx_, DENSE_VECTOR_NAME, cfg);
   CHECK(rc == TILEDB_OK);
 
   // Check correctness
@@ -4750,7 +5368,7 @@ TEST_CASE_METHOD(
   CHECK(rc == TILEDB_OK);
   CHECK(data.num == 2);
 
-  tiledb_config_free(&config);
+  tiledb_config_free(&cfg);
   remove_dense_vector();
 }
 
@@ -5023,11 +5641,13 @@ TEST_CASE_METHOD(
   remove_dense_vector();
 }
 
-// Test previous fragments overlap
+// Test previous fragments overlap, first two fragments will not consolidate due
+// to step ratio and last two because of overlapping non empty domains with
+// first fragment
 TEST_CASE_METHOD(
     ConsolidationFx,
-    "C API: Test advanced consolidation, consolidatable #1",
-    "[capi][consolidation][adv][consolidatable-1]") {
+    "C API: Test advanced consolidation, non-consolidatable",
+    "[capi][consolidation][adv][non-consolidatable]") {
   remove_dense_vector();
   create_dense_vector();
   write_dense_vector_consolidatable_1();
@@ -5051,7 +5671,7 @@ TEST_CASE_METHOD(
   REQUIRE(rc == TILEDB_OK);
   REQUIRE(error == nullptr);
   rc = tiledb_config_set(
-      config, "sm.consolidation.step_size_ratio", "0.75", &error);
+      config, "sm.consolidation.step_size_ratio", "0.78", &error);
   REQUIRE(rc == TILEDB_OK);
   REQUIRE(error == nullptr);
 
@@ -5079,8 +5699,8 @@ TEST_CASE_METHOD(
 // Test amplification
 TEST_CASE_METHOD(
     ConsolidationFx,
-    "C API: Test advanced consolidation, consolidatable #2",
-    "[capi][consolidation][adv][consolidatable-2]") {
+    "C API: Test advanced consolidation, consolidatable",
+    "[capi][consolidation][adv][consolidatable]") {
   remove_dense_vector();
   create_dense_vector();
   write_dense_vector_consolidatable_2();
@@ -5196,7 +5816,10 @@ TEST_CASE_METHOD(
   tiledb_array_t* array;
   rc = tiledb_array_alloc(ctx_, DENSE_VECTOR_NAME, &array);
   CHECK(rc == TILEDB_OK);
-  rc = tiledb_array_open_at(ctx_, array, TILEDB_READ, 1);
+  rc = tiledb_array_set_open_timestamp_end(ctx_, array, 1);
+  CHECK(rc == TILEDB_OK);
+
+  rc = tiledb_array_open(ctx_, array, TILEDB_READ);
   REQUIRE(rc == TILEDB_OK);
 
   // Preparation
@@ -5212,7 +5835,7 @@ TEST_CASE_METHOD(
   CHECK(rc == TILEDB_OK);
   rc = tiledb_query_set_subarray(ctx_, query, subarray);
   CHECK(rc == TILEDB_OK);
-  rc = tiledb_query_set_buffer(ctx_, query, "a", a, &a_size);
+  rc = tiledb_query_set_data_buffer(ctx_, query, "a", a, &a_size);
   CHECK(rc == TILEDB_OK);
   rc = tiledb_query_submit(ctx_, query);
   CHECK(rc == TILEDB_OK);
@@ -5565,4 +6188,212 @@ TEST_CASE_METHOD(
   tiledb_ctx_free(&ctx);
   tiledb_config_free(&config);
   remove_sparse_string_array();
+}
+
+TEST_CASE_METHOD(
+    ConsolidationFx,
+    "C API: Test consolidation and timestamps",
+    "[capi][consolidation][timestamps]") {
+  remove_dense_array();
+  create_dense_array();
+
+  SECTION("- consolidate fragments with timestamps") {
+    write_dense_subarray();
+    auto start = tiledb::sm::utils::time::timestamp_now_ms();
+    write_dense_subarray(1, 2, 1, 2);
+    write_dense_subarray(1, 2, 1, 2);
+    auto end = tiledb::sm::utils::time::timestamp_now_ms();
+    consolidate_dense("fragments", start, end);
+
+    CHECK(get_num_fragments_to_vacuum_dense() == 2);
+  }
+
+  SECTION("- consolidate fragments with timestamps, overlapping start") {
+    write_dense_subarray();
+    auto start = tiledb::sm::utils::time::timestamp_now_ms();
+    write_dense_subarray();
+    write_dense_subarray();
+    auto end = tiledb::sm::utils::time::timestamp_now_ms();
+    consolidate_dense("fragments", start, end);
+
+    CHECK(get_num_fragments_to_vacuum_dense() == 0);
+  }
+
+  SECTION("- consolidate array metadata with timestamps") {
+    write_dense_array_metadata();
+    std::this_thread::sleep_for(std::chrono::milliseconds(1));
+    auto start = tiledb::sm::utils::time::timestamp_now_ms();
+    write_dense_array_metadata();
+    write_dense_array_metadata();
+    auto end = tiledb::sm::utils::time::timestamp_now_ms();
+    consolidate_dense("array_meta", start, end);
+    read_dense_array_metadata();
+
+    std::vector<std::string> array_meta_vac_files;
+    get_array_meta_vac_files_dense(array_meta_vac_files);
+    CHECK(array_meta_vac_files.size() == 1);
+
+    std::vector<std::string> array_meta_files;
+    get_array_meta_files_dense(array_meta_files);
+    CHECK(array_meta_files.size() == 4);
+
+    uint64_t file_size = 0;
+    int rc = tiledb_vfs_file_size(
+        ctx_, vfs_, array_meta_vac_files[0].c_str(), &file_size);
+    REQUIRE(rc == TILEDB_OK);
+
+    // Make sure we only have two files to vaccum
+    tiledb_vfs_fh_t* fh;
+    std::string vac_file;
+    vac_file.resize(file_size);
+    rc = tiledb_vfs_open(
+        ctx_, vfs_, array_meta_vac_files[0].c_str(), TILEDB_VFS_READ, &fh);
+    REQUIRE(rc == TILEDB_OK);
+    rc = tiledb_vfs_read(ctx_, fh, 0, &vac_file[0], file_size);
+    REQUIRE(rc == TILEDB_OK);
+    CHECK(std::count(vac_file.begin(), vac_file.end(), '\n') == 2);
+    rc = tiledb_vfs_close(ctx_, fh);
+    REQUIRE(rc == TILEDB_OK);
+    tiledb_vfs_fh_free(&fh);
+    REQUIRE(rc == TILEDB_OK);
+  }
+
+  // Clean up
+  remove_dense_array();
+}
+
+TEST_CASE_METHOD(
+    ConsolidationFx,
+    "C API: Test vacuuming and timestamps",
+    "[capi][vacuuming][timestamps]") {
+  remove_dense_array();
+  create_dense_array();
+
+  SECTION("- vacuum fragments with timestamps") {
+    write_dense_subarray();
+
+    auto start1 = tiledb::sm::utils::time::timestamp_now_ms();
+    write_dense_subarray(1, 2, 3, 4);
+    write_dense_subarray(1, 2, 3, 4);
+    auto end1 = tiledb::sm::utils::time::timestamp_now_ms();
+    consolidate_dense("fragments", start1, end1);
+
+    auto start2 = tiledb::sm::utils::time::timestamp_now_ms();
+    write_dense_subarray(1, 2, 1, 2);
+    write_dense_subarray(1, 2, 1, 2);
+    auto end2 = tiledb::sm::utils::time::timestamp_now_ms();
+
+    consolidate_dense("fragments", start2, end2);
+    CHECK(get_num_fragments_to_vacuum_dense() == 4);
+
+    vacuum_dense("fragments", start1, end1);
+    CHECK(get_num_fragments_to_vacuum_dense() == 2);
+
+    vacuum_dense("fragments", start2, end2);
+    CHECK(get_num_fragments_to_vacuum_dense() == 0);
+  }
+
+  SECTION("- vacuum array metadata with timestamps") {
+    write_dense_array_metadata();
+    std::this_thread::sleep_for(std::chrono::milliseconds(1));
+
+    auto start1 = tiledb::sm::utils::time::timestamp_now_ms();
+    write_dense_array_metadata();
+    write_dense_array_metadata();
+    auto end1 = tiledb::sm::utils::time::timestamp_now_ms();
+    consolidate_dense("array_meta", start1, end1);
+
+    auto start2 = tiledb::sm::utils::time::timestamp_now_ms();
+    write_dense_array_metadata();
+    write_dense_array_metadata();
+    auto end2 = tiledb::sm::utils::time::timestamp_now_ms();
+    consolidate_dense("array_meta", start2, end2);
+
+    std::vector<std::string> array_meta_vac_files;
+    get_array_meta_vac_files_dense(array_meta_vac_files);
+    CHECK(array_meta_vac_files.size() == 2);
+
+    std::vector<std::string> array_meta_files;
+    get_array_meta_files_dense(array_meta_files);
+    CHECK(array_meta_files.size() == 7);
+
+    vacuum_dense("array_meta", start1, end1);
+
+    get_array_meta_vac_files_dense(array_meta_vac_files);
+    CHECK(array_meta_vac_files.size() == 1);
+    get_array_meta_files_dense(array_meta_files);
+    CHECK(array_meta_files.size() == 5);
+
+    vacuum_dense("array_meta", start2, end2);
+
+    get_array_meta_vac_files_dense(array_meta_vac_files);
+    CHECK(array_meta_vac_files.size() == 0);
+    get_array_meta_files_dense(array_meta_files);
+    CHECK(array_meta_files.size() == 3);
+  }
+
+  // Clean up
+  remove_dense_array();
+}
+
+TEST_CASE_METHOD(
+    ConsolidationFx,
+    "C API: Test partial vacuuming and timestamps",
+    "[capi][partial][vacuuming][timestamps]") {
+  remove_dense_array();
+  create_dense_array();
+
+  write_dense_subarray();
+  std::this_thread::sleep_for(std::chrono::milliseconds(1));
+  write_dense_subarray(1, 2, 3, 4);
+  std::this_thread::sleep_for(std::chrono::milliseconds(1));
+  write_dense_subarray(1, 2, 1, 2);
+  std::this_thread::sleep_for(std::chrono::milliseconds(1));
+  write_dense_subarray(1, 2, 1, 2);
+
+  std::vector<uint64_t> fragment_timestamps;
+  auto rc = tiledb_vfs_ls(
+      ctx_,
+      vfs_,
+      DENSE_ARRAY_NAME,
+      &get_fragment_timestamps,
+      &fragment_timestamps);
+  CHECK(rc == TILEDB_OK);
+
+  consolidate_dense(
+      "fragments", fragment_timestamps[1], fragment_timestamps[3]);
+
+  std::vector<std::string> vac_files;
+  get_vac_files_dense(vac_files);
+  CHECK(vac_files.size() == 1);
+
+  vacuum_dense("fragments", fragment_timestamps[0], fragment_timestamps[0]);
+
+  get_num_struct data = {ctx_, vfs_, 0};
+  rc = tiledb_vfs_ls(ctx_, vfs_, DENSE_ARRAY_NAME, &get_dir_num, &data);
+  CHECK(rc == TILEDB_OK);
+  CHECK(data.num == 5);
+
+  vacuum_dense("fragments", fragment_timestamps[1], fragment_timestamps[1]);
+
+  data.num = 0;
+  rc = tiledb_vfs_ls(ctx_, vfs_, DENSE_ARRAY_NAME, &get_dir_num, &data);
+  CHECK(rc == TILEDB_OK);
+  CHECK(data.num == 4);
+
+  get_vac_files_dense(vac_files);
+  CHECK(vac_files.size() == 1);
+
+  vacuum_dense("fragments", fragment_timestamps[2], fragment_timestamps[3]);
+
+  data.num = 0;
+  rc = tiledb_vfs_ls(ctx_, vfs_, DENSE_ARRAY_NAME, &get_dir_num, &data);
+  CHECK(rc == TILEDB_OK);
+  CHECK(data.num == 2);
+
+  get_vac_files_dense(vac_files);
+  CHECK(vac_files.size() == 0);
+
+  // Clean up
+  remove_dense_array();
 }

@@ -35,17 +35,48 @@
 
 #ifdef TILEDB_SERIALIZATION
 
+#include "tiledb-rest.h"
+
 #include "tiledb/common/heap_memory.h"
+#include "tiledb/common/logger_public.h"
 #include "tiledb/common/status.h"
+#include "tiledb/sm/array/array.h"
 #include "tiledb/sm/array_schema/array_schema.h"
+#include "tiledb/sm/array_schema/dimension.h"
 #include "tiledb/sm/buffer/buffer.h"
 #include "tiledb/sm/enums/datatype.h"
-#include "tiledb/sm/serialization/tiledb-rest.capnp.h"
 
 using namespace tiledb::common;
 
 namespace tiledb {
 namespace sm {
+namespace serialization {
+
+/**
+ * Serialize a config into a cap'n proto class
+ * @param config config to serialize
+ * @param config_builder cap'n proto message class
+ * @return Status
+ */
+Status config_to_capnp(
+    const Config* config, capnp::Config::Builder* config_builder);
+
+/**
+ * Create a config object from a cap'n proto class
+ * @param config_reader cap'n proto message class
+ * @param config config to deserialize into
+ * @return Status
+ */
+Status config_from_capnp(
+    const capnp::Config::Reader& config_reader, tdb_unique_ptr<Config>* config);
+
+};  // namespace serialization
+};  // namespace sm
+};  // namespace tiledb
+
+namespace tiledb {
+namespace sm {
+class Dimension;
 namespace serialization {
 namespace utils {
 
@@ -114,6 +145,15 @@ Status set_capnp_array_ptr(
     case tiledb::sm::Datatype::DATETIME_PS:
     case tiledb::sm::Datatype::DATETIME_FS:
     case tiledb::sm::Datatype::DATETIME_AS:
+    case tiledb::sm::Datatype::TIME_HR:
+    case tiledb::sm::Datatype::TIME_MIN:
+    case tiledb::sm::Datatype::TIME_SEC:
+    case tiledb::sm::Datatype::TIME_MS:
+    case tiledb::sm::Datatype::TIME_US:
+    case tiledb::sm::Datatype::TIME_NS:
+    case tiledb::sm::Datatype::TIME_PS:
+    case tiledb::sm::Datatype::TIME_FS:
+    case tiledb::sm::Datatype::TIME_AS:
     case tiledb::sm::Datatype::INT64:
       builder.setInt64(kj::arrayPtr(static_cast<const int64_t*>(ptr), size));
       break;
@@ -180,6 +220,15 @@ Status set_capnp_scalar(
     case tiledb::sm::Datatype::DATETIME_PS:
     case tiledb::sm::Datatype::DATETIME_FS:
     case tiledb::sm::Datatype::DATETIME_AS:
+    case tiledb::sm::Datatype::TIME_HR:
+    case tiledb::sm::Datatype::TIME_MIN:
+    case tiledb::sm::Datatype::TIME_SEC:
+    case tiledb::sm::Datatype::TIME_MS:
+    case tiledb::sm::Datatype::TIME_US:
+    case tiledb::sm::Datatype::TIME_NS:
+    case tiledb::sm::Datatype::TIME_PS:
+    case tiledb::sm::Datatype::TIME_FS:
+    case tiledb::sm::Datatype::TIME_AS:
     case tiledb::sm::Datatype::INT64:
       builder.setInt64(*static_cast<const int64_t*>(value));
       break;
@@ -283,6 +332,15 @@ Status copy_capnp_list(
     case tiledb::sm::Datatype::DATETIME_PS:
     case tiledb::sm::Datatype::DATETIME_FS:
     case tiledb::sm::Datatype::DATETIME_AS:
+    case tiledb::sm::Datatype::TIME_HR:
+    case tiledb::sm::Datatype::TIME_MIN:
+    case tiledb::sm::Datatype::TIME_SEC:
+    case tiledb::sm::Datatype::TIME_MS:
+    case tiledb::sm::Datatype::TIME_US:
+    case tiledb::sm::Datatype::TIME_NS:
+    case tiledb::sm::Datatype::TIME_PS:
+    case tiledb::sm::Datatype::TIME_FS:
+    case tiledb::sm::Datatype::TIME_AS:
     case tiledb::sm::Datatype::INT64:
       if (reader.hasInt64())
         RETURN_NOT_OK(copy_capnp_list<int64_t>(reader.getInt64(), buffer));

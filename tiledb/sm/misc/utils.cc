@@ -38,6 +38,7 @@
 #include "tiledb/sm/misc/constants.h"
 #include "tiledb/sm/misc/uri.h"
 
+#include <algorithm>
 #include <iostream>
 #include <set>
 #include <sstream>
@@ -273,10 +274,13 @@ Status get_fragment_name_version(const std::string& name, uint32_t* version) {
   size_t n = std::count(name.begin(), name.end(), '_');
   if (n == 5) {
     // Fetch the fragment version from the fragment name. If the fragment
+    // version is greater than or equal to 10, we have a footer version of 5.
     // version is greater than or equal to 7, we have a footer version of 4.
     // Otherwise, it is version 3.
     const int frag_version = std::stoi(name.substr(name.find_last_of('_') + 1));
-    if (frag_version >= 7)
+    if (frag_version >= 10)
+      *version = 5;
+    else if (frag_version >= 7)
       *version = 4;
     else
       *version = 3;
@@ -430,6 +434,15 @@ std::string to_str(const void* value, Datatype type) {
     case Datatype::DATETIME_PS:
     case Datatype::DATETIME_FS:
     case Datatype::DATETIME_AS:
+    case Datatype::TIME_HR:
+    case Datatype::TIME_MIN:
+    case Datatype::TIME_SEC:
+    case Datatype::TIME_MS:
+    case Datatype::TIME_US:
+    case Datatype::TIME_NS:
+    case Datatype::TIME_PS:
+    case Datatype::TIME_FS:
+    case Datatype::TIME_AS:
       ss << *(const int64_t*)value;
       break;
     default:
@@ -616,7 +629,7 @@ double coverage(const T* a, const T* b, unsigned dim_num) {
     } else {
       auto a_range = double(a[2 * i + 1]) - a[2 * i] + add;
       auto b_range = double(b[2 * i + 1]) - b[2 * i] + add;
-      if (std::numeric_limits<T>::is_integer) {
+      if (std::is_integral<T>::value) {
         auto max = std::numeric_limits<T>::max();
         if (a_range == 0)
           a_range = std::nextafter(a_range, max);
@@ -627,6 +640,20 @@ double coverage(const T* a, const T* b, unsigned dim_num) {
     }
   }
   return c;
+}
+
+template <class T>
+std::vector<std::array<T, 2>> intersection(
+    const std::vector<std::array<T, 2>>& r1,
+    const std::vector<std::array<T, 2>>& r2) {
+  auto dim_num = r1.size();
+  assert(r2.size() == dim_num);
+
+  std::vector<std::array<T, 2>> ret(dim_num);
+  for (size_t d = 0; d < dim_num; ++d)
+    ret[d] = {std::max(r1[d][0], r2[d][0]), std::min(r1[d][1], r2[d][1])};
+
+  return ret;
 }
 
 }  // namespace geometry
@@ -868,6 +895,31 @@ template double coverage<float>(
     const float* a, const float* b, unsigned dim_num);
 template double coverage<double>(
     const double* a, const double* b, unsigned dim_num);
+
+template std::vector<std::array<int8_t, 2>> intersection<int8_t>(
+    const std::vector<std::array<int8_t, 2>>& r1,
+    const std::vector<std::array<int8_t, 2>>& r2);
+template std::vector<std::array<uint8_t, 2>> intersection<uint8_t>(
+    const std::vector<std::array<uint8_t, 2>>& r1,
+    const std::vector<std::array<uint8_t, 2>>& r2);
+template std::vector<std::array<int16_t, 2>> intersection<int16_t>(
+    const std::vector<std::array<int16_t, 2>>& r1,
+    const std::vector<std::array<int16_t, 2>>& r2);
+template std::vector<std::array<uint16_t, 2>> intersection<uint16_t>(
+    const std::vector<std::array<uint16_t, 2>>& r1,
+    const std::vector<std::array<uint16_t, 2>>& r2);
+template std::vector<std::array<int32_t, 2>> intersection<int32_t>(
+    const std::vector<std::array<int32_t, 2>>& r1,
+    const std::vector<std::array<int32_t, 2>>& r2);
+template std::vector<std::array<uint32_t, 2>> intersection<uint32_t>(
+    const std::vector<std::array<uint32_t, 2>>& r1,
+    const std::vector<std::array<uint32_t, 2>>& r2);
+template std::vector<std::array<int64_t, 2>> intersection<int64_t>(
+    const std::vector<std::array<int64_t, 2>>& r1,
+    const std::vector<std::array<int64_t, 2>>& r2);
+template std::vector<std::array<uint64_t, 2>> intersection<uint64_t>(
+    const std::vector<std::array<uint64_t, 2>>& r1,
+    const std::vector<std::array<uint64_t, 2>>& r2);
 
 }  // namespace geometry
 

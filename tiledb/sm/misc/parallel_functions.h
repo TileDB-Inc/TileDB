@@ -39,13 +39,6 @@
 #include <algorithm>
 #include <cassert>
 
-#ifdef HAVE_TBB
-#include <tbb/blocked_range2d.h>
-#include <tbb/parallel_for.h>
-#include <tbb/parallel_for_each.h>
-#include <tbb/parallel_sort.h>
-#endif
-
 using namespace tiledb::common;
 
 namespace tiledb {
@@ -66,10 +59,6 @@ template <
     typename CmpT = std::less<typename std::iterator_traits<IterT>::value_type>>
 void parallel_sort(
     ThreadPool* const tp, IterT begin, IterT end, const CmpT& cmp = CmpT()) {
-#ifdef HAVE_TBB
-  (void)tp;
-  tbb::parallel_sort(begin, end, cmp);
-#else
   // Sort the range using a quicksort. The algorithm is:
   // 1. Pick a pivot value in the range.
   // 2. Re-order the range so that all values less than the
@@ -167,7 +156,6 @@ void parallel_sort(
 
   // Start the quicksort from the entire range.
   quick_sort(0, begin, end);
-#endif
 }
 
 /**
@@ -179,31 +167,19 @@ void parallel_sort(
  * @param begin Beginning of range (inclusive).
  * @param end End of range (exclusive).
  * @param F Function to call on each item
- * @return Vector of Status objects, one for each function invocation.
+ * @return Status
  */
 template <typename FuncT>
-std::vector<Status> parallel_for(
+Status parallel_for(
     ThreadPool* const tp, uint64_t begin, uint64_t end, const FuncT& F) {
   assert(begin <= end);
 
-  std::vector<Status> result;
-
   const uint64_t range_len = end - begin;
   if (range_len == 0)
-    return result;
+    return Status::Ok();
 
-#ifdef HAVE_TBB
-  (void)tp;
-  result.resize(range_len);
-  tbb::parallel_for(begin, end, [begin, &result, &F](uint64_t i) {
-    result[i - begin] = F(i);
-  });
-#else
   assert(tp);
 
-  // The return vector will be a single Status object containing
-  // the first failed status that we encounter. When we remove TBB,
-  // we will change the interface to return a single Status object.
   bool failed = false;
   Status return_st = Status::Ok();
   std::mutex return_st_mutex;
@@ -248,11 +224,7 @@ std::vector<Status> parallel_for(
     const uint64_t subrange_end = begin + fn_iter + task_subrange_len;
     std::function<Status()> bound_fn =
         std::bind(execute_subrange, subrange_start, subrange_end);
-#if 01
     tasks.emplace_back(tp->execute(std::move(bound_fn)));
-#else
-    bound_fn();
-#endif
 
     fn_iter += task_subrange_len;
   }
@@ -260,11 +232,7 @@ std::vector<Status> parallel_for(
   // Wait for all instances of `execute_subrange` to complete.
   tp->wait_all(tasks);
 
-  // Store the final result.
-  result.emplace_back(std::move(return_st));
-#endif
-
-  return result;
+  return return_st;
 }
 
 /**
@@ -278,10 +246,10 @@ std::vector<Status> parallel_for(
  * @param j0 Inclusive start of inner (cols) range.
  * @param j1 Exclusive end of inner range.
  * @param F Function to call on each (i, j) pair.
- * @return Vector of Status objects, one for each function invocation.
+ * @return Status
  */
 template <typename FuncT>
-std::vector<Status> parallel_for_2d(
+Status parallel_for_2d(
     ThreadPool* const tp,
     uint64_t i0,
     uint64_t i1,
@@ -291,40 +259,14 @@ std::vector<Status> parallel_for_2d(
   assert(i0 <= i1);
   assert(j0 <= j1);
 
-  std::vector<Status> result;
-
-#ifdef HAVE_TBB
-  (void)tp;
-  const uint64_t num_i_iters = i1 - i0 + 1, num_j_iters = j1 - j0 + 1;
-  const uint64_t num_iters = num_i_iters * num_j_iters;
-  result.resize(num_iters);
-  auto range = tbb::blocked_range2d<uint64_t>(i0, i1, j0, j1);
-  tbb::parallel_for(
-      range,
-      [i0, j0, num_j_iters, &result, &F](
-          const tbb::blocked_range2d<uint64_t>& r) {
-        const auto& rows = r.rows();
-        const auto& cols = r.cols();
-        for (uint64_t i = rows.begin(); i < rows.end(); i++) {
-          for (uint64_t j = cols.begin(); j < cols.end(); j++) {
-            uint64_t idx = (i - i0) * num_j_iters + (j - j0);
-            result[idx] = F(i, j);
-          }
-        }
-      });
-  return result;
-#else
   assert(tp);
 
   const uint64_t range_len_i = i1 - i0;
   const uint64_t range_len_j = j1 - j0;
 
   if (range_len_i == 0 || range_len_j == 0)
-    return result;
+    return Status::Ok();
 
-  // The return vector will be a single Status object containing
-  // the first failed status that we encounter. When we remove TBB,
-  // we will change the interface to return a single Status object.
   bool failed = false;
   Status return_st = Status::Ok();
   std::mutex return_st_mutex;
@@ -400,22 +342,14 @@ std::vector<Status> parallel_for_2d(
           subrange_i.second,
           subrange_j.first,
           subrange_j.second);
-#if 01
       tasks.emplace_back(tp->execute(std::move(bound_fn)));
-#else
-      bound_fn();
-#endif
     }
   }
 
   // Wait for all instances of `execute_subrange` to complete.
   tp->wait_all(tasks);
 
-  // Store the final result.
-  result.emplace_back(std::move(return_st));
-#endif
-
-  return result;
+  return return_st;
 }
 
 }  // namespace sm

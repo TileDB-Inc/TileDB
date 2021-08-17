@@ -41,6 +41,7 @@
 #include "tiledb/common/thread_pool.h"
 #include "tiledb/sm/filter/filter.h"
 #include "tiledb/sm/filter/filter_buffer.h"
+#include "tiledb/sm/stats/stats.h"
 #include "tiledb/sm/tile/chunked_buffer.h"
 
 using namespace tiledb::common;
@@ -177,7 +178,8 @@ class FilterPipeline {
    * @param compute_tp The thread pool for compute-bound tasks.
    * @return Status
    */
-  Status run_forward(Tile* tile, ThreadPool* compute_tp) const;
+  Status run_forward(
+      stats::Stats* writer_stats, Tile* tile, ThreadPool* compute_tp) const;
 
   /**
    * Runs the pipeline in reverse on the given filtered tile. This is used
@@ -214,28 +216,13 @@ class FilterPipeline {
    * @param tile Tile to filter
    * @param compute_tp The thread pool for compute-bound tasks.
    * @param config The global config.
-   * @param result_cell_slab_ranges optional list of result cell slab ranges. If
-   *   this is non-NULL, we will only run the filter pipeline reversal on chunks
-   *   that intersect with at least one range element in this list.
    * @return Status
    */
   Status run_reverse(
+      stats::Stats* reader_stats,
       Tile* tile,
       ThreadPool* compute_tp,
-      const Config& config,
-      const std::vector<std::pair<uint64_t, uint64_t>>*
-          result_cell_slab_ranges = nullptr) const;
-
-  /**
-   * The var-length overload of `run_reverse`.
-   */
-  Status run_reverse(
-      Tile* tile,
-      Tile* tile_var,
-      ThreadPool* compute_tp,
-      const Config& config,
-      const std::vector<std::pair<uint64_t, uint64_t>>*
-          result_cell_slab_ranges = nullptr) const;
+      const Config& config) const;
 
   /**
    * Serializes the pipeline metadata into a binary buffer.
@@ -302,86 +289,14 @@ class FilterPipeline {
    * @param output Chunked buffer where output of the last stage
    *    will be written.
    * @param compute_tp The thread pool for compute-bound tasks.
-   * @param unfiltering_all True if all all input chunks will be unfiltered.
-   *    This must be consistent with the skip parameter values in 'input'.
    * @param config The global config.
    * @return Status
    */
   Status filter_chunks_reverse(
-      const std::vector<std::tuple<void*, uint32_t, uint32_t, uint32_t, bool>>&
-          input,
+      const std::vector<std::tuple<void*, uint32_t, uint32_t, uint32_t>>& input,
       ChunkedBuffer* output,
       ThreadPool* compute_tp,
-      bool unfiltering_all,
       const Config& config) const;
-
-  /**
-   * Returns true if we should skip the filter pipeline reversal on a chunk
-   * with fixed-size cells.
-   *
-   * @param chunk_length The unfiltered (original) length of the chunk.
-   * @param cells_processed This is an opaque context variable between
-   * invocations.
-   * @param cell_size Fixed cell size.
-   * @param cs_it An opaque context variable to iterate the cell slab ranges.
-   * @param cs_end The end-iterator for the cell slab ranges.
-   * @param skip The return value for whether the chunk reversal should be
-   * skipped.
-   * @return Status
-   */
-  Status skip_chunk_reversal_fixed(
-      uint64_t chunk_length,
-      uint64_t* cells_processed,
-      uint64_t cell_size,
-      std::vector<std::pair<uint64_t, uint64_t>>::const_iterator* cs_it,
-      const std::vector<std::pair<uint64_t, uint64_t>>::const_iterator& cs_end,
-      bool* skip) const;
-
-  /**
-   * Returns true if we should skip the filter pipeline reversal on a chunk
-   * with var-sized cells.
-   *
-   * @param chunk_length The unfiltered (original) length of the chunk.
-   * @param d_off The contiguous buffer to the offset tile.
-   * @param d_off_len The number of uint64_t values in `d_off`.
-   * @param cells_processed This is an opaque context variable between
-   * invocations.
-   * @param cells_size_processed This is an opaque context variable between
-   * invocations.
-   * @param cs_it An opaque context variable to iterate the cell slab ranges.
-   * @param cs_end The end-iterator for the cell slab ranges.
-   * @param skip The return value for whether the chunk reversal should be
-   * skipped.
-   * @return Status
-   */
-  Status skip_chunk_reversal_var(
-      uint64_t chunk_length,
-      const uint64_t* d_off,
-      uint64_t d_off_size,
-      uint64_t* cells_processed,
-      uint64_t* cells_size_processed,
-      std::vector<std::pair<uint64_t, uint64_t>>::const_iterator* cs_it,
-      const std::vector<std::pair<uint64_t, uint64_t>>::const_iterator& cs_end,
-      bool* skip) const;
-
-  /**
-   * Common implementation between 'skip_chunk_reversal_fixed' and
-   * 'skip_chunk_reversal_var'.
-   *
-   * @param chunk_cell_start The starting cell index of the chunk.
-   * @param chunk_cell_end The inclusive ending cell index of the chunk.
-   * @param cs_it An opaque context variable to iterate the cell slab ranges.
-   * @param cs_end The end-iterator for the cell slab ranges.
-   * @param skip The return value for whether the chunk reversal should be
-   * skipped.
-   * @return Status
-   */
-  Status skip_chunk_reversal_common(
-      uint64_t chunk_cell_start,
-      uint64_t chunk_cell_end,
-      std::vector<std::pair<uint64_t, uint64_t>>::const_iterator* cs_it,
-      const std::vector<std::pair<uint64_t, uint64_t>>::const_iterator& cs_end,
-      bool* skip) const;
 
   /**
    * The internal work routine for `run_reverse`.
@@ -389,15 +304,13 @@ class FilterPipeline {
    * @param tile Tile to filter
    * @param compute_tp The thread pool for compute-bound tasks.
    * @param config The global config.
-   * @param skip_fn The function to determine if the given tile should be
-   *   skipped.
    * @return Status
    */
   Status run_reverse_internal(
+      stats::Stats* reader_stats,
       Tile* tile,
       ThreadPool* compute_tp,
-      const Config& config,
-      std::function<Status(uint64_t, bool*)>* skip_fn) const;
+      const Config& config) const;
 };
 
 }  // namespace sm

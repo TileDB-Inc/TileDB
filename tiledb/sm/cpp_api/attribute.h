@@ -513,6 +513,13 @@ class Attribute {
     return a;
   }
 
+  /** Factory function taking the type as a tiledb_datatype_t variable. */
+  static Attribute create(
+      const Context& ctx, const std::string& name, tiledb_datatype_t type) {
+    Attribute a(ctx, name, type);
+    return a;
+  }
+
   /**
    * Factory function for creating a new attribute with datatype T and
    * a FilterList.

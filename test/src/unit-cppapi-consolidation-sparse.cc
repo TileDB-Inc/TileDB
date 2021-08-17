@@ -64,8 +64,8 @@ void write_array(
   Array array(ctx, array_name, TILEDB_WRITE);
   Query query(ctx, array, TILEDB_WRITE);
   query.set_layout(TILEDB_UNORDERED);
-  query.set_buffer("d", d);
-  query.set_buffer("a", values);
+  query.set_data_buffer("d", d);
+  query.set_data_buffer("a", values);
   query.submit();
   array.close();
 }
@@ -83,8 +83,8 @@ void read_array(
   }
   std::vector<int> d(100);
   std::vector<int> values(100);
-  query.set_buffer("d", d);
-  query.set_buffer("a", values);
+  query.set_data_buffer("d", d);
+  query.set_data_buffer("a", values);
   query.submit();
   array.close();
   values.resize(query.result_buffer_elements()["a"].second);

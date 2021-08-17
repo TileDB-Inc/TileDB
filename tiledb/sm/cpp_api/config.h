@@ -262,9 +262,9 @@ class Config {
    *
    * **Parameters**
    *
-   *  * - `sm.dedup_coords` <br>
+   * - `sm.dedup_coords` <br>
    *    If `true`, cells with duplicate coordinates will be removed during
-   * sparse fragment writes. Note that ties during deduplication are broken
+   *    sparse fragment writes. Note that ties during deduplication are broken
    *    arbitrarily. <br>
    *    **Default**: false
    * - `sm.check_coord_dups` <br>
@@ -277,6 +277,11 @@ class Config {
    *    If `true`, an error will be thrown if there are cells with coordinates
    *    falling outside the array domain during sparse fragment writes. <br>
    *    **Default**: true
+   *    `sm.read_range_oob` <br>
+   *    If `error`, this will check ranges for read with out-of-bounds on the
+   *    dimension domain's and error. If `warn`, the ranges will be capped at
+   *    the dimension's domain and a warning logged. <br>
+   *    **Default**: warn
    * - `sm.check_global_order` <br>
    *    Checks if the coordinates obey the global array order. Applicable only
    *    to sparse writes in global order.
@@ -298,18 +303,23 @@ class Config {
    * - `sm.io_concurrency_level` <br>
    *    Upper-bound on number of threads to allocate for IO-bound tasks. <br>
    *    **Default*: # cores
-   * - `sm.num_tbb_threads` <br>
-   *    The number of threads allocated for the TBB thread pool. Note: this
-   *    is a whole-program setting. Usually this should not be modified from
-   *    the default. See also the documentation for TBB's `task_scheduler_init`
-   *    class. When TBB is disabled, this will be used to set the level of
-   *    concurrency for generic threading where TBB is otherwise used. <br>
-   *    **Default**: TBB automatic
    * - `sm.vacuum.mode` <br>
    *    The vacuuming mode, one of `fragments` (remove consolidated fragments),
    *    `fragment_meta` (remove only consolidated fragment metadata), or
    *    `array_meta` (remove consolidated array metadata files). <br>
    *    **Default**: fragments
+   * - `sm.vacuum.timestamp_start` <br>
+   *    **Experimental** <br>
+   *    When set, an array will be vacuumed between this value and
+   *    `sm.vacuum.timestamp_end` (inclusive). <br>
+   *    Only for `fragments` and `array_meta` vacuum mode. <br>
+   *    **Default**: 0
+   * - `sm.vacuum.timestamp_end` <br>
+   *    **Experimental** <br>
+   *    When set, an array will be vacuumed between `sm.vacuum.timestamp_start`
+   *    and this value (inclusive). <br>
+   *    Only for `fragments` and `array_meta` vacuum mode. <br>
+   *    **Default**: UINT64_MAX
    * - `sm.consolidation_mode` <br>
    *    The consolidation mode, one of `fragments` (consolidate all fragments),
    *    `fragment_meta` (consolidate only fragment metadata footers to a single
@@ -342,6 +352,18 @@ class Config {
    *    The size ratio that two ("adjacent") fragments must satisfy to be
    *    considered for consolidation in a single step.<br>
    *    **Default**: 0.0
+   * - `sm.consolidation.timestamp_start` <br>
+   *    **Experimental** <br>
+   *    When set, an array will be consolidated between this value and
+   *    `sm.consolidation.timestamp_end` (inclusive). <br>
+   *    Only for `fragments` and `array_meta` consolidation mode. <br>
+   *    **Default**: 0
+   * - `sm.consolidation.timestamp_end` <br>
+   *    **Experimental** <br>
+   *    When set, an array will be consolidated between
+   *    `sm.consolidation.timestamp_start` and this value (inclusive). <br>
+   *    Only for `fragments` and `array_meta` consolidation mode. <br>
+   *    **Default**: UINT64_MAX
    * - `sm.memory_budget` <br>
    *    The memory budget for tiles of fixed-sized attributes (or offsets for
    *    var-sized attributes) to be fetched during reads.<br>
@@ -362,17 +384,34 @@ class Config {
    *    The offsets format (`bytes` or `elements`) to be used for
    *    var-sized attributes.<br>
    *    **Default**: bytes
-   * - `sm.sub_partitioner_memory_budget` <br>
-   *    The memory budget used by the read algorithm to force partition the
-   *    query range in case sorting is much slower than the partitioning
-   *    overhead. <br>
-   *    **Default**: 0
+   * - `sm.use_refactored_readers` <br>
+   *    Use the refactored readers or not. <br>
+   *    **Default**: false
+   * - `sm.mem.total_budget` <br>
+   *    Memory budget for readers and writers. <br>
+   *    **Default**: 10GB
+   * - `sm.mem.reader.sparse_global_order.ratio_coords` <br>
+   *    Ratio of the budget allocated for coordinates in the sparse global
+   *    order reader. <br>
+   *    **Default**: 0.5
+   * - `sm.mem.reader.sparse_global_order.ratio_query_condition` <br>
+   *    Ratio of the budget allocated for the query condition in the sparse
+   *    global order reader. <br>
+   *    **Default**: 0.25
+   * - `sm.mem.reader.sparse_global_order.ratio_tile_ranges` <br>
+   *    Ratio of the budget allocated for tile ranges in the sparse global
+   *    order reader. <br>
+   *    **Default**: 0.1
+   * - `sm.mem.reader.sparse_global_order.ratio_array_data` <br>
+   *    Ratio of the budget allocated for array data in the sparse global
+   *    order reader. <br>
+   *    **Default**: 0.1
    * - `vfs.read_ahead_size` <br>
    *    The maximum byte size to read-ahead from the backend. <br>
    *    **Default**: 102400
    * -  `vfs.read_ahead_cache_size` <br>
    *    The the total maximum size of the read-ahead cache, which is an LRU.
-   * <br>
+   *    <br>
    *    **Default**: 10485760
    * - `vfs.min_parallel_size` <br>
    *    The minimum number of bytes in a parallel VFS operation
@@ -404,6 +443,9 @@ class Config {
    *    **Default**: ""
    * - `vfs.azure.storage_account_key` <br>
    *    Set the Azure Storage Account key. <br>
+   *    **Default**: ""
+   * - `vfs.azure.storage_sas_token` <br>
+   *    Set the Azure Storage SAS (shared access signature) token. <br>
    *    **Default**: ""
    * - `vfs.azure.blob_endpoint` <br>
    *    Overrides the default Azure Storage Blob endpoint. If empty, the
@@ -482,6 +524,9 @@ class Config {
    *    The S3 use of virtual addressing (`true` or `false`), if S3 is
    *    enabled. <br>
    *    **Default**: true
+   * - `vfs.s3.skip_init` <br>
+   *    Skip Aws::InitAPI for the S3 layer (`true` or `false`) <br>
+   *    **Default**: false
    * - `vfs.s3.use_multipart_upload` <br>
    *    The S3 use of multi-part upload requests (`true` or `false`), if S3 is
    *    enabled. <br>
@@ -550,6 +595,26 @@ class Config {
    *    The server-side encryption algorithm to use. Supported non-empty
    *    values are "aes256" and "kms" (AWS key management service). <br>
    *    **Default**: ""
+   * - `vfs.s3.bucket_canned_acl` <br>
+   *    Names of values found in Aws::S3::Model::BucketCannedACL enumeration.
+   *    "NOT_SET"
+   *    "private_"
+   *    "public_read"
+   *    "public_read_write"
+   *    "authenticated_read"
+   *    **Default**: "NOT_SET"
+   * - `vfs.s3.object_canned_acl` <br>
+   *    Names of values found in Aws::S3::Model::ObjectCannedACL enumeration.
+   *    (The first 5 are the same as for "vfs.s3.bucket_canned_acl".)
+   *    "NOT_SET"
+   *    "private_"
+   *    "public_read"
+   *    "public_read_write"
+   *    "authenticated_read"
+   *    (The following three items are found only in
+   *     Aws::S3::Model::ObjectCannedACL.) "aws_exec_read" "owner_read"
+   *    "bucket_owner_full_control"
+   *    **Default**: "NOT_SET"
    * - `vfs.hdfs.name_node_uri"` <br>
    *    Name node for HDFS. <br>
    *    **Default**: ""
@@ -567,10 +632,7 @@ class Config {
    *    The logging level configured, possible values: "0": fatal, "1": error,
    *    "2": warn, "3": info "4": debug, "5": trace <br>
    *    **Default**: "1" if --enable-verbose bootstrap flag is provided,
-   *    "0" otherwise
-   *
-   * <br>
-   *
+   *    "0" otherwise <br>
    * - `rest.server_address` <br>
    *    URL for REST server to use for remote arrays. <br>
    *    **Default**: "https://api.tiledb.com"
@@ -600,20 +662,20 @@ class Config {
    *    server. <br>
    *    **Default**: no default set
    * -  `rest.retry_http_codes` <br>
-   *     CSV list of http status codes to automatically retry a REST request for
-   * <br>
-   *     **Default**: "503"
-   * -  `rest.retry_count` <br>
-   *     Number of times to retry failed REST requests <br>
-   *     **Default**: 3
-   * -  `rest.retry_initial_delay_ms` <br>
-   *     Initial delay in milliseconds to wait until retrying a REST request
-   * <br>
-   *     **Default**: 500
-   * -  `rest.retry_delay_factor` <br>
-   *     The delay factor to exponentially wait until further retries of a
-   * failed REST request <br>
-   *     **Default**: 1.25
+   *    CSV list of http status codes to automatically retry a REST request for
+   *    <br>
+   *    **Default**: "503"
+   * - `rest.retry_count` <br>
+   *    Number of times to retry failed REST requests <br>
+   *    **Default**: 3
+   * - `rest.retry_initial_delay_ms` <br>
+   *    Initial delay in milliseconds to wait until retrying a REST request
+   *    <br>
+   *    **Default**: 500
+   * - `rest.retry_delay_factor` <br>
+   *    The delay factor to exponentially wait until further retries of a
+   *    failed REST request <br>
+   *    **Default**: 1.25
    */
   Config& set(const std::string& param, const std::string& value) {
     tiledb_error_t* err;

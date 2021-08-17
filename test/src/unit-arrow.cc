@@ -135,11 +135,11 @@ void free_query_buffers(tiledb::Query* const query) {
     auto attr = attr_iter.second;
 
     if (attr.cell_val_num() != TILEDB_VAR_NUM) {
-      query->get_buffer(name, &data, &data_nelem, &elem_size);
+      query->get_data_buffer(name, &data, &data_nelem, &elem_size);
       std::free(data);
     } else {
-      query->get_buffer(
-          name, &offsets, &offset_nelem, &data, &data_nelem, &elem_size);
+      query->get_data_buffer(name, &data, &data_nelem, &elem_size);
+      query->get_offsets_buffer(name, &offsets, &offset_nelem);
       std::free(data);
       std::free(offsets);
     }
@@ -149,11 +149,11 @@ void free_query_buffers(tiledb::Query* const query) {
     auto name = dim.name();
 
     if (dim.cell_val_num() != TILEDB_VAR_NUM) {
-      query->get_buffer(name, &data, &data_nelem, &elem_size);
+      query->get_data_buffer(name, &data, &data_nelem, &elem_size);
       std::free(data);
     } else {
-      query->get_buffer(
-          name, &offsets, &offset_nelem, &data, &data_nelem, &elem_size);
+      query->get_data_buffer(name, &data, &data_nelem, &elem_size);
+      query->get_offsets_buffer(name, &offsets, &offset_nelem);
       std::free(data);
       std::free(offsets);
     }
@@ -181,18 +181,14 @@ void allocate_query_buffers(tiledb::Query* const query) {
     if (attr.cell_val_num() != TILEDB_VAR_NUM) {
       auto est_size = query->est_result_size(attr.name());
       void* data = std::malloc(est_size);
-      query->set_buffer(name, data, est_size);
+      query->set_data_buffer(name, data, est_size);
     } else {
       auto est_size_var = query->est_result_size_var(attr.name());
       void* data = std::malloc(std::get<1>(est_size_var));
       uint64_t* offsets = static_cast<uint64_t*>(
           std::malloc(std::get<0>(est_size_var) * sizeof(uint64_t)));
-      query->set_buffer(
-          name,
-          offsets,
-          std::get<0>(est_size_var),
-          data,
-          std::get<1>(est_size_var));
+      query->set_data_buffer(name, data, std::get<1>(est_size_var));
+      query->set_offsets_buffer(name, offsets, std::get<0>(est_size_var));
     }
   }
 
@@ -202,18 +198,14 @@ void allocate_query_buffers(tiledb::Query* const query) {
     if (dim.cell_val_num() != TILEDB_VAR_NUM) {
       auto est_size = query->est_result_size(dim.name());
       void* data = std::malloc(est_size);
-      query->set_buffer(name, data, est_size);
+      query->set_data_buffer(name, data, est_size);
     } else {
       auto est_size_var = query->est_result_size_var(dim.name());
       void* data = std::malloc(std::get<1>(est_size_var));
       uint64_t* offsets = static_cast<uint64_t*>(
           std::malloc(std::get<0>(est_size_var) * sizeof(uint64_t)));
-      query->set_buffer(
-          name,
-          offsets,
-          std::get<0>(est_size_var),
-          data,
-          std::get<1>(est_size_var));
+      query->set_data_buffer(name, data, std::get<1>(est_size_var));
+      query->set_offsets_buffer(name, offsets, std::get<0>(est_size_var));
     }
   }
 }

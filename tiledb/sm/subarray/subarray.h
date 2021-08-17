@@ -33,12 +33,14 @@
 #ifndef TILEDB_SUBARRAY_H
 #define TILEDB_SUBARRAY_H
 
-#include "tiledb/common/logger.h"
 #include "tiledb/common/thread_pool.h"
 #include "tiledb/sm/buffer/buffer.h"
+#include "tiledb/sm/config/config.h"
 #include "tiledb/sm/enums/datatype.h"
 #include "tiledb/sm/misc/tile_overlap.h"
 #include "tiledb/sm/misc/types.h"
+#include "tiledb/sm/stats/stats.h"
+#include "tiledb/sm/subarray/subarray_tile_overlap.h"
 
 #include <cmath>
 #include <iostream>
@@ -111,7 +113,7 @@ enum class QueryType : uint8_t;
 class Subarray {
  public:
   /* ********************************* */
-  /*           TYPE DEFINITIONS        */
+  /*         PUBLIC DATA TYPES         */
   /* ********************************* */
 
   /**
@@ -167,10 +169,15 @@ class Subarray {
    * Constructor.
    *
    * @param array The array the subarray is associated with.
+   * @param parent_stats The parent stats to inherit from.
    * @param coalesce_ranges When enabled, ranges will attempt to coalesce
    *     with existing ranges as they are added.
    */
-  Subarray(const Array* array, bool coalesce_ranges = true);
+  Subarray(
+      const Array* array,
+      stats::Stats* parent_stats,
+      bool coalesce_ranges = true,
+      StorageManager* storage_manager = nullptr);
 
   /**
    * Constructor.
@@ -179,10 +186,16 @@ class Subarray {
    * @param layout The layout of the values of the subarray (of the results
    *     if the subarray is used for reads, or of the values provided
    *     by the user for writes).
+   * @param parent_stats The parent stats to inherit from.
    * @param coalesce_ranges When enabled, ranges will attempt to coalesce
    *     with existing ranges as they are added.
    */
-  Subarray(const Array* array, Layout layout, bool coalesce_ranges = true);
+  Subarray(
+      const Array* array,
+      Layout layout,
+      stats::Stats* parent_stats,
+      bool coalesce_ranges = true,
+      StorageManager* storage_manager = nullptr);
 
   /**
    * Copy constructor. This performs a deep copy (including memcpy of
@@ -209,11 +222,21 @@ class Subarray {
   /*                 API               */
   /* ********************************* */
 
-  // 'equivalent' for older Query::set_subarray(const void *subarray);
+  /** Sets config for query-level parameters only. */
+  Status set_config(const Config& config);
+
+  /**
+   * Get the config of the writer
+   * @return Config
+   */
+  const Config* config() const;
+
+  /** equivalent for older Query::set_subarray(const void *subarray); */
   Status set_subarray(const void* subarray);
 
   /** Adds a range along the dimension with the given index. */
-  Status add_range(uint32_t dim_idx, const Range& range);
+  Status add_range(
+      uint32_t dim_idx, Range&& range, const bool read_range_oob_error = true);
 
   /**
    * Adds a range to the subarray on the input dimension by index,
@@ -264,8 +287,10 @@ class Subarray {
       const void* end,
       uint64_t end_size);
 
-  /** Retrieves the number of ranges of the subarray for the given dimension
-   * name. */
+  /**
+   * Retrieves the number of ranges of the subarray for the given dimension
+   * name.
+   */
   Status get_range_num_from_name(
       const std::string& dim_name, uint64_t* range_num) const;
 
@@ -332,6 +357,16 @@ class Subarray {
   /** Clears the contents of the subarray. */
   void clear();
 
+  /** Clears the contents of the tile overlap. */
+  void clear_tile_overlap();
+
+  /**
+   * Returns the size of the tile overlap data.
+   *
+   * @return Size of the tile overlap data.
+   */
+  uint64_t tile_overlap_byte_size() const;
+
   /**
    * Returns true if the subarray is unary and it coincides with
    * tile boundaries.
@@ -345,10 +380,31 @@ class Subarray {
   void compute_range_offsets();
 
   /**
-   * Computes the tile overlap with all subarray ranges for
-   * all fragments.
+   * Precomputes the tile overlap with all subarray ranges for
+   * all fragments. The state is cached internally and accessible
+   * through the `get_subarray_tile_overlap` API.
+   *
+   * This routine may not compute tile overlap for the entire range.
+   * This only guarantees that:
+   *   1. Tile overlap will be computed for at least one range.
+   *   2. Tile overlap is computed starting from `start_range_idx`.
+   *
+   * The caller is responsible for checking the range indexes that
+   * were computed through the `get_subarray_tile_overlap` API.
+   *
+   * @param start_range_idx The start range index.
+   * @param end_range_idx The target end range index.
+   * @param config The config object.
+   * @param compute_tp The compute thread pool.
+   * @param override_memory_constraint When true, this forces the
+   *    routine to compute tile overlap for all ranges.
    */
-  Status compute_tile_overlap(ThreadPool* compute_tp);
+  Status precompute_tile_overlap(
+      uint64_t start_range_idx,
+      uint64_t end_range_idx,
+      const Config* config,
+      ThreadPool* compute_tp,
+      bool override_memory_constraint = false);
 
   /**
    * Computes the estimated result size (calibrated using the maximum size)
@@ -489,7 +545,7 @@ class Subarray {
   bool is_set() const;
 
   /** Returns number of non-default (set) ranges */
-  int32_t count_set() const;
+  int32_t count_set_ranges() const;
 
   /** Returns `true` if the input dimension has non-default range set. */
   bool is_set(unsigned dim_idx) const;
@@ -511,14 +567,17 @@ class Subarray {
    * Gets the estimated result size (in bytes) for the input fixed-sized
    * attribute/dimension.
    */
-  Status get_est_result_size(
-      const char* name, uint64_t* size, ThreadPool* compute_tp);
+  Status get_est_result_size_internal(
+      const char* name,
+      uint64_t* size,
+      const Config* config,
+      ThreadPool* compute_tp);
 
   /**
    * Gets the estimated result size (in bytes) for the input fixed-sized
-   * attribute/dimension if audit passes.
+   * attribute/dimension.
    */
-  Status get_est_result_size_querytype_audited(
+  Status get_est_result_size(
       const char* name, uint64_t* size, StorageManager* storage_manager);
 
   /**
@@ -529,6 +588,7 @@ class Subarray {
       const char* name,
       uint64_t* size_off,
       uint64_t* size_val,
+      const Config* config,
       ThreadPool* compute_tp);
 
   /**
@@ -539,6 +599,7 @@ class Subarray {
       const char* name,
       uint64_t* size,
       uint64_t* size_validity,
+      const Config* config,
       ThreadPool* compute_tp);
 
   /**
@@ -550,6 +611,7 @@ class Subarray {
       uint64_t* size_off,
       uint64_t* size_val,
       uint64_t* size_validity,
+      const Config* config,
       ThreadPool* compute_tp);
 
   /** returns whether the estimated result size has been computed or not */
@@ -560,7 +622,10 @@ class Subarray {
    * for the input fixed-sized attribute/dimensiom.
    */
   Status get_max_memory_size(
-      const char* name, uint64_t* size, ThreadPool* compute_tp);
+      const char* name,
+      uint64_t* size,
+      const Config* config,
+      ThreadPool* compute_tp);
 
   /**
    * Gets the maximum memory required to produce the result (in bytes)
@@ -570,6 +635,7 @@ class Subarray {
       const char* name,
       uint64_t* size_off,
       uint64_t* size_val,
+      const Config* config,
       ThreadPool* compute_tp);
 
   /*
@@ -580,6 +646,7 @@ class Subarray {
       const char* name,
       uint64_t* size,
       uint64_t* size_validity,
+      const Config* config,
       ThreadPool* compute_tp);
 
   /**
@@ -591,6 +658,7 @@ class Subarray {
       uint64_t* size_off,
       uint64_t* size_val,
       uint64_t* size_validity,
+      const Config* config,
       ThreadPool* compute_tp);
 
   /** Retrieves the query type of the subarray's array. */
@@ -726,27 +794,24 @@ class Subarray {
       const std::vector<T>& tile_coords, std::vector<uint8_t>* aux) const;
 
   /**
-   * Returns the tile overlap of the subarray.
+   * Returns the internal `TileOverlap` instance. The caller is responsible
+   * for ensuring that the input indexes are valid.
    *
-   * The outer vector is indexed by fragment ids and the inner vector is
-   * indexed by range indexes.
-   *
-   * As an optimization, the underlying data structure may be shared between
-   * `Subarray` instances and their partitioned `Subarray` instances created
-   * by the `SubarrayPartitioner`. The caller must use the
-   * `Subarray::overlap_range_offset` to determine the range index that points
-   * to the starting range of this `Subarray` instance.
+   * @param fragment_idx The fragment index.
+   * @param range_idx The range index.
    */
-  const std::vector<std::vector<TileOverlap>>& tile_overlap() const;
+  inline const TileOverlap* tile_overlap(
+      uint64_t fragment_idx, uint64_t range_idx) const {
+    return tile_overlap_.at(fragment_idx, range_idx);
+  }
 
   /**
-   * The `Subarray::tile_overlap` returns a data structure where the
-   * outter vector is indexed by fragment ids and the inner vector
-   * is indexed by range ids. This API returns the offset into the
-   * inner vector that points to the first range used by this
-   * `Subarray` instance.
+   * Returns the precomputed tile overlap. This may not contain
+   * tile overlap information for each range in this subarray. The
+   * caller is responsible for inspecting the returned object to
+   * determine the ranges it has information for.
    */
-  uint64_t overlap_range_offset() const;
+  const SubarrayTileOverlap* subarray_tile_overlap() const;
 
   /**
    * Compute `tile_coords_` and `tile_coords_map_`. The coordinates will
@@ -795,24 +860,106 @@ class Subarray {
    * @return
    */
   std::unordered_map<std::string, ResultSize> get_est_result_size_map(
-      ThreadPool* compute_tp);
+      const Config* config, ThreadPool* compute_tp);
 
   /**
    * Used by serialization to get the map of max mem sizes
    * @return
    */
   std::unordered_map<std::string, MemorySize> get_max_mem_size_map(
-      ThreadPool* compute_tp);
+      const Config* config, ThreadPool* compute_tp);
 
   /**
    * Return relevant fragments as computed
    */
   std::vector<unsigned> relevant_fragments() const;
 
+  /**
+   * For flattened ("total order") start/end range indexes,
+   * return the starting and ending ND-range coordinates that
+   * contain the minimum space to contain all flattened ranges.
+   *
+   * @param range_idx_start flattened range starting index, inclusive.
+   * @param range_idx_end flattened range ending index, inclusive.
+   * @param start_coords mutated to contain the nd-range start coordinates.
+   * @param end_coords mutated to contain the nd-range end coordinates.
+   */
+  void get_expanded_coordinates(
+      uint64_t range_idx_start,
+      uint64_t range_idx_end,
+      std::vector<uint64_t>* start_coords,
+      std::vector<uint64_t>* end_coords) const;
+
+  /** Returns `stats_`. */
+  stats::Stats* stats() const;
+
  private:
+  /* ********************************* */
+  /*        PRIVATE DATA TYPES         */
+  /* ********************************* */
+
+  /**
+   * An opaque context to be used between successive calls
+   * to `compute_relevant_fragments`.
+   */
+  struct ComputeRelevantFragmentsCtx {
+    ComputeRelevantFragmentsCtx()
+        : initialized_(false) {
+    }
+
+    /**
+     * This context cache is lazy initialized. This will be
+     * set to `true` when initialized in `compute_relevant_fragments()`.
+     */
+    bool initialized_;
+
+    /**
+     * The last calibrated start coordinates.
+     */
+    std::vector<uint64_t> last_start_coords_;
+
+    /**
+     * The last calibrated end coordinates.
+     */
+    std::vector<uint64_t> last_end_coords_;
+
+    /**
+     * The fragment bytemaps for each dimension. The inner
+     * vector is the fragment bytemap that has a byte element
+     * for each fragment. Non-zero bytes represent relevant
+     * fragments for a specific dimension. Each dimension
+     * has its own fragment bytemap (the outer vector).
+     */
+    std::vector<std::vector<uint8_t>> frag_bytemaps_;
+  };
+
+  /**
+   * An opaque context to be used between successive calls
+   * to `compute_relevant_fragment_tile_overlap`.
+   */
+  struct ComputeRelevantTileOverlapCtx {
+    ComputeRelevantTileOverlapCtx()
+        : range_idx_offset_(0)
+        , range_len_(0) {
+    }
+
+    /**
+     * The current range index offset. This points to the ending
+     * index from the last invocation of
+     * `compute_relevant_fragment_tile_overlap`.
+     */
+    uint64_t range_idx_offset_;
+
+    /** The number of ranges. */
+    uint64_t range_len_;
+  };
+
   /* ********************************* */
   /*         PRIVATE ATTRIBUTES        */
   /* ********************************* */
+
+  /** The class stats. */
+  stats::Stats* stats_;
 
   /** The array the subarray object is associated with. */
   const Array* array_;
@@ -861,23 +1008,10 @@ class Subarray {
   std::vector<unsigned> relevant_fragments_;
 
   /**
-   * Stores info about the overlap of the subarray with tiles
-   * of all array fragments. Each element is a vector corresponding
-   * to a single range of the subarray. These vectors/ranges are sorted
-   * according to ``layout_``.
-   *
-   * This is shared between a `Subarray` and all of its `Subarray` partitions
-   * created with the `Subarray::get_subarray` API.
+   * The precomputed tile overlap state. Is not guaranteed to be
+   * computed for all ranges in this subarray.
    */
-  tdb_shared_ptr<std::vector<std::vector<TileOverlap>>> tile_overlap_;
-
-  /**
-   * The first index in `tile_overlap_` corresponds to a fragment
-   * index. The second index corresponds to a range index. This
-   * variable stores the range index for the first range in
-   * this instance.
-   */
-  uint64_t tile_overlap_range_offset_;
+  SubarrayTileOverlap tile_overlap_;
 
   /**
    * ``True`` if ranges should attempt to be coalesced as they are added.
@@ -903,6 +1037,12 @@ class Subarray {
   /** A map (tile coords) -> (vector element position in `tile_coords_`). */
   std::map<std::vector<uint8_t>, size_t> tile_coords_map_;
 
+  /** The config for query-level parameters only. */
+  Config config_;
+
+  /** State of specific Config item needed from multiple locations. */
+  bool err_on_range_oob_ = true;
+
   /* ********************************* */
   /*           PRIVATE METHODS         */
   /* ********************************* */
@@ -916,7 +1056,7 @@ class Subarray {
   void add_default_ranges();
 
   /** Computes the estimated result size for all attributes/dimensions. */
-  Status compute_est_result_size(ThreadPool* compute_tp);
+  Status compute_est_result_size(const Config* config, ThreadPool* compute_tp);
 
   /**
    * Compute `tile_coords_` and `tile_coords_map_`. The coordinates will
@@ -949,7 +1089,7 @@ class Subarray {
    * @param fid The id of the fragment to focus on.
    * @return The tile overlap.
    */
-  TileOverlap get_tile_overlap(uint64_t range_idx, unsigned fid) const;
+  TileOverlap compute_tile_overlap(uint64_t range_idx, unsigned fid) const;
 
   /**
    * Compute the tile overlap between ``range`` and the non-empty domain
@@ -961,7 +1101,7 @@ class Subarray {
    * @return The tile overlap.
    */
   template <class T>
-  TileOverlap get_tile_overlap(uint64_t range_idx, unsigned fid) const;
+  TileOverlap compute_tile_overlap(uint64_t range_idx, unsigned fid) const;
 
   /**
    * Swaps the contents (all field values) of this subarray with the
@@ -973,16 +1113,50 @@ class Subarray {
    * Computes the indexes of the fragments that are relevant to the query,
    * that is those whose non-empty domain intersects with at least one
    * range.
+   *
+   * @param compute_tp The thread pool for compute-bound tasks.
+   * @param tile_overlap Mutated to store the computed tile overlap.
+   * @param fn_ctx An opaque context object to be used between successive
+   * invocations.
    */
-  Status compute_relevant_fragments(ThreadPool* compute_tp);
+  Status compute_relevant_fragments(
+      ThreadPool* compute_tp,
+      const SubarrayTileOverlap* tile_overlap,
+      ComputeRelevantFragmentsCtx* fn_ctx);
+
+  /**
+   * Computes the relevant fragment bytemap for a specific dimension.
+   *
+   * @param compute_tp The thread pool for compute-bound tasks.
+   * @param dim_idx The index of the dimension to compute on.
+   * @param fragment_num The number of fragments to compute on.
+   * @param start_coords The starting range coordinates to compute between.
+   * @param end_coords The ending range coordinates to compute between.
+   * @param frag_bytemap The fragment bytemap to mutate.
+   */
+  Status compute_relevant_fragments_for_dim(
+      ThreadPool* compute_tp,
+      uint32_t dim_idx,
+      uint64_t fragment_num,
+      const std::vector<uint64_t>& start_coords,
+      const std::vector<uint64_t>& end_coords,
+      std::vector<uint8_t>* frag_bytemap) const;
 
   /** Loads the R-Trees of all relevant fragments in parallel. */
   Status load_relevant_fragment_rtrees(ThreadPool* compute_tp) const;
 
-  /** Computes the tile overlap for each range and relevant fragment. */
+  /**
+   * Computes the tile overlap for each range and relevant fragment.
+   *
+   * @param compute_tp The thread pool for compute-bound tasks.
+   * @param tile_overlap Mutated to store the computed tile overlap.
+   * @param fn_ctx An opaque context object to be used between successive
+   * invocations.
+   */
   Status compute_relevant_fragment_tile_overlap(
       ThreadPool* compute_tp,
-      std::vector<std::vector<TileOverlap>>* tile_overlap);
+      SubarrayTileOverlap* tile_overlap,
+      ComputeRelevantTileOverlapCtx* fn_ctx);
 
   /**
    * Computes the tile overlap for all ranges on the given relevant fragment.
@@ -990,18 +1164,19 @@ class Subarray {
    * @param meta The fragment metadat to focus on.
    * @param frag_idx The fragment id.
    * @param dense Whether the fragment is dense or sparse.
-   * @param range_num The number of ranges.
    * @param compute_tp The thread pool for compute-bound tasks.
    * @param tile_overlap Mutated to store the computed tile overlap.
+   * @param fn_ctx An opaque context object to be used between successive
+   * invocations.
    * @return Status
    */
   Status compute_relevant_fragment_tile_overlap(
       FragmentMetadata* meta,
       unsigned frag_idx,
       bool dense,
-      uint64_t range_num,
       ThreadPool* compute_tp,
-      std::vector<std::vector<TileOverlap>>* tile_overlap);
+      SubarrayTileOverlap* tile_overlap,
+      ComputeRelevantTileOverlapCtx* fn_ctx);
 
   /**
    * Load the var-sized tile sizes for the input names and from the

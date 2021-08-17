@@ -34,6 +34,8 @@
 #include "tiledb/common/logger.h"
 #include "tiledb/sm/buffer/buffer.h"
 
+#include <algorithm>
+
 using namespace tiledb::common;
 
 namespace tiledb {

@@ -35,6 +35,8 @@
 #include "tiledb/common/logger.h"
 #include "tiledb/sm/filter/filter_storage.h"
 
+#include <algorithm>
+
 using namespace tiledb::common;
 
 namespace tiledb {

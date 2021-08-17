@@ -33,10 +33,6 @@
 #ifndef TILEDB_CONFIG_H
 #define TILEDB_CONFIG_H
 
-#ifdef HAVE_TBB
-#include <tbb/task_scheduler_init.h>
-#endif
-
 #include "tiledb/common/status.h"
 #include "tiledb/sm/misc/utils.h"
 
@@ -85,11 +81,22 @@ class Config {
   /** The prefix to use for checking for parameter environmental variables. */
   static const std::string CONFIG_ENVIRONMENT_VARIABLE_PREFIX;
 
-  /** The default logging level. It can be:
+  /**
+   * The default logging level. It can be:
    * - `1` i.e. `error` if bootstrap flag --enalbe-verbose is given
    * - `0` i.e. `fatal` if this bootstrap flag is missing
    */
   static const std::string CONFIG_LOGGING_LEVEL;
+
+  /**
+   * The key for encrypted arrays.
+   *  */
+  static const std::string SM_ENCRYPTION_KEY;
+
+  /**
+   * The type of encryption used for encrypted arrays.
+   *  */
+  static const std::string SM_ENCRYPTION_TYPE;
 
   /** If `true`, this will deduplicate coordinates upon sparse writes. */
   static const std::string SM_DEDUP_COORDS;
@@ -107,6 +114,13 @@ class Config {
   static const std::string SM_CHECK_COORD_OOB;
 
   /**
+   * If `true`, this will check ranges for read with out-of-bounds on the
+   * dimension domain's. If `false`, the ranges will be capped at the
+   * dimension's domain and a warning logged
+   */
+  static const std::string SM_READ_RANGE_OOB;
+
+  /**
    * If `true`, this will check if the cells upon writes in global order
    * are indeed provided in global order.
    */
@@ -114,6 +128,9 @@ class Config {
 
   /** The tile cache size. */
   static const std::string SM_TILE_CACHE_SIZE;
+
+  /** If `true`, bypass partitioning on estimated result sizes. */
+  static const std::string SM_SKIP_EST_SIZE_PARTITIONING;
 
   /**
    * The maximum memory budget for producing the result (in bytes)
@@ -127,15 +144,25 @@ class Config {
    */
   static const std::string SM_MEMORY_BUDGET_VAR;
 
+  /** Whether or not to use the refactored readers. */
+  static const std::string SM_USE_REFACTORED_READERS;
+
+  /** Maximum memory budget for readers and writers. */
+  static const std::string SM_MEM_TOTAL_BUDGET;
+
+  /** Ratio of the sparse global order reader budget used for coords. */
+  static const std::string SM_MEM_SPARSE_GLOBAL_ORDER_RATIO_COORDS;
+
   /**
-   * The maximum memory budget for further partitioning result partitions.
-   * If `0`, the sub-partitioner will not be used. This is an advanced
-   * tuning parameter for use on workloads where partitioning time is
-   * quicker than sorting result coordinates. This budget is used as
-   * a target and may be adjusted if it is too small. Additionally, it
-   * is used for fixed, var-sized, and validity vector budgets.
+   * Ratio of the sparse global order reader budget used for query condition.
    */
-  static const std::string SM_SUB_PARTITIONER_MEMORY_BUDGET;
+  static const std::string SM_MEM_SPARSE_GLOBAL_ORDER_RATIO_QUERY_CONDITION;
+
+  /** Ratio of the sparse global order reader budget used for tile ranges. */
+  static const std::string SM_MEM_SPARSE_GLOBAL_ORDER_RATIO_TILE_RANGES;
+
+  /** Ratio of the sparse global order reader budget used for array data. */
+  static const std::string SM_MEM_SPARSE_GLOBAL_ORDER_RATIO_ARRAY_DATA;
 
   /**
    * The maximum count of partitions to be generated via CAPI subarray
@@ -163,9 +190,6 @@ class Config {
 
   /** The maximum concurrency level for io-bound operations. */
   static const std::string SM_IO_CONCURRENCY_LEVEL;
-
-  /** The number of threads allocated for TBB. */
-  static const std::string SM_NUM_TBB_THREADS;
 
   /** If `true`, checksum validation will be skipped on reads. */
   static const std::string SM_SKIP_CHECKSUM_VALIDATION;
@@ -210,12 +234,32 @@ class Config {
   static const std::string SM_CONSOLIDATION_MODE;
 
   /**
+   * An array will consolidate between this value and timestamp_end.
+   * */
+  static const std::string SM_CONSOLIDATION_TIMESTAMP_START;
+
+  /**
+   * An array will consolidate between timestamp_start and this value.
+   *  */
+  static const std::string SM_CONSOLIDATION_TIMESTAMP_END;
+
+  /**
    * The vacuum mode. It can be one of:
    *     - "fragments": only the fragments will be vacuumed
    *     - "fragment_meta": only the fragment metadata will be vacuumed
    *     - "array_meta": only the array metadata will be vacuumed
    */
   static const std::string SM_VACUUM_MODE;
+
+  /**
+   * An array will vacuum between this value and timestamp_end.
+   * */
+  static const std::string SM_VACUUM_TIMESTAMP_START;
+
+  /**
+   * An array will vacuum between timestamp_start and this value.
+   *  */
+  static const std::string SM_VACUUM_TIMESTAMP_END;
 
   /**
    * The size of offsets in bits to be used for offset buffers of var-sized
@@ -236,6 +280,11 @@ class Config {
    *    - "elements": express offsets in number of elements
    */
   static const std::string SM_OFFSETS_FORMAT_MODE;
+
+  /**
+   * The maximum estimated size of the internal tile overlap structure.
+   */
+  static const std::string SM_MAX_TILE_OVERLAP_SIZE;
 
   /** The default minimum number of bytes in a parallel VFS operation. */
   static const std::string VFS_MIN_PARALLEL_SIZE;
@@ -271,6 +320,9 @@ class Config {
 
   /** Azure storage account key. */
   static const std::string VFS_AZURE_STORAGE_ACCOUNT_KEY;
+
+  /** Azure storage account SAS (shared access signature) token. */
+  static const std::string VFS_AZURE_STORAGE_SAS_TOKEN;
 
   /** Azure blob endpoint. */
   static const std::string VFS_AZURE_BLOB_ENDPOINT;
@@ -334,6 +386,9 @@ class Config {
 
   /** Use virtual addressing (false for minio, true for AWS S3). */
   static const std::string VFS_S3_USE_VIRTUAL_ADDRESSING;
+
+  /** S3 skip init. */
+  static const std::string VFS_S3_SKIP_INIT;
 
   /** Use virtual addressing (true). */
   static const std::string VFS_S3_USE_MULTIPART_UPLOAD;
@@ -400,6 +455,12 @@ class Config {
 
   /** HDFS default username. */
   static const std::string VFS_HDFS_USERNAME;
+
+  /** S3 default bucket canned ACL */
+  static const std::string VFS_S3_BUCKET_CANNED_ACL;
+
+  /** S3 default object canned ACL */
+  static const std::string VFS_S3_OBJECT_CANNED_ACL;
 
   /* ****************************** */
   /*        OTHER CONSTANTS         */

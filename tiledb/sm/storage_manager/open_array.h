@@ -44,6 +44,7 @@
 #include "tiledb/sm/filesystem/filelock.h"
 #include "tiledb/sm/fragment/fragment_metadata.h"
 #include "tiledb/sm/misc/uri.h"
+#include "tiledb/sm/storage_manager/open_array_memory_tracker.h"
 
 using namespace tiledb::common;
 
@@ -87,6 +88,14 @@ class OpenArray {
   /** Returns the array schema. */
   ArraySchema* array_schema() const;
 
+  /** Returns array schemas map. */
+  std::unordered_map<std::string, tdb_shared_ptr<ArraySchema>>& array_schemas();
+
+  /** Gets the array schema given a array schema name. */
+  Status get_array_schema(
+      const std::string& schema_name,
+      tdb_shared_ptr<ArraySchema>* array_schema);
+
   /** Returns the array URI. */
   const URI& array_uri() const;
 
@@ -124,6 +133,9 @@ class OpenArray {
    * or `nullptr` if the fragment metadata do no exist.
    */
   FragmentMetadata* fragment_metadata(const URI& uri) const;
+
+  /** Returns the memory tracker to be used by all fragment metadatas. */
+  OpenArrayMemoryTracker* memory_tracker();
 
   /**
    * Returns the constant buffer storing the serialized array metadata
@@ -174,8 +186,13 @@ class OpenArray {
   /*         PRIVATE ATTRIBUTES        */
   /* ********************************* */
 
-  /** The array schema. */
+  /** The latest array schema. */
   ArraySchema* array_schema_;
+
+  /**
+   * A map of all array_schemas
+   */
+  std::unordered_map<std::string, tdb_shared_ptr<ArraySchema>> array_schemas_;
 
   /** The array URI. */
   URI array_uri_;
@@ -197,6 +214,9 @@ class OpenArray {
    * loaded in `fragment_metadata_`.
    */
   std::unordered_map<std::string, FragmentMetadata*> fragment_metadata_set_;
+
+  /** The memory tracker for the fragment metadata. */
+  OpenArrayMemoryTracker memory_tracker_;
 
   /**
    * A map of URI strings to array metadata. The map stores the serialized

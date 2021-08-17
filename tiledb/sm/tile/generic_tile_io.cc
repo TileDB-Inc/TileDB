@@ -106,7 +106,11 @@ Status GenericTileIO::read_generic(
   // Unfilter
   assert((*tile)->filtered());
   RETURN_NOT_OK_ELSE(
-      header.filters.run_reverse(*tile, storage_manager_->compute_tp(), config),
+      header.filters.run_reverse(
+          storage_manager_->stats(),
+          *tile,
+          storage_manager_->compute_tp(),
+          config),
       tdb_delete(*tile));
   assert(!(*tile)->filtered());
 
@@ -158,8 +162,8 @@ Status GenericTileIO::write_generic(
 
   // Filter tile
   assert(!tile->filtered());
-  RETURN_NOT_OK(
-      header.filters.run_forward(tile, storage_manager_->compute_tp()));
+  RETURN_NOT_OK(header.filters.run_forward(
+      storage_manager_->stats(), tile, storage_manager_->compute_tp()));
   header.persisted_size = tile->filtered_buffer()->size();
   assert(tile->filtered());
 

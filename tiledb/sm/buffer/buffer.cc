@@ -27,14 +27,15 @@
  *
  * @section DESCRIPTION
  *
- * This file implements class Buffer.
+ * This file implements classes BufferBase, Buffer, ConstBuffer, and
+ * PreallocatedBuffer.
  */
 
 #include "tiledb/sm/buffer/buffer.h"
 #include "tiledb/common/heap_memory.h"
 #include "tiledb/common/logger.h"
-#include "tiledb/sm/buffer/const_buffer.h"
 
+#include <algorithm>
 #include <iostream>
 
 using namespace tiledb::common;
@@ -42,49 +43,124 @@ using namespace tiledb::common;
 namespace tiledb {
 namespace sm {
 
-/* ****************************** */
-/*             MACROS             */
-/* ****************************** */
+//=======================================================
+// BufferBase
+//=======================================================
 
-#define MAX(a, b) ((a) > (b) ? (a) : (b))
+BufferBase::BufferBase()
+    : data_(nullptr)
+    , size_(0)
+    , offset_(0){};
 
-/* ****************************** */
-/*   CONSTRUCTORS & DESTRUCTORS   */
-/* ****************************** */
+BufferBase::BufferBase(void* data, const uint64_t size)
+    : data_(data)
+    , size_(size)
+    , offset_(0){};
 
-Buffer::Buffer()
-    : Buffer(nullptr, 0) {
-  owns_data_ = true;
+BufferBase::BufferBase(const void* data, const uint64_t size)
+    // const_cast is safe here because BufferBase methods do not modify storage
+    : data_(const_cast<void*>(data))
+    , size_(size)
+    , offset_(0){};
+
+uint64_t BufferBase::size() const {
+  return size_;
 }
 
-Buffer::Buffer(void* data, const uint64_t size) {
+void* BufferBase::nonconst_data() const {
+  return data_;
+}
+
+const void* BufferBase::data() const {
+  // const_cast is safe here because BufferBase methods do not modify storage
+  return const_cast<const void*>(data_);
+}
+
+void* BufferBase::nonconst_unread_data() const {
+  if (data_ == nullptr) {
+    return nullptr;
+  }
+  // Cast to byte type because offset is measured in bytes
+  return static_cast<int8_t*>(data_) + offset_;
+}
+
+const void* BufferBase::cur_data() const {
+  // const_cast is safe here because BufferBase methods do not modify storage
+  return const_cast<const void*>(nonconst_unread_data());
+}
+
+uint64_t BufferBase::offset() const {
+  return offset_;
+}
+
+void BufferBase::reset_offset() {
   offset_ = 0;
-  alloced_size_ = 0;
-  owns_data_ = false;
-  data_ = data;
-  size_ = size;
 }
 
-Buffer::Buffer(const Buffer& buff) {
-  alloced_size_ = buff.alloced_size_;
-  offset_ = buff.offset_;
-  owns_data_ = buff.owns_data_;
-  size_ = buff.size_;
+void BufferBase::set_offset(const uint64_t offset) {
+  assert_offset_is_valid(offset);
+  offset_ = offset;
+}
 
-  if (buff.owns_data_) {
-    if (buff.data_ == nullptr) {
-      data_ = nullptr;
-    } else {
-      data_ = tdb_malloc(alloced_size_);
-      assert(data_);
-      std::memcpy(data_, buff.data_, buff.alloced_size_);
-    }
+void BufferBase::advance_offset(const uint64_t nbytes) {
+  if (nbytes >= size_ - offset_) {
+    // The argument puts us at the end or past it, which is still at the end.
+    offset_ = size_;
   } else {
-    data_ = buff.data_;
+    offset_ += nbytes;
   }
 }
 
-Buffer::Buffer(Buffer&& buff)
+bool BufferBase::end() const {
+  return offset_ == size_;
+}
+
+Status BufferBase::read(void* destination, const uint64_t nbytes) {
+  if (nbytes > size_ - offset_) {
+    return LOG_STATUS(Status::BufferError(
+        "Read buffer overflow; may not read beyond buffer size"));
+  }
+  std::memcpy(destination, static_cast<char*>(data_) + offset_, nbytes);
+  offset_ += nbytes;
+  return Status::Ok();
+}
+
+void BufferBase::assert_offset_is_valid(uint64_t offset) const {
+  if (offset > size_) {
+    throw std::out_of_range("BufferBase::set_offset");
+  }
+}
+
+//=======================================================
+// Buffer
+//=======================================================
+
+Buffer::Buffer()
+    : BufferBase()
+    , owns_data_(true)
+    , alloced_size_(0) {
+}
+
+Buffer::Buffer(void* data, const uint64_t size)
+    : BufferBase(data, size)
+    , owns_data_(false)
+    , alloced_size_(0) {
+}
+
+Buffer::Buffer(const Buffer& buff)
+    : BufferBase(buff.data_, buff.size_) {
+  offset_ = buff.offset_;
+  owns_data_ = buff.owns_data_;
+  alloced_size_ = buff.alloced_size_;
+
+  if (buff.owns_data_ && buff.data_ != nullptr) {
+    data_ = tdb_malloc(alloced_size_);
+    assert(data_);
+    std::memcpy(data_, buff.data_, buff.alloced_size_);
+  }
+}
+
+Buffer::Buffer(Buffer&& buff) noexcept
     : Buffer() {
   swap(buff);
 }
@@ -93,12 +169,8 @@ Buffer::~Buffer() {
   clear();
 }
 
-/* ****************************** */
-/*               API              */
-/* ****************************** */
-
-void Buffer::advance_offset(const uint64_t nbytes) {
-  offset_ += nbytes;
+void* Buffer::data() const {
+  return nonconst_data();
 }
 
 void Buffer::advance_size(const uint64_t nbytes) {
@@ -121,19 +193,15 @@ void Buffer::clear() {
 }
 
 void* Buffer::cur_data() const {
-  if (data_ == nullptr)
-    return nullptr;
-  return (char*)data_ + offset_;
-}
-
-void* Buffer::data() const {
-  return data_;
+  return nonconst_unread_data();
 }
 
 void* Buffer::data(const uint64_t offset) const {
-  if (data_ == nullptr)
+  auto data = static_cast<char*>(nonconst_data());
+  if (data == nullptr) {
     return nullptr;
-  return (char*)data_ + offset;
+  }
+  return data + offset;
 }
 
 void Buffer::disown_data() {
@@ -145,22 +213,8 @@ uint64_t Buffer::free_space() const {
   return alloced_size_ - size_;
 }
 
-uint64_t Buffer::offset() const {
-  return offset_;
-}
-
 bool Buffer::owns_data() const {
   return owns_data_;
-}
-
-Status Buffer::read(void* buffer, const uint64_t nbytes) {
-  if (nbytes + offset_ > size_) {
-    return LOG_STATUS(
-        Status::BufferError("Read failed; Trying to read beyond buffer size"));
-  }
-  std::memcpy(buffer, (char*)data_ + offset_, nbytes);
-  offset_ += nbytes;
-  return Status::Ok();
 }
 
 Status Buffer::realloc(const uint64_t nbytes) {
@@ -189,25 +243,13 @@ Status Buffer::realloc(const uint64_t nbytes) {
   return Status::Ok();
 }
 
-void Buffer::reset_offset() {
-  offset_ = 0;
-}
-
 void Buffer::reset_size() {
   offset_ = 0;
   size_ = 0;
 }
 
-void Buffer::set_offset(const uint64_t offset) {
-  offset_ = offset;
-}
-
 void Buffer::set_size(const uint64_t size) {
   size_ = size;
-}
-
-uint64_t Buffer::size() const {
-  return size_;
 }
 
 Status Buffer::swap(Buffer& other) {
@@ -267,25 +309,6 @@ Status Buffer::write(const void* buffer, const uint64_t nbytes) {
   return Status::Ok();
 }
 
-Status Buffer::write_with_shift(ConstBuffer* buff, const uint64_t offset) {
-  // Sanity check
-  if (!owns_data_)
-    return LOG_STATUS(Status::BufferError(
-        "Cannot write to buffer; Buffer does not own the already stored data"));
-
-  const uint64_t bytes_left_to_write = alloced_size_ - offset_;
-  const uint64_t bytes_left_to_read = buff->nbytes_left_to_read();
-  const uint64_t bytes_to_copy =
-      std::min(bytes_left_to_write, bytes_left_to_read);
-  buff->read_with_shift(
-      (uint64_t*)(((char*)data_ + offset_)), bytes_to_copy, offset);
-
-  offset_ += bytes_to_copy;
-  size_ = offset_;
-
-  return Status::Ok();
-}
-
 Buffer& Buffer::operator=(const Buffer& buff) {
   // Clear any existing allocation.
   clear();
@@ -313,9 +336,47 @@ Status Buffer::ensure_alloced_size(const uint64_t nbytes) {
   return this->realloc(new_alloc_size);
 }
 
-/* ****************************** */
-/*          PRIVATE METHODS       */
-/* ****************************** */
+//=======================================================
+// ConstBuffer
+//=======================================================
+
+ConstBuffer::ConstBuffer(Buffer* buff)
+    : ConstBuffer(buff->data(), buff->size()) {
+}
+
+ConstBuffer::ConstBuffer(const void* data, const uint64_t size)
+    : BufferBase(data, size) {
+}
+
+uint64_t ConstBuffer::nbytes_left_to_read() const {
+  return size_ - offset_;
+}
+
+//=======================================================
+// PreallocatedBuffer
+//=======================================================
+
+PreallocatedBuffer::PreallocatedBuffer(const void* data, const uint64_t size)
+    : BufferBase(data, size) {
+}
+
+void* PreallocatedBuffer::cur_data() const {
+  return nonconst_unread_data();
+}
+
+uint64_t PreallocatedBuffer::free_space() const {
+  return size_ - offset_;
+}
+
+Status PreallocatedBuffer::write(const void* buffer, const uint64_t nbytes) {
+  if (nbytes > size_ - offset_)
+    return Status::PreallocatedBufferError("Write would overflow buffer.");
+
+  std::memcpy((char*)data_ + offset_, buffer, nbytes);
+  offset_ += nbytes;
+
+  return Status::Ok();
+}
 
 }  // namespace sm
 }  // namespace tiledb

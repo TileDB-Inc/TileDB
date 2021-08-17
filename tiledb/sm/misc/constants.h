@@ -65,6 +65,9 @@ extern const std::string filelock_name;
 /** The array schema file name. */
 extern const std::string array_schema_filename;
 
+/** The array schema folder name. */
+extern const std::string array_schema_folder_name;
+
 /** The array metadata folder name. */
 extern const std::string array_metadata_folder_name;
 
@@ -230,6 +233,33 @@ extern const std::string query_status_incomplete_str;
 /** TILEDB_UNINITIALIZED Query String **/
 extern const std::string query_status_uninitialized_str;
 
+/** TILEDB_LT Query Condition Op String **/
+extern const std::string query_condition_op_lt_str;
+
+/** TILEDB_LE Query Condition Op String **/
+extern const std::string query_condition_op_le_str;
+
+/** TILEDB_GT Query Condition Op String **/
+extern const std::string query_condition_op_gt_str;
+
+/** TILEDB_GE Query Condition Op String **/
+extern const std::string query_condition_op_ge_str;
+
+/** TILEDB_EQ Query Condition Op String **/
+extern const std::string query_condition_op_eq_str;
+
+/** TILEDB_NE Query Condition Op String **/
+extern const std::string query_condition_op_ne_str;
+
+/** TILEDB_AND Query Condition Combination Op String **/
+extern const std::string query_condition_combination_op_and_str;
+
+/** TILEDB_OR Query Condition Combination Op String **/
+extern const std::string query_condition_combination_op_or_str;
+
+/** TILEDB_NOT Query Condition Combination Op String **/
+extern const std::string query_condition_combination_op_not_str;
+
 /** TILEDB_COMPRESSION Filter type string */
 extern const std::string filter_type_compression_str;
 
@@ -387,6 +417,33 @@ extern const std::string datetime_fs_str;
 /** The string representation for type DATETIME_AS. */
 extern const std::string datetime_as_str;
 
+/** The string representation for type TIME_HR. */
+extern const std::string time_hr_str;
+
+/** The string representation for type TIME_MIN. */
+extern const std::string time_min_str;
+
+/** The string representation for type TIME_SEC. */
+extern const std::string time_sec_str;
+
+/** The string representation for type TIME_MS. */
+extern const std::string time_ms_str;
+
+/** The string representation for type TIME_US. */
+extern const std::string time_us_str;
+
+/** The string representation for type TIME_NS. */
+extern const std::string time_ns_str;
+
+/** The string representation for type TIME_PS. */
+extern const std::string time_ps_str;
+
+/** The string representation for type TIME_FS. */
+extern const std::string time_fs_str;
+
+/** The string representation for type TIME_AS. */
+extern const std::string time_as_str;
+
 /** The string representation for the dense array type. */
 extern const std::string dense_str;
 
@@ -455,6 +512,9 @@ extern const int32_t library_version[3];
 
 /** The TileDB serialization format version number. */
 extern const uint32_t format_version;
+
+/** The lowest version supported for back compat writes. */
+extern const uint32_t back_compat_writes_min_format_version;
 
 /** The maximum size of a tile chunk (unit of compression) in bytes. */
 extern const uint64_t max_tile_chunk_size;

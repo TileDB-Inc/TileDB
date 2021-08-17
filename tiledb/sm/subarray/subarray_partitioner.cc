@@ -31,6 +31,7 @@
  */
 
 #include "tiledb/sm/subarray/subarray_partitioner.h"
+#include "tiledb/common/logger.h"
 #include "tiledb/sm/array/array.h"
 #include "tiledb/sm/array_schema/array_schema.h"
 #include "tiledb/sm/array_schema/attribute.h"
@@ -39,7 +40,7 @@
 #include "tiledb/sm/enums/layout.h"
 #include "tiledb/sm/misc/hilbert.h"
 #include "tiledb/sm/misc/utils.h"
-#include "tiledb/sm/stats/stats.h"
+#include "tiledb/sm/stats/global_stats.h"
 
 #include <iomanip>
 
@@ -54,6 +55,7 @@
 using namespace tiledb;
 using namespace tiledb::common;
 using namespace tiledb::sm;
+using namespace tiledb::sm::stats;
 
 /* ****************************** */
 /*   CONSTRUCTORS & DESTRUCTORS   */
@@ -62,20 +64,29 @@ using namespace tiledb::sm;
 SubarrayPartitioner::SubarrayPartitioner() = default;
 
 SubarrayPartitioner::SubarrayPartitioner(
+    const Config* const config,
     const Subarray& subarray,
-    uint64_t memory_budget,
-    uint64_t memory_budget_var,
-    uint64_t memory_budget_validity,
-    ThreadPool* const compute_tp)
-    : subarray_(subarray)
+    const uint64_t memory_budget,
+    const uint64_t memory_budget_var,
+    const uint64_t memory_budget_validity,
+    ThreadPool* const compute_tp,
+    Stats* const parent_stats)
+    : stats_(parent_stats->create_child("SubarrayPartitioner"))
+    , config_(config)
+    , subarray_(subarray)
     , memory_budget_(memory_budget)
     , memory_budget_var_(memory_budget_var)
     , memory_budget_validity_(memory_budget_validity)
     , compute_tp_(compute_tp) {
-  subarray_.compute_tile_overlap(compute_tp_);
   state_.start_ = 0;
   auto range_num = subarray_.range_num();
   state_.end_ = (range_num > 0) ? range_num - 1 : 0;
+
+  bool found = false;
+  config_->get<bool>(
+      "sm.skip_est_size_partitioning", &skip_split_on_est_size_, &found);
+  (void)found;
+  assert(found);
 }
 
 SubarrayPartitioner::~SubarrayPartitioner() = default;
@@ -110,6 +121,10 @@ SubarrayPartitioner& SubarrayPartitioner::operator=(
 /* ****************************** */
 /*               API              */
 /* ****************************** */
+
+const Subarray& SubarrayPartitioner::current() const {
+  return current_.partition_;
+}
 
 Subarray& SubarrayPartitioner::current() {
   return current_.partition_;
@@ -403,7 +418,7 @@ Status SubarrayPartitioner::compute_partition_series(
 }
 
 Status SubarrayPartitioner::next(bool* unsplittable) {
-  STATS_START_TIMER(stats::Stats::TimerType::READ_NEXT_PARTITION)
+  auto timer_se = stats_->start_timer("read_next_partition");
 
   *unsplittable = false;
 
@@ -438,7 +453,7 @@ Status SubarrayPartitioner::next(bool* unsplittable) {
 
   // An interval of whole ranges that may need calibration
   bool must_split_slab;
-  calibrate_current_start_end(&must_split_slab);
+  RETURN_NOT_OK(calibrate_current_start_end(&must_split_slab));
 
   // Handle case the next partition is composed of whole ND ranges
   if (interval_found && !must_split_slab) {
@@ -451,8 +466,6 @@ Status SubarrayPartitioner::next(bool* unsplittable) {
 
   // Must split a multi-range subarray slab
   return next_from_multi_range(unsplittable);
-
-  STATS_END_TIMER(stats::Stats::TimerType::READ_NEXT_PARTITION)
 }
 
 Status SubarrayPartitioner::set_result_budget(
@@ -616,7 +629,7 @@ Status SubarrayPartitioner::set_memory_budget(
 }
 
 Status SubarrayPartitioner::split_current(bool* unsplittable) {
-  STATS_START_TIMER(stats::Stats::TimerType::READ_SPLIT_CURRENT_PARTITION)
+  auto timer_se = stats_->start_timer("read_split_current_partition");
 
   *unsplittable = false;
 
@@ -638,7 +651,7 @@ Status SubarrayPartitioner::split_current(bool* unsplittable) {
     current_.end_ = current_.start_ + (uint64_t)new_range_num - 1;
 
     bool must_split_slab;
-    calibrate_current_start_end(&must_split_slab);
+    RETURN_NOT_OK(calibrate_current_start_end(&must_split_slab));
 
     // If the range between `current_.start_` and `current_.end_`
     // will not fit within the memory contraints, `must_split_slab`
@@ -668,8 +681,6 @@ Status SubarrayPartitioner::split_current(bool* unsplittable) {
   state_.single_range_.push_front(current_.partition_);
   split_top_single_range(unsplittable);
   return next_from_single_range(unsplittable);
-
-  STATS_END_TIMER(stats::Stats::TimerType::READ_SPLIT_CURRENT_PARTITION)
 }
 
 const SubarrayPartitioner::State* SubarrayPartitioner::state() const {
@@ -688,18 +699,22 @@ Subarray* SubarrayPartitioner::subarray() {
   return &subarray_;
 }
 
+stats::Stats* SubarrayPartitioner::stats() const {
+  return stats_;
+}
+
 /* ****************************** */
 /*          PRIVATE METHODS       */
 /* ****************************** */
 
-void SubarrayPartitioner::calibrate_current_start_end(bool* must_split_slab) {
+Status SubarrayPartitioner::calibrate_current_start_end(bool* must_split_slab) {
   // Initialize (may be reset below)
   *must_split_slab = false;
 
   // Special case of single range and global layout
   if (subarray_.layout() == Layout::GLOBAL_ORDER) {
     assert(current_.start_ == current_.end_);
-    return;
+    return Status::Ok();
   }
 
   auto start_coords = subarray_.get_range_coords(current_.start_);
@@ -709,7 +724,7 @@ void SubarrayPartitioner::calibrate_current_start_end(bool* must_split_slab) {
   auto dim_num = subarray_.dim_num();
   uint64_t num;
   for (unsigned i = 0; i < dim_num; ++i) {
-    subarray_.get_range_num(i, &num);
+    RETURN_NOT_OK(subarray_.get_range_num(i, &num));
     range_num.push_back(num);
   }
 
@@ -782,10 +797,13 @@ void SubarrayPartitioner::calibrate_current_start_end(bool* must_split_slab) {
 
   // Get current_.end_. based on end_coords
   current_.end_ = subarray_.range_idx(end_coords);
+  return Status::Ok();
 }
 
 SubarrayPartitioner SubarrayPartitioner::clone() const {
   SubarrayPartitioner clone;
+  clone.stats_ = stats_;
+  clone.config_ = config_;
   clone.subarray_ = subarray_;
   clone.budget_ = budget_;
   clone.current_ = current_;
@@ -793,12 +811,22 @@ SubarrayPartitioner SubarrayPartitioner::clone() const {
   clone.memory_budget_ = memory_budget_;
   clone.memory_budget_var_ = memory_budget_var_;
   clone.memory_budget_validity_ = memory_budget_validity_;
+  clone.skip_split_on_est_size_ = skip_split_on_est_size_;
   clone.compute_tp_ = compute_tp_;
 
   return clone;
 }
 
 Status SubarrayPartitioner::compute_current_start_end(bool* found) {
+  // Compute the tile overlap. Note that the ranges in `tile_overlap` may have
+  // been truncated the ending bound due to memory constraints.
+  RETURN_NOT_OK(subarray_.precompute_tile_overlap(
+      state_.start_, state_.end_, config_, compute_tp_));
+  const SubarrayTileOverlap* const tile_overlap =
+      subarray_.subarray_tile_overlap();
+  assert(tile_overlap->range_idx_start() == state_.start_);
+  assert(tile_overlap->range_idx_end() <= state_.end_);
+
   // Preparation
   auto array = subarray_.array();
   auto meta = array->fragment_metadata();
@@ -820,16 +848,18 @@ Status SubarrayPartitioner::compute_current_start_end(bool* found) {
   std::vector<std::vector<Subarray::MemorySize>> memory_sizes;
   RETURN_NOT_OK(subarray_.compute_relevant_fragment_est_result_sizes(
       names,
-      state_.start_,
-      state_.end_,
+      tile_overlap->range_idx_start(),
+      tile_overlap->range_idx_end(),
       &result_sizes,
       &memory_sizes,
       compute_tp_));
 
-  current_.start_ = state_.start_;
-  for (current_.end_ = state_.start_; current_.end_ <= state_.end_;
+  bool done = false;
+  current_.start_ = tile_overlap->range_idx_start();
+  for (current_.end_ = tile_overlap->range_idx_start();
+       current_.end_ <= tile_overlap->range_idx_end();
        ++current_.end_) {
-    size_t r = current_.end_ - state_.start_;
+    size_t r = current_.end_ - tile_overlap->range_idx_start();
     for (size_t i = 0; i < names.size(); ++i) {
       auto& cur_size = cur_sizes[i];
       auto& mem_size = mem_sizes[i];
@@ -840,29 +870,59 @@ Status SubarrayPartitioner::compute_current_start_end(bool* found) {
       mem_size.size_fixed_ += memory_sizes[r][i].size_fixed_;
       mem_size.size_var_ += memory_sizes[r][i].size_var_;
       mem_size.size_validity_ += memory_sizes[r][i].size_validity_;
-      if (cur_size.size_fixed_ > budget.size_fixed_ ||
-          cur_size.size_var_ > budget.size_var_ ||
-          cur_size.size_validity_ > budget.size_validity_ ||
+      if ((!skip_split_on_est_size_ &&
+           (cur_size.size_fixed_ > budget.size_fixed_ ||
+            cur_size.size_var_ > budget.size_var_ ||
+            cur_size.size_validity_ > budget.size_validity_)) ||
           mem_size.size_fixed_ > memory_budget_ ||
           mem_size.size_var_ > memory_budget_var_ ||
           mem_size.size_validity_ > memory_budget_validity_) {
-        // Cannot find range that fits in the buffer
-        if (current_.end_ == current_.start_) {
-          *found = false;
-          return Status::Ok();
+        if (cur_size.size_fixed_ > budget.size_fixed_) {
+          stats_->add_counter(
+              "compute_current_start_end.fixed_result_size_overflow", 1);
+        } else if (cur_size.size_var_ > budget.size_var_) {
+          stats_->add_counter(
+              "compute_current_start_end.var_result_size_overflow", 1);
+        } else if (cur_size.size_validity_ > budget.size_validity_) {
+          stats_->add_counter(
+              "compute_current_start_end.validity_result_size_overflow", 1);
+        } else if (mem_size.size_fixed_ > memory_budget_) {
+          stats_->add_counter(
+              "compute_current_start_end.fixed_tile_size_overflow", 1);
+        } else if (mem_size.size_var_ > memory_budget_var_) {
+          stats_->add_counter(
+              "compute_current_start_end.var_tile_size_overflow", 1);
+        } else if (mem_size.size_validity_ > memory_budget_validity_) {
+          stats_->add_counter(
+              "compute_current_start_end.validity_tile_size_overflow", 1);
         }
 
-        // Range found, make it inclusive
-        current_.end_--;
-        *found = true;
-        return Status::Ok();
+        done = true;
+        break;
       }
+    }
+
+    if (done) {
+      break;
     }
   }
 
-  // Range found, make it inclusive
-  current_.end_--;
-  *found = true;
+  *found = current_.end_ != current_.start_;
+  if (*found) {
+    // If the range was found, make it inclusive before returning.
+    current_.end_--;
+
+    stats_->add_counter("compute_current_start_end.found", 1);
+    stats_->add_counter(
+        "compute_current_start_end.ranges",
+        tile_overlap->range_idx_end() - tile_overlap->range_idx_start() + 1);
+    stats_->add_counter(
+        "compute_current_start_end.adjusted_ranges",
+        current_.end_ - current_.start_ + 1);
+
+  } else {
+    stats_->add_counter("compute_current_start_end.not_found", 1);
+  }
 
   return Status::Ok();
 }
@@ -939,9 +999,13 @@ void SubarrayPartitioner::compute_splitting_value_single_range(
   auto cell_order = array_schema->cell_order();
   assert(!range.is_unary());
   auto layout = subarray_.layout();
-  layout = (layout == Layout::UNORDERED || layout == Layout::GLOBAL_ORDER) ?
-               cell_order :
-               layout;
+  if (layout == Layout::UNORDERED && cell_order == Layout::HILBERT) {
+    cell_order = Layout::ROW_MAJOR;
+  } else {
+    layout = (layout == Layout::UNORDERED || layout == Layout::GLOBAL_ORDER) ?
+                 cell_order :
+                 layout;
+  }
   *splitting_dim = UINT32_MAX;
 
   // Special case for Hilbert cell order
@@ -1033,7 +1097,7 @@ void SubarrayPartitioner::compute_splitting_value_single_range_hilbert(
   *normal_order = (hilbert_left < hilbert_right);
 }
 
-void SubarrayPartitioner::compute_splitting_value_multi_range(
+Status SubarrayPartitioner::compute_splitting_value_multi_range(
     unsigned* splitting_dim,
     uint64_t* splitting_range,
     ByteVecValue* splitting_value,
@@ -1046,14 +1110,16 @@ void SubarrayPartitioner::compute_splitting_value_multi_range(
   if (partition.range_num() == 1) {
     compute_splitting_value_single_range(
         partition, splitting_dim, splitting_value, normal_order, unsplittable);
-    return;
+    return Status::Ok();
   }
 
   // Multi-range partition
   auto layout = subarray_.layout();
   auto array_schema = subarray_.array()->array_schema();
   auto dim_num = array_schema->dim_num();
-  auto cell_order = array_schema->cell_order();
+  auto cell_order = (array_schema->cell_order() == Layout::HILBERT) ?
+                        Layout::ROW_MAJOR :
+                        array_schema->cell_order();
   layout = (layout == Layout::UNORDERED) ? cell_order : layout;
   *splitting_dim = UINT32_MAX;
   uint64_t range_num;
@@ -1072,7 +1138,7 @@ void SubarrayPartitioner::compute_splitting_value_multi_range(
   const Range* r;
   for (auto d : dims) {
     // Check if we need to split the multiple ranges
-    partition.get_range_num(d, &range_num);
+    RETURN_NOT_OK(partition.get_range_num(d, &range_num));
     if (range_num > 1) {
       assert(d == dims.back());
       *splitting_dim = d;
@@ -1092,6 +1158,7 @@ void SubarrayPartitioner::compute_splitting_value_multi_range(
   }
 
   assert(*splitting_dim != UINT32_MAX);
+  return Status::Ok();
 }
 
 bool SubarrayPartitioner::must_split(Subarray* partition) {
@@ -1117,43 +1184,74 @@ bool SubarrayPartitioner::must_split(Subarray* partition) {
     mem_size_fixed = 0;
     mem_size_var = 0;
     mem_size_validity = 0;
+    // Compute max memory sizes
     if (var_size) {
       if (!nullable) {
-        partition->get_est_result_size(
-            b.first.c_str(), &size_fixed, &size_var, compute_tp_);
         partition->get_max_memory_size(
-            b.first.c_str(), &mem_size_fixed, &mem_size_var, compute_tp_);
-      } else {
-        partition->get_est_result_size_nullable(
             b.first.c_str(),
-            &size_fixed,
-            &size_var,
-            &size_validity,
+            &mem_size_fixed,
+            &mem_size_var,
+            config_,
             compute_tp_);
+      } else {
         partition->get_max_memory_size_nullable(
             b.first.c_str(),
             &mem_size_fixed,
             &mem_size_var,
             &mem_size_validity,
+            config_,
             compute_tp_);
       }
     } else {
       if (!nullable) {
-        partition->get_est_result_size(
-            b.first.c_str(), &size_fixed, compute_tp_);
         partition->get_max_memory_size(
-            b.first.c_str(), &mem_size_fixed, compute_tp_);
+            b.first.c_str(), &mem_size_fixed, config_, compute_tp_);
       } else {
         partition->get_est_result_size_nullable(
-            b.first.c_str(), &size_fixed, &size_validity, compute_tp_);
+            b.first.c_str(), &size_fixed, &size_validity, config_, compute_tp_);
         partition->get_max_memory_size_nullable(
-            b.first.c_str(), &mem_size_fixed, &mem_size_validity, compute_tp_);
+            b.first.c_str(),
+            &mem_size_fixed,
+            &mem_size_validity,
+            config_,
+            compute_tp_);
+      }
+    }
+
+    // Compute estimated result sizes
+    if (!skip_split_on_est_size_) {
+      if (var_size) {
+        if (!nullable) {
+          partition->get_est_result_size(
+              b.first.c_str(), &size_fixed, &size_var, config_, compute_tp_);
+        } else {
+          partition->get_est_result_size_nullable(
+              b.first.c_str(),
+              &size_fixed,
+              &size_var,
+              &size_validity,
+              config_,
+              compute_tp_);
+        }
+      } else {
+        if (!nullable) {
+          partition->get_est_result_size_internal(
+              b.first.c_str(), &size_fixed, config_, compute_tp_);
+        } else {
+          partition->get_est_result_size_nullable(
+              b.first.c_str(),
+              &size_fixed,
+              &size_validity,
+              config_,
+              compute_tp_);
+        }
       }
     }
 
     // Check for budget overflow
-    if (size_fixed > b.second.size_fixed_ || size_var > b.second.size_var_ ||
-        size_validity > b.second.size_validity_ ||
+    if ((!skip_split_on_est_size_ &&
+         (size_fixed > b.second.size_fixed_ || size_var > b.second.size_var_ ||
+          size_validity > b.second.size_validity_)) ||
         mem_size_fixed > memory_budget_ || mem_size_var > memory_budget_var_ ||
         mem_size_validity > memory_budget_validity_) {
       must_split = true;
@@ -1274,12 +1372,12 @@ Status SubarrayPartitioner::split_top_multi_range(bool* unsplittable) {
   uint64_t splitting_range = UINT64_MAX;
   ByteVecValue splitting_value;
   bool normal_order;
-  compute_splitting_value_multi_range(
+  RETURN_NOT_OK(compute_splitting_value_multi_range(
       &splitting_dim,
       &splitting_range,
       &splitting_value,
       &normal_order,
-      unsplittable);
+      unsplittable));
 
   if (*unsplittable)
     return Status::Ok();
@@ -1304,6 +1402,8 @@ Status SubarrayPartitioner::split_top_multi_range(bool* unsplittable) {
 }
 
 void SubarrayPartitioner::swap(SubarrayPartitioner& partitioner) {
+  std::swap(stats_, partitioner.stats_);
+  std::swap(config_, partitioner.config_);
   std::swap(subarray_, partitioner.subarray_);
   std::swap(budget_, partitioner.budget_);
   std::swap(current_, partitioner.current_);
@@ -1311,6 +1411,7 @@ void SubarrayPartitioner::swap(SubarrayPartitioner& partitioner) {
   std::swap(memory_budget_, partitioner.memory_budget_);
   std::swap(memory_budget_var_, partitioner.memory_budget_var_);
   std::swap(memory_budget_validity_, partitioner.memory_budget_validity_);
+  std::swap(skip_split_on_est_size_, partitioner.skip_split_on_est_size_);
   std::swap(compute_tp_, partitioner.compute_tp_);
 }
 
@@ -1326,7 +1427,7 @@ void SubarrayPartitioner::compute_range_uint64(
   range_uint64->resize(dim_num);
   Hilbert h(dim_num);
   auto bits = h.bits();
-  auto bucket_num = ((uint64_t)1 << bits) - 1;
+  auto max_bucket_val = ((uint64_t)1 << bits) - 1;
 
   // Default values for empty range start/end
   auto max_string = std::string("\x7F\x7F\x7F\x7F\x7F\x7F\x7F\x7F", 8);
@@ -1341,16 +1442,17 @@ void SubarrayPartitioner::compute_range_uint64(
     empty_end = var ? (r->end_size() == 0) : r->empty();
     auto max_default =
         var ? dim->map_to_uint64(
-                  max_string.data(), max_string.size(), bits, bucket_num) :
+                  max_string.data(), max_string.size(), bits, max_bucket_val) :
               (UINT64_MAX >> (64 - bits));
 
     (*range_uint64)[d][0] =
         empty_start ? 0 :  // min default
-            dim->map_to_uint64(r->start(), r->start_size(), bits, bucket_num);
+            dim->map_to_uint64(
+                r->start(), r->start_size(), bits, max_bucket_val);
     (*range_uint64)[d][1] =
         empty_end ?
             max_default :
-            dim->map_to_uint64(r->end(), r->end_size(), bits, bucket_num);
+            dim->map_to_uint64(r->end(), r->end_size(), bits, max_bucket_val);
 
     assert((*range_uint64)[d][0] <= (*range_uint64)[d][1]);
 
@@ -1439,39 +1541,45 @@ void SubarrayPartitioner::compute_splitting_value_hilbert(
     ByteVecValue* splitting_value) const {
   auto array_schema = subarray_.array()->array_schema();
   auto dim_num = array_schema->dim_num();
-  uint64_t splitting_value_uint64;   // Splitting value
-  uint64_t left_p2_m1, right_p2_m1;  // Left/right powers of 2 minus 1
+  uint64_t splitting_value_uint64 = range_uint64[0];  // Splitting value
+  if (range_uint64[0] + 1 != range_uint64[1]) {
+    uint64_t left_p2_m1, right_p2_m1;  // Left/right powers of 2 minus 1
 
-  // Compute left and right (2^i-1) enclosing the uint64 range
-  left_p2_m1 = utils::math::left_p2_m1(range_uint64[0]);
-  right_p2_m1 = utils::math::right_p2_m1(range_uint64[1]);
-  assert(left_p2_m1 != right_p2_m1);  // Cannot be unary
+    // Compute left and right (2^i-1) enclosing the uint64 range
+    left_p2_m1 = utils::math::left_p2_m1(range_uint64[0]);
+    right_p2_m1 = utils::math::right_p2_m1(range_uint64[1]);
+    assert(left_p2_m1 != right_p2_m1);  // Cannot be unary
 
-  // Compute splitting value
-  uint64_t splitting_offset = 0;
-  auto range_uint64_start = range_uint64[0];
-  auto range_uint64_end = range_uint64[1];
-  while (true) {
-    if (((left_p2_m1 << 1) + 1) != right_p2_m1) {
-      // More than one power of 2 apart, split at largest power of 2 in between
-      splitting_value_uint64 = splitting_offset + (right_p2_m1 >> 1);
-      break;
-    } else {  // One power apart - need to normalize and repeat
-      range_uint64_start -= (left_p2_m1 + 1);
-      range_uint64_end -= (left_p2_m1 + 1);
-      left_p2_m1 = utils::math::left_p2_m1(range_uint64_start);
-      right_p2_m1 = utils::math::right_p2_m1(range_uint64_end);
-      assert(left_p2_m1 != right_p2_m1);  // Cannot be unary
-      splitting_offset += left_p2_m1 + 1;
+    // Compute splitting value
+    uint64_t splitting_offset = 0;
+    auto range_uint64_start = range_uint64[0];
+    auto range_uint64_end = range_uint64[1];
+    while (true) {
+      if (((left_p2_m1 << 1) + 1) != right_p2_m1) {
+        // More than one power of 2 apart, split at largest power of 2 in
+        // between
+        splitting_value_uint64 = splitting_offset + (right_p2_m1 >> 1);
+        break;
+      } else if (left_p2_m1 == range_uint64_start) {
+        splitting_value_uint64 = splitting_offset + left_p2_m1;
+        break;
+      } else {  // One power apart - need to normalize and repeat
+        range_uint64_start -= (left_p2_m1 + 1);
+        range_uint64_end -= (left_p2_m1 + 1);
+        splitting_offset += (left_p2_m1 + 1);
+        left_p2_m1 = utils::math::left_p2_m1(range_uint64_start);
+        right_p2_m1 = utils::math::right_p2_m1(range_uint64_end);
+        assert(left_p2_m1 != right_p2_m1);  // Cannot be unary
+      }
     }
   }
 
   // Set real splitting value
   Hilbert h(dim_num);
   auto bits = h.bits();
-  auto bucket_num = ((uint64_t)1 << bits) - 1;
+  auto max_bucket_val = ((uint64_t)1 << bits) - 1;
 
   *splitting_value =
       array_schema->dimension(splitting_dim)
-          ->map_from_uint64(splitting_value_uint64, bits, bucket_num);
+          ->map_from_uint64(splitting_value_uint64, bits, max_bucket_val);
 }

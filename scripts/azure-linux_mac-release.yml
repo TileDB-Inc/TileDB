@@ -24,10 +24,9 @@ steps:
 
 - bash: |
     set -e pipefail
-    open /Library/Developer/CommandLineTools/Packages/macOS_SDK_headers_for_macOS_10.14.pkg
-    sudo installer -pkg /Library/Developer/CommandLineTools/Packages/macOS_SDK_headers_for_macOS_10.14.pkg -allowUntrusted -target /
+    sudo rm -Rf /Library/Developer/CommandLineTools/SDKs/* # Remove SDKs without ARM support
   condition: eq(variables['Agent.OS'], 'Darwin')
-  displayName: 'Install system headers (OSX only)'
+  displayName: 'Remove sdks for testing (OSX only)'
 
 - bash: |
     # DELETEME work-around for https://github.com/microsoft/azure-pipelines-image-generation/issues/969
@@ -68,9 +67,6 @@ steps:
     if [[ "$TILEDB_GCS" == "ON" ]]; then
       bootstrap_args="${bootstrap_args} --enable-gcs";
     fi;
-    if [[ "$TILEDB_TBB" == "OFF" ]]; then
-      bootstrap_args="${bootstrap_args} --disable-tbb";
-    fi
     if [[ "$TILEDB_TOOLS" == "ON" ]]; then
       bootstrap_args="${bootstrap_args} --enable-tools";
     fi
@@ -93,6 +89,10 @@ steps:
       # Add superbuild flag
       bootstrap_args="${bootstrap_args} --force-build-all-deps";
     fi
+    if [[ "$TILEDB_WERROR" == "OFF" ]]; then
+      # Add superbuild flag
+      bootstrap_args="${bootstrap_args} --disable-werror";
+    fi
 
     # displayName: 'Install dependencies'
 
@@ -106,12 +106,28 @@ steps:
     make -j4
     make -C tiledb install
   displayName: 'Build libtiledb'
+  continueOnError: true
+
+- task: ArchiveFiles@2
+  inputs:
+    rootFolderOrFile: '$(Build.Repository.LocalPath)'
+    includeRootFolder: false
+    archiveType: 'tar' # Options: zip, 7z, tar, wim
+    tarCompression: 'gz' # Optional. Options: gz, bz2, xz, none
+    archiveFile: $(Build.ArtifactStagingDirectory)/tiledb-$(ARTIFACT_OS)-build-dir-$(ARTIFACT_EXTRAS).tar.gz
+    replaceExistingArchive: true
+    verbose: true # Optional
+
+- task: PublishBuildArtifacts@1
+  inputs:
+    pathToPublish: '$(Build.ArtifactStagingDirectory)/tiledb-$(ARTIFACT_OS)-build-dir-$(ARTIFACT_EXTRAS).tar.gz'
+    artifactName: 'build-dirs'
 
 - script: |
-      echo $sourceVersion
-      commitHash=${sourceVersion:0:7}
-      echo $commitHash
-      echo "##vso[task.setvariable variable=commitHash]$commitHash" ## Set variable for using in other tasks.
+    echo $sourceVersion
+    commitHash=${sourceVersion:0:7}
+    echo $commitHash
+    echo "##vso[task.setvariable variable=commitHash]$commitHash" ## Set variable for using in other tasks.
   env: { sourceVersion: $(Build.SourceVersion) }
   displayName: Git Hash 7-digit
 
@@ -123,30 +139,14 @@ steps:
     includeRootFolder: false
     archiveType: 'tar' # Options: zip, 7z, tar, wim
     tarCompression: 'gz' # Optional. Options: gz, bz2, xz, none
-    archiveFile: $(Build.ArtifactStagingDirectory)/tiledb-$(ARTIFACT_OS)-$(Build.SourceBranchName)-$(commitHash)-$(ARTIFACT_EXTRAS).tar.gz
-    replaceExistingArchive: true
-    verbose: true # Optional
-  condition: succeeded()
-
-- task: ArchiveFiles@2
-  inputs:
-    rootFolderOrFile: '$(Build.Repository.LocalPath)'
-    includeRootFolder: false
-    archiveType: 'tar' # Options: zip, 7z, tar, wim
-    tarCompression: 'gz' # Optional. Options: gz, bz2, xz, none
-    archiveFile: $(Build.ArtifactStagingDirectory)/tiledb-$(ARTIFACT_OS)-build-dir-$(ARTIFACT_EXTRAS).tar.gz
+    archiveFile: $(Build.ArtifactStagingDirectory)/tiledb-$(ARTIFACT_OS)-$(ARTIFACT_ARCH)-$(Build.SourceBranchName)-$(commitHash).tar.gz
     replaceExistingArchive: true
     verbose: true # Optional
   condition: succeeded()
 
 - task: PublishBuildArtifacts@1
   inputs:
-      pathtoPublish: '$(Build.ArtifactStagingDirectory)/tiledb-$(ARTIFACT_OS)-$(Build.SourceBranchName)-$(commitHash)-$(ARTIFACT_EXTRAS).tar.gz'
-      artifactName: '$(ARTIFACT_EXTRAS)'
+    pathToPublish: '$(Build.ArtifactStagingDirectory)/tiledb-$(ARTIFACT_OS)-$(ARTIFACT_ARCH)-$(Build.SourceBranchName)-$(commitHash).tar.gz'
+    artifactName: 'built-libs'
   condition: succeeded()
 
-- task: PublishBuildArtifacts@1
-  inputs:
-    pathtoPublish: '$(Build.ArtifactStagingDirectory)/tiledb-$(ARTIFACT_OS)-build-dir-$(ARTIFACT_EXTRAS).tar.gz'
-    artifactName: 'build-dirs'
-  condition: succeeded()

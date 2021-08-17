@@ -51,6 +51,7 @@ namespace sm {
 class ArraySchema;
 class Buffer;
 class EncryptionKey;
+class OpenArrayMemoryTracker;
 class StorageManager;
 
 /** Stores the metadata structures of a fragment. */
@@ -69,6 +70,7 @@ class FragmentMetadata {
    * @param timestamp_range The timestamp range of the fragment.
    *     In TileDB, timestamps are in ms elapsed since
    *     1970-01-01 00:00:00 +0000 (UTC).
+   * @param memory_tracker Memory tracker for all fragment metadatas.
    * @param dense Indicates whether the fragment is dense or sparse.
    */
   FragmentMetadata(
@@ -76,6 +78,7 @@ class FragmentMetadata {
       const ArraySchema* array_schema,
       const URI& fragment_uri,
       const std::pair<uint64_t, uint64_t>& timestamp_range,
+      OpenArrayMemoryTracker* memory_tracker,
       bool dense = true);
 
   /** Destructor. */
@@ -325,6 +328,14 @@ class FragmentMetadata {
   void set_tile_validity_offset(
       const std::string& name, uint64_t tid, uint64_t step);
 
+  /**
+   * Sets array schema pointer.
+   *
+   * @param array_schema The schema pointer.
+   * @return void
+   */
+  void set_array_schema(ArraySchema* array_schema);
+
   /** Returns the tile index base value. */
   uint64_t tile_index_base() const;
 
@@ -339,6 +350,9 @@ class FragmentMetadata {
 
   /** Returns the validity URI of the input nullable attribute. */
   URI validity_uri(const std::string& name) const;
+
+  /** Return the array schema name. */
+  const std::string& array_schema_name();
 
   /**
    * Retrieves the starting offset of the input tile of the input attribute
@@ -499,6 +513,9 @@ class FragmentMetadata {
   /** Loads the R-tree from storage. */
   Status load_rtree(const EncryptionKey& encryption_key);
 
+  /** Frees the memory associated with the rtree. */
+  void free_rtree();
+
   /**
    * Loads the variable tile sizes for the input attribute or dimension idx
    * from storage.
@@ -563,6 +580,9 @@ class FragmentMetadata {
 
   /** The array schema */
   const ArraySchema* array_schema_;
+
+  /** The array schema name */
+  std::string array_schema_name_;
 
   /**
    * Maps an attribute or dimension to an index used in the various vector
@@ -672,6 +692,9 @@ class FragmentMetadata {
   /** Stores the generic tile offsets, facilitating loading. */
   GenericTileOffsets gt_offsets_;
 
+  /** Pointer to the memory tracking structure maintained by the array. */
+  OpenArrayMemoryTracker* memory_tracker_;
+
   /* ********************************* */
   /*           PRIVATE METHODS         */
   /* ********************************* */
@@ -776,6 +799,11 @@ class FragmentMetadata {
    * versions 7 or higher.
    */
   Status load_generic_tile_offsets_v7_or_higher(ConstBuffer* buff);
+
+  /**
+   * Loads the array schema name.
+   */
+  Status load_array_schema_name(ConstBuffer* buff);
 
   /**
    * Loads the bounding coordinates from the fragment metadata buffer.
@@ -936,6 +964,9 @@ class FragmentMetadata {
 
   /** Writes the generic tile offsets to the buffer. */
   Status write_generic_tile_offsets(Buffer* buff) const;
+
+  /** Writes the array schema name. */
+  Status write_array_schema_name(Buffer* buff) const;
 
   /**
    * Writes the cell number of the last tile to the fragment metadata buffer.

@@ -98,6 +98,7 @@ list(APPEND TILEDB_CORE_INCLUDE_DIR "${CMAKE_CURRENT_SOURCE_DIR}/../tiledb/sm/c_
 set(TILEDB_TEST_SOURCES
   src/helpers.h
   src/helpers.cc
+  src/helpers-dimension.h
   src/unit-azure.cc
   src/unit-backwards_compat.cc
   src/unit-buffer.cc
@@ -141,13 +142,15 @@ set(TILEDB_TEST_SOURCES
   src/unit-capi-uri.cc
   src/unit-capi-version.cc
   src/unit-capi-vfs.cc
-  src/unit-duplicates.cc
   src/unit-CellSlabIter.cc
+  src/unit-ChunkedBuffer.cc
   src/unit-compression-dd.cc
   src/unit-compression-rle.cc
   src/unit-crypto.cc
   src/unit-ctx.cc
+  src/unit-DenseTiler.cc
   src/unit-dimension.cc
+  src/unit-duplicates.cc
   src/unit-empty-var-length.cc
   src/unit-filter-buffer.cc
   src/unit-filter-pipeline.cc
@@ -155,18 +158,17 @@ set(TILEDB_TEST_SOURCES
   src/unit-hdfs-filesystem.cc
   src/unit-hilbert.cc
   src/unit-lru_cache.cc
-  src/unit-Reader.cc
+  src/unit-QueryCondition.cc
   src/unit-ReadCellSlabIter.cc
+  src/unit-Reader.cc
   src/unit-rtree.cc
-  src/unit-s3.cc
   src/unit-s3-no-multipart.cc
+  src/unit-s3.cc
   src/unit-status.cc
-  src/unit-ChunkedBuffer.cc
   src/unit-Subarray.cc
   src/unit-SubarrayPartitioner-dense.cc
   src/unit-SubarrayPartitioner-error.cc
   src/unit-SubarrayPartitioner-sparse.cc
-  src/unit-tbb.cc
   src/unit-threadpool.cc
   src/unit-Tile.cc
   src/unit-TileDomain.cc
@@ -187,6 +189,7 @@ if (TILEDB_CPP_API)
     src/unit-cppapi-consolidation-sparse.cc
     src/unit-cppapi-consolidation.cc
     src/unit-cppapi-datetimes.cc
+    src/unit-cppapi-time.cc
     src/unit-cppapi-fill_values.cc
     src/unit-cppapi-filter.cc
     src/unit-cppapi-fragment_info.cc
@@ -239,8 +242,9 @@ add_executable(
   ${TILEDB_TEST_SOURCES}
 )
 
-# TODO: Remove when KV API has been removed.
-if (NOT WIN32)
+# We want tests to continue as normal even as the API is changing,
+# so don't warn for deprecations, since they'll be escalated to errors.
+if (NOT MSVC)
   target_compile_options(tiledb_unit PRIVATE -Wno-deprecated-declarations)
 endif()
 
@@ -288,10 +292,6 @@ if (TILEDB_GCS)
   target_compile_definitions(tiledb_unit PRIVATE -DHAVE_GCS)
 endif()
 
-if (TILEDB_TBB)
-  target_compile_definitions(tiledb_unit PRIVATE -DHAVE_TBB -DTBB_SUPPRESS_DEPRECATED_MESSAGES)
-endif()
-
 if (TILEDB_SERIALIZATION)
   target_compile_definitions(tiledb_unit PRIVATE -DTILEDB_SERIALIZATION)
 endif()
@@ -323,16 +323,6 @@ add_test(
   COMMAND $<TARGET_FILE:tiledb_unit> --durations=yes
   WORKING_DIRECTORY ${CMAKE_CURRENT_SOURCE_DIR}
 )
-
-# Set the PATH on Windows so that the test executable can find the TBB library.
-if (TILEDB_TBB AND WIN32)
-  set(PATH_STRING "$ENV{PATH};${TBB_LIB_DIR}")
-  # Handle escaped semicolons. See
-  # https://cmake.org/pipermail/cmake/2010-December/041176.html
-  string(REPLACE "\\;" ";" PATH_STRING "${PATH_STRING}")
-  string(REPLACE ";" "\\;" PATH_STRING "${PATH_STRING}")
-  set_tests_properties("tiledb_unit" PROPERTIES ENVIRONMENT "PATH=${PATH_STRING}")
-endif()
 
 if(TILEDB_HDFS)
   # need to force flat namespace for the signal chaining to work on macOS

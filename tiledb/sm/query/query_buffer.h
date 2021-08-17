@@ -33,7 +33,6 @@
 #ifndef TILEDB_QUERY_BUFFER_H
 #define TILEDB_QUERY_BUFFER_H
 
-#include "tiledb/common/logger.h"
 #include "tiledb/common/macros.h"
 #include "tiledb/common/status.h"
 #include "tiledb/sm/query/validity_vector.h"
@@ -71,7 +70,7 @@ class QueryBuffer {
       , buffer_var_(buffer_var)
       , buffer_size_(buffer_size)
       , buffer_var_size_(buffer_var_size) {
-    original_buffer_size_ = *buffer_size;
+    original_buffer_size_ = (buffer_size != nullptr) ? *buffer_size : 0;
     original_buffer_var_size_ =
         (buffer_var_size_ != nullptr) ? *buffer_var_size_ : 0;
     original_validity_vector_size_ = 0;
@@ -89,7 +88,7 @@ class QueryBuffer {
       , buffer_size_(buffer_size)
       , buffer_var_size_(buffer_var_size)
       , validity_vector_(std::move(validity_vector)) {
-    original_buffer_size_ = *buffer_size;
+    original_buffer_size_ = (buffer_size_ != nullptr) ? *buffer_size_ : 0;
     original_buffer_var_size_ =
         (buffer_var_size_ != nullptr) ? *buffer_var_size_ : 0;
     original_validity_vector_size_ =
@@ -201,6 +200,41 @@ class QueryBuffer {
    * attributes.
    */
   ValidityVector validity_vector_;
+
+  /* ********************************* */
+  /*           PUBLIC METHODS         */
+  /* ********************************* */
+
+  Status set_data_buffer(void* data_buffer, uint64_t* size) {
+    buffer_ = data_buffer;
+    buffer_size_ = size;
+    original_buffer_size_ = *size;
+
+    return Status::Ok();
+  }
+
+  Status set_data_var_buffer(void* data_var_buffer, uint64_t* size) {
+    buffer_var_ = data_var_buffer;
+    buffer_var_size_ = size;
+    original_buffer_var_size_ = *size;
+
+    return Status::Ok();
+  }
+
+  Status set_offsets_buffer(void* offsets_buffer, uint64_t* size) {
+    buffer_ = offsets_buffer;
+    buffer_size_ = size;
+    original_buffer_size_ = *size;
+
+    return Status::Ok();
+  }
+
+  Status set_validity_buffer(ValidityVector&& validity_vector) {
+    validity_vector_ = std::move(validity_vector);
+    original_validity_vector_size_ = *validity_vector_.buffer_size();
+
+    return Status::Ok();
+  }
 };
 
 }  // namespace sm

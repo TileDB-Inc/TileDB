@@ -35,7 +35,6 @@
 
 #include <vector>
 
-#include "tiledb/common/logger.h"
 #include "tiledb/common/macros.h"
 #include "tiledb/common/status.h"
 
@@ -54,6 +53,12 @@ class ValidityVector {
   ValidityVector()
       : buffer_(nullptr)
       , buffer_size_(nullptr) {
+  }
+
+  /** Constructor. */
+  ValidityVector(uint8_t* buffer, uint64_t* buffer_size)
+      : buffer_(buffer)
+      , buffer_size_(buffer_size) {
   }
 
   /** Copy constructor. */

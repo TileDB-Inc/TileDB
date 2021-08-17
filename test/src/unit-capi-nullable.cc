@@ -227,6 +227,8 @@ NullableArrayFx::NullableArrayFx() {
 
 NullableArrayFx::~NullableArrayFx() {
   remove_dir(FILE_TEMP_DIR);
+  tiledb_ctx_free(&ctx_);
+  tiledb_vfs_free(&vfs_);
 }
 
 void NullableArrayFx::create_dir(const string& path) {
@@ -362,7 +364,7 @@ void NullableArrayFx::write(
   for (const auto& test_query_buffer : test_query_buffers) {
     if (test_query_buffer.buffer_validity_size_ == nullptr) {
       if (test_query_buffer.buffer_var_ == nullptr) {
-        rc = tiledb_query_set_buffer(
+        rc = tiledb_query_set_data_buffer(
             ctx_,
             query,
             test_query_buffer.name_.c_str(),
@@ -370,36 +372,56 @@ void NullableArrayFx::write(
             test_query_buffer.buffer_size_);
         REQUIRE(rc == TILEDB_OK);
       } else {
-        rc = tiledb_query_set_buffer_var(
+        rc = tiledb_query_set_data_buffer(
+            ctx_,
+            query,
+            test_query_buffer.name_.c_str(),
+            test_query_buffer.buffer_var_,
+            test_query_buffer.buffer_var_size_);
+        REQUIRE(rc == TILEDB_OK);
+        rc = tiledb_query_set_offsets_buffer(
             ctx_,
             query,
             test_query_buffer.name_.c_str(),
             static_cast<uint64_t*>(test_query_buffer.buffer_),
-            test_query_buffer.buffer_size_,
-            test_query_buffer.buffer_var_,
-            test_query_buffer.buffer_var_size_);
+            test_query_buffer.buffer_size_);
         REQUIRE(rc == TILEDB_OK);
       }
     } else {
       if (test_query_buffer.buffer_var_ == nullptr) {
-        rc = tiledb_query_set_buffer_nullable(
+        rc = tiledb_query_set_data_buffer(
             ctx_,
             query,
             test_query_buffer.name_.c_str(),
             test_query_buffer.buffer_,
-            test_query_buffer.buffer_size_,
+            test_query_buffer.buffer_size_);
+        REQUIRE(rc == TILEDB_OK);
+        rc = tiledb_query_set_validity_buffer(
+            ctx_,
+            query,
+            test_query_buffer.name_.c_str(),
             test_query_buffer.buffer_validity_,
             test_query_buffer.buffer_validity_size_);
         REQUIRE(rc == TILEDB_OK);
       } else {
-        rc = tiledb_query_set_buffer_var_nullable(
+        rc = tiledb_query_set_data_buffer(
+            ctx_,
+            query,
+            test_query_buffer.name_.c_str(),
+            test_query_buffer.buffer_var_,
+            test_query_buffer.buffer_var_size_);
+        REQUIRE(rc == TILEDB_OK);
+        rc = tiledb_query_set_offsets_buffer(
             ctx_,
             query,
             test_query_buffer.name_.c_str(),
             static_cast<uint64_t*>(test_query_buffer.buffer_),
-            test_query_buffer.buffer_size_,
-            test_query_buffer.buffer_var_,
-            test_query_buffer.buffer_var_size_,
+            test_query_buffer.buffer_size_);
+        REQUIRE(rc == TILEDB_OK);
+        rc = tiledb_query_set_validity_buffer(
+            ctx_,
+            query,
+            test_query_buffer.name_.c_str(),
             test_query_buffer.buffer_validity_,
             test_query_buffer.buffer_validity_size_);
         REQUIRE(rc == TILEDB_OK);
@@ -444,7 +466,7 @@ void NullableArrayFx::read(
     const test_query_buffer_t& test_query_buffer = test_query_buffers[i];
     if (test_query_buffer.buffer_validity_size_ == nullptr) {
       if (test_query_buffer.buffer_var_ == nullptr) {
-        rc = tiledb_query_set_buffer(
+        rc = tiledb_query_set_data_buffer(
             ctx_,
             query,
             test_query_buffer.name_.c_str(),
@@ -452,36 +474,56 @@ void NullableArrayFx::read(
             test_query_buffer.buffer_size_);
         REQUIRE(rc == TILEDB_OK);
       } else {
-        rc = tiledb_query_set_buffer_var(
+        rc = tiledb_query_set_data_buffer(
+            ctx_,
+            query,
+            test_query_buffer.name_.c_str(),
+            test_query_buffer.buffer_var_,
+            test_query_buffer.buffer_var_size_);
+        REQUIRE(rc == TILEDB_OK);
+        rc = tiledb_query_set_offsets_buffer(
             ctx_,
             query,
             test_query_buffer.name_.c_str(),
             static_cast<uint64_t*>(test_query_buffer.buffer_),
-            test_query_buffer.buffer_size_,
-            test_query_buffer.buffer_var_,
-            test_query_buffer.buffer_var_size_);
+            test_query_buffer.buffer_size_);
         REQUIRE(rc == TILEDB_OK);
       }
     } else {
       if (test_query_buffer.buffer_var_ == nullptr) {
-        rc = tiledb_query_set_buffer_nullable(
+        rc = tiledb_query_set_data_buffer(
             ctx_,
             query,
             test_query_buffer.name_.c_str(),
             test_query_buffer.buffer_,
-            test_query_buffer.buffer_size_,
+            test_query_buffer.buffer_size_);
+        REQUIRE(rc == TILEDB_OK);
+        rc = tiledb_query_set_validity_buffer(
+            ctx_,
+            query,
+            test_query_buffer.name_.c_str(),
             test_query_buffer.buffer_validity_,
             test_query_buffer.buffer_validity_size_);
         REQUIRE(rc == TILEDB_OK);
       } else {
-        rc = tiledb_query_set_buffer_var_nullable(
+        rc = tiledb_query_set_data_buffer(
+            ctx_,
+            query,
+            test_query_buffer.name_.c_str(),
+            test_query_buffer.buffer_var_,
+            test_query_buffer.buffer_var_size_);
+        REQUIRE(rc == TILEDB_OK);
+        rc = tiledb_query_set_offsets_buffer(
             ctx_,
             query,
             test_query_buffer.name_.c_str(),
             static_cast<uint64_t*>(test_query_buffer.buffer_),
-            test_query_buffer.buffer_size_,
-            test_query_buffer.buffer_var_,
-            test_query_buffer.buffer_var_size_,
+            test_query_buffer.buffer_size_);
+        REQUIRE(rc == TILEDB_OK);
+        rc = tiledb_query_set_validity_buffer(
+            ctx_,
+            query,
+            test_query_buffer.name_.c_str(),
             test_query_buffer.buffer_validity_,
             test_query_buffer.buffer_validity_size_);
         REQUIRE(rc == TILEDB_OK);

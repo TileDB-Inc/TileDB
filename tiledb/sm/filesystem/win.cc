@@ -37,9 +37,13 @@
 #include "tiledb/sm/misc/constants.h"
 #include "tiledb/sm/misc/utils.h"
 
+#if !defined(NOMINMAX)
+#define NOMINMAX  // suppress definition of min/max macros in Windows headers
+#endif
 #include <Shlwapi.h>
 #include <Windows.h>
 #include <wininet.h>  // For INTERNET_MAX_URL_LENGTH
+#include <algorithm>
 #include <cassert>
 #include <fstream>
 #include <iostream>
@@ -248,7 +252,7 @@ Status Win::filelock_lock(
     return LOG_STATUS(Status::IOError(
         std::string("Failed to lock '" + filename + "'; CreateFile error")));
   }
-  OVERLAPPED overlapped = {0, 0, 0, 0, 0};
+  OVERLAPPED overlapped = {0, 0, {{0, 0}}, 0};
   if (LockFileEx(
           file_h,
           shared ? 0 : LOCKFILE_EXCLUSIVE_LOCK,
@@ -267,7 +271,7 @@ Status Win::filelock_lock(
 }
 
 Status Win::filelock_unlock(filelock_t fd) const {
-  OVERLAPPED overlapped = {0, 0, 0, 0, 0};
+  OVERLAPPED overlapped = {0, 0, {{0, 0}}, 0};
   if (UnlockFileEx(fd, 0, MAXDWORD, MAXDWORD, &overlapped) == 0) {
     CloseHandle(fd);
     return LOG_STATUS(
@@ -520,7 +524,7 @@ Status Win::write_at(
   while (buffer_size > constants::max_write_bytes) {
     LARGE_INTEGER offset;
     offset.QuadPart = file_offset;
-    OVERLAPPED ov = {0, 0, 0, 0, 0};
+    OVERLAPPED ov = {0, 0, {{0, 0}}, 0};
     ov.Offset = offset.LowPart;
     ov.OffsetHigh = offset.HighPart;
     if (WriteFile(
@@ -540,7 +544,7 @@ Status Win::write_at(
   }
   LARGE_INTEGER offset;
   offset.QuadPart = file_offset;
-  OVERLAPPED ov = {0, 0, 0, 0, 0};
+  OVERLAPPED ov = {0, 0, {{0, 0}}, 0};
   ov.Offset = offset.LowPart;
   ov.OffsetHigh = offset.HighPart;
   if (WriteFile(
@@ -575,7 +579,13 @@ std::string Win::path_from_uri(const std::string& uri) {
   }
 
   std::string uri_with_scheme =
-      utils::parse::starts_with(uri, "file:///") ? uri : "file:///" + uri;
+      (utils::parse::starts_with(uri, "file://") ||
+       // also accept 'file:/x...'
+       (utils::parse::starts_with(uri, "file:/") && uri.substr(6, 1) != "/")) ?
+          uri
+          // else treat as file: item on 'localhost' (empty host name)
+          :
+          "file:///" + uri;
 
   unsigned long path_length = MAX_PATH;
   char path[MAX_PATH];

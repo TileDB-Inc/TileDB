@@ -36,7 +36,6 @@
 #include "tiledb/common/status.h"
 #include "tiledb/sm/array_schema/attribute.h"
 #include "tiledb/sm/buffer/buffer.h"
-#include "tiledb/sm/buffer/const_buffer.h"
 #include "tiledb/sm/tile/chunked_buffer.h"
 
 #include <cinttypes>
@@ -196,6 +195,8 @@ class Tile {
    * @param cell_size The cell size.
    * @param dim_num The number of dimensions in case the tile stores
    *      coordinates.
+   * @param fill_with_zeros If true, it fills the entire tile with zeros,
+   *      allocating memory and setting the size.
    * @return Status
    */
   Status init_unfiltered(
@@ -203,7 +204,8 @@ class Tile {
       Datatype type,
       uint64_t tile_size,
       uint64_t cell_size,
-      unsigned int dim_num);
+      unsigned int dim_num,
+      bool fill_with_zeros = false);
 
   /**
    * Tile initializer for storing filtered bytes.
@@ -330,6 +332,14 @@ class Tile {
 
   /** Writes `nbytes` from `data` to the tile. */
   Status write(const void* data, uint64_t nbytes);
+
+  /**
+   * Writes `nbytes` from `data` to the tile at `offset`.
+   *
+   * @note This function assumes that the tile buffer has already been
+   *     properly allocated. It does not alter the tile offset and size.
+   */
+  Status write(const void* data, uint64_t offset, uint64_t nbytes);
 
   /**
    * Zips the coordinate values such that a cell's coordinates across

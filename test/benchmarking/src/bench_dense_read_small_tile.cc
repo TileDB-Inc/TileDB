@@ -60,7 +60,7 @@ class Benchmark : public BenchmarkBase {
     Query query(ctx_, array);
     query.set_subarray({1u, array_rows, 1u, array_cols})
         .set_layout(TILEDB_ROW_MAJOR)
-        .set_buffer("a", data_);
+        .set_data_buffer("a", data_);
     query.submit();
     array.close();
   }
@@ -80,7 +80,7 @@ class Benchmark : public BenchmarkBase {
     Query query(ctx_, array);
     query.set_subarray({1u, array_rows, 1u, array_cols})
         .set_layout(TILEDB_ROW_MAJOR)
-        .set_buffer("a", data_);
+        .set_data_buffer("a", data_);
     query.submit();
     array.close();
   }

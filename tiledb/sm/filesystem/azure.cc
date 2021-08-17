@@ -32,7 +32,7 @@
 
 #ifdef HAVE_AZURE
 
-#if defined(_WIN32)
+#if !defined(NOMINMAX)
 #define NOMINMAX  // avoid min/max macros from windows headers
 #endif
 
@@ -92,6 +92,13 @@ Status Azure::init(const Config& config, ThreadPool* const thread_pool) {
     account_key = std::string(getenv("AZURE_STORAGE_KEY"));
   }
 
+  std::string sas_token = config.get("vfs.azure.storage_sas_token", &found);
+  assert(found);
+  if (sas_token.empty() &&
+      ((tmp = getenv("AZURE_STORAGE_SAS_TOKEN")) != NULL)) {
+    sas_token = std::string(getenv("AZURE_STORAGE_SAS_TOKEN"));
+  }
+
   std::string blob_endpoint = config.get("vfs.azure.blob_endpoint", &found);
   assert(found);
   if (blob_endpoint.empty() &&
@@ -121,15 +128,17 @@ Status Azure::init(const Config& config, ThreadPool* const thread_pool) {
 
   write_cache_max_size_ = max_parallel_ops_ * block_list_block_size_;
 
-  // The Azurite default test account name is 'devstoreaccount1'. If this
-  // is the account name, we must flag the credential constructor that
-  // it must authenticate with a storage emulator instead of a production
-  // instance of Azure.
-  const bool under_test = account_name == "devstoreaccount1" ? true : false;
-
-  std::shared_ptr<azure::storage_lite::shared_key_credential> credential =
+  // Initialize a credential object
+  std::shared_ptr<azure::storage_lite::storage_credential> credential =
       std::make_shared<azure::storage_lite::shared_key_credential>(
-          account_name, account_key, under_test);
+          account_name, account_key);
+
+  // Use the SAS token, if provided.
+  if (!sas_token.empty()) {
+    // clang-format off
+    credential = std::make_shared<azure::storage_lite::shared_access_signature_credential>(sas_token);
+    // clang-format on
+  }
 
   std::shared_ptr<azure::storage_lite::storage_account> account =
       std::make_shared<azure::storage_lite::storage_account>(

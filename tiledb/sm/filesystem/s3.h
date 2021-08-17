@@ -34,7 +34,6 @@
 #define TILEDB_S3_H
 
 #ifdef HAVE_S3
-#include "tiledb/common/logger.h"
 #include "tiledb/common/rwlock.h"
 #include "tiledb/common/status.h"
 #include "tiledb/common/thread_pool.h"
@@ -43,6 +42,7 @@
 #include "tiledb/sm/filesystem/s3_thread_pool_executor.h"
 #include "tiledb/sm/misc/constants.h"
 #include "tiledb/sm/misc/uri.h"
+#include "tiledb/sm/stats/global_stats.h"
 #include "tiledb/sm/stats/stats.h"
 
 #include <aws/core/Aws.h>
@@ -56,6 +56,7 @@
 #include <aws/core/utils/UUID.h>
 #include <aws/core/utils/memory/stl/AWSStringStream.h>
 #include <aws/core/utils/ratelimiter/DefaultRateLimiter.h>
+#include <aws/core/utils/stream/PreallocatedStreamBuf.h>
 #include <aws/core/utils/threading/Executor.h>
 #include <aws/identity-management/auth/STSAssumeRoleCredentialsProvider.h>
 #include <aws/s3/S3Client.h>
@@ -97,6 +98,9 @@ class S3 {
   /** Destructor. */
   ~S3();
 
+  DISABLE_COPY_AND_COPY_ASSIGN(S3);
+  DISABLE_MOVE_AND_MOVE_ASSIGN(S3);
+
   /* ********************************* */
   /*                 API               */
   /* ********************************* */
@@ -104,11 +108,15 @@ class S3 {
   /**
    * Initializes and connects an S3 client.
    *
+   * @param parent_stats The parent stats.
    * @param config Configuration parameters.
    * @param thread_pool The parent VFS thread pool.
    * @return Status
    */
-  Status init(const Config& config, ThreadPool* thread_pool);
+  Status init(
+      stats::Stats* parent_stats,
+      const Config& config,
+      ThreadPool* thread_pool);
 
   /**
    * Creates a bucket.
@@ -352,8 +360,12 @@ class S3 {
   class S3RetryStrategy : public Aws::Client::RetryStrategy {
    public:
     /** Constructor. */
-    S3RetryStrategy(const uint64_t max_retries, const uint64_t scale_factor)
-        : max_retries_(max_retries)
+    S3RetryStrategy(
+        stats::Stats* const s3_stats,
+        const uint64_t max_retries,
+        const uint64_t scale_factor)
+        : s3_stats_(s3_stats)
+        , max_retries_(max_retries)
         , scale_factor_(scale_factor) {
     }
 
@@ -375,8 +387,7 @@ class S3 {
           return false;
         }
 
-        STATS_ADD_COUNTER(
-            stats::Stats::CounterType::VFS_S3_SLOW_DOWN_RETRIES, 1)
+        s3_stats_->add_counter("vfs_s3_slow_down_retries", 1);
 
         return true;
       }
@@ -410,6 +421,9 @@ class S3 {
     }
 
    private:
+    /** The S3 `stats_`. */
+    stats::Stats* s3_stats_;
+
     /** The maximum number of retries after an error. */
     uint64_t max_retries_;
 
@@ -508,9 +522,38 @@ class S3 {
     mutable std::mutex mtx;
   };
 
+  /**
+   * Used to stream results from the GetObject request into
+   * a pre-allocated buffer.
+   */
+  class PreallocatedIOStream : public Aws::IOStream {
+   public:
+    /**
+     * Value constructor. Does not take ownership of the
+     * input buffer.
+     *
+     * @param buffer The pre-allocated underlying buffer.
+     * @param size The maximum size of the underlying buffer.
+     */
+    PreallocatedIOStream(void* const buffer, const size_t size)
+        : Aws::IOStream(new Aws::Utils::Stream::PreallocatedStreamBuf(
+              reinterpret_cast<unsigned char*>(buffer), size)) {
+    }
+
+    /** Destructor. */
+    ~PreallocatedIOStream() {
+      // Delete the unmanaged `Aws::Utils::Stream::PreallocatedStreamBuf`
+      // that was allocated in the constructor.
+      delete rdbuf();
+    }
+  };
+
   /* ********************************* */
   /*         PRIVATE ATTRIBUTES        */
   /* ********************************* */
+
+  /** The class stats. */
+  stats::Stats* stats_;
 
   /** The current state. */
   State state_;
@@ -520,6 +563,10 @@ class S3 {
    * functions can call init_client().
    */
   mutable tdb_shared_ptr<Aws::S3::S3Client> client_;
+
+  /** The AWS credetial provider. */
+  mutable tdb_shared_ptr<Aws::Auth::AWSCredentialsProvider>
+      credentials_provider_;
 
   /**
    * Mutex protecting client initialization. This is mutable so that nominally
@@ -581,6 +628,12 @@ class S3 {
 
   /** Protects file_buffers map */
   std::mutex file_buffers_mtx_;
+
+  /** If !NOT_SET assign to object requests supporting SetACL() */
+  Aws::S3::Model::ObjectCannedACL object_canned_acl_;
+
+  /** If !NOT_SET assign to bucket requests supporting SetACL() */
+  Aws::S3::Model::BucketCannedACL bucket_canned_acl_;
 
   /* ********************************* */
   /*          PRIVATE METHODS          */

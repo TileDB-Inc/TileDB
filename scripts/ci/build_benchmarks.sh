@@ -48,7 +48,7 @@ int main(int argc, char **argv) {
 }
 EOF
 export TESTFILE_LDFLAGS="-ltiledb"
-export LD_LIBRARY_PATH=$GITHUB_WORKSPACE/dist/lib:/usr/local/lib:$LD_LIBRARY_PATH
+export LD_LIBRARY_PATH=$GITHUB_WORKSPACE/dist/lib:/usr/local/lib:${LD_LIBRARY_PATH:-}
 $CXX -std=c++11 -g -O0 -Wall -Werror -I$GITHUB_WORKSPACE/dist/include -L$GITHUB_WORKSPACE/dist/lib $testfile -o $testfile.exe $TESTFILE_LDFLAGS && \
 $testfile.exe && \
 rm -f $testfile $testfile.exe

@@ -34,6 +34,7 @@
 #define TILEDB_THREAD_POOL_H
 
 #include <condition_variable>
+#include <functional>
 #include <mutex>
 #include <stack>
 #include <thread>
@@ -41,7 +42,6 @@
 #include <unordered_set>
 #include <vector>
 
-#include "tiledb/common/logger.h"
 #include "tiledb/common/macros.h"
 #include "tiledb/common/status.h"
 

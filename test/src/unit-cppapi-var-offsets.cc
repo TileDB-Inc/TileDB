@@ -71,9 +71,10 @@ void write_sparse_array(
   Array array(ctx, array_name, TILEDB_WRITE);
   Query query(ctx, array, TILEDB_WRITE);
   query.set_layout(layout);
-  query.set_buffer("d1", d1);
-  query.set_buffer("d2", d2);
-  query.set_buffer("attr", data_offsets, data);
+  query.set_data_buffer("d1", d1);
+  query.set_data_buffer("d2", d2);
+  query.set_data_buffer("attr", data);
+  query.set_offsets_buffer("attr", data_offsets);
   CHECK_NOTHROW(query.submit());
 
   // Finalize is necessary in global writes, otherwise a no-op
@@ -94,14 +95,13 @@ void write_sparse_array(
   Array array(ctx, array_name, TILEDB_WRITE);
   Query query(ctx, array, TILEDB_WRITE);
   query.set_layout(layout);
-  query.set_buffer("d1", d1);
-  query.set_buffer("d2", d2);
-  query.set_buffer(
+  query.set_data_buffer("d1", d1);
+  query.set_data_buffer("d2", d2);
+  query.set_data_buffer("attr", data.data(), data.size());
+  query.set_offsets_buffer(
       "attr",
       reinterpret_cast<uint64_t*>(data_offsets.data()),
-      data_offsets.size(),
-      data.data(),
-      data.size());
+      data_offsets.size());
   CHECK_NOTHROW(query.submit());
 
   // Finalize is necessary in global writes, otherwise a no-op
@@ -121,7 +121,8 @@ void read_and_check_sparse_array(
   std::vector<int32_t> attr_val(expected_data.size());
   std::vector<uint64_t> attr_off(expected_offsets.size());
 
-  query.set_buffer("attr", attr_off, attr_val);
+  query.set_data_buffer("attr", attr_val);
+  query.set_offsets_buffer("attr", attr_off);
 
   CHECK_NOTHROW(query.submit());
 
@@ -144,12 +145,9 @@ void read_and_check_sparse_array(
   std::vector<uint32_t> attr_off(expected_offsets.size());
   // Read using a 32-bit vector, but cast it to 64-bit pointer so that the API
   // accepts it
-  query.set_buffer(
-      "attr",
-      reinterpret_cast<uint64_t*>(attr_off.data()),
-      attr_off.size(),
-      attr_val.data(),
-      attr_val.size());
+  query.set_data_buffer("attr", attr_val.data(), attr_val.size());
+  query.set_offsets_buffer(
+      "attr", reinterpret_cast<uint64_t*>(attr_off.data()), attr_off.size());
   CHECK_NOTHROW(query.submit());
 
   // Check the element offsets are properly returned
@@ -179,7 +177,8 @@ void partial_read_and_check_sparse_array(
 
   Array array(ctx, array_name, TILEDB_READ);
   Query query(ctx, array, TILEDB_READ);
-  query.set_buffer("attr", attr_off, attr_val);
+  query.set_data_buffer("attr", attr_val);
+  query.set_offsets_buffer("attr", attr_off);
 
   // Check that first partial read returns expected results
   CHECK_NOTHROW(query.submit());
@@ -236,14 +235,20 @@ void write_dense_array(
 
   if (config != nullptr) {
     query.set_config(*config);
+
+    // Validate we can retrieve set config
+    Config config2 = query.config();
+    bool same = *config == config2;
+    CHECK(same == true);
   }
 
-  query.set_buffer("attr", data_offsets, data);
+  query.set_data_buffer("attr", data);
+  query.set_offsets_buffer("attr", data_offsets);
   query.set_layout(layout);
   if (layout == TILEDB_UNORDERED) {
     // sparse write to dense array
-    query.set_buffer("d1", d1);
-    query.set_buffer("d2", d2);
+    query.set_data_buffer("d1", d1);
+    query.set_data_buffer("d2", d2);
   } else {
     query.set_subarray<int64_t>({1, 2, 1, 2});
   }
@@ -271,21 +276,25 @@ void write_dense_array(
 
   if (config != nullptr) {
     query.set_config(*config);
+
+    // Validate we can retrieve set config
+    Config config2 = query.config();
+    bool same = *config == config2;
+    CHECK(same == true);
   }
 
   // Write using a 32-bit vector, but cast it to 64-bit pointer so that the API
   // accepts it
-  query.set_buffer(
+  query.set_data_buffer("attr", data.data(), data.size());
+  query.set_offsets_buffer(
       "attr",
       reinterpret_cast<uint64_t*>(data_offsets.data()),
-      data_offsets.size(),
-      data.data(),
-      data.size());
+      data_offsets.size());
   query.set_layout(layout);
   if (layout == TILEDB_UNORDERED) {
     // sparse write to dense array
-    query.set_buffer("d1", d1);
-    query.set_buffer("d2", d2);
+    query.set_data_buffer("d1", d1);
+    query.set_data_buffer("d2", d2);
   } else {
     query.set_subarray<int64_t>({1, 2, 1, 2});
   }
@@ -308,12 +317,18 @@ void read_and_check_dense_array(
 
   if (config != nullptr) {
     query.set_config(*config);
+
+    // Validate we can retrieve set config
+    Config config2 = query.config();
+    bool same = *config == config2;
+    CHECK(same == true);
   }
 
   std::vector<int32_t> attr_val(expected_data.size());
   std::vector<uint64_t> attr_off(expected_offsets.size());
   query.set_subarray<int64_t>({1, 2, 1, 2});
-  query.set_buffer("attr", attr_off, attr_val);
+  query.set_data_buffer("attr", attr_val);
+  query.set_offsets_buffer("attr", attr_off);
   CHECK_NOTHROW(query.submit());
 
   // Check the element offsets are properly returned
@@ -334,6 +349,11 @@ void read_and_check_dense_array(
 
   if (config != nullptr) {
     query.set_config(*config);
+
+    // Validate we can retrieve set config
+    Config config2 = query.config();
+    bool same = *config == config2;
+    CHECK(same == true);
   }
 
   std::vector<int32_t> attr_val(expected_data.size());
@@ -341,12 +361,9 @@ void read_and_check_dense_array(
   query.set_subarray<int64_t>({1, 2, 1, 2});
   // Read using a 32-bit vector, but cast it to 64-bit pointer so that the API
   // accepts it
-  query.set_buffer(
-      "attr",
-      reinterpret_cast<uint64_t*>(attr_off.data()),
-      attr_off.size(),
-      attr_val.data(),
-      attr_val.size());
+  query.set_data_buffer("attr", attr_val.data(), attr_val.size());
+  query.set_offsets_buffer(
+      "attr", reinterpret_cast<uint64_t*>(attr_off.data()), attr_off.size());
   CHECK_NOTHROW(query.submit());
 
   // Check the element offsets are properly returned
@@ -371,7 +388,8 @@ void partial_read_and_check_dense_array(
   Array array(ctx, array_name, TILEDB_READ);
   Query query(ctx, array, TILEDB_READ);
   query.set_subarray<int64_t>({1, 2, 1, 2});
-  query.set_buffer("attr", attr_off, attr_val);
+  query.set_data_buffer("attr", attr_val);
+  query.set_offsets_buffer("attr", attr_off);
 
   // Check that first partial read returns expected results
   CHECK_NOTHROW(query.submit());
@@ -388,7 +406,7 @@ void partial_read_and_check_dense_array(
 
 TEST_CASE(
     "C++ API: Test element offsets : sparse array",
-    "[var-offsets][element-offset]") {
+    "[var-offsets][element-offset][sparse]") {
   std::string array_name = "test_element_offset";
   create_sparse_array(array_name);
 
@@ -440,7 +458,7 @@ TEST_CASE(
 
 TEST_CASE(
     "C++ API: Test element offsets : dense array",
-    "[var-offsets][element-offset]") {
+    "[var-offsets][element-offset][dense]") {
   std::string array_name = "test_element_offset";
   create_dense_array(array_name);
 
@@ -501,7 +519,7 @@ TEST_CASE(
 
 TEST_CASE(
     "C++ API: Test offsets extra element: sparse array",
-    "[var-offsets][extra-offset]") {
+    "[var-offsets][extra-offset][sparse]") {
   std::string array_name = "test_extra_offset";
   create_sparse_array(array_name);
 
@@ -570,16 +588,18 @@ TEST_CASE(
         std::vector<int64_t> d2 = {2, 1, 3, 4};
         Query query_w(ctx, array_w, TILEDB_WRITE);
         query_w.set_layout(TILEDB_UNORDERED)
-            .set_buffer("d1", d1)
-            .set_buffer("d2", d2);
+            .set_data_buffer("d1", d1)
+            .set_data_buffer("d2", d2);
 
         // Try to write without allocating memory for the extra element
-        query_w.set_buffer("attr", data_offsets, data);
+        query_w.set_data_buffer("attr", data);
+        query_w.set_offsets_buffer("attr", data_offsets);
         CHECK_THROWS(query_w.submit());
 
         // Write data with extra element
         data_offsets.push_back(sizeof(data[0]) * data.size());
-        query_w.set_buffer("attr", data_offsets, data);
+        query_w.set_data_buffer("attr", data);
+        query_w.set_offsets_buffer("attr", data_offsets);
         CHECK_NOTHROW(query_w.submit());
         array_w.close();
 
@@ -590,7 +610,8 @@ TEST_CASE(
         // Assume no size for the extra element
         std::vector<int32_t> attr_val(data.size());
         std::vector<uint64_t> attr_off(data_offsets.size() - 1);
-        query_r.set_buffer("attr", attr_off, attr_val);
+        query_r.set_data_buffer("attr", attr_val);
+        query_r.set_offsets_buffer("attr", attr_off);
 
         // First partial read because offsets don't fit
         CHECK_NOTHROW(query_r.submit());
@@ -605,6 +626,12 @@ TEST_CASE(
         CHECK(offset_num == 3);
         std::vector<uint64_t> data_off_exp1 = {0, 4, 12, 0};
         CHECK(attr_off == data_off_exp1);
+
+        // check returned data with nullable API
+        auto result_els = query_r.result_buffer_elements_nullable()["attr"];
+        CHECK(std::get<0>(result_els) == 3);
+        CHECK(std::get<1>(result_els) == 3);
+        CHECK(std::get<2>(result_els) == 0);
 
         // Second partial read
         reset_read_buffers(attr_val, attr_off);
@@ -739,7 +766,8 @@ TEST_CASE(
         // Assume no size for the extra element
         std::vector<int32_t> attr_val(data_part1.size());
         std::vector<uint64_t> attr_off(data_off_part1.size());
-        query.set_buffer("attr", attr_off, attr_val);
+        query.set_data_buffer("attr", attr_val);
+        query.set_offsets_buffer("attr", attr_off);
 
         // First partial read
         CHECK_NOTHROW(query.submit());
@@ -813,7 +841,7 @@ TEST_CASE(
 
 TEST_CASE(
     "C++ API: Test offsets extra element: dense array",
-    "[var-offsets][extra-offset]") {
+    "[var-offsets][extra-offset][dense]") {
   std::string array_name = "test_extra_offset";
   create_dense_array(array_name);
 
@@ -895,12 +923,14 @@ TEST_CASE(
             .set_subarray<int64_t>({1, 2, 1, 2});
 
         // Try to write without allocating memory for the extra element
-        query_w.set_buffer("attr", element_offsets, data);
+        query_w.set_data_buffer("attr", data);
+        query_w.set_offsets_buffer("attr", element_offsets);
         CHECK_THROWS(query_w.submit());
 
         // Write data with extra element
         element_offsets.push_back(data.size());
-        query_w.set_buffer("attr", element_offsets, data);
+        query_w.set_data_buffer("attr", data);
+        query_w.set_offsets_buffer("attr", element_offsets);
         CHECK_NOTHROW(query_w.submit());
         array_w.close();
 
@@ -911,7 +941,8 @@ TEST_CASE(
         // Assume no size for the extra element
         std::vector<int32_t> attr_val(data.size());
         std::vector<uint64_t> attr_off(element_offsets.size() - 1);
-        query_r.set_buffer("attr", attr_off, attr_val);
+        query_r.set_data_buffer("attr", attr_val);
+        query_r.set_offsets_buffer("attr", attr_off);
         query_r.set_subarray<int64_t>({1, 2, 1, 2});
 
         // First partial read because offsets don't fit
@@ -1083,7 +1114,8 @@ TEST_CASE(
         // Assume smaller offset buffer than data buffer
         std::vector<int32_t> attr_val(data_part1.size());
         std::vector<uint64_t> attr_off(data_off_part1.size());
-        query.set_buffer("attr", attr_off, attr_val);
+        query.set_data_buffer("attr", attr_val);
+        query.set_offsets_buffer("attr", attr_off);
         query.set_subarray<int64_t>({1, 2, 1, 2});
 
         // First partial read
@@ -1158,7 +1190,7 @@ TEST_CASE(
 
 TEST_CASE(
     "C++ API: Test 32-bit offsets: sparse array",
-    "[var-offsets][32bit-offset]") {
+    "[var-offsets][32bit-offset][sparse]") {
   std::string array_name = "test_32bit_offset";
   create_sparse_array(array_name);
 
@@ -1238,7 +1270,7 @@ TEST_CASE(
 
 TEST_CASE(
     "C++ API: Test 32-bit offsets: dense array",
-    "[var-offsets][32bit-offset]") {
+    "[var-offsets][32bit-offset][dense]") {
   std::string array_name = "test_32bit_offset";
   create_dense_array(array_name);
 
@@ -1355,7 +1387,7 @@ TEST_CASE(
 
 TEST_CASE(
     "C++ API: Test 32-bit offsets: sparse array with string dimension",
-    "[var-offsets-dim][32bit-offset]") {
+    "[var-offsets-dim][32bit-offset][sparse]") {
   std::string array_name = "test_32bit_offset_string_dim";
 
   /*
@@ -1382,12 +1414,9 @@ TEST_CASE(
 
     auto array = tiledb::Array(ctx, array_name, TILEDB_WRITE);
     Query query(ctx, array, TILEDB_WRITE);
-    query.set_buffer(
-        "dim1",
-        data_elem_offsets.data(),
-        data_elem_offsets.size(),
-        (char*)data.data(),
-        data.size());
+    query.set_data_buffer("dim1", (char*)data.data(), data.size());
+    query.set_offsets_buffer(
+        "dim1", data_elem_offsets.data(), data_elem_offsets.size());
 
     query.set_layout(TILEDB_UNORDERED);
     query.submit();
@@ -1410,12 +1439,9 @@ TEST_CASE(
     auto array = tiledb::Array(ctx, array_name, TILEDB_READ);
     Query query(ctx, array, TILEDB_READ);
     query.add_range(0, std::string("aa"), std::string("dddd"));
-    query.set_buffer(
-        "dim1",
-        (uint64_t*)offsets_back.data(),
-        offsets_back.size(),
-        (char*)data_back.data(),
-        data_back.size());
+    query.set_data_buffer("dim1", (char*)data_back.data(), data_back.size());
+    query.set_offsets_buffer(
+        "dim1", (uint64_t*)offsets_back.data(), offsets_back.size());
 
     query.submit();
 

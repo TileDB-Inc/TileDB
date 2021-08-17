@@ -41,7 +41,6 @@ Configuration:
     --disable-werror                disables use of -Werror during build
     --disable-cpp-api               disables building of the TileDB C++ API
     --disable-tests                 disables building the TileDB tests
-    --disable-tbb                   disables use of TBB for parallelization
     --disable-stats                 disables internal TileDB statistics
     --disable-avx2                  disables use of AVX2 instructions
     --enable-static-tiledb          enables building TileDB as a static library
@@ -91,7 +90,6 @@ tiledb_werror="ON"
 tiledb_tests="ON"
 tiledb_cpp_api="ON"
 tiledb_force_all_deps="OFF"
-tiledb_tbb="OFF"
 tiledb_stats="ON"
 tiledb_static="OFF"
 tiledb_disable_avx2=""
@@ -110,7 +108,6 @@ while test $# != 0; do
     --disable-werror) tiledb_werror="OFF";;
     --disable-tests) tiledb_tests="OFF";;
     --disable-cpp-api) tiledb_cpp_api="OFF";;
-    --disable-tbb) tiledb_tbb="OFF";;
     --disable-stats) tiledb_stats="OFF";;
     --disable-avx2) tiledb_disable_avx2="-DCOMPILER_SUPPORTS_AVX2=FALSE";;
     --enable-static-tiledb) tiledb_static="ON";;
@@ -201,7 +198,6 @@ ${cmake} -DCMAKE_BUILD_TYPE=${build_type} \
     -DTILEDB_TOOLS=${tiledb_tools} \
     -DTILEDB_WERROR=${tiledb_werror} \
     -DTILEDB_CPP_API=${tiledb_cpp_api} \
-    -DTILEDB_TBB=${tiledb_tbb} \
     -DTILEDB_STATS=${tiledb_stats} \
     -DTILEDB_STATIC=${tiledb_static} \
     -DTILEDB_TESTS=${tiledb_tests} \

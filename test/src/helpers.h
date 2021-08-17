@@ -39,6 +39,7 @@
 #include "tiledb/sm/cpp_api/tiledb"
 #include "tiledb/sm/enums/layout.h"
 #include "tiledb/sm/enums/serialization_type.h"
+#include "tiledb/sm/stats/stats.h"
 #include "tiledb/sm/subarray/subarray.h"
 #include "tiledb_serialization.h"
 
@@ -72,6 +73,11 @@ class SubarrayPartitioner;
 
 namespace test {
 
+// A dummy `Stats` instance. This is useful for constructing
+// objects that require a parent `Stats` object. These stats are
+// never used.
+static tiledb::sm::stats::Stats g_helper_stats("test");
+
 // For easy reference
 typedef std::pair<tiledb_filter_type_t, int> Compressor;
 template <class T>
@@ -102,6 +108,13 @@ struct QueryBuffer {
 typedef std::map<std::string, QueryBuffer> QueryBuffers;
 
 /**
+ * Get the config for using the refactored readers.
+ *
+ * @return Using the refactored readers or not.
+ */
+bool use_refactored_readers();
+
+/**
  * Checks that the input partitioner produces the input partitions
  * (i.e., subarrays).
  *
@@ -113,23 +126,6 @@ typedef std::map<std::string, QueryBuffer> QueryBuffers;
 template <class T>
 void check_partitions(
     tiledb::sm::SubarrayPartitioner& partitioner,
-    const std::vector<SubarrayRanges<T>>& partitions,
-    bool last_unsplittable);
-
-#if DEVING_SUBARRAY_PARTITIONER_STORY5342
-/**
- * Checks that the capi input partitioner produces the input partitions
- * (i.e., subarrays).
- *
- * @tparam T The datatype of the subarray of the partitioner.
- * @param partitioner The capi partitioner.
- * @param partitions The ranges to be checked.
- * @param last_unsplittable Whether the last partition is unsplittable.
- */
-template <class T>
-void check_partitions(
-    tiledb_ctx_t* ctx,
-    tiledb_subarray_partitioner_t* partitioner,
     const std::vector<SubarrayRanges<T>>& partitions,
     bool last_unsplittable,
     tiledb_subarray_t* retrieve_partition_subarray);

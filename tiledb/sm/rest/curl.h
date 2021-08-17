@@ -35,6 +35,9 @@
 
 #ifdef TILEDB_SERIALIZATION
 
+#if !defined(NOMINMAX)
+#define NOMINMAX  // curl may include windows headers
+#endif
 #include <curl/curl.h>
 #include <cstdlib>
 #include <functional>
@@ -46,6 +49,7 @@
 #include "tiledb/sm/buffer/buffer_list.h"
 #include "tiledb/sm/config/config.h"
 #include "tiledb/sm/enums/serialization_type.h"
+#include "tiledb/sm/stats/stats.h"
 
 using namespace tiledb::common;
 
@@ -95,6 +99,12 @@ class Curl {
   /** Constructor. */
   Curl();
 
+  /** Destructor. */
+  ~Curl() = default;
+
+  DISABLE_COPY_AND_COPY_ASSIGN(Curl);
+  DISABLE_MOVE_AND_MOVE_ASSIGN(Curl);
+
   /**
    * Initializes the class.
    *
@@ -123,6 +133,7 @@ class Curl {
    * Wrapper for posting data to server and returning
    * the unbuffered response body.
    *
+   * @param stats The stats instance to record into
    * @param url URL to post to
    * @param serialization_type Serialization type to use
    * @param data Encoded data buffer for posting
@@ -131,6 +142,7 @@ class Curl {
    * @return Status
    */
   Status post_data(
+      stats::Stats* stats,
       const std::string& url,
       SerializationType serialization_type,
       const BufferList* data,
@@ -156,17 +168,21 @@ class Curl {
    * Wrapper for posting data to server and returning
    * a buffered response body.
    *
+   * @param stats The stats instance to record into
    * @param url URL to post to
    * @param serialization_type Serialization type to use
    * @param data Encoded data buffer for posting
+   * @param returned_data Buffer to store response data
    * @param write_cb Invoked as response body buffers are received.
    * @param res_ns_uri Array Namespace and URI
    * @return Status
    */
   Status post_data(
+      stats::Stats* stats,
       const std::string& url,
       SerializationType serialization_type,
       const BufferList* data,
+      Buffer* returned_data,
       PostResponseCb&& write_cb,
       const std::string& res_ns_uri);
 
@@ -188,6 +204,7 @@ class Curl {
   /**
    * Simple wrapper for getting data from server
    *
+   * @param stats The stats instance to record into
    * @param url URL to get
    * @param serialization_type Serialization type to use
    * @param returned_data Buffer to store response data
@@ -195,6 +212,7 @@ class Curl {
    * @return Status
    */
   Status get_data(
+      stats::Stats* stats,
       const std::string& url,
       SerializationType serialization_type,
       Buffer* returned_data,
@@ -203,6 +221,7 @@ class Curl {
   /**
    * Simple wrapper for sending delete requests to server
    *
+   * @param stats The stats instance to record into
    * @param config TileDB config storing server/auth information
    * @param url URL to delete
    * @param serialization_type Serialization type to use
@@ -211,6 +230,7 @@ class Curl {
    * @return Status
    */
   Status delete_data(
+      stats::Stats* stats,
       const std::string& url,
       SerializationType serialization_type,
       Buffer* returned_data,
@@ -267,29 +287,38 @@ class Curl {
    * Makes the configured curl request to the given URL, storing response data
    * in the given buffer.
    *
+   * @param stats The stats instance to record into
    * @param url URL to fetch
    * @param curl_code Set to the return value of the curl call
    * @param returned_data Buffer that will store the response data
    * @return Status
    */
   Status make_curl_request(
-      const char* url, CURLcode* curl_code, Buffer* returned_data) const;
+      stats::Stats* const stats,
+      const char* url,
+      CURLcode* curl_code,
+      Buffer* returned_data) const;
 
   /**
    * Makes the configured curl request to the given URL, writing partial
    * response data to the 'cb' callback as the response is received.
    *
+   * @param stats The stats instance to record into
    * @param url URL to fetch
    * @param curl_code Set to the return value of the curl call
    * @param write_cb Callback to invoke as response data is received
    * @return Status
    */
   Status make_curl_request(
-      const char* url, CURLcode* curl_code, PostResponseCb&& write_cb) const;
+      stats::Stats* stats,
+      const char* url,
+      CURLcode* curl_code,
+      PostResponseCb&& write_cb) const;
 
   /**
    * Common code shared between variants of 'make_curl_request'.
    *
+   * @param stats The stats instance to record into
    * @param url URL to fetch
    * @param curl_code Set to the return value of the curl call
    * @param write_cb Callback to invoke as response data is received.
@@ -297,6 +326,7 @@ class Curl {
    * @return Status
    */
   Status make_curl_request_common(
+      stats::Stats* stats,
       const char* url,
       CURLcode* curl_code,
       size_t (*write_cb)(void*, size_t, size_t, void*),

@@ -1,57 +1,247 @@
-# In Progress
+# TileDB v2.3.3 Release Notes
+
+## Improvements
+
+* Increase REST (TileDB Cloud) retry count from 3 to 25 to be inline with S3/GCS retry times [#2421](https://github.com/TileDB-Inc/TileDB/pull/2421)
+* Avoid unnecessary `est_result_size` computation in `must_split` [#2431](https://github.com/TileDB-Inc/TileDB/pull/2431)
+* Use newer Azure patch for all platforms to solve missing header error [#2433](https://github.com/TileDB-Inc/TileDB/pull/2433)
+
+## Bug fixes
+
+* Fix c-api error paths always resetting any alloced pointers to nullptr in-addition to deleting [#2427](https://github.com/TileDB-Inc/TileDB/pull/2427)
+
+# TileDB v2.3.2 Release Notes
+
+## Improvements
+* Support more env selectable options in both azure-windows.yml and azure-windows-release.yml [#2384](https://github.com/TileDB-Inc/TileDB/pull/2384)
+* Enable Azure/Serialization for windows CI artifacts [#2400](https://github.com/TileDB-Inc/TileDB/pull/2400)
+
+## Bug fixes
+* Correct check for last offset position so that undefined memory is not accessed. [#2390](https://github.com/TileDB-Inc/TileDB/pull/2390)
+* Fix ch8416, failure to read array written with tiledb 2.2 via REST [#2404](https://github.com/TileDB-Inc/TileDB/pull/2404)
+* Fix ch7582: use the correct buffer for validity deserialization [#2407](https://github.com/TileDB-Inc/TileDB/pull/2407)
+
+# TileDB v2.3.1 Release Notes
+
+## Improvements
+* Update bzip2 in windows build to 1.0.8 [#2332](https://github.com/TileDB-Inc/TileDB/pull/2332)
+* Fixing S3 build for OSX11 [#2339](https://github.com/TileDB-Inc/TileDB/pull/2339)
+* Fixing possible overflow in Dimension::tile_num [#2265](https://github.com/TileDB-Inc/TileDB/pull/2265)
+* Fixing tile extent calculations for signed integer domains [#2303](https://github.com/TileDB-Inc/TileDB/pull/2303)
+* Add support for cross compilation on OSX in superbuild [#2354](https://github.com/TileDB-Inc/TileDB/pull/2354)
+* Remove curl link args for cross compilation [#2359](https://github.com/TileDB-Inc/TileDB/pull/2359)
+* Enable MacOS arm64 release artifacts [#2360](https://github.com/TileDB-Inc/TileDB/pull/2360)
+* Add more stats for \`compute_result_coords\` path [#2366](https://github.com/TileDB-Inc/TileDB/pull/2366)
+* Support credentials refresh for AWS [#2376](https://github.com/TileDB-Inc/TileDB/pull/2376)
+
+## Bug fixes
+* Fixing intermittent metadata test failure [#2338](https://github.com/TileDB-Inc/TileDB/pull/2338)
+* Fix query condition validation check for nullable attributes with null conditions [#2344](https://github.com/TileDB-Inc/TileDB/pull/2344)
+* Multi-range single dimension query fix [#2347](https://github.com/TileDB-Inc/TileDB/pull/2347)
+* Rewrite `Dimension::overlap_ratio` [#2304](https://github.com/TileDB-Inc/TileDB/pull/2304)
+* Follow up fixes to floating point calculations for tile extents [#2341](https://github.com/TileDB-Inc/TileDB/pull/2341)
+* Fix for set_null_tile_extent_to_range [#2361](https://github.com/TileDB-Inc/TileDB/pull/2361)
+* Subarray partitioner, unordered should be unordered, even for Hilbert. [#2377](https://github.com/TileDB-Inc/TileDB/pull/2377)
+
+# TileDB v2.3.0 Release Notes
 
 ## Disk Format
 * Format version incremented to 9. [#2108](https://github.com/TileDB-Inc/TileDB/pull/2108)
 
-## Breaking C API changes
-
 ## Breaking behavior
+* The setting of \`sm.read_range_oob\` now defaults to \`warn\`, allowing queries to run with bounded ranges that errored before. [#2176](https://github.com/TileDB-Inc/TileDB/pull/2176)
+* Removes TBB as an optional dependency [#2181](https://github.com/TileDB-Inc/TileDB/pull/2181)
 
 ## New features
+* Support TILEDB_DATETIME_{SEC,MS,US,NS} in arrow_io_impl.h [#2228](https://github.com/TileDB-Inc/TileDB/pull/2228)
+* Adds support for filtering query results on attribute values [#2141](https://github.com/TileDB-Inc/TileDB/pull/2141)
+* Adding support for time datatype dimension and attribute [#2140](https://github.com/TileDB-Inc/TileDB/pull/2140)
+* Add support for serialization of config objects [#2164](https://github.com/TileDB-Inc/TileDB/pull/2164)
+* Add C and C++ examples to the `examples/` directory for the `tiledb_fragment_info_t` APIs. [#2160](https://github.com/TileDB-Inc/TileDB/pull/2160)
 * supporting serialization (using capnproto) build on windows [#2100](https://github.com/TileDB-Inc/TileDB/pull/2100)
-* Config option vfs.s3.sse for S3 server-side encryption support [#2130](https://github.com/TileDB-Inc/TileDB/pull/2130)
+* Config option "vfs.s3.sse" for S3 server-side encryption support [#2130](https://github.com/TileDB-Inc/TileDB/pull/2130)
 * Name attribute/dimension files by index. This is fragment-specific and updates the format version to version 9. [#2107](https://github.com/TileDB-Inc/TileDB/pull/2107)
 * Smoke Test, remove nullable structs from global namespace. [#2078](https://github.com/TileDB-Inc/TileDB/pull/2078)
 
 ## Improvements
+* replace ReadFromOffset with ReadRange in GCS::read() to avoid excess gcs egress traffic [#2307](https://github.com/TileDB-Inc/TileDB/pull/2307)
+* Hilbert partitioning fixes [#2269](https://github.com/TileDB-Inc/TileDB/pull/2269)
+* Stats refactor [#2267](https://github.com/TileDB-Inc/TileDB/pull/2267)
+* Improve Cap'n Proto cmake setup for system installations [#2263](https://github.com/TileDB-Inc/TileDB/pull/2263)
+* Runtime check for minimum validity buffer size [#2261](https://github.com/TileDB-Inc/TileDB/pull/2261)
+* Enable partial vacuuming when vacuuming with timestamps [#2251](https://github.com/TileDB-Inc/TileDB/pull/2251)
+* Consolidation: de-dupe FragmentInfo [#2250](https://github.com/TileDB-Inc/TileDB/pull/2250)
+* Consolidation: consider non empty domain before start timestamp [#2248](https://github.com/TileDB-Inc/TileDB/pull/2248)
+* Add size details to s3 read error [#2249](https://github.com/TileDB-Inc/TileDB/pull/2249)
+* Consolidation: do not re-open array for each fragment [#2243](https://github.com/TileDB-Inc/TileDB/pull/2243)
+* Support back compat writes [#2230](https://github.com/TileDB-Inc/TileDB/pull/2230)
+* Serialization support for query conditions [#2240](https://github.com/TileDB-Inc/TileDB/pull/2240)
+* Make SubarrayPartitioner's member functions to return Status after calling Subarray::get_range_num. [#2235](https://github.com/TileDB-Inc/TileDB/pull/2235)
+* Update bzip2 super build version to 1.0.8 to address [CVE-2019-12900](https://nvd.nist.gov/vuln/detail/CVE-2019-12900) in libbzip2 [#2233](https://github.com/TileDB-Inc/TileDB/pull/2233)
+* Timestamp start and end for vacuuming and consolidation [#2227](https://github.com/TileDB-Inc/TileDB/pull/2227)
+* Fix memory leaks reported on ASAN when running with leak-detection. [#2223](https://github.com/TileDB-Inc/TileDB/pull/2223)
+* Use relative paths in consolidated fragment metadata [#2215](https://github.com/TileDB-Inc/TileDB/pull/2215)
+* Optimize `Subarray::compute_relevant_fragments` [#2216](https://github.com/TileDB-Inc/TileDB/pull/2216)
+* AWS S3: improve is_dir [#2209](https://github.com/TileDB-Inc/TileDB/pull/2209)
+* Add nullable string to nullable attribute example [#2212](https://github.com/TileDB-Inc/TileDB/pull/2212)
+* AWS S3: adding option to skip Aws::InitAPI [#2204](https://github.com/TileDB-Inc/TileDB/pull/2204)
+* Added additional stats for subarrays and subarray partitioners [#2200](https://github.com/TileDB-Inc/TileDB/pull/2200)
+* Introduces config parameter "sm.skip_est_size_partitioning" [#2203](https://github.com/TileDB-Inc/TileDB/pull/2203)
+* Add config to query serialization. [#2177](https://github.com/TileDB-Inc/TileDB/pull/2177)
+* Consolidation support for nullable attributes [#2196](https://github.com/TileDB-Inc/TileDB/pull/2196)
+* Adjust unit tests to reduce memory leaks inside the tests. [#2179](https://github.com/TileDB-Inc/TileDB/pull/2179)
+* Reduces memory usage in multi-range range reads [#2165](https://github.com/TileDB-Inc/TileDB/pull/2165)
+* Add config option \`sm.read_range_oob\` to toggle bounding read ranges to domain or erroring [#2162](https://github.com/TileDB-Inc/TileDB/pull/2162)
+* Windows msys2 build artifacts are no longer uploaded [#2159](https://github.com/TileDB-Inc/TileDB/pull/2159)
 * Add internal log functions to log at different log levels [#2161](https://github.com/TileDB-Inc/TileDB/pull/2161)
 * Parallelize Writer::filter_tiles [#2156](https://github.com/TileDB-Inc/TileDB/pull/2156)
-* Added config option vfs.gcs.request_timeout_ms [#2148](https://github.com/TileDB-Inc/TileDB/pull/2148)
+* Added config option "vfs.gcs.request_timeout_ms" [#2148](https://github.com/TileDB-Inc/TileDB/pull/2148)
 * Improve fragment info loading by parallelizing fragment_size requests [#2143](https://github.com/TileDB-Inc/TileDB/pull/2143)
 * Allow open array stats to be printed without read query [#2131](https://github.com/TileDB-Inc/TileDB/pull/2131)
 * Cleanup the GHA CI scripts - put common code into external shell scripts. [#2124](https://github.com/TileDB-Inc/TileDB/pull/2124)
 * Reduced memory consumption in the read path for multi-range reads. [#2118](https://github.com/TileDB-Inc/TileDB/pull/2118)
-* The latest version of  was leaving behind a . This ensures that the directory is removed when  is run. [#2113](https://github.com/TileDB-Inc/TileDB/pull/2113)
+* The latest version of `dev` was leaving behind a `test/empty_string3/`. This ensures that the directory is removed when `make check` is run. [#2113](https://github.com/TileDB-Inc/TileDB/pull/2113)
 * Migrating AZP CI to GA [#2111](https://github.com/TileDB-Inc/TileDB/pull/2111)
 * Cache non_empty_domain for REST arrays like all other arrays [#2105](https://github.com/TileDB-Inc/TileDB/pull/2105)
 * Add additional stats printing to breakdown read state initialization timings [#2095](https://github.com/TileDB-Inc/TileDB/pull/2095)
 * Places the in-memory filesystem under unit test [#1961](https://github.com/TileDB-Inc/TileDB/pull/1961)
 * Adds a Github Action to automate the HISTORY.md [#2075](https://github.com/TileDB-Inc/TileDB/pull/2075)
-* Improve GCS multipart locking [#2087](https://github.com/TileDB-Inc/TileDB/pull/2087)
-* Consolidation functions now use the ctx's config if not config is passed [#2126](https://github.com/TileDB-Inc/TileDB/pull/2126)
+* Change printfs in C++ examples to cout, edit C print statements to fix format warnings [#2226](https://github.com/TileDB-Inc/TileDB/pull/2226)
 
 ## Deprecations
+* The following APIs have been deprecated: `tiledb_array_open_at`, `tiledb_array_open_at_with_key`, `tiledb_array_reopen_at`. [#2142](https://github.com/TileDB-Inc/TileDB/pull/2142)
 
 ## Bug fixes
+* Fix a segfault on `VFS::ls` for the in-memory filesystem [#2255](https://github.com/TileDB-Inc/TileDB/pull/2255)
+* Fix rare read corruption in S3 [#2253](https://github.com/TileDB-Inc/TileDB/pull/2253)
+* Update some union initializers to use strict syntax [#2242](https://github.com/TileDB-Inc/TileDB/pull/2242)
+* Fix race within `S3::init_client` [#2247](https://github.com/TileDB-Inc/TileDB/pull/2247)
+* Expand accepted windows URIs. [#2237](https://github.com/TileDB-Inc/TileDB/pull/2237)
+* Write fix for unordered writes on nullable, fixed attributes. [#2241](https://github.com/TileDB-Inc/TileDB/pull/2241)
+* Fix tile extent to be reported as domain extent for sparse arrays with Hilbert ordering [#2231](https://github.com/TileDB-Inc/TileDB/pull/2231)
+* Do not consider option sm.read_range_oob for set_subarray() on Write queries [#2211](https://github.com/TileDB-Inc/TileDB/pull/2211)
+* Change avoiding generation of multiple, concatenated, subarray flattened data. [#2190](https://github.com/TileDB-Inc/TileDB/pull/2190)
+* Change mutex from basic to recursive [#2180](https://github.com/TileDB-Inc/TileDB/pull/2180)
+* Fixes a memory leak in the S3 read path [#2189](https://github.com/TileDB-Inc/TileDB/pull/2189)
+* Fixes a potential memory leak in the filter pipeline [#2185](https://github.com/TileDB-Inc/TileDB/pull/2185)
+* Fixes misc memory leaks in the unit tests [#2183](https://github.com/TileDB-Inc/TileDB/pull/2183)
+* Fix memory leak of \`tiledb_config_t\` in error path of \`tiledb_config_alloc\`. [#2178](https://github.com/TileDB-Inc/TileDB/pull/2178)
+* Fix check for null pointer in query deserialization [#2163](https://github.com/TileDB-Inc/TileDB/pull/2163)
 * Fixes a potential crash when retrying incomplete reads [#2137](https://github.com/TileDB-Inc/TileDB/pull/2137)
 * Fixes a potential crash when opening an array with consolidated fragment metadata [#2135](https://github.com/TileDB-Inc/TileDB/pull/2135)
 * Corrected a bug where sparse cells may be incorrectly returned using string dimensions. [#2125](https://github.com/TileDB-Inc/TileDB/pull/2125)
 * Fix segfault in serialized queries when partition is unsplittable [#2120](https://github.com/TileDB-Inc/TileDB/pull/2120)
 * Always use original buffer size in serialized read queries serverside. [#2115](https://github.com/TileDB-Inc/TileDB/pull/2115)
 * Fix an edge-case where a read query may hang on array with string dimensions [#2089](https://github.com/TileDB-Inc/TileDB/pull/2089)
-* Fix mutex locking bugs on Windows due to unlocking on different thread and missing task join [#2077](https://github.com/TileDB-Inc/TileDB/pull/2077)
-* Apply 'var_offsets.extra_element' mode to string dimension offsets too [#2145](https://github.com/TileDB-Inc/TileDB/pull/2145)
 
 ## API additions
 
 ### C API
-* Removes non-default parameter in tiledb_config_unset. [#2099](https://github.com/TileDB-Inc/TileDB/pull/2099)
+* Added tiledb_array_set_open_timestamp_start and tiledb_array_get_open_timestamp_start [#2285](https://github.com/TileDB-Inc/TileDB/pull/2285)
+* Added tiledb_array_set_open_timestamp_end and tiledb_array_get_open_timestamp_end [#2285](https://github.com/TileDB-Inc/TileDB/pull/2285)
+* Addition of `tiledb_array_set_config` to directly assign a config to an array. [#2142](https://github.com/TileDB-Inc/TileDB/pull/2142)
+* tiledb_query_get_array now returns a deep-copy [#2184](https://github.com/TileDB-Inc/TileDB/pull/2184)
+* Added \`tiledb_serialize_config\` and \`tiledb_deserialize_config\` [#2164](https://github.com/TileDB-Inc/TileDB/pull/2164)
+* Add new api, `tiledb_query_get_config` to get a query's config. [#2167](https://github.com/TileDB-Inc/TileDB/pull/2167)
+* Removes non-default parameter in "tiledb_config_unset". [#2099](https://github.com/TileDB-Inc/TileDB/pull/2099)
 
 ### C++ API
-* Removes non-default parameter in Config::unset. [#2099](https://github.com/TileDB-Inc/TileDB/pull/2099)
+* Added Array::set_open_timestamp_start and Array::open_timestamp_start [#2285](https://github.com/TileDB-Inc/TileDB/pull/2285)
+* Added Array::set_open_timestamp_end and Array::open_timestamp_end [#2285](https://github.com/TileDB-Inc/TileDB/pull/2285)
+* add Query::result_buffer_elements_nullable support for dims [#2238](https://github.com/TileDB-Inc/TileDB/pull/2238)
+* Addition of `tiledb_array_set_config` to directly assign a config to an array. [#2142](https://github.com/TileDB-Inc/TileDB/pull/2142)
+* Add new api, `Query.config()` to get a query's config. [#2167](https://github.com/TileDB-Inc/TileDB/pull/2167)
+* Removes non-default parameter in "Config::unset". [#2099](https://github.com/TileDB-Inc/TileDB/pull/2099)
 * Add support for a string-typed, variable-sized, nullable attribute in the C++ API. [#2090](https://github.com/TileDB-Inc/TileDB/pull/2090)
 
-* Add new Config constructors for converting from STL map types [#2081](https://github.com/TileDB-Inc/TileDB/pull/2081)
+# TileDB v2.2.9 Release Notes
+
+## Bug fixes
+* Fix rare read corruption in S3 [#2254](https://github.com/TileDB-Inc/TileDB/pull/2254)
+* Write fix for unordered writes on nullable, fixed attributes [#2241](https://github.com/TileDB-Inc/TileDB/pull/2241)
+
+# TileDB v2.2.8 Release Notes
+
+## Disk Format
+
+## Breaking C API changes
+
+## Breaking behavior
+
+## New features
+* Support TILEDB_DATETIME_{SEC,MS,US,NS} in arrow_io_impl.h [#2229](https://github.com/TileDB-Inc/TileDB/pull/2229)
+* Add support for serialization of config objects [#2164](https://github.com/TileDB-Inc/TileDB/pull/2164)
+* Add support for serialization of query config [#2177](https://github.com/TileDB-Inc/TileDB/pull/2177)
+
+## Improvements
+* Optimize `Subarray::compute_relevant_fragments` [#2218](https://github.com/TileDB-Inc/TileDB/pull/2218)
+* Reduces memory usage in multi-range range reads [#2165](https://github.com/TileDB-Inc/TileDB/pull/2165)
+* Add config option `sm.read_range_oob` to toggle bounding read ranges to domain or erroring [#2162](https://github.com/TileDB-Inc/TileDB/pull/2162)
+* Updates bzip2 to v1.0.8 on Linux/OSX [#2233](https://github.com/TileDB-Inc/TileDB/pull/2233)
+
+## Deprecations
+
+## Bug fixes
+* Fixes a potential memory leak in the filter pipeline [#2185](https://github.com/TileDB-Inc/TileDB/pull/2185)
+* Fixes misc memory leaks in the unit tests [#2183](https://github.com/TileDB-Inc/TileDB/pull/2183)
+* Fix memory leak of `tiledb_config_t` in error path of `tiledb_config_alloc`. [#2178](https://github.com/TileDB-Inc/TileDB/pull/2178)
+
+## API additions
+
+### C API
+* tiledb_query_get_array now returns a deep-copy [#2188](https://github.com/TileDB-Inc/TileDB/pull/2188)
+* Add new api,`tiledb_query_get_config` to get a query's config. [#2167](https://github.com/TileDB-Inc/TileDB/pull/2167)
+* Added `tiledb_serialize_config` and `tiledb_deserialize_config` [#2164](https://github.com/TileDB-Inc/TileDB/pull/2164)
+
+### C++ API
+* Add new api, `Query.config()`  to get a query's config. [#2167](https://github.com/TileDB-Inc/TileDB/pull/2167)
+
+# TileDB v2.2.7 Release Notes
+
+## Improvements
+
+* Added config option vfs.gcs.request_timeout_ms [#2148](https://github.com/TileDB-Inc/TileDB/pull/2148)
+* Improve fragment info loading by parallelizing fragment_size requests [#2143](https://github.com/TileDB-Inc/TileDB/pull/2143)
+* Apply 'var_offsets.extra_element' mode to string dimension offsets too [#2145](https://github.com/TileDB-Inc/TileDB/pull/2145)
+
+# TileDB v2.2.6 Release Notes
+
+## Bug fixes
+
+* Fixes a potential crash when retrying incomplete reads [#2137](https://github.com/TileDB-Inc/TileDB/pull/2137)
+
+# TileDB v2.2.5 Release Notes
+
+## New features
+
+* Config option vfs.s3.sse for S3 server-side encryption support [#2130](https://github.com/TileDB-Inc/TileDB/pull/2130)
+
+## Improvements
+
+* Reduced memory consumption in the read path for multi-range reads. [#2118](https://github.com/TileDB-Inc/TileDB/pull/2118)
+* Cache non_empty_domain for REST arrays like all other arrays [#2105](https://github.com/TileDB-Inc/TileDB/pull/2105)
+* Add additional timer statistics for openning array for reads [#2027](https://github.com/TileDB-Inc/TileDB/pull/2027)
+* Allow open array stats to be printed without read query [#2131](https://github.com/TileDB-Inc/TileDB/pull/2131)
+
+## Bug fixes
+* Fixes a potential crash when opening an array with consolidated fragment metadata [#2135](https://github.com/TileDB-Inc/TileDB/pull/2135)
+* Corrected a bug where sparse cells may be incorrectly returned using string dimensions. [#2125](https://github.com/TileDB-Inc/TileDB/pull/2125)
+* Always use original buffer size in serialized read queries serverside. [#2115](https://github.com/TileDB-Inc/TileDB/pull/2115)
+* Fix segfault in serialized queries when partition is unsplittable [#2120](https://github.com/TileDB-Inc/TileDB/pull/2120)
+
+# TileDB v2.2.4 Release Notes
+
+## Improvements
+
+* Add additional stats printing to breakdown read state initialization timings [#2095](https://github.com/TileDB-Inc/TileDB/pull/2095)
+* Improve GCS multipart locking [#2087](https://github.com/TileDB-Inc/TileDB/pull/2087)
+
+## Bug fixes
+* Fix an edge-case where a read query may hang on array with string dimensions [#2089](https://github.com/TileDB-Inc/TileDB/pull/2089)
+* Fix mutex locking bugs on Windows due to unlocking on different thread and missing task join [#2077](https://github.com/TileDB-Inc/TileDB/pull/2077)
+
+### C++ API
+* Add support for a string-typed, variable-sized, nullable attribute in the C++ API. [#2090](https://github.com/TileDB-Inc/TileDB/pull/2090)
 
 # TileDB v2.2.3 Release Notes
 
@@ -75,7 +265,6 @@
 
 ## Improvements
 
-* Add additional timer statistics for openning array for reads [#2027](https://github.com/TileDB-Inc/TileDB/pull/2027)
 * Add `rest.creation_access_credentials_name` configuration parameter [#2025](https://github.com/TileDB-Inc/TileDB/pull/2025)
 
 ## Bug fixes
@@ -87,7 +276,6 @@
 
 ### C API
 * Add `tiledb_query_set_config` to apply a `tiledb_config_t` to query-level parameters [#2030](https://github.com/TileDB-Inc/TileDB/pull/2030)
-* Add `tiledb_heap_profiler_enable` to enable heap memory profiling [#2035](https://github.com/TileDB-Inc/TileDB/pull/2035)
 
 ### C++ API
 * Added `Query::set_config` to apply a `tiledb::Config` to query-level parameters [#2030](https://github.com/TileDB-Inc/TileDB/pull/2030)

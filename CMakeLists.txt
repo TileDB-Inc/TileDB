@@ -83,8 +83,8 @@ if(APPLE)
   set(CMAKE_FIND_FRAMEWORK NEVER)
 endif()
 
-# Set C++11 as required standard for all C++ targets.
-set(CMAKE_CXX_STANDARD 11)
+# Set C++17 as required standard for all C++ targets.
+set(CMAKE_CXX_STANDARD 17)
 set(CMAKE_CXX_STANDARD_REQUIRED ON)
 if(CMAKE_SYSTEM_NAME MATCHES "CYGWIN")
   # Use GNU extensions under Cygwin
@@ -115,8 +115,6 @@ option(TILEDB_MEMFS "Enables support of an in-memory filesystem." OFF)
 option(TILEDB_WERROR "Enables the -Werror flag during compilation." ON)
 option(TILEDB_CPP_API "Enables building of the TileDB C++ API." ON)
 option(TILEDB_CMAKE_IDE "(Used for CLion builds). Disables superbuild and sets the EP install dir." OFF)
-option(TILEDB_TBB "Enables use of TBB for parallelization." OFF)
-option(TILEDB_TBB_SHARED "If TBB is enabled, builds TBB as a shared library instead of static." OFF)
 option(TILEDB_STATS "Enables internal TileDB statistics gathering." ON)
 option(TILEDB_STATIC "Enables building TileDB as a static library." OFF)
 option(TILEDB_TESTS "If true, enables building the TileDB unit test suite" ON)
@@ -125,12 +123,22 @@ option(TILEDB_SERIALIZATION "If true, enables building with support for query se
 option(TILEDB_CCACHE "If true, enables use of 'ccache' (if present)" OFF)
 option(TILEDB_ARROW_TESTS "If true, enables building the arrow adapter unit tests" OFF)
 option(TILEDB_LOG_OUTPUT_ON_FAILURE "If true, print error logs if dependency sub-project build fails" ON)
+option(TILEDB_SKIP_S3AWSSDK_DIR_LENGTH_CHECK "If true, skip check needed path length for awssdk (TILEDB_S3) dependent builds" OFF)
 
 set(TILEDB_INSTALL_LIBDIR "" CACHE STRING "If non-empty, install TileDB library to this directory instead of CMAKE_INSTALL_LIBDIR.")
 
-if (MSVC AND NOT TILEDB_TBB_SHARED)
-  message(WARNING "Static TBB build not supported on Windows. Continuing with TILEDB_TBB_SHARED=ON.")
-  set(TILEDB_TBB_SHARED ON)
+# early WIN32 audit of path length for aws sdk build where 
+# insufficient available path length causes sdk build failure.
+if (WIN32 AND NOT TILEDB_SKIP_S3AWSSDK_DIR_LENGTH_CHECK)
+  if (TILEDB_SUPERBUILD)
+    if (TILEDB_S3)
+      string(LENGTH ${CMAKE_CURRENT_BINARY_DIR} LENGTH_CMAKE_CURRENT_BINARY_DIR)
+      if ( NOT (LENGTH_CMAKE_CURRENT_BINARY_DIR LESS 61))
+        message(FATAL_ERROR " build directory path likely too long for building awssdk/dependencies!")
+      return()
+      endif()
+    endif()
+  endif()
 endif()
 
 ############################################################
@@ -219,13 +227,6 @@ else()
     add_compile_options(-DNDEBUG -O3 -g3 -ggdb3 -gdwarf-3)
   elseif (CMAKE_BUILD_TYPE MATCHES "Coverage")
     add_compile_options(-DDEBUG -g3 -gdwarf-3 --coverage)
-  endif()
-
-  if (TILEDB_SERIALIZATION OR
-     (CMAKE_COMPILER_IS_GNUCC AND CMAKE_CXX_COMPILER_VERSION VERSION_LESS 5.0))
-    # CapnProto 0.6.1 contains some unused parameter warnings that we need to
-    # ignore in order to allow for Werror builds.
-    add_compile_options(-Wno-unused-parameter)
   endif()
 
   # Use -Wno-literal-suffix on Linux with C++ sources.

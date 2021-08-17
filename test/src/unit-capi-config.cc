@@ -177,9 +177,15 @@ void check_save_to_file() {
   REQUIRE(rc == TILEDB_OK);
   CHECK(error == nullptr);
 
-  // Check that aws secret access key is not serialized.
+  // Check that azure account key is not serialized.
   rc = tiledb_config_set(
       config, "vfs.azure.storage_account_key", "secret", &error);
+  REQUIRE(rc == TILEDB_OK);
+  CHECK(error == nullptr);
+
+  // Check that azure SAS token is not serialized.
+  rc = tiledb_config_set(
+      config, "vfs.azure.storage_sas_token", "secret", &error);
   REQUIRE(rc == TILEDB_OK);
   CHECK(error == nullptr);
 
@@ -209,6 +215,9 @@ void check_save_to_file() {
   REQUIRE(rc == TILEDB_OK);
 
   std::stringstream ss;
+  // Items here need to be assigned to 'ss' in alphabetical order as
+  // an std::[ordered_]map is where the comparison values saved to file
+  // come from.
   ss << "config.env_var_prefix TILEDB_\n";
 #ifdef TILEDB_VERBOSE
   ss << "config.logging_level 1\n";
@@ -216,7 +225,7 @@ void check_save_to_file() {
   ss << "config.logging_level 0\n";
 #endif
   ss << "rest.http_compressor any\n";
-  ss << "rest.retry_count 3\n";
+  ss << "rest.retry_count 25\n";
   ss << "rest.retry_delay_factor 1.25\n";
   ss << "rest.retry_http_codes 503\n";
   ss << "rest.retry_initial_delay_ms 500\n";
@@ -234,17 +243,30 @@ void check_save_to_file() {
   ss << "sm.consolidation.step_min_frags 4294967295\n";
   ss << "sm.consolidation.step_size_ratio 0.0\n";
   ss << "sm.consolidation.steps 4294967295\n";
+  ss << "sm.consolidation.timestamp_end " << std::to_string(UINT64_MAX) << "\n";
+  ss << "sm.consolidation.timestamp_start 0\n";
   ss << "sm.dedup_coords false\n";
   ss << "sm.enable_signal_handlers true\n";
+  ss << "sm.encryption_key 0\n";
+  ss << "sm.encryption_type NO_ENCRYPTION\n";
   ss << "sm.io_concurrency_level " << std::thread::hardware_concurrency()
      << "\n";
+  ss << "sm.max_tile_overlap_size 314572800\n";
+  ss << "sm.mem.reader.sparse_global_order.ratio_array_data 0.1\n";
+  ss << "sm.mem.reader.sparse_global_order.ratio_coords 0.5\n";
+  ss << "sm.mem.reader.sparse_global_order.ratio_query_condition 0.25\n";
+  ss << "sm.mem.reader.sparse_global_order.ratio_tile_ranges 0.1\n";
+  ss << "sm.mem.total_budget 10737418240\n";
   ss << "sm.memory_budget 5368709120\n";
   ss << "sm.memory_budget_var 10737418240\n";
-  ss << "sm.num_tbb_threads -1\n";
+  ss << "sm.read_range_oob warn\n";
   ss << "sm.skip_checksum_validation false\n";
-  ss << "sm.sub_partitioner_memory_budget 0\n";
+  ss << "sm.skip_est_size_partitioning false\n";
   ss << "sm.tile_cache_size 10000000\n";
+  ss << "sm.use_refactored_readers false\n";
   ss << "sm.vacuum.mode fragments\n";
+  ss << "sm.vacuum.timestamp_end " << std::to_string(UINT64_MAX) << "\n";
+  ss << "sm.vacuum.timestamp_start 0\n";
   ss << "sm.var_offsets.bitsize 64\n";
   ss << "sm.var_offsets.extra_element false\n";
   ss << "sm.var_offsets.mode bytes\n";
@@ -268,6 +290,7 @@ void check_save_to_file() {
   ss << "vfs.min_parallel_size 10485760\n";
   ss << "vfs.read_ahead_cache_size 10485760\n";
   ss << "vfs.read_ahead_size 102400\n";
+  ss << "vfs.s3.bucket_canned_acl NOT_SET\n";
   ss << "vfs.s3.connect_max_tries 5\n";
   ss << "vfs.s3.connect_scale_factor 25\n";
   ss << "vfs.s3.connect_timeout_ms 10800\n";
@@ -275,12 +298,14 @@ void check_save_to_file() {
   ss << "vfs.s3.max_parallel_ops " << std::thread::hardware_concurrency()
      << "\n";
   ss << "vfs.s3.multipart_part_size 5242880\n";
+  ss << "vfs.s3.object_canned_acl NOT_SET\n";
   ss << "vfs.s3.proxy_port 0\n";
   ss << "vfs.s3.proxy_scheme http\n";
   ss << "vfs.s3.region us-east-1\n";
   ss << "vfs.s3.request_timeout_ms 3000\n";
   ss << "vfs.s3.requester_pays false\n";
   ss << "vfs.s3.scheme https\n";
+  ss << "vfs.s3.skip_init false\n";
   ss << "vfs.s3.use_multipart_upload true\n";
   ss << "vfs.s3.use_virtual_addressing true\n";
   ss << "vfs.s3.verify_ssl true\n";
@@ -293,6 +318,8 @@ void check_save_to_file() {
 
   CHECK(ss.str() == ss_file.str());
   remove_file("test_config.txt");
+
+  tiledb_config_free(&config);
 }
 
 TEST_CASE("C API: Test config", "[capi], [config]") {
@@ -512,38 +539,53 @@ TEST_CASE("C API: Test config iter", "[capi], [config]") {
   all_param_values["rest.server_address"] = "https://api.tiledb.com";
   all_param_values["rest.server_serialization_format"] = "CAPNP";
   all_param_values["rest.http_compressor"] = "any";
-  all_param_values["rest.retry_count"] = "3";
+  all_param_values["rest.retry_count"] = "25";
   all_param_values["rest.retry_delay_factor"] = "1.25";
   all_param_values["rest.retry_initial_delay_ms"] = "500";
   all_param_values["rest.retry_http_codes"] = "503";
+  all_param_values["sm.encryption_key"] = "0";
+  all_param_values["sm.encryption_type"] = "NO_ENCRYPTION";
   all_param_values["sm.dedup_coords"] = "false";
   all_param_values["sm.check_coord_dups"] = "true";
   all_param_values["sm.check_coord_oob"] = "true";
   all_param_values["sm.check_global_order"] = "true";
   all_param_values["sm.tile_cache_size"] = "100";
+  all_param_values["sm.skip_est_size_partitioning"] = "false";
   all_param_values["sm.memory_budget"] = "5368709120";
   all_param_values["sm.memory_budget_var"] = "10737418240";
-  all_param_values["sm.sub_partitioner_memory_budget"] = "0";
+  all_param_values["sm.use_refactored_readers"] = "false";
+  all_param_values["sm.mem.total_budget"] = "10737418240";
+  all_param_values["sm.mem.reader.sparse_global_order.ratio_coords"] = "0.5";
+  all_param_values["sm.mem.reader.sparse_global_order.ratio_query_condition"] =
+      "0.25";
+  all_param_values["sm.mem.reader.sparse_global_order.ratio_tile_ranges"] =
+      "0.1";
+  all_param_values["sm.mem.reader.sparse_global_order.ratio_array_data"] =
+      "0.1";
   all_param_values["sm.enable_signal_handlers"] = "true";
   all_param_values["sm.compute_concurrency_level"] =
       std::to_string(std::thread::hardware_concurrency());
-  ;
   all_param_values["sm.io_concurrency_level"] =
       std::to_string(std::thread::hardware_concurrency());
-  ;
-  all_param_values["sm.num_tbb_threads"] = "-1";
   all_param_values["sm.skip_checksum_validation"] = "false";
   all_param_values["sm.consolidation.amplification"] = "1.0";
   all_param_values["sm.consolidation.steps"] = "4294967295";
+  all_param_values["sm.consolidation.timestamp_start"] = "0";
+  all_param_values["sm.consolidation.timestamp_end"] =
+      std::to_string(UINT64_MAX);
   all_param_values["sm.consolidation.step_min_frags"] = "4294967295";
   all_param_values["sm.consolidation.step_max_frags"] = "4294967295";
   all_param_values["sm.consolidation.buffer_size"] = "50000000";
   all_param_values["sm.consolidation.step_size_ratio"] = "0.0";
   all_param_values["sm.consolidation.mode"] = "fragments";
+  all_param_values["sm.read_range_oob"] = "warn";
   all_param_values["sm.vacuum.mode"] = "fragments";
+  all_param_values["sm.vacuum.timestamp_start"] = "0";
+  all_param_values["sm.vacuum.timestamp_end"] = std::to_string(UINT64_MAX);
   all_param_values["sm.var_offsets.bitsize"] = "32";
   all_param_values["sm.var_offsets.extra_element"] = "true";
   all_param_values["sm.var_offsets.mode"] = "elements";
+  all_param_values["sm.max_tile_overlap_size"] = "314572800";
 
   all_param_values["vfs.min_batch_gap"] = "512000";
   all_param_values["vfs.min_batch_size"] = "20971520";
@@ -558,6 +600,7 @@ TEST_CASE("C API: Test config iter", "[capi], [config]") {
   all_param_values["vfs.gcs.request_timeout_ms"] = "3000";
   all_param_values["vfs.azure.storage_account_name"] = "";
   all_param_values["vfs.azure.storage_account_key"] = "";
+  all_param_values["vfs.azure.storage_sas_token"] = "";
   all_param_values["vfs.azure.blob_endpoint"] = "";
   all_param_values["vfs.azure.block_list_block_size"] = "5242880";
   all_param_values["vfs.azure.max_parallel_ops"] =
@@ -580,6 +623,7 @@ TEST_CASE("C API: Test config iter", "[capi], [config]") {
   all_param_values["vfs.s3.aws_session_name"] = "";
   all_param_values["vfs.s3.endpoint_override"] = "";
   all_param_values["vfs.s3.use_virtual_addressing"] = "true";
+  all_param_values["vfs.s3.skip_init"] = "false";
   all_param_values["vfs.s3.use_multipart_upload"] = "true";
   all_param_values["vfs.s3.max_parallel_ops"] =
       std::to_string(std::thread::hardware_concurrency());
@@ -603,6 +647,8 @@ TEST_CASE("C API: Test config iter", "[capi], [config]") {
   all_param_values["vfs.hdfs.username"] = "stavros";
   all_param_values["vfs.hdfs.kerb_ticket_cache_path"] = "";
   all_param_values["vfs.hdfs.name_node_uri"] = "";
+  all_param_values["vfs.s3.bucket_canned_acl"] = "NOT_SET";
+  all_param_values["vfs.s3.object_canned_acl"] = "NOT_SET";
 
   std::map<std::string, std::string> vfs_param_values;
   vfs_param_values["min_batch_gap"] = "512000";
@@ -618,6 +664,7 @@ TEST_CASE("C API: Test config iter", "[capi], [config]") {
   vfs_param_values["gcs.request_timeout_ms"] = "3000";
   vfs_param_values["azure.storage_account_name"] = "";
   vfs_param_values["azure.storage_account_key"] = "";
+  vfs_param_values["azure.storage_sas_token"] = "";
   vfs_param_values["azure.blob_endpoint"] = "";
   vfs_param_values["azure.block_list_block_size"] = "5242880";
   vfs_param_values["azure.max_parallel_ops"] =
@@ -640,6 +687,7 @@ TEST_CASE("C API: Test config iter", "[capi], [config]") {
   vfs_param_values["s3.aws_session_name"] = "";
   vfs_param_values["s3.endpoint_override"] = "";
   vfs_param_values["s3.use_virtual_addressing"] = "true";
+  vfs_param_values["s3.skip_init"] = "false";
   vfs_param_values["s3.use_multipart_upload"] = "true";
   vfs_param_values["s3.max_parallel_ops"] =
       std::to_string(std::thread::hardware_concurrency());
@@ -660,6 +708,8 @@ TEST_CASE("C API: Test config iter", "[capi], [config]") {
   vfs_param_values["s3.proxy_scheme"] = "http";
   vfs_param_values["s3.proxy_username"] = "";
   vfs_param_values["s3.verify_ssl"] = "true";
+  vfs_param_values["s3.bucket_canned_acl"] = "NOT_SET";
+  vfs_param_values["s3.object_canned_acl"] = "NOT_SET";
   vfs_param_values["hdfs.username"] = "stavros";
   vfs_param_values["hdfs.kerb_ticket_cache_path"] = "";
   vfs_param_values["hdfs.name_node_uri"] = "";
@@ -675,6 +725,7 @@ TEST_CASE("C API: Test config iter", "[capi], [config]") {
   std::map<std::string, std::string> azure_param_values;
   azure_param_values["storage_account_name"] = "";
   azure_param_values["storage_account_key"] = "";
+  azure_param_values["storage_sas_token"] = "";
   azure_param_values["blob_endpoint"] = "";
   azure_param_values["block_list_block_size"] = "5242880";
   azure_param_values["max_parallel_ops"] =
@@ -694,6 +745,7 @@ TEST_CASE("C API: Test config iter", "[capi], [config]") {
   s3_param_values["aws_session_name"] = "";
   s3_param_values["endpoint_override"] = "";
   s3_param_values["use_virtual_addressing"] = "true";
+  s3_param_values["skip_init"] = "false";
   s3_param_values["use_multipart_upload"] = "true";
   s3_param_values["max_parallel_ops"] =
       std::to_string(std::thread::hardware_concurrency());
@@ -714,6 +766,8 @@ TEST_CASE("C API: Test config iter", "[capi], [config]") {
   s3_param_values["proxy_scheme"] = "http";
   s3_param_values["proxy_username"] = "";
   s3_param_values["verify_ssl"] = "true";
+  s3_param_values["bucket_canned_acl"] = "NOT_SET";
+  s3_param_values["object_canned_acl"] = "NOT_SET";
 
   // Create an iterator and iterate over all parameters
   tiledb_config_iter_t* config_iter = nullptr;
@@ -741,6 +795,19 @@ TEST_CASE("C API: Test config iter", "[capi], [config]") {
     CHECK(rc == TILEDB_OK);
     CHECK(error == nullptr);
   } while (!done);
+  // highlight any difference to aid the poor developer in event CHECK() fails.
+  for (auto i1 = all_param_values.begin(); i1 != all_param_values.end(); ++i1) {
+    if (all_iter_map.find(i1->first) == all_iter_map.end()) {
+      std::cout << "all_iter_map[\"" << i1->first << "\"] not found!"
+                << std::endl;
+    }
+  }
+  for (auto i1 = all_iter_map.begin(); i1 != all_iter_map.end(); ++i1) {
+    if (all_param_values.find(i1->first) == all_param_values.end()) {
+      std::cout << "all_param_values[\"" << i1->first << "\"] not found!"
+                << std::endl;
+    }
+  }
   CHECK(all_param_values == all_iter_map);
   tiledb_config_iter_free(&config_iter);
   CHECK(error == nullptr);
@@ -768,6 +835,19 @@ TEST_CASE("C API: Test config iter", "[capi], [config]") {
     CHECK(rc == TILEDB_OK);
     CHECK(error == nullptr);
   } while (!done);
+  // highlight any difference to aid the poor developer in event CHECK() fails.
+  for (auto i1 = vfs_param_values.begin(); i1 != vfs_param_values.end(); ++i1) {
+    if (vfs_iter_map.find(i1->first) == vfs_iter_map.end()) {
+      std::cout << "vfs_iter_map[\"" << i1->first << "\"] not found!"
+                << std::endl;
+    }
+  }
+  for (auto i1 = vfs_iter_map.begin(); i1 != vfs_iter_map.end(); ++i1) {
+    if (vfs_param_values.find(i1->first) == vfs_param_values.end()) {
+      std::cout << "vfs_param_values[\"" << i1->first << "\"] not found!"
+                << std::endl;
+    }
+  }
   CHECK(vfs_param_values == vfs_iter_map);
   tiledb_config_iter_free(&config_iter);
 
@@ -848,6 +928,19 @@ TEST_CASE("C API: Test config iter", "[capi], [config]") {
     CHECK(rc == TILEDB_OK);
     CHECK(error == nullptr);
   } while (!done);
+  // highlight any difference to aid the poor developer in event CHECK() fails.
+  for (auto i1 = s3_param_values.begin(); i1 != s3_param_values.end(); ++i1) {
+    if (s3_iter_map.find(i1->first) == s3_iter_map.end()) {
+      std::cout << "s3_iter_map[\"" << i1->first << "\"] not found!"
+                << std::endl;
+    }
+  }
+  for (auto i1 = s3_iter_map.begin(); i1 != s3_iter_map.end(); ++i1) {
+    if (s3_param_values.find(i1->first) == s3_param_values.end()) {
+      std::cout << "s3_param_values[\"" << i1->first << "\"] not found!"
+                << std::endl;
+    }
+  }
   CHECK(s3_param_values == s3_iter_map);
   tiledb_config_iter_free(&config_iter);
   CHECK(error == nullptr);
@@ -875,11 +968,19 @@ TEST_CASE(
   CHECK(rc == TILEDB_OK);
   rc = tiledb_config_set(config, "vfs.s3.use_virtual_addressing", "True", &err);
   CHECK(rc == TILEDB_OK);
+  rc = tiledb_config_set(config, "vfs.s3.skip_init", "FALSE", &err);
+  CHECK(rc == TILEDB_OK);
+  rc = tiledb_config_set(config, "vfs.s3.skip_init", "False", &err);
+  CHECK(rc == TILEDB_OK);
   rc =
       tiledb_config_set(config, "vfs.s3.use_virtual_addressing", "FALSE", &err);
   CHECK(rc == TILEDB_OK);
   rc =
       tiledb_config_set(config, "vfs.s3.use_virtual_addressing", "False", &err);
+  CHECK(rc == TILEDB_OK);
+  rc = tiledb_config_set(config, "vfs.s3.skit_init", "TRUE", &err);
+  CHECK(rc == TILEDB_OK);
+  rc = tiledb_config_set(config, "vfs.s3.skip_init", "True", &err);
   CHECK(rc == TILEDB_OK);
 
   rc = tiledb_config_set(config, "vfs.s3.use_multipart_upload", "TRUE", &err);
@@ -928,6 +1029,7 @@ TEST_CASE("C API: Test VFS config inheritance", "[capi][config][vfs-inherit]") {
 
   tiledb_config_free(&config);
   tiledb_config_free(&vfs_config);
+  tiledb_config_free(&vfs_config_get);
   tiledb_vfs_free(&vfs);
   tiledb_ctx_free(&ctx);
 }

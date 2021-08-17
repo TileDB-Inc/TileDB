@@ -118,7 +118,8 @@ void InfoCommand::run() {
 }
 
 void InfoCommand::print_tile_sizes() const {
-  StorageManager sm(&compute_tp_, &io_tp_);
+  stats::Stats stats("");
+  StorageManager sm(&compute_tp_, &io_tp_, &stats);
   THROW_NOT_OK(sm.init(nullptr));
 
   // Open the array
@@ -189,7 +190,8 @@ void InfoCommand::print_tile_sizes() const {
 }
 
 void InfoCommand::print_schema_info() const {
-  StorageManager sm(&compute_tp_, &io_tp_);
+  stats::Stats stats("");
+  StorageManager sm(&compute_tp_, &io_tp_, &stats);
   THROW_NOT_OK(sm.init(nullptr));
 
   // Open the array
@@ -205,7 +207,8 @@ void InfoCommand::print_schema_info() const {
 }
 
 void InfoCommand::write_svg_mbrs() const {
-  StorageManager sm(&compute_tp_, &io_tp_);
+  stats::Stats stats("");
+  StorageManager sm(&compute_tp_, &io_tp_, &stats);
   THROW_NOT_OK(sm.init(nullptr));
 
   // Open the array
@@ -279,7 +282,8 @@ void InfoCommand::write_svg_mbrs() const {
 }
 
 void InfoCommand::write_text_mbrs() const {
-  StorageManager sm(&compute_tp_, &io_tp_);
+  stats::Stats stats("");
+  StorageManager sm(&compute_tp_, &io_tp_, &stats);
   THROW_NOT_OK(sm.init(nullptr));
 
   // Open the array
@@ -379,6 +383,15 @@ std::tuple<double, double, double, double> InfoCommand::get_mbr(
     case Datatype::DATETIME_PS:
     case Datatype::DATETIME_FS:
     case Datatype::DATETIME_AS:
+    case Datatype::TIME_HR:
+    case Datatype::TIME_MIN:
+    case Datatype::TIME_SEC:
+    case Datatype::TIME_MS:
+    case Datatype::TIME_US:
+    case Datatype::TIME_NS:
+    case Datatype::TIME_PS:
+    case Datatype::TIME_FS:
+    case Datatype::TIME_AS:
       y = static_cast<const int64_t*>(mbr[0].data())[0];
       height = static_cast<const int64_t*>(mbr[0].data())[1] - y + 1;
       break;
@@ -443,6 +456,15 @@ std::tuple<double, double, double, double> InfoCommand::get_mbr(
     case Datatype::DATETIME_PS:
     case Datatype::DATETIME_FS:
     case Datatype::DATETIME_AS:
+    case Datatype::TIME_HR:
+    case Datatype::TIME_MIN:
+    case Datatype::TIME_SEC:
+    case Datatype::TIME_MS:
+    case Datatype::TIME_US:
+    case Datatype::TIME_NS:
+    case Datatype::TIME_PS:
+    case Datatype::TIME_FS:
+    case Datatype::TIME_AS:
       x = static_cast<const int64_t*>(mbr[1].data())[0];
       width = static_cast<const int64_t*>(mbr[1].data())[1] - x + 1;
       break;

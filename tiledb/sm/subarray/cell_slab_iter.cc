@@ -186,8 +186,8 @@ void CellSlabIter<T>::create_ranges(
     T tile_extent,
     T dim_domain_start,
     std::vector<Range>* ranges) {
-  T tile_start = (range[0] - dim_domain_start) / tile_extent;
-  T tile_end = (range[1] - dim_domain_start) / tile_extent;
+  T tile_start = Dimension::tile_idx(range[0], dim_domain_start, tile_extent);
+  T tile_end = Dimension::tile_idx(range[1], dim_domain_start, tile_extent);
 
   // The range falls int he same tile
   if (tile_start == tile_end) {
@@ -196,7 +196,7 @@ void CellSlabIter<T>::create_ranges(
     T start = range[0];
     T end;
     for (T i = tile_start; i < tile_end; ++i) {
-      end = (i + 1) * tile_extent + dim_domain_start - 1;
+      end = Dimension::tile_coord_high(i, dim_domain_start, tile_extent);
       ranges->emplace_back(start, end, i);
       start = end + 1;
     }
@@ -316,6 +316,15 @@ Status CellSlabIter<T>::sanity_check() const {
     case Datatype::DATETIME_PS:
     case Datatype::DATETIME_FS:
     case Datatype::DATETIME_AS:
+    case Datatype::TIME_HR:
+    case Datatype::TIME_MIN:
+    case Datatype::TIME_SEC:
+    case Datatype::TIME_MS:
+    case Datatype::TIME_US:
+    case Datatype::TIME_NS:
+    case Datatype::TIME_PS:
+    case Datatype::TIME_FS:
+    case Datatype::TIME_AS:
       error = !std::is_same<T, int64_t>::value;
       break;
     default:

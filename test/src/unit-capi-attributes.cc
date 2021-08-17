@@ -147,6 +147,7 @@ void Attributesfx::create_dense_vector(
   REQUIRE(rc == TILEDB_OK);
   tiledb_attribute_free(&attr);
   tiledb_dimension_free(&dim);
+  tiledb_domain_free(&domain);
   tiledb_array_schema_free(&array_schema);
 }
 
@@ -204,7 +205,7 @@ TEST_CASE_METHOD(
       CHECK(rc == TILEDB_OK);
       rc = tiledb_query_set_subarray(ctx_, query, subarray);
       CHECK(rc == TILEDB_OK);
-      rc = tiledb_query_set_buffer(
+      rc = tiledb_query_set_data_buffer(
           ctx_, query, attr_name.c_str(), buffer_a1, &buffer_a1_size);
       CHECK(rc == TILEDB_OK);
 
@@ -235,7 +236,7 @@ TEST_CASE_METHOD(
       CHECK(rc == TILEDB_OK);
       rc = tiledb_query_set_subarray(ctx_, query, subarray);
       CHECK(rc == TILEDB_OK);
-      rc = tiledb_query_set_buffer(
+      rc = tiledb_query_set_data_buffer(
           ctx_, query, attr_name.c_str(), buffer_read, &buffer_read_size);
       CHECK(rc == TILEDB_OK);
       rc = tiledb_query_submit(ctx_, query);

@@ -33,7 +33,6 @@
 #include "tiledb/sm/metadata/metadata.h"
 #include "tiledb/common/logger.h"
 #include "tiledb/sm/buffer/buffer.h"
-#include "tiledb/sm/buffer/const_buffer.h"
 #include "tiledb/sm/enums/datatype.h"
 #include "tiledb/sm/misc/utils.h"
 #include "tiledb/sm/misc/uuid.h"
@@ -53,6 +52,15 @@ namespace sm {
 Metadata::Metadata() {
   auto t = utils::time::timestamp_now_ms();
   timestamp_range_ = std::make_pair(t, t);
+}
+
+Metadata::Metadata(const Metadata& rhs)
+    : metadata_map_(rhs.metadata_map_)
+    , timestamp_range_(rhs.timestamp_range_)
+    , loaded_metadata_uris_(rhs.loaded_metadata_uris_)
+    , uri_(rhs.uri_) {
+  if (!rhs.metadata_index_.empty())
+    build_metadata_index();
 }
 
 Metadata::~Metadata() = default;
@@ -131,7 +139,7 @@ Status Metadata::deserialize(
     }
   }
 
-  RETURN_NOT_OK(build_metadata_index());
+  build_metadata_index();
   // Note: `metadata_map_` and `metadata_index_` are immutable after this point
 
   return Status::Ok();
@@ -241,7 +249,7 @@ Status Metadata::get(
     uint32_t* value_num,
     const void** value) {
   if (metadata_index_.empty())
-    RETURN_NOT_OK(build_metadata_index());
+    build_metadata_index();
 
   if (index >= metadata_index_.size())
     return LOG_STATUS(
@@ -332,14 +340,12 @@ Metadata::iterator Metadata::end() const {
 /*          PRIVATE METHODS          */
 /* ********************************* */
 
-Status Metadata::build_metadata_index() {
+void Metadata::build_metadata_index() {
   // Create metadata index for fast lookups from index
   metadata_index_.resize(metadata_map_.size());
   size_t i = 0;
   for (auto& m : metadata_map_)
     metadata_index_[i++] = std::make_pair(&(m.first), &(m.second));
-
-  return Status::Ok();
 }
 
 }  // namespace sm

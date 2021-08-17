@@ -67,10 +67,9 @@
  * It is up to the caller to free the instance before destruction.
  */
 
-#ifndef TILEDB_chunked_buffer_H
-#define TILEDB_chunked_buffer_H
+#ifndef TILEDB_CHUNKED_BUFFER_H
+#define TILEDB_CHUNKED_BUFFER_H
 
-#include "tiledb/common/logger.h"
 #include "tiledb/common/status.h"
 
 #include <cinttypes>
@@ -399,4 +398,4 @@ class ChunkedBuffer {
 }  // namespace sm
 }  // namespace tiledb
 
-#endif  // TILEDB_chunked_buffer_H
+#endif  // TILEDB_CHUNKED_BUFFER_H

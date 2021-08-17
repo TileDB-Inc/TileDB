@@ -34,12 +34,13 @@
 #define TILEDB_DIMENSION_H
 
 #include <bitset>
+#include <cmath>
 #include <iomanip>
 #include <iostream>
 #include <sstream>
 #include <string>
 
-#include "tiledb/common/logger.h"
+#include "tiledb/common/logger_public.h"
 #include "tiledb/common/status.h"
 #include "tiledb/sm/misc/types.h"
 #include "tiledb/sm/misc/utils.h"
@@ -142,6 +143,173 @@ class Dimension {
   const std::string& name() const;
 
   /**
+   *  Returns the tile index for integer values.
+   *
+   * @param v The value.
+   * @param domain_low The minimum value for the domain.
+   * @param tile_extent The tile extent.
+   * @return The index of the tile.
+   */
+  template <
+      class T,
+      typename std::enable_if<std::is_integral<T>::value>::type* = nullptr>
+  static uint64_t tile_idx(
+      const T& v, const T& domain_low, const T& tile_extent) {
+    typedef typename std::make_unsigned<T>::type unsigned_t;
+    return ((unsigned_t)v - (unsigned_t)domain_low) / (unsigned_t)tile_extent;
+  }
+
+  /**
+   *  Returns the tile index for floating point values.
+   *
+   * @param v The value.
+   * @param domain_low The minimum value for the domain.
+   * @param tile_extent The tile extent.
+   * @return The index of the tile.
+   */
+  template <
+      class T,
+      typename std::enable_if<!std::is_integral<T>::value>::type* = nullptr>
+  static uint64_t tile_idx(
+      const T& v, const T& domain_low, const T& tile_extent) {
+    return (v - domain_low) / tile_extent;
+  }
+
+  /**
+   *  Rounds the value down to the tile boundary for integer values.
+   *
+   * @param v The value.
+   * @param domain_low The minimum value for the domain.
+   * @param tile_extent The tile extent.
+   * @return The value rounded down to the tile boundary.
+   */
+  template <
+      class T,
+      typename std::enable_if<std::is_integral<T>::value>::type* = nullptr>
+  static T round_to_tile(
+      const T& v, const T& domain_low, const T& tile_extent) {
+    typedef typename std::make_unsigned<T>::type unsigned_t;
+    return ((unsigned_t)v - (unsigned_t)domain_low) / (unsigned_t)tile_extent *
+               (unsigned_t)tile_extent +
+           (unsigned_t)domain_low;
+  }
+
+  /**
+   *  Rounds the value down to the tile boundary for floating point values.
+   *
+   * @param v The value.
+   * @param domain_low The minimum value for the domain.
+   * @param tile_extent The tile extent.
+   * @return The value rounded down to the tile boundary.
+   */
+  template <
+      class T,
+      typename std::enable_if<!std::is_integral<T>::value>::type* = nullptr>
+  static T round_to_tile(
+      const T& v, const T& domain_low, const T& tile_extent) {
+    return floor((v - domain_low) / tile_extent) * tile_extent + domain_low;
+  }
+
+  /**
+   * Returns the tile lower coordinate for integer values.
+   *
+   * @param tile_num The tile index.
+   * @param domain_low The minimum value for the domain.
+   * @param tile_extent The tile extent.
+   * @return The tile lower coordinate.
+   */
+  template <
+      class T,
+      typename std::enable_if<std::is_integral<T>::value>::type* = nullptr>
+  static T tile_coord_low(
+      uint64_t tile_num, const T& domain_low, const T& tile_extent) {
+    typedef typename std::make_unsigned<T>::type unsigned_t;
+    return (unsigned_t)domain_low + tile_num * (unsigned_t)tile_extent;
+  }
+
+  /**
+   * Returns the tile lower coordinate for floating point values.
+   *
+   * @param tile_num The tile index.
+   * @param domain_low The minimum value for the domain.
+   * @param tile_extent The tile extent.
+   * @return The tile lower coordinate.
+   */
+  template <
+      class T,
+      typename std::enable_if<!std::is_integral<T>::value>::type* = nullptr>
+  static T tile_coord_low(
+      uint64_t tile_num, const T& domain_low, const T& tile_extent) {
+    return domain_low + tile_num * tile_extent;
+  }
+
+  /**
+   * Returns the tile upper coordinate for integer values.
+   *
+   * @param tile_num The tile index.
+   * @param domain_low The minimum value for the domain.
+   * @param tile_extent The tile extent.
+   * @return The tile upper coordinate.
+   */
+  template <
+      class T,
+      typename std::enable_if<std::is_integral<T>::value>::type* = nullptr>
+  static T tile_coord_high(
+      uint64_t tile_num, const T& domain_low, const T& tile_extent) {
+    typedef typename std::make_unsigned<T>::type unsigned_t;
+    if ((unsigned_t)tile_extent == std::numeric_limits<unsigned_t>::max())
+      return std::numeric_limits<T>::max() -
+             (domain_low == std::numeric_limits<T>::min());
+    return (unsigned_t)domain_low + ++tile_num * (unsigned_t)tile_extent - 1;
+  }
+
+  /**
+   * Returns the tile upper coordinate for floating point values.
+   *
+   * @param tile_num The tile index.
+   * @param domain_low The minimum value for the domain.
+   * @param tile_extent The tile extent.
+   * @return The tile upper coordinate.
+   */
+  template <
+      class T,
+      typename std::enable_if<!std::is_integral<T>::value>::type* = nullptr>
+  static T tile_coord_high(
+      uint64_t tile_num, const T& domain_low, const T& tile_extent) {
+    return std::nextafter(
+        domain_low + ++tile_num * tile_extent, std::numeric_limits<T>::min());
+  }
+
+  /**
+   * Used to multiply values by the tile extent for integer values.
+   *
+   * @param v The value to multiply.
+   * @param tile_extent The tile extent.
+   * @return The result of the multiplication.
+   */
+  template <
+      class T,
+      typename std::enable_if<std::is_integral<T>::value>::type* = nullptr>
+  static T tile_extent_mult(const T& v, const T& tile_extent) {
+    typedef typename std::make_unsigned<T>::type unsigned_t;
+    return (unsigned_t)v * (unsigned_t)tile_extent;
+  }
+
+  /**
+   * Used to multiply values by the tile extent for floating point values.
+   *
+   * @param v The value to multiply.
+   * @param tile_extent The tile extent.
+   * @return The result of the multiplication.
+   */
+  template <
+      class T,
+      typename std::enable_if<!std::is_integral<T>::value>::type* = nullptr>
+  static T tile_extent_mult(const T& v, const T& tile_extent) {
+    return v * tile_extent;
+  }
+
+  /**
    * Retrieves the value `v` that lies at the end (ceil) of the tile
    * that is `tile_num` tiles apart from the beginning of `r`.
    */
@@ -162,8 +330,17 @@ class Dimension {
    *     - if the lower range bound is larger than the upper
    *     - if the range falls outside the dimension domain
    *     - for real domains, if any range bound is NaN
+   *
    */
   Status check_range(const Range& range) const;
+
+  /**
+   * Adjust a range so that the upper/lower bounds are within the dimension's
+   * domain.
+   * @param range Query range object that might be mutated
+   * @return status if error
+   */
+  Status adjust_range_oob(Range* range) const;
 
   /**
    * Performs correctness checks on the input range. Returns `true`
@@ -239,10 +416,91 @@ class Dimension {
          << domain[0] << ", " << domain[1] << "] on dimension '" << dim->name()
          << "'";
       *err_msg = ss.str();
+
       return false;
     }
 
     return true;
+  }
+
+  /**
+   * Takes a range from a query and might mutate it so the lower/upper values
+   * are within the domain of the dimension. If mutation occurs a warning is
+   * logged
+   *
+   * @tparam T datatype
+   * @param dim dimension object to get domain from
+   * @param range Query range objects to mutate
+   */
+  template <
+      typename T,
+      typename std::enable_if<std::is_integral<T>::value>::type* = nullptr>
+  static void adjust_range_oob(const Dimension* dim, const Range* range) {
+    auto domain = (const T*)dim->domain().data();
+    auto r = (T*)range->data();
+
+    // Check out-of-bounds
+    if (r[0] < domain[0]) {
+      std::stringstream ss;
+      ss << "Range lower bound " << r[0] << " is out of domain bounds ["
+         << domain[0] << ", " << domain[1]
+         << "]. Adjusting range lower bound to be " << domain[0]
+         << " on dimension '" << dim->name() << "'";
+      LOG_WARN(ss.str());
+
+      r[0] = domain[0];
+    }
+
+    if (r[1] > domain[1]) {
+      std::stringstream ss;
+      ss << "Range upper bound " << r[1] << " is out of domain bounds ["
+         << domain[0] << ", " << domain[1]
+         << "]. Adjusting range upper bound to be " << domain[1]
+         << " on dimension '" << dim->name() << "'";
+      LOG_WARN(ss.str());
+
+      r[1] = domain[1];
+    }
+  }
+
+  /**
+   * Takes a range from a query and might mutate it so the lower/upper values
+   * are within the domain of the dimension. If mutation occurs a warning is
+   * logged
+   *
+   * @tparam T datatype
+   * @param dim dimension object to get domain from
+   * @param range Query range objects to mutate
+   */
+  template <
+      typename T,
+      typename std::enable_if<!std::is_integral<T>::value>::type* = nullptr>
+  static void adjust_range_oob(const Dimension* dim, const Range* range) {
+    auto domain = (const T*)dim->domain().data();
+    auto r = (T*)range->data();
+
+    // Check out-of-bounds
+    if (r[0] < domain[0]) {
+      std::stringstream ss;
+      ss << "Range lower bound " << r[0] << " is out of domain bounds ["
+         << domain[0] << ", " << domain[1]
+         << "]. Adjusting range lower bound to be " << domain[0]
+         << " on dimension '" << dim->name() << "'";
+      LOG_WARN(ss.str());
+
+      r[0] = domain[0];
+    }
+
+    if (r[1] > domain[1]) {
+      std::stringstream ss;
+      ss << "Range upper bound " << r[1] << " is out of domain bounds ["
+         << domain[0] << ", " << domain[1]
+         << "]. Adjusting range upper bound to be " << domain[1]
+         << " on dimension '" << dim->name() << "'";
+      LOG_WARN(ss.str());
+
+      r[1] = domain[1];
+    }
   }
 
   /** Returns true if the input range coincides with tile boundaries. */
@@ -379,10 +637,10 @@ class Dimension {
   template <class T>
   static bool overlap(const Range& r1, const Range& r2);
 
-  /** Return ratio of the overalp of the two input 1D ranges over `r2`. */
+  /** Return ratio of the overlap of the two input 1D ranges over `r2`. */
   double overlap_ratio(const Range& r1, const Range& r2) const;
 
-  /** Return ratio of the overalp of the two input 1D ranges over `r2`. */
+  /** Return ratio of the overlap of the two input 1D ranges over `r2`. */
   template <class T>
   static double overlap_ratio(const Range& r1, const Range& r2);
 
@@ -417,22 +675,9 @@ class Dimension {
   template <class T>
   static uint64_t tile_num(const Dimension* dim, const Range& range);
 
-  /** Returns `true` if `value` is within the 1D `range`. */
-  template <class T>
-  static bool value_in_range(const void* value, const Range& range);
-
-  /** Returns `true` if `value` is within the 1D `range`. */
-  bool value_in_range(const void* value, const Range& range) const;
-
-  /**
-   * Returns `true` if `value` is within the 1D `range`.
-   * Applicable only to string dimensions.
-   */
-  bool value_in_range(const std::string& value, const Range& range) const;
-
   /**
    * Maps the c-th cell in the input query buffer to a uint64 value,
-   * based on discretizing the domain into `bucket_num` buckets.
+   * based on discretizing the domain from 0 to `max_bucket_val`.
    * This value is used to compute a Hilbert value.
    */
   uint64_t map_to_uint64(
@@ -440,11 +685,11 @@ class Dimension {
       uint64_t c,
       uint64_t coords_num,
       int bits,
-      uint64_t bucket_num) const;
+      uint64_t max_bucket_val) const;
 
   /**
    * Maps the c-th cell in the input query buffer to a uint64 value,
-   * based on discretizing the domain into `bucket_num` buckets.
+   * based on discretizing the domain from 0 to `max_bucket_val`.
    * This value is used to compute a Hilbert value.
    */
   template <class T>
@@ -454,22 +699,22 @@ class Dimension {
       uint64_t c,
       uint64_t coords_num,
       int bits,
-      uint64_t bucket_num);
+      uint64_t max_bucket_val);
 
   /**
    * Maps the input coordinate to a uint64 value,
-   * based on discretizing the domain into `bucket_num` buckets.
+   * based on discretizing the domain from 0 to `max_bucket_val`.
    * This value is used to compute a Hilbert value.
    */
   uint64_t map_to_uint64(
       const void* coord,
       uint64_t coord_size,
       int bits,
-      uint64_t bucket_num) const;
+      uint64_t max_bucket_val) const;
 
   /**
    * Maps the input coordinate to a uint64 value,
-   * based on discretizing the domain into `bucket_num` buckets.
+   * based on discretizing the domain from 0 to `max_bucket_val`.
    * This value is used to compute a Hilbert value.
    */
   template <class T>
@@ -478,22 +723,22 @@ class Dimension {
       const void* coord,
       uint64_t coord_size,
       int bits,
-      uint64_t bucket_num);
+      uint64_t max_bucket_val);
 
   /**
    * Maps the input result coordinate to a uint64 value,
-   * based on discretizing the domain into `bucket_num` buckets.
+   * based on discretizing the domain from 0 to `max_bucket_val`.
    * This value is used to compute a Hilbert value.
    */
   uint64_t map_to_uint64(
       const ResultCoords& coord,
       uint32_t dim_idx,
       int bits,
-      uint64_t bucket_num) const;
+      uint64_t max_bucket_val) const;
 
   /**
    * Maps the input result coordinate to a uint64 value,
-   * based on discretizing the domain into `bucket_num` buckets.
+   * based on discretizing the domain from 0 to `max_bucket_val`.
    * This value is used to compute a Hilbert value.
    */
   template <class T>
@@ -502,24 +747,24 @@ class Dimension {
       const ResultCoords& coord,
       uint32_t dim_idx,
       int bits,
-      uint64_t bucket_num);
+      uint64_t max_bucket_val);
 
   /**
    * Maps a uint64 value (produced by `map_to_uint64`) to its corresponding
-   * value in the original dimension domain. `bucket_num` is the number
-   * of buckets used to discretize the original value.
+   * value in the original dimension domain. `max_bucket_val` is the maximum
+   * value used to discretize the original value.
    */
   ByteVecValue map_from_uint64(
-      uint64_t value, int bits, uint64_t bucket_num) const;
+      uint64_t value, int bits, uint64_t max_bucket_val) const;
 
   /**
    * Maps a uint64 value (produced by `map_to_uint64`) to its corresponding
-   * value in the original dimension domain. `bucket_num` is the number
-   * of buckets used to discretize the original value.
+   * value in the original dimension domain. `max_bucket_val` is the maximum
+   * value used to discretize the original value.
    */
   template <class T>
   static ByteVecValue map_from_uint64(
-      const Dimension* dim, uint64_t value, int bits, uint64_t bucket_num);
+      const Dimension* dim, uint64_t value, int bits, uint64_t max_bucket_val);
 
   /** Returns `true` if `value` is smaller than the start of `range`. */
   bool smaller_than(const ByteVecValue& value, const Range& range) const;
@@ -543,6 +788,9 @@ class Dimension {
 
   /** Sets the domain. */
   Status set_domain(const Range& domain);
+
+  /** Sets the domain without type, null, or bounds checks. */
+  Status set_domain_unsafe(const void* domain);
 
   /** Sets the filter pipeline for this dimension. */
   Status set_filter_pipeline(const FilterPipeline* pipeline);
@@ -617,6 +865,12 @@ class Dimension {
    */
   std::function<bool(const Dimension*, const Range&, std::string*)>
       check_range_func_;
+
+  /**
+   * Stores the appropriate templated check_range() function based on the
+   * dimension datatype.
+   */
+  std::function<void(const Dimension*, const Range*)> adjust_range_oob_func_;
 
   /**
    * Stores the appropriate templated coincides_with_tiles() function based on
@@ -713,12 +967,6 @@ class Dimension {
   std::function<uint64_t(const Dimension* dim, const Range&)> tile_num_func_;
 
   /**
-   * Stores the appropriate templated value_in_range() function based on the
-   * dimension datatype.
-   */
-  std::function<bool(const void*, const Range&)> value_in_range_func_;
-
-  /**
    * Stores the appropriate templated map_to_uint64() function based on
    * the dimension datatype.
    */
@@ -780,13 +1028,13 @@ class Dimension {
           "Domain check failed; Upper domain bound should "
           "not be smaller than the lower one"));
 
-    // Domain range must not exceed the maximum uint64_t number
+    // Domain range must not exceed the maximum unsigned number
     // for integer domains
-    if ((uint64_t)(domain[1] - domain[0]) ==
-        std::numeric_limits<uint64_t>::max())
+    if (domain[0] == std::numeric_limits<T>::min() &&
+        domain[1] == std::numeric_limits<T>::max())
       return LOG_STATUS(Status::DimensionError(
           "Domain check failed; Domain range (upper + lower + 1) is larger "
-          "than the maximum uint64 number"));
+          "than the maximum unsigned number"));
 
     return Status::Ok();
   }
@@ -853,6 +1101,9 @@ class Dimension {
   /** Sets the templated check_range() function. */
   void set_check_range_func();
 
+  /** Set the templated adjust_range_oob_func() function. */
+  void set_adjust_range_oob_func();
+
   /** Sets the templated coincides_with_tiles() function. */
   void set_coincides_with_tiles_func();
 
@@ -894,9 +1145,6 @@ class Dimension {
 
   /** Sets the templated tile_num() function. */
   void set_tile_num_func();
-
-  /** Sets the templated value_in_range() function. */
-  void set_value_in_range_func();
 
   /** Sets the templated map_to_uint64() function. */
   void set_map_to_uint64_func();

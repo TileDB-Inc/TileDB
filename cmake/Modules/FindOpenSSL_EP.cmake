@@ -90,15 +90,20 @@ if (NOT OPENSSL_FOUND AND TILEDB_SUPERBUILD)
     message(FATAL_ERROR "OpenSSL external project unimplemented on Windows.")
   endif()
 
+  # Support cross compilation of MacOS
+  if (CMAKE_OSX_ARCHITECTURES STREQUAL arm64)
+    set(OPENSSL_CONFIG_CMD ${CMAKE_COMMAND} -E env "ARCHFLAGS=\\\\-arch arm64" ${TILEDB_EP_BASE}/src/ep_openssl/Configure darwin64-arm64-cc --prefix=${TILEDB_EP_INSTALL_PREFIX} no-shared -fPIC)
+  elseif(CMAKE_OSX_ARCHITECTURES STREQUAL x86_64)
+    set(OPENSSL_CONFIG_CMD ${CMAKE_COMMAND} -E env "ARCHFLAGS=\\\\-arch x86_64" ${TILEDB_EP_BASE}/src/ep_openssl/Configure darwin64-x86_64-cc --prefix=${TILEDB_EP_INSTALL_PREFIX} no-shared -fPIC)
+  else()
+    set(OPENSSL_CONFIG_CMD ${TILEDB_EP_BASE}/src/ep_openssl/config --prefix=${TILEDB_EP_INSTALL_PREFIX} no-shared -fPIC)
+  endif()
+
   ExternalProject_Add(ep_openssl
     PREFIX "externals"
     URL "https://github.com/openssl/openssl/archive/OpenSSL_1_1_1i.zip"
     URL_HASH SHA1=627938302f681dfac186a9225b65368516b4f484
-    CONFIGURE_COMMAND
-      ${TILEDB_EP_BASE}/src/ep_openssl/config
-        --prefix=${TILEDB_EP_INSTALL_PREFIX}
-        no-shared
-        -fPIC
+    CONFIGURE_COMMAND ${OPENSSL_CONFIG_CMD}
     BUILD_IN_SOURCE TRUE
     BUILD_COMMAND $(MAKE)
     INSTALL_COMMAND $(MAKE) install

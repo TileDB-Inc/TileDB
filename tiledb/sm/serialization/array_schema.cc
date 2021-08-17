@@ -29,8 +29,12 @@
  *
  * This file defines serialization functions for ArraySchema.
  */
+#ifdef TILEDB_SERIALIZATION
+#include <capnp/compat/json.h>
+#include <capnp/serialize.h>
+#include "tiledb/sm/serialization/capnp_utils.h"
+#endif
 
-#include "tiledb/sm/serialization/array_schema.h"
 #include "tiledb/common/heap_memory.h"
 #include "tiledb/common/logger.h"
 #include "tiledb/sm/array/array.h"
@@ -45,19 +49,9 @@
 #include "tiledb/sm/enums/layout.h"
 #include "tiledb/sm/enums/serialization_type.h"
 #include "tiledb/sm/misc/constants.h"
-
-#ifdef _WIN32
-#include "tiledb/sm/serialization/meet-capnproto-win32-include-expectations.h"
-#endif
-
-#include "tiledb/sm/serialization/capnp_utils.h"
+#include "tiledb/sm/serialization/array_schema.h"
 
 #include <set>
-
-#ifdef TILEDB_SERIALIZATION
-#include <capnp/compat/json.h>
-#include <capnp/serialize.h>
-#endif
 
 using namespace tiledb::common;
 
@@ -266,7 +260,7 @@ Status dimension_to_capnp(
 
   dimension_builder->setName(dimension->name());
   dimension_builder->setType(datatype_str(dimension->type()));
-  dimension_builder->setNullTileExtent(dimension->tile_extent().empty());
+  dimension_builder->setNullTileExtent(!dimension->tile_extent());
 
   // Only set the domain if its not empty/null. String dimensions have null
   // domains
@@ -277,7 +271,7 @@ Status dimension_to_capnp(
   }
 
   // Only set the tile extent if its not empty
-  if (!dimension->tile_extent().empty()) {
+  if (dimension->tile_extent()) {
     auto tile_extent_builder = dimension_builder->initTileExtent();
     RETURN_NOT_OK(utils::set_capnp_scalar(
         tile_extent_builder,
@@ -305,7 +299,7 @@ Status dimension_from_capnp(
     Buffer domain_buffer;
     RETURN_NOT_OK(
         utils::copy_capnp_list(domain_reader, dim_type, &domain_buffer));
-    RETURN_NOT_OK((*dimension)->set_domain(domain_buffer.data()));
+    RETURN_NOT_OK((*dimension)->set_domain_unsafe(domain_buffer.data()));
   }
 
   if (dimension_reader.hasFilterPipeline()) {
@@ -361,6 +355,15 @@ Status dimension_from_capnp(
       case Datatype::DATETIME_PS:
       case Datatype::DATETIME_FS:
       case Datatype::DATETIME_AS:
+      case Datatype::TIME_HR:
+      case Datatype::TIME_MIN:
+      case Datatype::TIME_SEC:
+      case Datatype::TIME_MS:
+      case Datatype::TIME_US:
+      case Datatype::TIME_NS:
+      case Datatype::TIME_PS:
+      case Datatype::TIME_FS:
+      case Datatype::TIME_AS:
       case Datatype::INT64: {
         auto val = tile_extent_reader.getInt64();
         RETURN_NOT_OK((*dimension)->set_tile_extent(&val));

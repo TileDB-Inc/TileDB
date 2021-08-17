@@ -38,6 +38,7 @@
 #include <unordered_map>
 #include "tiledb/common/thread_pool.h"
 #include "tiledb/sm/misc/constants.h"
+#include "tiledb/sm/stats/stats.h"
 #include "tiledb/sm/subarray/subarray.h"
 
 using namespace tiledb::common;
@@ -99,11 +100,14 @@ class SubarrayPartitioner {
      * current partition has been constructed from.
      */
     uint64_t start_;
+
     /**
      * The end range index from the original subarray that the
-     * current partition has been constructed from.
+     * current partition has been constructed from. This is an
+     * inclusive index.
      */
     uint64_t end_;
+
     /**
      * ``true`` if the partition came from splitting a multi-range
      * subarray that was put into ``state_.multi_range_``.
@@ -159,11 +163,13 @@ class SubarrayPartitioner {
 
   /** Constructor. */
   SubarrayPartitioner(
+      const Config* config,
       const Subarray& subarray,
       uint64_t memory_budget,
       uint64_t memory_budget_var,
       uint64_t memory_budget_validity,
-      ThreadPool* compute_tp);
+      ThreadPool* compute_tp,
+      stats::Stats* parent_stats);
 
   /** Destructor. */
   ~SubarrayPartitioner();
@@ -183,6 +189,9 @@ class SubarrayPartitioner {
   /* ********************************* */
   /*                 API               */
   /* ********************************* */
+
+  /** Returns the current partition. */
+  const Subarray& current() const;
 
   /** Returns the current partition. */
   Subarray& current();
@@ -337,10 +346,19 @@ class SubarrayPartitioner {
   /** Returns the subarray. */
   Subarray* subarray();
 
+  /** Returns `stats_`. */
+  stats::Stats* stats() const;
+
  private:
   /* ********************************* */
   /*         PRIVATE ATTRIBUTES        */
   /* ********************************* */
+
+  /** The class stats. */
+  stats::Stats* stats_;
+
+  /** The config. */
+  const Config* config_;
 
   /** The subarray the partitioner will iterate on to produce partitions. */
   Subarray subarray_;
@@ -365,6 +383,12 @@ class SubarrayPartitioner {
 
   /** The memory budget for the validity vectors. */
   uint64_t memory_budget_validity_;
+
+  /**
+   * If true, do not consider estimated result sizes when
+   * determining if a partition should be split.
+   */
+  bool skip_split_on_est_size_;
 
   /** The thread pool for compute-bound tasks. */
   ThreadPool* compute_tp_;
@@ -397,7 +421,7 @@ class SubarrayPartitioner {
    * and needs splitting along the splitting dimension (that depends on
    * the layout).
    */
-  void calibrate_current_start_end(bool* must_split_slab);
+  Status calibrate_current_start_end(bool* must_split_slab);
 
   /** Returns a deep copy of this SubarrayPartitioner. */
   SubarrayPartitioner clone() const;
@@ -460,7 +484,7 @@ class SubarrayPartitioner {
    * the reverse order (this is used in global order reads when
    * the cell order is Hilbert).
    */
-  void compute_splitting_value_multi_range(
+  Status compute_splitting_value_multi_range(
       unsigned* splitting_dim,
       uint64_t* splitting_range,
       ByteVecValue* splitting_value,

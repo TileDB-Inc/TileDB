@@ -33,17 +33,15 @@
 #ifndef TILEDB_WRITER_H
 #define TILEDB_WRITER_H
 
-#include <memory>
-#include <set>
-#include <unordered_map>
-
 #include "tiledb/common/status.h"
 #include "tiledb/sm/fragment/written_fragment_info.h"
 #include "tiledb/sm/misc/types.h"
+#include "tiledb/sm/query/dense_tiler.h"
+#include "tiledb/sm/query/iquery_strategy.h"
+#include "tiledb/sm/query/query.h"
 #include "tiledb/sm/query/query_buffer.h"
-#include "tiledb/sm/query/validity_vector.h"
-#include "tiledb/sm/query/write_cell_slab_iter.h"
-#include "tiledb/sm/subarray/subarray.h"
+#include "tiledb/sm/query/strategy_base.h"
+#include "tiledb/sm/stats/stats.h"
 #include "tiledb/sm/tile/tile.h"
 
 using namespace tiledb::common;
@@ -52,12 +50,11 @@ namespace tiledb {
 namespace sm {
 
 class Array;
-class ArraySchema;
 class FragmentMetadata;
 class StorageManager;
 
 /** Processes write queries. */
-class Writer {
+class Writer : public StrategyBase, public IQueryStrategy {
  public:
   /* ********************************* */
   /*          TYPE DEFINITIONS         */
@@ -83,156 +80,48 @@ class Writer {
      */
     std::unordered_map<std::string, uint64_t> cells_written_;
 
-    /** The fragment metadata. */
+    /** The fragment metadata that the writer will focus on. */
     tdb_shared_ptr<FragmentMetadata> frag_meta_;
   };
-
-  /** Cell range to be written. */
-  struct WriteCellRange {
-    /** The position in the tile where the range will be copied. */
-    uint64_t pos_;
-    /** The starting cell in the user buffers. */
-    uint64_t start_;
-    /** The ending cell in the user buffers. */
-    uint64_t end_;
-
-    /** Constructor. */
-    WriteCellRange(uint64_t pos, uint64_t start, uint64_t end)
-        : pos_(pos)
-        , start_(start)
-        , end_(end) {
-    }
-  };
-
-  /** A vector of write cell ranges. */
-  typedef std::vector<WriteCellRange> WriteCellRangeVec;
 
   /* ********************************* */
   /*     CONSTRUCTORS & DESTRUCTORS    */
   /* ********************************* */
 
   /** Constructor. */
-  Writer();
+  Writer(
+      stats::Stats* stats,
+      StorageManager* storage_manager,
+      Array* array,
+      Config& config,
+      std::unordered_map<std::string, QueryBuffer>& buffers,
+      Subarray& subarray,
+      Layout layout,
+      std::vector<WrittenFragmentInfo>& written_fragment_info,
+      bool disable_check_global_order,
+      Query::CoordsInfo& coords_info_,
+      URI fragment_uri = URI(""));
 
   /** Destructor. */
   ~Writer();
+
+  DISABLE_COPY_AND_COPY_ASSIGN(Writer);
+  DISABLE_MOVE_AND_MOVE_ASSIGN(Writer);
 
   /* ********************************* */
   /*                 API               */
   /* ********************************* */
 
-  /** Returns the array. */
-  const Array* array() const;
-
-  /** Adds a range to the subarray on the input dimension. */
-  Status add_range(unsigned dim_idx, const Range& range);
-
-  /**
-   * Disables checking the global order. Applicable only to writes.
-   * This option will supercede the config.
-   */
-  void disable_check_global_order();
-
-  /** Retrieves the number of ranges of the subarray for the given dimension. */
-  Status get_range_num(unsigned dim_idx, uint64_t* range_num) const;
-
-  /**
-   * Retrieves a range from a dimension in the form (start, end, stride).
-   *
-   * @param dim_idx The dimension to retrieve the range from.
-   * @param range_idx The id of the range to retrieve.
-   * @param start The range start to retrieve.
-   * @param end The range end to retrieve.
-   * @param stride The range stride to retrieve.
-   * @return Status
-   */
-  Status get_range(
-      unsigned dim_idx,
-      uint64_t range_idx,
-      const void** start,
-      const void** end,
-      const void** stride) const;
-
-  /** Returns the array schema. */
-  const ArraySchema* array_schema() const;
-
   /** Returns the names of the buffers set by the user for the write query. */
   std::vector<std::string> buffer_names() const;
 
-  /**
-   * Returns the query buffer for the given attribute/dimension name.
-   * The name can be TILEDB_COORDS.
-   */
-  QueryBuffer buffer(const std::string& name) const;
-
-  /** Finalizes the reader. */
+  /** Finalizes the writer. */
   Status finalize();
 
-  /**
-   * Retrieves the buffer of a fixed-sized attribute/dimension.
-   *
-   * @param name The buffer name.
-   * @param buffer The buffer to be retrieved.
-   * @param buffer_size A pointer to the buffer size to be retrieved.
-   * @return Status
-   */
-  Status get_buffer(
-      const std::string& name, void** buffer, uint64_t** buffer_size) const;
-
-  /**
-   * Retrieves the offsets and values buffers of a var-sized
-   * attribute/dimension.
-   *
-   * @param name The buffer attribute/dimension.
-   * @param buffer_off The offsets buffer to be retrieved.
-   * @param buffer_off_size A pointer to the offsets buffer size to be
-   * retrieved.
-   * @param buffer_val The values buffer to be retrieved.
-   * @param buffer_val_size A pointer to the values buffer size to be retrieved.
-   * @return Status
-   */
-  Status get_buffer(
-      const std::string& name,
-      uint64_t** buffer_off,
-      uint64_t** buffer_off_size,
-      void** buffer_val,
-      uint64_t** buffer_val_size) const;
-
-  /**
-   * Retrieves the buffer of a fixed-sized, nullable attribute.
-   *
-   * @param name The buffer name.
-   * @param buffer The buffer to be retrieved.
-   * @param buffer_size A pointer to the buffer size to be retrieved.
-   * @param validity_vector A pointer to the validity vector to be retrieved.
-   * @return Status
-   */
-  Status get_buffer_nullable(
-      const std::string& name,
-      void** buffer,
-      uint64_t** buffer_size,
-      const ValidityVector** validity_vector) const;
-
-  /**
-   * Retrieves the offsets and values buffers of a var-sized,
-   * nullable attribute.
-   *
-   * @param name The buffer attribute/dimension.
-   * @param buffer_off The offsets buffer to be retrieved.
-   * @param buffer_off_size A pointer to the offsets buffer size to be
-   * retrieved.
-   * @param buffer_val The values buffer to be retrieved.
-   * @param buffer_val_size A pointer to the values buffer size to be retrieved.
-   * @param validity_vector A pointer to the validity vector to be retrieved.
-   * @return Status
-   */
-  Status get_buffer_nullable(
-      const std::string& name,
-      uint64_t** buffer_off,
-      uint64_t** buffer_off_size,
-      void** buffer_val,
-      uint64_t** buffer_val_size,
-      const ValidityVector** validity_vector) const;
+  /** Writer is never in an imcomplete state. */
+  bool incomplete() const {
+    return false;
+  }
 
   /** Returns current setting of check_coord_dups_ */
   bool get_check_coord_dups() const;
@@ -243,102 +132,8 @@ class Writer {
   /** Returns current setting of dedup_coords_ */
   bool get_dedup_coords() const;
 
-  /** Returns the configured offsets format mode. */
-  std::string get_offsets_mode() const;
-
-  /** Returns `True` if offsets are configured to have an extra element. */
-  bool get_offsets_extra_element() const;
-
-  /** Returns the configured offsets bitsize */
-  uint32_t get_offsets_bitsize() const;
-
-  /** Initializes the writer with the subarray layout. */
-  Status init(const Layout& layout);
-
-  /** Returns the cell layout. */
-  Layout layout() const;
-
-  /** Sets the array. */
-  void set_array(const Array* array);
-
-  /*
-   * Sets the array schema. If the array is a kv store, then this
-   * function also sets global order as the default layout.
-   */
-  void set_array_schema(const ArraySchema* array_schema);
-
-  /**
-   * Sets the buffer for a fixed-sized attribute/dimension.
-   *
-   * @param name The attribute/dimension to set the buffer for.
-   * @param buffer The buffer that has the input data to be written.
-   * @param buffer_size The size of `buffer` in bytes.
-   * @return Status
-   */
-  Status set_buffer(
-      const std::string& name, void* buffer, uint64_t* buffer_size);
-
-  /**
-   * Sets the buffer for a var-sized attribute/dimension.
-   *
-   * @param name The attribute/dimension to set the buffer for.
-   * @param buffer_off The buffer that has the input data to be written,
-   *     This buffer holds the starting offsets of each cell value in
-   *     `buffer_val`.
-   * @param buffer_off_size The size of `buffer_off` in bytes.
-   * @param buffer_val The buffer that has the input data to be written.
-   *     This buffer holds the actual var-sized cell values.
-   * @param buffer_val_size The size of `buffer_val` in bytes.
-   * @return Status
-   */
-  Status set_buffer(
-      const std::string& name,
-      uint64_t* buffer_off,
-      uint64_t* buffer_off_size,
-      void* buffer_val,
-      uint64_t* buffer_val_size);
-
-  /**
-   * Sets the buffer for a fixed-sized, nullable attribute.
-   *
-   * @param name The attribute to set the buffer for.
-   * @param buffer The buffer that has the input data to be written.
-   * @param buffer_size The size of `buffer` in bytes.
-   * @param validity_vector The validity vector associated with values in
-   * `buffer`.
-   * @return Status
-   */
-  Status set_buffer(
-      const std::string& name,
-      void* buffer,
-      uint64_t* buffer_size,
-      ValidityVector&& validity_vector);
-
-  /**
-   * Sets the buffer for a var-sized, nullable attribute.
-   *
-   * @param name The attribute to set the buffer for.
-   * @param buffer_off The buffer that has the input data to be written,
-   *     This buffer holds the starting offsets of each cell value in
-   *     `buffer_val`.
-   * @param buffer_off_size The size of `buffer_off` in bytes.
-   * @param buffer_val The buffer that has the input data to be written.
-   *     This buffer holds the actual var-sized cell values.
-   * @param buffer_val_size The size of `buffer_val` in bytes.
-   * @param validity_vector The validity vector associated with values in
-   * `buffer_val`.
-   * @return Status
-   */
-  Status set_buffer(
-      const std::string& name,
-      uint64_t* buffer_off,
-      uint64_t* buffer_off_size,
-      void* buffer_val,
-      uint64_t* buffer_val_size,
-      ValidityVector&& validity_vector);
-
-  /** Sets config for query-level parameters only. */
-  Status set_config(const Config& config);
+  /** Initializes the writer. */
+  Status init();
 
   /** Sets current setting of check_coord_dups_ */
   void set_check_coord_dups(bool b);
@@ -349,65 +144,13 @@ class Writer {
   /** Sets current setting of dedup_coords_ */
   void set_dedup_coords(bool b);
 
-  /** Sets the offsets format mode. */
-  Status set_offsets_mode(const std::string& offsets_mode);
-
-  /** Sets if offsets are configured to have an extra element. */
-  Status set_offsets_extra_element(bool add_extra_element);
-
-  /** Sets the bitsize of offsets */
-  Status set_offsets_bitsize(const uint32_t bitsize);
-
-  /** Sets the fragment URI. Applicable only to write queries. */
-  void set_fragment_uri(const URI& fragment_uri);
-
-  /**
-   * Sets the cell layout of the query. The function will return an error
-   * if the queried array is a key-value store (because it has its default
-   * layout for both reads and writes.
-   */
-  Status set_layout(Layout layout);
-
-  /** Sets the storage manager. */
-  void set_storage_manager(StorageManager* storage_manager);
-
-  /** Sets the query subarray. */
-  Status set_subarray(const Subarray& subarray);
-
-  /* Return the subarray. */
-  const void* subarray() const;
-
-  /** Returns the query subarray object. */
-  const Subarray* subarray_ranges() const;
-
   /** Performs a write query using its set members. */
-  Status write();
-
-  /** Returns the written fragment info. */
-  const std::vector<WrittenFragmentInfo>& written_fragment_info() const;
+  Status dowork();
 
  private:
   /* ********************************* */
   /*         PRIVATE ATTRIBUTES        */
   /* ********************************* */
-
-  /** The array. */
-  const Array* array_;
-
-  /** The array schema. */
-  const ArraySchema* array_schema_;
-
-  /** The config for query-level parameters only. */
-  Config config_;
-
-  /** Maps attribute/dimensions names to their buffers. */
-  std::unordered_map<std::string, QueryBuffer> buffers_;
-
-  /** The coordinates buffer potentially set by the user. */
-  void* coords_buffer_;
-
-  /** The coordinates buffer size potentially set by the user. */
-  uint64_t* coords_buffer_size_;
 
   /**
    * The sizes of the coordinate buffers in a map (dimension -> size).
@@ -416,23 +159,14 @@ class Writer {
    */
   std::unordered_map<std::string, uint64_t> coord_buffer_sizes_;
 
-  /** True if at least one separate coordinate buffer is set. */
-  bool coord_buffer_is_set_;
-
-  /** Keeps track of the number of coordinates across coordinate buffers. */
-  uint64_t coords_num_;
-
   /**
    * If `true`, it will not check if the written coordinates are
    * in the global order. This supercedes the config.
    */
   bool disable_check_global_order_;
 
-  /**
-   * True if either zipped coordinates buffer or separate coordinate
-   * buffers are set.
-   */
-  bool has_coords_;
+  /** Keeps track of the coords data. */
+  Query::CoordsInfo& coords_info_;
 
   /**
    * Meaningful only when `dedup_coords_` is `false`.
@@ -472,47 +206,11 @@ class Writer {
   /** True if the writer has been initialized. */
   bool initialized_;
 
-  /**
-   * The layout of the cells in the result of the subarray. Note
-   * that this may not be the same as what the user set to the
-   * query, as the Writer may calibrate it to boost performance.
-   */
-  Layout layout_;
-
-  /** The storage manager. */
-  StorageManager* storage_manager_;
-
-  /**
-   * The subarray the query is constrained on. It is represented
-   * as a flat byte vector for the (low, high) pairs of the
-   * subarray. This is used only in dense writes and, therefore,
-   * it is assumed that all dimensions have the same datatype.
-   */
-  std::vector<uint8_t> subarray_flat_;
-
-  /**
-   * The subarray object, used in dense writes. It has to be
-   * comprised of a single multi-dimensional range.
-   */
-  Subarray subarray_;
-
   /** Stores information about the written fragments. */
-  std::vector<WrittenFragmentInfo> written_fragment_info_;
+  std::vector<WrittenFragmentInfo>& written_fragment_info_;
 
   /** Allocated buffers that neeed to be cleaned upon destruction. */
   std::vector<void*> to_clean_;
-
-  /** The offset format used for variable-sized attributes. */
-  std::string offsets_format_mode_;
-
-  /**
-   * If `true`, an extra element that points to the end of the values buffer
-   * will be added in the end of the offsets buffer of var-sized attributes
-   */
-  bool offsets_extra_element_;
-
-  /** The offset bitsize used for variable-sized attributes. */
-  uint32_t offsets_bitsize_;
 
   /* ********************************* */
   /*           PRIVATE METHODS         */
@@ -520,9 +218,6 @@ class Writer {
 
   /** Adss a fragment to `written_fragment_info_`. */
   Status add_written_fragment_info(const URI& uri);
-
-  /** Checks if the buffers names have been appropriately set for the query. */
-  Status check_buffer_names();
 
   /** Correctness checks for buffer sizes. */
   Status check_buffer_sizes() const;
@@ -634,20 +329,6 @@ class Writer {
       FragmentMetadata* meta) const;
 
   /**
-   * Computes the cell ranges to be written, derived from a
-   * dense cell range iterator for a specific tile.
-   *
-   * @tparam T The domain type.
-   * @param iter The dense cell range iterator for one
-   *     tile overlapping with the write subarray.
-   * @param write_cell_ranges The write cell ranges to be created.
-   * @return Status
-   */
-  template <class T>
-  Status compute_write_cell_ranges(
-      WriteCellSlabIter<T>* iters, WriteCellRangeVec* write_cell_ranges) const;
-
-  /**
    * Creates a new fragment.
    *
    * @param dense Whether the fragment is dense or not.
@@ -663,14 +344,14 @@ class Writer {
    * of the pipeline.
    */
   Status filter_tiles(
-      std::unordered_map<std::string, std::vector<Tile>>* tiles) const;
+      std::unordered_map<std::string, std::vector<Tile>>* tiles);
 
   /**
    * Applicable only to global writes. Filters the last attribute and
    * coordinate tiles.
    */
   Status filter_last_tiles(
-      std::unordered_map<std::string, std::vector<Tile>>* tiles) const;
+      std::unordered_map<std::string, std::vector<Tile>>* tiles);
 
   /**
    * Runs the input tiles for the input attribute through the filter pipeline.
@@ -680,7 +361,7 @@ class Writer {
    * @param tile The tiles to be filtered.
    * @return Status
    */
-  Status filter_tiles(const std::string& name, std::vector<Tile>* tiles) const;
+  Status filter_tiles(const std::string& name, std::vector<Tile>* tiles);
 
   /**
    * Runs the input tile for the input attribute/dimension through the filter
@@ -695,7 +376,7 @@ class Writer {
    * @return Status
    */
   Status filter_tile(
-      const std::string& name, Tile* tile, bool offsets, bool nullable) const;
+      const std::string& name, Tile* tile, bool offsets, bool nullable);
 
   /** Finalizes the global write state. */
   Status finalize_global_write_state();
@@ -764,18 +445,6 @@ class Writer {
       Tile* tile_validity) const;
 
   /**
-   * Initializes dense cell range iterators for the subarray to be writte,
-   * one per overlapping tile.
-   *
-   * @tparam T The domain type.
-   * @param iters The dense cell range iterators to be created.
-   * @return Status
-   */
-  template <class T>
-  Status init_tile_dense_cell_range_iters(
-      std::vector<WriteCellSlabIter<T>>* iters) const;
-
-  /**
    * Initializes the tiles for writing for the input attribute/dimension.
    *
    * @param name The attribute/dimension the tiles belong to.
@@ -802,7 +471,8 @@ class Writer {
    * @param frag_uri Will store the new special fragment name
    * @return Status
    */
-  Status new_fragment_name(uint64_t timestamp, std::string* frag_uri) const;
+  Status new_fragment_name(
+      uint64_t timestamp, uint32_t format_version, std::string* frag_uri) const;
 
   /**
    * This deletes the global write state and deletes the potentially
@@ -931,33 +601,6 @@ class Writer {
   Status prepare_full_tiles_var(
       const std::string& name,
       const std::set<uint64_t>& coord_dups,
-      std::vector<Tile>* tiles) const;
-
-  /**
-   * It prepares and filters  attribute the tiles, copying from the user
-   * buffers into the tiles the values based on the input write cell ranges.
-   *
-   * @param write_cell_ranges The write cell ranges.
-   * @param tiles The tiles to be created.
-   * @return Status
-   */
-  Status prepare_and_filter_attr_tiles(
-      const std::vector<WriteCellRangeVec>& write_cell_ranges,
-      std::unordered_map<std::string, std::vector<Tile>>* attr_tiles) const;
-
-  /**
-   * It prepares the tiles, copying from the user buffers into the tiles
-   * the values based on the input write cell ranges, focusing on the
-   * input attribute.
-   *
-   * @param attribute The attribute to prepare the tiles for.
-   * @param write_cell_ranges The write cell ranges.
-   * @param tiles The tiles to be created.
-   * @return Status
-   */
-  Status prepare_tiles(
-      const std::string& attribute,
-      const std::vector<WriteCellRangeVec>& write_cell_ranges,
       std::vector<Tile>* tiles) const;
 
   /**
@@ -1207,20 +850,26 @@ class Writer {
    */
   Status write_all_tiles(
       FragmentMetadata* frag_meta,
-      std::unordered_map<std::string, std::vector<Tile>>* tiles) const;
+      std::unordered_map<std::string, std::vector<Tile>>* tiles);
 
   /**
    * Writes the input tiles for the input attribute/dimension to storage.
    *
    * @param name The attribute/dimension the tiles belong to.
    * @param frag_meta The fragment metadata.
+   * @param start_tile_id The function will start writing tiles
+   *     with ids in the fragment that start with this value.
    * @param tiles The tiles to be written.
+   * @param close_files Whether to close the attribute/coordinate
+   *     file in the end of the function call.
    * @return Status
    */
   Status write_tiles(
       const std::string& name,
       FragmentMetadata* frag_meta,
-      std::vector<Tile>* tiles) const;
+      uint64_t start_tile_id,
+      std::vector<Tile>* tiles,
+      bool close_files = true);
 
   /**
    * Returns the i-th coordinates in the coordinate buffers in string
@@ -1240,23 +889,27 @@ class Writer {
    */
   bool all_last_tiles_empty() const;
 
-  /**
-   * Sets the (zipped) coordinates buffer (set with TILEDB_COORDS as the
-   * buffer name).
-   *
-   * @param buffer The buffer that has the input data to be written.
-   * @param buffer_size The size of `buffer` in bytes.
-   * @return Status
-   */
-  Status set_coords_buffer(void* buffer, uint64_t* buffer_size);
-
-  /** Gets statistics about dimensions and attributes written. */
-  void get_dim_attr_stats() const;
-
   /** Calculates the hilbert values of the input coordinate buffers. */
   Status calculate_hilbert_values(
       const std::vector<const QueryBuffer*>& buffs,
       std::vector<uint64_t>* hilbert_values) const;
+
+  /**
+   * Prepares, filters and writes dense tiles for the given attribute.
+   *
+   * @tparam T The array domain datatype.
+   * @param name The attribute name.
+   * @param frag_meta The metadata of the new fragment.
+   * @param dense_tiler The dense tiler that will prepare the tiles.
+   * @param thread_num The number of threads to be used for the function.
+   * @param stats Statistics to gather in the function.
+   */
+  template <class T>
+  Status prepare_filter_and_write_tiles(
+      const std::string& name,
+      FragmentMetadata* frag_meta,
+      DenseTiler<T>* dense_tiler,
+      uint64_t thread_num);
 };
 
 }  // namespace sm

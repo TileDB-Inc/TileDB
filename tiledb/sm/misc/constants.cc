@@ -71,6 +71,9 @@ const unsigned rtree_fanout = 10;
 /** The array schema file name. */
 const std::string array_schema_filename = "__array_schema.tdb";
 
+/** The array schema folder name. */
+const std::string array_schema_folder_name = "__schema";
+
 /** The array metadata folder name. */
 const std::string array_metadata_folder_name = "__meta";
 
@@ -225,6 +228,7 @@ const std::string query_type_read_str = "READ";
 
 /** TILEDB_WRITE Query String **/
 const std::string query_type_write_str = "WRITE";
+
 /** TILEDB_FAILED Query String **/
 const std::string query_status_failed_str = "FAILED";
 
@@ -239,6 +243,33 @@ const std::string query_status_incomplete_str = "INCOMPLETE";
 
 /** TILEDB_UNINITIALIZED Query String **/
 const std::string query_status_uninitialized_str = "UNINITIALIZED";
+
+/** TILEDB_LT Query Condition Op String **/
+const std::string query_condition_op_lt_str = "LT";
+
+/** TILEDB_LE Query Condition Op String **/
+const std::string query_condition_op_le_str = "LE";
+
+/** TILEDB_GT Query Condition Op String **/
+const std::string query_condition_op_gt_str = "GT";
+
+/** TILEDB_GE Query Condition Op String **/
+const std::string query_condition_op_ge_str = "GE";
+
+/** TILEDB_EQ Query Condition Op String **/
+const std::string query_condition_op_eq_str = "EQ";
+
+/** TILEDB_NE Query Condition Op String **/
+const std::string query_condition_op_ne_str = "NE";
+
+/** TILEDB_AND Query Condition Combination Op String **/
+const std::string query_condition_combination_op_and_str = "AND";
+
+/** TILEDB_OR Query Condition Combination Op String **/
+const std::string query_condition_combination_op_or_str = "OR";
+
+/** TILEDB_NOT Query Condition Combination Op String **/
+const std::string query_condition_combination_op_not_str = "NOT";
 
 /** TILEDB_COMPRESSION Filter type string */
 const std::string filter_type_compression_str = "COMPRESSION";
@@ -399,6 +430,33 @@ const std::string datetime_fs_str = "DATETIME_FS";
 /** The string representation for type DATETIME_AS. */
 const std::string datetime_as_str = "DATETIME_AS";
 
+/** The string representation for type TIME_HR. */
+const std::string time_hr_str = "TIME_HR";
+
+/** The string representation for type TIME_MIN. */
+const std::string time_min_str = "TIME_MIN";
+
+/** The string representation for type TIME_SEC. */
+const std::string time_sec_str = "TIME_SEC";
+
+/** The string representation for type TIME_MS. */
+const std::string time_ms_str = "TIME_MS";
+
+/** The string representation for type TIME_US. */
+const std::string time_us_str = "TIME_US";
+
+/** The string representation for type TIME_NS. */
+const std::string time_ns_str = "TIME_NS";
+
+/** The string representation for type TIME_PS. */
+const std::string time_ps_str = "TIME_PS";
+
+/** The string representation for type TIME_FS. */
+const std::string time_fs_str = "TIME_FS";
+
+/** The string representation for type TIME_AS. */
+const std::string time_as_str = "TIME_AS";
+
 /** The string representation for the dense array type. */
 const std::string dense_str = "dense";
 
@@ -467,7 +525,10 @@ const int32_t library_version[3] = {
     TILEDB_VERSION_MAJOR, TILEDB_VERSION_MINOR, TILEDB_VERSION_PATCH};
 
 /** The TileDB serialization format version number. */
-const uint32_t format_version = 9;
+const uint32_t format_version = 10;
+
+/** The lowest version supported for back compat writes. */
+const uint32_t back_compat_writes_min_format_version = 7;
 
 /** The maximum size of a tile chunk (unit of compression) in bytes. */
 const uint64_t max_tile_chunk_size = 64 * 1024;
@@ -562,6 +623,15 @@ const void* fill_value(Datatype type) {
     case Datatype::DATETIME_PS:
     case Datatype::DATETIME_FS:
     case Datatype::DATETIME_AS:
+    case Datatype::TIME_HR:
+    case Datatype::TIME_MIN:
+    case Datatype::TIME_SEC:
+    case Datatype::TIME_MS:
+    case Datatype::TIME_US:
+    case Datatype::TIME_NS:
+    case Datatype::TIME_PS:
+    case Datatype::TIME_FS:
+    case Datatype::TIME_AS:
       return &constants::empty_int64;
   }
 

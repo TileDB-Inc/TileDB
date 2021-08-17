@@ -16,15 +16,29 @@ struct DomainArray {
   float64 @9 :List(Float64);
 }
 
+struct KV {
+  key @0 :Text;
+  value @1 :Text;
+}
+
+struct Config {
+# Represents a config object
+  entries @0 :List(KV);
+  # list of key-value settings
+}
+
 struct Array {
-  timestamp @0 :UInt64;
-  # timestamp array was opened
+  endTimestamp @0 :UInt64;
+  # ending timestamp array was opened
 
   queryType @1 :Text;
   # Array opened for query type
 
   uri @2 :Text;
   # Array uri
+
+  startTimestamp @3 :UInt64;
+  # starting timestamp array was opened
 }
 
 struct ArraySchema {
@@ -218,6 +232,32 @@ struct MapInt64 {
   }
 }
 
+struct MapUInt64 {
+  entries @0 :List(Entry);
+  struct Entry {
+    key @0 :Text;
+    value @1 :UInt64;
+  }
+}
+
+struct MapFloat64 {
+  entries @0 :List(Entry);
+  struct Entry {
+    key @0 :Text;
+    value @1 :Float64;
+  }
+}
+
+struct Stats {
+# Stats struct
+
+  timers @0 :MapFloat64;
+  # timer
+
+  counters @1 :MapUInt64;
+  # counters
+}
+
 struct Writer {
   # Write struct
   checkCoordDups @0 :Bool;
@@ -231,6 +271,9 @@ struct Writer {
 
   subarrayRanges @4 :Subarray;
   # The query subarray/ranges object, new style range object
+
+  stats @5 :Stats;
+  # Stats object
 }
 
 struct SubarrayRanges {
@@ -260,6 +303,9 @@ struct Subarray {
 
   ranges @1 :List(SubarrayRanges);
   # List of 1D ranges, one per dimension
+
+  stats @2 :Stats;
+  # Stats object
 }
 
 struct SubarrayPartitioner {
@@ -299,6 +345,9 @@ struct SubarrayPartitioner {
 
   memoryBudgetValidity @6 :UInt64;
   # The memory budget for the validity buffers
+
+  stats @7 :Stats;
+  # Stats object
 }
 
 struct ReadState {
@@ -315,6 +364,29 @@ struct ReadState {
   # The subarray partitioner
 }
 
+struct ConditionClause {
+  # A clause within a condition
+
+  fieldName @0 :Text;
+  # The name of the field this clause applies to
+
+  value @1 :Data;
+  # The comparison value
+
+  op @2 :Text;
+  # The comparison operation
+}
+
+struct Condition {
+  # The query condition
+
+  clauses @0 :List(ConditionClause);
+  # All clauses in this condition
+
+  clauseCombinationOps @1 :List(Text);
+  # The operation that combines each condition
+}
+
 struct QueryReader {
   # Read struct (can't be called reader due to class name conflict)
 
@@ -326,6 +398,12 @@ struct QueryReader {
 
   readState @2 :ReadState;
   # Read state of reader
+
+  condition @3 :Condition;
+  # The query condition
+
+  stats @4 :Stats;
+  # Stats object
 }
 
 struct Query {
@@ -360,13 +438,19 @@ struct Query {
     # Total number of bytes in validity buffers
 
     varOffsetsMode @10 :Text;
-    # The offsets format (`bytes` or `elements`) to be used
+    # This field is not longer used, it is replaced by the config
 
     varOffsetsAddExtraElement @11 :Bool;
-    # `True` if an extra element is to be added to the end of the offsets buffer
+    # This field is not longer used, it is replaced by the config
 
     varOffsetsBitsize @12 :Int32;
-    # The offsets bitsize (`32` or `64`) to be used
+    # This field is not longer used, it is replaced by the config
+
+    config @13 :Config;
+    # Config set on query
+
+    stats @14 :Stats;
+    # Stats object
 }
 
 struct NonEmptyDomain {

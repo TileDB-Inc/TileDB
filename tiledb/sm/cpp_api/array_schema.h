@@ -126,7 +126,11 @@ class ArraySchema : public Schema {
    * @param uri URI of array
    */
   ArraySchema(const Context& ctx, const std::string& uri)
-      : ArraySchema(ctx, uri, TILEDB_NO_ENCRYPTION, nullptr, 0) {
+      : Schema(ctx) {
+    tiledb_ctx_t* c_ctx = ctx.ptr().get();
+    tiledb_array_schema_t* schema;
+    ctx.handle_error(tiledb_array_schema_load(c_ctx, uri.c_str(), &schema));
+    schema_ = std::shared_ptr<tiledb_array_schema_t>(schema, deleter_);
   }
 
   /**
@@ -147,6 +151,7 @@ class ArraySchema : public Schema {
    * @param encryption_key The encryption key to use.
    * @param key_length Length in bytes of the encryption key.
    */
+  TILEDB_DEPRECATED
   ArraySchema(
       const Context& ctx,
       const std::string& uri,

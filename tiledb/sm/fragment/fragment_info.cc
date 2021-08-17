@@ -31,6 +31,10 @@
  */
 
 #include "tiledb/sm/fragment/fragment_info.h"
+#include "tiledb/common/logger.h"
+#include "tiledb/sm/array/array.h"
+#include "tiledb/sm/enums/encryption_type.h"
+#include "tiledb/sm/global_state/unit_test_config.h"
 #include "tiledb/sm/misc/utils.h"
 
 using namespace tiledb::sm;
@@ -85,8 +89,14 @@ void FragmentInfo::append(const SingleFragmentInfo& fragment) {
   fragments_.emplace_back(fragment);
 }
 
+void FragmentInfo::expand_anterior_ndrange(
+    const Domain* domain, const NDRange& range) {
+  domain->expand_ndrange(range, &anterior_ndrange_);
+}
+
 void FragmentInfo::clear() {
   fragments_.clear();
+  anterior_ndrange_.clear();
 }
 
 void FragmentInfo::dump(FILE* out) const {
@@ -429,7 +439,11 @@ Status FragmentInfo::has_consolidated_metadata(
   return Status::Ok();
 }
 
-Status FragmentInfo::load(const EncryptionKey& encryption_key) {
+Status FragmentInfo::load(
+    const Config config,
+    EncryptionType encryption_type,
+    const void* encryption_key,
+    uint32_t key_length) {
   bool is_array;
   RETURN_NOT_OK(storage_manager_->is_array(array_uri_, &is_array));
   if (!is_array) {
@@ -438,9 +452,51 @@ Status FragmentInfo::load(const EncryptionKey& encryption_key) {
     return LOG_STATUS(Status::FragmentInfoError(msg));
   }
 
+  Array array(array_uri_, storage_manager_);
+
+  if (encryption_type == EncryptionType::NO_ENCRYPTION) {
+    bool found = false;
+    std::string encryption_key_from_cfg =
+        config.get("sm.encryption_key", &found);
+    assert(found);
+    std::string encryption_type_from_cfg =
+        config.get("sm.encryption_type", &found);
+    assert(found);
+    auto [st, et] = encryption_type_enum(encryption_type_from_cfg);
+    RETURN_NOT_OK(st);
+    encryption_type = et.value();
+    EncryptionKey encryption_key_cfg;
+    uint32_t key_length = 0;
+
+    if (encryption_key_from_cfg.empty()) {
+      RETURN_NOT_OK(encryption_key_cfg.set_key(encryption_type, nullptr, 0));
+    } else {
+      if (EncryptionKey::is_valid_key_length(
+              encryption_type,
+              static_cast<uint32_t>(encryption_key_from_cfg.size()))) {
+        const UnitTestConfig& unit_test_cfg = UnitTestConfig::instance();
+        if (unit_test_cfg.array_encryption_key_length.is_set()) {
+          key_length = unit_test_cfg.array_encryption_key_length.get();
+        } else {
+          key_length = static_cast<uint32_t>(encryption_key_from_cfg.size());
+        }
+      }
+    }
+    RETURN_NOT_OK(array.open_without_fragments(
+        encryption_type,
+        (const void*)encryption_key_from_cfg.c_str(),
+        key_length));
+  } else {
+    RETURN_NOT_OK(array.open_without_fragments(
+        encryption_type, encryption_key, key_length));
+  }
+
   auto timestamp = utils::time::timestamp_now_ms();
-  RETURN_NOT_OK(storage_manager_->get_fragment_info(
-      array_uri_, timestamp, encryption_key, this, true));
+  RETURN_NOT_OK_ELSE(
+      storage_manager_->get_fragment_info(array, 0, timestamp, this, true),
+      array.close());
+
+  RETURN_NOT_OK(array.close());
 
   unconsolidated_metadata_num_ = 0;
   for (const auto& f : fragments_)
@@ -464,6 +520,10 @@ const std::vector<SingleFragmentInfo>& FragmentInfo::fragments() const {
   return fragments_;
 }
 
+const NDRange& FragmentInfo::anterior_ndrange() const {
+  return anterior_ndrange_;
+}
+
 uint32_t FragmentInfo::to_vacuum_num() const {
   return (uint32_t)to_vacuum_.size();
 }
@@ -485,6 +545,7 @@ FragmentInfo FragmentInfo::clone() const {
   clone.storage_manager_ = storage_manager_;
   clone.to_vacuum_ = to_vacuum_;
   clone.unconsolidated_metadata_num_ = unconsolidated_metadata_num_;
+  clone.anterior_ndrange_ = anterior_ndrange_;
 
   return clone;
 }
@@ -498,4 +559,5 @@ void FragmentInfo::swap(FragmentInfo& fragment_info) {
   std::swap(to_vacuum_, fragment_info.to_vacuum_);
   std::swap(
       unconsolidated_metadata_num_, fragment_info.unconsolidated_metadata_num_);
+  std::swap(anterior_ndrange_, fragment_info.anterior_ndrange_);
 }

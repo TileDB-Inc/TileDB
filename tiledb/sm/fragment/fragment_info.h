@@ -34,6 +34,7 @@
 #define TILEDB_FRAGMENT_INFO_H
 
 #include "tiledb/common/status.h"
+#include "tiledb/sm/array_schema/domain.h"
 #include "tiledb/sm/crypto/encryption_key.h"
 #include "tiledb/sm/fragment/single_fragment_info.h"
 #include "tiledb/sm/misc/uri.h"
@@ -78,6 +79,9 @@ class FragmentInfo {
 
   /** Appends the info about a single fragment at the end of `fragments_`. */
   void append(const SingleFragmentInfo& fragment);
+
+  /** Expand the non empty domain before start with a new range */
+  void expand_anterior_ndrange(const Domain* domain, const NDRange& range);
 
   /** Clears the object. */
   void clear();
@@ -171,7 +175,11 @@ class FragmentInfo {
    * Loads the fragment info from an array. The encryption key is used
    * only if the array is encrypted.
    */
-  Status load(const EncryptionKey& encryption_key);
+  Status load(
+      const Config config,
+      EncryptionType encryption_type,
+      const void* encryption_key,
+      uint32_t key_length);
 
   /** Set the dimension names and types to the object. */
   void set_dim_info(
@@ -183,6 +191,9 @@ class FragmentInfo {
 
   /** Returns the vector with the info about individual fragments. */
   const std::vector<SingleFragmentInfo>& fragments() const;
+
+  /** Returns the non empty domain of the fragments before start time. */
+  const NDRange& anterior_ndrange() const;
 
   /** Returns the number of fragments to vacuum. */
   uint32_t to_vacuum_num() const;
@@ -215,6 +226,9 @@ class FragmentInfo {
 
   /** The number of fragments with unconsolidated metadata. */
   uint32_t unconsolidated_metadata_num_;
+
+  /** Non empty domain before the start time specified */
+  NDRange anterior_ndrange_;
 
   /* ********************************* */
   /*          PRIVATE METHODS          */

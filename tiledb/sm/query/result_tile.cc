@@ -620,8 +620,8 @@ void ResultTile::compute_results_sparse<char>(
         uint64_t c_offset = 0, c_size = 0;
         for (uint64_t pos = first_c_pos; pos <= last_c_pos; ++pos) {
           c_offset = buff_off[pos];
-          c_size = (pos < coords_num) ? buff_off[pos + 1] - c_offset :
-                                        buff_str_size - c_offset;
+          c_size = (pos < coords_num - 1) ? buff_off[pos + 1] - c_offset :
+                                            buff_str_size - c_offset;
           r_bitmap[pos] = str_coord_intersects(
               c_offset, c_size, buff_str, range_start, range_end);
         }
@@ -822,6 +822,15 @@ void ResultTile::set_compute_results_func() {
       case Datatype::DATETIME_PS:
       case Datatype::DATETIME_FS:
       case Datatype::DATETIME_AS:
+      case Datatype::TIME_HR:
+      case Datatype::TIME_MIN:
+      case Datatype::TIME_SEC:
+      case Datatype::TIME_MS:
+      case Datatype::TIME_US:
+      case Datatype::TIME_NS:
+      case Datatype::TIME_PS:
+      case Datatype::TIME_FS:
+      case Datatype::TIME_AS:
         compute_results_dense_func_[d] = compute_results_dense<int64_t>;
         compute_results_sparse_func_[d] = compute_results_sparse<int64_t>;
         break;

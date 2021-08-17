@@ -53,7 +53,10 @@
 
 #include <cstdint>
 #include <cstring>
+#include <optional>
 #include <string>
+#include <tuple>
+using std::tuple, std::optional, std::nullopt;
 
 #include "tiledb/common/heap_memory.h"
 
@@ -112,6 +115,7 @@ enum class StatusCode : char {
   FS_MEM,
   Attribute,
   WriteCellSlabIter,
+  SparseGlobalOrderReaderError,
   Reader,
   Writer,
   PreallocatedBuffer,
@@ -128,7 +132,9 @@ enum class StatusCode : char {
   SerializationError,
   ChecksumError,
   ThreadPoolError,
-  FragmentInfoError
+  FragmentInfoError,
+  DenseTilerError,
+  QueryConditionError
 };
 
 class Status {
@@ -334,6 +340,12 @@ class Status {
     return Status(StatusCode::WriteCellSlabIter, msg, -1);
   }
 
+  /** Return a SparseGlobalOrderReaderError error class Status with a given
+   * message **/
+  static Status SparseGlobalOrderReaderError(const std::string& msg) {
+    return Status(StatusCode::SparseGlobalOrderReaderError, msg, -1);
+  }
+
   /** Return a ReaderError error class Status with a given message **/
   static Status ReaderError(const std::string& msg) {
     return Status(StatusCode::Reader, msg, -1);
@@ -414,6 +426,16 @@ class Status {
   /** Return a FragmentInfoError error class Status with a given message **/
   static Status FragmentInfoError(const std::string& msg) {
     return Status(StatusCode::FragmentInfoError, msg, -1);
+  }
+
+  /** Return a DenseTilerError error class Status with a given message **/
+  static Status DenseTilerError(const std::string& msg) {
+    return Status(StatusCode::DenseTilerError, msg, -1);
+  }
+
+  /** Return a QueryConditionError error class Status with a given message **/
+  static Status QueryConditionError(const std::string& msg) {
+    return Status(StatusCode::QueryConditionError, msg, -1);
   }
 
   /** Returns true iff the status indicates success **/

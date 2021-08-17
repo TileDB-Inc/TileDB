@@ -38,15 +38,16 @@
 #include <utility>
 #include <vector>
 
-#include "tiledb/common/logger.h"
 #include "tiledb/common/status.h"
 #include "tiledb/sm/array_schema/array_schema.h"
 #include "tiledb/sm/array_schema/dimension.h"
 #include "tiledb/sm/array_schema/domain.h"
+#include "tiledb/sm/fragment/written_fragment_info.h"
 #include "tiledb/sm/misc/utils.h"
-#include "tiledb/sm/query/reader.h"
+#include "tiledb/sm/query/iquery_strategy.h"
+#include "tiledb/sm/query/query_condition.h"
 #include "tiledb/sm/query/validity_vector.h"
-#include "tiledb/sm/query/writer.h"
+#include "tiledb/sm/subarray/subarray.h"
 
 using namespace tiledb::common;
 
@@ -54,7 +55,6 @@ namespace tiledb {
 namespace sm {
 
 class Array;
-class Subarray;
 class StorageManager;
 
 enum class QueryStatus : uint8_t;
@@ -101,6 +101,26 @@ class Query {
     std::unordered_map<std::string, AttrState> attribute_states;
   };
 
+  /**
+   * Contains current state related to coords of this query.
+   */
+  struct CoordsInfo {
+    /**
+     * True if either zipped coordinates buffer or separate coordinate
+     * buffers are set.
+     */
+    bool has_coords_;
+
+    /** The zipped coordinates buffer potentially set by the user. */
+    void* coords_buffer_;
+
+    /** The zipped coordinates buffer size potentially set by the user. */
+    uint64_t* coords_buffer_size_;
+
+    /** Keeps track of the number of coordinates across coordinate buffers. */
+    uint64_t coords_num_;
+  };
+
   /* ********************************* */
   /*     CONSTRUCTORS & DESTRUCTORS    */
   /* ********************************* */
@@ -120,6 +140,9 @@ class Query {
 
   /** Destructor. */
   ~Query();
+
+  DISABLE_COPY_AND_COPY_ASSIGN(Query);
+  DISABLE_MOVE_AND_MOVE_ASSIGN(Query);
 
   /* ********************************* */
   /*                 API               */
@@ -347,6 +370,7 @@ class Query {
   Status finalize();
 
   /**
+   * This is a deprecated API.
    * Retrieves the buffer of a fixed-sized attribute/dimension.
    *
    * @param name The buffer attribute/dimension name. An empty string means
@@ -359,6 +383,7 @@ class Query {
       const char* name, void** buffer, uint64_t** buffer_size) const;
 
   /**
+   * This is a deprecated API.
    * Retrieves the offsets and values buffers of a var-sized
    * attribute/dimension.
    *
@@ -379,6 +404,54 @@ class Query {
       uint64_t** buffer_val_size) const;
 
   /**
+   * Retrieves the data buffer of a fixed/var-sized attribute/dimension.
+   *
+   * @param name The buffer attribute/dimension name. An empty string means
+   *     the special default attribute/dimension.
+   * @param buffer The buffer to be retrieved.
+   * @param buffer_size A pointer to the buffer size to be retrieved.
+   * @return Status
+   */
+  Status get_data_buffer(
+      const char* name, void** buffer, uint64_t** buffer_size) const;
+
+  /**
+   * Retrieves the offset buffer for a var-sized attribute/dimension.
+   *
+   * @param name The buffer attribute/dimension name. An empty string means
+   * the special default attribute/dimension.
+   * @param buffer_off The offsets buffer to be retrieved. This buffer holds
+   * the starting offsets of each cell value in the data buffer.
+   * @param buffer_off_size A pointer to the buffer size to be retrieved.
+   * @return Status
+   */
+  Status get_offsets_buffer(
+      const char* name,
+      uint64_t** buffer_off,
+      uint64_t** buffer_off_size) const;
+
+  /**
+   * Retrieves the validity buffer for a nullable attribute/dimension.
+   *
+   * @param name The buffer attribute/dimension name. An empty string means
+   * the special default attribute/dimension.
+   * @param buffer_validity_bytemap The buffer that either have the validity
+   * bytemap associated with the input data to be written, or will hold the
+   * validity bytemap to be read.
+   * @param buffer_validity_bytemap_size In the case of writes, this is the size
+   * of `buffer_validity_bytemap` in bytes. In the case of reads, this initially
+   * contains the allocated size of `buffer_validity_bytemap`, but after the
+   * termination of the query it will contain the size of the useful (read)
+   * data in `buffer_validity_bytemap`.
+   * @return Status
+   */
+  Status get_validity_buffer(
+      const char* name,
+      uint8_t** buffer_validity_bytemap,
+      uint64_t** buffer_validity_bytemap_size) const;
+
+  /**
+   * This is a deprecated API.
    * Retrieves the buffer and validity bytemap of a fixed-sized, nullable
    * attribute.
    *
@@ -398,6 +471,7 @@ class Query {
       uint64_t** buffer_validity_bytemap_size) const;
 
   /**
+   * This is a deprecated API.
    * Retrieves the offsets, values, and validity bytemap buffers of
    * a var-sized, nullable attribute.
    *
@@ -448,7 +522,7 @@ class Query {
    */
   bool has_results() const;
 
-  /** Initializes the query (on submission, called from submit() et al.). */
+  /** Initializes the query. */
   Status init();
 
   /** Returns the first fragment uri. */
@@ -460,20 +534,20 @@ class Query {
   /** Returns the cell layout. */
   Layout layout() const;
 
+  /**
+   * Returns the condition for filtering results in a read query.
+   * @return QueryCondition
+   */
+  const QueryCondition* condition() const;
+
   /** Processes a query. */
   Status process();
 
-  /** Returns the Reader. */
-  const Reader* reader() const;
+  /** Create the strategy. */
+  Status create_strategy();
 
-  /** Returns the Reader. */
-  Reader* reader();
-
-  /** Returns the Writer. */
-  const Writer* writer() const;
-
-  /** Returns the Writer. */
-  Writer* writer();
+  /** Gets the strategy of the query. */
+  IQueryStrategy* strategy();
 
   /**
    * Disables checking the global order. Applicable only to writes.
@@ -494,6 +568,85 @@ class Query {
   Status set_config(const Config& config);
 
   /**
+   * Sets the (zipped) coordinates buffer (set with TILEDB_COORDS as the
+   * buffer name).
+   *
+   * @param buffer The buffer that has the input data to be written.
+   * @param buffer_size The size of `buffer` in bytes.
+   * @return Status
+   */
+  Status set_coords_buffer(void* buffer, uint64_t* buffer_size);
+
+  /**
+   * Sets the data for a fixed/var-sized attribute/dimension.
+   *
+   * @param name The attribute/dimension to set the buffer for.
+   * @param buffer The buffer that will hold the data to be read.
+   * @param buffer_size This initially contains the allocated
+   *     size of `buffer`, but after the termination of the function
+   *     it will contain the size of the useful (read) data in `buffer`.
+   * @param check_null_buffers If true (default), null buffers are not
+   * allowed.
+   * @return Status
+   */
+  Status set_data_buffer(
+      const std::string& name,
+      void* const buffer,
+      uint64_t* const buffer_size,
+      const bool check_null_buffers = true);
+
+  /**
+   * Sets the offset buffer for a var-sized attribute/dimension.
+   *
+   * @param name The attribute/dimension to set the buffer for.
+   * @param buffer_offsets The buffer that will hold the data to be read.
+   *     This buffer holds the starting offsets of each cell value in
+   *     `buffer_val`.
+   * @param buffer_offsets_size This initially contains
+   *     the allocated size of `buffer_off`, but after the termination of the
+   *     function it will contain the size of the useful (read) data in
+   *     `buffer_off`.
+   * @param check_null_buffers If true (default), null buffers are not
+   * allowed.
+   * @return Status
+   */
+  Status set_offsets_buffer(
+      const std::string& name,
+      uint64_t* const buffer_offsets,
+      uint64_t* const buffer_offsets_size,
+      const bool check_null_buffers = true);
+
+  /**
+   * Sets the validity buffer for nullable attribute/dimension.
+   *
+   * @param name The attribute/dimension to set the buffer for.
+   * @param buffer_validity_bytemap The buffer that either have the validity
+   * bytemap associated with the input data to be written, or will hold the
+   * validity bytemap to be read.
+   * @param buffer_validity_bytemap_size In the case of writes, this is the size
+   * of `buffer_validity_bytemap` in bytes. In the case of reads, this initially
+   * contains the allocated size of `buffer_validity_bytemap`, but after the
+   * termination of the query it will contain the size of the useful (read)
+   * data in `buffer_validity_bytemap`.
+   * @param check_null_buffers If true (default), null buffers are not
+   * allowed.
+   * @return Status
+   */
+  Status set_validity_buffer(
+      const std::string& name,
+      uint8_t* const buffer_validity_bytemap,
+      uint64_t* const buffer_validity_bytemap_size,
+      const bool check_null_buffers = true);
+
+  /**
+   * Get the config of the query.
+   *
+   * @return Config from query
+   */
+  const Config* config() const;
+
+  /**
+   * This is a deprecated API.
    * Sets the buffer for a fixed-sized attribute/dimension.
    *
    * @param name The attribute/dimension to set the buffer for.
@@ -513,6 +666,7 @@ class Query {
       bool check_null_buffers = true);
 
   /**
+   * This is a deprecated API.
    * Sets the buffer for a var-sized attribute/dimension.
    *
    * @param name The attribute/dimension to set the buffer for.
@@ -544,6 +698,7 @@ class Query {
       bool check_null_buffers = true);
 
   /**
+   * This is a deprecated API.
    * Sets the buffer for a fixed-sized, nullable attribute with a validity
    * bytemap.
    *
@@ -574,6 +729,7 @@ class Query {
       bool check_null_buffers = true);
 
   /**
+   * This is a deprecated API.
    * Sets the buffer for a var-sized, nullable attribute with a validity
    * bytemap.
    *
@@ -627,11 +783,22 @@ class Query {
       std::unordered_map<std::string, Subarray::MemorySize>& max_mem_size);
 
   /**
-   * Sets the cell layout of the query. The function will return an error
-   * if the queried array is a key-value store (because it has its default
-   * layout for both reads and writes.
+   * Sets the cell layout of the query without performing any checks.
+   */
+  Status set_layout_unsafe(Layout layout);
+
+  /**
+   * Sets the cell layout of the query.
    */
   Status set_layout(Layout layout);
+
+  /**
+   * Sets the condition for filtering results in a read query.
+   *
+   * @param condition The condition object.
+   * @return Status
+   */
+  Status set_condition(const QueryCondition& condition);
 
   /**
    * This is applicable only to dense arrays (errors out for sparse arrays),
@@ -666,24 +833,25 @@ class Query {
    */
   Status set_subarray(const void* subarray);
 
+  /** Returns the query subarray. */
+  const Subarray* subarray() const;
+
   /**
    * Sets the query subarray.
    *
    * @param subarray The subarray to be set.
    * @return Status
    *
-   * @note Setting a subarray for sparse arrays, or for dense arrays
-   *     when performing unordered (sparse) writes, has no effect
-   *     (will be ingnored).
+   * @note Calling set_subarray for sparse arrays, or for dense arrays
+   *     when performing unordered (sparse) writes, has no effect.
    */
-  Status set_subarray(const tiledb::sm::Subarray* subarray);
+  Status set_subarray(const tiledb::sm::Subarray& subarray);
+
+  /** Sets the query subarray, without performing any checks. */
+  Status set_subarray_unsafe(const Subarray& subarray);
 
   /** Sets the query subarray, without performing any checks. */
   Status set_subarray_unsafe(const NDRange& subarray);
-
-  /** Reference current Reader/Writer subarray according to query type */
-  const Subarray& subarray() const;
-  Subarray* subarray();
 
   /** Submits the query to the storage manager. */
   Status submit();
@@ -702,6 +870,9 @@ class Query {
   /** Returns the query type. */
   QueryType type() const;
 
+  /** Returns the internal stats object. */
+  stats::Stats* stats() const;
+
  private:
   /* ********************************* */
   /*         PRIVATE ATTRIBUTES        */
@@ -709,6 +880,12 @@ class Query {
 
   /** The array the query is associated with. */
   Array* array_;
+
+  /** The array schema. */
+  ArraySchema* array_schema_;
+
+  /** The config for query-level parameters only. */
+  Config config_;
 
   /** A function that will be called upon the completion of an async query. */
   std::function<void(void*)> callback_;
@@ -719,6 +896,9 @@ class Query {
   /** The layout of the cells in the result of the subarray. */
   Layout layout_;
 
+  /** The query subarray (initially the whole domain by default). */
+  Subarray subarray_;
+
   /** The query status. */
   QueryStatus status_;
 
@@ -728,14 +908,70 @@ class Query {
   /** The query type. */
   QueryType type_;
 
-  /** Query reader. */
-  Reader reader_;
+  /** The query strategy. */
+  tdb_unique_ptr<IQueryStrategy> strategy_;
 
-  /** Query writer. */
-  Writer writer_;
+  /** The class stats. */
+  stats::Stats* stats_;
+
+  /**
+   * Maps attribute/dimension names to their buffers.
+   * `TILEDB_COORDS` may be used for the special zipped coordinates
+   * buffer.
+   * */
+  std::unordered_map<std::string, QueryBuffer> buffers_;
+
+  /** Keeps track of the coords data. */
+  CoordsInfo coords_info_;
+
+  /** Stores information about the written fragments. */
+  std::vector<WrittenFragmentInfo> written_fragment_info_;
+
+  /** The query condition. */
+  QueryCondition condition_;
+
+  /** The fragment metadata that this query will focus on. */
+  std::vector<FragmentMetadata*> fragment_metadata_;
 
   /** The current serialization state. */
   SerializationState serialization_state_;
+
+  /** If the query has coords buffer set or not. */
+  bool has_coords_buffer_;
+
+  /** If the query has zipped coords buffer set or not. */
+  bool has_zipped_coords_buffer_;
+
+  /** True if at least one separate coordinate buffer is set. */
+  bool coord_buffer_is_set_;
+
+  /** True if at least one separate data coordinate buffer is set. */
+  bool coord_data_buffer_is_set_;
+
+  /** True if at least one separate offsets coordinate buffer is set. */
+  bool coord_offsets_buffer_is_set_;
+
+  /** Keeps track of the name of the data buffer once set. */
+  std::string data_buffer_name_;
+
+  /** Keeps track of the name of the offsets buffer once set. */
+  std::string offsets_buffer_name_;
+
+  /**
+   * If `true`, it will not check if the written coordinates are
+   * in the global order. This supercedes the config.
+   */
+  bool disable_check_global_order_;
+
+  /**
+   * If `true`, then the dense array will be read in "sparse mode", i.e.,
+   * the sparse read algorithm will be executing, returning results only
+   * for the non-empty cells.
+   */
+  bool sparse_mode_;
+
+  /** The name of the new fragment to be created for writes. */
+  URI fragment_uri_;
 
   /* ********************************* */
   /*           PRIVATE METHODS         */
@@ -743,7 +979,19 @@ class Query {
 
   Status check_set_fixed_buffer(const std::string& name);
 
+  /** Checks if the buffers names have been appropriately set for the query. */
+  Status check_buffer_names();
+
   /**
+   * Internal routine for checking the completeness of all attribute
+   * and dimensions buffers. Iteratively searches that all attributes &
+   * dimenstions buffers have been set correctly
+   * @return Status
+   */
+  Status check_buffers_correctness();
+
+  /**
+   * This is a deprecated API.
    * Internal routine for setting fixed-sized, nullable attribute buffers with
    * a ValidityVector.
    */
@@ -755,6 +1003,7 @@ class Query {
       bool check_null_buffers = true);
 
   /**
+   * This is a deprecated API.
    * Internal routine for setting var-sized, nullable attribute buffers with
    * a ValidityVector.
    */
@@ -768,6 +1017,7 @@ class Query {
       bool check_null_buffers = true);
 
   /**
+   * This is a deprecated API.
    * Internal routine for getting fixed-sized, nullable attribute buffers with
    * a ValidityVector.
    */
@@ -778,6 +1028,7 @@ class Query {
       const ValidityVector** validity_vector) const;
 
   /**
+   * This is a deprecated API.
    * Internal routine for getting fixed-sized, nullable attribute buffers with
    * a ValidityVector.
    */

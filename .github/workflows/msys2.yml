@@ -10,10 +10,17 @@ jobs:
     strategy:
       matrix:
         include: [
-          { msystem: MINGW64, arch: x86_64 },
-          { msystem: MINGW32, arch: i686 }
+          { msystem: MINGW64, toolchain: x86_64 },
+          { msystem: MINGW32, toolchain: i686 },
+          { msystem: ucrt64, toolchain: "ucrt-x86_64" }
         ]
       fail-fast: false
+    env:
+      TILEDB_HOME: ${{ github.workspace }}
+      MINGW_INSTALLS: ${{ matrix.msystem }}
+      MINGW_ARCH: ${{ matrix.msystem }}
+      MINGW_TOOLCHAIN: ${{ matrix.toolchain }}
+      PACMAN_REPOSITORY: ${{ matrix.msystem }}
     steps:
       - name: Prepare git
         run: git config --global core.autocrlf false
@@ -23,17 +30,10 @@ jobs:
       - uses: msys2/setup-msys2@v2
         with:
           msystem: ${{ matrix.msystem }}
-          install: mingw-w64-${{ matrix.arch }}-toolchain make patch
+          install: mingw-w64-${{ matrix.toolchain }}-toolchain make patch
           update: true
       - name: Building TileDB
         run: cd .github/workflows/mingw-w64-tiledb && makepkg-mingw --noconfirm --syncdeps
         env:
-          TILEDB_HOME: ${{ github.workspace }}
-          MINGW_INSTALLS: ${{ matrix.msystem }}
           PKGEXT: ".pkg.tar.xz"
         shell: msys2 {0}
-      - name: "Upload binaries"
-        uses: actions/upload-artifact@v2
-        with:
-          name: mingw-w64-${{ matrix.arch }}-tiledb
-          path: .github/workflows/mingw-w64-tiledb/*.pkg.tar.*

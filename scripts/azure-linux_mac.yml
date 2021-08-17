@@ -23,35 +23,10 @@ steps:
 
 - bash: |
     set -e pipefail
-    # Install doxygen *before* running cmake
-    sudo apt-get install doxygen
-  condition: eq(variables['Agent.OS'], 'Linux')
-  displayName: 'Install doxygen (linux only)'
-
-- bash: |
-    set -e pipefail
     open /Library/Developer/CommandLineTools/Packages/macOS_SDK_headers_for_macOS_10.14.pkg
     sudo installer -pkg /Library/Developer/CommandLineTools/Packages/macOS_SDK_headers_for_macOS_10.14.pkg -allowUntrusted -target /
   condition: and(eq(variables['Agent.OS'], 'Darwin'), eq(variables['imageName'], 'macOS-10.14'))
   displayName: 'Install system headers (OSX 10.14 only)'
-
-- bash: |
-    set -e pipefail
-    # Install clang-format (v5.0)
-    sudo scripts/install-clangformat.sh
-    src=$BUILD_REPOSITORY_LOCALPATH
-    cd $src
-    $src/scripts/run-clang-format.sh $src clang-format-5.0 0 \
-      $(find $src/tiledb $src/test/src $src/examples $src/tools \
-       -name "*.cc" -or -name "*.c" -or -name "*.h")
-  condition: eq(variables['Agent.OS'], 'Linux')
-  displayName: 'Check formatting (linux only)'
-
-- bash: |
-    set -e pipefail
-    python scripts/find_heap_api_violations.py tiledb
-  condition: eq(variables['Agent.OS'], 'Linux')
-  displayName: 'Check heap memory API violations (linux only)'
 
 - bash: |
     # enable core dumps
@@ -68,7 +43,7 @@ steps:
 
     # azure bash does not treat intermediate failure as error
     # https://github.com/Microsoft/azure-pipelines-yaml/issues/135
-    set -e pipefail
+    set -xe pipefail
 
     git config --global user.name 'Azure Pipeline'
     git config --global user.email 'no-reply@tiledb.io'
@@ -128,9 +103,6 @@ steps:
     if [[ "$TILEDB_GCS" == "ON" ]]; then
       bootstrap_args="${bootstrap_args} --enable-gcs";
     fi;
-    if [[ "$TILEDB_TBB" == "OFF" ]]; then
-      bootstrap_args="${bootstrap_args} --disable-tbb";
-    fi
     if [[ "$TILEDB_TOOLS" == "ON" ]]; then
       bootstrap_args="${bootstrap_args} --enable-tools";
     fi
@@ -185,7 +157,7 @@ steps:
     make -j4 -C tiledb tiledb_unit
 
     if [[ "$TILEDB_CI_ASAN" == "ON" ]]; then
-      export ASAN_OPTIONS=detect_leaks=0 LD_PRELOAD=/usr/lib/x86_64-linux-gnu/libasan.so.4
+      export ASAN_OPTIONS=detect_leaks=0 LD_PRELOAD=/usr/lib/x86_64-linux-gnu/libasan.so.5
     fi
 
     if [[ "$AGENT_OS" == "Darwin" && "$TILEDB_GCS" == "ON" ]]; then
@@ -215,63 +187,6 @@ steps:
       kill -9 $GCS_PID
     fi
 
-    # - bash: |
-    if [[ "$TILEDB_GCS" != "ON" ]]; then
-      pushd $BUILD_REPOSITORY_LOCALPATH/examples/cmake_project
-      mkdir build && cd build
-      cmake -DCMAKE_PREFIX_PATH=$BUILD_REPOSITORY_LOCALPATH/dist .. && make
-      ./ExampleExe
-      if [[ "TILEDB_STATIC" == "ON" ]]; then
-        ./ExampleExe_static
-      fi
-      popd
-      # Build and run the PNG ingestion example.
-      if [[ "$AGENT_OS" == "Linux" ]]; then
-        # libpng (example dependency)
-        sudo apt-get install libpng-dev
-
-        pushd $BUILD_REPOSITORY_LOCALPATH/examples/png_ingestion;
-        mkdir build && cd build;
-        cmake -DCMAKE_PREFIX_PATH=$BUILD_REPOSITORY_LOCALPATH/dist .. && make;
-        ./tiledb_png $BUILD_REPOSITORY_LOCALPATH/doc/source/figures/Scarlet-Macaw-small.png /tmp/pngarray output.png;
-        popd;
-      fi
-    fi
-
-    # Build the benchmarks (but do not run them).
-    pushd $BUILD_REPOSITORY_LOCALPATH/test/benchmarking && \
-      mkdir build && cd build && \
-      cmake -DCMAKE_PREFIX_PATH=$BUILD_REPOSITORY_LOCALPATH/dist ../src && make && \
-    popd
-
-    testfile=$(mktemp)
-    mv $testfile $testfile.cc
-    testfile=$testfile.cc
-    cat <<EOF > $testfile
-    #include <assert.h>
-    #include <tiledb/tiledb.h>
-    #include <tiledb/version.h>
-    int main(int argc, char **argv) {
-      int major = 0;
-      int minor = 0;
-      int patch = 0;
-      tiledb_version(&major,&minor,&patch);
-      auto version = tiledb::version();
-      assert(major == std::get<0>(version));
-      return 0;
-    }
-    EOF
-    export TESTFILE_LDFLAGS="-ltiledb"
-    if [[ "$AGENT_OS" == "Linux" ]]; then
-      export LD_LIBRARY_PATH=$BUILD_REPOSITORY_LOCALPATH/dist/lib:/usr/local/lib:$LD_LIBRARY_PATH
-    else
-      export DYLD_LIBRARY_PATH=$BUILD_REPOSITORY_LOCALPATH/dist/lib:/usr/local/lib:$DYLD_LIBRARY_PATH
-    fi
-    $CXX -std=c++11 -g -O0 -Wall -Werror -I$BUILD_REPOSITORY_LOCALPATH/dist/include -L$BUILD_REPOSITORY_LOCALPATH/dist/lib $testfile -o $testfile.exe $TESTFILE_LDFLAGS && \
-    $testfile.exe && \
-    rm -f $testfile $testfile.exe
-
-    ps -U $(whoami) -o comm= | sort | uniq
     #  displayName: 'Build examples, PNG test, and benchmarks (build-only)'
   displayName: 'Build and test libtiledb'
 
@@ -297,7 +212,7 @@ steps:
 
 - task: PublishBuildArtifacts@1
   inputs:
-    pathtoPublish: '$(Build.ArtifactStagingDirectory)/$(ARTIFACT_OS)-build-dir.tar.gz'
+    pathToPublish: '$(Build.ArtifactStagingDirectory)/$(ARTIFACT_OS)-build-dir.tar.gz'
     artifactName: 'build-dirs'
   condition: and(failed(), eq(variables['Agent.OS'], 'Darwin')) # only run this job if the build step failed
 
@@ -324,14 +239,3 @@ steps:
       done;
   condition: failed() # only run this job if the build step failed
   displayName: "Print log files (failed build only)"
-
-- bash: |
-    set -e pipefail
-    python -m pip install --upgrade pip virtualenv
-
-    # Build the documentation (this does not deploy to RTD).
-    pushd $BUILD_REPOSITORY_LOCALPATH/doc;
-    ./local-build.sh;
-    popd;
-  condition: eq(variables['Agent.OS'], 'Linux')
-  displayName: 'Build docs (no deployment)'

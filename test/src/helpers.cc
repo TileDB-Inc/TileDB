@@ -33,7 +33,10 @@
 
 #include "helpers.h"
 #include "catch.hpp"
+#include "tiledb/sm/c_api/tiledb_struct_def.h"
 #include "tiledb/sm/cpp_api/tiledb"
+#include "tiledb/sm/enums/encryption_type.h"
+#include "tiledb/sm/global_state/unit_test_config.h"
 #include "tiledb/sm/misc/constants.h"
 #include "tiledb/sm/misc/tile_overlap.h"
 #include "tiledb/sm/misc/uri.h"
@@ -49,6 +52,25 @@ namespace test {
 
 // Command line arguments.
 extern std::string g_vfs;
+
+bool use_refactored_readers() {
+  const char* value = nullptr;
+  tiledb_config_t* cfg;
+  tiledb_error_t* err = nullptr;
+  auto rc = tiledb_config_alloc(&cfg, &err);
+  REQUIRE(rc == TILEDB_OK);
+  REQUIRE(err == nullptr);
+
+  rc = tiledb_config_get(cfg, "sm.use_refactored_readers", &value, &err);
+  CHECK(rc == TILEDB_OK);
+  CHECK(err == nullptr);
+
+  bool use_refactored_readers = strcmp(value, "true") == 0;
+
+  tiledb_config_free(&cfg);
+
+  return use_refactored_readers;
+}
 
 template <class T>
 void check_partitions(
@@ -70,29 +92,6 @@ void check_partitions(
   }
 
   // Non-empty partitions
-  // TBD: The correctness of this routine (seems in doubt).
-  // A)
-  // All current tests (build configuration with -EnableSerialization)
-  // calling this routine with last_unsplittable==false pass one fewer
-  // partitions than the number of 'next()' calls made.  The final
-  //'next()' call made returns Ok(), but the 'current()' partition
-  // available after that last call is the same as the 'current()' partition
-  // that was available after the 'next()' call prior to the last one (i.e.
-  //'current()' partition is the same for the last two 'next()' calls made.)
-  // This can be demonstrated by adding a check for 'done()' before that last
-  //'next()' in the else clause and seeing that flow is 'done()' before that
-  //'next()' call.
-  // B)
-  // If a caller passes one -fewer- partitions
-  // than are available by next()ing (with last_unsplittable==false), and
-  //'splitability' is maintained through all next() calls, the presence of
-  // the 'extra' (via /next()ing) partition will not be
-  // detected, as in the else{} below, that final 'next()' will return '.ok()
-  // whether there was an additional partition or whether 'done()' occurred in
-  // the previous 'next()' call made (done in the last loop iteration). Can
-  // demonstrate this (uncaught) failure in test "SubarrayPartitioner (Dense):
-  // 1D, single-range, memory budget", by eliminating the last partition element
-  // from both assignments, and observe that the test(s) still pass.
   for (const auto& p : partitions) {
     CHECK(!partitioner.done());
     CHECK(!unsplittable);
@@ -106,25 +105,12 @@ void check_partitions(
     CHECK(unsplittable);
   } else {
     CHECK(!unsplittable);
-#if 0  //&& DIAGNOSING
-    // TBD: 
-    //For all tests tried, are always already 'done()' at this point,
-    //before the following, 'next()' call is made and returns 'Ok()' (as
-    //it finds 'done()' close to entry and returns 'Ok()'.)
-    if (partitioner.done())
-      std::cout << "***already done, why are we about to call next()?"
-                << std::endl;
-    else
-      std::cout << "***NOT already done, call next() reasonable?"
-                << std::endl;
-#endif
     CHECK(partitioner.next(&unsplittable).ok());
     CHECK(!unsplittable);
     CHECK(partitioner.done());
   }
 }
 
-#if DEVING_SUBARRAY_PARTITIONER_STORY5342
 template <class T>
 void check_partitions(
     tiledb_ctx_t* ctx,
@@ -229,8 +215,7 @@ template <class T>
 void check_subarray(
     tiledb::Subarray& subarray, const SubarrayRanges<T>& ranges) {
   auto as = subarray.array().schema();
-  auto dom = as.domain();
-  auto ndims = dom.ndim();
+  auto ndims = as.domain().ndim();
   uint64_t nranges = 1;
   for (auto ui = 0u; ui < ndims; ++ui) {
     auto range_num_dim = subarray.range_num(ui);
@@ -269,7 +254,6 @@ template <class T>
 void check_subarray_equiv(
     tiledb::sm::Subarray& subarray1, tiledb::sm::Subarray& subarray2) {
   CHECK(subarray1.range_num() == subarray2.range_num());
-  CHECK(subarray1.layout() == subarray2.layout());
   // Check dim num
   auto dim_num1 = subarray1.dim_num();
   auto dim_num2 = subarray2.dim_num();
@@ -319,7 +303,6 @@ bool subarray_equiv(
   bool equiv_state = 1;  // assume true
 
   equiv_state &= (subarray1.range_num() == subarray2.range_num());
-  equiv_state &= (subarray1.layout() == subarray2.layout());
   // Check dim num
   auto dim_num1 = subarray1.dim_num();
   auto dim_num2 = subarray2.dim_num();
@@ -425,6 +408,7 @@ int array_create_wrapper(
           &array_schema) == TILEDB_OK);
 
   // Clean up.
+  tiledb_array_schema_free(&array_schema);
   tiledb_array_schema_free(&new_array_schema);
   tiledb_buffer_free(&buff);
   tiledb_buffer_free(&buff2);
@@ -611,12 +595,29 @@ void create_array(
   REQUIRE(rc == TILEDB_OK);
 
   // Create array
-  rc = tiledb_array_create_with_key(
-      ctx, array_name.c_str(), array_schema, enc_type, key, key_len);
+  tiledb_config_t* config;
+  tiledb_error_t* error = nullptr;
+  rc = tiledb_config_alloc(&config, &error);
+  REQUIRE(rc == TILEDB_OK);
+  REQUIRE(error == nullptr);
+  std::string encryption_type_string =
+      encryption_type_str((tiledb::sm::EncryptionType)enc_type);
+  rc = tiledb_config_set(
+      config, "sm.encryption_type", encryption_type_string.c_str(), &error);
+  REQUIRE(error == nullptr);
+  rc = tiledb_config_set(config, "sm.encryption_key", key, &error);
+  REQUIRE(rc == TILEDB_OK);
+  REQUIRE(error == nullptr);
+  tiledb::sm::UnitTestConfig::instance().array_encryption_key_length.set(
+      key_len);
+  tiledb_ctx_t* ctx_array;
+  REQUIRE(tiledb_ctx_alloc(config, &ctx_array) == TILEDB_OK);
+  rc = tiledb_array_create(ctx_array, array_name.c_str(), array_schema);
   REQUIRE(rc == TILEDB_OK);
 
   // Clean up
   tiledb_array_schema_free(&array_schema);
+  tiledb_ctx_free(&ctx_array);
 }
 
 void create_s3_bucket(
@@ -728,13 +729,14 @@ void create_subarray(
     tiledb::sm::Layout layout,
     tiledb::sm::Subarray* subarray,
     bool coalesce_ranges) {
-  tiledb::sm::Subarray ret(array, layout, coalesce_ranges);
+  tiledb::sm::Subarray ret(array, layout, &g_helper_stats, coalesce_ranges);
 
   auto dim_num = (unsigned)ranges.size();
   for (unsigned d = 0; d < dim_num; ++d) {
     auto dim_range_num = ranges[d].size() / 2;
     for (size_t j = 0; j < dim_range_num; ++j) {
-      ret.add_range(d, sm::Range(&ranges[d][2 * j], 2 * sizeof(T)));
+      sm::Range range(&ranges[d][2 * j], 2 * sizeof(T));
+      ret.add_range(d, std::move(range), true);
     }
   }
 
@@ -749,14 +751,13 @@ void create_subarray(
     tiledb::sm::Layout layout,
     tiledb_subarray_t** subarray,
     bool coalesce_ranges) {
+  (void)layout;
   int32_t rc;
   tiledb_array_t tdb_array;
   tdb_array.array_ = array;
   rc = tiledb_subarray_alloc(ctx, &tdb_array, subarray);
   REQUIRE(rc == TILEDB_OK);
   if (rc == TILEDB_OK) {
-    rc = tiledb_subarray_set_layout(ctx, *subarray, (tiledb_layout_t)layout);
-    REQUIRE(rc == TILEDB_OK);
     rc = tiledb_subarray_set_coalesce_ranges(ctx, *subarray, coalesce_ranges);
     REQUIRE(rc == TILEDB_OK);
 
@@ -784,7 +785,7 @@ void create_subarray(
       new tiledb::Subarray(*ctx, *array, coalesce_ranges);
   tiledb::Subarray& subarray = *psubarray;
 
-  subarray.set_layout((tiledb_layout_t)layout);
+  (void)layout;
   subarray.set_coalesce_ranges(coalesce_ranges);
 
   auto dim_num = (unsigned)ranges.size();
@@ -1078,15 +1079,35 @@ void write_array(
     tiledb_layout_t layout,
     const QueryBuffers& buffers,
     std::string* uri) {
-  // Open array
+  // Set array configuration
   tiledb_array_t* array;
   int rc = tiledb_array_alloc(ctx, array_name.c_str(), &array);
   CHECK(rc == TILEDB_OK);
-  if (encryption_type == TILEDB_NO_ENCRYPTION)
-    rc = tiledb_array_open_at(ctx, array, TILEDB_WRITE, timestamp);
-  else
-    rc = tiledb_array_open_at_with_key(
-        ctx, array, TILEDB_WRITE, encryption_type, key, key_len, timestamp);
+  tiledb_config_t* cfg;
+  tiledb_error_t* err = nullptr;
+  REQUIRE(tiledb_config_alloc(&cfg, &err) == TILEDB_OK);
+  REQUIRE(err == nullptr);
+
+  rc = tiledb_array_set_open_timestamp_end(ctx, array, timestamp);
+  REQUIRE(rc == TILEDB_OK);
+
+  // Open array
+  if (encryption_type != TILEDB_NO_ENCRYPTION) {
+    std::string encryption_type_string =
+        encryption_type_str((tiledb::sm::EncryptionType)encryption_type);
+    rc = tiledb_config_set(
+        cfg, "sm.encryption_type", encryption_type_string.c_str(), &err);
+    REQUIRE(rc == TILEDB_OK);
+    REQUIRE(err == nullptr);
+    rc = tiledb_config_set(cfg, "sm.encryption_key", key, &err);
+    REQUIRE(rc == TILEDB_OK);
+    REQUIRE(err == nullptr);
+    rc = tiledb_array_set_config(ctx, array, cfg);
+    REQUIRE(rc == TILEDB_OK);
+    tiledb::sm::UnitTestConfig::instance().array_encryption_key_length.set(
+        key_len);
+  }
+  rc = tiledb_array_open(ctx, array, TILEDB_WRITE);
   CHECK(rc == TILEDB_OK);
 
   // Create query
@@ -1103,7 +1124,7 @@ void write_array(
   // Set buffers
   for (const auto& b : buffers) {
     if (b.second.var_ == nullptr) {  // Fixed-sized
-      rc = tiledb_query_set_buffer(
+      rc = tiledb_query_set_data_buffer(
           ctx,
           query,
           b.first.c_str(),
@@ -1111,14 +1132,19 @@ void write_array(
           (uint64_t*)&(b.second.fixed_size_));
       CHECK(rc == TILEDB_OK);
     } else {  // Var-sized
-      rc = tiledb_query_set_buffer_var(
+      rc = tiledb_query_set_data_buffer(
+          ctx,
+          query,
+          b.first.c_str(),
+          b.second.var_,
+          (uint64_t*)&(b.second.var_size_));
+      CHECK(rc == TILEDB_OK);
+      rc = tiledb_query_set_offsets_buffer(
           ctx,
           query,
           b.first.c_str(),
           (uint64_t*)b.second.fixed_,
-          (uint64_t*)&(b.second.fixed_size_),
-          b.second.var_,
-          (uint64_t*)&(b.second.var_size_));
+          (uint64_t*)&(b.second.fixed_size_));
       CHECK(rc == TILEDB_OK);
     }
   }
@@ -1144,6 +1170,7 @@ void write_array(
   // Clean up
   tiledb_array_free(&array);
   tiledb_query_free(&query);
+  tiledb_config_free(&cfg);
 }
 
 template <class T>
@@ -1173,7 +1200,7 @@ void read_array(
   // Set buffers
   for (const auto& b : buffers) {
     if (b.second.var_ == nullptr) {  // Fixed-sized
-      rc = tiledb_query_set_buffer(
+      rc = tiledb_query_set_data_buffer(
           ctx,
           query,
           b.first.c_str(),
@@ -1181,14 +1208,19 @@ void read_array(
           (uint64_t*)&(b.second.fixed_size_));
       CHECK(rc == TILEDB_OK);
     } else {  // Var-sized
-      rc = tiledb_query_set_buffer_var(
+      rc = tiledb_query_set_data_buffer(
+          ctx,
+          query,
+          b.first.c_str(),
+          b.second.var_,
+          (uint64_t*)&(b.second.var_size_));
+      CHECK(rc == TILEDB_OK);
+      rc = tiledb_query_set_offsets_buffer(
           ctx,
           query,
           b.first.c_str(),
           (uint64_t*)b.second.fixed_,
-          (uint64_t*)&(b.second.fixed_size_),
-          b.second.var_,
-          (uint64_t*)&(b.second.var_size_));
+          (uint64_t*)&(b.second.fixed_size_));
       CHECK(rc == TILEDB_OK);
     }
   }
@@ -1219,6 +1251,7 @@ int32_t num_fragments(const std::string& array_name) {
   for (const auto& uri : uris) {
     auto name = tiledb::sm::URI(uri).remove_trailing_slash().last_path_part();
     if (name != tiledb::sm::constants::array_metadata_folder_name &&
+        name != tiledb::sm::constants::array_schema_folder_name &&
         name.find_first_of('.') == std::string::npos)
       ++ret;
   }

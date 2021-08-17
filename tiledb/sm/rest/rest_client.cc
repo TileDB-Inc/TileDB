@@ -30,6 +30,20 @@
  * This file declares a REST client class.
  */
 
+// clang-format off
+#ifdef TILEDB_SERIALIZATION
+#include "tiledb/sm/serialization/capnp_utils.h"
+#include "tiledb/sm/serialization/query.h"
+#include "tiledb/sm/serialization/tiledb-rest.h"
+#include "tiledb/sm/rest/curl.h" // must be included last to avoid Windows.h
+#endif
+// clang-format on
+
+// Something, somewhere seems to be defining TIME_MS as a macro
+#if defined(TIME_MS)
+#undef TIME_MS
+#endif
+
 #include <cassert>
 
 #include "tiledb/common/logger.h"
@@ -41,18 +55,6 @@
 #include "tiledb/sm/rest/rest_client.h"
 #include "tiledb/sm/serialization/array_schema.h"
 
-#ifdef _WIN32
-#include "tiledb/sm/serialization/meet-capnproto-win32-include-expectations.h"
-#endif
-
-#include "tiledb/sm/serialization/capnp_utils.h"
-#include "tiledb/sm/serialization/query.h"
-
-#ifdef TILEDB_SERIALIZATION
-#include "tiledb/sm/rest/curl.h"
-#include "tiledb/sm/serialization/tiledb-rest.capnp.h"
-#endif
-
 using namespace tiledb::common;
 
 namespace tiledb {
@@ -61,7 +63,8 @@ namespace sm {
 #ifdef TILEDB_SERIALIZATION
 
 RestClient::RestClient()
-    : config_(nullptr)
+    : stats_(nullptr)
+    , config_(nullptr)
     , compute_tp_(nullptr)
     , resubmit_incomplete_(true) {
   auto st = utils::parse::convert(
@@ -70,10 +73,15 @@ RestClient::RestClient()
   (void)st;
 }
 
-Status RestClient::init(const Config* config, ThreadPool* compute_tp) {
+Status RestClient::init(
+    stats::Stats* const parent_stats,
+    const Config* config,
+    ThreadPool* compute_tp) {
   if (config == nullptr)
     return LOG_STATUS(
         Status::RestError("Error initializing rest client; config is null."));
+
+  stats_ = parent_stats->create_child("RestClient");
 
   config_ = config;
   compute_tp_ = compute_tp;
@@ -117,8 +125,8 @@ Status RestClient::get_array_schema_from_rest(
 
   // Get the data
   Buffer returned_data;
-  RETURN_NOT_OK(
-      curlc.get_data(url, serialization_type_, &returned_data, cache_key));
+  RETURN_NOT_OK(curlc.get_data(
+      stats_, url, serialization_type_, &returned_data, cache_key));
   if (returned_data.data() == nullptr || returned_data.size() == 0)
     return LOG_STATUS(Status::RestError(
         "Error getting array schema from REST; server returned no data."));
@@ -154,8 +162,13 @@ Status RestClient::post_array_schema_to_rest(
   auto deduced_url = redirect_uri(cache_key) + "/v1/arrays/" + array_ns + "/" +
                      curlc.url_escape(array_uri);
   Buffer returned_data;
-  Status sc = curlc.post_data(
-      deduced_url, serialization_type_, &serialized, &returned_data, cache_key);
+  const Status sc = curlc.post_data(
+      stats_,
+      deduced_url,
+      serialization_type_,
+      &serialized,
+      &returned_data,
+      cache_key);
   return sc;
 }
 
@@ -171,11 +184,12 @@ Status RestClient::deregister_array_from_rest(const URI& uri) {
                           "/" + curlc.url_escape(array_uri) + "/deregister";
 
   Buffer returned_data;
-  return curlc.delete_data(url, serialization_type_, &returned_data, cache_key);
+  return curlc.delete_data(
+      stats_, url, serialization_type_, &returned_data, cache_key);
 }
 
 Status RestClient::get_array_non_empty_domain(
-    Array* array, uint64_t timestamp) {
+    Array* array, uint64_t timestamp_start, uint64_t timestamp_end) {
   if (array == nullptr)
     return LOG_STATUS(
         Status::RestError("Cannot get array non-empty domain; array is null"));
@@ -190,15 +204,16 @@ Status RestClient::get_array_non_empty_domain(
   const std::string cache_key = array_ns + ":" + array_uri;
   RETURN_NOT_OK(
       curlc.init(config_, extra_headers_, &redirect_meta_, &redirect_mtx_));
-  const std::string url =
-      redirect_uri(cache_key) + "/v2/arrays/" + array_ns + "/" +
-      curlc.url_escape(array_uri) +
-      "/non_empty_domain?timestamp=" + std::to_string(timestamp);
+  const std::string url = redirect_uri(cache_key) + "/v2/arrays/" + array_ns +
+                          "/" + curlc.url_escape(array_uri) +
+                          "/non_empty_domain?" +
+                          "start_timestamp=" + std::to_string(timestamp_start) +
+                          "&end_timestamp=" + std::to_string(timestamp_end);
 
   // Get the data
   Buffer returned_data;
-  RETURN_NOT_OK(
-      curlc.get_data(url, serialization_type_, &returned_data, cache_key));
+  RETURN_NOT_OK(curlc.get_data(
+      stats_, url, serialization_type_, &returned_data, cache_key));
 
   if (returned_data.data() == nullptr || returned_data.size() == 0)
     return LOG_STATUS(
@@ -235,8 +250,8 @@ Status RestClient::get_array_max_buffer_sizes(
 
   // Get the data
   Buffer returned_data;
-  RETURN_NOT_OK(
-      curlc.get_data(url, serialization_type_, &returned_data, cache_key));
+  RETURN_NOT_OK(curlc.get_data(
+      stats_, url, serialization_type_, &returned_data, cache_key));
 
   if (returned_data.data() == nullptr || returned_data.size() == 0)
     return LOG_STATUS(
@@ -249,7 +264,10 @@ Status RestClient::get_array_max_buffer_sizes(
 }
 
 Status RestClient::get_array_metadata_from_rest(
-    const URI& uri, uint64_t timestamp, Array* array) {
+    const URI& uri,
+    uint64_t timestamp_start,
+    uint64_t timestamp_end,
+    Array* array) {
   if (array == nullptr)
     return LOG_STATUS(Status::RestError(
         "Error getting array metadata from REST; array is null."));
@@ -261,15 +279,16 @@ Status RestClient::get_array_metadata_from_rest(
   const std::string cache_key = array_ns + ":" + array_uri;
   RETURN_NOT_OK(
       curlc.init(config_, extra_headers_, &redirect_meta_, &redirect_mtx_));
-  const std::string url =
-      redirect_uri(cache_key) + "/v1/arrays/" + array_ns + "/" +
-      curlc.url_escape(array_uri) +
-      "/array_metadata?timestamp=" + std::to_string(timestamp);
+  const std::string url = redirect_uri(cache_key) + "/v1/arrays/" + array_ns +
+                          "/" + curlc.url_escape(array_uri) +
+                          "/array_metadata?" +
+                          "start_timestamp=" + std::to_string(timestamp_start) +
+                          "&end_timestamp=" + std::to_string(timestamp_end);
 
   // Get the data
   Buffer returned_data;
-  RETURN_NOT_OK(
-      curlc.get_data(url, serialization_type_, &returned_data, cache_key));
+  RETURN_NOT_OK(curlc.get_data(
+      stats_, url, serialization_type_, &returned_data, cache_key));
   if (returned_data.data() == nullptr || returned_data.size() == 0)
     return LOG_STATUS(Status::RestError(
         "Error getting array metadata from REST; server returned no data."));
@@ -303,7 +322,7 @@ Status RestClient::post_array_metadata_to_rest(const URI& uri, Array* array) {
   // Put the data
   Buffer returned_data;
   return curlc.post_data(
-      url, serialization_type_, &serialized, &returned_data, cache_key);
+      stats_, url, serialization_type_, &serialized, &returned_data, cache_key);
 }
 
 Status RestClient::submit_query_to_rest(const URI& uri, Query* query) {
@@ -348,8 +367,10 @@ Status RestClient::post_query_submit(
                     "&read_all=" + (resubmit_incomplete_ ? "true" : "false");
 
   // Remote array reads always supply the timestamp.
-  if (query->type() == QueryType::READ)
-    url += "&open_at=" + std::to_string(array->timestamp());
+  if (query->type() == QueryType::READ) {
+    url += "&start_timestamp=" + std::to_string(array->timestamp_start());
+    url += "&end_timestamp=" + std::to_string(array->timestamp_end());
+  }
 
   // Create the callback that will process the response buffers as they
   // are received.
@@ -366,7 +387,13 @@ Status RestClient::post_query_submit(
       copy_state);
 
   const Status st = curlc.post_data(
-      url, serialization_type_, &serialized, std::move(write_cb), cache_key);
+      stats_,
+      url,
+      serialization_type_,
+      &serialized,
+      &scratch,
+      std::move(write_cb),
+      cache_key);
 
   if (!st.ok() && copy_state->empty()) {
     return LOG_STATUS(Status::RestError(
@@ -376,7 +403,7 @@ Status RestClient::post_query_submit(
         st.message()));
   }
 
-  return Status::Ok();
+  return st;
 }
 
 size_t RestClient::post_data_write_cb(
@@ -566,7 +593,12 @@ Status RestClient::finalize_query_to_rest(const URI& uri, Query* query) {
       "/query/finalize?type=" + query_type_str(query->type());
   Buffer returned_data;
   RETURN_NOT_OK(curlc.post_data(
-      url, serialization_type_, &serialized, &returned_data, cache_key));
+      stats_,
+      url,
+      serialization_type_,
+      &serialized,
+      &returned_data,
+      cache_key));
 
   if (returned_data.data() == nullptr || returned_data.size() == 0)
     return LOG_STATUS(
@@ -625,6 +657,15 @@ Status RestClient::subarray_to_str(
       case Datatype::DATETIME_PS:
       case Datatype::DATETIME_FS:
       case Datatype::DATETIME_AS:
+      case Datatype::TIME_HR:
+      case Datatype::TIME_MIN:
+      case Datatype::TIME_SEC:
+      case Datatype::TIME_MS:
+      case Datatype::TIME_US:
+      case Datatype::TIME_NS:
+      case Datatype::TIME_PS:
+      case Datatype::TIME_FS:
+      case Datatype::TIME_AS:
       case Datatype::INT64:
         ss << ((const int64_t*)subarray)[i];
         break;
@@ -701,13 +742,20 @@ Status RestClient::get_query_est_result_sizes(const URI& uri, Query* query) {
       "/query/est_result_sizes?type=" + query_type_str(query->type());
 
   // Remote array reads always supply the timestamp.
-  if (query->type() == QueryType::READ)
-    url += "&open_at=" + std::to_string(array->timestamp());
+  if (query->type() == QueryType::READ) {
+    url += "&start_timestamp=" + std::to_string(array->timestamp_start());
+    url += "&end_timestamp=" + std::to_string(array->timestamp_end());
+  }
 
   // Get the data
   Buffer returned_data;
   RETURN_NOT_OK(curlc.post_data(
-      url, serialization_type_, &serialized, &returned_data, cache_key));
+      stats_,
+      url,
+      serialization_type_,
+      &serialized,
+      &returned_data,
+      cache_key));
   if (returned_data.data() == nullptr || returned_data.size() == 0)
     return LOG_STATUS(Status::RestError(
         "Error getting array metadata from REST; server returned no data."));
@@ -732,7 +780,7 @@ RestClient::RestClient() {
   (void)serialization_type_;
 }
 
-Status RestClient::init(const Config*, ThreadPool*) {
+Status RestClient::init(stats::Stats*, const Config*, ThreadPool*) {
   return LOG_STATUS(
       Status::RestError("Cannot use rest client; serialization not enabled."));
 }
@@ -757,7 +805,7 @@ Status RestClient::deregister_array_from_rest(const URI&) {
       Status::RestError("Cannot use rest client; serialization not enabled."));
 }
 
-Status RestClient::get_array_non_empty_domain(Array*, uint64_t) {
+Status RestClient::get_array_non_empty_domain(Array*, uint64_t, uint64_t) {
   return LOG_STATUS(
       Status::RestError("Cannot use rest client; serialization not enabled."));
 }
@@ -771,7 +819,8 @@ Status RestClient::get_array_max_buffer_sizes(
       Status::RestError("Cannot use rest client; serialization not enabled."));
 }
 
-Status RestClient::get_array_metadata_from_rest(const URI&, uint64_t, Array*) {
+Status RestClient::get_array_metadata_from_rest(
+    const URI&, uint64_t, uint64_t, Array*) {
   return LOG_STATUS(
       Status::RestError("Cannot use rest client; serialization not enabled."));
 }

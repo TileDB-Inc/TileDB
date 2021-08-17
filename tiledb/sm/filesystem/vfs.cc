@@ -39,7 +39,7 @@
 #include "tiledb/sm/filesystem/hdfs_filesystem.h"
 #include "tiledb/sm/misc/parallel_functions.h"
 #include "tiledb/sm/misc/utils.h"
-#include "tiledb/sm/stats/stats.h"
+#include "tiledb/sm/stats/global_stats.h"
 
 #include <iostream>
 #include <list>
@@ -70,7 +70,8 @@ static std::mutex filelock_mtx_;
 /* ********************************* */
 
 VFS::VFS()
-    : init_(false)
+    : stats_(nullptr)
+    , init_(false)
     , read_ahead_size_(0)
     , compute_tp_(nullptr)
     , io_tp_(nullptr) {
@@ -913,10 +914,13 @@ Status VFS::is_bucket(const URI& uri, bool* is_bucket) const {
 }
 
 Status VFS::init(
+    stats::Stats* const parent_stats,
     ThreadPool* const compute_tp,
     ThreadPool* const io_tp,
     const Config* const ctx_config,
     const Config* const vfs_config) {
+  stats_ = parent_stats->create_child("VFS");
+
   assert(compute_tp);
   assert(io_tp);
   compute_tp_ = compute_tp;
@@ -948,7 +952,7 @@ Status VFS::init(
 #endif
 
 #ifdef HAVE_S3
-  RETURN_NOT_OK(s3_.init(config_, io_tp_));
+  RETURN_NOT_OK(s3_.init(stats_, config_, io_tp_));
 #endif
 
 #ifdef HAVE_AZURE
@@ -968,7 +972,7 @@ Status VFS::init(
   }
 #endif
 
-#ifdef WIN32
+#ifdef _WIN32
   win_.init(config_, io_tp_);
 #else
   posix_.init(config_, io_tp_);
@@ -1389,7 +1393,7 @@ Status VFS::read(
     void* const buffer,
     const uint64_t nbytes,
     bool use_read_ahead) {
-  STATS_ADD_COUNTER(stats::Stats::CounterType::READ_BYTE_NUM, nbytes);
+  stats_->add_counter("read_byte_num", nbytes);
 
   if (!init_)
     return LOG_STATUS(Status::VFSError("Cannot read; VFS not initialized"));
@@ -1457,7 +1461,7 @@ Status VFS::read_impl(
     void* const buffer,
     const uint64_t nbytes,
     const bool use_read_ahead) {
-  STATS_ADD_COUNTER(stats::Stats::CounterType::READ_OPS_NUM, 1);
+  stats_->add_counter("read_ops_num", 1);
 
   // We only check to use the read-ahead cache for cloud-storage
   // backends. No-op the `use_read_ahead` to prevent the unused
@@ -1878,8 +1882,8 @@ Status VFS::close_file(const URI& uri) {
 }
 
 Status VFS::write(const URI& uri, const void* buffer, uint64_t buffer_size) {
-  STATS_ADD_COUNTER(stats::Stats::CounterType::WRITE_BYTE_NUM, buffer_size);
-  STATS_ADD_COUNTER(stats::Stats::CounterType::WRITE_OPS_NUM, 1);
+  stats_->add_counter("write_byte_num", buffer_size);
+  stats_->add_counter("write_ops_num", 1);
 
   if (!init_)
     return LOG_STATUS(Status::VFSError("Cannot write; VFS not initialized"));

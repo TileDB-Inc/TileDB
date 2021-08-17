@@ -31,14 +31,15 @@
  */
 
 #include "tiledb/sm/array_schema/dimension.h"
+#include "tiledb/common/logger.h"
 #include "tiledb/sm/buffer/buffer.h"
-#include "tiledb/sm/buffer/const_buffer.h"
 #include "tiledb/sm/enums/datatype.h"
 #include "tiledb/sm/enums/filter_type.h"
 #include "tiledb/sm/misc/utils.h"
 
 #include <bitset>
 #include <cassert>
+#include <cmath>
 #include <iostream>
 
 using namespace tiledb::common;
@@ -60,6 +61,7 @@ Dimension::Dimension(const std::string& name, Datatype type)
   cell_val_num_ = (datatype_is_string(type)) ? constants::var_num : 1;
   set_ceil_to_tile_func();
   set_check_range_func();
+  set_adjust_range_oob_func();
   set_coincides_with_tiles_func();
   set_compute_mbr_func();
   set_crop_range_func();
@@ -74,7 +76,6 @@ Dimension::Dimension(const std::string& name, Datatype type)
   set_split_range_func();
   set_splitting_value_func();
   set_tile_num_func();
-  set_value_in_range_func();
   set_map_to_uint64_func();
   set_map_to_uint64_2_func();
   set_map_to_uint64_3_func();
@@ -91,6 +92,7 @@ Dimension::Dimension(const Dimension* dim) {
   type_ = dim->type_;
 
   // Set fuctions
+  adjust_range_oob_func_ = dim->adjust_range_oob_func_;
   ceil_to_tile_func_ = dim->ceil_to_tile_func_;
   check_range_func_ = dim->check_range_func_;
   coincides_with_tiles_func_ = dim->coincides_with_tiles_func_;
@@ -107,7 +109,6 @@ Dimension::Dimension(const Dimension* dim) {
   split_range_func_ = dim->split_range_func_;
   splitting_value_func_ = dim->splitting_value_func_;
   tile_num_func_ = dim->tile_num_func_;
-  value_in_range_func_ = dim->value_in_range_func_;
   map_to_uint64_func_ = dim->map_to_uint64_func_;
   map_to_uint64_2_func_ = dim->map_to_uint64_2_func_;
   map_to_uint64_3_func_ = dim->map_to_uint64_3_func_;
@@ -198,6 +199,15 @@ std::string Dimension::coord_to_str(const QueryBuffer& buff, uint64_t i) const {
       case Datatype::DATETIME_PS:
       case Datatype::DATETIME_FS:
       case Datatype::DATETIME_AS:
+      case Datatype::TIME_HR:
+      case Datatype::TIME_MIN:
+      case Datatype::TIME_SEC:
+      case Datatype::TIME_MS:
+      case Datatype::TIME_US:
+      case Datatype::TIME_NS:
+      case Datatype::TIME_PS:
+      case Datatype::TIME_FS:
+      case Datatype::TIME_AS:
         ss << *((int64_t*)coord);
         break;
       default:
@@ -259,16 +269,17 @@ Status Dimension::deserialize(
   }
 
   // Load tile extent
-  tile_extent_.clear();
+  tile_extent_.assign_as_void();
   uint8_t null_tile_extent;
   RETURN_NOT_OK(buff->read(&null_tile_extent, sizeof(uint8_t)));
   if (null_tile_extent == 0) {
     tile_extent_.resize(coord_size());
-    RETURN_NOT_OK(buff->read(&tile_extent_[0], coord_size()));
+    RETURN_NOT_OK(buff->read(tile_extent_.data(), coord_size()));
   }
 
   set_ceil_to_tile_func();
   set_check_range_func();
+  set_adjust_range_oob_func();
   set_coincides_with_tiles_func();
   set_compute_mbr_func();
   set_crop_range_func();
@@ -283,7 +294,6 @@ Status Dimension::deserialize(
   set_split_range_func();
   set_splitting_value_func();
   set_tile_num_func();
-  set_value_in_range_func();
   set_map_to_uint64_func();
   set_map_to_uint64_2_func();
   set_map_to_uint64_3_func();
@@ -332,22 +342,21 @@ void Dimension::ceil_to_tile(
     const Dimension* dim, const Range& r, uint64_t tile_num, ByteVecValue* v) {
   assert(dim != nullptr);
   assert(!r.empty());
-  assert(v != nullptr);
-  assert(!dim->tile_extent().empty());
+  assert(dim->tile_extent());
 
   auto tile_extent = *(const T*)dim->tile_extent().data();
   auto dim_dom = (const T*)dim->domain().data();
-  v->resize(sizeof(T));
   auto r_t = (const T*)r.data();
 
-  T mid = r_t[0] + (tile_num + 1) * tile_extent;
-  uint64_t div = (mid - dim_dom[0]) / tile_extent;
-  auto floored_mid = (T)div * tile_extent + dim_dom[0];
-  T sp = (std::numeric_limits<T>::is_integer) ?
-             floored_mid - 1 :
-             static_cast<T>(
-                 std::nextafter(floored_mid, std::numeric_limits<T>::lowest()));
-  std::memcpy(&(*v)[0], &sp, sizeof(T));
+  T mid = tile_coord_low(tile_num + 1, r_t[0], tile_extent);
+  uint64_t div = tile_idx(mid, dim_dom[0], tile_extent);
+  T floored_mid = tile_coord_low(div, dim_dom[0], tile_extent);
+  assert(v != nullptr);
+  v->assign_as<T>(
+      (std::is_integral<T>::value) ?
+          floored_mid - 1 :
+          static_cast<T>(
+              std::nextafter(floored_mid, std::numeric_limits<T>::lowest())));
 }
 
 void Dimension::ceil_to_tile(
@@ -369,19 +378,29 @@ Status Dimension::check_range(const Range& range) const {
   return Status::Ok();
 }
 
+Status Dimension::adjust_range_oob(Range* range) const {
+  // Inapplicable to string domains
+  if (type_ == Datatype::STRING_ASCII)
+    return Status::Ok();
+
+  assert(adjust_range_oob_func_ != nullptr);
+  adjust_range_oob_func_(this, range);
+  return Status::Ok();
+}
+
 template <class T>
 bool Dimension::coincides_with_tiles(const Dimension* dim, const Range& r) {
   assert(dim != nullptr);
   assert(!r.empty());
-  assert(!dim->tile_extent().empty());
+  assert(dim->tile_extent());
 
   auto dim_domain = (const T*)dim->domain().data();
   auto tile_extent = *(const T*)dim->tile_extent().data();
   auto d = (const T*)r.data();
-  auto norm_1 = uint64_t(d[0] - dim_domain[0]);
-  auto norm_2 = (uint64_t(d[1]) - dim_domain[0]) + 1;
-  return ((norm_1 / tile_extent) * tile_extent == norm_1) &&
-         ((norm_2 / tile_extent) * tile_extent == norm_2);
+  auto rounded_1 = Dimension::round_to_tile(d[0], dim_domain[0], tile_extent);
+  auto rounded_2 =
+      Dimension::round_to_tile(T(d[1] + 1), dim_domain[0], tile_extent);
+  return (rounded_1 == d[0]) && (rounded_2 == T(d[1] + 1));
 }
 
 bool Dimension::coincides_with_tiles(const Range& r) const {
@@ -566,17 +585,18 @@ void Dimension::expand_to_tile(const Dimension* dim, Range* range) {
   assert(!range->empty());
 
   // Applicable only to regular tiles and integral domains
-  if (dim->tile_extent().empty() || !std::is_integral<T>::value)
+  if (!dim->tile_extent() || !std::is_integral<T>::value)
     return;
 
   auto tile_extent = *(const T*)dim->tile_extent().data();
   auto dim_dom = (const T*)dim->domain().data();
   auto r = (const T*)range->data();
-  T res[2];
+  auto tile_idx1 = tile_idx(r[0], dim_dom[0], tile_extent);
+  auto tile_idx2 = tile_idx(r[1], dim_dom[0], tile_extent);
 
-  res[0] = ((r[0] - dim_dom[0]) / tile_extent * tile_extent) + dim_dom[0];
-  res[1] =
-      ((r[1] - dim_dom[0]) / tile_extent + 1) * tile_extent - 1 + dim_dom[0];
+  T res[2];
+  res[0] = tile_coord_low(tile_idx1, dim_dom[0], tile_extent);
+  res[1] = tile_coord_high(tile_idx2, dim_dom[0], tile_extent);
 
   range->set_range(res, sizeof(res));
 }
@@ -712,35 +732,98 @@ double Dimension::overlap_ratio<char>(const Range& r1, const Range& r2) {
 
 template <class T>
 double Dimension::overlap_ratio(const Range& r1, const Range& r2) {
+  // Verify that we have two intervals
   assert(!r1.empty());
   assert(!r2.empty());
-
   auto d1 = (const T*)r1.data();
   auto d2 = (const T*)r2.data();
-  assert(d1[0] <= d1[1]);
-  assert(d2[0] <= d2[1]);
+  const auto r1_low = d1[0];
+  const auto r1_high = d1[1];
+  auto r2_low = d2[0];
+  auto r2_high = d2[1];
+  assert(r1_low <= r1_high);
+  assert(r2_low <= r2_high);
 
-  // No overlap
-  if (d1[0] > d2[1] || d1[1] < d2[0])
+  // Special case: No overlap, intervals are disjoint
+  if (r1_low > r2_high || r1_high < r2_low)
     return 0.0;
-
-  // Compute ratio
-  auto overlap_start = std::max(d1[0], d2[0]);
-  auto overlap_end = std::min(d1[1], d2[1]);
-  auto overlap_range = overlap_end - overlap_start;
-  auto mbr_range = d2[1] - d2[0];
-  auto max = std::numeric_limits<double>::max();
-  if (std::numeric_limits<T>::is_integer) {
-    overlap_range += 1;
-    mbr_range += 1;
-  } else {
-    if (overlap_range == 0)
-      overlap_range = std::nextafter(overlap_range, max);
-    if (mbr_range == 0)
-      mbr_range = std::nextafter(mbr_range, max);
+  // Special case: All overlap, interval r2 is a subset of interval r1
+  if (r1_low <= r2_low && r2_high <= r1_high)
+    return 1.0;
+  /*
+   * At this point we know that r2_low < r2_high, because we would have returned
+   * by now otherwise. Note that for floating point types, however, we cannot
+   * conclude that r2_high - r2_low > 0 because of the possibility of underflow.
+   */
+  auto intersection_low = std::max(r1_low, r2_low);
+  auto intersection_high = std::min(r1_high, r2_high);
+  /*
+   * The intersection is a proper subset of interval r1, either the upper bounds
+   * are distinct, or lower bounds are distinct, or both. This means that any
+   * result has to be strictly greater than zero and strictly less than 1.
+   */
+  /*
+   * Guard against overflow. If the outer interval has a bound with an absolute
+   * value that's "too large", meaning that it might lead to an overflow, we
+   * apply a shrinking transformation that preserves the ratio. We only need to
+   * check the outer interval because the intersection is strictly smaller. For
+   * unsigned types we only need to check the upper bound, since the lower bound
+   * is zero. For signed types we need to check both.
+   */
+  const T safe_upper = std::nextafter(std::numeric_limits<T>::max() / 2, 0);
+  bool unsafe = safe_upper < r2_high;
+  if (std::numeric_limits<T>::is_signed) {
+    const T safe_lower =
+        std::nextafter(std::numeric_limits<T>::lowest() / 2, 0);
+    unsafe = unsafe || r2_low < safe_lower;
+  }
+  if (unsafe) {
+    r2_low /= 2;
+    r2_high /= 2;
+    intersection_low /= 2;
+    intersection_high /= 2;
   }
 
-  return (double)overlap_range / mbr_range;
+  // Compute ratio
+  auto numerator = intersection_high - intersection_low;
+  auto denominator = r2_high - r2_low;
+  if (std::numeric_limits<T>::is_integer) {
+    // integer types count elements; they don't measure length
+    numerator += 1;
+    denominator += 1;
+  } else {
+    if (denominator == 0) {
+      /*
+       * If the variable `denominator` is zero, it's the result of rounding,
+       * since checking the "disjoint" and "subset" cases above has ensured that
+       * the endpoints of the denominator interval are distinct. Thus we have no
+       * easy-to-access information about the true quotient value, but
+       * mathematically it must be between 0 and 1, so we need either to return
+       * some value between 0 and 1 or to throw an exception stating that we
+       * don't support this case.
+       *
+       * The variable `denominator` is larger than the variable `numerator`, so
+       * the numerator is also be zero. We could extract some information from
+       * the floating-point representation itself, but that's a lot of work that
+       * doesn't seem justified at present. Throwing an exception would be
+       * better on principle, but the code in its current state now would not
+       * deal with that gracefully. As a compromise, therefore, we return a
+       * valid but non-computed value. It's a defect, but one that will rarely
+       * if ever arise in practice.
+       */
+      return 0.5;
+    }
+    // The rounded-to-zero numerator is handled in the general case below.
+  }
+  auto ratio = (double)numerator / denominator;
+  // Round away from the endpoints if needed.
+  if (ratio == 0.0) {
+    ratio = std::nextafter(0, 1);
+  } else if (ratio == 1.0) {
+    ratio = std::nextafter(1, 0);
+  }
+  assert(0.0 < ratio && ratio < 1.0);
+  return ratio;
 }
 
 double Dimension::overlap_ratio(const Range& r1, const Range& r2) const {
@@ -751,14 +834,14 @@ double Dimension::overlap_ratio(const Range& r1, const Range& r2) const {
 template <>
 void Dimension::split_range<char>(
     const Range& r, const ByteVecValue& v, Range* r1, Range* r2) {
-  assert(!v.empty());
+  assert(v);
   assert(r1 != nullptr);
   assert(r2 != nullptr);
 
   // First range
   auto min_string = std::string("\x0", 1);
   auto new_r1_start = !r.start_str().empty() ? r.start_str() : min_string;
-  auto new_r1_end = std::string((const char*)v.data(), v.size());
+  auto new_r1_end = v.rvalue_as<std::string>();
   auto new_r1_end_size = (int)new_r1_end.size();
   int pos;
   for (pos = 0; pos < new_r1_end_size; ++pos) {
@@ -772,7 +855,7 @@ void Dimension::split_range<char>(
   r1->set_str_range(new_r1_start, new_r1_end);
 
   // Second range
-  auto new_r2_start = std::string((const char*)v.data(), v.size());
+  auto new_r2_start = v.rvalue_as<std::string>();
   // The following will make "a b -1 -4 0" -> "a c"
   for (pos = 0; pos < new_r1_end_size; ++pos) {
     if ((int)(signed char)new_r2_start[pos] < 0)
@@ -782,7 +865,7 @@ void Dimension::split_range<char>(
     assert(pos != 0);
     new_r2_start[pos] = 0;
     new_r2_start[--pos]++;
-  } while (pos >= 0 && (int)new_r2_start[pos] < 0);
+  } while (pos >= 0 && (int)(signed char)new_r2_start[pos] < 0);
   new_r2_start.resize(pos + 1);
 
   auto max_string = std::string("\x7F", 1);
@@ -802,14 +885,14 @@ template <class T>
 void Dimension::split_range(
     const Range& r, const ByteVecValue& v, Range* r1, Range* r2) {
   assert(!r.empty());
-  assert(!v.empty());
+  assert(v);
   assert(r1 != nullptr);
   assert(r2 != nullptr);
 
   auto max = std::numeric_limits<T>::max();
-  bool int_domain = std::numeric_limits<T>::is_integer;
+  bool int_domain = std::is_integral<T>::value;
   auto r_t = (const T*)r.data();
-  auto v_t = *(const T*)(&v[0]);
+  auto v_t = *(const T*)(v.data());
   assert(v_t >= r_t[0]);
   assert(v_t < r_t[1]);
 
@@ -924,8 +1007,7 @@ void Dimension::splitting_value(
   // the split value.
   const T sp = r_t[0] + static_cast<T>(r_t1.to_ullong());
 
-  v->resize(sizeof(T));
-  std::memcpy(&(*v)[0], &sp, sizeof(T));
+  v->assign_as<T>(sp);
   *unsplittable = !std::memcmp(&sp, &r_t[1], sizeof(T));
 }
 
@@ -942,8 +1024,7 @@ void Dimension::splitting_value<float>(
   // dividing by 2.
   const float sp = r_t[0] + ((double)r_t[1] - (double)r_t[0]) / 2;
 
-  v->resize(sizeof(float));
-  std::memcpy(&(*v)[0], &sp, sizeof(float));
+  v->assign_as<float>(sp);
   *unsplittable = !std::memcmp(&sp, &r_t[1], sizeof(float));
 }
 
@@ -960,8 +1041,7 @@ void Dimension::splitting_value<double>(
   // before dividing by 2.
   const double sp = r_t[0] + ((long double)r_t[1] - (long double)r_t[0]) / 2;
 
-  v->resize(sizeof(double));
-  std::memcpy(&(*v)[0], &sp, sizeof(double));
+  v->assign_as<double>(sp);
   *unsplittable = !std::memcmp(&sp, &r_t[1], sizeof(double));
 }
 
@@ -985,14 +1065,15 @@ uint64_t Dimension::tile_num(const Dimension* dim, const Range& range) {
   assert(!range.empty());
 
   // Trivial cases
-  if (dim->tile_extent().empty())
+  if (!dim->tile_extent())
     return 1;
 
   auto tile_extent = *(const T*)dim->tile_extent().data();
   auto dim_dom = (const T*)dim->domain().data();
   auto r = (const T*)range.data();
-  const uint64_t start = floor((r[0] - dim_dom[0]) / tile_extent);
-  const uint64_t end = floor((r[1] - dim_dom[0]) / tile_extent);
+
+  uint64_t start = tile_idx(r[0], dim_dom[0], tile_extent);
+  uint64_t end = tile_idx(r[1], dim_dom[0], tile_extent);
   return end - start + 1;
 }
 
@@ -1001,37 +1082,14 @@ uint64_t Dimension::tile_num(const Range& range) const {
   return tile_num_func_(this, range);
 }
 
-template <class T>
-bool Dimension::value_in_range(const void* value, const Range& range) {
-  assert(value != nullptr);
-  assert(!range.empty());
-  auto v = (const T*)value;
-  auto r = (const T*)(range.data());
-  return *v >= r[0] && *v <= r[1];
-}
-
-bool Dimension::value_in_range(const void* value, const Range& range) const {
-  assert(value_in_range_func_ != nullptr);
-  return value_in_range_func_(value, range);
-}
-
-bool Dimension::value_in_range(
-    const std::string& value, const Range& range) const {
-  assert(type_ == Datatype::STRING_ASCII);
-  assert(!value.empty());
-  assert(!range.empty());
-
-  return value >= range.start_str() && value <= range.end_str();
-}
-
 uint64_t Dimension::map_to_uint64(
     const QueryBuffer* buff,
     uint64_t c,
     uint64_t coords_num,
     int bits,
-    uint64_t bucket_num) const {
+    uint64_t max_bucket_val) const {
   assert(map_to_uint64_func_ != nullptr);
-  return map_to_uint64_func_(this, buff, c, coords_num, bits, bucket_num);
+  return map_to_uint64_func_(this, buff, c, coords_num, bits, max_bucket_val);
 }
 
 template <class T>
@@ -1041,7 +1099,7 @@ uint64_t Dimension::map_to_uint64(
     uint64_t c,
     uint64_t coords_num,
     int bits,
-    uint64_t bucket_num) {
+    uint64_t max_bucket_val) {
   assert(dim != nullptr);
   assert(buff != nullptr);
   assert(!dim->domain().empty());
@@ -1050,9 +1108,9 @@ uint64_t Dimension::map_to_uint64(
 
   double dom_start_T = *(const T*)dim->domain().start();
   double dom_end_T = *(const T*)dim->domain().end();
-  auto dom_range_T = dom_end_T - dom_start_T + std::is_integral<T>::value;
+  auto dom_range_T = dom_end_T - dom_start_T;
   auto norm_coord_T = ((const T*)buff->buffer_)[c] - dom_start_T;
-  return (norm_coord_T / dom_range_T) * bucket_num;
+  return (norm_coord_T / dom_range_T) * max_bucket_val;
 }
 
 template <>
@@ -1062,13 +1120,13 @@ uint64_t Dimension::map_to_uint64<char>(
     uint64_t c,
     uint64_t coords_num,
     int bits,
-    uint64_t bucket_num) {
+    uint64_t max_bucket_val) {
   assert(dim != nullptr);
   assert(buff != nullptr);
   assert(buff->buffer_ != nullptr);
   assert(buff->buffer_var_ != nullptr);
   assert(buff->buffer_var_size_ != nullptr);
-  (void)bucket_num;  // Not needed here
+  (void)max_bucket_val;  // Not needed here
   (void)dim;
 
   auto offsets = (const uint64_t*)buff->buffer_;
@@ -1095,9 +1153,9 @@ uint64_t Dimension::map_to_uint64(
     const void* coord,
     uint64_t coord_size,
     int bits,
-    uint64_t bucket_num) const {
+    uint64_t max_bucket_val) const {
   assert(map_to_uint64_2_func_ != nullptr);
-  return map_to_uint64_2_func_(this, coord, coord_size, bits, bucket_num);
+  return map_to_uint64_2_func_(this, coord, coord_size, bits, max_bucket_val);
 }
 
 template <class T>
@@ -1106,7 +1164,7 @@ uint64_t Dimension::map_to_uint64_2(
     const void* coord,
     uint64_t coord_size,
     int bits,
-    uint64_t bucket_num) {
+    uint64_t max_bucket_val) {
   assert(dim != nullptr);
   assert(coord != nullptr);
   assert(!dim->domain().empty());
@@ -1115,9 +1173,9 @@ uint64_t Dimension::map_to_uint64_2(
 
   double dom_start_T = *(const T*)dim->domain().start();
   double dom_end_T = *(const T*)dim->domain().end();
-  auto dom_range_T = dom_end_T - dom_start_T + std::is_integral<T>::value;
+  auto dom_range_T = dom_end_T - dom_start_T;
   auto norm_coord_T = *(const T*)coord - dom_start_T;
-  return (norm_coord_T / dom_range_T) * bucket_num;
+  return (norm_coord_T / dom_range_T) * max_bucket_val;
 }
 
 template <>
@@ -1126,10 +1184,10 @@ uint64_t Dimension::map_to_uint64_2<char>(
     const void* coord,
     uint64_t coord_size,
     int bits,
-    uint64_t bucket_num) {
+    uint64_t max_bucket_val) {
   assert(dim != nullptr);
   assert(coord != nullptr);
-  (void)bucket_num;
+  (void)max_bucket_val;
   (void)dim;
 
   auto v_str = (const char*)coord;
@@ -1153,9 +1211,9 @@ uint64_t Dimension::map_to_uint64(
     const ResultCoords& coord,
     uint32_t dim_idx,
     int bits,
-    uint64_t bucket_num) const {
+    uint64_t max_bucket_val) const {
   assert(map_to_uint64_3_func_ != nullptr);
-  return map_to_uint64_3_func_(this, coord, dim_idx, bits, bucket_num);
+  return map_to_uint64_3_func_(this, coord, dim_idx, bits, max_bucket_val);
 }
 
 template <class T>
@@ -1164,16 +1222,16 @@ uint64_t Dimension::map_to_uint64_3(
     const ResultCoords& coord,
     uint32_t dim_idx,
     int bits,
-    uint64_t bucket_num) {
+    uint64_t max_bucket_val) {
   assert(dim != nullptr);
   assert(!dim->domain().empty());
   (void)bits;  // Not needed here
 
   double dom_start_T = *(const T*)dim->domain().start();
   double dom_end_T = *(const T*)dim->domain().end();
-  auto dom_range_T = dom_end_T - dom_start_T + std::is_integral<T>::value;
+  auto dom_range_T = dom_end_T - dom_start_T;
   auto norm_coord_T = *((const T*)coord.coord(dim_idx)) - dom_start_T;
-  return (norm_coord_T / dom_range_T) * bucket_num;
+  return (norm_coord_T / dom_range_T) * max_bucket_val;
 }
 
 template <>
@@ -1182,9 +1240,9 @@ uint64_t Dimension::map_to_uint64_3<char>(
     const ResultCoords& coord,
     uint32_t dim_idx,
     int bits,
-    uint64_t bucket_num) {
+    uint64_t max_bucket_val) {
   assert(dim != nullptr);
-  (void)bucket_num;  // Not needed here
+  (void)max_bucket_val;  // Not needed here
   (void)dim;
 
   auto v_str = coord.coord_string(dim_idx);
@@ -1205,14 +1263,14 @@ uint64_t Dimension::map_to_uint64_3<char>(
 }
 
 ByteVecValue Dimension::map_from_uint64(
-    uint64_t value, int bits, uint64_t bucket_num) const {
+    uint64_t value, int bits, uint64_t max_bucket_val) const {
   assert(map_from_uint64_func_ != nullptr);
-  return map_from_uint64_func_(this, value, bits, bucket_num);
+  return map_from_uint64_func_(this, value, bits, max_bucket_val);
 }
 
 template <class T>
 ByteVecValue Dimension::map_from_uint64(
-    const Dimension* dim, uint64_t value, int bits, uint64_t bucket_num) {
+    const Dimension* dim, uint64_t value, int bits, uint64_t max_bucket_val) {
   assert(dim != nullptr);
   assert(!dim->domain().empty());
   (void)bits;  // Not needed here
@@ -1225,17 +1283,20 @@ ByteVecValue Dimension::map_from_uint64(
 
   auto dom_start_T = *(const T*)dim->domain().start();
   auto dom_end_T = *(const T*)dim->domain().end();
-  double dom_range_T = dom_end_T - dom_start_T + std::is_integral<T>::value;
+  double dom_range_T = dom_end_T - dom_start_T;
 
+  // Essentially take the largest value in the bucket
   if (std::is_integral<T>::value) {  // Integers
-    // Essentially take the largest value in the bucket
-    T norm_coord_T = ((value + 1) / (double)bucket_num) * dom_range_T - 1;
+    T norm_coord_T =
+        std::ceil(((value + 1) / (double)max_bucket_val) * dom_range_T - 1);
     T coord_T = norm_coord_T + dom_start_T;
-    std::memcpy(&ret[0], &coord_T, sizeof(T));
+    std::memcpy(ret.data(), &coord_T, sizeof(T));
   } else {  // Floating point types
-    T norm_coord_T = (value / (double)bucket_num) * dom_range_T;
+    T norm_coord_T = ((value + 1) / (double)max_bucket_val) * dom_range_T;
+    norm_coord_T =
+        std::nextafter(norm_coord_T, std::numeric_limits<T>::lowest());
     T coord_T = norm_coord_T + dom_start_T;
-    std::memcpy(&ret[0], &coord_T, sizeof(T));
+    std::memcpy(ret.data(), &coord_T, sizeof(T));
   }
 
   return ret;
@@ -1243,12 +1304,12 @@ ByteVecValue Dimension::map_from_uint64(
 
 template <>
 ByteVecValue Dimension::map_from_uint64<char>(
-    const Dimension* dim, uint64_t value, int bits, uint64_t bucket_num) {
+    const Dimension* dim, uint64_t value, int bits, uint64_t max_bucket_val) {
   assert(dim != nullptr);
   (void)dim;
-  (void)bucket_num;  // Not needed here
+  (void)max_bucket_val;  // Not needed here
 
-  ByteVecValue ret(sizeof(uint64_t));  // 8 bytes
+  std::vector<uint8_t> ret(sizeof(uint64_t));  // 8 bytes
 
   uint64_t ret_uint64 = (value << (64 - bits));
   int ret_c;
@@ -1265,7 +1326,7 @@ ByteVecValue Dimension::map_from_uint64<char>(
   if (ret.back() != 128)
     ret.push_back(128);
 
-  return ret;
+  return ByteVecValue(std::move(ret));
 }
 
 bool Dimension::smaller_than(
@@ -1279,9 +1340,9 @@ bool Dimension::smaller_than(
     const Dimension* dim, const ByteVecValue& value, const Range& range) {
   assert(dim != nullptr);
   (void)dim;
-  assert(!value.empty());
+  assert(value);
 
-  auto value_T = *(const T*)(&value[0]);
+  auto value_T = *(const T*)(value.data());
   auto range_start_T = *(const T*)range.start();
   return value_T < range_start_T;
 }
@@ -1290,10 +1351,10 @@ template <>
 bool Dimension::smaller_than<char>(
     const Dimension* dim, const ByteVecValue& value, const Range& range) {
   assert(dim != nullptr);
-  assert(!value.empty());
+  assert(value);
   (void)dim;
 
-  auto value_str = std::string((const char*)&value[0], value.size());
+  auto value_str = value.rvalue_as<std::string>();
   auto range_start_str = range.start_str();
   auto range_end_str = range.end_str();
 
@@ -1342,9 +1403,9 @@ Status Dimension::serialize(Buffer* buff, uint32_t version) {
   RETURN_NOT_OK(buff->write(&domain_size, sizeof(uint64_t)));
   RETURN_NOT_OK(buff->write(domain_.data(), domain_size));
 
-  auto null_tile_extent = (uint8_t)((tile_extent_.empty()) ? 1 : 0);
+  auto null_tile_extent = (uint8_t)(tile_extent_ ? 0 : 1);
   RETURN_NOT_OK(buff->write(&null_tile_extent, sizeof(uint8_t)));
-  if (!tile_extent_.empty())
+  if (tile_extent_)
     RETURN_NOT_OK(buff->write(tile_extent_.data(), tile_extent_.size()));
 
   return Status::Ok();
@@ -1370,6 +1431,12 @@ Status Dimension::set_domain(const Range& domain) {
 
   domain_ = domain;
   RETURN_NOT_OK_ELSE(check_domain(), domain_.clear());
+
+  return Status::Ok();
+}
+
+Status Dimension::set_domain_unsafe(const void* domain) {
+  domain_ = Range(domain, 2 * coord_size());
 
   return Status::Ok();
 }
@@ -1405,13 +1472,20 @@ Status Dimension::set_tile_extent(const void* tile_extent) {
   if (tile_extent != nullptr) {
     auto size = coord_size();
     te.resize(size);
-    std::memcpy(&te[0], tile_extent, size);
+    std::memcpy(te.data(), tile_extent, size);
   }
 
   return set_tile_extent(te);
 }
 
 Status Dimension::set_tile_extent(const ByteVecValue& tile_extent) {
+  if (type_ == Datatype::STRING_ASCII) {
+    if (!tile_extent)
+      return Status::Ok();
+    return LOG_STATUS(Status::DimensionError(
+        std::string("Setting the tile extent to a dimension with type '") +
+        datatype_str(type_) + "' is not supported"));
+  }
   if (domain_.empty())
     return LOG_STATUS(Status::DimensionError(
         "Cannot set tile extent; Domain must be set first"));
@@ -1456,6 +1530,15 @@ Status Dimension::set_null_tile_extent_to_range() {
     case Datatype::DATETIME_PS:
     case Datatype::DATETIME_FS:
     case Datatype::DATETIME_AS:
+    case Datatype::TIME_HR:
+    case Datatype::TIME_MIN:
+    case Datatype::TIME_SEC:
+    case Datatype::TIME_MS:
+    case Datatype::TIME_US:
+    case Datatype::TIME_NS:
+    case Datatype::TIME_PS:
+    case Datatype::TIME_FS:
+    case Datatype::TIME_AS:
       return set_null_tile_extent_to_range<int64_t>();
     case Datatype::STRING_ASCII:
       return Status::Ok();  // Do nothing for strings
@@ -1474,7 +1557,7 @@ Status Dimension::set_null_tile_extent_to_range() {
 template <class T>
 Status Dimension::set_null_tile_extent_to_range() {
   // Applicable only to null extents
-  if (!tile_extent_.empty())
+  if (tile_extent_)
     return Status::Ok();
 
   // Check empty domain
@@ -1484,25 +1567,28 @@ Status Dimension::set_null_tile_extent_to_range() {
 
   // Calculate new tile extent equal to domain range
   auto domain = (const T*)domain_.data();
+
+  // For integral domain, we need to add 1, check for overflow before doing
+  // anything
+  if (std::is_integral<T>::value) {
+    if (domain[0] == std::numeric_limits<T>::min() &&
+        domain[1] == std::numeric_limits<T>::max()) {
+      return LOG_STATUS(Status::DimensionError(
+          "Cannot set null tile extent to domain range; "
+          "Domain range exceeds domain type max numeric limit"));
+    }
+  }
+
   T tile_extent = domain[1] - domain[0];
 
   // We need to add 1 for integral domains
   if (std::is_integral<T>::value) {
-    // Check overflow before adding 1
-    if (tile_extent == std::numeric_limits<T>::max())
-      return LOG_STATUS(Status::DimensionError(
-          "Cannot set null tile extent to domain range; "
-          "Domain range exceeds domain type max numeric limit"));
     ++tile_extent;
     // After this, tile_extent = domain[1] - domain[0] + 1, which is the correct
     // domain range
   }
 
-  // Allocate space
-  uint64_t type_size = sizeof(T);
-  tile_extent_.resize(type_size);
-  std::memcpy(&tile_extent_[0], &tile_extent, type_size);
-
+  tile_extent_.assign_as<T>(tile_extent);
   return Status::Ok();
 }
 
@@ -1557,6 +1643,15 @@ Status Dimension::check_domain() const {
     case Datatype::DATETIME_PS:
     case Datatype::DATETIME_FS:
     case Datatype::DATETIME_AS:
+    case Datatype::TIME_HR:
+    case Datatype::TIME_MIN:
+    case Datatype::TIME_SEC:
+    case Datatype::TIME_MS:
+    case Datatype::TIME_US:
+    case Datatype::TIME_NS:
+    case Datatype::TIME_PS:
+    case Datatype::TIME_FS:
+    case Datatype::TIME_AS:
       return check_domain<int64_t>();
     default:
       return LOG_STATUS(Status::DimensionError(
@@ -1599,6 +1694,15 @@ Status Dimension::check_tile_extent() const {
     case Datatype::DATETIME_PS:
     case Datatype::DATETIME_FS:
     case Datatype::DATETIME_AS:
+    case Datatype::TIME_HR:
+    case Datatype::TIME_MIN:
+    case Datatype::TIME_SEC:
+    case Datatype::TIME_MS:
+    case Datatype::TIME_US:
+    case Datatype::TIME_NS:
+    case Datatype::TIME_PS:
+    case Datatype::TIME_FS:
+    case Datatype::TIME_AS:
       return check_tile_extent<int64_t>();
     default:
       return LOG_STATUS(Status::DimensionError(
@@ -1612,27 +1716,32 @@ Status Dimension::check_tile_extent() const {
     return LOG_STATUS(
         Status::DimensionError("Tile extent check failed; Domain not set"));
 
-  if (tile_extent_.empty())
+  if (!tile_extent_)
     return Status::Ok();
 
   auto tile_extent = (const T*)tile_extent_.data();
   auto domain = (const T*)domain_.data();
   bool is_int = std::is_integral<T>::value;
 
-  // Check if tile extent is negative or 0
-  if (*tile_extent <= 0)
-    return LOG_STATUS(Status::DimensionError(
-        "Tile extent check failed; Tile extent must be greater than 0"));
-
   // Check if tile extent exceeds domain
   if (!is_int) {
+    // Check if tile extent is negative or 0
+    if (*tile_extent <= 0)
+      return LOG_STATUS(Status::DimensionError(
+          "Tile extent check failed; Tile extent must be greater than 0"));
+
     if (*tile_extent > (domain[1] - domain[0] + 1))
       return LOG_STATUS(
           Status::DimensionError("Tile extent check failed; Tile extent "
                                  "exceeds dimension domain range"));
   } else {
+    // Check if tile extent is 0
+    if (*tile_extent == 0)
+      return LOG_STATUS(Status::DimensionError(
+          "Tile extent check failed; Tile extent must not be 0"));
+
     // Check if tile extent exceeds domain
-    uint64_t range = domain[1] - domain[0] + 1;
+    uint64_t range = (uint64_t)domain[1] - (uint64_t)domain[0] + 1;
     if (uint64_t(*tile_extent) > range)
       return LOG_STATUS(
           Status::DimensionError("Tile extent check failed; Tile extent "
@@ -1753,6 +1862,15 @@ std::string Dimension::domain_str() const {
     case Datatype::DATETIME_PS:
     case Datatype::DATETIME_FS:
     case Datatype::DATETIME_AS:
+    case Datatype::TIME_HR:
+    case Datatype::TIME_MIN:
+    case Datatype::TIME_SEC:
+    case Datatype::TIME_MS:
+    case Datatype::TIME_US:
+    case Datatype::TIME_NS:
+    case Datatype::TIME_PS:
+    case Datatype::TIME_FS:
+    case Datatype::TIME_AS:
       domain_int64 = (const int64_t*)domain_.data();
       ss << "[" << domain_int64[0] << "," << domain_int64[1] << "]";
       return ss.str();
@@ -1777,28 +1895,24 @@ std::string Dimension::domain_str() const {
 std::string Dimension::tile_extent_str() const {
   std::stringstream ss;
 
-  if (tile_extent_.empty())
+  if (!tile_extent_)
     return constants::null_str;
 
-  const int* tile_extent_int32;
-  const int64_t* tile_extent_int64;
   const float* tile_extent_float32;
   const double* tile_extent_float64;
-  const int8_t* tile_extent_int8;
   const uint8_t* tile_extent_uint8;
-  const int16_t* tile_extent_int16;
   const uint16_t* tile_extent_uint16;
   const uint32_t* tile_extent_uint32;
   const uint64_t* tile_extent_uint64;
 
   switch (type_) {
     case Datatype::INT32:
-      tile_extent_int32 = (const int32_t*)tile_extent_.data();
-      ss << *tile_extent_int32;
+      tile_extent_uint32 = (const uint32_t*)tile_extent_.data();
+      ss << *tile_extent_uint32;
       return ss.str();
     case Datatype::INT64:
-      tile_extent_int64 = (const int64_t*)tile_extent_.data();
-      ss << *tile_extent_int64;
+      tile_extent_uint64 = (const uint64_t*)tile_extent_.data();
+      ss << *tile_extent_uint64;
       return ss.str();
     case Datatype::FLOAT32:
       tile_extent_float32 = (const float*)tile_extent_.data();
@@ -1809,16 +1923,16 @@ std::string Dimension::tile_extent_str() const {
       ss << *tile_extent_float64;
       return ss.str();
     case Datatype::INT8:
-      tile_extent_int8 = (const int8_t*)tile_extent_.data();
-      ss << int(*tile_extent_int8);
+      tile_extent_uint8 = (const uint8_t*)tile_extent_.data();
+      ss << int(*tile_extent_uint8);
       return ss.str();
     case Datatype::UINT8:
       tile_extent_uint8 = (const uint8_t*)tile_extent_.data();
       ss << int(*tile_extent_uint8);
       return ss.str();
     case Datatype::INT16:
-      tile_extent_int16 = (const int16_t*)tile_extent_.data();
-      ss << *tile_extent_int16;
+      tile_extent_uint16 = (const uint16_t*)tile_extent_.data();
+      ss << *tile_extent_uint16;
       return ss.str();
     case Datatype::UINT16:
       tile_extent_uint16 = (const uint16_t*)tile_extent_.data();
@@ -1845,8 +1959,17 @@ std::string Dimension::tile_extent_str() const {
     case Datatype::DATETIME_PS:
     case Datatype::DATETIME_FS:
     case Datatype::DATETIME_AS:
-      tile_extent_int64 = (const int64_t*)tile_extent_.data();
-      ss << *tile_extent_int64;
+    case Datatype::TIME_HR:
+    case Datatype::TIME_MIN:
+    case Datatype::TIME_SEC:
+    case Datatype::TIME_MS:
+    case Datatype::TIME_US:
+    case Datatype::TIME_NS:
+    case Datatype::TIME_PS:
+    case Datatype::TIME_FS:
+    case Datatype::TIME_AS:
+      tile_extent_uint64 = (const uint64_t*)tile_extent_.data();
+      ss << *tile_extent_uint64;
       return ss.str();
 
     case Datatype::CHAR:
@@ -1911,6 +2034,15 @@ void Dimension::set_crop_range_func() {
     case Datatype::DATETIME_PS:
     case Datatype::DATETIME_FS:
     case Datatype::DATETIME_AS:
+    case Datatype::TIME_HR:
+    case Datatype::TIME_MIN:
+    case Datatype::TIME_SEC:
+    case Datatype::TIME_MS:
+    case Datatype::TIME_US:
+    case Datatype::TIME_NS:
+    case Datatype::TIME_PS:
+    case Datatype::TIME_FS:
+    case Datatype::TIME_AS:
       crop_range_func_ = crop_range<int64_t>;
       break;
     default:
@@ -1964,6 +2096,15 @@ void Dimension::set_domain_range_func() {
     case Datatype::DATETIME_PS:
     case Datatype::DATETIME_FS:
     case Datatype::DATETIME_AS:
+    case Datatype::TIME_HR:
+    case Datatype::TIME_MIN:
+    case Datatype::TIME_SEC:
+    case Datatype::TIME_MS:
+    case Datatype::TIME_US:
+    case Datatype::TIME_NS:
+    case Datatype::TIME_PS:
+    case Datatype::TIME_FS:
+    case Datatype::TIME_AS:
       domain_range_func_ = domain_range<int64_t>;
       break;
     default:
@@ -2017,6 +2158,15 @@ void Dimension::set_ceil_to_tile_func() {
     case Datatype::DATETIME_PS:
     case Datatype::DATETIME_FS:
     case Datatype::DATETIME_AS:
+    case Datatype::TIME_HR:
+    case Datatype::TIME_MIN:
+    case Datatype::TIME_SEC:
+    case Datatype::TIME_MS:
+    case Datatype::TIME_US:
+    case Datatype::TIME_NS:
+    case Datatype::TIME_PS:
+    case Datatype::TIME_FS:
+    case Datatype::TIME_AS:
       ceil_to_tile_func_ = ceil_to_tile<int64_t>;
       break;
     default:
@@ -2070,10 +2220,81 @@ void Dimension::set_check_range_func() {
     case Datatype::DATETIME_PS:
     case Datatype::DATETIME_FS:
     case Datatype::DATETIME_AS:
+    case Datatype::TIME_HR:
+    case Datatype::TIME_MIN:
+    case Datatype::TIME_SEC:
+    case Datatype::TIME_MS:
+    case Datatype::TIME_US:
+    case Datatype::TIME_NS:
+    case Datatype::TIME_PS:
+    case Datatype::TIME_FS:
+    case Datatype::TIME_AS:
       check_range_func_ = check_range<int64_t>;
       break;
     default:
       check_range_func_ = nullptr;
+      break;
+  }
+}
+
+void Dimension::set_adjust_range_oob_func() {
+  switch (type_) {
+    case Datatype::INT32:
+      adjust_range_oob_func_ = adjust_range_oob<int32_t>;
+      break;
+    case Datatype::INT64:
+      adjust_range_oob_func_ = adjust_range_oob<int64_t>;
+      break;
+    case Datatype::INT8:
+      adjust_range_oob_func_ = adjust_range_oob<int8_t>;
+      break;
+    case Datatype::UINT8:
+      adjust_range_oob_func_ = adjust_range_oob<uint8_t>;
+      break;
+    case Datatype::INT16:
+      adjust_range_oob_func_ = adjust_range_oob<int16_t>;
+      break;
+    case Datatype::UINT16:
+      adjust_range_oob_func_ = adjust_range_oob<uint16_t>;
+      break;
+    case Datatype::UINT32:
+      adjust_range_oob_func_ = adjust_range_oob<uint32_t>;
+      break;
+    case Datatype::UINT64:
+      adjust_range_oob_func_ = adjust_range_oob<uint64_t>;
+      break;
+    case Datatype::FLOAT32:
+      adjust_range_oob_func_ = adjust_range_oob<float>;
+      break;
+    case Datatype::FLOAT64:
+      adjust_range_oob_func_ = adjust_range_oob<double>;
+      break;
+    case Datatype::DATETIME_YEAR:
+    case Datatype::DATETIME_MONTH:
+    case Datatype::DATETIME_WEEK:
+    case Datatype::DATETIME_DAY:
+    case Datatype::DATETIME_HR:
+    case Datatype::DATETIME_MIN:
+    case Datatype::DATETIME_SEC:
+    case Datatype::DATETIME_MS:
+    case Datatype::DATETIME_US:
+    case Datatype::DATETIME_NS:
+    case Datatype::DATETIME_PS:
+    case Datatype::DATETIME_FS:
+    case Datatype::DATETIME_AS:
+    case Datatype::TIME_HR:
+    case Datatype::TIME_MIN:
+    case Datatype::TIME_SEC:
+    case Datatype::TIME_MS:
+    case Datatype::TIME_US:
+    case Datatype::TIME_NS:
+    case Datatype::TIME_PS:
+    case Datatype::TIME_FS:
+    case Datatype::TIME_AS:
+      adjust_range_oob_func_ = adjust_range_oob<int64_t>;
+      break;
+    default:
+      adjust_range_oob_func_ = nullptr;
       break;
   }
 }
@@ -2123,6 +2344,15 @@ void Dimension::set_coincides_with_tiles_func() {
     case Datatype::DATETIME_PS:
     case Datatype::DATETIME_FS:
     case Datatype::DATETIME_AS:
+    case Datatype::TIME_HR:
+    case Datatype::TIME_MIN:
+    case Datatype::TIME_SEC:
+    case Datatype::TIME_MS:
+    case Datatype::TIME_US:
+    case Datatype::TIME_NS:
+    case Datatype::TIME_PS:
+    case Datatype::TIME_FS:
+    case Datatype::TIME_AS:
       coincides_with_tiles_func_ = coincides_with_tiles<int64_t>;
       break;
     default:
@@ -2178,6 +2408,15 @@ void Dimension::set_compute_mbr_func() {
       case Datatype::DATETIME_PS:
       case Datatype::DATETIME_FS:
       case Datatype::DATETIME_AS:
+      case Datatype::TIME_HR:
+      case Datatype::TIME_MIN:
+      case Datatype::TIME_SEC:
+      case Datatype::TIME_MS:
+      case Datatype::TIME_US:
+      case Datatype::TIME_NS:
+      case Datatype::TIME_PS:
+      case Datatype::TIME_FS:
+      case Datatype::TIME_AS:
         compute_mbr_func_ = compute_mbr<int64_t>;
         break;
       default:
@@ -2236,6 +2475,15 @@ void Dimension::set_expand_range_func() {
     case Datatype::DATETIME_PS:
     case Datatype::DATETIME_FS:
     case Datatype::DATETIME_AS:
+    case Datatype::TIME_HR:
+    case Datatype::TIME_MIN:
+    case Datatype::TIME_SEC:
+    case Datatype::TIME_MS:
+    case Datatype::TIME_US:
+    case Datatype::TIME_NS:
+    case Datatype::TIME_PS:
+    case Datatype::TIME_FS:
+    case Datatype::TIME_AS:
       expand_range_func_ = expand_range<int64_t>;
       break;
     default:
@@ -2289,6 +2537,15 @@ void Dimension::set_expand_range_v_func() {
     case Datatype::DATETIME_PS:
     case Datatype::DATETIME_FS:
     case Datatype::DATETIME_AS:
+    case Datatype::TIME_HR:
+    case Datatype::TIME_MIN:
+    case Datatype::TIME_SEC:
+    case Datatype::TIME_MS:
+    case Datatype::TIME_US:
+    case Datatype::TIME_NS:
+    case Datatype::TIME_PS:
+    case Datatype::TIME_FS:
+    case Datatype::TIME_AS:
       expand_range_v_func_ = expand_range_v<int64_t>;
       break;
     default:
@@ -2342,6 +2599,15 @@ void Dimension::set_expand_to_tile_func() {
     case Datatype::DATETIME_PS:
     case Datatype::DATETIME_FS:
     case Datatype::DATETIME_AS:
+    case Datatype::TIME_HR:
+    case Datatype::TIME_MIN:
+    case Datatype::TIME_SEC:
+    case Datatype::TIME_MS:
+    case Datatype::TIME_US:
+    case Datatype::TIME_NS:
+    case Datatype::TIME_PS:
+    case Datatype::TIME_FS:
+    case Datatype::TIME_AS:
       expand_to_tile_func_ = expand_to_tile<int64_t>;
       break;
     default:
@@ -2395,6 +2661,15 @@ void Dimension::set_oob_func() {
     case Datatype::DATETIME_PS:
     case Datatype::DATETIME_FS:
     case Datatype::DATETIME_AS:
+    case Datatype::TIME_HR:
+    case Datatype::TIME_MIN:
+    case Datatype::TIME_SEC:
+    case Datatype::TIME_MS:
+    case Datatype::TIME_US:
+    case Datatype::TIME_NS:
+    case Datatype::TIME_PS:
+    case Datatype::TIME_FS:
+    case Datatype::TIME_AS:
       oob_func_ = oob<int64_t>;
       break;
     default:
@@ -2448,6 +2723,15 @@ void Dimension::set_covered_func() {
     case Datatype::DATETIME_PS:
     case Datatype::DATETIME_FS:
     case Datatype::DATETIME_AS:
+    case Datatype::TIME_HR:
+    case Datatype::TIME_MIN:
+    case Datatype::TIME_SEC:
+    case Datatype::TIME_MS:
+    case Datatype::TIME_US:
+    case Datatype::TIME_NS:
+    case Datatype::TIME_PS:
+    case Datatype::TIME_FS:
+    case Datatype::TIME_AS:
       covered_func_ = covered<int64_t>;
       break;
     default:
@@ -2501,6 +2785,15 @@ void Dimension::set_overlap_func() {
     case Datatype::DATETIME_PS:
     case Datatype::DATETIME_FS:
     case Datatype::DATETIME_AS:
+    case Datatype::TIME_HR:
+    case Datatype::TIME_MIN:
+    case Datatype::TIME_SEC:
+    case Datatype::TIME_MS:
+    case Datatype::TIME_US:
+    case Datatype::TIME_NS:
+    case Datatype::TIME_PS:
+    case Datatype::TIME_FS:
+    case Datatype::TIME_AS:
       overlap_func_ = overlap<int64_t>;
       break;
     case Datatype::STRING_ASCII:
@@ -2558,6 +2851,15 @@ void Dimension::set_overlap_ratio_func() {
     case Datatype::DATETIME_PS:
     case Datatype::DATETIME_FS:
     case Datatype::DATETIME_AS:
+    case Datatype::TIME_HR:
+    case Datatype::TIME_MIN:
+    case Datatype::TIME_SEC:
+    case Datatype::TIME_MS:
+    case Datatype::TIME_US:
+    case Datatype::TIME_NS:
+    case Datatype::TIME_PS:
+    case Datatype::TIME_FS:
+    case Datatype::TIME_AS:
       overlap_ratio_func_ = overlap_ratio<int64_t>;
       break;
     case Datatype::STRING_ASCII:
@@ -2615,6 +2917,15 @@ void Dimension::set_split_range_func() {
     case Datatype::DATETIME_PS:
     case Datatype::DATETIME_FS:
     case Datatype::DATETIME_AS:
+    case Datatype::TIME_HR:
+    case Datatype::TIME_MIN:
+    case Datatype::TIME_SEC:
+    case Datatype::TIME_MS:
+    case Datatype::TIME_US:
+    case Datatype::TIME_NS:
+    case Datatype::TIME_PS:
+    case Datatype::TIME_FS:
+    case Datatype::TIME_AS:
       split_range_func_ = split_range<int64_t>;
       break;
     case Datatype::STRING_ASCII:
@@ -2671,6 +2982,15 @@ void Dimension::set_splitting_value_func() {
     case Datatype::DATETIME_PS:
     case Datatype::DATETIME_FS:
     case Datatype::DATETIME_AS:
+    case Datatype::TIME_HR:
+    case Datatype::TIME_MIN:
+    case Datatype::TIME_SEC:
+    case Datatype::TIME_MS:
+    case Datatype::TIME_US:
+    case Datatype::TIME_NS:
+    case Datatype::TIME_PS:
+    case Datatype::TIME_FS:
+    case Datatype::TIME_AS:
       splitting_value_func_ = splitting_value<int64_t>;
       break;
     case Datatype::STRING_ASCII:
@@ -2728,6 +3048,15 @@ void Dimension::set_tile_num_func() {
     case Datatype::DATETIME_PS:
     case Datatype::DATETIME_FS:
     case Datatype::DATETIME_AS:
+    case Datatype::TIME_HR:
+    case Datatype::TIME_MIN:
+    case Datatype::TIME_SEC:
+    case Datatype::TIME_MS:
+    case Datatype::TIME_US:
+    case Datatype::TIME_NS:
+    case Datatype::TIME_PS:
+    case Datatype::TIME_FS:
+    case Datatype::TIME_AS:
       tile_num_func_ = tile_num<int64_t>;
       break;
     case Datatype::STRING_ASCII:
@@ -2735,59 +3064,6 @@ void Dimension::set_tile_num_func() {
       break;
     default:
       tile_num_func_ = nullptr;
-      break;
-  }
-}
-
-void Dimension::set_value_in_range_func() {
-  switch (type_) {
-    case Datatype::INT32:
-      value_in_range_func_ = value_in_range<int32_t>;
-      break;
-    case Datatype::INT64:
-      value_in_range_func_ = value_in_range<int64_t>;
-      break;
-    case Datatype::INT8:
-      value_in_range_func_ = value_in_range<int8_t>;
-      break;
-    case Datatype::UINT8:
-      value_in_range_func_ = value_in_range<uint8_t>;
-      break;
-    case Datatype::INT16:
-      value_in_range_func_ = value_in_range<int16_t>;
-      break;
-    case Datatype::UINT16:
-      value_in_range_func_ = value_in_range<uint16_t>;
-      break;
-    case Datatype::UINT32:
-      value_in_range_func_ = value_in_range<uint32_t>;
-      break;
-    case Datatype::UINT64:
-      value_in_range_func_ = value_in_range<uint64_t>;
-      break;
-    case Datatype::FLOAT32:
-      value_in_range_func_ = value_in_range<float>;
-      break;
-    case Datatype::FLOAT64:
-      value_in_range_func_ = value_in_range<double>;
-      break;
-    case Datatype::DATETIME_YEAR:
-    case Datatype::DATETIME_MONTH:
-    case Datatype::DATETIME_WEEK:
-    case Datatype::DATETIME_DAY:
-    case Datatype::DATETIME_HR:
-    case Datatype::DATETIME_MIN:
-    case Datatype::DATETIME_SEC:
-    case Datatype::DATETIME_MS:
-    case Datatype::DATETIME_US:
-    case Datatype::DATETIME_NS:
-    case Datatype::DATETIME_PS:
-    case Datatype::DATETIME_FS:
-    case Datatype::DATETIME_AS:
-      value_in_range_func_ = value_in_range<int64_t>;
-      break;
-    default:
-      value_in_range_func_ = nullptr;
       break;
   }
 }
@@ -2837,6 +3113,15 @@ void Dimension::set_map_to_uint64_func() {
     case Datatype::DATETIME_PS:
     case Datatype::DATETIME_FS:
     case Datatype::DATETIME_AS:
+    case Datatype::TIME_HR:
+    case Datatype::TIME_MIN:
+    case Datatype::TIME_SEC:
+    case Datatype::TIME_MS:
+    case Datatype::TIME_US:
+    case Datatype::TIME_NS:
+    case Datatype::TIME_PS:
+    case Datatype::TIME_FS:
+    case Datatype::TIME_AS:
       map_to_uint64_func_ = map_to_uint64<int64_t>;
       break;
     case Datatype::STRING_ASCII:
@@ -2893,6 +3178,15 @@ void Dimension::set_map_to_uint64_2_func() {
     case Datatype::DATETIME_PS:
     case Datatype::DATETIME_FS:
     case Datatype::DATETIME_AS:
+    case Datatype::TIME_HR:
+    case Datatype::TIME_MIN:
+    case Datatype::TIME_SEC:
+    case Datatype::TIME_MS:
+    case Datatype::TIME_US:
+    case Datatype::TIME_NS:
+    case Datatype::TIME_PS:
+    case Datatype::TIME_FS:
+    case Datatype::TIME_AS:
       map_to_uint64_2_func_ = map_to_uint64_2<int64_t>;
       break;
     case Datatype::STRING_ASCII:
@@ -2949,6 +3243,15 @@ void Dimension::set_map_to_uint64_3_func() {
     case Datatype::DATETIME_PS:
     case Datatype::DATETIME_FS:
     case Datatype::DATETIME_AS:
+    case Datatype::TIME_HR:
+    case Datatype::TIME_MIN:
+    case Datatype::TIME_SEC:
+    case Datatype::TIME_MS:
+    case Datatype::TIME_US:
+    case Datatype::TIME_NS:
+    case Datatype::TIME_PS:
+    case Datatype::TIME_FS:
+    case Datatype::TIME_AS:
       map_to_uint64_3_func_ = map_to_uint64_3<int64_t>;
       break;
     case Datatype::STRING_ASCII:
@@ -3005,6 +3308,15 @@ void Dimension::set_map_from_uint64_func() {
     case Datatype::DATETIME_PS:
     case Datatype::DATETIME_FS:
     case Datatype::DATETIME_AS:
+    case Datatype::TIME_HR:
+    case Datatype::TIME_MIN:
+    case Datatype::TIME_SEC:
+    case Datatype::TIME_MS:
+    case Datatype::TIME_US:
+    case Datatype::TIME_NS:
+    case Datatype::TIME_PS:
+    case Datatype::TIME_FS:
+    case Datatype::TIME_AS:
       map_from_uint64_func_ = map_from_uint64<int64_t>;
       break;
     case Datatype::STRING_ASCII:
@@ -3061,6 +3373,15 @@ void Dimension::set_smaller_than_func() {
     case Datatype::DATETIME_PS:
     case Datatype::DATETIME_FS:
     case Datatype::DATETIME_AS:
+    case Datatype::TIME_HR:
+    case Datatype::TIME_MIN:
+    case Datatype::TIME_SEC:
+    case Datatype::TIME_MS:
+    case Datatype::TIME_US:
+    case Datatype::TIME_NS:
+    case Datatype::TIME_PS:
+    case Datatype::TIME_FS:
+    case Datatype::TIME_AS:
       smaller_than_func_ = smaller_than<int64_t>;
       break;
     case Datatype::STRING_ASCII:

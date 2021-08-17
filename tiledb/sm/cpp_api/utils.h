@@ -55,7 +55,8 @@ namespace tiledb {
  * std::vector<uint64_t> offsets;
  * std::vector<char> data;
  * ...
- * query.set_buffer("attr_name", offsets, data);
+ * query.set_data_buffer("attr_name", data);
+ * query.set_offsets_buffer("attr_name", offsets);
  * query.submit();
  * ...
  * auto attr_results = query.result_buffer_elements()["attr_name"];
@@ -115,7 +116,8 @@ std::vector<E> group_by_cell(
  * std::vector<uint64_t> offsets;
  * std::vector<char> data;
  * ...
- * query.set_buffer("attr_name", offsets, data);
+ * query.set_data_buffer("attr_name", data);
+ * query.set_offsets_buffer("attr_name", offsets);
  * query.submit();
  * ...
  * auto attr_results = query.result_buffer_elements()["attr_name"];

@@ -57,13 +57,17 @@ void create_array() {
   // variable-sized.
   Attribute a1 = Attribute::create<int>(ctx, "a1");
   Attribute a2 = Attribute::create<std::vector<int>>(ctx, "a2");
+  auto a3 = Attribute(ctx, "a3", TILEDB_STRING_UTF8);
+  a3.set_cell_val_num(TILEDB_VAR_NUM);
 
   // Set both attributes as nullable
   a1.set_nullable(true);
   a2.set_nullable(true);
+  a3.set_nullable(true);
 
   schema.add_attribute(a1);
   schema.add_attribute(a2);
+  schema.add_attribute(a3);
 
   // Create the (empty) array on disk.
   Array::create(array_name, schema);
@@ -80,6 +84,13 @@ void write_array() {
   for (auto e : a2_el_off)
     a2_off.push_back(e * sizeof(int));
 
+  const char a3_data_char[] = "abcdewxyz";
+  std::vector<char> a3_data(a3_data_char, a3_data_char + 9);
+  std::vector<uint64_t> a3_el_off = {0, 3, 4, 5};
+  std::vector<uint64_t> a3_off;
+  for (auto e : a3_el_off)
+    a3_off.push_back(e * sizeof(char));
+
   // Open the array for writing and create the query
   Array array(ctx, array_name, TILEDB_WRITE);
   Query query(ctx, array);
@@ -88,10 +99,17 @@ void write_array() {
   // Specify the validity buffer for each attribute
   std::vector<uint8_t> a1_validity_buf = {1, 0, 0, 1};
   std::vector<uint8_t> a2_validity_buf = {0, 1, 1, 0};
+  std::vector<uint8_t> a3_validity_buf = {1, 0, 0, 1};
 
   // Set the query buffers specifying the validity for each data
-  query.set_buffer_nullable("a1", a1_data, a1_validity_buf)
-      .set_buffer_nullable("a2", a2_off, a2_data, a2_validity_buf);
+  query.set_data_buffer("a1", a1_data)
+      .set_validity_buffer("a1", a1_validity_buf)
+      .set_data_buffer("a2", a2_data)
+      .set_offsets_buffer("a2", a2_off)
+      .set_validity_buffer("a2", a2_validity_buf)
+      .set_data_buffer("a3", a3_data)
+      .set_offsets_buffer("a3", a3_off)
+      .set_validity_buffer("a3", a3_validity_buf);
 
   // Perform the write and close the array.
   query.submit();
@@ -112,6 +130,10 @@ void read_array() {
   std::vector<uint64_t> a2_off(4);
   std::vector<uint8_t> a2_validity_buf(a2_off.size());
 
+  std::vector<char> a3_data(1000);
+  std::vector<uint64_t> a3_off(10);
+  std::vector<uint8_t> a3_validity_buf(a3_off.size());
+
   // Prepare and submit the query, and close the array
   Query query(ctx, array);
   query.set_layout(TILEDB_ROW_MAJOR);
@@ -121,10 +143,38 @@ void read_array() {
   query.set_subarray(subarray_full);
 
   // Set the query buffers specifying the validity for each data
-  query.set_buffer_nullable("a1", a1_data, a1_validity_buf)
-      .set_buffer_nullable("a2", a2_off, a2_data, a2_validity_buf);
+  query.set_data_buffer("a1", a1_data)
+      .set_validity_buffer("a1", a1_validity_buf)
+      .set_data_buffer("a2", a2_data)
+      .set_offsets_buffer("a2", a2_off)
+      .set_validity_buffer("a2", a2_validity_buf)
+      .set_data_buffer("a3", a3_data)
+      .set_offsets_buffer("a3", a3_off)
+      .set_validity_buffer("a3", a3_validity_buf);
   query.submit();
+
+  if (query.query_status() == tiledb::Query::Status::INCOMPLETE) {
+    std::cerr << "** Query did not complete! **" << std::endl;
+  }
+
+  auto result_elements = query.result_buffer_elements();
   array.close();
+
+  // Unpack a3 result to a vector of strings
+  std::vector<std::string> a3_results;
+  auto a3_result_elements = result_elements["a3"];
+  uint64_t a3_offsets_num = a3_result_elements.first;
+  uint64_t a3_data_num = a3_result_elements.second;
+
+  uint64_t start = 0;
+  uint64_t end = 0;
+
+  for (size_t i = 0; i < a3_offsets_num; i++) {
+    start = a3_off[i];
+    end = (i == a3_offsets_num - 1) ? a3_data_num : a3_off[i + 1];
+    a3_results.push_back(
+        std::string(a3_data.data() + start, a3_data.data() + end));
+  }
 
   // Print out the data we read for each nullable atttribute
   unsigned long i = 0;
@@ -148,6 +198,16 @@ void read_array() {
     }
     std::cout << " ";
   }
+
+  std::cout << std::endl << "a3: " << std::endl;
+  for (i = 0; i < 4; ++i) {
+    if (a3_validity_buf[i] > 0)
+      std::cout << "  " << a3_results[i] << std::endl;
+    else
+      std::cout << "  "
+                << "NULL" << std::endl;
+  }
+
   std::cout << std::endl;
 }
 

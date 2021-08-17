@@ -87,6 +87,23 @@ class Query;
  */
 class Subarray {
  public:
+  /**
+   * Creates a TileDB Subarray object.
+   *
+   * **Example:**
+   *
+   * @code{.cpp}
+   * // Open the array for writing
+   * tiledb::Context ctx;
+   * tiledb::Array array(ctx, "my_array", TILEDB_WRITE);
+   * tiledb::Subarray subarray(ctx, array);
+   * @endcode
+   *
+   * @param ctx TileDB context
+   * @param array Open Array object
+   * @param coalesce_ranges When enabled, ranges will attempt to coalesce
+   *     with existing ranges as they are added.
+   */
   Subarray(
       const tiledb::Context& ctx,
       const tiledb::Array& array,
@@ -102,8 +119,6 @@ class Subarray {
     subarray_ = std::shared_ptr<tiledb_subarray_t>(capi_subarray, deleter_);
   }
 
-  Subarray(const tiledb::Query& query);  // defined in cppapi Query.h
-
   /** Set the layout for the subarray. */
   Subarray& set_layout(tiledb_layout_t layout) {
     ctx_.get().handle_error(tiledb_subarray_set_layout(
@@ -118,6 +133,10 @@ class Subarray {
     return *this;
   }
 
+  Subarray& replace_subarray_data(tiledb_subarray_t* capi_subarray) {
+    subarray_ = std::shared_ptr<tiledb_subarray_t>(capi_subarray, deleter_);
+    return *this;
+  }
   /**
    * Adds a 1D range along a subarray dimension index, in the form
    * (start, end, stride). The datatype of the range
@@ -268,14 +287,6 @@ class Subarray {
   }
 
   /**
-
-   */
-  tiledb_subarray_t* capi_subarray() const {
-    return subarray_.get();
-  }
-
-  /**
-   *
    * Sets a subarray, defined in the order dimensions were added.
    * Coordinates are inclusive. For the case of writes, this is meaningful only
    * for dense arrays, and specifically dense writes.
@@ -312,6 +323,32 @@ class Subarray {
     }
     ctx.handle_error(
         tiledb_subarray_set_subarray(ctx.ptr().get(), subarray_.get(), pairs));
+    return *this;
+  }
+
+  /**
+   * Set the query config.
+   *
+   * Setting configuration with this function overrides the following
+   * Query-level parameters only:
+   *
+   * - `sm.memory_budget`
+   * - `sm.memory_budget_var`
+   * - `sm.sub_partitioner_memory_budget`
+   * - `sm.var_offsets.mode`
+   * - `sm.var_offsets.extra_element`
+   * - `sm.var_offsets.bitsize`
+   * - `sm.check_coord_dups`
+   * - `sm.check_coord_oob`
+   * - `sm.check_global_order`
+   * - `sm.dedup_coords`
+   */
+  Subarray& set_config(const Config& config) {
+    auto ctx = ctx_.get();
+
+    ctx.handle_error(tiledb_subarray_set_config(
+        ctx.ptr().get(), subarray_.get(), config.ptr().get()));
+
     return *this;
   }
 
@@ -586,59 +623,12 @@ class Subarray {
     return ret;
   }
 
-  /**
-   * Retrieves the estimated result size for a fixed-size attribute.
-   *
-   * **Example:**
-   *
-   * @code{.cpp}
-   * uint64_t est_size = subarray.est_result_size("attr1");
-   * @endcode
-   *
-   * @param attr_name The attribute name.
-   * @return The estimated size in bytes.
-   */
-  uint64_t est_result_size(const std::string& attr_name) const {
-    auto& ctx = ctx_.get();
-    uint64_t size = 0;
-    ctx.handle_error(tiledb_subarray_get_est_result_size(
-        ctx.ptr().get(), subarray_.get(), attr_name.c_str(), &size));
-    return size;
-  }
-
-  /**
-   * Retrieves the estimated result size for a variable-size attribute.
-   *
-   * **Example:**
-   *
-   * @code{.cpp}
-   * std::array<uint64_t, 2> est_size =
-   *     subarray.est_result_size_var("attr1");
-   * @endcode
-   *
-   * @param attr_name The attribute name.
-   * @return An array with first element containing the estimated size of
-   *    the result offsets in bytes, and second element containing the
-   *    estimated size of the result values in bytes.
-   */
-  std::array<uint64_t, 2> est_result_size_var(
-      const std::string& attr_name) const {
-    auto& ctx = ctx_.get();
-    uint64_t size_off = 0, size_val = 0;
-    ctx.handle_error(tiledb_subarray_get_est_result_size_var(
-        ctx.ptr().get(),
-        subarray_.get(),
-        attr_name.c_str(),
-        &size_off,
-        &size_val));
-    return {size_off, size_val};
-  }
-
   /** Returns the C TileDB subarray object. */
   std::shared_ptr<tiledb_subarray_t> ptr() const {
     return subarray_;
   }
 
+  /** Returns the array the subarray is associated with. */
   const Array& array() const {
     return array_.get();
   }

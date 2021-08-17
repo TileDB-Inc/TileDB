@@ -74,10 +74,11 @@ void write_array() {
   Array array(ctx, array_name, TILEDB_WRITE);
   Query query(ctx, array);
   query.set_layout(TILEDB_GLOBAL_ORDER)
-      .set_buffer("a1", a1_data)
-      .set_buffer("a2", a2_off, a2_data)
-      .set_buffer("rows", coords_rows)
-      .set_buffer("cols", coords_cols);
+      .set_data_buffer("a1", a1_data)
+      .set_data_buffer("a2", a2_data)
+      .set_offsets_buffer("a2", a2_off)
+      .set_data_buffer("rows", coords_rows)
+      .set_data_buffer("cols", coords_cols);
 
   // Perform the write and close the array.
   query.submit();
@@ -158,10 +159,11 @@ void read_array() {
   Query query(ctx, array);
   query.set_subarray(subarray)
       .set_layout(TILEDB_ROW_MAJOR)
-      .set_buffer("a1", a1_data)
-      .set_buffer("a2", a2_off, a2_data)
-      .set_buffer("rows", coords_rows)
-      .set_buffer("cols", coords_cols);
+      .set_data_buffer("a1", a1_data)
+      .set_data_buffer("a2", a2_data)
+      .set_offsets_buffer("a2", a2_off)
+      .set_data_buffer("rows", coords_rows)
+      .set_data_buffer("cols", coords_cols);
 
   // Create a loop
   Query::Status status;
@@ -176,10 +178,11 @@ void read_array() {
         result_num == 0) {  // VERY IMPORTANT!!
       reallocate_buffers(
           &coords_rows, &coords_cols, &a1_data, &a2_off, &a2_data);
-      query.set_buffer("a1", a1_data)
-          .set_buffer("a2", a2_off, a2_data)
-          .set_buffer("rows", coords_rows)
-          .set_buffer("cols", coords_cols);
+      query.set_data_buffer("a1", a1_data)
+          .set_data_buffer("a2", a2_data)
+          .set_offsets_buffer("a2", a2_off)
+          .set_data_buffer("rows", coords_rows)
+          .set_data_buffer("cols", coords_cols);
     } else if (result_num > 0) {
       print_results(
           coords_rows,

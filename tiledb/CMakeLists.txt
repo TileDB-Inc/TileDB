@@ -73,6 +73,7 @@ if (TILEDB_CPP_API)
     ${TILEDB_CORE_INCLUDE_DIR}/tiledb/sm/cpp_api/object.h
     ${TILEDB_CORE_INCLUDE_DIR}/tiledb/sm/cpp_api/object_iter.h
     ${TILEDB_CORE_INCLUDE_DIR}/tiledb/sm/cpp_api/query.h
+    ${TILEDB_CORE_INCLUDE_DIR}/tiledb/sm/cpp_api/query_condition.h
     ${TILEDB_CORE_INCLUDE_DIR}/tiledb/sm/cpp_api/schema_base.h
     ${TILEDB_CORE_INCLUDE_DIR}/tiledb/sm/cpp_api/stats.h
     ${TILEDB_CORE_INCLUDE_DIR}/tiledb/sm/cpp_api/subarray.h
@@ -101,8 +102,6 @@ set(TILEDB_CORE_SOURCES
   ${TILEDB_CORE_INCLUDE_DIR}/tiledb/sm/array_schema/domain.cc
   ${TILEDB_CORE_INCLUDE_DIR}/tiledb/sm/buffer/buffer.cc
   ${TILEDB_CORE_INCLUDE_DIR}/tiledb/sm/buffer/buffer_list.cc
-  ${TILEDB_CORE_INCLUDE_DIR}/tiledb/sm/buffer/const_buffer.cc
-  ${TILEDB_CORE_INCLUDE_DIR}/tiledb/sm/buffer/preallocated_buffer.cc
   ${TILEDB_CORE_INCLUDE_DIR}/tiledb/sm/c_api/tiledb.cc
   ${TILEDB_CORE_INCLUDE_DIR}/tiledb/sm/cache/buffer_lru_cache.cc
   ${TILEDB_CORE_INCLUDE_DIR}/tiledb/sm/compressors/bzip_compressor.cc
@@ -147,26 +146,32 @@ set(TILEDB_CORE_SOURCES
   ${TILEDB_CORE_INCLUDE_DIR}/tiledb/sm/global_state/libcurl_state.cc
   ${TILEDB_CORE_INCLUDE_DIR}/tiledb/sm/global_state/openssl_state.cc
   ${TILEDB_CORE_INCLUDE_DIR}/tiledb/sm/global_state/signal_handlers.cc
-  ${TILEDB_CORE_INCLUDE_DIR}/tiledb/sm/global_state/tbb_state.cc
   ${TILEDB_CORE_INCLUDE_DIR}/tiledb/sm/global_state/watchdog.cc
   ${TILEDB_CORE_INCLUDE_DIR}/tiledb/sm/metadata/metadata.cc
   ${TILEDB_CORE_INCLUDE_DIR}/tiledb/sm/misc/cancelable_tasks.cc
   ${TILEDB_CORE_INCLUDE_DIR}/tiledb/sm/misc/constants.cc
+  ${TILEDB_CORE_INCLUDE_DIR}/tiledb/sm/misc/types.cc
   ${TILEDB_CORE_INCLUDE_DIR}/tiledb/sm/misc/uri.cc
   ${TILEDB_CORE_INCLUDE_DIR}/tiledb/sm/misc/utils.cc
   ${TILEDB_CORE_INCLUDE_DIR}/tiledb/sm/misc/uuid.cc
   ${TILEDB_CORE_INCLUDE_DIR}/tiledb/sm/misc/win_constants.cc
   ${TILEDB_CORE_INCLUDE_DIR}/tiledb/sm/misc/work_arounds.cc
+  ${TILEDB_CORE_INCLUDE_DIR}/tiledb/sm/query/dense_tiler.cc
   ${TILEDB_CORE_INCLUDE_DIR}/tiledb/sm/query/query.cc
+  ${TILEDB_CORE_INCLUDE_DIR}/tiledb/sm/query/query_condition.cc
   ${TILEDB_CORE_INCLUDE_DIR}/tiledb/sm/query/reader.cc
+  ${TILEDB_CORE_INCLUDE_DIR}/tiledb/sm/query/reader_base.cc
   ${TILEDB_CORE_INCLUDE_DIR}/tiledb/sm/query/result_tile.cc
   ${TILEDB_CORE_INCLUDE_DIR}/tiledb/sm/query/read_cell_slab_iter.cc
+  ${TILEDB_CORE_INCLUDE_DIR}/tiledb/sm/query/sparse_global_order_reader.cc
+  ${TILEDB_CORE_INCLUDE_DIR}/tiledb/sm/query/strategy_base.cc
   ${TILEDB_CORE_INCLUDE_DIR}/tiledb/sm/query/writer.cc
-  ${TILEDB_CORE_INCLUDE_DIR}/tiledb/sm/query/write_cell_slab_iter.cc
   ${TILEDB_CORE_INCLUDE_DIR}/tiledb/sm/rest/rest_client.cc
   ${TILEDB_CORE_INCLUDE_DIR}/tiledb/sm/rtree/rtree.cc
   ${TILEDB_CORE_INCLUDE_DIR}/tiledb/sm/serialization/array_schema.cc
+  ${TILEDB_CORE_INCLUDE_DIR}/tiledb/sm/serialization/config.cc
   ${TILEDB_CORE_INCLUDE_DIR}/tiledb/sm/serialization/query.cc
+  ${TILEDB_CORE_INCLUDE_DIR}/tiledb/sm/stats/global_stats.cc
   ${TILEDB_CORE_INCLUDE_DIR}/tiledb/sm/stats/stats.cc
   ${TILEDB_CORE_INCLUDE_DIR}/tiledb/sm/stats/timer_stat.cc
   ${TILEDB_CORE_INCLUDE_DIR}/tiledb/sm/storage_manager/context.cc
@@ -176,6 +181,7 @@ set(TILEDB_CORE_SOURCES
   ${TILEDB_CORE_INCLUDE_DIR}/tiledb/sm/subarray/cell_slab_iter.cc
   ${TILEDB_CORE_INCLUDE_DIR}/tiledb/sm/subarray/subarray.cc
   ${TILEDB_CORE_INCLUDE_DIR}/tiledb/sm/subarray/subarray_partitioner.cc
+  ${TILEDB_CORE_INCLUDE_DIR}/tiledb/sm/subarray/subarray_tile_overlap.cc
   ${TILEDB_CORE_INCLUDE_DIR}/tiledb/sm/tile/chunked_buffer.cc
   ${TILEDB_CORE_INCLUDE_DIR}/tiledb/sm/tile/tile.cc
   ${TILEDB_CORE_INCLUDE_DIR}/tiledb/sm/tile/generic_tile_io.cc
@@ -186,37 +192,28 @@ if (TILEDB_SERIALIZATION)
     ${TILEDB_CORE_INCLUDE_DIR}/tiledb/sm/rest/curl.cc
   )
 
-  #NOTE: These properties are being set possibly *before* tiledb-rest.capnp.c++ has been generated.
   if(NOT WIN32)
-    if($false)  #section will be needed when mov *n*x to v0.8.0
-    #capnproto v0.8.0 requires at least c++14, msvc2017 seems ok, gcc 7.5 is not by default
     set_source_files_properties(
       ${TILEDB_CORE_INCLUDE_DIR}/tiledb/sm/rest/rest_client.cc
       ${TILEDB_CORE_INCLUDE_DIR}/tiledb/sm/serialization/array_schema.cc
+      ${TILEDB_CORE_INCLUDE_DIR}/tiledb/sm/serialization/config.cc
       ${TILEDB_CORE_INCLUDE_DIR}/tiledb/sm/serialization/query.cc
       ${TILEDB_CORE_INCLUDE_DIR}/tiledb/sm/serialization/tiledb-rest.capnp.c++
       PROPERTIES
-      #eventually, not yet in cmake 3.3, added in 3.11 - COMPILE_OPTIONS "-std=c++14"
-      #   C4267: 'argument': conversion from 'size_t' to '<various-lesser-types>', possible loss of data
-      #   C4100 '<some-name>' unreferenced format parameter
-        COMPILE_FLAGS "-std=c++14"
+        COMPILE_FLAGS "-Wno-unused-parameter"
     )
-    endif()
   endif()
   if(MSVC)
     set_source_files_properties(
       ${TILEDB_CORE_INCLUDE_DIR}/tiledb/sm/rest/rest_client.cc
       ${TILEDB_CORE_INCLUDE_DIR}/tiledb/sm/serialization/array_schema.cc
+      ${TILEDB_CORE_INCLUDE_DIR}/tiledb/sm/serialization/config.cc
       ${TILEDB_CORE_INCLUDE_DIR}/tiledb/sm/serialization/query.cc
       ${TILEDB_CORE_INCLUDE_DIR}/tiledb/sm/serialization/tiledb-rest.capnp.c++
       PROPERTIES
-      #eventually, not yet in cmake 3.3, added in 3.11 - COMPILE_OPTIONS "/wd4267 /wd4100"
-      #   C4267: 'argument': conversion from 'size_t' to '<various-lesser-types>', possible loss of data
-      #   C4100 '<some-name>' unreferenced format parameter
-      #vs2017/19 std:c++14 or greater by default
-      #vs2015, is not so specify it (std:c++14, std::c++latest not avail vs2015 til *update 3*)
-      #TBD: would std:c++latest be better choice?
-        COMPILE_FLAGS "/wd4267 /wd4100 /std:c++14"
+        #   C4267: 'argument': conversion from 'size_t' to '<various-lesser-types>', possible loss of data
+        #   C4100 '<some-name>' unreferenced format parameter
+        COMPILE_FLAGS "/wd4267 /wd4100"
     )
   endif()
 
@@ -256,7 +253,7 @@ target_include_directories(TILEDB_CORE_OBJECTS
     "${TILEDB_CORE_INCLUDE_DIR}/tiledb/sm/c_api"
     "${TILEDB_EXTERNALS_INCLUDE_DIRS}"
 	# to pickup <build_dir>/tiledb for capnp gen'd files
-    "${CMAKE_CURRENT_BINARY_DIR}/.." 
+    "${CMAKE_CURRENT_BINARY_DIR}/.."
 )
 
 # Build a separate copy of the object library for use with static TileDB
@@ -425,27 +422,6 @@ if (TILEDB_HDFS)
   endif()
 endif()
 
-# TBB dependency
-if (TILEDB_TBB)
-  find_package(TBB_EP REQUIRED)
-  target_link_libraries(TILEDB_CORE_OBJECTS_ILIB
-    INTERFACE
-      TBB::tbb
-  )
-  add_definitions(-DHAVE_TBB -DTBB_SUPPRESS_DEPRECATED_MESSAGES)
-endif()
-
-# Serialization
-if (TILEDB_SERIALIZATION)
-  find_package(Capnp_EP REQUIRED)
-  target_link_libraries(TILEDB_CORE_OBJECTS_ILIB
-    INTERFACE
-      CapnProto::capnp
-      CapnProto::capnp-json
-      CapnProto::kj
-  )
-endif()
-
 # Sanitizer linker flags
 if (SANITIZER)
   target_link_libraries(TILEDB_CORE_OBJECTS_ILIB
@@ -474,7 +450,7 @@ target_link_libraries(TILEDB_CORE_OBJECTS_ILIB
   INTERFACE
     Bzip2::Bzip2
     LZ4::LZ4
-    Spdlog::Spdlog
+    spdlog::spdlog
     Zlib::Zlib
     Zstd::Zstd
 )
@@ -519,7 +495,7 @@ if(APPLE)
 endif()
 
 # On Linux, must explicitly link -lpthread -ldl in order for static linking
-# to libzstd and tbb.
+# to libzstd.
 if (NOT WIN32)
   target_link_libraries(TILEDB_CORE_OBJECTS_ILIB INTERFACE pthread dl)
 endif()
@@ -600,6 +576,22 @@ if (CURL_APPEND_LIBS)
   # End result, we remove the -lssl and -lcrypto from the list of curl extra libs
   # The same problem exists for libz, so we remove -lz also.
   list(REMOVE_ITEM CURL_APPEND_LIBS "-lssl" "-lcrypto" "-lz")
+
+  # If we are cross compiling curl likely includes the arch details in the linker
+  # commands. In this case we want to remove them from the link libs as cmake
+  # will handle any linker flags for cross compilation.
+  SET(index 0)
+  foreach(CURL_APPEND_LIB ${CURL_APPEND_LIBS})
+    if(${CURL_APPEND_LIB} STREQUAL "-arch")
+      # remove "-arch"
+      LIST(REMOVE_AT CURL_APPEND_LIBS ${index})
+      # remove arch i.e. arm64 or x86_64
+      # there are two items because we split on space above
+      LIST(REMOVE_AT CURL_APPEND_LIBS ${index})
+    endif()
+    MATH(EXPR index "${index}+1")
+  endforeach()
+
   message(STATUS "Adding final transitive Curl library links to TileDB targets: '${CURL_APPEND_LIBS}'")
   target_link_libraries(TILEDB_CORE_OBJECTS_ILIB
     INTERFACE
@@ -607,66 +599,64 @@ if (CURL_APPEND_LIBS)
 endif()
 
 ############################################################
-# capnproto file generation
+# capnproto generated sources
 ############################################################
 
+# Serialization
 if(TILEDB_SERIALIZATION)
-  if(TILEDB_CAPNP_EP_BUILT)
-    set(TILEDB_CAPNPROTOEXEPATH "${TILEDB_CAPNPEXEC_PATH}")
-  else()
-    find_package(CapnProto 0.6.1 #*not* EXACT since windows/*n*x using 0.8.0, 0.6.1 respectively
-      PATHS  ${TILEDB_EP_INSTALL_PREFIX} ${TILEDB_DEPS_NO_DEFAULT_PATH}
-    )
-    set(TILEDB_CAPNPROTOEXEPATH "${CAPNP_EXECUTABLE}")
-  endif()
+  find_package(Capnp_EP REQUIRED)
+  target_link_libraries(TILEDB_CORE_OBJECTS_ILIB
+          INTERFACE
+          CapnProto::capnp
+          CapnProto::capnp-json
+          CapnProto::kj
+          )
 
-  #make files 'known' via add_custom_command() so ("tiledb-rest.capnp.c++") can be added to TILEDB_CORE_OBJECTS (further below)
-  if(WIN32)
-    add_custom_command(
-	  DEPENDS ${TILEDB_CORE_INCLUDE_DIR}/tiledb/sm/serialization/tiledb-rest.capnp
-      OUTPUT #BYPRODUCTS
-        #i.e. <builddir>/tiledb/tiledb/sm/serialization/...
-        ${CMAKE_CURRENT_BINARY_DIR}/sm/serialization/tiledb-rest.capnp.c++
-        ${CMAKE_CURRENT_BINARY_DIR}/sm/serialization/tiledb-rest.capnp.h
-      COMMAND
-        powershell "${CMAKE_CURRENT_SOURCE_DIR}/../scripts/capnpupdate.ps1 ${CMAKE_CURRENT_BINARY_DIR}/sm/serialization ${TILEDB_CORE_INCLUDE_DIR}/tiledb/sm/serialization"
-      WORKING_DIRECTORY
-        ${TILEDB_EP_BASE}/..
-
-      COMMENT "(re-)generate tiledb-rest.capnp.<h,c++>"
-    )
+  if (WIN32)
+    set(TILEDB_SERIALIZATION_GENERATED_SUBDIR win32)
   else()
-    add_custom_command(
-	  DEPENDS ${TILEDB_CORE_INCLUDE_DIR}/tiledb/sm/serialization/tiledb-rest.capnp
-      OUTPUT #BYPRODUCTS
-        ${CMAKE_CURRENT_BINARY_DIR}/sm/serialization/tiledb-rest.capnp.c++
-        ${CMAKE_CURRENT_BINARY_DIR}/sm/serialization/tiledb-rest.capnp.h
-      COMMAND
-        bash -c "${CMAKE_CURRENT_SOURCE_DIR}/../scripts/capnpupdate.sh ${CMAKE_CURRENT_BINARY_DIR}/sm/serialization ${TILEDB_CORE_INCLUDE_DIR}/tiledb/sm/serialization"
-      WORKING_DIRECTORY
-        ${TILEDB_EP_BASE}/..
-      COMMENT "(re-)generate tiledb-rest.capnp.<h,c++>"
-    )
+    set(TILEDB_SERIALIZATION_GENERATED_SUBDIR posix)
   endif()
-  
-  set_source_files_properties(
-    "${CMAKE_CURRENT_BINARY_DIR}/sm/serialization/tiledb-rest.capnp.c++"
-    "${CMAKE_CURRENT_BINARY_DIR}/sm/serialization/tiledb-rest.capnp.h"
-    PROPERTIES GENERATED TRUE
-    )
-	
-  set_property(SOURCE 
-    ${CMAKE_CURRENT_BINARY_DIR}/sm/serialization/tiledb-rest.capnp.c++
-	APPEND PROPERTY OBJECT_DEPENDS ${TILEDB_CORE_INCLUDE_DIR}/tiledb/sm/serialization/tiledb-rest.capnp
-	)
-  set_property(SOURCE 
-    ${CMAKE_CURRENT_BINARY_DIR}/sm/serialization/tiledb-rest.capnp.h
-	APPEND PROPERTY OBJECT_DEPENDS ${TILEDB_CORE_INCLUDE_DIR}/tiledb/sm/serialization/tiledb-rest.capnp
-	)
 
   target_sources(TILEDB_CORE_OBJECTS PUBLIC
-    ${CMAKE_CURRENT_BINARY_DIR}/sm/serialization/tiledb-rest.capnp.c++
+    ${CMAKE_CURRENT_SOURCE_DIR}/sm/serialization/${TILEDB_SERIALIZATION_GENERATED_SUBDIR}/tiledb-rest.capnp.c++
   )
+  if (WIN32 AND TILEDB_STATIC)
+    target_sources(TILEDB_CORE_OBJECTS_STATIC PUBLIC
+      ${CMAKE_CURRENT_SOURCE_DIR}/sm/serialization/${TILEDB_SERIALIZATION_GENERATED_SUBDIR}/tiledb-rest.capnp.c++
+    )
+  endif()
+
+  ###################################
+  # capnproto file generation target
+  ###################################
+
+  # This target regenerates the checked-in generated source files for serialization
+  # support. It must be re-run whenever `tiledb-rest.capnp` is updated.
+
+  set(TILEDB_SERIALIZATION_GENERATED_DIR
+      ${CMAKE_CURRENT_SOURCE_DIR}/sm/serialization/${TILEDB_SERIALIZATION_GENERATED_SUBDIR})
+
+  # We only need to override the include path and PATH env for EP builds
+  if(TILEDB_CAPNP_EP_BUILT)
+    list(APPEND CAPNP_COMPILE_COMMAND "${CMAKE_COMMAND}" -E env PATH="${TILEDB_EP_BASE}/install/bin" "${CAPNP_EXECUTABLE}" compile -I "${TILEDB_EP_BASE}/install/include" -oc++:"${TILEDB_SERIALIZATION_GENERATED_DIR}" "${CMAKE_CURRENT_SOURCE_DIR}/sm/serialization/tiledb-rest.capnp" --src-prefix="${CMAKE_CURRENT_SOURCE_DIR}/sm/serialization")
+  else()
+    list(APPEND CAPNP_COMPILE_COMMAND "${CAPNP_EXECUTABLE}" compile -oc++:"${TILEDB_SERIALIZATION_GENERATED_DIR}" "${CMAKE_CURRENT_SOURCE_DIR}/sm/serialization/tiledb-rest.capnp" --src-prefix "${CMAKE_CURRENT_SOURCE_DIR}/sm/serialization")
+  endif()
+
+  # note: run the compiler under `cmake -E env ...` because we need to run capnp executable
+  #       the capnp driver needs to be able to find the plugin executables (eg capnpc-c++)
+  add_custom_target(
+    update-serialization
+      ${CMAKE_COMMAND} -E echo "CAPNP_COMPILE_COMMAND: '${CAPNP_COMPILE_COMMAND}'"
+    COMMAND
+      "${CAPNP_COMPILE_COMMAND}"
+    DEPENDS ${TILEDB_CORE_INCLUDE_DIR}/tiledb/sm/serialization/tiledb-rest.capnp
+    WORKING_DIRECTORY
+      ${TILEDB_EP_BASE}/..
+    COMMAND_EXPAND_LISTS
+    COMMENT "Re-generate tiledb-rest.capnp.<h,c++> files for serialization support"
+    )
 
 endif()
 
@@ -708,7 +698,6 @@ if (TILEDB_STATIC)
 
   append_dep_lib(Bzip2::Bzip2)
   append_dep_lib(LZ4::LZ4)
-  append_dep_lib(TBB::tbb)
   append_dep_lib(Zlib::Zlib)
   append_dep_lib(ZLIB::ZLIB)
   append_dep_lib(Zstd::Zstd)
@@ -729,14 +718,7 @@ if (TILEDB_STATIC)
   append_dep_lib(GCSSDK::storage_client)
   append_dep_lib(GCSSDK::google_cloud_cpp_common)
   append_dep_lib(GCSSDK::crc32c)
-
-  # Spdlog is a special case because it is header-only.
-  string(CONCAT TILEDB_STATIC_DEP_STRING
-    "${TILEDB_STATIC_DEP_STRING}"
-    "if (NOT TARGET Spdlog::Spdlog)\n"
-    "  add_library(Spdlog::Spdlog INTERFACE IMPORTED)\n"
-    "endif()"
-  )
+  append_dep_lib(spdlog::spdlog)
 endif()
 
 ############################################################
