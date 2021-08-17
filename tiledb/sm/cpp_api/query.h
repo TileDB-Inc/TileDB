@@ -1058,7 +1058,7 @@ class Query {
    * per dimension.
    */
   template <typename Vec>
-  Query& set_subarray(const Vec& pairs) {
+  TILEDB_DEPRECATED Query& set_subarray(const Vec& pairs) {
     return set_subarray(pairs.data(), pairs.size());
   }
 
@@ -1079,7 +1079,7 @@ class Query {
    * @param pairs List of [start, stop] coordinates per dimension.
    */
   template <typename T = uint64_t>
-  Query& set_subarray(const std::initializer_list<T>& l) {
+  TILEDB_DEPRECATED Query& set_subarray(const std::initializer_list<T>& l) {
     return set_subarray(std::vector<T>(l));
   }
 
@@ -1093,7 +1093,8 @@ class Query {
    * @param pairs The subarray defined as pairs of [start, stop] per dimension.
    */
   template <typename T = uint64_t>
-  Query& set_subarray(const std::vector<std::array<T, 2>>& pairs) {
+  TILEDB_DEPRECATED Query& set_subarray(
+      const std::vector<std::array<T, 2>>& pairs) {
     std::vector<T> buf;
     buf.reserve(pairs.size() * 2);
     std::for_each(
