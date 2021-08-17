@@ -697,7 +697,6 @@ Status Writer::check_subarray() const {
   } else {
     assert(!array_schema_->dense());
     if (subarray_.is_set())
-      // Note: previously handled in Writer::add_range()
       return LOG_STATUS(
           Status::WriterError("Subarray range for a write query is not "
                               "supported in sparse arrays"));
