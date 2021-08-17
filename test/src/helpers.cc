@@ -680,6 +680,7 @@ void create_subarray(
     tiledb::sm::Layout layout,
     tiledb_subarray_t** subarray,
     bool coalesce_ranges) {
+  (void)layout;
   int32_t rc;
   tiledb_array_t tdb_array;
   tdb_array.array_ = array;
@@ -713,7 +714,7 @@ void create_subarray(
       new tiledb::Subarray(*ctx, *array, coalesce_ranges);
   tiledb::Subarray& subarray = *psubarray;
 
-  (void*)layout;
+  (void)layout;
   subarray.set_coalesce_ranges(coalesce_ranges);
 
   auto dim_num = (unsigned)ranges.size();
