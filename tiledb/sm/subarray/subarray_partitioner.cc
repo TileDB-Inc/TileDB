@@ -1124,10 +1124,9 @@ bool SubarrayPartitioner::must_split(Subarray* partition) {
     mem_size_fixed = 0;
     mem_size_var = 0;
     mem_size_validity = 0;
+    // Compute max memory sizes
     if (var_size) {
       if (!nullable) {
-        partition->get_est_result_size(
-            b.first.c_str(), &size_fixed, &size_var, config_, compute_tp_);
         partition->get_max_memory_size(
             b.first.c_str(),
             &mem_size_fixed,
@@ -1135,13 +1134,6 @@ bool SubarrayPartitioner::must_split(Subarray* partition) {
             config_,
             compute_tp_);
       } else {
-        partition->get_est_result_size_nullable(
-            b.first.c_str(),
-            &size_fixed,
-            &size_var,
-            &size_validity,
-            config_,
-            compute_tp_);
         partition->get_max_memory_size_nullable(
             b.first.c_str(),
             &mem_size_fixed,
@@ -1152,8 +1144,6 @@ bool SubarrayPartitioner::must_split(Subarray* partition) {
       }
     } else {
       if (!nullable) {
-        partition->get_est_result_size_internal(
-            b.first.c_str(), &size_fixed, config_, compute_tp_);
         partition->get_max_memory_size(
             b.first.c_str(), &mem_size_fixed, config_, compute_tp_);
       } else {
@@ -1165,6 +1155,36 @@ bool SubarrayPartitioner::must_split(Subarray* partition) {
             &mem_size_validity,
             config_,
             compute_tp_);
+      }
+    }
+
+    // Compute estimated result sizes
+    if (!skip_split_on_est_size_) {
+      if (var_size) {
+        if (!nullable) {
+          partition->get_est_result_size(
+              b.first.c_str(), &size_fixed, &size_var, config_, compute_tp_);
+        } else {
+          partition->get_est_result_size_nullable(
+              b.first.c_str(),
+              &size_fixed,
+              &size_var,
+              &size_validity,
+              config_,
+              compute_tp_);
+        }
+      } else {
+        if (!nullable) {
+          partition->get_est_result_size_internal(
+              b.first.c_str(), &size_fixed, config_, compute_tp_);
+        } else {
+          partition->get_est_result_size_nullable(
+              b.first.c_str(),
+              &size_fixed,
+              &size_validity,
+              config_,
+              compute_tp_);
+        }
       }
     }
 

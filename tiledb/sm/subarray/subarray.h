@@ -357,6 +357,16 @@ class Subarray {
   /** Clears the contents of the subarray. */
   void clear();
 
+  /** Clears the contents of the tile overlap. */
+  void clear_tile_overlap();
+
+  /**
+   * Returns the size of the tile overlap data.
+   *
+   * @return Size of the tile overlap data.
+   */
+  uint64_t tile_overlap_byte_size() const;
+
   /**
    * Returns true if the subarray is unary and it coincides with
    * tile boundaries.

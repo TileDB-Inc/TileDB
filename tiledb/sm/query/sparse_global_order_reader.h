@@ -49,6 +49,7 @@ namespace tiledb {
 namespace sm {
 
 class Array;
+class OpenArrayMemoryTracker;
 class StorageManager;
 
 /** Processes sparse global order read queries. */
@@ -130,17 +131,11 @@ class SparseGlobalOrderReader : public ReaderBase, public IQueryStrategy {
   /** The result tiles currently loaded. */
   std::vector<std::list<ResultTile>> result_tiles_;
 
-  /**
-   * Maintain a temporary vector with pointers to result tiles, so that
-   * `read_tiles`, `unfilter_tiles` can work without changes.
-   */
-  std::vector<ResultTile*> tmp_result_tiles_;
-
   /** Have ve loaded the initial data. */
   bool initial_data_loaded_;
 
-  /** Bit vector of the tiles in the subarray, if set. */
-  std::vector<std::vector<char>> result_tile_set_;
+  /** Sorted list, per fragments of tiles ranges in the subarray, if set. */
+  std::vector<std::list<std::pair<uint64_t, uint64_t>>> result_tile_ranges_;
 
   /** Dimension names. */
   std::vector<std::string> dim_names_;
@@ -148,11 +143,23 @@ class SparseGlobalOrderReader : public ReaderBase, public IQueryStrategy {
   /** Are dimensions var sized. */
   std::vector<bool> is_dim_var_size_;
 
+  /** Mutex protecting memory budget variables. */
+  std::mutex mem_budget_mtx_;
+
   /** Total memory budget. */
   uint64_t memory_budget_;
 
+  /** Memory tracker object for the array. */
+  OpenArrayMemoryTracker* array_memory_tracker_;
+
   /** Memory used for coordinates tiles per fragment. */
   std::vector<uint64_t> memory_used_for_coords_;
+
+  /** Memory used for coordinates tiles. */
+  uint64_t memory_used_for_coords_total_;
+
+  /** Memory used for query condition tiles. */
+  uint64_t memory_used_qc_tiles_;
 
   /** Memory used for result cell slabs. */
   uint64_t memory_used_rcs_;
@@ -160,12 +167,23 @@ class SparseGlobalOrderReader : public ReaderBase, public IQueryStrategy {
   /** Memory used for result tiles. */
   uint64_t memory_used_result_tiles_;
 
-  // TODO Make configurable.
-  /** How much of the memory budget is reserved for coords */
-  float memory_budget_ratio_coords_;
+  /** Memory used for result tile ranges. */
+  uint64_t memory_used_result_tile_ranges_;
+
+  /** How much of the memory budget is reserved for coords. */
+  double memory_budget_ratio_coords_;
+
+  /** How much of the memory budget is reserved for query condition. */
+  double memory_budget_ratio_query_condition_;
+
+  /** How much of the memory budget is reserved for tile ranges. */
+  double memory_budget_ratio_tile_ranges_;
+
+  /** How much of the memory budget is reserved for array data. */
+  double memory_budget_ratio_array_data_;
 
   /** Memory budget per fragment. */
-  float per_fragment_memory_;
+  double per_fragment_memory_;
 
   /* ********************************* */
   /*           PRIVATE METHODS         */
@@ -174,14 +192,14 @@ class SparseGlobalOrderReader : public ReaderBase, public IQueryStrategy {
   /** Load tile offsets and result tile set. */
   Status load_initial_data();
 
-  /** Get the tile size for a dimension. */
-  Status get_coord_tile_size(
-      unsigned dim_num, unsigned f, uint64_t t, uint64_t* tile_size);
+  /** Get the coordinate tiles size for a dimension. */
+  Status get_coord_tiles_size(
+      unsigned dim_num, unsigned f, uint64_t t, uint64_t* tiles_size);
 
   /** Load a coordinate tile, making sure maximum budget is respected. */
   Status add_result_tile(
       unsigned dim_num,
-      uint64_t per_fragment_memory,
+      uint64_t memory_budget,
       unsigned f,
       uint64_t t,
       const Domain* domain,
@@ -193,9 +211,11 @@ class SparseGlobalOrderReader : public ReaderBase, public IQueryStrategy {
   /** Populate a result cell slab to process. */
   Status compute_result_cell_slab();
 
-  /** Computes info about the which tiles are in subarray. */
-  Status compute_result_tiles_set(
-      Subarray& subarray, std::vector<std::vector<char>>& result_tile_set);
+  /**
+   * Computes info about the which tiles are in subarray,
+   * making sure maximum budget is respected.
+   */
+  Status compute_result_tiles_ranges(uint64_t memory_budget);
 
   /**
    * Add a new tile to the queue of tiles currently being processed
@@ -205,10 +225,13 @@ class SparseGlobalOrderReader : public ReaderBase, public IQueryStrategy {
   Status add_next_tile_to_queue(
       bool subarray_set,
       unsigned int frag_idx,
+      uint64_t cell_idx,
       std::vector<std::list<ResultTile>::iterator>& result_tiles_it,
+      std::vector<bool>& result_tile_used,
       std::vector<std::vector<uint8_t>>& coord_tiles_result_bitmap,
       std::priority_queue<ResultCoords, std::vector<ResultCoords>, T>&
           tile_queue,
+      std::mutex& tile_queue_mutex,
       T& cmp,
       bool* need_more_tiles);
 
@@ -227,16 +250,19 @@ class SparseGlobalOrderReader : public ReaderBase, public IQueryStrategy {
       std::vector<std::vector<uint8_t>>& coord_tiles_result_bitmap);
 
   /** Compute the result cell slabs once tiles are loaded. */
-  // TODO Get rid of ResultCoords?
   template <class T>
   Status merge_result_cell_slabs(uint64_t memory_budget, T cmp);
 
   /** Resize the output buffers to the correct size after copying. */
-  Status resize_output_buffers(std::vector<ResultCellSlab>& copied);
+  Status resize_output_buffers();
+
+  /** Remove a result tile from memory */
+  Status remove_result_tile(
+      unsigned frag_idx, std::list<ResultTile>::iterator rt);
 
   /** Clean up processed data after copying and get ready for the next
    * iteration. */
-  Status end_iteration(std::vector<ResultCellSlab>& copied);
+  Status end_iteration();
 };
 
 }  // namespace sm

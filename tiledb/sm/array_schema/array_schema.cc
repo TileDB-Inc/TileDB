@@ -707,6 +707,10 @@ std::pair<uint64_t, uint64_t> ArraySchema::timestamp_range() const {
       timestamp_range_.first, timestamp_range_.second);
 }
 
+uint64_t ArraySchema::timestamp_start() const {
+  return timestamp_range_.first;
+}
+
 URI ArraySchema::uri() {
   std::lock_guard<std::mutex> lock(mtx_);
   if (uri_.is_invalid()) {
@@ -716,7 +720,7 @@ URI ArraySchema::uri() {
   return result;
 }
 
-void ArraySchema::set_uri(URI& uri) {
+void ArraySchema::set_uri(const URI& uri) {
   std::lock_guard<std::mutex> lock(mtx_);
   uri_ = uri;
   name_ = uri_.last_path_part();

@@ -831,7 +831,8 @@ Status Reader::compute_result_coords(
   // Preload zipped coordinate tile offsets. Note that this will
   // ignore fragments with a version >= 5.
   auto& subarray = read_state_.partitioner_.current();
-  RETURN_CANCEL_OR_ERROR(load_tile_offsets(subarray, {constants::coords}));
+  std::vector<std::string> zipped_coords_names = {constants::coords};
+  RETURN_CANCEL_OR_ERROR(load_tile_offsets(&subarray, &zipped_coords_names));
 
   // Preload unzipped coordinate tile offsets. Note that this will
   // ignore fragments with a version < 5.
@@ -840,24 +841,19 @@ Status Reader::compute_result_coords(
   dim_names.reserve(dim_num);
   for (unsigned d = 0; d < dim_num; ++d)
     dim_names.emplace_back(array_schema_->dimension(d)->name());
-  RETURN_CANCEL_OR_ERROR(load_tile_offsets(subarray, dim_names));
+  RETURN_CANCEL_OR_ERROR(load_tile_offsets(&subarray, &dim_names));
 
   // Read and unfilter zipped coordinate tiles. Note that
-  // this will ignore fragments with a version >= 5. Unfilter
-  // with a nullptr `rcs_index` argument to bypass selective
-  // unfiltering.
+  // this will ignore fragments with a version >= 5.
   RETURN_CANCEL_OR_ERROR(
-      read_coordinate_tiles({constants::coords}, tmp_result_tiles));
-  RETURN_CANCEL_OR_ERROR(
-      unfilter_tiles(constants::coords, tmp_result_tiles, nullptr));
+      read_coordinate_tiles(&zipped_coords_names, &tmp_result_tiles));
+  RETURN_CANCEL_OR_ERROR(unfilter_tiles(constants::coords, &tmp_result_tiles));
 
   // Read and unfilter unzipped coordinate tiles. Note that
-  // this will ignore fragments with a version < 5. Unfilter
-  // with a nullptr `rcs_index` argument to bypass selective
-  // unfiltering.
-  RETURN_CANCEL_OR_ERROR(read_coordinate_tiles(dim_names, tmp_result_tiles));
+  // this will ignore fragments with a version < 5.
+  RETURN_CANCEL_OR_ERROR(read_coordinate_tiles(&dim_names, &tmp_result_tiles));
   for (const auto& dim_name : dim_names) {
-    RETURN_CANCEL_OR_ERROR(unfilter_tiles(dim_name, tmp_result_tiles, nullptr));
+    RETURN_CANCEL_OR_ERROR(unfilter_tiles(dim_name, &tmp_result_tiles));
   }
 
   // Compute the read coordinates for all fragments for each subarray range.
@@ -978,7 +974,7 @@ Status Reader::dense_read() {
       &result_cell_slabs));
 
   auto stride = array_schema_->domain()->stride<T>(subarray.layout());
-  apply_query_condition(&result_cell_slabs, result_tiles, subarray, stride);
+  apply_query_condition(&result_cell_slabs, &result_tiles, &subarray, stride);
 
   get_result_tile_stats(result_tiles);
   get_result_cell_stats(result_cell_slabs);
@@ -987,8 +983,8 @@ Status Reader::dense_read() {
   erase_coord_tiles(&sparse_result_tiles);
 
   // Needed when copying the cells
-  RETURN_NOT_OK(
-      copy_attribute_values(stride, result_tiles, result_cell_slabs, subarray));
+  RETURN_NOT_OK(copy_attribute_values(
+      stride, &result_tiles, &result_cell_slabs, subarray));
   read_state_.overflowed_ = copy_overflowed_;
 
   // Fill coordinates if the user requested them
@@ -1387,13 +1383,13 @@ Status Reader::sparse_read() {
   result_coords.clear();
 
   auto& subarray = read_state_.partitioner_.current();
-  apply_query_condition(&result_cell_slabs, result_tiles, subarray);
+  apply_query_condition(&result_cell_slabs, &result_tiles, &subarray);
   get_result_tile_stats(result_tiles);
   get_result_cell_stats(result_cell_slabs);
 
-  RETURN_NOT_OK(copy_coordinates(result_tiles, result_cell_slabs));
+  RETURN_NOT_OK(copy_coordinates(&result_tiles, &result_cell_slabs));
   RETURN_NOT_OK(copy_attribute_values(
-      UINT64_MAX, result_tiles, result_cell_slabs, subarray));
+      UINT64_MAX, &result_tiles, &result_cell_slabs, subarray));
   read_state_.overflowed_ = copy_overflowed_;
 
   return Status::Ok();

@@ -71,6 +71,7 @@ class FragmentMetadata;
 class FragmentInfo;
 class Metadata;
 class OpenArray;
+class OpenArrayMemoryTracker;
 class Query;
 class RestClient;
 class VFS;
@@ -338,6 +339,14 @@ class StorageManager {
       const URI& array_uri,
       ArraySchema* array_schema,
       const EncryptionKey& encryption_key);
+
+  /**
+   * Gets the memory tracker for an open array.
+   *
+   * @param array_uri The array URI.
+   * @return The memory tracker.
+   */
+  OpenArrayMemoryTracker* array_get_memory_tracker(const URI& array_uri);
 
   /**
    * Retrieves the non-empty domain from an array. This is the union of the
@@ -679,6 +688,19 @@ class StorageManager {
       const URI& array_uri, URI* schema_uri) const;
 
   /**
+   * Loads the schema of a schema uri from persistent storage into memory.
+   *
+   * @param array_schema_uri The URI path of the array schema.
+   * @param encryption_key The encryption key to use.
+   * @param array_schema The array schema to be retrieved.
+   * @return Status
+   */
+  Status load_array_schema_from_uri(
+      const URI& array_schema_uri,
+      const EncryptionKey& encryption_key,
+      ArraySchema** array_schema);
+
+  /**
    * Loads the schema of an array from persistent storage into memory.
    *
    * @param array_uri The URI path of the array.
@@ -690,6 +712,20 @@ class StorageManager {
       const URI& array_uri,
       const EncryptionKey& encryption_key,
       ArraySchema** array_schema);
+
+  /**
+   * Loads all schemas of an array from persistent storage into memory.
+   *
+   * @param array_uri The URI path of the array.
+   * @param encryption_key The encryption key to use.
+   * @param array_schemas The array schema pointermap to be retrieved.
+   * @return Status
+   */
+  Status load_all_array_schemas(
+      const URI& array_uri,
+      const EncryptionKey& encryption_key,
+      std::unordered_map<std::string, tdb_shared_ptr<ArraySchema>>&
+          array_schemas);
 
   /**
    * Loads the array metadata from persistent storage that were created

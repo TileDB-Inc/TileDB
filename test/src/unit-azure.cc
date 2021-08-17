@@ -45,6 +45,22 @@
 using namespace tiledb::common;
 using namespace tiledb::sm;
 
+using ConfMap = std::map<std::string, std::string>;
+using ConfList = std::vector<ConfMap>;
+
+static ConfList test_settings = {
+    {{"vfs.azure.storage_account_name", "devstoreaccount1"},
+     {"vfs.azure.storage_account_key",
+      "Eby8vdM02xNOcqFlqUwJPLlmEtlCDXJ1OUzFT50uSRZ6IFsuFq2UVErCz4I6tq/"
+      "K1SZFPTOtr/KBHBeksoGMGw=="},
+     {"vfs.azure.blob_endpoint", "127.0.0.1:10000/devstoreaccount1"}},
+    // Currently disabled because it does not work with the Azurite emulator
+    // The SAS path was manually tested against the Azure Blob Service.
+    //{{"vfs.azure.storage_account_name", "devstoreaccount2"},
+    // {"vfs.azure.storage_sas_token", ""},
+    // {"vfs.azure.blob_endpoint", "127.0.0.1:10000/devstoreaccount2"}}
+};
+
 struct AzureFx {
   const std::string AZURE_PREFIX = "azure://";
   const tiledb::sm::URI AZURE_CONTAINER =
@@ -57,7 +73,7 @@ struct AzureFx {
   AzureFx() = default;
   ~AzureFx();
 
-  void init_azure(Config&& config);
+  void init_azure(Config&& config, ConfMap);
 
   static std::string random_container_name(const std::string& prefix);
 };
@@ -76,19 +92,15 @@ AzureFx::~AzureFx() {
   REQUIRE(azure_.remove_container(AZURE_CONTAINER).ok());
 }
 
-void AzureFx::init_azure(Config&& config) {
-  // Connect
-  REQUIRE(
-      config.set("vfs.azure.storage_account_name", "devstoreaccount1").ok());
-  REQUIRE(config
-              .set(
-                  "vfs.azure.storage_account_key",
-                  "Eby8vdM02xNOcqFlqUwJPLlmEtlCDXJ1OUzFT50uSRZ6IFsuFq2UVErCz4I6"
-                  "tq/K1SZFPTOtr/KBHBeksoGMGw==")
-              .ok());
-  REQUIRE(
-      config.set("vfs.azure.blob_endpoint", "127.0.0.1:10000/devstoreaccount1")
-          .ok());
+void AzureFx::init_azure(Config&& config, ConfMap settings) {
+  auto set_conf = [&](auto iter) {
+    std::string key = iter.first;
+    std::string val = iter.second;
+    REQUIRE(config.set(key, val).ok());
+  };
+
+  // Set provided config settings for connection
+  std::for_each(settings.begin(), settings.end(), set_conf);
   REQUIRE(config.set("vfs.azure.use_https", "false").ok());
   REQUIRE(thread_pool_.init(2).ok());
   REQUIRE(azure_.init(config, &thread_pool_).ok());
@@ -96,8 +108,9 @@ void AzureFx::init_azure(Config&& config) {
   // Create container
   bool is_container;
   REQUIRE(azure_.is_container(AZURE_CONTAINER, &is_container).ok());
-  if (is_container)
+  if (is_container) {
     REQUIRE(azure_.remove_container(AZURE_CONTAINER).ok());
+  }
 
   REQUIRE(azure_.is_container(AZURE_CONTAINER, &is_container).ok());
   REQUIRE(!is_container);
@@ -119,7 +132,10 @@ std::string AzureFx::random_container_name(const std::string& prefix) {
 TEST_CASE_METHOD(AzureFx, "Test Azure filesystem, file management", "[azure]") {
   Config config;
   config.set("vfs.azure.use_block_list_upload", "true");
-  init_azure(std::move(config));
+
+  auto settings =
+      GENERATE(from_range(test_settings.begin(), test_settings.end()));
+  init_azure(std::move(config), settings);
 
   /* Create the following file hierarchy:
    *
@@ -239,7 +255,10 @@ TEST_CASE_METHOD(
   config.set("vfs.azure.max_parallel_ops", std::to_string(max_parallel_ops));
   config.set(
       "vfs.azure.block_list_block_size", std::to_string(block_list_block_size));
-  init_azure(std::move(config));
+
+  auto settings =
+      GENERATE(from_range(test_settings.begin(), test_settings.end()));
+  init_azure(std::move(config), settings);
 
   const uint64_t write_cache_max_size =
       max_parallel_ops * block_list_block_size;
@@ -326,7 +345,10 @@ TEST_CASE_METHOD(
   config.set("vfs.azure.max_parallel_ops", std::to_string(max_parallel_ops));
   config.set(
       "vfs.azure.block_list_block_size", std::to_string(block_list_block_size));
-  init_azure(std::move(config));
+
+  auto settings =
+      GENERATE(from_range(test_settings.begin(), test_settings.end()));
+  init_azure(std::move(config), settings);
 
   const uint64_t write_cache_max_size =
       max_parallel_ops * block_list_block_size;

@@ -508,6 +508,14 @@ void Subarray::clear() {
   add_or_coalesce_range_func_.clear();
 }
 
+void Subarray::clear_tile_overlap() {
+  tile_overlap_.clear();
+}
+
+uint64_t Subarray::tile_overlap_byte_size() const {
+  return tile_overlap_.byte_size();
+}
+
 bool Subarray::coincides_with_tiles() const {
   if (range_num() != 1)
     return false;

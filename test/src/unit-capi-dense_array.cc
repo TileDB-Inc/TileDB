@@ -3019,7 +3019,7 @@ int DenseArrayFx::submit_query_wrapper(
   REQUIRE_SAFE(tiledb_query_get_layout(ctx_, query, &layout) == TILEDB_OK);
 
   // Serialize the query (client-side).
-  tiledb_buffer_list_t* buff_list1;
+  tiledb_buffer_list_t* buff_list1 = nullptr;
   int rc = tiledb_serialize_query(ctx_, query, TILEDB_CAPNP, 1, &buff_list1);
 
   // Global order writes are not (yet) supported for serialization. Just
@@ -3063,7 +3063,7 @@ int DenseArrayFx::submit_query_wrapper(
   tiledb_query_t* new_query = nullptr;
   REQUIRE_SAFE(
       tiledb_query_alloc(ctx_, new_array, query_type, &new_query) == TILEDB_OK);
-  REQUIRE(
+  REQUIRE_SAFE(
       tiledb_deserialize_query(ctx_, buff2, TILEDB_CAPNP, 0, new_query) ==
       TILEDB_OK);
 
@@ -3098,7 +3098,7 @@ int DenseArrayFx::submit_query_wrapper(
         REQUIRE_SAFE(
             tiledb_query_get_data_buffer(
                 ctx_, new_query, name, &buff, &buff_size) == TILEDB_OK);
-        REQUIRE(
+        REQUIRE_SAFE(
             tiledb_query_get_offsets_buffer(
                 ctx_, new_query, name, &offset_buff, &offset_buff_size) ==
             TILEDB_OK);
@@ -3116,7 +3116,7 @@ int DenseArrayFx::submit_query_wrapper(
           REQUIRE_SAFE(
               tiledb_query_set_data_buffer(
                   ctx_, new_query, name, buff, buff_size) == TILEDB_OK);
-          REQUIRE(
+          REQUIRE_SAFE(
               tiledb_query_set_offsets_buffer(
                   ctx_, new_query, name, offset_buff, offset_buff_size) ==
               TILEDB_OK);

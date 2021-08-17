@@ -1,3 +1,48 @@
+# TileDB v2.3.3 Release Notes
+
+## Improvements
+
+* Increase REST (TileDB Cloud) retry count from 3 to 25 to be inline with S3/GCS retry times [#2421](https://github.com/TileDB-Inc/TileDB/pull/2421)
+* Avoid unnecessary `est_result_size` computation in `must_split` [#2431](https://github.com/TileDB-Inc/TileDB/pull/2431)
+* Use newer Azure patch for all platforms to solve missing header error [#2433](https://github.com/TileDB-Inc/TileDB/pull/2433)
+
+## Bug fixes
+
+* Fix c-api error paths always resetting any alloced pointers to nullptr in-addition to deleting [#2427](https://github.com/TileDB-Inc/TileDB/pull/2427)
+
+# TileDB v2.3.2 Release Notes
+
+## Improvements
+* Support more env selectable options in both azure-windows.yml and azure-windows-release.yml [#2384](https://github.com/TileDB-Inc/TileDB/pull/2384)
+* Enable Azure/Serialization for windows CI artifacts [#2400](https://github.com/TileDB-Inc/TileDB/pull/2400)
+
+## Bug fixes
+* Correct check for last offset position so that undefined memory is not accessed. [#2390](https://github.com/TileDB-Inc/TileDB/pull/2390)
+* Fix ch8416, failure to read array written with tiledb 2.2 via REST [#2404](https://github.com/TileDB-Inc/TileDB/pull/2404)
+* Fix ch7582: use the correct buffer for validity deserialization [#2407](https://github.com/TileDB-Inc/TileDB/pull/2407)
+
+# TileDB v2.3.1 Release Notes
+
+## Improvements
+* Update bzip2 in windows build to 1.0.8 [#2332](https://github.com/TileDB-Inc/TileDB/pull/2332)
+* Fixing S3 build for OSX11 [#2339](https://github.com/TileDB-Inc/TileDB/pull/2339)
+* Fixing possible overflow in Dimension::tile_num [#2265](https://github.com/TileDB-Inc/TileDB/pull/2265)
+* Fixing tile extent calculations for signed integer domains [#2303](https://github.com/TileDB-Inc/TileDB/pull/2303)
+* Add support for cross compilation on OSX in superbuild [#2354](https://github.com/TileDB-Inc/TileDB/pull/2354)
+* Remove curl link args for cross compilation [#2359](https://github.com/TileDB-Inc/TileDB/pull/2359)
+* Enable MacOS arm64 release artifacts [#2360](https://github.com/TileDB-Inc/TileDB/pull/2360)
+* Add more stats for \`compute_result_coords\` path [#2366](https://github.com/TileDB-Inc/TileDB/pull/2366)
+* Support credentials refresh for AWS [#2376](https://github.com/TileDB-Inc/TileDB/pull/2376)
+
+## Bug fixes
+* Fixing intermittent metadata test failure [#2338](https://github.com/TileDB-Inc/TileDB/pull/2338)
+* Fix query condition validation check for nullable attributes with null conditions [#2344](https://github.com/TileDB-Inc/TileDB/pull/2344)
+* Multi-range single dimension query fix [#2347](https://github.com/TileDB-Inc/TileDB/pull/2347)
+* Rewrite `Dimension::overlap_ratio` [#2304](https://github.com/TileDB-Inc/TileDB/pull/2304)
+* Follow up fixes to floating point calculations for tile extents [#2341](https://github.com/TileDB-Inc/TileDB/pull/2341)
+* Fix for set_null_tile_extent_to_range [#2361](https://github.com/TileDB-Inc/TileDB/pull/2361)
+* Subarray partitioner, unordered should be unordered, even for Hilbert. [#2377](https://github.com/TileDB-Inc/TileDB/pull/2377)
+
 # TileDB v2.3.0 Release Notes
 
 ## Disk Format

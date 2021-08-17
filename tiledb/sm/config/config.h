@@ -147,8 +147,22 @@ class Config {
   /** Whether or not to use the refactored readers. */
   static const std::string SM_USE_REFACTORED_READERS;
 
-  /** Maximum memory budget for the sparse global order reader. */
+  /** Maximum memory budget for readers and writers. */
   static const std::string SM_MEM_TOTAL_BUDGET;
+
+  /** Ratio of the sparse global order reader budget used for coords. */
+  static const std::string SM_MEM_SPARSE_GLOBAL_ORDER_RATIO_COORDS;
+
+  /**
+   * Ratio of the sparse global order reader budget used for query condition.
+   */
+  static const std::string SM_MEM_SPARSE_GLOBAL_ORDER_RATIO_QUERY_CONDITION;
+
+  /** Ratio of the sparse global order reader budget used for tile ranges. */
+  static const std::string SM_MEM_SPARSE_GLOBAL_ORDER_RATIO_TILE_RANGES;
+
+  /** Ratio of the sparse global order reader budget used for array data. */
+  static const std::string SM_MEM_SPARSE_GLOBAL_ORDER_RATIO_ARRAY_DATA;
 
   /** Whether or not the signal handlers are installed. */
   static const std::string SM_ENABLE_SIGNAL_HANDLERS;
@@ -288,6 +302,9 @@ class Config {
 
   /** Azure storage account key. */
   static const std::string VFS_AZURE_STORAGE_ACCOUNT_KEY;
+
+  /** Azure storage account SAS (shared access signature) token. */
+  static const std::string VFS_AZURE_STORAGE_SAS_TOKEN;
 
   /** Azure blob endpoint. */
   static const std::string VFS_AZURE_BLOB_ENDPOINT;

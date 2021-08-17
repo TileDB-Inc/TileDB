@@ -46,7 +46,7 @@ install_brew_pkgs() {
 }
 
 install_deps() {
-  AZURITE_PACKAGE="azurite@3.6.0"
+  AZURITE_PACKAGE="azurite@3.13.1"
   if [[ $OSTYPE == linux* ]]; then
     if [ -n "$(command -v apt-get)" ]; then
       install_apt_pkgs

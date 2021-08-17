@@ -87,7 +87,17 @@ class Array {
       const Context& ctx,
       const std::string& array_uri,
       tiledb_query_type_t query_type)
-      : Array(ctx, array_uri, query_type, TILEDB_NO_ENCRYPTION, nullptr, 0) {
+      : ctx_(ctx)
+      , schema_(ArraySchema(ctx, (tiledb_array_schema_t*)nullptr)) {
+    tiledb_ctx_t* c_ctx = ctx.ptr().get();
+    tiledb_array_t* array;
+    ctx.handle_error(tiledb_array_alloc(c_ctx, array_uri.c_str(), &array));
+    array_ = std::shared_ptr<tiledb_array_t>(array, deleter_);
+    ctx.handle_error(tiledb_array_open(c_ctx, array, query_type));
+
+    tiledb_array_schema_t* array_schema;
+    ctx.handle_error(tiledb_array_get_schema(c_ctx, array, &array_schema));
+    schema_ = ArraySchema(ctx, array_schema);
   }
 
   /**
@@ -147,6 +157,7 @@ class Array {
    * @param encryption_key The encryption key to use.
    */
   // clang-format on
+  TILEDB_DEPRECATED
   Array(
       const Context& ctx,
       const std::string& array_uri,
@@ -409,7 +420,13 @@ class Array {
    * @throws TileDBError if the array is already open or other error occurred.
    */
   void open(tiledb_query_type_t query_type) {
-    open(query_type, TILEDB_NO_ENCRYPTION, nullptr, 0);
+    auto& ctx = ctx_.get();
+    tiledb_ctx_t* c_ctx = ctx.ptr().get();
+    ctx.handle_error(tiledb_array_open(c_ctx, array_.get(), query_type));
+    tiledb_array_schema_t* array_schema;
+    ctx.handle_error(
+        tiledb_array_get_schema(c_ctx, array_.get(), &array_schema));
+    schema_ = ArraySchema(ctx, array_schema);
   }
 
   /**
@@ -722,7 +739,8 @@ class Array {
       const Context& ctx,
       const std::string& uri,
       Config* const config = nullptr) {
-    consolidate(ctx, uri, TILEDB_NO_ENCRYPTION, nullptr, 0, config);
+    ctx.handle_error(tiledb_array_consolidate(
+        ctx.ptr().get(), uri.c_str(), config ? config->ptr().get() : nullptr));
   }
 
   /**
@@ -836,7 +854,11 @@ class Array {
    * @param schema The array schema.
    */
   static void create(const std::string& uri, const ArraySchema& schema) {
-    create(uri, schema, TILEDB_NO_ENCRYPTION, nullptr, 0);
+    auto& ctx = schema.context();
+    tiledb_ctx_t* c_ctx = ctx.ptr().get();
+    ctx.handle_error(tiledb_array_schema_check(c_ctx, schema.ptr().get()));
+    ctx.handle_error(
+        tiledb_array_create(c_ctx, uri.c_str(), schema.ptr().get()));
   }
 
   /**
@@ -1308,7 +1330,7 @@ class Array {
     }
 
     (*config_aux)["sm.consolidation.mode"] = "array_meta";
-    consolidate(ctx, uri, TILEDB_NO_ENCRYPTION, nullptr, 0, config_aux);
+    consolidate(ctx, uri, config_aux);
   }
 
   /**
@@ -1338,6 +1360,7 @@ class Array {
    * @param key_length Length in bytes of the encryption key.
    * @param config Configuration parameters for the consolidation.
    */
+  TILEDB_DEPRECATED
   static void consolidate_metadata(
       const Context& ctx,
       const std::string& uri,
