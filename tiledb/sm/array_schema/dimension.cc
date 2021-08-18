@@ -414,10 +414,7 @@ Status Dimension::compute_mbr(const Tile& tile, Range* mbr) {
   auto cell_num = tile.cell_num();
   assert(cell_num > 0);
 
-  // The chunked buffers in the write path are always contiguous.
-  void* tile_buffer = nullptr;
-  ChunkedBuffer* const chunked_buffer = tile.chunked_buffer();
-  RETURN_NOT_OK(chunked_buffer->get_contiguous(&tile_buffer));
+  void* tile_buffer = tile.buffer()->data();
   assert(tile_buffer != nullptr);
 
   // Initialize MBR with the first tile values
@@ -445,16 +442,10 @@ Status Dimension::compute_mbr_var<char>(
   auto cell_num = tile_off.cell_num();
   assert(cell_num > 0);
 
-  // The chunked buffers in the write path are always contiguous.
-  void* tile_buffer_off = nullptr;
-  ChunkedBuffer* const chunked_buffer_off = tile_off.chunked_buffer();
-  RETURN_NOT_OK(chunked_buffer_off->get_contiguous(&tile_buffer_off));
+  void* tile_buffer_off = tile_off.buffer()->data();
   assert(tile_buffer_off != nullptr);
 
-  // The chunked buffers in the write path are always contiguous.
-  void* tile_buffer_val = nullptr;
-  ChunkedBuffer* const chunked_buffer_val = tile_val.chunked_buffer();
-  RETURN_NOT_OK(chunked_buffer_val->get_contiguous(&tile_buffer_val));
+  void* tile_buffer_val = tile_val.buffer()->data();
   assert(tile_buffer_val != nullptr);
 
   uint64_t* const d_off = static_cast<uint64_t*>(tile_buffer_off);

@@ -44,7 +44,11 @@ const std::string array_name = "fragment_info_array";
 TEST_CASE(
     "C++ API: Test fragment info, errors", "[cppapi][fragment_info][errors]") {
   // Create TileDB context
-  Context ctx;
+  std::string key = "12345678901234567890123456789012";
+  tiledb::Config cfg;
+  cfg["sm.encryption_type"] = "AES_256_GCM";
+  cfg["sm.encryption_key"] = key.c_str();
+  Context ctx(cfg);
   VFS vfs(ctx);
   remove_dir(array_name, ctx.ptr().get(), vfs.ptr().get());
 
@@ -73,9 +77,8 @@ TEST_CASE(
       TILEDB_ROW_MAJOR,
       2);
 
-  // Array is not encrypted
-  std::string key = "12345678901234567890123456789012";
-  CHECK_THROWS(fragment_info.load(TILEDB_AES_256_GCM, key));
+  // Load fragment info, array is encrypted
+  fragment_info.load();
 
   // Write a dense fragment
   QueryBuffers buffers;

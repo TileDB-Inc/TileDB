@@ -242,7 +242,7 @@ class ArraySchema {
   /**
    * Adds an attribute, copying the input.
    *
-   * @param attr The attribute to be added
+   * @param attr_builder The attribute builder to be added
    * @param check_special If `true` this function will check if the attribute
    *     is special (starting with `__`) and error if that's the case. Setting
    *     to `false` will allow adding attributes starting with `__`, noting
@@ -321,11 +321,14 @@ class ArraySchema {
   /** Returns the timestamp range. */
   std::pair<uint64_t, uint64_t> timestamp_range() const;
 
+  /** Returns the the first timestamp. */
+  uint64_t timestamp_start() const;
+
   /** Returns the array schema uri. */
   URI uri();
 
   /** Set schema URI, along with parsing out timestamp ranges and name. */
-  void set_uri(URI& uri);
+  void set_uri(const URI& uri);
 
   /** Get schema URI with return status. */
   Status get_uri(URI* uri);

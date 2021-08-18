@@ -494,11 +494,6 @@ Status Consolidator::consolidate_fragment_meta(
   // Close array
   RETURN_NOT_OK(array.close());
 
-  ChunkedBuffer chunked_buffer;
-  RETURN_NOT_OK(Tile::buffer_to_contiguous_fixed_chunks(
-      buff, 0, constants::generic_tile_cell_size, &chunked_buffer));
-  buff.disown_data();
-
   // Write to file
   EncryptionKey enc_key;
   RETURN_NOT_OK(enc_key.set_key(encryption_type, encryption_key, key_length));
@@ -507,16 +502,17 @@ Status Consolidator::consolidate_fragment_meta(
       constants::generic_tile_datatype,
       constants::generic_tile_cell_size,
       0,
-      &chunked_buffer,
+      &buff,
       false);
+  buff.disown_data();
   GenericTileIO tile_io(storage_manager_, uri);
   uint64_t nbytes = 0;
   RETURN_NOT_OK_ELSE(
-      tile_io.write_generic(&tile, enc_key, &nbytes), chunked_buffer.free());
+      tile_io.write_generic(&tile, enc_key, &nbytes), buff.clear());
   (void)nbytes;
-  RETURN_NOT_OK_ELSE(storage_manager_->close_file(uri), chunked_buffer.free());
+  RETURN_NOT_OK_ELSE(storage_manager_->close_file(uri), buff.clear());
 
-  chunked_buffer.free();
+  buff.clear();
 
   return Status::Ok();
 }

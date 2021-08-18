@@ -997,6 +997,7 @@ Status Writer::create_fragment(
       array_schema_,
       uri,
       timestamp_range,
+      nullptr,
       dense);
 
   RETURN_NOT_OK((*frag_meta)->init(subarray_.ndrange(0)));
@@ -1064,7 +1065,7 @@ Status Writer::filter_tile(
     const bool nullable) {
   auto timer_se = stats_->start_timer("filter_tile");
 
-  const auto orig_size = tile->chunked_buffer()->size();
+  const auto orig_size = tile->buffer()->size();
 
   // Get a copy of the appropriate filter pipeline.
   FilterPipeline filters;

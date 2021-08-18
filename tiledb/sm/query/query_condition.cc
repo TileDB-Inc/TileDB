@@ -446,8 +446,7 @@ void QueryCondition::apply_clause(
 
       if (nullable) {
         const auto& tile_validity = std::get<2>(*tile_tuple);
-        buffer_validity = static_cast<uint8_t*>(
-            tile_validity.chunked_buffer()->get_contiguous_unsafe());
+        buffer_validity = static_cast<uint8_t*>(tile_validity.buffer()->data());
       }
 
       // Start the pending result cell slab at the start position
@@ -457,13 +456,12 @@ void QueryCondition::apply_clause(
 
       if (var_size) {
         const auto& tile = std::get<1>(*tile_tuple);
-        const char* buffer =
-            static_cast<char*>(tile.chunked_buffer()->get_contiguous_unsafe());
+        const char* buffer = static_cast<char*>(tile.buffer()->data());
         const uint64_t buffer_size = tile.size();
 
         const auto& tile_offsets = std::get<0>(*tile_tuple);
-        const uint64_t* buffer_offsets = static_cast<uint64_t*>(
-            tile_offsets.chunked_buffer()->get_contiguous_unsafe());
+        const uint64_t* buffer_offsets =
+            static_cast<uint64_t*>(tile_offsets.buffer()->data());
         const uint64_t buffer_offsets_el =
             tile_offsets.size() / constants::cell_var_offset_size;
 
@@ -503,8 +501,7 @@ void QueryCondition::apply_clause(
         }
       } else {
         const auto& tile = std::get<0>(*tile_tuple);
-        const char* buffer =
-            static_cast<char*>(tile.chunked_buffer()->get_contiguous_unsafe());
+        const char* buffer = static_cast<char*>(tile.buffer()->data());
         const uint64_t cell_size = tile.cell_size();
         uint64_t buffer_offset = start * cell_size;
         const uint64_t buffer_offset_inc = stride * cell_size;
@@ -790,7 +787,8 @@ Status QueryCondition::apply_clause(
 Status QueryCondition::apply(
     const ArraySchema* const array_schema,
     std::vector<ResultCellSlab>* const result_cell_slabs,
-    const uint64_t stride) const {
+    const uint64_t stride,
+    uint64_t memory_budget) const {
   if (clauses_.empty()) {
     return Status::Ok();
   }
@@ -807,6 +805,15 @@ Status QueryCondition::apply(
         stride,
         *result_cell_slabs,
         &tmp_result_cell_slabs));
+    if (tmp_result_cell_slabs.size() > result_cell_slabs->size()) {
+      uint64_t memory_increase =
+          tmp_result_cell_slabs.size() - result_cell_slabs->size();
+      memory_increase *= sizeof(ResultCellSlab);
+      if (memory_increase > memory_budget) {
+        return Status::QueryConditionError(
+            "Exceeded result cell slab budget applying query condition");
+      }
+    }
     *result_cell_slabs = tmp_result_cell_slabs;
   }
 

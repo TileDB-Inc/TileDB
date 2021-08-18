@@ -93,7 +93,6 @@ enum class StatusCode : char {
   Compression,
   Tile,
   TileIO,
-  ChunkedBuffer,
   Buffer,
   Query,
   ValidityVector,
@@ -114,6 +113,7 @@ enum class StatusCode : char {
   FS_HDFS,
   FS_MEM,
   Attribute,
+  AttributeBuilder,
   WriteCellSlabIter,
   SparseGlobalOrderReaderError,
   Reader,
@@ -229,11 +229,6 @@ class Status {
     return Status(StatusCode::TileIO, msg, -1);
   }
 
-  /** Return a ChunkedBufferError error class Status with a given message **/
-  static Status ChunkedBufferError(const std::string& msg) {
-    return Status(StatusCode::ChunkedBuffer, msg, -1);
-  }
-
   /** Return a BufferError error class Status with a given message **/
   static Status BufferError(const std::string& msg) {
     return Status(StatusCode::Buffer, msg, -1);
@@ -332,6 +327,11 @@ class Status {
   /** Return a AttributeError error class Status with a given message **/
   static Status AttributeError(const std::string& msg) {
     return Status(StatusCode::Attribute, msg, -1);
+  }
+
+  /** Return a AttributeBuilderError error class Status with a given message **/
+  static Status AttributeBuilderError(const std::string& msg) {
+    return Status(StatusCode::AttributeBuilder, msg, -1);
   }
 
   /** Return a WriteCellSlabIterError error class Status with a given message

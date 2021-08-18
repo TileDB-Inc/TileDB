@@ -1040,8 +1040,24 @@ TILEDB_EXPORT void tiledb_config_free(tiledb_config_t** config);
  *    Use the refactored readers or not. <br>
  *    **Default**: false
  * - `sm.mem.total_budget` <br>
- *    Memory budget for the sparse global order reader. <br>
- *    **Default**: \10GB
+ *    Memory budget for readers and writers. <br>
+ *    **Default**: 10GB
+ * - `sm.mem.reader.sparse_global_order.ratio_coords` <br>
+ *    Ratio of the budget allocated for coordinates in the sparse global
+ *    order reader. <br>
+ *    **Default**: 0.5
+ * - `sm.mem.reader.sparse_global_order.ratio_query_condition` <br>
+ *    Ratio of the budget allocated for the query condition in the sparse
+ *    global order reader. <br>
+ *    **Default**: 0.25
+ * - `sm.mem.reader.sparse_global_order.ratio_tile_ranges` <br>
+ *    Ratio of the budget allocated for tile ranges in the sparse global
+ *    order reader. <br>
+ *    **Default**: 0.1
+ * - `sm.mem.reader.sparse_global_order.ratio_array_data` <br>
+ *    Ratio of the budget allocated for array data in the sparse global
+ *    order reader. <br>
+ *    **Default**: 0.1
  * - `vfs.read_ahead_size` <br>
  *    The maximum byte size to read-ahead from the backend. <br>
  *    **Default**: 102400
@@ -1078,6 +1094,9 @@ TILEDB_EXPORT void tiledb_config_free(tiledb_config_t** config);
  *    **Default**: ""
  * - `vfs.azure.storage_account_key` <br>
  *    Set the Azure Storage Account key. <br>
+ *    **Default**: ""
+ * - `vfs.azure.storage_sas_token` <br>
+ *    Set the Azure Storage SAS (shared access signature) token. <br>
  *    **Default**: ""
  * - `vfs.azure.blob_endpoint` <br>
  *    Overrides the default Azure Storage Blob endpoint. If empty, the endpoint
@@ -3097,8 +3116,6 @@ TILEDB_EXPORT int32_t tiledb_array_schema_load(
     tiledb_array_schema_t** array_schema);
 
 /**
- * This is a deprecated API.
- *
  * Retrieves the schema of an encrypted array from the disk, creating an array
  * schema struct.
  *
@@ -3122,7 +3139,7 @@ TILEDB_EXPORT int32_t tiledb_array_schema_load(
  * @param array_schema The array schema to be retrieved, or `NULL` upon error.
  * @return `TILEDB_OK` for success and `TILEDB_OOM` or `TILEDB_ERR` for error.
  */
-TILEDB_EXPORT int32_t tiledb_array_schema_load_with_key(
+TILEDB_DEPRECATED_EXPORT int32_t tiledb_array_schema_load_with_key(
     tiledb_ctx_t* ctx,
     const char* array_uri,
     tiledb_encryption_type_t encryption_type,
@@ -5101,8 +5118,6 @@ TILEDB_EXPORT int32_t tiledb_array_open(
     tiledb_ctx_t* ctx, tiledb_array_t* array, tiledb_query_type_t query_type);
 
 /**
- * This is a deprecated API.
- *
  * Similar to `tiledb_array_open`, but this function takes as input a
  * timestamp, representing time in milliseconds ellapsed since
  * 1970-01-01 00:00:00 +0000 (UTC). Opening the array at a
@@ -5135,15 +5150,13 @@ TILEDB_EXPORT int32_t tiledb_array_open(
  *      `timestamp{start, end}` values should be set to a config that's set to
  *       the array object before opening the array.
  */
-TILEDB_EXPORT int32_t tiledb_array_open_at(
+TILEDB_DEPRECATED_EXPORT int32_t tiledb_array_open_at(
     tiledb_ctx_t* ctx,
     tiledb_array_t* array,
     tiledb_query_type_t query_type,
     uint64_t timestamp);
 
 /**
- * This is a deprecated API.
- *
  * Opens an encrypted array using the given encryption key. This function has
  * the same semantics as `tiledb_array_open()` but is used for encrypted arrays.
  *
@@ -5171,7 +5184,7 @@ TILEDB_EXPORT int32_t tiledb_array_open_at(
  *
  * @note The config should be set before opening an array.
  */
-TILEDB_EXPORT int32_t tiledb_array_open_with_key(
+TILEDB_DEPRECATED_EXPORT int32_t tiledb_array_open_with_key(
     tiledb_ctx_t* ctx,
     tiledb_array_t* array,
     tiledb_query_type_t query_type,
@@ -5180,8 +5193,6 @@ TILEDB_EXPORT int32_t tiledb_array_open_with_key(
     uint32_t key_length);
 
 /**
- * This is a deprecated API.
- *
  * Similar to `tiledb_array_open_with_key`, but this function takes as
  * input a timestamp, representing time in milliseconds ellapsed since
  * 1970-01-01 00:00:00 +0000 (UTC). Opening the array at a
@@ -5217,7 +5228,7 @@ TILEDB_EXPORT int32_t tiledb_array_open_with_key(
  * @note This function is applicable only to read queries.
  * @note The config should be set before opening an array.
  */
-TILEDB_EXPORT int32_t tiledb_array_open_at_with_key(
+TILEDB_DEPRECATED_EXPORT int32_t tiledb_array_open_at_with_key(
     tiledb_ctx_t* ctx,
     tiledb_array_t* array,
     tiledb_query_type_t query_type,
@@ -5270,8 +5281,6 @@ TILEDB_EXPORT int32_t
 tiledb_array_reopen(tiledb_ctx_t* ctx, tiledb_array_t* array);
 
 /**
- * This is a deprecated API.
- *
  * Reopens a TileDB array (the array must be already open) at a specific
  * timestamp.
  *
@@ -5296,11 +5305,10 @@ tiledb_array_reopen(tiledb_ctx_t* ctx, tiledb_array_t* array);
  *      interval, the `timestamp{start, end}` values and subsequent config
  *      object should be reset for the array before reopening.
  */
-TILEDB_EXPORT int32_t tiledb_array_reopen_at(
+TILEDB_DEPRECATED_EXPORT int32_t tiledb_array_reopen_at(
     tiledb_ctx_t* ctx, tiledb_array_t* array, uint64_t timestamp);
 
 /**
- * This is a deprecated API.
  * The start/end timestamps for opening an array
  * are now set in the config.
  *
@@ -5326,7 +5334,7 @@ TILEDB_EXPORT int32_t tiledb_array_reopen_at(
  *
  * @note The array does not need to be open to use this function.
  */
-TILEDB_EXPORT int32_t tiledb_array_get_timestamp(
+TILEDB_DEPRECATED_EXPORT int32_t tiledb_array_get_timestamp(
     tiledb_ctx_t* ctx, tiledb_array_t* array, uint64_t* timestamp);
 
 /**
@@ -5476,8 +5484,6 @@ TILEDB_EXPORT int32_t tiledb_array_create(
     const tiledb_array_schema_t* array_schema);
 
 /**
- * This is a deprecated API.
- *
  * Creates a new encrypted TileDB array given an input schema.
  *
  * Encrypted arrays can only be created through this function.
@@ -5499,7 +5505,7 @@ TILEDB_EXPORT int32_t tiledb_array_create(
  * @param key_length Length in bytes of the encryption key.
  * @return `TILEDB_OK` for success and `TILEDB_ERR` for error.
  */
-TILEDB_EXPORT int32_t tiledb_array_create_with_key(
+TILEDB_DEPRECATED_EXPORT int32_t tiledb_array_create_with_key(
     tiledb_ctx_t* ctx,
     const char* array_uri,
     const tiledb_array_schema_t* array_schema,
@@ -5536,8 +5542,6 @@ TILEDB_EXPORT int32_t tiledb_array_consolidate(
     tiledb_ctx_t* ctx, const char* array_uri, tiledb_config_t* config);
 
 /**
- * This is a deprecated API.
- *
  * Depending on the consoliation mode in the config, consolidates either the
  * fragment files, fragment metadata files, or array metadata files into a
  * single file.
@@ -5566,7 +5570,7 @@ TILEDB_EXPORT int32_t tiledb_array_consolidate(
  *
  * @return `TILEDB_OK` on success, and `TILEDB_ERR` on error.
  */
-TILEDB_EXPORT int32_t tiledb_array_consolidate_with_key(
+TILEDB_DEPRECATED_EXPORT int32_t tiledb_array_consolidate_with_key(
     tiledb_ctx_t* ctx,
     const char* array_uri,
     tiledb_encryption_type_t encryption_type,
@@ -6084,8 +6088,6 @@ TILEDB_DEPRECATED_EXPORT int32_t tiledb_array_consolidate_metadata(
     tiledb_ctx_t* ctx, const char* array_uri, tiledb_config_t* config);
 
 /**
- * This is a deprecated API.
- *
  * Consolidates the array metadata of an encrypted array into a single file.
  *
  * You must first finalize all queries to the array before consolidation can
@@ -7008,8 +7010,6 @@ TILEDB_EXPORT int32_t tiledb_fragment_info_load(
     tiledb_ctx_t* ctx, tiledb_fragment_info_t* fragment_info);
 
 /**
- * This is a deprecated API.
- *
  * Loads the fragment info from an encrypted array.
  *
  * **Example:**
@@ -7026,7 +7026,7 @@ TILEDB_EXPORT int32_t tiledb_fragment_info_load(
  * @param key_length Length in bytes of the encryption key.
  * @return `TILEDB_OK` for success and `TILEDB_ERR` for error.
  */
-TILEDB_EXPORT int32_t tiledb_fragment_info_load_with_key(
+TILEDB_DEPRECATED_EXPORT int32_t tiledb_fragment_info_load_with_key(
     tiledb_ctx_t* ctx,
     tiledb_fragment_info_t* fragment_info,
     tiledb_encryption_type_t encryption_type,

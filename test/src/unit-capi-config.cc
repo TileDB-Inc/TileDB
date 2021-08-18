@@ -177,9 +177,15 @@ void check_save_to_file() {
   REQUIRE(rc == TILEDB_OK);
   CHECK(error == nullptr);
 
-  // Check that aws secret access key is not serialized.
+  // Check that azure account key is not serialized.
   rc = tiledb_config_set(
       config, "vfs.azure.storage_account_key", "secret", &error);
+  REQUIRE(rc == TILEDB_OK);
+  CHECK(error == nullptr);
+
+  // Check that azure SAS token is not serialized.
+  rc = tiledb_config_set(
+      config, "vfs.azure.storage_sas_token", "secret", &error);
   REQUIRE(rc == TILEDB_OK);
   CHECK(error == nullptr);
 
@@ -219,7 +225,7 @@ void check_save_to_file() {
   ss << "config.logging_level 0\n";
 #endif
   ss << "rest.http_compressor any\n";
-  ss << "rest.retry_count 3\n";
+  ss << "rest.retry_count 25\n";
   ss << "rest.retry_delay_factor 1.25\n";
   ss << "rest.retry_http_codes 503\n";
   ss << "rest.retry_initial_delay_ms 500\n";
@@ -246,6 +252,10 @@ void check_save_to_file() {
   ss << "sm.io_concurrency_level " << std::thread::hardware_concurrency()
      << "\n";
   ss << "sm.max_tile_overlap_size 314572800\n";
+  ss << "sm.mem.reader.sparse_global_order.ratio_array_data 0.1\n";
+  ss << "sm.mem.reader.sparse_global_order.ratio_coords 0.5\n";
+  ss << "sm.mem.reader.sparse_global_order.ratio_query_condition 0.25\n";
+  ss << "sm.mem.reader.sparse_global_order.ratio_tile_ranges 0.1\n";
   ss << "sm.mem.total_budget 10737418240\n";
   ss << "sm.memory_budget 5368709120\n";
   ss << "sm.memory_budget_var 10737418240\n";
@@ -529,7 +539,7 @@ TEST_CASE("C API: Test config iter", "[capi], [config]") {
   all_param_values["rest.server_address"] = "https://api.tiledb.com";
   all_param_values["rest.server_serialization_format"] = "CAPNP";
   all_param_values["rest.http_compressor"] = "any";
-  all_param_values["rest.retry_count"] = "3";
+  all_param_values["rest.retry_count"] = "25";
   all_param_values["rest.retry_delay_factor"] = "1.25";
   all_param_values["rest.retry_initial_delay_ms"] = "500";
   all_param_values["rest.retry_http_codes"] = "503";
@@ -545,6 +555,13 @@ TEST_CASE("C API: Test config iter", "[capi], [config]") {
   all_param_values["sm.memory_budget_var"] = "10737418240";
   all_param_values["sm.use_refactored_readers"] = "false";
   all_param_values["sm.mem.total_budget"] = "10737418240";
+  all_param_values["sm.mem.reader.sparse_global_order.ratio_coords"] = "0.5";
+  all_param_values["sm.mem.reader.sparse_global_order.ratio_query_condition"] =
+      "0.25";
+  all_param_values["sm.mem.reader.sparse_global_order.ratio_tile_ranges"] =
+      "0.1";
+  all_param_values["sm.mem.reader.sparse_global_order.ratio_array_data"] =
+      "0.1";
   all_param_values["sm.enable_signal_handlers"] = "true";
   all_param_values["sm.compute_concurrency_level"] =
       std::to_string(std::thread::hardware_concurrency());
@@ -583,6 +600,7 @@ TEST_CASE("C API: Test config iter", "[capi], [config]") {
   all_param_values["vfs.gcs.request_timeout_ms"] = "3000";
   all_param_values["vfs.azure.storage_account_name"] = "";
   all_param_values["vfs.azure.storage_account_key"] = "";
+  all_param_values["vfs.azure.storage_sas_token"] = "";
   all_param_values["vfs.azure.blob_endpoint"] = "";
   all_param_values["vfs.azure.block_list_block_size"] = "5242880";
   all_param_values["vfs.azure.max_parallel_ops"] =
@@ -646,6 +664,7 @@ TEST_CASE("C API: Test config iter", "[capi], [config]") {
   vfs_param_values["gcs.request_timeout_ms"] = "3000";
   vfs_param_values["azure.storage_account_name"] = "";
   vfs_param_values["azure.storage_account_key"] = "";
+  vfs_param_values["azure.storage_sas_token"] = "";
   vfs_param_values["azure.blob_endpoint"] = "";
   vfs_param_values["azure.block_list_block_size"] = "5242880";
   vfs_param_values["azure.max_parallel_ops"] =
@@ -706,6 +725,7 @@ TEST_CASE("C API: Test config iter", "[capi], [config]") {
   std::map<std::string, std::string> azure_param_values;
   azure_param_values["storage_account_name"] = "";
   azure_param_values["storage_account_key"] = "";
+  azure_param_values["storage_sas_token"] = "";
   azure_param_values["blob_endpoint"] = "";
   azure_param_values["block_list_block_size"] = "5242880";
   azure_param_values["max_parallel_ops"] =
@@ -776,10 +796,29 @@ TEST_CASE("C API: Test config iter", "[capi], [config]") {
     CHECK(error == nullptr);
   } while (!done);
   // highlight any difference to aid the poor developer in event CHECK() fails.
+  // If tiledb environment config variables have been set to something different
+  // from default configuration (such as
+  // "set/export TILEDB_VFS_S3_AWS_ACCESS_KEY_ID=minio"),
+  // these can legitimately differ from the defaults expected!
   for (auto i1 = all_param_values.begin(); i1 != all_param_values.end(); ++i1) {
-    if (all_iter_map.find(i1->first) == all_iter_map.end()) {
+    if (auto i2 = all_iter_map.find(i1->first); i2 == all_iter_map.end()) {
       std::cout << "all_iter_map[\"" << i1->first << "\"] not found!"
                 << std::endl;
+    } else {
+      if (i1->first != i2->first) {
+        std::cout << "huh? i1->first != i2->first, \"" << i1->first
+                  << "\" vs \"" << i2->first << std::endl;
+      } else if (i2->second != i1->second) {
+        std::cout << "values for key \"" << i1->first << "\", "
+                  << "\"" << i2->second << "\" != "
+                  << "\"" << i1->second << "\"" << std::endl;
+      } else if (all_param_values[i1->first] != all_iter_map[i1->first]) {
+        // if i1->first == i2->first, then should not be possible to be here,
+        // but just in case...
+        std::cout << " apv[k] != aim[k], k \"" << i1->first << "\", "
+                  << "\"" << all_param_values[i1->first] << "\" != \""
+                  << all_iter_map[i1->first] << "\"" << std::endl;
+      }
     }
   }
   for (auto i1 = all_iter_map.begin(); i1 != all_iter_map.end(); ++i1) {
@@ -787,6 +826,8 @@ TEST_CASE("C API: Test config iter", "[capi], [config]") {
       std::cout << "all_param_values[\"" << i1->first << "\"] not found!"
                 << std::endl;
     }
+    // else, for all like keys, unlike values should have been reported in
+    // previous loop.
   }
   CHECK(all_param_values == all_iter_map);
   tiledb_config_iter_free(&config_iter);
@@ -817,9 +858,26 @@ TEST_CASE("C API: Test config iter", "[capi], [config]") {
   } while (!done);
   // highlight any difference to aid the poor developer in event CHECK() fails.
   for (auto i1 = vfs_param_values.begin(); i1 != vfs_param_values.end(); ++i1) {
-    if (vfs_iter_map.find(i1->first) == vfs_iter_map.end()) {
+    if (auto i2 = vfs_iter_map.find(i1->first); i2 == vfs_iter_map.end()) {
       std::cout << "vfs_iter_map[\"" << i1->first << "\"] not found!"
                 << std::endl;
+    } else {
+      if (i1->first != i2->first) {
+        std::cout << "huh? i1->first != i2->first, \"" << i1->first
+                  << "\" vs \"" << i2->first << std::endl;
+      } else if (i2->second != i1->second) {
+        std::cout << "values for key \"" << i1->first << "\", "
+                  << "\"" << i2->second << "\" != "
+                  << "\"" << i1->second << "\"" << std::endl;
+      } else if (vfs_param_values[i1->first] != vfs_iter_map[i1->first]) {
+        // if i1->first == i2->first, then should not be possible to be here,
+        // but just in case...
+        std::cout << " apv[k] != aim[k], k \"" << i1->first << "\", "
+                  << "\"" << vfs_param_values[i1->first] << "\" != \""
+                  << vfs_iter_map[i1->first] << "\"" << std::endl;
+        // std::cout << " apv/aim [\"" << i1->first << "\"], \"" <<
+        // all_param_values[i1->first] << " != \"" <<
+      }
     }
   }
   for (auto i1 = vfs_iter_map.begin(); i1 != vfs_iter_map.end(); ++i1) {
@@ -910,9 +968,26 @@ TEST_CASE("C API: Test config iter", "[capi], [config]") {
   } while (!done);
   // highlight any difference to aid the poor developer in event CHECK() fails.
   for (auto i1 = s3_param_values.begin(); i1 != s3_param_values.end(); ++i1) {
-    if (s3_iter_map.find(i1->first) == s3_iter_map.end()) {
+    if (auto i2 = s3_iter_map.find(i1->first); i2 == s3_iter_map.end()) {
       std::cout << "s3_iter_map[\"" << i1->first << "\"] not found!"
                 << std::endl;
+    } else {
+      if (i1->first != i2->first) {
+        std::cout << "huh? i1->first != i2->first, \"" << i1->first
+                  << "\" vs \"" << i2->first << std::endl;
+      } else if (i2->second != i1->second) {
+        std::cout << "values for key \"" << i1->first << "\", "
+                  << "\"" << i2->second << "\" != "
+                  << "\"" << i1->second << "\"" << std::endl;
+      } else if (s3_param_values[i1->first] != s3_iter_map[i1->first]) {
+        // if i1->first == i2->first, then should not be possible to be here,
+        // but just in case...
+        std::cout << " apv[k] != aim[k], k \"" << i1->first << "\", "
+                  << "\"" << s3_param_values[i1->first] << "\" != \""
+                  << s3_iter_map[i1->first] << "\"" << std::endl;
+        // std::cout << " apv/aim [\"" << i1->first << "\"], \"" <<
+        // all_param_values[i1->first] << " != \"" <<
+      }
     }
   }
   for (auto i1 = s3_iter_map.begin(); i1 != s3_iter_map.end(); ++i1) {

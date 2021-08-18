@@ -181,7 +181,6 @@ set(TILEDB_CORE_SOURCES
   ${TILEDB_CORE_INCLUDE_DIR}/tiledb/sm/subarray/subarray.cc
   ${TILEDB_CORE_INCLUDE_DIR}/tiledb/sm/subarray/subarray_partitioner.cc
   ${TILEDB_CORE_INCLUDE_DIR}/tiledb/sm/subarray/subarray_tile_overlap.cc
-  ${TILEDB_CORE_INCLUDE_DIR}/tiledb/sm/tile/chunked_buffer.cc
   ${TILEDB_CORE_INCLUDE_DIR}/tiledb/sm/tile/tile.cc
   ${TILEDB_CORE_INCLUDE_DIR}/tiledb/sm/tile/generic_tile_io.cc
 )
@@ -449,7 +448,7 @@ target_link_libraries(TILEDB_CORE_OBJECTS_ILIB
   INTERFACE
     Bzip2::Bzip2
     LZ4::LZ4
-    Spdlog::Spdlog
+    spdlog::spdlog
     Zlib::Zlib
     Zstd::Zstd
 )
@@ -717,14 +716,7 @@ if (TILEDB_STATIC)
   append_dep_lib(GCSSDK::storage_client)
   append_dep_lib(GCSSDK::google_cloud_cpp_common)
   append_dep_lib(GCSSDK::crc32c)
-
-  # Spdlog is a special case because it is header-only.
-  string(CONCAT TILEDB_STATIC_DEP_STRING
-    "${TILEDB_STATIC_DEP_STRING}"
-    "if (NOT TARGET Spdlog::Spdlog)\n"
-    "  add_library(Spdlog::Spdlog INTERFACE IMPORTED)\n"
-    "endif()"
-  )
+  append_dep_lib(spdlog::spdlog)
 endif()
 
 ############################################################

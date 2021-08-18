@@ -60,7 +60,7 @@ const std::string Config::REST_SERVER_DEFAULT_ADDRESS =
 const std::string Config::REST_SERIALIZATION_DEFAULT_FORMAT = "CAPNP";
 const std::string Config::REST_SERVER_DEFAULT_HTTP_COMPRESSOR = "any";
 const std::string Config::REST_RETRY_HTTP_CODES = "503";
-const std::string Config::REST_RETRY_COUNT = "3";
+const std::string Config::REST_RETRY_COUNT = "25";
 const std::string Config::REST_RETRY_INITIAL_DELAY_MS = "500";
 const std::string Config::REST_RETRY_DELAY_FACTOR = "1.25";
 const std::string Config::SM_ENCRYPTION_KEY = "0";
@@ -76,6 +76,11 @@ const std::string Config::SM_MEMORY_BUDGET = "5368709120";       // 5GB
 const std::string Config::SM_MEMORY_BUDGET_VAR = "10737418240";  // 10GB;
 const std::string Config::SM_USE_REFACTORED_READERS = "false";
 const std::string Config::SM_MEM_TOTAL_BUDGET = "10737418240";  // 10GB;
+const std::string Config::SM_MEM_SPARSE_GLOBAL_ORDER_RATIO_COORDS = "0.5";
+const std::string Config::SM_MEM_SPARSE_GLOBAL_ORDER_RATIO_QUERY_CONDITION =
+    "0.25";
+const std::string Config::SM_MEM_SPARSE_GLOBAL_ORDER_RATIO_TILE_RANGES = "0.1";
+const std::string Config::SM_MEM_SPARSE_GLOBAL_ORDER_RATIO_ARRAY_DATA = "0.1";
 const std::string Config::SM_ENABLE_SIGNAL_HANDLERS = "true";
 const std::string Config::SM_COMPUTE_CONCURRENCY_LEVEL =
     utils::parse::to_str(std::thread::hardware_concurrency());
@@ -111,6 +116,7 @@ const std::string Config::VFS_READ_AHEAD_SIZE = "102400";          // 100KiB
 const std::string Config::VFS_READ_AHEAD_CACHE_SIZE = "10485760";  // 10MiB;
 const std::string Config::VFS_AZURE_STORAGE_ACCOUNT_NAME = "";
 const std::string Config::VFS_AZURE_STORAGE_ACCOUNT_KEY = "";
+const std::string Config::VFS_AZURE_STORAGE_SAS_TOKEN = "";
 const std::string Config::VFS_AZURE_BLOB_ENDPOINT = "";
 const std::string Config::VFS_AZURE_USE_HTTPS = "true";
 const std::string Config::VFS_AZURE_MAX_PARALLEL_OPS =
@@ -169,6 +175,7 @@ const char Config::COMMENT_START = '#';
 const std::set<std::string> Config::unserialized_params_ = {
     "vfs.azure.storage_account_name",
     "vfs.azure.storage_account_key",
+    "vfs.azure.storage_sas_token",
     "vfs.s3.proxy_username",
     "vfs.s3.proxy_password",
     "vfs.s3.aws_access_key_id",
@@ -213,6 +220,14 @@ Config::Config() {
   param_values_["sm.memory_budget_var"] = SM_MEMORY_BUDGET_VAR;
   param_values_["sm.use_refactored_readers"] = SM_USE_REFACTORED_READERS;
   param_values_["sm.mem.total_budget"] = SM_MEM_TOTAL_BUDGET;
+  param_values_["sm.mem.reader.sparse_global_order.ratio_coords"] =
+      SM_MEM_SPARSE_GLOBAL_ORDER_RATIO_COORDS;
+  param_values_["sm.mem.reader.sparse_global_order.ratio_query_condition"] =
+      SM_MEM_SPARSE_GLOBAL_ORDER_RATIO_QUERY_CONDITION;
+  param_values_["sm.mem.reader.sparse_global_order.ratio_tile_ranges"] =
+      SM_MEM_SPARSE_GLOBAL_ORDER_RATIO_TILE_RANGES;
+  param_values_["sm.mem.reader.sparse_global_order.ratio_array_data"] =
+      SM_MEM_SPARSE_GLOBAL_ORDER_RATIO_ARRAY_DATA;
   param_values_["sm.enable_signal_handlers"] = SM_ENABLE_SIGNAL_HANDLERS;
   param_values_["sm.compute_concurrency_level"] = SM_COMPUTE_CONCURRENCY_LEVEL;
   param_values_["sm.io_concurrency_level"] = SM_IO_CONCURRENCY_LEVEL;
@@ -254,6 +269,7 @@ Config::Config() {
       VFS_AZURE_STORAGE_ACCOUNT_NAME;
   param_values_["vfs.azure.storage_account_key"] =
       VFS_AZURE_STORAGE_ACCOUNT_KEY;
+  param_values_["vfs.azure.storage_sas_token"] = VFS_AZURE_STORAGE_SAS_TOKEN;
   param_values_["vfs.azure.blob_endpoint"] = VFS_AZURE_BLOB_ENDPOINT;
   param_values_["vfs.azure.use_https"] = VFS_AZURE_USE_HTTPS;
   param_values_["vfs.azure.max_parallel_ops"] = VFS_AZURE_MAX_PARALLEL_OPS;
@@ -470,6 +486,19 @@ Status Config::unset(const std::string& param) {
     param_values_["sm.use_refactored_readers"] = SM_USE_REFACTORED_READERS;
   } else if (param == "sm.mem.total_budget") {
     param_values_["sm.mem.total_budget"] = SM_MEM_TOTAL_BUDGET;
+  } else if (param == "sm.mem.reader.sparse_global_order.ratio_coords") {
+    param_values_["sm.mem.reader.sparse_global_order.ratio_coords"] =
+        SM_MEM_SPARSE_GLOBAL_ORDER_RATIO_COORDS;
+  } else if (
+      param == "sm.mem.reader.sparse_global_order.ratio_query_condition") {
+    param_values_["sm.mem.reader.sparse_global_order.ratio_query_condition"] =
+        SM_MEM_SPARSE_GLOBAL_ORDER_RATIO_QUERY_CONDITION;
+  } else if (param == "sm.mem.reader.sparse_global_order.ratio_tile_ranges") {
+    param_values_["sm.mem.reader.sparse_global_order.ratio_tile_ranges"] =
+        SM_MEM_SPARSE_GLOBAL_ORDER_RATIO_TILE_RANGES;
+  } else if (param == "sm.mem.reader.sparse_global_order.ratio_array_data") {
+    param_values_["sm.mem.reader.sparse_global_order.ratio_array_data"] =
+        SM_MEM_SPARSE_GLOBAL_ORDER_RATIO_ARRAY_DATA;
   } else if (param == "sm.enable_signal_handlers") {
     param_values_["sm.enable_signal_handlers"] = SM_ENABLE_SIGNAL_HANDLERS;
   } else if (param == "sm.compute_concurrency_level") {
@@ -542,6 +571,8 @@ Status Config::unset(const std::string& param) {
   } else if (param == "vfs.azure.storage_account_key") {
     param_values_["vfs.azure.storage_account_key"] =
         VFS_AZURE_STORAGE_ACCOUNT_KEY;
+  } else if (param == "vfs.azure.storage_sas_token") {
+    param_values_["vfs.azure.storage_sas_token"] = VFS_AZURE_STORAGE_SAS_TOKEN;
   } else if (param == "vfs.azure.blob_endpoint") {
     param_values_["vfs.azure.blob_endpoint"] = VFS_AZURE_BLOB_ENDPOINT;
   } else if (param == "vfs.azure.use_https") {

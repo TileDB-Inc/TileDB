@@ -1210,6 +1210,12 @@ TEST_CASE_METHOD(
   rc = tiledb_array_schema_add_attribute(ctx_, array_schema, attr1);
   REQUIRE(rc == TILEDB_OK);
 
+  // Try readding attribute with new params to schema (error)
+  rc = tiledb_attribute_set_nullable(ctx_, attr1, true);
+  REQUIRE(rc == TILEDB_OK);
+  rc = tiledb_array_schema_add_attribute(ctx_, array_schema, attr1);
+  REQUIRE(rc == TILEDB_ERR);
+
   // Set schema members
   rc = tiledb_array_schema_set_capacity(ctx_, array_schema, CAPACITY);
   REQUIRE(rc == TILEDB_OK);

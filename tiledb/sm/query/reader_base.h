@@ -75,301 +75,15 @@ class ReaderBase : public StrategyBase {
   /*        PROTECTED DATATYPES        */
   /* ********************************* */
 
-  // TODO Remove selective unfiltering.
   /** Bitflags for individual dimension/attributes in `process_tiles()`. */
   typedef uint8_t ProcessTileFlags;
 
   /** Bitflag values applicable to `ProcessTileFlags`. */
-  enum ProcessTileFlag { READ = 1, COPY = 2, SELECTIVE_UNFILTERING = 4 };
+  enum ProcessTileFlag { READ = 1, COPY = 2 };
 
   typedef std::
       unordered_map<ResultTile*, std::vector<std::pair<uint64_t, uint64_t>>>
           ResultCellSlabsIndex;
-
-  class CopyFixedCellsContextCache {
-   public:
-    /** Constructor. */
-    CopyFixedCellsContextCache()
-        : initialized_(false)
-        , num_cs_(0) {
-    }
-
-    /** Destructor. */
-    ~CopyFixedCellsContextCache() = default;
-
-    DISABLE_COPY_AND_COPY_ASSIGN(CopyFixedCellsContextCache);
-    DISABLE_MOVE_AND_MOVE_ASSIGN(CopyFixedCellsContextCache);
-
-    /**
-     * Initializes this instance on the first invocation, otherwise
-     * this is a no-op.
-     *
-     * @param result_cell_slabs The cell slabs.
-     * @param num_copy_threads The number of threads used in the copy path.
-     */
-    void initialize(
-        const std::vector<ResultCellSlab>& result_cell_slabs,
-        const int num_copy_threads) {
-      // Without locking the `mutex_`, check if this instance
-      // has been initialized.
-      if (initialized_)
-        return;
-
-      std::lock_guard<std::mutex> lg(mutex_);
-
-      // Re-check if this instance has been initialized.
-      if (initialized_)
-        return;
-
-      // Store the number of cell slabs.
-      num_cs_ = result_cell_slabs.size();
-
-      // Calculate the partition sizes.
-      const uint64_t num_cs_partitions =
-          std::min<uint64_t>(num_copy_threads, num_cs_);
-      const uint64_t cs_per_partition = num_cs_ / num_cs_partitions;
-      const uint64_t cs_per_partition_carry = num_cs_ % num_cs_partitions;
-
-      // Calculate the partition offsets.
-      uint64_t num_cs_partitioned = 0;
-      cs_partitions_.reserve(num_cs_partitions);
-      for (uint64_t i = 0; i < num_cs_partitions; ++i) {
-        const uint64_t num_cs_in_partition =
-            cs_per_partition + ((i < cs_per_partition_carry) ? 1 : 0);
-        num_cs_partitioned += num_cs_in_partition;
-        cs_partitions_.emplace_back(num_cs_partitioned);
-      }
-
-      initialized_ = true;
-    }
-
-    /** Returns the `cs_partitions_`. */
-    const std::vector<size_t>* cs_partitions() const {
-      // We do protect this with `mutex_` because it is only
-      // mutated on initialization.
-      return &cs_partitions_;
-    }
-
-    /** Returns a pre-sized vector to store cell slab offsets. */
-    tdb_unique_ptr<std::vector<uint64_t>> get_cs_offsets() {
-      std::lock_guard<std::mutex> lg(mutex_);
-
-      // Re-use a vector in the `cs_offsets_cache_` if possible,
-      // otherwise create a new vector of size `num_cs_`.
-      tdb_unique_ptr<std::vector<uint64_t>> cs_offsets;
-      if (!cs_offsets_cache_.empty()) {
-        cs_offsets = std::move(cs_offsets_cache_.front());
-        assert(cs_offsets->size() == num_cs_);
-        cs_offsets_cache_.pop();
-      } else {
-        cs_offsets =
-            tdb_unique_ptr<std::vector<uint64_t>>(new std::vector<uint64_t>());
-        cs_offsets->resize(num_cs_);
-      }
-
-      return cs_offsets;
-    }
-
-    /** Returns a vector fetched from `get_cs_offsets`. */
-    void cache_cs_offsets(tdb_unique_ptr<std::vector<uint64_t>>&& cs_offsets) {
-      assert(cs_offsets->size() == num_cs_);
-      std::lock_guard<std::mutex> lg(mutex_);
-      cs_offsets_cache_.push(std::move(cs_offsets));
-    }
-
-   private:
-    /** Protects all member variables. */
-    std::mutex mutex_;
-
-    /** True if the context cache has been initialized. */
-    bool initialized_;
-
-    /**
-     * Logical partitions of `cs_offsets`. Each element is the
-     * partition's starting index.
-     */
-    std::vector<size_t> cs_partitions_;
-
-    /** The number of cell slabs. */
-    size_t num_cs_;
-
-    /**
-     * A pool of vectors that maps the index of each cell slab
-     * to its offset in the output buffer.
-     */
-    std::queue<tdb_unique_ptr<std::vector<uint64_t>>> cs_offsets_cache_;
-  };
-
-  class CopyVarCellsContextCache {
-   public:
-    /** Constructor. */
-    CopyVarCellsContextCache()
-        : initialized_(false)
-        , total_cs_length_(0) {
-    }
-
-    /** Destructor. */
-    ~CopyVarCellsContextCache() = default;
-
-    DISABLE_COPY_AND_COPY_ASSIGN(CopyVarCellsContextCache);
-    DISABLE_MOVE_AND_MOVE_ASSIGN(CopyVarCellsContextCache);
-
-    /**
-     * Initializes this instance on the first invocation, otherwise
-     * this is a no-op.
-     *
-     * @param result_cell_slabs The cell slabs.
-     * @param num_copy_threads The number of threads used in the copy path.
-     */
-    void initialize(
-        const std::vector<ResultCellSlab>& result_cell_slabs,
-        const int num_copy_threads) {
-      // Without locking the `mutex_`, check if this instance
-      // has been initialized.
-      if (initialized_)
-        return;
-
-      std::lock_guard<std::mutex> lg(mutex_);
-
-      // Re-check if this instance has been initialized.
-      if (initialized_)
-        return;
-
-      // Calculate the partition range.
-      const uint64_t num_cs = result_cell_slabs.size();
-      const uint64_t num_cs_partitions =
-          std::min<uint64_t>(num_copy_threads, num_cs);
-      const uint64_t cs_per_partition = num_cs / num_cs_partitions;
-      const uint64_t cs_per_partition_carry = num_cs % num_cs_partitions;
-
-      // Compute the boundary between each partition. Each boundary
-      // is represented by an `std::pair` that contains the total
-      // length of each cell slab in the leading partition and an
-      // exclusive cell slab index that ends the partition.
-      uint64_t next_partition_idx = cs_per_partition;
-      if (cs_per_partition_carry > 0)
-        ++next_partition_idx;
-
-      total_cs_length_ = 0;
-      cs_partitions_.reserve(num_cs_partitions);
-      for (uint64_t cs_idx = 0; cs_idx < num_cs; cs_idx++) {
-        if (cs_idx == next_partition_idx) {
-          cs_partitions_.emplace_back(total_cs_length_, cs_idx);
-
-          // The final partition may contain extra cell slabs that did
-          // not evenly divide into the partition range. Set the
-          // `next_partition_idx` to zero and build the last boundary
-          // after this for-loop.
-          if (cs_partitions_.size() == num_cs_partitions) {
-            next_partition_idx = 0;
-          } else {
-            next_partition_idx += cs_per_partition;
-            if (cs_idx < (cs_per_partition_carry - 1))
-              ++next_partition_idx;
-          }
-        }
-
-        total_cs_length_ += result_cell_slabs[cs_idx].length_;
-      }
-
-      // Store the final boundary.
-      cs_partitions_.emplace_back(total_cs_length_, num_cs);
-    }
-
-    /** Returns the `cs_partitions_`. */
-    const std::vector<std::pair<size_t, size_t>>* cs_partitions() const {
-      // We do protect this with `mutex_` because it is only
-      // mutated on initialization.
-      return &cs_partitions_;
-    }
-
-    /** Returns a pre-sized vector to store offset-offsets per cell slab. */
-    tdb_unique_ptr<std::vector<uint64_t>> get_offset_offsets_per_cs() {
-      std::lock_guard<std::mutex> lg(mutex_);
-
-      // Re-use a vector in the `offset_offsets_per_cs_cache_` if possible,
-      // otherwise create a new vector of size `total_cs_length_`.
-      tdb_unique_ptr<std::vector<uint64_t>> offset_offsets_per_cs;
-      if (!offset_offsets_per_cs_cache_.empty()) {
-        offset_offsets_per_cs = std::move(offset_offsets_per_cs_cache_.front());
-        assert(offset_offsets_per_cs->size() == total_cs_length_);
-        offset_offsets_per_cs_cache_.pop();
-      } else {
-        offset_offsets_per_cs =
-            tdb_unique_ptr<std::vector<uint64_t>>(new std::vector<uint64_t>());
-        offset_offsets_per_cs->resize(total_cs_length_);
-      }
-
-      return offset_offsets_per_cs;
-    }
-
-    /** Returns a vector fetched from `get_offset_offsets_per_cs`. */
-    void cache_offset_offsets_per_cs(
-        tdb_unique_ptr<std::vector<uint64_t>>&& offset_offsets_per_cs) {
-      assert(offset_offsets_per_cs->size() == total_cs_length_);
-      std::lock_guard<std::mutex> lg(mutex_);
-      offset_offsets_per_cs_cache_.push(std::move(offset_offsets_per_cs));
-    }
-
-    /** Returns a pre-sized vector to store var-offsets per cell slab. */
-    tdb_unique_ptr<std::vector<uint64_t>> get_var_offsets_per_cs() {
-      std::lock_guard<std::mutex> lg(mutex_);
-
-      // Re-use a vector in the `var_offsets_per_cs_cache_` if possible,
-      // otherwise create a new vector of size `total_cs_length_`.
-      tdb_unique_ptr<std::vector<uint64_t>> var_offsets_per_cs;
-      if (!var_offsets_per_cs_cache_.empty()) {
-        var_offsets_per_cs = std::move(var_offsets_per_cs_cache_.front());
-        assert(var_offsets_per_cs->size() == total_cs_length_);
-        var_offsets_per_cs_cache_.pop();
-      } else {
-        var_offsets_per_cs =
-            tdb_unique_ptr<std::vector<uint64_t>>(new std::vector<uint64_t>());
-        var_offsets_per_cs->resize(total_cs_length_);
-      }
-
-      return var_offsets_per_cs;
-    }
-
-    /** Returns a vector fetched from `get_var_offsets_per_cs`. */
-    void cache_var_offsets_per_cs(
-        tdb_unique_ptr<std::vector<uint64_t>>&& var_offsets_per_cs) {
-      assert(var_offsets_per_cs->size() == total_cs_length_);
-      std::lock_guard<std::mutex> lg(mutex_);
-      var_offsets_per_cs_cache_.push(std::move(var_offsets_per_cs));
-    }
-
-   private:
-    /** Protects all member variables. */
-    std::mutex mutex_;
-
-    /** True if the context cache has been initialized. */
-    bool initialized_;
-
-    /**
-     * Logical partitions for both `offset_offsets_per_cs` and
-     * `var_offsets_per_cs`. Each element contains a pair, where the
-     * first pair-element is the partition's starting index and the
-     * second pair-element is the number of cell slabs in the partition.
-     */
-    std::vector<std::pair<size_t, size_t>> cs_partitions_;
-
-    /** The total size of all cell slabs. */
-    size_t total_cs_length_;
-
-    /**
-     * A pool of vectors that maps each cell slab to its offset
-     * for its attribute offsets.
-     */
-    std::queue<tdb_unique_ptr<std::vector<uint64_t>>>
-        offset_offsets_per_cs_cache_;
-
-    /**
-     * A pool of vectors that maps each cell slab to its offset
-     * for its variable-length data.
-     */
-    std::queue<tdb_unique_ptr<std::vector<uint64_t>>> var_offsets_per_cs_cache_;
-  };
 
   /* ********************************* */
   /*       PROTECTED ATTRIBUTES        */
@@ -393,6 +107,13 @@ class ReaderBase : public StrategyBase {
   /** Was there an overflow during copying tiles. */
   bool copy_overflowed_;
 
+  /**
+   * Used to specify where in the result cell slabs to end the copy
+   * operations. First is the size of the result cell slabs, second is
+   * the length of the last result cell slab.
+   */
+  std::pair<uint64_t, uint64_t> copy_end_;
+
   /* ********************************* */
   /*         PROTECTED METHODS         */
   /* ********************************* */
@@ -406,7 +127,7 @@ class ReaderBase : public StrategyBase {
    */
   void clear_tiles(
       const std::string& name,
-      const std::vector<ResultTile*>& result_tiles) const;
+      const std::vector<ResultTile*>* result_tiles) const;
 
   /**
    * Resets the buffer sizes to the original buffer sizes. This is because
@@ -433,7 +154,7 @@ class ReaderBase : public StrategyBase {
    * @return Status
    */
   Status load_tile_offsets(
-      Subarray& subarray, const std::vector<std::string>& names);
+      Subarray* subarray, const std::vector<std::string>* names);
 
   /**
    * Initializes a fixed-sized tile.
@@ -504,8 +225,8 @@ class ReaderBase : public StrategyBase {
    * @return Status
    */
   Status read_attribute_tiles(
-      const std::vector<std::string>& names,
-      const std::vector<ResultTile*>& result_tiles) const;
+      const std::vector<std::string>* names,
+      const std::vector<ResultTile*>* result_tiles) const;
 
   /**
    * Concurrently executes `read_tiles` for each name in `names`. This
@@ -518,8 +239,8 @@ class ReaderBase : public StrategyBase {
    * @return Status
    */
   Status read_coordinate_tiles(
-      const std::vector<std::string>& names,
-      const std::vector<ResultTile*>& result_tiles) const;
+      const std::vector<std::string>* names,
+      const std::vector<ResultTile*>* result_tiles) const;
 
   /**
    * Concurrently executes `read_tiles` for each name in `names`.
@@ -530,8 +251,8 @@ class ReaderBase : public StrategyBase {
    * @return Status
    */
   Status read_tiles(
-      const std::vector<std::string>& names,
-      const std::vector<ResultTile*>& result_tiles) const;
+      const std::vector<std::string>* names,
+      const std::vector<ResultTile*>* result_tiles) const;
 
   /**
    * Retrieves the tiles on a particular attribute or dimension and stores it
@@ -544,7 +265,7 @@ class ReaderBase : public StrategyBase {
    */
   Status read_tiles(
       const std::string& name,
-      const std::vector<ResultTile*>& result_tiles) const;
+      const std::vector<ResultTile*>* result_tiles) const;
 
   /**
    * Retrieves the tiles on a particular attribute or dimension and stores it
@@ -561,7 +282,7 @@ class ReaderBase : public StrategyBase {
    */
   Status read_tiles(
       const std::string& name,
-      const std::vector<ResultTile*>& result_tiles,
+      const std::vector<ResultTile*>* result_tiles,
       std::vector<ThreadPool::Task>* tasks) const;
 
   /**
@@ -570,15 +291,11 @@ class ReaderBase : public StrategyBase {
    *
    * @param name Attribute/dimension whose tiles will be unfiltered.
    * @param result_tiles Vector containing the tiles to be unfiltered.
-   * @param cs_ranges An optional association from the result tile to
-   *   the cell slab ranges that it contains. If given, this will be
-   *   used for selective unfiltering.
    * @return Status
    */
   Status unfilter_tiles(
       const std::string& name,
-      const std::vector<ResultTile*>& result_tiles,
-      const ResultCellSlabsIndex* const rcs_index) const;
+      const std::vector<ResultTile*>* result_tiles) const;
 
   /**
    * Runs the input fixed-sized tile for the input attribute or dimension
@@ -587,15 +304,9 @@ class ReaderBase : public StrategyBase {
    *
    * @param name The attribute/dimension the tile belong to.
    * @param tile The tile to be unfiltered.
-   * @param result_cell_slab_ranges Result cell slab ranges sorted in ascending
-   *    order.
    * @return Status
    */
-  Status unfilter_tile(
-      const std::string& name,
-      Tile* tile,
-      const std::vector<std::pair<uint64_t, uint64_t>>* result_cell_slab_ranges)
-      const;
+  Status unfilter_tile(const std::string& name, Tile* tile) const;
 
   /**
    * Runs the input var-sized tile for the input attribute or dimension through
@@ -605,16 +316,10 @@ class ReaderBase : public StrategyBase {
    * @param name The attribute/dimension the tile belong to.
    * @param tile The offsets tile to be unfiltered.
    * @param tile_var The value tile to be unfiltered.
-   * @param result_cell_slab_ranges Result cell slab ranges sorted in ascending
-   *    order.
    * @return Status
    */
   Status unfilter_tile(
-      const std::string& name,
-      Tile* tile,
-      Tile* tile_var,
-      const std::vector<std::pair<uint64_t, uint64_t>>* result_cell_slab_ranges)
-      const;
+      const std::string& name, Tile* tile, Tile* tile_var) const;
 
   /**
    * Runs the input fixed-sized tile for the input nullable attribute
@@ -624,16 +329,10 @@ class ReaderBase : public StrategyBase {
    * @param name The attribute/dimension the tile belong to.
    * @param tile The tile to be unfiltered.
    * @param tile_validity The validity tile to be unfiltered.
-   * @param result_cell_slab_ranges Result cell slab ranges sorted in ascending
-   *    order.
    * @return Status
    */
   Status unfilter_tile_nullable(
-      const std::string& name,
-      Tile* tile,
-      Tile* tile_validity,
-      const std::vector<std::pair<uint64_t, uint64_t>>* result_cell_slab_ranges)
-      const;
+      const std::string& name, Tile* tile, Tile* tile_validity) const;
 
   /**
    * Runs the input var-sized tile for the input nullable attribute through
@@ -644,25 +343,21 @@ class ReaderBase : public StrategyBase {
    * @param tile The offsets tile to be unfiltered.
    * @param tile_var The value tile to be unfiltered.
    * @param tile_validity The validity tile to be unfiltered.
-   * @param result_cell_slab_ranges Result cell slab ranges sorted in ascending
-   *    order.
    * @return Status
    */
   Status unfilter_tile_nullable(
       const std::string& name,
       Tile* tile,
       Tile* tile_var,
-      Tile* tile_validity,
-      const std::vector<std::pair<uint64_t, uint64_t>>* result_cell_slab_ranges)
-      const;
+      Tile* tile_validity) const;
 
   /**
    * Copies the result coordinates to the user buffers.
    * It also appropriately cleans up the used result tiles.
    */
   Status copy_coordinates(
-      const std::vector<ResultTile*>& result_tiles,
-      std::vector<ResultCellSlab>& result_cell_slabs);
+      const std::vector<ResultTile*>* result_tiles,
+      std::vector<ResultCellSlab>* result_cell_slabs);
 
   /**
    * Copies the result attribute values to the user buffers.
@@ -670,9 +365,10 @@ class ReaderBase : public StrategyBase {
    */
   Status copy_attribute_values(
       uint64_t stride,
-      const std::vector<ResultTile*>& result_tiles,
-      std::vector<ResultCellSlab>& result_cell_slabs,
-      Subarray& subarray);
+      std::vector<ResultTile*>* result_tiles,
+      std::vector<ResultCellSlab>* result_cell_slabs,
+      Subarray& subarray,
+      uint64_t memory_budget = UINT64_MAX);
 
   /**
    * Copies the cells for the input **fixed-sized** attribute/dimension and
@@ -683,25 +379,24 @@ class ReaderBase : public StrategyBase {
    *     cell slabs are all contiguous. Otherwise, each cell in the
    *     result cell slabs are `stride` cells apart from each other.
    * @param result_cell_slabs The result cell slabs to copy cells for.
-   * @param ctx_cache An opaque context cache that may be shared between
-   *     calls to improve performance.
+   * @param fixed_cs_partitions The cell slab partitions.
    * @return Status
    */
   Status copy_fixed_cells(
       const std::string& name,
       uint64_t stride,
-      const std::vector<ResultCellSlab>& result_cell_slabs,
-      CopyFixedCellsContextCache* ctx_cache);
+      const std::vector<ResultCellSlab>* result_cell_slabs,
+      std::vector<size_t>* fixed_cs_partitions);
 
   /**
-   * Populates 'ctx_cache' for fixed-sized cell copying.
+   * Compute cs partitions for fixed-sized cell copying.
    *
    * @param result_cell_slabs The result cell slabs to copy cells for.
-   * @param ctx_cache The context cache to populate.
+   * @param fixed_cs_partitions The output partitions.
    */
-  void populate_cfc_ctx_cache(
-      const std::vector<ResultCellSlab>& result_cell_slabs,
-      CopyFixedCellsContextCache* ctx_cache);
+  void compute_fixed_cs_partitions(
+      const std::vector<ResultCellSlab>* result_cell_slabs,
+      std::vector<size_t>* fixed_cs_partitions);
 
   /**
    * Returns the configured bytesize for var-sized attribute offsets
@@ -728,8 +423,8 @@ class ReaderBase : public StrategyBase {
       const std::string* name,
       uint64_t stride,
       const std::vector<ResultCellSlab>* result_cell_slabs,
-      const std::vector<uint64_t>& cs_offsets,
-      const std::vector<size_t>& cs_partitions);
+      const std::vector<uint64_t>* cs_offsets,
+      const std::vector<size_t>* cs_partitions);
 
   /**
    * Copies the cells for the input **var-sized** attribute/dimension and result
@@ -740,25 +435,28 @@ class ReaderBase : public StrategyBase {
    *     cell slabs are all contiguous. Otherwise, each cell in the
    *     result cell slabs are `stride` cells apart from each other.
    * @param result_cell_slabs The result cell slabs to copy cells for.
-   * @param ctx_cache An opaque context cache that may be shared between
-   *     calls to improve performance.
+   * @param var_cs_partitions The cell slab partitions.
+   * @param total_cs_length The total cell slab length.
    * @return Status
    */
   Status copy_var_cells(
       const std::string& name,
       uint64_t stride,
-      std::vector<ResultCellSlab>& result_cell_slabs,
-      CopyVarCellsContextCache* ctx_cache);
+      std::vector<ResultCellSlab>* result_cell_slabs,
+      std::vector<std::pair<size_t, size_t>>* var_cs_partitions,
+      size_t total_var_cs_length);
 
   /**
-   * Populates 'ctx_cache' for var-sized cell copying.
+   * Compute cs partitions for var-sized cell copying.
    *
    * @param result_cell_slabs The result cell slabs to copy cells for.
-   * @param ctx_cache The context cache to populate.
+   * @param var_cs_partitions The output partitions.
+   * @param total_var_cs_length The total cell slab length.
    */
-  void populate_cvc_ctx_cache(
-      const std::vector<ResultCellSlab>& result_cell_slabs,
-      CopyVarCellsContextCache* ctx_cache);
+  void compute_var_cs_partitions(
+      const std::vector<ResultCellSlab>* result_cell_slabs,
+      std::vector<std::pair<size_t, size_t>>* var_cs_partitions,
+      size_t* total_var_cs_length);
 
   /**
    * Computes offsets into destination buffers for the given
@@ -787,7 +485,7 @@ class ReaderBase : public StrategyBase {
   Status compute_var_cell_destinations(
       const std::string& name,
       uint64_t stride,
-      std::vector<ResultCellSlab>& result_cell_slabs,
+      std::vector<ResultCellSlab>* result_cell_slabs,
       std::vector<uint64_t>* offset_offsets_per_cs,
       std::vector<uint64_t>* var_offsets_per_cs,
       uint64_t* total_offset_size,
@@ -797,7 +495,7 @@ class ReaderBase : public StrategyBase {
   /**
    * Copies the cells for the input **var-sized** attribute/dimension and result
    * cell slabs into the corresponding result buffers for the
-   * partition in `ctx_cache` at index `partition_idx`.
+   * partition in `cs_partitions` at index `partition_idx`.
    *
    * @param name The partition index.
    * @param name The targeted attribute/dimension.
@@ -831,21 +529,25 @@ class ReaderBase : public StrategyBase {
    * @param result_cell_slabs The cell slabs to process.
    * @param subarray Specifies the current subarray.
    * @param stride The stride between cells, UINT64_MAX for contiguous.
+   * @param memory_budget The memory budget, UINT64_MAX for unlimited.
+   * @param memory_used_for_tiles The memory used for tiles that will not be
+   * unloaded.
    */
   Status process_tiles(
-      const std::unordered_map<std::string, ProcessTileFlags>& names,
-      const std::vector<ResultTile*>& result_tiles,
-      std::vector<ResultCellSlab>& result_cell_slabs,
-      Subarray& subarray,
-      uint64_t stride);
+      const std::unordered_map<std::string, ProcessTileFlags>* names,
+      std::vector<ResultTile*>* result_tiles,
+      std::vector<ResultCellSlab>* result_cell_slabs,
+      Subarray* subarray,
+      uint64_t stride,
+      uint64_t memory_budget,
+      uint64_t* memory_used_for_tiles);
 
   /**
    * Builds and returns an association from each tile in `result_cell_slabs`
    * to the cell slabs it contains.
    */
   tdb_unique_ptr<ResultCellSlabsIndex> compute_rcs_index(
-      const std::vector<ResultCellSlab>& result_cell_slabs,
-      Subarray& subarray) const;
+      const std::vector<ResultCellSlab>* result_cell_slabs) const;
 
   /**
    * Applies the query condition, `condition_`, to filter cell indexes
@@ -857,13 +559,33 @@ class ReaderBase : public StrategyBase {
    * @param subarray Specifies the current subarray.
    * @param stride The stride between cells, defaulting to UINT64_MAX
    *   for contiguous cells.
+   * @param memory_budget_rcs The memory budget for tiles, defaulting
+   *   to UINT64_MAX for unlimited budget.
+   * @param memory_budget_tiles The memory budget for result cell slabs,
+   *   defaulting to UINT64_MAX for unlimited budget.
+   * @param memory_used_for_tiles The memory used for tiles that will
+   *   not be unloaded.
    * @return Status
    */
   Status apply_query_condition(
       std::vector<ResultCellSlab>* result_cell_slabs,
-      const std::vector<ResultTile*>& result_tiles,
-      Subarray& subarray,
-      uint64_t stride = UINT64_MAX);
+      std::vector<ResultTile*>* result_tiles,
+      Subarray* subarray,
+      uint64_t stride = UINT64_MAX,
+      uint64_t memory_budget_rcs = UINT64_MAX,
+      uint64_t memory_budget_tiles = UINT64_MAX,
+      uint64_t* memory_used_for_tiles = nullptr);
+
+  /**
+   * Get the size of an attribute tile.
+   *
+   * @param name The attribute name.
+   * @param result_tile The result tile.
+   * @param tile_size The return tile size.
+   * @return Status
+   */
+  Status get_attribute_tile_size(
+      const std::string& name, ResultTile* result_tile, uint64_t* tile_size);
 };
 
 }  // namespace sm

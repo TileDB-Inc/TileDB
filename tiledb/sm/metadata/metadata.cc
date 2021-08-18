@@ -110,7 +110,7 @@ Status Metadata::deserialize(
   size_t value_len;
   for (const auto& buff : metadata_buffs) {
     // Iterate over all items
-    buff->set_offset(0);
+    buff->reset_offset();
     while (buff->offset() != buff->size()) {
       RETURN_NOT_OK(buff->read(&key_len, sizeof(uint32_t)));
       std::string key((const char*)buff->cur_data(), key_len);
