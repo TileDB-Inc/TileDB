@@ -264,7 +264,9 @@ void CPPAPISubarrayPartitionerDenseFx::test_subarray_partitioner(
       &cppvfs_.context(), cpparray_, ranges, subarray_layout, &tdb_subarray);
   tdb_subarray->set_layout((tiledb_layout_t)subarray_layout);
   check_subarray_equiv<T>(
-      coresubarray, *(tdb_subarray->capi_subarray()->subarray_));
+//      coresubarray, *(tdb_subarray->capi_subarray()->subarray_));
+      coresubarray,
+      *(tdb_subarray->ptr()->subarray_));
 
   tiledb::SubarrayPartitioner subarray_partitioner(
       cppvfs_.context(), *tdb_subarray, memory_budget_, memory_budget_var_, 0);
@@ -279,8 +281,9 @@ void CPPAPISubarrayPartitionerDenseFx::test_subarray_partitioner(
       &tdb_retrieve_partition_subarray);
   check_subarray_equiv<T>(
       coresubarray,
-      *(tdb_retrieve_partition_subarray->capi_subarray()->subarray_));
-  check_partitions(
+//      *(tdb_retrieve_partition_subarray->capi_subarray()->subarray_));
+      *(tdb_retrieve_partition_subarray->ptr()->subarray_));
+      check_partitions(
       &subarray_partitioner,
       partitions,
       unsplittable,
@@ -312,7 +315,9 @@ void CPPAPISubarrayPartitionerDenseFx::test_subarray_partitioner(
       &cppvfs_.context(), cpparray_, ranges, subarray_layout, &tdb_subarray);
   tdb_subarray->set_layout((tiledb_layout_t)subarray_layout);
   check_subarray_equiv<T>(
-      coresubarray, *(tdb_subarray->capi_subarray()->subarray_));
+//      coresubarray, *(tdb_subarray->capi_subarray()->subarray_));
+      coresubarray,
+      *(tdb_subarray->ptr()->subarray_));
 
   tiledb::SubarrayPartitioner subarray_partitioner(
       cppvfs_.context(), *tdb_subarray, memory_budget_, memory_budget_var_, 0);
@@ -326,7 +331,8 @@ void CPPAPISubarrayPartitionerDenseFx::test_subarray_partitioner(
       &tdb_retrieve_partition_subarray);
   check_subarray_equiv<T>(
       coresubarray,
-      *(tdb_retrieve_partition_subarray->capi_subarray()->subarray_));
+//      *(tdb_retrieve_partition_subarray->capi_subarray()->subarray_));
+      *(tdb_retrieve_partition_subarray->ptr()->subarray_));
 
   // Note: this is necessary, otherwise the subarray partitioner does
   // not check if the memory budget is exceeded for attributes whose
@@ -608,8 +614,9 @@ TEST_CASE_METHOD(
 
   ThreadPool tp;
   CHECK(tp.init(4).ok());
-  SubarrayPartitioner subarray_partitioner(
-      subarray, memory_budget_, memory_budget_var_, 0, &tp);
+  Config cfg;
+  tiledb::sm::SubarrayPartitioner subarray_partitioner(&cfg,
+      subarray, memory_budget_, memory_budget_var_, 0, &tp, nullptr);
   auto st = subarray_partitioner.set_result_budget("a", 100 * sizeof(int));
   CHECK(st.ok());
   st = subarray_partitioner.set_result_budget("b", 1, 1);

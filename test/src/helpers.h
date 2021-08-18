@@ -127,6 +127,23 @@ template <class T>
 void check_partitions(
     tiledb::sm::SubarrayPartitioner& partitioner,
     const std::vector<SubarrayRanges<T>>& partitions,
+    bool last_unsplittable);
+
+#if DEVING_SUBARRAY_PARTITIONER_STORY5342
+/**
+ * Checks that the capi input partitioner produces the input partitions
+ * (i.e., subarrays).
+ *
+ * @tparam T The datatype of the subarray of the partitioner.
+ * @param partitioner The capi partitioner.
+ * @param partitions The ranges to be checked.
+ * @param last_unsplittable Whether the last partition is unsplittable.
+ */
+template <class T>
+void check_partitions(
+    tiledb_ctx_t* ctx,
+    tiledb_subarray_partitioner_t* partitioner,
+    const std::vector<SubarrayRanges<T>>& partitions,
     bool last_unsplittable,
     tiledb_subarray_t* retrieve_partition_subarray);
 

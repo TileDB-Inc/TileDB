@@ -152,7 +152,7 @@ class SubarrayPartitioner {
         ctx_.get().ptr().get(),
         subarray_partitioner_.get(),
         part_id,
-        retrieved_subarray.capi_subarray()));
+        retrieved_subarray.ptr().get()));
     return *this;
   }
 

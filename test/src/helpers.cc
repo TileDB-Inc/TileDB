@@ -111,6 +111,7 @@ void check_partitions(
   }
 }
 
+#if DEVING_SUBARRAY_PARTITIONER_STORY5342
 template <class T>
 void check_partitions(
     tiledb_ctx_t* ctx,
@@ -303,6 +304,7 @@ bool subarray_equiv(
   bool equiv_state = 1;  // assume true
 
   equiv_state &= (subarray1.range_num() == subarray2.range_num());
+  equiv_state &= (subarray1.layout() == subarray2.layout());
   // Check dim num
   auto dim_num1 = subarray1.dim_num();
   auto dim_num2 = subarray2.dim_num();
