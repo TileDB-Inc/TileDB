@@ -89,7 +89,7 @@ TEST_CASE("FilterBuffer: Test init", "[filter], [filter-buffer]") {
   CHECK(fbuf.size() == 6);
   char data_r2[8];
   CHECK(!fbuf.read(data_r2, 6).ok());
-  fbuf.set_offset(0);
+  fbuf.reset_offset();
   CHECK(fbuf.read(data_r2, 6).ok());
   check_buf(data_r2, {0, 1, 6, 7, 8, 5});
 
@@ -128,24 +128,24 @@ TEST_CASE("FilterBuffer: Test prepend", "[filter], [filter-buffer]") {
   // Prepend a buffer of 2 bytes and overwrite in place, spanning both buffers.
   CHECK(fbuf.prepend_buffer(2).ok());
   CHECK(fbuf.size() == 6);
-  fbuf.set_offset(0);
+  fbuf.reset_offset();
   char data2[] = {7, 8, 9, 10, 11};
   CHECK(fbuf.write(data2, sizeof(data2)).ok());
   CHECK(fbuf.size() == 8);
   char data_r2[8];
-  fbuf.set_offset(0);
+  fbuf.reset_offset();
   CHECK(fbuf.read(data_r2, 8).ok());
   check_buf(data_r2, {7, 8, 9, 10, 11, 3, 4, 5});
 
   // Prepend another buffer of 3 bytes, and only write to it partially.
   CHECK(fbuf.prepend_buffer(3).ok());
   CHECK(fbuf.size() == 8);
-  fbuf.set_offset(0);
+  fbuf.reset_offset();
   char data3[] = {12};
   CHECK(fbuf.write(data3, sizeof(data3)).ok());
   CHECK(fbuf.size() == 9);
   char data_r3[9];
-  fbuf.set_offset(0);
+  fbuf.reset_offset();
   CHECK(fbuf.read(data_r3, 7).ok());
   check_buf(data_r3, {12, 7, 8, 9, 10, 11, 3});
 

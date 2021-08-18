@@ -519,24 +519,19 @@ TEST_CASE("Filter: Test empty pipeline", "[filter]") {
   const uint64_t cell_size = sizeof(uint64_t);
   const uint32_t dim_num = 0;
 
-  uint32_t chunk_size;
-  CHECK(Tile::compute_chunk_size(tile_size, dim_num, cell_size, &chunk_size)
-            .ok());
-
-  ChunkedBuffer chunked_buffer;
-  chunked_buffer.init_fixed_size(
-      ChunkedBuffer::BufferAddressing::DISCRETE, tile_size, chunk_size);
-  CHECK(chunked_buffer.size() == 0);
-  CHECK(chunked_buffer.capacity() == tile_size);
+  Buffer buffer;
+  buffer.realloc(tile_size);
+  CHECK(buffer.size() == 0);
+  CHECK(buffer.alloced_size() == tile_size);
 
   // Set up test data
   for (uint64_t i = 0; i < nelts; i++) {
-    const uint64_t offset = i * sizeof(uint64_t);
-    CHECK(chunked_buffer.write(&i, sizeof(uint64_t), offset).ok());
+    buffer.set_offset(i * sizeof(uint64_t));
+    CHECK(buffer.write(&i, sizeof(uint64_t)).ok());
   }
-  CHECK(chunked_buffer.size() == tile_size);
+  CHECK(buffer.size() == tile_size);
 
-  Tile tile(Datatype::UINT64, cell_size, dim_num, &chunked_buffer, false);
+  Tile tile(Datatype::UINT64, cell_size, dim_num, &buffer, false);
 
   FilterPipeline pipeline;
   ThreadPool tp;
@@ -544,7 +539,7 @@ TEST_CASE("Filter: Test empty pipeline", "[filter]") {
   CHECK(pipeline.run_forward(&test::g_helper_stats, &tile, &tp).ok());
 
   // Check new size and number of chunks
-  CHECK(tile.chunked_buffer()->size() == 0);
+  CHECK(tile.buffer()->size() == 0);
   CHECK(
       tile.filtered_buffer()->size() ==
       nelts * sizeof(uint64_t) + sizeof(uint64_t) + 3 * sizeof(uint32_t));
@@ -571,18 +566,18 @@ TEST_CASE("Filter: Test empty pipeline", "[filter]") {
   }
 
   CHECK(pipeline.run_reverse(&test::g_helper_stats, &tile, &tp, config).ok());
-  CHECK(tile.chunked_buffer()->size() != 0);
+  CHECK(tile.buffer()->size() != 0);
   CHECK(tile.filtered_buffer()->size() == 0);
-  CHECK(tile.chunked_buffer() == &chunked_buffer);
-  CHECK(chunked_buffer.size() == nelts * sizeof(uint64_t));
+  CHECK(tile.buffer() == &buffer);
+  CHECK(buffer.size() == nelts * sizeof(uint64_t));
   for (uint64_t i = 0; i < nelts; i++) {
     uint64_t elt = 0;
-    CHECK(chunked_buffer.read(&elt, sizeof(uint64_t), (i * sizeof(uint64_t)))
-              .ok());
+    buffer.set_offset(i * sizeof(uint64_t));
+    CHECK(buffer.read(&elt, sizeof(uint64_t)).ok());
     CHECK(elt == i);
   }
 
-  chunked_buffer.free();
+  buffer.clear();
 }
 
 TEST_CASE("Filter: Test simple in-place pipeline", "[filter]") {
@@ -593,36 +588,19 @@ TEST_CASE("Filter: Test simple in-place pipeline", "[filter]") {
   const uint64_t cell_size = sizeof(uint64_t);
   const uint32_t dim_num = 0;
 
-  uint32_t chunk_size;
-  CHECK(Tile::compute_chunk_size(tile_size, dim_num, cell_size, &chunk_size)
-            .ok());
-
-  ChunkedBuffer chunked_buffer;
-  chunked_buffer.init_fixed_size(
-      ChunkedBuffer::BufferAddressing::DISCRETE, tile_size, chunk_size);
-  CHECK(
-      chunked_buffer.buffer_addressing() ==
-      ChunkedBuffer::BufferAddressing::DISCRETE);
-  CHECK(chunked_buffer.size() == 0);
-  CHECK(chunked_buffer.capacity() == tile_size);
+  Buffer buffer;
+  buffer.realloc(tile_size);
+  CHECK(buffer.size() == 0);
+  CHECK(buffer.alloced_size() == tile_size);
 
   // Set up test data
   for (uint64_t i = 0; i < nelts; i++) {
-    const uint64_t offset = i * sizeof(uint64_t);
-    CHECK(chunked_buffer.write(&i, sizeof(uint64_t), offset).ok());
+    buffer.set_offset(i * sizeof(uint64_t));
+    CHECK(buffer.write(&i, sizeof(uint64_t)).ok());
   }
-  CHECK(chunked_buffer.size() == tile_size);
+  CHECK(buffer.size() == tile_size);
 
-  Tile tile(Datatype::UINT64, cell_size, dim_num, &chunked_buffer, false);
-
-  // Save the original allocations so that we can check that after running
-  // through the pipeline, the tile buffer points to a different memory
-  // regions.
-  std::vector<void*> original_allocs(chunked_buffer.nchunks());
-  for (size_t i = 0; i < chunked_buffer.nchunks(); ++i) {
-    CHECK(chunked_buffer.internal_buffer(i, &original_allocs[i]).ok());
-    CHECK(original_allocs[i]);
-  }
+  Tile tile(Datatype::UINT64, cell_size, dim_num, &buffer, false);
 
   FilterPipeline pipeline;
   ThreadPool tp;
@@ -633,7 +611,7 @@ TEST_CASE("Filter: Test simple in-place pipeline", "[filter]") {
     CHECK(pipeline.run_forward(&test::g_helper_stats, &tile, &tp).ok());
 
     // Check new size and number of chunks
-    CHECK(tile.chunked_buffer()->size() == 0);
+    CHECK(tile.buffer()->size() == 0);
     CHECK(
         tile.filtered_buffer()->size() ==
         nelts * sizeof(uint64_t) + sizeof(uint64_t) + 3 * sizeof(uint32_t));
@@ -660,14 +638,14 @@ TEST_CASE("Filter: Test simple in-place pipeline", "[filter]") {
     }
 
     CHECK(pipeline.run_reverse(&test::g_helper_stats, &tile, &tp, config).ok());
-    CHECK(tile.chunked_buffer()->size() != 0);
+    CHECK(tile.buffer()->size() != 0);
     CHECK(tile.filtered_buffer()->size() == 0);
-    CHECK(tile.chunked_buffer() == &chunked_buffer);
-    CHECK(chunked_buffer.size() == nelts * sizeof(uint64_t));
+    CHECK(tile.buffer() == &buffer);
+    CHECK(buffer.size() == nelts * sizeof(uint64_t));
     for (uint64_t i = 0; i < nelts; i++) {
       uint64_t elt = 0;
-      CHECK(chunked_buffer.read(&elt, sizeof(uint64_t), (i * sizeof(uint64_t)))
-                .ok());
+      buffer.set_offset(i * sizeof(uint64_t));
+      CHECK(buffer.read(&elt, sizeof(uint64_t)).ok());
       CHECK(elt == i);
     }
   }
@@ -679,7 +657,7 @@ TEST_CASE("Filter: Test simple in-place pipeline", "[filter]") {
     CHECK(pipeline.run_forward(&test::g_helper_stats, &tile, &tp).ok());
 
     // Check new size and number of chunks
-    CHECK(tile.chunked_buffer()->size() == 0);
+    CHECK(tile.buffer()->size() == 0);
     CHECK(
         tile.filtered_buffer()->size() ==
         nelts * sizeof(uint64_t) + sizeof(uint64_t) + 3 * sizeof(uint32_t));
@@ -706,19 +684,19 @@ TEST_CASE("Filter: Test simple in-place pipeline", "[filter]") {
     }
 
     CHECK(pipeline.run_reverse(&test::g_helper_stats, &tile, &tp, config).ok());
-    CHECK(tile.chunked_buffer()->size() != 0);
+    CHECK(tile.buffer()->size() != 0);
     CHECK(tile.filtered_buffer()->size() == 0);
-    CHECK(tile.chunked_buffer() == &chunked_buffer);
-    CHECK(chunked_buffer.size() == nelts * sizeof(uint64_t));
+    CHECK(tile.buffer() == &buffer);
+    CHECK(buffer.size() == nelts * sizeof(uint64_t));
     for (uint64_t i = 0; i < nelts; i++) {
       uint64_t elt = 0;
-      CHECK(chunked_buffer.read(&elt, sizeof(uint64_t), (i * sizeof(uint64_t)))
-                .ok());
+      buffer.set_offset(i * sizeof(uint64_t));
+      CHECK(buffer.read(&elt, sizeof(uint64_t)).ok());
       CHECK(elt == i);
     }
   }
 
-  chunked_buffer.free();
+  buffer.clear();
 }
 
 TEST_CASE("Filter: Test simple out-of-place pipeline", "[filter]") {
@@ -730,36 +708,19 @@ TEST_CASE("Filter: Test simple out-of-place pipeline", "[filter]") {
   const uint64_t cell_size = sizeof(uint64_t);
   const uint32_t dim_num = 0;
 
-  uint32_t chunk_size;
-  CHECK(Tile::compute_chunk_size(tile_size, dim_num, cell_size, &chunk_size)
-            .ok());
-
-  ChunkedBuffer chunked_buffer;
-  chunked_buffer.init_fixed_size(
-      ChunkedBuffer::BufferAddressing::DISCRETE, tile_size, chunk_size);
-  CHECK(
-      chunked_buffer.buffer_addressing() ==
-      ChunkedBuffer::BufferAddressing::DISCRETE);
-  CHECK(chunked_buffer.size() == 0);
-  CHECK(chunked_buffer.capacity() == tile_size);
+  Buffer buffer;
+  buffer.realloc(tile_size);
+  CHECK(buffer.size() == 0);
+  CHECK(buffer.alloced_size() == tile_size);
 
   // Set up test data
   for (uint64_t i = 0; i < nelts; i++) {
-    const uint64_t offset = i * sizeof(uint64_t);
-    CHECK(chunked_buffer.write(&i, sizeof(uint64_t), offset).ok());
+    buffer.set_offset(i * sizeof(uint64_t));
+    CHECK(buffer.write(&i, sizeof(uint64_t)).ok());
   }
-  CHECK(chunked_buffer.size() == tile_size);
+  CHECK(buffer.size() == tile_size);
 
-  Tile tile(Datatype::UINT64, cell_size, dim_num, &chunked_buffer, false);
-
-  // Save the original allocations so that we can check that after running
-  // through the pipeline, the tile buffer points to a different memory
-  // regions.
-  std::vector<void*> original_allocs(chunked_buffer.nchunks());
-  for (size_t i = 0; i < chunked_buffer.nchunks(); ++i) {
-    CHECK(chunked_buffer.internal_buffer(i, &original_allocs[i]).ok());
-    CHECK(original_allocs[i]);
-  }
+  Tile tile(Datatype::UINT64, cell_size, dim_num, &buffer, false);
 
   FilterPipeline pipeline;
   ThreadPool tp;
@@ -770,7 +731,7 @@ TEST_CASE("Filter: Test simple out-of-place pipeline", "[filter]") {
     CHECK(pipeline.run_forward(&test::g_helper_stats, &tile, &tp).ok());
 
     // Check new size and number of chunks
-    CHECK(tile.chunked_buffer()->size() == 0);
+    CHECK(tile.buffer()->size() == 0);
     CHECK(
         tile.filtered_buffer()->size() ==
         nelts * sizeof(uint64_t) + sizeof(uint64_t) + 3 * sizeof(uint32_t));
@@ -797,14 +758,14 @@ TEST_CASE("Filter: Test simple out-of-place pipeline", "[filter]") {
     }
 
     CHECK(pipeline.run_reverse(&test::g_helper_stats, &tile, &tp, config).ok());
-    CHECK(tile.chunked_buffer()->size() != 0);
+    CHECK(tile.buffer()->size() != 0);
     CHECK(tile.filtered_buffer()->size() == 0);
-    CHECK(tile.chunked_buffer() == &chunked_buffer);
-    CHECK(chunked_buffer.size() == nelts * sizeof(uint64_t));
+    CHECK(tile.buffer() == &buffer);
+    CHECK(buffer.size() == nelts * sizeof(uint64_t));
     for (uint64_t i = 0; i < nelts; i++) {
       uint64_t elt = 0;
-      CHECK(chunked_buffer.read(&elt, sizeof(uint64_t), (i * sizeof(uint64_t)))
-                .ok());
+      buffer.set_offset(i * sizeof(uint64_t));
+      CHECK(buffer.read(&elt, sizeof(uint64_t)).ok());
       CHECK(elt == i);
     }
   }
@@ -816,7 +777,7 @@ TEST_CASE("Filter: Test simple out-of-place pipeline", "[filter]") {
     CHECK(pipeline.run_forward(&test::g_helper_stats, &tile, &tp).ok());
 
     // Check new size and number of chunks
-    CHECK(tile.chunked_buffer()->size() == 0);
+    CHECK(tile.buffer()->size() == 0);
     CHECK(
         tile.filtered_buffer()->size() ==
         nelts * sizeof(uint64_t) + sizeof(uint64_t) + 3 * sizeof(uint32_t));
@@ -843,19 +804,19 @@ TEST_CASE("Filter: Test simple out-of-place pipeline", "[filter]") {
     }
 
     CHECK(pipeline.run_reverse(&test::g_helper_stats, &tile, &tp, config).ok());
-    CHECK(tile.chunked_buffer()->size() != 0);
+    CHECK(tile.buffer()->size() != 0);
     CHECK(tile.filtered_buffer()->size() == 0);
-    CHECK(tile.chunked_buffer() == &chunked_buffer);
-    CHECK(chunked_buffer.size() == nelts * sizeof(uint64_t));
+    CHECK(tile.buffer() == &buffer);
+    CHECK(buffer.size() == nelts * sizeof(uint64_t));
     for (uint64_t i = 0; i < nelts; i++) {
       uint64_t elt = 0;
-      CHECK(chunked_buffer.read(&elt, sizeof(uint64_t), (i * sizeof(uint64_t)))
-                .ok());
+      buffer.set_offset(i * sizeof(uint64_t));
+      CHECK(buffer.read(&elt, sizeof(uint64_t)).ok());
       CHECK(elt == i);
     }
   }
 
-  chunked_buffer.free();
+  buffer.clear();
 }
 
 TEST_CASE("Filter: Test mixed in- and out-of-place pipeline", "[filter]") {
@@ -867,36 +828,19 @@ TEST_CASE("Filter: Test mixed in- and out-of-place pipeline", "[filter]") {
   const uint64_t cell_size = sizeof(uint64_t);
   const uint32_t dim_num = 0;
 
-  uint32_t chunk_size;
-  CHECK(Tile::compute_chunk_size(tile_size, dim_num, cell_size, &chunk_size)
-            .ok());
-
-  ChunkedBuffer chunked_buffer;
-  chunked_buffer.init_fixed_size(
-      ChunkedBuffer::BufferAddressing::DISCRETE, tile_size, chunk_size);
-  CHECK(
-      chunked_buffer.buffer_addressing() ==
-      ChunkedBuffer::BufferAddressing::DISCRETE);
-  CHECK(chunked_buffer.size() == 0);
-  CHECK(chunked_buffer.capacity() == tile_size);
+  Buffer buffer;
+  buffer.realloc(tile_size);
+  CHECK(buffer.size() == 0);
+  CHECK(buffer.alloced_size() == tile_size);
 
   // Set up test data
   for (uint64_t i = 0; i < nelts; i++) {
-    const uint64_t offset = i * sizeof(uint64_t);
-    CHECK(chunked_buffer.write(&i, sizeof(uint64_t), offset).ok());
+    buffer.set_offset(i * sizeof(uint64_t));
+    CHECK(buffer.write(&i, sizeof(uint64_t)).ok());
   }
-  CHECK(chunked_buffer.size() == tile_size);
+  CHECK(buffer.size() == tile_size);
 
-  Tile tile(Datatype::UINT64, cell_size, dim_num, &chunked_buffer, false);
-
-  // Save the original allocations so that we can check that after running
-  // through the pipeline, the tile buffer points to a different memory
-  // regions.
-  std::vector<void*> original_allocs(chunked_buffer.nchunks());
-  for (size_t i = 0; i < chunked_buffer.nchunks(); ++i) {
-    CHECK(chunked_buffer.internal_buffer(i, &original_allocs[i]).ok());
-    CHECK(original_allocs[i]);
-  }
+  Tile tile(Datatype::UINT64, cell_size, dim_num, &buffer, false);
 
   FilterPipeline pipeline;
   ThreadPool tp;
@@ -907,7 +851,7 @@ TEST_CASE("Filter: Test mixed in- and out-of-place pipeline", "[filter]") {
   CHECK(pipeline.add_filter(Add1OutOfPlace()).ok());
   CHECK(pipeline.run_forward(&test::g_helper_stats, &tile, &tp).ok());
 
-  CHECK(tile.chunked_buffer()->size() == 0);
+  CHECK(tile.buffer()->size() == 0);
   CHECK(
       tile.filtered_buffer()->size() ==
       nelts * sizeof(uint64_t) + sizeof(uint64_t) + 3 * sizeof(uint32_t));
@@ -935,18 +879,18 @@ TEST_CASE("Filter: Test mixed in- and out-of-place pipeline", "[filter]") {
 
   // Set up test data
   CHECK(pipeline.run_reverse(&test::g_helper_stats, &tile, &tp, config).ok());
-  CHECK(tile.chunked_buffer()->size() != 0);
+  CHECK(tile.buffer()->size() != 0);
   CHECK(tile.filtered_buffer()->size() == 0);
-  CHECK(tile.chunked_buffer() == &chunked_buffer);
-  CHECK(chunked_buffer.size() == nelts * sizeof(uint64_t));
+  CHECK(tile.buffer() == &buffer);
+  CHECK(buffer.size() == nelts * sizeof(uint64_t));
   for (uint64_t i = 0; i < nelts; i++) {
     uint64_t elt = 0;
-    CHECK(chunked_buffer.read(&elt, sizeof(uint64_t), (i * sizeof(uint64_t)))
-              .ok());
+    buffer.set_offset(i * sizeof(uint64_t));
+    CHECK(buffer.read(&elt, sizeof(uint64_t)).ok());
     CHECK(elt == i);
   }
 
-  chunked_buffer.free();
+  buffer.clear();
 }
 
 TEST_CASE("Filter: Test compression", "[filter], [compression]") {
@@ -957,27 +901,19 @@ TEST_CASE("Filter: Test compression", "[filter], [compression]") {
   const uint64_t cell_size = sizeof(uint64_t);
   const uint32_t dim_num = 0;
 
-  uint32_t chunk_size;
-  CHECK(Tile::compute_chunk_size(tile_size, dim_num, cell_size, &chunk_size)
-            .ok());
-
-  ChunkedBuffer chunked_buffer;
-  chunked_buffer.init_fixed_size(
-      ChunkedBuffer::BufferAddressing::DISCRETE, tile_size, chunk_size);
-  CHECK(
-      chunked_buffer.buffer_addressing() ==
-      ChunkedBuffer::BufferAddressing::DISCRETE);
-  CHECK(chunked_buffer.size() == 0);
-  CHECK(chunked_buffer.capacity() == tile_size);
+  Buffer buffer;
+  buffer.realloc(tile_size);
+  CHECK(buffer.size() == 0);
+  CHECK(buffer.alloced_size() == tile_size);
 
   // Set up test data
   for (uint64_t i = 0; i < nelts; i++) {
-    const uint64_t offset = i * sizeof(uint64_t);
-    CHECK(chunked_buffer.write(&i, sizeof(uint64_t), offset).ok());
+    buffer.set_offset(i * sizeof(uint64_t));
+    CHECK(buffer.write(&i, sizeof(uint64_t)).ok());
   }
-  CHECK(chunked_buffer.size() == tile_size);
+  CHECK(buffer.size() == tile_size);
 
-  Tile tile(Datatype::UINT64, cell_size, dim_num, &chunked_buffer, false);
+  Tile tile(Datatype::UINT64, cell_size, dim_num, &buffer, false);
 
   // Set up dummy array schema (needed by compressor filter for cell size, etc).
   uint32_t dim_dom[] = {1, 10};
@@ -1002,19 +938,19 @@ TEST_CASE("Filter: Test compression", "[filter], [compression]") {
 
     CHECK(pipeline.run_forward(&test::g_helper_stats, &tile, &tp).ok());
     // Check compression worked
-    CHECK(tile.chunked_buffer()->size() == 0);
+    CHECK(tile.buffer()->size() == 0);
     CHECK(tile.filtered_buffer()->size() < nelts * sizeof(uint64_t));
 
     CHECK(pipeline.run_reverse(&test::g_helper_stats, &tile, &tp, config).ok());
-    CHECK(tile.chunked_buffer()->size() != 0);
+    CHECK(tile.buffer()->size() != 0);
     CHECK(tile.filtered_buffer()->size() == 0);
-    CHECK(tile.chunked_buffer()->size() == nelts * sizeof(uint64_t));
+    CHECK(tile.buffer()->size() == nelts * sizeof(uint64_t));
 
     // Check all elements original values.
     for (uint64_t i = 0; i < nelts; i++) {
       uint64_t elt = 0;
-      CHECK(chunked_buffer.read(&elt, sizeof(uint64_t), (i * sizeof(uint64_t)))
-                .ok());
+      buffer.set_offset(i * sizeof(uint64_t));
+      CHECK(buffer.read(&elt, sizeof(uint64_t)).ok());
       CHECK(elt == i);
     }
   }
@@ -1025,19 +961,19 @@ TEST_CASE("Filter: Test compression", "[filter], [compression]") {
 
     CHECK(pipeline.run_forward(&test::g_helper_stats, &tile, &tp).ok());
     // Check compression worked
-    CHECK(tile.chunked_buffer()->size() == 0);
+    CHECK(tile.buffer()->size() == 0);
     CHECK(tile.filtered_buffer()->size() < nelts * sizeof(uint64_t));
 
     CHECK(pipeline.run_reverse(&test::g_helper_stats, &tile, &tp, config).ok());
-    CHECK(tile.chunked_buffer()->size() != 0);
+    CHECK(tile.buffer()->size() != 0);
     CHECK(tile.filtered_buffer()->size() == 0);
-    CHECK(tile.chunked_buffer()->size() == nelts * sizeof(uint64_t));
+    CHECK(tile.buffer()->size() == nelts * sizeof(uint64_t));
 
     // Check all elements original values.
     for (uint64_t i = 0; i < nelts; i++) {
       uint64_t elt = 0;
-      CHECK(chunked_buffer.read(&elt, sizeof(uint64_t), (i * sizeof(uint64_t)))
-                .ok());
+      buffer.set_offset(i * sizeof(uint64_t));
+      CHECK(buffer.read(&elt, sizeof(uint64_t)).ok());
       CHECK(elt == i);
     }
   }
@@ -1050,24 +986,24 @@ TEST_CASE("Filter: Test compression", "[filter], [compression]") {
 
     CHECK(pipeline.run_forward(&test::g_helper_stats, &tile, &tp).ok());
     // Check compression worked
-    CHECK(tile.chunked_buffer()->size() == 0);
+    CHECK(tile.buffer()->size() == 0);
     CHECK(tile.filtered_buffer()->size() < nelts * sizeof(uint64_t));
 
     CHECK(pipeline.run_reverse(&test::g_helper_stats, &tile, &tp, config).ok());
-    CHECK(tile.chunked_buffer()->size() != 0);
+    CHECK(tile.buffer()->size() != 0);
     CHECK(tile.filtered_buffer()->size() == 0);
-    CHECK(tile.chunked_buffer()->size() == nelts * sizeof(uint64_t));
+    CHECK(tile.buffer()->size() == nelts * sizeof(uint64_t));
 
     // Check all elements original values.
     for (uint64_t i = 0; i < nelts; i++) {
       uint64_t elt = 0;
-      CHECK(chunked_buffer.read(&elt, sizeof(uint64_t), (i * sizeof(uint64_t)))
-                .ok());
+      buffer.set_offset(i * sizeof(uint64_t));
+      CHECK(buffer.read(&elt, sizeof(uint64_t)).ok());
       CHECK(elt == i);
     }
   }
 
-  chunked_buffer.free();
+  buffer.clear();
 }
 
 TEST_CASE("Filter: Test pseudo-checksum", "[filter]") {
@@ -1080,27 +1016,19 @@ TEST_CASE("Filter: Test pseudo-checksum", "[filter]") {
   const uint64_t cell_size = sizeof(uint64_t);
   const uint32_t dim_num = 0;
 
-  uint32_t chunk_size;
-  CHECK(Tile::compute_chunk_size(tile_size, dim_num, cell_size, &chunk_size)
-            .ok());
-
-  ChunkedBuffer chunked_buffer;
-  chunked_buffer.init_fixed_size(
-      ChunkedBuffer::BufferAddressing::DISCRETE, tile_size, chunk_size);
-  CHECK(
-      chunked_buffer.buffer_addressing() ==
-      ChunkedBuffer::BufferAddressing::DISCRETE);
-  CHECK(chunked_buffer.size() == 0);
-  CHECK(chunked_buffer.capacity() == tile_size);
+  Buffer buffer;
+  buffer.realloc(tile_size);
+  CHECK(buffer.size() == 0);
+  CHECK(buffer.alloced_size() == tile_size);
 
   // Set up test data
   for (uint64_t i = 0; i < nelts; i++) {
-    const uint64_t offset = i * sizeof(uint64_t);
-    CHECK(chunked_buffer.write(&i, sizeof(uint64_t), offset).ok());
+    buffer.set_offset(i * sizeof(uint64_t));
+    CHECK(buffer.write(&i, sizeof(uint64_t)).ok());
   }
-  CHECK(chunked_buffer.size() == tile_size);
+  CHECK(buffer.size() == tile_size);
 
-  Tile tile(Datatype::UINT64, cell_size, dim_num, &chunked_buffer, false);
+  Tile tile(Datatype::UINT64, cell_size, dim_num, &buffer, false);
 
   FilterPipeline pipeline;
   ThreadPool tp;
@@ -1111,7 +1039,7 @@ TEST_CASE("Filter: Test pseudo-checksum", "[filter]") {
     CHECK(pipeline.run_forward(&test::g_helper_stats, &tile, &tp).ok());
 
     // Check new size and number of chunks
-    CHECK(tile.chunked_buffer()->size() == 0);
+    CHECK(tile.buffer()->size() == 0);
     CHECK(
         tile.filtered_buffer()->size() ==
         nelts * sizeof(uint64_t) + sizeof(uint64_t) + sizeof(uint64_t) +
@@ -1143,14 +1071,14 @@ TEST_CASE("Filter: Test pseudo-checksum", "[filter]") {
     }
 
     CHECK(pipeline.run_reverse(&test::g_helper_stats, &tile, &tp, config).ok());
-    CHECK(tile.chunked_buffer()->size() != 0);
+    CHECK(tile.buffer()->size() != 0);
     CHECK(tile.filtered_buffer()->size() == 0);
-    CHECK(tile.chunked_buffer() == &chunked_buffer);
-    CHECK(chunked_buffer.size() == nelts * sizeof(uint64_t));
+    CHECK(tile.buffer() == &buffer);
+    CHECK(buffer.size() == nelts * sizeof(uint64_t));
     for (uint64_t i = 0; i < nelts; i++) {
       uint64_t elt = 0;
-      CHECK(chunked_buffer.read(&elt, sizeof(uint64_t), (i * sizeof(uint64_t)))
-                .ok());
+      buffer.set_offset(i * sizeof(uint64_t));
+      CHECK(buffer.read(&elt, sizeof(uint64_t)).ok());
       CHECK(elt == i);
     }
   }
@@ -1167,7 +1095,7 @@ TEST_CASE("Filter: Test pseudo-checksum", "[filter]") {
       expected_checksum_2 += i + 2;
 
     // Check new size and number of chunks.
-    CHECK(tile.chunked_buffer()->size() == 0);
+    CHECK(tile.buffer()->size() == 0);
     CHECK(
         tile.filtered_buffer()->size() ==
         nelts * sizeof(uint64_t) + sizeof(uint64_t) + sizeof(uint64_t) +
@@ -1203,19 +1131,19 @@ TEST_CASE("Filter: Test pseudo-checksum", "[filter]") {
     }
 
     CHECK(pipeline.run_reverse(&test::g_helper_stats, &tile, &tp, config).ok());
-    CHECK(tile.chunked_buffer()->size() != 0);
+    CHECK(tile.buffer()->size() != 0);
     CHECK(tile.filtered_buffer()->size() == 0);
-    CHECK(tile.chunked_buffer() == &chunked_buffer);
-    CHECK(chunked_buffer.size() == nelts * sizeof(uint64_t));
+    CHECK(tile.buffer() == &buffer);
+    CHECK(buffer.size() == nelts * sizeof(uint64_t));
     for (uint64_t i = 0; i < nelts; i++) {
       uint64_t elt = 0;
-      CHECK(chunked_buffer.read(&elt, sizeof(uint64_t), (i * sizeof(uint64_t)))
-                .ok());
+      buffer.set_offset(i * sizeof(uint64_t));
+      CHECK(buffer.read(&elt, sizeof(uint64_t)).ok());
       CHECK(elt == i);
     }
   }
 
-  chunked_buffer.free();
+  buffer.clear();
 }
 
 TEST_CASE("Filter: Test pipeline modify filter", "[filter]") {
@@ -1227,27 +1155,19 @@ TEST_CASE("Filter: Test pipeline modify filter", "[filter]") {
   const uint64_t cell_size = sizeof(uint64_t);
   const uint32_t dim_num = 0;
 
-  uint32_t chunk_size;
-  CHECK(Tile::compute_chunk_size(tile_size, dim_num, cell_size, &chunk_size)
-            .ok());
-
-  ChunkedBuffer chunked_buffer;
-  chunked_buffer.init_fixed_size(
-      ChunkedBuffer::BufferAddressing::DISCRETE, tile_size, chunk_size);
-  CHECK(
-      chunked_buffer.buffer_addressing() ==
-      ChunkedBuffer::BufferAddressing::DISCRETE);
-  CHECK(chunked_buffer.size() == 0);
-  CHECK(chunked_buffer.capacity() == tile_size);
+  Buffer buffer;
+  buffer.realloc(tile_size);
+  CHECK(buffer.size() == 0);
+  CHECK(buffer.alloced_size() == tile_size);
 
   // Set up test data
   for (uint64_t i = 0; i < nelts; i++) {
-    const uint64_t offset = i * sizeof(uint64_t);
-    CHECK(chunked_buffer.write(&i, sizeof(uint64_t), offset).ok());
+    buffer.set_offset(i * sizeof(uint64_t));
+    CHECK(buffer.write(&i, sizeof(uint64_t)).ok());
   }
-  CHECK(chunked_buffer.size() == tile_size);
+  CHECK(buffer.size() == tile_size);
 
-  Tile tile(Datatype::UINT64, cell_size, dim_num, &chunked_buffer, false);
+  Tile tile(Datatype::UINT64, cell_size, dim_num, &buffer, false);
 
   FilterPipeline pipeline;
   ThreadPool tp;
@@ -1267,7 +1187,7 @@ TEST_CASE("Filter: Test pipeline modify filter", "[filter]") {
 
   CHECK(pipeline.run_forward(&test::g_helper_stats, &tile, &tp).ok());
 
-  CHECK(tile.chunked_buffer()->size() == 0);
+  CHECK(tile.buffer()->size() == 0);
   CHECK(tile.filtered_buffer()->size() != 0);
   tile.filtered_buffer()->reset_offset();
   CHECK(tile.filtered_buffer()->value<uint64_t>() == 1);  // Number of chunks
@@ -1292,18 +1212,18 @@ TEST_CASE("Filter: Test pipeline modify filter", "[filter]") {
   }
 
   CHECK(pipeline.run_reverse(&test::g_helper_stats, &tile, &tp, config).ok());
-  CHECK(tile.chunked_buffer()->size() != 0);
+  CHECK(tile.buffer()->size() != 0);
   CHECK(tile.filtered_buffer()->size() == 0);
-  CHECK(tile.chunked_buffer() == &chunked_buffer);
-  CHECK(chunked_buffer.size() == nelts * sizeof(uint64_t));
+  CHECK(tile.buffer() == &buffer);
+  CHECK(buffer.size() == nelts * sizeof(uint64_t));
   for (uint64_t i = 0; i < nelts; i++) {
     uint64_t elt = 0;
-    CHECK(chunked_buffer.read(&elt, sizeof(uint64_t), (i * sizeof(uint64_t)))
-              .ok());
+    buffer.set_offset(i * sizeof(uint64_t));
+    CHECK(buffer.read(&elt, sizeof(uint64_t)).ok());
     CHECK(elt == i);
   }
 
-  chunked_buffer.free();
+  buffer.clear();
 }
 
 TEST_CASE("Filter: Test pipeline copy", "[filter]") {
@@ -1316,27 +1236,19 @@ TEST_CASE("Filter: Test pipeline copy", "[filter]") {
   const uint64_t cell_size = sizeof(uint64_t);
   const uint32_t dim_num = 0;
 
-  uint32_t chunk_size;
-  CHECK(Tile::compute_chunk_size(tile_size, dim_num, cell_size, &chunk_size)
-            .ok());
-
-  ChunkedBuffer chunked_buffer;
-  chunked_buffer.init_fixed_size(
-      ChunkedBuffer::BufferAddressing::DISCRETE, tile_size, chunk_size);
-  CHECK(
-      chunked_buffer.buffer_addressing() ==
-      ChunkedBuffer::BufferAddressing::DISCRETE);
-  CHECK(chunked_buffer.size() == 0);
-  CHECK(chunked_buffer.capacity() == tile_size);
+  Buffer buffer;
+  buffer.realloc(tile_size);
+  CHECK(buffer.size() == 0);
+  CHECK(buffer.alloced_size() == tile_size);
 
   // Set up test data
   for (uint64_t i = 0; i < nelts; i++) {
-    const uint64_t offset = i * sizeof(uint64_t);
-    CHECK(chunked_buffer.write(&i, sizeof(uint64_t), offset).ok());
+    buffer.set_offset(i * sizeof(uint64_t));
+    CHECK(buffer.write(&i, sizeof(uint64_t)).ok());
   }
-  CHECK(chunked_buffer.size() == tile_size);
+  CHECK(buffer.size() == tile_size);
 
-  Tile tile(Datatype::UINT64, cell_size, dim_num, &chunked_buffer, false);
+  Tile tile(Datatype::UINT64, cell_size, dim_num, &buffer, false);
 
   FilterPipeline pipeline;
   ThreadPool tp;
@@ -1362,7 +1274,7 @@ TEST_CASE("Filter: Test pipeline copy", "[filter]") {
 
   CHECK(pipeline_copy.run_forward(&test::g_helper_stats, &tile, &tp).ok());
 
-  CHECK(tile.chunked_buffer()->size() == 0);
+  CHECK(tile.buffer()->size() == 0);
   CHECK(tile.filtered_buffer()->size() != 0);
   tile.filtered_buffer()->reset_offset();
   CHECK(tile.filtered_buffer()->value<uint64_t>() == 1);  // Number of chunks
@@ -1391,18 +1303,18 @@ TEST_CASE("Filter: Test pipeline copy", "[filter]") {
   }
 
   CHECK(pipeline.run_reverse(&test::g_helper_stats, &tile, &tp, config).ok());
-  CHECK(tile.chunked_buffer()->size() != 0);
+  CHECK(tile.buffer()->size() != 0);
   CHECK(tile.filtered_buffer()->size() == 0);
-  CHECK(tile.chunked_buffer() == &chunked_buffer);
-  CHECK(chunked_buffer.size() == nelts * sizeof(uint64_t));
+  CHECK(tile.buffer() == &buffer);
+  CHECK(buffer.size() == nelts * sizeof(uint64_t));
   for (uint64_t i = 0; i < nelts; i++) {
     uint64_t elt = 0;
-    CHECK(chunked_buffer.read(&elt, sizeof(uint64_t), (i * sizeof(uint64_t)))
-              .ok());
+    buffer.set_offset(i * sizeof(uint64_t));
+    CHECK(buffer.read(&elt, sizeof(uint64_t)).ok());
     CHECK(elt == i);
   }
 
-  chunked_buffer.free();
+  buffer.clear();
 }
 
 TEST_CASE("Filter: Test random pipeline", "[filter]") {
@@ -1413,27 +1325,19 @@ TEST_CASE("Filter: Test random pipeline", "[filter]") {
   const uint64_t cell_size = sizeof(uint64_t);
   const uint32_t dim_num = 0;
 
-  uint32_t chunk_size;
-  CHECK(Tile::compute_chunk_size(tile_size, dim_num, cell_size, &chunk_size)
-            .ok());
-
-  ChunkedBuffer chunked_buffer;
-  chunked_buffer.init_fixed_size(
-      ChunkedBuffer::BufferAddressing::DISCRETE, tile_size, chunk_size);
-  CHECK(
-      chunked_buffer.buffer_addressing() ==
-      ChunkedBuffer::BufferAddressing::DISCRETE);
-  CHECK(chunked_buffer.size() == 0);
-  CHECK(chunked_buffer.capacity() == tile_size);
+  Buffer buffer;
+  buffer.realloc(tile_size);
+  CHECK(buffer.size() == 0);
+  CHECK(buffer.alloced_size() == tile_size);
 
   // Set up test data
   for (uint64_t i = 0; i < nelts; i++) {
-    const uint64_t offset = i * sizeof(uint64_t);
-    CHECK(chunked_buffer.write(&i, sizeof(uint64_t), offset).ok());
+    buffer.set_offset(i * sizeof(uint64_t));
+    CHECK(buffer.write(&i, sizeof(uint64_t)).ok());
   }
-  CHECK(chunked_buffer.size() == tile_size);
+  CHECK(buffer.size() == tile_size);
 
-  Tile tile(Datatype::UINT64, cell_size, dim_num, &chunked_buffer, false);
+  Tile tile(Datatype::UINT64, cell_size, dim_num, &buffer, false);
 
   EncryptionKey encryption_key;
   REQUIRE(encryption_key
@@ -1498,21 +1402,21 @@ TEST_CASE("Filter: Test random pipeline", "[filter]") {
 
     // End result should always be the same as the input.
     CHECK(pipeline.run_forward(&test::g_helper_stats, &tile, &tp).ok());
-    CHECK(tile.chunked_buffer()->size() == 0);
+    CHECK(tile.buffer()->size() == 0);
     CHECK(tile.filtered_buffer()->size() != 0);
     CHECK(pipeline.run_reverse(&test::g_helper_stats, &tile, &tp, config).ok());
-    CHECK(tile.chunked_buffer()->size() != 0);
+    CHECK(tile.buffer()->size() != 0);
     CHECK(tile.filtered_buffer()->size() == 0);
-    auto* chunked_buffer = tile.chunked_buffer();
+    auto* buffer = tile.buffer();
     for (uint64_t n = 0; n < nelts; n++) {
       uint64_t elt = 0;
-      CHECK(chunked_buffer->read(&elt, sizeof(uint64_t), (n * sizeof(uint64_t)))
-                .ok());
+      buffer->set_offset(n * sizeof(uint64_t));
+      CHECK(buffer->read(&elt, sizeof(uint64_t)).ok());
       CHECK(elt == n);
     }
   }
 
-  chunked_buffer.free();
+  buffer.clear();
 }
 
 TEST_CASE(
@@ -1526,27 +1430,19 @@ TEST_CASE(
   const uint64_t cell_size = sizeof(uint64_t);
   const uint32_t dim_num = 0;
 
-  uint32_t chunk_size;
-  CHECK(Tile::compute_chunk_size(tile_size, dim_num, cell_size, &chunk_size)
-            .ok());
-
-  ChunkedBuffer chunked_buffer;
-  chunked_buffer.init_fixed_size(
-      ChunkedBuffer::BufferAddressing::DISCRETE, tile_size, chunk_size);
-  CHECK(
-      chunked_buffer.buffer_addressing() ==
-      ChunkedBuffer::BufferAddressing::DISCRETE);
-  CHECK(chunked_buffer.size() == 0);
-  CHECK(chunked_buffer.capacity() == tile_size);
+  Buffer buffer;
+  buffer.realloc(tile_size);
+  CHECK(buffer.size() == 0);
+  CHECK(buffer.alloced_size() == tile_size);
 
   // Set up test data
   for (uint64_t i = 0; i < nelts; i++) {
-    const uint64_t offset = i * sizeof(uint64_t);
-    CHECK(chunked_buffer.write(&i, sizeof(uint64_t), offset).ok());
+    buffer.set_offset(i * sizeof(uint64_t));
+    CHECK(buffer.write(&i, sizeof(uint64_t)).ok());
   }
-  CHECK(chunked_buffer.size() == tile_size);
+  CHECK(buffer.size() == tile_size);
 
-  Tile tile(Datatype::UINT64, cell_size, dim_num, &chunked_buffer, false);
+  Tile tile(Datatype::UINT64, cell_size, dim_num, &buffer, false);
 
   // MD5
   FilterPipeline md5_pipeline;
@@ -1555,18 +1451,17 @@ TEST_CASE(
   ChecksumMD5Filter md5_filter;
   CHECK(md5_pipeline.add_filter(md5_filter).ok());
   CHECK(md5_pipeline.run_forward(&test::g_helper_stats, &tile, &tp).ok());
-  CHECK(tile.chunked_buffer()->size() == 0);
+  CHECK(tile.buffer()->size() == 0);
   CHECK(tile.filtered_buffer()->size() != 0);
   CHECK(
       md5_pipeline.run_reverse(&test::g_helper_stats, &tile, &tp, config).ok());
-  CHECK(tile.chunked_buffer()->size() != 0);
+  CHECK(tile.buffer()->size() != 0);
   CHECK(tile.filtered_buffer()->size() == 0);
-  auto* internal_chunked_buffer = tile.chunked_buffer();
+  auto* internal_buffer = tile.buffer();
   for (uint64_t n = 0; n < nelts; n++) {
     uint64_t elt = 0;
-    CHECK(internal_chunked_buffer
-              ->read(&elt, sizeof(uint64_t), (n * sizeof(uint64_t)))
-              .ok());
+    internal_buffer->set_offset(n * sizeof(uint64_t));
+    CHECK(internal_buffer->read(&elt, sizeof(uint64_t)).ok());
     CHECK(elt == n);
   }
 
@@ -1575,22 +1470,21 @@ TEST_CASE(
   ChecksumMD5Filter sha_256_filter;
   CHECK(sha_256_pipeline.add_filter(sha_256_filter).ok());
   CHECK(sha_256_pipeline.run_forward(&test::g_helper_stats, &tile, &tp).ok());
-  CHECK(tile.chunked_buffer()->size() == 0);
+  CHECK(tile.buffer()->size() == 0);
   CHECK(tile.filtered_buffer()->size() != 0);
   CHECK(sha_256_pipeline.run_reverse(&test::g_helper_stats, &tile, &tp, config)
             .ok());
-  CHECK(tile.chunked_buffer()->size() != 0);
+  CHECK(tile.buffer()->size() != 0);
   CHECK(tile.filtered_buffer()->size() == 0);
-  internal_chunked_buffer = tile.chunked_buffer();
+  internal_buffer = tile.buffer();
   for (uint64_t n = 0; n < nelts; n++) {
     uint64_t elt = 0;
-    CHECK(internal_chunked_buffer
-              ->read(&elt, sizeof(uint64_t), (n * sizeof(uint64_t)))
-              .ok());
+    internal_buffer->set_offset(n * sizeof(uint64_t));
+    CHECK(internal_buffer->read(&elt, sizeof(uint64_t)).ok());
     CHECK(elt == n);
   }
 
-  chunked_buffer.free();
+  buffer.clear();
 }
 
 TEST_CASE("Filter: Test bit width reduction", "[filter]") {
@@ -1602,27 +1496,19 @@ TEST_CASE("Filter: Test bit width reduction", "[filter]") {
   const uint64_t cell_size = sizeof(uint64_t);
   const uint32_t dim_num = 0;
 
-  uint32_t chunk_size;
-  CHECK(Tile::compute_chunk_size(tile_size, dim_num, cell_size, &chunk_size)
-            .ok());
-
-  ChunkedBuffer chunked_buffer;
-  chunked_buffer.init_fixed_size(
-      ChunkedBuffer::BufferAddressing::DISCRETE, tile_size, chunk_size);
-  CHECK(
-      chunked_buffer.buffer_addressing() ==
-      ChunkedBuffer::BufferAddressing::DISCRETE);
-  CHECK(chunked_buffer.size() == 0);
-  CHECK(chunked_buffer.capacity() == tile_size);
+  Buffer buffer;
+  buffer.realloc(tile_size);
+  CHECK(buffer.size() == 0);
+  CHECK(buffer.alloced_size() == tile_size);
 
   // Set up test data
   for (uint64_t i = 0; i < nelts; i++) {
-    const uint64_t offset = i * sizeof(uint64_t);
-    CHECK(chunked_buffer.write(&i, sizeof(uint64_t), offset).ok());
+    buffer.set_offset(i * sizeof(uint64_t));
+    CHECK(buffer.write(&i, sizeof(uint64_t)).ok());
   }
-  CHECK(chunked_buffer.size() == tile_size);
+  CHECK(buffer.size() == tile_size);
 
-  Tile tile(Datatype::UINT64, cell_size, dim_num, &chunked_buffer, false);
+  Tile tile(Datatype::UINT64, cell_size, dim_num, &buffer, false);
 
   FilterPipeline pipeline;
   ThreadPool tp;
@@ -1632,7 +1518,7 @@ TEST_CASE("Filter: Test bit width reduction", "[filter]") {
   SECTION("- Single stage") {
     CHECK(pipeline.run_forward(&test::g_helper_stats, &tile, &tp).ok());
 
-    CHECK(tile.chunked_buffer()->size() == 0);
+    CHECK(tile.buffer()->size() == 0);
     CHECK(tile.filtered_buffer()->size() != 0);
 
     // Sanity check number of windows value
@@ -1665,14 +1551,14 @@ TEST_CASE("Filter: Test bit width reduction", "[filter]") {
     CHECK(compressed_size < nelts * sizeof(uint64_t));
 
     CHECK(pipeline.run_reverse(&test::g_helper_stats, &tile, &tp, config).ok());
-    CHECK(tile.chunked_buffer()->size() != 0);
+    CHECK(tile.buffer()->size() != 0);
     CHECK(tile.filtered_buffer()->size() == 0);
-    CHECK(tile.chunked_buffer() == &chunked_buffer);
-    CHECK(chunked_buffer.size() == nelts * sizeof(uint64_t));
+    CHECK(tile.buffer() == &buffer);
+    CHECK(buffer.size() == nelts * sizeof(uint64_t));
     for (uint64_t i = 0; i < nelts; i++) {
       uint64_t elt = 0;
-      CHECK(chunked_buffer.read(&elt, sizeof(uint64_t), (i * sizeof(uint64_t)))
-                .ok());
+      buffer.set_offset(i * sizeof(uint64_t));
+      CHECK(buffer.read(&elt, sizeof(uint64_t)).ok());
       CHECK(elt == i);
     }
   }
@@ -1685,19 +1571,18 @@ TEST_CASE("Filter: Test bit width reduction", "[filter]") {
           window_size);
 
       CHECK(pipeline.run_forward(&test::g_helper_stats, &tile, &tp).ok());
-      CHECK(tile.chunked_buffer()->size() == 0);
+      CHECK(tile.buffer()->size() == 0);
       CHECK(tile.filtered_buffer()->size() != 0);
       CHECK(
           pipeline.run_reverse(&test::g_helper_stats, &tile, &tp, config).ok());
-      CHECK(tile.chunked_buffer()->size() != 0);
+      CHECK(tile.buffer()->size() != 0);
       CHECK(tile.filtered_buffer()->size() == 0);
-      CHECK(tile.chunked_buffer() == &chunked_buffer);
-      CHECK(chunked_buffer.size() == nelts * sizeof(uint64_t));
+      CHECK(tile.buffer() == &buffer);
+      CHECK(buffer.size() == nelts * sizeof(uint64_t));
       for (uint64_t i = 0; i < nelts; i++) {
         uint64_t elt = 0;
-        CHECK(
-            chunked_buffer.read(&elt, sizeof(uint64_t), (i * sizeof(uint64_t)))
-                .ok());
+        buffer.set_offset(i * sizeof(uint64_t));
+        CHECK(buffer.read(&elt, sizeof(uint64_t)).ok());
         CHECK(elt == i);
       }
     }
@@ -1710,41 +1595,37 @@ TEST_CASE("Filter: Test bit width reduction", "[filter]") {
     std::uniform_int_distribution<> rng(0, std::numeric_limits<int32_t>::max());
     INFO("Random element seed: " << seed);
 
-    ChunkedBuffer chunked_buffer;
-    chunked_buffer.init_fixed_size(
-        ChunkedBuffer::BufferAddressing::DISCRETE, tile_size, chunk_size);
-    CHECK(
-        chunked_buffer.buffer_addressing() ==
-        ChunkedBuffer::BufferAddressing::DISCRETE);
-    CHECK(chunked_buffer.size() == 0);
-    CHECK(chunked_buffer.capacity() == tile_size);
+    Buffer buffer;
+    buffer.realloc(tile_size);
+    CHECK(buffer.size() == 0);
+    CHECK(buffer.alloced_size() == tile_size);
 
     // Set up test data
     for (uint64_t i = 0; i < nelts; i++) {
-      const uint64_t offset = i * sizeof(uint64_t);
       uint64_t val = (uint64_t)rng(gen);
-      CHECK(chunked_buffer.write(&val, sizeof(uint64_t), offset).ok());
+      buffer.set_offset(i * sizeof(uint64_t));
+      CHECK(buffer.write(&val, sizeof(uint64_t)).ok());
     }
-    CHECK(chunked_buffer.size() == tile_size);
+    CHECK(buffer.size() == tile_size);
 
-    Tile tile(Datatype::UINT64, cell_size, dim_num, &chunked_buffer, false);
+    Tile tile(Datatype::UINT64, cell_size, dim_num, &buffer, false);
 
     CHECK(pipeline.run_forward(&test::g_helper_stats, &tile, &tp).ok());
-    CHECK(tile.chunked_buffer()->size() == 0);
+    CHECK(tile.buffer()->size() == 0);
     CHECK(tile.filtered_buffer()->size() != 0);
     CHECK(pipeline.run_reverse(&test::g_helper_stats, &tile, &tp, config).ok());
-    CHECK(tile.chunked_buffer()->size() != 0);
+    CHECK(tile.buffer()->size() != 0);
     CHECK(tile.filtered_buffer()->size() == 0);
-    CHECK(tile.chunked_buffer() == &chunked_buffer);
-    CHECK(chunked_buffer.size() == nelts * sizeof(uint64_t));
+    CHECK(tile.buffer() == &buffer);
+    CHECK(buffer.size() == nelts * sizeof(uint64_t));
     for (uint64_t i = 0; i < nelts; i++) {
       uint64_t elt = 0;
-      CHECK(chunked_buffer.read(&elt, sizeof(uint64_t), (i * sizeof(uint64_t)))
-                .ok());
+      buffer.set_offset(i * sizeof(uint64_t));
+      CHECK(buffer.read(&elt, sizeof(uint64_t)).ok());
       CHECK((int64_t)elt == rng(gen_copy));
     }
 
-    chunked_buffer.free();
+    buffer.clear();
   }
 
   SECTION(" - Random signed values") {
@@ -1758,82 +1639,74 @@ TEST_CASE("Filter: Test bit width reduction", "[filter]") {
 
     const uint64_t tile_size2 = nelts * sizeof(uint32_t);
 
-    ChunkedBuffer chunked_buffer;
-    chunked_buffer.init_fixed_size(
-        ChunkedBuffer::BufferAddressing::DISCRETE, tile_size2, chunk_size);
-    CHECK(
-        chunked_buffer.buffer_addressing() ==
-        ChunkedBuffer::BufferAddressing::DISCRETE);
-    CHECK(chunked_buffer.size() == 0);
-    CHECK(chunked_buffer.capacity() == tile_size2);
+    Buffer buffer;
+    buffer.realloc(tile_size2);
+    CHECK(buffer.size() == 0);
+    CHECK(buffer.alloced_size() == tile_size2);
 
     // Set up test data
     for (uint64_t i = 0; i < nelts; i++) {
-      const uint64_t offset = i * sizeof(int32_t);
       int32_t val = (int32_t)rng(gen);
-      CHECK(chunked_buffer.write(&val, sizeof(int32_t), offset).ok());
+      buffer.set_offset(i * sizeof(int32_t));
+      CHECK(buffer.write(&val, sizeof(int32_t)).ok());
     }
-    CHECK(chunked_buffer.size() == tile_size2);
+    CHECK(buffer.size() == tile_size2);
 
-    Tile tile(Datatype::INT32, cell_size, dim_num, &chunked_buffer, false);
+    Tile tile(Datatype::INT32, cell_size, dim_num, &buffer, false);
 
     CHECK(pipeline.run_forward(&test::g_helper_stats, &tile, &tp).ok());
-    CHECK(tile.chunked_buffer()->size() == 0);
+    CHECK(tile.buffer()->size() == 0);
     CHECK(tile.filtered_buffer()->size() != 0);
     CHECK(pipeline.run_reverse(&test::g_helper_stats, &tile, &tp, config).ok());
-    CHECK(tile.chunked_buffer()->size() != 0);
+    CHECK(tile.buffer()->size() != 0);
     CHECK(tile.filtered_buffer()->size() == 0);
-    CHECK(tile.chunked_buffer() == &chunked_buffer);
-    CHECK(chunked_buffer.size() == nelts * sizeof(uint32_t));
+    CHECK(tile.buffer() == &buffer);
+    CHECK(buffer.size() == nelts * sizeof(uint32_t));
     for (uint64_t i = 0; i < nelts; i++) {
       int32_t elt = 0;
-      CHECK(chunked_buffer.read(&elt, sizeof(int32_t), (i * sizeof(int32_t)))
-                .ok());
+      buffer.set_offset(i * sizeof(int32_t));
+      CHECK(buffer.read(&elt, sizeof(int32_t)).ok());
       CHECK(elt == rng(gen_copy));
     }
 
-    chunked_buffer.free();
+    buffer.clear();
   }
 
   SECTION("- Byte overflow") {
-    ChunkedBuffer chunked_buffer;
-    chunked_buffer.init_fixed_size(
-        ChunkedBuffer::BufferAddressing::DISCRETE, tile_size, chunk_size);
-    CHECK(
-        chunked_buffer.buffer_addressing() ==
-        ChunkedBuffer::BufferAddressing::DISCRETE);
-    CHECK(chunked_buffer.size() == 0);
-    CHECK(chunked_buffer.capacity() == tile_size);
+    Buffer buffer;
+    buffer.realloc(tile_size);
+    CHECK(buffer.size() == 0);
+    CHECK(buffer.alloced_size() == tile_size);
 
     // Set up test data
     for (uint64_t i = 0; i < nelts; i++) {
-      const uint64_t offset = i * sizeof(uint64_t);
       uint64_t val = i % 257;
-      CHECK(chunked_buffer.write(&val, sizeof(uint64_t), offset).ok());
+      buffer.set_offset(i * sizeof(uint64_t));
+      CHECK(buffer.write(&val, sizeof(uint64_t)).ok());
     }
-    CHECK(chunked_buffer.size() == tile_size);
+    CHECK(buffer.size() == tile_size);
 
-    Tile tile(Datatype::UINT64, cell_size, dim_num, &chunked_buffer, false);
+    Tile tile(Datatype::UINT64, cell_size, dim_num, &buffer, false);
 
     CHECK(pipeline.run_forward(&test::g_helper_stats, &tile, &tp).ok());
-    CHECK(tile.chunked_buffer()->size() == 0);
+    CHECK(tile.buffer()->size() == 0);
     CHECK(tile.filtered_buffer()->size() != 0);
     CHECK(pipeline.run_reverse(&test::g_helper_stats, &tile, &tp, config).ok());
-    CHECK(tile.chunked_buffer()->size() != 0);
+    CHECK(tile.buffer()->size() != 0);
     CHECK(tile.filtered_buffer()->size() == 0);
-    CHECK(tile.chunked_buffer() == &chunked_buffer);
-    CHECK(chunked_buffer.size() == nelts * sizeof(uint64_t));
+    CHECK(tile.buffer() == &buffer);
+    CHECK(buffer.size() == nelts * sizeof(uint64_t));
     for (uint64_t i = 0; i < nelts; i++) {
       uint64_t elt = 0;
-      CHECK(chunked_buffer.read(&elt, sizeof(uint64_t), (i * sizeof(uint64_t)))
-                .ok());
+      buffer.set_offset(i * sizeof(uint64_t));
+      CHECK(buffer.read(&elt, sizeof(uint64_t)).ok());
       CHECK(elt == i % 257);
     }
 
-    chunked_buffer.free();
+    buffer.clear();
   }
 
-  chunked_buffer.free();
+  buffer.clear();
 }
 
 TEST_CASE("Filter: Test positive-delta encoding", "[filter]") {
@@ -1845,27 +1718,19 @@ TEST_CASE("Filter: Test positive-delta encoding", "[filter]") {
   const uint64_t cell_size = sizeof(uint64_t);
   const uint32_t dim_num = 0;
 
-  uint32_t chunk_size;
-  CHECK(Tile::compute_chunk_size(tile_size, dim_num, cell_size, &chunk_size)
-            .ok());
-
-  ChunkedBuffer chunked_buffer;
-  chunked_buffer.init_fixed_size(
-      ChunkedBuffer::BufferAddressing::DISCRETE, tile_size, chunk_size);
-  CHECK(
-      chunked_buffer.buffer_addressing() ==
-      ChunkedBuffer::BufferAddressing::DISCRETE);
-  CHECK(chunked_buffer.size() == 0);
-  CHECK(chunked_buffer.capacity() == tile_size);
+  Buffer buffer;
+  buffer.realloc(tile_size);
+  CHECK(buffer.size() == 0);
+  CHECK(buffer.alloced_size() == tile_size);
 
   // Set up test data
   for (uint64_t i = 0; i < nelts; i++) {
-    const uint64_t offset = i * sizeof(uint64_t);
-    CHECK(chunked_buffer.write(&i, sizeof(uint64_t), offset).ok());
+    buffer.set_offset(i * sizeof(uint64_t));
+    CHECK(buffer.write(&i, sizeof(uint64_t)).ok());
   }
-  CHECK(chunked_buffer.size() == tile_size);
+  CHECK(buffer.size() == tile_size);
 
-  Tile tile(Datatype::UINT64, cell_size, dim_num, &chunked_buffer, false);
+  Tile tile(Datatype::UINT64, cell_size, dim_num, &buffer, false);
 
   FilterPipeline pipeline;
   ThreadPool tp;
@@ -1875,7 +1740,7 @@ TEST_CASE("Filter: Test positive-delta encoding", "[filter]") {
   SECTION("- Single stage") {
     CHECK(pipeline.run_forward(&test::g_helper_stats, &tile, &tp).ok());
 
-    CHECK(tile.chunked_buffer()->size() == 0);
+    CHECK(tile.buffer()->size() == 0);
     CHECK(tile.filtered_buffer()->size() != 0);
 
     auto pipeline_metadata_size = sizeof(uint64_t) + 3 * sizeof(uint32_t);
@@ -1907,14 +1772,14 @@ TEST_CASE("Filter: Test positive-delta encoding", "[filter]") {
                             nelts * sizeof(uint64_t));
 
     CHECK(pipeline.run_reverse(&test::g_helper_stats, &tile, &tp, config).ok());
-    CHECK(tile.chunked_buffer()->size() != 0);
+    CHECK(tile.buffer()->size() != 0);
     CHECK(tile.filtered_buffer()->size() == 0);
-    CHECK(tile.chunked_buffer() == &chunked_buffer);
-    CHECK(chunked_buffer.size() == nelts * sizeof(uint64_t));
+    CHECK(tile.buffer() == &buffer);
+    CHECK(buffer.size() == nelts * sizeof(uint64_t));
     for (uint64_t i = 0; i < nelts; i++) {
       uint64_t elt = 0;
-      CHECK(chunked_buffer.read(&elt, sizeof(uint64_t), (i * sizeof(uint64_t)))
-                .ok());
+      buffer.set_offset(i * sizeof(uint64_t));
+      CHECK(buffer.read(&elt, sizeof(uint64_t)).ok());
       CHECK(elt == i);
     }
   }
@@ -1927,19 +1792,18 @@ TEST_CASE("Filter: Test positive-delta encoding", "[filter]") {
           window_size);
 
       CHECK(pipeline.run_forward(&test::g_helper_stats, &tile, &tp).ok());
-      CHECK(tile.chunked_buffer()->size() == 0);
+      CHECK(tile.buffer()->size() == 0);
       CHECK(tile.filtered_buffer()->size() != 0);
       CHECK(
           pipeline.run_reverse(&test::g_helper_stats, &tile, &tp, config).ok());
-      CHECK(tile.chunked_buffer()->size() != 0);
+      CHECK(tile.buffer()->size() != 0);
       CHECK(tile.filtered_buffer()->size() == 0);
-      CHECK(tile.chunked_buffer() == &chunked_buffer);
-      CHECK(chunked_buffer.size() == nelts * sizeof(uint64_t));
+      CHECK(tile.buffer() == &buffer);
+      CHECK(buffer.size() == nelts * sizeof(uint64_t));
       for (uint64_t i = 0; i < nelts; i++) {
         uint64_t elt = 0;
-        CHECK(
-            chunked_buffer.read(&elt, sizeof(uint64_t), (i * sizeof(uint64_t)))
-                .ok());
+        buffer.set_offset(i * sizeof(uint64_t));
+        CHECK(buffer.read(&elt, sizeof(uint64_t)).ok());
         CHECK(elt == i);
       }
     }
@@ -1948,14 +1812,14 @@ TEST_CASE("Filter: Test positive-delta encoding", "[filter]") {
   SECTION("- Error on non-positive delta data") {
     for (uint64_t i = 0; i < nelts; i++) {
       auto val = nelts - i;
-      const uint64_t offset = i * sizeof(uint64_t);
-      CHECK(chunked_buffer.write(&val, sizeof(uint64_t), offset).ok());
+      buffer.set_offset(i * sizeof(uint64_t));
+      CHECK(buffer.write(&val, sizeof(uint64_t)).ok());
     }
 
     CHECK(!pipeline.run_forward(&test::g_helper_stats, &tile, &tp).ok());
   }
 
-  chunked_buffer.free();
+  buffer.clear();
 }
 
 TEST_CASE("Filter: Test bitshuffle", "[filter]") {
@@ -1967,27 +1831,19 @@ TEST_CASE("Filter: Test bitshuffle", "[filter]") {
   const uint64_t cell_size = sizeof(uint64_t);
   const uint32_t dim_num = 0;
 
-  uint32_t chunk_size;
-  CHECK(Tile::compute_chunk_size(tile_size, dim_num, cell_size, &chunk_size)
-            .ok());
-
-  ChunkedBuffer chunked_buffer;
-  chunked_buffer.init_fixed_size(
-      ChunkedBuffer::BufferAddressing::DISCRETE, tile_size, chunk_size);
-  CHECK(
-      chunked_buffer.buffer_addressing() ==
-      ChunkedBuffer::BufferAddressing::DISCRETE);
-  CHECK(chunked_buffer.size() == 0);
-  CHECK(chunked_buffer.capacity() == tile_size);
+  Buffer buffer;
+  buffer.realloc(tile_size);
+  CHECK(buffer.size() == 0);
+  CHECK(buffer.alloced_size() == tile_size);
 
   // Set up test data
   for (uint64_t i = 0; i < nelts; i++) {
-    const uint64_t offset = i * sizeof(uint64_t);
-    CHECK(chunked_buffer.write(&i, sizeof(uint64_t), offset).ok());
+    buffer.set_offset(i * sizeof(uint64_t));
+    CHECK(buffer.write(&i, sizeof(uint64_t)).ok());
   }
-  CHECK(chunked_buffer.size() == tile_size);
+  CHECK(buffer.size() == tile_size);
 
-  Tile tile(Datatype::UINT64, cell_size, dim_num, &chunked_buffer, false);
+  Tile tile(Datatype::UINT64, cell_size, dim_num, &buffer, false);
 
   FilterPipeline pipeline;
   ThreadPool tp;
@@ -1996,17 +1852,17 @@ TEST_CASE("Filter: Test bitshuffle", "[filter]") {
 
   SECTION("- Single stage") {
     CHECK(pipeline.run_forward(&test::g_helper_stats, &tile, &tp).ok());
-    CHECK(tile.chunked_buffer()->size() == 0);
+    CHECK(tile.buffer()->size() == 0);
     CHECK(tile.filtered_buffer()->size() != 0);
     CHECK(pipeline.run_reverse(&test::g_helper_stats, &tile, &tp, config).ok());
-    CHECK(tile.chunked_buffer()->size() != 0);
+    CHECK(tile.buffer()->size() != 0);
     CHECK(tile.filtered_buffer()->size() == 0);
-    CHECK(tile.chunked_buffer() == &chunked_buffer);
-    CHECK(chunked_buffer.size() == nelts * sizeof(uint64_t));
+    CHECK(tile.buffer() == &buffer);
+    CHECK(buffer.size() == nelts * sizeof(uint64_t));
     for (uint64_t i = 0; i < nelts; i++) {
       uint64_t elt = 0;
-      CHECK(chunked_buffer.read(&elt, sizeof(uint64_t), (i * sizeof(uint64_t)))
-                .ok());
+      buffer.set_offset((i * sizeof(uint64_t)));
+      CHECK(buffer.read(&elt, sizeof(uint64_t)).ok());
       CHECK(elt == i);
     }
   }
@@ -2015,43 +1871,39 @@ TEST_CASE("Filter: Test bitshuffle", "[filter]") {
     const uint32_t nelts2 = 1001;
     const uint64_t tile_size2 = nelts2 * sizeof(uint32_t);
 
-    ChunkedBuffer chunked_buffer2;
-    chunked_buffer2.init_fixed_size(
-        ChunkedBuffer::BufferAddressing::DISCRETE, tile_size2, chunk_size);
-    CHECK(
-        chunked_buffer2.buffer_addressing() ==
-        ChunkedBuffer::BufferAddressing::DISCRETE);
-    CHECK(chunked_buffer2.size() == 0);
-    CHECK(chunked_buffer2.capacity() == tile_size2);
+    Buffer buffer2;
+    buffer2.realloc(tile_size2);
+    CHECK(buffer2.size() == 0);
+    CHECK(buffer2.alloced_size() == tile_size2);
 
     for (uint64_t i = 0; i < nelts2; i++) {
-      const uint64_t offset = i * sizeof(uint32_t);
-      CHECK(chunked_buffer2.write(&i, sizeof(uint32_t), offset).ok());
+      buffer2.set_offset(i * sizeof(uint32_t));
+      CHECK(buffer2.write(&i, sizeof(uint32_t)).ok());
     }
-    CHECK(chunked_buffer2.size() == tile_size2);
+    CHECK(buffer2.size() == tile_size2);
 
-    Tile tile2(Datatype::UINT32, cell_size, dim_num, &chunked_buffer2, false);
+    Tile tile2(Datatype::UINT32, cell_size, dim_num, &buffer2, false);
 
     CHECK(pipeline.run_forward(&test::g_helper_stats, &tile2, &tp).ok());
-    CHECK(tile2.chunked_buffer()->size() == 0);
+    CHECK(tile2.buffer()->size() == 0);
     CHECK(tile2.filtered_buffer()->size() != 0);
     CHECK(
         pipeline.run_reverse(&test::g_helper_stats, &tile2, &tp, config).ok());
-    CHECK(tile2.chunked_buffer()->size() != 0);
+    CHECK(tile2.buffer()->size() != 0);
     CHECK(tile2.filtered_buffer()->size() == 0);
-    CHECK(tile2.chunked_buffer() == &chunked_buffer2);
-    CHECK(chunked_buffer2.size() == tile_size2);
+    CHECK(tile2.buffer() == &buffer2);
+    CHECK(buffer2.size() == tile_size2);
     for (uint64_t i = 0; i < nelts2; i++) {
       uint32_t elt = 0;
-      CHECK(chunked_buffer2.read(&elt, sizeof(uint32_t), (i * sizeof(uint32_t)))
-                .ok());
+      buffer2.set_offset(i * sizeof(uint32_t));
+      CHECK(buffer2.read(&elt, sizeof(uint32_t)).ok());
       CHECK(elt == i);
     }
 
-    chunked_buffer2.free();
+    buffer2.clear();
   }
 
-  chunked_buffer.free();
+  buffer.clear();
 }
 
 TEST_CASE("Filter: Test byteshuffle", "[filter]") {
@@ -2063,27 +1915,19 @@ TEST_CASE("Filter: Test byteshuffle", "[filter]") {
   const uint64_t cell_size = sizeof(uint64_t);
   const uint32_t dim_num = 0;
 
-  uint32_t chunk_size;
-  CHECK(Tile::compute_chunk_size(tile_size, dim_num, cell_size, &chunk_size)
-            .ok());
-
-  ChunkedBuffer chunked_buffer;
-  chunked_buffer.init_fixed_size(
-      ChunkedBuffer::BufferAddressing::DISCRETE, tile_size, chunk_size);
-  CHECK(
-      chunked_buffer.buffer_addressing() ==
-      ChunkedBuffer::BufferAddressing::DISCRETE);
-  CHECK(chunked_buffer.size() == 0);
-  CHECK(chunked_buffer.capacity() == tile_size);
+  Buffer buffer;
+  buffer.realloc(tile_size);
+  CHECK(buffer.size() == 0);
+  CHECK(buffer.alloced_size() == tile_size);
 
   // Set up test data
   for (uint64_t i = 0; i < nelts; i++) {
-    const uint64_t offset = i * sizeof(uint64_t);
-    CHECK(chunked_buffer.write(&i, sizeof(uint64_t), offset).ok());
+    buffer.set_offset(i * sizeof(uint64_t));
+    CHECK(buffer.write(&i, sizeof(uint64_t)).ok());
   }
-  CHECK(chunked_buffer.size() == tile_size);
+  CHECK(buffer.size() == tile_size);
 
-  Tile tile(Datatype::UINT64, cell_size, dim_num, &chunked_buffer, false);
+  Tile tile(Datatype::UINT64, cell_size, dim_num, &buffer, false);
 
   FilterPipeline pipeline;
   ThreadPool tp;
@@ -2092,17 +1936,17 @@ TEST_CASE("Filter: Test byteshuffle", "[filter]") {
 
   SECTION("- Single stage") {
     CHECK(pipeline.run_forward(&test::g_helper_stats, &tile, &tp).ok());
-    CHECK(tile.chunked_buffer()->size() == 0);
+    CHECK(tile.buffer()->size() == 0);
     CHECK(tile.filtered_buffer()->size() != 0);
     CHECK(pipeline.run_reverse(&test::g_helper_stats, &tile, &tp, config).ok());
-    CHECK(tile.chunked_buffer()->size() != 0);
+    CHECK(tile.buffer()->size() != 0);
     CHECK(tile.filtered_buffer()->size() == 0);
-    CHECK(tile.chunked_buffer() == &chunked_buffer);
-    CHECK(chunked_buffer.size() == nelts * sizeof(uint64_t));
+    CHECK(tile.buffer() == &buffer);
+    CHECK(buffer.size() == nelts * sizeof(uint64_t));
     for (uint64_t i = 0; i < nelts; i++) {
       uint64_t elt = 0;
-      CHECK(chunked_buffer.read(&elt, sizeof(uint64_t), (i * sizeof(uint64_t)))
-                .ok());
+      buffer.set_offset(i * sizeof(uint64_t));
+      CHECK(buffer.read(&elt, sizeof(uint64_t)).ok());
       CHECK(elt == i);
     }
   }
@@ -2111,43 +1955,39 @@ TEST_CASE("Filter: Test byteshuffle", "[filter]") {
     const uint32_t nelts2 = 1001;
     const uint64_t tile_size2 = nelts2 * sizeof(uint32_t);
 
-    ChunkedBuffer chunked_buffer2;
-    chunked_buffer2.init_fixed_size(
-        ChunkedBuffer::BufferAddressing::DISCRETE, tile_size2, chunk_size);
-    CHECK(
-        chunked_buffer2.buffer_addressing() ==
-        ChunkedBuffer::BufferAddressing::DISCRETE);
-    CHECK(chunked_buffer2.size() == 0);
-    CHECK(chunked_buffer2.capacity() == tile_size2);
+    Buffer buffer2;
+    buffer2.realloc(tile_size2);
+    CHECK(buffer2.size() == 0);
+    CHECK(buffer2.alloced_size() == tile_size2);
 
     for (uint64_t i = 0; i < nelts2; i++) {
-      const uint64_t offset = i * sizeof(uint32_t);
-      CHECK(chunked_buffer2.write(&i, sizeof(uint32_t), offset).ok());
+      buffer2.set_offset(i * sizeof(uint32_t));
+      CHECK(buffer2.write(&i, sizeof(uint32_t)).ok());
     }
-    CHECK(chunked_buffer2.size() == tile_size2);
+    CHECK(buffer2.size() == tile_size2);
 
-    Tile tile2(Datatype::UINT32, cell_size, dim_num, &chunked_buffer2, false);
+    Tile tile2(Datatype::UINT32, cell_size, dim_num, &buffer2, false);
 
     CHECK(pipeline.run_forward(&test::g_helper_stats, &tile2, &tp).ok());
-    CHECK(tile2.chunked_buffer()->size() == 0);
+    CHECK(tile2.buffer()->size() == 0);
     CHECK(tile2.filtered_buffer()->size() != 0);
     CHECK(
         pipeline.run_reverse(&test::g_helper_stats, &tile2, &tp, config).ok());
-    CHECK(tile2.chunked_buffer()->size() != 0);
+    CHECK(tile2.buffer()->size() != 0);
     CHECK(tile2.filtered_buffer()->size() == 0);
-    CHECK(tile2.chunked_buffer() == &chunked_buffer2);
-    CHECK(chunked_buffer2.size() == tile_size2);
+    CHECK(tile2.buffer() == &buffer2);
+    CHECK(buffer2.size() == tile_size2);
     for (uint64_t i = 0; i < nelts2; i++) {
       uint32_t elt = 0;
-      CHECK(chunked_buffer2.read(&elt, sizeof(uint32_t), (i * sizeof(uint32_t)))
-                .ok());
+      buffer2.set_offset(i * sizeof(uint32_t));
+      CHECK(buffer2.read(&elt, sizeof(uint32_t)).ok());
       CHECK(elt == i);
     }
 
-    chunked_buffer2.free();
+    buffer2.clear();
   }
 
-  chunked_buffer.free();
+  buffer.clear();
 }
 
 TEST_CASE("Filter: Test encryption", "[filter], [encryption]") {
@@ -2159,27 +1999,19 @@ TEST_CASE("Filter: Test encryption", "[filter], [encryption]") {
   const uint64_t cell_size = sizeof(uint64_t);
   const uint32_t dim_num = 0;
 
-  uint32_t chunk_size;
-  CHECK(Tile::compute_chunk_size(tile_size, dim_num, cell_size, &chunk_size)
-            .ok());
-
-  ChunkedBuffer chunked_buffer;
-  chunked_buffer.init_fixed_size(
-      ChunkedBuffer::BufferAddressing::DISCRETE, tile_size, chunk_size);
-  CHECK(
-      chunked_buffer.buffer_addressing() ==
-      ChunkedBuffer::BufferAddressing::DISCRETE);
-  CHECK(chunked_buffer.size() == 0);
-  CHECK(chunked_buffer.capacity() == tile_size);
+  Buffer buffer;
+  buffer.realloc(tile_size);
+  CHECK(buffer.size() == 0);
+  CHECK(buffer.alloced_size() == tile_size);
 
   // Set up test data
   for (uint64_t i = 0; i < nelts; i++) {
-    const uint64_t offset = i * sizeof(uint64_t);
-    CHECK(chunked_buffer.write(&i, sizeof(uint64_t), offset).ok());
+    buffer.set_offset(i * sizeof(uint64_t));
+    CHECK(buffer.write(&i, sizeof(uint64_t)).ok());
   }
-  CHECK(chunked_buffer.size() == tile_size);
+  CHECK(buffer.size() == tile_size);
 
-  Tile tile(Datatype::UINT64, cell_size, dim_num, &chunked_buffer, false);
+  Tile tile(Datatype::UINT64, cell_size, dim_num, &buffer, false);
 
   SECTION("- AES-256-GCM") {
     FilterPipeline pipeline;
@@ -2199,17 +2031,17 @@ TEST_CASE("Filter: Test encryption", "[filter], [encryption]") {
 
     // Check success
     CHECK(pipeline.run_forward(&test::g_helper_stats, &tile, &tp).ok());
-    CHECK(tile.chunked_buffer()->size() == 0);
+    CHECK(tile.buffer()->size() == 0);
     CHECK(tile.filtered_buffer()->size() != 0);
     CHECK(pipeline.run_reverse(&test::g_helper_stats, &tile, &tp, config).ok());
-    CHECK(tile.chunked_buffer()->size() != 0);
+    CHECK(tile.buffer()->size() != 0);
     CHECK(tile.filtered_buffer()->size() == 0);
-    CHECK(tile.chunked_buffer() == &chunked_buffer);
-    CHECK(chunked_buffer.size() == nelts * sizeof(uint64_t));
+    CHECK(tile.buffer() == &buffer);
+    CHECK(buffer.size() == nelts * sizeof(uint64_t));
     for (uint64_t i = 0; i < nelts; i++) {
       uint64_t elt = 0;
-      CHECK(chunked_buffer.read(&elt, sizeof(uint64_t), (i * sizeof(uint64_t)))
-                .ok());
+      buffer.set_offset(i * sizeof(uint64_t));
+      CHECK(buffer.read(&elt, sizeof(uint64_t)).ok());
       CHECK(elt == i);
     }
 
@@ -2226,17 +2058,17 @@ TEST_CASE("Filter: Test encryption", "[filter], [encryption]") {
     key[0]--;
     CHECK(filter->set_key(key).ok());
     CHECK(pipeline.run_reverse(&test::g_helper_stats, &tile, &tp, config).ok());
-    CHECK(tile.chunked_buffer()->size() != 0);
+    CHECK(tile.buffer()->size() != 0);
     CHECK(tile.filtered_buffer()->size() == 0);
-    CHECK(tile.chunked_buffer() == &chunked_buffer);
-    CHECK(chunked_buffer.size() == nelts * sizeof(uint64_t));
+    CHECK(tile.buffer() == &buffer);
+    CHECK(buffer.size() == nelts * sizeof(uint64_t));
     for (uint64_t i = 0; i < nelts; i++) {
       uint64_t elt = 0;
-      CHECK(chunked_buffer.read(&elt, sizeof(uint64_t), (i * sizeof(uint64_t)))
-                .ok());
+      buffer.set_offset(i * sizeof(uint64_t));
+      CHECK(buffer.read(&elt, sizeof(uint64_t)).ok());
       CHECK(elt == i);
     }
   }
 
-  chunked_buffer.free();
+  buffer.clear();
 }

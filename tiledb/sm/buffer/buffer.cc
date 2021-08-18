@@ -125,6 +125,16 @@ Status BufferBase::read(void* destination, const uint64_t nbytes) {
   return Status::Ok();
 }
 
+Status BufferBase::read(
+    void* destination, const uint64_t offset, const uint64_t nbytes) {
+  if (nbytes > size_ - offset) {
+    return LOG_STATUS(Status::BufferError(
+        "Read buffer overflow; may not read beyond buffer size"));
+  }
+  std::memcpy(destination, static_cast<char*>(data_) + offset, nbytes);
+  return Status::Ok();
+}
+
 void BufferBase::assert_offset_is_valid(uint64_t offset) const {
   if (offset > size_) {
     throw std::out_of_range("BufferBase::set_offset");
@@ -274,7 +284,7 @@ Status Buffer::write(ConstBuffer* buff) {
 
   RETURN_NOT_OK(buff->read((char*)data_ + offset_, bytes_to_copy));
   offset_ += bytes_to_copy;
-  size_ = offset_;
+  size_ = std::max(offset_, size_);
 
   return Status::Ok();
 }
@@ -289,7 +299,7 @@ Status Buffer::write(ConstBuffer* buff, const uint64_t nbytes) {
 
   RETURN_NOT_OK(buff->read((char*)data_ + offset_, nbytes));
   offset_ += nbytes;
-  size_ = offset_;
+  size_ = std::max(offset_, size_);
 
   return Status::Ok();
 }
@@ -304,7 +314,22 @@ Status Buffer::write(const void* buffer, const uint64_t nbytes) {
 
   std::memcpy((char*)data_ + offset_, buffer, nbytes);
   offset_ += nbytes;
-  size_ = offset_;
+  size_ = std::max(offset_, size_);
+
+  return Status::Ok();
+}
+
+Status Buffer::write(
+    const void* buffer, const uint64_t offset, const uint64_t nbytes) {
+  // Sanity check
+  if (!owns_data_)
+    return LOG_STATUS(Status::BufferError(
+        "Cannot write to buffer; Buffer does not own the already stored data"));
+
+  RETURN_NOT_OK(ensure_alloced_size(offset + nbytes));
+
+  std::memcpy((char*)data_ + offset, buffer, nbytes);
+  size_ = std::max(offset + nbytes, size_);
 
   return Status::Ok();
 }

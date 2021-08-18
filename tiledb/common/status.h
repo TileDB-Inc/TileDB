@@ -93,7 +93,6 @@ enum class StatusCode : char {
   Compression,
   Tile,
   TileIO,
-  ChunkedBuffer,
   Buffer,
   Query,
   ValidityVector,
@@ -227,11 +226,6 @@ class Status {
   /** Return a TileIOError error class Status with a given message **/
   static Status TileIOError(const std::string& msg) {
     return Status(StatusCode::TileIO, msg, -1);
-  }
-
-  /** Return a ChunkedBufferError error class Status with a given message **/
-  static Status ChunkedBufferError(const std::string& msg) {
-    return Status(StatusCode::ChunkedBuffer, msg, -1);
   }
 
   /** Return a BufferError error class Status with a given message **/

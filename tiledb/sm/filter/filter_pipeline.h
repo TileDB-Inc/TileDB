@@ -42,7 +42,6 @@
 #include "tiledb/sm/filter/filter.h"
 #include "tiledb/sm/filter/filter_buffer.h"
 #include "tiledb/sm/stats/stats.h"
-#include "tiledb/sm/tile/chunked_buffer.h"
 
 using namespace tiledb::common;
 
@@ -271,16 +270,20 @@ class FilterPipeline {
   uint32_t max_chunk_size_;
 
   /**
-   * Run the given list of chunks forward through the pipeline.
+   * Run the given buffer forward through the pipeline.
    *
-   * @param input chunked buffer to process.
+   * @param input buffer to process.
+   * @param chunk_size chunk size.
    * @param output buffer where output of the last stage
    *    will be written.
    * @param compute_tp The thread pool for compute-bound tasks.
    * @return Status
    */
   Status filter_chunks_forward(
-      const ChunkedBuffer& input, Buffer* output, ThreadPool* compute_tp) const;
+      const Buffer& input,
+      uint32_t chunk_size,
+      Buffer* output,
+      ThreadPool* compute_tp) const;
 
   /**
    * Run the given list of chunks in reverse through the pipeline.
@@ -294,7 +297,7 @@ class FilterPipeline {
    */
   Status filter_chunks_reverse(
       const std::vector<std::tuple<void*, uint32_t, uint32_t, uint32_t>>& input,
-      ChunkedBuffer* output,
+      Buffer* output,
       ThreadPool* compute_tp,
       const Config& config) const;
 

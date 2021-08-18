@@ -120,9 +120,6 @@ std::string Status::code_to_string() const {
     case StatusCode::Compression:
       type = "[TileDB::Compression] Error";
       break;
-    case StatusCode::ChunkedBuffer:
-      type = "[TileDB::ChunkedBuffer] Error";
-      break;
     case StatusCode::Tile:
       type = "[TileDB::Tile] Error";
       break;

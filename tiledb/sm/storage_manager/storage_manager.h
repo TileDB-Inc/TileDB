@@ -64,7 +64,6 @@ class Array;
 class ArraySchema;
 class Buffer;
 class BufferLRUCache;
-class ChunkedBuffer;
 class Consolidator;
 class EncryptionKey;
 class FragmentMetadata;

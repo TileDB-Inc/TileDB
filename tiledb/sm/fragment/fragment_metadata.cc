@@ -2038,12 +2038,12 @@ Status FragmentMetadata::load_v1_v2(const EncryptionKey& encryption_key) {
   RETURN_NOT_OK(tile_io.read_generic(
       &tile, 0, encryption_key, storage_manager_->config()));
 
-  auto chunked_buffer = tile->chunked_buffer();
+  auto buffer = tile->buffer();
   Buffer buff;
-  RETURN_NOT_OK_ELSE(buff.realloc(chunked_buffer->size()), tdb_delete(tile));
-  buff.set_size(chunked_buffer->size());
-  RETURN_NOT_OK_ELSE(
-      chunked_buffer->read(buff.data(), buff.size(), 0), tdb_delete(tile));
+  RETURN_NOT_OK_ELSE(buff.realloc(buffer->size()), tdb_delete(tile));
+  buff.set_size(buffer->size());
+  buffer->reset_offset();
+  RETURN_NOT_OK_ELSE(buffer->read(buff.data(), buff.size()), tdb_delete(tile));
   tdb_delete(tile);
 
   storage_manager_->stats()->add_counter("read_frag_meta_size", buff.size());
@@ -2346,11 +2346,12 @@ Status FragmentMetadata::read_generic_tile_from_file(
   RETURN_NOT_OK(tile_io.read_generic(
       &tile, offset, encryption_key, storage_manager_->config()));
 
-  const auto chunked_buffer = tile->chunked_buffer();
-  buff->realloc(chunked_buffer->size());
-  buff->set_size(chunked_buffer->size());
+  const auto buffer = tile->buffer();
+  buff->realloc(buffer->size());
+  buff->set_size(buffer->size());
+  buffer->reset_offset();
   RETURN_NOT_OK_ELSE(
-      chunked_buffer->read(buff->data(), buff->size(), 0), tdb_delete(tile));
+      buffer->read(buff->data(), buff->size()), tdb_delete(tile));
   tdb_delete(tile);
 
   return Status::Ok();
@@ -2383,18 +2384,14 @@ Status FragmentMetadata::write_generic_tile_to_file(
   URI fragment_metadata_uri = fragment_uri_.join_path(
       std::string(constants::fragment_metadata_filename));
 
-  ChunkedBuffer* const chunked_buffer = tdb_new(ChunkedBuffer);
-  RETURN_NOT_OK_ELSE(
-      Tile::buffer_to_contiguous_fixed_chunks(
-          buff, 0, constants::generic_tile_cell_size, chunked_buffer),
-      tdb_delete(chunked_buffer));
-  buff.disown_data();
+  Buffer* const buffer = tdb_new(Buffer);
+  buffer->swap(buff);
 
   Tile tile(
       constants::generic_tile_datatype,
       constants::generic_tile_cell_size,
       0,
-      chunked_buffer,
+      buffer,
       true);
 
   GenericTileIO tile_io(storage_manager_, fragment_metadata_uri);

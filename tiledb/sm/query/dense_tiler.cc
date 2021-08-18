@@ -330,8 +330,7 @@ Status DenseTiler<T>::get_tile_var(
       0));
 
   // Copy real offsets and values to the corresponding tiles
-  void* tile_pos_buff_tmp = nullptr;
-  RETURN_NOT_OK(tile_pos.chunked_buffer()->get_contiguous(&tile_pos_buff_tmp));
+  void* tile_pos_buff_tmp = tile_pos.buffer()->data();
   auto tile_pos_buff = (uint64_t*)tile_pos_buff_tmp;
   uint64_t offset = 0, val_offset, val_size, pos;
   auto mul = (offsets_format_mode_ == "bytes") ? 1 : cell_size;

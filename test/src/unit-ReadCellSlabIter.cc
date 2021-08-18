@@ -428,36 +428,21 @@ TEST_CASE_METHOD(
 
   std::vector<uint64_t> vec_2_0 = {1000, 3, 1000, 5};
   Buffer buff_2_0(&vec_2_0[0], vec_2_0.size() * sizeof(uint64_t));
-  ChunkedBuffer chunked_buffer_2_0;
-  REQUIRE(Tile::buffer_to_contiguous_fixed_chunks(
-              buff_2_0, 0, sizeof(uint64_t), &chunked_buffer_2_0)
-              .ok());
-  Tile tile_2_0(
-      Datatype::UINT64, sizeof(uint64_t), 0, &chunked_buffer_2_0, false);
+  Tile tile_2_0(Datatype::UINT64, sizeof(uint64_t), 0, &buff_2_0, false);
   auto tile_tuple = result_tile_2_0.tile_tuple("d");
   REQUIRE(tile_tuple != nullptr);
   std::get<0>(*tile_tuple) = tile_2_0;
 
   std::vector<uint64_t> vec_3_0 = {1000, 1000, 8, 9};
   Buffer buff_3_0(&vec_3_0[0], vec_3_0.size() * sizeof(uint64_t));
-  ChunkedBuffer chunked_buffer_3_0;
-  REQUIRE(Tile::buffer_to_contiguous_fixed_chunks(
-              buff_3_0, 0, sizeof(uint64_t), &chunked_buffer_3_0)
-              .ok());
-  Tile tile_3_0(
-      Datatype::UINT64, sizeof(uint64_t), 0, &chunked_buffer_3_0, false);
+  Tile tile_3_0(Datatype::UINT64, sizeof(uint64_t), 0, &buff_3_0, false);
   tile_tuple = result_tile_3_0.tile_tuple("d");
   REQUIRE(tile_tuple != nullptr);
   std::get<0>(*tile_tuple) = tile_3_0;
 
   std::vector<uint64_t> vec_3_1 = {1000, 12, 19, 1000};
   Buffer buff_3_1(&vec_3_1[0], vec_3_1.size() * sizeof(uint64_t));
-  ChunkedBuffer chunked_buffer_3_1;
-  REQUIRE(Tile::buffer_to_contiguous_fixed_chunks(
-              buff_3_1, 0, sizeof(uint64_t), &chunked_buffer_3_1)
-              .ok());
-  Tile tile_3_1(
-      Datatype::UINT64, sizeof(uint64_t), 0, &chunked_buffer_3_1, false);
+  Tile tile_3_1(Datatype::UINT64, sizeof(uint64_t), 0, &buff_3_1, false);
   tile_tuple = result_tile_3_1.tile_tuple("d");
   REQUIRE(tile_tuple != nullptr);
   std::get<0>(*tile_tuple) = tile_3_1;
@@ -1254,48 +1239,28 @@ TEST_CASE_METHOD(
 
   std::vector<uint64_t> vec_3_0_d1 = {1000, 3, 1000, 1000};
   Buffer buff_3_0_d1(&vec_3_0_d1[0], vec_3_0_d1.size() * sizeof(uint64_t));
-  ChunkedBuffer chunked_buffer_3_0_d1;
-  REQUIRE(Tile::buffer_to_contiguous_fixed_chunks(
-              buff_3_0_d1, 0, sizeof(uint64_t), &chunked_buffer_3_0_d1)
-              .ok());
-  Tile tile_3_0_d1(
-      Datatype::UINT64, sizeof(uint64_t), 0, &chunked_buffer_3_0_d1, false);
+  Tile tile_3_0_d1(Datatype::UINT64, sizeof(uint64_t), 0, &buff_3_0_d1, false);
   auto tile_tuple = result_tile_3_0.tile_tuple("d1");
   REQUIRE(tile_tuple != nullptr);
   std::get<0>(*tile_tuple) = tile_3_0_d1;
 
   std::vector<uint64_t> vec_3_0_d2 = {1000, 3, 1000, 1000};
   Buffer buff_3_0_d2(&vec_3_0_d2[0], vec_3_0_d2.size() * sizeof(uint64_t));
-  ChunkedBuffer chunked_buffer_3_0_d2;
-  REQUIRE(Tile::buffer_to_contiguous_fixed_chunks(
-              buff_3_0_d2, 0, sizeof(uint64_t), &chunked_buffer_3_0_d2)
-              .ok());
-  Tile tile_3_0_d2(
-      Datatype::UINT64, sizeof(uint64_t), 0, &chunked_buffer_3_0_d2, false);
+  Tile tile_3_0_d2(Datatype::UINT64, sizeof(uint64_t), 0, &buff_3_0_d2, false);
   tile_tuple = result_tile_3_0.tile_tuple("d2");
   REQUIRE(tile_tuple != nullptr);
   std::get<0>(*tile_tuple) = tile_3_0_d2;
 
   std::vector<uint64_t> vec_3_1_d1 = {5, 1000, 5, 1000};
   Buffer buff_3_1_d1(&vec_3_1_d1[0], vec_3_1_d1.size() * sizeof(uint64_t));
-  ChunkedBuffer chunked_buffer_3_1_d1;
-  REQUIRE(Tile::buffer_to_contiguous_fixed_chunks(
-              buff_3_1_d1, 0, sizeof(uint64_t), &chunked_buffer_3_1_d1)
-              .ok());
-  Tile tile_3_1_d1(
-      Datatype::UINT64, sizeof(uint64_t), 0, &chunked_buffer_3_1_d1, false);
+  Tile tile_3_1_d1(Datatype::UINT64, sizeof(uint64_t), 0, &buff_3_1_d1, false);
   tile_tuple = result_tile_3_1.tile_tuple("d1");
   REQUIRE(tile_tuple != nullptr);
   std::get<0>(*tile_tuple) = tile_3_1_d1;
 
   std::vector<uint64_t> vec_3_1_d2 = {5, 1000, 6, 1000};
   Buffer buff_3_1_d2(&vec_3_1_d2[0], vec_3_1_d2.size() * sizeof(uint64_t));
-  ChunkedBuffer chunked_buffer_3_1_d2;
-  REQUIRE(Tile::buffer_to_contiguous_fixed_chunks(
-              buff_3_1_d2, 0, sizeof(uint64_t), &chunked_buffer_3_1_d2)
-              .ok());
-  Tile tile_3_1_d2(
-      Datatype::UINT64, sizeof(uint64_t), 0, &chunked_buffer_3_1_d2, false);
+  Tile tile_3_1_d2(Datatype::UINT64, sizeof(uint64_t), 0, &buff_3_1_d2, false);
   tile_tuple = result_tile_3_1.tile_tuple("d2");
   REQUIRE(tile_tuple != nullptr);
   std::get<0>(*tile_tuple) = tile_3_1_d2;
