@@ -616,7 +616,7 @@ TEST_CASE_METHOD(
   CHECK(tp.init(4).ok());
   Config cfg;
   tiledb::sm::SubarrayPartitioner subarray_partitioner(&cfg,
-      subarray, memory_budget_, memory_budget_var_, 0, &tp, nullptr);
+      subarray, memory_budget_, memory_budget_var_, 0, &tp, subarray.stats());
   auto st = subarray_partitioner.set_result_budget("a", 100 * sizeof(int));
   CHECK(st.ok());
   st = subarray_partitioner.set_result_budget("b", 1, 1);
