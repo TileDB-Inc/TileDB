@@ -25,4 +25,6 @@
 # THE SOFTWARE.
 #
 
-add_subdirectory(interval)
+if (TILEDB_TESTS)
+    add_subdirectory(interval)
+endif()

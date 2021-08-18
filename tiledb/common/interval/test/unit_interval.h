@@ -233,7 +233,7 @@ class TestTypeTraits<
                                                      max};
 
   static constexpr T positive_infinity = std::numeric_limits<T>::infinity();
-  static constexpr T negative_infinity = -1.0 * positive_infinity;
+  static constexpr T negative_infinity = -std::numeric_limits<T>::infinity();
   static constexpr T NaN = std::numeric_limits<T>::quiet_NaN();
 };
 
