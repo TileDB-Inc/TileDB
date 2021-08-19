@@ -261,6 +261,11 @@ add_subdirectory(examples)
 # Build unit tests
 if (TILEDB_TESTS)
   add_subdirectory(test)
+
+  # Add cmake target for "tests" to build all unit tests executables
+  add_custom_target(tests)
+  add_dependencies(tests tiledb_unit)
+  add_dependencies(tests unit_interval)
 endif()
 
 # Build tools
