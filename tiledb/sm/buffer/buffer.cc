@@ -43,9 +43,9 @@ using namespace tiledb::common;
 namespace tiledb {
 namespace sm {
 
-//=======================================================
-// BufferBase
-//=======================================================
+/* ****************************** */
+/*          BufferBase            */
+/* ****************************** */
 
 BufferBase::BufferBase()
     : data_(nullptr)
@@ -141,9 +141,9 @@ void BufferBase::assert_offset_is_valid(uint64_t offset) const {
   }
 }
 
-//=======================================================
-// Buffer
-//=======================================================
+/* ****************************** */
+/*            Buffer              */
+/* ****************************** */
 
 Buffer::Buffer()
     : BufferBase()
@@ -361,9 +361,9 @@ Status Buffer::ensure_alloced_size(const uint64_t nbytes) {
   return this->realloc(new_alloc_size);
 }
 
-//=======================================================
-// ConstBuffer
-//=======================================================
+/* ****************************** */
+/*          ConstBuffer           */
+/* ****************************** */
 
 ConstBuffer::ConstBuffer(Buffer* buff)
     : ConstBuffer(buff->data(), buff->size()) {
@@ -377,9 +377,9 @@ uint64_t ConstBuffer::nbytes_left_to_read() const {
   return size_ - offset_;
 }
 
-//=======================================================
-// PreallocatedBuffer
-//=======================================================
+/* ****************************** */
+/*       PreallocatedBuffer       */
+/* ****************************** */
 
 PreallocatedBuffer::PreallocatedBuffer(const void* data, const uint64_t size)
     : BufferBase(data, size) {

@@ -43,9 +43,9 @@
 
 #include "unit_interval.h"
 
-//=======================================================
-// Tests for Interval::intersection()
-//=======================================================
+/* ************************************** */
+/*   Tests for Interval::intersection()   */
+/* ************************************** */
 
 template <class T>
 void check_intersection(
@@ -1055,9 +1055,9 @@ TEMPLATE_LIST_TEST_CASE(
   }
 }
 
-//=======================================================
-// Tests for Interval::union()
-//=======================================================
+/* ******************************** */
+/*    Tests for Interval::union()   */
+/* ******************************** */
 
 /**
  * Check that a union produces the expected result, except if either of the
@@ -1451,9 +1451,9 @@ TEMPLATE_LIST_TEST_CASE(
   }
 }
 
-//=======================================================
-// Tests for Interval::cut()
-//=======================================================
+/* ******************************** */
+/*     Tests for Interval::cut()    */
+/* ******************************** */
 
 template <class T>
 void check_cut(

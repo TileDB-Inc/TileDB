@@ -33,17 +33,17 @@
 
 #include "unit_interval.h"
 
-//=======================================================
-// Equality
-//=======================================================
+/* ****************************** */
+/*             Equality           */
+/* ****************************** */
 /*
  * The tests for `operator==` are incorporated into `check_equality()`, which is
  * used in all the operation tests.
  */
 
-//=======================================================
-// Interval comparison
-//=======================================================
+/* ****************************** */
+/*       Interval comparison      */
+/* ****************************** */
 /*
  * Most of the tests for interval comparison are integrated into the tests for
  * `interval_union` and `cut`.
@@ -87,9 +87,9 @@ TEMPLATE_LIST_TEST_CASE(
   }
 }
 
-//=======================================================
-// Point comparison
-//=======================================================
+/* ****************************** */
+/*         Point comparison       */
+/* ****************************** */
 
 template <class T>
 void check_point_below(T x, Interval<T> y) {

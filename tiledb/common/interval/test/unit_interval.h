@@ -49,9 +49,9 @@ inline bool implies(bool x, bool y) {
   return !x || y;
 }
 
-//=======================================================
-// class WhiteboxInterval
-//=======================================================
+/* ******************************** */
+/*       class WhiteboxInterval     */
+/* ******************************** */
 
 // forward declaration
 template <class T>
@@ -140,23 +140,21 @@ class WhiteboxInterval : public Interval<T> {
 
 }  // namespace tiledb::common
 
-//=======================================================
-// Types under test
-//=======================================================
+/* ******************************** */
+/*          Types under rest        */
+/* ******************************** */
 
 /**
  * List of types used to instantiate generic test cases
  */
 typedef tuple<uint16_t, uint64_t, int16_t, double> TypesUnderTest;
 
-//==================================
 /**
  * Test type traits allow generic instantiation by Catch from a list of types.
  */
 template <class T, class Enable = T>
 class TestTypeTraits;
 
-//==================================
 /**
  * Test traits for unsigned integral values
  */
@@ -174,7 +172,6 @@ class TestTypeTraits<
       0, 1, 2, 3, 99, 100, 101, max - 1, max};
 };
 
-//==================================
 /**
  * Test traits for signed integral values
  */
@@ -193,7 +190,6 @@ class TestTypeTraits<
       min, min + 1, -101, -100, -99, -2, -1, 0, 1, 2, 3, max - 1, max};
 };
 
-//==================================
 /**
  * Test traits for unsigned integral values
  */
@@ -237,9 +233,9 @@ class TestTypeTraits<
   static constexpr T NaN = std::numeric_limits<T>::quiet_NaN();
 };
 
-//=======================================================
-// is_adjacent
-//=======================================================
+/* ******************************** */
+/*             is_adjacent          */
+/* ******************************** */
 
 /**
  * Independent access to adjacency testing
@@ -256,9 +252,9 @@ bool is_adjacent([[maybe_unused]] T x, [[maybe_unused]] T y) {
   }
 }
 
-//=======================================================
-// Choose generator for Catch
-//=======================================================
+/* ******************************** */
+/*   Choose generator for Catch     */
+/* ******************************** */
 
 /**
  * A generator for Catch. Given a list L and a number K, it generates every way
@@ -371,9 +367,9 @@ choose(unsigned int k, std::initializer_list<T> list) {
       std::make_unique<ChooseGenerator<T>>(k, list));
 }
 
-//=======================================================
-// Verification of class invariants
-//=======================================================
+/* ************************************ */
+/*   Verification of class invariants   */
+/* ************************************ */
 
 /**
  * Checks that all the class invariants of an Interval object are satisfied.
