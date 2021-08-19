@@ -33,9 +33,9 @@
 #include "catch.hpp"
 #include "tiledb/sm/cpp_api/tiledb"
 
-using namespace tiledb;
+#include "tiledb/common/logger_public.h"
 
-static bool active_diags = false;
+using namespace tiledb;
 
 std::vector<std::string> dataAndOffsetToStrings(
     Query query,
@@ -48,13 +48,17 @@ std::vector<std::string> dataAndOffsetToStrings(
   std::vector<uint64_t> str_sizes;
   if (result_el_off > 1) {
     for (size_t i = 0; i < result_el_off - 1; ++i) {
-      if (active_diags && i >= offsets.size()) {
-        std::cout << "i " << i << ", offsets.size() " << offsets.size();
+      if (i >= offsets.size()) {
+        std::stringstream msg;
+        msg << "i " << i << ", offsets.size() " << offsets.size();
+        LOG_TRACE(msg.str());
       }
       str_sizes.push_back(offsets[i + 1] - offsets[i]);
-      if (active_diags && str_sizes.size() > data.size()) {
-        std::cout << "str_sizes.size() " << str_sizes.size() << ", data.size() "
+      if (str_sizes.size() > data.size()) {
+        std::stringstream msg;
+        msg << "str_sizes.size() " << str_sizes.size() << ", data.size() "
                   << data.size();
+        LOG_TRACE(msg.str());
       }
     }
   }
@@ -456,9 +460,11 @@ TEST_CASE(
       std::vector<std::string> d3 =
           dataAndOffsetToStrings(query_read, "dim3", dim3_offsets, dim3s);
       for (auto i = 0u; i < result_num; i++) {
-        if (active_diags) {
-          std::cout << d1[i] << "\t" << dim2[i] << "\t" << d3[i] << "\t"
+        {
+          std::stringstream msg;
+          msg << d1[i] << "\t" << dim2[i] << "\t" << d3[i] << "\t"
                     << a1_data[i] << std::endl;
+          LOG_TRACE(msg.str());
         }
         collect_results_dim1.emplace_back(d1[i]);
         collect_results_dim2.emplace_back(dim2[i]);
@@ -466,9 +472,11 @@ TEST_CASE(
         collect_results_a1.emplace_back(a1_data[i]);
       }
     };
-    if (active_diags) {
-      std::cout << "option " << option << ", num results " << result_num
+    {
+      std::stringstream msg;
+      msg << "option " << option << ", num results " << result_num
                 << std::endl;
+      LOG_TRACE(msg.str());
     }
     collect_data();
     REQUIRE(expected_dim1 == collect_results_dim1);
@@ -745,12 +753,14 @@ TEST_CASE(
 
     auto result_buffers = query_read.result_buffer_elements();
     auto result_num = result_buffers["a1"].second;
-    if (active_diags) {
-      std::cout << "option " << option << ", expected status "
+    {
+      std::stringstream msg;
+      msg << "option " << option << ", expected status "
                 << initial_expected_read_status << " current read_status() "
                 << query_read.query_status() << ", (initial) result_num "
                 << result_num << ", final expected_result_num "
                 << expected_result_num << std::endl;
+      LOG_TRACE(msg.str());
     }
 
     decltype(query_read.query_status()) what_status =
@@ -765,9 +775,11 @@ TEST_CASE(
       std::vector<std::string> d3 =
           dataAndOffsetToStrings(query_read, "dim3", dim3_offsets, dim3s);
       for (auto i = 0u; i < result_num; i++) {
-        if (active_diags) {
-          std::cout << d1[i] << "\t" << dim2[i] << "\t" << d3[i] << "\t"
+        {
+          std::stringstream msg;
+          msg << d1[i] << "\t" << dim2[i] << "\t" << d3[i] << "\t"
                     << a1_data[i] << std::endl;
+          LOG_TRACE(msg.str());
         }
         collect_results_dim1.emplace_back(d1[i]);
         collect_results_dim2.emplace_back(dim2[i]);
@@ -788,8 +800,10 @@ TEST_CASE(
       collect_data();
     }
     tot_result_num += result_num;
-    if (active_diags) {
-      std::cout << "tot_result_num " << tot_result_num << std::endl;
+    {
+      std::stringstream msg;
+      msg << "tot_result_num " << tot_result_num << std::endl;
+      LOG_TRACE(msg.str());
     }
     REQUIRE(query_read.query_status() == Query::Status::COMPLETE);
     REQUIRE(tot_result_num == expected_result_num);
@@ -1043,12 +1057,14 @@ TEST_CASE(
 
   auto result_buffers = query_read.result_buffer_elements();
   auto result_num = result_buffers["a1"].second;
-  if (active_diags) {
-    std::cout << "option " << which_option << ", expected status "
+  {
+    std::stringstream msg;
+    msg << "option " << which_option << ", expected status "
               << initial_expected_read_status << " current read_status() "
               << query_read.query_status() << ", (initial) result_num "
               << result_num << ", final expected_result_num "
               << expected_result_num << std::endl;
+    LOG_TRACE(msg.str());
   }
 
   decltype(query_read.query_status()) what_status =
@@ -1063,9 +1079,11 @@ TEST_CASE(
     std::vector<std::string> d3 =
         dataAndOffsetToStrings(query_read, "dim3", dim3_offsets, dim3s);
     for (auto i = 0u; i < result_num; i++) {
-      if (active_diags) {
-        std::cout << d1[i] << "\t" << dim2[i] << "\t" << d3[i] << "\t"
+      {
+        std::stringstream msg;
+        msg << d1[i] << "\t" << dim2[i] << "\t" << d3[i] << "\t"
                   << a1_data[i] << std::endl;
+        LOG_TRACE(msg.str());
       }
       collect_results_dim1.emplace_back(d1[i]);
       collect_results_dim2.emplace_back(dim2[i]);
@@ -1086,8 +1104,10 @@ TEST_CASE(
     collect_data();
   }
   tot_result_num += result_num;
-  if (active_diags) {
-    std::cout << "tot_result_num " << tot_result_num << std::endl;
+  {
+    std::stringstream msg;
+    msg << "tot_result_num " << tot_result_num << std::endl;
+    LOG_TRACE(msg.str());
   }
   REQUIRE(query_read.query_status() == Query::Status::COMPLETE);
   REQUIRE(tot_result_num == expected_result_num);
@@ -1349,11 +1369,13 @@ TEST_CASE(
 
     auto result_buffers = query_read.result_buffer_elements();
     auto result_num = result_buffers["a1"].second;
-    if (active_diags) {
-      std::cout << "option " << option << " current read_status() "
+    {
+      std::stringstream msg;
+      msg << "option " << option << " current read_status() "
                 << query_read.query_status() << ", (initial) result_num "
                 << result_num << ", final expected_result_num "
                 << expected_result_num << ", bufcnt " << bufcnt << std::endl;
+      LOG_TRACE(msg.str());
     }
 
     // ch9473
@@ -1383,9 +1405,11 @@ TEST_CASE(
       std::vector<std::string> d3 =
           dataAndOffsetToStrings(query_read, "dim3", dim3_offsets, dim3s);
       for (auto i = 0u; i < result_num; i++) {
-        if (active_diags) {
-          std::cout << d1[i] << "\t" << dim2[i] << "\t" << d3[i] << "\t"
+        {
+          std::stringstream msg;
+          msg << d1[i] << "\t" << dim2[i] << "\t" << d3[i] << "\t"
                     << a1_data[i] << std::endl;
+          LOG_TRACE(msg.str());
         }
         collect_results_dim1.emplace_back(d1[i]);
         collect_results_dim2.emplace_back(dim2[i]);
@@ -1412,8 +1436,10 @@ TEST_CASE(
       collect_data();
     }
     tot_result_num += result_num;
-    if (active_diags) {
-      std::cout << "tot_result_num " << tot_result_num << std::endl;
+    {
+      std::stringstream msg;
+      msg << "tot_result_num " << tot_result_num << std::endl;
+      LOG_TRACE(msg.str());
     }
     REQUIRE(query_read.query_status() == Query::Status::COMPLETE);
     REQUIRE(tot_result_num == expected_result_num);
@@ -1680,11 +1706,13 @@ TEST_CASE(
 
     auto result_buffers = query_read.result_buffer_elements();
     auto result_num = result_buffers["a1"].second;
-    if (active_diags) {
-      std::cout << "option " << option << " current read_status() "
+    {
+      std::stringstream msg;
+      msg << "option " << option << " current read_status() "
                 << query_read.query_status() << ", (initial) result_num "
                 << result_num << ", final expected_result_num "
                 << expected_result_num << ", bufcnt " << bufcnt << std::endl;
+      LOG_TRACE(msg.str());
     }
 
     // ch9473
@@ -1714,9 +1742,11 @@ TEST_CASE(
       std::vector<std::string> d3 =
           dataAndOffsetToStrings(query_read, "dim3", dim3_offsets, dim3s);
       for (auto i = 0u; i < result_num; i++) {
-        if (active_diags) {
-          std::cout << d1[i] << "\t" << dim2[i] << "\t" << d3[i] << "\t"
+        {
+          std::stringstream msg;
+          msg << d1[i] << "\t" << dim2[i] << "\t" << d3[i] << "\t"
                     << a1_data[i] << std::endl;
+          LOG_TRACE(msg.str());
         }
         collect_results_dim1.emplace_back(d1[i]);
         collect_results_dim2.emplace_back(dim2[i]);
@@ -1743,8 +1773,10 @@ TEST_CASE(
       collect_data();
     }
     tot_result_num += result_num;
-    if (active_diags) {
-      std::cout << "tot_result_num " << tot_result_num << std::endl;
+    {
+      std::stringstream msg;
+      msg << "tot_result_num " << tot_result_num << std::endl;
+      LOG_TRACE(msg.str());
     }
     REQUIRE(query_read.query_status() == Query::Status::COMPLETE);
     REQUIRE(tot_result_num == expected_result_num);
