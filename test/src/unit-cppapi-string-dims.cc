@@ -57,7 +57,7 @@ std::vector<std::string> dataAndOffsetToStrings(
       if (str_sizes.size() > data.size()) {
         std::stringstream msg;
         msg << "str_sizes.size() " << str_sizes.size() << ", data.size() "
-                  << data.size();
+            << data.size();
         LOG_TRACE(msg.str());
       }
     }
@@ -462,8 +462,8 @@ TEST_CASE(
       for (auto i = 0u; i < result_num; i++) {
         {
           std::stringstream msg;
-          msg << d1[i] << "\t" << dim2[i] << "\t" << d3[i] << "\t"
-                    << a1_data[i] << std::endl;
+          msg << d1[i] << "\t" << dim2[i] << "\t" << d3[i] << "\t" << a1_data[i]
+              << std::endl;
           LOG_TRACE(msg.str());
         }
         collect_results_dim1.emplace_back(d1[i]);
@@ -474,8 +474,7 @@ TEST_CASE(
     };
     {
       std::stringstream msg;
-      msg << "option " << option << ", num results " << result_num
-                << std::endl;
+      msg << "option " << option << ", num results " << result_num << std::endl;
       LOG_TRACE(msg.str());
     }
     collect_data();
@@ -756,10 +755,10 @@ TEST_CASE(
     {
       std::stringstream msg;
       msg << "option " << option << ", expected status "
-                << initial_expected_read_status << " current read_status() "
-                << query_read.query_status() << ", (initial) result_num "
-                << result_num << ", final expected_result_num "
-                << expected_result_num << std::endl;
+          << initial_expected_read_status << " current read_status() "
+          << query_read.query_status() << ", (initial) result_num "
+          << result_num << ", final expected_result_num " << expected_result_num
+          << std::endl;
       LOG_TRACE(msg.str());
     }
 
@@ -777,8 +776,8 @@ TEST_CASE(
       for (auto i = 0u; i < result_num; i++) {
         {
           std::stringstream msg;
-          msg << d1[i] << "\t" << dim2[i] << "\t" << d3[i] << "\t"
-                    << a1_data[i] << std::endl;
+          msg << d1[i] << "\t" << dim2[i] << "\t" << d3[i] << "\t" << a1_data[i]
+              << std::endl;
           LOG_TRACE(msg.str());
         }
         collect_results_dim1.emplace_back(d1[i]);
@@ -1060,10 +1059,9 @@ TEST_CASE(
   {
     std::stringstream msg;
     msg << "option " << which_option << ", expected status "
-              << initial_expected_read_status << " current read_status() "
-              << query_read.query_status() << ", (initial) result_num "
-              << result_num << ", final expected_result_num "
-              << expected_result_num << std::endl;
+        << initial_expected_read_status << " current read_status() "
+        << query_read.query_status() << ", (initial) result_num " << result_num
+        << ", final expected_result_num " << expected_result_num << std::endl;
     LOG_TRACE(msg.str());
   }
 
@@ -1081,8 +1079,8 @@ TEST_CASE(
     for (auto i = 0u; i < result_num; i++) {
       {
         std::stringstream msg;
-        msg << d1[i] << "\t" << dim2[i] << "\t" << d3[i] << "\t"
-                  << a1_data[i] << std::endl;
+        msg << d1[i] << "\t" << dim2[i] << "\t" << d3[i] << "\t" << a1_data[i]
+            << std::endl;
         LOG_TRACE(msg.str());
       }
       collect_results_dim1.emplace_back(d1[i]);
@@ -1372,9 +1370,9 @@ TEST_CASE(
     {
       std::stringstream msg;
       msg << "option " << option << " current read_status() "
-                << query_read.query_status() << ", (initial) result_num "
-                << result_num << ", final expected_result_num "
-                << expected_result_num << ", bufcnt " << bufcnt << std::endl;
+          << query_read.query_status() << ", (initial) result_num "
+          << result_num << ", final expected_result_num " << expected_result_num
+          << ", bufcnt " << bufcnt << std::endl;
       LOG_TRACE(msg.str());
     }
 
@@ -1407,8 +1405,8 @@ TEST_CASE(
       for (auto i = 0u; i < result_num; i++) {
         {
           std::stringstream msg;
-          msg << d1[i] << "\t" << dim2[i] << "\t" << d3[i] << "\t"
-                    << a1_data[i] << std::endl;
+          msg << d1[i] << "\t" << dim2[i] << "\t" << d3[i] << "\t" << a1_data[i]
+              << std::endl;
           LOG_TRACE(msg.str());
         }
         collect_results_dim1.emplace_back(d1[i]);
@@ -1709,9 +1707,9 @@ TEST_CASE(
     {
       std::stringstream msg;
       msg << "option " << option << " current read_status() "
-                << query_read.query_status() << ", (initial) result_num "
-                << result_num << ", final expected_result_num "
-                << expected_result_num << ", bufcnt " << bufcnt << std::endl;
+          << query_read.query_status() << ", (initial) result_num "
+          << result_num << ", final expected_result_num " << expected_result_num
+          << ", bufcnt " << bufcnt << std::endl;
       LOG_TRACE(msg.str());
     }
 
@@ -1744,8 +1742,8 @@ TEST_CASE(
       for (auto i = 0u; i < result_num; i++) {
         {
           std::stringstream msg;
-          msg << d1[i] << "\t" << dim2[i] << "\t" << d3[i] << "\t"
-                    << a1_data[i] << std::endl;
+          msg << d1[i] << "\t" << dim2[i] << "\t" << d3[i] << "\t" << a1_data[i]
+              << std::endl;
           LOG_TRACE(msg.str());
         }
         collect_results_dim1.emplace_back(d1[i]);
