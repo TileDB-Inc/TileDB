@@ -956,6 +956,11 @@ Status Query::set_layout(Layout layout) {
         "Cannot set layout; Hilbert order is not applicable to queries"));
 
   layout_ = layout;
+  if (type_ == QueryType::WRITE) {
+    RETURN_NOT_OK(writer_.set_layout(layout));
+  } else if (type_ == QueryType::READ) {
+    RETURN_NOT_OK(reader_.set_layout(layout));
+  }
   return Status::Ok();
 }
 
