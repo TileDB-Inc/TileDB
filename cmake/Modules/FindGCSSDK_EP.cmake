@@ -38,15 +38,42 @@ set(CMAKE_PREFIX_PATH ${CMAKE_PREFIX_PATH} "${TILEDB_EP_INSTALL_PREFIX}")
 
 # Try searching for the SDK in the EP prefix.
 set(GCSSDK_DIR "${TILEDB_EP_INSTALL_PREFIX}")
+# Is the above an incorrect variable name? try adding the following...
+set(GCSSDK_EP_DIR "${TILEDB_EP_INSTALL_PREFIX}")
 
 # First check for a static version in the EP prefix.
 # The storage client is installed as the cmake package storage_client
 # TODO: This should be replaced with proper find_package as google installs cmake targets for the subprojects
 if (NOT TILEDB_FORCE_ALL_DEPS OR TILEDB_GCSSDK_EP_BUILT)
+  if(WIN32)
+    set(ZLIB_LIBRARY "${TILEDB_EP_SOURCE_DIR}/ep_gcssdk/cmake-out/vcpkg/packages/zlib_x64-windows-static/lib/zlib.lib")
+    set(CMAKE_PREFIX_PATH ${CMAKE_PREFIX_PATH} "${TILEDB_EP_SOURCE_DIR}/ep_gcssdk/cmake-out/msvc-x64-windows-static")
+    set(CMAKE_PREFIX_PATH ${CMAKE_PREFIX_PATH} "${TILEDB_EP_SOURCE_DIR}/ep_gcssdk/cmake-out/vcpkg/packages")
+    set(google_cloud_cpp_common_DIR ${TILEDB_EP_SOURCE_DIR}/ep_gcssdk/cmake-out/msvc-x64-windows-static/google/cloud)
+#       google_cloud_cpp_common_DIR                          ep_gcssdk\cmake-out\msvc-x64-windows-static\google\cloud
+    set(google_cloud_cpp_common_LIBRARY ${TILEDB_EP_SOURCE_DIR}/ep_gcssdk/cmake-out/msvc-x64-windows-static/google/cloud/google_cloud_cpp_common.lib)
+#                                                                ep_gcssdk\cmake-out\msvc-x64-windows-static\google\cloud\google_cloud_cpp_common.lib
+    set(absl_DIR "${TILEDB_EP_SOURCE_DIR}/ep_gcssdk/cmake-out/vcpkg/packages/abseil_x64-windows-static/share/absl")
+    # set(nlohmann_json_DIR "${TILEDB_EP_SOURCE_DIR}/ep_gcssdk/cmake-out/vcpkg/packages/nlohmann-json_x64-windows-static/share/nlohmann_json")
+    set(nlohmann_json_DIR "${TILEDB_EP_SOURCE_DIR}/ep_gcssdk/cmake-out/vcpkg/installed/x64-windows-static/share/nlohmann_json")
+    set(openssl_DIR "${TILEDB_EP_SOURCE_DIR}/ep_gcssdk/cmake-out/vcpkg/packages/openssl_x64-windows-static/include/openssl")
+    set(OPENSSL_ROOT_DIR "${TILEDB_EP_SOURCE_DIR}/ep_gcssdk/cmake-out/vcpkg/packages/openssl_x64-windows-static/include/openssl")
+    set(storage_client_LIBRARY ${TILEDB_EP_SOURCE_DIR}/ep_gcssdk/cmake-out/msvc-x64-windows-static/google/cloud/storage/storage_client.lib)
+    find_package(storage_client CONFIG
+      PATHS ${TILEDB_EP_INSTALL_PREFIX}
+            ${TILEDB_DEPS_NO_DEFAULT_PATH}
+            ${TILEDB_EP_SOURCE_DIR}/ep_gcssdk/cmake-out/msvc-x64-windows-static/google/cloud/storage
+            ${TILEDB_EP_SOURCE_DIR}/ep_gcssdk/cmake-out/msvc-x64-windows-static/google/cloud/storage/CMakeFiles/Export
+     #       ${TILEDB_EP_SOURCE_DIR}/ep_gcssdk/cmake-out/msvc-x64-windows-static/google/cloud
+    )
+  else()
   find_package(storage_client
     PATHS ${TILEDB_EP_INSTALL_PREFIX}
           ${TILEDB_DEPS_NO_DEFAULT_PATH}
+   #       ${TILEDB_EP_SOURCE_DIR}/ep_gcssdk/cmake-out/msvc-x64-windows-static/google/cloud/storage
+   #       ${TILEDB_EP_SOURCE_DIR}/ep_gcssdk/cmake-out/msvc-x64-windows-static/google/cloud
   )
+  endif()
   set(GCSSDK_FOUND ${storage_client_FOUND})
 endif()
 
@@ -75,13 +102,19 @@ if (NOT GCSSDK_FOUND)
       #set(CONDITIONAL_PATCH cd ${CMAKE_SOURCE_DIR} && ${GIT_EXECUTABLE} apply --ignore-whitespace -p1 --unsafe-paths --verbose --directory=${TILEDB_EP_SOURCE_DIR}/ep_capnp < ${TILEDB_CMAKE_INPUTS_DIR}/patches/ep_capnp/capnp_CMakeLists.txt.patch)
       set(CONDITIONAL_PATCH cd ${CMAKE_SOURCE_DIR} &&
         echo TILEDB_EP_SOURCE_DIR/ep_gcssdk is ${TILEDB_EP_SOURCE_DIR}/ep_gcssdk &&
+        echo b4 build.patch &&
         ${GIT_EXECUTABLE} apply --check --apply --ignore-whitespace -p1 --unsafe-paths --verbose --directory=${TILEDB_EP_SOURCE_DIR}/ep_gcssdk < ${TILEDB_CMAKE_INPUTS_DIR}/patches/ep_gcssdk/build.patch &&
+        echo b4 disable_tests.patch &&
         ${GIT_EXECUTABLE} apply --check --apply --ignore-whitespace -p1 --unsafe-paths --verbose --directory=${TILEDB_EP_SOURCE_DIR}/ep_gcssdk < ${TILEDB_CMAKE_INPUTS_DIR}/patches/ep_gcssdk/disable_tests.patch &&
+        echo b4 disable_examples.patch &&
         ${GIT_EXECUTABLE} apply --check --apply --ignore-whitespace -p1 --unsafe-paths --verbose --directory=${TILEDB_EP_SOURCE_DIR}/ep_gcssdk < ${TILEDB_CMAKE_INPUTS_DIR}/patches/ep_gcssdk/disable_examples.patch
       )
 #      set(TILEDB_BUILD_GCSSTUFF_COMMAND ${CMAKE_COMMAND} --build cmake-out -- /MP${NCPU} )
       #vs2019 msbuild complaining about /MP12, so let's just let it default to whatever
-      set(TILEDB_BUILD_GCSSTUFF_COMMAND ${CMAKE_COMMAND} --build cmake-out -- )
+      set(TILEDB_BUILD_GCSSTUFF_COMMAND ${CMAKE_COMMAND} --build cmake-out )
+      set(SSLSTUFF "") # may need to populate, did get some.ssl buildin gon windows, think it was 'open' flavor...
+      set(TILEDB_CMAKE_C_FLAGS "/EHsc ${CMAKE_C_FLAGS}")
+      # set(TILEDB_CMAKE_C_FLAGS "/EHsc ${CMAKE_C_FLAGS} /MT")
     else()
       set(CONDITIONAL_PATCH
         patch -N -p1 < ${TILEDB_CMAKE_INPUTS_DIR}/patches/ep_gcssdk/build.patch &&
@@ -89,9 +122,11 @@ if (NOT GCSSDK_FOUND)
         patch -N -p1 < ${TILEDB_CMAKE_INPUTS_DIR}/patches/ep_gcssdk/disable_examples.patch
       )
       set(TILEDB_BUILD_GCSSTUFF_COMMAND ${CMAKE_COMMAND} --build cmake-out -- -j${NCPU} )
-
+      set(SSLSTUFF "-DOPENSSL_ROOT_DIR=${TILEDB_OPENSSL_DIR}")
+	  set(TILEDB_CMAKE_C_FLAGS "${CMAKE_C_FLAGS}")
     endif()
-
+    
+    if (WIN32)
     ExternalProject_Add(ep_gcssdk
       PREFIX "externals"
       # Set download name to avoid collisions with only the version number in the filename
@@ -100,20 +135,61 @@ if (NOT GCSSDK_FOUND)
       URL_HASH SHA1=d4e14faef4095289b06f5ffe57d33a14574a7055
       BUILD_IN_SOURCE 1
       PATCH_COMMAND
-        echo patching ep_gcssdk from &&
-        echo %cd% &&
-        echo ${CONDITIONAL_PATCH} &&
+         echo "start - dlh patching win32 gcs" &&
+         cmake -E copy ${TILEDB_CMAKE_INPUTS_DIR}/patches/ep_gcssdk/build-cmake-dependencies.ps1 ./ci/kokoro/windows/ && 
+         cmake -E copy ${TILEDB_CMAKE_INPUTS_DIR}/patches/ep_gcssdk/build-cmake.ps1 ./ci/kokoro/windows/ && 
+         cmake -E copy ${TILEDB_CMAKE_INPUTS_DIR}/patches/ep_gcssdk/EnableWerror.cmake ./cmake/ && 
+         cmake -E copy ${TILEDB_CMAKE_INPUTS_DIR}/patches/ep_gcssdk/common_client_test.cc ./google/cloud/bigtable/internal/ &&
+         echo "done - dlh patching win32 gcs"
+#        echo patching ep_gcssdk from &&
+#        echo %cd% &&
+#        echo ${CONDITIONAL_PATCH} &&
+        # ${CONDITIONAL_PATCH}
+#        patch -N -p1 < ${TILEDB_CMAKE_INPUTS_DIR}/patches/ep_gcssdk/build.patch &&
+#        patch -N -p1 < ${TILEDB_CMAKE_INPUTS_DIR}/patches/ep_gcssdk/disable_tests.patch &&
+#        patch -N -p1 < ${TILEDB_CMAKE_INPUTS_DIR}/patches/ep_gcssdk/disable_examples.patch
+      CONFIGURE_COMMAND ""
+      BUILD_COMMAND 
+        cmd.exe /c echo %cd% && 
+        powershell -exec bypass ci/kokoro/windows/build.ps1 cmake-release
+      # The GCS build scripts do have their own install, but for build tiledb needs to
+      # match prior *nix installation expectations so we copy from gcs install location to 
+      # tiledb desired location.
+      INSTALL_COMMAND 
+        cmake -E copy ${TILEDB_EP_SOURCE_DIR}/ep_gcssdk/cmake-out/msvc-x64-windows-static/google/cloud/storage/storage_client.lib ${TILEDB_EP_SOURCE_DIR}/ep_gcssdk/cmake-out/msvc-x64-windows-static/google/cloud/google_cloud_cpp_common.lib ${TILEDB_EP_INSTALL_PREFIX}/lib/
+      LOG_DOWNLOAD TRUE
+      LOG_CONFIGURE TRUE
+      LOG_BUILD TRUE
+      LOG_INSTALL TRUE
+      LOG_OUTPUT_ON_FAILURE ${TILEDB_LOG_OUTPUT_ON_FAILURE}
+    )
+    else()
+   #This non-WIN32 section has STUFF that needs to be UNDONE to restore to serviceable *nix build
+    ExternalProject_Add(ep_gcssdk
+      PREFIX "externals"
+      # Set download name to avoid collisions with only the version number in the filename
+      DOWNLOAD_NAME ep_gcssdk.zip
+      URL "https://github.com/googleapis/google-cloud-cpp/archive/v1.22.0.zip"
+      URL_HASH SHA1=d4e14faef4095289b06f5ffe57d33a14574a7055
+      BUILD_IN_SOURCE 1
+      PATCH_COMMAND
+#        echo patching ep_gcssdk from &&
+#        echo %cd% &&
+#        echo ${CONDITIONAL_PATCH} &&
         ${CONDITIONAL_PATCH}
 #        patch -N -p1 < ${TILEDB_CMAKE_INPUTS_DIR}/patches/ep_gcssdk/build.patch &&
 #        patch -N -p1 < ${TILEDB_CMAKE_INPUTS_DIR}/patches/ep_gcssdk/disable_tests.patch &&
 #        patch -N -p1 < ${TILEDB_CMAKE_INPUTS_DIR}/patches/ep_gcssdk/disable_examples.patch
       CONFIGURE_COMMAND
+         -A X64
          ${CMAKE_COMMAND} -Hsuper -Bcmake-out
+                 -DCMAKE_C_CFLAGS=${TILEDB_CMAKE_C_FLAGS}
         -DCMAKE_BUILD_TYPE=${CMAKE_BUILD_TYPE}
         -DBUILD_SHARED_LIBS=OFF
         -DBUILD_SAMPLES=OFF
         -DCMAKE_PREFIX_PATH=${TILEDB_EP_INSTALL_PREFIX}
-        -DOPENSSL_ROOT_DIR=${TILEDB_OPENSSL_DIR}
+        #-DOPENSSL_ROOT_DIR=${TILEDB_OPENSSL_DIR}
+        ${SSLSTUFF}
         -DCMAKE_INSTALL_PREFIX=${TILEDB_EP_INSTALL_PREFIX}
         -DGOOGLE_CLOUD_CPP_ENABLE_MACOS_OPENSSL_CHECK=OFF
         # Disable unused api features to speed up build
@@ -138,6 +214,7 @@ if (NOT GCSSDK_FOUND)
       LOG_OUTPUT_ON_FAILURE ${TILEDB_LOG_OUTPUT_ON_FAILURE}
       DEPENDS ${DEPENDS}
     )
+    endif()
 
     list(APPEND TILEDB_EXTERNAL_PROJECTS ep_gcssdk)
     list(APPEND FORWARD_EP_CMAKE_ARGS

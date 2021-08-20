@@ -333,7 +333,34 @@ endif()
 # GCS dependencies
 if (TILEDB_GCS)
   message(STATUS "The TileDB library is compiled with GCS support.")
-  find_package(GCSSDK_EP REQUIRED COMPONENTS gcs)
+  if(WIN32)
+    # find_package(Zlib_EP REQUIRED)
+    # find_package(Curl_EP REQUIRED)
+    # find_library(zlib PATH "${TILEDB_EP_SOURCE_DIR}/ep_gcssdk/cmake-out/vcpkg/packages/zlib_x64-windows-static/lib")
+    set(ZLIB_LIBRARY "${TILEDB_EP_SOURCE_DIR}/ep_gcssdk/cmake-out/vcpkg/packages/zlib_x64-windows-static/lib/zlib.lib")
+    set(CMAKE_PREFIX_PATH ${CMAKE_PREFIX_PATH} "${TILEDB_EP_SOURCE_DIR}/ep_gcssdk/cmake-out/msvc-x64-windows-static")
+    set(CMAKE_PREFIX_PATH ${CMAKE_PREFIX_PATH} "${TILEDB_EP_SOURCE_DIR}/ep_gcssdk/cmake-out/vcpkg/packages")
+    set(google_cloud_cpp_common_DIR ${TILEDB_EP_SOURCE_DIR}/ep_gcssdk/cmake-out/msvc-x64-windows-static/google/cloud)
+#       google_cloud_cpp_common_DIR                          ep_gcssdk\cmake-out\msvc-x64-windows-static\google\cloud
+    set(google_cloud_cpp_common_LIBRARY ${TILEDB_EP_SOURCE_DIR}/ep_gcssdk/cmake-out/msvc-x64-windows-static/google/cloud/google_cloud_cpp_common.lib)
+    set(absl_DIR "${TILEDB_EP_SOURCE_DIR}/ep_gcssdk/cmake-out/vcpkg/packages/abseil_x64-windows-static/share/absl")
+    # set(nlohmann_json_DIR "${TILEDB_EP_SOURCE_DIR}/ep_gcssdk/cmake-out/vcpkg/packages/nlohmann-json_x64-windows-static/share/nlohmann_json")
+    set(nlohmann_json_DIR "${TILEDB_EP_SOURCE_DIR}/ep_gcssdk/cmake-out/vcpkg/installed/x64-windows-static/share/nlohmann_json")
+    set(openssl_DIR "${TILEDB_EP_SOURCE_DIR}/ep_gcssdk/cmake-out/vcpkg/packages/openssl_x64-windows-static/include/openssl")
+    set(OPENSSL_ROOT_DIR "${TILEDB_EP_SOURCE_DIR}/ep_gcssdk/cmake-out/vcpkg/packages/openssl_x64-windows-static/include/openssl")
+    # find_package(GCSSDK_EP REQUIRED COMPONENTS gcs
+    set(storage_client_LIBRARY ${TILEDB_EP_SOURCE_DIR}/ep_gcssdk/cmake-out/msvc-x64-windows-static/google/cloud/storage/storage_client.lib)
+    find_package(storage_client REQUIRED CONFIG
+      PATHS
+        #storage_client-Config.cmake
+        ${TILEDB_EP_SOURCE_DIR}/ep_gcssdk/cmake-out/msvc-x64-windows-static/google/cloud/storage
+            ${TILEDB_EP_SOURCE_DIR}/ep_gcssdk/cmake-out/msvc-x64-windows-static/google/cloud/storage/CMakeFiles/Export
+        #google_cloud_cpp_common-config.cmake
+        ${TILEDB_EP_SOURCE_DIR}/ep_gcssdk/cmake-out/msvc-x64-windows-static/google/cloud
+    )
+  else()
+    find_package(GCSSDK_EP REQUIRED COMPONENTS gcs)
+  endif()
   target_link_libraries(TILEDB_CORE_OBJECTS_ILIB
     INTERFACE
        storage_client

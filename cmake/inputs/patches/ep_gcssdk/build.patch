@@ -63,8 +63,8 @@ index f5560a620..12ca348a2 100644
 +               -DCMAKE_BUILD_TYPE=${CMAKE_BUILD_TYPE}
 +               -DBUILD_SHARED_LIBS=${BUILD_SHARED_LIBS}
 +               -DBUILD_SAMPLES=${BUILD_SAMPLES}
-+               -DCMAKE_CXX_FLAGS=-fPIC
-+               -DCMAKE_C_FLAGS=-fPIC
++               -DCMAKE_CXX_FLAGS=/EHsc
++               -DCMAKE_C_FLAGS=/EHsc
 +               -DOPENSSL_ROOT_DIR=${OPENSSL_ROOT_DIR}
 +               -DGOOGLE_CLOUD_CPP_ENABLE_MACOS_OPENSSL_CHECK=OFF
 +               -DBUILD_TESTING=${BUILD_TESTING}
@@ -85,13 +85,15 @@ diff --git a/super/external/abseil.cmake b/super/external/abseil.cmake
 index 97d2c1551..0b71ee987 100644
 --- a/super/external/abseil.cmake
 +++ b/super/external/abseil.cmake
-@@ -46,11 +46,13 @@ if (NOT TARGET abseil-cpp-project)
+@@ -46,11 +46,14 @@ if (NOT TARGET abseil-cpp-project)
                     -DCMAKE_PREFIX_PATH=${GOOGLE_CLOUD_CPP_PREFIX_PATH}
                     -DCMAKE_INSTALL_RPATH=${GOOGLE_CLOUD_CPP_INSTALL_RPATH}
                     -DCMAKE_INSTALL_PREFIX=<INSTALL_DIR>
-+                   -DCMAKE_CXX_FLAGS=-fPIC
-+                   -DCMAKE_C_FLAGS=-fPIC
-         BUILD_COMMAND ${CMAKE_COMMAND} --build <BINARY_DIR> ${PARALLEL}
++                   -DCMAKE_CXX_FLAGS=/EHsc
++                   --trace
++                   -DCMAKE_C_FLAGS=/EHsc
+-         BUILD_COMMAND ${CMAKE_COMMAND} --build <BINARY_DIR> ${PARALLEL}
++         BUILD_COMMAND ${CMAKE_COMMAND} --build <BINARY_DIR> ${PARALLEL} -- /verbosity:detailed
          PATCH_COMMAND ${CMAKE_COMMAND} -P
                        "${CMAKE_CURRENT_LIST_DIR}/abseil-patch.cmake"
 -        LOG_DOWNLOAD OFF
@@ -109,8 +111,8 @@ index 5b898e3f7..63bd708b6 100644
                     -DCMAKE_PREFIX_PATH=${GOOGLE_CLOUD_CPP_PREFIX_PATH}
                     -DCMAKE_INSTALL_RPATH=${GOOGLE_CLOUD_CPP_INSTALL_RPATH}
                     -DCMAKE_INSTALL_PREFIX=<INSTALL_DIR>
-+                   -DCMAKE_CXX_FLAGS=-fPIC
-+                   -DCMAKE_C_FLAGS=-fPIC
++                   -DCMAKE_CXX_FLAGS=/EHsc
++                   -DCMAKE_C_FLAGS=/EHsc
          BUILD_COMMAND ${CMAKE_COMMAND} --build <BINARY_DIR> ${PARALLEL}
          LOG_DOWNLOAD ON
          LOG_CONFIGURE ON
@@ -127,8 +129,8 @@ index ed35de175..7d54c5ae8 100644
                     -DCRC32C_BUILD_TESTS=OFF
                     -DCRC32C_BUILD_BENCHMARKS=OFF
                     -DCRC32C_USE_GLOG=OFF
-+                   -DCMAKE_CXX_FLAGS=-fPIC
-+                   -DCMAKE_C_FLAGS=-fPIC
++                   -DCMAKE_CXX_FLAGS=/EHsc
++                   -DCMAKE_C_FLAGS=/EHsc
          BUILD_COMMAND ${CMAKE_COMMAND} --build <BINARY_DIR> ${PARALLEL}
          LOG_DOWNLOAD ON
          LOG_CONFIGURE ON
@@ -214,8 +216,8 @@ index a4e5220e0..f7cd15b61 100644
                     -DCMAKE_PREFIX_PATH=${GOOGLE_CLOUD_CPP_PREFIX_PATH}
                     -DCMAKE_INSTALL_RPATH=${GOOGLE_CLOUD_CPP_INSTALL_RPATH}
                     -DCMAKE_INSTALL_PREFIX=<INSTALL_DIR>
-+                   -DCMAKE_CXX_FLAGS=-fPIC
-+                   -DCMAKE_C_FLAGS=-fPIC
++                   -DCMAKE_CXX_FLAGS=/EHsc
++                   -DCMAKE_C_FLAGS=/EHsc
          BUILD_COMMAND ${CMAKE_COMMAND} --build <BINARY_DIR> ${PARALLEL}
          LOG_DOWNLOAD ON
          LOG_CONFIGURE ON
@@ -245,12 +247,13 @@ index 91f70eaa9..3cac5cfef 100644
          EXCLUDE_FROM_ALL ON
          PREFIX "${CMAKE_BINARY_DIR}/external/grpc"
          INSTALL_DIR "${GOOGLE_CLOUD_CPP_EXTERNAL_PREFIX}"
-@@ -52,9 +51,19 @@ if (NOT TARGET grpc-project)
+@@ -52,9 +51,20 @@ if (NOT TARGET grpc-project)
                     -DgRPC_PROTOBUF_PROVIDER=package
                     -DgRPC_SSL_PROVIDER=package
                     -DgRPC_ZLIB_PROVIDER=package
-+                   -DCMAKE_CXX_FLAGS=-fPIC
-+                   -DCMAKE_C_FLAGS=-fPIC
++                   -DCMAKE_CXX_FLAGS=/EHsc
++                   -DCMAKE_SHARED_LINKER_FLAGS=/NODEFAULTLIB:LIBCMTD
++                   -DCMAKE_C_FLAGS=/EHsc
 +                   -DgRPC_BUILD_GRPC_CSHARP_PLUGIN=OFF
 +                   -DgRPC_BUILD_GRPC_NODE_PLUGIN=OFF
 +                   -DgRPC_BUILD_GRPC_OBJECTIVE_C_PLUGIN=OFF
@@ -290,8 +293,8 @@ index 7cc0aae1e..9351ef34f 100644
              -Dprotobuf_DEBUG_POSTFIX=
              -H<SOURCE_DIR>/cmake
              -B<BINARY_DIR>
-+            -DCMAKE_CXX_FLAGS=-fPIC
-+            -DCMAKE_C_FLAGS=-fPIC
++            -DCMAKE_CXX_FLAGS=/EHsc -DLINK_FLAGS=/NODEFAULTLIB:LIBCMTD
++            -DCMAKE_C_FLAGS=/EHsc
          BUILD_COMMAND ${CMAKE_COMMAND} --build <BINARY_DIR> ${PARALLEL}
          LOG_DOWNLOAD ON
          LOG_CONFIGURE ON

@@ -88,7 +88,8 @@ if (TILEDB_SERIALIZATION)
   include(${CMAKE_CURRENT_SOURCE_DIR}/cmake/Modules/FindCapnp_EP.cmake)
 endif()
 
-if (NOT WIN32)
+#if (NOT WIN32)
+if (NOT WIN32 OR TILEDB_GCS)
   include(${CMAKE_CURRENT_SOURCE_DIR}/cmake/Modules/FindOpenSSL_EP.cmake)
 endif()
 
@@ -130,6 +131,7 @@ endif()
 ExternalProject_Add(tiledb
   SOURCE_DIR ${PROJECT_SOURCE_DIR}
   CMAKE_ARGS
+    --trace
     -DTILEDB_SUPERBUILD=OFF
     ${INHERITED_CMAKE_ARGS}
     ${FORWARD_EP_CMAKE_ARGS}
