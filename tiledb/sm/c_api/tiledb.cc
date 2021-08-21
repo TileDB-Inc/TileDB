@@ -509,6 +509,19 @@ inline int32_t sanity_check(
   return TILEDB_OK;
 }
 
+inline int32_t sanity_check(
+    tiledb_ctx_t* ctx,
+    const tiledb_array_schema_evolution_t* schema_evolution) {
+  if (schema_evolution == nullptr ||
+      schema_evolution->array_schema_evolution_ == nullptr) {
+    auto st = Status::Error("Invalid TileDB array schema evolution object");
+    LOG_STATUS(st);
+    save_error(ctx, st);
+    return TILEDB_ERR;
+  }
+  return TILEDB_OK;
+}
+
 inline int32_t sanity_check(tiledb_ctx_t* ctx, const tiledb_domain_t* domain) {
   if (domain == nullptr || domain->domain_ == nullptr) {
     auto st = Status::Error("Invalid TileDB domain object");
@@ -2705,6 +2718,91 @@ int32_t tiledb_array_schema_has_attribute(
   return TILEDB_OK;
 }
 
+/* ********************************* */
+/*            SCHEMA EVOLUTION       */
+/* ********************************* */
+
+int32_t tiledb_array_schema_evolution_alloc(
+    tiledb_ctx_t* ctx,
+    tiledb_array_schema_evolution_t** array_schema_evolution) {
+  // Sanity check
+  if (sanity_check(ctx) == TILEDB_ERR)
+    return TILEDB_ERR;
+
+  // Create schema evolution struct
+  *array_schema_evolution = new (std::nothrow) tiledb_array_schema_evolution_t;
+  if (*array_schema_evolution == nullptr) {
+    auto st = Status::Error(
+        "Failed to allocate TileDB array schema evolution object");
+    LOG_STATUS(st);
+    save_error(ctx, st);
+    return TILEDB_OOM;
+  }
+
+  // Create a new SchemaEvolution object
+  (*array_schema_evolution)->array_schema_evolution_ =
+      new (std::nothrow) tiledb::sm::ArraySchemaEvolution();
+  if ((*array_schema_evolution)->array_schema_evolution_ == nullptr) {
+    delete *array_schema_evolution;
+    *array_schema_evolution = nullptr;
+    auto st = Status::Error(
+        "Failed to allocate TileDB array schema evolution object");
+    LOG_STATUS(st);
+    save_error(ctx, st);
+    return TILEDB_OOM;
+  }
+
+  // Success
+  return TILEDB_OK;
+}
+
+void tiledb_array_schema_evolution_free(
+    tiledb_array_schema_evolution_t** array_schema_evolution) {
+  if (array_schema_evolution != nullptr && *array_schema_evolution != nullptr) {
+    delete (*array_schema_evolution)->array_schema_evolution_;
+    delete *array_schema_evolution;
+    *array_schema_evolution = nullptr;
+  }
+}
+
+int32_t tiledb_array_schema_evolution_add_attribute(
+    tiledb_ctx_t* ctx,
+    tiledb_array_schema_evolution_t* array_schema_evolution,
+    tiledb_attribute_t* attr) {
+  if (sanity_check(ctx) == TILEDB_ERR ||
+      sanity_check(ctx, array_schema_evolution) == TILEDB_ERR ||
+      sanity_check(ctx, attr) == TILEDB_ERR)
+    return TILEDB_ERR;
+
+  if (SAVE_ERROR_CATCH(
+          ctx,
+          array_schema_evolution->array_schema_evolution_->add_attribute(
+              attr->attr_)))
+    return TILEDB_ERR;
+  return TILEDB_OK;
+
+  // Success
+  return TILEDB_OK;
+}
+
+int32_t tiledb_array_schema_evolution_drop_attribute(
+    tiledb_ctx_t* ctx,
+    tiledb_array_schema_evolution_t* array_schema_evolution,
+    const char* attribute_name) {
+  if (sanity_check(ctx) == TILEDB_ERR ||
+      sanity_check(ctx, array_schema_evolution) == TILEDB_ERR)
+    return TILEDB_ERR;
+
+  if (SAVE_ERROR_CATCH(
+          ctx,
+          array_schema_evolution->array_schema_evolution_->drop_attribute(
+              attribute_name)))
+    return TILEDB_ERR;
+  return TILEDB_OK;
+  // Success
+  return TILEDB_OK;
+}
+
 /* ****************************** */
 /*              QUERY             */
 /* ****************************** */
@@ -4660,6 +4758,44 @@ int32_t tiledb_array_consolidate_metadata_with_key(
                                     config->config_)))
     return TILEDB_ERR;
 
+  return TILEDB_OK;
+}
+
+int32_t tiledb_array_evolve(
+    tiledb_ctx_t* ctx,
+    const char* array_uri,
+    tiledb_array_schema_evolution_t* array_schema_evolution) {
+  // Sanity Checks
+  if (sanity_check(ctx) == TILEDB_ERR ||
+      sanity_check(ctx, array_schema_evolution) == TILEDB_ERR)
+    return TILEDB_ERR;
+
+  // Check array name
+  tiledb::sm::URI uri(array_uri);
+  if (uri.is_invalid()) {
+    auto st = Status::Error("Failed to create array; Invalid array URI");
+    LOG_STATUS(st);
+    save_error(ctx, st);
+    return TILEDB_ERR;
+  }
+
+  // Create key
+  tiledb::sm::EncryptionKey key;
+  if (SAVE_ERROR_CATCH(
+          ctx,
+          key.set_key(
+              static_cast<tiledb::sm::EncryptionType>(TILEDB_NO_ENCRYPTION),
+              nullptr,
+              0)))
+    return TILEDB_ERR;
+
+  if (SAVE_ERROR_CATCH(
+          ctx,
+          ctx->ctx_->storage_manager()->array_evolve_schema(
+              uri, array_schema_evolution->array_schema_evolution_, key)))
+    return TILEDB_ERR;
+
+  // Success
   return TILEDB_OK;
 }
 
