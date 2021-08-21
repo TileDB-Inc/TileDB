@@ -40,6 +40,7 @@
 #include "tiledb/common/logger.h"
 #include "tiledb/sm/array/array.h"
 #include "tiledb/sm/array_schema/array_schema.h"
+#include "tiledb/sm/array_schema/array_schema_evolution.h"
 #include "tiledb/sm/cache/buffer_lru_cache.h"
 #include "tiledb/sm/enums/array_type.h"
 #include "tiledb/sm/enums/layout.h"
@@ -876,6 +877,47 @@ Status StorageManager::array_create(
     vfs_->remove_dir(array_uri);
     return st;
   }
+
+  return Status::Ok();
+}
+
+Status StorageManager::array_evolve_schema(
+    const URI& array_uri,
+    ArraySchemaEvolution* schema_evolution,
+    const EncryptionKey& encryption_key) {
+  // Check array schema
+  if (schema_evolution == nullptr) {
+    return LOG_STATUS(Status::StorageManagerError(
+        "Cannot evolve array; Empty schema evolution"));
+  }
+
+  // Check if array exists
+  bool exists = false;
+  RETURN_NOT_OK(is_array(array_uri, &exists));
+  if (!exists)
+    return LOG_STATUS(Status::StorageManagerError(
+        std::string("Cannot evolve array; Array '") + array_uri.c_str() +
+        "' not exists"));
+
+  ArraySchema* array_schema = (ArraySchema*)nullptr;
+  RETURN_NOT_OK(load_array_schema(array_uri, encryption_key, &array_schema));
+
+  // Evolve schema
+  ArraySchema* array_schema_evolved = (ArraySchema*)nullptr;
+  RETURN_NOT_OK(
+      schema_evolution->evolve_schema(array_schema, &array_schema_evolved));
+
+  Status st = store_array_schema(array_schema_evolved, encryption_key);
+  if (!st.ok()) {
+    tdb_delete(array_schema_evolved);
+    return LOG_STATUS(Status::StorageManagerError(
+        "Cannot evovle schema;  Not able to store evolved array schema."));
+  }
+
+  tdb_delete(array_schema);
+  array_schema = nullptr;
+  tdb_delete(array_schema_evolved);
+  array_schema_evolved = nullptr;
 
   return Status::Ok();
 }

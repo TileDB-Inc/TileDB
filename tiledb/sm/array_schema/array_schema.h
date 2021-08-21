@@ -239,6 +239,14 @@ class ArraySchema {
   Status add_attribute(const Attribute* attr, bool check_special = true);
 
   /**
+   * Drops an attribute.
+   *
+   * @param attr_name The name of the attribute to be removed.
+   * @return Status
+   */
+  Status drop_attribute(const std::string& attr_name);
+
+  /**
    * It assigns values to the members of the object from the input buffer.
    *
    * @param buff The binary representation of the object to read from.
