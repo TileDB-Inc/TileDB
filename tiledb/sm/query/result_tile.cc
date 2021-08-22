@@ -40,7 +40,6 @@
 #include <chrono>
 #include <iostream>
 #include <list>
-#include <thread>
 
 using namespace tiledb::common;
 
