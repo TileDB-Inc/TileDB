@@ -37,8 +37,10 @@
 #include "tiledb/sm/fragment/fragment_metadata.h"
 
 #include <cassert>
+#include <chrono>
 #include <iostream>
 #include <list>
+#include <thread>
 
 using namespace tiledb::common;
 
@@ -184,9 +186,10 @@ std::string ResultTile::coord_string(uint64_t pos, unsigned dim_idx) const {
     assert(st.ok());
   }
 
-  auto size = next_offset - offset;
+  auto size = (next_offset > offset) ? (next_offset - offset) : 0;
 
   auto* buffer = static_cast<char*>(coord_tile_val.buffer()->data()) + offset;
+
   return std::string(buffer, size);
 }
 
