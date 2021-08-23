@@ -171,6 +171,8 @@ set(TILEDB_CORE_SOURCES
   ${TILEDB_CORE_INCLUDE_DIR}/tiledb/sm/query/result_tile.cc
   ${TILEDB_CORE_INCLUDE_DIR}/tiledb/sm/query/read_cell_slab_iter.cc
   ${TILEDB_CORE_INCLUDE_DIR}/tiledb/sm/query/sparse_global_order_reader.cc
+  ${TILEDB_CORE_INCLUDE_DIR}/tiledb/sm/query/sparse_index_reader_base.cc
+  ${TILEDB_CORE_INCLUDE_DIR}/tiledb/sm/query/sparse_unordered_with_dups_reader.cc
   ${TILEDB_CORE_INCLUDE_DIR}/tiledb/sm/query/strategy_base.cc
   ${TILEDB_CORE_INCLUDE_DIR}/tiledb/sm/query/writer.cc
   ${TILEDB_CORE_INCLUDE_DIR}/tiledb/sm/rest/rest_client.cc
