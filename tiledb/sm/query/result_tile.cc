@@ -170,25 +170,20 @@ std::string ResultTile::coord_string(uint64_t pos, unsigned dim_idx) const {
   assert(!coord_tile_val.empty());
   auto cell_num = coord_tile_off.cell_num();
   auto val_size = coord_tile_val.size();
-
   uint64_t offset = 0;
-  coord_tile_off.buffer()->set_offset(pos * sizeof(uint64_t));
-  Status st = coord_tile_off.buffer()->read(&offset, sizeof(uint64_t));
+  Status st = coord_tile_off.buffer()->read(
+      &offset, pos * sizeof(uint64_t), sizeof(uint64_t));
   assert(st.ok());
-
   uint64_t next_offset = 0;
   if (pos == cell_num - 1) {
     next_offset = val_size;
   } else {
-    coord_tile_off.buffer()->set_offset((pos + 1) * sizeof(uint64_t));
-    st = coord_tile_off.buffer()->read(&next_offset, sizeof(uint64_t));
+    st = coord_tile_off.buffer()->read(
+        &next_offset, (pos + 1) * sizeof(uint64_t), sizeof(uint64_t));
     assert(st.ok());
   }
-
-  auto size = (next_offset > offset) ? (next_offset - offset) : 0;
-
+  auto size = next_offset - offset;
   auto* buffer = static_cast<char*>(coord_tile_val.buffer()->data()) + offset;
-
   return std::string(buffer, size);
 }
 
