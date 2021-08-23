@@ -518,9 +518,6 @@ typedef struct tiledb_attribute_t tiledb_attribute_t;
 /** A TileDB array schema. */
 typedef struct tiledb_array_schema_t tiledb_array_schema_t;
 
-/** A TileDB array schema. */
-typedef struct tiledb_array_schema_evolution_t tiledb_array_schema_evolution_t;
-
 /** A TileDB dimension. */
 typedef struct tiledb_dimension_t tiledb_dimension_t;
 
@@ -3445,85 +3442,6 @@ TILEDB_EXPORT int32_t tiledb_array_schema_dump(
     tiledb_ctx_t* ctx, const tiledb_array_schema_t* array_schema, FILE* out);
 
 /* ********************************* */
-/*            SCHEMA EVOLUTION       */
-/* ********************************* */
-
-/**
- * Creates a TileDB schema evolution object.
- *
- * **Example:**
- *
- * @code{.c}
- * tiledb_array_schema_evolution_t* array_schema_evolution;
- * tiledb_array_schema_evolution_alloc(ctx, &array_schema_evolution);
- * @endcode
- *
- * @param ctx The TileDB context.
- * @param array_schema_evolution The TileDB schema evolution to be created.
- * @return `TILEDB_OK` for success and `TILEDB_OOM` or `TILEDB_ERR` for error.
- */
-TILEDB_EXPORT int32_t tiledb_array_schema_evolution_alloc(
-    tiledb_ctx_t* ctx,
-    tiledb_array_schema_evolution_t** array_schema_evolution);
-
-/**
- * Destroys an array schema evolution, freeing associated memory.
- *
- * **Example:**
- *
- * @code{.c}
- * tiledb_array_schema_evolution_free(&array_schema_evolution);
- * @endcode
- *
- * @param array_schema_evolution The array schema evolution to be destroyed.
- */
-TILEDB_EXPORT void tiledb_array_schema_evolution_free(
-    tiledb_array_schema_evolution_t** array_schema_evolution);
-
-/**
- * Adds an attribute to an array schema evolution.
- *
- * **Example:**
- *
- * @code{.c}
- * tiledb_attribute_t* attr;
- * tiledb_attribute_alloc(ctx, "my_attr", TILEDB_INT32, &attr);
- * tiledb_array_schema_evolution_add_attribute(ctx, array_schema_evolution,
- * attr);
- * @endcode
- *
- * @param ctx The TileDB context.
- * @param array_schema_evolution The schema evolution.
- * @param attr The attribute to be added.
- * @return `TILEDB_OK` for success and `TILEDB_ERR` for error.
- */
-TILEDB_EXPORT int32_t tiledb_array_schema_evolution_add_attribute(
-    tiledb_ctx_t* ctx,
-    tiledb_array_schema_evolution_t* array_schema_evolution,
-    tiledb_attribute_t* attribute);
-
-/**
- * Drops an attribute to an array schema evolution.
- *
- * **Example:**
- *
- * @code{.c}
- * const char* attribute_name="a1";
- * tiledb_array_schema_evolution_drop_attribute(ctx, array_schema_evolution,
- * attribute_name);
- * @endcode
- *
- * @param ctx The TileDB context.
- * @param array_schema_evolution The schema evolution.
- * @param attribute_name The name of the attribute to be dropped.
- * @return `TILEDB_OK` for success and `TILEDB_ERR` for error.
- */
-TILEDB_EXPORT int32_t tiledb_array_schema_evolution_drop_attribute(
-    tiledb_ctx_t* ctx,
-    tiledb_array_schema_evolution_t* array_schema_evolution,
-    const char* attribute_name);
-
-/* ********************************* */
 /*               QUERY               */
 /* ********************************* */
 
@@ -6233,26 +6151,6 @@ TILEDB_DEPRECATED_EXPORT int32_t tiledb_array_consolidate_metadata_with_key(
     const void* encryption_key,
     uint32_t key_length,
     tiledb_config_t* config);
-
-/**
- * Evolve array schema of an array.
- *
- * **Example:**
- *
- * @code{.c}
- * const char* array_uri="test_array";
- * tiledb_array_evolve(ctx, array_uri,array_schema_evolution);
- * @endcode
- *
- * @param ctx The TileDB context.
- * @param array_uri The uri of the array.
- * @param array_schema_evolution The schema evolution.
- * @return `TILEDB_OK` for success and `TILEDB_ERR` for error.
- */
-TILEDB_EXPORT int32_t tiledb_array_evolve(
-    tiledb_ctx_t* ctx,
-    const char* array_uri,
-    tiledb_array_schema_evolution_t* array_schema_evolution);
 
 /* ********************************* */
 /*          OBJECT MANAGEMENT        */
