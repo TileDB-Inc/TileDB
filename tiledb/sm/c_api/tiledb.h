@@ -1039,6 +1039,10 @@ TILEDB_EXPORT void tiledb_config_free(tiledb_config_t** config);
  * - `sm.use_refactored_readers` <br>
  *    Use the refactored readers or not. <br>
  *    **Default**: false
+ * - `sm.mem.malloc_trim` <br>
+ *    Should malloc_trim be called on context and query destruction? This might
+ * reduce residual memory usage. <br>
+ *    **Default**: true
  * - `sm.mem.total_budget` <br>
  *    Memory budget for readers and writers. <br>
  *    **Default**: 10GB

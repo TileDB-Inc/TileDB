@@ -33,6 +33,7 @@
 #include "tiledb/sm/query/query.h"
 #include "tiledb/common/heap_memory.h"
 #include "tiledb/common/logger.h"
+#include "tiledb/common/memory.h"
 #include "tiledb/sm/array/array.h"
 #include "tiledb/sm/enums/query_status.h"
 #include "tiledb/sm/enums/query_type.h"
@@ -105,7 +106,15 @@ Query::Query(StorageManager* storage_manager, Array* array, URI fragment_uri)
     config_ = storage_manager->config();
 }
 
-Query::~Query() = default;
+Query::~Query() {
+  bool found = false;
+  bool use_malloc_trim = false;
+  const Status& st =
+      config_.get<bool>("sm.mem.malloc_trim", &use_malloc_trim, &found);
+  if (st.ok() && found && use_malloc_trim) {
+    tdb_malloc_trim();
+  }
+};
 
 /* ****************************** */
 /*               API              */
