@@ -368,7 +368,8 @@ class ReaderBase : public StrategyBase {
       std::vector<ResultTile*>* result_tiles,
       std::vector<ResultCellSlab>* result_cell_slabs,
       Subarray& subarray,
-      uint64_t memory_budget = UINT64_MAX);
+      uint64_t memory_budget = UINT64_MAX,
+      bool include_dim = false);
 
   /**
    * Copies the cells for the input **fixed-sized** attribute/dimension and
