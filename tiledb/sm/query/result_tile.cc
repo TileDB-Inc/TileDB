@@ -37,7 +37,6 @@
 #include "tiledb/sm/fragment/fragment_metadata.h"
 
 #include <cassert>
-#include <chrono>
 #include <iostream>
 #include <list>
 
