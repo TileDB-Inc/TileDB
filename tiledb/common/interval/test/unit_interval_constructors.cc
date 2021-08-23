@@ -143,7 +143,7 @@ TEMPLATE_LIST_TEST_CASE(
         CHECK(x.is_empty());
       }
     }
-  }
+  } //is_floating_point_v()
   SECTION("Two arguments") {
     T i = GENERATE_REF(values(Tr::outer));
     T j = GENERATE_REF(values(Tr::inner));
@@ -159,8 +159,10 @@ TEMPLATE_LIST_TEST_CASE(
       } else if constexpr (std::is_floating_point_v<T>) {
         CHECK(implies(i < j, !x.is_empty()));
         CHECK(!x.has_single_point());
+      } else if constexpr (std::is_base_of<std::string, T>::value) {
+        //TBD:
       } else {
-        REQUIRE(false && "unexpected type");
+        REQUIRE((false && "unexpected type"));
       }
     }
     DYNAMIC_SECTION("(" << i << "," << j << "]") {
@@ -173,7 +175,10 @@ TEMPLATE_LIST_TEST_CASE(
         CHECK(implies(i < j && i == j - 1, x.has_single_point()));
       } else if constexpr (std::is_floating_point_v<T>) {
         CHECK(!x.has_single_point());
+      } else if constexpr (std::is_base_of<std::string, T>::value) {
+        //TBD:
       }
+
     }
     DYNAMIC_SECTION("[" << i << "," << j << ")") {
       I x(I::closed, i, j, I::open);
@@ -185,6 +190,8 @@ TEMPLATE_LIST_TEST_CASE(
         CHECK(implies(i < j && i == j - 1, x.has_single_point()));
       } else if constexpr (std::is_floating_point_v<T>) {
         CHECK(!x.has_single_point());
+      } else if constexpr (std::is_base_of<std::string, T>::value) {
+        //TBD:
       }
     }
     DYNAMIC_SECTION("[" << i << "," << j << "]") {

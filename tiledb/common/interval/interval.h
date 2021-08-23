@@ -236,6 +236,8 @@
 #include <optional>
 #include <stdexcept>
 #include <tuple>
+#include <type_traits>
+#include <string>
 
 using std::tuple, std::optional, std::nullopt, std::isnan, std::isinf,
     std::isfinite;
@@ -265,12 +267,16 @@ struct TypeTraits {
    * is twice-adjacent to `b` if `a < b` and there exists a `c` such that `a` is
    * adjacent to `c` and `c` is adjacent to `b`.
    */
-  [[maybe_unused]] static tuple<bool, bool> adjacency(T, T);
+//  [[maybe_unused]] static tuple<bool, bool> adjacency(T, T);
+//  [[maybe_unused]] static tuple<bool, bool> adjacency(const T&, const T&);
+  [[maybe_unused]] static tuple<bool, bool> adjacency(const T, const T);
 
   /**
    * Returns the predicate "adjacent".
    */
-  [[maybe_unused]] static bool adjacent(T, T);
+//  [[maybe_unused]] static bool adjacent(T, T);
+//  [[maybe_unused]] static bool adjacent(const T&, const T&);
+  [[maybe_unused]] static bool adjacent(const T, const T);
 
   /**
    * Predicate constant that T contains unordered elements. Floating point types
@@ -296,14 +302,18 @@ struct TypeTraits {
    * elements. All occurences appear within an `if constexpr` guard with
    * `has_unordered_elements`.
    */
-  [[maybe_unused]] static bool is_ordered(T);
+//  [[maybe_unused]] static bool is_ordered(T);
+//  [[maybe_unused]] static bool is_ordered(const T&);
+  [[maybe_unused]] static bool is_ordered(const T);
 
   /**
    * Predicate function that an element of T is a finite number. This function
    * allows detecting floating point infinities as interval bounds in
    * constructors.
    */
-  [[maybe_unused]] static bool is_finite(T);
+//  [[maybe_unused]] static bool is_finite(T);
+//  [[maybe_unused]] static bool is_finite(const T&);
+  [[maybe_unused]] static bool is_finite(const T);
 
   /**
    * Predicate function that an infinite element is positive infinity. Returns
@@ -311,7 +321,9 @@ struct TypeTraits {
    *
    * @precondition argument is an infinite element
    */
-  [[maybe_unused]] static bool is_infinity_positive(T);
+//  [[maybe_unused]] static bool is_infinity_positive(T);
+//  [[maybe_unused]] static bool is_infinity_positive(const T&);
+  [[maybe_unused]] static bool is_infinity_positive(const T);
 };
 
 /**
@@ -326,7 +338,9 @@ struct TypeTraits<
    * Adjacency for integral types means that the lower is one less than the
    * upper.
    */
-  static tuple<bool, bool> adjacency(T a, T b) {
+//  static tuple<bool, bool> adjacency(T a, T b) {
+//  static tuple<bool, bool> adjacency(const T& a, const T& b) {
+  static tuple<bool, bool> adjacency(const T a, const T b) {
     if (a >= b) {
       return {false, false};
     }
@@ -339,11 +353,13 @@ struct TypeTraits<
    * Adjacency for integral types means that the lower is one less than the
    * upper.
    */
-  static bool adjacent(T a, T b) {
+//  static bool adjacent(T a, T b) {
+//  static bool adjacent(const T& a, const T& b) {
+  static bool adjacent(const T a, const T b) {
     if (a >= b) {
       return false;
     }
-    // Assert: a < b
+    // Assert: a < b (checked above by 'a >= b'
     // Assert: a+1 cannot overflow.
     return a + 1 == b;
   }
@@ -363,11 +379,15 @@ struct TypeTraits<
   /**
    * Floating point numbers are never adjacent.
    */
-  static tuple<bool, bool> adjacency(T, T) {
+//  static tuple<bool, bool> adjacency(T, T) {
+//  static tuple<bool, bool> adjacency(const T&, const T&) {
+  static tuple<bool, bool> adjacency(const T, const T) {
     return {false, false};
   };
 
-  static bool adjacent(T, T) {
+//  static bool adjacent(T, T) {
+//  static bool adjacent(const T&, const T&) {
+  static bool adjacent(const T, const T) {
     return false;
   };
 
@@ -377,24 +397,135 @@ struct TypeTraits<
   /**
    * An extended number is either finite or infinite, but must not be NaN.
    */
-  static bool is_ordered(T x) {
+//  static bool is_ordered(T x) {
+//  static bool is_ordered(const T& x) {
+  static bool is_ordered(const T x) {
     return !isnan(x);
   }
 
   /**
    * Floating point types have infinite elements.
    */
-  static bool is_finite(T x) {
+//  static bool is_finite(T x) {
+//  static bool is_finite(const T& x) {
+  static bool is_finite(const T x) {
     return isfinite(x);
   }
 
   /**
    * Floating point infinities compare with finite values.
    */
-  static bool is_infinity_positive(T x) {
+//  static bool is_infinity_positive(T x) {
+//  static bool is_infinity_positive(const T& x) {
+  static bool is_infinity_positive(const T x) {
     return x > 0;
   }
 };
+
+/**
+ * Specialization of TypeTraits for std::string. std::string variables
+ * have ..something... // trivial adjacency and presence of both unordered and infinite elements.
+ * TBD: What effect might compiling with the various 'char types' have, will everything still 'just work'?
+ */
+
+#if 01
+template <class T>
+struct TypeTraits
+  <
+    T,
+    typename std::enable_if<std::is_base_of<std::string, T>::value, T>::type > {
+
+    // Assert: std::is_same<s1::value_type, s2::value_type>
+  /**
+   * String may be adjacent.
+   */
+   // consider:
+   // min == 'a'
+   // max == 'z'
+   // "a" \/ "a" no
+   // "a" \/ "b" yes
+   // "a" \/ "c" yes2
+   // "a" \/ "aa" no
+   // "z" \/ "z" no
+   // "z" \/ "za" yes
+   // "z" \/ "zb" yes2
+//  static tuple<bool, bool> adjacency(T s1, T s2) {
+//  static tuple<bool, bool> adjacency(const T& s1, const T& s2) {
+  static tuple<bool, bool> adjacency(const T s1, const T s2) {
+//    x nothing;
+    if(s1.length() > s2.length()) return {false, false};
+    //TBD: Do we want to count either being empty as non-adjacent, 
+    // or could we have s1.empty(), s2.length()==1 and s1.back()== ...::min() or == ...::min()+1
+    if(s1.empty() || s2.empty()) return {false, false};
+    // Assert: s1.length() <= s2.length()
+    auto lendiff = s2.length() - s1.length();
+    if(lendiff > 1) return {false, false};
+    auto prefixmemdiff = std::memcmp(s1.data(), s2.data(), s1.length()-1);
+    if (prefixmemdiff){
+      return {false, false};
+    }
+    // Assert: s1.substr(0, s1.length()-1) == s2.substr(0,s1.length()-1)
+    if(!lendiff) { 
+      // Assert: s1.length() == s2.length()
+      if(s1.back() >= s2.back()) return {false, false};
+      // Assert: s1.back() < s2.back()
+      return {s1.back()+1 == s2.back(), s1.back() + 1 == s2.back() - 1};
+    }
+    // Assert: s1.length()+1 == s2.length()
+    return { 
+      ( ( (*s2.rbegin()-1) == std::numeric_limits<std::decay_t<decltype(s1.back())>>::max() )
+       && ( s1.back()      == std::numeric_limits<std::decay_t<decltype(s1.back())>>::max() )
+       && ( s2.back()      == std::numeric_limits<std::decay_t<decltype(s1.back())>>::min() ) )
+      ,
+       (s1.back() == std::numeric_limits<std::decay_t<decltype(s1.back())>>::max()
+        && s2.back() == std::numeric_limits<std::decay_t<decltype(s1.back())>>::min() + 1)
+        };
+    
+  }
+
+//  static bool adjacent(T s1, T s2) {
+//  static bool adjacent(const T& s1, const T& s2) {
+  static bool adjacent(const T s1, const T s2) {
+    //return false;
+    //return adjacency(s1, s2).get<0>();
+    return std::get<0>(adjacency(s1,s2));
+  };
+
+  static constexpr bool has_unordered_elements = false;
+  //think technically 'true', but messes with 'is_for_upper_bound()', etc.
+  //setting to true avoids attempts to call is_for_upper_bound(), but we
+  //treat all elements as finite in is_finite().
+  //static constexpr bool has_infinite_elements = true;
+  static constexpr bool has_infinite_elements = false;  //  true;
+
+  /**
+   * An extended number is either finite or infinite, but must not be NaN.
+   */
+//  static bool is_ordered(T x) {
+//  static bool is_ordered(const T& x) {
+  static bool is_ordered(const T x) {
+    return true; //!isnan(x);
+  }
+
+  /**
+   * Floating point types have infinite elements.
+   */
+//  static bool is_finite(T x) {
+//  static bool is_finite(const T& x) {
+  static bool is_finite(const T x) {
+    return true; //isfinite(x);
+  }
+
+  /**
+   * Floating point infinities compare with finite values.
+   */
+//  static bool is_infinity_positive(T x) {
+//  static bool is_infinity_positive(const T& x) {
+  static bool is_infinity_positive(const T x) {
+    return false; // x > 0;
+  }
+};
+#endif //TypeTraits<std:string>
 
 /**
  * Non-template base class for `Interval`.
@@ -964,6 +1095,7 @@ class Interval : public detail::IntervalBase {
       }
     }
     if constexpr (!Traits::has_infinite_elements) {
+      (void)is_for_upper_bound;
       return Bound(bound, is_closed);
     } else {
       if (Traits::is_finite(bound)) {
@@ -1479,7 +1611,7 @@ class Interval : public detail::IntervalBase {
                 Bound(cut_point, lower_open_upper_closed), BoundUpper()))};
   }
 
-};  // namespace tiledb::common
+};
 
 }  // namespace tiledb::common
 

@@ -147,7 +147,9 @@ class WhiteboxInterval : public Interval<T> {
 /**
  * List of types used to instantiate generic test cases
  */
-typedef tuple<uint16_t, uint64_t, int16_t, double> TypesUnderTest;
+//typedef tuple<uint16_t, uint64_t, int16_t, double> TypesUnderTest;
+//typedef tuple<uint16_t, uint64_t, int16_t, double, std::string> TypesUnderTest;
+typedef tuple<std::string> TypesUnderTest;
 
 /**
  * Test type traits allow generic instantiation by Catch from a list of types.
@@ -233,6 +235,64 @@ class TestTypeTraits<
   static constexpr T NaN = std::numeric_limits<T>::quiet_NaN();
 };
 
+#if 01
+/**
+ * Test traits for std::string values
+ */
+template <class T>
+class TestTypeTraits<
+    T,
+  //  typename std::enable_if<std::is_same<typename std::remove_reference<typename std::remove_cv<typename T>::type>::type, std::string>::type>::type> {
+    typename std::enable_if<std::is_base_of<std::string, T>::value, T>::type > {
+  /*
+   * We can't just add or subract 1.0 to extreme limits because it's small
+   * enough to disappear after rounding. Instead, `almost_one` is the largest
+   * mantissa that's less than one.
+   *
+   * We might have used std::nextafter(), but it's not declared constexpr and
+   * thus can't be evaluated within a static constexpr initializer.
+   */
+//  static constexpr T almost_one = 1.0 - std::numeric_limits<T>::epsilon();
+//  static inline /*constexpr*/ T min = {""}; //std::numeric_limits<T>::lowest();
+//  static inline /*constexpr*/ T almost_min = {"\0"};  // min * almost_one;
+  static inline /*constexpr*/ T max = {
+      "\xff\xff\xff\xff\xff\xff\xff\xff\xff\xff"};  // std::numeric_limits<T>::max();
+  static inline /*constexpr*/ T almost_max = {
+      "\xff\xff\xff\xff\xff\xff\xff\xff\xff\xfe"};  // max * almost_one;
+
+ public:
+#if 0
+  static inline /*constexpr*/ std::initializer_list<T> outer = {
+      //      min, almost_min, -100.0, 0.0, 1.0, 2.0, 100.0, almost_max, max};
+      {"\0"}, {"\1"}, {"b"}, {"d"}, {"f"}, {"y"}, {"z"}, {"\xfe"}, {"\xff"} };
+  //static constexpr std::initializer_list<T> inner = {min,
+                                                     //almost_min,
+                                                     //-100.01,
+                                                     //-100.0,
+                                                     //-99.99,
+                                                     //-2.0,
+                                                     //-1.0,
+                                                     //0,
+                                                     //0.9,
+                                                     //1.0,
+                                                     //1.1,
+                                                     //almost_max,
+                                                     //max};
+  static inline /*constexpr*/ std::initializer_list<T> inner = 
+    { {"\0"}, {"\1"}, {"a"}, {"b"}, {"c"}, {"e"}, {"w"}, {"x"}, {"y"}, {"z"}, {"\xfe"}, {"\xff"} };
+#endif
+
+  static inline /*constexpr*/ std::initializer_list<T> outer = {
+    {"000"}, {"001"}, {"002"}, {"100"}, {almost_max}, {max} };
+  static inline /*constexpr*/ std::initializer_list<T> inner = {
+    {"000"}, {"001"}, {"002"}, {"003"}, {"099"}, {"100"}, {"101"}, {almost_max}, {max} };
+  
+  //  static constexpr T positive_infinity = std::numeric_limits<T>::infinity();
+  //  static constexpr T negative_infinity = -std::numeric_limits<T>::infinity();
+//  static constexpr T NaN = std::numeric_limits<T>::quiet_NaN();
+}; //std::string
+#endif 
+
 /* ******************************** */
 /*             is_adjacent          */
 /* ******************************** */
@@ -247,6 +307,10 @@ bool is_adjacent([[maybe_unused]] T x, [[maybe_unused]] T y) {
     return (x < std::numeric_limits<T>::max()) && x + 1 == y;
   } else if constexpr (std::is_floating_point_v<T>) {
     return false;
+  } else if constexpr (std::is_base_of<std::string, T>::value) {
+    //TBD: Huh? how to easily test?
+    detail::TypeTraits<std::string> tts;
+    return tts.adjacent(x, y); //Not too useful but makes the compiler happy...
   } else {
     REQUIRE((false && "unsupported type"));
   }
@@ -424,6 +488,17 @@ void test_interval_invariants(const Interval<T>& x) {
       } else if constexpr (std::is_floating_point_v<T>) {
         REQUIRE(
             (false && "single-point intervals for floating point are closed"));
+      } else if constexpr (std::is_base_of<std::string, T>::value) {
+        // TBD:
+        //REQUIRE((false && "std::string single-point one open/closed TBD"));
+#if 0
+        REQUIRE(a < b);
+        if (a.length() == b.length()) {
+          CHECK( (b.back() - a.back()) == 1);
+        } else if (b.length() - a.length() == 1) {
+        }
+        CHECK(Traits::adjacent(a, b));
+#endif
       } else {
         REQUIRE((false && "unknown type"));
       }
@@ -437,6 +512,9 @@ void test_interval_invariants(const Interval<T>& x) {
       } else if constexpr (std::is_floating_point_v<T>) {
         REQUIRE(
             (false && "single-point intervals for floating point are closed"));
+      } else if constexpr (std::is_base_of<std::string, T>::value) {
+        // TBD:
+        CHECK((false && "std::string single-point upper/lower open TBD"));
       } else {
         REQUIRE((false && "unknown type"));
       }

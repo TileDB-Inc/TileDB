@@ -53,6 +53,15 @@ TEMPLATE_LIST_TEST_CASE("TypeTraits", "[interval]", TypesUnderTest) {
   } else if constexpr (std::is_floating_point_v<T>) {
     CHECK_FALSE(adjacent);
     CHECK_FALSE(twice_adjacent);
+  } else if constexpr (std::is_base_of<std::string, T>::value) {
+    if (i < j) {
+      //TBD: Figure out if, and how, there is a way to touble-check these relationships for strings?
+//      CHECK(iff(adjacent, i + 1 == j));
+//      CHECK(iff(twice_adjacent, i + 1 == j - 1));
+    } else {
+      CHECK(!adjacent);
+      CHECK(!twice_adjacent);
+    }
   } else {
     REQUIRE((false && "unknown type"));
   }
