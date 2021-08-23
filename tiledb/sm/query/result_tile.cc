@@ -174,6 +174,7 @@ std::string ResultTile::coord_string(uint64_t pos, unsigned dim_idx) const {
   Status st = coord_tile_off.buffer()->read(
       &offset, pos * sizeof(uint64_t), sizeof(uint64_t));
   assert(st.ok());
+
   uint64_t next_offset = 0;
   if (pos == cell_num - 1) {
     next_offset = val_size;
