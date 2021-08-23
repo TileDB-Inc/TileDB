@@ -40,6 +40,7 @@
 #include "tiledb/sm/query/query_condition.h"
 #include "tiledb/sm/query/reader.h"
 #include "tiledb/sm/query/sparse_global_order_reader.h"
+#include "tiledb/sm/query/sparse_unordered_with_dups_reader.h"
 #include "tiledb/sm/query/writer.h"
 #include "tiledb/sm/rest/rest_client.h"
 #include "tiledb/sm/storage_manager/storage_manager.h"
@@ -1011,6 +1012,20 @@ Status Query::create_strategy() {
         use_default = false;
         strategy_ = tdb_unique_ptr<IQueryStrategy>(tdb_new(
             SparseGlobalOrderReader,
+            stats_->create_child("Reader"),
+            storage_manager_,
+            array_,
+            config_,
+            buffers_,
+            subarray_,
+            layout_,
+            condition_));
+      } else if (
+          !array_schema_->dense() && layout_ == Layout::UNORDERED &&
+          array_schema_->allows_dups()) {
+        use_default = false;
+        strategy_ = tdb_unique_ptr<IQueryStrategy>(tdb_new(
+            SparseUnorderedWithDupsReader,
             stats_->create_child("Reader"),
             storage_manager_,
             array_,
