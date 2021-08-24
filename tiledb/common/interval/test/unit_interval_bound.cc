@@ -101,11 +101,11 @@ TEMPLATE_LIST_TEST_CASE(
       detail::TypeTraits<std::string> tts;
       auto [adjacent, twice_adjacent] = tts.adjacency(i, j);
       expected = adjacent ? 0 : ( i<j ) ? -1 : +1;
-      if (c != expected) {
-        __debugbreak();
-        auto c2 = x.compare_as_lower(y);
-        CHECK(c2 == expected);
-      }
+      //if (c != expected) {
+      //  __debugbreak();
+      //  auto c2 = x.compare_as_lower(y);
+      //  CHECK(c2 == expected);
+      //}
     } else {
       REQUIRE((false && "Unsupported type"));
     }
@@ -134,7 +134,6 @@ TEMPLATE_LIST_TEST_CASE(
       expected = i <= j ? -1 : +1;
     } else if constexpr (std::is_base_of<std::string, T>::value) {
       // TBD:
-      //expected = i <= j ? -1 : +1;
       detail::TypeTraits<std::string> tts;
       auto [adjacent, twice_adjacent] = tts.adjacency(i, j);
       auto [rev_adjacent, rev_twice_adjacent] = tts.adjacency(j, i);
@@ -209,7 +208,6 @@ TEMPLATE_LIST_TEST_CASE(
       expected = i <= j ? -1 : +1;
     } else if constexpr (std::is_base_of<std::string, T>::value) {
       // TBD:
-//      expected = i <= j ? -1 : +1;
       detail::TypeTraits<std::string> tts;
       auto [adjacent, twice_adjacent] = tts.adjacency(i, j);
       auto [rev_adjacent, rev_twice_adjacent] = tts.adjacency(j, i);
@@ -238,7 +236,6 @@ TEMPLATE_LIST_TEST_CASE(
       expected = i < j ? -1 : +1;
     } else if constexpr (std::is_base_of<std::string, T>::value) {
       // TBD:
-//      expected = i < j ? -1 : +1;
       detail::TypeTraits<std::string> tts;
       auto [adjacent, twice_adjacent] = tts.adjacency(i, j);
       expected = adjacent ? 0 : (i < j) ? -1 : +1;
@@ -300,9 +297,9 @@ TEMPLATE_LIST_TEST_CASE(
         // Can't add 1 to 'j', but every `i` is less than `j+1`
         expected = -1;
       } else {
-        //expected = (i < j + 1) ? -1 : (i == j + 1) ? 0 : +1;
-        expected = (i <= j ) ? -1 : (i == j + 1) ? 0 : +1;
+        expected = (i < j + 1) ? -1 : (i == j + 1) ? 0 : +1;
 #if 0
+        //expected = (i <= j ) ? -1 : (i == j + 1) ? 0 : +1;
         if (i == 1 && j == 0) {
           __debugbreak();
           int c2 = x.compare_as_mixed(y);

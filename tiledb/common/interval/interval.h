@@ -449,8 +449,9 @@ struct TypeTraits
    // "z" \/ "z" no
    // "z" \/ "za" yes
    // "z" \/ "zb" yes2
-//  static tuple<bool, bool> adjacency(T s1, T s2) {
-//  static tuple<bool, bool> adjacency(const T& s1, const T& s2) {
+    // "y" "za" yes2
+    //  static tuple<bool, bool> adjacency(T s1, T s2) {
+    //  static tuple<bool, bool> adjacency(const T& s1, const T& s2) {
   static tuple<bool, bool> adjacency(const T s1, const T s2) {
 //    x nothing;
     if(s1.length() > s2.length()) return {false, false};
@@ -460,7 +461,8 @@ struct TypeTraits
     // Assert: s1.length() <= s2.length()
     auto lendiff = s2.length() - s1.length();
     if(lendiff > 1) return {false, false};
-    auto prefixmemdiff = std::memcmp(s1.data(), s2.data(), s1.length()-1);
+    // Assert: s2.length() - s1.length() <= 1
+    auto prefixmemdiff = std::memcmp(s1.data(), s2.data(), s1.length() - 1);
     if (prefixmemdiff){
       return {false, false};
     }
@@ -471,16 +473,58 @@ struct TypeTraits
       // Assert: s1.back() < s2.back()
       return {s1.back()+1 == s2.back(), s1.back() + 1 == s2.back() - 1};
     }
+    // Assert: s2.length() - 1 == s1.length()
+    // "z" "za" yes
+    // "z" "zb" yes2
+    // "y" "za" yes2
+    if (*(s2.rbegin() + 1) !=
+        std::numeric_limits<std::decay_t<decltype(s1.back())>>::max()) {
+      return {false, false};
+    }
+    //
+    return {
+        // "z" "za"
+        (s1.back() ==
+         std::numeric_limits<std::decay_t<decltype(s1.back())>>::max()) &&
+            (s2.back() ==
+             std::numeric_limits<std::decay_t<decltype(s1.back())>>::min()),
+        //twice_adjacent ?
+        // "y" "za"
+        // "z" "zb"
+        ((s1.back() == // "y"
+          std::numeric_limits<std::decay_t<decltype(s1.back())>>::max() - 1) &&
+         (s2.back() == // "b"
+             (std::numeric_limits<std::decay_t<decltype(s1.back())>>::min() +
+              1))) ||
+            ((s1.back() == // "z"
+              std::numeric_limits<std::decay_t<decltype(s1.back())>>::max()) &&
+             s2.back() ==  // "b"
+              (std::numeric_limits<
+                               std::decay_t<decltype(s1.back())>>::min() +
+                           1))
+
+    };
+#if 0
+    auto sbackddiff = *(s2.rebgin() + 1) - s1.back();
+    if ( s1.back() != *(s2.rbegin() + 1) {
+    }
+    if (s1.back() != std::numeric_limits<std::decay_t<decltype(s1.back()_)>>::max()){
+      if (s1.back() !=
+          std::numeric_limits<std::decay_t<decltype(s1.back() _)>>::max()-1)
+        return {false, false};
+      else if (s1.back() != *(s2.rbegin() + 1) {
+      }
+    }
     // Assert: s1.length()+1 == s2.length()
     return { 
-      ( ( (*s2.rbegin()-1) == std::numeric_limits<std::decay_t<decltype(s1.back())>>::max() )
+      ( ( *(s2.rbegin()+1) == std::numeric_limits<std::decay_t<decltype(s1.back())>>::max() )
        && ( s1.back()      == std::numeric_limits<std::decay_t<decltype(s1.back())>>::max() )
        && ( s2.back()      == std::numeric_limits<std::decay_t<decltype(s1.back())>>::min() ) )
       ,
        (s1.back() == std::numeric_limits<std::decay_t<decltype(s1.back())>>::max()
         && s2.back() == std::numeric_limits<std::decay_t<decltype(s1.back())>>::min() + 1)
         };
-    
+#endif    
   }
 
 //  static bool adjacent(T s1, T s2) {

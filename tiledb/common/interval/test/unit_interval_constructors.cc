@@ -160,7 +160,10 @@ TEMPLATE_LIST_TEST_CASE(
         CHECK(implies(i < j, !x.is_empty()));
         CHECK(!x.has_single_point());
       } else if constexpr (std::is_base_of<std::string, T>::value) {
-        //TBD:
+        detail::TypeTraits<std::string> tts;
+        auto [adjacenct, twice_adjacent] = tts.adjacency(i, j);
+        // TBD: simple vers of... CHECK(implies(i < j && i + 1 < j, !x.is_empty()));
+        CHECK(implies(twice_adjacent, x.has_single_point()));
       } else {
         REQUIRE((false && "unexpected type"));
       }
@@ -177,6 +180,11 @@ TEMPLATE_LIST_TEST_CASE(
         CHECK(!x.has_single_point());
       } else if constexpr (std::is_base_of<std::string, T>::value) {
         //TBD:
+        detail::TypeTraits<std::string> tts;
+        auto [adjacent, twice_adjacent] = tts.adjacency(i, j);
+        CHECK(implies(adjacent, x.has_single_point()));
+      } else {
+        REQUIRE((false && "unexpected type"));
       }
 
     }
@@ -192,6 +200,11 @@ TEMPLATE_LIST_TEST_CASE(
         CHECK(!x.has_single_point());
       } else if constexpr (std::is_base_of<std::string, T>::value) {
         //TBD:
+        detail::TypeTraits<std::string> tts;
+        auto [adjacent, twice_adjacent] = tts.adjacency(i, j);
+        CHECK(implies(adjacent, x.has_single_point()));
+      } else {
+        REQUIRE((false && "unexpected type"));
       }
     }
     DYNAMIC_SECTION("[" << i << "," << j << "]") {

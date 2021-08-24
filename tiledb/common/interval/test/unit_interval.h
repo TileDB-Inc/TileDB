@@ -489,14 +489,14 @@ void test_interval_invariants(const Interval<T>& x) {
         REQUIRE(
             (false && "single-point intervals for floating point are closed"));
       } else if constexpr (std::is_base_of<std::string, T>::value) {
-        // TBD:
         //REQUIRE((false && "std::string single-point one open/closed TBD"));
-#if 0
+#if 01
+        // TBD: Do we really want to re-code entire adjacency test logic here?
+        detail::TypeTraits<std::string> tts;
+        auto [adjacent, twice_adjacent] = tts.adjacency(a, b);
         REQUIRE(a < b);
-        if (a.length() == b.length()) {
-          CHECK( (b.back() - a.back()) == 1);
-        } else if (b.length() - a.length() == 1) {
-        }
+        // TBD: Any *simple* equiv for... CHECK(a + 1 == b);
+        CHECK(adjacent);
         CHECK(Traits::adjacent(a, b));
 #endif
       } else {
@@ -513,8 +513,12 @@ void test_interval_invariants(const Interval<T>& x) {
         REQUIRE(
             (false && "single-point intervals for floating point are closed"));
       } else if constexpr (std::is_base_of<std::string, T>::value) {
-        // TBD:
-        CHECK((false && "std::string single-point upper/lower open TBD"));
+        // similar to unsigned
+        auto [adj1, adj2] = Traits::adjacency(a, b);
+        REQUIRE(a < b);
+        // TBD: *simple* equiv for... CHECK(a + 1 == b - 1);
+        CHECK(adj2);
+        CHECK_FALSE(adj1);
       } else {
         REQUIRE((false && "unknown type"));
       }
