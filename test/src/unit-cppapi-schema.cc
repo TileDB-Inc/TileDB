@@ -32,6 +32,7 @@
 
 #include "catch.hpp"
 #include "tiledb/sm/cpp_api/tiledb"
+#include "tiledb/sm/cpp_api/tiledb_experimental"
 
 #include <limits>
 
@@ -341,4 +342,57 @@ TEST_CASE(
     CHECK_NOTHROW(tiledb::Dimension::create(
         ctx, "d1", TILEDB_UINT64, domain, &tile_extent));
   }
+}
+
+TEST_CASE(
+    "C++ API: SchemaEvolution, add and drop attributes",
+    "[cppapi][schema][evolution][add][drop]") {
+  using namespace tiledb;
+  Context ctx;
+  VFS vfs(ctx);
+
+  std::string array_uri = "test_schema_evolution_array";
+
+  Domain domain(ctx);
+  auto id1 = Dimension::create<int>(ctx, "d1", {{-100, 100}}, 10);
+  auto id2 = Dimension::create<int>(ctx, "d2", {{0, 100}}, 5);
+  CHECK_THROWS(id1.set_cell_val_num(4));
+  CHECK_NOTHROW(id1.set_cell_val_num(1));
+  domain.add_dimension(id1).add_dimension(id2);
+
+  auto a1 = Attribute::create<int>(ctx, "a1");
+  auto a2 = Attribute::create<int>(ctx, "a2");
+
+  ArraySchema schema(ctx, TILEDB_DENSE);
+  schema.set_domain(domain);
+  schema.add_attribute(a1);
+  schema.add_attribute(a2);
+  schema.set_cell_order(TILEDB_ROW_MAJOR);
+  schema.set_tile_order(TILEDB_COL_MAJOR);
+
+  if (vfs.is_dir(array_uri)) {
+    vfs.remove_dir(array_uri);
+  }
+
+  Array::create(array_uri, schema);
+
+  auto evolution = ArraySchemaEvolution(ctx);
+
+  // add a new attribute a3
+  auto a3 = Attribute::create<int>(ctx, "a3");
+  evolution.add_attribute(a3);
+
+  // drop attribute a1
+  evolution.drop_attribute("a1");
+
+  // evolve array
+  evolution.array_evolve(array_uri);
+
+  // read schema
+  auto read_schema = Array::load_schema(ctx, array_uri);
+
+  auto attrs = read_schema.attributes();
+  CHECK(attrs.count("a1") == 0);
+  CHECK(attrs.count("a2") == 1);
+  CHECK(attrs.count("a3") == 1);
 }

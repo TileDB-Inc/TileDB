@@ -63,8 +63,10 @@ endif()
 if (TILEDB_CPP_API)
   list(APPEND TILEDB_PUBLIC_HEADERS
     ${TILEDB_CORE_INCLUDE_DIR}/tiledb/sm/cpp_api/tiledb
+    ${TILEDB_CORE_INCLUDE_DIR}/tiledb/sm/cpp_api/tiledb_experimental
     ${TILEDB_CORE_INCLUDE_DIR}/tiledb/sm/cpp_api/array.h
     ${TILEDB_CORE_INCLUDE_DIR}/tiledb/sm/cpp_api/array_schema.h
+    ${TILEDB_CORE_INCLUDE_DIR}/tiledb/sm/cpp_api/array_schema_evolution.h
     ${TILEDB_CORE_INCLUDE_DIR}/tiledb/sm/cpp_api/attribute.h
     ${TILEDB_CORE_INCLUDE_DIR}/tiledb/sm/cpp_api/config.h
     ${TILEDB_CORE_INCLUDE_DIR}/tiledb/sm/cpp_api/context.h

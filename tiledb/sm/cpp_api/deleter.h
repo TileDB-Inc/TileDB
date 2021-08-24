@@ -37,6 +37,7 @@
 
 #include "context.h"
 #include "tiledb.h"
+#include "tiledb_experimental.h"
 
 namespace tiledb {
 
@@ -84,6 +85,10 @@ class Deleter {
 
   void operator()(tiledb_array_schema_t* p) const {
     tiledb_array_schema_free(&p);
+  }
+
+  void operator()(tiledb_array_schema_evolution_t* p) const {
+    tiledb_array_schema_evolution_free(&p);
   }
 
   void operator()(tiledb_attribute_t* p) const {
