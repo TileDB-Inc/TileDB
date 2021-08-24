@@ -964,6 +964,7 @@ class Interval : public detail::IntervalBase {
       }
     }
     if constexpr (!Traits::has_infinite_elements) {
+      (void)is_for_upper_bound;
       return Bound(bound, is_closed);
     } else {
       if (Traits::is_finite(bound)) {
