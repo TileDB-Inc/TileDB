@@ -53,13 +53,13 @@ stages:
             imageName: 'windows-2019'
             TILEDB_S3: ON
             TILEDB_ARROW_TESTS: ON
-          #VS2017_azure:
-            #imageName: 'vs2017-win2016'
-            #TILEDB_AZURE: ON
-            #TILEDB_ARROW_TESTS: ON
-          #VS2017_serialization:
-            #imageName: 'vs2017-win2016'
-            #TILEDB_SERIALIZATION: ON
+          VS2017_azure:
+            imageName: 'windows-2019'
+            TILEDB_AZURE: ON
+            TILEDB_ARROW_TESTS: ON
+          VS2017_serialization:
+            imageName: 'windows-2019'
+            TILEDB_SERIALIZATION: ON
       pool:
         vmImage: $(imageName)
       steps:
@@ -77,39 +77,39 @@ stages:
       TILEDB_FORCE_BUILD_DEPS: ON
       MACOSX_DEPLOYMENT_TARGET: 10.14
     jobs:
-     - job:
-       strategy:
-         matrix:
-           linux:
-             imageName: 'ubuntu-20.04'
-             CXX: g++
-             ARTIFACT_OS: 'linux'
-             ARTIFACT_ARCH: 'x86_64'
-           macOS:
-             imageName: 'macOS-10.15'
-             CXX: clang++
-             ARTIFACT_OS: 'macos'
-             ARTIFACT_ARCH: 'x86_64'
-             CMAKE_OSX_ARCHITECTURES: "x86_64"
-           macOS_arm64:
-             imageName: 'macOS-10.15'
-             CXX: clang++
-             ARTIFACT_OS: 'macos'
-             ARTIFACT_ARCH: 'arm64'
-             TILEDB_GCS: OFF
-             TILEDB_WERROR: OFF
-             CMAKE_OSX_ARCHITECTURES: "arm64"
-             MACOSX_DEPLOYMENT_TARGET: 11
-       pool:
-         vmImage: $(imageName)
-       steps:
-         - template: scripts/azure-linux_mac-release.yml
+     #~ - job:
+       #~ strategy:
+         #~ matrix:
+           #~ linux:
+             #~ imageName: 'ubuntu-20.04'
+             #~ CXX: g++
+             #~ ARTIFACT_OS: 'linux'
+             #~ ARTIFACT_ARCH: 'x86_64'
+           #~ macOS:
+             #~ imageName: 'macOS-10.15'
+             #~ CXX: clang++
+             #~ ARTIFACT_OS: 'macos'
+             #~ ARTIFACT_ARCH: 'x86_64'
+             #~ CMAKE_OSX_ARCHITECTURES: "x86_64"
+           #~ macOS_arm64:
+             #~ imageName: 'macOS-10.15'
+             #~ CXX: clang++
+             #~ ARTIFACT_OS: 'macos'
+             #~ ARTIFACT_ARCH: 'arm64'
+             #~ TILEDB_GCS: OFF
+             #~ TILEDB_WERROR: OFF
+             #~ CMAKE_OSX_ARCHITECTURES: "arm64"
+             #~ MACOSX_DEPLOYMENT_TARGET: 11
+       #~ pool:
+         #~ vmImage: $(imageName)
+       #~ steps:
+         #~ - template: scripts/azure-linux_mac-release.yml
 
      - job: Windows
        strategy:
          matrix:
            VS2017:
-             imageName: 'vs2017-win2016'
+             imageName: 'windows-2019'
              # Only S3 variable is currently supported in boostrap powershell
              TILEDB_GCS: OFF
              TILEDB_HDFS: OFF
