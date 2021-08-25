@@ -14,27 +14,27 @@ stages:
     variables:
       BACKWARDS_COMPATIBILITY_ARRAYS: OFF
     jobs:
-    - job:
-      timeoutInMinutes: 90
-      strategy:
-        matrix:
-          macOS_azure:
-            imageName: 'macOS-10.15'
-            TILEDB_AZURE: ON
-            TILEDB_SERIALIZATION: ON
-            CXX: clang++
-            ARTIFACT_OS: macOS_azure
-          linux_asan:
-            imageName: 'ubuntu-20.04'
-            TILEDB_CI_ASAN: ON
-            TILEDB_SERIALIZATION: ON
-            CXX: g++
-            CC: gcc
+    #- job:
+      #timeoutInMinutes: 90
+      #strategy:
+        #matrix:
+          #macOS_azure:
+            #imageName: 'macOS-10.15'
+            #TILEDB_AZURE: ON
+            #TILEDB_SERIALIZATION: ON
+            #CXX: clang++
+            #ARTIFACT_OS: macOS_azure
+          #linux_asan:
+            #imageName: 'ubuntu-20.04'
+            #TILEDB_CI_ASAN: ON
+            #TILEDB_SERIALIZATION: ON
+            #CXX: g++
+            #CC: gcc
 
-      pool:
-        vmImage: $(imageName)
-      steps:
-      - template: scripts/azure-linux_mac.yml
+      #pool:
+        #vmImage: $(imageName)
+      #steps:
+      #- template: scripts/azure-linux_mac.yml
 
     #- job: CentOS6_manylinux1
     #    container:
@@ -50,16 +50,16 @@ stages:
       strategy:
         matrix:
           VS2017:
-            imageName: 'vs2017-win2016'
+            imageName: 'windows-2019'
             TILEDB_S3: ON
             TILEDB_ARROW_TESTS: ON
-          VS2017_azure:
-            imageName: 'vs2017-win2016'
-            TILEDB_AZURE: ON
-            TILEDB_ARROW_TESTS: ON
-          VS2017_serialization:
-            imageName: 'vs2017-win2016'
-            TILEDB_SERIALIZATION: ON
+          #VS2017_azure:
+            #imageName: 'vs2017-win2016'
+            #TILEDB_AZURE: ON
+            #TILEDB_ARROW_TESTS: ON
+          #VS2017_serialization:
+            #imageName: 'vs2017-win2016'
+            #TILEDB_SERIALIZATION: ON
       pool:
         vmImage: $(imageName)
       steps:
