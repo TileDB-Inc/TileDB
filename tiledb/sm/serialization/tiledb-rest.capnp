@@ -81,6 +81,16 @@ struct ArraySchema {
     # Type of compression for validity buffers (enum)
 }
 
+struct ArraySchemaEvolution {
+# Evolution of array schema
+    attributesToDrop @0 :List(Text);
+    # Attribute names to be dropped
+
+    attributesToAdd @1 :List(Attribute);
+    # Attributes to be added    
+
+}
+
 struct Attribute {
 # Attribute of array
     cellValNum @0 :UInt32;
