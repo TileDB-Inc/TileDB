@@ -6435,8 +6435,11 @@ int32_t tiledb_fragment_info_get_array_schema(
   if (SAVE_ERROR_CATCH(
           ctx,
           fragment_info->fragment_info_->get_array_schema(
-              fid, &(*array_schema)->array_schema_)))
+              fid, &(*array_schema)->array_schema_))) {
+    delete *array_schema;
+    *array_schema = nullptr;
     return TILEDB_ERR;
+  }
 
   return TILEDB_OK;
 }
