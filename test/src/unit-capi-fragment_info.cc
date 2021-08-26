@@ -1024,6 +1024,54 @@ TEST_CASE("C API: Test fragment info, dump", "[capi][fragment_info][dump]") {
   rc = tiledb_fragment_info_load(ctx, fragment_info);
   CHECK(rc == TILEDB_OK);
 
+  // Get fragment array schemas
+  tiledb_array_schema_t* frag1_array_schema = nullptr;
+  tiledb_array_schema_t* frag2_array_schema = nullptr;
+  tiledb_array_schema_t* frag3_array_schema = nullptr;
+
+  rc = tiledb_fragment_info_get_array_schema(
+      ctx, fragment_info, 0, &frag1_array_schema);
+  CHECK(rc == TILEDB_OK);
+  rc = tiledb_fragment_info_get_array_schema(
+      ctx, fragment_info, 1, &frag2_array_schema);
+  CHECK(rc == TILEDB_OK);
+  rc = tiledb_fragment_info_get_array_schema(
+      ctx, fragment_info, 2, &frag3_array_schema);
+  CHECK(rc == TILEDB_OK);
+
+  FILE* frag1_schema_file = fopen("frag1_schema.txt", "w");
+  FILE* frag2_schema_file = fopen("frag2_schema.txt", "w");
+  FILE* frag3_schema_file = fopen("frag3_schema.txt", "w");
+
+  rc = tiledb_array_schema_dump(ctx, frag1_array_schema, frag1_schema_file);
+  CHECK(rc == TILEDB_OK);
+  rc = tiledb_array_schema_dump(ctx, frag2_array_schema, frag2_schema_file);
+  CHECK(rc == TILEDB_OK);
+  rc = tiledb_array_schema_dump(ctx, frag3_array_schema, frag3_schema_file);
+  CHECK(rc == TILEDB_OK);
+
+  fclose(frag1_schema_file);
+  fclose(frag2_schema_file);
+  fclose(frag3_schema_file);
+
+#ifdef _WIN32
+  CHECK(!system("FC frag1_schema.txt frag2_schema.txt > nul"));
+  CHECK(!system("FC frag1_schema.txt frag3_schema.txt > nul"));
+#else
+  CHECK(!system("diff frag1_schema.txt frag2_schema.txt"));
+  CHECK(!system("diff frag1_schema.txt frag3_schema.txt"));
+#endif
+
+  // Clean up fragement array schemas
+  tiledb_array_schema_free(&frag1_array_schema);
+  tiledb_array_schema_free(&frag2_array_schema);
+  tiledb_array_schema_free(&frag3_array_schema);
+
+  // Remove fragment schema files
+  CHECK(tiledb_vfs_remove_file(ctx, vfs, "frag1_schema.txt") == TILEDB_OK);
+  CHECK(tiledb_vfs_remove_file(ctx, vfs, "frag2_schema.txt") == TILEDB_OK);
+  CHECK(tiledb_vfs_remove_file(ctx, vfs, "frag3_schema.txt") == TILEDB_OK);
+
   // Check dump
   std::string dump_str =
       std::string("- Fragment num: 3\n") +

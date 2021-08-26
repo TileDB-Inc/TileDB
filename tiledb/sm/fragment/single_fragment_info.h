@@ -58,6 +58,7 @@ class SingleFragmentInfo {
     sparse_ = false;
     timestamp_range_ = {0, 0};
     fragment_size_ = 0;
+    array_schema_name_ = "";
   }
 
   /** Constructor. */
@@ -70,7 +71,8 @@ class SingleFragmentInfo {
       uint64_t fragment_size,
       bool has_consolidated_footer,
       const NDRange& non_empty_domain,
-      const NDRange& expanded_non_empty_domain)
+      const NDRange& expanded_non_empty_domain,
+      const std::string& array_schema_name)
       : uri_(uri)
       , version_(version)
       , sparse_(sparse)
@@ -79,7 +81,8 @@ class SingleFragmentInfo {
       , fragment_size_(fragment_size)
       , has_consolidated_footer_(has_consolidated_footer)
       , non_empty_domain_(non_empty_domain)
-      , expanded_non_empty_domain_(expanded_non_empty_domain) {
+      , expanded_non_empty_domain_(expanded_non_empty_domain)
+      , array_schema_name_(array_schema_name) {
   }
 
   /** Copy constructor. */
@@ -130,6 +133,7 @@ class SingleFragmentInfo {
     ss << "  > Format version: " << version_ << "\n";
     ss << "  > Has consolidated metadata: "
        << (has_consolidated_footer_ ? "yes" : "no") << "\n";
+
     fprintf(out, "%s", ss.str().c_str());
   }
 
@@ -258,6 +262,11 @@ class SingleFragmentInfo {
     return ss.str();
   }
 
+  /** Returns the array schema name. */
+  const std::string& array_schema_name() const {
+    return array_schema_name_;
+  }
+
  private:
   /** The fragment URI. */
   URI uri_;
@@ -283,6 +292,9 @@ class SingleFragmentInfo {
    */
   NDRange expanded_non_empty_domain_;
 
+  /** The name of array schema */
+  std::string array_schema_name_;
+
   /**
    * Returns a deep copy of this FragmentInfo.
    * @return New FragmentInfo
@@ -298,6 +310,7 @@ class SingleFragmentInfo {
     clone.has_consolidated_footer_ = has_consolidated_footer_;
     clone.non_empty_domain_ = non_empty_domain_;
     clone.expanded_non_empty_domain_ = expanded_non_empty_domain_;
+    clone.array_schema_name_ = array_schema_name_;
     return clone;
   }
 
@@ -312,6 +325,7 @@ class SingleFragmentInfo {
     std::swap(has_consolidated_footer_, info.has_consolidated_footer_);
     std::swap(non_empty_domain_, info.non_empty_domain_);
     std::swap(expanded_non_empty_domain_, info.expanded_non_empty_domain_);
+    std::swap(array_schema_name_, info.array_schema_name_);
   }
 };
 

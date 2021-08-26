@@ -33,6 +33,7 @@
 #ifndef TILEDB_CPP_API_FRAGMENT_INFO_H
 #define TILEDB_CPP_API_FRAGMENT_INFO_H
 
+#include "array_schema.h"
 #include "context.h"
 #include "deleter.h"
 #include "exception.h"
@@ -239,6 +240,15 @@ class FragmentInfo {
     ctx.handle_error(tiledb_fragment_info_get_version(
         ctx.ptr().get(), fragment_info_.get(), fid, &ret));
     return ret;
+  }
+
+  /** Returns the array schema of the fragment with the given index. */
+  ArraySchema array_schema(uint32_t fid) const {
+    auto& ctx = ctx_.get();
+    tiledb_array_schema_t* schema;
+    ctx.handle_error(tiledb_fragment_info_get_array_schema(
+        ctx.ptr().get(), fragment_info_.get(), fid, &schema));
+    return ArraySchema(ctx, schema);
   }
 
   /**
