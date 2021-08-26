@@ -95,6 +95,54 @@ void Logger::critical(const char* msg) {
   logger_->critical(msg);
 }
 
+void Logger::trace(const std::string& msg) {
+  logger_->trace(msg);
+}
+
+void Logger::debug(const std::string& msg) {
+  logger_->debug(msg);
+}
+
+void Logger::info(const std::string& msg) {
+  logger_->info(msg);
+}
+
+void Logger::warn(const std::string& msg) {
+  logger_->warn(msg);
+}
+
+void Logger::error(const std::string& msg) {
+  logger_->error(msg);
+}
+
+void Logger::critical(const std::string& msg) {
+  logger_->critical(msg);
+}
+
+void Logger::trace(const std::stringstream& msg) {
+  logger_->trace(msg.str());
+}
+
+void Logger::debug(const std::stringstream& msg) {
+  logger_->debug(msg.str());
+}
+
+void Logger::info(const std::stringstream& msg) {
+  logger_->info(msg.str());
+}
+
+void Logger::warn(const std::stringstream& msg) {
+  logger_->warn(msg.str());
+}
+
+void Logger::error(const std::stringstream& msg) {
+  logger_->error(msg.str());
+}
+
+void Logger::critical(const std::stringstream& msg) {
+  logger_->critical(msg.str());
+}
+
 void Logger::set_level(Logger::Level lvl) {
   switch (lvl) {
     case Logger::Level::FATAL:
@@ -127,40 +175,71 @@ Logger& global_logger() {
   return l;
 }
 
-/** Logs an error. */
+/** Logs a trace. */
 void LOG_TRACE(const std::string& msg) {
-  global_logger().trace(msg.c_str());
+  global_logger().trace(msg);
 }
 
-/** Logs an error. */
+/** Logs debug. */
 void LOG_DEBUG(const std::string& msg) {
-  global_logger().debug(msg.c_str());
+  global_logger().debug(msg);
 }
 
-/** Logs an error. */
+/** Logs info. */
 void LOG_INFO(const std::string& msg) {
-  global_logger().info(msg.c_str());
+  global_logger().info(msg);
 }
 
-/** Logs an error. */
+/** Logs an warning. */
 void LOG_WARN(const std::string& msg) {
-  global_logger().warn(msg.c_str());
+  global_logger().warn(msg);
 }
 
 /** Logs an error. */
 void LOG_ERROR(const std::string& msg) {
-  global_logger().error(msg.c_str());
+  global_logger().error(msg);
 }
 
 /** Logs a status. */
 Status LOG_STATUS(const Status& st) {
-  global_logger().error(st.to_string().c_str());
+  global_logger().error(st.to_string());
   return st;
 }
 
 /** Logs an error and exits with a non-zero status. */
 void LOG_FATAL(const std::string& msg) {
-  global_logger().error(msg.c_str());
+  global_logger().error(msg);
+  exit(1);
+}
+
+/** Logs a trace. */
+void LOG_TRACE(const std::stringstream& msg) {
+  global_logger().trace(msg);
+}
+
+/** Logs debug. */
+void LOG_DEBUG(const std::stringstream& msg) {
+  global_logger().debug(msg);
+}
+
+/** Logs info. */
+void LOG_INFO(const std::stringstream& msg) {
+  global_logger().info(msg);
+}
+
+/** Logs a warning. */
+void LOG_WARN(const std::stringstream& msg) {
+  global_logger().warn(msg);
+}
+
+/** Logs an error. */
+void LOG_ERROR(const std::stringstream& msg) {
+  global_logger().error(msg);
+}
+
+/** Logs an error and exits with a non-zero status. */
+void LOG_FATAL(const std::stringstream& msg) {
+  global_logger().error(msg);
   exit(1);
 }
 
