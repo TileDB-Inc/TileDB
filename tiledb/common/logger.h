@@ -52,6 +52,7 @@
 #define TILEDB_LOGGER_H
 
 #include <spdlog/spdlog.h>
+#include <sstream>
 
 #include "tiledb/common/heap_memory.h"
 #include "tiledb/common/status.h"
@@ -84,6 +85,20 @@ class Logger {
   void trace(const char* msg);
 
   /**
+   * Log a trace statement with no message formatting.
+   *
+   * @param msg The string to log.
+   */
+  void trace(const std::string& msg);
+
+  /**
+   * Log a trace statement with no message formatting.
+   *
+   * @param msg The string to log.
+   */
+  void trace(const std::stringstream& msg);
+
+  /**
    * A formatted trace statment.
    *
    * @param fmt A fmtlib format string, see http://fmtlib.net/latest/ for
@@ -102,6 +117,20 @@ class Logger {
    * @param msg The string to log.
    */
   void debug(const char* msg);
+
+  /**
+   * Log a debug statement with no message formatting.
+   *
+   * @param msg The string to log.
+   */
+  void debug(const std::string& msg);
+
+  /**
+   * Log a debug statement with no message formatting.
+   *
+   * @param msg The string to log.
+   */
+  void debug(const std::stringstream& msg);
 
   /**
    * A formatted debug statment.
@@ -124,6 +153,20 @@ class Logger {
   void info(const char* msg);
 
   /**
+   * Log an info statement with no message formatting.
+   *
+   * @param msg The string to log.
+   */
+  void info(const std::string& msg);
+
+  /**
+   * Log an info statement with no message formatting.
+   *
+   * @param msg The string to log.
+   */
+  void info(const std::stringstream& msg);
+
+  /**
    * A formatted info statment.
    *
    * @param fmt A fmtlib format string, see http://fmtlib.net/latest/ for
@@ -142,6 +185,20 @@ class Logger {
    * @param msg The string to log.
    */
   void warn(const char* msg);
+
+  /**
+   * Log a warn statement with no message formatting.
+   *
+   * @param msg The string to log.
+   */
+  void warn(const std::string& msg);
+
+  /**
+   * Log a warn statement with no message formatting.
+   *
+   * @param msg The string to log.
+   */
+  void warn(const std::stringstream& msg);
 
   /**
    * A formatted warn statment.
@@ -163,6 +220,20 @@ class Logger {
    * */
   void error(const char* msg);
 
+  /**
+   * Log an error with no message formatting.
+   *
+   * @param msg The string to log
+   * */
+  void error(const std::string& msg);
+
+  /**
+   * Log an error with no message formatting.
+   *
+   * @param msg The string to log
+   * */
+  void error(const std::stringstream& msg);
+
   /** A formatted error statement.
    *
    * @param fmt A fmtlib format string, see http://fmtlib.net/latest/ for
@@ -181,6 +252,20 @@ class Logger {
    * @param msg The string to log.
    */
   void critical(const char* msg);
+
+  /**
+   * Log a critical statement with no message formatting.
+   *
+   * @param msg The string to log.
+   */
+  void critical(const std::string& msg);
+
+  /**
+   * Log a critical statement with no message formatting.
+   *
+   * @param msg The string to log.
+   */
+  void critical(const std::stringstream& msg);
 
   /**
    * A formatted critical statment.
