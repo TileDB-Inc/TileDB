@@ -25,7 +25,9 @@
 # THE SOFTWARE.
 #
 
-cmake_policy(SET CMP0076 NEW)  # CMake 3.13 - converts relative paths to absolute
+if (POLICY CMP0076) # CMP0076 unknown to vs2017 cmake version 3.12.18081601-MSVC_2
+  cmake_policy(SET CMP0076 NEW)  # CMake 3.13 - converts relative paths to absolute
+endif()
 find_package(Catch_EP REQUIRED)
 
 add_executable(unit_interval EXCLUDE_FROM_ALL)
