@@ -1058,7 +1058,8 @@ Status query_from_capnp(
           // Var size attribute; buffers already set.
           char* offset_dest = (char*)existing_offset_buffer + curr_offset_size;
           char* data_dest = (char*)existing_buffer + curr_data_size;
-          char* validity_dest = (char*)existing_buffer + curr_validity_size;
+          char* validity_dest =
+              (char*)existing_validity_buffer + curr_validity_size;
           uint64_t fixedlen_size_to_copy = fixedlen_size;
 
           // If the last query included an extra offset we will skip the first
@@ -1114,11 +1115,13 @@ Status query_from_capnp(
             // Set the size directly on the query (so user can introspect on
             // result size).
             if (existing_offset_buffer_size_ptr != nullptr)
-              *existing_offset_buffer_size_ptr = fixedlen_size_to_copy;
+              *existing_offset_buffer_size_ptr =
+                  curr_offset_size + fixedlen_size_to_copy;
             if (existing_buffer_size_ptr != nullptr)
-              *existing_buffer_size_ptr = varlen_size;
+              *existing_buffer_size_ptr = curr_data_size + varlen_size;
             if (nullable && existing_validity_buffer_size_ptr != nullptr)
-              *existing_validity_buffer_size_ptr = validitylen_size;
+              *existing_validity_buffer_size_ptr =
+                  curr_validity_size + validitylen_size;
           } else {
             // Accumulate total bytes copied (caller's responsibility to
             // eventually update the query).
@@ -1147,9 +1150,10 @@ Status query_from_capnp(
 
           if (attr_copy_state == nullptr) {
             if (existing_buffer_size_ptr != nullptr)
-              *existing_buffer_size_ptr = fixedlen_size;
+              *existing_buffer_size_ptr = curr_data_size + fixedlen_size;
             if (nullable && existing_validity_buffer_size_ptr != nullptr)
-              *existing_validity_buffer_size_ptr = validitylen_size;
+              *existing_validity_buffer_size_ptr =
+                  curr_validity_size + validitylen_size;
           } else {
             attr_copy_state->data_size += fixedlen_size;
             if (nullable)
@@ -1242,8 +1246,8 @@ Status query_from_capnp(
         if (var_size) {
           auto* offsets = reinterpret_cast<uint64_t*>(attribute_buffer_start);
           auto* varlen_data = attribute_buffer_start + fixedlen_size;
-          auto* validity =
-              reinterpret_cast<uint8_t*>(attribute_buffer_start + varlen_size);
+          auto* validity = reinterpret_cast<uint8_t*>(
+              attribute_buffer_start + fixedlen_size + varlen_size);
 
           attribute_buffer_start +=
               fixedlen_size + varlen_size + validitylen_size;
