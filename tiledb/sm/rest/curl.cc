@@ -40,7 +40,6 @@
 #include <cstring>
 #include <iostream>
 #include <sstream>
-#include <algorithm>
 
 #ifdef _WIN32
 #include <locale>  //provides needed visibility of two-argument tolower() prototype for win32
