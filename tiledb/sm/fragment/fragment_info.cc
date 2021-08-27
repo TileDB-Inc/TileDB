@@ -60,9 +60,11 @@ FragmentInfo::FragmentInfo(
 }
 
 FragmentInfo::~FragmentInfo() {
-  if (array_->is_open())
-    array_->close();
-  tdb_delete(array_);
+  if (array_ != nullptr) {
+    if (array_->is_open())
+      array_->close();
+    tdb_delete(array_);
+  }
 }
 
 FragmentInfo::FragmentInfo(const FragmentInfo& fragment_info)
@@ -780,6 +782,8 @@ Status FragmentInfo::load(
   unconsolidated_metadata_num_ = 0;
   for (const auto& f : fragments_)
     unconsolidated_metadata_num_ += (uint32_t)!f.has_consolidated_footer();
+
+  RETURN_NOT_OK(array_->close());
 
   return Status::Ok();
 }

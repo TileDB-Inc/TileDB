@@ -810,6 +810,7 @@ Status Array::get_fragment_info(
         meta->has_consolidated_footer(),
         non_empty_domain,
         expanded_non_empty_domain,
+        meta->array_schema_name(),
         encryption_key(),
         meta));
   }
