@@ -1618,9 +1618,7 @@ Status StorageManager::init(const Config* config) {
   // set logging level from config
   bool found = false;
   uint32_t level = static_cast<unsigned int>(Logger::Level::ERR);
-  std::cout << "default level: " << level << std::endl;
   RETURN_NOT_OK(config_.get<uint32_t>("config.logging_level", &level, &found));
-  std::cout << "default2 level: " << level << std::endl;
   assert(found);
   if (level > static_cast<unsigned int>(Logger::Level::TRACE)) {
     return LOG_STATUS(Status::StorageManagerError(

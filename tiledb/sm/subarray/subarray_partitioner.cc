@@ -824,6 +824,7 @@ Status SubarrayPartitioner::compute_current_start_end(bool* found) {
         if (cur_size.size_fixed_ > budget.size_fixed_) {
           global_logger().debug(
               "{} cur_size.size_fixed_ ({}) > budget.size_fixed_ ({})",
+              names[i],
               cur_size.size_fixed_,
               budget.size_fixed_);
           stats_->add_counter(
@@ -831,6 +832,7 @@ Status SubarrayPartitioner::compute_current_start_end(bool* found) {
         } else if (cur_size.size_var_ > budget.size_var_) {
           global_logger().debug(
               "{} cur_size.size_var_ ({}) > budget.size_var_ ({})",
+              names[i],
               cur_size.size_var_,
               budget.size_var_);
           stats_->add_counter(
@@ -838,6 +840,7 @@ Status SubarrayPartitioner::compute_current_start_end(bool* found) {
         } else if (cur_size.size_validity_ > budget.size_validity_) {
           global_logger().debug(
               "{} cur_size.size_validity_ ({}) > budget.size_validity_ ({})",
+              names[i],
               cur_size.size_validity_,
               budget.size_validity_);
           stats_->add_counter(
@@ -845,6 +848,7 @@ Status SubarrayPartitioner::compute_current_start_end(bool* found) {
         } else if (mem_size.size_fixed_ > memory_budget_) {
           global_logger().debug(
               "{} mem_size.size_fixed_ ({}) > memory_budget_ ({})",
+              names[i],
               mem_size.size_fixed_,
               memory_budget_);
           stats_->add_counter(
@@ -852,6 +856,7 @@ Status SubarrayPartitioner::compute_current_start_end(bool* found) {
         } else if (mem_size.size_var_ > memory_budget_var_) {
           global_logger().debug(
               "{} mem_size.size_var_ ({}) > memory_budget_var_ ({})",
+              names[i],
               mem_size.size_var_,
               memory_budget_var_);
           stats_->add_counter(
@@ -859,6 +864,7 @@ Status SubarrayPartitioner::compute_current_start_end(bool* found) {
         } else if (mem_size.size_validity_ > memory_budget_validity_) {
           global_logger().debug(
               "{} mem_size.size_validity_ ({}) > budget.size_fixed_ ({})",
+              names[i],
               mem_size.size_validity_,
               memory_budget_validity_);
           stats_->add_counter(
@@ -1225,31 +1231,37 @@ bool SubarrayPartitioner::must_split(Subarray* partition) {
       if (size_fixed > b.second.size_fixed_) {
         global_logger().debug(
             "{} size_fixed ({}) > b.second.size_fixed_ ({})",
+            name,
             size_fixed,
             b.second.size_fixed_);
       } else if (size_var > b.second.size_var_) {
         global_logger().debug(
             "{} size_var_ ({}) > b.second.size_var_ ({})",
+            name,
             size_var,
             b.second.size_var_);
       } else if (size_validity > b.second.size_validity_) {
         global_logger().debug(
             "{} size_validity_ ({}) > b.second.size_validity_ ({})",
+            name,
             size_validity,
             b.second.size_validity_);
       } else if (mem_size_fixed > memory_budget_) {
         global_logger().debug(
             "{} mem_size_fixed ({}) > memory_budget_ ({})",
+            name,
             mem_size_fixed,
             memory_budget_);
       } else if (mem_size_var > memory_budget_var_) {
         global_logger().debug(
             "{} mem_size_var ({}) > memory_budget_var_ ({})",
+            name,
             mem_size_var,
             memory_budget_var_);
       } else if (mem_size_validity > memory_budget_validity_) {
         global_logger().debug(
             "{} mem_size_validity ({}) > memory_budget_validity_ ({})",
+            name,
             mem_size_validity,
             memory_budget_validity_);
       }
