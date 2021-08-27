@@ -1445,7 +1445,8 @@ Status StorageManager::get_fragment_info(
           sizes[i],
           meta->has_consolidated_footer(),
           non_empty_domain,
-          expanded_non_empty_domain));
+          expanded_non_empty_domain,
+          meta->array_schema_name()));
     }
   }
 
@@ -1573,7 +1574,8 @@ Status StorageManager::get_fragment_info(
       size,
       meta.has_consolidated_footer(),
       non_empty_domain,
-      expanded_non_empty_domain);
+      expanded_non_empty_domain,
+      meta.array_schema_name());
 
   return Status::Ok();
 }
