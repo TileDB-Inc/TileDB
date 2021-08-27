@@ -85,6 +85,7 @@ StorageManager::StorageManager(
     , compute_tp_(compute_tp)
     , io_tp_(io_tp)
     , vfs_(nullptr) {
+  logger_ = global_logger().clone("StorageManager");
 }
 
 StorageManager::~StorageManager() {

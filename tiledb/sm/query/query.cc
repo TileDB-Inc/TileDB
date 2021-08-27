@@ -104,6 +104,9 @@ Query::Query(StorageManager* storage_manager, Array* array, URI fragment_uri)
 
   if (storage_manager != nullptr)
     config_ = storage_manager->config();
+
+  // This should come from the context
+  logger_ = global_logger().clone("query");
 }
 
 Query::~Query() {
