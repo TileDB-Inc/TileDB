@@ -192,8 +192,10 @@ Status Reader::dowork() {
   }
 
   // Loop until you find results, or unsplittable, or done
+  uint64_t loop_num = 0;
   do {
     stats_->add_counter("loop_num", 1);
+    std::cout << "reader: loop_num=" <<  ++loop_num << std::endl;
 
     read_state_.overflowed_ = false;
     copy_overflowed_ = false;
