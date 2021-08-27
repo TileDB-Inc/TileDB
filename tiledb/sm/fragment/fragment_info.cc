@@ -527,6 +527,8 @@ Status FragmentInfo::load(
   for (const auto& f : fragments_)
     unconsolidated_metadata_num_ += (uint32_t)!f.has_consolidated_footer();
 
+  array.close();
+
   return Status::Ok();
 }
 
