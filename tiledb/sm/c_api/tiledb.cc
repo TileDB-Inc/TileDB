@@ -6414,6 +6414,36 @@ int32_t tiledb_fragment_info_get_to_vacuum_uri(
   return TILEDB_OK;
 }
 
+int32_t tiledb_fragment_info_get_array_schema(
+    tiledb_ctx_t* ctx,
+    tiledb_fragment_info_t* fragment_info,
+    uint32_t fid,
+    tiledb_array_schema_t** array_schema) {
+  if (sanity_check(ctx) == TILEDB_ERR ||
+      sanity_check(ctx, fragment_info) == TILEDB_ERR)
+    return TILEDB_ERR;
+
+  // Create array schema
+  *array_schema = new (std::nothrow) tiledb_array_schema_t;
+  if (*array_schema == nullptr) {
+    auto st = Status::Error("Failed to allocate TileDB array schema object");
+    LOG_STATUS(st);
+    save_error(ctx, st);
+    return TILEDB_OOM;
+  }
+
+  if (SAVE_ERROR_CATCH(
+          ctx,
+          fragment_info->fragment_info_->get_array_schema(
+              fid, &(*array_schema)->array_schema_))) {
+    delete *array_schema;
+    *array_schema = nullptr;
+    return TILEDB_ERR;
+  }
+
+  return TILEDB_OK;
+}
+
 int32_t tiledb_fragment_info_dump(
     tiledb_ctx_t* ctx, const tiledb_fragment_info_t* fragment_info, FILE* out) {
   if (sanity_check(ctx) == TILEDB_ERR ||

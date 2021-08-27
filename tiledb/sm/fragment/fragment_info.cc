@@ -422,6 +422,31 @@ Status FragmentInfo::get_version(uint32_t fid, uint32_t* version) const {
   return Status::Ok();
 }
 
+Status FragmentInfo::get_array_schema(
+    uint32_t fid, ArraySchema** array_schema) {
+  if (array_schema == nullptr)
+    return LOG_STATUS(Status::FragmentInfoError(
+        "Cannot get array schema URI; schema URI argument cannot be null"));
+
+  if (fid >= fragments_.size())
+    return LOG_STATUS(Status::FragmentInfoError(
+        "Cannot get array schema URI; Invalid fragment index"));
+  URI schema_uri;
+  uint32_t version = fragments_[fid].format_version();
+  if (version >= 10) {
+    schema_uri = array_uri_.join_path(constants::array_schema_folder_name)
+                     .join_path(fragments_[fid].array_schema_name());
+  } else {
+    schema_uri = array_uri_.join_path(constants::array_schema_filename);
+  }
+
+  EncryptionKey encryption_key;
+  RETURN_NOT_OK(storage_manager_->load_array_schema_from_uri(
+      schema_uri, encryption_key, array_schema));
+
+  return Status::Ok();
+}
+
 Status FragmentInfo::has_consolidated_metadata(
     uint32_t fid, int32_t* has) const {
   if (has == nullptr)

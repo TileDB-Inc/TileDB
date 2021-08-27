@@ -166,6 +166,9 @@ class FragmentInfo {
   /** Retrieves the version of the fragment with the given index. */
   Status get_version(uint32_t fid, uint32_t* version) const;
 
+  /** Retrieves the array schema of the fragment with the given index. */
+  Status get_array_schema(uint32_t fid, ArraySchema** array_schema);
+
   /**
    * Checks if the fragment with the given index has consolidated metadata.
    */
