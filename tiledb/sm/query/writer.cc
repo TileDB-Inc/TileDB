@@ -386,10 +386,6 @@ Status Writer::check_var_attr_offsets() const {
           "Invalid offsets for attribute " + attr + "; offset " +
           std::to_string(prev_offset) + " specified for buffer of size " +
           std::to_string(*buffer_val_size)));
-    else if (prev_offset == *buffer_val_size)
-      return LOG_STATUS(Status::WriterError(
-          "Invalid offsets for attribute " + attr +
-          "; zero length single cell writes are not supported"));
 
     for (uint64_t i = 1; i < num_offsets; i++) {
       uint64_t cur_offset = get_offset_buffer_element(buffer_off, i);
@@ -1852,9 +1848,9 @@ Status Writer::filter_last_tiles(
           // Note making shallow clones here, as it's not necessary to copy the
           // underlying tile Buffers.
           tiles_ref.push_back(last_tile.clone(false));
-          if (!last_tile_var.empty())
+          if (array_schema_->var_size(*name))
             tiles_ref.push_back(last_tile_var.clone(false));
-          if (!last_tile_validity.empty())
+          if (array_schema_->is_nullable(*name))
             tiles_ref.push_back(last_tile_validity.clone(false));
         }
         return Status::Ok();
