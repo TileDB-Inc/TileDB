@@ -1,3 +1,13 @@
+# TileDB v2.3.4 Release Notes
+
+## Improvements
+* Query::set_layout: setting the layout on the subarray. [#2451](https://github.com/TileDB-Inc/TileDB/pull/2451)
+* Allow empty attribute writes. [#2461](https://github.com/TileDB-Inc/TileDB/pull/2461)
+
+## Bug fixes
+* Fix deserialization of buffers in write queries with nullable var-length attributes [#2442](https://github.com/TileDB-Inc/TileDB/pull/2442)
+
+
 # TileDB v2.3.3 Release Notes
 
 ## Improvements
