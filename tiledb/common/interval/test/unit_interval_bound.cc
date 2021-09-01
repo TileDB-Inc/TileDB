@@ -97,25 +97,15 @@ TEMPLATE_LIST_TEST_CASE(
        */
       expected = i < j ? -1 : +1;
     } else if constexpr (std::is_base_of<std::string, T>::value) {
-      // TBD:
+      // TBD: any better way to do this, since essentially testing against self?
       detail::TypeTraits<std::string> tts;
       auto [adjacent, twice_adjacent] = tts.adjacency(i, j);
       expected = adjacent ? 0 : ( i<j ) ? -1 : +1;
-      //if (c != expected) {
-      //  __debugbreak();
-      //  auto c2 = x.compare_as_lower(y);
-      //  CHECK(c2 == expected);
-      //}
     } else if constexpr (std::is_base_of<std::string_view, T>::value) {
-      // TBD:
+      // TBD: any better way to do this, since essentially testing against self?
       detail::TypeTraits<std::string_view> ttsv;
       auto [adjacent, twice_adjacent] = ttsv.adjacency(i, j);
       expected = adjacent ? 0 : (i < j) ? -1 : +1;
-      // if (c != expected) {
-      //  __debugbreak();
-      //  auto c2 = x.compare_as_lower(y);
-      //  CHECK(c2 == expected);
-      //}
     } else {
       REQUIRE((false && "Unsupported type"));
     }
@@ -143,15 +133,11 @@ TEMPLATE_LIST_TEST_CASE(
        */
       expected = i <= j ? -1 : +1;
     } else if constexpr (std::is_base_of<std::string, T>::value) {
-      // TBD:
       detail::TypeTraits<std::string> tts;
-      //auto [adjacent, twice_adjacent] = tts.adjacency(i, j);
       auto [rev_adjacent, rev_twice_adjacent] = tts.adjacency(j, i);
       expected = (rev_adjacent) ? 0 : (j >= i) ? -1 : +1;
     } else if constexpr (std::is_base_of<std::string_view, T>::value) {
-      // TBD:
       detail::TypeTraits<std::string_view> ttsv;
-      //auto [adjacent, twice_adjacent] = ttsv.adjacency(i, j);
       auto [rev_adjacent, rev_twice_adjacent] = ttsv.adjacency(j, i);
       expected = (rev_adjacent) ? 0 : (j >= i) ? -1 : +1;
     } else {
@@ -223,15 +209,11 @@ TEMPLATE_LIST_TEST_CASE(
     } else if constexpr (std::is_floating_point_v<T>) {
       expected = i <= j ? -1 : +1;
     } else if constexpr (std::is_base_of<std::string, T>::value) {
-      // TBD:
       detail::TypeTraits<std::string> tts;
-      //auto [adjacent, twice_adjacent] = tts.adjacency(i, j);
       auto [rev_adjacent, rev_twice_adjacent] = tts.adjacency(j, i);
       expected = (rev_adjacent) ? 0 : (j >= i) ? -1 : +1;
     } else if constexpr (std::is_base_of<std::string_view, T>::value) {
-      // TBD:
       detail::TypeTraits<std::string_view> ttsv;
-      //auto [adjacent, twice_adjacent] = ttsv.adjacency(i, j);
       auto [rev_adjacent, rev_twice_adjacent] = ttsv.adjacency(j, i);
       expected = (rev_adjacent) ? 0 : (j >= i) ? -1 : +1;
     } else {
@@ -257,12 +239,12 @@ TEMPLATE_LIST_TEST_CASE(
     } else if constexpr (std::is_floating_point_v<T>) {
       expected = i < j ? -1 : +1;
     } else if constexpr (std::is_base_of<std::string, T>::value) {
-      // TBD:
+      // TBD: any better way to do this, since essentially testing against self?
       detail::TypeTraits<std::string> tts;
       auto [adjacent, twice_adjacent] = tts.adjacency(i, j);
       expected = adjacent ? 0 : (i < j) ? -1 : +1;
     } else if constexpr (std::is_base_of<std::string_view, T>::value) {
-      // TBD:
+      // TBD: any better way to do this, since essentially testing against self?
       detail::TypeTraits<std::string_view> ttsv;
       auto [adjacent, twice_adjacent] = ttsv.adjacency(i, j);
       expected = adjacent ? 0 : (i < j) ? -1 : +1;
@@ -329,25 +311,12 @@ TEMPLATE_LIST_TEST_CASE(
     } else if constexpr (std::is_floating_point_v<T>) {
       expected = i <= j ? -1 : +1;
     } else if constexpr (std::is_base_of<std::string, T>::value) {
-
-      // TBD:
       detail::TypeTraits<std::string> tts;
-      //auto [adjacent, twice_adjacent] = tts.adjacency(i, j);
       auto [rev_adjacent, rev_twice_adjacent] = tts.adjacency(j, i);
-      // expected = adjacent ? 0 : (i < j) ? -1 : +1;
-      //...
-      //expected = (!adjacent && i < j) ? -1 : (adjacent) ? 0 : +1;
-      //expected = (i >= j) ? +1 : (adjacent) ? 0 : -1;
       expected = (i <= j) ? -1 : (rev_adjacent) ? 0 : +1;
     } else if constexpr (std::is_base_of<std::string_view, T>::value) {
-      // TBD:
       detail::TypeTraits<std::string_view> ttsv;
-      //auto [adjacent, twice_adjacent] = ttsv.adjacency(i, j);
       auto [rev_adjacent, rev_twice_adjacent] = ttsv.adjacency(j, i);
-      // expected = adjacent ? 0 : (i < j) ? -1 : +1;
-      //...
-      // expected = (!adjacent && i < j) ? -1 : (adjacent) ? 0 : +1;
-      // expected = (i >= j) ? +1 : (adjacent) ? 0 : -1;
       expected = (i <= j) ? -1 : (rev_adjacent) ? 0 : +1;
     } else {
       REQUIRE((false && "unsupported type"));
@@ -386,18 +355,14 @@ TEMPLATE_LIST_TEST_CASE(
     } else if constexpr (std::is_floating_point_v<T>) {
       expected = (i < j) ? -1 : +1;
     } else if constexpr (std::is_base_of<std::string, T>::value) {
-      // TBD:
+      // TBD: any better way to do this, since essentially testing against self?
       detail::TypeTraits<std::string> tts;
       auto [adjacent, twice_adjacent] = tts.adjacency(i, j);
-      //expected = adjacent ? 0 : (i < j) ? -1 : +1;
-      //expected = (i < j && !adjacent && !twice_adjacent) ? -1 : ();
       expected = (adjacent) ? 0 : (i < j) ? -1 : +1;
     } else if constexpr (std::is_base_of<std::string_view, T>::value) {
-      // TBD:
+      // TBD: any better way to do this, since essentially testing against self?
       detail::TypeTraits<std::string_view> ttsv;
       auto [adjacent, twice_adjacent] = ttsv.adjacency(i, j);
-      // expected = adjacent ? 0 : (i < j) ? -1 : +1;
-      // expected = (i < j && !adjacent && !twice_adjacent) ? -1 : ();
       expected = (adjacent) ? 0 : (i < j) ? -1 : +1;
     } else {
       REQUIRE((false && "unsupported type"));

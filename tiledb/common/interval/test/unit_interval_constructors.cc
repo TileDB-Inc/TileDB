@@ -167,8 +167,6 @@ TEMPLATE_LIST_TEST_CASE(
       } else if constexpr (std::is_base_of<std::string_view, T>::value) {
         detail::TypeTraits<std::string_view> ttsv;
         auto [adjacenct, twice_adjacent] = ttsv.adjacency(i, j);
-        // TBD: simple vers of... CHECK(implies(i < j && i + 1 < j,
-        // !x.is_empty()));
         CHECK(implies(twice_adjacent, x.has_single_point()));
       } else {
         REQUIRE((false && "unexpected type"));
@@ -185,12 +183,10 @@ TEMPLATE_LIST_TEST_CASE(
       } else if constexpr (std::is_floating_point_v<T>) {
         CHECK(!x.has_single_point());
       } else if constexpr (std::is_base_of<std::string, T>::value) {
-        //TBD:
         detail::TypeTraits<std::string> tts;
         auto [adjacent, twice_adjacent] = tts.adjacency(i, j);
         CHECK(implies(adjacent, x.has_single_point()));
       } else if constexpr (std::is_base_of<std::string_view, T>::value) {
-        // TBD:
         detail::TypeTraits<std::string_view> ttsv;
         auto [adjacent, twice_adjacent] = ttsv.adjacency(i, j);
         CHECK(implies(adjacent, x.has_single_point()));
@@ -210,12 +206,10 @@ TEMPLATE_LIST_TEST_CASE(
       } else if constexpr (std::is_floating_point_v<T>) {
         CHECK(!x.has_single_point());
       } else if constexpr (std::is_base_of<std::string, T>::value) {
-        //TBD:
         detail::TypeTraits<std::string> tts;
         auto [adjacent, twice_adjacent] = tts.adjacency(i, j);
         CHECK(implies(adjacent, x.has_single_point()));
       } else if constexpr (std::is_base_of<std::string_view, T>::value) {
-        // TBD:
         detail::TypeTraits<std::string_view> ttsv;
         auto [adjacent, twice_adjacent] = ttsv.adjacency(i, j);
         CHECK(implies(adjacent, x.has_single_point()));

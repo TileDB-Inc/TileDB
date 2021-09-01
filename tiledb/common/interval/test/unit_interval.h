@@ -147,12 +147,7 @@ class WhiteboxInterval : public Interval<T> {
 /**
  * List of types used to instantiate generic test cases
  */
-//typedef tuple<uint16_t, uint64_t, int16_t, double> TypesUnderTest;
-//typedef tuple<uint16_t, uint64_t, int16_t, double, std::string> TypesUnderTest;
-//typedef tuple<std::string> TypesUnderTest;
-//typedef tuple<char *> TypesUnderTest;
-//typedef tuple<std::string_view> TypesUnderTest; 
-typedef tuple<uint16_t, uint64_t, int16_t, double, std::string_view> TypesUnderTest;
+typedef tuple<uint16_t, uint64_t, int16_t, double, std::string, std::string_view> TypesUnderTest;
 
 /**
  * Test type traits allow generic instantiation by Catch from a list of types.
@@ -239,11 +234,13 @@ class TestTypeTraits<
 };
 
 #if 0
-//Tests do things like '        CHECK(v[j] < v[j + 1]);'
-//which fail when v[j] and v[j+1] are -pointers- with addresses that have
-//no relationship to the data they are ref'ing that is what -should- be CHECK()d
-//So, will 'punt' to using string_view and see if that works since it simply
-//proxies through to the 'char *' implementation...
+// (Left to record the difficulty of directly having TestTypeTraits<char *>, 
+// reason for its absence)
+// Tests do things like 'CHECK(v[j] < v[j + 1]);'
+// which are incorrect since for 'char *' v[j] and v[j+1] are -pointers- with 
+// addresses that have no relationship to the data they are ref'ing that is 
+// what -should- be CHECK()d So, will 'punt' to using string_view and see if 
+// that works since it simply proxies through to the 'char *' implementation.
 /**
  * Test traits for std::string values
  */
@@ -251,46 +248,13 @@ template <class T>
 class TestTypeTraits<
     T,
     typename std::enable_if<detail::is_char_ptr<T>::value, T>::type> {
-  /*
-   * We can't just add or subract 1.0 to extreme limits because it's small
-   * enough to disappear after rounding. Instead, `almost_one` is the largest
-   * mantissa that's less than one.
-   *
-   * We might have used std::nextafter(), but it's not declared constexpr and
-   * thus can't be evaluated within a static constexpr initializer.
-   */
-  static inline T min = {""};
-  static inline T almost_min = {"\0"};  // min * almost_one;
-  static inline T max = {
-      "\xff\xff\xff\xff\xff\xff\xff\xff\xff\xff"};  // std::numeric_limits<T>::max();
-  static inline T almost_max = {
-      "\xff\xff\xff\xff\xff\xff\xff\xff\xff\xfe"};  // max * almost_one;
-
- public:
-
-  static inline /*constexpr*/ std::initializer_list<T> outer = {
-      {"000"}, {"001"}, {"002"}, {"100"}, {almost_max}, {max}};
-  static inline /*constexpr*/ std::initializer_list<T> inner = {{"000"},
-                                                                {"001"},
-                                                                {"002"},
-                                                                {"003"},
-                                                                {"099"},
-                                                                {"100"},
-                                                                {"101"},
-                                                                {almost_max},
-                                                                {max}};
 
 };  // char *
 #endif
 
-#if 01
-//Tests do things like '        CHECK(v[j] < v[j + 1]);'
-//which fail when v[j] and v[j+1] are -pointers- with addresses that have
-//no relationship to the data they are ref'ing that is what -should- be CHECK()d
-//Try a version with string_view which currently is proxying through to 
-//char* version.
 /**
- * Test traits for std::string values
+ * Test traits for std::string_view values
+ * Will be indirectly testing <char *> as string_view proxies through
  */
 template <class T>
 class TestTypeTraits<
@@ -306,24 +270,15 @@ class TestTypeTraits<
    */
   static const unsigned char minelem = '\0';
   static const unsigned char maxelem = uint8_t('\xff');
-#define MINELEMASSTR "\0"
-#define MAXELEMASSTR "\xff"
 #define MINELEM "\0"
 #define MAXELEM "\xff"
-  static inline auto minelemasstringlit = {""};
-  //alias namespace std::string_literals as nslit;
-//  namespace nslist = std::string_literals ;
-//  inline constexpr string minelemasstring = "\0"s;
-//  inline constexpr string maxelemasstring = "\xff"s;
-//  static const auto minelemasstring = "\0"s;
-//  static const auto maxelemasstring = "\xff"s;
   static inline T min = {""};
   static inline T almost_min = {"\0"};
   // Arbitrary values for max/almost_max.
   static inline T max = {
-      "\xff\xff\xff\xff\xff\xff\xff\xff\xff\xff"};  // std::numeric_limits<T>::max();
+      "\xff\xff\xff\xff\xff\xff\xff\xff\xff\xff"};  // arbitrary
   static inline T almost_max = {
-      "\xff\xff\xff\xff\xff\xff\xff\xff\xff\xfe"};  // max * almost_one;
+      "\xff\xff\xff\xff\xff\xff\xff\xff\xff\xfe"};  // 'almost' relative to prior 'max'
 
  public:
 
@@ -375,31 +330,27 @@ class TestTypeTraits<
     { {"z", 1}, {"z" MINELEM "\1", 3}, 0},
     { {"z", 1}, {"z" "\1" MINELEM, 3}, 0},
 
-    //{ {0}, {0}, false}
     { {"endoftest", 9}, {"endoftest",9}, false}
     // clang-format on
   };
 #undef MINELEMASSTR 
 #undef MAXELEMASSTR
 };  // string_view
-#endif
 
-#if 01
 /**
  * Test traits for std::string values
  */
 template <class T>
 class TestTypeTraits<
     T,
-  //  typename std::enable_if<std::is_same<typename std::remove_reference<typename std::remove_cv<typename T>::type>::type, std::string>::type>::type> {
     typename std::enable_if<std::is_base_of<std::string, T>::value, T>::type > {
 
-  static inline T min = {""}; //std::numeric_limits<T>::lowest();
-  static inline T almost_min = {"\0"};  // min * almost_one;
+  static inline T min = {""};
+  static inline T almost_min = {"\0"};
   static inline T max = {
-      "\xff\xff\xff\xff\xff\xff\xff\xff\xff\xff"};  // std::numeric_limits<T>::max();
+      "\xff\xff\xff\xff\xff\xff\xff\xff\xff\xff"};  // arbitrary
   static inline T almost_max = {
-      "\xff\xff\xff\xff\xff\xff\xff\xff\xff\xfe"};  // max * almost_one;
+      "\xff\xff\xff\xff\xff\xff\xff\xff\xff\xfe"};  // 'almost' relative to prior 'max'
 
  public:
 
@@ -446,14 +397,12 @@ class TestTypeTraits<
     { {"z", 1}, {"z" MINELEM "\1", 3}, 0},
     { {"z", 1}, {"z" "\1" MINELEM, 3}, 0},
 
-    //{ {0}, {0}, false}
     { {"endoftest", 9}, {"endoftest",9}, false}
       // clang-format on
   };
 #undef MINELEMASSTR
 #undef MAXELEMASSTR
 };  // std::string
-#endif 
 
 /* ******************************** */
 /*             is_adjacent          */

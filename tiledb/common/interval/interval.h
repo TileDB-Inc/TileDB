@@ -533,7 +533,6 @@ struct TypeTraits
  * types' have, will everything still 'just work'?
  */
 
-#if 01
 template <class T>
 struct TypeTraits<
     T,
@@ -549,99 +548,6 @@ struct TypeTraits<
     // type will be different.
     TypeTraits<decltype(&s1[0])> ttc;
     return ttc.adjacency(s1.data(), s1.length(), s2.data(), s2.length());
-#if 0
-    // consider:
-    // min == 'a'
-    // max == 'z'
-    // "a" \/ "a" no
-    // "a" \/ "b" yes
-    // "a" \/ "c" yes2
-    // "a" \/ "aa" no
-    // "z" \/ "z" no
-    // "z" \/ "za" yes
-    // "z" \/ "zb" yes2
-    // "y" "za" yes2
-    // TBD: Do we want to count either being empty as non-adjacent,
-    // or could we have s1.empty(), s2.length()==1 and s1.back()== ...::min() or
-    // == ...::min()+1
-    if (s1.empty() || s2.empty())
-      return {false, false};
-    // Assert: s1.length() <= s2.length()
-    auto lendiff = s2.length() - s1.length();
-    if (lendiff > 1)
-      return {false, false};
-    // Assert: s2.length() - s1.length() <= 1
-    auto prefixmemdiff = std::memcmp(s1.data(), s2.data(), s1.length() - 1);
-    if (prefixmemdiff) {
-      return {false, false};
-    }
-    // Assert: s1.substr(0, s1.length()-1) == s2.substr(0,s1.length()-1)
-    if (!lendiff) {
-      // Assert: s1.length() == s2.length()
-      if (s1.back() >= s2.back())
-        return {false, false};
-      // Assert: s1.back() < s2.back()
-      return {s1.back() + 1 == s2.back(), s1.back() + 1 == s2.back() - 1};
-    }
-    // Assert: s2.length() - 1 == s1.length()
-    // "z" "za" yes
-    // "z" "zb" yes2
-    // "y" "za" yes2
-    if (*(s2.rbegin() + 1) !=
-        std::numeric_limits<std::decay_t<decltype(s1.back())>>::max()) {
-      return {false, false};
-    }
-    //
-    return {
-        // "z" "za"
-        (s1.back() ==
-         //std::numeric_limits<std::decay_t<decltype(s1.back())>>::max()) &&
-         maxelem) &&
-            (s2.back() ==
-             minelem),
-        // twice_adjacent ?
-        // "y" "za"
-        // "z" "zb"
-        ((s1.back() ==  // "y"
-          //std::numeric_limits<std::decay_t<decltype(s1.back())>>::max() - 1) &&
-          maxelem-1) &&
-         (s2.back() ==  // "b"
-          //(std::numeric_limits<std::decay_t<decltype(s1.back())>>::min() +
-          (minelem +
-           1))) ||
-            ((s1.back() ==  // "z"
-              //std::numeric_limits<std::decay_t<decltype(s1.back())>>::max()) &&
-              maxelem) &&
-             s2.back() ==  // "b"
-                 //(std::numeric_limits<
-                 //     std::decay_t<decltype(s1.back())>>::min() +
-                 // 1))
-                 (minelem +
-                  1))
-
-    };
-#if 0
-    auto sbackddiff = *(s2.rebgin() + 1) - s1.back();
-    if ( s1.back() != *(s2.rbegin() + 1) {
-    }
-    if (s1.back() != std::numeric_limits<std::decay_t<decltype(s1.back()_)>>::max()){
-      if (s1.back() !=
-          std::numeric_limits<std::decay_t<decltype(s1.back() _)>>::max()-1)
-        return {false, false};
-      else if (s1.back() != *(s2.rbegin() + 1) {
-      }
-    }
-    // Assert: s1.length()+1 == s2.length()
-    return { 
-      ( ( *(s2.rbegin()+1) == std::numeric_limits<std::decay_t<decltype(s1.back())>>::max() )
-       && ( s1.back()      == std::numeric_limits<std::decay_t<decltype(s1.back())>>::max() )
-       && ( s2.back()      == std::numeric_limits<std::decay_t<decltype(s1.back())>>::min() ) )
-      ,
-       (s1.back() == std::numeric_limits<std::decay_t<decltype(s1.back())>>::max()
-        && s2.back() == std::numeric_limits<std::decay_t<decltype(s1.back())>>::min() + 1)
-        };
-#endif
-#endif
   }
 
   static bool adjacent(const T s1, const T s2) {
@@ -675,8 +581,7 @@ struct TypeTraits<
   static bool is_infinity_positive(const T x) {
     return false;  // x > 0;
   }
-};
-#endif  // TypeTraits<std:string_view>
+}; //TypeTraits<std::string_view>
 
 /**
  * Specialization of TypeTraits for std::string. std::string variables
@@ -684,9 +589,6 @@ struct TypeTraits<
  * TBD: What effect might compiling with the various 'char types' have, will everything still 'just work'?
  */
 
-#if 01
-// here, version using maxelem, minelem
-// below, version using numeric_limits<>::max(),::min()
 template <class T>
 struct TypeTraits<
     T,
@@ -829,153 +731,7 @@ struct TypeTraits<
   static bool is_infinity_positive(const T x) {
     return false;  // x > 0;
   }
-};
-#endif  // TypeTraits<std:string>
-
-#if 0 // duplicate of above?
-// above, version using maxelem, minelem
-// here, version using numeric_limits<>::max(),::min()
-template <class T>
-struct TypeTraits
-  <
-    T,
-    typename std::enable_if<std::is_base_of<std::string, T>::value, T>::type > {
-
-    // Assert: std::is_same<s1::value_type, s2::value_type>
-  /**
-   * String may be adjacent.
-   */
-    //  static tuple<bool, bool> adjacency(T s1, T s2) {
-    //  static tuple<bool, bool> adjacency(const T& s1, const T& s2) {
-  static tuple<bool, bool> adjacency(const T s1, const T s2) {
-//    x nothing;
-   // consider:
-   // min == 'a'
-   // max == 'z'
-   // "a" \/ "a" no
-   // "a" \/ "b" yes
-   // "a" \/ "c" yes2
-   // "a" \/ "aa" no
-   // "z" \/ "z" no
-   // "z" \/ "za" yes
-   // "z" \/ "zb" yes2
-    // "y" "za" yes2
-    if(s1.length() > s2.length()) return {false, false};
-    //TBD: Do we want to count either being empty as non-adjacent, 
-    // or could we have s1.empty(), s2.length()==1 and s1.back()== ...::min() or == ...::min()+1
-    if(s1.empty() || s2.empty()) return {false, false};
-    // Assert: s1.length() <= s2.length()
-    auto lendiff = s2.length() - s1.length();
-    if(lendiff > 1) return {false, false};
-    // Assert: s2.length() - s1.length() <= 1
-    auto prefixmemdiff = std::memcmp(s1.data(), s2.data(), s1.length() - 1);
-    if (prefixmemdiff){
-      return {false, false};
-    }
-    // Assert: s1.substr(0, s1.length()-1) == s2.substr(0,s1.length()-1)
-    if(!lendiff) { 
-      // Assert: s1.length() == s2.length()
-      if(s1.back() >= s2.back()) return {false, false};
-      // Assert: s1.back() < s2.back()
-      return {s1.back()+1 == s2.back(), s1.back() + 1 == s2.back() - 1};
-    }
-    // Assert: s2.length() - 1 == s1.length()
-    // "z" "za" yes
-    // "z" "zb" yes2
-    // "y" "za" yes2
-    if (*(s2.rbegin() + 1) !=
-        std::numeric_limits<std::decay_t<decltype(s1.back())>>::max()) {
-      return {false, false};
-    }
-    //
-    return {
-        // "z" "za"
-        (s1.back() ==
-         std::numeric_limits<std::decay_t<decltype(s1.back())>>::max()) &&
-            (s2.back() ==
-             std::numeric_limits<std::decay_t<decltype(s1.back())>>::min()),
-        //twice_adjacent ?
-        // "y" "za"
-        // "z" "zb"
-        ((s1.back() == // "y"
-          std::numeric_limits<std::decay_t<decltype(s1.back())>>::max() - 1) &&
-         (s2.back() == // "b"
-             (std::numeric_limits<std::decay_t<decltype(s1.back())>>::min() +
-              1))) ||
-            ((s1.back() == // "z"
-              std::numeric_limits<std::decay_t<decltype(s1.back())>>::max()) &&
-             s2.back() ==  // "b"
-              (std::numeric_limits<
-                               std::decay_t<decltype(s1.back())>>::min() +
-                           1))
-
-    };
-#if 0
-    auto sbackddiff = *(s2.rebgin() + 1) - s1.back();
-    if ( s1.back() != *(s2.rbegin() + 1) {
-    }
-    if (s1.back() != std::numeric_limits<std::decay_t<decltype(s1.back()_)>>::max()){
-      if (s1.back() !=
-          std::numeric_limits<std::decay_t<decltype(s1.back() _)>>::max()-1)
-        return {false, false};
-      else if (s1.back() != *(s2.rbegin() + 1) {
-      }
-    }
-    // Assert: s1.length()+1 == s2.length()
-    return { 
-      ( ( *(s2.rbegin()+1) == std::numeric_limits<std::decay_t<decltype(s1.back())>>::max() )
-       && ( s1.back()      == std::numeric_limits<std::decay_t<decltype(s1.back())>>::max() )
-       && ( s2.back()      == std::numeric_limits<std::decay_t<decltype(s1.back())>>::min() ) )
-      ,
-       (s1.back() == std::numeric_limits<std::decay_t<decltype(s1.back())>>::max()
-        && s2.back() == std::numeric_limits<std::decay_t<decltype(s1.back())>>::min() + 1)
-        };
-#endif    
-  }
-
-//  static bool adjacent(T s1, T s2) {
-//  static bool adjacent(const T& s1, const T& s2) {
-  static bool adjacent(const T s1, const T s2) {
-    //return false;
-    //return adjacency(s1, s2).get<0>();
-    return std::get<0>(adjacency(s1,s2));
-  };
-
-  static constexpr bool has_unordered_elements = false;
-  //think technically 'true', but messes with 'is_for_upper_bound()', etc.
-  //setting to true avoids attempts to call is_for_upper_bound(), but we
-  //treat all elements as finite in is_finite().
-  //static constexpr bool has_infinite_elements = true;
-  static constexpr bool has_infinite_elements = false;  //  true;
-
-  /**
-   * An extended number is either finite or infinite, but must not be NaN.
-   */
-//  static bool is_ordered(T x) {
-//  static bool is_ordered(const T& x) {
-  static bool is_ordered(const T x) {
-    return true; //!isnan(x);
-  }
-
-  /**
-   * Floating point types have infinite elements.
-   */
-//  static bool is_finite(T x) {
-//  static bool is_finite(const T& x) {
-  static bool is_finite(const T x) {
-    return true; //isfinite(x);
-  }
-
-  /**
-   * Floating point infinities compare with finite values.
-   */
-//  static bool is_infinity_positive(T x) {
-//  static bool is_infinity_positive(const T& x) {
-  static bool is_infinity_positive(const T x) {
-    return false; // x > 0;
-  }
-};
-#endif //TypeTraits<std:string>
+}; //TypeTraits<std:string>
 
 /**
  * Non-template base class for `Interval`.
