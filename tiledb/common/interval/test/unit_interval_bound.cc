@@ -106,6 +106,16 @@ TEMPLATE_LIST_TEST_CASE(
       //  auto c2 = x.compare_as_lower(y);
       //  CHECK(c2 == expected);
       //}
+    } else if constexpr (std::is_base_of<std::string_view, T>::value) {
+      // TBD:
+      detail::TypeTraits<std::string_view> ttsv;
+      auto [adjacent, twice_adjacent] = ttsv.adjacency(i, j);
+      expected = adjacent ? 0 : (i < j) ? -1 : +1;
+      // if (c != expected) {
+      //  __debugbreak();
+      //  auto c2 = x.compare_as_lower(y);
+      //  CHECK(c2 == expected);
+      //}
     } else {
       REQUIRE((false && "Unsupported type"));
     }
@@ -135,8 +145,14 @@ TEMPLATE_LIST_TEST_CASE(
     } else if constexpr (std::is_base_of<std::string, T>::value) {
       // TBD:
       detail::TypeTraits<std::string> tts;
-      auto [adjacent, twice_adjacent] = tts.adjacency(i, j);
+      //auto [adjacent, twice_adjacent] = tts.adjacency(i, j);
       auto [rev_adjacent, rev_twice_adjacent] = tts.adjacency(j, i);
+      expected = (rev_adjacent) ? 0 : (j >= i) ? -1 : +1;
+    } else if constexpr (std::is_base_of<std::string_view, T>::value) {
+      // TBD:
+      detail::TypeTraits<std::string_view> ttsv;
+      //auto [adjacent, twice_adjacent] = ttsv.adjacency(i, j);
+      auto [rev_adjacent, rev_twice_adjacent] = ttsv.adjacency(j, i);
       expected = (rev_adjacent) ? 0 : (j >= i) ? -1 : +1;
     } else {
       REQUIRE((false && "Unsupported type"));
@@ -209,8 +225,14 @@ TEMPLATE_LIST_TEST_CASE(
     } else if constexpr (std::is_base_of<std::string, T>::value) {
       // TBD:
       detail::TypeTraits<std::string> tts;
-      auto [adjacent, twice_adjacent] = tts.adjacency(i, j);
+      //auto [adjacent, twice_adjacent] = tts.adjacency(i, j);
       auto [rev_adjacent, rev_twice_adjacent] = tts.adjacency(j, i);
+      expected = (rev_adjacent) ? 0 : (j >= i) ? -1 : +1;
+    } else if constexpr (std::is_base_of<std::string_view, T>::value) {
+      // TBD:
+      detail::TypeTraits<std::string_view> ttsv;
+      //auto [adjacent, twice_adjacent] = ttsv.adjacency(i, j);
+      auto [rev_adjacent, rev_twice_adjacent] = ttsv.adjacency(j, i);
       expected = (rev_adjacent) ? 0 : (j >= i) ? -1 : +1;
     } else {
       REQUIRE((false && "Unsupported type"));
@@ -238,6 +260,11 @@ TEMPLATE_LIST_TEST_CASE(
       // TBD:
       detail::TypeTraits<std::string> tts;
       auto [adjacent, twice_adjacent] = tts.adjacency(i, j);
+      expected = adjacent ? 0 : (i < j) ? -1 : +1;
+    } else if constexpr (std::is_base_of<std::string_view, T>::value) {
+      // TBD:
+      detail::TypeTraits<std::string_view> ttsv;
+      auto [adjacent, twice_adjacent] = ttsv.adjacency(i, j);
       expected = adjacent ? 0 : (i < j) ? -1 : +1;
     } else {
       REQUIRE((false && "Unsupported type"));
@@ -298,14 +325,6 @@ TEMPLATE_LIST_TEST_CASE(
         expected = -1;
       } else {
         expected = (i < j + 1) ? -1 : (i == j + 1) ? 0 : +1;
-#if 0
-        //expected = (i <= j ) ? -1 : (i == j + 1) ? 0 : +1;
-        if (i == 1 && j == 0) {
-          __debugbreak();
-          int c2 = x.compare_as_mixed(y);
-          CHECK(c2 == expected);
-        }
-#endif
       }
     } else if constexpr (std::is_floating_point_v<T>) {
       expected = i <= j ? -1 : +1;
@@ -313,20 +332,23 @@ TEMPLATE_LIST_TEST_CASE(
 
       // TBD:
       detail::TypeTraits<std::string> tts;
-      auto [adjacent, twice_adjacent] = tts.adjacency(i, j);
+      //auto [adjacent, twice_adjacent] = tts.adjacency(i, j);
       auto [rev_adjacent, rev_twice_adjacent] = tts.adjacency(j, i);
       // expected = adjacent ? 0 : (i < j) ? -1 : +1;
       //...
       //expected = (!adjacent && i < j) ? -1 : (adjacent) ? 0 : +1;
       //expected = (i >= j) ? +1 : (adjacent) ? 0 : -1;
       expected = (i <= j) ? -1 : (rev_adjacent) ? 0 : +1;
-#if 0
-      if (i == "001" && j == "000") {
-        __debugbreak();
-        int c2 = x.compare_as_mixed(y);
-        CHECK(c2 == expected);
-      }
-#endif
+    } else if constexpr (std::is_base_of<std::string_view, T>::value) {
+      // TBD:
+      detail::TypeTraits<std::string_view> ttsv;
+      //auto [adjacent, twice_adjacent] = ttsv.adjacency(i, j);
+      auto [rev_adjacent, rev_twice_adjacent] = ttsv.adjacency(j, i);
+      // expected = adjacent ? 0 : (i < j) ? -1 : +1;
+      //...
+      // expected = (!adjacent && i < j) ? -1 : (adjacent) ? 0 : +1;
+      // expected = (i >= j) ? +1 : (adjacent) ? 0 : -1;
+      expected = (i <= j) ? -1 : (rev_adjacent) ? 0 : +1;
     } else {
       REQUIRE((false && "unsupported type"));
     }
@@ -369,6 +391,13 @@ TEMPLATE_LIST_TEST_CASE(
       auto [adjacent, twice_adjacent] = tts.adjacency(i, j);
       //expected = adjacent ? 0 : (i < j) ? -1 : +1;
       //expected = (i < j && !adjacent && !twice_adjacent) ? -1 : ();
+      expected = (adjacent) ? 0 : (i < j) ? -1 : +1;
+    } else if constexpr (std::is_base_of<std::string_view, T>::value) {
+      // TBD:
+      detail::TypeTraits<std::string_view> ttsv;
+      auto [adjacent, twice_adjacent] = ttsv.adjacency(i, j);
+      // expected = adjacent ? 0 : (i < j) ? -1 : +1;
+      // expected = (i < j && !adjacent && !twice_adjacent) ? -1 : ();
       expected = (adjacent) ? 0 : (i < j) ? -1 : +1;
     } else {
       REQUIRE((false && "unsupported type"));

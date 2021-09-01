@@ -149,7 +149,10 @@ class WhiteboxInterval : public Interval<T> {
  */
 //typedef tuple<uint16_t, uint64_t, int16_t, double> TypesUnderTest;
 //typedef tuple<uint16_t, uint64_t, int16_t, double, std::string> TypesUnderTest;
-typedef tuple<std::string> TypesUnderTest;
+//typedef tuple<std::string> TypesUnderTest;
+//typedef tuple<char *> TypesUnderTest;
+//typedef tuple<std::string_view> TypesUnderTest; 
+typedef tuple<uint16_t, uint64_t, int16_t, double, std::string_view> TypesUnderTest;
 
 /**
  * Test type traits allow generic instantiation by Catch from a list of types.
@@ -235,6 +238,152 @@ class TestTypeTraits<
   static constexpr T NaN = std::numeric_limits<T>::quiet_NaN();
 };
 
+#if 0
+//Tests do things like '        CHECK(v[j] < v[j + 1]);'
+//which fail when v[j] and v[j+1] are -pointers- with addresses that have
+//no relationship to the data they are ref'ing that is what -should- be CHECK()d
+//So, will 'punt' to using string_view and see if that works since it simply
+//proxies through to the 'char *' implementation...
+/**
+ * Test traits for std::string values
+ */
+template <class T>
+class TestTypeTraits<
+    T,
+    typename std::enable_if<detail::is_char_ptr<T>::value, T>::type> {
+  /*
+   * We can't just add or subract 1.0 to extreme limits because it's small
+   * enough to disappear after rounding. Instead, `almost_one` is the largest
+   * mantissa that's less than one.
+   *
+   * We might have used std::nextafter(), but it's not declared constexpr and
+   * thus can't be evaluated within a static constexpr initializer.
+   */
+  static inline T min = {""};
+  static inline T almost_min = {"\0"};  // min * almost_one;
+  static inline T max = {
+      "\xff\xff\xff\xff\xff\xff\xff\xff\xff\xff"};  // std::numeric_limits<T>::max();
+  static inline T almost_max = {
+      "\xff\xff\xff\xff\xff\xff\xff\xff\xff\xfe"};  // max * almost_one;
+
+ public:
+
+  static inline /*constexpr*/ std::initializer_list<T> outer = {
+      {"000"}, {"001"}, {"002"}, {"100"}, {almost_max}, {max}};
+  static inline /*constexpr*/ std::initializer_list<T> inner = {{"000"},
+                                                                {"001"},
+                                                                {"002"},
+                                                                {"003"},
+                                                                {"099"},
+                                                                {"100"},
+                                                                {"101"},
+                                                                {almost_max},
+                                                                {max}};
+
+};  // char *
+#endif
+
+#if 01
+//Tests do things like '        CHECK(v[j] < v[j + 1]);'
+//which fail when v[j] and v[j+1] are -pointers- with addresses that have
+//no relationship to the data they are ref'ing that is what -should- be CHECK()d
+//Try a version with string_view which currently is proxying through to 
+//char* version.
+/**
+ * Test traits for std::string values
+ */
+template <class T>
+class TestTypeTraits<
+    T,
+    typename std::enable_if<std::is_base_of<std::string_view, T>::value, T>::type > {
+  /*
+   * We can't just add or subract 1.0 to extreme limits because it's small
+   * enough to disappear after rounding. Instead, `almost_one` is the largest
+   * mantissa that's less than one.
+   *
+   * We might have used std::nextafter(), but it's not declared constexpr and
+   * thus can't be evaluated within a static constexpr initializer.
+   */
+  static const unsigned char minelem = '\0';
+  static const unsigned char maxelem = uint8_t('\xff');
+#define MINELEMASSTR "\0"
+#define MAXELEMASSTR "\xff"
+#define MINELEM "\0"
+#define MAXELEM "\xff"
+  static inline auto minelemasstringlit = {""};
+  //alias namespace std::string_literals as nslit;
+//  namespace nslist = std::string_literals ;
+//  inline constexpr string minelemasstring = "\0"s;
+//  inline constexpr string maxelemasstring = "\xff"s;
+//  static const auto minelemasstring = "\0"s;
+//  static const auto maxelemasstring = "\xff"s;
+  static inline T min = {""};
+  static inline T almost_min = {"\0"};
+  // Arbitrary values for max/almost_max.
+  static inline T max = {
+      "\xff\xff\xff\xff\xff\xff\xff\xff\xff\xff"};  // std::numeric_limits<T>::max();
+  static inline T almost_max = {
+      "\xff\xff\xff\xff\xff\xff\xff\xff\xff\xfe"};  // max * almost_one;
+
+ public:
+
+  static inline std::initializer_list<T> outer = {
+      {"000"}, {"001"}, {"002"}, {"100"}, {almost_max}, {max}};
+  static inline std::initializer_list<T> inner = {{"000"},
+                                                                {"001"},
+                                                                {"002"},
+                                                                {"003"},
+                                                                {"099"},
+                                                                {"100"},
+                                                                {"101"},
+                                                                {almost_max},
+                                                                {max}};
+
+  static inline struct adjacent_or_not_s {
+    std::string v1;
+    std::string v2;
+    int adjacency;  // 0==none, 1==adjacent, 2==twice_adjacent
+  } adjacent_or_not[] = {
+    // clang-format off
+    { {"", 0}, {"\0", 1}, 1},
+    { {"", 0}, {"\0\0", 2}, 2},
+    { {"\0", 1}, {"\1", 1}, 0},
+    { {"\0", 1}, {"\0\0", 2}, 1},
+    { {"\0", 1}, {"\0\0\0", 3}, 2},
+    { {"a", 1}, {"a\0", 2}, 1},
+    { {"a", 1}, {"a\0\0", 3}, 2},
+    { {"a", 1}, {"a\0\1", 3}, 0},
+    { {"a", 1}, {"a\1\0", 3}, 0},
+    { {"z", 1}, {"z\0", 2}, 1},
+    { {"z", 1}, {"z\0\0", 3}, 2},
+    { {"z", 1}, {"z\0\1", 3}, 0},
+    { {"z", 1}, {"z\1\0", 3}, 0},
+
+    //repeat of above items, may or not be easier to comprehend
+    //with possibility of more easily changing MINELEM in use
+    { {"", 0}, {MINELEM, 1}, 1},
+    { {"", 0}, {MINELEM MINELEM, 2}, 2},
+    { {"\0", 1}, {"\1", 1}, 0},
+    { {"\0", 1}, {"\0" MINELEM, 2}, 1},
+    { {"\0", 1}, {"\0" MINELEM MINELEM, 3}, 2},
+    { {"a", 1}, {"a" MINELEM, 2}, 1},
+    { {"a", 1}, {"a" MINELEM MINELEM, 3}, 2},
+    { {"a", 1}, {"a" MINELEM "\1", 3}, 0},
+    { {"a", 1}, {"a" "\1" MINELEM, 3}, 0},
+    { {"z", 1}, {"z" MINELEM, 2}, 1},
+    { {"z", 1}, {"z" MINELEM MINELEM, 3}, 2},
+    { {"z", 1}, {"z" MINELEM "\1", 3}, 0},
+    { {"z", 1}, {"z" "\1" MINELEM, 3}, 0},
+
+    //{ {0}, {0}, false}
+    { {"endoftest", 9}, {"endoftest",9}, false}
+    // clang-format on
+  };
+#undef MINELEMASSTR 
+#undef MAXELEMASSTR
+};  // string_view
+#endif
+
 #if 01
 /**
  * Test traits for std::string values
@@ -244,53 +393,66 @@ class TestTypeTraits<
     T,
   //  typename std::enable_if<std::is_same<typename std::remove_reference<typename std::remove_cv<typename T>::type>::type, std::string>::type>::type> {
     typename std::enable_if<std::is_base_of<std::string, T>::value, T>::type > {
-  /*
-   * We can't just add or subract 1.0 to extreme limits because it's small
-   * enough to disappear after rounding. Instead, `almost_one` is the largest
-   * mantissa that's less than one.
-   *
-   * We might have used std::nextafter(), but it's not declared constexpr and
-   * thus can't be evaluated within a static constexpr initializer.
-   */
-//  static constexpr T almost_one = 1.0 - std::numeric_limits<T>::epsilon();
-//  static inline /*constexpr*/ T min = {""}; //std::numeric_limits<T>::lowest();
-//  static inline /*constexpr*/ T almost_min = {"\0"};  // min * almost_one;
-  static inline /*constexpr*/ T max = {
+
+  static inline T min = {""}; //std::numeric_limits<T>::lowest();
+  static inline T almost_min = {"\0"};  // min * almost_one;
+  static inline T max = {
       "\xff\xff\xff\xff\xff\xff\xff\xff\xff\xff"};  // std::numeric_limits<T>::max();
-  static inline /*constexpr*/ T almost_max = {
+  static inline T almost_max = {
       "\xff\xff\xff\xff\xff\xff\xff\xff\xff\xfe"};  // max * almost_one;
 
  public:
-#if 0
-  static inline /*constexpr*/ std::initializer_list<T> outer = {
-      //      min, almost_min, -100.0, 0.0, 1.0, 2.0, 100.0, almost_max, max};
-      {"\0"}, {"\1"}, {"b"}, {"d"}, {"f"}, {"y"}, {"z"}, {"\xfe"}, {"\xff"} };
-  //static constexpr std::initializer_list<T> inner = {min,
-                                                     //almost_min,
-                                                     //-100.01,
-                                                     //-100.0,
-                                                     //-99.99,
-                                                     //-2.0,
-                                                     //-1.0,
-                                                     //0,
-                                                     //0.9,
-                                                     //1.0,
-                                                     //1.1,
-                                                     //almost_max,
-                                                     //max};
-  static inline /*constexpr*/ std::initializer_list<T> inner = 
-    { {"\0"}, {"\1"}, {"a"}, {"b"}, {"c"}, {"e"}, {"w"}, {"x"}, {"y"}, {"z"}, {"\xfe"}, {"\xff"} };
-#endif
 
-  static inline /*constexpr*/ std::initializer_list<T> outer = {
+  static inline std::initializer_list<T> outer = {
     {"000"}, {"001"}, {"002"}, {"100"}, {almost_max}, {max} };
-  static inline /*constexpr*/ std::initializer_list<T> inner = {
+  static inline std::initializer_list<T> inner = {
     {"000"}, {"001"}, {"002"}, {"003"}, {"099"}, {"100"}, {"101"}, {almost_max}, {max} };
   
-  //  static constexpr T positive_infinity = std::numeric_limits<T>::infinity();
-  //  static constexpr T negative_infinity = -std::numeric_limits<T>::infinity();
-//  static constexpr T NaN = std::numeric_limits<T>::quiet_NaN();
-}; //std::string
+#define MINELEM "\0"
+#define MAXELEM "\xff"
+  static inline struct adjacent_or_not_s {
+    std::string v1;
+    std::string v2;
+    int adjacency;  // 0==none, 1==adjacent, 2==twice_adjacent
+  } adjacent_or_not[] = {
+      // clang-format off
+    { {"", 0}, {"\0", 1}, 1},
+    { {"", 0}, {"\0\0", 2}, 2},
+    { {"\0", 1}, {"\1", 1}, 0},
+    { {"\0", 1}, {"\0\0", 2}, 1},
+    { {"\0", 1}, {"\0\0\0", 3}, 2},
+    { {"a", 1}, {"a\0", 2}, 1},
+    { {"a", 1}, {"a\0\0", 3}, 2},
+    { {"a", 1}, {"a\0\1", 3}, 0},
+    { {"a", 1}, {"a\1\0", 3}, 0},
+    { {"z", 1}, {"z\0", 2}, 1},
+    { {"z", 1}, {"z\0\0", 3}, 2},
+    { {"z", 1}, {"z\0\1", 3}, 0},
+    { {"z", 1}, {"z\1\0", 3}, 0},
+
+    //repeat of above items, may or not be easier to comprehend
+    //with possibility of more easily changing MINELEM in use
+    { {"", 0}, {MINELEM, 1}, 1},
+    { {"", 0}, {MINELEM MINELEM, 2}, 2},
+    { {"\0", 1}, {"\1", 1}, 0},
+    { {"\0", 1}, {"\0" MINELEM, 2}, 1},
+    { {"\0", 1}, {"\0" MINELEM MINELEM, 3}, 2},
+    { {"a", 1}, {"a" MINELEM, 2}, 1},
+    { {"a", 1}, {"a" MINELEM MINELEM, 3}, 2},
+    { {"a", 1}, {"a" MINELEM "\1", 3}, 0},
+    { {"a", 1}, {"a" "\1" MINELEM, 3}, 0},
+    { {"z", 1}, {"z" MINELEM, 2}, 1},
+    { {"z", 1}, {"z" MINELEM MINELEM, 3}, 2},
+    { {"z", 1}, {"z" MINELEM "\1", 3}, 0},
+    { {"z", 1}, {"z" "\1" MINELEM, 3}, 0},
+
+    //{ {0}, {0}, false}
+    { {"endoftest", 9}, {"endoftest",9}, false}
+      // clang-format on
+  };
+#undef MINELEMASSTR
+#undef MAXELEMASSTR
+};  // std::string
 #endif 
 
 /* ******************************** */
@@ -311,6 +473,16 @@ bool is_adjacent([[maybe_unused]] T x, [[maybe_unused]] T y) {
     //TBD: Huh? how to easily test?
     detail::TypeTraits<std::string> tts;
     return tts.adjacent(x, y); //Not too useful but makes the compiler happy...
+  } else if constexpr (detail::is_char_ptr<T>::value) {
+    // TBD: Huh? how to easily test?
+    detail::TypeTraits<char *> tts;
+    return tts.adjacent(x, y);  // Not too useful but makes the compiler
+                                // happy...
+  } else if constexpr (std::is_base_of<std::string_view, T>::value) {
+    // TBD: Huh? how to easily test?
+    detail::TypeTraits<std::string_view> tts;
+    return tts.adjacent(x, y);  // Not too useful but makes the compiler
+                                // happy...
   } else {
     REQUIRE((false && "unsupported type"));
   }

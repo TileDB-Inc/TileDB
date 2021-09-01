@@ -238,6 +238,8 @@
 #include <tuple>
 #include <type_traits>
 #include <string>
+#include <string_view>
+#include <cstring>
 
 using std::tuple, std::optional, std::nullopt, std::isnan, std::isinf,
     std::isfinite;
@@ -267,15 +269,11 @@ struct TypeTraits {
    * is twice-adjacent to `b` if `a < b` and there exists a `c` such that `a` is
    * adjacent to `c` and `c` is adjacent to `b`.
    */
-//  [[maybe_unused]] static tuple<bool, bool> adjacency(T, T);
-//  [[maybe_unused]] static tuple<bool, bool> adjacency(const T&, const T&);
   [[maybe_unused]] static tuple<bool, bool> adjacency(const T, const T);
 
   /**
    * Returns the predicate "adjacent".
    */
-//  [[maybe_unused]] static bool adjacent(T, T);
-//  [[maybe_unused]] static bool adjacent(const T&, const T&);
   [[maybe_unused]] static bool adjacent(const T, const T);
 
   /**
@@ -302,8 +300,6 @@ struct TypeTraits {
    * elements. All occurences appear within an `if constexpr` guard with
    * `has_unordered_elements`.
    */
-//  [[maybe_unused]] static bool is_ordered(T);
-//  [[maybe_unused]] static bool is_ordered(const T&);
   [[maybe_unused]] static bool is_ordered(const T);
 
   /**
@@ -311,8 +307,6 @@ struct TypeTraits {
    * allows detecting floating point infinities as interval bounds in
    * constructors.
    */
-//  [[maybe_unused]] static bool is_finite(T);
-//  [[maybe_unused]] static bool is_finite(const T&);
   [[maybe_unused]] static bool is_finite(const T);
 
   /**
@@ -321,8 +315,6 @@ struct TypeTraits {
    *
    * @precondition argument is an infinite element
    */
-//  [[maybe_unused]] static bool is_infinity_positive(T);
-//  [[maybe_unused]] static bool is_infinity_positive(const T&);
   [[maybe_unused]] static bool is_infinity_positive(const T);
 };
 
@@ -338,8 +330,6 @@ struct TypeTraits<
    * Adjacency for integral types means that the lower is one less than the
    * upper.
    */
-//  static tuple<bool, bool> adjacency(T a, T b) {
-//  static tuple<bool, bool> adjacency(const T& a, const T& b) {
   static tuple<bool, bool> adjacency(const T a, const T b) {
     if (a >= b) {
       return {false, false};
@@ -353,8 +343,6 @@ struct TypeTraits<
    * Adjacency for integral types means that the lower is one less than the
    * upper.
    */
-//  static bool adjacent(T a, T b) {
-//  static bool adjacent(const T& a, const T& b) {
   static bool adjacent(const T a, const T b) {
     if (a >= b) {
       return false;
@@ -379,14 +367,10 @@ struct TypeTraits<
   /**
    * Floating point numbers are never adjacent.
    */
-//  static tuple<bool, bool> adjacency(T, T) {
-//  static tuple<bool, bool> adjacency(const T&, const T&) {
   static tuple<bool, bool> adjacency(const T, const T) {
     return {false, false};
   };
 
-//  static bool adjacent(T, T) {
-//  static bool adjacent(const T&, const T&) {
   static bool adjacent(const T, const T) {
     return false;
   };
@@ -397,8 +381,6 @@ struct TypeTraits<
   /**
    * An extended number is either finite or infinite, but must not be NaN.
    */
-//  static bool is_ordered(T x) {
-//  static bool is_ordered(const T& x) {
   static bool is_ordered(const T x) {
     return !isnan(x);
   }
@@ -406,8 +388,6 @@ struct TypeTraits<
   /**
    * Floating point types have infinite elements.
    */
-//  static bool is_finite(T x) {
-//  static bool is_finite(const T& x) {
   static bool is_finite(const T x) {
     return isfinite(x);
   }
@@ -415,12 +395,288 @@ struct TypeTraits<
   /**
    * Floating point infinities compare with finite values.
    */
-//  static bool is_infinity_positive(T x) {
-//  static bool is_infinity_positive(const T& x) {
   static bool is_infinity_positive(const T x) {
     return x > 0;
   }
 };
+
+//TBD: Where should this live, is it generic enuf, should name have any other predicates?
+template <typename T>
+struct is_char_ptr
+    : std::integral_constant<
+          bool,
+          std::is_pointer<T>::value &&
+              std::is_same<
+                  char,
+                  typename std::remove_cv<typename std::remove_pointer<
+                      typename std::remove_cv<T>::type>::type>::type>::value> {
+};
+
+template <class T>
+struct TypeTraits
+    <T,
+     typename std::enable_if<is_char_ptr<T>::value, T>::type> {
+
+  // char *;
+
+  // TBD: What is range of values TileDB 'ASCII' supports? 0-255 per Seth
+  // Technically supports 'char' range without specifying 'sign'age of the char type.
+  // visual studio c/cpp, g++, clang++ versions checked all support 'signed' as 
+  // default char signage in absence of char signage specification.
+  // TileDB builds using tools default signage char type.
+  static const unsigned char minelem = '\x00'; 
+  static const unsigned char maxelem = uint8_t('\xff');
+  // altho as pre-existing tiledb cell_order_cmp<char>() comparison routine is implemented, should really be
+  // minelem = -127;
+  // maxelem = 128;
+
+  /**
+   * char * may be lexicographically adjacent.
+   */
+  static tuple<bool, bool> adjacency(
+      const T s1, uint64_t s1len, const T s2, uint64_t s2len) {
+    if (s1len > s2len)
+      return {false, false};
+    // Assert: s2len >= s1len
+    auto diff_in_len = s2len - s1len;
+    if (diff_in_len > 2)
+      return {false, false};
+    if (!diff_in_len)
+      return {false, false};
+    // Assert: difflen >= 1 && difflen <= 2
+    // ***Precondition for lexicographic adjacency, s1 == s2.substr(0, s1len)
+    // TBD: this does *not* match current 
+    // int Domain::cell_order_cmp<char>(
+    //      const Dimension* dim, const QueryBuffer* buff, uint64_t a, uint64_t b) 
+    // implementation for element values >= 0x80.
+
+    //TBD: What do we want to do?  What do we need to do?
+    // std::string::compare() in VC, gcc, and clang versions tested all compare as 'unsigned char' 
+    // int Domain::cell_order_cmp<char>(
+    //      const Dimension* dim, const QueryBuffer* buff, uint64_t a, uint64_t b)
+    // looks as though it will be performing 'signed char' compare...
+    // Possibly use 
+    // auto diff1 = std::char_traits<char>::compare(s1, s2, s1len); //RowCmp()/ColCmp() are working with signed char...
+    // -or-
+    // auto diff1 = std::char_traits<unsigned char>::compare(s1, s2, s1len); //basic_string::compare() seems to use unsigned char...
+    // TBD: this may be slower than the memcmp version... 
+    // the <char> specialized version uses memcmp anyway,
+    // no specialized version of <unsigned char> found...
+    auto diff1 = std::char_traits<unsigned char>::compare(
+        (unsigned char*)s1,
+        (unsigned char*)s2,
+        s1len);  // basic_string::compare() seems to use unsigned char...
+    // auto diff1 = memcmp(s1, s2, s1len);
+    if (diff1)
+      return {false, false};  // Precondition not met
+    // Assert: s2.substr(0, s1len) == s1
+    // <X> \/ <X>a
+    // <X>a \/ <X>aa
+    // <X> \/ \/ <X>aa
+    bool adj1posequal;
+    // Assert: s2.length() >= 1
+    // recall, Assert: diff_in_len >= 1 && diff_in_len <= 2
+    adj1posequal = (s2[s1len] == minelem) ? true : false;
+    if (adj1posequal) {
+      if (diff_in_len == 2) {
+        if (s2[s1len + 1] == minelem)
+          return {false, true};
+        else // diff_in_length was two, so can't be adjacent1
+          return {false, false};
+      }
+      //diff_in_len == 1 and adj1posequal, so adjacent1
+      return {true, false};
+    } else {
+      return {false, false};
+    }
+  }
+
+  static tuple<bool, bool> adjacency(const T s1, const T s2) {
+    auto s1len = std::strlen(s1);
+    auto s2len = std::strlen(s2);
+    return adjacency(s1, s1len, s2, s2len);
+  }
+
+  static bool adjacent(const T s1, const T s2) {
+    return std::get<0>(adjacency(s1, s2));
+  }
+
+  static constexpr bool has_unordered_elements = false;
+  static constexpr bool has_infinite_elements = false;
+
+  /**
+   * An extended number is either finite or infinite, but must not be NaN.
+   */
+  static bool is_ordered(const T x) {
+    return true;  //! isnan(x);
+  }
+
+  /**
+   * Floating point types have infinite elements.
+   */
+  static bool is_finite(const T x) {
+    return true;  // isfinite(x);
+  }
+
+  /**
+   * Floating point infinities compare with finite values.
+   */
+  static bool is_infinity_positive(const T x) {
+    return false;  // x > 0;
+  }
+};
+
+/**
+ * Specialization of TypeTraits for std::string_view. std::string variables
+ * have ..something... // trivial adjacency and presence of both unordered and
+ * infinite elements. TBD: What effect might compiling with the various 'char
+ * types' have, will everything still 'just work'?
+ */
+
+#if 01
+template <class T>
+struct TypeTraits<
+    T,
+    typename std::enable_if<std::is_base_of<std::string_view, T>::value, T>::type> {
+  // Assert: std::is_same<s1::value_type, s2::value_type>
+  /**
+   * String may be adjacent.
+   */
+  static const unsigned char minelem = '\x00';
+  static const unsigned char maxelem = uint8_t('\xff');
+  static tuple<bool, bool> adjacency(const T s1, const T s2) {
+    // std::string vs char *, comparisons for values > 0x7f with signed char
+    // type will be different.
+    TypeTraits<decltype(&s1[0])> ttc;
+    return ttc.adjacency(s1.data(), s1.length(), s2.data(), s2.length());
+#if 0
+    // consider:
+    // min == 'a'
+    // max == 'z'
+    // "a" \/ "a" no
+    // "a" \/ "b" yes
+    // "a" \/ "c" yes2
+    // "a" \/ "aa" no
+    // "z" \/ "z" no
+    // "z" \/ "za" yes
+    // "z" \/ "zb" yes2
+    // "y" "za" yes2
+    // TBD: Do we want to count either being empty as non-adjacent,
+    // or could we have s1.empty(), s2.length()==1 and s1.back()== ...::min() or
+    // == ...::min()+1
+    if (s1.empty() || s2.empty())
+      return {false, false};
+    // Assert: s1.length() <= s2.length()
+    auto lendiff = s2.length() - s1.length();
+    if (lendiff > 1)
+      return {false, false};
+    // Assert: s2.length() - s1.length() <= 1
+    auto prefixmemdiff = std::memcmp(s1.data(), s2.data(), s1.length() - 1);
+    if (prefixmemdiff) {
+      return {false, false};
+    }
+    // Assert: s1.substr(0, s1.length()-1) == s2.substr(0,s1.length()-1)
+    if (!lendiff) {
+      // Assert: s1.length() == s2.length()
+      if (s1.back() >= s2.back())
+        return {false, false};
+      // Assert: s1.back() < s2.back()
+      return {s1.back() + 1 == s2.back(), s1.back() + 1 == s2.back() - 1};
+    }
+    // Assert: s2.length() - 1 == s1.length()
+    // "z" "za" yes
+    // "z" "zb" yes2
+    // "y" "za" yes2
+    if (*(s2.rbegin() + 1) !=
+        std::numeric_limits<std::decay_t<decltype(s1.back())>>::max()) {
+      return {false, false};
+    }
+    //
+    return {
+        // "z" "za"
+        (s1.back() ==
+         //std::numeric_limits<std::decay_t<decltype(s1.back())>>::max()) &&
+         maxelem) &&
+            (s2.back() ==
+             minelem),
+        // twice_adjacent ?
+        // "y" "za"
+        // "z" "zb"
+        ((s1.back() ==  // "y"
+          //std::numeric_limits<std::decay_t<decltype(s1.back())>>::max() - 1) &&
+          maxelem-1) &&
+         (s2.back() ==  // "b"
+          //(std::numeric_limits<std::decay_t<decltype(s1.back())>>::min() +
+          (minelem +
+           1))) ||
+            ((s1.back() ==  // "z"
+              //std::numeric_limits<std::decay_t<decltype(s1.back())>>::max()) &&
+              maxelem) &&
+             s2.back() ==  // "b"
+                 //(std::numeric_limits<
+                 //     std::decay_t<decltype(s1.back())>>::min() +
+                 // 1))
+                 (minelem +
+                  1))
+
+    };
+#if 0
+    auto sbackddiff = *(s2.rebgin() + 1) - s1.back();
+    if ( s1.back() != *(s2.rbegin() + 1) {
+    }
+    if (s1.back() != std::numeric_limits<std::decay_t<decltype(s1.back()_)>>::max()){
+      if (s1.back() !=
+          std::numeric_limits<std::decay_t<decltype(s1.back() _)>>::max()-1)
+        return {false, false};
+      else if (s1.back() != *(s2.rbegin() + 1) {
+      }
+    }
+    // Assert: s1.length()+1 == s2.length()
+    return { 
+      ( ( *(s2.rbegin()+1) == std::numeric_limits<std::decay_t<decltype(s1.back())>>::max() )
+       && ( s1.back()      == std::numeric_limits<std::decay_t<decltype(s1.back())>>::max() )
+       && ( s2.back()      == std::numeric_limits<std::decay_t<decltype(s1.back())>>::min() ) )
+      ,
+       (s1.back() == std::numeric_limits<std::decay_t<decltype(s1.back())>>::max()
+        && s2.back() == std::numeric_limits<std::decay_t<decltype(s1.back())>>::min() + 1)
+        };
+#endif
+#endif
+  }
+
+  static bool adjacent(const T s1, const T s2) {
+    return std::get<0>(adjacency(s1, s2));
+  };
+
+  static constexpr bool has_unordered_elements = false;
+  // think technically 'true', but messes with 'is_for_upper_bound()', etc.
+  // setting to true avoids attempts to call is_for_upper_bound(), but we
+  // treat all elements as finite in is_finite().
+  // static constexpr bool has_infinite_elements = true;
+  static constexpr bool has_infinite_elements = false;  //  true;
+
+  /**
+   * An extended number is either finite or infinite, but must not be NaN.
+   */
+  static bool is_ordered(const T x) {
+    return true;  //! isnan(x);
+  }
+
+  /**
+   * strings do not have an 'infinite' element.
+   */
+  static bool is_finite(const T x) {
+    return true;  // isfinite(x);
+  }
+
+  /**
+   * strings have no 'infinite' value, can't be positive.
+   */
+  static bool is_infinity_positive(const T x) {
+    return false;  // x > 0;
+  }
+};
+#endif  // TypeTraits<std:string_view>
 
 /**
  * Specialization of TypeTraits for std::string. std::string variables
@@ -429,6 +685,156 @@ struct TypeTraits<
  */
 
 #if 01
+// here, version using maxelem, minelem
+// below, version using numeric_limits<>::max(),::min()
+template <class T>
+struct TypeTraits<
+    T,
+    typename std::enable_if<std::is_base_of<std::string, T>::value, T>::type> {
+  /**
+   * String may be adjacent.
+   */
+  static const char minelem = '\0';
+  static const char maxelem = '\xff';
+
+  static tuple<bool, bool> adjacency(const T s1, const T s2) {
+    // std::string vs char *, comparisons for values > 0x7f with signed char
+    // type will be different.
+    TypeTraits<decltype(&s1[0])> ttc;
+    return ttc.adjacency(s1.data(), s1.length(), s2.data(), s2.length());
+#if 0
+  // consider:
+  // min == 'a'
+  // max == 'z'
+  // "a" \/ "a" no
+  // "a" \/ "b" yes
+  // "a" \/ "c" yes2
+  // "a" \/ "aa" no
+  // "z" \/ "z" no
+  // "z" \/ "za" yes
+  // "z" \/ "zb" yes2
+  // "y" "za" yes2
+    if(s1.length() > s2.length()) return {false, false};
+    // TBD: Do we want to count either being empty as non-adjacent,
+    // or could we have s1.empty(), s2.length()==1 and s1.back()== ...::min() or
+    // == ...::min()+1
+    if (s1.empty() || s2.empty())
+      return {false, false};
+    // Assert: s1.length() <= s2.length()
+    auto lendiff = s2.length() - s1.length();
+    if (lendiff > 1)
+      return {false, false};
+    // Assert: s2.length() - s1.length() <= 1
+    auto prefixmemdiff = std::memcmp(s1.data(), s2.data(), s1.length() - 1);
+    if (prefixmemdiff) {
+      return {false, false};
+    }
+    // Assert: s1.substr(0, s1.length()-1) == s2.substr(0,s1.length()-1)
+    if (!lendiff) {
+      // Assert: s1.length() == s2.length()
+      if (s1.back() >= s2.back())
+        return {false, false};
+      // Assert: s1.back() < s2.back()
+      return {s1.back() + 1 == s2.back(), s1.back() + 1 == s2.back() - 1};
+    }
+    // Assert: s2.length() - 1 == s1.length()
+    // "z" "za" yes
+    // "z" "zb" yes2
+    // "y" "za" yes2
+    if (*(s2.rbegin() + 1) !=
+        std::numeric_limits<std::decay_t<decltype(s1.back())>>::max()) {
+      return {false, false};
+    }
+    //
+    return {
+        // "z" "za"
+        (s1.back() ==
+         //std::numeric_limits<std::decay_t<decltype(s1.back())>>::max()) &&
+         maxelem) &&
+            (s2.back() ==
+             minelem),
+        // twice_adjacent ?
+        // "y" "za"
+        // "z" "zb"
+        ((s1.back() ==  // "y"
+          //std::numeric_limits<std::decay_t<decltype(s1.back())>>::max() - 1) &&
+          maxelem-1) &&
+         (s2.back() ==  // "b"
+          //(std::numeric_limits<std::decay_t<decltype(s1.back())>>::min() +
+          (minelem +
+           1))) ||
+            ((s1.back() ==  // "z"
+              //std::numeric_limits<std::decay_t<decltype(s1.back())>>::max()) &&
+              maxelem) &&
+             s2.back() ==  // "b"
+                 //(std::numeric_limits<
+                 //     std::decay_t<decltype(s1.back())>>::min() +
+                 // 1))
+                 (minelem +
+                  1))
+
+    };
+#if 0
+    auto sbackddiff = *(s2.rebgin() + 1) - s1.back();
+    if ( s1.back() != *(s2.rbegin() + 1) {
+    }
+    if (s1.back() != std::numeric_limits<std::decay_t<decltype(s1.back()_)>>::max()){
+      if (s1.back() !=
+          std::numeric_limits<std::decay_t<decltype(s1.back() _)>>::max()-1)
+        return {false, false};
+      else if (s1.back() != *(s2.rbegin() + 1) {
+      }
+    }
+    // Assert: s1.length()+1 == s2.length()
+    return { 
+      ( ( *(s2.rbegin()+1) == std::numeric_limits<std::decay_t<decltype(s1.back())>>::max() )
+       && ( s1.back()      == std::numeric_limits<std::decay_t<decltype(s1.back())>>::max() )
+       && ( s2.back()      == std::numeric_limits<std::decay_t<decltype(s1.back())>>::min() ) )
+      ,
+       (s1.back() == std::numeric_limits<std::decay_t<decltype(s1.back())>>::max()
+        && s2.back() == std::numeric_limits<std::decay_t<decltype(s1.back())>>::min() + 1)
+        };
+#endif
+#endif
+  }
+
+  static bool adjacent(const T s1, const T s2) {
+    return std::get<0>(adjacency(s1, s2));
+  };
+
+  static constexpr bool has_unordered_elements = false;
+  // think technically 'true', but messes with 'is_for_upper_bound()', etc.
+  // setting to true avoids attempts to call is_for_upper_bound(), but we
+  // treat all elements as finite in is_finite().
+  // static constexpr bool has_infinite_elements = true;
+  static constexpr bool has_infinite_elements = false;  //  true;
+
+  /**
+   * string values do have order.
+   */
+  static bool is_ordered(const T x) {
+    return true;  //! isnan(x);
+  }
+
+  /**
+   * strings have no 'infinite' value element.
+   */
+  static bool is_finite(const T x) {
+    return true;  // isfinite(x);
+  }
+
+  /**
+   * no finite value element, can't possibly be positive.
+   */
+  static bool is_infinity_positive(const T x) {
+    return false;  // x > 0;
+  }
+};
+#endif  // TypeTraits<std:string>
+
+#if 0 // duplicate of above?
+// above, version using maxelem, minelem
+// here, version using numeric_limits<>::max(),::min()
 template <class T>
 struct TypeTraits
   <
@@ -439,6 +845,10 @@ struct TypeTraits
   /**
    * String may be adjacent.
    */
+    //  static tuple<bool, bool> adjacency(T s1, T s2) {
+    //  static tuple<bool, bool> adjacency(const T& s1, const T& s2) {
+  static tuple<bool, bool> adjacency(const T s1, const T s2) {
+//    x nothing;
    // consider:
    // min == 'a'
    // max == 'z'
@@ -450,10 +860,6 @@ struct TypeTraits
    // "z" \/ "za" yes
    // "z" \/ "zb" yes2
     // "y" "za" yes2
-    //  static tuple<bool, bool> adjacency(T s1, T s2) {
-    //  static tuple<bool, bool> adjacency(const T& s1, const T& s2) {
-  static tuple<bool, bool> adjacency(const T s1, const T s2) {
-//    x nothing;
     if(s1.length() > s2.length()) return {false, false};
     //TBD: Do we want to count either being empty as non-adjacent, 
     // or could we have s1.empty(), s2.length()==1 and s1.back()== ...::min() or == ...::min()+1
@@ -809,6 +1215,10 @@ class Interval : public detail::IntervalBase {
      *
      * In other words, `Left < Right` when there exist elements in `Left`
      * that are less than every element in `Right`.
+     * 'eaa' < 'cdd' ?
+     * 'mbb' < 'iic' ?
+     * ahh, may be talking 'bound's which (generally) consists of a lower/upper 
+     * pair specifying a range...
      *
      * @param right. The right hand side of a comparison left < right. This
      * interval is the left hand side.
