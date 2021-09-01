@@ -417,7 +417,7 @@ template <class T>
 struct TypeTraits<T, typename std::enable_if<is_char_ptr<T>::value, T>::type> {
   // char *;
 
-  // Choice to treat compares as unsigned.  
+  // Choice to treat compares as unsigned.
   // TBD: Verify this does not cause problems with pre-existing array data
   // that has used sparse array dimension values in range 128-255.
   static const unsigned char minelem = '\x00';
