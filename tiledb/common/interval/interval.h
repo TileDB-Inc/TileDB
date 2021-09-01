@@ -503,6 +503,7 @@ struct TypeTraits<T, typename std::enable_if<is_char_ptr<T>::value, T>::type> {
    * An extended number is either finite or infinite, but must not be NaN.
    */
   static bool is_ordered(const T x) {
+    (void)x;
     return true;
   }
 
@@ -510,6 +511,7 @@ struct TypeTraits<T, typename std::enable_if<is_char_ptr<T>::value, T>::type> {
    * Floating point types have infinite elements.
    */
   static bool is_finite(const T x) {
+    (void)x;
     return true;
   }
 
@@ -517,6 +519,7 @@ struct TypeTraits<T, typename std::enable_if<is_char_ptr<T>::value, T>::type> {
    * Floating point infinities compare with finite values.
    */
   static bool is_infinity_positive(const T x) {
+    (void)x;
     return false;
   }
 };
