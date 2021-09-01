@@ -143,7 +143,7 @@ TEMPLATE_LIST_TEST_CASE(
         CHECK(x.is_empty());
       }
     }
-  } //is_floating_point_v()
+  }  // is_floating_point_v()
   SECTION("Two arguments") {
     T i = GENERATE_REF(values(Tr::outer));
     T j = GENERATE_REF(values(Tr::inner));
@@ -162,7 +162,8 @@ TEMPLATE_LIST_TEST_CASE(
       } else if constexpr (std::is_base_of<std::string, T>::value) {
         detail::TypeTraits<std::string> tts;
         auto [adjacenct, twice_adjacent] = tts.adjacency(i, j);
-        // TBD: simple vers of... CHECK(implies(i < j && i + 1 < j, !x.is_empty()));
+        // TBD: simple vers of... CHECK(implies(i < j && i + 1 < j,
+        // !x.is_empty()));
         CHECK(implies(twice_adjacent, x.has_single_point()));
       } else if constexpr (std::is_base_of<std::string_view, T>::value) {
         detail::TypeTraits<std::string_view> ttsv;
@@ -193,7 +194,6 @@ TEMPLATE_LIST_TEST_CASE(
       } else {
         REQUIRE((false && "unexpected type"));
       }
-
     }
     DYNAMIC_SECTION("[" << i << "," << j << ")") {
       I x(I::closed, i, j, I::open);

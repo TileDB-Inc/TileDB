@@ -55,8 +55,8 @@ TEMPLATE_LIST_TEST_CASE("TypeTraits", "[interval]", TypesUnderTest) {
     CHECK_FALSE(twice_adjacent);
   } else if constexpr (std::is_base_of<std::string, T>::value) {
     if (i < j) {
-      // TBD: Figure out if, and how, there is a simple way to double-check these relationships for strings?
-      // CHECK(iff(adjacent, i + 1 == j));
+      // TBD: Figure out if, and how, there is a simple way to double-check
+      // these relationships for strings? CHECK(iff(adjacent, i + 1 == j));
       // CHECK(iff(twice_adjacent, i + 1 == j - 1));
     } else {
       CHECK(!adjacent);
@@ -64,9 +64,8 @@ TEMPLATE_LIST_TEST_CASE("TypeTraits", "[interval]", TypesUnderTest) {
     }
   } else if constexpr (std::is_base_of<std::string_view, T>::value) {
     if (i < j) {
-      // TBD: Figure out if, and how, there is a simple way to double-check these
-      // relationships for strings?
-      // CHECK(iff(adjacent, i + 1 == j));
+      // TBD: Figure out if, and how, there is a simple way to double-check
+      // these relationships for strings? CHECK(iff(adjacent, i + 1 == j));
       // CHECK(iff(twice_adjacent, i + 1 == j - 1));
     } else {
       CHECK(!adjacent);

@@ -233,13 +233,13 @@
 #define TILEDB_INTERVAL_H
 
 #include <cmath>
+#include <cstring>
 #include <optional>
 #include <stdexcept>
-#include <tuple>
-#include <type_traits>
 #include <string>
 #include <string_view>
-#include <cstring>
+#include <tuple>
+#include <type_traits>
 
 using std::tuple, std::optional, std::nullopt, std::isnan, std::isinf,
     std::isfinite;
@@ -400,7 +400,8 @@ struct TypeTraits<
   }
 };
 
-//TBD: Where should this live, is it generic enuf, should name have any other predicates?
+// TBD: Where should this live, is it generic enuf, should name have any other
+// predicates?
 template <typename T>
 struct is_char_ptr
     : std::integral_constant<
@@ -413,22 +414,18 @@ struct is_char_ptr
 };
 
 template <class T>
-struct TypeTraits
-    <T,
-     typename std::enable_if<is_char_ptr<T>::value, T>::type> {
-
+struct TypeTraits<T, typename std::enable_if<is_char_ptr<T>::value, T>::type> {
   // char *;
 
   // TBD: What is range of values TileDB 'ASCII' supports? 0-255 per Seth
-  // Technically supports 'char' range without specifying 'sign'age of the char type.
-  // visual studio c/cpp, g++, clang++ versions checked all support 'signed' as 
-  // default char signage in absence of char signage specification.
+  // Technically supports 'char' range without specifying 'sign'age of the char
+  // type. visual studio c/cpp, g++, clang++ versions checked all support
+  // 'signed' as default char signage in absence of char signage specification.
   // TileDB builds using tools default signage char type.
-  static const unsigned char minelem = '\x00'; 
+  static const unsigned char minelem = '\x00';
   static const unsigned char maxelem = uint8_t('\xff');
-  // altho as pre-existing tiledb cell_order_cmp<char>() comparison routine is implemented, should really be
-  // minelem = -127;
-  // maxelem = 128;
+  // altho as pre-existing tiledb cell_order_cmp<char>() comparison routine is
+  // implemented, should really be minelem = -127; maxelem = 128;
 
   /**
    * char * may be lexicographically adjacent.
@@ -445,23 +442,25 @@ struct TypeTraits
       return {false, false};
     // Assert: difflen >= 1 && difflen <= 2
     // ***Precondition for lexicographic adjacency, s1 == s2.substr(0, s1len)
-    // TBD: this does *not* match current 
+    // TBD: this does *not* match current
     // int Domain::cell_order_cmp<char>(
-    //      const Dimension* dim, const QueryBuffer* buff, uint64_t a, uint64_t b) 
+    //      const Dimension* dim, const QueryBuffer* buff, uint64_t a, uint64_t
+    //      b)
     // implementation for element values >= 0x80.
 
-    //TBD: What do we want to do?  What do we need to do?
-    // std::string::compare() in VC, gcc, and clang versions tested all compare as 'unsigned char' 
-    // int Domain::cell_order_cmp<char>(
-    //      const Dimension* dim, const QueryBuffer* buff, uint64_t a, uint64_t b)
+    // TBD: What do we want to do?  What do we need to do?
+    // std::string::compare() in VC, gcc, and clang versions tested all compare
+    // as 'unsigned char' int Domain::cell_order_cmp<char>(
+    //      const Dimension* dim, const QueryBuffer* buff, uint64_t a, uint64_t
+    //      b)
     // looks as though it will be performing 'signed char' compare...
-    // Possibly use 
-    // auto diff1 = std::char_traits<char>::compare(s1, s2, s1len); //RowCmp()/ColCmp() are working with signed char...
-    // -or-
-    // auto diff1 = std::char_traits<unsigned char>::compare(s1, s2, s1len); //basic_string::compare() seems to use unsigned char...
-    // TBD: this may be slower than the memcmp version... 
-    // the <char> specialized version uses memcmp anyway,
-    // no specialized version of <unsigned char> found...
+    // Possibly use
+    // auto diff1 = std::char_traits<char>::compare(s1, s2, s1len);
+    // //RowCmp()/ColCmp() are working with signed char... -or- auto diff1 =
+    // std::char_traits<unsigned char>::compare(s1, s2, s1len);
+    // //basic_string::compare() seems to use unsigned char... TBD: this may be
+    // slower than the memcmp version... the <char> specialized version uses
+    // memcmp anyway, no specialized version of <unsigned char> found...
     auto diff1 = std::char_traits<unsigned char>::compare(
         (unsigned char*)s1,
         (unsigned char*)s2,
@@ -481,10 +480,10 @@ struct TypeTraits
       if (diff_in_len == 2) {
         if (s2[s1len + 1] == minelem)
           return {false, true};
-        else // diff_in_length was two, so can't be adjacent1
+        else  // diff_in_length was two, so can't be adjacent1
           return {false, false};
       }
-      //diff_in_len == 1 and adj1posequal, so adjacent1
+      // diff_in_len == 1 and adj1posequal, so adjacent1
       return {true, false};
     } else {
       return {false, false};
@@ -536,7 +535,8 @@ struct TypeTraits
 template <class T>
 struct TypeTraits<
     T,
-    typename std::enable_if<std::is_base_of<std::string_view, T>::value, T>::type> {
+    typename std::enable_if<std::is_base_of<std::string_view, T>::value, T>::
+        type> {
   // Assert: std::is_same<s1::value_type, s2::value_type>
   /**
    * String may be adjacent.
@@ -581,12 +581,13 @@ struct TypeTraits<
   static bool is_infinity_positive(const T x) {
     return false;  // x > 0;
   }
-}; //TypeTraits<std::string_view>
+};  // TypeTraits<std::string_view>
 
 /**
  * Specialization of TypeTraits for std::string. std::string variables
- * have ..something... // trivial adjacency and presence of both unordered and infinite elements.
- * TBD: What effect might compiling with the various 'char types' have, will everything still 'just work'?
+ * have ..something... // trivial adjacency and presence of both unordered and
+ * infinite elements. TBD: What effect might compiling with the various 'char
+ * types' have, will everything still 'just work'?
  */
 
 template <class T>
@@ -731,7 +732,7 @@ struct TypeTraits<
   static bool is_infinity_positive(const T x) {
     return false;  // x > 0;
   }
-}; //TypeTraits<std:string>
+};  // TypeTraits<std:string>
 
 /**
  * Non-template base class for `Interval`.
@@ -971,10 +972,6 @@ class Interval : public detail::IntervalBase {
      *
      * In other words, `Left < Right` when there exist elements in `Left`
      * that are less than every element in `Right`.
-     * 'eaa' < 'cdd' ?
-     * 'mbb' < 'iic' ?
-     * ahh, may be talking 'bound's which (generally) consists of a lower/upper 
-     * pair specifying a range...
      *
      * @param right. The right hand side of a comparison left < right. This
      * interval is the left hand side.
@@ -1820,7 +1817,6 @@ class Interval : public detail::IntervalBase {
             Interval(adjust_bounds(
                 Bound(cut_point, lower_open_upper_closed), BoundUpper()))};
   }
-
 };
 
 }  // namespace tiledb::common

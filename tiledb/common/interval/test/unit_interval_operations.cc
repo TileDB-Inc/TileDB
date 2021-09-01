@@ -1718,10 +1718,7 @@ TEMPLATE_LIST_TEST_CASE(
 
 /* Test char * (via string_view) adjacency */
 
-TEST_CASE(    
-  "TypeTraits<char *>::adjacency",
-    "[typetraits][adjacency]") {
-
+TEST_CASE("TypeTraits<char *>::adjacency", "[typetraits][adjacency]") {
   SECTION("viastringview") {
     TestTypeTraits<std::string_view> tttsv;
     detail::TypeTraits<std::string_view> ttsv;
@@ -1745,7 +1742,8 @@ TEST_CASE(
 
     decltype(&ttts.adjacent_or_not[0]) aoni;
     unsigned ui = 0;
-    for (aoni = &ttts.adjacent_or_not[0]; aoni->v1 != "endoftest"; ++aoni, ++ui){
+    for (aoni = &ttts.adjacent_or_not[0]; aoni->v1 != "endoftest";
+         ++aoni, ++ui) {
       auto [adj1, adj2] = tts.adjacency(aoni->v1, aoni->v2);
       CHECK(iff(adj1, aoni->adjacency == 1));
       CHECK(iff(!adj1, aoni->adjacency != 1));

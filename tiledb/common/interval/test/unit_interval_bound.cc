@@ -100,7 +100,7 @@ TEMPLATE_LIST_TEST_CASE(
       // TBD: any better way to do this, since essentially testing against self?
       detail::TypeTraits<std::string> tts;
       auto [adjacent, twice_adjacent] = tts.adjacency(i, j);
-      expected = adjacent ? 0 : ( i<j ) ? -1 : +1;
+      expected = adjacent ? 0 : (i < j) ? -1 : +1;
     } else if constexpr (std::is_base_of<std::string_view, T>::value) {
       // TBD: any better way to do this, since essentially testing against self?
       detail::TypeTraits<std::string_view> ttsv;

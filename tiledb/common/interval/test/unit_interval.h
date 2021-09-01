@@ -147,7 +147,14 @@ class WhiteboxInterval : public Interval<T> {
 /**
  * List of types used to instantiate generic test cases
  */
-typedef tuple<uint16_t, uint64_t, int16_t, double, std::string, std::string_view> TypesUnderTest;
+typedef tuple<
+    uint16_t,
+    uint64_t,
+    int16_t,
+    double,
+    std::string,
+    std::string_view>
+    TypesUnderTest;
 
 /**
  * Test type traits allow generic instantiation by Catch from a list of types.
@@ -259,7 +266,8 @@ class TestTypeTraits<
 template <class T>
 class TestTypeTraits<
     T,
-    typename std::enable_if<std::is_base_of<std::string_view, T>::value, T>::type > {
+    typename std::enable_if<std::is_base_of<std::string_view, T>::value, T>::
+        type> {
   /*
    * We can't just add or subract 1.0 to extreme limits because it's small
    * enough to disappear after rounding. Instead, `almost_one` is the largest
@@ -278,28 +286,28 @@ class TestTypeTraits<
   static inline T max = {
       "\xff\xff\xff\xff\xff\xff\xff\xff\xff\xff"};  // arbitrary
   static inline T almost_max = {
-      "\xff\xff\xff\xff\xff\xff\xff\xff\xff\xfe"};  // 'almost' relative to prior 'max'
+      "\xff\xff\xff\xff\xff\xff\xff\xff\xff\xfe"};  // 'almost' relative to
+                                                    // prior 'max'
 
  public:
-
   static inline std::initializer_list<T> outer = {
       {"000"}, {"001"}, {"002"}, {"100"}, {almost_max}, {max}};
   static inline std::initializer_list<T> inner = {{"000"},
-                                                                {"001"},
-                                                                {"002"},
-                                                                {"003"},
-                                                                {"099"},
-                                                                {"100"},
-                                                                {"101"},
-                                                                {almost_max},
-                                                                {max}};
+                                                  {"001"},
+                                                  {"002"},
+                                                  {"003"},
+                                                  {"099"},
+                                                  {"100"},
+                                                  {"101"},
+                                                  {almost_max},
+                                                  {max}};
 
   static inline struct adjacent_or_not_s {
     std::string v1;
     std::string v2;
     int adjacency;  // 0==none, 1==adjacent, 2==twice_adjacent
   } adjacent_or_not[] = {
-    // clang-format off
+      // clang-format off
     { {"", 0}, {"\0", 1}, 1},
     { {"", 0}, {"\0\0", 2}, 2},
     { {"\0", 1}, {"\1", 1}, 0},
@@ -331,9 +339,9 @@ class TestTypeTraits<
     { {"z", 1}, {"z" "\1" MINELEM, 3}, 0},
 
     { {"endoftest", 9}, {"endoftest",9}, false}
-    // clang-format on
+      // clang-format on
   };
-#undef MINELEMASSTR 
+#undef MINELEMASSTR
 #undef MAXELEMASSTR
 };  // string_view
 
@@ -343,22 +351,28 @@ class TestTypeTraits<
 template <class T>
 class TestTypeTraits<
     T,
-    typename std::enable_if<std::is_base_of<std::string, T>::value, T>::type > {
-
+    typename std::enable_if<std::is_base_of<std::string, T>::value, T>::type> {
   static inline T min = {""};
   static inline T almost_min = {"\0"};
   static inline T max = {
       "\xff\xff\xff\xff\xff\xff\xff\xff\xff\xff"};  // arbitrary
   static inline T almost_max = {
-      "\xff\xff\xff\xff\xff\xff\xff\xff\xff\xfe"};  // 'almost' relative to prior 'max'
+      "\xff\xff\xff\xff\xff\xff\xff\xff\xff\xfe"};  // 'almost' relative to
+                                                    // prior 'max'
 
  public:
-
   static inline std::initializer_list<T> outer = {
-    {"000"}, {"001"}, {"002"}, {"100"}, {almost_max}, {max} };
-  static inline std::initializer_list<T> inner = {
-    {"000"}, {"001"}, {"002"}, {"003"}, {"099"}, {"100"}, {"101"}, {almost_max}, {max} };
-  
+      {"000"}, {"001"}, {"002"}, {"100"}, {almost_max}, {max}};
+  static inline std::initializer_list<T> inner = {{"000"},
+                                                  {"001"},
+                                                  {"002"},
+                                                  {"003"},
+                                                  {"099"},
+                                                  {"100"},
+                                                  {"101"},
+                                                  {almost_max},
+                                                  {max}};
+
 #define MINELEM "\0"
 #define MAXELEM "\xff"
   static inline struct adjacent_or_not_s {
@@ -419,12 +433,13 @@ bool is_adjacent([[maybe_unused]] T x, [[maybe_unused]] T y) {
   } else if constexpr (std::is_floating_point_v<T>) {
     return false;
   } else if constexpr (std::is_base_of<std::string, T>::value) {
-    //TBD: Huh? how to easily test?
+    // TBD: Huh? how to easily test?
     detail::TypeTraits<std::string> tts;
-    return tts.adjacent(x, y); //Not too useful but makes the compiler happy...
+    return tts.adjacent(x, y);  // Not too useful but makes the compiler
+                                // happy...
   } else if constexpr (detail::is_char_ptr<T>::value) {
     // TBD: Huh? how to easily test?
-    detail::TypeTraits<char *> tts;
+    detail::TypeTraits<char*> tts;
     return tts.adjacent(x, y);  // Not too useful but makes the compiler
                                 // happy...
   } else if constexpr (std::is_base_of<std::string_view, T>::value) {
@@ -610,7 +625,7 @@ void test_interval_invariants(const Interval<T>& x) {
         REQUIRE(
             (false && "single-point intervals for floating point are closed"));
       } else if constexpr (std::is_base_of<std::string, T>::value) {
-        //REQUIRE((false && "std::string single-point one open/closed TBD"));
+        // REQUIRE((false && "std::string single-point one open/closed TBD"));
 #if 01
         // TBD: Do we really want to re-code entire adjacency test logic here?
         detail::TypeTraits<std::string> tts;
