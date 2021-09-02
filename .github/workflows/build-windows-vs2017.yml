@@ -6,6 +6,7 @@ on:
       - tiledb
       - test
       - .github
+      - tobedeletedafterseeifGAruns
   pull_request:
 
 env:
