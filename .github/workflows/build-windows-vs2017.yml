@@ -2,11 +2,11 @@ name: windows build
 
 on:
   push:
-    paths:
-      - tiledb
-      - test
-      - .github
-      - tobedeletedafterseeifGAruns
+    #~ paths:
+      #~ - tiledb
+      #~ - test
+      #~ - .github
+      #~ - tobedeletedafterseeifGAruns
   pull_request:
 
 env:
