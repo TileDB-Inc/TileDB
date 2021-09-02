@@ -5,6 +5,7 @@ on:
     paths:
       - tiledb
       - test
+      - .github
   pull_request:
 
 env:
