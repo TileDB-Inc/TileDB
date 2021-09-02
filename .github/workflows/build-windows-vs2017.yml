@@ -2,6 +2,9 @@ name: windows build
 
 on:
   push:
+    paths:
+      - tiledb
+      - test
   pull_request:
 
 env:
@@ -15,7 +18,11 @@ env:
 
 jobs:
   build:
-    runs-on: windows-2016
+    #runs-on: windows-2016
+    runs-on: ${{ matrix.os }}
+    strategy:
+      matrix:
+        os: [windows-2016]
     #if: ${{ false == true }}
     #hmm, is that indented commenting approach acceptable, don't recall noticing when using before...
     #~ strategy:
@@ -28,6 +35,7 @@ jobs:
       #~ fail-fast: false
     env:
       TILEDB_HOME: ${{ github.workspace }}
+      TILEDB_GA_IMAGE_NAME: ${{ matrix.os }}
       #~ MINGW_INSTALLS: ${{ matrix.msystem }}
       #~ MINGW_ARCH: ${{ matrix.msystem }}
       #~ MINGW_TOOLCHAIN: ${{ matrix.toolchain }}
@@ -46,7 +54,7 @@ jobs:
         run: |
           Write-Host "AGENT_BUILDDIRECTORY is $env:AGENT_BUILDDIRECTORY"
           Write-Host "Number of processors is $env:NUMBER_OF_PROCESSORS"
-          Write-Host "Running on image $env:imageName"
+          Write-Host "Running on image '$($env:imageName)'"
 
           # Using names that were on azure, doc states they should have appended _PATH for GA
           # AP to GA, changing AGENT_BUILDDIRECTORY and BUILD_SOURCESDIRECTORY to GITHUB_WORKSPACE
@@ -56,13 +64,15 @@ jobs:
           mkdir $env:AGENT_BUILDDIRECTORY\build
           cd $env:AGENT_BUILDDIRECTORY\build
 
-          if ($env:imageName -eq "windows-2016") {
+          #if ($env:imageName -eq "windows-2016") {
+          if ($env:TILEDB_GA_IMAGE_NAME -eq "windows-2016") {
             if (!(Test-Path "C:\Program Files (x86)\Microsoft Visual Studio\2017\Community\Common7\IDE\CommonExtensions\Microsoft\CMake\CMake\bin")) {
               Write-Host "ERROR***: Missing C:\Program Files (x86)\Microsoft Visual Studio\2017\Community\Common7\IDE\CommonExtensions\Microsoft\CMake\CMake\bin"
               exit $LastExitCode
             }
             $env:Path += ";C:\Program Files (x86)\Microsoft Visual Studio\2017\Community\Common7\IDE\CommonExtensions\Microsoft\CMake\CMake\bin"
-          } elseif ($env:imageName -eq "windows-2019") {
+          #} elseif ($env:imageName -eq "windows-2019") {
+          } elseif ($env:TILEDB_GA_IMAGE_NAME -eq "windows-2019") {
             if (!(Test-Path "C:\Program Files (x86)\Microsoft Visual Studio\2019\Community\Common7\IDE\CommonExtensions\Microsoft\CMake\CMake\bin")) {
               Write-Host "ERROR***: Missing C:\Program Files (x86)\Microsoft Visual Studio\2019\Community\Common7\IDE\CommonExtensions\Microsoft\CMake\CMake\bin"
               exit $LastExitCode
@@ -70,6 +80,7 @@ jobs:
             $env:Path += ";C:\Program Files (x86)\Microsoft Visual Studio\2019\Community\Common7\IDE\CommonExtensions\Microsoft\CMake\CMake\bin"
           } else {
             Write-Host "Unknown image name: '$($env:imageName)'"
+            Write-Host "Unknown image name: '$($env:TILEDB_GA_IMAGE_NAME)'"
             #$host.SetShouldExit(1)
             exit $LastExitCode
           }
