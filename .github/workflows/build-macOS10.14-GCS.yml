@@ -18,7 +18,7 @@ jobs:
   build:
     runs-on: macos-10.14
     if: ${{ false == true }}
-    if: ${{ startsWith(github.ref , 'refs/tags') != true && startsWith(github.ref , 'build-') != true }}
+    #if: ${{ startsWith(github.ref , 'refs/tags') != true && startsWith(github.ref , 'build-') != true }}
     timeout-minutes: 90
     name: Build - macos-10.14 - GCS
     steps:
