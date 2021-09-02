@@ -125,6 +125,32 @@ Status ArraySchemaEvolution::add_attribute(const Attribute* attr) {
   return Status::Ok();
 }
 
+Status ArraySchemaEvolution::add_attribute(AttributeBuilder* attr_builder) {
+  // Sanity check
+  if (attr_builder == nullptr)
+    return LOG_STATUS(Status::ArraySchemaError(
+        "Cannot add attribute; Input attribute is null"));
+
+  if (attributes_to_add_map_.find(attr_builder->name()) !=
+      attributes_to_add_map_.end()) {
+    return LOG_STATUS(Status::ArraySchemaEvolutionError(
+        "Cannot add attribute; Input attribute name is already there"));
+  }
+
+  if (attr_builder->built()) {
+    return LOG_STATUS(Status::ArraySchemaError(
+        "[AttributeBuilder]: "
+        "This TileDB attribute object has already been "
+        "allocated and cannot be reused."));
+  }
+
+  tdb_unique_ptr<Attribute> attr_ptr = attr_builder->build();
+  Attribute* attr(attr_ptr.get());
+  add_attribute(attr);
+
+  return Status::Ok();
+}
+
 Status ArraySchemaEvolution::drop_attribute(const std::string& attribute_name) {
   std::lock_guard<std::mutex> lock(mtx_);
   attributes_to_drop_.insert(attribute_name);

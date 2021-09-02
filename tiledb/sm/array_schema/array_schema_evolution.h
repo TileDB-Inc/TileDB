@@ -38,6 +38,7 @@
 #include <unordered_set>
 
 #include "tiledb/common/status.h"
+#include "tiledb/sm/array_schema/attribute_builder.h"
 #include "tiledb/sm/filter/filter_pipeline.h"
 #include "tiledb/sm/misc/constants.h"
 #include "tiledb/sm/misc/hilbert.h"
@@ -88,6 +89,14 @@ class ArraySchemaEvolution {
    * @return Status
    */
   Status add_attribute(const Attribute* attr);
+
+  /**
+   * Adds an attribute, copying the input.
+   *
+   * @param attr_builder The attribute builder to be added
+   * @return Status
+   */
+  Status add_attribute(AttributeBuilder* attr_builder);
 
   /**
    * Drops an attribute.

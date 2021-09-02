@@ -242,7 +242,7 @@ class ArraySchema {
   /**
    * Adds an attribute, copying the input.
    *
-   * @param attr The attribute to be added
+   * @param attr_builder The attribute builder to be added
    * @param check_special If `true` this function will check if the attribute
    *     is special (starting with `__`) and error if that's the case. Setting
    *     to `false` will allow adding attributes starting with `__`, noting

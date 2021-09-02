@@ -36,8 +36,8 @@
 #include "tiledb/common/logger.h"
 #include "tiledb/sm/array/array.h"
 #include "tiledb/sm/array_schema/array_schema.h"
-#include "tiledb/sm/c_api/tiledb_experimental.h"
 #include "tiledb/sm/array_schema/attribute_builder.h"
+#include "tiledb/sm/c_api/tiledb_experimental.h"
 #include "tiledb/sm/c_api/tiledb_serialization.h"
 #include "tiledb/sm/c_api/tiledb_struct_def.h"
 #include "tiledb/sm/config/config.h"
@@ -2788,7 +2788,7 @@ int32_t tiledb_array_schema_evolution_add_attribute(
   if (SAVE_ERROR_CATCH(
           ctx,
           array_schema_evolution->array_schema_evolution_->add_attribute(
-              attr->attr_)))
+              attr->attr_builder_)))
     return TILEDB_ERR;
   return TILEDB_OK;
 

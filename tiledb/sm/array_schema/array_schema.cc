@@ -500,7 +500,7 @@ Status ArraySchema::add_attribute(const Attribute* attr, bool check_special) {
   // Create new attribute and potentially set a default name
   auto new_attr = tdb_new(Attribute, attr);
   attributes_.emplace_back(new_attr);
-  attribute_map_[new_attr->name()] = new_attr; 
+  attribute_map_[new_attr->name()] = new_attr;
 
   return Status::Ok();
 }
@@ -527,7 +527,8 @@ Status ArraySchema::add_attribute(
         "allocated and cannot be reused."));
   }
 
-  Attribute* attr = attr_builder->build();
+  tdb_unique_ptr<Attribute> attr_ptr = attr_builder->build();
+  Attribute* attr(attr_ptr.get());
   add_attribute(attr, check_special);
 
   return Status::Ok();

@@ -1,5 +1,5 @@
 /**
- * @file   attribute.h
+ * @file   attribute_builder.h
  *
  * @section LICENSE
  *
@@ -49,27 +49,25 @@ namespace sm {
 class AttributeBuilder {
  public:
   typedef struct PrivateAttribute {
-    std::string name_;
-    Datatype type_;
-    bool nullable_;
-    uint32_t cell_val_num_;
-    FilterPipeline filters_;
-    uint64_t cell_size_;
-    ByteVecValue fill_value_;
-    uint8_t fill_value_validity_;
+    std::string name_ = "";
+    Datatype type_ = Datatype::CHAR;
+    bool nullable_ = false;
+    uint32_t cell_val_num_ = 1;
+    FilterPipeline filters_ = FilterPipeline();
+    uint64_t cell_size_ = 1;
+    ByteVecValue fill_value_ = ByteVecValue();
+    uint8_t fill_value_validity_ = 0;
     Attribute* attr_ = nullptr;
-    bool built_;
+    bool built_ = false;
   } PrivateAttribute;
 
-  // Set default values
-  PrivateAttribute private_attr_ = {
-      .name_ = (""), .type_ = Datatype::CHAR, .nullable_ = false};
+  // Create private attribute.
+  PrivateAttribute private_attr_;
 
   /* ********************************* */
   /*     CONSTRUCTORS & DESTRUCTORS    */
   /* ********************************* */
 
-  /** Constructor. */
   AttributeBuilder()
       : private_attr_() {
   }
@@ -97,29 +95,28 @@ class AttributeBuilder {
     private_attr_.fill_value_validity_ = attr->fill_value_validity();
   }
 
-  /** Destructor. */
   ~AttributeBuilder() = default;
 
   /* ********************************* */
   /*                API                */
   /* ********************************* */
 
-  Attribute* build() {
+  tdb_unique_ptr<Attribute> build() {
     private_attr_.attr_ = new (std::nothrow) Attribute(
         private_attr_.name_, private_attr_.type_, private_attr_.nullable_);
     private_attr_.built_ = true;
-    Attribute* attr(private_attr_.attr_);
+    tdb_unique_ptr<Attribute> attr(private_attr_.attr_);
 
     attr->set_cell_val_num(private_attr_.cell_val_num_);
     attr->set_filter_pipeline(&private_attr_.filters_);
     if (private_attr_.nullable_) {
       attr->set_fill_value(
-          &private_attr_.fill_value_,
+          private_attr_.fill_value_.data(),
           (uint64_t)private_attr_.fill_value_.size(),
           private_attr_.fill_value_validity_);
     } else {
       attr->set_fill_value(
-          &private_attr_.fill_value_,
+          private_attr_.fill_value_.data(),
           (uint64_t)private_attr_.fill_value_.size());
     }
 
@@ -176,7 +173,7 @@ class AttributeBuilder {
 
   Status set_cell_val_num(unsigned int cell_val_num) {
     if (private_attr_.type_ == Datatype::ANY)
-      return LOG_STATUS(Status::AttributeError(
+      return LOG_STATUS(Status::AttributeBuilderError(
           "Cannot set number of values per cell; Attribute datatype `ANY` is "
           "always variable-sized"));
 
@@ -198,15 +195,15 @@ class AttributeBuilder {
 
   Status set_filter_pipeline(const FilterPipeline* pipeline) {
     if (pipeline == nullptr)
-      return LOG_STATUS(Status::AttributeError(
+      return LOG_STATUS(Status::AttributeBuilderError(
           "Cannot set filter pipeline to attribute; Pipeline cannot be null"));
 
     for (unsigned i = 0; i < pipeline->size(); ++i) {
       if (datatype_is_real(private_attr_.type_) &&
           pipeline->get_filter(i)->type() == FilterType::FILTER_DOUBLE_DELTA)
         return LOG_STATUS(
-            Status::AttributeError("Cannot set DOUBLE DELTA filter to a "
-                                   "dimension with a real datatype"));
+            Status::AttributeBuilderError("Cannot set DOUBLE DELTA filter to a "
+                                          "dimension with a real datatype"));
     }
 
     private_attr_.filters_ = *pipeline;
@@ -220,22 +217,22 @@ class AttributeBuilder {
 
   Status set_fill_value(const void* value, uint64_t size) {
     if (value == nullptr) {
-      return LOG_STATUS(Status::AttributeError(
+      return LOG_STATUS(Status::AttributeBuilderError(
           "Cannot set fill value; Input value cannot be null"));
     }
 
     if (size == 0) {
-      return LOG_STATUS(Status::AttributeError(
+      return LOG_STATUS(Status::AttributeBuilderError(
           "Cannot set fill value; Input size cannot be 0"));
     }
 
     if (nullable()) {
-      return LOG_STATUS(Status::AttributeError(
+      return LOG_STATUS(Status::AttributeBuilderError(
           "Cannot set fill value; Attribute is nullable"));
     }
 
     if (!var_size() && size != cell_size()) {
-      return LOG_STATUS(Status::AttributeError(
+      return LOG_STATUS(Status::AttributeBuilderError(
           "Cannot set fill value; Input size is not the same as cell size"));
     }
 
@@ -248,17 +245,17 @@ class AttributeBuilder {
 
   Status get_fill_value(const void** value, uint64_t* size) const {
     if (value == nullptr) {
-      return LOG_STATUS(Status::AttributeError(
+      return LOG_STATUS(Status::AttributeBuilderError(
           "Cannot get fill value; Input value cannot be null"));
     }
 
     if (size == nullptr) {
-      return LOG_STATUS(Status::AttributeError(
+      return LOG_STATUS(Status::AttributeBuilderError(
           "Cannot get fill value; Input size cannot be null"));
     }
 
     if (nullable()) {
-      return LOG_STATUS(Status::AttributeError(
+      return LOG_STATUS(Status::AttributeBuilderError(
           "Cannot get fill value; Attribute is nullable"));
     }
 
@@ -270,22 +267,22 @@ class AttributeBuilder {
 
   Status set_fill_value(const void* value, uint64_t size, uint8_t valid) {
     if (value == nullptr) {
-      return LOG_STATUS(Status::AttributeError(
+      return LOG_STATUS(Status::AttributeBuilderError(
           "Cannot set fill value; Input value cannot be null"));
     }
 
     if (size == 0) {
-      return LOG_STATUS(Status::AttributeError(
+      return LOG_STATUS(Status::AttributeBuilderError(
           "Cannot set fill value; Input size cannot be 0"));
     }
 
     if (!nullable()) {
-      return LOG_STATUS(Status::AttributeError(
+      return LOG_STATUS(Status::AttributeBuilderError(
           "Cannot set fill value; Attribute is not nullable"));
     }
 
     if (!var_size() && size != cell_size()) {
-      return LOG_STATUS(Status::AttributeError(
+      return LOG_STATUS(Status::AttributeBuilderError(
           "Cannot set fill value; Input size is not the same as cell size"));
     }
 
@@ -300,17 +297,17 @@ class AttributeBuilder {
   Status get_fill_value(
       const void** value, uint64_t* size, uint8_t* valid) const {
     if (value == nullptr) {
-      return LOG_STATUS(Status::AttributeError(
+      return LOG_STATUS(Status::AttributeBuilderError(
           "Cannot get fill value; Input value cannot be null"));
     }
 
     if (size == nullptr) {
-      return LOG_STATUS(Status::AttributeError(
+      return LOG_STATUS(Status::AttributeBuilderError(
           "Cannot get fill value; Input size cannot be null"));
     }
 
     if (!nullable()) {
-      return LOG_STATUS(Status::AttributeError(
+      return LOG_STATUS(Status::AttributeBuilderError(
           "Cannot get fill value; Attribute is not nullable"));
     }
 

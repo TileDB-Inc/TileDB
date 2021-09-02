@@ -114,6 +114,7 @@ enum class StatusCode : char {
   FS_HDFS,
   FS_MEM,
   Attribute,
+  AttributeBuilder,
   WriteCellSlabIter,
   SparseGlobalOrderReaderError,
   SparseUnorderedWithDupsReaderError,
@@ -333,6 +334,11 @@ class Status {
   /** Return a AttributeError error class Status with a given message **/
   static Status AttributeError(const std::string& msg) {
     return Status(StatusCode::Attribute, msg, -1);
+  }
+
+  /** Return a AttributeBuilderError error class Status with a given message **/
+  static Status AttributeBuilderError(const std::string& msg) {
+    return Status(StatusCode::AttributeBuilder, msg, -1);
   }
 
   /** Return a WriteCellSlabIterError error class Status with a given message
