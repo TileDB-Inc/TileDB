@@ -167,7 +167,7 @@ jobs:
             exit $LastExitCode
           }
 
-          cmake --build $env:AGENT_BUILDDIRECTORY\build --config Release -j $env:NUMBER_OF_PROCESSORS -- /verbosity:minimal
+          cmake --build $env:AGENT_BUILDDIRECTORY\build --config Release -j $env:NUMBER_OF_PROCESSORS -- /verbosity:diagnostic
 
           if ($LastExitCode -ne 0) {
             Write-Host "Build failed. CMake exit status: " $LastExitCocde
