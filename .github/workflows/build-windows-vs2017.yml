@@ -56,10 +56,12 @@ jobs:
         run: |
           Write-Host "AGENT_BUILDDIRECTORY is $env:AGENT_BUILDDIRECTORY"
           Write-Host "Number of processors is $env:NUMBER_OF_PROCESSORS"
+          Write-Host "Running on image '$env:imageName'"
           Write-Host "Running on image '$($env:imageName)'"
+          Write-Host "Running on image '$env:TILEDB_GA_IMAGE_NAME'"
           
-          $clpath = (GetCommand cl).Path
-          $cmakepath = (GetCommand cmake).Path
+          $clpath = (Get-Command cl).Path
+          $cmakepath = (Get-Command cmake).Path
           Write-Host "cl at " + $clpath
           Write-Host "cmake at " + $cmakepath
 
