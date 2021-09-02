@@ -54,6 +54,12 @@ jobs:
           #~ fetch-depth: 1
       - name: core tiledb windows build 
         run: |
+          # seem to be missing output  (stderr?, or?), most cl.exe commands
+          # should show with /verbosity:diagnostic, but are still missing afterwards...
+          # https://github.com/actions/runner/issues/382
+          # will this get stderr output in general? 
+          $ErrorView = "NormalView" 
+          
           Write-Host "AGENT_BUILDDIRECTORY is $env:AGENT_BUILDDIRECTORY"
           Write-Host "Number of processors is $env:NUMBER_OF_PROCESSORS"
           Write-Host "Running on image '$env:imageName'"
