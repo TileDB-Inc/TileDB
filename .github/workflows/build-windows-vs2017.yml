@@ -173,7 +173,8 @@ jobs:
             exit $LastExitCode
           }
 
-          cmake --build $env:AGENT_BUILDDIRECTORY\build --config Release -j $env:NUMBER_OF_PROCESSORS -- /verbosity:diagnostic 2>&1
+          cmake --build $env:AGENT_BUILDDIRECTORY\build --config Release -j $env:NUMBER_OF_PROCESSORS -- /verbosity:diagnostic 2>&1 | c:\msys64\usr\bin\tee core.out.1a.txt
+          cmd /c "type core.out.1a.txt"
 
           if ($LastExitCode -ne 0) {
             Write-Host "Build failed. CMake exit status: " $LastExitCocde
