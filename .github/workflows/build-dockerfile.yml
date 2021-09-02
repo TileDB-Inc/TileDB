@@ -5,6 +5,7 @@ on: pull_request
 jobs:
   build-dockerfile:
     runs-on: ubuntu-20.04
+    if: ${{ false == true }}
 
     steps:
       - name: Check out the repository
