@@ -60,6 +60,11 @@ jobs:
           Write-Host "Running on image '$($env:imageName)'"
           Write-Host "Running on image '$env:TILEDB_GA_IMAGE_NAME'"
           
+          cmd /c "dir 'c:\program files (x86)\Microsoft Visual Studio\cl.exe' /s"
+          cmd /c "dir 'c:\program files (x86)\Microsoft Visual Studio\cmake.exe' /s"
+          cmd /c "dir 'c:\program files (x86)\Microsoft Visual Studio\vcvarsall.bat' /s"
+          cmd /c "dir 'c:\program files (x86)\Microsoft Visual Studio\vcvarsx64.bat' /s"
+          
           $clpath = (Get-Command cl).Path
           $cmakepath = (Get-Command cmake).Path
           Write-Host "cl at " + $clpath
