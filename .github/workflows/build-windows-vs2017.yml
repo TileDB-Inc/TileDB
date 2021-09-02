@@ -173,7 +173,7 @@ jobs:
             exit $LastExitCode
           }
 
-          cmake --build $env:AGENT_BUILDDIRECTORY\build --config Release -j $env:NUMBER_OF_PROCESSORS -- /verbosity:diagnostic
+          cmake --build $env:AGENT_BUILDDIRECTORY\build --config Release -j $env:NUMBER_OF_PROCESSORS -- /verbosity:diagnostic 2>&1
 
           if ($LastExitCode -ne 0) {
             Write-Host "Build failed. CMake exit status: " $LastExitCocde
@@ -181,7 +181,7 @@ jobs:
             exit $LastExitCode
           }
 
-          cmake --build $env:AGENT_BUILDDIRECTORY\build  -j $env:NUMBER_OF_PROCESSORS --target install-tiledb --config Release
+          cmake --build $env:AGENT_BUILDDIRECTORY\build  -j $env:NUMBER_OF_PROCESSORS --target install-tiledb --config Release 2>&1
 
           if ($LastExitCode -ne 0) {
             Write-Host "Installation failed."
