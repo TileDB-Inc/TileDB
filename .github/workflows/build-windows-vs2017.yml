@@ -61,6 +61,7 @@ jobs:
           # will this get stderr output in general? 
           $ErrorView = "NormalView" 
           
+          Write-Host "GITHUB_WORKSPACE is '$env:GITHUB_WORKSPACE'"
           Write-Host "AGENT_BUILDDIRECTORY is $env:AGENT_BUILDDIRECTORY"
           Write-Host "Number of processors is $env:NUMBER_OF_PROCESSORS"
           Write-Host "Running on image '$env:imageName'"
@@ -89,11 +90,13 @@ jobs:
           Write-Host "AGENT_BUILDDIRECTORY is '$env:AGENT_BUILDDIRECTORY'"
           Write-Host "BUILD_SOURCESDIRECTORY is '$env:BUILD_SOURCESDIRECTORY'"
 
+          cmd /c "echo current dir @%cd% & dir"
+          cmd /c "echo dir above @%cd% & dir .."
           mkdir $env:AGENT_BUILDDIRECTORY\build
           #cmd /c "mkdir $env:AGENT_BUILDDIRECTORY\build"
-          cmd /c "cd & dir"
+          cmd /c "echo @%cd% & dir"
           cd $env:AGENT_BUILDDIRECTORY\build
-          cmd /c "cd & dir"
+          cmd /c "echo @%cd% & dir"
 
           #if ($env:imageName -eq "windows-2016") {
           if ($env:TILEDB_GA_IMAGE_NAME -eq "windows-2016") {
