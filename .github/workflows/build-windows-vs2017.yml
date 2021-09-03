@@ -85,6 +85,10 @@ jobs:
           $env:AGENT_BUILDDIRECTORY = $env:GITHUB_WORKSPACE
           $env:BUILD_SOURCESDIRECTORY = $env:GITHUB_WORKSPACE
 
+          Write-Host "GITHUB_WORKSPACE is '$env:GITHUB_WORKSPACE'"
+          Write-Host "AGENT_BUILDDIRECTORY is '$env:AGENT_BUILDDIRECTORY'"
+          Write-Host "BUILD_SOURCESDIRECTORY is '$env:BUILD_SOURCESDIRECTORY'"
+
           mkdir $env:AGENT_BUILDDIRECTORY\build
           cmd /c "cd & dir"
           cd $env:AGENT_BUILDDIRECTORY\build
