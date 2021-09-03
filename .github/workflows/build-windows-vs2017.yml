@@ -90,6 +90,9 @@ jobs:
           Write-Host "AGENT_BUILDDIRECTORY is '$env:AGENT_BUILDDIRECTORY'"
           Write-Host "BUILD_SOURCESDIRECTORY is '$env:BUILD_SOURCESDIRECTORY'"
 
+          # TBD: because of 'too long' paths in azure/gcs, 
+          # may need to modify 'build' directory location placing off 'root' rather than
+          # underneath TileDB/TileDB where GA currently locates
           cmd /c "echo current dir @%cd% & dir"
           cmd /c "echo dir above @%cd% & dir .."
           mkdir $env:AGENT_BUILDDIRECTORY\build
