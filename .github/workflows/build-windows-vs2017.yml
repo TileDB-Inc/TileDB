@@ -174,8 +174,10 @@ jobs:
             exit $LastExitCode
           }
 
-          cd $env:AGENT_BUILDDIRECTORY\build
-          & "C:/Program Files (x86)/Microsoft Visual Studio/2019/Enterprise/MSBuild/Current/Bin/MSBuild.exe" /m:2 /p:Configuration=Release /p:Platform=X64 /p:VisualStudioVersion=16.0 /p:CL_MPCount=1 /verbosity:diag ALL_BUILD.vcxproj
+          #cd $env:AGENT_BUILDDIRECTORY\build
+          #& "C:/Program Files (x86)/Microsoft Visual Studio/2019/Enterprise/MSBuild/Current/Bin/MSBuild.exe" /m:2 /p:Configuration=Release /p:Platform=X64 /p:VisualStudioVersion=16.0 /p:CL_MPCount=1 /verbosity:diag ALL_BUILD.vcxproj
+          cmake --build $env:AGENT_BUILDDIRECTORY\build --config Release -j $env:NUMBER_OF_PROCESSORS
+          #cmake --build $env:AGENT_BUILDDIRECTORY\build --config Release -j $env:NUMBER_OF_PROCESSORS -- /verbosity:diagnostic 
           #cmake --build $env:AGENT_BUILDDIRECTORY\build --config Release -j $env:NUMBER_OF_PROCESSORS -- /verbosity:diagnostic 2>&1 | c:\msys64\usr\bin\tee core.out.1a.txt
           #cmd /c "type core.out.1a.txt"
 
