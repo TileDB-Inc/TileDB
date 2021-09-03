@@ -108,6 +108,7 @@ Status array_schema_evolution_to_capnp(
 Status array_schema_evolution_from_capnp(
     const capnp::ArraySchemaEvolution::Reader& evolution_reader,
     tdb_unique_ptr<ArraySchemaEvolution>* array_schema_evolution) {
+  array_schema_evolution->reset(tdb_new(ArraySchemaEvolution));
   // Set attributes to drop
   auto attributes_to_drop_reader = evolution_reader.getAttributesToDrop();
   for (auto attr_reader : attributes_to_drop_reader) {
