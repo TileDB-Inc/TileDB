@@ -2127,6 +2127,29 @@ TEST_CASE_METHOD(
       ctx_, array_schema_evolution, "a1");
   REQUIRE(rc == TILEDB_OK);
 
+#ifdef TILEDB_SERIALIZATION
+  tiledb_buffer_t* buffer;
+
+  // Serialize the array schema evolution
+  rc = tiledb_serialize_array_schema_evolution(
+      ctx_,
+      array_schema_evolution,
+      (tiledb_serialization_type_t)tiledb::sm::SerializationType::CAPNP,
+      0,
+      &buffer);
+  REQUIRE(rc == TILEDB_OK);
+
+  // Deserialize to validate we can round-trip
+  rc = tiledb_deserialize_array_schema_evolution(
+      ctx_,
+      buffer,
+      (tiledb_serialization_type_t)tiledb::sm::SerializationType::CAPNP,
+      1,
+      &array_schema_evolution);
+
+  tiledb_buffer_free(&buffer);
+#endif
+
   // Evolve schema
   rc = tiledb_array_evolve(ctx_, array_name.c_str(), array_schema_evolution);
   REQUIRE(rc == TILEDB_OK);
