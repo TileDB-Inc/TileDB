@@ -86,7 +86,9 @@ jobs:
           $env:BUILD_SOURCESDIRECTORY = $env:GITHUB_WORKSPACE
 
           mkdir $env:AGENT_BUILDDIRECTORY\build
+          cmd /c "cd & dir"
           cd $env:AGENT_BUILDDIRECTORY\build
+          cmd /c "cd & dir"
 
           #if ($env:imageName -eq "windows-2016") {
           if ($env:TILEDB_GA_IMAGE_NAME -eq "windows-2016") {
@@ -173,6 +175,9 @@ jobs:
             #$host.SetShouldExit($LastExitCode)
             exit $LastExitCode
           }
+
+          cmd /c "cd & dir"
+          Write-Host "env:AGENT_BUILDDIRECTORY: '$env:AGENT_BUILDDIRECTORY'"
 
           #cd $env:AGENT_BUILDDIRECTORY\build
           #& "C:/Program Files (x86)/Microsoft Visual Studio/2019/Enterprise/MSBuild/Current/Bin/MSBuild.exe" /m:2 /p:Configuration=Release /p:Platform=X64 /p:VisualStudioVersion=16.0 /p:CL_MPCount=1 /verbosity:diag ALL_BUILD.vcxproj
