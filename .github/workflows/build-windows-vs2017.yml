@@ -24,7 +24,8 @@ jobs:
     runs-on: ${{ matrix.os }}
     strategy:
       matrix:
-        os: [windows-2016]
+        #os: [windows-2016]
+        os: [windows-2019]
     #if: ${{ false == true }}
     #hmm, is that indented commenting approach acceptable, don't recall noticing when using before...
     #~ strategy:
