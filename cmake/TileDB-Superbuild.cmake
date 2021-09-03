@@ -129,7 +129,9 @@ ExternalProject_Add(tiledb
     ${INHERITED_CMAKE_ARGS}
     ${FORWARD_EP_CMAKE_ARGS}
   INSTALL_COMMAND ""
-  BUILD_COMMAND ${CMAKE_COMMAND} --build ${CMAKE_CURRENT_BINARY_DIR}/build --config RelWithDebInfo -- /verbosity:diagnostic
+#  BUILD_COMMAND ${CMAKE_COMMAND} --build ${CMAKE_CURRENT_BINARY_DIR}/build --config RelWithDebInfo -- /verbosity:diagnostic
+  BUILD_COMMAND 
+    ${CMAKE_COMMAND} --build ${CMAKE_CURRENT_BINARY_DIR} --config RelWithDebInfo -- /verbosity:diagnostic
   BINARY_DIR ${CMAKE_CURRENT_BINARY_DIR}/tiledb
   DEPENDS ${TILEDB_EXTERNAL_PROJECTS}
 )
