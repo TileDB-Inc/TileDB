@@ -90,6 +90,7 @@ jobs:
           Write-Host "BUILD_SOURCESDIRECTORY is '$env:BUILD_SOURCESDIRECTORY'"
 
           mkdir $env:AGENT_BUILDDIRECTORY\build
+          #cmd /c "mkdir $env:AGENT_BUILDDIRECTORY\build"
           cmd /c "cd & dir"
           cd $env:AGENT_BUILDDIRECTORY\build
           cmd /c "cd & dir"
