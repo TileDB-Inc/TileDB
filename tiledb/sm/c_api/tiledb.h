@@ -7530,6 +7530,28 @@ TILEDB_EXPORT int32_t tiledb_fragment_info_get_to_vacuum_uri(
     const char** uri);
 
 /**
+ * Retrieves the array schema name a fragment.
+ *
+ * **Example:**
+ *
+ * @code{.c}
+ * tiledb_array_schema_t* array_schema;
+ * tiledb_fragment_info_get_array_schema(ctx, fragment_info, 0, &array_schema);
+ * @endcode
+ *
+ * @param ctx The TileDB context
+ * @param fragment_info The fragment info object.
+ * @param fid The index of the fragment of interest.
+ * @param array_schema The array schema to be retrieved.
+ * @return `TILEDB_OK` for success and `TILEDB_ERR` for error.
+ */
+TILEDB_EXPORT int32_t tiledb_fragment_info_get_array_schema(
+    tiledb_ctx_t* ctx,
+    tiledb_fragment_info_t* fragment_info,
+    uint32_t fid,
+    tiledb_array_schema_t** array_schema);
+
+/**
  * Dumps the fragment info in ASCII format in the selected output.
  *
  * **Example:**

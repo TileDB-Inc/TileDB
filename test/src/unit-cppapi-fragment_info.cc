@@ -622,6 +622,26 @@ TEST_CASE(
   // Load fragment info
   fragment_info.load();
 
+  // Get Array Schemas for fragments
+  ArraySchema frag1_schema = fragment_info.array_schema(0);
+  ArraySchema frag2_schema = fragment_info.array_schema(1);
+  ArraySchema frag3_schema = fragment_info.array_schema(2);
+
+  // The three fragments use the same schema
+  std::stringstream frag1_schema_ss;
+  std::stringstream frag2_schema_ss;
+  std::stringstream frag3_schema_ss;
+
+  frag1_schema_ss << frag1_schema;
+  frag2_schema_ss << frag2_schema;
+  frag3_schema_ss << frag3_schema;
+
+  std::string frag1_schema_str = frag1_schema_ss.str();
+  std::string frag2_schema_str = frag2_schema_ss.str();
+  std::string frag3_schema_str = frag3_schema_ss.str();
+  CHECK(frag1_schema_str == frag2_schema_str);
+  CHECK(frag1_schema_str == frag3_schema_str);
+
   // Check dump
   std::string dump_str =
       std::string("- Fragment num: 3\n") +
