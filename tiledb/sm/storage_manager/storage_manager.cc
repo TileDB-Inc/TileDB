@@ -2253,7 +2253,7 @@ Status StorageManager::store_array_schema(
       0,
       &buff,
       false);
-  buff.disown_data();
+
   GenericTileIO tile_io(this, schema_uri);
   uint64_t nbytes;
   Status st = tile_io.write_generic(&tile, encryption_key, &nbytes);
