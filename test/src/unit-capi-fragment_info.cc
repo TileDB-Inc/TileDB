@@ -386,7 +386,6 @@ TEST_CASE(
   REQUIRE(tiledb_ctx_alloc(cfg, &ctx_wrong_key) == TILEDB_OK);
   rc = tiledb_fragment_info_load(ctx_wrong_key, fragment_info);
   CHECK(rc == TILEDB_ERR);
-  tiledb_ctx_free(&ctx_wrong_key);
 
   // Load fragment info
   rc = tiledb_config_set(cfg, "sm.encryption_key", key, &err);
@@ -469,7 +468,6 @@ TEST_CASE(
   // Load fragment info again
   rc = tiledb_fragment_info_load(ctx_correct_key, fragment_info);
   CHECK(rc == TILEDB_OK);
-  tiledb_ctx_free(&ctx_correct_key);
 
   // Get fragment num again
   rc = tiledb_fragment_info_get_fragment_num(ctx, fragment_info, &fragment_num);
@@ -599,9 +597,11 @@ TEST_CASE(
 
   // Clean up
   remove_dir(array_name, ctx, vfs);
-  tiledb_ctx_free(&ctx);
-  tiledb_vfs_free(&vfs);
   tiledb_fragment_info_free(&fragment_info);
+  tiledb_vfs_free(&vfs);
+  tiledb_ctx_free(&ctx);
+  tiledb_ctx_free(&ctx_correct_key);
+  tiledb_ctx_free(&ctx_wrong_key);
 }
 
 TEST_CASE(
