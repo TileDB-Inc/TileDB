@@ -800,7 +800,8 @@ Status ReaderBase::copy_attribute_values(
     std::vector<ResultTile*>* result_tiles,
     std::vector<ResultCellSlab>* result_cell_slabs,
     Subarray& subarray,
-    uint64_t memory_budget) {
+    uint64_t memory_budget,
+    bool include_dim) {
   auto timer_se = stats_->start_timer("copy_attr_values");
 
   if (result_cell_slabs->empty() && result_tiles->empty()) {
@@ -820,7 +821,8 @@ Status ReaderBase::copy_attribute_values(
       break;
     }
 
-    if (name == constants::coords || array_schema_->is_dim(name)) {
+    if (!include_dim &&
+        (name == constants::coords || array_schema_->is_dim(name))) {
       continue;
     }
 
