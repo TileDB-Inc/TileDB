@@ -2296,7 +2296,6 @@ Status StorageManager::store_array_metadata(
       0,
       &metadata_buff,
       false);
-  metadata_buff.disown_data();
 
   GenericTileIO tile_io(this, array_metadata_uri);
   uint64_t nbytes;
@@ -2306,6 +2305,8 @@ Status StorageManager::store_array_metadata(
   if (st.ok()) {
     st = close_file(array_metadata_uri);
   }
+
+  metadata_buff.clear();
 
   return st;
 }
