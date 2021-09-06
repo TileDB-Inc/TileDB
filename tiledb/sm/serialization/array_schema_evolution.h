@@ -30,8 +30,8 @@
  * This file declares serialization functions for ArraySchema.
  */
 
-#ifndef TILEDB_SERIALIZATION_ARRAY_SCHEMA_Evolution_H
-#define TILEDB_SERIALIZATION_ARRAY_SCHEMA_Evolution_H
+#ifndef TILEDB_SERIALIZATION_ARRAY_SCHEMA_EVOLUTION_H
+#define TILEDB_SERIALIZATION_ARRAY_SCHEMA_EVOLUTION_H
 
 #include <unordered_map>
 

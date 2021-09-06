@@ -876,7 +876,7 @@ Status RestClient::get_query_est_result_sizes(const URI&, Query*) {
 }
 
 Status RestClient::post_array_schema_evolution_to_rest(
-    const URI& uri, ArraySchemaEvolution* array_schema_evolution) {
+    const URI&, ArraySchemaEvolution*) {
   return LOG_STATUS(
       Status::RestError("Cannot use rest client; serialization not enabled."));
 }
