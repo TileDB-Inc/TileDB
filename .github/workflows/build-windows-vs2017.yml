@@ -194,7 +194,8 @@ jobs:
           cmd /c "cd & dir"
           Write-Host "env:AGENT_BUILDDIRECTORY: '$env:AGENT_BUILDDIRECTORY'"
 
-          cmake --build $env:AGENT_BUILDDIRECTORY\build --config Release -j $env:NUMBER_OF_PROCESSORS
+          #cmake --build $env:AGENT_BUILDDIRECTORY\build --config Release -j $env:NUMBER_OF_PROCESSORS
+          cmake --build $env:AGENT_BUILDDIRECTORY --config Release -j $env:NUMBER_OF_PROCESSORS
 
           if ($LastExitCode -ne 0) {
             Write-Host "Build failed. CMake exit status: " $LastExitCocde
@@ -202,7 +203,8 @@ jobs:
             exit $LastExitCode
           }
 
-          cmake --build $env:AGENT_BUILDDIRECTORY\build  -j $env:NUMBER_OF_PROCESSORS --target install-tiledb --config Release 2>&1
+          #cmake --build $env:AGENT_BUILDDIRECTORY\build  -j $env:NUMBER_OF_PROCESSORS --target install-tiledb --config Release 2>&1
+          cmake --build $env:AGENT_BUILDDIRECTORY  -j $env:NUMBER_OF_PROCESSORS --target install-tiledb --config Release 2>&1
 
           if ($LastExitCode -ne 0) {
             Write-Host "Installation failed."
