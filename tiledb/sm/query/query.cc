@@ -1251,8 +1251,9 @@ Status Query::set_data_buffer(
 
   // Check buffer
   if (check_null_buffers && buffer == nullptr)
-    return LOG_STATUS(
-        Status::QueryError("Cannot set buffer; " + name + " buffer is null"));
+    if (type_ != QueryType::WRITE || *buffer_size != 0)
+      return LOG_STATUS(
+          Status::QueryError("Cannot set buffer; " + name + " buffer is null"));
 
   // Check buffer size
   if (check_null_buffers && buffer_size == nullptr)
@@ -1456,8 +1457,9 @@ Status Query::set_buffer(
     const bool check_null_buffers) {
   // Check buffer
   if (check_null_buffers && buffer_val == nullptr)
-    return LOG_STATUS(
-        Status::QueryError("Cannot set buffer; " + name + " buffer is null"));
+    if (type_ != QueryType::WRITE || *buffer_val_size != 0)
+      return LOG_STATUS(
+          Status::QueryError("Cannot set buffer; " + name + " buffer is null"));
 
   // Check buffer size
   if (check_null_buffers && buffer_val_size == nullptr)
@@ -1645,8 +1647,9 @@ Status Query::set_buffer(
     const bool check_null_buffers) {
   // Check buffer
   if (check_null_buffers && buffer_val == nullptr)
-    return LOG_STATUS(
-        Status::QueryError("Cannot set buffer; " + name + " buffer is null"));
+    if (type_ != QueryType::WRITE || *buffer_val_size != 0)
+      return LOG_STATUS(
+          Status::QueryError("Cannot set buffer; " + name + " buffer is null"));
 
   // Check buffer size
   if (check_null_buffers && buffer_val_size == nullptr)
@@ -1885,7 +1888,8 @@ Status Query::check_buffers_correctness() {
       // Check for data buffer under buffer_var
       bool exists_data = buffer(attr).buffer_var_ != nullptr;
       bool exists_offset = buffer(attr).buffer_ != nullptr;
-      if (!exists_data || !exists_offset) {
+      if ((!exists_data && *buffer(attr).buffer_var_size_ != 0) ||
+          !exists_offset) {
         return LOG_STATUS(Status::QueryError(
             std::string("Var-Sized input attribute/dimension '") + attr +
             "' is not set correctly \nOffsets buffer is not set"));
