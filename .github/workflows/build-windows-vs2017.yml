@@ -84,7 +84,8 @@ jobs:
 
           # Using names that were on azure, doc states they should have appended _PATH for GA
           # AP to GA, changing AGENT_BUILDDIRECTORY and BUILD_SOURCESDIRECTORY to GITHUB_WORKSPACE
-          $env:AGENT_BUILDDIRECTORY = $env:GITHUB_WORKSPACE
+          #$env:AGENT_BUILDDIRECTORY = $env:GITHUB_WORKSPACE
+          $env:AGENT_BUILDDIRECTORY = $env:GITHUB_WORKSPACE.replace("TileDB\TileDB","tdbbd") # 't'ile'db' 'b'uild 'd'ir
           $env:BUILD_SOURCESDIRECTORY = $env:GITHUB_WORKSPACE
 
           Write-Host "GITHUB_WORKSPACE is '$env:GITHUB_WORKSPACE'"
@@ -96,10 +97,12 @@ jobs:
           # underneath TileDB/TileDB where GA currently locates
           cmd /c "echo current dir @%cd% & dir"
           cmd /c "echo dir above @%cd% & dir .."
-          mkdir $env:AGENT_BUILDDIRECTORY\build
+          #mkdir $env:AGENT_BUILDDIRECTORY\build
+          mkdir $env:AGENT_BUILDDIRECTORY
           #cmd /c "mkdir $env:AGENT_BUILDDIRECTORY\build"
           cmd /c "echo @%cd% & dir"
-          cd $env:AGENT_BUILDDIRECTORY\build
+          #cd $env:AGENT_BUILDDIRECTORY\build
+          cd $env:AGENT_BUILDDIRECTORY
           cmd /c "echo @%cd% & dir"
 
           #if ($env:imageName -eq "windows-2016") {
@@ -159,7 +162,7 @@ jobs:
           #  $bootstrapOptions = $bootstrapOptions + " -EnableHDFS"
           #}
           if ($env:TILEDB_TOOLS -eq "ON") {
-            #~ $bootstrapOptions = $bootstrapOptions + " -EnableTools"
+            $bootstrapOptions = $bootstrapOptions + " -EnableTools"
           }
           if ($env:TILEDB_DEBUG -eq "ON") {
             $bootstrapOptions = $bootstrapOptions + " -EnableDebug"
@@ -191,12 +194,7 @@ jobs:
           cmd /c "cd & dir"
           Write-Host "env:AGENT_BUILDDIRECTORY: '$env:AGENT_BUILDDIRECTORY'"
 
-          #cd $env:AGENT_BUILDDIRECTORY\build
-          #& "C:/Program Files (x86)/Microsoft Visual Studio/2019/Enterprise/MSBuild/Current/Bin/MSBuild.exe" /m:2 /p:Configuration=Release /p:Platform=X64 /p:VisualStudioVersion=16.0 /p:CL_MPCount=1 /verbosity:diag ALL_BUILD.vcxproj
           cmake --build $env:AGENT_BUILDDIRECTORY\build --config Release -j $env:NUMBER_OF_PROCESSORS
-          #cmake --build $env:AGENT_BUILDDIRECTORY\build --config Release -j $env:NUMBER_OF_PROCESSORS -- /verbosity:diagnostic 
-          #cmake --build $env:AGENT_BUILDDIRECTORY\build --config Release -j $env:NUMBER_OF_PROCESSORS -- /verbosity:diagnostic 2>&1 | c:\msys64\usr\bin\tee core.out.1a.txt
-          #cmd /c "type core.out.1a.txt"
 
           if ($LastExitCode -ne 0) {
             Write-Host "Build failed. CMake exit status: " $LastExitCocde
