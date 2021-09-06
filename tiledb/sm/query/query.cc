@@ -1075,6 +1075,10 @@ IQueryStrategy* Query::strategy() {
   return strategy_.get();
 }
 
+void Query::clear_strategy() {
+  strategy_ = nullptr;
+}
+
 Status Query::disable_check_global_order() {
   if (status_ != QueryStatus::UNINITIALIZED)
     return LOG_STATUS(Status::QueryError(
