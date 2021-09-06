@@ -549,6 +549,9 @@ class Query {
   /** Gets the strategy of the query. */
   IQueryStrategy* strategy();
 
+  /** Remove the current strategy. Used by serialization. */
+  void clear_strategy();
+
   /**
    * Disables checking the global order. Applicable only to writes.
    * This option will supercede the config.

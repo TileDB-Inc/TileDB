@@ -102,6 +102,13 @@ class SparseUnorderedWithDupsReader : public SparseIndexReaderBase,
   /** Resets the reader object. */
   void reset();
 
+  /** Clears the result tiles. Used by serialization. */
+  Status clear_result_tiles();
+
+  /** Add a result tile with no memory budget checks. Used by serialization. */
+  ResultTile* add_result_tile_unsafe(
+      unsigned dim_num, unsigned f, uint64_t t, const Domain* domain);
+
  private:
   /* ********************************* */
   /*         PRIVATE ATTRIBUTES        */

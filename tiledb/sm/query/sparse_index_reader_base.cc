@@ -81,12 +81,22 @@ SparseIndexReaderBase::SparseIndexReaderBase(
     , memory_budget_ratio_tile_ranges_(0.1)
     , memory_budget_ratio_array_data_(0.1)
     , memory_budget_ratio_result_tiles_(0.05)
-    , memory_budget_ratio_rcs_(0.05) {
+    , memory_budget_ratio_rcs_(0.05)
+    , coords_loaded_(true) {
 }
 
 /* ****************************** */
 /*        PROTECTED METHODS       */
 /* ****************************** */
+
+const SparseIndexReaderBase::ReadState* SparseIndexReaderBase::read_state()
+    const {
+  return &read_state_;
+}
+
+SparseIndexReaderBase::ReadState* SparseIndexReaderBase::read_state() {
+  return &read_state_;
+}
 
 Status SparseIndexReaderBase::get_coord_tiles_size(
     unsigned dim_num, unsigned f, uint64_t t, uint64_t* tiles_size) {

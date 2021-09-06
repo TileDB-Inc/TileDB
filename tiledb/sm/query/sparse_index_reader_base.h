@@ -84,6 +84,23 @@ class SparseIndexReaderBase : public ReaderBase {
   /** Destructor. */
   ~SparseIndexReaderBase() = default;
 
+  /* ********************************* */
+  /*          PUBLIC METHODS           */
+  /* ********************************* */
+
+  /** Returns the current read state. */
+  const ReadState* read_state() const;
+
+  /** Returns the current read state. */
+  ReadState* read_state();
+
+  /** Clears the result tiles. Used by serialization. */
+  virtual Status clear_result_tiles() = 0;
+
+  /** Add a result tile with no memory budget checks. Used by serialization. */
+  virtual ResultTile* add_result_tile_unsafe(
+      unsigned dim_num, unsigned f, uint64_t t, const Domain* domain) = 0;
+
  protected:
   /* ********************************* */
   /*       PROTECTED ATTRIBUTES        */
@@ -151,6 +168,9 @@ class SparseIndexReaderBase : public ReaderBase {
 
   /** How much of the memory budget is reserved for result cell slabs. */
   double memory_budget_ratio_rcs_;
+
+  /** Indicate if the coordinates are loaded for the result tiles. */
+  bool coords_loaded_;
 
   /* ********************************* */
   /*         PROTECTED METHODS         */
