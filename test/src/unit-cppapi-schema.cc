@@ -399,5 +399,5 @@ TEST_CASE(
   // Clean up
   if (vfs.is_dir(array_uri)) {
     vfs.remove_dir(array_uri);
-  }  
+  }
 }

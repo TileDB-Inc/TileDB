@@ -150,8 +150,7 @@ struct ArraySchemaFx {
   int tiledb_array_evolve_wrapper(
       tiledb_ctx_t* ctx,
       const char* array_name,
-      tiledb_array_schema_evolution_t* array_schema_evolution
-  );
+      tiledb_array_schema_evolution_t* array_schema_evolution);
 };
 
 ArraySchemaFx::ArraySchemaFx()
@@ -333,7 +332,7 @@ int ArraySchemaFx::tiledb_array_evolve_wrapper(
       1,
       &array_schema_evolution);
 
-  tiledb_buffer_free(&buffer);  
+  tiledb_buffer_free(&buffer);
 
   return tiledb_array_evolve(ctx, array_name, array_schema_evolution);
 }
@@ -2029,7 +2028,8 @@ TEST_CASE_METHOD(
   REQUIRE(rc == TILEDB_OK);
 
   // Evolve schema
-  rc = tiledb_array_evolve(ctx_, array_name.c_str(), array_schema_evolution);
+  rc = tiledb_array_evolve_wrapper(
+      ctx_, array_name.c_str(), array_schema_evolution);
   REQUIRE(rc == TILEDB_OK);
 
   // Clean up array schema evolution
@@ -2164,7 +2164,8 @@ TEST_CASE_METHOD(
   REQUIRE(rc == TILEDB_OK);
 
   // Evolve schema
-  rc = tiledb_array_evolve_wrapper(ctx_, array_name.c_str(), array_schema_evolution);
+  rc = tiledb_array_evolve_wrapper(
+      ctx_, array_name.c_str(), array_schema_evolution);
   REQUIRE(rc == TILEDB_OK);
 
   // Clean up array schema evolution
