@@ -89,6 +89,51 @@ FragmentMetadata::FragmentMetadata(
 
 FragmentMetadata::~FragmentMetadata() = default;
 
+// FragmentMetadata(FragmentMetadata&& other) noexcept {
+//
+//}
+
+// Copy initialization
+FragmentMetadata::FragmentMetadata(const FragmentMetadata& other) {
+  storage_manager_ = other.storage_manager_;
+  array_schema_ = other.array_schema_;
+  dense_ = other.dense_;
+  fragment_uri_ = other.fragment_uri_;
+  timestamp_range_ = other.timestamp_range_;
+  memory_tracker_ = other.memory_tracker_;
+  has_consolidated_footer_ = other.has_consolidated_footer_;
+  rtree_ = other.rtree_;
+  meta_file_size_ = other.meta_file_size_;
+  version_ = other.version_;
+  tile_index_base_ = other.tile_index_base_;
+  sparse_tile_num_ = other.sparse_tile_num_;
+  footer_size_ = other.footer_size_;
+  footer_offset_ = other.footer_offset_;
+  idx_map_ = other.idx_map_;
+  array_schema_name_ = other.array_schema_name_;
+}
+
+FragmentMetadata& FragmentMetadata::operator=(const FragmentMetadata& other) {
+  storage_manager_ = other.storage_manager_;
+  array_schema_ = other.array_schema_;
+  dense_ = other.dense_;
+  fragment_uri_ = other.fragment_uri_;
+  timestamp_range_ = other.timestamp_range_;
+  memory_tracker_ = other.memory_tracker_;
+  has_consolidated_footer_ = other.has_consolidated_footer_;
+  rtree_ = other.rtree_;
+  meta_file_size_ = other.meta_file_size_;
+  version_ = other.version_;
+  tile_index_base_ = other.tile_index_base_;
+  sparse_tile_num_ = other.sparse_tile_num_;
+  footer_size_ = other.footer_size_;
+  footer_offset_ = other.footer_offset_;
+  idx_map_ = other.idx_map_;
+  array_schema_name_ = other.array_schema_name_;
+
+  return *this;
+}
+
 /* ****************************** */
 /*                API             */
 /* ****************************** */

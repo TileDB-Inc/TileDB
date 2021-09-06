@@ -76,7 +76,7 @@ class SingleFragmentInfo {
       const NDRange& expanded_non_empty_domain,
       const std::string& array_schema_name,
       const EncryptionKey* encryption_key,
-      FragmentMetadata* meta)
+      tdb_shared_ptr<FragmentMetadata> meta)
       : uri_(uri)
       , version_(version)
       , sparse_(sparse)
@@ -193,7 +193,7 @@ class SingleFragmentInfo {
   }
 
   /** Returns a pointer to the fragment's metadata. */
-  FragmentMetadata* meta() const {
+  tdb_shared_ptr<FragmentMetadata> meta() const {
     return meta_;
   }
 
@@ -334,7 +334,7 @@ class SingleFragmentInfo {
   const EncryptionKey* encryption_key_;
 
   /** The fragment metadata. **/
-  FragmentMetadata* meta_;
+  tdb_shared_ptr<FragmentMetadata> meta_;
 
   /**
    * Returns a deep copy of this FragmentInfo.

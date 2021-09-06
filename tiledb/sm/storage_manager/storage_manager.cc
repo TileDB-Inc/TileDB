@@ -206,7 +206,7 @@ Status StorageManager::array_open_for_reads(
     const URI& array_uri,
     const EncryptionKey& enc_key,
     ArraySchema** array_schema,
-    std::vector<FragmentMetadata*>* fragment_metadata,
+    std::vector<tdb_shared_ptr<FragmentMetadata>>* fragment_metadata,
     uint64_t timestamp_start,
     uint64_t timestamp_end) {
   auto timer_se = stats_->start_timer("read_array_open");
@@ -387,7 +387,7 @@ Status StorageManager::array_open_for_writes(
 Status StorageManager::array_load_fragments(
     const URI& array_uri,
     const EncryptionKey& enc_key,
-    std::vector<FragmentMetadata*>* fragment_metadata,
+    std::vector<tdb_shared_ptr<FragmentMetadata>>* fragment_metadata,
     const std::vector<TimestampedURI>& fragments_to_load) {
   auto timer_se = stats_->start_timer("read_array_open");
 
@@ -436,7 +436,7 @@ Status StorageManager::array_reopen(
     const URI& array_uri,
     const EncryptionKey& enc_key,
     ArraySchema** array_schema,
-    std::vector<FragmentMetadata*>* fragment_metadata,
+    std::vector<tdb_shared_ptr<FragmentMetadata>>* fragment_metadata,
     uint64_t timestamp_start,
     uint64_t timestamp_end) {
   auto timer_se = stats_->start_timer("read_array_open");
@@ -1401,7 +1401,7 @@ Status StorageManager::get_fragment_info(
   fragment_info->set_dim_info(
       array_schema->dim_names(), array_schema->dim_types());
 
-  std::vector<FragmentMetadata*> fragment_metadata;
+  std::vector<tdb_shared_ptr<FragmentMetadata>> fragment_metadata;
 
   // Get encryption key from config
   RETURN_NOT_OK(array_reopen(
@@ -1496,7 +1496,8 @@ Status StorageManager::get_fragment_info(
   fragment_info->set_dim_info(
       array_schema->dim_names(), array_schema->dim_types());
 
-  std::vector<FragmentMetadata*> fragment_metadata = array->fragment_metadata();
+  std::vector<tdb_shared_ptr<FragmentMetadata>> fragment_metadata =
+      array->fragment_metadata();
 
   // Return if array is empty
   if (fragment_metadata.empty())
@@ -1636,7 +1637,7 @@ Status StorageManager::get_fragment_info(
   }
 
   // Get fragment non-empty domain
-  FragmentMetadata* meta = tdb_new(
+  tdb_shared_ptr<FragmentMetadata> meta = tdb_make_shared(
       FragmentMetadata,
       this,
       array.array_schema(),
@@ -2641,7 +2642,7 @@ Status StorageManager::load_fragment_metadata(
     const std::vector<TimestampedURI>& fragments_to_load,
     Buffer* meta_buff,
     const std::unordered_map<std::string, uint64_t>& offsets,
-    std::vector<FragmentMetadata*>* fragment_metadata) {
+    std::vector<tdb_shared_ptr<FragmentMetadata>>* fragment_metadata) {
   auto timer_se = stats_->start_timer("read_load_frag_meta");
 
   // Load the metadata for each fragment, only if they are not already
@@ -2666,7 +2667,7 @@ Status StorageManager::load_fragment_metadata(
       if (f_version == 1) {  // This is equivalent to format version <=2
         bool sparse;
         RETURN_NOT_OK(vfs_->is_file(coords_uri, &sparse));
-        metadata = tdb_new(
+        metadata = tdb_make_shared(
             FragmentMetadata,
             this,
             array_schema,
@@ -2675,7 +2676,7 @@ Status StorageManager::load_fragment_metadata(
             open_array->memory_tracker(),
             !sparse);
       } else {  // Format version > 2
-        metadata = tdb_new(
+        metadata = tdb_make_shared(
             FragmentMetadata,
             this,
             array_schema,
@@ -2701,10 +2702,7 @@ Status StorageManager::load_fragment_metadata(
       }
 
       // Load fragment metadata
-      RETURN_NOT_OK_ELSE(
-          metadata->load(
-              encryption_key, f_buff, offset, open_array->array_schemas()),
-          tdb_delete(metadata));
+      RETURN_NOT_OK(metadata->load(encryption_key, f_buff, offset, open_array->array_schemas()));
       open_array->insert_fragment_metadata(metadata);
     }
 

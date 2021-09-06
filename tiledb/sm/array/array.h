@@ -156,7 +156,7 @@ class Array {
    * Returns the fragment metadata of the array. If the array is not open,
    * an empty vector is returned.
    */
-  std::vector<FragmentMetadata*> fragment_metadata() const;
+  std::vector<tdb_shared_ptr<FragmentMetadata>> fragment_metadata() const;
 
   /**
    * Returns `true` if the array is empty at the time it is opened.
@@ -377,7 +377,7 @@ class Array {
   tdb_shared_ptr<EncryptionKey> encryption_key_;
 
   /** The metadata of the fragments the array was opened with. */
-  std::vector<FragmentMetadata*> fragment_metadata_;
+  std::vector<tdb_shared_ptr<FragmentMetadata>> fragment_metadata_;
 
   /** `True` if the array has been opened. */
   std::atomic<bool> is_open_;

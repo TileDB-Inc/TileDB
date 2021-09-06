@@ -62,6 +62,11 @@ class FragmentMetadata {
   /* ********************************* */
 
   /**
+   * Default contructor
+   */
+  FragmentMetadata() = default;
+
+  /**
    * Constructor.
    *
    * @param storage_manager A storage manager instance.
@@ -83,6 +88,13 @@ class FragmentMetadata {
 
   /** Destructor. */
   ~FragmentMetadata();
+
+  //  FragmentMetadata(FragmentMetadata&& other) noexcept;
+
+  // Copy initialization
+  FragmentMetadata(const FragmentMetadata& other);
+
+  FragmentMetadata& operator=(const FragmentMetadata& other);
 
   /* ********************************* */
   /*                API                */
