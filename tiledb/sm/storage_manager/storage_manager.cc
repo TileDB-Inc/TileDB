@@ -891,6 +891,11 @@ Status StorageManager::array_evolve_schema(
         "Cannot evolve array; Empty schema evolution"));
   }
 
+  if (array_uri.is_tiledb()) {
+    return rest_client_->post_array_schema_evolution_to_rest(
+        array_uri, schema_evolution);
+  }
+
   // Check if array exists
   bool exists = false;
   RETURN_NOT_OK(is_array(array_uri, &exists));
