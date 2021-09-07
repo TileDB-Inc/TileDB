@@ -542,7 +542,7 @@ size_t RestClient::post_data_write_cb(
   // consumption by overwriting the serialized query objects that we
   // have already processed.
   const uint64_t length = scratch->size() - scratch->offset();
-  if (scratch->offset() != 0) {
+  if (scratch->offset() != 0 && length != 0) {
     const uint64_t offset = scratch->offset();
     scratch->reset_offset();
 
