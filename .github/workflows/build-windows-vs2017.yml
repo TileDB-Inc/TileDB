@@ -92,7 +92,8 @@ jobs:
         shell: cmd
       - name: ARROW python needs
         shell: bash
-        if: ${{ matrix.TILEDB_ARROW_TESTS == "ON" }}
+        #if: ${{ matrix.TILEDB_ARROW_TESTS == "ON" }}
+        if: ${{ matrix.TILEDB_ARROW_TESTS == 'ON' }}
         run: |
           set -e pipefail
           if [[ "$TILEDB_ARROW_TESTS" == "ON" ]]; then
