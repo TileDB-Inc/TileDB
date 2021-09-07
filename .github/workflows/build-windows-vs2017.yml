@@ -93,10 +93,11 @@ jobs:
       - name: ARROW python needs
         shell: bash
         if: ${{ matrix.TILEDB_ARROW_TESTS == "ON" }}
-        set -e pipefail
-        if [[ "$TILEDB_ARROW_TESTS" == "ON" ]]; then
-          pip install pyarrow pybind11 numpy
-        fi
+        run: |
+          set -e pipefail
+          if [[ "$TILEDB_ARROW_TESTS" == "ON" ]]; then
+            pip install pyarrow pybind11 numpy
+          fi
       - name: Prepare git
         run: git config --global core.autocrlf false
       - uses: actions/checkout@v2
