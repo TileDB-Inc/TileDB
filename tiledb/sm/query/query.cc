@@ -1881,8 +1881,8 @@ Status Query::check_buffers_correctness() {
   // Iterate through each attribute
   for (auto& attr : buffer_names()) {
     if (buffer(attr).buffer_ == nullptr)
-      return LOG_STATUS(
-          Status::QueryError(std::string("Data buffer is not set")));
+      return LOG_STATUS(Status::QueryError(
+          std::string("Data buffer is not set for " + attr)));
     if (array_schema_->var_size(attr)) {
       // Var-sized
       // Check for data buffer under buffer_var
