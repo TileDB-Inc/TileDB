@@ -395,4 +395,9 @@ TEST_CASE(
   CHECK(attrs.count("a1") == 0);
   CHECK(attrs.count("a2") == 1);
   CHECK(attrs.count("a3") == 1);
+
+  // Clean up
+  if (vfs.is_dir(array_uri)) {
+    vfs.remove_dir(array_uri);
+  }
 }
