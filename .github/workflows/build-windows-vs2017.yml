@@ -266,6 +266,7 @@ jobs:
         shell: powershell
 
       - name: 'Test'
+        shell: powershell
         run: |
           $env:MINIO_ACCESS_KEY = "minio"
           $env:MINIO_SECRET_KEY = "miniosecretkey"
