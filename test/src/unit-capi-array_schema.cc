@@ -147,6 +147,10 @@ struct ArraySchemaFx {
       const char* name,
       void* domain,
       int32_t* is_empty);
+  int tiledb_array_evolve_wrapper(
+      tiledb_ctx_t* ctx,
+      const char* array_name,
+      tiledb_array_schema_evolution_t* array_schema_evolution);
 };
 
 ArraySchemaFx::ArraySchemaFx()
@@ -300,6 +304,37 @@ int ArraySchemaFx::tiledb_array_get_non_empty_domain_from_name_wrapper(
   tiledb_buffer_free(&buff);
   return tiledb_array_get_non_empty_domain_from_name(
       ctx, array, name, domain, is_empty);
+}
+
+int ArraySchemaFx::tiledb_array_evolve_wrapper(
+    tiledb_ctx_t* ctx,
+    const char* array_name,
+    tiledb_array_schema_evolution_t* array_schema_evolution) {
+#ifndef TILEDB_SERIALIZATION
+  return tiledb_array_evolve(ctx, array_name, array_schema_evolution);
+#endif
+  tiledb_buffer_t* buffer;
+
+  // Serialize the array schema evolution
+  int rc = tiledb_serialize_array_schema_evolution(
+      ctx,
+      array_schema_evolution,
+      (tiledb_serialization_type_t)tiledb::sm::SerializationType::CAPNP,
+      0,
+      &buffer);
+  REQUIRE(rc == TILEDB_OK);
+
+  // Deserialize to validate we can round-trip
+  rc = tiledb_deserialize_array_schema_evolution(
+      ctx,
+      buffer,
+      (tiledb_serialization_type_t)tiledb::sm::SerializationType::CAPNP,
+      1,
+      &array_schema_evolution);
+
+  tiledb_buffer_free(&buffer);
+
+  return tiledb_array_evolve(ctx, array_name, array_schema_evolution);
 }
 
 int ArraySchemaFx::array_create_wrapper(
@@ -1993,7 +2028,8 @@ TEST_CASE_METHOD(
   REQUIRE(rc == TILEDB_OK);
 
   // Evolve schema
-  rc = tiledb_array_evolve(ctx_, array_name.c_str(), array_schema_evolution);
+  rc = tiledb_array_evolve_wrapper(
+      ctx_, array_name.c_str(), array_schema_evolution);
   REQUIRE(rc == TILEDB_OK);
 
   // Clean up array schema evolution
@@ -2128,7 +2164,8 @@ TEST_CASE_METHOD(
   REQUIRE(rc == TILEDB_OK);
 
   // Evolve schema
-  rc = tiledb_array_evolve(ctx_, array_name.c_str(), array_schema_evolution);
+  rc = tiledb_array_evolve_wrapper(
+      ctx_, array_name.c_str(), array_schema_evolution);
   REQUIRE(rc == TILEDB_OK);
 
   // Clean up array schema evolution

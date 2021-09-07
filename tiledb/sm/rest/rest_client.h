@@ -155,7 +155,7 @@ class RestClient {
    * Post a data query to rest server
    *
    * @param uri of array being queried
-   * @param query to send to server and store results in, this qill be modified
+   * @param query to send to server and store results in, this will be modified
    * @return Status Ok() on success Error() on failures
    */
   Status finalize_query_to_rest(const URI& uri, Query* query);
@@ -167,6 +167,16 @@ class RestClient {
    * @return Status Ok() on success Error() on failures
    */
   Status get_query_est_result_sizes(const URI& uri, Query* query);
+
+  /**
+   * Post array schema evolution to rest server
+   *
+   * @param uri of array being queried
+   * @param array_schema_evolution to send to server
+   * @return Status Ok() on success Error() on failures
+   */
+  Status post_array_schema_evolution_to_rest(
+      const URI& uri, ArraySchemaEvolution* array_schema_evolution);
 
  private:
   /* ********************************* */
