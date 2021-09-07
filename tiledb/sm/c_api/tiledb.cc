@@ -61,6 +61,7 @@
 #include "tiledb/sm/query/query_condition.h"
 #include "tiledb/sm/rest/rest_client.h"
 #include "tiledb/sm/serialization/array_schema.h"
+#include "tiledb/sm/serialization/array_schema_evolution.h"
 #include "tiledb/sm/serialization/config.h"
 #include "tiledb/sm/serialization/query.h"
 #include "tiledb/sm/stats/global_stats.h"
@@ -5588,6 +5589,74 @@ int32_t tiledb_deserialize_array_schema(
               *buffer->buffer_))) {
     delete *array_schema;
     *array_schema = nullptr;
+    return TILEDB_ERR;
+  }
+
+  return TILEDB_OK;
+}
+
+int32_t tiledb_serialize_array_schema_evolution(
+    tiledb_ctx_t* ctx,
+    const tiledb_array_schema_evolution_t* array_schema_evolution,
+    tiledb_serialization_type_t serialize_type,
+    int32_t client_side,
+    tiledb_buffer_t** buffer) {
+  // Sanity check
+  if (sanity_check(ctx) == TILEDB_ERR ||
+      sanity_check(ctx, array_schema_evolution) == TILEDB_ERR)
+    return TILEDB_ERR;
+
+  // Create buffer
+  if (tiledb_buffer_alloc(ctx, buffer) != TILEDB_OK ||
+      sanity_check(ctx, *buffer) == TILEDB_ERR)
+    return TILEDB_ERR;
+
+  if (SAVE_ERROR_CATCH(
+          ctx,
+          tiledb::sm::serialization::array_schema_evolution_serialize(
+              array_schema_evolution->array_schema_evolution_,
+              (tiledb::sm::SerializationType)serialize_type,
+              (*buffer)->buffer_,
+              client_side))) {
+    tiledb_buffer_free(buffer);
+    return TILEDB_ERR;
+  }
+
+  return TILEDB_OK;
+}
+
+int32_t tiledb_deserialize_array_schema_evolution(
+    tiledb_ctx_t* ctx,
+    const tiledb_buffer_t* buffer,
+    tiledb_serialization_type_t serialize_type,
+    int32_t client_side,
+    tiledb_array_schema_evolution_t** array_schema_evolution) {
+  // Currently unused:
+  (void)client_side;
+
+  // Sanity check
+  if (sanity_check(ctx) == TILEDB_ERR ||
+      sanity_check(ctx, buffer) == TILEDB_ERR)
+    return TILEDB_ERR;
+
+  // Create array schema struct
+  *array_schema_evolution = new (std::nothrow) tiledb_array_schema_evolution_t;
+  if (*array_schema_evolution == nullptr) {
+    auto st = Status::Error(
+        "Failed to allocate TileDB array schema evolution object");
+    LOG_STATUS(st);
+    save_error(ctx, st);
+    return TILEDB_OOM;
+  }
+
+  if (SAVE_ERROR_CATCH(
+          ctx,
+          tiledb::sm::serialization::array_schema_evolution_deserialize(
+              &((*array_schema_evolution)->array_schema_evolution_),
+              (tiledb::sm::SerializationType)serialize_type,
+              *buffer->buffer_))) {
+    delete *array_schema_evolution;
+    *array_schema_evolution = nullptr;
     return TILEDB_ERR;
   }
 

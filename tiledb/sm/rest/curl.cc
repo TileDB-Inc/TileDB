@@ -37,6 +37,7 @@
 #include "tiledb/sm/misc/utils.h"
 #include "tiledb/sm/stats/global_stats.h"
 
+#include <algorithm>
 #include <cstring>
 #include <iostream>
 #include <sstream>
