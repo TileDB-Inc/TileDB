@@ -474,7 +474,11 @@ uint64_t FragmentMetadata::last_tile_cell_num() const {
 }
 
 Status FragmentMetadata::load(
-    const EncryptionKey& encryption_key, Buffer* f_buff, uint64_t offset) {
+    const EncryptionKey& encryption_key,
+    Buffer* f_buff,
+    uint64_t offset,
+    std::unordered_map<std::string, tiledb_shared_ptr<ArraySchema>>
+        array_schemas) {
   auto meta_uri = fragment_uri_.join_path(
       std::string(constants::fragment_metadata_filename));
   // Load the metadata file size when we are not reading from consolidated
@@ -498,7 +502,7 @@ Status FragmentMetadata::load(
   //    * __t1_t2_uuid_version
   if (f_version == 1)
     return load_v1_v2(encryption_key);
-  return load_v3_or_higher(encryption_key, f_buff, offset);
+  return load_v3_or_higher(encryption_key, f_buff, offset, array_schemas);
 }
 
 Status FragmentMetadata::store(const EncryptionKey& encryption_key) {
@@ -874,6 +878,9 @@ bool FragmentMetadata::operator<(const FragmentMetadata& metadata) const {
 
 Status FragmentMetadata::write_footer(Buffer* buff) const {
   RETURN_NOT_OK(write_version(buff));
+  if (version_ >= 10) {
+    RETURN_NOT_OK(write_array_schema_name(buff));
+  }
   RETURN_NOT_OK(write_dense(buff));
   RETURN_NOT_OK(write_non_empty_domain(buff));
   RETURN_NOT_OK(write_sparse_tile_num(buff));
@@ -882,9 +889,6 @@ Status FragmentMetadata::write_footer(Buffer* buff) const {
   RETURN_NOT_OK(write_file_var_sizes(buff));
   RETURN_NOT_OK(write_file_validity_sizes(buff));
   RETURN_NOT_OK(write_generic_tile_offsets(buff));
-  if (version_ >= 10) {
-    RETURN_NOT_OK(write_array_schema_name(buff));
-  }
   return Status::Ok();
 }
 
@@ -2020,7 +2024,7 @@ Status FragmentMetadata::load_array_schema_name(ConstBuffer* buff) {
   RETURN_NOT_OK(buff->read(&size, sizeof(uint64_t)));
   if (size == 0) {
     return LOG_STATUS(Status::FragmentMetadataError(
-        "Cannot load array schema name; Size of shema name is zero"));
+        "Cannot load array schema name; Size of schema name is zero"));
   }
   array_schema_name_.resize(size);
 
@@ -2066,13 +2070,21 @@ Status FragmentMetadata::load_v1_v2(const EncryptionKey& encryption_key) {
 }
 
 Status FragmentMetadata::load_v3_or_higher(
-    const EncryptionKey& encryption_key, Buffer* f_buff, uint64_t offset) {
-  RETURN_NOT_OK(load_footer(encryption_key, f_buff, offset));
+    const EncryptionKey& encryption_key,
+    Buffer* f_buff,
+    uint64_t offset,
+    std::unordered_map<std::string, tiledb_shared_ptr<ArraySchema>>
+        array_schemas) {
+  RETURN_NOT_OK(load_footer(encryption_key, f_buff, offset, array_schemas));
   return Status::Ok();
 }
 
 Status FragmentMetadata::load_footer(
-    const EncryptionKey& encryption_key, Buffer* f_buff, uint64_t offset) {
+    const EncryptionKey& encryption_key,
+    Buffer* f_buff,
+    uint64_t offset,
+    std::unordered_map<std::string, tiledb_shared_ptr<ArraySchema>>
+        array_schemas) {
   (void)encryption_key;  // Not used for now, perhaps in the future
   std::lock_guard<std::mutex> lock(mtx_);
 
@@ -2094,6 +2106,13 @@ Status FragmentMetadata::load_footer(
   }
 
   RETURN_NOT_OK(load_version(cbuff.get()));
+  if (version_ >= 10) {
+    RETURN_NOT_OK(load_array_schema_name(cbuff.get()));
+    auto schema = array_schemas.find(array_schema_name_);
+    if (schema != array_schemas.end()) {
+      set_array_schema(schema->second.get());
+    }
+  }
   RETURN_NOT_OK(load_dense(cbuff.get()));
   RETURN_NOT_OK(load_non_empty_domain(cbuff.get()));
   RETURN_NOT_OK(load_sparse_tile_num(cbuff.get()));
@@ -2118,9 +2137,6 @@ Status FragmentMetadata::load_footer(
   loaded_metadata_.tile_validity_offsets_.resize(num, false);
 
   RETURN_NOT_OK(load_generic_tile_offsets(cbuff.get()));
-  if (version_ >= 10) {
-    RETURN_NOT_OK(load_array_schema_name(cbuff.get()));
-  }
 
   loaded_metadata_.footer_ = true;
 
@@ -2248,7 +2264,7 @@ Status FragmentMetadata::write_array_schema_name(Buffer* buff) const {
   uint64_t size = array_schema_name_.size();
   if (size == 0) {
     return LOG_STATUS(Status::FragmentMetadataError(
-        "Cannot write array schema name; Size of shema name is zero"));
+        "Cannot write array schema name; Size of schema name is zero"));
   }
   RETURN_NOT_OK(buff->write(&size, sizeof(uint64_t)));
   return buff->write(array_schema_name_.c_str(), size);

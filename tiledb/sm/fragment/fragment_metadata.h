@@ -236,7 +236,11 @@ class FragmentMetadata {
    * versions if it is not `nullptr`.
    */
   Status load(
-      const EncryptionKey& encryption_key, Buffer* f_buff, uint64_t offset);
+      const EncryptionKey& encryption_key,
+      Buffer* f_buff,
+      uint64_t offset,
+      std::unordered_map<std::string, tiledb_shared_ptr<ArraySchema>>
+          array_schemas);
 
   /** Stores all the metadata to storage. */
   Status store(const EncryptionKey& encryption_key);
@@ -942,7 +946,11 @@ class FragmentMetadata {
    * it is not `nullptr` (version 3 or after).
    */
   Status load_v3_or_higher(
-      const EncryptionKey& encryption_key, Buffer* f_buff, uint64_t offset);
+      const EncryptionKey& encryption_key,
+      Buffer* f_buff,
+      uint64_t offset,
+      std::unordered_map<std::string, tiledb_shared_ptr<ArraySchema>>
+          array_schemas);
 
   /**
    * Loads the footer of the metadata file, which contains
@@ -951,7 +959,11 @@ class FragmentMetadata {
    * will be loaded from `f_buff`.
    */
   Status load_footer(
-      const EncryptionKey& encryption_key, Buffer* f_buff, uint64_t offset);
+      const EncryptionKey& encryption_key,
+      Buffer* f_buff,
+      uint64_t offset,
+      std::unordered_map<std::string, tiledb_shared_ptr<ArraySchema>>
+          array_schemas);
 
   /** Writes the sizes of each attribute file to the buffer. */
   Status write_file_sizes(Buffer* buff) const;
