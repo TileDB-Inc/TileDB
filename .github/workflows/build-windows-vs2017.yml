@@ -315,7 +315,7 @@ jobs:
           }
 
           # Actually run tests
-          #cmake --build $env:AGENT_BUILDDIRECTORY\tiledb --target check --config Release -- /verbosity:minimal
+          # cmake --build $env:AGENT_BUILDDIRECTORY\tiledb --target check --config Release -- /verbosity:minimal
           cmake --build $env:BUILD_SOURCESDIRECTORY\tiledb --target check --config Release -- /verbosity:minimal
 
           if ($LastExitCode -ne 0) {
@@ -324,7 +324,7 @@ jobs:
           }
 
           # Build the examples
-          #cmake --build $env:AGENT_BUILDDIRECTORY --target examples --config Release -- /verbosity:minimal
+          # cmake --build $env:AGENT_BUILDDIRECTORY --target examples --config Release -- /verbosity:minimal
           cmake --build $env:BUILD_SOURCESDIRECTORY --target examples --config Release -- /verbosity:minimal
 
           if ($LastExitCode -ne 0) {
@@ -332,8 +332,8 @@ jobs:
             $host.SetShouldExit($LastExitCode)
           }
 
-          #write-host "setting path with ';$env:AGENT_BUILDDIRECTORY\s\dist\bin;$env:AGENT_BUILDDIRECTORY\externals\install\bin'"
-          #env:Path += ";$env:AGENT_BUILDDIRECTORY\s\dist\bin;$env:AGENT_BUILDDIRECTORY\externals\install\bin"
+          # write-host "setting path with ';$env:AGENT_BUILDDIRECTORY\s\dist\bin;$env:AGENT_BUILDDIRECTORY\externals\install\bin'"
+          # $env:Path += ";$env:AGENT_BUILDDIRECTORY\s\dist\bin;$env:AGENT_BUILDDIRECTORY\externals\install\bin"
           write-host "setting path with ';$env:BUILD_SOURCESDIRECTORY\dist\bin;$env:AGENT_BUILDDIRECTORY\externals\install\bin'"
           $env:Path += ";$env:BUILD_SOURCESDIRECTORY\dist\bin;$env:AGENT_BUILDDIRECTORY\externals\install\bin"
 
