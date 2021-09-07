@@ -25,6 +25,44 @@ jobs:
     strategy:
       matrix:
         os: [windows-2016]
+        #considering https://stackoverflow.com/questions/65035256/how-to-access-matrix-variables-in-github-actions
+        environ: [azure, s3, serialization]
+        include:
+          - environ: 'azure'
+            TILEDB_AZURE: ON
+            TILEDB_ARROW_TESTS: ON
+            TILEDB_SERIALIZATION: OFF
+            TILEDB_S3: OFF
+          - environ: 's3'
+            TILEDB_S3: ON
+            TILEDB_ARROW_TESTS: ON
+            TILEDB_SERIALIZATION: OFF
+            TILEDB_AZURE: OFF
+          - environ: 'serialization'
+            TILEDB_S3: OFF
+            TILEDB_AZURE: OFF
+            TILEDB_ARROW_TESTS: OFF
+            TILEDB_SERIALIZATION: ON
+        #~ include:
+          #~ envs:
+            #~ S3:
+              #~ env:
+                #~ TILEDB_S3: ON
+                #~ TILEDB_ARROW_TESTS: ON
+                #~ TILEDB_SERIALIZATION: OFF
+                #~ TILEDB_AZURE: OFF
+            #~ azure:
+              #~ env:
+                #~ TILEDB_AZURE: ON
+                #~ TILEDB_ARROW_TESTS: ON
+                #~ TILEDB_SERIALIZATION: OFF
+                #~ TILEDB_S3: OFF
+            #~ serialization:
+              #~ env:
+                #~ TILEDB_S3: OFF
+                #~ TILEDB_AZURE: OFF
+                #~ TILEDB_ARROW_TESTS: OFF
+                #~ TILEDB_SERIALIZATION: ON
         #os: [windows-2019]
     #if: ${{ false == true }}
     #hmm, is that indented commenting approach acceptable, don't recall noticing when using before...
@@ -39,6 +77,9 @@ jobs:
     env:
       TILEDB_HOME: ${{ github.workspace }}
       TILEDB_GA_IMAGE_NAME: ${{ matrix.os }}
+      TILEDB_S3: ${{ matrix.S3 }}
+      TILEDB_AZURE: ${{ matrix.azure }}
+      TILEDB_SERIALIZATION: ${{ matrix.serialization }}
       #~ MINGW_INSTALLS: ${{ matrix.msystem }}
       #~ MINGW_ARCH: ${{ matrix.msystem }}
       #~ MINGW_TOOLCHAIN: ${{ matrix.toolchain }}
