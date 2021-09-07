@@ -199,6 +199,9 @@ class ArraySchema {
   /** Returns true if the input name is a dimension. */
   bool is_dim(const std::string& name) const;
 
+  /** Returns true if the input name is a dimension, attribute or coords. */
+  bool is_field(const std::string& name) const;
+
   /** Returns true if the input name is nullable. */
   bool is_nullable(const std::string& name) const;
 
@@ -332,6 +335,9 @@ class ArraySchema {
   /** Returns the schema name. If it is not set, will returns error status. */
   Status get_name(std::string* name) const;
 
+  /** Generates a new array schema URI. */
+  Status generate_uri();
+
  private:
   /* ********************************* */
   /*         PRIVATE ATTRIBUTES        */
@@ -426,9 +432,6 @@ class ArraySchema {
 
   /** Clears all members. Use with caution! */
   void clear();
-
-  /** Generates a new array schema URI. */
-  Status generate_uri();
 };
 
 }  // namespace sm

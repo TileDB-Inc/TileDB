@@ -809,6 +809,7 @@ Status StorageManager::array_create(
 
   std::lock_guard<std::mutex> lock{object_create_mtx_};
   array_schema->set_array_uri(array_uri);
+  RETURN_NOT_OK(array_schema->generate_uri());
   RETURN_NOT_OK(array_schema->check());
 
   // Create array directory
@@ -1552,7 +1553,11 @@ Status StorageManager::get_fragment_info(
       timestamp_range,
       array_get_memory_tracker(array.array_uri()),
       !sparse);
-  RETURN_NOT_OK(meta.load(*array.encryption_key(), nullptr, 0));
+  RETURN_NOT_OK(meta.load(
+      *array.encryption_key(),
+      nullptr,
+      0,
+      std::unordered_map<std::string, tiledb_shared_ptr<ArraySchema>>()));
 
   // This is important for format version > 2
   sparse = !meta.dense();
@@ -2603,18 +2608,12 @@ Status StorageManager::load_fragment_metadata(
 
       // Load fragment metadata
       RETURN_NOT_OK_ELSE(
-          metadata->load(encryption_key, f_buff, offset), tdb_delete(metadata));
+          metadata->load(
+              encryption_key, f_buff, offset, open_array->array_schemas()),
+          tdb_delete(metadata));
       open_array->insert_fragment_metadata(metadata);
     }
-    auto array_schema_name = metadata->array_schema_name();
-    tdb_shared_ptr<ArraySchema> frag_array_schema(nullptr);
-    RETURN_NOT_OK(
-        open_array->get_array_schema(array_schema_name, &frag_array_schema));
-    if (!frag_array_schema) {
-      return LOG_STATUS(Status::StorageManagerError(
-          "Cannot load fragment metadata; Null fragment array schema"));
-    }
-    metadata->set_array_schema(frag_array_schema.get());
+
     (*fragment_metadata)[f] = metadata;
     return Status::Ok();
   });
