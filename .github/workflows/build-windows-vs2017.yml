@@ -295,13 +295,19 @@ jobs:
             }
             else { #using the node/npm already present in vm
               Write-Host "azurite: using vm install nodejs"
-              #this code path avoids overhead of download/expand/install of alternate nodejs/azurite.
+              write-host "temp: '$env:TEMP'"
+               #this code path avoids overhead of download/expand/install of alternate nodejs/azurite.
               npm install -g azurite
+              write-host "done with 'npm install -g azurite'"
               $azuriteDataPath = (Join-Path $env:TEMP "azuriteData")
               New-Item -ItemType Directory -Path $azuriteDataPath
               $azuriteDebugLog = (Join-Path $env:TEMP "azuriteDebugLog.Log")
+              ls $env:TEMP
+              ls $env:azureDataPath
               cmd /c "start `"azurite`" azurite-blob --silent --location $azuriteDataPath --debug $azuriteDebugLog --blobPort 10000 --blobHost 127.0.0.1"
+              write-host "after starting azure'
             }
+            write-host "look for 'node.exe' in following list:"
             tasklist | findstr /i node.exe
           }
 
