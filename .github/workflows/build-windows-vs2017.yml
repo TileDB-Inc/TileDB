@@ -231,6 +231,8 @@ jobs:
           if ($env:TILEDB_WERROR -eq "OFF") {
             $bootstrapOptions = $bootstrapOptions + " -DisableWerror"
           }
+          
+          #$bootstrapOptions = $bootstrapOptions + " -Prefix $env:GITHUB_WORKSPACE\TileDB\TileDB\"
 
           $bootstrapExpression = "& $env:BUILD_SOURCESDIRECTORY\bootstrap.ps1 " + $bootstrapOptions
           Write-Host "bootstrapExpression: $bootstrapExpression"
@@ -284,7 +286,8 @@ jobs:
 
           # CMake exits with non-0 status if there are any warnings during the build, so
           # build the unit test executable before running tests.
-          cmake --build $env:AGENT_BUILDDIRECTORY\tiledb  -j $env:NUMBER_OF_PROCESSORS --target tiledb_unit --config Release -- /verbosity:minimal
+          #cmake --build $env:AGENT_BUILDDIRECTORY\tiledb  -j $env:NUMBER_OF_PROCESSORS --target tiledb_unit --config Release -- /verbosity:minimal
+          cmake --build $env:BUILD_SOURCESDIRECTORY\tiledb  -j $env:NUMBER_OF_PROCESSORS --target tiledb_unit --config Release -- /verbosity:minimal
 
           if ($env:TILEDB_AZURE -eq "ON") {
             $useTileDBInstallNodeJS = $False #$True
@@ -312,7 +315,8 @@ jobs:
           }
 
           # Actually run tests
-          cmake --build $env:AGENT_BUILDDIRECTORY\tiledb --target check --config Release -- /verbosity:minimal
+          #cmake --build $env:AGENT_BUILDDIRECTORY\tiledb --target check --config Release -- /verbosity:minimal
+          cmake --build $env:BUILD_SOURCESDIRECTORY\tiledb --target check --config Release -- /verbosity:minimal
 
           if ($LastExitCode -ne 0) {
              Write-Host "Tests failed. CMake exit status: " $LastExitCocde
@@ -320,19 +324,24 @@ jobs:
           }
 
           # Build the examples
-          cmake --build $env:AGENT_BUILDDIRECTORY --target examples --config Release -- /verbosity:minimal
+          #cmake --build $env:AGENT_BUILDDIRECTORY --target examples --config Release -- /verbosity:minimal
+          cmake --build $env:BUILD_SOURCESDIRECTORY --target examples --config Release -- /verbosity:minimal
 
           if ($LastExitCode -ne 0) {
             Write-Host "Examples failed to build."
             $host.SetShouldExit($LastExitCode)
           }
 
-          $env:Path += ";$env:AGENT_BUILDDIRECTORY\s\dist\bin;$env:AGENT_BUILDDIRECTORY\externals\install\bin"
+          write-host "setting path with ';$env:AGENT_BUILDDIRECTORY\s\dist\bin;$env:AGENT_BUILDDIRECTORY\externals\install\bin'"
+          #env:Path += ";$env:AGENT_BUILDDIRECTORY\s\dist\bin;$env:AGENT_BUILDDIRECTORY\externals\install\bin"
+          $env:Path += ";$env:BUILD_SOURCESDRECTORY\dist\bin;$env:AGENT_BUILDDIRECTORY\externals\install\bin"
 
-          ls $env:AGENT_BUILDDIRECTORY\tiledb\examples\c_api\Release
+          #ls $env:AGENT_BUILDDIRECTORY\tiledb\examples\c_api\Release
+          ls $env:BUILD_SOURCESDIRECTORY\tiledb\examples\c_api\Release
           
           try {
-            $exepath = Join-Path $env:AGENT_BUILDDIRECTORY "build\tiledb\examples\c_api\Release\quickstart_dense_c.exe"
+            #$exepath = Join-Path $env:AGENT_BUILDDIRECTORY "build\tiledb\examples\c_api\Release\quickstart_dense_c.exe"
+            $exepath = Join-Path $env:AGENT_BUILDDIRECTORY "tiledb\examples\c_api\Release\quickstart_dense_c.exe"
             & $exepath
           } catch {
             Write-Host "C API example failed. Error:"
@@ -341,7 +350,8 @@ jobs:
           }
 
           try {
-            $exepath = Join-Path $env:AGENT_BUILDDIRECTORY "build\tiledb\examples\cpp_api\Release\quickstart_dense_cpp.exe"
+            #$exepath = Join-Path $env:AGENT_BUILDDIRECTORY "build\tiledb\examples\cpp_api\Release\quickstart_dense_cpp.exe"
+            $exepath = Join-Path $env:BUILD_SOURCESDIRECTORY "tiledb\examples\cpp_api\Release\quickstart_dense_cpp.exe"
             & $exepath
           } catch {
             Write-Host "C++ API example failed."
@@ -354,14 +364,16 @@ jobs:
           }
 
           # Build examples
-          cd $env:AGENT_BUILDDIRECTORY\s\examples\cmake_project
+          #cd $env:AGENT_BUILDDIRECTORY\s\examples\cmake_project
+          cd $env:BUILD_SOURCESDIRECTORY\examples\cmake_project
 
           mkdir build
 
           cd build
 
           # Build zip artifact
-          cmake -A X64 -DCMAKE_PREFIX_PATH="$env:AGENT_BUILDDIRECTORY\s\dist" ..
+          #cmake -A X64 -DCMAKE_PREFIX_PATH="$env:AGENT_BUILDDIRECTORY\s\dist" ..
+          cmake -A X64 -DCMAKE_PREFIX_PATH="$env:BUILD_SOURCESDIRECTORY\dist" ..
 
           cmake --build . --config Release -- /verbosity:minimal
 
