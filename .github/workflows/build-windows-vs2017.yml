@@ -77,9 +77,10 @@ jobs:
     env:
       TILEDB_HOME: ${{ github.workspace }}
       TILEDB_GA_IMAGE_NAME: ${{ matrix.os }}
-      TILEDB_S3: ${{ matrix.S3 }}
-      TILEDB_AZURE: ${{ matrix.azure }}
-      TILEDB_SERIALIZATION: ${{ matrix.serialization }}
+      TILEDB_S3: ${{ matrix.TILEDB_S3 }}
+      TILEDB_AZURE: ${{ matrix.TILEDB_AZURE }} #azure }}
+      TILEDB_SERIALIZATION: ${{ matrix.TILEDB_SERIALIZATION }} #serialization }}
+      TILEDB_ARROW_TESTS: ${{ matrix.TILEDB_ARROW_TESTS }}
       #~ MINGW_INSTALLS: ${{ matrix.msystem }}
       #~ MINGW_ARCH: ${{ matrix.msystem }}
       #~ MINGW_TOOLCHAIN: ${{ matrix.toolchain }}
