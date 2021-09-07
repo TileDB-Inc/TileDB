@@ -332,12 +332,14 @@ jobs:
             $host.SetShouldExit($LastExitCode)
           }
 
-          write-host "setting path with ';$env:AGENT_BUILDDIRECTORY\s\dist\bin;$env:AGENT_BUILDDIRECTORY\externals\install\bin'"
+          #write-host "setting path with ';$env:AGENT_BUILDDIRECTORY\s\dist\bin;$env:AGENT_BUILDDIRECTORY\externals\install\bin'"
           #env:Path += ";$env:AGENT_BUILDDIRECTORY\s\dist\bin;$env:AGENT_BUILDDIRECTORY\externals\install\bin"
-          $env:Path += ";$env:BUILD_SOURCESDRECTORY\dist\bin;$env:AGENT_BUILDDIRECTORY\externals\install\bin"
+          write-host "setting path with ';$env:BUILD_SOURCESDIRECTORY\dist\bin;$env:AGENT_BUILDDIRECTORY\externals\install\bin'"
+          $env:Path += ";$env:BUILD_SOURCESDIRECTORY\dist\bin;$env:AGENT_BUILDDIRECTORY\externals\install\bin"
 
-          #ls $env:AGENT_BUILDDIRECTORY\tiledb\examples\c_api\Release
+          ls $env:AGENT_BUILDDIRECTORY\tiledb\examples\c_api\Release
           ls $env:BUILD_SOURCESDIRECTORY\tiledb\examples\c_api\Release
+          ls $env:BUILD_SOURCESDIRECTORY\examples\c_api\Release
           
           try {
             #$exepath = Join-Path $env:AGENT_BUILDDIRECTORY "build\tiledb\examples\c_api\Release\quickstart_dense_c.exe"
