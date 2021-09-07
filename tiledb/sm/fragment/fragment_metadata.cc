@@ -82,17 +82,8 @@ FragmentMetadata::FragmentMetadata(
   sparse_tile_num_ = 0;
   footer_size_ = 0;
   footer_offset_ = 0;
-  auto attributes = array_schema_->attributes();
-  for (unsigned i = 0; i < attributes.size(); ++i) {
-    auto attr_name = attributes[i]->name();
-    idx_map_[attr_name] = i;
-  }
-  idx_map_[constants::coords] = array_schema_->attribute_num();
-  for (unsigned i = 0; i < array_schema_->dim_num(); ++i) {
-    auto dim_name = array_schema_->dimension(i)->name();
-    idx_map_[dim_name] = array_schema_->attribute_num() + 1 + i;
-  }
 
+  build_idx_map();
   array_schema_->get_name(&array_schema_name_);
 }
 
@@ -162,6 +153,9 @@ void FragmentMetadata::set_tile_validity_offset(
 
 void FragmentMetadata::set_array_schema(ArraySchema* array_schema) {
   array_schema_ = array_schema;
+
+  // Rebuild index mapping
+  build_idx_map();
 }
 
 uint64_t FragmentMetadata::cell_num() const {
@@ -2621,6 +2615,25 @@ void FragmentMetadata::clean_up() {
   storage_manager_->close_file(fragment_metadata_uri);
   storage_manager_->vfs()->remove_file(fragment_metadata_uri);
   storage_manager_->array_xunlock(array_uri);
+}
+
+const ArraySchema* FragmentMetadata::array_schema() const {
+  return array_schema_;
+}
+
+void FragmentMetadata::build_idx_map() {
+  idx_map_.clear();
+
+  auto attributes = array_schema_->attributes();
+  for (unsigned i = 0; i < attributes.size(); ++i) {
+    auto attr_name = attributes[i]->name();
+    idx_map_[attr_name] = i;
+  }
+  idx_map_[constants::coords] = array_schema_->attribute_num();
+  for (unsigned i = 0; i < array_schema_->dim_num(); ++i) {
+    auto dim_name = array_schema_->dimension(i)->name();
+    idx_map_[dim_name] = array_schema_->attribute_num() + 1 + i;
+  }
 }
 
 // Explicit template instantiations

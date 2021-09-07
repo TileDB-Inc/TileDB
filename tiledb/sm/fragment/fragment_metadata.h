@@ -547,6 +547,13 @@ class FragmentMetadata {
   Status load_tile_validity_offsets(
       const EncryptionKey& encryption_key, std::vector<std::string>&& names);
 
+  /**
+   * Returns ArraySchema
+   *
+   * @return
+   */
+  const ArraySchema* array_schema() const;
+
  private:
   /* ********************************* */
   /*          TYPE DEFINITIONS         */
@@ -1133,6 +1140,11 @@ class FragmentMetadata {
    * return std::string The encoded dimension/attribute name.
    */
   std::string encode_name(const std::string& name) const;
+
+  /**
+   * This builds the index mapping for attribute/dimension name to id.
+   */
+  void build_idx_map();
 };
 
 }  // namespace sm
