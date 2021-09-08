@@ -279,6 +279,9 @@ jobs:
           
           # $env:AGENT_BUILDDIRECTORY = $env:GITHUB_WORKSPACE
 
+          $env:AGENT_BUILDDIRECTORY = $env:GITHUB_WORKSPACE.replace("TileDB\TileDB","tdbbd") # 't'ile'db' 'b'uild 'd'ir
+          $env:BUILD_SOURCESDIRECTORY = $env:GITHUB_WORKSPACE
+
           Write-Host "GITHUB_WORKSPACE is '$env:GITHUB_WORKSPACE'"
           Write-Host "AGENT_BUILDDIRECTORY is '$env:AGENT_BUILDDIRECTORY'"
           
