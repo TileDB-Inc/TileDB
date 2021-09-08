@@ -106,6 +106,7 @@ TEST_CASE_METHOD(
   Subarray subarray;
   QueryCondition condition;
   Reader reader(
+      global_logger().clone("test"),
       &g_helper_stats,
       nullptr,
       nullptr,

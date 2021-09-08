@@ -205,6 +205,8 @@ Status SparseGlobalOrderReader::dowork() {
     return Status::Ok();
   }
 
+  logger_->debug("read: copy data");
+
   // First try to limit the maximum number of cells we copy using the size
   // of the output buffers for fixed sized attributes. Later we will validate
   // the memory budget. This is the first line of defence used to try to prevent
@@ -443,6 +445,7 @@ Status SparseGlobalOrderReader::create_result_tiles(bool* tiles_found) {
 
 Status SparseGlobalOrderReader::compute_result_cell_slab() {
   auto timer_se = stats_->start_timer("compute_result_cell_slab");
+  logger_->debug("read: compute_result_cell_slab");
 
   // Create the result tiles we are going to process.
   bool tiles_found = false;
@@ -890,6 +893,8 @@ Status SparseGlobalOrderReader::remove_result_tile(
 }
 
 Status SparseGlobalOrderReader::end_iteration() {
+  logger_->debug("read: end iteration");
+
   // For easy reference.
   auto fragment_num = fragment_metadata_.size();
 
@@ -918,7 +923,10 @@ Status SparseGlobalOrderReader::end_iteration() {
   for (auto it = read_state_.result_cell_slabs_.begin(); it < cs_to_del_end;
        it++) {
     last_tile_processed[it->tile_->frag_idx()] = it->tile_->tile_idx();
+    total_num_cells_read_ += it->length_;
   }
+
+  logger_->debug("read {} cells", total_num_cells_read_);
 
   // Clear the tiles in each fragments until the front is the last seen.
   auto status = parallel_for(

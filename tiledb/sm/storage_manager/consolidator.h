@@ -174,6 +174,9 @@ class Consolidator {
   /** The class stats. */
   stats::Stats* stats_;
 
+  /** Logger for use on context; */
+  tdb_shared_ptr<Logger> logger_;
+
   /* ********************************* */
   /*          PRIVATE METHODS           */
   /* ********************************* */

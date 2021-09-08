@@ -62,6 +62,8 @@ namespace sm {
 Consolidator::Consolidator(StorageManager* storage_manager)
     : storage_manager_(storage_manager)
     , stats_(storage_manager_->stats()->create_child("Consolidator")) {
+  // This should come from the context
+  logger_ = global_logger().clone("consolidator");
 }
 
 Consolidator::~Consolidator() = default;
@@ -237,6 +239,8 @@ Status Consolidator::consolidate_fragments(
     // Check if there is anything to consolidate
     if (to_consolidate.size() <= 1)
       break;
+
+    logger_->debug("consolidating {} fragments", to_consolidate.size());
 
     // Consolidate the selected fragments
     URI new_fragment_uri;
@@ -531,9 +535,13 @@ Status Consolidator::copy_array(
   // the query submission.
   RETURN_NOT_OK(set_query_buffers(query_r, sparse_mode, buffers, buffer_sizes));
 
+  uint64_t loop_num = 0;
   do {
+    ++loop_num;
+    logger_->debug("loop_num {}", loop_num);
     // READ
     RETURN_NOT_OK(query_r->submit());
+    logger_->debug("read data");
 
     // Set explicitly the write query buffers, as the sizes may have
     // been altered by the read query.
@@ -542,6 +550,7 @@ Status Consolidator::copy_array(
 
     // WRITE
     RETURN_NOT_OK(query_w->submit());
+    logger_->debug("wrote data");
   } while (query_r->status() == QueryStatus::INCOMPLETE);
 
   return Status::Ok();

@@ -83,7 +83,8 @@ SparseIndexReaderBase::SparseIndexReaderBase(
     , memory_budget_ratio_tile_ranges_(0.1)
     , memory_budget_ratio_array_data_(0.1)
     , memory_budget_ratio_result_tiles_(0.05)
-    , memory_budget_ratio_rcs_(0.05) {
+    , memory_budget_ratio_rcs_(0.05)
+    , total_num_cells_read_(0) {
 }
 
 /* ****************************** */
@@ -115,6 +116,14 @@ Status SparseIndexReaderBase::load_initial_data() {
 
   // For easy reference.
   auto fragment_num = fragment_metadata_.size();
+
+  // Log the total number of cells.
+  uint64_t total_num_cells = 0;
+  for (auto frag_md : fragment_metadata_) {
+    total_num_cells += frag_md->cell_num();
+  }
+
+  logger_->debug("total cell number {}", total_num_cells);
 
   // Make sure we have enough space for tiles data.
   read_state_.frag_tile_idx_.resize(fragment_num);

@@ -153,6 +153,9 @@ class SparseIndexReaderBase : public ReaderBase {
   /** How much of the memory budget is reserved for result cell slabs. */
   double memory_budget_ratio_rcs_;
 
+  /** Total number of cells read. */
+  uint64_t total_num_cells_read_;
+
   /* ********************************* */
   /*         PROTECTED METHODS         */
   /* ********************************* */

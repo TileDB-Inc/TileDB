@@ -196,6 +196,8 @@ Status SparseUnorderedWithDupsReader::dowork() {
     return Status::Ok();
   }
 
+  logger_->debug("read: copy data");
+
   // First try to limit the maximum number of cells we copy using the size
   // of the output buffers for fixed sized attributes. Later we will validate
   // the memory budget. This is the first line of defence used to try to prevent
@@ -457,6 +459,7 @@ Status SparseUnorderedWithDupsReader::create_result_tiles(bool* tiles_found) {
 
 Status SparseUnorderedWithDupsReader::compute_result_cell_slab() {
   auto timer_se = stats_->start_timer("compute_result_cell_slab");
+  logger_->debug("read: compute_result_cell_slab");
 
   // Create the result tiles we are going to process.
   bool tiles_found = false;
@@ -609,6 +612,15 @@ Status SparseUnorderedWithDupsReader::end_iteration() {
     auto f = result_tiles_.front().frag_idx();
     RETURN_NOT_OK(remove_result_tile(f, result_tiles_.begin()));
   }
+
+  // Count the number of cells read.
+  for (auto it = read_state_.result_cell_slabs_.begin();
+       it < read_state_.result_cell_slabs_.begin() + copy_end_.first;
+       it++) {
+    total_num_cells_read_ += it->length_;
+  }
+
+  logger_->debug("read {} cells", total_num_cells_read_);
 
   // Erase from the vector.
   read_state_.result_cell_slabs_.erase(
