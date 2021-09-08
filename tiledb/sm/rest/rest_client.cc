@@ -368,10 +368,8 @@ Status RestClient::post_query_submit(
                     "&read_all=" + (resubmit_incomplete_ ? "true" : "false");
 
   // Remote array reads always supply the timestamp.
-  if (query->type() == QueryType::READ) {
-    url += "&start_timestamp=" + std::to_string(array->timestamp_start());
-    url += "&end_timestamp=" + std::to_string(array->timestamp_end());
-  }
+  url += "&start_timestamp=" + std::to_string(array->timestamp_start());
+  url += "&end_timestamp=" + std::to_string(array->timestamp_end());
 
   // Create the callback that will process the response buffers as they
   // are received.
