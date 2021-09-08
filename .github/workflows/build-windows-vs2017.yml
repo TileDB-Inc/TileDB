@@ -309,7 +309,7 @@ jobs:
               ls $env:TEMP
               ls $env:azureDataPath
               cmd /c "start `"azurite`" azurite-blob --silent --location $azuriteDataPath --debug $azuriteDebugLog --blobPort 10000 --blobHost 127.0.0.1"
-              write-host "after starting azure'
+              write-host "after starting azure"
             }
             write-host "look for 'node.exe' in following list:"
             tasklist | findstr /i node.exe
