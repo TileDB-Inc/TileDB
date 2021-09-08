@@ -20,7 +20,6 @@ env:
 
 jobs:
   build:
-    #runs-on: windows-2016
     runs-on: ${{ matrix.os }}
     strategy:
       matrix:
