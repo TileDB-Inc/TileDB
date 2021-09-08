@@ -409,7 +409,7 @@ jobs:
           #cmake -A X64 -DCMAKE_PREFIX_PATH="$env:AGENT_BUILDDIRECTORY\s\dist" ..
           cmake -A X64 -DCMAKE_PREFIX_PATH="$env:BUILD_SOURCESDIRECTORY\dist" ..
 
-          write-host "point T"'
+          write-host "point T"
 
           cmake --build . --config Release -- /verbosity:minimal
 
