@@ -275,29 +275,43 @@ jobs:
           
           $env:AGENT_BUILDDIRECTORY = $env:GITHUB_WORKSPACE
 
+          Write-Host "GITHUB_WORKSPACE is '$env:GITHUB_WORKSPACE'"
+          Write-Host "AGENT_BUILDDIRECTORY is $env:AGENT_BUILDDIRECTORY"
+          
+          write-host "point A"
+
           # Clone backwards compatibility test arrays
           if ($env:BACKWARDS_COMPATIBILITY_ARRAYS -eq "ON") {
             git clone https://github.com/TileDB-Inc/TileDB-Unit-Test-Arrays.git --branch 2.2.3 $env:BUILD_SOURCESDIRECTORY/test/inputs/arrays/read_compatibility_test
           }
 
+          write-host "point B"
+          
           if ($env:TILEDB_S3 -eq "ON") {
             # update CMake to disable S3 for the test configuration, see minio note above
-            cmake -B $env:AGENT_BUILDDIRECTORY\tiledb -DTILEDB_S3=0 $env:AGENT_BUILDDIRECTORY\tiledb
+            #cmake -B $env:AGENT_BUILDDIRECTORY\tiledb -DTILEDB_S3=0 $env:AGENT_BUILDDIRECTORY\tiledb
+            cmake -B $env:AGENT_BUILDDIRECTORY\tiledb -DTILEDB_S3=0 $env:BUILD_SOURCESDIRECTORY
           }
 
+          write-host "point C"
+          
           # CMake exits with non-0 status if there are any warnings during the build, so
           # build the unit test executable before running tests.
           #cmake --build $env:AGENT_BUILDDIRECTORY\tiledb  -j $env:NUMBER_OF_PROCESSORS --target tiledb_unit --config Release -- /verbosity:minimal
-          cmake --build $env:BUILD_SOURCESDIRECTORY\tiledb  -j $env:NUMBER_OF_PROCESSORS --target tiledb_unit --config Release -- /verbosity:minimal
+          cmake --build $env:AGENT_BUILDDIRECTORY  -j $env:NUMBER_OF_PROCESSORS --target tiledb_unit --config Release -- /verbosity:minimal
 
+          write-host "point D"
+          
           if ($env:TILEDB_AZURE -eq "ON") {
             $useTileDBInstallNodeJS = $False #$True
             if($useTileDBInstallNodeJS) {
+              write-host "point E"
               Write-Host "azurite: using custom install nodejs"
               #in CI environ, doesn't work with 'local' install, works when -g'lobal' install used in the .ps1
               & "$env:BUILD_SOURCESDIRECTORY\scripts\install-run-azurite.ps1"
             }
             else { #using the node/npm already present in vm
+              write-host "point F"
               Write-Host "azurite: using vm install nodejs"
               write-host "temp: '$env:TEMP'"
                #this code path avoids overhead of download/expand/install of alternate nodejs/azurite.
@@ -313,35 +327,45 @@ jobs:
             }
             write-host "look for 'node.exe' in following list:"
             tasklist | findstr /i node.exe
+            write-host "point G"
           }
 
+          write-host "point H"
           # Actually run tests
           # cmake --build $env:AGENT_BUILDDIRECTORY\tiledb --target check --config Release -- /verbosity:minimal
           cmake --build $env:BUILD_SOURCESDIRECTORY\tiledb --target check --config Release -- /verbosity:minimal
+          write-host "point I"
 
           if ($LastExitCode -ne 0) {
              Write-Host "Tests failed. CMake exit status: " $LastExitCocde
              $host.SetShouldExit($LastExitCode)
           }
+          write-host "point J"
 
           # Build the examples
           # cmake --build $env:AGENT_BUILDDIRECTORY --target examples --config Release -- /verbosity:minimal
           cmake --build $env:BUILD_SOURCESDIRECTORY --target examples --config Release -- /verbosity:minimal
+          write-host "point K"
 
           if ($LastExitCode -ne 0) {
             Write-Host "Examples failed to build."
             $host.SetShouldExit($LastExitCode)
           }
+          write-host "point L"
 
           # write-host "setting path with ';$env:AGENT_BUILDDIRECTORY\s\dist\bin;$env:AGENT_BUILDDIRECTORY\externals\install\bin'"
           # $env:Path += ";$env:AGENT_BUILDDIRECTORY\s\dist\bin;$env:AGENT_BUILDDIRECTORY\externals\install\bin"
           write-host "setting path with ';$env:BUILD_SOURCESDIRECTORY\dist\bin;$env:AGENT_BUILDDIRECTORY\externals\install\bin'"
           $env:Path += ";$env:BUILD_SOURCESDIRECTORY\dist\bin;$env:AGENT_BUILDDIRECTORY\externals\install\bin"
 
+          write-host "point M"
+          
           ls $env:AGENT_BUILDDIRECTORY\tiledb\examples\c_api\Release
           ls $env:BUILD_SOURCESDIRECTORY\tiledb\examples\c_api\Release
           ls $env:BUILD_SOURCESDIRECTORY\examples\c_api\Release
           
+          write-host "point N"
+
           try {
             #$exepath = Join-Path $env:AGENT_BUILDDIRECTORY "build\tiledb\examples\c_api\Release\quickstart_dense_c.exe"
             $exepath = Join-Path $env:AGENT_BUILDDIRECTORY "tiledb\examples\c_api\Release\quickstart_dense_c.exe"
@@ -351,6 +375,7 @@ jobs:
             Write-Host $_
             $host.SetShouldExit(1)
           }
+          write-host "point O"
 
           try {
             #$exepath = Join-Path $env:AGENT_BUILDDIRECTORY "build\tiledb\examples\cpp_api\Release\quickstart_dense_cpp.exe"
@@ -360,30 +385,44 @@ jobs:
             Write-Host "C++ API example failed."
             $host.SetShouldExit(1)
           }
+          write-host "point P"
 
           if ($LastExitCode -ne 0) {
             Write-Host "C++ API example failed."
             $host.SetShouldExit($LastExitCode)
           }
+          write-host "point Q"
 
           # Build examples
           #cd $env:AGENT_BUILDDIRECTORY\s\examples\cmake_project
           cd $env:BUILD_SOURCESDIRECTORY\examples\cmake_project
 
+          write-host "point R"
+
           mkdir build
 
           cd build
+
+          write-host "point S"
 
           # Build zip artifact
           #cmake -A X64 -DCMAKE_PREFIX_PATH="$env:AGENT_BUILDDIRECTORY\s\dist" ..
           cmake -A X64 -DCMAKE_PREFIX_PATH="$env:BUILD_SOURCESDIRECTORY\dist" ..
 
+          write-host "point T"'
+
           cmake --build . --config Release -- /verbosity:minimal
+
+          write-host "point U"
 
           .\Release\ExampleExe.exe
 
+          write-host "point R"
+
           .\Release\ExampleExe_static.exe
 
+          write-host "point S"
+          
           #cd $env:AGENT_BUILDDIRECTORY
 
           #7z a tiledb-windows-x64.zip $env:AGENT_BUILDDIRECTORY\s\dist
