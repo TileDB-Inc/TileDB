@@ -399,7 +399,8 @@ jobs:
 
           try {
             #$exepath = Join-Path $env:AGENT_BUILDDIRECTORY "build\tiledb\examples\cpp_api\Release\quickstart_dense_cpp.exe"
-            $exepath = Join-Path $env:BUILD_SOURCESDIRECTORY "tiledb\examples\cpp_api\Release\quickstart_dense_cpp.exe"
+            #$exepath = Join-Path $env:BUILD_SOURCESDIRECTORY "tiledb\examples\cpp_api\Release\quickstart_dense_cpp.exe"
+            $exepath = Join-Path $env:AGENT_BUILDDIRECTORY "tiledb\examples\cpp_api\Release\quickstart_dense_cpp.exe"
             & $exepath
           } catch {
             Write-Host "C++ API example failed."
