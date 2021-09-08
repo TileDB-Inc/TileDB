@@ -363,8 +363,8 @@ jobs:
           Write-Host "point J"
 
           # Build the examples
-          # cmake --build $env:AGENT_BUILDDIRECTORY --target examples --config Release -- /verbosity:minimal
-          cmake --build $env:BUILD_SOURCESDIRECTORY --target examples --config Release -- /verbosity:minimal
+          cmake --build $env:AGENT_BUILDDIRECTORY --target examples --config Release -- /verbosity:minimal
+          # cmake --build $env:BUILD_SOURCESDIRECTORY --target examples --config Release -- /verbosity:minimal
           Write-Host "point K"
 
           if ($LastExitCode -ne 0) {
@@ -381,8 +381,8 @@ jobs:
           Write-Host "point M"
           
           ls $env:AGENT_BUILDDIRECTORY\tiledb\examples\c_api\Release
-          ls $env:BUILD_SOURCESDIRECTORY\tiledb\examples\c_api\Release
-          ls $env:BUILD_SOURCESDIRECTORY\examples\c_api\Release
+          #ls $env:BUILD_SOURCESDIRECTORY\tiledb\examples\c_api\Release
+          #ls $env:BUILD_SOURCESDIRECTORY\examples\c_api\Release
           
           Write-Host "point N"
 
