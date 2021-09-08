@@ -273,7 +273,7 @@ jobs:
           $env:AWS_ACCESS_KEY_ID = "minio"
           $env:AWS_SECRET_ACCESS_KEY = "miniosecretkey"
           
-          $env:AGENT_BUILDDIRECTORY = $env:GITHUB_WORKSPACE
+          # $env:AGENT_BUILDDIRECTORY = $env:GITHUB_WORKSPACE
 
           Write-Host "GITHUB_WORKSPACE is '$env:GITHUB_WORKSPACE'"
           Write-Host "AGENT_BUILDDIRECTORY is $env:AGENT_BUILDDIRECTORY"
@@ -298,7 +298,7 @@ jobs:
           # CMake exits with non-0 status if there are any warnings during the build, so
           # build the unit test executable before running tests.
           #cmake --build $env:AGENT_BUILDDIRECTORY\tiledb  -j $env:NUMBER_OF_PROCESSORS --target tiledb_unit --config Release -- /verbosity:minimal
-          cmake --build $env:AGENT_BUILDDIRECTORY  -j $env:NUMBER_OF_PROCESSORS --target tiledb_unit --config Release -- /verbosity:minimal
+          cmake --build $env:AGENT_BUILDDIRECTORY\tiledb  -j $env:NUMBER_OF_PROCESSORS --target tiledb_unit --config Release -- /verbosity:minimal
 
           write-host "point D"
           
@@ -333,7 +333,8 @@ jobs:
           write-host "point H"
           # Actually run tests
           # cmake --build $env:AGENT_BUILDDIRECTORY\tiledb --target check --config Release -- /verbosity:minimal
-          cmake --build $env:BUILD_SOURCESDIRECTORY\tiledb --target check --config Release -- /verbosity:minimal
+          #cmake --build $env:BUILD_SOURCESDIRECTORY\tiledb --target check --config Release -- /verbosity:minimal
+          cmake --build $env:AGENT_BUILDDIRECTORY --target check --config Release -- /verbosity:minimal
           write-host "point I"
 
           if ($LastExitCode -ne 0) {
