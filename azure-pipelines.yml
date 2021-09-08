@@ -78,6 +78,7 @@ stages:
       MACOSX_DEPLOYMENT_TARGET: 10.14
     jobs:
      - job:
+       timeoutInMinutes: 90
        strategy:
          matrix:
            linux:
