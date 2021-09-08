@@ -68,6 +68,7 @@
 * Changes to address issues with default string dimension ranges in query [#2436](https://github.com/TileDB-Inc/TileDB/pull/2436)
 * Only set cmake policy CMP0076 if cmake version in use knows about it [#2463](https://github.com/TileDB-Inc/TileDB/pull/2463)
 * Fix handling curl REST request having all data in single call back [#2485](https://github.com/TileDB-Inc/TileDB/pull/2485)
+* Write queries should post start/end timestamps for REST arrays [#2492](https://github.com/TileDB-Inc/TileDB/pull/2492)
 
 ## API additions
 
