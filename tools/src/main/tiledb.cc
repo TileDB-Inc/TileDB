@@ -56,7 +56,7 @@
 #include "commands/info_command.h"
 
 using namespace tiledb::cli;
-//using namespace clipp;
+// using namespace clipp;
 
 #if 01
 int main(int argc, char** argv) {
@@ -64,10 +64,12 @@ int main(int argc, char** argv) {
   Mode mode = Mode::Undef;
 
   InfoCommand info;
-  auto info_mode = (clipp::command("info").set(mode, Mode::Info), info.get_cli());
+  auto info_mode =
+      (clipp::command("info").set(mode, Mode::Info), info.get_cli());
 
   HelpCommand help;
-  auto help_mode = (clipp::command("help").set(mode, Mode::Help), help.get_cli());
+  auto help_mode =
+      (clipp::command("help").set(mode, Mode::Help), help.get_cli());
 
   auto all_args = help_mode | info_mode;
 
