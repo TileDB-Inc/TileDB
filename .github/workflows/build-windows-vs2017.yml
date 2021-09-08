@@ -353,7 +353,7 @@ jobs:
           #cmake --build "$env:AGENT_BUILDDIRECTORY\tiledb" --target check --config Release -- /verbosity:minimal
           $cmds = "cmake --build $env:AGENT_BUILDDIRECTORY\tiledb --target check --config Release -- /verbosity:minimal"
           Write-Host "cmds: '$cmds'"
-          & $cmds
+          Invoke-Expression $cmds
           Write-Host "point I"
 
           if ($LastExitCode -ne 0) {
