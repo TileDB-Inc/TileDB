@@ -113,7 +113,7 @@ jobs:
           $ErrorView = "NormalView" 
           
           Write-Host "GITHUB_WORKSPACE is '$env:GITHUB_WORKSPACE'"
-          Write-Host "AGENT_BUILDDIRECTORY is $env:AGENT_BUILDDIRECTORY"
+          Write-Host "BUILD_BUILDDIRECTORY is $env:BUILD_BUILDDIRECTORY"
           Write-Host "Number of processors is $env:NUMBER_OF_PROCESSORS"
           Write-Host "Running on image '$env:imageName'"
           Write-Host "Running on image '$($env:imageName)'"
@@ -134,13 +134,13 @@ jobs:
           #Write-Host "cmake at " + $cmakepath
 
           # Using names that were on azure, doc states they should have appended _PATH for GA
-          # AP to GA, changing AGENT_BUILDDIRECTORY and BUILD_SOURCESDIRECTORY to GITHUB_WORKSPACE
-          #$env:AGENT_BUILDDIRECTORY = $env:GITHUB_WORKSPACE
-          $env:AGENT_BUILDDIRECTORY = $env:GITHUB_WORKSPACE.replace("TileDB\TileDB","tdbbd") # 't'ile'db' 'b'uild 'd'ir
+          # AP to GA, changing BUILD_BUILDDIRECTORY and BUILD_SOURCESDIRECTORY to GITHUB_WORKSPACE
+          #$env:BUILD_BUILDDIRECTORY = $env:GITHUB_WORKSPACE
+          $env:BUILD_BUILDDIRECTORY = $env:GITHUB_WORKSPACE.replace("TileDB\TileDB","tdbbd") # 't'ile'db' 'b'uild 'd'ir
           $env:BUILD_SOURCESDIRECTORY = $env:GITHUB_WORKSPACE
 
           Write-Host "GITHUB_WORKSPACE is '$env:GITHUB_WORKSPACE'"
-          Write-Host "AGENT_BUILDDIRECTORY is '$env:AGENT_BUILDDIRECTORY'"
+          Write-Host "BUILD_BUILDDIRECTORY is '$env:BUILD_BUILDDIRECTORY'"
           Write-Host "BUILD_SOURCESDIRECTORY is '$env:BUILD_SOURCESDIRECTORY'"
 
           # TBD: because of 'too long' paths in azure/gcs, 
@@ -148,12 +148,12 @@ jobs:
           # underneath TileDB/TileDB where GA currently locates
           cmd /c "echo current dir @%cd% & dir"
           cmd /c "echo dir above @%cd% & dir .."
-          #mkdir $env:AGENT_BUILDDIRECTORY\build
-          mkdir $env:AGENT_BUILDDIRECTORY
-          #cmd /c "mkdir $env:AGENT_BUILDDIRECTORY\build"
+          #mkdir $env:BUILD_BUILDDIRECTORY\build
+          mkdir $env:BUILD_BUILDDIRECTORY
+          #cmd /c "mkdir $env:BUILD_BUILDDIRECTORY\build"
           cmd /c "echo @%cd% & dir"
-          #cd $env:AGENT_BUILDDIRECTORY\build
-          cd $env:AGENT_BUILDDIRECTORY
+          #cd $env:BUILD_BUILDDIRECTORY\build
+          cd $env:BUILD_BUILDDIRECTORY
           cmd /c "echo @%cd% & dir"
 
           #if ($env:imageName -eq "windows-2016") {
@@ -245,10 +245,10 @@ jobs:
           }
 
           cmd /c "cd & dir"
-          Write-Host "env:AGENT_BUILDDIRECTORY: '$env:AGENT_BUILDDIRECTORY'"
+          Write-Host "env:BUILD_BUILDDIRECTORY: '$env:BUILD_BUILDDIRECTORY'"
 
-          #cmake --build $env:AGENT_BUILDDIRECTORY\build --config Release -j $env:NUMBER_OF_PROCESSORS
-          cmake --build $env:AGENT_BUILDDIRECTORY --config Release -j $env:NUMBER_OF_PROCESSORS
+          #cmake --build $env:BUILD_BUILDDIRECTORY\build --config Release -j $env:NUMBER_OF_PROCESSORS
+          cmake --build $env:BUILD_BUILDDIRECTORY --config Release -j $env:NUMBER_OF_PROCESSORS
 
           if ($LastExitCode -ne 0) {
             Write-Host "Build failed. CMake exit status: " $LastExitCocde
@@ -256,8 +256,8 @@ jobs:
             exit $LastExitCode
           }
 
-          #cmake --build $env:AGENT_BUILDDIRECTORY\build  -j $env:NUMBER_OF_PROCESSORS --target install-tiledb --config Release 2>&1
-          cmake --build $env:AGENT_BUILDDIRECTORY  -j $env:NUMBER_OF_PROCESSORS --target install-tiledb --config Release 2>&1
+          #cmake --build $env:BUILD_BUILDDIRECTORY\build  -j $env:NUMBER_OF_PROCESSORS --target install-tiledb --config Release 2>&1
+          cmake --build $env:BUILD_BUILDDIRECTORY  -j $env:NUMBER_OF_PROCESSORS --target install-tiledb --config Release 2>&1
 
           if ($LastExitCode -ne 0) {
             Write-Host "Installation failed."
@@ -277,13 +277,13 @@ jobs:
           
           write-host "point minusA"
           
-          # $env:AGENT_BUILDDIRECTORY = $env:GITHUB_WORKSPACE
+          # $env:BUILD_BUILDDIRECTORY = $env:GITHUB_WORKSPACE
 
-          $env:AGENT_BUILDDIRECTORY = $env:GITHUB_WORKSPACE.replace("TileDB\TileDB","tdbbd") # 't'ile'db' 'b'uild 'd'ir
+          $env:BUILD_BUILDDIRECTORY = $env:GITHUB_WORKSPACE.replace("TileDB\TileDB","tdbbd") # 't'ile'db' 'b'uild 'd'ir
           $env:BUILD_SOURCESDIRECTORY = $env:GITHUB_WORKSPACE
 
           Write-Host "GITHUB_WORKSPACE is '$env:GITHUB_WORKSPACE'"
-          Write-Host "AGENT_BUILDDIRECTORY is '$env:AGENT_BUILDDIRECTORY'"
+          Write-Host "BUILD_BUILDDIRECTORY is '$env:BUILD_BUILDDIRECTORY'"
           
           Write-Host "point A"
 
@@ -296,16 +296,16 @@ jobs:
           
           if ($env:TILEDB_S3 -eq "ON") {
             # update CMake to disable S3 for the test configuration, see minio note above
-            #cmake -B $env:AGENT_BUILDDIRECTORY\tiledb -DTILEDB_S3=0 $env:AGENT_BUILDDIRECTORY\tiledb
-            cmake -B $env:AGENT_BUILDDIRECTORY\tiledb -DTILEDB_S3=0 $env:BUILD_SOURCESDIRECTORY
+            #cmake -B $env:BUILD_BUILDDIRECTORY\tiledb -DTILEDB_S3=0 $env:BUILD_BUILDDIRECTORY\tiledb
+            cmake -B $env:BUILD_BUILDDIRECTORY\tiledb -DTILEDB_S3=0 $env:BUILD_SOURCESDIRECTORY
           }
 
           Write-Host "point C"
           
           # CMake exits with non-0 status if there are any warnings during the build, so
           # build the unit test executable before running tests.
-          #cmake --build $env:AGENT_BUILDDIRECTORY\tiledb  -j $env:NUMBER_OF_PROCESSORS --target tiledb_unit --config Release -- /verbosity:minimal
-          cmake --build $env:AGENT_BUILDDIRECTORY\tiledb  -j $env:NUMBER_OF_PROCESSORS --target tiledb_unit --config Release -- /verbosity:minimal
+          #cmake --build $env:BUILD_BUILDDIRECTORY\tiledb  -j $env:NUMBER_OF_PROCESSORS --target tiledb_unit --config Release -- /verbosity:minimal
+          cmake --build $env:BUILD_BUILDDIRECTORY\tiledb  -j $env:NUMBER_OF_PROCESSORS --target tiledb_unit --config Release -- /verbosity:minimal
 
           Write-Host "point D"
           
@@ -338,20 +338,20 @@ jobs:
           }
 
           Write-Host "point H"
-          Write-Host "AGENT_BUILDDIRECTORY is '$env:AGENT_BUILDDIRECTORY'"
+          Write-Host "BUILD_BUILDDIRECTORY is '$env:BUILD_BUILDDIRECTORY'"
           cmd /c "echo @ %cd%"
           Write-Host "point H2"
-          ls $env:AGENT_BUILDDIRECTORY
+          ls $env:BUILD_BUILDDIRECTORY
           Write-Host "point H3"
-          ls $env:AGENT_BUILDDIRECTORY\tiledb
+          ls $env:BUILD_BUILDDIRECTORY\tiledb
           Write-Host "point H4"
           
           # Actually run tests
-          # cmake --build $env:AGENT_BUILDDIRECTORY\tiledb --target check --config Release -- /verbosity:minimal
+          # cmake --build $env:BUILD_BUILDDIRECTORY\tiledb --target check --config Release -- /verbosity:minimal
           #cmake --build $env:BUILD_SOURCESDIRECTORY\tiledb --target check --config Release -- /verbosity:minimal
-          #cmake --build $env:AGENT_BUILDDIRECTORY --target check --config Release -- /verbosity:minimal
-          #cmake --build "$env:AGENT_BUILDDIRECTORY\tiledb" --target check --config Release -- /verbosity:minimal
-          $cmds = "cmake --build $env:AGENT_BUILDDIRECTORY\tiledb --target check --config Release -- /verbosity:minimal"
+          #cmake --build $env:BUILD_BUILDDIRECTORY --target check --config Release -- /verbosity:minimal
+          #cmake --build "$env:BUILD_BUILDDIRECTORY\tiledb" --target check --config Release -- /verbosity:minimal
+          $cmds = "cmake --build $env:BUILD_BUILDDIRECTORY\tiledb --target check --config Release -- /verbosity:minimal"
           Write-Host "cmds: '$cmds'"
           Invoke-Expression $cmds
           Write-Host "point I"
@@ -363,7 +363,7 @@ jobs:
           Write-Host "point J"
 
           # Build the examples
-          cmake --build $env:AGENT_BUILDDIRECTORY --target examples --config Release -- /verbosity:minimal
+          cmake --build $env:BUILD_BUILDDIRECTORY --target examples --config Release -- /verbosity:minimal
           # cmake --build $env:BUILD_SOURCESDIRECTORY --target examples --config Release -- /verbosity:minimal
           Write-Host "point K"
 
@@ -373,22 +373,22 @@ jobs:
           }
           Write-Host "point L"
 
-          # Write-Host "setting path with ';$env:AGENT_BUILDDIRECTORY\s\dist\bin;$env:AGENT_BUILDDIRECTORY\externals\install\bin'"
-          # $env:Path += ";$env:AGENT_BUILDDIRECTORY\s\dist\bin;$env:AGENT_BUILDDIRECTORY\externals\install\bin"
-          Write-Host "setting path with ';$env:BUILD_SOURCESDIRECTORY\dist\bin;$env:AGENT_BUILDDIRECTORY\externals\install\bin'"
-          $env:Path += ";$env:BUILD_SOURCESDIRECTORY\dist\bin;$env:AGENT_BUILDDIRECTORY\externals\install\bin"
+          # Write-Host "setting path with ';$env:BUILD_BUILDDIRECTORY\s\dist\bin;$env:BUILD_BUILDDIRECTORY\externals\install\bin'"
+          # $env:Path += ";$env:BUILD_BUILDDIRECTORY\s\dist\bin;$env:BUILD_BUILDDIRECTORY\externals\install\bin"
+          Write-Host "setting path with ';$env:BUILD_SOURCESDIRECTORY\dist\bin;$env:BUILD_BUILDDIRECTORY\externals\install\bin'"
+          $env:Path += ";$env:BUILD_SOURCESDIRECTORY\dist\bin;$env:BUILD_BUILDDIRECTORY\externals\install\bin"
 
           Write-Host "point M"
           
-          ls $env:AGENT_BUILDDIRECTORY\tiledb\examples\c_api\Release
+          ls $env:BUILD_BUILDDIRECTORY\tiledb\examples\c_api\Release
           #ls $env:BUILD_SOURCESDIRECTORY\tiledb\examples\c_api\Release
           #ls $env:BUILD_SOURCESDIRECTORY\examples\c_api\Release
           
           Write-Host "point N"
 
           try {
-            #$exepath = Join-Path $env:AGENT_BUILDDIRECTORY "build\tiledb\examples\c_api\Release\quickstart_dense_c.exe"
-            $exepath = Join-Path $env:AGENT_BUILDDIRECTORY "tiledb\examples\c_api\Release\quickstart_dense_c.exe"
+            #$exepath = Join-Path $env:BUILD_BUILDDIRECTORY "build\tiledb\examples\c_api\Release\quickstart_dense_c.exe"
+            $exepath = Join-Path $env:BUILD_BUILDDIRECTORY "tiledb\examples\c_api\Release\quickstart_dense_c.exe"
             & $exepath
           } catch {
             Write-Host "C API example failed. Error:"
@@ -398,9 +398,9 @@ jobs:
           Write-Host "point O"
 
           try {
-            #$exepath = Join-Path $env:AGENT_BUILDDIRECTORY "build\tiledb\examples\cpp_api\Release\quickstart_dense_cpp.exe"
+            #$exepath = Join-Path $env:BUILD_BUILDDIRECTORY "build\tiledb\examples\cpp_api\Release\quickstart_dense_cpp.exe"
             #$exepath = Join-Path $env:BUILD_SOURCESDIRECTORY "tiledb\examples\cpp_api\Release\quickstart_dense_cpp.exe"
-            $exepath = Join-Path $env:AGENT_BUILDDIRECTORY "tiledb\examples\cpp_api\Release\quickstart_dense_cpp.exe"
+            $exepath = Join-Path $env:BUILD_BUILDDIRECTORY "tiledb\examples\cpp_api\Release\quickstart_dense_cpp.exe"
             & $exepath
           } catch {
             Write-Host "C++ API example failed."
@@ -415,7 +415,7 @@ jobs:
           Write-Host "point Q"
 
           # Build examples
-          #cd $env:AGENT_BUILDDIRECTORY\s\examples\cmake_project
+          #cd $env:BUILD_BUILDDIRECTORY\s\examples\cmake_project
           cd $env:BUILD_SOURCESDIRECTORY\examples\cmake_project
 
           Write-Host "point R"
@@ -427,7 +427,7 @@ jobs:
           Write-Host "point S"
 
           # Build zip artifact
-          #cmake -A X64 -DCMAKE_PREFIX_PATH="$env:AGENT_BUILDDIRECTORY\s\dist" ..
+          #cmake -A X64 -DCMAKE_PREFIX_PATH="$env:BUILD_SOURCESDIRECTORY\s\dist" ..
           cmake -A X64 -DCMAKE_PREFIX_PATH="$env:BUILD_SOURCESDIRECTORY\dist" ..
 
           Write-Host "point T"
@@ -444,6 +444,6 @@ jobs:
 
           Write-Host "point S"
           
-          #cd $env:AGENT_BUILDDIRECTORY
+          #cd $env:BUILD_BUILDDIRECTORY
 
-          #7z a tiledb-windows-x64.zip $env:AGENT_BUILDDIRECTORY\s\dist
+          #7z a tiledb-windows-x64.zip $env:BUILD_SOURCESDIRECTORY\dist
