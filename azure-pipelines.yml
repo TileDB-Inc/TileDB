@@ -82,7 +82,7 @@ stages:
        strategy:
          matrix:
            linux:
-             imageName: 'ubuntu-20.04'
+             imageName: 'ubuntu-18.04'
              CXX: g++
              ARTIFACT_OS: 'linux'
              ARTIFACT_ARCH: 'x86_64'
