@@ -403,11 +403,20 @@ TEST_CASE("C++ API: Zero length buffer", "[cppapi][zero-length]") {
 
   tiledb_layout_t write_layout = TILEDB_GLOBAL_ORDER;
   tiledb_array_type_t array_type = TILEDB_DENSE;
+  bool null_pointer = true;
 
   SECTION("SPARSE") {
     array_type = TILEDB_SPARSE;
     SECTION("GLOBAL_ORDER") {
       write_layout = TILEDB_GLOBAL_ORDER;
+
+      SECTION("NULL_PTR") {
+        null_pointer = true;
+      }
+
+      SECTION("NON_NULL_PTR") {
+        null_pointer = false;
+      }
     }
 
     SECTION("UNORDERED") {
@@ -419,6 +428,14 @@ TEST_CASE("C++ API: Zero length buffer", "[cppapi][zero-length]") {
     array_type = TILEDB_DENSE;
     SECTION("GLOBAL_ORDER") {
       write_layout = TILEDB_GLOBAL_ORDER;
+
+      SECTION("NULL_PTR") {
+        null_pointer = true;
+      }
+
+      SECTION("NON_NULL_PTR") {
+        null_pointer = false;
+      }
     }
 
     SECTION("UNORDERED") {
@@ -444,7 +461,10 @@ TEST_CASE("C++ API: Zero length buffer", "[cppapi][zero-length]") {
     std::vector<uint64_t> a_offset = {0, 0, 0};
     std::vector<uint64_t> b = {1, 2, 3};
 
-    a.reserve(10);
+    if (!null_pointer) {
+      a.reserve(10);
+    }
+
     a = {};
     Query q(ctx, array, TILEDB_WRITE);
     q.set_layout(write_layout);

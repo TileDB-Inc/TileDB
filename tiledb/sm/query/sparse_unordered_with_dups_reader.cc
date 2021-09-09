@@ -259,15 +259,17 @@ Status SparseUnorderedWithDupsReader::dowork() {
   //      list, this way we will prevent reading tiles we don't need on
   //      future reads.
 
-  // Copy the coordinates data.
-  RETURN_NOT_OK(
-      copy_coordinates(&tmp_result_tiles, &read_state_.result_cell_slabs_));
+  if (coords_loaded_) {
+    // Copy the coordinates data.
+    RETURN_NOT_OK(
+        copy_coordinates(&tmp_result_tiles, &read_state_.result_cell_slabs_));
 
-  // copy_coordinates will only have an unrecoverable overflow if a single cell
-  // is too big for the user's buffers.
-  if (copy_overflowed_) {
-    zero_out_buffer_sizes();
-    return Status::Ok();
+    // copy_coordinates will only have an unrecoverable overflow if a single
+    // cell is too big for the user's buffers.
+    if (copy_overflowed_) {
+      zero_out_buffer_sizes();
+      return Status::Ok();
+    }
   }
 
   // Calculate memory budget. For array data, copy_attribute_values might load
@@ -283,7 +285,8 @@ Status SparseUnorderedWithDupsReader::dowork() {
       &tmp_result_tiles,
       &read_state_.result_cell_slabs_,
       subarray_,
-      memory_budget_copy));
+      memory_budget_copy,
+      !coords_loaded_));
 
   // copy_coordinates will only have an unrecoverable overflow if a single cell
   // is too big for the user's buffers.
@@ -302,6 +305,32 @@ Status SparseUnorderedWithDupsReader::dowork() {
 }
 
 void SparseUnorderedWithDupsReader::reset() {
+}
+
+Status SparseUnorderedWithDupsReader::clear_result_tiles() {
+  while (!result_tiles_.empty()) {
+    auto f = result_tiles_.front().frag_idx();
+    RETURN_NOT_OK(remove_result_tile(f, result_tiles_.begin()));
+  }
+
+  coords_loaded_ = false;
+
+  return Status::Ok();
+}
+
+ResultTile* SparseUnorderedWithDupsReader::add_result_tile_unsafe(
+    unsigned dim_num, unsigned f, uint64_t t, const Domain* domain) {
+  bool unused;
+  add_result_tile(
+      dim_num,
+      std::numeric_limits<uint64_t>::max(),
+      std::numeric_limits<uint64_t>::max(),
+      std::numeric_limits<uint64_t>::max(),
+      f,
+      t,
+      domain,
+      &unused);
+  return &result_tiles_.back();
 }
 
 Status SparseUnorderedWithDupsReader::add_result_tile(
@@ -464,6 +493,8 @@ Status SparseUnorderedWithDupsReader::compute_result_cell_slab() {
   if (!tiles_found) {
     return Status::Ok();
   }
+
+  coords_loaded_ = true;
 
   // Maintain a temporary vector with pointers to result tiles, so that
   // `read_tiles`, `unfilter_tiles` can work without changes.

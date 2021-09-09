@@ -77,6 +77,7 @@ if (TILEDB_CPP_API)
   file(GLOB TILEDB_CPP_HEADERS
     "${CMAKE_CURRENT_SOURCE_DIR}/../tiledb/sm/cpp_api/*.h"
     "${CMAKE_CURRENT_SOURCE_DIR}/../tiledb/sm/cpp_api/tiledb"
+    "${CMAKE_CURRENT_SOURCE_DIR}/../tiledb/sm/cpp_api/tiledb_experimental"
   )
 
   foreach(HEADER ${TILEDB_CPP_HEADERS})
