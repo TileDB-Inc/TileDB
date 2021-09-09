@@ -52,8 +52,8 @@ jobs:
       TILEDB_SERIALIZATION: ${{ matrix.TILEDB_SERIALIZATION }} #serialization }}
       TILEDB_ARROW_TESTS: ${{ matrix.TILEDB_ARROW_TESTS }}
     steps:
-      - name: cancel_earlier_runs
-        uses: actions/cancel-previous-runs-actions@V1.0.0
+      #- name: cancel_earlier_runs
+      - uses: actions/cancel-previous-runs-actions@V1.0.0
       - name: 'tiledb env prep'
         run: |
           $env:BUILD_BUILDDIRECTORY = $env:GITHUB_WORKSPACE.replace("TileDB\TileDB","tdbbd") # 't'ile'db' 'b'uild 'd'ir
