@@ -139,7 +139,7 @@ stages:
          displayName: 'Add artifacts to GitHub Release'
          inputs:
            gitHubConnection: TileDB-Inc-Release
-           repositoryName: TileDB-Inc/TileDB
+           repositoryName: $(Build.Repository.Name)
            addChangeLog: false
            action: edit
            tag: $(Build.SourceBranchName)
