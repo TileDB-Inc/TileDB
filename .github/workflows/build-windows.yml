@@ -52,6 +52,18 @@ jobs:
       TILEDB_SERIALIZATION: ${{ matrix.TILEDB_SERIALIZATION }} #serialization }}
       TILEDB_ARROW_TESTS: ${{ matrix.TILEDB_ARROW_TESTS }}
     steps:
+      - name: 'tiledb env prep'
+        run: |
+          $env:BUILD_BUILDDIRECTORY = $env:GITHUB_WORKSPACE.replace("TileDB\TileDB","tdbbd") # 't'ile'db' 'b'uild 'd'ir
+          $env:BUILD_SOURCESDIRECTORY = $env:GITHUB_WORKSPACE
+
+          Write-Host "GITHUB_WORKSPACE is '$env:GITHUB_WORKSPACE'"
+          Write-Host "BUILD_BUILDDIRECTORY is '$env:BUILD_BUILDDIRECTORY'"
+          Write-Host "BUILD_SOURCESDIRECTORY is '$env:BUILD_SOURCESDIRECTORY'"
+
+          mkdir $env:BUILD_BUILDDIRECTORY
+          write-host "BUILD_BUILDDIRECTORY=$env:BUILD_BUILDDIRECTORY" *>> $GITHUB_ENV
+          write-host "BUILD_SOURCESDIRECTORY=$env:BUILD_SOURCESDIRECTORY" *>> $GITHUB_ENV
       - name: 'Print env'
         run: |
           set
@@ -78,14 +90,14 @@ jobs:
           Write-Host "Running on image '$($env:imageName)'"
           Write-Host "Running on image '$env:TILEDB_GA_IMAGE_NAME'"
           
-          $env:BUILD_BUILDDIRECTORY = $env:GITHUB_WORKSPACE.replace("TileDB\TileDB","tdbbd") # 't'ile'db' 'b'uild 'd'ir
-          $env:BUILD_SOURCESDIRECTORY = $env:GITHUB_WORKSPACE
+          #$env:BUILD_BUILDDIRECTORY = $env:GITHUB_WORKSPACE.replace("TileDB\TileDB","tdbbd") # 't'ile'db' 'b'uild 'd'ir
+          #$env:BUILD_SOURCESDIRECTORY = $env:GITHUB_WORKSPACE
 
           Write-Host "GITHUB_WORKSPACE is '$env:GITHUB_WORKSPACE'"
           Write-Host "BUILD_BUILDDIRECTORY is '$env:BUILD_BUILDDIRECTORY'"
           Write-Host "BUILD_SOURCESDIRECTORY is '$env:BUILD_SOURCESDIRECTORY'"
 
-          mkdir $env:BUILD_BUILDDIRECTORY
+          #mkdir $env:BUILD_BUILDDIRECTORY
           cd $env:BUILD_BUILDDIRECTORY
 
           if ($env:TILEDB_GA_IMAGE_NAME -eq "windows-2016") {
@@ -192,8 +204,8 @@ jobs:
           $env:AWS_ACCESS_KEY_ID = "minio"
           $env:AWS_SECRET_ACCESS_KEY = "miniosecretkey"
           
-          $env:BUILD_BUILDDIRECTORY = $env:GITHUB_WORKSPACE.replace("TileDB\TileDB","tdbbd") # 't'ile'db' 'b'uild 'd'ir
-          $env:BUILD_SOURCESDIRECTORY = $env:GITHUB_WORKSPACE
+          #$env:BUILD_BUILDDIRECTORY = $env:GITHUB_WORKSPACE.replace("TileDB\TileDB","tdbbd") # 't'ile'db' 'b'uild 'd'ir
+          #$env:BUILD_SOURCESDIRECTORY = $env:GITHUB_WORKSPACE
 
           Write-Host "GITHUB_WORKSPACE is '$env:GITHUB_WORKSPACE'"
           Write-Host "BUILD_BUILDDIRECTORY is '$env:BUILD_BUILDDIRECTORY'"
