@@ -30,7 +30,6 @@
  * Command-line interface for common TileDB tasks.
  */
 
-
 #include <clipp.h>
 
 #include <iostream>
