@@ -30,23 +30,8 @@
  * Command-line interface for common TileDB tasks.
  */
 
-#if _MSC_VER
-/* avoid following warning reported by MSVC, but not clang-cl nor gcc
-1 > C :\Program Files(x86)\Microsoft Visual
-    Studio\2019\Community\VC\Tools\MSVC\14.29.30133\include \xutility(4197, 1)
-    : warning C4913 : user defined binary operator',' exists but no overload
-                      could convert all operands
-, default built - in binary operator',' used
-*/
-#pragma warning(push)
-//#pragma warning(disable:4913)
-#endif
 
 #include <clipp.h>
-
-#if _MSC_VER
-#pragma warning(pop)
-#endif
 
 #include <iostream>
 #include <map>
@@ -56,9 +41,7 @@
 #include "commands/info_command.h"
 
 using namespace tiledb::cli;
-// using namespace clipp;
 
-#if 01
 int main(int argc, char** argv) {
   enum class Mode { Undef, Info, Help };
   Mode mode = Mode::Undef;
@@ -114,5 +97,3 @@ int main(int argc, char** argv) {
 
   return 0;
 }
-
-#endif
