@@ -2,11 +2,6 @@ name: windows build
 
 on:
   push:
-    #~ paths:
-      #~ - tiledb
-      #~ - test
-      #~ - .github
-      #~ - tobedeletedafterseeifGAruns
   pull_request:
 
 env:
@@ -23,8 +18,6 @@ jobs:
     runs-on: ${{ matrix.os }}
     strategy:
       matrix:
-        #os: [windows-2016]
-        #os: [windows-2019]
         os: [windows-2016, windows-2019]
         #considering https://stackoverflow.com/questions/65035256/how-to-access-matrix-variables-in-github-actions
         environ: [azure, s3, serialization]
