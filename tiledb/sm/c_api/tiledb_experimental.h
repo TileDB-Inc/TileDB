@@ -128,6 +128,30 @@ TILEDB_EXPORT int32_t tiledb_array_schema_evolution_drop_attribute(
     tiledb_array_schema_evolution_t* array_schema_evolution,
     const char* attribute_name);
 
+/**
+ * Rename an attribute.
+ *
+ * **Example:**
+ *
+ * @code{.c}
+ * const char* attribute_old_name="a1";
+ * const char* attribute_new_name="a2";
+ * tiledb_array_schema_evolution_rename_attribute(ctx, array_schema_evolution,
+ * attribute_old_name,attribute_new_name);
+ * @endcode
+ *
+ * @param ctx The TileDB context.
+ * @param array_schema_evolution The schema evolution.
+ * @param attribute_old_name The name of the attribute to be renamed.
+ * @param attribute_new_name The new name of the attribute.
+ * @return `TILEDB_OK` for success and `TILEDB_ERR` for error.
+ */
+TILEDB_EXPORT int32_t tiledb_array_schema_evolution_rename_attribute(
+    tiledb_ctx_t* ctx,
+    tiledb_array_schema_evolution_t* array_schema_evolution,
+    const char* attribute_old_name,
+    const char* attribute_new_name);
+
 /* ********************************* */
 /*               ARRAY               */
 /* ********************************* */

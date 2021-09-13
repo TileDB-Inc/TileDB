@@ -102,6 +102,16 @@ Status array_schema_evolution_to_capnp(
     RETURN_NOT_OK(attribute_to_capnp(attr_to_add, &attribute_builder));
   }
 
+  // Attributes to rename
+  auto attributes_to_rename_builder =
+      array_schema_evolution_builder->initAttributesToRename(
+          array_schema_evolution->attribute_names_to_rename().size());
+  uint64_t i = 0;
+  for (const auto& kv : array_schema_evolution->attribute_names_to_rename()) {
+    attributes_to_rename_builder[i].setKey(kv.first);
+    attributes_to_rename_builder[i].setValue(kv.second);
+  }
+
   return Status::Ok();
 }
 
@@ -123,6 +133,16 @@ Status array_schema_evolution_from_capnp(
     RETURN_NOT_OK(attribute_from_capnp(attr_reader, &attribute));
     const Attribute* attr_to_add = attribute.get();
     RETURN_NOT_OK((*array_schema_evolution)->add_attribute(attr_to_add));
+  }
+
+  // Set attributes to rename
+  if (evolution_reader.hasAttributesToRename()) {
+    auto attributes_to_rename = evolution_reader.getAttributesToRename();
+    for (const auto kv : attributes_to_rename) {
+      RETURN_NOT_OK(
+          (*array_schema_evolution)
+              ->rename_attribute(kv.getKey().cStr(), kv.getValue().cStr()));
+    }
   }
 
   return Status::Ok();

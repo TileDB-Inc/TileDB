@@ -2805,6 +2805,25 @@ int32_t tiledb_array_schema_evolution_drop_attribute(
   return TILEDB_OK;
 }
 
+int32_t tiledb_array_schema_evolution_rename_attribute(
+    tiledb_ctx_t* ctx,
+    tiledb_array_schema_evolution_t* array_schema_evolution,
+    const char* attribute_old_name,
+    const char* attribute_new_name) {
+  if (sanity_check(ctx) == TILEDB_ERR ||
+      sanity_check(ctx, array_schema_evolution) == TILEDB_ERR)
+    return TILEDB_ERR;
+
+  if (SAVE_ERROR_CATCH(
+          ctx,
+          array_schema_evolution->array_schema_evolution_->rename_attribute(
+              attribute_old_name, attribute_new_name)))
+    return TILEDB_ERR;
+  return TILEDB_OK;
+  // Success
+  return TILEDB_OK;
+}
+
 /* ****************************** */
 /*              QUERY             */
 /* ****************************** */

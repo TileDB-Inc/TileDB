@@ -96,6 +96,13 @@ Status ArraySchemaEvolution::evolve_schema(
     }
   }
 
+  // Rename attribute names
+  for (auto it = attributes_to_rename_map_.begin();
+       it != attributes_to_rename_map_.end();
+       ++it) {
+    RETURN_NOT_OK(schema->rename_attribute(it->first, it->second, true));
+  }
+
   // Do other things
 
   *new_schema = schema;
@@ -167,6 +174,21 @@ std::vector<std::string> ArraySchemaEvolution::attribute_names_to_drop() const {
   return names;
 }
 
+Status ArraySchemaEvolution::rename_attribute(
+    const std::string& old_name, const std::string& new_name) {
+  std::lock_guard<std::mutex> lock(mtx_);
+  if (old_name.empty() || new_name.empty()) {
+    // Do nothing if name is empty
+    return Status::Ok();
+  }
+  attributes_to_rename_map_[old_name] = new_name;
+  return Status::Ok();
+}
+
+const std::unordered_map<std::string, std::string>&
+ArraySchemaEvolution::attribute_names_to_rename() {
+  return attributes_to_rename_map_;
+}
 /* ****************************** */
 /*         PRIVATE METHODS        */
 /* ****************************** */

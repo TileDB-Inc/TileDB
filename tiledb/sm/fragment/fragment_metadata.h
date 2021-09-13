@@ -554,6 +554,11 @@ class FragmentMetadata {
    */
   const ArraySchema* array_schema() const;
 
+  /**
+   * This builds the index mapping for attribute/dimension name to id.
+   */
+  void build_idx_map();
+
  private:
   /* ********************************* */
   /*          TYPE DEFINITIONS         */
@@ -1140,11 +1145,6 @@ class FragmentMetadata {
    * return std::string The encoded dimension/attribute name.
    */
   std::string encode_name(const std::string& name) const;
-
-  /**
-   * This builds the index mapping for attribute/dimension name to id.
-   */
-  void build_idx_map();
 };
 
 }  // namespace sm

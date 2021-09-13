@@ -66,6 +66,9 @@ ReaderBase::ReaderBase(
   if (array != nullptr)
     fragment_metadata_ = array->fragment_metadata();
 
+  // Evolve fragment array schemas backward
+  evolve_fragment_array_schemas();
+
   auto uint64_t_max = std::numeric_limits<uint64_t>::max();
   copy_end_ = std::pair<uint64_t, uint64_t>(uint64_t_max, uint64_t_max);
 }
@@ -73,6 +76,36 @@ ReaderBase::ReaderBase(
 /* ****************************** */
 /*        PROTECTED METHODS       */
 /* ****************************** */
+
+void ReaderBase::evolve_fragment_array_schemas() {
+  if (fragment_metadata_.size() <= 1) {
+    // No need to evolve
+    return;
+  }
+  for (auto i = fragment_metadata_.size() - 1; i > 0; i--) {
+    if (fragment_metadata_[i]->array_schema_name() ==
+        fragment_metadata_[i - 1]->array_schema_name()) {
+      // No need to evolve for two same schemas
+      continue;
+    }
+    auto attribute_used_names =
+        fragment_metadata_[i]->array_schema()->attribute_used_names();
+    bool need_to_build_idx = false;
+    for (auto attribute_used_name : attribute_used_names) {
+      auto attribute_current_name =
+          fragment_metadata_[i]->array_schema()->attribute_current_name(
+              attribute_used_name);
+      ArraySchema* prev_array_schema =
+          const_cast<ArraySchema*>(fragment_metadata_[i - 1]->array_schema());
+      prev_array_schema->rename_attribute(
+          attribute_used_name, attribute_current_name, false);
+      need_to_build_idx = true;
+    }
+    if (need_to_build_idx) {
+      fragment_metadata_[i - 1]->build_idx_map();
+    }
+  }
+}
 
 void ReaderBase::clear_tiles(
     const std::string& name,

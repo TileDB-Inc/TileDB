@@ -109,6 +109,20 @@ class ArraySchemaEvolution {
   /** Returns the names of attributes to drop. */
   std::vector<std::string> attribute_names_to_drop() const;
 
+  /**
+   * Renames an attribute
+   *
+   * @param old_name The old attribute name
+   * @param new_name The new attribute name
+   * @return Status
+   */
+  Status rename_attribute(
+      const std::string& old_name, const std::string& new_name);
+
+  /** Returns the names map of attributes to rename. */
+  const std::unordered_map<std::string, std::string>&
+  attribute_names_to_rename();
+
  private:
   /* ********************************* */
   /*         PRIVATE ATTRIBUTES        */
@@ -121,6 +135,9 @@ class ArraySchemaEvolution {
 
   /** The names of array attributes to be dropped. */
   std::unordered_set<std::string> attributes_to_drop_;
+
+  /** The names map of attray attributes to be renamed. */
+  std::unordered_map<std::string, std::string> attributes_to_rename_map_;
 
   /** Mutex for thread-safety. */
   mutable std::mutex mtx_;

@@ -371,7 +371,8 @@ Status ArraySchema::has_attribute(
 }
 
 bool ArraySchema::is_attr(const std::string& name) const {
-  return this->attribute(name) != nullptr;
+  return this->attribute(name) != nullptr ||
+         attribute_used_name_map_.find(name) != attribute_used_name_map_.end();
 }
 
 bool ArraySchema::is_dim(const std::string& name) const {
@@ -444,6 +445,21 @@ Status ArraySchema::serialize(Buffer* buff) const {
   RETURN_NOT_OK(buff->write(&attribute_num, sizeof(uint32_t)));
   for (auto& attr : attributes_)
     RETURN_NOT_OK(attr->serialize(buff, version));
+
+  // Write attributes used name map
+  if (version >= 11) {
+    auto attribute_used_name_num = (uint32_t)attribute_used_name_map_.size();
+    RETURN_NOT_OK(buff->write(&attribute_used_name_num, sizeof(uint32_t)));
+    for (auto& kv : attribute_used_name_map_) {
+      auto key_size = (uint32_t)kv.first.size();
+      RETURN_NOT_OK(buff->write(&key_size, sizeof(uint32_t)));
+      RETURN_NOT_OK(buff->write(kv.first.c_str(), key_size));
+
+      auto value_size = (uint32_t)kv.second.size();
+      RETURN_NOT_OK(buff->write(&value_size, sizeof(uint32_t)));
+      RETURN_NOT_OK(buff->write(kv.second.c_str(), value_size));
+    }
+  }
 
   return Status::Ok();
 }
@@ -538,6 +554,62 @@ Status ArraySchema::drop_attribute(const std::string& attr_name) {
   return Status::Ok();
 }
 
+Status ArraySchema::rename_attribute(
+    const std::string& old_name,
+    const std::string& new_name,
+    bool is_new_uri = true) {
+  std::lock_guard<std::mutex> lock(mtx_);
+  if (old_name.empty() || new_name.empty()) {
+    // Do nothing if name is empty
+    return Status::Ok();
+  }
+
+  auto it = attribute_map_.find(old_name);
+  if (it != attribute_map_.end()) {
+    it->second->set_name(new_name);
+    attribute_map_[new_name] = std::move(it->second);
+    attribute_map_.erase(it);
+  }
+
+  // Save the old name
+  attribute_used_name_map_[old_name] = new_name;
+
+  for (auto it = attribute_used_name_map_.begin();
+       it != attribute_used_name_map_.end();
+       ++it) {
+    if (it->second == old_name) {
+      attribute_used_name_map_[it->first] = new_name;
+    }
+  }
+
+  if (is_new_uri) {
+    RETURN_NOT_OK(generate_uri());
+  }
+
+  return Status::Ok();
+}
+
+std::vector<std::string> ArraySchema::attribute_used_names() const {
+  std::vector<std::string> result;
+  std::lock_guard<std::mutex> lock(mtx_);
+  result.reserve(attribute_used_name_map_.size());
+  for (auto it = attribute_used_name_map_.begin();
+       it != attribute_used_name_map_.end();
+       ++it) {
+    result.push_back(it->first);
+  }
+  return result;
+}
+
+std::string ArraySchema::attribute_current_name(
+    const std::string& used_name) const {
+  std::lock_guard<std::mutex> lock(mtx_);
+  return (attribute_used_name_map_.find(used_name) ==
+          attribute_used_name_map_.end()) ?
+             "" :
+             attribute_used_name_map_.at(used_name);
+}
+
 Status ArraySchema::deserialize(ConstBuffer* buff) {
   // Load version
   RETURN_NOT_OK(buff->read(&version_, sizeof(uint32_t)));
@@ -586,6 +658,27 @@ Status ArraySchema::deserialize(ConstBuffer* buff) {
     RETURN_NOT_OK_ELSE(attr->deserialize(buff, version_), tdb_delete(attr));
     attributes_.emplace_back(attr);
     attribute_map_[attr->name()] = attr;
+  }
+
+  // Load attribute used names
+  if (version_ >= 11) {
+    uint32_t attribute_used_name_num;
+    RETURN_NOT_OK(buff->read(&attribute_used_name_num, sizeof(uint32_t)));
+    for (uint32_t i = 0; i < attribute_used_name_num; ++i) {
+      uint32_t key_size;
+      RETURN_NOT_OK(buff->read(&key_size, sizeof(uint32_t)));
+      std::string key_str;
+      key_str.resize(key_size);
+      RETURN_NOT_OK(buff->read(&key_str[0], key_size));
+
+      uint32_t value_size;
+      RETURN_NOT_OK(buff->read(&value_size, sizeof(uint32_t)));
+      std::string value_str;
+      value_str.resize(value_size);
+      RETURN_NOT_OK(buff->read(&value_str[0], value_size));
+
+      rename_attribute(key_str, value_str, false);
+    }
   }
 
   // Create dimension map

@@ -1079,16 +1079,16 @@ TEST_CASE("C API: Test fragment info, dump", "[capi][fragment_info][dump]") {
       "- Fragment #1:\n" + "  > URI: " + written_frag_uri_1 + "\n" +
       "  > Type: dense\n" + "  > Non-empty domain: [1, 6]\n" +
       "  > Size: 1662\n" + "  > Cell num: 10\n" +
-      "  > Timestamp range: [1, 1]\n" + "  > Format version: 10\n" +
+      "  > Timestamp range: [1, 1]\n" + "  > Format version: 11\n" +
       "  > Has consolidated metadata: no\n" + "- Fragment #2:\n" +
       "  > URI: " + written_frag_uri_2 + "\n" + "  > Type: sparse\n" +
       "  > Non-empty domain: [1, 7]\n" + "  > Size: 1786\n" +
       "  > Cell num: 4\n" + "  > Timestamp range: [2, 2]\n" +
-      "  > Format version: 10\n" + "  > Has consolidated metadata: no\n" +
+      "  > Format version: 11\n" + "  > Has consolidated metadata: no\n" +
       "- Fragment #3:\n" + "  > URI: " + written_frag_uri_3 + "\n" +
       "  > Type: sparse\n" + "  > Non-empty domain: [2, 9]\n" +
       "  > Size: 1774\n" + "  > Cell num: 3\n" +
-      "  > Timestamp range: [3, 3]\n" + "  > Format version: 10\n" +
+      "  > Timestamp range: [3, 3]\n" + "  > Format version: 11\n" +
       "  > Has consolidated metadata: no\n";
   FILE* gold_fout = fopen("gold_fout.txt", "w");
   const char* dump = dump_str.c_str();
@@ -1208,7 +1208,7 @@ TEST_CASE(
       "- Fragment #1:\n" + "  > URI: " + uri + "\n" + "  > Type: dense\n" +
       "  > Non-empty domain: [1, 10]\n" + "  > Size: 1662\n" +
       "  > Cell num: 10\n" + "  > Timestamp range: [1, 3]\n" +
-      "  > Format version: 10\n" + "  > Has consolidated metadata: no\n";
+      "  > Format version: 11\n" + "  > Has consolidated metadata: no\n";
   FILE* gold_fout = fopen("gold_fout.txt", "w");
   const char* dump = dump_str.c_str();
   fwrite(dump, sizeof(char), strlen(dump), gold_fout);
@@ -1290,7 +1290,7 @@ TEST_CASE(
       "- Fragment #1:\n" + "  > URI: " + written_frag_uri + "\n" +
       "  > Type: sparse\n" + "  > Non-empty domain: [a, ddd]\n" +
       "  > Size: 1903\n" + "  > Cell num: 4\n" +
-      "  > Timestamp range: [1, 1]\n" + "  > Format version: 10\n" +
+      "  > Timestamp range: [1, 1]\n" + "  > Format version: 11\n" +
       "  > Has consolidated metadata: no\n";
   FILE* gold_fout = fopen("gold_fout.txt", "w");
   const char* dump = dump_str.c_str();

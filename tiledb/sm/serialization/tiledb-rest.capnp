@@ -87,7 +87,10 @@ struct ArraySchemaEvolution {
     # Attribute names to be dropped
 
     attributesToAdd @1 :List(Attribute);
-    # Attributes to be added    
+    # Attributes to be added  
+
+    attributesToRename @2 :List(KV);
+    # list of attributes to be renamed  
 
 }
 

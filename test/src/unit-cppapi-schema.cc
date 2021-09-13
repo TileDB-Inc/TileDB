@@ -513,6 +513,9 @@ TEST_CASE(
     e.set_fill_value(fill_value_e.c_str(), fill_value_e.size(), false);
     schemaEvolution.add_attribute(e);
 
+    // rename attriburte a to aa
+    schemaEvolution.rename_attribute("a", "aa");
+
     // evolve array
     schemaEvolution.array_evolve(array_uri);
 
@@ -520,7 +523,8 @@ TEST_CASE(
     auto read_schema = Array::load_schema(ctx, array_uri);
 
     auto attrs = read_schema.attributes();
-    CHECK(attrs.count("a") == 1);
+    CHECK(attrs.count("a") == 0);
+    CHECK(attrs.count("aa") == 1);
     CHECK(attrs.count("b") == 1);
     CHECK(attrs.count("c") == 1);
     CHECK(attrs.count("d") == 1);
@@ -546,7 +550,7 @@ TEST_CASE(
     Array array(ctx, array_uri, TILEDB_WRITE);
     Query query(ctx, array, TILEDB_WRITE);
     query.set_layout(TILEDB_UNORDERED)
-        .set_data_buffer("a", a_data)
+        .set_data_buffer("aa", a_data)
         .set_data_buffer("b", b_data)
         .set_data_buffer("c", c_data)
         .set_validity_buffer("c", c_validity)
@@ -588,7 +592,7 @@ TEST_CASE(
     query.add_range(0, 1, 4)
         .add_range(1, 1, 4)
         .set_layout(TILEDB_ROW_MAJOR)
-        .set_data_buffer("a", a_data)
+        .set_data_buffer("aa", a_data)
         .set_data_buffer("b", b_data)
         .set_data_buffer("c", c_data)
         .set_validity_buffer("c", c_validity)
@@ -605,7 +609,7 @@ TEST_CASE(
     array.close();
 
     // Compare the results.
-    auto result_num = (int)query.result_buffer_elements()["a"].second;
+    auto result_num = (int)query.result_buffer_elements()["aa"].second;
     CHECK(result_num == 4);
     CHECK_THAT(a_data, Catch::Matchers::Equals(std::vector<int>{1, 3, 2, 4}));
     CHECK_THAT(

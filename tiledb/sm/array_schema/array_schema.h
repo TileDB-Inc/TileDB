@@ -250,6 +250,34 @@ class ArraySchema {
   Status drop_attribute(const std::string& attr_name);
 
   /**
+   * Renames an attribute.
+   *
+   * @param old_name The old attribute name
+   * @param new_name The new attribute name
+   * @param is_new_uri The flag to generate new array schema uri
+   * @return Status
+   */
+  Status rename_attribute(
+      const std::string& old_name,
+      const std::string& new_name,
+      bool is_new_uri);
+
+  /**
+   * Returns a vector of used names of attributes
+   *
+   * @return all used names
+   */
+  std::vector<std::string> attribute_used_names() const;
+
+  /**
+   * Get the current name for a used name.
+   *
+   * @param used_name The used name
+   * @return current name
+   */
+  std::string attribute_current_name(const std::string& used_name) const;
+
+  /**
    * It assigns values to the members of the object from the input buffer.
    *
    * @param buff The binary representation of the object to read from.
@@ -360,6 +388,10 @@ class ArraySchema {
 
   /** The array attributes. */
   std::vector<Attribute*> attributes_;
+
+  /** The used name map of the attributes.  */
+  std::unordered_map<std::string, std::string> attribute_used_name_map_;
+
   /**
    * The tile capacity for the case of sparse fragments.
    */

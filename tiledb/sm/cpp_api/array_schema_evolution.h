@@ -152,6 +152,28 @@ class ArraySchemaEvolution {
   }
 
   /**
+   * Renames an attribute.
+   *
+   * **Example:**
+   * @code{.cpp}
+   * tiledb::Context ctx;
+   * tiledb::ArraySchemaEvolution schema_evolution(ctx);
+   * schema_evolution.rename_attribute("old_name","new_name");
+   * @endcode
+   *
+   * @param old_name The name of the attribute to be renamed
+   * @param new_name The new name of the attribute
+   * @return Reference to this `ArraySchemaEvolution` instance.
+   */
+  ArraySchemaEvolution& rename_attribute(
+      const std::string& old_name, const std::string& new_name) {
+    auto& ctx = ctx_.get();
+    ctx.handle_error(tiledb_array_schema_evolution_rename_attribute(
+        ctx.ptr().get(), evolution_.get(), old_name.c_str(), new_name.c_str()));
+    return *this;
+  }
+
+  /**
    * Evolves the schema of an array.
    *
    * **Example:**

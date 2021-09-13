@@ -119,6 +119,13 @@ class ReaderBase : public StrategyBase {
   /* ********************************* */
 
   /**
+   * Evolve the array schemas for fragments.
+   *
+   * @return void
+   */
+  void evolve_fragment_array_schemas();
+
+  /**
    * Deletes the tiles on the input attribute/dimension from the result tiles.
    *
    * @param name The attribute/dimension name.

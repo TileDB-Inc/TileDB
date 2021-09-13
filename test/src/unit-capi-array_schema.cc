@@ -2163,6 +2163,11 @@ TEST_CASE_METHOD(
       ctx_, array_schema_evolution, "a1");
   REQUIRE(rc == TILEDB_OK);
 
+  // Rename attribute a2 to a4
+  rc = tiledb_array_schema_evolution_rename_attribute(
+      ctx_, array_schema_evolution, "a2", "a4");
+  REQUIRE(rc == TILEDB_OK);
+
   // Evolve schema
   rc = tiledb_array_evolve_wrapper(
       ctx_, array_name.c_str(), array_schema_evolution);
@@ -2194,7 +2199,7 @@ TEST_CASE_METHOD(
   const char* attr_name;
   rc = tiledb_attribute_get_name(ctx_, read_attr, &attr_name);
   REQUIRE(rc == TILEDB_OK);
-  CHECK_THAT(attr_name, Catch::Equals("a2"));
+  CHECK_THAT(attr_name, Catch::Equals("a4"));
 
   tiledb_attribute_t* read_attr1;
   rc = tiledb_array_schema_get_attribute_from_index(
