@@ -186,7 +186,7 @@ Status ArraySchemaEvolution::rename_attribute(
 }
 
 const std::unordered_map<std::string, std::string>&
-ArraySchemaEvolution::attribute_names_to_rename() {
+ArraySchemaEvolution::attribute_names_to_rename() const {
   return attributes_to_rename_map_;
 }
 /* ****************************** */

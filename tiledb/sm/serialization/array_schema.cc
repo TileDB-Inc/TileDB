@@ -487,6 +487,18 @@ Status array_schema_to_capnp(
         attribute_to_capnp(array_schema->attribute(i), &attribute_builder));
   }
 
+  // Attribute used names
+  std::vector<std::string> attribute_used_names =
+      array_schema->attribute_used_names();
+  auto attribute_used_names_builder =
+      array_schema_builder->initAttributeUsedNames(attribute_used_names.size());
+  for (size_t i = 0; i < attribute_used_names.size(); ++i) {
+    std::string used_name = attribute_used_names[i];
+    std::string current_name = array_schema->attribute_current_name(used_name);
+    attribute_used_names_builder[i].setKey(used_name);
+    attribute_used_names_builder[i].setValue(current_name);
+  }
+
   return Status::Ok();
 }
 
@@ -552,6 +564,16 @@ Status array_schema_from_capnp(
     tdb_unique_ptr<Attribute> attribute;
     RETURN_NOT_OK(attribute_from_capnp(attr_reader, &attribute));
     RETURN_NOT_OK((*array_schema)->add_attribute(attribute.get(), false));
+  }
+
+  // Set attribute used names
+  if (schema_reader.hasAttributeUsedNames()) {
+    auto attribute_used_names = schema_reader.getAttributeUsedNames();
+    for (const auto kv : attribute_used_names) {
+      RETURN_NOT_OK((*array_schema)
+                        ->rename_attribute(
+                            kv.getKey().cStr(), kv.getValue().cStr(), false));
+    }
   }
 
   // Initialize

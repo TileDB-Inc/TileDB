@@ -103,11 +103,13 @@ Status array_schema_evolution_to_capnp(
   }
 
   // Attributes to rename
+  const auto& attribute_names_to_rename =
+      array_schema_evolution->attribute_names_to_rename();
   auto attributes_to_rename_builder =
       array_schema_evolution_builder->initAttributesToRename(
-          array_schema_evolution->attribute_names_to_rename().size());
+          attribute_names_to_rename.size());
   uint64_t i = 0;
-  for (const auto& kv : array_schema_evolution->attribute_names_to_rename()) {
+  for (const auto& kv : attribute_names_to_rename) {
     attributes_to_rename_builder[i].setKey(kv.first);
     attributes_to_rename_builder[i].setValue(kv.second);
   }

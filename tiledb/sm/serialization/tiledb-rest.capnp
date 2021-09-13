@@ -79,6 +79,9 @@ struct ArraySchema {
 
     validityFilterPipeline @11 :FilterPipeline;
     # Type of compression for validity buffers (enum)
+
+    attributeUsedNames @12 :List(KV);
+    # list of attribute used names
 }
 
 struct ArraySchemaEvolution {

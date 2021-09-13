@@ -149,7 +149,7 @@ struct ArraySchema {
   class Pipeline;
 
   struct _capnpPrivate {
-    CAPNP_DECLARE_STRUCT_HEADER(d71de32f98e296fe, 2, 10)
+    CAPNP_DECLARE_STRUCT_HEADER(d71de32f98e296fe, 2, 11)
 #if !CAPNP_LITE
     static constexpr ::capnp::_::RawBrandedSchema const* brand() {
       return &schema->defaultBrand;
@@ -1629,6 +1629,12 @@ class ArraySchema::Reader {
   inline ::tiledb::sm::serialization::capnp::FilterPipeline::Reader
   getValidityFilterPipeline() const;
 
+  inline bool hasAttributeUsedNames() const;
+  inline ::capnp::List<
+      ::tiledb::sm::serialization::capnp::KV,
+      ::capnp::Kind::STRUCT>::Reader
+  getAttributeUsedNames() const;
+
  private:
   ::capnp::_::StructReader _reader;
   template <typename, ::capnp::Kind>
@@ -1784,6 +1790,27 @@ class ArraySchema::Builder {
           value);
   inline ::capnp::Orphan<::tiledb::sm::serialization::capnp::FilterPipeline>
   disownValidityFilterPipeline();
+
+  inline bool hasAttributeUsedNames();
+  inline ::capnp::List<
+      ::tiledb::sm::serialization::capnp::KV,
+      ::capnp::Kind::STRUCT>::Builder
+  getAttributeUsedNames();
+  inline void setAttributeUsedNames(::capnp::List<
+                                    ::tiledb::sm::serialization::capnp::KV,
+                                    ::capnp::Kind::STRUCT>::Reader value);
+  inline ::capnp::List<
+      ::tiledb::sm::serialization::capnp::KV,
+      ::capnp::Kind::STRUCT>::Builder
+  initAttributeUsedNames(unsigned int size);
+  inline void adoptAttributeUsedNames(
+      ::capnp::Orphan<::capnp::List<
+          ::tiledb::sm::serialization::capnp::KV,
+          ::capnp::Kind::STRUCT>>&& value);
+  inline ::capnp::Orphan<::capnp::List<
+      ::tiledb::sm::serialization::capnp::KV,
+      ::capnp::Kind::STRUCT>>
+  disownAttributeUsedNames();
 
  private:
   ::capnp::_::StructBuilder _builder;
@@ -9090,6 +9117,77 @@ ArraySchema::Builder::disownValidityFilterPipeline() {
       ::tiledb::sm::serialization::capnp::FilterPipeline>::
       disown(
           _builder.getPointerField(::capnp::bounded<9>() * ::capnp::POINTERS));
+}
+
+inline bool ArraySchema::Reader::hasAttributeUsedNames() const {
+  return !_reader.getPointerField(::capnp::bounded<10>() * ::capnp::POINTERS)
+              .isNull();
+}
+inline bool ArraySchema::Builder::hasAttributeUsedNames() {
+  return !_builder.getPointerField(::capnp::bounded<10>() * ::capnp::POINTERS)
+              .isNull();
+}
+inline ::capnp::
+    List<::tiledb::sm::serialization::capnp::KV, ::capnp::Kind::STRUCT>::Reader
+    ArraySchema::Reader::getAttributeUsedNames() const {
+  return ::capnp::_::PointerHelpers<::capnp::List<
+      ::tiledb::sm::serialization::capnp::KV,
+      ::capnp::Kind::STRUCT>>::get(_reader
+                                       .getPointerField(
+                                           ::capnp::bounded<10>() *
+                                           ::capnp::POINTERS));
+}
+inline ::capnp::
+    List<::tiledb::sm::serialization::capnp::KV, ::capnp::Kind::STRUCT>::Builder
+    ArraySchema::Builder::getAttributeUsedNames() {
+  return ::capnp::_::PointerHelpers<::capnp::List<
+      ::tiledb::sm::serialization::capnp::KV,
+      ::capnp::Kind::STRUCT>>::get(_builder
+                                       .getPointerField(
+                                           ::capnp::bounded<10>() *
+                                           ::capnp::POINTERS));
+}
+inline void ArraySchema::Builder::setAttributeUsedNames(
+    ::capnp::List<
+        ::tiledb::sm::serialization::capnp::KV,
+        ::capnp::Kind::STRUCT>::Reader value) {
+  ::capnp::_::PointerHelpers<::capnp::List<
+      ::tiledb::sm::serialization::capnp::KV,
+      ::capnp::Kind::STRUCT>>::
+      set(_builder.getPointerField(::capnp::bounded<10>() * ::capnp::POINTERS),
+          value);
+}
+inline ::capnp::
+    List<::tiledb::sm::serialization::capnp::KV, ::capnp::Kind::STRUCT>::Builder
+    ArraySchema::Builder::initAttributeUsedNames(unsigned int size) {
+  return ::capnp::_::PointerHelpers<::capnp::List<
+      ::tiledb::sm::serialization::capnp::KV,
+      ::capnp::Kind::STRUCT>>::
+      init(
+          _builder.getPointerField(::capnp::bounded<10>() * ::capnp::POINTERS),
+          size);
+}
+inline void ArraySchema::Builder::adoptAttributeUsedNames(
+    ::capnp::Orphan<::capnp::List<
+        ::tiledb::sm::serialization::capnp::KV,
+        ::capnp::Kind::STRUCT>>&& value) {
+  ::capnp::_::PointerHelpers<::capnp::List<
+      ::tiledb::sm::serialization::capnp::KV,
+      ::capnp::Kind::STRUCT>>::
+      adopt(
+          _builder.getPointerField(::capnp::bounded<10>() * ::capnp::POINTERS),
+          kj::mv(value));
+}
+inline ::capnp::Orphan<::capnp::List<
+    ::tiledb::sm::serialization::capnp::KV,
+    ::capnp::Kind::STRUCT>>
+ArraySchema::Builder::disownAttributeUsedNames() {
+  return ::capnp::_::PointerHelpers<::capnp::List<
+      ::tiledb::sm::serialization::capnp::KV,
+      ::capnp::Kind::STRUCT>>::disown(_builder
+                                          .getPointerField(
+                                              ::capnp::bounded<10>() *
+                                              ::capnp::POINTERS));
 }
 
 inline bool ArraySchemaEvolution::Reader::hasAttributesToDrop() const {

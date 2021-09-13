@@ -121,7 +121,7 @@ class ArraySchemaEvolution {
 
   /** Returns the names map of attributes to rename. */
   const std::unordered_map<std::string, std::string>&
-  attribute_names_to_rename();
+  attribute_names_to_rename() const;
 
  private:
   /* ********************************* */
