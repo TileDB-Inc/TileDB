@@ -331,7 +331,7 @@ void StringFx::delete_array(const std::string& array_name) {
   tiledb_ctx_free(&ctx);
 }
 
-TEST_CASE_METHOD(StringFx, "C API: Test string support", "[capi], [string]") {
+TEST_CASE_METHOD(StringFx, "C API: Test string support", "[capi][string]") {
   std::string array_name = "foo";
   delete_array(array_name);
   create_array(array_name);

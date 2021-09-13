@@ -902,7 +902,7 @@ std::string VFSFx::random_name(const std::string& prefix) {
   return ss.str();
 }
 
-TEST_CASE_METHOD(VFSFx, "C API: Test virtual filesystem", "[capi], [vfs]") {
+TEST_CASE_METHOD(VFSFx, "C API: Test virtual filesystem", "[capi][vfs]") {
   tiledb_stats_enable();
   tiledb_stats_reset();
 
@@ -921,7 +921,7 @@ TEST_CASE_METHOD(VFSFx, "C API: Test virtual filesystem", "[capi], [vfs]") {
 TEST_CASE_METHOD(
     VFSFx,
     "C API: Test virtual filesystem when S3 is not supported",
-    "[capi], [vfs]") {
+    "[capi][vfs]") {
   if (!supports_s3_) {
     tiledb_vfs_t* vfs;
     int rc = tiledb_vfs_alloc(ctx_, nullptr, &vfs);
@@ -933,7 +933,7 @@ TEST_CASE_METHOD(
 }
 
 TEST_CASE_METHOD(
-    VFSFx, "C API: Test virtual filesystem config", "[capi], [vfs]") {
+    VFSFx, "C API: Test virtual filesystem config", "[capi][vfs]") {
   // Prepare a config
   tiledb_error_t* error = nullptr;
   tiledb_config_t* config;
@@ -967,7 +967,7 @@ TEST_CASE_METHOD(
   tiledb_vfs_free(&vfs);
 }
 
-TEST_CASE_METHOD(VFSFx, "C API: Test VFS parallel I/O", "[capi], [vfs]") {
+TEST_CASE_METHOD(VFSFx, "C API: Test VFS parallel I/O", "[capi][vfs]") {
   tiledb_stats_enable();
   tiledb_stats_reset();
   set_num_vfs_threads(4);

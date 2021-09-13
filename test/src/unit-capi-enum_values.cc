@@ -43,7 +43,7 @@
 
 using namespace tiledb::sm;
 
-TEST_CASE("C API: Test enum values", "[capi], [enums]") {
+TEST_CASE("C API: Test enum values", "[capi][enums]") {
   /**
    * NOTE: The values of these enums are serialized to the array schema and/or
    * fragment metadata. Therefore, the values below should never change (i.e.
@@ -133,7 +133,7 @@ TEST_CASE("C API: Test enum values", "[capi], [enums]") {
   REQUIRE(TILEDB_VFS_APPEND == 2);
 }
 
-TEST_CASE("C API: Test enum string conversion", "[capi], [enums]") {
+TEST_CASE("C API: Test enum string conversion", "[capi][enums]") {
   const char* c_str = nullptr;
   tiledb_query_type_t query_type;
   REQUIRE(

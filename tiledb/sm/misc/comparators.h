@@ -308,7 +308,7 @@ class HilbertCmpReverse {
   }
 
  private:
-  /** GlobalCmp. */
+  /** HilbertCmp. */
   HilbertCmp cmp_;
 };
 

@@ -596,7 +596,7 @@ void QueryFx::test_get_buffer_read_decoupled(const std::string& path) {
 TEST_CASE_METHOD(
     QueryFx,
     "C API: Test query get buffer",
-    "[capi], [query], [query-get-buffer]") {
+    "[capi][query][query-get-buffer]") {
   // TODO: refactor for each supported FS.
   SupportedFsLocal local_fs;
   std::string temp_dir = local_fs.file_prefix() + local_fs.temp_dir();
@@ -614,7 +614,7 @@ TEST_CASE_METHOD(
 TEST_CASE_METHOD(
     QueryFx,
     "C API: Test query get layout",
-    "[capi], [query], [query-get-layout]") {
+    "[capi][query][query-get-layout]") {
   SupportedFsLocal local_fs;
   std::string temp_dir = local_fs.file_prefix() + local_fs.temp_dir();
   std::string array_name = temp_dir + "query_get_layout";
@@ -654,9 +654,7 @@ TEST_CASE_METHOD(
 }
 
 TEST_CASE_METHOD(
-    QueryFx,
-    "C API: Test query get array",
-    "[capi], [query], [query-get-array]") {
+    QueryFx, "C API: Test query get array", "[capi][query][query-get-array]") {
   SupportedFsLocal local_fs;
   std::string temp_dir = local_fs.file_prefix() + local_fs.temp_dir();
   std::string array_name = temp_dir + "query_get_array";

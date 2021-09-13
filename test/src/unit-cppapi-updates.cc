@@ -37,7 +37,7 @@ using namespace tiledb;
 
 TEST_CASE(
     "C++ API updates: test writing two identical fragments",
-    "[updates], [updates-identical-fragments]") {
+    "[updates][updates-identical-fragments]") {
   const std::string array_name = "updates_identical_fragments";
   Context ctx;
   VFS vfs(ctx);

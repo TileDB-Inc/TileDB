@@ -314,7 +314,7 @@ void DenseVectorFx::check_update(const std::string& path) {
 }
 
 TEST_CASE_METHOD(
-    DenseVectorFx, "C API: Test 1d dense vector", "[capi], [dense-vector]") {
+    DenseVectorFx, "C API: Test 1d dense vector", "[capi][dense-vector]") {
   std::string vector_name;
 
   // TODO: refactor for each supported FS.
@@ -331,7 +331,7 @@ TEST_CASE_METHOD(
 TEST_CASE_METHOD(
     DenseVectorFx,
     "C API: Test 1d dense vector with anonymous attribute",
-    "[capi], [dense-vector], [anon-attr]") {
+    "[capi][dense-vector][anon-attr]") {
   ATTR_NAME = "";
 
   SupportedFsLocal local_fs;
@@ -349,7 +349,7 @@ TEST_CASE_METHOD(
 TEST_CASE_METHOD(
     DenseVectorFx,
     "C API: Test 1d dense vector cell/tile layout",
-    "[capi], [dense-vector], [dense-vector-layout]") {
+    "[capi][dense-vector][dense-vector-layout]") {
   SupportedFsLocal local_fs;
   std::string vector_name =
       local_fs.file_prefix() + local_fs.temp_dir() + VECTOR;
@@ -375,7 +375,7 @@ TEST_CASE_METHOD(
 TEST_CASE_METHOD(
     DenseVectorFx,
     "C API: Test 1d dense vector, update",
-    "[capi], [dense-vector], [dense-vector-update]") {
+    "[capi][dense-vector][dense-vector-update]") {
   SupportedFsLocal local_fs;
   std::string vector_name =
       local_fs.file_prefix() + local_fs.temp_dir() + VECTOR;

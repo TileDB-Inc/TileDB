@@ -1,5 +1,5 @@
 /**
- * @file   unit-cppapi_config.cc
+ * @file   unit-cppapi-config.cc
  *
  * @section LICENSE
  *
@@ -54,7 +54,7 @@ TEST_CASE("C++ API: Config", "[cppapi][config]") {
   REQUIRE_THROWS_AS(readInvalidKey(), tiledb::TileDBError);
 }
 
-TEST_CASE("C++ API: Config iterator", "[cppapi], [cppapi-config]") {
+TEST_CASE("C++ API: Config iterator", "[cppapi][cppapi-config]") {
   tiledb::Config config;
   std::vector<std::string> names;
   for (auto it = config.begin("vfs"), ite = config.end(); it != ite; ++it) {
@@ -64,8 +64,7 @@ TEST_CASE("C++ API: Config iterator", "[cppapi], [cppapi-config]") {
   CHECK(names.size() == 58);
 }
 
-TEST_CASE(
-    "C++ API: Config Environment Variables", "[cppapi], [cppapi-config]") {
+TEST_CASE("C++ API: Config Environment Variables", "[cppapi][cppapi-config]") {
   tiledb::Config config;
   auto readInvalidKey = [&config]() { std::string result1 = config["foo"]; };
   REQUIRE_THROWS_AS(readInvalidKey(), tiledb::TileDBError);
@@ -89,7 +88,7 @@ TEST_CASE(
 
 TEST_CASE(
     "C++ API: Config Environment Variables Default Override",
-    "[cppapi], [cppapi-config]") {
+    "[cppapi][cppapi-config]") {
   tiledb::Config config;
   const std::string key = "sm.io_concurrency_level";
 
@@ -115,7 +114,7 @@ TEST_CASE(
   CHECK(result3 == value3);
 }
 
-TEST_CASE("C++ API: Config Equality", "[cppapi], [cppapi-config]") {
+TEST_CASE("C++ API: Config Equality", "[cppapi][cppapi-config]") {
   // Check for equality
   tiledb::Config config1;
   config1["foo"] = "bar";
@@ -132,8 +131,7 @@ TEST_CASE("C++ API: Config Equality", "[cppapi], [cppapi-config]") {
 
 #ifdef TILEDB_SERIALIZATION
 TEST_CASE(
-    "C++ API: Config Serialization",
-    "[cppapi], [cppapi-config], [serialization]") {
+    "C++ API: Config Serialization", "[cppapi][cppapi-config][serialization]") {
   // this variable is parameterized below, but we initialize
   // here to avoid warning/error on MSVC
   //   C4701: potentially uninitialized local variable 'format'

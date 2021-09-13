@@ -893,7 +893,7 @@ TEST_CASE("Filter: Test mixed in- and out-of-place pipeline", "[filter]") {
   buffer.clear();
 }
 
-TEST_CASE("Filter: Test compression", "[filter], [compression]") {
+TEST_CASE("Filter: Test compression", "[filter][compression]") {
   Config config;
 
   const uint64_t nelts = 100;
@@ -1990,7 +1990,7 @@ TEST_CASE("Filter: Test byteshuffle", "[filter]") {
   buffer.clear();
 }
 
-TEST_CASE("Filter: Test encryption", "[filter], [encryption]") {
+TEST_CASE("Filter: Test encryption", "[filter][encryption]") {
   Config config;
 
   // Set up test data
