@@ -40,7 +40,9 @@ using namespace tiledb::common;
 namespace tiledb {
 namespace sm {
 
-EncryptionKey::EncryptionKey() : encryption_type_(EncryptionType::NO_ENCRYPTION), key_length_(0) {
+EncryptionKey::EncryptionKey()
+    : encryption_type_(EncryptionType::NO_ENCRYPTION)
+    , key_length_(0) {
   std::memset(key_, 0, max_key_length_);
 }
 
@@ -56,7 +58,6 @@ Status EncryptionKey::set_key(
     EncryptionType encryption_type,
     const void* key_bytes,
     uint32_t key_length) {
-  
   if (!is_valid_key_length(encryption_type, key_length))
     return LOG_STATUS(Status::EncryptionError(
         "Cannot create key; invalid key length for encryption type."));
