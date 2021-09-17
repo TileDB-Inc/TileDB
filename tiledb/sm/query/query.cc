@@ -184,6 +184,10 @@ Status Query::add_range_var(
     return LOG_STATUS(
         Status::QueryError("Cannot add range; Invalid dimension index"));
 
+  if ((start == nullptr && start_size != 0) ||
+      (end == nullptr && end_size != 0))
+    return LOG_STATUS(Status::QueryError("Cannot add range; Invalid range"));
+
   if (!array_schema_->domain()->dimension(dim_idx)->var_size())
     return LOG_STATUS(
         Status::QueryError("Cannot add range; Range must be variable-sized"));
