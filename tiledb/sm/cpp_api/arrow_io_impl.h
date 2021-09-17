@@ -675,7 +675,7 @@ BufferInfo ArrowExporter::buffer_info(const std::string& name) {
   uint8_t offsets_elem_nbytes =
       ctx_->config().get("sm.var_offsets.bitsize") == "32" ? 4 : 8;
 
-  bool is_var = (result_elt_iter->second.first != 0);
+  bool is_var = typeinfo.cell_val_num == TILEDB_VAR_NUM;
 
   // NOTE: result sizes are in bytes
   if (is_var) {
@@ -758,12 +758,19 @@ void ArrowExporter::export_(
   }
   cpp_schema->export_ptr(schema);
 
+  size_t elem_num = 0;
+  if (bufferinfo.is_var) {
+    // adjust for offset unless empty result
+    elem_num = (bufferinfo.data_num == 0) ? 0 : bufferinfo.offsets_num - 1;
+  } else {
+    elem_num = bufferinfo.data_num;
+  }
+
   auto cpp_arrow_array = new CPPArrowArray(
-      (bufferinfo.is_var ? bufferinfo.offsets_num - 1 :
-                           bufferinfo.data_num),  // elem_num
-      0,                                          // null_num
-      0,                                          // offset
-      {},                                         // children
+      elem_num,  // elem_num
+      0,         // null_num
+      0,         // offset
+      {},        // children
       buffers);
   cpp_arrow_array->export_ptr(array);
 }

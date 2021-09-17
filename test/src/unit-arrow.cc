@@ -54,8 +54,9 @@ struct CPPArrayFx {
       vfs.remove_dir(uri);
 
     Domain domain(ctx);
-    auto d1 =
-        Dimension::create<int>(ctx, "d1", {{0, (int)col_size - 1}}, col_size);
+    int dim_end = col_size > 0 ? col_size - 1 : 0;
+    int tile_extent = col_size > 0 ? col_size : 1;
+    auto d1 = Dimension::create<int>(ctx, "d1", {{0, dim_end}}, tile_extent);
     domain.add_dimensions(d1);
 
     std::vector<Attribute> attrs;
@@ -184,11 +185,14 @@ void allocate_query_buffers(tiledb::Query* const query) {
       query->set_data_buffer(name, data, est_size);
     } else {
       auto est_size_var = query->est_result_size_var(attr.name());
-      void* data = std::malloc(std::get<1>(est_size_var));
-      uint64_t* offsets = static_cast<uint64_t*>(
-          std::malloc(std::get<0>(est_size_var) * sizeof(uint64_t)));
-      query->set_data_buffer(name, data, std::get<1>(est_size_var));
-      query->set_offsets_buffer(name, offsets, std::get<0>(est_size_var));
+      size_t data_size = std::get<1>(est_size_var);
+      void* data = std::malloc(data_size);
+      size_t offsets_nelem = std::get<0>(est_size_var);
+      uint64_t* offsets =
+          static_cast<uint64_t*>(std::malloc(offsets_nelem * sizeof(uint64_t)));
+
+      query->set_data_buffer(name, data, data_size);
+      query->set_offsets_buffer(name, offsets, offsets_nelem);
     }
   }
 
@@ -212,13 +216,10 @@ void allocate_query_buffers(tiledb::Query* const query) {
 
 };  // namespace
 
-TEST_CASE("Arrow IO integration tests", "[arrow]") {
-  std::string uri("test_arrow_io");
-  const uint64_t col_size = 111;
-
+void test_for_column_size(size_t col_size) {
+  std::string uri("test_arrow_io_" + std::to_string(col_size));
   CPPArrayFx _fx(uri, col_size);
 
-  py::scoped_interpreter guard{};
   py::object py_data_source;
   py::object py_data_arrays;
   py::object py_data_names;
@@ -227,17 +228,6 @@ TEST_CASE("Arrow IO integration tests", "[arrow]") {
   size_t data_len = 0;
 
   // create (arrow) schema and array from pyarrow RecordBatch
-  py::module py_sys = py::module::import("sys");
-
-#ifdef TILEDB_PYTHON_UNIT_PATH
-  // append the tiledb_unit exe dir so that we can import the helper
-  py_sys.attr("path").attr("insert")(1, TILEDB_PYTHON_UNIT_PATH);
-#endif
-#ifdef TILEDB_PYTHON_SITELIB_PATH
-  // append the site-packages path from cmake
-  // this is not necessary with conda
-  py_sys.attr("path").attr("insert")(1, TILEDB_PYTHON_SITELIB_PATH);
-#endif
 
   // import the arrow helper
   unit_arrow = py::module::import("unit_arrow");
@@ -251,7 +241,8 @@ TEST_CASE("Arrow IO integration tests", "[arrow]") {
   ds_import = py_data_source.attr("import_result");
 
   // SECTION("Test writing data via ArrowAdapter from pyarrow arrays")
-  {
+  // Note: don't try to write col_size == 0
+  if (col_size > 0) {
     /*
      * Test write
      */
@@ -263,7 +254,8 @@ TEST_CASE("Arrow IO integration tests", "[arrow]") {
     Array array(ctx, uri, TILEDB_WRITE);
     Query query(ctx, array);
     query.set_layout(TILEDB_COL_MAJOR);
-    query.add_range(0, (int32_t)0, (int32_t)(col_size - 1));
+    int32_t range_max = static_cast<int32_t>(col_size > 0 ? col_size - 1 : 0);
+    query.add_range(0, (int32_t)0, (int32_t)range_max);
 
     std::vector<ArrowArray*> vec_array;
     std::vector<ArrowSchema*> vec_schema;
@@ -322,12 +314,53 @@ TEST_CASE("Arrow IO integration tests", "[arrow]") {
     Array array(ctx, uri, TILEDB_READ);
     Query query(ctx, array);
     query.set_layout(TILEDB_COL_MAJOR);
-    query.add_range(
-        0, static_cast<int32_t>(0), static_cast<int32_t>(col_size - 1));
+    int32_t range_max = static_cast<int32_t>(col_size > 0 ? col_size - 1 : 0);
+    query.add_range(0, static_cast<int32_t>(0), range_max);
 
     allocate_query_buffers(&query);
     query.submit();
     assert(query.query_status() == Query::Status::COMPLETE);
+
+    auto schema = query.array().schema();
+    for (const auto& [attr_name, res] :
+         query.result_buffer_elements_nullable()) {
+      if (!schema.has_attribute(attr_name))
+        continue;
+
+      // unwrap from a std::tuple here to avoid unnecessary const bug in
+      // structured binding with MSVC 15
+      // https://developercommunity.visualstudio.com/t/structured-bindings-with-auto-is-incorrectly-const/562665
+      auto [offsets_nelem, data_nelem, validity_nelem] =
+          std::tuple<uint64_t, uint64_t, uint64_t>(res);
+
+      // fake an empty result set, which is not otherwise possible with
+      // a dense array. test for ch10191
+      if (col_size == 0) {
+        offsets_nelem = 1;  // compensate for offset +1 adjustment
+        data_nelem = 0;
+        validity_nelem = 0;
+      }
+
+      uint64_t nelem_unused = 0;
+      uint64_t elemnbytes_unused = 0;
+      void* buffer_p = nullptr;
+      query.get_data_buffer(
+          attr_name, &buffer_p, &nelem_unused, &elemnbytes_unused);
+      query.set_data_buffer(attr_name, buffer_p, data_nelem);
+
+      const auto& attr = schema.attribute(attr_name);
+      if (attr.cell_val_num() == TILEDB_VAR_NUM) {
+        query.get_offsets_buffer(
+            attr_name, (uint64_t**)&buffer_p, &nelem_unused);
+        query.set_offsets_buffer(attr_name, (uint64_t*)buffer_p, offsets_nelem);
+      }
+      if (attr.nullable()) {
+        query.get_validity_buffer(
+            attr_name, (uint8_t**)&buffer_p, &nelem_unused);
+        query.set_validity_buffer(
+            attr_name, (uint8_t*)buffer_p, validity_nelem);
+      }
+    }
 
     std::vector<ArrowArray*> vec_array;
     std::vector<ArrowSchema*> vec_schema;
@@ -377,5 +410,26 @@ TEST_CASE("Arrow IO integration tests", "[arrow]") {
       std::free(schema_p);
 
     free_query_buffers(&query);
+  }
+}
+
+TEST_CASE("Arrow IO integration tests", "[arrow]") {
+  py::scoped_interpreter guard{};
+  py::module py_sys = py::module::import("sys");
+
+#ifdef TILEDB_PYTHON_UNIT_PATH
+  // append the tiledb_unit exe dir so that we can import the helper
+  py_sys.attr("path").attr("insert")(1, TILEDB_PYTHON_UNIT_PATH);
+#endif
+#ifdef TILEDB_PYTHON_SITELIB_PATH
+  // append the site-packages path from cmake
+  // this is not necessary with conda
+  py_sys.attr("path").attr("insert")(1, TILEDB_PYTHON_SITELIB_PATH);
+#endif
+
+  // do not use catch2 GENERATE here: it causes bad things to happen w/ python
+  uint64_t col_sizes[] = {0};  //,1,2,3,4,11,103};
+  for (auto sz : col_sizes) {
+    test_for_column_size(sz);
   }
 }
