@@ -1621,13 +1621,7 @@ TEST_CASE_METHOD(
 
     SECTION("** 1D") {
       dimension = 1;
-      SECTION("### dense") {
-        create_dense_vector(array_name);
-      }
-
-      SECTION("### sparse") {
-        create_sparse_vector(array_name);
-      }
+      create_sparse_vector(array_name);
 
       // Prepare cell buffers
       buffer_coords_dim1[0] = 1;
@@ -1642,13 +1636,7 @@ TEST_CASE_METHOD(
 
     SECTION("** 2D") {
       dimension = 2;
-      SECTION("### dense") {
-        create_dense_array(array_name);
-      }
-
-      SECTION("### sparse") {
-        create_sparse_array(array_name);
-      }
+      create_sparse_array(array_name);
 
       // Prepare cell buffers
       buffer_coords_dim1[0] = 1;
@@ -1675,13 +1663,7 @@ TEST_CASE_METHOD(
 
     SECTION("** 1D") {
       dimension = 1;
-      SECTION("### dense") {
-        create_dense_vector(array_name);
-      }
-
-      SECTION("### sparse") {
-        create_sparse_vector(array_name);
-      }
+      create_sparse_vector(array_name);
 
       // Prepare cell buffers
       buffer_coords_dim1[0] = 1;
@@ -1696,13 +1678,7 @@ TEST_CASE_METHOD(
 
     SECTION("** 2D") {
       dimension = 2;
-      SECTION("### dense") {
-        create_dense_array(array_name);
-      }
-
-      SECTION("### sparse") {
-        create_sparse_array(array_name);
-      }
+      create_sparse_array(array_name);
 
       // Prepare cell buffers
       buffer_coords_dim1[0] = 1;
@@ -2057,33 +2033,12 @@ TEST_CASE_METHOD(
   rc = tiledb_array_open(ctx_, array, TILEDB_WRITE);
   REQUIRE(rc == TILEDB_OK);
 
-  int32_t a[] = {1, 2, 3, 4};
-  uint64_t a_size = sizeof(a);
-  uint64_t coords_dim1[] = {1, 1, 1, 1};
-  uint64_t coords_dim2[] = {1, 2, 3, 4};
-
-  uint64_t coords_size = sizeof(coords_dim1);
-
   // Prepare query
   tiledb_query_t* query;
   rc = tiledb_query_alloc(ctx_, array, TILEDB_WRITE, &query);
   CHECK(rc == TILEDB_OK);
-  rc = tiledb_query_set_data_buffer(ctx_, query, "a", a, &a_size);
-  CHECK(rc == TILEDB_OK);
-  rc = tiledb_query_set_data_buffer(
-      ctx_, query, "d1", coords_dim1, &coords_size);
-  CHECK(rc == TILEDB_OK);
-  rc = tiledb_query_set_data_buffer(
-      ctx_, query, "d2", coords_dim2, &coords_size);
-  CHECK(rc == TILEDB_OK);
-
-  int64_t subarray[] = {2, 3, 4, 5};
-  rc = tiledb_query_set_subarray(ctx_, query, subarray);
-  CHECK(rc == TILEDB_OK);
 
   rc = tiledb_query_set_layout(ctx_, query, TILEDB_UNORDERED);
-  CHECK(rc == TILEDB_OK);
-  rc = tiledb_query_submit(ctx_, query);
   CHECK(rc == TILEDB_ERR);
 
   // Close array

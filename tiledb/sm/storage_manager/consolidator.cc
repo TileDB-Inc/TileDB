@@ -214,7 +214,6 @@ Status Consolidator::consolidate_fragments(
 
   uint32_t step = 0;
   std::vector<TimestampedURI> to_consolidate;
-  bool all_sparse;
   do {
     // No need to consolidate if no more than 1 fragment exist
     if (fragment_info.fragment_num() <= 1)
@@ -226,7 +225,6 @@ Status Consolidator::consolidate_fragments(
         array_for_reads.array_schema(),
         fragment_info,
         &to_consolidate,
-        &all_sparse,
         &union_non_empty_domains);
     if (!st.ok()) {
       array_for_reads.close();
@@ -244,7 +242,6 @@ Status Consolidator::consolidate_fragments(
         array_for_reads,
         array_for_writes,
         to_consolidate,
-        all_sparse,
         union_non_empty_domains,
         &new_fragment_uri);
     if (!st.ok()) {
@@ -279,28 +276,12 @@ Status Consolidator::consolidate_fragments(
   return Status::Ok();
 }
 
-bool Consolidator::all_sparse(
-    const FragmentInfo& fragment_info, size_t start, size_t end) const {
-  const auto& fragments = fragment_info.fragments();
-
-  for (size_t i = start; i <= end; ++i) {
-    if (!fragments[i].sparse())
-      return false;
-  }
-
-  return true;
-}
-
 bool Consolidator::are_consolidatable(
     const Domain* domain,
     const FragmentInfo& fragment_info,
     size_t start,
     size_t end,
     const NDRange& union_non_empty_domains) const {
-  // True if all fragments in [start, end] are sparse
-  if (all_sparse(fragment_info, start, end))
-    return true;
-
   auto anterior_ndrange = fragment_info.anterior_ndrange();
   if (anterior_ndrange.size() != 0 &&
       domain->overlap(union_non_empty_domains, anterior_ndrange))
@@ -328,7 +309,6 @@ Status Consolidator::consolidate(
     Array& array_for_reads,
     Array& array_for_writes,
     const std::vector<TimestampedURI>& to_consolidate,
-    bool all_sparse,
     const NDRange& union_non_empty_domains,
     URI* new_fragment_uri) {
   auto timer_se = stats_->start_timer("consolidate_main");
@@ -345,8 +325,7 @@ Status Consolidator::consolidate(
   // Prepare buffers
   std::vector<ByteVec> buffers;
   std::vector<uint64_t> buffer_sizes;
-  RETURN_NOT_OK(
-      create_buffers(array_schema, all_sparse, &buffers, &buffer_sizes));
+  RETURN_NOT_OK(create_buffers(array_schema, &buffers, &buffer_sizes));
 
   // Create queries
   auto query_r = (Query*)nullptr;
@@ -354,7 +333,6 @@ Status Consolidator::consolidate(
   auto st = create_queries(
       &array_for_reads,
       &array_for_writes,
-      all_sparse,
       union_non_empty_domains,
       &query_r,
       &query_w,
@@ -366,7 +344,7 @@ Status Consolidator::consolidate(
   }
 
   // Read from one array and write to the other
-  st = copy_array(query_r, query_w, &buffers, &buffer_sizes, all_sparse);
+  st = copy_array(query_r, query_w, &buffers, &buffer_sizes);
   if (!st.ok()) {
     tdb_delete(query_r);
     tdb_delete(query_w);
@@ -521,15 +499,14 @@ Status Consolidator::copy_array(
     Query* query_r,
     Query* query_w,
     std::vector<ByteVec>* buffers,
-    std::vector<uint64_t>* buffer_sizes,
-    bool sparse_mode) {
+    std::vector<uint64_t>* buffer_sizes) {
   auto timer_se = stats_->start_timer("consolidate_copy_array");
 
   // Set the read query buffers outside the repeated submissions.
   // The Reader will reset the query buffer sizes to the original
   // sizes, not the potentially smaller sizes of the results after
   // the query submission.
-  RETURN_NOT_OK(set_query_buffers(query_r, sparse_mode, buffers, buffer_sizes));
+  RETURN_NOT_OK(set_query_buffers(query_r, buffers, buffer_sizes));
 
   do {
     // READ
@@ -537,8 +514,7 @@ Status Consolidator::copy_array(
 
     // Set explicitly the write query buffers, as the sizes may have
     // been altered by the read query.
-    RETURN_NOT_OK(
-        set_query_buffers(query_w, sparse_mode, buffers, buffer_sizes));
+    RETURN_NOT_OK(set_query_buffers(query_w, buffers, buffer_sizes));
 
     // WRITE
     RETURN_NOT_OK(query_w->submit());
@@ -549,7 +525,6 @@ Status Consolidator::copy_array(
 
 Status Consolidator::create_buffers(
     const ArraySchema* array_schema,
-    bool sparse_mode,
     std::vector<ByteVec>* buffers,
     std::vector<uint64_t>* buffer_sizes) {
   auto timer_se = stats_->start_timer("consolidate_create_buffers");
@@ -558,7 +533,7 @@ Status Consolidator::create_buffers(
   auto attribute_num = array_schema->attribute_num();
   auto domain = array_schema->domain();
   auto dim_num = array_schema->dim_num();
-  auto sparse = !array_schema->dense() || sparse_mode;
+  auto sparse = !array_schema->dense();
 
   // Calculate number of buffers
   size_t buffer_num = 0;
@@ -588,7 +563,6 @@ Status Consolidator::create_buffers(
 Status Consolidator::create_queries(
     Array* array_for_reads,
     Array* array_for_writes,
-    bool sparse_mode,
     const NDRange& subarray,
     Query** query_r,
     Query** query_w,
@@ -607,9 +581,6 @@ Status Consolidator::create_queries(
   if (!config_.use_refactored_readers_ ||
       array_for_reads->array_schema()->dense())
     RETURN_NOT_OK((*query_r)->set_subarray_unsafe(subarray));
-
-  if (array_for_reads->array_schema()->dense() && sparse_mode)
-    RETURN_NOT_OK((*query_r)->set_sparse_mode(true));
 
   // Get last fragment URI, which will be the URI of the consolidated fragment
   auto first = (*query_r)->first_fragment_uri();
@@ -636,12 +607,11 @@ Status Consolidator::compute_next_to_consolidate(
     const ArraySchema* array_schema,
     const FragmentInfo& fragment_info,
     std::vector<TimestampedURI>* to_consolidate,
-    bool* all_sparse,
     NDRange* union_non_empty_domains) const {
   auto timer_se = stats_->start_timer("consolidate_compute_next");
 
   // Preparation
-  *all_sparse = true;
+  auto sparse = !array_schema->dense();
   const auto& fragments = fragment_info.fragments();
   auto domain = array_schema->domain();
   to_consolidate->clear();
@@ -698,8 +668,8 @@ Status Consolidator::compute_next_to_consolidate(
           domain->expand_ndrange(
               fragments[i + j].non_empty_domain(), &m_union[i][j]);
           domain->expand_to_tiles(&m_union[i][j]);
-          if (!are_consolidatable(
-                  domain, fragment_info, j, j + i, m_union[i][j])) {
+          if (!sparse && !are_consolidatable(
+                             domain, fragment_info, j, j + i, m_union[i][j])) {
             // Mark this entry as invalid
             m_sizes[i][j] = UINT64_MAX;
             m_union[i][j].clear();
@@ -742,7 +712,6 @@ Status Consolidator::compute_next_to_consolidate(
     for (size_t f = min_col; f <= min_col + i; ++f) {
       to_consolidate->emplace_back(
           fragments[f].uri(), fragments[f].timestamp_range());
-      *all_sparse &= fragments[f].sparse();
     }
     *union_non_empty_domains = m_union[i][min_col];
     break;
@@ -779,7 +748,6 @@ Status Consolidator::compute_new_fragment_uri(
 
 Status Consolidator::set_query_buffers(
     Query* query,
-    bool sparse_mode,
     std::vector<ByteVec>* buffers,
     std::vector<uint64_t>* buffer_sizes) const {
   auto array_schema = query->array_schema();
@@ -826,7 +794,7 @@ Status Consolidator::set_query_buffers(
       }
     }
   }
-  if (!dense || sparse_mode) {
+  if (!dense) {
     for (unsigned d = 0; d < dim_num; ++d) {
       auto dim = array_schema->dimension(d);
       auto dim_name = dim->name();

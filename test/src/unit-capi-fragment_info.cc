@@ -212,24 +212,29 @@ TEST_CASE(
   CHECK(rc == TILEDB_OK);
   CHECK(fragment_num == 1);
 
-  // Write a sparse fragment
-  a = {11, 12, 13, 14};
+  // Write another dense fragment
+  subarray[0] = 1;
+  subarray[1] = 7;
+  a = {7, 1, 2, 3, 4, 5, 6};
   a_size = a.size() * sizeof(int32_t);
-  std::vector<uint64_t> d = {1, 3, 5, 7};
-  uint64_t d_size = d.size() * sizeof(uint64_t);
   buffers["a"] = tiledb::test::QueryBuffer({&a[0], a_size, nullptr, 0});
-  buffers["d"] = tiledb::test::QueryBuffer({&d[0], d_size, nullptr, 0});
   std::string written_frag_uri;
-  write_array(ctx, array_name, 2, TILEDB_UNORDERED, buffers, &written_frag_uri);
+  write_array(
+      ctx,
+      array_name,
+      2,
+      subarray,
+      TILEDB_ROW_MAJOR,
+      buffers,
+      &written_frag_uri);
 
-  // Write another sparse fragment
-  a = {21, 22, 23};
+  // Write another dense fragment
+  subarray[0] = 2;
+  subarray[1] = 9;
+  a = {6, 7, 1, 2, 3, 4, 5, 6};
   a_size = a.size() * sizeof(int32_t);
-  d = {2, 4, 9};
-  d_size = d.size() * sizeof(uint64_t);
   buffers["a"] = tiledb::test::QueryBuffer({&a[0], a_size, nullptr, 0});
-  buffers["d"] = tiledb::test::QueryBuffer({&d[0], d_size, nullptr, 0});
-  write_array(ctx, array_name, 3, TILEDB_UNORDERED, buffers);
+  write_array(ctx, array_name, 3, subarray, TILEDB_ROW_MAJOR, buffers);
 
   // Load fragment info again
   rc = tiledb_fragment_info_load(ctx, fragment_info);
@@ -250,7 +255,7 @@ TEST_CASE(
   uint64_t size;
   rc = tiledb_fragment_info_get_fragment_size(ctx, fragment_info, 1, &size);
   CHECK(rc == TILEDB_OK);
-  CHECK(size == 1786);
+  CHECK(size == 1662);
 
   // Get dense / sparse
   int32_t dense;
@@ -262,10 +267,10 @@ TEST_CASE(
   CHECK(dense == 0);
   rc = tiledb_fragment_info_get_dense(ctx, fragment_info, 1, &dense);
   CHECK(rc == TILEDB_OK);
-  CHECK(dense == 0);
+  CHECK(dense == 1);
   rc = tiledb_fragment_info_get_sparse(ctx, fragment_info, 1, &dense);
   CHECK(rc == TILEDB_OK);
-  CHECK(dense == 1);
+  CHECK(dense == 0);
 
   // Get timestamp range
   uint64_t start, end;
@@ -301,10 +306,10 @@ TEST_CASE(
   CHECK(cell_num == 10);
   rc = tiledb_fragment_info_get_cell_num(ctx, fragment_info, 1, &cell_num);
   CHECK(rc == TILEDB_OK);
-  CHECK(cell_num == 4);
+  CHECK(cell_num == 10);
   rc = tiledb_fragment_info_get_cell_num(ctx, fragment_info, 2, &cell_num);
   CHECK(rc == TILEDB_OK);
-  CHECK(cell_num == 3);
+  CHECK(cell_num == 10);
 
   // Get version
   uint32_t version;
@@ -425,13 +430,12 @@ TEST_CASE(
   CHECK(rc == TILEDB_OK);
   CHECK(fragment_num == 1);
 
-  // Write a sparse fragment
-  a = {11, 12, 13, 14};
+  // Write another dense fragment
+  subarray[0] = 1;
+  subarray[1] = 7;
+  a = {7, 1, 2, 3, 4, 5, 6};
   a_size = a.size() * sizeof(int32_t);
-  std::vector<uint64_t> d = {1, 3, 5, 7};
-  uint64_t d_size = d.size() * sizeof(uint64_t);
   buffers["a"] = tiledb::test::QueryBuffer({&a[0], a_size, nullptr, 0});
-  buffers["d"] = tiledb::test::QueryBuffer({&d[0], d_size, nullptr, 0});
   std::string written_frag_uri;
   write_array(
       ctx,
@@ -440,17 +444,17 @@ TEST_CASE(
       key,
       32,
       2,
-      TILEDB_UNORDERED,
+      subarray,
+      TILEDB_ROW_MAJOR,
       buffers,
       &written_frag_uri);
 
-  // Write another sparse fragment
-  a = {21, 22, 23};
+  // Write another dense fragment
+  subarray[0] = 2;
+  subarray[1] = 9;
+  a = {6, 7, 1, 2, 3, 4, 5, 6};
   a_size = a.size() * sizeof(int32_t);
-  d = {2, 4, 9};
-  d_size = d.size() * sizeof(uint64_t);
   buffers["a"] = tiledb::test::QueryBuffer({&a[0], a_size, nullptr, 0});
-  buffers["d"] = tiledb::test::QueryBuffer({&d[0], d_size, nullptr, 0});
   write_array(
       ctx,
       array_name,
@@ -458,7 +462,8 @@ TEST_CASE(
       key,
       32,
       3,
-      TILEDB_UNORDERED,
+      subarray,
+      TILEDB_ROW_MAJOR,
       buffers);
 
   // Load fragment info again
@@ -481,7 +486,7 @@ TEST_CASE(
   uint64_t size;
   rc = tiledb_fragment_info_get_fragment_size(ctx, fragment_info, 1, &size);
   CHECK(rc == TILEDB_OK);
-  CHECK(size == 3139);
+  CHECK(size == 2855);
 
   // Get dense / sparse
   int32_t dense;
@@ -493,10 +498,10 @@ TEST_CASE(
   CHECK(dense == 0);
   rc = tiledb_fragment_info_get_dense(ctx, fragment_info, 1, &dense);
   CHECK(rc == TILEDB_OK);
-  CHECK(dense == 0);
+  CHECK(dense == 1);
   rc = tiledb_fragment_info_get_sparse(ctx, fragment_info, 1, &dense);
   CHECK(rc == TILEDB_OK);
-  CHECK(dense == 1);
+  CHECK(dense == 0);
 
   // Get timestamp range
   uint64_t start, end;
@@ -532,10 +537,10 @@ TEST_CASE(
   CHECK(cell_num == 10);
   rc = tiledb_fragment_info_get_cell_num(ctx, fragment_info, 1, &cell_num);
   CHECK(rc == TILEDB_OK);
-  CHECK(cell_num == 4);
+  CHECK(cell_num == 10);
   rc = tiledb_fragment_info_get_cell_num(ctx, fragment_info, 2, &cell_num);
   CHECK(rc == TILEDB_OK);
-  CHECK(cell_num == 3);
+  CHECK(cell_num == 10);
 
   // Get version
   uint32_t version;
@@ -686,25 +691,29 @@ TEST_CASE(
       TILEDB_ROW_MAJOR,
       2);
 
-  // Write a sparse fragment
+  // Write a dense fragment
   QueryBuffers buffers;
-  std::vector<int32_t> a = {11, 12, 13, 14};
+  uint64_t subarray[] = {1, 6};
+  std::vector<int32_t> a = {1, 2, 3, 4, 5, 6};
   uint64_t a_size = a.size() * sizeof(int32_t);
-  std::vector<uint64_t> d = {1, 3, 5, 7};
-  uint64_t d_size = d.size() * sizeof(uint64_t);
   buffers["a"] = tiledb::test::QueryBuffer({&a[0], a_size, nullptr, 0});
-  buffers["d"] = tiledb::test::QueryBuffer({&d[0], d_size, nullptr, 0});
   std::string written_frag_uri;
-  write_array(ctx, array_name, 1, TILEDB_UNORDERED, buffers, &written_frag_uri);
+  write_array(
+      ctx,
+      array_name,
+      1,
+      subarray,
+      TILEDB_ROW_MAJOR,
+      buffers,
+      &written_frag_uri);
 
-  // Write another sparse fragment
-  a = {21, 22, 23};
+  // Write another dense fragment
+  subarray[0] = 1;
+  subarray[1] = 7;
+  a = {7, 1, 2, 3, 4, 5, 6};
   a_size = a.size() * sizeof(int32_t);
-  d = {2, 4, 9};
-  d_size = d.size() * sizeof(uint64_t);
   buffers["a"] = tiledb::test::QueryBuffer({&a[0], a_size, nullptr, 0});
-  buffers["d"] = tiledb::test::QueryBuffer({&d[0], d_size, nullptr, 0});
-  write_array(ctx, array_name, 2, TILEDB_UNORDERED, buffers);
+  write_array(ctx, array_name, 2, subarray, TILEDB_ROW_MAJOR, buffers);
 
   // Create fragment info object
   tiledb_fragment_info_t* fragment_info = nullptr;
@@ -770,14 +779,13 @@ TEST_CASE(
   CHECK(rc == TILEDB_OK);
   CHECK(unconsolidated == 0);
 
-  // Write another sparse fragment
-  a = {31, 32, 33};
+  // Write another dense fragment
+  subarray[0] = 2;
+  subarray[1] = 9;
+  a = {6, 7, 1, 2, 3, 4, 5, 6};
   a_size = a.size() * sizeof(int32_t);
-  d = {1, 3, 5};
-  d_size = d.size() * sizeof(uint64_t);
   buffers["a"] = tiledb::test::QueryBuffer({&a[0], a_size, nullptr, 0});
-  buffers["d"] = tiledb::test::QueryBuffer({&d[0], d_size, nullptr, 0});
-  write_array(ctx, array_name, 3, TILEDB_UNORDERED, buffers);
+  write_array(ctx, array_name, 3, subarray, TILEDB_ROW_MAJOR, buffers);
 
   // Load fragment info
   rc = tiledb_fragment_info_load(ctx, fragment_info);
@@ -843,25 +851,29 @@ TEST_CASE(
       TILEDB_ROW_MAJOR,
       2);
 
-  // Write a sparse fragment
+  // Write a dense fragment
   QueryBuffers buffers;
+  uint64_t subarray[] = {1, 4};
   std::vector<int32_t> a = {11, 12, 13, 14};
   uint64_t a_size = a.size() * sizeof(int32_t);
-  std::vector<uint64_t> d = {1, 3, 5, 7};
-  uint64_t d_size = d.size() * sizeof(uint64_t);
   buffers["a"] = tiledb::test::QueryBuffer({&a[0], a_size, nullptr, 0});
-  buffers["d"] = tiledb::test::QueryBuffer({&d[0], d_size, nullptr, 0});
   std::string written_frag_uri;
-  write_array(ctx, array_name, 1, TILEDB_UNORDERED, buffers, &written_frag_uri);
+  write_array(
+      ctx,
+      array_name,
+      1,
+      subarray,
+      TILEDB_ROW_MAJOR,
+      buffers,
+      &written_frag_uri);
 
-  // Write another sparse fragment
+  // Write another dense fragment
+  subarray[0] = 5;
+  subarray[1] = 7;
   a = {21, 22, 23};
   a_size = a.size() * sizeof(int32_t);
-  d = {2, 4, 9};
-  d_size = d.size() * sizeof(uint64_t);
   buffers["a"] = tiledb::test::QueryBuffer({&a[0], a_size, nullptr, 0});
-  buffers["d"] = tiledb::test::QueryBuffer({&d[0], d_size, nullptr, 0});
-  write_array(ctx, array_name, 2, TILEDB_UNORDERED, buffers);
+  write_array(ctx, array_name, 2, subarray, TILEDB_ROW_MAJOR, buffers);
 
   // Create fragment info object
   tiledb_fragment_info_t* fragment_info = nullptr;
@@ -920,14 +932,13 @@ TEST_CASE(
   CHECK(rc == TILEDB_OK);
   CHECK(std::string(to_vacuum_uri) == written_frag_uri);
 
-  // Write another sparse fragment
+  // Write another dense fragment
+  subarray[0] = 1;
+  subarray[1] = 3;
   a = {31, 32, 33};
   a_size = a.size() * sizeof(int32_t);
-  d = {1, 3, 5};
-  d_size = d.size() * sizeof(uint64_t);
   buffers["a"] = tiledb::test::QueryBuffer({&a[0], a_size, nullptr, 0});
-  buffers["d"] = tiledb::test::QueryBuffer({&d[0], d_size, nullptr, 0});
-  write_array(ctx, array_name, 3, TILEDB_UNORDERED, buffers);
+  write_array(ctx, array_name, 3, subarray, TILEDB_ROW_MAJOR, buffers);
 
   // Load fragment info
   rc = tiledb_fragment_info_load(ctx, fragment_info);
@@ -993,27 +1004,37 @@ TEST_CASE("C API: Test fragment info, dump", "[capi][fragment_info][dump]") {
       buffers,
       &written_frag_uri_1);
 
-  // Write a sparse fragment
+  // Write another dense fragment
+  subarray[0] = 1;
+  subarray[1] = 4;
   a = {11, 12, 13, 14};
   a_size = a.size() * sizeof(int32_t);
-  std::vector<uint64_t> d = {1, 3, 5, 7};
-  uint64_t d_size = d.size() * sizeof(uint64_t);
   buffers["a"] = tiledb::test::QueryBuffer({&a[0], a_size, nullptr, 0});
-  buffers["d"] = tiledb::test::QueryBuffer({&d[0], d_size, nullptr, 0});
   std::string written_frag_uri_2;
   write_array(
-      ctx, array_name, 2, TILEDB_UNORDERED, buffers, &written_frag_uri_2);
+      ctx,
+      array_name,
+      2,
+      subarray,
+      TILEDB_ROW_MAJOR,
+      buffers,
+      &written_frag_uri_2);
 
-  // Write another sparse fragment
-  a = {21, 22, 23};
+  // Write another dense fragment
+  subarray[0] = 5;
+  subarray[1] = 6;
+  a = {11, 12};
   a_size = a.size() * sizeof(int32_t);
-  d = {2, 4, 9};
-  d_size = d.size() * sizeof(uint64_t);
   buffers["a"] = tiledb::test::QueryBuffer({&a[0], a_size, nullptr, 0});
-  buffers["d"] = tiledb::test::QueryBuffer({&d[0], d_size, nullptr, 0});
   std::string written_frag_uri_3;
   write_array(
-      ctx, array_name, 3, TILEDB_UNORDERED, buffers, &written_frag_uri_3);
+      ctx,
+      array_name,
+      3,
+      subarray,
+      TILEDB_ROW_MAJOR,
+      buffers,
+      &written_frag_uri_3);
 
   // Create fragment info object
   tiledb_fragment_info_t* fragment_info = nullptr;
@@ -1081,13 +1102,13 @@ TEST_CASE("C API: Test fragment info, dump", "[capi][fragment_info][dump]") {
       "  > Size: 1662\n" + "  > Cell num: 10\n" +
       "  > Timestamp range: [1, 1]\n" + "  > Format version: 10\n" +
       "  > Has consolidated metadata: no\n" + "- Fragment #2:\n" +
-      "  > URI: " + written_frag_uri_2 + "\n" + "  > Type: sparse\n" +
-      "  > Non-empty domain: [1, 7]\n" + "  > Size: 1786\n" +
-      "  > Cell num: 4\n" + "  > Timestamp range: [2, 2]\n" +
+      "  > URI: " + written_frag_uri_2 + "\n" + "  > Type: dense\n" +
+      "  > Non-empty domain: [1, 4]\n" + "  > Size: 1619\n" +
+      "  > Cell num: 5\n" + "  > Timestamp range: [2, 2]\n" +
       "  > Format version: 10\n" + "  > Has consolidated metadata: no\n" +
       "- Fragment #3:\n" + "  > URI: " + written_frag_uri_3 + "\n" +
-      "  > Type: sparse\n" + "  > Non-empty domain: [2, 9]\n" +
-      "  > Size: 1774\n" + "  > Cell num: 3\n" +
+      "  > Type: dense\n" + "  > Non-empty domain: [5, 6]\n" +
+      "  > Size: 1662\n" + "  > Cell num: 10\n" +
       "  > Timestamp range: [3, 3]\n" + "  > Format version: 10\n" +
       "  > Has consolidated metadata: no\n";
   FILE* gold_fout = fopen("gold_fout.txt", "w");
@@ -1159,27 +1180,37 @@ TEST_CASE(
       buffers,
       &written_frag_uri_1);
 
-  // Write a sparse fragment
+  // Write another dense fragment
+  subarray[0] = 1;
+  subarray[1] = 4;
   a = {11, 12, 13, 14};
   a_size = a.size() * sizeof(int32_t);
-  std::vector<uint64_t> d = {1, 3, 5, 7};
-  uint64_t d_size = d.size() * sizeof(uint64_t);
   buffers["a"] = tiledb::test::QueryBuffer({&a[0], a_size, nullptr, 0});
-  buffers["d"] = tiledb::test::QueryBuffer({&d[0], d_size, nullptr, 0});
   std::string written_frag_uri_2;
   write_array(
-      ctx, array_name, 2, TILEDB_UNORDERED, buffers, &written_frag_uri_2);
+      ctx,
+      array_name,
+      2,
+      subarray,
+      TILEDB_ROW_MAJOR,
+      buffers,
+      &written_frag_uri_2);
 
-  // Write another sparse fragment
-  a = {21, 22, 23};
+  // Write another dense fragment
+  subarray[0] = 5;
+  subarray[1] = 6;
+  a = {11, 12};
   a_size = a.size() * sizeof(int32_t);
-  d = {2, 4, 9};
-  d_size = d.size() * sizeof(uint64_t);
   buffers["a"] = tiledb::test::QueryBuffer({&a[0], a_size, nullptr, 0});
-  buffers["d"] = tiledb::test::QueryBuffer({&d[0], d_size, nullptr, 0});
   std::string written_frag_uri_3;
   write_array(
-      ctx, array_name, 3, TILEDB_UNORDERED, buffers, &written_frag_uri_3);
+      ctx,
+      array_name,
+      3,
+      subarray,
+      TILEDB_ROW_MAJOR,
+      buffers,
+      &written_frag_uri_3);
 
   // Consolidate
   rc = tiledb_array_consolidate(ctx, array_name.c_str(), nullptr);
@@ -1357,18 +1388,17 @@ TEST_CASE(
   uint64_t bar_size = foo.size() * sizeof(int32_t);
   buffers["bar"] = tiledb::test::QueryBuffer({&bar[0], bar_size, nullptr, 0});
 
-  std::vector<uint64_t> dimOne = {1, 1, 2, 3};
-  uint64_t dimOne_size = dimOne.size() * sizeof(uint64_t);
-  std::vector<uint64_t> dimTwo = {2, 3, 1, 1};
-  uint64_t dimTwo_size = dimTwo.size() * sizeof(uint64_t);
-  buffers["dimOne"] =
-      tiledb::test::QueryBuffer({&dimOne[0], dimOne_size, nullptr, 0});
-  buffers["dimTwo"] =
-      tiledb::test::QueryBuffer({&dimTwo[0], dimTwo_size, nullptr, 0});
+  uint64_t subarray[] = {1, 4, 1, 4};
 
   std::string written_frag_uri_1;
   write_array(
-      ctx, array_name, 2, TILEDB_UNORDERED, buffers, &written_frag_uri_1);
+      ctx,
+      array_name,
+      2,
+      subarray,
+      TILEDB_ROW_MAJOR,
+      buffers,
+      &written_frag_uri_1);
 
   // Create fragment info object
   tiledb_fragment_info_t* fragment_info = nullptr;
@@ -1389,8 +1419,7 @@ TEST_CASE(
   rc = tiledb_vfs_is_dir(ctx, vfs, frag_uri, &is_dir);
   REQUIRE(rc == TILEDB_OK);
 
-  std::vector<std::string> expected_files = {
-      "/a0.tdb", "/a1.tdb", "/d0.tdb", "/d1.tdb"};
+  std::vector<std::string> expected_files = {"/a0.tdb", "/a1.tdb"};
 
   for (const std::string& expected_file : expected_files) {
     std::string file_name = frag_uri + expected_file;

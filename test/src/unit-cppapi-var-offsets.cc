@@ -471,10 +471,6 @@ TEST_CASE(
 
     std::vector<uint64_t> byte_offsets = {0, 4, 12, 20};
 
-    SECTION("Unordered write") {
-      write_dense_array(ctx, array_name, data, byte_offsets, TILEDB_UNORDERED);
-      read_and_check_dense_array(ctx, array_name, data, byte_offsets);
-    }
     SECTION("Ordered write") {
       write_dense_array(ctx, array_name, data, byte_offsets, TILEDB_ROW_MAJOR);
       read_and_check_dense_array(ctx, array_name, data, byte_offsets);
@@ -494,11 +490,6 @@ TEST_CASE(
 
     std::vector<uint64_t> element_offsets = {0, 1, 3, 5};
 
-    SECTION("Unordered write") {
-      write_dense_array(
-          ctx, array_name, data, element_offsets, TILEDB_UNORDERED);
-      read_and_check_dense_array(ctx, array_name, data, element_offsets);
-    }
     SECTION("Ordered write") {
       write_dense_array(
           ctx, array_name, data, element_offsets, TILEDB_ROW_MAJOR);
@@ -871,11 +862,6 @@ TEST_CASE(
         // Write data with extra element indicating total number of bytes
         data_offsets.push_back(sizeof(data[0]) * data.size());
 
-        SECTION("Unordered write") {
-          write_dense_array(
-              ctx, array_name, data, data_offsets, TILEDB_UNORDERED);
-          read_and_check_dense_array(ctx, array_name, data, data_offsets);
-        }
         SECTION("Ordered write") {
           write_dense_array(
               ctx, array_name, data, data_offsets, TILEDB_ROW_MAJOR);
@@ -895,11 +881,6 @@ TEST_CASE(
         // Write data with extra element indicating the total number of elements
         element_offsets.push_back(data.size());
 
-        SECTION("Unordered write") {
-          write_dense_array(
-              ctx, array_name, data, element_offsets, TILEDB_UNORDERED);
-          read_and_check_dense_array(ctx, array_name, data, element_offsets);
-        }
         SECTION("Ordered write") {
           write_dense_array(
               ctx, array_name, data, element_offsets, TILEDB_ROW_MAJOR);
@@ -995,7 +976,7 @@ TEST_CASE(
       config = ctx.config();
       CHECK((std::string)config["sm.var_offsets.extra_element"] == "false");
 
-      write_dense_array(ctx, array_name, data, data_offsets, TILEDB_UNORDERED);
+      write_dense_array(ctx, array_name, data, data_offsets, TILEDB_ROW_MAJOR);
       partial_read_and_check_dense_array(
           ctx,
           array_name,
@@ -1019,17 +1000,6 @@ TEST_CASE(
         data_off_part1.push_back(sizeof(data_part1[0]) * data_part1.size());
         data_off_part2.push_back(sizeof(data_part2[0]) * data_part2.size());
 
-        SECTION("Unordered write") {
-          write_dense_array(
-              ctx, array_name, data, data_offsets, TILEDB_UNORDERED);
-          partial_read_and_check_dense_array(
-              ctx,
-              array_name,
-              data_part1,
-              data_off_part1,
-              data_part2,
-              data_off_part2);
-        }
         SECTION("Ordered write") {
           write_dense_array(
               ctx, array_name, data, data_offsets, TILEDB_ROW_MAJOR);
@@ -1065,17 +1035,6 @@ TEST_CASE(
         data_elem_off_part1.push_back(data_part1.size());
         data_elem_off_part2.push_back(data_part2.size());
 
-        SECTION("Unordered write") {
-          write_dense_array(
-              ctx, array_name, data, element_offsets, TILEDB_UNORDERED);
-          partial_read_and_check_dense_array(
-              ctx,
-              array_name,
-              data_part1,
-              data_elem_off_part1,
-              data_part2,
-              data_elem_off_part2);
-        }
         SECTION("Ordered write") {
           write_dense_array(
               ctx, array_name, data, element_offsets, TILEDB_ROW_MAJOR);
@@ -1286,11 +1245,6 @@ TEST_CASE(
   SECTION("Byte offsets (default case)") {
     CHECK((std::string)config["sm.var_offsets.mode"] == "bytes");
 
-    SECTION("Unordered write") {
-      write_dense_array(
-          ctx, array_name, data, data_byte_offsets, TILEDB_UNORDERED);
-      read_and_check_dense_array(ctx, array_name, data, data_byte_offsets);
-    }
     SECTION("Ordered write") {
       write_dense_array(
           ctx, array_name, data, data_byte_offsets, TILEDB_ROW_MAJOR);
@@ -1311,11 +1265,6 @@ TEST_CASE(
     // Create 32 bit element offsets buffer to use
     std::vector<uint32_t> data_element_offsets = {0, 1, 3, 5};
 
-    SECTION("Unordered write") {
-      write_dense_array(
-          ctx, array_name, data, data_element_offsets, TILEDB_UNORDERED);
-      read_and_check_dense_array(ctx, array_name, data, data_element_offsets);
-    }
     SECTION("Ordered write") {
       write_dense_array(
           ctx, array_name, data, data_element_offsets, TILEDB_ROW_MAJOR);
@@ -1336,11 +1285,6 @@ TEST_CASE(
     uint32_t data_size = static_cast<uint32_t>(sizeof(data[0]) * data.size());
     std::vector<uint32_t> data_byte_offsets = {0, 4, 12, 20, data_size};
 
-    SECTION("Unordered write") {
-      write_dense_array(
-          ctx, array_name, data, data_byte_offsets, TILEDB_UNORDERED);
-      read_and_check_dense_array(ctx, array_name, data, data_byte_offsets);
-    }
     SECTION("Ordered write") {
       write_dense_array(
           ctx, array_name, data, data_byte_offsets, TILEDB_ROW_MAJOR);
@@ -1350,28 +1294,6 @@ TEST_CASE(
       write_dense_array(
           ctx, array_name, data, data_byte_offsets, TILEDB_GLOBAL_ORDER);
       read_and_check_dense_array(ctx, array_name, data, data_byte_offsets);
-    }
-  }
-
-  SECTION("Test direct Query configuration") {
-    config["sm.var_offsets.extra_element"] = "true";
-    auto config_sp = std::make_shared<Config>(config);
-    Context ctx;
-
-    // Check the extra element is included in the offsets
-    uint32_t data_size = static_cast<uint32_t>(sizeof(data[0]) * data.size());
-    std::vector<uint32_t> data_byte_offsets = {0, 4, 12, 20, data_size};
-
-    SECTION("Unordered write") {
-      write_dense_array(
-          ctx,
-          array_name,
-          data,
-          data_byte_offsets,
-          TILEDB_UNORDERED,
-          config_sp);
-      read_and_check_dense_array(
-          ctx, array_name, data, data_byte_offsets, config_sp);
     }
   }
 
