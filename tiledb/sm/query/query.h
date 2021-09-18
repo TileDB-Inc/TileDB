@@ -804,19 +804,6 @@ class Query {
   Status set_condition(const QueryCondition& condition);
 
   /**
-   * This is applicable only to dense arrays (errors out for sparse arrays),
-   * and only in the case where the array is opened in a way that all its
-   * fragments are sparse. Also it is only applicable to read queries.
-   * If the input is `true`, then the dense array will be read in
-   * "sparse mode", i.e., the sparse read algorithm will be executing,
-   * returning results only for the non-empty cells.
-   *
-   * @param sparse_mode This sets the sparse mode.
-   * @return Status
-   */
-  Status set_sparse_mode(bool sparse_mode);
-
-  /**
    * Set query status, needed for json deserialization
    * @param status
    * @return Status
@@ -954,13 +941,6 @@ class Query {
    * in the global order. This supercedes the config.
    */
   bool disable_check_global_order_;
-
-  /**
-   * If `true`, then the dense array will be read in "sparse mode", i.e.,
-   * the sparse read algorithm will be executing, returning results only
-   * for the non-empty cells.
-   */
-  bool sparse_mode_;
 
   /** The name of the new fragment to be created for writes. */
   URI fragment_uri_;

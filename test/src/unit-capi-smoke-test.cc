@@ -857,6 +857,11 @@ void SmokeTestFx::smoke_test(
     return;
   }
 
+  // Skip unordered writes for dense arrays.
+  if (array_type == TILEDB_DENSE && write_order == TILEDB_UNORDERED) {
+    return;
+  }
+
   // String_ascii, float32, and float64 types can only be
   // written to sparse arrays.
   if (array_type == TILEDB_DENSE) {
@@ -990,11 +995,10 @@ void SmokeTestFx::smoke_test(
         nullptr);
   }
 
-  // Define dimension query write vectors for either sparse arrays
-  // or dense arrays with an unordered write order.
+  // Define dimension query write vectors for sparse arrays.
   vector<pair<uint64_t*, uint64_t>> d_write_buffers;
   d_write_buffers.reserve(test_dims.size());
-  if (array_type == TILEDB_SPARSE || write_order == TILEDB_UNORDERED) {
+  if (array_type == TILEDB_SPARSE) {
     vector<uint64_t> ranges;
     for (const auto& test_dim : test_dims) {
       const uint64_t max_range =
