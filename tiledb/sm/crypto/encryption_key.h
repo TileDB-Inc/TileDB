@@ -36,6 +36,8 @@
 #include "tiledb/common/status.h"
 #include "tiledb/sm/buffer/buffer.h"
 
+#include <cstddef>
+
 using namespace tiledb::common;
 
 namespace tiledb {
