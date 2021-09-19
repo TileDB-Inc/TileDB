@@ -854,3 +854,123 @@ TEST_CASE(
 
   free(values);
 }
+
+TEST_CASE(
+    "QueryCondition: Test empty string", "[QueryCondition][empty_string]") {
+  const std::string field_name = "foo";
+  const uint64_t cells = 10;
+  const char* fill_value = "";
+  const Datatype type = Datatype::STRING_ASCII;
+  bool nullable = false;
+  bool var_size = true;
+
+  // Initialize the array schema.
+  ArraySchema array_schema;
+  Attribute attr(field_name, type);
+  REQUIRE(attr.set_nullable(nullable).ok());
+  REQUIRE(attr.set_cell_val_num(var_size ? constants::var_num : 2).ok());
+
+  if (!nullable) {
+    REQUIRE(attr.set_fill_value(fill_value, 2 * sizeof(char)).ok());
+  }
+
+  REQUIRE(array_schema.add_attribute(&attr).ok());
+  Domain domain;
+  Dimension dim("dim1", Datatype::UINT32);
+  uint32_t bounds[2] = {1, cells};
+  Range range(bounds, 2 * sizeof(uint32_t));
+  REQUIRE(dim.set_domain(range).ok());
+  REQUIRE(domain.add_dimension(&dim).ok());
+  REQUIRE(array_schema.set_domain(&domain).ok());
+
+  // Initialize the result tile.
+  ResultTile result_tile(0, 0, &domain);
+  result_tile.init_attr_tile(field_name);
+
+  // test_apply_tile<char*>(field_name, cells, type, &array_schema,
+  // &result_tile);
+  ResultTile::TileTuple* const tile_tuple = result_tile.tile_tuple(field_name);
+
+  var_size = array_schema.attribute(field_name)->var_size();
+  nullable = array_schema.attribute(field_name)->nullable();
+  Tile* const tile =
+      var_size ? &std::get<1>(*tile_tuple) : &std::get<0>(*tile_tuple);
+
+  REQUIRE(tile->init_unfiltered(
+                  constants::format_version,
+                  type,
+                  2 * cells * sizeof(char),
+                  2 * sizeof(char),
+                  0)
+              .ok());
+
+  char* values = static_cast<char*>(malloc(sizeof(char) * 2 * cells));
+  for (uint64_t i = 0; i < cells; ++i) {
+    values[i * 2] = 'a';
+    values[(i * 2) + 1] = 'a' + static_cast<char>(i);
+  }
+
+  REQUIRE(tile->write(values, 2 * cells * sizeof(char)).ok());
+
+  if (var_size) {
+    Tile* const tile_offsets = &std::get<0>(*tile_tuple);
+    REQUIRE(tile_offsets
+                ->init_unfiltered(
+                    constants::format_version,
+                    constants::cell_var_offset_type,
+                    10 * constants::cell_var_offset_size,
+                    constants::cell_var_offset_size,
+                    0)
+                .ok());
+
+    uint64_t* offsets =
+        static_cast<uint64_t*>(malloc(sizeof(uint64_t) * cells));
+    uint64_t offset = 0;
+    for (uint64_t i = 0; i < cells; ++i) {
+      offsets[i] = offset;
+      offset += 2;
+    }
+    REQUIRE(tile_offsets->write(offsets, cells * sizeof(uint64_t)).ok());
+  }
+
+  // Empty string as condition value
+  const char* cmp_value = "";
+
+  QueryCondition query_condition;
+  QueryConditionOp op = QueryConditionOp::NE;
+  REQUIRE(
+      query_condition.init(std::string(field_name), &cmp_value, 0, op).ok());
+
+  // Run Check
+  REQUIRE(query_condition.check(&array_schema).ok());
+
+  // Build expected indexes of cells that meet the query condition
+  // criteria.
+  std::vector<uint64_t> expected_cell_idx_vec;
+  for (uint64_t i = 0; i < cells; ++i) {
+    if (nullable && (i % 2 == 0))
+      continue;
+    if (std::string(&static_cast<char*>(values)[2 * i], 2) !=
+        std::string(cmp_value))
+      expected_cell_idx_vec.emplace_back(i);
+  }
+
+  // Apply the query condition.
+  ResultCellSlab result_cell_slab(&result_tile, 0, cells);
+  std::vector<ResultCellSlab> result_cell_slabs;
+  result_cell_slabs.emplace_back(std::move(result_cell_slab));
+  REQUIRE(query_condition.apply(&array_schema, &result_cell_slabs, 1).ok());
+
+  // Verify the result cell slabs contain the expected cells.
+  auto expected_iter = expected_cell_idx_vec.begin();
+  for (const auto& result_cell_slab : result_cell_slabs) {
+    for (uint64_t cell_idx = result_cell_slab.start_;
+         cell_idx < (result_cell_slab.start_ + result_cell_slab.length_);
+         ++cell_idx) {
+      REQUIRE(*expected_iter == cell_idx);
+      ++expected_iter;
+    }
+  }
+
+  free(values);
+}

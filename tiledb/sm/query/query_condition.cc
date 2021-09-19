@@ -110,7 +110,8 @@ Status QueryCondition::check(const ArraySchema* const array_schema) const {
             "Null value can only be used with equality operators");
       }
 
-      if (!attribute->nullable()) {
+      if ((!attribute->nullable()) &&
+          attribute->type() != Datatype::STRING_ASCII) {
         return Status::QueryConditionError(
             "Null value can only be used with nullable attributes");
       }
