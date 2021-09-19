@@ -437,10 +437,6 @@ TEST_CASE("C++ API: Zero length buffer", "[cppapi][zero-length]") {
         null_pointer = false;
       }
     }
-
-    SECTION("UNORDERED") {
-      write_layout = TILEDB_UNORDERED;
-    }
   }
 
   if (vfs.is_dir(array_name_1d))
@@ -448,7 +444,7 @@ TEST_CASE("C++ API: Zero length buffer", "[cppapi][zero-length]") {
 
   ArraySchema schema(ctx, array_type);
   Domain domain(ctx);
-  domain.add_dimension(Dimension::create<int32_t>(ctx, "d", {{0, 1000}}, 1001));
+  domain.add_dimension(Dimension::create<int32_t>(ctx, "d", {{0, 2}}, 3));
   schema.set_domain(domain);
   schema.add_attribute(Attribute::create<std::vector<int32_t>>(ctx, "a"));
   schema.add_attribute(Attribute::create<uint64_t>(ctx, "b"));
@@ -468,7 +464,8 @@ TEST_CASE("C++ API: Zero length buffer", "[cppapi][zero-length]") {
     a = {};
     Query q(ctx, array, TILEDB_WRITE);
     q.set_layout(write_layout);
-    q.set_data_buffer("d", coord);
+    if (array_type == TILEDB_SPARSE)
+      q.set_data_buffer("d", coord);
     q.set_data_buffer("a", a);
     q.set_offsets_buffer("a", a_offset);
     q.set_data_buffer("b", b);
