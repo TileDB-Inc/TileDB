@@ -87,11 +87,17 @@ class EncryptionKey {
       uint32_t key_length);
 
  private:
-  /** Buffer holding the encryption key. */
-  Buffer key_;
-
   /** The encryption type. */
   EncryptionType encryption_type_;
+
+  /** Size of the array storing the encryption key. */
+  constexpr static size_t max_key_length_ = 32;
+
+  /** Array holding the actual encryption key. */
+  std::byte key_[max_key_length_];
+
+  /** Length of the stored encryption key. */
+  size_t key_length_;
 };
 
 }  // namespace sm

@@ -403,11 +403,20 @@ TEST_CASE("C++ API: Zero length buffer", "[cppapi][zero-length]") {
 
   tiledb_layout_t write_layout = TILEDB_GLOBAL_ORDER;
   tiledb_array_type_t array_type = TILEDB_DENSE;
+  bool null_pointer = true;
 
   SECTION("SPARSE") {
     array_type = TILEDB_SPARSE;
     SECTION("GLOBAL_ORDER") {
       write_layout = TILEDB_GLOBAL_ORDER;
+
+      SECTION("NULL_PTR") {
+        null_pointer = true;
+      }
+
+      SECTION("NON_NULL_PTR") {
+        null_pointer = false;
+      }
     }
 
     SECTION("UNORDERED") {
@@ -419,10 +428,14 @@ TEST_CASE("C++ API: Zero length buffer", "[cppapi][zero-length]") {
     array_type = TILEDB_DENSE;
     SECTION("GLOBAL_ORDER") {
       write_layout = TILEDB_GLOBAL_ORDER;
-    }
 
-    SECTION("UNORDERED") {
-      write_layout = TILEDB_UNORDERED;
+      SECTION("NULL_PTR") {
+        null_pointer = true;
+      }
+
+      SECTION("NON_NULL_PTR") {
+        null_pointer = false;
+      }
     }
   }
 
@@ -431,7 +444,7 @@ TEST_CASE("C++ API: Zero length buffer", "[cppapi][zero-length]") {
 
   ArraySchema schema(ctx, array_type);
   Domain domain(ctx);
-  domain.add_dimension(Dimension::create<int32_t>(ctx, "d", {{0, 1000}}, 1001));
+  domain.add_dimension(Dimension::create<int32_t>(ctx, "d", {{0, 2}}, 3));
   schema.set_domain(domain);
   schema.add_attribute(Attribute::create<std::vector<int32_t>>(ctx, "a"));
   schema.add_attribute(Attribute::create<uint64_t>(ctx, "b"));
@@ -444,11 +457,15 @@ TEST_CASE("C++ API: Zero length buffer", "[cppapi][zero-length]") {
     std::vector<uint64_t> a_offset = {0, 0, 0};
     std::vector<uint64_t> b = {1, 2, 3};
 
-    a.reserve(10);
+    if (!null_pointer) {
+      a.reserve(10);
+    }
+
     a = {};
     Query q(ctx, array, TILEDB_WRITE);
     q.set_layout(write_layout);
-    q.set_data_buffer("d", coord);
+    if (array_type == TILEDB_SPARSE)
+      q.set_data_buffer("d", coord);
     q.set_data_buffer("a", a);
     q.set_offsets_buffer("a", a_offset);
     q.set_data_buffer("b", b);

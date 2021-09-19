@@ -1293,6 +1293,12 @@ Status Subarray::compute_relevant_fragment_est_result_sizes(
       if (it.second) {  // If the fragment/tile pair is new
         auto meta = fragment_metadata[ft.first];
         for (size_t i = 0; i < names.size(); ++i) {
+          // If this attribute does not exist, skip it as this is likely a new
+          // attribute added as a result of schema evolution
+          if (!meta->array_schema()->is_field(names[i])) {
+            continue;
+          }
+
           tile_size = meta->tile_size(names[i], ft.second);
           auto cell_size = array_schema->cell_size(names[i]);
           if (!var_sizes[i]) {
@@ -1731,6 +1737,12 @@ Status Subarray::compute_relevant_fragment_est_result_sizes(
           if (names[n] == constants::coords && !all_dims_same_type)
             continue;
 
+          // If this attribute does not exist, skip it as this is likely a new
+          // attribute added as a result of schema evolution
+          if (!meta->array_schema()->is_field(names[n])) {
+            continue;
+          }
+
           frag_tiles->insert(std::pair<unsigned, uint64_t>(f, tid));
           tile_size = meta->tile_size(names[n], tid);
           auto attr_datatype_size = datatype_size(array_schema->type(names[n]));
@@ -1762,6 +1774,12 @@ Status Subarray::compute_relevant_fragment_est_result_sizes(
         // Zipped coords applicable only in homogeneous domains
         if (names[n] == constants::coords && !all_dims_same_type)
           continue;
+
+        // If this attribute does not exist, skip it as this is likely a new
+        // attribute added as a result of schema evolution
+        if (!meta->array_schema()->is_field(names[n])) {
+          continue;
+        }
 
         frag_tiles->insert(std::pair<unsigned, uint64_t>(f, tid));
         tile_size = meta->tile_size(names[n], tid);
@@ -2484,6 +2502,12 @@ Status Subarray::load_relevant_fragment_tile_var_sizes(
     const auto status = parallel_for(
         compute_tp, 0, relevant_fragments_.size(), [&](const size_t i) {
           auto f = relevant_fragments_[i];
+          // Gracefully skip loading tile sizes for attributes added in schema
+          // evolution that do not exists in this fragment
+          auto schema = meta[f]->array_schema();
+          if (!schema->is_field(var_name))
+            return Status::Ok();
+
           return meta[f]->load_tile_var_sizes(*encryption_key, var_name);
         });
 

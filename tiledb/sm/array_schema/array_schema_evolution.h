@@ -89,6 +89,15 @@ class ArraySchemaEvolution {
    */
   Status add_attribute(const Attribute* attr);
 
+  /** Returns the names of attributes to add. */
+  std::vector<std::string> attribute_names_to_add() const;
+
+  /**
+   * Returns a constant pointer to the selected attribute (nullptr if it
+   * does not exist).
+   */
+  const Attribute* attribute_to_add(const std::string& name) const;
+
   /**
    * Drops an attribute.
    *
@@ -96,6 +105,9 @@ class ArraySchemaEvolution {
    * @return Status
    */
   Status drop_attribute(const std::string& attribute_name);
+
+  /** Returns the names of attributes to drop. */
+  std::vector<std::string> attribute_names_to_drop() const;
 
  private:
   /* ********************************* */

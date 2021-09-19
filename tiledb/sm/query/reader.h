@@ -116,8 +116,7 @@ class Reader : public ReaderBase, public IQueryStrategy {
       std::unordered_map<std::string, QueryBuffer>& buffers,
       Subarray& subarray,
       Layout layout,
-      QueryCondition& condition,
-      bool sparse_mode);
+      QueryCondition& condition);
 
   /** Destructor. */
   ~Reader() = default;
@@ -286,13 +285,6 @@ class Reader : public ReaderBase, public IQueryStrategy {
 
   /** Read state. */
   ReadState read_state_;
-
-  /**
-   * If `true`, then the dense array will be read in "sparse mode", i.e.,
-   * the sparse read algorithm will be executing, returning results only
-   * for the non-empty cells.
-   */
-  bool sparse_mode_;
 
   /* ********************************* */
   /*           PRIVATE METHODS         */

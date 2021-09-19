@@ -70,7 +70,6 @@ struct DenseVectorFx {
       tiledb_layout_t tile_order);
   void check_read(const std::string& path, tiledb_layout_t layout);
   void check_update(const std::string& path);
-  void check_duplicate_coords(const std::string& path);
   void create_temp_dir(const std::string& path);
   void remove_temp_dir(const std::string& path);
   static std::string random_name(const std::string& prefix);
@@ -314,92 +313,6 @@ void DenseVectorFx::check_update(const std::string& path) {
   CHECK((buffer[0] == 9 && buffer[1] == 8 && buffer[2] == 7));
 }
 
-void DenseVectorFx::check_duplicate_coords(const std::string& path) {
-  // Open array
-  tiledb_array_t* array;
-  int rc = tiledb_array_alloc(ctx_, path.c_str(), &array);
-  CHECK(rc == TILEDB_OK);
-  rc = tiledb_array_open(ctx_, array, TILEDB_WRITE);
-  CHECK(rc == TILEDB_OK);
-
-  const int64_t num_writes = 5;
-  for (int64_t write_num = 0; write_num < num_writes; write_num++) {
-    const char* attributes[] = {ATTR_NAME.c_str(), "d"};
-    int64_t update_buffer[] = {write_num, write_num, write_num};
-    int64_t coords_buffer[] = {7, 8, 9};
-    void* update_buffers[] = {update_buffer, coords_buffer};
-    uint64_t update_buffer_sizes[] = {sizeof(update_buffer),
-                                      sizeof(coords_buffer)};
-
-    // Update
-    tiledb_query_t* update_query;
-    rc = tiledb_query_alloc(ctx_, array, TILEDB_WRITE, &update_query);
-    REQUIRE(rc == TILEDB_OK);
-    rc = tiledb_query_set_data_buffer(
-        ctx_,
-        update_query,
-        attributes[0],
-        update_buffers[0],
-        &update_buffer_sizes[0]);
-    REQUIRE(rc == TILEDB_OK);
-    rc = tiledb_query_set_data_buffer(
-        ctx_,
-        update_query,
-        attributes[1],
-        update_buffers[1],
-        &update_buffer_sizes[1]);
-    REQUIRE(rc == TILEDB_OK);
-    rc = tiledb_query_set_layout(ctx_, update_query, TILEDB_UNORDERED);
-    REQUIRE(rc == TILEDB_OK);
-    rc = tiledb_query_submit(ctx_, update_query);
-    REQUIRE(rc == TILEDB_OK);
-    rc = tiledb_query_finalize(ctx_, update_query);
-    REQUIRE(rc == TILEDB_OK);
-    tiledb_query_free(&update_query);
-  }
-
-  // Close array
-  rc = tiledb_array_close(ctx_, array);
-  CHECK(rc == TILEDB_OK);
-
-  // Open array
-  rc = tiledb_array_open(ctx_, array, TILEDB_READ);
-  CHECK(rc == TILEDB_OK);
-
-  // Read
-  uint64_t subarray[] = {7, 9};
-  const char* attributes[] = {ATTR_NAME.c_str()};
-  int64_t buffer[3] = {0};
-  void* read_buffers[] = {buffer};
-  uint64_t read_buffer_sizes[] = {sizeof(buffer)};
-  tiledb_query_t* read_query = nullptr;
-  rc = tiledb_query_alloc(ctx_, array, TILEDB_READ, &read_query);
-  REQUIRE(rc == TILEDB_OK);
-  rc = tiledb_query_set_data_buffer(
-      ctx_, read_query, attributes[0], read_buffers[0], &read_buffer_sizes[0]);
-  REQUIRE(rc == TILEDB_OK);
-  rc = tiledb_query_set_layout(ctx_, read_query, TILEDB_GLOBAL_ORDER);
-  REQUIRE(rc == TILEDB_OK);
-  rc = tiledb_query_set_subarray(ctx_, read_query, subarray);
-  REQUIRE(rc == TILEDB_OK);
-  rc = tiledb_query_submit(ctx_, read_query);
-  REQUIRE(rc == TILEDB_OK);
-  rc = tiledb_query_finalize(ctx_, read_query);
-  REQUIRE(rc == TILEDB_OK);
-
-  // Close array
-  rc = tiledb_array_close(ctx_, array);
-  CHECK(rc == TILEDB_OK);
-
-  // Clean up
-  tiledb_array_free(&array);
-  tiledb_query_free(&read_query);
-
-  CHECK(
-      (buffer[0] == num_writes - 1 && buffer[1] == num_writes - 1 &&
-       buffer[2] == num_writes - 1));
-}
-
 TEST_CASE_METHOD(
     DenseVectorFx, "C API: Test 1d dense vector", "[capi], [dense-vector]") {
   std::string vector_name;
@@ -412,7 +325,6 @@ TEST_CASE_METHOD(
   check_read(vector_name, TILEDB_ROW_MAJOR);
   check_read(vector_name, TILEDB_COL_MAJOR);
   check_update(vector_name);
-  check_duplicate_coords(vector_name);
   remove_temp_dir(temp_dir);
 }
 
@@ -431,7 +343,6 @@ TEST_CASE_METHOD(
   check_read(vector_name, TILEDB_ROW_MAJOR);
   check_read(vector_name, TILEDB_COL_MAJOR);
   check_update(vector_name);
-  check_duplicate_coords(vector_name);
   remove_temp_dir(local_fs.file_prefix() + local_fs.temp_dir());
 }
 

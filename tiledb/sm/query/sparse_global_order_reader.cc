@@ -266,15 +266,17 @@ Status SparseGlobalOrderReader::dowork() {
   //      list, this way we will prevent reading tiles we don't need on
   //      future reads.
 
-  // Copy the coordinates data.
-  RETURN_NOT_OK(
-      copy_coordinates(&tmp_result_tiles, &read_state_.result_cell_slabs_));
+  if (coords_loaded_) {
+    // Copy the coordinates data.
+    RETURN_NOT_OK(
+        copy_coordinates(&tmp_result_tiles, &read_state_.result_cell_slabs_));
 
-  // copy_coordinates will only have an unrecoverable overflow if a single cell
-  // is too big for the user's buffers.
-  if (copy_overflowed_) {
-    zero_out_buffer_sizes();
-    return Status::Ok();
+    // copy_coordinates will only have an unrecoverable overflow if a single
+    // cell is too big for the user's buffers.
+    if (copy_overflowed_) {
+      zero_out_buffer_sizes();
+      return Status::Ok();
+    }
   }
 
   // Calculate memory budget. For array data, copy_attribute_values might load
@@ -291,7 +293,8 @@ Status SparseGlobalOrderReader::dowork() {
       &tmp_result_tiles,
       &read_state_.result_cell_slabs_,
       subarray_,
-      memory_budget_copy));
+      memory_budget_copy,
+      !coords_loaded_));
 
   // copy_coordinates will only have an unrecoverable overflow if a single cell
   // is too big for the user's buffers.
@@ -310,6 +313,34 @@ Status SparseGlobalOrderReader::dowork() {
 }
 
 void SparseGlobalOrderReader::reset() {
+}
+
+Status SparseGlobalOrderReader::clear_result_tiles() {
+  if (!result_tiles_.empty()) {
+    for (unsigned f = 0; f < fragment_metadata_.size(); f++) {
+      while (!result_tiles_[f].empty()) {
+        RETURN_NOT_OK(remove_result_tile(f, result_tiles_[f].begin()));
+      }
+    }
+  }
+
+  coords_loaded_ = false;
+
+  return Status::Ok();
+}
+
+ResultTile* SparseGlobalOrderReader::add_result_tile_unsafe(
+    unsigned dim_num, unsigned f, uint64_t t, const Domain* domain) {
+  bool unused;
+  add_result_tile(
+      dim_num,
+      std::numeric_limits<uint64_t>::max(),
+      std::numeric_limits<uint64_t>::max(),
+      f,
+      t,
+      domain,
+      &unused);
+  return &result_tiles_[f].back();
 }
 
 Status SparseGlobalOrderReader::add_result_tile(
@@ -448,6 +479,8 @@ Status SparseGlobalOrderReader::compute_result_cell_slab() {
   if (!tiles_found) {
     return Status::Ok();
   }
+
+  coords_loaded_ = true;
 
   // Maintain a temporary vector with pointers to result tiles, so that
   // `read_tiles`, `unfilter_tiles` can work without changes.

@@ -378,6 +378,10 @@ bool ArraySchema::is_dim(const std::string& name) const {
   return this->dimension(name) != nullptr;
 }
 
+bool ArraySchema::is_field(const std::string& name) const {
+  return is_attr(name) || is_dim(name) || name == constants::coords;
+}
+
 bool ArraySchema::is_nullable(const std::string& name) const {
   const Attribute* const attr = this->attribute(name);
   if (attr == nullptr)
@@ -502,6 +506,7 @@ Status ArraySchema::add_attribute(const Attribute* attr, bool check_special) {
   attributes_.emplace_back(new_attr);
   attribute_map_[new_attr->name()] = new_attr;
 
+  RETURN_NOT_OK(generate_uri());
   return Status::Ok();
 }
 

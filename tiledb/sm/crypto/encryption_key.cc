@@ -41,12 +41,13 @@ namespace tiledb {
 namespace sm {
 
 EncryptionKey::EncryptionKey()
-    : encryption_type_(EncryptionType::NO_ENCRYPTION) {
+    : encryption_type_(EncryptionType::NO_ENCRYPTION)
+    , key_length_(0) {
+  std::memset(key_, 0, max_key_length_);
 }
 
 EncryptionKey::~EncryptionKey() {
-  if (key_.data() != nullptr)
-    std::memset(key_.data(), 0, key_.alloced_size());
+  std::memset(key_, 0, max_key_length_);
 }
 
 EncryptionType EncryptionKey::encryption_type() const {
@@ -57,23 +58,17 @@ Status EncryptionKey::set_key(
     EncryptionType encryption_type,
     const void* key_bytes,
     uint32_t key_length) {
-  // Clear (and free) old key
-  if (key_.data() != nullptr)
-    std::memset(key_.data(), 0, key_.alloced_size());
-  key_.clear();
-
   if (!is_valid_key_length(encryption_type, key_length))
     return LOG_STATUS(Status::EncryptionError(
         "Cannot create key; invalid key length for encryption type."));
 
   encryption_type_ = encryption_type;
+  key_length_ = key_length;
+
+  std::memset(key_, 0, max_key_length_);
 
   if (key_bytes != nullptr && key_length > 0) {
-    // Realloc and copy.
-    if (key_.alloced_size() < key_length)
-      RETURN_NOT_OK(key_.realloc(key_length));
-    RETURN_NOT_OK(key_.write(key_bytes, key_length));
-    key_.reset_offset();
+    std::memcpy(key_, key_bytes, key_length);
   }
 
   return Status::Ok();
@@ -92,7 +87,7 @@ bool EncryptionKey::is_valid_key_length(
 }
 
 ConstBuffer EncryptionKey::key() const {
-  return ConstBuffer(key_.data(), key_.size());
+  return ConstBuffer(key_, key_length_);
 }
 
 }  // namespace sm

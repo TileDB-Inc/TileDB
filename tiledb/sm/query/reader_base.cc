@@ -176,14 +176,20 @@ Status ReaderBase::load_tile_offsets(
         // Filter the 'names' for format-specific names.
         std::vector<std::string> filtered_names;
         filtered_names.reserve(names->size());
+        auto schema = fragment->array_schema();
         for (const auto& name : *names) {
           // Applicable for zipped coordinates only to versions < 5
           if (name == constants::coords && format_version >= 5)
             continue;
 
           // Applicable to separate coordinates only to versions >= 5
-          const auto is_dim = array_schema_->is_dim(name);
+          const auto is_dim = schema->is_dim(name);
           if (is_dim && format_version < 5)
+            continue;
+
+          // Not a member of array schema, this field was added in array schema
+          // evolution, ignore for this fragment's tile offsets
+          if (!schema->is_field(name))
             continue;
 
           filtered_names.emplace_back(name);
@@ -378,6 +384,11 @@ Status ReaderBase::read_tiles(
     // Applicable to separate coordinates only to versions >= 5
     const bool is_dim = array_schema_->is_dim(name);
     if (is_dim && format_version < 5)
+      continue;
+
+    // If the fragment doesn't have the attribute, this is a schema evolution
+    // field and will be treated with fill-in value instead of reading from disk
+    if (!fragment->array_schema()->is_field(name))
       continue;
 
     // Initialize the tile(s)
@@ -800,7 +811,8 @@ Status ReaderBase::copy_attribute_values(
     std::vector<ResultTile*>* result_tiles,
     std::vector<ResultCellSlab>* result_cell_slabs,
     Subarray& subarray,
-    uint64_t memory_budget) {
+    uint64_t memory_budget,
+    bool include_dim) {
   auto timer_se = stats_->start_timer("copy_attr_values");
 
   if (result_cell_slabs->empty() && result_tiles->empty()) {
@@ -820,7 +832,8 @@ Status ReaderBase::copy_attribute_values(
       break;
     }
 
-    if (name == constants::coords || array_schema_->is_dim(name)) {
+    if (!include_dim &&
+        (name == constants::coords || array_schema_->is_dim(name))) {
       continue;
     }
 
@@ -997,7 +1010,18 @@ Status ReaderBase::copy_partitioned_fixed_cells(
     }
 
     // Copy
-    if (cs.tile_ == nullptr) {  // Empty range
+
+    // First we check if this is an older (pre TileDB 2.0) array with zipped
+    // coordinates and the user has requested split buffer if so we should
+    // proceed to copying the tile If not, and there is no tile or the tile is
+    // empty for the field then this is a read of an older fragment in schema
+    // evolution. In that case we want to set the field to fill values for this
+    // for this tile.
+    const bool split_buffer_for_zipped_coords =
+        array_schema_->is_dim(*name) && cs.tile_->stores_zipped_coords();
+    if ((cs.tile_ == nullptr || cs.tile_->tile_tuple(*name) == nullptr) &&
+        !split_buffer_for_zipped_coords) {  // Empty range or attributed added
+                                            // in schema evolution
       auto bytes_to_copy = cs_length * cell_size;
       auto fill_num = bytes_to_copy / fill_value_size;
       for (uint64_t j = 0; j < fill_num; ++j) {
@@ -1198,7 +1222,7 @@ Status ReaderBase::compute_var_cell_destinations(
     uint64_t* tile_offsets = nullptr;
     uint64_t tile_cell_num = 0;
     uint64_t tile_var_size = 0;
-    if (cs.tile_ != nullptr) {
+    if (cs.tile_ != nullptr && cs.tile_->tile_tuple(name) != nullptr) {
       const auto tile_tuple = cs.tile_->tile_tuple(name);
       const auto& tile = std::get<0>(*tile_tuple);
       const auto& tile_var = std::get<1>(*tile_tuple);
@@ -1219,7 +1243,7 @@ Status ReaderBase::compute_var_cell_destinations(
          cell_idx += stride, dest_vec_idx++) {
       // Get size of variable-sized cell
       uint64_t cell_var_size = 0;
-      if (cs.tile_ == nullptr) {
+      if (cs.tile_ == nullptr || cs.tile_->tile_tuple(name) == nullptr) {
         cell_var_size = fill_value_size;
       } else {
         cell_var_size =
@@ -1329,7 +1353,7 @@ Status ReaderBase::copy_partitioned_var_cells(
     Tile* tile_var = nullptr;
     Tile* tile_validity = nullptr;
     uint64_t tile_cell_num = 0;
-    if (cs.tile_ != nullptr) {
+    if (cs.tile_ != nullptr && cs.tile_->tile_tuple(*name) != nullptr) {
       const auto tile_tuple = cs.tile_->tile_tuple(*name);
       Tile* const tile = &std::get<0>(*tile_tuple);
       tile_var = &std::get<1>(*tile_tuple);
@@ -1361,7 +1385,7 @@ Status ReaderBase::copy_partitioned_var_cells(
       std::memcpy(offset_dest, &var_offset, offset_size);
 
       // Copy variable-sized value
-      if (cs.tile_ == nullptr) {
+      if (cs.tile_ == nullptr || cs.tile_->tile_tuple(*name) == nullptr) {
         std::memcpy(var_dest, fill_value.data(), fill_value_size);
         if (nullable)
           std::memset(

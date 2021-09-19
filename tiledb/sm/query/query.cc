@@ -73,7 +73,6 @@ Query::Query(StorageManager* storage_manager, Array* array, URI fragment_uri)
     , data_buffer_name_("")
     , offsets_buffer_name_("")
     , disable_check_global_order_(false)
-    , sparse_mode_(false)
     , fragment_uri_(fragment_uri) {
   if (array != nullptr) {
     assert(array->is_open());
@@ -1056,8 +1055,7 @@ Status Query::create_strategy() {
           buffers_,
           subarray_,
           layout_,
-          condition_,
-          sparse_mode_));
+          condition_));
     }
   }
 
@@ -1073,6 +1071,10 @@ IQueryStrategy* Query::strategy() {
     create_strategy();
   }
   return strategy_.get();
+}
+
+void Query::clear_strategy() {
+  strategy_ = nullptr;
 }
 
 Status Query::disable_check_global_order() {
@@ -1247,8 +1249,9 @@ Status Query::set_data_buffer(
 
   // Check buffer
   if (check_null_buffers && buffer == nullptr)
-    return LOG_STATUS(
-        Status::QueryError("Cannot set buffer; " + name + " buffer is null"));
+    if (type_ != QueryType::WRITE || *buffer_size != 0)
+      return LOG_STATUS(
+          Status::QueryError("Cannot set buffer; " + name + " buffer is null"));
 
   // Check buffer size
   if (check_null_buffers && buffer_size == nullptr)
@@ -1269,6 +1272,11 @@ Status Query::set_data_buffer(
     return LOG_STATUS(Status::QueryError(
         std::string("Cannot set buffer; Invalid attribute/dimension '") + name +
         "'"));
+
+  if (array_schema_->dense() && type_ == QueryType::WRITE && !is_attr) {
+    return LOG_STATUS(Status::QueryError(
+        std::string("Dense write queries cannot set dimension buffers")));
+  }
 
   // Check if zipped coordinates coexist with separate coordinate buffers
   if ((is_dim && has_zipped_coords_buffer_) ||
@@ -1452,8 +1460,9 @@ Status Query::set_buffer(
     const bool check_null_buffers) {
   // Check buffer
   if (check_null_buffers && buffer_val == nullptr)
-    return LOG_STATUS(
-        Status::QueryError("Cannot set buffer; " + name + " buffer is null"));
+    if (type_ != QueryType::WRITE || *buffer_val_size != 0)
+      return LOG_STATUS(
+          Status::QueryError("Cannot set buffer; " + name + " buffer is null"));
 
   // Check buffer size
   if (check_null_buffers && buffer_val_size == nullptr)
@@ -1641,8 +1650,9 @@ Status Query::set_buffer(
     const bool check_null_buffers) {
   // Check buffer
   if (check_null_buffers && buffer_val == nullptr)
-    return LOG_STATUS(
-        Status::QueryError("Cannot set buffer; " + name + " buffer is null"));
+    if (type_ != QueryType::WRITE || *buffer_val_size != 0)
+      return LOG_STATUS(
+          Status::QueryError("Cannot set buffer; " + name + " buffer is null"));
 
   // Check buffer size
   if (check_null_buffers && buffer_val_size == nullptr)
@@ -1733,6 +1743,11 @@ Status Query::set_layout(Layout layout) {
     return LOG_STATUS(Status::QueryError(
         "Cannot set layout; Hilbert order is not applicable to queries"));
 
+  if (array_schema_->dense() && layout == Layout::UNORDERED) {
+    return LOG_STATUS(Status::QueryError(
+        "Unordered writes are only possible for sparse arrays"));
+  }
+
   layout_ = layout;
   subarray_.set_layout(layout);
   return Status::Ok();
@@ -1745,36 +1760,6 @@ Status Query::set_condition(const QueryCondition& condition) {
         "to read queries"));
 
   condition_ = condition;
-  return Status::Ok();
-}
-
-Status Query::set_sparse_mode(bool sparse_mode) {
-  if (status_ != QueryStatus::UNINITIALIZED)
-    return LOG_STATUS(
-        Status::QueryError("Cannot set sparse mode after initialization"));
-
-  if (type_ != QueryType::READ)
-    return LOG_STATUS(Status::QueryError(
-        "Cannot set sparse mode; Only applicable to read queries"));
-
-  if (!array_schema_->dense())
-    return LOG_STATUS(Status::QueryError(
-        "Cannot set sparse mode; Only applicable to dense arrays"));
-
-  bool all_sparse = true;
-  for (const auto& f : fragment_metadata_) {
-    if (f->dense()) {
-      all_sparse = false;
-      break;
-    }
-  }
-
-  if (!all_sparse)
-    return LOG_STATUS(
-        Status::QueryError("Cannot set sparse mode; Only applicable to opened "
-                           "dense arrays having only sparse fragments"));
-
-  sparse_mode_ = sparse_mode;
   return Status::Ok();
 }
 
@@ -1874,14 +1859,15 @@ Status Query::check_buffers_correctness() {
   // Iterate through each attribute
   for (auto& attr : buffer_names()) {
     if (buffer(attr).buffer_ == nullptr)
-      return LOG_STATUS(
-          Status::QueryError(std::string("Data buffer is not set")));
+      return LOG_STATUS(Status::QueryError(
+          std::string("Data buffer is not set for " + attr)));
     if (array_schema_->var_size(attr)) {
       // Var-sized
       // Check for data buffer under buffer_var
       bool exists_data = buffer(attr).buffer_var_ != nullptr;
       bool exists_offset = buffer(attr).buffer_ != nullptr;
-      if (!exists_data || !exists_offset) {
+      if ((!exists_data && *buffer(attr).buffer_var_size_ != 0) ||
+          !exists_offset) {
         return LOG_STATUS(Status::QueryError(
             std::string("Var-Sized input attribute/dimension '") + attr +
             "' is not set correctly \nOffsets buffer is not set"));
