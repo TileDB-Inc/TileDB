@@ -348,8 +348,8 @@ Status ChunkedBuffer::internal_buffer_from_offset(
     return Status::Ok();
   }
 
-  size_t chunk_idx;
-  size_t chunk_offset;
+  size_t chunk_idx = 0;
+  size_t chunk_offset = 0;
   RETURN_NOT_OK(translate_logical_offset(offset, &chunk_idx, &chunk_offset));
   RETURN_NOT_OK(internal_buffer(chunk_idx, buffer));
   *buffer = static_cast<char*>(*buffer) + chunk_offset;
