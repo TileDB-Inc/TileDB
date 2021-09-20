@@ -12,6 +12,7 @@ env:
   TILEDB_SERIALIZATION: OFF
   TILEDB_STATIC: OFF
   TILEDB_TOOLS: ON
+  TILEDB_BASE_BOOTSTRAP_OPTIONS: '-EnableVerbose -EnableStaticTileDB -EnableBuildDeps'
 
 jobs:
   build:
@@ -24,6 +25,7 @@ jobs:
         include:
           - environ: 'azure'
             TILEDB_AZURE: ON
+            TILEDB_USE_CUSTOM_NODEJS: OFF
             TILEDB_ARROW_TESTS: ON
             TILEDB_SERIALIZATION: OFF
             TILEDB_S3: OFF
@@ -78,10 +80,6 @@ jobs:
         run: |
           $ErrorView = "NormalView" 
           
-          Write-Host "GITHUB_WORKSPACE is '$env:GITHUB_WORKSPACE'"
-          Write-Host "BUILD_BUILDDIRECTORY is '$env:BUILD_BUILDDIRECTORY'"
-          Write-Host "BUILD_SOURCESDIRECTORY is '$env:BUILD_SOURCESDIRECTORY'"
-
           #directory $env:BUILD_BUILDDIRECTORY was created in step 'tiledb env prep'
           cd $env:BUILD_BUILDDIRECTORY
 
@@ -116,7 +114,7 @@ jobs:
           # currently we do not run S3 tests on Windows because tests time out (minio+azure slow?)
           #& "$env:BUILD_SOURCESDIRECTORY\scripts\install-minio.ps1"
 
-          $bootstrapOptions = "-EnableVerbose -EnableStaticTileDB -EnableBuildDeps"
+          $bootstrapOptions = $env:TILEDB_BASE_BOOTSTRAP_OPTIONS
           if ($env:TILEDB_S3 -eq "ON") {
             $bootstrapOptions = "-EnableS3 " + $bootstrapOptions
           }
@@ -166,14 +164,14 @@ jobs:
             exit $LastExitCode
           }
 
-          cmake --build $env:BUILD_BUILDDIRECTORY --config Release -j $env:NUMBER_OF_PROCESSORS
+          cmake --build $env:BUILD_BUILDDIRECTORY --config Release -j $env:NUMBER_OF_PROCESSORS 2>&1
 
           if ($LastExitCode -ne 0) {
             Write-Host "Build failed. CMake exit status: " $LastExitCocde
             exit $LastExitCode
           }
 
-          cmake --build $env:BUILD_BUILDDIRECTORY  -j $env:NUMBER_OF_PROCESSORS --target install-tiledb --config Release 2>&1
+          cmake --build $env:BUILD_BUILDDIRECTORY --target install-tiledb --config Release 2>&1
 
           if ($LastExitCode -ne 0) {
             Write-Host "Installation failed."
@@ -191,10 +189,6 @@ jobs:
           $env:AWS_ACCESS_KEY_ID = "minio"
           $env:AWS_SECRET_ACCESS_KEY = "miniosecretkey"
           
-          Write-Host "GITHUB_WORKSPACE is '$env:GITHUB_WORKSPACE'"
-          Write-Host "BUILD_BUILDDIRECTORY is '$env:BUILD_BUILDDIRECTORY'"
-          Write-Host "BUILD_SOURCESDIRECTORY is '$env:BUILD_SOURCESDIRECTORY'"
-          
           # Clone backwards compatibility test arrays
           if ($env:BACKWARDS_COMPATIBILITY_ARRAYS -eq "ON") {
             git clone https://github.com/TileDB-Inc/TileDB-Unit-Test-Arrays.git --branch 2.2.3 $env:BUILD_SOURCESDIRECTORY/test/inputs/arrays/read_compatibility_test
@@ -209,8 +203,7 @@ jobs:
           cmake --build $env:BUILD_BUILDDIRECTORY\tiledb  -j $env:NUMBER_OF_PROCESSORS --target tiledb_unit --config Release -- /verbosity:minimal
 
           if ($env:TILEDB_AZURE -eq "ON") {
-            $useTileDBInstallNodeJS = $False #$True
-            if($useTileDBInstallNodeJS) {
+            if($env.TILEDB_USE_CUSTOM_NODE_JS) {
               Write-Host "azurite: using custom install nodejs"
               #in CI environ, doesn't work with 'local' install, works when -g'lobal' install used in the .ps1
               & "$env:BUILD_SOURCESDIRECTORY\scripts\install-run-azurite.ps1"
@@ -230,7 +223,6 @@ jobs:
             }
             Write-Host "look for 'node.exe' in following list:"
             tasklist | findstr /i node.exe
-            Write-Host "point G"
           }
 
           # Actually run tests
@@ -261,7 +253,6 @@ jobs:
             Write-Host $_
             $host.SetShouldExit(1)
           }
-          Write-Host "point O"
 
           try {
             $exepath = Join-Path $env:BUILD_BUILDDIRECTORY "tiledb\examples\cpp_api\Release\quickstart_dense_cpp.exe"
