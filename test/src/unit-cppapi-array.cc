@@ -396,8 +396,119 @@ TEST_CASE_METHOD(CPPArrayFx, "C++ API: Arrays", "[cppapi][basic]") {
   }
 }
 
-TEST_CASE(
-    "C++ API: Incorrect buffer size and offsets", "[cppapi][invalid-offsets]") {
+TEST_CASE("C++ API: Zero length buffer", "[cppapi][zero-length]") {
+  const std::string array_name_1d = "cpp_unit_array_1d";
+  Context ctx;
+  VFS vfs(ctx);
+
+  tiledb_layout_t write_layout = TILEDB_GLOBAL_ORDER;
+  tiledb_array_type_t array_type = TILEDB_DENSE;
+  bool null_pointer = true;
+
+  SECTION("SPARSE") {
+    array_type = TILEDB_SPARSE;
+    SECTION("GLOBAL_ORDER") {
+      write_layout = TILEDB_GLOBAL_ORDER;
+
+      SECTION("NULL_PTR") {
+        null_pointer = true;
+      }
+
+      SECTION("NON_NULL_PTR") {
+        null_pointer = false;
+      }
+    }
+
+    SECTION("UNORDERED") {
+      write_layout = TILEDB_UNORDERED;
+    }
+  }
+
+  SECTION("DENSE") {
+    array_type = TILEDB_DENSE;
+    SECTION("GLOBAL_ORDER") {
+      write_layout = TILEDB_GLOBAL_ORDER;
+
+      SECTION("NULL_PTR") {
+        null_pointer = true;
+      }
+
+      SECTION("NON_NULL_PTR") {
+        null_pointer = false;
+      }
+    }
+  }
+
+  if (vfs.is_dir(array_name_1d))
+    vfs.remove_dir(array_name_1d);
+
+  ArraySchema schema(ctx, array_type);
+  Domain domain(ctx);
+  domain.add_dimension(Dimension::create<int32_t>(ctx, "d", {{0, 2}}, 3));
+  schema.set_domain(domain);
+  schema.add_attribute(Attribute::create<std::vector<int32_t>>(ctx, "a"));
+  schema.add_attribute(Attribute::create<uint64_t>(ctx, "b"));
+  Array::create(array_name_1d, schema);
+
+  {
+    Array array(ctx, array_name_1d, TILEDB_WRITE);
+
+    std::vector<int32_t> a, coord = {0, 1, 2};
+    std::vector<uint64_t> a_offset = {0, 0, 0};
+    std::vector<uint64_t> b = {1, 2, 3};
+
+    if (!null_pointer) {
+      a.reserve(10);
+    }
+
+    a = {};
+    Query q(ctx, array, TILEDB_WRITE);
+    q.set_layout(write_layout);
+    if (array_type == TILEDB_SPARSE)
+      q.set_data_buffer("d", coord);
+    q.set_data_buffer("a", a);
+    q.set_offsets_buffer("a", a_offset);
+    q.set_data_buffer("b", b);
+    q.submit();
+    q.finalize();
+
+    array.close();
+  }
+
+  {
+    Array array(ctx, array_name_1d, TILEDB_READ);
+
+    std::vector<int32_t> a(3);
+    std::vector<uint64_t> a_offset = {1, 1, 1};
+    std::vector<uint64_t> b(3);
+
+    a.reserve(10);
+    a = {};
+    const std::vector<int> subarray = {0, 2};
+    Query q(ctx, array, TILEDB_READ);
+    q.set_layout(TILEDB_GLOBAL_ORDER);
+    q.set_subarray(subarray);
+    q.set_data_buffer("a", a);
+    q.set_offsets_buffer("a", a_offset);
+    q.set_data_buffer("b", b);
+    REQUIRE(q.submit() == Query::Status::COMPLETE);
+    CHECK((int)q.result_buffer_elements()["a"].first == 3);
+    CHECK((int)q.result_buffer_elements()["a"].second == 0);
+    CHECK((int)q.result_buffer_elements()["b"].second == 3);
+
+    array.close();
+
+    for (size_t i = 0; i < 3; i++) {
+      CHECK(a_offset[i] == 0);
+      CHECK(b[i] == i + 1);
+    }
+  }
+
+  if (vfs.is_dir(array_name_1d))
+    vfs.remove_dir(array_name_1d);
+}
+
+TEST_CASE("C++ API: Incorrect offsets", "[cppapi][invalid-offsets]") {
   const std::string array_name_1d = "cpp_unit_array_1d";
   Context ctx;
   VFS vfs(ctx);
@@ -415,19 +526,6 @@ TEST_CASE(
 
   std::vector<int32_t> a, coord = {10, 20, 30};
   std::vector<uint64_t> a_offset = {0, 0, 0};
-
-  // Test case where backing buffer for vector is non-null, but size is 0.
-  // For bug https://github.com/TileDB-Inc/TileDB/issues/590
-  {
-    a.reserve(10);
-    a = {};
-    Query q(ctx, array, TILEDB_WRITE);
-    q.set_layout(TILEDB_GLOBAL_ORDER);
-    q.set_coordinates(coord);
-    q.set_data_buffer("a", a);
-    q.set_offsets_buffer("a", a_offset);
-    REQUIRE_THROWS(q.submit());
-  }
 
   // Test case of non-ascending offsets
   {

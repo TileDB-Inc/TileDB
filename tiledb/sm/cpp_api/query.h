@@ -2091,8 +2091,6 @@ class Query {
     ctx.handle_error(tiledb_query_get_offsets_buffer(
         ctx.ptr().get(), query_.get(), name.c_str(), offsets, &offsets_nbytes));
 
-    assert(*offsets_nbytes % sizeof(uint64_t) == 0);
-
     *offsets_nelements = (*offsets_nbytes) / sizeof(uint64_t);
 
     return *this;

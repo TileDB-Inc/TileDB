@@ -100,8 +100,7 @@ Reader::Reader(
     std::unordered_map<std::string, QueryBuffer>& buffers,
     Subarray& subarray,
     Layout layout,
-    QueryCondition& condition,
-    bool sparse_mode)
+    QueryCondition& condition)
     : ReaderBase(
           stats,
           storage_manager,
@@ -110,8 +109,7 @@ Reader::Reader(
           buffers,
           subarray,
           layout,
-          condition)
-    , sparse_mode_(sparse_mode) {
+          condition) {
 }
 
 /* ****************************** */
@@ -137,7 +135,7 @@ Status Reader::init() {
   if (buffers_.empty())
     return LOG_STATUS(
         Status::ReaderError("Cannot initialize reader; Buffers not set"));
-  if (array_schema_->dense() && !sparse_mode_ && !subarray_.is_set())
+  if (array_schema_->dense() && !subarray_.is_set())
     return LOG_STATUS(Status::ReaderError(
         "Cannot initialize reader; Dense reads must have a subarray set"));
 
@@ -179,7 +177,7 @@ Status Reader::dowork() {
 
   auto timer_se = stats_->start_timer("read");
 
-  auto dense_mode = array_schema_->dense() && !sparse_mode_;
+  auto dense_mode = array_schema_->dense();
 
   // Get next partition
   if (!read_state_.unsplittable_)
@@ -386,9 +384,14 @@ Status Reader::compute_range_result_coords(
       // in reverse.
       const unsigned dim_idx =
           cell_order == Layout::COL_MAJOR ? dim_num - d - 1 : d;
-      const auto& ranges = subarray->ranges_for_dim(dim_idx);
-      RETURN_NOT_OK(tile->compute_results_sparse(
-          dim_idx, ranges[range_coords[dim_idx]], &result_bitmap, cell_order));
+      if (!subarray->is_default(dim_idx)) {
+        const auto& ranges = subarray->ranges_for_dim(dim_idx);
+        RETURN_NOT_OK(tile->compute_results_sparse(
+            dim_idx,
+            ranges[range_coords[dim_idx]],
+            &result_bitmap,
+            cell_order));
+      }
     }
 
     // Gather results

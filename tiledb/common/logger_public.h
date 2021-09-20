@@ -41,16 +41,16 @@
 namespace tiledb {
 namespace common {
 
-/** Logs an error. */
+/** Logs a trace. */
 void LOG_TRACE(const std::string& msg);
 
-/** Logs an error. */
+/** Logs debug. */
 void LOG_DEBUG(const std::string& msg);
 
-/** Logs an error. */
+/** Logs info. */
 void LOG_INFO(const std::string& msg);
 
-/** Logs an error. */
+/** Logs a warning. */
 void LOG_WARN(const std::string& msg);
 
 /** Logs an error. */
@@ -61,6 +61,24 @@ Status LOG_STATUS(const Status& st);
 
 /** Logs an error and exits with a non-zero status. */
 void LOG_FATAL(const std::string& msg);
+
+/** Logs trace. */
+void LOG_TRACE(const std::stringstream& msg);
+
+/** Logs debug. */
+void LOG_DEBUG(const std::stringstream& msg);
+
+/** Logs info. */
+void LOG_INFO(const std::stringstream& msg);
+
+/** Logs a warning. */
+void LOG_WARN(const std::stringstream& msg);
+
+/** Logs an error. */
+void LOG_ERROR(const std::stringstream& msg);
+
+/** Logs an error and exits with a non-zero status. */
+void LOG_FATAL(const std::stringstream& msg);
 
 }  // namespace common
 

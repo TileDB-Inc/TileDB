@@ -51,6 +51,7 @@ set(TILEDB_PUBLIC_HEADERS
   ${TILEDB_CORE_INCLUDE_DIR}/tiledb/sm/c_api/tiledb.h
   ${TILEDB_CORE_INCLUDE_DIR}/tiledb/sm/c_api/tiledb_enum.h
   ${TILEDB_CORE_INCLUDE_DIR}/tiledb/sm/c_api/tiledb_version.h
+  ${TILEDB_CORE_INCLUDE_DIR}/tiledb/sm/c_api/tiledb_experimental.h
 )
 
 if (TILEDB_SERIALIZATION)
@@ -62,8 +63,10 @@ endif()
 if (TILEDB_CPP_API)
   list(APPEND TILEDB_PUBLIC_HEADERS
     ${TILEDB_CORE_INCLUDE_DIR}/tiledb/sm/cpp_api/tiledb
+    ${TILEDB_CORE_INCLUDE_DIR}/tiledb/sm/cpp_api/tiledb_experimental
     ${TILEDB_CORE_INCLUDE_DIR}/tiledb/sm/cpp_api/array.h
     ${TILEDB_CORE_INCLUDE_DIR}/tiledb/sm/cpp_api/array_schema.h
+    ${TILEDB_CORE_INCLUDE_DIR}/tiledb/sm/cpp_api/array_schema_evolution.h
     ${TILEDB_CORE_INCLUDE_DIR}/tiledb/sm/cpp_api/attribute.h
     ${TILEDB_CORE_INCLUDE_DIR}/tiledb/sm/cpp_api/config.h
     ${TILEDB_CORE_INCLUDE_DIR}/tiledb/sm/cpp_api/context.h
@@ -98,11 +101,13 @@ set(TILEDB_CORE_SOURCES
   ${TILEDB_CORE_INCLUDE_DIR}/tiledb/common/heap_memory.cc
   ${TILEDB_CORE_INCLUDE_DIR}/tiledb/common/heap_profiler.cc
   ${TILEDB_CORE_INCLUDE_DIR}/tiledb/common/logger.cc
+  ${TILEDB_CORE_INCLUDE_DIR}/tiledb/common/memory.cc
   ${TILEDB_CORE_INCLUDE_DIR}/tiledb/common/status.cc
   ${TILEDB_CORE_INCLUDE_DIR}/tiledb/common/thread_pool.cc
   ${TILEDB_CORE_INCLUDE_DIR}/tiledb/common/interval/interval.cc
   ${TILEDB_CORE_INCLUDE_DIR}/tiledb/sm/array/array.cc
   ${TILEDB_CORE_INCLUDE_DIR}/tiledb/sm/array_schema/array_schema.cc
+  ${TILEDB_CORE_INCLUDE_DIR}/tiledb/sm/array_schema/array_schema_evolution.cc
   ${TILEDB_CORE_INCLUDE_DIR}/tiledb/sm/array_schema/attribute.cc
   ${TILEDB_CORE_INCLUDE_DIR}/tiledb/sm/array_schema/dimension.cc
   ${TILEDB_CORE_INCLUDE_DIR}/tiledb/sm/array_schema/domain.cc
@@ -170,11 +175,14 @@ set(TILEDB_CORE_SOURCES
   ${TILEDB_CORE_INCLUDE_DIR}/tiledb/sm/query/result_tile.cc
   ${TILEDB_CORE_INCLUDE_DIR}/tiledb/sm/query/read_cell_slab_iter.cc
   ${TILEDB_CORE_INCLUDE_DIR}/tiledb/sm/query/sparse_global_order_reader.cc
+  ${TILEDB_CORE_INCLUDE_DIR}/tiledb/sm/query/sparse_index_reader_base.cc
+  ${TILEDB_CORE_INCLUDE_DIR}/tiledb/sm/query/sparse_unordered_with_dups_reader.cc
   ${TILEDB_CORE_INCLUDE_DIR}/tiledb/sm/query/strategy_base.cc
   ${TILEDB_CORE_INCLUDE_DIR}/tiledb/sm/query/writer.cc
   ${TILEDB_CORE_INCLUDE_DIR}/tiledb/sm/rest/rest_client.cc
   ${TILEDB_CORE_INCLUDE_DIR}/tiledb/sm/rtree/rtree.cc
   ${TILEDB_CORE_INCLUDE_DIR}/tiledb/sm/serialization/array_schema.cc
+  ${TILEDB_CORE_INCLUDE_DIR}/tiledb/sm/serialization/array_schema_evolution.cc
   ${TILEDB_CORE_INCLUDE_DIR}/tiledb/sm/serialization/config.cc
   ${TILEDB_CORE_INCLUDE_DIR}/tiledb/sm/serialization/query.cc
   ${TILEDB_CORE_INCLUDE_DIR}/tiledb/sm/stats/global_stats.cc
@@ -201,6 +209,7 @@ if (TILEDB_SERIALIZATION)
     set_source_files_properties(
       ${TILEDB_CORE_INCLUDE_DIR}/tiledb/sm/rest/rest_client.cc
       ${TILEDB_CORE_INCLUDE_DIR}/tiledb/sm/serialization/array_schema.cc
+      ${TILEDB_CORE_INCLUDE_DIR}/tiledb/sm/serialization/array_schema_evolution.cc
       ${TILEDB_CORE_INCLUDE_DIR}/tiledb/sm/serialization/config.cc
       ${TILEDB_CORE_INCLUDE_DIR}/tiledb/sm/serialization/query.cc
       ${TILEDB_CORE_INCLUDE_DIR}/tiledb/sm/serialization/tiledb-rest.capnp.c++
@@ -212,6 +221,7 @@ if (TILEDB_SERIALIZATION)
     set_source_files_properties(
       ${TILEDB_CORE_INCLUDE_DIR}/tiledb/sm/rest/rest_client.cc
       ${TILEDB_CORE_INCLUDE_DIR}/tiledb/sm/serialization/array_schema.cc
+      ${TILEDB_CORE_INCLUDE_DIR}/tiledb/sm/serialization/array_schema_evolution.cc
       ${TILEDB_CORE_INCLUDE_DIR}/tiledb/sm/serialization/config.cc
       ${TILEDB_CORE_INCLUDE_DIR}/tiledb/sm/serialization/query.cc
       ${TILEDB_CORE_INCLUDE_DIR}/tiledb/sm/serialization/tiledb-rest.capnp.c++

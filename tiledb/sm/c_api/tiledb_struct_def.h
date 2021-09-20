@@ -36,6 +36,7 @@
 
 #include "tiledb/sm/array/array.h"
 #include "tiledb/sm/array_schema/array_schema.h"
+#include "tiledb/sm/array_schema/array_schema_evolution.h"
 #include "tiledb/sm/buffer/buffer_list.h"
 #include "tiledb/sm/config/config.h"
 #include "tiledb/sm/config/config_iter.h"
@@ -84,6 +85,10 @@ struct tiledb_attribute_t {
 
 struct tiledb_array_schema_t {
   tiledb::sm::ArraySchema* array_schema_ = nullptr;
+};
+
+struct tiledb_array_schema_evolution_t {
+  tiledb::sm::ArraySchemaEvolution* array_schema_evolution_ = nullptr;
 };
 
 struct tiledb_dimension_t {

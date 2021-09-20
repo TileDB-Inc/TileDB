@@ -86,6 +86,7 @@ enum class StatusCode : char {
   StorageManager,
   FragmentMetadata,
   ArraySchema,
+  ArraySchemaEvolution,
   Metadata,
   IO,
   Mem,
@@ -115,6 +116,7 @@ enum class StatusCode : char {
   Attribute,
   WriteCellSlabIter,
   SparseGlobalOrderReaderError,
+  SparseUnorderedWithDupsReaderError,
   Reader,
   Writer,
   PreallocatedBuffer,
@@ -186,6 +188,11 @@ class Status {
   /** Return a ArraySchema error class Status with a given message **/
   static Status ArraySchemaError(const std::string& msg) {
     return Status(StatusCode::ArraySchema, msg, -1);
+  }
+
+  /** Return a ArraySchemaEvolution error class Status with a given message **/
+  static Status ArraySchemaEvolutionError(const std::string& msg) {
+    return Status(StatusCode::ArraySchemaEvolution, msg, -1);
   }
 
   /** Return a Metadata error class Status with a given message **/
@@ -338,6 +345,12 @@ class Status {
    * message **/
   static Status SparseGlobalOrderReaderError(const std::string& msg) {
     return Status(StatusCode::SparseGlobalOrderReaderError, msg, -1);
+  }
+
+  /** Return a SparseUnorderedWithDupsReaderError error class Status with a
+   * given message **/
+  static Status SparseUnorderedWithDupsReaderError(const std::string& msg) {
+    return Status(StatusCode::SparseUnorderedWithDupsReaderError, msg, -1);
   }
 
   /** Return a ReaderError error class Status with a given message **/

@@ -40,6 +40,7 @@
 #include "tiledb/common/logger.h"
 #include "tiledb/sm/array/array.h"
 #include "tiledb/sm/array_schema/array_schema.h"
+#include "tiledb/sm/array_schema/array_schema_evolution.h"
 #include "tiledb/sm/cache/buffer_lru_cache.h"
 #include "tiledb/sm/enums/array_type.h"
 #include "tiledb/sm/enums/layout.h"
@@ -808,6 +809,7 @@ Status StorageManager::array_create(
 
   std::lock_guard<std::mutex> lock{object_create_mtx_};
   array_schema->set_array_uri(array_uri);
+  RETURN_NOT_OK(array_schema->generate_uri());
   RETURN_NOT_OK(array_schema->check());
 
   // Create array directory
@@ -876,6 +878,52 @@ Status StorageManager::array_create(
     vfs_->remove_dir(array_uri);
     return st;
   }
+
+  return Status::Ok();
+}
+
+Status StorageManager::array_evolve_schema(
+    const URI& array_uri,
+    ArraySchemaEvolution* schema_evolution,
+    const EncryptionKey& encryption_key) {
+  // Check array schema
+  if (schema_evolution == nullptr) {
+    return LOG_STATUS(Status::StorageManagerError(
+        "Cannot evolve array; Empty schema evolution"));
+  }
+
+  if (array_uri.is_tiledb()) {
+    return rest_client_->post_array_schema_evolution_to_rest(
+        array_uri, schema_evolution);
+  }
+
+  // Check if array exists
+  bool exists = false;
+  RETURN_NOT_OK(is_array(array_uri, &exists));
+  if (!exists)
+    return LOG_STATUS(Status::StorageManagerError(
+        std::string("Cannot evolve array; Array '") + array_uri.c_str() +
+        "' not exists"));
+
+  ArraySchema* array_schema = (ArraySchema*)nullptr;
+  RETURN_NOT_OK(load_array_schema(array_uri, encryption_key, &array_schema));
+
+  // Evolve schema
+  ArraySchema* array_schema_evolved = (ArraySchema*)nullptr;
+  RETURN_NOT_OK(
+      schema_evolution->evolve_schema(array_schema, &array_schema_evolved));
+
+  Status st = store_array_schema(array_schema_evolved, encryption_key);
+  if (!st.ok()) {
+    tdb_delete(array_schema_evolved);
+    return LOG_STATUS(Status::StorageManagerError(
+        "Cannot evovle schema;  Not able to store evolved array schema."));
+  }
+
+  tdb_delete(array_schema);
+  array_schema = nullptr;
+  tdb_delete(array_schema_evolved);
+  array_schema_evolved = nullptr;
 
   return Status::Ok();
 }
@@ -1403,7 +1451,8 @@ Status StorageManager::get_fragment_info(
           sizes[i],
           meta->has_consolidated_footer(),
           non_empty_domain,
-          expanded_non_empty_domain));
+          expanded_non_empty_domain,
+          meta->array_schema_name()));
     }
   }
 
@@ -1504,7 +1553,11 @@ Status StorageManager::get_fragment_info(
       timestamp_range,
       array_get_memory_tracker(array.array_uri()),
       !sparse);
-  RETURN_NOT_OK(meta.load(*array.encryption_key(), nullptr, 0));
+  RETURN_NOT_OK(meta.load(
+      *array.encryption_key(),
+      nullptr,
+      0,
+      std::unordered_map<std::string, tiledb_shared_ptr<ArraySchema>>()));
 
   // This is important for format version > 2
   sparse = !meta.dense();
@@ -1531,7 +1584,8 @@ Status StorageManager::get_fragment_info(
       size,
       meta.has_consolidated_footer(),
       non_empty_domain,
-      expanded_non_empty_domain);
+      expanded_non_empty_domain,
+      meta.array_schema_name());
 
   return Status::Ok();
 }
@@ -2209,7 +2263,7 @@ Status StorageManager::store_array_schema(
       0,
       &buff,
       false);
-  buff.disown_data();
+
   GenericTileIO tile_io(this, schema_uri);
   uint64_t nbytes;
   Status st = tile_io.write_generic(&tile, encryption_key, &nbytes);
@@ -2252,7 +2306,6 @@ Status StorageManager::store_array_metadata(
       0,
       &metadata_buff,
       false);
-  metadata_buff.disown_data();
 
   GenericTileIO tile_io(this, array_metadata_uri);
   uint64_t nbytes;
@@ -2262,6 +2315,8 @@ Status StorageManager::store_array_metadata(
   if (st.ok()) {
     st = close_file(array_metadata_uri);
   }
+
+  metadata_buff.clear();
 
   return st;
 }
@@ -2554,18 +2609,12 @@ Status StorageManager::load_fragment_metadata(
 
       // Load fragment metadata
       RETURN_NOT_OK_ELSE(
-          metadata->load(encryption_key, f_buff, offset), tdb_delete(metadata));
+          metadata->load(
+              encryption_key, f_buff, offset, open_array->array_schemas()),
+          tdb_delete(metadata));
       open_array->insert_fragment_metadata(metadata);
     }
-    auto array_schema_name = metadata->array_schema_name();
-    tdb_shared_ptr<ArraySchema> frag_array_schema(nullptr);
-    RETURN_NOT_OK(
-        open_array->get_array_schema(array_schema_name, &frag_array_schema));
-    if (!frag_array_schema) {
-      return LOG_STATUS(Status::StorageManagerError(
-          "Cannot load fragment metadata; Null fragment array schema"));
-    }
-    metadata->set_array_schema(frag_array_schema.get());
+
     (*fragment_metadata)[f] = metadata;
     return Status::Ok();
   });

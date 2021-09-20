@@ -195,13 +195,6 @@ class Consolidator {
       uint32_t key_length);
 
   /**
-   * Returns `true` if all fragments between `start` and `end`
-   * (inclusive) in `fragments` are sparse.
-   */
-  bool all_sparse(
-      const FragmentInfo& fragment_info, size_t start, size_t end) const;
-
-  /**
    * Checks if the fragments between `start` and `end` (inclusive)
    * in `fragments` are allowed to be consolidated. A set of fragments
    * is allowed to be consolidated if all fragments are sparse,
@@ -237,7 +230,6 @@ class Consolidator {
    * @param array_for_writes Array used for writes.
    * @param to_consolidate The fragments to consolidate in this consolidation
    *     step.
-   * @param all_sparse If all the fragments to consolidate are sparse.
    * @param union_non_empty_domains The union of the non-empty domains of
    *     the fragments in `to_consolidate`. Applicable only when those
    *     fragments are *not* all sparse.
@@ -249,7 +241,6 @@ class Consolidator {
       Array& array_for_reads,
       Array& array_for_writes,
       const std::vector<TimestampedURI>& to_consolidate,
-      bool all_sparse,
       const NDRange& union_non_empty_domains,
       URI* new_fragment_uri);
 
@@ -296,8 +287,7 @@ class Consolidator {
       Query* query_r,
       Query* query_w,
       std::vector<ByteVec>* buffers,
-      std::vector<uint64_t>* buffer_sizes,
-      bool sparse_mode);
+      std::vector<uint64_t>* buffer_sizes);
 
   /**
    * Creates the buffers that will be used upon reading the input fragments and
@@ -305,15 +295,12 @@ class Consolidator {
    * created.
    *
    * @param array_schema The array schema.
-   * @param sparse_mode This indicates whether a dense array must be opened
-   *     in special sparse mode. This is ignored for sparse arrays.
    * @param buffers The buffers to be created.
    * @param buffer_sizes The corresponding buffer sizes.
    * @return Status
    */
   Status create_buffers(
       const ArraySchema* array_schema,
-      bool sparse_mode,
       std::vector<ByteVec>* buffers,
       std::vector<uint64_t>* buffer_sizes);
 
@@ -326,8 +313,6 @@ class Consolidator {
    *     to be consolidated.
    * @param array_for_writes The opened array for writing the
    *     consolidated fragments.
-   * @param sparse_mode This indicates whether a dense array must be opened
-   *     in special sparse mode. This is ignored for sparse arrays.
    * @param subarray The subarray to read from (the fragments to consolidate)
    *     and write to (the new fragment).
    * @param query_r This query reads from the fragments to be consolidated.
@@ -338,7 +323,6 @@ class Consolidator {
   Status create_queries(
       Array* array_for_reads,
       Array* array_for_writes,
-      bool sparse_mode,
       const NDRange& subarray,
       Query** query_r,
       Query** query_w,
@@ -351,8 +335,6 @@ class Consolidator {
    * @param array_schema The array schema.
    * @param fragment_info Information about all the fragments.
    * @param to_consolidate The fragments to consolidate in the next step.
-   * @param all_sparse The function will return here if all fragments to
-   *     consolidate are all sparse.
    * @param union_non_empty_domains The function will return here the
    *     union of the non-empty domains of the fragments in `to_consolidate`.
    * @return Status
@@ -361,7 +343,6 @@ class Consolidator {
       const ArraySchema* array_schema,
       const FragmentInfo& fragment_info,
       std::vector<TimestampedURI>* to_consolidate,
-      bool* all_sparse,
       NDRange* union_non_empty_domains) const;
 
   /**
@@ -384,14 +365,11 @@ class Consolidator {
    * if the array is sparse in the end.
    *
    * @param query The query to set the buffers to.
-   * @param sparse_mode This indicates whether a dense array must be opened
-   *     in special sparse mode. This is ignored for sparse arrays.
    * @param The buffers to set.
    * @param buffer_sizes The buffer sizes.
    */
   Status set_query_buffers(
       Query* query,
-      bool sparse_mode,
       std::vector<ByteVec>* buffers,
       std::vector<uint64_t>* buffer_sizes) const;
 

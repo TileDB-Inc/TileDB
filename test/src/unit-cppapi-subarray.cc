@@ -221,11 +221,10 @@ TEST_CASE("C++ API: Test subarray (dense)", "[cppapi][dense][subarray]") {
 
   // Write
   std::vector<int> data_w = {1, 2, 3, 4};
-  std::vector<int> coords_w = {0, 0, 1, 1, 2, 2, 3, 3};
   Array array_w(ctx, array_name, TILEDB_WRITE);
   tiledb::Query query_w(ctx, array_w);
-  query_w.set_coordinates(coords_w)
-      .set_layout(TILEDB_UNORDERED)
+  query_w.set_subarray({0, 1, 0, 1})
+      .set_layout(TILEDB_ROW_MAJOR)
       .set_data_buffer("a", data_w);
   query_w.submit();
   query_w.finalize();

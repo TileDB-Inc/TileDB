@@ -33,6 +33,7 @@
 // clang-format off
 #ifdef TILEDB_SERIALIZATION
 #include "tiledb/sm/serialization/capnp_utils.h"
+#include "tiledb/sm/serialization/array_schema_evolution.h"
 #include "tiledb/sm/serialization/query.h"
 #include "tiledb/sm/serialization/tiledb-rest.h"
 #include "tiledb/sm/rest/curl.h" // must be included last to avoid Windows.h
@@ -367,10 +368,8 @@ Status RestClient::post_query_submit(
                     "&read_all=" + (resubmit_incomplete_ ? "true" : "false");
 
   // Remote array reads always supply the timestamp.
-  if (query->type() == QueryType::READ) {
-    url += "&start_timestamp=" + std::to_string(array->timestamp_start());
-    url += "&end_timestamp=" + std::to_string(array->timestamp_end());
-  }
+  url += "&start_timestamp=" + std::to_string(array->timestamp_start());
+  url += "&end_timestamp=" + std::to_string(array->timestamp_end());
 
   // Create the callback that will process the response buffers as they
   // are received.
@@ -541,7 +540,7 @@ size_t RestClient::post_data_write_cb(
   // consumption by overwriting the serialized query objects that we
   // have already processed.
   const uint64_t length = scratch->size() - scratch->offset();
-  if (scratch->offset() != 0) {
+  if (scratch->offset() != 0 && length != 0) {
     const uint64_t offset = scratch->offset();
     scratch->reset_offset();
 
@@ -772,6 +771,35 @@ std::string RestClient::redirect_uri(const std::string& cache_key) {
   return (cache_it == redirect_meta_.end()) ? rest_server_ : cache_it->second;
 }
 
+Status RestClient::post_array_schema_evolution_to_rest(
+    const URI& uri, ArraySchemaEvolution* array_schema_evolution) {
+  Buffer buff;
+  RETURN_NOT_OK(serialization::array_schema_evolution_serialize(
+      array_schema_evolution, serialization_type_, &buff, false));
+  // Wrap in a list
+  BufferList serialized;
+  RETURN_NOT_OK(serialized.add_buffer(std::move(buff)));
+
+  // Init curl and form the URL
+  Curl curlc;
+  std::string array_ns, array_uri;
+  RETURN_NOT_OK(uri.get_rest_components(&array_ns, &array_uri));
+  const std::string cache_key = array_ns + ":" + array_uri;
+  RETURN_NOT_OK(
+      curlc.init(config_, extra_headers_, &redirect_meta_, &redirect_mtx_));
+  auto deduced_url = redirect_uri(cache_key) + "/v1/arrays/" + array_ns + "/" +
+                     curlc.url_escape(array_uri) + "/evolve";
+  Buffer returned_data;
+  const Status sc = curlc.post_data(
+      stats_,
+      deduced_url,
+      serialization_type_,
+      &serialized,
+      &returned_data,
+      cache_key);
+  return sc;
+}
+
 #else
 
 RestClient::RestClient() {
@@ -841,6 +869,12 @@ Status RestClient::finalize_query_to_rest(const URI&, Query*) {
 }
 
 Status RestClient::get_query_est_result_sizes(const URI&, Query*) {
+  return LOG_STATUS(
+      Status::RestError("Cannot use rest client; serialization not enabled."));
+}
+
+Status RestClient::post_array_schema_evolution_to_rest(
+    const URI&, ArraySchemaEvolution*) {
   return LOG_STATUS(
       Status::RestError("Cannot use rest client; serialization not enabled."));
 }
