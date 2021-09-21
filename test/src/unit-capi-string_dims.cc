@@ -1672,6 +1672,21 @@ TEST_CASE_METHOD(
   char s1[] = "a";
   char s2[] = "ee";
 
+  // Check we can add empty ranges
+  rc = tiledb_query_add_range_var(ctx_, query, 0, s1, 0, s2, 2);
+  CHECK(rc == TILEDB_OK);
+  rc = tiledb_query_add_range_var(ctx_, query, 0, s1, 1, s2, 0);
+  CHECK(rc == TILEDB_OK);
+  rc = tiledb_query_add_range_var(ctx_, query, 0, nullptr, 0, s2, 2);
+  CHECK(rc == TILEDB_OK);
+  rc = tiledb_query_add_range_var(ctx_, query, 0, s1, 1, nullptr, 0);
+  CHECK(rc == TILEDB_OK);
+
+  // Clean query and re-alloc
+  tiledb_query_free(&query);
+  rc = tiledb_query_alloc(ctx_, array, TILEDB_READ, &query);
+  CHECK(rc == TILEDB_OK);
+
   // Check errors when adding range
   rc = tiledb_query_add_range(ctx_, query, 0, s1, s2, nullptr);
   CHECK(rc == TILEDB_ERR);
@@ -1680,10 +1695,6 @@ TEST_CASE_METHOD(
   rc = tiledb_query_add_range_var(ctx_, query, 0, nullptr, 1, s2, 2);
   CHECK(rc == TILEDB_ERR);
   rc = tiledb_query_add_range_var(ctx_, query, 0, s1, 1, nullptr, 2);
-  CHECK(rc == TILEDB_ERR);
-  rc = tiledb_query_add_range_var(ctx_, query, 0, s1, 0, s2, 2);
-  CHECK(rc == TILEDB_ERR);
-  rc = tiledb_query_add_range_var(ctx_, query, 0, s1, 1, s2, 0);
   CHECK(rc == TILEDB_ERR);
 
   // Add string range
