@@ -859,10 +859,11 @@ TEST_CASE(
     "QueryCondition: Test empty string", "[QueryCondition][empty_string]") {
   const std::string field_name = "foo";
   const uint64_t cells = 10;
-  const char* fill_value = "";
+  const char* fill_value = "ac";
   const Datatype type = Datatype::STRING_ASCII;
-  bool nullable = false;
-  bool var_size = true;
+  bool var_size = GENERATE(true, false);
+  bool nullable = GENERATE(true, false);
+  QueryConditionOp op = GENERATE(QueryConditionOp::NE, QueryConditionOp::EQ);
 
   // Initialize the array schema.
   ArraySchema array_schema;
@@ -887,8 +888,6 @@ TEST_CASE(
   ResultTile result_tile(0, 0, &domain);
   result_tile.init_attr_tile(field_name);
 
-  // test_apply_tile<char*>(field_name, cells, type, &array_schema,
-  // &result_tile);
   ResultTile::TileTuple* const tile_tuple = result_tile.tile_tuple(field_name);
 
   var_size = array_schema.attribute(field_name)->var_size();
@@ -931,13 +930,34 @@ TEST_CASE(
       offset += 2;
     }
     REQUIRE(tile_offsets->write(offsets, cells * sizeof(uint64_t)).ok());
+
+    free(offsets);
+  }
+
+  if (nullable) {
+    Tile* const tile_validity = &std::get<2>(*tile_tuple);
+    REQUIRE(tile_validity
+                ->init_unfiltered(
+                    constants::format_version,
+                    constants::cell_validity_type,
+                    10 * constants::cell_validity_size,
+                    constants::cell_validity_size,
+                    0)
+                .ok());
+
+    uint8_t* validity = static_cast<uint8_t*>(malloc(sizeof(uint8_t) * cells));
+    for (uint64_t i = 0; i < cells; ++i) {
+      validity[i] = i % 2;
+    }
+    REQUIRE(tile_validity->write(validity, cells * sizeof(uint8_t)).ok());
+
+    free(validity);
   }
 
   // Empty string as condition value
   const char* cmp_value = "";
 
   QueryCondition query_condition;
-  QueryConditionOp op = QueryConditionOp::NE;
   REQUIRE(
       query_condition.init(std::string(field_name), &cmp_value, 0, op).ok());
 
@@ -948,11 +968,28 @@ TEST_CASE(
   // criteria.
   std::vector<uint64_t> expected_cell_idx_vec;
   for (uint64_t i = 0; i < cells; ++i) {
-    if (nullable && (i % 2 == 0))
-      continue;
-    if (std::string(&static_cast<char*>(values)[2 * i], 2) !=
-        std::string(cmp_value))
-      expected_cell_idx_vec.emplace_back(i);
+    switch (op) {
+      case QueryConditionOp::EQ:
+        if (nullable && (i % 2 == 0)) {
+          expected_cell_idx_vec.emplace_back(i);
+        } else if (
+            std::string(&static_cast<char*>(values)[2 * i], 2) ==
+            std::string(cmp_value)) {
+          expected_cell_idx_vec.emplace_back(i);
+        }
+        break;
+      case QueryConditionOp::NE:
+        if (nullable && (i % 2 == 0)) {
+          continue;
+        } else if (
+            std::string(&static_cast<char*>(values)[2 * i], 2) !=
+            std::string(cmp_value)) {
+          expected_cell_idx_vec.emplace_back(i);
+        }
+        break;
+      default:
+        REQUIRE(false);
+    }
   }
 
   // Apply the query condition.
