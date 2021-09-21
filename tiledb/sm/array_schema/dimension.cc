@@ -527,8 +527,6 @@ void Dimension::expand_range_v(const void* v, Range* r) const {
 void Dimension::expand_range_var_v(const char* v, uint64_t v_size, Range* r) {
   assert(v != nullptr);
   assert(r != nullptr);
-  assert(!r->empty());
-  assert(v_size != 0);
 
   auto start = r->start_str();
   auto end = r->end_str();
@@ -555,8 +553,6 @@ void Dimension::expand_range(const Range& r1, Range* r2) const {
 
 void Dimension::expand_range_var(const Range& r1, Range* r2) const {
   assert(type_ == Datatype::STRING_ASCII);
-  assert(!r1.empty());
-  assert(!r2->empty());
 
   auto r1_start = r1.start_str();
   auto r1_end = r1.end_str();

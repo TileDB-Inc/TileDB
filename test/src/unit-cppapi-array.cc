@@ -1285,16 +1285,50 @@ TEST_CASE(
   std::string s1("a", 1);
   std::string s2("ee", 2);
   Query query_r(ctx, array_r, TILEDB_READ);
-  query_r.add_range(0, s1, s2);
-  CHECK_THROWS(query_r.add_range(1, s1, s2));
-  CHECK_THROWS(query_r.add_range(0, "", s2));
-  CHECK_THROWS(query_r.add_range(0, s1, ""));
 
-  // Check range
-  CHECK_THROWS(query_r.range(1, 1));
-  std::array<std::string, 2> range = query_r.range(0, 0);
-  CHECK(range[0] == s1);
-  CHECK(range[1] == s2);
+  SECTION("Non empty range") {
+    query_r.add_range(0, s1, s2);
+    CHECK_THROWS(query_r.add_range(1, s1, s2));
+
+    // Check range
+    CHECK_THROWS(query_r.range(1, 1));
+    std::array<std::string, 2> range = query_r.range(0, 0);
+    CHECK(range[0] == s1);
+    CHECK(range[1] == s2);
+  }
+
+  SECTION("Empty first range") {
+    query_r.add_range(0, "", s2);
+    CHECK_THROWS(query_r.add_range(1, "", s2));
+
+    // Check range
+    CHECK_THROWS(query_r.range(1, 1));
+    std::array<std::string, 2> range = query_r.range(0, 0);
+    CHECK(range[0] == "");
+    CHECK(range[1] == s2);
+  }
+
+  SECTION("Empty second range") {
+    query_r.add_range(0, s1, "");
+    CHECK_THROWS(query_r.add_range(1, s1, ""));
+
+    // Check range
+    CHECK_THROWS(query_r.range(1, 1));
+    std::array<std::string, 2> range = query_r.range(0, 0);
+    CHECK(range[0] == s1);
+    CHECK(range[1] == "");
+  }
+
+  SECTION("Empty ranges") {
+    query_r.add_range(0, std::string(""), std::string(""));
+    CHECK_THROWS(query_r.add_range(1, std::string(""), std::string("")));
+
+    // Check range
+    CHECK_THROWS(query_r.range(1, 1));
+    std::array<std::string, 2> range = query_r.range(0, 0);
+    CHECK(range[0] == "");
+    CHECK(range[1] == "");
+  }
 
   std::string data;
   data.resize(10);
