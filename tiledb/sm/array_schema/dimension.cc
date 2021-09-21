@@ -761,7 +761,7 @@ bool Dimension::overlap<char>(const Range& r1, const Range& r2) {
 
   return !r1_after_r2 && !r2_after_r1;
 }
-#elif 01
+#elif 0
 template <>
 bool Dimension::overlap<char>(const Range& r1, const Range& r2) {
 
@@ -815,9 +815,7 @@ bool Dimension::overlap<char>(const Range& r1, const Range& r2) {
       r2.end_size() ? Interval<std::string_view>::closed :
                       Interval<std::string_view>::open);
 #endif
-  //  return std::get<0>(interval1.compare(interval2)) == 0;
   auto result2 = std::get<0>(interval1.compare(interval2)) == 0;
-  //  return std::get<0>(interval2.compare(interval1)) == 0;
   auto result3 = std::get<0>(interval2.compare(interval1)) == 0;
 
   auto str_range1 = tiledb::sm::utils::range_to_str(r1, Datatype::STRING_ASCII);
@@ -825,7 +823,6 @@ bool Dimension::overlap<char>(const Range& r1, const Range& r2) {
   if (result1 != result2) {
     // arrived here with "[a,d][,]"
     std::cout << str_range1.c_str() << str_range2.c_str() << std::endl;
-    // OutputDebugString(str_range2.c_str());
     __debugbreak();
   }
   if (result1 != result3) {
@@ -839,9 +836,96 @@ bool Dimension::overlap<char>(const Range& r1, const Range& r2) {
   }
 
   return result1;
-  // auto compare_result = interval1.compare(interval2);
-  // return 0 ; //return std::get<0>(compare_result);
-  //  #endif
+}
+
+#elif 01
+template <>
+bool Dimension::overlap<char>(const Range& r1, const Range& r2) {
+  //
+  // blends both original and Interval approaches
+  // with comparison of results and reporting of ranges on inconsistency
+  //
+  //  #if 0
+  // original approach
+  auto r1_start = r1.start_str();
+  auto r1_end = r1.end_str();
+  auto r2_start = r2.start_str();
+  auto r2_end = r2.end_str();
+
+  auto r1_after_r2 = !r1_start.empty() && !r2_end.empty() && r1_start > r2_end;
+  auto r2_after_r1 = !r2_start.empty() && !r1_end.empty() && r2_start > r1_end;
+
+  //  return !r1_after_r2 && !r2_after_r1;
+  auto result1 = !r1_after_r2 && !r2_after_r1;
+  //  #else
+
+  // consider data of "r1 [a,d], r2 [,]", how is it to be handled?
+
+  // approach using Interval class
+#if 01
+  Interval<std::string_view> interval1(
+      Interval<std::string_view>::closed,
+
+      std::string_view{(char*)r1.start(), r1.start_size()},
+      std::string_view{(char*)r1.end(), r1.end_size()},
+      Interval<std::string_view>::closed);
+  Interval<std::string_view> interval2(
+      Interval<std::string_view>::closed,
+      std::string_view{(char*)r2.start(), r2.start_size()},
+      std::string_view{(char*)r2.end(), r2.end_size()},
+      Interval<std::string_view>::closed);
+#else
+  //...nope, closed/open are different types, doesn't work like this attempt...
+  Interval<std::string_view> interval1(
+      r1.start_size() ? Interval<std::string_view>::closed :
+                        Interval<std::string_view>::open,
+      std::string_view{(char*)r1.start(), r1.start_size()},
+      std::string_view{(char*)r1.end(), r1.end_size()},
+      r1.end_size() ? Interval<std::string_view>::closed :
+                      Interval<std::string_view>::open);
+  Interval<std::string_view> interval2(
+      r2.start_size() ? Interval<std::string_view>::closed :
+                        Interval<std::string_view>::open,
+      std::string_view{(char*)r2.start(), r2.start_size()},
+      std::string_view{(char*)r2.end(), r2.end_size()},
+      r2.end_size() ? Interval<std::string_view>::closed :
+                      Interval<std::string_view>::open);
+#endif
+
+  auto intersection_interval = interval1.intersection(interval2);
+
+  // return !intersection_interval.is_empty_;
+  // return intersection_interval.is_empty_;
+  auto str_range1 = tiledb::sm::utils::range_to_str(r1, Datatype::STRING_ASCII);
+  auto str_range2 = tiledb::sm::utils::range_to_str(r2, Datatype::STRING_ASCII);
+
+  // if (!intersection_interval.is_empty() != result1) {
+  if (intersection_interval.is_empty() != result1) {
+    // arrived here with "[a,d][,]"
+    std::cout << str_range1.c_str() << str_range2.c_str() << std::endl;
+    __debugbreak();
+  
+  }
+
+  auto result2 = std::get<0>(interval1.compare(interval2)) == 0;
+  auto result3 = std::get<0>(interval2.compare(interval1)) == 0;
+
+  if (result1 != result2) {
+    // arrived here with "[a,d][,]"
+    std::cout << str_range1.c_str() << str_range2.c_str() << std::endl;
+    __debugbreak();
+  }
+  if (result1 != result3) {
+    // arrived here with "[a,d][,]"
+    std::cout << str_range1.c_str() << str_range2.c_str() << std::endl;
+    __debugbreak();
+  }
+  if (result2 != result3) {
+    std::cout << str_range1.c_str() << str_range2.c_str() << std::endl;
+    __debugbreak();
+  }
+
+  return result1;
 }
 
 #elif 0
