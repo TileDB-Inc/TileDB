@@ -89,19 +89,21 @@ class DataFactory():
 
     # var-len (strings)
     self.data['tiledb_char'] = np.array([rand_ascii_bytes(np.random.randint(1,100))
-                                       for _ in range(col_size)])
+                                       for _ in range(col_size)]).astype("S1")
     self.data['utf_string1'] = np.array([rand_utf8(np.random.randint(1, 100))
-                                       for _ in range(col_size)])
+                                       for _ in range(col_size)]).astype("U0")
 
     # another version with some important cells set to empty
     self.data['utf_string2'] = np.array([rand_utf8(np.random.randint(0, 100))
-                                       for _ in range(col_size)])
-    self.data['utf_string2'][0] = ''
-    self.data['utf_string2'][1] = ''
-    self.data['utf_string2'][3] = ''
-    self.data['utf_string2'][-1] = ''
-    self.data['utf_string2'][-2] = ''
-    self.data['utf_string2'][-3] = ''
+                                       for _ in range(col_size)]).astype("U0")
+
+    utf_string2 = self.data['utf_string2']
+    for i in range(len(utf_string2)):
+        self.data['utf_string2'][i] = ''
+    range_start = len(utf_string2) - 1
+    range_end = len(utf_string2) % 3
+    for i in range(range_start, range_end, -1):
+        self.data['utf_string2'][i] = ''
 
     self.data['datetime_ns'] = rand_datetime64_array(col_size)
 

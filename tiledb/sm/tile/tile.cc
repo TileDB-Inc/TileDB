@@ -87,7 +87,7 @@ Status Tile::buffer_to_contiguous_fixed_chunks(
     const uint64_t tile_cell_size,
     ChunkedBuffer* chunked_buffer) {
   // Calculate the chunk size for 'buff'.
-  uint32_t chunk_size;
+  uint32_t chunk_size = 0;
   RETURN_NOT_OK(compute_chunk_size(
       buffer_size, tile_dim_num, tile_cell_size, &chunk_size));
 
