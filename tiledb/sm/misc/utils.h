@@ -36,6 +36,9 @@
 
 #include <cassert>
 #include <cmath>
+
+#include <sstream>
+
 #include <string>
 #include <type_traits>
 #include <vector>
@@ -58,6 +61,7 @@ enum class SerializationType : uint8_t;
 
 namespace utils {
 
+
 #ifdef __linux__
 namespace https {
 /**
@@ -70,7 +74,10 @@ std::string find_ca_certs_linux(const Posix& posix);
 }  // namespace https
 #endif
 
-namespace parse {
+  std::string range_to_str(
+    const tiledb::sm::Range& range, Datatype r_type);
+
+  namespace parse {
 
 /* ********************************* */
 /*          PARSING FUNCTIONS        */

@@ -36,6 +36,7 @@
 #include "tiledb/sm/enums/datatype.h"
 #include "tiledb/sm/enums/filter_type.h"
 #include "tiledb/sm/misc/utils.h"
+#include "tiledb/common/interval/interval.h"
 
 #include <bitset>
 #include <cassert>
@@ -44,8 +45,21 @@
 
 using namespace tiledb::common;
 
+using namespace tiledb::common::detail;
+namespace intervals = tiledb::common::detail;
+
 namespace tiledb {
 namespace sm {
+
+
+//sview_init("some char string");
+template <class Item, size_t n>
+constexpr auto sview_init(Item (&data)[n]) -> std::string_view
+// Size vs size_t type (sign vs unsign) mismatch due to some gcc compilers
+//{ return n; }
+{
+  return std::string_view(data, n);
+}
 
 /* ********************************* */
 /*     CONSTRUCTORS & DESTRUCTORS    */
@@ -628,6 +642,9 @@ Status Dimension::oob(const void* coord) const {
 
 template <class T>
 bool Dimension::covered(const Range& r1, const Range& r2) {
+
+//...Seems this method is not reached with 'basic' build config...
+
   assert(!r1.empty());
   assert(!r2.empty());
 
@@ -636,7 +653,17 @@ bool Dimension::covered(const Range& r1, const Range& r2) {
   assert(d1[0] <= d1[1]);
   assert(d2[0] <= d2[1]);
 
-  return d1[0] >= d2[0] && d1[1] <= d2[1];
+  //return d1[0] >= d2[0] && d1[1] <= d2[1];
+
+  Interval<T> interval(
+      Interval<T>::closed,
+      *d2,
+      *(d2 + 1),
+      Interval<T>::closed);
+  auto& lower_to_check = *d1;
+  auto& upper_to_check = *(d1 + 1);
+  return interval.is_member(lower_to_check) &&
+         interval.is_member(upper_to_check);
 }
 
 bool Dimension::covered(const Range& r1, const Range& r2) const {
@@ -644,8 +671,86 @@ bool Dimension::covered(const Range& r1, const Range& r2) const {
   return covered_func_(r1, r2);
 }
 
+#if 0
 template <>
 bool Dimension::overlap<char>(const Range& r1, const Range& r2) {
+//  #if 0
+  //original approach
+  auto r1_start = r1.start_str();
+  auto r1_end = r1.end_str();
+  auto r2_start = r2.start_str();
+  auto r2_end = r2.end_str();
+
+  auto r1_after_r2 = !r1_start.empty() && !r2_end.empty() && r1_start > r2_end;
+  auto r2_after_r1 = !r2_start.empty() && !r1_end.empty() && r2_start > r1_end;
+
+//  return !r1_after_r2 && !r2_after_r1;
+  auto result1 = !r1_after_r2 && !r2_after_r1;
+  //  #else
+
+  //approach using Interval class
+  #if 01
+  Interval<std::string_view> interval1(
+      Interval<std::string_view>::closed,
+      std::string_view{(char*)r1.start(), r1.start_size()},
+      std::string_view{(char*)r1.end(), r1.end_size()},
+      Interval<std::string_view>::closed);
+  Interval<std::string_view> interval2(
+      Interval<std::string_view>::closed,
+      std::string_view{(char*)r2.start(), r2.start_size()},
+      std::string_view{(char*)r2.end(), r2.end_size()},
+      Interval<std::string_view>::closed);
+  #else
+  //...nope, closed/open are different types, doesn't work like this attempt...
+  Interval<std::string_view> interval1(
+      r1.start_size() ? Interval<std::string_view>::closed :
+                        Interval<std::string_view>::open,
+      std::string_view{(char*)r1.start(), r1.start_size()},
+      std::string_view{(char*)r1.end(), r1.end_size()},
+      r1.end_size() ? Interval<std::string_view>::closed :
+                      Interval<std::string_view>::open);
+  Interval<std::string_view> interval2(
+      r2.start_size() ? Interval<std::string_view>::closed :
+                        Interval<std::string_view>::open,
+      std::string_view{(char*)r2.start(), r2.start_size()},
+      std::string_view{(char*)r2.end(), r2.end_size()},
+      r2.end_size() ? Interval<std::string_view>::closed :
+                      Interval<std::string_view>::open);
+  #endif
+  //  return std::get<0>(interval1.compare(interval2)) == 0;
+  auto result2 = std::get<0>(interval1.compare(interval2)) == 0;
+  //  return std::get<0>(interval2.compare(interval1)) == 0;
+  auto result3 = std::get<0>(interval2.compare(interval1)) == 0;
+
+  auto str_range1 = tiledb::sm::utils::range_to_str(r1, Datatype::STRING_ASCII);
+  auto str_range2 = tiledb::sm::utils::range_to_str(r2, Datatype::STRING_ASCII);
+  if (result1 != result2) {
+    //arrived here with "[a,d][,]"
+    std::cout << str_range1.c_str() << str_range2.c_str();
+    //OutputDebugString(str_range2.c_str());
+    __debugbreak();
+  }
+  if (result1 != result3) {
+    // arrived here with "[a,d][,]"
+    std::cout << str_range1.c_str() << str_range2.c_str();
+    __debugbreak();
+  }
+  if (result2 != result3) {
+    std::cout << str_range1.c_str() << str_range2.c_str();
+    __debugbreak();
+  }
+
+  return result1;
+  // auto compare_result = interval1.compare(interval2);
+  //return 0 ; //return std::get<0>(compare_result);
+//  #endif
+}
+#endif
+
+#if 0
+template <>
+bool Dimension::overlap<char>(const Range& r1, const Range& r2) {
+  // original approach
   auto r1_start = r1.start_str();
   auto r1_end = r1.end_str();
   auto r2_start = r2.start_str();
@@ -656,6 +761,137 @@ bool Dimension::overlap<char>(const Range& r1, const Range& r2) {
 
   return !r1_after_r2 && !r2_after_r1;
 }
+#elif 01
+template <>
+bool Dimension::overlap<char>(const Range& r1, const Range& r2) {
+
+  // 
+  //blends both original and Interval approaches
+  //with comparison of results and reporting of ranges on inconsistency
+  // 
+  //  #if 0
+  // original approach
+  auto r1_start = r1.start_str();
+  auto r1_end = r1.end_str();
+  auto r2_start = r2.start_str();
+  auto r2_end = r2.end_str();
+
+  auto r1_after_r2 = !r1_start.empty() && !r2_end.empty() && r1_start > r2_end;
+  auto r2_after_r1 = !r2_start.empty() && !r1_end.empty() && r2_start > r1_end;
+
+  //  return !r1_after_r2 && !r2_after_r1;
+  auto result1 = !r1_after_r2 && !r2_after_r1;
+//  #else
+
+  // consider data of "r1 [a,d], r2 [,]", how is it to be handled?
+
+  // approach using Interval class
+#if 01
+  Interval<std::string_view> interval1(
+      Interval<std::string_view>::closed,
+
+      std::string_view{(char*)r1.start(), r1.start_size()},
+      std::string_view{(char*)r1.end(), r1.end_size()},
+      Interval<std::string_view>::closed);
+  Interval<std::string_view> interval2(
+      Interval<std::string_view>::closed,
+      std::string_view{(char*)r2.start(), r2.start_size()},
+      std::string_view{(char*)r2.end(), r2.end_size()},
+      Interval<std::string_view>::closed);
+#else
+  //...nope, closed/open are different types, doesn't work like this attempt...
+  Interval<std::string_view> interval1(
+      r1.start_size() ? Interval<std::string_view>::closed :
+                        Interval<std::string_view>::open,
+      std::string_view{(char*)r1.start(), r1.start_size()},
+      std::string_view{(char*)r1.end(), r1.end_size()},
+      r1.end_size() ? Interval<std::string_view>::closed :
+                      Interval<std::string_view>::open);
+  Interval<std::string_view> interval2(
+      r2.start_size() ? Interval<std::string_view>::closed :
+                        Interval<std::string_view>::open,
+      std::string_view{(char*)r2.start(), r2.start_size()},
+      std::string_view{(char*)r2.end(), r2.end_size()},
+      r2.end_size() ? Interval<std::string_view>::closed :
+                      Interval<std::string_view>::open);
+#endif
+  //  return std::get<0>(interval1.compare(interval2)) == 0;
+  auto result2 = std::get<0>(interval1.compare(interval2)) == 0;
+  //  return std::get<0>(interval2.compare(interval1)) == 0;
+  auto result3 = std::get<0>(interval2.compare(interval1)) == 0;
+
+  auto str_range1 = tiledb::sm::utils::range_to_str(r1, Datatype::STRING_ASCII);
+  auto str_range2 = tiledb::sm::utils::range_to_str(r2, Datatype::STRING_ASCII);
+  if (result1 != result2) {
+    // arrived here with "[a,d][,]"
+    std::cout << str_range1.c_str() << str_range2.c_str() << std::endl;
+    // OutputDebugString(str_range2.c_str());
+    __debugbreak();
+  }
+  if (result1 != result3) {
+    // arrived here with "[a,d][,]"
+    std::cout << str_range1.c_str() << str_range2.c_str() << std::endl;
+    __debugbreak();
+  }
+  if (result2 != result3) {
+    std::cout << str_range1.c_str() << str_range2.c_str() << std::endl;
+    __debugbreak();
+  }
+
+  return result1;
+  // auto compare_result = interval1.compare(interval2);
+  // return 0 ; //return std::get<0>(compare_result);
+  //  #endif
+}
+
+#elif 0
+template <>
+bool Dimension::overlap<char>(const Range& r1, const Range& r2) {
+
+// approach using Interval class
+#if 01
+  Interval<std::string_view> interval1(
+      Interval<std::string_view>::closed,
+      std::string_view{(char*)r1.start(), r1.start_size()},
+      std::string_view{(char*)r1.end(), r1.end_size()},
+      Interval<std::string_view>::closed);
+  Interval<std::string_view> interval2(
+      Interval<std::string_view>::closed,
+      std::string_view{(char*)r2.start(), r2.start_size()},
+      std::string_view{(char*)r2.end(), r2.end_size()},
+      Interval<std::string_view>::closed);
+#else
+  //...nope, closed/open are different types, doesn't work like this attempt...
+  Interval<std::string_view> interval1(
+      r1.start_size() ? Interval<std::string_view>::closed :
+                        Interval<std::string_view>::open,
+      std::string_view{(char*)r1.start(), r1.start_size()},
+      std::string_view{(char*)r1.end(), r1.end_size()},
+      r1.end_size() ? Interval<std::string_view>::closed :
+                      Interval<std::string_view>::open);
+  Interval<std::string_view> interval2(
+      r2.start_size() ? Interval<std::string_view>::closed :
+                        Interval<std::string_view>::open,
+      std::string_view{(char*)r2.start(), r2.start_size()},
+      std::string_view{(char*)r2.end(), r2.end_size()},
+      r2.end_size() ? Interval<std::string_view>::closed :
+                      Interval<std::string_view>::open);
+#endif
+  //  return std::get<0>(interval1.compare(interval2)) == 0;
+  auto result2 = std::get<0>(interval1.compare(interval2)) == 0;
+  //  return std::get<0>(interval2.compare(interval1)) == 0;
+  auto result3 = std::get<0>(interval2.compare(interval1)) == 0;
+
+  auto str_range1 = tiledb::sm::utils::range_to_str(r1, Datatype::STRING_ASCII);
+  auto str_range2 = tiledb::sm::utils::range_to_str(r2, Datatype::STRING_ASCII);
+  if (result2 != result3) {
+    std::cout << str_range1.c_str() << str_range2.c_str() << std::endl;
+    __debugbreak();
+  }
+
+  return result2; // || result3 if preferred...
+}
+#endif
 
 template <class T>
 bool Dimension::overlap(const Range& r1, const Range& r2) {
