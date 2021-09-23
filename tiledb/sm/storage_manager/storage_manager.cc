@@ -928,6 +928,61 @@ Status StorageManager::array_evolve_schema(
   return Status::Ok();
 }
 
+Status StorageManager::array_upgrade_version(
+    const URI& array_uri, const EncryptionKey& encryption_key) {
+  // Check if array exists
+  bool exists = false;
+  RETURN_NOT_OK(is_array(array_uri, &exists));
+  if (!exists)
+    return LOG_STATUS(Status::StorageManagerError(
+        std::string("Cannot upgrade array; Array '") + array_uri.c_str() +
+        "' not exists"));
+
+  ArraySchema* array_schema = (ArraySchema*)nullptr;
+  RETURN_NOT_OK(load_array_schema(array_uri, encryption_key, &array_schema));
+
+  if (array_schema->version() == constants::format_version) {
+    // No need to upgrade
+    tdb_delete(array_schema);
+    array_schema = nullptr;
+    return Status::Ok();
+  }
+
+  tdb_delete(array_schema);
+  array_schema = nullptr;
+  std::vector<FragmentMetadata*> fragment_metadata_vec;
+  uint64_t timestamp_start = 0;
+  uint64_t timestamp_end = utils::time::timestamp_now_ms();
+  RETURN_NOT_OK(array_open_for_reads(
+      array_uri,
+      encryption_key,
+      &array_schema,
+      &fragment_metadata_vec,
+      timestamp_start,
+      timestamp_end));
+
+  if (array_schema->version() > 2) {
+    array_schema->set_version(constants::format_version);
+    RETURN_NOT_OK(store_array_schema(array_schema, encryption_key));
+
+    for (auto& fragment_metadata : fragment_metadata_vec) {
+      fragment_metadata->set_array_schema(array_schema);
+      fragment_metadata->store(encryption_key);
+    }
+  } else {
+  }
+
+  // Clean up
+  tdb_delete(array_schema);
+  array_schema = nullptr;
+  for (auto& fragment_metadata : fragment_metadata_vec) {
+    tdb_delete(fragment_metadata);
+    fragment_metadata = nullptr;
+  }
+
+  return Status::Ok();
+}
+
 OpenArrayMemoryTracker* StorageManager::array_get_memory_tracker(
     const URI& array_uri) {
   // Lock mutex

@@ -345,12 +345,23 @@ class StorageManager {
    *
    * @param array_uri The URI of the array to be evolved.
    * @param schema_evolution The schema evolution.
+   * @param encryption_key The encryption key to use.
    * @return Status
    */
   Status array_evolve_schema(
       const URI& array_uri,
       ArraySchemaEvolution* array_schema,
       const EncryptionKey& encryption_key);
+
+  /**
+   * Upgrade a TileDB array to latest format version.
+   *
+   * @param array_uri The URI of the array to be upgraded.
+   * @param encryption_key The encryption key to use.
+   * @return Status
+   */
+  Status array_upgrade_version(
+      const URI& array_uri, const EncryptionKey& encryption_key);
 
   /**
    * Gets the memory tracker for an open array.
