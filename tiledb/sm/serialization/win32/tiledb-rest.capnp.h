@@ -1629,11 +1629,11 @@ class ArraySchema::Reader {
   inline ::tiledb::sm::serialization::capnp::FilterPipeline::Reader
   getValidityFilterPipeline() const;
 
-  inline bool hasAttributeUsedNames() const;
+  inline bool hasAttributeOldNames() const;
   inline ::capnp::List<
       ::tiledb::sm::serialization::capnp::KV,
       ::capnp::Kind::STRUCT>::Reader
-  getAttributeUsedNames() const;
+  getAttributeOldNames() const;
 
  private:
   ::capnp::_::StructReader _reader;
@@ -1791,26 +1791,25 @@ class ArraySchema::Builder {
   inline ::capnp::Orphan<::tiledb::sm::serialization::capnp::FilterPipeline>
   disownValidityFilterPipeline();
 
-  inline bool hasAttributeUsedNames();
+  inline bool hasAttributeOldNames();
   inline ::capnp::List<
       ::tiledb::sm::serialization::capnp::KV,
       ::capnp::Kind::STRUCT>::Builder
-  getAttributeUsedNames();
-  inline void setAttributeUsedNames(::capnp::List<
-                                    ::tiledb::sm::serialization::capnp::KV,
-                                    ::capnp::Kind::STRUCT>::Reader value);
+  getAttributeOldNames();
+  inline void setAttributeOldNames(::capnp::List<
+                                   ::tiledb::sm::serialization::capnp::KV,
+                                   ::capnp::Kind::STRUCT>::Reader value);
   inline ::capnp::List<
       ::tiledb::sm::serialization::capnp::KV,
       ::capnp::Kind::STRUCT>::Builder
-  initAttributeUsedNames(unsigned int size);
-  inline void adoptAttributeUsedNames(
-      ::capnp::Orphan<::capnp::List<
-          ::tiledb::sm::serialization::capnp::KV,
-          ::capnp::Kind::STRUCT>>&& value);
+  initAttributeOldNames(unsigned int size);
+  inline void adoptAttributeOldNames(::capnp::Orphan<::capnp::List<
+                                         ::tiledb::sm::serialization::capnp::KV,
+                                         ::capnp::Kind::STRUCT>>&& value);
   inline ::capnp::Orphan<::capnp::List<
       ::tiledb::sm::serialization::capnp::KV,
       ::capnp::Kind::STRUCT>>
-  disownAttributeUsedNames();
+  disownAttributeOldNames();
 
  private:
   ::capnp::_::StructBuilder _builder;
@@ -9119,17 +9118,17 @@ ArraySchema::Builder::disownValidityFilterPipeline() {
           _builder.getPointerField(::capnp::bounded<9>() * ::capnp::POINTERS));
 }
 
-inline bool ArraySchema::Reader::hasAttributeUsedNames() const {
+inline bool ArraySchema::Reader::hasAttributeOldNames() const {
   return !_reader.getPointerField(::capnp::bounded<10>() * ::capnp::POINTERS)
               .isNull();
 }
-inline bool ArraySchema::Builder::hasAttributeUsedNames() {
+inline bool ArraySchema::Builder::hasAttributeOldNames() {
   return !_builder.getPointerField(::capnp::bounded<10>() * ::capnp::POINTERS)
               .isNull();
 }
 inline ::capnp::
     List<::tiledb::sm::serialization::capnp::KV, ::capnp::Kind::STRUCT>::Reader
-    ArraySchema::Reader::getAttributeUsedNames() const {
+    ArraySchema::Reader::getAttributeOldNames() const {
   return ::capnp::_::PointerHelpers<::capnp::List<
       ::tiledb::sm::serialization::capnp::KV,
       ::capnp::Kind::STRUCT>>::get(_reader
@@ -9139,7 +9138,7 @@ inline ::capnp::
 }
 inline ::capnp::
     List<::tiledb::sm::serialization::capnp::KV, ::capnp::Kind::STRUCT>::Builder
-    ArraySchema::Builder::getAttributeUsedNames() {
+    ArraySchema::Builder::getAttributeOldNames() {
   return ::capnp::_::PointerHelpers<::capnp::List<
       ::tiledb::sm::serialization::capnp::KV,
       ::capnp::Kind::STRUCT>>::get(_builder
@@ -9147,7 +9146,7 @@ inline ::capnp::
                                            ::capnp::bounded<10>() *
                                            ::capnp::POINTERS));
 }
-inline void ArraySchema::Builder::setAttributeUsedNames(
+inline void ArraySchema::Builder::setAttributeOldNames(
     ::capnp::List<
         ::tiledb::sm::serialization::capnp::KV,
         ::capnp::Kind::STRUCT>::Reader value) {
@@ -9159,7 +9158,7 @@ inline void ArraySchema::Builder::setAttributeUsedNames(
 }
 inline ::capnp::
     List<::tiledb::sm::serialization::capnp::KV, ::capnp::Kind::STRUCT>::Builder
-    ArraySchema::Builder::initAttributeUsedNames(unsigned int size) {
+    ArraySchema::Builder::initAttributeOldNames(unsigned int size) {
   return ::capnp::_::PointerHelpers<::capnp::List<
       ::tiledb::sm::serialization::capnp::KV,
       ::capnp::Kind::STRUCT>>::
@@ -9167,7 +9166,7 @@ inline ::capnp::
           _builder.getPointerField(::capnp::bounded<10>() * ::capnp::POINTERS),
           size);
 }
-inline void ArraySchema::Builder::adoptAttributeUsedNames(
+inline void ArraySchema::Builder::adoptAttributeOldNames(
     ::capnp::Orphan<::capnp::List<
         ::tiledb::sm::serialization::capnp::KV,
         ::capnp::Kind::STRUCT>>&& value) {
@@ -9181,7 +9180,7 @@ inline void ArraySchema::Builder::adoptAttributeUsedNames(
 inline ::capnp::Orphan<::capnp::List<
     ::tiledb::sm::serialization::capnp::KV,
     ::capnp::Kind::STRUCT>>
-ArraySchema::Builder::disownAttributeUsedNames() {
+ArraySchema::Builder::disownAttributeOldNames() {
   return ::capnp::_::PointerHelpers<::capnp::List<
       ::tiledb::sm::serialization::capnp::KV,
       ::capnp::Kind::STRUCT>>::disown(_builder
