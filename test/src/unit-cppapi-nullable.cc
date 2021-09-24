@@ -369,6 +369,11 @@ void NullableArrayCppFx::do_2d_nullable_test(
     return;
   }
 
+  // Skip unordered writes for dense arrays.
+  if (array_type == TILEDB_DENSE && write_order == TILEDB_UNORDERED) {
+    return;
+  }
+
   // Define the dimensions.
   vector<test_dim_t<uint64_t>> test_dims;
   const array<uint64_t, 2> d1_domain = {1, 4};

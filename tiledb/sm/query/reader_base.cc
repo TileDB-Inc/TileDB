@@ -77,10 +77,10 @@ ReaderBase::ReaderBase(
 /*        PROTECTED METHODS       */
 /* ****************************** */
 
-void ReaderBase::evolve_fragment_array_schemas() {
+Status ReaderBase::evolve_fragment_array_schemas() {
   if (fragment_metadata_.size() <= 1) {
     // No need to evolve
-    return;
+    return Status::Ok();
   }
   for (auto i = fragment_metadata_.size() - 1; i > 0; i--) {
     if (fragment_metadata_[i]->array_schema_name() ==
@@ -88,23 +88,23 @@ void ReaderBase::evolve_fragment_array_schemas() {
       // No need to evolve for two same schemas
       continue;
     }
-    auto attribute_used_names =
-        fragment_metadata_[i]->array_schema()->attribute_used_names();
-    bool need_to_build_idx = false;
-    for (auto attribute_used_name : attribute_used_names) {
-      auto attribute_current_name =
-          fragment_metadata_[i]->array_schema()->attribute_current_name(
-              attribute_used_name);
+    auto attribute_old_names =
+        fragment_metadata_[i]->array_schema()->attribute_old_names();
+    for (auto attribute_old_name : attribute_old_names) {
+      std::string attribute_new_name = "";
+      RETURN_NOT_OK(fragment_metadata_[i]->array_schema()->get_attribute_new_name(
+              attribute_old_name,&attribute_new_name));
       ArraySchema* prev_array_schema =
           const_cast<ArraySchema*>(fragment_metadata_[i - 1]->array_schema());
       prev_array_schema->rename_attribute(
-          attribute_used_name, attribute_current_name, false);
-      need_to_build_idx = true;
+          attribute_old_name, attribute_new_name, false);
     }
-    if (need_to_build_idx) {
+    if (attribute_old_names.size()>0) {
       fragment_metadata_[i - 1]->build_idx_map();
     }
   }
+
+  return Status::Ok();
 }
 
 void ReaderBase::clear_tiles(

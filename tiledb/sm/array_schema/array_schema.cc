@@ -372,7 +372,7 @@ Status ArraySchema::has_attribute(
 
 bool ArraySchema::is_attr(const std::string& name) const {
   return this->attribute(name) != nullptr ||
-         attribute_used_name_map_.find(name) != attribute_used_name_map_.end();
+         attribute_old_to_new_name_map_.find(name) != attribute_old_to_new_name_map_.end();
 }
 
 bool ArraySchema::is_dim(const std::string& name) const {
@@ -448,9 +448,9 @@ Status ArraySchema::serialize(Buffer* buff) const {
 
   // Write attributes used name map
   if (version >= 11) {
-    auto attribute_used_name_num = (uint32_t)attribute_used_name_map_.size();
-    RETURN_NOT_OK(buff->write(&attribute_used_name_num, sizeof(uint32_t)));
-    for (auto& kv : attribute_used_name_map_) {
+    auto attribute_old_to_new_name_num = (uint32_t)attribute_old_to_new_name_map_.size();
+    RETURN_NOT_OK(buff->write(&attribute_old_to_new_name_num, sizeof(uint32_t)));
+    for (auto& kv : attribute_old_to_new_name_map_) {
       auto key_size = (uint32_t)kv.first.size();
       RETURN_NOT_OK(buff->write(&key_size, sizeof(uint32_t)));
       RETURN_NOT_OK(buff->write(kv.first.c_str(), key_size));
@@ -561,7 +561,8 @@ Status ArraySchema::rename_attribute(
   std::lock_guard<std::mutex> lock(mtx_);
   if (old_name.empty() || new_name.empty()) {
     // Do nothing if name is empty
-    return Status::Ok();
+    return LOG_STATUS(
+        Status::ArraySchemaError("Empty old or new name for an attribute to be renamed"));
   }
 
   auto it = attribute_map_.find(old_name);
@@ -572,13 +573,13 @@ Status ArraySchema::rename_attribute(
   }
 
   // Save the old name
-  attribute_used_name_map_[old_name] = new_name;
+  attribute_old_to_new_name_map_[old_name] = new_name;
 
-  for (auto it = attribute_used_name_map_.begin();
-       it != attribute_used_name_map_.end();
+  for (auto it = attribute_old_to_new_name_map_.begin();
+       it != attribute_old_to_new_name_map_.end();
        ++it) {
     if (it->second == old_name) {
-      attribute_used_name_map_[it->first] = new_name;
+      attribute_old_to_new_name_map_[it->first] = new_name;
     }
   }
 
@@ -589,25 +590,29 @@ Status ArraySchema::rename_attribute(
   return Status::Ok();
 }
 
-std::vector<std::string> ArraySchema::attribute_used_names() const {
+std::vector<std::string> ArraySchema::attribute_old_names() const {
   std::vector<std::string> result;
   std::lock_guard<std::mutex> lock(mtx_);
-  result.reserve(attribute_used_name_map_.size());
-  for (auto it = attribute_used_name_map_.begin();
-       it != attribute_used_name_map_.end();
+  result.reserve(attribute_old_to_new_name_map_.size());
+  for (auto it = attribute_old_to_new_name_map_.begin();
+       it != attribute_old_to_new_name_map_.end();
        ++it) {
     result.push_back(it->first);
   }
   return result;
 }
 
-std::string ArraySchema::attribute_current_name(
-    const std::string& used_name) const {
+Status ArraySchema::get_attribute_new_name(
+    const std::string& old_name, std::string* new_name) const {
   std::lock_guard<std::mutex> lock(mtx_);
-  return (attribute_used_name_map_.find(used_name) ==
-          attribute_used_name_map_.end()) ?
-             "" :
-             attribute_used_name_map_.at(used_name);
+  if (attribute_old_to_new_name_map_.find(old_name) ==
+      attribute_old_to_new_name_map_.end()) {
+    return LOG_STATUS(
+        Status::ArraySchemaError("Error in ArraySchema; Old name not found"));
+  }
+
+  *new_name = attribute_old_to_new_name_map_.at(old_name);
+  return Status::Ok();
 }
 
 Status ArraySchema::deserialize(ConstBuffer* buff) {
@@ -662,9 +667,9 @@ Status ArraySchema::deserialize(ConstBuffer* buff) {
 
   // Load attribute used names
   if (version_ >= 11) {
-    uint32_t attribute_used_name_num;
-    RETURN_NOT_OK(buff->read(&attribute_used_name_num, sizeof(uint32_t)));
-    for (uint32_t i = 0; i < attribute_used_name_num; ++i) {
+    uint32_t attribute_old_to_new_name_num;
+    RETURN_NOT_OK(buff->read(&attribute_old_to_new_name_num, sizeof(uint32_t)));
+    for (uint32_t i = 0; i < attribute_old_to_new_name_num; ++i) {
       uint32_t key_size;
       RETURN_NOT_OK(buff->read(&key_size, sizeof(uint32_t)));
       std::string key_str;

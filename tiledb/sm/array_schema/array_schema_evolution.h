@@ -136,7 +136,7 @@ class ArraySchemaEvolution {
   /** The names of array attributes to be dropped. */
   std::unordered_set<std::string> attributes_to_drop_;
 
-  /** The names map of attray attributes to be renamed. */
+  /** The names map of array attributes to be renamed. */
   std::unordered_map<std::string, std::string> attributes_to_rename_map_;
 
   /** Mutex for thread-safety. */

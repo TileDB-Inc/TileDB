@@ -456,7 +456,7 @@ class Attribute {
    *
    * @return Whether the attribute is nullable.
    */
-  bool nullable() {
+  bool nullable() const {
     auto& ctx = ctx_.get();
     uint8_t nullable;
     ctx.handle_error(

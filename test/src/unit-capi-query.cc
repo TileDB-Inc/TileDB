@@ -644,11 +644,6 @@ TEST_CASE_METHOD(
   rc = tiledb_query_get_layout(ctx_, query, &layout);
   REQUIRE(rc == TILEDB_OK);
   REQUIRE(layout == TILEDB_GLOBAL_ORDER);
-  rc = tiledb_query_set_layout(ctx_, query, TILEDB_UNORDERED);
-  REQUIRE(rc == TILEDB_OK);
-  rc = tiledb_query_get_layout(ctx_, query, &layout);
-  REQUIRE(rc == TILEDB_OK);
-  REQUIRE(layout == TILEDB_UNORDERED);
 
   rc = tiledb_array_close(ctx_, array);
   REQUIRE(rc == TILEDB_OK);

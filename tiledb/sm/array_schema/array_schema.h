@@ -263,19 +263,20 @@ class ArraySchema {
       bool is_new_uri);
 
   /**
-   * Returns a vector of used names of attributes
+   * Returns a vector of old names of attributes
    *
-   * @return all used names
+   * @return all old names
    */
-  std::vector<std::string> attribute_used_names() const;
+  std::vector<std::string> attribute_old_names() const;
 
   /**
-   * Get the current name for a used name.
+   * Get the new name for an old name.
    *
-   * @param used_name The used name
-   * @return current name
+   * @param old_name The old name
+   * @param new_name The new name
+   * @return new name, If it is not found, will returns error status.
    */
-  std::string attribute_current_name(const std::string& used_name) const;
+  Status get_attribute_new_name(const std::string& old_name, std::string* new_name) const;
 
   /**
    * It assigns values to the members of the object from the input buffer.
@@ -389,8 +390,8 @@ class ArraySchema {
   /** The array attributes. */
   std::vector<Attribute*> attributes_;
 
-  /** The used name map of the attributes.  */
-  std::unordered_map<std::string, std::string> attribute_used_name_map_;
+  /** The old to new name map of the attributes.  */
+  std::unordered_map<std::string, std::string> attribute_old_to_new_name_map_;
 
   /**
    * The tile capacity for the case of sparse fragments.

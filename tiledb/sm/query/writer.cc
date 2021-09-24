@@ -681,10 +681,6 @@ Status Writer::check_subarray() const {
           Status::WriterError("Cannot initialize query; In global writes for "
                               "dense arrays, the subarray "
                               "must coincide with the tile bounds"));
-    if (layout_ == Layout::UNORDERED && subarray_.is_set())
-      return LOG_STATUS(Status::WriterError(
-          "Cannot initialize query; Setting a subarray in unordered writes for "
-          "dense arrays in inapplicable"));
   }
 
   return Status::Ok();
@@ -2364,8 +2360,9 @@ Status Writer::split_coords_buffer() {
 }
 
 Status Writer::unordered_write() {
-  // Applicable only to unordered write on dense/sparse arrays
+  // Applicable only to unordered write on sparse arrays
   assert(layout_ == Layout::UNORDERED);
+  assert(!array_schema_->dense());
 
   // Sort coordinates first
   std::vector<uint64_t> cell_pos;

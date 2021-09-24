@@ -896,7 +896,7 @@ void write_array(
   // Get fragment uri
   const char* temp_uri;
   rc = tiledb_query_get_fragment_uri(ctx, query, 0, &temp_uri);
-  CHECK(rc == TILEDB_OK);
+  REQUIRE(rc == TILEDB_OK);
   *uri = std::string(temp_uri);
 
   // Close array

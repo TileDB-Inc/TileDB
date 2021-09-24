@@ -165,8 +165,6 @@ const void* ResultTile::zipped_coord(uint64_t pos, unsigned dim_idx) const {
 std::string ResultTile::coord_string(uint64_t pos, unsigned dim_idx) const {
   const auto& coord_tile_off = std::get<0>(coord_tiles_[dim_idx].second);
   const auto& coord_tile_val = std::get<1>(coord_tiles_[dim_idx].second);
-  assert(!coord_tile_off.empty());
-  assert(!coord_tile_val.empty());
   auto cell_num = coord_tile_off.cell_num();
   auto val_size = coord_tile_val.size();
 
