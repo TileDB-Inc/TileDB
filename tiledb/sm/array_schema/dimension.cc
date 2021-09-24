@@ -822,16 +822,19 @@ bool Dimension::overlap<char>(const Range& r1, const Range& r2) {
   auto str_range2 = tiledb::sm::utils::range_to_str(r2, Datatype::STRING_ASCII);
   if (result1 != result2) {
     // arrived here with "[a,d][,]"
-    std::cout << str_range1.c_str() << str_range2.c_str() << std::endl;
+    std::cout << "ERROR: for data " << str_range1.c_str() << str_range2.c_str()
+              << std::endl;
     __debugbreak();
   }
   if (result1 != result3) {
     // arrived here with "[a,d][,]"
-    std::cout << str_range1.c_str() << str_range2.c_str() << std::endl;
+    std::cout << "ERROR: for data " << str_range1.c_str() << str_range2.c_str()
+              << std::endl;
     __debugbreak();
   }
   if (result2 != result3) {
-    std::cout << str_range1.c_str() << str_range2.c_str() << std::endl;
+    std::cout << "ERROR: for data " << str_range1.c_str() << str_range2.c_str()
+              << std::endl;
     __debugbreak();
   }
 
@@ -902,7 +905,7 @@ bool Dimension::overlap<char>(const Range& r1, const Range& r2) {
   // if (!intersection_interval.is_empty() != result1) {
   if (intersection_interval.is_empty() != result1) {
     // arrived here with "[a,d][,]"
-    std::cout << str_range1.c_str() << str_range2.c_str() << std::endl;
+    std::cout << "ERROR: for data " << str_range1.c_str() << str_range2.c_str() << std::endl;
     __debugbreak();
   
   }
@@ -912,16 +915,19 @@ bool Dimension::overlap<char>(const Range& r1, const Range& r2) {
 
   if (result1 != result2) {
     // arrived here with "[a,d][,]"
-    std::cout << str_range1.c_str() << str_range2.c_str() << std::endl;
+    std::cout << "ERROR: for data " << str_range1.c_str() << str_range2.c_str()
+              << std::endl;
     __debugbreak();
   }
   if (result1 != result3) {
     // arrived here with "[a,d][,]"
-    std::cout << str_range1.c_str() << str_range2.c_str() << std::endl;
+    std::cout << "ERROR: for data " << str_range1.c_str() << str_range2.c_str()
+              << std::endl;
     __debugbreak();
   }
   if (result2 != result3) {
-    std::cout << str_range1.c_str() << str_range2.c_str() << std::endl;
+    std::cout << "ERROR: for data " << str_range1.c_str() << str_range2.c_str()
+              << std::endl;
     __debugbreak();
   }
 
@@ -969,7 +975,8 @@ bool Dimension::overlap<char>(const Range& r1, const Range& r2) {
   auto str_range1 = tiledb::sm::utils::range_to_str(r1, Datatype::STRING_ASCII);
   auto str_range2 = tiledb::sm::utils::range_to_str(r2, Datatype::STRING_ASCII);
   if (result2 != result3) {
-    std::cout << str_range1.c_str() << str_range2.c_str() << std::endl;
+    std::cout << "ERROR: for data " << str_range1.c_str() << str_range2.c_str()
+              << std::endl;
     __debugbreak();
   }
 
