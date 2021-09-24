@@ -30,6 +30,9 @@
 #   - CATCH2_FOUND, whether Catch has been found
 #   - The Catch::Catch imported target
 
+# Include some common helper functions.
+include(TileDBCommon)
+
 # Search the path set during the superbuild for the EP.
 message(STATUS "searching for catch in ${TILEDB_EP_SOURCE_DIR}")
 set(CATCH_PATHS ${TILEDB_EP_SOURCE_DIR}/ep_catch/single_include)
