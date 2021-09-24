@@ -363,7 +363,7 @@ void SparseRealFx2::read_sparse_array_next_partition_bug(
 TEST_CASE_METHOD(
     SparseRealFx2,
     "C API: Test 2d sparse array with real domain 2",
-    "[capi], [sparse-real-2]") {
+    "[capi][sparse-real-2]") {
   SupportedFsLocal local_fs;
   std::string vector_name =
       local_fs.file_prefix() + local_fs.temp_dir() + "sparse_real";
@@ -448,7 +448,7 @@ TEST_CASE_METHOD(
 TEST_CASE_METHOD(
     SparseRealFx2,
     "C API: Test 2d sparse array with real domain 2, unary range",
-    "[capi], [sparse-real-2]") {
+    "[capi][sparse-real-2]") {
   SupportedFsLocal local_fs;
   std::string array_name =
       local_fs.file_prefix() + local_fs.temp_dir() + "sparse_real_unary";

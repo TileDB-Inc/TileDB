@@ -4734,7 +4734,7 @@ TEST_CASE_METHOD(
     ConsolidationFx,
     "C API: Test consolidation, fragments that don't coincide with space tiles "
     "#1",
-    "[cap[consolidation][not-coinciding-1]") {
+    "[capi][consolidation][not-coinciding-1]") {
   remove_dense_vector();
   create_dense_vector();
   write_dense_vector_4_fragments_not_coinciding();

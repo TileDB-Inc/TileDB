@@ -875,7 +875,7 @@ class Subarray {
    */
   std::vector<std::vector<uint8_t>> tile_coords_;
 
-  /** A map (tile coords) -> (vector element poistion in `tile_coords_`). */
+  /** A map (tile coords) -> (vector element position in `tile_coords_`). */
   std::map<std::vector<uint8_t>, size_t> tile_coords_map_;
 
   /* ********************************* */

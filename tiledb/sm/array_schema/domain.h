@@ -237,21 +237,6 @@ class Domain {
   void expand_to_tiles(NDRange* ndrange) const;
 
   /**
-   * Returns the position of the input coordinates inside its corresponding
-   * tile, based on the array cell order. Applicable only to **dense** arrays.
-   *
-   * @tparam T The coordinates type.
-   * @param coords The input coordindates, which are expressed as global
-   *     coordinates in the array domain.
-   * @pos The position of the cell coordinates in the array cell order
-   *     within its corresponding tile.
-   * @return Status
-   *
-   */
-  template <class T>
-  Status get_cell_pos(const T* coords, uint64_t* pos) const;
-
-  /**
    * Retrieves the tile coordinates of the input cell coordinates.
    *
    * @tparam T The domain type.
@@ -278,42 +263,6 @@ class Domain {
    */
   template <class T>
   void get_end_of_cell_slab(T* subarray, T* start, Layout layout, T* end) const;
-
-  /**
-   * Retrieves the next coordinates along the array cell order within a given
-   * domain (desregarding whether the domain is split into tiles or not).
-   * Applicable only to **dense** arrays, and focusing on **column-major**
-   * cell order.
-   *
-   * @tparam T The coordinates type.
-   * @param domain The targeted domain.
-   * @param cell_coords The input cell coordinates, which the function modifies
-   *     to store the next coordinates at termination.
-   * @param coords_retrieved Will store true if the retrieved coordinates are
-   *     inside the domain, and false otherwise.
-   * @return void
-   */
-  template <class T>
-  void get_next_cell_coords_col(
-      const T* domain, T* cell_coords, bool* coords_retrieved) const;
-
-  /**
-   * Retrieves the next coordinates along the array cell order within a given
-   * domain (desregarding whether the domain is split into tiles or not).
-   * Applicable only to **dense** arrays, and focusing on **row-major**
-   * cell order.
-   *
-   * @tparam T The coordinates type.
-   * @param domain The targeted domain.
-   * @param cell_coords The input cell coordinates, which the function modifies
-   *     to store the next coordinates at termination.
-   * @param coords_retrieved Will store true if the retrieved coordinates are
-   *     inside the domain, and false otherwise.
-   * @return void
-   */
-  template <class T>
-  void get_next_cell_coords_row(
-      const T* domain, T* cell_coords, bool* coords_retrieved) const;
 
   /**
    * Retrieves the next tile coordinates along the array tile order within a
@@ -527,60 +476,6 @@ class Domain {
    */
   int tile_order_cmp(
       unsigned dim_idx, const void* coord_a, const void* coord_b) const;
-
-  /**
-   * Returns the position of the input coordinates inside its corresponding
-   * tile, based on the array cell order. Applicable only to **dense** arrays,
-   * and focusing on the **column-major** cell order.
-   *
-   * @tparam T The coordinates type.
-   * @param coords The input coordindates, which are expressed as global
-   *     coordinates in the array domain.
-   * @return The position of the cell coordinates in the array cell order
-   *     within its corresponding tile.
-   */
-  template <class T>
-  uint64_t get_cell_pos_col(const T* coords) const;
-
-  /**
-   * Returns the position of the input coordinates inside the input subarray.
-   * Applicable only to **dense** arrays,
-   * and focusing on the **column-major** cell order.
-   *
-   * @tparam T The coordinates type.
-   * @param subarray The input subarray, expressed in global coordinates.
-   * @param coords The input coordindates, expressed in global coordinates.
-   * @return The position of the cell coordinates in the subarray.
-   */
-  template <class T>
-  uint64_t get_cell_pos_col(const T* subarray, const T* coords) const;
-
-  /**
-   * Returns the position of the input coordinates inside its corresponding
-   * tile, based on the array cell order. Applicable only to **dense** arrays,
-   * and focusing on the **row-major** cell order.
-   *
-   * @tparam T The coordinates type.
-   * @param coords The input coordindates, which are expressed as global
-   *     coordinates in the array domain.
-   * @return The position of the cell coordinates in the array cell order
-   *     within its corresponding tile.
-   */
-  template <class T>
-  uint64_t get_cell_pos_row(const T* coords) const;
-
-  /**
-   * Returns the position of the input coordinates inside the input subarray.
-   * Applicable only to **dense** arrays,
-   * and focusing on the **row-major** cell order.
-   *
-   * @tparam T The coordinates type.
-   * @param subarray The input subarray, expressed in global coordinates.
-   * @param coords The input coordindates, expressed in global coordinates.
-   * @return The position of the cell coordinates in the subarray.
-   */
-  template <class T>
-  uint64_t get_cell_pos_row(const T* subarray, const T* coords) const;
 
  private:
   /* ********************************* */
