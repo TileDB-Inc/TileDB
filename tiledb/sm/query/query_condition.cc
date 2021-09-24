@@ -477,7 +477,8 @@ void QueryCondition::apply_clause(
           const uint64_t cell_size = next_cell_offset - buffer_offset;
 
           const bool null_cell =
-              nullable && buffer_validity[start + c * stride] == 0;
+              (nullable && buffer_validity[start + c * stride] == 0) ||
+              (cell_size == 0);
 
           // Get the cell value.
           const void* const cell_value =

@@ -861,7 +861,7 @@ TEST_CASE(
   const uint64_t cells = 10;
   const char* fill_value = "ac";
   const Datatype type = Datatype::STRING_ASCII;
-  bool var_size = GENERATE(true, false);
+  bool var_size = true;
   bool nullable = GENERATE(true, false);
   QueryConditionOp op = GENERATE(QueryConditionOp::NE, QueryConditionOp::EQ);
 
@@ -898,18 +898,22 @@ TEST_CASE(
   REQUIRE(tile->init_unfiltered(
                   constants::format_version,
                   type,
-                  2 * cells * sizeof(char),
+                  2 * (cells - 2) * sizeof(char),
                   2 * sizeof(char),
                   0)
               .ok());
 
-  char* values = static_cast<char*>(malloc(sizeof(char) * 2 * cells));
-  for (uint64_t i = 0; i < cells; ++i) {
+  char* values = static_cast<char*>(malloc(
+      sizeof(char) * 2 *
+      (cells - 2)));  // static_cast<char*>(malloc(sizeof(char) * 2 * cells));
+
+  // Empty strings are at idx 8 and 9
+  for (uint64_t i = 0; i < (cells - 2); ++i) {
     values[i * 2] = 'a';
     values[(i * 2) + 1] = 'a' + static_cast<char>(i);
   }
 
-  REQUIRE(tile->write(values, 2 * cells * sizeof(char)).ok());
+  REQUIRE(tile->write(values, 2 * (cells - 2) * sizeof(char)).ok());
 
   if (var_size) {
     Tile* const tile_offsets = &std::get<0>(*tile_tuple);
@@ -925,10 +929,12 @@ TEST_CASE(
     uint64_t* offsets =
         static_cast<uint64_t*>(malloc(sizeof(uint64_t) * cells));
     uint64_t offset = 0;
-    for (uint64_t i = 0; i < cells; ++i) {
+    for (uint64_t i = 0; i < cells - 2; ++i) {
       offsets[i] = offset;
       offset += 2;
     }
+    offsets[cells - 2] = offset;
+    offsets[cells - 1] = offset;
     REQUIRE(tile_offsets->write(offsets, cells * sizeof(uint64_t)).ok());
 
     free(offsets);
@@ -970,7 +976,7 @@ TEST_CASE(
   for (uint64_t i = 0; i < cells; ++i) {
     switch (op) {
       case QueryConditionOp::EQ:
-        if (nullable && (i % 2 == 0)) {
+        if ((nullable && (i % 2 == 0)) || (i >= 8)) {
           expected_cell_idx_vec.emplace_back(i);
         } else if (
             std::string(&static_cast<char*>(values)[2 * i], 2) ==
@@ -979,7 +985,7 @@ TEST_CASE(
         }
         break;
       case QueryConditionOp::NE:
-        if (nullable && (i % 2 == 0)) {
+        if ((nullable && (i % 2 == 0)) || (i >= 8)) {
           continue;
         } else if (
             std::string(&static_cast<char*>(values)[2 * i], 2) !=
