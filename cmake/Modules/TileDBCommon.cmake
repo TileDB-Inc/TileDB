@@ -97,3 +97,5 @@ function(install_target_libs LIB_TARGET)
   endif()
 endfunction()
 
+# Suppress warnings from find_package_handle_standard_args usage w/ *_EP targets
+set(FPHSA_NAME_MISMATCHED TRUE)
