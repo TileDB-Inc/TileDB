@@ -92,14 +92,15 @@ Status ReaderBase::evolve_fragment_array_schemas() {
         fragment_metadata_[i]->array_schema()->attribute_old_names();
     for (auto attribute_old_name : attribute_old_names) {
       std::string attribute_new_name = "";
-      RETURN_NOT_OK(fragment_metadata_[i]->array_schema()->get_attribute_new_name(
-              attribute_old_name,&attribute_new_name));
+      RETURN_NOT_OK(
+          fragment_metadata_[i]->array_schema()->get_attribute_new_name(
+              attribute_old_name, &attribute_new_name));
       ArraySchema* prev_array_schema =
           const_cast<ArraySchema*>(fragment_metadata_[i - 1]->array_schema());
       prev_array_schema->rename_attribute(
           attribute_old_name, attribute_new_name, false);
     }
-    if (attribute_old_names.size()>0) {
+    if (attribute_old_names.size() > 0) {
       fragment_metadata_[i - 1]->build_idx_map();
     }
   }

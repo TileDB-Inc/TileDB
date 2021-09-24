@@ -276,7 +276,8 @@ class ArraySchema {
    * @param new_name The new name
    * @return new name, If it is not found, will returns error status.
    */
-  Status get_attribute_new_name(const std::string& old_name, std::string* new_name) const;
+  Status get_attribute_new_name(
+      const std::string& old_name, std::string* new_name) const;
 
   /**
    * It assigns values to the members of the object from the input buffer.

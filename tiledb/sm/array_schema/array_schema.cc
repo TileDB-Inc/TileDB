@@ -372,7 +372,8 @@ Status ArraySchema::has_attribute(
 
 bool ArraySchema::is_attr(const std::string& name) const {
   return this->attribute(name) != nullptr ||
-         attribute_old_to_new_name_map_.find(name) != attribute_old_to_new_name_map_.end();
+         attribute_old_to_new_name_map_.find(name) !=
+             attribute_old_to_new_name_map_.end();
 }
 
 bool ArraySchema::is_dim(const std::string& name) const {
@@ -448,8 +449,10 @@ Status ArraySchema::serialize(Buffer* buff) const {
 
   // Write attributes used name map
   if (version >= 11) {
-    auto attribute_old_to_new_name_num = (uint32_t)attribute_old_to_new_name_map_.size();
-    RETURN_NOT_OK(buff->write(&attribute_old_to_new_name_num, sizeof(uint32_t)));
+    auto attribute_old_to_new_name_num =
+        (uint32_t)attribute_old_to_new_name_map_.size();
+    RETURN_NOT_OK(
+        buff->write(&attribute_old_to_new_name_num, sizeof(uint32_t)));
     for (auto& kv : attribute_old_to_new_name_map_) {
       auto key_size = (uint32_t)kv.first.size();
       RETURN_NOT_OK(buff->write(&key_size, sizeof(uint32_t)));
@@ -561,8 +564,8 @@ Status ArraySchema::rename_attribute(
   std::lock_guard<std::mutex> lock(mtx_);
   if (old_name.empty() || new_name.empty()) {
     // Do nothing if name is empty
-    return LOG_STATUS(
-        Status::ArraySchemaError("Empty old or new name for an attribute to be renamed"));
+    return LOG_STATUS(Status::ArraySchemaError(
+        "Empty old or new name for an attribute to be renamed"));
   }
 
   auto it = attribute_map_.find(old_name);
