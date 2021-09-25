@@ -834,7 +834,7 @@ class Interval : public detail::IntervalBase {
     /**
      * Finite constructor uses T for the bound instead of optional<T>.
      */
-    Bound(T bound, bool is_closed) noexcept
+    Bound(const T bound, bool is_closed) noexcept
         : bound_(bound)
         , is_open_(!is_closed)
         , is_closed_(is_closed)
@@ -858,7 +858,7 @@ class Interval : public detail::IntervalBase {
      * of an Interval.
      */
     Bound(
-        optional<T> bound,
+        optional<const T> bound,
         bool is_open,
         bool is_closed,
         bool is_infinite) noexcept
@@ -887,7 +887,7 @@ class Interval : public detail::IntervalBase {
      * @precondition is_satisfiable && right.is_satisfiable. In other words,
      * this function is only for bounds of already-constructed Interval objects.
      */
-    int compare_as_lower(Bound right) const {
+    int compare_as_lower(const Bound right) const {
       // Check the precondition anyway.
       // Could be converted to an NDEBUG-dependent assertion later.
       if (!is_satisfiable_ || !right.is_satisfiable_) {
@@ -944,7 +944,7 @@ class Interval : public detail::IntervalBase {
      * @precondition is_satisfiable && right.is_satisfiable. In other words,
      * this function is only for bounds of already-constructed Interval objects.
      */
-    int compare_as_upper(Bound right) const {
+    int compare_as_upper(const Bound right) const {
       // Check the precondition anyway.
       // Could be converted to an NDEBUG-dependent assertion later.
       if (!is_satisfiable_ || !right.is_satisfiable_) {
@@ -1011,7 +1011,7 @@ class Interval : public detail::IntervalBase {
      * Right and Left is adjacent to Right. +1 if Left and Right have a
      * non-trivial intersection.
      */
-    int compare_as_mixed(Bound right) const {
+    int compare_as_mixed(const Bound right) const {
       // Check the precondition anyway.
       // Could be converted to an NDEBUG-dependent assertion later.
       if (!is_satisfiable_ || !right.is_satisfiable_) {
@@ -1120,7 +1120,7 @@ class Interval : public detail::IntervalBase {
    * @precondition lower and upper bounds have been normalized
    */
   tuple<Bound, Bound, bool, bool> adjust_bounds(
-      Bound lower, Bound upper) noexcept {
+      const Bound lower, const Bound upper) const noexcept {
     if (!lower.is_satisfiable_ || !upper.is_satisfiable_) {
       // If either of the bounds are not satisfiable, we have an empty set.
       return {BoundNull(), BoundNull(), true, false};
@@ -1200,7 +1200,7 @@ class Interval : public detail::IntervalBase {
    * @precondition [in] bound is ordered. Throws if not.
    * @postcondition [out] bound is an ordinary element and not infinite
    */
-  Bound normalize_bound(T bound, bool is_closed, bool is_for_upper_bound) {
+  Bound normalize_bound(const T bound, bool is_closed, bool is_for_upper_bound) const {
     if constexpr (Traits::has_unordered_elements) {
       if (!Traits::is_ordered(bound)) {
         throw std::invalid_argument(
@@ -1280,14 +1280,14 @@ class Interval : public detail::IntervalBase {
    * Single-point sets may also be constructed in another situation,
    * specifically as a closed interval with equal upper and lower bounds.
    */
-  Interval(const single_point_t&, T x)
+  Interval(const single_point_t&, const T x)
       : Interval(adjust_bounds(
             normalize_bound(x, true, false), normalize_bound(x, true, true))){};
 
   /**
    * Finite set constructor: open
    */
-  Interval(const open_t&, T lower, T upper, const open_t&)
+  Interval(const open_t&, const T lower, const T upper, const open_t&)
       : Interval(adjust_bounds(
             normalize_bound(lower, false, false),
             normalize_bound(upper, false, true))){};
@@ -1295,7 +1295,7 @@ class Interval : public detail::IntervalBase {
   /**
    * Finite set constructor: half-open, half-closed
    */
-  Interval(const open_t&, T lower, T upper, const closed_t&)
+  Interval(const open_t&, const T lower, const T upper, const closed_t&)
       : Interval(adjust_bounds(
             normalize_bound(lower, false, false),
             normalize_bound(upper, true, true))){};
@@ -1303,7 +1303,7 @@ class Interval : public detail::IntervalBase {
   /**
    * Finite set constructor: half-closed, half-open
    */
-  Interval(const closed_t&, T lower, T upper, const open_t&)
+  Interval(const closed_t&, const T lower, const T upper, const open_t&)
       : Interval(adjust_bounds(
             normalize_bound(lower, true, false),
             normalize_bound(upper, false, true))){};
@@ -1311,7 +1311,7 @@ class Interval : public detail::IntervalBase {
   /**
    * Finite set constructor: closed
    */
-  Interval(const closed_t&, T lower, T upper, const closed_t&)
+  Interval(const closed_t&, const T lower, const T upper, const closed_t&)
       : Interval(adjust_bounds(
             normalize_bound(lower, true, false),
             normalize_bound(upper, true, true))){};
@@ -1319,28 +1319,28 @@ class Interval : public detail::IntervalBase {
   /**
    * Lower-infinite set constructor: upper half-open
    */
-  Interval(const minus_infinity_t&, T upper, const open_t&)
+  Interval(const minus_infinity_t&, const T upper, const open_t&)
       : Interval(adjust_bounds(
             BoundInfinity(), normalize_bound(upper, false, true))){};
 
   /**
    * Lower-infinite set constructor: upper half-closed
    */
-  Interval(const minus_infinity_t&, T upper, const closed_t&)
+  Interval(const minus_infinity_t&, const T upper, const closed_t&)
       : Interval(adjust_bounds(
             BoundInfinity(), normalize_bound(upper, true, true))){};
 
   /**
    * Upper-infinite set constructor: lower half-open
    */
-  Interval(const open_t&, T lower, const plus_infinity_t&)
+  Interval(const open_t&, const T lower, const plus_infinity_t&)
       : Interval(adjust_bounds(
             normalize_bound(lower, false, false), BoundInfinity())){};
 
   /**
    * Upper-infinite set constructor: lower half-closed
    */
-  Interval(const closed_t&, T lower, const plus_infinity_t&)
+  Interval(const closed_t&, const T lower, const plus_infinity_t&)
       : Interval(adjust_bounds(
             normalize_bound(lower, true, false), BoundInfinity())){};
 
@@ -1489,7 +1489,7 @@ class Interval : public detail::IntervalBase {
   /**
    * Membership predicate that the argument is an element of the interval.
    */
-  bool is_member(T x) noexcept {
+  bool is_member(const T x) noexcept {
     if constexpr (Traits::has_unordered_elements) {
       if (!Traits::is_ordered(x)) {
         // An unordered element is not a member of any interval.
@@ -1529,7 +1529,7 @@ class Interval : public detail::IntervalBase {
    * @precondition This interval must not be empty.
    * @precondition Argument must be an ordered element.
    */
-  int compare(T x) {
+  int compare(const T x) const {
     if constexpr (Traits::has_unordered_elements) {
       if (!Traits::is_ordered(x)) {
         // An unordered element is not a member of any interval.
@@ -1569,7 +1569,7 @@ class Interval : public detail::IntervalBase {
   /**
    * Calculate the intersection of another interval with this one.
    */
-  Interval<T> intersection(Interval<T> y) {
+  Interval<T> intersection(const Interval<T> y) const {
     /*
      * The empty set always has an empty intersection.
      */
@@ -1606,7 +1606,7 @@ class Interval : public detail::IntervalBase {
    *
    * We can't call this function `union` because it's a reserved word.
    */
-  tuple<bool, optional<Interval<T>>> interval_union(Interval<T> y) {
+  tuple<bool, optional<Interval<T>>> interval_union(const Interval<T> y) const {
     /*
      * An empty set gives the identity function on the other operand.
      */
@@ -1666,7 +1666,7 @@ class Interval : public detail::IntervalBase {
    * and `(cut_point,+infinity)`.
    */
   tuple<Interval<T>, Interval<T>> cut(
-      T cut_point, bool lower_open_upper_closed = true) {
+      const T cut_point, bool lower_open_upper_closed = true) const {
     if (is_empty_) {
       /**
        * The empty set always splits into two empty sets.
