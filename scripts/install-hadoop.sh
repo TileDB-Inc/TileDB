@@ -27,7 +27,7 @@
 # Installs and configures HDFS.
 set -x
 
-HADOOP_VERSION="3.1.4"
+HADOOP_VERSION="3.2.1"
 
 die() {
   echo "$@" 1>&2 ; popd 2>/dev/null; exit 1
@@ -41,7 +41,7 @@ function update_apt_repo  {
 } 
 
 function install_java {
-  sudo apt-get install -y openjdk-8-jre
+  sudo apt-get install -y openjdk-11-jre
 }
 
 function install_hadoop {
@@ -172,11 +172,23 @@ EOF
   mv $tmpfile $file
 }
 
-
 function setup_environment {
   export HADOOP_HOME=/usr/local/hadoop/home
-  sudo sed -i -- 's/JAVA_HOME=\${JAVA_HOME}/JAVA_HOME=\$(readlink -f \/usr\/bin\/java | sed "s:bin\/java::")/' \
-       $HADOOP_HOME/etc/hadoop/hadoop-env.sh
+  JAVA_HOME=$(readlink -f \/usr\/bin\/java | sed "s:bin\/java::")
+  HADOOP_ENVSH=/usr/local/hadoop/home/etc/hadoop/hadoop-env.sh
+  HADOOP_USER=$(whoami)
+
+  # Make a copy
+  cp -n $HADOOP_ENVSH $HADOOP_ENVSH.bk
+  # Write the new one
+  echo "JAVA_HOME=${JAVA_HOME}" > $HADOOP_ENVSH
+  cat >> $HADOOP_ENVSH <<EOT
+export HDFS_NAMENODE_USER=${HADOOP_USER}
+export HDFS_DATANODE_USER=${HADOOP_USER}
+export HDFS_SECONDARYNAMENODE_USER=${HADOOP_USER}
+export YARN_RESOURCEMANAGER_USER=${HADOOP_USER}
+export YARN_NODEMANAGER_USER=${HADOOP_USER}
+EOT
   setup_core_xml &&
     setup_mapred_xml &&
     setup_hdfs_xml || die "error in generating xml configuration files"

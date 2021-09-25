@@ -1,4 +1,4 @@
-name: build-ubuntu-16.04-HDFS
+name: build-ubuntu-20.04-HDFS
 on:
   push:
     branches:
@@ -16,10 +16,10 @@ env:
 
 jobs:
   build:
-    runs-on: ubuntu-16.04
+    runs-on: ubuntu-20.04
     if: ${{ startsWith(github.ref , 'refs/tags') != true && startsWith(github.ref , 'build-') != true }}
     timeout-minutes: 90
-    name: Build - ubuntu-16.04 - HDFS
+    name: Build - ubuntu-20.04 - HDFS
     steps:
       - uses: actions/checkout@v2
       - name: 'Print env'
@@ -46,6 +46,7 @@ jobs:
       - name: 'Build and test libtiledb'
         id: test
         run: |
+          set -exo pipefail
 
           # - run: |
           # Start HDFS server if enabled
@@ -57,7 +58,7 @@ jobs:
           source scripts/install-hadoop.sh
           source scripts/run-hadoop.sh
 
-          bootstrap_args="${bootstrap_args} --enable-hdfs";
+          bootstrap_args=" --enable-hdfs";
           source $GITHUB_WORKSPACE/scripts/ci/build_libtiledb.sh
 
           # Bypass Catch2 Framework stdout interception with awk on test output
