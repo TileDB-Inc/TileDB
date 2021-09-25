@@ -1200,7 +1200,8 @@ class Interval : public detail::IntervalBase {
    * @precondition [in] bound is ordered. Throws if not.
    * @postcondition [out] bound is an ordinary element and not infinite
    */
-  Bound normalize_bound(const T bound, bool is_closed, bool is_for_upper_bound) const {
+  Bound normalize_bound(
+      const T bound, bool is_closed, bool is_for_upper_bound) const {
     if constexpr (Traits::has_unordered_elements) {
       if (!Traits::is_ordered(bound)) {
         throw std::invalid_argument(
