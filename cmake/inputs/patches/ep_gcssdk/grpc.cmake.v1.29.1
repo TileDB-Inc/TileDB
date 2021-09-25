@@ -1,0 +1,89 @@
+# ~~~
+# Copyright 2018 Google LLC
+#
+# Licensed under the Apache License, Version 2.0 (the "License");
+# you may not use this file except in compliance with the License.
+# You may obtain a copy of the License at
+#
+#     http://www.apache.org/licenses/LICENSE-2.0
+#
+# Unless required by applicable law or agreed to in writing, software
+# distributed under the License is distributed on an "AS IS" BASIS,
+# WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
+# See the License for the specific language governing permissions and
+# limitations under the License.
+# ~~~
+
+include(ExternalProjectHelper)
+include(external/abseil)
+include(external/c-ares)
+include(external/protobuf)
+
+if (NOT TARGET grpc-project)
+    # Give application developers a hook to configure the version and hash
+    # downloaded from GitHub.
+    set(GOOGLE_CLOUD_CPP_GRPC_URL
+        "https://github.com/grpc/grpc/archive/v1.29.1.tar.gz")
+    set(GOOGLE_CLOUD_CPP_GRPC_SHA256
+        "0343e6dbde66e9a31c691f2f61e98d79f3584e03a11511fad3f10e3667832a45")
+
+    set_external_project_build_parallel_level(PARALLEL)
+    set_external_project_vars()
+
+    include(ExternalProject)
+    ExternalProject_Add(
+        grpc-project
+        DEPENDS c-ares-project protobuf-project abseil-cpp-project
+        EXCLUDE_FROM_ALL ON
+        PREFIX "${CMAKE_BINARY_DIR}/external/grpc"
+        INSTALL_DIR "${GOOGLE_CLOUD_CPP_EXTERNAL_PREFIX}"
+        URL ${GOOGLE_CLOUD_CPP_GRPC_URL}
+        URL_HASH SHA256=${GOOGLE_CLOUD_CPP_GRPC_SHA256}
+        LIST_SEPARATOR |
+        CMAKE_ARGS --trace ${GOOGLE_CLOUD_CPP_EXTERNAL_PROJECT_CMAKE_FLAGS}
+                   -DCMAKE_PREFIX_PATH=${GOOGLE_CLOUD_CPP_PREFIX_PATH}
+                   -DCMAKE_INSTALL_RPATH=${GOOGLE_CLOUD_CPP_INSTALL_RPATH}
+                   -DCMAKE_INSTALL_PREFIX=<INSTALL_DIR>
+                   -DgRPC_BUILD_TESTS=OFF
+                   -DgRPC_BENCHMARK_PROVIDER=none
+                   -DgRPC_BUILD_CSHARP_EXT=OFF
+                   -DgRPC_ABSL_PROVIDER=package
+                   -DgRPC_CARES_PROVIDER=package
+                   -DgRPC_PROTOBUF_PROVIDER=package
+                   -DgRPC_SSL_PROVIDER=package
+                   -DgRPC_ZLIB_PROVIDER=package
+                   -DCMAKE_CXX_FLAGS=/EHsc
+#                   -DCMAKE_SHARED_LINKER_FLAGS=/NODEFAULTLIB:LIBCMTD
+                   -DBUILD_SHARED_LIBS=OFF
+                   #-DBUILD_SHARED_LIBS=ON
+                   -Dprotobuf_BUILD_SHARED_LIBS=OFF
+                   -DCMAKE_C_FLAGS=/EHsc
+                   -DgRPC_BUILD_GRPC_CSHARP_PLUGIN=OFF
+                   -DgRPC_BUILD_GRPC_NODE_PLUGIN=OFF
+                   -DgRPC_BUILD_GRPC_OBJECTIVE_C_PLUGIN=OFF
+                   -DgRPC_BUILD_GRPC_PHP_PLUGIN=OFF
+                   -DgRPC_BUILD_GRPC_PYTHON_PLUGIN=OFF
+                   -DgRPC_BUILD_GRPC_RUBY_PLUGIN=OFF
+                   -DOPENSSL_ROOT_DIR=${OPENSSL_ROOT_DIR}
+                   -DgRPC_BUILD_STATIC_LIBS=ON
+                   -DgRPC_MSVC_STATIC_RUNTIME=ON
+                   -DProtobuf_USE_STATIC_LIBS=ON # Are cmake variables case sensitive, note leading cap 'P', cmake 3.2 FindProtobuf.cmake uses
+                   -DLINK_FLAGS=/NODEFAULTLIB
+                   #-DCMAKE_EXE_LINKER_FLAGS=/NODEFAULTLIB:MSVCRTD # cmake test programs won't build, i.e. 'compiler is broken'
+                   #-DCMAKE_EXE_LINKER_FLAGS=/NODEFAULTLIB:LIBCMDD # seems to make little/no difference
+#as suspected, the TILEDB_... and current path locations are not correct to obtain this... &&
+#          cmake -E copy ${TILEDB_CMAKE_INPUTS_DIR}/patches/ep_gcssdk/grpc-project-v1.29.0-CMakeLists.txt ./cmake-out/externals/src/ep_gcssdk/cmake-out/external/grpc/src/grpc-project/CMakeLists.txt &&
+        PATCH_COMMAND 
+          echo b4 dlh patch -e copy updated cmakelists.txt to grpc-project &&
+          cmd /c "echo in directory ====%cd%==== " &&
+          cmd /c "cd" &&
+          echo about to copy -e ...
+          ${CMAKE_COMMAND} -E copy super/external/grpc-project-v1.29.0-CMakeLists.txt ./cmake-out/external/grpc/src/grpc-project/CMakeLists.txt &&
+          echo done dlh patch grpc-project
+        BUILD_COMMAND ${CMAKE_COMMAND} --build <BINARY_DIR> ${PARALLEL} -- /verbosity:diagnostic
+        LOG_DOWNLOAD ON
+        LOG_CONFIGURE ON
+        LOG_BUILD ON
+        LOG_INSTALL ON
+	LOG_OUTPUT_ON_FAILURE ON)
+endif ()

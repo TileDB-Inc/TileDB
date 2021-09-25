@@ -102,6 +102,7 @@ if(WIN32)
 				URL "https://strawberryperl.com/download/5.32.1.1/strawberry-perl-5.32.1.1-32bit-portable.zip"
 				URL_HASH SHA1=28bca91cadd6651c2b2463db8587c170bf17f2fa
 				CONFIGURE_COMMAND ""
+                                BUILD_ALWAYS OFF
 				BUILD_COMMAND ""
 				INSTALL_COMMAND ""
 				LOG_DOWNLOAD TRUE
@@ -215,6 +216,7 @@ nmake install")
     #CONFIGURE_COMMAND "${CMAKE_CURRENT_BINARY_DIR}/OpenSSL-configure.bat"
     CONFIGURE_COMMAND "${TILEDB_EP_OPENSSL_HELP_DIR}/${proj}-configure.bat"
     #BUILD_COMMAND "${CMAKE_CURRENT_BINARY_DIR}/${proj}-build.bat"
+    BUILD_ALWAYS OFF
     BUILD_COMMAND "${TILEDB_EP_OPENSSL_HELP_DIR}/${proj}-build.bat"
     #BUILD_COMMAND "${CMAKE_COMMAND}" --build "${CMAKE_CURRENT_BINARY_DIR}"
     #INSTALL_COMMAND "${CMAKE_CURRENT_BINARY_DIR}/${proj}-install.bat"

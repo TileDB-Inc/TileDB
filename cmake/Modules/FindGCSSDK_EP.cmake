@@ -46,6 +46,11 @@ set(GCSSDK_EP_DIR "${TILEDB_EP_INSTALL_PREFIX}")
 # TODO: This should be replaced with proper find_package as google installs cmake targets for the subprojects
 if (NOT TILEDB_FORCE_ALL_DEPS OR TILEDB_GCSSDK_EP_BUILT)
   if(WIN32)
+    set(CMP0074 "NEW")
+    # ref items from GCS CI windows build process ...
+     set(ZLIB_INCLUDE_DIR "${TILEDB_EP_SOURCE_DIR}/ep_gcssdk/cmake-out/vcpkg/packages/zlib_x64-windows-static/include")
+     set (ZLIB_FOUND, 1)
+     set (ZLIB_ROOT "${TILEDB_EP_SOURCE_DIR}/ep_gcssdk/cmake-out/vcpkg/packages/zlib_x64-windows-static")
     set(ZLIB_LIBRARY "${TILEDB_EP_SOURCE_DIR}/ep_gcssdk/cmake-out/vcpkg/packages/zlib_x64-windows-static/lib/zlib.lib")
     set(CMAKE_PREFIX_PATH ${CMAKE_PREFIX_PATH} "${TILEDB_EP_SOURCE_DIR}/ep_gcssdk/cmake-out/msvc-x64-windows-static")
     set(CMAKE_PREFIX_PATH ${CMAKE_PREFIX_PATH} "${TILEDB_EP_SOURCE_DIR}/ep_gcssdk/cmake-out/vcpkg/packages")
@@ -61,6 +66,7 @@ if (NOT TILEDB_FORCE_ALL_DEPS OR TILEDB_GCSSDK_EP_BUILT)
     set(storage_client_LIBRARY ${TILEDB_EP_SOURCE_DIR}/ep_gcssdk/cmake-out/msvc-x64-windows-static/google/cloud/storage/storage_client.lib)
     find_package(storage_client CONFIG
       PATHS ${TILEDB_EP_INSTALL_PREFIX}
+            ${TILEDB_EP_SOURCE_DIR}/ep_gcssdk/cmake-out/msvc-x64-windows-static/external/googleapis
             ${TILEDB_DEPS_NO_DEFAULT_PATH}
             ${TILEDB_EP_SOURCE_DIR}/ep_gcssdk/cmake-out/msvc-x64-windows-static/google/cloud/storage
             ${TILEDB_EP_SOURCE_DIR}/ep_gcssdk/cmake-out/msvc-x64-windows-static/google/cloud/storage/CMakeFiles/Export
@@ -100,6 +106,8 @@ if (NOT GCSSDK_FOUND)
     if(WIN32)
       find_package(Git REQUIRED)
       #set(CONDITIONAL_PATCH cd ${CMAKE_SOURCE_DIR} && ${GIT_EXECUTABLE} apply --ignore-whitespace -p1 --unsafe-paths --verbose --directory=${TILEDB_EP_SOURCE_DIR}/ep_capnp < ${TILEDB_CMAKE_INPUTS_DIR}/patches/ep_capnp/capnp_CMakeLists.txt.patch)
+      if(01)
+      # patching for v1.22.0.zip
       set(CONDITIONAL_PATCH cd ${CMAKE_SOURCE_DIR} &&
         echo TILEDB_EP_SOURCE_DIR/ep_gcssdk is ${TILEDB_EP_SOURCE_DIR}/ep_gcssdk &&
         echo b4 build.patch &&
@@ -107,14 +115,56 @@ if (NOT GCSSDK_FOUND)
         echo b4 disable_tests.patch &&
         ${GIT_EXECUTABLE} apply --check --apply --ignore-whitespace -p1 --unsafe-paths --verbose --directory=${TILEDB_EP_SOURCE_DIR}/ep_gcssdk < ${TILEDB_CMAKE_INPUTS_DIR}/patches/ep_gcssdk/disable_tests.patch &&
         echo b4 disable_examples.patch &&
-        ${GIT_EXECUTABLE} apply --check --apply --ignore-whitespace -p1 --unsafe-paths --verbose --directory=${TILEDB_EP_SOURCE_DIR}/ep_gcssdk < ${TILEDB_CMAKE_INPUTS_DIR}/patches/ep_gcssdk/disable_examples.patch
+        ${GIT_EXECUTABLE} apply --check --apply --ignore-whitespace -p1 --unsafe-paths --verbose --directory=${TILEDB_EP_SOURCE_DIR}/ep_gcssdk < ${TILEDB_CMAKE_INPUTS_DIR}/patches/ep_gcssdk/disable_examples.patch &&
+        echo b4 cd ${TILEDB_EP_SOURCE_DIR}/ep_gcssdk &&
+        cd ${TILEDB_EP_SOURCE_DIR}/ep_gcssdk &&
+        echo B4 cmake -E copy ${TILEDB_CMAKE_INPUTS_DIR}/patches/ep_gcssdk/EnableWerror.cmake ./cmake/ &&
+        cmake -E copy ${TILEDB_CMAKE_INPUTS_DIR}/patches/ep_gcssdk/EnableWerror.cmake ./cmake/ &&
+        cmake -E copy ${TILEDB_CMAKE_INPUTS_DIR}/patches/ep_gcssdk/FindgRPC.cmake ./cmake/ &&
+        cmake -E copy ${TILEDB_CMAKE_INPUTS_DIR}/patches/ep_gcssdk/FindProtobufWithTargets.cmake ./cmake/ &&
+        cmake -E copy ${TILEDB_CMAKE_INPUTS_DIR}/patches/ep_gcssdk/protobuf.cmake ./super/external/ &&
+#        cmake -E copy ${TILEDB_CMAKE_INPUTS_DIR}/patches/ep_gcssdk/grpc.cmake ./super/external/ &&
+        cmake -E copy ${TILEDB_CMAKE_INPUTS_DIR}/patches/ep_gcssdk/grpc.cmake.v1.29.1 ./super/external/grpc.cmake &&
+        cmake -E copy ${TILEDB_CMAKE_INPUTS_DIR}/patches/ep_gcssdk/SelectMSVCRuntime.cmake ./cmake/ &&
+        cmake -E copy ${TILEDB_CMAKE_INPUTS_DIR}/patches/ep_gcssdk/abseil.cmake ./super/external/ &&
+        cmake -E copy ${TILEDB_CMAKE_INPUTS_DIR}/patches/ep_gcssdk/super.CMakeLists.txt ./super/CMakeLists.txt &&
+        # copy this to location can be found/retrieved from super/external/grpc.cmake
+        cmake -E copy ${TILEDB_CMAKE_INPUTS_DIR}/patches/ep_gcssdk/grpc-project-v1.29.0-CMakeLists.txt ./super/external/ &&
+        cmake -E copy ${TILEDB_CMAKE_INPUTS_DIR}/patches/ep_gcssdk/generator.CMakeLists.txt ./generator/CMakeLists.txt &&
+        echo "done - dlh patching win32 gcs"
       )
+      else()
+      # patching for v1.25.0.zip
+      set(CONDITIONAL_PATCH cd ${CMAKE_SOURCE_DIR} &&
+        echo TILEDB_EP_SOURCE_DIR/ep_gcssdk is ${TILEDB_EP_SOURCE_DIR}/ep_gcssdk &&
+#        echo b4 build.patch &&
+#        ${GIT_EXECUTABLE} apply --check --apply --ignore-whitespace -p1 --unsafe-paths --verbose --directory=${TILEDB_EP_SOURCE_DIR}/ep_gcssdk < ${TILEDB_CMAKE_INPUTS_DIR}/patches/ep_gcssdk/build.patch &&
+        echo b4 disable_tests.patch &&
+        ${GIT_EXECUTABLE} apply --check --apply --ignore-whitespace -p1 --unsafe-paths --verbose --directory=${TILEDB_EP_SOURCE_DIR}/ep_gcssdk < ${TILEDB_CMAKE_INPUTS_DIR}/patches/ep_gcssdk/disable_tests.patch &&
+#        echo b4 disable_examples.patch &&
+#        ${GIT_EXECUTABLE} apply --check --apply --ignore-whitespace -p1 --unsafe-paths --verbose --directory=${TILEDB_EP_SOURCE_DIR}/ep_gcssdk < ${TILEDB_CMAKE_INPUTS_DIR}/patches/ep_gcssdk/disable_examples.patch &&
+#        echo "done - dlh patching win32 gcs"
+        echo b4 cd ${TILEDB_EP_SOURCE_DIR}/ep_gcssdk &&
+        cd ${TILEDB_EP_SOURCE_DIR}/ep_gcssdk &&
+#        echo B4 cmake -E copy ${TILEDB_CMAKE_INPUTS_DIR}/patches/ep_gcssdk/EnableWerror.cmake ./cmake/ &&
+#        cmake -E copy ${TILEDB_CMAKE_INPUTS_DIR}/patches/ep_gcssdk/EnableWerror.cmake ./cmake/ &&
+        #cmake -E copy ${TILEDB_CMAKE_INPUTS_DIR}/patches/ep_gcssdk/FindgRPC.cmake ./cmake/ &&
+        #cmake -E copy ${TILEDB_CMAKE_INPUTS_DIR}/patches/ep_gcssdk/FindProtobufWithTargets.cmake ./cmake/ &&
+#        cmake -E copy ${TILEDB_CMAKE_INPUTS_DIR}/patches/ep_gcssdk/protobuf.cmake ./super/external/ &&
+#        cmake -E copy ${TILEDB_CMAKE_INPUTS_DIR}/patches/ep_gcssdk/grpc.cmake.v1.29.1 ./super/external/grpc.cmake &&
+        cmake -E copy ${TILEDB_CMAKE_INPUTS_DIR}/patches/ep_gcssdk/grpc.cmake.v1.35.0 ./super/external/grpc.cmake &&
+#        cmake -E copy ${TILEDB_CMAKE_INPUTS_DIR}/patches/ep_gcssdk/SelectMSVCRuntime.cmake ./cmake/ &&
+        cmake -E copy ${TILEDB_CMAKE_INPUTS_DIR}/patches/ep_gcssdk/abseil.cmake ./super/external/ &&
+#        cmake -E copy ${TILEDB_CMAKE_INPUTS_DIR}/patches/ep_gcssdk/super.CMakeLists.txt ./super/CMakeLists.txt &&
+        echo "done - dlh patching win32 gcs"
+      )
+      endif()
 #      set(TILEDB_BUILD_GCSSTUFF_COMMAND ${CMAKE_COMMAND} --build cmake-out -- /MP${NCPU} )
       #vs2019 msbuild complaining about /MP12, so let's just let it default to whatever
-      set(TILEDB_BUILD_GCSSTUFF_COMMAND ${CMAKE_COMMAND} --build cmake-out )
-      set(SSLSTUFF "") # may need to populate, did get some.ssl buildin gon windows, think it was 'open' flavor...
-      set(TILEDB_CMAKE_C_FLAGS "/EHsc ${CMAKE_C_FLAGS}")
-      # set(TILEDB_CMAKE_C_FLAGS "/EHsc ${CMAKE_C_FLAGS} /MT")
+      set(TILEDB_BUILD_GCSSTUFF_COMMAND "${CMAKE_COMMAND} --build cmake-out -- /verbosity:diagnostic")
+      set(SSLSTUFF "") # may need to populate, did get some.ssl building on windows, think it was 'open' flavor...
+      # set(TILEDB_CMAKE_C_FLAGS "/EHsc ${CMAKE_C_FLAGS}")
+      set(TILEDB_CMAKE_C_FLAGS "/EHsc ${CMAKE_C_FLAGS} /MT")
     else()
       set(CONDITIONAL_PATCH
         patch -N -p1 < ${TILEDB_CMAKE_INPUTS_DIR}/patches/ep_gcssdk/build.patch &&
@@ -123,10 +173,12 @@ if (NOT GCSSDK_FOUND)
       )
       set(TILEDB_BUILD_GCSSTUFF_COMMAND ${CMAKE_COMMAND} --build cmake-out -- -j${NCPU} )
       set(SSLSTUFF "-DOPENSSL_ROOT_DIR=${TILEDB_OPENSSL_DIR}")
-	  set(TILEDB_CMAKE_C_FLAGS "${CMAKE_C_FLAGS}")
+      set(TILEDB_CMAKE_C_FLAGS "${CMAKE_C_FLAGS}")
     endif()
     
-    if (WIN32)
+    if (0 AND WIN32)
+    # trying to piggyback on GCS CI windows build process...
+    message(STATUS "build GCSSDK piggybackd on GCS CI build process")
     ExternalProject_Add(ep_gcssdk
       PREFIX "externals"
       # Set download name to avoid collisions with only the version number in the filename
@@ -134,6 +186,7 @@ if (NOT GCSSDK_FOUND)
       URL "https://github.com/googleapis/google-cloud-cpp/archive/v1.22.0.zip"
       URL_HASH SHA1=d4e14faef4095289b06f5ffe57d33a14574a7055
       BUILD_IN_SOURCE 1
+      CMAKE_ARGS --trace
       PATCH_COMMAND
          echo "start - dlh patching win32 gcs" &&
          cmake -E copy ${TILEDB_CMAKE_INPUTS_DIR}/patches/ep_gcssdk/build-cmake-dependencies.ps1 ./ci/kokoro/windows/ && 
@@ -163,7 +216,8 @@ if (NOT GCSSDK_FOUND)
       LOG_INSTALL TRUE
       LOG_OUTPUT_ON_FAILURE ${TILEDB_LOG_OUTPUT_ON_FAILURE}
     )
-    else()
+    elseif(01 AND WIN32)
+    message(STATUS "build GCSSDK non-GCS-CI approach, ala *nix")
    #This non-WIN32 section has STUFF that needs to be UNDONE to restore to serviceable *nix build
     ExternalProject_Add(ep_gcssdk
       PREFIX "externals"
@@ -181,8 +235,7 @@ if (NOT GCSSDK_FOUND)
 #        patch -N -p1 < ${TILEDB_CMAKE_INPUTS_DIR}/patches/ep_gcssdk/disable_tests.patch &&
 #        patch -N -p1 < ${TILEDB_CMAKE_INPUTS_DIR}/patches/ep_gcssdk/disable_examples.patch
       CONFIGURE_COMMAND
-         -A X64
-         ${CMAKE_COMMAND} -Hsuper -Bcmake-out
+         ${CMAKE_COMMAND} --trace -A X64 -Hsuper -Bcmake-out
                  -DCMAKE_C_CFLAGS=${TILEDB_CMAKE_C_FLAGS}
         -DCMAKE_BUILD_TYPE=${CMAKE_BUILD_TYPE}
         -DBUILD_SHARED_LIBS=OFF
@@ -200,11 +253,148 @@ if (NOT GCSSDK_FOUND)
         -DGOOGLE_CLOUD_CPP_ENABLE_STORAGE=ON
         -DGOOGLE_CLOUD_CPP_ENABLE_PUBSUB=OFF
         -DBUILD_TESTING=OFF
+        #-DLINK_FLAGS=/NODEFAULTLIB:LIBCMTD
+        -DLINK_FLAGS=/NODEFAULTLIB:MSVCRTD
+        -DENABLE_STATIC_RUNTIME=ON
+        -DCMAKE_MSVC_RUNTIME_LIBRARY=MultiThreadedDebug
+        #using the 'global' no default libraries causes cmake test program compilations to fail...
+        #-DLINK_FLAGS=/NODEFAULTLIB
+        #-DCMAKE_EXE_LINKER_FLAGS=/NODEFAULTLIB:MSVCRTD
+        #-DCMAKE_EXE_LINKER_FLAGS=/NODEFAULTLIB
+        -DSTATIC_LIBRARY_FLAGS=/NODEFAULTLIB:LIBCMTD
+        -DSTATIC_LIBRARY_OPTIONS=/NODEFAULTLIB:LIBCMTD # cmake v3.13
         # Google uses their own variable instead of CMAKE_INSTALL_PREFIX
         -DGOOGLE_CLOUD_CPP_EXTERNAL_PREFIX=${TILEDB_EP_INSTALL_PREFIX}
         -DCMAKE_POSITION_INDEPENDENT_CODE=ON
+        # win32 additions
+        -DGOOGLE_CLOUD_CPP_ENABLE_WERROR=OFF #win32, vs2019
+        # see if these make it down to grpc build... appears -not-
+        #"see if valid combination ... configuration and platform ... for configuration='Debug' platform='X64'... 
+        -DgRPC_DEBUG=ON
+        -Dprotobuf_DEBUG=ON
+        #-DProtobuf_BUILD_SHARED_LIBS=OFF # leading CAPITAL 'P'!!!
+        -DProtobuf_USE_STATIC_LIBS=ON # leading CAPITAL 'P'!!!
+        -DABSL_DEFAULT_LINKOPTS=/NODEFAULTLIB:LIBCMDD
+        #-DABSL_CC_LIB_COPTS="/MTd"
+        -DABSL_CC_LIB_LINKOPTS=/NODEFAULTLIB:LIBCMDD
+        #-DABSL_CC_LIB_DEFINES=?
+#        -DgRPC_USE_STATIC_LIBS=ON
 #      BUILD_COMMAND ${CMAKE_COMMAND} --build cmake-out -- -j${NCPU}
-      BUILD_COMMAND ${TILEDB_BUILD_GCSSTUFF_COMMAND}
+#      BUILD_COMMAND ${TILEDB_BUILD_GCSSTUFF_COMMAND}
+      BUILD_COMMAND ${CMAKE_COMMAND} --build cmake-out -- /verbosity:diagnostic
+      # There is no install command, the build process installs the libraries
+      INSTALL_COMMAND ""
+      LOG_DOWNLOAD TRUE
+      LOG_CONFIGURE TRUE
+      LOG_BUILD TRUE
+      LOG_INSTALL TRUE
+      LOG_OUTPUT_ON_FAILURE ${TILEDB_LOG_OUTPUT_ON_FAILURE}
+      DEPENDS ${DEPENDS}
+    )
+    elseif(0 AND WIN32)
+    message(STATUS "build GCSSDK non-GCS-CI approach, ala *nix")
+   #This non-WIN32 section has STUFF that needs to be UNDONE to restore to serviceable *nix build
+    ExternalProject_Add(ep_gcssdk
+      PREFIX "externals"
+      # Set download name to avoid collisions with only the version number in the filename
+      DOWNLOAD_NAME ep_gcssdk.zip
+      #URL "https://github.com/googleapis/google-cloud-cpp/archive/v1.22.0.zip"
+      #URL_HASH SHA1=d4e14faef4095289b06f5ffe57d33a14574a7055
+      URL "https://github.com/googleapis/google-cloud-cpp/archive/v1.25.0.zip"
+      URL_HASH SHA1=a7c83618e1a6b81cb4e1f294c4164b0999087edc
+      BUILD_IN_SOURCE 1
+      PATCH_COMMAND
+#        echo patching ep_gcssdk from &&
+#        echo %cd% &&
+#        echo ${CONDITIONAL_PATCH} &&
+        ${CONDITIONAL_PATCH}
+#        patch -N -p1 < ${TILEDB_CMAKE_INPUTS_DIR}/patches/ep_gcssdk/build.patch &&
+#        patch -N -p1 < ${TILEDB_CMAKE_INPUTS_DIR}/patches/ep_gcssdk/disable_tests.patch &&
+#        patch -N -p1 < ${TILEDB_CMAKE_INPUTS_DIR}/patches/ep_gcssdk/disable_examples.patch
+      CONFIGURE_COMMAND
+         ${CMAKE_COMMAND} --trace -A X64 -Hsuper -Bcmake-out
+                 -DCMAKE_C_CFLAGS=${TILEDB_CMAKE_C_FLAGS}
+        -DCMAKE_BUILD_TYPE=${CMAKE_BUILD_TYPE}
+        -DBUILD_SHARED_LIBS=OFF
+        -DBUILD_SAMPLES=OFF
+        -DCMAKE_PREFIX_PATH=${TILEDB_EP_INSTALL_PREFIX}
+        #-DOPENSSL_ROOT_DIR=${TILEDB_OPENSSL_DIR}
+        ${SSLSTUFF}
+        -DCMAKE_INSTALL_PREFIX=${TILEDB_EP_INSTALL_PREFIX}
+        -DGOOGLE_CLOUD_CPP_ENABLE_MACOS_OPENSSL_CHECK=OFF
+        # Disable unused api features to speed up build
+        -DGOOGLE_CLOUD_CPP_ENABLE_BIGQUERY=OFF
+        -DGOOGLE_CLOUD_CPP_ENABLE_BIGTABLE=OFF
+        -DGOOGLE_CLOUD_CPP_ENABLE_SPANNER=OFF
+        -DGOOGLE_CLOUD_CPP_ENABLE_FIRESTORE=OFF
+        -DGOOGLE_CLOUD_CPP_ENABLE_STORAGE=ON
+        -DGOOGLE_CLOUD_CPP_ENABLE_PUBSUB=OFF
+        -DBUILD_TESTING=OFF
+        -DLINK_FLAGS=/NODEFAULTLIB:LIBCMTD
+        -DSTATIC_LIBRARY_FLAGS=/NODEFAULTLIB:LIBCMTD
+        -DSTATIC_LIBRARY_OPTIONS=/NODEFAULTLIB:LIBCMTD # cmake v3.13
+        # Google uses their own variable instead of CMAKE_INSTALL_PREFIX
+        -DGOOGLE_CLOUD_CPP_EXTERNAL_PREFIX=${TILEDB_EP_INSTALL_PREFIX}
+        -DCMAKE_POSITION_INDEPENDENT_CODE=ON
+        # win32 additions
+        -DGOOGLE_CLOUD_CPP_ENABLE_WERROR=OFF #win32, vs2019
+        # see if these make it down to grpc build... appears -not-
+        #"see if valid combination ... configuration and platform ... for configuration='Debug' platform='X64'... 
+        -DgRPC_DEBUG=ON
+        -Dprotobuf_DEBUG=ON
+        #-DProtobuf_BUILD_SHARED_LIBS=OFF # leading CAPITAL 'P'!!!
+        -DProtobuf_USE_STATIC_LIBS=ON # leading CAPITAL 'P'!!!
+        -DABSL_DEFAULT_LINKOPTS=/NODEFAULTLIB:LIBCMDD
+        #-DABSL_CC_LIB_COPTS="/MTd"
+        -DABSL_CC_LIB_LINKOPTS=/NODEFAULTLIB:LIBCMDD
+        #-DABSL_CC_LIB_DEFINES=?
+#        -DgRPC_USE_STATIC_LIBS=ON
+#      BUILD_COMMAND ${CMAKE_COMMAND} --build cmake-out -- -j${NCPU}
+#      BUILD_COMMAND ${TILEDB_BUILD_GCSSTUFF_COMMAND}
+      BUILD_COMMAND ${CMAKE_COMMAND} --build cmake-out -- /verbosity:diagnostic
+      # There is no install command, the build process installs the libraries
+      INSTALL_COMMAND ""
+      LOG_DOWNLOAD TRUE
+      LOG_CONFIGURE TRUE
+      LOG_BUILD TRUE
+      LOG_INSTALL TRUE
+      LOG_OUTPUT_ON_FAILURE ${TILEDB_LOG_OUTPUT_ON_FAILURE}
+      DEPENDS ${DEPENDS}
+    )
+    else() # orig *nix version
+    ExternalProject_Add(ep_gcssdk
+      PREFIX "externals"
+      # Set download name to avoid collisions with only the version number in the filename
+      DOWNLOAD_NAME ep_gcssdk.zip
+      URL "https://github.com/googleapis/google-cloud-cpp/archive/v1.22.0.zip"
+      URL_HASH SHA1=d4e14faef4095289b06f5ffe57d33a14574a7055
+      BUILD_IN_SOURCE 1
+      PATCH_COMMAND
+        patch -N -p1 < ${TILEDB_CMAKE_INPUTS_DIR}/patches/ep_gcssdk/build.patch &&
+        patch -N -p1 < ${TILEDB_CMAKE_INPUTS_DIR}/patches/ep_gcssdk/disable_tests.patch &&
+        patch -N -p1 < ${TILEDB_CMAKE_INPUTS_DIR}/patches/ep_gcssdk/disable_examples.patch
+      CONFIGURE_COMMAND
+         ${CMAKE_COMMAND} -Hsuper -Bcmake-out
+        -DCMAKE_BUILD_TYPE=${CMAKE_BUILD_TYPE}
+        -DBUILD_SHARED_LIBS=OFF
+        -DBUILD_SAMPLES=OFF
+        -DCMAKE_PREFIX_PATH=${TILEDB_EP_INSTALL_PREFIX}
+        -DOPENSSL_ROOT_DIR=${TILEDB_OPENSSL_DIR}
+        -DCMAKE_INSTALL_PREFIX=${TILEDB_EP_INSTALL_PREFIX}
+        -DGOOGLE_CLOUD_CPP_ENABLE_MACOS_OPENSSL_CHECK=OFF
+        # Disable unused api features to speed up build
+        -DGOOGLE_CLOUD_CPP_ENABLE_BIGQUERY=OFF
+        -DGOOGLE_CLOUD_CPP_ENABLE_BIGTABLE=OFF
+        -DGOOGLE_CLOUD_CPP_ENABLE_SPANNER=OFF
+        -DGOOGLE_CLOUD_CPP_ENABLE_FIRESTORE=OFF
+        -DGOOGLE_CLOUD_CPP_ENABLE_STORAGE=ON
+        -DGOOGLE_CLOUD_CPP_ENABLE_PUBSUB=OFF
+        -DBUILD_TESTING=OFF
+        # Google uses their own variable instead of CMAKE_INSTALL_PREFIX
+        -DGOOGLE_CLOUD_CPP_EXTERNAL_PREFIX=${TILEDB_EP_INSTALL_PREFIX}
+        -DCMAKE_POSITION_INDEPENDENT_CODE=ON
+        -DCMAKE_OSX_ARCHITECTURES=${CMAKE_OSX_ARCHITECTURES}
+      BUILD_COMMAND ${CMAKE_COMMAND} --build cmake-out -- -j${NCPU}
       # There is no install command, the build process installs the libraries
       INSTALL_COMMAND ""
       LOG_DOWNLOAD TRUE
