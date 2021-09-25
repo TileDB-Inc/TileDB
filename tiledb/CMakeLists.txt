@@ -334,10 +334,22 @@ endif()
 if (TILEDB_GCS)
   message(STATUS "The TileDB library is compiled with GCS support.")
   if(WIN32)
+    if(01) #if(01 AND $True)
+      set(CMP0074 "NEW") # hope it will use ZLIB_ROOT for curl configuration
+      find_package(GCSSDK_EP REQUIRED COMPONENTS gcs
+        # PATHS 
+        #   ${TILEDB_EP_SOURCE_DIR}/ep_gcssdk/cmake-out/msvc-x64-windows-static/external/googleapis
+      )
+    else()
+    # this branch *does not* work with vs2017, prob. with vcpkg install zlib somewhere...
     # find_package(Zlib_EP REQUIRED)
     # find_package(Curl_EP REQUIRED)
     # find_library(zlib PATH "${TILEDB_EP_SOURCE_DIR}/ep_gcssdk/cmake-out/vcpkg/packages/zlib_x64-windows-static/lib")
+    # find_library(zlib PATH "${TILEDB_EP_SOURCE_DIR}/ep_gcssdk/cmake-out/vcpkg/packages/zlib_x64-windows-static")
     set(ZLIB_LIBRARY "${TILEDB_EP_SOURCE_DIR}/ep_gcssdk/cmake-out/vcpkg/packages/zlib_x64-windows-static/lib/zlib.lib")
+     set(ZLIB_INCLUDE_DIR "${TILEDB_EP_SOURCE_DIR}/ep_gcssdk/cmake-out/vcpkg/packages/zlib_x64-windows-static/include")
+     set (ZLIB_FOUND, 1)
+     set (ZLIB_ROOT "${TILEDB_EP_SOURCE_DIR}/ep_gcssdk/cmake-out/vcpkg/packages/zlib_x64-windows-static")
     set(CMAKE_PREFIX_PATH ${CMAKE_PREFIX_PATH} "${TILEDB_EP_SOURCE_DIR}/ep_gcssdk/cmake-out/msvc-x64-windows-static")
     set(CMAKE_PREFIX_PATH ${CMAKE_PREFIX_PATH} "${TILEDB_EP_SOURCE_DIR}/ep_gcssdk/cmake-out/vcpkg/packages")
     set(google_cloud_cpp_common_DIR ${TILEDB_EP_SOURCE_DIR}/ep_gcssdk/cmake-out/msvc-x64-windows-static/google/cloud)
@@ -347,17 +359,22 @@ if (TILEDB_GCS)
     # set(nlohmann_json_DIR "${TILEDB_EP_SOURCE_DIR}/ep_gcssdk/cmake-out/vcpkg/packages/nlohmann-json_x64-windows-static/share/nlohmann_json")
     set(nlohmann_json_DIR "${TILEDB_EP_SOURCE_DIR}/ep_gcssdk/cmake-out/vcpkg/installed/x64-windows-static/share/nlohmann_json")
     set(openssl_DIR "${TILEDB_EP_SOURCE_DIR}/ep_gcssdk/cmake-out/vcpkg/packages/openssl_x64-windows-static/include/openssl")
-    set(OPENSSL_ROOT_DIR "${TILEDB_EP_SOURCE_DIR}/ep_gcssdk/cmake-out/vcpkg/packages/openssl_x64-windows-static/include/openssl")
+    # set(OPENSSL_ROOT_DIR "${TILEDB_EP_SOURCE_DIR}/ep_gcssdk/cmake-out/vcpkg/packages/openssl_x64-windows-static/include/openssl")
+    set(OPENSSL_ROOT_DIR "${TILEDB_EP_SOURCE_DIR}/ep_gcssdk/cmake-out/vcpkg/packages/openssl_x64-windows-static/")
+    set(OPENSSL_INCLUDE_DIR "${TILEDB_EP_SOURCE_DIR}/ep_gcssdk/cmake-out/vcpkg/packages/openssl_x64-windows-static/include/openssl")
     # find_package(GCSSDK_EP REQUIRED COMPONENTS gcs
     set(storage_client_LIBRARY ${TILEDB_EP_SOURCE_DIR}/ep_gcssdk/cmake-out/msvc-x64-windows-static/google/cloud/storage/storage_client.lib)
     find_package(storage_client REQUIRED CONFIG
       PATHS
         #storage_client-Config.cmake
+        ${TILEDB_EP_SOURCE_DIR}/ep_gcssdk/cmake-out/msvc-x64-windows-static/external/googleapis
         ${TILEDB_EP_SOURCE_DIR}/ep_gcssdk/cmake-out/msvc-x64-windows-static/google/cloud/storage
-            ${TILEDB_EP_SOURCE_DIR}/ep_gcssdk/cmake-out/msvc-x64-windows-static/google/cloud/storage/CMakeFiles/Export
+        ${TILEDB_EP_SOURCE_DIR}/ep_gcssdk/cmake-out/msvc-x64-windows-static/google/cloud/storage/CMakeFiles/Export
+        ${TILEDB_EP_SOURCE_DIR}/ep_gcssdk/cmake-out/msvc-x64-windows-static/google/cloud/storage/CMakeFiles/Export/lib/cmake/google_cloud_cpp_common
         #google_cloud_cpp_common-config.cmake
         ${TILEDB_EP_SOURCE_DIR}/ep_gcssdk/cmake-out/msvc-x64-windows-static/google/cloud
     )
+    endif()
   else()
     find_package(GCSSDK_EP REQUIRED COMPONENTS gcs)
   endif()
@@ -742,6 +759,10 @@ set(TILEDB_EXPORT_HEADER "${CMAKE_CURRENT_BINARY_DIR}/tiledb_export.h")
 set(TILEDB_EXPORT_HEADER "${TILEDB_EXPORT_HEADER}" PARENT_SCOPE)
 
 target_compile_definitions(TILEDB_CORE_OBJECTS PRIVATE -DTILEDB_CORE_OBJECTS_EXPORTS)
+
+if(MSVC)
+  target_link_options(tiledb_shared PRIVATE /NODEFAULTLIB:LIBCMTD)
+endif()
 
 target_include_directories(TILEDB_CORE_OBJECTS PRIVATE ${CMAKE_CURRENT_BINARY_DIR})
 
