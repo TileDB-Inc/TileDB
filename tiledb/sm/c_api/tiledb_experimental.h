@@ -153,7 +153,7 @@ TILEDB_EXPORT int32_t tiledb_array_evolve(
     tiledb_array_schema_evolution_t* array_schema_evolution);
 
 /**
- * Upgrade array to the latest format version.
+ * Upgrades an array to the latest format version.
  *
  * **Example:**
  *

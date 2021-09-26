@@ -38,6 +38,7 @@
 #include "array_schema.h"
 #include "context.h"
 #include "tiledb.h"
+#include "tiledb_experimental.h"
 #include "type.h"
 
 #include <unordered_map>
@@ -1412,6 +1413,24 @@ class Array {
         encryption_key.data(),
         (uint32_t)encryption_key.size(),
         config_aux);
+  }
+
+  /**
+   * @brief Upgrades an array to the latest format version.
+   *
+   *
+   * **Example:**
+   * @code{.cpp}
+   * tiledb::Array::upgrade_version(ctx, "array_name");
+   * @endcode
+   *
+   * @param ctx TileDB context
+   * @param array_uri The URI of the TileDB array to be upgraded.
+   */
+  static void upgrade_version(
+      const Context& ctx, const std::string& array_uri) {
+    ctx.handle_error(
+        tiledb_array_upgrade_version(ctx.ptr().get(), array_uri.c_str()));
   }
 
   /**
