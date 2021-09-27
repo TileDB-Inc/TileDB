@@ -194,6 +194,11 @@ EOT
     setup_hdfs_xml || die "error in generating xml configuration files"
 }
 
+function test_passwordless_ssh {
+  # test the ssh setup so we don't proceed and fail later with nonspecific errors
+  ssh localhost "echo 'hello world'"
+}
+
 function passwordless_ssh {
   if [ -d ~/.ssh ]; then
     rm -rf ~/.ssh
@@ -210,17 +215,19 @@ function passwordless_ssh {
   ssh-keyscan -H 127.0.0.1 >> ~/.ssh/known_hosts
   ssh-keyscan -H 0.0.0.0 >> ~/.ssh/known_hosts
   sudo service ssh restart || die "error restarting ssh service"
+  # sleep to make sure the ssh service restart is done because systemd
+  sleep 2
+
+  test_passwordless_ssh || die "failed to run passwordless ssh!"
 }
 
 function run {
   update_apt_repo || die "error updating apt-repo"
+  passwordless_ssh || die "error setting up passwordless ssh"
   install_java || die "error installing java"
   create_hadoop_user || die "error creating hadoop user"
   install_hadoop || die "error installing hadoop"
   setup_environment || die "error setting up environment"
-  passwordless_ssh || die "error setting up passwordless ssh"
 }
 
 run
-# sleep to make sure the ssh service restart is done because systemd
-sleep 2
