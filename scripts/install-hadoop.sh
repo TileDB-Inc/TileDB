@@ -200,6 +200,10 @@ function passwordless_ssh {
   fi
   sudo apt-get --reinstall install -y openssh-server openssh-client || die "error (re)installing openssh"
   mkdir ~/.ssh
+
+  # reset permissions to avoid ssh errors for world-readable directory
+  chmod og-rw ~
+
   ssh-keygen -t rsa -P "" -f ~/.ssh/id_rsa
   cat ~/.ssh/id_rsa.pub >> ~/.ssh/authorized_keys
   ssh-keyscan -H localhost >> ~/.ssh/known_hosts
