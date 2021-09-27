@@ -113,6 +113,14 @@ function setup_mapred_xml {
 <value>localhost:9010</value>
 <description>The tracker of MapReduce</description>
 </property>
+<property>
+<name>mapreduce.map.log.level</name>
+<value>WARN</value>
+</property>
+<property>
+<name>mapreduce.reduce.log.level</name>
+<value>WARN</value>
+</property>
 </configuration>
 EOT
   tmpfile=/tmp/hadoop_mapred.xml
