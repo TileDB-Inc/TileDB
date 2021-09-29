@@ -228,9 +228,7 @@ jobs:
           # Actually run tests
           $cmds = "cmake --build $env:BUILD_BUILDDIRECTORY\tiledb --target check --config Release -- /verbosity:minimal"
           Write-Host "cmds: '$cmds'"
-          #Invoke-Expression $cmds
-          $LastExitCode = 99 # testing 'Test status check' step
-          return
+          Invoke-Expression $cmds
 
           if ($LastExitCode -ne 0) {
              Write-Host "Tests failed. CMake exit status: " $LastExitCocde
