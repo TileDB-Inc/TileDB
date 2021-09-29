@@ -51,73 +51,6 @@ namespace intervals = tiledb::common::detail;
 namespace tiledb {
 namespace sm {
 
-
-//sview_init("some char string");
-template <class Item, size_t n>
-constexpr auto sview_init(Item (&data)[n]) -> std::string_view
-// Size vs size_t type (sign vs unsign) mismatch due to some gcc compilers
-//{ return n; }
-{
-  return std::string_view(data, n);
-}
-
-template < class T >
-Interval<T> Interval_from_Range(const Range& r) {
-  return Interval<T>(
-      Interval<T>::closed,
-      *(const T*)r.start(),
-      *(const T*)r.end(),
-      Interval<T>::closed);
-}
-
-//template <class T>
-template <>
-Interval<std::string_view> Interval_from_Range<std::string_view>(
-    const Range& r) {
-  //Interval<std::string_view> Interval_from_Range<std::string_view>(const Range& r) {
-  int select = 0;
-  if (!r.start_size()) // empty end?
-    select += 1; // yes
-  if (!r.end_size()) // empty start?
-    select += 2; // yes
-
-  switch (select) { 
-  case 0: { // have both start and end values
-      Interval<std::string_view> interval(
-          Interval<std::string_view>::closed,
-          std::string_view{(char*)r.start(), r.start_size()},
-          std::string_view{(char*)r.end(), r.end_size()},
-          Interval<std::string_view>::closed);
-      return interval;
-    }
-  case 1: { // have end but no start value
-      Interval<std::string_view> interval(
-          Interval<std::string_view>::minus_infinity,
-          std::string_view{(char*)r.end(), r.end_size()},
-          Interval<std::string_view>::closed);
-      return interval;
-  }
-  case 2: {  // have start but no end value
-    Interval<std::string_view> interval(
-        Interval<std::string_view>::closed,
-        std::string_view{(char*)r.start(), r.start_size()},
-        Interval<std::string_view>::plus_infinity);
-    return interval;
-  }
-  case 3: {  // have neither start nor end value
-    Interval<std::string_view> interval(
-        Interval<std::string_view>::minus_infinity,
-        Interval<std::string_view>::plus_infinity);
-    return interval;
-  }
-  default: {
-    Interval<std::string_view> interval(Interval<std::string_view>::empty_set);
-    return interval;
-  }
-
-  } // switch
-}
-
 /* ********************************* */
 /*     CONSTRUCTORS & DESTRUCTORS    */
 /* ********************************* */
@@ -746,8 +679,8 @@ bool Dimension::overlap<char>(const Range& r1, const Range& r2) {
 template <>
 bool Dimension::overlap<char>(const Range& r1, const Range& r2) {
 
-  auto interval1 = Interval_from_Range<std::string_view>(r1);
-  auto interval2 = Interval_from_Range<std::string_view>(r2);
+  auto interval1 = r1.Interval_from_Range<std::string_view>();
+  auto interval2 = r2.Interval_from_Range<std::string_view>();
   auto intersection_interval = interval1.intersection(interval2);
 
   return !intersection_interval.is_empty();

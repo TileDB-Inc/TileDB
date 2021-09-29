@@ -38,8 +38,10 @@
 #include <string>
 #include <vector>
 #include "tiledb/common/logger_public.h"
+#include "tiledb/common/interval/interval.h"
 
 namespace tiledb {
+
 namespace sm {
 
 /* ********************************* */
@@ -236,6 +238,21 @@ class Range {
   uint64_t partition_depth() const {
     return partition_depth_;
   }
+
+  template <class T>
+  static common::Interval<T> Interval_from_Range(const Range& r);
+    #if 0
+  {
+    return common::Interval<T>(
+        common::Interval<T>::closed,
+        *(const T*)r.start(),
+        *(const T*)r.end(),
+        common::Interval<T>::closed);
+  }
+  #endif
+
+  template <class T>
+  common::Interval<T> Interval_from_Range() const;
 
  private:
   /** The range as a flat byte vector.*/
