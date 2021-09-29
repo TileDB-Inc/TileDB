@@ -294,6 +294,6 @@ jobs:
           # following the test run. If this variable is not set, the build should fail.
           # see https://github.com/TileDB-Inc/TileDB/pull/1400 (5f0623f4d3)
           if ($env:TILEDB_CI_SUCCESS -ne 1) {
-            Write-Host "tiledb_unit sanity-check failed! Go check logs."
+            Write-Host "tiledb_unit sanity-check failed! Go check logs. (TILEDB_CI_SUCCESS '$env:TILEDB_CI_SUCCESS')"
             $host.SetShouldExit(1)
           }
