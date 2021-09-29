@@ -230,6 +230,7 @@ jobs:
           Write-Host "cmds: '$cmds'"
           #Invoke-Expression $cmds
           $LastExitCode = 99 # testing 'Test status check' step
+          return
 
           if ($LastExitCode -ne 0) {
              Write-Host "Tests failed. CMake exit status: " $LastExitCocde
