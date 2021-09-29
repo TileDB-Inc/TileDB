@@ -228,7 +228,8 @@ jobs:
           # Actually run tests
           $cmds = "cmake --build $env:BUILD_BUILDDIRECTORY\tiledb --target check --config Release -- /verbosity:minimal"
           Write-Host "cmds: '$cmds'"
-          Invoke-Expression $cmds
+          #Invoke-Expression $cmds
+          $LastExitCode = 99 # testing 'Test status check' step
 
           if ($LastExitCode -ne 0) {
              Write-Host "Tests failed. CMake exit status: " $LastExitCocde
@@ -286,3 +287,14 @@ jobs:
           #cd $env:BUILD_BUILDDIRECTORY
 
           #7z a tiledb-windows-x64.zip $env:BUILD_SOURCESDIRECTORY\dist
+
+      - name: "Test status check"
+        shell: powershell
+        run: |
+          # tiledb_unit is configured to set a job-level variable TILEDB_CI_SUCCESS=1
+          # following the test run. If this variable is not set, the build should fail.
+          # see https://github.com/TileDB-Inc/TileDB/pull/1400 (5f0623f4d3)
+          if ($env:TILEDB_CI_SUCCESS -ne 1) {
+            Write-Host "tiledb_unit sanity-check failed! Go check logs."
+            $host.SetShouldExit(1)
+          }
