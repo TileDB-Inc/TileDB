@@ -50,9 +50,11 @@
 #include "tiledb/sm/enums/query_status.h"
 #include "tiledb/sm/enums/query_type.h"
 #include "tiledb/sm/enums/serialization_type.h"
+#include "tiledb/sm/fragment/fragment_metadata.h"
 #include "tiledb/sm/misc/utils.h"
 #include "tiledb/sm/query/query.h"
 #include "tiledb/sm/query/reader.h"
+#include "tiledb/sm/query/dense_reader.h"
 #include "tiledb/sm/query/sparse_global_order_reader.h"
 #include "tiledb/sm/query/sparse_unordered_with_dups_reader.h"
 #include "tiledb/sm/query/writer.h"
@@ -503,6 +505,25 @@ Status index_read_state_to_capnp(
   return Status::Ok();
 }
 
+Status dense_read_state_to_capnp(
+    const ArraySchema* schema,
+    const DenseReader& reader,
+    capnp::QueryReader::Builder* builder) {
+  auto read_state = reader.read_state();
+  auto read_state_builder = builder->initReadState();
+  read_state_builder.setOverflowed(read_state->overflowed_);
+  read_state_builder.setUnsplittable(read_state->unsplittable_);
+  read_state_builder.setInitialized(read_state->initialized_);
+
+  if (read_state->initialized_) {
+    auto partitioner_builder = read_state_builder.initSubarrayPartitioner();
+    RETURN_NOT_OK(subarray_partitioner_to_capnp(
+        schema, read_state->partitioner_, &partitioner_builder));
+  }
+
+  return Status::Ok();
+}
+
 Status read_state_from_capnp(
     const Array* array,
     const capnp::ReadState::Reader& read_state_reader,
@@ -577,6 +598,36 @@ Status index_read_state_from_capnp(
     auto cell_idx = rcs.getCellIdx();
 
     read_state->frag_tile_idx_.emplace_back(tile_idx, cell_idx);
+  }
+
+  return Status::Ok();
+}
+
+Status dense_read_state_from_capnp(
+    const Array* array,
+    const capnp::ReadState::Reader& read_state_reader,
+    Query* query,
+    DenseReader* reader,
+    ThreadPool* compute_tp) {
+  auto read_state = reader->read_state();
+
+  read_state->overflowed_ = read_state_reader.getOverflowed();
+  read_state->unsplittable_ = read_state_reader.getUnsplittable();
+  read_state->initialized_ = read_state_reader.getInitialized();
+
+  // Subarray partitioner
+  if (read_state_reader.hasSubarrayPartitioner()) {
+    RETURN_NOT_OK(subarray_partitioner_from_capnp(
+        reader->stats(),
+        query->config(),
+        array,
+        read_state_reader.getSubarrayPartitioner(),
+        &read_state->partitioner_,
+        compute_tp,
+        // If the current partition is unsplittable, this means we need to make
+        // sure the tile_overlap for the current is computed because we won't go
+        // to the next partition
+        read_state->unsplittable_));
   }
 
   return Status::Ok();
@@ -673,6 +724,41 @@ Status index_reader_to_capnp(
 
   // Read state
   RETURN_NOT_OK(index_read_state_to_capnp(reader.read_state(), reader_builder));
+
+  const QueryCondition* condition = query.condition();
+  if (!condition->empty()) {
+    auto condition_builder = reader_builder->initCondition();
+    RETURN_NOT_OK(condition_to_capnp(*condition, &condition_builder));
+  }
+
+  // If stats object exists set its cap'n proto object
+  stats::Stats* stats = reader.stats();
+  if (stats != nullptr) {
+    auto stats_builder = reader_builder->initStats();
+    RETURN_NOT_OK(stats_to_capnp(*stats, &stats_builder));
+  }
+
+  return Status::Ok();
+}
+
+Status dense_reader_to_capnp(
+    const Query& query,
+    const DenseReader& reader,
+    capnp::QueryReader::Builder* reader_builder) {
+  auto array_schema = query.array_schema();
+
+  // Subarray layout
+  const auto& layout = layout_str(query.layout());
+  reader_builder->setLayout(layout);
+
+  // Subarray
+  auto subarray_builder = reader_builder->initSubarray();
+  RETURN_NOT_OK(
+      subarray_to_capnp(array_schema, query.subarray(), &subarray_builder));
+
+  // Read state
+  RETURN_NOT_OK(
+      dense_read_state_to_capnp(array_schema, reader, reader_builder));
 
   const QueryCondition* condition = query.condition();
   if (!condition->empty()) {
@@ -793,6 +879,49 @@ Status index_reader_from_capnp(
   if (reader_reader.hasReadState())
     RETURN_NOT_OK(index_read_state_from_capnp(
         schema, reader_reader.getReadState(), reader));
+
+  // Query condition
+  if (reader_reader.hasCondition()) {
+    auto condition_reader = reader_reader.getCondition();
+    QueryCondition condition;
+    RETURN_NOT_OK(condition_from_capnp(condition_reader, &condition));
+    RETURN_NOT_OK(query->set_condition(condition));
+  }
+
+  // If cap'n proto object has stats set it on c++ object
+  if (reader_reader.hasStats()) {
+    stats::Stats* stats = reader->stats();
+    // We should always have a stats here
+    if (stats != nullptr) {
+      RETURN_NOT_OK(stats_from_capnp(reader_reader.getStats(), stats));
+    }
+  }
+
+  return Status::Ok();
+}
+
+Status dense_reader_from_capnp(
+    const ArraySchema* schema,
+    const capnp::QueryReader::Reader& reader_reader,
+    Query* query,
+    DenseReader* reader,
+    ThreadPool* compute_tp) {
+  auto array = query->array();
+
+  // Layout
+  Layout layout = Layout::ROW_MAJOR;
+  RETURN_NOT_OK(layout_enum(reader_reader.getLayout(), &layout));
+
+  // Subarray
+  Subarray subarray(array, layout, reader->stats(), false);
+  auto subarray_reader = reader_reader.getSubarray();
+  RETURN_NOT_OK(subarray_from_capnp(subarray_reader, &subarray));
+  RETURN_NOT_OK(query->set_subarray_unsafe(subarray));
+
+  // Read state
+  if (reader_reader.hasReadState())
+    RETURN_NOT_OK(dense_read_state_from_capnp(
+        array, reader_reader.getReadState(), query, reader, compute_tp));
 
   // Query condition
   if (reader_reader.hasCondition()) {
@@ -958,6 +1087,9 @@ Status query_to_capnp(Query& query, capnp::Query::Builder* query_builder) {
   query_builder->setTotalValidityBufferBytes(total_validity_len_bytes);
 
   if (type == QueryType::READ) {
+    bool all_dense = true;
+    for (auto& frag_md : array->fragment_metadata())
+      all_dense &= frag_md->dense();
     bool found = false;
     bool use_refactored_readers = false;
     RETURN_NOT_OK(query.config()->get<bool>(
@@ -984,6 +1116,15 @@ Status query_to_capnp(Query& query, capnp::Query::Builder* query_builder) {
           reader->offsets_extra_element());
       query_builder->setVarOffsetsBitsize(reader->offsets_bitsize());
       RETURN_NOT_OK(index_reader_to_capnp(query, *reader, &builder));
+    } else if (use_refactored_readers && all_dense && schema->dense()) {
+      auto builder = query_builder->initDenseReader();
+      auto reader = (DenseReader*)query.strategy();
+
+      query_builder->setVarOffsetsMode(reader->offsets_mode());
+      query_builder->setVarOffsetsAddExtraElement(
+          reader->offsets_extra_element());
+      query_builder->setVarOffsetsBitsize(reader->offsets_bitsize());
+      RETURN_NOT_OK(dense_reader_to_capnp(query, *reader, &builder));
     } else {
       auto builder = query_builder->initReader();
       auto reader = (Reader*)query.strategy();
@@ -1551,6 +1692,29 @@ Status query_from_capnp(
 
       RETURN_NOT_OK(
           index_reader_from_capnp(schema, reader_reader, query, reader));
+    } else if (query_reader.hasDenseReader()) {
+      // Strategy needs to be cleared here to create the correct reader.
+      query->clear_strategy();
+      RETURN_NOT_OK(query->set_layout_unsafe(layout));
+
+      auto reader_reader = query_reader.getDenseReader();
+      auto reader = (DenseReader*)query->strategy();
+
+      if (query_reader.hasVarOffsetsMode()) {
+        RETURN_NOT_OK(
+            reader->set_offsets_mode(query_reader.getVarOffsetsMode()));
+      }
+
+      RETURN_NOT_OK(reader->set_offsets_extra_element(
+          query_reader.getVarOffsetsAddExtraElement()));
+
+      if (query_reader.getVarOffsetsBitsize() > 0) {
+        RETURN_NOT_OK(
+            reader->set_offsets_bitsize(query_reader.getVarOffsetsBitsize()));
+      }
+
+      RETURN_NOT_OK(dense_reader_from_capnp(
+          schema, reader_reader, query, reader, compute_tp));
     } else {
       auto reader_reader = query_reader.getReader();
       auto reader = (Reader*)query->strategy();

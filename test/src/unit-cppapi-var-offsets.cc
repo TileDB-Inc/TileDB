@@ -1,5 +1,5 @@
 /**
- * @file   unit-var_offsets.cc
+ * @file   unit-cppapi-var-offsets.cc
  *
  * @section LICENSE
  *

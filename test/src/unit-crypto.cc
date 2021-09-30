@@ -39,7 +39,7 @@
 
 using namespace tiledb::sm;
 
-TEST_CASE("Crypto: Test AES-256-GCM", "[crypto], [aes]") {
+TEST_CASE("Crypto: Test AES-256-GCM", "[crypto][aes]") {
   SECTION("- Basic") {
     unsigned nelts = 123;
     Buffer input;
@@ -493,7 +493,7 @@ TEST_CASE("Crypto: Test AES-256-GCM", "[crypto], [aes]") {
   }
 }
 
-TEST_CASE("Crypto: Test MD5", "[crypto], [md5]") {
+TEST_CASE("Crypto: Test MD5", "[crypto][md5]") {
   SECTION("- Basic") {
     std::string expected_checksum = "e99a18c428cb38d5f260853678922e03";
     std::string text_to_checksum = "abc123";
@@ -516,7 +516,7 @@ TEST_CASE("Crypto: Test MD5", "[crypto], [md5]") {
   }
 }
 
-TEST_CASE("Crypto: Test SHA256", "[crypto], [sha256]") {
+TEST_CASE("Crypto: Test SHA256", "[crypto][sha256]") {
   SECTION("- Basic") {
     std::string expected_checksum =
         "6ca13d52ca70c883e0f0bb101e425a89e8624de51db2d2392593af6a84118090";

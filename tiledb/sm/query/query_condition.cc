@@ -820,6 +820,467 @@ Status QueryCondition::apply(
   return Status::Ok();
 }
 
+template <typename T, QueryConditionOp Op>
+void QueryCondition::apply_clause_dense(
+    const QueryCondition::Clause& clause,
+    ResultTile* result_tile,
+    const uint64_t start,
+    const uint64_t length,
+    const uint64_t src_cell,
+    const uint64_t stride,
+    const bool var_size,
+    const bool nullable,
+    const uint8_t previous_result_bitmask,
+    const uint8_t current_result_bitmask,
+    uint8_t* result_buffer) const {
+  const std::string& field_name = clause.field_name_;
+
+  // Get the nullable buffer.
+  const auto tile_tuple = result_tile->tile_tuple(field_name);
+  uint8_t* buffer_validity = nullptr;
+
+  if (nullable) {
+    const auto& tile_validity = std::get<2>(*tile_tuple);
+    buffer_validity =
+        static_cast<uint8_t*>(tile_validity.buffer()->data()) + src_cell;
+  }
+
+  if (var_size) {
+    // Get var data buffer and tile offsets buffer.
+    const auto& tile = std::get<1>(*tile_tuple);
+    const char* buffer = static_cast<char*>(tile.buffer()->data());
+    const uint64_t buffer_size = tile.size();
+
+    const auto& tile_offsets = std::get<0>(*tile_tuple);
+    const uint64_t* buffer_offsets =
+        static_cast<uint64_t*>(tile_offsets.buffer()->data()) + src_cell;
+    const uint64_t buffer_offsets_el =
+        tile_offsets.size() / constants::cell_var_offset_size;
+
+    // Iterate through each cell in this slab.
+    for (uint64_t c = 0; c < length; ++c) {
+      const uint64_t buffer_offset = buffer_offsets[start + c * stride];
+      const uint64_t next_cell_offset =
+          (start + c * stride + 1 < buffer_offsets_el) ?
+              buffer_offsets[start + c * stride + 1] :
+              buffer_size;
+      const uint64_t cell_size = next_cell_offset - buffer_offset;
+
+      const bool null_cell =
+          nullable && buffer_validity[start + c * stride] == 0;
+
+      // Get the cell value.
+      const void* const cell_value =
+          null_cell ? nullptr : buffer + buffer_offset;
+
+      // Compare the cell value against the value in the clause.
+      const bool cmp = BinaryCmp<T, Op>::cmp(
+          cell_value,
+          cell_size,
+          clause.condition_value_,
+          clause.condition_value_data_.size());
+
+      // Set the value.
+      if (cmp && (result_buffer[start + c] & previous_result_bitmask)) {
+        result_buffer[start + c] |= current_result_bitmask;
+      } else {
+        result_buffer[start + c] &= ~(current_result_bitmask);
+      }
+    }
+  } else {
+    // Get the fixed size data buffers.
+    const auto& tile = std::get<0>(*tile_tuple);
+    const char* buffer = static_cast<char*>(tile.buffer()->data());
+    const uint64_t cell_size = tile.cell_size();
+    uint64_t buffer_offset = (start + src_cell) * cell_size;
+    const uint64_t buffer_offset_inc = stride * cell_size;
+
+    // Iterate through each cell in this slab.
+    for (uint64_t c = 0; c < length; ++c) {
+      const bool null_cell =
+          nullable && buffer_validity[start + c * stride] == 0;
+
+      // Get the cell value.
+      const void* const cell_value =
+          null_cell ? nullptr : buffer + buffer_offset;
+      buffer_offset += buffer_offset_inc;
+
+      // Compare the cell value against the value in the clause.
+      const bool cmp = BinaryCmp<T, Op>::cmp(
+          cell_value,
+          cell_size,
+          clause.condition_value_,
+          clause.condition_value_data_.size());
+
+      // Set the value.
+      if (cmp && (result_buffer[start + c] & previous_result_bitmask)) {
+        result_buffer[start + c] |= current_result_bitmask;
+      } else {
+        result_buffer[start + c] &= ~(current_result_bitmask);
+      }
+    }
+  }
+}
+
+template <typename T>
+Status QueryCondition::apply_clause_dense(
+    const Clause& clause,
+    ResultTile* result_tile,
+    const uint64_t start,
+    const uint64_t length,
+    const uint64_t src_cell,
+    const uint64_t stride,
+    const bool var_size,
+    const bool nullable,
+    const uint8_t previous_result_bitmask,
+    const uint8_t current_result_bitmask,
+    uint8_t* result_buffer) const {
+  switch (clause.op_) {
+    case QueryConditionOp::LT:
+      apply_clause_dense<T, QueryConditionOp::LT>(
+          clause,
+          result_tile,
+          start,
+          length,
+          src_cell,
+          stride,
+          var_size,
+          nullable,
+          previous_result_bitmask,
+          current_result_bitmask,
+          result_buffer);
+      break;
+    case QueryConditionOp::LE:
+      apply_clause_dense<T, QueryConditionOp::LE>(
+          clause,
+          result_tile,
+          start,
+          length,
+          src_cell,
+          stride,
+          var_size,
+          nullable,
+          previous_result_bitmask,
+          current_result_bitmask,
+          result_buffer);
+      break;
+    case QueryConditionOp::GT:
+      apply_clause_dense<T, QueryConditionOp::GT>(
+          clause,
+          result_tile,
+          start,
+          length,
+          src_cell,
+          stride,
+          var_size,
+          nullable,
+          previous_result_bitmask,
+          current_result_bitmask,
+          result_buffer);
+      break;
+    case QueryConditionOp::GE:
+      apply_clause_dense<T, QueryConditionOp::GE>(
+          clause,
+          result_tile,
+          start,
+          length,
+          src_cell,
+          stride,
+          var_size,
+          nullable,
+          previous_result_bitmask,
+          current_result_bitmask,
+          result_buffer);
+      break;
+    case QueryConditionOp::EQ:
+      apply_clause_dense<T, QueryConditionOp::EQ>(
+          clause,
+          result_tile,
+          start,
+          length,
+          src_cell,
+          stride,
+          var_size,
+          nullable,
+          previous_result_bitmask,
+          current_result_bitmask,
+          result_buffer);
+      break;
+    case QueryConditionOp::NE:
+      apply_clause_dense<T, QueryConditionOp::NE>(
+          clause,
+          result_tile,
+          start,
+          length,
+          src_cell,
+          stride,
+          var_size,
+          nullable,
+          previous_result_bitmask,
+          current_result_bitmask,
+          result_buffer);
+      break;
+    default:
+      return Status::QueryConditionError(
+          "Cannot perform query comparison; Unknown query "
+          "condition operator");
+  }
+
+  return Status::Ok();
+}
+
+Status QueryCondition::apply_clause_dense(
+    const QueryCondition::Clause& clause,
+    const ArraySchema* const array_schema,
+    ResultTile* result_tile,
+    const uint64_t start,
+    const uint64_t length,
+    const uint64_t src_cell,
+    const uint64_t stride,
+    const uint8_t previous_result_bitmask,
+    const uint8_t current_result_bitmask,
+    uint8_t* result_buffer) const {
+  const Attribute* const attribute =
+      array_schema->attribute(clause.field_name_);
+  if (!attribute) {
+    return Status::QueryConditionError(
+        "Unknown attribute " + clause.field_name_);
+  }
+
+  const bool var_size = attribute->var_size();
+  const bool nullable = attribute->nullable();
+  switch (attribute->type()) {
+    case Datatype::INT8:
+      return apply_clause_dense<int8_t>(
+          clause,
+          result_tile,
+          start,
+          length,
+          src_cell,
+          stride,
+          var_size,
+          nullable,
+          previous_result_bitmask,
+          current_result_bitmask,
+          result_buffer);
+    case Datatype::UINT8:
+      return apply_clause_dense<uint8_t>(
+          clause,
+          result_tile,
+          start,
+          length,
+          src_cell,
+          stride,
+          var_size,
+          nullable,
+          previous_result_bitmask,
+          current_result_bitmask,
+          result_buffer);
+    case Datatype::INT16:
+      return apply_clause_dense<int16_t>(
+          clause,
+          result_tile,
+          start,
+          length,
+          src_cell,
+          stride,
+          var_size,
+          nullable,
+          previous_result_bitmask,
+          current_result_bitmask,
+          result_buffer);
+    case Datatype::UINT16:
+      return apply_clause_dense<uint16_t>(
+          clause,
+          result_tile,
+          start,
+          length,
+          src_cell,
+          stride,
+          var_size,
+          nullable,
+          previous_result_bitmask,
+          current_result_bitmask,
+          result_buffer);
+    case Datatype::INT32:
+      return apply_clause_dense<int32_t>(
+          clause,
+          result_tile,
+          start,
+          length,
+          src_cell,
+          stride,
+          var_size,
+          nullable,
+          previous_result_bitmask,
+          current_result_bitmask,
+          result_buffer);
+    case Datatype::UINT32:
+      return apply_clause_dense<uint32_t>(
+          clause,
+          result_tile,
+          start,
+          length,
+          src_cell,
+          stride,
+          var_size,
+          nullable,
+          previous_result_bitmask,
+          current_result_bitmask,
+          result_buffer);
+    case Datatype::INT64:
+      return apply_clause_dense<int64_t>(
+          clause,
+          result_tile,
+          start,
+          length,
+          src_cell,
+          stride,
+          var_size,
+          nullable,
+          previous_result_bitmask,
+          current_result_bitmask,
+          result_buffer);
+    case Datatype::UINT64:
+      return apply_clause_dense<uint64_t>(
+          clause,
+          result_tile,
+          start,
+          length,
+          src_cell,
+          stride,
+          var_size,
+          nullable,
+          previous_result_bitmask,
+          current_result_bitmask,
+          result_buffer);
+    case Datatype::FLOAT32:
+      return apply_clause_dense<float>(
+          clause,
+          result_tile,
+          start,
+          length,
+          src_cell,
+          stride,
+          var_size,
+          nullable,
+          previous_result_bitmask,
+          current_result_bitmask,
+          result_buffer);
+    case Datatype::FLOAT64:
+      return apply_clause_dense<double>(
+          clause,
+          result_tile,
+          start,
+          length,
+          src_cell,
+          stride,
+          var_size,
+          nullable,
+          previous_result_bitmask,
+          current_result_bitmask,
+          result_buffer);
+    case Datatype::STRING_ASCII:
+      return apply_clause_dense<char*>(
+          clause,
+          result_tile,
+          start,
+          length,
+          src_cell,
+          stride,
+          var_size,
+          nullable,
+          previous_result_bitmask,
+          current_result_bitmask,
+          result_buffer);
+    case Datatype::CHAR:
+      return apply_clause_dense<char>(
+          clause,
+          result_tile,
+          start,
+          length,
+          src_cell,
+          stride,
+          var_size,
+          nullable,
+          previous_result_bitmask,
+          current_result_bitmask,
+          result_buffer);
+    case Datatype::DATETIME_YEAR:
+    case Datatype::DATETIME_MONTH:
+    case Datatype::DATETIME_WEEK:
+    case Datatype::DATETIME_DAY:
+    case Datatype::DATETIME_HR:
+    case Datatype::DATETIME_MIN:
+    case Datatype::DATETIME_SEC:
+    case Datatype::DATETIME_MS:
+    case Datatype::DATETIME_US:
+    case Datatype::DATETIME_NS:
+    case Datatype::DATETIME_PS:
+    case Datatype::DATETIME_FS:
+    case Datatype::DATETIME_AS:
+      return apply_clause_dense<int64_t>(
+          clause,
+          result_tile,
+          start,
+          length,
+          src_cell,
+          stride,
+          var_size,
+          nullable,
+          previous_result_bitmask,
+          current_result_bitmask,
+          result_buffer);
+    case Datatype::ANY:
+    case Datatype::STRING_UTF8:
+    case Datatype::STRING_UTF16:
+    case Datatype::STRING_UTF32:
+    case Datatype::STRING_UCS2:
+    case Datatype::STRING_UCS4:
+    default:
+      return Status::QueryConditionError(
+          "Cannot perform query comparison; Unsupported query "
+          "conditional type on " +
+          clause.field_name_);
+  }
+
+  return Status::Ok();
+}
+
+template <typename T>
+Status QueryCondition::apply_dense(
+    const ArraySchema* const array_schema,
+    ResultTile* result_tile,
+    const uint64_t start,
+    const uint64_t length,
+    const uint64_t src_cell,
+    const uint64_t stride,
+    uint8_t* result_buffer) {
+  uint8_t previous_result_bitmask = clauses_.size() % 2 == 1 ? 0x2 : 0x1;
+  uint8_t current_result_bitmask = clauses_.size() % 2 == 1 ? 0x1 : 0x2;
+
+  // Iterate through each clause.
+  // This assumes all clauses are combined with a logical "AND".
+  for (const auto& clause : clauses_) {
+    RETURN_NOT_OK(apply_clause_dense(
+        clause,
+        array_schema,
+        result_tile,
+        start,
+        length,
+        src_cell,
+        stride,
+        previous_result_bitmask,
+        current_result_bitmask,
+        result_buffer));
+
+    // Switch the result bitmasks for the next condition.
+    std::swap(previous_result_bitmask, current_result_bitmask);
+  }
+
+  return Status::Ok();
+}
+
 void QueryCondition::set_clauses(std::vector<Clause>&& clauses) {
   clauses_ = std::move(clauses);
 }
@@ -837,6 +1298,72 @@ std::vector<QueryConditionCombinationOp> QueryCondition::combination_ops()
     const {
   return combination_ops_;
 }
+
+// Explicit template instantiations.
+template Status QueryCondition::apply_dense<int8_t>(
+    const ArraySchema* const,
+    ResultTile*,
+    const uint64_t,
+    const uint64_t,
+    const uint64_t,
+    const uint64_t,
+    uint8_t*);
+template Status QueryCondition::apply_dense<uint8_t>(
+    const ArraySchema* const,
+    ResultTile*,
+    const uint64_t,
+    const uint64_t,
+    const uint64_t,
+    const uint64_t,
+    uint8_t*);
+template Status QueryCondition::apply_dense<int16_t>(
+    const ArraySchema* const,
+    ResultTile*,
+    const uint64_t,
+    const uint64_t,
+    const uint64_t,
+    const uint64_t,
+    uint8_t*);
+template Status QueryCondition::apply_dense<uint16_t>(
+    const ArraySchema* const,
+    ResultTile*,
+    const uint64_t,
+    const uint64_t,
+    const uint64_t,
+    const uint64_t,
+    uint8_t*);
+template Status QueryCondition::apply_dense<int32_t>(
+    const ArraySchema* const,
+    ResultTile*,
+    const uint64_t,
+    const uint64_t,
+    const uint64_t,
+    const uint64_t,
+    uint8_t*);
+template Status QueryCondition::apply_dense<uint32_t>(
+    const ArraySchema* const,
+    ResultTile*,
+    const uint64_t,
+    const uint64_t,
+    const uint64_t,
+    const uint64_t,
+    uint8_t*);
+template Status QueryCondition::apply_dense<int64_t>(
+    const ArraySchema* const,
+    ResultTile*,
+    const uint64_t,
+    const uint64_t,
+    const uint64_t,
+    const uint64_t,
+    uint8_t*);
+template Status QueryCondition::apply_dense<uint64_t>(
+    const ArraySchema* const,
+    ResultTile*,
+    const uint64_t,
+    const uint64_t,
+    const uint64_t,
+    const uint64_t,
+    uint8_t*);
 
 }  // namespace sm
 }  // namespace tiledb

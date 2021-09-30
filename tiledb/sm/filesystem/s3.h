@@ -794,7 +794,7 @@ class S3 {
    * Writes the input buffer to a file by issuing one or more multipart upload
    * requests. If the file does not exist, then it is created. If the file
    * exists then it is appended to. This command will upload chunks of an
-   * in-progress write each time the parallelisation buffer size is exceeded
+   * in-progress write each time the parallelization buffer size is exceeded
    * (calculated as product of  `multipart_part_size`` * ``max_parallel_ops``
    *  configuration options).
    *

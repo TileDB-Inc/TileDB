@@ -38,6 +38,7 @@
 #include "tiledb/sm/enums/query_status.h"
 #include "tiledb/sm/enums/query_type.h"
 #include "tiledb/sm/fragment/fragment_metadata.h"
+#include "tiledb/sm/query/dense_reader.h"
 #include "tiledb/sm/query/query_condition.h"
 #include "tiledb/sm/query/reader.h"
 #include "tiledb/sm/query/sparse_global_order_reader.h"
@@ -1039,6 +1040,24 @@ Status Query::create_strategy() {
             subarray_,
             layout_,
             condition_));
+      } else if (array_schema_->dense()) {
+        bool all_dense = true;
+        for (auto& frag_md : fragment_metadata_)
+          all_dense &= frag_md->dense();
+
+        if (all_dense) {
+          use_default = false;
+          strategy_ = tdb_unique_ptr<IQueryStrategy>(tdb_new(
+              DenseReader,
+              stats_->create_child("Reader"),
+              storage_manager_,
+              array_,
+              config_,
+              buffers_,
+              subarray_,
+              layout_,
+              condition_));
+        }
       }
     }
 

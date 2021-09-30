@@ -1209,12 +1209,17 @@ void SmokeTestFx::smoke_test(
   vector<uint64_t> cell_idx_vec;
 
   // Check the read values on "a".
+  uint64_t non_null_cells = 0;
   for (uint64_t i = 0; i < cells_read; ++i) {
     const int32_t cell_value = ((int32_t*)a_read_buffer)[i];
-    REQUIRE(expected_a_values_read[cell_value]);
 
-    // We expect to read a unique cell value exactly once.
-    expected_a_values_read[cell_value] = false;
+    if (cell_value != std::numeric_limits<int32_t>::min()) {
+      non_null_cells++;
+      REQUIRE(expected_a_values_read[cell_value]);
+
+      // We expect to read a unique cell value exactly once.
+      expected_a_values_read[cell_value] = false;
+    }
 
     // The cell value is the cell index in the write buffers.
     cell_idx_vec.emplace_back(cell_value);
@@ -1223,15 +1228,27 @@ void SmokeTestFx::smoke_test(
   // Check the read on "b".
   if (test_attrs.size() >= 2) {
     const uint64_t type_size = tiledb_datatype_size(test_attrs[1].type_);
-    REQUIRE(b_read_buffer_size == 2 * cells_read * type_size);
+
+    // Null cells will have the fill value of length 1,
+    // others the value of length 2.
+    auto expected_size =
+        (cells_read - non_null_cells + 2 * non_null_cells) * type_size;
+    REQUIRE(b_read_buffer_size == expected_size);
     for (uint64_t i = 0; i < cells_read; ++i) {
-      const uint64_t write_i = cell_idx_vec[i];
-      REQUIRE(
-          ((int32_t*)b_read_buffer)[(i * 2)] ==
-          ((int32_t*)b_write_buffer)[(write_i * 2)]);
-      REQUIRE(
-          ((int32_t*)b_read_buffer)[(i * 2) + 1] ==
-          ((int32_t*)b_write_buffer)[(write_i * 2) + 1]);
+      auto offset = b_read_buffer_offset[i] / type_size;
+      if (((int32_t*)a_read_buffer)[i] == std::numeric_limits<int32_t>::min()) {
+        REQUIRE(
+            ((int32_t*)b_read_buffer)[offset] ==
+            std::numeric_limits<int32_t>::min());
+      } else {
+        const uint64_t write_i = cell_idx_vec[i];
+        REQUIRE(
+            ((int32_t*)b_read_buffer)[offset] ==
+            ((int32_t*)b_write_buffer)[(write_i * 2)]);
+        REQUIRE(
+            ((int32_t*)b_read_buffer)[offset + 1] ==
+            ((int32_t*)b_write_buffer)[(write_i * 2) + 1]);
+      }
     }
   }
 

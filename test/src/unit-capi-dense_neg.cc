@@ -507,7 +507,7 @@ void DenseNegFx::read_dense_array_col(const std::string& path) {
 TEST_CASE_METHOD(
     DenseNegFx,
     "C API: Test 1d dense vector with negative domain",
-    "[capi], [dense-neg], [dense-neg-vector]") {
+    "[capi][dense-neg][dense-neg-vector]") {
   SupportedFsLocal local_fs;
   std::string vector_name =
       local_fs.file_prefix() + local_fs.temp_dir() + "dense_neg_vector";
@@ -523,7 +523,7 @@ TEST_CASE_METHOD(
 TEST_CASE_METHOD(
     DenseNegFx,
     "C API: Test 2d dense array with negative domain",
-    "[capi], [dense-neg], [dense-neg-array]") {
+    "[capi][dense-neg][dense-neg-array]") {
   SupportedFsLocal local_fs;
   std::string vector_name =
       local_fs.file_prefix() + local_fs.temp_dir() + "dense_neg_array";
