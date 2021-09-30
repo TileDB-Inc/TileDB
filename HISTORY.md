@@ -37,7 +37,7 @@
 * Use newer Azure patch for all platforms to solve missing header error [#2433](https://github.com/TileDB-Inc/TileDB/pull/2433)
 * increased diag output for differences reported by tiledb_unit (some of which may be reasonable) [#2437](https://github.com/TileDB-Inc/TileDB/pull/2437)
 * Adjustments to schema evolution new attribute reads [#2484](https://github.com/TileDB-Inc/TileDB/pull/2484)
-* Change `Quickstart` link in readthedocs/doxygen index.rst` [#2448](https://github.com/TileDB-Inc/TileDB/pull/2448)
+* Change `Quickstart` link in readthedocs/doxygen `index.rst` [#2448](https://github.com/TileDB-Inc/TileDB/pull/2448)
 * Initial sparse unordered with duplicates reader. [#2441](https://github.com/TileDB-Inc/TileDB/pull/2441)
 * Add calls to `malloc_trim` on context and query destruction linux to potentially reduce idle memory usage [#2443](https://github.com/TileDB-Inc/TileDB/pull/2443)
 * Add logger internals for `std::string` and `std::stringstream` for developer convenience [#2454](https://github.com/TileDB-Inc/TileDB/pull/2454)
