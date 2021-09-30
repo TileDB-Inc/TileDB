@@ -517,6 +517,9 @@ struct Query {
 
     readerIndex @15 :ReaderIndex;
     # readerIndex contains data needed for continuation of incomplete sparse reads with index readers
+
+    denseReader @16 :QueryReader;
+    # denseReader contains data needed for continuation of incomplete dense reads with dense reader
 }
 
 struct NonEmptyDomain {

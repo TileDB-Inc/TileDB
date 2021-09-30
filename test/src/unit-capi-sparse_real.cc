@@ -422,7 +422,7 @@ void SparseRealFx::create_sparse_array_double(const std::string& path) {
 TEST_CASE_METHOD(
     SparseRealFx,
     "C API: Test 2d sparse array with real domain",
-    "[capi], [sparse-real]") {
+    "[capi][sparse-real]") {
   SupportedFsLocal local_fs;
   std::string vector_name =
       local_fs.file_prefix() + local_fs.temp_dir() + "sparse_real";

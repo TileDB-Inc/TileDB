@@ -39,7 +39,7 @@
 #include "tiledb/sm/filesystem/posix.h"
 #endif
 
-TEST_CASE("C++ API: Test VFS ls", "[cppapi], [cppapi-vfs], [cppapi-vfs-ls]") {
+TEST_CASE("C++ API: Test VFS ls", "[cppapi][cppapi-vfs][cppapi-vfs-ls]") {
   using namespace tiledb;
   Context ctx;
   VFS vfs(ctx);
@@ -96,8 +96,7 @@ TEST_CASE("C++ API: Test VFS ls", "[cppapi], [cppapi-vfs], [cppapi-vfs-ls]") {
 }
 
 TEST_CASE(
-    "C++ API: Test VFS dir size",
-    "[cppapi], [cppapi-vfs], [cppapi-vfs-dir-size]") {
+    "C++ API: Test VFS dir size", "[cppapi][cppapi-vfs][cppapi-vfs-dir-size]") {
   using namespace tiledb;
   Context ctx;
   VFS vfs(ctx);
@@ -170,7 +169,7 @@ TEST_CASE(
 
 TEST_CASE(
     "C++ API: Test VFS copy file",
-    "[cppapi], [cppapi-vfs], [cppapi-vfs-copy-file]") {
+    "[cppapi][cppapi-vfs][cppapi-vfs-copy-file]") {
   using namespace tiledb;
   Context ctx;
   VFS vfs(ctx);
@@ -235,7 +234,7 @@ TEST_CASE(
 
 TEST_CASE(
     "C++ API: Test VFS copy directory",
-    "[cppapi], [cppapi-vfs], [cppapi-vfs-copy-dir]") {
+    "[cppapi][cppapi-vfs][cppapi-vfs-copy-dir]") {
   using namespace tiledb;
   Context ctx;
   VFS vfs(ctx);

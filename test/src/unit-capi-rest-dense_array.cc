@@ -1286,7 +1286,7 @@ std::string DenseArrayRESTFx::random_name(const std::string& prefix) {
 TEST_CASE_METHOD(
     DenseArrayRESTFx,
     "C API: REST Test dense array, sorted reads",
-    "[capi], [dense], [rest]") {
+    "[capi][dense][rest]") {
   // TODO: refactor for each supported FS.
   std::string temp_dir = fs_vec_[0]->temp_dir();
   create_temp_dir(temp_dir);
@@ -1297,7 +1297,7 @@ TEST_CASE_METHOD(
 TEST_CASE_METHOD(
     DenseArrayRESTFx,
     "C API: REST Test dense array, sorted writes",
-    "[capi], [dense], [rest]") {
+    "[capi][dense][rest]") {
   // TODO: refactor for each supported FS.
   std::string temp_dir = fs_vec_[0]->temp_dir();
   create_temp_dir(temp_dir);
@@ -1308,7 +1308,7 @@ TEST_CASE_METHOD(
 TEST_CASE_METHOD(
     DenseArrayRESTFx,
     "C API: REST Test dense array, simultaneous writes",
-    "[capi], [dense], [rest], [dense-simultaneous-writes]") {
+    "[capi][dense][rest][dense-simultaneous-writes]") {
   // TODO: refactor for each supported FS.
   SupportedFsLocal local_fs;
   std::string temp_dir = local_fs.file_prefix() + local_fs.temp_dir();
@@ -1389,7 +1389,7 @@ TEST_CASE_METHOD(
 TEST_CASE_METHOD(
     DenseArrayRESTFx,
     "C API: REST Test dense array, missing attributes in writes",
-    "[capi], [dense], [rest], [dense-write-missing-attributes]") {
+    "[capi][dense]][rest][dense-write-missing-attributes]") {
   SupportedFsLocal local_fs;
   std::string temp_dir = local_fs.file_prefix() + local_fs.temp_dir();
   std::string array_name =
@@ -1403,7 +1403,7 @@ TEST_CASE_METHOD(
 TEST_CASE_METHOD(
     DenseArrayRESTFx,
     "C API: REST Test dense array, read subarrays with empty cells",
-    "[capi], [dense], [rest], [dense-read-empty]") {
+    "[capi][dense][rest][dense-read-empty]") {
   SupportedFsLocal local_fs;
   std::string temp_dir = local_fs.file_prefix() + local_fs.temp_dir();
   std::string array_name = TILEDB_URI_PREFIX + temp_dir + "dense_read_empty/";
@@ -1487,7 +1487,7 @@ TEST_CASE_METHOD(
     DenseArrayRESTFx,
     "C API: REST Test dense array, read subarrays with empty areas, merging "
     "adjacent cell ranges",
-    "[capi], [dense], [rest], [dense-read-empty], [dense-read-empty-merge]") {
+    "[capi][dense][rest][dense-read-empty][dense-read-empty-merge]") {
   SupportedFsLocal local_fs;
   std::string temp_dir = local_fs.file_prefix() + local_fs.temp_dir();
   std::string array_name =
@@ -1571,7 +1571,7 @@ TEST_CASE_METHOD(
 TEST_CASE_METHOD(
     DenseArrayRESTFx,
     "C API: REST Test dense array, multi-fragment reads",
-    "[capi], [dense], [rest], [dense-multi-fragment]") {
+    "[capi][dense][rest][dense-multi-fragment]") {
   SupportedFsLocal local_fs;
   std::string temp_dir = local_fs.file_prefix() + local_fs.temp_dir();
   std::string array_name =
@@ -1677,7 +1677,7 @@ TEST_CASE_METHOD(
 TEST_CASE_METHOD(
     DenseArrayRESTFx,
     "C API: REST Test dense array, check if open",
-    "[capi], [dense], [rest], [dense-is-open]") {
+    "[capi][dense][rest][dense-is-open]") {
   SupportedFsLocal local_fs;
   std::string temp_dir = local_fs.file_prefix() + local_fs.temp_dir();
   std::string array_name = TILEDB_URI_PREFIX + temp_dir + "dense_is_open/";
@@ -1715,7 +1715,7 @@ TEST_CASE_METHOD(
 TEST_CASE_METHOD(
     DenseArrayRESTFx,
     "C API: REST Test dense array, get schema from opened array",
-    "[capi], [dense], [rest], [dense-get-schema]") {
+    "[capi][dense][rest][dense-get-schema]") {
   SupportedFsLocal local_fs;
   std::string temp_dir = local_fs.file_prefix() + local_fs.temp_dir();
   std::string array_name = TILEDB_URI_PREFIX + temp_dir + "dense_get_schema/";
@@ -1748,7 +1748,7 @@ TEST_CASE_METHOD(
 TEST_CASE_METHOD(
     DenseArrayRESTFx,
     "C API: REST Test dense array, set subarray in sparse writes should error",
-    "[capi], [dense], [rest], [dense-set-subarray-sparse]") {
+    "[capi][dense][rest][dense-set-subarray-sparse]") {
   SupportedFsLocal local_fs;
   std::string array_name = TILEDB_URI_PREFIX + local_fs.file_prefix() +
                            local_fs.temp_dir() + "dense_set_subarray_sparse";
@@ -1793,7 +1793,7 @@ TEST_CASE_METHOD(
 TEST_CASE_METHOD(
     DenseArrayRESTFx,
     "C API: REST Test dense array, incomplete reads",
-    "[capi], [dense], [rest], [incomplete]") {
+    "[capi][dense][rest][incomplete]") {
   // Disable incomplete resubmission
   tiledb_ctx_free(&ctx_);
   tiledb_error_t* error;
@@ -1834,7 +1834,7 @@ TEST_CASE_METHOD(
 TEST_CASE_METHOD(
     DenseArrayRESTFx,
     "C API: REST Test dense array, get nonempty domain",
-    "[capi], [dense], [rest]") {
+    "[capi][dense][rest]") {
   // Parameters used in this test
   int64_t domain_size_0 = 100;
   int64_t domain_size_1 = 100;
@@ -1928,7 +1928,7 @@ TEST_CASE_METHOD(
 TEST_CASE_METHOD(
     DenseArrayRESTFx,
     "C API: REST Test dense array, get max buffer sizes",
-    "[capi], [dense], [rest]") {
+    "[capi][dense][rest]") {
   SupportedFsLocal local_fs;
   std::string array_name = TILEDB_URI_PREFIX + local_fs.file_prefix() +
                            local_fs.temp_dir() + "max_buffer_sizes_array";
@@ -1963,7 +1963,7 @@ TEST_CASE_METHOD(
 TEST_CASE_METHOD(
     DenseArrayRESTFx,
     "C API: REST Test dense array, error without rest server configured",
-    "[capi], [dense], [rest], [dense-set-subarray-sparse]") {
+    "[capi][dense][rest][dense-set-subarray-sparse]") {
   SupportedFsLocal local_fs;
   std::string array_name = TILEDB_URI_PREFIX + local_fs.file_prefix() +
                            local_fs.temp_dir() + "dense_set_subarray_sparse";

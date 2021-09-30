@@ -984,7 +984,7 @@ TEST_CASE_METHOD(
 TEST_CASE_METHOD(
     ArraySchemaFx,
     "C API: Test array schema one anonymous dimension",
-    "[capi], [array-schema]") {
+    "[capi][array-schema]") {
   // Create dimensions
   tiledb_dimension_t* d1;
   int rc = tiledb_dimension_alloc(
@@ -1036,7 +1036,7 @@ TEST_CASE_METHOD(
 TEST_CASE_METHOD(
     ArraySchemaFx,
     "C API: Test array schema with invalid float dense domain",
-    "[capi], [array-schema]") {
+    "[capi][array-schema]") {
   // Create array schema
   tiledb_array_schema_t* array_schema;
   int rc = tiledb_array_schema_alloc(ctx_, TILEDB_DENSE, &array_schema);
@@ -1356,7 +1356,7 @@ TEST_CASE_METHOD(
 TEST_CASE_METHOD(
     ArraySchemaFx,
     "C API: Test array schema load error condition",
-    "[capi], [array-schema]") {
+    "[capi][array-schema]") {
   SECTION("- No serialization") {
     serialize_array_schema_ = false;
   }
@@ -1942,7 +1942,7 @@ TEST_CASE_METHOD(
 TEST_CASE_METHOD(
     ArraySchemaFx,
     "C API: Test array schema attribute drop",
-    "[capi], [array-schema], [attribute-drop]") {
+    "[capi][array-schema][attribute-drop]") {
   // Create array schema
   tiledb_array_schema_t* array_schema;
   int rc = tiledb_array_schema_alloc(ctx_, TILEDB_SPARSE, &array_schema);
@@ -2075,7 +2075,7 @@ TEST_CASE_METHOD(
 TEST_CASE_METHOD(
     ArraySchemaFx,
     "C API: Test array schema attribute drop and add",
-    "[capi], [array-schema], [attribute-drop], [attribute-add]") {
+    "[capi][array-schema][attribute-drop][attribute-add]") {
   // Create array schema
   tiledb_array_schema_t* array_schema;
   int rc = tiledb_array_schema_alloc(ctx_, TILEDB_SPARSE, &array_schema);

@@ -34,7 +34,7 @@
 #include "catch.hpp"
 #include "tiledb/sm/c_api/tiledb.h"
 
-TEST_CASE("C API: Test buffer", "[capi], [buffer]") {
+TEST_CASE("C API: Test buffer", "[capi][buffer]") {
   tiledb_ctx_t* ctx;
   REQUIRE(tiledb_ctx_alloc(nullptr, &ctx) == TILEDB_OK);
   tiledb_buffer_t* buffer;

@@ -35,7 +35,6 @@
 
 #include "tiledb/common/status.h"
 #include "tiledb/sm/array_schema/dimension.h"
-#include "tiledb/sm/array_schema/tile_domain.h"
 #include "tiledb/sm/misc/types.h"
 #include "tiledb/sm/query/iquery_strategy.h"
 #include "tiledb/sm/query/query_buffer.h"
@@ -43,7 +42,6 @@
 #include "tiledb/sm/query/reader_base.h"
 #include "tiledb/sm/query/result_cell_slab.h"
 #include "tiledb/sm/query/result_coords.h"
-#include "tiledb/sm/query/result_space_tile.h"
 #include "tiledb/sm/subarray/subarray_partitioner.h"
 
 using namespace tiledb::common;
@@ -58,51 +56,6 @@ class Tile;
 /** Processes read queries. */
 class Reader : public ReaderBase, public IQueryStrategy {
  public:
-  /* ********************************* */
-  /*          TYPE DEFINITIONS         */
-  /* ********************************* */
-
-  /** The state for a read query. */
-  struct ReadState {
-    /**
-     * True if the query led to a result that does not fit in
-     * the user buffers.
-     */
-    bool overflowed_ = false;
-
-    /** The subarray partitioner. */
-    SubarrayPartitioner partitioner_;
-
-    /**
-     * ``true`` if the next partition cannot be retrieved from the
-     * partitioner, because it reaches a partition that is unsplittable.
-     */
-    bool unsplittable_ = false;
-
-    /** True if the reader has been initialized. */
-    bool initialized_ = false;
-
-    /** ``true`` if there are no more partitions. */
-    bool done() const {
-      return partitioner_.done();
-    }
-
-    /** Retrieves the next partition from the partitioner. */
-    Status next() {
-      return partitioner_.next(&unsplittable_);
-    }
-
-    /**
-     * Splits the current partition and updates the state, retrieving
-     * a new current partition. This function is typically called
-     * by the reader when the current partition was estimated to fit
-     * the results, but that was not eventually true.
-     */
-    Status split_current() {
-      return partitioner_.split_current(&unsplittable_);
-    }
-  };
-
   /* ********************************* */
   /*     CONSTRUCTORS & DESTRUCTORS    */
   /* ********************************* */
@@ -152,38 +105,6 @@ class Reader : public ReaderBase, public IQueryStrategy {
 
   /** Resets the reader object. */
   void reset();
-
-  /* ********************************* */
-  /*          STATIC FUNCTIONS         */
-  /* ********************************* */
-
-  /**
-   * Computes a mapping (tile coordinates) -> (result space tile).
-   * The produced result space tiles will contain information only
-   * about fragments that will contribute results. Specifically, if
-   * a fragment is completely covered by a more recent fragment
-   * in a particular space tile, then it will certainly not contribute
-   * results and, thus, no information about that fragment is included
-   * in the space tile.
-   *
-   * @tparam T The datatype of the tile domains.
-   * @param domain The array domain
-   * @param tile_coords The unique coordinates of the tiles that intersect
-   *     a subarray.
-   * @param array_tile_domain The array tile domain.
-   * @param frag_tile_domains The tile domains of each fragment. These
-   *     are assumed to be ordered from the most recent to the oldest
-   *     fragment.
-   * @param result_space_tiles The result space tiles to be produced
-   *     by the function.
-   */
-  template <class T>
-  static void compute_result_space_tiles(
-      const Domain* domain,
-      const std::vector<std::vector<uint8_t>>& tile_coords,
-      const TileDomain<T>& array_tile_domain,
-      const std::vector<TileDomain<T>>& frag_tile_domains,
-      std::map<const T*, ResultSpaceTile<T>>* result_space_tiles);
 
   /**
    * Computes the result cell slabs for the input subarray, given the
@@ -419,18 +340,6 @@ class Reader : public ReaderBase, public IQueryStrategy {
       std::vector<bool>* single_fragment);
 
   /**
-   * Computes the result space tiles based on the input subarray.
-   *
-   * @tparam T The domain datatype.
-   * @param subarray The input subarray.
-   * @param result_space_tiles The result space tiles to be computed.
-   */
-  template <class T>
-  void compute_result_space_tiles(
-      const Subarray& subarray,
-      std::map<const T*, ResultSpaceTile<T>>* result_space_tiles) const;
-
-  /**
    * Computes the result coordinates from the sparse fragments.
    *
    * @param result_tiles This will store the unique result tiles.
@@ -462,124 +371,6 @@ class Reader : public ReaderBase, public IQueryStrategy {
   Status dense_read();
 
   /**
-   * Fills the coordinate buffer with coordinates. Applicable only to dense
-   * arrays when the user explicitly requests the coordinates to be
-   * materialized.
-   *
-   * @tparam T The domain type.
-   * @param subarray The input subarray.
-   * @return Status
-   */
-  template <class T>
-  Status fill_dense_coords(const Subarray& subarray);
-
-  /**
-   * Fills the coordinate buffers with coordinates. Applicable only to dense
-   * arrays when the user explicitly requests the coordinates to be
-   * materialized. Also applicable only to global order.
-   *
-   * @tparam T The domain type.
-   * @param subarray The input subarray.
-   * @param dim_idx The dimension indices of the corresponding `buffers`.
-   *     For the special zipped coordinates, `dim_idx`, `buffers` and `offsets`
-   *     contain a single element and `dim_idx` contains `dim_num` as
-   *     the dimension index.
-   * @param buffers The buffers to copy from. It could be the special
-   *     zipped coordinates or separate coordinate buffers.
-   * @param offsets The offsets that will be used eventually to update
-   *     the buffer sizes, determining the useful results written in
-   *     the buffers.
-   * @return Status
-   */
-  template <class T>
-  Status fill_dense_coords_global(
-      const Subarray& subarray,
-      const std::vector<unsigned>& dim_idx,
-      const std::vector<QueryBuffer*>& buffers,
-      std::vector<uint64_t>* offsets);
-
-  /**
-   * Fills the coordinate buffers with coordinates. Applicable only to dense
-   * arrays when the user explicitly requests the coordinates to be
-   * materialized. Also applicable only to row-/col-major order.
-   *
-   * @tparam T The domain type.
-   * @param subarray The input subarray.
-   * @param dim_idx The dimension indices of the corresponding `buffers`.
-   *     For the special zipped coordinates, `dim_idx`, `buffers` and `offsets`
-   *     contain a single element and `dim_idx` contains `dim_num` as
-   *     the dimension index.
-   * @param buffers The buffers to copy from. It could be the special
-   *     zipped coordinates or separate coordinate buffers.
-   * @param offsets The offsets that will be used eventually to update
-   *     the buffer sizes, determining the useful results written in
-   *     the buffers.
-   * @return Status
-   */
-  template <class T>
-  Status fill_dense_coords_row_col(
-      const Subarray& subarray,
-      const std::vector<unsigned>& dim_idx,
-      const std::vector<QueryBuffer*>& buffers,
-      std::vector<uint64_t>* offsets);
-
-  /**
-   * Fills coordinates in the input buffers for a particular cell slab,
-   * following a row-major layout. For instance, if the starting coordinate are
-   * [3, 1] and the number of coords to be written is 3, this function will
-   * write to the input buffer (starting at the input offset) coordinates
-   * [3, 1], [3, 2], and [3, 3].
-   *
-   * @tparam T The domain type.
-   * @param start The starting coordinates in the slab.
-   * @param num The number of coords to be written.
-   * @param dim_idx The dimension indices of the corresponding `buffers`.
-   *     For the special zipped coordinates, `dim_idx`, `buffers` and `offsets`
-   *     contain a single element and `dim_idx` contains `dim_num` as
-   *     the dimension index.
-   * @param buffers The buffers to copy from. It could be the special
-   *     zipped coordinates or separate coordinate buffers.
-   * @param offsets The offsets that will be used eventually to update
-   *     the buffer sizes, determining the useful results written in
-   *     the buffers.
-   */
-  template <class T>
-  void fill_dense_coords_row_slab(
-      const T* start,
-      uint64_t num,
-      const std::vector<unsigned>& dim_idx,
-      const std::vector<QueryBuffer*>& buffers,
-      std::vector<uint64_t>* offsets) const;
-
-  /**
-   * Fills coordinates in the input buffers for a particular cell slab,
-   * following a col-major layout. For instance, if the starting coordinate are
-   * [3, 1] and the number of coords to be written is 3, this function will
-   * write to the input buffer (starting at the input offset) coordinates
-   * [4, 1], [5, 1], and [6, 1].
-   *
-   * @tparam T The domain type.
-   * @param start The starting coordinates in the slab.
-   * @param num The number of coords to be written.
-   * @param dim_idx The dimension indices of the corresponding `buffers`.
-   *     For the special zipped coordinates, `dim_idx`, `buffers` and `offsets`
-   *     contain a single element and `dim_idx` contains `dim_num` as
-   *     the dimension index.
-   * @param buffers The buffers to copy from. It could be the special
-   *     zipped coordinates or separate coordinate buffers.
-   * @param offsets The offsets that will be used eventually to update
-   *     the buffer sizes, determining the useful results written in
-   *     the buffers.
-   */
-  template <class T>
-  void fill_dense_coords_col_slab(
-      const T* start,
-      uint64_t num,
-      const std::vector<unsigned>& dim_idx,
-      const std::vector<QueryBuffer*>& buffers,
-      std::vector<uint64_t>* offsets) const;
-
-  /**
    * Gets all the result coordinates of the input tile into `result_coords`.
    *
    * @param result_tile The result tile to read the coordinates from.
@@ -588,9 +379,6 @@ class Reader : public ReaderBase, public IQueryStrategy {
    */
   Status get_all_result_coords(
       ResultTile* tile, std::vector<ResultCoords>* result_coords) const;
-
-  /** Returns `true` if the coordinates are included in the attributes. */
-  bool has_coords() const;
 
   /**
    * Returns `true` if a coordinate buffer for a separate dimension

@@ -807,7 +807,7 @@ struct Query {
   class Pipeline;
 
   struct _capnpPrivate {
-    CAPNP_DECLARE_STRUCT_HEADER(96ba49d0f8b23ccc, 4, 11)
+    CAPNP_DECLARE_STRUCT_HEADER(96ba49d0f8b23ccc, 4, 12)
 #if !CAPNP_LITE
     static constexpr ::capnp::_::RawBrandedSchema const* brand() {
       return &schema->defaultBrand;
@@ -6445,6 +6445,10 @@ class Query::Reader {
   inline ::tiledb::sm::serialization::capnp::ReaderIndex::Reader
   getReaderIndex() const;
 
+  inline bool hasDenseReader() const;
+  inline ::tiledb::sm::serialization::capnp::QueryReader::Reader
+  getDenseReader() const;
+
  private:
   ::capnp::_::StructReader _reader;
   template <typename, ::capnp::Kind>
@@ -6609,6 +6613,18 @@ class Query::Builder {
   inline ::capnp::Orphan<::tiledb::sm::serialization::capnp::ReaderIndex>
   disownReaderIndex();
 
+  inline bool hasDenseReader();
+  inline ::tiledb::sm::serialization::capnp::QueryReader::Builder
+  getDenseReader();
+  inline void setDenseReader(
+      ::tiledb::sm::serialization::capnp::QueryReader::Reader value);
+  inline ::tiledb::sm::serialization::capnp::QueryReader::Builder
+  initDenseReader();
+  inline void adoptDenseReader(
+      ::capnp::Orphan<::tiledb::sm::serialization::capnp::QueryReader>&& value);
+  inline ::capnp::Orphan<::tiledb::sm::serialization::capnp::QueryReader>
+  disownDenseReader();
+
  private:
   ::capnp::_::StructBuilder _builder;
   template <typename, ::capnp::Kind>
@@ -6637,6 +6653,8 @@ class Query::Pipeline {
   inline ::tiledb::sm::serialization::capnp::Stats::Pipeline getStats();
   inline ::tiledb::sm::serialization::capnp::ReaderIndex::Pipeline
   getReaderIndex();
+  inline ::tiledb::sm::serialization::capnp::QueryReader::Pipeline
+  getDenseReader();
 
  private:
   ::capnp::AnyPointer::Pipeline _typeless;
@@ -14553,6 +14571,59 @@ Query::Builder::disownReaderIndex() {
   return ::capnp::_::
       PointerHelpers<::tiledb::sm::serialization::capnp::ReaderIndex>::disown(
           _builder.getPointerField(::capnp::bounded<10>() * ::capnp::POINTERS));
+}
+
+inline bool Query::Reader::hasDenseReader() const {
+  return !_reader.getPointerField(::capnp::bounded<11>() * ::capnp::POINTERS)
+              .isNull();
+}
+inline bool Query::Builder::hasDenseReader() {
+  return !_builder.getPointerField(::capnp::bounded<11>() * ::capnp::POINTERS)
+              .isNull();
+}
+inline ::tiledb::sm::serialization::capnp::QueryReader::Reader
+Query::Reader::getDenseReader() const {
+  return ::capnp::_::
+      PointerHelpers<::tiledb::sm::serialization::capnp::QueryReader>::get(
+          _reader.getPointerField(::capnp::bounded<11>() * ::capnp::POINTERS));
+}
+inline ::tiledb::sm::serialization::capnp::QueryReader::Builder
+Query::Builder::getDenseReader() {
+  return ::capnp::_::
+      PointerHelpers<::tiledb::sm::serialization::capnp::QueryReader>::get(
+          _builder.getPointerField(::capnp::bounded<11>() * ::capnp::POINTERS));
+}
+#if !CAPNP_LITE
+inline ::tiledb::sm::serialization::capnp::QueryReader::Pipeline
+Query::Pipeline::getDenseReader() {
+  return ::tiledb::sm::serialization::capnp::QueryReader::Pipeline(
+      _typeless.getPointerField(11));
+}
+#endif  // !CAPNP_LITE
+inline void Query::Builder::setDenseReader(
+    ::tiledb::sm::serialization::capnp::QueryReader::Reader value) {
+  ::capnp::_::PointerHelpers<::tiledb::sm::serialization::capnp::QueryReader>::
+      set(_builder.getPointerField(::capnp::bounded<11>() * ::capnp::POINTERS),
+          value);
+}
+inline ::tiledb::sm::serialization::capnp::QueryReader::Builder
+Query::Builder::initDenseReader() {
+  return ::capnp::_::
+      PointerHelpers<::tiledb::sm::serialization::capnp::QueryReader>::init(
+          _builder.getPointerField(::capnp::bounded<11>() * ::capnp::POINTERS));
+}
+inline void Query::Builder::adoptDenseReader(
+    ::capnp::Orphan<::tiledb::sm::serialization::capnp::QueryReader>&& value) {
+  ::capnp::_::PointerHelpers<::tiledb::sm::serialization::capnp::QueryReader>::
+      adopt(
+          _builder.getPointerField(::capnp::bounded<11>() * ::capnp::POINTERS),
+          kj::mv(value));
+}
+inline ::capnp::Orphan<::tiledb::sm::serialization::capnp::QueryReader>
+Query::Builder::disownDenseReader() {
+  return ::capnp::_::
+      PointerHelpers<::tiledb::sm::serialization::capnp::QueryReader>::disown(
+          _builder.getPointerField(::capnp::bounded<11>() * ::capnp::POINTERS));
 }
 
 inline bool NonEmptyDomain::Reader::hasNonEmptyDomain() const {
