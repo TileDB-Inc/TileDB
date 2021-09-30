@@ -27,7 +27,7 @@
 # Installs and configures HDFS.
 set -x
 
-HADOOP_VERSION="3.1.4"
+HADOOP_VERSION="3.3.1"
 
 die() {
   echo "$@" 1>&2 ; popd 2>/dev/null; exit 1
@@ -41,7 +41,7 @@ function update_apt_repo  {
 } 
 
 function install_java {
-  sudo apt-get install -y openjdk-8-jre
+  sudo apt-get install -y openjdk-11-jre
 }
 
 function install_hadoop {
@@ -113,6 +113,14 @@ function setup_mapred_xml {
 <value>localhost:9010</value>
 <description>The tracker of MapReduce</description>
 </property>
+<property>
+<name>mapreduce.map.log.level</name>
+<value>WARN</value>
+</property>
+<property>
+<name>mapreduce.reduce.log.level</name>
+<value>WARN</value>
+</property>
 </configuration>
 EOT
   tmpfile=/tmp/hadoop_mapred.xml
@@ -172,14 +180,31 @@ EOF
   mv $tmpfile $file
 }
 
-
 function setup_environment {
   export HADOOP_HOME=/usr/local/hadoop/home
-  sudo sed -i -- 's/JAVA_HOME=\${JAVA_HOME}/JAVA_HOME=\$(readlink -f \/usr\/bin\/java | sed "s:bin\/java::")/' \
-       $HADOOP_HOME/etc/hadoop/hadoop-env.sh
+  JAVA_HOME=$(readlink -f \/usr\/bin\/java | sed "s:bin\/java::")
+  HADOOP_ENVSH=/usr/local/hadoop/home/etc/hadoop/hadoop-env.sh
+  HADOOP_USER=$(whoami)
+
+  # Make a copy
+  cp -n $HADOOP_ENVSH $HADOOP_ENVSH.bk
+  # Write the new one
+  echo "JAVA_HOME=${JAVA_HOME}" > $HADOOP_ENVSH
+  cat >> $HADOOP_ENVSH <<EOT
+export HDFS_NAMENODE_USER=${HADOOP_USER}
+export HDFS_DATANODE_USER=${HADOOP_USER}
+export HDFS_SECONDARYNAMENODE_USER=${HADOOP_USER}
+export YARN_RESOURCEMANAGER_USER=${HADOOP_USER}
+export YARN_NODEMANAGER_USER=${HADOOP_USER}
+EOT
   setup_core_xml &&
     setup_mapred_xml &&
     setup_hdfs_xml || die "error in generating xml configuration files"
+}
+
+function test_passwordless_ssh {
+  # test the ssh setup so we don't proceed and fail later with nonspecific errors
+  ssh localhost "echo 'hello world'"
 }
 
 function passwordless_ssh {
@@ -188,23 +213,29 @@ function passwordless_ssh {
   fi
   sudo apt-get --reinstall install -y openssh-server openssh-client || die "error (re)installing openssh"
   mkdir ~/.ssh
+
+  # reset permissions to avoid ssh errors for world-readable directory
+  chmod og-rw ~
+
   ssh-keygen -t rsa -P "" -f ~/.ssh/id_rsa
   cat ~/.ssh/id_rsa.pub >> ~/.ssh/authorized_keys
   ssh-keyscan -H localhost >> ~/.ssh/known_hosts
   ssh-keyscan -H 127.0.0.1 >> ~/.ssh/known_hosts
   ssh-keyscan -H 0.0.0.0 >> ~/.ssh/known_hosts
   sudo service ssh restart || die "error restarting ssh service"
+  # sleep to make sure the ssh service restart is done because systemd
+  sleep 2
+
+  test_passwordless_ssh || die "failed to run passwordless ssh!"
 }
 
 function run {
   update_apt_repo || die "error updating apt-repo"
+  passwordless_ssh || die "error setting up passwordless ssh"
   install_java || die "error installing java"
   create_hadoop_user || die "error creating hadoop user"
   install_hadoop || die "error installing hadoop"
   setup_environment || die "error setting up environment"
-  passwordless_ssh || die "error setting up passwordless ssh"
 }
 
 run
-# sleep to make sure the ssh service restart is done because systemd
-sleep 2

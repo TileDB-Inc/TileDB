@@ -332,7 +332,7 @@ void check_save_to_file() {
   tiledb_config_free(&config);
 }
 
-TEST_CASE("C API: Test config", "[capi], [config]") {
+TEST_CASE("C API: Test config", "[capi][config]") {
   tiledb_config_t* config = nullptr;
   tiledb_error_t* error = nullptr;
   int rc = tiledb_config_alloc(&config, &error);
@@ -508,7 +508,7 @@ TEST_CASE("C API: Test config", "[capi], [config]") {
   tiledb_config_free(&config3);
 }
 
-TEST_CASE("C API: Test config iter", "[capi], [config]") {
+TEST_CASE("C API: Test config iter", "[capi][config]") {
   tiledb_ctx_t* ctx;
   int rc = tiledb_ctx_alloc(nullptr, &ctx);
   REQUIRE(rc == TILEDB_OK);
@@ -1032,7 +1032,7 @@ TEST_CASE("C API: Test config iter", "[capi], [config]") {
   tiledb_ctx_free(&ctx);
 }
 
-TEST_CASE("C API: Test config from file", "[capi], [config]") {
+TEST_CASE("C API: Test config from file", "[capi][config]") {
   check_load_correct_file();
   check_load_incorrect_file_cannot_open();
   check_load_incorrect_file_missing_value();
@@ -1041,7 +1041,7 @@ TEST_CASE("C API: Test config from file", "[capi], [config]") {
 }
 
 TEST_CASE(
-    "C API: Test boolean config values are normalized", "[capi], [config]") {
+    "C API: Test boolean config values are normalized", "[capi][config]") {
   tiledb_error_t* err;
   tiledb_config_t* config = nullptr;
   int rc = tiledb_config_alloc(&config, &err);

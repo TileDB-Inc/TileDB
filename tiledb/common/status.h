@@ -117,6 +117,7 @@ enum class StatusCode : char {
   WriteCellSlabIter,
   SparseGlobalOrderReaderError,
   SparseUnorderedWithDupsReaderError,
+  DenseReaderError,
   Reader,
   Writer,
   PreallocatedBuffer,
@@ -351,6 +352,11 @@ class Status {
    * given message **/
   static Status SparseUnorderedWithDupsReaderError(const std::string& msg) {
     return Status(StatusCode::SparseUnorderedWithDupsReaderError, msg, -1);
+  }
+
+  /** Return a DenseReaderError error class Status with a given message **/
+  static Status DenseReaderError(const std::string& msg) {
+    return Status(StatusCode::DenseReaderError, msg, -1);
   }
 
   /** Return a ReaderError error class Status with a given message **/

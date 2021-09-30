@@ -1100,7 +1100,7 @@ void IncompleteFx2::check_sparse_unsplittable_complete() {
 TEST_CASE_METHOD(
     IncompleteFx2,
     "C API: Test incomplete read queries 2, dense",
-    "[capi], [incomplete-2], [dense-incomplete-2]") {
+    "[capi][incomplete-2][dense-incomplete-2]") {
   remove_dense_array();
   create_dense_array();
   write_dense_full();
@@ -1116,7 +1116,7 @@ TEST_CASE_METHOD(
 TEST_CASE_METHOD(
     IncompleteFx2,
     "C API: Test incomplete read queries 2, sparse",
-    "[capi], [incomplete-2], [sparse-incomplete-2]") {
+    "[capi][incomplete-2][sparse-incomplete-2]") {
   remove_sparse_array();
   create_sparse_array();
   write_sparse_full();

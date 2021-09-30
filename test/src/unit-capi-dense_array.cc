@@ -2984,7 +2984,7 @@ TEST_CASE_METHOD(
 TEST_CASE_METHOD(
     DenseArrayFx,
     "C API: Test dense array, invalid number of cells in dense writes",
-    "[capi], [dense]") {
+    "[capi][dense]") {
   SECTION("- No serialization") {
     serialize_query_ = false;
   }
@@ -3000,7 +3000,9 @@ TEST_CASE_METHOD(
 }
 
 TEST_CASE_METHOD(
-    DenseArrayFx, "C API: Test dense array, sorted writes", "[capi], [dense]") {
+    DenseArrayFx,
+    "C API: Test dense array, sorted writes",
+    "[capi][dense][sorted_writes]") {
   SECTION("- No serialization") {
     serialize_query_ = false;
   }
@@ -3036,7 +3038,7 @@ TEST_CASE_METHOD(
 TEST_CASE_METHOD(
     DenseArrayFx,
     "C API: Test dense array, cancel and retry writes",
-    "[capi], [dense], [async], [cancel]") {
+    "[capi][dense][async][cancel]") {
   SECTION("- No serialization") {
     serialize_query_ = false;
   }
@@ -3195,7 +3197,7 @@ TEST_CASE_METHOD(
 TEST_CASE_METHOD(
     DenseArrayFx,
     "C API: Test dense array, open array checks",
-    "[capi], [dense], [dense-open-array-checks]") {
+    "[capi][dense][dense-open-array-checks]") {
   SupportedFsLocal local_fs;
   std::string temp_dir = local_fs.file_prefix() + local_fs.temp_dir();
   create_temp_dir(temp_dir);
@@ -3277,7 +3279,7 @@ TEST_CASE_METHOD(
 TEST_CASE_METHOD(
     DenseArrayFx,
     "C API: Test dense array, reopen array checks",
-    "[capi], [dense], [dense-reopen-array-checks]") {
+    "[capi][dense][dense-reopen-array-checks]") {
   SupportedFsLocal local_fs;
   std::string temp_dir = local_fs.file_prefix() + local_fs.temp_dir();
   create_temp_dir(temp_dir);
@@ -3453,7 +3455,7 @@ TEST_CASE_METHOD(
 TEST_CASE_METHOD(
     DenseArrayFx,
     "C API: Test dense array, reset write subarray",
-    "[capi], [dense], [reset-write-subarray]") {
+    "[capi][dense][reset-write-subarray]") {
   SECTION("- No serialization") {
     serialize_query_ = false;
   }
@@ -3696,7 +3698,7 @@ TEST_CASE_METHOD(
     DenseArrayFx,
     "C API: Test dense array, read subarrays with empty areas, merging "
     "adjacent cell ranges",
-    "[capi], [dense], [dense-read-empty], [dense-read-empty-merge]") {
+    "[capi][dense][dense-read-empty][dense-read-empty-merge]") {
   SECTION("- No serialization") {
     serialize_query_ = false;
   }
@@ -3786,7 +3788,7 @@ TEST_CASE_METHOD(
 TEST_CASE_METHOD(
     DenseArrayFx,
     "C API: Test dense array, multi-fragment reads",
-    "[capi], [dense], [dense-multi-fragment]") {
+    "[capi][dense][dense-multi-fragment]") {
   SECTION("- No serialization") {
     serialize_query_ = false;
   }
@@ -3898,7 +3900,7 @@ TEST_CASE_METHOD(
 TEST_CASE_METHOD(
     DenseArrayFx,
     "C API: Test dense array, check if open",
-    "[capi], [dense], [dense-is-open]") {
+    "[capi][dense][dense-is-open]") {
   SECTION("- No serialization") {
     serialize_query_ = false;
   }
@@ -3943,7 +3945,7 @@ TEST_CASE_METHOD(
 TEST_CASE_METHOD(
     DenseArrayFx,
     "C API: Test dense array, get schema from opened array",
-    "[capi], [dense], [dense-get-schema]") {
+    "[capi][dense][dense-get-schema]") {
   SECTION("- No serialization") {
     serialize_query_ = false;
   }
