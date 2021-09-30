@@ -1,3 +1,103 @@
+# TileDB v2.4.0 Release Notes
+
+## Disk Format
+
+* Store array schemas under `__schema` directory [#2258](https://github.com/TileDB-Inc/TileDB/pull/2258)
+
+## New features
+
+* Perform early audit for acceptable aws sdk windows path length [#2260](https://github.com/TileDB-Inc/TileDB/pull/2260)
+* Support setting via config s3 BucketCannedACL and ObjectCannedACL via SetACL() methods [#2383](https://github.com/TileDB-Inc/TileDB/pull/2383)
+* Update spdlog dependency to 1.9.0 fixing c++17 compatibility and general improvements [#1973](https://github.com/TileDB-Inc/TileDB/pull/1973)
+* Added Azure SAS token config support and new config option [#2420](https://github.com/TileDB-Inc/TileDB/pull/2420)
+* Load all array schemas in storage manager and pass the appropriate schema pointer to each fragment [#2415](https://github.com/TileDB-Inc/TileDB/pull/2415)
+* First revision of the Interval class [#2417](https://github.com/TileDB-Inc/TileDB/pull/2417)
+* Add `tiledb_schema_evolution_t` and new apis for schema evolution [#2426](https://github.com/TileDB-Inc/TileDB/pull/2426)
+* Add `ArraySchemaEvolution` to cpp_api and its unit tests are also added. [#2462](https://github.com/TileDB-Inc/TileDB/pull/2462)
+* Add c and cpp api functions for getting the array schema of a fragment [#2468](https://github.com/TileDB-Inc/TileDB/pull/2468)
+* Add capnp serialization and rest support for array schema evolution objects [#2467](https://github.com/TileDB-Inc/TileDB/pull/2467)
+
+## Improvements
+
+* `encryption_key` and `encryption_type` parameters have been added to the config; internal APIs now use these parameters to set the key. [#2245](https://github.com/TileDB-Inc/TileDB/pull/2245)
+* Initial read refactor [#2374](https://github.com/TileDB-Inc/TileDB/pull/2374)
+* Create class ByteVecValue from typedef [#2368](https://github.com/TileDB-Inc/TileDB/pull/2368)
+* Encapsulate spdlog.h [#2396](https://github.com/TileDB-Inc/TileDB/pull/2396)
+* Update OSX target to 10.14 for release artifacts [#2401](https://github.com/TileDB-Inc/TileDB/pull/2401)
+* Add nullable (and unordered, nullable) support to the smoke test. [#2405](https://github.com/TileDB-Inc/TileDB/pull/2405)
+* Initial sparse global order reader [#2395](https://github.com/TileDB-Inc/TileDB/pull/2395)
+* Remove sm.sub_partitioner_memory_budget [#2402](https://github.com/TileDB-Inc/TileDB/pull/2402)
+* Update the markdown documents for our new version of array schemas [#2416](https://github.com/TileDB-Inc/TileDB/pull/2416)
+* Sparse global order reader: no more result cell slab copy. [#2411](https://github.com/TileDB-Inc/TileDB/pull/2411)
+* Sparse global order reader: initial memory budget improvements. [#2413](https://github.com/TileDB-Inc/TileDB/pull/2413)
+* Optimization of result cell slabs generation for sparse global order reader. [#2414](https://github.com/TileDB-Inc/TileDB/pull/2414)
+* Remove selective unfiltering. [#2410](https://github.com/TileDB-Inc/TileDB/pull/2410)
+* Updated Azure Storage Lite SDK to 0.3.0 [#2419](https://github.com/TileDB-Inc/TileDB/pull/2419)
+* Respect memory budget for sparse global order reader. [#2425](https://github.com/TileDB-Inc/TileDB/pull/2425)
+* Use newer Azure patch for all platforms to solve missing header error [#2433](https://github.com/TileDB-Inc/TileDB/pull/2433)
+* increased diag output for differences reported by tiledb_unit (some of which may be reasonable) [#2437](https://github.com/TileDB-Inc/TileDB/pull/2437)
+* Adjustments to schema evolution new attribute reads [#2484](https://github.com/TileDB-Inc/TileDB/pull/2484)
+* Change `Quickstart` link in readthedocs/doxygen index.rst` [#2448](https://github.com/TileDB-Inc/TileDB/pull/2448)
+* Initial sparse unordered with duplicates reader. [#2441](https://github.com/TileDB-Inc/TileDB/pull/2441)
+* Add calls to `malloc_trim` on context and query destruction linux to potentially reduce idle memory usage [#2443](https://github.com/TileDB-Inc/TileDB/pull/2443)
+* Add logger internals for `std::string` and `std::stringstream` for developer convenience [#2454](https://github.com/TileDB-Inc/TileDB/pull/2454)
+* Allow empty attribute writes. [#2461](https://github.com/TileDB-Inc/TileDB/pull/2461)
+* Refactored readers: serialization. [#2458](https://github.com/TileDB-Inc/TileDB/pull/2458)
+* Allow null data pointers for writes. [#2481](https://github.com/TileDB-Inc/TileDB/pull/2481)
+* Update backwards compatibility arrays for 2.3.0 [#2487](https://github.com/TileDB-Inc/TileDB/pull/2487)
+
+## Deprecations
+
+* Deprecate all `*_with_key` APIs. [#2245](https://github.com/TileDB-Inc/TileDB/pull/2245) [#2308](https://github.com/TileDB-Inc/TileDB/pull/2308) [#2412](https://github.com/TileDB-Inc/TileDB/pull/2412)
+
+## Bug fixes
+
+* Fix to correctly apply capnproto create_symlink avoidance patch [#2264](https://github.com/TileDB-Inc/TileDB/pull/2264)
+* The bug for calculating max_size_validity for var_size attribute caused incomplete query [#2266](https://github.com/TileDB-Inc/TileDB/pull/2266)
+* Always run ASAN with matching compiler versions [#2277](https://github.com/TileDB-Inc/TileDB/pull/2277)
+* Fix some loop bounds that reference non-existent elements [#2282](https://github.com/TileDB-Inc/TileDB/pull/2282)
+* Treating `std::vector` like an array; accessing an element that is not present to get its address. [#2276](https://github.com/TileDB-Inc/TileDB/pull/2276)
+* Fix buffer arguments in unit-curl.cc [#2287](https://github.com/TileDB-Inc/TileDB/pull/2287)
+* Stop loop iterations within limits of vector being initialized. [#2320](https://github.com/TileDB-Inc/TileDB/pull/2320)
+* Modify FindCurl_EP.cmake to work for WIN32 -EnableDebug builds [#2319](https://github.com/TileDB-Inc/TileDB/pull/2319)
+* Fixing test failure because of an uninitialized buffer. [#2386](https://github.com/TileDB-Inc/TileDB/pull/2386)
+* Change a condition that assumed MSVC was the only compiler for WIN32 [#2388](https://github.com/TileDB-Inc/TileDB/pull/2388)
+* Fix defects in buffer classes: read, set_offset, advance_offset [#2342](https://github.com/TileDB-Inc/TileDB/pull/2342)
+* Use CHECK_SAFE() to avoid multi-threaded conflict [#2394](https://github.com/TileDB-Inc/TileDB/pull/2394)
+* Use tiledb _SAFE() items when overlapping threads may invoke code [#2418](https://github.com/TileDB-Inc/TileDB/pull/2418)
+* Changes to address issues with default string dimension ranges in query [#2436](https://github.com/TileDB-Inc/TileDB/pull/2436)
+* Only set cmake policy CMP0076 if cmake version in use knows about it [#2463](https://github.com/TileDB-Inc/TileDB/pull/2463)
+* Fix handling curl REST request having all data in single call back [#2485](https://github.com/TileDB-Inc/TileDB/pull/2485)
+* Write queries should post start/end timestamps for REST arrays [#2492](https://github.com/TileDB-Inc/TileDB/pull/2492)
+
+## API additions
+
+* Introduce new `tiledb_experimental.h` c-api header for new feature that don't have a stabilized api yet [#2453](https://github.com/TileDB-Inc/TileDB/pull/2453)
+* Introduce new `tiledb_experimental` cpp-api header for new feature that don't have a stabilized api yet [#2453](https://github.com/TileDB-Inc/TileDB/pull/2462)
+
+### C API
+
+* Refactoring [get/set]_buffer APIs [#2315](https://github.com/TileDB-Inc/TileDB/pull/2315)
+* Add `tiledb_fragment_info_get_array_schema` functions for getting the array schema of a fragment [#2468](https://github.com/TileDB-Inc/TileDB/pull/2468)
+* Add `tiledb_schema_evolution_t` and new apis for schema evolution [#2426](https://github.com/TileDB-Inc/TileDB/pull/2426)
+
+### C++ API
+
+* Refactoring [get/set]_buffer APIs [#2399](https://github.com/TileDB-Inc/TileDB/pull/2399)
+* Add `FragmentInfo::array_schema` functions for getting the array schema of a fragment [#2468](https://github.com/TileDB-Inc/TileDB/pull/2468)
+* Add `ArraySchemaEvolution` to cpp_api and its unit tests are also added. [#2462](https://github.com/TileDB-Inc/TileDB/pull/2462)
+
+# TileDB v2.3.4 Release Notes
+
+## Improvements
+
+* `Query::set_layout`: setting the layout on the subarray. [#2451](https://github.com/TileDB-Inc/TileDB/pull/2451)
+* Allow empty attribute writes. [#2461](https://github.com/TileDB-Inc/TileDB/pull/2461)
+
+## Bug fixes
+
+* Fix deserialization of buffers in write queries with nullable var-length attributes [#2442](https://github.com/TileDB-Inc/TileDB/pull/2442)
+
 # TileDB v2.3.3 Release Notes
 
 ## Improvements
