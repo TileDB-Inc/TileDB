@@ -290,10 +290,20 @@ jobs:
       - name: "Test status check"
         shell: powershell
         run: |
+          if ( ! Test-Path env:AGENT_NAME){
+            write-host "env:AGENT_NAME does NOT exist!"
+          } else {
+            write-host "env:AGENT_NAME DOES exist!"
+          }
+          if ( ! Test-Path env:TILEDB_CI_SUCCESS){
+            write-host "env:TILEDB_CI_SUCCESS does NOT exist!"
+          } else {
+            write-host "env:TILEDB_CI_SUCCESS DOES exist!"
+          }
           # tiledb_unit is configured to set a job-level variable TILEDB_CI_SUCCESS=1
           # following the test run. If this variable is not set, the build should fail.
           # see https://github.com/TileDB-Inc/TileDB/pull/1400 (5f0623f4d3)
-          if ($env:TILEDB_CI_SUCCESS -ne 1) {
+          if ((Test-Path env:TILEDB_CI_SUCCESS) -AND $env:TILEDB_CI_SUCCESS -ne 1) {
             Write-Host "tiledb_unit sanity-check failed! Go check logs. (TILEDB_CI_SUCCESS '$env:TILEDB_CI_SUCCESS')"
             $host.SetShouldExit(1)
           }
