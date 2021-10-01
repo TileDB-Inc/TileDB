@@ -117,16 +117,20 @@ Status QueryCondition::check(const ArraySchema* const array_schema) const {
       }
     }
 
-    if (attribute->var_size() && attribute->type() != Datatype::STRING_ASCII) {
+    if (attribute->var_size() && attribute->type() != Datatype::STRING_ASCII &&
+        clause.condition_value_ != nullptr) {
       return Status::QueryConditionError(
-          "Clause attribute may only be var-sized for ASCII strings: " +
+          "Clause non-empty attribute may only be var-sized for ASCII "
+          "strings: " +
           field_name);
     }
 
     if (attribute->cell_val_num() != 1 &&
-        attribute->type() != Datatype::STRING_ASCII) {
+        attribute->type() != Datatype::STRING_ASCII &&
+        (!attribute->var_size())) {
       return Status::QueryConditionError(
-          "Clause attribute must have one value per cell for non-string "
+          "Clause attribute must have one value per cell for non-string fixed "
+          "size "
           "attributes: " +
           field_name);
     }
@@ -134,7 +138,8 @@ Status QueryCondition::check(const ArraySchema* const array_schema) const {
     if (attribute->cell_size() != constants::var_size &&
         attribute->cell_size() != condition_value_size &&
         !(attribute->nullable() && clause.condition_value_ == nullptr) &&
-        attribute->type() != Datatype::STRING_ASCII) {
+        attribute->type() != Datatype::STRING_ASCII &&
+        (!attribute->var_size())) {
       return Status::QueryConditionError(
           "Clause condition value size mismatch: " +
           std::to_string(attribute->cell_size()) +
