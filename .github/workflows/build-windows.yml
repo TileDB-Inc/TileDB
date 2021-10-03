@@ -287,11 +287,12 @@ jobs:
 
           #7z a tiledb-windows-x64.zip $env:BUILD_SOURCESDIRECTORY\dist
 
-      - name: "Test status check"
+      - name: 'Test status check'
         shell: powershell
         run: |
           write-host "A) ${{ steps.Test.outputs.TILEDB_CI_SUCCESS }}"
           write-host "B) env:steps.Test.outputs.TILEDB_CI_SUCCESS "
+          write-host C - ${{ steps.Test.outputs.TILEDB_CI_SUCCESS }}
           if ( ! (Test-Path env:AGENT_NAME) ){
             write-host "env:AGENT_NAME does NOT exist!"
           } else {
