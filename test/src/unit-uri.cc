@@ -31,6 +31,8 @@
  */
 
 #include <catch.hpp>
+#include "tiledb/sm/cpp_api/config.h"
+#include "tiledb/sm/cpp_api/context.h"
 #include "tiledb/sm/misc/uri.h"
 
 #ifdef _WIN32
@@ -255,3 +257,22 @@ TEST_CASE("URI: Test Windows paths", "[uri]") {
 }
 
 #endif
+
+TEST_CASE("URI: Test local root path", "[uri]") {
+  tiledb::Config config;
+#ifdef _WIN32
+  config.set("vfs.local_root_path", "C:/tmp");
+#else
+  config.set("vfs.local_root_path", "/tmp");
+#endif
+  tiledb::Context ctx(config);
+  URI uri("test_root_path");
+  CHECK(!uri.is_invalid());
+  CHECK(URI::is_file(uri.to_string()));
+#ifdef _WIN32
+  CHECK(uri.to_string() == "file:///C:/tmp/test_root_path");
+#else
+  CHECK(uri.to_string() == "file:///tmp/test_root_path");
+#endif
+  ctx.config().set("vfs.local_root_path", "");
+}

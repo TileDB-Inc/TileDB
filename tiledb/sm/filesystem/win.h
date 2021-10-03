@@ -63,7 +63,8 @@ class Win {
    * Returns the absolute (string) path of the input in the
    * form of a Windows path.
    */
-  static std::string abs_path(const std::string& path);
+  static std::string abs_path(
+      const std::string& path, const std::string& root_path);
 
   /**
    * Creates a new directory.

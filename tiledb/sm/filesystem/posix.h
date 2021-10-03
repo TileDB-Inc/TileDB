@@ -67,7 +67,8 @@ class Posix {
    * Returns the absolute posix (string) path of the input in the
    * form "file://<absolute path>"
    */
-  static std::string abs_path(const std::string& path);
+  static std::string abs_path(
+      const std::string& path, const std::string& root_path);
 
   /**
    * Creates a new directory.

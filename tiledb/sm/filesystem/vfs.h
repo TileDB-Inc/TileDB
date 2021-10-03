@@ -114,6 +114,14 @@ class VFS {
   static std::string abs_path(const std::string& path);
 
   /**
+   * Sets the root path for local file system.
+   *
+   * @param root_path The root path.
+   * @return Status
+   */
+  static Status set_local_root_path(const std::string& root_path);
+
+  /**
    * Return a config object containing the VFS parameters. All other non-VFS
    * parameters will are set to default values.
    */
@@ -659,6 +667,9 @@ class VFS {
 
   /** The read-ahead cache. */
   tdb_unique_ptr<ReadAheadCache> read_ahead_cache_;
+
+  /** The local root path. */
+  static std::string local_root_path_;
 
   /* ********************************* */
   /*          PRIVATE METHODS          */
