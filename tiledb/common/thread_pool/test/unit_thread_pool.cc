@@ -30,6 +30,5 @@
 
 #include "unit_thread_pool.h"
 
-TEST_CASE("")
-{
+TEST_CASE("") {
 }
