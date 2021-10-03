@@ -114,7 +114,7 @@ void Posix::adjacent_slashes_dedup(std::string* path) {
 std::string Posix::abs_path(
     const std::string& path, const std::string& root_path = "") {
   std::string local_path = path;
-  if (local_path.length() > 0) {
+  if (root_path.length() > 0) {
     local_path = root_path + "/" + path;
   }
   std::string resolved_path = abs_path_internal(local_path);

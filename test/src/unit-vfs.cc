@@ -479,3 +479,30 @@ TEST_CASE("VFS: URI semantics", "[vfs][uri]") {
     vfs.terminate();
   }
 }
+
+TEST_CASE("VFS: Test local root path", "[vfs][uri]") {
+  ThreadPool compute_tp;
+  ThreadPool io_tp;
+  REQUIRE(compute_tp.init(1).ok());
+  REQUIRE(io_tp.init(1).ok());
+
+  Config config;
+#ifdef _WIN32
+  REQUIRE(config.set("vfs.local_root_path", "C:/tmp").ok());
+#else
+  REQUIRE(config.set("vfs.local_root_path", "/tmp").ok());
+#endif
+
+  VFS vfs;
+  REQUIRE(
+      vfs.init(&g_helper_stats, &compute_tp, &io_tp, nullptr, &config).ok());
+  std::string array_name = "test_root_path_array";
+  URI uri(array_name);
+#ifdef _WIN32
+  CHECK(uri.to_string() == "file:///C:/tmp/test_root_path_array");
+#else
+  CHECK(uri.to_string() == "file:///tmp/test_root_path_array");
+#endif
+
+  vfs.terminate();
+}
