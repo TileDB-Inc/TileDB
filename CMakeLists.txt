@@ -266,7 +266,7 @@ if (TILEDB_TESTS)
   # Add cmake target for "tests" to build all unit tests executables
   add_custom_target(tests)
   add_dependencies(tests tiledb_unit)
-  add_dependencies(tests unit_interval)
+  add_dependencies(tests unit_interval unit_thread_pool)
 endif()
 
 # Build tools
