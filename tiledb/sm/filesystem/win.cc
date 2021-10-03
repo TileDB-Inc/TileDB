@@ -77,13 +77,18 @@ std::string get_last_error_msg() {
 }
 }  // namespace
 
-std::string Win::abs_path(const std::string& path) {
+std::string Win::abs_path(
+    const std::string& path, const std::string& root_path = "") {
+  std::string rootpath = root_path;
+  if (rootpath.length() == 0) {
+    rootpath = current_dir();
+  }
   if (path.length() == 0) {
-    return current_dir();
+    return rootpath;
   }
   std::string full_path;
   if (PathIsRelative(path.c_str())) {
-    full_path = current_dir() + "\\" + path;
+    full_path = rootpath + "\\" + path;
   } else {
     full_path = path;
   }

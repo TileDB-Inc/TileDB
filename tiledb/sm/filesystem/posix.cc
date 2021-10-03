@@ -111,8 +111,13 @@ void Posix::adjacent_slashes_dedup(std::string* path) {
       path->end());
 }
 
-std::string Posix::abs_path(const std::string& path) {
-  std::string resolved_path = abs_path_internal(path);
+std::string Posix::abs_path(
+    const std::string& path, const std::string& root_path = "") {
+  std::string local_path = path;
+  if (local_path.length() > 0) {
+    local_path = root_path + "/" + path;
+  }
+  std::string resolved_path = abs_path_internal(local_path);
 
   // Ensure the returned has the same postfix slash as 'path'.
   if (utils::parse::ends_with(path, "/")) {
