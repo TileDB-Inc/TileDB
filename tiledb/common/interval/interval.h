@@ -236,6 +236,7 @@
 #include <cstring>
 #include <optional>
 #include <stdexcept>
+#include <sstream>
 #include <string>
 #include <string_view>
 #include <tuple>
@@ -1724,6 +1725,43 @@ class Interval : public detail::IntervalBase {
                 BoundLower(), Bound(cut_point, !lower_open_upper_closed))),
             Interval(adjust_bounds(
                 Bound(cut_point, lower_open_upper_closed), BoundUpper()))};
+  }
+
+  std::string to_str() const {
+    std::stringstream ss;
+    if (is_lower_open_ || is_lower_infinite_) {
+      ss << "(";
+    } else {
+      ss << "[";
+    }
+    if (!is_empty_) {
+      if (is_lower_infinite_) {
+        ss << "infinite";
+      } else {
+        if (!lower_bound_) {
+          ss << "?lb?";
+        } else {
+          ss << lower_bound_.value();
+        }
+      }
+      ss << ",";
+      if (is_upper_infinite_) {
+        ss << "infinite";
+      } else {
+        if (!upper_bound_) {
+          ss << "?ub?";
+        } else {
+          ss << upper_bound_.value();
+        }
+      }
+    }
+    if (is_upper_open_ || is_upper_infinite_) {
+      ss << ")";
+    } else {
+      ss << "]";
+    }
+
+    return ss.str();
   }
 };
 
