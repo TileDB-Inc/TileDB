@@ -1426,11 +1426,16 @@ class Array {
    *
    * @param ctx TileDB context
    * @param array_uri The URI of the TileDB array to be upgraded.
+   * @param config Configuration parameters for the upgrade.
    */
   static void upgrade_version(
-      const Context& ctx, const std::string& array_uri) {
-    ctx.handle_error(
-        tiledb_array_upgrade_version(ctx.ptr().get(), array_uri.c_str()));
+      const Context& ctx,
+      const std::string& array_uri,
+      Config* const config = nullptr) {
+    ctx.handle_error(tiledb_array_upgrade_version(
+        ctx.ptr().get(),
+        array_uri.c_str(),
+        config ? config->ptr().get() : nullptr));
   }
 
   /**
