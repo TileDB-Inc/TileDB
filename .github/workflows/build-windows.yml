@@ -296,8 +296,10 @@ jobs:
           # following the test run. If this variable is not set, the build should fail.
           # see https://github.com/TileDB-Inc/TileDB/pull/1400 (5f0623f4d3)
           if [[ "${{ steps.test.outputs.TILEDB_CI_SUCCESS }}" -ne 1 ]]; then
+            echo TILEDB_CI_SUCCESS != 1, exiting.
             exit 1;
           fi
+          echo diag: TILEDB_CI_SUCCESS == 1, yeah!
 
       #~ - name: 'Test status check'
         #~ shell: powershell
