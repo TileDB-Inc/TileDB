@@ -110,29 +110,36 @@ Status QueryCondition::check(const ArraySchema* const array_schema) const {
             "Null value can only be used with equality operators");
       }
 
-      if (!attribute->nullable()) {
+      if ((!attribute->nullable()) &&
+          attribute->type() != Datatype::STRING_ASCII) {
         return Status::QueryConditionError(
             "Null value can only be used with nullable attributes");
       }
     }
 
-    if (attribute->var_size() && attribute->type() != Datatype::STRING_ASCII) {
+    if (attribute->var_size() && attribute->type() != Datatype::STRING_ASCII &&
+        clause.condition_value_ != nullptr) {
       return Status::QueryConditionError(
-          "Clause attribute may only be var-sized for ASCII strings: " +
+          "Clause non-empty attribute may only be var-sized for ASCII "
+          "strings: " +
           field_name);
     }
 
     if (attribute->cell_val_num() != 1 &&
-        attribute->type() != Datatype::STRING_ASCII) {
+        attribute->type() != Datatype::STRING_ASCII &&
+        (!attribute->var_size())) {
       return Status::QueryConditionError(
-          "Clause attribute must have one value per cell for non-string "
+          "Clause attribute must have one value per cell for non-string fixed "
+          "size "
           "attributes: " +
           field_name);
     }
 
     if (attribute->cell_size() != constants::var_size &&
         attribute->cell_size() != condition_value_size &&
-        !(attribute->nullable() && clause.condition_value_ == nullptr)) {
+        !(attribute->nullable() && clause.condition_value_ == nullptr) &&
+        attribute->type() != Datatype::STRING_ASCII &&
+        (!attribute->var_size())) {
       return Status::QueryConditionError(
           "Clause condition value size mismatch: " +
           std::to_string(attribute->cell_size()) +
@@ -475,7 +482,8 @@ void QueryCondition::apply_clause(
           const uint64_t cell_size = next_cell_offset - buffer_offset;
 
           const bool null_cell =
-              nullable && buffer_validity[start + c * stride] == 0;
+              (nullable && buffer_validity[start + c * stride] == 0) ||
+              (cell_size == 0);
 
           // Get the cell value.
           const void* const cell_value =
