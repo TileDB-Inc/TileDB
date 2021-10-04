@@ -77,6 +77,46 @@ std::string find_ca_certs_linux(const Posix& posix) {
 }  // namespace https
 #endif
 
+std::string range_to_str(
+    const tiledb::sm::Range& range, Datatype r_type) {
+  std::string srstr, erstr;
+  // loc_to_str to treat variant types differently than
+  // utils::sm::parse::to_str() handles them.
+  auto loc_to_str = [](const void* value,
+                       uint64_t var_type_size,
+                       Datatype type) -> std::string {
+    std::stringstream ss;
+    switch (type) {
+      case Datatype::STRING_ASCII:
+      case Datatype::STRING_UTF8: {
+        // ss << *(const uint8_t*)value;
+        std::string s((char*)value, var_type_size);
+        ss << s;
+        break;
+      }
+    }
+    return ss.str();
+  };
+  switch (r_type) {  // dim->type()) {
+    case Datatype::STRING_ASCII:
+    case Datatype::STRING_UTF8:
+      srstr = loc_to_str(range.start(), range.start_size(), r_type);
+      erstr = loc_to_str(range.end(), range.end_size(), r_type);
+      break;
+    default:
+      srstr = tiledb::sm::utils::parse::to_str(range.start(), r_type);
+      erstr = tiledb::sm::utils::parse::to_str(range.end(), r_type);
+      // srstr = /* tiledb::sm::*/utils::parse::to_str(range.start(), r_type);
+      // erstr = /* tiledb::sm::*/ utils::parse::to_str(range.end(), r_type);
+      break;
+  }
+  // std::cout << "/" << ur << ": [";
+  // std::cout << "[";
+  // std::cout << srstr << "," << erstr;
+  // std::cout << "]" << std::endl;
+  return "[" + srstr + "," + erstr + "]";
+}
+
 namespace parse {
 
 /* ********************************* */

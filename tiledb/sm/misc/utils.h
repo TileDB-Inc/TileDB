@@ -70,6 +70,9 @@ std::string find_ca_certs_linux(const Posix& posix);
 }  // namespace https
 #endif
 
+std::string range_to_str(
+  const tiledb::sm::Range& range, Datatype r_type);
+
 namespace parse {
 
 /* ********************************* */
