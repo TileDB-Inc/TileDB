@@ -504,5 +504,6 @@ TEST_CASE("VFS: Test local root path", "[vfs][uri]") {
   CHECK(uri.to_string() == "file:///tmp/test_root_path_array");
 #endif
 
-  vfs.terminate();
+  // Set the local_root_path back to empty
+  REQUIRE(vfs.set_local_root_path("").ok());
 }
