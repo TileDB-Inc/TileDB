@@ -31,8 +31,6 @@
  */
 
 #include <catch.hpp>
-#include "tiledb/sm/cpp_api/config.h"
-#include "tiledb/sm/cpp_api/context.h"
 #include "tiledb/sm/misc/uri.h"
 
 #ifdef _WIN32
