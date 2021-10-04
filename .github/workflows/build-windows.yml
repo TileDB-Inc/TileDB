@@ -288,6 +288,7 @@ jobs:
           #7z a tiledb-windows-x64.zip $env:BUILD_SOURCESDIRECTORY\dist
 
       - name: 'Test status check'
+        shell : bash
         run: |
           echo A - ...TILEDB_CI_SUCCESS... - "${{ steps.test.outputs.TILEDB_CI_SUCCESS }}"
           echo B - ...TILEDB_CI_SUCCESS... - ${{ steps.test.outputs.TILEDB_CI_SUCCESS }}
