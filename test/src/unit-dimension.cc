@@ -748,3 +748,50 @@ TEST_CASE(
   auto max = std::numeric_limits<T>::max();
   basic_verify_overlap_ratio<T>(0, 1, -2, max - 2);
 }
+
+TEST_CASE("Verify overlap<char>", "[dimension][overlap-char]") {
+  Dimension d1("d1", Datatype::STRING_ASCII);
+  struct range_s {
+    const char* begin;
+    const char* end;
+  };
+  static
+  struct  {
+    range_s r1;
+    range_s r2;
+    bool expected_result;
+  } test_data[] = {
+    //items in this first group should be dup'd but with flipped
+    //begin/end ranges in second group of items below
+    {{"a", "b"}, {"c", "f"}, false}, //r1 precedes r2
+    {{"a", "c"}, {"c", "f"}, true},  //r1 end coincident with r2 begin
+    {{"a", "e"}, {"c", "f"}, true},  //r1 overlap r2
+    {{"a", "g"}, {"c", "f"}, true},  //r1 contains r2
+    {{"c", "d"}, {"c", "f"}, true},  //r1 within r2
+    {{"d", "e"}, {"c", "f"}, true},  //r1 within r2
+    {{"d", "f"}, {"c", "f"}, true},  //r1 within r2
+    {{"f", "g"}, {"c", "f"}, true},  //r1 begin coincident with r2 end
+    {{"g", "h"}, {"c", "f"}, false}, //r1 after r2
+
+    //begin/end ranges reversed from above
+    {{"c", "f"}, {"a", "b"}, false},  // r2 after r1
+    {{"c", "f"}, {"a", "c"}, true},   // r1 begin coincident with r2 end
+    {{"c", "f"}, {"a", "e"}, true},   // r1 overlap r2
+    {{"c", "f"}, {"a", "g"}, true},   // r2 contains r1
+    {{"c", "f"}, {"c", "d"}, true},   // r2 within r1
+    {{"c", "f"}, {"d", "e"}, true},   // r2 within r1
+    {{"c", "f"}, {"d", "f"}, true},   // r2 within r1
+    {{"c", "f"}, {"f", "g"}, true},   // r1 end coincident with r2 begin
+    {{"c", "f"}, {"g", "h"}, false},  // r2 after r1
+    {{0, 0}, {0, 0}, false}
+  };
+
+  int i = 0;
+  while (test_data[i].r1.begin) {
+    TypedRange<const char> r1(test_data[i].r1.begin, test_data[i].r1.end);
+    TypedRange<const char> r2(test_data[i].r2.begin, test_data[i].r2.end);
+    auto result = d1.overlap<char>(r1, r2);
+    CHECK(result == test_data[i].expected_result);
+    ++i;
+  }
+}

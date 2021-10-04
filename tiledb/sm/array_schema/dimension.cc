@@ -36,7 +36,6 @@
 #include "tiledb/sm/enums/datatype.h"
 #include "tiledb/sm/enums/filter_type.h"
 #include "tiledb/sm/misc/utils.h"
-#include "tiledb/common/interval/interval.h"
 
 #include <bitset>
 #include <cassert>
@@ -44,9 +43,6 @@
 #include <iostream>
 
 using namespace tiledb::common;
-
-using namespace tiledb::common::detail;
-namespace intervals = tiledb::common::detail;
 
 namespace tiledb {
 namespace sm {
@@ -632,9 +628,6 @@ Status Dimension::oob(const void* coord) const {
 
 template <class T>
 bool Dimension::covered(const Range& r1, const Range& r2) {
-
-//...Seems this method is not reached with 'basic' build config...
-
   assert(!r1.empty());
   assert(!r2.empty());
 
@@ -643,17 +636,7 @@ bool Dimension::covered(const Range& r1, const Range& r2) {
   assert(d1[0] <= d1[1]);
   assert(d2[0] <= d2[1]);
 
-  //return d1[0] >= d2[0] && d1[1] <= d2[1];
-
-  Interval<T> interval(
-      Interval<T>::closed,
-      *d2,
-      *(d2 + 1),
-      Interval<T>::closed);
-  auto& lower_to_check = *d1;
-  auto& upper_to_check = *(d1 + 1);
-  return interval.is_member(lower_to_check) &&
-         interval.is_member(upper_to_check);
+  return d1[0] >= d2[0] && d1[1] <= d2[1];
 }
 
 bool Dimension::covered(const Range& r1, const Range& r2) const {

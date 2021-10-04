@@ -1085,7 +1085,7 @@ class Interval : public detail::IntervalBase {
    *
    * @precondition lower, upper are both ordered, non-exceptional elements
    */
-  explicit Interval(Bound lower, Bound upper, bool empty, bool single) noexcept
+  explicit Interval(const Bound lower, const Bound upper, bool empty, bool single) noexcept
       : lower_bound_(lower.bound_)
       , upper_bound_(upper.bound_)
       , is_empty_(empty)
@@ -1103,7 +1103,7 @@ class Interval : public detail::IntervalBase {
    *
    * @param x a tuple of lower and upper bounds and empty/single flags.
    */
-  explicit Interval(tuple<Bound, Bound, bool, bool> x) noexcept
+  explicit Interval(const tuple<Bound, Bound, bool, bool> x) noexcept
       : Interval(
             std::get<0>(x), std::get<1>(x), std::get<2>(x), std::get<3>(x)) {
   }
@@ -1200,7 +1200,8 @@ class Interval : public detail::IntervalBase {
    * @precondition [in] bound is ordered. Throws if not.
    * @postcondition [out] bound is an ordinary element and not infinite
    */
-  Bound normalize_bound(const T bound, bool is_closed, bool is_for_upper_bound) const {
+  Bound normalize_bound(
+      const T bound, bool is_closed, bool is_for_upper_bound) const {
     if constexpr (Traits::has_unordered_elements) {
       if (!Traits::is_ordered(bound)) {
         throw std::invalid_argument(
@@ -1489,7 +1490,7 @@ class Interval : public detail::IntervalBase {
   /**
    * Membership predicate that the argument is an element of the interval.
    */
-  bool is_member(const T x) noexcept {
+  bool is_member(const T x) const noexcept {
     if constexpr (Traits::has_unordered_elements) {
       if (!Traits::is_ordered(x)) {
         // An unordered element is not a member of any interval.
