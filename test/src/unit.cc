@@ -77,7 +77,8 @@ struct CICompletionStatusListener : Catch::TestEventListenerBase {
         std::cout << "testRunEnded Point C" << std::endl;
         // set TILEDB_CI_SUCCESS job-level variable in azure pipelines
         // note: this variable is only set in subsequest tasks.
-        std::cout << "::set-output name=TILEDB_CI_SUCCESS::1" << std::endl;
+        //std::cout << "::set-output name=TILEDB_CI_SUCCESS::1" << std::endl;
+        printf("::set-output name=TILEDB_CI_SUCCESS::1");
         std::cout << "##vso[task.setvariable variable=TILEDB_CI_SUCCESS]1"
                   << std::endl;
       }
