@@ -425,14 +425,13 @@ Status FragmentInfo::get_mbr_num(uint32_t fid, uint64_t* mbr_num) const {
     return LOG_STATUS(Status::FragmentInfoError(
         "Cannot get fragment URI; Invalid fragment index"));
 
-  auto meta = fragments_[fid].meta();
-
   if (!fragments_[fid].sparse()) {
     *mbr_num = 0;
     return Status::Ok();
   }
 
   auto key = fragments_[fid].encryption_key();
+  auto meta = fragments_[fid].meta();
   RETURN_NOT_OK(meta->load_rtree(*key));
   *mbr_num = meta->mbrs().size();
 

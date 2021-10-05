@@ -89,11 +89,6 @@ class SingleFragmentInfo {
       , array_schema_name_(array_schema_name)
       , encryption_key_(encryption_key)
       , meta_(meta) {
-    // encryption_key_ = tdb_make_shared(EncryptionKey);
-    // encryption_key_->set_key(
-    //     encryption_key->encryption_type(),
-    //     encryption_key->key().data(),
-    //     encryption_key->key().size());
   }
 
   /** Copy constructor. */

@@ -371,7 +371,7 @@ class Array {
    *
    * Note: The Array and SingleFragmentInfo classes are the only two places in
    * TileDB where the user's private key bytes should be stored. Whenever a key
-   * is needed, a pointer to this memory region should be passed instad of a
+   * is needed, a pointer to this memory region should be passed instead of a
    * copy of the bytes.
    */
   tdb_shared_ptr<EncryptionKey> encryption_key_;

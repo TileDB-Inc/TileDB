@@ -89,10 +89,6 @@ FragmentMetadata::FragmentMetadata(
 
 FragmentMetadata::~FragmentMetadata() = default;
 
-// FragmentMetadata(FragmentMetadata&& other) noexcept {
-//
-//}
-
 // Copy initialization
 FragmentMetadata::FragmentMetadata(const FragmentMetadata& other) {
   storage_manager_ = other.storage_manager_;

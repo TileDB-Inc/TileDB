@@ -238,34 +238,26 @@ TEST_CASE(
   cell_num = fragment_info.cell_num(2);
   CHECK(cell_num == 10);
 
-  // Get number of MBRs
+  // Get number of MBRs - should always be 0 since it's a dense array
   auto mbr_num = fragment_info.mbr_num(0);
   CHECK(mbr_num == 0);
   mbr_num = fragment_info.mbr_num(1);
-  CHECK(mbr_num == 2);
+  CHECK(mbr_num == 0);
   mbr_num = fragment_info.mbr_num(2);
-  CHECK(mbr_num == 2);
+  CHECK(mbr_num == 0);
 
-  // Get MBR from index
+  // Get MBR from index - should fail since it's a dense array
   std::vector<uint64_t> mbr(2);
-  fragment_info.get_mbr(1, 0, 0, &mbr[0]);
-  CHECK(mbr == std::vector<uint64_t>{1, 3});
-  fragment_info.get_mbr(1, 1, 0, &mbr[0]);
-  CHECK(mbr == std::vector<uint64_t>{5, 7});
-  fragment_info.get_mbr(2, 0, 0, &mbr[0]);
-  CHECK(mbr == std::vector<uint64_t>{2, 4});
-  fragment_info.get_mbr(2, 1, 0, &mbr[0]);
-  CHECK(mbr == std::vector<uint64_t>{9, 9});
+  CHECK_THROWS(fragment_info.get_mbr(1, 0, 0, &mbr[0]));
+  CHECK_THROWS(fragment_info.get_mbr(1, 1, 0, &mbr[0]));
+  CHECK_THROWS(fragment_info.get_mbr(2, 0, 0, &mbr[0]));
+  CHECK_THROWS(fragment_info.get_mbr(2, 1, 0, &mbr[0]));
 
-  // Get MBR from name
-  fragment_info.get_mbr(1, 0, "d", &mbr[0]);
-  CHECK(mbr == std::vector<uint64_t>{1, 3});
-  fragment_info.get_mbr(1, 1, "d", &mbr[0]);
-  CHECK(mbr == std::vector<uint64_t>{5, 7});
-  fragment_info.get_mbr(2, 0, "d", &mbr[0]);
-  CHECK(mbr == std::vector<uint64_t>{2, 4});
-  fragment_info.get_mbr(2, 1, "d", &mbr[0]);
-  CHECK(mbr == std::vector<uint64_t>{9, 9});
+  // Get MBR from name - should fail since it's a dense array
+  CHECK_THROWS(fragment_info.get_mbr(1, 0, "d", &mbr[0]));
+  CHECK_THROWS(fragment_info.get_mbr(1, 1, "d", &mbr[0]));
+  CHECK_THROWS(fragment_info.get_mbr(2, 0, "d", &mbr[0]));
+  CHECK_THROWS(fragment_info.get_mbr(2, 1, "d", &mbr[0]));
 
   // Get version
   auto version = fragment_info.version(0);

@@ -89,8 +89,6 @@ class FragmentMetadata {
   /** Destructor. */
   ~FragmentMetadata();
 
-  //  FragmentMetadata(FragmentMetadata&& other) noexcept;
-
   // Copy initialization
   FragmentMetadata(const FragmentMetadata& other);
 

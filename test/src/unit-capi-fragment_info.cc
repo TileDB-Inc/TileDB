@@ -528,54 +528,28 @@ TEST_CASE(
   CHECK(rc == TILEDB_OK);
   CHECK(non_empty_dom == std::vector<uint64_t>{1, 7});
 
-  // Get number of MBRs
+  // Get number of MBRs - should always be 0 since it's a dense array
   uint64_t mbr_num;
   rc = tiledb_fragment_info_get_mbr_num(ctx, fragment_info, 0, &mbr_num);
   CHECK(rc == TILEDB_OK);
   CHECK(mbr_num == 0);
   rc = tiledb_fragment_info_get_mbr_num(ctx, fragment_info, 1, &mbr_num);
   CHECK(rc == TILEDB_OK);
-  CHECK(mbr_num == 2);
+  CHECK(mbr_num == 0);
   rc = tiledb_fragment_info_get_mbr_num(ctx, fragment_info, 2, &mbr_num);
   CHECK(rc == TILEDB_OK);
-  CHECK(mbr_num == 2);
+  CHECK(mbr_num == 0);
 
-  // Get MBR from index
+  // Get MBR from index - should fail since it's a dense array
   std::vector<uint64_t> mbr(2);
   rc = tiledb_fragment_info_get_mbr_from_index(
       ctx, fragment_info, 1, 0, 0, &mbr[0]);
-  CHECK(rc == TILEDB_OK);
-  CHECK(mbr == std::vector<uint64_t>{1, 3});
-  rc = tiledb_fragment_info_get_mbr_from_index(
-      ctx, fragment_info, 1, 1, 0, &mbr[0]);
-  CHECK(rc == TILEDB_OK);
-  CHECK(mbr == std::vector<uint64_t>{5, 7});
-  rc = tiledb_fragment_info_get_mbr_from_index(
-      ctx, fragment_info, 2, 0, 0, &mbr[0]);
-  CHECK(rc == TILEDB_OK);
-  CHECK(mbr == std::vector<uint64_t>{2, 4});
-  rc = tiledb_fragment_info_get_mbr_from_index(
-      ctx, fragment_info, 2, 1, 0, &mbr[0]);
-  CHECK(rc == TILEDB_OK);
-  CHECK(mbr == std::vector<uint64_t>{9, 9});
+  CHECK(rc == TILEDB_ERR);
 
-  // Get MBR from name
+  // Get MBR from name - should fail since it's a dense array
   rc = tiledb_fragment_info_get_mbr_from_name(
       ctx, fragment_info, 1, 0, "d", &mbr[0]);
-  CHECK(rc == TILEDB_OK);
-  CHECK(mbr == std::vector<uint64_t>{1, 3});
-  rc = tiledb_fragment_info_get_mbr_from_name(
-      ctx, fragment_info, 1, 1, "d", &mbr[0]);
-  CHECK(rc == TILEDB_OK);
-  CHECK(mbr == std::vector<uint64_t>{5, 7});
-  rc = tiledb_fragment_info_get_mbr_from_name(
-      ctx, fragment_info, 2, 0, "d", &mbr[0]);
-  CHECK(rc == TILEDB_OK);
-  CHECK(mbr == std::vector<uint64_t>{2, 4});
-  rc = tiledb_fragment_info_get_mbr_from_name(
-      ctx, fragment_info, 2, 1, "d", &mbr[0]);
-  CHECK(rc == TILEDB_OK);
-  CHECK(mbr == std::vector<uint64_t>{9, 9});
+  CHECK(rc == TILEDB_ERR);
 
   // Get number of cells
   uint64_t cell_num;
