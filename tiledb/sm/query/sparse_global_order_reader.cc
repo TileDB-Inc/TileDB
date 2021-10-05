@@ -787,10 +787,10 @@ Status SparseGlobalOrderReader::merge_result_cell_slabs(
             &need_more_tiles));
       } else {
         // Put the next cell on the queue again to be resorted.
-        tile_queue.emplace(std::move(next_tile));
         read_state_.frag_tile_idx_[next_tile.tile_->frag_idx()] =
             std::pair<uint64_t, uint64_t>(
                 next_tile.tile_->tile_idx(), next_tile.pos_);
+        tile_queue.emplace(std::move(next_tile));
       }
     }
 
@@ -880,9 +880,9 @@ Status SparseGlobalOrderReader::merge_result_cell_slabs(
           &need_more_tiles));
     } else {
       // Put the next cell on the queue to be resorted.
-      tile_queue.emplace(std::move(to_process));
       read_state_.frag_tile_idx_[tile->frag_idx()] =
           std::pair<uint64_t, uint64_t>(tile->tile_idx(), to_process.pos_);
+      tile_queue.emplace(std::move(to_process));
     }
 
     // If we busted our memory budget, exit.
