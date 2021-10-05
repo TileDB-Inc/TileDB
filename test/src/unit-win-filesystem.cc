@@ -102,22 +102,26 @@ TEST_CASE_METHOD(WinFx, "Test Windows filesystem", "[windows]") {
   CHECK(!Win::is_win_path("file:///path1/path2"));
   CHECK(!Win::is_win_path("hdfs:///path1/path2"));
 
-  CHECK(Win::abs_path(test_dir_path) == test_dir_path);
-  CHECK(Win::abs_path(test_file_path) == test_file_path);
-  CHECK(Win::abs_path("") == Win::current_dir());
-  CHECK(Win::abs_path("C:\\") == "C:\\");
-  CHECK(Win::abs_path("C:\\path1\\path2\\") == "C:\\path1\\path2\\");
-  CHECK(Win::abs_path("C:\\..") == "C:\\");
-  CHECK(Win::abs_path("C:\\..\\path1") == "C:\\path1");
-  CHECK(Win::abs_path("C:\\path1\\.\\..\\path2\\") == "C:\\path2\\");
-  CHECK(Win::abs_path("C:\\path1\\.\\path2\\..\\path3") == "C:\\path1\\path3");
+  CHECK(Win::abs_path(test_dir_path, "") == test_dir_path);
+  CHECK(Win::abs_path(test_file_path, "") == test_file_path);
+  CHECK(Win::abs_path("", "") == Win::current_dir());
+  CHECK(Win::abs_path("C:\\", "") == "C:\\");
+  CHECK(Win::abs_path("C:\\path1\\path2\\", "") == "C:\\path1\\path2\\");
+  CHECK(Win::abs_path("C:\\..", "") == "C:\\");
+  CHECK(Win::abs_path("C:\\..\\path1", "") == "C:\\path1");
+  CHECK(Win::abs_path("C:\\path1\\.\\..\\path2\\", "") == "C:\\path2\\");
   CHECK(
-      Win::abs_path("path1\\path2\\..\\path3") ==
+      Win::abs_path("C:\\path1\\.\\path2\\..\\path3", "") ==
+      "C:\\path1\\path3");
+  CHECK(
+      Win::abs_path("path1\\path2\\..\\path3", "") ==
       Win::current_dir() + "\\path1\\path3");
-  CHECK(Win::abs_path("path1") == Win::current_dir() + "\\path1");
-  CHECK(Win::abs_path("path1\\path2") == Win::current_dir() + "\\path1\\path2");
+  CHECK(Win::abs_path("path1", "") == Win::current_dir() + "\\path1");
   CHECK(
-      Win::abs_path("path1\\path2\\..\\path3") ==
+      Win::abs_path("path1\\path2", "") ==
+      Win::current_dir() + "\\path1\\path2");
+  CHECK(
+      Win::abs_path("path1\\path2\\..\\path3", "") ==
       Win::current_dir() + "\\path1\\path3");
 
   CHECK(!win_.is_dir(test_dir.to_path()));
