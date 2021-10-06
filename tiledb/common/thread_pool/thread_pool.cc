@@ -30,6 +30,7 @@
  * This file defines the ThreadPool class.
  */
 
+#if 0 
 #include <cassert>
 
 #include "tiledb/common/logger.h"
@@ -100,9 +101,8 @@ Status ThreadPool::init(const uint64_t concurrency_level) {
 
 ThreadPool::Task ThreadPool::execute(std::function<Status()>&& function) {
   if (concurrency_level_ == 0) {
-    Task invalid_future;
     LOG_ERROR("Cannot execute task; thread pool uninitialized.");
-    return invalid_future;
+    return Task();
   }
 
   if (!function) {
@@ -464,3 +464,4 @@ void ThreadPool::exec_packaged_task(tdb_shared_ptr<PackagedTask> const task) {
 
 }  // namespace common
 }  // namespace tiledb
+#endif

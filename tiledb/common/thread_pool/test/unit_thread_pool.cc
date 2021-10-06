@@ -118,9 +118,10 @@ TEST_CASE("ThreadPool: Test execute with empty pool", "[threadpool]") {
     return Status::Ok();
   });
 
-  REQUIRE(!task.valid());
+  REQUIRE(task.valid() == false);
   REQUIRE(result == 0);
 }
+
 
 TEST_CASE("ThreadPool: Test recursion", "[threadpool]") {
   ThreadPool pool;
@@ -143,6 +144,7 @@ TEST_CASE("ThreadPool: Test recursion", "[threadpool]") {
   const size_t num_nested_tasks = 10;
   std::vector<ThreadPool::Task> tasks;
   for (size_t i = 0; i < num_tasks; ++i) {
+
     auto task = pool.execute([&]() {
       std::vector<ThreadPool::Task> inner_tasks;
       for (size_t j = 0; j < num_nested_tasks; ++j) {
@@ -195,6 +197,7 @@ TEST_CASE("ThreadPool: Test recursion", "[threadpool]") {
     cv.wait(ul);
 }
 
+
 TEST_CASE("ThreadPool: Test recursion, two pools", "[threadpool]") {
   ThreadPool pool_a;
   ThreadPool pool_b;
@@ -218,6 +221,7 @@ TEST_CASE("ThreadPool: Test recursion, two pools", "[threadpool]") {
     REQUIRE(pool_a.init(20).ok());
     REQUIRE(pool_b.init(20).ok());
   }
+
 
   // This test logic is relatively inexpensive, run it 50 times
   // to increase the chance of encountering race conditions.
@@ -304,3 +308,4 @@ TEST_CASE("ThreadPool: Test recursion, two pools", "[threadpool]") {
       cv.wait(ul);
   }
 }
+
