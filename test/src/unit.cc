@@ -69,22 +69,14 @@ struct CICompletionStatusListener : Catch::TestEventListenerBase {
 
   // Successful completion hook
   void testRunEnded(Catch::TestRunStats const& testRunStats) override {
-    std::cout << "testRunEnded Point A" << std::endl;
     if (std::getenv("GITHUB_RUN_ID") != nullptr ||
         std::getenv("AGENT_NAME") != nullptr) {
-      std::cout << "testRunEnded Point B" << std::endl;
       if (testRunStats.totals.testCases.allOk() == 1) {
-        std::cout << "testRunEnded Point C" << std::endl;
         // set TILEDB_CI_SUCCESS job-level variable in azure pipelines
         // note: this variable is only set in subsequest tasks.
-        //std::cout << "::set-output name=TILEDB_CI_SUCCESS::1" << std::endl;
-        printf("before printf...TILEDB_CI_SUCCESS...\n");
         printf("::set-output name=TILEDB_CI_SUCCESS::1\n");
-        printf("after printf...TILEDB_CI_SUCCESS...\n");
-        std::cout << "##vso[task.setvariable variable=TILEDB_CI_SUCCESS]1"
-                  << std::endl;
+        printf("##vso[task.setvariable variable=TILEDB_CI_SUCCESS]1\n");
       }
-      std::cout << "testRunEnded Point D" << std::endl;
     }
   }
 };
