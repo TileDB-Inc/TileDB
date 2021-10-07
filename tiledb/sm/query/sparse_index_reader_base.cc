@@ -151,10 +151,6 @@ Status SparseIndexReaderBase::load_initial_data() {
   array_memory_tracker_->set_budget(
       memory_budget_ * memory_budget_ratio_array_data_);
 
-  // Set a limit to the array memory.
-  array_memory_tracker_->set_budget(
-      memory_budget_ * memory_budget_ratio_array_data_);
-
   // Preload zipped coordinate tile offsets. Note that this will
   // ignore fragments with a version >= 5.
   std::vector<std::string> zipped_coords_names = {constants::coords};
