@@ -307,16 +307,18 @@ jobs:
           fi
           echo diag: TILEDB_CI_SUCCESS == 1, yeah!
 
-      #~ - name: 'Test status check from powershell'
-        #~ shell: pwsh
-        #~ run: |
-          #~ write-host "A) ${{ steps.test.outputs.TILEDB_CI_SUCCESS }}"
-          #~ write-host "B) env:steps.test.outputs.TILEDB_CI_SUCCESS "
-          #~ write-host C - ${{ steps.test.outputs.TILEDB_CI_SUCCESS }}
-          #~ if ( ${{ steps.test.outputs.TILEDB_CI_SUCCESS }} -ne 1 ){
-            #~ echo TILEDB_CI_SUCCESS != 1, exiting.
-            #~ exit 1;
-          #~ }
+      - name: 'Test status check from powershell'
+        shell: pwsh
+        run: |
+          write-host "A) ${{ steps.test.outputs.TILEDB_CI_SUCCESS }}"
+          write-host "B) env:steps.test.outputs.TILEDB_CI_SUCCESS "
+          write-host C - ${{ steps.test.outputs.TILEDB_CI_SUCCESS }}
+          if ( ${{ steps.test.outputs.TILEDB_CI_SUCCESS }} -ne 1 ){
+            echo TILEDB_CI_SUCCESS != 1, exiting.
+            exit 1;
+          } else {
+            write-host success, TILEDB_CI_SUCCESS== 1
+          }
           #~ if ( ! (Test-Path env:AGENT_NAME) ){
             #~ write-host "env:AGENT_NAME does NOT exist!"
           #~ } else {
