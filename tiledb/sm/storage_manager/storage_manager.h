@@ -356,9 +356,11 @@ class StorageManager {
    * Gets the memory tracker for an open array.
    *
    * @param array_uri The array URI.
+   * @param top_level Specifies if the call is the top level call in recursion.
    * @return The memory tracker.
    */
-  OpenArrayMemoryTracker* array_get_memory_tracker(const URI& array_uri);
+  OpenArrayMemoryTracker* array_memory_tracker(
+      const URI& array_uri, bool top_level = true);
 
   /**
    * Retrieves the non-empty domain from an array. This is the union of the
