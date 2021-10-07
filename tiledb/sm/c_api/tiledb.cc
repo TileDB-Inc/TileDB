@@ -1129,7 +1129,7 @@ int32_t tiledb_config_iter_done(
 /*            CONTEXT             */
 /* ****************************** */
 
-int32_t tiledb_ctx_alloc(tiledb_config_t* config, tiledb_ctx_t** ctx) {
+int32_t tiledb_ctx_alloc(tiledb_config_t* config, tiledb_ctx_t** ctx) try {
   if (config != nullptr && config->config_ == nullptr)
     return TILEDB_ERR;
 
@@ -1149,15 +1149,35 @@ int32_t tiledb_ctx_alloc(tiledb_config_t* config, tiledb_ctx_t** ctx) {
   // Initialize the context
   auto conf =
       (config == nullptr) ? (tiledb::sm::Config*)nullptr : config->config_;
-  if (!(*ctx)->ctx_->init(conf).ok()) {
+  auto st = (*ctx)->ctx_->init(conf);
+
+  if (!st.ok()) {
     delete (*ctx)->ctx_;
     delete (*ctx);
     (*ctx) = nullptr;
+    LOG_STATUS(st);
     return TILEDB_ERR;
   }
 
   // Success
   return TILEDB_OK;
+} catch (const std::bad_alloc& e) {
+  delete (*ctx)->ctx_;
+  delete (*ctx);
+  (*ctx) = nullptr;
+  auto st = Status::Error(
+      std::string("Internal TileDB uncaught std::bad_alloc exception; ") +
+      e.what());
+  LOG_STATUS(st);
+  return TILEDB_OOM;
+} catch (const std::exception& e) {
+  delete (*ctx)->ctx_;
+  delete (*ctx);
+  (*ctx) = nullptr;
+  auto st = Status::Error(
+      std::string("Internal TileDB uncaught exception; ") + e.what());
+  LOG_STATUS(st);
+  return TILEDB_ERR;
 }
 
 void tiledb_ctx_free(tiledb_ctx_t** ctx) {
