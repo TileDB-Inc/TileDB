@@ -359,7 +359,7 @@ class StorageManager {
    * @param top_level Specifies if the call is the top level call in recursion.
    * @return The memory tracker.
    */
-  OpenArrayMemoryTracker* array_get_memory_tracker(
+  OpenArrayMemoryTracker* array_memory_tracker(
       const URI& array_uri, bool top_level = true);
 
   /**

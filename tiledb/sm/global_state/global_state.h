@@ -94,7 +94,7 @@ class GlobalState {
    * @param caller The storage manager that iniciated the call.
    * @return the memory tracker object for the array.
    */
-  OpenArrayMemoryTracker* array_get_memory_tracker(
+  OpenArrayMemoryTracker* array_memory_tracker(
       const URI& array_uri, StorageManager* caller);
 
   /**
