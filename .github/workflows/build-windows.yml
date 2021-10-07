@@ -234,7 +234,6 @@ jobs:
           $cmds = "$env:BUILD_BUILDDIRECTORY\tiledb\test\Release\tiledb_unit.exe -d=yes" 
           Write-Host "cmds: '$cmds'"
           Invoke-Expression $cmds
-          write-host TILEDB_CI_SUCCESS... ${{ steps.test.outputs.TILEDB_CI_SUCCESS }}
 
           if ($LastExitCode -ne 0) {
              Write-Host "Tests failed. CMake exit status: " $LastExitCocde
@@ -296,8 +295,6 @@ jobs:
       - name: 'Test status check'
         shell: bash
         run: |
-          echo A - ...TILEDB_CI_SUCCESS... - "${{ steps.test.outputs.TILEDB_CI_SUCCESS }}"
-          echo B - ...TILEDB_CI_SUCCESS... - ${{ steps.test.outputs.TILEDB_CI_SUCCESS }}
           # tiledb_unit is configured to set a job-level variable TILEDB_CI_SUCCESS=1
           # following the test run. If this variable is not set, the build should fail.
           # see https://github.com/TileDB-Inc/TileDB/pull/1400 (5f0623f4d3)
@@ -305,34 +302,3 @@ jobs:
             echo TILEDB_CI_SUCCESS != 1, exiting.
             exit 1;
           fi
-          echo diag: TILEDB_CI_SUCCESS == 1, yeah!
-
-      - name: 'Test status check from powershell'
-        shell: pwsh
-        run: |
-          write-host "A) ${{ steps.test.outputs.TILEDB_CI_SUCCESS }}"
-          write-host "B) env:steps.test.outputs.TILEDB_CI_SUCCESS "
-          write-host C - ${{ steps.test.outputs.TILEDB_CI_SUCCESS }}
-          if ( ${{ steps.test.outputs.TILEDB_CI_SUCCESS }} -ne 1 ){
-            echo TILEDB_CI_SUCCESS != 1, exiting.
-            exit 1;
-          } else {
-            write-host success, TILEDB_CI_SUCCESS== 1
-          }
-          #~ if ( ! (Test-Path env:AGENT_NAME) ){
-            #~ write-host "env:AGENT_NAME does NOT exist!"
-          #~ } else {
-            #~ write-host "env:AGENT_NAME DOES exist!"
-          #~ }
-          #~ if ( ! (Test-Path env:TILEDB_CI_SUCCESS) ){
-            #~ write-host "env:TILEDB_CI_SUCCESS does NOT exist!"
-          #~ } else {
-            #~ write-host "env:TILEDB_CI_SUCCESS DOES exist!"
-          #~ }
-          #~ # tiledb_unit is configured to set a job-level variable TILEDB_CI_SUCCESS=1
-          #~ # following the test run. If this variable is not set, the build should fail.
-          #~ # see https://github.com/TileDB-Inc/TileDB/pull/1400 (5f0623f4d3)
-          #~ if ((Test-Path env:TILEDB_CI_SUCCESS) -AND $env:TILEDB_CI_SUCCESS -ne 1) {
-            #~ Write-Host "tiledb_unit sanity-check failed! Go check logs. (TILEDB_CI_SUCCESS '$env:TILEDB_CI_SUCCESS')"
-            #~ $host.SetShouldExit(1)
-          #~ }
