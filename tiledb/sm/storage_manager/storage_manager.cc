@@ -928,15 +928,23 @@ Status StorageManager::array_evolve_schema(
   return Status::Ok();
 }
 
-OpenArrayMemoryTracker* StorageManager::array_get_memory_tracker(
-    const URI& array_uri) {
+OpenArrayMemoryTracker* StorageManager::array_memory_tracker(
+    const URI& array_uri, bool top_level) {
   // Lock mutex
   std::lock_guard<std::mutex> lock{open_array_for_reads_mtx_};
 
   // Find the open array to retrieve the memory tracker.
   auto it = open_arrays_for_reads_.find(array_uri.to_string());
-  if (it == open_arrays_for_reads_.end())
-    return nullptr;
+  if (it == open_arrays_for_reads_.end()) {
+    if (top_level) {
+      // TODO remove this work around once VCF runs on only context.
+      // The memory tracker could live on another context, try to find it.
+      auto& global_state = global_state::GlobalState::GetGlobalState();
+      return global_state.array_memory_tracker(array_uri, this);
+    } else {
+      return nullptr;
+    }
+  }
 
   return it->second->memory_tracker();
 }
@@ -1551,7 +1559,7 @@ Status StorageManager::get_fragment_info(
       array.array_schema(),
       fragment_uri,
       timestamp_range,
-      array_get_memory_tracker(array.array_uri()),
+      array_memory_tracker(array.array_uri()),
       !sparse);
   RETURN_NOT_OK(meta.load(
       *array.encryption_key(),

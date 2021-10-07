@@ -36,6 +36,7 @@
 #include "tiledb/sm/global_state/signal_handlers.h"
 #include "tiledb/sm/global_state/watchdog.h"
 #include "tiledb/sm/misc/constants.h"
+#include "tiledb/sm/storage_manager/storage_manager.h"
 
 #ifdef __linux__
 #include "tiledb/common/thread_pool.h"
@@ -113,6 +114,21 @@ void GlobalState::unregister_storage_manager(StorageManager* sm) {
 std::set<StorageManager*> GlobalState::storage_managers() {
   std::unique_lock<std::mutex> lck(storage_managers_mtx_);
   return storage_managers_;
+}
+
+OpenArrayMemoryTracker* GlobalState::array_memory_tracker(
+    const URI& array_uri, StorageManager* caller) {
+  std::unique_lock<std::mutex> lck(storage_managers_mtx_);
+  for (auto& storage_manager : storage_managers_) {
+    if (storage_manager == caller)
+      continue;
+
+    auto tracker = storage_manager->array_memory_tracker(array_uri, false);
+    if (tracker != nullptr)
+      return tracker;
+  }
+
+  return nullptr;
 }
 
 const std::string& GlobalState::cert_file() {
