@@ -180,6 +180,7 @@ jobs:
         shell: powershell
 
       - name: 'Test'
+        id: test
         shell: powershell
         run: |
           write-host "begin run: 'Test'"
@@ -294,12 +295,12 @@ jobs:
       - name: 'Test status check'
         shell : bash
         run: |
-          echo A - ...TILEDB_CI_SUCCESS... - "${{ steps.Test.outputs.TILEDB_CI_SUCCESS }}"
-          echo B - ...TILEDB_CI_SUCCESS... - ${{ steps.Test.outputs.TILEDB_CI_SUCCESS }}
+          echo A - ...TILEDB_CI_SUCCESS... - "${{ steps.test.outputs.TILEDB_CI_SUCCESS }}"
+          echo B - ...TILEDB_CI_SUCCESS... - ${{ steps.test.outputs.TILEDB_CI_SUCCESS }}
           # tiledb_unit is configured to set a job-level variable TILEDB_CI_SUCCESS=1
           # following the test run. If this variable is not set, the build should fail.
           # see https://github.com/TileDB-Inc/TileDB/pull/1400 (5f0623f4d3)
-          if [[ "${{ steps.Test.outputs.TILEDB_CI_SUCCESS }}" -ne 1 ]]; then
+          if [[ "${{ steps.test.outputs.TILEDB_CI_SUCCESS }}" -ne 1 ]]; then
             echo TILEDB_CI_SUCCESS != 1, exiting.
             exit 1;
           fi
