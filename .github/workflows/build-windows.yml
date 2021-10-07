@@ -234,6 +234,7 @@ jobs:
           $cmds = "$env:BUILD_BUILDDIRECTORY\tiledb\test\Release\tiledb_unit.exe -d=yes" 
           Write-Host "cmds: '$cmds'"
           Invoke-Expression $cmds
+          write-host TILEDB_CI_SUCCESS... ${{ steps.test.outputs.TILEDB_CI_SUCCESS }}
 
           if ($LastExitCode -ne 0) {
              Write-Host "Tests failed. CMake exit status: " $LastExitCocde
@@ -293,7 +294,7 @@ jobs:
           #7z a tiledb-windows-x64.zip $env:BUILD_SOURCESDIRECTORY\dist
 
       - name: 'Test status check'
-        shell : bash
+        shell: bash
         run: |
           echo A - ...TILEDB_CI_SUCCESS... - "${{ steps.test.outputs.TILEDB_CI_SUCCESS }}"
           echo B - ...TILEDB_CI_SUCCESS... - ${{ steps.test.outputs.TILEDB_CI_SUCCESS }}
@@ -309,9 +310,9 @@ jobs:
       #~ - name: 'Test status check'
         #~ shell: powershell
         #~ run: |
-          #~ write-host "A) ${{ steps.Test.outputs.TILEDB_CI_SUCCESS }}"
-          #~ write-host "B) env:steps.Test.outputs.TILEDB_CI_SUCCESS "
-          #~ write-host C - ${{ steps.Test.outputs.TILEDB_CI_SUCCESS }}
+          #~ write-host "A) ${{ steps.test.outputs.TILEDB_CI_SUCCESS }}"
+          #~ write-host "B) env:steps.test.outputs.TILEDB_CI_SUCCESS "
+          #~ write-host C - ${{ steps.test.outputs.TILEDB_CI_SUCCESS }}
           #~ if ( ! (Test-Path env:AGENT_NAME) ){
             #~ write-host "env:AGENT_NAME does NOT exist!"
           #~ } else {
