@@ -164,20 +164,29 @@ class FragmentInfo {
       uint32_t fid, const char* dim_name, void* start, void* end) const;
 
   /** Retrieves the number of MBRs in the fragment with the given index. */
-  Status get_mbr_num(uint32_t fid, uint64_t* mbr_num) const;
+  Status get_mbr_num(const Config& config, uint32_t fid, uint64_t* mbr_num);
 
   /**
    * Retrieves the MBR of the fragment with the given index on the given
    * dimension index.
    */
-  Status get_mbr(uint32_t fid, uint32_t mid, uint32_t did, void* mbr) const;
+  Status get_mbr(
+      const Config& config,
+      uint32_t fid,
+      uint32_t mid,
+      uint32_t did,
+      void* mbr) const;
 
   /**
    * Retrieves the MBR of the fragment with the given index on the given
    * dimension name.
    */
   Status get_mbr(
-      uint32_t fid, uint32_t mid, const char* dim_name, void* mbr) const;
+      const Config& config,
+      uint32_t fid,
+      uint32_t mid,
+      const char* dim_name,
+      void* mbr) const;
 
   /**
    * Retrieves the sizes of the start and end values of the MBR of the fragment
@@ -185,6 +194,7 @@ class FragmentInfo {
    * var-sized dimensions.
    */
   Status get_mbr_var_size(
+      const Config& config,
       uint32_t fid,
       uint32_t mid,
       uint32_t did,
@@ -197,6 +207,7 @@ class FragmentInfo {
    * var-sized dimensions.
    */
   Status get_mbr_var_size(
+      const Config& config,
       uint32_t fid,
       uint32_t mid,
       const char* dim_name,
@@ -208,13 +219,19 @@ class FragmentInfo {
    * dimension index. Applicable to var-sized dimensions.
    */
   Status get_mbr_var(
-      uint32_t fid, uint32_t mid, uint32_t did, void* start, void* end) const;
+      const Config& config,
+      uint32_t fid,
+      uint32_t mid,
+      uint32_t did,
+      void* start,
+      void* end) const;
 
   /**
    * Retrieves the MBR of the fragment with the given index on the given
    * dimension name. Applicable to var-sized dimensions.
    */
   Status get_mbr_var(
+      const Config& config,
       uint32_t fid,
       uint32_t mid,
       const char* dim_name,
@@ -237,7 +254,7 @@ class FragmentInfo {
    * only if the array is encrypted.
    */
   Status load(
-      const Config config,
+      const Config& config,
       EncryptionType encryption_type,
       const void* encryption_key,
       uint32_t key_length);
@@ -300,6 +317,15 @@ class FragmentInfo {
 
   /** Returns a copy of this object. */
   FragmentInfo clone() const;
+
+  /**
+   * Helper function to open the array before accessing the rtree
+   */
+  Status array_open(
+      const Config& config,
+      EncryptionType encryption_type,
+      const void* encryption_key,
+      uint32_t key_length) const;
 
   /**
    * Swaps the contents (all field values) of this object with the

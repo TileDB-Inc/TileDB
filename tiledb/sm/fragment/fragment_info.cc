@@ -416,10 +416,11 @@ Status FragmentInfo::get_non_empty_domain_var(
   return get_non_empty_domain_var(fid, did, start, end);
 }
 
-Status FragmentInfo::get_mbr_num(uint32_t fid, uint64_t* mbr_num) const {
+Status FragmentInfo::get_mbr_num(
+    const Config& config, uint32_t fid, uint64_t* mbr_num) {
   if (mbr_num == nullptr)
     return LOG_STATUS(Status::FragmentInfoError(
-        "Cannot get fragment URI; mbr number argument cannot be null"));
+        "Cannot get fragment URI; MBR number argument cannot be null"));
 
   if (fid >= fragments_.size())
     return LOG_STATUS(Status::FragmentInfoError(
@@ -430,19 +431,40 @@ Status FragmentInfo::get_mbr_num(uint32_t fid, uint64_t* mbr_num) const {
     return Status::Ok();
   }
 
-  auto key = fragments_[fid].encryption_key();
+  RETURN_NOT_OK(array_open(config, EncryptionType::NO_ENCRYPTION, nullptr, 0));
+
+  auto timestamp = utils::time::timestamp_now_ms();
+  /*  FIXME temporary workaround for the following issue: We want to load MRB
+   * info from the Rtree that is stored in the metadata of the requested
+   * fragment. To do so we have added FragmentMetadata to SingleFragmentInfo
+   * class, and we load it during fragment_info_load step. This info is then
+   * available even after the array is closed. However, FragmentMetadata stores
+   * a pointer to the ArraySchema which is deleted after and array is closed. As
+   * a result, when FragmentMetadata members access arraychema attributes or
+   * methods we segfault. For now we are reloading the fragment info here.
+   */
+  RETURN_NOT_OK_ELSE(
+      storage_manager_->get_fragment_info(*array_, 0, timestamp, this, true),
+      array_->close());
+
   auto meta = fragments_[fid].meta();
-  RETURN_NOT_OK(meta->load_rtree(*key));
+  RETURN_NOT_OK(meta->load_rtree(*array_->encryption_key()));
   *mbr_num = meta->mbrs().size();
+
+  RETURN_NOT_OK(array_->close());
 
   return Status::Ok();
 }
 
 Status FragmentInfo::get_mbr(
-    uint32_t fid, uint32_t mid, uint32_t did, void* mbr) const {
+    const Config& config,
+    uint32_t fid,
+    uint32_t mid,
+    uint32_t did,
+    void* mbr) const {
   if (mbr == nullptr)
-    return LOG_STATUS(
-        Status::FragmentInfoError("Cannot get mbr; mbr cannot be null"));
+    return LOG_STATUS(Status::FragmentInfoError(
+        "Cannot get MBR; mbr argument cannot be null"));
 
   if (fid >= fragments_.size())
     return LOG_STATUS(
@@ -452,18 +474,17 @@ Status FragmentInfo::get_mbr(
     return LOG_STATUS(
         Status::FragmentInfoError("Cannot get MBR; Fragment is not sparse"));
 
-  auto meta = fragments_[fid].meta();
+  array_open(config, EncryptionType::NO_ENCRYPTION, nullptr, 0);
 
-  auto key = fragments_[fid].encryption_key();
-  RETURN_NOT_OK(meta->load_rtree(*key));
+  auto meta = fragments_[fid].meta();
+  RETURN_NOT_OK(meta->load_rtree(*array_->encryption_key()));
   const auto& mbrs = meta->mbrs();
 
   if (mid >= mbrs.size())
     return LOG_STATUS(
-        Status::FragmentInfoError("Cannot get MBR; Invalid mbr index"));
+        Status::FragmentInfoError("Cannot get MBR; Invalid MBR index"));
 
   const auto& minimum_bounding_rectangle = mbrs[mid];
-
   if (did >= minimum_bounding_rectangle.size())
     return LOG_STATUS(
         Status::FragmentInfoError("Cannot get MBR; Invalid dimension index"));
@@ -482,7 +503,11 @@ Status FragmentInfo::get_mbr(
 }
 
 Status FragmentInfo::get_mbr(
-    uint32_t fid, uint32_t mid, const char* dim_name, void* mbr) const {
+    const Config& config,
+    uint32_t fid,
+    uint32_t mid,
+    const char* dim_name,
+    void* mbr) const {
   if (dim_name == nullptr)
     return LOG_STATUS(Status::FragmentInfoError(
         "Cannot get non-empty domain; Dimension name argument cannot be null"));
@@ -502,10 +527,11 @@ Status FragmentInfo::get_mbr(
     return LOG_STATUS(Status::FragmentInfoError(msg));
   }
 
-  return get_mbr(fid, mid, did, mbr);
+  return get_mbr(config, fid, mid, did, mbr);
 }
 
 Status FragmentInfo::get_mbr_var_size(
+    const Config& config,
     uint32_t fid,
     uint32_t mid,
     uint32_t did,
@@ -529,9 +555,10 @@ Status FragmentInfo::get_mbr_var_size(
     return LOG_STATUS(
         Status::FragmentInfoError("Cannot get MBR; Fragment is not sparse"));
 
+  array_open(config, EncryptionType::NO_ENCRYPTION, nullptr, 0);
+
   auto meta = fragments_[fid].meta();
-  auto key = fragments_[fid].encryption_key();
-  RETURN_NOT_OK(meta->load_rtree(*key));
+  RETURN_NOT_OK(meta->load_rtree(*array_->encryption_key()));
   const auto& mbrs = meta->mbrs();
 
   if (mid >= mbrs.size())
@@ -556,6 +583,7 @@ Status FragmentInfo::get_mbr_var_size(
 }
 
 Status FragmentInfo::get_mbr_var_size(
+    const Config& config,
     uint32_t fid,
     uint32_t mid,
     const char* dim_name,
@@ -581,11 +609,16 @@ Status FragmentInfo::get_mbr_var_size(
     return LOG_STATUS(Status::FragmentInfoError(msg));
   }
 
-  return get_mbr_var_size(fid, mid, did, start_size, end_size);
+  return get_mbr_var_size(config, fid, mid, did, start_size, end_size);
 }
 
 Status FragmentInfo::get_mbr_var(
-    uint32_t fid, uint32_t mid, uint32_t did, void* start, void* end) const {
+    const Config& config,
+    uint32_t fid,
+    uint32_t mid,
+    uint32_t did,
+    void* start,
+    void* end) const {
   if (start == nullptr)
     return LOG_STATUS(
         Status::FragmentInfoError("Cannot get non-empty domain var; Domain "
@@ -603,9 +636,10 @@ Status FragmentInfo::get_mbr_var(
     return LOG_STATUS(
         Status::FragmentInfoError("Cannot get MBR; Fragment is not sparse"));
 
+  array_open(config, EncryptionType::NO_ENCRYPTION, nullptr, 0);
+
   auto meta = fragments_[fid].meta();
-  auto key = fragments_[fid].encryption_key();
-  RETURN_NOT_OK(meta->load_rtree(*key));
+  RETURN_NOT_OK(meta->load_rtree(*array_->encryption_key()));
   const auto& mbrs = meta->mbrs();
 
   if (mid >= mbrs.size())
@@ -636,6 +670,7 @@ Status FragmentInfo::get_mbr_var(
 }
 
 Status FragmentInfo::get_mbr_var(
+    const Config& config,
     uint32_t fid,
     uint32_t mid,
     const char* dim_name,
@@ -662,7 +697,7 @@ Status FragmentInfo::get_mbr_var(
     return LOG_STATUS(Status::FragmentInfoError(msg));
   }
 
-  return get_mbr_var(fid, mid, did, start, end);
+  return get_mbr_var(config, fid, mid, did, start, end);
 }
 
 Status FragmentInfo::get_version(uint32_t fid, uint32_t* version) const {
@@ -721,19 +756,11 @@ Status FragmentInfo::has_consolidated_metadata(
   return Status::Ok();
 }
 
-Status FragmentInfo::load(
-    const Config config,
+Status FragmentInfo::array_open(
+    const Config& config,
     EncryptionType encryption_type,
     const void* encryption_key,
-    uint32_t key_length) {
-  bool is_array;
-  RETURN_NOT_OK(storage_manager_->is_array(array_uri_, &is_array));
-  if (!is_array) {
-    auto msg = std::string("Cannot load fragment info; Array '") +
-               array_uri_.to_string() + "' does not exist";
-    return LOG_STATUS(Status::FragmentInfoError(msg));
-  }
-
+    uint32_t key_length) const {
   if (array_->is_open())
     array_->close();
 
@@ -774,9 +801,29 @@ Status FragmentInfo::load(
         encryption_type, encryption_key, key_length));
   }
 
+  return Status::Ok();
+}
+
+Status FragmentInfo::load(
+    const Config& config,
+    EncryptionType encryption_type,
+    const void* encryption_key,
+    uint32_t key_length) {
+  bool is_array;
+  RETURN_NOT_OK(storage_manager_->is_array(array_uri_, &is_array));
+  if (!is_array) {
+    auto msg = std::string("Cannot load fragment info; Array '") +
+               array_uri_.to_string() + "' does not exist";
+    return LOG_STATUS(Status::FragmentInfoError(msg));
+  }
+
+  RETURN_NOT_OK(
+      array_open(config, encryption_type, encryption_key, key_length));
+
   auto timestamp = utils::time::timestamp_now_ms();
   RETURN_NOT_OK_ELSE(
-      array_->get_fragment_info(0, timestamp, this, true), array_->close());
+      storage_manager_->get_fragment_info(*array_, 0, timestamp, this, true),
+      array_->close());
 
   unconsolidated_metadata_num_ = 0;
   for (const auto& f : fragments_)

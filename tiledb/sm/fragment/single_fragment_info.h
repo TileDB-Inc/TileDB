@@ -34,7 +34,6 @@
 #ifndef TILEDB_SINGLE_FRAGMENT_INFO_H
 #define TILEDB_SINGLE_FRAGMENT_INFO_H
 
-#include "tiledb/sm/crypto/encryption_key.h"
 #include "tiledb/sm/enums/datatype.h"
 #include "tiledb/sm/fragment/fragment_metadata.h"
 #include "tiledb/sm/misc/types.h"
@@ -75,7 +74,6 @@ class SingleFragmentInfo {
       const NDRange& non_empty_domain,
       const NDRange& expanded_non_empty_domain,
       const std::string& array_schema_name,
-      const EncryptionKey* encryption_key,
       tdb_shared_ptr<FragmentMetadata> meta)
       : uri_(uri)
       , version_(version)
@@ -87,7 +85,6 @@ class SingleFragmentInfo {
       , non_empty_domain_(non_empty_domain)
       , expanded_non_empty_domain_(expanded_non_empty_domain)
       , array_schema_name_(array_schema_name)
-      , encryption_key_(encryption_key)
       , meta_(meta) {
   }
 
@@ -180,11 +177,6 @@ class SingleFragmentInfo {
   /** Returns the expanded non-empty domain. */
   const NDRange& expanded_non_empty_domain() const {
     return expanded_non_empty_domain_;
-  }
-
-  /** Returns a pointer to the encryption key. */
-  const EncryptionKey* encryption_key() const {
-    return encryption_key_;
   }
 
   /** Returns a pointer to the fragment's metadata. */
@@ -319,15 +311,6 @@ class SingleFragmentInfo {
   /** The name of array schema */
   std::string array_schema_name_;
 
-  /** The private encryption key used to encrypt the array.
-   *
-   * Note: The Array and SingleFragmentInfo classes are the only two places in
-   * TileDB where the user's private key bytes should be stored. Whenever a key
-   * is needed, a pointer to this memory region should be passed instead of a
-   * copy of the bytes.
-   */
-  const EncryptionKey* encryption_key_;
-
   /** The fragment metadata. **/
   tdb_shared_ptr<FragmentMetadata> meta_;
 
@@ -347,7 +330,6 @@ class SingleFragmentInfo {
     clone.non_empty_domain_ = non_empty_domain_;
     clone.expanded_non_empty_domain_ = expanded_non_empty_domain_;
     clone.array_schema_name_ = array_schema_name_;
-    clone.encryption_key_ = encryption_key_;
     clone.meta_ = meta_;
     return clone;
   }
@@ -364,7 +346,6 @@ class SingleFragmentInfo {
     std::swap(non_empty_domain_, info.non_empty_domain_);
     std::swap(expanded_non_empty_domain_, info.expanded_non_empty_domain_);
     std::swap(array_schema_name_, info.array_schema_name_);
-    std::swap(encryption_key_, info.encryption_key_);
     std::swap(meta_, info.meta_);
   }
 };

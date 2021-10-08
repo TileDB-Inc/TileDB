@@ -2378,8 +2378,7 @@ Status Subarray::compute_relevant_fragments_for_dim(
     const std::vector<uint64_t>& start_coords,
     const std::vector<uint64_t>& end_coords,
     std::vector<uint8_t>* const frag_bytemap) const {
-  const std::vector<tdb_shared_ptr<FragmentMetadata>> meta =
-      array_->fragment_metadata();
+  const auto meta = array_->fragment_metadata();
   const Dimension* const dim = array_->array_schema()->dimension(dim_idx);
 
   return parallel_for(compute_tp, 0, fragment_num, [&](const uint64_t f) {

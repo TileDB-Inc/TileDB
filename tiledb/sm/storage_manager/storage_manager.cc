@@ -1461,7 +1461,6 @@ Status StorageManager::get_fragment_info(
           non_empty_domain,
           expanded_non_empty_domain,
           meta->array_schema_name(),
-          array.encryption_key(),
           meta));
     }
   }
@@ -1556,13 +1555,12 @@ Status StorageManager::get_fragment_info(
   }
 
   // Get fragment non-empty domain
-  tdb_shared_ptr<FragmentMetadata> meta = tdb_make_shared(
+  auto meta = tdb_make_shared(
       FragmentMetadata,
       this,
       array.array_schema(),
       fragment_uri,
       timestamp_range,
-      array_memory_tracker(array.array_uri()),
       !sparse);
   RETURN_NOT_OK(meta->load(
       *array.encryption_key(),
@@ -1597,7 +1595,6 @@ Status StorageManager::get_fragment_info(
       non_empty_domain,
       expanded_non_empty_domain,
       meta->array_schema_name(),
-      array.encryption_key(),
       meta);
 
   return Status::Ok();
@@ -2571,6 +2568,7 @@ Status StorageManager::load_fragment_metadata(
   auto status = parallel_for(compute_tp_, 0, fragment_num, [&](size_t f) {
     const auto& sf = fragments_to_load[f];
     auto array_schema = open_array->array_schema();
+
     auto metadata = open_array->fragment_metadata(sf.uri_);
     if (metadata == nullptr) {  // Fragment metadata does not exist - load it
       URI coords_uri =
@@ -2592,16 +2590,10 @@ Status StorageManager::load_fragment_metadata(
             array_schema,
             sf.uri_,
             sf.timestamp_range_,
-            open_array->memory_tracker(),
             !sparse);
       } else {  // Format version > 2
         metadata = tdb_make_shared(
-            FragmentMetadata,
-            this,
-            array_schema,
-            sf.uri_,
-            sf.timestamp_range_,
-            open_array->memory_tracker());
+            FragmentMetadata, this, array_schema, sf.uri_, sf.timestamp_range_);
       }
 
       // Potentially find the basic fragment metadata in the consolidated

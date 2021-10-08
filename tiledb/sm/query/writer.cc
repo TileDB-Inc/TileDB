@@ -984,7 +984,7 @@ Status Writer::create_fragment(
   }
   auto timestamp_range = std::pair<uint64_t, uint64_t>(timestamp, timestamp);
   *frag_meta = FragmentMetadata(
-      storage_manager_, array_schema_, uri, timestamp_range, nullptr, dense);
+      storage_manager_, array_schema_, uri, timestamp_range, dense);
 
   RETURN_NOT_OK(frag_meta->init(subarray_.ndrange(0)));
   return storage_manager_->create_dir(uri);
@@ -1589,8 +1589,7 @@ Status Writer::ordered_write() {
   auto timer_se = stats_->start_timer("filter_tile");
 
   // Create new fragment
-  tdb_shared_ptr<FragmentMetadata> frag_meta =
-      tdb_make_shared(FragmentMetadata);
+  auto frag_meta = tdb_make_shared(FragmentMetadata);
   RETURN_CANCEL_OR_ERROR(create_fragment(true, frag_meta));
   const auto& uri = frag_meta->fragment_uri();
 

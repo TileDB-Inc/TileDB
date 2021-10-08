@@ -705,6 +705,7 @@ class StorageManager {
    * Loads the schema of a schema uri from persistent storage into memory.
    *
    * @param array_schema_uri The URI path of the array schema.
+   * @param array_uri The URI path of the array.
    * @param encryption_key The encryption key to use.
    * @param array_schema The array schema to be retrieved.
    * @return Status
@@ -981,21 +982,6 @@ class StorageManager {
   /** Returns `stats_`. */
   stats::Stats* stats();
 
-  /**
-   * It computes the URIs `to_vacuum` from the input `uris`, considering
-   * only the URIs whose first timestamp is greater than or equal to
-   * `timestamp_start` or second timestamp is smaller than or equal to
-   * `timestamp_end`. The function also retrieves the `vac_uris` (files with
-   * `.vac` suffix) that were used to compute `to_vacuum`.
-   */
-  Status get_uris_to_vacuum(
-      const std::vector<URI>& uris,
-      uint64_t timestamp_start,
-      uint64_t timestamp_end,
-      std::vector<URI>* to_vacuum,
-      std::vector<URI>* vac_uris,
-      bool allow_partial = true) const;
-
  private:
   /* ********************************* */
   /*        PRIVATE DATATYPES          */
@@ -1233,6 +1219,21 @@ class StorageManager {
       std::vector<TimestampedURI>* sorted_uris,
       uint64_t timestamp_start,
       uint64_t timestamp_end) const;
+
+  /**
+   * It computes the URIs `to_vacuum` from the input `uris`, considering
+   * only the URIs whose first timestamp is greater than or equal to
+   * `timestamp_start` and second timestamp is smaller than or equal to
+   * `timestamp_end`. The function also retrieves the `vac_uris` (files with
+   * `.vac` suffix) that were used to compute `to_vacuum`.
+   */
+  Status get_uris_to_vacuum(
+      const std::vector<URI>& uris,
+      uint64_t timestamp_start,
+      uint64_t timestamp_end,
+      std::vector<URI>* to_vacuum,
+      std::vector<URI>* vac_uris,
+      bool allow_partial = true) const;
 
   /** Block until there are zero in-progress queries. */
   void wait_for_zero_in_progress();

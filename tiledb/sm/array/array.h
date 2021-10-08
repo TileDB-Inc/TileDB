@@ -327,25 +327,6 @@ class Array {
    */
   Metadata* metadata();
 
-  /**
-   * Retrieves the array fragments.
-   *
-   * @param timestamp_start The function will consider fragments created
-   *     at or after this timestamp.
-   * @param timestamp_end The function will consider fragments created
-   *     at or before this timestamp.
-   * @param fragment_info The fragment information to be retrieved.
-   *     The fragments are sorted in chronological creation order.
-   * @param get_to_vacuum Whether or not to receive information about
-   *     fragments to vacuum.
-   * @return Status
-   */
-  Status get_fragment_info(
-      uint64_t timestamp_start,
-      uint64_t timestamp_end,
-      FragmentInfo* fragment_info,
-      bool get_to_vacuum = false);
-
   /** Returns the non-empty domain of the opened array.
    *  If the non_empty_domain has not been computed or loaded
    *  it will be loaded first
@@ -369,10 +350,9 @@ class Array {
   /**
    * The private encryption key used to encrypt the array.
    *
-   * Note: The Array and SingleFragmentInfo classes are the only two places in
-   * TileDB where the user's private key bytes should be stored. Whenever a key
-   * is needed, a pointer to this memory region should be passed instead of a
-   * copy of the bytes.
+   * Note: This is the only place in TileDB where the user's private key bytes
+   * should be stored. Whenever a key is needed, a pointer to this memory region
+   * should be passed instead of a copy of the bytes.
    */
   tdb_shared_ptr<EncryptionKey> encryption_key_;
 

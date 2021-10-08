@@ -7401,8 +7401,8 @@ TILEDB_EXPORT int32_t tiledb_fragment_info_get_non_empty_domain_var_from_name(
  * **Example:**
  *
  * @code{.c}
- * uint64_t cell_num;
- * tiledb_fragment_info_get_mbr_num(ctx, fragment_info, 0, &cell_num);
+ * uint64_t mbr_num;
+ * tiledb_fragment_info_get_mbr_num(ctx, fragment_info, 0, &mbr_num);
  * @endcode
  *
  * @param ctx The TileDB context
@@ -7451,7 +7451,7 @@ TILEDB_EXPORT int32_t tiledb_fragment_info_get_mbr_from_index(
  *
  * @code{.c}
  * uint64_t mbr[2];
- * tiledb_fragment_info_get_mbr_from_index(ctx, fragment_info, 0, 0, "d1", mbr);
+ * tiledb_fragment_info_get_mbr_from_name(ctx, fragment_info, 0, 0, "d1", mbr);
  * @endcode
  *
  * @param ctx The TileDB context

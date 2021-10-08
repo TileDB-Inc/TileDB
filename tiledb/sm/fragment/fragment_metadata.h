@@ -83,7 +83,6 @@ class FragmentMetadata {
       const ArraySchema* array_schema,
       const URI& fragment_uri,
       const std::pair<uint64_t, uint64_t>& timestamp_range,
-      OpenArrayMemoryTracker* memory_tracker,
       bool dense = true);
 
   /** Destructor. */
@@ -97,9 +96,6 @@ class FragmentMetadata {
   /* ********************************* */
   /*                API                */
   /* ********************************* */
-
-  /** Returns the array URI. */
-  const URI& array_uri() const;
 
   /** Returns the number of cells in the fragment. */
   uint64_t cell_num() const;
@@ -713,8 +709,8 @@ class FragmentMetadata {
   /** Stores the generic tile offsets, facilitating loading. */
   GenericTileOffsets gt_offsets_;
 
-  /** Pointer to the memory tracking structure maintained by the array. */
-  OpenArrayMemoryTracker* memory_tracker_;
+  /** The uri of the array the metadata belongs to. */
+  URI array_uri_;
 
   /* ********************************* */
   /*           PRIVATE METHODS         */
