@@ -85,22 +85,16 @@ jobs:
 
           $VSCategory = "Enterprise" # alternate 'Community'
           if ($env:TILEDB_GA_IMAGE_NAME -eq "windows-2016") {
-            #if (!(Test-Path "C:\Program Files (x86)\Microsoft Visual Studio\2017\Enterprise\Common7\IDE\CommonExtensions\Microsoft\CMake\CMake\bin")) {
             if (!(Test-Path "C:\Program Files (x86)\Microsoft Visual Studio\2017\${VSCategory}\Common7\IDE\CommonExtensions\Microsoft\CMake\CMake\bin")) {
-              #Write-Host "ERROR***: Missing C:\Program Files (x86)\Microsoft Visual Studio\2017\Enterprise\Common7\IDE\CommonExtensions\Microsoft\CMake\CMake\bin"
               Write-Host "ERROR***: Missing C:\Program Files (x86)\Microsoft Visual Studio\2017\${VSCategory}\Common7\IDE\CommonExtensions\Microsoft\CMake\CMake\bin"
               exit $LastExitCode
             }
-            #$env:Path += ";C:\Program Files (x86)\Microsoft Visual Studio\2017\Enterprise\Common7\IDE\CommonExtensions\Microsoft\CMake\CMake\bin"
             $env:Path += ";C:\Program Files (x86)\Microsoft Visual Studio\2017\${VSCategory}\Common7\IDE\CommonExtensions\Microsoft\CMake\CMake\bin"
           } elseif ($env:TILEDB_GA_IMAGE_NAME -eq "windows-2019") {
-            #if (!(Test-Path "C:\Program Files (x86)\Microsoft Visual Studio\2019\Enterprise\Common7\IDE\CommonExtensions\Microsoft\CMake\CMake\bin")) {
             if (!(Test-Path "C:\Program Files (x86)\Microsoft Visual Studio\2019\${VSCategory}\Common7\IDE\CommonExtensions\Microsoft\CMake\CMake\bin")) {
-              #Write-Host "ERROR***: Missing C:\Program Files (x86)\Microsoft Visual Studio\2019\Enterprise\Common7\IDE\CommonExtensions\Microsoft\CMake\CMake\bin"
               Write-Host "ERROR***: Missing C:\Program Files (x86)\Microsoft Visual Studio\2019\${VSCategory}\Common7\IDE\CommonExtensions\Microsoft\CMake\CMake\bin"
               exit $LastExitCode
             }
-            #$env:Path += ";C:\Program Files (x86)\Microsoft Visual Studio\2019\Enterprise\Common7\IDE\CommonExtensions\Microsoft\CMake\CMake\bin"
             $env:Path += ";C:\Program Files (x86)\Microsoft Visual Studio\2019\${VSCategory}\Common7\IDE\CommonExtensions\Microsoft\CMake\CMake\bin"
           } else {
             Write-Host "Unknown image name: '$($env:TILEDB_GA_IMAGE_NAME)'"
@@ -112,7 +106,7 @@ jobs:
 
           # TODO DEBUG move this back in the TILEDB_S3 section
           # currently we do not run S3 tests on Windows because tests time out (minio+azure slow?)
-          #& "$env:BUILD_SOURCESDIRECTORY\scripts\install-minio.ps1"
+          & "$env:BUILD_SOURCESDIRECTORY\scripts\install-minio.ps1"
 
           $bootstrapOptions = $env:TILEDB_BASE_BOOTSTRAP_OPTIONS
           if ($env:TILEDB_S3 -eq "ON") {
@@ -195,10 +189,10 @@ jobs:
             git clone https://github.com/TileDB-Inc/TileDB-Unit-Test-Arrays.git --branch 2.2.3 $env:BUILD_SOURCESDIRECTORY/test/inputs/arrays/read_compatibility_test
           }
 
-          if ($env:TILEDB_S3 -eq "ON") {
-            # update CMake to disable S3 for the test configuration, see minio note above
-            cmake -B $env:BUILD_BUILDDIRECTORY\tiledb -DTILEDB_S3=0 $env:BUILD_SOURCESDIRECTORY
-          }
+          #~ if ($env:TILEDB_S3 -eq "ON") {
+            #~ # update CMake to disable S3 for the test configuration, see minio note above
+            #~ cmake -B $env:BUILD_BUILDDIRECTORY\tiledb -DTILEDB_S3=0 $env:BUILD_SOURCESDIRECTORY
+          #~ }
 
           # CMake exits with non-0 status if there are any warnings during the build, so
           cmake --build $env:BUILD_BUILDDIRECTORY\tiledb  -j $env:NUMBER_OF_PROCESSORS --target tiledb_unit --config Release -- /verbosity:minimal
