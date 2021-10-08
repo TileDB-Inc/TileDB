@@ -415,6 +415,12 @@ Status SparseUnorderedWithDupsReader::create_result_tiles(bool* tiles_found) {
       uint64_t t = 0;
       while (range_it != result_tile_ranges_[f].end()) {
         for (t = range_it->first; t <= range_it->second; t++) {
+          // Figure out the start index.
+          auto start = range_it->first;
+          if (!result_tiles_.empty() && result_tiles_.back().frag_idx() == f) {
+            start = std::max(start, result_tiles_.back().tile_idx() + 1);
+          }
+
           RETURN_NOT_OK(add_result_tile(
               dim_num,
               memory_budget_result_tiles,
@@ -583,6 +589,14 @@ Status SparseUnorderedWithDupsReader::create_result_cell_slabs(
       if (length != 0) {
         read_state_.result_cell_slabs_.emplace_back(&rt, start, length);
         memory_used_rcs_ += sizeof(ResultCellSlab);
+      }
+
+      // Adjust result tile ranges.
+      auto& first_range = result_tile_ranges_[rt.frag_idx()].front();
+      if (first_range.second == rt.tile_idx()) {
+        result_tile_ranges_[rt.frag_idx()].pop_front();
+      } else {
+        first_range.first = rt.tile_idx() + 1;
       }
     }
 
