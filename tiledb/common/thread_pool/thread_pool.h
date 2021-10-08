@@ -168,29 +168,19 @@ public:
   std::vector<Status> wait_all_status(std::vector<Task>& tasks) {
     std::vector<Status> statuses;
 
-    std::cout << "start wait" << std::endl;
+    std::queue<Task> pending_tasks;
 
     for (auto& task : tasks) {
-
-      std::cout << "task" << std::endl;
-
       if (!task.valid()) {
 	LOG_ERROR("Waiting on invalid task future.");
 	statuses.push_back(Status::ThreadPoolError("Invalid task future"));
       } else {
-	std::cout << "getting" << std::endl;
-
-	Status status = task.get();
-
-	std::cout << "gotten" << std::endl;
-
-	if (!status.ok()) {
-	  LOG_STATUS(status);
-	}
-	statuses.push_back(status);
+	pending_tasks.push(task);
       }
     }
-    std::cout << "end wait" << std::endl;
+
+    
+
 
     return statuses;
 
