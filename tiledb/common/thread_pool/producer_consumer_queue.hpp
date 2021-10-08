@@ -26,6 +26,17 @@ public:
     return true;
   }
 
+  std::optional<Item> try_pop() {
+    std::unique_lock lock{ mutex_ };
+
+    if (queue_.empty()) {   // if ((!is_open_ && queue_.empty()) || queue_.empty()) {
+      return {};
+    }
+    Item item = queue_.front();
+    queue_.pop();
+    return item;
+  }
+
   std::optional<Item> pop() {
     std::unique_lock lock{mutex_};
 
@@ -52,6 +63,14 @@ public:
     std::scoped_lock lock{mutex_};
     is_open_ = false;
     // lock.unlock();
+    cv_.notify_all();
+  }
+
+  void signal_one() {
+    cv_.notify_one();
+  }
+
+  void signal_all() {
     cv_.notify_all();
   }
 
