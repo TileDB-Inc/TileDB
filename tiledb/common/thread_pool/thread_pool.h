@@ -42,16 +42,16 @@
 #include "tiledb/common/macros.h"
 #include "tiledb/common/status.h"
 
-
 namespace tiledb::common {
 
 class ThreadPool {
-
-public:
+ public:
   using Task = std::shared_future<Status>;
 
-  ThreadPool() : concurrency_level_(0) {}
-  
+  ThreadPool()
+      : concurrency_level_(0) {
+  }
+
   // There shouldn't be an uninitalized threadpool (IMO)
   explicit ThreadPool(size_t n) {
     init(n);
@@ -59,40 +59,42 @@ public:
 
   Status init(size_t n = std::thread::hardware_concurrency()) {
     if (n == 0) {
-      return Status::ThreadPoolError("Unable to initialize a thread pool with a concurrency level of 0.");
+      return Status::ThreadPoolError(
+          "Unable to initialize a thread pool with a concurrency level of 0.");
     }
-    
+
     Status st = Status::Ok();
 
     threads_.reserve(n);
-    
+
     for (size_t i = 0; i < n; ++i) {
       std::thread tmp;
-      
-      // Three shall be the maximum number of retries and the maximum number of retries shall be three.
-      // Try to launch a thread running the worker() function
-      // If we get resources_unvailable_try_again error, then try again
+
+      // Three shall be the maximum number of retries and the maximum number of
+      // retries shall be three. Try to launch a thread running the worker()
+      // function If we get resources_unvailable_try_again error, then try again
       size_t tries = 3;
       while (tries--) {
-	try {
-	  tmp = std::thread(&ThreadPool::worker, this);
-	}
-	catch (const std::system_error& e) {
-	  if (e.code() != std::errc::resource_unavailable_try_again || tries == 0) {
-	    st = Status::ThreadPoolError("Error initializing thread pool of concurrency level " +
-					 std::to_string(concurrency_level_) + "; " + e.what());
-	    LOG_STATUS(st);
-	    break;
-	  }
-	  continue;
-	}
-	break;
+        try {
+          tmp = std::thread(&ThreadPool::worker, this);
+        } catch (const std::system_error& e) {
+          if (e.code() != std::errc::resource_unavailable_try_again ||
+              tries == 0) {
+            st = Status::ThreadPoolError(
+                "Error initializing thread pool of concurrency level " +
+                std::to_string(concurrency_level_) + "; " + e.what());
+            LOG_STATUS(st);
+            break;
+          }
+          continue;
+        }
+        break;
       }
       if (!st.ok()) {
-	shutdown();
-	return st;
+        shutdown();
+        return st;
       }
-      
+
       threads_.emplace_back(std::move(tmp));
     }
     concurrency_level_ = n;
@@ -100,32 +102,37 @@ public:
     return st;
   }
 
-  ~ThreadPool() { shutdown(); }
+  ~ThreadPool() {
+    shutdown();
+  }
 
   // Alias for async
-  template <class Fn, class... Args, class R = std::invoke_result_t<std::decay_t<Fn>, std::decay_t<Args>...>>
+  template <
+      class Fn,
+      class... Args,
+      class R = std::invoke_result_t<std::decay_t<Fn>, std::decay_t<Args>...>>
   std::shared_future<R> execute(const Fn& task, const Args&... args) {
     return async(task, args...);
   }
 
-
   // Launch an async task, returning a future
-  template <class Fn, class... Args, class R = std::invoke_result_t<std::decay_t<Fn>, std::decay_t<Args>...>>
+  template <
+      class Fn,
+      class... Args,
+      class R = std::invoke_result_t<std::decay_t<Fn>, std::decay_t<Args>...>>
   std::shared_future<R> async(const Fn& task, const Args&... args) {
-    
     if (concurrency_level_ == 0) {
       Task invalid_future;
       LOG_ERROR("Cannot execute task; thread pool uninitialized.");
       return invalid_future;
     }
-    
+
     std::shared_ptr<std::promise<R>> task_promise(new std::promise<R>);
-    std::shared_future<R>            future = task_promise->get_future();
-    
+    std::shared_future<R> future = task_promise->get_future();
+
     task_queue_.push([task, args..., task_promise] {
       try {
-
-	// Separately handle the case of future<void>
+        // Separately handle the case of future<void>
         if constexpr (std::is_void_v<R>) {
           task(args...);
           task_promise->set_value();
@@ -136,7 +143,6 @@ public:
         try {
           task_promise->set_exception(std::current_exception());
         } catch (...) {
-	  
         }
       }
     });
@@ -167,7 +173,7 @@ public:
     auto statuses = wait_all_status(tasks);
     for (auto& st : statuses) {
       if (!st.ok()) {
-	return st;
+        return st;
       }
     }
     return Status::Ok();
@@ -182,63 +188,59 @@ public:
     for (auto& task : tasks) {
       pending_tasks.push(task);
     }
-    
+
     while (!pending_tasks.empty()) {
-      auto task = pending_tasks.front(); pending_tasks.pop();
+      auto task = pending_tasks.front();
+      pending_tasks.pop();
 
       if (!task.valid()) {
-	LOG_ERROR("Waiting on invalid task future.");
-	statuses.push_back(Status::ThreadPoolError("Invalid task future"));
-      } else if (task.wait_for(std::chrono::milliseconds(0)) == std::future_status::ready) {
+        LOG_ERROR("Waiting on invalid task future.");
+        statuses.push_back(Status::ThreadPoolError("Invalid task future"));
+      } else if (
+          task.wait_for(std::chrono::milliseconds(0)) ==
+          std::future_status::ready) {
+        // Try to get result, handling possible exception
+        Status st = [&task] {
+          try {
+            return task.get();
+          } catch (const std::string& msg) {
+            return Status::TaskError("Caught " + msg);
+          } catch (const Status& stat) {
+            return stat;
+          } catch (...) {
+            return Status::TaskError("Caught ... ");
+          }
+        }();
 
-	// Try to get result, handling possible exception
-	Status st = [&task] {
-	  try {
-	    return task.get();
-	  }
-	  catch (const std::string& msg) {
-	    return Status::TaskError("Caught " + msg);
-	  }
-	  catch (const Status& stat) {
-	    return stat;
-	  }
-	  catch (...) {
-	    return Status::TaskError("Caught ... ");
-	  }
-	}();
+        statuses.push_back(st);
 
-	statuses.push_back(st);
-	
       } else {
+        // If not completed, try again later
+        pending_tasks.push(task);
 
-	// If not completed, try again later
-	pending_tasks.push(task);
-	
-	// In the meantime, try to do something useful
-	if (auto val = task_queue_.try_pop()) {
-	  (*val)();
-	} else {
-	  
-	  // If nothing useful to do, pause
-	  task.wait_for(std::chrono::milliseconds(10));
-	  
-	}
+        // In the meantime, try to do something useful
+        if (auto val = task_queue_.try_pop()) {
+          (*val)();
+        } else {
+          // If nothing useful to do, pause
+          task.wait_for(std::chrono::milliseconds(10));
+        }
       }
     }
-    
+
     return statuses;
   }
-  
-  size_t concurrency_level() { return concurrency_level_; }
 
-private:
+  size_t concurrency_level() {
+    return concurrency_level_;
+  }
+
+ private:
   producer_consumer_queue<std::function<void()>> task_queue_;
-  std::vector<std::thread>                       threads_;
-  std::atomic<size_t>                            concurrency_level_;
+  std::vector<std::thread> threads_;
+  std::atomic<size_t> concurrency_level_;
 };
 
-
-}
-
+}  // namespace tiledb::common
 
 #endif  // TILEDB_THREAD_POOL_H
