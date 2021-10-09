@@ -131,7 +131,7 @@ std::vector<Status> ThreadPool::wait_all_status(std::vector<Task>& tasks) {
     } else if (
         task.wait_for(std::chrono::milliseconds(0)) ==
         std::future_status::ready) {
-      // Try to get result, handling possible exception
+      // Try to get result, handling possible exceptions
       Status st = [&task] {
         try {
           return task.get();
