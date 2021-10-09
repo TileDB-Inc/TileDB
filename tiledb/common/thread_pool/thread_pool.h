@@ -133,10 +133,16 @@ public:
           task_promise->set_value(task(args...));
         }
       } catch (...) {
+	
+	std::cout << "Caught" << std::endl;
 
         try {
+
           task_promise->set_exception(std::current_exception());
+	  
         } catch (...) {
+
+	  std::cout << "Caught caught" << std::endl;
 
         }
       }
@@ -186,7 +192,17 @@ public:
 	statuses.push_back(Status::ThreadPoolError("Invalid task future"));
       } else {
 	if (task.wait_for(std::chrono::milliseconds(0)) == std::future_status::ready) {
-	  statuses.push_back(task.get());
+
+	  Status st;
+	  try {
+	    st = task.get();
+	  }
+	  catch (...) {
+	    std::cout << "Caught in wait" << std::endl;
+	  }
+	  statuses.push_back(st);
+
+
 	} else {
 	  pending_tasks.push(task);	  
 	}
