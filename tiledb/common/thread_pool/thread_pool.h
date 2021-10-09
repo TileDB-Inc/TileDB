@@ -70,9 +70,10 @@ class ThreadPool {
     for (size_t i = 0; i < n; ++i) {
       std::thread tmp;
 
-      // Three shall be the maximum number of retries and the maximum number of
-      // retries shall be three. Try to launch a thread running the worker()
-      // function If we get resources_unvailable_try_again error, then try again
+      // Try to launch a thread running the worker()
+      // function. If we get resources_unvailable_try_again error, then try
+      // again. Three shall be the maximum number of retries and the maximum
+      // number of retries shall be three.
       size_t tries = 3;
       while (tries--) {
         try {

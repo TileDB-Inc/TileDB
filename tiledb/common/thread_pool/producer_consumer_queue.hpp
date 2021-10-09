@@ -39,6 +39,8 @@
 #include <optional>
 #include <queue>
 
+namespace tiledb::common {
+
 template <typename Item>
 class producer_consumer_queue {
  public:
@@ -83,11 +85,6 @@ class producer_consumer_queue {
     return item;
   }
 
-  size_t size() const {
-    std::scoped_lock lock{mutex_};
-    return queue_.size();
-  }
-
   bool is_open() const {
     std::scoped_lock lock{mutex_};
     return is_open_;
@@ -110,8 +107,14 @@ class producer_consumer_queue {
 
  private:
   bool empty() const {
+    std::scoped_lock lock{mutex_};
     return queue_.empty();
   }
+  size_t size() const {
+    std::scoped_lock lock{mutex_};
+    return queue_.size();
+  }
+
 
  private:
   std::queue<Item> queue_;
@@ -119,5 +122,7 @@ class producer_consumer_queue {
   mutable std::mutex mutex_;
   std::atomic<bool> is_open_{true};
 };
+
+}  // namespace tiledb::common
 
 #endif
