@@ -310,7 +310,6 @@ TEST_CASE("ThreadPool: Test recursion, two pools", "[threadpool]") {
 }
 
 
-
 TEST_CASE("ThreadPool: Test Exceptions", "[threadpool]") {
   std::atomic<int> result(0);
   std::vector<ThreadPool::Task> results;
@@ -330,12 +329,11 @@ TEST_CASE("ThreadPool: Test Exceptions", "[threadpool]") {
       }));
     }
     
-    // REQUIRE(pool.wait_all(results).code() == StatusCode::TaskError);
-    pool.wait_all(results);
+    REQUIRE(pool.wait_all(results).code() == StatusCode::TaskError);
     REQUIRE(result == 207);
   }
 
-#if 0
+
   SECTION("One tile error exception") {
 
     for (int i = 0; i < 207; ++i) {
@@ -348,8 +346,7 @@ TEST_CASE("ThreadPool: Test Exceptions", "[threadpool]") {
       }));
     }
     
-    // REQUIRE(pool.wait_all(results).code() == StatusCode::Tile);
-    pool.wait_all(results);
+    REQUIRE(pool.wait_all(results).code() == StatusCode::Tile);
     REQUIRE(result == 207);
   }
 
@@ -369,8 +366,7 @@ TEST_CASE("ThreadPool: Test Exceptions", "[threadpool]") {
       }));
     }
     
-    // REQUIRE(((pool.wait_all(results).code() == StatusCode::TaskError) || (pool.wait_all(results).code() == StatusCode::Tile)));
-    pool.wait_all(results);
+    REQUIRE(((pool.wait_all(results).code() == StatusCode::TaskError) || (pool.wait_all(results).code() == StatusCode::Tile)));
     REQUIRE(result == 207);
   }
 
@@ -390,8 +386,7 @@ TEST_CASE("ThreadPool: Test Exceptions", "[threadpool]") {
       }));
     }
     
-    // REQUIRE(((pool.wait_all(results).code() == StatusCode::TaskError) || (pool.wait_all(results).code() == StatusCode::Tile)));
-    pool.wait_all(results);
+    REQUIRE(((pool.wait_all(results).code() == StatusCode::TaskError) || (pool.wait_all(results).code() == StatusCode::Tile)));
     REQUIRE(result == 207);
   }
 
@@ -411,12 +406,9 @@ TEST_CASE("ThreadPool: Test Exceptions", "[threadpool]") {
       }));
     }
     
-    // REQUIRE(pool.wait_all(results).code() == StatusCode::TaskError);
-    pool.wait_all(results);
+    REQUIRE(pool.wait_all(results).code() == StatusCode::TaskError);
     REQUIRE(result == 207);
   }
-
-  //  *((volatile int*)0) = 0;
 
   SECTION("Two exceptions strict reverse order") {
 
@@ -434,9 +426,8 @@ TEST_CASE("ThreadPool: Test Exceptions", "[threadpool]") {
       }));
     }
     
-    // REQUIRE(pool.wait_all(results).code() == StatusCode::Tile);
-    pool.wait_all(results);
+    REQUIRE(pool.wait_all(results).code() == StatusCode::Tile);
     REQUIRE(result == 207);
   }
-#endif
+
 }

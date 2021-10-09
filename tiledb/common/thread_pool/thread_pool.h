@@ -133,17 +133,10 @@ public:
           task_promise->set_value(task(args...));
         }
       } catch (...) {
-	
-	std::cout << "Caught" << std::endl;
-
         try {
-
           task_promise->set_exception(std::current_exception());
-	  
         } catch (...) {
-
-	  std::cout << "Caught caught" << std::endl;
-
+	  
         }
       }
     });
@@ -187,37 +180,35 @@ public:
 
     // enqueue all valid tasks that have not completed
     for (auto& task : tasks) {
-      if (!task.valid()) {
-	LOG_ERROR("Waiting on invalid task future.");
-	statuses.push_back(Status::ThreadPoolError("Invalid task future"));
-      } else {
-	if (task.wait_for(std::chrono::milliseconds(0)) == std::future_status::ready) {
-
-	  Status st;
-	  try {
-	    st = task.get();
-	  }
-	  catch (...) {
-	    std::cout << "Caught in wait" << std::endl;
-	  }
-	  statuses.push_back(st);
-
-
-	} else {
-	  pending_tasks.push(task);	  
-	}
-      }
+      pending_tasks.push(task);
     }
-    
     // While still waiting for some tasks
     while (!pending_tasks.empty()) {
       auto task = pending_tasks.front(); pending_tasks.pop();
-      
-      // Check if task has completed
-      if (task.wait_for(std::chrono::milliseconds(0)) == std::future_status::ready) {
-	statuses.push_back(task.get());
-      } else {
 
+      if (!task.valid()) {
+	LOG_ERROR("Waiting on invalid task future.");
+	statuses.push_back(Status::ThreadPoolError("Invalid task future"));
+      } else if (task.wait_for(std::chrono::milliseconds(0)) == std::future_status::ready) {
+
+	Status st;
+	try {
+	  st = task.get();
+	}
+	catch (const std::string& msg) {
+	  st = Status::TaskError("Caught " + msg);
+	}
+	catch (const Status& stat) {
+	  st = stat;
+	}
+	catch (...) {
+	  st = Status::TaskError("Caught ... ");
+	}
+	
+	statuses.push_back(st);
+	
+	
+      } else {
 	// If not completed, try again later
 	pending_tasks.push(task);
 	
@@ -225,13 +216,14 @@ public:
 	if (auto val = task_queue_.try_pop()) {
 	  (*val)();
 	} else {
-
+	  
 	  // If nothing useful to do, pause
 	  task.wait_for(std::chrono::milliseconds(10));
+	  
 	}
       }
     }
-
+    
     return statuses;
   }
   
