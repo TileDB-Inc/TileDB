@@ -178,11 +178,11 @@ public:
 
     std::queue<Task> pending_tasks;
 
-    // enqueue all valid tasks that have not completed
+    // Enqueue all the tasks for processing
     for (auto& task : tasks) {
       pending_tasks.push(task);
     }
-    // While still waiting for some tasks
+    
     while (!pending_tasks.empty()) {
       auto task = pending_tasks.front(); pending_tasks.pop();
 
@@ -191,24 +191,26 @@ public:
 	statuses.push_back(Status::ThreadPoolError("Invalid task future"));
       } else if (task.wait_for(std::chrono::milliseconds(0)) == std::future_status::ready) {
 
-	Status st;
-	try {
-	  st = task.get();
-	}
-	catch (const std::string& msg) {
-	  st = Status::TaskError("Caught " + msg);
-	}
-	catch (const Status& stat) {
-	  st = stat;
-	}
-	catch (...) {
-	  st = Status::TaskError("Caught ... ");
-	}
-	
+	// Try to get result, handling possible exception
+	Status st = [&task] {
+	  try {
+	    return task.get();
+	  }
+	  catch (const std::string& msg) {
+	    return Status::TaskError("Caught " + msg);
+	  }
+	  catch (const Status& stat) {
+	    return stat;
+	  }
+	  catch (...) {
+	    return Status::TaskError("Caught ... ");
+	  }
+	}();
+
 	statuses.push_back(st);
 	
-	
       } else {
+
 	// If not completed, try again later
 	pending_tasks.push(task);
 	
