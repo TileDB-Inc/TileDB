@@ -59,6 +59,8 @@ export_aws_keys() {
   export AWS_SECRET_ACCESS_KEY=miniosecretkey
   export MINIO_ACCESS_KEY=minio
   export MINIO_SECRET_KEY=miniosecretkey
+  export MINIO_ROOT_USER=minio
+  export MINIO_ROOT_PASSWORD=miniosecretkey
 }
 
 run() {
