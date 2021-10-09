@@ -115,7 +115,6 @@ class producer_consumer_queue {
     return queue_.size();
   }
 
-
  private:
   std::queue<Item> queue_;
   std::condition_variable cv_;
