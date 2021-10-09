@@ -309,3 +309,134 @@ TEST_CASE("ThreadPool: Test recursion, two pools", "[threadpool]") {
   }
 }
 
+
+
+TEST_CASE("ThreadPool: Test Exceptions", "[threadpool]") {
+  std::atomic<int> result(0);
+  std::vector<ThreadPool::Task> results;
+  ThreadPool pool;
+
+  REQUIRE(pool.init(7).ok());
+  
+  SECTION("One task error exception") {
+    
+    for (int i = 0; i < 207; ++i) {
+      results.push_back(pool.execute([&result]() {
+	auto tmp = result++;
+	if (tmp == 13) {
+	  throw(std::string("Unripe banana"));
+	}
+	return Status::Ok();
+      }));
+    }
+    
+    // REQUIRE(pool.wait_all(results).code() == StatusCode::TaskError);
+    pool.wait_all(results);
+    REQUIRE(result == 207);
+  }
+
+#if 0
+  SECTION("One tile error exception") {
+
+    for (int i = 0; i < 207; ++i) {
+      results.push_back(pool.execute([&result]() {
+	auto tmp = result++;
+	if (tmp == 31) {
+	  throw(Status::TileError("Unbaked potato"));
+	}
+	return Status::Ok();
+      }));
+    }
+    
+    // REQUIRE(pool.wait_all(results).code() == StatusCode::Tile);
+    pool.wait_all(results);
+    REQUIRE(result == 207);
+  }
+
+  SECTION("Two exceptions") {
+
+    for (int i = 0; i < 207; ++i) {
+      results.push_back(pool.execute([&result]() {
+	auto tmp = result++;
+	if (tmp == 13) {
+	  throw(std::string("Unripe banana"));
+	}
+	if (tmp == 31) {
+	  throw(Status::TileError("Unbaked potato"));
+	}
+	
+	return Status::Ok();
+      }));
+    }
+    
+    // REQUIRE(((pool.wait_all(results).code() == StatusCode::TaskError) || (pool.wait_all(results).code() == StatusCode::Tile)));
+    pool.wait_all(results);
+    REQUIRE(result == 207);
+  }
+
+  SECTION("Two exceptions reverse order") {
+
+    for (int i = 0; i < 207; ++i) {
+      results.push_back(pool.execute([&result]() {
+	auto tmp = result++;
+	if (tmp == 31) {
+	  throw(std::string("Unripe banana"));
+	}
+	if (tmp == 13) {
+	  throw(Status::TileError("Unbaked potato"));
+	}
+	
+	return Status::Ok();
+      }));
+    }
+    
+    // REQUIRE(((pool.wait_all(results).code() == StatusCode::TaskError) || (pool.wait_all(results).code() == StatusCode::Tile)));
+    pool.wait_all(results);
+    REQUIRE(result == 207);
+  }
+
+  SECTION("Two exceptions strict order") {
+
+    for (int i = 0; i < 207; ++i) {
+      results.push_back(pool.execute([i,&result]() {
+	result++;
+	if (i == 13) {
+	  throw(std::string("Unripe banana"));
+	}
+	if (i == 31) {
+	  throw(Status::TileError("Unbaked potato"));
+	}
+	
+	return Status::Ok();
+      }));
+    }
+    
+    // REQUIRE(pool.wait_all(results).code() == StatusCode::TaskError);
+    pool.wait_all(results);
+    REQUIRE(result == 207);
+  }
+
+  //  *((volatile int*)0) = 0;
+
+  SECTION("Two exceptions strict reverse order") {
+
+    for (int i = 0; i < 207; ++i) {
+      results.push_back(pool.execute([i,&result]() {
+	++result;
+	if (i == 31) {
+	  throw(std::string("Unripe banana"));
+	}
+	if (i == 13) {
+	  throw(Status::TileError("Unbaked potato"));
+	}
+	
+	return Status::Ok();
+      }));
+    }
+    
+    // REQUIRE(pool.wait_all(results).code() == StatusCode::Tile);
+    pool.wait_all(results);
+    REQUIRE(result == 207);
+  }
+#endif
+}
