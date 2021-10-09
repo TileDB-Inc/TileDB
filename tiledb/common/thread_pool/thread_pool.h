@@ -57,54 +57,14 @@ class ThreadPool {
     init(n);
   }
 
-  Status init(size_t n = std::thread::hardware_concurrency()) {
-    if (n == 0) {
-      return Status::ThreadPoolError(
-          "Unable to initialize a thread pool with a concurrency level of 0.");
-    }
-
-    Status st = Status::Ok();
-
-    threads_.reserve(n);
-
-    for (size_t i = 0; i < n; ++i) {
-      std::thread tmp;
-
-      // Try to launch a thread running the worker()
-      // function. If we get resources_unvailable_try_again error, then try
-      // again. Three shall be the maximum number of retries and the maximum
-      // number of retries shall be three.
-      size_t tries = 3;
-      while (tries--) {
-        try {
-          tmp = std::thread(&ThreadPool::worker, this);
-        } catch (const std::system_error& e) {
-          if (e.code() != std::errc::resource_unavailable_try_again ||
-              tries == 0) {
-            st = Status::ThreadPoolError(
-                "Error initializing thread pool of concurrency level " +
-                std::to_string(concurrency_level_) + "; " + e.what());
-            LOG_STATUS(st);
-            break;
-          }
-          continue;
-        }
-        break;
-      }
-      if (!st.ok()) {
-        shutdown();
-        return st;
-      }
-
-      threads_.emplace_back(std::move(tmp));
-    }
-    concurrency_level_ = n;
-
-    return st;
-  }
-
   ~ThreadPool() {
     shutdown();
+  }
+
+  Status init(size_t n = std::thread::hardware_concurrency());
+
+  size_t concurrency_level() {
+    return concurrency_level_;
   }
 
   // Alias for async
@@ -151,92 +111,16 @@ class ThreadPool {
     return future;
   }
 
-  void worker() {
-    while (true) {
-      auto val = task_queue_.pop();
-      if (val) {
-        (*val)();
-      } else {
-        break;
-      }
-    }
-  }
 
-  void shutdown() {
-    task_queue_.drain();
-    for (auto&& t : threads_) {
-      t.join();
-    }
-    threads_.clear();
-  }
+  Status wait_all(std::vector<Task>& tasks);
 
-  Status wait_all(std::vector<Task>& tasks) {
-    auto statuses = wait_all_status(tasks);
-    for (auto& st : statuses) {
-      if (!st.ok()) {
-        return st;
-      }
-    }
-    return Status::Ok();
-  }
+  std::vector<Status> wait_all_status(std::vector<Task>& tasks);
 
-  std::vector<Status> wait_all_status(std::vector<Task>& tasks) {
-    std::vector<Status> statuses;
-
-    std::queue<Task> pending_tasks;
-
-    // Enqueue all the tasks for processing
-    for (auto& task : tasks) {
-      pending_tasks.push(task);
-    }
-
-    while (!pending_tasks.empty()) {
-      auto task = pending_tasks.front();
-      pending_tasks.pop();
-
-      if (!task.valid()) {
-        LOG_ERROR("Waiting on invalid task future.");
-        statuses.push_back(Status::ThreadPoolError("Invalid task future"));
-      } else if (
-          task.wait_for(std::chrono::milliseconds(0)) ==
-          std::future_status::ready) {
-        // Try to get result, handling possible exception
-        Status st = [&task] {
-          try {
-            return task.get();
-          } catch (const std::string& msg) {
-            return Status::TaskError("Caught " + msg);
-          } catch (const Status& stat) {
-            return stat;
-          } catch (...) {
-            return Status::TaskError("Caught ... ");
-          }
-        }();
-
-        statuses.push_back(st);
-
-      } else {
-        // If not completed, try again later
-        pending_tasks.push(task);
-
-        // In the meantime, try to do something useful
-        if (auto val = task_queue_.try_pop()) {
-          (*val)();
-        } else {
-          // If nothing useful to do, pause
-          task.wait_for(std::chrono::milliseconds(10));
-        }
-      }
-    }
-
-    return statuses;
-  }
-
-  size_t concurrency_level() {
-    return concurrency_level_;
-  }
+  void shutdown();
 
  private:
+  void worker();
+
   producer_consumer_queue<std::function<void()>> task_queue_;
   std::vector<std::thread> threads_;
   std::atomic<size_t> concurrency_level_;
