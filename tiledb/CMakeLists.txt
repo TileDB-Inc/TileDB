@@ -224,7 +224,7 @@ if (TILEDB_SERIALIZATION)
       ${TILEDB_CORE_INCLUDE_DIR}/tiledb/sm/serialization/tiledb-rest.capnp.c++
       PROPERTIES
         #   C4267: 'argument': conversion from 'size_t' to '<various-lesser-types>', possible loss of data
-        #   C4100 '<some-name>' unreferenced format parameter
+        #   C4100 '<some-name>' unreferenced formal parameter
         COMPILE_FLAGS "/wd4267 /wd4100"
     )
   endif()
