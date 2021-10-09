@@ -89,6 +89,8 @@ class ThreadPool {
    * Schedule a new task to be executed. If the returned future object
    * is valid, `f` is execute asynchronously. To avoid deadlock, `f`
    * should not acquire non-recursive locks held by the calling thread.
+   * A std::shared_future is returned instead of a std::future so that get() can
+   * be called multiple times.
    *
    * @param task Callable object to call
    * @param args... Parameters to pass to f
