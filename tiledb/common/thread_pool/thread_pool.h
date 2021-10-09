@@ -69,7 +69,9 @@ public:
     for (size_t i = 0; i < n; ++i) {
       std::thread tmp;
       
-      // Three shall be the number of retries and the number of retries shall be three.
+      // Three shall be the maximum number of retries and the maximum number of retries shall be three.
+      // Try to launch a thread running the worker() function
+      // If we get resources_unvailable_try_again error, then try again
       size_t tries = 3;
       while (tries--) {
 	try {
@@ -100,11 +102,14 @@ public:
 
   ~ThreadPool() { shutdown(); }
 
+  // Alias for async
   template <class Fn, class... Args, class R = std::invoke_result_t<std::decay_t<Fn>, std::decay_t<Args>...>>
   std::shared_future<R> execute(const Fn& task, const Args&... args) {
     return async(task, args...);
   }
 
+
+  // Launch an async task, returning a future
   template <class Fn, class... Args, class R = std::invoke_result_t<std::decay_t<Fn>, std::decay_t<Args>...>>
   std::shared_future<R> async(const Fn& task, const Args&... args) {
     
@@ -113,12 +118,14 @@ public:
       LOG_ERROR("Cannot execute task; thread pool uninitialized.");
       return invalid_future;
     }
-
+    
     std::shared_ptr<std::promise<R>> task_promise(new std::promise<R>);
     std::shared_future<R>            future = task_promise->get_future();
-
+    
     task_queue_.push([task, args..., task_promise] {
       try {
+
+	// Separately handle the case of future<void>
         if constexpr (std::is_void_v<R>) {
           task(args...);
           task_promise->set_value();
@@ -126,9 +133,11 @@ public:
           task_promise->set_value(task(args...));
         }
       } catch (...) {
+
         try {
           task_promise->set_exception(std::current_exception());
         } catch (...) {
+
         }
       }
     });
@@ -217,8 +226,6 @@ private:
   std::vector<std::thread>                       threads_;
   std::atomic<size_t>                            concurrency_level_;
 };
-
-
 
 
 }
