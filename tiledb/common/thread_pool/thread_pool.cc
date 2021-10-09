@@ -121,6 +121,7 @@ std::vector<Status> ThreadPool::wait_all_status(std::vector<Task>& tasks) {
     pending_tasks.push(task);
   }
 
+  // Process tasks in the pending queue
   while (!pending_tasks.empty()) {
     auto task = pending_tasks.front();
     pending_tasks.pop();
@@ -131,7 +132,7 @@ std::vector<Status> ThreadPool::wait_all_status(std::vector<Task>& tasks) {
     } else if (
         task.wait_for(std::chrono::milliseconds(0)) ==
         std::future_status::ready) {
-      // Try to get result, handling possible exceptions
+      // Task is completed, get result, handling possible exceptions
       Status st = [&task] {
         try {
           return task.get();
@@ -144,17 +145,21 @@ std::vector<Status> ThreadPool::wait_all_status(std::vector<Task>& tasks) {
         }
       }();
 
-      statuses.push_back(st);
+      statuses.emplace_back(st);
 
     } else {
-      // If not completed, try again later
+      // If the task is not completed, try again later
       pending_tasks.push(task);
 
-      // In the meantime, try to do something useful
+      // In the meantime, try to do something useful to make progress (and avoid
+      // deadlock)
       if (auto val = task_queue_.try_pop()) {
         (*val)();
       } else {
-        // If nothing useful to do, pause
+        // If nothing useful to do, take a short pause so we don't burn cycles
+        // going through the task list over and over. A better approach would be
+        // to timestamp the tasks and only wait if we have not seen the task too
+        // many times before.
         task.wait_for(std::chrono::milliseconds(10));
       }
     }

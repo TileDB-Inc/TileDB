@@ -140,7 +140,7 @@ class ThreadPool {
   }
 
   /**
-   * Wait on all the given tasks to complete. This is safe to call recusively
+   * Wait on all the given tasks to complete. This is safe to call recursively
    * and may execute pending tasks on the calling thread while waiting.
    *
    * @param tasks Task list to wait on.
@@ -151,7 +151,7 @@ class ThreadPool {
 
   /**
    * Wait on all the given tasks to complete, return a vector of their return
-   * Status. This is safe to call recusively and may execute pending tasks
+   * Status. This is safe to call recursively and may execute pending tasks
    * on the calling thread while waiting.
    *
    * @param tasks Task list to wait on
@@ -159,13 +159,11 @@ class ThreadPool {
    */
   std::vector<Status> wait_all_status(std::vector<Task>& tasks);
 
-
   /* ********************************* */
   /*         PRIVATE ATTRIBUTES        */
   /* ********************************* */
 
  private:
-
   /** The worker thread routine */
   void worker();
 
