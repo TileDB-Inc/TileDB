@@ -111,7 +111,6 @@ class ThreadPool {
     return future;
   }
 
-
   Status wait_all(std::vector<Task>& tasks);
 
   std::vector<Status> wait_all_status(std::vector<Task>& tasks);

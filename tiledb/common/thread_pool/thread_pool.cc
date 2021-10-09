@@ -37,7 +37,6 @@
 
 namespace tiledb::common {
 
-
 Status ThreadPool::init(size_t n) {
   if (n == 0) {
     return Status::ThreadPoolError(
@@ -82,7 +81,6 @@ Status ThreadPool::init(size_t n) {
 
   return st;
 }
-
 
 void ThreadPool::worker() {
   while (true) {
@@ -166,5 +164,3 @@ std::vector<Status> ThreadPool::wait_all_status(std::vector<Task>& tasks) {
 }
 
 }  // namespace tiledb::common
-
-
