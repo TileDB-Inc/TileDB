@@ -83,7 +83,9 @@ function Run-Minio {
     type miniostdout.txt
     
     $minioproc.ID
-    Get-Process $minioproc.ID
+    tasklist
+    tasklist | findstr /i minio
+    Get-Process -id $minioproc.ID
 
     if ($PSVersionTable.PSVersion.Major -ge 6) {
         Write-Host "Checking Minio with '-SkipCertificateCheck':"
