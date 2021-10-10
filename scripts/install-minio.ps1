@@ -72,7 +72,8 @@ function Run-Minio {
     if (!(Test-Path $ServerConfigDir)) {
         New-Item -ItemType Directory -Path $ServerConfigDir
     }
-    $minioproc = Start-Process -FilePath $ExePath -ArgumentList "server --address 127.0.0.1:9999 --config-dir `"$ServerConfigDir`" --certs-dir `"$CertsDir`" `"$ServerDataDir`""
+    #Start-Process -FilePath $ExePath -ArgumentList "server --address 127.0.0.1:9999 --config-dir `"$ServerConfigDir`" --certs-dir `"$CertsDir`" `"$ServerDataDir`""
+    $minioproc = Start-Process -FilePath $ExePath -ArgumentList "server --address 127.0.0.1:9999 --config-dir `"$ServerConfigDir`" --certs-dir `"$CertsDir`" `"$ServerDataDir`"" -PassThru
 
     Start-Sleep 1.0
     
