@@ -1269,6 +1269,9 @@ class StorageManager {
 
   /** Sets default tag values on this StorageManager. */
   Status set_default_tags();
+
+  /** Makes URI from path and config. */
+  URI make_uri(const char* path, const Config* config = nullptr) const;
 };
 
 }  // namespace sm

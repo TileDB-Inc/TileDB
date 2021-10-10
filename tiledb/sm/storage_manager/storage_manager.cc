@@ -508,7 +508,7 @@ Status StorageManager::array_consolidate(
     uint32_t key_length,
     const Config* config) {
   // Check array URI
-  URI array_uri(array_name);
+  URI array_uri = make_uri(array_name, config);
   if (array_uri.is_invalid()) {
     return logger_->status(
         Status::StorageManagerError("Cannot consolidate array; Invalid URI"));
@@ -576,6 +576,9 @@ Status StorageManager::array_vacuum(
     config = &config_;
   }
 
+  URI array_uri = make_uri(array_name, config);
+  std::string array_path = array_uri.to_string();
+
   // Get mode
   const char* mode;
   RETURN_NOT_OK(config->get("sm.vacuum.mode", &mode));
@@ -595,13 +598,13 @@ Status StorageManager::array_vacuum(
     return logger_->status(Status::StorageManagerError(
         "Cannot vacuum array; Vacuum mode cannot be null"));
   else if (std::string(mode) == "fragments")
-    RETURN_NOT_OK(
-        array_vacuum_fragments(array_name, timestamp_start, timestamp_end));
+    RETURN_NOT_OK(array_vacuum_fragments(
+        array_path.c_str(), timestamp_start, timestamp_end));
   else if (std::string(mode) == "fragment_meta")
-    RETURN_NOT_OK(array_vacuum_fragment_meta(array_name));
+    RETURN_NOT_OK(array_vacuum_fragment_meta(array_path.c_str()));
   else if (std::string(mode) == "array_meta")
-    RETURN_NOT_OK(
-        array_vacuum_array_meta(array_name, timestamp_start, timestamp_end));
+    RETURN_NOT_OK(array_vacuum_array_meta(
+        array_path.c_str(), timestamp_start, timestamp_end));
   else
     return logger_->status(Status::StorageManagerError(
         "Cannot vacuum array; Invalid vacuum mode"));
@@ -616,7 +619,7 @@ Status StorageManager::array_vacuum_fragments(
         "Cannot vacuum fragments; Array name cannot be null"));
 
   // Get all URIs in the array directory
-  URI array_uri(array_name);
+  URI array_uri = make_uri(array_name, nullptr);
   std::vector<URI> uris;
   RETURN_NOT_OK(vfs_->ls(array_uri.add_trailing_slash(), &uris));
 
@@ -662,7 +665,7 @@ Status StorageManager::array_vacuum_fragment_meta(const char* array_name) {
 
   // Get the consolidated fragment metadata URIs to be deleted
   // (all except the last one)
-  URI array_uri(array_name);
+  URI array_uri = make_uri(array_name, nullptr);
   std::vector<URI> uris, to_vacuum;
   URI last;
   RETURN_NOT_OK(vfs_->ls(array_uri.add_trailing_slash(), &uris));
@@ -694,7 +697,7 @@ Status StorageManager::array_vacuum_array_meta(
         "Cannot vacuum array metadata; Array name cannot be null"));
 
   // Get all URIs in the array directory
-  URI array_uri(array_name);
+  URI array_uri = make_uri(array_name, nullptr);
   auto meta_uri = array_uri.join_path(constants::array_metadata_folder_name);
   std::vector<URI> uris;
   RETURN_NOT_OK(vfs_->ls(meta_uri.add_trailing_slash(), &uris));
@@ -732,7 +735,7 @@ Status StorageManager::array_metadata_consolidate(
     uint32_t key_length,
     const Config* config) {
   // Check array URI
-  URI array_uri(array_name);
+  URI array_uri = make_uri(array_name, config);
   if (array_uri.is_invalid()) {
     return logger_->status(Status::StorageManagerError(
         "Cannot consolidate array metadata; Invalid URI"));
@@ -1302,7 +1305,7 @@ Status StorageManager::array_get_non_empty_domain_var_from_name(
 
 Status StorageManager::array_get_encryption(
     const std::string& array_uri, EncryptionType* encryption_type) {
-  URI uri(array_uri);
+  URI uri = make_uri(array_uri.c_str(), nullptr);
 
   if (uri.is_invalid())
     return logger_->status(Status::StorageManagerError(
@@ -1440,7 +1443,7 @@ void StorageManager::decrement_in_progress() {
 }
 
 Status StorageManager::object_remove(const char* path) const {
-  auto uri = URI(path);
+  auto uri = make_uri(path, nullptr);
   if (uri.is_invalid())
     return logger_->status(Status::StorageManagerError(
         std::string("Cannot remove object '") + path + "'; Invalid URI"));
@@ -1457,12 +1460,12 @@ Status StorageManager::object_remove(const char* path) const {
 
 Status StorageManager::object_move(
     const char* old_path, const char* new_path) const {
-  auto old_uri = URI(old_path);
+  auto old_uri = make_uri(old_path, nullptr);
   if (old_uri.is_invalid())
     return logger_->status(Status::StorageManagerError(
         std::string("Cannot move object '") + old_path + "'; Invalid URI"));
 
-  auto new_uri = URI(new_path);
+  auto new_uri = make_uri(new_path, nullptr);
   if (new_uri.is_invalid())
     return logger_->status(Status::StorageManagerError(
         std::string("Cannot move object to '") + new_path + "'; Invalid URI"));
@@ -1685,7 +1688,7 @@ Status StorageManager::get_fragment_info(
 
 Status StorageManager::group_create(const std::string& group) {
   // Create group URI
-  URI uri(group);
+  URI uri = make_uri(group.c_str(), nullptr);
   if (uri.is_invalid())
     return logger_->status(Status::StorageManagerError(
         "Cannot create group '" + group + "'; Invalid group URI"));
@@ -2114,7 +2117,7 @@ Status StorageManager::object_type(const URI& uri, ObjectType* type) const {
 Status StorageManager::object_iter_begin(
     ObjectIter** obj_iter, const char* path, WalkOrder order) {
   // Sanity check
-  URI path_uri(path);
+  URI path_uri = make_uri(path, nullptr);
   if (path_uri.is_invalid()) {
     return logger_->status(Status::StorageManagerError(
         "Cannot create object iterator; Invalid input path"));
@@ -2146,7 +2149,7 @@ Status StorageManager::object_iter_begin(
 Status StorageManager::object_iter_begin(
     ObjectIter** obj_iter, const char* path) {
   // Sanity check
-  URI path_uri(path);
+  URI path_uri = make_uri(path, nullptr);
   if (path_uri.is_invalid()) {
     return logger_->status(Status::StorageManagerError(
         "Cannot create object iterator; Invalid input path"));
@@ -2895,6 +2898,25 @@ Status StorageManager::set_default_tags() {
   RETURN_NOT_OK(set_tag("x-tiledb-api-language", "c"));
 
   return Status::Ok();
+}
+
+URI StorageManager::make_uri(const char* path, const Config* config) const {
+  if (!config) {
+    config = &config_;
+  }
+  std::string cpp_path =
+      (path == nullptr) ? std::string("") : std::string(path);
+  if (config == nullptr) {
+    return URI(cpp_path);
+  }
+
+  bool found = false;
+  std::string local_root_path = config->get("vfs.local_root_path", &found);
+  if (found && local_root_path.length() > 0) {
+    return URI(VFS::abs_path(cpp_path, local_root_path));
+  }
+
+  return URI(cpp_path);
 }
 
 }  // namespace sm

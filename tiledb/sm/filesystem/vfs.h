@@ -109,17 +109,12 @@ class VFS {
    * posix URI's).
    *
    * @param path The input path.
+   * @param root_path The root path for local file system. If it is empty, it
+   * will be the current working directory.
    * @return The string with the absolute path.
    */
-  static std::string abs_path(const std::string& path);
-
-  /**
-   * Sets the root path for local file system.
-   *
-   * @param root_path The root path.
-   * @return Status
-   */
-  static Status set_local_root_path(const std::string& root_path);
+  static std::string abs_path(
+      const std::string& path, const std::string& root_path = "");
 
   /**
    * Return a config object containing the VFS parameters. All other non-VFS
@@ -667,9 +662,6 @@ class VFS {
 
   /** The read-ahead cache. */
   tdb_unique_ptr<ReadAheadCache> read_ahead_cache_;
-
-  /** The local root path. */
-  static std::string local_root_path_;
 
   /* ********************************* */
   /*          PRIVATE METHODS          */

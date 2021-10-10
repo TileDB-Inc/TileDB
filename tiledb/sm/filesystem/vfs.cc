@@ -65,9 +65,6 @@ static std::unordered_map<std::string, std::pair<uint64_t, filelock_t>>
 /** Mutex protecting the filelock process and the filelock counts map. */
 static std::mutex filelock_mtx_;
 
-/** Initialization of static variable local_root_path_. */
-std::string VFS::local_root_path_ = "";
-
 /* ********************************* */
 /*     CONSTRUCTORS & DESTRUCTORS    */
 /* ********************************* */
@@ -97,18 +94,19 @@ VFS::VFS()
 /*                API                */
 /* ********************************* */
 
-std::string VFS::abs_path(const std::string& path) {
+std::string VFS::abs_path(
+    const std::string& path, const std::string& root_path) {
   // workaround for older clang (llvm 3.5) compilers (issue #828)
   std::string path_copy = path;
 #ifdef _WIN32
   if (Win::is_win_path(path))
-    return Win::uri_from_path(Win::abs_path(path, local_root_path_));
+    return Win::uri_from_path(Win::abs_path(path, root_path));
   else if (URI::is_file(path))
     return Win::uri_from_path(
-        Win::abs_path(Win::path_from_uri(path), local_root_path_));
+        Win::abs_path(Win::path_from_uri(path), root_path));
 #else
   if (URI::is_file(path))
-    return Posix::abs_path(path, local_root_path_);
+    return Posix::abs_path(path, root_path);
 #endif
   if (URI::is_hdfs(path))
     return path_copy;
@@ -122,11 +120,6 @@ std::string VFS::abs_path(const std::string& path) {
     return path_copy;
   // Certainly starts with "<resource>://" other than "file://"
   return path_copy;
-}
-
-Status VFS::set_local_root_path(const std::string& root_path) {
-  local_root_path_ = root_path;
-  return Status::Ok();
 }
 
 Config VFS::config() const {
@@ -986,10 +979,6 @@ Status VFS::init(
 #else
   posix_.init(config_, io_tp_);
 #endif
-  std::string local_root_path = config_.get("vfs.local_root_path", &found);
-  if (found && local_root_path.length() > 0) {
-    RETURN_NOT_OK(VFS::set_local_root_path(local_root_path));
-  }
 
   init_ = true;
 
