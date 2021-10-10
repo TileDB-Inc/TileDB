@@ -109,6 +109,12 @@ jobs:
           # currently we do not run S3 tests on Windows because tests time out (minio+azure slow?)
           & "$env:BUILD_SOURCESDIRECTORY\scripts\install-minio.ps1"
           
+          ls "$env:BUILD_SOURCESDIRECTORY\dist\bin"
+          #ls "$env:BUILD_SOURCESDIRECTORY\dist\etc"
+          #ls "$env:BUILD_SOURCESDIRECTORY\dist\etc\minio"
+          ls "$env:BUILD_SOURCESDIRECTORY\dist\usr\local\share"
+          ls "$env:BUILD_SOURCESDIRECTORY\dist\usr\local\share\minio"
+          ls "$env:BUILD_SOURCESDIRECTORY\dist\usr\local\share\minio\.minio.sys"
           tasklist
           echo "minio running?"
           tasklist | findstr /i minio
