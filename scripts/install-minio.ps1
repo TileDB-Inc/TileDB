@@ -53,6 +53,8 @@ function Install-Minio {
 function Export-Env {
     $env:MINIO_ACCESS_KEY = "minio"
     $env:MINIO_SECRET_KEY = "miniosecretkey"
+    $env:MINIO_ROOT_USER = "minio"
+    $env:MINIO_ROOT_PASSWORD = "miniosecretkey"
     $env:AWS_ACCESS_KEY_ID = "minio"
     $env:AWS_SECRET_ACCESS_KEY = "miniosecretkey"
 }
