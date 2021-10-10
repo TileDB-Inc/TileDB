@@ -110,6 +110,7 @@ jobs:
           & "$env:BUILD_SOURCESDIRECTORY\scripts\install-minio.ps1"
           
           tasklist
+          echo "minio running?"
           tasklist | findstr /i minio
 
           $bootstrapOptions = $env:TILEDB_BASE_BOOTSTRAP_OPTIONS
