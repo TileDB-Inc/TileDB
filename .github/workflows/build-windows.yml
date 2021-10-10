@@ -17,6 +17,7 @@ env:
 jobs:
   build:
     runs-on: ${{ matrix.os }}
+    timeout-minutes: 120
     strategy:
       matrix:
         #os: [windows-2016, windows-2019]
