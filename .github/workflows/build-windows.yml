@@ -189,7 +189,11 @@ jobs:
           $env:MINIO_ROOT_PASSWORD = "miniosecretkey"
           $env:AWS_ACCESS_KEY_ID = "minio"
           $env:AWS_SECRET_ACCESS_KEY = "miniosecretkey"
-          
+
+          #debug...
+          tasklist
+          tasklist | findstr /i minio
+
           # Clone backwards compatibility test arrays
           if ($env:BACKWARDS_COMPATIBILITY_ARRAYS -eq "ON") {
             git clone https://github.com/TileDB-Inc/TileDB-Unit-Test-Arrays.git --branch 2.2.3 $env:BUILD_SOURCESDIRECTORY/test/inputs/arrays/read_compatibility_test
