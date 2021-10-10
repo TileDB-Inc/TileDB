@@ -69,9 +69,12 @@ function Run-Minio {
     if (!(Test-Path $ServerConfigDir)) {
         New-Item -ItemType Directory -Path $ServerConfigDir
     }
-    Start-Process -FilePath $ExePath -ArgumentList "server --address 127.0.0.1:9999 --config-dir `"$ServerConfigDir`" --certs-dir `"$CertsDir`" `"$ServerDataDir`""
+    $minioproc = Start-Process -FilePath $ExePath -ArgumentList "server --address 127.0.0.1:9999 --config-dir `"$ServerConfigDir`" --certs-dir `"$CertsDir`" `"$ServerDataDir`""
 
     Start-Sleep 1.0
+    
+    $minioproc.ID
+    Get-Process $minioproc.ID
 
     if ($PSVersionTable.PSVersion.Major -ge 6) {
         Write-Host "Checking Minio with '-SkipCertificateCheck':"
