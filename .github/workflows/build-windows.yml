@@ -108,10 +108,13 @@ jobs:
 
           # TODO DEBUG move this back in the TILEDB_S3 section
           # currently we do not run S3 tests on Windows because tests time out (minio+azure slow?)
-          write-host "$env:BUILD_SOURCESDIRECTORY"
+          write-host "env:BUILD_SOURCESDIRECTORY: '$env:BUILD_SOURCESDIRECTORY'"
+          write-host "b4 ls $env:BUILD_SOURCESDIRECTORY"
           ls $env:BUILD_SOURCESDIRECTORY
+          write-host 'b4 & "$env:BUILD_SOURCESDIRECTORY\scripts\install-minio.ps1"'
           & "$env:BUILD_SOURCESDIRECTORY\scripts\install-minio.ps1"
           
+          write-host 'b4 ls "$env:BUILD_SOURCESDIRECTORY\dist\bin"'
           ls "$env:BUILD_SOURCESDIRECTORY\dist\bin"
           #ls "$env:BUILD_SOURCESDIRECTORY\dist\etc"
           #ls "$env:BUILD_SOURCESDIRECTORY\dist\etc\minio"
