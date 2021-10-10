@@ -113,18 +113,20 @@ jobs:
           ls $env:BUILD_SOURCESDIRECTORY
           write-host 'b4 & "$env:BUILD_SOURCESDIRECTORY\scripts\install-minio.ps1"'
           write-host current directory... (pwd)
-          & "$env:BUILD_SOURCESDIRECTORY\scripts\install-minio.ps1"
-          
-          write-host 'b4 ls "$env:BUILD_SOURCESDIRECTORY\dist\bin"'
-          ls "$env:BUILD_SOURCESDIRECTORY\dist\bin"
-          #ls "$env:BUILD_SOURCESDIRECTORY\dist\etc"
-          #ls "$env:BUILD_SOURCESDIRECTORY\dist\etc\minio"
-          ls "$env:BUILD_SOURCESDIRECTORY\dist\usr\local\share"
-          ls "$env:BUILD_SOURCESDIRECTORY\dist\usr\local\share\minio"
-          #ls "$env:BUILD_SOURCESDIRECTORY\dist\usr\local\share\minio\.minio.sys"
-          tasklist
-          echo "minio running?"
-          tasklist | findstr /i minio
+          if ($env:TILEDB_S3 -eq "ON") {
+            & "$env:BUILD_SOURCESDIRECTORY\scripts\install-minio.ps1"
+            write-host 'b4 ls "$env:BUILD_SOURCESDIRECTORY\dist\bin"'
+            ls "$env:BUILD_SOURCESDIRECTORY\dist\bin"
+            #ls "$env:BUILD_SOURCESDIRECTORY\dist\etc"
+            #ls "$env:BUILD_SOURCESDIRECTORY\dist\etc\minio"
+            ls "$env:BUILD_SOURCESDIRECTORY\dist\usr\local\share"
+            ls "$env:BUILD_SOURCESDIRECTORY\dist\usr\local\share\minio"
+            #ls "$env:BUILD_SOURCESDIRECTORY\dist\usr\local\share\minio\.minio.sys"
+            tasklist
+            echo "minio running?"
+            tasklist | findstr /i minio
+            tasklist /fi "imagename eq minio.exe"
+          }
 
           $bootstrapOptions = $env:TILEDB_BASE_BOOTSTRAP_OPTIONS
           if ($env:TILEDB_S3 -eq "ON") {
@@ -189,6 +191,8 @@ jobs:
             Write-Host "Installation failed."
             $host.SetShouldExit($LastExitCode)
           }
+
+          tasklist /fi "imagename eq minio.exe" #TBD: removeme
         shell: powershell
 
       - name: 'Test'
@@ -204,9 +208,15 @@ jobs:
           $env:AWS_ACCESS_KEY_ID = "minio"
           $env:AWS_SECRET_ACCESS_KEY = "miniosecretkey"
 
+          if ($env:TILEDB_S3 -eq "ON") {
+            & "$env:BUILD_SOURCESDIRECTORY\scripts\install-minio.ps1"
+          }
+
           #debug...
           tasklist
+          write-host 'b4 findstr /i minio'
           tasklist | findstr /i minio
+          tasklist /fi "imagename eq minio.exe"
 
           # Clone backwards compatibility test arrays
           if ($env:BACKWARDS_COMPATIBILITY_ARRAYS -eq "ON") {
