@@ -27,7 +27,7 @@ $InstallPrefix = Join-Path $TileDBRootDirectory "dist"
 $StagingDirectory = Join-Path (Get-ScriptsDirectory) "deps-staging"
 $CertsDirectory = Join-Path $TileDBRootDirectory "test/inputs/test_certs"
 if(! (Test-Path $InstallPrefix)){
-  New-Item -ItemType Directory -Path (Join-Path $InstallPrefix) -ea 0
+  New-Item -ItemType Directory -Path $InstallPrefix -ea 0
 }
 New-Item -ItemType Directory -Path (Join-Path $InstallPrefix bin) -ea 0
 
