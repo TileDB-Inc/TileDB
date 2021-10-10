@@ -33,6 +33,7 @@
 #include "tiledb/sm/storage_manager/context.h"
 #include "tiledb/common/logger.h"
 #include "tiledb/common/memory.h"
+#include "tiledb/sm/filesystem/vfs.h"
 
 using namespace tiledb::common;
 
@@ -114,6 +115,24 @@ ThreadPool* Context::io_tp() const {
 
 stats::Stats* Context::stats() const {
   return stats_.get();
+}
+
+std::string Context::abs_path(const std::string& path) {
+  if (storage_manager_ != nullptr) {
+    bool found = false;
+    std::string local_root_path =
+        storage_manager_->config().get("vfs.local_root_path", &found);
+    if (found && local_root_path.length() > 0) {
+      return VFS::abs_path(path, local_root_path);
+    }
+  }
+  return path;
+}
+
+std::string Context::abs_path(const char* path) {
+  std::string cpp_path =
+      (path == nullptr) ? std::string("") : std::string(path);
+  return abs_path(cpp_path);
 }
 
 Status Context::init_thread_pools(Config* const config) {

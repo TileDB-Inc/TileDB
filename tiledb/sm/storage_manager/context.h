@@ -85,6 +85,12 @@ class Context {
   /** Returns the internal stats object. */
   stats::Stats* stats() const;
 
+  /** Returns the absolute full path from a path. */
+  std::string abs_path(const std::string& path);
+
+  /** Returns the absolute full path from a path. */
+  std::string abs_path(const char* path);
+
  private:
   /* ********************************* */
   /*         PRIVATE ATTRIBUTES        */

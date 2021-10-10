@@ -2308,7 +2308,7 @@ int32_t tiledb_array_schema_load(
   }
 
   // Check array name
-  tiledb::sm::URI uri(array_uri);
+  tiledb::sm::URI uri(ctx->ctx_->abs_path(array_uri));
   if (uri.is_invalid()) {
     auto st = Status::Error("Failed to load array schema; Invalid array URI");
     LOG_STATUS(st);
@@ -2379,7 +2379,7 @@ int32_t tiledb_array_schema_load_with_key(
   }
 
   // Check array name
-  tiledb::sm::URI uri(array_uri);
+  tiledb::sm::URI uri(ctx->ctx_->abs_path(array_uri));
   if (uri.is_invalid()) {
     delete *array_schema;
     *array_schema = nullptr;
@@ -3884,7 +3884,7 @@ int32_t tiledb_array_alloc(
   }
 
   // Check array URI
-  auto uri = tiledb::sm::URI(array_uri);
+  auto uri = tiledb::sm::URI(ctx->ctx_->abs_path(array_uri));
   if (uri.is_invalid()) {
     auto st =
         Status::Error("Failed to create TileDB array object; Invalid URI");
@@ -4204,7 +4204,7 @@ int32_t tiledb_array_create(
     return TILEDB_ERR;
 
   // Check array name
-  tiledb::sm::URI uri(array_uri);
+  tiledb::sm::URI uri(ctx->ctx_->abs_path(array_uri));
   if (uri.is_invalid()) {
     auto st = Status::Error("Failed to create array; Invalid array URI");
     LOG_STATUS(st);
@@ -4262,7 +4262,7 @@ int32_t tiledb_array_create_with_key(
     return TILEDB_ERR;
 
   // Check array name
-  tiledb::sm::URI uri(array_uri);
+  tiledb::sm::URI uri(ctx->ctx_->abs_path(array_uri));
   if (uri.is_invalid()) {
     auto st = Status::Error("Failed to create array; Invalid array URI");
     LOG_STATUS(st);
@@ -4773,7 +4773,7 @@ int32_t tiledb_array_evolve(
     return TILEDB_ERR;
 
   // Check array name
-  tiledb::sm::URI uri(array_uri);
+  tiledb::sm::URI uri(ctx->ctx_->abs_path(array_uri));
   if (uri.is_invalid()) {
     auto st = Status::Error("Failed to create array; Invalid array URI");
     LOG_STATUS(st);
@@ -4810,7 +4810,7 @@ int32_t tiledb_object_type(
   if (sanity_check(ctx) == TILEDB_ERR)
     return TILEDB_ERR;
 
-  auto uri = tiledb::sm::URI(path);
+  auto uri = tiledb::sm::URI(ctx->ctx_->abs_path(path));
   tiledb::sm::ObjectType object_type;
   if (SAVE_ERROR_CATCH(
           ctx, ctx->ctx_->storage_manager()->object_type(uri, &object_type)))
@@ -5038,7 +5038,9 @@ int32_t tiledb_vfs_create_bucket(
   if (sanity_check(ctx) == TILEDB_ERR || sanity_check(ctx, vfs) == TILEDB_ERR)
     return TILEDB_ERR;
 
-  if (SAVE_ERROR_CATCH(ctx, vfs->vfs_->create_bucket(tiledb::sm::URI(uri))))
+  if (SAVE_ERROR_CATCH(
+          ctx,
+          vfs->vfs_->create_bucket(tiledb::sm::URI(ctx->ctx_->abs_path(uri)))))
     return TILEDB_ERR;
 
   return TILEDB_OK;
@@ -5049,7 +5051,9 @@ int32_t tiledb_vfs_remove_bucket(
   if (sanity_check(ctx) == TILEDB_ERR || sanity_check(ctx, vfs) == TILEDB_ERR)
     return TILEDB_ERR;
 
-  if (SAVE_ERROR_CATCH(ctx, vfs->vfs_->remove_bucket(tiledb::sm::URI(uri))))
+  if (SAVE_ERROR_CATCH(
+          ctx,
+          vfs->vfs_->remove_bucket(tiledb::sm::URI(ctx->ctx_->abs_path(uri)))))
     return TILEDB_ERR;
 
   return TILEDB_OK;
@@ -5060,7 +5064,9 @@ int32_t tiledb_vfs_empty_bucket(
   if (sanity_check(ctx) == TILEDB_ERR || sanity_check(ctx, vfs) == TILEDB_ERR)
     return TILEDB_ERR;
 
-  if (SAVE_ERROR_CATCH(ctx, vfs->vfs_->empty_bucket(tiledb::sm::URI(uri))))
+  if (SAVE_ERROR_CATCH(
+          ctx,
+          vfs->vfs_->empty_bucket(tiledb::sm::URI(ctx->ctx_->abs_path(uri)))))
     return TILEDB_ERR;
 
   return TILEDB_OK;
@@ -5073,7 +5079,9 @@ int32_t tiledb_vfs_is_empty_bucket(
 
   bool b;
   if (SAVE_ERROR_CATCH(
-          ctx, vfs->vfs_->is_empty_bucket(tiledb::sm::URI(uri), &b)))
+          ctx,
+          vfs->vfs_->is_empty_bucket(
+              tiledb::sm::URI(ctx->ctx_->abs_path(uri)), &b)))
     return TILEDB_ERR;
   *is_empty = (int32_t)b;
 
@@ -5087,7 +5095,9 @@ int32_t tiledb_vfs_is_bucket(
 
   bool exists;
   if (SAVE_ERROR_CATCH(
-          ctx, vfs->vfs_->is_bucket(tiledb::sm::URI(uri), &exists)))
+          ctx,
+          vfs->vfs_->is_bucket(
+              tiledb::sm::URI(ctx->ctx_->abs_path(uri)), &exists)))
     return TILEDB_ERR;
 
   *is_bucket = (int32_t)exists;
@@ -5100,7 +5110,9 @@ int32_t tiledb_vfs_create_dir(
   if (sanity_check(ctx) == TILEDB_ERR || sanity_check(ctx, vfs) == TILEDB_ERR)
     return TILEDB_ERR;
 
-  if (SAVE_ERROR_CATCH(ctx, vfs->vfs_->create_dir(tiledb::sm::URI(uri))))
+  if (SAVE_ERROR_CATCH(
+          ctx,
+          vfs->vfs_->create_dir(tiledb::sm::URI(ctx->ctx_->abs_path(uri)))))
     return TILEDB_ERR;
 
   return TILEDB_OK;
@@ -5112,7 +5124,10 @@ int32_t tiledb_vfs_is_dir(
     return TILEDB_ERR;
 
   bool exists;
-  if (SAVE_ERROR_CATCH(ctx, vfs->vfs_->is_dir(tiledb::sm::URI(uri), &exists)))
+  if (SAVE_ERROR_CATCH(
+          ctx,
+          vfs->vfs_->is_dir(
+              tiledb::sm::URI(ctx->ctx_->abs_path(uri)), &exists)))
     return TILEDB_ERR;
   *is_dir = (int32_t)exists;
 
@@ -5124,7 +5139,9 @@ int32_t tiledb_vfs_remove_dir(
   if (sanity_check(ctx) == TILEDB_ERR || sanity_check(ctx, vfs) == TILEDB_ERR)
     return TILEDB_ERR;
 
-  if (SAVE_ERROR_CATCH(ctx, vfs->vfs_->remove_dir(tiledb::sm::URI(uri))))
+  if (SAVE_ERROR_CATCH(
+          ctx,
+          vfs->vfs_->remove_dir(tiledb::sm::URI(ctx->ctx_->abs_path(uri)))))
     return TILEDB_ERR;
 
   return TILEDB_OK;
@@ -5136,7 +5153,10 @@ int32_t tiledb_vfs_is_file(
     return TILEDB_ERR;
 
   bool exists;
-  if (SAVE_ERROR_CATCH(ctx, vfs->vfs_->is_file(tiledb::sm::URI(uri), &exists)))
+  if (SAVE_ERROR_CATCH(
+          ctx,
+          vfs->vfs_->is_file(
+              tiledb::sm::URI(ctx->ctx_->abs_path(uri)), &exists)))
     return TILEDB_ERR;
   *is_file = (int32_t)exists;
 
@@ -5148,7 +5168,9 @@ int32_t tiledb_vfs_remove_file(
   if (sanity_check(ctx) == TILEDB_ERR || sanity_check(ctx, vfs) == TILEDB_ERR)
     return TILEDB_ERR;
 
-  if (SAVE_ERROR_CATCH(ctx, vfs->vfs_->remove_file(tiledb::sm::URI(uri))))
+  if (SAVE_ERROR_CATCH(
+          ctx,
+          vfs->vfs_->remove_file(tiledb::sm::URI(ctx->ctx_->abs_path(uri)))))
     return TILEDB_ERR;
 
   return TILEDB_OK;
@@ -5159,7 +5181,9 @@ int32_t tiledb_vfs_dir_size(
   if (sanity_check(ctx) == TILEDB_ERR || sanity_check(ctx, vfs) == TILEDB_ERR)
     return TILEDB_ERR;
 
-  if (SAVE_ERROR_CATCH(ctx, vfs->vfs_->dir_size(tiledb::sm::URI(uri), size)))
+  if (SAVE_ERROR_CATCH(
+          ctx,
+          vfs->vfs_->dir_size(tiledb::sm::URI(ctx->ctx_->abs_path(uri)), size)))
     return TILEDB_ERR;
 
   return TILEDB_OK;
@@ -5170,7 +5194,10 @@ int32_t tiledb_vfs_file_size(
   if (sanity_check(ctx) == TILEDB_ERR || sanity_check(ctx, vfs) == TILEDB_ERR)
     return TILEDB_ERR;
 
-  if (SAVE_ERROR_CATCH(ctx, vfs->vfs_->file_size(tiledb::sm::URI(uri), size)))
+  if (SAVE_ERROR_CATCH(
+          ctx,
+          vfs->vfs_->file_size(
+              tiledb::sm::URI(ctx->ctx_->abs_path(uri)), size)))
     return TILEDB_ERR;
 
   return TILEDB_OK;
@@ -5187,7 +5214,8 @@ int32_t tiledb_vfs_move_file(
   if (SAVE_ERROR_CATCH(
           ctx,
           vfs->vfs_->move_file(
-              tiledb::sm::URI(old_uri), tiledb::sm::URI(new_uri))))
+              tiledb::sm::URI(ctx->ctx_->abs_path(old_uri)),
+              tiledb::sm::URI(ctx->ctx_->abs_path(new_uri)))))
     return TILEDB_ERR;
 
   return TILEDB_OK;
@@ -5204,7 +5232,8 @@ int32_t tiledb_vfs_move_dir(
   if (SAVE_ERROR_CATCH(
           ctx,
           vfs->vfs_->move_dir(
-              tiledb::sm::URI(old_uri), tiledb::sm::URI(new_uri))))
+              tiledb::sm::URI(ctx->ctx_->abs_path(old_uri)),
+              tiledb::sm::URI(ctx->ctx_->abs_path(new_uri)))))
     return TILEDB_ERR;
 
   return TILEDB_OK;
@@ -5263,7 +5292,7 @@ int32_t tiledb_vfs_open(
   }
 
   // Check URI
-  auto fh_uri = tiledb::sm::URI(uri);
+  auto fh_uri = tiledb::sm::URI(ctx->ctx_->abs_path(uri));
   if (fh_uri.is_invalid()) {
     auto st =
         Status::Error("Failed to create TileDB VFS file handle; Invalid URI");
@@ -5367,7 +5396,8 @@ int32_t tiledb_vfs_ls(
 
   // Get children
   std::vector<tiledb::sm::URI> children;
-  auto st = vfs->vfs_->ls(tiledb::sm::URI(path), &children);
+  auto st =
+      vfs->vfs_->ls(tiledb::sm::URI(ctx->ctx_->abs_path(path)), &children);
 
   if (!st.ok())
     return TILEDB_ERR;
@@ -5408,7 +5438,8 @@ int32_t tiledb_vfs_touch(
   if (sanity_check(ctx) == TILEDB_ERR || sanity_check(ctx, vfs) == TILEDB_ERR)
     return TILEDB_ERR;
 
-  if (SAVE_ERROR_CATCH(ctx, vfs->vfs_->touch(tiledb::sm::URI(uri))))
+  if (SAVE_ERROR_CATCH(
+          ctx, vfs->vfs_->touch(tiledb::sm::URI(ctx->ctx_->abs_path(uri)))))
     return TILEDB_ERR;
 
   return TILEDB_OK;
@@ -5424,7 +5455,7 @@ int32_t tiledb_uri_to_path(
       path_out == nullptr || path_length == nullptr)
     return TILEDB_ERR;
 
-  std::string path = tiledb::sm::URI::to_path(uri);
+  std::string path = tiledb::sm::URI::to_path(ctx->ctx_->abs_path(uri));
   if (path.empty() || path.length() + 1 > *path_length) {
     *path_length = 0;
     return TILEDB_ERR;
@@ -6093,7 +6124,7 @@ int32_t tiledb_fragment_info_alloc(
   }
 
   // Check array URI
-  auto uri = tiledb::sm::URI(array_uri);
+  auto uri = tiledb::sm::URI(ctx->ctx_->abs_path(array_uri));
   if (uri.is_invalid()) {
     auto st = Status::Error(
         "Failed to create TileDB fragment info object; Invalid URI");

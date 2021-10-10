@@ -37,6 +37,12 @@
 #include "tiledb/sm/misc/uri.h"
 #include "tiledb/sm/misc/utils.h"
 
+#ifdef _WIN32
+#include "tiledb/sm/filesystem/win.h"
+#else
+#include "tiledb/sm/filesystem/posix.h"
+#endif
+
 using namespace tiledb;
 
 struct Point {
@@ -1419,4 +1425,46 @@ TEST_CASE(
 
   if (vfs.is_dir(array_name))
     vfs.remove_dir(array_name);
+}
+
+TEST_CASE("RootPath", "[cppapi][config][rootpath]") {
+  std::string array_name = "test_array";
+
+#ifdef _WIN32
+  std::string root_path = tiledb::sm::Win::current_dir() + "\\test_root_path";
+#else
+  std::string root_path = std::string("file://") +
+                          tiledb::sm::Posix::current_dir() + "/test_root_path";
+#endif
+
+  tiledb::Config cfg;
+  cfg.set("vfs.local_root_path", root_path);
+  tiledb::Context ctx(cfg);
+  tiledb::VFS vfs(ctx);
+
+  vfs.create_dir(root_path);
+
+  if (vfs.is_dir(array_name)) {
+    vfs.remove_dir(array_name);
+  }
+
+  tiledb::Domain domain(ctx);
+  domain.add_dimension(tiledb::Dimension::create<int>(ctx, "d", {{0, 3}}, 1));
+  tiledb::ArraySchema schema(ctx, TILEDB_DENSE);
+  schema.set_domain(domain);
+  schema.add_attribute(tiledb::Attribute::create<int>(ctx, "a"));
+  tiledb::Array::create(array_name, schema);
+
+  tiledb::Array array(ctx, array_name, TILEDB_READ);
+  REQUIRE(array.config().get("vfs.local_root_path") == root_path);
+
+  array.close();
+
+  if (vfs.is_dir(array_name)) {
+    vfs.remove_dir(array_name);
+  }
+
+  if (vfs.is_dir(root_path)) {
+    vfs.remove_dir(root_path);
+  }
 }

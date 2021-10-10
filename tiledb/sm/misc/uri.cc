@@ -66,7 +66,7 @@ URI::URI(const std::string& path) {
   if (path.empty())
     uri_ = "";
   else if (URI::is_file(path))
-    uri_ = VFS::abs_path(path);
+    uri_ = VFS::abs_path(path, std::string(""));
   else if (
       URI::is_hdfs(path) || URI::is_s3(path) || URI::is_azure(path) ||
       URI::is_gcs(path) || URI::is_memfs(path) || URI::is_tiledb(path))
