@@ -210,7 +210,9 @@ jobs:
           $env:AWS_SECRET_ACCESS_KEY = "miniosecretkey"
 
           if ($env:TILEDB_S3 -eq "ON") {
-            $env:MINIO_HTTP_TRACE = "$env:BUILD_SOURCESDIRECTORY\minio.log"
+            #$env:MINIO_HTTP_TRACE = "$env:BUILD_SOURCESDIRECTORY\minio.log"
+            #cmd /c set
+            mc admin trace -v -e myminio
             & "$env:BUILD_SOURCESDIRECTORY\scripts\install-minio.ps1"
             netstat -abo
             write-host "...ls $env:BUILD_SOURCESDIRECTORY\dist\bin -ea 0"
@@ -225,6 +227,9 @@ jobs:
             write-host "mc alias"
             #"$env:BUILD_SOURCESDIRECTORY\dist\bin\mc --insecure --debug alias set tdbminio https://127.0.0.1:9999" 2>&1 | tee-object -Append mcstdouterr.txt
             cmd /c "$env:BUILD_SOURCESDIRECTORY\dist\bin\mc --insecure --debug alias set tdbminio https://127.0.0.1:9999 2>&1 | c:\msys64\usr\bin\tee -a mcstdouterr.txt"
+            write-host "b4 mc ... admin trace -v -a tdbminio"
+            cmd /c "$env:BUILD_SOURCESDIRECTORY\dist\bin\mc --insecure --debug admin trace -v -a tdbminio"
+            write-host "after mc ... admin trace -v -a tdbminio"
             write-host "mc ls tdbminio"
             #"$env:BUILD_SOURCESDIRECTORY\dist\bin\mc --insecure --debug ls tdbminio" 2>&1 | tee-object -Append mcstdouterr.txt
             cmd /c "$env:BUILD_SOURCESDIRECTORY\dist\bin\mc --insecure --debug ls tdbminio 2>&1 | c:\msys64\usr\bin\tee -a mcstdouterr.txt"
@@ -244,8 +249,10 @@ jobs:
             cat mcstdouterr.txt
             write-host "end contents mcstdouterr.txt"
             write-host "b4 cat $env:BUILD_SOURCESDIRECTORY\minio.log"
-            cat $env:BUILD_SOURCESDIRECTORY\minio.log
-            write-host "after cat $env:BUILD_SOURCESDIRECTORY\minio.log"
+            #$miniologfile = "$env:BUILD_SOURCESDIRECTORY\minio.log"
+            #cat $miniologfile
+            #write-host "after cat $env:BUILD_SOURCESDIRECTORY\minio.log"
+            cmd /c set
           }
 
           #debug...
