@@ -177,6 +177,11 @@ std::string ResultTile::coord_string(uint64_t pos, unsigned dim_idx) const {
   auto cell_num = coord_tile_off.cell_num();
   auto val_size = coord_tile_val.size();
 
+  // If the coord tile value size is empty we are dealing with empty strings
+  // In this case just return early
+  if (coord_tile_val.chunked_buffer()->size() == 0)
+    return std::string();
+
   uint64_t offset = 0;
   Status st = coord_tile_off.chunked_buffer()->read(
       &offset, sizeof(uint64_t), pos * sizeof(uint64_t));
@@ -543,10 +548,15 @@ void ResultTile::compute_results_sparse<char>(
   // Get string buffer
   const auto& coord_tile_str = std::get<1>(coord_tile);
   assert(
-      coord_tile_str.chunked_buffer()->buffer_addressing() ==
-      ChunkedBuffer::BufferAddressing::CONTIGUOUS);
-  auto buff_str = static_cast<const char*>(
-      coord_tile_str.chunked_buffer()->get_contiguous_unsafe());
+      (coord_tile_str.chunked_buffer()->size() > 0 &&
+       coord_tile_str.chunked_buffer()->buffer_addressing() ==
+           ChunkedBuffer::BufferAddressing::CONTIGUOUS) ||
+      coord_tile_str.chunked_buffer()->size() == 0);
+  const char* buff_str = nullptr;
+  if (coord_tile_str.chunked_buffer()->size() > 0) {
+    buff_str = static_cast<const char*>(
+        coord_tile_str.chunked_buffer()->get_contiguous_unsafe());
+  }
   auto buff_str_size = coord_tile_str.size();
 
   // For row-major cell orders, the first dimension is sorted.
