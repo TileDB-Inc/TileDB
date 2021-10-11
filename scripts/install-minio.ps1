@@ -46,11 +46,15 @@ function DownloadIfNotExists([string] $Path, [string] $URL) {
 function Install-Minio {
     $MinioRoot = (Join-Path $StagingDirectory "minio")
     $DownloadMinioDest = Join-Path $MinioRoot "minio.exe"
+    $DownloadMinioMCDest = Join-Path $MinioRoot "mc.exe"
     if (!(Test-Path $MinioRoot)) {
         New-Item -ItemType Directory -Path $MinioRoot
         DownloadIfNotExists $DownloadMinioDest "https://dl.minio.io/server/minio/release/windows-amd64/minio.exe"
+        DownloadIfNotExists $DownloadMinioMCDest "https://dl.minio.io/client/mc/release/windows-amd64/mc.exe"
+                                                #"https://dl.min.io/client/mc/release/windows-amd64/mc.exe"
     }
     Copy-Item $DownloadMinioDest (Join-Path $InstallPrefix "bin")
+    Copy-Item $DownloadMinioMCDest (Join-Path $InstallPrefix "bin")
 }
 
 function Export-Env {
