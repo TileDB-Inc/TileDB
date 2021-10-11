@@ -210,6 +210,7 @@ jobs:
           $env:AWS_SECRET_ACCESS_KEY = "miniosecretkey"
 
           if ($env:TILEDB_S3 -eq "ON") {
+            $env:MINIO_HTTP_TRACE = "$env:BUILD_SOURCESDIRECTORY\minio.log"
             & "$env:BUILD_SOURCESDIRECTORY\scripts\install-minio.ps1"
             netstat -abo
             write-host "...ls $env:BUILD_SOURCESDIRECTORY\dist\bin -ea 0"
@@ -242,6 +243,9 @@ jobs:
             write-host "contents mcstdouterr.txt"
             cat mcstdouterr.txt
             write-host "end contents mcstdouterr.txt"
+            write-host "b4 cat $env:BUILD_SOURCESDIRECTORY\minio.log"
+            cat $env:BUILD_SOURCESDIRECTORY\minio.log
+            write-host "after cat $env:BUILD_SOURCESDIRECTORY\minio.log"
           }
 
           #debug...
