@@ -213,6 +213,11 @@ jobs:
             & "$env:BUILD_SOURCESDIRECTORY\scripts\install-minio.ps1"
             netstat -abo
             ls "$env:BUILD_SOURCESDIRECTORY\dist\bin"
+            "$env:BUILD_SOURCESDIRECTORY\dist\bin\mc --insecure alias set tdbminio https://127.0.0.1:9999"
+            "$env:BUILD_SOURCESDIRECTORY\dist\bin\mc --insecure ls tdbminio"
+            "$env:BUILD_SOURCESDIRECTORY\dist\bin\mc --insecure mb tdbminio/dlhtestbucket1"
+            "$env:BUILD_SOURCESDIRECTORY\dist\bin\mc --insecure ls tdbminio"
+            "$env:BUILD_SOURCESDIRECTORY\dist\bin\mc --insecure rb tdbminio/dlhtestbucket1"
           }
 
           #debug...
