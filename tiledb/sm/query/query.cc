@@ -1014,10 +1014,11 @@ Status Query::create_strategy() {
 
     bool use_default = true;
     if (use_refactored_readers) {
-      if (!array_schema_->dense() && layout_ == Layout::GLOBAL_ORDER) {
+      if (!array_schema_->dense() && layout_ == Layout::UNORDERED &&
+          array_schema_->allows_dups()) {
         use_default = false;
         strategy_ = tdb_unique_ptr<IQueryStrategy>(tdb_new(
-            SparseGlobalOrderReader,
+            SparseUnorderedWithDupsReader,
             stats_->create_child("Reader"),
             storage_manager_,
             array_,
@@ -1027,11 +1028,13 @@ Status Query::create_strategy() {
             layout_,
             condition_));
       } else if (
-          !array_schema_->dense() && layout_ == Layout::UNORDERED &&
-          array_schema_->allows_dups()) {
+          !array_schema_->dense() &&
+          (layout_ == Layout::GLOBAL_ORDER ||
+           (layout_ == Layout::UNORDERED && subarray_.range_num() <= 1))) {
+        // Using the reader for unordered queries to do deduplication.
         use_default = false;
         strategy_ = tdb_unique_ptr<IQueryStrategy>(tdb_new(
-            SparseUnorderedWithDupsReader,
+            SparseGlobalOrderReader,
             stats_->create_child("Reader"),
             storage_manager_,
             array_,
