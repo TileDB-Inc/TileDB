@@ -220,7 +220,7 @@ jobs:
             write-host "mc mb ..."
             "$env:BUILD_SOURCESDIRECTORY\dist\bin\mc --insecure --debug mb tdbminio/dlhtestbucket1" 2>&1 | tee-object -Append mcstdouterr.txt
             write-host "mc ls tdbminio"
-            "$env:BUILD_SOURCESDIRECTORY\dist\bin\mc --insecure --debug ls tdbminio" 2>&1 | vmcstdouterr.txt
+            "$env:BUILD_SOURCESDIRECTORY\dist\bin\mc --insecure --debug ls tdbminio" 2>&1 | tee-object -Append mcstdouterr.txt
             write-host "mc rb tdbminio..."
             "$env:BUILD_SOURCESDIRECTORY\dist\bin\mc --insecure --debug rb tdbminio/dlhtestbucket1" 2>&1 | tee-object -Append mcstdouterr.txt
             write-host "mc ls tdbminio"
