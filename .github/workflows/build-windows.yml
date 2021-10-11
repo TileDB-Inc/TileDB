@@ -212,7 +212,15 @@ jobs:
           if ($env:TILEDB_S3 -eq "ON") {
             & "$env:BUILD_SOURCESDIRECTORY\scripts\install-minio.ps1"
             netstat -abo
-            ls "$env:BUILD_SOURCESDIRECTORY\dist\bin"
+            write-host "...ls $env:BUILD_SOURCESDIRECTORY\dist\bin -ea 0"
+            ls "$env:BUILD_SOURCESDIRECTORY\dist\bin" -ea 0
+            write-host "after ls $env:BUILD_SOURCESDIRECTORY\dist\bin -ea 0"
+            write-host "...ls $env:BUILD_SOURCESDIRECTORY\dist\usr\local\share -ea 0"
+            ls "$env:BUILD_SOURCESDIRECTORY\dist\usr\local\share" -ea 0
+            write-host "after ls $env:BUILD_SOURCESDIRECTORY\dist\usr\local\share -ea 0"
+            write-host "...ls $env:BUILD_SOURCESDIRECTORY\dist\usr\local\share\minio -ea 0"
+            ls "$env:BUILD_SOURCESDIRECTORY\dist\usr\local\share\minio" -ea 0
+            write-host "after ls $env:BUILD_SOURCESDIRECTORY\dist\usr\local\share\minio -ea 0"
             write-host "mc alias"
             #"$env:BUILD_SOURCESDIRECTORY\dist\bin\mc --insecure --debug alias set tdbminio https://127.0.0.1:9999" 2>&1 | tee-object -Append mcstdouterr.txt
             cmd /c "$env:BUILD_SOURCESDIRECTORY\dist\bin\mc --insecure --debug alias set tdbminio https://127.0.0.1:9999 2>&1 | c:\msys64\usr\bin\tee -a mcstdouterr.txt"
