@@ -1,7 +1,7 @@
 # C++ Style Guide
 
 
-When in double and not in conflict with this document, follow [C++ Core Guidelines](https://isocpp.github.io/CppCoreGuidelines/CppCoreGuidelines)
+When in doubt and not in conflict with this document, follow [C++ Core Guidelines](https://isocpp.github.io/CppCoreGuidelines/CppCoreGuidelines)
 
 ## C++ Standards
 
