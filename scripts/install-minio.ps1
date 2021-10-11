@@ -73,7 +73,9 @@ function Run-Minio {
         New-Item -ItemType Directory -Path $ServerConfigDir
     }
     #Start-Process -FilePath $ExePath -ArgumentList "server --address 127.0.0.1:9999 --config-dir `"$ServerConfigDir`" --certs-dir `"$CertsDirectory`" `"$ServerDataDir`""
-    ls $CertsDir
+    write-host "whats in CertsDirectory '$CertsDirectory'?"
+    ls $CertsDirectory
+    write-host "starting '$ExePath'"
     $minioproc = Start-Process -FilePath $ExePath -ArgumentList "server --address 127.0.0.1:9999 --config-dir `"$ServerConfigDir`" --certs-dir `"$CertsDirectory`" `"$ServerDataDir`"" -PassThru -RedirectStandardError miniostderr.txt -RedirectStandardOutput miniostdout.txt
     Start-Sleep 1.0
     
