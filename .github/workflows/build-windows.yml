@@ -225,6 +225,9 @@ jobs:
             "$env:BUILD_SOURCESDIRECTORY\dist\bin\mc --insecure rb tdbminio/dlhtestbucket1" 2>&1 | c:\msys64\usr\bin\tee -a mcstdouterr.txt
             write-host "mc ls tdbminio"
             "$env:BUILD_SOURCESDIRECTORY\dist\bin\mc --insecure ls tdbminio" 2>&1 | c:\msys64\usr\bin\tee -a mcstdouterr.txt
+            write-host "contents mcstdouterr.txt"
+            cat mcstdouterr.txt
+            write-host "end contents mcstdouterr.txt"
           }
 
           #debug...
