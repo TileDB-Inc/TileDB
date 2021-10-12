@@ -212,7 +212,7 @@ jobs:
           if ($env:TILEDB_S3 -eq "ON") {
             #$env:MINIO_HTTP_TRACE = "$env:BUILD_SOURCESDIRECTORY\minio.log"
             #cmd /c set
-            mc admin trace -v -e myminio
+            #mc admin trace -v -e myminio
             & "$env:BUILD_SOURCESDIRECTORY\scripts\install-minio.ps1"
             netstat -abo
             write-host "...ls $env:BUILD_SOURCESDIRECTORY\dist\bin -ea 0"
