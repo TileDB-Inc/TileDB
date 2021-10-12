@@ -217,7 +217,7 @@ jobs:
 
           if ($env:TILEDB_S3 -eq "ON") {
             #$env:MINIO_HTTP_TRACE = "$env:BUILD_SOURCESDIRECTORY\minio.log"
-            #cmd /c set
+            cmd /c set
             #mc admin trace -v -e myminio
             & "$env:BUILD_SOURCESDIRECTORY\scripts\install-minio.ps1"
             netstat -abo
@@ -234,9 +234,11 @@ jobs:
             ls "$env:BUILD_SOURCESDIRECTORY\test\inputs\test_certs" -ea 0
             write-host "after ls $env:BUILD_SOURCESDIRECTORY\test\inputs\test_certs" -ea 0
             write-host "mc alias"
+            cmd /c "$env:BUILD_SOURCESDIRECTORY\dist\bin\mc --insecure --debug alias list 2>&1 | c:\msys64\usr\bin\tee -a mcstdouterr.txt"
             #"$env:BUILD_SOURCESDIRECTORY\dist\bin\mc --insecure --debug alias set tdbminio https://127.0.0.1:9999" 2>&1 | tee-object -Append mcstdouterr.txt
             cmd /c "$env:BUILD_SOURCESDIRECTORY\dist\bin\mc --insecure --debug alias set tdbminio https://127.0.0.1:9999 2>&1 | c:\msys64\usr\bin\tee -a mcstdouterr.txt"
             #cmd /c "$env:BUILD_SOURCESDIRECTORY\dist\bin\mc --insecure --debug alias set tdbminio http://127.0.0.1:9999 2>&1 | c:\msys64\usr\bin\tee -a mcstdouterr.txt"
+            cmd /c "$env:BUILD_SOURCESDIRECTORY\dist\bin\mc --insecure --debug alias list 2>&1 | c:\msys64\usr\bin\tee -a mcstdouterr.txt"
             write-host "b4 mc ... admin trace -v -a tdbminio"
             cmd /c "$env:BUILD_SOURCESDIRECTORY\dist\bin\mc --insecure --debug admin trace -v -a tdbminio"
             write-host "after mc ... admin trace -v -a tdbminio"
