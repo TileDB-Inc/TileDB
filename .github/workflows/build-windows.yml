@@ -210,9 +210,10 @@ jobs:
           $env:AWS_SECRET_ACCESS_KEY = "miniosecretkey"
 
           # These have helped running locally, try for CI (won't help minio/mc, but maybe actual tiledb_unit...)
-          $env:TILEDB_VFS_S3_AWS_ACCESS_KEY_ID = "minio"
-          $env:TILEDB_VFS_S3_AWS_SECRET_ACCESS_KEY = "miniosecretkey"
-          $env:TILEDB_VFS_S3_SCHEME = "http"
+          # ... did not seem to help
+          #~ $env:TILEDB_VFS_S3_AWS_ACCESS_KEY_ID = "minio"
+          #~ $env:TILEDB_VFS_S3_AWS_SECRET_ACCESS_KEY = "miniosecretkey"
+          #~ $env:TILEDB_VFS_S3_SCHEME = "http"
 
           if ($env:TILEDB_S3 -eq "ON") {
             #$env:MINIO_HTTP_TRACE = "$env:BUILD_SOURCESDIRECTORY\minio.log"
@@ -229,6 +230,9 @@ jobs:
             write-host "...ls $env:BUILD_SOURCESDIRECTORY\dist\usr\local\share\minio -ea 0"
             ls "$env:BUILD_SOURCESDIRECTORY\dist\usr\local\share\minio" -ea 0
             write-host "after ls $env:BUILD_SOURCESDIRECTORY\dist\usr\local\share\minio -ea 0"
+            write-host "ls $env:BUILD_SOURCESDIRECTORY\test\inputs\test_certs" -ea 0
+            ls "$env:BUILD_SOURCESDIRECTORY\test\inputs\test_certs" -ea 0
+            write-host "after ls $env:BUILD_SOURCESDIRECTORY\test\inputs\test_certs" -ea 0
             write-host "mc alias"
             #"$env:BUILD_SOURCESDIRECTORY\dist\bin\mc --insecure --debug alias set tdbminio https://127.0.0.1:9999" 2>&1 | tee-object -Append mcstdouterr.txt
             cmd /c "$env:BUILD_SOURCESDIRECTORY\dist\bin\mc --insecure --debug alias set tdbminio https://127.0.0.1:9999 2>&1 | c:\msys64\usr\bin\tee -a mcstdouterr.txt"
