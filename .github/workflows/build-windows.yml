@@ -241,6 +241,11 @@ jobs:
             cmd /c "$env:BUILD_SOURCESDIRECTORY\dist\bin\mc --insecure --debug alias set tdbminio https://127.0.0.1:9999 minio miniosecretkey --api s3v4 2>&1 | c:\msys64\usr\bin\tee -a mcstdouterr.txt"
             #cmd /c "$env:BUILD_SOURCESDIRECTORY\dist\bin\mc --insecure --debug alias set tdbminio http://127.0.0.1:9999 2>&1 | c:\msys64\usr\bin\tee -a mcstdouterr.txt"
             cmd /c "$env:BUILD_SOURCESDIRECTORY\dist\bin\mc --insecure --debug alias list 2>&1 | c:\msys64\usr\bin\tee -a mcstdouterr.txt"
+            #mc --insecure admin --json info myminio
+            write-host "mc admin info tdbminio"
+            cmd /c "$env:BUILD_SOURCESDIRECTORY\dist\bin\mc --insecure --debug admin --json info tdbminio 2>&1 | c:\msys64\usr\bin\tee -a mcstdouterr.txt"
+            write-host "mc admin info myminio"
+            cmd /c "$env:BUILD_SOURCESDIRECTORY\dist\bin\mc --insecure --debug admin --json info myminio 2>&1 | c:\msys64\usr\bin\tee -a mcstdouterr.txt"
             write-host "b4 mc ... admin trace -v -a tdbminio"
             cmd /c "$env:BUILD_SOURCESDIRECTORY\dist\bin\mc --insecure --debug admin trace -v -a tdbminio"
             write-host "after mc ... admin trace -v -a tdbminio"
