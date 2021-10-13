@@ -554,16 +554,21 @@ size_t RestClient::post_data_write_cb(
     // there will be an overlap in the memory of the source and
     // destination.
     if (length <= offset) {
+      scratch->reset_size();
       st = scratch->write(scratch->data(offset), length);
     } else {
       Buffer aux;
       st = aux.write(scratch->data(offset), length);
       if (st.ok()) {
+        scratch->reset_size();
         st = scratch->write(aux.data(), aux.size());
       }
     }
 
     assert(st.ok());
+    if (!st.ok()) {
+      LOG_STATUS(st);
+    }
     assert(scratch->size() == length);
   }
 
