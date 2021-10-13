@@ -187,13 +187,13 @@ jobs:
             cmd /c set
             #$cmds = "$env:BUILD_BUILDDIRECTORY\tiledb\test\Release\tiledb_unit.exe -d=yes [s3]" 
             ls $env:BUILD_SOURCESDIRECTORY -ea 0
-            #ls $env:BUILD_SOURCESDIRECTORY\builds\tiledb\test\Release\tiledb_unit.exe
-            ls $env:BUILD_SOURCESDIRECTORY\builds -ea 0
-            ls $env:BUILD_SOURCESDIRECTORY\builds\tiledb -ea 0
-            ls $env:BUILD_SOURCESDIRECTORY\builds\tiledb\test -ea 0
-            ls $env:BUILD_SOURCESDIRECTORY\builds\tiledb\test\Release -ea 0
-            ls $env:BUILD_SOURCESDIRECTORY\builds\tiledb\test\Release\tiledb_unit.exe -ea 0
-            $cmds = "$env:BUILD_SOURCESDIRECTORY\builds\tiledb\test\Release\tiledb_unit.exe -d=yes [s3]" 
+            #ls $env:BUILD_SOURCESDIRECTORY\build\tiledb\test\Release\tiledb_unit.exe
+            ls $env:BUILD_SOURCESDIRECTORY\build -ea 0
+            ls $env:BUILD_SOURCESDIRECTORY\build\tiledb -ea 0
+            ls $env:BUILD_SOURCESDIRECTORY\build\tiledb\test -ea 0
+            ls $env:BUILD_SOURCESDIRECTORY\build\tiledb\test\Release -ea 0
+            ls $env:BUILD_SOURCESDIRECTORY\build\tiledb\test\Release\tiledb_unit.exe -ea 0
+            $cmds = "$env:BUILD_SOURCESDIRECTORY\build\tiledb\test\Release\tiledb_unit.exe -d=yes [s3]" 
             Write-Host "cmds: '$cmds'"
             Invoke-Expression $cmds
             exit 727
