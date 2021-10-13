@@ -59,7 +59,7 @@ jobs:
           Write-Host "BUILD_SOURCESDIRECTORY is '$env:BUILD_SOURCESDIRECTORY'"
           Write-Host "GITHUB_ENV is $env:GITHUB_ENV"
 
-          if(! (Test-Path $env:BUILD_BUILDDIRECTORY){
+          if(! (Test-Path $env:BUILD_BUILDDIRECTORY)) {
             mkdir $env:BUILD_BUILDDIRECTORY
           }
 
