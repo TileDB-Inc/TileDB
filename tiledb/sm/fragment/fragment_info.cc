@@ -34,7 +34,6 @@
 #include "tiledb/common/logger.h"
 #include "tiledb/sm/array/array.h"
 #include "tiledb/sm/enums/encryption_type.h"
-#include "tiledb/sm/enums/query_type.h"
 #include "tiledb/sm/global_state/unit_test_config.h"
 #include "tiledb/sm/misc/utils.h"
 
@@ -440,7 +439,7 @@ Status FragmentInfo::get_mbr_num(
    * class, and we load it during fragment_info_load step. This info is then
    * available even after the array is closed. However, FragmentMetadata stores
    * a pointer to the ArraySchema which is deleted after and array is closed. As
-   * a result, when FragmentMetadata members access arraychema attributes or
+   * a result, when FragmentMetadata members access arrayschema attributes or
    * methods we segfault. For now we are reloading the fragment info here.
    */
   RETURN_NOT_OK_ELSE(
@@ -457,11 +456,7 @@ Status FragmentInfo::get_mbr_num(
 }
 
 Status FragmentInfo::get_mbr(
-    const Config& config,
-    uint32_t fid,
-    uint32_t mid,
-    uint32_t did,
-    void* mbr) const {
+    const Config& config, uint32_t fid, uint32_t mid, uint32_t did, void* mbr) {
   if (mbr == nullptr)
     return LOG_STATUS(Status::FragmentInfoError(
         "Cannot get MBR; mbr argument cannot be null"));
@@ -475,6 +470,13 @@ Status FragmentInfo::get_mbr(
         Status::FragmentInfoError("Cannot get MBR; Fragment is not sparse"));
 
   array_open(config, EncryptionType::NO_ENCRYPTION, nullptr, 0);
+
+  auto timestamp = utils::time::timestamp_now_ms();
+  /*  FIXME see get_mbr_num for details
+   */
+  RETURN_NOT_OK_ELSE(
+      storage_manager_->get_fragment_info(*array_, 0, timestamp, this, true),
+      array_->close());
 
   auto meta = fragments_[fid].meta();
   RETURN_NOT_OK(meta->load_rtree(*array_->encryption_key()));
@@ -507,7 +509,7 @@ Status FragmentInfo::get_mbr(
     uint32_t fid,
     uint32_t mid,
     const char* dim_name,
-    void* mbr) const {
+    void* mbr) {
   if (dim_name == nullptr)
     return LOG_STATUS(Status::FragmentInfoError(
         "Cannot get non-empty domain; Dimension name argument cannot be null"));
@@ -536,7 +538,7 @@ Status FragmentInfo::get_mbr_var_size(
     uint32_t mid,
     uint32_t did,
     uint64_t* start_size,
-    uint64_t* end_size) const {
+    uint64_t* end_size) {
   if (start_size == nullptr)
     return LOG_STATUS(
         Status::FragmentInfoError("Cannot get MBR var size; Start "
@@ -556,6 +558,13 @@ Status FragmentInfo::get_mbr_var_size(
         Status::FragmentInfoError("Cannot get MBR; Fragment is not sparse"));
 
   array_open(config, EncryptionType::NO_ENCRYPTION, nullptr, 0);
+
+  auto timestamp = utils::time::timestamp_now_ms();
+  /*  FIXME see get_mbr_num for details
+   */
+  RETURN_NOT_OK_ELSE(
+      storage_manager_->get_fragment_info(*array_, 0, timestamp, this, true),
+      array_->close());
 
   auto meta = fragments_[fid].meta();
   RETURN_NOT_OK(meta->load_rtree(*array_->encryption_key()));
@@ -588,7 +597,7 @@ Status FragmentInfo::get_mbr_var_size(
     uint32_t mid,
     const char* dim_name,
     uint64_t* start_size,
-    uint64_t* end_size) const {
+    uint64_t* end_size) {
   if (dim_name == nullptr)
     return LOG_STATUS(
         Status::FragmentInfoError("Cannot get MBR var size; "
@@ -618,7 +627,7 @@ Status FragmentInfo::get_mbr_var(
     uint32_t mid,
     uint32_t did,
     void* start,
-    void* end) const {
+    void* end) {
   if (start == nullptr)
     return LOG_STATUS(
         Status::FragmentInfoError("Cannot get non-empty domain var; Domain "
@@ -637,6 +646,13 @@ Status FragmentInfo::get_mbr_var(
         Status::FragmentInfoError("Cannot get MBR; Fragment is not sparse"));
 
   array_open(config, EncryptionType::NO_ENCRYPTION, nullptr, 0);
+
+  auto timestamp = utils::time::timestamp_now_ms();
+  /*  FIXME see get_mbr_num for details
+   */
+  RETURN_NOT_OK_ELSE(
+      storage_manager_->get_fragment_info(*array_, 0, timestamp, this, true),
+      array_->close());
 
   auto meta = fragments_[fid].meta();
   RETURN_NOT_OK(meta->load_rtree(*array_->encryption_key()));
@@ -675,7 +691,7 @@ Status FragmentInfo::get_mbr_var(
     uint32_t mid,
     const char* dim_name,
     void* start,
-    void* end) const {
+    void* end) {
   if (dim_name == nullptr)
     return LOG_STATUS(
         Status::FragmentInfoError("Cannot get non-empty domain var; Dimension "

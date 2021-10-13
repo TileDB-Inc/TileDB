@@ -983,10 +983,16 @@ Status Writer::create_fragment(
     uri = array_schema_->array_uri().join_path(new_fragment_str);
   }
   auto timestamp_range = std::pair<uint64_t, uint64_t>(timestamp, timestamp);
-  *frag_meta = FragmentMetadata(
-      storage_manager_, array_schema_, uri, timestamp_range, dense);
 
-  RETURN_NOT_OK(frag_meta->init(subarray_.ndrange(0)));
+  frag_meta = tdb_make_shared(
+      FragmentMetadata,
+      storage_manager_,
+      array_schema_,
+      uri,
+      timestamp_range,
+      dense);
+
+  RETURN_NOT_OK((frag_meta)->init(subarray_.ndrange(0)));
   return storage_manager_->create_dir(uri);
 }
 
@@ -2372,8 +2378,7 @@ Status Writer::unordered_write() {
     RETURN_CANCEL_OR_ERROR(compute_coord_dups(cell_pos, &coord_dups));
 
   // Create new fragment
-  tdb_shared_ptr<FragmentMetadata> frag_meta =
-      tdb_make_shared(FragmentMetadata);
+  auto frag_meta = tdb_make_shared(FragmentMetadata);
   RETURN_CANCEL_OR_ERROR(create_fragment(false, frag_meta));
   const auto& uri = frag_meta->fragment_uri();
 

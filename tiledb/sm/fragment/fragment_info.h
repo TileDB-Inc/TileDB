@@ -175,7 +175,7 @@ class FragmentInfo {
       uint32_t fid,
       uint32_t mid,
       uint32_t did,
-      void* mbr) const;
+      void* mbr);
 
   /**
    * Retrieves the MBR of the fragment with the given index on the given
@@ -186,7 +186,7 @@ class FragmentInfo {
       uint32_t fid,
       uint32_t mid,
       const char* dim_name,
-      void* mbr) const;
+      void* mbr);
 
   /**
    * Retrieves the sizes of the start and end values of the MBR of the fragment
@@ -199,7 +199,7 @@ class FragmentInfo {
       uint32_t mid,
       uint32_t did,
       uint64_t* start_size,
-      uint64_t* end_size) const;
+      uint64_t* end_size);
 
   /**
    * Retrieves the sizes of the start and end values of the MBR of the fragment
@@ -212,7 +212,7 @@ class FragmentInfo {
       uint32_t mid,
       const char* dim_name,
       uint64_t* start_size,
-      uint64_t* end_size) const;
+      uint64_t* end_size);
 
   /**
    * Retrieves the MBR of the fragment with the given index on the given
@@ -224,7 +224,7 @@ class FragmentInfo {
       uint32_t mid,
       uint32_t did,
       void* start,
-      void* end) const;
+      void* end);
 
   /**
    * Retrieves the MBR of the fragment with the given index on the given
@@ -236,7 +236,7 @@ class FragmentInfo {
       uint32_t mid,
       const char* dim_name,
       void* start,
-      void* end) const;
+      void* end);
 
   /** Retrieves the version of the fragment with the given index. */
   Status get_version(uint32_t fid, uint32_t* version) const;
