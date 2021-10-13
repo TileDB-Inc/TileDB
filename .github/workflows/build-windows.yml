@@ -194,9 +194,13 @@ jobs:
             ls $env:BUILD_SOURCESDIRECTORY\build\tiledb\test -ea 0
             ls $env:BUILD_SOURCESDIRECTORY\build\tiledb\test\Release -ea 0
             ls $env:BUILD_SOURCESDIRECTORY\build\tiledb\test\Release\tiledb_unit.exe -ea 0
-            $cmds = "$env:BUILD_SOURCESDIRECTORY\build\tiledb\test\Release\tiledb_unit.exe -d=yes [s3]" 
+            #$cmds = "$env:BUILD_SOURCESDIRECTORY\build\tiledb\test\Release\tiledb_unit.exe -d=yes [s3]" 
+            $cmds = "$env:BUILD_SOURCESDIRECTORY\build\tiledb\test\Release\tiledb_unit.exe -d=yes" 
             Write-Host "cmds: '$cmds'"
             Invoke-Expression $cmds
+            #TBD: the above *may* not be able to be run twice, in particular
+            #due to items being expected to exist or not exist, if the tests do not appropriately
+            #cleanup after themselves to leave in a position to run again cleanly.
             #exit 727
           }
           #exit 728
@@ -393,11 +397,15 @@ jobs:
           #~ Write-Host "cmds: '$cmds'"
           #~ Invoke-Expression $cmds
           #$cmds = "$env:BUILD_BUILDDIRECTORY\tiledb\test\Release\tiledb_unit.exe -d=yes | c:\msys64\usr\bin\awk '/1: ::set-output/{sub(/.*1: /, `"`"); print; next} 1'" 
-          $cmds = "$env:BUILD_BUILDDIRECTORY\tiledb\test\Release\tiledb_unit.exe -d=yes [s3]" 
+          #$cmds = "$env:BUILD_BUILDDIRECTORY\tiledb\test\Release\tiledb_unit.exe -d=yes [s3]" 
+          $cmds = "$env:BUILD_BUILDDIRECTORY\tiledb\test\Release\tiledb_unit.exe -d=yes" 
           Write-Host "cmds: '$cmds'"
           Invoke-Expression $cmds
-          
-          $cmds = "$env:BUILD_SOURCESDIRECTORY\build\tiledb\test\Release\tiledb_unit.exe -d=yes [s3]" 
+
+          #TBD: The following *could* fail if the involved tests do not cleanup to leave 'state' such
+          #that following runs will find initial environment state as they anticipate!
+          #$cmds = "$env:BUILD_SOURCESDIRECTORY\build\tiledb\test\Release\tiledb_unit.exe -d=yes [s3]" 
+          $cmds = "$env:BUILD_SOURCESDIRECTORY\build\tiledb\test\Release\tiledb_unit.exe -d=yes" 
           Write-Host "cmds: '$cmds'"
           Invoke-Expression $cmds
 
