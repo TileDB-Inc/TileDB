@@ -185,7 +185,8 @@ jobs:
             #cat $miniologfile
             #write-host "after cat $env:BUILD_SOURCESDIRECTORY\minio.log"
             cmd /c set
-            $cmds = "$env:BUILD_BUILDDIRECTORY\tiledb\test\Release\tiledb_unit.exe -d=yes [s3]" 
+            #$cmds = "$env:BUILD_BUILDDIRECTORY\tiledb\test\Release\tiledb_unit.exe -d=yes [s3]" 
+            $cmds = "$env:BUILD_SOURCESDIRECTORY\tiledb\test\Release\tiledb_unit.exe -d=yes [s3]" 
             Write-Host "cmds: '$cmds'"
             Invoke-Expression $cmds
             exit 727
