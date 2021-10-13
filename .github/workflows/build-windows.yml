@@ -26,22 +26,22 @@ jobs:
         #environ: [azure, s3, serialization]
         environ: [s3]
         include:
-          - environ: 'azure'
-            TILEDB_AZURE: ON
-            TILEDB_USE_CUSTOM_NODEJS: OFF
-            TILEDB_ARROW_TESTS: ON
-            TILEDB_SERIALIZATION: OFF
-            TILEDB_S3: OFF
+          #~ - environ: 'azure'
+            #~ TILEDB_AZURE: ON
+            #~ TILEDB_USE_CUSTOM_NODEJS: OFF
+            #~ TILEDB_ARROW_TESTS: ON
+            #~ TILEDB_SERIALIZATION: OFF
+            #~ TILEDB_S3: OFF
           - environ: 's3'
             TILEDB_S3: ON
             TILEDB_ARROW_TESTS: ON
             TILEDB_SERIALIZATION: OFF
             TILEDB_AZURE: OFF
-          - environ: 'serialization'
-            TILEDB_S3: OFF
-            TILEDB_AZURE: OFF
-            TILEDB_ARROW_TESTS: OFF
-            TILEDB_SERIALIZATION: ON
+          #~ - environ: 'serialization'
+            #~ TILEDB_S3: OFF
+            #~ TILEDB_AZURE: OFF
+            #~ TILEDB_ARROW_TESTS: OFF
+            #~ TILEDB_SERIALIZATION: ON
     env:
       TILEDB_HOME: ${{ github.workspace }}
       TILEDB_GA_IMAGE_NAME: ${{ matrix.os }}
