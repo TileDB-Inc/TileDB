@@ -183,8 +183,12 @@ jobs:
             #cat $miniologfile
             #write-host "after cat $env:BUILD_SOURCESDIRECTORY\minio.log"
             cmd /c set
+            $cmds = "$env:BUILD_BUILDDIRECTORY\tiledb\test\Release\tiledb_unit.exe -d=yes [s3]" 
+            Write-Host "cmds: '$cmds'"
+            Invoke-Expression $cmds
             exit 727
           }
+          exit 728
 
           $bootstrapOptions = $env:TILEDB_BASE_BOOTSTRAP_OPTIONS
           if ($env:TILEDB_S3 -eq "ON") {
