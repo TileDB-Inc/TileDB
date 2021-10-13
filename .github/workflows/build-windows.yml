@@ -23,7 +23,8 @@ jobs:
         #os: [windows-2016, windows-2019]
         os: [windows-2016]
         #considering https://stackoverflow.com/questions/65035256/how-to-access-matrix-variables-in-github-actions
-        environ: [azure, s3, serialization]
+        #environ: [azure, s3, serialization]
+        environ: [s3]
         include:
           - environ: 'azure'
             TILEDB_AZURE: ON
