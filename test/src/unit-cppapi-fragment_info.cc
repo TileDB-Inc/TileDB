@@ -625,65 +625,82 @@ TEST_CASE(
   // Create fragment info object
   FragmentInfo fragment_info(ctx, array_name);
 
-  // Load fragment info
-  fragment_info.load();
-
-  // Get number of fragments to vacuum
-  auto to_vacuum_num = fragment_info.to_vacuum_num();
-  CHECK(to_vacuum_num == 0);
-
-  // Get to vacuum fragment URI - should error out
-  std::string to_vacuum_uri;
-  CHECK_THROWS(to_vacuum_uri = fragment_info.to_vacuum_uri(0));
-
-  // Consolidate fragments
-  Config config;
-  config["sm.consolidation.mode"] = "fragments";
-  Array::consolidate(ctx, array_name, &config);
-
-  // Load fragment info
-  fragment_info.load();
-
-  // Get consolidated fragment URI
-  auto uri = fragment_info.fragment_uri(0);
-  CHECK(uri.find_last_of("__1_2") != std::string::npos);
-
-  // Get number of fragments to vacuum
-  to_vacuum_num = fragment_info.to_vacuum_num();
-  CHECK(to_vacuum_num == 2);
-
-  // Get to vacuum fragment URI
-  to_vacuum_uri = fragment_info.to_vacuum_uri(0);
-  CHECK(to_vacuum_uri == written_frag_uri);
-
-  // Write another dense fragment
-  subarray[0] = 1;
-  subarray[1] = 3;
-  a = {31, 32, 33};
-  a_size = a.size() * sizeof(int32_t);
-  buffers["a"] = tiledb::test::QueryBuffer({&a[0], a_size, nullptr, 0});
-  write_array(
-      ctx.ptr().get(), array_name, 3, subarray, TILEDB_ROW_MAJOR, buffers);
-
-  // Load fragment info
-  fragment_info.load();
-
-  // Get number of fragments to vacuum
-  to_vacuum_num = fragment_info.to_vacuum_num();
-  CHECK(to_vacuum_num == 2);
-
-  // Deadlock
-  /*
-    // Vacuum
-    Array::vacuum(ctx, array_name);
+  {
+    // Create fragment info object
+    FragmentInfo fragment_info(ctx, array_name);
 
     // Load fragment info
     fragment_info.load();
 
     // Get number of fragments to vacuum
-    to_vacuum_num = fragment_info.to_vacuum_num();
+    auto to_vacuum_num = fragment_info.to_vacuum_num();
     CHECK(to_vacuum_num == 0);
-  */
+
+    // Get to vacuum fragment URI - should error out
+    std::string to_vacuum_uri;
+    CHECK_THROWS(to_vacuum_uri = fragment_info.to_vacuum_uri(0));
+  }
+
+  {
+    // Create fragment info object
+    FragmentInfo fragment_info(ctx, array_name);
+
+    // Consolidate fragments
+    Config config;
+    config["sm.consolidation.mode"] = "fragments";
+    Array::consolidate(ctx, array_name, &config);
+
+    // Load fragment info
+    fragment_info.load();
+
+    // Get consolidated fragment URI
+    auto uri = fragment_info.fragment_uri(0);
+    CHECK(uri.find_last_of("__1_2") != std::string::npos);
+
+    // Get number of fragments to vacuum
+    auto to_vacuum_num = fragment_info.to_vacuum_num();
+    CHECK(to_vacuum_num == 2);
+
+    // Get to vacuum fragment URI
+    auto to_vacuum_uri = fragment_info.to_vacuum_uri(0);
+    CHECK(to_vacuum_uri == written_frag_uri);
+  }
+
+  {
+    // Create fragment info object
+    FragmentInfo fragment_info(ctx, array_name);
+
+    // Write another dense fragment
+    subarray[0] = 1;
+    subarray[1] = 3;
+    a = {31, 32, 33};
+    a_size = a.size() * sizeof(int32_t);
+    buffers["a"] = tiledb::test::QueryBuffer({&a[0], a_size, nullptr, 0});
+    write_array(
+        ctx.ptr().get(), array_name, 3, subarray, TILEDB_ROW_MAJOR, buffers);
+
+    // Load fragment info
+    fragment_info.load();
+
+    // Get number of fragments to vacuum
+    auto to_vacuum_num = fragment_info.to_vacuum_num();
+    CHECK(to_vacuum_num == 2);
+  }
+
+  // Vacuum
+  Array::vacuum(ctx, array_name);
+
+  {
+    // Create fragment info object
+    FragmentInfo fragment_info(ctx, array_name);
+
+    // Load fragment info
+    fragment_info.load();
+
+    // Get number of fragments to vacuum
+    auto to_vacuum_num = fragment_info.to_vacuum_num();
+    CHECK(to_vacuum_num == 0);
+  }
 
   // Clean up
   remove_dir(array_name, ctx.ptr().get(), vfs.ptr().get());
