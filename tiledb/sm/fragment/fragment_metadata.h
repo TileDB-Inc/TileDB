@@ -75,7 +75,6 @@ class FragmentMetadata {
    * @param timestamp_range The timestamp range of the fragment.
    *     In TileDB, timestamps are in ms elapsed since
    *     1970-01-01 00:00:00 +0000 (UTC).
-   * @param memory_tracker Memory tracker for all fragment metadatas.
    * @param dense Indicates whether the fragment is dense or sparse.
    */
   FragmentMetadata(

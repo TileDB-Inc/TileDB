@@ -123,7 +123,7 @@ OpenArrayMemoryTracker* GlobalState::array_memory_tracker(
     if (storage_manager == caller)
       continue;
 
-    auto tracker = storage_manager->array_memory_tracker(array_uri, false);
+    auto tracker = storage_manager->array_get_memory_tracker(array_uri, false);
     if (tracker != nullptr)
       return tracker;
   }
