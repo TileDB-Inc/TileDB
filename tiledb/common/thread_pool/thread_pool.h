@@ -33,7 +33,7 @@
 #ifndef TILEDB_THREAD_POOL_H
 #define TILEDB_THREAD_POOL_H
 
-#include "producer_consumer_queue.hpp"
+#include "producer_consumer_queue.h"
 
 #include <functional>
 #include <future>
