@@ -144,9 +144,9 @@ TEST_CASE(
 
   // Clean up
   remove_dir(array_name, ctx, vfs);
+  tiledb_fragment_info_free(&fragment_info);
   tiledb_ctx_free(&ctx);
   tiledb_vfs_free(&vfs);
-  tiledb_fragment_info_free(&fragment_info);
 }
 
 TEST_CASE(
@@ -319,9 +319,9 @@ TEST_CASE(
 
   // Clean up
   remove_dir(array_name, ctx, vfs);
+  tiledb_fragment_info_free(&fragment_info);
   tiledb_ctx_free(&ctx);
   tiledb_vfs_free(&vfs);
-  tiledb_fragment_info_free(&fragment_info);
 }
 
 TEST_CASE(
@@ -386,6 +386,7 @@ TEST_CASE(
   REQUIRE(tiledb_ctx_alloc(cfg, &ctx_wrong_key) == TILEDB_OK);
   rc = tiledb_fragment_info_load(ctx_wrong_key, fragment_info);
   CHECK(rc == TILEDB_ERR);
+  tiledb_ctx_free(&ctx_wrong_key);
 
   // Load fragment info
   rc = tiledb_config_set(cfg, "sm.encryption_key", key, &err);
@@ -468,6 +469,7 @@ TEST_CASE(
   // Load fragment info again
   rc = tiledb_fragment_info_load(ctx_correct_key, fragment_info);
   CHECK(rc == TILEDB_OK);
+  tiledb_ctx_free(&ctx_correct_key);
 
   // Get fragment num again
   rc = tiledb_fragment_info_get_fragment_num(ctx, fragment_info, &fragment_num);
@@ -574,11 +576,9 @@ TEST_CASE(
   tiledb_fragment_info_free(&fragment_info);
   tiledb_vfs_free(&vfs);
   tiledb_ctx_free(&ctx);
-  tiledb_ctx_free(&ctx_correct_key);
-  tiledb_ctx_free(&ctx_wrong_key);
 }
 
-TEST_CASE("C API: Test MBR fragment info", "[cppapi][fragment_info][mbr]") {
+TEST_CASE("C API: Test MBR fragment info", "[capi][fragment_info][mbr]") {
   // Create TileDB context
   tiledb_ctx_t* ctx = nullptr;
   int rc = tiledb_ctx_alloc(nullptr, &ctx);
@@ -703,7 +703,7 @@ TEST_CASE("C API: Test MBR fragment info", "[cppapi][fragment_info][mbr]") {
   CHECK(rc == TILEDB_OK);
   tiledb_config_free(&cfg);
 
-  // Get fragment num again
+  // Get fragment num
   uint32_t fragment_num;
   rc = tiledb_fragment_info_get_fragment_num(ctx, fragment_info, &fragment_num);
   CHECK(rc == TILEDB_OK);
@@ -737,8 +737,8 @@ TEST_CASE("C API: Test MBR fragment info", "[cppapi][fragment_info][mbr]") {
   CHECK(mbr == std::vector<uint64_t>{7, 8});
 
   // Clean up
-  remove_dir(array_name, ctx, vfs);
   tiledb_fragment_info_free(&fragment_info);
+  remove_dir(array_name, ctx, vfs);
   tiledb_vfs_free(&vfs);
   tiledb_ctx_free(&ctx);
 }
@@ -1036,12 +1036,12 @@ TEST_CASE(
   CHECK(unconsolidated == 1);
 
   // Clean up
+  tiledb_fragment_info_free(&fragment_info);
   remove_dir(array_name, ctx, vfs);
   tiledb_ctx_free(&ctx);
   tiledb_vfs_free(&vfs);
   tiledb_error_free(&error);
   tiledb_config_free(&config);
-  tiledb_fragment_info_free(&fragment_info);
 }
 
 TEST_CASE(
@@ -1175,12 +1175,12 @@ TEST_CASE(
   CHECK(to_vacuum_num == 2);
 
   // Clean up
+  tiledb_fragment_info_free(&fragment_info);
   remove_dir(array_name, ctx, vfs);
   tiledb_ctx_free(&ctx);
   tiledb_vfs_free(&vfs);
   tiledb_error_free(&error);
   tiledb_config_free(&config);
-  tiledb_fragment_info_free(&fragment_info);
 }
 
 TEST_CASE("C API: Test fragment info, dump", "[capi][fragment_info][dump]") {
@@ -1352,9 +1352,9 @@ TEST_CASE("C API: Test fragment info, dump", "[capi][fragment_info][dump]") {
 
   // Clean up
   remove_dir(array_name, ctx, vfs);
+  tiledb_fragment_info_free(&fragment_info);
   tiledb_ctx_free(&ctx);
   tiledb_vfs_free(&vfs);
-  tiledb_fragment_info_free(&fragment_info);
 }
 
 TEST_CASE(
@@ -1480,10 +1480,10 @@ TEST_CASE(
   CHECK(tiledb_vfs_remove_file(ctx, vfs, "fout.txt") == TILEDB_OK);
 
   // Clean up
+  tiledb_fragment_info_free(&fragment_info);
   remove_dir(array_name, ctx, vfs);
   tiledb_ctx_free(&ctx);
   tiledb_vfs_free(&vfs);
-  tiledb_fragment_info_free(&fragment_info);
 }
 
 TEST_CASE(
@@ -1563,10 +1563,10 @@ TEST_CASE(
   CHECK(tiledb_vfs_remove_file(ctx, vfs, "fout.txt") == TILEDB_OK);
 
   // Clean up
+  tiledb_fragment_info_free(&fragment_info);
   remove_dir(array_name, ctx, vfs);
   tiledb_ctx_free(&ctx);
   tiledb_vfs_free(&vfs);
-  tiledb_fragment_info_free(&fragment_info);
 }
 
 TEST_CASE(
@@ -1654,8 +1654,8 @@ TEST_CASE(
   }
 
   // Clean up
+  tiledb_fragment_info_free(&fragment_info);
   remove_dir(array_name, ctx, vfs);
   tiledb_ctx_free(&ctx);
   tiledb_vfs_free(&vfs);
-  tiledb_fragment_info_free(&fragment_info);
 }

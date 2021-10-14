@@ -6424,8 +6424,7 @@ int32_t tiledb_fragment_info_get_mbr_num(
   tiledb::sm::Config config = ctx->ctx_->storage_manager()->config();
 
   if (SAVE_ERROR_CATCH(
-          ctx,
-          fragment_info->fragment_info_->get_mbr_num(config, fid, mbr_num)))
+          ctx, fragment_info->fragment_info_->get_mbr_num(fid, mbr_num)))
     return TILEDB_ERR;
 
   return TILEDB_OK;
@@ -6446,8 +6445,7 @@ int32_t tiledb_fragment_info_get_mbr_from_index(
   tiledb::sm::Config config = ctx->ctx_->storage_manager()->config();
 
   if (SAVE_ERROR_CATCH(
-          ctx,
-          fragment_info->fragment_info_->get_mbr(config, fid, mid, did, mbr)))
+          ctx, fragment_info->fragment_info_->get_mbr(fid, mid, did, mbr)))
     return TILEDB_ERR;
 
   return TILEDB_OK;
@@ -6468,9 +6466,7 @@ int32_t tiledb_fragment_info_get_mbr_from_name(
   tiledb::sm::Config config = ctx->ctx_->storage_manager()->config();
 
   if (SAVE_ERROR_CATCH(
-          ctx,
-          fragment_info->fragment_info_->get_mbr(
-              config, fid, mid, dim_name, mbr)))
+          ctx, fragment_info->fragment_info_->get_mbr(fid, mid, dim_name, mbr)))
     return TILEDB_ERR;
 
   return TILEDB_OK;
@@ -6494,7 +6490,7 @@ int32_t tiledb_fragment_info_get_mbr_var_size_from_index(
   if (SAVE_ERROR_CATCH(
           ctx,
           fragment_info->fragment_info_->get_mbr_var_size(
-              config, fid, mid, did, start_size, end_size)))
+              fid, mid, did, start_size, end_size)))
     return TILEDB_ERR;
 
   return TILEDB_OK;
@@ -6518,7 +6514,7 @@ int32_t tiledb_fragment_info_get_mbr_var_size_from_name(
   if (SAVE_ERROR_CATCH(
           ctx,
           fragment_info->fragment_info_->get_mbr_var_size(
-              config, fid, mid, dim_name, start_size, end_size)))
+              fid, mid, dim_name, start_size, end_size)))
     return TILEDB_ERR;
 
   return TILEDB_OK;
@@ -6542,7 +6538,7 @@ int32_t tiledb_fragment_info_get_mbr_var_from_index(
   if (SAVE_ERROR_CATCH(
           ctx,
           fragment_info->fragment_info_->get_mbr_var(
-              config, fid, mid, did, start, end)))
+              fid, mid, did, start, end)))
     return TILEDB_ERR;
 
   return TILEDB_OK;
@@ -6566,7 +6562,7 @@ int32_t tiledb_fragment_info_get_mbr_var_from_name(
   if (SAVE_ERROR_CATCH(
           ctx,
           fragment_info->fragment_info_->get_mbr_var(
-              config, fid, mid, dim_name, start, end)))
+              fid, mid, dim_name, start, end)))
     return TILEDB_ERR;
 
   return TILEDB_OK;
