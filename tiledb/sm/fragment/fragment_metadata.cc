@@ -937,7 +937,7 @@ Status FragmentMetadata::load_rtree(const EncryptionKey& encryption_key) {
   storage_manager_->stats()->add_counter("read_rtree_size", buff.size());
 
   // Use the serialized buffer size to approximate memory usage of the rtree.
-  auto memory_tracker = storage_manager_->array_get_memory_tracker(array_uri_);
+  auto memory_tracker = storage_manager_->array_memory_tracker(array_uri_);
   assert(memory_tracker);
   if (!memory_tracker->take_memory(buff.size())) {
     return LOG_STATUS(Status::FragmentMetadataError(
@@ -954,7 +954,7 @@ Status FragmentMetadata::load_rtree(const EncryptionKey& encryption_key) {
 
 void FragmentMetadata::free_rtree() {
   auto freed = rtree_.free_memory();
-  auto memory_tracker = storage_manager_->array_get_memory_tracker(array_uri_);
+  auto memory_tracker = storage_manager_->array_memory_tracker(array_uri_);
   memory_tracker->release_memory(freed);
   loaded_metadata_.rtree_ = false;
 }
@@ -1678,8 +1678,7 @@ Status FragmentMetadata::load_tile_offsets(ConstBuffer* buff) {
       continue;
 
     auto size = tile_offsets_num * sizeof(uint64_t);
-    auto memory_tracker =
-        storage_manager_->array_get_memory_tracker(array_uri_);
+    auto memory_tracker = storage_manager_->array_memory_tracker(array_uri_);
     assert(memory_tracker);
     if (!memory_tracker->take_memory(size)) {
       return LOG_STATUS(Status::FragmentMetadataError(
@@ -1716,8 +1715,7 @@ Status FragmentMetadata::load_tile_offsets(unsigned idx, ConstBuffer* buff) {
   // Get tile offsets
   if (tile_offsets_num != 0) {
     auto size = tile_offsets_num * sizeof(uint64_t);
-    auto memory_tracker =
-        storage_manager_->array_get_memory_tracker(array_uri_);
+    auto memory_tracker = storage_manager_->array_memory_tracker(array_uri_);
     assert(memory_tracker);
     if (!memory_tracker->take_memory(size)) {
       return LOG_STATUS(Status::FragmentMetadataError(
@@ -1766,8 +1764,7 @@ Status FragmentMetadata::load_tile_var_offsets(ConstBuffer* buff) {
       continue;
 
     auto size = tile_var_offsets_num * sizeof(uint64_t);
-    auto memory_tracker =
-        storage_manager_->array_get_memory_tracker(array_uri_);
+    auto memory_tracker = storage_manager_->array_memory_tracker(array_uri_);
     assert(memory_tracker);
     if (!memory_tracker->take_memory(size)) {
       return LOG_STATUS(Status::FragmentMetadataError(
@@ -1806,8 +1803,7 @@ Status FragmentMetadata::load_tile_var_offsets(
   // Get variable tile offsets
   if (tile_var_offsets_num != 0) {
     auto size = tile_var_offsets_num * sizeof(uint64_t);
-    auto memory_tracker =
-        storage_manager_->array_get_memory_tracker(array_uri_);
+    auto memory_tracker = storage_manager_->array_memory_tracker(array_uri_);
     assert(memory_tracker);
     if (!memory_tracker->take_memory(size)) {
       return LOG_STATUS(Status::FragmentMetadataError(
@@ -1855,8 +1851,7 @@ Status FragmentMetadata::load_tile_var_sizes(ConstBuffer* buff) {
       continue;
 
     auto size = tile_var_sizes_num * sizeof(uint64_t);
-    auto memory_tracker =
-        storage_manager_->array_get_memory_tracker(array_uri_);
+    auto memory_tracker = storage_manager_->array_memory_tracker(array_uri_);
     assert(memory_tracker);
     if (!memory_tracker->take_memory(size)) {
       return LOG_STATUS(Status::FragmentMetadataError(
@@ -1893,8 +1888,7 @@ Status FragmentMetadata::load_tile_var_sizes(unsigned idx, ConstBuffer* buff) {
   // Get variable tile sizes
   if (tile_var_sizes_num != 0) {
     auto size = tile_var_sizes_num * sizeof(uint64_t);
-    auto memory_tracker =
-        storage_manager_->array_get_memory_tracker(array_uri_);
+    auto memory_tracker = storage_manager_->array_memory_tracker(array_uri_);
     assert(memory_tracker);
     if (!memory_tracker->take_memory(size)) {
       return LOG_STATUS(Status::FragmentMetadataError(
@@ -1930,8 +1924,7 @@ Status FragmentMetadata::load_tile_validity_offsets(
   // Get tile offsets
   if (tile_validity_offsets_num != 0) {
     auto size = tile_validity_offsets_num * sizeof(uint64_t);
-    auto memory_tracker =
-        storage_manager_->array_get_memory_tracker(array_uri_);
+    auto memory_tracker = storage_manager_->array_memory_tracker(array_uri_);
     assert(memory_tracker);
     if (!memory_tracker->take_memory(size)) {
       return LOG_STATUS(Status::FragmentMetadataError(
@@ -2436,7 +2429,7 @@ Status FragmentMetadata::read_file_footer(
 
   storage_manager_->stats()->add_counter("read_frag_meta_size", *footer_size);
 
-  auto memory_tracker = storage_manager_->array_get_memory_tracker(array_uri_);
+  auto memory_tracker = storage_manager_->array_memory_tracker(array_uri_);
   assert(memory_tracker);
   if (!memory_tracker->take_memory(*footer_size)) {
     return LOG_STATUS(Status::FragmentMetadataError(

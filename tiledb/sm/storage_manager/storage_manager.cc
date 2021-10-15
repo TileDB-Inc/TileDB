@@ -928,7 +928,7 @@ Status StorageManager::array_evolve_schema(
   return Status::Ok();
 }
 
-OpenArrayMemoryTracker* StorageManager::array_get_memory_tracker(
+OpenArrayMemoryTracker* StorageManager::array_memory_tracker(
     const URI& array_uri, bool top_level) {
   // Lock mutex
   std::lock_guard<std::mutex> lock{open_array_for_reads_mtx_};

@@ -79,7 +79,7 @@ SparseGlobalOrderReader::SparseGlobalOrderReader(
   fix_var_sized_overflows_ = true;
   clear_coords_tiles_on_copy_ = false;
   array_memory_tracker_ =
-      storage_manager_->array_get_memory_tracker(array->array_uri());
+      storage_manager_->array_memory_tracker(array->array_uri());
 }
 
 /* ****************************** */
