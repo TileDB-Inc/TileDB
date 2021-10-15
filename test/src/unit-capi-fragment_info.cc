@@ -39,7 +39,7 @@
 
 using namespace tiledb::test;
 
-const std::string array_name = "fragment_info_array";
+const std::string array_name = "fragment_info_array_c";
 
 TEST_CASE(
     "C API: Test fragment info, errors", "[capi][fragment_info][errors]") {
@@ -49,7 +49,6 @@ TEST_CASE(
   tiledb_vfs_t* vfs = nullptr;
   rc = tiledb_vfs_alloc(ctx, nullptr, &vfs);
   REQUIRE(rc == TILEDB_OK);
-  remove_dir(array_name, ctx, vfs);
 
   // Create fragment info object
   tiledb_fragment_info_t* fragment_info = nullptr;
@@ -61,7 +60,6 @@ TEST_CASE(
   CHECK(rc == TILEDB_ERR);
 
   // Create array
-  remove_dir(array_name, ctx, vfs);
   uint64_t domain[] = {1, 10};
   uint64_t tile_extent = 5;
   create_array(
@@ -143,8 +141,8 @@ TEST_CASE(
   CHECK(rc == TILEDB_ERR);
 
   // Clean up
-  remove_dir(array_name, ctx, vfs);
   tiledb_fragment_info_free(&fragment_info);
+  remove_dir(array_name, ctx, vfs);
   tiledb_ctx_free(&ctx);
   tiledb_vfs_free(&vfs);
 }
@@ -161,7 +159,6 @@ TEST_CASE(
   REQUIRE(rc == TILEDB_OK);
 
   // Create array
-  remove_dir(array_name, ctx, vfs);
   uint64_t domain[] = {1, 10};
   uint64_t tile_extent = 5;
   create_array(
@@ -318,8 +315,8 @@ TEST_CASE(
   CHECK(version == tiledb::sm::constants::format_version);
 
   // Clean up
-  remove_dir(array_name, ctx, vfs);
   tiledb_fragment_info_free(&fragment_info);
+  remove_dir(array_name, ctx, vfs);
   tiledb_ctx_free(&ctx);
   tiledb_vfs_free(&vfs);
 }
@@ -339,7 +336,6 @@ TEST_CASE(
   const char* key = "12345678901234567890123456789012";
 
   // Create array
-  remove_dir(array_name, ctx, vfs);
   uint64_t domain[] = {1, 10};
   uint64_t tile_extent = 5;
   create_array(
@@ -572,10 +568,10 @@ TEST_CASE(
   CHECK(version == tiledb::sm::constants::format_version);
 
   // Clean up
-  remove_dir(array_name, ctx, vfs);
   tiledb_fragment_info_free(&fragment_info);
-  tiledb_vfs_free(&vfs);
+  remove_dir(array_name, ctx, vfs);
   tiledb_ctx_free(&ctx);
+  tiledb_vfs_free(&vfs);
 }
 
 TEST_CASE("C API: Test MBR fragment info", "[capi][fragment_info][mbr]") {
@@ -591,7 +587,6 @@ TEST_CASE("C API: Test MBR fragment info", "[capi][fragment_info][mbr]") {
   const char* key = "12345678901234567890123456789012";
 
   // Create sparse array
-  remove_dir(array_name, ctx, vfs);
   uint64_t domain[] = {1, 10};
   uint64_t tile_extent = 5;
   create_array(
@@ -753,7 +748,6 @@ TEST_CASE(
   tiledb_vfs_t* vfs = nullptr;
   rc = tiledb_vfs_alloc(ctx, nullptr, &vfs);
   REQUIRE(rc == TILEDB_OK);
-  remove_dir(array_name, ctx, vfs);
 
   // Create array
   create_array(
@@ -896,7 +890,6 @@ TEST_CASE(
   REQUIRE(rc == TILEDB_OK);
 
   // Create array
-  remove_dir(array_name, ctx, vfs);
   uint64_t domain[] = {1, 10};
   uint64_t tile_extent = 5;
   create_array(
@@ -1056,7 +1049,6 @@ TEST_CASE(
   REQUIRE(rc == TILEDB_OK);
 
   // Create array
-  remove_dir(array_name, ctx, vfs);
   uint64_t domain[] = {1, 10};
   uint64_t tile_extent = 5;
   create_array(
@@ -1193,7 +1185,6 @@ TEST_CASE("C API: Test fragment info, dump", "[capi][fragment_info][dump]") {
   REQUIRE(rc == TILEDB_OK);
 
   // Create array
-  remove_dir(array_name, ctx, vfs);
   uint64_t domain[] = {1, 10};
   uint64_t tile_extent = 5;
   create_array(
@@ -1351,6 +1342,7 @@ TEST_CASE("C API: Test fragment info, dump", "[capi][fragment_info][dump]") {
   CHECK(tiledb_vfs_remove_file(ctx, vfs, "fout.txt") == TILEDB_OK);
 
   // Clean up
+  tiledb_fragment_info_free(&fragment_info);
   remove_dir(array_name, ctx, vfs);
   tiledb_fragment_info_free(&fragment_info);
   tiledb_ctx_free(&ctx);
@@ -1369,7 +1361,6 @@ TEST_CASE(
   REQUIRE(rc == TILEDB_OK);
 
   // Create array
-  remove_dir(array_name, ctx, vfs);
   uint64_t domain[] = {1, 10};
   uint64_t tile_extent = 5;
   create_array(
@@ -1496,7 +1487,6 @@ TEST_CASE(
   tiledb_vfs_t* vfs = nullptr;
   rc = tiledb_vfs_alloc(ctx, nullptr, &vfs);
   REQUIRE(rc == TILEDB_OK);
-  remove_dir(array_name, ctx, vfs);
 
   // Create array
   create_array(
@@ -1581,7 +1571,6 @@ TEST_CASE(
   REQUIRE(rc == TILEDB_OK);
 
   // Create array
-  remove_dir(array_name, ctx, vfs);
   uint64_t domain[] = {1, 4, 1, 4};
   uint64_t tile_extent = 1;
   create_array(

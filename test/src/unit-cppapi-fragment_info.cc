@@ -39,7 +39,7 @@
 using namespace tiledb;
 using namespace tiledb::test;
 
-const std::string array_name = "fragment_info_array";
+const std::string array_name = "fragment_info_array_cpp";
 
 TEST_CASE(
     "C++ API: Test fragment info, errors", "[cppapi][fragment_info][errors]") {
@@ -50,13 +50,14 @@ TEST_CASE(
   cfg["sm.encryption_key"] = key.c_str();
   Context ctx(cfg);
   VFS vfs(ctx);
-  remove_dir(array_name, ctx.ptr().get(), vfs.ptr().get());
 
-  // Create fragment info object
-  FragmentInfo fragment_info(ctx, array_name);
+  {
+    // Create fragment info object
+    FragmentInfo fragment_info(ctx, array_name);
 
-  // Error if array does not exist
-  CHECK_THROWS(fragment_info.load());
+    // Error if array does not exist
+    CHECK_THROWS(fragment_info.load());
+  }
 
   // Create array
   uint64_t domain[] = {1, 10};
@@ -77,9 +78,6 @@ TEST_CASE(
       TILEDB_ROW_MAJOR,
       2);
 
-  // Load fragment info, array is encrypted
-  fragment_info.load();
-
   // Write a dense fragment
   QueryBuffers buffers;
   uint64_t subarray[] = {1, 6};
@@ -88,24 +86,30 @@ TEST_CASE(
   buffers["a"] = tiledb::test::QueryBuffer({&a[0], a_size, nullptr, 0});
   write_array(
       ctx.ptr().get(), array_name, 1, subarray, TILEDB_ROW_MAJOR, buffers);
+  {
+    // Create fragment info object
+    FragmentInfo fragment_info(ctx, array_name);
 
-  // Load again
-  fragment_info.load();
+    // Load fragment info, array is encrypted
+    fragment_info.load();
 
-  // Get fragment URI
-  std::string uri;
-  CHECK_THROWS(uri = fragment_info.fragment_uri(1));
+    // Get fragment URI
+    std::string uri;
+    CHECK_THROWS(uri = fragment_info.fragment_uri(1));
 
-  // Get non-empty domain, invalid index and name
-  std::vector<uint64_t> non_empty_dom(2);
-  CHECK_THROWS(fragment_info.get_non_empty_domain(0, 1, &non_empty_dom[0]));
-  CHECK_THROWS(fragment_info.get_non_empty_domain(0, "foo", &non_empty_dom[0]));
+    // Get non-empty domain, invalid index and name
+    std::vector<uint64_t> non_empty_dom(2);
+    CHECK_THROWS(fragment_info.get_non_empty_domain(0, 1, &non_empty_dom[0]));
+    CHECK_THROWS(
+        fragment_info.get_non_empty_domain(0, "foo", &non_empty_dom[0]));
 
-  // Var-sized non-empty domain getters should error out
-  std::pair<std::string, std::string> non_empty_domain_str;
-  CHECK_THROWS(non_empty_domain_str = fragment_info.non_empty_domain_var(0, 0));
-  CHECK_THROWS(
-      non_empty_domain_str = fragment_info.non_empty_domain_var(0, "d"));
+    // Var-sized non-empty domain getters should error out
+    std::pair<std::string, std::string> non_empty_domain_str;
+    CHECK_THROWS(
+        non_empty_domain_str = fragment_info.non_empty_domain_var(0, 0));
+    CHECK_THROWS(
+        non_empty_domain_str = fragment_info.non_empty_domain_var(0, "d"));
+  }
 
   // Clean up
   remove_dir(array_name, ctx.ptr().get(), vfs.ptr().get());
@@ -119,7 +123,6 @@ TEST_CASE(
   VFS vfs(ctx);
 
   // Create array
-  remove_dir(array_name, ctx.ptr().get(), vfs.ptr().get());
   uint64_t domain[] = {1, 10};
   uint64_t tile_extent = 5;
   create_array(
@@ -138,15 +141,17 @@ TEST_CASE(
       TILEDB_ROW_MAJOR,
       2);
 
-  // Create fragment info object
-  FragmentInfo fragment_info(ctx, array_name);
+  {
+    // Create fragment info object
+    FragmentInfo fragment_info(ctx, array_name);
 
-  // Load fragment info
-  fragment_info.load();
+    // Load fragment info
+    fragment_info.load();
 
-  // No fragments yet
-  auto fragment_num = fragment_info.fragment_num();
-  CHECK(fragment_num == 0);
+    // No fragments yet
+    auto fragment_num = fragment_info.fragment_num();
+    CHECK(fragment_num == 0);
+  }
 
   // Write a dense fragment
   QueryBuffers buffers;
@@ -157,12 +162,17 @@ TEST_CASE(
   write_array(
       ctx.ptr().get(), array_name, 1, subarray, TILEDB_ROW_MAJOR, buffers);
 
-  // Load fragment info again
-  fragment_info.load();
+  {
+    // Create fragment info object
+    FragmentInfo fragment_info(ctx, array_name);
 
-  // Get fragment num again
-  fragment_num = fragment_info.fragment_num();
-  CHECK(fragment_num == 1);
+    // Load fragment info again
+    fragment_info.load();
+
+    // Get fragment num again
+    auto fragment_num = fragment_info.fragment_num();
+    CHECK(fragment_num == 1);
+  }
 
   // Write another dense fragment
   subarray[0] = 1;
@@ -189,79 +199,84 @@ TEST_CASE(
   write_array(
       ctx.ptr().get(), array_name, 3, subarray, TILEDB_ROW_MAJOR, buffers);
 
-  // Load fragment info again
-  fragment_info.load();
+  {
+    // Create fragment info object
+    FragmentInfo fragment_info(ctx, array_name);
 
-  // Get fragment num again
-  fragment_num = fragment_info.fragment_num();
-  CHECK(fragment_num == 3);
+    // Load fragment info again
+    fragment_info.load();
 
-  // Get fragment URI
-  auto uri = fragment_info.fragment_uri(1);
-  CHECK(uri == written_frag_uri);
+    // Get fragment num again
+    auto fragment_num = fragment_info.fragment_num();
+    CHECK(fragment_num == 3);
 
-  // Get fragment size
-  auto size = fragment_info.fragment_size(1);
-  CHECK(size == 1662);
+    // Get fragment URI
+    auto uri = fragment_info.fragment_uri(1);
+    CHECK(uri == written_frag_uri);
 
-  // Get dense / sparse
-  auto dense = fragment_info.dense(0);
-  CHECK(dense == true);
-  auto sparse = fragment_info.sparse(0);
-  CHECK(sparse == false);
-  dense = fragment_info.dense(1);
-  CHECK(dense == true);
-  sparse = fragment_info.sparse(1);
-  CHECK(sparse == false);
+    // Get fragment size
+    auto size = fragment_info.fragment_size(1);
+    CHECK(size == 1662);
 
-  // Get timestamp range
-  auto range = fragment_info.timestamp_range(1);
-  CHECK(range.first == 2);
-  CHECK(range.second == 2);
+    // Get dense / sparse
+    auto dense = fragment_info.dense(0);
+    CHECK(dense == true);
+    auto sparse = fragment_info.sparse(0);
+    CHECK(sparse == false);
+    dense = fragment_info.dense(1);
+    CHECK(dense == true);
+    sparse = fragment_info.sparse(1);
+    CHECK(sparse == false);
 
-  // Get non-empty domain
-  std::vector<uint64_t> non_empty_dom(2);
-  fragment_info.get_non_empty_domain(0, 0, &non_empty_dom[0]);
-  CHECK(non_empty_dom == std::vector<uint64_t>{1, 6});
-  fragment_info.get_non_empty_domain(1, 0, &non_empty_dom[0]);
-  CHECK(non_empty_dom == std::vector<uint64_t>{1, 7});
-  fragment_info.get_non_empty_domain(2, 0, &non_empty_dom[0]);
-  CHECK(non_empty_dom == std::vector<uint64_t>{2, 9});
-  fragment_info.get_non_empty_domain(1, "d", &non_empty_dom[0]);
-  CHECK(non_empty_dom == std::vector<uint64_t>{1, 7});
+    // Get timestamp range
+    auto range = fragment_info.timestamp_range(1);
+    CHECK(range.first == 2);
+    CHECK(range.second == 2);
 
-  // Get number of cells
-  auto cell_num = fragment_info.cell_num(0);
-  CHECK(cell_num == 10);
-  cell_num = fragment_info.cell_num(1);
-  CHECK(cell_num == 10);
-  cell_num = fragment_info.cell_num(2);
-  CHECK(cell_num == 10);
+    // Get non-empty domain
+    std::vector<uint64_t> non_empty_dom(2);
+    fragment_info.get_non_empty_domain(0, 0, &non_empty_dom[0]);
+    CHECK(non_empty_dom == std::vector<uint64_t>{1, 6});
+    fragment_info.get_non_empty_domain(1, 0, &non_empty_dom[0]);
+    CHECK(non_empty_dom == std::vector<uint64_t>{1, 7});
+    fragment_info.get_non_empty_domain(2, 0, &non_empty_dom[0]);
+    CHECK(non_empty_dom == std::vector<uint64_t>{2, 9});
+    fragment_info.get_non_empty_domain(1, "d", &non_empty_dom[0]);
+    CHECK(non_empty_dom == std::vector<uint64_t>{1, 7});
 
-  // Get number of MBRs - should always be 0 since it's a dense array
-  auto mbr_num = fragment_info.mbr_num(0);
-  CHECK(mbr_num == 0);
-  mbr_num = fragment_info.mbr_num(1);
-  CHECK(mbr_num == 0);
-  mbr_num = fragment_info.mbr_num(2);
-  CHECK(mbr_num == 0);
+    // Get number of cells
+    auto cell_num = fragment_info.cell_num(0);
+    CHECK(cell_num == 10);
+    cell_num = fragment_info.cell_num(1);
+    CHECK(cell_num == 10);
+    cell_num = fragment_info.cell_num(2);
+    CHECK(cell_num == 10);
 
-  // Get MBR from index - should fail since it's a dense array
-  std::vector<uint64_t> mbr(2);
-  CHECK_THROWS(fragment_info.get_mbr(1, 0, 0, &mbr[0]));
-  CHECK_THROWS(fragment_info.get_mbr(1, 1, 0, &mbr[0]));
-  CHECK_THROWS(fragment_info.get_mbr(2, 0, 0, &mbr[0]));
-  CHECK_THROWS(fragment_info.get_mbr(2, 1, 0, &mbr[0]));
+    // Get number of MBRs - should always be 0 since it's a dense array
+    auto mbr_num = fragment_info.mbr_num(0);
+    CHECK(mbr_num == 0);
+    mbr_num = fragment_info.mbr_num(1);
+    CHECK(mbr_num == 0);
+    mbr_num = fragment_info.mbr_num(2);
+    CHECK(mbr_num == 0);
 
-  // Get MBR from name - should fail since it's a dense array
-  CHECK_THROWS(fragment_info.get_mbr(1, 0, "d", &mbr[0]));
-  CHECK_THROWS(fragment_info.get_mbr(1, 1, "d", &mbr[0]));
-  CHECK_THROWS(fragment_info.get_mbr(2, 0, "d", &mbr[0]));
-  CHECK_THROWS(fragment_info.get_mbr(2, 1, "d", &mbr[0]));
+    // Get MBR from index - should fail since it's a dense array
+    std::vector<uint64_t> mbr(2);
+    CHECK_THROWS(fragment_info.get_mbr(1, 0, 0, &mbr[0]));
+    CHECK_THROWS(fragment_info.get_mbr(1, 1, 0, &mbr[0]));
+    CHECK_THROWS(fragment_info.get_mbr(2, 0, 0, &mbr[0]));
+    CHECK_THROWS(fragment_info.get_mbr(2, 1, 0, &mbr[0]));
 
-  // Get version
-  auto version = fragment_info.version(0);
-  CHECK(version == tiledb::sm::constants::format_version);
+    // Get MBR from name - should fail since it's a dense array
+    CHECK_THROWS(fragment_info.get_mbr(1, 0, "d", &mbr[0]));
+    CHECK_THROWS(fragment_info.get_mbr(1, 1, "d", &mbr[0]));
+    CHECK_THROWS(fragment_info.get_mbr(2, 0, "d", &mbr[0]));
+    CHECK_THROWS(fragment_info.get_mbr(2, 1, "d", &mbr[0]));
+
+    // Get version
+    auto version = fragment_info.version(0);
+    CHECK(version == tiledb::sm::constants::format_version);
+  }
 
   // Clean up
   remove_dir(array_name, ctx.ptr().get(), vfs.ptr().get());
@@ -273,7 +288,6 @@ TEST_CASE("C++ API: Test MBR fragment info", "[cppapi][fragment_info][mbr]") {
   VFS vfs(ctx);
 
   // Create sparse array
-  remove_dir(array_name, ctx.ptr().get(), vfs.ptr().get());
   uint64_t domain[] = {1, 10};
   uint64_t tile_extent = 5;
   create_array(
@@ -348,33 +362,34 @@ TEST_CASE("C++ API: Test MBR fragment info", "[cppapi][fragment_info][mbr]") {
       buffers,
       &written_frag_uri);
 
-  // Create fragment info object
-  FragmentInfo fragment_info(ctx, array_name);
-  // Load fragment info
-  fragment_info.load();
-  auto fragment_num = fragment_info.fragment_num();
-  CHECK(fragment_num == 3);
+  {
+    // Create fragment info object
+    FragmentInfo fragment_info(ctx, array_name);
+    // Load fragment info
+    fragment_info.load();
+    auto fragment_num = fragment_info.fragment_num();
+    CHECK(fragment_num == 3);
 
-  // Test get number of MBRs API
+    // Test get number of MBRs API
 
-  auto mbr_num = fragment_info.mbr_num(0);
-  CHECK(mbr_num == 1);
-  mbr_num = fragment_info.mbr_num(1);
-  CHECK(mbr_num == 2);
-  mbr_num = fragment_info.mbr_num(2);
-  CHECK(mbr_num == 2);
-  // 3 is out of fragment_info bounds
-  CHECK_THROWS(fragment_info.mbr_num(3));
+    auto mbr_num = fragment_info.mbr_num(0);
+    CHECK(mbr_num == 1);
+    mbr_num = fragment_info.mbr_num(1);
+    CHECK(mbr_num == 2);
+    mbr_num = fragment_info.mbr_num(2);
+    CHECK(mbr_num == 2);
+    // 3 is out of fragment_info bounds
+    CHECK_THROWS(fragment_info.mbr_num(3));
 
-  // Test get MBR from index API
-  std::vector<uint64_t> mbr(2);
-  fragment_info.get_mbr(0, 0, 0, &mbr[0]);
-  CHECK(mbr == std::vector<uint64_t>{1, 2});
+    // Test get MBR from index API
+    std::vector<uint64_t> mbr(2);
+    fragment_info.get_mbr(0, 0, 0, &mbr[0]);
+    CHECK(mbr == std::vector<uint64_t>{1, 2});
 
-  // Test get MBR from name API
-  fragment_info.get_mbr(1, 1, "d1", &mbr[0]);
-  CHECK(mbr == std::vector<uint64_t>{7, 8});
-
+    // Test get MBR from name API
+    fragment_info.get_mbr(1, 1, "d1", &mbr[0]);
+    CHECK(mbr == std::vector<uint64_t>{7, 8});
+  }
   // Clean up
   remove_dir(array_name, ctx.ptr().get(), vfs.ptr().get());
 }
@@ -386,7 +401,6 @@ TEST_CASE(
   Context ctx;
   Config cfg;
   VFS vfs(ctx);
-  remove_dir(array_name, ctx.ptr().get(), vfs.ptr().get());
 
   // Create array
   create_array(
@@ -425,31 +439,33 @@ TEST_CASE(
       buffers,
       &written_frag_uri);
 
-  // Create fragment info object
-  FragmentInfo fragment_info(ctx, array_name);
+  {
+    // Create fragment info object
+    FragmentInfo fragment_info(ctx, array_name);
 
-  // Load fragment info
-  fragment_info.load();
+    // Load fragment info
+    fragment_info.load();
 
-  // Get non-empty domain
-  auto non_empty_domain_str = fragment_info.non_empty_domain_var(0, 0);
-  CHECK(std::string("a") == non_empty_domain_str.first);
-  CHECK(std::string("ddd") == non_empty_domain_str.second);
-  non_empty_domain_str = fragment_info.non_empty_domain_var(0, "d");
-  CHECK(std::string("a") == non_empty_domain_str.first);
-  CHECK(std::string("ddd") == non_empty_domain_str.second);
+    // Get non-empty domain
+    auto non_empty_domain_str = fragment_info.non_empty_domain_var(0, 0);
+    CHECK(std::string("a") == non_empty_domain_str.first);
+    CHECK(std::string("ddd") == non_empty_domain_str.second);
+    non_empty_domain_str = fragment_info.non_empty_domain_var(0, "d");
+    CHECK(std::string("a") == non_empty_domain_str.first);
+    CHECK(std::string("ddd") == non_empty_domain_str.second);
 
-  // Get number of MBRs
-  auto mbr_num = fragment_info.mbr_num(0);
-  CHECK(mbr_num == 2);
+    // Get number of MBRs
+    auto mbr_num = fragment_info.mbr_num(0);
+    CHECK(mbr_num == 2);
 
-  // Get MBR
-  auto mbr_str = fragment_info.mbr_var(0, 0, 0);
-  CHECK(std::string("a") == mbr_str.first);
-  CHECK(std::string("bb") == mbr_str.second);
-  mbr_str = fragment_info.mbr_var(0, 1, "d");
-  CHECK(std::string("c") == mbr_str.first);
-  CHECK(std::string("ddd") == mbr_str.second);
+    // Get MBR
+    auto mbr_str = fragment_info.mbr_var(0, 0, 0);
+    CHECK(std::string("a") == mbr_str.first);
+    CHECK(std::string("bb") == mbr_str.second);
+    mbr_str = fragment_info.mbr_var(0, 1, "d");
+    CHECK(std::string("c") == mbr_str.first);
+    CHECK(std::string("ddd") == mbr_str.second);
+  }
 
   // Clean up
   remove_dir(array_name, ctx.ptr().get(), vfs.ptr().get());
@@ -463,7 +479,6 @@ TEST_CASE(
   VFS vfs(ctx);
 
   // Create array
-  remove_dir(array_name, ctx.ptr().get(), vfs.ptr().get());
   uint64_t domain[] = {1, 10};
   uint64_t tile_extent = 5;
   create_array(
@@ -507,40 +522,47 @@ TEST_CASE(
   write_array(
       ctx.ptr().get(), array_name, 2, subarray, TILEDB_ROW_MAJOR, buffers);
 
-  // Create fragment info object
-  FragmentInfo fragment_info(ctx, array_name);
+  {
+    // Create fragment info object
+    FragmentInfo fragment_info(ctx, array_name);
 
-  // Load fragment info
-  fragment_info.load();
+    // Load fragment info
+    fragment_info.load();
 
-  // Check for consolidated metadata
-  auto has = fragment_info.has_consolidated_metadata(0);
-  CHECK(has == false);
-  has = fragment_info.has_consolidated_metadata(1);
-  CHECK(has == false);
-  CHECK_THROWS(has = fragment_info.has_consolidated_metadata(2));
+    // Check for consolidated metadata
+    auto has = fragment_info.has_consolidated_metadata(0);
+    CHECK(has == false);
+    has = fragment_info.has_consolidated_metadata(1);
+    CHECK(has == false);
+    CHECK_THROWS(has = fragment_info.has_consolidated_metadata(2));
 
-  // Get number of unconsolidated fragment metadata
-  auto unconsolidated = fragment_info.unconsolidated_metadata_num();
-  CHECK(unconsolidated == 2);
+    // Get number of unconsolidated fragment metadata
+    auto unconsolidated = fragment_info.unconsolidated_metadata_num();
+    CHECK(unconsolidated == 2);
+  }
 
   // Consolidate fragment metadata
   Config config;
   config["sm.consolidation.mode"] = "fragment_meta";
   Array::consolidate(ctx, array_name, &config);
 
-  // Load fragment info
-  fragment_info.load();
+  {
+    // Create fragment info object
+    FragmentInfo fragment_info(ctx, array_name);
 
-  // Check for consolidated metadata
-  has = fragment_info.has_consolidated_metadata(0);
-  CHECK(has == true);
-  has = fragment_info.has_consolidated_metadata(1);
-  CHECK(has == true);
+    // Load fragment info
+    fragment_info.load();
 
-  // Get number of unconsolidated fragment metadata
-  unconsolidated = fragment_info.unconsolidated_metadata_num();
-  CHECK(unconsolidated == 0);
+    // Check for consolidated metadata
+    auto has = fragment_info.has_consolidated_metadata(0);
+    CHECK(has == true);
+    has = fragment_info.has_consolidated_metadata(1);
+    CHECK(has == true);
+
+    // Get number of unconsolidated fragment metadata
+    auto unconsolidated = fragment_info.unconsolidated_metadata_num();
+    CHECK(unconsolidated == 0);
+  }
 
   // Write another dense fragment
   subarray[0] = 3;
@@ -551,20 +573,25 @@ TEST_CASE(
   write_array(
       ctx.ptr().get(), array_name, 3, subarray, TILEDB_ROW_MAJOR, buffers);
 
-  // Load fragment info
-  fragment_info.load();
+  {
+    // Create fragment info object
+    FragmentInfo fragment_info(ctx, array_name);
 
-  // Check for consolidated metadata
-  has = fragment_info.has_consolidated_metadata(0);
-  CHECK(has == true);
-  has = fragment_info.has_consolidated_metadata(1);
-  CHECK(has == true);
-  has = fragment_info.has_consolidated_metadata(2);
-  CHECK(has == false);
+    // Load fragment info
+    fragment_info.load();
 
-  // Get number of unconsolidated fragment metadata
-  unconsolidated = fragment_info.unconsolidated_metadata_num();
-  CHECK(unconsolidated == 1);
+    // Check for consolidated metadata
+    auto has = fragment_info.has_consolidated_metadata(0);
+    CHECK(has == true);
+    has = fragment_info.has_consolidated_metadata(1);
+    CHECK(has == true);
+    has = fragment_info.has_consolidated_metadata(2);
+    CHECK(has == false);
+
+    // Get number of unconsolidated fragment metadata
+    auto unconsolidated = fragment_info.unconsolidated_metadata_num();
+    CHECK(unconsolidated == 1);
+  }
 
   // Clean up
   remove_dir(array_name, ctx.ptr().get(), vfs.ptr().get());
@@ -578,7 +605,6 @@ TEST_CASE(
   VFS vfs(ctx);
 
   // Create array
-  remove_dir(array_name, ctx.ptr().get(), vfs.ptr().get());
   uint64_t domain[] = {1, 10};
   uint64_t tile_extent = 5;
   create_array(
@@ -621,9 +647,6 @@ TEST_CASE(
   buffers["a"] = tiledb::test::QueryBuffer({&a[0], a_size, nullptr, 0});
   write_array(
       ctx.ptr().get(), array_name, 2, subarray, TILEDB_ROW_MAJOR, buffers);
-
-  // Create fragment info object
-  FragmentInfo fragment_info(ctx, array_name);
 
   {
     // Create fragment info object
@@ -713,7 +736,6 @@ TEST_CASE(
   VFS vfs(ctx);
 
   // Create array
-  remove_dir(array_name, ctx.ptr().get(), vfs.ptr().get());
   uint64_t domain[] = {1, 10};
   uint64_t tile_extent = 5;
   create_array(
@@ -780,64 +802,66 @@ TEST_CASE(
       buffers,
       &written_frag_uri_3);
 
-  // Create fragment info object
-  FragmentInfo fragment_info(ctx, array_name);
+  {
+    // Create fragment info object
+    FragmentInfo fragment_info(ctx, array_name);
 
-  // Load fragment info
-  fragment_info.load();
+    // Load fragment info
+    fragment_info.load();
 
-  // Get Array Schemas for fragments
-  ArraySchema frag1_schema = fragment_info.array_schema(0);
-  ArraySchema frag2_schema = fragment_info.array_schema(1);
-  ArraySchema frag3_schema = fragment_info.array_schema(2);
+    // Get Array Schemas for fragments
+    ArraySchema frag1_schema = fragment_info.array_schema(0);
+    ArraySchema frag2_schema = fragment_info.array_schema(1);
+    ArraySchema frag3_schema = fragment_info.array_schema(2);
 
-  // The three fragments use the same schema
-  std::stringstream frag1_schema_ss;
-  std::stringstream frag2_schema_ss;
-  std::stringstream frag3_schema_ss;
+    // The three fragments use the same schema
+    std::stringstream frag1_schema_ss;
+    std::stringstream frag2_schema_ss;
+    std::stringstream frag3_schema_ss;
 
-  frag1_schema_ss << frag1_schema;
-  frag2_schema_ss << frag2_schema;
-  frag3_schema_ss << frag3_schema;
+    frag1_schema_ss << frag1_schema;
+    frag2_schema_ss << frag2_schema;
+    frag3_schema_ss << frag3_schema;
 
-  std::string frag1_schema_str = frag1_schema_ss.str();
-  std::string frag2_schema_str = frag2_schema_ss.str();
-  std::string frag3_schema_str = frag3_schema_ss.str();
-  CHECK(frag1_schema_str == frag2_schema_str);
-  CHECK(frag1_schema_str == frag3_schema_str);
+    std::string frag1_schema_str = frag1_schema_ss.str();
+    std::string frag2_schema_str = frag2_schema_ss.str();
+    std::string frag3_schema_str = frag3_schema_ss.str();
+    CHECK(frag1_schema_str == frag2_schema_str);
+    CHECK(frag1_schema_str == frag3_schema_str);
 
-  // Check dump
-  std::string dump_str =
-      std::string("- Fragment num: 3\n") +
-      "- Unconsolidated metadata num: 3\n" + "- To vacuum num: 0\n" +
-      "- Fragment #1:\n" + "  > URI: " + written_frag_uri_1 + "\n" +
-      "  > Type: dense\n" + "  > Non-empty domain: [1, 6]\n" +
-      "  > Size: 1662\n" + "  > Cell num: 10\n" +
-      "  > Timestamp range: [1, 1]\n" + "  > Format version: 10\n" +
-      "  > Has consolidated metadata: no\n" + "- Fragment #2:\n" +
-      "  > URI: " + written_frag_uri_2 + "\n" + "  > Type: dense\n" +
-      "  > Non-empty domain: [1, 4]\n" + "  > Size: 1619\n" +
-      "  > Cell num: 5\n" + "  > Timestamp range: [2, 2]\n" +
-      "  > Format version: 10\n" + "  > Has consolidated metadata: no\n" +
-      "- Fragment #3:\n" + "  > URI: " + written_frag_uri_3 + "\n" +
-      "  > Type: dense\n" + "  > Non-empty domain: [5, 6]\n" +
-      "  > Size: 1662\n" + "  > Cell num: 10\n" +
-      "  > Timestamp range: [3, 3]\n" + "  > Format version: 10\n" +
-      "  > Has consolidated metadata: no\n";
-  FILE* gold_fout = fopen("gold_fout.txt", "w");
-  const char* dump = dump_str.c_str();
-  fwrite(dump, sizeof(char), strlen(dump), gold_fout);
-  fclose(gold_fout);
-  FILE* fout = fopen("fout.txt", "w");
-  fragment_info.dump(fout);
-  fclose(fout);
+    // Check dump
+    std::string dump_str =
+        std::string("- Fragment num: 3\n") +
+        "- Unconsolidated metadata num: 3\n" + "- To vacuum num: 0\n" +
+        "- Fragment #1:\n" + "  > URI: " + written_frag_uri_1 + "\n" +
+        "  > Type: dense\n" + "  > Non-empty domain: [1, 6]\n" +
+        "  > Size: 1662\n" + "  > Cell num: 10\n" +
+        "  > Timestamp range: [1, 1]\n" + "  > Format version: 10\n" +
+        "  > Has consolidated metadata: no\n" + "- Fragment #2:\n" +
+        "  > URI: " + written_frag_uri_2 + "\n" + "  > Type: dense\n" +
+        "  > Non-empty domain: [1, 4]\n" + "  > Size: 1619\n" +
+        "  > Cell num: 5\n" + "  > Timestamp range: [2, 2]\n" +
+        "  > Format version: 10\n" + "  > Has consolidated metadata: no\n" +
+        "- Fragment #3:\n" + "  > URI: " + written_frag_uri_3 + "\n" +
+        "  > Type: dense\n" + "  > Non-empty domain: [5, 6]\n" +
+        "  > Size: 1662\n" + "  > Cell num: 10\n" +
+        "  > Timestamp range: [3, 3]\n" + "  > Format version: 10\n" +
+        "  > Has consolidated metadata: no\n";
+    FILE* gold_fout = fopen("gold_fout.txt", "w");
+    const char* dump = dump_str.c_str();
+    fwrite(dump, sizeof(char), strlen(dump), gold_fout);
+    fclose(gold_fout);
+    FILE* fout = fopen("fout.txt", "w");
+    fragment_info.dump(fout);
+    fclose(fout);
 #ifdef _WIN32
-  CHECK(!system("FC gold_fout.txt fout.txt > nul"));
+    CHECK(!system("FC gold_fout.txt fout.txt > nul"));
 #else
-  CHECK(!system("diff gold_fout.txt fout.txt"));
+    CHECK(!system("diff gold_fout.txt fout.txt"));
 #endif
-  CHECK_NOTHROW(vfs.remove_file("gold_fout.txt"));
-  CHECK_NOTHROW(vfs.remove_file("fout.txt"));
+    CHECK_NOTHROW(vfs.remove_file("gold_fout.txt"));
+    CHECK_NOTHROW(vfs.remove_file("fout.txt"));
+  }
 
   // Clean up
   remove_dir(array_name, ctx.ptr().get(), vfs.ptr().get());

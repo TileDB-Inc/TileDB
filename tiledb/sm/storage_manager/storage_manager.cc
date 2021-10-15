@@ -1452,15 +1452,11 @@ Status StorageManager::get_fragment_info(
       // Push new fragment info
       fragment_info->append(SingleFragmentInfo(
           uri,
-          meta->format_version(),
           sparse,
           meta->timestamp_range(),
-          meta->cell_num(),
           sizes[i],
-          meta->has_consolidated_footer(),
           non_empty_domain,
           expanded_non_empty_domain,
-          meta->array_schema_name(),
           meta));
     }
   }
@@ -1586,15 +1582,11 @@ Status StorageManager::get_fragment_info(
   // Set fragment info
   *fragment_info = SingleFragmentInfo(
       fragment_uri,
-      meta->format_version(),
       sparse,
       timestamp_range,
-      meta->cell_num(),
       size,
-      meta->has_consolidated_footer(),
       non_empty_domain,
       expanded_non_empty_domain,
-      meta->array_schema_name(),
       meta);
 
   return Status::Ok();

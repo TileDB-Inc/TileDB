@@ -65,26 +65,22 @@ class SingleFragmentInfo {
   /** Constructor. */
   SingleFragmentInfo(
       const URI& uri,
-      uint32_t version,
       bool sparse,
       const std::pair<uint64_t, uint64_t>& timestamp_range,
-      uint64_t cell_num,
       uint64_t fragment_size,
-      bool has_consolidated_footer,
       const NDRange& non_empty_domain,
       const NDRange& expanded_non_empty_domain,
-      const std::string& array_schema_name,
       tdb_shared_ptr<FragmentMetadata> meta)
       : uri_(uri)
-      , version_(version)
+      , version_(meta->format_version())
       , sparse_(sparse)
       , timestamp_range_(timestamp_range)
-      , cell_num_(cell_num)
+      , cell_num_(meta->cell_num())
       , fragment_size_(fragment_size)
-      , has_consolidated_footer_(has_consolidated_footer)
+      , has_consolidated_footer_(meta->has_consolidated_footer())
       , non_empty_domain_(non_empty_domain)
       , expanded_non_empty_domain_(expanded_non_empty_domain)
-      , array_schema_name_(array_schema_name)
+      , array_schema_name_(meta->array_schema_name())
       , meta_(meta) {
   }
 
