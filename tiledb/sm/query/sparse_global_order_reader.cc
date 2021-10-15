@@ -109,6 +109,13 @@ Status SparseGlobalOrderReader::init() {
 
   // Load offset configuration options.
   bool found = false;
+  offsets_format_mode_ = config_.get("sm.var_offsets.mode", &found);
+  assert(found);
+  if (offsets_format_mode_ != "bytes" && offsets_format_mode_ != "elements") {
+    return LOG_STATUS(
+        Status::ReaderError("Cannot initialize reader; Unsupported offsets "
+                            "format in configuration"));
+  }
   RETURN_NOT_OK(config_.get<bool>(
       "sm.var_offsets.extra_element", &offsets_extra_element_, &found));
   assert(found);
@@ -1016,6 +1023,10 @@ Status SparseGlobalOrderReader::end_iteration() {
         }
       }
     }
+  }
+
+  if (offsets_extra_element_) {
+    RETURN_NOT_OK(add_extra_offset());
   }
 
   array_memory_tracker_->set_budget(std::numeric_limits<uint64_t>::max());
