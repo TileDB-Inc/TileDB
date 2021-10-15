@@ -1708,7 +1708,7 @@ class Interval : public detail::IntervalBase {
 
   std::string to_str() const {
     std::stringstream ss;
-    if(is_empty_){
+    if (is_empty_) {
       ss << "{}";
       return ss.str();
     }
@@ -1721,8 +1721,8 @@ class Interval : public detail::IntervalBase {
       if (is_lower_infinite_) {
         ss << "infinite";
       } else {
-        if (!lower_bound_) { // sanity check, should not occur
-          ss << "?lb?"; //should not occur
+        if (!lower_bound_) {  // sanity check, should not occur
+          ss << "?lb?";
         } else {
           ss << lower_bound_.value();
         }
@@ -1731,7 +1731,7 @@ class Interval : public detail::IntervalBase {
       if (is_upper_infinite_) {
         ss << "infinite";
       } else {
-        if (!upper_bound_) { // sanity check, should not occur.
+        if (!upper_bound_) {  // sanity check, should not occur.
           ss << "?ub?";
         } else {
           ss << upper_bound_.value();
