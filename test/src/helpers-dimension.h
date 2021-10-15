@@ -62,6 +62,10 @@ class TypedRange : public tiledb::sm::Range {
      * needs to build an array and then copy it.
      */
   }
+
+  TypedRange(const T* low, uint64_t lowlen, const T* high, uint64_t highlen) {
+    set_range_var(low, lowlen, high, highlen);
+  }
 };
 
 using Datatype = tiledb::sm::Datatype;

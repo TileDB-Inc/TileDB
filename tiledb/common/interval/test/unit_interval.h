@@ -147,7 +147,14 @@ class WhiteboxInterval : public Interval<T> {
 /**
  * List of types used to instantiate generic test cases
  */
-typedef tuple<uint16_t, uint64_t, int16_t, double> TypesUnderTest;
+typedef tuple<
+    uint16_t,
+    uint64_t,
+    int16_t,
+    double,
+    std::string,
+    std::string_view>
+    TypesUnderTest;
 
 /**
  * Test type traits allow generic instantiation by Catch from a list of types.
@@ -233,6 +240,155 @@ class TestTypeTraits<
   static constexpr T NaN = std::numeric_limits<T>::quiet_NaN();
 };
 
+/**
+ * Test traits for std::string_view values
+ * Will be indirectly testing <char *> as string_view proxies through
+ */
+template <class T>
+class TestTypeTraits<
+    T,
+    typename std::enable_if<std::is_base_of<std::string_view, T>::value, T>::
+        type> {
+#define MINELEM "\0"
+#define MAXELEM "\xff"
+  static inline T min = {""};
+  static inline T almost_min = {"\0"};
+  // Arbitrary values for max/almost_max.
+  static inline T max = {
+      "\xff\xff\xff\xff\xff\xff\xff\xff\xff\xff"};  // arbitrary
+  static inline T almost_max = {
+      "\xff\xff\xff\xff\xff\xff\xff\xff\xff\xfe"};  // 'almost' relative to
+                                                    // prior 'max'
+
+ public:
+  static inline std::initializer_list<T> outer = {
+      {"000"}, {"001"}, {"002"}, {"100"}, {almost_max}, {max}};
+  static inline std::initializer_list<T> inner = {{"000"},
+                                                  {"001"},
+                                                  {"002"},
+                                                  {"003"},
+                                                  {"099"},
+                                                  {"100"},
+                                                  {"101"},
+                                                  {almost_max},
+                                                  {max}};
+
+  static inline struct adjacent_or_not_s {
+    std::string v1;
+    std::string v2;
+    int adjacency;  // 0==none, 1==adjacent, 2==twice_adjacent
+  } adjacent_or_not[] = {
+      // clang-format off
+    { {"", 0}, {"\0", 1}, 1},
+    { {"", 0}, {"\0\0", 2}, 2},
+    { {"\0", 1}, {"\1", 1}, 0},
+    { {"\0", 1}, {"\0\0", 2}, 1},
+    { {"\0", 1}, {"\0\0\0", 3}, 2},
+    { {"a", 1}, {"a\0", 2}, 1},
+    { {"a", 1}, {"a\0\0", 3}, 2},
+    { {"a", 1}, {"a\0\1", 3}, 0},
+    { {"a", 1}, {"a\1\0", 3}, 0},
+    { {"z", 1}, {"z\0", 2}, 1},
+    { {"z", 1}, {"z\0\0", 3}, 2},
+    { {"z", 1}, {"z\0\1", 3}, 0},
+    { {"z", 1}, {"z\1\0", 3}, 0},
+
+    //repeat of above items, may or not be easier to comprehend
+    //with possibility of more easily changing MINELEM in use
+    { {"", 0}, {MINELEM, 1}, 1},
+    { {"", 0}, {MINELEM MINELEM, 2}, 2},
+    { {"\0", 1}, {"\1", 1}, 0},
+    { {"\0", 1}, {"\0" MINELEM, 2}, 1},
+    { {"\0", 1}, {"\0" MINELEM MINELEM, 3}, 2},
+    { {"a", 1}, {"a" MINELEM, 2}, 1},
+    { {"a", 1}, {"a" MINELEM MINELEM, 3}, 2},
+    { {"a", 1}, {"a" MINELEM "\1", 3}, 0},
+    { {"a", 1}, {"a" "\1" MINELEM, 3}, 0},
+    { {"z", 1}, {"z" MINELEM, 2}, 1},
+    { {"z", 1}, {"z" MINELEM MINELEM, 3}, 2},
+    { {"z", 1}, {"z" MINELEM "\1", 3}, 0},
+    { {"z", 1}, {"z" "\1" MINELEM, 3}, 0},
+
+    { {"endoftest", 9}, {"endoftest",9}, false}
+      // clang-format on
+  };
+#undef MINELEM
+#undef MAXELEM
+};  // string_view
+
+/**
+ * Test traits for std::string values
+ */
+template <class T>
+class TestTypeTraits<
+    T,
+    typename std::enable_if<std::is_base_of<std::string, T>::value, T>::type> {
+  static inline T min = {""};
+  static inline T almost_min = {"\0"};
+  static inline T max = {
+      "\xff\xff\xff\xff\xff\xff\xff\xff\xff\xff"};  // arbitrary
+  static inline T almost_max = {
+      "\xff\xff\xff\xff\xff\xff\xff\xff\xff\xfe"};  // 'almost' relative to
+                                                    // prior 'max'
+
+ public:
+  static inline std::initializer_list<T> outer = {
+      {"000"}, {"001"}, {"002"}, {"100"}, {almost_max}, {max}};
+  static inline std::initializer_list<T> inner = {{"000"},
+                                                  {"001"},
+                                                  {"002"},
+                                                  {"003"},
+                                                  {"099"},
+                                                  {"100"},
+                                                  {"101"},
+                                                  {almost_max},
+                                                  {max}};
+
+#define MINELEM "\0"
+#define MAXELEM "\xff"
+  static inline struct adjacent_or_not_s {
+    std::string v1;
+    std::string v2;
+    int adjacency;  // 0==none, 1==adjacent, 2==twice_adjacent
+  } adjacent_or_not[] = {
+      // clang-format off
+    { {"", 0}, {"\0", 1}, 1},
+    { {"", 0}, {"\0\0", 2}, 2},
+    { {"\0", 1}, {"\1", 1}, 0},
+    { {"\0", 1}, {"\0\0", 2}, 1},
+    { {"\0", 1}, {"\0\0\0", 3}, 2},
+    { {"a", 1}, {"a\0", 2}, 1},
+    { {"a", 1}, {"a\0\0", 3}, 2},
+    { {"a", 1}, {"a\0\1", 3}, 0},
+    { {"a", 1}, {"a\1\0", 3}, 0},
+    { {"z", 1}, {"z\0", 2}, 1},
+    { {"z", 1}, {"z\0\0", 3}, 2},
+    { {"z", 1}, {"z\0\1", 3}, 0},
+    { {"z", 1}, {"z\1\0", 3}, 0},
+
+    //repeat of above items, may or not be easier to comprehend
+    //with possibility of more easily changing MINELEM in use
+    { {"", 0}, {MINELEM, 1}, 1},
+    { {"", 0}, {MINELEM MINELEM, 2}, 2},
+    { {"\0", 1}, {"\1", 1}, 0},
+    { {"\0", 1}, {"\0" MINELEM, 2}, 1},
+    { {"\0", 1}, {"\0" MINELEM MINELEM, 3}, 2},
+    { {"a", 1}, {"a" MINELEM, 2}, 1},
+    { {"a", 1}, {"a" MINELEM MINELEM, 3}, 2},
+    { {"a", 1}, {"a" MINELEM "\1", 3}, 0},
+    { {"a", 1}, {"a" "\1" MINELEM, 3}, 0},
+    { {"z", 1}, {"z" MINELEM, 2}, 1},
+    { {"z", 1}, {"z" MINELEM MINELEM, 3}, 2},
+    { {"z", 1}, {"z" MINELEM "\1", 3}, 0},
+    { {"z", 1}, {"z" "\1" MINELEM, 3}, 0},
+
+    { {"endoftest", 9}, {"endoftest",9}, false}
+      // clang-format on
+  };
+#undef MINELEM
+#undef MAXELEM
+};  // std::string
+
 /* ******************************** */
 /*             is_adjacent          */
 /* ******************************** */
@@ -247,6 +403,18 @@ bool is_adjacent([[maybe_unused]] T x, [[maybe_unused]] T y) {
     return (x < std::numeric_limits<T>::max()) && x + 1 == y;
   } else if constexpr (std::is_floating_point_v<T>) {
     return false;
+  } else if constexpr (std::is_base_of<std::string, T>::value) {
+    detail::TypeTraits<std::string> tts;
+    // TBD: any simple alternate implementation rather than just re-using this?
+    return tts.adjacent(x, y);
+  } else if constexpr (detail::interval_T_is_char_ptr<T>::value) {
+    detail::TypeTraits<char*> tts;
+    // TBD: any simple alternate implementation rather than just re-using this?
+    return tts.adjacent(x, y);
+  } else if constexpr (std::is_base_of<std::string_view, T>::value) {
+    detail::TypeTraits<std::string_view> tts;
+    // TBD: any simple alternate implementation rather than just re-using this?
+    return tts.adjacent(x, y);
   } else {
     REQUIRE((false && "unsupported type"));
   }
@@ -424,6 +592,15 @@ void test_interval_invariants(const Interval<T>& x) {
       } else if constexpr (std::is_floating_point_v<T>) {
         REQUIRE(
             (false && "single-point intervals for floating point are closed"));
+      } else if constexpr (std::is_base_of<std::string, T>::value) {
+        // REQUIRE((false && "std::string single-point one open/closed TBD"));
+        // TBD: Do we really want to re-code entire adjacency test logic here?
+        detail::TypeTraits<std::string> tts;
+        auto [adjacent, twice_adjacent] = tts.adjacency(a, b);
+        REQUIRE(a < b);
+        // TBD: Any *simple* equiv for... CHECK(a + 1 == b);
+        CHECK(adjacent);
+        CHECK(Traits::adjacent(a, b));
       } else {
         REQUIRE((false && "unknown type"));
       }
@@ -437,6 +614,13 @@ void test_interval_invariants(const Interval<T>& x) {
       } else if constexpr (std::is_floating_point_v<T>) {
         REQUIRE(
             (false && "single-point intervals for floating point are closed"));
+      } else if constexpr (std::is_base_of<std::string, T>::value) {
+        // similar to unsigned
+        auto [adj1, adj2] = Traits::adjacency(a, b);
+        REQUIRE(a < b);
+        // TBD: *simple* equiv for... CHECK(a + 1 == b - 1);
+        CHECK(adj2);
+        CHECK_FALSE(adj1);
       } else {
         REQUIRE((false && "unknown type"));
       }

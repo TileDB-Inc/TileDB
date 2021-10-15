@@ -44,6 +44,8 @@ TEMPLATE_LIST_TEST_CASE(
       I x(I::empty_set);
       test_interval_invariants(x);
       CHECK(x.is_empty());
+      auto sres = x.to_str();
+      CHECK(sres == "{}");
     }
     SECTION("(-infinity,+infinity)") {
       I x(I::minus_infinity, I::plus_infinity);
@@ -52,6 +54,8 @@ TEMPLATE_LIST_TEST_CASE(
       CHECK(!x.has_single_point());
       CHECK(x.is_lower_bound_infinite());
       CHECK(x.is_upper_bound_infinite());
+      auto sres = x.to_str();
+      CHECK(sres == "(infinite,infinite)");
     }
   }
   SECTION("One argument") {
@@ -60,30 +64,50 @@ TEMPLATE_LIST_TEST_CASE(
       I x(I::single_point, i);
       test_interval_invariants(x);
       CHECK(x.has_single_point());
+      std::stringstream rescmp;
+      rescmp << "[" << i << "," << i << "]";
+      auto sres = x.to_str();
+      CHECK(sres == rescmp.str());
     }
     DYNAMIC_SECTION("(-infinity," << i << ")") {
       I x(I::minus_infinity, i, I::open);
       test_interval_invariants(x);
       CHECK(x.is_lower_bound_infinite());
       CHECK(x.is_upper_bound_open());
+      std::stringstream rescmp;
+      rescmp << "(infinite," << i << ")";
+      auto sres = x.to_str();
+      CHECK(sres == rescmp.str());
     }
     DYNAMIC_SECTION("(-infinity," << i << "]") {
       I x(I::minus_infinity, i, I::closed);
       test_interval_invariants(x);
       CHECK(x.is_lower_bound_infinite());
       CHECK(x.is_upper_bound_closed());
+      std::stringstream rescmp;
+      rescmp << "(infinite," << i << "]";
+      auto sres = x.to_str();
+      CHECK(sres == rescmp.str());
     }
     DYNAMIC_SECTION("(" << i << ",+infinity)") {
       I x(I::open, i, I::plus_infinity);
       test_interval_invariants(x);
       CHECK(x.is_lower_bound_open());
       CHECK(x.is_upper_bound_infinite());
+      std::stringstream rescmp;
+      rescmp << "(" << i << ",infinite)";
+      auto sres = x.to_str();
+      CHECK(sres == rescmp.str());
     }
     DYNAMIC_SECTION("[" << i << ",+infinity)") {
       I x(I::closed, i, I::plus_infinity);
       CHECK(x.is_lower_bound_closed());
       CHECK(x.is_upper_bound_infinite());
       test_interval_invariants(x);
+      std::stringstream rescmp;
+      rescmp << "[" << i << ",infinite)";
+      auto sres = x.to_str();
+      CHECK(sres == rescmp.str());
     }
   }
   if constexpr (std::is_floating_point_v<T>) {
@@ -143,7 +167,7 @@ TEMPLATE_LIST_TEST_CASE(
         CHECK(x.is_empty());
       }
     }
-  }
+  }  // is_floating_point_v()
   SECTION("Two arguments") {
     T i = GENERATE_REF(values(Tr::outer));
     T j = GENERATE_REF(values(Tr::inner));
@@ -159,8 +183,18 @@ TEMPLATE_LIST_TEST_CASE(
       } else if constexpr (std::is_floating_point_v<T>) {
         CHECK(implies(i < j, !x.is_empty()));
         CHECK(!x.has_single_point());
+      } else if constexpr (std::is_base_of<std::string, T>::value) {
+        detail::TypeTraits<std::string> tts;
+        auto [adjacenct, twice_adjacent] = tts.adjacency(i, j);
+        // TBD: simple vers of... CHECK(implies(i < j && i + 1 < j,
+        // !x.is_empty()));
+        CHECK(implies(twice_adjacent, x.has_single_point()));
+      } else if constexpr (std::is_base_of<std::string_view, T>::value) {
+        detail::TypeTraits<std::string_view> ttsv;
+        auto [adjacenct, twice_adjacent] = ttsv.adjacency(i, j);
+        CHECK(implies(twice_adjacent, x.has_single_point()));
       } else {
-        REQUIRE(false && "unexpected type");
+        REQUIRE((false && "unexpected type"));
       }
     }
     DYNAMIC_SECTION("(" << i << "," << j << "]") {
@@ -173,6 +207,16 @@ TEMPLATE_LIST_TEST_CASE(
         CHECK(implies(i < j && i == j - 1, x.has_single_point()));
       } else if constexpr (std::is_floating_point_v<T>) {
         CHECK(!x.has_single_point());
+      } else if constexpr (std::is_base_of<std::string, T>::value) {
+        detail::TypeTraits<std::string> tts;
+        auto [adjacent, twice_adjacent] = tts.adjacency(i, j);
+        CHECK(implies(adjacent, x.has_single_point()));
+      } else if constexpr (std::is_base_of<std::string_view, T>::value) {
+        detail::TypeTraits<std::string_view> ttsv;
+        auto [adjacent, twice_adjacent] = ttsv.adjacency(i, j);
+        CHECK(implies(adjacent, x.has_single_point()));
+      } else {
+        REQUIRE((false && "unexpected type"));
       }
     }
     DYNAMIC_SECTION("[" << i << "," << j << ")") {
@@ -185,6 +229,16 @@ TEMPLATE_LIST_TEST_CASE(
         CHECK(implies(i < j && i == j - 1, x.has_single_point()));
       } else if constexpr (std::is_floating_point_v<T>) {
         CHECK(!x.has_single_point());
+      } else if constexpr (std::is_base_of<std::string, T>::value) {
+        detail::TypeTraits<std::string> tts;
+        auto [adjacent, twice_adjacent] = tts.adjacency(i, j);
+        CHECK(implies(adjacent, x.has_single_point()));
+      } else if constexpr (std::is_base_of<std::string_view, T>::value) {
+        detail::TypeTraits<std::string_view> ttsv;
+        auto [adjacent, twice_adjacent] = ttsv.adjacency(i, j);
+        CHECK(implies(adjacent, x.has_single_point()));
+      } else {
+        REQUIRE((false && "unexpected type"));
       }
     }
     DYNAMIC_SECTION("[" << i << "," << j << "]") {

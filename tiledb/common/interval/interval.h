@@ -233,9 +233,14 @@
 #define TILEDB_INTERVAL_H
 
 #include <cmath>
+#include <cstring>
 #include <optional>
+#include <sstream>
 #include <stdexcept>
+#include <string>
+#include <string_view>
 #include <tuple>
+#include <type_traits>
 
 using std::tuple, std::optional, std::nullopt, std::isnan, std::isinf,
     std::isfinite;
@@ -265,12 +270,12 @@ struct TypeTraits {
    * is twice-adjacent to `b` if `a < b` and there exists a `c` such that `a` is
    * adjacent to `c` and `c` is adjacent to `b`.
    */
-  [[maybe_unused]] static tuple<bool, bool> adjacency(T, T);
+  [[maybe_unused]] static tuple<bool, bool> adjacency(const T, const T);
 
   /**
    * Returns the predicate "adjacent".
    */
-  [[maybe_unused]] static bool adjacent(T, T);
+  [[maybe_unused]] static bool adjacent(const T, const T);
 
   /**
    * Predicate constant that T contains unordered elements. Floating point types
@@ -296,14 +301,14 @@ struct TypeTraits {
    * elements. All occurences appear within an `if constexpr` guard with
    * `has_unordered_elements`.
    */
-  [[maybe_unused]] static bool is_ordered(T);
+  [[maybe_unused]] static bool is_ordered(const T);
 
   /**
    * Predicate function that an element of T is a finite number. This function
    * allows detecting floating point infinities as interval bounds in
    * constructors.
    */
-  [[maybe_unused]] static bool is_finite(T);
+  [[maybe_unused]] static bool is_finite(const T);
 
   /**
    * Predicate function that an infinite element is positive infinity. Returns
@@ -311,7 +316,7 @@ struct TypeTraits {
    *
    * @precondition argument is an infinite element
    */
-  [[maybe_unused]] static bool is_infinity_positive(T);
+  [[maybe_unused]] static bool is_infinity_positive(const T);
 };
 
 /**
@@ -326,7 +331,7 @@ struct TypeTraits<
    * Adjacency for integral types means that the lower is one less than the
    * upper.
    */
-  static tuple<bool, bool> adjacency(T a, T b) {
+  static tuple<bool, bool> adjacency(const T a, const T b) {
     if (a >= b) {
       return {false, false};
     }
@@ -339,11 +344,11 @@ struct TypeTraits<
    * Adjacency for integral types means that the lower is one less than the
    * upper.
    */
-  static bool adjacent(T a, T b) {
+  static bool adjacent(const T a, const T b) {
     if (a >= b) {
       return false;
     }
-    // Assert: a < b
+    // Assert: a < b (checked above by 'a >= b'
     // Assert: a+1 cannot overflow.
     return a + 1 == b;
   }
@@ -363,11 +368,11 @@ struct TypeTraits<
   /**
    * Floating point numbers are never adjacent.
    */
-  static tuple<bool, bool> adjacency(T, T) {
+  static tuple<bool, bool> adjacency(const T, const T) {
     return {false, false};
   };
 
-  static bool adjacent(T, T) {
+  static bool adjacent(const T, const T) {
     return false;
   };
 
@@ -377,24 +382,243 @@ struct TypeTraits<
   /**
    * An extended number is either finite or infinite, but must not be NaN.
    */
-  static bool is_ordered(T x) {
+  static bool is_ordered(const T x) {
     return !isnan(x);
   }
 
   /**
    * Floating point types have infinite elements.
    */
-  static bool is_finite(T x) {
+  static bool is_finite(const T x) {
     return isfinite(x);
   }
 
   /**
    * Floating point infinities compare with finite values.
    */
-  static bool is_infinity_positive(T x) {
+  static bool is_infinity_positive(const T x) {
     return x > 0;
   }
 };
+
+/**
+ * Specialization of TypeTraits for 'char*'.
+ */
+
+// TBD: is this generic enuf, should nany other
+// predicates be applied?
+template <typename T>
+struct interval_T_is_char_ptr
+    : std::integral_constant<
+          bool,
+          std::is_pointer<T>::value &&
+              std::is_same<
+                  char,
+                  typename std::remove_cv<typename std::remove_pointer<
+                      typename std::remove_cv<T>::type>::type>::type>::value> {
+};
+
+template <class T>
+struct TypeTraits<
+    T,
+    typename std::enable_if<interval_T_is_char_ptr<T>::value, T>::type> {
+  // char *;
+
+  // Choice to treat compares as unsigned.
+  static const unsigned char minelem = '\x00';
+  static const unsigned char maxelem = uint8_t('\xff');
+
+  /**
+   * char * may be lexicographically adjacent.
+   */
+  static tuple<bool, bool> adjacency(
+      const T s1, uint64_t s1len, const T s2, uint64_t s2len) {
+    if (s1len > s2len)
+      return {false, false};
+    // Assert: s2len >= s1len
+    auto diff_in_len = s2len - s1len;
+    if (diff_in_len > 2)
+      return {false, false};
+    if (!diff_in_len)
+      return {false, false};
+      // Assert: difflen >= 1 && difflen <= 2
+      // ***Precondition for lexicographic adjacency, s1 == s2.substr(0, s1len)
+
+      // TBD: which compare approach should be used?
+#if 0
+    auto diff1 = std::char_traits<unsigned char>::compare(
+        (unsigned char*)s1,
+        (unsigned char*)s2,
+        s1len);  // basic_string::compare() seems to use unsigned char...
+#else
+    auto diff1 = memcmp(s1, s2, s1len);
+#endif
+    if (diff1)
+      return {false, false};  // Precondition not met
+    // Assert: s2.substr(0, s1len) == s1
+    // <X> \/ <X>a
+    // <X>a \/ <X>aa
+    // <X> \/ \/ <X>aa
+    bool adj1posequal;
+    // Assert: s2.length() >= 1
+    // recall, Assert: diff_in_len >= 1 && diff_in_len <= 2
+    adj1posequal = (s2[s1len] == minelem) ? true : false;
+    if (adj1posequal) {
+      if (diff_in_len == 2) {
+        if (s2[s1len + 1] == minelem)
+          return {false, true};
+        else  // diff_in_length was two, so can't be adjacent1
+          return {false, false};
+      }
+      // diff_in_len == 1 and adj1posequal, so adjacent1
+      return {true, false};
+    } else {
+      return {false, false};
+    }
+  }
+
+  static tuple<bool, bool> adjacency(const T s1, const T s2) {
+    auto s1len = std::strlen(s1);
+    auto s2len = std::strlen(s2);
+    return adjacency(s1, s1len, s2, s2len);
+  }
+
+  static bool adjacent(const T s1, const T s2) {
+    return std::get<0>(adjacency(s1, s2));
+  }
+
+  static constexpr bool has_unordered_elements = false;
+  static constexpr bool has_infinite_elements = false;
+
+  /**
+   * textual items are ordered.
+   */
+  static bool is_ordered(const T x) {
+    (void)x;
+    return true;
+  }
+
+  /**
+   * textual items have infinite elements.
+   */
+  static bool is_finite(const T x) {
+    (void)x;
+    return true;
+  }
+
+  /**
+   * textual have no 'infinite' value, can not be positive.
+   */
+  static bool is_infinity_positive(const T x) {
+    (void)x;
+    return false;
+  }
+};
+
+/**
+ * Specialization of TypeTraits for std::string_view.
+ */
+
+template <class T>
+struct TypeTraits<
+    T,
+    typename std::enable_if<std::is_base_of<std::string_view, T>::value, T>::
+        type> {
+  // Assert: std::is_same<s1::value_type, s2::value_type>
+  /**
+   * String may be adjacent.
+   */
+  static const unsigned char minelem = '\x00';
+  static const unsigned char maxelem = uint8_t('\xff');
+  static tuple<bool, bool> adjacency(const T s1, const T s2) {
+    TypeTraits<decltype(&s1[0])> ttc;
+    return ttc.adjacency(s1.data(), s1.length(), s2.data(), s2.length());
+  }
+
+  static bool adjacent(const T s1, const T s2) {
+    return std::get<0>(adjacency(s1, s2));
+  };
+
+  static constexpr bool has_unordered_elements = false;
+  static constexpr bool has_infinite_elements = false;
+
+  /**
+   * string items are ordered.
+   */
+  static bool is_ordered(const T x) {
+    (void)x;
+    return true;
+  }
+
+  /**
+   * strings do not have an 'infinite' element.
+   */
+  static bool is_finite(const T x) {
+    (void)x;
+    return true;
+  }
+
+  /**
+   * strings have no 'infinite' value, can't be positive.
+   */
+  static bool is_infinity_positive(const T x) {
+    (void)x;
+    return false;
+  }
+};  // TypeTraits<std::string_view>
+
+/**
+ * Specialization of TypeTraits for std::string.
+ */
+
+template <class T>
+struct TypeTraits<
+    T,
+    typename std::enable_if<std::is_base_of<std::string, T>::value, T>::type> {
+  /**
+   * String may be adjacent.
+   */
+  static const char minelem = '\0';
+  static const char maxelem = '\xff';
+
+  static tuple<bool, bool> adjacency(const T s1, const T s2) {
+    // std::string vs char *, comparisons for values > 0x7f with signed char
+    // type will be different.
+    TypeTraits<decltype(&s1[0])> ttc;
+    return ttc.adjacency(s1.data(), s1.length(), s2.data(), s2.length());
+  }
+
+  static bool adjacent(const T s1, const T s2) {
+    return std::get<0>(adjacency(s1, s2));
+  };
+
+  static constexpr bool has_unordered_elements = false;
+  static constexpr bool has_infinite_elements = false;  //  true;
+
+  /**
+   * string values do have order.
+   */
+  static bool is_ordered(const T x) {
+    (void)x;
+    return true;
+  }
+
+  /**
+   * strings have no 'infinite' value element, but are infinite.
+   */
+  static bool is_finite(const T x) {
+    (void)x;
+    return true;
+  }
+
+  /**
+   * no finite value element, can't possibly be positive.
+   */
+  static bool is_infinity_positive(const T x) {
+    (void)x;
+    return false;
+  }
+};  // TypeTraits<std:string>
 
 /**
  * Non-template base class for `Interval`.
@@ -589,7 +813,7 @@ class Interval : public detail::IntervalBase {
     /**
      * Finite constructor uses T for the bound instead of optional<T>.
      */
-    Bound(T bound, bool is_closed) noexcept
+    Bound(const T bound, bool is_closed) noexcept
         : bound_(bound)
         , is_open_(!is_closed)
         , is_closed_(is_closed)
@@ -613,7 +837,7 @@ class Interval : public detail::IntervalBase {
      * of an Interval.
      */
     Bound(
-        optional<T> bound,
+        optional<const T> bound,
         bool is_open,
         bool is_closed,
         bool is_infinite) noexcept
@@ -642,7 +866,7 @@ class Interval : public detail::IntervalBase {
      * @precondition is_satisfiable && right.is_satisfiable. In other words,
      * this function is only for bounds of already-constructed Interval objects.
      */
-    int compare_as_lower(Bound right) const {
+    int compare_as_lower(const Bound right) const {
       // Check the precondition anyway.
       // Could be converted to an NDEBUG-dependent assertion later.
       if (!is_satisfiable_ || !right.is_satisfiable_) {
@@ -699,7 +923,7 @@ class Interval : public detail::IntervalBase {
      * @precondition is_satisfiable && right.is_satisfiable. In other words,
      * this function is only for bounds of already-constructed Interval objects.
      */
-    int compare_as_upper(Bound right) const {
+    int compare_as_upper(const Bound right) const {
       // Check the precondition anyway.
       // Could be converted to an NDEBUG-dependent assertion later.
       if (!is_satisfiable_ || !right.is_satisfiable_) {
@@ -766,7 +990,7 @@ class Interval : public detail::IntervalBase {
      * Right and Left is adjacent to Right. +1 if Left and Right have a
      * non-trivial intersection.
      */
-    int compare_as_mixed(Bound right) const {
+    int compare_as_mixed(const Bound right) const {
       // Check the precondition anyway.
       // Could be converted to an NDEBUG-dependent assertion later.
       if (!is_satisfiable_ || !right.is_satisfiable_) {
@@ -840,7 +1064,8 @@ class Interval : public detail::IntervalBase {
    *
    * @precondition lower, upper are both ordered, non-exceptional elements
    */
-  explicit Interval(Bound lower, Bound upper, bool empty, bool single) noexcept
+  explicit Interval(
+      const Bound lower, const Bound upper, bool empty, bool single) noexcept
       : lower_bound_(lower.bound_)
       , upper_bound_(upper.bound_)
       , is_empty_(empty)
@@ -858,7 +1083,7 @@ class Interval : public detail::IntervalBase {
    *
    * @param x a tuple of lower and upper bounds and empty/single flags.
    */
-  explicit Interval(tuple<Bound, Bound, bool, bool> x) noexcept
+  explicit Interval(const tuple<Bound, Bound, bool, bool> x) noexcept
       : Interval(
             std::get<0>(x), std::get<1>(x), std::get<2>(x), std::get<3>(x)) {
   }
@@ -875,7 +1100,7 @@ class Interval : public detail::IntervalBase {
    * @precondition lower and upper bounds have been normalized
    */
   tuple<Bound, Bound, bool, bool> adjust_bounds(
-      Bound lower, Bound upper) noexcept {
+      const Bound lower, const Bound upper) const noexcept {
     if (!lower.is_satisfiable_ || !upper.is_satisfiable_) {
       // If either of the bounds are not satisfiable, we have an empty set.
       return {BoundNull(), BoundNull(), true, false};
@@ -955,7 +1180,8 @@ class Interval : public detail::IntervalBase {
    * @precondition [in] bound is ordered. Throws if not.
    * @postcondition [out] bound is an ordinary element and not infinite
    */
-  Bound normalize_bound(T bound, bool is_closed, bool is_for_upper_bound) {
+  Bound normalize_bound(
+      const T bound, bool is_closed, bool is_for_upper_bound) const {
     if constexpr (Traits::has_unordered_elements) {
       if (!Traits::is_ordered(bound)) {
         throw std::invalid_argument(
@@ -964,6 +1190,7 @@ class Interval : public detail::IntervalBase {
       }
     }
     if constexpr (!Traits::has_infinite_elements) {
+      (void)is_for_upper_bound;
       return Bound(bound, is_closed);
     } else {
       if (Traits::is_finite(bound)) {
@@ -1034,14 +1261,14 @@ class Interval : public detail::IntervalBase {
    * Single-point sets may also be constructed in another situation,
    * specifically as a closed interval with equal upper and lower bounds.
    */
-  Interval(const single_point_t&, T x)
+  Interval(const single_point_t&, const T x)
       : Interval(adjust_bounds(
             normalize_bound(x, true, false), normalize_bound(x, true, true))){};
 
   /**
    * Finite set constructor: open
    */
-  Interval(const open_t&, T lower, T upper, const open_t&)
+  Interval(const open_t&, const T lower, const T upper, const open_t&)
       : Interval(adjust_bounds(
             normalize_bound(lower, false, false),
             normalize_bound(upper, false, true))){};
@@ -1049,7 +1276,7 @@ class Interval : public detail::IntervalBase {
   /**
    * Finite set constructor: half-open, half-closed
    */
-  Interval(const open_t&, T lower, T upper, const closed_t&)
+  Interval(const open_t&, const T lower, const T upper, const closed_t&)
       : Interval(adjust_bounds(
             normalize_bound(lower, false, false),
             normalize_bound(upper, true, true))){};
@@ -1057,7 +1284,7 @@ class Interval : public detail::IntervalBase {
   /**
    * Finite set constructor: half-closed, half-open
    */
-  Interval(const closed_t&, T lower, T upper, const open_t&)
+  Interval(const closed_t&, const T lower, const T upper, const open_t&)
       : Interval(adjust_bounds(
             normalize_bound(lower, true, false),
             normalize_bound(upper, false, true))){};
@@ -1065,7 +1292,7 @@ class Interval : public detail::IntervalBase {
   /**
    * Finite set constructor: closed
    */
-  Interval(const closed_t&, T lower, T upper, const closed_t&)
+  Interval(const closed_t&, const T lower, const T upper, const closed_t&)
       : Interval(adjust_bounds(
             normalize_bound(lower, true, false),
             normalize_bound(upper, true, true))){};
@@ -1073,28 +1300,28 @@ class Interval : public detail::IntervalBase {
   /**
    * Lower-infinite set constructor: upper half-open
    */
-  Interval(const minus_infinity_t&, T upper, const open_t&)
+  Interval(const minus_infinity_t&, const T upper, const open_t&)
       : Interval(adjust_bounds(
             BoundInfinity(), normalize_bound(upper, false, true))){};
 
   /**
    * Lower-infinite set constructor: upper half-closed
    */
-  Interval(const minus_infinity_t&, T upper, const closed_t&)
+  Interval(const minus_infinity_t&, const T upper, const closed_t&)
       : Interval(adjust_bounds(
             BoundInfinity(), normalize_bound(upper, true, true))){};
 
   /**
    * Upper-infinite set constructor: lower half-open
    */
-  Interval(const open_t&, T lower, const plus_infinity_t&)
+  Interval(const open_t&, const T lower, const plus_infinity_t&)
       : Interval(adjust_bounds(
             normalize_bound(lower, false, false), BoundInfinity())){};
 
   /**
    * Upper-infinite set constructor: lower half-closed
    */
-  Interval(const closed_t&, T lower, const plus_infinity_t&)
+  Interval(const closed_t&, const T lower, const plus_infinity_t&)
       : Interval(adjust_bounds(
             normalize_bound(lower, true, false), BoundInfinity())){};
 
@@ -1243,7 +1470,7 @@ class Interval : public detail::IntervalBase {
   /**
    * Membership predicate that the argument is an element of the interval.
    */
-  bool is_member(T x) noexcept {
+  bool is_member(const T x) const noexcept {
     if constexpr (Traits::has_unordered_elements) {
       if (!Traits::is_ordered(x)) {
         // An unordered element is not a member of any interval.
@@ -1283,7 +1510,7 @@ class Interval : public detail::IntervalBase {
    * @precondition This interval must not be empty.
    * @precondition Argument must be an ordered element.
    */
-  int compare(T x) {
+  int compare(const T x) const {
     if constexpr (Traits::has_unordered_elements) {
       if (!Traits::is_ordered(x)) {
         // An unordered element is not a member of any interval.
@@ -1323,7 +1550,7 @@ class Interval : public detail::IntervalBase {
   /**
    * Calculate the intersection of another interval with this one.
    */
-  Interval<T> intersection(Interval<T> y) {
+  Interval<T> intersection(const Interval<T> y) const {
     /*
      * The empty set always has an empty intersection.
      */
@@ -1360,7 +1587,7 @@ class Interval : public detail::IntervalBase {
    *
    * We can't call this function `union` because it's a reserved word.
    */
-  tuple<bool, optional<Interval<T>>> interval_union(Interval<T> y) {
+  tuple<bool, optional<Interval<T>>> interval_union(const Interval<T> y) const {
     /*
      * An empty set gives the identity function on the other operand.
      */
@@ -1420,7 +1647,7 @@ class Interval : public detail::IntervalBase {
    * and `(cut_point,+infinity)`.
    */
   tuple<Interval<T>, Interval<T>> cut(
-      T cut_point, bool lower_open_upper_closed = true) {
+      const T cut_point, bool lower_open_upper_closed = true) const {
     if (is_empty_) {
       /**
        * The empty set always splits into two empty sets.
@@ -1479,7 +1706,47 @@ class Interval : public detail::IntervalBase {
                 Bound(cut_point, lower_open_upper_closed), BoundUpper()))};
   }
 
-};  // namespace tiledb::common
+  std::string to_str() const {
+    std::stringstream ss;
+    if(is_empty_){
+      ss << "{}";
+      return ss.str();
+    }
+    if (is_lower_open_ || is_lower_infinite_) {
+      ss << "(";
+    } else {
+      ss << "[";
+    }
+    if (!is_empty_) {
+      if (is_lower_infinite_) {
+        ss << "infinite";
+      } else {
+        if (!lower_bound_) { // sanity check, should not occur
+          ss << "?lb?"; //should not occur
+        } else {
+          ss << lower_bound_.value();
+        }
+      }
+      ss << ",";
+      if (is_upper_infinite_) {
+        ss << "infinite";
+      } else {
+        if (!upper_bound_) { // sanity check, should not occur.
+          ss << "?ub?";
+        } else {
+          ss << upper_bound_.value();
+        }
+      }
+    }
+    if (is_upper_open_ || is_upper_infinite_) {
+      ss << ")";
+    } else {
+      ss << "]";
+    }
+
+    return ss.str();
+  }
+};
 
 }  // namespace tiledb::common
 

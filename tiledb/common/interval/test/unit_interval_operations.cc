@@ -1715,3 +1715,41 @@ TEMPLATE_LIST_TEST_CASE(
     }
   }
 }
+
+/* Test char * adjacency via string_view, string */
+
+TEST_CASE("TypeTraits<char *>::adjacency", "[typetraits][adjacency]") {
+  SECTION("viastringview") {
+    TestTypeTraits<std::string_view> tttsv;
+    detail::TypeTraits<std::string_view> ttsv;
+
+    decltype(&tttsv.adjacent_or_not[0]) aoni;
+    unsigned ui = 0;
+    for (aoni = &tttsv.adjacent_or_not[0]; aoni->v1 != "endoftest";
+         ++aoni, ++ui) {
+      auto [adj1, adj2] = ttsv.adjacency(aoni->v1, aoni->v2);
+      CHECK(iff(adj1, aoni->adjacency == 1));
+      CHECK(iff(!adj1, aoni->adjacency != 1));
+      CHECK(iff(adj2, aoni->adjacency == 2));
+      CHECK(iff(!adj2, aoni->adjacency != 2));
+      CHECK(iff(!adj1 && !adj2, !aoni->adjacency));
+    }
+  }
+
+  SECTION("viastring") {
+    TestTypeTraits<std::string> ttts;
+    detail::TypeTraits<std::string> tts;
+
+    decltype(&ttts.adjacent_or_not[0]) aoni;
+    unsigned ui = 0;
+    for (aoni = &ttts.adjacent_or_not[0]; aoni->v1 != "endoftest";
+         ++aoni, ++ui) {
+      auto [adj1, adj2] = tts.adjacency(aoni->v1, aoni->v2);
+      CHECK(iff(adj1, aoni->adjacency == 1));
+      CHECK(iff(!adj1, aoni->adjacency != 1));
+      CHECK(iff(adj2, aoni->adjacency == 2));
+      CHECK(iff(!adj2, aoni->adjacency != 2));
+      CHECK(iff(!adj1 && !adj2, !aoni->adjacency));
+    }
+  }
+}

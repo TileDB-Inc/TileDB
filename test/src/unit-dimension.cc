@@ -748,3 +748,80 @@ TEST_CASE(
   auto max = std::numeric_limits<T>::max();
   basic_verify_overlap_ratio<T>(0, 1, -2, max - 2);
 }
+
+TEST_CASE("Verify overlap<char>", "[dimension][overlap-char]") {
+  Dimension d1("d1", Datatype::STRING_ASCII);
+  struct range_s {
+    const char* begin;
+    const char* end;
+  };
+  static struct {
+    range_s r1;
+    range_s r2;
+    bool expected_result;
+  } test_data[] = {
+      // items in this first group should be dup'd but with flipped
+      // begin/end ranges in second group of items below
+      {{"a", "b"}, {"e", "h"}, false},  // r1 precedes r2
+      {{"a", "e"}, {"e", "h"}, true},   // r1 end coincident with r2 begin
+      {{"a", "f"}, {"e", "h"}, true},   // r1 overlap r2
+      {{"a", "i"}, {"e", "h"}, true},   // r1 contains r2
+      {{"e", "f"}, {"e", "h"}, true},   // r1 within r2
+      {{"f", "g"}, {"e", "h"}, true},   // r1 within r2
+      {{"e", "h"}, {"e", "h"}, true},   // r1 within r2
+      {{"h", "i"}, {"e", "h"}, true},   // r1 begin coincident with r2 end
+      {{"h", "j"}, {"e", "h"}, true},   // r1 begin coincident with r2 end
+      {{"h", "k"}, {"e", "h"}, true},   // r1 begin coincident with r2 end
+      {{"i", "j"}, {"e", "h"}, false},  // r1 after r2
+
+      // try some items around/near the signed/unsigned cross-over point
+      {{"\x7a", "\x7b"}, {"\x7e", "\x81"}, false},
+      {{"\x7a", "\x7e"}, {"\x7e", "\x81"}, true},
+      {{"\x7a", "\x7f"}, {"\x7e", "\x81"}, true},
+      {{"\x7a", "\x80"}, {"\x7e", "\x81"}, true},
+      {{"\x7a", "\x81"}, {"\x7e", "\x81"}, true},
+      {{"\x7d", "\x80"}, {"\x7e", "\x81"}, true},
+      {{"\x7e", "\x80"}, {"\x7e", "\x81"}, true},
+      {{"\x7f", "\x80"}, {"\x7e", "\x81"}, true},
+      {{"\x7f", "\x81"}, {"\x7e", "\x81"}, true},
+      {{"\x7f", "\x82"}, {"\x7e", "\x81"}, true},
+      {{"\x80", "\x80"}, {"\x7e", "\x81"}, true},
+      {{"\x80", "\x81"}, {"\x7e", "\x81"}, true},
+      {{"\x80", "\x82"}, {"\x7e", "\x81"}, true},
+      {{"\x81", "\x82"}, {"\x7e", "\x81"}, true},
+      {{"\x81", "\x83"}, {"\x7e", "\x81"}, true},
+      {{"\x82", "\x83"}, {"\x7e", "\x81"}, false},
+
+      {{"\x81", "\x82"}, {"\x85", "\x88"}, false},
+
+      // begin/end ranges reversed from above
+      {{"e", "h"}, {"a", "b"}, false},  // r2 after r1
+      {{"e", "h"}, {"a", "e"}, true},   // r1 begin coincident with r2 end
+      {{"e", "h"}, {"a", "f"}, true},   // r1 overlap r2
+      {{"e", "h"}, {"a", "i"}, true},   // r2 contains r1
+      {{"e", "h"}, {"e", "f"}, true},   // r2 within r1
+      {{"e", "h"}, {"f", "g"}, true},   // r2 within r1
+      {{"e", "h"}, {"e", "h"}, true},   // r2 within r1
+      {{"e", "h"}, {"h", "i"}, true},   // r1 end coincident with r2 begin
+      {{"e", "h"}, {"h", "j"}, true},   // r1 begin coincident with r2 end
+      {{"e", "h"}, {"h", "k"}, true},   // r1 begin coincident with r2 end
+      {{"e", "h"}, {"i", "j"}, false},  // r2 after r1
+      {{0, 0}, {0, 0}, false}};
+
+  int i = 0;
+  while (test_data[i].r1.begin) {
+    TypedRange<const char> r1(
+        test_data[i].r1.begin,
+        strlen(test_data[i].r1.begin),
+        test_data[i].r1.end,
+        strlen(test_data[i].r1.end));
+    TypedRange<const char> r2(
+        test_data[i].r2.begin,
+        strlen(test_data[i].r2.begin),
+        test_data[i].r2.end,
+        strlen(test_data[i].r2.end));
+    auto result = d1.overlap<char>(r1, r2);
+    CHECK(result == test_data[i].expected_result);
+    ++i;
+  }
+}

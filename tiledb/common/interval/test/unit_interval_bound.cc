@@ -96,8 +96,18 @@ TEMPLATE_LIST_TEST_CASE(
        * thus we expect +1.
        */
       expected = i < j ? -1 : +1;
+    } else if constexpr (std::is_base_of<std::string, T>::value) {
+      // TBD: any better way to do this, since essentially testing against self?
+      detail::TypeTraits<std::string> tts;
+      auto [adjacent, twice_adjacent] = tts.adjacency(i, j);
+      expected = adjacent ? 0 : (i < j) ? -1 : +1;
+    } else if constexpr (std::is_base_of<std::string_view, T>::value) {
+      // TBD: any better way to do this, since essentially testing against self?
+      detail::TypeTraits<std::string_view> ttsv;
+      auto [adjacent, twice_adjacent] = ttsv.adjacency(i, j);
+      expected = adjacent ? 0 : (i < j) ? -1 : +1;
     } else {
-      REQUIRE(false && "Unsupported type");
+      REQUIRE((false && "Unsupported type"));
     }
     CHECK(c == expected);
   }
@@ -122,8 +132,16 @@ TEMPLATE_LIST_TEST_CASE(
        * and thus we expect -1 when i == j.
        */
       expected = i <= j ? -1 : +1;
+    } else if constexpr (std::is_base_of<std::string, T>::value) {
+      detail::TypeTraits<std::string> tts;
+      auto [rev_adjacent, rev_twice_adjacent] = tts.adjacency(j, i);
+      expected = (rev_adjacent) ? 0 : (j >= i) ? -1 : +1;
+    } else if constexpr (std::is_base_of<std::string_view, T>::value) {
+      detail::TypeTraits<std::string_view> ttsv;
+      auto [rev_adjacent, rev_twice_adjacent] = ttsv.adjacency(j, i);
+      expected = (rev_adjacent) ? 0 : (j >= i) ? -1 : +1;
     } else {
-      REQUIRE(false && "Unsupported type");
+      REQUIRE((false && "Unsupported type"));
     }
     CHECK(c == expected);
   }
@@ -190,8 +208,16 @@ TEMPLATE_LIST_TEST_CASE(
       }
     } else if constexpr (std::is_floating_point_v<T>) {
       expected = i <= j ? -1 : +1;
+    } else if constexpr (std::is_base_of<std::string, T>::value) {
+      detail::TypeTraits<std::string> tts;
+      auto [rev_adjacent, rev_twice_adjacent] = tts.adjacency(j, i);
+      expected = (rev_adjacent) ? 0 : (j >= i) ? -1 : +1;
+    } else if constexpr (std::is_base_of<std::string_view, T>::value) {
+      detail::TypeTraits<std::string_view> ttsv;
+      auto [rev_adjacent, rev_twice_adjacent] = ttsv.adjacency(j, i);
+      expected = (rev_adjacent) ? 0 : (j >= i) ? -1 : +1;
     } else {
-      REQUIRE(false && "Unsupported type");
+      REQUIRE((false && "Unsupported type"));
     }
     CHECK(c == expected);
   }
@@ -212,8 +238,18 @@ TEMPLATE_LIST_TEST_CASE(
       }
     } else if constexpr (std::is_floating_point_v<T>) {
       expected = i < j ? -1 : +1;
+    } else if constexpr (std::is_base_of<std::string, T>::value) {
+      // TBD: any better way to do this, since essentially testing against self?
+      detail::TypeTraits<std::string> tts;
+      auto [adjacent, twice_adjacent] = tts.adjacency(i, j);
+      expected = adjacent ? 0 : (i < j) ? -1 : +1;
+    } else if constexpr (std::is_base_of<std::string_view, T>::value) {
+      // TBD: any better way to do this, since essentially testing against self?
+      detail::TypeTraits<std::string_view> ttsv;
+      auto [adjacent, twice_adjacent] = ttsv.adjacency(i, j);
+      expected = adjacent ? 0 : (i < j) ? -1 : +1;
     } else {
-      REQUIRE(false && "Unsupported type");
+      REQUIRE((false && "Unsupported type"));
     }
     CHECK(c == expected);
   }
@@ -274,6 +310,14 @@ TEMPLATE_LIST_TEST_CASE(
       }
     } else if constexpr (std::is_floating_point_v<T>) {
       expected = i <= j ? -1 : +1;
+    } else if constexpr (std::is_base_of<std::string, T>::value) {
+      detail::TypeTraits<std::string> tts;
+      auto [rev_adjacent, rev_twice_adjacent] = tts.adjacency(j, i);
+      expected = (i <= j) ? -1 : (rev_adjacent) ? 0 : +1;
+    } else if constexpr (std::is_base_of<std::string_view, T>::value) {
+      detail::TypeTraits<std::string_view> ttsv;
+      auto [rev_adjacent, rev_twice_adjacent] = ttsv.adjacency(j, i);
+      expected = (i <= j) ? -1 : (rev_adjacent) ? 0 : +1;
     } else {
       REQUIRE((false && "unsupported type"));
     }
@@ -310,6 +354,16 @@ TEMPLATE_LIST_TEST_CASE(
       }
     } else if constexpr (std::is_floating_point_v<T>) {
       expected = (i < j) ? -1 : +1;
+    } else if constexpr (std::is_base_of<std::string, T>::value) {
+      // TBD: any better way to do this, since essentially testing against self?
+      detail::TypeTraits<std::string> tts;
+      auto [adjacent, twice_adjacent] = tts.adjacency(i, j);
+      expected = (adjacent) ? 0 : (i < j) ? -1 : +1;
+    } else if constexpr (std::is_base_of<std::string_view, T>::value) {
+      // TBD: any better way to do this, since essentially testing against self?
+      detail::TypeTraits<std::string_view> ttsv;
+      auto [adjacent, twice_adjacent] = ttsv.adjacency(i, j);
+      expected = (adjacent) ? 0 : (i < j) ? -1 : +1;
     } else {
       REQUIRE((false && "unsupported type"));
     }
