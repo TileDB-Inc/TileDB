@@ -907,14 +907,16 @@ Status ReaderBase::copy_attribute_values(
     names[name] = flags;
   }
 
-  RETURN_NOT_OK(process_tiles(
-      &names,
-      result_tiles,
-      result_cell_slabs,
-      &subarray,
-      stride,
-      memory_budget,
-      nullptr));
+  if (!names.empty()) {
+    RETURN_NOT_OK(process_tiles(
+        &names,
+        result_tiles,
+        result_cell_slabs,
+        &subarray,
+        stride,
+        memory_budget,
+        nullptr));
+  }
 
   return Status::Ok();
 }
