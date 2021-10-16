@@ -33,11 +33,19 @@
 #ifndef TILEDB_PEODUCER_CONSUMER_QUEUE_H
 #define TILEDB_PEODUCER_CONSUMER_QUEUE_H
 
+#define USE_DEQUE
+
 #include <atomic>
 #include <condition_variable>
 #include <mutex>
 #include <optional>
+
+#ifdef USE_DEQUE
+#include <deque>
+#else
 #include <queue>
+#endif
+
 
 namespace tiledb::common {
 
@@ -55,7 +63,12 @@ class producer_consumer_queue {
       return false;
     }
 
+#ifdef USE_DEQUE
+    queue_.push_front(item);
+#else
     queue_.push(item);
+#endif
+
     // lock.unlock();
     cv_.notify_one();
     return true;
@@ -68,7 +81,12 @@ class producer_consumer_queue {
       return {};
     }
     Item item = queue_.front();
+#ifdef USE_DEQUE
+    queue_.pop_front();
+#else
     queue_.pop();
+#endif
+
     return item;
   }
 
@@ -81,7 +99,11 @@ class producer_consumer_queue {
       return {};
     }
     Item item = queue_.front();
+#ifdef USE_DEQUE
+    queue_.pop_front();
+#else
     queue_.pop();
+#endif
     return item;
   }
 
@@ -116,8 +138,12 @@ class producer_consumer_queue {
   }
 
  private:
+#ifdef USE_DEQUE
+  std::deque<Item> queue_;
+#else
   std::queue<Item> queue_;
-  std::condition_variable cv_;
+#endif
+ std::condition_variable cv_;
   mutable std::mutex mutex_;
   std::atomic<bool> is_open_{true};
 };
