@@ -31,6 +31,7 @@
  */
 
 #include <cassert>
+#include <queue>
 
 #include "tiledb/common/logger.h"
 #include "tiledb/common/thread_pool.h"
