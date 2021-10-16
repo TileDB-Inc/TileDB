@@ -321,7 +321,7 @@ class Subarray {
       const ArraySchema* array_schema,
       bool all_dims_same_type,
       bool all_dims_fixed,
-      const std::vector<FragmentMetadata*>& fragment_meta,
+      const std::vector<tdb_shared_ptr<FragmentMetadata>>& fragment_meta,
       const std::vector<std::string>& name,
       const std::vector<bool>& var_sizes,
       const std::vector<bool>& nullable,
@@ -1006,7 +1006,7 @@ class Subarray {
    * @return Status
    */
   Status compute_relevant_fragment_tile_overlap(
-      FragmentMetadata* meta,
+      tdb_shared_ptr<FragmentMetadata> meta,
       unsigned frag_idx,
       bool dense,
       ThreadPool* compute_tp,

@@ -281,7 +281,7 @@ class Writer : public StrategyBase, public IQueryStrategy {
   void clear_coord_buffers();
 
   /** Closes all attribute files, flushing their state to storage. */
-  Status close_files(FragmentMetadata* meta) const;
+  Status close_files(tdb_shared_ptr<FragmentMetadata> meta) const;
 
   /**
    * Computes the positions of the coordinate duplicates (if any). Note
@@ -326,7 +326,7 @@ class Writer : public StrategyBase, public IQueryStrategy {
    */
   Status compute_coords_metadata(
       const std::unordered_map<std::string, std::vector<Tile>>& tiles,
-      FragmentMetadata* meta) const;
+      tdb_shared_ptr<FragmentMetadata> meta) const;
 
   /**
    * Creates a new fragment.
@@ -336,7 +336,7 @@ class Writer : public StrategyBase, public IQueryStrategy {
    * @return Status
    */
   Status create_fragment(
-      bool dense, tdb_shared_ptr<FragmentMetadata>* frag_meta) const;
+      bool dense, tdb_shared_ptr<FragmentMetadata>& frag_meta) const;
 
   /**
    * Runs the input coordinate and attribute tiles through their
@@ -849,7 +849,7 @@ class Writer : public StrategyBase, public IQueryStrategy {
    * @return Status
    */
   Status write_all_tiles(
-      FragmentMetadata* frag_meta,
+      tdb_shared_ptr<FragmentMetadata> frag_meta,
       std::unordered_map<std::string, std::vector<Tile>>* tiles);
 
   /**
@@ -866,7 +866,7 @@ class Writer : public StrategyBase, public IQueryStrategy {
    */
   Status write_tiles(
       const std::string& name,
-      FragmentMetadata* frag_meta,
+      tdb_shared_ptr<FragmentMetadata> frag_meta,
       uint64_t start_tile_id,
       std::vector<Tile>* tiles,
       bool close_files = true);
@@ -907,7 +907,7 @@ class Writer : public StrategyBase, public IQueryStrategy {
   template <class T>
   Status prepare_filter_and_write_tiles(
       const std::string& name,
-      FragmentMetadata* frag_meta,
+      tdb_shared_ptr<FragmentMetadata> frag_meta,
       DenseTiler<T>* dense_tiler,
       uint64_t thread_num);
 };
