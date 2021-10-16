@@ -152,7 +152,15 @@ ThreadPool::Task ThreadPool::execute(std::function<Status()>&& function) {
       exec_packaged_task(task);
     } else {
       // Add `task` to the stack of pending tasks.
+
+#if defined(USE_QUEUE)
+      task_stack_.push(std::move(task));
+#elif defined(USE_FIFO_DEQUE)
       task_stack_.emplace_back(std::move(task));
+#else
+      task_stack_.emplace_back(std::move(task));
+#endif
+
       task_stack_cv_.notify_one();
 
       // Increment the logical clock to indicate that the
@@ -297,12 +305,24 @@ Status ThreadPool::wait_or_work(Task&& task) {
         // We are not executing in the context of a threadpool task, we do
         // not have any restriction on which task we can execute. Select
         // the next one.
+
+#if defined(USE_QUEUE)
+        descendent_task = task_stack_.front();
+        task_stack_.pop();
+#elif defined(USE_FIFO_DEQUE)
+        descendent_task = task_stack_.front();
+        task_stack_.pop_front();
+#else
         descendent_task = task_stack_.back();
         task_stack_.pop_back();
+#endif
+
       } else {
         // Find the next pending task that is a descendent of `current_task`.
-        for (auto riter = task_stack_.rbegin(); riter != task_stack_.rend();
-             ++riter) {
+
+
+        for (auto riter = task_stack_.rbegin(); riter != task_stack_.rend();  ++riter) {
+
           // Determine if the task pointed to by `riter` is a descendent
           // of `current_task`.
           const PackagedTask* tmp_task = riter->get();
@@ -381,8 +401,19 @@ void ThreadPool::worker(ThreadPool& pool) {
       });
 
       if (!pool.task_stack_.empty()) {
+
+
+#if defined(USE_QUEUE)
+        task = std::move(pool.task_stack_.front());
+        pool.task_stack_.pop();
+#elif defined(USE_FIFO_DEQUE)
+        task = std::move(pool.task_stack_.front());
+        pool.task_stack_.pop_front();
+#else
         task = std::move(pool.task_stack_.back());
         pool.task_stack_.pop_back();
+#endif
+
         --pool.idle_threads_;
       } else {
         // The task stack was empty, ensure `task` is invalid.

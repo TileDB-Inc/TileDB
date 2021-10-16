@@ -33,10 +33,52 @@
 #ifndef TILEDB_THREAD_POOL_H
 #define TILEDB_THREAD_POOL_H
 
+#define USE_QUEUE
+
 #include <condition_variable>
 #include <functional>
 #include <mutex>
+
+// #define USE_FIFO_DEQUE
+#define USE_QUEUE
+
+#if defined(USE_QUEUE)
+#warning "Building with queue"
+#include <deque>
+#include <queue>
+
+template <class Item>
+struct q_container : public std::queue<Item> {
+  
+  typedef typename std::deque<Item>::iterator iterator;
+  typedef typename std::deque<Item>::const_iterator const_iterator;
+ 
+ typedef typename std::deque<Item>::reverse_iterator reverse_iterator;
+  typedef typename std::deque<Item>::const_reverse_iterator const_reverse_iterator;
+
+  iterator begin() { return this->c.begin(); }
+  iterator end() { return this->c.end(); }
+
+  const_iterator begin() const { return this->c.begin(); }
+  const_iterator end() const { return this->c.end(); }
+
+  reverse_iterator rbegin() { return this->c.rbegin(); }
+  reverse_iterator rend() { return this->c.rend(); }
+
+  const_reverse_iterator rbegin() const { return this->c.rbegin(); }
+  const_reverse_iterator rend() const { return this->c.rend(); }
+
+  iterator erase(iterator pos) { return this->c.erase(pos); }
+};
+
+#elif defined(USE_FIFO_DEQUE)
+#warning "Building with deque"
+#include <deque>
+#else
+#warning "Building with stack"
 #include <stack>
+#endif
+
 #include <thread>
 #include <unordered_map>
 #include <unordered_set>
@@ -288,7 +330,14 @@ class ThreadPool {
   std::condition_variable task_stack_cv_;
 
   /** Pending tasks in LIFO ordering. */
+
+#if defined(USE_QUEUE)
+  q_container<tdb_shared_ptr<PackagedTask>> task_stack_;
+#elif defined(USE_FIFO_DEQUE)
+  std::deque<tdb_shared_ptr<PackagedTask>> task_stack_;
+#else  
   std::vector<tdb_shared_ptr<PackagedTask>> task_stack_;
+#endif
 
   /*
    * A logical, monotonically increasing clock that is incremented
