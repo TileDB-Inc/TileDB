@@ -36,7 +36,7 @@ else()
   # Don't treat printf format warnings as errors.
   add_compile_options(-Wno-error=format)
   # TODO: Remove when KV API has been removed.
-  add_compile_options(-Wno-deprecated-declarations)
+#  add_compile_options(-Wno-deprecated-declarations)
 endif()
 
 # The examples pretend as if they use an installed TileDB, e.g.
