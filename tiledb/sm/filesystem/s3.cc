@@ -1351,7 +1351,7 @@ Status S3::initiate_multipart_request(
     Aws::Http::URI aws_uri, MultiPartUploadState* state) {
   RETURN_NOT_OK(init_client());
 
-  auto& path = aws_uri.GetPath();
+  auto path = aws_uri.GetPath();
   std::string path_c_str = path.c_str();
   Aws::S3::Model::CreateMultipartUploadRequest multipart_upload_request;
   multipart_upload_request.SetBucket(aws_uri.GetAuthority());
@@ -1562,7 +1562,7 @@ Status S3::write_multipart(
     // thread didn't create the state
     state_iter = multipart_upload_states_.find(uri_path);
     if (state_iter == multipart_upload_states_.end()) {
-      auto& path = aws_uri.GetPath();
+      auto path = aws_uri.GetPath();
       std::string path_str = path.c_str();
       MultiPartUploadState new_state;
 
