@@ -55,6 +55,7 @@ void create_sparse_array(const std::string& array_name) {
   schema.set_tile_order(TILEDB_ROW_MAJOR);
   schema.set_cell_order(TILEDB_ROW_MAJOR);
   schema.set_domain(dom);
+  schema.set_allows_dups(true);
 
   Array::create(array_name, schema);
 }
@@ -114,13 +115,15 @@ void read_and_check_sparse_array(
     Context ctx,
     const std::string& array_name,
     std::vector<int32_t>& expected_data,
-    std::vector<uint64_t>& expected_offsets) {
+    std::vector<uint64_t>& expected_offsets,
+    tiledb_layout_t layout) {
   Array array(ctx, array_name, TILEDB_READ);
   Query query(ctx, array, TILEDB_READ);
 
   std::vector<int32_t> attr_val(expected_data.size());
   std::vector<uint64_t> attr_off(expected_offsets.size());
 
+  query.set_layout(layout);
   query.set_data_buffer("attr", attr_val);
   query.set_offsets_buffer("attr", attr_off);
 
@@ -137,12 +140,14 @@ void read_and_check_sparse_array(
     Context ctx,
     const std::string& array_name,
     std::vector<int32_t>& expected_data,
-    std::vector<uint32_t>& expected_offsets) {
+    std::vector<uint32_t>& expected_offsets,
+    tiledb_layout_t layout) {
   Array array(ctx, array_name, TILEDB_READ);
   Query query(ctx, array, TILEDB_READ);
 
   std::vector<int32_t> attr_val(expected_data.size());
   std::vector<uint32_t> attr_off(expected_offsets.size());
+  query.set_layout(layout);
   // Read using a 32-bit vector, but cast it to 64-bit pointer so that the API
   // accepts it
   query.set_data_buffer("attr", attr_val.data(), attr_val.size());
@@ -169,7 +174,8 @@ void partial_read_and_check_sparse_array(
     std::vector<int32_t>& exp_data_part1,
     std::vector<uint64_t>& exp_off_part1,
     std::vector<int32_t>& exp_data_part2,
-    std::vector<uint64_t>& exp_off_part2) {
+    std::vector<uint64_t>& exp_off_part2,
+    tiledb_layout_t layout) {
   // The size of read buffers is smaller than the size
   // of all the data, so we'll do partial reads
   std::vector<int32_t> attr_val(exp_data_part1.size());
@@ -177,6 +183,7 @@ void partial_read_and_check_sparse_array(
 
   Array array(ctx, array_name, TILEDB_READ);
   Query query(ctx, array, TILEDB_READ);
+  query.set_layout(layout);
   query.set_data_buffer("attr", attr_val);
   query.set_offsets_buffer("attr", attr_off);
 
@@ -421,12 +428,34 @@ TEST_CASE(
 
     SECTION("Unordered write") {
       write_sparse_array(ctx, array_name, data, byte_offsets, TILEDB_UNORDERED);
-      read_and_check_sparse_array(ctx, array_name, data, byte_offsets);
+      SECTION("Row major read") {
+        read_and_check_sparse_array(
+            ctx, array_name, data, byte_offsets, TILEDB_ROW_MAJOR);
+      }
+      SECTION("Global order read") {
+        read_and_check_sparse_array(
+            ctx, array_name, data, byte_offsets, TILEDB_GLOBAL_ORDER);
+      }
+      SECTION("Unordered read") {
+        read_and_check_sparse_array(
+            ctx, array_name, data, byte_offsets, TILEDB_UNORDERED);
+      }
     }
     SECTION("Global order write") {
       write_sparse_array(
           ctx, array_name, data, byte_offsets, TILEDB_GLOBAL_ORDER);
-      read_and_check_sparse_array(ctx, array_name, data, byte_offsets);
+      SECTION("Row major read") {
+        read_and_check_sparse_array(
+            ctx, array_name, data, byte_offsets, TILEDB_ROW_MAJOR);
+      }
+      SECTION("Global order read") {
+        read_and_check_sparse_array(
+            ctx, array_name, data, byte_offsets, TILEDB_GLOBAL_ORDER);
+      }
+      SECTION("Unordered read") {
+        read_and_check_sparse_array(
+            ctx, array_name, data, byte_offsets, TILEDB_UNORDERED);
+      }
     }
   }
 
@@ -441,12 +470,34 @@ TEST_CASE(
     SECTION("Unordered write") {
       write_sparse_array(
           ctx, array_name, data, element_offsets, TILEDB_UNORDERED);
-      read_and_check_sparse_array(ctx, array_name, data, element_offsets);
+      SECTION("Row major read") {
+        read_and_check_sparse_array(
+            ctx, array_name, data, element_offsets, TILEDB_ROW_MAJOR);
+      }
+      SECTION("Global order read") {
+        read_and_check_sparse_array(
+            ctx, array_name, data, element_offsets, TILEDB_GLOBAL_ORDER);
+      }
+      SECTION("Unordered read") {
+        read_and_check_sparse_array(
+            ctx, array_name, data, element_offsets, TILEDB_UNORDERED);
+      }
     }
     SECTION("Global order write") {
       write_sparse_array(
           ctx, array_name, data, element_offsets, TILEDB_GLOBAL_ORDER);
-      read_and_check_sparse_array(ctx, array_name, data, element_offsets);
+      SECTION("Row major read") {
+        read_and_check_sparse_array(
+            ctx, array_name, data, element_offsets, TILEDB_ROW_MAJOR);
+      }
+      SECTION("Global order read") {
+        read_and_check_sparse_array(
+            ctx, array_name, data, element_offsets, TILEDB_GLOBAL_ORDER);
+      }
+      SECTION("Unordered read") {
+        read_and_check_sparse_array(
+            ctx, array_name, data, element_offsets, TILEDB_UNORDERED);
+      }
     }
   }
 
@@ -527,7 +578,18 @@ TEST_CASE(
       CHECK((std::string)config["sm.var_offsets.extra_element"] == "false");
 
       write_sparse_array(ctx, array_name, data, data_offsets, TILEDB_UNORDERED);
-      read_and_check_sparse_array(ctx, array_name, data, data_offsets);
+      SECTION("Row major read") {
+        read_and_check_sparse_array(
+            ctx, array_name, data, data_offsets, TILEDB_ROW_MAJOR);
+      }
+      SECTION("Global order read") {
+        read_and_check_sparse_array(
+            ctx, array_name, data, data_offsets, TILEDB_GLOBAL_ORDER);
+      }
+      SECTION("Unordered read") {
+        read_and_check_sparse_array(
+            ctx, array_name, data, data_offsets, TILEDB_UNORDERED);
+      }
     }
 
     SECTION("Extra element") {
@@ -543,12 +605,34 @@ TEST_CASE(
         SECTION("Unordered write") {
           write_sparse_array(
               ctx, array_name, data, data_offsets, TILEDB_UNORDERED);
-          read_and_check_sparse_array(ctx, array_name, data, data_offsets);
+          SECTION("Row major read") {
+            read_and_check_sparse_array(
+                ctx, array_name, data, data_offsets, TILEDB_ROW_MAJOR);
+          }
+          SECTION("Global order read") {
+            read_and_check_sparse_array(
+                ctx, array_name, data, data_offsets, TILEDB_GLOBAL_ORDER);
+          }
+          SECTION("UNORDERED read") {
+            read_and_check_sparse_array(
+                ctx, array_name, data, data_offsets, TILEDB_UNORDERED);
+          }
         }
         SECTION("Global order write") {
           write_sparse_array(
               ctx, array_name, data, data_offsets, TILEDB_GLOBAL_ORDER);
-          read_and_check_sparse_array(ctx, array_name, data, data_offsets);
+          SECTION("Row major read") {
+            read_and_check_sparse_array(
+                ctx, array_name, data, data_offsets, TILEDB_ROW_MAJOR);
+          }
+          SECTION("Global order read") {
+            read_and_check_sparse_array(
+                ctx, array_name, data, data_offsets, TILEDB_GLOBAL_ORDER);
+          }
+          SECTION("Unordered read") {
+            read_and_check_sparse_array(
+                ctx, array_name, data, data_offsets, TILEDB_UNORDERED);
+          }
         }
       }
 
@@ -562,12 +646,34 @@ TEST_CASE(
         SECTION("Unordered write") {
           write_sparse_array(
               ctx, array_name, data, element_offsets, TILEDB_UNORDERED);
-          read_and_check_sparse_array(ctx, array_name, data, element_offsets);
+          SECTION("Row major read") {
+            read_and_check_sparse_array(
+                ctx, array_name, data, element_offsets, TILEDB_ROW_MAJOR);
+          }
+          SECTION("Global order read") {
+            read_and_check_sparse_array(
+                ctx, array_name, data, element_offsets, TILEDB_GLOBAL_ORDER);
+          }
+          SECTION("Unordered read") {
+            read_and_check_sparse_array(
+                ctx, array_name, data, element_offsets, TILEDB_UNORDERED);
+          }
         }
         SECTION("Global order write") {
           write_sparse_array(
               ctx, array_name, data, element_offsets, TILEDB_GLOBAL_ORDER);
-          read_and_check_sparse_array(ctx, array_name, data, element_offsets);
+          SECTION("Row major read") {
+            read_and_check_sparse_array(
+                ctx, array_name, data, element_offsets, TILEDB_ROW_MAJOR);
+          }
+          SECTION("Global order read") {
+            read_and_check_sparse_array(
+                ctx, array_name, data, element_offsets, TILEDB_GLOBAL_ORDER);
+          }
+          SECTION("Unordered read") {
+            read_and_check_sparse_array(
+                ctx, array_name, data, element_offsets, TILEDB_UNORDERED);
+          }
         }
       }
 
@@ -661,13 +767,36 @@ TEST_CASE(
       CHECK((std::string)config["sm.var_offsets.extra_element"] == "false");
 
       write_sparse_array(ctx, array_name, data, data_offsets, TILEDB_UNORDERED);
-      partial_read_and_check_sparse_array(
-          ctx,
-          array_name,
-          data_part1,
-          data_off_part1,
-          data_part2,
-          data_off_part2);
+      SECTION("Row major read") {
+        partial_read_and_check_sparse_array(
+            ctx,
+            array_name,
+            data_part1,
+            data_off_part1,
+            data_part2,
+            data_off_part2,
+            TILEDB_ROW_MAJOR);
+      }
+      SECTION("Global order read") {
+        partial_read_and_check_sparse_array(
+            ctx,
+            array_name,
+            data_part1,
+            data_off_part1,
+            data_part2,
+            data_off_part2,
+            TILEDB_GLOBAL_ORDER);
+      }
+      SECTION("Unordered read") {
+        partial_read_and_check_sparse_array(
+            ctx,
+            array_name,
+            data_part1,
+            data_off_part1,
+            data_part2,
+            data_off_part2,
+            TILEDB_UNORDERED);
+      }
     }
 
     SECTION("Extra element") {
@@ -687,24 +816,70 @@ TEST_CASE(
         SECTION("Unordered write") {
           write_sparse_array(
               ctx, array_name, data, data_offsets, TILEDB_UNORDERED);
-          partial_read_and_check_sparse_array(
-              ctx,
-              array_name,
-              data_part1,
-              data_off_part1,
-              data_part2,
-              data_off_part2);
+          SECTION("Row major read") {
+            partial_read_and_check_sparse_array(
+                ctx,
+                array_name,
+                data_part1,
+                data_off_part1,
+                data_part2,
+                data_off_part2,
+                TILEDB_ROW_MAJOR);
+          }
+          SECTION("Global order read") {
+            partial_read_and_check_sparse_array(
+                ctx,
+                array_name,
+                data_part1,
+                data_off_part1,
+                data_part2,
+                data_off_part2,
+                TILEDB_GLOBAL_ORDER);
+          }
+          SECTION("Unordered read") {
+            partial_read_and_check_sparse_array(
+                ctx,
+                array_name,
+                data_part1,
+                data_off_part1,
+                data_part2,
+                data_off_part2,
+                TILEDB_UNORDERED);
+          }
         }
         SECTION("Global order write") {
           write_sparse_array(
               ctx, array_name, data, data_offsets, TILEDB_GLOBAL_ORDER);
-          partial_read_and_check_sparse_array(
-              ctx,
-              array_name,
-              data_part1,
-              data_off_part1,
-              data_part2,
-              data_off_part2);
+          SECTION("Row major read") {
+            partial_read_and_check_sparse_array(
+                ctx,
+                array_name,
+                data_part1,
+                data_off_part1,
+                data_part2,
+                data_off_part2,
+                TILEDB_ROW_MAJOR);
+          }
+          SECTION("Global order read") {
+            partial_read_and_check_sparse_array(
+                ctx,
+                array_name,
+                data_part1,
+                data_off_part1,
+                data_part2,
+                data_off_part2,
+                TILEDB_GLOBAL_ORDER);
+          }
+          SECTION("Unordered read") {
+            partial_read_and_check_sparse_array(
+                ctx,
+                array_name,
+                data_part1,
+                data_off_part1,
+                data_part2,
+                data_off_part2,
+                TILEDB_UNORDERED);
+          }
         }
       }
 
@@ -722,24 +897,70 @@ TEST_CASE(
         SECTION("Unordered write") {
           write_sparse_array(
               ctx, array_name, data, element_offsets, TILEDB_UNORDERED);
-          partial_read_and_check_sparse_array(
-              ctx,
-              array_name,
-              data_part1,
-              data_elem_off_part1,
-              data_part2,
-              data_elem_off_part2);
+          SECTION("Row major read") {
+            partial_read_and_check_sparse_array(
+                ctx,
+                array_name,
+                data_part1,
+                data_elem_off_part1,
+                data_part2,
+                data_elem_off_part2,
+                TILEDB_ROW_MAJOR);
+          }
+          SECTION("Global order read") {
+            partial_read_and_check_sparse_array(
+                ctx,
+                array_name,
+                data_part1,
+                data_elem_off_part1,
+                data_part2,
+                data_elem_off_part2,
+                TILEDB_GLOBAL_ORDER);
+          }
+          SECTION("Unordered read") {
+            partial_read_and_check_sparse_array(
+                ctx,
+                array_name,
+                data_part1,
+                data_elem_off_part1,
+                data_part2,
+                data_elem_off_part2,
+                TILEDB_UNORDERED);
+          }
         }
         SECTION("Global order write") {
           write_sparse_array(
               ctx, array_name, data, element_offsets, TILEDB_GLOBAL_ORDER);
-          partial_read_and_check_sparse_array(
-              ctx,
-              array_name,
-              data_part1,
-              data_elem_off_part1,
-              data_part2,
-              data_elem_off_part2);
+          SECTION("Row major read") {
+            partial_read_and_check_sparse_array(
+                ctx,
+                array_name,
+                data_part1,
+                data_elem_off_part1,
+                data_part2,
+                data_elem_off_part2,
+                TILEDB_ROW_MAJOR);
+          }
+          SECTION("Global order read") {
+            partial_read_and_check_sparse_array(
+                ctx,
+                array_name,
+                data_part1,
+                data_elem_off_part1,
+                data_part2,
+                data_elem_off_part2,
+                TILEDB_GLOBAL_ORDER);
+          }
+          SECTION("Unordered read") {
+            partial_read_and_check_sparse_array(
+                ctx,
+                array_name,
+                data_part1,
+                data_elem_off_part1,
+                data_part2,
+                data_elem_off_part2,
+                TILEDB_UNORDERED);
+          }
         }
       }
 
@@ -1168,12 +1389,34 @@ TEST_CASE(
     SECTION("Unordered write") {
       write_sparse_array(
           ctx, array_name, data, data_byte_offsets, TILEDB_UNORDERED);
-      read_and_check_sparse_array(ctx, array_name, data, data_byte_offsets);
+      SECTION("Row major read") {
+        read_and_check_sparse_array(
+            ctx, array_name, data, data_byte_offsets, TILEDB_ROW_MAJOR);
+      }
+      SECTION("Global order read") {
+        read_and_check_sparse_array(
+            ctx, array_name, data, data_byte_offsets, TILEDB_GLOBAL_ORDER);
+      }
+      SECTION("Unordered read") {
+        read_and_check_sparse_array(
+            ctx, array_name, data, data_byte_offsets, TILEDB_UNORDERED);
+      }
     }
     SECTION("Global order write") {
       write_sparse_array(
           ctx, array_name, data, data_byte_offsets, TILEDB_GLOBAL_ORDER);
-      read_and_check_sparse_array(ctx, array_name, data, data_byte_offsets);
+      SECTION("Row major read") {
+        read_and_check_sparse_array(
+            ctx, array_name, data, data_byte_offsets, TILEDB_ROW_MAJOR);
+      }
+      SECTION("Global order read") {
+        read_and_check_sparse_array(
+            ctx, array_name, data, data_byte_offsets, TILEDB_GLOBAL_ORDER);
+      }
+      SECTION("Unordered read") {
+        read_and_check_sparse_array(
+            ctx, array_name, data, data_byte_offsets, TILEDB_UNORDERED);
+      }
     }
   }
 
@@ -1188,12 +1431,34 @@ TEST_CASE(
     SECTION("Unordered write") {
       write_sparse_array(
           ctx, array_name, data, data_element_offsets, TILEDB_UNORDERED);
-      read_and_check_sparse_array(ctx, array_name, data, data_element_offsets);
+      SECTION("Row major read") {
+        read_and_check_sparse_array(
+            ctx, array_name, data, data_element_offsets, TILEDB_ROW_MAJOR);
+      }
+      SECTION("Global order read") {
+        read_and_check_sparse_array(
+            ctx, array_name, data, data_element_offsets, TILEDB_GLOBAL_ORDER);
+      }
+      SECTION("Unoredered read") {
+        read_and_check_sparse_array(
+            ctx, array_name, data, data_element_offsets, TILEDB_UNORDERED);
+      }
     }
     SECTION("Global order write") {
       write_sparse_array(
           ctx, array_name, data, data_element_offsets, TILEDB_GLOBAL_ORDER);
-      read_and_check_sparse_array(ctx, array_name, data, data_element_offsets);
+      SECTION("Row major read") {
+        read_and_check_sparse_array(
+            ctx, array_name, data, data_element_offsets, TILEDB_ROW_MAJOR);
+      }
+      SECTION("Global order read") {
+        read_and_check_sparse_array(
+            ctx, array_name, data, data_element_offsets, TILEDB_GLOBAL_ORDER);
+      }
+      SECTION("Unordered read") {
+        read_and_check_sparse_array(
+            ctx, array_name, data, data_element_offsets, TILEDB_UNORDERED);
+      }
     }
   }
 
@@ -1208,12 +1473,34 @@ TEST_CASE(
     SECTION("Unordered write") {
       write_sparse_array(
           ctx, array_name, data, data_byte_offsets, TILEDB_UNORDERED);
-      read_and_check_sparse_array(ctx, array_name, data, data_byte_offsets);
+      SECTION("Row major read") {
+        read_and_check_sparse_array(
+            ctx, array_name, data, data_byte_offsets, TILEDB_ROW_MAJOR);
+      }
+      SECTION("Global order read") {
+        read_and_check_sparse_array(
+            ctx, array_name, data, data_byte_offsets, TILEDB_GLOBAL_ORDER);
+      }
+      SECTION("Unordered read") {
+        read_and_check_sparse_array(
+            ctx, array_name, data, data_byte_offsets, TILEDB_UNORDERED);
+      }
     }
     SECTION("Global order write") {
       write_sparse_array(
           ctx, array_name, data, data_byte_offsets, TILEDB_GLOBAL_ORDER);
-      read_and_check_sparse_array(ctx, array_name, data, data_byte_offsets);
+      SECTION("Row major read") {
+        read_and_check_sparse_array(
+            ctx, array_name, data, data_byte_offsets, TILEDB_ROW_MAJOR);
+      }
+      SECTION("Global order read") {
+        read_and_check_sparse_array(
+            ctx, array_name, data, data_byte_offsets, TILEDB_GLOBAL_ORDER);
+      }
+      SECTION("Unordered read") {
+        read_and_check_sparse_array(
+            ctx, array_name, data, data_byte_offsets, TILEDB_UNORDERED);
+      }
     }
   }
 

@@ -197,6 +197,12 @@ class SparseIndexReaderBase : public ReaderBase {
 
   /** Resize the output buffers to the correct size after copying. */
   Status resize_output_buffers();
+
+  /**
+   * Adds an extra offset in the end of the offsets buffer indicating the
+   * returned data size if an attribute is var-sized.
+   */
+  Status add_extra_offset();
 };
 
 }  // namespace sm
