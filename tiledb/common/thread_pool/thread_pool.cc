@@ -160,7 +160,10 @@ std::vector<Status> ThreadPool::wait_all_status(std::vector<Task>& tasks) {
         // going through the task list over and over. A better approach would be
         // to timestamp the tasks and only wait if we have not seen the task too
         // many times before.
-        task.wait_for(std::chrono::milliseconds(10));
+
+        // task.wait_for(std::chrono::milliseconds(10));
+	task_queue_.signal_one();
+	std::this_thread::yield();
       }
     }
   }
