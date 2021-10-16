@@ -155,7 +155,6 @@ std::vector<Status> ThreadPool::wait_all_status(std::vector<Task>& tasks) {
       // In the meantime, try to do something useful to make progress (and avoid
       // deadlock)
 
-
       if (auto val = task_queue_.try_pop()) {
         (*val)();
       } else {
@@ -164,7 +163,10 @@ std::vector<Status> ThreadPool::wait_all_status(std::vector<Task>& tasks) {
         // to timestamp the tasks and only wait if we have not seen the task too
         // many times before.
 
-	task.wait_for(std::chrono::milliseconds(10));
+	// task.wait_for(std::chrono::milliseconds(10));
+
+	// Or, we could simply yield
+	std::this_thread::yield();
       }
     }
   }
