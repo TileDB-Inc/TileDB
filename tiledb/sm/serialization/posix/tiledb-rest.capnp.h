@@ -773,7 +773,7 @@ struct ReadStateIndex {
   class Pipeline;
 
   struct _capnpPrivate {
-    CAPNP_DECLARE_STRUCT_HEADER(c86c77b5f6a2bf0f, 0, 2)
+    CAPNP_DECLARE_STRUCT_HEADER(c86c77b5f6a2bf0f, 1, 2)
 #if !CAPNP_LITE
     static constexpr ::capnp::_::RawBrandedSchema const* brand() {
       return &schema->defaultBrand;
@@ -6107,6 +6107,8 @@ class ReadStateIndex::Reader {
       ::capnp::Kind::STRUCT>::Reader
   getFragTileIdx() const;
 
+  inline ::uint64_t getRangeIdx() const;
+
  private:
   ::capnp::_::StructReader _reader;
   template <typename, ::capnp::Kind>
@@ -6188,6 +6190,9 @@ class ReadStateIndex::Builder {
       ::tiledb::sm::serialization::capnp::FragmentIndex,
       ::capnp::Kind::STRUCT>>
   disownFragTileIdx();
+
+  inline ::uint64_t getRangeIdx();
+  inline void setRangeIdx(::uint64_t value);
 
  private:
   ::capnp::_::StructBuilder _builder;
@@ -13722,6 +13727,20 @@ ReadStateIndex::Builder::disownFragTileIdx() {
                                           .getPointerField(
                                               ::capnp::bounded<1>() *
                                               ::capnp::POINTERS));
+}
+
+inline ::uint64_t ReadStateIndex::Reader::getRangeIdx() const {
+  return _reader.getDataField<::uint64_t>(
+      ::capnp::bounded<0>() * ::capnp::ELEMENTS);
+}
+
+inline ::uint64_t ReadStateIndex::Builder::getRangeIdx() {
+  return _builder.getDataField<::uint64_t>(
+      ::capnp::bounded<0>() * ::capnp::ELEMENTS);
+}
+inline void ReadStateIndex::Builder::setRangeIdx(::uint64_t value) {
+  _builder.setDataField<::uint64_t>(
+      ::capnp::bounded<0>() * ::capnp::ELEMENTS, value);
 }
 
 inline bool ReaderIndex::Reader::hasLayout() const {
