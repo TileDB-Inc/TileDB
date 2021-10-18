@@ -391,6 +391,7 @@ struct SerializationFx {
       bool clientside) {
     // Serialize
     tiledb_buffer_list_t* buff_list;
+
     ctx.handle_error(tiledb_serialize_query(
         ctx.ptr().get(),
         query.ptr().get(),

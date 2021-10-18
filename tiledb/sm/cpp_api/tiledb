@@ -55,6 +55,7 @@
 #include "query_condition.h"
 #include "schema_base.h"
 #include "stats.h"
+#include "subarray.h"
 #include "tiledb.h"
 #include "utils.h"
 #include "version.h"

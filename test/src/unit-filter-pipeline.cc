@@ -66,7 +66,7 @@ using namespace tiledb::sm;
  * Simple filter that modifies the input stream by adding 1 to every input
  * element.
  */
-class Add1InPlace : public Filter {
+class Add1InPlace : public tiledb::sm::Filter {
  public:
   // Just use a dummy filter type
   Add1InPlace()
@@ -104,7 +104,7 @@ class Add1InPlace : public Filter {
       FilterBuffer* input,
       FilterBuffer* output_metadata,
       FilterBuffer* output,
-      const Config& config) const override {
+      const tiledb::sm::Config& config) const override {
     (void)config;
 
     auto input_size = input->size();
@@ -133,7 +133,7 @@ class Add1InPlace : public Filter {
  * Simple filter that increments every element of the input stream, writing the
  * output to a new buffer. Does not modify the input stream.
  */
-class Add1OutOfPlace : public Filter {
+class Add1OutOfPlace : public tiledb::sm::Filter {
  public:
   // Just use a dummy filter type
   Add1OutOfPlace()
@@ -182,7 +182,7 @@ class Add1OutOfPlace : public Filter {
       FilterBuffer* input,
       FilterBuffer* output_metadata,
       FilterBuffer* output,
-      const Config& config) const override {
+      const tiledb::sm::Config& config) const override {
     (void)config;
 
     auto input_size = input->size();
@@ -221,7 +221,7 @@ class Add1OutOfPlace : public Filter {
  * Simple filter that modifies the input stream by adding a constant value to
  * every input element.
  */
-class AddNInPlace : public Filter {
+class AddNInPlace : public tiledb::sm::Filter {
  public:
   // Just use a dummy filter type
   AddNInPlace()
@@ -259,7 +259,7 @@ class AddNInPlace : public Filter {
       FilterBuffer* input,
       FilterBuffer* output_metadata,
       FilterBuffer* output,
-      const Config& config) const override {
+      const tiledb::sm::Config& config) const override {
     (void)config;
 
     auto input_size = input->size();
@@ -301,7 +301,7 @@ class AddNInPlace : public Filter {
  * Simple filter which computes the sum of its input and prepends the sum
  * to the output. In reverse execute, checks that the sum is correct.
  */
-class PseudoChecksumFilter : public Filter {
+class PseudoChecksumFilter : public tiledb::sm::Filter {
  public:
   // Just use a dummy filter type
   PseudoChecksumFilter()
@@ -346,7 +346,7 @@ class PseudoChecksumFilter : public Filter {
       FilterBuffer* input,
       FilterBuffer* output_metadata,
       FilterBuffer* output,
-      const Config& config) const override {
+      const tiledb::sm::Config& config) const override {
     (void)config;
 
     auto input_size = input->size();
@@ -388,7 +388,7 @@ class PseudoChecksumFilter : public Filter {
  * output to a new buffer. The input metadata is treated as a part of the input
  * data.
  */
-class Add1IncludingMetadataFilter : public Filter {
+class Add1IncludingMetadataFilter : public tiledb::sm::Filter {
  public:
   // Just use a dummy filter type
   Add1IncludingMetadataFilter()
@@ -457,7 +457,7 @@ class Add1IncludingMetadataFilter : public Filter {
       FilterBuffer* input,
       FilterBuffer* output_metadata,
       FilterBuffer* output,
-      const Config& config) const override {
+      const tiledb::sm::Config& config) const override {
     (void)config;
 
     if (input_metadata->size() != 2 * sizeof(uint32_t))
@@ -511,7 +511,7 @@ class Add1IncludingMetadataFilter : public Filter {
 };
 
 TEST_CASE("Filter: Test empty pipeline", "[filter]") {
-  Config config;
+  tiledb::sm::Config config;
 
   // Set up test data
   const uint64_t nelts = 100;
@@ -581,7 +581,7 @@ TEST_CASE("Filter: Test empty pipeline", "[filter]") {
 }
 
 TEST_CASE("Filter: Test simple in-place pipeline", "[filter]") {
-  Config config;
+  tiledb::sm::Config config;
 
   const uint64_t nelts = 100;
   const uint64_t tile_size = nelts * sizeof(uint64_t);
@@ -700,7 +700,7 @@ TEST_CASE("Filter: Test simple in-place pipeline", "[filter]") {
 }
 
 TEST_CASE("Filter: Test simple out-of-place pipeline", "[filter]") {
-  Config config;
+  tiledb::sm::Config config;
 
   // Set up test data
   const uint64_t nelts = 100;
@@ -820,7 +820,7 @@ TEST_CASE("Filter: Test simple out-of-place pipeline", "[filter]") {
 }
 
 TEST_CASE("Filter: Test mixed in- and out-of-place pipeline", "[filter]") {
-  Config config;
+  tiledb::sm::Config config;
 
   // Set up test data
   const uint64_t nelts = 100;
@@ -894,7 +894,7 @@ TEST_CASE("Filter: Test mixed in- and out-of-place pipeline", "[filter]") {
 }
 
 TEST_CASE("Filter: Test compression", "[filter][compression]") {
-  Config config;
+  tiledb::sm::Config config;
 
   const uint64_t nelts = 100;
   const uint64_t tile_size = nelts * sizeof(uint64_t);
@@ -919,10 +919,10 @@ TEST_CASE("Filter: Test compression", "[filter][compression]") {
   uint32_t dim_dom[] = {1, 10};
   Dimension dim{"", Datatype::INT32};
   dim.set_domain(dim_dom);
-  Domain domain;
+  tiledb::sm::Domain domain;
   domain.add_dimension(&dim);
-  ArraySchema schema;
-  Attribute attr("attr", Datatype::UINT64);
+  tiledb::sm::ArraySchema schema;
+  tiledb::sm::Attribute attr("attr", Datatype::UINT64);
   schema.add_attribute(&attr);
   schema.set_domain(&domain);
   schema.init();
@@ -934,7 +934,8 @@ TEST_CASE("Filter: Test compression", "[filter][compression]") {
   SECTION("- Simple") {
     CHECK(pipeline.add_filter(Add1InPlace()).ok());
     CHECK(pipeline.add_filter(Add1OutOfPlace()).ok());
-    CHECK(pipeline.add_filter(CompressionFilter(Compressor::LZ4, 5)).ok());
+    CHECK(pipeline.add_filter(CompressionFilter(tiledb::sm::Compressor::LZ4, 5))
+              .ok());
 
     CHECK(pipeline.run_forward(&test::g_helper_stats, &tile, &tp).ok());
     // Check compression worked
@@ -957,7 +958,8 @@ TEST_CASE("Filter: Test compression", "[filter][compression]") {
 
   SECTION("- With checksum stage") {
     CHECK(pipeline.add_filter(PseudoChecksumFilter()).ok());
-    CHECK(pipeline.add_filter(CompressionFilter(Compressor::LZ4, 5)).ok());
+    CHECK(pipeline.add_filter(CompressionFilter(tiledb::sm::Compressor::LZ4, 5))
+              .ok());
 
     CHECK(pipeline.run_forward(&test::g_helper_stats, &tile, &tp).ok());
     // Check compression worked
@@ -982,7 +984,8 @@ TEST_CASE("Filter: Test compression", "[filter][compression]") {
     CHECK(pipeline.add_filter(Add1InPlace()).ok());
     CHECK(pipeline.add_filter(PseudoChecksumFilter()).ok());
     CHECK(pipeline.add_filter(Add1OutOfPlace()).ok());
-    CHECK(pipeline.add_filter(CompressionFilter(Compressor::LZ4, 5)).ok());
+    CHECK(pipeline.add_filter(CompressionFilter(tiledb::sm::Compressor::LZ4, 5))
+              .ok());
 
     CHECK(pipeline.run_forward(&test::g_helper_stats, &tile, &tp).ok());
     // Check compression worked
@@ -1007,7 +1010,7 @@ TEST_CASE("Filter: Test compression", "[filter][compression]") {
 }
 
 TEST_CASE("Filter: Test pseudo-checksum", "[filter]") {
-  Config config;
+  tiledb::sm::Config config;
 
   // Set up test data
   const uint64_t nelts = 100;
@@ -1147,7 +1150,7 @@ TEST_CASE("Filter: Test pseudo-checksum", "[filter]") {
 }
 
 TEST_CASE("Filter: Test pipeline modify filter", "[filter]") {
-  Config config;
+  tiledb::sm::Config config;
 
   // Set up test data
   const uint64_t nelts = 100;
@@ -1227,7 +1230,7 @@ TEST_CASE("Filter: Test pipeline modify filter", "[filter]") {
 }
 
 TEST_CASE("Filter: Test pipeline copy", "[filter]") {
-  Config config;
+  tiledb::sm::Config config;
 
   const uint64_t expected_checksum = 5350;
 
@@ -1318,7 +1321,7 @@ TEST_CASE("Filter: Test pipeline copy", "[filter]") {
 }
 
 TEST_CASE("Filter: Test random pipeline", "[filter]") {
-  Config config;
+  tiledb::sm::Config config;
 
   const uint64_t nelts = 100;
   const uint64_t tile_size = nelts * sizeof(uint64_t);
@@ -1349,14 +1352,14 @@ TEST_CASE("Filter: Test random pipeline", "[filter]") {
 
   // List of potential filters to use. All of these filters can occur anywhere
   // in the pipeline.
-  std::vector<std::function<Filter*(void)>> constructors = {
+  std::vector<std::function<tiledb::sm::Filter*(void)>> constructors = {
       []() { return new Add1InPlace(); },
       []() { return new Add1OutOfPlace(); },
       []() { return new Add1IncludingMetadataFilter(); },
       []() { return new BitWidthReductionFilter(); },
       []() { return new BitshuffleFilter(); },
       []() { return new ByteshuffleFilter(); },
-      []() { return new CompressionFilter(Compressor::BZIP2, -1); },
+      []() { return new CompressionFilter(tiledb::sm::Compressor::BZIP2, -1); },
       []() { return new PseudoChecksumFilter(); },
       []() { return new ChecksumMD5Filter(); },
       []() { return new ChecksumSHA256Filter(); },
@@ -1366,7 +1369,7 @@ TEST_CASE("Filter: Test random pipeline", "[filter]") {
   };
 
   // List of potential filters that must occur at the beginning of the pipeline.
-  std::vector<std::function<Filter*(void)>> constructors_first = {
+  std::vector<std::function<tiledb::sm::Filter*(void)>> constructors_first = {
       // Pos-delta would (correctly) return error after e.g. compression.
       []() { return new PositiveDeltaFilter(); }};
 
@@ -1389,12 +1392,12 @@ TEST_CASE("Filter: Test random pipeline", "[filter]") {
     for (unsigned j = 0; j < num_filters; j++) {
       if (j == 0 && rng_bool(gen) == 1) {
         auto idx = (unsigned)rng_constructors_first(gen);
-        Filter* filter = constructors_first[idx]();
+        tiledb::sm::Filter* filter = constructors_first[idx]();
         CHECK(pipeline.add_filter(*filter).ok());
         delete filter;
       } else {
         auto idx = (unsigned)rng_constructors(gen);
-        Filter* filter = constructors[idx]();
+        tiledb::sm::Filter* filter = constructors[idx]();
         CHECK(pipeline.add_filter(*filter).ok());
         delete filter;
       }
@@ -1422,7 +1425,7 @@ TEST_CASE("Filter: Test random pipeline", "[filter]") {
 TEST_CASE(
     "Filter: Test skip checksum validation",
     "[filter][skip-checksum-validation]") {
-  Config config;
+  tiledb::sm::Config config;
   REQUIRE(config.set("sm.skip_checksum_validation", "true").ok());
 
   const uint64_t nelts = 100;
@@ -1488,7 +1491,7 @@ TEST_CASE(
 }
 
 TEST_CASE("Filter: Test bit width reduction", "[filter]") {
-  Config config;
+  tiledb::sm::Config config;
 
   // Set up test data
   const uint64_t nelts = 1000;
@@ -1710,7 +1713,7 @@ TEST_CASE("Filter: Test bit width reduction", "[filter]") {
 }
 
 TEST_CASE("Filter: Test positive-delta encoding", "[filter]") {
-  Config config;
+  tiledb::sm::Config config;
 
   // Set up test data
   const uint64_t nelts = 1000;
@@ -1823,7 +1826,7 @@ TEST_CASE("Filter: Test positive-delta encoding", "[filter]") {
 }
 
 TEST_CASE("Filter: Test bitshuffle", "[filter]") {
-  Config config;
+  tiledb::sm::Config config;
 
   // Set up test data
   const uint64_t nelts = 1000;
@@ -1907,7 +1910,7 @@ TEST_CASE("Filter: Test bitshuffle", "[filter]") {
 }
 
 TEST_CASE("Filter: Test byteshuffle", "[filter]") {
-  Config config;
+  tiledb::sm::Config config;
 
   // Set up test data
   const uint64_t nelts = 1000;
@@ -1991,7 +1994,7 @@ TEST_CASE("Filter: Test byteshuffle", "[filter]") {
 }
 
 TEST_CASE("Filter: Test encryption", "[filter][encryption]") {
-  Config config;
+  tiledb::sm::Config config;
 
   // Set up test data
   const uint64_t nelts = 1000;

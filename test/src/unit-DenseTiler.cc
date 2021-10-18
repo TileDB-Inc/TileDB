@@ -81,7 +81,7 @@ struct DenseTilerFx {
   void add_ranges(
       const std::vector<const void*>& ranges,
       uint64_t range_size,
-      Subarray* subarray);
+      tiledb::sm::Subarray* subarray);
   template <class T>
   bool check_tile(Tile* tile, const std::vector<T>& data);
 };
@@ -144,7 +144,7 @@ void DenseTilerFx::create_array(
 void DenseTilerFx::add_ranges(
     const std::vector<const void*>& ranges,
     uint64_t range_size,
-    Subarray* subarray) {
+    tiledb::sm::Subarray* subarray) {
   for (size_t i = 0; i < ranges.size(); ++i)
     CHECK(subarray->add_range((uint32_t)i, Range(ranges[i], range_size)).ok());
 }
@@ -3186,6 +3186,10 @@ TEST_CASE_METHOD(
       Layout::ROW_MAJOR,
       &test::g_helper_stats,
       test::g_helper_logger());
+=======
+  tiledb::sm::Subarray subarray1(
+      array_->array_, Layout::ROW_MAJOR, &test::g_helper_stats);
+>>>>>>> ed3f02d7 (expose subarray functionality externally for client use)
   add_ranges({sub1_0, sub1_1}, sizeof(sub1_0), &subarray1);
 
   // Create DenseTiler

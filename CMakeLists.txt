@@ -201,6 +201,7 @@ if (MSVC)
   #   C4800: warning implicit cast int to bool
   #   C4996: deprecation warning about e.g. sscanf.
   add_compile_options(/W4 /wd4101 /wd4146 /wd4244 /wd4251 /wd4456 /wd4457 /wd4702 /wd4800 /wd4996)
+#  add_compile_options(/W4 /wd4101 /wd4146 /wd4244 /wd4251 /wd4456 /wd4457 /wd4702 /wd4800)
   # Warnings as errors:
   if (TILEDB_WERROR)
     add_compile_options(/WX)
