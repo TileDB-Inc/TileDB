@@ -76,6 +76,9 @@ struct DenseArrayFx {
    */
   bool serialize_query_ = false;
 
+  // use separate subarray prepared 'outside' of a query
+  bool use_external_subarray_ = false;
+
   // TileDB context and VFS
   tiledb_ctx_t* ctx_;
   tiledb_vfs_t* vfs_;
@@ -823,10 +826,7 @@ void DenseArrayFx::write_dense_subarray_2D_with_cancel(
   rc = tiledb_query_set_layout(ctx_, query, query_layout);
   REQUIRE(rc == TILEDB_OK);
 
-  // Submit the same query several times, some may be duplicates, some may
-  // be cancelled, it doesn't matter since it's all the same data being written.
-  // TODO: this doesn't trigger the cancelled path very often.
-  for (unsigned i = 0; i < num_writes; i++) {
+  auto proc_query = [&](unsigned i) -> void {
     rc = tiledb_query_submit_async(ctx_, query, NULL, NULL);
     REQUIRE(rc == TILEDB_OK);
     // Cancel it immediately.
@@ -852,10 +852,37 @@ void DenseArrayFx::write_dense_subarray_2D_with_cancel(
       } while (status != TILEDB_COMPLETED && status != TILEDB_FAILED);
     }
     REQUIRE(status == TILEDB_COMPLETED);
-  }
+  };
 
-  rc = tiledb_query_finalize(ctx_, query);
-  REQUIRE(rc == TILEDB_OK);
+  if (!use_external_subarray_) {
+    // Submit the same query several times, some may be duplicates, some may
+    // be cancelled, it doesn't matter since it's all the same data being
+    // written.
+    // TODO: this doesn't trigger the cancelled path very often.
+    for (unsigned i = 0; i < num_writes; i++) {
+      proc_query(i);
+    }
+
+    rc = tiledb_query_finalize(ctx_, query);
+    REQUIRE(rc == TILEDB_OK);
+  } else {
+    tiledb_subarray_t* query_subarray;
+    tiledb_query_get_subarray(ctx_, query, &query_subarray);
+    // Submit the same query several times, some may be duplicates, some may
+    // be cancelled, it doesn't matter since it's all the same data being
+    // written.
+    // TODO: this doesn't trigger the cancelled path very often.
+    for (unsigned i = 0; i < num_writes; i++) {
+      rc = tiledb_query_set_subarray_t(ctx_, query, query_subarray);
+      CHECK(rc == TILEDB_OK);
+      proc_query(i);
+    }
+
+    rc = tiledb_query_finalize(ctx_, query);
+    REQUIRE(rc == TILEDB_OK);
+
+    tiledb_subarray_free(&query_subarray);
+  }
 
   // Close array
   rc = tiledb_array_close(ctx_, array);
@@ -2724,6 +2751,10 @@ int DenseArrayFx::submit_query_wrapper(
   if (!serialize_query_)
     return tiledb_query_submit(ctx_, query);
 
+  // submit_query_wrapper() is being called via
+  // check_simultaneous_writes() which means these catch framework tests need
+  // thread protection as 'simultaneous' involves multiple threads.
+
   // Get the query type and layout
   tiledb_query_type_t query_type;
   tiledb_layout_t layout;
@@ -3039,11 +3070,22 @@ TEST_CASE_METHOD(
     DenseArrayFx,
     "C API: Test dense array, cancel and retry writes",
     "[capi][dense][async][cancel]") {
-  SECTION("- No serialization") {
+  SECTION("- No serialization nor outisde subarray") {
     serialize_query_ = false;
+    use_external_subarray_ = false;
   }
-  SECTION("- Serialization") {
+  SECTION("- Serialization, no outside subarray") {
     serialize_query_ = true;
+    use_external_subarray_ = false;
+  }
+
+  SECTION("- no serialization, with outside subarray") {
+    serialize_query_ = false;
+    use_external_subarray_ = true;
+  }
+  SECTION("- Serialization, with outside subarray") {
+    serialize_query_ = true;
+    use_external_subarray_ = true;
   }
 
   // TODO: refactor for each supported FS.

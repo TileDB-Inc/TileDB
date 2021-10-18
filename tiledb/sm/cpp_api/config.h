@@ -49,10 +49,16 @@ class Config;  // Forward decl for impl classes
 
 namespace impl {
 
-class ConfigIter : public std::iterator<
-                       std::forward_iterator_tag,
-                       const std::pair<std::string, std::string>> {
+class ConfigIter  //: public std::iterator<
+                  //      std::forward_iterator_tag,
+                  //      const std::pair<std::string, std::string>> {
+{
  public:
+  using iterator_category = std::forward_iterator_tag;
+  using value_type = const std::pair<std::string, std::string>;
+  using difference_type = std::ptrdiff_t;
+  using pointer = value_type*;
+  using reference = value_type&;
   /* ********************************* */
   /*     CONSTRUCTORS & DESTRUCTORS    */
   /* ********************************* */

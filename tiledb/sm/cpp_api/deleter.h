@@ -75,6 +75,10 @@ class Deleter {
     tiledb_array_free(&p);
   }
 
+  void operator()(tiledb_subarray_t* p) const {
+    tiledb_subarray_free(&p);
+  }
+
   void operator()(tiledb_query_t* p) const {
     tiledb_query_free(&p);
   }
