@@ -28,14 +28,14 @@ RUN apt-get update && DEBIAN_FRONTEND=noninteractive apt-get install -y \
     wget \
     unzip \
     git \
-    cmake \
     python3 \
     python3-dev \
     python3-pip \
     libssl-dev \
     && apt-get clean \
     && apt-get purge -y \
-    && rm -rf /var/lib/apt/lists*
+    && rm -rf /var/lib/apt/lists* \
+    && pip3 install cmake
 
 # Build and install TileDB.
 RUN cd /home/tiledb/TileDB \
