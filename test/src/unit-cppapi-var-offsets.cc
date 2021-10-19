@@ -1658,6 +1658,53 @@ TEST_CASE(
     CHECK(offsets_back[4] == data.size());
   }
 
+  // Regression test for https://github.com/TileDB-Inc/TileDB/pull/2540
+  // Test that the query execution with empty result does not write out
+  // of buffer bounds. We create an oversize buffer with guard values
+  // ahead of the actual pointer range given to libtiledb; we run the
+  // query to completion with empty result; then we check the guard
+  // values. This test fails prior to PR#2540.
+  {
+    Config config;
+    // Change config of offsets bitsize from 64 to 32
+    config["sm.var_offsets.bitsize"] = 32;
+    // Add extra element
+    config["sm.var_offsets.extra_element"] = "true";
+    Context ctx(config);
+
+    std::vector<uint32_t> offsets_back(14);
+
+    const std::vector<size_t> guard_idx = {0, 1, 2, 3, 10, 11, 12, 13};
+    const uint32_t guard_val =
+        std::numeric_limits<uint32_t>::max() - (uint32_t)10;
+    for (auto idx : guard_idx) {
+      offsets_back[idx] = guard_val;
+    }
+    std::string data_back;
+    data_back.resize(data.size());
+
+    auto array = tiledb::Array(ctx, array_name, TILEDB_READ);
+    Query query(ctx, array, TILEDB_READ);
+    // this query range should return empty result
+    query.add_range(0, std::string("xyz"), std::string("xyz"));
+    query.set_data_buffer("dim1", (char*)data_back.data(), data_back.size());
+
+    // here we set the buffer at an offset of 2*uint64_t (== 4 * uint32_t)
+    // from the real start because we cast to uint64_t* to keep the C++
+    // API type-check happy
+    query.set_offsets_buffer(
+        "dim1", (uint64_t*)offsets_back.data() + 2, offsets_back.size() - 2);
+
+    query.submit();
+
+    CHECK(query.query_status() == Query::Status::COMPLETE);
+
+    // check the guard values match on both sides of the buffer
+    for (auto idx : guard_idx) {
+      CHECK(offsets_back[idx] == guard_val);
+    }
+  }
+
   Context ctx;
   VFS vfs(ctx);
   if (vfs.is_dir(array_name))
