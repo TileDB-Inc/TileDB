@@ -33,6 +33,7 @@
 #include "tiledb/sm/array/array.h"
 #include "tiledb/common/logger.h"
 #include "tiledb/sm/array_schema/array_schema.h"
+#include "tiledb/sm/array_schema/array_schema_evolution.h"
 #include "tiledb/sm/array_schema/attribute.h"
 #include "tiledb/sm/array_schema/dimension.h"
 #include "tiledb/sm/array_schema/domain.h"
@@ -331,7 +332,7 @@ bool Array::is_remote() const {
   return remote_;
 }
 
-std::vector<FragmentMetadata*> Array::fragment_metadata() const {
+std::vector<tdb_shared_ptr<FragmentMetadata>> Array::fragment_metadata() const {
   std::unique_lock<std::mutex> lck(mtx_);
   return fragment_metadata_;
 }

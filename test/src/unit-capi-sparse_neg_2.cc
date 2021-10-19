@@ -458,7 +458,7 @@ void SparseNegFx2::read_sparse_array_col(const std::string& path) {
 TEST_CASE_METHOD(
     SparseNegFx2,
     "C API: Test 1d sparse vector with negative domain 2",
-    "[capi], [sparse-neg-2], [sparse-neg-vector-2]") {
+    "[capi][sparse-neg-2][sparse-neg-vector-2]") {
   SupportedFsLocal local_fs;
   std::string vector_name =
       local_fs.file_prefix() + local_fs.temp_dir() + "sparse_neg_vector";
@@ -474,7 +474,7 @@ TEST_CASE_METHOD(
 TEST_CASE_METHOD(
     SparseNegFx2,
     "C API: Test 2d sparse array with negative domain 2",
-    "[capi], [sparse-neg-2], [sparse-neg-array-2]") {
+    "[capi][sparse-neg-2][sparse-neg-array-2]") {
   SupportedFsLocal local_fs;
   std::string vector_name =
       local_fs.file_prefix() + local_fs.temp_dir() + "sparse_neg_array";

@@ -31,7 +31,7 @@
  */
 
 #include "catch.hpp"
-#include "helpers.h"
+#include "test/src/helpers.h"
 #include "tiledb/sm/c_api/tiledb_struct_def.h"
 #include "tiledb/sm/cpp_api/tiledb"
 #include "tiledb/sm/misc/utils.h"
@@ -394,11 +394,10 @@ TEST_CASE("C++ API: Test subarray (dense)", "[cppapi][dense][subarray]") {
 
   // Write
   std::vector<int> data_w = {1, 2, 3, 4};
-  std::vector<int> coords_w = {0, 0, 1, 1, 2, 2, 3, 3};
   Array array_w(ctx, array_name, TILEDB_WRITE);
   tiledb::Query query_w(ctx, array_w);
-  query_w.set_coordinates(coords_w)
-      .set_layout(TILEDB_UNORDERED)
+  query_w.set_subarray({0, 1, 0, 1})
+      .set_layout(TILEDB_ROW_MAJOR)
       .set_data_buffer("a", data_w);
   query_w.submit();
   query_w.finalize();
@@ -528,8 +527,14 @@ TEST_CASE(
   REQUIRE(st == Query::Status::INCOMPLETE);
   result_elts = query.result_buffer_elements();
   result_num = result_elts[TILEDB_COORDS].second / 2;
-  REQUIRE(result_num == 1);
-  REQUIRE(data[0] == 'c');
+  if (test::use_refactored_readers()) {
+    REQUIRE(result_num == 2);
+    REQUIRE(data[0] == 'c');
+    REQUIRE(data[1] == 'n');
+  } else {
+    REQUIRE(result_num == 1);
+    REQUIRE(data[0] == 'c');
+  }
 
   // Resubmit
   st = query.submit();
@@ -537,50 +542,79 @@ TEST_CASE(
   result_elts = query.result_buffer_elements();
   result_num = result_elts[TILEDB_COORDS].second / 2;
   REQUIRE(result_num == 2);
-  REQUIRE(data[0] == 'n');
-  REQUIRE(data[1] == 'd');
+
+  if (test::use_refactored_readers()) {
+    REQUIRE(data[0] == 'd');
+    REQUIRE(data[1] == 'e');
+  } else {
+    REQUIRE(data[0] == 'n');
+    REQUIRE(data[1] == 'd');
+  }
 
   // Resubmit
   st = query.submit();
   REQUIRE(st == Query::Status::INCOMPLETE);
   result_elts = query.result_buffer_elements();
   result_num = result_elts[TILEDB_COORDS].second / 2;
-  REQUIRE(result_num == 1);
-  REQUIRE(data[0] == 'e');
+  if (test::use_refactored_readers()) {
+    REQUIRE(result_num == 2);
+    REQUIRE(data[0] == 'f');
+    REQUIRE(data[1] == 'g');
+  } else {
+    REQUIRE(result_num == 1);
+    REQUIRE(data[0] == 'e');
+  }
 
   // Resubmit
   st = query.submit();
   REQUIRE(st == Query::Status::INCOMPLETE);
   result_elts = query.result_buffer_elements();
   result_num = result_elts[TILEDB_COORDS].second / 2;
-  REQUIRE(result_num == 1);
-  REQUIRE(data[0] == 'f');
+  if (test::use_refactored_readers()) {
+    REQUIRE(result_num == 2);
+    REQUIRE(data[0] == 'h');
+    REQUIRE(data[1] == 'i');
+  } else {
+    REQUIRE(result_num == 1);
+    REQUIRE(data[0] == 'f');
+  }
 
   // Resubmit
   st = query.submit();
-  REQUIRE(st == Query::Status::INCOMPLETE);
+  if (test::use_refactored_readers()) {
+    REQUIRE(st == Query::Status::COMPLETE);
+  } else {
+    REQUIRE(st == Query::Status::INCOMPLETE);
+  }
   result_elts = query.result_buffer_elements();
   result_num = result_elts[TILEDB_COORDS].second / 2;
-  REQUIRE(result_num == 2);
-  REQUIRE(data[0] == 'g');
-  REQUIRE(data[1] == 'h');
 
-  // Resubmit
-  st = query.submit();
-  REQUIRE(st == Query::Status::INCOMPLETE);
-  result_elts = query.result_buffer_elements();
-  result_num = result_elts[TILEDB_COORDS].second / 2;
-  REQUIRE(result_num == 1);
-  REQUIRE(data[0] == 'i');
+  if (test::use_refactored_readers()) {
+    REQUIRE(result_num == 2);
+    REQUIRE(data[0] == 'j');
+    REQUIRE(data[1] == 'k');
+  } else {
+    REQUIRE(result_num == 2);
+    REQUIRE(data[0] == 'g');
+    REQUIRE(data[1] == 'h');
 
-  // Resubmit
-  st = query.submit();
-  REQUIRE(st == Query::Status::COMPLETE);
-  result_elts = query.result_buffer_elements();
-  result_num = result_elts[TILEDB_COORDS].second / 2;
-  REQUIRE(result_num == 2);
-  REQUIRE(data[0] == 'j');
-  REQUIRE(data[1] == 'k');
+    // Resubmit
+    st = query.submit();
+    REQUIRE(st == Query::Status::INCOMPLETE);
+    result_elts = query.result_buffer_elements();
+    result_num = result_elts[TILEDB_COORDS].second / 2;
+    REQUIRE(result_num == 1);
+    REQUIRE(data[0] == 'i');
+
+    // Resubmit
+    st = query.submit();
+    REQUIRE(st == Query::Status::COMPLETE);
+    result_elts = query.result_buffer_elements();
+    result_num = result_elts[TILEDB_COORDS].second / 2;
+    REQUIRE(result_num == 2);
+    REQUIRE(data[0] == 'j');
+    REQUIRE(data[1] == 'k');
+  }
 
   // Close array.
   array.close();
@@ -632,6 +666,7 @@ TEST_CASE(
   tiledb::Array array(ctx, array_name, TILEDB_READ);
   tiledb::Query query(ctx, array);
   tiledb::Subarray subarray(ctx, array);
+  subarray.set_layout(TILEDB_UNORDERED);
   query.set_layout(TILEDB_UNORDERED);
 
   // Set up subarray for read
@@ -673,7 +708,7 @@ TEST_CASE(
         *subarray.ptr().get()->subarray_));
     query.set_subarray(subarray);
     tiledb::Subarray retrieved_query_subarray(query.ctx(), query.array());
-    query.update_subarray_from_query(retrieved_query_subarray);
+    query.update_subarray_from_query(&retrieved_query_subarray);
     CHECK(subarray_equiv<int>(
         *retrieved_query_subarray.ptr().get()->subarray_,
         *subarray.ptr().get()->subarray_));

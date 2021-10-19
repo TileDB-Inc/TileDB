@@ -1,4 +1,3 @@
-#define DEVING_SUBARRAY_PARTITIONER_STORY5342 1
 /**
  * @file   helpers.cc
  *
@@ -40,9 +39,7 @@
 #include "tiledb/sm/misc/constants.h"
 #include "tiledb/sm/misc/tile_overlap.h"
 #include "tiledb/sm/misc/uri.h"
-#if DEVING_SUBARRAY_PARTITIONER_STORY5342
 #include "tiledb/sm/subarray/subarray_partitioner.h"
-#endif
 #include "tiledb/sm/c_api/tiledb_struct_def.h"
 
 std::mutex catch2_macro_mutex;
@@ -111,7 +108,6 @@ void check_partitions(
   }
 }
 
-#if DEVING_SUBARRAY_PARTITIONER_STORY5342
 template <class T>
 void check_partitions(
     tiledb_ctx_t* ctx,
@@ -176,7 +172,6 @@ void check_partitions(
     check_subarray<T>(*retrieve_partition_subarray, p);
   }
 }
-#endif
 
 template <class T>
 void check_subarray(
@@ -1163,7 +1158,7 @@ void write_array(
   // Get fragment uri
   const char* temp_uri;
   rc = tiledb_query_get_fragment_uri(ctx, query, 0, &temp_uri);
-  CHECK(rc == TILEDB_OK);
+  REQUIRE(rc == TILEDB_OK);
   *uri = std::string(temp_uri);
 
   // Close array
@@ -1569,7 +1564,6 @@ template void check_partitions<double>(
     const std::vector<SubarrayRanges<double>>& partitions,
     bool last_unsplittable);
 
-#if DEVING_SUBARRAY_PARTITIONER_STORY5342
 template void check_partitions<int8_t>(
     tiledb_ctx_t* ctx,
     tiledb_subarray_partitioner_t* partitioner,
@@ -1681,7 +1675,6 @@ template void check_partitions<double>(
     const std::vector<SubarrayRanges<double>>& partitions,
     bool last_unsplittable,
     tiledb::Subarray* retrieve_partition_subarray);
-#endif
 
 template void read_array<int8_t>(
     tiledb_ctx_t* ctx,

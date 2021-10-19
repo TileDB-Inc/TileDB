@@ -38,6 +38,8 @@
 #include "tiledb/sm/c_api/tiledb_serialization.h"
 #include "tiledb/sm/c_api/tiledb_struct_def.h"
 #include "tiledb/sm/cpp_api/tiledb"
+#include "tiledb/sm/query/reader.h"
+#include "tiledb/sm/query/writer.h"
 #include "tiledb/sm/serialization/query.h"
 
 #ifdef _WIN32
@@ -46,7 +48,12 @@
 #include "tiledb/sm/filesystem/posix.h"
 #endif
 
+#include <any>
+#include <cassert>
+#include <map>
+
 using namespace tiledb;
+using ResultSetType = std::map<std::string, std::any>;
 
 namespace {
 
@@ -61,6 +68,33 @@ static std::string current_dir() {
   return sm::Posix::current_dir();
 }
 #endif
+
+template <class T>
+bool check_result(const T a, const T b, size_t start, size_t end) {
+  auto a_exp = T(a.begin() + start, a.begin() + end);
+  auto b_exp = T(b.begin() + start, b.begin() + end);
+  return a_exp == b_exp;
+}
+
+template <class TResult, class TExpected>
+bool check_result(
+    const TResult a,
+    const TExpected b,
+    std::optional<size_t> start = nullopt,
+    std::optional<size_t> end = nullopt) {
+  TResult b_typed;
+  if constexpr (std::is_same<TExpected, std::any>::value) {
+    b_typed = std::any_cast<TResult>(b);
+  } else {
+    b_typed = b;
+  }
+  if (start.has_value()) {
+    assert(end.has_value());
+    return check_result(a, b_typed, *start, *end);
+  } else {
+    return check_result(a, b_typed, 0, b_typed.size());
+  }
+}
 
 struct SerializationFx {
   const std::string tmpdir = "serialization_test_dir";
@@ -86,6 +120,28 @@ struct SerializationFx {
       vfs.remove_dir(tmpdir);
   }
 
+  static void check_read_stats(const Query& query) {
+    auto stats = ((sm::Writer*)query.ptr()->query_->strategy())->stats();
+    REQUIRE(stats != nullptr);
+    auto counters = stats->counters();
+    REQUIRE(counters != nullptr);
+    auto loop_num =
+        counters->find("Context.StorageManager.Query.Reader.loop_num");
+    REQUIRE((loop_num != counters->end()));
+    REQUIRE(loop_num->second > 0);
+  }
+
+  static void check_write_stats(const Query& query) {
+    auto stats = ((sm::Reader*)query.ptr()->query_->strategy())->stats();
+    REQUIRE(stats != nullptr);
+    auto counters = stats->counters();
+    REQUIRE(counters != nullptr);
+    auto loop_num =
+        counters->find("Context.StorageManager.Query.Writer.attr_num");
+    REQUIRE((loop_num != counters->end()));
+    REQUIRE(loop_num->second > 0);
+  }
+
   void create_array(tiledb_array_type_t type) {
     ArraySchema schema(ctx, type);
     Domain domain(ctx);
@@ -102,7 +158,7 @@ struct SerializationFx {
     Array::create(array_uri, schema);
   }
 
-  void write_dense_array() {
+  ResultSetType write_dense_array() {
     std::vector<int32_t> subarray = {1, 10, 1, 10};
     std::vector<uint32_t> a1;
     std::vector<uint32_t> a2;
@@ -125,14 +181,23 @@ struct SerializationFx {
       a3_data.insert(a3_data.end(), a3.begin(), a3.end());
     }
 
+    ResultSetType results;
+    results["a1"] = a1;
+    results["a2"] = a2;
+    results["a2_nullable"] = a2_nullable;
+    results["a3_data"] = a3_data;
+    results["a3_offsets"] = a3_offsets;
+
     Array array(ctx, array_uri, TILEDB_WRITE);
     Query query(ctx, array);
     Subarray cppapi_subarray(ctx, array);
     cppapi_subarray.set_subarray(subarray);
     query.set_subarray(cppapi_subarray);
-    query.set_buffer("a1", a1);
-    query.set_buffer_nullable("a2", a2, a2_nullable);
-    query.set_buffer("a3", a3_offsets, a3_data);
+    query.set_data_buffer("a1", a1);
+    query.set_data_buffer("a2", a2);
+    query.set_validity_buffer("a2", a2_nullable);
+    query.set_data_buffer("a3", a3_data);
+    query.set_offsets_buffer("a3", a3_offsets);
 
     // Serialize into a copy and submit.
     std::vector<uint8_t> serialized;
@@ -141,8 +206,17 @@ struct SerializationFx {
     Query query2(ctx, array2);
     deserialize_query(ctx, serialized, &query2, false);
     query2.submit();
+
+    // Make sure query2 has logged stats
+    check_write_stats(query2);
+
     serialize_query(ctx, query2, &serialized, false);
     deserialize_query(ctx, serialized, &query, true);
+
+    // The deserialized query should also include the write stats
+    check_write_stats(query);
+
+    return results;
   }
 
   void write_dense_array_ranges() {
@@ -174,9 +248,11 @@ struct SerializationFx {
     cppapi_subarray.add_range(0, subarray[0], subarray[1]);
     cppapi_subarray.add_range(1, subarray[2], subarray[3]);
     query.set_subarray(cppapi_subarray);
-    query.set_buffer("a1", a1);
-    query.set_buffer_nullable("a2", a2, a2_nullable);
-    query.set_buffer("a3", a3_offsets, a3_data);
+    query.set_data_buffer("a1", a1);
+    query.set_data_buffer("a2", a2);
+    query.set_validity_buffer("a2", a2_nullable);
+    query.set_data_buffer("a3", a3_data);
+    query.set_offsets_buffer("a3", a3_offsets);
 
     // Serialize into a copy and submit.
     std::vector<uint8_t> serialized;
@@ -216,9 +292,11 @@ struct SerializationFx {
     Query query(ctx, array);
     query.set_layout(TILEDB_UNORDERED);
     query.set_coordinates(coords);
-    query.set_buffer("a1", a1);
-    query.set_buffer_nullable("a2", a2, a2_nullable);
-    query.set_buffer("a3", a3_offsets, a3_data);
+    query.set_data_buffer("a1", a1);
+    query.set_data_buffer("a2", a2);
+    query.set_validity_buffer("a2", a2_nullable);
+    query.set_data_buffer("a3", a3_data);
+    query.set_offsets_buffer("a3", a3_offsets);
 
     // Serialize into a copy and submit.
     std::vector<uint8_t> serialized;
@@ -259,11 +337,13 @@ struct SerializationFx {
     Array array(ctx, array_uri, TILEDB_WRITE);
     Query query(ctx, array);
     query.set_layout(TILEDB_UNORDERED);
-    query.set_buffer("d1", d1);
-    query.set_buffer("d2", d2);
-    query.set_buffer("a1", a1);
-    query.set_buffer_nullable("a2", a2, a2_nullable);
-    query.set_buffer("a3", a3_offsets, a3_data);
+    query.set_data_buffer("d1", d1);
+    query.set_data_buffer("d2", d2);
+    query.set_data_buffer("a1", a1);
+    query.set_data_buffer("a2", a2);
+    query.set_validity_buffer("a2", a2_nullable);
+    query.set_data_buffer("a3", a3_data);
+    query.set_offsets_buffer("a3", a3_offsets);
 
     // Serialize into a copy and submit.
     std::vector<uint8_t> serialized;
@@ -375,25 +455,22 @@ struct SerializationFx {
     uint8_t* unused3;
     uint64_t *a1_size, *a2_size, *a2_validity_size, *a3_size, *a3_offset_size,
         *coords_size;
-    ctx.handle_error(tiledb_query_get_buffer(
+    ctx.handle_error(tiledb_query_get_data_buffer(
         ctx.ptr().get(), query->ptr().get(), "a1", &unused1, &a1_size));
-    ctx.handle_error(tiledb_query_get_buffer_nullable(
+    ctx.handle_error(tiledb_query_get_data_buffer(
+        ctx.ptr().get(), query->ptr().get(), "a2", &unused1, &a2_size));
+    ctx.handle_error(tiledb_query_get_validity_buffer(
         ctx.ptr().get(),
         query->ptr().get(),
         "a2",
-        &unused1,
-        &a2_size,
         &unused3,
         &a2_validity_size));
-    ctx.handle_error(tiledb_query_get_buffer_var(
-        ctx.ptr().get(),
-        query->ptr().get(),
-        "a3",
-        &unused2,
-        &a3_offset_size,
-        &unused1,
-        &a3_size));
-    ctx.handle_error(tiledb_query_get_buffer(
+
+    ctx.handle_error(tiledb_query_get_data_buffer(
+        ctx.ptr().get(), query->ptr().get(), "a3", &unused1, &a3_size));
+    ctx.handle_error(tiledb_query_get_offsets_buffer(
+        ctx.ptr().get(), query->ptr().get(), "a3", &unused2, &a3_offset_size));
+    ctx.handle_error(tiledb_query_get_data_buffer(
         ctx.ptr().get(),
         query->ptr().get(),
         TILEDB_COORDS,
@@ -402,7 +479,7 @@ struct SerializationFx {
 
     if (a1_size != nullptr) {
       void* buff = std::malloc(*a1_size);
-      ctx.handle_error(tiledb_query_set_buffer(
+      ctx.handle_error(tiledb_query_set_data_buffer(
           ctx.ptr().get(), query->ptr().get(), "a1", buff, a1_size));
       to_free.push_back(buff);
     }
@@ -410,35 +487,32 @@ struct SerializationFx {
     if (a2_size != nullptr) {
       void* buff = std::malloc(*a2_size);
       uint8_t* validity = (uint8_t*)std::malloc(*a2_validity_size);
-      ctx.handle_error(tiledb_query_set_buffer_nullable(
+      ctx.handle_error(tiledb_query_set_data_buffer(
+          ctx.ptr().get(), query->ptr().get(), "a2", buff, a2_size));
+      ctx.handle_error(tiledb_query_set_validity_buffer(
           ctx.ptr().get(),
           query->ptr().get(),
           "a2",
-          buff,
-          a2_size,
           validity,
           a2_validity_size));
       to_free.push_back(buff);
+      to_free.push_back(validity);
     }
 
     if (a3_size != nullptr) {
       void* buff = std::malloc(*a3_size);
       uint64_t* offsets = (uint64_t*)std::malloc(*a3_offset_size);
-      ctx.handle_error(tiledb_query_set_buffer_var(
-          ctx.ptr().get(),
-          query->ptr().get(),
-          "a3",
-          offsets,
-          a3_offset_size,
-          buff,
-          a3_size));
+      ctx.handle_error(tiledb_query_set_data_buffer(
+          ctx.ptr().get(), query->ptr().get(), "a3", buff, a3_size));
+      ctx.handle_error(tiledb_query_set_offsets_buffer(
+          ctx.ptr().get(), query->ptr().get(), "a3", offsets, a3_offset_size));
       to_free.push_back(buff);
       to_free.push_back(offsets);
     }
 
     if (coords_size != nullptr) {
       void* buff = std::malloc(*coords_size);
-      ctx.handle_error(tiledb_query_set_buffer(
+      ctx.handle_error(tiledb_query_set_data_buffer(
           ctx.ptr().get(),
           query->ptr().get(),
           TILEDB_COORDS,
@@ -458,7 +532,7 @@ TEST_CASE_METHOD(
     "subarray - Query serialization, dense",
     "[query][dense][serialization]") {
   create_array(TILEDB_DENSE);
-  write_dense_array();
+  auto expected_results = write_dense_array();
 
   SECTION("- Read all") {
     Array array(ctx, array_uri, TILEDB_READ);
@@ -474,9 +548,11 @@ TEST_CASE_METHOD(
     cppapi_subarray.set_layout(query.query_layout());
     cppapi_subarray.set_subarray(subarray);
     query.set_subarray(cppapi_subarray);
-    query.set_buffer("a1", a1);
-    query.set_buffer_nullable("a2", a2, a2_nullable);
-    query.set_buffer("a3", a3_offsets, a3_data);
+    query.set_data_buffer("a1", a1);
+    query.set_data_buffer("a2", a2);
+    query.set_validity_buffer("a2", a2_nullable);
+    query.set_data_buffer("a3", a3_data);
+    query.set_offsets_buffer("a3", a3_offsets);
 
     // Serialize into a copy (client side).
     std::vector<uint8_t> serialized;
@@ -507,6 +583,73 @@ TEST_CASE_METHOD(
       std::free(b);
   }
 
+  SECTION("- Read all, with condition") {
+    Array array(ctx, array_uri, TILEDB_READ);
+    Query query(ctx, array);
+    std::vector<uint32_t> a1(1000);
+    std::vector<uint32_t> a2(1000);
+    std::vector<uint8_t> a2_nullable(500);
+    std::vector<char> a3_data(1000 * 100);
+    std::vector<uint64_t> a3_offsets(1000);
+    std::vector<int32_t> subarray = {1, 10, 1, 10};
+
+    Subarray cppapi_subarray(ctx, array);
+    cppapi_subarray.set_subarray(subarray);
+    query.set_subarray(cppapi_subarray);
+    query.set_data_buffer("a1", a1);
+    query.set_data_buffer("a2", a2);
+    query.set_validity_buffer("a2", a2_nullable);
+    query.set_data_buffer("a3", a3_data);
+    query.set_offsets_buffer("a3", a3_offsets);
+
+    uint32_t cmp_value = 5;
+    QueryCondition condition(ctx);
+    condition.init("a1", &cmp_value, sizeof(uint32_t), TILEDB_LT);
+    query.set_condition(condition);
+
+    // Serialize into a copy (client side).
+    std::vector<uint8_t> serialized;
+    serialize_query(ctx, query, &serialized, true);
+
+    // Deserialize into a new query and allocate buffers (server side).
+    Array array2(ctx, array_uri, TILEDB_READ);
+    Query query2(ctx, array2);
+    deserialize_query(ctx, serialized, &query2, false);
+    auto to_free = allocate_query_buffers(ctx, array2, &query2);
+
+    // Submit and serialize results (server side).
+    query2.submit();
+    serialize_query(ctx, query2, &serialized, false);
+
+    // Make sure query2 has logged stats
+    check_read_stats(query2);
+
+    // Deserialize into original query (client side).
+    deserialize_query(ctx, serialized, &query, true);
+    REQUIRE(query.query_status() == Query::Status::COMPLETE);
+
+    // The deserialized query should also include the write stats
+    check_read_stats(query);
+
+    // We expect all cells where `a1` >= `cmp_value` to be filtered
+    // out.
+    auto result_el = query.result_buffer_elements_nullable();
+    REQUIRE(std::get<1>(result_el["a1"]) == 5);
+    REQUIRE(std::get<1>(result_el["a2"]) == 10);
+    REQUIRE(std::get<2>(result_el["a2"]) == 5);
+    REQUIRE(std::get<0>(result_el["a3"]) == 5);
+    REQUIRE(std::get<1>(result_el["a3"]) == 15);
+
+    REQUIRE(check_result(a1, expected_results["a1"], 0, 5));
+    REQUIRE(check_result(a2, expected_results["a2"], 0, 10));
+    REQUIRE(check_result(a2_nullable, expected_results["a2_nullable"], 0, 5));
+    REQUIRE(check_result(a3_data, expected_results["a3_data"], 0, 15));
+    REQUIRE(check_result(a3_offsets, expected_results["a3_offsets"], 0, 5));
+
+    for (void* b : to_free)
+      std::free(b);
+  }
+
   SECTION("- Read subarray") {
     Array array(ctx, array_uri, TILEDB_READ);
     Query query(ctx, array);
@@ -521,9 +664,11 @@ TEST_CASE_METHOD(
     cppapi_subarray.set_layout(query.query_layout());
     cppapi_subarray.set_subarray(subarray);
     query.set_subarray(cppapi_subarray);
-    query.set_buffer("a1", a1);
-    query.set_buffer_nullable("a2", a2, a2_nullable);
-    query.set_buffer("a3", a3_offsets, a3_data);
+    query.set_data_buffer("a1", a1);
+    query.set_data_buffer("a2", a2);
+    query.set_validity_buffer("a2", a2_nullable);
+    query.set_data_buffer("a3", a3_data);
+    query.set_offsets_buffer("a3", a3_offsets);
 
     // Serialize into a copy (client side).
     std::vector<uint8_t> serialized;
@@ -569,9 +714,11 @@ TEST_CASE_METHOD(
     query.set_subarray(cppapi_subarray);
 
     auto set_buffers = [&](Query& q) {
-      q.set_buffer("a1", a1);
-      q.set_buffer_nullable("a2", a2, a2_nullable);
-      q.set_buffer("a3", a3_offsets, a3_data);
+      q.set_data_buffer("a1", a1);
+      q.set_data_buffer("a2", a2);
+      q.set_validity_buffer("a2", a2_nullable);
+      q.set_data_buffer("a3", a3_data);
+      q.set_offsets_buffer("a3", a3_offsets);
     };
 
     auto serialize_and_submit = [&](Query& q) {
@@ -657,9 +804,11 @@ TEST_CASE_METHOD(
     query.set_subarray(cppapi_subarray);
 
     query.set_coordinates(coords);
-    query.set_buffer("a1", a1);
-    query.set_buffer_nullable("a2", a2, a2_nullable);
-    query.set_buffer("a3", a3_offsets, a3_data);
+    query.set_data_buffer("a1", a1);
+    query.set_data_buffer("a2", a2);
+    query.set_validity_buffer("a2", a2_nullable);
+    query.set_data_buffer("a3", a3_data);
+    query.set_offsets_buffer("a3", a3_offsets);
 
     // Serialize into a copy and submit.
     std::vector<uint8_t> serialized;
@@ -709,9 +858,11 @@ TEST_CASE_METHOD(
     cppapi_subarray.set_subarray(subarray);
     query.set_subarray(cppapi_subarray);
     query.set_coordinates(coords);
-    query.set_buffer("a1", a1);
-    query.set_buffer_nullable("a2", a2, a2_nullable);
-    query.set_buffer("a3", a3_offsets, a3_data);
+    query.set_data_buffer("a1", a1);
+    query.set_data_buffer("a2", a2);
+    query.set_validity_buffer("a2", a2_nullable);
+    query.set_data_buffer("a3", a3_data);
+    query.set_offsets_buffer("a3", a3_offsets);
 
     // Serialize into a copy and submit.
     std::vector<uint8_t> serialized;
@@ -762,9 +913,11 @@ TEST_CASE_METHOD(
     cppapi_subarray.add_range(1, subarray[2], subarray[3]);
     cppapi_subarray.set_layout(query.query_layout());
     query.set_subarray(cppapi_subarray);
-    query.set_buffer("a1", a1);
-    query.set_buffer_nullable("a2", a2, a2_nullable);
-    query.set_buffer("a3", a3_offsets, a3_data);
+    query.set_data_buffer("a1", a1);
+    query.set_data_buffer("a2", a2);
+    query.set_validity_buffer("a2", a2_nullable);
+    query.set_data_buffer("a3", a3_data);
+    query.set_offsets_buffer("a3", a3_offsets);
 
     // Serialize into a copy (client side).
     std::vector<uint8_t> serialized;
@@ -810,9 +963,11 @@ TEST_CASE_METHOD(
     cppapi_subarray.add_range(1, subarray[2], subarray[3]);
     cppapi_subarray.set_layout(query.query_layout());
     query.set_subarray(cppapi_subarray);
-    query.set_buffer("a1", a1);
-    query.set_buffer_nullable("a2", a2, a2_nullable);
-    query.set_buffer("a3", a3_offsets, a3_data);
+    query.set_data_buffer("a1", a1);
+    query.set_data_buffer("a2", a2);
+    query.set_validity_buffer("a2", a2_nullable);
+    query.set_data_buffer("a3", a3_data);
+    query.set_offsets_buffer("a3", a3_offsets);
 
     // Serialize into a copy (client side).
     std::vector<uint8_t> serialized;
@@ -859,9 +1014,11 @@ TEST_CASE_METHOD(
     query.set_subarray(cppapi_subarray);
 
     auto set_buffers = [&](Query& q) {
-      q.set_buffer("a1", a1);
-      q.set_buffer_nullable("a2", a2, a2_nullable);
-      q.set_buffer("a3", a3_offsets, a3_data);
+      q.set_data_buffer("a1", a1);
+      q.set_data_buffer("a2", a2);
+      q.set_validity_buffer("a2", a2_nullable);
+      q.set_data_buffer("a3", a3_data);
+      q.set_offsets_buffer("a3", a3_offsets);
     };
 
     auto serialize_and_submit = [&](Query& q) {

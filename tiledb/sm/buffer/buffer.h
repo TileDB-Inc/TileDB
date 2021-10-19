@@ -44,9 +44,9 @@ namespace sm {
 
 class ConstBuffer;
 
-//=======================================================
-// BufferBase
-//=======================================================
+/* ****************************** */
+/*          BufferBase            */
+/* ****************************** */
 /**
  * Base class for `Buffer`, `ConstBuffer`, and `PreallocatedBuffer`
  *
@@ -88,6 +88,16 @@ class BufferBase {
    */
   Status read(void* destination, uint64_t nbytes);
 
+  /**
+   * Reads from the local data at an offset into the input buffer.
+   *
+   * @param destination The buffer to read the data into.
+   * @param offset The input offset.
+   * @param nbytes The number of bytes to read.
+   * @return Status
+   */
+  Status read(void* destination, uint64_t offset, uint64_t nbytes);
+
  protected:
   BufferBase();
   BufferBase(void* data, uint64_t size);
@@ -119,9 +129,9 @@ class BufferBase {
   uint64_t offset_;
 };
 
-//=======================================================
-// Buffer
-//=======================================================
+/* ****************************** */
+/*            Buffer              */
+/* ****************************** */
 /**
  * General-purpose buffer. Manages own memory. Writeable.
  */
@@ -259,7 +269,7 @@ class Buffer : public BufferBase {
 
   /**
    * Writes exactly *nbytes* into the local buffer by reading from the
-   * input buffer *buf*.
+   * input buffer *buff*.
    *
    * @param buff The buffer to read from.
    * @param nbytes Number of bytes to write.
@@ -269,13 +279,24 @@ class Buffer : public BufferBase {
 
   /**
    * Writes exactly *nbytes* into the local buffer by reading from the
-   * input buffer *buf*.
+   * input buffer *buffer*.
    *
    * @param buffer The buffer to read from.
    * @param nbytes Number of bytes to write.
    * @return Status.
    */
   Status write(const void* buffer, uint64_t nbytes);
+
+  /**
+   * Writes exactly *nbytes* into the local buffer at offset 'offset'
+   * by reading from the input buffer *buffer*.
+   *
+   * @param buffer The buffer to read from.
+   * @param offset The offset to write in the local buffer.
+   * @param nbytes Number of bytes to write.
+   * @return Status.
+   */
+  Status write(const void* buffer, uint64_t offset, uint64_t nbytes);
 
  private:
   /**
@@ -297,9 +318,9 @@ class Buffer : public BufferBase {
   Status ensure_alloced_size(uint64_t nbytes);
 };
 
-//=======================================================
-// ConstBuffer
-//=======================================================
+/* ****************************** */
+/*          ConstBuffer           */
+/* ****************************** */
 /**
  * A read-only buffer fully-initialized at construction. It does not manage
  * memory; its storage is subordinate to some other object.
@@ -357,9 +378,9 @@ class ConstBuffer : public BufferBase {
   }
 };
 
-//=======================================================
-// PreallocatedBuffer
-//=======================================================
+/* ****************************** */
+/*       PreallocatedBuffer       */
+/* ****************************** */
 /**
  * Writeable buffer that uses pre-allocated storage provided externally. Does
  * not expand storage on write.

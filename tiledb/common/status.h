@@ -86,6 +86,7 @@ enum class StatusCode : char {
   StorageManager,
   FragmentMetadata,
   ArraySchema,
+  ArraySchemaEvolution,
   Metadata,
   IO,
   Mem,
@@ -93,7 +94,6 @@ enum class StatusCode : char {
   Compression,
   Tile,
   TileIO,
-  ChunkedBuffer,
   Buffer,
   Query,
   ValidityVector,
@@ -116,6 +116,8 @@ enum class StatusCode : char {
   Attribute,
   WriteCellSlabIter,
   SparseGlobalOrderReaderError,
+  SparseUnorderedWithDupsReaderError,
+  DenseReaderError,
   Reader,
   Writer,
   PreallocatedBuffer,
@@ -189,6 +191,11 @@ class Status {
     return Status(StatusCode::ArraySchema, msg, -1);
   }
 
+  /** Return a ArraySchemaEvolution error class Status with a given message **/
+  static Status ArraySchemaEvolutionError(const std::string& msg) {
+    return Status(StatusCode::ArraySchemaEvolution, msg, -1);
+  }
+
   /** Return a Metadata error class Status with a given message **/
   static Status MetadataError(const std::string& msg) {
     return Status(StatusCode::Metadata, msg, -1);
@@ -227,11 +234,6 @@ class Status {
   /** Return a TileIOError error class Status with a given message **/
   static Status TileIOError(const std::string& msg) {
     return Status(StatusCode::TileIO, msg, -1);
-  }
-
-  /** Return a ChunkedBufferError error class Status with a given message **/
-  static Status ChunkedBufferError(const std::string& msg) {
-    return Status(StatusCode::ChunkedBuffer, msg, -1);
   }
 
   /** Return a BufferError error class Status with a given message **/
@@ -344,6 +346,17 @@ class Status {
    * message **/
   static Status SparseGlobalOrderReaderError(const std::string& msg) {
     return Status(StatusCode::SparseGlobalOrderReaderError, msg, -1);
+  }
+
+  /** Return a SparseUnorderedWithDupsReaderError error class Status with a
+   * given message **/
+  static Status SparseUnorderedWithDupsReaderError(const std::string& msg) {
+    return Status(StatusCode::SparseUnorderedWithDupsReaderError, msg, -1);
+  }
+
+  /** Return a DenseReaderError error class Status with a given message **/
+  static Status DenseReaderError(const std::string& msg) {
+    return Status(StatusCode::DenseReaderError, msg, -1);
   }
 
   /** Return a ReaderError error class Status with a given message **/

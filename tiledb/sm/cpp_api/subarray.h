@@ -133,6 +133,13 @@ class Subarray {
     return *this;
   }
 
+  /** Replace/update -this- Subarray's shared_ptr to data to reference the
+   * passed subarray.
+   *
+   * @param capi_subarray is a c_api subarray to be referenced by this cpp_api
+   * subarray entity.
+   */
+
   Subarray& replace_subarray_data(tiledb_subarray_t* capi_subarray) {
     subarray_ = std::shared_ptr<tiledb_subarray_t>(capi_subarray, deleter_);
     return *this;
@@ -268,7 +275,6 @@ class Subarray {
    * @param end The range end to add.
    * @return Reference to this Query
    */
-  TILEDB_DEPRECATED
   Subarray& add_range(
       const std::string& dim_name,
       const std::string& start,

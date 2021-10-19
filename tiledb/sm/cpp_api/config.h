@@ -49,10 +49,16 @@ class Config;  // Forward decl for impl classes
 
 namespace impl {
 
-class ConfigIter : public std::iterator<
-                       std::forward_iterator_tag,
-                       const std::pair<std::string, std::string>> {
+class ConfigIter  //: public std::iterator<
+                  //      std::forward_iterator_tag,
+                  //      const std::pair<std::string, std::string>> {
+{
  public:
+  using iterator_category = std::forward_iterator_tag;
+  using value_type = const std::pair<std::string, std::string>;
+  using difference_type = std::ptrdiff_t;
+  using pointer = value_type*;
+  using reference = value_type&;
   /* ********************************* */
   /*     CONSTRUCTORS & DESTRUCTORS    */
   /* ********************************* */
@@ -387,6 +393,10 @@ class Config {
    * - `sm.use_refactored_readers` <br>
    *    Use the refactored readers or not. <br>
    *    **Default**: false
+   * - `sm.mem.malloc_trim` <br>
+   *    Should malloc_trim be called on context and query destruction? This
+   *    might reduce residual memory usage. <br>
+   *    **Default**: true
    * - `sm.mem.total_budget` <br>
    *    Memory budget for readers and writers. <br>
    *    **Default**: 10GB
@@ -406,6 +416,37 @@ class Config {
    *    Ratio of the budget allocated for array data in the sparse global
    *    order reader. <br>
    *    **Default**: 0.1
+   * - `sm.mem.reader.sparse_global_order.ratio_result_tiles` <br>
+   *    Ratio of the budget allocated for result tiles in the sparse global
+   *    order reader. <br>
+   *    **Default**: 0.05
+   * - `sm.mem.reader.sparse_global_order.ratio_rcs` <br>
+   *    Ratio of the budget allocated for result cell slabs in the sparse
+   *    global order reader. <br>
+   *    **Default**: 0.05
+   * - `sm.mem.reader.sparse_unordered_with_dups.ratio_coords` <br>
+   *    Ratio of the budget allocated for coordinates in the sparse unordered
+   *    with duplicates reader. <br>
+   *    **Default**: 0.5
+   * - `sm.mem.reader.sparse_unordered_with_dups.ratio_query_condition` <br>
+   *    Ratio of the budget allocated for the query condition in the sparse
+   *    unordered with duplicates reader. <br>
+   *    **Default**: 0.25
+   * - `sm.mem.reader.sparse_unordered_with_dups.ratio_tile_ranges` <br>
+   *    Ratio of the budget allocated for tile ranges in the sparse unordered
+   *    with duplicates reader. <br>
+   *    **Default**: 0.1
+   * - `sm.mem.reader.sparse_unordered_with_dups.ratio_array_data` <br>
+   *    Ratio of the budget allocated for array data in the sparse unordered
+   *    with duplicates reader. <br>
+   *    **Default**: 0.1
+   * - `sm.mem.reader.sparse_unordered_with_dups.ratio_result_tiles` <br>
+   *    Ratio of the budget allocated for result tiles in the sparse
+   *    unordered with duplicates reader. <br>
+   *    **Default**: 0.05
+   * - `sm.mem.reader.sparse_unordered_with_dups.ratio_rcs` <br>
+   *    Ratio of the budget allocated for result cell slabs in the sparse
+   *    unordered with duplicates reader. <br>
    * - `vfs.read_ahead_size` <br>
    *    The maximum byte size to read-ahead from the backend. <br>
    *    **Default**: 102400

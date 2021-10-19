@@ -281,12 +281,9 @@ Status Subarray::add_range_var(
     return LOG_STATUS(
         Status::SubarrayError("Cannot add range; Invalid dimension index"));
 
-  if (start == nullptr || end == nullptr)
+  if ((start == nullptr && start_size != 0) ||
+      (end == nullptr && end_size != 0))
     return LOG_STATUS(Status::SubarrayError("Cannot add range; Invalid range"));
-
-  if (start_size == 0 || end_size == 0)
-    return LOG_STATUS(Status::SubarrayError(
-        "Cannot add range; Range start/end cannot have zero length"));
 
   if (!array_->array_schema()->domain()->dimension(dim_idx)->var_size())
     return LOG_STATUS(Status::SubarrayError(
@@ -297,6 +294,16 @@ Status Subarray::add_range_var(
   if (array_query_type == tiledb::sm::QueryType::WRITE)
     return LOG_STATUS(Status::SubarrayError(
         "Cannot add range; Function applicable only to reads"));
+
+  // Get read_range_oob config setting
+  bool found = false;
+  std::string read_range_oob = config_.get("sm.read_range_oob", &found);
+  assert(found);
+
+  if (read_range_oob != "error" && read_range_oob != "warn")
+    return LOG_STATUS(Status::SubarrayError(
+        "Invalid value " + read_range_oob +
+        " for sm.read_range_obb. Acceptable values are 'error' or 'warn'."));
 
   // Add range
   Range r;
@@ -546,16 +553,18 @@ Subarray Subarray::crop_to_tile(const T* tile_coords, Layout layout) const {
   for (unsigned d = 0; d < dim_num(); ++d) {
     auto r_size = 2 * array_schema->dimension(d)->coord_size();
     for (size_t r = 0; r < ranges_[d].size(); ++r) {
-      const auto& range = ranges_[d][r];
-      utils::geometry::overlap(
-          (const T*)range.data(),
-          &tile_subarray[2 * d],
-          1,
-          new_range,
-          &overlaps);
+      if (!is_default_[d]) {
+        const auto& range = ranges_[d][r];
+        utils::geometry::overlap(
+            (const T*)range.data(),
+            &tile_subarray[2 * d],
+            1,
+            new_range,
+            &overlaps);
 
-      if (overlaps)
-        ret.add_range_unsafe(d, Range(new_range, r_size));
+        if (overlaps)
+          ret.add_range_unsafe(d, Range(new_range, r_size));
+      }
     }
   }
 
@@ -680,8 +689,10 @@ Subarray Subarray::get_subarray(uint64_t start, uint64_t end) const {
 
   auto dim_num = this->dim_num();
   for (unsigned d = 0; d < dim_num; ++d) {
-    for (uint64_t r = start_coords[d]; r <= end_coords[d]; ++r) {
-      ret.add_range_unsafe(d, ranges_[d][r]);
+    if (!is_default_[d]) {
+      for (uint64_t r = start_coords[d]; r <= end_coords[d]; ++r) {
+        ret.add_range_unsafe(d, ranges_[d][r]);
+      }
     }
   }
 
@@ -1452,8 +1463,10 @@ Status Subarray::split(
       RETURN_NOT_OK(r1->add_range_unsafe(d, sr1));
       RETURN_NOT_OK(r2->add_range_unsafe(d, sr2));
     } else {
-      RETURN_NOT_OK(r1->add_range_unsafe(d, r));
-      RETURN_NOT_OK(r2->add_range_unsafe(d, r));
+      if (!is_default_[d]) {
+        RETURN_NOT_OK(r1->add_range_unsafe(d, r));
+        RETURN_NOT_OK(r2->add_range_unsafe(d, r));
+      }
     }
   }
 
@@ -1480,10 +1493,12 @@ Status Subarray::split(
   for (unsigned d = 0; d < dim_num; ++d) {
     RETURN_NOT_OK(this->get_range_num(d, &range_num));
     if (d != splitting_dim) {
-      for (uint64_t j = 0; j < range_num; ++j) {
-        const auto& r = ranges_[d][j];
-        RETURN_NOT_OK(r1->add_range_unsafe(d, r));
-        RETURN_NOT_OK(r2->add_range_unsafe(d, r));
+      if (!is_default_[d]) {
+        for (uint64_t j = 0; j < range_num; ++j) {
+          const auto& r = ranges_[d][j];
+          RETURN_NOT_OK(r1->add_range_unsafe(d, r));
+          RETURN_NOT_OK(r2->add_range_unsafe(d, r));
+        }
       }
     } else {                                // d == splitting_dim
       if (splitting_range != UINT64_MAX) {  // Need to split multiple ranges
@@ -1635,6 +1650,12 @@ Status Subarray::compute_relevant_fragment_est_result_sizes(
       if (it.second) {  // If the fragment/tile pair is new
         auto meta = fragment_metadata[ft.first];
         for (size_t i = 0; i < names.size(); ++i) {
+          // If this attribute does not exist, skip it as this is likely a new
+          // attribute added as a result of schema evolution
+          if (!meta->array_schema()->is_field(names[i])) {
+            continue;
+          }
+
           tile_size = meta->tile_size(names[i], ft.second);
           auto cell_size = array_schema->cell_size(names[i]);
           if (!var_sizes[i]) {
@@ -2044,7 +2065,7 @@ Status Subarray::compute_relevant_fragment_est_result_sizes(
     const ArraySchema* array_schema,
     bool all_dims_same_type,
     bool all_dims_fixed,
-    const std::vector<FragmentMetadata*>& fragment_meta,
+    const std::vector<tdb_shared_ptr<FragmentMetadata>>& fragment_meta,
     const std::vector<std::string>& names,
     const std::vector<bool>& var_sizes,
     const std::vector<bool>& nullable,
@@ -2073,6 +2094,12 @@ Status Subarray::compute_relevant_fragment_est_result_sizes(
           // Zipped coords applicable only in homogeneous domains
           if (names[n] == constants::coords && !all_dims_same_type)
             continue;
+
+          // If this attribute does not exist, skip it as this is likely a new
+          // attribute added as a result of schema evolution
+          if (!meta->array_schema()->is_field(names[n])) {
+            continue;
+          }
 
           frag_tiles->insert(std::pair<unsigned, uint64_t>(f, tid));
           tile_size = meta->tile_size(names[n], tid);
@@ -2105,6 +2132,12 @@ Status Subarray::compute_relevant_fragment_est_result_sizes(
         // Zipped coords applicable only in homogeneous domains
         if (names[n] == constants::coords && !all_dims_same_type)
           continue;
+
+        // If this attribute does not exist, skip it as this is likely a new
+        // attribute added as a result of schema evolution
+        if (!meta->array_schema()->is_field(names[n])) {
+          continue;
+        }
 
         frag_tiles->insert(std::pair<unsigned, uint64_t>(f, tid));
         tile_size = meta->tile_size(names[n], tid);
@@ -2703,7 +2736,7 @@ Status Subarray::compute_relevant_fragments_for_dim(
     const std::vector<uint64_t>& start_coords,
     const std::vector<uint64_t>& end_coords,
     std::vector<uint8_t>* const frag_bytemap) const {
-  const std::vector<FragmentMetadata*> meta = array_->fragment_metadata();
+  const auto meta = array_->fragment_metadata();
   const Dimension* const dim = array_->array_schema()->dimension(dim_idx);
 
   return parallel_for(compute_tp, 0, fragment_num, [&](const uint64_t f) {
@@ -2771,7 +2804,7 @@ Status Subarray::compute_relevant_fragment_tile_overlap(
 }
 
 Status Subarray::compute_relevant_fragment_tile_overlap(
-    FragmentMetadata* meta,
+    tdb_shared_ptr<FragmentMetadata> meta,
     unsigned frag_idx,
     bool dense,
     ThreadPool* const compute_tp,
@@ -2827,6 +2860,12 @@ Status Subarray::load_relevant_fragment_tile_var_sizes(
     const auto status = parallel_for(
         compute_tp, 0, relevant_fragments_.size(), [&](const size_t i) {
           auto f = relevant_fragments_[i];
+          // Gracefully skip loading tile sizes for attributes added in schema
+          // evolution that do not exists in this fragment
+          auto schema = meta[f]->array_schema();
+          if (!schema->is_field(var_name))
+            return Status::Ok();
+
           return meta[f]->load_tile_var_sizes(*encryption_key, var_name);
         });
 

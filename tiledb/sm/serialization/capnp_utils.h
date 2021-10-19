@@ -50,6 +50,7 @@ using namespace tiledb::common;
 
 namespace tiledb {
 namespace sm {
+class Attribute;
 namespace serialization {
 
 /**
@@ -69,6 +70,25 @@ Status config_to_capnp(
  */
 Status config_from_capnp(
     const capnp::Config::Reader& config_reader, tdb_unique_ptr<Config>* config);
+
+/**
+ * Serialize an attribute into a cap'n proto class
+ * @param attribute attribute to serialize
+ * @param attribute_builder cap'n proto message class
+ * @return Status
+ */
+Status attribute_to_capnp(
+    const Attribute* attribute, capnp::Attribute::Builder* attribute_builder);
+
+/**
+ * Create an attribute object from a cap'n proto class
+ * @param attribute_reader cap'n proto message class
+ * @param attribute attribute to deserialize into
+ * @return Status
+ */
+Status attribute_from_capnp(
+    const capnp::Attribute::Reader& attribute_reader,
+    tdb_unique_ptr<Attribute>* attribute);
 
 };  // namespace serialization
 };  // namespace sm

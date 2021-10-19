@@ -510,10 +510,8 @@ typedef struct tiledb_array_t tiledb_array_t;
 /** A subarray object. */
 typedef struct tiledb_subarray_t tiledb_subarray_t;
 
-#if DEVING_SUBARRAY_PARTITIONER
 /** A subarray partitioner object. */
 typedef struct tiledb_subarray_partitioner_t tiledb_subarray_partitioner_t;
-#endif
 
 /** A generic buffer object. */
 typedef struct tiledb_buffer_t tiledb_buffer_t;
@@ -1060,6 +1058,10 @@ TILEDB_EXPORT void tiledb_config_free(tiledb_config_t** config);
  * - `sm.use_refactored_readers` <br>
  *    Use the refactored readers or not. <br>
  *    **Default**: false
+ * - `sm.mem.malloc_trim` <br>
+ *    Should malloc_trim be called on context and query destruction? This might
+ * reduce residual memory usage. <br>
+ *    **Default**: true
  * - `sm.mem.total_budget` <br>
  *    Memory budget for readers and writers. <br>
  *    **Default**: 10GB
@@ -1079,6 +1081,38 @@ TILEDB_EXPORT void tiledb_config_free(tiledb_config_t** config);
  *    Ratio of the budget allocated for array data in the sparse global
  *    order reader. <br>
  *    **Default**: 0.1
+ * - `sm.mem.reader.sparse_global_order.ratio_result_tiles` <br>
+ *    Ratio of the budget allocated for result tiles in the sparse global
+ *    order reader. <br>
+ *    **Default**: 0.05
+ * - `sm.mem.reader.sparse_global_order.ratio_rcs` <br>
+ *    Ratio of the budget allocated for result cell slabs in the sparse
+ *    global order reader. <br>
+ *    **Default**: 0.05
+ * - `sm.mem.reader.sparse_unordered_with_dups.ratio_coords` <br>
+ *    Ratio of the budget allocated for coordinates in the sparse unordered
+ *    with duplicates reader. <br>
+ *    **Default**: 0.5
+ * - `sm.mem.reader.sparse_unordered_with_dups.ratio_query_condition` <br>
+ *    Ratio of the budget allocated for the query condition in the sparse
+ *    unordered with duplicates reader. <br>
+ *    **Default**: 0.25
+ * - `sm.mem.reader.sparse_unordered_with_dups.ratio_tile_ranges` <br>
+ *    Ratio of the budget allocated for tile ranges in the sparse unordered
+ *    with duplicates reader. <br>
+ *    **Default**: 0.1
+ * - `sm.mem.reader.sparse_unordered_with_dups.ratio_array_data` <br>
+ *    Ratio of the budget allocated for array data in the sparse unordered
+ *    with duplicates reader. <br>
+ *    **Default**: 0.1
+ * - `sm.mem.reader.sparse_unordered_with_dups.ratio_result_tiles` <br>
+ *    Ratio of the budget allocated for result tiles in the sparse
+ *    unordered with duplicates reader. <br>
+ *    **Default**: 0.05
+ * - `sm.mem.reader.sparse_unordered_with_dups.ratio_rcs` <br>
+ *    Ratio of the budget allocated for result cell slabs in the sparse
+ *    unordered with duplicates reader. <br>
+ *    **Default**: 0.05
  * - `vfs.read_ahead_size` <br>
  *    The maximum byte size to read-ahead from the backend. <br>
  *    **Default**: 102400
@@ -3549,6 +3583,49 @@ TILEDB_EXPORT int32_t tiledb_query_get_config(
  *     the same `tiledb_query_t` object (i.e., without having to create
  *     a new object).
  *
+ * @note This function will error in the following case, provided that
+ *     this is a write query:
+ *     (i) the array is dense and the
+ *     layout has been set to `TILEDB_UNORDERED`. In this case,
+ *     if the user sets the layout to `TILEDB_UNORDERED` **after**
+ *     the subarray has been set, the subarray will simply be ignored.
+ */
+TILEDB_DEPRECATED_EXPORT int32_t tiledb_query_set_subarray(
+    tiledb_ctx_t* ctx, tiledb_query_t* query, const void* subarray);
+
+/**
+ * Indicates that the query will write or read a subarray, and provides
+ * the appropriate information.
+ *
+ * **Example:**
+ *
+ * The following sets a 2D subarray [0,10], [20, 30] to the query.
+ *
+ * @code{.c}
+ * tiledb_subarray_t *subarray;
+ * tiledb_subarray_alloc(ctx, array, &subarray);
+ * uint64_t subarray_v[] = { 0, 10, 20, 30};
+ * tiledb_subarray_set_subarray(ctx, subarray, subarray_v);
+ * tiledb_query_set_subarray_t(ctx, query, subarray);
+ * @endcode
+ *
+ * @param ctx The TileDB context.
+ * @param query The TileDB query.
+ * @param subarray The subarray by which the array read/write will be
+ *     constrained. It should be a sequence of [low, high] pairs (one
+ *     pair per dimension). For the case of writes, this is meaningful only
+ *     for dense arrays, and specifically dense writes. Note that `subarray`
+ *     must have the same type as the domain.
+ * @return `TILEDB_OK` for success or `TILEDB_ERR` for error.
+ *
+ * @note If you set the subarray of a completed, or uninitialized
+ *     query, this function will clear the internal state and render it
+ *     as uninitialized. However, the potentially set layout and attribute
+ *     buffers will be retained. This is useful when the user wishes to
+ *     fix the attributes and layout, but explore different subarrays with
+ *     the same `tiledb_query_t` object (i.e., without having to create
+ *     a new object).
+ *
  * @note Setting the subarray in sparse writes is meaningless and, thus,
  *     this function will error in the following two cases, provided that
  *     this is a write query:
@@ -3559,8 +3636,10 @@ TILEDB_EXPORT int32_t tiledb_query_get_config(
  *
  * @note This is a TILEDB_DEPRECATED api.
  */
-TILEDB_EXPORT int32_t tiledb_query_set_subarray(
-    tiledb_ctx_t* ctx, tiledb_query_t* query, const void* subarray);
+TILEDB_EXPORT int32_t tiledb_query_set_subarray_t(
+    tiledb_ctx_t* ctx,
+    tiledb_query_t* query,
+    const tiledb_subarray_t* subarray);
 
 /**
  * Indicates that the query will write or read a subarray, and provides
@@ -4151,7 +4230,7 @@ TILEDB_EXPORT int32_t tiledb_query_get_validity_buffer(
  *      any particular order, which will often lead to better performance.
  * * @return `TILEDB_OK` for success and `TILEDB_ERR` for error.
  */
-TILEDB_EXPORT int32_t tiledb_query_set_layout(
+TILEDB_DEPRECATED_EXPORT int32_t tiledb_query_set_layout(
     tiledb_ctx_t* ctx, tiledb_query_t* query, tiledb_layout_t layout);
 
 /**
@@ -5556,7 +5635,6 @@ TILEDB_EXPORT int32_t tiledb_subarray_get_range_var_from_name(
     void* start,
     void* end);
 
-#if DEVING_SUBARRAY_PARTITIONER
 /* ********************************* */
 /*        SUBARRAY PARTITIONER       */
 /* ********************************* */
@@ -6002,7 +6080,6 @@ TILEDB_EXPORT int32_t tiledb_subarray_partitioner_get_memory_budget(
     uint64_t* budget_validity,
     tiledb_subarray_partitioner_t* partitioner);
 
-#endif
 
 /* ********************************* */
 /*               ARRAY               */
@@ -8358,8 +8435,8 @@ TILEDB_EXPORT int32_t tiledb_fragment_info_get_non_empty_domain_var_from_index(
     void* end);
 
 /**
- * Retrieves the non-empty domain from a fragment for a given
- * dimension name. Applicable to var-sized dimensions.
+ * Retrieves the non-empty domain from a fragment for a given dimension name.
+ * Applicable to var-sized dimensions.
  *
  * **Example:**
  *
@@ -8389,6 +8466,227 @@ TILEDB_EXPORT int32_t tiledb_fragment_info_get_non_empty_domain_var_from_name(
     tiledb_ctx_t* ctx,
     tiledb_fragment_info_t* fragment_info,
     uint32_t fid,
+    const char* dim_name,
+    void* start,
+    void* end);
+
+/**
+ * Retrieves the number of MBRs from the fragment.
+ *
+ * In the case of sparse fragments, this is the number of physical tiles.
+ *
+ * Dense fragments do not contain MBRs.
+ *
+ * **Example:**
+ *
+ * @code{.c}
+ * uint64_t mbr_num;
+ * tiledb_fragment_info_get_mbr_num(ctx, fragment_info, 0, &mbr_num);
+ * @endcode
+ *
+ * @param ctx The TileDB context
+ * @param fragment_info The fragment info object.
+ * @param fid The index of the fragment of interest.
+ * @param mbrs_num The number of MBRs to be retrieved.
+ * @return `TILEDB_OK` for success and `TILEDB_ERR` for error.
+ */
+TILEDB_EXPORT int32_t tiledb_fragment_info_get_mbr_num(
+    tiledb_ctx_t* ctx,
+    tiledb_fragment_info_t* fragment_info,
+    uint32_t fid,
+    uint64_t* mbr_num);
+
+/**
+ * Retrieves the MBR from a given fragment for a given dimension index.
+ *
+ * **Example:**
+ *
+ * @code{.c}
+ * uint64_t mbr[2];
+ * tiledb_fragment_info_get_mbr_from_index(ctx, fragment_info, 0, 0, 0, mbr);
+ * @endcode
+ *
+ * @param ctx The TileDB context
+ * @param fragment_info The fragment info object.
+ * @param fid The index of the fragment of interest.
+ * @param mid The mbr of the fragment of interest.
+ * @param did The dimension index, following the order as it was defined
+ *      in the domain of the array schema.
+ * @param mbr The mbr to be retrieved.
+ * @return `TILEDB_OK` for success and `TILEDB_ERR` for error.
+ */
+TILEDB_EXPORT int32_t tiledb_fragment_info_get_mbr_from_index(
+    tiledb_ctx_t* ctx,
+    tiledb_fragment_info_t* fragment_info,
+    uint32_t fid,
+    uint32_t mid,
+    uint32_t did,
+    void* mbr);
+
+/**
+ * Retrieves the MBR from a given fragment for a given dimension name.
+ *
+ * **Example:**
+ *
+ * @code{.c}
+ * uint64_t mbr[2];
+ * tiledb_fragment_info_get_mbr_from_name(ctx, fragment_info, 0, 0, "d1", mbr);
+ * @endcode
+ *
+ * @param ctx The TileDB context
+ * @param fragment_info The fragment info object.
+ * @param fid The index of the fragment of interest.
+ * @param mid The mbr of the fragment of interest.
+ * @param dim_name The dimension name.
+ * @param mbr The mbr to be retrieved.
+ * @return `TILEDB_OK` for success and `TILEDB_ERR` for error.
+ */
+TILEDB_EXPORT int32_t tiledb_fragment_info_get_mbr_from_name(
+    tiledb_ctx_t* ctx,
+    tiledb_fragment_info_t* fragment_info,
+    uint32_t fid,
+    uint32_t mid,
+    const char* dim_name,
+    void* mbr);
+
+/**
+ * Retrieves the MBR sizes from a fragment for a given dimension index.
+ * Applicable to var-sized dimensions.
+ *
+ * **Example:**
+ *
+ * @code{.c}
+ * uint64_t start_size, end_size;
+ * tiledb_fragment_info_get_mbr_var_size_from_index(
+ *     ctx, fragment_info, 0, 0, 0, &start_size, &end_size);
+ * // If non-empty domain range is `[aa, dddd]`, then `start_size = 2`
+ * // and `end_size = 4`.
+ * @endcode
+ *
+ * @param ctx The TileDB context
+ * @param fragment_info The fragment information object.
+ * @param fid The fragment index.
+   @param mid The mbr of the fragment of interest.
+ * @param did The dimension index, following the order as it was defined
+ *      in the domain of the array schema.
+ * @param start_size The size in bytes of the start range.
+ * @param end_size The size in bytes of the end range.
+ * @return `TILEDB_OK` for success and `TILEDB_ERR` for error.
+ */
+TILEDB_EXPORT int32_t tiledb_fragment_info_get_mbr_var_size_from_index(
+    tiledb_ctx_t* ctx,
+    tiledb_fragment_info_t* fragment_info,
+    uint32_t fid,
+    uint32_t mid,
+    uint32_t did,
+    uint64_t* start_size,
+    uint64_t* end_size);
+
+/**
+ * Retrieves the MBR range sizes from a fragment for a given dimension name.
+ * Applicable to var-sized dimensions.
+ *
+ * **Example:**
+ *
+ * @code{.c}
+ * uint64_t start_size, end_size;
+ * tiledb_fragment_info_get_mbr_var_size_from_name(
+ *     ctx, fragment_info, 0, 0, "d1", &start_size, &end_size);
+ * // If non-empty domain range is `[aa, dddd]`, then `start_size = 2`
+ * // and `end_size = 4`.
+ * @endcode
+ *
+ * @param ctx The TileDB context
+ * @param fragment_info The fragment information object.
+ * @param fid The fragment index.
+ * @param mid The mbr of the fragment of interest.
+ * @param dim_name The dimension name.
+ * @param start_size The size in bytes of the start range.
+ * @param end_size The size in bytes of the end range.
+ * @return `TILEDB_OK` for success and `TILEDB_ERR` for error.
+ */
+TILEDB_EXPORT int32_t tiledb_fragment_info_get_mbr_var_size_from_name(
+    tiledb_ctx_t* ctx,
+    tiledb_fragment_info_t* fragment_info,
+    uint32_t fid,
+    uint32_t mid,
+    const char* dim_name,
+    uint64_t* start_size,
+    uint64_t* end_size);
+
+/**
+ * Retrieves the MBR from a fragment for a given dimension index.
+ * Applicable to var-sized dimensions.
+ *
+ * **Example:**
+ *
+ * @code{.c}
+ *
+ * // Get range sizes first
+ * uint64_t start_size, end_size;
+ * tiledb_fragment_info_get_mbr_var_size_from_index(
+ *     ctx, fragment_info, 0, 0, 0, &start_size, &end_size);
+ *
+ * // Get domain
+ * char start[start_size];
+ * char end[end_size];
+ * tiledb_fragment_info_get_mbr_var_from_index(
+ *     ctx, fragment_info, 0, 0, 0, start, end);
+ * @endcode
+ *
+ * @param ctx The TileDB context
+ * @param fragment_info The fragment info object.
+ * @param fid The fragment index.
+ * @param mid The mbr of the fragment of interest.
+ * @param did The dimension index, following the order as it was defined
+ *      in the domain of the array schema.
+ * @param start The domain range start to set.
+ * @param end The domain range end to set.
+ * @return `TILEDB_OK` for success and `TILEDB_ERR` for error.
+ */
+TILEDB_EXPORT int32_t tiledb_fragment_info_get_mbr_var_from_index(
+    tiledb_ctx_t* ctx,
+    tiledb_fragment_info_t* fragment_info,
+    uint32_t fid,
+    uint32_t mid,
+    uint32_t did,
+    void* start,
+    void* end);
+
+/**
+ * Retrieves the MBR from a fragment for a given dimension name.
+ * Applicable to var-sized dimensions.
+ *
+ * **Example:**
+ *
+ * @code{.c}
+ *
+ * // Get range sizes first
+ * uint64_t start_size, end_size;
+ * tiledb_fragment_info_get_mbr_var_size_from_name(
+ *     ctx, fragment_info, 0, 0, "d1", &start_size, &end_size);
+ *
+ * // Get domain
+ * char start[start_size];
+ * char end[end_size];
+ * tiledb_fragment_info_get_mbr_var_from_name(
+ *     ctx, fragment_info, 0, 0, "d1", start, end);
+ * @endcode
+ *
+ * @param ctx The TileDB context
+ * @param fragment_info The fragment info object.
+ * @param fid The fragment index.
+ * @param mid The mbr of the fragment of interest.
+ * @param dim_name The dimension name.
+ * @param start The domain range start to set.
+ * @param end The domain range end to set.
+ * @return `TILEDB_OK` for success and `TILEDB_ERR` for error.
+ */
+TILEDB_EXPORT int32_t tiledb_fragment_info_get_mbr_var_from_name(
+    tiledb_ctx_t* ctx,
+    tiledb_fragment_info_t* fragment_info,
+    uint32_t fid,
+    uint32_t mid,
     const char* dim_name,
     void* start,
     void* end);
@@ -8530,6 +8828,28 @@ TILEDB_EXPORT int32_t tiledb_fragment_info_get_to_vacuum_uri(
     tiledb_fragment_info_t* fragment_info,
     uint32_t fid,
     const char** uri);
+
+/**
+ * Retrieves the array schema name a fragment.
+ *
+ * **Example:**
+ *
+ * @code{.c}
+ * tiledb_array_schema_t* array_schema;
+ * tiledb_fragment_info_get_array_schema(ctx, fragment_info, 0, &array_schema);
+ * @endcode
+ *
+ * @param ctx The TileDB context
+ * @param fragment_info The fragment info object.
+ * @param fid The index of the fragment of interest.
+ * @param array_schema The array schema to be retrieved.
+ * @return `TILEDB_OK` for success and `TILEDB_ERR` for error.
+ */
+TILEDB_EXPORT int32_t tiledb_fragment_info_get_array_schema(
+    tiledb_ctx_t* ctx,
+    tiledb_fragment_info_t* fragment_info,
+    uint32_t fid,
+    tiledb_array_schema_t** array_schema);
 
 /**
  * Dumps the fragment info in ASCII format in the selected output.

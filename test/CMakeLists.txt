@@ -32,6 +32,7 @@ find_package(Catch_EP REQUIRED)
 option(TILEDB_TESTS_AWS_S3_CONFIG "Use an S3 config appropriate for AWS in tests" OFF)
 option(TILEDB_TESTS_ENABLE_REST "Enables REST tests (requires running REST server)" OFF)
 
+
 # Arrow integration test config and dependencies
 # Override from environment if not set in cache
 if (NOT DEFINED $CACHE{TILEDB_ARROW_TESTS})
@@ -143,7 +144,6 @@ set(TILEDB_TEST_SOURCES
   src/unit-capi-version.cc
   src/unit-capi-vfs.cc
   src/unit-CellSlabIter.cc
-  src/unit-ChunkedBuffer.cc
   src/unit-compression-dd.cc
   src/unit-compression-rle.cc
   src/unit-crypto.cc

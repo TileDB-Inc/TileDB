@@ -33,6 +33,7 @@
 #ifndef TILEDB_CPP_API_FRAGMENT_INFO_H
 #define TILEDB_CPP_API_FRAGMENT_INFO_H
 
+#include "array_schema.h"
 #include "context.h"
 #include "deleter.h"
 #include "exception.h"
@@ -178,6 +179,105 @@ class FragmentInfo {
     return std::make_pair(start, end);
   }
 
+  /** Returns the number of MBRs in the fragment with the given index. */
+  uint64_t mbr_num(uint32_t fid) const {
+    auto& ctx = ctx_.get();
+    uint64_t ret;
+    ctx.handle_error(tiledb_fragment_info_get_mbr_num(
+        ctx.ptr().get(), fragment_info_.get(), fid, &ret));
+    return ret;
+  }
+
+  /**
+   * Retrieves the MBR of the fragment with the given index on the given
+   * dimension index.
+   */
+  void get_mbr(uint32_t fid, uint32_t mid, uint32_t did, void* mbr) const {
+    auto& ctx = ctx_.get();
+    ctx.handle_error(tiledb_fragment_info_get_mbr_from_index(
+        ctx.ptr().get(), fragment_info_.get(), fid, mid, did, mbr));
+  }
+
+  /**
+   * Retrieves the MBR of the fragment with the given index on the given
+   * dimension name.
+   */
+  void get_mbr(
+      uint32_t fid,
+      uint32_t mid,
+      const std::string& dim_name,
+      void* mbr) const {
+    auto& ctx = ctx_.get();
+    ctx.handle_error(tiledb_fragment_info_get_mbr_from_name(
+        ctx.ptr().get(),
+        fragment_info_.get(),
+        fid,
+        mid,
+        dim_name.c_str(),
+        mbr));
+  }
+
+  /**
+   * Returns the MBR of the fragment with the given index on the given
+   * dimension index. Applicable to string dimensions.
+   */
+  std::pair<std::string, std::string> mbr_var(
+      uint32_t fid, uint32_t mid, uint32_t did) const {
+    auto& ctx = ctx_.get();
+    uint64_t start_size, end_size;
+    std::string start, end;
+    ctx.handle_error(tiledb_fragment_info_get_mbr_var_size_from_index(
+        ctx.ptr().get(),
+        fragment_info_.get(),
+        fid,
+        mid,
+        did,
+        &start_size,
+        &end_size));
+    start.resize(start_size);
+    end.resize(end_size);
+    ctx.handle_error(tiledb_fragment_info_get_mbr_var_from_index(
+        ctx.ptr().get(),
+        fragment_info_.get(),
+        fid,
+        mid,
+        did,
+        &start[0],
+        &end[0]));
+    return std::make_pair(start, end);
+  }
+
+  /**
+   * Returns the MBR of the fragment with the given index on the given
+   * dimension name. Applicable to string dimensions.
+   */
+  std::pair<std::string, std::string> mbr_var(
+      uint32_t fid, uint32_t mid, const std::string& dim_name) const {
+    auto& ctx = ctx_.get();
+    uint64_t start_size, end_size;
+    std::string start, end;
+    ctx.handle_error(tiledb_fragment_info_get_mbr_var_size_from_name(
+
+        ctx.ptr().get(),
+        fragment_info_.get(),
+        fid,
+        mid,
+        dim_name.c_str(),
+        &start_size,
+        &end_size));
+    start.resize(start_size);
+    end.resize(end_size);
+    ctx.handle_error(tiledb_fragment_info_get_mbr_var_from_name(
+        ctx.ptr().get(),
+        fragment_info_.get(),
+        fid,
+        mid,
+        dim_name.c_str(),
+        &start[0],
+        &end[0]));
+    return std::make_pair(start, end);
+  }
+
   /** Returns the number of fragments. */
   uint32_t fragment_num() const {
     auto& ctx = ctx_.get();
@@ -239,6 +339,15 @@ class FragmentInfo {
     ctx.handle_error(tiledb_fragment_info_get_version(
         ctx.ptr().get(), fragment_info_.get(), fid, &ret));
     return ret;
+  }
+
+  /** Returns the array schema of the fragment with the given index. */
+  ArraySchema array_schema(uint32_t fid) const {
+    auto& ctx = ctx_.get();
+    tiledb_array_schema_t* schema;
+    ctx.handle_error(tiledb_fragment_info_get_array_schema(
+        ctx.ptr().get(), fragment_info_.get(), fid, &schema));
+    return ArraySchema(ctx, schema);
   }
 
   /**

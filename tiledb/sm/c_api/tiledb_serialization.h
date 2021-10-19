@@ -34,6 +34,7 @@
 #define TILEDB_SERIALIZATION_H
 
 #include "tiledb.h"
+#include "tiledb_experimental.h"
 
 #ifdef __cplusplus
 extern "C" {
@@ -110,6 +111,46 @@ TILEDB_EXPORT int32_t tiledb_deserialize_array_schema(
     tiledb_serialization_type_t serialize_type,
     int32_t client_side,
     tiledb_array_schema_t** array_schema);
+
+/**
+ * Serializes the given array schema evolution.
+ *
+ * @note The caller must free the returned `tiledb_buffer_t`.
+ *
+ * @param ctx The TileDB context.
+ * @param array_schema_evolution The array schema evolution to serialize.
+ * @param serialization_type Type of serialization to use
+ * @param client_side If set to 1, serialize from "client-side" perspective.
+ *    Else, "server-side."
+ * @param buffer Will be set to a newly allocated buffer containing the
+ *      serialized max buffer sizes.
+ * @return `TILEDB_OK` for success and `TILEDB_ERR` for error.
+ */
+TILEDB_EXPORT int32_t tiledb_serialize_array_schema_evolution(
+    tiledb_ctx_t* ctx,
+    const tiledb_array_schema_evolution_t* array_schema_evolution,
+    tiledb_serialization_type_t serialize_type,
+    int32_t client_side,
+    tiledb_buffer_t** buffer);
+
+/**
+ * Deserializes a new array schema evolution object from the given buffer.
+ *
+ * @param ctx The TileDB context.
+ * @param buffer Buffer to deserialize from
+ * @param serialization_type Type of serialization to use
+ * @param client_side If set to 1, deserialize from "client-side" perspective.
+ *    Else, "server-side."
+ * @param array_schema_evolution Will be set to a newly allocated array schema
+ * evolution.
+ * @return `TILEDB_OK` for success and `TILEDB_ERR` for error.
+ */
+TILEDB_EXPORT int32_t tiledb_deserialize_array_schema_evolution(
+    tiledb_ctx_t* ctx,
+    const tiledb_buffer_t* buffer,
+    tiledb_serialization_type_t serialize_type,
+    int32_t client_side,
+    tiledb_array_schema_evolution_t** array_schema_evolution);
 
 /**
  * Serializes the given query.

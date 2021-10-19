@@ -366,7 +366,7 @@ std::string ObjectMgmtFx::random_name(const std::string& prefix) {
 TEST_CASE_METHOD(
     ObjectMgmtFx,
     "C API: Test object management methods: object_type, delete, move",
-    "[capi], [object], [delete], [move], [object_type]") {
+    "[capi][object][delete][move][object_type]") {
   // TODO: refactor for each supported FS.
   std::string temp_dir = fs_vec_[0]->temp_dir();
   create_temp_dir(temp_dir);
@@ -379,7 +379,7 @@ TEST_CASE_METHOD(
 TEST_CASE_METHOD(
     ObjectMgmtFx,
     "C API: Test object management methods: walk, ls",
-    "[capi], [object], [walk], [ls]") {
+    "[capi][object][walk][ls]") {
   std::string golden_walk, golden_ls;
   std::string walk_str, ls_str;
   int rc;
@@ -461,7 +461,7 @@ TEST_CASE_METHOD(
 TEST_CASE_METHOD(
     ObjectMgmtFx,
     "C API: Test listing directory with >1000 objects on S3",
-    "[capi], [object], [ls-1000]") {
+    "[capi][object][ls-1000]") {
   // TODO: refactor for each supported FS.
   std::string temp_dir = fs_vec_[0]->temp_dir();
   create_temp_dir(temp_dir);

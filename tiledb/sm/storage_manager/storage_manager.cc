@@ -40,6 +40,7 @@
 #include "tiledb/common/logger.h"
 #include "tiledb/sm/array/array.h"
 #include "tiledb/sm/array_schema/array_schema.h"
+#include "tiledb/sm/array_schema/array_schema_evolution.h"
 #include "tiledb/sm/cache/buffer_lru_cache.h"
 #include "tiledb/sm/enums/array_type.h"
 #include "tiledb/sm/enums/layout.h"
@@ -205,7 +206,7 @@ Status StorageManager::array_open_for_reads(
     const URI& array_uri,
     const EncryptionKey& enc_key,
     ArraySchema** array_schema,
-    std::vector<FragmentMetadata*>* fragment_metadata,
+    std::vector<tdb_shared_ptr<FragmentMetadata>>* fragment_metadata,
     uint64_t timestamp_start,
     uint64_t timestamp_end) {
   auto timer_se = stats_->start_timer("read_array_open");
@@ -386,7 +387,7 @@ Status StorageManager::array_open_for_writes(
 Status StorageManager::array_load_fragments(
     const URI& array_uri,
     const EncryptionKey& enc_key,
-    std::vector<FragmentMetadata*>* fragment_metadata,
+    std::vector<tdb_shared_ptr<FragmentMetadata>>* fragment_metadata,
     const std::vector<TimestampedURI>& fragments_to_load) {
   auto timer_se = stats_->start_timer("read_array_open");
 
@@ -435,7 +436,7 @@ Status StorageManager::array_reopen(
     const URI& array_uri,
     const EncryptionKey& enc_key,
     ArraySchema** array_schema,
-    std::vector<FragmentMetadata*>* fragment_metadata,
+    std::vector<tdb_shared_ptr<FragmentMetadata>>* fragment_metadata,
     uint64_t timestamp_start,
     uint64_t timestamp_end) {
   auto timer_se = stats_->start_timer("read_array_open");
@@ -808,6 +809,7 @@ Status StorageManager::array_create(
 
   std::lock_guard<std::mutex> lock{object_create_mtx_};
   array_schema->set_array_uri(array_uri);
+  RETURN_NOT_OK(array_schema->generate_uri());
   RETURN_NOT_OK(array_schema->check());
 
   // Create array directory
@@ -880,15 +882,69 @@ Status StorageManager::array_create(
   return Status::Ok();
 }
 
-OpenArrayMemoryTracker* StorageManager::array_get_memory_tracker(
-    const URI& array_uri) {
+Status StorageManager::array_evolve_schema(
+    const URI& array_uri,
+    ArraySchemaEvolution* schema_evolution,
+    const EncryptionKey& encryption_key) {
+  // Check array schema
+  if (schema_evolution == nullptr) {
+    return LOG_STATUS(Status::StorageManagerError(
+        "Cannot evolve array; Empty schema evolution"));
+  }
+
+  if (array_uri.is_tiledb()) {
+    return rest_client_->post_array_schema_evolution_to_rest(
+        array_uri, schema_evolution);
+  }
+
+  // Check if array exists
+  bool exists = false;
+  RETURN_NOT_OK(is_array(array_uri, &exists));
+  if (!exists)
+    return LOG_STATUS(Status::StorageManagerError(
+        std::string("Cannot evolve array; Array '") + array_uri.c_str() +
+        "' not exists"));
+
+  ArraySchema* array_schema = (ArraySchema*)nullptr;
+  RETURN_NOT_OK(load_array_schema(array_uri, encryption_key, &array_schema));
+
+  // Evolve schema
+  ArraySchema* array_schema_evolved = (ArraySchema*)nullptr;
+  RETURN_NOT_OK(
+      schema_evolution->evolve_schema(array_schema, &array_schema_evolved));
+
+  Status st = store_array_schema(array_schema_evolved, encryption_key);
+  if (!st.ok()) {
+    tdb_delete(array_schema_evolved);
+    return LOG_STATUS(Status::StorageManagerError(
+        "Cannot evovle schema;  Not able to store evolved array schema."));
+  }
+
+  tdb_delete(array_schema);
+  array_schema = nullptr;
+  tdb_delete(array_schema_evolved);
+  array_schema_evolved = nullptr;
+
+  return Status::Ok();
+}
+
+OpenArrayMemoryTracker* StorageManager::array_memory_tracker(
+    const URI& array_uri, bool top_level) {
   // Lock mutex
   std::lock_guard<std::mutex> lock{open_array_for_reads_mtx_};
 
   // Find the open array to retrieve the memory tracker.
   auto it = open_arrays_for_reads_.find(array_uri.to_string());
-  if (it == open_arrays_for_reads_.end())
-    return nullptr;
+  if (it == open_arrays_for_reads_.end()) {
+    if (top_level) {
+      // TODO remove this work around once VCF runs on only context.
+      // The memory tracker could live on another context, try to find it.
+      auto& global_state = global_state::GlobalState::GetGlobalState();
+      return global_state.array_memory_tracker(array_uri, this);
+    } else {
+      return nullptr;
+    }
+  }
 
   return it->second->memory_tracker();
 }
@@ -1345,7 +1401,7 @@ Status StorageManager::get_fragment_info(
   fragment_info->set_dim_info(
       array_schema->dim_names(), array_schema->dim_types());
 
-  std::vector<FragmentMetadata*> fragment_metadata;
+  std::vector<tdb_shared_ptr<FragmentMetadata>> fragment_metadata;
 
   // Get encryption key from config
   RETURN_NOT_OK(array_reopen(
@@ -1396,14 +1452,12 @@ Status StorageManager::get_fragment_info(
       // Push new fragment info
       fragment_info->append(SingleFragmentInfo(
           uri,
-          meta->format_version(),
           sparse,
           meta->timestamp_range(),
-          meta->cell_num(),
           sizes[i],
-          meta->has_consolidated_footer(),
           non_empty_domain,
-          expanded_non_empty_domain));
+          expanded_non_empty_domain,
+          meta));
     }
   }
 
@@ -1497,26 +1551,30 @@ Status StorageManager::get_fragment_info(
   }
 
   // Get fragment non-empty domain
-  FragmentMetadata meta(
+  auto meta = tdb_make_shared(
+      FragmentMetadata,
       this,
       array.array_schema(),
       fragment_uri,
       timestamp_range,
-      array_get_memory_tracker(array.array_uri()),
       !sparse);
-  RETURN_NOT_OK(meta.load(*array.encryption_key(), nullptr, 0));
+  RETURN_NOT_OK(meta->load(
+      *array.encryption_key(),
+      nullptr,
+      0,
+      std::unordered_map<std::string, tiledb_shared_ptr<ArraySchema>>()));
 
   // This is important for format version > 2
-  sparse = !meta.dense();
+  sparse = !meta->dense();
 
   // Get fragment size
   uint64_t size;
-  RETURN_NOT_OK(meta.fragment_size(&size));
+  RETURN_NOT_OK(meta->fragment_size(&size));
 
   // Compute expanded non-empty domain only for dense fragments
   // Get non-empty domain, and compute expanded non-empty domain
   // (only for dense fragments)
-  const auto& non_empty_domain = meta.non_empty_domain();
+  const auto& non_empty_domain = meta->non_empty_domain();
   auto expanded_non_empty_domain = non_empty_domain;
   if (!sparse)
     array.array_schema()->domain()->expand_to_tiles(&expanded_non_empty_domain);
@@ -1524,14 +1582,12 @@ Status StorageManager::get_fragment_info(
   // Set fragment info
   *fragment_info = SingleFragmentInfo(
       fragment_uri,
-      meta.format_version(),
       sparse,
       timestamp_range,
-      meta.cell_num(),
       size,
-      meta.has_consolidated_footer(),
       non_empty_domain,
-      expanded_non_empty_domain);
+      expanded_non_empty_domain,
+      meta);
 
   return Status::Ok();
 }
@@ -1802,12 +1858,11 @@ Status StorageManager::load_array_schema_from_uri(
     RETURN_NOT_OK(tile_io.read_generic(&tile, 0, encryption_key, config_));
   }
 
-  auto chunked_buffer = tile->chunked_buffer();
+  auto buffer = tile->buffer();
   Buffer buff;
-  buff.realloc(chunked_buffer->size());
-  buff.set_size(chunked_buffer->size());
-  RETURN_NOT_OK_ELSE(
-      chunked_buffer->read(buff.data(), buff.size(), 0), tdb_delete(tile));
+  buff.realloc(buffer->size());
+  buff.set_size(buffer->size());
+  RETURN_NOT_OK_ELSE(buffer->read(buff.data(), buff.size()), tdb_delete(tile));
   tdb_delete(tile);
 
   stats_->add_counter("read_array_schema_size", buff.size());
@@ -2203,18 +2258,14 @@ Status StorageManager::store_array_schema(
   if (exists)
     RETURN_NOT_OK(vfs_->remove_file(schema_uri));
 
-  ChunkedBuffer chunked_buffer;
-  RETURN_NOT_OK(Tile::buffer_to_contiguous_fixed_chunks(
-      buff, 0, constants::generic_tile_cell_size, &chunked_buffer));
-  buff.disown_data();
-
   // Write to file
   Tile tile(
       constants::generic_tile_datatype,
       constants::generic_tile_cell_size,
       0,
-      &chunked_buffer,
+      &buff,
       false);
+
   GenericTileIO tile_io(this, schema_uri);
   uint64_t nbytes;
   Status st = tile_io.write_generic(&tile, encryption_key, &nbytes);
@@ -2222,7 +2273,7 @@ Status StorageManager::store_array_schema(
   if (st.ok())
     st = close_file(schema_uri);
 
-  chunked_buffer.free();
+  buff.clear();
 
   return st;
 }
@@ -2251,19 +2302,12 @@ Status StorageManager::store_array_metadata(
   URI array_metadata_uri;
   RETURN_NOT_OK(array_metadata->get_uri(array_uri, &array_metadata_uri));
 
-  ChunkedBuffer* const chunked_buffer = tdb_new(ChunkedBuffer);
-  RETURN_NOT_OK_ELSE(
-      Tile::buffer_to_contiguous_fixed_chunks(
-          metadata_buff, 0, constants::generic_tile_cell_size, chunked_buffer),
-      tdb_delete(chunked_buffer));
-  metadata_buff.disown_data();
-
   Tile tile(
       constants::generic_tile_datatype,
       constants::generic_tile_cell_size,
       0,
-      chunked_buffer,
-      true);
+      &metadata_buff,
+      false);
 
   GenericTileIO tile_io(this, array_metadata_uri);
   uint64_t nbytes;
@@ -2273,6 +2317,8 @@ Status StorageManager::store_array_metadata(
   if (st.ok()) {
     st = close_file(array_metadata_uri);
   }
+
+  metadata_buff.clear();
 
   return st;
 }
@@ -2466,12 +2512,13 @@ Status StorageManager::load_array_metadata(
       auto tile = (Tile*)nullptr;
       RETURN_NOT_OK(tile_io.read_generic(&tile, 0, encryption_key, config_));
 
-      auto chunked_buffer = tile->chunked_buffer();
+      auto buffer = tile->buffer();
       metadata_buff = tdb_make_shared(Buffer);
-      RETURN_NOT_OK(metadata_buff->realloc(chunked_buffer->size()));
-      metadata_buff->set_size(chunked_buffer->size());
+      RETURN_NOT_OK(metadata_buff->realloc(buffer->size()));
+      metadata_buff->set_size(buffer->size());
+      buffer->reset_offset();
       RETURN_NOT_OK_ELSE(
-          chunked_buffer->read(metadata_buff->data(), metadata_buff->size(), 0),
+          buffer->read(metadata_buff->data(), metadata_buff->size()),
           tdb_delete(tile));
       tdb_delete(tile);
 
@@ -2503,7 +2550,7 @@ Status StorageManager::load_fragment_metadata(
     const std::vector<TimestampedURI>& fragments_to_load,
     Buffer* meta_buff,
     const std::unordered_map<std::string, uint64_t>& offsets,
-    std::vector<FragmentMetadata*>* fragment_metadata) {
+    std::vector<tdb_shared_ptr<FragmentMetadata>>* fragment_metadata) {
   auto timer_se = stats_->start_timer("read_load_frag_meta");
 
   // Load the metadata for each fragment, only if they are not already
@@ -2513,6 +2560,7 @@ Status StorageManager::load_fragment_metadata(
   auto status = parallel_for(compute_tp_, 0, fragment_num, [&](size_t f) {
     const auto& sf = fragments_to_load[f];
     auto array_schema = open_array->array_schema();
+
     auto metadata = open_array->fragment_metadata(sf.uri_);
     if (metadata == nullptr) {  // Fragment metadata does not exist - load it
       URI coords_uri =
@@ -2528,22 +2576,16 @@ Status StorageManager::load_fragment_metadata(
       if (f_version == 1) {  // This is equivalent to format version <=2
         bool sparse;
         RETURN_NOT_OK(vfs_->is_file(coords_uri, &sparse));
-        metadata = tdb_new(
+        metadata = tdb_make_shared(
             FragmentMetadata,
             this,
             array_schema,
             sf.uri_,
             sf.timestamp_range_,
-            open_array->memory_tracker(),
             !sparse);
       } else {  // Format version > 2
-        metadata = tdb_new(
-            FragmentMetadata,
-            this,
-            array_schema,
-            sf.uri_,
-            sf.timestamp_range_,
-            open_array->memory_tracker());
+        metadata = tdb_make_shared(
+            FragmentMetadata, this, array_schema, sf.uri_, sf.timestamp_range_);
       }
 
       // Potentially find the basic fragment metadata in the consolidated
@@ -2563,19 +2605,11 @@ Status StorageManager::load_fragment_metadata(
       }
 
       // Load fragment metadata
-      RETURN_NOT_OK_ELSE(
-          metadata->load(encryption_key, f_buff, offset), tdb_delete(metadata));
+      RETURN_NOT_OK(metadata->load(
+          encryption_key, f_buff, offset, open_array->array_schemas()));
       open_array->insert_fragment_metadata(metadata);
     }
-    auto array_schema_name = metadata->array_schema_name();
-    tdb_shared_ptr<ArraySchema> frag_array_schema(nullptr);
-    RETURN_NOT_OK(
-        open_array->get_array_schema(array_schema_name, &frag_array_schema));
-    if (!frag_array_schema) {
-      return LOG_STATUS(Status::StorageManagerError(
-          "Cannot load fragment metadata; Null fragment array schema"));
-    }
-    metadata->set_array_schema(frag_array_schema.get());
+
     (*fragment_metadata)[f] = metadata;
     return Status::Ok();
   });
@@ -2599,12 +2633,12 @@ Status StorageManager::load_consolidated_fragment_meta(
   Tile* tile = nullptr;
   RETURN_NOT_OK(tile_io.read_generic(&tile, 0, enc_key, config_));
 
-  auto chunked_buffer = tile->chunked_buffer();
-  f_buff->realloc(chunked_buffer->size());
-  f_buff->set_size(chunked_buffer->size());
+  auto buffer = tile->buffer();
+  f_buff->realloc(buffer->size());
+  f_buff->set_size(buffer->size());
+  buffer->reset_offset();
   RETURN_NOT_OK_ELSE(
-      chunked_buffer->read(f_buff->data(), f_buff->size(), 0),
-      tdb_delete(tile));
+      buffer->read(f_buff->data(), f_buff->size()), tdb_delete(tile));
   tdb_delete(tile);
 
   stats_->add_counter("consolidated_frag_meta_size", f_buff->size());

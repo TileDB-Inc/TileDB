@@ -860,7 +860,13 @@ bool AsyncFx::is_array(const std::string& array_name) {
 }
 
 TEST_CASE_METHOD(
-    AsyncFx, "C API: Test dense async", "[capi], [async], [dense-async]") {
+    AsyncFx, "C API: Test dense async", "[capi][async][dense-async]") {
+  SECTION("- No outside subarray") {
+    use_external_subarray_ = false;
+  }
+  SECTION("- outside subarray") {
+    use_external_subarray_ = true;
+  }
   SECTION("- No outside subarray") {
     use_external_subarray_ = false;
   }
@@ -875,7 +881,13 @@ TEST_CASE_METHOD(
 }
 
 TEST_CASE_METHOD(
-    AsyncFx, "C API: Test sparse async", "[capi], [async], [sparse-async]") {
+    AsyncFx, "C API: Test sparse async", "[capi][async][sparse-async]") {
+  SECTION("- No outside subarray") {
+    use_external_subarray_ = false;
+  }
+  SECTION("- outside subarray") {
+    use_external_subarray_ = true;
+  }
   SECTION("- No outside subarray") {
     use_external_subarray_ = false;
   }
@@ -890,7 +902,13 @@ TEST_CASE_METHOD(
 }
 
 TEST_CASE_METHOD(
-    AsyncFx, "C API: Test async cancellation", "[capi], [async], [cancel]") {
+    AsyncFx, "C API: Test async cancellation", "[capi][async][cancel]") {
+  SECTION("- No outside subarray") {
+    use_external_subarray_ = false;
+  }
+  SECTION("- outside subarray") {
+    use_external_subarray_ = true;
+  }
   SECTION("- No outside subarray") {
     use_external_subarray_ = false;
   }

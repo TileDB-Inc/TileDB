@@ -53,7 +53,7 @@ static void check_buf(const int* check, std::initializer_list<int> answer) {
   }
 }
 
-TEST_CASE("FilterBuffer: Test init", "[filter], [filter-buffer]") {
+TEST_CASE("FilterBuffer: Test init", "[filter][filter-buffer]") {
   FilterStorage storage;
   FilterBuffer fbuf(&storage);
 
@@ -89,7 +89,7 @@ TEST_CASE("FilterBuffer: Test init", "[filter], [filter-buffer]") {
   CHECK(fbuf.size() == 6);
   char data_r2[8];
   CHECK(!fbuf.read(data_r2, 6).ok());
-  fbuf.set_offset(0);
+  fbuf.reset_offset();
   CHECK(fbuf.read(data_r2, 6).ok());
   check_buf(data_r2, {0, 1, 6, 7, 8, 5});
 
@@ -98,7 +98,7 @@ TEST_CASE("FilterBuffer: Test init", "[filter], [filter-buffer]") {
   CHECK(!fbuf.write(data2, sizeof(data2)).ok());
 }
 
-TEST_CASE("FilterBuffer: Test prepend", "[filter], [filter-buffer]") {
+TEST_CASE("FilterBuffer: Test prepend", "[filter][filter-buffer]") {
   FilterStorage storage;
   FilterBuffer fbuf(&storage);
 
@@ -128,24 +128,24 @@ TEST_CASE("FilterBuffer: Test prepend", "[filter], [filter-buffer]") {
   // Prepend a buffer of 2 bytes and overwrite in place, spanning both buffers.
   CHECK(fbuf.prepend_buffer(2).ok());
   CHECK(fbuf.size() == 6);
-  fbuf.set_offset(0);
+  fbuf.reset_offset();
   char data2[] = {7, 8, 9, 10, 11};
   CHECK(fbuf.write(data2, sizeof(data2)).ok());
   CHECK(fbuf.size() == 8);
   char data_r2[8];
-  fbuf.set_offset(0);
+  fbuf.reset_offset();
   CHECK(fbuf.read(data_r2, 8).ok());
   check_buf(data_r2, {7, 8, 9, 10, 11, 3, 4, 5});
 
   // Prepend another buffer of 3 bytes, and only write to it partially.
   CHECK(fbuf.prepend_buffer(3).ok());
   CHECK(fbuf.size() == 8);
-  fbuf.set_offset(0);
+  fbuf.reset_offset();
   char data3[] = {12};
   CHECK(fbuf.write(data3, sizeof(data3)).ok());
   CHECK(fbuf.size() == 9);
   char data_r3[9];
-  fbuf.set_offset(0);
+  fbuf.reset_offset();
   CHECK(fbuf.read(data_r3, 7).ok());
   check_buf(data_r3, {12, 7, 8, 9, 10, 11, 3});
 
@@ -174,7 +174,7 @@ TEST_CASE("FilterBuffer: Test prepend", "[filter], [filter-buffer]") {
 }
 
 TEST_CASE(
-    "FilterBuffer: Test multiple reads/writes", "[filter], [filter-buffer]") {
+    "FilterBuffer: Test multiple reads/writes", "[filter][filter-buffer]") {
   FilterStorage storage;
   FilterBuffer fbuf(&storage);
 
@@ -199,7 +199,7 @@ TEST_CASE(
   check_buf(data_r, {1, 2});
 }
 
-TEST_CASE("FilterBuffer: Test write from other", "[filter], [filter-buffer]") {
+TEST_CASE("FilterBuffer: Test write from other", "[filter][filter-buffer]") {
   FilterStorage storage;
   FilterBuffer fbuf(&storage), fbuf2(&storage);
 
@@ -222,7 +222,7 @@ TEST_CASE("FilterBuffer: Test write from other", "[filter], [filter-buffer]") {
   check_buf(data_r, {1, 2});
 }
 
-TEST_CASE("FilterBuffer: Test get ConstBuffer", "[filter], [filter-buffer]") {
+TEST_CASE("FilterBuffer: Test get ConstBuffer", "[filter][filter-buffer]") {
   FilterStorage storage;
   FilterBuffer fbuf(&storage);
 
@@ -253,7 +253,7 @@ TEST_CASE("FilterBuffer: Test get ConstBuffer", "[filter], [filter-buffer]") {
   CHECK(!fbuf.get_const_buffer(2 * sizeof(int), &cbuf).ok());
 }
 
-TEST_CASE("FilterBuffer: Test clear", "[filter], [filter-buffer]") {
+TEST_CASE("FilterBuffer: Test clear", "[filter][filter-buffer]") {
   FilterStorage storage;
   FilterBuffer fbuf(&storage);
 
@@ -293,7 +293,7 @@ TEST_CASE("FilterBuffer: Test clear", "[filter], [filter-buffer]") {
   CHECK(fbuf.size() == 9);
 }
 
-TEST_CASE("FilterBuffer: Test copy_to", "[filter], [filter-buffer]") {
+TEST_CASE("FilterBuffer: Test copy_to", "[filter][filter-buffer]") {
   FilterStorage storage;
   FilterBuffer fbuf(&storage);
 
@@ -326,7 +326,7 @@ TEST_CASE("FilterBuffer: Test copy_to", "[filter], [filter-buffer]") {
   check_buf(data_r2, {3, 3, 4, 5, 6, 7, 8, 9, 10, 11, 0, 1, 2});
 }
 
-TEST_CASE("FilterBuffer: Test append_view", "[filter], [filter-buffer]") {
+TEST_CASE("FilterBuffer: Test append_view", "[filter][filter-buffer]") {
   FilterStorage storage;
   FilterBuffer fbuf(&storage);
 
@@ -368,7 +368,7 @@ TEST_CASE("FilterBuffer: Test append_view", "[filter], [filter-buffer]") {
   CHECK(fbuf2.clear().ok());
 }
 
-TEST_CASE("FilterBuffer: Test view reclaim", "[filter], [filter-buffer]") {
+TEST_CASE("FilterBuffer: Test view reclaim", "[filter][filter-buffer]") {
   FilterStorage storage;
   FilterBuffer fbuf(&storage), fbuf2(&storage);
 
@@ -396,7 +396,7 @@ TEST_CASE("FilterBuffer: Test view reclaim", "[filter], [filter-buffer]") {
   CHECK(storage.num_in_use() == 0);
 }
 
-TEST_CASE("FilterBuffer: Test fixed allocation", "[filter], [filter-buffer]") {
+TEST_CASE("FilterBuffer: Test fixed allocation", "[filter][filter-buffer]") {
   FilterStorage storage;
   FilterBuffer fbuf(&storage);
   Buffer fixed;
@@ -473,7 +473,7 @@ TEST_CASE("FilterBuffer: Test fixed allocation", "[filter], [filter-buffer]") {
 
 TEST_CASE(
     "FilterBuffer: Test copy with reinterpret type",
-    "[filter], [filter-buffer]") {
+    "[filter][filter-buffer]") {
   FilterStorage storage;
   FilterBuffer fbuf(&storage), fbuf2(&storage);
 
@@ -516,7 +516,7 @@ TEST_CASE(
   CHECK(aa == f);
 }
 
-TEST_CASE("FilterBuffer: Test read-only", "[filter], [filter-buffer]") {
+TEST_CASE("FilterBuffer: Test read-only", "[filter][filter-buffer]") {
   FilterStorage storage;
   FilterBuffer fbuf(&storage);
 

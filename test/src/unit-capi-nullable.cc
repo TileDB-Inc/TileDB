@@ -564,6 +564,10 @@ void NullableArrayFx::do_2d_nullable_test(
     return;
   }
 
+  if (array_type == TILEDB_DENSE && (write_order == TILEDB_UNORDERED)) {
+    return;
+  }
+
   // Define the dimensions.
   vector<test_dim_t> test_dims;
   const uint64_t d1_domain[] = {1, 4};

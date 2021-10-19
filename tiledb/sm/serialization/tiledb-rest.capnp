@@ -81,6 +81,16 @@ struct ArraySchema {
     # Type of compression for validity buffers (enum)
 }
 
+struct ArraySchemaEvolution {
+# Evolution of array schema
+    attributesToDrop @0 :List(Text);
+    # Attribute names to be dropped
+
+    attributesToAdd @1 :List(Attribute);
+    # Attributes to be added    
+
+}
+
 struct Attribute {
 # Attribute of array
     cellValNum @0 :UInt32;
@@ -406,6 +416,61 @@ struct QueryReader {
   # Stats object
 }
 
+struct ResultCellSlab {
+# Result cell slab
+
+    fragIdx @0 :UInt32;
+    # Fragment index
+
+    tileIdx @1 :UInt64;
+    # Tile index
+
+    start @2 :UInt64;
+    # Start of the cell slab
+
+    length @3 :UInt64;
+    # Length of the cell slab
+}
+
+struct FragmentIndex {
+# Tile/cell index for a fragment
+
+    tileIdx @0 :UInt64;
+    # Tile index
+
+    cellIdx @1 :UInt64;
+    # Cell index
+}
+
+struct ReadStateIndex {
+  resultCellSlab @0 :List(ResultCellSlab);
+  # Result cell slab.
+
+  fragTileIdx @1 :List(FragmentIndex);
+  # Tile/cell index for each fragments.
+
+  rangeIdx @2 :UInt64;
+}
+
+struct ReaderIndex {
+  # Reader struct for indexed readers.
+
+  layout @0 :Text;
+  # The layout of the cells in the result of the subarray
+
+  subarray @1 :Subarray;
+  # The query subarray.
+
+  readState @2 :ReadStateIndex;
+  # Read state of reader
+
+  condition @3 :Condition;
+  # The query condition
+
+  stats @4 :Stats;
+  # Stats object
+}
+
 struct Query {
     attributeBufferHeaders @0 :List(AttributeBufferHeader);
     # list of attribute buffer headers
@@ -451,6 +516,12 @@ struct Query {
 
     stats @14 :Stats;
     # Stats object
+
+    readerIndex @15 :ReaderIndex;
+    # readerIndex contains data needed for continuation of incomplete sparse reads with index readers
+
+    denseReader @16 :QueryReader;
+    # denseReader contains data needed for continuation of incomplete dense reads with dense reader
 }
 
 struct NonEmptyDomain {

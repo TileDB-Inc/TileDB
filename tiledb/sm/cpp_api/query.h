@@ -2110,8 +2110,6 @@ class Query {
     ctx.handle_error(tiledb_query_get_offsets_buffer(
         ctx.ptr().get(), query_.get(), name.c_str(), offsets, &offsets_nbytes));
 
-    assert(*offsets_nbytes % sizeof(uint64_t) == 0);
-
     *offsets_nelements = (*offsets_nbytes) / sizeof(uint64_t);
 
     return *this;
@@ -2259,13 +2257,17 @@ class Query {
     return str;
   }
 
-  Query& update_subarray_from_query(Subarray& subarray) {
+  /** Update the subarray data within the query from the subarray parameter.
+   *
+   * @param subarray The output subarray to receive this query's subarray data.
+   **/
+  Query& update_subarray_from_query(Subarray* subarray) {
     tiledb_subarray_t* loc_subarray;
     auto& ctx = ctx_.get();
     auto& query = *this;
     ctx.handle_error(tiledb_query_get_subarray(
         ctx_.get().ptr().get(), query.ptr().get(), &loc_subarray));
-    subarray.replace_subarray_data(loc_subarray);
+    subarray->replace_subarray_data(loc_subarray);
     return *this;
   }
 

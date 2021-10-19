@@ -252,10 +252,20 @@ void check_save_to_file() {
   ss << "sm.io_concurrency_level " << std::thread::hardware_concurrency()
      << "\n";
   ss << "sm.max_tile_overlap_size 314572800\n";
+  ss << "sm.mem.malloc_trim true\n";
   ss << "sm.mem.reader.sparse_global_order.ratio_array_data 0.1\n";
   ss << "sm.mem.reader.sparse_global_order.ratio_coords 0.5\n";
   ss << "sm.mem.reader.sparse_global_order.ratio_query_condition 0.25\n";
+  ss << "sm.mem.reader.sparse_global_order.ratio_rcs 0.05\n";
+  ss << "sm.mem.reader.sparse_global_order.ratio_result_tiles 0.05\n";
   ss << "sm.mem.reader.sparse_global_order.ratio_tile_ranges 0.1\n";
+  ss << "sm.mem.reader.sparse_unordered_with_dups.ratio_array_data 0.1\n";
+  ss << "sm.mem.reader.sparse_unordered_with_dups.ratio_coords 0.5\n";
+  ss << "sm.mem.reader.sparse_unordered_with_dups.ratio_query_condition "
+        "0.25\n";
+  ss << "sm.mem.reader.sparse_unordered_with_dups.ratio_rcs 0.05\n";
+  ss << "sm.mem.reader.sparse_unordered_with_dups.ratio_result_tiles 0.05\n";
+  ss << "sm.mem.reader.sparse_unordered_with_dups.ratio_tile_ranges 0.1\n";
   ss << "sm.mem.total_budget 10737418240\n";
   ss << "sm.memory_budget 5368709120\n";
   ss << "sm.memory_budget_var 10737418240\n";
@@ -322,7 +332,7 @@ void check_save_to_file() {
   tiledb_config_free(&config);
 }
 
-TEST_CASE("C API: Test config", "[capi], [config]") {
+TEST_CASE("C API: Test config", "[capi][config]") {
   tiledb_config_t* config = nullptr;
   tiledb_error_t* error = nullptr;
   int rc = tiledb_config_alloc(&config, &error);
@@ -498,7 +508,7 @@ TEST_CASE("C API: Test config", "[capi], [config]") {
   tiledb_config_free(&config3);
 }
 
-TEST_CASE("C API: Test config iter", "[capi], [config]") {
+TEST_CASE("C API: Test config iter", "[capi][config]") {
   tiledb_ctx_t* ctx;
   int rc = tiledb_ctx_alloc(nullptr, &ctx);
   REQUIRE(rc == TILEDB_OK);
@@ -554,6 +564,7 @@ TEST_CASE("C API: Test config iter", "[capi], [config]") {
   all_param_values["sm.memory_budget"] = "5368709120";
   all_param_values["sm.memory_budget_var"] = "10737418240";
   all_param_values["sm.use_refactored_readers"] = "false";
+  all_param_values["sm.mem.malloc_trim"] = "true";
   all_param_values["sm.mem.total_budget"] = "10737418240";
   all_param_values["sm.mem.reader.sparse_global_order.ratio_coords"] = "0.5";
   all_param_values["sm.mem.reader.sparse_global_order.ratio_query_condition"] =
@@ -562,6 +573,22 @@ TEST_CASE("C API: Test config iter", "[capi], [config]") {
       "0.1";
   all_param_values["sm.mem.reader.sparse_global_order.ratio_array_data"] =
       "0.1";
+  all_param_values["sm.mem.reader.sparse_global_order.ratio_result_tiles"] =
+      "0.05";
+  all_param_values["sm.mem.reader.sparse_global_order.ratio_rcs"] = "0.05";
+  all_param_values["sm.mem.reader.sparse_unordered_with_dups.ratio_coords"] =
+      "0.5";
+  all_param_values
+      ["sm.mem.reader.sparse_unordered_with_dups.ratio_query_condition"] =
+          "0.25";
+  all_param_values
+      ["sm.mem.reader.sparse_unordered_with_dups.ratio_tile_ranges"] = "0.1";
+  all_param_values
+      ["sm.mem.reader.sparse_unordered_with_dups.ratio_array_data"] = "0.1";
+  all_param_values
+      ["sm.mem.reader.sparse_unordered_with_dups.ratio_result_tiles"] = "0.05";
+  all_param_values["sm.mem.reader.sparse_unordered_with_dups.ratio_rcs"] =
+      "0.05";
   all_param_values["sm.enable_signal_handlers"] = "true";
   all_param_values["sm.compute_concurrency_level"] =
       std::to_string(std::thread::hardware_concurrency());
@@ -796,10 +823,29 @@ TEST_CASE("C API: Test config iter", "[capi], [config]") {
     CHECK(error == nullptr);
   } while (!done);
   // highlight any difference to aid the poor developer in event CHECK() fails.
+  // If tiledb environment config variables have been set to something different
+  // from default configuration (such as
+  // "set/export TILEDB_VFS_S3_AWS_ACCESS_KEY_ID=minio"),
+  // these can legitimately differ from the defaults expected!
   for (auto i1 = all_param_values.begin(); i1 != all_param_values.end(); ++i1) {
-    if (all_iter_map.find(i1->first) == all_iter_map.end()) {
+    if (auto i2 = all_iter_map.find(i1->first); i2 == all_iter_map.end()) {
       std::cout << "all_iter_map[\"" << i1->first << "\"] not found!"
                 << std::endl;
+    } else {
+      if (i1->first != i2->first) {
+        std::cout << "huh? i1->first != i2->first, \"" << i1->first
+                  << "\" vs \"" << i2->first << std::endl;
+      } else if (i2->second != i1->second) {
+        std::cout << "values for key \"" << i1->first << "\", "
+                  << "\"" << i2->second << "\" != "
+                  << "\"" << i1->second << "\"" << std::endl;
+      } else if (all_param_values[i1->first] != all_iter_map[i1->first]) {
+        // if i1->first == i2->first, then should not be possible to be here,
+        // but just in case...
+        std::cout << " apv[k] != aim[k], k \"" << i1->first << "\", "
+                  << "\"" << all_param_values[i1->first] << "\" != \""
+                  << all_iter_map[i1->first] << "\"" << std::endl;
+      }
     }
   }
   for (auto i1 = all_iter_map.begin(); i1 != all_iter_map.end(); ++i1) {
@@ -807,6 +853,8 @@ TEST_CASE("C API: Test config iter", "[capi], [config]") {
       std::cout << "all_param_values[\"" << i1->first << "\"] not found!"
                 << std::endl;
     }
+    // else, for all like keys, unlike values should have been reported in
+    // previous loop.
   }
   CHECK(all_param_values == all_iter_map);
   tiledb_config_iter_free(&config_iter);
@@ -837,9 +885,26 @@ TEST_CASE("C API: Test config iter", "[capi], [config]") {
   } while (!done);
   // highlight any difference to aid the poor developer in event CHECK() fails.
   for (auto i1 = vfs_param_values.begin(); i1 != vfs_param_values.end(); ++i1) {
-    if (vfs_iter_map.find(i1->first) == vfs_iter_map.end()) {
+    if (auto i2 = vfs_iter_map.find(i1->first); i2 == vfs_iter_map.end()) {
       std::cout << "vfs_iter_map[\"" << i1->first << "\"] not found!"
                 << std::endl;
+    } else {
+      if (i1->first != i2->first) {
+        std::cout << "huh? i1->first != i2->first, \"" << i1->first
+                  << "\" vs \"" << i2->first << std::endl;
+      } else if (i2->second != i1->second) {
+        std::cout << "values for key \"" << i1->first << "\", "
+                  << "\"" << i2->second << "\" != "
+                  << "\"" << i1->second << "\"" << std::endl;
+      } else if (vfs_param_values[i1->first] != vfs_iter_map[i1->first]) {
+        // if i1->first == i2->first, then should not be possible to be here,
+        // but just in case...
+        std::cout << " apv[k] != aim[k], k \"" << i1->first << "\", "
+                  << "\"" << vfs_param_values[i1->first] << "\" != \""
+                  << vfs_iter_map[i1->first] << "\"" << std::endl;
+        // std::cout << " apv/aim [\"" << i1->first << "\"], \"" <<
+        // all_param_values[i1->first] << " != \"" <<
+      }
     }
   }
   for (auto i1 = vfs_iter_map.begin(); i1 != vfs_iter_map.end(); ++i1) {
@@ -930,9 +995,26 @@ TEST_CASE("C API: Test config iter", "[capi], [config]") {
   } while (!done);
   // highlight any difference to aid the poor developer in event CHECK() fails.
   for (auto i1 = s3_param_values.begin(); i1 != s3_param_values.end(); ++i1) {
-    if (s3_iter_map.find(i1->first) == s3_iter_map.end()) {
+    if (auto i2 = s3_iter_map.find(i1->first); i2 == s3_iter_map.end()) {
       std::cout << "s3_iter_map[\"" << i1->first << "\"] not found!"
                 << std::endl;
+    } else {
+      if (i1->first != i2->first) {
+        std::cout << "huh? i1->first != i2->first, \"" << i1->first
+                  << "\" vs \"" << i2->first << std::endl;
+      } else if (i2->second != i1->second) {
+        std::cout << "values for key \"" << i1->first << "\", "
+                  << "\"" << i2->second << "\" != "
+                  << "\"" << i1->second << "\"" << std::endl;
+      } else if (s3_param_values[i1->first] != s3_iter_map[i1->first]) {
+        // if i1->first == i2->first, then should not be possible to be here,
+        // but just in case...
+        std::cout << " apv[k] != aim[k], k \"" << i1->first << "\", "
+                  << "\"" << s3_param_values[i1->first] << "\" != \""
+                  << s3_iter_map[i1->first] << "\"" << std::endl;
+        // std::cout << " apv/aim [\"" << i1->first << "\"], \"" <<
+        // all_param_values[i1->first] << " != \"" <<
+      }
     }
   }
   for (auto i1 = s3_iter_map.begin(); i1 != s3_iter_map.end(); ++i1) {
@@ -950,7 +1032,7 @@ TEST_CASE("C API: Test config iter", "[capi], [config]") {
   tiledb_ctx_free(&ctx);
 }
 
-TEST_CASE("C API: Test config from file", "[capi], [config]") {
+TEST_CASE("C API: Test config from file", "[capi][config]") {
   check_load_correct_file();
   check_load_incorrect_file_cannot_open();
   check_load_incorrect_file_missing_value();
@@ -959,7 +1041,7 @@ TEST_CASE("C API: Test config from file", "[capi], [config]") {
 }
 
 TEST_CASE(
-    "C API: Test boolean config values are normalized", "[capi], [config]") {
+    "C API: Test boolean config values are normalized", "[capi][config]") {
   tiledb_error_t* err;
   tiledb_config_t* config = nullptr;
   int rc = tiledb_config_alloc(&config, &err);

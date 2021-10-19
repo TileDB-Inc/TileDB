@@ -198,6 +198,7 @@ if (MSVC)
   #   C4800: warning implicit cast int to bool
   #   C4996: deprecation warning about e.g. sscanf.
   add_compile_options(/W4 /wd4101 /wd4146 /wd4244 /wd4251 /wd4456 /wd4457 /wd4702 /wd4800 /wd4996)
+#  add_compile_options(/W4 /wd4101 /wd4146 /wd4244 /wd4251 /wd4456 /wd4457 /wd4702 /wd4800)
   # Warnings as errors:
   if (TILEDB_WERROR)
     add_compile_options(/WX)
@@ -261,6 +262,11 @@ add_subdirectory(examples)
 # Build unit tests
 if (TILEDB_TESTS)
   add_subdirectory(test)
+
+  # Add cmake target for "tests" to build all unit tests executables
+  add_custom_target(tests)
+  add_dependencies(tests tiledb_unit)
+  add_dependencies(tests unit_interval)
 endif()
 
 # Build tools

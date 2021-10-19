@@ -66,14 +66,12 @@ FragmentMetadata::FragmentMetadata(
     const ArraySchema* array_schema,
     const URI& fragment_uri,
     const std::pair<uint64_t, uint64_t>& timestamp_range,
-    OpenArrayMemoryTracker* memory_tracker,
     bool dense)
     : storage_manager_(storage_manager)
     , array_schema_(array_schema)
     , dense_(dense)
     , fragment_uri_(fragment_uri)
-    , timestamp_range_(timestamp_range)
-    , memory_tracker_(memory_tracker) {
+    , timestamp_range_(timestamp_range) {
   has_consolidated_footer_ = false;
   rtree_ = RTree(array_schema_->domain(), constants::rtree_fanout);
   meta_file_size_ = 0;
@@ -82,29 +80,58 @@ FragmentMetadata::FragmentMetadata(
   sparse_tile_num_ = 0;
   footer_size_ = 0;
   footer_offset_ = 0;
-  auto attributes = array_schema_->attributes();
-  for (unsigned i = 0; i < attributes.size(); ++i) {
-    auto attr_name = attributes[i]->name();
-    idx_map_[attr_name] = i;
-  }
-  idx_map_[constants::coords] = array_schema_->attribute_num();
-  for (unsigned i = 0; i < array_schema_->dim_num(); ++i) {
-    auto dim_name = array_schema_->dimension(i)->name();
-    idx_map_[dim_name] = array_schema_->attribute_num() + 1 + i;
-  }
 
+  build_idx_map();
   array_schema_->get_name(&array_schema_name_);
+  array_uri_ = array_schema_->array_uri();
 }
 
 FragmentMetadata::~FragmentMetadata() = default;
 
+// Copy initialization
+FragmentMetadata::FragmentMetadata(const FragmentMetadata& other) {
+  storage_manager_ = other.storage_manager_;
+  array_schema_ = other.array_schema_;
+  dense_ = other.dense_;
+  fragment_uri_ = other.fragment_uri_;
+  timestamp_range_ = other.timestamp_range_;
+  has_consolidated_footer_ = other.has_consolidated_footer_;
+  rtree_ = other.rtree_;
+  meta_file_size_ = other.meta_file_size_;
+  version_ = other.version_;
+  tile_index_base_ = other.tile_index_base_;
+  sparse_tile_num_ = other.sparse_tile_num_;
+  footer_size_ = other.footer_size_;
+  footer_offset_ = other.footer_offset_;
+  idx_map_ = other.idx_map_;
+  array_schema_name_ = other.array_schema_name_;
+  array_uri_ = other.array_uri_;
+}
+
+FragmentMetadata& FragmentMetadata::operator=(const FragmentMetadata& other) {
+  storage_manager_ = other.storage_manager_;
+  array_schema_ = other.array_schema_;
+  dense_ = other.dense_;
+  fragment_uri_ = other.fragment_uri_;
+  timestamp_range_ = other.timestamp_range_;
+  has_consolidated_footer_ = other.has_consolidated_footer_;
+  rtree_ = other.rtree_;
+  meta_file_size_ = other.meta_file_size_;
+  version_ = other.version_;
+  tile_index_base_ = other.tile_index_base_;
+  sparse_tile_num_ = other.sparse_tile_num_;
+  footer_size_ = other.footer_size_;
+  footer_offset_ = other.footer_offset_;
+  idx_map_ = other.idx_map_;
+  array_schema_name_ = other.array_schema_name_;
+  array_uri_ = other.array_uri_;
+
+  return *this;
+}
+
 /* ****************************** */
 /*                API             */
 /* ****************************** */
-
-const URI& FragmentMetadata::array_uri() const {
-  return array_schema_->array_uri();
-}
 
 Status FragmentMetadata::set_mbr(uint64_t tile, const NDRange& mbr) {
   // For easy reference
@@ -162,6 +189,9 @@ void FragmentMetadata::set_tile_validity_offset(
 
 void FragmentMetadata::set_array_schema(ArraySchema* array_schema) {
   array_schema_ = array_schema;
+
+  // Rebuild index mapping
+  build_idx_map();
 }
 
 uint64_t FragmentMetadata::cell_num() const {
@@ -474,7 +504,11 @@ uint64_t FragmentMetadata::last_tile_cell_num() const {
 }
 
 Status FragmentMetadata::load(
-    const EncryptionKey& encryption_key, Buffer* f_buff, uint64_t offset) {
+    const EncryptionKey& encryption_key,
+    Buffer* f_buff,
+    uint64_t offset,
+    std::unordered_map<std::string, tiledb_shared_ptr<ArraySchema>>
+        array_schemas) {
   auto meta_uri = fragment_uri_.join_path(
       std::string(constants::fragment_metadata_filename));
   // Load the metadata file size when we are not reading from consolidated
@@ -498,14 +532,13 @@ Status FragmentMetadata::load(
   //    * __t1_t2_uuid_version
   if (f_version == 1)
     return load_v1_v2(encryption_key);
-  return load_v3_or_higher(encryption_key, f_buff, offset);
+  return load_v3_or_higher(encryption_key, f_buff, offset, array_schemas);
 }
 
 Status FragmentMetadata::store(const EncryptionKey& encryption_key) {
   auto timer_se =
       storage_manager_->stats()->start_timer("write_store_frag_meta");
 
-  auto array_uri = this->array_uri();
   auto fragment_metadata_uri =
       fragment_uri_.join_path(constants::fragment_metadata_filename);
   auto num = array_schema_->attribute_num() + array_schema_->dim_num() + 1;
@@ -874,6 +907,9 @@ bool FragmentMetadata::operator<(const FragmentMetadata& metadata) const {
 
 Status FragmentMetadata::write_footer(Buffer* buff) const {
   RETURN_NOT_OK(write_version(buff));
+  if (version_ >= 10) {
+    RETURN_NOT_OK(write_array_schema_name(buff));
+  }
   RETURN_NOT_OK(write_dense(buff));
   RETURN_NOT_OK(write_non_empty_domain(buff));
   RETURN_NOT_OK(write_sparse_tile_num(buff));
@@ -882,9 +918,6 @@ Status FragmentMetadata::write_footer(Buffer* buff) const {
   RETURN_NOT_OK(write_file_var_sizes(buff));
   RETURN_NOT_OK(write_file_validity_sizes(buff));
   RETURN_NOT_OK(write_generic_tile_offsets(buff));
-  if (version_ >= 10) {
-    RETURN_NOT_OK(write_array_schema_name(buff));
-  }
   return Status::Ok();
 }
 
@@ -904,7 +937,9 @@ Status FragmentMetadata::load_rtree(const EncryptionKey& encryption_key) {
   storage_manager_->stats()->add_counter("read_rtree_size", buff.size());
 
   // Use the serialized buffer size to approximate memory usage of the rtree.
-  if (!memory_tracker_->take_memory(buff.size())) {
+  auto memory_tracker = storage_manager_->array_memory_tracker(array_uri_);
+  assert(memory_tracker);
+  if (!memory_tracker->take_memory(buff.size())) {
     return LOG_STATUS(Status::FragmentMetadataError(
         "Cannot load R-tree; Insufficient memory budget"));
   }
@@ -919,7 +954,8 @@ Status FragmentMetadata::load_rtree(const EncryptionKey& encryption_key) {
 
 void FragmentMetadata::free_rtree() {
   auto freed = rtree_.free_memory();
-  memory_tracker_->release_memory(freed);
+  auto memory_tracker = storage_manager_->array_memory_tracker(array_uri_);
+  memory_tracker->release_memory(freed);
   loaded_metadata_.rtree_ = false;
 }
 
@@ -1642,7 +1678,9 @@ Status FragmentMetadata::load_tile_offsets(ConstBuffer* buff) {
       continue;
 
     auto size = tile_offsets_num * sizeof(uint64_t);
-    if (!memory_tracker_->take_memory(size)) {
+    auto memory_tracker = storage_manager_->array_memory_tracker(array_uri_);
+    assert(memory_tracker);
+    if (!memory_tracker->take_memory(size)) {
       return LOG_STATUS(Status::FragmentMetadataError(
           "Cannot load tile offsets; Insufficient memory budget"));
     }
@@ -1677,7 +1715,9 @@ Status FragmentMetadata::load_tile_offsets(unsigned idx, ConstBuffer* buff) {
   // Get tile offsets
   if (tile_offsets_num != 0) {
     auto size = tile_offsets_num * sizeof(uint64_t);
-    if (!memory_tracker_->take_memory(size)) {
+    auto memory_tracker = storage_manager_->array_memory_tracker(array_uri_);
+    assert(memory_tracker);
+    if (!memory_tracker->take_memory(size)) {
       return LOG_STATUS(Status::FragmentMetadataError(
           "Cannot load tile offsets; Insufficient memory budget"));
     }
@@ -1724,7 +1764,9 @@ Status FragmentMetadata::load_tile_var_offsets(ConstBuffer* buff) {
       continue;
 
     auto size = tile_var_offsets_num * sizeof(uint64_t);
-    if (!memory_tracker_->take_memory(size)) {
+    auto memory_tracker = storage_manager_->array_memory_tracker(array_uri_);
+    assert(memory_tracker);
+    if (!memory_tracker->take_memory(size)) {
       return LOG_STATUS(Status::FragmentMetadataError(
           "Cannot load tile var offsets; Insufficient memory budget"));
     }
@@ -1761,7 +1803,9 @@ Status FragmentMetadata::load_tile_var_offsets(
   // Get variable tile offsets
   if (tile_var_offsets_num != 0) {
     auto size = tile_var_offsets_num * sizeof(uint64_t);
-    if (!memory_tracker_->take_memory(size)) {
+    auto memory_tracker = storage_manager_->array_memory_tracker(array_uri_);
+    assert(memory_tracker);
+    if (!memory_tracker->take_memory(size)) {
       return LOG_STATUS(Status::FragmentMetadataError(
           "Cannot load tile var offsets; Insufficient memory budget"));
     }
@@ -1807,7 +1851,9 @@ Status FragmentMetadata::load_tile_var_sizes(ConstBuffer* buff) {
       continue;
 
     auto size = tile_var_sizes_num * sizeof(uint64_t);
-    if (!memory_tracker_->take_memory(size)) {
+    auto memory_tracker = storage_manager_->array_memory_tracker(array_uri_);
+    assert(memory_tracker);
+    if (!memory_tracker->take_memory(size)) {
       return LOG_STATUS(Status::FragmentMetadataError(
           "Cannot load tile var sizes; Insufficient memory budget"));
     }
@@ -1842,7 +1888,9 @@ Status FragmentMetadata::load_tile_var_sizes(unsigned idx, ConstBuffer* buff) {
   // Get variable tile sizes
   if (tile_var_sizes_num != 0) {
     auto size = tile_var_sizes_num * sizeof(uint64_t);
-    if (!memory_tracker_->take_memory(size)) {
+    auto memory_tracker = storage_manager_->array_memory_tracker(array_uri_);
+    assert(memory_tracker);
+    if (!memory_tracker->take_memory(size)) {
       return LOG_STATUS(Status::FragmentMetadataError(
           "Cannot load tile var sizes; Insufficient memory budget"));
     }
@@ -1876,7 +1924,9 @@ Status FragmentMetadata::load_tile_validity_offsets(
   // Get tile offsets
   if (tile_validity_offsets_num != 0) {
     auto size = tile_validity_offsets_num * sizeof(uint64_t);
-    if (!memory_tracker_->take_memory(size)) {
+    auto memory_tracker = storage_manager_->array_memory_tracker(array_uri_);
+    assert(memory_tracker);
+    if (!memory_tracker->take_memory(size)) {
       return LOG_STATUS(Status::FragmentMetadataError(
           "Cannot load tile validity offsets; Insufficient memory budget"));
     }
@@ -2020,7 +2070,7 @@ Status FragmentMetadata::load_array_schema_name(ConstBuffer* buff) {
   RETURN_NOT_OK(buff->read(&size, sizeof(uint64_t)));
   if (size == 0) {
     return LOG_STATUS(Status::FragmentMetadataError(
-        "Cannot load array schema name; Size of shema name is zero"));
+        "Cannot load array schema name; Size of schema name is zero"));
   }
   array_schema_name_.resize(size);
 
@@ -2038,12 +2088,12 @@ Status FragmentMetadata::load_v1_v2(const EncryptionKey& encryption_key) {
   RETURN_NOT_OK(tile_io.read_generic(
       &tile, 0, encryption_key, storage_manager_->config()));
 
-  auto chunked_buffer = tile->chunked_buffer();
+  auto buffer = tile->buffer();
   Buffer buff;
-  RETURN_NOT_OK_ELSE(buff.realloc(chunked_buffer->size()), tdb_delete(tile));
-  buff.set_size(chunked_buffer->size());
-  RETURN_NOT_OK_ELSE(
-      chunked_buffer->read(buff.data(), buff.size(), 0), tdb_delete(tile));
+  RETURN_NOT_OK_ELSE(buff.realloc(buffer->size()), tdb_delete(tile));
+  buff.set_size(buffer->size());
+  buffer->reset_offset();
+  RETURN_NOT_OK_ELSE(buffer->read(buff.data(), buff.size()), tdb_delete(tile));
   tdb_delete(tile);
 
   storage_manager_->stats()->add_counter("read_frag_meta_size", buff.size());
@@ -2066,13 +2116,21 @@ Status FragmentMetadata::load_v1_v2(const EncryptionKey& encryption_key) {
 }
 
 Status FragmentMetadata::load_v3_or_higher(
-    const EncryptionKey& encryption_key, Buffer* f_buff, uint64_t offset) {
-  RETURN_NOT_OK(load_footer(encryption_key, f_buff, offset));
+    const EncryptionKey& encryption_key,
+    Buffer* f_buff,
+    uint64_t offset,
+    std::unordered_map<std::string, tiledb_shared_ptr<ArraySchema>>
+        array_schemas) {
+  RETURN_NOT_OK(load_footer(encryption_key, f_buff, offset, array_schemas));
   return Status::Ok();
 }
 
 Status FragmentMetadata::load_footer(
-    const EncryptionKey& encryption_key, Buffer* f_buff, uint64_t offset) {
+    const EncryptionKey& encryption_key,
+    Buffer* f_buff,
+    uint64_t offset,
+    std::unordered_map<std::string, tiledb_shared_ptr<ArraySchema>>
+        array_schemas) {
   (void)encryption_key;  // Not used for now, perhaps in the future
   std::lock_guard<std::mutex> lock(mtx_);
 
@@ -2094,6 +2152,13 @@ Status FragmentMetadata::load_footer(
   }
 
   RETURN_NOT_OK(load_version(cbuff.get()));
+  if (version_ >= 10) {
+    RETURN_NOT_OK(load_array_schema_name(cbuff.get()));
+    auto schema = array_schemas.find(array_schema_name_);
+    if (schema != array_schemas.end()) {
+      set_array_schema(schema->second.get());
+    }
+  }
   RETURN_NOT_OK(load_dense(cbuff.get()));
   RETURN_NOT_OK(load_non_empty_domain(cbuff.get()));
   RETURN_NOT_OK(load_sparse_tile_num(cbuff.get()));
@@ -2118,9 +2183,6 @@ Status FragmentMetadata::load_footer(
   loaded_metadata_.tile_validity_offsets_.resize(num, false);
 
   RETURN_NOT_OK(load_generic_tile_offsets(cbuff.get()));
-  if (version_ >= 10) {
-    RETURN_NOT_OK(load_array_schema_name(cbuff.get()));
-  }
 
   loaded_metadata_.footer_ = true;
 
@@ -2248,7 +2310,7 @@ Status FragmentMetadata::write_array_schema_name(Buffer* buff) const {
   uint64_t size = array_schema_name_.size();
   if (size == 0) {
     return LOG_STATUS(Status::FragmentMetadataError(
-        "Cannot write array schema name; Size of shema name is zero"));
+        "Cannot write array schema name; Size of schema name is zero"));
   }
   RETURN_NOT_OK(buff->write(&size, sizeof(uint64_t)));
   return buff->write(array_schema_name_.c_str(), size);
@@ -2346,11 +2408,12 @@ Status FragmentMetadata::read_generic_tile_from_file(
   RETURN_NOT_OK(tile_io.read_generic(
       &tile, offset, encryption_key, storage_manager_->config()));
 
-  const auto chunked_buffer = tile->chunked_buffer();
-  buff->realloc(chunked_buffer->size());
-  buff->set_size(chunked_buffer->size());
+  const auto buffer = tile->buffer();
+  buff->realloc(buffer->size());
+  buff->set_size(buffer->size());
+  buffer->reset_offset();
   RETURN_NOT_OK_ELSE(
-      chunked_buffer->read(buff->data(), buff->size(), 0), tdb_delete(tile));
+      buffer->read(buff->data(), buff->size()), tdb_delete(tile));
   tdb_delete(tile);
 
   return Status::Ok();
@@ -2366,7 +2429,9 @@ Status FragmentMetadata::read_file_footer(
 
   storage_manager_->stats()->add_counter("read_frag_meta_size", *footer_size);
 
-  if (!memory_tracker_->take_memory(*footer_size)) {
+  auto memory_tracker = storage_manager_->array_memory_tracker(array_uri_);
+  assert(memory_tracker);
+  if (!memory_tracker->take_memory(*footer_size)) {
     return LOG_STATUS(Status::FragmentMetadataError(
         "Cannot load file footer; Insufficient memory budget"));
   }
@@ -2383,18 +2448,14 @@ Status FragmentMetadata::write_generic_tile_to_file(
   URI fragment_metadata_uri = fragment_uri_.join_path(
       std::string(constants::fragment_metadata_filename));
 
-  ChunkedBuffer* const chunked_buffer = tdb_new(ChunkedBuffer);
-  RETURN_NOT_OK_ELSE(
-      Tile::buffer_to_contiguous_fixed_chunks(
-          buff, 0, constants::generic_tile_cell_size, chunked_buffer),
-      tdb_delete(chunked_buffer));
-  buff.disown_data();
+  Buffer* const buffer = tdb_new(Buffer);
+  buffer->swap(buff);
 
   Tile tile(
       constants::generic_tile_datatype,
       constants::generic_tile_cell_size,
       0,
-      chunked_buffer,
+      buffer,
       true);
 
   GenericTileIO tile_io(storage_manager_, fragment_metadata_uri);
@@ -2601,13 +2662,31 @@ Status FragmentMetadata::store_footer(const EncryptionKey& encryption_key) {
 }
 
 void FragmentMetadata::clean_up() {
-  auto array_uri = this->array_uri();
   auto fragment_metadata_uri =
       fragment_uri_.join_path(constants::fragment_metadata_filename);
 
   storage_manager_->close_file(fragment_metadata_uri);
   storage_manager_->vfs()->remove_file(fragment_metadata_uri);
-  storage_manager_->array_xunlock(array_uri);
+  storage_manager_->array_xunlock(array_uri_);
+}
+
+const ArraySchema* FragmentMetadata::array_schema() const {
+  return array_schema_;
+}
+
+void FragmentMetadata::build_idx_map() {
+  idx_map_.clear();
+
+  auto attributes = array_schema_->attributes();
+  for (unsigned i = 0; i < attributes.size(); ++i) {
+    auto attr_name = attributes[i]->name();
+    idx_map_[attr_name] = i;
+  }
+  idx_map_[constants::coords] = array_schema_->attribute_num();
+  for (unsigned i = 0; i < array_schema_->dim_num(); ++i) {
+    auto dim_name = array_schema_->dimension(i)->name();
+    idx_map_[dim_name] = array_schema_->attribute_num() + 1 + i;
+  }
 }
 
 // Explicit template instantiations
