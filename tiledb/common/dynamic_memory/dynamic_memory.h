@@ -135,7 +135,7 @@ using TiledbTracedAllocator = typename std::conditional<
     // The allocator used when not tracing
     std::allocator<T>>::type;
 
-}  // namespace <anonymous>
+}  // namespace
 
 /**
  * The common allocator for the TileDB library.
@@ -228,7 +228,7 @@ class AllocationFunctions {
   }
 };
 
-}  // namespace <anonymous>
+}  // namespace
 
 /**
  *
