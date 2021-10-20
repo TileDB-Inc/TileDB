@@ -443,6 +443,12 @@ Status FragmentMetadata::get_tile_overlap(
   return Status::Ok();
 }
 
+void FragmentMetadata::compute_tile_bitmap(
+    const Range& range, unsigned d, std::vector<uint8_t>* tile_bitmap) {
+  assert(version_ <= 2 || loaded_metadata_.rtree_);
+  rtree_.compute_tile_bitmap(range, d, tile_bitmap);
+}
+
 Status FragmentMetadata::init(const NDRange& non_empty_domain) {
   // For easy reference
   auto dim_num = array_schema_->dim_num();

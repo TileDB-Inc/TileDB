@@ -1320,7 +1320,8 @@ Status ReaderBase::compute_var_cell_destinations(
                *buffer_validity_size)) {
         // Try to fix the overflow by reducing the result cell slabs to copy.
         if (fix_var_sized_overflows_) {
-          copy_end_ = std::pair<uint64_t, uint64_t>(cs_idx + 1, cell_idx);
+          copy_end_ =
+              std::pair<uint64_t, uint64_t>(cs_idx + 1, cell_idx - cs.start_);
 
           // Cannot even copy one cell, return overflow.
           if (cs_idx == 0 && cell_idx == result_cell_slabs->front().start_) {
