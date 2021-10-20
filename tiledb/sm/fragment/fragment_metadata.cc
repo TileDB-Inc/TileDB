@@ -513,7 +513,7 @@ Status FragmentMetadata::load(
     const EncryptionKey& encryption_key,
     Buffer* f_buff,
     uint64_t offset,
-    std::unordered_map<std::string, tiledb_shared_ptr<ArraySchema>>
+    std::unordered_map<std::string, tdb_shared_ptr<ArraySchema>>
         array_schemas) {
   auto meta_uri = fragment_uri_.join_path(
       std::string(constants::fragment_metadata_filename));
@@ -2122,7 +2122,7 @@ Status FragmentMetadata::load_v3_or_higher(
     const EncryptionKey& encryption_key,
     Buffer* f_buff,
     uint64_t offset,
-    std::unordered_map<std::string, tiledb_shared_ptr<ArraySchema>>
+    std::unordered_map<std::string, tdb_shared_ptr<ArraySchema>>
         array_schemas) {
   RETURN_NOT_OK(load_footer(encryption_key, f_buff, offset, array_schemas));
   return Status::Ok();
@@ -2132,7 +2132,7 @@ Status FragmentMetadata::load_footer(
     const EncryptionKey& encryption_key,
     Buffer* f_buff,
     uint64_t offset,
-    std::unordered_map<std::string, tiledb_shared_ptr<ArraySchema>>
+    std::unordered_map<std::string, tdb_shared_ptr<ArraySchema>>
         array_schemas) {
   (void)encryption_key;  // Not used for now, perhaps in the future
   std::lock_guard<std::mutex> lock(mtx_);

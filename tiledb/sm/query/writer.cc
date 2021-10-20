@@ -1320,7 +1320,7 @@ Status Writer::init_global_write_state() {
   global_write_state_.reset(new GlobalWriteState);
 
   // Create fragment
-  global_write_state_->frag_meta_ = tdb_make_shared(FragmentMetadata);
+  global_write_state_->frag_meta_ = tdb::make_shared<FragmentMetadata>(HERE());
   RETURN_NOT_OK(create_fragment(
       !coords_info_.has_coords_, global_write_state_->frag_meta_));
   auto uri = global_write_state_->frag_meta_->fragment_uri();
@@ -1608,7 +1608,7 @@ Status Writer::ordered_write() {
   auto timer_se = stats_->start_timer("filter_tile");
 
   // Create new fragment
-  auto frag_meta = tdb_make_shared(FragmentMetadata);
+  auto frag_meta = tdb::make_shared<FragmentMetadata>(HERE());
   RETURN_CANCEL_OR_ERROR(create_fragment(true, frag_meta));
   const auto& uri = frag_meta->fragment_uri();
 
@@ -2391,7 +2391,7 @@ Status Writer::unordered_write() {
     RETURN_CANCEL_OR_ERROR(compute_coord_dups(cell_pos, &coord_dups));
 
   // Create new fragment
-  auto frag_meta = tdb_make_shared(FragmentMetadata);
+  auto frag_meta = tdb::make_shared<FragmentMetadata>(HERE());
   RETURN_CANCEL_OR_ERROR(create_fragment(false, frag_meta));
   const auto& uri = frag_meta->fragment_uri();
 

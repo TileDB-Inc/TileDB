@@ -1644,8 +1644,8 @@ Status StorageManager::get_fragment_info(
   }
 
   // Get fragment non-empty domain
-  auto meta = tdb_make_shared(
-      FragmentMetadata,
+  auto meta = tdb::make_shared<FragmentMetadata>(
+      HERE(),
       this,
       array.array_schema(),
       fragment_uri,
@@ -1655,7 +1655,7 @@ Status StorageManager::get_fragment_info(
       *array.encryption_key(),
       nullptr,
       0,
-      std::unordered_map<std::string, tiledb_shared_ptr<ArraySchema>>()));
+      std::unordered_map<std::string, tdb_shared_ptr<ArraySchema>>()));
 
   // This is important for format version > 2
   sparse = !meta->dense();
@@ -2661,16 +2661,16 @@ Status StorageManager::load_fragment_metadata(
       if (f_version == 1) {  // This is equivalent to format version <=2
         bool sparse;
         RETURN_NOT_OK(vfs_->is_file(coords_uri, &sparse));
-        metadata = tdb_make_shared(
-            FragmentMetadata,
+        metadata = tdb::make_shared<FragmentMetadata>(
+            HERE(),
             this,
             array_schema,
             sf.uri_,
             sf.timestamp_range_,
             !sparse);
       } else {  // Format version > 2
-        metadata = tdb_make_shared(
-            FragmentMetadata, this, array_schema, sf.uri_, sf.timestamp_range_);
+        metadata = tdb::make_shared<FragmentMetadata>(
+            HERE(), this, array_schema, sf.uri_, sf.timestamp_range_);
       }
 
       // Potentially find the basic fragment metadata in the consolidated
