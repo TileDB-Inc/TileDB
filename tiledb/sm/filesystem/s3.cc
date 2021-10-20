@@ -1245,7 +1245,7 @@ Status S3::init_client() const {
     } else {
       client_ = make_shared<Aws::S3::S3Client>(
           HERE(),
-          credentials_provider_.inner_sp(),
+          credentials_provider_,
           *client_config_,
           Aws::Client::AWSAuthV4Signer::PayloadSigningPolicy::Never,
           use_virtual_addressing_);
