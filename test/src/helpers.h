@@ -1,4 +1,3 @@
-#define DEVING_SUBARRAY_PARTITIONER_STORY5342 1
 /**
  * @file   helpers.h
  *
@@ -129,7 +128,6 @@ void check_partitions(
     const std::vector<SubarrayRanges<T>>& partitions,
     bool last_unsplittable);
 
-#if DEVING_SUBARRAY_PARTITIONER_STORY5342
 /**
  * Checks that the capi input partitioner produces the input partitions
  * (i.e., subarrays).
@@ -162,7 +160,6 @@ void check_partitions(
     const std::vector<SubarrayRanges<T>>& partitions,
     bool last_unsplittable,
     tiledb::Subarray* retrieve_partition_subarray);
-#endif
 
 /**
  * Checks if the input subarray has the input subarray ranges.
