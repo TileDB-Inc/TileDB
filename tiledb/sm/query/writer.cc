@@ -30,6 +30,8 @@
  * This file implements class Writer.
  */
 
+#include "tiledb/common/common.h"
+
 #include "tiledb/sm/query/writer.h"
 #include "tiledb/common/heap_memory.h"
 #include "tiledb/common/logger.h"
@@ -995,9 +997,8 @@ Status Writer::create_fragment(
     uri = array_schema_->array_uri().join_path(new_fragment_str);
   }
   auto timestamp_range = std::pair<uint64_t, uint64_t>(timestamp, timestamp);
-
-  frag_meta = tdb_make_shared(
-      FragmentMetadata,
+  frag_meta = tdb::make_shared<FragmentMetadata>(
+      HERE(),
       storage_manager_,
       array_schema_,
       uri,

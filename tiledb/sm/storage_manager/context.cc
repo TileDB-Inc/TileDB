@@ -30,6 +30,8 @@
  * This file implements class Context.
  */
 
+#include "tiledb/common/common.h"
+
 #include "tiledb/sm/storage_manager/context.h"
 #include "tiledb/common/logger.h"
 #include "tiledb/common/memory.h"
@@ -46,7 +48,7 @@ namespace sm {
 Context::Context()
     : last_error_(Status::Ok())
     , storage_manager_(nullptr)
-    , stats_(tdb_make_shared(stats::Stats, "Context"))
+    , stats_(make_shared<stats::Stats>(HERE(), "Context"))
     , logger_(tdb_make_shared(Logger, "")) {
 }
 

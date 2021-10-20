@@ -1,5 +1,5 @@
 #
-# tiledb/common/CMakeLists.txt
+# tiledb/common/dynamic_memory/CMakeLists.txt
 #
 # The MIT License
 #
@@ -24,15 +24,46 @@
 # THE SOFTWARE.
 #
 
-include(common-root)
+include(common NO_POLICY_SCOPE)
 
-add_subdirectory(thread_pool)
-add_subdirectory(dynamic_memory)
-add_subdirectory(governor)
+list(APPEND SOURCES
+    dynamic_memory.cc
+)
+gather_sources(${SOURCES})
+
+list(APPEND DEPENDENT_SOURCES
+    ../governor/governor.cc
+    ../heap_profiler.cc
+)
 
 if (TILEDB_TESTS)
-    add_subdirectory(interval)
+    find_package(Catch_EP REQUIRED)
+
+    add_executable(unit_dynamic_memory EXCLUDE_FROM_ALL)
+    target_link_libraries(unit_dynamic_memory PUBLIC Catch2::Catch2)
+
+    # Sources for code under test
+    target_sources(unit_dynamic_memory PUBLIC ${SOURCES})
+
+    # Sources for required code
+    target_sources(unit_dynamic_memory PUBLIC ${DEPENDENT_SOURCES})
+
+    # Sources for tests
+    target_sources(unit_dynamic_memory PUBLIC
+        test/main.cc
+        test/unit_dynamic_memory.cc
+    )
+
+    add_test(
+        NAME "unit_dynamic_memory"
+        COMMAND $<TARGET_FILE:unit_dynamic_memory>
+        WORKING_DIRECTORY ${CMAKE_CURRENT_SOURCE_DIR}
+    )
 endif()
 
-get_gathered(COMMON_SOURCES)
-set(TILEDB_COMMON_SOURCES ${COMMON_SOURCES} PARENT_SCOPE)
+# TODO: Implementation of allocator_unique
+
+# TODO: Provenance with copy constructor
+# TODO: Provenance with select_on_copy_construction
+
+# TODO: TracedAllocator variant with its own std::string storage

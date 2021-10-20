@@ -32,6 +32,8 @@
 
 #ifdef HAVE_S3
 
+#include "tiledb/common/common.h"
+
 #include <aws/core/utils/logging/AWSLogging.h>
 #include <aws/core/utils/logging/DefaultLogSystem.h>
 #include <aws/core/utils/logging/LogLevel.h>
@@ -1191,8 +1193,8 @@ Status S3::init_client() const {
       Aws::String secret_access_key(aws_secret_access_key.c_str());
       Aws::String session_token(
           !aws_session_token.empty() ? aws_session_token.c_str() : "");
-      credentials_provider_ = tdb_make_shared(
-          Aws::Auth::SimpleAWSCredentialsProvider,
+      credentials_provider_ = make_shared<Aws::Auth::SimpleAWSCredentialsProvider>(
+              HERE(),
           access_key_id,
           secret_access_key,
           session_token);
@@ -1210,8 +1212,8 @@ Status S3::init_client() const {
               Aws::Auth::DEFAULT_CREDS_LOAD_FREQ_SECONDS);
       Aws::String session_name(
           !aws_session_name.empty() ? aws_session_name.c_str() : "");
-      credentials_provider_ = tdb_make_shared(
-          Aws::Auth::STSAssumeRoleCredentialsProvider,
+      credentials_provider_ = make_shared<Aws::Auth::STSAssumeRoleCredentialsProvider>(
+              HERE(),
           role_arn,
           session_name,
           external_id,
@@ -1235,14 +1237,14 @@ Status S3::init_client() const {
     std::lock_guard<std::mutex> static_lck(static_client_init_mtx);
 
     if (credentials_provider_ == nullptr) {
-      client_ = tdb_make_shared(
-          Aws::S3::S3Client,
+      client_ = make_shared<Aws::S3::S3Client>(
+              HERE(),
           *client_config_,
           Aws::Client::AWSAuthV4Signer::PayloadSigningPolicy::Never,
           use_virtual_addressing_);
     } else {
-      client_ = tdb_make_shared(
-          Aws::S3::S3Client,
+      client_ = make_shared<Aws::S3::S3Client>(
+          HERE(),
           credentials_provider_.inner_sp(),
           *client_config_,
           Aws::Client::AWSAuthV4Signer::PayloadSigningPolicy::Never,

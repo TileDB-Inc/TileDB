@@ -36,6 +36,8 @@
 #define NOMINMAX  // avoid min/max macros from windows headers
 #endif
 
+#include "tiledb/common/common.h"
+
 #include <put_block_list_request_base.h>
 #include <future>
 
@@ -156,14 +158,14 @@ Status Azure::init(const Config& config, ThreadPool* const thread_pool) {
   // Linux.
   const std::string cert_file =
       global_state::GlobalState::GetGlobalState().cert_file();
-  client_ = tdb_make_shared(
-      azure::storage_lite::blob_client,
+  client_ = make_shared<azure::storage_lite::blob_client>(
+      HERE(),
       account,
       thread_pool_->concurrency_level(),
       cert_file);
 #else
-  client_ = tdb_make_shared(
-      azure::storage_lite::blob_client,
+  client_ = make_shared<azure::storage_lite::blob_client>(
+      HERE(),
       account,
       thread_pool_->concurrency_level());
 #endif

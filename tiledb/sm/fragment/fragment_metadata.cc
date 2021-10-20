@@ -31,6 +31,8 @@
  * This file implements the FragmentMetadata class.
  */
 
+#include "tiledb/common/common.h"
+
 #include "tiledb/sm/fragment/fragment_metadata.h"
 #include "tiledb/common/heap_memory.h"
 #include "tiledb/common/logger.h"
@@ -2143,12 +2145,12 @@ Status FragmentMetadata::load_footer(
   if (f_buff == nullptr) {
     has_consolidated_footer_ = false;
     RETURN_NOT_OK(read_file_footer(&buff, &footer_offset_, &footer_size_));
-    cbuff = tdb_make_shared(ConstBuffer, &buff);
+    cbuff = make_shared<ConstBuffer>(HERE(), &buff);
   } else {
     footer_size_ = 0;
     footer_offset_ = offset;
     has_consolidated_footer_ = true;
-    cbuff = tdb_make_shared(ConstBuffer, f_buff);
+    cbuff = make_shared<ConstBuffer>(HERE(), f_buff);
     cbuff->set_offset(offset);
   }
 

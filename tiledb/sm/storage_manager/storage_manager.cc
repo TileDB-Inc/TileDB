@@ -31,6 +31,8 @@
  * This file implements the StorageManager class.
  */
 
+#include "tiledb/common/common.h"
+
 #include <algorithm>
 #include <functional>
 #include <iostream>
@@ -2596,7 +2598,7 @@ Status StorageManager::load_array_metadata(
       RETURN_NOT_OK(tile_io.read_generic(&tile, 0, encryption_key, config_));
 
       auto buffer = tile->buffer();
-      metadata_buff = tdb_make_shared(Buffer);
+      metadata_buff = make_shared<Buffer>(HERE());
       RETURN_NOT_OK(metadata_buff->realloc(buffer->size()));
       metadata_buff->set_size(buffer->size());
       buffer->reset_offset();

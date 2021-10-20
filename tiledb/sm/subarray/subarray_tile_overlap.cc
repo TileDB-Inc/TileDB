@@ -30,6 +30,8 @@
  * This file implements class SubarrayTileOverlap.
  */
 
+#include "tiledb/common/common.h"
+
 #include "tiledb/sm/subarray/subarray_tile_overlap.h"
 
 using namespace tiledb::common;
@@ -69,7 +71,7 @@ SubarrayTileOverlap::SubarrayTileOverlap(
     , range_idx_start_offset_(0)
     , range_idx_end_offset_(0) {
   const uint64_t range_num = range_idx_end_ - range_idx_start_ + 1;
-  tile_overlap_idx_ = tdb_make_shared(TileOverlapIndex);
+  tile_overlap_idx_ = make_shared<TileOverlapIndex>(HERE());
   tile_overlap_idx_->resize(fragment_num);
   for (size_t i = 0; i < tile_overlap_idx_->size(); ++i)
     (*tile_overlap_idx_)[i].resize(range_num);
