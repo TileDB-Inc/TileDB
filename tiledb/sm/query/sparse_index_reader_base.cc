@@ -344,5 +344,33 @@ Status SparseIndexReaderBase::resize_output_buffers() {
   return Status::Ok();
 }
 
+Status SparseIndexReaderBase::add_extra_offset() {
+  for (const auto& it : buffers_) {
+    const auto& name = it.first;
+    if (!array_schema_->var_size(name))
+      continue;
+
+    auto buffer = static_cast<unsigned char*>(it.second.buffer_);
+    if (offsets_format_mode_ == "bytes") {
+      memcpy(
+          buffer + *it.second.buffer_size_ - offsets_bytesize(),
+          it.second.buffer_var_size_,
+          offsets_bytesize());
+    } else if (offsets_format_mode_ == "elements") {
+      auto elements = *it.second.buffer_var_size_ /
+                      datatype_size(array_schema_->type(name));
+      memcpy(
+          buffer + *it.second.buffer_size_ - offsets_bytesize(),
+          &elements,
+          offsets_bytesize());
+    } else {
+      return LOG_STATUS(Status::ReaderError(
+          "Cannot add extra offset to buffer; Unsupported offsets format"));
+    }
+  }
+
+  return Status::Ok();
+}
+
 }  // namespace sm
 }  // namespace tiledb

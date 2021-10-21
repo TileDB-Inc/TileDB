@@ -109,6 +109,13 @@ Status SparseUnorderedWithDupsReader::init() {
 
   // Load offset configuration options.
   bool found = false;
+  offsets_format_mode_ = config_.get("sm.var_offsets.mode", &found);
+  assert(found);
+  if (offsets_format_mode_ != "bytes" && offsets_format_mode_ != "elements") {
+    return LOG_STATUS(
+        Status::ReaderError("Cannot initialize reader; Unsupported offsets "
+                            "format in configuration"));
+  }
   RETURN_NOT_OK(config_.get<bool>(
       "sm.var_offsets.extra_element", &offsets_extra_element_, &found));
   assert(found);
@@ -415,6 +422,12 @@ Status SparseUnorderedWithDupsReader::create_result_tiles(bool* tiles_found) {
       uint64_t t = 0;
       while (range_it != result_tile_ranges_[f].end()) {
         for (t = range_it->first; t <= range_it->second; t++) {
+          // Figure out the start index.
+          auto start = range_it->first;
+          if (!result_tiles_.empty() && result_tiles_.back().frag_idx() == f) {
+            start = std::max(start, result_tiles_.back().tile_idx() + 1);
+          }
+
           RETURN_NOT_OK(add_result_tile(
               dim_num,
               memory_budget_result_tiles,
@@ -584,6 +597,14 @@ Status SparseUnorderedWithDupsReader::create_result_cell_slabs(
         read_state_.result_cell_slabs_.emplace_back(&rt, start, length);
         memory_used_rcs_ += sizeof(ResultCellSlab);
       }
+
+      // Adjust result tile ranges.
+      auto& first_range = result_tile_ranges_[rt.frag_idx()].front();
+      if (first_range.second == rt.tile_idx()) {
+        result_tile_ranges_[rt.frag_idx()].pop_front();
+      } else {
+        first_range.first = rt.tile_idx() + 1;
+      }
     }
 
     read_state_.frag_tile_idx_[rt.frag_idx()] =
@@ -655,6 +676,10 @@ Status SparseUnorderedWithDupsReader::end_iteration() {
 
   auto uint64_t_max = std::numeric_limits<uint64_t>::max();
   copy_end_ = std::pair<uint64_t, uint64_t>(uint64_t_max, uint64_t_max);
+
+  if (offsets_extra_element_) {
+    RETURN_NOT_OK(add_extra_offset());
+  }
 
   array_memory_tracker_->set_budget(std::numeric_limits<uint64_t>::max());
   return Status::Ok();
