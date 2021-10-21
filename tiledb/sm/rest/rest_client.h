@@ -137,10 +137,16 @@ class RestClient {
    * Posts the array's metadata to the REST server.
    *
    * @param uri Array URI
+   * @param timestamp_start Inclusive starting timestamp at which to open array
+   * @param timestamp_end Inclusive ending timestamp at which to open array
    * @param array Array to update/post metadata for.
    * @return Status
    */
-  Status post_array_metadata_to_rest(const URI& uri, Array* array);
+  Status post_array_metadata_to_rest(
+      const URI& uri,
+      uint64_t timestamp_start,
+      uint64_t timestamp_end,
+      Array* array);
 
   /**
    * Post a data query to rest server
