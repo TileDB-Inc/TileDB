@@ -78,8 +78,10 @@ namespace sm {
 StorageManager::StorageManager(
     ThreadPool* const compute_tp,
     ThreadPool* const io_tp,
-    stats::Stats* const parent_stats)
+    stats::Stats* const parent_stats,
+    tdb_shared_ptr<Logger> logger)
     : stats_(parent_stats->create_child("StorageManager"))
+    , logger_(logger->clone("Context: " + std::to_string(++logger_id_)))
     , cancellation_in_progress_(false)
     , queries_in_progress_(0)
     , compute_tp_(compute_tp)
@@ -1727,6 +1729,7 @@ Status StorageManager::init(const Config* config) {
   }
 
   global_logger().set_level(static_cast<Logger::Level>(level));
+  global_logger().clone("StorageManager");
 
   // Get config params
   uint64_t tile_cache_size = 0;
@@ -2476,6 +2479,10 @@ Status StorageManager::write(const URI& uri, void* data, uint64_t size) const {
 
 stats::Stats* StorageManager::stats() {
   return stats_;
+}
+
+tdb_shared_ptr<Logger> StorageManager::logger() const {
+  return logger_;
 }
 
 /* ****************************** */

@@ -108,6 +108,9 @@ class Context {
   /** The class stats. */
   tdb_shared_ptr<stats::Stats> stats_;
 
+  /** The class logger. */
+  tdb_shared_ptr<Logger> logger_;
+
   /* ********************************* */
   /*         PRIVATE METHODS           */
   /* ********************************* */

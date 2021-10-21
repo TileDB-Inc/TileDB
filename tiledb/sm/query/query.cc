@@ -66,6 +66,8 @@ Query::Query(StorageManager* storage_manager, Array* array, URI fragment_uri)
     , layout_(Layout::ROW_MAJOR)
     , storage_manager_(storage_manager)
     , stats_(storage_manager_->stats()->create_child("Query"))
+    , logger_(storage_manager->logger()->clone(
+          "Query: " + std::to_string(++logger_id_)))
     , has_coords_buffer_(false)
     , has_zipped_coords_buffer_(false)
     , coord_buffer_is_set_(false)
@@ -1922,6 +1924,9 @@ Status Query::submit() {
   if (type_ == QueryType::READ && status_ == QueryStatus::COMPLETED) {
     return Status::Ok();
   }
+
+  // logger_->error("A query has just been submitted");
+
   // Check attribute/dimensions buffers completeness before query submits
   RETURN_NOT_OK(check_buffers_correctness());
 
@@ -1972,6 +1977,10 @@ const Config* Query::config() const {
 
 stats::Stats* Query::stats() const {
   return stats_;
+}
+
+tdb_shared_ptr<Logger> Query::logger() const {
+  return logger_;
 }
 
 /* ****************************** */

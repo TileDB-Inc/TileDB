@@ -46,25 +46,28 @@ namespace tiledb::common {
 /*     CONSTRUCTORS & DESTRUCTORS    */
 /* ********************************* */
 
-Logger::Logger() {
-  logger_ = spdlog::get("tiledb");
+Logger::Logger(const std::string& name)
+    : name_(name) {
+  logger_ = spdlog::get(name);
   if (logger_ == nullptr) {
 #ifdef _WIN32
-    logger_ = spdlog::stdout_logger_mt("tiledb");
+    logger_ = spdlog::stdout_logger_mt(name);
 #else
-    logger_ = spdlog::stdout_color_mt("tiledb");
+    logger_ = spdlog::stdout_color_mt(name);
 #endif
   }
   // Set the default logging format
   // [Year-month-day 24hr-min-second.microsecond]
-  // [logger]
   // [Process: id]
-  // [Thread: id]
   // [log level]
+  // [logger name]
   // text to log...
-  logger_->set_pattern(
-      "[%Y-%m-%d %H:%M:%S.%e] [%n] [Process: %P] [Thread: %t] [%l] %v");
-  logger_->set_level(spdlog::level::critical);
+  logger_->set_pattern("[%Y-%m-%d %H:%M:%S.%e] [Process: %P] [%l] [%n] %v");
+  logger_->set_level(spdlog::level::err);
+}
+
+Logger::Logger(std::shared_ptr<spdlog::logger> logger) {
+  logger_ = std::move(logger);
 }
 
 Logger::~Logger() {
@@ -166,12 +169,23 @@ void Logger::set_level(Logger::Level lvl) {
   }
 }
 
+void Logger::set_name(const std::string& name) {
+  name_ = name;
+}
+
+tdb_shared_ptr<Logger> Logger::clone(const std::string& name) {
+  std::string new_name = name_ + "] [" + name;
+  auto new_loger = tdb_make_shared(Logger, Logger(logger_->clone(new_name)));
+  new_loger->set_name(new_name);
+  return new_loger;
+}
+
 /* ********************************* */
 /*              GLOBAL               */
 /* ********************************* */
 
 Logger& global_logger() {
-  static Logger l;
+  static Logger l("");
   return l;
 }
 

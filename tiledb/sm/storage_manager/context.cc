@@ -46,7 +46,8 @@ namespace sm {
 Context::Context()
     : last_error_(Status::Ok())
     , storage_manager_(nullptr)
-    , stats_(tdb_make_shared(stats::Stats, "Context")) {
+    , stats_(tdb_make_shared(stats::Stats, "Context"))
+    , logger_(tdb_make_shared(Logger, "tiledb")) {
 }
 
 Context::~Context() {
@@ -81,13 +82,19 @@ Status Context::init(Config* const config) {
 
   // Create storage manager
   storage_manager_ = new (std::nothrow)
-      tiledb::sm::StorageManager(&compute_tp_, &io_tp_, stats_.get());
+      tiledb::sm::StorageManager(&compute_tp_, &io_tp_, stats_.get(), logger_);
   if (storage_manager_ == nullptr)
     return LOG_STATUS(Status::ContextError(
         "Cannot initialize context Storage manager allocation failed"));
 
   // Initialize storage manager
-  return storage_manager_->init(config);
+  auto sm = storage_manager_->init(config);
+
+  // Use the logger created for the storage manager
+  logger_ = storage_manager_->logger();
+  // logger_->error("Context was successfully initialized");
+
+  return sm;
 }
 
 Status Context::last_error() {

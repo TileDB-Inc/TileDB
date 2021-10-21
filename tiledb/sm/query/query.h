@@ -38,6 +38,7 @@
 #include <utility>
 #include <vector>
 
+#include "tiledb/common/logger.h"
 #include "tiledb/common/status.h"
 #include "tiledb/sm/array_schema/array_schema.h"
 #include "tiledb/sm/array_schema/dimension.h"
@@ -852,6 +853,9 @@ class Query {
   /** Returns the internal stats object. */
   stats::Stats* stats() const;
 
+  /** Returns the internal logger object. */
+  tdb_shared_ptr<Logger> logger() const;
+
  private:
   /* ********************************* */
   /*         PRIVATE ATTRIBUTES        */
@@ -892,6 +896,12 @@ class Query {
 
   /** The class stats. */
   stats::Stats* stats_;
+
+  /** The class logger. */
+  tdb_shared_ptr<Logger> logger_;
+
+  /** UID of the logger instance */
+  inline static uint64_t logger_id_ = 0;
 
   /**
    * Maps attribute/dimension names to their buffers.

@@ -68,7 +68,9 @@ class Logger {
   /* ********************************* */
 
   /** Constructor. */
-  Logger();
+  Logger(const std::string& name);
+
+  Logger(std::shared_ptr<spdlog::logger> logger);
 
   /** Destructor. */
   ~Logger();
@@ -76,6 +78,10 @@ class Logger {
   /* ********************************* */
   /*                API                */
   /* ********************************* */
+
+  //  Logger clone(const std::string& name);
+
+  tdb_shared_ptr<Logger> clone(const std::string& name);
 
   /**
    * Log a trace statement with no message formatting.
@@ -99,7 +105,7 @@ class Logger {
   void trace(const std::stringstream& msg);
 
   /**
-   * A formatted trace statment.
+   * A formatted trace statement.
    *
    * @param fmt A fmtlib format string, see http://fmtlib.net/latest/ for
    *     details.
@@ -298,6 +304,8 @@ class Logger {
    */
   void set_level(Logger::Level lvl);
 
+  void set_name(const std::string& name);
+
  private:
   /* ********************************* */
   /*         PRIVATE ATTRIBUTES        */
@@ -305,6 +313,8 @@ class Logger {
 
   /** The logger object. */
   std::shared_ptr<spdlog::logger> logger_;
+
+  std::string name_;
 };
 
 /* ********************************* */
