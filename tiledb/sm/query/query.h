@@ -910,7 +910,7 @@ class Query {
   QueryCondition condition_;
 
   /** The fragment metadata that this query will focus on. */
-  std::vector<FragmentMetadata*> fragment_metadata_;
+  std::vector<tdb_shared_ptr<FragmentMetadata>> fragment_metadata_;
 
   /** The current serialization state. */
   SerializationState serialization_state_;

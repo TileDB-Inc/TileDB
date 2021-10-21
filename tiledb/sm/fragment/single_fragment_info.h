@@ -35,6 +35,7 @@
 #define TILEDB_SINGLE_FRAGMENT_INFO_H
 
 #include "tiledb/sm/enums/datatype.h"
+#include "tiledb/sm/fragment/fragment_metadata.h"
 #include "tiledb/sm/misc/types.h"
 #include "tiledb/sm/misc/uri.h"
 
@@ -64,25 +65,23 @@ class SingleFragmentInfo {
   /** Constructor. */
   SingleFragmentInfo(
       const URI& uri,
-      uint32_t version,
       bool sparse,
       const std::pair<uint64_t, uint64_t>& timestamp_range,
-      uint64_t cell_num,
       uint64_t fragment_size,
-      bool has_consolidated_footer,
       const NDRange& non_empty_domain,
       const NDRange& expanded_non_empty_domain,
-      const std::string& array_schema_name)
+      tdb_shared_ptr<FragmentMetadata> meta)
       : uri_(uri)
-      , version_(version)
+      , version_(meta->format_version())
       , sparse_(sparse)
       , timestamp_range_(timestamp_range)
-      , cell_num_(cell_num)
+      , cell_num_(meta->cell_num())
       , fragment_size_(fragment_size)
-      , has_consolidated_footer_(has_consolidated_footer)
+      , has_consolidated_footer_(meta->has_consolidated_footer())
       , non_empty_domain_(non_empty_domain)
       , expanded_non_empty_domain_(expanded_non_empty_domain)
-      , array_schema_name_(array_schema_name) {
+      , array_schema_name_(meta->array_schema_name())
+      , meta_(meta) {
   }
 
   /** Copy constructor. */
@@ -174,6 +173,11 @@ class SingleFragmentInfo {
   /** Returns the expanded non-empty domain. */
   const NDRange& expanded_non_empty_domain() const {
     return expanded_non_empty_domain_;
+  }
+
+  /** Returns a pointer to the fragment's metadata. */
+  tdb_shared_ptr<FragmentMetadata> meta() const {
+    return meta_;
   }
 
   /** Returns the non-empty domain in string format. */
@@ -270,20 +274,28 @@ class SingleFragmentInfo {
  private:
   /** The fragment URI. */
   URI uri_;
+
   /** The format version of the fragment. */
   uint32_t version_;
+
   /** True if the fragment is sparse, and false if it is dense. */
   bool sparse_;
+
   /** The timestamp range of the fragment. */
   std::pair<uint64_t, uint64_t> timestamp_range_;
+
   /** The number of cells written in the fragment. */
   uint64_t cell_num_;
+
   /** The size of the entire fragment directory. */
   uint64_t fragment_size_;
+
   /** Returns true if the fragment metadata footer is consolidated. */
   bool has_consolidated_footer_;
+
   /** The fragment's non-empty domain. */
   NDRange non_empty_domain_;
+
   /**
    * The fragment's expanded non-empty domain (in a way that
    * it coincides with tile boundaries. Applicable only to
@@ -294,6 +306,9 @@ class SingleFragmentInfo {
 
   /** The name of array schema */
   std::string array_schema_name_;
+
+  /** The fragment metadata. **/
+  tdb_shared_ptr<FragmentMetadata> meta_;
 
   /**
    * Returns a deep copy of this FragmentInfo.
@@ -311,6 +326,7 @@ class SingleFragmentInfo {
     clone.non_empty_domain_ = non_empty_domain_;
     clone.expanded_non_empty_domain_ = expanded_non_empty_domain_;
     clone.array_schema_name_ = array_schema_name_;
+    clone.meta_ = meta_;
     return clone;
   }
 
@@ -326,6 +342,7 @@ class SingleFragmentInfo {
     std::swap(non_empty_domain_, info.non_empty_domain_);
     std::swap(expanded_non_empty_domain_, info.expanded_non_empty_domain_);
     std::swap(array_schema_name_, info.array_schema_name_);
+    std::swap(meta_, info.meta_);
   }
 };
 

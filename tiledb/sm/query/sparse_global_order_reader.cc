@@ -79,7 +79,7 @@ SparseGlobalOrderReader::SparseGlobalOrderReader(
   fix_var_sized_overflows_ = true;
   clear_coords_tiles_on_copy_ = false;
   array_memory_tracker_ =
-      storage_manager_->array_get_memory_tracker(array->array_uri());
+      storage_manager_->array_memory_tracker(array->array_uri());
 }
 
 /* ****************************** */
@@ -109,6 +109,13 @@ Status SparseGlobalOrderReader::init() {
 
   // Load offset configuration options.
   bool found = false;
+  offsets_format_mode_ = config_.get("sm.var_offsets.mode", &found);
+  assert(found);
+  if (offsets_format_mode_ != "bytes" && offsets_format_mode_ != "elements") {
+    return LOG_STATUS(
+        Status::ReaderError("Cannot initialize reader; Unsupported offsets "
+                            "format in configuration"));
+  }
   RETURN_NOT_OK(config_.get<bool>(
       "sm.var_offsets.extra_element", &offsets_extra_element_, &found));
   assert(found);
@@ -364,9 +371,11 @@ Status SparseGlobalOrderReader::add_result_tile(
   memory_used_for_coords_[f] += tiles_size;
   result_tiles_[f].emplace_back(f, t, domain);
 
-  std::unique_lock<std::mutex> lck(mem_budget_mtx_);
-  memory_used_for_coords_total_ += tiles_size;
-  memory_used_result_tiles_ += sizeof(ResultTile);
+  {
+    std::unique_lock<std::mutex> lck(mem_budget_mtx_);
+    memory_used_for_coords_total_ += tiles_size;
+    memory_used_result_tiles_ += sizeof(ResultTile);
+  }
   if (memory_used_result_tiles_ > memory_budget_result_tiles) {
     *budget_exceeded = true;
   }
@@ -398,11 +407,21 @@ Status SparseGlobalOrderReader::create_result_tiles(bool* tiles_found) {
     // Load as many tiles as the memory budget allows.
     auto status = parallel_for(
         storage_manager_->compute_tp(), 0, fragment_num, [&](uint64_t f) {
-          auto range_it = result_tile_ranges_[f].begin();
+          auto range_it = result_tile_ranges_[f].rbegin();
           uint64_t t = 0;
           bool budget_exceeded = false;
-          while (range_it != result_tile_ranges_[f].end()) {
-            for (t = range_it->first; t <= range_it->second; t++) {
+          while (range_it != result_tile_ranges_[f].rend()) {
+            // Figure out the start index.
+            auto start = range_it->first;
+            if (!result_tiles_[f].empty()) {
+              start = std::max(start, result_tiles_[f].back().tile_idx() + 1);
+            }
+
+            auto end =
+                range_it->second == std::numeric_limits<uint64_t>::max() ?
+                    range_it->first :
+                    range_it->second;
+            for (t = start; t <= end; t++) {
               RETURN_NOT_OK(add_result_tile(
                   dim_num,
                   memory_budget_result_tiles,
@@ -417,8 +436,13 @@ Status SparseGlobalOrderReader::create_result_tiles(bool* tiles_found) {
                 break;
             }
 
-            if (budget_exceeded)
+            if (budget_exceeded) {
+              if (result_tiles_[f].empty())
+                return LOG_STATUS(Status::SparseGlobalOrderReaderError(
+                    "Cannot load a single tile for fragment, increase memory "
+                    "budget"));
               break;
+            }
             range_it++;
           }
 
@@ -450,8 +474,13 @@ Status SparseGlobalOrderReader::create_result_tiles(bool* tiles_found) {
                 &budget_exceeded));
             *tiles_found = true;
 
-            if (budget_exceeded)
+            if (budget_exceeded) {
+              if (result_tiles_[f].empty())
+                return LOG_STATUS(Status::SparseGlobalOrderReaderError(
+                    "Cannot load a single tile for fragment, increase memory "
+                    "budget"));
               break;
+            }
           }
 
           all_tiles_loaded_[f] = !budget_exceeded;
@@ -552,6 +581,7 @@ Status SparseGlobalOrderReader::add_next_tile_to_queue(
     bool* need_more_tiles) {
   bool found = false;
 
+  // Remove the tile from result tiles if it wasn't used at all.
   if (!result_tile_used[frag_idx]) {
     auto to_delete = result_tiles_it[frag_idx];
     to_delete--;
@@ -562,9 +592,27 @@ Status SparseGlobalOrderReader::add_next_tile_to_queue(
     found = !subarray_set;
     auto tile = &*result_tiles_it[frag_idx];
 
-    // Calculate the bitmap for the cells.
-    RETURN_NOT_OK(compute_coord_tiles_result_bitmap(
-        subarray_set, tile, &coord_tiles_result_bitmap[frag_idx]));
+    // Calculate the tile bitmap only if necessary.
+    coord_tiles_result_bitmap[frag_idx].clear();
+    coord_tiles_result_bitmap[frag_idx].resize(tile->cell_num(), 1);
+    if (subarray_set) {
+      // Adjust the current tile ranges if needed.
+      auto& range = result_tile_ranges_[frag_idx].back();
+      auto second = range.second == std::numeric_limits<uint64_t>::max() ?
+                        range.first :
+                        range.second;
+      if (tile->tile_idx() > second) {
+        remove_result_tile_range(frag_idx);
+      }
+      result_tile_ranges_[frag_idx].back().first = tile->tile_idx();
+
+      // Max specifies the bitmap needs to be computed for this tile.
+      if (result_tile_ranges_[frag_idx].back().second ==
+          std::numeric_limits<uint64_t>::max()) {
+        RETURN_NOT_OK(compute_coord_tiles_result_bitmap(
+            tile, 0, &coord_tiles_result_bitmap[frag_idx]));
+      }
+    }
 
     // Calculate hilbert values, this is templated out for non hilbert code.
     RETURN_NOT_OK(calculate_hilbert_values(
@@ -610,15 +658,16 @@ Status SparseGlobalOrderReader::add_next_tile_to_queue(
       if (subarray_.is_set()) {
         // Look in the result tile ranges to find a tile.
         if (!result_tile_ranges_[frag_idx].empty()) {
-          auto& first_range = result_tile_ranges_[frag_idx].front();
-          read_state_.frag_tile_idx_[frag_idx].first = first_range.first;
-
-          if (first_range.first == first_range.second) {
-            result_tile_ranges_[frag_idx].pop_front();
-            memory_used_result_tile_ranges_ -= 2 * sizeof(uint64_t);
+          auto& first_range = result_tile_ranges_[frag_idx].back();
+          if (first_range.first == first_range.second ||
+              first_range.second == std::numeric_limits<uint64_t>::max()) {
+            remove_result_tile_range(frag_idx);
           } else {
             first_range.first++;
           }
+
+          read_state_.frag_tile_idx_[frag_idx].first =
+              result_tile_ranges_[frag_idx].back().first;
 
           *need_more_tiles = true;
         }
@@ -630,6 +679,12 @@ Status SparseGlobalOrderReader::add_next_tile_to_queue(
 
       // If there are no more tiles in this fragment, set the bool.
       all_tiles_loaded_[frag_idx] = !*need_more_tiles;
+    } else {
+      if (subarray_.is_set()) {
+        result_tile_ranges_[frag_idx].clear();
+      }
+      read_state_.frag_tile_idx_[frag_idx] = std::pair<uint64_t, uint64_t>(
+          fragment_metadata_[frag_idx]->tile_num(), 0);
     }
   }
 
@@ -787,10 +842,10 @@ Status SparseGlobalOrderReader::merge_result_cell_slabs(
             &need_more_tiles));
       } else {
         // Put the next cell on the queue again to be resorted.
-        tile_queue.emplace(std::move(next_tile));
         read_state_.frag_tile_idx_[next_tile.tile_->frag_idx()] =
             std::pair<uint64_t, uint64_t>(
                 next_tile.tile_->tile_idx(), next_tile.pos_);
+        tile_queue.emplace(std::move(next_tile));
       }
     }
 
@@ -846,9 +901,10 @@ Status SparseGlobalOrderReader::merge_result_cell_slabs(
           if (length != 0) {
             read_state_.result_cell_slabs_.emplace_back(tile, start, length);
             memory_used_rcs_ += sizeof(ResultCellSlab);
-            start = c + 1;
             length = 0;
           }
+
+          start = c + 1;
         } else {
           length++;
         }
@@ -880,9 +936,9 @@ Status SparseGlobalOrderReader::merge_result_cell_slabs(
           &need_more_tiles));
     } else {
       // Put the next cell on the queue to be resorted.
-      tile_queue.emplace(std::move(to_process));
       read_state_.frag_tile_idx_[tile->frag_idx()] =
           std::pair<uint64_t, uint64_t>(tile->tile_idx(), to_process.pos_);
+      tile_queue.emplace(std::move(to_process));
     }
 
     // If we busted our memory budget, exit.
@@ -966,6 +1022,7 @@ Status SparseGlobalOrderReader::end_iteration() {
   read_state_.result_cell_slabs_.erase(
       read_state_.result_cell_slabs_.begin(),
       read_state_.result_cell_slabs_.begin() + copy_end_.first);
+  memory_used_rcs_ -= copy_end_.first * sizeof(ResultCellSlab);
 
   auto uint64_t_max = std::numeric_limits<uint64_t>::max();
   copy_end_ = std::pair<uint64_t, uint64_t>(uint64_t_max, uint64_t_max);
@@ -982,6 +1039,10 @@ Status SparseGlobalOrderReader::end_iteration() {
         }
       }
     }
+  }
+
+  if (offsets_extra_element_) {
+    RETURN_NOT_OK(add_extra_offset());
   }
 
   array_memory_tracker_->set_budget(std::numeric_limits<uint64_t>::max());

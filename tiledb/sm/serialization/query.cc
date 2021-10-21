@@ -484,6 +484,8 @@ Status index_read_state_to_capnp(
     capnp::ReaderIndex::Builder* builder) {
   auto read_state_builder = builder->initReadState();
 
+  read_state_builder.setRangeIdx(read_state->range_idx_);
+
   auto rcs_builder = read_state_builder.initResultCellSlab(
       read_state->result_cell_slabs_.size());
   for (size_t i = 0; i < read_state->result_cell_slabs_.size(); ++i) {
@@ -561,6 +563,8 @@ Status index_read_state_from_capnp(
   auto read_state = reader->read_state();
   auto dim_num = schema->dim_num();
   const auto* domain = schema->domain();
+
+  read_state->range_idx_ = read_state_reader.getRangeIdx();
 
   assert(read_state_reader.hasResultCellSlab());
   RETURN_NOT_OK(reader->clear_result_tiles());

@@ -433,7 +433,7 @@ Status ReaderBase::read_tiles(
   // Populate the list of regions per file to be read.
   std::map<URI, std::vector<std::tuple<uint64_t, void*, uint64_t>>> all_regions;
   for (const auto& tile : *result_tiles) {
-    FragmentMetadata* const fragment = fragment_metadata_[tile->frag_idx()];
+    auto const fragment = fragment_metadata_[tile->frag_idx()];
     const uint32_t format_version = fragment->format_version();
 
     // Applicable for zipped coordinates only to versions < 5
@@ -907,14 +907,16 @@ Status ReaderBase::copy_attribute_values(
     names[name] = flags;
   }
 
-  RETURN_NOT_OK(process_tiles(
-      &names,
-      result_tiles,
-      result_cell_slabs,
-      &subarray,
-      stride,
-      memory_budget,
-      nullptr));
+  if (!names.empty()) {
+    RETURN_NOT_OK(process_tiles(
+        &names,
+        result_tiles,
+        result_cell_slabs,
+        &subarray,
+        stride,
+        memory_budget,
+        nullptr));
+  }
 
   return Status::Ok();
 }

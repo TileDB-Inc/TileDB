@@ -198,8 +198,8 @@ void get_fragment_info() {
       ctx, fragment_info, 0, 0, &non_empty_dom[0]);
 
   // Clean up
-  tiledb_ctx_free(&ctx);
   tiledb_fragment_info_free(&fragment_info);
+  tiledb_ctx_free(&ctx);
 }
 
 int main() {
