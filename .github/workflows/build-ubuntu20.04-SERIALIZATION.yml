@@ -9,8 +9,7 @@ on:
     branches:
       - '*'  # must quote since "*" is a YAML reserved character; we want a string
 env:
-  TILEDB_SERIALIZATION: ON
-  TILEDB_S3: ON
+  TILEDB_SERIALIZATION: ON # NOTE: currently defined directly inline
   CXX: g++
   BACKWARDS_COMPATIBILITY_ARRAYS: ON
 

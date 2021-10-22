@@ -11,26 +11,19 @@ steps:
 
 - bash: |
     set -e pipefail
-    # Install doxygen *before* running cmake
-    sudo apt-get install doxygen
-  condition: eq(variables['Agent.OS'], 'Linux')
-  displayName: 'Install doxygen (linux only)'
-
-- bash: |
-    set -e pipefail
     brew uninstall --ignore-dependencies libidn2 brotli rtmpdump
   condition: eq(variables['Agent.OS'], 'Darwin')
   displayName: 'Uninstall brew packages for curl (OSX only)'
 
 - bash: |
     set -e pipefail
-    sudo rm -Rf /Library/Developer/CommandLineTools/SDKs/* # Remove SDKs without ARM support
+    $SUDO rm -Rf /Library/Developer/CommandLineTools/SDKs/* # Remove SDKs without ARM support
   condition: eq(variables['Agent.OS'], 'Darwin')
   displayName: 'Remove sdks for testing (OSX only)'
 
 - bash: |
     # DELETEME work-around for https://github.com/microsoft/azure-pipelines-image-generation/issues/969
-    sudo chown root.root /
+    $SUDO chown root.root /
 
     # Azure sets "SYSTEM=build" for unknown reasonas, which breaks the OpenSSL configure script
     #   - openssl configure uses ENV{SYSTEM} if available:
