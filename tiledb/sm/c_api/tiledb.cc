@@ -621,6 +621,76 @@ inline int32_t check_filter_type(
     return save_error(ctx, _s);                                            \
   }()
 
+/**
+ * Helper macro similar to save_error() that catches all exceptions when
+ * executing 'stmt'.
+ *
+ * @param ctx TileDB context
+ * @param stmt Statement to execute
+ */
+#define VOID_ERROR_CATCH(ctx, stmt)                                        \
+  [&]() {                                                                  \
+    auto _s = Status::Ok();                                                \
+    try {                                                                  \
+      (stmt);                                                              \
+    } catch (const std::exception& e) {                                    \
+      auto st = Status::Error(                                             \
+          std::string("Internal TileDB uncaught exception; ") + e.what()); \
+      LOG_STATUS(st);                                                      \
+      save_error(ctx, st);                                                 \
+      return true;                                                         \
+    }                                                                      \
+    return true;                                                           \
+  }()
+
+/**
+ * Helper macro to wrap functions with try/catch that catches all exceptions
+ * when executing 'stmt' and simple logs the exception.
+ *
+ * @param stmt Statement to execute
+ */
+#define FUNCTION_TRY_CATCH(stmt)                                             \
+  try {                                                                      \
+    stmt                                                                     \
+  } catch (const std::bad_alloc& e) {                                        \
+    auto st = Status::Error(                                                 \
+        std::string("Internal TileDB uncaught std::bad_alloc exception; ") + \
+        e.what());                                                           \
+    LOG_STATUS(st);                                                          \
+    return TILEDB_OOM;                                                       \
+  } catch (const std::exception& e) {                                        \
+    auto st = Status::Error(                                                 \
+        std::string("Internal TileDB uncaught exception; ") + e.what());     \
+    LOG_STATUS(st);                                                          \
+    return TILEDB_ERR;                                                       \
+  }
+
+/**
+ * Helper macro to wrap functions with try/catch that catches all exceptions
+ * when executing 'stmt' and saves the exception to the context and logs it.
+ *
+ * @param stmt Statement to execute
+ */
+#define FUNCTION_TRY_CATCH_SAVE_ERROR(stmt)                                  \
+  try {                                                                      \
+    if (sanity_check(ctx) == TILEDB_ERR)                                     \
+      return TILEDB_ERR;                                                     \
+    stmt                                                                     \
+  } catch (const std::bad_alloc& e) {                                        \
+    auto st = Status::Error(                                                 \
+        std::string("Internal TileDB uncaught std::bad_alloc exception; ") + \
+        e.what());                                                           \
+    LOG_STATUS(st);                                                          \
+    save_error(ctx, st);                                                     \
+    return TILEDB_OOM;                                                       \
+  } catch (const std::exception& e) {                                        \
+    auto st = Status::Error(                                                 \
+        std::string("Internal TileDB uncaught exception; ") + e.what());     \
+    LOG_STATUS(st);                                                          \
+    save_error(ctx, st);                                                     \
+    return TILEDB_ERR;                                                       \
+  }
+
 /** For debugging, use this definition instead to not catch exceptions. */
 //#define SAVE_ERROR_CATCH(ctx, stmt) save_error(ctx, (stmt))
 
@@ -6648,53 +6718,53 @@ int32_t tiledb_fragment_info_get_to_vacuum_uri(
     tiledb_ctx_t* ctx,
     tiledb_fragment_info_t* fragment_info,
     uint32_t fid,
-    const char** uri) {
-  if (sanity_check(ctx) == TILEDB_ERR ||
-      sanity_check(ctx, fragment_info) == TILEDB_ERR)
-    return TILEDB_ERR;
+    const char** uri)
+    FUNCTION_TRY_CATCH_SAVE_ERROR(
+        if (sanity_check(ctx) == TILEDB_ERR ||
+            sanity_check(ctx, fragment_info) == TILEDB_ERR) return TILEDB_ERR;
 
-  if (SAVE_ERROR_CATCH(
-          ctx, fragment_info->fragment_info_->get_to_vacuum_uri(fid, uri)))
-    return TILEDB_ERR;
+        if (SAVE_ERROR_CATCH(
+                ctx,
+                fragment_info->fragment_info_->get_to_vacuum_uri(
+                    fid, uri))) return TILEDB_ERR;
 
-  return TILEDB_OK;
-}
+        return TILEDB_OK;);
 
 int32_t tiledb_fragment_info_get_array_schema(
     tiledb_ctx_t* ctx,
     tiledb_fragment_info_t* fragment_info,
     uint32_t fid,
-    tiledb_array_schema_t** array_schema) {
-  if (sanity_check(ctx) == TILEDB_ERR ||
-      sanity_check(ctx, fragment_info) == TILEDB_ERR)
-    return TILEDB_ERR;
+    tiledb_array_schema_t** array_schema)
+    FUNCTION_TRY_CATCH_SAVE_ERROR(
+        if (sanity_check(ctx) == TILEDB_ERR ||
+            sanity_check(ctx, fragment_info) == TILEDB_ERR) return TILEDB_ERR;
 
-  // Create array schema
-  *array_schema = new (std::nothrow) tiledb_array_schema_t;
-  if (*array_schema == nullptr) {
-    auto st = Status::Error("Failed to allocate TileDB array schema object");
-    LOG_STATUS(st);
-    save_error(ctx, st);
-    return TILEDB_OOM;
-  }
+            // Create array schema
+                * array_schema = new (std::nothrow) tiledb_array_schema_t;
+        if (*array_schema == nullptr) {
+          auto st =
+              Status::Error("Failed to allocate TileDB array schema object");
+          LOG_STATUS(st);
+          save_error(ctx, st);
+          return TILEDB_OOM;
+        }
 
-  if (SAVE_ERROR_CATCH(
-          ctx,
-          fragment_info->fragment_info_->get_array_schema(
-              fid, &(*array_schema)->array_schema_))) {
-    delete *array_schema;
-    *array_schema = nullptr;
-    return TILEDB_ERR;
-  }
+        if (SAVE_ERROR_CATCH(
+                ctx,
+                fragment_info->fragment_info_->get_array_schema(
+                    fid, &(*array_schema)->array_schema_))) {
+          delete *array_schema;
+          *array_schema = nullptr;
+          return TILEDB_ERR;
+        }
 
-  return TILEDB_OK;
-}
+        return TILEDB_OK;);
 
 int32_t tiledb_fragment_info_dump(
-    tiledb_ctx_t* ctx, const tiledb_fragment_info_t* fragment_info, FILE* out) {
-  if (sanity_check(ctx) == TILEDB_ERR ||
-      sanity_check(ctx, fragment_info) == TILEDB_ERR)
-    return TILEDB_ERR;
-  fragment_info->fragment_info_->dump(out);
-  return TILEDB_OK;
-}
+    tiledb_ctx_t* ctx, const tiledb_fragment_info_t* fragment_info, FILE* out)
+    FUNCTION_TRY_CATCH_SAVE_ERROR(
+        if (sanity_check(ctx) == TILEDB_ERR ||
+            sanity_check(ctx, fragment_info) == TILEDB_ERR) return TILEDB_ERR;
+
+        VOID_ERROR_CATCH(ctx, fragment_info->fragment_info_->dump(out));
+        return TILEDB_OK;);
