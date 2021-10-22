@@ -6411,6 +6411,163 @@ int32_t tiledb_fragment_info_get_non_empty_domain_var_from_name(
   return TILEDB_OK;
 }
 
+int32_t tiledb_fragment_info_get_mbr_num(
+    tiledb_ctx_t* ctx,
+    tiledb_fragment_info_t* fragment_info,
+    uint32_t fid,
+    uint64_t* mbr_num) {
+  if (sanity_check(ctx) == TILEDB_ERR ||
+      sanity_check(ctx, fragment_info) == TILEDB_ERR)
+    return TILEDB_ERR;
+
+  // Get config from ctx
+  tiledb::sm::Config config = ctx->ctx_->storage_manager()->config();
+
+  if (SAVE_ERROR_CATCH(
+          ctx, fragment_info->fragment_info_->get_mbr_num(fid, mbr_num)))
+    return TILEDB_ERR;
+
+  return TILEDB_OK;
+}
+
+int32_t tiledb_fragment_info_get_mbr_from_index(
+    tiledb_ctx_t* ctx,
+    tiledb_fragment_info_t* fragment_info,
+    uint32_t fid,
+    uint32_t mid,
+    uint32_t did,
+    void* mbr) {
+  if (sanity_check(ctx) == TILEDB_ERR ||
+      sanity_check(ctx, fragment_info) == TILEDB_ERR)
+    return TILEDB_ERR;
+
+  // Get config from ctx
+  tiledb::sm::Config config = ctx->ctx_->storage_manager()->config();
+
+  if (SAVE_ERROR_CATCH(
+          ctx, fragment_info->fragment_info_->get_mbr(fid, mid, did, mbr)))
+    return TILEDB_ERR;
+
+  return TILEDB_OK;
+}
+
+int32_t tiledb_fragment_info_get_mbr_from_name(
+    tiledb_ctx_t* ctx,
+    tiledb_fragment_info_t* fragment_info,
+    uint32_t fid,
+    uint32_t mid,
+    const char* dim_name,
+    void* mbr) {
+  if (sanity_check(ctx) == TILEDB_ERR ||
+      sanity_check(ctx, fragment_info) == TILEDB_ERR)
+    return TILEDB_ERR;
+
+  // Get config from ctx
+  tiledb::sm::Config config = ctx->ctx_->storage_manager()->config();
+
+  if (SAVE_ERROR_CATCH(
+          ctx, fragment_info->fragment_info_->get_mbr(fid, mid, dim_name, mbr)))
+    return TILEDB_ERR;
+
+  return TILEDB_OK;
+}
+
+int32_t tiledb_fragment_info_get_mbr_var_size_from_index(
+    tiledb_ctx_t* ctx,
+    tiledb_fragment_info_t* fragment_info,
+    uint32_t fid,
+    uint32_t mid,
+    uint32_t did,
+    uint64_t* start_size,
+    uint64_t* end_size) {
+  if (sanity_check(ctx) == TILEDB_ERR ||
+      sanity_check(ctx, fragment_info) == TILEDB_ERR)
+    return TILEDB_ERR;
+
+  // Get config from ctx
+  tiledb::sm::Config config = ctx->ctx_->storage_manager()->config();
+
+  if (SAVE_ERROR_CATCH(
+          ctx,
+          fragment_info->fragment_info_->get_mbr_var_size(
+              fid, mid, did, start_size, end_size)))
+    return TILEDB_ERR;
+
+  return TILEDB_OK;
+}
+
+int32_t tiledb_fragment_info_get_mbr_var_size_from_name(
+    tiledb_ctx_t* ctx,
+    tiledb_fragment_info_t* fragment_info,
+    uint32_t fid,
+    uint32_t mid,
+    const char* dim_name,
+    uint64_t* start_size,
+    uint64_t* end_size) {
+  if (sanity_check(ctx) == TILEDB_ERR ||
+      sanity_check(ctx, fragment_info) == TILEDB_ERR)
+    return TILEDB_ERR;
+
+  // Get config from ctx
+  tiledb::sm::Config config = ctx->ctx_->storage_manager()->config();
+
+  if (SAVE_ERROR_CATCH(
+          ctx,
+          fragment_info->fragment_info_->get_mbr_var_size(
+              fid, mid, dim_name, start_size, end_size)))
+    return TILEDB_ERR;
+
+  return TILEDB_OK;
+}
+
+int32_t tiledb_fragment_info_get_mbr_var_from_index(
+    tiledb_ctx_t* ctx,
+    tiledb_fragment_info_t* fragment_info,
+    uint32_t fid,
+    uint32_t mid,
+    uint32_t did,
+    void* start,
+    void* end) {
+  if (sanity_check(ctx) == TILEDB_ERR ||
+      sanity_check(ctx, fragment_info) == TILEDB_ERR)
+    return TILEDB_ERR;
+
+  // Get config from ctx
+  tiledb::sm::Config config = ctx->ctx_->storage_manager()->config();
+
+  if (SAVE_ERROR_CATCH(
+          ctx,
+          fragment_info->fragment_info_->get_mbr_var(
+              fid, mid, did, start, end)))
+    return TILEDB_ERR;
+
+  return TILEDB_OK;
+}
+
+int32_t tiledb_fragment_info_get_mbr_var_from_name(
+    tiledb_ctx_t* ctx,
+    tiledb_fragment_info_t* fragment_info,
+    uint32_t fid,
+    uint32_t mid,
+    const char* dim_name,
+    void* start,
+    void* end) {
+  if (sanity_check(ctx) == TILEDB_ERR ||
+      sanity_check(ctx, fragment_info) == TILEDB_ERR)
+    return TILEDB_ERR;
+
+  // Get config from ctx
+  tiledb::sm::Config config = ctx->ctx_->storage_manager()->config();
+
+  if (SAVE_ERROR_CATCH(
+          ctx,
+          fragment_info->fragment_info_->get_mbr_var(
+              fid, mid, dim_name, start, end)))
+    return TILEDB_ERR;
+
+  return TILEDB_OK;
+}
+
 int32_t tiledb_fragment_info_get_cell_num(
     tiledb_ctx_t* ctx,
     tiledb_fragment_info_t* fragment_info,

@@ -1087,6 +1087,14 @@ Status Reader::add_extra_offset() {
     if (!array_schema_->var_size(name))
       continue;
 
+    // Do not apply offset for empty results because we will
+    // write backwards and corrupt memory we don't own.
+    if (*it.second.buffer_size_ == 0)
+      continue;
+
+    // The buffer should always be 0 or divisible by the bytesize.
+    assert(!(*it.second.buffer_size_ < offsets_bytesize()));
+
     auto buffer = static_cast<unsigned char*>(it.second.buffer_);
     if (offsets_format_mode_ == "bytes") {
       memcpy(

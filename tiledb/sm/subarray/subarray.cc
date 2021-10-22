@@ -1707,7 +1707,7 @@ Status Subarray::compute_relevant_fragment_est_result_sizes(
     const ArraySchema* array_schema,
     bool all_dims_same_type,
     bool all_dims_fixed,
-    const std::vector<FragmentMetadata*>& fragment_meta,
+    const std::vector<tdb_shared_ptr<FragmentMetadata>>& fragment_meta,
     const std::vector<std::string>& names,
     const std::vector<bool>& var_sizes,
     const std::vector<bool>& nullable,
@@ -2378,7 +2378,7 @@ Status Subarray::compute_relevant_fragments_for_dim(
     const std::vector<uint64_t>& start_coords,
     const std::vector<uint64_t>& end_coords,
     std::vector<uint8_t>* const frag_bytemap) const {
-  const std::vector<FragmentMetadata*> meta = array_->fragment_metadata();
+  const auto meta = array_->fragment_metadata();
   const Dimension* const dim = array_->array_schema()->dimension(dim_idx);
 
   return parallel_for(compute_tp, 0, fragment_num, [&](const uint64_t f) {
@@ -2446,7 +2446,7 @@ Status Subarray::compute_relevant_fragment_tile_overlap(
 }
 
 Status Subarray::compute_relevant_fragment_tile_overlap(
-    FragmentMetadata* meta,
+    tdb_shared_ptr<FragmentMetadata> meta,
     unsigned frag_idx,
     bool dense,
     ThreadPool* const compute_tp,

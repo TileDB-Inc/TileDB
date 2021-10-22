@@ -170,7 +170,7 @@ class StorageManager {
       const URI& array_uri,
       const EncryptionKey& enc_key,
       ArraySchema** array_schema,
-      std::vector<FragmentMetadata*>* fragment_metadata,
+      std::vector<tdb_shared_ptr<FragmentMetadata>>* fragment_metadata,
       uint64_t timestamp_start,
       uint64_t timestamp_end);
 
@@ -214,7 +214,7 @@ class StorageManager {
   Status array_load_fragments(
       const URI& array_uri,
       const EncryptionKey& enc_key,
-      std::vector<FragmentMetadata*>* fragment_metadata,
+      std::vector<tdb_shared_ptr<FragmentMetadata>>* fragment_metadata,
       const std::vector<TimestampedURI>& fragment_info);
 
   /**
@@ -239,7 +239,7 @@ class StorageManager {
       const URI& array_uri,
       const EncryptionKey& enc_key,
       ArraySchema** array_schema,
-      std::vector<FragmentMetadata*>* fragment_metadata,
+      std::vector<tdb_shared_ptr<FragmentMetadata>>* fragment_metadata,
       uint64_t timestamp_start,
       uint64_t timestamp_end);
 
@@ -705,6 +705,7 @@ class StorageManager {
    * Loads the schema of a schema uri from persistent storage into memory.
    *
    * @param array_schema_uri The URI path of the array schema.
+   * @param array_uri The URI path of the array.
    * @param encryption_key The encryption key to use.
    * @param array_schema The array schema to be retrieved.
    * @return Status
@@ -1179,7 +1180,7 @@ class StorageManager {
       const std::vector<TimestampedURI>& fragments_to_load,
       Buffer* meta_buff,
       const std::unordered_map<std::string, uint64_t>& offsets,
-      std::vector<FragmentMetadata*>* fragment_metadata);
+      std::vector<tdb_shared_ptr<FragmentMetadata>>* fragment_metadata);
 
   /**
    * Loads the latest consolidated fragment metadata from storage.
@@ -1222,7 +1223,7 @@ class StorageManager {
   /**
    * It computes the URIs `to_vacuum` from the input `uris`, considering
    * only the URIs whose first timestamp is greater than or equal to
-   * `timestamp_start` or second timestamp is smaller than or equal to
+   * `timestamp_start` and second timestamp is smaller than or equal to
    * `timestamp_end`. The function also retrieves the `vac_uris` (files with
    * `.vac` suffix) that were used to compute `to_vacuum`.
    */

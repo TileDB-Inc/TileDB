@@ -87,8 +87,10 @@ SparseUnorderedWithDupsReader::SparseUnorderedWithDupsReader(
 /* ****************************** */
 
 bool SparseUnorderedWithDupsReader::incomplete() const {
+  bool last_range =
+      !subarray_.is_set() || read_state_.range_idx_ == subarray_.range_num();
   return copy_overflowed_ || !read_state_.result_cell_slabs_.empty() ||
-         !done_adding_result_tiles_;
+         !done_adding_result_tiles_ || !last_range;
 }
 
 Status SparseUnorderedWithDupsReader::init() {
@@ -109,6 +111,13 @@ Status SparseUnorderedWithDupsReader::init() {
 
   // Load offset configuration options.
   bool found = false;
+  offsets_format_mode_ = config_.get("sm.var_offsets.mode", &found);
+  assert(found);
+  if (offsets_format_mode_ != "bytes" && offsets_format_mode_ != "elements") {
+    return LOG_STATUS(
+        Status::ReaderError("Cannot initialize reader; Unsupported offsets "
+                            "format in configuration"));
+  }
   RETURN_NOT_OK(config_.get<bool>(
       "sm.var_offsets.extra_element", &offsets_extra_element_, &found));
   assert(found);
@@ -163,6 +172,9 @@ Status SparseUnorderedWithDupsReader::init() {
 Status SparseUnorderedWithDupsReader::dowork() {
   auto timer_se = stats_->start_timer("dowork");
 
+  // For easy reference.
+  bool subarray_set = subarray_.is_set();
+
   // Check that the query condition is valid.
   RETURN_NOT_OK(condition_.check(array_schema_));
 
@@ -174,6 +186,7 @@ Status SparseUnorderedWithDupsReader::dowork() {
   // Handle empty array.
   if (fragment_metadata_.empty()) {
     done_adding_result_tiles_ = true;
+    read_state_.range_idx_ = subarray_set ? subarray_.range_num() : 1;
     zero_out_buffer_sizes();
     return Status::Ok();
   }
@@ -190,6 +203,7 @@ Status SparseUnorderedWithDupsReader::dowork() {
   // No more tiles to process, done.
   if (read_state_.result_cell_slabs_.empty()) {
     done_adding_result_tiles_ = true;
+    read_state_.range_idx_ += range_num_;
     zero_out_buffer_sizes();
     return Status::Ok();
   }
@@ -301,6 +315,13 @@ Status SparseUnorderedWithDupsReader::dowork() {
   // End the iteration.
   RETURN_NOT_OK(end_iteration());
 
+  // Possibly move to the next range.
+  if (subarray_set && read_state_.result_cell_slabs_.empty() &&
+      done_adding_result_tiles_) {
+    read_state_.range_idx_ += range_num_;
+    initial_data_loaded_ = false;
+  }
+
   return Status::Ok();
 }
 
@@ -411,10 +432,12 @@ Status SparseUnorderedWithDupsReader::create_result_tiles(bool* tiles_found) {
     bool budget_exceeded = false;
     unsigned int f = 0;
     while (f < fragment_num && !budget_exceeded) {
-      auto range_it = result_tile_ranges_[f].begin();
+      auto range_it = result_tile_ranges_[f].rbegin();
       uint64_t t = 0;
-      while (range_it != result_tile_ranges_[f].end()) {
-        for (t = range_it->first; t <= range_it->second; t++) {
+      while (range_it != result_tile_ranges_[f].rend()) {
+        auto end =
+            range_it->second >= NO_OVERLAP ? range_it->first : range_it->second;
+        for (t = range_it->first; t <= end; t++) {
           // Figure out the start index.
           auto start = range_it->first;
           if (!result_tiles_.empty() && result_tiles_.back().frag_idx() == f) {
@@ -551,50 +574,106 @@ Status SparseUnorderedWithDupsReader::create_result_cell_slabs(
   auto timer_se = stats_->start_timer("create_result_cell_slabs");
 
   // For easy reference.
-  bool subarray_set = subarray_.is_set();
+  auto subarray_set = subarray_.is_set();
 
   for (auto& rt : result_tiles_) {
-    // Get the cell index we were processing.
-    auto cell_idx = read_state_.frag_tile_idx_[rt.frag_idx()].second;
-
     // If no subarray is set, add all cells.
     if (!subarray_set) {
-      read_state_.result_cell_slabs_.emplace_back(
-          &rt, cell_idx, rt.cell_num() - cell_idx);
+      read_state_.result_cell_slabs_.emplace_back(&rt, 0, rt.cell_num());
       memory_used_rcs_ += sizeof(ResultCellSlab);
     } else {
-      // Calculate the bitmap for the cells.
-      std::vector<uint8_t> coord_tiles_result_bitmap;
-      RETURN_NOT_OK(compute_coord_tiles_result_bitmap(
-          subarray_set, &rt, &coord_tiles_result_bitmap));
+      auto status = parallel_for(
+          storage_manager_->compute_tp(), 0, range_num_, [&](uint64_t r) {
+            // Figure out what to do with the tile.
+            bool compute_bitmap = false;
+            bool add_full_tile = false;
+            if (range_num_ <= 1) {
+              auto& current_range = result_tile_ranges_[rt.frag_idx()].back();
+              if (current_range.second == COMPUTE_OVERLAP) {
+                compute_bitmap = true;
+              } else if (current_range.second != NO_OVERLAP) {
+                add_full_tile = true;
+              }
+            } else {
+              if (!range_result_tiles_ranges_[r].empty()) {
+                auto& current_range = range_result_tiles_ranges_[r].back();
+                if (std::get<0>(current_range) == rt.frag_idx() &&
+                    std::get<1>(current_range) == rt.tile_idx()) {
+                  if (std::get<2>(current_range) == COMPUTE_OVERLAP) {
+                    // The single tile range can be removed.
+                    remove_range_result_tile_range(r);
 
-      // Process all cells, when there is a "hole" in the cell contiguity,
-      // push a new cell slab.
-      auto start = cell_idx;
-      uint64_t length = 0;
-      for (auto c = cell_idx; c < rt.cell_num(); c++) {
-        if (!coord_tiles_result_bitmap[c]) {
-          if (length != 0) {
-            read_state_.result_cell_slabs_.emplace_back(&rt, start, length);
-            memory_used_rcs_ += sizeof(ResultCellSlab);
-            start = c + 1;
-            length = 0;
-          }
-        } else {
-          length++;
-        }
-      }
+                    compute_bitmap = true;
+                  } else if (std::get<2>(current_range) == NO_OVERLAP) {
+                    // The single tile range can be removed.
+                    remove_range_result_tile_range(r);
+                  } else {
+                    // The single tile range can be removed.
+                    if (std::get<1>(current_range) ==
+                        std::get<2>(current_range)) {
+                      remove_range_result_tile_range(r);
+                    } else {
+                      // Move the range to the next tile.
+                      std::get<1>(current_range)++;
+                    }
+                    add_full_tile = true;
+                  }
+                }
+              }
+            }
 
-      // Add the last cell slab.
-      if (length != 0) {
-        read_state_.result_cell_slabs_.emplace_back(&rt, start, length);
-        memory_used_rcs_ += sizeof(ResultCellSlab);
-      }
+            if (compute_bitmap) {
+              // Calculate the bitmap for the cells.
+              std::vector<uint8_t> coord_tiles_result_bitmap;
+              coord_tiles_result_bitmap.resize(rt.cell_num(), 1);
+              RETURN_NOT_OK(compute_coord_tiles_result_bitmap(
+                  &rt, r + read_state_.range_idx_, &coord_tiles_result_bitmap));
+
+              // Process all cells, when there is a "hole" in the cell
+              // contiguity, push a new cell slab.
+              uint64_t start = 0;
+              uint64_t length = 0;
+              for (uint64_t c = 0; c < rt.cell_num(); c++) {
+                if (!coord_tiles_result_bitmap[c]) {
+                  if (length != 0) {
+                    {
+                      std::unique_lock<std::mutex> lck(mem_budget_mtx_);
+                      read_state_.result_cell_slabs_.emplace_back(
+                          &rt, start, length);
+                      memory_used_rcs_ += sizeof(ResultCellSlab);
+                    }
+                    length = 0;
+                  }
+
+                  start = c + 1;
+                } else {
+                  length++;
+                }
+              }
+
+              // Add the last cell slab.
+              if (length != 0) {
+                std::unique_lock<std::mutex> lck(mem_budget_mtx_);
+                read_state_.result_cell_slabs_.emplace_back(&rt, start, length);
+                memory_used_rcs_ += sizeof(ResultCellSlab);
+              }
+            }
+
+            if (add_full_tile) {
+              // Add all tile.
+              read_state_.result_cell_slabs_.emplace_back(
+                  &rt, 0, rt.cell_num());
+              memory_used_rcs_ += sizeof(ResultCellSlab);
+            }
+
+            return Status::Ok();
+          });
+      RETURN_NOT_OK_ELSE(status, LOG_STATUS(status));
 
       // Adjust result tile ranges.
-      auto& first_range = result_tile_ranges_[rt.frag_idx()].front();
+      auto& first_range = result_tile_ranges_[rt.frag_idx()].back();
       if (first_range.second == rt.tile_idx()) {
-        result_tile_ranges_[rt.frag_idx()].pop_front();
+        remove_result_tile_range(rt.frag_idx());
       } else {
         first_range.first = rt.tile_idx() + 1;
       }
@@ -629,8 +708,10 @@ Status SparseUnorderedWithDupsReader::remove_result_tile(
   // Delete the tile.
   result_tiles_.erase(rt);
 
-  std::unique_lock<std::mutex> lck(mem_budget_mtx_);
-  memory_used_result_tiles_ -= sizeof(ResultTile);
+  {
+    std::unique_lock<std::mutex> lck(mem_budget_mtx_);
+    memory_used_result_tiles_ -= sizeof(ResultTile);
+  }
 
   return Status::Ok();
 }
@@ -657,6 +738,7 @@ Status SparseUnorderedWithDupsReader::end_iteration() {
   read_state_.result_cell_slabs_.erase(
       read_state_.result_cell_slabs_.begin(),
       read_state_.result_cell_slabs_.begin() + copy_end_.first);
+  memory_used_rcs_ -= copy_end_.first * sizeof(ResultCellSlab);
 
   // If the result cell slabs are empty, check if we need to remove the last
   // tile.
@@ -670,7 +752,11 @@ Status SparseUnorderedWithDupsReader::end_iteration() {
   auto uint64_t_max = std::numeric_limits<uint64_t>::max();
   copy_end_ = std::pair<uint64_t, uint64_t>(uint64_t_max, uint64_t_max);
 
-  array_memory_tracker_->set_budget(std::numeric_limits<uint64_t>::max());
+  if (offsets_extra_element_) {
+    RETURN_NOT_OK(add_extra_offset());
+  }
+
+  array_memory_tracker_->set_budget(uint64_t_max);
   return Status::Ok();
 }
 
