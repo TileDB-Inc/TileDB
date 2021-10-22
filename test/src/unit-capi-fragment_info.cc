@@ -39,7 +39,7 @@
 
 using namespace tiledb::test;
 
-const std::string array_name = "fragment_info_array";
+const std::string array_name = "fragment_info_array_c";
 
 TEST_CASE(
     "C API: Test fragment info, errors", "[capi][fragment_info][errors]") {
@@ -49,7 +49,6 @@ TEST_CASE(
   tiledb_vfs_t* vfs = nullptr;
   rc = tiledb_vfs_alloc(ctx, nullptr, &vfs);
   REQUIRE(rc == TILEDB_OK);
-  remove_dir(array_name, ctx, vfs);
 
   // Create fragment info object
   tiledb_fragment_info_t* fragment_info = nullptr;
@@ -61,7 +60,6 @@ TEST_CASE(
   CHECK(rc == TILEDB_ERR);
 
   // Create array
-  remove_dir(array_name, ctx, vfs);
   uint64_t domain[] = {1, 10};
   uint64_t tile_extent = 5;
   create_array(
@@ -143,10 +141,10 @@ TEST_CASE(
   CHECK(rc == TILEDB_ERR);
 
   // Clean up
+  tiledb_fragment_info_free(&fragment_info);
   remove_dir(array_name, ctx, vfs);
   tiledb_ctx_free(&ctx);
   tiledb_vfs_free(&vfs);
-  tiledb_fragment_info_free(&fragment_info);
 }
 
 TEST_CASE(
@@ -161,7 +159,6 @@ TEST_CASE(
   REQUIRE(rc == TILEDB_OK);
 
   // Create array
-  remove_dir(array_name, ctx, vfs);
   uint64_t domain[] = {1, 10};
   uint64_t tile_extent = 5;
   create_array(
@@ -318,10 +315,10 @@ TEST_CASE(
   CHECK(version == tiledb::sm::constants::format_version);
 
   // Clean up
+  tiledb_fragment_info_free(&fragment_info);
   remove_dir(array_name, ctx, vfs);
   tiledb_ctx_free(&ctx);
   tiledb_vfs_free(&vfs);
-  tiledb_fragment_info_free(&fragment_info);
 }
 
 TEST_CASE(
@@ -339,7 +336,6 @@ TEST_CASE(
   const char* key = "12345678901234567890123456789012";
 
   // Create array
-  remove_dir(array_name, ctx, vfs);
   uint64_t domain[] = {1, 10};
   uint64_t tile_extent = 5;
   create_array(
@@ -530,6 +526,29 @@ TEST_CASE(
   CHECK(rc == TILEDB_OK);
   CHECK(non_empty_dom == std::vector<uint64_t>{1, 7});
 
+  // Get number of MBRs - should always be 0 since it's a dense array
+  uint64_t mbr_num;
+  rc = tiledb_fragment_info_get_mbr_num(ctx, fragment_info, 0, &mbr_num);
+  CHECK(rc == TILEDB_OK);
+  CHECK(mbr_num == 0);
+  rc = tiledb_fragment_info_get_mbr_num(ctx, fragment_info, 1, &mbr_num);
+  CHECK(rc == TILEDB_OK);
+  CHECK(mbr_num == 0);
+  rc = tiledb_fragment_info_get_mbr_num(ctx, fragment_info, 2, &mbr_num);
+  CHECK(rc == TILEDB_OK);
+  CHECK(mbr_num == 0);
+
+  // Get MBR from index - should fail since it's a dense array
+  std::vector<uint64_t> mbr(2);
+  rc = tiledb_fragment_info_get_mbr_from_index(
+      ctx, fragment_info, 1, 0, 0, &mbr[0]);
+  CHECK(rc == TILEDB_ERR);
+
+  // Get MBR from name - should fail since it's a dense array
+  rc = tiledb_fragment_info_get_mbr_from_name(
+      ctx, fragment_info, 1, 0, "d", &mbr[0]);
+  CHECK(rc == TILEDB_ERR);
+
   // Get number of cells
   uint64_t cell_num;
   rc = tiledb_fragment_info_get_cell_num(ctx, fragment_info, 0, &cell_num);
@@ -549,15 +568,13 @@ TEST_CASE(
   CHECK(version == tiledb::sm::constants::format_version);
 
   // Clean up
+  tiledb_fragment_info_free(&fragment_info);
   remove_dir(array_name, ctx, vfs);
   tiledb_ctx_free(&ctx);
   tiledb_vfs_free(&vfs);
-  tiledb_fragment_info_free(&fragment_info);
 }
 
-TEST_CASE(
-    "C API: Test fragment info, load from array with string dimension",
-    "[capi][fragment_info][load][string-dim]") {
+TEST_CASE("C API: Test MBR fragment info", "[capi][fragment_info][mbr]") {
   // Create TileDB context
   tiledb_ctx_t* ctx = nullptr;
   int rc = tiledb_ctx_alloc(nullptr, &ctx);
@@ -565,7 +582,172 @@ TEST_CASE(
   tiledb_vfs_t* vfs = nullptr;
   rc = tiledb_vfs_alloc(ctx, nullptr, &vfs);
   REQUIRE(rc == TILEDB_OK);
+
+  // Key
+  const char* key = "12345678901234567890123456789012";
+
+  // Create sparse array
+  uint64_t domain[] = {1, 10};
+  uint64_t tile_extent = 5;
+  create_array(
+      ctx,
+      array_name,
+      TILEDB_AES_256_GCM,
+      key,
+      32,
+      TILEDB_SPARSE,
+      {"d1", "d2"},
+      {TILEDB_UINT64, TILEDB_UINT64},
+      {domain, domain},
+      {&tile_extent, &tile_extent},
+      {"a"},
+      {TILEDB_INT32},
+      {1},
+      {tiledb::test::Compressor(TILEDB_FILTER_NONE, -1)},
+      TILEDB_ROW_MAJOR,
+      TILEDB_ROW_MAJOR,
+      2);
+
+  tiledb_config_t* cfg;
+  tiledb_error_t* err = nullptr;
+  rc = tiledb_config_alloc(&cfg, &err);
+  REQUIRE(rc == TILEDB_OK);
+  REQUIRE(err == nullptr);
+  rc = tiledb_config_set(cfg, "sm.encryption_type", "AES_256_GCM", &err);
+  REQUIRE(err == nullptr);
+  rc = tiledb_config_set(cfg, "sm.encryption_key", key, &err);
+  REQUIRE(rc == TILEDB_OK);
+  REQUIRE(err == nullptr);
+
+  // Write a sparse fragment
+  QueryBuffers buffers;
+  std::vector<int32_t> a = {1, 2};
+  uint64_t a_size = a.size() * sizeof(int32_t);
+  buffers["a"] = tiledb::test::QueryBuffer({&a[0], a_size, nullptr, 0});
+  std::vector<int64_t> d1 = {1, 2};
+  uint64_t d1_size = d1.size() * sizeof(uint64_t);
+  buffers["d1"] = tiledb::test::QueryBuffer({&d1[0], d1_size, nullptr, 0});
+  std::vector<int64_t> d2 = {1, 2};
+  uint64_t d2_size = d2.size() * sizeof(uint64_t);
+  buffers["d2"] = tiledb::test::QueryBuffer({&d2[0], d2_size, nullptr, 0});
+  std::string written_frag_uri;
+  write_array(
+      ctx,
+      array_name,
+      TILEDB_AES_256_GCM,
+      key,
+      32,
+      1,
+      TILEDB_UNORDERED,
+      buffers,
+      &written_frag_uri);
+
+  // Write a second sparse fragment
+  std::vector<int64_t> a2 = {9, 10, 11, 12};
+  a_size = a2.size() * sizeof(int32_t);
+  buffers["a"] = tiledb::test::QueryBuffer({&a2[0], a_size, nullptr, 0});
+  std::vector<int64_t> d1b = {1, 2, 7, 8};
+  uint64_t d1b_size = d1b.size() * sizeof(uint64_t);
+  buffers["d1"] = tiledb::test::QueryBuffer({&d1b[0], d1b_size, nullptr, 0});
+  std::vector<int64_t> d2b = {1, 2, 7, 8};
+  uint64_t d2b_size = d2b.size() * sizeof(uint64_t);
+  buffers["d2"] = tiledb::test::QueryBuffer({&d2b[0], d2b_size, nullptr, 0});
+  write_array(
+      ctx,
+      array_name,
+      TILEDB_AES_256_GCM,
+      key,
+      32,
+      2,
+      TILEDB_UNORDERED,
+      buffers,
+      &written_frag_uri);
+
+  // Write a third sparse fragment
+  std::vector<int64_t> a3 = {5, 6, 7, 8};
+  a_size = a3.size() * sizeof(int32_t);
+  buffers["a"] = tiledb::test::QueryBuffer({&a3[0], a_size, nullptr, 0});
+  std::vector<int64_t> d1c = {1, 2, 7, 1};
+  uint64_t d1c_size = d1c.size() * sizeof(uint64_t);
+  buffers["d1"] = tiledb::test::QueryBuffer({&d1c[0], d1c_size, nullptr, 0});
+  std::vector<int64_t> d2c = {1, 2, 7, 8};
+  uint64_t d2c_size = d2c.size() * sizeof(uint64_t);
+  buffers["d2"] = tiledb::test::QueryBuffer({&d2c[0], d2c_size, nullptr, 0});
+  write_array(
+      ctx,
+      array_name,
+      TILEDB_AES_256_GCM,
+      key,
+      32,
+      3,
+      TILEDB_UNORDERED,
+      buffers,
+      &written_frag_uri);
+
+  // Create fragment info object
+  tiledb_fragment_info_t* fragment_info = nullptr;
+  rc = tiledb_fragment_info_alloc(ctx, array_name.c_str(), &fragment_info);
+  CHECK(rc == TILEDB_OK);
+
+  // Load fragment info
+  rc = tiledb_config_set(cfg, "sm.encryption_key", key, &err);
+  REQUIRE(rc == TILEDB_OK);
+  REQUIRE(err == nullptr);
+  REQUIRE(tiledb_ctx_alloc(cfg, &ctx) == TILEDB_OK);
+  rc = tiledb_fragment_info_load(ctx, fragment_info);
+  CHECK(rc == TILEDB_OK);
+  tiledb_config_free(&cfg);
+
+  // Get fragment num
+  uint32_t fragment_num;
+  rc = tiledb_fragment_info_get_fragment_num(ctx, fragment_info, &fragment_num);
+  CHECK(rc == TILEDB_OK);
+  CHECK(fragment_num == 3);
+
+  // Get number of MBRs
+  uint64_t mbr_num;
+  rc = tiledb_fragment_info_get_mbr_num(ctx, fragment_info, 0, &mbr_num);
+  CHECK(rc == TILEDB_OK);
+  CHECK(mbr_num == 1);
+  rc = tiledb_fragment_info_get_mbr_num(ctx, fragment_info, 1, &mbr_num);
+  CHECK(rc == TILEDB_OK);
+  CHECK(mbr_num == 2);
+  rc = tiledb_fragment_info_get_mbr_num(ctx, fragment_info, 2, &mbr_num);
+  CHECK(rc == TILEDB_OK);
+  CHECK(mbr_num == 2);
+  rc = tiledb_fragment_info_get_mbr_num(ctx, fragment_info, 3, &mbr_num);
+  CHECK(rc == TILEDB_ERR);
+
+  // Get MBR from index
+  std::vector<uint64_t> mbr(2);
+  rc = tiledb_fragment_info_get_mbr_from_index(
+      ctx, fragment_info, 0, 0, 0, &mbr[0]);
+  CHECK(rc == TILEDB_OK);
+  CHECK(mbr == std::vector<uint64_t>{1, 2});
+
+  // Get MBR from name
+  rc = tiledb_fragment_info_get_mbr_from_name(
+      ctx, fragment_info, 1, 1, "d1", &mbr[0]);
+  CHECK(rc == TILEDB_OK);
+  CHECK(mbr == std::vector<uint64_t>{7, 8});
+
+  // Clean up
+  tiledb_fragment_info_free(&fragment_info);
   remove_dir(array_name, ctx, vfs);
+  tiledb_vfs_free(&vfs);
+  tiledb_ctx_free(&ctx);
+}
+
+TEST_CASE(
+    "C API: Test fragment info, load from array with string dimension",
+    "[capi][fragment_info][load][string-dim][mbr]") {
+  // Create TileDB context
+  tiledb_ctx_t* ctx = nullptr;
+  int rc = tiledb_ctx_alloc(nullptr, &ctx);
+  REQUIRE(rc == TILEDB_OK);
+  tiledb_vfs_t* vfs = nullptr;
+  rc = tiledb_vfs_alloc(ctx, nullptr, &vfs);
+  REQUIRE(rc == TILEDB_OK);
 
   // Create array
   create_array(
@@ -653,11 +835,47 @@ TEST_CASE(
       ctx, fragment_info, 0, "foo", start, end);
   CHECK(rc == TILEDB_ERR);
 
+  // Get number of MBRs
+  uint64_t mbr_num;
+  rc = tiledb_fragment_info_get_mbr_num(ctx, fragment_info, 0, &mbr_num);
+  CHECK(rc == TILEDB_OK);
+  CHECK(mbr_num == 2);
+
+  // Get MBR size
+  uint64_t mbr_start_size, mbr_end_size;
+  rc = tiledb_fragment_info_get_mbr_var_size_from_index(
+      ctx, fragment_info, 0, 0, 0, &mbr_start_size, &mbr_end_size);
+  CHECK(rc == TILEDB_OK);
+  CHECK(mbr_start_size == 1);
+  CHECK(mbr_end_size == 2);
+  rc = tiledb_fragment_info_get_mbr_var_size_from_name(
+      ctx, fragment_info, 0, 1, "d", &mbr_start_size, &mbr_end_size);
+  CHECK(rc == TILEDB_OK);
+  CHECK(mbr_start_size == 1);
+  CHECK(mbr_end_size == 3);
+
+  // Get MBR
+  char mbr0_start[1];
+  char mbr0_end[2];
+  rc = tiledb_fragment_info_get_mbr_var_from_index(
+      ctx, fragment_info, 0, 0, 0, mbr0_start, mbr0_end);
+  CHECK(rc == TILEDB_OK);
+  CHECK(std::string("a") == std::string(mbr0_start, 1));
+  CHECK(std::string("bb") == std::string(mbr0_end, 2));
+
+  char mbr1_start[1];
+  char mbr1_end[3];
+  rc = tiledb_fragment_info_get_mbr_var_from_name(
+      ctx, fragment_info, 0, 1, "d", mbr1_start, mbr1_end);
+  CHECK(rc == TILEDB_OK);
+  CHECK(std::string("c") == std::string(mbr1_start, 1));
+  CHECK(std::string("ddd") == std::string(mbr1_end, 3));
+
   // Clean up
+  tiledb_fragment_info_free(&fragment_info);
   remove_dir(array_name, ctx, vfs);
   tiledb_ctx_free(&ctx);
   tiledb_vfs_free(&vfs);
-  tiledb_fragment_info_free(&fragment_info);
 }
 
 TEST_CASE(
@@ -672,7 +890,6 @@ TEST_CASE(
   REQUIRE(rc == TILEDB_OK);
 
   // Create array
-  remove_dir(array_name, ctx, vfs);
   uint64_t domain[] = {1, 10};
   uint64_t tile_extent = 5;
   create_array(
@@ -812,12 +1029,12 @@ TEST_CASE(
   CHECK(unconsolidated == 1);
 
   // Clean up
+  tiledb_fragment_info_free(&fragment_info);
   remove_dir(array_name, ctx, vfs);
   tiledb_ctx_free(&ctx);
   tiledb_vfs_free(&vfs);
   tiledb_error_free(&error);
   tiledb_config_free(&config);
-  tiledb_fragment_info_free(&fragment_info);
 }
 
 TEST_CASE(
@@ -832,7 +1049,6 @@ TEST_CASE(
   REQUIRE(rc == TILEDB_OK);
 
   // Create array
-  remove_dir(array_name, ctx, vfs);
   uint64_t domain[] = {1, 10};
   uint64_t tile_extent = 5;
   create_array(
@@ -951,12 +1167,12 @@ TEST_CASE(
   CHECK(to_vacuum_num == 2);
 
   // Clean up
+  tiledb_fragment_info_free(&fragment_info);
   remove_dir(array_name, ctx, vfs);
   tiledb_ctx_free(&ctx);
   tiledb_vfs_free(&vfs);
   tiledb_error_free(&error);
   tiledb_config_free(&config);
-  tiledb_fragment_info_free(&fragment_info);
 }
 
 TEST_CASE("C API: Test fragment info, dump", "[capi][fragment_info][dump]") {
@@ -969,7 +1185,6 @@ TEST_CASE("C API: Test fragment info, dump", "[capi][fragment_info][dump]") {
   REQUIRE(rc == TILEDB_OK);
 
   // Create array
-  remove_dir(array_name, ctx, vfs);
   uint64_t domain[] = {1, 10};
   uint64_t tile_extent = 5;
   create_array(
@@ -1127,10 +1342,11 @@ TEST_CASE("C API: Test fragment info, dump", "[capi][fragment_info][dump]") {
   CHECK(tiledb_vfs_remove_file(ctx, vfs, "fout.txt") == TILEDB_OK);
 
   // Clean up
+  tiledb_fragment_info_free(&fragment_info);
   remove_dir(array_name, ctx, vfs);
+  tiledb_fragment_info_free(&fragment_info);
   tiledb_ctx_free(&ctx);
   tiledb_vfs_free(&vfs);
-  tiledb_fragment_info_free(&fragment_info);
 }
 
 TEST_CASE(
@@ -1145,7 +1361,6 @@ TEST_CASE(
   REQUIRE(rc == TILEDB_OK);
 
   // Create array
-  remove_dir(array_name, ctx, vfs);
   uint64_t domain[] = {1, 10};
   uint64_t tile_extent = 5;
   create_array(
@@ -1256,10 +1471,10 @@ TEST_CASE(
   CHECK(tiledb_vfs_remove_file(ctx, vfs, "fout.txt") == TILEDB_OK);
 
   // Clean up
+  tiledb_fragment_info_free(&fragment_info);
   remove_dir(array_name, ctx, vfs);
   tiledb_ctx_free(&ctx);
   tiledb_vfs_free(&vfs);
-  tiledb_fragment_info_free(&fragment_info);
 }
 
 TEST_CASE(
@@ -1272,7 +1487,6 @@ TEST_CASE(
   tiledb_vfs_t* vfs = nullptr;
   rc = tiledb_vfs_alloc(ctx, nullptr, &vfs);
   REQUIRE(rc == TILEDB_OK);
-  remove_dir(array_name, ctx, vfs);
 
   // Create array
   create_array(
@@ -1339,10 +1553,10 @@ TEST_CASE(
   CHECK(tiledb_vfs_remove_file(ctx, vfs, "fout.txt") == TILEDB_OK);
 
   // Clean up
+  tiledb_fragment_info_free(&fragment_info);
   remove_dir(array_name, ctx, vfs);
   tiledb_ctx_free(&ctx);
   tiledb_vfs_free(&vfs);
-  tiledb_fragment_info_free(&fragment_info);
 }
 
 TEST_CASE(
@@ -1357,7 +1571,6 @@ TEST_CASE(
   REQUIRE(rc == TILEDB_OK);
 
   // Create array
-  remove_dir(array_name, ctx, vfs);
   uint64_t domain[] = {1, 4, 1, 4};
   uint64_t tile_extent = 1;
   create_array(
@@ -1430,8 +1643,8 @@ TEST_CASE(
   }
 
   // Clean up
+  tiledb_fragment_info_free(&fragment_info);
   remove_dir(array_name, ctx, vfs);
   tiledb_ctx_free(&ctx);
   tiledb_vfs_free(&vfs);
-  tiledb_fragment_info_free(&fragment_info);
 }

@@ -38,6 +38,7 @@
 #include "tiledb/common/status.h"
 #include "tiledb/sm/array_schema/dimension.h"
 #include "tiledb/sm/misc/types.h"
+#include "tiledb/sm/misc/utils.h"
 #include "tiledb/sm/query/query_condition.h"
 #include "tiledb/sm/query/result_cell_slab.h"
 
@@ -50,9 +51,43 @@ class OpenArrayMemoryTracker;
 class StorageManager;
 class Subarray;
 
+constexpr uint64_t ceil_div(uint64_t a, uint64_t b) {
+  auto div = static_cast<float>(a) / static_cast<float>(b);
+  return (static_cast<float>(static_cast<int32_t>(div)) == div) ?
+             static_cast<int32_t>(div) :
+             static_cast<int32_t>(div) + ((div > 0) ? 1 : 0);
+}
+
 /** Processes read queries. */
 class SparseIndexReaderBase : public ReaderBase {
  public:
+  /* ********************************* */
+  /*             CONSTANTS             */
+  /* ********************************* */
+
+  /** Constant used in tile ranges to specify compute overlap. */
+  static const uint64_t COMPUTE_OVERLAP = std::numeric_limits<uint64_t>::max();
+
+  /** Constant used in tile ranges to specify no overlap. */
+  static const uint64_t NO_OVERLAP = std::numeric_limits<uint64_t>::max() - 1;
+
+  /**
+   * Rough ratio of tile overlap size versus tile range size for single range.
+   * This includes data for result_tile_ranges_.
+   */
+  static const uint64_t TILE_RANGES_TO_TILE_OVERLAP_RATIO_SINGLE_RANGE = 1;
+
+  /**
+   * Rough ratio of tile overlap size versus tile range size for multiple
+   * range. This includes data for result_tile_ranges_ and
+   * range_result_tiles_ranges_.
+   * */
+  static const uint64_t TILE_RANGES_TO_TILE_OVERLAP_RATIO_MULTI_RANGE =
+      TILE_RANGES_TO_TILE_OVERLAP_RATIO_SINGLE_RANGE +
+      ceil_div(
+          sizeof(std::tuple<uint64_t, uint64_t, uint64_t>),
+          sizeof(std::pair<uint64_t, uint64_t>));
+
   /* ********************************* */
   /*          TYPE DEFINITIONS         */
   /* ********************************* */
@@ -64,6 +99,9 @@ class SparseIndexReaderBase : public ReaderBase {
 
     /** The tile index inside of each fragments. */
     std::vector<std::pair<uint64_t, uint64_t>> frag_tile_idx_;
+
+    /** The range index. */
+    uint64_t range_idx_;
   };
 
   /* ********************************* */
@@ -109,6 +147,9 @@ class SparseIndexReaderBase : public ReaderBase {
   /** Read state. */
   ReadState read_state_;
 
+  /** Number of ranges in process. */
+  uint64_t range_num_;
+
   /** Is the reader done with the query. */
   bool done_adding_result_tiles_;
 
@@ -121,8 +162,14 @@ class SparseIndexReaderBase : public ReaderBase {
   /** Are dimensions var sized. */
   std::vector<bool> is_dim_var_size_;
 
-  /** Sorted list, per fragments of tiles ranges in the subarray, if set. */
-  std::vector<std::list<std::pair<uint64_t, uint64_t>>> result_tile_ranges_;
+  /** Reverse sorted vector, per fragments, of tiles ranges in the subarray, if
+   * set. */
+  std::vector<std::vector<std::pair<uint64_t, uint64_t>>> result_tile_ranges_;
+
+  /** Reverse sorted vector, per range, of tiles ranges in the subarray, if set.
+   * The tuple stores fragment id, start tile, end tile. */
+  std::vector<std::vector<std::tuple<uint64_t, uint64_t, uint64_t>>>
+      range_result_tiles_ranges_;
 
   /** Have ve loaded the initial data. */
   bool initial_data_loaded_;
@@ -191,12 +238,24 @@ class SparseIndexReaderBase : public ReaderBase {
 
   /** Compute the result bitmap for a tile. */
   Status compute_coord_tiles_result_bitmap(
-      bool subarray_set,
       ResultTile* tile,
+      uint64_t range_idx,
       std::vector<uint8_t>* coord_tiles_result_bitmap);
 
   /** Resize the output buffers to the correct size after copying. */
   Status resize_output_buffers();
+
+  /**
+   * Adds an extra offset in the end of the offsets buffer indicating the
+   * returned data size if an attribute is var-sized.
+   */
+  Status add_extra_offset();
+
+  /** Remove a result tile range for a specific fragment */
+  void remove_result_tile_range(uint64_t f);
+
+  /** Remove a result tile range for a specific range */
+  void remove_range_result_tile_range(uint64_t r);
 };
 
 }  // namespace sm

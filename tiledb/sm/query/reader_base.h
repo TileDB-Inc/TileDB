@@ -173,7 +173,7 @@ class ReaderBase : public StrategyBase {
   QueryCondition& condition_;
 
   /** The fragment metadata that the reader will focus on. */
-  std::vector<FragmentMetadata*> fragment_metadata_;
+  std::vector<tdb_shared_ptr<FragmentMetadata>> fragment_metadata_;
 
   /** Protects result tiles. */
   mutable std::mutex result_tiles_mutex_;

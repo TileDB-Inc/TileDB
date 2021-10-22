@@ -454,6 +454,8 @@ struct ReadStateIndex {
 
   fragTileIdx @1 :List(FragmentIndex);
   # Tile/cell index for each fragments.
+
+  rangeIdx @2 :UInt64;
 }
 
 struct ReaderIndex {

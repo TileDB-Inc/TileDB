@@ -132,7 +132,7 @@ class OpenArray {
    * Returns the `FragmentMetadata` object of the input fragment URI,
    * or `nullptr` if the fragment metadata do no exist.
    */
-  FragmentMetadata* fragment_metadata(const URI& uri) const;
+  tdb_shared_ptr<FragmentMetadata> fragment_metadata(const URI& uri) const;
 
   /** Returns the memory tracker to be used by all fragment metadatas. */
   OpenArrayMemoryTracker* memory_tracker();
@@ -157,7 +157,7 @@ class OpenArray {
    * metadata must be sorted in ascending timestamp of creation.
    * This function will guarantee that the ordering is maintained.
    */
-  void insert_fragment_metadata(FragmentMetadata* metadata);
+  void insert_fragment_metadata(tdb_shared_ptr<FragmentMetadata> metadata);
 
   /**
    * Inserts the input array metadata (serialized in a share constant
@@ -176,7 +176,8 @@ class OpenArray {
      * breaking ties based on the URI string.
      */
     bool operator()(
-        const FragmentMetadata* meta_a, const FragmentMetadata* meta_b) const {
+        const tdb_shared_ptr<FragmentMetadata>& meta_a,
+        const tdb_shared_ptr<FragmentMetadata>& meta_b) const {
       return *meta_a < *meta_b;
     }
   };
@@ -207,13 +208,15 @@ class OpenArray {
   filelock_t filelock_;
 
   /** The fragment metadata of the open array. */
-  std::set<FragmentMetadata*, cmp_frag_meta_ptr> fragment_metadata_;
+  std::set<tdb_shared_ptr<FragmentMetadata>, cmp_frag_meta_ptr>
+      fragment_metadata_;
 
   /**
    * A map of URI strings to the fragment metadata that already have been
    * loaded in `fragment_metadata_`.
    */
-  std::unordered_map<std::string, FragmentMetadata*> fragment_metadata_set_;
+  std::unordered_map<std::string, tdb_shared_ptr<FragmentMetadata>>
+      fragment_metadata_set_;
 
   /** The memory tracker for the fragment metadata. */
   OpenArrayMemoryTracker memory_tracker_;
