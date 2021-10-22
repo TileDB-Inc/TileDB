@@ -412,10 +412,10 @@ struct interval_T_is_char_ptr
     : std::integral_constant<
           bool,
           std::is_pointer<T>::value &&
-              std::is_same<
+              (std::is_same<
                   char,
                   typename std::remove_cv<typename std::remove_pointer<
-                      typename std::remove_cv<T>::type>::type>::type>::value> {
+                      typename std::remove_cv<T>::type>::type>::type>::value)> {
 };
 
 template <class T>
@@ -441,18 +441,13 @@ struct TypeTraits<
       return {false, false};
     if (!diff_in_len)
       return {false, false};
-      // Assert: difflen >= 1 && difflen <= 2
-      // ***Precondition for lexicographic adjacency, s1 == s2.substr(0, s1len)
+    // Assert: difflen >= 1 && difflen <= 2
+    // ***Precondition for lexicographic adjacency, s1 == s2.substr(0, s1len)
 
-      // TBD: which compare approach should be used?
-#if 0
     auto diff1 = std::char_traits<unsigned char>::compare(
         (unsigned char*)s1,
         (unsigned char*)s2,
         s1len);  // basic_string::compare() seems to use unsigned char...
-#else
-    auto diff1 = memcmp(s1, s2, s1len);
-#endif
     if (diff1)
       return {false, false};  // Precondition not met
     // Assert: s2.substr(0, s1len) == s1
@@ -524,12 +519,9 @@ struct TypeTraits<
     T,
     typename std::enable_if<std::is_base_of<std::string_view, T>::value, T>::
         type> {
-  // Assert: std::is_same<s1::value_type, s2::value_type>
   /**
    * String may be adjacent.
    */
-  static const unsigned char minelem = '\x00';
-  static const unsigned char maxelem = uint8_t('\xff');
   static tuple<bool, bool> adjacency(const T s1, const T s2) {
     TypeTraits<decltype(&s1[0])> ttc;
     return ttc.adjacency(s1.data(), s1.length(), s2.data(), s2.length());
@@ -537,7 +529,7 @@ struct TypeTraits<
 
   static bool adjacent(const T s1, const T s2) {
     return std::get<0>(adjacency(s1, s2));
-  };
+  }
 
   static constexpr bool has_unordered_elements = false;
   static constexpr bool has_infinite_elements = false;
