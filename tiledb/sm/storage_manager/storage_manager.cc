@@ -908,7 +908,7 @@ Status StorageManager::array_evolve_schema(
   if (!exists)
     return logger_->status(Status::StorageManagerError(
         std::string("Cannot evolve array; Array '") + array_uri.c_str() +
-        "' not exists"));
+        "' does not exists"));
 
   ArraySchema* array_schema = (ArraySchema*)nullptr;
   RETURN_NOT_OK(load_array_schema(array_uri, encryption_key, &array_schema));
