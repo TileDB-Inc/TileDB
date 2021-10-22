@@ -938,7 +938,7 @@ Status StorageManager::array_upgrade_version(
   if (!exists)
     return LOG_STATUS(Status::StorageManagerError(
         std::string("Cannot upgrade array; Array '") + array_uri.c_str() +
-        "' does not exists"));
+        "' does not exist"));
 
   // If 'config' is unset, use the 'config_' that was set during initialization
   // of this StorageManager instance.
