@@ -938,7 +938,7 @@ Status StorageManager::array_upgrade_version(
   if (!exists)
     return LOG_STATUS(Status::StorageManagerError(
         std::string("Cannot upgrade array; Array '") + array_uri.c_str() +
-        "' not exists"));
+        "' does not exists"));
 
   // If 'config' is unset, use the 'config_' that was set during initialization
   // of this StorageManager instance.
@@ -986,15 +986,33 @@ Status StorageManager::array_upgrade_version(
   RETURN_NOT_OK(load_array_schema(array_uri, encryption_key, &array_schema));
 
   if (array_schema->version() < constants::format_version) {
-    RETURN_NOT_OK(array_schema->generate_uri());
+    Status st = array_schema->generate_uri();
+    if (!st.ok()) {
+      LOG_STATUS(st);
+      // Clean up
+      tdb_delete(array_schema);
+      return st;
+    }
     array_schema->set_version(constants::format_version);
 
     // Create array schema directory if necessary
     URI array_schema_folder_uri =
         array_uri.join_path(constants::array_schema_folder_name);
-    RETURN_NOT_OK(vfs_->create_dir(array_schema_folder_uri));
+    st = vfs_->create_dir(array_schema_folder_uri);
+    if (!st.ok()) {
+      LOG_STATUS(st);
+      // Clean up
+      tdb_delete(array_schema);
+      return st;
+    }
 
-    RETURN_NOT_OK(store_array_schema(array_schema, encryption_key));
+    st = store_array_schema(array_schema, encryption_key);
+    if (!st.ok()) {
+      LOG_STATUS(st);
+      // Clean up
+      tdb_delete(array_schema);
+      return st;
+    }
   }
 
   // Clean up

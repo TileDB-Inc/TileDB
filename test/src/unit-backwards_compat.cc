@@ -1178,89 +1178,85 @@ TEST_CASE(
   std::string schema_folder;
   std::string fragment_uri;
 
-  try {
-    // Upgrades version
-    Array::upgrade_version(ctx, array_name);
+  // Upgrades version
+  Array::upgrade_version(ctx, array_name);
 
-    // Read using upgraded version
-    Array array_read1(ctx, array_name, TILEDB_READ);
-    std::vector<int> subarray_read1 = {1, 4, 10, 10};
-    std::vector<int> a_read1;
-    a_read1.resize(4);
-    std::vector<int> d1_read1;
-    d1_read1.resize(4);
-    std::vector<int> d2_read1;
-    d2_read1.resize(4);
+  // Read using upgraded version
+  Array array_read1(ctx, array_name, TILEDB_READ);
+  std::vector<int> subarray_read1 = {1, 4, 10, 10};
+  std::vector<int> a_read1;
+  a_read1.resize(4);
+  std::vector<int> d1_read1;
+  d1_read1.resize(4);
+  std::vector<int> d2_read1;
+  d2_read1.resize(4);
 
-    Query query_read1(ctx, array_read1);
-    query_read1.set_subarray(subarray_read1)
-        .set_layout(TILEDB_ROW_MAJOR)
-        .set_data_buffer("a", a_read1)
-        .set_data_buffer("d1", d1_read1)
-        .set_data_buffer("d2", d2_read1);
+  Query query_read1(ctx, array_read1);
+  query_read1.set_subarray(subarray_read1)
+      .set_layout(TILEDB_ROW_MAJOR)
+      .set_data_buffer("a", a_read1)
+      .set_data_buffer("d1", d1_read1)
+      .set_data_buffer("d2", d2_read1);
 
-    query_read1.submit();
-    array_read1.close();
+  query_read1.submit();
+  array_read1.close();
 
-    for (int i = 0; i < 4; i++) {
-      REQUIRE(a_read1[i] == i + 1);
-    }
-
-    // Write
-    Array array_write(ctx, array_name, TILEDB_WRITE);
-    std::vector<int> subarray_write = {1, 2, 10, 10};
-    std::vector<int> a_write = {11, 12};
-    std::vector<int> d1_write = {1, 2};
-    std::vector<int> d2_write = {10, 10};
-
-    Query query_write(ctx, array_write, TILEDB_WRITE);
-
-    query_write.set_layout(TILEDB_GLOBAL_ORDER);
-    query_write.set_data_buffer("a", a_write);
-    query_write.set_data_buffer("d1", d1_write);
-    query_write.set_data_buffer("d2", d2_write);
-
-    query_write.submit();
-    query_write.finalize();
-    array_write.close();
-
-    fragment_uri = query_write.fragment_uri(0);
-
-    // Read again
-    Array array_read2(ctx, array_name, TILEDB_READ);
-    std::vector<int> subarray_read2 = {1, 4, 10, 10};
-    std::vector<int> a_read2;
-    a_read2.resize(4);
-    std::vector<int> d1_read2;
-    d1_read2.resize(4);
-    std::vector<int> d2_read2;
-    d2_read2.resize(4);
-
-    Query query_read2(ctx, array_read2);
-    query_read2.set_subarray(subarray_read2)
-        .set_layout(TILEDB_ROW_MAJOR)
-        .set_data_buffer("a", a_read2)
-        .set_data_buffer("d1", d1_read2)
-        .set_data_buffer("d2", d2_read2);
-
-    query_read2.submit();
-    array_read2.close();
-
-    for (int i = 0; i < 2; i++) {
-      REQUIRE(a_read2[i] == i + 11);
-    }
-    for (int i = 2; i < 3; i++) {
-      REQUIRE(a_read2[i] == i + 1);
-    }
-
-    // Clean up
-    schema_folder = array_read2.uri() + "/__schema";
-
-    VFS vfs(ctx);
-    vfs.remove_dir(fragment_uri);
-    vfs.remove_file(fragment_uri + ".ok");
-    vfs.remove_dir(schema_folder);
-  } catch (const std::exception& e) {
-    CHECK(false);
+  for (int i = 0; i < 4; i++) {
+    REQUIRE(a_read1[i] == i + 1);
   }
+
+  // Write
+  Array array_write(ctx, array_name, TILEDB_WRITE);
+  std::vector<int> subarray_write = {1, 2, 10, 10};
+  std::vector<int> a_write = {11, 12};
+  std::vector<int> d1_write = {1, 2};
+  std::vector<int> d2_write = {10, 10};
+
+  Query query_write(ctx, array_write, TILEDB_WRITE);
+
+  query_write.set_layout(TILEDB_GLOBAL_ORDER);
+  query_write.set_data_buffer("a", a_write);
+  query_write.set_data_buffer("d1", d1_write);
+  query_write.set_data_buffer("d2", d2_write);
+
+  query_write.submit();
+  query_write.finalize();
+  array_write.close();
+
+  fragment_uri = query_write.fragment_uri(0);
+
+  // Read again
+  Array array_read2(ctx, array_name, TILEDB_READ);
+  std::vector<int> subarray_read2 = {1, 4, 10, 10};
+  std::vector<int> a_read2;
+  a_read2.resize(4);
+  std::vector<int> d1_read2;
+  d1_read2.resize(4);
+  std::vector<int> d2_read2;
+  d2_read2.resize(4);
+
+  Query query_read2(ctx, array_read2);
+  query_read2.set_subarray(subarray_read2)
+      .set_layout(TILEDB_ROW_MAJOR)
+      .set_data_buffer("a", a_read2)
+      .set_data_buffer("d1", d1_read2)
+      .set_data_buffer("d2", d2_read2);
+
+  query_read2.submit();
+  array_read2.close();
+
+  for (int i = 0; i < 2; i++) {
+    REQUIRE(a_read2[i] == i + 11);
+  }
+  for (int i = 2; i < 3; i++) {
+    REQUIRE(a_read2[i] == i + 1);
+  }
+
+  // Clean up
+  schema_folder = array_read2.uri() + "/__schema";
+
+  VFS vfs(ctx);
+  vfs.remove_dir(fragment_uri);
+  vfs.remove_file(fragment_uri + ".ok");
+  vfs.remove_dir(schema_folder);
 }
