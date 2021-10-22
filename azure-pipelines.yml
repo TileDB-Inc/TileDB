@@ -10,7 +10,7 @@ pr:
     - '*'  # must quote since "*" is a YAML reserved character; we want a string
 
 variables:
-  - name: MANYLINUX_IMAGE
+  - name: manylinuxImage
     value: quay.io/pypa/manylinux2010_x86_64:2021-06-07-00faba2
 
 stages:
@@ -35,12 +35,24 @@ stages:
             TILEDB_SERIALIZATION: ON
             CXX: g++
             CC: gcc
-
       pool:
         vmImage: $(imageName)
       steps:
       - template: scripts/azure-linux_mac.yml
 
+    - job: linux_manylinux
+      pool: { vmImage: $(imageName) }
+      container: ${{ variables.manylinuxImage }}
+      variables:
+        imageName: 'ubuntu-20.04'
+        TILEDB_SERIALIZATION: ON
+        CXX: g++
+        CC: gcc
+        CXXFLAGS: "-lrt"
+        CFLAGS: "-lrt"
+        USE_MANYLINUX: ON
+      steps:
+      - template: scripts/azure-linux_mac.yml
     - job: Windows
       strategy:
         matrix:
@@ -71,17 +83,12 @@ stages:
       TILEDB_SERIALIZATION: ON
       TILEDB_FORCE_BUILD_DEPS: ON
       MACOSX_DEPLOYMENT_TARGET: 10.14
+      SUDO: 'sudo'
     jobs:
      - job:
        timeoutInMinutes: 90
        strategy:
          matrix:
-           linux:
-             imageName: 'ubuntu-20.04'
-             containerImage: $(MANYLINUX_CONTAINER)
-             CXX: g++
-             ARTIFACT_OS: 'linux'
-             ARTIFACT_ARCH: 'x86_64'
            macOS:
              imageName: 'macOS-10.15'
              CXX: clang++
@@ -100,8 +107,19 @@ stages:
        pool:
          vmImage: $(imageName)
        steps:
-         - template: scripts/azure-linux_mac-release.yml
-
+       - template: scripts/azure-linux_mac-release.yml
+     - job: linux_manylinux
+       pool: { vmImage: 'ubuntu-20.04' }
+       container: ${{ variables.manylinuxImage }}
+       variables:
+         CXX: g++
+         CFLAGS: "-lrt"
+         CXXFLAGS: "-lrt"
+         ARTIFACT_OS: 'linux'
+         ARTIFACT_ARCH: 'x86_64'
+         SUDO: ''
+       steps:
+       - template: scripts/azure-linux_mac-release.yml
      - job: Windows
        strategy:
          matrix:
@@ -115,7 +133,7 @@ stages:
        pool:
          vmImage: $(imageName)
        steps:
-         - template: scripts/azure-windows-release.yml
+       - template: scripts/azure-windows-release.yml
 
   # NOTE: this section cannot be conditional because `Build.Repository.Name` is an agent-scoped variable.
   - stage: Github_Release
