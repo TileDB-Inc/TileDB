@@ -298,7 +298,11 @@ Status RestClient::get_array_metadata_from_rest(
       array, serialization_type_, returned_data);
 }
 
-Status RestClient::post_array_metadata_to_rest(const URI& uri, Array* array) {
+Status RestClient::post_array_metadata_to_rest(
+    const URI& uri,
+    uint64_t timestamp_start,
+    uint64_t timestamp_end,
+    Array* array) {
   if (array == nullptr)
     return LOG_STATUS(Status::RestError(
         "Error posting array metadata to REST; array is null."));
@@ -318,7 +322,10 @@ Status RestClient::post_array_metadata_to_rest(const URI& uri, Array* array) {
   RETURN_NOT_OK(
       curlc.init(config_, extra_headers_, &redirect_meta_, &redirect_mtx_));
   const std::string url = redirect_uri(cache_key) + "/v1/arrays/" + array_ns +
-                          "/" + curlc.url_escape(array_uri) + "/array_metadata";
+                          "/" + curlc.url_escape(array_uri) +
+                          "/array_metadata?" +
+                          "start_timestamp=" + std::to_string(timestamp_start) +
+                          "&end_timestamp=" + std::to_string(timestamp_end);
 
   // Put the data
   Buffer returned_data;
@@ -554,16 +561,21 @@ size_t RestClient::post_data_write_cb(
     // there will be an overlap in the memory of the source and
     // destination.
     if (length <= offset) {
+      scratch->reset_size();
       st = scratch->write(scratch->data(offset), length);
     } else {
       Buffer aux;
       st = aux.write(scratch->data(offset), length);
       if (st.ok()) {
+        scratch->reset_size();
         st = scratch->write(aux.data(), aux.size());
       }
     }
 
     assert(st.ok());
+    if (!st.ok()) {
+      LOG_STATUS(st);
+    }
     assert(scratch->size() == length);
   }
 
@@ -853,7 +865,8 @@ Status RestClient::get_array_metadata_from_rest(
       Status::RestError("Cannot use rest client; serialization not enabled."));
 }
 
-Status RestClient::post_array_metadata_to_rest(const URI&, Array*) {
+Status RestClient::post_array_metadata_to_rest(
+    const URI&, uint64_t, uint64_t, Array*) {
   return LOG_STATUS(
       Status::RestError("Cannot use rest client; serialization not enabled."));
 }

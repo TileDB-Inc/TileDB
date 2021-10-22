@@ -163,6 +163,59 @@ class FragmentInfo {
   Status get_non_empty_domain_var(
       uint32_t fid, const char* dim_name, void* start, void* end) const;
 
+  /** Retrieves the number of MBRs in the fragment with the given index. */
+  Status get_mbr_num(uint32_t fid, uint64_t* mbr_num);
+
+  /**
+   * Retrieves the MBR of the fragment with the given index on the given
+   * dimension index.
+   */
+  Status get_mbr(uint32_t fid, uint32_t mid, uint32_t did, void* mbr);
+
+  /**
+   * Retrieves the MBR of the fragment with the given index on the given
+   * dimension name.
+   */
+  Status get_mbr(uint32_t fid, uint32_t mid, const char* dim_name, void* mbr);
+
+  /**
+   * Retrieves the sizes of the start and end values of the MBR of the fragment
+   * with the given index on the given dimension index. Applicable only to
+   * var-sized dimensions.
+   */
+  Status get_mbr_var_size(
+      uint32_t fid,
+      uint32_t mid,
+      uint32_t did,
+      uint64_t* start_size,
+      uint64_t* end_size);
+
+  /**
+   * Retrieves the sizes of the start and end values of the MBR of the fragment
+   * with the given index on the given dimension name. Applicable only to
+   * var-sized dimensions.
+   */
+  Status get_mbr_var_size(
+      uint32_t fid,
+      uint32_t mid,
+      const char* dim_name,
+      uint64_t* start_size,
+      uint64_t* end_size);
+
+  /**
+   * Retrieves the MBR of the fragment with the given index on the given
+   * dimension index. Applicable to var-sized dimensions.
+   */
+  Status get_mbr_var(
+      uint32_t fid, uint32_t mid, uint32_t did, void* start, void* end);
+
+  /**
+   * Retrieves the MBR of the fragment with the given index on the given
+   * dimension name. Applicable to var-sized dimensions.
+   */
+  Status get_mbr_var(
+      uint32_t fid, uint32_t mid, const char* dim_name, void* start, void* end);
+
   /** Retrieves the version of the fragment with the given index. */
   Status get_version(uint32_t fid, uint32_t* version) const;
 
@@ -179,7 +232,7 @@ class FragmentInfo {
    * only if the array is encrypted.
    */
   Status load(
-      const Config config,
+      const Config& config,
       EncryptionType encryption_type,
       const void* encryption_key,
       uint32_t key_length);
@@ -224,6 +277,9 @@ class FragmentInfo {
   /** The storage manager. */
   StorageManager* storage_manager_;
 
+  /** The pointer to the opened array that the fragments belong to. */
+  Array* array_;
+
   /** The URIs of the fragments to vacuum. */
   std::vector<URI> to_vacuum_;
 
@@ -239,6 +295,15 @@ class FragmentInfo {
 
   /** Returns a copy of this object. */
   FragmentInfo clone() const;
+
+  /**
+   * Helper function to open the array before accessing the rtree
+   */
+  Status array_open(
+      const Config& config,
+      EncryptionType encryption_type,
+      const void* encryption_key,
+      uint32_t key_length) const;
 
   /**
    * Swaps the contents (all field values) of this object with the
