@@ -1,13 +1,27 @@
+# TileDB v2.4.3 Release Notes
+
+## Bug fixes
+
+* Fix segfault in result `ResultTile::coord_string` and `ResultTile::compute_results_sparse<char>` due empty chunk buffer [#2531](https://github.com/TileDB-Inc/TileDB/pull/2531)
+* Fix memory corruption with empty result set in extra_element mode [#2540](https://github.com/TileDB-Inc/TileDB/pull/2540)
+* REST array metadata writes should post with timestamps [#2545](https://github.com/TileDB-Inc/TileDB/pull/2545)
+* Backport fixes for new Sparse Unordered with Duplicate readers from [#2530](https://github.com/TileDB-Inc/TileDB/pull/2530) and [#2538](https://github.com/TileDB-Inc/TileDB/pull/2538)
+
+## API additions
+
 # TileDB v2.4.2 Release Notes
 
 ## New features
+
 * Add support for empty string as query condition value. [#2507](https://github.com/TileDB-Inc/TileDB/pull/2507)
 
 ## Improvements
+
 * Support writing empty strings for dimensions [#2501](https://github.com/TileDB-Inc/TileDB/pull/2501)
 * Refactored readers can segfault when multiple contexts are used. [#2525](https://github.com/TileDB-Inc/TileDB/pull/2525)
 
 ## Bug fixes
+
 * Fix ch10191: check cell_val_num for varlen status instead of result count [#2505](https://github.com/TileDB-Inc/TileDB/pull/2505)
 * Do not access variables after moving them [#2522](https://github.com/TileDB-Inc/TileDB/pull/2522)
 * Add try/catch to `tiledb_ctx_alloc` for exception safety [#2527](https://github.com/TileDB-Inc/TileDB/pull/2527)
