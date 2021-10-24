@@ -3070,7 +3070,7 @@ TEST_CASE_METHOD(
     DenseArrayFx,
     "C API: Test dense array, cancel and retry writes",
     "[capi][dense][async][cancel]") {
-  SECTION("- No serialization nor outisde subarray") {
+  SECTION("- No serialization nor outside subarray") {
     serialize_query_ = false;
     use_external_subarray_ = false;
   }

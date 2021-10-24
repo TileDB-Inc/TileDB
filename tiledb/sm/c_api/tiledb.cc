@@ -3485,10 +3485,10 @@ int32_t tiledb_query_add_range(
     return TILEDB_ERR;
 
   tiledb_subarray_transient_local_t query_subarray(query);
-  tiledb_config_t loccfg;
+  tiledb_config_t local_cfg;
   // Drop 'const'ness for local usage here
-  loccfg.config_ = (tiledb::sm::Config*)query->query_->config();
-  tiledb_subarray_set_config(ctx, &query_subarray, &loccfg);
+  local_cfg.config_ = (tiledb::sm::Config*)query->query_->config();
+  tiledb_subarray_set_config(ctx, &query_subarray, &local_cfg);
   return tiledb_subarray_add_range(
       ctx, &query_subarray, dim_idx, start, end, stride);
 }
