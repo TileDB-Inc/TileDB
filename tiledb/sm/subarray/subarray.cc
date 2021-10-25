@@ -308,6 +308,7 @@ Subarray Subarray::crop_to_tile(const T* tile_coords, Layout layout) const {
   // Compute cropped subarray
   for (unsigned d = 0; d < dim_num(); ++d) {
     auto r_size = 2 * array_schema->dimension(d)->coord_size();
+    uint64_t i = 0;
     for (size_t r = 0; r < ranges_[d].size(); ++r) {
       if (!is_default_[d]) {
         const auto& range = ranges_[d][r];
@@ -318,8 +319,12 @@ Subarray Subarray::crop_to_tile(const T* tile_coords, Layout layout) const {
             new_range,
             &overlaps);
 
-        if (overlaps)
+        if (overlaps) {
           ret.add_range_unsafe(d, Range(new_range, r_size));
+          ret.original_range_idx_.resize(dim_num());
+          ret.original_range_idx_[d].resize(i + 1);
+          ret.original_range_idx_[d][i++] = r;
+        }
       }
     }
   }
@@ -1008,6 +1013,15 @@ uint64_t Subarray::range_idx(const std::vector<uint64_t>& range_coords) const {
     ret += range_offsets_[i] * range_coords[i];
 
   return ret;
+}
+
+template <class T>
+void Subarray::get_original_range_coords(
+    const T* const range_coords,
+    std::vector<uint64_t>* original_range_coords) const {
+  auto dim_num = this->dim_num();
+  for (unsigned i = 0; i < dim_num; ++i)
+    original_range_coords->at(i) = original_range_idx_[i][range_coords[i]];
 }
 
 uint64_t Subarray::range_num() const {
@@ -2183,6 +2197,7 @@ Subarray Subarray::clone() const {
   clone.est_result_size_ = est_result_size_;
   clone.max_mem_size_ = max_mem_size_;
   clone.relevant_fragments_ = relevant_fragments_;
+  clone.original_range_idx_ = original_range_idx_;
 
   return clone;
 }
@@ -2328,6 +2343,7 @@ void Subarray::swap(Subarray& subarray) {
   std::swap(est_result_size_, subarray.est_result_size_);
   std::swap(max_mem_size_, subarray.max_mem_size_);
   std::swap(relevant_fragments_, subarray.relevant_fragments_);
+  std::swap(original_range_idx_, subarray.original_range_idx_);
 }
 
 Status Subarray::compute_relevant_fragments(
@@ -2705,6 +2721,37 @@ template Subarray Subarray::crop_to_tile<float>(
     const float* tile_coords, Layout layout) const;
 template Subarray Subarray::crop_to_tile<double>(
     const double* tile_coords, Layout layout) const;
+
+template void Subarray::get_original_range_coords<int8_t>(
+    const int8_t* const range_coords,
+    std::vector<uint64_t>* original_range_coords) const;
+template void Subarray::get_original_range_coords<uint8_t>(
+    const uint8_t* const range_coords,
+    std::vector<uint64_t>* original_range_coords) const;
+template void Subarray::get_original_range_coords<int16_t>(
+    const int16_t* const range_coords,
+    std::vector<uint64_t>* original_range_coords) const;
+template void Subarray::get_original_range_coords<uint16_t>(
+    const uint16_t* const range_coords,
+    std::vector<uint64_t>* original_range_coords) const;
+template void Subarray::get_original_range_coords<int32_t>(
+    const int32_t* const range_coords,
+    std::vector<uint64_t>* original_range_coords) const;
+template void Subarray::get_original_range_coords<uint32_t>(
+    const uint32_t* const range_coords,
+    std::vector<uint64_t>* original_range_coords) const;
+template void Subarray::get_original_range_coords<int64_t>(
+    const int64_t* const range_coords,
+    std::vector<uint64_t>* original_range_coords) const;
+template void Subarray::get_original_range_coords<uint64_t>(
+    const uint64_t* const range_coords,
+    std::vector<uint64_t>* original_range_coords) const;
+template void Subarray::get_original_range_coords<float>(
+    const float* const range_coords,
+    std::vector<uint64_t>* original_range_coords) const;
+template void Subarray::get_original_range_coords<double>(
+    const double* const range_coords,
+    std::vector<uint64_t>* original_range_coords) const;
 
 }  // namespace sm
 }  // namespace tiledb
