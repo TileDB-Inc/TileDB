@@ -134,13 +134,18 @@ class detail::WhiteboxTracedAllocator
   }
 
   template <typename... Args>
-  WhiteboxTracedAllocator(const TracingLabel& label, Args&&... args)
+  explicit WhiteboxTracedAllocator(const TracingLabel& label, Args&&... args)
       : base(label, forward<Args>(args)...) {
   }
 
   template <typename... Args>
   explicit WhiteboxTracedAllocator(const std::string_view s, Args&&... args)
       : base(s, forward<Args>(args)...) {
+  }
+
+  template <int n, typename... Args>
+  explicit WhiteboxTracedAllocator(const char origin[n], Args&&... args)
+      : base(std::string_view(origin, n), forward<Args>(args)...) {
   }
 };
 
