@@ -67,7 +67,6 @@ SparseIndexReaderBase::SparseIndexReaderBase(
           subarray,
           layout,
           condition)
-    , done_adding_result_tiles_(false)
     , initial_data_loaded_(false)
     , memory_budget_(0)
     , array_memory_tracker_(nullptr)
@@ -83,6 +82,7 @@ SparseIndexReaderBase::SparseIndexReaderBase(
     , memory_budget_ratio_result_tiles_(0.05)
     , memory_budget_ratio_rcs_(0.05)
     , coords_loaded_(true) {
+  read_state_.done_adding_result_tiles_ = false;
 }
 
 /* ****************************** */
@@ -120,7 +120,7 @@ Status SparseIndexReaderBase::load_initial_data() {
     return Status::Ok();
 
   auto timer_se = stats_->start_timer("load_initial_data");
-  done_adding_result_tiles_ = false;
+  read_state_.done_adding_result_tiles_ = false;
 
   // For easy reference.
   auto fragment_num = fragment_metadata_.size();

@@ -49,6 +49,9 @@ class IQueryStrategy {
   /** Initializes the strategy. */
   virtual Status init() = 0;
 
+  /** Initialize the memory budget variables. */
+  virtual Status initialize_memory_budget() = 0;
+
   /** Performs a query using its set members. */
   virtual Status dowork() = 0;
 

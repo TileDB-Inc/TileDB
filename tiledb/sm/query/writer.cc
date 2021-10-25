@@ -271,6 +271,10 @@ Status Writer::init() {
   return Status::Ok();
 }
 
+Status Writer::initialize_memory_budget() {
+  return Status::Ok();
+}
+
 Status Writer::dowork() {
   get_dim_attr_stats();
 

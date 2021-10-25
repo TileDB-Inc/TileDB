@@ -91,6 +91,9 @@ class DenseReader : public ReaderBase, public IQueryStrategy {
   /** Initializes the reader. */
   Status init();
 
+  /** Initialize the memory budget variables. */
+  Status initialize_memory_budget();
+
   /** Returns the current read state. */
   const ReadState* read_state() const;
 
