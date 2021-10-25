@@ -32,6 +32,7 @@
 
 #include "test/src/helpers.h"
 #include "test/src/vfs_helpers.h"
+#include "tiledb/common/heap_memory.h"
 #include "tiledb/sm/c_api/tiledb_struct_def.h"
 #include "tiledb/sm/misc/types.h"
 #include "tiledb/sm/query/reader.h"
@@ -107,6 +108,7 @@ TEST_CASE_METHOD(
   QueryCondition condition;
   Reader reader(
       &g_helper_stats,
+      tdb_make_shared(Logger, global_logger()),
       nullptr,
       nullptr,
       config,

@@ -273,6 +273,15 @@ class Logger {
    */
   void critical(const std::stringstream& msg);
 
+  // TODO: add docstrings
+  Status status(const Status& st);
+
+  void fatal(const char* msg);
+
+  void fatal(const std::string& msg);
+
+  void fatal(const std::stringstream& msg);
+
   /**
    * A formatted critical statment.
    *

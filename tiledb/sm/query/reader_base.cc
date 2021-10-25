@@ -51,6 +51,7 @@ namespace sm {
 
 ReaderBase::ReaderBase(
     stats::Stats* stats,
+    tdb_shared_ptr<Logger> logger,
     StorageManager* storage_manager,
     Array* array,
     Config& config,
@@ -59,7 +60,14 @@ ReaderBase::ReaderBase(
     Layout layout,
     QueryCondition& condition)
     : StrategyBase(
-          stats, storage_manager, array, config, buffers, subarray, layout)
+          stats,
+          logger,
+          storage_manager,
+          array,
+          config,
+          buffers,
+          subarray,
+          layout)
     , condition_(condition)
     , fix_var_sized_overflows_(false)
     , clear_coords_tiles_on_copy_(true)
@@ -164,7 +172,7 @@ void ReaderBase::zero_out_buffer_sizes() {
 
 Status ReaderBase::check_subarray() const {
   if (subarray_.layout() == Layout::GLOBAL_ORDER && subarray_.range_num() != 1)
-    return LOG_STATUS(Status::ReaderError(
+    return logger_->status(Status::ReaderError(
         "Cannot initialize reader; Multi-range subarrays with "
         "global order layout are not supported"));
 
@@ -204,7 +212,7 @@ Status ReaderBase::check_validity_buffer_sizes() const {
               "given for ";
         ss << "attribute '" << name << "'";
         ss << " (" << cell_validity_num << " < " << min_cell_num << ")";
-        return LOG_STATUS(Status::ReaderError(ss.str()));
+        return logger_->status(Status::ReaderError(ss.str()));
       }
     }
   }
@@ -1810,7 +1818,7 @@ Status ReaderBase::fill_dense_coords(const Subarray& subarray) {
   // This path does not use result cell slabs, which will fill coordinates
   // for cells that should be filtered out.
   if (!condition_.empty()) {
-    return LOG_STATUS(
+    return logger_->status(
         Status::ReaderError("Cannot read dense coordinates; dense coordinate "
                             "reads are unsupported with a query condition"));
   }

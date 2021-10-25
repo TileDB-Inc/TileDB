@@ -59,6 +59,7 @@ namespace sm {
 
 SparseUnorderedWithDupsReader::SparseUnorderedWithDupsReader(
     stats::Stats* stats,
+    tdb_shared_ptr<Logger> logger,
     StorageManager* storage_manager,
     Array* array,
     Config& config,
@@ -68,6 +69,8 @@ SparseUnorderedWithDupsReader::SparseUnorderedWithDupsReader(
     QueryCondition& condition)
     : SparseIndexReaderBase(
           stats,
+          logger->clone(
+              "SparseUnorderedWithDupsReader: " + std::to_string(++logger_id_)),
           storage_manager,
           array,
           config,
@@ -94,14 +97,14 @@ bool SparseUnorderedWithDupsReader::incomplete() const {
 Status SparseUnorderedWithDupsReader::init() {
   // Sanity checks
   if (storage_manager_ == nullptr)
-    return LOG_STATUS(Status::SparseUnorderedWithDupsReaderError(
+    return logger_->status(Status::SparseUnorderedWithDupsReaderError(
         "Cannot initialize sparse global order reader; Storage manager not "
         "set"));
   if (array_schema_ == nullptr)
-    return LOG_STATUS(Status::SparseUnorderedWithDupsReaderError(
+    return logger_->status(Status::SparseUnorderedWithDupsReaderError(
         "Cannot initialize sparse global order reader; Array schema not set"));
   if (buffers_.empty())
-    return LOG_STATUS(Status::SparseUnorderedWithDupsReaderError(
+    return logger_->status(Status::SparseUnorderedWithDupsReaderError(
         "Cannot initialize sparse global order reader; Buffers not set"));
 
   // Check subarray
@@ -112,7 +115,7 @@ Status SparseUnorderedWithDupsReader::init() {
   offsets_format_mode_ = config_.get("sm.var_offsets.mode", &found);
   assert(found);
   if (offsets_format_mode_ != "bytes" && offsets_format_mode_ != "elements") {
-    return LOG_STATUS(
+    return logger_->status(
         Status::ReaderError("Cannot initialize reader; Unsupported offsets "
                             "format in configuration"));
   }
@@ -122,7 +125,7 @@ Status SparseUnorderedWithDupsReader::init() {
   RETURN_NOT_OK(config_.get<uint32_t>(
       "sm.var_offsets.bitsize", &offsets_bitsize_, &found));
   if (offsets_bitsize_ != 32 && offsets_bitsize_ != 64) {
-    return LOG_STATUS(Status::SparseUnorderedWithDupsReaderError(
+    return logger_->status(Status::SparseUnorderedWithDupsReaderError(
         "Cannot initialize reader; "
         "Unsupported offsets bitsize in configuration"));
   }

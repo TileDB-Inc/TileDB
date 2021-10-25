@@ -84,6 +84,7 @@ class SparseIndexReaderBase : public ReaderBase {
   /** Constructor. */
   SparseIndexReaderBase(
       stats::Stats* stats,
+      tdb_shared_ptr<Logger> logger,
       StorageManager* storage_manager,
       Array* array,
       Config& config,

@@ -71,7 +71,7 @@ Context::~Context() {
 
 Status Context::init(Config* const config) {
   if (storage_manager_ != nullptr)
-    return LOG_STATUS(Status::ContextError(
+    return logger_->status(Status::ContextError(
         "Cannot initialize context; Context already initialized"));
 
   // Initialize `compute_tp_` and `io_tp_`.
@@ -84,7 +84,7 @@ Status Context::init(Config* const config) {
   storage_manager_ = new (std::nothrow)
       tiledb::sm::StorageManager(&compute_tp_, &io_tp_, stats_.get(), logger_);
   if (storage_manager_ == nullptr)
-    return LOG_STATUS(Status::ContextError(
+    return logger_->status(Status::ContextError(
         "Cannot initialize context Storage manager allocation failed"));
 
   // Initialize storage manager
@@ -92,7 +92,6 @@ Status Context::init(Config* const config) {
 
   // Use the logger created for the storage manager
   logger_ = storage_manager_->logger();
-  // logger_->error("Context was successfully initialized");
 
   return sm;
 }
@@ -144,7 +143,7 @@ Status Context::init_thread_pools(Config* const config) {
       "sm.num_async_threads", &num_async_threads, &found));
   if (found) {
     max_thread_count = std::max(max_thread_count, num_async_threads);
-    LOG_STATUS(Status::StorageManagerError(
+    logger_->status(Status::StorageManagerError(
         "Config parameter \"sm.num_async_threads\" has been removed; use "
         "config parameter \"sm.compute_concurrency_level\"."));
   }
@@ -154,7 +153,7 @@ Status Context::init_thread_pools(Config* const config) {
       "sm.num_reader_threads", &num_reader_threads, &found));
   if (found) {
     max_thread_count = std::max(max_thread_count, num_reader_threads);
-    LOG_STATUS(Status::StorageManagerError(
+    logger_->status(Status::StorageManagerError(
         "Config parameter \"sm.num_reader_threads\" has been removed; use "
         "config parameter \"sm.compute_concurrency_level\"."));
   }
@@ -164,7 +163,7 @@ Status Context::init_thread_pools(Config* const config) {
       "sm.num_writer_threads", &num_writer_threads, &found));
   if (found) {
     max_thread_count = std::max(max_thread_count, num_writer_threads);
-    LOG_STATUS(Status::StorageManagerError(
+    logger_->status(Status::StorageManagerError(
         "Config parameter \"sm.num_writer_threads\" has been removed; use "
         "config parameter \"sm.compute_concurrency_level\"."));
   }
@@ -174,7 +173,7 @@ Status Context::init_thread_pools(Config* const config) {
       tmp_config.get<uint64_t>("sm.num_vfs_threads", &num_vfs_threads, &found));
   if (found) {
     max_thread_count = std::max(max_thread_count, num_vfs_threads);
-    LOG_STATUS(Status::StorageManagerError(
+    logger_->status(Status::StorageManagerError(
         "Config parameter \"sm.num_vfs_threads\" has been removed; use "
         "config parameter \"sm.io_concurrency_level\"."));
   }

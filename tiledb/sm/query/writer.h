@@ -91,6 +91,7 @@ class Writer : public StrategyBase, public IQueryStrategy {
   /** Constructor. */
   Writer(
       stats::Stats* stats,
+      tdb_shared_ptr<Logger> logger,
       StorageManager* storage_manager,
       Array* array,
       Config& config,
@@ -214,6 +215,9 @@ class Writer : public StrategyBase, public IQueryStrategy {
 
   /** Allocated buffers that neeed to be cleaned upon destruction. */
   std::vector<void*> to_clean_;
+
+  /** UID of the logger instance */
+  inline static uint64_t logger_id_ = 0;
 
   /* ********************************* */
   /*           PRIVATE METHODS         */

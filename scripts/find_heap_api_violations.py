@@ -86,7 +86,7 @@ regex_shared_ptr = re.compile(r"shared_ptr<")
 # Contains per-file exceptions to violations of "shared_ptr".
 shared_ptr_exceptions = {
     "*": ["tdb_shared_ptr", "tiledb_shared_ptr"],
-    "logger.h": ["std::shared_ptr<spdlog::logger> logger_"],
+    "logger.h": ["std::shared_ptr<spdlog::logger>"],
     "gcs.cc": ["std::shared_ptr<google::cloud::storage::oauth2::Credentials>"],
     "s3.cc": [
         "std::shared_ptr<Aws::IOStream>",

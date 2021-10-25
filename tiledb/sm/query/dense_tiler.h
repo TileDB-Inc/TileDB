@@ -34,6 +34,8 @@
 #define TILEDB_DENSE_TILER_H
 
 #include "tiledb/common/status.h"
+// FIXME: we should be including "tiledb/common/logger_public.h" instead ?
+#include "tiledb/common/logger.h"
 #include "tiledb/sm/array_schema/array_schema.h"
 #include "tiledb/sm/query/query_buffer.h"
 #include "tiledb/sm/stats/stats.h"
@@ -239,6 +241,12 @@ class DenseTiler {
   /** The stats for the dense tiler. */
   stats::Stats* stats_;
 
+  /** The class logger. */
+  tdb_shared_ptr<Logger> logger_;
+
+  /** UID of the logger instance */
+  inline static uint64_t logger_id_ = 0;
+
   /** The array schema. */
   const ArraySchema* array_schema_;
 
@@ -342,6 +350,9 @@ class DenseTiler {
    */
   Status copy_tile(
       uint64_t id, uint64_t cell_size, uint8_t* buff, Tile* tile) const;
+
+  /** Returns the internal logger object. */
+  tdb_shared_ptr<Logger> logger() const;
 };
 
 }  // namespace sm

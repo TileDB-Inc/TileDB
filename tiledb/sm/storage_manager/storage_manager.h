@@ -45,6 +45,7 @@
 #include <unordered_map>
 
 #include "tiledb/common/heap_memory.h"
+// FIXME: we should be including "tiledb/common/logger_public.h" instead ?
 #include "tiledb/common/logger.h"
 #include "tiledb/common/status.h"
 #include "tiledb/common/thread_pool.h"

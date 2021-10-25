@@ -98,6 +98,16 @@ void Logger::critical(const char* msg) {
   logger_->critical(msg);
 }
 
+void Logger::fatal(const char* msg) {
+  logger_->error(msg);
+  exit(1);
+}
+
+Status Logger::status(const Status& st) {
+  logger_->error(st.message());
+  return st;
+}
+
 void Logger::trace(const std::string& msg) {
   logger_->trace(msg);
 }
@@ -144,6 +154,11 @@ void Logger::error(const std::stringstream& msg) {
 
 void Logger::critical(const std::stringstream& msg) {
   logger_->critical(msg.str());
+}
+
+void Logger::fatal(const std::stringstream& msg) {
+  logger_->error(msg.str());
+  exit(1);
 }
 
 void Logger::set_level(Logger::Level lvl) {

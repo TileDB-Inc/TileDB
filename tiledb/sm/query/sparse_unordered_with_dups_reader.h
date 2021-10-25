@@ -63,6 +63,7 @@ class SparseUnorderedWithDupsReader : public SparseIndexReaderBase,
   /** Constructor. */
   SparseUnorderedWithDupsReader(
       stats::Stats* stats,
+      tdb_shared_ptr<Logger> logger,
       StorageManager* storage_manager,
       Array* array,
       Config& config,
@@ -116,6 +117,9 @@ class SparseUnorderedWithDupsReader : public SparseIndexReaderBase,
   /* ********************************* */
   /*         PRIVATE ATTRIBUTES        */
   /* ********************************* */
+
+  /** UID of the logger instance */
+  inline static uint64_t logger_id_ = 0;
 
   /** The result tiles currently loaded. */
   std::list<ResultTile> result_tiles_;

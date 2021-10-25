@@ -34,6 +34,8 @@
 #define TILEDB_STRATEGY_BASE_H
 
 #include "tiledb/common/status.h"
+// FIXME: we should be including "tiledb/common/logger_public.h" instead ?
+#include "tiledb/common/logger.h"
 #include "tiledb/sm/array_schema/dimension.h"
 #include "tiledb/sm/misc/types.h"
 
@@ -55,6 +57,7 @@ class StrategyBase {
   /** Constructor. */
   StrategyBase(
       stats::Stats* stats,
+      tdb_shared_ptr<Logger> logger,
       StorageManager* storage_manager,
       Array* array,
       Config& config,
@@ -97,6 +100,9 @@ class StrategyBase {
 
   /** The class stats. */
   stats::Stats* stats_;
+
+  /** The class logger. */
+  tdb_shared_ptr<Logger> logger_;
 
   /** The array. */
   const Array* array_;
@@ -144,6 +150,9 @@ class StrategyBase {
    * the query.
    */
   void get_dim_attr_stats() const;
+
+  /** Returns the internal logger object. */
+  tdb_shared_ptr<Logger> logger() const;
 };
 
 }  // namespace sm
