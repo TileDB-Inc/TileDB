@@ -59,8 +59,8 @@ using std::tie;
 using std::tuple;
 
 #include <optional>
-using std::optional;
 using std::nullopt;
+using std::optional;
 
 /**
  * @section Reference

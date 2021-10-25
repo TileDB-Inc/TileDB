@@ -89,7 +89,7 @@ struct global_tracing {
  * tracing into `common::tiledb::allocator`.
  */
 #if defined(TILEDB_MEMTRACE)
-template<>
+template <>
 struct global_tracing<void> {
   using enabled = std::true_type;
 };
