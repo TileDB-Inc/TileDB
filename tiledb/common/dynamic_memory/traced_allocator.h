@@ -182,9 +182,9 @@ class TracedAllocator : public Alloc<T> {
    * @param args Arguments for the allocator from which this one is derived
    */
   template <size_t n, typename... Args>
-  TracedAllocator(const char origin[n], Args&&... args)
+  TracedAllocator(const char (&origin)[n], Args&&... args)
       : inner(std::forward<Args>(args)...)
-      , label_(std::string_view(origin, n)) {
+      , label_(std::string_view(origin, n - 1)) {
   }
 
   /*

@@ -145,7 +145,7 @@ class WhiteboxTracedAllocator : public TracedAllocator<T, Alloc, Tracer> {
 
   template <size_t n, typename... Args>
   explicit WhiteboxTracedAllocator(const char (&origin)[n], Args&&... args)
-      : base(std::string_view(origin, n), forward<Args>(args)...) {
+      : base(std::string_view(origin, n - 1), forward<Args>(args)...) {
   }
 };
 }  // namespace tiledb::common::detail
@@ -174,7 +174,7 @@ template <class T, int n, class... Args>
 std::shared_ptr<T> make_shared_whitebox(
     const char (&origin)[n], Args&&... args) {
   return make_shared_whitebox<T>(
-      std::string_view(origin, n), std::forward<Args>(args)...);
+      std::string_view(origin, n - 1), std::forward<Args>(args)...);
 }
 
 #endif  // TILEDB_COMMON_DYNAMIC_MEMORY_TEST_DYNAMIC_MEMORY_H

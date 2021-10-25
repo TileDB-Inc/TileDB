@@ -219,7 +219,7 @@ class AllocationFunctions {
       [[maybe_unused]] const char (&origin)[n], Args&&... args) {
     if constexpr (detail::global_tracing<void>::enabled::value) {
       return make_shared(
-          std::string_view(origin, n), std::forward<Args>(args)...);
+          std::string_view(origin, n - 1), std::forward<Args>(args)...);
     } else {
       return make_shared_notrace(std::forward<Args>(args)...);
     }
