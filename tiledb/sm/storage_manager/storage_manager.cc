@@ -929,9 +929,7 @@ Status StorageManager::array_evolve_schema(
 }
 
 Status StorageManager::array_upgrade_version(
-    const URI& array_uri,
-    const EncryptionKey& encryption_key,
-    const Config* config) {
+    const URI& array_uri, const Config* config) {
   // Check if array exists
   bool exists = false;
   RETURN_NOT_OK(is_array(array_uri, &exists));
@@ -947,43 +945,41 @@ Status StorageManager::array_upgrade_version(
   }
 
   // Get encryption key from config
-  if (encryption_key.encryption_type() == EncryptionType::NO_ENCRYPTION) {
-    bool found = false;
-    std::string encryption_key_from_cfg =
-        config_.get("sm.encryption_key", &found);
-    assert(found);
-    std::string encryption_type_from_cfg =
-        config_.get("sm.encryption_type", &found);
-    assert(found);
-    auto [st, etc] = encryption_type_enum(encryption_type_from_cfg);
-    RETURN_NOT_OK(st);
-    EncryptionType encryption_type_cfg = etc.value();
+  bool found = false;
+  std::string encryption_key_from_cfg =
+      config_.get("sm.encryption_key", &found);
+  assert(found);
+  std::string encryption_type_from_cfg =
+      config_.get("sm.encryption_type", &found);
+  assert(found);
+  auto [st, etc] = encryption_type_enum(encryption_type_from_cfg);
+  RETURN_NOT_OK(st);
+  EncryptionType encryption_type_cfg = etc.value();
 
-    EncryptionKey encryption_key_cfg;
-    if (encryption_key_from_cfg.empty()) {
-      RETURN_NOT_OK(
-          encryption_key_cfg.set_key(encryption_type_cfg, nullptr, 0));
-    } else {
-      uint32_t key_length = 0;
-      if (EncryptionKey::is_valid_key_length(
-              encryption_type_cfg,
-              static_cast<uint32_t>(encryption_key_from_cfg.size()))) {
-        const UnitTestConfig& unit_test_cfg = UnitTestConfig::instance();
-        if (unit_test_cfg.array_encryption_key_length.is_set()) {
-          key_length = unit_test_cfg.array_encryption_key_length.get();
-        } else {
-          key_length = static_cast<uint32_t>(encryption_key_from_cfg.size());
-        }
+  EncryptionKey encryption_key_cfg;
+  if (encryption_key_from_cfg.empty()) {
+    RETURN_NOT_OK(encryption_key_cfg.set_key(encryption_type_cfg, nullptr, 0));
+  } else {
+    uint32_t key_length = 0;
+    if (EncryptionKey::is_valid_key_length(
+            encryption_type_cfg,
+            static_cast<uint32_t>(encryption_key_from_cfg.size()))) {
+      const UnitTestConfig& unit_test_cfg = UnitTestConfig::instance();
+      if (unit_test_cfg.array_encryption_key_length.is_set()) {
+        key_length = unit_test_cfg.array_encryption_key_length.get();
+      } else {
+        key_length = static_cast<uint32_t>(encryption_key_from_cfg.size());
       }
-      RETURN_NOT_OK(encryption_key_cfg.set_key(
-          encryption_type_cfg,
-          (const void*)encryption_key_from_cfg.c_str(),
-          key_length));
     }
+    RETURN_NOT_OK(encryption_key_cfg.set_key(
+        encryption_type_cfg,
+        (const void*)encryption_key_from_cfg.c_str(),
+        key_length));
   }
 
   ArraySchema* array_schema = (ArraySchema*)nullptr;
-  RETURN_NOT_OK(load_array_schema(array_uri, encryption_key, &array_schema));
+  RETURN_NOT_OK(
+      load_array_schema(array_uri, encryption_key_cfg, &array_schema));
 
   if (array_schema->version() < constants::format_version) {
     Status st = array_schema->generate_uri();
@@ -1006,7 +1002,7 @@ Status StorageManager::array_upgrade_version(
       return st;
     }
 
-    st = store_array_schema(array_schema, encryption_key);
+    st = store_array_schema(array_schema, encryption_key_cfg);
     if (!st.ok()) {
       LOG_STATUS(st);
       // Clean up

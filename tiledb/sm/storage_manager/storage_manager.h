@@ -357,16 +357,12 @@ class StorageManager {
    * Upgrade a TileDB array to latest format version.
    *
    * @param array_uri The URI of the array to be upgraded.
-   * @param encryption_key The encryption key to use.
    * @param config Configuration parameters for the upgrade
    *     (`nullptr` means default, which will use the config associated with
    *      this instance).
    * @return Status
    */
-  Status array_upgrade_version(
-      const URI& array_uri,
-      const EncryptionKey& encryption_key,
-      const Config* config);
+  Status array_upgrade_version(const URI& array_uri, const Config* config);
 
   /**
    * Gets the memory tracker for an open array.

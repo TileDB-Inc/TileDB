@@ -4836,21 +4836,10 @@ int32_t tiledb_array_upgrade_version(
     return TILEDB_ERR;
   }
 
-  // Create key
-  tiledb::sm::EncryptionKey key;
-  if (SAVE_ERROR_CATCH(
-          ctx,
-          key.set_key(
-              static_cast<tiledb::sm::EncryptionType>(TILEDB_NO_ENCRYPTION),
-              nullptr,
-              0)))
-    return TILEDB_ERR;
-
   if (SAVE_ERROR_CATCH(
           ctx,
           ctx->ctx_->storage_manager()->array_upgrade_version(
               uri,
-              key,
               (config == nullptr) ? &ctx->ctx_->storage_manager()->config() :
                                     config->config_)))
     return TILEDB_ERR;
