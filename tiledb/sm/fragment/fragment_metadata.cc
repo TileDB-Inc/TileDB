@@ -2145,12 +2145,12 @@ Status FragmentMetadata::load_footer(
   if (f_buff == nullptr) {
     has_consolidated_footer_ = false;
     RETURN_NOT_OK(read_file_footer(&buff, &footer_offset_, &footer_size_));
-    cbuff = make_shared<ConstBuffer>(HERE(), &buff);
+    cbuff = tdb::make_shared<ConstBuffer>(HERE(), &buff);
   } else {
     footer_size_ = 0;
     footer_offset_ = offset;
     has_consolidated_footer_ = true;
-    cbuff = make_shared<ConstBuffer>(HERE(), f_buff);
+    cbuff = tdb::make_shared<ConstBuffer>(HERE(), f_buff);
     cbuff->set_offset(offset);
   }
 

@@ -55,7 +55,7 @@ class ThrowingAllocator {
     throw std::bad_alloc();
   }
 
-  void deallocate(T* p, std::size_t) noexcept {
+  void deallocate(T*, std::size_t) noexcept {
   }
 };
 

@@ -66,7 +66,7 @@ namespace sm {
 Array::Array(const URI& array_uri, StorageManager* storage_manager)
     : array_schema_(nullptr)
     , array_uri_(array_uri)
-    , encryption_key_(make_shared<EncryptionKey>(HERE()))
+    , encryption_key_(tdb::make_shared<EncryptionKey>(HERE()))
     , is_open_(false)
     , timestamp_start_(0)
     , timestamp_end_(UINT64_MAX)

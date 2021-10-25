@@ -132,19 +132,18 @@ Status Azure::init(const Config& config, ThreadPool* const thread_pool) {
 
   // Initialize a credential object
   std::shared_ptr<azure::storage_lite::storage_credential> credential =
-      std::make_shared<azure::storage_lite::shared_key_credential>(
-          account_name, account_key);
+      tdb::make_shared<azure::storage_lite::shared_key_credential>(
+          HERE(), account_name, account_key);
 
   // Use the SAS token, if provided.
   if (!sas_token.empty()) {
     // clang-format off
-    credential = std::make_shared<azure::storage_lite::shared_access_signature_credential>(sas_token);
+    credential = tdb::make_shared<azure::storage_lite::shared_access_signature_credential>(HERE(), sas_token);
     // clang-format on
   }
 
-  std::shared_ptr<azure::storage_lite::storage_account> account =
-      std::make_shared<azure::storage_lite::storage_account>(
-          account_name, credential, use_https, blob_endpoint);
+  auto account = tdb::make_shared<azure::storage_lite::storage_account>(
+      HERE(), account_name, credential, use_https, blob_endpoint);
 
   // Construct the Azure SDK blob client with a concurrency level
   // equal to 'thread_pool_->concurrency_level'. Internally, the client
@@ -169,8 +168,8 @@ Status Azure::init(const Config& config, ThreadPool* const thread_pool) {
   // policy or construct a client with our own retry policy. This
   // re-assigns the context with our own retry policy.
   *client_->context() = azure::storage_lite::executor_context(
-      std::make_shared<azure::storage_lite::tinyxml2_parser>(),
-      std::make_shared<AzureRetryPolicy>());
+      tdb::make_shared<azure::storage_lite::tinyxml2_parser>(HERE()),
+      tdb::make_shared<AzureRetryPolicy>(HERE()));
 
   return Status::Ok();
 }

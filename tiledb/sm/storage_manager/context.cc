@@ -48,7 +48,7 @@ namespace sm {
 Context::Context()
     : last_error_(Status::Ok())
     , storage_manager_(nullptr)
-    , stats_(make_shared<stats::Stats>(HERE(), "Context"))
+    , stats_(tdb::make_shared<stats::Stats>(HERE(), "Context"))
     , logger_(tdb_make_shared(Logger, "")) {
 }
 
