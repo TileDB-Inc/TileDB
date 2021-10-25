@@ -97,6 +97,11 @@ CellSlab<T> CellSlabIter<T>::cell_slab() const {
 }
 
 template <class T>
+std::vector<T>& CellSlabIter<T>::range_coords() {
+  return range_coords_;
+}
+
+template <class T>
 bool CellSlabIter<T>::end() const {
   return end_;
 }
