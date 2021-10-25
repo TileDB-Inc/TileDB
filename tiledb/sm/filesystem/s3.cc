@@ -1058,7 +1058,8 @@ Status S3::init_client() const {
   client_config_ = tdb_unique_ptr<Aws::Client::ClientConfiguration>(
       tdb_new(Aws::Client::ClientConfiguration));
 
-  s3_tp_executor_ = tdb::make_shared<S3ThreadPoolExecutor>(HERE(), vfs_thread_pool_);
+  s3_tp_executor_ =
+      tdb::make_shared<S3ThreadPoolExecutor>(HERE(), vfs_thread_pool_);
 
   client_config_->executor = s3_tp_executor_;
 
@@ -1193,11 +1194,9 @@ Status S3::init_client() const {
       Aws::String secret_access_key(aws_secret_access_key.c_str());
       Aws::String session_token(
           !aws_session_token.empty() ? aws_session_token.c_str() : "");
-      credentials_provider_ = tdb::make_shared<Aws::Auth::SimpleAWSCredentialsProvider>(
-              HERE(),
-          access_key_id,
-          secret_access_key,
-          session_token);
+      credentials_provider_ =
+          tdb::make_shared<Aws::Auth::SimpleAWSCredentialsProvider>(
+              HERE(), access_key_id, secret_access_key, session_token);
       break;
     }
     case 4: {
@@ -1212,13 +1211,14 @@ Status S3::init_client() const {
               Aws::Auth::DEFAULT_CREDS_LOAD_FREQ_SECONDS);
       Aws::String session_name(
           !aws_session_name.empty() ? aws_session_name.c_str() : "");
-      credentials_provider_ = tdb::make_shared<Aws::Auth::STSAssumeRoleCredentialsProvider>(
+      credentials_provider_ =
+          tdb::make_shared<Aws::Auth::STSAssumeRoleCredentialsProvider>(
               HERE(),
-          role_arn,
-          session_name,
-          external_id,
-          load_frequency,
-          nullptr);
+              role_arn,
+              session_name,
+              external_id,
+              load_frequency,
+              nullptr);
       break;
     }
     default:
@@ -1238,7 +1238,7 @@ Status S3::init_client() const {
 
     if (credentials_provider_ == nullptr) {
       client_ = tdb::make_shared<Aws::S3::S3Client>(
-              HERE(),
+          HERE(),
           *client_config_,
           Aws::Client::AWSAuthV4Signer::PayloadSigningPolicy::Never,
           use_virtual_addressing_);

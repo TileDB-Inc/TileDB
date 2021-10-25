@@ -32,7 +32,6 @@
 
 #include "tiledb/common/common.h"
 
-#include "tiledb/sm/query/writer.h"
 #include "tiledb/common/heap_memory.h"
 #include "tiledb/common/logger.h"
 #include "tiledb/sm/array/array.h"
@@ -46,6 +45,7 @@
 #include "tiledb/sm/misc/utils.h"
 #include "tiledb/sm/misc/uuid.h"
 #include "tiledb/sm/query/query_macros.h"
+#include "tiledb/sm/query/writer.h"
 #include "tiledb/sm/stats/global_stats.h"
 #include "tiledb/sm/storage_manager/storage_manager.h"
 #include "tiledb/sm/tile/generic_tile_io.h"
@@ -998,12 +998,7 @@ Status Writer::create_fragment(
   }
   auto timestamp_range = std::pair<uint64_t, uint64_t>(timestamp, timestamp);
   frag_meta = tdb::make_shared<FragmentMetadata>(
-      HERE(),
-      storage_manager_,
-      array_schema_,
-      uri,
-      timestamp_range,
-      dense);
+      HERE(), storage_manager_, array_schema_, uri, timestamp_range, dense);
 
   RETURN_NOT_OK((frag_meta)->init(subarray_.ndrange(0)));
   return storage_manager_->create_dir(uri);

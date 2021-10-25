@@ -2662,12 +2662,7 @@ Status StorageManager::load_fragment_metadata(
         bool sparse;
         RETURN_NOT_OK(vfs_->is_file(coords_uri, &sparse));
         metadata = tdb::make_shared<FragmentMetadata>(
-            HERE(),
-            this,
-            array_schema,
-            sf.uri_,
-            sf.timestamp_range_,
-            !sparse);
+            HERE(), this, array_schema, sf.uri_, sf.timestamp_range_, !sparse);
       } else {  // Format version > 2
         metadata = tdb::make_shared<FragmentMetadata>(
             HERE(), this, array_schema, sf.uri_, sf.timestamp_range_);

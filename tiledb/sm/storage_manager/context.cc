@@ -32,9 +32,9 @@
 
 #include "tiledb/common/common.h"
 
-#include "tiledb/sm/storage_manager/context.h"
 #include "tiledb/common/logger.h"
 #include "tiledb/common/memory.h"
+#include "tiledb/sm/storage_manager/context.h"
 
 using namespace tiledb::common;
 

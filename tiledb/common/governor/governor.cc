@@ -40,7 +40,6 @@ void Governor::memory_panic() {
 
 }  // namespace tiledb::common
 
-
 /*
  * change interface to heap_profiler to allow dump-with-flush
  * call panic from my code; remove calls to exit() from heap_profiler

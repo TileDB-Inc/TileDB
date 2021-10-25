@@ -30,7 +30,6 @@
  * This file defines a test `main()`
  */
 
-
 #define CATCH_CONFIG_MAIN
 #include "unit_dynamic_memory.h"
 
@@ -39,12 +38,10 @@ using namespace tiledb::common::detail;
 bool TestGovernor::memory_panicked_ = false;
 std::vector<TestTraceEntry> TestTracer::log_;
 
-TEST_CASE("Whitebox constructor, default arguments")
-{
-  WhiteboxTracedAllocator<int, std::allocator,TestTracer> x("foo");
+TEST_CASE("Whitebox constructor, default arguments") {
+  WhiteboxTracedAllocator<int, std::allocator, TestTracer> x("foo");
   CHECK(x.origin() == "foo");
 }
 
-TEST_CASE("")
-{
+TEST_CASE("") {
 }
