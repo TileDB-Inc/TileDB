@@ -86,11 +86,9 @@ struct global_tracing {
 /*
  * As part of the documentation for `global_tracing`, the specialization below,
  * if present when `TiledbTracedAllocator` is compiled, will incorporate
- * tracing into `common::tiledb::allocator`. This need not be done here by
- * modifying the #if directive, but can be defined independently without
- * altering this source file.
+ * tracing into `common::tiledb::allocator`.
  */
-#if false
+#if defined(TILEDB_MEMTRACE)
 template<>
 struct global_tracing<void> {
   using enabled = std::true_type;

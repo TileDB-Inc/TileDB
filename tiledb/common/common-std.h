@@ -60,6 +60,7 @@ using std::tuple;
 
 #include <optional>
 using std::optional;
+using std::nullopt;
 
 /**
  * @section Reference
