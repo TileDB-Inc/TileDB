@@ -38,10 +38,13 @@ using namespace tiledb::common::detail;
 bool TestGovernor::memory_panicked_ = false;
 std::vector<TestTraceEntry> TestTracer::log_;
 
-TEST_CASE("Whitebox constructor, default arguments") {
-  WhiteboxTracedAllocator<int, std::allocator, TestTracer> x("foo");
+TEST_CASE("White-box constructor, label argument") {
+  auto label = TracingLabel(std::string_view("foo", 3));
+  WhiteboxTracedAllocator<int, std::allocator, TestTracer> x{label};
   CHECK(x.origin() == "foo");
 }
 
-TEST_CASE("") {
+TEST_CASE("White-box constructor, const-char argument") {
+  WhiteboxTracedAllocator<int, std::allocator, TestTracer> x{"foo"};
+  CHECK(x.origin() == "foo");
 }

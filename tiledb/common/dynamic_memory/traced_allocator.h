@@ -43,9 +43,9 @@ namespace tiledb::common {
 namespace detail {
 
 /*
- * Whitebox declaration for testing classes.
+ * White-box declaration for testing classes.
  */
-template <class T, template <class> class Alloc, class Tracer>
+template <class T, template <class U> class Alloc, class Tracer>
 class WhiteboxTracedAllocator;
 
 }  // namespace detail
@@ -225,7 +225,7 @@ class TracedAllocator : public Alloc<T> {
     try {
       pointer p = inner_traits::allocate(a, n);
       /*
-       * The Tracer requires that `pointer` be covertible to `void *`. There's
+       * The Tracer requires that `pointer` be convertible to `void *`. There's
        * no issue with the standard allocator. If, however, `pointer` is not
        * `T*`, its class may need `operator void *()`.
        */
@@ -252,7 +252,7 @@ class TracedAllocator : public Alloc<T> {
    * Equality operators
    *
    * This class does not impose any new restriction on equality tests, so we
-   * simply use whatever's defined in the base class.
+   * simply use whatever is defined in the base class.
    *
    * Allocators are always considered equal because any instance may deallocate
    * the result of any other allocator. If the heap profiler required a label

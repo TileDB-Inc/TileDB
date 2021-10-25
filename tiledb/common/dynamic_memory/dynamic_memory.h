@@ -216,7 +216,7 @@ class AllocationFunctions {
 
   template <int n, class... Args>
   static std::shared_ptr<T> make_shared(
-      [[maybe_unused]] const char origin[n], Args&&... args) {
+      [[maybe_unused]] const char (&origin)[n], Args&&... args) {
     if constexpr (detail::global_tracing<void>::enabled::value) {
       return make_shared(
           std::string_view(origin, n), std::forward<Args>(args)...);
@@ -248,7 +248,7 @@ std::shared_ptr<T> make_shared(const std::string_view& origin, Args&&... args) {
 }
 
 template <class T, int n, class... Args>
-std::shared_ptr<T> make_shared(const char origin[n], Args&&... args) {
+std::shared_ptr<T> make_shared(const char (&origin)[n], Args&&... args) {
   return AllocationFunctions<T>::make_shared(
       origin, std::forward<Args>(args)...);
 }

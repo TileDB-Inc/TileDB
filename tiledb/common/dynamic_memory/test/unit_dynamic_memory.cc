@@ -73,7 +73,7 @@ TEST_CASE("make_shared - TracingLabel") {
 }
 
 TEST_CASE("make_shared - string_view") {
-  std::string_view sv("foo", 3);
+  std::string_view sv{"foo", 3};
   auto x = tiledb::common::make_shared<unsigned short>(sv, 5);
 
   // MSVC 14.29.30037 (2019) faults when the explicit namespace specification is

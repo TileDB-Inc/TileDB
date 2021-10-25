@@ -120,9 +120,9 @@ struct TracingFixture {
   }
 };
 
+namespace tiledb::common::detail {
 template <class T, template <class U> class Alloc, class Tracer>
-class detail::WhiteboxTracedAllocator
-    : public TracedAllocator<T, Alloc, Tracer> {
+class WhiteboxTracedAllocator : public TracedAllocator<T, Alloc, Tracer> {
   using base = TracedAllocator<T, Alloc, Tracer>;
 
  public:
@@ -143,11 +143,12 @@ class detail::WhiteboxTracedAllocator
       : base(s, forward<Args>(args)...) {
   }
 
-  template <int n, typename... Args>
-  explicit WhiteboxTracedAllocator(const char origin[n], Args&&... args)
+  template <size_t n, typename... Args>
+  explicit WhiteboxTracedAllocator(const char (&origin)[n], Args&&... args)
       : base(std::string_view(origin, n), forward<Args>(args)...) {
   }
 };
+}  // namespace tiledb::common::detail
 
 template <class T>
 using TestingAllocator =
@@ -170,7 +171,8 @@ std::shared_ptr<T> make_shared_whitebox(
 }
 
 template <class T, int n, class... Args>
-std::shared_ptr<T> make_shared_whitebox(const char origin[n], Args&&... args) {
+std::shared_ptr<T> make_shared_whitebox(
+    const char (&origin)[n], Args&&... args) {
   return make_shared_whitebox<T>(
       std::string_view(origin, n), std::forward<Args>(args)...);
 }
