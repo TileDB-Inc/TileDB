@@ -5,13 +5,14 @@ from dataclasses import dataclass, field
 from typing import Collection, Iterable, Mapping, Pattern
 
 # Do not check for violations in these directories.
-ignored_dirs = frozenset(["c_api", "cpp_api", "dynamic_memory"])
+ignored_dirs = frozenset(["c_api", "cpp_api"])
 
 # Do not check for violations in these files.
 ignored_files = frozenset(
     [
         "allocate_unique.h",
         "dynamic_memory.h",
+        "unit_dynamic_memory.cc",
         "heap_profiler.h",
         "heap_profiler.cc",
         "heap_memory.h",
