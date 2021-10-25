@@ -5,7 +5,7 @@ from dataclasses import dataclass, field
 from typing import Collection, Iterable, Mapping, Pattern
 
 # Do not check for violations in these directories.
-ignored_dirs = frozenset(["c_api", "cpp_api", "dynamic_memory/test"])
+ignored_dirs = frozenset(["c_api", "cpp_api", "dynamic_memory"])
 
 # Do not check for violations in these files.
 ignored_files = frozenset(
