@@ -274,14 +274,6 @@ endif()
 
 if (TILEDB_S3)
   target_compile_definitions(tiledb_unit PRIVATE -DHAVE_S3)
-  if(MSVC)
-    set_source_files_properties(
-      src/unit-s3.cc
-      PROPERTIES
-        #   C4458: declaration of <something> hides class member
-        COMPILE_FLAGS "/wd4458"
-    )
-  endif()
 endif()
 
 if (TILEDB_TESTS_AWS_S3_CONFIG)
