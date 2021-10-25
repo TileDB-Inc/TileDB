@@ -96,9 +96,19 @@ if (NOT AWSSDK_FOUND)
 
     if (WIN32)
       find_package(Git REQUIRED)
-      set(CONDITIONAL_PATCH cd ${CMAKE_SOURCE_DIR} && ${GIT_EXECUTABLE} apply --ignore-whitespace -p1 --unsafe-paths --verbose --directory=${TILEDB_EP_SOURCE_DIR}/ep_awssdk < ${TILEDB_CMAKE_INPUTS_DIR}/patches/ep_awssdk/awsccommon.patch)
+      set(patch2 "${GIT_EXECUTABLE} apply --ignore-whitespace -p1 --unsafe-paths --verbose --directory=${TILEDB_EP_SOURCE_DIR}/ep_awssdk < ${TILEDB_CMAKE_INPUTS_DIR}/patches/ep_awssdk/awssdk.winerror.B.patch")
+      set(CONDITIONAL_PATCH cd ${CMAKE_SOURCE_DIR} && 
+             #"${GIT_EXECUTABLE}" apply --ignore-whitespace -p1 --unsafe-paths --verbose --directory=${TILEDB_EP_SOURCE_DIR}/ep_awssdk < ${TILEDB_CMAKE_INPUTS_DIR}/patches/ep_awssdk/awssdk.winerror.B.patch &&
+             #"${GIT_EXECUTABLE}" apply --ignore-whitespace -p1 --unsafe-paths --verbose --directory=${TILEDB_EP_SOURCE_DIR}/ep_awssdk < ${TILEDB_CMAKE_INPUTS_DIR}/patches/ep_awssdk/awssdk.winerror.C.mod.patch &&
+             "${GIT_EXECUTABLE}" apply --ignore-whitespace -p1 --unsafe-paths --verbose --directory=${TILEDB_EP_SOURCE_DIR}/ep_awssdk < ${TILEDB_CMAKE_INPUTS_DIR}/patches/ep_awssdk/awssdk.winerror.D.patch &&
+             # echo %cd% && 
+             #${patch2}
+             "${GIT_EXECUTABLE}" apply --ignore-whitespace -p1 --unsafe-paths --verbose --directory=${TILEDB_EP_SOURCE_DIR}/ep_awssdk < ${TILEDB_CMAKE_INPUTS_DIR}/patches/ep_awssdk/awsccommon.patch
+          )
+      #set(CONDITIONAL_PATCH "") # items being patched not present in 1.9.120, at least not in same location
     else()
       set(CONDITIONAL_PATCH patch -N -p1 < ${TILEDB_CMAKE_INPUTS_DIR}/patches/ep_awssdk/awsccommon.patch)
+      set(CONDITIONAL_PATCH "") # items being patched not present in 1.9.120, at least not in same location
     endif()
 
     ExternalProject_Add(ep_awssdk
@@ -107,9 +117,25 @@ if (NOT AWSSDK_FOUND)
       DOWNLOAD_NAME ep_awssdk.zip
       URL "https://github.com/aws/aws-sdk-cpp/archive/1.8.84.zip"
       URL_HASH SHA1=e32a53a01c75ca7fdfe9feed9c5bbcedd98708e3
+      #URL "https://github.com/aws/aws-sdk-cpp/archive/1.8.186.zip"
+      #URL_HASH SHA1=d3c6a37661607cdca19882152063a2ac33707f5a
+      #archives below err unable to find 'AwsFindPackage', missing CMakeLists.txt
+      #URL "https://github.com/aws/aws-sdk-cpp/archive/1.9.0.zip"
+      #URL_HASH SHA1=ba511a7b94afddef32acc83c5a47c25cdc254e64
+      #URL "https://github.com/aws/aws-sdk-cpp/archive/1.9.1.zip"
+      #URL_HASH SHA1=4c2894ed4bbc1a49c9900c6847ee82e39d29d435
+      #URL "https://github.com/aws/aws-sdk-cpp/archive/1.9.120.zip"
+      #URL_HASH SHA1=7ca717978e115f71c8dc0d372768dc6cdbb616af
+      #aws 1.9 + uses submodules (no longer has 'third-party' branch in repository)
+      #git retrieve functionality by cmake reportedly by default retrieves submodules recursively
+      #GIT_REPOSITORY "https://github.com/aws/aws-sdk-cpp"
+      #GIT_TAG 1.9.120
       PATCH_COMMAND
+        #ECHO patching ep_awssdk &&
+        #echo ${CONDITIONAL_PATCH} &&
         ${CONDITIONAL_PATCH}
       CMAKE_ARGS
+        --trace
         -DCMAKE_BUILD_TYPE=${AWS_CMAKE_BUILD_TYPE}
         -DENABLE_TESTING=OFF
         -DBUILD_ONLY=s3\\$<SEMICOLON>core\\$<SEMICOLON>identity-management\\$<SEMICOLON>sts
