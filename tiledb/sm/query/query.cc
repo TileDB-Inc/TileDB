@@ -104,6 +104,8 @@ Query::Query(StorageManager* storage_manager, Array* array, URI fragment_uri)
 
   if (storage_manager != nullptr)
     config_ = storage_manager->config();
+
+  rest_scratch_ = tdb_make_shared(Buffer);
 }
 
 Query::~Query() {
@@ -1966,6 +1968,10 @@ const Config* Query::config() const {
 
 stats::Stats* Query::stats() const {
   return stats_;
+}
+
+tdb_shared_ptr<Buffer> Query::rest_scratch() const {
+  return rest_scratch_;
 }
 
 /* ****************************** */
