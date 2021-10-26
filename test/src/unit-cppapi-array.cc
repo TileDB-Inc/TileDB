@@ -1442,11 +1442,11 @@ TEST_CASE("RootPath", "[cppapi][config][rootpath]") {
   tiledb::Context ctx(cfg);
   tiledb::VFS vfs(ctx);
 
-  vfs.create_dir(root_path);
-
   if (vfs.is_dir(array_name)) {
     vfs.remove_dir(array_name);
   }
+
+  vfs.create_dir(root_path);
 
   tiledb::Domain domain(ctx);
   domain.add_dimension(tiledb::Dimension::create<int>(ctx, "d", {{0, 3}}, 1));
@@ -1458,10 +1458,11 @@ TEST_CASE("RootPath", "[cppapi][config][rootpath]") {
   tiledb::Array array(ctx, array_name, TILEDB_READ);
   REQUIRE(array.config().get("vfs.local_root_path") == root_path);
 
+  std::string array_uri = array.uri();
   array.close();
 
-  if (vfs.is_dir(array_name)) {
-    vfs.remove_dir(array_name);
+  if (vfs.is_dir(array_uri)) {
+    vfs.remove_dir(array_uri);
   }
 
   if (vfs.is_dir(root_path)) {
