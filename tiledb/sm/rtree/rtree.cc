@@ -187,6 +187,51 @@ TileOverlap RTree::get_tile_overlap(const NDRange& range) const {
   return overlap;
 }
 
+void RTree::compute_tile_bitmap(
+    const Range& range, unsigned d, std::vector<uint8_t>* tile_bitmap) const {
+  // Empty tree
+  if (domain_ == nullptr || levels_.empty())
+    return;
+
+  // This will keep track of the traversal
+  std::list<Entry> traversal;
+  traversal.push_front({0, 0});
+  auto leaf_num = levels_.back().size();
+  auto height = this->height();
+
+  while (!traversal.empty()) {
+    // Get next entry
+    auto entry = traversal.front();
+    traversal.pop_front();
+    const auto& mbr = levels_[entry.level_][entry.mbr_idx_];
+
+    // If there is overlap
+    if (domain_->dimension(d)->overlap(range, mbr[d])) {
+      // If there is full overlap
+      if (domain_->dimension(d)->covered(mbr[d], range)) {
+        auto subtree_leaf_num = this->subtree_leaf_num(entry.level_);
+        assert(subtree_leaf_num > 0);
+        uint64_t start = entry.mbr_idx_ * subtree_leaf_num;
+        uint64_t end = start + std::min(subtree_leaf_num, leaf_num - start);
+        for (uint64_t i = start; i < end; i++) {
+          tile_bitmap->at(i) = 1;
+        }
+      } else {  // Partial overlap
+        // If this is the leaf level, insert into results
+        if (entry.level_ == height - 1) {
+          tile_bitmap->at(entry.mbr_idx_) = 1;
+        } else {  // Insert all "children" to traversal
+          auto next_mbr_num = (uint64_t)levels_[entry.level_ + 1].size();
+          auto start = entry.mbr_idx_ * fanout_;
+          auto end = std::min(start + fanout_ - 1, next_mbr_num - 1);
+          for (uint64_t i = start; i <= end; ++i)
+            traversal.push_front({entry.level_ + 1, end - (i - start)});
+        }
+      }
+    }
+  }
+}
+
 unsigned RTree::height() const {
   return (unsigned)levels_.size();
 }

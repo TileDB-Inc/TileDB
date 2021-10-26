@@ -107,6 +107,12 @@ class RTree {
    */
   TileOverlap get_tile_overlap(const NDRange& range) const;
 
+  /**
+   * Compute tile bitmap for the curent range.
+   */
+  void compute_tile_bitmap(
+      const Range& range, unsigned d, std::vector<uint8_t>* tile_bitmap) const;
+
   /** Returns the tree height. */
   unsigned height() const;
 

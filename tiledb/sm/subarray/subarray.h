@@ -294,6 +294,17 @@ class Subarray {
       bool override_memory_constraint = false);
 
   /**
+   * Precomputes the tile overlap with all subarray ranges for all fragments.
+   *
+   * @param compute_tp The compute thread pool.
+   * @param result_tile_ranges The resulting tile ranges.
+   */
+  Status precompute_all_ranges_tile_overlap(
+      ThreadPool* const compute_tp,
+      std::vector<std::vector<std::pair<uint64_t, uint64_t>>>*
+          result_tile_ranges);
+
+  /**
    * Computes the estimated result size (calibrated using the maximum size)
    * for a vector of given attributes/dimensions and range id, for all
    * fragments. The function focuses only on fragments relevant to the
