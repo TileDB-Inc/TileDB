@@ -104,7 +104,7 @@ Reader::Reader(
     QueryCondition& condition)
     : ReaderBase(
           stats,
-          logger->clone("Reader: " + std::to_string(++logger_id_)),
+          logger->clone("Reader", ++logger_id_),
           storage_manager,
           array,
           config,

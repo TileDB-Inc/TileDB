@@ -69,8 +69,7 @@ SparseUnorderedWithDupsReader::SparseUnorderedWithDupsReader(
     QueryCondition& condition)
     : SparseIndexReaderBase(
           stats,
-          logger->clone(
-              "SparseUnorderedWithDupsReader: " + std::to_string(++logger_id_)),
+          logger->clone("SparseUnorderedWithDupsReader", ++logger_id_),
           storage_manager,
           array,
           config,

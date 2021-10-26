@@ -67,7 +67,7 @@ DenseReader::DenseReader(
     QueryCondition& condition)
     : ReaderBase(
           stats,
-          logger->clone("DenseReader: " + std::to_string(++logger_id_)),
+          logger->clone("DenseReader", ++logger_id_),
           storage_manager,
           array,
           config,

@@ -74,7 +74,7 @@ Writer::Writer(
     URI fragment_uri)
     : StrategyBase(
           stats,
-          logger->clone("Writer: " + std::to_string(++logger_id_)),
+          logger->clone("Writer", ++logger_id_),
           storage_manager,
           array,
           config,

@@ -67,7 +67,7 @@ class Logger {
   /*     CONSTRUCTORS & DESTRUCTORS    */
   /* ********************************* */
 
-  /** Constructor. */
+  /** Constructors */
   Logger(const std::string& name);
 
   Logger(std::shared_ptr<spdlog::logger> logger);
@@ -79,9 +79,9 @@ class Logger {
   /*                API                */
   /* ********************************* */
 
-  //  Logger clone(const std::string& name);
+  //  todo: add docstring
 
-  tdb_shared_ptr<Logger> clone(const std::string& name);
+  tdb_shared_ptr<Logger> clone(const std::string& name, uint64_t id);
 
   /**
    * Log a trace statement with no message formatting.
@@ -305,6 +305,12 @@ class Logger {
     TRACE,
   };
 
+  /** Log format. */
+  enum class Format : char {
+    DEFAULT,
+    JSON,
+  };
+
   /**
    * Set the logger level.
    *
@@ -313,7 +319,8 @@ class Logger {
    */
   void set_level(Logger::Level lvl);
 
-  void set_name(const std::string& name);
+  // todo: add docstring
+  void set_format(Logger::Format fmt);
 
  private:
   /* ********************************* */
@@ -323,7 +330,19 @@ class Logger {
   /** The logger object. */
   std::shared_ptr<spdlog::logger> logger_;
 
+  // todo: add docstring
   std::string name_;
+
+  Logger::Format fmt_;
+
+  /* ********************************* */
+  /*          PRIVATE METHODS          */
+  /* ********************************* */
+
+  // todo: add docstrings
+  void set_name(const std::string& tags);
+
+  std::string add_tag(const std::string& tag, uint64_t id);
 };
 
 /* ********************************* */

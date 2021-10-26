@@ -69,8 +69,7 @@ SparseGlobalOrderReader::SparseGlobalOrderReader(
     QueryCondition& condition)
     : SparseIndexReaderBase(
           stats,
-          logger->clone(
-              "SparseGlobalOrderReader: " + std::to_string(++logger_id_)),
+          logger->clone("SparseGlobalOrderReader", ++logger_id_),
           storage_manager,
           array,
           config,

@@ -81,7 +81,7 @@ StorageManager::StorageManager(
     stats::Stats* const parent_stats,
     tdb_shared_ptr<Logger> logger)
     : stats_(parent_stats->create_child("StorageManager"))
-    , logger_(logger->clone("Context: " + std::to_string(++logger_id_)))
+    , logger_(logger->clone("Context", ++logger_id_))
     , cancellation_in_progress_(false)
     , queries_in_progress_(0)
     , compute_tp_(compute_tp)
@@ -1717,6 +1717,8 @@ Status StorageManager::init(const Config* config) {
   if (config != nullptr)
     config_ = *config;
 
+  // temporarily set level to error so that possible errors reading
+  // configuration are visible to the user
   global_logger().set_level(Logger::Level::ERR);
   logger_->set_level(Logger::Level::ERR);
 
@@ -1730,6 +1732,19 @@ Status StorageManager::init(const Config* config) {
         "Cannot set logger level; Unsupported level:" + std::to_string(level) +
         "set in configuration"));
   }
+  /*
+  uint32_t format = static_cast<unsigned int>(Logger::Format::DEFAULT);
+  RETURN_NOT_OK(config_.get<uint32_t>("config.logging.format", &level, &found));
+  assert(found);
+  if (format > static_cast<unsigned int>(Logger::Format::JSON)) {
+    return logger_->status(Status::StorageManagerError(
+        "Cannot set logger format; Unsupported format:" + std::to_string(level)
+  + "set in configuration"));
+  }
+
+  global_logger().set_format(static_cast<Logger::Format>(format));
+  logger()->set_format(static_cast<Logger::Format>(format));
+  */
 
   global_logger().set_level(static_cast<Logger::Level>(level));
   logger_->set_level(static_cast<Logger::Level>(level));

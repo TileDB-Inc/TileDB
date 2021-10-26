@@ -47,7 +47,7 @@ Context::Context()
     : last_error_(Status::Ok())
     , storage_manager_(nullptr)
     , stats_(tdb_make_shared(stats::Stats, "Context"))
-    , logger_(tdb_make_shared(Logger, "tiledb")) {
+    , logger_(tdb_make_shared(Logger, "")) {
 }
 
 Context::~Context() {
