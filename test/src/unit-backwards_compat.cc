@@ -33,6 +33,7 @@
 
 #include "catch.hpp"
 #include "tiledb/sm/cpp_api/tiledb"
+#include "tiledb/sm/misc/constants.h"
 
 #include <chrono>
 #include <iostream>
@@ -1223,7 +1224,14 @@ TEST_CASE(
   query_write.finalize();
   array_write.close();
 
-  fragment_uri = query_write.fragment_uri(0);
+  FragmentInfo fragment_info(ctx, array_name);
+  fragment_info.load();
+  fragment_uri = fragment_info.fragment_uri(1);
+
+  // old version fragment
+  CHECK(fragment_info.version(0) == 1);
+  // new version fragment
+  CHECK(fragment_info.version(1) == tiledb::sm::constants::format_version);
 
   // Read again
   Array array_read2(ctx, array_name, TILEDB_READ);
