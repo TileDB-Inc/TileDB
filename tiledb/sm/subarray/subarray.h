@@ -569,6 +569,13 @@ class Subarray {
   /** Returns the flattened 1D id of the range with the input coordinates. */
   uint64_t range_idx(const std::vector<uint64_t>& range_coords) const;
 
+  /** Returns the flattened 1D id of the range with the input coordinates for
+   * the original subarray. */
+  template <class T>
+  void get_original_range_coords(
+      const T* const range_coords,
+      std::vector<uint64_t>* original_range_coords) const;
+
   /** The total number of multi-dimensional ranges in the subarray. */
   uint64_t range_num() const;
 
@@ -744,6 +751,9 @@ class Subarray {
 
   /** Returns `stats_`. */
   stats::Stats* stats() const;
+
+  /** Stores a vector of 1D ranges per dimension. */
+  std::vector<std::vector<uint64_t>> original_range_idx_;
 
  private:
   /* ********************************* */
