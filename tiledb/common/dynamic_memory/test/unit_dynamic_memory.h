@@ -129,7 +129,7 @@ class WhiteboxTracedAllocator : public TracedAllocator<T, Alloc, Tracer> {
   [[nodiscard]] const TracingLabel& label() const {
     return base::label_;
   }
-  [[nodiscard]] std::string_view origin() const {
+  [[nodiscard]] const std::string_view& origin() const {
     return base::label_.origin_;
   }
 
@@ -138,14 +138,9 @@ class WhiteboxTracedAllocator : public TracedAllocator<T, Alloc, Tracer> {
       : base(label, forward<Args>(args)...) {
   }
 
-  template <typename... Args>
-  explicit WhiteboxTracedAllocator(const std::string_view s, Args&&... args)
-      : base(s, forward<Args>(args)...) {
-  }
-
   template <size_t n, typename... Args>
   explicit WhiteboxTracedAllocator(const char (&origin)[n], Args&&... args)
-      : base(std::string_view(origin, n - 1), forward<Args>(args)...) {
+      : base(TracingLabel(std::string_view(origin, n - 1)), forward<Args>(args)...) {
   }
 };
 }  // namespace tiledb::common::detail
@@ -163,18 +158,11 @@ std::shared_ptr<T> make_shared_whitebox(const TracingLabel& x, Args&&... args) {
       TestingAllocator<T>(x), std::forward<Args>(args)...);
 }
 
-template <class T, class... Args>
-std::shared_ptr<T> make_shared_whitebox(
-    const std::string_view& origin, Args&&... args) {
-  return make_shared_whitebox<T>(
-      TracingLabel(origin), std::forward<Args>(args)...);
-}
-
 template <class T, int n, class... Args>
 std::shared_ptr<T> make_shared_whitebox(
     const char (&origin)[n], Args&&... args) {
   return make_shared_whitebox<T>(
-      std::string_view(origin, n - 1), std::forward<Args>(args)...);
+      TracingLabel(std::string_view(origin, n - 1)), std::forward<Args>(args)...);
 }
 
 #endif  // TILEDB_COMMON_DYNAMIC_MEMORY_TEST_DYNAMIC_MEMORY_H

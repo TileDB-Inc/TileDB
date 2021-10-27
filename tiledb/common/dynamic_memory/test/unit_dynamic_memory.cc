@@ -59,11 +59,13 @@ TEST_CASE_METHOD(
  */
 TEST_CASE(
     "TracedAllocator - default null tracing, constructor, default arguments") {
-  TracedAllocator<int, std::allocator, NullTracer> a("");
+  TracingLabel label{std::string_view("", 0)};
+  TracedAllocator<int, std::allocator, NullTracer> a(label);
 }
 
 TEST_CASE("TracedAllocator - with tracing, allocate throw") {
-  TracedAllocator<int, ThrowingAllocator, NullTracer> a("");
+  TracingLabel label{std::string_view("", 0)};
+  TracedAllocator<int, ThrowingAllocator, NullTracer> a(label);
   REQUIRE_THROWS(a.allocate(1));
 }
 
@@ -72,20 +74,17 @@ TEST_CASE("make_shared - TracingLabel") {
   auto x = make_shared<unsigned short>(label, 5);
 }
 
-TEST_CASE("make_shared - string_view") {
-  std::string_view sv{"foo", 3};
-  auto x = tiledb::common::make_shared<unsigned short>(sv, 5);
-
-  // MSVC 14.29.30037 (2019) faults when the explicit namespace specification is
-  // absent, as follows:
-  //     auto y = make_shared<unsigned short>(sv, 5);
-  // The error messages show that it's trying to instantiate std::make_shared,
-  // even though there's no `using`-statement to warrant looking in `std`, and
-  // despite the explicit `using`-statement at the top of the file.
+TEST_CASE("make_shared_whitebox - TracingLabel") {
+  auto label = TracingLabel(std::string_view("foo", 3));
+  auto x = make_shared_whitebox<unsigned short>(label, 5);
 }
 
 TEST_CASE("make_shared - string constant") {
   auto x = make_shared<unsigned short>("foo", 5);
+}
+
+TEST_CASE("make_shared_whitebox - string constant") {
+  auto x = make_shared_whitebox<unsigned short>("foo", 5);
 }
 
 TEST_CASE_METHOD(TracingFixture, "Tracer - trace make_shared") {
@@ -102,7 +101,8 @@ TEST_CASE_METHOD(TracingFixture, "Tracer - trace make_shared") {
 }
 
 TEST_CASE_METHOD(TracingFixture, "Tracer - trace bad_alloc") {
-  TracedAllocator<int, ThrowingAllocator, TestTracer> a(HERE());
+  TracingLabel label{std::string_view(HERE(), strlen(HERE()))};
+  TracedAllocator<int, ThrowingAllocator, TestTracer> a(label);
   try {
     a.allocate(1);
   } catch (const std::bad_alloc&) {

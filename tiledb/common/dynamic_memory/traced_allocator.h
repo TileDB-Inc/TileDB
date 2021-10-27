@@ -163,30 +163,6 @@ class TracedAllocator : public Alloc<T> {
       , label_(label) {
   }
 
-  /**
-   * Ordinary constructor labels each allocation with a given origin.
-   *
-   * @param origin A fixed origin for this allocator
-   * @param args Arguments for the allocator from which this one is derived
-   */
-  template <typename... Args>
-  TracedAllocator(const std::string_view& origin, Args&&... args)
-      : inner(std::forward<Args>(args)...)
-      , label_(origin) {
-  }
-
-  /**
-   * Ordinary constructor labels each allocation with a given origin.
-   *
-   * @param origin A fixed origin for this allocator
-   * @param args Arguments for the allocator from which this one is derived
-   */
-  template <size_t n, typename... Args>
-  TracedAllocator(const char (&origin)[n], Args&&... args)
-      : inner(std::forward<Args>(args)...)
-      , label_(std::string_view(origin, n - 1)) {
-  }
-
   /*
    * Doing something more sophisticated that declaring default all the copy/move
    * constructors/assignments might be necessary for supporting allocators
