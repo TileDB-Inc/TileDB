@@ -101,7 +101,7 @@ TEST_CASE_METHOD(TracingFixture, "Tracer - trace make_shared") {
 }
 
 TEST_CASE_METHOD(TracingFixture, "Tracer - trace bad_alloc") {
-  TracingLabel label{std::string_view(HERE(), strlen(HERE()))};
+  TracingLabel label{std::string_view(HERE(), std::string(HERE()).length())};
   TracedAllocator<int, ThrowingAllocator, TestTracer> a(label);
   try {
     a.allocate(1);
