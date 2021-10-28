@@ -83,6 +83,7 @@ struct ArrowArray {
 /* Begin TileDB Arrow IO internal implementation */
 
 #include <memory>
+#include <optional>
 
 /* ****************************** */
 /*      Error context helper      */
@@ -367,7 +368,7 @@ struct CPPArrowSchema {
   CPPArrowSchema(
       std::string name,
       std::string format,
-      std::string metadata,
+      std::optional<std::string> metadata,
       int64_t flags,
       std::vector<ArrowSchema*> children,
       std::shared_ptr<CPPArrowSchema> dictionary)
@@ -387,7 +388,7 @@ struct CPPArrowSchema {
     // Type description
     schema_->format = format_.c_str();
     schema_->name = name_.c_str();
-    schema_->metadata = metadata.c_str();
+    schema_->metadata = metadata ? metadata.value().c_str() : nullptr;
     schema_->flags = flags;
     schema_->n_children = n_children_;
 
@@ -470,7 +471,7 @@ struct CPPArrowSchema {
   ArrowSchema* schema_;
   std::string format_;
   std::string name_;
-  std::string metadata_;
+  std::optional<std::string> metadata_;
   int64_t flags_;
   int64_t n_children_;
   std::vector<ArrowSchema*> children_;
@@ -745,15 +746,15 @@ void ArrowExporter::export_(
   // lifetime:
   //   - address is stored in ArrowSchema.private_data
   //   - delete is called by lambda stored in ArrowSchema.release
-  CPPArrowSchema* cpp_schema =
-      new CPPArrowSchema(name, arrow_fmt.fmt_, "", arrow_flags, {}, {});
+  CPPArrowSchema* cpp_schema = new CPPArrowSchema(
+      name, arrow_fmt.fmt_, std::nullopt, arrow_flags, {}, {});
 
   std::vector<void*> buffers;
   if (bufferinfo.is_var) {
     buffers = {nullptr, bufferinfo.offsets, bufferinfo.data};
   } else {
-    cpp_schema =
-        new CPPArrowSchema(name, arrow_fmt.fmt_, "", arrow_flags, {}, {});
+    cpp_schema = new CPPArrowSchema(
+        name, arrow_fmt.fmt_, std::nullopt, arrow_flags, {}, {});
     buffers = {nullptr, bufferinfo.data};
   }
   cpp_schema->export_ptr(schema);
