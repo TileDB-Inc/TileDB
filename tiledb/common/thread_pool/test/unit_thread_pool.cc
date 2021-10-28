@@ -35,8 +35,10 @@
 #include <iostream>
 
 #include "tiledb/common/thread_pool.h"
+#include "tiledb/sm/misc/cancelable_tasks.h"
 
 using namespace tiledb::common;
+using namespace tiledb::sm;
 
 TEST_CASE("ThreadPool: Test empty", "[threadpool]") {
   for (int i = 0; i < 10; i++) {
@@ -49,7 +51,7 @@ TEST_CASE("ThreadPool: Test single thread", "[threadpool]") {
   int result = 0;
   std::vector<ThreadPool::Task> results;
   ThreadPool pool;
-  REQUIRE(pool.init().ok());
+  REQUIRE(pool.init(1).ok());
   for (int i = 0; i < 100; i++) {
     ThreadPool::Task task = pool.execute([&result]() {
       result++;
@@ -302,5 +304,73 @@ TEST_CASE("ThreadPool: Test recursion, two pools", "[threadpool]") {
     std::unique_lock<std::mutex> ul(cv_mutex);
     while (result > 0)
       cv.wait(ul);
+  }
+}
+
+
+TEST_CASE(
+    "ThreadPool: Test pending task cancellation", "[threadpool][cancel]") {
+  SECTION("- No cancellation callback") {
+    ThreadPool pool;
+    CancelableTasks cancelable_tasks;
+    REQUIRE(pool.init(2).ok());
+    std::atomic<int> result(0);
+    std::vector<ThreadPool::Task> tasks;
+
+    for (int i = 0; i < 5; i++) {
+      tasks.push_back(cancelable_tasks.execute(&pool, [&result]() {
+        std::this_thread::sleep_for(std::chrono::seconds(2));
+        result++;
+        return Status::Ok();
+      }));
+    }
+
+    // Because the thread pool has 2 threads, the first two will probably be
+    // executing at this point, but some will still be queued.
+    cancelable_tasks.cancel_all_tasks();
+
+    // The result is the number of threads that returned Ok (were not
+    // cancelled).
+    std::vector<Status> statuses = pool.wait_all_status(tasks);
+    int num_ok = 0;
+    for (const auto& st : statuses) {
+      num_ok += st.ok() ? 1 : 0;
+    }
+
+    REQUIRE(result == num_ok);
+  }
+
+  SECTION("- With cancellation callback") {
+    ThreadPool pool;
+    CancelableTasks cancelable_tasks;
+    REQUIRE(pool.init(2).ok());
+    std::atomic<int> result(0), num_cancelled(0);
+    std::vector<ThreadPool::Task> tasks;
+
+    for (int i = 0; i < 5; i++) {
+      tasks.push_back(cancelable_tasks.execute(
+          &pool,
+          [&result]() {
+            std::this_thread::sleep_for(std::chrono::seconds(2));
+            result++;
+            return Status::Ok();
+          },
+          [&num_cancelled]() { num_cancelled++; }));
+    }
+
+    // Because the thread pool has 2 threads, the first two will probably be
+    // executing at this point, but some will still be queued.
+    cancelable_tasks.cancel_all_tasks();
+
+    // The result is the number of threads that returned Ok (were not
+    // cancelled).
+    std::vector<Status> statuses = pool.wait_all_status(tasks);
+    int num_ok = 0;
+    for (const auto& st : statuses) {
+      num_ok += st.ok() ? 1 : 0;
+    }
+
+    REQUIRE(result == num_ok);
+    REQUIRE(num_cancelled == ((int64_t)tasks.size() - num_ok));
   }
 }
