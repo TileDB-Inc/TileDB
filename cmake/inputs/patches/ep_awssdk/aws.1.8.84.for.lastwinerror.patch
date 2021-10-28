@@ -1,0 +1,201 @@
+diff --git a/aws-cpp-sdk-core/include/aws/core/VersionConfig.h b/aws-cpp-sdk-core/include/aws/core/VersionConfig.h
+index 02811d1f7a..7a73bbf481 100644
+--- a/aws-cpp-sdk-core/include/aws/core/VersionConfig.h
++++ b/aws-cpp-sdk-core/include/aws/core/VersionConfig.h
+@@ -1,6 +1,6 @@
+-/**
+- * Copyright Amazon.com, Inc. or its affiliates. All Rights Reserved.
+- * SPDX-License-Identifier: Apache-2.0.
+- */
+-
+-#define AWS_SDK_VERSION_STRING "1.8.84"
++/**
++ * Copyright Amazon.com, Inc. or its affiliates. All Rights Reserved.
++ * SPDX-License-Identifier: Apache-2.0.
++ */
++
++#define AWS_SDK_VERSION_STRING "1.8.84"
+diff --git a/aws-cpp-sdk-core/include/aws/core/http/HttpClient.h b/aws-cpp-sdk-core/include/aws/core/http/HttpClient.h
+index 4c292064d7..411c374fd1 100644
+--- a/aws-cpp-sdk-core/include/aws/core/http/HttpClient.h
++++ b/aws-cpp-sdk-core/include/aws/core/http/HttpClient.h
+@@ -41,7 +41,7 @@ namespace Aws
+              */
+             virtual std::shared_ptr<HttpResponse> MakeRequest(const std::shared_ptr<HttpRequest>& request,
+                 Aws::Utils::RateLimits::RateLimiterInterface* readLimiter = nullptr,
+-                Aws::Utils::RateLimits::RateLimiterInterface* writeLimiter = nullptr) const = 0;
++                Aws::Utils::RateLimits::RateLimiterInterface* writeLimiter = nullptr) = 0;
+ 
+             /**
+              * If yes, the http client supports transfer-encoding:chunked.
+diff --git a/aws-cpp-sdk-core/include/aws/core/http/windows/WinHttpSyncHttpClient.h b/aws-cpp-sdk-core/include/aws/core/http/windows/WinHttpSyncHttpClient.h
+index 7f995b088c..a1a83758b2 100644
+--- a/aws-cpp-sdk-core/include/aws/core/http/windows/WinHttpSyncHttpClient.h
++++ b/aws-cpp-sdk-core/include/aws/core/http/windows/WinHttpSyncHttpClient.h
+@@ -41,6 +41,8 @@ namespace Aws
+              */
+             const char* GetLogTag() const override { return "WinHttpSyncHttpClient"; }
+ 
++            virtual uint32_t LastWinError() const override { return m_lastWinError; }
++
+         private:
+             // WinHttp specific implementations
+             void* OpenRequest(const std::shared_ptr<HttpRequest>& request, void* connection, const Aws::StringStream& ss) const override;
+@@ -49,7 +51,7 @@ namespace Aws
+             uint64_t FinalizeWriteData(void* hHttpRequest) const override;
+             bool DoReceiveResponse(void* httpRequest) const override;
+             bool DoQueryHeaders(void* httpRequest, std::shared_ptr<Aws::Http::HttpResponse>& response, Aws::StringStream& ss, uint64_t& read) const override;
+-            bool DoSendRequest(void* httpRequest) const override;
++            bool DoSendRequest(void* httpRequest) override;
+             bool DoReadData(void* hHttpRequest, char* body, uint64_t size, uint64_t& read) const override;
+             void* GetClientModule() const override;
+ 
+@@ -57,6 +59,8 @@ namespace Aws
+             bool m_verifySSL;
+             Aws::WString m_proxyUserName;
+             Aws::WString m_proxyPassword;
++            
++            uint32_t m_lastWinError;
+         };
+ 
+     } // namespace Http
+diff --git a/aws-cpp-sdk-core/include/aws/core/http/windows/WinINetSyncHttpClient.h b/aws-cpp-sdk-core/include/aws/core/http/windows/WinINetSyncHttpClient.h
+index 6a49767e21..f060ed626a 100644
+--- a/aws-cpp-sdk-core/include/aws/core/http/windows/WinINetSyncHttpClient.h
++++ b/aws-cpp-sdk-core/include/aws/core/http/windows/WinINetSyncHttpClient.h
+@@ -48,7 +48,7 @@ namespace Aws
+             uint64_t FinalizeWriteData(void* hHttpRequest) const override;
+             bool DoReceiveResponse(void* hHttpRequest) const override;
+             bool DoQueryHeaders(void* hHttpRequest, std::shared_ptr<Aws::Http::HttpResponse>& response, Aws::StringStream& ss, uint64_t& read) const override;
+-            bool DoSendRequest(void* hHttpRequest) const override;
++            bool DoSendRequest(void* hHttpRequest) override;
+             bool DoReadData(void* hHttpRequest, char* body, uint64_t size, uint64_t& read) const override;
+             void* GetClientModule() const override;
+ 
+diff --git a/aws-cpp-sdk-core/include/aws/core/http/windows/WinSyncHttpClient.h b/aws-cpp-sdk-core/include/aws/core/http/windows/WinSyncHttpClient.h
+index dc3efae4ca..7d8d6ec5ab 100644
+--- a/aws-cpp-sdk-core/include/aws/core/http/windows/WinSyncHttpClient.h
++++ b/aws-cpp-sdk-core/include/aws/core/http/windows/WinSyncHttpClient.h
+@@ -40,7 +40,7 @@ namespace Aws
+              */
+             std::shared_ptr<HttpResponse> MakeRequest(const std::shared_ptr<HttpRequest>& request,
+                     Aws::Utils::RateLimits::RateLimiterInterface* readLimiter = nullptr,
+-                    Aws::Utils::RateLimits::RateLimiterInterface* writeLimiter = nullptr) const override;
++                    Aws::Utils::RateLimits::RateLimiterInterface* writeLimiter = nullptr) override;
+ 
+             /**
+              * Gets log tag for use in logging.
+@@ -81,6 +81,8 @@ namespace Aws
+              * config flag for whether or not to tell apis to allow redirects.
+              */
+             bool m_allowRedirects;
++            
++            virtual uint32_t LastWinError() const { return (uint32_t)-1; }
+ 
+         private:
+             virtual void* OpenRequest(const std::shared_ptr<HttpRequest>& request, void* connection, const Aws::StringStream& ss) const = 0;
+@@ -89,7 +91,7 @@ namespace Aws
+             virtual uint64_t FinalizeWriteData(void* hHttpRequest) const = 0;
+             virtual bool DoReceiveResponse(void* hHttpRequest) const = 0;
+             virtual bool DoQueryHeaders(void* hHttpRequest, std::shared_ptr<Aws::Http::HttpResponse>& response, Aws::StringStream& ss, uint64_t& read) const = 0;
+-            virtual bool DoSendRequest(void* hHttpRequest) const = 0;
++            virtual bool DoSendRequest(void* hHttpRequest) = 0;
+             virtual bool DoReadData(void* hHttpRequest, char* body, uint64_t size, uint64_t& read) const = 0;
+             virtual void* GetClientModule() const = 0;
+ 
+diff --git a/aws-cpp-sdk-core/source/http/windows/WinHttpSyncHttpClient.cpp b/aws-cpp-sdk-core/source/http/windows/WinHttpSyncHttpClient.cpp
+index d7f4fc7c9f..d00742d633 100644
+--- a/aws-cpp-sdk-core/source/http/windows/WinHttpSyncHttpClient.cpp
++++ b/aws-cpp-sdk-core/source/http/windows/WinHttpSyncHttpClient.cpp
+@@ -295,14 +295,22 @@ bool WinHttpSyncHttpClient::DoQueryHeaders(void* hHttpRequest, std::shared_ptr<H
+     return queryResult == TRUE;
+ }
+ 
+-bool WinHttpSyncHttpClient::DoSendRequest(void* hHttpRequest) const
++bool WinHttpSyncHttpClient::DoSendRequest(void* hHttpRequest) 
+ {
+-    return (WinHttpSendRequest(hHttpRequest, NULL, NULL, 0, 0, 0, NULL) != 0);
++    //return (WinHttpSendRequest(hHttpRequest, NULL, NULL, 0, 0, 0, NULL) != 0);
++    auto rval = WinHttpSendRequest(hHttpRequest, NULL, NULL, 0, 0, 0, NULL);
++    if(!rval)
++    {
++        m_lastWinError = GetLastError();
++    }
++    return rval != 0;
+ }
+ 
+ bool WinHttpSyncHttpClient::DoReadData(void* hHttpRequest, char* body, uint64_t size, uint64_t& read) const
+ {
+-    return (WinHttpReadData(hHttpRequest, body, (DWORD)size, (LPDWORD)&read) != 0);
++    //return (WinHttpReadData(hHttpRequest, body, (DWORD)size, (LPDWORD)&read) != 0);
++    auto rval = WinHttpReadData(hHttpRequest, body, (DWORD)size, (LPDWORD)&read);
++    return rval != 0;
+ }
+ 
+ void* WinHttpSyncHttpClient::GetClientModule() const
+diff --git a/aws-cpp-sdk-core/source/http/windows/WinINetSyncHttpClient.cpp b/aws-cpp-sdk-core/source/http/windows/WinINetSyncHttpClient.cpp
+index 1d6f606305..fbbb62b706 100644
+--- a/aws-cpp-sdk-core/source/http/windows/WinINetSyncHttpClient.cpp
++++ b/aws-cpp-sdk-core/source/http/windows/WinINetSyncHttpClient.cpp
+@@ -242,7 +242,7 @@ bool WinINetSyncHttpClient::DoQueryHeaders(void* hHttpRequest, std::shared_ptr<H
+     return (read != 0);
+ }
+ 
+-bool WinINetSyncHttpClient::DoSendRequest(void* hHttpRequest) const
++bool WinINetSyncHttpClient::DoSendRequest(void* hHttpRequest) 
+ {
+     return (HttpSendRequestEx(hHttpRequest, NULL, NULL, 0, 0) != 0);
+ }
+diff --git a/aws-cpp-sdk-core/source/http/windows/WinSyncHttpClient.cpp b/aws-cpp-sdk-core/source/http/windows/WinSyncHttpClient.cpp
+index 2b644c8ecf..4ede45b954 100644
+--- a/aws-cpp-sdk-core/source/http/windows/WinSyncHttpClient.cpp
++++ b/aws-cpp-sdk-core/source/http/windows/WinSyncHttpClient.cpp
+@@ -256,7 +256,7 @@ bool WinSyncHttpClient::BuildSuccessResponse(const std::shared_ptr<HttpRequest>&
+ 
+ std::shared_ptr<HttpResponse> WinSyncHttpClient::MakeRequest(const std::shared_ptr<HttpRequest>& request,
+         Aws::Utils::RateLimits::RateLimiterInterface* readLimiter,
+-        Aws::Utils::RateLimits::RateLimiterInterface* writeLimiter) const
++        Aws::Utils::RateLimits::RateLimiterInterface* writeLimiter) 
+ {
+ 	//we URL encode right before going over the wire to avoid double encoding problems with the signer.
+ 	URI& uriRef = request->GetUri();
+@@ -285,7 +285,8 @@ std::shared_ptr<HttpResponse> WinSyncHttpClient::MakeRequest(const std::shared_p
+ 
+         AddHeadersToRequest(request, hHttpRequest);
+         OverrideOptionsOnRequestHandle(hHttpRequest);
+-        if (DoSendRequest(hHttpRequest) && StreamPayloadToRequest(request, hHttpRequest, writeLimiter))
++        int whatpath = 0;
++        if ((whatpath=1,DoSendRequest(hHttpRequest)) && (whatpath=2,StreamPayloadToRequest(request, hHttpRequest, writeLimiter)))
+         {
+             success = BuildSuccessResponse(request, response, hHttpRequest, readLimiter);
+         }
+@@ -293,6 +294,16 @@ std::shared_ptr<HttpResponse> WinSyncHttpClient::MakeRequest(const std::shared_p
+         {
+             response->SetClientErrorType(CoreErrors::NETWORK_CONNECTION);
+             response->SetClientErrorMessage("Encountered network error when sending http request");
++            AWS_LOGSTREAM_DEBUG(
++                GetLogTag(),
++                "Encountered network error (" << LastWinError()
++                                              << " when sending http request"
++                    << " (whatpath " << whatpath << ")" );
++            std::cout <<
++                GetLogTag() <<
++                "Encountered network error ("
++                    << LastWinError() << " when sending http request"
++                    << " (whatpath " << whatpath << ")" << std::endl;
+         }
+     }
+ 
+diff --git a/testing-resources/include/aws/testing/mocks/http/MockHttpClient.h b/testing-resources/include/aws/testing/mocks/http/MockHttpClient.h
+index 7c3ead3438..82b60e7b62 100644
+--- a/testing-resources/include/aws/testing/mocks/http/MockHttpClient.h
++++ b/testing-resources/include/aws/testing/mocks/http/MockHttpClient.h
+@@ -22,7 +22,7 @@ class MockHttpClient : public Aws::Http::HttpClient
+ public:
+     std::shared_ptr<Aws::Http::HttpResponse> MakeRequest(const std::shared_ptr<Aws::Http::HttpRequest>& request,
+                                                          Aws::Utils::RateLimits::RateLimiterInterface* readLimiter = nullptr,
+-                                                         Aws::Utils::RateLimits::RateLimiterInterface* writeLimiter = nullptr) const override
++                                                         Aws::Utils::RateLimits::RateLimiterInterface* writeLimiter = nullptr) override
+     {
+         AWS_UNREFERENCED_PARAM(readLimiter);
+         AWS_UNREFERENCED_PARAM(writeLimiter);

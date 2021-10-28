@@ -100,7 +100,8 @@ if (NOT AWSSDK_FOUND)
       set(CONDITIONAL_PATCH cd ${CMAKE_SOURCE_DIR} && 
              #"${GIT_EXECUTABLE}" apply --ignore-whitespace -p1 --unsafe-paths --verbose --directory=${TILEDB_EP_SOURCE_DIR}/ep_awssdk < ${TILEDB_CMAKE_INPUTS_DIR}/patches/ep_awssdk/awssdk.winerror.B.patch &&
              #"${GIT_EXECUTABLE}" apply --ignore-whitespace -p1 --unsafe-paths --verbose --directory=${TILEDB_EP_SOURCE_DIR}/ep_awssdk < ${TILEDB_CMAKE_INPUTS_DIR}/patches/ep_awssdk/awssdk.winerror.C.mod.patch &&
-             "${GIT_EXECUTABLE}" apply --ignore-whitespace -p1 --unsafe-paths --verbose --directory=${TILEDB_EP_SOURCE_DIR}/ep_awssdk < ${TILEDB_CMAKE_INPUTS_DIR}/patches/ep_awssdk/awssdk.winerror.D.patch &&
+             #"${GIT_EXECUTABLE}" apply --ignore-whitespace -p1 --unsafe-paths --verbose --directory=${TILEDB_EP_SOURCE_DIR}/ep_awssdk < ${TILEDB_CMAKE_INPUTS_DIR}/patches/ep_awssdk/awssdk.winerror.D.patch &&
+             "${GIT_EXECUTABLE}" apply --ignore-whitespace -p1 --unsafe-paths --verbose --directory=${TILEDB_EP_SOURCE_DIR}/ep_awssdk < ${TILEDB_CMAKE_INPUTS_DIR}/patches/ep_awssdk/aws.1.8.84.for.lastwinerror.patch &&
              # echo %cd% && 
              #${patch2}
              "${GIT_EXECUTABLE}" apply --ignore-whitespace -p1 --unsafe-paths --verbose --directory=${TILEDB_EP_SOURCE_DIR}/ep_awssdk < ${TILEDB_CMAKE_INPUTS_DIR}/patches/ep_awssdk/awsccommon.patch
