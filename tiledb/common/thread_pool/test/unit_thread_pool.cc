@@ -49,13 +49,16 @@ TEST_CASE("ThreadPool: Test single thread", "[threadpool]") {
   int result = 0;
   std::vector<ThreadPool::Task> results;
   ThreadPool pool;
-  REQUIRE(pool.init().ok());
+  REQUIRE(pool.init(1).ok());
+
   for (int i = 0; i < 100; i++) {
     ThreadPool::Task task = pool.execute([&result]() {
       result++;
       return Status::Ok();
     });
+
     REQUIRE(task.valid());
+
     results.emplace_back(std::move(task));
   }
   REQUIRE(pool.wait_all(results).ok());
@@ -123,6 +126,14 @@ TEST_CASE("ThreadPool: Test execute with empty pool", "[threadpool]") {
 }
 
 
+size_t random_ms() {
+  static std::random_device             rdev;
+  static std::mt19937                   rgen(rdev());
+  std::uniform_int_distribution<size_t> idist(0, 5);
+  return idist(rgen);
+}
+
+
 TEST_CASE("ThreadPool: Test recursion", "[threadpool]") {
   ThreadPool pool;
 
@@ -149,6 +160,7 @@ TEST_CASE("ThreadPool: Test recursion", "[threadpool]") {
       std::vector<ThreadPool::Task> inner_tasks;
       for (size_t j = 0; j < num_nested_tasks; ++j) {
         auto inner_task = pool.execute([&]() {
+	  std::this_thread::sleep_for(std::chrono::milliseconds(random_ms()));
           ++result;
           return Status::Ok();
         });
@@ -174,6 +186,9 @@ TEST_CASE("ThreadPool: Test recursion", "[threadpool]") {
     auto task = pool.execute([&]() {
       for (size_t j = 0; j < num_nested_tasks; ++j) {
         pool.execute([&]() {
+
+	  std::this_thread::sleep_for(std::chrono::milliseconds(random_ms()));
+
           std::unique_lock<std::mutex> ul(cv_mutex);
           if (--result == 0) {
             cv.notify_all();
@@ -240,6 +255,7 @@ TEST_CASE("ThreadPool: Test recursion, two pools", "[threadpool]") {
             std::vector<ThreadPool::Task> tasks_c;
             for (size_t k = 0; k < num_tasks_b; ++k) {
               auto task_c = pool_a.execute([&result]() {
+		std::this_thread::sleep_for(std::chrono::milliseconds(random_ms()));
                 ++result;
                 return Status::Ok();
               });
@@ -276,6 +292,7 @@ TEST_CASE("ThreadPool: Test recursion, two pools", "[threadpool]") {
             std::vector<ThreadPool::Task> tasks_c;
             for (size_t k = 0; k < num_tasks_c; ++k) {
               auto task_c = pool_a.execute([&]() {
+		std::this_thread::sleep_for(std::chrono::milliseconds(random_ms()));
                 if (--result == 0) {
                   std::unique_lock<std::mutex> ul(cv_mutex);
                   cv.notify_all();

@@ -36,6 +36,7 @@ list(APPEND DEPENDENT_SOURCES
     ../heap_profiler.cc
     ../logger.cc
     ../status.cc
+    ../../sm/misc/cancelable_tasks.cc
 )
 
 if (TILEDB_TESTS)
