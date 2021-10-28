@@ -60,7 +60,7 @@ struct TracingLabel {
    * efficiently support static char[] labels. If a non-static string is needed,
    * this class may be the base class of another that holds that string.
    */
-  const std::string_view& origin_;
+  const std::string_view origin_;
 
   /**
    * The serial number is an arbitrary identifier. It identifies the allocator
@@ -73,7 +73,7 @@ struct TracingLabel {
    * The cause label identifies the promixate operation that caused this origin
    * to come into existence. These are all internally-generated.
    */
-  const std::string_view& cause_;
+  const std::string_view cause_;
 
   /**
    * If the cause refers to another allocator, this is the serial number of that

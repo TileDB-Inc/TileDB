@@ -41,6 +41,15 @@ if (TILEDB_TESTS)
 
     add_executable(unit_dynamic_memory EXCLUDE_FROM_ALL)
     target_link_libraries(unit_dynamic_memory PUBLIC Catch2::Catch2)
+    #
+    # The heap_profiler dependency is as loose files rather than as a library
+    # of some sort. The pthread requirement below should ideally be carried
+    # on a library interface rather than specified directly.
+    #
+    if (CMAKE_CXX_COMPILER MATCHES "GNU")
+        # Apparently gcc requires pthread to be linked for <thread> definitions
+        target_link_libraries(unit_dynamic_memory PUBLIC pthread)
+    endif()
 
     # Sources for code under test
     target_sources(unit_dynamic_memory PUBLIC ${SOURCES})
