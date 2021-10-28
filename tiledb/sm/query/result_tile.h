@@ -41,6 +41,7 @@
 #include "tiledb/sm/enums/layout.h"
 #include "tiledb/sm/misc/constants.h"
 #include "tiledb/sm/misc/types.h"
+#include "tiledb/sm/subarray/subarray.h"
 #include "tiledb/sm/tile/tile.h"
 
 using namespace tiledb::common;
@@ -50,6 +51,7 @@ namespace sm {
 
 class Domain;
 class FragmentMetadata;
+class Subarray;
 
 /**
  * Stores information about a logical dense or sparse result tile. Note that it
@@ -224,6 +226,23 @@ class ResultTile {
       const Layout& cell_order);
 
   /**
+   * Applicable only to sparse arrays.
+   *
+   * Computes a result count for the input dimension for the coordinates that
+   * fall in the input range.
+   */
+  template <class T>
+  static void compute_results_count_sparse(
+      const ResultTile* result_tile,
+      unsigned dim_idx,
+      const Range& range,
+      std::vector<uint64_t>* result_count,
+      bool use_prev_dim_result_count,
+      std::vector<uint64_t>* prev_dim_result_count,
+      const Layout& cell_order,
+      std::mutex& mtx);
+
+  /**
    * Applicable only to sparse tiles of dense arrays.
    *
    * Accummulates to a result bitmap for the coordinates that
@@ -253,6 +272,21 @@ class ResultTile {
       const Range& range,
       std::vector<uint8_t>* result_bitmap,
       const Layout& cell_order) const;
+
+  /**
+   * Applicable only to sparse arrays.
+   *
+   * Accummulates to a result count for the coordinates that
+   * fall in the input range, checking only dimensions `dim_idx`.
+   */
+  Status compute_results_count_sparse(
+      unsigned dim_idx,
+      const Range& range,
+      std::vector<uint64_t>* result_count,
+      bool use_prev_dim_result_count,
+      std::vector<uint64_t>* prev_dim_result_count,
+      const Layout& cell_order,
+      std::mutex& mtx) const;
 
  private:
   /* ********************************* */
@@ -312,6 +346,21 @@ class ResultTile {
       std::vector<uint8_t>*,
       const Layout&)>>
       compute_results_sparse_func_;
+
+  /**
+   * Stores the appropriate templated compute_results_count_sparse() function
+   * based for each dimension, based on the dimension datatype.
+   */
+  std::vector<std::function<void(
+      const ResultTile*,
+      unsigned,
+      const Range&,
+      std::vector<uint64_t>*,
+      bool,
+      std::vector<uint64_t>*,
+      const Layout&,
+      std::mutex&)>>
+      compute_results_count_sparse_func_;
 
   /* ********************************* */
   /*          PRIVATE METHODS          */
