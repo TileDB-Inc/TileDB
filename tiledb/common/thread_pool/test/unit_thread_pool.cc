@@ -35,8 +35,8 @@
 #include <iostream>
 
 #include "tiledb/common/thread_pool.h"
+#include "tiledb/sm/misc/cancelable_tasks.h"
 
-using namespace tiledb::common;
 
 TEST_CASE("ThreadPool: Test empty", "[threadpool]") {
   for (int i = 0; i < 10; i++) {
@@ -429,5 +429,172 @@ TEST_CASE("ThreadPool: Test Exceptions", "[threadpool]") {
     REQUIRE(pool.wait_all(results).code() == StatusCode::Tile);
     REQUIRE(result == 207);
   }
-
 }
+
+
+
+TEST_CASE(
+    "ThreadPool: Test pending task cancellation", "[threadpool][cancel]") {
+  SECTION("- No cancellation callback") {
+
+    ThreadPool pool;
+
+    tiledb::sm::CancelableTasks cancelable_tasks;
+
+    REQUIRE(pool.init(2).ok());
+    std::atomic<int> result(0);
+    std::vector<ThreadPool::Task> tasks;
+
+    for (int i = 0; i < 5; i++) {
+      tasks.push_back(cancelable_tasks.execute(&pool, [&result]() {
+        std::this_thread::sleep_for(std::chrono::seconds(2));
+        result++;
+        return Status::Ok();
+      }));
+    }
+
+    // Because the thread pool has 2 threads, the first two will probably be
+    // executing at this point, but some will still be queued.
+    cancelable_tasks.cancel_all_tasks();
+
+    // The result is the number of threads that returned Ok (were not
+    // cancelled).
+    std::vector<Status> statuses = pool.wait_all_status(tasks);
+    int num_ok = 0;
+    for (const auto& st : statuses) {
+      num_ok += st.ok() ? 1 : 0;
+    }
+
+    REQUIRE(result == num_ok);
+  }
+
+  SECTION("- With cancellation callback") {
+    ThreadPool pool;
+    tiledb::sm::CancelableTasks cancelable_tasks;
+    REQUIRE(pool.init(2).ok());
+    std::atomic<int> result(0), num_cancelled(0);
+    std::vector<ThreadPool::Task> tasks;
+
+    for (int i = 0; i < 5; i++) {
+      tasks.push_back(cancelable_tasks.execute(
+          &pool,
+          [&result]() {
+            std::this_thread::sleep_for(std::chrono::seconds(2));
+            result++;
+            return Status::Ok();
+          },
+          [&num_cancelled]() { num_cancelled++; }));
+    }
+
+    // Because the thread pool has 2 threads, the first two will probably be
+    // executing at this point, but some will still be queued.
+    cancelable_tasks.cancel_all_tasks();
+
+    // The result is the number of threads that returned Ok (were not
+    // cancelled).
+    std::vector<Status> statuses = pool.wait_all_status(tasks);
+    int num_ok = 0;
+    for (const auto& st : statuses) {
+      num_ok += st.ok() ? 1 : 0;
+    }
+
+    REQUIRE(result == num_ok);
+    REQUIRE(num_cancelled == ((int64_t)tasks.size() - num_ok));
+
+  }
+}
+
+
+
+
+TEST_CASE("ThreadPool: Test robustness", "[threadpool][robust]") {
+  std::random_device rd;   // obtain a random number from hardware
+  std::mt19937 gen(rd());  // seed the generator
+  std::uniform_int_distribution<> distr(0, 5);  // define the range
+  ThreadPool pool;
+  tiledb::sm::CancelableTasks cancelable_tasks;
+  REQUIRE(pool.init(std::thread::hardware_concurrency()-1).ok());
+  //std::atomic<int> result(0), num_cancelled(0);
+  //yes, not thread-safe, but atomic slowing things down too much...
+  int result = {0};
+  //, num_cancelled = {0};
+  std::vector<ThreadPool::Task> tasks;
+  int howmany = 50000000;
+  std::atomic<int> doneflag(0);
+  static std::vector<std::mutex> vmtx(3);
+  std::uniform_int_distribution<> distr0to2(0, 2);  // define the range
+  std::uniform_int_distribution<> distr0toX000(0, 40);  // define the range
+
+  int garbage;
+  //  auto threadaction = [&result, &pool, howmany, &doneflag, threadaction]() -> Status {
+  auto threadaction =
+        //[&result, &pool, howmany, &doneflag, &threadaction]() -> Status {
+    [&result,&howmany,&doneflag,&pool,&gen,&distr0toX000,&garbage](auto&& threadaction) -> Status {
+    //std::unique_lock < std::remove_reference<decltype(vmtx[0])>::type> ul(vmtx[distr0to2(gen)]);
+      // std::this_thread::sleep_for(std::chrono::seconds(2));
+    result++;
+    if (result < howmany) {
+      int cum = 0;
+      auto limit = distr0toX000(gen);
+      for (auto i = 0; i < limit; ++i)
+        cum += i;
+      garbage = cum;
+        //      std::this_thread::sleep_for(std::chrono::nanoseconds(distr(gen)));
+       // ;
+       pool.execute(threadaction, threadaction);
+    } else {
+      doneflag = 1;
+    }
+
+    return Status::Ok();
+  };
+  for (std::remove_const < decltype(pool.concurrency_level() )> ::type i = 0;
+       i < pool.concurrency_level() + 30;
+       i++) {
+#if 01
+    pool.execute(threadaction, threadaction);
+#elif 0
+    tasks.push_back(pool.execute(threadaction));
+    #else
+    tasks.push_back(cancelable_tasks.execute(threadaction));
+    #endif
+  }
+
+  // Because the thread pool has 2 threads, the first two will probably be
+  // executing at this point, but some will still be queued.
+  //cancelable_tasks.cancel_all_tasks();
+
+  // The result is the number of threads that returned Ok (were not
+  // cancelled).
+  //int howmany = 50000000;
+  #if 01
+  while (!doneflag) {
+    std::this_thread::sleep_for(std::chrono::seconds(2));
+  }
+  #else
+  for (auto i = 0; i < howmany; ++i) {
+    std::vector<ThreadPool::Task> onetask;
+    onetask.emplace_back(tasks[0]);
+    std::vector<Status> statuses = pool.wait_all_status(onetask);
+    int num_ok = 0;
+    for (const auto& st : statuses) {
+      num_ok += st.ok() ? 1 : 0;
+    }
+    tasks.erase(tasks.begin());
+    tasks.push_back(cancelable_tasks.execute(
+        &pool,
+        [&result]() {
+          // std::this_thread::sleep_for(std::chrono::seconds(2));
+          result++;
+          return Status::Ok();
+        },
+        [&num_cancelled]() { num_cancelled++; }));
+  }
+  #endif
+
+  std::cout << "result " << result << std::endl;
+
+  //REQUIRE(result == num_ok);
+//  REQUIRE(num_cancelled == ((int64_t)tasks.size() - num_ok));
+}
+
