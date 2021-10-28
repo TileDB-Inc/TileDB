@@ -46,7 +46,7 @@ if (TILEDB_TESTS)
     # of some sort. The pthread requirement below should ideally be carried
     # on a library interface rather than specified directly.
     #
-    if (CMAKE_CXX_COMPILER MATCHES "GNU")
+    if (CMAKE_CXX_COMPILER_ID MATCHES "GNU")
         # Apparently gcc requires pthread to be linked for <thread> definitions
         target_link_libraries(unit_dynamic_memory PUBLIC pthread)
     endif()
