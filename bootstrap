@@ -184,31 +184,6 @@ if [[ ! -x ${cmake} ]]; then
 fi
 
 # Configure
-echo ${cmake} -DCMAKE_BUILD_TYPE=${build_type} \
-    -DCMAKE_INSTALL_PREFIX="${prefix_dirs}" \
-    -DCMAKE_C_COMPILER="${c_compiler}" \
-    -DCMAKE_CXX_COMPILER="${cxx_compiler}" \
-    -DCMAKE_PREFIX_PATH="${dependency_dir}" \
-    -DTILEDB_VERBOSE=${tiledb_verbose} \
-    -DTILEDB_HDFS=${tiledb_hdfs} \
-    -DTILEDB_S3=${tiledb_s3} \
-    -DTILEDB_AZURE=${tiledb_azure} \
-    -DTILEDB_GCS=${tiledb_gcs} \
-    -DTILEDB_SERIALIZATION=${tiledb_serialization} \
-    -DTILEDB_TOOLS=${tiledb_tools} \
-    -DTILEDB_WERROR=${tiledb_werror} \
-    -DTILEDB_CPP_API=${tiledb_cpp_api} \
-    -DTILEDB_STATS=${tiledb_stats} \
-    -DTILEDB_STATIC=${tiledb_static} \
-    -DTILEDB_TESTS=${tiledb_tests} \
-    -DTILEDB_CCACHE=${tiledb_ccache} \
-    -DTILEDB_ARROW_TESTS=${tiledb_arrow_tests} \
-    -DTILEDB_FORCE_ALL_DEPS=${tiledb_force_all_deps} \
-    -DSANITIZER="${sanitizer}" \
-    ${tiledb_disable_avx2} \
-    "${source_dir}" || die "failed to configure the project"
-
-
 ${cmake} -DCMAKE_BUILD_TYPE=${build_type} \
     -DCMAKE_INSTALL_PREFIX="${prefix_dirs}" \
     -DCMAKE_C_COMPILER="${c_compiler}" \
