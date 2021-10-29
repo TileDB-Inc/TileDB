@@ -263,8 +263,9 @@ Status DenseReader::dense_read() {
       });
   RETURN_NOT_OK(status);
 
-  // Compute tile offsets for global order.
+  // Compute tile offsets for global order and range offsets for row/col major.
   std::vector<uint64_t> tile_offsets;
+  std::vector<uint64_t> range_offsets;
 
   if (layout_ == Layout::GLOBAL_ORDER) {
     tile_offsets.reserve(tile_coords.size());
@@ -273,6 +274,14 @@ Status DenseReader::dense_read() {
     for (auto& tile_subarray : tile_subarrays) {
       tile_offsets.emplace_back(tile_offset);
       tile_offset += tile_subarray.cell_num();
+    }
+  } else {
+    range_offsets.reserve(subarray.range_num());
+
+    uint64_t range_offset = 0;
+    for (uint64_t r = 0; r < subarray.range_num(); r++) {
+      range_offsets.emplace_back(range_offset);
+      range_offset += subarray.cell_num(r);
     }
   }
 
@@ -319,6 +328,7 @@ Status DenseReader::dense_read() {
       &subarray,
       &tile_subarrays,
       &tile_offsets,
+      &range_offsets,
       &result_space_tiles,
       &qc_result);
   RETURN_CANCEL_OR_ERROR(status);
@@ -336,6 +346,7 @@ Status DenseReader::dense_read() {
         &subarray,
         &tile_subarrays,
         &tile_offsets,
+        &range_offsets,
         &result_space_tiles,
         &qc_result);
     RETURN_CANCEL_OR_ERROR(status);
@@ -457,6 +468,7 @@ Status DenseReader::apply_query_condition(
     Subarray* subarray,
     std::vector<Subarray>* tile_subarrays,
     std::vector<uint64_t>* tile_offsets,
+    const std::vector<uint64_t>* const range_offsets,
     std::map<const DimType*, ResultSpaceTile<DimType>>* result_space_tiles,
     std::vector<uint8_t>* qc_result) {
   if (!condition_.clauses().empty()) {
@@ -499,7 +511,13 @@ Status DenseReader::apply_query_condition(
             // Compute destination pointer for row/col major orders.
             if (!global_order) {
               RETURN_NOT_OK(get_dest_cell_offset_row_col(
-                  dim_num, subarray, cell_slab.coords_.data(), &cell_offset));
+                  dim_num,
+                  subarray,
+                  tile_subarray,
+                  cell_slab.coords_.data(),
+                  iter.range_coords(),
+                  range_offsets,
+                  &cell_offset));
               dest_ptr = qc_result->data() + cell_offset;
             }
 
@@ -597,6 +615,7 @@ Status DenseReader::read_attributes(
     const Subarray* const subarray,
     const std::vector<Subarray>* const tile_subarrays,
     const std::vector<uint64_t>* const tile_offsets,
+    const std::vector<uint64_t>* const range_offsets,
     std::map<const DimType*, ResultSpaceTile<DimType>>* result_space_tiles,
     const std::vector<uint8_t>* const qc_result) {
   // For easy reference
@@ -662,6 +681,7 @@ Status DenseReader::read_attributes(
               tile_subarray,
               global_order ? tile_offsets->at(t) : 0,
               &var_data,
+              range_offsets,
               qc_result);
         });
     RETURN_NOT_OK(status);
@@ -710,6 +730,7 @@ Status DenseReader::read_attributes(
               tile_subarray,
               global_order ? tile_offsets->at(t) : 0,
               &var_data,
+              range_offsets,
               t == tile_coords.size() - 1,
               &var_buffer_sizes);
 
@@ -765,6 +786,7 @@ Status DenseReader::read_attributes(
               subarray,
               tile_subarray,
               global_order ? tile_offsets->at(t) : 0,
+              range_offsets,
               qc_result));
 
           return Status::Ok();
@@ -849,28 +871,43 @@ template <class DimType>
 Status DenseReader::get_dest_cell_offset_row_col(
     const int32_t dim_num,
     const Subarray* const subarray,
+    const Subarray* const tile_subarray,
     const DimType* const coords,
+    const DimType* const range_coords,
+    const std::vector<uint64_t>* const range_offsets,
     uint64_t* cell_offset) {
   uint64_t ret = 0;
   uint64_t mult = 1;
 
+  uint64_t r = 0;
+  std::vector<uint64_t> converted_range_coords(dim_num);
+  if (subarray->range_num() > 1) {
+    tile_subarray->get_original_range_coords(
+        range_coords, &converted_range_coords);
+    r = subarray->range_idx(converted_range_coords);
+  }
+
   if (subarray->layout() == Layout::COL_MAJOR) {
     for (int32_t d = 0; d < dim_num; d++) {
       auto subarray_dom =
-          (DimType*)subarray->ranges_for_dim((uint32_t)d)[0].data();
+          (DimType*)subarray
+              ->ranges_for_dim((uint32_t)d)[converted_range_coords[d]]
+              .data();
       ret += mult * (coords[d] - subarray_dom[0]);
       mult *= subarray_dom[1] - subarray_dom[0] + 1;
     }
   } else {
-    for (auto d = dim_num - 1; d >= 0; d--) {
+    for (int32_t d = dim_num - 1; d >= 0; d--) {
       auto subarray_dom =
-          (DimType*)subarray->ranges_for_dim((uint32_t)d)[0].data();
+          (DimType*)subarray
+              ->ranges_for_dim((uint32_t)d)[converted_range_coords[d]]
+              .data();
       ret += mult * (coords[d] - subarray_dom[0]);
       mult *= subarray_dom[1] - subarray_dom[0] + 1;
     }
   }
 
-  *cell_offset = ret;
+  *cell_offset = ret + range_offsets->at(r);
   return Status::Ok();
 }
 
@@ -885,6 +922,7 @@ Status DenseReader::copy_fixed_tiles(
     const Subarray* const subarray,
     const Subarray* const tile_subarray,
     const uint64_t global_cell_offset,
+    const std::vector<uint64_t>* const range_offsets,
     const std::vector<uint8_t>* const qc_result) {
   // For easy reference
   const auto dim_num = array_schema_->dim_num();
@@ -905,7 +943,13 @@ Status DenseReader::copy_fixed_tiles(
     // Compute cell offset for row/col major orders.
     if (layout_ != Layout::GLOBAL_ORDER) {
       RETURN_NOT_OK(get_dest_cell_offset_row_col(
-          dim_num, subarray, cell_slab.coords_.data(), &cell_offset));
+          dim_num,
+          subarray,
+          tile_subarray,
+          cell_slab.coords_.data(),
+          iter.range_coords(),
+          range_offsets,
+          &cell_offset));
     }
 
     // Get the source cell offset.
@@ -1078,6 +1122,7 @@ Status DenseReader::copy_offset_tiles(
     const Subarray* const tile_subarray,
     const uint64_t global_cell_offset,
     std::vector<std::vector<void*>>* var_data,
+    const std::vector<uint64_t>* const range_offsets,
     const std::vector<uint8_t>* const qc_result) {
   // For easy reference
   const auto domain = array_schema_->domain();
@@ -1103,7 +1148,13 @@ Status DenseReader::copy_offset_tiles(
     // Compute cell offset for row/col major orders.
     if (layout_ != Layout::GLOBAL_ORDER) {
       RETURN_NOT_OK(get_dest_cell_offset_row_col(
-          dim_num, subarray, cell_slab.coords_.data(), &cell_offset));
+          dim_num,
+          subarray,
+          tile_subarray,
+          cell_slab.coords_.data(),
+          iter.range_coords(),
+          range_offsets,
+          &cell_offset));
     }
 
     // Get the source cell offset.
@@ -1267,6 +1318,7 @@ Status DenseReader::copy_var_tiles(
     const Subarray* const tile_subarray,
     const uint64_t global_cell_offset,
     std::vector<std::vector<void*>>* var_data,
+    const std::vector<uint64_t>* const range_offsets,
     bool last_tile,
     std::vector<uint64_t>* var_buffer_sizes) {
   // For easy reference
@@ -1285,7 +1337,13 @@ Status DenseReader::copy_var_tiles(
     // Compute cell offset for row/col major orders.
     if (layout_ != Layout::GLOBAL_ORDER) {
       RETURN_NOT_OK(get_dest_cell_offset_row_col(
-          dim_num, subarray, cell_slab.coords_.data(), &cell_offset));
+          dim_num,
+          subarray,
+          tile_subarray,
+          cell_slab.coords_.data(),
+          iter.range_coords(),
+          range_offsets,
+          &cell_offset));
     }
 
     for (uint64_t n = 0; n < names->size(); n++) {

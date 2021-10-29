@@ -294,6 +294,17 @@ class Subarray {
       bool override_memory_constraint = false);
 
   /**
+   * Precomputes the tile overlap with all subarray ranges for all fragments.
+   *
+   * @param compute_tp The compute thread pool.
+   * @param result_tile_ranges The resulting tile ranges.
+   */
+  Status precompute_all_ranges_tile_overlap(
+      ThreadPool* const compute_tp,
+      std::vector<std::vector<std::pair<uint64_t, uint64_t>>>*
+          result_tile_ranges);
+
+  /**
    * Computes the estimated result size (calibrated using the maximum size)
    * for a vector of given attributes/dimensions and range id, for all
    * fragments. The function focuses only on fragments relevant to the
@@ -558,6 +569,13 @@ class Subarray {
   /** Returns the flattened 1D id of the range with the input coordinates. */
   uint64_t range_idx(const std::vector<uint64_t>& range_coords) const;
 
+  /** Returns the flattened 1D id of the range with the input coordinates for
+   * the original subarray. */
+  template <class T>
+  void get_original_range_coords(
+      const T* const range_coords,
+      std::vector<uint64_t>* original_range_coords) const;
+
   /** The total number of multi-dimensional ranges in the subarray. */
   uint64_t range_num() const;
 
@@ -733,6 +751,9 @@ class Subarray {
 
   /** Returns `stats_`. */
   stats::Stats* stats() const;
+
+  /** Stores a vector of 1D ranges per dimension. */
+  std::vector<std::vector<uint64_t>> original_range_idx_;
 
  private:
   /* ********************************* */

@@ -62,33 +62,6 @@ constexpr uint64_t ceil_div(uint64_t a, uint64_t b) {
 class SparseIndexReaderBase : public ReaderBase {
  public:
   /* ********************************* */
-  /*             CONSTANTS             */
-  /* ********************************* */
-
-  /** Constant used in tile ranges to specify compute overlap. */
-  static const uint64_t COMPUTE_OVERLAP = std::numeric_limits<uint64_t>::max();
-
-  /** Constant used in tile ranges to specify no overlap. */
-  static const uint64_t NO_OVERLAP = std::numeric_limits<uint64_t>::max() - 1;
-
-  /**
-   * Rough ratio of tile overlap size versus tile range size for single range.
-   * This includes data for result_tile_ranges_.
-   */
-  static const uint64_t TILE_RANGES_TO_TILE_OVERLAP_RATIO_SINGLE_RANGE = 1;
-
-  /**
-   * Rough ratio of tile overlap size versus tile range size for multiple
-   * range. This includes data for result_tile_ranges_ and
-   * range_result_tiles_ranges_.
-   * */
-  static const uint64_t TILE_RANGES_TO_TILE_OVERLAP_RATIO_MULTI_RANGE =
-      TILE_RANGES_TO_TILE_OVERLAP_RATIO_SINGLE_RANGE +
-      ceil_div(
-          sizeof(std::tuple<uint64_t, uint64_t, uint64_t>),
-          sizeof(std::pair<uint64_t, uint64_t>));
-
-  /* ********************************* */
   /*          TYPE DEFINITIONS         */
   /* ********************************* */
 
@@ -99,9 +72,6 @@ class SparseIndexReaderBase : public ReaderBase {
 
     /** The tile index inside of each fragments. */
     std::vector<std::pair<uint64_t, uint64_t>> frag_tile_idx_;
-
-    /** The range index. */
-    uint64_t range_idx_;
   };
 
   /* ********************************* */
@@ -147,9 +117,6 @@ class SparseIndexReaderBase : public ReaderBase {
   /** Read state. */
   ReadState read_state_;
 
-  /** Number of ranges in process. */
-  uint64_t range_num_;
-
   /** Is the reader done with the query. */
   bool done_adding_result_tiles_;
 
@@ -165,11 +132,6 @@ class SparseIndexReaderBase : public ReaderBase {
   /** Reverse sorted vector, per fragments, of tiles ranges in the subarray, if
    * set. */
   std::vector<std::vector<std::pair<uint64_t, uint64_t>>> result_tile_ranges_;
-
-  /** Reverse sorted vector, per range, of tiles ranges in the subarray, if set.
-   * The tuple stores fragment id, start tile, end tile. */
-  std::vector<std::vector<std::tuple<uint64_t, uint64_t, uint64_t>>>
-      range_result_tiles_ranges_;
 
   /** Have ve loaded the initial data. */
   bool initial_data_loaded_;
@@ -229,12 +191,6 @@ class SparseIndexReaderBase : public ReaderBase {
 
   /** Load tile offsets and result tile ranges. */
   Status load_initial_data();
-
-  /**
-   * Computes info about the which tiles are in subarray,
-   * making sure maximum budget is respected.
-   */
-  Status compute_result_tiles_ranges(uint64_t memory_budget);
 
   /** Compute the result bitmap for a tile. */
   Status compute_coord_tiles_result_bitmap(

@@ -686,6 +686,238 @@ void ResultTile::compute_results_sparse(
   }
 }
 
+template <>
+void ResultTile::compute_results_count_sparse<char>(
+    const ResultTile* result_tile,
+    unsigned dim_idx,
+    const Range& range,
+    std::vector<uint64_t>* result_count,
+    bool use_prev_dim_result_count,
+    std::vector<uint64_t>* prev_dim_result_count,
+    const Layout& cell_order,
+    std::mutex& mtx) {
+  auto coords_num = result_tile->cell_num();
+  auto dim_num = result_tile->domain()->dim_num();
+  auto range_start = range.start_str();
+  auto range_end = range.end_str();
+  auto& r_count = (*result_count);
+  auto& prev_dim_r_count = (*prev_dim_result_count);
+
+  // Sanity check.
+  assert(coords_num != 0);
+  if (coords_num == 0)
+    return;
+
+  // Get coordinate tile
+  const auto& coord_tile = result_tile->coord_tile(dim_idx);
+
+  // Get offset buffer
+  const auto& coord_tile_off = std::get<0>(coord_tile);
+  auto buff_off = static_cast<const uint64_t*>(coord_tile_off.buffer()->data());
+
+  // Get string buffer
+  const auto& coord_tile_str = std::get<1>(coord_tile);
+  auto buff_str = static_cast<const char*>(coord_tile_str.buffer()->data());
+  auto buff_str_size = coord_tile_str.size();
+
+  // For row-major cell orders, the first dimension is sorted.
+  // For col-major cell orders, the last dimension is sorted.
+  // If the coordinate value at index 0 is equivalent to the
+  // coordinate value at index 100, we know that  all coordinates
+  // between them are also equivalent. In this scenario where
+  // coordinate value i=0 matches the coordinate value at i=100,
+  // we can calculate `r_count[0]` and apply assign its value to
+  // `r_count[i]` where i in the range [1, 100].
+  //
+  // Calculating `r_count[i]` is expensive for strings because
+  // it invokes a string comparison. We partition the coordinates
+  // into a fixed number of ranges. For each partition, we will
+  // compare the start and ending coordinate values to see if
+  // they are equivalent. If so, we save the expense of computing
+  // `r_count` for each corresponding coordinate. If they do
+  // not match, we must compare each coordinate in the partition.
+  static const uint64_t c_partition_num = 6;
+  // We calculate the size of each partition by dividing the total
+  // number of coordinates by the number of partitions. If this
+  // does not evenly divide, we will append the remaining coordinates
+  // onto the last partition.
+  const uint64_t c_partition_size_div = coords_num / c_partition_num;
+  const uint64_t c_partition_size_rem = coords_num % c_partition_num;
+  const bool is_sorted_dim =
+      ((cell_order == Layout::ROW_MAJOR && dim_idx == 0) ||
+       (cell_order == Layout::COL_MAJOR && dim_idx == dim_num - 1));
+  if (is_sorted_dim && c_partition_size_div > 1 &&
+      coords_num > c_partition_num) {
+    // Loop over each coordinate partition.
+    for (uint64_t p = 0; p < c_partition_num; ++p) {
+      // Calculate the size of this partition.
+      const uint64_t c_partition_size =
+          c_partition_size_div +
+          (p == (c_partition_num - 1) ? c_partition_size_rem : 0);
+
+      // Calculate the position of the first and last coordinates
+      // in this partition.
+      const uint64_t first_c_pos = p * c_partition_size_div;
+      const uint64_t last_c_pos = first_c_pos + c_partition_size - 1;
+      assert(first_c_pos < last_c_pos);
+
+      // The coordinate values are determined by their offset and size
+      // within `buff_str`. Calculate the offset and size for the
+      // first and last coordinates in this partition.
+      const uint64_t first_c_offset = buff_off[first_c_pos];
+      const uint64_t last_c_offset = buff_off[last_c_pos];
+      const uint64_t first_c_size = buff_off[first_c_pos + 1] - first_c_offset;
+      const uint64_t last_c_size = (last_c_pos == coords_num - 1) ?
+                                       buff_str_size - last_c_offset :
+                                       buff_off[last_c_pos + 1] - last_c_offset;
+
+      // Fetch the coordinate values for the first and last coordinates
+      // in this partition.
+      const char* const first_c_coord = &buff_str[first_c_offset];
+      const char* const second_coord = &buff_str[last_c_offset];
+
+      // Check if the first and last coordinates have an identical
+      // string value.
+      if (first_c_size == last_c_size &&
+          strncmp(first_c_coord, second_coord, first_c_size) == 0) {
+        const uint8_t intersects = str_coord_intersects(
+            first_c_offset, first_c_size, buff_str, range_start, range_end);
+        if (intersects) {
+          std::unique_lock<std::mutex> ul(mtx);
+          for (uint64_t pos = first_c_pos; pos < first_c_pos + c_partition_size;
+               ++pos) {
+            r_count[pos]++;
+          }
+        }
+      } else {
+        // Compute results
+        uint64_t c_offset = 0, c_size = 0;
+        std::unique_lock<std::mutex> ul(mtx);
+        for (uint64_t pos = first_c_pos; pos <= last_c_pos; ++pos) {
+          c_offset = buff_off[pos];
+          c_size = (pos < coords_num - 1) ? buff_off[pos + 1] - c_offset :
+                                            buff_str_size - c_offset;
+          r_count[pos] += str_coord_intersects(
+              c_offset, c_size, buff_str, range_start, range_end);
+        }
+      }
+    }
+
+    // We've calculated `r_count` for all coordinate values in
+    // the sorted dimension.
+    return;
+  }
+
+  // Here, we're computing on all other dimensions. After the first
+  // dimension, it is possible that coordinates have already been determined
+  // to not intersect with the range in an earlier dimension. For example,
+  // if `dim_idx` is 2 for a row-major cell order, we have already checked
+  // this coordinate for an intersection in dimension-0 and dimension-1. If
+  // either did not intersect a coordindate, its associated value in
+  // `prev_dim_r_count` will be zero. To optimize for the scenario where there
+  // are many contiguous zeroes, we can `memcmp` a large range of
+  // `prev_dim_r_count` values to avoid a comparison on each individual
+  // element.
+  //
+  // Often, a memory comparison for one byte is as quick as comparing
+  // 4 or 8 bytes. We will only get a benefit if we successfully
+  // find a `memcmp` on a much larger range.
+  const uint64_t zeroed_size = coords_num < 256 ? coords_num : 256;
+  for (uint64_t i = 0; i < coords_num; i += zeroed_size) {
+    const uint64_t partition_size =
+        (i < coords_num - zeroed_size) ? zeroed_size : coords_num - i;
+
+    // Check if all `r_bitmap` values are zero between `i` and
+    // `partition_size`.
+    if (use_prev_dim_result_count && prev_dim_r_count[i] == 0 &&
+        memcmp(
+            &prev_dim_r_count[i],
+            &prev_dim_r_count[i + 1],
+            (partition_size - 1) * sizeof(uint64_t)) == 0)
+      continue;
+
+    {
+      // Here, we know that there is at least one `1` value within the
+      // `prev_dim_r_count` values within this partition. We must check
+      // each value for an intersection.
+      uint64_t c_offset = 0, c_size = 0;
+      std::unique_lock<std::mutex> ul(mtx);
+      for (uint64_t pos = i; pos < i + partition_size; ++pos) {
+        if (use_prev_dim_result_count && prev_dim_r_count[pos] == 0)
+          continue;
+
+        c_offset = buff_off[pos];
+        c_size = (pos < coords_num - 1) ? buff_off[pos + 1] - c_offset :
+                                          buff_str_size - c_offset;
+        r_count[pos] += str_coord_intersects(
+            c_offset, c_size, buff_str, range_start, range_end);
+      }
+    }
+  }
+}
+
+template <class T>
+void ResultTile::compute_results_count_sparse(
+    const ResultTile* result_tile,
+    unsigned dim_idx,
+    const Range& range,
+    std::vector<uint64_t>* result_count,
+    bool use_prev_dim_result_count,
+    std::vector<uint64_t>* prev_dim_result_count,
+    const Layout& cell_order,
+    std::mutex& mtx) {
+  // We do not use `cell_order` for this template type.
+  (void)cell_order;
+
+  // For easy reference.
+  auto coords_num = result_tile->cell_num();
+  auto r = (const T*)range.data();
+  auto stores_zipped_coords = result_tile->stores_zipped_coords();
+  auto dim_num = result_tile->domain()->dim_num();
+  auto& r_count = (*result_count);
+  auto& prev_dim_r_count = (*prev_dim_result_count);
+
+  // Variables for the loop over `coords_num`.
+  T c;
+  const T& r0 = r[0];
+  const T& r1 = r[1];
+
+  // Handle separate coordinate tiles
+  if (!stores_zipped_coords) {
+    const auto& coord_tile = std::get<0>(result_tile->coord_tile(dim_idx));
+    Buffer* const buffer = coord_tile.buffer();
+    const T* const coords = static_cast<const T*>(buffer->data());
+    {
+      std::unique_lock<std::mutex> ul(mtx);
+      for (uint64_t pos = 0; pos < coords_num; ++pos) {
+        c = coords[pos];
+        bool has_prev_res =
+            !use_prev_dim_result_count || prev_dim_r_count[pos] > 0;
+        if (has_prev_res && c >= r0 && c <= r1)
+          r_count[pos]++;
+      }
+    }
+
+    return;
+  }
+
+  // Handle zipped coordinates tile
+  assert(stores_zipped_coords);
+  const auto& coords_tile = result_tile->zipped_coords_tile();
+  Buffer* const buffer = coords_tile.buffer();
+  const T* const coords = static_cast<const T*>(buffer->data());
+  {
+    std::unique_lock<std::mutex> ul(mtx);
+    for (uint64_t pos = 0; pos < coords_num; ++pos) {
+      c = coords[pos * dim_num + dim_idx];
+      bool has_prev_res =
+          !use_prev_dim_result_count || prev_dim_r_count[pos] > 0;
+      if (has_prev_res && c >= r0 && c <= r1)
+        r_count[pos]++;
+    }
+  }
+}
+
 Status ResultTile::compute_results_dense(
     unsigned dim_idx,
     const Range& range,
@@ -716,6 +948,27 @@ Status ResultTile::compute_results_sparse(
   return Status::Ok();
 }
 
+Status ResultTile::compute_results_count_sparse(
+    unsigned dim_idx,
+    const Range& range,
+    std::vector<uint64_t>* result_count,
+    bool use_prev_dim_result_count,
+    std::vector<uint64_t>* prev_dim_result_count,
+    const Layout& cell_order,
+    std::mutex& mtx) const {
+  assert(compute_results_count_sparse_func_[dim_idx] != nullptr);
+  compute_results_count_sparse_func_[dim_idx](
+      this,
+      dim_idx,
+      range,
+      result_count,
+      use_prev_dim_result_count,
+      prev_dim_result_count,
+      cell_order,
+      mtx);
+  return Status::Ok();
+}
+
 /* ****************************** */
 /*         PRIVATE METHODS        */
 /* ****************************** */
@@ -724,48 +977,69 @@ void ResultTile::set_compute_results_func() {
   auto dim_num = domain_->dim_num();
   compute_results_dense_func_.resize(dim_num);
   compute_results_sparse_func_.resize(dim_num);
+  compute_results_count_sparse_func_.resize(dim_num);
   for (unsigned d = 0; d < dim_num; ++d) {
     auto dim = domain_->dimension(d);
     switch (dim->type()) {
       case Datatype::INT32:
         compute_results_dense_func_[d] = compute_results_dense<int32_t>;
         compute_results_sparse_func_[d] = compute_results_sparse<int32_t>;
+        compute_results_count_sparse_func_[d] =
+            compute_results_count_sparse<int32_t>;
         break;
       case Datatype::INT64:
         compute_results_dense_func_[d] = compute_results_dense<int64_t>;
         compute_results_sparse_func_[d] = compute_results_sparse<int64_t>;
+        compute_results_count_sparse_func_[d] =
+            compute_results_count_sparse<int64_t>;
         break;
       case Datatype::INT8:
         compute_results_dense_func_[d] = compute_results_dense<int8_t>;
         compute_results_sparse_func_[d] = compute_results_sparse<int8_t>;
+        compute_results_count_sparse_func_[d] =
+            compute_results_count_sparse<int8_t>;
         break;
       case Datatype::UINT8:
         compute_results_dense_func_[d] = compute_results_dense<uint8_t>;
         compute_results_sparse_func_[d] = compute_results_sparse<uint8_t>;
+        compute_results_count_sparse_func_[d] =
+            compute_results_count_sparse<uint8_t>;
         break;
       case Datatype::INT16:
         compute_results_dense_func_[d] = compute_results_dense<int16_t>;
         compute_results_sparse_func_[d] = compute_results_sparse<int16_t>;
+        compute_results_count_sparse_func_[d] =
+            compute_results_count_sparse<int16_t>;
         break;
       case Datatype::UINT16:
         compute_results_dense_func_[d] = compute_results_dense<uint16_t>;
         compute_results_sparse_func_[d] = compute_results_sparse<uint16_t>;
+        compute_results_count_sparse_func_[d] =
+            compute_results_count_sparse<uint16_t>;
         break;
       case Datatype::UINT32:
         compute_results_dense_func_[d] = compute_results_dense<uint32_t>;
         compute_results_sparse_func_[d] = compute_results_sparse<uint32_t>;
+        compute_results_count_sparse_func_[d] =
+            compute_results_count_sparse<uint32_t>;
         break;
       case Datatype::UINT64:
         compute_results_dense_func_[d] = compute_results_dense<uint64_t>;
         compute_results_sparse_func_[d] = compute_results_sparse<uint64_t>;
+        compute_results_count_sparse_func_[d] =
+            compute_results_count_sparse<uint64_t>;
         break;
       case Datatype::FLOAT32:
         compute_results_dense_func_[d] = compute_results_dense<float>;
         compute_results_sparse_func_[d] = compute_results_sparse<float>;
+        compute_results_count_sparse_func_[d] =
+            compute_results_count_sparse<float>;
         break;
       case Datatype::FLOAT64:
         compute_results_dense_func_[d] = compute_results_dense<double>;
         compute_results_sparse_func_[d] = compute_results_sparse<double>;
+        compute_results_count_sparse_func_[d] =
+            compute_results_count_sparse<double>;
         break;
       case Datatype::DATETIME_YEAR:
       case Datatype::DATETIME_MONTH:
@@ -791,14 +1065,19 @@ void ResultTile::set_compute_results_func() {
       case Datatype::TIME_AS:
         compute_results_dense_func_[d] = compute_results_dense<int64_t>;
         compute_results_sparse_func_[d] = compute_results_sparse<int64_t>;
+        compute_results_count_sparse_func_[d] =
+            compute_results_count_sparse<int64_t>;
         break;
       case Datatype::STRING_ASCII:
         compute_results_dense_func_[d] = nullptr;
         compute_results_sparse_func_[d] = compute_results_sparse<char>;
+        compute_results_count_sparse_func_[d] =
+            compute_results_count_sparse<char>;
         break;
       default:
         compute_results_dense_func_[d] = nullptr;
         compute_results_sparse_func_[d] = nullptr;
+        compute_results_count_sparse_func_[d] = nullptr;
         break;
     }
   }

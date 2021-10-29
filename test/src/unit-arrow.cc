@@ -385,6 +385,10 @@ void test_for_column_size(size_t col_size) {
           static_cast<void*>(vec_array.at(i)),
           static_cast<void*>(vec_schema.at(i)));
 
+      // Currently we do not export any metadata. Ensure
+      // that the field is null as it should be. SC-11522
+      CHECK(vec_schema.at(i)->metadata == nullptr);
+
       ds_import(
           pa_name,
           py::int_((ptrdiff_t)(vec_array.at(i))),
