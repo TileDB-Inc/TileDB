@@ -668,6 +668,9 @@ class Config {
    *    "2": warn, "3": info "4": debug, "5": trace <br>
    *    **Default**: "1" if --enable-verbose bootstrap flag is provided,
    *    "0" otherwise <br>
+   * - `config.logging_format` <br>
+   *    The logging format configured (DEFAULT or JSON)
+   *    **Default**: "DEFAULT"
    * - `rest.server_address` <br>
    *    URL for REST server to use for remote arrays. <br>
    *    **Default**: "https://api.tiledb.com"

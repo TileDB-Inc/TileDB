@@ -88,6 +88,9 @@ class Config {
    */
   static const std::string CONFIG_LOGGING_LEVEL;
 
+  /** The default format for logging. */
+  static const std::string CONFIG_LOGGING_DEFAULT_FORMAT;
+
   /**
    * The key for encrypted arrays.
    *  */

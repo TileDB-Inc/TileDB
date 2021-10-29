@@ -219,6 +219,7 @@ void check_save_to_file() {
   // an std::[ordered_]map is where the comparison values saved to file
   // come from.
   ss << "config.env_var_prefix TILEDB_\n";
+  ss << "config.logging_format DEFAULT\n";
 #ifdef TILEDB_VERBOSE
   ss << "config.logging_level 1\n";
 #else
@@ -522,6 +523,9 @@ TEST_CASE("C API: Test config iter", "[capi][config]") {
   rc = tiledb_config_set(config, "config.logging_level", "2", &error);
   CHECK(rc == TILEDB_OK);
   CHECK(error == nullptr);
+  rc = tiledb_config_set(config, "config.logging_format", "JSON", &error);
+  CHECK(rc == TILEDB_OK);
+  CHECK(error == nullptr);
   rc = tiledb_config_set(config, "sm.tile_cache_size", "100", &error);
   CHECK(rc == TILEDB_OK);
   CHECK(error == nullptr);
@@ -546,6 +550,7 @@ TEST_CASE("C API: Test config iter", "[capi][config]") {
   std::map<std::string, std::string> all_param_values;
   all_param_values["config.env_var_prefix"] = "TILEDB_";
   all_param_values["config.logging_level"] = "2";
+  all_param_values["config.logging_format"] = "JSON";
   all_param_values["rest.server_address"] = "https://api.tiledb.com";
   all_param_values["rest.server_serialization_format"] = "CAPNP";
   all_param_values["rest.http_compressor"] = "any";

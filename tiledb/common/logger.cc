@@ -57,9 +57,6 @@ Logger::Logger(const std::string& name)
     logger_ = spdlog::stdout_color_mt(name_);
 #endif
   }
-  // fixme: read format from config
-  fmt_ = Logger::Format::JSON;
-  set_format(fmt_);
   logger_->set_level(spdlog::level::err);
 }
 
@@ -271,10 +268,8 @@ std::string Logger::add_tag(const std::string& tag, uint64_t id) {
 /*              GLOBAL               */
 /* ********************************* */
 
-Logger& global_logger() {
-  // TODO : format from config and format tha right way
-  // auto name = (fmt == Logger::Format::JSON) ? "\"Global\":\"\"" : "Global: ";
-  auto name = "\"Global\":\"\"";
+Logger& global_logger(Logger::Format fmt) {
+  auto name = (fmt == Logger::Format::JSON) ? "\"Global\":\"1\"" : "Global: 1";
   static Logger l(name);
   return l;
 }

@@ -1732,22 +1732,17 @@ Status StorageManager::init(const Config* config) {
         "Cannot set logger level; Unsupported level:" + std::to_string(level) +
         "set in configuration"));
   }
-  /*
-  uint32_t format = static_cast<unsigned int>(Logger::Format::DEFAULT);
-  RETURN_NOT_OK(config_.get<uint32_t>("config.logging.format", &level, &found));
-  assert(found);
-  if (format > static_cast<unsigned int>(Logger::Format::JSON)) {
-    return logger_->status(Status::StorageManagerError(
-        "Cannot set logger format; Unsupported format:" + std::to_string(level)
-  + "set in configuration"));
-  }
 
-  global_logger().set_format(static_cast<Logger::Format>(format));
-  logger()->set_format(static_cast<Logger::Format>(format));
-  */
+  const char* format_conf;
+  RETURN_NOT_OK(config_.get("config.logging_format", &format_conf));
+  assert(format_conf != nullptr);
+  Logger::Format format = Logger::Format::DEFAULT;
+  RETURN_NOT_OK(logger_format_from_string(format_conf, &format));
 
   global_logger().set_level(static_cast<Logger::Level>(level));
+  global_logger().set_format(static_cast<Logger::Format>(format));
   logger_->set_level(static_cast<Logger::Level>(level));
+  logger_->set_format(static_cast<Logger::Format>(format));
 
   // Get config params
   uint64_t tile_cache_size = 0;

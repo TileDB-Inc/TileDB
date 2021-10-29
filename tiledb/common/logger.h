@@ -350,7 +350,20 @@ class Logger {
 /* ********************************* */
 
 /** Global logger function. */
-Logger& global_logger();
+Logger& global_logger(Logger::Format fmt = Logger::Format::DEFAULT);
+
+/** Returns the serialization type given a string representation. */
+inline Status logger_format_from_string(
+    const std::string& format_type_str, Logger::Format* format_type) {
+  if (format_type_str == "DEFAULT")
+    *format_type = Logger::Format::DEFAULT;
+  else if (format_type_str == "JSON")
+    *format_type = Logger::Format::JSON;
+  else {
+    return Status::Error("Unsupported logging format: " + format_type_str);
+  }
+  return Status::Ok();
+}
 
 }  // namespace common
 }  // namespace tiledb
