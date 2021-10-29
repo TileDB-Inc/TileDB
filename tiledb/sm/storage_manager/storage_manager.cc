@@ -928,6 +928,95 @@ Status StorageManager::array_evolve_schema(
   return Status::Ok();
 }
 
+Status StorageManager::array_upgrade_version(
+    const URI& array_uri, const Config* config) {
+  // Check if array exists
+  bool exists = false;
+  RETURN_NOT_OK(is_array(array_uri, &exists));
+  if (!exists)
+    return LOG_STATUS(Status::StorageManagerError(
+        std::string("Cannot upgrade array; Array '") + array_uri.c_str() +
+        "' does not exist"));
+
+  // If 'config' is unset, use the 'config_' that was set during initialization
+  // of this StorageManager instance.
+  if (!config) {
+    config = &config_;
+  }
+
+  // Get encryption key from config
+  bool found = false;
+  std::string encryption_key_from_cfg =
+      config_.get("sm.encryption_key", &found);
+  assert(found);
+  std::string encryption_type_from_cfg =
+      config_.get("sm.encryption_type", &found);
+  assert(found);
+  auto [st, etc] = encryption_type_enum(encryption_type_from_cfg);
+  RETURN_NOT_OK(st);
+  EncryptionType encryption_type_cfg = etc.value();
+
+  EncryptionKey encryption_key_cfg;
+  if (encryption_key_from_cfg.empty()) {
+    RETURN_NOT_OK(encryption_key_cfg.set_key(encryption_type_cfg, nullptr, 0));
+  } else {
+    uint32_t key_length = 0;
+    if (EncryptionKey::is_valid_key_length(
+            encryption_type_cfg,
+            static_cast<uint32_t>(encryption_key_from_cfg.size()))) {
+      const UnitTestConfig& unit_test_cfg = UnitTestConfig::instance();
+      if (unit_test_cfg.array_encryption_key_length.is_set()) {
+        key_length = unit_test_cfg.array_encryption_key_length.get();
+      } else {
+        key_length = static_cast<uint32_t>(encryption_key_from_cfg.size());
+      }
+    }
+    RETURN_NOT_OK(encryption_key_cfg.set_key(
+        encryption_type_cfg,
+        (const void*)encryption_key_from_cfg.c_str(),
+        key_length));
+  }
+
+  ArraySchema* array_schema = (ArraySchema*)nullptr;
+  RETURN_NOT_OK(
+      load_array_schema(array_uri, encryption_key_cfg, &array_schema));
+
+  if (array_schema->version() < constants::format_version) {
+    Status st = array_schema->generate_uri();
+    if (!st.ok()) {
+      LOG_STATUS(st);
+      // Clean up
+      tdb_delete(array_schema);
+      return st;
+    }
+    array_schema->set_version(constants::format_version);
+
+    // Create array schema directory if necessary
+    URI array_schema_folder_uri =
+        array_uri.join_path(constants::array_schema_folder_name);
+    st = vfs_->create_dir(array_schema_folder_uri);
+    if (!st.ok()) {
+      LOG_STATUS(st);
+      // Clean up
+      tdb_delete(array_schema);
+      return st;
+    }
+
+    st = store_array_schema(array_schema, encryption_key_cfg);
+    if (!st.ok()) {
+      LOG_STATUS(st);
+      // Clean up
+      tdb_delete(array_schema);
+      return st;
+    }
+  }
+
+  // Clean up
+  tdb_delete(array_schema);
+
+  return Status::Ok();
+}
+
 OpenArrayMemoryTracker* StorageManager::array_memory_tracker(
     const URI& array_uri, bool top_level) {
   // Lock mutex
