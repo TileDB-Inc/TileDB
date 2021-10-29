@@ -104,10 +104,47 @@ index dc3efae4ca..7d8d6ec5ab 100644
              virtual void* GetClientModule() const = 0;
  
 diff --git a/aws-cpp-sdk-core/source/http/windows/WinHttpSyncHttpClient.cpp b/aws-cpp-sdk-core/source/http/windows/WinHttpSyncHttpClient.cpp
-index d7f4fc7c9f..d00742d633 100644
+index d7f4fc7c9f..7695d8e23e 100644
 --- a/aws-cpp-sdk-core/source/http/windows/WinHttpSyncHttpClient.cpp
 +++ b/aws-cpp-sdk-core/source/http/windows/WinHttpSyncHttpClient.cpp
-@@ -295,14 +295,22 @@ bool WinHttpSyncHttpClient::DoQueryHeaders(void* hHttpRequest, std::shared_ptr<H
+@@ -207,17 +207,23 @@ uint64_t WinHttpSyncHttpClient::DoWriteData(void* hHttpRequest, char* streamBuff
+ 
+         if (!WinHttpWriteData(hHttpRequest, chunkSizeHexString.c_str(), (DWORD)chunkSizeHexString.size(), &bytesWritten))
+         {
++          m_lastWinError = GetLastError();
++          std::cout << "DoWriteData (A) lastErr " << m_lastWinError << std::endl;
+             return totalBytesWritten;
+         }
+         totalBytesWritten += bytesWritten;
+         if (!WinHttpWriteData(hHttpRequest, streamBuffer, (DWORD)bytesRead, &bytesWritten))
+         {
+-            return totalBytesWritten;
++          m_lastWinError = GetLastError();
++          std::cout << "DoWriteData (B) lastErr " << m_lastWinError << std::endl;
++          return totalBytesWritten;
+         }
+         totalBytesWritten += bytesWritten;
+         if (!WinHttpWriteData(hHttpRequest, CRLF, (DWORD)(sizeof(CRLF) - 1), &bytesWritten))
+         {
+-            return totalBytesWritten;
++          m_lastWinError = GetLastError();
++          std::cout << "DoWriteData (C) lastErr " << m_lastWinError << std::endl;
++          return totalBytesWritten;
+         }
+         totalBytesWritten += bytesWritten;
+     }
+@@ -225,7 +231,9 @@ uint64_t WinHttpSyncHttpClient::DoWriteData(void* hHttpRequest, char* streamBuff
+     {
+         if (!WinHttpWriteData(hHttpRequest, streamBuffer, (DWORD)bytesRead, &bytesWritten))
+         {
+-            return totalBytesWritten;
++          m_lastWinError = GetLastError();
++          std::cout << "DoWriteData (D) lastErr " << m_lastWinError << std::endl;
++          return totalBytesWritten;
+         }
+         totalBytesWritten += bytesWritten;
+     }
+@@ -295,14 +303,22 @@ bool WinHttpSyncHttpClient::DoQueryHeaders(void* hHttpRequest, std::shared_ptr<H
      return queryResult == TRUE;
  }
  
