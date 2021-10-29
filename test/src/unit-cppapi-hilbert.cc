@@ -1441,7 +1441,7 @@ TEST_CASE(
 }
 
 TEST_CASE(
-    "C++ API: Test Hilbert, 2d, floa32, multiple fragments, read in "
+    "C++ API: Test Hilbert, 2d, float32, multiple fragments, read in "
     "global order",
     "[cppapi][hilbert][2d][float32][read][multiple-fragments][global-"
     "order]") {
