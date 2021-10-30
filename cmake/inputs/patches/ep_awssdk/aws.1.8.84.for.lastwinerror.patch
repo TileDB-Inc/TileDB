@@ -132,7 +132,7 @@ index dc3efae4ca..c41fd1bfcc 100644
              void* m_openHandle;
              //we need control over the order in which this gets cleaned up
 diff --git a/aws-cpp-sdk-core/source/http/windows/WinHttpSyncHttpClient.cpp b/aws-cpp-sdk-core/source/http/windows/WinHttpSyncHttpClient.cpp
-index d7f4fc7c9f..131355bd20 100644
+index d7f4fc7c9f..a93c4a2958 100644
 --- a/aws-cpp-sdk-core/source/http/windows/WinHttpSyncHttpClient.cpp
 +++ b/aws-cpp-sdk-core/source/http/windows/WinHttpSyncHttpClient.cpp
 @@ -186,7 +186,7 @@ void* WinHttpSyncHttpClient::OpenRequest(const std::shared_ptr<HttpRequest>& req
@@ -190,7 +190,7 @@ index d7f4fc7c9f..131355bd20 100644
          }
          totalBytesWritten += bytesWritten;
      }
-@@ -233,21 +241,46 @@ uint64_t WinHttpSyncHttpClient::DoWriteData(void* hHttpRequest, char* streamBuff
+@@ -233,21 +241,47 @@ uint64_t WinHttpSyncHttpClient::DoWriteData(void* hHttpRequest, char* streamBuff
      return totalBytesWritten;
  }
  
@@ -221,7 +221,8 @@ index d7f4fc7c9f..131355bd20 100644
 +  };
 +  auto priorcb = WinHttpSetStatusCallback(httpRequest, cb, (WINHTTP_CALLBACK_FLAG_ALL_COMPLETIONS | WINHTTP_CALLBACK_FLAG_ALL_NOTIFICATIONS), NULL);
 +  if (priorcb == WINHTTP_INVALID_STATUS_CALLBACK) {
-+    std::cout << "DoReceiveResponse, error setting callback!!!" << std::endl;
++    auto le = GetLastError();
++    std::cout << "DoReceiveResponse, error setting callback!!! GetLastError() " << le << "(0x" << std::hex << le << std::dec << std::endl;
 +  }
 +  auto rval = WinHttpReceiveResponse(httpRequest, nullptr);
 +  if (!rval) {
@@ -240,7 +241,7 @@ index d7f4fc7c9f..131355bd20 100644
  }
  
  bool WinHttpSyncHttpClient::DoQueryHeaders(void* hHttpRequest, std::shared_ptr<HttpResponse>& response, Aws::StringStream& ss, uint64_t& read) const
-@@ -295,14 +328,22 @@ bool WinHttpSyncHttpClient::DoQueryHeaders(void* hHttpRequest, std::shared_ptr<H
+@@ -295,14 +329,22 @@ bool WinHttpSyncHttpClient::DoQueryHeaders(void* hHttpRequest, std::shared_ptr<H
      return queryResult == TRUE;
  }
  
