@@ -296,7 +296,7 @@ index 1d6f606305..655536383c 100644
      return (HttpSendRequestEx(hHttpRequest, NULL, NULL, 0, 0) != 0);
  }
 diff --git a/aws-cpp-sdk-core/source/http/windows/WinSyncHttpClient.cpp b/aws-cpp-sdk-core/source/http/windows/WinSyncHttpClient.cpp
-index 2b644c8ecf..8032f1ee22 100644
+index 2b644c8ecf..8440459197 100644
 --- a/aws-cpp-sdk-core/source/http/windows/WinSyncHttpClient.cpp
 +++ b/aws-cpp-sdk-core/source/http/windows/WinSyncHttpClient.cpp
 @@ -64,7 +64,7 @@ void* WinSyncHttpClient::AllocateWindowsHttpRequest(const std::shared_ptr<HttpRe
@@ -356,14 +356,19 @@ index 2b644c8ecf..8032f1ee22 100644
                  }
                  else if(writeLimiter)
                  {
-@@ -125,10 +141,24 @@ bool WinSyncHttpClient::StreamPayloadToRequest(const std::shared_ptr<HttpRequest
+@@ -125,10 +141,29 @@ bool WinSyncHttpClient::StreamPayloadToRequest(const std::shared_ptr<HttpRequest
  
              if(!payloadStream->good())
              {
 -                done = true;
 +              if (payloadStream->fail() || payloadStream->bad()) {
 +                lastErr2 = LastWinError();
-+                failurepoint |= 0x04;
++                if (payloadStream->fail()) {
++                  failurepoint |= 0x04;
++                }
++                else if (payloadStream->bad()) {
++                  failurepoint |= 0x40;
++                }
 +              }
 +              //else, must be ->eof()
 +              done = true;
@@ -383,7 +388,7 @@ index 2b644c8ecf..8032f1ee22 100644
          }
  
          if (success && isChunked)
-@@ -136,7 +166,9 @@ bool WinSyncHttpClient::StreamPayloadToRequest(const std::shared_ptr<HttpRequest
+@@ -136,7 +171,9 @@ bool WinSyncHttpClient::StreamPayloadToRequest(const std::shared_ptr<HttpRequest
              bytesWritten = FinalizeWriteData(hHttpRequest);
              if (!bytesWritten)
              {
@@ -394,7 +399,7 @@ index 2b644c8ecf..8032f1ee22 100644
              }
              else if (writeLimiter)
              {
-@@ -151,7 +183,19 @@ bool WinSyncHttpClient::StreamPayloadToRequest(const std::shared_ptr<HttpRequest
+@@ -151,7 +188,19 @@ bool WinSyncHttpClient::StreamPayloadToRequest(const std::shared_ptr<HttpRequest
      if(success)
      {
          success = DoReceiveResponse(hHttpRequest);
@@ -402,19 +407,19 @@ index 2b644c8ecf..8032f1ee22 100644
 +          lastErr5 = LastWinError();
 +          failurepoint |= 0x20;
 +        }
-+    }
+     }
 +
 +    if (!success || failurepoint) {
 +      auto time_now = std::chrono::system_clock::now();
 +      auto all_dur = std::chrono::duration_cast<std::chrono::milliseconds>(time_now - start_all);
 +      std::cout << "StreamPayloadToRequest, failurepoint 0x" << std::hex << failurepoint << " cnt_iters " << std::dec << cnt_iters << " dur " << all_dur.count() << "ms" << std::endl;
 +      std::cout << "StreamPayloadToRequest, last errs " << lastErr0 << ", " << lastErr1 << ", " << lastErr2 << ", " << lastErr3 << ", " << lastErr4 << ", " << lastErr5 << std::endl;
-     }
++    }
 +
      return success;
  }
  
-@@ -256,7 +300,7 @@ bool WinSyncHttpClient::BuildSuccessResponse(const std::shared_ptr<HttpRequest>&
+@@ -256,7 +305,7 @@ bool WinSyncHttpClient::BuildSuccessResponse(const std::shared_ptr<HttpRequest>&
  
  std::shared_ptr<HttpResponse> WinSyncHttpClient::MakeRequest(const std::shared_ptr<HttpRequest>& request,
          Aws::Utils::RateLimits::RateLimiterInterface* readLimiter,
@@ -423,7 +428,7 @@ index 2b644c8ecf..8032f1ee22 100644
  {
  	//we URL encode right before going over the wire to avoid double encoding problems with the signer.
  	URI& uriRef = request->GetUri();
-@@ -285,7 +329,8 @@ std::shared_ptr<HttpResponse> WinSyncHttpClient::MakeRequest(const std::shared_p
+@@ -285,7 +334,8 @@ std::shared_ptr<HttpResponse> WinSyncHttpClient::MakeRequest(const std::shared_p
  
          AddHeadersToRequest(request, hHttpRequest);
          OverrideOptionsOnRequestHandle(hHttpRequest);
@@ -433,7 +438,7 @@ index 2b644c8ecf..8032f1ee22 100644
          {
              success = BuildSuccessResponse(request, response, hHttpRequest, readLimiter);
          }
-@@ -293,6 +338,16 @@ std::shared_ptr<HttpResponse> WinSyncHttpClient::MakeRequest(const std::shared_p
+@@ -293,6 +343,16 @@ std::shared_ptr<HttpResponse> WinSyncHttpClient::MakeRequest(const std::shared_p
          {
              response->SetClientErrorType(CoreErrors::NETWORK_CONNECTION);
              response->SetClientErrorMessage("Encountered network error when sending http request");
