@@ -132,7 +132,7 @@ index dc3efae4ca..c41fd1bfcc 100644
              void* m_openHandle;
              //we need control over the order in which this gets cleaned up
 diff --git a/aws-cpp-sdk-core/source/http/windows/WinHttpSyncHttpClient.cpp b/aws-cpp-sdk-core/source/http/windows/WinHttpSyncHttpClient.cpp
-index d7f4fc7c9f..658d56a7ee 100644
+index d7f4fc7c9f..131355bd20 100644
 --- a/aws-cpp-sdk-core/source/http/windows/WinHttpSyncHttpClient.cpp
 +++ b/aws-cpp-sdk-core/source/http/windows/WinHttpSyncHttpClient.cpp
 @@ -186,7 +186,7 @@ void* WinHttpSyncHttpClient::OpenRequest(const std::shared_ptr<HttpRequest>& req
@@ -190,7 +190,7 @@ index d7f4fc7c9f..658d56a7ee 100644
          }
          totalBytesWritten += bytesWritten;
      }
-@@ -233,21 +241,28 @@ uint64_t WinHttpSyncHttpClient::DoWriteData(void* hHttpRequest, char* streamBuff
+@@ -233,21 +241,46 @@ uint64_t WinHttpSyncHttpClient::DoWriteData(void* hHttpRequest, char* streamBuff
      return totalBytesWritten;
  }
  
@@ -213,16 +213,34 @@ index d7f4fc7c9f..658d56a7ee 100644
  {
 -    return (WinHttpReceiveResponse(httpRequest, nullptr) != 0);
 +  //return (WinHttpReceiveResponse(httpRequest, nullptr) != 0);
++  static std::vector<DWORD> cbstatsrecvd;
++  cbstatsrecvd.clear();
++  auto cb = +[](HINTERNET hInternet, DWORD_PTR dwContext, DWORD dwInternetStatus, LPVOID lpvStatusInformation, DWORD dwStatusInformationLength) ->void {
++    (void)hInternet, (void)dwContext, (void)lpvStatusInformation, (void)dwStatusInformationLength;
++    cbstatsrecvd.emplace_back(dwInternetStatus);
++  };
++  auto priorcb = WinHttpSetStatusCallback(httpRequest, cb, (WINHTTP_CALLBACK_FLAG_ALL_COMPLETIONS | WINHTTP_CALLBACK_FLAG_ALL_NOTIFICATIONS), NULL);
++  if (priorcb == WINHTTP_INVALID_STATUS_CALLBACK) {
++    std::cout << "DoReceiveResponse, error setting callback!!!" << std::endl;
++  }
 +  auto rval = WinHttpReceiveResponse(httpRequest, nullptr);
 +  if (!rval) {
 +    m_lastWinError = GetLastError();
 +    std::cout << "DoReceiveResponse lastErr " << m_lastWinError << std::endl;
++    std::cout << "(DoReceiveResponse, cb values, cnt " << cbstatsrecvd.size() << std::endl;
++    for (auto ui = 0u; ui < cbstatsrecvd.size(); ++ui) {
++      std::cout << cbstatsrecvd[ui] << std::endl;
++    }
++    std::cout << ")" << std::endl;
 +  }
++  //While the callback was returned, we don't know what the notifications selected with it were to reinstate???
++  WinHttpSetStatusCallback(httpRequest, priorcb, (WINHTTP_CALLBACK_FLAG_ALL_COMPLETIONS | WINHTTP_CALLBACK_FLAG_ALL_NOTIFICATIONS), NULL);
++
 +  return rval != 0;
  }
  
  bool WinHttpSyncHttpClient::DoQueryHeaders(void* hHttpRequest, std::shared_ptr<HttpResponse>& response, Aws::StringStream& ss, uint64_t& read) const
-@@ -295,14 +310,22 @@ bool WinHttpSyncHttpClient::DoQueryHeaders(void* hHttpRequest, std::shared_ptr<H
+@@ -295,14 +328,22 @@ bool WinHttpSyncHttpClient::DoQueryHeaders(void* hHttpRequest, std::shared_ptr<H
      return queryResult == TRUE;
  }
  
