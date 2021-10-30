@@ -136,7 +136,10 @@ enum class StatusCode : char {
   ThreadPoolError,
   FragmentInfoError,
   DenseTilerError,
-  QueryConditionError
+  QueryConditionError,
+  TaskError,
+  TaskGraphError,
+  TaskGraphExecutorError
 };
 
 class Status {
@@ -449,6 +452,22 @@ class Status {
   /** Return a QueryConditionError error class Status with a given message **/
   static Status QueryConditionError(const std::string& msg) {
     return Status(StatusCode::QueryConditionError, msg);
+  }
+
+  /** Return a TaskError error class Status with a given message **/
+  static Status TaskError(const std::string& msg) {
+    return Status(StatusCode::TaskError, msg);
+  }
+
+  /** Return a TaskGraphError error class Status with a given message **/
+  static Status TaskGraphError(const std::string& msg) {
+    return Status(StatusCode::TaskGraphError, msg);
+  }
+
+  /** Return a TaskGraphExecutorError error class Status with a given message
+   * **/
+  static Status TaskGraphExecutorError(const std::string& msg) {
+    return Status(StatusCode::TaskGraphExecutorError, msg);
   }
 
   /** Returns true iff the status indicates success **/

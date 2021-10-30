@@ -176,6 +176,10 @@ class tiledb_shared_ptr {
     return sp_ != rhs.sp_;
   }
 
+  bool operator<(const tiledb_shared_ptr& rhs) const {
+    return sp_ < rhs.sp_;
+  }
+
   void swap(tiledb_shared_ptr& rhs) noexcept {
     sp_.swap(rhs.sp_);
   }

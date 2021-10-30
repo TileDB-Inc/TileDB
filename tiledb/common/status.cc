@@ -235,6 +235,15 @@ std::string Status::code_to_string() const {
     case StatusCode::QueryConditionError:
       type = "[TileDB::QueryCondition] Error";
       break;
+    case StatusCode::TaskError:
+      type = "[TileDB::Task] Error";
+      break;
+    case StatusCode::TaskGraphError:
+      type = "[TileDB::TaskGraph] Error";
+      break;
+    case StatusCode::TaskGraphExecutorError:
+      type = "[TileDB::TaskGraphExecutor] Error";
+      break;
     default:
       type = "[TileDB::?] Error:";
   }

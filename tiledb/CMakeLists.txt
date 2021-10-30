@@ -105,6 +105,12 @@ set(TILEDB_CORE_SOURCES
   ${TILEDB_CORE_INCLUDE_DIR}/tiledb/common/status.cc
   ${TILEDB_CORE_INCLUDE_DIR}/tiledb/common/thread_pool.cc
   ${TILEDB_CORE_INCLUDE_DIR}/tiledb/common/interval/interval.cc
+  ${TILEDB_CORE_INCLUDE_DIR}/tiledb/common/task_graph/task_status.cc
+  ${TILEDB_CORE_INCLUDE_DIR}/tiledb/common/task_graph/task_stats.cc
+  ${TILEDB_CORE_INCLUDE_DIR}/tiledb/common/task_graph/task_log.cc
+  ${TILEDB_CORE_INCLUDE_DIR}/tiledb/common/task_graph/task.cc
+  ${TILEDB_CORE_INCLUDE_DIR}/tiledb/common/task_graph/task_graph.cc
+  ${TILEDB_CORE_INCLUDE_DIR}/tiledb/common/task_graph/task_graph_executor.cc
   ${TILEDB_CORE_INCLUDE_DIR}/tiledb/sm/array/array.cc
   ${TILEDB_CORE_INCLUDE_DIR}/tiledb/sm/array_schema/array_schema.cc
   ${TILEDB_CORE_INCLUDE_DIR}/tiledb/sm/array_schema/array_schema_evolution.cc
