@@ -132,7 +132,7 @@ index dc3efae4ca..c41fd1bfcc 100644
              void* m_openHandle;
              //we need control over the order in which this gets cleaned up
 diff --git a/aws-cpp-sdk-core/source/http/windows/WinHttpSyncHttpClient.cpp b/aws-cpp-sdk-core/source/http/windows/WinHttpSyncHttpClient.cpp
-index d7f4fc7c9f..a93c4a2958 100644
+index d7f4fc7c9f..9b83fd1811 100644
 --- a/aws-cpp-sdk-core/source/http/windows/WinHttpSyncHttpClient.cpp
 +++ b/aws-cpp-sdk-core/source/http/windows/WinHttpSyncHttpClient.cpp
 @@ -186,7 +186,7 @@ void* WinHttpSyncHttpClient::OpenRequest(const std::shared_ptr<HttpRequest>& req
@@ -190,7 +190,7 @@ index d7f4fc7c9f..a93c4a2958 100644
          }
          totalBytesWritten += bytesWritten;
      }
-@@ -233,21 +241,47 @@ uint64_t WinHttpSyncHttpClient::DoWriteData(void* hHttpRequest, char* streamBuff
+@@ -233,21 +241,99 @@ uint64_t WinHttpSyncHttpClient::DoWriteData(void* hHttpRequest, char* streamBuff
      return totalBytesWritten;
  }
  
@@ -213,35 +213,87 @@ index d7f4fc7c9f..a93c4a2958 100644
  {
 -    return (WinHttpReceiveResponse(httpRequest, nullptr) != 0);
 +  //return (WinHttpReceiveResponse(httpRequest, nullptr) != 0);
++#if 0
 +  static std::vector<DWORD> cbstatsrecvd;
 +  cbstatsrecvd.clear();
 +  auto cb = +[](HINTERNET hInternet, DWORD_PTR dwContext, DWORD dwInternetStatus, LPVOID lpvStatusInformation, DWORD dwStatusInformationLength) ->void {
 +    (void)hInternet, (void)dwContext, (void)lpvStatusInformation, (void)dwStatusInformationLength;
 +    cbstatsrecvd.emplace_back(dwInternetStatus);
 +  };
++  //Attempts to set failing with 12019 (0x2ef3)
 +  auto priorcb = WinHttpSetStatusCallback(httpRequest, cb, (WINHTTP_CALLBACK_FLAG_ALL_COMPLETIONS | WINHTTP_CALLBACK_FLAG_ALL_NOTIFICATIONS), NULL);
 +  if (priorcb == WINHTTP_INVALID_STATUS_CALLBACK) {
 +    auto le = GetLastError();
-+    std::cout << "DoReceiveResponse, error setting callback!!! GetLastError() " << le << "(0x" << std::hex << le << std::dec << std::endl;
++    std::cout << "DoReceiveResponse, error setting callback!!! GetLastError() " << le << "(0x" << std::hex << le << ")" << std::dec << std::endl;
 +  }
++#endif
 +  auto rval = WinHttpReceiveResponse(httpRequest, nullptr);
 +  if (!rval) {
 +    m_lastWinError = GetLastError();
 +    std::cout << "DoReceiveResponse lastErr " << m_lastWinError << std::endl;
-+    std::cout << "(DoReceiveResponse, cb values, cnt " << cbstatsrecvd.size() << std::endl;
-+    for (auto ui = 0u; ui < cbstatsrecvd.size(); ++ui) {
-+      std::cout << cbstatsrecvd[ui] << std::endl;
++    {
++      // based on https://social.msdn.microsoft.com/Forums/windowsdesktop/en-US/4a8f7be5-5e15-4213-a7bb-ddf424a954e6/winhttpsendrequest-ends-with-12002-errorhttptimeout-after-21-seconds-no-matter-what-timeout
++      DWORD timeoutval = 0;
++      //TBD: prototypes seem to show 'int' for WinHttpSetTimeouts(), with comments about 'negative' being bad I think...
++      //yet the source example using DWORD (unsigned?) variables...
++      DWORD size = sizeof(DWORD);
++      //TBD: hSession vs httpRequest ??? 
++      auto reqok = WinHttpQueryOption(httpRequest, WINHTTP_OPTION_RESOLVE_TIMEOUT, &timeoutval, &size);
++
++      if (reqok) {
++        printf("WINHTTP_OPTION_RESOLVE_TIMEOUT: %d\n", timeoutval);
++      }
++      else {
++        auto le = GetLastError();
++        printf("err %d (0x%x) retrieving WINHTTP_OPTION_RESOLVE_TIMEOUT", le, le);
++      }
++
++      reqok = WinHttpQueryOption(httpRequest, WINHTTP_OPTION_CONNECT_TIMEOUT, &timeoutval, &size);
++
++      if (reqok) {
++        printf("WINHTTP_OPTION_CONNECT_TIMEOUT: %d\n", timeoutval);
++      }
++      else {
++        auto le = GetLastError();
++        printf("err %d (0x%x) retrieving WINHTTP_OPTION_CONNECT_TIMEOUT", le, le);
++      }
++
++      reqok = WinHttpQueryOption(httpRequest, WINHTTP_OPTION_SEND_TIMEOUT, &timeoutval, &size);
++
++      if (reqok) {
++        printf("WINHTTP_OPTION_SEND_TIMEOUT: %d\n", timeoutval);
++      }
++      else {
++        auto le = GetLastError();
++        printf("err %d (0x%x) retrieving WINHTTP_OPTION_SEND_TIMEOUT", le, le);
++      }
++
++      reqok = WinHttpQueryOption(httpRequest, WINHTTP_OPTION_RECEIVE_TIMEOUT, &timeoutval, &size);
++
++      if (reqok) {
++        printf("WINHTTP_OPTION_RECEIVE_TIMEOUT: %d\n", timeoutval);
++      }
++      else {
++        auto le = GetLastError();
++        printf("err %d (0x%x) retrieving WINHTTP_OPTION_RECEIVE_TIMEOUT", le, le);
++      }
 +    }
-+    std::cout << ")" << std::endl;
++    //    std::cout << "(DoReceiveResponse, cb values, cnt " << cbstatsrecvd.size() << std::endl;
++//    for (auto ui = 0u; ui < cbstatsrecvd.size(); ++ui) {
++//      std::cout << cbstatsrecvd[ui] << std::endl;
++//    }
++//    std::cout << ")" << std::endl;
 +  }
++#if 0
 +  //While the callback was returned, we don't know what the notifications selected with it were to reinstate???
 +  WinHttpSetStatusCallback(httpRequest, priorcb, (WINHTTP_CALLBACK_FLAG_ALL_COMPLETIONS | WINHTTP_CALLBACK_FLAG_ALL_NOTIFICATIONS), NULL);
++#endif
 +
 +  return rval != 0;
  }
  
  bool WinHttpSyncHttpClient::DoQueryHeaders(void* hHttpRequest, std::shared_ptr<HttpResponse>& response, Aws::StringStream& ss, uint64_t& read) const
-@@ -295,14 +329,22 @@ bool WinHttpSyncHttpClient::DoQueryHeaders(void* hHttpRequest, std::shared_ptr<H
+@@ -295,14 +381,22 @@ bool WinHttpSyncHttpClient::DoQueryHeaders(void* hHttpRequest, std::shared_ptr<H
      return queryResult == TRUE;
  }
  
@@ -478,7 +530,7 @@ index 2b644c8ecf..8d95d18a75 100644
      }
  
 diff --git a/aws-cpp-sdk-core/source/internal/AWSHttpResourceClient.cpp b/aws-cpp-sdk-core/source/internal/AWSHttpResourceClient.cpp
-index 24145e4d92..70ff1bdbd8 100644
+index 24145e4d92..02d984b25a 100644
 --- a/aws-cpp-sdk-core/source/internal/AWSHttpResourceClient.cpp
 +++ b/aws-cpp-sdk-core/source/internal/AWSHttpResourceClient.cpp
 @@ -71,7 +71,7 @@ namespace Aws
@@ -486,7 +538,7 @@ index 24145e4d92..70ff1bdbd8 100644
              // EC2MetadataService delay is in order of seconds so it only make sense to retry after a couple of seconds.
              res.connectTimeoutMs = 1000;
 -            res.requestTimeoutMs = 1000;
-+            res.requestTimeoutMs = 90000; // 1000;
++            res.requestTimeoutMs = 180000; // 90000; // 1000;
              res.retryStrategy = Aws::MakeShared<DefaultRetryStrategy>(RESOURCE_CLIENT_CONFIGURATION_ALLOCATION_TAG, 1, 1000);
  
              return res;
