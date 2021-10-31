@@ -477,6 +477,19 @@ index 2b644c8ecf..8d95d18a75 100644
          }
      }
  
+diff --git a/aws-cpp-sdk-core/source/internal/AWSHttpResourceClient.cpp b/aws-cpp-sdk-core/source/internal/AWSHttpResourceClient.cpp
+index 24145e4d92..70ff1bdbd8 100644
+--- a/aws-cpp-sdk-core/source/internal/AWSHttpResourceClient.cpp
++++ b/aws-cpp-sdk-core/source/internal/AWSHttpResourceClient.cpp
+@@ -71,7 +71,7 @@ namespace Aws
+             // EC2MetadataService throttles by delaying the response so the service client should set a large read timeout.
+             // EC2MetadataService delay is in order of seconds so it only make sense to retry after a couple of seconds.
+             res.connectTimeoutMs = 1000;
+-            res.requestTimeoutMs = 1000;
++            res.requestTimeoutMs = 90000; // 1000;
+             res.retryStrategy = Aws::MakeShared<DefaultRetryStrategy>(RESOURCE_CLIENT_CONFIGURATION_ALLOCATION_TAG, 1, 1000);
+ 
+             return res;
 diff --git a/testing-resources/include/aws/testing/mocks/http/MockHttpClient.h b/testing-resources/include/aws/testing/mocks/http/MockHttpClient.h
 index 7c3ead3438..82b60e7b62 100644
 --- a/testing-resources/include/aws/testing/mocks/http/MockHttpClient.h
