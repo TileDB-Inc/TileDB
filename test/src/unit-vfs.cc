@@ -480,41 +480,40 @@ TEST_CASE("VFS: URI semantics", "[vfs][uri]") {
   }
 }
 
-  //built from example at http://www.cplusplus.com/forum/beginner/211374/#msg990138
-  #include <iostream>
-#include <vector>
-#include <string>
+// built from example at
+// http://www.cplusplus.com/forum/beginner/211374/#msg990138
 #include <chrono>
+#include <iostream>
+#include <string>
+#include <vector>
 
 //#include <experimental/filesystem>
-//namespace fs = std::experimental::filesystem;
+// namespace fs = std::experimental::filesystem;
 #include <filesystem>
 namespace fs = std::filesystem;
 TEST_CASE("VFS: explore c++17 filesystem viability", "[vfs][filesystem]") {
+  // boost filesystem
+  // see: http://www.boost.org/doc/libs/1_63_0/libs/filesystem/doc/index.htm
+  // #include <boost/filesystem.hpp>
+  // namespace fs = boost::filesystem ;
 
-// boost filesystem 
-// see: http://www.boost.org/doc/libs/1_63_0/libs/filesystem/doc/index.htm
-// #include <boost/filesystem.hpp>
-// namespace fs = boost::filesystem ;
+  auto gafr = [](const std::string& path) -> std::vector<std::string> {
+    std::vector<std::string> file_names;
 
+    using iterator = fs::recursive_directory_iterator;
+    for (iterator iter(path); iter != iterator{}; ++iter)
+      file_names.push_back(iter->path().string());
 
-auto gafr = []( const std::string& path ) -> std::vector<std::string> 
-{
-    std::vector<std::string> file_names ;
+    return file_names;
+  };
 
-    using iterator = fs::recursive_directory_iterator ;
-    for( iterator iter(path) ; iter != iterator {} ; ++iter )
-        file_names.push_back( iter->path().string() ) ;
-
-    return file_names ;
-};
-
-{
-  auto dir_to_list = "./";
-  std::cout << "start filesystem test, listing " << dir_to_list << std::endl;
-    const std::vector<std::string> file_list = gafr( dir_to_list ) ; //"C:/Windows/Logs" ) ;
-    for( const auto& fn : file_list ) std::cout << fn << '\n' ;
+  {
+    auto dir_to_list = "./";
+    std::cout << "start filesystem test, listing " << dir_to_list << std::endl;
+    const std::vector<std::string> file_list =
+        gafr(dir_to_list);  //"C:/Windows/Logs" ) ;
+    for (const auto& fn : file_list)
+      std::cout << fn << '\n';
     std::cout << "end filesystem test" << std::endl;
-}
-
+  }
 }
