@@ -2108,18 +2108,15 @@ Status Subarray::precompute_all_ranges_tile_overlap(
       parallel_for(compute_tp, 0, relevant_fragments_.size(), [&](uint64_t i) {
         const auto f = relevant_fragments_[i];
 
-        // Make sure all bitmaps have the correct size.
-        if (tile_bitmaps.size() == 0) {
+        if (tile_bitmaps.size() != dim_num)
           tile_bitmaps.resize(dim_num);
-          for (unsigned d = 0; d < dim_num; d++)
-            tile_bitmaps[d].resize(meta[f]->tile_num());
-        } else {
-          uint64_t memset_length =
-              std::min((uint64_t)tile_bitmaps[0].size(), meta[f]->tile_num());
-          for (unsigned d = 0; d < dim_num; d++) {
-            memset(tile_bitmaps[d].data(), 0, memset_length * sizeof(uint8_t));
-            tile_bitmaps[d].resize(meta[f]->tile_num());
-          }
+
+        // Make sure all thread_local bitmaps have the correct size.
+        uint64_t bitmap_size = meta[f]->tile_num();
+        for (unsigned d = 0; d < dim_num; d++) {
+          if (tile_bitmaps[d].size() < bitmap_size)
+            tile_bitmaps[d].resize(bitmap_size);
+          memset(tile_bitmaps[d].data(), 0, bitmap_size);
         }
 
         for (unsigned d = 0; d < dim_num; d++) {
