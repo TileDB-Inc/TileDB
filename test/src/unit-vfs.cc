@@ -507,16 +507,21 @@ TEST_CASE("VFS: explore c++17 filesystem viability", "[vfs][filesystem]") {
     return file_names;
   };
 
-  try
-  {
+  try {
     auto dir_to_list = "./";
     std::cout << "start filesystem test, listing " << dir_to_list << std::endl;
     const std::vector<std::string> file_list =
         gafr(dir_to_list);  //"C:/Windows/Logs" ) ;
-    for (const auto& fn : file_list)
-      std::cout << fn << '\n';
+    std::cout << file_list.size() << " files found, following:" << std::endl;
+    unsigned ui = 0;
+    for (const auto& fn : file_list) {
+      std::cout << ui << ": " << fn << std::endl;
+      ++ui;
+    }
     std::cout << "end filesystem test" << std::endl;
   } catch (...) {
-    std::cout << "some exception occurred recursively listing files, but compilation against filesystem must have been ok." << std::endl;
+    std::cout << "some exception occurred recursively listing files, but "
+                 "compilation against filesystem must have been ok."
+              << std::endl;
   }
 }
