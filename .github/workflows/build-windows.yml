@@ -112,99 +112,7 @@ jobs:
 
           # TODO DEBUG move this back in the TILEDB_S3 section
           # currently we do not run S3 tests on Windows because tests time out (minio+azure slow?)
-          write-host "env:BUILD_SOURCESDIRECTORY: '$env:BUILD_SOURCESDIRECTORY'"
-          write-host "b4 ls $env:BUILD_SOURCESDIRECTORY"
-          ls $env:BUILD_SOURCESDIRECTORY
-          write-host 'b4 & "$env:BUILD_SOURCESDIRECTORY\scripts\install-minio.ps1"'
-          write-host current directory... (pwd)
-          if ($env:TILEDB_S3 -eq "ON") {
-            #~ & "$env:BUILD_SOURCESDIRECTORY\scripts\install-minio.ps1"
-            #~ netstat -abo
-            #~ write-host 'b4 ls "$env:BUILD_SOURCESDIRECTORY\dist\bin"'
-            #~ ls "$env:BUILD_SOURCESDIRECTORY\dist\bin"
-            #~ #ls "$env:BUILD_SOURCESDIRECTORY\dist\etc"
-            #~ #ls "$env:BUILD_SOURCESDIRECTORY\dist\etc\minio"
-            #~ ls "$env:BUILD_SOURCESDIRECTORY\dist\usr\local\share"
-            #~ ls "$env:BUILD_SOURCESDIRECTORY\dist\usr\local\share\minio"
-            #~ #ls "$env:BUILD_SOURCESDIRECTORY\dist\usr\local\share\minio\.minio.sys"
-            #~ tasklist
-            #~ echo "minio running?"
-            #~ tasklist | findstr /i minio
-            #~ tasklist /fi "imagename eq minio.exe"
-            #$env:MINIO_HTTP_TRACE = "$env:BUILD_SOURCESDIRECTORY\minio.log"
-            cmd /c set
-            #mc admin trace -v -e myminio
-            & "$env:BUILD_SOURCESDIRECTORY\scripts\install-minio.ps1"
-            netstat -abo
-            write-host "...ls $env:BUILD_SOURCESDIRECTORY\dist\bin -ea 0"
-            ls "$env:BUILD_SOURCESDIRECTORY\dist\bin" -ea 0
-            write-host "after ls $env:BUILD_SOURCESDIRECTORY\dist\bin -ea 0"
-            write-host "...ls $env:BUILD_SOURCESDIRECTORY\dist\usr\local\share -ea 0"
-            ls "$env:BUILD_SOURCESDIRECTORY\dist\usr\local\share" -ea 0
-            write-host "after ls $env:BUILD_SOURCESDIRECTORY\dist\usr\local\share -ea 0"
-            write-host "...ls $env:BUILD_SOURCESDIRECTORY\dist\usr\local\share\minio -ea 0"
-            ls "$env:BUILD_SOURCESDIRECTORY\dist\usr\local\share\minio" -ea 0
-            write-host "after ls $env:BUILD_SOURCESDIRECTORY\dist\usr\local\share\minio -ea 0"
-            write-host "ls $env:BUILD_SOURCESDIRECTORY\test\inputs\test_certs" -ea 0
-            ls "$env:BUILD_SOURCESDIRECTORY\test\inputs\test_certs" -ea 0
-            write-host "after ls $env:BUILD_SOURCESDIRECTORY\test\inputs\test_certs" -ea 0
-            write-host "mc alias"
-            cmd /c "$env:BUILD_SOURCESDIRECTORY\dist\bin\mc --insecure --debug alias list 2>&1 | c:\msys64\usr\bin\tee -a mcstdouterr.txt"
-            #"$env:BUILD_SOURCESDIRECTORY\dist\bin\mc --insecure --debug alias set tdbminio https://127.0.0.1:9999" 2>&1 | tee-object -Append mcstdouterr.txt
-            #cmd /c "$env:BUILD_SOURCESDIRECTORY\dist\bin\mc --insecure --debug alias set tdbminio https://127.0.0.1:9999 2>&1 | c:\msys64\usr\bin\tee -a mcstdouterr.txt"
-            #cmd /c "$env:BUILD_SOURCESDIRECTORY\dist\bin\mc --insecure --debug alias set tdbminio https://127.0.0.1:9999 minio miniosecretkey 2>&1 | c:\msys64\usr\bin\tee -a mcstdouterr.txt"
-            cmd /c "$env:BUILD_SOURCESDIRECTORY\dist\bin\mc --insecure --debug alias set tdbminio https://127.0.0.1:9999 minio miniosecretkey --api s3v4 2>&1 | c:\msys64\usr\bin\tee -a mcstdouterr.txt"
-            #cmd /c "$env:BUILD_SOURCESDIRECTORY\dist\bin\mc --insecure --debug alias set tdbminio http://127.0.0.1:9999 2>&1 | c:\msys64\usr\bin\tee -a mcstdouterr.txt"
-            cmd /c "$env:BUILD_SOURCESDIRECTORY\dist\bin\mc --insecure --debug alias list 2>&1 | c:\msys64\usr\bin\tee -a mcstdouterr.txt"
-            #mc --insecure admin --json info myminio
-            write-host "mc admin info tdbminio"
-            cmd /c "$env:BUILD_SOURCESDIRECTORY\dist\bin\mc --insecure --debug admin --json info tdbminio 2>&1 | c:\msys64\usr\bin\tee -a mcstdouterr.txt"
-            write-host "mc admin info myminio"
-            cmd /c "$env:BUILD_SOURCESDIRECTORY\dist\bin\mc --insecure --debug admin --json info myminio 2>&1 | c:\msys64\usr\bin\tee -a mcstdouterr.txt"
-            #write-host "b4 mc ... admin trace -v -a tdbminio"
-            #cmd /c "$env:BUILD_SOURCESDIRECTORY\dist\bin\mc --insecure --debug admin trace -v -a tdbminio"
-            #write-host "after mc ... admin trace -v -a tdbminio"
-            write-host "mc ls tdbminio"
-            #"$env:BUILD_SOURCESDIRECTORY\dist\bin\mc --insecure --debug ls tdbminio" 2>&1 | tee-object -Append mcstdouterr.txt
-            cmd /c "$env:BUILD_SOURCESDIRECTORY\dist\bin\mc --insecure --debug ls tdbminio 2>&1 | c:\msys64\usr\bin\tee -a mcstdouterr.txt"
-            write-host "mc mb ..."
-            #"$env:BUILD_SOURCESDIRECTORY\dist\bin\mc --insecure --debug mb tdbminio/dlhtestbucket1" 2>&1 | tee-object -Append mcstdouterr.txt
-            cmd /c "$env:BUILD_SOURCESDIRECTORY\dist\bin\mc --insecure --debug mb tdbminio/dlhtestbucket1 2>&1 | c:\msys64\usr\bin\tee -a mcstdouterr.txt"
-            write-host "mc ls tdbminio"
-            #"$env:BUILD_SOURCESDIRECTORY\dist\bin\mc --insecure --debug ls tdbminio" 2>&1 | tee-object -Append mcstdouterr.txt
-            cmd /c "$env:BUILD_SOURCESDIRECTORY\dist\bin\mc --insecure --debug ls tdbminio 2>&1 | c:\msys64\usr\bin\tee -a mcstdouterr.txt"
-            write-host "mc rb tdbminio..."
-            #"$env:BUILD_SOURCESDIRECTORY\dist\bin\mc --insecure --debug rb tdbminio/dlhtestbucket1" 2>&1 | tee-object -Append mcstdouterr.txt
-            cmd /c "$env:BUILD_SOURCESDIRECTORY\dist\bin\mc --insecure --debug rb tdbminio/dlhtestbucket1 2>&1 | c:\msys64\usr\bin\tee -a mcstdouterr.txt"
-            write-host "mc ls tdbminio"
-            #"$env:BUILD_SOURCESDIRECTORY\dist\bin\mc --insecure --debug ls tdbminio" 2>&1 | tee-object -Append  mcstdouterr.txt
-            cmd /c "$env:BUILD_SOURCESDIRECTORY\dist\bin\mc --insecure --debug ls tdbminio 2>&1 | c:\msys64\usr\bin\tee -a mcstdouterr.txt"
-            write-host "contents mcstdouterr.txt"
-            cat mcstdouterr.txt
-            write-host "end contents mcstdouterr.txt"
-            write-host "b4 cat $env:BUILD_SOURCESDIRECTORY\minio.log"
-            #$miniologfile = "$env:BUILD_SOURCESDIRECTORY\minio.log"
-            #cat $miniologfile
-            #write-host "after cat $env:BUILD_SOURCESDIRECTORY\minio.log"
-            cmd /c set
-            #$cmds = "$env:BUILD_BUILDDIRECTORY\tiledb\test\Release\tiledb_unit.exe -d=yes [s3]" 
-            ls $env:BUILD_SOURCESDIRECTORY -ea 0
-            #ls $env:BUILD_SOURCESDIRECTORY\build\tiledb\test\Release\tiledb_unit.exe
-            ls $env:BUILD_SOURCESDIRECTORY\build -ea 0
-            ls $env:BUILD_SOURCESDIRECTORY\build\tiledb -ea 0
-            ls $env:BUILD_SOURCESDIRECTORY\build\tiledb\test -ea 0
-            ls $env:BUILD_SOURCESDIRECTORY\build\tiledb\test\Release -ea 0
-            ls $env:BUILD_SOURCESDIRECTORY\build\tiledb\test\Release\tiledb_unit.exe -ea 0
-            #$cmds = "$env:BUILD_SOURCESDIRECTORY\build\tiledb\test\Release\tiledb_unit.exe -d=yes [s3]" 
-            $cmds = "$env:BUILD_SOURCESDIRECTORY\build\tiledb\test\Release\tiledb_unit.exe -d=yes" 
-            Write-Host "cmds: '$cmds'"
-            Invoke-Expression $cmds
-            #TBD: the above *may* not be able to be run twice, in particular
-            #due to items being expected to exist or not exist, if the tests do not appropriately
-            #cleanup after themselves to leave in a position to run again cleanly.
-            #exit 727
-          }
-          #exit 728
+          # & "$env:BUILD_SOURCESDIRECTORY\scripts\install-minio.ps1"
 
           $bootstrapOptions = $env:TILEDB_BASE_BOOTSTRAP_OPTIONS
           if ($env:TILEDB_S3 -eq "ON") {
@@ -269,8 +177,6 @@ jobs:
             Write-Host "Installation failed."
             $host.SetShouldExit($LastExitCode)
           }
-
-          tasklist /fi "imagename eq minio.exe" #TBD: removeme
         shell: powershell
 
       - name: 'Test'
@@ -285,78 +191,7 @@ jobs:
           $env:MINIO_ROOT_PASSWORD = "miniosecretkey"
           $env:AWS_ACCESS_KEY_ID = "minio"
           $env:AWS_SECRET_ACCESS_KEY = "miniosecretkey"
-
-          # These have helped running locally, try for CI (won't help minio/mc, but maybe actual tiledb_unit...)
-          # ... did not seem to help
-          #~ $env:TILEDB_VFS_S3_AWS_ACCESS_KEY_ID = "minio"
-          #~ $env:TILEDB_VFS_S3_AWS_SECRET_ACCESS_KEY = "miniosecretkey"
-          #~ $env:TILEDB_VFS_S3_SCHEME = "http"
-
-          if ($env:TILEDB_S3 -eq "ON") {
-            #$env:MINIO_HTTP_TRACE = "$env:BUILD_SOURCESDIRECTORY\minio.log"
-            cmd /c set
-            #mc admin trace -v -e myminio
-            & "$env:BUILD_SOURCESDIRECTORY\scripts\install-minio.ps1"
-            netstat -abo
-            write-host "...ls $env:BUILD_SOURCESDIRECTORY\dist\bin -ea 0"
-            ls "$env:BUILD_SOURCESDIRECTORY\dist\bin" -ea 0
-            write-host "after ls $env:BUILD_SOURCESDIRECTORY\dist\bin -ea 0"
-            write-host "...ls $env:BUILD_SOURCESDIRECTORY\dist\usr\local\share -ea 0"
-            ls "$env:BUILD_SOURCESDIRECTORY\dist\usr\local\share" -ea 0
-            write-host "after ls $env:BUILD_SOURCESDIRECTORY\dist\usr\local\share -ea 0"
-            write-host "...ls $env:BUILD_SOURCESDIRECTORY\dist\usr\local\share\minio -ea 0"
-            ls "$env:BUILD_SOURCESDIRECTORY\dist\usr\local\share\minio" -ea 0
-            write-host "after ls $env:BUILD_SOURCESDIRECTORY\dist\usr\local\share\minio -ea 0"
-            write-host "ls $env:BUILD_SOURCESDIRECTORY\test\inputs\test_certs" -ea 0
-            ls "$env:BUILD_SOURCESDIRECTORY\test\inputs\test_certs" -ea 0
-            write-host "after ls $env:BUILD_SOURCESDIRECTORY\test\inputs\test_certs" -ea 0
-            write-host "mc alias"
-            cmd /c "$env:BUILD_SOURCESDIRECTORY\dist\bin\mc --insecure --debug alias list 2>&1 | c:\msys64\usr\bin\tee -a mcstdouterr.txt"
-            #"$env:BUILD_SOURCESDIRECTORY\dist\bin\mc --insecure --debug alias set tdbminio https://127.0.0.1:9999" 2>&1 | tee-object -Append mcstdouterr.txt
-            #cmd /c "$env:BUILD_SOURCESDIRECTORY\dist\bin\mc --insecure --debug alias set tdbminio https://127.0.0.1:9999 2>&1 | c:\msys64\usr\bin\tee -a mcstdouterr.txt"
-            #cmd /c "$env:BUILD_SOURCESDIRECTORY\dist\bin\mc --insecure --debug alias set tdbminio https://127.0.0.1:9999 minio miniosecretkey 2>&1 | c:\msys64\usr\bin\tee -a mcstdouterr.txt"
-            cmd /c "$env:BUILD_SOURCESDIRECTORY\dist\bin\mc --insecure --debug alias set tdbminio https://127.0.0.1:9999 minio miniosecretkey --api s3v4 2>&1 | c:\msys64\usr\bin\tee -a mcstdouterr.txt"
-            #cmd /c "$env:BUILD_SOURCESDIRECTORY\dist\bin\mc --insecure --debug alias set tdbminio http://127.0.0.1:9999 2>&1 | c:\msys64\usr\bin\tee -a mcstdouterr.txt"
-            cmd /c "$env:BUILD_SOURCESDIRECTORY\dist\bin\mc --insecure --debug alias list 2>&1 | c:\msys64\usr\bin\tee -a mcstdouterr.txt"
-            #mc --insecure admin --json info myminio
-            write-host "mc admin info tdbminio"
-            cmd /c "$env:BUILD_SOURCESDIRECTORY\dist\bin\mc --insecure --debug admin --json info tdbminio 2>&1 | c:\msys64\usr\bin\tee -a mcstdouterr.txt"
-            write-host "mc admin info myminio"
-            cmd /c "$env:BUILD_SOURCESDIRECTORY\dist\bin\mc --insecure --debug admin --json info myminio 2>&1 | c:\msys64\usr\bin\tee -a mcstdouterr.txt"
-            #write-host "b4 mc ... admin trace -v -a tdbminio"
-            #cmd /c "$env:BUILD_SOURCESDIRECTORY\dist\bin\mc --insecure --debug admin trace -v -a tdbminio"
-            #write-host "after mc ... admin trace -v -a tdbminio"
-            write-host "mc ls tdbminio"
-            #"$env:BUILD_SOURCESDIRECTORY\dist\bin\mc --insecure --debug ls tdbminio" 2>&1 | tee-object -Append mcstdouterr.txt
-            cmd /c "$env:BUILD_SOURCESDIRECTORY\dist\bin\mc --insecure --debug ls tdbminio 2>&1 | c:\msys64\usr\bin\tee -a mcstdouterr.txt"
-            write-host "mc mb ..."
-            #"$env:BUILD_SOURCESDIRECTORY\dist\bin\mc --insecure --debug mb tdbminio/dlhtestbucket1" 2>&1 | tee-object -Append mcstdouterr.txt
-            cmd /c "$env:BUILD_SOURCESDIRECTORY\dist\bin\mc --insecure --debug mb tdbminio/dlhtestbucket1 2>&1 | c:\msys64\usr\bin\tee -a mcstdouterr.txt"
-            write-host "mc ls tdbminio"
-            #"$env:BUILD_SOURCESDIRECTORY\dist\bin\mc --insecure --debug ls tdbminio" 2>&1 | tee-object -Append mcstdouterr.txt
-            cmd /c "$env:BUILD_SOURCESDIRECTORY\dist\bin\mc --insecure --debug ls tdbminio 2>&1 | c:\msys64\usr\bin\tee -a mcstdouterr.txt"
-            write-host "mc rb tdbminio..."
-            #"$env:BUILD_SOURCESDIRECTORY\dist\bin\mc --insecure --debug rb tdbminio/dlhtestbucket1" 2>&1 | tee-object -Append mcstdouterr.txt
-            cmd /c "$env:BUILD_SOURCESDIRECTORY\dist\bin\mc --insecure --debug rb tdbminio/dlhtestbucket1 2>&1 | c:\msys64\usr\bin\tee -a mcstdouterr.txt"
-            write-host "mc ls tdbminio"
-            #"$env:BUILD_SOURCESDIRECTORY\dist\bin\mc --insecure --debug ls tdbminio" 2>&1 | tee-object -Append  mcstdouterr.txt
-            cmd /c "$env:BUILD_SOURCESDIRECTORY\dist\bin\mc --insecure --debug ls tdbminio 2>&1 | c:\msys64\usr\bin\tee -a mcstdouterr.txt"
-            write-host "contents mcstdouterr.txt"
-            cat mcstdouterr.txt
-            write-host "end contents mcstdouterr.txt"
-            write-host "b4 cat $env:BUILD_SOURCESDIRECTORY\minio.log"
-            #$miniologfile = "$env:BUILD_SOURCESDIRECTORY\minio.log"
-            #cat $miniologfile
-            #write-host "after cat $env:BUILD_SOURCESDIRECTORY\minio.log"
-            cmd /c set
-          }
-
-          #debug...
-          tasklist
-          write-host 'b4 findstr /i minio'
-          tasklist | findstr /i minio
-          tasklist /fi "imagename eq minio.exe"
-
+          
           # Clone backwards compatibility test arrays
           if ($env:BACKWARDS_COMPATIBILITY_ARRAYS -eq "ON") {
             git clone https://github.com/TileDB-Inc/TileDB-Unit-Test-Arrays.git --branch 2.2.3 $env:BUILD_SOURCESDIRECTORY/test/inputs/arrays/read_compatibility_test
