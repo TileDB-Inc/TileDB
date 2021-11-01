@@ -63,6 +63,14 @@ using std::tuple, std::optional, std::nullopt;
 namespace tiledb {
 namespace common {
 
+#define THROW_NOT_OK(s)                       \
+  do {                                        \
+    Status _s = (s);                          \
+    if (!_s.ok()) {                           \
+      throw std::runtime_error(_s.message()); \
+    }                                         \
+  } while (false)
+
 #define RETURN_NOT_OK(s) \
   do {                   \
     Status _s = (s);     \
@@ -136,7 +144,8 @@ enum class StatusCode : char {
   ThreadPoolError,
   FragmentInfoError,
   DenseTilerError,
-  QueryConditionError
+  QueryConditionError,
+  FileError
 };
 
 class Status {
@@ -449,6 +458,11 @@ class Status {
   /** Return a QueryConditionError error class Status with a given message **/
   static Status QueryConditionError(const std::string& msg) {
     return Status(StatusCode::QueryConditionError, msg);
+  }
+
+  /** Return a FileError error class Status with a given message **/
+  static Status FileError(const std::string& msg) {
+    return Status(StatusCode::Array, msg);
   }
 
   /** Returns true iff the status indicates success **/

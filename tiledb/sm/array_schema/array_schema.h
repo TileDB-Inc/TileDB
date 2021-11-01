@@ -338,7 +338,7 @@ class ArraySchema {
   /** Generates a new array schema URI. */
   Status generate_uri();
 
- private:
+ protected:
   /* ********************************* */
   /*         PRIVATE ATTRIBUTES        */
   /* ********************************* */

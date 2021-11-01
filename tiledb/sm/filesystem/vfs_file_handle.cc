@@ -89,6 +89,10 @@ Status VFSFileHandle::open() {
   return vfs_->open_file(uri_, mode_);
 }
 
+VFSMode VFSFileHandle::mode() const {
+  return mode_;
+}
+
 Status VFSFileHandle::read(uint64_t offset, void* buffer, uint64_t nbytes) {
   if (!is_open_) {
     std::stringstream msg;
@@ -128,5 +132,13 @@ Status VFSFileHandle::write(const void* buffer, uint64_t nbytes) {
   return vfs_->write(uri_, buffer, nbytes);
 }
 
+uint64_t VFSFileHandle::size() const {
+  uint64_t size = 0;
+  auto st = vfs_->file_size(uri_, &size);
+  if (!st.ok())
+    throw std::runtime_error(st.message());
+
+  return size;
+}
 }  // namespace sm
 }  // namespace tiledb

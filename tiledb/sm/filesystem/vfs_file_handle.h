@@ -100,6 +100,18 @@ class VFSFileHandle {
    */
   Status write(const void* buffer, uint64_t nbytes);
 
+  /**
+   * Return the size of the file
+   * @return size
+   */
+  uint64_t size() const;
+
+  /**
+   * Return the mode the file as open with
+   * @return mode
+   */
+  VFSMode mode() const;
+
  private:
   /* ********************************* */
   /*        PRIVATE ATTRIBUTES         */

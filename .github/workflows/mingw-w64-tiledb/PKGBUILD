@@ -11,7 +11,8 @@ depends=("${MINGW_PACKAGE_PREFIX}-lz4"
          "${MINGW_PACKAGE_PREFIX}-aws-sdk-cpp"
          "${MINGW_PACKAGE_PREFIX}-bzip2"
          "${MINGW_PACKAGE_PREFIX}-zlib"
-         "${MINGW_PACKAGE_PREFIX}-zstd")
+         "${MINGW_PACKAGE_PREFIX}-zstd"
+         "${MINGW_PACKAGE_PREFIX}-file")
 makedepends=("${MINGW_PACKAGE_PREFIX}-cmake"
              "${MINGW_PACKAGE_PREFIX}-gcc"
              "${MINGW_PACKAGE_PREFIX}-curl")

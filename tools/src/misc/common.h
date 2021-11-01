@@ -36,17 +36,7 @@
 #include "tiledb/common/status.h"
 
 namespace tiledb {
-namespace cli {
-
-/** Throws an exception if the given Status is not ok. */
-#define THROW_NOT_OK(s)                                          \
-  do {                                                           \
-    tiledb::common::Status _s = (s);                             \
-    if (!_s.ok())                                                \
-      throw std::runtime_error("TileDB Error: " + _s.message()); \
-  } while (0)
-
-}  // namespace cli
+namespace cli {}  // namespace cli
 }  // namespace tiledb
 
 #endif

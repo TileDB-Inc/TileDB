@@ -40,6 +40,7 @@
 #include "tiledb/sm/buffer/buffer_list.h"
 #include "tiledb/sm/config/config.h"
 #include "tiledb/sm/config/config_iter.h"
+#include "tiledb/sm/file/file.h"
 #include "tiledb/sm/filesystem/vfs_file_handle.h"
 #include "tiledb/sm/filter/compression_filter.h"
 #include "tiledb/sm/filter/filter_pipeline.h"
@@ -125,6 +126,10 @@ struct tiledb_vfs_fh_t {
 
 struct tiledb_fragment_info_t {
   tiledb::sm::FragmentInfo* fragment_info_ = nullptr;
+};
+
+struct tiledb_file_t {
+  tiledb::sm::File* file_ = nullptr;
 };
 
 #endif
