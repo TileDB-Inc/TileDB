@@ -40,6 +40,7 @@
 #include "tiledb/sm/enums/layout.h"
 #include "tiledb/sm/fragment/fragment_metadata.h"
 #include "tiledb/sm/misc/parallel_functions.h"
+#include "tiledb/sm/misc/resource_pool.h"
 #include "tiledb/sm/misc/utils.h"
 #include "tiledb/sm/rtree/rtree.h"
 #include "tiledb/sm/stats/global_stats.h"
@@ -2099,14 +2100,18 @@ Status Subarray::precompute_all_ranges_tile_overlap(
       compute_relevant_fragments(compute_tp, nullptr, &relevant_fragment_ctx));
   RETURN_NOT_OK(load_relevant_fragment_rtrees(compute_tp));
 
-  // Make one bitmap per dimensions. Using thread_local to reuse bitmaps when
-  // on the same thead.
-  thread_local std::vector<std::vector<uint8_t>> tile_bitmaps;
+  // Each thread will use one bitmap per dimensions.
+  const auto num_threads = compute_tp->concurrency_level();
+  ResourcePool<std::vector<std::vector<uint8_t>>> all_threads_tile_bitmaps(
+      num_threads);
 
   // Run all fragments in parallel.
   auto status =
       parallel_for(compute_tp, 0, relevant_fragments_.size(), [&](uint64_t i) {
         const auto f = relevant_fragments_[i];
+        auto tile_bitmaps_resource_guard =
+            ResourceGuard(all_threads_tile_bitmaps);
+        auto tile_bitmaps = tile_bitmaps_resource_guard.get();
 
         // Make sure all bitmaps have the correct size.
         if (tile_bitmaps.size() == 0) {
@@ -2117,6 +2122,8 @@ Status Subarray::precompute_all_ranges_tile_overlap(
           uint64_t memset_length =
               std::min((uint64_t)tile_bitmaps[0].size(), meta[f]->tile_num());
           for (unsigned d = 0; d < dim_num; d++) {
+            // TODO we might be able to skip the memset if
+            // tile_bitmaps.capacity() <= meta[f]->tile_num().
             memset(tile_bitmaps[d].data(), 0, memset_length * sizeof(uint8_t));
             tile_bitmaps[d].resize(meta[f]->tile_num());
           }
@@ -2124,11 +2131,7 @@ Status Subarray::precompute_all_ranges_tile_overlap(
 
         for (unsigned d = 0; d < dim_num; d++) {
           // Run all ranges in parallel.
-          const auto num_threads = compute_tp->concurrency_level();
           const uint64_t range_num = ranges_[d].size();
-
-          // Make this tile bitmap non thread_local.
-          auto current_bitmap = &tile_bitmaps[d];
 
           // Compute tile bitmaps for this fragment.
           const auto ranges_per_thread =
@@ -2140,7 +2143,7 @@ Status Subarray::precompute_all_ranges_tile_overlap(
                     std::min((t + 1) * ranges_per_thread - 1, range_num - 1);
                 for (uint64_t r = r_start; r <= r_end; ++r) {
                   meta[f]->compute_tile_bitmap(
-                      ranges_[d][r], d, current_bitmap);
+                      ranges_[d][r], d, &tile_bitmaps[d]);
                 }
 
                 return Status::Ok();
