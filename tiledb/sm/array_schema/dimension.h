@@ -69,6 +69,11 @@ class Dimension {
   /* ********************************* */
 
   /**
+   * No default constructor by C.41
+   */
+  Dimension() = delete;
+
+  /**
    * Constructor.
    *
    * @param name The name of the dimension.
