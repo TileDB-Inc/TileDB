@@ -96,6 +96,9 @@ class SparseUnorderedWithDupsReader : public SparseIndexReaderBase,
   /** Initializes the reader. */
   Status init();
 
+  /** Initialize the memory budget variables. */
+  Status initialize_memory_budget();
+
   /** Performs a read query using its set members. */
   Status dowork();
 
@@ -107,7 +110,7 @@ class SparseUnorderedWithDupsReader : public SparseIndexReaderBase,
 
   /** Add a result tile with no memory budget checks. Used by serialization. */
   ResultTile* add_result_tile_unsafe(
-      unsigned dim_num, unsigned f, uint64_t t, const Domain* domain);
+      unsigned f, uint64_t t, const Domain* domain);
 
  private:
   /* ********************************* */
@@ -131,6 +134,9 @@ class SparseUnorderedWithDupsReader : public SparseIndexReaderBase,
       uint64_t t,
       const Domain* domain,
       bool* budget_exceeded);
+
+  /** corrects memory usage after de-serialization. */
+  Status fix_memory_usage_after_serialization();
 
   /** Create the result tiles. */
   Status create_result_tiles(bool* tiles_found);

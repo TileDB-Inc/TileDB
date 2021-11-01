@@ -88,7 +88,7 @@ SparseGlobalOrderReader::SparseGlobalOrderReader(
 
 bool SparseGlobalOrderReader::incomplete() const {
   return copy_overflowed_ || !read_state_.result_cell_slabs_.empty() ||
-         !done_adding_result_tiles_;
+         !read_state_.done_adding_result_tiles_;
 }
 
 Status SparseGlobalOrderReader::init() {
@@ -127,6 +127,18 @@ Status SparseGlobalOrderReader::init() {
         "Unsupported offsets bitsize in configuration"));
   }
   assert(found);
+
+  // Initialize memory budget variables.
+  RETURN_NOT_OK(initialize_memory_budget());
+
+  // Check the validity buffer sizes.
+  RETURN_NOT_OK(check_validity_buffer_sizes());
+
+  return Status::Ok();
+}
+
+Status SparseGlobalOrderReader::initialize_memory_budget() {
+  bool found = false;
   RETURN_NOT_OK(
       config_.get<uint64_t>("sm.mem.total_budget", &memory_budget_, &found));
   assert(found);
@@ -161,9 +173,6 @@ Status SparseGlobalOrderReader::init() {
       &found));
   assert(found);
 
-  // Check the validity buffer sizes.
-  RETURN_NOT_OK(check_validity_buffer_sizes());
-
   return Status::Ok();
 }
 
@@ -183,7 +192,7 @@ Status SparseGlobalOrderReader::dowork() {
 
   // Handle empty array.
   if (fragment_metadata_.empty()) {
-    done_adding_result_tiles_ = true;
+    read_state_.done_adding_result_tiles_ = true;
     zero_out_buffer_sizes();
     return Status::Ok();
   }
@@ -197,13 +206,16 @@ Status SparseGlobalOrderReader::dowork() {
   // Load initial data, if not loaded already.
   RETURN_NOT_OK(load_initial_data());
 
+  // Potentially fix memory usage after de-serialization.
+  RETURN_NOT_OK(fix_memory_usage_after_serialization());
+
   // If the result cell slab is empty, populate it.
   if (read_state_.result_cell_slabs_.empty())
     RETURN_NOT_OK(compute_result_cell_slab());
 
   // No more tiles to process, done.
   if (read_state_.result_cell_slabs_.empty()) {
-    done_adding_result_tiles_ = true;
+    read_state_.done_adding_result_tiles_ = true;
     zero_out_buffer_sizes();
     return Status::Ok();
   }
@@ -337,16 +349,11 @@ Status SparseGlobalOrderReader::clear_result_tiles() {
 }
 
 ResultTile* SparseGlobalOrderReader::add_result_tile_unsafe(
-    unsigned dim_num, unsigned f, uint64_t t, const Domain* domain) {
-  bool unused;
-  add_result_tile(
-      dim_num,
-      std::numeric_limits<uint64_t>::max(),
-      std::numeric_limits<uint64_t>::max(),
-      f,
-      t,
-      domain,
-      &unused);
+    unsigned f, uint64_t t, const Domain* domain) {
+  if (result_tiles_.size() < f + 1) {
+    result_tiles_.resize(f + 1);
+  }
+  result_tiles_[f].emplace_back(f, t, domain);
   return &result_tiles_[f].back();
 }
 
@@ -378,6 +385,30 @@ Status SparseGlobalOrderReader::add_result_tile(
   }
   if (memory_used_result_tiles_ > memory_budget_result_tiles) {
     *budget_exceeded = true;
+  }
+
+  return Status::Ok();
+}
+
+Status SparseGlobalOrderReader::fix_memory_usage_after_serialization() {
+  // For easy reference.
+  auto dim_num = array_schema_->dim_num();
+
+  if (memory_used_result_tiles_ == 0) {
+    for (auto& rt_list : result_tiles_) {
+      for (auto& rt : rt_list) {
+        auto f = rt.frag_idx();
+
+        // Calculate memory consumption for this tile.
+        uint64_t tiles_size = 0;
+        RETURN_NOT_OK(
+            get_coord_tiles_size(dim_num, f, rt.tile_idx(), &tiles_size));
+
+        memory_used_for_coords_[f] += tiles_size;
+        memory_used_for_coords_total_ += tiles_size;
+        memory_used_result_tiles_ += sizeof(ResultTile);
+      }
+    }
   }
 
   return Status::Ok();
@@ -489,7 +520,7 @@ Status SparseGlobalOrderReader::create_result_tiles(bool* tiles_found) {
     done_adding_result_tiles &= all_tiles_loaded_[f];
   }
 
-  done_adding_result_tiles_ = done_adding_result_tiles;
+  read_state_.done_adding_result_tiles_ = done_adding_result_tiles;
   return Status::Ok();
 }
 

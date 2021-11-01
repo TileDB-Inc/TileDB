@@ -127,7 +127,6 @@ Status stats_from_capnp(
 
 Status array_to_capnp(
     const Array& array, capnp::Array::Builder* array_builder) {
-  array_builder->setUri(array.array_uri().to_string());
   array_builder->setStartTimestamp(array.timestamp_start());
   array_builder->setEndTimestamp(array.timestamp_end());
 
@@ -136,7 +135,6 @@ Status array_to_capnp(
 
 Status array_from_capnp(
     const capnp::Array::Reader& array_reader, Array* array) {
-  RETURN_NOT_OK(array->set_uri(array_reader.getUri().cStr()));
   RETURN_NOT_OK(array->set_timestamp_start(array_reader.getStartTimestamp()));
   RETURN_NOT_OK(array->set_timestamp_end(array_reader.getEndTimestamp()));
 
@@ -484,6 +482,9 @@ Status index_read_state_to_capnp(
     capnp::ReaderIndex::Builder* builder) {
   auto read_state_builder = builder->initReadState();
 
+  read_state_builder.setDoneAddingResultTiles(
+      read_state->done_adding_result_tiles_);
+
   auto rcs_builder = read_state_builder.initResultCellSlab(
       read_state->result_cell_slabs_.size());
   for (size_t i = 0; i < read_state->result_cell_slabs_.size(); ++i) {
@@ -559,8 +560,10 @@ Status index_read_state_from_capnp(
     const capnp::ReadStateIndex::Reader& read_state_reader,
     SparseIndexReaderBase* reader) {
   auto read_state = reader->read_state();
-  auto dim_num = schema->dim_num();
   const auto* domain = schema->domain();
+
+  read_state->done_adding_result_tiles_ =
+      read_state_reader.getDoneAddingResultTiles();
 
   assert(read_state_reader.hasResultCellSlab());
   RETURN_NOT_OK(reader->clear_result_tiles());
@@ -583,7 +586,7 @@ Status index_read_state_from_capnp(
     if (it != result_tile_map.end()) {
       rt = it->second;
     } else {
-      rt = reader->add_result_tile_unsafe(dim_num, frag_idx, tile_idx, domain);
+      rt = reader->add_result_tile_unsafe(frag_idx, tile_idx, domain);
       result_tile_map.emplace(
           std::pair<unsigned, uint64_t>(frag_idx, tile_idx), rt);
     }
@@ -1665,6 +1668,8 @@ Status query_from_capnp(
             reader->set_offsets_bitsize(query_reader.getVarOffsetsBitsize()));
       }
 
+      RETURN_NOT_OK(reader->initialize_memory_budget());
+
       RETURN_NOT_OK(
           index_reader_from_capnp(schema, reader_reader, query, reader));
     } else if (
@@ -1689,6 +1694,8 @@ Status query_from_capnp(
         RETURN_NOT_OK(
             reader->set_offsets_bitsize(query_reader.getVarOffsetsBitsize()));
       }
+
+      RETURN_NOT_OK(reader->initialize_memory_budget());
 
       RETURN_NOT_OK(
           index_reader_from_capnp(schema, reader_reader, query, reader));

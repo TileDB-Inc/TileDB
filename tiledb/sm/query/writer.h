@@ -135,6 +135,9 @@ class Writer : public StrategyBase, public IQueryStrategy {
   /** Initializes the writer. */
   Status init();
 
+  /** Initialize the memory budget variables. */
+  Status initialize_memory_budget();
+
   /** Sets current setting of check_coord_dups_ */
   void set_check_coord_dups(bool b);
 
