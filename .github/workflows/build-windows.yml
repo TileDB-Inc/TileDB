@@ -112,7 +112,7 @@ jobs:
 
           # TODO DEBUG move this back in the TILEDB_S3 section
           # currently we do not run S3 tests on Windows because tests time out (minio+azure slow?)
-          # & "$env:BUILD_SOURCESDIRECTORY\scripts\install-minio.ps1"
+          & "$env:BUILD_SOURCESDIRECTORY\scripts\install-minio.ps1"
 
           $bootstrapOptions = $env:TILEDB_BASE_BOOTSTRAP_OPTIONS
           if ($env:TILEDB_S3 -eq "ON") {
