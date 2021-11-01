@@ -1983,10 +1983,6 @@ stats::Stats* Query::stats() const {
   return stats_;
 }
 
-tdb_shared_ptr<Logger> Query::logger() const {
-  return logger_;
-}
-
 /* ****************************** */
 /*          PRIVATE METHODS       */
 /* ****************************** */

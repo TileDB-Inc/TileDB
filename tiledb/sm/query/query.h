@@ -854,9 +854,6 @@ class Query {
   /** Returns the internal stats object. */
   stats::Stats* stats() const;
 
-  /** Returns the internal logger object. */
-  tdb_shared_ptr<Logger> logger() const;
-
  private:
   /* ********************************* */
   /*         PRIVATE ATTRIBUTES        */

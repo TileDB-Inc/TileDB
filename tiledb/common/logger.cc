@@ -46,9 +46,8 @@ namespace tiledb::common {
 /*     CONSTRUCTORS & DESTRUCTORS    */
 /* ********************************* */
 
-Logger::Logger(const std::string& name)
+Logger::Logger(const std::string& name, const Logger::Format format)
     : name_(name) {
-  // fixme: is that line needed?
   logger_ = spdlog::get(name_);
   if (logger_ == nullptr) {
 #ifdef _WIN32
@@ -57,7 +56,14 @@ Logger::Logger(const std::string& name)
     logger_ = spdlog::stdout_color_mt(name_);
 #endif
   }
-  logger_->set_level(spdlog::level::err);
+  set_format(format);
+  set_level(Logger::Level::ERR);
+  if (++instance_count == 1 && format == Logger::Format::JSON) {
+    // If this is the first logger created set up the opening brace and an
+    // array named "log"
+    logger_->set_pattern("{\n \"log\": [");
+    logger_->critical("");
+  }
 }
 
 Logger::Logger(std::shared_ptr<spdlog::logger> logger) {
@@ -65,12 +71,12 @@ Logger::Logger(std::shared_ptr<spdlog::logger> logger) {
 }
 
 Logger::~Logger() {
-  if (fmt_ == Logger::Format::JSON && name_ == "\"Global\":\"\"") {
-    // Set the same log format, without the "," at the end
+  if (--instance_count == 0 && fmt_ == Logger::Format::JSON) {
+    // If this is the last logger being destroyed, set the same log format,
+    // without the "," at the end
     std::string last_log_pattern = {
-        "{\"time\": \"%Y-%m-%dT%H:%M:%S.%f%z\", \"name\": \"Global\", "
-        "\"level\": \"info\", \"process\": %P, \"thread\": %t, \"message\": "
-        "\"%v\"}"};
+        "{\"severity\":\"%l\",\"timestamp\":\"%Y-%m-%dT%H:%M:%S.%f%z\","
+        "\"process\":\"%P\",\"name\":{%n},\"message\":\"%v\"}"};
     logger_->set_pattern(last_log_pattern);
     // Log a last entry
     logger_->critical("Finished logging.");
@@ -195,12 +201,6 @@ void Logger::set_level(Logger::Level lvl) {
 void Logger::set_format(Logger::Format fmt) {
   switch (fmt) {
     case Logger::Format::JSON: {
-      // If this is the static global logger set up the opening brace and an
-      // array named "log"
-      if (name_ == "\"Global\":\"\"") {
-        logger_->set_pattern("{\n \"log\": [");
-        logger_->critical("");
-      }
       /*
        * Set up the JSON format
        * {
@@ -243,10 +243,10 @@ void Logger::set_name(const std::string& tags) {
 
 tdb_shared_ptr<Logger> Logger::clone(const std::string& tag, uint64_t id) {
   std::string new_tags = add_tag(tag, id);
-  auto new_loger = tdb_make_shared(Logger, Logger(logger_->clone(new_tags)));
-  new_loger->set_name(new_tags);
-  new_loger->set_format(fmt_);
-  return new_loger;
+  auto new_logger = tdb_make_shared(Logger, logger_->clone(new_tags));
+  new_logger->set_name(new_tags);
+  ++instance_count;
+  return new_logger;
 }
 
 std::string Logger::add_tag(const std::string& tag, uint64_t id) {
@@ -268,9 +268,11 @@ std::string Logger::add_tag(const std::string& tag, uint64_t id) {
 /*              GLOBAL               */
 /* ********************************* */
 
-Logger& global_logger(Logger::Format fmt) {
-  auto name = (fmt == Logger::Format::JSON) ? "\"Global\":\"1\"" : "Global: 1";
-  static Logger l(name);
+Logger& global_logger(Logger::Format format) {
+  static std::string name = (format == Logger::Format::JSON) ?
+                                Logger::global_logger_json_name :
+                                Logger::global_logger_default_name;
+  static Logger l(name, format);
   return l;
 }
 

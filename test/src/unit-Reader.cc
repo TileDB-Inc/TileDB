@@ -108,7 +108,7 @@ TEST_CASE_METHOD(
   QueryCondition condition;
   Reader reader(
       &g_helper_stats,
-      tdb_make_shared(Logger, global_logger()),
+      tdb_make_shared(Logger, g_helper_logger_name),
       nullptr,
       nullptr,
       config,

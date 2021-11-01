@@ -675,7 +675,7 @@ Status SparseUnorderedWithDupsReader::create_result_cell_slabs(
 
               return Status::Ok();
             });
-        RETURN_NOT_OK_ELSE(status, LOG_STATUS(status));
+        RETURN_NOT_OK_ELSE(status, logger_->status(status));
 
         use_prev_dim_result_count |= full_overlap_count[dim_idx] == 0;
         prev_dim = dim_idx;

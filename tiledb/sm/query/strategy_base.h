@@ -150,9 +150,6 @@ class StrategyBase {
    * the query.
    */
   void get_dim_attr_stats() const;
-
-  /** Returns the internal logger object. */
-  tdb_shared_ptr<Logger> logger() const;
 };
 
 }  // namespace sm

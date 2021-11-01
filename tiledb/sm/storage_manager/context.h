@@ -122,6 +122,14 @@ class Context {
    * @return Status
    */
   Status init_thread_pools(Config* config);
+
+  /**
+   * Initializes global and local logger.
+   *
+   * @param config The configuration parameters.
+   * @return Status
+   */
+  Status init_loggers(Config* const config);
 };
 
 }  // namespace sm

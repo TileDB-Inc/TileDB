@@ -936,7 +936,7 @@ Status StorageManager::array_upgrade_version(
   bool exists = false;
   RETURN_NOT_OK(is_array(array_uri, &exists));
   if (!exists)
-    return LOG_STATUS(Status::StorageManagerError(
+    return logger_->status(Status::StorageManagerError(
         std::string("Cannot upgrade array; Array '") + array_uri.c_str() +
         "' does not exist"));
 
@@ -986,7 +986,7 @@ Status StorageManager::array_upgrade_version(
   if (array_schema->version() < constants::format_version) {
     Status st = array_schema->generate_uri();
     if (!st.ok()) {
-      LOG_STATUS(st);
+      logger_->status(st);
       // Clean up
       tdb_delete(array_schema);
       return st;
@@ -998,7 +998,7 @@ Status StorageManager::array_upgrade_version(
         array_uri.join_path(constants::array_schema_folder_name);
     st = vfs_->create_dir(array_schema_folder_uri);
     if (!st.ok()) {
-      LOG_STATUS(st);
+      logger_->status(st);
       // Clean up
       tdb_delete(array_schema);
       return st;
@@ -1006,7 +1006,7 @@ Status StorageManager::array_upgrade_version(
 
     st = store_array_schema(array_schema, encryption_key_cfg);
     if (!st.ok()) {
-      LOG_STATUS(st);
+      logger_->status(st);
       // Clean up
       tdb_delete(array_schema);
       return st;
@@ -1717,34 +1717,8 @@ Status StorageManager::init(const Config* config) {
   if (config != nullptr)
     config_ = *config;
 
-  // temporarily set level to error so that possible errors reading
-  // configuration are visible to the user
-  global_logger().set_level(Logger::Level::ERR);
-  logger_->set_level(Logger::Level::ERR);
-
-  // set logging level from config
-  bool found = false;
-  uint32_t level = static_cast<unsigned int>(Logger::Level::ERR);
-  RETURN_NOT_OK(config_.get<uint32_t>("config.logging_level", &level, &found));
-  assert(found);
-  if (level > static_cast<unsigned int>(Logger::Level::TRACE)) {
-    return logger_->status(Status::StorageManagerError(
-        "Cannot set logger level; Unsupported level:" + std::to_string(level) +
-        "set in configuration"));
-  }
-
-  const char* format_conf;
-  RETURN_NOT_OK(config_.get("config.logging_format", &format_conf));
-  assert(format_conf != nullptr);
-  Logger::Format format = Logger::Format::DEFAULT;
-  RETURN_NOT_OK(logger_format_from_string(format_conf, &format));
-
-  global_logger().set_level(static_cast<Logger::Level>(level));
-  global_logger().set_format(static_cast<Logger::Format>(format));
-  logger_->set_level(static_cast<Logger::Level>(level));
-  logger_->set_format(static_cast<Logger::Format>(format));
-
   // Get config params
+  bool found = false;
   uint64_t tile_cache_size = 0;
   RETURN_NOT_OK(
       config_.get<uint64_t>("sm.tile_cache_size", &tile_cache_size, &found));

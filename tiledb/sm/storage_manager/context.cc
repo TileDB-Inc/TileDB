@@ -70,6 +70,8 @@ Context::~Context() {
 /* ****************************** */
 
 Status Context::init(Config* const config) {
+  RETURN_NOT_OK(init_loggers(config));
+
   if (storage_manager_ != nullptr)
     return logger_->status(Status::ContextError(
         "Cannot initialize context; Context already initialized"));
@@ -208,6 +210,43 @@ Status Context::init_thread_pools(Config* const config) {
   // Initialize the thread pools.
   RETURN_NOT_OK(compute_tp_.init(compute_concurrency_level));
   RETURN_NOT_OK(io_tp_.init(io_concurrency_level));
+
+  return Status::Ok();
+}
+
+Status Context::init_loggers(Config* const config) {
+  // If `config` is null, use a default-constructed config.
+  Config tmp_config;
+  if (config != nullptr)
+    tmp_config = *config;
+
+  // temporarily set level to error so that possible errors reading
+  // configuration are visible to the user
+  logger_->set_level(Logger::Level::ERR);
+
+  const char* format_conf;
+  RETURN_NOT_OK(tmp_config.get("config.logging_format", &format_conf));
+  assert(format_conf != nullptr);
+  Logger::Format format = Logger::Format::DEFAULT;
+  RETURN_NOT_OK(logger_format_from_string(format_conf, &format));
+
+  global_logger(format);
+  logger_->set_format(static_cast<Logger::Format>(format));
+
+  // set logging level from config
+  bool found = false;
+  uint32_t level = static_cast<unsigned int>(Logger::Level::ERR);
+  RETURN_NOT_OK(
+      tmp_config.get<uint32_t>("config.logging_level", &level, &found));
+  assert(found);
+  if (level > static_cast<unsigned int>(Logger::Level::TRACE)) {
+    return logger_->status(Status::StorageManagerError(
+        "Cannot set logger level; Unsupported level:" + std::to_string(level) +
+        "set in configuration"));
+  }
+
+  global_logger().set_level(static_cast<Logger::Level>(level));
+  logger_->set_level(static_cast<Logger::Level>(level));
 
   return Status::Ok();
 }

@@ -76,6 +76,10 @@ namespace test {
 // never used.
 static tiledb::sm::stats::Stats g_helper_stats("test");
 
+// A dummy `Logger` instance. This is useful for constructing
+// objects that require a parent `Logger` object.
+static inline const char* g_helper_logger_name("");
+
 // For easy reference
 typedef std::pair<tiledb_filter_type_t, int> Compressor;
 template <class T>

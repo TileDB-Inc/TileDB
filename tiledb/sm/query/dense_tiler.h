@@ -350,9 +350,6 @@ class DenseTiler {
    */
   Status copy_tile(
       uint64_t id, uint64_t cell_size, uint8_t* buff, Tile* tile) const;
-
-  /** Returns the internal logger object. */
-  tdb_shared_ptr<Logger> logger() const;
 };
 
 }  // namespace sm
