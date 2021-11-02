@@ -92,47 +92,86 @@ unsigned int Attribute::cell_val_num() const {
   return cell_val_num_;
 }
 
-Status Attribute::deserialize(ConstBuffer* buff, const uint32_t version) {
+std::tuple<Status, std::optional<Attribute&&>> Attribute::deserialize(
+    ConstBuffer* buff, const uint32_t version) {
+  Status st;
   // Load attribute name
   uint32_t attribute_name_size;
-  RETURN_NOT_OK(buff->read(&attribute_name_size, sizeof(uint32_t)));
-  name_.resize(attribute_name_size);
-  RETURN_NOT_OK(buff->read(&name_[0], attribute_name_size));
+  st = buff->read(&attribute_name_size, sizeof(uint32_t));
+  if (!st.ok())
+    return {st, std::nullopt};
+  std::string name;
+  name.resize(attribute_name_size);
+  st = buff->read(&name[0], attribute_name_size);
+  if (!st.ok())
+    return {st, std::nullopt};
 
   // Load type
   uint8_t type;
-  RETURN_NOT_OK(buff->read(&type, sizeof(uint8_t)));
-  type_ = (Datatype)type;
+  st = buff->read(&type, sizeof(uint8_t));
+  if (!st.ok())
+    return {st, std::nullopt};
+  Datatype datatype = (Datatype)type;
 
-  // Load cell_val_num_
-  RETURN_NOT_OK(buff->read(&cell_val_num_, sizeof(uint32_t)));
+  // Load cell_val_num
+  uint32_t cell_val_num;
+  st = buff->read(&cell_val_num, sizeof(uint32_t));
+  if (!st.ok())
+    return {st, std::nullopt};
 
   // Load filter pipeline
-  RETURN_NOT_OK(filters_.deserialize(buff));
+//  auto [st_filter, filter_pipeline] = FilterPipeline::deserialize(buff);
+//  if (!st_filter.ok())
+//    return {st, std::nullopt};
 
   // Load fill value
+  uint64_t fill_value_size = 0;
+  ByteVecValue fill_value;
   if (version >= 6) {
-    uint64_t fill_value_size = 0;
-    RETURN_NOT_OK(buff->read(&fill_value_size, sizeof(uint64_t)));
+    st = buff->read(&fill_value_size, sizeof(uint64_t));
+    if (!st.ok())
+      return {st, std::nullopt};
     assert(fill_value_size > 0);
-    fill_value_.resize(fill_value_size);
-    fill_value_.shrink_to_fit();
-    RETURN_NOT_OK(buff->read(fill_value_.data(), fill_value_size));
-  } else {
-    set_default_fill_value();
+    fill_value.resize(fill_value_size);
+    fill_value.shrink_to_fit();
+    st = buff->read(fill_value.data(), fill_value_size);
+    if (!st.ok())
+      return {st, std::nullopt};
   }
 
   // Load nullable flag
-  if (version >= 7)
-    RETURN_NOT_OK(buff->read(&nullable_, sizeof(bool)));
+  bool nullable;
+  if (version >= 7) {
+    st = buff->read(&nullable, sizeof(bool));
+    if (!st.ok())
+      return {st, std::nullopt};
+  }
 
   // Load validity fill value
-  if (version >= 7)
-    RETURN_NOT_OK(buff->read(&fill_value_validity_, sizeof(uint8_t)));
+  uint8_t fill_value_validity;
+  if (version >= 7) {
+    st = buff->read(&fill_value_validity, sizeof(uint8_t));
+    if (!st.ok())
+      return {st, std::nullopt};
+  }
 
-  return Status::Ok();
+  Attribute attribute(name, datatype, nullable);
+
+  attribute.set_cell_val_num(cell_val_num);
+//  attribute.set_filter_pipeline(&(const FilterPipeline&)filter_pipeline);
+
+  if (version >= 6) {
+    attribute.set_fill_value(fill_value.data(), fill_value_size);
+  } else {
+    attribute.set_default_fill_value();
+  }
+
+  if (version >= 7) {
+    attribute.set_fill_value_validity(fill_value_validity);
+  }
+
+  return {Status::Ok(), std::move(attribute)};
 }
-
 void Attribute::dump(FILE* out) const {
   if (out == nullptr)
     out = stdout;
@@ -359,6 +398,10 @@ Status Attribute::get_fill_value(
 
 const ByteVecValue& Attribute::fill_value() const {
   return fill_value_;
+}
+
+Status Attribute::set_fill_value_validity(uint8_t valid) {
+  fill_value_validity_ = valid;
 }
 
 uint8_t Attribute::fill_value_validity() const {

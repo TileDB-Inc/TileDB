@@ -582,10 +582,13 @@ Status ArraySchema::deserialize(ConstBuffer* buff) {
   uint32_t attribute_num;
   RETURN_NOT_OK(buff->read(&attribute_num, sizeof(uint32_t)));
   for (uint32_t i = 0; i < attribute_num; ++i) {
-    auto attr = tdb_new(Attribute);
-    RETURN_NOT_OK_ELSE(attr->deserialize(buff, version_), tdb_delete(attr));
-    attributes_.emplace_back(attr);
-    attribute_map_[attr->name()] = attr;
+    auto [st_attr, attr] = Attribute::deserialize(buff, version_);
+    if (!st_attr.ok()) {
+      return st_attr;
+    }
+
+    attributes_.emplace_back(&attr.value());
+    attribute_map_[attr.value().name()] = &attr.value();
   }
 
   // Create dimension map

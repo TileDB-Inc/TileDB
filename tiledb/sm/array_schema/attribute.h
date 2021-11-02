@@ -107,9 +107,10 @@ class Attribute {
    *
    * @param buff The buffer to deserialize from.
    * @param version The format spec version.
-   * @return Status
+   * @return Status and Attribute
    */
-  Status deserialize(ConstBuffer* buff, uint32_t version);
+  static std::tuple<Status, std::optional<Attribute&&>> deserialize(
+      ConstBuffer* buff, uint32_t version);
 
   /** Dumps the attribute contents in ASCII form in the selected output. */
   void dump(FILE* out) const;
@@ -186,6 +187,11 @@ class Attribute {
 
   /** Returns the fill value. */
   const ByteVecValue& fill_value() const;
+
+  /**
+   * Sets the fill value validity.
+   */
+  Status set_fill_value_validity(uint8_t valid);
 
   /** Returns the fill value validity. */
   uint8_t fill_value_validity() const;
