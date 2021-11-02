@@ -110,11 +110,13 @@ jobs:
           # allow double-checking path
           cmd /c "echo $PATH"
 
-          # TODO DEBUG move this back in the TILEDB_S3 section
-          # currently we do not run S3 tests on Windows because tests time out (minio+azure slow?)
-          & "$env:BUILD_SOURCESDIRECTORY\scripts\install-minio.ps1"
-          Write-Host "look for 'minio.exe' in following list:"
-          tasklist | findstr /i minio
+          if ($env:TILEDB_S3 -eq "ON") {
+            # TODO DEBUG move this back in the TILEDB_S3 section
+            # currently we do not run S3 tests on Windows because tests time out (minio+azure slow?)
+            & "$env:BUILD_SOURCESDIRECTORY\scripts\install-minio.ps1"
+            Write-Host "look for 'minio.exe' in following list:"
+            tasklist | findstr /i minio
+          }
 
           $bootstrapOptions = $env:TILEDB_BASE_BOOTSTRAP_OPTIONS
           if ($env:TILEDB_S3 -eq "ON") {
@@ -230,6 +232,11 @@ jobs:
             tasklist | findstr /i node.exe
           }
 
+          if ($env:TILEDB_S3 -eq "ON") {
+            Write-Host "look for 'minio.exe' in following list:"
+            tasklist | findstr /i minio
+          }
+
           # Actually run tests
           #~ $cmds = "cmake --build $env:BUILD_BUILDDIRECTORY\tiledb --target check --config Release -- /verbosity:minimal"
           #~ Write-Host "cmds: '$cmds'"
@@ -243,9 +250,9 @@ jobs:
           #TBD: The following *could* fail if the involved tests do not cleanup to leave 'state' such
           #that following runs will find initial environment state as they anticipate!
           #$cmds = "$env:BUILD_SOURCESDIRECTORY\build\tiledb\test\Release\tiledb_unit.exe -d=yes [s3]" 
-          $cmds = "$env:BUILD_SOURCESDIRECTORY\build\tiledb\test\Release\tiledb_unit.exe -d=yes" 
-          Write-Host "cmds: '$cmds'"
-          Invoke-Expression $cmds
+          #$cmds = "$env:BUILD_SOURCESDIRECTORY\build\tiledb\test\Release\tiledb_unit.exe -d=yes" 
+          #Write-Host "cmds: '$cmds'"
+          #Invoke-Expression $cmds
 
           if ($LastExitCode -ne 0) {
              Write-Host "Tests failed. CMake exit status: " $LastExitCocde
