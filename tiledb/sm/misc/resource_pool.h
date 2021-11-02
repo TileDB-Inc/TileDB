@@ -37,7 +37,7 @@
 namespace tiledb {
 namespace sm {
 
-template <class T, template <class U> class P>
+template <class T, template <class> class P>
 class ResourceHandle {
  public:
   ResourceHandle(P<T>& p, unsigned int n)
@@ -65,7 +65,7 @@ class ResourceHandle {
  * @tparam T The resource type
  * @tparam P Class P<T> provides instances of ResourceGuard<T>
  */
-template <class T, template <class U> class P>
+template <class T, template <class> class P>
 class ResourceGuard {
  public:
   /** Constructor. */
@@ -91,7 +91,7 @@ class ResourceGuard {
 template <class T>
 class ResourcePool {
  public:
-  using resource_handle = ResourceHandle<T, ResourcePool>;
+  using resource_handle = ResourceHandle<T, tiledb::sm::ResourcePool>;
 
   /** Constructor. */
   ResourcePool(unsigned int n)
@@ -134,7 +134,7 @@ class ResourcePool {
   /** Mutex protecting unused_ and unused_idx_. */
   std::mutex m_;
 
-  friend class ResourceHandle<T, ResourcePool>;
+  friend class ResourceHandle<T, tiledb::sm::ResourcePool>;
 };
 
 }  // namespace sm
