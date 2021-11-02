@@ -510,7 +510,8 @@ TEST_CASE("VFS: explore c++17 filesystem viability", "[vfs][filesystem]") {
   try {
     auto dir_to_list = "./";
     std::cout << "start filesystem test, listing " << dir_to_list << std::endl;
-    const std::vector<std::string> file_list =
+    //    const std::vector<std::string> file_list =
+    std::vector<std::string> file_list =
         gafr(dir_to_list);  //"C:/Windows/Logs" ) ;
     std::cout << file_list.size() << " files found, following:" << std::endl;
     unsigned ui = 0;
