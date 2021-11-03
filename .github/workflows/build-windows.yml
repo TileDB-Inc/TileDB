@@ -257,10 +257,13 @@ jobs:
           #$cmds = "$env:BUILD_BUILDDIRECTORY\tiledb\test\Release\tiledb_unit.exe -d=yes | c:\msys64\usr\bin\awk '/1: ::set-output/{sub(/.*1: /, `"`"); print; next} 1'" 
           #$cmds = "$env:BUILD_BUILDDIRECTORY\tiledb\test\Release\tiledb_unit.exe -d=yes [s3]" 
           #$cmds = "$env:BUILD_BUILDDIRECTORY\tiledb\test\Release\tiledb_unit.exe -d=yes [serialization]" 
+          # generate the list of tests so, if one fails catastrophically the list can be reviewed to see
+          # what was after the last one reported.
           $cmds = "$env:BUILD_BUILDDIRECTORY\tiledb\test\Release\tiledb_unit.exe -l" 
           Write-Host "cmds: '$cmds'"
           Invoke-Expression $cmds
-          $cmds = "$env:BUILD_BUILDDIRECTORY\tiledb\test\Release\tiledb_unit.exe -d=yes ~[arrow]" 
+          $cmds = "$env:BUILD_BUILDDIRECTORY\tiledb\test\Release\tiledb_unit.exe -d=yes" 
+          #$cmds = "$env:BUILD_BUILDDIRECTORY\tiledb\test\Release\tiledb_unit.exe -d=yes ~[arrow]" 
           Write-Host "cmds: '$cmds'"
           Invoke-Expression $cmds
 
