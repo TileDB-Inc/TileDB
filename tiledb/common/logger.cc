@@ -146,6 +146,11 @@ void Logger::critical(const std::string& msg) {
   logger_->critical(msg);
 }
 
+void Logger::fatal(const std::string& msg) {
+  logger_->error(msg);
+  exit(1);
+}
+
 void Logger::trace(const std::stringstream& msg) {
   logger_->trace(msg.str());
 }
@@ -212,6 +217,8 @@ void Logger::set_format(Logger::Format fmt) {
        *    "Query": "uid",
        *    "Writer": "uid"
        *  },
+       *  "message": "text to log"
+       * },
        */
       std::string json_pattern = {
           "{\"severity\":\"%l\",\"timestamp\":\"%Y-%m-%dT%H:%M:%S.%f%z\","

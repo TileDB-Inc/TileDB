@@ -382,7 +382,7 @@ class Logger {
   static inline Logger::Format fmt_ = Logger::Format::DEFAULT;
 
   /** A counter of logger class instances */
-  static inline uint64_t instance_count = 0;
+  static inline std::atomic<uint64_t> instance_count = 0;
 
   /* ********************************* */
   /*          PRIVATE METHODS          */

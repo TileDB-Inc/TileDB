@@ -46,8 +46,6 @@
 #include <string>
 #include <vector>
 
-#include "tiledb/common/macros.h"
-
 namespace tiledb {
 
 /**
@@ -125,7 +123,6 @@ class Context {
 
     set_tag("x-tiledb-api-language", "c++");
   }
-
   /* ********************************* */
   /*                API                */
   /* ********************************* */

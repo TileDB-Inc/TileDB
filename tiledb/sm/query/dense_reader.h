@@ -115,7 +115,7 @@ class DenseReader : public ReaderBase, public IQueryStrategy {
   /* ********************************* */
 
   /** UID of the logger instance */
-  inline static uint64_t logger_id_ = 0;
+  inline static std::atomic<uint64_t> logger_id_ = 0;
 
   /** Read state. */
   ReadState read_state_;

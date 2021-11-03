@@ -217,7 +217,7 @@ class Writer : public StrategyBase, public IQueryStrategy {
   std::vector<void*> to_clean_;
 
   /** UID of the logger instance */
-  inline static uint64_t logger_id_ = 0;
+  inline static std::atomic<uint64_t> logger_id_ = 0;
 
   /* ********************************* */
   /*           PRIVATE METHODS         */

@@ -899,7 +899,7 @@ class Query {
   tdb_shared_ptr<Logger> logger_;
 
   /** UID of the logger instance */
-  inline static uint64_t logger_id_ = 0;
+  inline static std::atomic<uint64_t> logger_id_ = 0;
 
   /**
    * Maps attribute/dimension names to their buffers.
