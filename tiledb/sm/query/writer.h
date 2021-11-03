@@ -33,6 +33,8 @@
 #ifndef TILEDB_WRITER_H
 #define TILEDB_WRITER_H
 
+#include <atomic>
+
 #include "tiledb/common/status.h"
 #include "tiledb/sm/fragment/written_fragment_info.h"
 #include "tiledb/sm/misc/types.h"

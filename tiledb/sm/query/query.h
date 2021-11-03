@@ -33,6 +33,7 @@
 #ifndef TILEDB_QUERY_H
 #define TILEDB_QUERY_H
 
+#include <atomic>
 #include <functional>
 #include <sstream>
 #include <utility>

@@ -34,6 +34,7 @@
 #ifndef TILEDB_STORAGE_MANAGER_H
 #define TILEDB_STORAGE_MANAGER_H
 
+#include <atomic>
 #include <condition_variable>
 #include <functional>
 #include <list>

@@ -33,6 +33,8 @@
 #ifndef TILEDB_READER_H
 #define TILEDB_READER_H
 
+#include <atomic>
+
 #include "tiledb/common/logger_public.h"
 #include "tiledb/common/status.h"
 #include "tiledb/sm/array_schema/dimension.h"

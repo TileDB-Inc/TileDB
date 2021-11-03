@@ -52,6 +52,7 @@
 #define TILEDB_LOGGER_H
 
 #include <spdlog/spdlog.h>
+#include <atomic>
 #include <sstream>
 
 #include "tiledb/common/heap_memory.h"
