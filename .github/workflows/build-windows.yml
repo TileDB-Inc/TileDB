@@ -258,6 +258,8 @@ jobs:
           #$cmds = "$env:BUILD_BUILDDIRECTORY\tiledb\test\Release\tiledb_unit.exe -d=yes [s3]" 
           #$cmds = "$env:BUILD_BUILDDIRECTORY\tiledb\test\Release\tiledb_unit.exe -d=yes [serialization]" 
           $cmds = "$env:BUILD_BUILDDIRECTORY\tiledb\test\Release\tiledb_unit.exe -l" 
+          Write-Host "cmds: '$cmds'"
+          Invoke-Expression $cmds
           $cmds = "$env:BUILD_BUILDDIRECTORY\tiledb\test\Release\tiledb_unit.exe -d=yes" 
           Write-Host "cmds: '$cmds'"
           Invoke-Expression $cmds
