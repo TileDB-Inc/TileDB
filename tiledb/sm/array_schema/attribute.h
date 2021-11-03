@@ -69,6 +69,17 @@ class Attribute {
    */
   Attribute(const std::string& name, Datatype type, bool nullable = false);
 
+  /**
+   * Constructor.
+   *
+   * @param name The name of the attribute.
+   * @param type The type of the attribute.
+   * @param nullable The nullable of the attribute.
+   * @param cell_val_num The cell number of the attribute.
+   * @param filter_pipeline The filters of the attribute.
+   * @param fill_value The fill value of the attribute.
+   * @param fill_value_validity The validity of fill_value.
+   */
   Attribute(
       const std::string& name,
       Datatype type,
@@ -196,11 +207,6 @@ class Attribute {
 
   /** Returns the fill value. */
   const ByteVecValue& fill_value() const;
-
-  /**
-   * Sets the fill value validity.
-   */
-  Status set_fill_value_validity(uint8_t valid);
 
   /** Returns the fill value validity. */
   uint8_t fill_value_validity() const;

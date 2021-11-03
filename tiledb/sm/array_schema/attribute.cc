@@ -411,11 +411,6 @@ const ByteVecValue& Attribute::fill_value() const {
   return fill_value_;
 }
 
-Status Attribute::set_fill_value_validity(uint8_t valid) {
-  fill_value_validity_ = valid;
-  return Status::Ok();
-}
-
 uint8_t Attribute::fill_value_validity() const {
   return fill_value_validity_;
 }
