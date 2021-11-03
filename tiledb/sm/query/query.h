@@ -38,8 +38,7 @@
 #include <utility>
 #include <vector>
 
-// FIXME: we should be including "tiledb/common/logger_public.h" instead ?
-#include "tiledb/common/logger.h"
+#include "tiledb/common/logger_public.h"
 #include "tiledb/common/status.h"
 #include "tiledb/sm/array_schema/array_schema.h"
 #include "tiledb/sm/array_schema/dimension.h"

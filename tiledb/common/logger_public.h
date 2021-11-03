@@ -41,6 +41,8 @@
 namespace tiledb {
 namespace common {
 
+class Logger;
+
 /** Logs a trace. */
 void LOG_TRACE(const std::string& msg);
 

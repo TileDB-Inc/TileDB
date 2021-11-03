@@ -33,9 +33,8 @@
 #ifndef TILEDB_DENSE_TILER_H
 #define TILEDB_DENSE_TILER_H
 
+#include "tiledb/common/logger_public.h"
 #include "tiledb/common/status.h"
-// FIXME: we should be including "tiledb/common/logger_public.h" instead ?
-#include "tiledb/common/logger.h"
 #include "tiledb/sm/array_schema/array_schema.h"
 #include "tiledb/sm/query/query_buffer.h"
 #include "tiledb/sm/stats/stats.h"

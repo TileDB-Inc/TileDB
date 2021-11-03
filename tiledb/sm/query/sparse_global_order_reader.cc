@@ -31,6 +31,7 @@
  */
 
 #include "tiledb/sm/query/sparse_global_order_reader.h"
+#include "tiledb/common/logger.h"
 #include "tiledb/sm/array/array.h"
 #include "tiledb/sm/array_schema/array_schema.h"
 #include "tiledb/sm/array_schema/dimension.h"

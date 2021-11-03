@@ -33,6 +33,7 @@
 #include "test/src/helpers.h"
 #include "test/src/vfs_helpers.h"
 #include "tiledb/common/heap_memory.h"
+#include "tiledb/common/logger.h"
 #include "tiledb/sm/c_api/tiledb_struct_def.h"
 #include "tiledb/sm/misc/types.h"
 #include "tiledb/sm/query/reader.h"

@@ -33,9 +33,8 @@
 #ifndef TILEDB_READER_H
 #define TILEDB_READER_H
 
+#include "tiledb/common/logger_public.h"
 #include "tiledb/common/status.h"
-// FIXME: we should be including "tiledb/common/logger_public.h" instead ?
-#include "tiledb/common/logger.h"
 #include "tiledb/sm/array_schema/dimension.h"
 #include "tiledb/sm/misc/types.h"
 #include "tiledb/sm/query/iquery_strategy.h"

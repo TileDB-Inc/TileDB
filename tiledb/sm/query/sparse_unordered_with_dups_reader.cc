@@ -29,8 +29,8 @@
  *
  * This file implements class SparseUnorderedWithDupsReader.
  */
-
 #include "tiledb/sm/query/sparse_unordered_with_dups_reader.h"
+#include "tiledb/common/logger.h"
 #include "tiledb/sm/array/array.h"
 #include "tiledb/sm/array_schema/array_schema.h"
 #include "tiledb/sm/array_schema/dimension.h"
