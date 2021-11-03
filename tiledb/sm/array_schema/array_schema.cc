@@ -587,8 +587,8 @@ Status ArraySchema::deserialize(ConstBuffer* buff) {
       return st_attr;
     }
 
-    attributes_.emplace_back(&attr.value());
-    attribute_map_[attr.value().name()] = &attr.value();
+    attributes_.emplace_back(attr.value());
+    attribute_map_[attr.value()->name()] = attr.value();
   }
 
   // Create dimension map

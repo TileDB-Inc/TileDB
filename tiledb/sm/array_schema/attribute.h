@@ -69,6 +69,15 @@ class Attribute {
    */
   Attribute(const std::string& name, Datatype type, bool nullable = false);
 
+  Attribute(
+      const std::string& name,
+      Datatype type,
+      bool nullable,
+      uint32_t cell_val_num,
+      const FilterPipeline& filter_pipeline,
+      const ByteVecValue& fill_value,
+      uint8_t fill_value_validity);
+
   /**
    * Constructor. It clones the input attribute.
    *
@@ -109,7 +118,7 @@ class Attribute {
    * @param version The format spec version.
    * @return Status and Attribute
    */
-  static std::tuple<Status, std::optional<Attribute&&>> deserialize(
+  static std::tuple<Status, std::optional<Attribute*>> deserialize(
       ConstBuffer* buff, uint32_t version);
 
   /** Dumps the attribute contents in ASCII form in the selected output. */
@@ -243,6 +252,10 @@ class Attribute {
 
   /** Sets the default fill value. */
   void set_default_fill_value();
+
+  /** The default fill value. */
+  static ByteVecValue default_fill_value(
+      Datatype datatype, uint32_t cell_val_num);
 
   /** Returns the fill value in string form. */
   std::string fill_value_str() const;

@@ -64,6 +64,23 @@ Attribute::Attribute(
   set_default_fill_value();
 }
 
+Attribute::Attribute(
+    const std::string& name,
+    Datatype type,
+    bool nullable,
+    uint32_t cell_val_num,
+    const FilterPipeline& filter_pipeline,
+    const ByteVecValue& fill_value,
+    uint8_t fill_value_validity) {
+  name_ = name;
+  type_ = type;
+  nullable_ = nullable;
+  cell_val_num_ = cell_val_num;
+  filters_ = filter_pipeline;
+  fill_value_ = fill_value;
+  fill_value_validity_ = fill_value_validity;
+}
+
 Attribute::Attribute(const Attribute* attr) {
   assert(attr != nullptr);
   name_ = attr->name();
@@ -92,7 +109,7 @@ unsigned int Attribute::cell_val_num() const {
   return cell_val_num_;
 }
 
-std::tuple<Status, std::optional<Attribute&&>> Attribute::deserialize(
+std::tuple<Status, std::optional<Attribute*>> Attribute::deserialize(
     ConstBuffer* buff, const uint32_t version) {
   Status st;
   // Load attribute name
@@ -120,13 +137,12 @@ std::tuple<Status, std::optional<Attribute&&>> Attribute::deserialize(
     return {st, std::nullopt};
 
   // Load filter pipeline
-//  auto [st_filter, filter_pipeline] = FilterPipeline::deserialize(buff);
-//  if (!st_filter.ok())
-//    return {st, std::nullopt};
+  FilterPipeline filter_pipeline;
+  filter_pipeline.deserialize(buff);
 
   // Load fill value
   uint64_t fill_value_size = 0;
-  ByteVecValue fill_value;
+  ByteVecValue fill_value = default_fill_value(datatype, cell_val_num);
   if (version >= 6) {
     st = buff->read(&fill_value_size, sizeof(uint64_t));
     if (!st.ok())
@@ -140,7 +156,7 @@ std::tuple<Status, std::optional<Attribute&&>> Attribute::deserialize(
   }
 
   // Load nullable flag
-  bool nullable;
+  bool nullable = false;
   if (version >= 7) {
     st = buff->read(&nullable, sizeof(bool));
     if (!st.ok())
@@ -148,29 +164,24 @@ std::tuple<Status, std::optional<Attribute&&>> Attribute::deserialize(
   }
 
   // Load validity fill value
-  uint8_t fill_value_validity;
+  uint8_t fill_value_validity = 0;
   if (version >= 7) {
     st = buff->read(&fill_value_validity, sizeof(uint8_t));
     if (!st.ok())
       return {st, std::nullopt};
   }
 
-  Attribute attribute(name, datatype, nullable);
+  Attribute* attribute = tdb_new(
+      Attribute,
+      name,
+      datatype,
+      nullable,
+      cell_val_num,
+      filter_pipeline,
+      fill_value,
+      fill_value_validity);
 
-  attribute.set_cell_val_num(cell_val_num);
-//  attribute.set_filter_pipeline(&(const FilterPipeline&)filter_pipeline);
-
-  if (version >= 6) {
-    attribute.set_fill_value(fill_value.data(), fill_value_size);
-  } else {
-    attribute.set_default_fill_value();
-  }
-
-  if (version >= 7) {
-    attribute.set_fill_value_validity(fill_value_validity);
-  }
-
-  return {Status::Ok(), std::move(attribute)};
+  return {Status::Ok(), attribute};
 }
 void Attribute::dump(FILE* out) const {
   if (out == nullptr)
@@ -402,6 +413,7 @@ const ByteVecValue& Attribute::fill_value() const {
 
 Status Attribute::set_fill_value_validity(uint8_t valid) {
   fill_value_validity_ = valid;
+  return Status::Ok();
 }
 
 uint8_t Attribute::fill_value_validity() const {
@@ -439,6 +451,25 @@ void Attribute::set_default_fill_value() {
   }
 
   fill_value_validity_ = 0;
+}
+
+ByteVecValue Attribute::default_fill_value(
+    Datatype datatype, uint32_t cell_val_num) {
+  ByteVecValue fillvalue;
+  auto fill_value = constants::fill_value(datatype);
+  auto fill_size = datatype_size(datatype);
+  if (cell_val_num == constants::var_num) {
+    cell_val_num = 1;
+  }
+  fillvalue.resize(cell_val_num * fill_size);
+  fillvalue.shrink_to_fit();
+  uint64_t offset = 0;
+  auto buff = (unsigned char*)fillvalue.data();
+  for (uint64_t i = 0; i < cell_val_num; ++i) {
+    std::memcpy(buff + offset, fill_value, fill_size);
+    offset += fill_size;
+  }
+  return fillvalue;
 }
 
 std::string Attribute::fill_value_str() const {
