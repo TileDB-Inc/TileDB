@@ -110,13 +110,13 @@ jobs:
           # allow double-checking path
           cmd /c "echo $PATH"
 
-          if ($env:TILEDB_S3 -eq "ON") {
-            # TODO DEBUG move this back in the TILEDB_S3 section
-            # currently we do not run S3 tests on Windows because tests time out (minio+azure slow?)
-            & "$env:BUILD_SOURCESDIRECTORY\scripts\install-minio.ps1"
-            Write-Host "look for 'minio.exe' in following list:"
-            tasklist | findstr /i minio
-          }
+          #~ if ($env:TILEDB_S3 -eq "ON") {
+            #~ # TODO DEBUG move this back in the TILEDB_S3 section
+            #~ # currently we do not run S3 tests on Windows because tests time out (minio+azure slow?)
+            #~ & "$env:BUILD_SOURCESDIRECTORY\scripts\install-minio.ps1"
+            #~ Write-Host "look for 'minio.exe' in following list:"
+            #~ tasklist | findstr /i minio
+          #~ }
 
           $bootstrapOptions = $env:TILEDB_BASE_BOOTSTRAP_OPTIONS
           if ($env:TILEDB_S3 -eq "ON") {
@@ -196,6 +196,14 @@ jobs:
           $env:AWS_ACCESS_KEY_ID = "minio"
           $env:AWS_SECRET_ACCESS_KEY = "miniosecretkey"
           
+          if ($env:TILEDB_S3 -eq "ON") {
+            # TODO DEBUG move this back in the TILEDB_S3 section
+            # currently we do not run S3 tests on Windows because tests time out (minio+azure slow?)
+            & "$env:BUILD_SOURCESDIRECTORY\scripts\install-minio.ps1"
+            Write-Host "look for 'minio.exe' in following list:"
+            tasklist | findstr /i minio
+          }
+
           # Clone backwards compatibility test arrays
           if ($env:BACKWARDS_COMPATIBILITY_ARRAYS -eq "ON") {
             git clone https://github.com/TileDB-Inc/TileDB-Unit-Test-Arrays.git --branch 2.2.3 $env:BUILD_SOURCESDIRECTORY/test/inputs/arrays/read_compatibility_test
