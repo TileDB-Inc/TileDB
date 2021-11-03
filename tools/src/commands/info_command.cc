@@ -33,6 +33,7 @@
 #include "commands/info_command.h"
 #include "misc/common.h"
 
+#include "tiledb/common/logger.h"
 #include "tiledb/sm/array/array.h"
 #include "tiledb/sm/array_schema/array_schema.h"
 #include "tiledb/sm/array_schema/attribute.h"
