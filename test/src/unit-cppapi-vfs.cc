@@ -233,6 +233,7 @@ TEST_CASE(
 #endif
 }
 
+#ifndef _WIN32
 TEST_CASE(
     "C++ API: Test VFS copy directory",
     "[cppapi], [cppapi-vfs], [cppapi-vfs-copy-dir]") {
@@ -240,7 +241,6 @@ TEST_CASE(
   Context ctx;
   VFS vfs(ctx);
 
-#ifndef _WIN32
   std::string path =
       std::string("file://") + sm::Posix::current_dir() + "/vfs_test/";
 
@@ -459,5 +459,5 @@ TEST_CASE(
   // Clean up
   vfs.remove_dir(path);
 
-#endif
 }
+#endif
