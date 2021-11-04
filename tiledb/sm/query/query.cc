@@ -104,6 +104,8 @@ Query::Query(StorageManager* storage_manager, Array* array, URI fragment_uri)
 
   if (storage_manager != nullptr)
     config_ = storage_manager->config();
+
+  rest_scratch_ = tdb_make_shared(Buffer);
 }
 
 Query::~Query() {
@@ -1156,6 +1158,10 @@ Status Query::check_set_fixed_buffer(const std::string& name) {
 Status Query::set_config(const Config& config) {
   config_ = config;
 
+  // Refresh memory budget configutation.
+  if (strategy_ != nullptr)
+    RETURN_NOT_OK(strategy_->initialize_memory_budget());
+
   return Status::Ok();
 }
 
@@ -1928,6 +1934,8 @@ Status Query::submit() {
           "Error in query submission; remote array with no rest client."));
 
     array_schema_->set_array_uri(array_->array_uri());
+    RETURN_NOT_OK(create_strategy());
+    RETURN_NOT_OK(strategy_->init());
     return rest_client->submit_query_to_rest(array_->array_uri(), this);
   }
   RETURN_NOT_OK(init());
@@ -1966,6 +1974,10 @@ const Config* Query::config() const {
 
 stats::Stats* Query::stats() const {
   return stats_;
+}
+
+tdb_shared_ptr<Buffer> Query::rest_scratch() const {
+  return rest_scratch_;
 }
 
 /* ****************************** */

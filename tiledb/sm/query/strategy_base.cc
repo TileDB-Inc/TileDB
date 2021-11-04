@@ -58,6 +58,7 @@ StrategyBase::StrategyBase(
     , layout_(layout)
     , storage_manager_(storage_manager)
     , subarray_(subarray)
+    , offsets_format_mode_(Config::SM_OFFSETS_FORMAT_MODE)
     , offsets_extra_element_(false)
     , offsets_bitsize_(constants::cell_var_offset_size * 8) {
   if (array != nullptr) {

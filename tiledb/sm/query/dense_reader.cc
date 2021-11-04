@@ -111,6 +111,10 @@ Status DenseReader::init() {
   return Status::Ok();
 }
 
+Status DenseReader::initialize_memory_budget() {
+  return Status::Ok();
+}
+
 const DenseReader::ReadState* DenseReader::read_state() const {
   return &read_state_;
 }

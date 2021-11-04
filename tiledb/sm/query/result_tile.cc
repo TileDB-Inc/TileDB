@@ -113,7 +113,7 @@ void ResultTile::init_attr_tile(const std::string& name) {
     return;
 
   // Handle attributes
-  if (attr_tiles_.find(name) == attr_tiles_.end())
+  if (attr_tiles_.empty() || attr_tiles_.find(name) == attr_tiles_.end())
     attr_tiles_.emplace(name, TileTuple(Tile(), Tile(), Tile()));
 }
 

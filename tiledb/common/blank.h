@@ -1,11 +1,11 @@
 /**
- * @file   iquery_strategy.h
+ * @file blank.h
  *
  * @section LICENSE
  *
  * The MIT License
  *
- * @copyright Copyright (c) 2017-2021 TileDB, Inc.
+ * @copyright Copyright (c) 2021 TileDB, Inc.
  *
  * Permission is hereby granted, free of charge, to any person obtaining a copy
  * of this software and associated documentation files (the "Software"), to deal
@@ -24,48 +24,35 @@
  * LIABILITY, WHETHER IN AN ACTION OF CONTRACT, TORT OR OTHERWISE, ARISING FROM,
  * OUT OF OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN
  * THE SOFTWARE.
- *
- * @section DESCRIPTION
- *
- * This file defines class IQueryStrategy.
  */
 
-#ifndef TILEDB_IQUERY_STRATEGY_H
-#define TILEDB_IQUERY_STRATEGY_H
+#ifndef TILEDB_COMMON_BLANK_H
+#define TILEDB_COMMON_BLANK_H
 
-#include "tiledb/common/status.h"
-#include "tiledb/sm/enums/layout.h"
+namespace tiledb::common {
 
-using namespace tiledb::common;
-
-namespace tiledb {
-namespace sm {
-
-class IQueryStrategy {
- public:
-  /** Destructor. */
-  virtual ~IQueryStrategy() = default;
-
-  /** Initializes the strategy. */
-  virtual Status init() = 0;
-
-  /** Initialize the memory budget variables. */
-  virtual Status initialize_memory_budget() = 0;
-
-  /** Performs a query using its set members. */
-  virtual Status dowork() = 0;
-
-  /** Finalizes the strategy. */
-  virtual Status finalize() = 0;
-
-  /** Returns of the query is incomplete. */
-  virtual bool incomplete() const = 0;
-
-  /** Resets the object */
-  virtual void reset() = 0;
+/**
+ * `blank` is a marker class to highlight calls to constructors that are slated
+ * for removal. Without specialization, `blank<T>` is not constructable. Each
+ * specialization provides access to a specific constructor is not visible from
+ * the class itself.
+ *
+ * `blank` is intended as a transition mechanism. For example, an initial use of
+ * blank might hide an existing constructor as private and only make it
+ * available through a blank. This does not prevent the use of the old
+ * constructor in new code, but it does make the use blindingly obvious.
+ */
+template <class T>
+struct blank {
+  /**
+   * All constructors are deleted.
+   *
+   * @tparam Args Any argument list.
+   */
+  template <typename... Args>
+  explicit blank(Args&...) = delete;
 };
 
-}  // namespace sm
-}  // namespace tiledb
+}  // namespace tiledb::common
 
-#endif  // TILEDB_IQUERY_STRATEGY_H
+#endif  // TILEDB_COMMON_BLANK_H

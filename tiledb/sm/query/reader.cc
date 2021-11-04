@@ -153,6 +153,10 @@ Status Reader::init() {
   return Status::Ok();
 }
 
+Status Reader::initialize_memory_budget() {
+  return Status::Ok();
+}
+
 const Reader::ReadState* Reader::read_state() const {
   return &read_state_;
 }
