@@ -88,7 +88,7 @@ SparseUnorderedWithDupsReader::SparseUnorderedWithDupsReader(
 
 bool SparseUnorderedWithDupsReader::incomplete() const {
   return copy_overflowed_ || !read_state_.result_cell_slabs_.empty() ||
-         !read_state_.done_adding_result_tiles_;
+         !read_state_.done_adding_result_tiles_ || !result_tiles_.empty();
 }
 
 Status SparseUnorderedWithDupsReader::init() {
@@ -350,6 +350,7 @@ Status SparseUnorderedWithDupsReader::add_result_tile(
     uint64_t memory_budget_coords_tiles,
     unsigned f,
     uint64_t t,
+    uint64_t last_t,
     const Domain* domain,
     bool* budget_exceeded) {
   // Calculate memory consumption for this tile.
@@ -362,30 +363,34 @@ Status SparseUnorderedWithDupsReader::add_result_tile(
     return Status::Ok();
   }
 
-  memory_used_for_coords_total_ += tiles_size;
-
-  result_tiles_.emplace_back(f, t, domain);
-
+  uint64_t tiles_size_qc = 0;
   if (!condition_.empty()) {
-    uint64_t tiles_size = 0;
     for (auto& name : condition_.field_names()) {
       // Calculate memory consumption for this tile.
       uint64_t tile_size = 0;
-      RETURN_NOT_OK(
-          get_attribute_tile_size(name, &result_tiles_.back(), &tile_size));
-      tiles_size += tile_size;
+      RETURN_NOT_OK(get_attribute_tile_size(name, f, t, &tile_size));
+      tiles_size_qc += tile_size;
     }
 
-    memory_used_qc_tiles_ += tiles_size;
-    if (memory_used_qc_tiles_ > memory_budget_qc_tiles) {
+    if (memory_used_qc_tiles_ + tiles_size_qc > memory_budget_qc_tiles) {
       *budget_exceeded = true;
+      return Status::Ok();
     }
   }
 
-  memory_used_result_tiles_ += sizeof(ResultTile);
-  if (memory_used_result_tiles_ > memory_budget_result_tiles) {
+  if (memory_used_result_tiles_ + sizeof(ResultTile) >
+      memory_budget_result_tiles) {
     *budget_exceeded = true;
+    return Status::Ok();
   }
+
+  memory_used_for_coords_total_ += tiles_size;
+  memory_used_qc_tiles_ += tiles_size_qc;
+  memory_used_result_tiles_ += sizeof(ResultTile);
+
+  result_tiles_.emplace_back(f, t, domain);
+  if (t == last_t)
+    all_tiles_loaded_[f] = true;
 
   return Status::Ok();
 }
@@ -411,7 +416,8 @@ Status SparseUnorderedWithDupsReader::fix_memory_usage_after_serialization() {
         for (auto& name : condition_.field_names()) {
           // Calculate memory consumption for this tile.
           uint64_t tile_size = 0;
-          RETURN_NOT_OK(get_attribute_tile_size(name, &rt, &tile_size));
+          RETURN_NOT_OK(
+              get_attribute_tile_size(name, f, rt.tile_idx(), &tile_size));
           tiles_size += tile_size;
         }
 
@@ -423,7 +429,7 @@ Status SparseUnorderedWithDupsReader::fix_memory_usage_after_serialization() {
   return Status::Ok();
 }
 
-Status SparseUnorderedWithDupsReader::create_result_tiles(bool* tiles_found) {
+Status SparseUnorderedWithDupsReader::create_result_tiles() {
   auto timer_se = stats_->start_timer("create_result_tiles");
 
   // For easy reference.
@@ -439,7 +445,7 @@ Status SparseUnorderedWithDupsReader::create_result_tiles(bool* tiles_found) {
       names.emplace_back(name);
     }
 
-    load_tile_offsets(&subarray_, &names);
+    RETURN_NOT_OK(load_tile_offsets(&subarray_, &names));
   }
 
   uint64_t memory_budget_result_tiles =
@@ -454,37 +460,43 @@ Status SparseUnorderedWithDupsReader::create_result_tiles(bool* tiles_found) {
     bool budget_exceeded = false;
     unsigned int f = 0;
     while (f < fragment_num && !budget_exceeded) {
-      auto range_it = result_tile_ranges_[f].rbegin();
-      uint64_t t = 0;
-      while (range_it != result_tile_ranges_[f].rend()) {
-        for (t = range_it->first; t <= range_it->second; t++) {
+      if (!all_tiles_loaded_[f]) {
+        auto range_it = result_tile_ranges_[f].rbegin();
+        while (range_it != result_tile_ranges_[f].rend()) {
+          auto last_t = result_tile_ranges_[f].front().second;
+
           // Figure out the start index.
           auto start = range_it->first;
           if (!result_tiles_.empty() && result_tiles_.back().frag_idx() == f) {
             start = std::max(start, result_tiles_.back().tile_idx() + 1);
           }
 
-          RETURN_NOT_OK(add_result_tile(
-              dim_num,
-              memory_budget_result_tiles,
-              memory_budget_qc_tiles,
-              memory_budget_coords,
-              f,
-              t,
-              domain,
-              &budget_exceeded));
-          *tiles_found = true;
+          for (uint64_t t = start; t <= range_it->second; t++) {
+            RETURN_NOT_OK(add_result_tile(
+                dim_num,
+                memory_budget_result_tiles,
+                memory_budget_qc_tiles,
+                memory_budget_coords,
+                f,
+                t,
+                last_t,
+                domain,
+                &budget_exceeded));
+
+            if (budget_exceeded) {
+              if (result_tiles_.empty())
+                return LOG_STATUS(Status::SparseUnorderedWithDupsReaderError(
+                    "Cannot load a single tile, increase memory budget"));
+              break;
+            }
+          }
 
           if (budget_exceeded)
             break;
+          range_it++;
         }
-
-        if (budget_exceeded)
-          break;
-        range_it++;
       }
 
-      all_tiles_loaded_[f] = !budget_exceeded;
       f++;
     }
   } else {
@@ -492,32 +504,35 @@ Status SparseUnorderedWithDupsReader::create_result_tiles(bool* tiles_found) {
     bool budget_exceeded = false;
     unsigned int f = 0;
     while (f < fragment_num && !budget_exceeded) {
-      uint64_t t = 0;
-      auto tile_num = fragment_metadata_[f]->tile_num();
+      if (!all_tiles_loaded_[f]) {
+        auto tile_num = fragment_metadata_[f]->tile_num();
 
-      // Figure out the start index.
-      auto start = read_state_.frag_tile_idx_[f].first;
-      if (!result_tiles_.empty() && result_tiles_.back().frag_idx() == f) {
-        start = std::max(start, result_tiles_.back().tile_idx() + 1);
+        // Figure out the start index.
+        auto start = read_state_.frag_tile_idx_[f].first;
+        if (!result_tiles_.empty() && result_tiles_.back().frag_idx() == f) {
+          start = std::max(start, result_tiles_.back().tile_idx() + 1);
+        }
+
+        for (uint64_t t = start; t < tile_num; t++) {
+          RETURN_NOT_OK(add_result_tile(
+              dim_num,
+              memory_budget_result_tiles,
+              memory_budget_qc_tiles,
+              memory_budget_coords,
+              f,
+              t,
+              tile_num - 1,
+              domain,
+              &budget_exceeded));
+
+          if (budget_exceeded) {
+            if (result_tiles_.empty())
+              return LOG_STATUS(Status::SparseUnorderedWithDupsReaderError(
+                  "Cannot load a single tile, increase memory budget"));
+            break;
+          }
+        }
       }
-
-      for (t = start; t < tile_num; t++) {
-        RETURN_NOT_OK(add_result_tile(
-            dim_num,
-            memory_budget_result_tiles,
-            memory_budget_qc_tiles,
-            memory_budget_coords,
-            f,
-            t,
-            domain,
-            &budget_exceeded));
-        *tiles_found = true;
-
-        if (budget_exceeded)
-          break;
-      }
-
-      all_tiles_loaded_[f] = !budget_exceeded;
       f++;
     }
   }
@@ -535,11 +550,10 @@ Status SparseUnorderedWithDupsReader::compute_result_cell_slab() {
   auto timer_se = stats_->start_timer("compute_result_cell_slab");
 
   // Create the result tiles we are going to process.
-  bool tiles_found = false;
-  RETURN_NOT_OK(create_result_tiles(&tiles_found));
+  RETURN_NOT_OK(create_result_tiles());
 
   // No tiles found, return.
-  if (!tiles_found) {
+  if (result_tiles_.empty()) {
     return Status::Ok();
   }
 
@@ -571,8 +585,6 @@ Status SparseUnorderedWithDupsReader::compute_result_cell_slab() {
 
   // TODO This can be moved before calculating result cell slabs.
   // Finally apply the query condition.
-  uint64_t memory_budget_tiles =
-      memory_budget_ * memory_budget_ratio_query_condition_;
   uint64_t memory_used_tiles = 0;
   RETURN_CANCEL_OR_ERROR(apply_query_condition(
       &read_state_.result_cell_slabs_,
@@ -580,11 +592,11 @@ Status SparseUnorderedWithDupsReader::compute_result_cell_slab() {
       &subarray_,
       std::numeric_limits<uint64_t>::max(),
       memory_budget_rcs,
-      memory_budget_tiles,
+      std::numeric_limits<uint64_t>::max() -
+          1,  // Memory budget already enforced.
       &memory_used_tiles));
   memory_used_rcs_ =
       read_state_.result_cell_slabs_.size() * sizeof(ResultCellSlab);
-  memory_used_qc_tiles_ += memory_used_tiles;
 
   return Status::Ok();
 }
@@ -770,7 +782,8 @@ Status SparseUnorderedWithDupsReader::remove_result_tile(
 
   for (const auto& name : condition_.field_names()) {
     uint64_t tile_size = 0;
-    RETURN_NOT_OK(get_attribute_tile_size(name, &*rt, &tile_size));
+    RETURN_NOT_OK(
+        get_attribute_tile_size(name, frag_idx, tile_idx, &tile_size));
     memory_used_qc_tiles_ -= tile_size;
   }
 

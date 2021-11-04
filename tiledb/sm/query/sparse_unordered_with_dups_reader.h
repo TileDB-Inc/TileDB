@@ -132,6 +132,7 @@ class SparseUnorderedWithDupsReader : public SparseIndexReaderBase,
       uint64_t memory_budget_coords_tiles,
       unsigned f,
       uint64_t t,
+      uint64_t last_t,
       const Domain* domain,
       bool* budget_exceeded);
 
@@ -139,7 +140,7 @@ class SparseUnorderedWithDupsReader : public SparseIndexReaderBase,
   Status fix_memory_usage_after_serialization();
 
   /** Create the result tiles. */
-  Status create_result_tiles(bool* tiles_found);
+  Status create_result_tiles();
 
   /** Populate a result cell slab to process. */
   Status compute_result_cell_slab();

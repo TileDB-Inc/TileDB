@@ -254,7 +254,8 @@ Status ReaderBase::load_tile_offsets(
           filtered_names.emplace_back(name);
         }
 
-        fragment->load_tile_offsets(*encryption_key, std::move(filtered_names));
+        RETURN_NOT_OK(fragment->load_tile_offsets(
+            *encryption_key, std::move(filtered_names)));
         return Status::Ok();
       });
 
@@ -1508,7 +1509,7 @@ Status ReaderBase::process_tiles(
 
   // Pre-load all attribute offsets into memory for attributes
   // to be read.
-  load_tile_offsets(subarray, &read_names);
+  RETURN_NOT_OK(load_tile_offsets(subarray, &read_names));
 
   // Respect the memory budget if it is set.
   if (memory_budget != std::numeric_limits<uint64_t>::max()) {
@@ -1520,7 +1521,8 @@ Status ReaderBase::process_tiles(
 
         for (const auto& rt : *result_tiles) {
           uint64_t tile_size = 0;
-          RETURN_NOT_OK(get_attribute_tile_size(name, rt, &tile_size));
+          RETURN_NOT_OK(get_attribute_tile_size(
+              name, rt->frag_idx(), rt->tile_idx(), &tile_size));
           *memory_used_for_tiles += tile_size;
         }
       }
@@ -1539,8 +1541,8 @@ Status ReaderBase::process_tiles(
              i++) {
           const auto& rt = result_tiles->at(i);
           uint64_t tile_size = 0;
-          RETURN_NOT_OK(
-              get_attribute_tile_size(name_pair.first, rt, &tile_size));
+          RETURN_NOT_OK(get_attribute_tile_size(
+              name_pair.first, rt->frag_idx(), rt->tile_idx(), &tile_size));
           if (mem_usage + tile_size > memory_budget) {
             new_result_tile_size = i;
             break;
@@ -1733,10 +1735,8 @@ Status ReaderBase::apply_query_condition(
 }
 
 Status ReaderBase::get_attribute_tile_size(
-    const std::string& name, ResultTile* result_tile, uint64_t* tile_size) {
+    const std::string& name, unsigned f, uint64_t t, uint64_t* tile_size) {
   *tile_size = 0;
-  auto f = result_tile->frag_idx();
-  auto t = result_tile->tile_idx();
   *tile_size += fragment_metadata_[f]->tile_size(name, t);
 
   if (array_schema_->var_size(name)) {
@@ -1747,7 +1747,8 @@ Status ReaderBase::get_attribute_tile_size(
   }
 
   if (array_schema_->is_nullable(name)) {
-    *tile_size += result_tile->cell_num() * constants::cell_validity_size;
+    *tile_size +=
+        fragment_metadata_[f]->cell_num(t) * constants::cell_validity_size;
   }
 
   return Status::Ok();
