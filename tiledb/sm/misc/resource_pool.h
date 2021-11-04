@@ -105,7 +105,7 @@ class ResourcePool {
   /** Take a resource from the pool. */
   resource_handle take() {
     std::lock_guard x(m_);
-    if (unused_idx_ == 0)
+    if (unused_idx_ == -1)
       throw std::runtime_error("Ran out of resources in resource pool");
     return ResourceHandle(*this, unused_[unused_idx_--]);
   }
@@ -129,7 +129,7 @@ class ResourcePool {
   std::vector<unsigned int> unused_;
 
   /** Index of the last valid resource in the unused vector. */
-  unsigned int unused_idx_;
+  int unused_idx_;
 
   /** Mutex protecting unused_ and unused_idx_. */
   std::mutex m_;
