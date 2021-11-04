@@ -4224,7 +4224,7 @@ int32_t tiledb_array_create(
     return TILEDB_ERR;
 
   // Check array name
-  tiledb::sm::URI uri(array_uri);
+  tiledb::sm::URI uri(ctx->ctx_->abs_path(array_uri));
   if (uri.is_invalid()) {
     auto st = Status::Error("Failed to create array; Invalid array URI");
     LOG_STATUS(st);
