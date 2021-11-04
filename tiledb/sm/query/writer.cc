@@ -264,7 +264,7 @@ Status Writer::init() {
 
   // Set a default subarray
   if (!subarray_.is_set())
-    subarray_ = Subarray(array_, layout_, stats_);
+    subarray_ = Subarray(array_, layout_, stats_, logger_);
 
   if (offsets_extra_element_)
     RETURN_NOT_OK(check_extra_element());

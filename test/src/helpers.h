@@ -34,6 +34,8 @@
 #define TILEDB_TEST_HELPERS_H
 
 #include "tiledb.h"
+// fixme: is this ok to be included here instead of logger_public.h?
+#include <tiledb/common/logger.h>
 #include "tiledb/sm/array/array.h"
 #include "tiledb/sm/enums/layout.h"
 #include "tiledb/sm/enums/serialization_type.h"
@@ -75,6 +77,10 @@ namespace test {
 // objects that require a parent `Stats` object. These stats are
 // never used.
 static tiledb::sm::stats::Stats g_helper_stats("test");
+
+// A dummy `Logger` instance. This is useful for constructing
+// objects that require a parent `Logger` object.
+static tdb_shared_ptr<Logger> g_helper_logger = tdb_make_shared(Logger, "");
 
 // For easy reference
 typedef std::pair<tiledb_filter_type_t, int> Compressor;
