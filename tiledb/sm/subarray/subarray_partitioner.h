@@ -36,6 +36,7 @@
 #include <list>
 
 #include <unordered_map>
+#include "tiledb/common/logger_public.h"
 #include "tiledb/common/thread_pool.h"
 #include "tiledb/sm/misc/constants.h"
 #include "tiledb/sm/stats/stats.h"
@@ -169,7 +170,8 @@ class SubarrayPartitioner {
       uint64_t memory_budget_var,
       uint64_t memory_budget_validity,
       ThreadPool* compute_tp,
-      stats::Stats* parent_stats);
+      stats::Stats* parent_stats,
+      tdb_shared_ptr<Logger> logger);
 
   /** Destructor. */
   ~SubarrayPartitioner();
@@ -339,6 +341,12 @@ class SubarrayPartitioner {
 
   /** The class stats. */
   stats::Stats* stats_;
+
+  /** UID of the logger instance */
+  inline static std::atomic<uint64_t> logger_id_ = 0;
+
+  /** The class logger. */
+  tdb_shared_ptr<Logger> logger_;
 
   /** The config. */
   const Config* config_;

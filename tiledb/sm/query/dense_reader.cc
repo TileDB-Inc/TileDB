@@ -430,7 +430,8 @@ Status DenseReader::init_read_state() {
       memory_budget_var,
       memory_budget_validity,
       storage_manager_->compute_tp(),
-      stats_);
+      stats_,
+      logger_);
   read_state_.overflowed_ = false;
   read_state_.unsplittable_ = false;
 
