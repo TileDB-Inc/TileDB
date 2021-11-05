@@ -263,8 +263,8 @@ jobs:
           Write-Host "cmds: '$cmds'"
           Invoke-Expression $cmds
           #$cmds = "$env:BUILD_BUILDDIRECTORY\tiledb\test\Release\tiledb_unit.exe -d=yes" 
-          #$cmds = "$env:BUILD_BUILDDIRECTORY\tiledb\test\Release\tiledb_unit.exe -d=yes ~[arrow]" 
-          $cmds = "$env:BUILD_BUILDDIRECTORY\tiledb\test\Release\tiledb_unit.exe -d=yes [arrow]" 
+          $cmds = "$env:BUILD_BUILDDIRECTORY\tiledb\test\Release\tiledb_unit.exe -d=yes ~[arrow]" 
+          #$cmds = "$env:BUILD_BUILDDIRECTORY\tiledb\test\Release\tiledb_unit.exe -d=yes [arrow]" 
           Write-Host "cmds: '$cmds'"
           Invoke-Expression $cmds
 
