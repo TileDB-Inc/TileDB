@@ -296,7 +296,8 @@ Status Array::close() {
       if (rest_client == nullptr)
         return LOG_STATUS(Status::ArrayError(
             "Error closing array; remote array with no REST client."));
-      RETURN_NOT_OK(rest_client->post_array_metadata_to_rest(array_uri_, this));
+      RETURN_NOT_OK(rest_client->post_array_metadata_to_rest(
+          array_uri_, timestamp_start_, timestamp_end_opened_at_, this));
     }
 
     // Storage manager does not own the array schema for remote arrays.
@@ -332,7 +333,7 @@ bool Array::is_remote() const {
   return remote_;
 }
 
-std::vector<FragmentMetadata*> Array::fragment_metadata() const {
+std::vector<tdb_shared_ptr<FragmentMetadata>> Array::fragment_metadata() const {
   std::unique_lock<std::mutex> lck(mtx_);
   return fragment_metadata_;
 }

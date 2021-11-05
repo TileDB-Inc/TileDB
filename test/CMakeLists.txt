@@ -158,6 +158,7 @@ set(TILEDB_TEST_SOURCES
   src/unit-QueryCondition.cc
   src/unit-ReadCellSlabIter.cc
   src/unit-Reader.cc
+  src/unit-resource-pool.cc
   src/unit-rtree.cc
   src/unit-s3-no-multipart.cc
   src/unit-s3.cc

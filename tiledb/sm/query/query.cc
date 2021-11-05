@@ -38,6 +38,7 @@
 #include "tiledb/sm/enums/query_status.h"
 #include "tiledb/sm/enums/query_type.h"
 #include "tiledb/sm/fragment/fragment_metadata.h"
+#include "tiledb/sm/query/dense_reader.h"
 #include "tiledb/sm/query/query_condition.h"
 #include "tiledb/sm/query/reader.h"
 #include "tiledb/sm/query/sparse_global_order_reader.h"
@@ -73,7 +74,6 @@ Query::Query(StorageManager* storage_manager, Array* array, URI fragment_uri)
     , data_buffer_name_("")
     , offsets_buffer_name_("")
     , disable_check_global_order_(false)
-    , sparse_mode_(false)
     , fragment_uri_(fragment_uri) {
   if (array != nullptr) {
     assert(array->is_open());
@@ -104,6 +104,8 @@ Query::Query(StorageManager* storage_manager, Array* array, URI fragment_uri)
 
   if (storage_manager != nullptr)
     config_ = storage_manager->config();
+
+  rest_scratch_ = tdb_make_shared(Buffer);
 }
 
 Query::~Query() {
@@ -184,12 +186,9 @@ Status Query::add_range_var(
     return LOG_STATUS(
         Status::QueryError("Cannot add range; Invalid dimension index"));
 
-  if (start == nullptr || end == nullptr)
+  if ((start == nullptr && start_size != 0) ||
+      (end == nullptr && end_size != 0))
     return LOG_STATUS(Status::QueryError("Cannot add range; Invalid range"));
-
-  if (start_size == 0 || end_size == 0)
-    return LOG_STATUS(Status::QueryError(
-        "Cannot add range; Range start/end cannot have zero length"));
 
   if (!array_schema_->domain()->dimension(dim_idx)->var_size())
     return LOG_STATUS(
@@ -1017,20 +1016,7 @@ Status Query::create_strategy() {
 
     bool use_default = true;
     if (use_refactored_readers) {
-      if (!array_schema_->dense() && layout_ == Layout::GLOBAL_ORDER) {
-        use_default = false;
-        strategy_ = tdb_unique_ptr<IQueryStrategy>(tdb_new(
-            SparseGlobalOrderReader,
-            stats_->create_child("Reader"),
-            storage_manager_,
-            array_,
-            config_,
-            buffers_,
-            subarray_,
-            layout_,
-            condition_));
-      } else if (
-          !array_schema_->dense() && layout_ == Layout::UNORDERED &&
+      if (!array_schema_->dense() && layout_ == Layout::UNORDERED &&
           array_schema_->allows_dups()) {
         use_default = false;
         strategy_ = tdb_unique_ptr<IQueryStrategy>(tdb_new(
@@ -1043,6 +1029,40 @@ Status Query::create_strategy() {
             subarray_,
             layout_,
             condition_));
+      } else if (
+          !array_schema_->dense() &&
+          (layout_ == Layout::GLOBAL_ORDER ||
+           (layout_ == Layout::UNORDERED && subarray_.range_num() <= 1))) {
+        // Using the reader for unordered queries to do deduplication.
+        use_default = false;
+        strategy_ = tdb_unique_ptr<IQueryStrategy>(tdb_new(
+            SparseGlobalOrderReader,
+            stats_->create_child("Reader"),
+            storage_manager_,
+            array_,
+            config_,
+            buffers_,
+            subarray_,
+            layout_,
+            condition_));
+      } else if (array_schema_->dense()) {
+        bool all_dense = true;
+        for (auto& frag_md : fragment_metadata_)
+          all_dense &= frag_md->dense();
+
+        if (all_dense) {
+          use_default = false;
+          strategy_ = tdb_unique_ptr<IQueryStrategy>(tdb_new(
+              DenseReader,
+              stats_->create_child("Reader"),
+              storage_manager_,
+              array_,
+              config_,
+              buffers_,
+              subarray_,
+              layout_,
+              condition_));
+        }
       }
     }
 
@@ -1056,8 +1076,7 @@ Status Query::create_strategy() {
           buffers_,
           subarray_,
           layout_,
-          condition_,
-          sparse_mode_));
+          condition_));
     }
   }
 
@@ -1073,6 +1092,10 @@ IQueryStrategy* Query::strategy() {
     create_strategy();
   }
   return strategy_.get();
+}
+
+void Query::clear_strategy() {
+  strategy_ = nullptr;
 }
 
 Status Query::disable_check_global_order() {
@@ -1134,6 +1157,10 @@ Status Query::check_set_fixed_buffer(const std::string& name) {
 
 Status Query::set_config(const Config& config) {
   config_ = config;
+
+  // Refresh memory budget configutation.
+  if (strategy_ != nullptr)
+    RETURN_NOT_OK(strategy_->initialize_memory_budget());
 
   return Status::Ok();
 }
@@ -1247,8 +1274,9 @@ Status Query::set_data_buffer(
 
   // Check buffer
   if (check_null_buffers && buffer == nullptr)
-    return LOG_STATUS(
-        Status::QueryError("Cannot set buffer; " + name + " buffer is null"));
+    if (type_ != QueryType::WRITE || *buffer_size != 0)
+      return LOG_STATUS(
+          Status::QueryError("Cannot set buffer; " + name + " buffer is null"));
 
   // Check buffer size
   if (check_null_buffers && buffer_size == nullptr)
@@ -1269,6 +1297,11 @@ Status Query::set_data_buffer(
     return LOG_STATUS(Status::QueryError(
         std::string("Cannot set buffer; Invalid attribute/dimension '") + name +
         "'"));
+
+  if (array_schema_->dense() && type_ == QueryType::WRITE && !is_attr) {
+    return LOG_STATUS(Status::QueryError(
+        std::string("Dense write queries cannot set dimension buffers")));
+  }
 
   // Check if zipped coordinates coexist with separate coordinate buffers
   if ((is_dim && has_zipped_coords_buffer_) ||
@@ -1452,8 +1485,9 @@ Status Query::set_buffer(
     const bool check_null_buffers) {
   // Check buffer
   if (check_null_buffers && buffer_val == nullptr)
-    return LOG_STATUS(
-        Status::QueryError("Cannot set buffer; " + name + " buffer is null"));
+    if (type_ != QueryType::WRITE || *buffer_val_size != 0)
+      return LOG_STATUS(
+          Status::QueryError("Cannot set buffer; " + name + " buffer is null"));
 
   // Check buffer size
   if (check_null_buffers && buffer_val_size == nullptr)
@@ -1641,8 +1675,9 @@ Status Query::set_buffer(
     const bool check_null_buffers) {
   // Check buffer
   if (check_null_buffers && buffer_val == nullptr)
-    return LOG_STATUS(
-        Status::QueryError("Cannot set buffer; " + name + " buffer is null"));
+    if (type_ != QueryType::WRITE || *buffer_val_size != 0)
+      return LOG_STATUS(
+          Status::QueryError("Cannot set buffer; " + name + " buffer is null"));
 
   // Check buffer size
   if (check_null_buffers && buffer_val_size == nullptr)
@@ -1733,6 +1768,11 @@ Status Query::set_layout(Layout layout) {
     return LOG_STATUS(Status::QueryError(
         "Cannot set layout; Hilbert order is not applicable to queries"));
 
+  if (array_schema_->dense() && layout == Layout::UNORDERED) {
+    return LOG_STATUS(Status::QueryError(
+        "Unordered writes are only possible for sparse arrays"));
+  }
+
   layout_ = layout;
   subarray_.set_layout(layout);
   return Status::Ok();
@@ -1745,36 +1785,6 @@ Status Query::set_condition(const QueryCondition& condition) {
         "to read queries"));
 
   condition_ = condition;
-  return Status::Ok();
-}
-
-Status Query::set_sparse_mode(bool sparse_mode) {
-  if (status_ != QueryStatus::UNINITIALIZED)
-    return LOG_STATUS(
-        Status::QueryError("Cannot set sparse mode after initialization"));
-
-  if (type_ != QueryType::READ)
-    return LOG_STATUS(Status::QueryError(
-        "Cannot set sparse mode; Only applicable to read queries"));
-
-  if (!array_schema_->dense())
-    return LOG_STATUS(Status::QueryError(
-        "Cannot set sparse mode; Only applicable to dense arrays"));
-
-  bool all_sparse = true;
-  for (const auto& f : fragment_metadata_) {
-    if (f->dense()) {
-      all_sparse = false;
-      break;
-    }
-  }
-
-  if (!all_sparse)
-    return LOG_STATUS(
-        Status::QueryError("Cannot set sparse mode; Only applicable to opened "
-                           "dense arrays having only sparse fragments"));
-
-  sparse_mode_ = sparse_mode;
   return Status::Ok();
 }
 
@@ -1874,14 +1884,15 @@ Status Query::check_buffers_correctness() {
   // Iterate through each attribute
   for (auto& attr : buffer_names()) {
     if (buffer(attr).buffer_ == nullptr)
-      return LOG_STATUS(
-          Status::QueryError(std::string("Data buffer is not set")));
+      return LOG_STATUS(Status::QueryError(
+          std::string("Data buffer is not set for " + attr)));
     if (array_schema_->var_size(attr)) {
       // Var-sized
       // Check for data buffer under buffer_var
       bool exists_data = buffer(attr).buffer_var_ != nullptr;
       bool exists_offset = buffer(attr).buffer_ != nullptr;
-      if (!exists_data || !exists_offset) {
+      if ((!exists_data && *buffer(attr).buffer_var_size_ != 0) ||
+          !exists_offset) {
         return LOG_STATUS(Status::QueryError(
             std::string("Var-Sized input attribute/dimension '") + attr +
             "' is not set correctly \nOffsets buffer is not set"));
@@ -1923,6 +1934,8 @@ Status Query::submit() {
           "Error in query submission; remote array with no rest client."));
 
     array_schema_->set_array_uri(array_->array_uri());
+    RETURN_NOT_OK(create_strategy());
+    RETURN_NOT_OK(strategy_->init());
     return rest_client->submit_query_to_rest(array_->array_uri(), this);
   }
   RETURN_NOT_OK(init());
@@ -1961,6 +1974,10 @@ const Config* Query::config() const {
 
 stats::Stats* Query::stats() const {
   return stats_;
+}
+
+tdb_shared_ptr<Buffer> Query::rest_scratch() const {
+  return rest_scratch_;
 }
 
 /* ****************************** */

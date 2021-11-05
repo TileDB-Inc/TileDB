@@ -228,6 +228,28 @@ class QueryCondition {
       uint64_t memory_budget = UINT64_MAX) const;
 
   /**
+   * Applies this query condition to a set of cells.
+   *
+   * @param array_schema The array schema.
+   * @param result_tile The result tile to get the cells from.
+   * @param start The start cell.
+   * @param length The number of cells to process.
+   * @param src_cell The cell offset in the source tile.
+   * @param stride The stride between cells.
+   * @param result_buffer The buffer to use for results.
+   * @return Status
+   */
+  template <typename T>
+  Status apply_dense(
+      const ArraySchema* const array_schema,
+      ResultTile* result_tile,
+      const uint64_t start,
+      const uint64_t length,
+      const uint64_t src_cell,
+      const uint64_t stride,
+      uint8_t* result_buffer);
+
+  /**
    * Sets the clauses. This is internal state to only be used in
    * the serialization path.
    */
@@ -345,6 +367,92 @@ class QueryCondition {
       uint64_t stride,
       const std::vector<ResultCellSlab>& result_cell_slabs,
       std::vector<ResultCellSlab>* out_result_cell_slabs) const;
+
+  /**
+   * Applies a clause on a dense result tile,
+   * templated for a query condition operator.
+   *
+   * @param clause The clause to apply.
+   * @param result_tile The result tile to get the cells from.
+   * @param start The start cell.
+   * @param length The number of cells to process.
+   * @param src_cell The cell offset in the source tile.
+   * @param stride The stride between cells.
+   * @param var_size The attribute is var sized or not.
+   * @param nullable The attribute is nullable or not.
+   * @param previous_result_bitmask The bitmask to get the previous result.
+   * @param current_result_bitmask The bitmask to set the current result.
+   * @param result_buffer The result buffer.
+   */
+  template <typename T, QueryConditionOp Op>
+  void apply_clause_dense(
+      const QueryCondition::Clause& clause,
+      ResultTile* result_tile,
+      const uint64_t start,
+      const uint64_t length,
+      const uint64_t src_cell,
+      const uint64_t stride,
+      const bool var_size,
+      const bool nullable,
+      const uint8_t previous_result_bitmask,
+      const uint8_t current_result_bitmask,
+      uint8_t* result_buffer) const;
+
+  /**
+   * Applies a clause on a dense result tile.
+   *
+   * @param clause The clause to apply.
+   * @param result_tile The result tile to get the cells from.
+   * @param start The start cell.
+   * @param length The number of cells to process.
+   * @param src_cell The cell offset in the source tile.
+   * @param stride The stride between cells.
+   * @param var_size The attribute is var sized or not.
+   * @param nullable The attribute is nullable or not.
+   * @param previous_result_bitmask The bitmask to get the previous result.
+   * @param current_result_bitmask The bitmask to set the current result.
+   * @param result_buffer The result buffer.
+   */
+  template <typename T>
+  Status apply_clause_dense(
+      const Clause& clause,
+      ResultTile* result_tile,
+      const uint64_t start,
+      const uint64_t length,
+      const uint64_t src_cell,
+      const uint64_t stride,
+      const bool var_size,
+      const bool nullable,
+      const uint8_t previous_result_bitmask,
+      const uint8_t current_result_bitmask,
+      uint8_t* result_buffer) const;
+
+  /**
+   * Applies a clause to filter result cells from the input
+   * result tile.
+   *
+   * @param clause The clause to apply.
+   * @param array_schema The current array schema.
+   * @param result_tile The result tile to get the cells from.
+   * @param start The start cell.
+   * @param length The number of cells to process.
+   * @param src_cell The cell offset in the source tile.
+   * @param stride The stride between cells.
+   * @param previous_result_bitmask The bitmask to get the previous result.
+   * @param current_result_bitmask The bitmask to set the current result.
+   * @param result_buffer The result buffer.
+   */
+  Status apply_clause_dense(
+      const QueryCondition::Clause& clause,
+      const ArraySchema* const array_schema,
+      ResultTile* result_tile,
+      const uint64_t start,
+      const uint64_t length,
+      const uint64_t src_cell,
+      const uint64_t stride,
+      const uint8_t previous_result_bitmask,
+      const uint8_t current_result_bitmask,
+      uint8_t* result_buffer) const;
 };
 
 }  // namespace sm

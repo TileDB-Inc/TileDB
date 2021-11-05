@@ -158,9 +158,11 @@ void SubarrayTileOverlap::clear() {
 
 uint64_t SubarrayTileOverlap::byte_size() const {
   uint64_t size = 0;
-  for (const auto& tile_overlaps : *tile_overlap_idx_) {
-    for (const auto& tile_overlap : tile_overlaps) {
-      size += tile_overlap.byte_size();
+  if (tile_overlap_idx_) {
+    for (const auto& tile_overlaps : *tile_overlap_idx_) {
+      for (const auto& tile_overlap : tile_overlaps) {
+        size += tile_overlap.byte_size();
+      }
     }
   }
 

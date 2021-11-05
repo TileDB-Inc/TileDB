@@ -33,6 +33,7 @@
 // clang-format off
 #ifdef TILEDB_SERIALIZATION
 #include "tiledb/sm/serialization/capnp_utils.h"
+#include "tiledb/sm/serialization/array_schema_evolution.h"
 #include "tiledb/sm/serialization/query.h"
 #include "tiledb/sm/serialization/tiledb-rest.h"
 #include "tiledb/sm/rest/curl.h" // must be included last to avoid Windows.h
@@ -297,7 +298,11 @@ Status RestClient::get_array_metadata_from_rest(
       array, serialization_type_, returned_data);
 }
 
-Status RestClient::post_array_metadata_to_rest(const URI& uri, Array* array) {
+Status RestClient::post_array_metadata_to_rest(
+    const URI& uri,
+    uint64_t timestamp_start,
+    uint64_t timestamp_end,
+    Array* array) {
   if (array == nullptr)
     return LOG_STATUS(Status::RestError(
         "Error posting array metadata to REST; array is null."));
@@ -317,7 +322,10 @@ Status RestClient::post_array_metadata_to_rest(const URI& uri, Array* array) {
   RETURN_NOT_OK(
       curlc.init(config_, extra_headers_, &redirect_meta_, &redirect_mtx_));
   const std::string url = redirect_uri(cache_key) + "/v1/arrays/" + array_ns +
-                          "/" + curlc.url_escape(array_uri) + "/array_metadata";
+                          "/" + curlc.url_escape(array_uri) +
+                          "/array_metadata?" +
+                          "start_timestamp=" + std::to_string(timestamp_start) +
+                          "&end_timestamp=" + std::to_string(timestamp_end);
 
   // Put the data
   Buffer returned_data;
@@ -349,6 +357,14 @@ Status RestClient::post_query_submit(
         Status::RestError("Error submitting query to REST; null array."));
   }
 
+  auto rest_scratch = query->rest_scratch();
+
+  if (rest_scratch->size() > 0) {
+    bool skip;
+    query_post_call_back(
+        false, nullptr, 0, &skip, rest_scratch, query, copy_state);
+  }
+
   // Serialize query to send
   BufferList serialized;
   RETURN_NOT_OK(serialization::query_serialize(
@@ -367,22 +383,19 @@ Status RestClient::post_query_submit(
                     "&read_all=" + (resubmit_incomplete_ ? "true" : "false");
 
   // Remote array reads always supply the timestamp.
-  if (query->type() == QueryType::READ) {
-    url += "&start_timestamp=" + std::to_string(array->timestamp_start());
-    url += "&end_timestamp=" + std::to_string(array->timestamp_end());
-  }
+  url += "&start_timestamp=" + std::to_string(array->timestamp_start());
+  url += "&end_timestamp=" + std::to_string(array->timestamp_end());
 
   // Create the callback that will process the response buffers as they
   // are received.
-  Buffer scratch;
   auto write_cb = std::bind(
-      &RestClient::post_data_write_cb,
+      &RestClient::query_post_call_back,
       this,
       std::placeholders::_1,
       std::placeholders::_2,
       std::placeholders::_3,
       std::placeholders::_4,
-      &scratch,
+      rest_scratch,
       query,
       copy_state);
 
@@ -391,7 +404,7 @@ Status RestClient::post_query_submit(
       url,
       serialization_type_,
       &serialized,
-      &scratch,
+      rest_scratch.get(),
       std::move(write_cb),
       cache_key);
 
@@ -406,12 +419,12 @@ Status RestClient::post_query_submit(
   return st;
 }
 
-size_t RestClient::post_data_write_cb(
+size_t RestClient::query_post_call_back(
     const bool reset,
     void* const contents,
     const size_t content_nbytes,
     bool* const skip_retries,
-    Buffer* const scratch,
+    tdb_shared_ptr<Buffer> scratch,
     Query* query,
     serialization::CopyState* copy_state) {
   // All return statements in this function must pass through this wrapper.
@@ -502,7 +515,6 @@ size_t RestClient::post_data_write_cb(
       st = aux.write(scratch->cur_data(), query_size);
       if (!st.ok()) {
         scratch->set_offset(scratch->offset() - 8);
-        scratch->set_size(scratch->offset());
         return return_wrapper(bytes_processed);
       }
 
@@ -515,7 +527,6 @@ size_t RestClient::post_data_write_cb(
           aux, serialization_type_, true, copy_state, query, compute_tp_);
       if (!st.ok()) {
         scratch->set_offset(scratch->offset() - 8);
-        scratch->set_size(scratch->offset());
         return return_wrapper(bytes_processed);
       }
     } else {
@@ -527,7 +538,6 @@ size_t RestClient::post_data_write_cb(
           *scratch, serialization_type_, true, copy_state, query, compute_tp_);
       if (!st.ok()) {
         scratch->set_offset(scratch->offset() - 8);
-        scratch->set_size(scratch->offset());
         return return_wrapper(bytes_processed);
       }
     }
@@ -541,7 +551,7 @@ size_t RestClient::post_data_write_cb(
   // consumption by overwriting the serialized query objects that we
   // have already processed.
   const uint64_t length = scratch->size() - scratch->offset();
-  if (scratch->offset() != 0) {
+  if (scratch->offset() != 0 && length != 0) {
     const uint64_t offset = scratch->offset();
     scratch->reset_offset();
 
@@ -555,16 +565,21 @@ size_t RestClient::post_data_write_cb(
     // there will be an overlap in the memory of the source and
     // destination.
     if (length <= offset) {
+      scratch->reset_size();
       st = scratch->write(scratch->data(offset), length);
     } else {
       Buffer aux;
       st = aux.write(scratch->data(offset), length);
       if (st.ok()) {
+        scratch->reset_size();
         st = scratch->write(aux.data(), aux.size());
       }
     }
 
     assert(st.ok());
+    if (!st.ok()) {
+      LOG_STATUS(st);
+    }
     assert(scratch->size() == length);
   }
 
@@ -772,6 +787,35 @@ std::string RestClient::redirect_uri(const std::string& cache_key) {
   return (cache_it == redirect_meta_.end()) ? rest_server_ : cache_it->second;
 }
 
+Status RestClient::post_array_schema_evolution_to_rest(
+    const URI& uri, ArraySchemaEvolution* array_schema_evolution) {
+  Buffer buff;
+  RETURN_NOT_OK(serialization::array_schema_evolution_serialize(
+      array_schema_evolution, serialization_type_, &buff, false));
+  // Wrap in a list
+  BufferList serialized;
+  RETURN_NOT_OK(serialized.add_buffer(std::move(buff)));
+
+  // Init curl and form the URL
+  Curl curlc;
+  std::string array_ns, array_uri;
+  RETURN_NOT_OK(uri.get_rest_components(&array_ns, &array_uri));
+  const std::string cache_key = array_ns + ":" + array_uri;
+  RETURN_NOT_OK(
+      curlc.init(config_, extra_headers_, &redirect_meta_, &redirect_mtx_));
+  auto deduced_url = redirect_uri(cache_key) + "/v1/arrays/" + array_ns + "/" +
+                     curlc.url_escape(array_uri) + "/evolve";
+  Buffer returned_data;
+  const Status sc = curlc.post_data(
+      stats_,
+      deduced_url,
+      serialization_type_,
+      &serialized,
+      &returned_data,
+      cache_key);
+  return sc;
+}
+
 #else
 
 RestClient::RestClient() {
@@ -825,7 +869,8 @@ Status RestClient::get_array_metadata_from_rest(
       Status::RestError("Cannot use rest client; serialization not enabled."));
 }
 
-Status RestClient::post_array_metadata_to_rest(const URI&, Array*) {
+Status RestClient::post_array_metadata_to_rest(
+    const URI&, uint64_t, uint64_t, Array*) {
   return LOG_STATUS(
       Status::RestError("Cannot use rest client; serialization not enabled."));
 }
@@ -841,6 +886,12 @@ Status RestClient::finalize_query_to_rest(const URI&, Query*) {
 }
 
 Status RestClient::get_query_est_result_sizes(const URI&, Query*) {
+  return LOG_STATUS(
+      Status::RestError("Cannot use rest client; serialization not enabled."));
+}
+
+Status RestClient::post_array_schema_evolution_to_rest(
+    const URI&, ArraySchemaEvolution*) {
   return LOG_STATUS(
       Status::RestError("Cannot use rest client; serialization not enabled."));
 }

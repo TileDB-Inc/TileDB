@@ -271,6 +271,10 @@ Status Writer::init() {
   return Status::Ok();
 }
 
+Status Writer::initialize_memory_budget() {
+  return Status::Ok();
+}
+
 Status Writer::dowork() {
   get_dim_attr_stats();
 
@@ -681,10 +685,6 @@ Status Writer::check_subarray() const {
           Status::WriterError("Cannot initialize query; In global writes for "
                               "dense arrays, the subarray "
                               "must coincide with the tile bounds"));
-    if (layout_ == Layout::UNORDERED && subarray_.is_set())
-      return LOG_STATUS(Status::WriterError(
-          "Cannot initialize query; Setting a subarray in unordered writes for "
-          "dense arrays in inapplicable"));
   }
 
   return Status::Ok();
@@ -716,7 +716,7 @@ std::vector<std::string> Writer::buffer_names() const {
   return ret;
 }
 
-Status Writer::close_files(FragmentMetadata* meta) const {
+Status Writer::close_files(tdb_shared_ptr<FragmentMetadata> meta) const {
   // Close attribute and dimension files
   const auto buffer_name = buffer_names();
 
@@ -922,7 +922,7 @@ Status Writer::compute_coord_dups(std::set<uint64_t>* coord_dups) const {
 
 Status Writer::compute_coords_metadata(
     const std::unordered_map<std::string, std::vector<Tile>>& tiles,
-    FragmentMetadata* meta) const {
+    tdb_shared_ptr<FragmentMetadata> meta) const {
   auto timer_se = stats_->start_timer("compute_coord_meta");
 
   // Applicable only if there are coordinates
@@ -975,7 +975,7 @@ Status Writer::compute_coords_metadata(
 }
 
 Status Writer::create_fragment(
-    bool dense, tdb_shared_ptr<FragmentMetadata>* frag_meta) const {
+    bool dense, tdb_shared_ptr<FragmentMetadata>& frag_meta) const {
   URI uri;
   uint64_t timestamp = array_->timestamp_end_opened_at();
   if (!fragment_uri_.to_string().empty()) {
@@ -987,16 +987,16 @@ Status Writer::create_fragment(
     uri = array_schema_->array_uri().join_path(new_fragment_str);
   }
   auto timestamp_range = std::pair<uint64_t, uint64_t>(timestamp, timestamp);
-  *frag_meta = tdb_make_shared(
+
+  frag_meta = tdb_make_shared(
       FragmentMetadata,
       storage_manager_,
       array_schema_,
       uri,
       timestamp_range,
-      nullptr,
       dense);
 
-  RETURN_NOT_OK((*frag_meta)->init(subarray_.ndrange(0)));
+  RETURN_NOT_OK((frag_meta)->init(subarray_.ndrange(0)));
   return storage_manager_->create_dir(uri);
 }
 
@@ -1090,7 +1090,7 @@ Status Writer::filter_tile(
 
 Status Writer::finalize_global_write_state() {
   assert(layout_ == Layout::GLOBAL_ORDER);
-  auto meta = global_write_state_->frag_meta_.get();
+  auto meta = global_write_state_->frag_meta_;
   const auto& uri = meta->fragment_uri();
 
   // Handle last tile
@@ -1157,7 +1157,7 @@ Status Writer::global_write() {
   if (!global_write_state_) {
     RETURN_CANCEL_OR_ERROR(init_global_write_state());
   }
-  auto frag_meta = global_write_state_->frag_meta_.get();
+  auto frag_meta = global_write_state_->frag_meta_;
   auto uri = frag_meta->fragment_uri();
 
   // Check for coordinate duplicates
@@ -1224,7 +1224,7 @@ Status Writer::global_write_handle_last_tile() {
     return Status::Ok();
 
   // Reserve space for the last tile in the fragment metadata
-  auto meta = global_write_state_->frag_meta_.get();
+  auto meta = global_write_state_->frag_meta_;
   meta->set_num_tiles(meta->tile_index_base() + 1);
   const auto& uri = global_write_state_->frag_meta_->fragment_uri();
 
@@ -1277,7 +1277,7 @@ Status Writer::filter_last_tiles(
   RETURN_NOT_OK(status);
 
   // Compute coordinates metadata
-  auto meta = global_write_state_->frag_meta_.get();
+  auto meta = global_write_state_->frag_meta_;
   RETURN_NOT_OK(compute_coords_metadata(*tiles, meta));
 
   // Gather stats
@@ -1311,8 +1311,9 @@ Status Writer::init_global_write_state() {
   global_write_state_.reset(new GlobalWriteState);
 
   // Create fragment
+  global_write_state_->frag_meta_ = tdb_make_shared(FragmentMetadata);
   RETURN_NOT_OK(create_fragment(
-      !coords_info_.has_coords_, &(global_write_state_->frag_meta_)));
+      !coords_info_.has_coords_, global_write_state_->frag_meta_));
   auto uri = global_write_state_->frag_meta_->fragment_uri();
 
   // Initialize global write state for attribute and coordinates
@@ -1498,7 +1499,7 @@ Status Writer::new_fragment_name(
 }
 
 void Writer::nuke_global_write_state() {
-  auto meta = global_write_state_->frag_meta_.get();
+  auto meta = global_write_state_->frag_meta_;
   close_files(meta);
   storage_manager_->vfs()->remove_dir(meta->fragment_uri());
   global_write_state_.reset(nullptr);
@@ -1598,8 +1599,8 @@ Status Writer::ordered_write() {
   auto timer_se = stats_->start_timer("filter_tile");
 
   // Create new fragment
-  tdb_shared_ptr<FragmentMetadata> frag_meta;
-  RETURN_CANCEL_OR_ERROR(create_fragment(true, &frag_meta));
+  auto frag_meta = tdb_make_shared(FragmentMetadata);
+  RETURN_CANCEL_OR_ERROR(create_fragment(true, frag_meta));
   const auto& uri = frag_meta->fragment_uri();
 
   // Create a dense tiler
@@ -1625,7 +1626,7 @@ Status Writer::ordered_write() {
       std::advance(buff_it, i);
       const auto& attr = buff_it->first;
       return prepare_filter_and_write_tiles<T>(
-          attr, frag_meta.get(), &dense_tiler, 1);
+          attr, frag_meta, &dense_tiler, 1);
     });
     RETURN_NOT_OK_ELSE(st, storage_manager_->vfs()->remove_dir(uri));
   } else {  // Parallelize over tiles
@@ -1634,7 +1635,7 @@ Status Writer::ordered_write() {
       const auto& attr = buff.first;
       RETURN_NOT_OK_ELSE(
           prepare_filter_and_write_tiles<T>(
-              attr, frag_meta.get(), &dense_tiler, thread_num),
+              attr, frag_meta, &dense_tiler, thread_num),
           storage_manager_->vfs()->remove_dir(uri));
       ++i;
     }
@@ -2364,8 +2365,9 @@ Status Writer::split_coords_buffer() {
 }
 
 Status Writer::unordered_write() {
-  // Applicable only to unordered write on dense/sparse arrays
+  // Applicable only to unordered write on sparse arrays
   assert(layout_ == Layout::UNORDERED);
+  assert(!array_schema_->dense());
 
   // Sort coordinates first
   std::vector<uint64_t> cell_pos;
@@ -2380,8 +2382,8 @@ Status Writer::unordered_write() {
     RETURN_CANCEL_OR_ERROR(compute_coord_dups(cell_pos, &coord_dups));
 
   // Create new fragment
-  tdb_shared_ptr<FragmentMetadata> frag_meta;
-  RETURN_CANCEL_OR_ERROR(create_fragment(false, &frag_meta));
+  auto frag_meta = tdb_make_shared(FragmentMetadata);
+  RETURN_CANCEL_OR_ERROR(create_fragment(false, frag_meta));
   const auto& uri = frag_meta->fragment_uri();
 
   // Prepare tiles
@@ -2409,14 +2411,14 @@ Status Writer::unordered_write() {
 
   // Compute coordinates metadata
   RETURN_CANCEL_OR_ERROR_ELSE(
-      compute_coords_metadata(tiles, frag_meta.get()), clean_up(uri));
+      compute_coords_metadata(tiles, frag_meta), clean_up(uri));
 
   // Filter all tiles
   RETURN_CANCEL_OR_ERROR_ELSE(filter_tiles(&tiles), clean_up(uri));
 
   // Write tiles for all attributes and coordinates
   RETURN_CANCEL_OR_ERROR_ELSE(
-      write_all_tiles(frag_meta.get(), &tiles), clean_up(uri));
+      write_all_tiles(frag_meta, &tiles), clean_up(uri));
 
   // Write the fragment metadata
   RETURN_CANCEL_OR_ERROR_ELSE(
@@ -2612,7 +2614,7 @@ Status Writer::write_cell_range_to_tile_var_nullable(
 }
 
 Status Writer::write_all_tiles(
-    FragmentMetadata* frag_meta,
+    tdb_shared_ptr<FragmentMetadata> frag_meta,
     std::unordered_map<std::string, std::vector<Tile>>* const tiles) {
   auto timer_se = stats_->start_timer("tiles");
 
@@ -2636,7 +2638,7 @@ Status Writer::write_all_tiles(
 
 Status Writer::write_tiles(
     const std::string& name,
-    FragmentMetadata* frag_meta,
+    tdb_shared_ptr<FragmentMetadata> frag_meta,
     uint64_t start_tile_id,
     std::vector<Tile>* const tiles,
     bool close_files) {
@@ -2750,7 +2752,7 @@ Status Writer::calculate_hilbert_values(
 template <class T>
 Status Writer::prepare_filter_and_write_tiles(
     const std::string& name,
-    FragmentMetadata* frag_meta,
+    tdb_shared_ptr<FragmentMetadata> frag_meta,
     DenseTiler<T>* dense_tiler,
     uint64_t thread_num) {
   auto timer_se = stats_->start_timer("prepare_filter_and_write_tiles");

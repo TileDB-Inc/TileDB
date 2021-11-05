@@ -38,6 +38,7 @@
 #include "tiledb/common/status.h"
 #include "tiledb/sm/array_schema/dimension.h"
 #include "tiledb/sm/misc/types.h"
+#include "tiledb/sm/misc/utils.h"
 #include "tiledb/sm/query/query_condition.h"
 #include "tiledb/sm/query/result_cell_slab.h"
 
@@ -49,6 +50,13 @@ class ArraySchema;
 class OpenArrayMemoryTracker;
 class StorageManager;
 class Subarray;
+
+constexpr uint64_t ceil_div(uint64_t a, uint64_t b) {
+  auto div = static_cast<float>(a) / static_cast<float>(b);
+  return (static_cast<float>(static_cast<int32_t>(div)) == div) ?
+             static_cast<int32_t>(div) :
+             static_cast<int32_t>(div) + ((div > 0) ? 1 : 0);
+}
 
 /** Processes read queries. */
 class SparseIndexReaderBase : public ReaderBase {
@@ -64,6 +72,9 @@ class SparseIndexReaderBase : public ReaderBase {
 
     /** The tile index inside of each fragments. */
     std::vector<std::pair<uint64_t, uint64_t>> frag_tile_idx_;
+
+    /** Is the reader done with the query. */
+    bool done_adding_result_tiles_;
   };
 
   /* ********************************* */
@@ -84,6 +95,23 @@ class SparseIndexReaderBase : public ReaderBase {
   /** Destructor. */
   ~SparseIndexReaderBase() = default;
 
+  /* ********************************* */
+  /*          PUBLIC METHODS           */
+  /* ********************************* */
+
+  /** Returns the current read state. */
+  const ReadState* read_state() const;
+
+  /** Returns the current read state. */
+  ReadState* read_state();
+
+  /** Clears the result tiles. Used by serialization. */
+  virtual Status clear_result_tiles() = 0;
+
+  /** Add a result tile with no memory budget checks. Used by serialization. */
+  virtual ResultTile* add_result_tile_unsafe(
+      unsigned f, uint64_t t, const Domain* domain) = 0;
+
  protected:
   /* ********************************* */
   /*       PROTECTED ATTRIBUTES        */
@@ -91,9 +119,6 @@ class SparseIndexReaderBase : public ReaderBase {
 
   /** Read state. */
   ReadState read_state_;
-
-  /** Is the reader done with the query. */
-  bool done_adding_result_tiles_;
 
   /** Have we loaded all thiles for this fragment. */
   std::vector<bool> all_tiles_loaded_;
@@ -104,8 +129,9 @@ class SparseIndexReaderBase : public ReaderBase {
   /** Are dimensions var sized. */
   std::vector<bool> is_dim_var_size_;
 
-  /** Sorted list, per fragments of tiles ranges in the subarray, if set. */
-  std::vector<std::list<std::pair<uint64_t, uint64_t>>> result_tile_ranges_;
+  /** Reverse sorted vector, per fragments, of tiles ranges in the subarray, if
+   * set. */
+  std::vector<std::vector<std::pair<uint64_t, uint64_t>>> result_tile_ranges_;
 
   /** Have ve loaded the initial data. */
   bool initial_data_loaded_;
@@ -152,6 +178,9 @@ class SparseIndexReaderBase : public ReaderBase {
   /** How much of the memory budget is reserved for result cell slabs. */
   double memory_budget_ratio_rcs_;
 
+  /** Indicate if the coordinates are loaded for the result tiles. */
+  bool coords_loaded_;
+
   /* ********************************* */
   /*         PROTECTED METHODS         */
   /* ********************************* */
@@ -163,20 +192,26 @@ class SparseIndexReaderBase : public ReaderBase {
   /** Load tile offsets and result tile ranges. */
   Status load_initial_data();
 
-  /**
-   * Computes info about the which tiles are in subarray,
-   * making sure maximum budget is respected.
-   */
-  Status compute_result_tiles_ranges(uint64_t memory_budget);
-
   /** Compute the result bitmap for a tile. */
   Status compute_coord_tiles_result_bitmap(
-      bool subarray_set,
       ResultTile* tile,
+      uint64_t range_idx,
       std::vector<uint8_t>* coord_tiles_result_bitmap);
 
   /** Resize the output buffers to the correct size after copying. */
   Status resize_output_buffers();
+
+  /**
+   * Adds an extra offset in the end of the offsets buffer indicating the
+   * returned data size if an attribute is var-sized.
+   */
+  Status add_extra_offset();
+
+  /** Remove a result tile range for a specific fragment */
+  void remove_result_tile_range(uint64_t f);
+
+  /** Remove a result tile range for a specific range */
+  void remove_range_result_tile_range(uint64_t r);
 };
 
 }  // namespace sm

@@ -34,7 +34,7 @@
 #include "tiledb/sm/c_api/tiledb.h"
 #include "tiledb/sm/misc/constants.h"
 
-TEST_CASE("C API: Test filter set option", "[capi], [filter]") {
+TEST_CASE("C API: Test filter set option", "[capi][filter]") {
   tiledb_ctx_t* ctx;
   int rc = tiledb_ctx_alloc(nullptr, &ctx);
   REQUIRE(rc == TILEDB_OK);
@@ -68,7 +68,7 @@ TEST_CASE("C API: Test filter set option", "[capi], [filter]") {
   tiledb_ctx_free(&ctx);
 }
 
-TEST_CASE("C API: Test filter list", "[capi], [filter]") {
+TEST_CASE("C API: Test filter list", "[capi][filter]") {
   tiledb_ctx_t* ctx;
   int rc = tiledb_ctx_alloc(nullptr, &ctx);
   REQUIRE(rc == TILEDB_OK);
@@ -128,7 +128,7 @@ TEST_CASE("C API: Test filter list", "[capi], [filter]") {
   tiledb_ctx_free(&ctx);
 }
 
-TEST_CASE("C API: Test filter list on attribute", "[capi], [filter]") {
+TEST_CASE("C API: Test filter list on attribute", "[capi][filter]") {
   tiledb_ctx_t* ctx;
   int rc = tiledb_ctx_alloc(nullptr, &ctx);
   REQUIRE(rc == TILEDB_OK);

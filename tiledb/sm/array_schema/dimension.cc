@@ -44,16 +44,16 @@
 
 using namespace tiledb::common;
 
+tiledb::common::blank<tiledb::sm::Dimension>::blank()
+    : tiledb::sm::Dimension{"", tiledb::sm::Datatype::INT32} {
+}
+
 namespace tiledb {
 namespace sm {
 
 /* ********************************* */
 /*     CONSTRUCTORS & DESTRUCTORS    */
 /* ********************************* */
-
-Dimension::Dimension()
-    : Dimension("", Datatype::INT32) {
-}
 
 Dimension::Dimension(const std::string& name, Datatype type)
     : name_(name)
@@ -527,8 +527,6 @@ void Dimension::expand_range_v(const void* v, Range* r) const {
 void Dimension::expand_range_var_v(const char* v, uint64_t v_size, Range* r) {
   assert(v != nullptr);
   assert(r != nullptr);
-  assert(!r->empty());
-  assert(v_size != 0);
 
   auto start = r->start_str();
   auto end = r->end_str();
@@ -555,8 +553,6 @@ void Dimension::expand_range(const Range& r1, Range* r2) const {
 
 void Dimension::expand_range_var(const Range& r1, Range* r2) const {
   assert(type_ == Datatype::STRING_ASCII);
-  assert(!r1.empty());
-  assert(!r2->empty());
 
   auto r1_start = r1.start_str();
   auto r1_end = r1.end_str();
@@ -624,6 +620,20 @@ Status Dimension::oob(const void* coord) const {
   if (ret)
     return Status::DimensionError(err_msg);
   return Status::Ok();
+}
+
+template <>
+bool Dimension::covered<char>(const Range& r1, const Range& r2) {
+  auto r1_start = r1.start_str();
+  auto r1_end = r1.end_str();
+  auto r2_start = r2.start_str();
+  auto r2_end = r2.end_str();
+
+  auto r1_after_r2 =
+      !r1_start.empty() && !r2_start.empty() && r1_start >= r2_start;
+  auto r2_after_r1 = !r1_end.empty() && !r2_end.empty() && r1_end <= r2_end;
+
+  return r1_after_r2 && r2_after_r1;
 }
 
 template <class T>
@@ -2724,6 +2734,10 @@ void Dimension::set_covered_func() {
     case Datatype::TIME_FS:
     case Datatype::TIME_AS:
       covered_func_ = covered<int64_t>;
+      break;
+    case Datatype::STRING_ASCII:
+      assert(var_size());
+      covered_func_ = covered<char>;
       break;
     default:
       covered_func_ = nullptr;

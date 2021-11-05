@@ -83,6 +83,7 @@ struct ArrowArray {
 /* Begin TileDB Arrow IO internal implementation */
 
 #include <memory>
+#include <optional>
 
 /* ****************************** */
 /*      Error context helper      */
@@ -367,7 +368,7 @@ struct CPPArrowSchema {
   CPPArrowSchema(
       std::string name,
       std::string format,
-      std::string metadata,
+      std::optional<std::string> metadata,
       int64_t flags,
       std::vector<ArrowSchema*> children,
       std::shared_ptr<CPPArrowSchema> dictionary)
@@ -387,7 +388,7 @@ struct CPPArrowSchema {
     // Type description
     schema_->format = format_.c_str();
     schema_->name = name_.c_str();
-    schema_->metadata = metadata.c_str();
+    schema_->metadata = metadata ? metadata.value().c_str() : nullptr;
     schema_->flags = flags;
     schema_->n_children = n_children_;
 
@@ -470,7 +471,7 @@ struct CPPArrowSchema {
   ArrowSchema* schema_;
   std::string format_;
   std::string name_;
-  std::string metadata_;
+  std::optional<std::string> metadata_;
   int64_t flags_;
   int64_t n_children_;
   std::vector<ArrowSchema*> children_;
@@ -675,7 +676,7 @@ BufferInfo ArrowExporter::buffer_info(const std::string& name) {
   uint8_t offsets_elem_nbytes =
       ctx_->config().get("sm.var_offsets.bitsize") == "32" ? 4 : 8;
 
-  bool is_var = (result_elt_iter->second.first != 0);
+  bool is_var = typeinfo.cell_val_num == TILEDB_VAR_NUM;
 
   // NOTE: result sizes are in bytes
   if (is_var) {
@@ -745,25 +746,32 @@ void ArrowExporter::export_(
   // lifetime:
   //   - address is stored in ArrowSchema.private_data
   //   - delete is called by lambda stored in ArrowSchema.release
-  CPPArrowSchema* cpp_schema =
-      new CPPArrowSchema(name, arrow_fmt.fmt_, "", arrow_flags, {}, {});
+  CPPArrowSchema* cpp_schema = new CPPArrowSchema(
+      name, arrow_fmt.fmt_, std::nullopt, arrow_flags, {}, {});
 
   std::vector<void*> buffers;
   if (bufferinfo.is_var) {
     buffers = {nullptr, bufferinfo.offsets, bufferinfo.data};
   } else {
-    cpp_schema =
-        new CPPArrowSchema(name, arrow_fmt.fmt_, "", arrow_flags, {}, {});
+    cpp_schema = new CPPArrowSchema(
+        name, arrow_fmt.fmt_, std::nullopt, arrow_flags, {}, {});
     buffers = {nullptr, bufferinfo.data};
   }
   cpp_schema->export_ptr(schema);
 
+  size_t elem_num = 0;
+  if (bufferinfo.is_var) {
+    // adjust for offset unless empty result
+    elem_num = (bufferinfo.data_num == 0) ? 0 : bufferinfo.offsets_num - 1;
+  } else {
+    elem_num = bufferinfo.data_num;
+  }
+
   auto cpp_arrow_array = new CPPArrowArray(
-      (bufferinfo.is_var ? bufferinfo.offsets_num - 1 :
-                           bufferinfo.data_num),  // elem_num
-      0,                                          // null_num
-      0,                                          // offset
-      {},                                         // children
+      elem_num,  // elem_num
+      0,         // null_num
+      0,         // offset
+      {},        // children
       buffers);
   cpp_arrow_array->export_ptr(array);
 }

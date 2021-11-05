@@ -9,8 +9,7 @@ on:
     branches:
       - '*'  # must quote since "*" is a YAML reserved character; we want a string
 env:
-  TILEDB_SERIALIZATION: ON
-  TILEDB_S3: ON
+  TILEDB_SERIALIZATION: ON # NOTE: currently defined directly inline
   CXX: g++
   BACKWARDS_COMPATIBILITY_ARRAYS: ON
 
@@ -18,7 +17,7 @@ jobs:
   build:
     runs-on: ubuntu-20.04
     if: ${{ startsWith(github.ref , 'refs/tags') != true && startsWith(github.ref , 'build-') != true }}
-    timeout-minutes: 90
+    timeout-minutes: 120
     name: Build - ubuntu-20.04 - SERIALIZATION
     steps:
       - uses: actions/checkout@v2
@@ -46,7 +45,7 @@ jobs:
         id: test
         run: |
 
-          git clone https://github.com/TileDB-Inc/TileDB-Unit-Test-Arrays.git --branch 2.2.0 test/inputs/arrays/read_compatibility_test
+          git clone https://github.com/TileDB-Inc/TileDB-Unit-Test-Arrays.git --branch 2.3.0 test/inputs/arrays/read_compatibility_test
 
           #   name: 'Clone Unit-Test-Arrays'
 

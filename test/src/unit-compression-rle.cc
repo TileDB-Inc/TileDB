@@ -41,7 +41,7 @@
 using namespace tiledb::common;
 using namespace tiledb::sm;
 
-TEST_CASE("Compression-RLE: Test invalid format", "[compression], [rle]") {
+TEST_CASE("Compression-RLE: Test invalid format", "[compression][rle]") {
   // Initializations
   auto input = new ConstBuffer(nullptr, 0);
   auto compressed = new Buffer();
@@ -71,7 +71,7 @@ TEST_CASE("Compression-RLE: Test invalid format", "[compression], [rle]") {
   delete buff;
 }
 
-TEST_CASE("Compression-RLE: Test all values unique", "[compression], [rle]") {
+TEST_CASE("Compression-RLE: Test all values unique", "[compression][rle]") {
   // Populate data
   int data[100];
   for (int i = 0; i < 100; ++i)
@@ -106,7 +106,7 @@ TEST_CASE("Compression-RLE: Test all values unique", "[compression], [rle]") {
   delete decompressed;
 }
 
-TEST_CASE("Compression-RLE: Test all values the same", "[compression], [rle]") {
+TEST_CASE("Compression-RLE: Test all values the same", "[compression][rle]") {
   // Initializations
   uint64_t run_size = 6;
   auto compressed = new Buffer();
@@ -148,7 +148,7 @@ TEST_CASE("Compression-RLE: Test all values the same", "[compression], [rle]") {
 
 TEST_CASE(
     "Compression-RLE: Test a mix of short and long runs",
-    "[compression], [rle]") {
+    "[compression][rle]") {
   // Initializations
   uint64_t run_size = 6;
   Status st;
@@ -192,7 +192,7 @@ TEST_CASE(
 
 TEST_CASE(
     "Compression-RLE: Test when a run exceeds max run length",
-    "[compression], [rle]") {
+    "[compression][rle]") {
   // Initializations
   uint64_t run_size = 6;
   auto decompressed = new Buffer();
@@ -236,7 +236,7 @@ TEST_CASE(
 
 TEST_CASE(
     "Compression-RLE: Test compression/decompression with type double:2",
-    "[compression], [rle]") {
+    "[compression][rle]") {
   // Initializations
   Status st;
   uint64_t value_size = 2 * sizeof(double);

@@ -125,6 +125,25 @@ Status ArraySchemaEvolution::add_attribute(const Attribute* attr) {
   return Status::Ok();
 }
 
+std::vector<std::string> ArraySchemaEvolution::attribute_names_to_add() const {
+  std::lock_guard<std::mutex> lock(mtx_);
+  std::vector<std::string> names;
+  names.reserve(attributes_to_add_map_.size());
+  for (auto it = attributes_to_add_map_.begin();
+       it != attributes_to_add_map_.end();
+       ++it) {
+    names.push_back(it->first);
+  }
+  return names;
+}
+
+const Attribute* ArraySchemaEvolution::attribute_to_add(
+    const std::string& name) const {
+  std::lock_guard<std::mutex> lock(mtx_);
+  auto it = attributes_to_add_map_.find(name);
+  return (it == attributes_to_add_map_.end()) ? nullptr : it->second.get();
+}
+
 Status ArraySchemaEvolution::drop_attribute(const std::string& attribute_name) {
   std::lock_guard<std::mutex> lock(mtx_);
   attributes_to_drop_.insert(attribute_name);
@@ -135,6 +154,17 @@ Status ArraySchemaEvolution::drop_attribute(const std::string& attribute_name) {
     attributes_to_add_map_.erase(attribute_name);
   }
   return Status::Ok();
+}
+
+std::vector<std::string> ArraySchemaEvolution::attribute_names_to_drop() const {
+  std::lock_guard<std::mutex> lock(mtx_);
+  std::vector<std::string> names;
+  names.reserve(attributes_to_drop_.size());
+  for (auto it = attributes_to_drop_.begin(); it != attributes_to_drop_.end();
+       ++it) {
+    names.push_back(*it);
+  }
+  return names;
 }
 
 /* ****************************** */

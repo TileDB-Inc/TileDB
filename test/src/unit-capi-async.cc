@@ -777,7 +777,7 @@ bool AsyncFx::is_array(const std::string& array_name) {
 }
 
 TEST_CASE_METHOD(
-    AsyncFx, "C API: Test dense async", "[capi], [async], [dense-async]") {
+    AsyncFx, "C API: Test dense async", "[capi][async][dense-async]") {
   remove_dense_array();
   create_dense_array();
   write_dense_async();
@@ -786,7 +786,7 @@ TEST_CASE_METHOD(
 }
 
 TEST_CASE_METHOD(
-    AsyncFx, "C API: Test sparse async", "[capi], [async], [sparse-async]") {
+    AsyncFx, "C API: Test sparse async", "[capi][async][sparse-async]") {
   remove_sparse_array();
   create_sparse_array();
   write_sparse_async();
@@ -795,7 +795,7 @@ TEST_CASE_METHOD(
 }
 
 TEST_CASE_METHOD(
-    AsyncFx, "C API: Test async cancellation", "[capi], [async], [cancel]") {
+    AsyncFx, "C API: Test async cancellation", "[capi][async][cancel]") {
   remove_sparse_array();
   create_sparse_array();
   write_sparse_async_cancelled();

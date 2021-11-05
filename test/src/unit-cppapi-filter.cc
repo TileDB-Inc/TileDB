@@ -43,7 +43,7 @@ static void check_filters(
   }
 }
 
-TEST_CASE("C++ API: Filter options", "[cppapi], [filter]") {
+TEST_CASE("C++ API: Filter options", "[cppapi][filter]") {
   using namespace tiledb;
   Context ctx;
 
@@ -93,7 +93,7 @@ TEST_CASE("C++ API: Filter options", "[cppapi], [filter]") {
       std::invalid_argument);
 }
 
-TEST_CASE("C++ API: Filter lists", "[cppapi], [filter]") {
+TEST_CASE("C++ API: Filter lists", "[cppapi][filter]") {
   using namespace tiledb;
   Context ctx;
 
@@ -126,7 +126,7 @@ TEST_CASE("C++ API: Filter lists", "[cppapi], [filter]") {
   REQUIRE(list.nfilters() == 3);
 }
 
-TEST_CASE("C++ API: Filter lists on array", "[cppapi], [filter]") {
+TEST_CASE("C++ API: Filter lists on array", "[cppapi][filter]") {
   using namespace tiledb;
   Context ctx;
   VFS vfs(ctx);

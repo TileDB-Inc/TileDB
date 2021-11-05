@@ -58,6 +58,7 @@ class Range {
   /** Default constructor. */
   Range()
       : range_start_size_(0)
+      , var_size_(false)
       , partition_depth_(0) {
   }
 
@@ -99,6 +100,7 @@ class Range {
     range_.resize(r_size);
     std::memcpy(&range_[0], r, r_size);
     range_start_size_ = range_start_size;
+    var_size_ = true;
   }
 
   /** Sets a var-sized range `[r1, r2]`. */
@@ -109,6 +111,7 @@ class Range {
     auto c = (char*)(&range_[0]);
     std::memcpy(c + r1_size, r2, r2_size);
     range_start_size_ = r1_size;
+    var_size_ = true;
   }
 
   /** Sets a string range. */
@@ -135,7 +138,7 @@ class Range {
 
   /** Copies 'start' into this range's start bytes for fixed-size ranges. */
   void set_start(const void* const start) {
-    if (range_start_size_ != 0)
+    if (var_size_)
       LOG_FATAL("Unexpected var-sized range; cannot set end range.");
     const size_t fixed_size = range_.size() / 2;
     std::memcpy(&range_[0], start, fixed_size);
@@ -168,21 +171,20 @@ class Range {
    * Non-zero only for var-sized ranges.
    */
   uint64_t end_size() const {
-    if (range_start_size_ == 0)
+    if (!var_size_)
       return 0;
     return range_.size() - range_start_size_;
   }
 
   /** Returns a pointer to the end of the range. */
   const void* end() const {
-    auto end_pos =
-        (range_start_size_ == 0) ? range_.size() / 2 : range_start_size_;
+    auto end_pos = var_size_ ? range_start_size_ : range_.size() / 2;
     return range_.empty() ? nullptr : &range_[end_pos];
   }
 
   /** Copies 'end' into this range's end bytes for fixed-size ranges. */
   void set_end(const void* const end) {
-    if (range_start_size_ != 0)
+    if (var_size_)
       LOG_FATAL("Unexpected var-sized range; cannot set end range.");
     const size_t fixed_size = range_.size() / 2;
     std::memcpy(&range_[fixed_size], end, fixed_size);
@@ -215,8 +217,7 @@ class Range {
     if (range_.empty())
       return false;
 
-    bool same_size =
-        range_start_size_ == 0 || 2 * range_start_size_ == range_.size();
+    bool same_size = !var_size_ || 2 * range_start_size_ == range_.size();
     return same_size &&
            !std::memcmp(
                &range_[0], &range_[range_.size() / 2], range_.size() / 2);
@@ -224,7 +225,7 @@ class Range {
 
   /** True if the range is variable sized. */
   bool var_size() const {
-    return range_start_size_ != 0;
+    return var_size_;
   }
 
   /** Sets the partition depth. */
@@ -238,14 +239,14 @@ class Range {
   }
 
  private:
-  /** The range as a flat byte vector.*/
+  /** The range as a flat byte vector. */
   std::vector<uint8_t> range_;
 
-  /**
-   * Non-zero only for var-sized ranges. It is the size of the
-   * start of `range_`.
-   */
+  /** The size of the start of `range_`. */
   uint64_t range_start_size_;
+
+  /** Is the range var sized. */
+  bool var_size_;
 
   /**
    * The ranges in a query's initial subarray have a depth of 0.

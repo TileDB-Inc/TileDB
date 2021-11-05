@@ -403,11 +403,20 @@ TEST_CASE("C++ API: Zero length buffer", "[cppapi][zero-length]") {
 
   tiledb_layout_t write_layout = TILEDB_GLOBAL_ORDER;
   tiledb_array_type_t array_type = TILEDB_DENSE;
+  bool null_pointer = true;
 
   SECTION("SPARSE") {
     array_type = TILEDB_SPARSE;
     SECTION("GLOBAL_ORDER") {
       write_layout = TILEDB_GLOBAL_ORDER;
+
+      SECTION("NULL_PTR") {
+        null_pointer = true;
+      }
+
+      SECTION("NON_NULL_PTR") {
+        null_pointer = false;
+      }
     }
 
     SECTION("UNORDERED") {
@@ -419,10 +428,14 @@ TEST_CASE("C++ API: Zero length buffer", "[cppapi][zero-length]") {
     array_type = TILEDB_DENSE;
     SECTION("GLOBAL_ORDER") {
       write_layout = TILEDB_GLOBAL_ORDER;
-    }
 
-    SECTION("UNORDERED") {
-      write_layout = TILEDB_UNORDERED;
+      SECTION("NULL_PTR") {
+        null_pointer = true;
+      }
+
+      SECTION("NON_NULL_PTR") {
+        null_pointer = false;
+      }
     }
   }
 
@@ -431,7 +444,7 @@ TEST_CASE("C++ API: Zero length buffer", "[cppapi][zero-length]") {
 
   ArraySchema schema(ctx, array_type);
   Domain domain(ctx);
-  domain.add_dimension(Dimension::create<int32_t>(ctx, "d", {{0, 1000}}, 1001));
+  domain.add_dimension(Dimension::create<int32_t>(ctx, "d", {{0, 2}}, 3));
   schema.set_domain(domain);
   schema.add_attribute(Attribute::create<std::vector<int32_t>>(ctx, "a"));
   schema.add_attribute(Attribute::create<uint64_t>(ctx, "b"));
@@ -444,11 +457,15 @@ TEST_CASE("C++ API: Zero length buffer", "[cppapi][zero-length]") {
     std::vector<uint64_t> a_offset = {0, 0, 0};
     std::vector<uint64_t> b = {1, 2, 3};
 
-    a.reserve(10);
+    if (!null_pointer) {
+      a.reserve(10);
+    }
+
     a = {};
     Query q(ctx, array, TILEDB_WRITE);
     q.set_layout(write_layout);
-    q.set_data_buffer("d", coord);
+    if (array_type == TILEDB_SPARSE)
+      q.set_data_buffer("d", coord);
     q.set_data_buffer("a", a);
     q.set_offsets_buffer("a", a_offset);
     q.set_data_buffer("b", b);
@@ -1268,16 +1285,50 @@ TEST_CASE(
   std::string s1("a", 1);
   std::string s2("ee", 2);
   Query query_r(ctx, array_r, TILEDB_READ);
-  query_r.add_range(0, s1, s2);
-  CHECK_THROWS(query_r.add_range(1, s1, s2));
-  CHECK_THROWS(query_r.add_range(0, "", s2));
-  CHECK_THROWS(query_r.add_range(0, s1, ""));
 
-  // Check range
-  CHECK_THROWS(query_r.range(1, 1));
-  std::array<std::string, 2> range = query_r.range(0, 0);
-  CHECK(range[0] == s1);
-  CHECK(range[1] == s2);
+  SECTION("Non empty range") {
+    query_r.add_range(0, s1, s2);
+    CHECK_THROWS(query_r.add_range(1, s1, s2));
+
+    // Check range
+    CHECK_THROWS(query_r.range(1, 1));
+    std::array<std::string, 2> range = query_r.range(0, 0);
+    CHECK(range[0] == s1);
+    CHECK(range[1] == s2);
+  }
+
+  SECTION("Empty first range") {
+    query_r.add_range(0, "", s2);
+    CHECK_THROWS(query_r.add_range(1, "", s2));
+
+    // Check range
+    CHECK_THROWS(query_r.range(1, 1));
+    std::array<std::string, 2> range = query_r.range(0, 0);
+    CHECK(range[0] == "");
+    CHECK(range[1] == s2);
+  }
+
+  SECTION("Empty second range") {
+    query_r.add_range(0, s1, "");
+    CHECK_THROWS(query_r.add_range(1, s1, ""));
+
+    // Check range
+    CHECK_THROWS(query_r.range(1, 1));
+    std::array<std::string, 2> range = query_r.range(0, 0);
+    CHECK(range[0] == s1);
+    CHECK(range[1] == "");
+  }
+
+  SECTION("Empty ranges") {
+    query_r.add_range(0, std::string(""), std::string(""));
+    CHECK_THROWS(query_r.add_range(1, std::string(""), std::string("")));
+
+    // Check range
+    CHECK_THROWS(query_r.range(1, 1));
+    std::array<std::string, 2> range = query_r.range(0, 0);
+    CHECK(range[0] == "");
+    CHECK(range[1] == "");
+  }
 
   std::string data;
   data.resize(10);
@@ -1365,6 +1416,157 @@ TEST_CASE(
 
   // Close array
   array_r.close();
+
+  if (vfs.is_dir(array_name))
+    vfs.remove_dir(array_name);
+}
+
+TEST_CASE(
+    "C++ API: Sparse global order, dimension only read",
+    "[cppapi][sparse][global][read][dimension-only]") {
+  const std::string array_name = "cpp_unit_array";
+  Context ctx;
+  VFS vfs(ctx);
+
+  if (vfs.is_dir(array_name))
+    vfs.remove_dir(array_name);
+
+  // Create
+  Domain domain(ctx);
+  domain.add_dimension(Dimension::create<int>(ctx, "rows", {{0, 3}}, 4))
+      .add_dimension(Dimension::create<int>(ctx, "cols", {{0, 3}}, 4));
+  ArraySchema schema(ctx, TILEDB_SPARSE);
+  schema.set_domain(domain).set_order({{TILEDB_ROW_MAJOR, TILEDB_ROW_MAJOR}});
+  schema.add_attribute(Attribute::create<int>(ctx, "a"));
+  Array::create(array_name, schema);
+
+  // Write
+  std::vector<int> data_w = {1};
+  std::vector<int> coords_w = {0, 0};
+  Array array_w(ctx, array_name, TILEDB_WRITE);
+  Query query_w(ctx, array_w);
+  query_w.set_coordinates(coords_w)
+      .set_layout(TILEDB_GLOBAL_ORDER)
+      .set_data_buffer("a", data_w);
+  query_w.submit();
+  query_w.finalize();
+  array_w.close();
+
+  // Read
+  Array array(ctx, array_name, TILEDB_READ);
+  Query query(ctx, array);
+  const std::vector<int> subarray = {0, 0, 0, 0};
+  std::vector<int> rows(1);
+  query.set_subarray(subarray)
+      .set_layout(TILEDB_GLOBAL_ORDER)
+      .set_data_buffer("rows", rows);
+  query.submit();
+  array.close();
+
+  REQUIRE(rows[0] == 0);
+
+  if (vfs.is_dir(array_name))
+    vfs.remove_dir(array_name);
+}
+
+TEST_CASE(
+    "C++ API: Unordered with dups, dimension only read",
+    "[cppapi][sparse][unordered][dups][read][dimension-only]") {
+  const std::string array_name = "cpp_unit_array";
+  Context ctx;
+  VFS vfs(ctx);
+
+  if (vfs.is_dir(array_name))
+    vfs.remove_dir(array_name);
+
+  // Create
+  Domain domain(ctx);
+  domain.add_dimension(Dimension::create<int>(ctx, "rows", {{0, 3}}, 4))
+      .add_dimension(Dimension::create<int>(ctx, "cols", {{0, 3}}, 4));
+  ArraySchema schema(ctx, TILEDB_SPARSE);
+  schema.set_domain(domain).set_order({{TILEDB_ROW_MAJOR, TILEDB_ROW_MAJOR}});
+  schema.add_attribute(Attribute::create<int>(ctx, "a"));
+  schema.set_allows_dups(true);
+  Array::create(array_name, schema);
+
+  // Write
+  std::vector<int> data_w = {1};
+  std::vector<int> coords_w = {0, 0};
+  Array array_w(ctx, array_name, TILEDB_WRITE);
+  Query query_w(ctx, array_w);
+  query_w.set_coordinates(coords_w)
+      .set_layout(TILEDB_GLOBAL_ORDER)
+      .set_data_buffer("a", data_w);
+  query_w.submit();
+  query_w.finalize();
+  array_w.close();
+
+  // Read
+  Array array(ctx, array_name, TILEDB_READ);
+  Query query(ctx, array);
+  const std::vector<int> subarray = {0, 0, 0, 0};
+  std::vector<int> rows(1);
+  query.set_subarray(subarray)
+      .set_layout(TILEDB_UNORDERED)
+      .set_data_buffer("rows", rows);
+  query.submit();
+  array.close();
+
+  REQUIRE(rows[0] == 0);
+
+  if (vfs.is_dir(array_name))
+    vfs.remove_dir(array_name);
+}
+
+TEST_CASE(
+    "C++ API: Read subarray with multiple ranges",
+    "[cppapi][dense][multi-range]") {
+  const std::string array_name = "cpp_unit_array";
+  Context ctx;
+  VFS vfs(ctx);
+
+  if (vfs.is_dir(array_name))
+    vfs.remove_dir(array_name);
+
+  // Create
+  Domain domain(ctx);
+  domain.add_dimension(Dimension::create<int>(ctx, "rows", {{0, 3}}, 4))
+      .add_dimension(Dimension::create<int>(ctx, "cols", {{0, 3}}, 4));
+  ArraySchema schema(ctx, TILEDB_DENSE);
+  schema.set_domain(domain).set_order({{TILEDB_ROW_MAJOR, TILEDB_ROW_MAJOR}});
+  schema.add_attribute(Attribute::create<int>(ctx, "a"));
+  Array::create(array_name, schema);
+
+  // Write
+  std::vector<int> data_w = {
+      1, 2, 3, 4, 5, 6, 7, 8, 9, 10, 11, 12, 13, 14, 15, 16};
+  Array array_w(ctx, array_name, TILEDB_WRITE);
+  Query query_w(ctx, array_w);
+  query_w.set_subarray({0, 3, 0, 3})
+      .set_layout(TILEDB_ROW_MAJOR)
+      .set_data_buffer("a", data_w);
+  query_w.submit();
+  array_w.close();
+
+  // Read
+  Array array(ctx, array_name, TILEDB_READ);
+  Query query(ctx, array);
+  std::vector<int> data(12);
+  query.add_range(0, 0, 1)
+      .add_range(0, 3, 3)
+      .add_range(1, 0, 3)
+      .set_layout(TILEDB_ROW_MAJOR)
+      .set_data_buffer("a", data);
+  query.submit();
+  array.close();
+
+  for (int i = 0; i < 8; i++) {
+    REQUIRE(data[i] == i + 1);
+  }
+
+  for (int i = 8; i < 12; i++) {
+    REQUIRE(data[i] == i + 5);
+  }
 
   if (vfs.is_dir(array_name))
     vfs.remove_dir(array_name);

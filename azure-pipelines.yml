@@ -8,6 +8,11 @@ pr:
   branches:
     include:
     - '*'  # must quote since "*" is a YAML reserved character; we want a string
+
+variables:
+  - name: manylinuxImage
+    value: quay.io/pypa/manylinux2010_x86_64:2021-06-07-00faba2
+
 stages:
   - stage: CI
     condition: and(not(startsWith(variables['Build.SourceBranch'], 'refs/tags')), not(startsWith(variables['Build.SourceBranchName'], 'build-')))
@@ -30,22 +35,24 @@ stages:
             TILEDB_SERIALIZATION: ON
             CXX: g++
             CC: gcc
-
       pool:
         vmImage: $(imageName)
       steps:
       - template: scripts/azure-linux_mac.yml
 
-    #- job: CentOS6_manylinux1
-    #    container:
-    #      image: quay.io/pypa/manylinux1_x86_64:2020-12-05-08e76f2
-    #    variables:
-    #      CXX: g++
-    #      TILEDB_FORCE_BUILD_DEPS: ON
-    #      TILEDB_BUILD_ENABLE: "s3,azure,serialization,static-tiledb"
-    #    steps:
-    #    - template: scripts/azure-centos6.yml
-
+    - job: linux_manylinux
+      pool: { vmImage: $(imageName) }
+      container: ${{ variables.manylinuxImage }}
+      variables:
+        imageName: 'ubuntu-20.04'
+        TILEDB_SERIALIZATION: ON
+        CXX: g++
+        CC: gcc
+        CXXFLAGS: "-lrt"
+        CFLAGS: "-lrt"
+        USE_MANYLINUX: ON
+      steps:
+      - template: scripts/azure-linux_mac.yml
     - job: Windows
       strategy:
         matrix:
@@ -76,15 +83,12 @@ stages:
       TILEDB_SERIALIZATION: ON
       TILEDB_FORCE_BUILD_DEPS: ON
       MACOSX_DEPLOYMENT_TARGET: 10.14
+      SUDO: 'sudo'
     jobs:
      - job:
+       timeoutInMinutes: 90
        strategy:
          matrix:
-           linux:
-             imageName: 'ubuntu-20.04'
-             CXX: g++
-             ARTIFACT_OS: 'linux'
-             ARTIFACT_ARCH: 'x86_64'
            macOS:
              imageName: 'macOS-10.15'
              CXX: clang++
@@ -103,8 +107,19 @@ stages:
        pool:
          vmImage: $(imageName)
        steps:
-         - template: scripts/azure-linux_mac-release.yml
-
+       - template: scripts/azure-linux_mac-release.yml
+     - job: linux_manylinux
+       pool: { vmImage: 'ubuntu-20.04' }
+       container: ${{ variables.manylinuxImage }}
+       variables:
+         CXX: g++
+         CFLAGS: "-lrt"
+         CXXFLAGS: "-lrt"
+         ARTIFACT_OS: 'linux'
+         ARTIFACT_ARCH: 'x86_64'
+         SUDO: ''
+       steps:
+       - template: scripts/azure-linux_mac-release.yml
      - job: Windows
        strategy:
          matrix:
@@ -118,7 +133,7 @@ stages:
        pool:
          vmImage: $(imageName)
        steps:
-         - template: scripts/azure-windows-release.yml
+       - template: scripts/azure-windows-release.yml
 
   # NOTE: this section cannot be conditional because `Build.Repository.Name` is an agent-scoped variable.
   - stage: Github_Release
@@ -142,7 +157,7 @@ stages:
          displayName: 'Add artifacts to GitHub Release'
          inputs:
            gitHubConnection: TileDB-Inc-Release
-           repositoryName: TileDB-Inc/TileDB
+           repositoryName: $(Build.Repository.Name)
            addChangeLog: false
            action: edit
            tag: $(Build.SourceBranchName)

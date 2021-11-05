@@ -137,10 +137,16 @@ class RestClient {
    * Posts the array's metadata to the REST server.
    *
    * @param uri Array URI
+   * @param timestamp_start Inclusive starting timestamp at which to open array
+   * @param timestamp_end Inclusive ending timestamp at which to open array
    * @param array Array to update/post metadata for.
    * @return Status
    */
-  Status post_array_metadata_to_rest(const URI& uri, Array* array);
+  Status post_array_metadata_to_rest(
+      const URI& uri,
+      uint64_t timestamp_start,
+      uint64_t timestamp_end,
+      Array* array);
 
   /**
    * Post a data query to rest server
@@ -155,7 +161,7 @@ class RestClient {
    * Post a data query to rest server
    *
    * @param uri of array being queried
-   * @param query to send to server and store results in, this qill be modified
+   * @param query to send to server and store results in, this will be modified
    * @return Status Ok() on success Error() on failures
    */
   Status finalize_query_to_rest(const URI& uri, Query* query);
@@ -167,6 +173,16 @@ class RestClient {
    * @return Status Ok() on success Error() on failures
    */
   Status get_query_est_result_sizes(const URI& uri, Query* query);
+
+  /**
+   * Post array schema evolution to rest server
+   *
+   * @param uri of array being queried
+   * @param array_schema_evolution to send to server
+   * @return Status Ok() on success Error() on failures
+   */
+  Status post_array_schema_evolution_to_rest(
+      const URI& uri, ArraySchemaEvolution* array_schema_evolution);
 
  private:
   /* ********************************* */
@@ -254,12 +270,12 @@ class RestClient {
    *    map is updated accordingly.
    * @return Number of acknowledged bytes
    */
-  size_t post_data_write_cb(
-      bool reset,
-      void* contents,
-      size_t content_nbytes,
-      bool* skip_retries,
-      Buffer* scratch,
+  size_t query_post_call_back(
+      const bool reset,
+      void* constcontents,
+      const size_t content_nbytes,
+      bool* constskip_retries,
+      tdb_shared_ptr<Buffer> scratch,
       Query* query,
       serialization::CopyState* copy_state);
 

@@ -893,7 +893,7 @@ TEST_CASE("Filter: Test mixed in- and out-of-place pipeline", "[filter]") {
   buffer.clear();
 }
 
-TEST_CASE("Filter: Test compression", "[filter], [compression]") {
+TEST_CASE("Filter: Test compression", "[filter][compression]") {
   Config config;
 
   const uint64_t nelts = 100;
@@ -917,7 +917,7 @@ TEST_CASE("Filter: Test compression", "[filter], [compression]") {
 
   // Set up dummy array schema (needed by compressor filter for cell size, etc).
   uint32_t dim_dom[] = {1, 10};
-  Dimension dim;
+  Dimension dim{"", Datatype::INT32};
   dim.set_domain(dim_dom);
   Domain domain;
   domain.add_dimension(&dim);
@@ -1990,7 +1990,7 @@ TEST_CASE("Filter: Test byteshuffle", "[filter]") {
   buffer.clear();
 }
 
-TEST_CASE("Filter: Test encryption", "[filter], [encryption]") {
+TEST_CASE("Filter: Test encryption", "[filter][encryption]") {
   Config config;
 
   // Set up test data

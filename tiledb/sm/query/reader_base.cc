@@ -39,6 +39,7 @@
 #include "tiledb/sm/misc/parallel_functions.h"
 #include "tiledb/sm/query/query_macros.h"
 #include "tiledb/sm/query/strategy_base.h"
+#include "tiledb/sm/subarray/cell_slab_iter.h"
 #include "tiledb/sm/subarray/subarray.h"
 
 namespace tiledb {
@@ -68,6 +69,64 @@ ReaderBase::ReaderBase(
 
   auto uint64_t_max = std::numeric_limits<uint64_t>::max();
   copy_end_ = std::pair<uint64_t, uint64_t>(uint64_t_max, uint64_t_max);
+}
+
+/* ********************************* */
+/*          STATIC FUNCTIONS         */
+/* ********************************* */
+
+template <class T>
+void ReaderBase::compute_result_space_tiles(
+    const Domain* domain,
+    const std::vector<std::vector<uint8_t>>& tile_coords,
+    const TileDomain<T>& array_tile_domain,
+    const std::vector<TileDomain<T>>& frag_tile_domains,
+    std::map<const T*, ResultSpaceTile<T>>* result_space_tiles) {
+  auto fragment_num = (unsigned)frag_tile_domains.size();
+  auto dim_num = array_tile_domain.dim_num();
+  std::vector<T> start_coords;
+  const T* coords;
+  start_coords.resize(dim_num);
+
+  // For all tile coordinates
+  for (const auto& tc : tile_coords) {
+    coords = (T*)(&(tc[0]));
+    start_coords = array_tile_domain.start_coords(coords);
+
+    // Create result space tile and insert into the map
+    auto r = result_space_tiles->emplace(coords, ResultSpaceTile<T>());
+    auto& result_space_tile = r.first->second;
+    result_space_tile.set_start_coords(start_coords);
+
+    // Add fragment info to the result space tile
+    for (unsigned f = 0; f < fragment_num; ++f) {
+      // Check if the fragment overlaps with the space tile
+      if (!frag_tile_domains[f].in_tile_domain(coords))
+        continue;
+
+      // Check if any previous fragment covers this fragment
+      // for the tile identified by `coords`
+      bool covered = false;
+      for (unsigned j = 0; j < f; ++j) {
+        if (frag_tile_domains[j].covers(coords, frag_tile_domains[f])) {
+          covered = true;
+          break;
+        }
+      }
+
+      // Exclude this fragment from the space tile
+      if (covered)
+        continue;
+
+      // Include this fragment in the space tile
+      auto frag_domain = frag_tile_domains[f].domain_slice();
+      auto frag_idx = frag_tile_domains[f].id();
+      result_space_tile.append_frag_domain(frag_idx, frag_domain);
+      auto tile_idx = frag_tile_domains[f].tile_pos(coords);
+      ResultTile result_tile(frag_idx, tile_idx, domain);
+      result_space_tile.set_result_tile(frag_idx, result_tile);
+    }
+  }
 }
 
 /* ****************************** */
@@ -176,14 +235,20 @@ Status ReaderBase::load_tile_offsets(
         // Filter the 'names' for format-specific names.
         std::vector<std::string> filtered_names;
         filtered_names.reserve(names->size());
+        auto schema = fragment->array_schema();
         for (const auto& name : *names) {
           // Applicable for zipped coordinates only to versions < 5
           if (name == constants::coords && format_version >= 5)
             continue;
 
           // Applicable to separate coordinates only to versions >= 5
-          const auto is_dim = array_schema_->is_dim(name);
+          const auto is_dim = schema->is_dim(name);
           if (is_dim && format_version < 5)
+            continue;
+
+          // Not a member of array schema, this field was added in array schema
+          // evolution, ignore for this fragment's tile offsets
+          if (!schema->is_field(name))
             continue;
 
           filtered_names.emplace_back(name);
@@ -368,7 +433,7 @@ Status ReaderBase::read_tiles(
   // Populate the list of regions per file to be read.
   std::map<URI, std::vector<std::tuple<uint64_t, void*, uint64_t>>> all_regions;
   for (const auto& tile : *result_tiles) {
-    FragmentMetadata* const fragment = fragment_metadata_[tile->frag_idx()];
+    auto const fragment = fragment_metadata_[tile->frag_idx()];
     const uint32_t format_version = fragment->format_version();
 
     // Applicable for zipped coordinates only to versions < 5
@@ -378,6 +443,11 @@ Status ReaderBase::read_tiles(
     // Applicable to separate coordinates only to versions >= 5
     const bool is_dim = array_schema_->is_dim(name);
     if (is_dim && format_version < 5)
+      continue;
+
+    // If the fragment doesn't have the attribute, this is a schema evolution
+    // field and will be treated with fill-in value instead of reading from disk
+    if (!fragment->array_schema()->is_field(name))
       continue;
 
     // Initialize the tile(s)
@@ -800,7 +870,8 @@ Status ReaderBase::copy_attribute_values(
     std::vector<ResultTile*>* result_tiles,
     std::vector<ResultCellSlab>* result_cell_slabs,
     Subarray& subarray,
-    uint64_t memory_budget) {
+    uint64_t memory_budget,
+    bool include_dim) {
   auto timer_se = stats_->start_timer("copy_attr_values");
 
   if (result_cell_slabs->empty() && result_tiles->empty()) {
@@ -820,7 +891,8 @@ Status ReaderBase::copy_attribute_values(
       break;
     }
 
-    if (name == constants::coords || array_schema_->is_dim(name)) {
+    if (!include_dim &&
+        (name == constants::coords || array_schema_->is_dim(name))) {
       continue;
     }
 
@@ -835,14 +907,16 @@ Status ReaderBase::copy_attribute_values(
     names[name] = flags;
   }
 
-  RETURN_NOT_OK(process_tiles(
-      &names,
-      result_tiles,
-      result_cell_slabs,
-      &subarray,
-      stride,
-      memory_budget,
-      nullptr));
+  if (!names.empty()) {
+    RETURN_NOT_OK(process_tiles(
+        &names,
+        result_tiles,
+        result_cell_slabs,
+        &subarray,
+        stride,
+        memory_budget,
+        nullptr));
+  }
 
   return Status::Ok();
 }
@@ -997,7 +1071,18 @@ Status ReaderBase::copy_partitioned_fixed_cells(
     }
 
     // Copy
-    if (cs.tile_ == nullptr) {  // Empty range
+
+    // First we check if this is an older (pre TileDB 2.0) array with zipped
+    // coordinates and the user has requested split buffer if so we should
+    // proceed to copying the tile If not, and there is no tile or the tile is
+    // empty for the field then this is a read of an older fragment in schema
+    // evolution. In that case we want to set the field to fill values for this
+    // for this tile.
+    const bool split_buffer_for_zipped_coords =
+        array_schema_->is_dim(*name) && cs.tile_->stores_zipped_coords();
+    if ((cs.tile_ == nullptr || cs.tile_->tile_tuple(*name) == nullptr) &&
+        !split_buffer_for_zipped_coords) {  // Empty range or attributed added
+                                            // in schema evolution
       auto bytes_to_copy = cs_length * cell_size;
       auto fill_num = bytes_to_copy / fill_value_size;
       for (uint64_t j = 0; j < fill_num; ++j) {
@@ -1198,7 +1283,7 @@ Status ReaderBase::compute_var_cell_destinations(
     uint64_t* tile_offsets = nullptr;
     uint64_t tile_cell_num = 0;
     uint64_t tile_var_size = 0;
-    if (cs.tile_ != nullptr) {
+    if (cs.tile_ != nullptr && cs.tile_->tile_tuple(name) != nullptr) {
       const auto tile_tuple = cs.tile_->tile_tuple(name);
       const auto& tile = std::get<0>(*tile_tuple);
       const auto& tile_var = std::get<1>(*tile_tuple);
@@ -1219,7 +1304,7 @@ Status ReaderBase::compute_var_cell_destinations(
          cell_idx += stride, dest_vec_idx++) {
       // Get size of variable-sized cell
       uint64_t cell_var_size = 0;
-      if (cs.tile_ == nullptr) {
+      if (cs.tile_ == nullptr || cs.tile_->tile_tuple(name) == nullptr) {
         cell_var_size = fill_value_size;
       } else {
         cell_var_size =
@@ -1235,7 +1320,8 @@ Status ReaderBase::compute_var_cell_destinations(
                *buffer_validity_size)) {
         // Try to fix the overflow by reducing the result cell slabs to copy.
         if (fix_var_sized_overflows_) {
-          copy_end_ = std::pair<uint64_t, uint64_t>(cs_idx + 1, cell_idx);
+          copy_end_ =
+              std::pair<uint64_t, uint64_t>(cs_idx + 1, cell_idx - cs.start_);
 
           // Cannot even copy one cell, return overflow.
           if (cs_idx == 0 && cell_idx == result_cell_slabs->front().start_) {
@@ -1329,7 +1415,7 @@ Status ReaderBase::copy_partitioned_var_cells(
     Tile* tile_var = nullptr;
     Tile* tile_validity = nullptr;
     uint64_t tile_cell_num = 0;
-    if (cs.tile_ != nullptr) {
+    if (cs.tile_ != nullptr && cs.tile_->tile_tuple(*name) != nullptr) {
       const auto tile_tuple = cs.tile_->tile_tuple(*name);
       Tile* const tile = &std::get<0>(*tile_tuple);
       tile_var = &std::get<1>(*tile_tuple);
@@ -1361,7 +1447,7 @@ Status ReaderBase::copy_partitioned_var_cells(
       std::memcpy(offset_dest, &var_offset, offset_size);
 
       // Copy variable-sized value
-      if (cs.tile_ == nullptr) {
+      if (cs.tile_ == nullptr || cs.tile_->tile_tuple(*name) == nullptr) {
         std::memcpy(var_dest, fill_value.data(), fill_value_size);
         if (nullable)
           std::memset(
@@ -1666,6 +1752,308 @@ Status ReaderBase::get_attribute_tile_size(
 
   return Status::Ok();
 }
+
+template <class T>
+void ReaderBase::compute_result_space_tiles(
+    const Subarray& subarray,
+    std::map<const T*, ResultSpaceTile<T>>* result_space_tiles) const {
+  // For easy reference
+  auto domain = array_schema_->domain()->domain();
+  auto tile_extents = array_schema_->domain()->tile_extents();
+  auto tile_order = array_schema_->tile_order();
+
+  // Compute fragment tile domains
+  std::vector<TileDomain<T>> frag_tile_domains;
+  auto fragment_num = (int)fragment_metadata_.size();
+  if (fragment_num > 0) {
+    for (int i = fragment_num - 1; i >= 0; --i) {
+      if (fragment_metadata_[i]->dense()) {
+        frag_tile_domains.emplace_back(
+            i,
+            domain,
+            fragment_metadata_[i]->non_empty_domain(),
+            tile_extents,
+            tile_order);
+      }
+    }
+  }
+
+  // Get tile coords and array domain
+  const auto& tile_coords = subarray.tile_coords();
+  TileDomain<T> array_tile_domain(
+      UINT32_MAX, domain, domain, tile_extents, tile_order);
+
+  // Compute result space tiles
+  compute_result_space_tiles<T>(
+      array_schema_->domain(),
+      tile_coords,
+      array_tile_domain,
+      frag_tile_domains,
+      result_space_tiles);
+}
+
+bool ReaderBase::has_coords() const {
+  for (const auto& it : buffers_) {
+    if (it.first == constants::coords || array_schema_->is_dim(it.first))
+      return true;
+  }
+
+  return false;
+}
+
+template <class T>
+Status ReaderBase::fill_dense_coords(const Subarray& subarray) {
+  auto timer_se = stats_->start_timer("fill_dense_coords");
+
+  // Reading coordinates with a query condition is currently unsupported.
+  // Query conditions mutate the result cell slabs to filter attributes.
+  // This path does not use result cell slabs, which will fill coordinates
+  // for cells that should be filtered out.
+  if (!condition_.empty()) {
+    return LOG_STATUS(
+        Status::ReaderError("Cannot read dense coordinates; dense coordinate "
+                            "reads are unsupported with a query condition"));
+  }
+
+  // Prepare buffers
+  std::vector<unsigned> dim_idx;
+  std::vector<QueryBuffer*> buffers;
+  auto coords_it = buffers_.find(constants::coords);
+  auto dim_num = array_schema_->dim_num();
+  if (coords_it != buffers_.end()) {
+    buffers.emplace_back(&(coords_it->second));
+    dim_idx.emplace_back(dim_num);
+  } else {
+    for (unsigned d = 0; d < dim_num; ++d) {
+      const auto& dim = array_schema_->dimension(d);
+      auto it = buffers_.find(dim->name());
+      if (it != buffers_.end()) {
+        buffers.emplace_back(&(it->second));
+        dim_idx.emplace_back(d);
+      }
+    }
+  }
+  std::vector<uint64_t> offsets(buffers.size(), 0);
+
+  if (layout_ == Layout::GLOBAL_ORDER) {
+    RETURN_NOT_OK(
+        fill_dense_coords_global<T>(subarray, dim_idx, buffers, &offsets));
+  } else {
+    assert(layout_ == Layout::ROW_MAJOR || layout_ == Layout::COL_MAJOR);
+    RETURN_NOT_OK(
+        fill_dense_coords_row_col<T>(subarray, dim_idx, buffers, &offsets));
+  }
+
+  // Update buffer sizes
+  for (size_t i = 0; i < buffers.size(); ++i)
+    *(buffers[i]->buffer_size_) = offsets[i];
+
+  return Status::Ok();
+}
+
+template <class T>
+Status ReaderBase::fill_dense_coords_global(
+    const Subarray& subarray,
+    const std::vector<unsigned>& dim_idx,
+    const std::vector<QueryBuffer*>& buffers,
+    std::vector<uint64_t>* offsets) {
+  auto tile_coords = subarray.tile_coords();
+  auto cell_order = array_schema_->cell_order();
+
+  for (const auto& tc : tile_coords) {
+    auto tile_subarray = subarray.crop_to_tile((const T*)&tc[0], cell_order);
+    RETURN_NOT_OK(
+        fill_dense_coords_row_col<T>(tile_subarray, dim_idx, buffers, offsets));
+  }
+
+  return Status::Ok();
+}
+
+template <class T>
+Status ReaderBase::fill_dense_coords_row_col(
+    const Subarray& subarray,
+    const std::vector<unsigned>& dim_idx,
+    const std::vector<QueryBuffer*>& buffers,
+    std::vector<uint64_t>* offsets) {
+  auto cell_order = array_schema_->cell_order();
+  auto dim_num = array_schema_->dim_num();
+
+  // Iterate over all coordinates, retrieved in cell slabs
+  CellSlabIter<T> iter(&subarray);
+  RETURN_CANCEL_OR_ERROR(iter.begin());
+  while (!iter.end()) {
+    auto cell_slab = iter.cell_slab();
+    auto coords_num = cell_slab.length_;
+
+    // Check for overflow
+    for (size_t i = 0; i < buffers.size(); ++i) {
+      auto idx = (dim_idx[i] == dim_num) ? 0 : dim_idx[i];
+      auto dim = array_schema_->domain()->dimension(idx);
+      auto coord_size = dim->coord_size();
+      coord_size = (dim_idx[i] == dim_num) ? coord_size * dim_num : coord_size;
+      auto buff_size = *(buffers[i]->buffer_size_);
+      auto offset = (*offsets)[i];
+      if (coords_num * coord_size + offset > buff_size) {
+        copy_overflowed_ = true;
+        return Status::Ok();
+      }
+    }
+
+    // Copy slab
+    if (layout_ == Layout::ROW_MAJOR ||
+        (layout_ == Layout::GLOBAL_ORDER && cell_order == Layout::ROW_MAJOR))
+      fill_dense_coords_row_slab(
+          &cell_slab.coords_[0], coords_num, dim_idx, buffers, offsets);
+    else
+      fill_dense_coords_col_slab(
+          &cell_slab.coords_[0], coords_num, dim_idx, buffers, offsets);
+
+    ++iter;
+  }
+
+  return Status::Ok();
+}
+
+template <class T>
+void ReaderBase::fill_dense_coords_row_slab(
+    const T* start,
+    uint64_t num,
+    const std::vector<unsigned>& dim_idx,
+    const std::vector<QueryBuffer*>& buffers,
+    std::vector<uint64_t>* offsets) const {
+  // For easy reference
+  auto dim_num = array_schema_->dim_num();
+
+  // Special zipped coordinates
+  if (dim_idx.size() == 1 && dim_idx[0] == dim_num) {
+    auto c_buff = (char*)buffers[0]->buffer_;
+    auto offset = &(*offsets)[0];
+
+    // Fill coordinates
+    for (uint64_t i = 0; i < num; ++i) {
+      // First dim-1 dimensions are copied as they are
+      if (dim_num > 1) {
+        auto bytes_to_copy = (dim_num - 1) * sizeof(T);
+        std::memcpy(c_buff + *offset, start, bytes_to_copy);
+        *offset += bytes_to_copy;
+      }
+
+      // Last dimension is incremented by `i`
+      auto new_coord = start[dim_num - 1] + i;
+      std::memcpy(c_buff + *offset, &new_coord, sizeof(T));
+      *offset += sizeof(T);
+    }
+  } else {  // Set of separate coordinate buffers
+    for (uint64_t i = 0; i < num; ++i) {
+      for (size_t b = 0; b < buffers.size(); ++b) {
+        auto c_buff = (char*)buffers[b]->buffer_;
+        auto offset = &(*offsets)[b];
+
+        // First dim-1 dimensions are copied as they are
+        if (dim_num > 1 && dim_idx[b] < dim_num - 1) {
+          std::memcpy(c_buff + *offset, &start[dim_idx[b]], sizeof(T));
+          *offset += sizeof(T);
+        } else {
+          // Last dimension is incremented by `i`
+          auto new_coord = start[dim_num - 1] + i;
+          std::memcpy(c_buff + *offset, &new_coord, sizeof(T));
+          *offset += sizeof(T);
+        }
+      }
+    }
+  }
+}
+
+template <class T>
+void ReaderBase::fill_dense_coords_col_slab(
+    const T* start,
+    uint64_t num,
+    const std::vector<unsigned>& dim_idx,
+    const std::vector<QueryBuffer*>& buffers,
+    std::vector<uint64_t>* offsets) const {
+  // For easy reference
+  auto dim_num = array_schema_->dim_num();
+
+  // Special zipped coordinates
+  if (dim_idx.size() == 1 && dim_idx[0] == dim_num) {
+    auto c_buff = (char*)buffers[0]->buffer_;
+    auto offset = &(*offsets)[0];
+
+    // Fill coordinates
+    for (uint64_t i = 0; i < num; ++i) {
+      // First dimension is incremented by `i`
+      auto new_coord = start[0] + i;
+      std::memcpy(c_buff + *offset, &new_coord, sizeof(T));
+      *offset += sizeof(T);
+
+      // Last dim-1 dimensions are copied as they are
+      if (dim_num > 1) {
+        auto bytes_to_copy = (dim_num - 1) * sizeof(T);
+        std::memcpy(c_buff + *offset, &start[1], bytes_to_copy);
+        *offset += bytes_to_copy;
+      }
+    }
+  } else {  // Separate coordinate buffers
+    for (uint64_t i = 0; i < num; ++i) {
+      for (size_t b = 0; b < buffers.size(); ++b) {
+        auto c_buff = (char*)buffers[b]->buffer_;
+        auto offset = &(*offsets)[b];
+
+        // First dimension is incremented by `i`
+        if (dim_idx[b] == 0) {
+          auto new_coord = start[0] + i;
+          std::memcpy(c_buff + *offset, &new_coord, sizeof(T));
+          *offset += sizeof(T);
+        } else {  // Last dim-1 dimensions are copied as they are
+          std::memcpy(c_buff + *offset, &start[dim_idx[b]], sizeof(T));
+          *offset += sizeof(T);
+        }
+      }
+    }
+  }
+}
+
+// Explicit template instantiations
+template void ReaderBase::compute_result_space_tiles<int8_t>(
+    const Subarray& subarray,
+    std::map<const int8_t*, ResultSpaceTile<int8_t>>* result_space_tiles) const;
+template void ReaderBase::compute_result_space_tiles<uint8_t>(
+    const Subarray& subarray,
+    std::map<const uint8_t*, ResultSpaceTile<uint8_t>>* result_space_tiles)
+    const;
+template void ReaderBase::compute_result_space_tiles<int16_t>(
+    const Subarray& subarray,
+    std::map<const int16_t*, ResultSpaceTile<int16_t>>* result_space_tiles)
+    const;
+template void ReaderBase::compute_result_space_tiles<uint16_t>(
+    const Subarray& subarray,
+    std::map<const uint16_t*, ResultSpaceTile<uint16_t>>* result_space_tiles)
+    const;
+template void ReaderBase::compute_result_space_tiles<int32_t>(
+    const Subarray& subarray,
+    std::map<const int32_t*, ResultSpaceTile<int32_t>>* result_space_tiles)
+    const;
+template void ReaderBase::compute_result_space_tiles<uint32_t>(
+    const Subarray& subarray,
+    std::map<const uint32_t*, ResultSpaceTile<uint32_t>>* result_space_tiles)
+    const;
+template void ReaderBase::compute_result_space_tiles<int64_t>(
+    const Subarray& subarray,
+    std::map<const int64_t*, ResultSpaceTile<int64_t>>* result_space_tiles)
+    const;
+template void ReaderBase::compute_result_space_tiles<uint64_t>(
+    const Subarray& subarray,
+    std::map<const uint64_t*, ResultSpaceTile<uint64_t>>* result_space_tiles)
+    const;
+
+template Status ReaderBase::fill_dense_coords<int8_t>(const Subarray&);
+template Status ReaderBase::fill_dense_coords<uint8_t>(const Subarray&);
+template Status ReaderBase::fill_dense_coords<int16_t>(const Subarray&);
+template Status ReaderBase::fill_dense_coords<uint16_t>(const Subarray&);
+template Status ReaderBase::fill_dense_coords<int32_t>(const Subarray&);
+template Status ReaderBase::fill_dense_coords<uint32_t>(const Subarray&);
+template Status ReaderBase::fill_dense_coords<int64_t>(const Subarray&);
+template Status ReaderBase::fill_dense_coords<uint64_t>(const Subarray&);
 
 }  // namespace sm
 }  // namespace tiledb

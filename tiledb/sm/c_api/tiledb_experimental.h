@@ -152,6 +152,25 @@ TILEDB_EXPORT int32_t tiledb_array_evolve(
     const char* array_uri,
     tiledb_array_schema_evolution_t* array_schema_evolution);
 
+/**
+ * Upgrades an array to the latest format version.
+ *
+ * **Example:**
+ *
+ * @code{.c}
+ * const char* array_uri="test_array";
+ * tiledb_array_upgrade_version(ctx, array_uri);
+ * @endcode
+ *
+ * @param ctx The TileDB context.
+ * @param array_uri The uri of the array.
+ * @param config Configuration parameters for the upgrade
+ *     (`nullptr` means default, which will use the config from `ctx`).
+ * @return `TILEDB_OK` for success and `TILEDB_ERR` for error.
+ */
+TILEDB_EXPORT int32_t tiledb_array_upgrade_version(
+    tiledb_ctx_t* ctx, const char* array_uri, tiledb_config_t* config);
+
 #ifdef __cplusplus
 }
 #endif

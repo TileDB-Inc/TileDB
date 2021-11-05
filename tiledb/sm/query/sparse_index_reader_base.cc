@@ -67,7 +67,6 @@ SparseIndexReaderBase::SparseIndexReaderBase(
           subarray,
           layout,
           condition)
-    , done_adding_result_tiles_(false)
     , initial_data_loaded_(false)
     , memory_budget_(0)
     , array_memory_tracker_(nullptr)
@@ -81,12 +80,23 @@ SparseIndexReaderBase::SparseIndexReaderBase(
     , memory_budget_ratio_tile_ranges_(0.1)
     , memory_budget_ratio_array_data_(0.1)
     , memory_budget_ratio_result_tiles_(0.05)
-    , memory_budget_ratio_rcs_(0.05) {
+    , memory_budget_ratio_rcs_(0.05)
+    , coords_loaded_(true) {
+  read_state_.done_adding_result_tiles_ = false;
 }
 
 /* ****************************** */
 /*        PROTECTED METHODS       */
 /* ****************************** */
+
+const SparseIndexReaderBase::ReadState* SparseIndexReaderBase::read_state()
+    const {
+  return &read_state_;
+}
+
+SparseIndexReaderBase::ReadState* SparseIndexReaderBase::read_state() {
+  return &read_state_;
+}
 
 Status SparseIndexReaderBase::get_coord_tiles_size(
     unsigned dim_num, unsigned f, uint64_t t, uint64_t* tiles_size) {
@@ -110,36 +120,41 @@ Status SparseIndexReaderBase::load_initial_data() {
     return Status::Ok();
 
   auto timer_se = stats_->start_timer("load_initial_data");
+  read_state_.done_adding_result_tiles_ = false;
 
   // For easy reference.
   auto fragment_num = fragment_metadata_.size();
 
-  // Make sure we have enough space for tiles data.
+  // Make sure there is enough space for tiles data.
+  read_state_.frag_tile_idx_.clear();
+  all_tiles_loaded_.clear();
   read_state_.frag_tile_idx_.resize(fragment_num);
   all_tiles_loaded_.resize(fragment_num);
 
   // Calculate ranges of tiles in the subarray, if set.
   if (subarray_.is_set()) {
-    // We have the full memory budget at this point, use it.
+    // At this point, full memory budget is available.
     array_memory_tracker_->set_budget(memory_budget_);
 
-    // TODO Tile overlap computation will not stop if it exceeds memory budget.
-    RETURN_NOT_OK(subarray_.precompute_tile_overlap(
-        0, 0, &config_, storage_manager_->compute_tp()));
+    // Make sure there is no memory taken by the subarray.
+    subarray_.clear_tile_overlap();
 
-    // Free the rtrees from memory.
-    for (auto frag_md : fragment_metadata_) {
-      frag_md->free_rtree();
+    // Tile ranges computation will not stop if it exceeds memory budget.
+    // This is ok as it is a soft limit and will be taken into consideration
+    // later.
+    RETURN_NOT_OK(subarray_.precompute_all_ranges_tile_overlap(
+        storage_manager_->compute_tp(), &result_tile_ranges_));
+
+    for (auto frag_result_tile_ranges : result_tile_ranges_) {
+      memory_used_result_tile_ranges_ += frag_result_tile_ranges.size() *
+                                         sizeof(std::pair<uint64_t, uint64_t>);
     }
 
-    // Compute tile ranges.
-    RETURN_CANCEL_OR_ERROR(compute_result_tiles_ranges(
-        memory_budget_ * memory_budget_ratio_tile_ranges_));
+    if (memory_used_result_tile_ranges_ >
+        memory_budget_ratio_tile_ranges_ * memory_budget_)
+      return LOG_STATUS(
+          Status::ReaderError("Exceeded memory budget for result tile ranges"));
   }
-
-  // Set a limit to the array memory.
-  array_memory_tracker_->set_budget(
-      memory_budget_ * memory_budget_ratio_array_data_);
 
   // Set a limit to the array memory.
   array_memory_tracker_->set_budget(
@@ -165,108 +180,23 @@ Status SparseIndexReaderBase::load_initial_data() {
   return Status::Ok();
 }
 
-Status SparseIndexReaderBase::compute_result_tiles_ranges(
-    uint64_t memory_budget) {
-  auto timer_se = stats_->start_timer("compute_result_tiles_ranges");
-
-  // For easy reference.
-  auto range_num = subarray_.range_num();
-  auto fragment_num = fragment_metadata_.size();
-
-  // To sort the ranges, we need double the memory of the tile overlap data.
-  if (subarray_.tile_overlap_byte_size() > memory_budget_ / 2) {
-    return LOG_STATUS(
-        Status::ReaderError("Exceeded memory budget for tile overlap"));
-  }
-
-  // Build vectors of sorted ranges, per fragments.
-  std::vector<std::vector<std::pair<uint64_t, uint64_t>>> sorted_ranges;
-  sorted_ranges.resize(fragment_num);
-
-  auto status = parallel_for(
-      storage_manager_->compute_tp(), 0, fragment_num, [&](uint64_t f) {
-        // Filter out ranges that are smaller than the tile index.
-        auto tile_idx = read_state_.frag_tile_idx_[f].first;
-        for (uint64_t r = 0; r < range_num; ++r) {
-          // Inset range of tiles.
-          const auto& tile_ranges = subarray_.tile_overlap(f, r)->tile_ranges_;
-          for (const auto& tr : tile_ranges) {
-            // Make sure all ranges start at a minumum at the tile index.
-            if (tile_idx <= tr.second)
-              sorted_ranges[f].emplace_back(
-                  std::max(tile_idx, tr.first), tr.second);
-          }
-
-          // Insert single tiles.
-          const auto& o_tiles = subarray_.tile_overlap(f, r)->tiles_;
-          for (const auto& o_tile : o_tiles) {
-            if (tile_idx <= o_tile.first)
-              sorted_ranges[f].emplace_back(o_tile.first, o_tile.first);
-          }
-        }
-
-        std::sort(sorted_ranges[f].begin(), sorted_ranges[f].end());
-        return Status::Ok();
-      });
-  RETURN_NOT_OK_ELSE(status, LOG_STATUS(status));
-
-  // Free memory for tile overlap data.
-  subarray_.clear_tile_overlap();
-
-  // Go though the sorted list of ranges, and coalesce them.
-  result_tile_ranges_.resize(fragment_num);
-  status = parallel_for(
-      storage_manager_->compute_tp(), 0, fragment_num, [&](uint64_t f) {
-        auto it = sorted_ranges[f].begin();
-        while (it != sorted_ranges[f].end()) {
-          auto it2 = it + 1;
-          while (it2 != sorted_ranges[f].end()) {
-            // Same start, we can ignore *it* since *it2* end will be greater.
-            if (it->first == it2->first) {
-              it++;
-            } else if (it2->first <= it->second) {
-              // The start of the second range is included in the first.
-              it->second = std::max(it->second, it2->second);
-            } else {
-              // We start a new range.
-              break;
-            }
-            it2++;
-          }
-          result_tile_ranges_[f].emplace_back(it->first, it->second);
-          memory_used_result_tile_ranges_ += 2 * sizeof(uint64_t);
-
-          // If we busted our memory budget, exit.
-          if (memory_used_result_tile_ranges_ >= memory_budget)
-            return LOG_STATUS(Status::ReaderError(
-                "Exceeded memory budget for result tile ranges"));
-
-          it = it2;
-        }
-        return Status::Ok();
-      });
-  RETURN_NOT_OK_ELSE(status, LOG_STATUS(status));
-
-  return Status::Ok();
+// Sort vector elements by second element of tuples.
+bool reverse_tuple_sort_by_second(
+    const tuple<uint64_t, uint64_t, uint64_t>& a,
+    const tuple<uint64_t, uint64_t, uint64_t>& b) {
+  return (std::get<1>(a) > std::get<1>(b));
 }
 
 Status SparseIndexReaderBase::compute_coord_tiles_result_bitmap(
-    bool subarray_set,
     ResultTile* tile,
+    uint64_t range_idx,
     std::vector<uint8_t>* coord_tiles_result_bitmap) {
   auto timer_se = stats_->start_timer("compute_coord_tiles_result_bitmap");
 
-  // No subarray means we process all cells.
-  if (!subarray_set)
-    return Status::Ok();
-
   // For easy reference.
-  auto coords_num = tile->cell_num();
   auto dim_num = array_schema_->dim_num();
   auto cell_order = array_schema_->cell_order();
-  auto range_coords = subarray_.get_range_coords(0);
-
-  std::vector<uint8_t> result_bitmap(coords_num, 1);
+  auto range_coords = subarray_.get_range_coords(range_idx);
 
   // Compute result and overwritten bitmap per dimension
   for (unsigned d = 0; d < dim_num; ++d) {
@@ -277,11 +207,12 @@ Status SparseIndexReaderBase::compute_coord_tiles_result_bitmap(
     if (!subarray_.is_default(dim_idx)) {
       const auto& ranges = subarray_.ranges_for_dim(dim_idx);
       RETURN_NOT_OK(tile->compute_results_sparse(
-          dim_idx, ranges[range_coords[dim_idx]], &result_bitmap, cell_order));
+          dim_idx,
+          ranges[range_coords[dim_idx]],
+          coord_tiles_result_bitmap,
+          cell_order));
     }
   }
-
-  *coord_tiles_result_bitmap = std::move(result_bitmap);
 
   return Status::Ok();
 }
@@ -316,7 +247,7 @@ Status SparseIndexReaderBase::resize_output_buffers() {
             cells_copied * constants::cell_var_offset_size +
             offsets_extra_element_;
 
-        // Since we shrink the buffer, there is an offset for the next element
+        // Since the buffer is shrunk, there is an offset for the next element
         // loaded, use it.
         *(it.second.buffer_var_size_) =
             ((uint64_t*)it.second.buffer_)[cells_copied];
@@ -336,6 +267,42 @@ Status SparseIndexReaderBase::resize_output_buffers() {
   }
 
   return Status::Ok();
+}
+
+Status SparseIndexReaderBase::add_extra_offset() {
+  for (const auto& it : buffers_) {
+    const auto& name = it.first;
+    if (!array_schema_->var_size(name))
+      continue;
+
+    auto buffer = static_cast<unsigned char*>(it.second.buffer_);
+    if (offsets_format_mode_ == "bytes") {
+      memcpy(
+          buffer + *it.second.buffer_size_ - offsets_bytesize(),
+          it.second.buffer_var_size_,
+          offsets_bytesize());
+    } else if (offsets_format_mode_ == "elements") {
+      auto elements = *it.second.buffer_var_size_ /
+                      datatype_size(array_schema_->type(name));
+      memcpy(
+          buffer + *it.second.buffer_size_ - offsets_bytesize(),
+          &elements,
+          offsets_bytesize());
+    } else {
+      return LOG_STATUS(Status::ReaderError(
+          "Cannot add extra offset to buffer; Unsupported offsets format"));
+    }
+  }
+
+  return Status::Ok();
+}
+
+void SparseIndexReaderBase::remove_result_tile_range(uint64_t f) {
+  result_tile_ranges_[f].pop_back();
+  {
+    std::unique_lock<std::mutex> lck(mem_budget_mtx_);
+    memory_used_result_tile_ranges_ -= sizeof(std::pair<uint64_t, uint64_t>);
+  }
 }
 
 }  // namespace sm

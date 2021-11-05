@@ -97,6 +97,11 @@ CellSlab<T> CellSlabIter<T>::cell_slab() const {
 }
 
 template <class T>
+T* CellSlabIter<T>::range_coords() {
+  return range_coords_.data();
+}
+
+template <class T>
 bool CellSlabIter<T>::end() const {
   return end_;
 }
@@ -189,7 +194,7 @@ void CellSlabIter<T>::create_ranges(
   T tile_start = Dimension::tile_idx(range[0], dim_domain_start, tile_extent);
   T tile_end = Dimension::tile_idx(range[1], dim_domain_start, tile_extent);
 
-  // The range falls int he same tile
+  // The range falls in the same tile
   if (tile_start == tile_end) {
     ranges->emplace_back(range[0], range[1], tile_start);
   } else {  // We need to split the range

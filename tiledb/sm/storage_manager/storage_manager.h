@@ -170,7 +170,7 @@ class StorageManager {
       const URI& array_uri,
       const EncryptionKey& enc_key,
       ArraySchema** array_schema,
-      std::vector<FragmentMetadata*>* fragment_metadata,
+      std::vector<tdb_shared_ptr<FragmentMetadata>>* fragment_metadata,
       uint64_t timestamp_start,
       uint64_t timestamp_end);
 
@@ -214,7 +214,7 @@ class StorageManager {
   Status array_load_fragments(
       const URI& array_uri,
       const EncryptionKey& enc_key,
-      std::vector<FragmentMetadata*>* fragment_metadata,
+      std::vector<tdb_shared_ptr<FragmentMetadata>>* fragment_metadata,
       const std::vector<TimestampedURI>& fragment_info);
 
   /**
@@ -239,7 +239,7 @@ class StorageManager {
       const URI& array_uri,
       const EncryptionKey& enc_key,
       ArraySchema** array_schema,
-      std::vector<FragmentMetadata*>* fragment_metadata,
+      std::vector<tdb_shared_ptr<FragmentMetadata>>* fragment_metadata,
       uint64_t timestamp_start,
       uint64_t timestamp_end);
 
@@ -345,6 +345,7 @@ class StorageManager {
    *
    * @param array_uri The URI of the array to be evolved.
    * @param schema_evolution The schema evolution.
+   * @param encryption_key The encryption key to use.
    * @return Status
    */
   Status array_evolve_schema(
@@ -353,12 +354,25 @@ class StorageManager {
       const EncryptionKey& encryption_key);
 
   /**
+   * Upgrade a TileDB array to latest format version.
+   *
+   * @param array_uri The URI of the array to be upgraded.
+   * @param config Configuration parameters for the upgrade
+   *     (`nullptr` means default, which will use the config associated with
+   *      this instance).
+   * @return Status
+   */
+  Status array_upgrade_version(const URI& array_uri, const Config* config);
+
+  /**
    * Gets the memory tracker for an open array.
    *
    * @param array_uri The array URI.
+   * @param top_level Specifies if the call is the top level call in recursion.
    * @return The memory tracker.
    */
-  OpenArrayMemoryTracker* array_get_memory_tracker(const URI& array_uri);
+  OpenArrayMemoryTracker* array_memory_tracker(
+      const URI& array_uri, bool top_level = true);
 
   /**
    * Retrieves the non-empty domain from an array. This is the union of the
@@ -703,6 +717,7 @@ class StorageManager {
    * Loads the schema of a schema uri from persistent storage into memory.
    *
    * @param array_schema_uri The URI path of the array schema.
+   * @param array_uri The URI path of the array.
    * @param encryption_key The encryption key to use.
    * @param array_schema The array schema to be retrieved.
    * @return Status
@@ -1177,7 +1192,7 @@ class StorageManager {
       const std::vector<TimestampedURI>& fragments_to_load,
       Buffer* meta_buff,
       const std::unordered_map<std::string, uint64_t>& offsets,
-      std::vector<FragmentMetadata*>* fragment_metadata);
+      std::vector<tdb_shared_ptr<FragmentMetadata>>* fragment_metadata);
 
   /**
    * Loads the latest consolidated fragment metadata from storage.
@@ -1220,7 +1235,7 @@ class StorageManager {
   /**
    * It computes the URIs `to_vacuum` from the input `uris`, considering
    * only the URIs whose first timestamp is greater than or equal to
-   * `timestamp_start` or second timestamp is smaller than or equal to
+   * `timestamp_start` and second timestamp is smaller than or equal to
    * `timestamp_end`. The function also retrieves the `vac_uris` (files with
    * `.vac` suffix) that were used to compute `to_vacuum`.
    */
