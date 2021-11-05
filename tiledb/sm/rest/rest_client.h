@@ -270,12 +270,12 @@ class RestClient {
    *    map is updated accordingly.
    * @return Number of acknowledged bytes
    */
-  size_t post_data_write_cb(
-      bool reset,
-      void* contents,
-      size_t content_nbytes,
-      bool* skip_retries,
-      Buffer* scratch,
+  size_t query_post_call_back(
+      const bool reset,
+      void* constcontents,
+      const size_t content_nbytes,
+      bool* constskip_retries,
+      tdb_shared_ptr<Buffer> scratch,
       Query* query,
       serialization::CopyState* copy_state);
 

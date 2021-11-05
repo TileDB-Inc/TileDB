@@ -31,6 +31,7 @@
  */
 
 #include "tiledb/sm/array_schema/domain.h"
+#include "tiledb/common/blank.h"
 #include "tiledb/common/heap_memory.h"
 #include "tiledb/common/logger.h"
 #include "tiledb/sm/array_schema/dimension.h"
@@ -307,7 +308,7 @@ Status Domain::deserialize(ConstBuffer* buff, uint32_t version) {
   // Load dimensions
   RETURN_NOT_OK(buff->read(&dim_num_, sizeof(uint32_t)));
   for (uint32_t i = 0; i < dim_num_; ++i) {
-    auto dim = tdb_new(Dimension);
+    auto dim = tdb_new(tiledb::common::blank<Dimension>);
     dim->deserialize(buff, version, type);
     dimensions_.emplace_back(dim);
   }

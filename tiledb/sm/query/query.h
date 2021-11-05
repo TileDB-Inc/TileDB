@@ -852,6 +852,9 @@ class Query {
   /** Returns the internal stats object. */
   stats::Stats* stats() const;
 
+  /** Returns the scratch space used for REST requests. */
+  tdb_shared_ptr<Buffer> rest_scratch() const;
+
  private:
   /* ********************************* */
   /*         PRIVATE ATTRIBUTES        */
@@ -944,6 +947,9 @@ class Query {
 
   /** The name of the new fragment to be created for writes. */
   URI fragment_uri_;
+
+  /* Scratch space used for REST requests. */
+  tdb_shared_ptr<Buffer> rest_scratch_;
 
   /* ********************************* */
   /*           PRIVATE METHODS         */
