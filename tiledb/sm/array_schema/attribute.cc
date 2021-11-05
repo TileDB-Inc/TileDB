@@ -71,14 +71,14 @@ Attribute::Attribute(
     uint32_t cell_val_num,
     const FilterPipeline& filter_pipeline,
     const ByteVecValue& fill_value,
-    uint8_t fill_value_validity) {
-  name_ = name;
-  type_ = type;
-  nullable_ = nullable;
-  cell_val_num_ = cell_val_num;
-  filters_ = filter_pipeline;
-  fill_value_ = fill_value;
-  fill_value_validity_ = fill_value_validity;
+    uint8_t fill_value_validity)
+    : cell_val_num_(cell_val_num)
+    , nullable_(nullable)
+    , filters_(filter_pipeline)
+    , name_(name)
+    , type_(type)
+    , fill_value_(fill_value)
+    , fill_value_validity_(fill_value_validity) {
 }
 
 Attribute::Attribute(const Attribute* attr) {
@@ -128,7 +128,7 @@ std::tuple<Status, std::optional<Attribute*>> Attribute::deserialize(
   st = buff->read(&type, sizeof(uint8_t));
   if (!st.ok())
     return {st, std::nullopt};
-  Datatype datatype = (Datatype)type;
+  Datatype datatype = static_cast<Datatype>(type);
 
   // Load cell_val_num
   uint32_t cell_val_num;
@@ -142,7 +142,7 @@ std::tuple<Status, std::optional<Attribute*>> Attribute::deserialize(
 
   // Load fill value
   uint64_t fill_value_size = 0;
-  ByteVecValue fill_value = default_fill_value(datatype, cell_val_num);
+  ByteVecValue fill_value;
   if (version >= 6) {
     st = buff->read(&fill_value_size, sizeof(uint64_t));
     if (!st.ok())
@@ -153,6 +153,8 @@ std::tuple<Status, std::optional<Attribute*>> Attribute::deserialize(
     st = buff->read(fill_value.data(), fill_value_size);
     if (!st.ok())
       return {st, std::nullopt};
+  } else {
+    fill_value = default_fill_value(datatype, cell_val_num);
   }
 
   // Load nullable flag
