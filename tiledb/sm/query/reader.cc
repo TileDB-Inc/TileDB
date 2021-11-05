@@ -738,7 +738,7 @@ Status Reader::compute_result_coords(
   // ignore fragments with a version >= 5.
   auto& subarray = read_state_.partitioner_.current();
   std::vector<std::string> zipped_coords_names = {constants::coords};
-  RETURN_CANCEL_OR_ERROR(load_tile_offsets(&subarray, &zipped_coords_names));
+  RETURN_CANCEL_OR_ERROR(load_tile_offsets(read_state_.partitioner_.subarray(), &zipped_coords_names));
 
   // Preload unzipped coordinate tile offsets. Note that this will
   // ignore fragments with a version < 5.
@@ -747,7 +747,7 @@ Status Reader::compute_result_coords(
   dim_names.reserve(dim_num);
   for (unsigned d = 0; d < dim_num; ++d)
     dim_names.emplace_back(array_schema_->dimension(d)->name());
-  RETURN_CANCEL_OR_ERROR(load_tile_offsets(&subarray, &dim_names));
+  RETURN_CANCEL_OR_ERROR(load_tile_offsets(read_state_.partitioner_.subarray(), &dim_names));
 
   // Read and unfilter zipped coordinate tiles. Note that
   // this will ignore fragments with a version >= 5.
@@ -890,7 +890,7 @@ Status Reader::dense_read() {
 
   // Needed when copying the cells
   RETURN_NOT_OK(copy_attribute_values(
-      stride, &result_tiles, &result_cell_slabs, subarray));
+      stride, &result_tiles, &result_cell_slabs, *read_state_.partitioner_.subarray()));
   read_state_.overflowed_ = copy_overflowed_;
 
   // Fill coordinates if the user requested them
@@ -1075,7 +1075,7 @@ Status Reader::sparse_read() {
 
   RETURN_NOT_OK(copy_coordinates(&result_tiles, &result_cell_slabs));
   RETURN_NOT_OK(copy_attribute_values(
-      UINT64_MAX, &result_tiles, &result_cell_slabs, subarray));
+      UINT64_MAX, &result_tiles, &result_cell_slabs, *read_state_.partitioner_.subarray()));
   read_state_.overflowed_ = copy_overflowed_;
 
   return Status::Ok();
