@@ -75,7 +75,10 @@ const std::string Config::SM_TILE_CACHE_SIZE = "10000000";
 const std::string Config::SM_SKIP_EST_SIZE_PARTITIONING = "false";
 const std::string Config::SM_MEMORY_BUDGET = "5368709120";       // 5GB
 const std::string Config::SM_MEMORY_BUDGET_VAR = "10737418240";  // 10GB;
-const std::string Config::SM_USE_REFACTORED_READERS = "false";
+const std::string Config::SM_QUERY_DENSE_READER = "legacy";
+const std::string Config::SM_QUERY_SPARSE_GLOBAL_ORDER_READER = "legacy";
+const std::string Config::SM_QUERY_SPARSE_UNORDERED_WITH_DUPS_READER =
+    "refactored";
 const std::string Config::SM_MEM_MALLOC_TRIM = "true";
 const std::string Config::SM_MEM_TOTAL_BUDGET = "10737418240";  // 10GB;
 const std::string Config::SM_MEM_SPARSE_GLOBAL_ORDER_RATIO_COORDS = "0.5";
@@ -235,7 +238,11 @@ Config::Config() {
       SM_SKIP_EST_SIZE_PARTITIONING;
   param_values_["sm.memory_budget"] = SM_MEMORY_BUDGET;
   param_values_["sm.memory_budget_var"] = SM_MEMORY_BUDGET_VAR;
-  param_values_["sm.use_refactored_readers"] = SM_USE_REFACTORED_READERS;
+  param_values_["sm.query.dense.reader"] = SM_QUERY_DENSE_READER;
+  param_values_["sm.query.sparse_global_order.reader"] =
+      SM_QUERY_SPARSE_GLOBAL_ORDER_READER;
+  param_values_["sm.query.sparse_unordered_with_dups.reader"] =
+      SM_QUERY_SPARSE_UNORDERED_WITH_DUPS_READER;
   param_values_["sm.mem.malloc_trim"] = SM_MEM_MALLOC_TRIM;
   param_values_["sm.mem.total_budget"] = SM_MEM_TOTAL_BUDGET;
   param_values_["sm.mem.reader.sparse_global_order.ratio_coords"] =
@@ -519,8 +526,14 @@ Status Config::unset(const std::string& param) {
     param_values_["sm.memory_budget"] = SM_MEMORY_BUDGET;
   } else if (param == "sm.memory_budget_var") {
     param_values_["sm.memory_budget_var"] = SM_MEMORY_BUDGET_VAR;
-  } else if (param == "sm.use_refactored_readers") {
-    param_values_["sm.use_refactored_readers"] = SM_USE_REFACTORED_READERS;
+  } else if (param == "sm.query.dense.reader") {
+    param_values_["sm.query.dense.reader"] = SM_QUERY_DENSE_READER;
+  } else if (param == "sm.query.sparse_global_order.reader") {
+    param_values_["sm.query.sparse_global_order.reader"] =
+        SM_QUERY_SPARSE_GLOBAL_ORDER_READER;
+  } else if (param == "sm.query.sparse_unordered_with_dups.reader") {
+    param_values_["sm.query.sparse_unordered_with_dups.reader"] =
+        SM_QUERY_SPARSE_UNORDERED_WITH_DUPS_READER;
   } else if (param == "sm.mem.malloc_trim") {
     param_values_["sm.mem.malloc_trim"] = SM_MEM_MALLOC_TRIM;
   } else if (param == "sm.mem.total_budget") {
