@@ -55,6 +55,7 @@ const std::string Config::CONFIG_LOGGING_LEVEL = "1";
 #else
 const std::string Config::CONFIG_LOGGING_LEVEL = "0";
 #endif
+const std::string Config::CONFIG_LOGGING_DEFAULT_FORMAT = "DEFAULT";
 const std::string Config::REST_SERVER_DEFAULT_ADDRESS =
     "https://api.tiledb.com";
 const std::string Config::REST_SERIALIZATION_DEFAULT_FORMAT = "CAPNP";
@@ -221,6 +222,7 @@ Config::Config() {
   param_values_["rest.retry_delay_factor"] = REST_RETRY_DELAY_FACTOR;
   param_values_["config.env_var_prefix"] = CONFIG_ENVIRONMENT_VARIABLE_PREFIX;
   param_values_["config.logging_level"] = CONFIG_LOGGING_LEVEL;
+  param_values_["config.logging_format"] = CONFIG_LOGGING_DEFAULT_FORMAT;
   param_values_["sm.encryption_key"] = SM_ENCRYPTION_KEY;
   param_values_["sm.encryption_type"] = SM_ENCRYPTION_TYPE;
   param_values_["sm.dedup_coords"] = SM_DEDUP_COORDS;
@@ -495,6 +497,8 @@ Status Config::unset(const std::string& param) {
     param_values_["config.env_var_prefix"] = CONFIG_ENVIRONMENT_VARIABLE_PREFIX;
   } else if (param == "config.logging_level") {
     param_values_["config.logging_level"] = CONFIG_LOGGING_LEVEL;
+  } else if (param == "config.logging_format") {
+    param_values_["config.logging_foramt"] = CONFIG_LOGGING_DEFAULT_FORMAT;
   } else if (param == "sm.encryption_key") {
     param_values_["sm.encryption_key"] = SM_ENCRYPTION_KEY;
   } else if (param == "sm.encryption_type") {
@@ -787,6 +791,10 @@ Status Config::sanity_check(
     RETURN_NOT_OK(serialization_type_enum(value, &serialization_type));
   } else if (param == "config.logging_level") {
     RETURN_NOT_OK(utils::parse::convert(value, &v32));
+  } else if (param == "config.logging_format") {
+    if (value != "DEFAULT" && value != "JSON")
+      return LOG_STATUS(
+          Status::ConfigError("Invalid logging format parameter value"));
   } else if (param == "sm.dedup_coords") {
     RETURN_NOT_OK(utils::parse::convert(value, &v));
   } else if (param == "sm.check_coord_dups") {

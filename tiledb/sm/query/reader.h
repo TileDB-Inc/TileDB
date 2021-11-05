@@ -33,6 +33,9 @@
 #ifndef TILEDB_READER_H
 #define TILEDB_READER_H
 
+#include <atomic>
+
+#include "tiledb/common/logger_public.h"
 #include "tiledb/common/status.h"
 #include "tiledb/sm/array_schema/dimension.h"
 #include "tiledb/sm/misc/types.h"
@@ -63,6 +66,7 @@ class Reader : public ReaderBase, public IQueryStrategy {
   /** Constructor. */
   Reader(
       stats::Stats* stats,
+      tdb_shared_ptr<Logger> logger,
       StorageManager* storage_manager,
       Array* array,
       Config& config,
@@ -206,6 +210,9 @@ class Reader : public ReaderBase, public IQueryStrategy {
   /* ********************************* */
   /*         PRIVATE ATTRIBUTES        */
   /* ********************************* */
+
+  /** UID of the logger instance */
+  inline static std::atomic<uint64_t> logger_id_ = 0;
 
   /** Read state. */
   ReadState read_state_;

@@ -61,6 +61,7 @@ namespace sm {
 
 Writer::Writer(
     stats::Stats* stats,
+    tdb_shared_ptr<Logger> logger,
     StorageManager* storage_manager,
     Array* array,
     Config& config,
@@ -72,7 +73,14 @@ Writer::Writer(
     Query::CoordsInfo& coords_info,
     URI fragment_uri)
     : StrategyBase(
-          stats, storage_manager, array, config, buffers, subarray, layout)
+          stats,
+          logger->clone("Writer", ++logger_id_),
+          storage_manager,
+          array,
+          config,
+          buffers,
+          subarray,
+          layout)
     , disable_check_global_order_(disable_check_global_order)
     , coords_info_(coords_info)
     , check_coord_dups_(false)
@@ -166,7 +174,7 @@ Status Writer::check_var_attr_offsets() const {
     // Allow the initial offset to be equal to the size, this indicates
     // the first and only value in the buffer is to be empty
     if (prev_offset > *buffer_val_size)
-      return LOG_STATUS(Status::WriterError(
+      return logger_->status(Status::WriterError(
           "Invalid offsets for attribute " + attr + "; offset " +
           std::to_string(prev_offset) + " specified for buffer of size " +
           std::to_string(*buffer_val_size)));
@@ -174,7 +182,7 @@ Status Writer::check_var_attr_offsets() const {
     for (uint64_t i = 1; i < num_offsets; i++) {
       uint64_t cur_offset = get_offset_buffer_element(buffer_off, i);
       if (cur_offset < prev_offset)
-        return LOG_STATUS(Status::WriterError(
+        return logger_->status(Status::WriterError(
             "Invalid offsets for attribute " + attr +
             "; offsets must be given in "
             "strictly ascending order."));
@@ -186,7 +194,7 @@ Status Writer::check_var_attr_offsets() const {
            get_offset_buffer_element(
                buffer_off, (i < num_offsets - 1 ? i + 1 : i)) !=
                *buffer_val_size))
-        return LOG_STATUS(Status::WriterError(
+        return logger_->status(Status::WriterError(
             "Invalid offsets for attribute " + attr + "; offset " +
             std::to_string(cur_offset) + " specified for buffer of size " +
             std::to_string(*buffer_val_size)));
@@ -201,19 +209,19 @@ Status Writer::check_var_attr_offsets() const {
 Status Writer::init() {
   // Sanity checks
   if (storage_manager_ == nullptr)
-    return LOG_STATUS(Status::WriterError(
+    return logger_->status(Status::WriterError(
         "Cannot initialize query; Storage manager not set"));
   if (array_schema_ == nullptr)
-    return LOG_STATUS(
+    return logger_->status(
         Status::WriterError("Cannot initialize writer; Array schema not set"));
   if (buffers_.empty())
-    return LOG_STATUS(
+    return logger_->status(
         Status::WriterError("Cannot initialize writer; Buffers not set"));
   if (array_schema_->dense() &&
       (layout_ == Layout::ROW_MAJOR || layout_ == Layout::COL_MAJOR)) {
     for (const auto& b : buffers_) {
       if (array_schema_->is_dim(b.first)) {
-        return LOG_STATUS(Status::WriterError(
+        return logger_->status(Status::WriterError(
             "Cannot initialize writer; Sparse coordinates "
             "for dense arrays cannot be provided "
             "if the query layout is ROW_MAJOR or COL_MAJOR"));
@@ -238,7 +246,7 @@ Status Writer::init() {
   offsets_format_mode_ = config_.get("sm.var_offsets.mode", &found);
   assert(found);
   if (offsets_format_mode_ != "bytes" && offsets_format_mode_ != "elements") {
-    return LOG_STATUS(
+    return logger_->status(
         Status::WriterError("Cannot initialize writer; Unsupported offsets "
                             "format in configuration"));
   }
@@ -248,7 +256,7 @@ Status Writer::init() {
   RETURN_NOT_OK(config_.get<uint32_t>(
       "sm.var_offsets.bitsize", &offsets_bitsize_, &found));
   if (offsets_bitsize_ != 32 && offsets_bitsize_ != 64) {
-    return LOG_STATUS(
+    return logger_->status(
         Status::WriterError("Cannot initialize writer; Unsupported offsets "
                             "bitsize in configuration"));
   }
@@ -342,7 +350,7 @@ Status Writer::check_buffer_sizes() const {
               "given for ";
         ss << "attribute '" << attr << "'";
         ss << " (" << expected_validity_num << " != " << cell_num << ")";
-        return LOG_STATUS(Status::WriterError(ss.str()));
+        return logger_->status(Status::WriterError(ss.str()));
       }
     } else {
       if (expected_cell_num != cell_num) {
@@ -350,7 +358,7 @@ Status Writer::check_buffer_sizes() const {
         ss << "Buffer sizes check failed; Invalid number of cells given for ";
         ss << "attribute '" << attr << "'";
         ss << " (" << expected_cell_num << " != " << cell_num << ")";
-        return LOG_STATUS(Status::WriterError(ss.str()));
+        return logger_->status(Status::WriterError(ss.str()));
       }
     }
   }
@@ -366,7 +374,7 @@ Status Writer::check_coord_dups(const std::vector<uint64_t>& cell_pos) const {
     return Status::Ok();
 
   if (!coords_info_.has_coords_) {
-    return LOG_STATUS(
+    return logger_->status(
         Status::WriterError("Cannot check for coordinate duplicates; "
                             "Coordinates buffer not found"));
   }
@@ -449,7 +457,7 @@ Status Writer::check_coord_dups(const std::vector<uint64_t>& cell_pos) const {
         return Status::Ok();
       });
 
-  RETURN_NOT_OK_ELSE(status, LOG_STATUS(status));
+  RETURN_NOT_OK_ELSE(status, logger_->status(status));
 
   return Status::Ok();
 }
@@ -462,7 +470,7 @@ Status Writer::check_coord_dups() const {
     return Status::Ok();
 
   if (!coords_info_.has_coords_) {
-    return LOG_STATUS(
+    return logger_->status(
         Status::WriterError("Cannot check for coordinate duplicates; "
                             "Coordinates buffer not found"));
   }
@@ -676,12 +684,12 @@ Status Writer::check_global_order_hilbert() const {
 
 Status Writer::check_subarray() const {
   if (array_schema_ == nullptr)
-    return LOG_STATUS(
+    return logger_->status(
         Status::WriterError("Cannot check subarray; Array schema not set"));
 
   if (array_schema_->dense()) {
     if (layout_ == Layout::GLOBAL_ORDER && !subarray_.coincides_with_tiles())
-      return LOG_STATUS(
+      return logger_->status(
           Status::WriterError("Cannot initialize query; In global writes for "
                               "dense arrays, the subarray "
                               "must coincide with the tile bounds"));
@@ -749,7 +757,7 @@ Status Writer::compute_coord_dups(
   auto timer_se = stats_->start_timer("compute_coord_dups");
 
   if (!coords_info_.has_coords_) {
-    return LOG_STATUS(
+    return logger_->status(
         Status::WriterError("Cannot check for coordinate duplicates; "
                             "Coordinates buffer not found"));
   }
@@ -840,7 +848,7 @@ Status Writer::compute_coord_dups(std::set<uint64_t>* coord_dups) const {
   auto timer_se = stats_->start_timer("compute_coord_dups");
 
   if (!coords_info_.has_coords_) {
-    return LOG_STATUS(
+    return logger_->status(
         Status::WriterError("Cannot check for coordinate duplicates; "
                             "Coordinates buffer not found"));
   }
@@ -1111,7 +1119,7 @@ Status Writer::finalize_global_write_state() {
     const auto& name = it.first;
     if (global_write_state_->cells_written_[name] != cell_num) {
       clean_up(uri);
-      return LOG_STATUS(Status::WriterError(
+      return logger_->status(Status::WriterError(
           "Failed to finalize global write state; Different "
           "number of cells written across attributes and coordinates"));
     }
@@ -1128,7 +1136,7 @@ Status Writer::finalize_global_write_state() {
          << "of cells written (" << cell_num
          << ") is different from the number of cells expected ("
          << expected_cell_num << ") for the query subarray";
-      return LOG_STATUS(Status::WriterError(ss.str()));
+      return logger_->status(Status::WriterError(ss.str()));
     }
   }
 
@@ -1305,7 +1313,7 @@ bool Writer::all_last_tiles_empty() const {
 Status Writer::init_global_write_state() {
   // Create global array state object
   if (global_write_state_ != nullptr)
-    return LOG_STATUS(
+    return logger_->status(
         Status::WriterError("Cannot initialize global write state; State not "
                             "properly finalized"));
   global_write_state_.reset(new GlobalWriteState);
@@ -1530,7 +1538,7 @@ Status Writer::check_extra_element() {
         get_offset_buffer_element(buffer_off, num_offsets - 1);
 
     if (last_offset != max_offset)
-      return LOG_STATUS(Status::WriterError(
+      return logger_->status(Status::WriterError(
           "Invalid offsets for attribute " + attr +
           "; the last offset: " + std::to_string(last_offset) +
           " is not equal to the size of the data buffer: " +
@@ -1587,7 +1595,7 @@ Status Writer::ordered_write() {
     case Datatype::TIME_AS:
       return ordered_write<int64_t>();
     default:
-      return LOG_STATUS(Status::WriterError(
+      return logger_->status(Status::WriterError(
           "Cannot write in ordered layout; Unsupported domain type"));
   }
 
@@ -2744,7 +2752,7 @@ Status Writer::calculate_hilbert_values(
         return Status::Ok();
       });
 
-  RETURN_NOT_OK_ELSE(status, LOG_STATUS(status));
+  RETURN_NOT_OK_ELSE(status, logger_->status(status));
 
   return Status::Ok();
 }

@@ -34,6 +34,7 @@
 #ifndef TILEDB_STORAGE_MANAGER_H
 #define TILEDB_STORAGE_MANAGER_H
 
+#include <atomic>
 #include <condition_variable>
 #include <functional>
 #include <list>
@@ -45,6 +46,7 @@
 #include <unordered_map>
 
 #include "tiledb/common/heap_memory.h"
+#include "tiledb/common/logger_public.h"
 #include "tiledb/common/status.h"
 #include "tiledb/common/thread_pool.h"
 #include "tiledb/sm/config/config.h"
@@ -112,7 +114,10 @@ class StorageManager {
 
   /** Constructor. */
   StorageManager(
-      ThreadPool* compute_tp, ThreadPool* io_tp, stats::Stats* parent_stats);
+      ThreadPool* compute_tp,
+      ThreadPool* io_tp,
+      stats::Stats* parent_stats,
+      tdb_shared_ptr<Logger> logger);
 
   /** Destructor. */
   ~StorageManager();
@@ -994,6 +999,9 @@ class StorageManager {
   /** Returns `stats_`. */
   stats::Stats* stats();
 
+  /** Returns the internal logger object. */
+  tdb_shared_ptr<Logger> logger() const;
+
  private:
   /* ********************************* */
   /*        PRIVATE DATATYPES          */
@@ -1028,6 +1036,12 @@ class StorageManager {
 
   /** The class stats. */
   stats::Stats* stats_;
+
+  /** The class logger. */
+  tdb_shared_ptr<Logger> logger_;
+
+  /** UID of the logger instance */
+  inline static std::atomic<uint64_t> logger_id_ = 0;
 
   /** Set to true when tasks are being cancelled. */
   bool cancellation_in_progress_;

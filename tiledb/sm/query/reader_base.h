@@ -107,6 +107,7 @@ class ReaderBase : public StrategyBase {
   /** Constructor. */
   ReaderBase(
       stats::Stats* stats,
+      tdb_shared_ptr<Logger> logger,
       StorageManager* storage_manager,
       Array* array,
       Config& config,
