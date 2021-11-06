@@ -880,7 +880,7 @@ Status Reader::dense_read() {
       &result_cell_slabs));
 
   auto stride = array_schema_->domain()->stride<T>(subarray.layout());
-  apply_query_condition(&result_cell_slabs, &result_tiles, &subarray, stride);
+  apply_query_condition(&result_cell_slabs, &result_tiles, read_state_.partitioner_.subarray(), stride);
 
   get_result_tile_stats(result_tiles);
   get_result_cell_stats(result_cell_slabs);
@@ -1069,7 +1069,7 @@ Status Reader::sparse_read() {
   result_coords.clear();
 
   auto& subarray = read_state_.partitioner_.current();
-  apply_query_condition(&result_cell_slabs, &result_tiles, &subarray);
+  apply_query_condition(&result_cell_slabs, &result_tiles, read_state_.partitioner_.subarray());
   get_result_tile_stats(result_tiles);
   get_result_cell_stats(result_cell_slabs);
 
