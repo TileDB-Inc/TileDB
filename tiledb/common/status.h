@@ -150,10 +150,10 @@ class Status {
       : state_(nullptr) {
   }
 
-  /** Consturctor with a code and error message. */
-  Status(StatusCode code, const std::string& msg)
-      : Status(code, msg, -1) {
-  }
+  /**
+   * General constructor for arbitrary status
+   */
+  Status(StatusCode code, const std::string& msg);
 
   /** Destructor. */
   ~Status() {
@@ -173,282 +173,282 @@ class Status {
 
   /**  Return a generic Error class Status **/
   static Status Error(const std::string& msg) {
-    return Status(StatusCode::Error, msg, -1);
+    return Status(StatusCode::Error, msg);
   }
 
   /** Return a StorageManager error class Status with a given message **/
   static Status StorageManagerError(const std::string& msg) {
-    return Status(StatusCode::StorageManager, msg, -1);
+    return Status(StatusCode::StorageManager, msg);
   }
 
   /** Return a FragmentMetadata error class Status with a given message **/
   static Status FragmentMetadataError(const std::string& msg) {
-    return Status(StatusCode::FragmentMetadata, msg, -1);
+    return Status(StatusCode::FragmentMetadata, msg);
   }
 
   /** Return a ArraySchema error class Status with a given message **/
   static Status ArraySchemaError(const std::string& msg) {
-    return Status(StatusCode::ArraySchema, msg, -1);
+    return Status(StatusCode::ArraySchema, msg);
   }
 
   /** Return a ArraySchemaEvolution error class Status with a given message **/
   static Status ArraySchemaEvolutionError(const std::string& msg) {
-    return Status(StatusCode::ArraySchemaEvolution, msg, -1);
+    return Status(StatusCode::ArraySchemaEvolution, msg);
   }
 
   /** Return a Metadata error class Status with a given message **/
   static Status MetadataError(const std::string& msg) {
-    return Status(StatusCode::Metadata, msg, -1);
+    return Status(StatusCode::Metadata, msg);
   }
 
   /** Return a IO error class Status with a given message **/
   static Status IOError(const std::string& msg) {
-    return Status(StatusCode::IO, msg, -1);
+    return Status(StatusCode::IO, msg);
   }
 
   /** Return a Memory error class Status with a given message **/
   static Status MemError(const std::string& msg) {
-    return Status(StatusCode::Mem, msg, -1);
+    return Status(StatusCode::Mem, msg);
   }
 
   /** Return a ArrayError error class Status with a given message **/
   static Status GZipError(const std::string& msg) {
-    return Status(StatusCode::GZip, msg, -1);
+    return Status(StatusCode::GZip, msg);
   }
 
   /** Return a ArrayError error class Status with a given message **/
   static Status ChecksumError(const std::string& msg) {
-    return Status(StatusCode::ChecksumError, msg, -1);
+    return Status(StatusCode::ChecksumError, msg);
   }
 
   /** Return a ArrayError error class Status with a given message **/
   static Status CompressionError(const std::string& msg) {
-    return Status(StatusCode::Compression, msg, -1);
+    return Status(StatusCode::Compression, msg);
   }
 
   /** Return a TileError error class Status with a given message **/
   static Status TileError(const std::string& msg) {
-    return Status(StatusCode::Tile, msg, -1);
+    return Status(StatusCode::Tile, msg);
   }
 
   /** Return a TileIOError error class Status with a given message **/
   static Status TileIOError(const std::string& msg) {
-    return Status(StatusCode::TileIO, msg, -1);
+    return Status(StatusCode::TileIO, msg);
   }
 
   /** Return a BufferError error class Status with a given message **/
   static Status BufferError(const std::string& msg) {
-    return Status(StatusCode::Buffer, msg, -1);
+    return Status(StatusCode::Buffer, msg);
   }
 
   /** Return a QueryError error class Status with a given message **/
   static Status QueryError(const std::string& msg) {
-    return Status(StatusCode::Query, msg, -1);
+    return Status(StatusCode::Query, msg);
   }
 
   /** Return a ValidityVectorError error class Status with a given message **/
   static Status ValidityVectorError(const std::string& msg) {
-    return Status(StatusCode::ValidityVector, msg, -1);
+    return Status(StatusCode::ValidityVector, msg);
   }
 
   /** Return a VFSError error class Status with a given message **/
   static Status VFSError(const std::string& msg) {
-    return Status(StatusCode::VFS, msg, -1);
+    return Status(StatusCode::VFS, msg);
   }
 
   /** Return a ConstBufferError error class Status with a given message **/
   static Status ConstBufferError(const std::string& msg) {
-    return Status(StatusCode::ConstBuffer, msg, -1);
+    return Status(StatusCode::ConstBuffer, msg);
   }
 
   /** Return a DimensionError error class Status with a given message **/
   static Status DimensionError(const std::string& msg) {
-    return Status(StatusCode::Dimension, msg, -1);
+    return Status(StatusCode::Dimension, msg);
   }
 
   /** Return a DomainError error class Status with a given message **/
   static Status DomainError(const std::string& msg) {
-    return Status(StatusCode::Domain, msg, -1);
+    return Status(StatusCode::Domain, msg);
   }
 
   /** Return a ConsolidatorError error class Status with a given message **/
   static Status ConsolidatorError(const std::string& msg) {
-    return Status(StatusCode::Consolidator, msg, -1);
+    return Status(StatusCode::Consolidator, msg);
   }
 
   /** Return a LRUCacheError error class Status with a given message **/
   static Status LRUCacheError(const std::string& msg) {
-    return Status(StatusCode::LRUCache, msg, -1);
+    return Status(StatusCode::LRUCache, msg);
   }
 
   /** Return a KVError error class Status with a given message **/
   static Status KVError(const std::string& msg) {
-    return Status(StatusCode::KV, msg, -1);
+    return Status(StatusCode::KV, msg);
   }
 
   /** Return a KVItemError error class Status with a given message **/
   static Status KVItemError(const std::string& msg) {
-    return Status(StatusCode::KVItem, msg, -1);
+    return Status(StatusCode::KVItem, msg);
   }
 
   /** Return a KVIterError error class Status with a given message **/
   static Status KVIterError(const std::string& msg) {
-    return Status(StatusCode::KVIter, msg, -1);
+    return Status(StatusCode::KVIter, msg);
   }
 
   /** Return a ConfigError error class Status with a given message **/
   static Status ConfigError(const std::string& msg) {
-    return Status(StatusCode::Config, msg, -1);
+    return Status(StatusCode::Config, msg);
   }
 
   /** Return a UtilsError error class Status with a given message **/
   static Status UtilsError(const std::string& msg) {
-    return Status(StatusCode::Utils, msg, -1);
+    return Status(StatusCode::Utils, msg);
   }
 
   /** Return a UtilsError error class Status with a given message **/
   static Status S3Error(const std::string& msg) {
-    return Status(StatusCode::FS_S3, msg, -1);
+    return Status(StatusCode::FS_S3, msg);
   }
 
   /** Return a UtilsError error class Status with a given message **/
   static Status AzureError(const std::string& msg) {
-    return Status(StatusCode::FS_AZURE, msg, -1);
+    return Status(StatusCode::FS_AZURE, msg);
   }
 
   /** Return a UtilsError error class Status with a given message **/
   static Status GCSError(const std::string& msg) {
-    return Status(StatusCode::FS_GCS, msg, -1);
+    return Status(StatusCode::FS_GCS, msg);
   }
 
   /** Return a UtilsError error class Status with a given message **/
   static Status HDFSError(const std::string& msg) {
-    return Status(StatusCode::FS_HDFS, msg, -1);
+    return Status(StatusCode::FS_HDFS, msg);
   }
 
   /** Return a MemFSError error class Status with a given message **/
   static Status MemFSError(const std::string& msg) {
-    return Status(StatusCode::FS_MEM, msg, -1);
+    return Status(StatusCode::FS_MEM, msg);
   }
 
   /** Return a AttributeError error class Status with a given message **/
   static Status AttributeError(const std::string& msg) {
-    return Status(StatusCode::Attribute, msg, -1);
+    return Status(StatusCode::Attribute, msg);
   }
 
   /** Return a WriteCellSlabIterError error class Status with a given message
    * **/
   static Status WriteCellSlabIterError(const std::string& msg) {
-    return Status(StatusCode::WriteCellSlabIter, msg, -1);
+    return Status(StatusCode::WriteCellSlabIter, msg);
   }
 
   /** Return a SparseGlobalOrderReaderError error class Status with a given
    * message **/
   static Status SparseGlobalOrderReaderError(const std::string& msg) {
-    return Status(StatusCode::SparseGlobalOrderReaderError, msg, -1);
+    return Status(StatusCode::SparseGlobalOrderReaderError, msg);
   }
 
   /** Return a SparseUnorderedWithDupsReaderError error class Status with a
    * given message **/
   static Status SparseUnorderedWithDupsReaderError(const std::string& msg) {
-    return Status(StatusCode::SparseUnorderedWithDupsReaderError, msg, -1);
+    return Status(StatusCode::SparseUnorderedWithDupsReaderError, msg);
   }
 
   /** Return a DenseReaderError error class Status with a given message **/
   static Status DenseReaderError(const std::string& msg) {
-    return Status(StatusCode::DenseReaderError, msg, -1);
+    return Status(StatusCode::DenseReaderError, msg);
   }
 
   /** Return a ReaderError error class Status with a given message **/
   static Status ReaderError(const std::string& msg) {
-    return Status(StatusCode::Reader, msg, -1);
+    return Status(StatusCode::Reader, msg);
   }
 
   /** Return a WriterError error class Status with a given message **/
   static Status WriterError(const std::string& msg) {
-    return Status(StatusCode::Writer, msg, -1);
+    return Status(StatusCode::Writer, msg);
   }
 
   /** Return a PreallocatedBufferError error class Status with a given message
    * **/
   static Status PreallocatedBufferError(const std::string& msg) {
-    return Status(StatusCode::PreallocatedBuffer, msg, -1);
+    return Status(StatusCode::PreallocatedBuffer, msg);
   }
 
   /** Return a FilterError error class Status with a given message **/
   static Status FilterError(const std::string& msg) {
-    return Status(StatusCode::Filter, msg, -1);
+    return Status(StatusCode::Filter, msg);
   }
 
   /** Return a EncryptionError error class Status with a given message **/
   static Status EncryptionError(const std::string& msg) {
-    return Status(StatusCode::Encryption, msg, -1);
+    return Status(StatusCode::Encryption, msg);
   }
 
   /** Return an ArrayError error class Status with a given message **/
   static Status ArrayError(const std::string& msg) {
-    return Status(StatusCode::Array, msg, -1);
+    return Status(StatusCode::Array, msg);
   }
 
   /** Return a VFSFileHandle error class Status with a given message **/
   static Status VFSFileHandleError(const std::string& msg) {
-    return Status(StatusCode::VFSFileHandleError, msg, -1);
+    return Status(StatusCode::VFSFileHandleError, msg);
   }
 
   /** Return a ContextError error class Status with a given message **/
   static Status ContextError(const std::string& msg) {
-    return Status(StatusCode::ContextError, msg, -1);
+    return Status(StatusCode::ContextError, msg);
   }
 
   /** Return a SubarrayError error class Status with a given message **/
   static Status SubarrayError(const std::string& msg) {
-    return Status(StatusCode::SubarrayError, msg, -1);
+    return Status(StatusCode::SubarrayError, msg);
   }
 
   /** Return a SubarrayPartitionerError error class Status with a given message
    * **/
   static Status SubarrayPartitionerError(const std::string& msg) {
-    return Status(StatusCode::SubarrayPartitionerError, msg, -1);
+    return Status(StatusCode::SubarrayPartitionerError, msg);
   }
 
   /** Return a RTreeError error class Status with a given message **/
   static Status RTreeError(const std::string& msg) {
-    return Status(StatusCode::RTreeError, msg, -1);
+    return Status(StatusCode::RTreeError, msg);
   }
 
   /** Return a CellSlabIterError error class Status with a given message **/
   static Status CellSlabIterError(const std::string& msg) {
-    return Status(StatusCode::CellSlabIterError, msg, -1);
+    return Status(StatusCode::CellSlabIterError, msg);
   }
 
   /** Return a RestError error class Status with a given message **/
   static Status RestError(const std::string& msg) {
-    return Status(StatusCode::RestError, msg, -1);
+    return Status(StatusCode::RestError, msg);
   }
 
   /** Return a SerializationError error class Status with a given message **/
   static Status SerializationError(const std::string& msg) {
-    return Status(StatusCode::SerializationError, msg, -1);
+    return Status(StatusCode::SerializationError, msg);
   }
 
   /** Return a ThreadPoolError error class Status with a given message **/
   static Status ThreadPoolError(const std::string& msg) {
-    return Status(StatusCode::ThreadPoolError, msg, -1);
+    return Status(StatusCode::ThreadPoolError, msg);
   }
 
   /** Return a FragmentInfoError error class Status with a given message **/
   static Status FragmentInfoError(const std::string& msg) {
-    return Status(StatusCode::FragmentInfoError, msg, -1);
+    return Status(StatusCode::FragmentInfoError, msg);
   }
 
   /** Return a DenseTilerError error class Status with a given message **/
   static Status DenseTilerError(const std::string& msg) {
-    return Status(StatusCode::DenseTilerError, msg, -1);
+    return Status(StatusCode::DenseTilerError, msg);
   }
 
   /** Return a QueryConditionError error class Status with a given message **/
   static Status QueryConditionError(const std::string& msg) {
-    return Status(StatusCode::QueryConditionError, msg, -1);
+    return Status(StatusCode::QueryConditionError, msg);
   }
 
   /** Returns true iff the status indicates success **/
@@ -464,9 +464,6 @@ class Status {
 
   /** Return a string representation of the status code **/
   std::string code_to_string() const;
-
-  /** Get the POSIX code associated with this Status, -1 if None. **/
-  int16_t posix_code() const;
 
   /** Return the status code of this Status object **/
   StatusCode code() const {
@@ -494,7 +491,7 @@ class Status {
    * of the following form:
    *    state_[0..3] == length of message
    *    state_[4]    == code
-   *    state_[5..6] == posix_code
+   *    state_[5..6] == reserved
    *    state_[7..]  == message
    */
   const char* state_;
@@ -502,9 +499,6 @@ class Status {
   /* ********************************* */
   /*           PRIVATE METHODS         */
   /* ********************************* */
-
-  /** Private constructor. */
-  Status(StatusCode code, const std::string& msg, int16_t posix_code);
 
   /** Clones and returns the input state (allocates memory). */
   static const char* copy_state(const char* s);
