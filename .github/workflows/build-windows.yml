@@ -49,7 +49,7 @@ jobs:
       TILEDB_AZURE: ${{ matrix.TILEDB_AZURE }} #azure }}
       TILEDB_SERIALIZATION: ${{ matrix.TILEDB_SERIALIZATION }} #serialization }}
       TILEDB_ARROW_TESTS: ${{ matrix.TILEDB_ARROW_TESTS }}
-      TILEDB_VFS_S3_REQUEST_TIMEOUT_MS: 10000 #89000
+      TILEDB_VFS_S3_REQUEST_TIMEOUT_MS: 6000 #10000 #89000
     steps:
       - name: 'tiledb env prep'
         run: |
@@ -262,8 +262,8 @@ jobs:
           $cmds = "$env:BUILD_BUILDDIRECTORY\tiledb\test\Release\tiledb_unit.exe -l" 
           Write-Host "cmds: '$cmds'"
           Invoke-Expression $cmds
-          #$cmds = "$env:BUILD_BUILDDIRECTORY\tiledb\test\Release\tiledb_unit.exe -d=yes" 
-          $cmds = "$env:BUILD_BUILDDIRECTORY\tiledb\test\Release\tiledb_unit.exe -d=yes ~[arrow]" 
+          $cmds = "$env:BUILD_BUILDDIRECTORY\tiledb\test\Release\tiledb_unit.exe -d=yes" 
+          #$cmds = "$env:BUILD_BUILDDIRECTORY\tiledb\test\Release\tiledb_unit.exe -d=yes ~[arrow]" 
           #$cmds = "$env:BUILD_BUILDDIRECTORY\tiledb\test\Release\tiledb_unit.exe -d=yes [arrow]" 
           Write-Host "cmds: '$cmds'"
           Invoke-Expression $cmds
