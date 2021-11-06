@@ -1012,64 +1012,58 @@ Status Query::create_strategy() {
         coords_info_,
         fragment_uri_));
   } else {
-    bool found = false;
-    bool use_refactored_readers = false;
-    RETURN_NOT_OK(config_.get<bool>(
-        "sm.use_refactored_readers", &use_refactored_readers, &found));
-    assert(found);
-
     bool use_default = true;
-    if (use_refactored_readers) {
-      if (!array_schema_->dense() && layout_ == Layout::UNORDERED &&
-          array_schema_->allows_dups()) {
-        use_default = false;
-        strategy_ = tdb_unique_ptr<IQueryStrategy>(tdb_new(
-            SparseUnorderedWithDupsReader,
-            stats_->create_child("Reader"),
-            logger_,
-            storage_manager_,
-            array_,
-            config_,
-            buffers_,
-            subarray_,
-            layout_,
-            condition_));
-      } else if (
-          !array_schema_->dense() &&
-          (layout_ == Layout::GLOBAL_ORDER ||
-           (layout_ == Layout::UNORDERED && subarray_.range_num() <= 1))) {
-        // Using the reader for unordered queries to do deduplication.
-        use_default = false;
-        strategy_ = tdb_unique_ptr<IQueryStrategy>(tdb_new(
-            SparseGlobalOrderReader,
-            stats_->create_child("Reader"),
-            logger_,
-            storage_manager_,
-            array_,
-            config_,
-            buffers_,
-            subarray_,
-            layout_,
-            condition_));
-      } else if (array_schema_->dense()) {
-        bool all_dense = true;
-        for (auto& frag_md : fragment_metadata_)
-          all_dense &= frag_md->dense();
+    if (use_refactored_sparse_unordered_with_dups_reader() &&
+        !array_schema_->dense() && layout_ == Layout::UNORDERED &&
+        array_schema_->allows_dups()) {
+      use_default = false;
+      strategy_ = tdb_unique_ptr<IQueryStrategy>(tdb_new(
+          SparseUnorderedWithDupsReader,
+          stats_->create_child("Reader"),
+          logger_,
+          storage_manager_,
+          array_,
+          config_,
+          buffers_,
+          subarray_,
+          layout_,
+          condition_));
+    } else if (
+        use_refactored_sparse_global_order_reader() &&
+        !array_schema_->dense() &&
+        (layout_ == Layout::GLOBAL_ORDER ||
+         (layout_ == Layout::UNORDERED && subarray_.range_num() <= 1))) {
+      // Using the reader for unordered queries to do deduplication.
+      use_default = false;
+      strategy_ = tdb_unique_ptr<IQueryStrategy>(tdb_new(
+          SparseGlobalOrderReader,
+          stats_->create_child("Reader"),
+          logger_,
+          storage_manager_,
+          array_,
+          config_,
+          buffers_,
+          subarray_,
+          layout_,
+          condition_));
+    } else if (use_refactored_dense_reader() && array_schema_->dense()) {
+      bool all_dense = true;
+      for (auto& frag_md : fragment_metadata_)
+        all_dense &= frag_md->dense();
 
-        if (all_dense) {
-          use_default = false;
-          strategy_ = tdb_unique_ptr<IQueryStrategy>(tdb_new(
-              DenseReader,
-              stats_->create_child("Reader"),
-              logger_,
-              storage_manager_,
-              array_,
-              config_,
-              buffers_,
-              subarray_,
-              layout_,
-              condition_));
-        }
+      if (all_dense) {
+        use_default = false;
+        strategy_ = tdb_unique_ptr<IQueryStrategy>(tdb_new(
+            DenseReader,
+            stats_->create_child("Reader"),
+            logger_,
+            storage_manager_,
+            array_,
+            config_,
+            buffers_,
+            subarray_,
+            layout_,
+            condition_));
       }
     }
 
@@ -1987,6 +1981,28 @@ stats::Stats* Query::stats() const {
 
 tdb_shared_ptr<Buffer> Query::rest_scratch() const {
   return rest_scratch_;
+}
+
+bool Query::use_refactored_dense_reader() {
+  bool found = false;
+  std::string val = config_.get("sm.query.dense.reader", &found);
+  assert(found);
+  return val.compare("refactored") == 0;
+}
+
+bool Query::use_refactored_sparse_global_order_reader() {
+  bool found = false;
+  std::string val = config_.get("sm.query.sparse_global_order.reader", &found);
+  assert(found);
+  return val.compare("refactored") == 0;
+}
+
+bool Query::use_refactored_sparse_unordered_with_dups_reader() {
+  bool found = false;
+  std::string val =
+      config_.get("sm.query.sparse_unordered_with_dups.reader", &found);
+  assert(found);
+  return val.compare("refactored") == 0;
 }
 
 /* ****************************** */

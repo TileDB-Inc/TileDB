@@ -578,7 +578,7 @@ Status Consolidator::create_queries(
   RETURN_NOT_OK((*query_r)->set_layout(Layout::GLOBAL_ORDER));
 
   // Refactored reader optimizes for no subarray.
-  if (!config_.use_refactored_readers_ ||
+  if (!config_.use_refactored_reader_ ||
       array_for_reads->array_schema()->dense())
     RETURN_NOT_OK((*query_r)->set_subarray_unsafe(subarray));
 
@@ -890,9 +890,10 @@ Status Consolidator::set_config(const Config* config) {
   RETURN_NOT_OK(merged_config.get<uint64_t>(
       "sm.consolidation.timestamp_end", &config_.timestamp_end_, &found));
   assert(found);
-  RETURN_NOT_OK(merged_config.get<bool>(
-      "sm.use_refactored_readers", &config_.use_refactored_readers_, &found));
+  std::string reader =
+      merged_config.get("sm.query.sparse_global_order.reader", &found);
   assert(found);
+  config_.use_refactored_reader_ = reader.compare("reafctored") == 0;
 
   // Sanity checks
   if (config_.min_frags_ > config_.max_frags_)

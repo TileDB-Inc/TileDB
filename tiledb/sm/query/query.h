@@ -857,6 +857,15 @@ class Query {
   /** Returns the scratch space used for REST requests. */
   tdb_shared_ptr<Buffer> rest_scratch() const;
 
+  /** Use the refactored dense reader or not. */
+  bool use_refactored_dense_reader();
+
+  /** Use the refactored sparse global order reader or not. */
+  bool use_refactored_sparse_global_order_reader();
+
+  /** Use the refactored sparse unordered with dups reader or not. */
+  bool use_refactored_sparse_unordered_with_dups_reader();
+
  private:
   /* ********************************* */
   /*         PRIVATE ATTRIBUTES        */
