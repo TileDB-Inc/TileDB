@@ -654,7 +654,8 @@ Status Reader::compute_result_cell_slabs_row_col(
     std::vector<ResultCellSlab>* result_cell_slabs) const {
   // Compute result space tiles. The result space tiles hold all the
   // relevant result tiles of the dense fragments
-  compute_result_space_tiles<T>(subarray, result_space_tiles);
+  compute_result_space_tiles<T>(
+      &subarray, read_state_.partitioner_.subarray(), result_space_tiles);
 
   // Gather result cell slabs and pointers to result tiles
   // `result_tiles` holds pointers to tiles that store actual results,
@@ -742,7 +743,8 @@ Status Reader::compute_result_coords(
   // ignore fragments with a version >= 5.
   auto& subarray = read_state_.partitioner_.current();
   std::vector<std::string> zipped_coords_names = {constants::coords};
-  RETURN_CANCEL_OR_ERROR(load_tile_offsets(&subarray, &zipped_coords_names));
+  RETURN_CANCEL_OR_ERROR(load_tile_offsets(
+      read_state_.partitioner_.subarray(), &zipped_coords_names));
 
   // Preload unzipped coordinate tile offsets. Note that this will
   // ignore fragments with a version < 5.
@@ -751,7 +753,8 @@ Status Reader::compute_result_coords(
   dim_names.reserve(dim_num);
   for (unsigned d = 0; d < dim_num; ++d)
     dim_names.emplace_back(array_schema_->dimension(d)->name());
-  RETURN_CANCEL_OR_ERROR(load_tile_offsets(&subarray, &dim_names));
+  RETURN_CANCEL_OR_ERROR(
+      load_tile_offsets(read_state_.partitioner_.subarray(), &dim_names));
 
   // Read and unfilter zipped coordinate tiles. Note that
   // this will ignore fragments with a version >= 5.
@@ -884,7 +887,11 @@ Status Reader::dense_read() {
       &result_cell_slabs));
 
   auto stride = array_schema_->domain()->stride<T>(subarray.layout());
-  apply_query_condition(&result_cell_slabs, &result_tiles, &subarray, stride);
+  RETURN_NOT_OK(apply_query_condition(
+      &result_cell_slabs,
+      &result_tiles,
+      read_state_.partitioner_.subarray(),
+      stride));
 
   get_result_tile_stats(result_tiles);
   get_result_cell_stats(result_cell_slabs);
@@ -894,7 +901,10 @@ Status Reader::dense_read() {
 
   // Needed when copying the cells
   RETURN_NOT_OK(copy_attribute_values(
-      stride, &result_tiles, &result_cell_slabs, subarray));
+      stride,
+      &result_tiles,
+      &result_cell_slabs,
+      *read_state_.partitioner_.subarray()));
   read_state_.overflowed_ = copy_overflowed_;
 
   // Fill coordinates if the user requested them
@@ -1072,14 +1082,17 @@ Status Reader::sparse_read() {
       compute_result_cell_slabs(result_coords, &result_cell_slabs));
   result_coords.clear();
 
-  auto& subarray = read_state_.partitioner_.current();
-  apply_query_condition(&result_cell_slabs, &result_tiles, &subarray);
+  apply_query_condition(
+      &result_cell_slabs, &result_tiles, read_state_.partitioner_.subarray());
   get_result_tile_stats(result_tiles);
   get_result_cell_stats(result_cell_slabs);
 
   RETURN_NOT_OK(copy_coordinates(&result_tiles, &result_cell_slabs));
   RETURN_NOT_OK(copy_attribute_values(
-      UINT64_MAX, &result_tiles, &result_cell_slabs, subarray));
+      UINT64_MAX,
+      &result_tiles,
+      &result_cell_slabs,
+      *read_state_.partitioner_.subarray()));
   read_state_.overflowed_ = copy_overflowed_;
 
   return Status::Ok();

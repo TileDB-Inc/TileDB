@@ -106,8 +106,8 @@ Status SparseIndexReaderBase::get_coord_tiles_size(
 
     if (is_dim_var_size_[d]) {
       uint64_t temp = 0;
-      RETURN_NOT_OK(fragment_metadata_[f]->tile_var_size(
-          *array_->encryption_key(), dim_names_[d], t, &temp));
+      RETURN_NOT_OK(
+          fragment_metadata_[f]->tile_var_size(dim_names_[d], t, &temp));
       *tiles_size += temp;
     }
   }
@@ -170,11 +170,24 @@ Status SparseIndexReaderBase::load_initial_data() {
   const auto dim_num = array_schema_->dim_num();
   dim_names_.reserve(dim_num);
   is_dim_var_size_.reserve(dim_num);
+  std::vector<std::string> var_size_to_load;
   for (unsigned d = 0; d < dim_num; ++d) {
     dim_names_.emplace_back(array_schema_->dimension(d)->name());
     is_dim_var_size_[d] = array_schema_->var_size(dim_names_[d]);
+    if (is_dim_var_size_[d])
+      var_size_to_load.emplace_back(dim_names_[d]);
   }
   RETURN_CANCEL_OR_ERROR(load_tile_offsets(&subarray_, &dim_names_));
+
+  for (auto& it : buffers_) {
+    const auto& name = it.first;
+    if (array_schema_->is_dim(name))
+      continue;
+
+    if (array_schema_->var_size(name))
+      var_size_to_load.emplace_back(name);
+  }
+  RETURN_CANCEL_OR_ERROR(load_tile_var_sizes(&subarray_, &var_size_to_load));
 
   initial_data_loaded_ = true;
   return Status::Ok();

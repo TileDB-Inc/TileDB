@@ -181,6 +181,14 @@ Status subarray_to_capnp(
     RETURN_NOT_OK(stats_to_capnp(*stats, &stats_builder));
   }
 
+  if (subarray->relevant_fragments()->size() > 0) {
+    auto relevant_fragments_builder =
+        builder->initRelevantFragments(subarray->relevant_fragments()->size());
+    for (size_t i = 0; i < subarray->relevant_fragments()->size(); ++i) {
+      relevant_fragments_builder.set(i, subarray->relevant_fragments()->at(i));
+    }
+  }
+
   return Status::Ok();
 }
 
@@ -231,6 +239,15 @@ Status subarray_from_capnp(
     // We should always have a stats here
     if (stats != nullptr) {
       RETURN_NOT_OK(stats_from_capnp(reader.getStats(), stats));
+    }
+  }
+
+  if (reader.hasRelevantFragments()) {
+    auto relevant_fragments = reader.getRelevantFragments();
+    size_t count = relevant_fragments.size();
+    subarray->relevant_fragments()->reserve(count);
+    for (size_t i = 0; i < count; i++) {
+      subarray->relevant_fragments()->emplace_back(relevant_fragments[i]);
     }
   }
 
