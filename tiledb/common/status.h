@@ -151,10 +151,9 @@ class Status {
   }
 
   /**
-r   * General constructor for arbitrary status
+   * General constructor for arbitrary status
    */
   Status(StatusCode code, const std::string& msg);
-
 
   /** Destructor. */
   ~Status() {
