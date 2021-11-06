@@ -993,7 +993,8 @@ Status SparseGlobalOrderReader::remove_result_tile(
 
   for (const auto& name : condition_.field_names()) {
     uint64_t tile_size = 0;
-    RETURN_NOT_OK(get_attribute_tile_size(name, &*rt, &tile_size));
+    RETURN_NOT_OK(
+        get_attribute_tile_size(name, frag_idx, tile_idx, &tile_size));
     memory_used_qc_tiles_ -= tile_size;
   }
 
