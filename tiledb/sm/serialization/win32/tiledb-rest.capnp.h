@@ -6160,7 +6160,7 @@ class ReadStateIndex::Reader {
       ::capnp::Kind::STRUCT>::Reader
   getFragTileIdx() const;
 
-  inline ::uint64_t getRangeIdx() const;
+  inline bool getDoneAddingResultTiles() const;
 
  private:
   ::capnp::_::StructReader _reader;
@@ -6244,8 +6244,8 @@ class ReadStateIndex::Builder {
       ::capnp::Kind::STRUCT>>
   disownFragTileIdx();
 
-  inline ::uint64_t getRangeIdx();
-  inline void setRangeIdx(::uint64_t value);
+  inline bool getDoneAddingResultTiles();
+  inline void setDoneAddingResultTiles(bool value);
 
  private:
   ::capnp::_::StructBuilder _builder;
@@ -13924,18 +13924,15 @@ ReadStateIndex::Builder::disownFragTileIdx() {
                                               ::capnp::POINTERS));
 }
 
-inline ::uint64_t ReadStateIndex::Reader::getRangeIdx() const {
-  return _reader.getDataField<::uint64_t>(
-      ::capnp::bounded<0>() * ::capnp::ELEMENTS);
+inline bool ReadStateIndex::Reader::getDoneAddingResultTiles() const {
+  return _reader.getDataField<bool>(::capnp::bounded<0>() * ::capnp::ELEMENTS);
 }
 
-inline ::uint64_t ReadStateIndex::Builder::getRangeIdx() {
-  return _builder.getDataField<::uint64_t>(
-      ::capnp::bounded<0>() * ::capnp::ELEMENTS);
+inline bool ReadStateIndex::Builder::getDoneAddingResultTiles() {
+  return _builder.getDataField<bool>(::capnp::bounded<0>() * ::capnp::ELEMENTS);
 }
-inline void ReadStateIndex::Builder::setRangeIdx(::uint64_t value) {
-  _builder.setDataField<::uint64_t>(
-      ::capnp::bounded<0>() * ::capnp::ELEMENTS, value);
+inline void ReadStateIndex::Builder::setDoneAddingResultTiles(bool value) {
+  _builder.setDataField<bool>(::capnp::bounded<0>() * ::capnp::ELEMENTS, value);
 }
 
 inline bool ReaderIndex::Reader::hasLayout() const {

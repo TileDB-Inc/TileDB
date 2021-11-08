@@ -33,6 +33,9 @@
 #ifndef TILEDB_DENSE_READER
 #define TILEDB_DENSE_READER
 
+#include <atomic>
+
+#include "tiledb/common/logger_public.h"
 #include "tiledb/common/status.h"
 #include "tiledb/sm/array_schema/dimension.h"
 #include "tiledb/sm/misc/types.h"
@@ -58,6 +61,7 @@ class DenseReader : public ReaderBase, public IQueryStrategy {
   /** Constructor. */
   DenseReader(
       stats::Stats* stats,
+      tdb_shared_ptr<Logger> logger,
       StorageManager* storage_manager,
       Array* array,
       Config& config,
@@ -91,6 +95,9 @@ class DenseReader : public ReaderBase, public IQueryStrategy {
   /** Initializes the reader. */
   Status init();
 
+  /** Initialize the memory budget variables. */
+  Status initialize_memory_budget();
+
   /** Returns the current read state. */
   const ReadState* read_state() const;
 
@@ -107,6 +114,9 @@ class DenseReader : public ReaderBase, public IQueryStrategy {
   /* ********************************* */
   /*         PRIVATE ATTRIBUTES        */
   /* ********************************* */
+
+  /** UID of the logger instance */
+  inline static std::atomic<uint64_t> logger_id_ = 0;
 
   /** Read state. */
   ReadState read_state_;
@@ -135,6 +145,7 @@ class DenseReader : public ReaderBase, public IQueryStrategy {
       Subarray* subarray,
       std::vector<Subarray>* tile_subarrays,
       std::vector<uint64_t>* tile_offsets,
+      const std::vector<uint64_t>* const range_offsets,
       std::map<const DimType*, ResultSpaceTile<DimType>>* result_space_tiles,
       std::vector<uint8_t>* qc_result);
 
@@ -155,6 +166,7 @@ class DenseReader : public ReaderBase, public IQueryStrategy {
       const Subarray* const subarray,
       const std::vector<Subarray>* const tile_subarrays,
       const std::vector<uint64_t>* const tile_offsets,
+      const std::vector<uint64_t>* const range_offsets,
       std::map<const DimType*, ResultSpaceTile<DimType>>* result_space_tiles,
       const std::vector<uint8_t>* const qc_result);
 
@@ -186,7 +198,10 @@ class DenseReader : public ReaderBase, public IQueryStrategy {
   Status get_dest_cell_offset_row_col(
       const int32_t dim_num,
       const Subarray* const subarray,
+      const Subarray* const tile_subarray,
       const DimType* const coords,
+      const DimType* const range_coords,
+      const std::vector<uint64_t>* const range_offsets,
       uint64_t* cell_offset);
 
   /** Copy fixed tiles to the output buffers. */
@@ -201,6 +216,7 @@ class DenseReader : public ReaderBase, public IQueryStrategy {
       const Subarray* const subarray,
       const Subarray* const tile_subarray,
       const uint64_t global_cell_offset,
+      const std::vector<uint64_t>* const range_offsets,
       const std::vector<uint8_t>* const qc_result);
 
   /** Copy a tile var offsets to the output buffers. */
@@ -216,6 +232,7 @@ class DenseReader : public ReaderBase, public IQueryStrategy {
       const Subarray* const tile_subarray,
       const uint64_t global_cell_offset,
       std::vector<std::vector<void*>>* var_data,
+      const std::vector<uint64_t>* const range_offsets,
       const std::vector<uint8_t>* const qc_result);
 
   /** Copy a var tile to the output buffers. */
@@ -229,6 +246,7 @@ class DenseReader : public ReaderBase, public IQueryStrategy {
       const Subarray* const tile_subarray,
       const uint64_t global_cell_offset,
       std::vector<std::vector<void*>>* var_data,
+      const std::vector<uint64_t>* const range_offsets,
       bool last_tile,
       std::vector<uint64_t>* var_buffer_sizes);
 

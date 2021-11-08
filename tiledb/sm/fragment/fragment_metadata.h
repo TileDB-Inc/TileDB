@@ -225,6 +225,12 @@ class FragmentMetadata {
   Status get_tile_overlap(const NDRange& range, TileOverlap* tile_overlap);
 
   /**
+   * Compute tile bitmap for the curent fragment/range/dimension.
+   */
+  void compute_tile_bitmap(
+      const Range& range, unsigned d, std::vector<uint8_t>* tile_bitmap);
+
+  /**
    * Initializes the fragment metadata structures.
    *
    * @param non_empty_domain The non-empty domain in which the array read/write

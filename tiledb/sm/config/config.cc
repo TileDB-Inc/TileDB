@@ -55,6 +55,7 @@ const std::string Config::CONFIG_LOGGING_LEVEL = "1";
 #else
 const std::string Config::CONFIG_LOGGING_LEVEL = "0";
 #endif
+const std::string Config::CONFIG_LOGGING_DEFAULT_FORMAT = "DEFAULT";
 const std::string Config::REST_SERVER_DEFAULT_ADDRESS =
     "https://api.tiledb.com";
 const std::string Config::REST_SERIALIZATION_DEFAULT_FORMAT = "CAPNP";
@@ -74,7 +75,10 @@ const std::string Config::SM_TILE_CACHE_SIZE = "10000000";
 const std::string Config::SM_SKIP_EST_SIZE_PARTITIONING = "false";
 const std::string Config::SM_MEMORY_BUDGET = "5368709120";       // 5GB
 const std::string Config::SM_MEMORY_BUDGET_VAR = "10737418240";  // 10GB;
-const std::string Config::SM_USE_REFACTORED_READERS = "false";
+const std::string Config::SM_QUERY_DENSE_READER = "legacy";
+const std::string Config::SM_QUERY_SPARSE_GLOBAL_ORDER_READER = "legacy";
+const std::string Config::SM_QUERY_SPARSE_UNORDERED_WITH_DUPS_READER =
+    "refactored";
 const std::string Config::SM_MEM_MALLOC_TRIM = "true";
 const std::string Config::SM_MEM_TOTAL_BUDGET = "10737418240";  // 10GB;
 const std::string Config::SM_MEM_SPARSE_GLOBAL_ORDER_RATIO_COORDS = "0.5";
@@ -221,6 +225,7 @@ Config::Config() {
   param_values_["rest.retry_delay_factor"] = REST_RETRY_DELAY_FACTOR;
   param_values_["config.env_var_prefix"] = CONFIG_ENVIRONMENT_VARIABLE_PREFIX;
   param_values_["config.logging_level"] = CONFIG_LOGGING_LEVEL;
+  param_values_["config.logging_format"] = CONFIG_LOGGING_DEFAULT_FORMAT;
   param_values_["sm.encryption_key"] = SM_ENCRYPTION_KEY;
   param_values_["sm.encryption_type"] = SM_ENCRYPTION_TYPE;
   param_values_["sm.dedup_coords"] = SM_DEDUP_COORDS;
@@ -233,7 +238,11 @@ Config::Config() {
       SM_SKIP_EST_SIZE_PARTITIONING;
   param_values_["sm.memory_budget"] = SM_MEMORY_BUDGET;
   param_values_["sm.memory_budget_var"] = SM_MEMORY_BUDGET_VAR;
-  param_values_["sm.use_refactored_readers"] = SM_USE_REFACTORED_READERS;
+  param_values_["sm.query.dense.reader"] = SM_QUERY_DENSE_READER;
+  param_values_["sm.query.sparse_global_order.reader"] =
+      SM_QUERY_SPARSE_GLOBAL_ORDER_READER;
+  param_values_["sm.query.sparse_unordered_with_dups.reader"] =
+      SM_QUERY_SPARSE_UNORDERED_WITH_DUPS_READER;
   param_values_["sm.mem.malloc_trim"] = SM_MEM_MALLOC_TRIM;
   param_values_["sm.mem.total_budget"] = SM_MEM_TOTAL_BUDGET;
   param_values_["sm.mem.reader.sparse_global_order.ratio_coords"] =
@@ -495,6 +504,8 @@ Status Config::unset(const std::string& param) {
     param_values_["config.env_var_prefix"] = CONFIG_ENVIRONMENT_VARIABLE_PREFIX;
   } else if (param == "config.logging_level") {
     param_values_["config.logging_level"] = CONFIG_LOGGING_LEVEL;
+  } else if (param == "config.logging_format") {
+    param_values_["config.logging_foramt"] = CONFIG_LOGGING_DEFAULT_FORMAT;
   } else if (param == "sm.encryption_key") {
     param_values_["sm.encryption_key"] = SM_ENCRYPTION_KEY;
   } else if (param == "sm.encryption_type") {
@@ -515,8 +526,14 @@ Status Config::unset(const std::string& param) {
     param_values_["sm.memory_budget"] = SM_MEMORY_BUDGET;
   } else if (param == "sm.memory_budget_var") {
     param_values_["sm.memory_budget_var"] = SM_MEMORY_BUDGET_VAR;
-  } else if (param == "sm.use_refactored_readers") {
-    param_values_["sm.use_refactored_readers"] = SM_USE_REFACTORED_READERS;
+  } else if (param == "sm.query.dense.reader") {
+    param_values_["sm.query.dense.reader"] = SM_QUERY_DENSE_READER;
+  } else if (param == "sm.query.sparse_global_order.reader") {
+    param_values_["sm.query.sparse_global_order.reader"] =
+        SM_QUERY_SPARSE_GLOBAL_ORDER_READER;
+  } else if (param == "sm.query.sparse_unordered_with_dups.reader") {
+    param_values_["sm.query.sparse_unordered_with_dups.reader"] =
+        SM_QUERY_SPARSE_UNORDERED_WITH_DUPS_READER;
   } else if (param == "sm.mem.malloc_trim") {
     param_values_["sm.mem.malloc_trim"] = SM_MEM_MALLOC_TRIM;
   } else if (param == "sm.mem.total_budget") {
@@ -787,6 +804,10 @@ Status Config::sanity_check(
     RETURN_NOT_OK(serialization_type_enum(value, &serialization_type));
   } else if (param == "config.logging_level") {
     RETURN_NOT_OK(utils::parse::convert(value, &v32));
+  } else if (param == "config.logging_format") {
+    if (value != "DEFAULT" && value != "JSON")
+      return LOG_STATUS(
+          Status::ConfigError("Invalid logging format parameter value"));
   } else if (param == "sm.dedup_coords") {
     RETURN_NOT_OK(utils::parse::convert(value, &v));
   } else if (param == "sm.check_coord_dups") {

@@ -357,6 +357,14 @@ Status RestClient::post_query_submit(
         Status::RestError("Error submitting query to REST; null array."));
   }
 
+  auto rest_scratch = query->rest_scratch();
+
+  if (rest_scratch->size() > 0) {
+    bool skip;
+    query_post_call_back(
+        false, nullptr, 0, &skip, rest_scratch, query, copy_state);
+  }
+
   // Serialize query to send
   BufferList serialized;
   RETURN_NOT_OK(serialization::query_serialize(
@@ -380,15 +388,14 @@ Status RestClient::post_query_submit(
 
   // Create the callback that will process the response buffers as they
   // are received.
-  Buffer scratch;
   auto write_cb = std::bind(
-      &RestClient::post_data_write_cb,
+      &RestClient::query_post_call_back,
       this,
       std::placeholders::_1,
       std::placeholders::_2,
       std::placeholders::_3,
       std::placeholders::_4,
-      &scratch,
+      rest_scratch,
       query,
       copy_state);
 
@@ -397,7 +404,7 @@ Status RestClient::post_query_submit(
       url,
       serialization_type_,
       &serialized,
-      &scratch,
+      rest_scratch.get(),
       std::move(write_cb),
       cache_key);
 
@@ -412,12 +419,12 @@ Status RestClient::post_query_submit(
   return st;
 }
 
-size_t RestClient::post_data_write_cb(
+size_t RestClient::query_post_call_back(
     const bool reset,
     void* const contents,
     const size_t content_nbytes,
     bool* const skip_retries,
-    Buffer* const scratch,
+    tdb_shared_ptr<Buffer> scratch,
     Query* query,
     serialization::CopyState* copy_state) {
   // All return statements in this function must pass through this wrapper.
@@ -508,7 +515,6 @@ size_t RestClient::post_data_write_cb(
       st = aux.write(scratch->cur_data(), query_size);
       if (!st.ok()) {
         scratch->set_offset(scratch->offset() - 8);
-        scratch->set_size(scratch->offset());
         return return_wrapper(bytes_processed);
       }
 
@@ -521,7 +527,6 @@ size_t RestClient::post_data_write_cb(
           aux, serialization_type_, true, copy_state, query, compute_tp_);
       if (!st.ok()) {
         scratch->set_offset(scratch->offset() - 8);
-        scratch->set_size(scratch->offset());
         return return_wrapper(bytes_processed);
       }
     } else {
@@ -533,7 +538,6 @@ size_t RestClient::post_data_write_cb(
           *scratch, serialization_type_, true, copy_state, query, compute_tp_);
       if (!st.ok()) {
         scratch->set_offset(scratch->offset() - 8);
-        scratch->set_size(scratch->offset());
         return return_wrapper(bytes_processed);
       }
     }

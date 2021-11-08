@@ -106,11 +106,25 @@ struct QueryBuffer {
 typedef std::map<std::string, QueryBuffer> QueryBuffers;
 
 /**
- * Get the config for using the refactored readers.
+ * Get the config for using the refactored dense reader.
  *
- * @return Using the refactored readers or not.
+ * @return Using the refactored reader or not.
  */
-bool use_refactored_readers();
+bool use_refactored_dense_reader();
+
+/**
+ * Get the config for using the refactored sparse global order reader.
+ *
+ * @return Using the refactored reader or not.
+ */
+bool use_refactored_sparse_global_order_reader();
+
+/**
+ * Get the config for using the refactored unordered with dups reader.
+ *
+ * @return Using the refactored reader or not.
+ */
+bool use_refactored_sparse_unordered_with_dups_reader();
 
 /**
  * Checks that the input partitioner produces the input partitions

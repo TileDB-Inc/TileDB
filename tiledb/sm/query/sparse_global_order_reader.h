@@ -33,6 +33,9 @@
 #ifndef TILEDB_SPARSE_GLOBAL_ORDER_READER
 #define TILEDB_SPARSE_GLOBAL_ORDER_READER
 
+#include <atomic>
+
+#include "tiledb/common/logger_public.h"
 #include "tiledb/common/status.h"
 #include "tiledb/sm/array_schema/dimension.h"
 #include "tiledb/sm/misc/types.h"
@@ -63,6 +66,7 @@ class SparseGlobalOrderReader : public SparseIndexReaderBase,
   /** Constructor. */
   SparseGlobalOrderReader(
       stats::Stats* stats,
+      tdb_shared_ptr<Logger> logger,
       StorageManager* storage_manager,
       Array* array,
       Config& config,
@@ -96,6 +100,9 @@ class SparseGlobalOrderReader : public SparseIndexReaderBase,
   /** Initializes the reader. */
   Status init();
 
+  /** Initialize the memory budget variables. */
+  Status initialize_memory_budget();
+
   /** Performs a read query using its set members. */
   Status dowork();
 
@@ -107,12 +114,15 @@ class SparseGlobalOrderReader : public SparseIndexReaderBase,
 
   /** Add a result tile with no memory budget checks. Used by serialization. */
   ResultTile* add_result_tile_unsafe(
-      unsigned dim_num, unsigned f, uint64_t t, const Domain* domain);
+      unsigned f, uint64_t t, const Domain* domain);
 
  private:
   /* ********************************* */
   /*         PRIVATE ATTRIBUTES        */
   /* ********************************* */
+
+  /** UID of the logger instance */
+  inline static std::atomic<uint64_t> logger_id_ = 0;
 
   /** The result tiles currently loaded. */
   std::vector<std::list<ResultTile>> result_tiles_;
@@ -136,6 +146,9 @@ class SparseGlobalOrderReader : public SparseIndexReaderBase,
       uint64_t t,
       const Domain* domain,
       bool* budget_exceeded);
+
+  /** corrects memory usage after de-serialization. */
+  Status fix_memory_usage_after_serialization();
 
   /** Create the result tiles. */
   Status create_result_tiles(bool* tiles_found);

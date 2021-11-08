@@ -1,11 +1,12 @@
 /**
- * @file   iquery_strategy.h
+ * @file unit-resource-pool.cc
  *
  * @section LICENSE
  *
  * The MIT License
  *
  * @copyright Copyright (c) 2017-2021 TileDB, Inc.
+ * @copyright Copyright (c) 2016 MIT and Intel Corporation
  *
  * Permission is hereby granted, free of charge, to any person obtaining a copy
  * of this software and associated documentation files (the "Software"), to deal
@@ -27,45 +28,48 @@
  *
  * @section DESCRIPTION
  *
- * This file defines class IQueryStrategy.
+ * Tests the `ResourcePool` class.
  */
 
-#ifndef TILEDB_IQUERY_STRATEGY_H
-#define TILEDB_IQUERY_STRATEGY_H
+#include <mutex>
+#include <vector>
+#include "tiledb/sm/misc/resource_pool.h"
 
-#include "tiledb/common/status.h"
-#include "tiledb/sm/enums/layout.h"
+#include <catch.hpp>
 
-using namespace tiledb::common;
+using namespace tiledb::sm;
 
-namespace tiledb {
-namespace sm {
+TEST_CASE("Buffer: Test resource pool", "[resource-pool]") {
+  ResourcePool<int> pool(3);
 
-class IQueryStrategy {
- public:
-  /** Destructor. */
-  virtual ~IQueryStrategy() = default;
+  {
+    // Get the maximum number of resources and set them.
+    ResourceGuard r1(pool);
+    ResourceGuard r2(pool);
+    ResourceGuard r3(pool);
 
-  /** Initializes the strategy. */
-  virtual Status init() = 0;
+    r1.get() = 7;
+    r2.get() = 8;
+    r3.get() = 9;
 
-  /** Initialize the memory budget variables. */
-  virtual Status initialize_memory_budget() = 0;
+    // Try to get one more resource should throw an exception.
+    REQUIRE_THROWS_WITH(
+        ResourceGuard(pool), "Ran out of resources in resource pool");
+  }
 
-  /** Performs a query using its set members. */
-  virtual Status dowork() = 0;
+  {
+    // Validate we can get access to the same resources again.
+    std::vector<bool> found(3, false);
+    ResourceGuard r1(pool);
+    ResourceGuard r2(pool);
+    ResourceGuard r3(pool);
 
-  /** Finalizes the strategy. */
-  virtual Status finalize() = 0;
+    found[r1.get() - 7] = true;
+    found[r2.get() - 7] = true;
+    found[r3.get() - 7] = true;
 
-  /** Returns of the query is incomplete. */
-  virtual bool incomplete() const = 0;
-
-  /** Resets the object */
-  virtual void reset() = 0;
-};
-
-}  // namespace sm
-}  // namespace tiledb
-
-#endif  // TILEDB_IQUERY_STRATEGY_H
+    REQUIRE(found[0]);
+    REQUIRE(found[1]);
+    REQUIRE(found[2]);
+  }
+}

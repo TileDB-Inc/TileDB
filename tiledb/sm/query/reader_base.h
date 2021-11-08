@@ -107,6 +107,7 @@ class ReaderBase : public StrategyBase {
   /** Constructor. */
   ReaderBase(
       stats::Stats* stats,
+      tdb_shared_ptr<Logger> logger,
       StorageManager* storage_manager,
       Array* array,
       Config& config,
@@ -668,12 +669,13 @@ class ReaderBase : public StrategyBase {
    * Get the size of an attribute tile.
    *
    * @param name The attribute name.
-   * @param result_tile The result tile.
+   * @param f The fragment idx.
+   * @param t The tile idx.
    * @param tile_size The return tile size.
    * @return Status
    */
   Status get_attribute_tile_size(
-      const std::string& name, ResultTile* result_tile, uint64_t* tile_size);
+      const std::string& name, unsigned f, uint64_t t, uint64_t* tile_size);
 
   /**
    * Computes the result space tiles based on the input subarray.

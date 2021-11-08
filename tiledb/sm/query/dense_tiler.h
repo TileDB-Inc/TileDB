@@ -33,14 +33,16 @@
 #ifndef TILEDB_DENSE_TILER_H
 #define TILEDB_DENSE_TILER_H
 
+#include <atomic>
+#include <functional>
+#include <unordered_map>
+
+#include "tiledb/common/logger_public.h"
 #include "tiledb/common/status.h"
 #include "tiledb/sm/array_schema/array_schema.h"
 #include "tiledb/sm/query/query_buffer.h"
 #include "tiledb/sm/stats/stats.h"
 #include "tiledb/sm/subarray/subarray.h"
-
-#include <functional>
-#include <unordered_map>
 
 using namespace tiledb::common;
 
@@ -238,6 +240,12 @@ class DenseTiler {
 
   /** The stats for the dense tiler. */
   stats::Stats* stats_;
+
+  /** The class logger. */
+  tdb_shared_ptr<Logger> logger_;
+
+  /** UID of the logger instance */
+  inline static std::atomic<uint64_t> logger_id_ = 0;
 
   /** The array schema. */
   const ArraySchema* array_schema_;

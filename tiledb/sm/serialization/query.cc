@@ -127,7 +127,6 @@ Status stats_from_capnp(
 
 Status array_to_capnp(
     const Array& array, capnp::Array::Builder* array_builder) {
-  array_builder->setUri(array.array_uri().to_string());
   array_builder->setStartTimestamp(array.timestamp_start());
   array_builder->setEndTimestamp(array.timestamp_end());
 
@@ -136,7 +135,6 @@ Status array_to_capnp(
 
 Status array_from_capnp(
     const capnp::Array::Reader& array_reader, Array* array) {
-  RETURN_NOT_OK(array->set_uri(array_reader.getUri().cStr()));
   RETURN_NOT_OK(array->set_timestamp_start(array_reader.getStartTimestamp()));
   RETURN_NOT_OK(array->set_timestamp_end(array_reader.getEndTimestamp()));
 
@@ -484,7 +482,8 @@ Status index_read_state_to_capnp(
     capnp::ReaderIndex::Builder* builder) {
   auto read_state_builder = builder->initReadState();
 
-  read_state_builder.setRangeIdx(read_state->range_idx_);
+  read_state_builder.setDoneAddingResultTiles(
+      read_state->done_adding_result_tiles_);
 
   auto rcs_builder = read_state_builder.initResultCellSlab(
       read_state->result_cell_slabs_.size());
@@ -561,10 +560,10 @@ Status index_read_state_from_capnp(
     const capnp::ReadStateIndex::Reader& read_state_reader,
     SparseIndexReaderBase* reader) {
   auto read_state = reader->read_state();
-  auto dim_num = schema->dim_num();
   const auto* domain = schema->domain();
 
-  read_state->range_idx_ = read_state_reader.getRangeIdx();
+  read_state->done_adding_result_tiles_ =
+      read_state_reader.getDoneAddingResultTiles();
 
   assert(read_state_reader.hasResultCellSlab());
   RETURN_NOT_OK(reader->clear_result_tiles());
@@ -587,7 +586,7 @@ Status index_read_state_from_capnp(
     if (it != result_tile_map.end()) {
       rt = it->second;
     } else {
-      rt = reader->add_result_tile_unsafe(dim_num, frag_idx, tile_idx, domain);
+      rt = reader->add_result_tile_unsafe(frag_idx, tile_idx, domain);
       result_tile_map.emplace(
           std::pair<unsigned, uint64_t>(frag_idx, tile_idx), rt);
     }
@@ -1094,13 +1093,21 @@ Status query_to_capnp(Query& query, capnp::Query::Builder* query_builder) {
     bool all_dense = true;
     for (auto& frag_md : array->fragment_metadata())
       all_dense &= frag_md->dense();
-    bool found = false;
-    bool use_refactored_readers = false;
-    RETURN_NOT_OK(query.config()->get<bool>(
-        "sm.use_refactored_readers", &use_refactored_readers, &found));
-    assert(found);
-    if (use_refactored_readers && !schema->dense() &&
-        layout == Layout::GLOBAL_ORDER) {
+    if (query.use_refactored_sparse_unordered_with_dups_reader() &&
+        !schema->dense() && layout == Layout::UNORDERED &&
+        schema->allows_dups()) {
+      auto builder = query_builder->initReaderIndex();
+      auto reader = (SparseUnorderedWithDupsReader*)query.strategy();
+
+      query_builder->setVarOffsetsMode(reader->offsets_mode());
+      query_builder->setVarOffsetsAddExtraElement(
+          reader->offsets_extra_element());
+      query_builder->setVarOffsetsBitsize(reader->offsets_bitsize());
+      RETURN_NOT_OK(index_reader_to_capnp(query, *reader, &builder));
+    } else if (
+        query.use_refactored_sparse_global_order_reader() && !schema->dense() &&
+        (layout == Layout::GLOBAL_ORDER ||
+         (layout == Layout::UNORDERED && query.subarray()->range_num() <= 1))) {
       auto builder = query_builder->initReaderIndex();
       auto reader = (SparseGlobalOrderReader*)query.strategy();
 
@@ -1110,17 +1117,7 @@ Status query_to_capnp(Query& query, capnp::Query::Builder* query_builder) {
       query_builder->setVarOffsetsBitsize(reader->offsets_bitsize());
       RETURN_NOT_OK(index_reader_to_capnp(query, *reader, &builder));
     } else if (
-        use_refactored_readers && !schema->dense() &&
-        layout == Layout::UNORDERED && schema->allows_dups()) {
-      auto builder = query_builder->initReaderIndex();
-      auto reader = (SparseUnorderedWithDupsReader*)query.strategy();
-
-      query_builder->setVarOffsetsMode(reader->offsets_mode());
-      query_builder->setVarOffsetsAddExtraElement(
-          reader->offsets_extra_element());
-      query_builder->setVarOffsetsBitsize(reader->offsets_bitsize());
-      RETURN_NOT_OK(index_reader_to_capnp(query, *reader, &builder));
-    } else if (use_refactored_readers && all_dense && schema->dense()) {
+        query.use_refactored_dense_reader() && all_dense && schema->dense()) {
       auto builder = query_builder->initDenseReader();
       auto reader = (DenseReader*)query.strategy();
 
@@ -1669,6 +1666,8 @@ Status query_from_capnp(
             reader->set_offsets_bitsize(query_reader.getVarOffsetsBitsize()));
       }
 
+      RETURN_NOT_OK(reader->initialize_memory_budget());
+
       RETURN_NOT_OK(
           index_reader_from_capnp(schema, reader_reader, query, reader));
     } else if (
@@ -1693,6 +1692,8 @@ Status query_from_capnp(
         RETURN_NOT_OK(
             reader->set_offsets_bitsize(query_reader.getVarOffsetsBitsize()));
       }
+
+      RETURN_NOT_OK(reader->initialize_memory_budget());
 
       RETURN_NOT_OK(
           index_reader_from_capnp(schema, reader_reader, query, reader));

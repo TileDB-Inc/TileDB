@@ -13,6 +13,7 @@ steps:
 - task: UsePythonVersion@0
   inputs:
     versionSpec: '3.8'
+  condition: eq(variables['TILEDB_ARROW_TESTS'], 'ON')
 
 - bash: |
     set -e pipefail
@@ -20,6 +21,7 @@ steps:
     if [[ "$TILEDB_ARROW_TESTS" == "ON" ]]; then
       pip install pyarrow pybind11 numpy
     fi
+  condition: eq(variables['TILEDB_ARROW_TESTS'], 'ON')
 
 - bash: |
     set -e pipefail
@@ -33,7 +35,6 @@ steps:
     ulimit -c               # should output 0 if disabled
     ulimit -c unlimited     # Enable core dumps to be captured (must be in same run block)
     ulimit -c               # should output 'unlimited' now
-
     # Azure sets "SYSTEM=build" for unknown reasons, which breaks the OpenSSL configure script
     #   - openssl configure uses ENV{SYSTEM} if available:
     #     https://github.com/openssl/openssl/blob/6d745d740d37d680ff696486218b650512bbbbc6/config#L56
