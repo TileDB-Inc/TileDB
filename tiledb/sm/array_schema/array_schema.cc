@@ -587,8 +587,9 @@ Status ArraySchema::deserialize(ConstBuffer* buff) {
       return st_attr;
     }
 
-    attributes_.emplace_back(attr.value());
-    attribute_map_[attr.value()->name()] = attr.value();
+    Attribute* attr_ptr = tdb_new(Attribute, &(Attribute&)attr.value());
+    attributes_.emplace_back(attr_ptr);
+    attribute_map_[attr_ptr->name()] = attr_ptr;
   }
 
   // Create dimension map

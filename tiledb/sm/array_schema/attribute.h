@@ -106,6 +106,9 @@ class Attribute {
   /** Copy-assignment operator. */
   DISABLE_COPY_ASSIGN(Attribute);
 
+  /** Move constructor. */
+  Attribute(Attribute&& other);
+
   /** Destructor. */
   ~Attribute();
 
@@ -129,7 +132,7 @@ class Attribute {
    * @param version The format spec version.
    * @return Status and Attribute
    */
-  static std::tuple<Status, std::optional<Attribute*>> deserialize(
+  static std::tuple<Status, std::optional<Attribute>> deserialize(
       ConstBuffer* buff, uint32_t version);
 
   /** Dumps the attribute contents in ASCII form in the selected output. */

@@ -92,6 +92,16 @@ Attribute::Attribute(const Attribute* attr) {
   fill_value_validity_ = attr->fill_value_validity_;
 }
 
+Attribute::Attribute(Attribute&& other)
+    : cell_val_num_(std::move(other.cell_val_num_))
+    , nullable_(std::move(other.nullable_))
+    , filters_(std::move(other.filters_))
+    , name_(std::move(other.name_))
+    , type_(std::move(other.type_))
+    , fill_value_(std::move(other.fill_value_))
+    , fill_value_validity_(std::move(other.fill_value_validity_)) {
+}
+
 Attribute::~Attribute() = default;
 
 /* ********************************* */
@@ -109,7 +119,7 @@ unsigned int Attribute::cell_val_num() const {
   return cell_val_num_;
 }
 
-std::tuple<Status, std::optional<Attribute*>> Attribute::deserialize(
+std::tuple<Status, std::optional<Attribute>> Attribute::deserialize(
     ConstBuffer* buff, const uint32_t version) {
   Status st;
   // Load attribute name
@@ -173,17 +183,16 @@ std::tuple<Status, std::optional<Attribute*>> Attribute::deserialize(
       return {st, std::nullopt};
   }
 
-  Attribute* attribute = tdb_new(
-      Attribute,
-      name,
-      datatype,
-      nullable,
-      cell_val_num,
-      filter_pipeline,
-      fill_value,
-      fill_value_validity);
-
-  return {Status::Ok(), attribute};
+  return {Status::Ok(),
+          std::optional<Attribute>(
+              std::in_place,
+              name,
+              datatype,
+              nullable,
+              cell_val_num,
+              filter_pipeline,
+              fill_value,
+              fill_value_validity)};
 }
 void Attribute::dump(FILE* out) const {
   if (out == nullptr)
