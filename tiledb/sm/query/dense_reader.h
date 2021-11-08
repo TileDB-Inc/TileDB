@@ -33,6 +33,9 @@
 #ifndef TILEDB_DENSE_READER
 #define TILEDB_DENSE_READER
 
+#include <atomic>
+
+#include "tiledb/common/logger_public.h"
 #include "tiledb/common/status.h"
 #include "tiledb/sm/array_schema/dimension.h"
 #include "tiledb/sm/misc/types.h"
@@ -58,6 +61,7 @@ class DenseReader : public ReaderBase, public IQueryStrategy {
   /** Constructor. */
   DenseReader(
       stats::Stats* stats,
+      tdb_shared_ptr<Logger> logger,
       StorageManager* storage_manager,
       Array* array,
       Config& config,
@@ -110,6 +114,9 @@ class DenseReader : public ReaderBase, public IQueryStrategy {
   /* ********************************* */
   /*         PRIVATE ATTRIBUTES        */
   /* ********************************* */
+
+  /** UID of the logger instance */
+  inline static std::atomic<uint64_t> logger_id_ = 0;
 
   /** Read state. */
   ReadState read_state_;

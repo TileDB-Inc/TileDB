@@ -88,6 +88,9 @@ class Config {
    */
   static const std::string CONFIG_LOGGING_LEVEL;
 
+  /** The default format for logging. */
+  static const std::string CONFIG_LOGGING_DEFAULT_FORMAT;
+
   /**
    * The key for encrypted arrays.
    *  */
@@ -144,8 +147,14 @@ class Config {
    */
   static const std::string SM_MEMORY_BUDGET_VAR;
 
-  /** Whether or not to use the refactored readers. */
-  static const std::string SM_USE_REFACTORED_READERS;
+  /** Which reader to use for dense queries. */
+  static const std::string SM_QUERY_DENSE_READER;
+
+  /** Which reader to use for sparse global order queries. */
+  static const std::string SM_QUERY_SPARSE_GLOBAL_ORDER_READER;
+
+  /** Which reader to use for sparse unordered with dups queries. */
+  static const std::string SM_QUERY_SPARSE_UNORDERED_WITH_DUPS_READER;
 
   /** Should malloc_trim be called on query/ctx destructors. */
   static const std::string SM_MEM_MALLOC_TRIM;

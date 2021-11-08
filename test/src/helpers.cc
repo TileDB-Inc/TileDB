@@ -47,7 +47,7 @@ namespace test {
 // Command line arguments.
 extern std::string g_vfs;
 
-bool use_refactored_readers() {
+bool use_refactored_dense_reader() {
   const char* value = nullptr;
   tiledb_config_t* cfg;
   tiledb_error_t* err = nullptr;
@@ -55,11 +55,51 @@ bool use_refactored_readers() {
   REQUIRE(rc == TILEDB_OK);
   REQUIRE(err == nullptr);
 
-  rc = tiledb_config_get(cfg, "sm.use_refactored_readers", &value, &err);
+  rc = tiledb_config_get(cfg, "sm.query.dense.reader", &value, &err);
   CHECK(rc == TILEDB_OK);
   CHECK(err == nullptr);
 
-  bool use_refactored_readers = strcmp(value, "true") == 0;
+  bool use_refactored_readers = strcmp(value, "refactored") == 0;
+
+  tiledb_config_free(&cfg);
+
+  return use_refactored_readers;
+}
+
+bool use_refactored_sparse_global_order_reader() {
+  const char* value = nullptr;
+  tiledb_config_t* cfg;
+  tiledb_error_t* err = nullptr;
+  auto rc = tiledb_config_alloc(&cfg, &err);
+  REQUIRE(rc == TILEDB_OK);
+  REQUIRE(err == nullptr);
+
+  rc = tiledb_config_get(
+      cfg, "sm.query.sparse_global_order.reader", &value, &err);
+  CHECK(rc == TILEDB_OK);
+  CHECK(err == nullptr);
+
+  bool use_refactored_readers = strcmp(value, "refactored") == 0;
+
+  tiledb_config_free(&cfg);
+
+  return use_refactored_readers;
+}
+
+bool use_refactored_sparse_unordered_with_dups_reader() {
+  const char* value = nullptr;
+  tiledb_config_t* cfg;
+  tiledb_error_t* err = nullptr;
+  auto rc = tiledb_config_alloc(&cfg, &err);
+  REQUIRE(rc == TILEDB_OK);
+  REQUIRE(err == nullptr);
+
+  rc = tiledb_config_get(
+      cfg, "sm.query.sparse_unordered_with_dups.reader", &value, &err);
+  CHECK(rc == TILEDB_OK);
+  CHECK(err == nullptr);
+
+  bool use_refactored_readers = strcmp(value, "refactored") == 0;
 
   tiledb_config_free(&cfg);
 

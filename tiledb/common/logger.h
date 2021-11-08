@@ -52,6 +52,7 @@
 #define TILEDB_LOGGER_H
 
 #include <spdlog/spdlog.h>
+#include <atomic>
 #include <sstream>
 
 #include "tiledb/common/heap_memory.h"
@@ -63,12 +64,19 @@ namespace common {
 /** Definition of class Logger. */
 class Logger {
  public:
+  enum class Format : char;
+  enum class Level : char;
+
   /* ********************************* */
   /*     CONSTRUCTORS & DESTRUCTORS    */
   /* ********************************* */
 
-  /** Constructor. */
-  Logger();
+  /** Constructors */
+  Logger(
+      const std::string& name,
+      const Logger::Format format = Logger::Format::DEFAULT);
+
+  Logger(std::shared_ptr<spdlog::logger> logger);
 
   /** Destructor. */
   ~Logger();
@@ -76,6 +84,15 @@ class Logger {
   /* ********************************* */
   /*                API                */
   /* ********************************* */
+
+  /**
+   * Clone the current logger and get a new object with
+   * the same configurations
+   *
+   * @param name The name of the new logger
+   * @param id An id to use as suffix for the name of the new logger
+   */
+  tdb_shared_ptr<Logger> clone(const std::string& name, uint64_t id);
 
   /**
    * Log a trace statement with no message formatting.
@@ -99,7 +116,7 @@ class Logger {
   void trace(const std::stringstream& msg);
 
   /**
-   * A formatted trace statment.
+   * A formatted trace statement.
    *
    * @param fmt A fmtlib format string, see http://fmtlib.net/latest/ for
    *     details.
@@ -268,6 +285,35 @@ class Logger {
   void critical(const std::stringstream& msg);
 
   /**
+   * Log a message from a Status object and return
+   * the same Status object
+   *
+   * @param st The Status object to log
+   */
+  Status status(const Status& st);
+
+  /**
+   * Log an error and exit with a non-zero status.
+   *
+   * @param msg The string to log.
+   */
+  void fatal(const char* msg);
+
+  /**
+   * Log an error and exit with a non-zero status.
+   *
+   * @param msg The string to log.
+   */
+  void fatal(const std::string& msg);
+
+  /**
+   * Log an error and exit with a non-zero status.
+   *
+   * @param msg The string to log.
+   */
+  void fatal(const std::stringstream& msg);
+
+  /**
    * A formatted critical statment.
    *
    * @param fmt A fmtlib format string, see http://fmtlib.net/latest/ for
@@ -280,6 +326,26 @@ class Logger {
     logger_->critical(fmt, arg1, args...);
   }
 
+  /**
+   * Set the logger level.
+   *
+   * @param lvl Logger::Level VERBOSE logs debug statements, ERR only logs
+   *    Status Error's.
+   */
+  void set_level(Logger::Level lvl);
+
+  /**
+   * Set the logger output format.
+   *
+   * @param fmt Logger::Format JSON logs in json format, DEFAULT
+   * logs in the default tiledb format
+   */
+  void set_format(Logger::Format fmt);
+
+  /* ********************************* */
+  /*          PUBLIC ATTRIBUTES        */
+  /* ********************************* */
+
   /** Verbosity level. */
   enum class Level : char {
     FATAL,
@@ -290,13 +356,17 @@ class Logger {
     TRACE,
   };
 
-  /**
-   * Set the logger level.
-   *
-   * @param lvl Logger::Level VERBOSE logs debug statements, ERR only logs
-   *    Status Error's.
-   */
-  void set_level(Logger::Level lvl);
+  /** Log format. */
+  enum class Format : char {
+    DEFAULT,
+    JSON,
+  };
+
+  /** The name of the global logger */
+  static inline constexpr char global_logger_default_name[] = "Global";
+
+  /** The name of the global logger in json format */
+  static inline constexpr char global_logger_json_name[] = "\"Global\":\"1\"";
 
  private:
   /* ********************************* */
@@ -305,14 +375,68 @@ class Logger {
 
   /** The logger object. */
   std::shared_ptr<spdlog::logger> logger_;
+
+  /** The name of the logger */
+  std::string name_;
+
+  /** The format of the logger  */
+  static inline Logger::Format fmt_ = Logger::Format::DEFAULT;
+
+  /** A counter of logger class instances */
+  static inline std::atomic<uint64_t> instance_count = 0;
+
+  /* ********************************* */
+  /*          PRIVATE METHODS          */
+  /* ********************************* */
+
+  /**
+   * Set the logger name.
+   *
+   * @param tags The string to use as a name, usually a
+   * concatenation of [tag:id] strings
+   */
+  void set_name(const std::string& tags);
+
+  /**
+   * Create a new string by appending a [tag:id] to the current
+   * name of the logger. Does not modify the name of the current
+   * logger object.
+   *
+   * @param tag The string to add in the new tag
+   * @param id The id to add in the new tag
+   *
+   */
+  std::string add_tag(const std::string& tag, uint64_t id);
 };
 
 /* ********************************* */
 /*              GLOBAL               */
 /* ********************************* */
 
-/** Global logger function. */
-Logger& global_logger();
+/**
+ * Returns a global logger to be used for general logging
+ *
+ * @param format The output format of the logger
+ */
+Logger& global_logger(Logger::Format format = Logger::Format::DEFAULT);
+
+/**
+ * Returns the logger format type given a string representation.
+ *
+ *  @param format_type_str The string representation of the logger format type
+ *  @param[out] format_type The logger format type
+ */
+inline Status logger_format_from_string(
+    const std::string& format_type_str, Logger::Format* format_type) {
+  if (format_type_str == "DEFAULT")
+    *format_type = Logger::Format::DEFAULT;
+  else if (format_type_str == "JSON")
+    *format_type = Logger::Format::JSON;
+  else {
+    return Status::Error("Unsupported logging format: " + format_type_str);
+  }
+  return Status::Ok();
+}
 
 }  // namespace common
 }  // namespace tiledb

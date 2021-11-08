@@ -33,11 +33,13 @@
 #ifndef TILEDB_QUERY_H
 #define TILEDB_QUERY_H
 
+#include <atomic>
 #include <functional>
 #include <sstream>
 #include <utility>
 #include <vector>
 
+#include "tiledb/common/logger_public.h"
 #include "tiledb/common/status.h"
 #include "tiledb/sm/array_schema/array_schema.h"
 #include "tiledb/sm/array_schema/dimension.h"
@@ -855,6 +857,15 @@ class Query {
   /** Returns the scratch space used for REST requests. */
   tdb_shared_ptr<Buffer> rest_scratch() const;
 
+  /** Use the refactored dense reader or not. */
+  bool use_refactored_dense_reader();
+
+  /** Use the refactored sparse global order reader or not. */
+  bool use_refactored_sparse_global_order_reader();
+
+  /** Use the refactored sparse unordered with dups reader or not. */
+  bool use_refactored_sparse_unordered_with_dups_reader();
+
  private:
   /* ********************************* */
   /*         PRIVATE ATTRIBUTES        */
@@ -895,6 +906,12 @@ class Query {
 
   /** The class stats. */
   stats::Stats* stats_;
+
+  /** The class logger. */
+  tdb_shared_ptr<Logger> logger_;
+
+  /** UID of the logger instance */
+  inline static std::atomic<uint64_t> logger_id_ = 0;
 
   /**
    * Maps attribute/dimension names to their buffers.
