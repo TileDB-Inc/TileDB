@@ -487,8 +487,9 @@ Status SparseUnorderedWithDupsReader::create_result_tiles() {
 
             if (budget_exceeded) {
               if (result_tiles_.empty())
-                return LOG_STATUS(Status::SparseUnorderedWithDupsReaderError(
-                    "Cannot load a single tile, increase memory budget"));
+                return logger_->status(
+                    Status::SparseUnorderedWithDupsReaderError(
+                        "Cannot load a single tile, increase memory budget"));
               break;
             }
           }
@@ -529,7 +530,7 @@ Status SparseUnorderedWithDupsReader::create_result_tiles() {
 
           if (budget_exceeded) {
             if (result_tiles_.empty())
-              return LOG_STATUS(Status::SparseUnorderedWithDupsReaderError(
+              return logger_->status(Status::SparseUnorderedWithDupsReaderError(
                   "Cannot load a single tile, increase memory budget"));
             break;
           }
