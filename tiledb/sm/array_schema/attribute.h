@@ -107,7 +107,7 @@ class Attribute {
   DISABLE_COPY_ASSIGN(Attribute);
 
   /** Move constructor. */
-  Attribute(Attribute&& other);
+  Attribute(Attribute&& other) = default;
 
   /** Destructor. */
   ~Attribute();

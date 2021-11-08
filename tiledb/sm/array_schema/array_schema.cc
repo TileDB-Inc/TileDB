@@ -582,12 +582,12 @@ Status ArraySchema::deserialize(ConstBuffer* buff) {
   uint32_t attribute_num;
   RETURN_NOT_OK(buff->read(&attribute_num, sizeof(uint32_t)));
   for (uint32_t i = 0; i < attribute_num; ++i) {
-    auto [st_attr, attr] = Attribute::deserialize(buff, version_);
+    auto&& [st_attr, attr] = Attribute::deserialize(buff, version_);
     if (!st_attr.ok()) {
       return st_attr;
     }
 
-    Attribute* attr_ptr = tdb_new(Attribute, &(Attribute&)attr.value());
+    Attribute* attr_ptr = tdb_new(Attribute, std::move(attr.value()));
     attributes_.emplace_back(attr_ptr);
     attribute_map_[attr_ptr->name()] = attr_ptr;
   }

@@ -92,16 +92,6 @@ Attribute::Attribute(const Attribute* attr) {
   fill_value_validity_ = attr->fill_value_validity_;
 }
 
-Attribute::Attribute(Attribute&& other)
-    : cell_val_num_(std::move(other.cell_val_num_))
-    , nullable_(std::move(other.nullable_))
-    , filters_(std::move(other.filters_))
-    , name_(std::move(other.name_))
-    , type_(std::move(other.type_))
-    , fill_value_(std::move(other.fill_value_))
-    , fill_value_validity_(std::move(other.fill_value_validity_)) {
-}
-
 Attribute::~Attribute() = default;
 
 /* ********************************* */
