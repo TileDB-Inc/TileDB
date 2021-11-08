@@ -78,7 +78,7 @@ std::string get_last_error_msg() {
 }  // namespace
 
 std::string Win::abs_path(
-    const std::string& path, const std::string& root_path = "") {
+    const std::string& path, const std::string& root_path) {
   std::string rootpath = root_path;
   if (rootpath.length() == 0) {
     rootpath = current_dir();

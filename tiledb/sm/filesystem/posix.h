@@ -68,7 +68,7 @@ class Posix {
    * form "file://<absolute path>"
    */
   static std::string abs_path(
-      const std::string& path, const std::string& root_path);
+      const std::string& path, const std::string& root_path = "");
 
   /**
    * Creates a new directory.
