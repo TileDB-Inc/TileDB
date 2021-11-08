@@ -1093,13 +1093,21 @@ Status query_to_capnp(Query& query, capnp::Query::Builder* query_builder) {
     bool all_dense = true;
     for (auto& frag_md : array->fragment_metadata())
       all_dense &= frag_md->dense();
-    bool found = false;
-    bool use_refactored_readers = false;
-    RETURN_NOT_OK(query.config()->get<bool>(
-        "sm.use_refactored_readers", &use_refactored_readers, &found));
-    assert(found);
-    if (use_refactored_readers && !schema->dense() &&
-        layout == Layout::GLOBAL_ORDER) {
+    if (query.use_refactored_sparse_unordered_with_dups_reader() &&
+        !schema->dense() && layout == Layout::UNORDERED &&
+        schema->allows_dups()) {
+      auto builder = query_builder->initReaderIndex();
+      auto reader = (SparseUnorderedWithDupsReader*)query.strategy();
+
+      query_builder->setVarOffsetsMode(reader->offsets_mode());
+      query_builder->setVarOffsetsAddExtraElement(
+          reader->offsets_extra_element());
+      query_builder->setVarOffsetsBitsize(reader->offsets_bitsize());
+      RETURN_NOT_OK(index_reader_to_capnp(query, *reader, &builder));
+    } else if (
+        query.use_refactored_sparse_global_order_reader() && !schema->dense() &&
+        (layout == Layout::GLOBAL_ORDER ||
+         (layout == Layout::UNORDERED && query.subarray()->range_num() <= 1))) {
       auto builder = query_builder->initReaderIndex();
       auto reader = (SparseGlobalOrderReader*)query.strategy();
 
@@ -1109,17 +1117,7 @@ Status query_to_capnp(Query& query, capnp::Query::Builder* query_builder) {
       query_builder->setVarOffsetsBitsize(reader->offsets_bitsize());
       RETURN_NOT_OK(index_reader_to_capnp(query, *reader, &builder));
     } else if (
-        use_refactored_readers && !schema->dense() &&
-        layout == Layout::UNORDERED && schema->allows_dups()) {
-      auto builder = query_builder->initReaderIndex();
-      auto reader = (SparseUnorderedWithDupsReader*)query.strategy();
-
-      query_builder->setVarOffsetsMode(reader->offsets_mode());
-      query_builder->setVarOffsetsAddExtraElement(
-          reader->offsets_extra_element());
-      query_builder->setVarOffsetsBitsize(reader->offsets_bitsize());
-      RETURN_NOT_OK(index_reader_to_capnp(query, *reader, &builder));
-    } else if (use_refactored_readers && all_dense && schema->dense()) {
+        query.use_refactored_dense_reader() && all_dense && schema->dense()) {
       auto builder = query_builder->initDenseReader();
       auto reader = (DenseReader*)query.strategy();
 

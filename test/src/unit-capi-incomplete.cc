@@ -1049,8 +1049,9 @@ void IncompleteFx::check_sparse_until_complete() {
   rc = tiledb_query_get_status(ctx_, query, &status);
   CHECK(rc == TILEDB_OK);
   CHECK(
-      status ==
-      (use_refactored_readers() ? TILEDB_COMPLETED : TILEDB_INCOMPLETE));
+      status == (use_refactored_sparse_global_order_reader() ?
+                     TILEDB_COMPLETED :
+                     TILEDB_INCOMPLETE));
 
   // Check buffer
   c_buffer_a1[0] = 1;
@@ -1061,7 +1062,7 @@ void IncompleteFx::check_sparse_until_complete() {
    * Old reader needs an extra round here to finish processing all the
    * partitions in the subarray. New reader is done earlier.
    */
-  if (!use_refactored_readers()) {
+  if (!use_refactored_sparse_global_order_reader()) {
     // Submit query
     rc = tiledb_query_submit(ctx_, query);
     REQUIRE(rc == TILEDB_OK);

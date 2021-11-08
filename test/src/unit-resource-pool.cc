@@ -53,15 +53,8 @@ TEST_CASE("Buffer: Test resource pool", "[resource-pool]") {
     r3.get() = 9;
 
     // Try to get one more resource should throw an exception.
-    bool got_exception = false;
-    try {
-      ResourceGuard r4(pool);
-    } catch (std::runtime_error const& e) {
-      std::string excp(e.what());
-      got_exception = excp.find("Ran out of resources in resource pool") !=
-                      std::string::npos;
-    }
-    REQUIRE(got_exception);
+    REQUIRE_THROWS_WITH(
+        ResourceGuard(pool), "Ran out of resources in resource pool");
   }
 
   {

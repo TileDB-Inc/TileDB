@@ -33,6 +33,9 @@
 #ifndef TILEDB_SPARSE_GLOBAL_ORDER_READER
 #define TILEDB_SPARSE_GLOBAL_ORDER_READER
 
+#include <atomic>
+
+#include "tiledb/common/logger_public.h"
 #include "tiledb/common/status.h"
 #include "tiledb/sm/array_schema/dimension.h"
 #include "tiledb/sm/misc/types.h"
@@ -63,6 +66,7 @@ class SparseGlobalOrderReader : public SparseIndexReaderBase,
   /** Constructor. */
   SparseGlobalOrderReader(
       stats::Stats* stats,
+      tdb_shared_ptr<Logger> logger,
       StorageManager* storage_manager,
       Array* array,
       Config& config,
@@ -116,6 +120,9 @@ class SparseGlobalOrderReader : public SparseIndexReaderBase,
   /* ********************************* */
   /*         PRIVATE ATTRIBUTES        */
   /* ********************************* */
+
+  /** UID of the logger instance */
+  inline static std::atomic<uint64_t> logger_id_ = 0;
 
   /** The result tiles currently loaded. */
   std::vector<std::list<ResultTile>> result_tiles_;

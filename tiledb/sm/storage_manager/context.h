@@ -114,6 +114,9 @@ class Context {
   /** The class stats. */
   tdb_shared_ptr<stats::Stats> stats_;
 
+  /** The class logger. */
+  tdb_shared_ptr<Logger> logger_;
+
   /* ********************************* */
   /*         PRIVATE METHODS           */
   /* ********************************* */
@@ -125,6 +128,14 @@ class Context {
    * @return Status
    */
   Status init_thread_pools(Config* config);
+
+  /**
+   * Initializes global and local logger.
+   *
+   * @param config The configuration parameters.
+   * @return Status
+   */
+  Status init_loggers(Config* const config);
 };
 
 }  // namespace sm

@@ -31,6 +31,7 @@
  */
 
 #include "tiledb/sm/query/sparse_global_order_reader.h"
+#include "tiledb/common/logger.h"
 #include "tiledb/sm/array/array.h"
 #include "tiledb/sm/array_schema/array_schema.h"
 #include "tiledb/sm/array_schema/dimension.h"
@@ -59,6 +60,7 @@ namespace sm {
 
 SparseGlobalOrderReader::SparseGlobalOrderReader(
     stats::Stats* stats,
+    tdb_shared_ptr<Logger> logger,
     StorageManager* storage_manager,
     Array* array,
     Config& config,
@@ -68,6 +70,7 @@ SparseGlobalOrderReader::SparseGlobalOrderReader(
     QueryCondition& condition)
     : SparseIndexReaderBase(
           stats,
+          logger->clone("SparseGlobalOrderReader", ++logger_id_),
           storage_manager,
           array,
           config,
@@ -94,14 +97,14 @@ bool SparseGlobalOrderReader::incomplete() const {
 Status SparseGlobalOrderReader::init() {
   // Sanity checks
   if (storage_manager_ == nullptr)
-    return LOG_STATUS(Status::SparseGlobalOrderReaderError(
+    return logger_->status(Status::SparseGlobalOrderReaderError(
         "Cannot initialize sparse global order reader; Storage manager not "
         "set"));
   if (array_schema_ == nullptr)
-    return LOG_STATUS(Status::SparseGlobalOrderReaderError(
+    return logger_->status(Status::SparseGlobalOrderReaderError(
         "Cannot initialize sparse global order reader; Array schema not set"));
   if (buffers_.empty())
-    return LOG_STATUS(Status::SparseGlobalOrderReaderError(
+    return logger_->status(Status::SparseGlobalOrderReaderError(
         "Cannot initialize sparse global order reader; Buffers not set"));
 
   // Check subarray
@@ -112,7 +115,7 @@ Status SparseGlobalOrderReader::init() {
   offsets_format_mode_ = config_.get("sm.var_offsets.mode", &found);
   assert(found);
   if (offsets_format_mode_ != "bytes" && offsets_format_mode_ != "elements") {
-    return LOG_STATUS(
+    return logger_->status(
         Status::ReaderError("Cannot initialize reader; Unsupported offsets "
                             "format in configuration"));
   }
@@ -122,7 +125,7 @@ Status SparseGlobalOrderReader::init() {
   RETURN_NOT_OK(config_.get<uint32_t>(
       "sm.var_offsets.bitsize", &offsets_bitsize_, &found));
   if (offsets_bitsize_ != 32 && offsets_bitsize_ != 64) {
-    return LOG_STATUS(Status::SparseGlobalOrderReaderError(
+    return logger_->status(Status::SparseGlobalOrderReaderError(
         "Cannot initialize reader; "
         "Unsupported offsets bitsize in configuration"));
   }
@@ -465,7 +468,7 @@ Status SparseGlobalOrderReader::create_result_tiles(bool* tiles_found) {
 
             if (budget_exceeded) {
               if (result_tiles_[f].empty())
-                return LOG_STATUS(Status::SparseGlobalOrderReaderError(
+                return logger_->status(Status::SparseGlobalOrderReaderError(
                     "Cannot load a single tile for fragment, increase memory "
                     "budget"));
               break;
@@ -503,7 +506,7 @@ Status SparseGlobalOrderReader::create_result_tiles(bool* tiles_found) {
 
             if (budget_exceeded) {
               if (result_tiles_[f].empty())
-                return LOG_STATUS(Status::SparseGlobalOrderReaderError(
+                return logger_->status(Status::SparseGlobalOrderReaderError(
                     "Cannot load a single tile for fragment, increase memory "
                     "budget"));
               break;
@@ -765,7 +768,7 @@ Status SparseGlobalOrderReader::calculate_hilbert_values<HilbertCmpReverse>(
         }
         return Status::Ok();
       });
-  RETURN_NOT_OK_ELSE(status, LOG_STATUS(status));
+  RETURN_NOT_OK_ELSE(status, logger_->status(status));
 
   // Set the values in the comparator.
   cmp.set_values_for_fragment(frag_idx, hilbert_values);
@@ -830,7 +833,7 @@ Status SparseGlobalOrderReader::merge_result_cell_slabs(
 
         return Status::Ok();
       });
-  RETURN_NOT_OK_ELSE(status, LOG_STATUS(status));
+  RETURN_NOT_OK_ELSE(status, logger_->status(status));
 
   // Process all elements.
   while (!tile_queue.empty() && !need_more_tiles) {
@@ -990,7 +993,8 @@ Status SparseGlobalOrderReader::remove_result_tile(
 
   for (const auto& name : condition_.field_names()) {
     uint64_t tile_size = 0;
-    RETURN_NOT_OK(get_attribute_tile_size(name, &*rt, &tile_size));
+    RETURN_NOT_OK(
+        get_attribute_tile_size(name, frag_idx, tile_idx, &tile_size));
     memory_used_qc_tiles_ -= tile_size;
   }
 

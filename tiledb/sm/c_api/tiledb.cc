@@ -2090,7 +2090,7 @@ int32_t tiledb_domain_get_dimension_from_name(
 
   if (found_dim == nullptr) {
     auto st = Status::DomainError(
-        std::string("Dimension \"") + name + "\" does not exist");
+        std::string("Dimension '") + name + "' does not exist");
     LOG_STATUS(st);
     save_error(ctx, st);
     return TILEDB_ERR;

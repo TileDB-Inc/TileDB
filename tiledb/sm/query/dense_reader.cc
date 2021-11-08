@@ -30,13 +30,15 @@
  * This file implements class DenseReader.
  */
 
-#include "tiledb/sm/query/dense_reader.h"
+#include "tiledb/common/logger.h"
+
 #include "tiledb/sm/array/array.h"
 #include "tiledb/sm/array_schema/array_schema.h"
 #include "tiledb/sm/array_schema/dimension.h"
 #include "tiledb/sm/fragment/fragment_metadata.h"
 #include "tiledb/sm/misc/parallel_functions.h"
 #include "tiledb/sm/misc/utils.h"
+#include "tiledb/sm/query/dense_reader.h"
 #include "tiledb/sm/query/query_macros.h"
 #include "tiledb/sm/query/result_tile.h"
 #include "tiledb/sm/stats/global_stats.h"
@@ -57,6 +59,7 @@ namespace sm {
 
 DenseReader::DenseReader(
     stats::Stats* stats,
+    tdb_shared_ptr<Logger> logger,
     StorageManager* storage_manager,
     Array* array,
     Config& config,
@@ -66,6 +69,7 @@ DenseReader::DenseReader(
     QueryCondition& condition)
     : ReaderBase(
           stats,
+          logger->clone("DenseReader", ++logger_id_),
           storage_manager,
           array,
           config,
