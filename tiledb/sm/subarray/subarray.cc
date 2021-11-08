@@ -1221,7 +1221,6 @@ Status Subarray::compute_relevant_fragment_est_result_sizes(
   // For easy reference
   auto array_schema = array_->array_schema();
   auto fragment_metadata = array_->fragment_metadata();
-  auto encryption_key = array_->encryption_key();
   auto dim_num = array_->array_schema()->dim_num();
   auto layout = (layout_ == Layout::UNORDERED) ? cell_order_ : layout_;
 
@@ -1255,7 +1254,6 @@ Status Subarray::compute_relevant_fragment_est_result_sizes(
     auto r_coords = get_range_coords(r_start);
     for (uint64_t r = r_start; r <= r_end; ++r) {
       RETURN_NOT_OK(compute_relevant_fragment_est_result_sizes(
-          encryption_key,
           array_schema,
           all_dims_same_type,
           all_dims_fixed,
@@ -1322,8 +1320,8 @@ Status Subarray::compute_relevant_fragment_est_result_sizes(
               mem_vec[i].size_validity_ +=
                   tile_size / cell_size * constants::cell_validity_size;
           } else {
-            RETURN_NOT_OK(meta->tile_var_size(
-                *encryption_key, names[i], ft.second, &tile_var_size));
+            RETURN_NOT_OK(
+                meta->tile_var_size(names[i], ft.second, &tile_var_size));
             mem_vec[i].size_fixed_ += tile_size;
             mem_vec[i].size_var_ += tile_var_size;
             if (nullable[i])
@@ -1718,7 +1716,6 @@ bool Subarray::est_result_size_computed() {
 }
 
 Status Subarray::compute_relevant_fragment_est_result_sizes(
-    const EncryptionKey* encryption_key,
     const ArraySchema* array_schema,
     bool all_dims_same_type,
     bool all_dims_fixed,
@@ -1769,8 +1766,7 @@ Status Subarray::compute_relevant_fragment_est_result_sizes(
                   constants::cell_validity_size;
           } else {
             (*result_sizes)[n].size_fixed_ += tile_size;
-            RETURN_NOT_OK(meta->tile_var_size(
-                *encryption_key, names[n], tid, &tile_var_size));
+            RETURN_NOT_OK(meta->tile_var_size(names[n], tid, &tile_var_size));
             (*result_sizes)[n].size_var_ += tile_var_size;
             if (nullable[n])
               (*result_sizes)[n].size_validity_ +=
@@ -1809,8 +1805,7 @@ Status Subarray::compute_relevant_fragment_est_result_sizes(
 
         } else {
           (*result_sizes)[n].size_fixed_ += tile_size * ratio;
-          RETURN_NOT_OK(meta->tile_var_size(
-              *encryption_key, names[n], tid, &tile_var_size));
+          RETURN_NOT_OK(meta->tile_var_size(names[n], tid, &tile_var_size));
           (*result_sizes)[n].size_var_ += tile_var_size * ratio;
           if (nullable[n])
             (*result_sizes)[n].size_validity_ +=
@@ -2643,8 +2638,12 @@ Status Subarray::load_relevant_fragment_tile_var_sizes(
   return Status::Ok();
 }
 
-std::vector<unsigned> Subarray::relevant_fragments() const {
-  return relevant_fragments_;
+const std::vector<unsigned>* Subarray::relevant_fragments() const {
+  return &relevant_fragments_;
+}
+
+std::vector<unsigned>* Subarray::relevant_fragments() {
+  return &relevant_fragments_;
 }
 
 stats::Stats* Subarray::stats() const {

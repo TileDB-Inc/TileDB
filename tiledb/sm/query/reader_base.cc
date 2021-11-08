@@ -234,9 +234,9 @@ Status ReaderBase::load_tile_offsets(
   const auto status = parallel_for(
       storage_manager_->compute_tp(),
       0,
-      all_frag ? fragment_metadata_.size() : relevant_fragments.size(),
+      all_frag ? fragment_metadata_.size() : relevant_fragments->size(),
       [&](const uint64_t i) {
-        auto frag_idx = all_frag ? i : relevant_fragments[i];
+        auto frag_idx = all_frag ? i : relevant_fragments->at(i);
         auto& fragment = fragment_metadata_[frag_idx];
         const auto format_version = fragment->format_version();
 
@@ -264,6 +264,47 @@ Status ReaderBase::load_tile_offsets(
 
         RETURN_NOT_OK(fragment->load_tile_offsets(
             *encryption_key, std::move(filtered_names)));
+        return Status::Ok();
+      });
+
+  RETURN_NOT_OK(status);
+
+  return Status::Ok();
+}
+
+Status ReaderBase::load_tile_var_sizes(
+    Subarray* subarray, const std::vector<std::string>* names) {
+  auto timer_se = stats_->start_timer("load_tile_var_sizes");
+  const auto encryption_key = array_->encryption_key();
+
+  // Fetch relevant fragments so we load tile var sizes only from intersecting
+  // fragments
+  const auto relevant_fragments = subarray->relevant_fragments();
+
+  bool all_frag = !subarray->is_set();
+
+  const auto status = parallel_for(
+      storage_manager_->compute_tp(),
+      0,
+      all_frag ? fragment_metadata_.size() : relevant_fragments->size(),
+      [&](const uint64_t i) {
+        auto frag_idx = all_frag ? i : relevant_fragments->at(i);
+        auto& fragment = fragment_metadata_[frag_idx];
+
+        auto schema = fragment->array_schema();
+        for (const auto& name : *names) {
+          // Not a var size attribute.
+          if (!schema->var_size(name))
+            continue;
+
+          // Not a member of array schema, this field was added in array schema
+          // evolution, ignore for this fragment's tile var sizes.
+          if (!schema->is_field(name))
+            continue;
+
+          fragment->load_tile_var_sizes(*encryption_key, name);
+        }
+
         return Status::Ok();
       });
 
@@ -423,7 +464,6 @@ Status ReaderBase::read_tiles(
   // For each tile, read from its fragment.
   const bool var_size = array_schema_->var_size(name);
   const bool nullable = array_schema_->is_nullable(name);
-  const auto encryption_key = array_->encryption_key();
 
   // Gather the unique fragments indexes for which there are tiles
   std::unordered_set<uint32_t> fragment_idxs_set;
@@ -494,11 +534,10 @@ Status ReaderBase::read_tiles(
     auto tile_attr_uri = fragment->uri(name);
     auto tile_idx = tile->tile_idx();
     uint64_t tile_attr_offset;
-    RETURN_NOT_OK(fragment->file_offset(
-        *encryption_key, name, tile_idx, &tile_attr_offset));
+    RETURN_NOT_OK(fragment->file_offset(name, tile_idx, &tile_attr_offset));
     uint64_t tile_persisted_size;
-    RETURN_NOT_OK(fragment->persisted_tile_size(
-        *encryption_key, name, tile_idx, &tile_persisted_size));
+    RETURN_NOT_OK(
+        fragment->persisted_tile_size(name, tile_idx, &tile_persisted_size));
 
     // Try the cache first.
     // TODO Parallelize.
@@ -522,11 +561,11 @@ Status ReaderBase::read_tiles(
     if (var_size) {
       auto tile_attr_var_uri = fragment->var_uri(name);
       uint64_t tile_attr_var_offset;
-      RETURN_NOT_OK(fragment->file_var_offset(
-          *encryption_key, name, tile_idx, &tile_attr_var_offset));
+      RETURN_NOT_OK(
+          fragment->file_var_offset(name, tile_idx, &tile_attr_var_offset));
       uint64_t tile_var_persisted_size;
       RETURN_NOT_OK(fragment->persisted_tile_var_size(
-          *encryption_key, name, tile_idx, &tile_var_persisted_size));
+          name, tile_idx, &tile_var_persisted_size));
 
       Buffer cached_var_buffer;
       RETURN_NOT_OK(storage_manager_->read_from_cache(
@@ -553,10 +592,10 @@ Status ReaderBase::read_tiles(
       auto tile_validity_attr_uri = fragment->validity_uri(name);
       uint64_t tile_attr_validity_offset;
       RETURN_NOT_OK(fragment->file_validity_offset(
-          *encryption_key, name, tile_idx, &tile_attr_validity_offset));
+          name, tile_idx, &tile_attr_validity_offset));
       uint64_t tile_validity_persisted_size;
       RETURN_NOT_OK(fragment->persisted_tile_validity_size(
-          *encryption_key, name, tile_idx, &tile_validity_persisted_size));
+          name, tile_idx, &tile_validity_persisted_size));
 
       Buffer cached_valdity_buffer;
       RETURN_NOT_OK(storage_manager_->read_from_cache(
@@ -610,7 +649,6 @@ Status ReaderBase::unfilter_tiles(
   auto var_size = array_schema_->var_size(name);
   auto nullable = array_schema_->is_nullable(name);
   auto num_tiles = static_cast<uint64_t>(result_tiles->size());
-  auto encryption_key = array_->encryption_key();
 
   auto status = parallel_for(
       storage_manager_->compute_tp(), 0, num_tiles, [&, this](uint64_t i) {
@@ -636,8 +674,8 @@ Status ReaderBase::unfilter_tiles(
           auto tile_attr_uri = fragment->uri(name);
           auto tile_idx = tile->tile_idx();
           uint64_t tile_attr_offset;
-          RETURN_NOT_OK(fragment->file_offset(
-              *encryption_key, name, tile_idx, &tile_attr_offset));
+          RETURN_NOT_OK(
+              fragment->file_offset(name, tile_idx, &tile_attr_offset));
 
           auto& t = std::get<0>(*tile_tuple);
           auto& t_var = std::get<1>(*tile_tuple);
@@ -655,7 +693,7 @@ Status ReaderBase::unfilter_tiles(
             auto tile_attr_var_uri = fragment->var_uri(name);
             uint64_t tile_attr_var_offset;
             RETURN_NOT_OK(fragment->file_var_offset(
-                *encryption_key, name, tile_idx, &tile_attr_var_offset));
+                name, tile_idx, &tile_attr_var_offset));
 
             // Store the filtered buffer in the tile cache.
             RETURN_NOT_OK(storage_manager_->write_to_cache(
@@ -669,7 +707,7 @@ Status ReaderBase::unfilter_tiles(
             auto tile_attr_validity_uri = fragment->validity_uri(name);
             uint64_t tile_attr_validity_offset;
             RETURN_NOT_OK(fragment->file_validity_offset(
-                *encryption_key, name, tile_idx, &tile_attr_validity_offset));
+                name, tile_idx, &tile_attr_validity_offset));
 
             // Store the filtered buffer in the tile cache.
             RETURN_NOT_OK(storage_manager_->write_to_cache(
@@ -1721,14 +1759,14 @@ Status ReaderBase::apply_query_condition(
 
   // Each element in `names` has been flagged with `ProcessTileFlag::READ`.
   // This will read the tiles, but will not copy them into the user buffers.
-  process_tiles(
+  RETURN_NOT_OK(process_tiles(
       &names,
       result_tiles,
       result_cell_slabs,
       subarray,
       stride,
       memory_budget_tiles,
-      memory_used_for_tiles);
+      memory_used_for_tiles));
 
   // The `UINT64_MAX` is a sentinel value to indicate that we do not
   // use a stride in the cell index calculation. To simplify our logic,
@@ -1749,8 +1787,7 @@ Status ReaderBase::get_attribute_tile_size(
 
   if (array_schema_->var_size(name)) {
     uint64_t temp = 0;
-    RETURN_NOT_OK(fragment_metadata_[f]->tile_var_size(
-        *array_->encryption_key(), name, t, &temp));
+    RETURN_NOT_OK(fragment_metadata_[f]->tile_var_size(name, t, &temp));
     *tile_size += temp;
   }
 
@@ -1764,7 +1801,8 @@ Status ReaderBase::get_attribute_tile_size(
 
 template <class T>
 void ReaderBase::compute_result_space_tiles(
-    const Subarray& subarray,
+    const Subarray* subarray,
+    const Subarray* partitioner_subarray,
     std::map<const T*, ResultSpaceTile<T>>* result_space_tiles) const {
   // For easy reference
   auto domain = array_schema_->domain()->domain();
@@ -1773,22 +1811,38 @@ void ReaderBase::compute_result_space_tiles(
 
   // Compute fragment tile domains
   std::vector<TileDomain<T>> frag_tile_domains;
-  auto fragment_num = (int)fragment_metadata_.size();
-  if (fragment_num > 0) {
-    for (int i = fragment_num - 1; i >= 0; --i) {
-      if (fragment_metadata_[i]->dense()) {
+
+  if (partitioner_subarray->is_set()) {
+    auto relevant_frags = partitioner_subarray->relevant_fragments();
+    for (auto it = relevant_frags->rbegin(); it != relevant_frags->rend();
+         it++) {
+      if (fragment_metadata_[*it]->dense()) {
         frag_tile_domains.emplace_back(
-            i,
+            *it,
             domain,
-            fragment_metadata_[i]->non_empty_domain(),
+            fragment_metadata_[*it]->non_empty_domain(),
             tile_extents,
             tile_order);
+      }
+    }
+  } else {
+    auto fragment_num = (int)fragment_metadata_.size();
+    if (fragment_num > 0) {
+      for (int i = fragment_num - 1; i >= 0; --i) {
+        if (fragment_metadata_[i]->dense()) {
+          frag_tile_domains.emplace_back(
+              i,
+              domain,
+              fragment_metadata_[i]->non_empty_domain(),
+              tile_extents,
+              tile_order);
+        }
       }
     }
   }
 
   // Get tile coords and array domain
-  const auto& tile_coords = subarray.tile_coords();
+  const auto& tile_coords = subarray->tile_coords();
   TileDomain<T> array_tile_domain(
       UINT32_MAX, domain, domain, tile_extents, tile_order);
 
@@ -2024,34 +2078,42 @@ void ReaderBase::fill_dense_coords_col_slab(
 
 // Explicit template instantiations
 template void ReaderBase::compute_result_space_tiles<int8_t>(
-    const Subarray& subarray,
+    const Subarray* subarray,
+    const Subarray* partitioner_subarray,
     std::map<const int8_t*, ResultSpaceTile<int8_t>>* result_space_tiles) const;
 template void ReaderBase::compute_result_space_tiles<uint8_t>(
-    const Subarray& subarray,
+    const Subarray* subarray,
+    const Subarray* partitioner_subarray,
     std::map<const uint8_t*, ResultSpaceTile<uint8_t>>* result_space_tiles)
     const;
 template void ReaderBase::compute_result_space_tiles<int16_t>(
-    const Subarray& subarray,
+    const Subarray* subarray,
+    const Subarray* partitioner_subarray,
     std::map<const int16_t*, ResultSpaceTile<int16_t>>* result_space_tiles)
     const;
 template void ReaderBase::compute_result_space_tiles<uint16_t>(
-    const Subarray& subarray,
+    const Subarray* subarray,
+    const Subarray* partitioner_subarray,
     std::map<const uint16_t*, ResultSpaceTile<uint16_t>>* result_space_tiles)
     const;
 template void ReaderBase::compute_result_space_tiles<int32_t>(
-    const Subarray& subarray,
+    const Subarray* subarray,
+    const Subarray* partitioner_subarray,
     std::map<const int32_t*, ResultSpaceTile<int32_t>>* result_space_tiles)
     const;
 template void ReaderBase::compute_result_space_tiles<uint32_t>(
-    const Subarray& subarray,
+    const Subarray* subarray,
+    const Subarray* partitioner_subarray,
     std::map<const uint32_t*, ResultSpaceTile<uint32_t>>* result_space_tiles)
     const;
 template void ReaderBase::compute_result_space_tiles<int64_t>(
-    const Subarray& subarray,
+    const Subarray* subarray,
+    const Subarray* partitioner_subarray,
     std::map<const int64_t*, ResultSpaceTile<int64_t>>* result_space_tiles)
     const;
 template void ReaderBase::compute_result_space_tiles<uint64_t>(
-    const Subarray& subarray,
+    const Subarray* subarray,
+    const Subarray* partitioner_subarray,
     std::map<const uint64_t*, ResultSpaceTile<uint64_t>>* result_space_tiles)
     const;
 

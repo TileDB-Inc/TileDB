@@ -222,7 +222,7 @@ Status FragmentMetadata::add_max_buffer_sizes(
         buffer_sizes) {
   // Dense case
   if (dense_)
-    return add_max_buffer_sizes_dense(encryption_key, subarray, buffer_sizes);
+    return add_max_buffer_sizes_dense(subarray, buffer_sizes);
 
   // Convert subarray to NDRange
   auto dim_num = array_schema_->dim_num();
@@ -240,7 +240,6 @@ Status FragmentMetadata::add_max_buffer_sizes(
 }
 
 Status FragmentMetadata::add_max_buffer_sizes_dense(
-    const EncryptionKey& encryption_key,
     const void* subarray,
     std::unordered_map<std::string, std::pair<uint64_t, uint64_t>>*
         buffer_sizes) {
@@ -250,34 +249,34 @@ Status FragmentMetadata::add_max_buffer_sizes_dense(
   switch (type) {
     case Datatype::INT32:
       return add_max_buffer_sizes_dense<int32_t>(
-          encryption_key, static_cast<const int32_t*>(subarray), buffer_sizes);
+          static_cast<const int32_t*>(subarray), buffer_sizes);
     case Datatype::INT64:
       return add_max_buffer_sizes_dense<int64_t>(
-          encryption_key, static_cast<const int64_t*>(subarray), buffer_sizes);
+          static_cast<const int64_t*>(subarray), buffer_sizes);
     case Datatype::FLOAT32:
       return add_max_buffer_sizes_dense<float>(
-          encryption_key, static_cast<const float*>(subarray), buffer_sizes);
+          static_cast<const float*>(subarray), buffer_sizes);
     case Datatype::FLOAT64:
       return add_max_buffer_sizes_dense<double>(
-          encryption_key, static_cast<const double*>(subarray), buffer_sizes);
+          static_cast<const double*>(subarray), buffer_sizes);
     case Datatype::INT8:
       return add_max_buffer_sizes_dense<int8_t>(
-          encryption_key, static_cast<const int8_t*>(subarray), buffer_sizes);
+          static_cast<const int8_t*>(subarray), buffer_sizes);
     case Datatype::UINT8:
       return add_max_buffer_sizes_dense<uint8_t>(
-          encryption_key, static_cast<const uint8_t*>(subarray), buffer_sizes);
+          static_cast<const uint8_t*>(subarray), buffer_sizes);
     case Datatype::INT16:
       return add_max_buffer_sizes_dense<int16_t>(
-          encryption_key, static_cast<const int16_t*>(subarray), buffer_sizes);
+          static_cast<const int16_t*>(subarray), buffer_sizes);
     case Datatype::UINT16:
       return add_max_buffer_sizes_dense<uint16_t>(
-          encryption_key, static_cast<const uint16_t*>(subarray), buffer_sizes);
+          static_cast<const uint16_t*>(subarray), buffer_sizes);
     case Datatype::UINT32:
       return add_max_buffer_sizes_dense<uint32_t>(
-          encryption_key, static_cast<const uint32_t*>(subarray), buffer_sizes);
+          static_cast<const uint32_t*>(subarray), buffer_sizes);
     case Datatype::UINT64:
       return add_max_buffer_sizes_dense<uint64_t>(
-          encryption_key, static_cast<const uint64_t*>(subarray), buffer_sizes);
+          static_cast<const uint64_t*>(subarray), buffer_sizes);
     case Datatype::DATETIME_YEAR:
     case Datatype::DATETIME_MONTH:
     case Datatype::DATETIME_WEEK:
@@ -301,7 +300,7 @@ Status FragmentMetadata::add_max_buffer_sizes_dense(
     case Datatype::TIME_FS:
     case Datatype::TIME_AS:
       return add_max_buffer_sizes_dense<int64_t>(
-          encryption_key, static_cast<const int64_t*>(subarray), buffer_sizes);
+          static_cast<const int64_t*>(subarray), buffer_sizes);
     default:
       return LOG_STATUS(Status::FragmentMetadataError(
           "Cannot compute add read buffer sizes for dense array; Unsupported "
@@ -313,7 +312,6 @@ Status FragmentMetadata::add_max_buffer_sizes_dense(
 
 template <class T>
 Status FragmentMetadata::add_max_buffer_sizes_dense(
-    const EncryptionKey& encryption_key,
     const T* subarray,
     std::unordered_map<std::string, std::pair<uint64_t, uint64_t>>*
         buffer_sizes) {
@@ -327,7 +325,7 @@ Status FragmentMetadata::add_max_buffer_sizes_dense(
       if (array_schema_->var_size(it.first)) {
         auto cell_num = this->cell_num(tid);
         it.second.first += cell_num * constants::cell_var_offset_size;
-        RETURN_NOT_OK(tile_var_size(encryption_key, it.first, tid, &size));
+        RETURN_NOT_OK(tile_var_size(it.first, tid, &size));
         it.second.second += size;
       } else {
         it.second.first += cell_num(tid) * array_schema_->cell_size(it.first);
@@ -356,7 +354,7 @@ Status FragmentMetadata::add_max_buffer_sizes_sparse(
         if (array_schema_->var_size(it.first)) {
           auto cell_num = this->cell_num(tid);
           it.second.first += cell_num * constants::cell_var_offset_size;
-          RETURN_NOT_OK(tile_var_size(encryption_key, it.first, tid, &size));
+          RETURN_NOT_OK(tile_var_size(it.first, tid, &size));
           it.second.second += size;
         } else {
           it.second.first += cell_num(tid) * array_schema_->cell_size(it.first);
@@ -372,7 +370,7 @@ Status FragmentMetadata::add_max_buffer_sizes_sparse(
       if (array_schema_->var_size(it.first)) {
         auto cell_num = this->cell_num(tid);
         it.second.first += cell_num * constants::cell_var_offset_size;
-        RETURN_NOT_OK(tile_var_size(encryption_key, it.first, tid, &size));
+        RETURN_NOT_OK(tile_var_size(it.first, tid, &size));
         it.second.second += size;
       } else {
         it.second.first += cell_num(tid) * array_schema_->cell_size(it.first);
@@ -768,40 +766,40 @@ Status FragmentMetadata::load_tile_offsets(
 }
 
 Status FragmentMetadata::file_offset(
-    const EncryptionKey& encryption_key,
-    const std::string& name,
-    uint64_t tile_idx,
-    uint64_t* offset) {
+    const std::string& name, uint64_t tile_idx, uint64_t* offset) {
   auto it = idx_map_.find(name);
   assert(it != idx_map_.end());
   auto idx = it->second;
-  RETURN_NOT_OK(load_tile_offsets(encryption_key, idx));
+  if (!loaded_metadata_.tile_offsets_[idx])
+    return LOG_STATUS(Status::FragmentMetadataError(
+        "Trying to access metadata that's not loaded"));
+
   *offset = tile_offsets_[idx][tile_idx];
   return Status::Ok();
 }
 
 Status FragmentMetadata::file_var_offset(
-    const EncryptionKey& encryption_key,
-    const std::string& name,
-    uint64_t tile_idx,
-    uint64_t* offset) {
+    const std::string& name, uint64_t tile_idx, uint64_t* offset) {
   auto it = idx_map_.find(name);
   assert(it != idx_map_.end());
   auto idx = it->second;
-  RETURN_NOT_OK(load_tile_var_offsets(encryption_key, idx));
+  if (!loaded_metadata_.tile_var_offsets_[idx])
+    return LOG_STATUS(Status::FragmentMetadataError(
+        "Trying to access metadata that's not loaded"));
+
   *offset = tile_var_offsets_[idx][tile_idx];
   return Status::Ok();
 }
 
 Status FragmentMetadata::file_validity_offset(
-    const EncryptionKey& encryption_key,
-    const std::string& name,
-    uint64_t tile_idx,
-    uint64_t* offset) {
+    const std::string& name, uint64_t tile_idx, uint64_t* offset) {
   auto it = idx_map_.find(name);
   assert(it != idx_map_.end());
   auto idx = it->second;
-  RETURN_NOT_OK(load_tile_validity_offsets(encryption_key, idx));
+  if (!loaded_metadata_.tile_validity_offsets_[idx])
+    return LOG_STATUS(Status::FragmentMetadataError(
+        "Trying to access metadata that's not loaded"));
+
   *offset = tile_validity_offsets_[idx][tile_idx];
   return Status::Ok();
 }
@@ -815,14 +813,13 @@ const std::vector<NDRange>& FragmentMetadata::mbrs() const {
 }
 
 Status FragmentMetadata::persisted_tile_size(
-    const EncryptionKey& encryption_key,
-    const std::string& name,
-    uint64_t tile_idx,
-    uint64_t* tile_size) {
+    const std::string& name, uint64_t tile_idx, uint64_t* tile_size) {
   auto it = idx_map_.find(name);
   assert(it != idx_map_.end());
   auto idx = it->second;
-  RETURN_NOT_OK(load_tile_offsets(encryption_key, idx));
+  if (!loaded_metadata_.tile_offsets_[idx])
+    return LOG_STATUS(Status::FragmentMetadataError(
+        "Trying to access metadata that's not loaded"));
 
   auto tile_num = this->tile_num();
 
@@ -835,14 +832,14 @@ Status FragmentMetadata::persisted_tile_size(
 }
 
 Status FragmentMetadata::persisted_tile_var_size(
-    const EncryptionKey& encryption_key,
-    const std::string& name,
-    uint64_t tile_idx,
-    uint64_t* tile_size) {
+    const std::string& name, uint64_t tile_idx, uint64_t* tile_size) {
   auto it = idx_map_.find(name);
   assert(it != idx_map_.end());
   auto idx = it->second;
-  RETURN_NOT_OK(load_tile_var_offsets(encryption_key, idx));
+
+  if (!loaded_metadata_.tile_var_offsets_[idx])
+    return LOG_STATUS(Status::FragmentMetadataError(
+        "Trying to access metadata that's not loaded"));
 
   auto tile_num = this->tile_num();
 
@@ -855,14 +852,13 @@ Status FragmentMetadata::persisted_tile_var_size(
 }
 
 Status FragmentMetadata::persisted_tile_validity_size(
-    const EncryptionKey& encryption_key,
-    const std::string& name,
-    uint64_t tile_idx,
-    uint64_t* tile_size) {
+    const std::string& name, uint64_t tile_idx, uint64_t* tile_size) {
   auto it = idx_map_.find(name);
   assert(it != idx_map_.end());
   auto idx = it->second;
-  RETURN_NOT_OK(load_tile_validity_offsets(encryption_key, idx));
+  if (!loaded_metadata_.tile_validity_offsets_[idx])
+    return LOG_STATUS(Status::FragmentMetadataError(
+        "Trying to access metadata that's not loaded"));
 
   auto tile_num = this->tile_num();
 
@@ -884,14 +880,13 @@ uint64_t FragmentMetadata::tile_size(
 }
 
 Status FragmentMetadata::tile_var_size(
-    const EncryptionKey& encryption_key,
-    const std::string& name,
-    uint64_t tile_idx,
-    uint64_t* tile_size) {
+    const std::string& name, uint64_t tile_idx, uint64_t* tile_size) {
   auto it = idx_map_.find(name);
   assert(it != idx_map_.end());
   auto idx = it->second;
-  RETURN_NOT_OK(load_tile_var_sizes(encryption_key, idx));
+  if (!loaded_metadata_.tile_var_sizes_[idx])
+    return LOG_STATUS(Status::FragmentMetadataError(
+        "Trying to access metadata that's not loaded"));
   *tile_size = tile_var_sizes_[idx][tile_idx];
 
   return Status::Ok();
