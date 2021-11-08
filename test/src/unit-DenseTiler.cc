@@ -207,7 +207,7 @@ TEST_CASE_METHOD(
       array_->array_,
       Layout::ROW_MAJOR,
       &test::g_helper_stats,
-      test::g_helper_logger);
+      test::g_helper_logger());
   add_ranges({sub1}, sizeof(sub1), &subarray1);
 
   // Create DenseTiler
@@ -228,7 +228,7 @@ TEST_CASE_METHOD(
       array_->array_,
       Layout::ROW_MAJOR,
       &test::g_helper_stats,
-      test::g_helper_logger);
+      test::g_helper_logger());
   add_ranges({sub2}, sizeof(sub2), &subarray2);
 
   // Create DenseTiler
@@ -274,7 +274,7 @@ TEST_CASE_METHOD(
       array_->array_,
       Layout::ROW_MAJOR,
       &test::g_helper_stats,
-      test::g_helper_logger);
+      test::g_helper_logger());
   add_ranges({sub1}, sizeof(sub1), &subarray1);
 
   // Create DenseTiler
@@ -310,7 +310,7 @@ TEST_CASE_METHOD(
       array_->array_,
       Layout::ROW_MAJOR,
       &test::g_helper_stats,
-      test::g_helper_logger);
+      test::g_helper_logger());
   add_ranges({sub2}, sizeof(sub2), &subarray2);
 
   // Create DenseTiler
@@ -334,7 +334,7 @@ TEST_CASE_METHOD(
       array_->array_,
       Layout::COL_MAJOR,
       &test::g_helper_stats,
-      test::g_helper_logger);
+      test::g_helper_logger());
   add_ranges({sub3}, sizeof(sub3), &subarray3);
 
   // Create DenseTiler
@@ -383,7 +383,7 @@ TEST_CASE_METHOD(
       array_->array_,
       Layout::ROW_MAJOR,
       &test::g_helper_stats,
-      test::g_helper_logger);
+      test::g_helper_logger());
   add_ranges({sub1}, sizeof(sub1), &subarray1);
 
   // Create DenseTiler
@@ -412,7 +412,7 @@ TEST_CASE_METHOD(
       array_->array_,
       Layout::ROW_MAJOR,
       &test::g_helper_stats,
-      test::g_helper_logger);
+      test::g_helper_logger());
   add_ranges({sub2}, sizeof(sub2), &subarray2);
 
   // Create DenseTiler
@@ -432,7 +432,7 @@ TEST_CASE_METHOD(
       array_->array_,
       Layout::COL_MAJOR,
       &test::g_helper_stats,
-      test::g_helper_logger);
+      test::g_helper_logger());
   add_ranges({sub3}, sizeof(sub3), &subarray3);
 
   // Create DenseTiler
@@ -477,7 +477,7 @@ TEST_CASE_METHOD(
       array_->array_,
       Layout::ROW_MAJOR,
       &test::g_helper_stats,
-      test::g_helper_logger);
+      test::g_helper_logger());
   add_ranges({sub1}, sizeof(sub1), &subarray1);
 
   // Create DenseTiler
@@ -531,7 +531,7 @@ TEST_CASE_METHOD(
       array_->array_,
       Layout::ROW_MAJOR,
       &test::g_helper_stats,
-      test::g_helper_logger);
+      test::g_helper_logger());
   add_ranges({sub1}, sizeof(sub1), &subarray1);
 
   // Create DenseTiler
@@ -589,7 +589,7 @@ TEST_CASE_METHOD(
       array_->array_,
       Layout::ROW_MAJOR,
       &test::g_helper_stats,
-      test::g_helper_logger);
+      test::g_helper_logger());
   add_ranges({sub1_0, sub1_1}, sizeof(sub1_0), &subarray1);
 
   // Create DenseTiler
@@ -611,7 +611,7 @@ TEST_CASE_METHOD(
       array_->array_,
       Layout::ROW_MAJOR,
       &test::g_helper_stats,
-      test::g_helper_logger);
+      test::g_helper_logger());
   add_ranges({sub2_0, sub2_1}, sizeof(sub2_0), &subarray2);
 
   // Create DenseTiler
@@ -633,7 +633,7 @@ TEST_CASE_METHOD(
       array_->array_,
       Layout::COL_MAJOR,
       &test::g_helper_stats,
-      test::g_helper_logger);
+      test::g_helper_logger());
   add_ranges({sub3_0, sub3_1}, sizeof(sub3_0), &subarray3);
 
   // Create DenseTiler
@@ -655,7 +655,7 @@ TEST_CASE_METHOD(
       array_->array_,
       Layout::COL_MAJOR,
       &test::g_helper_stats,
-      test::g_helper_logger);
+      test::g_helper_logger());
   add_ranges({sub4_0, sub4_1}, sizeof(sub4_0), &subarray4);
 
   // Create DenseTiler
@@ -705,7 +705,7 @@ TEST_CASE_METHOD(
       array_->array_,
       Layout::ROW_MAJOR,
       &test::g_helper_stats,
-      test::g_helper_logger);
+      test::g_helper_logger());
   add_ranges({sub1_0, sub1_1}, sizeof(sub1_0), &subarray1);
 
   // Create DenseTiler
@@ -727,7 +727,7 @@ TEST_CASE_METHOD(
       array_->array_,
       Layout::ROW_MAJOR,
       &test::g_helper_stats,
-      test::g_helper_logger);
+      test::g_helper_logger());
   add_ranges({sub2_0, sub2_1}, sizeof(sub2_0), &subarray2);
 
   // Create DenseTiler
@@ -749,7 +749,7 @@ TEST_CASE_METHOD(
       array_->array_,
       Layout::COL_MAJOR,
       &test::g_helper_stats,
-      test::g_helper_logger);
+      test::g_helper_logger());
   add_ranges({sub3_0, sub3_1}, sizeof(sub3_0), &subarray3);
 
   // Create DenseTiler
@@ -771,7 +771,7 @@ TEST_CASE_METHOD(
       array_->array_,
       Layout::COL_MAJOR,
       &test::g_helper_stats,
-      test::g_helper_logger);
+      test::g_helper_logger());
   add_ranges({sub4_0, sub4_1}, sizeof(sub4_0), &subarray4);
 
   // Create DenseTiler
@@ -821,7 +821,7 @@ TEST_CASE_METHOD(
       array_->array_,
       Layout::ROW_MAJOR,
       &test::g_helper_stats,
-      test::g_helper_logger);
+      test::g_helper_logger());
   add_ranges({sub1_0, sub1_1}, sizeof(sub1_0), &subarray1);
 
   // Create DenseTiler
@@ -880,7 +880,7 @@ TEST_CASE_METHOD(
       array_->array_,
       Layout::ROW_MAJOR,
       &test::g_helper_stats,
-      test::g_helper_logger);
+      test::g_helper_logger());
   add_ranges({sub2_0, sub2_1}, sizeof(sub2_0), &subarray2);
 
   // Create DenseTiler
@@ -906,7 +906,7 @@ TEST_CASE_METHOD(
       array_->array_,
       Layout::COL_MAJOR,
       &test::g_helper_stats,
-      test::g_helper_logger);
+      test::g_helper_logger());
   add_ranges({sub3_0, sub3_1}, sizeof(sub3_0), &subarray3);
 
   // Create DenseTiler
@@ -969,7 +969,7 @@ TEST_CASE_METHOD(
       array_->array_,
       Layout::COL_MAJOR,
       &test::g_helper_stats,
-      test::g_helper_logger);
+      test::g_helper_logger());
   add_ranges({sub4_0, sub4_1}, sizeof(sub4_0), &subarray4);
 
   // Create DenseTiler
@@ -1024,7 +1024,7 @@ TEST_CASE_METHOD(
       array_->array_,
       Layout::ROW_MAJOR,
       &test::g_helper_stats,
-      test::g_helper_logger);
+      test::g_helper_logger());
   add_ranges({sub1_0, sub1_1}, sizeof(sub1_0), &subarray1);
 
   // Create DenseTiler
@@ -1087,7 +1087,7 @@ TEST_CASE_METHOD(
       array_->array_,
       Layout::ROW_MAJOR,
       &test::g_helper_stats,
-      test::g_helper_logger);
+      test::g_helper_logger());
   add_ranges({sub2_0, sub2_1}, sizeof(sub2_0), &subarray2);
 
   // Create DenseTiler
@@ -1114,7 +1114,7 @@ TEST_CASE_METHOD(
       array_->array_,
       Layout::COL_MAJOR,
       &test::g_helper_stats,
-      test::g_helper_logger);
+      test::g_helper_logger());
   add_ranges({sub3_0, sub3_1}, sizeof(sub3_0), &subarray3);
 
   // Create DenseTiler
@@ -1173,7 +1173,7 @@ TEST_CASE_METHOD(
       array_->array_,
       Layout::COL_MAJOR,
       &test::g_helper_stats,
-      test::g_helper_logger);
+      test::g_helper_logger());
   add_ranges({sub4_0, sub4_1}, sizeof(sub4_0), &subarray4);
 
   // Create DenseTiler
@@ -1227,7 +1227,7 @@ TEST_CASE_METHOD(
       array_->array_,
       Layout::ROW_MAJOR,
       &test::g_helper_stats,
-      test::g_helper_logger);
+      test::g_helper_logger());
   add_ranges({sub1_0, sub1_1}, sizeof(sub1_0), &subarray1);
 
   // Create DenseTiler
@@ -1292,7 +1292,7 @@ TEST_CASE_METHOD(
       array_->array_,
       Layout::COL_MAJOR,
       &test::g_helper_stats,
-      test::g_helper_logger);
+      test::g_helper_logger());
   add_ranges({sub1_0, sub1_1}, sizeof(sub1_0), &subarray1);
 
   // Create DenseTiler
@@ -1358,7 +1358,7 @@ TEST_CASE_METHOD(
       array_->array_,
       Layout::ROW_MAJOR,
       &test::g_helper_stats,
-      test::g_helper_logger);
+      test::g_helper_logger());
   add_ranges({sub1_0, sub1_1}, sizeof(sub1_0), &subarray1);
 
   // Create DenseTiler
@@ -1425,7 +1425,7 @@ TEST_CASE_METHOD(
       array_->array_,
       Layout::ROW_MAJOR,
       &test::g_helper_stats,
-      test::g_helper_logger);
+      test::g_helper_logger());
   add_ranges({sub2_0, sub2_1}, sizeof(sub2_0), &subarray2);
 
   // Create DenseTiler
@@ -1463,7 +1463,7 @@ TEST_CASE_METHOD(
       array_->array_,
       Layout::COL_MAJOR,
       &test::g_helper_stats,
-      test::g_helper_logger);
+      test::g_helper_logger());
   add_ranges({sub3_0, sub3_1}, sizeof(sub3_0), &subarray3);
 
   // Create DenseTiler
@@ -1533,7 +1533,7 @@ TEST_CASE_METHOD(
       array_->array_,
       Layout::COL_MAJOR,
       &test::g_helper_stats,
-      test::g_helper_logger);
+      test::g_helper_logger());
   add_ranges({sub4_0, sub4_1}, sizeof(sub4_0), &subarray4);
 
   // Create DenseTiler
@@ -1600,7 +1600,7 @@ TEST_CASE_METHOD(
       array_->array_,
       Layout::ROW_MAJOR,
       &test::g_helper_stats,
-      test::g_helper_logger);
+      test::g_helper_logger());
   add_ranges({sub1_0, sub1_1}, sizeof(sub1_0), &subarray1);
 
   // Create DenseTiler
@@ -1678,7 +1678,7 @@ TEST_CASE_METHOD(
       array_->array_,
       Layout::ROW_MAJOR,
       &test::g_helper_stats,
-      test::g_helper_logger);
+      test::g_helper_logger());
   add_ranges({sub2_0, sub2_1}, sizeof(sub2_0), &subarray2);
 
   // Create DenseTiler
@@ -1734,7 +1734,7 @@ TEST_CASE_METHOD(
       array_->array_,
       Layout::COL_MAJOR,
       &test::g_helper_stats,
-      test::g_helper_logger);
+      test::g_helper_logger());
   add_ranges({sub3_0, sub3_1}, sizeof(sub3_0), &subarray3);
 
   // Create DenseTiler
@@ -1815,7 +1815,7 @@ TEST_CASE_METHOD(
       array_->array_,
       Layout::COL_MAJOR,
       &test::g_helper_stats,
-      test::g_helper_logger);
+      test::g_helper_logger());
   add_ranges({sub4_0, sub4_1}, sizeof(sub4_0), &subarray4);
 
   // Create DenseTiler
@@ -1903,7 +1903,7 @@ TEST_CASE_METHOD(
       array_->array_,
       Layout::ROW_MAJOR,
       &test::g_helper_stats,
-      test::g_helper_logger);
+      test::g_helper_logger());
   add_ranges({sub1_0, sub1_1}, sizeof(sub1_0), &subarray1);
 
   // Create DenseTiler
@@ -1968,7 +1968,7 @@ TEST_CASE_METHOD(
       array_->array_,
       Layout::COL_MAJOR,
       &test::g_helper_stats,
-      test::g_helper_logger);
+      test::g_helper_logger());
   add_ranges({sub1_0, sub1_1}, sizeof(sub1_0), &subarray1);
 
   // Create DenseTiler
@@ -2027,7 +2027,7 @@ TEST_CASE_METHOD(
       array_->array_,
       Layout::ROW_MAJOR,
       &test::g_helper_stats,
-      test::g_helper_logger);
+      test::g_helper_logger());
   add_ranges({sub1}, sizeof(sub1), &subarray1);
 
   // Create DenseTiler
@@ -2063,7 +2063,7 @@ TEST_CASE_METHOD(
       array_->array_,
       Layout::ROW_MAJOR,
       &test::g_helper_stats,
-      test::g_helper_logger);
+      test::g_helper_logger());
   add_ranges({sub2}, sizeof(sub2), &subarray2);
 
   // Create DenseTiler
@@ -2084,7 +2084,7 @@ TEST_CASE_METHOD(
       array_->array_,
       Layout::COL_MAJOR,
       &test::g_helper_stats,
-      test::g_helper_logger);
+      test::g_helper_logger());
   add_ranges({sub3}, sizeof(sub3), &subarray3);
 
   // Create DenseTiler
@@ -2133,7 +2133,7 @@ TEST_CASE_METHOD(
       array_->array_,
       Layout::ROW_MAJOR,
       &test::g_helper_stats,
-      test::g_helper_logger);
+      test::g_helper_logger());
   add_ranges({sub1}, sizeof(sub1), &subarray1);
 
   // Create DenseTiler
@@ -2173,7 +2173,7 @@ TEST_CASE_METHOD(
       array_->array_,
       Layout::ROW_MAJOR,
       &test::g_helper_stats,
-      test::g_helper_logger);
+      test::g_helper_logger());
   add_ranges({sub2}, sizeof(sub2), &subarray2);
 
   // Create DenseTiler
@@ -2197,7 +2197,7 @@ TEST_CASE_METHOD(
       array_->array_,
       Layout::COL_MAJOR,
       &test::g_helper_stats,
-      test::g_helper_logger);
+      test::g_helper_logger());
   add_ranges({sub3}, sizeof(sub3), &subarray3);
 
   // Create DenseTiler
@@ -2258,7 +2258,7 @@ TEST_CASE_METHOD(
       array_->array_,
       Layout::ROW_MAJOR,
       &test::g_helper_stats,
-      test::g_helper_logger);
+      test::g_helper_logger());
   add_ranges({sub1_0, sub1_1}, sizeof(sub1_0), &subarray1);
 
   // Create DenseTiler
@@ -2328,7 +2328,7 @@ TEST_CASE_METHOD(
       array_->array_,
       Layout::ROW_MAJOR,
       &test::g_helper_stats,
-      test::g_helper_logger);
+      test::g_helper_logger());
   add_ranges({sub2_0, sub2_1}, sizeof(sub2_0), &subarray2);
 
   // Create DenseTiler
@@ -2385,7 +2385,7 @@ TEST_CASE_METHOD(
       array_->array_,
       Layout::COL_MAJOR,
       &test::g_helper_stats,
-      test::g_helper_logger);
+      test::g_helper_logger());
   add_ranges({sub3_0, sub3_1}, sizeof(sub3_0), &subarray3);
 
   // Create DenseTiler
@@ -2465,7 +2465,7 @@ TEST_CASE_METHOD(
       array_->array_,
       Layout::COL_MAJOR,
       &test::g_helper_stats,
-      test::g_helper_logger);
+      test::g_helper_logger());
   add_ranges({sub4_0, sub4_1}, sizeof(sub4_0), &subarray4);
 
   // Create DenseTiler
@@ -2557,7 +2557,7 @@ TEST_CASE_METHOD(
       array_->array_,
       Layout::ROW_MAJOR,
       &test::g_helper_stats,
-      test::g_helper_logger);
+      test::g_helper_logger());
   add_ranges({sub1_0, sub1_1}, sizeof(sub1_0), &subarray1);
 
   // Create DenseTiler
@@ -2697,7 +2697,7 @@ TEST_CASE_METHOD(
       array_->array_,
       Layout::ROW_MAJOR,
       &test::g_helper_stats,
-      test::g_helper_logger);
+      test::g_helper_logger());
   add_ranges({sub2_0, sub2_1}, sizeof(sub2_0), &subarray2);
 
   // Create DenseTiler
@@ -2861,7 +2861,7 @@ TEST_CASE_METHOD(
       array_->array_,
       Layout::ROW_MAJOR,
       &test::g_helper_stats,
-      test::g_helper_logger);
+      test::g_helper_logger());
   add_ranges({sub1_0, sub1_1}, sizeof(sub1_0), &subarray1);
 
   // Create DenseTiler
@@ -3001,7 +3001,7 @@ TEST_CASE_METHOD(
       array_->array_,
       Layout::ROW_MAJOR,
       &test::g_helper_stats,
-      test::g_helper_logger);
+      test::g_helper_logger());
   add_ranges({sub2_0, sub2_1}, sizeof(sub2_0), &subarray2);
 
   // Create DenseTiler
@@ -3185,7 +3185,7 @@ TEST_CASE_METHOD(
       array_->array_,
       Layout::ROW_MAJOR,
       &test::g_helper_stats,
-      test::g_helper_logger);
+      test::g_helper_logger());
   add_ranges({sub1_0, sub1_1}, sizeof(sub1_0), &subarray1);
 
   // Create DenseTiler
@@ -3326,7 +3326,7 @@ TEST_CASE_METHOD(
       array_->array_,
       Layout::ROW_MAJOR,
       &test::g_helper_stats,
-      test::g_helper_logger);
+      test::g_helper_logger());
   add_ranges({sub2_0, sub2_1}, sizeof(sub2_0), &subarray2);
 
   // Create DenseTiler
@@ -3498,7 +3498,7 @@ TEST_CASE_METHOD(
       array_->array_,
       Layout::ROW_MAJOR,
       &test::g_helper_stats,
-      test::g_helper_logger);
+      test::g_helper_logger());
   add_ranges({sub1_0, sub1_1}, sizeof(sub1_0), &subarray1);
 
   // Create DenseTiler
@@ -3639,7 +3639,7 @@ TEST_CASE_METHOD(
       array_->array_,
       Layout::ROW_MAJOR,
       &test::g_helper_stats,
-      test::g_helper_logger);
+      test::g_helper_logger());
   add_ranges({sub2_0, sub2_1}, sizeof(sub2_0), &subarray2);
 
   // Create DenseTiler
@@ -3794,7 +3794,7 @@ TEST_CASE_METHOD(
       array_->array_,
       Layout::ROW_MAJOR,
       &test::g_helper_stats,
-      test::g_helper_logger);
+      test::g_helper_logger());
   add_ranges({sub1_0, sub1_1}, sizeof(sub1_0), &subarray1);
 
   // Create DenseTiler
@@ -3935,7 +3935,7 @@ TEST_CASE_METHOD(
       array_->array_,
       Layout::ROW_MAJOR,
       &test::g_helper_stats,
-      test::g_helper_logger);
+      test::g_helper_logger());
   add_ranges({sub2_0, sub2_1}, sizeof(sub2_0), &subarray2);
 
   // Create DenseTiler

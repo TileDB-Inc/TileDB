@@ -109,7 +109,7 @@ TEST_CASE_METHOD(
   QueryCondition condition;
   Reader reader(
       &g_helper_stats,
-      g_helper_logger,
+      g_helper_logger(),
       nullptr,
       nullptr,
       config,

@@ -140,7 +140,7 @@ TEST_CASE_METHOD(
       0,
       &tp,
       &g_helper_stats,
-      g_helper_logger);
+      g_helper_logger());
   uint64_t budget, budget_off, budget_val;
 
   auto st = subarray_partitioner.get_result_budget("a", &budget);
