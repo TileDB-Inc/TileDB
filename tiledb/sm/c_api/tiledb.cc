@@ -6717,6 +6717,26 @@ int32_t tiledb_fragment_info_get_array_schema(
   return TILEDB_OK;
 }
 
+int32_t tiledb_fragment_info_get_array_schema_name(
+    tiledb_ctx_t* ctx,
+    tiledb_fragment_info_t* fragment_info,
+    uint32_t fid,
+    const char** schema_name) {
+  if (sanity_check(ctx) == TILEDB_ERR ||
+      sanity_check(ctx, fragment_info) == TILEDB_ERR)
+    return TILEDB_ERR;
+
+  if (SAVE_ERROR_CATCH(
+          ctx,
+          fragment_info->fragment_info_->get_array_schema_name(
+              fid, schema_name)))
+    return TILEDB_ERR;
+
+  assert(schema_name != nullptr);
+
+  return TILEDB_OK;
+}
+
 int32_t tiledb_fragment_info_dump(
     tiledb_ctx_t* ctx, const tiledb_fragment_info_t* fragment_info, FILE* out) {
   if (sanity_check(ctx) == TILEDB_ERR ||
