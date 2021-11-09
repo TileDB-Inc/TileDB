@@ -322,6 +322,9 @@ struct Subarray {
 
   stats @2 :Stats;
   # Stats object
+
+  relevantFragments @3 :List(UInt32);
+  # Relevant fragments
 }
 
 struct SubarrayPartitioner {
