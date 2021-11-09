@@ -53,11 +53,11 @@ template <class T>
 DenseTiler<T>::DenseTiler(
     const std::unordered_map<std::string, QueryBuffer>* buffers,
     const Subarray* subarray,
-    Stats* const parent_stats,
+    tdb_shared_ptr<Stats> const parent_stats,
     const std::string& offsets_format_mode,
     uint64_t offsets_bitsize,
     bool offsets_extra_element)
-    : stats_(parent_stats->create_child("DenseTiler"))
+    : stats_(parent_stats->create_child("DenseTiler", parent_stats))
     , array_schema_(subarray->array()->array_schema())
     , buffers_(buffers)
     , subarray_(subarray)

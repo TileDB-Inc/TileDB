@@ -74,7 +74,7 @@ namespace test {
 // A dummy `Stats` instance. This is useful for constructing
 // objects that require a parent `Stats` object. These stats are
 // never used.
-static tiledb::sm::stats::Stats g_helper_stats("test");
+tdb_shared_ptr<tiledb::sm::stats::Stats> g_helper_stats(void);
 
 // For easy reference
 typedef std::pair<tiledb_filter_type_t, int> Compressor;

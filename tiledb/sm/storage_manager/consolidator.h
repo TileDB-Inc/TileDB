@@ -172,7 +172,7 @@ class Consolidator {
   StorageManager* storage_manager_;
 
   /** The class stats. */
-  stats::Stats* stats_;
+  tdb_shared_ptr<stats::Stats> stats_;
 
   /* ********************************* */
   /*          PRIVATE METHODS           */

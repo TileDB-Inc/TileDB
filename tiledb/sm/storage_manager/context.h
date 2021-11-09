@@ -83,7 +83,7 @@ class Context {
   ThreadPool* io_tp() const;
 
   /** Returns the internal stats object. */
-  stats::Stats* stats() const;
+  tdb_shared_ptr<stats::Stats> stats() const;
 
  private:
   /* ********************************* */

@@ -78,9 +78,9 @@ namespace sm {
 StorageManager::StorageManager(
     ThreadPool* const compute_tp,
     ThreadPool* const io_tp,
-    stats::Stats* const parent_stats,
+    tdb_shared_ptr<stats::Stats> const parent_stats,
     tdb_shared_ptr<Logger> logger)
-    : stats_(parent_stats->create_child("StorageManager"))
+    : stats_(parent_stats->create_child("StorageManager", parent_stats))
     , logger_(logger->clone("Context", ++logger_id_))
     , cancellation_in_progress_(false)
     , queries_in_progress_(0)
@@ -2464,7 +2464,7 @@ Status StorageManager::write(const URI& uri, void* data, uint64_t size) const {
   return vfs_->write(uri, data, size);
 }
 
-stats::Stats* StorageManager::stats() {
+tdb_shared_ptr<stats::Stats> StorageManager::stats() {
   return stats_;
 }
 

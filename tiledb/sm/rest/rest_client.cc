@@ -75,14 +75,14 @@ RestClient::RestClient()
 }
 
 Status RestClient::init(
-    stats::Stats* const parent_stats,
+    tdb_shared_ptr<stats::Stats> const parent_stats,
     const Config* config,
     ThreadPool* compute_tp) {
   if (config == nullptr)
     return LOG_STATUS(
         Status::RestError("Error initializing rest client; config is null."));
 
-  stats_ = parent_stats->create_child("RestClient");
+  stats_ = parent_stats->create_child("RestClient", parent_stats);
 
   config_ = config;
   compute_tp_ = compute_tp;
@@ -824,7 +824,8 @@ RestClient::RestClient() {
   (void)serialization_type_;
 }
 
-Status RestClient::init(stats::Stats*, const Config*, ThreadPool*) {
+Status RestClient::init(
+    tdb_shared_ptr<stats::Stats>, const Config*, ThreadPool*) {
   return LOG_STATUS(
       Status::RestError("Cannot use rest client; serialization not enabled."));
 }

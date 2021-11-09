@@ -174,7 +174,7 @@ class Subarray {
    */
   Subarray(
       const Array* array,
-      stats::Stats* parent_stats,
+      tdb_shared_ptr<stats::Stats> parent_stats,
       bool coalesce_ranges = true);
 
   /**
@@ -191,7 +191,7 @@ class Subarray {
   Subarray(
       const Array* array,
       Layout layout,
-      stats::Stats* parent_stats,
+      tdb_shared_ptr<stats::Stats> parent_stats,
       bool coalesce_ranges = true);
 
   /**
@@ -754,7 +754,7 @@ class Subarray {
       std::vector<uint64_t>* end_coords) const;
 
   /** Returns `stats_`. */
-  stats::Stats* stats() const;
+  tdb_shared_ptr<stats::Stats> stats() const;
 
   /** Stores a vector of 1D ranges per dimension. */
   std::vector<std::vector<uint64_t>> original_range_idx_;
@@ -825,7 +825,7 @@ class Subarray {
   /* ********************************* */
 
   /** The class stats. */
-  stats::Stats* stats_;
+  tdb_shared_ptr<stats::Stats> stats_;
 
   /** The array the subarray object is associated with. */
   const Array* array_;

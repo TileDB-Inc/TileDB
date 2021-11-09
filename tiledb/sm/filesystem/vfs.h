@@ -274,7 +274,7 @@ class VFS {
    * @return Status
    */
   Status init(
-      stats::Stats* parent_stats,
+      tdb_shared_ptr<stats::Stats> parent_stats,
       ThreadPool* compute_tp,
       ThreadPool* io_tp,
       const Config* ctx_config,
@@ -631,7 +631,7 @@ class VFS {
 #endif
 
   /** The class stats. */
-  stats::Stats* stats_;
+  tdb_shared_ptr<stats::Stats> stats_;
 
   /** The in-memory filesystem which is always supported */
   MemFilesystem memfs_;

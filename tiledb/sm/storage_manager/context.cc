@@ -84,7 +84,7 @@ Status Context::init(Config* const config) {
 
   // Create storage manager
   storage_manager_ = new (std::nothrow)
-      tiledb::sm::StorageManager(&compute_tp_, &io_tp_, stats_.get(), logger_);
+      tiledb::sm::StorageManager(&compute_tp_, &io_tp_, stats_, logger_);
   if (storage_manager_ == nullptr)
     return logger_->status(Status::ContextError(
         "Cannot initialize context Storage manager allocation failed"));
@@ -120,8 +120,8 @@ ThreadPool* Context::io_tp() const {
   return &io_tp_;
 }
 
-stats::Stats* Context::stats() const {
-  return stats_.get();
+tdb_shared_ptr<stats::Stats> Context::stats() const {
+  return stats_;
 }
 
 Status Context::init_thread_pools(Config* const config) {

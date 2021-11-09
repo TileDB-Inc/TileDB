@@ -70,8 +70,8 @@ SubarrayPartitioner::SubarrayPartitioner(
     const uint64_t memory_budget_var,
     const uint64_t memory_budget_validity,
     ThreadPool* const compute_tp,
-    Stats* const parent_stats)
-    : stats_(parent_stats->create_child("SubarrayPartitioner"))
+    tdb_shared_ptr<Stats> const parent_stats)
+    : stats_(parent_stats->create_child("SubarrayPartitioner", parent_stats))
     , config_(config)
     , subarray_(subarray)
     , memory_budget_(memory_budget)
@@ -640,7 +640,7 @@ Subarray* SubarrayPartitioner::subarray() {
   return &subarray_;
 }
 
-stats::Stats* SubarrayPartitioner::stats() const {
+tdb_shared_ptr<stats::Stats> SubarrayPartitioner::stats() const {
   return stats_;
 }
 

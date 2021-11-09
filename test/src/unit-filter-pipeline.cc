@@ -536,7 +536,7 @@ TEST_CASE("Filter: Test empty pipeline", "[filter]") {
   FilterPipeline pipeline;
   ThreadPool tp;
   CHECK(tp.init(4).ok());
-  CHECK(pipeline.run_forward(&test::g_helper_stats, &tile, &tp).ok());
+  CHECK(pipeline.run_forward(test::g_helper_stats(), &tile, &tp).ok());
 
   // Check new size and number of chunks
   CHECK(tile.buffer()->size() == 0);
@@ -565,7 +565,7 @@ TEST_CASE("Filter: Test empty pipeline", "[filter]") {
     tile.filtered_buffer()->advance_offset(sizeof(uint64_t));
   }
 
-  CHECK(pipeline.run_reverse(&test::g_helper_stats, &tile, &tp, config).ok());
+  CHECK(pipeline.run_reverse(test::g_helper_stats(), &tile, &tp, config).ok());
   CHECK(tile.buffer()->size() != 0);
   CHECK(tile.filtered_buffer()->size() == 0);
   CHECK(tile.buffer() == &buffer);
@@ -608,7 +608,7 @@ TEST_CASE("Filter: Test simple in-place pipeline", "[filter]") {
   CHECK(pipeline.add_filter(Add1InPlace()).ok());
 
   SECTION("- Single stage") {
-    CHECK(pipeline.run_forward(&test::g_helper_stats, &tile, &tp).ok());
+    CHECK(pipeline.run_forward(test::g_helper_stats(), &tile, &tp).ok());
 
     // Check new size and number of chunks
     CHECK(tile.buffer()->size() == 0);
@@ -637,7 +637,8 @@ TEST_CASE("Filter: Test simple in-place pipeline", "[filter]") {
       tile.filtered_buffer()->advance_offset(sizeof(uint64_t));
     }
 
-    CHECK(pipeline.run_reverse(&test::g_helper_stats, &tile, &tp, config).ok());
+    CHECK(
+        pipeline.run_reverse(test::g_helper_stats(), &tile, &tp, config).ok());
     CHECK(tile.buffer()->size() != 0);
     CHECK(tile.filtered_buffer()->size() == 0);
     CHECK(tile.buffer() == &buffer);
@@ -654,7 +655,7 @@ TEST_CASE("Filter: Test simple in-place pipeline", "[filter]") {
     // Add a few more +1 filters and re-run.
     CHECK(pipeline.add_filter(Add1InPlace()).ok());
     CHECK(pipeline.add_filter(Add1InPlace()).ok());
-    CHECK(pipeline.run_forward(&test::g_helper_stats, &tile, &tp).ok());
+    CHECK(pipeline.run_forward(test::g_helper_stats(), &tile, &tp).ok());
 
     // Check new size and number of chunks
     CHECK(tile.buffer()->size() == 0);
@@ -683,7 +684,8 @@ TEST_CASE("Filter: Test simple in-place pipeline", "[filter]") {
       tile.filtered_buffer()->advance_offset(sizeof(uint64_t));
     }
 
-    CHECK(pipeline.run_reverse(&test::g_helper_stats, &tile, &tp, config).ok());
+    CHECK(
+        pipeline.run_reverse(test::g_helper_stats(), &tile, &tp, config).ok());
     CHECK(tile.buffer()->size() != 0);
     CHECK(tile.filtered_buffer()->size() == 0);
     CHECK(tile.buffer() == &buffer);
@@ -728,7 +730,7 @@ TEST_CASE("Filter: Test simple out-of-place pipeline", "[filter]") {
   CHECK(pipeline.add_filter(Add1OutOfPlace()).ok());
 
   SECTION("- Single stage") {
-    CHECK(pipeline.run_forward(&test::g_helper_stats, &tile, &tp).ok());
+    CHECK(pipeline.run_forward(test::g_helper_stats(), &tile, &tp).ok());
 
     // Check new size and number of chunks
     CHECK(tile.buffer()->size() == 0);
@@ -757,7 +759,8 @@ TEST_CASE("Filter: Test simple out-of-place pipeline", "[filter]") {
       tile.filtered_buffer()->advance_offset(sizeof(uint64_t));
     }
 
-    CHECK(pipeline.run_reverse(&test::g_helper_stats, &tile, &tp, config).ok());
+    CHECK(
+        pipeline.run_reverse(test::g_helper_stats(), &tile, &tp, config).ok());
     CHECK(tile.buffer()->size() != 0);
     CHECK(tile.filtered_buffer()->size() == 0);
     CHECK(tile.buffer() == &buffer);
@@ -774,7 +777,7 @@ TEST_CASE("Filter: Test simple out-of-place pipeline", "[filter]") {
     // Add a few more +1 filters and re-run.
     CHECK(pipeline.add_filter(Add1OutOfPlace()).ok());
     CHECK(pipeline.add_filter(Add1OutOfPlace()).ok());
-    CHECK(pipeline.run_forward(&test::g_helper_stats, &tile, &tp).ok());
+    CHECK(pipeline.run_forward(test::g_helper_stats(), &tile, &tp).ok());
 
     // Check new size and number of chunks
     CHECK(tile.buffer()->size() == 0);
@@ -803,7 +806,8 @@ TEST_CASE("Filter: Test simple out-of-place pipeline", "[filter]") {
       tile.filtered_buffer()->advance_offset(sizeof(uint64_t));
     }
 
-    CHECK(pipeline.run_reverse(&test::g_helper_stats, &tile, &tp, config).ok());
+    CHECK(
+        pipeline.run_reverse(test::g_helper_stats(), &tile, &tp, config).ok());
     CHECK(tile.buffer()->size() != 0);
     CHECK(tile.filtered_buffer()->size() == 0);
     CHECK(tile.buffer() == &buffer);
@@ -849,7 +853,7 @@ TEST_CASE("Filter: Test mixed in- and out-of-place pipeline", "[filter]") {
   CHECK(pipeline.add_filter(Add1OutOfPlace()).ok());
   CHECK(pipeline.add_filter(Add1InPlace()).ok());
   CHECK(pipeline.add_filter(Add1OutOfPlace()).ok());
-  CHECK(pipeline.run_forward(&test::g_helper_stats, &tile, &tp).ok());
+  CHECK(pipeline.run_forward(test::g_helper_stats(), &tile, &tp).ok());
 
   CHECK(tile.buffer()->size() == 0);
   CHECK(
@@ -878,7 +882,7 @@ TEST_CASE("Filter: Test mixed in- and out-of-place pipeline", "[filter]") {
   }
 
   // Set up test data
-  CHECK(pipeline.run_reverse(&test::g_helper_stats, &tile, &tp, config).ok());
+  CHECK(pipeline.run_reverse(test::g_helper_stats(), &tile, &tp, config).ok());
   CHECK(tile.buffer()->size() != 0);
   CHECK(tile.filtered_buffer()->size() == 0);
   CHECK(tile.buffer() == &buffer);
@@ -936,12 +940,13 @@ TEST_CASE("Filter: Test compression", "[filter][compression]") {
     CHECK(pipeline.add_filter(Add1OutOfPlace()).ok());
     CHECK(pipeline.add_filter(CompressionFilter(Compressor::LZ4, 5)).ok());
 
-    CHECK(pipeline.run_forward(&test::g_helper_stats, &tile, &tp).ok());
+    CHECK(pipeline.run_forward(test::g_helper_stats(), &tile, &tp).ok());
     // Check compression worked
     CHECK(tile.buffer()->size() == 0);
     CHECK(tile.filtered_buffer()->size() < nelts * sizeof(uint64_t));
 
-    CHECK(pipeline.run_reverse(&test::g_helper_stats, &tile, &tp, config).ok());
+    CHECK(
+        pipeline.run_reverse(test::g_helper_stats(), &tile, &tp, config).ok());
     CHECK(tile.buffer()->size() != 0);
     CHECK(tile.filtered_buffer()->size() == 0);
     CHECK(tile.buffer()->size() == nelts * sizeof(uint64_t));
@@ -959,12 +964,13 @@ TEST_CASE("Filter: Test compression", "[filter][compression]") {
     CHECK(pipeline.add_filter(PseudoChecksumFilter()).ok());
     CHECK(pipeline.add_filter(CompressionFilter(Compressor::LZ4, 5)).ok());
 
-    CHECK(pipeline.run_forward(&test::g_helper_stats, &tile, &tp).ok());
+    CHECK(pipeline.run_forward(test::g_helper_stats(), &tile, &tp).ok());
     // Check compression worked
     CHECK(tile.buffer()->size() == 0);
     CHECK(tile.filtered_buffer()->size() < nelts * sizeof(uint64_t));
 
-    CHECK(pipeline.run_reverse(&test::g_helper_stats, &tile, &tp, config).ok());
+    CHECK(
+        pipeline.run_reverse(test::g_helper_stats(), &tile, &tp, config).ok());
     CHECK(tile.buffer()->size() != 0);
     CHECK(tile.filtered_buffer()->size() == 0);
     CHECK(tile.buffer()->size() == nelts * sizeof(uint64_t));
@@ -984,12 +990,13 @@ TEST_CASE("Filter: Test compression", "[filter][compression]") {
     CHECK(pipeline.add_filter(Add1OutOfPlace()).ok());
     CHECK(pipeline.add_filter(CompressionFilter(Compressor::LZ4, 5)).ok());
 
-    CHECK(pipeline.run_forward(&test::g_helper_stats, &tile, &tp).ok());
+    CHECK(pipeline.run_forward(test::g_helper_stats(), &tile, &tp).ok());
     // Check compression worked
     CHECK(tile.buffer()->size() == 0);
     CHECK(tile.filtered_buffer()->size() < nelts * sizeof(uint64_t));
 
-    CHECK(pipeline.run_reverse(&test::g_helper_stats, &tile, &tp, config).ok());
+    CHECK(
+        pipeline.run_reverse(test::g_helper_stats(), &tile, &tp, config).ok());
     CHECK(tile.buffer()->size() != 0);
     CHECK(tile.filtered_buffer()->size() == 0);
     CHECK(tile.buffer()->size() == nelts * sizeof(uint64_t));
@@ -1036,7 +1043,7 @@ TEST_CASE("Filter: Test pseudo-checksum", "[filter]") {
   CHECK(pipeline.add_filter(PseudoChecksumFilter()).ok());
 
   SECTION("- Single stage") {
-    CHECK(pipeline.run_forward(&test::g_helper_stats, &tile, &tp).ok());
+    CHECK(pipeline.run_forward(test::g_helper_stats(), &tile, &tp).ok());
 
     // Check new size and number of chunks
     CHECK(tile.buffer()->size() == 0);
@@ -1070,7 +1077,8 @@ TEST_CASE("Filter: Test pseudo-checksum", "[filter]") {
       tile.filtered_buffer()->advance_offset(sizeof(uint64_t));
     }
 
-    CHECK(pipeline.run_reverse(&test::g_helper_stats, &tile, &tp, config).ok());
+    CHECK(
+        pipeline.run_reverse(test::g_helper_stats(), &tile, &tp, config).ok());
     CHECK(tile.buffer()->size() != 0);
     CHECK(tile.filtered_buffer()->size() == 0);
     CHECK(tile.buffer() == &buffer);
@@ -1087,7 +1095,7 @@ TEST_CASE("Filter: Test pseudo-checksum", "[filter]") {
     CHECK(pipeline.add_filter(Add1OutOfPlace()).ok());
     CHECK(pipeline.add_filter(Add1InPlace()).ok());
     CHECK(pipeline.add_filter(PseudoChecksumFilter()).ok());
-    CHECK(pipeline.run_forward(&test::g_helper_stats, &tile, &tp).ok());
+    CHECK(pipeline.run_forward(test::g_helper_stats(), &tile, &tp).ok());
 
     // Compute the second (final) checksum value.
     uint64_t expected_checksum_2 = 0;
@@ -1130,7 +1138,8 @@ TEST_CASE("Filter: Test pseudo-checksum", "[filter]") {
       tile.filtered_buffer()->advance_offset(sizeof(uint64_t));
     }
 
-    CHECK(pipeline.run_reverse(&test::g_helper_stats, &tile, &tp, config).ok());
+    CHECK(
+        pipeline.run_reverse(test::g_helper_stats(), &tile, &tp, config).ok());
     CHECK(tile.buffer()->size() != 0);
     CHECK(tile.filtered_buffer()->size() == 0);
     CHECK(tile.buffer() == &buffer);
@@ -1185,7 +1194,7 @@ TEST_CASE("Filter: Test pipeline modify filter", "[filter]") {
   CHECK(add_n != nullptr);
   add_n->set_increment(2);
 
-  CHECK(pipeline.run_forward(&test::g_helper_stats, &tile, &tp).ok());
+  CHECK(pipeline.run_forward(test::g_helper_stats(), &tile, &tp).ok());
 
   CHECK(tile.buffer()->size() == 0);
   CHECK(tile.filtered_buffer()->size() != 0);
@@ -1211,7 +1220,7 @@ TEST_CASE("Filter: Test pipeline modify filter", "[filter]") {
     tile.filtered_buffer()->advance_offset(sizeof(uint64_t));
   }
 
-  CHECK(pipeline.run_reverse(&test::g_helper_stats, &tile, &tp, config).ok());
+  CHECK(pipeline.run_reverse(test::g_helper_stats(), &tile, &tp, config).ok());
   CHECK(tile.buffer()->size() != 0);
   CHECK(tile.filtered_buffer()->size() == 0);
   CHECK(tile.buffer() == &buffer);
@@ -1272,7 +1281,7 @@ TEST_CASE("Filter: Test pipeline copy", "[filter]") {
   CHECK(add_n_2 != nullptr);
   CHECK(add_n_2->increment() == 2);
 
-  CHECK(pipeline_copy.run_forward(&test::g_helper_stats, &tile, &tp).ok());
+  CHECK(pipeline_copy.run_forward(test::g_helper_stats(), &tile, &tp).ok());
 
   CHECK(tile.buffer()->size() == 0);
   CHECK(tile.filtered_buffer()->size() != 0);
@@ -1302,7 +1311,7 @@ TEST_CASE("Filter: Test pipeline copy", "[filter]") {
     tile.filtered_buffer()->advance_offset(sizeof(uint64_t));
   }
 
-  CHECK(pipeline.run_reverse(&test::g_helper_stats, &tile, &tp, config).ok());
+  CHECK(pipeline.run_reverse(test::g_helper_stats(), &tile, &tp, config).ok());
   CHECK(tile.buffer()->size() != 0);
   CHECK(tile.filtered_buffer()->size() == 0);
   CHECK(tile.buffer() == &buffer);
@@ -1401,10 +1410,11 @@ TEST_CASE("Filter: Test random pipeline", "[filter]") {
     }
 
     // End result should always be the same as the input.
-    CHECK(pipeline.run_forward(&test::g_helper_stats, &tile, &tp).ok());
+    CHECK(pipeline.run_forward(test::g_helper_stats(), &tile, &tp).ok());
     CHECK(tile.buffer()->size() == 0);
     CHECK(tile.filtered_buffer()->size() != 0);
-    CHECK(pipeline.run_reverse(&test::g_helper_stats, &tile, &tp, config).ok());
+    CHECK(
+        pipeline.run_reverse(test::g_helper_stats(), &tile, &tp, config).ok());
     CHECK(tile.buffer()->size() != 0);
     CHECK(tile.filtered_buffer()->size() == 0);
     auto* buffer = tile.buffer();
@@ -1450,11 +1460,11 @@ TEST_CASE(
   CHECK(tp.init(4).ok());
   ChecksumMD5Filter md5_filter;
   CHECK(md5_pipeline.add_filter(md5_filter).ok());
-  CHECK(md5_pipeline.run_forward(&test::g_helper_stats, &tile, &tp).ok());
+  CHECK(md5_pipeline.run_forward(test::g_helper_stats(), &tile, &tp).ok());
   CHECK(tile.buffer()->size() == 0);
   CHECK(tile.filtered_buffer()->size() != 0);
-  CHECK(
-      md5_pipeline.run_reverse(&test::g_helper_stats, &tile, &tp, config).ok());
+  CHECK(md5_pipeline.run_reverse(test::g_helper_stats(), &tile, &tp, config)
+            .ok());
   CHECK(tile.buffer()->size() != 0);
   CHECK(tile.filtered_buffer()->size() == 0);
   auto* internal_buffer = tile.buffer();
@@ -1469,10 +1479,10 @@ TEST_CASE(
   FilterPipeline sha_256_pipeline;
   ChecksumMD5Filter sha_256_filter;
   CHECK(sha_256_pipeline.add_filter(sha_256_filter).ok());
-  CHECK(sha_256_pipeline.run_forward(&test::g_helper_stats, &tile, &tp).ok());
+  CHECK(sha_256_pipeline.run_forward(test::g_helper_stats(), &tile, &tp).ok());
   CHECK(tile.buffer()->size() == 0);
   CHECK(tile.filtered_buffer()->size() != 0);
-  CHECK(sha_256_pipeline.run_reverse(&test::g_helper_stats, &tile, &tp, config)
+  CHECK(sha_256_pipeline.run_reverse(test::g_helper_stats(), &tile, &tp, config)
             .ok());
   CHECK(tile.buffer()->size() != 0);
   CHECK(tile.filtered_buffer()->size() == 0);
@@ -1516,7 +1526,7 @@ TEST_CASE("Filter: Test bit width reduction", "[filter]") {
   CHECK(pipeline.add_filter(BitWidthReductionFilter()).ok());
 
   SECTION("- Single stage") {
-    CHECK(pipeline.run_forward(&test::g_helper_stats, &tile, &tp).ok());
+    CHECK(pipeline.run_forward(test::g_helper_stats(), &tile, &tp).ok());
 
     CHECK(tile.buffer()->size() == 0);
     CHECK(tile.filtered_buffer()->size() != 0);
@@ -1550,7 +1560,8 @@ TEST_CASE("Filter: Test bit width reduction", "[filter]") {
     auto compressed_size = tile.filtered_buffer()->size();
     CHECK(compressed_size < nelts * sizeof(uint64_t));
 
-    CHECK(pipeline.run_reverse(&test::g_helper_stats, &tile, &tp, config).ok());
+    CHECK(
+        pipeline.run_reverse(test::g_helper_stats(), &tile, &tp, config).ok());
     CHECK(tile.buffer()->size() != 0);
     CHECK(tile.filtered_buffer()->size() == 0);
     CHECK(tile.buffer() == &buffer);
@@ -1570,11 +1581,11 @@ TEST_CASE("Filter: Test bit width reduction", "[filter]") {
       pipeline.get_filter<BitWidthReductionFilter>()->set_max_window_size(
           window_size);
 
-      CHECK(pipeline.run_forward(&test::g_helper_stats, &tile, &tp).ok());
+      CHECK(pipeline.run_forward(test::g_helper_stats(), &tile, &tp).ok());
       CHECK(tile.buffer()->size() == 0);
       CHECK(tile.filtered_buffer()->size() != 0);
-      CHECK(
-          pipeline.run_reverse(&test::g_helper_stats, &tile, &tp, config).ok());
+      CHECK(pipeline.run_reverse(test::g_helper_stats(), &tile, &tp, config)
+                .ok());
       CHECK(tile.buffer()->size() != 0);
       CHECK(tile.filtered_buffer()->size() == 0);
       CHECK(tile.buffer() == &buffer);
@@ -1610,10 +1621,11 @@ TEST_CASE("Filter: Test bit width reduction", "[filter]") {
 
     Tile tile(Datatype::UINT64, cell_size, dim_num, &buffer, false);
 
-    CHECK(pipeline.run_forward(&test::g_helper_stats, &tile, &tp).ok());
+    CHECK(pipeline.run_forward(test::g_helper_stats(), &tile, &tp).ok());
     CHECK(tile.buffer()->size() == 0);
     CHECK(tile.filtered_buffer()->size() != 0);
-    CHECK(pipeline.run_reverse(&test::g_helper_stats, &tile, &tp, config).ok());
+    CHECK(
+        pipeline.run_reverse(test::g_helper_stats(), &tile, &tp, config).ok());
     CHECK(tile.buffer()->size() != 0);
     CHECK(tile.filtered_buffer()->size() == 0);
     CHECK(tile.buffer() == &buffer);
@@ -1654,10 +1666,11 @@ TEST_CASE("Filter: Test bit width reduction", "[filter]") {
 
     Tile tile(Datatype::INT32, cell_size, dim_num, &buffer, false);
 
-    CHECK(pipeline.run_forward(&test::g_helper_stats, &tile, &tp).ok());
+    CHECK(pipeline.run_forward(test::g_helper_stats(), &tile, &tp).ok());
     CHECK(tile.buffer()->size() == 0);
     CHECK(tile.filtered_buffer()->size() != 0);
-    CHECK(pipeline.run_reverse(&test::g_helper_stats, &tile, &tp, config).ok());
+    CHECK(
+        pipeline.run_reverse(test::g_helper_stats(), &tile, &tp, config).ok());
     CHECK(tile.buffer()->size() != 0);
     CHECK(tile.filtered_buffer()->size() == 0);
     CHECK(tile.buffer() == &buffer);
@@ -1688,10 +1701,11 @@ TEST_CASE("Filter: Test bit width reduction", "[filter]") {
 
     Tile tile(Datatype::UINT64, cell_size, dim_num, &buffer, false);
 
-    CHECK(pipeline.run_forward(&test::g_helper_stats, &tile, &tp).ok());
+    CHECK(pipeline.run_forward(test::g_helper_stats(), &tile, &tp).ok());
     CHECK(tile.buffer()->size() == 0);
     CHECK(tile.filtered_buffer()->size() != 0);
-    CHECK(pipeline.run_reverse(&test::g_helper_stats, &tile, &tp, config).ok());
+    CHECK(
+        pipeline.run_reverse(test::g_helper_stats(), &tile, &tp, config).ok());
     CHECK(tile.buffer()->size() != 0);
     CHECK(tile.filtered_buffer()->size() == 0);
     CHECK(tile.buffer() == &buffer);
@@ -1738,7 +1752,7 @@ TEST_CASE("Filter: Test positive-delta encoding", "[filter]") {
   CHECK(pipeline.add_filter(PositiveDeltaFilter()).ok());
 
   SECTION("- Single stage") {
-    CHECK(pipeline.run_forward(&test::g_helper_stats, &tile, &tp).ok());
+    CHECK(pipeline.run_forward(test::g_helper_stats(), &tile, &tp).ok());
 
     CHECK(tile.buffer()->size() == 0);
     CHECK(tile.filtered_buffer()->size() != 0);
@@ -1771,7 +1785,8 @@ TEST_CASE("Filter: Test positive-delta encoding", "[filter]") {
         encoded_size == pipeline_metadata_size + filter_metadata_size +
                             nelts * sizeof(uint64_t));
 
-    CHECK(pipeline.run_reverse(&test::g_helper_stats, &tile, &tp, config).ok());
+    CHECK(
+        pipeline.run_reverse(test::g_helper_stats(), &tile, &tp, config).ok());
     CHECK(tile.buffer()->size() != 0);
     CHECK(tile.filtered_buffer()->size() == 0);
     CHECK(tile.buffer() == &buffer);
@@ -1791,11 +1806,11 @@ TEST_CASE("Filter: Test positive-delta encoding", "[filter]") {
       pipeline.get_filter<PositiveDeltaFilter>()->set_max_window_size(
           window_size);
 
-      CHECK(pipeline.run_forward(&test::g_helper_stats, &tile, &tp).ok());
+      CHECK(pipeline.run_forward(test::g_helper_stats(), &tile, &tp).ok());
       CHECK(tile.buffer()->size() == 0);
       CHECK(tile.filtered_buffer()->size() != 0);
-      CHECK(
-          pipeline.run_reverse(&test::g_helper_stats, &tile, &tp, config).ok());
+      CHECK(pipeline.run_reverse(test::g_helper_stats(), &tile, &tp, config)
+                .ok());
       CHECK(tile.buffer()->size() != 0);
       CHECK(tile.filtered_buffer()->size() == 0);
       CHECK(tile.buffer() == &buffer);
@@ -1816,7 +1831,7 @@ TEST_CASE("Filter: Test positive-delta encoding", "[filter]") {
       CHECK(buffer.write(&val, sizeof(uint64_t)).ok());
     }
 
-    CHECK(!pipeline.run_forward(&test::g_helper_stats, &tile, &tp).ok());
+    CHECK(!pipeline.run_forward(test::g_helper_stats(), &tile, &tp).ok());
   }
 
   buffer.clear();
@@ -1851,10 +1866,11 @@ TEST_CASE("Filter: Test bitshuffle", "[filter]") {
   CHECK(pipeline.add_filter(BitshuffleFilter()).ok());
 
   SECTION("- Single stage") {
-    CHECK(pipeline.run_forward(&test::g_helper_stats, &tile, &tp).ok());
+    CHECK(pipeline.run_forward(test::g_helper_stats(), &tile, &tp).ok());
     CHECK(tile.buffer()->size() == 0);
     CHECK(tile.filtered_buffer()->size() != 0);
-    CHECK(pipeline.run_reverse(&test::g_helper_stats, &tile, &tp, config).ok());
+    CHECK(
+        pipeline.run_reverse(test::g_helper_stats(), &tile, &tp, config).ok());
     CHECK(tile.buffer()->size() != 0);
     CHECK(tile.filtered_buffer()->size() == 0);
     CHECK(tile.buffer() == &buffer);
@@ -1884,11 +1900,11 @@ TEST_CASE("Filter: Test bitshuffle", "[filter]") {
 
     Tile tile2(Datatype::UINT32, cell_size, dim_num, &buffer2, false);
 
-    CHECK(pipeline.run_forward(&test::g_helper_stats, &tile2, &tp).ok());
+    CHECK(pipeline.run_forward(test::g_helper_stats(), &tile2, &tp).ok());
     CHECK(tile2.buffer()->size() == 0);
     CHECK(tile2.filtered_buffer()->size() != 0);
     CHECK(
-        pipeline.run_reverse(&test::g_helper_stats, &tile2, &tp, config).ok());
+        pipeline.run_reverse(test::g_helper_stats(), &tile2, &tp, config).ok());
     CHECK(tile2.buffer()->size() != 0);
     CHECK(tile2.filtered_buffer()->size() == 0);
     CHECK(tile2.buffer() == &buffer2);
@@ -1935,10 +1951,11 @@ TEST_CASE("Filter: Test byteshuffle", "[filter]") {
   CHECK(pipeline.add_filter(ByteshuffleFilter()).ok());
 
   SECTION("- Single stage") {
-    CHECK(pipeline.run_forward(&test::g_helper_stats, &tile, &tp).ok());
+    CHECK(pipeline.run_forward(test::g_helper_stats(), &tile, &tp).ok());
     CHECK(tile.buffer()->size() == 0);
     CHECK(tile.filtered_buffer()->size() != 0);
-    CHECK(pipeline.run_reverse(&test::g_helper_stats, &tile, &tp, config).ok());
+    CHECK(
+        pipeline.run_reverse(test::g_helper_stats(), &tile, &tp, config).ok());
     CHECK(tile.buffer()->size() != 0);
     CHECK(tile.filtered_buffer()->size() == 0);
     CHECK(tile.buffer() == &buffer);
@@ -1968,11 +1985,11 @@ TEST_CASE("Filter: Test byteshuffle", "[filter]") {
 
     Tile tile2(Datatype::UINT32, cell_size, dim_num, &buffer2, false);
 
-    CHECK(pipeline.run_forward(&test::g_helper_stats, &tile2, &tp).ok());
+    CHECK(pipeline.run_forward(test::g_helper_stats(), &tile2, &tp).ok());
     CHECK(tile2.buffer()->size() == 0);
     CHECK(tile2.filtered_buffer()->size() != 0);
     CHECK(
-        pipeline.run_reverse(&test::g_helper_stats, &tile2, &tp, config).ok());
+        pipeline.run_reverse(test::g_helper_stats(), &tile2, &tp, config).ok());
     CHECK(tile2.buffer()->size() != 0);
     CHECK(tile2.filtered_buffer()->size() == 0);
     CHECK(tile2.buffer() == &buffer2);
@@ -2020,7 +2037,7 @@ TEST_CASE("Filter: Test encryption", "[filter][encryption]") {
     CHECK(pipeline.add_filter(EncryptionAES256GCMFilter()).ok());
 
     // No key set
-    CHECK(!pipeline.run_forward(&test::g_helper_stats, &tile, &tp).ok());
+    CHECK(!pipeline.run_forward(test::g_helper_stats(), &tile, &tp).ok());
 
     // Create and set a key
     char key[32];
@@ -2030,10 +2047,11 @@ TEST_CASE("Filter: Test encryption", "[filter][encryption]") {
     CHECK(filter->set_key(key).ok());
 
     // Check success
-    CHECK(pipeline.run_forward(&test::g_helper_stats, &tile, &tp).ok());
+    CHECK(pipeline.run_forward(test::g_helper_stats(), &tile, &tp).ok());
     CHECK(tile.buffer()->size() == 0);
     CHECK(tile.filtered_buffer()->size() != 0);
-    CHECK(pipeline.run_reverse(&test::g_helper_stats, &tile, &tp, config).ok());
+    CHECK(
+        pipeline.run_reverse(test::g_helper_stats(), &tile, &tp, config).ok());
     CHECK(tile.buffer()->size() != 0);
     CHECK(tile.filtered_buffer()->size() == 0);
     CHECK(tile.buffer() == &buffer);
@@ -2046,18 +2064,19 @@ TEST_CASE("Filter: Test encryption", "[filter][encryption]") {
     }
 
     // Check error decrypting with wrong key.
-    CHECK(pipeline.run_forward(&test::g_helper_stats, &tile, &tp).ok());
+    CHECK(pipeline.run_forward(test::g_helper_stats(), &tile, &tp).ok());
     key[0]++;
     CHECK(filter->set_key(key).ok());
     CHECK(
-        !pipeline.run_reverse(&test::g_helper_stats, &tile, &tp, config).ok());
+        !pipeline.run_reverse(test::g_helper_stats(), &tile, &tp, config).ok());
 
     // Fix key and check success. Note: this test depends on the implementation
     // leaving the tile data unmodified when the decryption fails, which is not
     // true in general use of the filter pipeline.
     key[0]--;
     CHECK(filter->set_key(key).ok());
-    CHECK(pipeline.run_reverse(&test::g_helper_stats, &tile, &tp, config).ok());
+    CHECK(
+        pipeline.run_reverse(test::g_helper_stats(), &tile, &tp, config).ok());
     CHECK(tile.buffer()->size() != 0);
     CHECK(tile.filtered_buffer()->size() == 0);
     CHECK(tile.buffer() == &buffer);

@@ -75,7 +75,7 @@ S3DirectFx::S3DirectFx() {
   REQUIRE(config.set("vfs.s3.multipart_part_size", "10000000").ok());
   REQUIRE(config.set("vfs.s3.use_multipart_upload", "false").ok());
   REQUIRE(thread_pool_.init(2).ok());
-  REQUIRE(s3_.init(&g_helper_stats, config, &thread_pool_).ok());
+  REQUIRE(s3_.init(g_helper_stats(), config, &thread_pool_).ok());
 
   // Create bucket
   bool exists;

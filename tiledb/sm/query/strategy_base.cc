@@ -44,7 +44,7 @@ namespace sm {
 /* ****************************** */
 
 StrategyBase::StrategyBase(
-    stats::Stats* stats,
+    tdb_shared_ptr<stats::Stats> stats,
     tdb_shared_ptr<Logger> logger,
     StorageManager* storage_manager,
     Array* array,
@@ -68,7 +68,7 @@ StrategyBase::StrategyBase(
   }
 }
 
-stats::Stats* StrategyBase::stats() const {
+tdb_shared_ptr<stats::Stats> StrategyBase::stats() const {
   return stats_;
 }
 

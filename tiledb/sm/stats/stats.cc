@@ -46,10 +46,10 @@ namespace stats {
 /*   CONSTRUCTORS & DESTRUCTORS   */
 /* ****************************** */
 
-Stats::Stats(const std::string& prefix)
+Stats::Stats(const std::string& prefix, tdb_shared_ptr<Stats> parent)
     : enabled_(true)
     , prefix_(prefix + ".")
-    , parent_(nullptr) {
+    , parent_(parent) {
 }
 
 /* ****************************** */
@@ -73,7 +73,7 @@ void Stats::reset() {
   counters_.clear();
 
   for (auto& child : children_) {
-    child.reset();
+    child->reset();
   }
 }
 
@@ -258,15 +258,16 @@ void Stats::end_timer(const std::string& stat) {
 
 #endif
 
-Stats* Stats::parent() {
+tdb_shared_ptr<Stats> Stats::parent() {
   return parent_;
 }
 
-Stats* Stats::create_child(const std::string& prefix) {
+tdb_shared_ptr<Stats> Stats::create_child(
+    const std::string& prefix, tdb_shared_ptr<Stats> parent) {
   std::unique_lock<std::mutex> lck(mtx_);
-  children_.emplace_back(prefix_ + prefix);
-  Stats* const child = &children_.back();
-  child->parent_ = this;
+  tdb_shared_ptr<Stats> child =
+      tdb_make_shared(Stats, prefix_ + prefix, parent);
+  children_.emplace_back(child);
   return child;
 }
 
@@ -285,7 +286,7 @@ void Stats::populate_flattened_stats(
 
   // Populate the stats from all of the children.
   for (const auto& child : children_) {
-    child.populate_flattened_stats(flattened_timers, flattened_counters);
+    child->populate_flattened_stats(flattened_timers, flattened_counters);
   }
 }
 

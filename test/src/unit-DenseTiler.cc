@@ -203,11 +203,11 @@ TEST_CASE_METHOD(
   // Create subarray
   open_array(array_name, TILEDB_READ);
   int32_t sub1[] = {3, 6};
-  Subarray subarray1(array_->array_, Layout::ROW_MAJOR, &test::g_helper_stats);
+  Subarray subarray1(array_->array_, Layout::ROW_MAJOR, test::g_helper_stats());
   add_ranges({sub1}, sizeof(sub1), &subarray1);
 
   // Create DenseTiler
-  DenseTiler<int32_t> tiler1(&buffers, &subarray1, &test::g_helper_stats);
+  DenseTiler<int32_t> tiler1(&buffers, &subarray1, test::g_helper_stats());
 
   // Test correctness of initialization
   CHECK(tiler1.tile_num() == 2);
@@ -220,11 +220,11 @@ TEST_CASE_METHOD(
   close_array();
   open_array(array_name, TILEDB_READ);
   int32_t sub2[] = {6, 9};
-  Subarray subarray2(array_->array_, Layout::ROW_MAJOR, &test::g_helper_stats);
+  Subarray subarray2(array_->array_, Layout::ROW_MAJOR, test::g_helper_stats());
   add_ranges({sub2}, sizeof(sub2), &subarray2);
 
   // Create DenseTiler
-  DenseTiler<int32_t> tiler2(&buffers, &subarray2, &test::g_helper_stats);
+  DenseTiler<int32_t> tiler2(&buffers, &subarray2, test::g_helper_stats());
 
   // Test correctness of initialization
   CHECK(tiler2.tile_num() == 1);
@@ -262,11 +262,11 @@ TEST_CASE_METHOD(
   // Create subarray
   open_array(array_name, TILEDB_READ);
   int32_t sub1[] = {3, 6};
-  Subarray subarray1(array_->array_, Layout::ROW_MAJOR, &test::g_helper_stats);
+  Subarray subarray1(array_->array_, Layout::ROW_MAJOR, test::g_helper_stats());
   add_ranges({sub1}, sizeof(sub1), &subarray1);
 
   // Create DenseTiler
-  DenseTiler<int32_t> tiler1(&buffers, &subarray1, &test::g_helper_stats);
+  DenseTiler<int32_t> tiler1(&buffers, &subarray1, test::g_helper_stats());
 
   // Test correctness of copy plan for tile 0
   auto copy_plan1_0 = tiler1.copy_plan(0);
@@ -294,11 +294,11 @@ TEST_CASE_METHOD(
   close_array();
   open_array(array_name, TILEDB_READ);
   int32_t sub2[] = {7, 8};
-  Subarray subarray2(array_->array_, Layout::ROW_MAJOR, &test::g_helper_stats);
+  Subarray subarray2(array_->array_, Layout::ROW_MAJOR, test::g_helper_stats());
   add_ranges({sub2}, sizeof(sub2), &subarray2);
 
   // Create DenseTiler
-  DenseTiler<int32_t> tiler2(&buffers, &subarray2, &test::g_helper_stats);
+  DenseTiler<int32_t> tiler2(&buffers, &subarray2, test::g_helper_stats());
 
   // Test correctness of copy plan for tile 0
   auto copy_plan2 = tiler2.copy_plan(0);
@@ -314,11 +314,11 @@ TEST_CASE_METHOD(
   close_array();
   open_array(array_name, TILEDB_READ);
   int32_t sub3[] = {7, 8};
-  Subarray subarray3(array_->array_, Layout::COL_MAJOR, &test::g_helper_stats);
+  Subarray subarray3(array_->array_, Layout::COL_MAJOR, test::g_helper_stats());
   add_ranges({sub3}, sizeof(sub3), &subarray3);
 
   // Create DenseTiler
-  DenseTiler<int32_t> tiler3(&buffers, &subarray3, &test::g_helper_stats);
+  DenseTiler<int32_t> tiler3(&buffers, &subarray3, test::g_helper_stats());
 
   // Test correctness of copy plan for tile 0
   auto copy_plan3 = tiler3.copy_plan(0);
@@ -359,11 +359,11 @@ TEST_CASE_METHOD(
   // Create subarray
   open_array(array_name, TILEDB_READ);
   int32_t sub1[] = {3, 6};
-  Subarray subarray1(array_->array_, Layout::ROW_MAJOR, &test::g_helper_stats);
+  Subarray subarray1(array_->array_, Layout::ROW_MAJOR, test::g_helper_stats());
   add_ranges({sub1}, sizeof(sub1), &subarray1);
 
   // Create DenseTiler
-  DenseTiler<int32_t> tiler1(&buffers, &subarray1, &test::g_helper_stats);
+  DenseTiler<int32_t> tiler1(&buffers, &subarray1, test::g_helper_stats());
 
   // Test get tile 0
   Tile tile1_0;
@@ -384,11 +384,11 @@ TEST_CASE_METHOD(
   close_array();
   open_array(array_name, TILEDB_READ);
   int32_t sub2[] = {7, 10};
-  Subarray subarray2(array_->array_, Layout::ROW_MAJOR, &test::g_helper_stats);
+  Subarray subarray2(array_->array_, Layout::ROW_MAJOR, test::g_helper_stats());
   add_ranges({sub2}, sizeof(sub2), &subarray2);
 
   // Create DenseTiler
-  DenseTiler<int32_t> tiler2(&buffers, &subarray2, &test::g_helper_stats);
+  DenseTiler<int32_t> tiler2(&buffers, &subarray2, test::g_helper_stats());
 
   // Test get tile 0
   Tile tile2;
@@ -400,11 +400,11 @@ TEST_CASE_METHOD(
   close_array();
   open_array(array_name, TILEDB_READ);
   int32_t sub3[] = {7, 10};
-  Subarray subarray3(array_->array_, Layout::COL_MAJOR, &test::g_helper_stats);
+  Subarray subarray3(array_->array_, Layout::COL_MAJOR, test::g_helper_stats());
   add_ranges({sub3}, sizeof(sub3), &subarray3);
 
   // Create DenseTiler
-  DenseTiler<int32_t> tiler3(&buffers, &subarray3, &test::g_helper_stats);
+  DenseTiler<int32_t> tiler3(&buffers, &subarray3, test::g_helper_stats());
 
   // Test get tile 0
   Tile tile3;
@@ -441,11 +441,11 @@ TEST_CASE_METHOD(
   // Create subarray
   open_array(array_name, TILEDB_READ);
   int32_t sub1[] = {3, 6};
-  Subarray subarray1(array_->array_, Layout::ROW_MAJOR, &test::g_helper_stats);
+  Subarray subarray1(array_->array_, Layout::ROW_MAJOR, test::g_helper_stats());
   add_ranges({sub1}, sizeof(sub1), &subarray1);
 
   // Create DenseTiler
-  DenseTiler<int32_t> tiler1(&buffers, &subarray1, &test::g_helper_stats);
+  DenseTiler<int32_t> tiler1(&buffers, &subarray1, test::g_helper_stats());
 
   // Test get tile 0
   Tile tile1_0;
@@ -491,11 +491,11 @@ TEST_CASE_METHOD(
   // Create subarray
   open_array(array_name, TILEDB_READ);
   int32_t sub1[] = {-2, 1};
-  Subarray subarray1(array_->array_, Layout::ROW_MAJOR, &test::g_helper_stats);
+  Subarray subarray1(array_->array_, Layout::ROW_MAJOR, test::g_helper_stats());
   add_ranges({sub1}, sizeof(sub1), &subarray1);
 
   // Create DenseTiler
-  DenseTiler<int32_t> tiler1(&buffers, &subarray1, &test::g_helper_stats);
+  DenseTiler<int32_t> tiler1(&buffers, &subarray1, test::g_helper_stats());
 
   // Test get tile 0
   Tile tile1_0;
@@ -545,11 +545,11 @@ TEST_CASE_METHOD(
   open_array(array_name, TILEDB_READ);
   int32_t sub1_0[] = {4, 6};
   int32_t sub1_1[] = {18, 22};
-  Subarray subarray1(array_->array_, Layout::ROW_MAJOR, &test::g_helper_stats);
+  Subarray subarray1(array_->array_, Layout::ROW_MAJOR, test::g_helper_stats());
   add_ranges({sub1_0, sub1_1}, sizeof(sub1_0), &subarray1);
 
   // Create DenseTiler
-  DenseTiler<int32_t> tiler1(&buffers, &subarray1, &test::g_helper_stats);
+  DenseTiler<int32_t> tiler1(&buffers, &subarray1, test::g_helper_stats());
 
   // Test correctness of initialization
   CHECK(tiler1.tile_num() == 4);
@@ -563,11 +563,11 @@ TEST_CASE_METHOD(
   open_array(array_name, TILEDB_READ);
   int32_t sub2_0[] = {7, 9};
   int32_t sub2_1[] = {23, 27};
-  Subarray subarray2(array_->array_, Layout::ROW_MAJOR, &test::g_helper_stats);
+  Subarray subarray2(array_->array_, Layout::ROW_MAJOR, test::g_helper_stats());
   add_ranges({sub2_0, sub2_1}, sizeof(sub2_0), &subarray2);
 
   // Create DenseTiler
-  DenseTiler<int32_t> tiler2(&buffers, &subarray2, &test::g_helper_stats);
+  DenseTiler<int32_t> tiler2(&buffers, &subarray2, test::g_helper_stats());
 
   // Test correctness of initialization
   CHECK(tiler2.tile_num() == 1);
@@ -581,11 +581,11 @@ TEST_CASE_METHOD(
   open_array(array_name, TILEDB_READ);
   int32_t sub3_0[] = {4, 6};
   int32_t sub3_1[] = {18, 22};
-  Subarray subarray3(array_->array_, Layout::COL_MAJOR, &test::g_helper_stats);
+  Subarray subarray3(array_->array_, Layout::COL_MAJOR, test::g_helper_stats());
   add_ranges({sub3_0, sub3_1}, sizeof(sub3_0), &subarray3);
 
   // Create DenseTiler
-  DenseTiler<int32_t> tiler3(&buffers, &subarray3, &test::g_helper_stats);
+  DenseTiler<int32_t> tiler3(&buffers, &subarray3, test::g_helper_stats());
 
   // Test correctness of initialization
   CHECK(tiler3.tile_num() == 4);
@@ -599,11 +599,11 @@ TEST_CASE_METHOD(
   open_array(array_name, TILEDB_READ);
   int32_t sub4_0[] = {7, 10};
   int32_t sub4_1[] = {23, 27};
-  Subarray subarray4(array_->array_, Layout::COL_MAJOR, &test::g_helper_stats);
+  Subarray subarray4(array_->array_, Layout::COL_MAJOR, test::g_helper_stats());
   add_ranges({sub4_0, sub4_1}, sizeof(sub4_0), &subarray4);
 
   // Create DenseTiler
-  DenseTiler<int32_t> tiler4(&buffers, &subarray4, &test::g_helper_stats);
+  DenseTiler<int32_t> tiler4(&buffers, &subarray4, test::g_helper_stats());
 
   // Test correctness of initialization
   CHECK(tiler4.tile_num() == 1);
@@ -645,11 +645,11 @@ TEST_CASE_METHOD(
   open_array(array_name, TILEDB_READ);
   int32_t sub1_0[] = {4, 6};
   int32_t sub1_1[] = {18, 22};
-  Subarray subarray1(array_->array_, Layout::ROW_MAJOR, &test::g_helper_stats);
+  Subarray subarray1(array_->array_, Layout::ROW_MAJOR, test::g_helper_stats());
   add_ranges({sub1_0, sub1_1}, sizeof(sub1_0), &subarray1);
 
   // Create DenseTiler
-  DenseTiler<int32_t> tiler1(&buffers, &subarray1, &test::g_helper_stats);
+  DenseTiler<int32_t> tiler1(&buffers, &subarray1, test::g_helper_stats());
 
   // Test correctness of initialization
   CHECK(tiler1.tile_num() == 4);
@@ -663,11 +663,11 @@ TEST_CASE_METHOD(
   open_array(array_name, TILEDB_READ);
   int32_t sub2_0[] = {7, 9};
   int32_t sub2_1[] = {23, 27};
-  Subarray subarray2(array_->array_, Layout::ROW_MAJOR, &test::g_helper_stats);
+  Subarray subarray2(array_->array_, Layout::ROW_MAJOR, test::g_helper_stats());
   add_ranges({sub2_0, sub2_1}, sizeof(sub2_0), &subarray2);
 
   // Create DenseTiler
-  DenseTiler<int32_t> tiler2(&buffers, &subarray2, &test::g_helper_stats);
+  DenseTiler<int32_t> tiler2(&buffers, &subarray2, test::g_helper_stats());
 
   // Test correctness of initialization
   CHECK(tiler2.tile_num() == 1);
@@ -681,11 +681,11 @@ TEST_CASE_METHOD(
   open_array(array_name, TILEDB_READ);
   int32_t sub3_0[] = {4, 6};
   int32_t sub3_1[] = {18, 22};
-  Subarray subarray3(array_->array_, Layout::COL_MAJOR, &test::g_helper_stats);
+  Subarray subarray3(array_->array_, Layout::COL_MAJOR, test::g_helper_stats());
   add_ranges({sub3_0, sub3_1}, sizeof(sub3_0), &subarray3);
 
   // Create DenseTiler
-  DenseTiler<int32_t> tiler3(&buffers, &subarray3, &test::g_helper_stats);
+  DenseTiler<int32_t> tiler3(&buffers, &subarray3, test::g_helper_stats());
 
   // Test correctness of initialization
   CHECK(tiler3.tile_num() == 4);
@@ -699,11 +699,11 @@ TEST_CASE_METHOD(
   open_array(array_name, TILEDB_READ);
   int32_t sub4_0[] = {7, 10};
   int32_t sub4_1[] = {23, 27};
-  Subarray subarray4(array_->array_, Layout::COL_MAJOR, &test::g_helper_stats);
+  Subarray subarray4(array_->array_, Layout::COL_MAJOR, test::g_helper_stats());
   add_ranges({sub4_0, sub4_1}, sizeof(sub4_0), &subarray4);
 
   // Create DenseTiler
-  DenseTiler<int32_t> tiler4(&buffers, &subarray4, &test::g_helper_stats);
+  DenseTiler<int32_t> tiler4(&buffers, &subarray4, test::g_helper_stats());
 
   // Test correctness of initialization
   CHECK(tiler4.tile_num() == 1);
@@ -745,11 +745,11 @@ TEST_CASE_METHOD(
   open_array(array_name, TILEDB_READ);
   int32_t sub1_0[] = {4, 6};
   int32_t sub1_1[] = {18, 22};
-  Subarray subarray1(array_->array_, Layout::ROW_MAJOR, &test::g_helper_stats);
+  Subarray subarray1(array_->array_, Layout::ROW_MAJOR, test::g_helper_stats());
   add_ranges({sub1_0, sub1_1}, sizeof(sub1_0), &subarray1);
 
   // Create DenseTiler
-  DenseTiler<int32_t> tiler1(&buffers, &subarray1, &test::g_helper_stats);
+  DenseTiler<int32_t> tiler1(&buffers, &subarray1, test::g_helper_stats());
 
   // Test correctness of copy plan for tile 0
   auto copy_plan1_0 = tiler1.copy_plan(0);
@@ -800,11 +800,11 @@ TEST_CASE_METHOD(
   open_array(array_name, TILEDB_READ);
   int32_t sub2_0[] = {3, 5};
   int32_t sub2_1[] = {13, 18};
-  Subarray subarray2(array_->array_, Layout::ROW_MAJOR, &test::g_helper_stats);
+  Subarray subarray2(array_->array_, Layout::ROW_MAJOR, test::g_helper_stats());
   add_ranges({sub2_0, sub2_1}, sizeof(sub2_0), &subarray2);
 
   // Create DenseTiler
-  DenseTiler<int32_t> tiler2(&buffers, &subarray2, &test::g_helper_stats);
+  DenseTiler<int32_t> tiler2(&buffers, &subarray2, test::g_helper_stats());
 
   // Test correctness of copy plan for tile 0
   auto copy_plan2_0 = tiler2.copy_plan(0);
@@ -822,11 +822,11 @@ TEST_CASE_METHOD(
   open_array(array_name, TILEDB_READ);
   int32_t sub3_0[] = {4, 6};
   int32_t sub3_1[] = {18, 22};
-  Subarray subarray3(array_->array_, Layout::COL_MAJOR, &test::g_helper_stats);
+  Subarray subarray3(array_->array_, Layout::COL_MAJOR, test::g_helper_stats());
   add_ranges({sub3_0, sub3_1}, sizeof(sub3_0), &subarray3);
 
   // Create DenseTiler
-  DenseTiler<int32_t> tiler3(&buffers, &subarray3, &test::g_helper_stats);
+  DenseTiler<int32_t> tiler3(&buffers, &subarray3, test::g_helper_stats());
 
   // Test correctness of copy plan for tile 0
   auto copy_plan3_0 = tiler3.copy_plan(0);
@@ -881,11 +881,11 @@ TEST_CASE_METHOD(
   open_array(array_name, TILEDB_READ);
   int32_t sub4_0[] = {3, 5};
   int32_t sub4_1[] = {13, 18};
-  Subarray subarray4(array_->array_, Layout::COL_MAJOR, &test::g_helper_stats);
+  Subarray subarray4(array_->array_, Layout::COL_MAJOR, test::g_helper_stats());
   add_ranges({sub4_0, sub4_1}, sizeof(sub4_0), &subarray4);
 
   // Create DenseTiler
-  DenseTiler<int32_t> tiler4(&buffers, &subarray4, &test::g_helper_stats);
+  DenseTiler<int32_t> tiler4(&buffers, &subarray4, test::g_helper_stats());
 
   // Test correctness of copy plan for tile 0
   auto copy_plan4_0 = tiler4.copy_plan(0);
@@ -932,11 +932,11 @@ TEST_CASE_METHOD(
   open_array(array_name, TILEDB_READ);
   int32_t sub1_0[] = {4, 6};
   int32_t sub1_1[] = {18, 22};
-  Subarray subarray1(array_->array_, Layout::ROW_MAJOR, &test::g_helper_stats);
+  Subarray subarray1(array_->array_, Layout::ROW_MAJOR, test::g_helper_stats());
   add_ranges({sub1_0, sub1_1}, sizeof(sub1_0), &subarray1);
 
   // Create DenseTiler
-  DenseTiler<int32_t> tiler1(&buffers, &subarray1, &test::g_helper_stats);
+  DenseTiler<int32_t> tiler1(&buffers, &subarray1, test::g_helper_stats());
 
   // Test correctness of copy plan for tile 0
   auto copy_plan1_0 = tiler1.copy_plan(0);
@@ -991,11 +991,11 @@ TEST_CASE_METHOD(
   open_array(array_name, TILEDB_READ);
   int32_t sub2_0[] = {3, 5};
   int32_t sub2_1[] = {13, 18};
-  Subarray subarray2(array_->array_, Layout::ROW_MAJOR, &test::g_helper_stats);
+  Subarray subarray2(array_->array_, Layout::ROW_MAJOR, test::g_helper_stats());
   add_ranges({sub2_0, sub2_1}, sizeof(sub2_0), &subarray2);
 
   // Create DenseTiler
-  DenseTiler<int32_t> tiler2(&buffers, &subarray2, &test::g_helper_stats);
+  DenseTiler<int32_t> tiler2(&buffers, &subarray2, test::g_helper_stats());
 
   // Test correctness of copy plan for tile 0
   auto copy_plan2_0 = tiler2.copy_plan(0);
@@ -1014,11 +1014,11 @@ TEST_CASE_METHOD(
   open_array(array_name, TILEDB_READ);
   int32_t sub3_0[] = {4, 6};
   int32_t sub3_1[] = {18, 22};
-  Subarray subarray3(array_->array_, Layout::COL_MAJOR, &test::g_helper_stats);
+  Subarray subarray3(array_->array_, Layout::COL_MAJOR, test::g_helper_stats());
   add_ranges({sub3_0, sub3_1}, sizeof(sub3_0), &subarray3);
 
   // Create DenseTiler
-  DenseTiler<int32_t> tiler3(&buffers, &subarray3, &test::g_helper_stats);
+  DenseTiler<int32_t> tiler3(&buffers, &subarray3, test::g_helper_stats());
 
   // Test correctness of copy plan for tile 0
   auto copy_plan3_0 = tiler3.copy_plan(0);
@@ -1069,11 +1069,11 @@ TEST_CASE_METHOD(
   open_array(array_name, TILEDB_READ);
   int32_t sub4_0[] = {3, 5};
   int32_t sub4_1[] = {13, 18};
-  Subarray subarray4(array_->array_, Layout::COL_MAJOR, &test::g_helper_stats);
+  Subarray subarray4(array_->array_, Layout::COL_MAJOR, test::g_helper_stats());
   add_ranges({sub4_0, sub4_1}, sizeof(sub4_0), &subarray4);
 
   // Create DenseTiler
-  DenseTiler<int32_t> tiler4(&buffers, &subarray4, &test::g_helper_stats);
+  DenseTiler<int32_t> tiler4(&buffers, &subarray4, test::g_helper_stats());
 
   // Test correctness of copy plan for tile 0
   auto copy_plan4_0 = tiler4.copy_plan(0);
@@ -1119,11 +1119,11 @@ TEST_CASE_METHOD(
   open_array(array_name, TILEDB_READ);
   int32_t sub1_0[] = {4, 9};
   int32_t sub1_1[] = {11, 20};
-  Subarray subarray1(array_->array_, Layout::ROW_MAJOR, &test::g_helper_stats);
+  Subarray subarray1(array_->array_, Layout::ROW_MAJOR, test::g_helper_stats());
   add_ranges({sub1_0, sub1_1}, sizeof(sub1_0), &subarray1);
 
   // Create DenseTiler
-  DenseTiler<int32_t> tiler1(&buffers, &subarray1, &test::g_helper_stats);
+  DenseTiler<int32_t> tiler1(&buffers, &subarray1, test::g_helper_stats());
 
   // Test correctness of copy plan for tile 0
   auto copy_plan1_0 = tiler1.copy_plan(0);
@@ -1180,11 +1180,11 @@ TEST_CASE_METHOD(
   open_array(array_name, TILEDB_READ);
   int32_t sub1_0[] = {1, 5};
   int32_t sub1_1[] = {8, 12};
-  Subarray subarray1(array_->array_, Layout::COL_MAJOR, &test::g_helper_stats);
+  Subarray subarray1(array_->array_, Layout::COL_MAJOR, test::g_helper_stats());
   add_ranges({sub1_0, sub1_1}, sizeof(sub1_0), &subarray1);
 
   // Create DenseTiler
-  DenseTiler<int32_t> tiler1(&buffers, &subarray1, &test::g_helper_stats);
+  DenseTiler<int32_t> tiler1(&buffers, &subarray1, test::g_helper_stats());
 
   // Test correctness of copy plan for tile 0
   auto copy_plan1_0 = tiler1.copy_plan(0);
@@ -1242,11 +1242,11 @@ TEST_CASE_METHOD(
   open_array(array_name, TILEDB_READ);
   int32_t sub1_0[] = {4, 6};
   int32_t sub1_1[] = {18, 22};
-  Subarray subarray1(array_->array_, Layout::ROW_MAJOR, &test::g_helper_stats);
+  Subarray subarray1(array_->array_, Layout::ROW_MAJOR, test::g_helper_stats());
   add_ranges({sub1_0, sub1_1}, sizeof(sub1_0), &subarray1);
 
   // Create DenseTiler
-  DenseTiler<int32_t> tiler1(&buffers, &subarray1, &test::g_helper_stats);
+  DenseTiler<int32_t> tiler1(&buffers, &subarray1, test::g_helper_stats());
 
   // Test get tile 0
   Tile tile1_0;
@@ -1305,14 +1305,14 @@ TEST_CASE_METHOD(
   open_array(array_name, TILEDB_READ);
   int32_t sub2_0[] = {3, 5};
   int32_t sub2_1[] = {13, 18};
-  Subarray subarray2(array_->array_, Layout::ROW_MAJOR, &test::g_helper_stats);
+  Subarray subarray2(array_->array_, Layout::ROW_MAJOR, test::g_helper_stats());
   add_ranges({sub2_0, sub2_1}, sizeof(sub2_0), &subarray2);
 
   // Create DenseTiler
   buff_a = {1, 2, 3, 4, 5, 6, 7, 8, 9, 10, 11, 12, 13, 14, 15, 16, 17, 18};
   buff_a_size = sizeof(buff_a);
   buffers["a"] = QueryBuffer(&buff_a[0], nullptr, &buff_a_size, nullptr);
-  DenseTiler<int32_t> tiler2(&buffers, &subarray2, &test::g_helper_stats);
+  DenseTiler<int32_t> tiler2(&buffers, &subarray2, test::g_helper_stats());
 
   // Test get tile 0
   Tile tile2_0;
@@ -1339,14 +1339,14 @@ TEST_CASE_METHOD(
   open_array(array_name, TILEDB_READ);
   int32_t sub3_0[] = {4, 6};
   int32_t sub3_1[] = {18, 22};
-  Subarray subarray3(array_->array_, Layout::COL_MAJOR, &test::g_helper_stats);
+  Subarray subarray3(array_->array_, Layout::COL_MAJOR, test::g_helper_stats());
   add_ranges({sub3_0, sub3_1}, sizeof(sub3_0), &subarray3);
 
   // Create DenseTiler
   buff_a = {1, 6, 11, 2, 7, 12, 3, 8, 13, 4, 9, 14, 5, 10, 15};
   buff_a_size = sizeof(buff_a);
   buffers["a"] = QueryBuffer(&buff_a[0], nullptr, &buff_a_size, nullptr);
-  DenseTiler<int32_t> tiler3(&buffers, &subarray3, &test::g_helper_stats);
+  DenseTiler<int32_t> tiler3(&buffers, &subarray3, test::g_helper_stats());
 
   // Test get tile 0
   Tile tile3_0;
@@ -1405,14 +1405,14 @@ TEST_CASE_METHOD(
   open_array(array_name, TILEDB_READ);
   int32_t sub4_0[] = {3, 5};
   int32_t sub4_1[] = {13, 18};
-  Subarray subarray4(array_->array_, Layout::COL_MAJOR, &test::g_helper_stats);
+  Subarray subarray4(array_->array_, Layout::COL_MAJOR, test::g_helper_stats());
   add_ranges({sub4_0, sub4_1}, sizeof(sub4_0), &subarray4);
 
   // Create DenseTiler
   buff_a = {1, 7, 13, 2, 8, 14, 3, 9, 15, 4, 10, 16, 5, 11, 17, 6, 12, 18};
   buff_a_size = sizeof(buff_a);
   buffers["a"] = QueryBuffer(&buff_a[0], nullptr, &buff_a_size, nullptr);
-  DenseTiler<int32_t> tiler4(&buffers, &subarray4, &test::g_helper_stats);
+  DenseTiler<int32_t> tiler4(&buffers, &subarray4, test::g_helper_stats());
 
   // Test get tile 0
   Tile tile4_0;
@@ -1468,11 +1468,11 @@ TEST_CASE_METHOD(
   open_array(array_name, TILEDB_READ);
   int32_t sub1_0[] = {4, 6};
   int32_t sub1_1[] = {18, 22};
-  Subarray subarray1(array_->array_, Layout::ROW_MAJOR, &test::g_helper_stats);
+  Subarray subarray1(array_->array_, Layout::ROW_MAJOR, test::g_helper_stats());
   add_ranges({sub1_0, sub1_1}, sizeof(sub1_0), &subarray1);
 
   // Create DenseTiler
-  DenseTiler<int32_t> tiler1(&buffers, &subarray1, &test::g_helper_stats);
+  DenseTiler<int32_t> tiler1(&buffers, &subarray1, test::g_helper_stats());
 
   // Test get tile 0
   Tile tile1_0;
@@ -1542,14 +1542,14 @@ TEST_CASE_METHOD(
   open_array(array_name, TILEDB_READ);
   int32_t sub2_0[] = {3, 5};
   int32_t sub2_1[] = {13, 18};
-  Subarray subarray2(array_->array_, Layout::ROW_MAJOR, &test::g_helper_stats);
+  Subarray subarray2(array_->array_, Layout::ROW_MAJOR, test::g_helper_stats());
   add_ranges({sub2_0, sub2_1}, sizeof(sub2_0), &subarray2);
 
   // Create DenseTiler
   buff_a = {1, 2, 3, 4, 5, 6, 7, 8, 9, 10, 11, 12, 13, 14, 15, 16, 17, 18};
   buff_a_size = sizeof(buff_a);
   buffers["a"] = QueryBuffer(&buff_a[0], nullptr, &buff_a_size, nullptr);
-  DenseTiler<int32_t> tiler2(&buffers, &subarray2, &test::g_helper_stats);
+  DenseTiler<int32_t> tiler2(&buffers, &subarray2, test::g_helper_stats());
 
   // Test get tile 0
   Tile tile2_0;
@@ -1594,14 +1594,14 @@ TEST_CASE_METHOD(
   open_array(array_name, TILEDB_READ);
   int32_t sub3_0[] = {4, 6};
   int32_t sub3_1[] = {18, 22};
-  Subarray subarray3(array_->array_, Layout::COL_MAJOR, &test::g_helper_stats);
+  Subarray subarray3(array_->array_, Layout::COL_MAJOR, test::g_helper_stats());
   add_ranges({sub3_0, sub3_1}, sizeof(sub3_0), &subarray3);
 
   // Create DenseTiler
   buff_a = {1, 6, 11, 2, 7, 12, 3, 8, 13, 4, 9, 14, 5, 10, 15};
   buff_a_size = sizeof(buff_a);
   buffers["a"] = QueryBuffer(&buff_a[0], nullptr, &buff_a_size, nullptr);
-  DenseTiler<int32_t> tiler3(&buffers, &subarray3, &test::g_helper_stats);
+  DenseTiler<int32_t> tiler3(&buffers, &subarray3, test::g_helper_stats());
 
   // Test get tile 0
   Tile tile3_0;
@@ -1671,14 +1671,14 @@ TEST_CASE_METHOD(
   open_array(array_name, TILEDB_READ);
   int32_t sub4_0[] = {3, 5};
   int32_t sub4_1[] = {13, 18};
-  Subarray subarray4(array_->array_, Layout::COL_MAJOR, &test::g_helper_stats);
+  Subarray subarray4(array_->array_, Layout::COL_MAJOR, test::g_helper_stats());
   add_ranges({sub4_0, sub4_1}, sizeof(sub4_0), &subarray4);
 
   // Create DenseTiler
   buff_a = {1, 7, 13, 2, 8, 14, 3, 9, 15, 4, 10, 16, 5, 11, 17, 6, 12, 18};
   buff_a_size = sizeof(buff_a);
   buffers["a"] = QueryBuffer(&buff_a[0], nullptr, &buff_a_size, nullptr);
-  DenseTiler<int32_t> tiler4(&buffers, &subarray4, &test::g_helper_stats);
+  DenseTiler<int32_t> tiler4(&buffers, &subarray4, test::g_helper_stats());
 
   // Test get tile 0
   Tile tile4_0;
@@ -1755,11 +1755,11 @@ TEST_CASE_METHOD(
   open_array(array_name, TILEDB_READ);
   int32_t sub1_0[] = {4, 9};
   int32_t sub1_1[] = {11, 20};
-  Subarray subarray1(array_->array_, Layout::ROW_MAJOR, &test::g_helper_stats);
+  Subarray subarray1(array_->array_, Layout::ROW_MAJOR, test::g_helper_stats());
   add_ranges({sub1_0, sub1_1}, sizeof(sub1_0), &subarray1);
 
   // Create DenseTiler
-  DenseTiler<int32_t> tiler1(&buffers, &subarray1, &test::g_helper_stats);
+  DenseTiler<int32_t> tiler1(&buffers, &subarray1, test::g_helper_stats());
 
   // Test get tile 0
   Tile tile1_0;
@@ -1816,11 +1816,11 @@ TEST_CASE_METHOD(
   open_array(array_name, TILEDB_READ);
   int32_t sub1_0[] = {1, 5};
   int32_t sub1_1[] = {8, 12};
-  Subarray subarray1(array_->array_, Layout::COL_MAJOR, &test::g_helper_stats);
+  Subarray subarray1(array_->array_, Layout::COL_MAJOR, test::g_helper_stats());
   add_ranges({sub1_0, sub1_1}, sizeof(sub1_0), &subarray1);
 
   // Create DenseTiler
-  DenseTiler<int32_t> tiler1(&buffers, &subarray1, &test::g_helper_stats);
+  DenseTiler<int32_t> tiler1(&buffers, &subarray1, test::g_helper_stats());
 
   // Test get tile 0
   Tile tile1_0;
@@ -1871,11 +1871,11 @@ TEST_CASE_METHOD(
   // Create subarray
   open_array(array_name, TILEDB_READ);
   int32_t sub1[] = {3, 6};
-  Subarray subarray1(array_->array_, Layout::ROW_MAJOR, &test::g_helper_stats);
+  Subarray subarray1(array_->array_, Layout::ROW_MAJOR, test::g_helper_stats());
   add_ranges({sub1}, sizeof(sub1), &subarray1);
 
   // Create DenseTiler
-  DenseTiler<int32_t> tiler1(&buffers, &subarray1, &test::g_helper_stats);
+  DenseTiler<int32_t> tiler1(&buffers, &subarray1, test::g_helper_stats());
 
   // Test get tile 0
   Tile tile1_0;
@@ -1903,11 +1903,11 @@ TEST_CASE_METHOD(
   close_array();
   open_array(array_name, TILEDB_READ);
   int32_t sub2[] = {7, 10};
-  Subarray subarray2(array_->array_, Layout::ROW_MAJOR, &test::g_helper_stats);
+  Subarray subarray2(array_->array_, Layout::ROW_MAJOR, test::g_helper_stats());
   add_ranges({sub2}, sizeof(sub2), &subarray2);
 
   // Create DenseTiler
-  DenseTiler<int32_t> tiler2(&buffers, &subarray2, &test::g_helper_stats);
+  DenseTiler<int32_t> tiler2(&buffers, &subarray2, test::g_helper_stats());
 
   // Test get tile 0
   Tile tile2;
@@ -1920,11 +1920,11 @@ TEST_CASE_METHOD(
   close_array();
   open_array(array_name, TILEDB_READ);
   int32_t sub3[] = {7, 10};
-  Subarray subarray3(array_->array_, Layout::COL_MAJOR, &test::g_helper_stats);
+  Subarray subarray3(array_->array_, Layout::COL_MAJOR, test::g_helper_stats());
   add_ranges({sub3}, sizeof(sub3), &subarray3);
 
   // Create DenseTiler
-  DenseTiler<int32_t> tiler3(&buffers, &subarray3, &test::g_helper_stats);
+  DenseTiler<int32_t> tiler3(&buffers, &subarray3, test::g_helper_stats());
 
   // Test get tile 0
   Tile tile3;
@@ -1965,11 +1965,11 @@ TEST_CASE_METHOD(
   // Create subarray
   open_array(array_name, TILEDB_READ);
   int32_t sub1[] = {3, 6};
-  Subarray subarray1(array_->array_, Layout::ROW_MAJOR, &test::g_helper_stats);
+  Subarray subarray1(array_->array_, Layout::ROW_MAJOR, test::g_helper_stats());
   add_ranges({sub1}, sizeof(sub1), &subarray1);
 
   // Create DenseTiler
-  DenseTiler<int32_t> tiler1(&buffers, &subarray1, &test::g_helper_stats);
+  DenseTiler<int32_t> tiler1(&buffers, &subarray1, test::g_helper_stats());
 
   // Test get tile 0
   Tile tile1_0_a1;
@@ -2001,11 +2001,11 @@ TEST_CASE_METHOD(
   close_array();
   open_array(array_name, TILEDB_READ);
   int32_t sub2[] = {7, 10};
-  Subarray subarray2(array_->array_, Layout::ROW_MAJOR, &test::g_helper_stats);
+  Subarray subarray2(array_->array_, Layout::ROW_MAJOR, test::g_helper_stats());
   add_ranges({sub2}, sizeof(sub2), &subarray2);
 
   // Create DenseTiler
-  DenseTiler<int32_t> tiler2(&buffers, &subarray2, &test::g_helper_stats);
+  DenseTiler<int32_t> tiler2(&buffers, &subarray2, test::g_helper_stats());
 
   // Test get tile 0
   Tile tile2_a1;
@@ -2021,11 +2021,11 @@ TEST_CASE_METHOD(
   close_array();
   open_array(array_name, TILEDB_READ);
   int32_t sub3[] = {7, 10};
-  Subarray subarray3(array_->array_, Layout::COL_MAJOR, &test::g_helper_stats);
+  Subarray subarray3(array_->array_, Layout::COL_MAJOR, test::g_helper_stats());
   add_ranges({sub3}, sizeof(sub3), &subarray3);
 
   // Create DenseTiler
-  DenseTiler<int32_t> tiler3(&buffers, &subarray3, &test::g_helper_stats);
+  DenseTiler<int32_t> tiler3(&buffers, &subarray3, test::g_helper_stats());
 
   // Test get tile 0
   Tile tile3_a1;
@@ -2078,11 +2078,11 @@ TEST_CASE_METHOD(
   open_array(array_name, TILEDB_READ);
   int32_t sub1_0[] = {4, 6};
   int32_t sub1_1[] = {18, 22};
-  Subarray subarray1(array_->array_, Layout::ROW_MAJOR, &test::g_helper_stats);
+  Subarray subarray1(array_->array_, Layout::ROW_MAJOR, test::g_helper_stats());
   add_ranges({sub1_0, sub1_1}, sizeof(sub1_0), &subarray1);
 
   // Create DenseTiler
-  DenseTiler<int32_t> tiler1(&buffers, &subarray1, &test::g_helper_stats);
+  DenseTiler<int32_t> tiler1(&buffers, &subarray1, test::g_helper_stats());
 
   // Test get tile 0
   Tile tile1_0;
@@ -2144,7 +2144,7 @@ TEST_CASE_METHOD(
   open_array(array_name, TILEDB_READ);
   int32_t sub2_0[] = {3, 5};
   int32_t sub2_1[] = {13, 18};
-  Subarray subarray2(array_->array_, Layout::ROW_MAJOR, &test::g_helper_stats);
+  Subarray subarray2(array_->array_, Layout::ROW_MAJOR, test::g_helper_stats());
   add_ranges({sub2_0, sub2_1}, sizeof(sub2_0), &subarray2);
 
   // Create DenseTiler
@@ -2158,7 +2158,7 @@ TEST_CASE_METHOD(
       &buff_a_size,
       nullptr,
       ValidityVector(&buff_a_n[0], &buff_a_n_size));
-  DenseTiler<int32_t> tiler2(&buffers, &subarray2, &test::g_helper_stats);
+  DenseTiler<int32_t> tiler2(&buffers, &subarray2, test::g_helper_stats());
 
   // Test get tile 0
   Tile tile2_0;
@@ -2197,7 +2197,7 @@ TEST_CASE_METHOD(
   open_array(array_name, TILEDB_READ);
   int32_t sub3_0[] = {4, 6};
   int32_t sub3_1[] = {18, 22};
-  Subarray subarray3(array_->array_, Layout::COL_MAJOR, &test::g_helper_stats);
+  Subarray subarray3(array_->array_, Layout::COL_MAJOR, test::g_helper_stats());
   add_ranges({sub3_0, sub3_1}, sizeof(sub3_0), &subarray3);
 
   // Create DenseTiler
@@ -2211,7 +2211,7 @@ TEST_CASE_METHOD(
       &buff_a_size,
       nullptr,
       ValidityVector(&buff_a_n[0], &buff_a_n_size));
-  DenseTiler<int32_t> tiler3(&buffers, &subarray3, &test::g_helper_stats);
+  DenseTiler<int32_t> tiler3(&buffers, &subarray3, test::g_helper_stats());
 
   // Test get tile 0
   Tile tile3_0;
@@ -2273,7 +2273,7 @@ TEST_CASE_METHOD(
   open_array(array_name, TILEDB_READ);
   int32_t sub4_0[] = {3, 5};
   int32_t sub4_1[] = {13, 18};
-  Subarray subarray4(array_->array_, Layout::COL_MAJOR, &test::g_helper_stats);
+  Subarray subarray4(array_->array_, Layout::COL_MAJOR, test::g_helper_stats());
   add_ranges({sub4_0, sub4_1}, sizeof(sub4_0), &subarray4);
 
   // Create DenseTiler
@@ -2287,7 +2287,7 @@ TEST_CASE_METHOD(
       &buff_a_size,
       nullptr,
       ValidityVector(&buff_a_n[0], &buff_a_n_size));
-  DenseTiler<int32_t> tiler4(&buffers, &subarray4, &test::g_helper_stats);
+  DenseTiler<int32_t> tiler4(&buffers, &subarray4, test::g_helper_stats());
 
   // Test get tile 0
   Tile tile4_0;
@@ -2361,11 +2361,11 @@ TEST_CASE_METHOD(
   open_array(array_name, TILEDB_READ);
   int32_t sub1_0[] = {4, 6};
   int32_t sub1_1[] = {18, 22};
-  Subarray subarray1(array_->array_, Layout::ROW_MAJOR, &test::g_helper_stats);
+  Subarray subarray1(array_->array_, Layout::ROW_MAJOR, test::g_helper_stats());
   add_ranges({sub1_0, sub1_1}, sizeof(sub1_0), &subarray1);
 
   // Create DenseTiler
-  DenseTiler<int32_t> tiler1(&buffers, &subarray1, &test::g_helper_stats);
+  DenseTiler<int32_t> tiler1(&buffers, &subarray1, test::g_helper_stats());
 
   // Test get tile 0
   Tile tile1_0_off, tile1_0_val;
@@ -2497,7 +2497,7 @@ TEST_CASE_METHOD(
   open_array(array_name, TILEDB_READ);
   int32_t sub2_0[] = {3, 5};
   int32_t sub2_1[] = {13, 18};
-  Subarray subarray2(array_->array_, Layout::ROW_MAJOR, &test::g_helper_stats);
+  Subarray subarray2(array_->array_, Layout::ROW_MAJOR, test::g_helper_stats());
   add_ranges({sub2_0, sub2_1}, sizeof(sub2_0), &subarray2);
 
   // Create DenseTiler
@@ -2509,7 +2509,7 @@ TEST_CASE_METHOD(
   buff_a_val_size = buff_a_val.size();
   buffers["a"] = QueryBuffer(
       &buff_a_off[0], &buff_a_val[0], &buff_a_off_size, &buff_a_val_size);
-  DenseTiler<int32_t> tiler2(&buffers, &subarray2, &test::g_helper_stats);
+  DenseTiler<int32_t> tiler2(&buffers, &subarray2, test::g_helper_stats());
 
   // Test get tile 0
   Tile tile2_0_off, tile2_0_val;
@@ -2657,11 +2657,11 @@ TEST_CASE_METHOD(
   open_array(array_name, TILEDB_READ);
   int32_t sub1_0[] = {4, 6};
   int32_t sub1_1[] = {18, 22};
-  Subarray subarray1(array_->array_, Layout::ROW_MAJOR, &test::g_helper_stats);
+  Subarray subarray1(array_->array_, Layout::ROW_MAJOR, test::g_helper_stats());
   add_ranges({sub1_0, sub1_1}, sizeof(sub1_0), &subarray1);
 
   // Create DenseTiler
-  DenseTiler<int32_t> tiler1(&buffers, &subarray1, &test::g_helper_stats);
+  DenseTiler<int32_t> tiler1(&buffers, &subarray1, test::g_helper_stats());
 
   // Test get tile 0
   Tile tile1_0_off, tile1_0_val;
@@ -2793,7 +2793,7 @@ TEST_CASE_METHOD(
   open_array(array_name, TILEDB_READ);
   int32_t sub2_0[] = {3, 5};
   int32_t sub2_1[] = {13, 18};
-  Subarray subarray2(array_->array_, Layout::ROW_MAJOR, &test::g_helper_stats);
+  Subarray subarray2(array_->array_, Layout::ROW_MAJOR, test::g_helper_stats());
   add_ranges({sub2_0, sub2_1}, sizeof(sub2_0), &subarray2);
 
   // Create DenseTiler
@@ -2824,7 +2824,7 @@ TEST_CASE_METHOD(
   buff_a_val_size = buff_a_val.size() * sizeof(int32_t);
   buffers["a"] = QueryBuffer(
       &buff_a_off[0], &buff_a_val[0], &buff_a_off_size, &buff_a_val_size);
-  DenseTiler<int32_t> tiler2(&buffers, &subarray2, &test::g_helper_stats);
+  DenseTiler<int32_t> tiler2(&buffers, &subarray2, test::g_helper_stats());
 
   // Test get tile 0
   Tile tile2_0_off, tile2_0_val;
@@ -2973,12 +2973,12 @@ TEST_CASE_METHOD(
   open_array(array_name, TILEDB_READ);
   int32_t sub1_0[] = {4, 6};
   int32_t sub1_1[] = {18, 22};
-  Subarray subarray1(array_->array_, Layout::ROW_MAJOR, &test::g_helper_stats);
+  Subarray subarray1(array_->array_, Layout::ROW_MAJOR, test::g_helper_stats());
   add_ranges({sub1_0, sub1_1}, sizeof(sub1_0), &subarray1);
 
   // Create DenseTiler
   DenseTiler<int32_t> tiler1(
-      &buffers, &subarray1, &test::g_helper_stats, "bytes", 64, true);
+      &buffers, &subarray1, test::g_helper_stats(), "bytes", 64, true);
 
   // Test get tile 0
   Tile tile1_0_off, tile1_0_val;
@@ -3110,7 +3110,7 @@ TEST_CASE_METHOD(
   open_array(array_name, TILEDB_READ);
   int32_t sub2_0[] = {3, 5};
   int32_t sub2_1[] = {13, 18};
-  Subarray subarray2(array_->array_, Layout::ROW_MAJOR, &test::g_helper_stats);
+  Subarray subarray2(array_->array_, Layout::ROW_MAJOR, test::g_helper_stats());
   add_ranges({sub2_0, sub2_1}, sizeof(sub2_0), &subarray2);
 
   // Create DenseTiler
@@ -3143,7 +3143,7 @@ TEST_CASE_METHOD(
   buffers["a"] = QueryBuffer(
       &buff_a_off[0], &buff_a_val[0], &buff_a_off_size, &buff_a_val_size);
   DenseTiler<int32_t> tiler2(
-      &buffers, &subarray2, &test::g_helper_stats, "bytes", 64, true);
+      &buffers, &subarray2, test::g_helper_stats(), "bytes", 64, true);
 
   // Test get tile 0
   Tile tile2_0_off, tile2_0_val;
@@ -3278,12 +3278,12 @@ TEST_CASE_METHOD(
   open_array(array_name, TILEDB_READ);
   int32_t sub1_0[] = {4, 6};
   int32_t sub1_1[] = {18, 22};
-  Subarray subarray1(array_->array_, Layout::ROW_MAJOR, &test::g_helper_stats);
+  Subarray subarray1(array_->array_, Layout::ROW_MAJOR, test::g_helper_stats());
   add_ranges({sub1_0, sub1_1}, sizeof(sub1_0), &subarray1);
 
   // Create DenseTiler
   DenseTiler<int32_t> tiler1(
-      &buffers, &subarray1, &test::g_helper_stats, "elements", 64, false);
+      &buffers, &subarray1, test::g_helper_stats(), "elements", 64, false);
 
   // Test get tile 0
   Tile tile1_0_off, tile1_0_val;
@@ -3415,7 +3415,7 @@ TEST_CASE_METHOD(
   open_array(array_name, TILEDB_READ);
   int32_t sub2_0[] = {3, 5};
   int32_t sub2_1[] = {13, 18};
-  Subarray subarray2(array_->array_, Layout::ROW_MAJOR, &test::g_helper_stats);
+  Subarray subarray2(array_->array_, Layout::ROW_MAJOR, test::g_helper_stats());
   add_ranges({sub2_0, sub2_1}, sizeof(sub2_0), &subarray2);
 
   // Create DenseTiler
@@ -3431,7 +3431,7 @@ TEST_CASE_METHOD(
   buffers["a"] = QueryBuffer(
       &buff_a_off[0], &buff_a_val[0], &buff_a_off_size, &buff_a_val_size);
   DenseTiler<int32_t> tiler2(
-      &buffers, &subarray2, &test::g_helper_stats, "elements", 64, false);
+      &buffers, &subarray2, test::g_helper_stats(), "elements", 64, false);
 
   // Test get tile 0
   Tile tile2_0_off, tile2_0_val;
@@ -3566,12 +3566,12 @@ TEST_CASE_METHOD(
   open_array(array_name, TILEDB_READ);
   int32_t sub1_0[] = {4, 6};
   int32_t sub1_1[] = {18, 22};
-  Subarray subarray1(array_->array_, Layout::ROW_MAJOR, &test::g_helper_stats);
+  Subarray subarray1(array_->array_, Layout::ROW_MAJOR, test::g_helper_stats());
   add_ranges({sub1_0, sub1_1}, sizeof(sub1_0), &subarray1);
 
   // Create DenseTiler
   DenseTiler<int32_t> tiler1(
-      &buffers, &subarray1, &test::g_helper_stats, "elements", 32, false);
+      &buffers, &subarray1, test::g_helper_stats(), "elements", 32, false);
 
   // Test get tile 0
   Tile tile1_0_off, tile1_0_val;
@@ -3703,7 +3703,7 @@ TEST_CASE_METHOD(
   open_array(array_name, TILEDB_READ);
   int32_t sub2_0[] = {3, 5};
   int32_t sub2_1[] = {13, 18};
-  Subarray subarray2(array_->array_, Layout::ROW_MAJOR, &test::g_helper_stats);
+  Subarray subarray2(array_->array_, Layout::ROW_MAJOR, test::g_helper_stats());
   add_ranges({sub2_0, sub2_1}, sizeof(sub2_0), &subarray2);
 
   // Create DenseTiler
@@ -3719,7 +3719,7 @@ TEST_CASE_METHOD(
   buffers["a"] = QueryBuffer(
       &buff_a_off[0], &buff_a_val[0], &buff_a_off_size, &buff_a_val_size);
   DenseTiler<int32_t> tiler2(
-      &buffers, &subarray2, &test::g_helper_stats, "elements", 32, false);
+      &buffers, &subarray2, test::g_helper_stats(), "elements", 32, false);
 
   // Test get tile 0
   Tile tile2_0_off, tile2_0_val;

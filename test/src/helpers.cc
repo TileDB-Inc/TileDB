@@ -44,6 +44,8 @@ std::mutex catch2_macro_mutex;
 namespace tiledb {
 namespace test {
 
+using tiledb::sm::stats::Stats;
+
 // Command line arguments.
 extern std::string g_vfs;
 
@@ -104,6 +106,11 @@ bool use_refactored_sparse_unordered_with_dups_reader() {
   tiledb_config_free(&cfg);
 
   return use_refactored_readers;
+}
+
+tdb_shared_ptr<Stats> g_helper_stats(void) {
+  static tdb_shared_ptr<Stats> g_helper_stats = tdb_make_shared(Stats, "test");
+  return g_helper_stats;
 }
 
 template <class T>
@@ -560,7 +567,7 @@ void create_subarray(
     tiledb::sm::Layout layout,
     tiledb::sm::Subarray* subarray,
     bool coalesce_ranges) {
-  tiledb::sm::Subarray ret(array, layout, &g_helper_stats, coalesce_ranges);
+  tiledb::sm::Subarray ret(array, layout, g_helper_stats(), coalesce_ranges);
 
   auto dim_num = (unsigned)ranges.size();
   for (unsigned d = 0; d < dim_num; ++d) {

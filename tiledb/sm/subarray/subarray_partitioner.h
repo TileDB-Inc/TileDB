@@ -169,7 +169,7 @@ class SubarrayPartitioner {
       uint64_t memory_budget_var,
       uint64_t memory_budget_validity,
       ThreadPool* compute_tp,
-      stats::Stats* parent_stats);
+      tdb_shared_ptr<stats::Stats> parent_stats);
 
   /** Destructor. */
   ~SubarrayPartitioner();
@@ -330,7 +330,7 @@ class SubarrayPartitioner {
   Subarray* subarray();
 
   /** Returns `stats_`. */
-  stats::Stats* stats() const;
+  tdb_shared_ptr<stats::Stats> stats() const;
 
  private:
   /* ********************************* */
@@ -338,7 +338,7 @@ class SubarrayPartitioner {
   /* ********************************* */
 
   /** The class stats. */
-  stats::Stats* stats_;
+  tdb_shared_ptr<stats::Stats> stats_;
 
   /** The config. */
   const Config* config_;

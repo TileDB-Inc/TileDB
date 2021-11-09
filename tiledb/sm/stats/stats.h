@@ -33,6 +33,7 @@
 #ifndef TILEDB_STATS_H
 #define TILEDB_STATS_H
 
+#include "tiledb/common/heap_memory.h"
 #include "tiledb/common/scoped_executor.h"
 
 #include <inttypes.h>
@@ -66,7 +67,7 @@ class Stats {
    * @param prefix The stat name prefix.
    * @param parent If non-null, stats will be added to this instance.
    */
-  Stats(const std::string& prefix);
+  Stats(const std::string& prefix, tdb_shared_ptr<Stats> parent = nullptr);
 
   /** Destructor. */
   ~Stats() = default;
@@ -103,10 +104,16 @@ class Stats {
   std::string dump(uint64_t indent_size, uint64_t num_indents) const;
 
   /** Returns the parent that manages this instance. */
-  Stats* parent();
+  tdb_shared_ptr<Stats> parent();
 
-  /** Creates a child instance, managed by this instance. */
-  Stats* create_child(const std::string& prefix);
+  /**
+   *  Creates a child instance, managed by this instance.
+   *  TODO: when we fall back to standard shared_ptr instead of tdb_shared_ptr
+   * we can use std::enable_shared_from_this from C++11 instead of passing the
+   * parent shared pointer around
+   */
+  tdb_shared_ptr<Stats> create_child(
+      const std::string& prefix, tdb_shared_ptr<Stats> parent);
 
   /** Return pointer to timers map, used for serialization only. */
   std::unordered_map<std::string, double>* timers();
@@ -146,10 +153,10 @@ class Stats {
    * A pointer to the parent instance that manages this
    * lifetime of this instance.
    */
-  Stats* parent_;
+  tdb_shared_ptr<Stats> parent_;
 
   /** All child instances created with the `create_child` API. */
-  std::list<Stats> children_;
+  std::list<tdb_shared_ptr<Stats>> children_;
 
   /* ****************************** */
   /*       PRIVATE FUNCTIONS        */

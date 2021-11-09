@@ -142,7 +142,7 @@ class Curl {
    * @return Status
    */
   Status post_data(
-      stats::Stats* stats,
+      tdb_shared_ptr<stats::Stats> stats,
       const std::string& url,
       SerializationType serialization_type,
       const BufferList* data,
@@ -178,7 +178,7 @@ class Curl {
    * @return Status
    */
   Status post_data(
-      stats::Stats* stats,
+      tdb_shared_ptr<stats::Stats> stats,
       const std::string& url,
       SerializationType serialization_type,
       const BufferList* data,
@@ -212,7 +212,7 @@ class Curl {
    * @return Status
    */
   Status get_data(
-      stats::Stats* stats,
+      tdb_shared_ptr<stats::Stats> stats,
       const std::string& url,
       SerializationType serialization_type,
       Buffer* returned_data,
@@ -230,7 +230,7 @@ class Curl {
    * @return Status
    */
   Status delete_data(
-      stats::Stats* stats,
+      tdb_shared_ptr<stats::Stats> stats,
       const std::string& url,
       SerializationType serialization_type,
       Buffer* returned_data,
@@ -294,7 +294,7 @@ class Curl {
    * @return Status
    */
   Status make_curl_request(
-      stats::Stats* const stats,
+      tdb_shared_ptr<stats::Stats> const stats,
       const char* url,
       CURLcode* curl_code,
       Buffer* returned_data) const;
@@ -310,7 +310,7 @@ class Curl {
    * @return Status
    */
   Status make_curl_request(
-      stats::Stats* stats,
+      tdb_shared_ptr<stats::Stats> stats,
       const char* url,
       CURLcode* curl_code,
       PostResponseCb&& write_cb) const;
@@ -326,7 +326,7 @@ class Curl {
    * @return Status
    */
   Status make_curl_request_common(
-      stats::Stats* stats,
+      tdb_shared_ptr<stats::Stats> stats,
       const char* url,
       CURLcode* curl_code,
       size_t (*write_cb)(void*, size_t, size_t, void*),

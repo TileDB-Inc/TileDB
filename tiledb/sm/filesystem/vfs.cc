@@ -914,12 +914,12 @@ Status VFS::is_bucket(const URI& uri, bool* is_bucket) const {
 }
 
 Status VFS::init(
-    stats::Stats* const parent_stats,
+    tdb_shared_ptr<stats::Stats> const parent_stats,
     ThreadPool* const compute_tp,
     ThreadPool* const io_tp,
     const Config* const ctx_config,
     const Config* const vfs_config) {
-  stats_ = parent_stats->create_child("VFS");
+  stats_ = parent_stats->create_child("VFS", parent_stats);
 
   assert(compute_tp);
   assert(io_tp);

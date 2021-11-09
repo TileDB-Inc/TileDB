@@ -146,7 +146,7 @@ class DenseTiler {
   DenseTiler(
       const std::unordered_map<std::string, QueryBuffer>* buffers,
       const Subarray* subarray,
-      stats::Stats* const parent_stats,
+      tdb_shared_ptr<stats::Stats> const parent_stats,
       const std::string& offsets_format_mode = "bytes",
       uint64_t offsets_bitsize = 64,
       bool offsets_extra_element = false);
@@ -239,7 +239,7 @@ class DenseTiler {
   /* ********************************* */
 
   /** The stats for the dense tiler. */
-  stats::Stats* stats_;
+  tdb_shared_ptr<stats::Stats> stats_;
 
   /** The class logger. */
   tdb_shared_ptr<Logger> logger_;

@@ -852,7 +852,7 @@ class Query {
   QueryType type() const;
 
   /** Returns the internal stats object. */
-  stats::Stats* stats() const;
+  tdb_shared_ptr<stats::Stats> stats() const;
 
   /** Returns the scratch space used for REST requests. */
   tdb_shared_ptr<Buffer> rest_scratch() const;
@@ -905,7 +905,7 @@ class Query {
   tdb_unique_ptr<IQueryStrategy> strategy_;
 
   /** The class stats. */
-  stats::Stats* stats_;
+  tdb_shared_ptr<stats::Stats> stats_;
 
   /** The class logger. */
   tdb_shared_ptr<Logger> logger_;

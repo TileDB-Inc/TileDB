@@ -108,7 +108,7 @@ TEST_CASE_METHOD(
   Subarray subarray;
   QueryCondition condition;
   Reader reader(
-      &g_helper_stats,
+      g_helper_stats(),
       tdb_make_shared(Logger, ""),
       nullptr,
       nullptr,

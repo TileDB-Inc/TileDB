@@ -59,7 +59,9 @@ class RestClient {
 
   /** Initialize the REST client with the given config. */
   Status init(
-      stats::Stats* parent_stats, const Config* config, ThreadPool* compute_tp);
+      tdb_shared_ptr<stats::Stats> parent_stats,
+      const Config* config,
+      ThreadPool* compute_tp);
 
   /** Sets a header that will be attached to all requests. */
   Status set_header(const std::string& name, const std::string& value);
@@ -190,7 +192,7 @@ class RestClient {
   /* ********************************* */
 
   /** The class stats. */
-  stats::Stats* stats_;
+  tdb_shared_ptr<stats::Stats> stats_;
 
   /** The TileDB config options (contains server and auth info). */
   const Config* config_;

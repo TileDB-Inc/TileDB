@@ -65,7 +65,8 @@ Query::Query(StorageManager* storage_manager, Array* array, URI fragment_uri)
     : array_(array)
     , layout_(Layout::ROW_MAJOR)
     , storage_manager_(storage_manager)
-    , stats_(storage_manager_->stats()->create_child("Query"))
+    , stats_(storage_manager_->stats()->create_child(
+          "Query", storage_manager_->stats()))
     , logger_(storage_manager->logger()->clone("Query", ++logger_id_))
     , has_coords_buffer_(false)
     , has_zipped_coords_buffer_(false)
@@ -999,7 +1000,7 @@ Status Query::create_strategy() {
   if (type_ == QueryType::WRITE) {
     strategy_ = tdb_unique_ptr<IQueryStrategy>(tdb_new(
         Writer,
-        stats_->create_child("Writer"),
+        stats_->create_child("Writer", stats_),
         logger_,
         storage_manager_,
         array_,
@@ -1019,7 +1020,7 @@ Status Query::create_strategy() {
       use_default = false;
       strategy_ = tdb_unique_ptr<IQueryStrategy>(tdb_new(
           SparseUnorderedWithDupsReader,
-          stats_->create_child("Reader"),
+          stats_->create_child("Reader", stats_),
           logger_,
           storage_manager_,
           array_,
@@ -1037,7 +1038,7 @@ Status Query::create_strategy() {
       use_default = false;
       strategy_ = tdb_unique_ptr<IQueryStrategy>(tdb_new(
           SparseGlobalOrderReader,
-          stats_->create_child("Reader"),
+          stats_->create_child("Reader", stats_),
           logger_,
           storage_manager_,
           array_,
@@ -1055,7 +1056,7 @@ Status Query::create_strategy() {
         use_default = false;
         strategy_ = tdb_unique_ptr<IQueryStrategy>(tdb_new(
             DenseReader,
-            stats_->create_child("Reader"),
+            stats_->create_child("Reader", stats_),
             logger_,
             storage_manager_,
             array_,
@@ -1070,7 +1071,7 @@ Status Query::create_strategy() {
     if (use_default) {
       strategy_ = tdb_unique_ptr<IQueryStrategy>(tdb_new(
           Reader,
-          stats_->create_child("Reader"),
+          stats_->create_child("Reader", stats_),
           logger_,
           storage_manager_,
           array_,
@@ -1975,7 +1976,7 @@ const Config* Query::config() const {
   return &config_;
 }
 
-stats::Stats* Query::stats() const {
+tdb_shared_ptr<stats::Stats> Query::stats() const {
   return stats_;
 }
 

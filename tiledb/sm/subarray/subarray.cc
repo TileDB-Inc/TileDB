@@ -70,16 +70,18 @@ Subarray::Subarray()
 }
 
 Subarray::Subarray(
-    const Array* array, Stats* const parent_stats, const bool coalesce_ranges)
+    const Array* array,
+    tdb_shared_ptr<Stats> const parent_stats,
+    const bool coalesce_ranges)
     : Subarray(array, Layout::UNORDERED, parent_stats, coalesce_ranges) {
 }
 
 Subarray::Subarray(
     const Array* const array,
     const Layout layout,
-    Stats* const parent_stats,
+    tdb_shared_ptr<Stats> const parent_stats,
     const bool coalesce_ranges)
-    : stats_(parent_stats->create_child("Subarray"))
+    : stats_(parent_stats->create_child("Subarray", parent_stats))
     , array_(array)
     , layout_(layout)
     , cell_order_(array_->array_schema()->cell_order())
@@ -2646,7 +2648,7 @@ std::vector<unsigned>* Subarray::relevant_fragments() {
   return &relevant_fragments_;
 }
 
-stats::Stats* Subarray::stats() const {
+tdb_shared_ptr<stats::Stats> Subarray::stats() const {
   return stats_;
 }
 

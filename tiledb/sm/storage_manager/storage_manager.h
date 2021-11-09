@@ -116,7 +116,7 @@ class StorageManager {
   StorageManager(
       ThreadPool* compute_tp,
       ThreadPool* io_tp,
-      stats::Stats* parent_stats,
+      tdb_shared_ptr<stats::Stats> parent_stats,
       tdb_shared_ptr<Logger> logger);
 
   /** Destructor. */
@@ -997,7 +997,7 @@ class StorageManager {
   Status write(const URI& uri, void* data, uint64_t size) const;
 
   /** Returns `stats_`. */
-  stats::Stats* stats();
+  tdb_shared_ptr<stats::Stats> stats();
 
   /** Returns the internal logger object. */
   tdb_shared_ptr<Logger> logger() const;
@@ -1035,7 +1035,7 @@ class StorageManager {
   /* ********************************* */
 
   /** The class stats. */
-  stats::Stats* stats_;
+  tdb_shared_ptr<stats::Stats> stats_;
 
   /** The class logger. */
   tdb_shared_ptr<Logger> logger_;

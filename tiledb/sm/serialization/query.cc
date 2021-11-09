@@ -105,7 +105,7 @@ Status stats_to_capnp(Stats& stats, capnp::Stats::Builder* stats_builder) {
 }
 
 Status stats_from_capnp(
-    const capnp::Stats::Reader& stats_reader, Stats* stats) {
+    const capnp::Stats::Reader& stats_reader, tdb_shared_ptr<Stats> stats) {
   if (stats_reader.hasCounters()) {
     auto counters = stats->counters();
     auto counters_reader = stats_reader.getCounters();
@@ -175,7 +175,7 @@ Status subarray_to_capnp(
   }
 
   // If stats object exists set its cap'n proto object
-  stats::Stats* stats = subarray->stats();
+  tdb_shared_ptr<stats::Stats> stats = subarray->stats();
   if (stats != nullptr) {
     auto stats_builder = builder->initStats();
     RETURN_NOT_OK(stats_to_capnp(*stats, &stats_builder));
@@ -235,7 +235,7 @@ Status subarray_from_capnp(
 
   // If cap'n proto object has stats set it on c++ object
   if (reader.hasStats()) {
-    stats::Stats* stats = subarray->stats();
+    tdb_shared_ptr<stats::Stats> stats = subarray->stats();
     // We should always have a stats here
     if (stats != nullptr) {
       RETURN_NOT_OK(stats_from_capnp(reader.getStats(), stats));
@@ -332,7 +332,7 @@ Status subarray_partitioner_to_capnp(
   builder->setMemoryBudgetValidity(mem_budget_validity);
 
   // If stats object exists set its cap'n proto object
-  stats::Stats* stats = partitioner.stats();
+  tdb_shared_ptr<stats::Stats> stats = partitioner.stats();
   if (stats != nullptr) {
     auto stats_builder = builder->initStats();
     RETURN_NOT_OK(stats_to_capnp(*stats, &stats_builder));
@@ -342,7 +342,7 @@ Status subarray_partitioner_to_capnp(
 }
 
 Status subarray_partitioner_from_capnp(
-    Stats* reader_stats,
+    tdb_shared_ptr<Stats> reader_stats,
     const Config* config,
     const Array* array,
     const capnp::SubarrayPartitioner::Reader& reader,
@@ -718,7 +718,7 @@ Status reader_to_capnp(
   }
 
   // If stats object exists set its cap'n proto object
-  stats::Stats* stats = reader.stats();
+  tdb_shared_ptr<stats::Stats> stats = reader.stats();
   if (stats != nullptr) {
     auto stats_builder = reader_builder->initStats();
     RETURN_NOT_OK(stats_to_capnp(*stats, &stats_builder));
@@ -752,7 +752,7 @@ Status index_reader_to_capnp(
   }
 
   // If stats object exists set its cap'n proto object
-  stats::Stats* stats = reader.stats();
+  tdb_shared_ptr<stats::Stats> stats = reader.stats();
   if (stats != nullptr) {
     auto stats_builder = reader_builder->initStats();
     RETURN_NOT_OK(stats_to_capnp(*stats, &stats_builder));
@@ -787,7 +787,7 @@ Status dense_reader_to_capnp(
   }
 
   // If stats object exists set its cap'n proto object
-  stats::Stats* stats = reader.stats();
+  tdb_shared_ptr<stats::Stats> stats = reader.stats();
   if (stats != nullptr) {
     auto stats_builder = reader_builder->initStats();
     RETURN_NOT_OK(stats_to_capnp(*stats, &stats_builder));
@@ -868,7 +868,7 @@ Status reader_from_capnp(
 
   // If cap'n proto object has stats set it on c++ object
   if (reader_reader.hasStats()) {
-    stats::Stats* stats = reader->stats();
+    tdb_shared_ptr<stats::Stats> stats = reader->stats();
     // We should always have a stats here
     if (stats != nullptr) {
       RETURN_NOT_OK(stats_from_capnp(reader_reader.getStats(), stats));
@@ -910,7 +910,7 @@ Status index_reader_from_capnp(
 
   // If cap'n proto object has stats set it on c++ object
   if (reader_reader.hasStats()) {
-    stats::Stats* stats = reader->stats();
+    tdb_shared_ptr<stats::Stats> stats = reader->stats();
     // We should always have a stats here
     if (stats != nullptr) {
       RETURN_NOT_OK(stats_from_capnp(reader_reader.getStats(), stats));
@@ -953,7 +953,7 @@ Status dense_reader_from_capnp(
 
   // If cap'n proto object has stats set it on c++ object
   if (reader_reader.hasStats()) {
-    stats::Stats* stats = reader->stats();
+    tdb_shared_ptr<stats::Stats> stats = reader->stats();
     // We should always have a stats here
     if (stats != nullptr) {
       RETURN_NOT_OK(stats_from_capnp(reader_reader.getStats(), stats));
@@ -990,7 +990,7 @@ Status writer_to_capnp(
   }
 
   // If stats object exists set its cap'n proto object
-  stats::Stats* stats = writer.stats();
+  tdb_shared_ptr<stats::Stats> stats = writer.stats();
   if (stats != nullptr) {
     auto stats_builder = writer_builder->initStats();
     RETURN_NOT_OK(stats_to_capnp(*stats, &stats_builder));
@@ -1007,7 +1007,7 @@ Status writer_from_capnp(
 
   // If cap'n proto object has stats set it on c++ object
   if (writer_reader.hasStats()) {
-    stats::Stats* stats = writer->stats();
+    tdb_shared_ptr<stats::Stats> stats = writer->stats();
     // We should always have a stats here
     if (stats != nullptr) {
       RETURN_NOT_OK(stats_from_capnp(writer_reader.getStats(), stats));
@@ -1170,7 +1170,7 @@ Status query_to_capnp(Query& query, capnp::Query::Builder* query_builder) {
   RETURN_NOT_OK(config_to_capnp(config, &config_builder));
 
   // If stats object exists set its cap'n proto object
-  stats::Stats* stats = query.stats();
+  tdb_shared_ptr<stats::Stats> stats = query.stats();
   if (stats != nullptr) {
     auto stats_builder = query_builder->initStats();
     RETURN_NOT_OK(stats_to_capnp(*stats, &stats_builder));
@@ -1807,7 +1807,7 @@ Status query_from_capnp(
 
   // If cap'n proto object has stats set it on c++ object
   if (query_reader.hasStats()) {
-    stats::Stats* stats = query->stats();
+    tdb_shared_ptr<stats::Stats> stats = query->stats();
     // We should always have a stats here
     if (stats != nullptr) {
       RETURN_NOT_OK(stats_from_capnp(query_reader.getStats(), stats));

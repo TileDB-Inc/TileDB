@@ -353,7 +353,7 @@ uint32_t FilterPipeline::max_chunk_size() const {
 }
 
 Status FilterPipeline::run_forward(
-    stats::Stats* const writer_stats,
+    tdb_shared_ptr<stats::Stats> const writer_stats,
     Tile* const tile,
     ThreadPool* const compute_tp) const {
   current_tile_ = tile;
@@ -379,7 +379,7 @@ Status FilterPipeline::run_forward(
 }
 
 Status FilterPipeline::run_reverse(
-    stats::Stats* const reader_stats,
+    tdb_shared_ptr<stats::Stats> const reader_stats,
     Tile* const tile,
     ThreadPool* const compute_tp,
     const Config& config) const {
@@ -389,7 +389,7 @@ Status FilterPipeline::run_reverse(
 }
 
 Status FilterPipeline::run_reverse_internal(
-    stats::Stats* const reader_stats,
+    tdb_shared_ptr<stats::Stats> const reader_stats,
     Tile* tile,
     ThreadPool* const compute_tp,
     const Config& config) const {

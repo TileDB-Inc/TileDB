@@ -55,7 +55,7 @@ class StrategyBase {
 
   /** Constructor. */
   StrategyBase(
-      stats::Stats* stats,
+      tdb_shared_ptr<stats::Stats> stats,
       tdb_shared_ptr<Logger> logger,
       StorageManager* storage_manager,
       Array* array,
@@ -72,7 +72,7 @@ class StrategyBase {
   /* ********************************* */
 
   /** Returns `stats_`. */
-  stats::Stats* stats() const;
+  tdb_shared_ptr<stats::Stats> stats() const;
 
   /** Returns the configured offsets format mode. */
   std::string offsets_mode() const;
@@ -98,7 +98,7 @@ class StrategyBase {
   /* ********************************* */
 
   /** The class stats. */
-  stats::Stats* stats_;
+  tdb_shared_ptr<stats::Stats> stats_;
 
   /** The class logger. */
   tdb_shared_ptr<Logger> logger_;

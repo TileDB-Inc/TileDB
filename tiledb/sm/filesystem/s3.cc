@@ -203,7 +203,7 @@ S3::~S3() {
 /* ********************************* */
 
 Status S3::init(
-    stats::Stats* const parent_stats,
+    tdb_shared_ptr<stats::Stats> const parent_stats,
     const Config& config,
     ThreadPool* const thread_pool) {
   // already initialized
@@ -212,7 +212,7 @@ Status S3::init(
 
   assert(state_ == State::UNINITIALIZED);
 
-  stats_ = parent_stats->create_child("S3");
+  stats_ = parent_stats->create_child("S3", parent_stats);
 
   if (thread_pool == nullptr) {
     return LOG_STATUS(

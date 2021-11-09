@@ -71,7 +71,7 @@ S3Fx::S3Fx() {
   REQUIRE(config.set("vfs.s3.verify_ssl", "false").ok());
 #endif
   REQUIRE(thread_pool_.init(2).ok());
-  REQUIRE(s3_.init(&g_helper_stats, config, &thread_pool_).ok());
+  REQUIRE(s3_.init(g_helper_stats(), config, &thread_pool_).ok());
 
   // Create bucket
   bool exists;
@@ -363,7 +363,7 @@ TEST_CASE_METHOD(S3Fx, "Test S3 use BucketCannedACL", "[s3]") {
   auto try_with_bucket_canned_acl = [&](const char* bucket_acl_to_try) {
     REQUIRE(config.set("vfs.s3.bucket_canned_acl", bucket_acl_to_try).ok());
     tiledb::sm::S3 s3_;
-    REQUIRE(s3_.init(&g_helper_stats, config, &thread_pool_).ok());
+    REQUIRE(s3_.init(g_helper_stats(), config, &thread_pool_).ok());
 
     // Create bucket
     bool exists;
@@ -526,7 +526,7 @@ TEST_CASE_METHOD(S3Fx, "Test S3 use Bucket/Object CannedACL", "[s3]") {
     REQUIRE(config.set("vfs.s3.object_canned_acl", object_acl_to_try).ok());
 
     tiledb::sm::S3 s3_;
-    REQUIRE(s3_.init(&g_helper_stats, config, &thread_pool_).ok());
+    REQUIRE(s3_.init(g_helper_stats(), config, &thread_pool_).ok());
 
     // Create bucket
     bool exists;

@@ -178,7 +178,9 @@ class FilterPipeline {
    * @return Status
    */
   Status run_forward(
-      stats::Stats* writer_stats, Tile* tile, ThreadPool* compute_tp) const;
+      tdb_shared_ptr<stats::Stats> writer_stats,
+      Tile* tile,
+      ThreadPool* compute_tp) const;
 
   /**
    * Runs the pipeline in reverse on the given filtered tile. This is used
@@ -218,7 +220,7 @@ class FilterPipeline {
    * @return Status
    */
   Status run_reverse(
-      stats::Stats* reader_stats,
+      tdb_shared_ptr<stats::Stats> reader_stats,
       Tile* tile,
       ThreadPool* compute_tp,
       const Config& config) const;
@@ -310,7 +312,7 @@ class FilterPipeline {
    * @return Status
    */
   Status run_reverse_internal(
-      stats::Stats* reader_stats,
+      tdb_shared_ptr<stats::Stats> reader_stats,
       Tile* tile,
       ThreadPool* compute_tp,
       const Config& config) const;

@@ -59,7 +59,7 @@ namespace sm {
 /* ****************************** */
 
 SparseGlobalOrderReader::SparseGlobalOrderReader(
-    stats::Stats* stats,
+    tdb_shared_ptr<stats::Stats> stats,
     tdb_shared_ptr<Logger> logger,
     StorageManager* storage_manager,
     Array* array,

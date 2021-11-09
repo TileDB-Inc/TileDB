@@ -61,7 +61,8 @@ namespace sm {
 
 Consolidator::Consolidator(StorageManager* storage_manager)
     : storage_manager_(storage_manager)
-    , stats_(storage_manager_->stats()->create_child("Consolidator")) {
+    , stats_(storage_manager_->stats()->create_child(
+          "Consolidator", storage_manager_->stats())) {
 }
 
 Consolidator::~Consolidator() = default;

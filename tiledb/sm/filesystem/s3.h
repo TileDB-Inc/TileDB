@@ -114,7 +114,7 @@ class S3 {
    * @return Status
    */
   Status init(
-      stats::Stats* parent_stats,
+      tdb_shared_ptr<stats::Stats> parent_stats,
       const Config& config,
       ThreadPool* thread_pool);
 
@@ -361,7 +361,7 @@ class S3 {
    public:
     /** Constructor. */
     S3RetryStrategy(
-        stats::Stats* const s3_stats,
+        tdb_shared_ptr<stats::Stats> const s3_stats,
         const uint64_t max_retries,
         const uint64_t scale_factor)
         : s3_stats_(s3_stats)
@@ -422,7 +422,7 @@ class S3 {
 
    private:
     /** The S3 `stats_`. */
-    stats::Stats* s3_stats_;
+    tdb_shared_ptr<stats::Stats> s3_stats_;
 
     /** The maximum number of retries after an error. */
     uint64_t max_retries_;
@@ -553,7 +553,7 @@ class S3 {
   /* ********************************* */
 
   /** The class stats. */
-  stats::Stats* stats_;
+  tdb_shared_ptr<stats::Stats> stats_;
 
   /** The current state. */
   State state_;
