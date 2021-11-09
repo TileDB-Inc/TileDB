@@ -639,3 +639,441 @@ TEST_CASE(
     vfs.remove_dir(array_uri);
   }
 }
+
+TEST_CASE(
+    "C++ API: SchemaEvolution, rename attributes twice",
+    "[cppapi][schema][evolution][rename]") {
+  using namespace tiledb;
+  Context ctx;
+  VFS vfs(ctx);
+
+  std::string array_uri = "test_schema_evolution_array_read";
+
+  // Create
+  {
+    Domain domain(ctx);
+    auto id1 = Dimension::create<int>(ctx, "d1", {{-100, 100}}, 10);
+    auto id2 = Dimension::create<int>(ctx, "d2", {{0, 100}}, 5);
+    domain.add_dimension(id1).add_dimension(id2);
+
+    auto a = Attribute::create<int>(ctx, "a1");
+
+    ArraySchema schema(ctx, TILEDB_SPARSE);
+    schema.set_domain(domain);
+    schema.add_attribute(a);
+    schema.set_cell_order(TILEDB_ROW_MAJOR);
+    schema.set_tile_order(TILEDB_COL_MAJOR);
+
+    if (vfs.is_dir(array_uri)) {
+      vfs.remove_dir(array_uri);
+    }
+
+    Array::create(array_uri, schema);
+  }
+
+  // Write data
+  {
+    // Write some simple data to cells (1, 1), (2, 4) and (2, 3).
+    std::vector<int> d1_data = {1, 2, 2};
+    std::vector<int> d2_data = {1, 4, 3};
+    std::vector<int> data = {1, 2, 3};
+
+    // Open the array for writing and create the query.
+    Array array(ctx, array_uri, TILEDB_WRITE);
+    Query query(ctx, array, TILEDB_WRITE);
+    query.set_layout(TILEDB_UNORDERED)
+        .set_data_buffer("a1", data)
+        .set_data_buffer("d1", d1_data)
+        .set_data_buffer("d2", d2_data);
+
+    // Perform the write and close the array.
+    query.submit();
+    array.close();
+  }
+
+  // Read
+  {
+    // Prepare the array for reading
+    Array array(ctx, array_uri, TILEDB_READ);
+
+    // Prepare the vector that will hold the result.
+    // We take an upper bound on the result size, as we do not
+    // know a priori how big it is (since the array is sparse)
+    std::vector<int> data(3);
+    std::vector<int> d1_data(3);
+    std::vector<int> d2_data(3);
+
+    // Prepare the query
+    Query query(ctx, array, TILEDB_READ);
+    query.add_range(0, 1, 4)
+        .add_range(1, 1, 4)
+        .set_layout(TILEDB_ROW_MAJOR)
+        .set_data_buffer("a1", data)
+        .set_data_buffer("d1", d1_data)
+        .set_data_buffer("d2", d2_data);
+
+    // Submit the query and close the array.
+    query.submit();
+    array.close();
+
+    // Compare the results.
+    auto result_num = (int)query.result_buffer_elements()["a1"].second;
+    CHECK(result_num == 3);
+    CHECK_THAT(data, Catch::Matchers::Equals(std::vector<int>{1, 3, 2}));
+    CHECK_THAT(d1_data, Catch::Matchers::Equals(std::vector<int>{1, 2, 2}));
+    CHECK_THAT(d2_data, Catch::Matchers::Equals(std::vector<int>{1, 3, 4}));
+  }
+
+  // Evolve, rename attribute a1 to a2
+  {
+    ArraySchemaEvolution schemaEvolution = ArraySchemaEvolution(ctx);
+
+    // rename attriburte a1 to a2
+    schemaEvolution.rename_attribute("a1", "a2");
+
+    // evolve array
+    schemaEvolution.array_evolve(array_uri);
+
+    // read schema
+    auto read_schema = Array::load_schema(ctx, array_uri);
+
+    auto attrs = read_schema.attributes();
+    CHECK(attrs.count("a1") == 0);
+    CHECK(attrs.count("a2") == 1);
+  }
+
+  // Write again
+  {
+    // Write some simple data to cells (3,1).
+    std::vector<int> d1_data = {3};
+    std::vector<int> d2_data = {1};
+    std::vector<int> a_data = {4};
+
+    // Open the array for writing and create the query.
+    Array array(ctx, array_uri, TILEDB_WRITE);
+    Query query(ctx, array, TILEDB_WRITE);
+    query.set_layout(TILEDB_UNORDERED)
+        .set_data_buffer("a2", a_data)
+        .set_data_buffer("d1", d1_data)
+        .set_data_buffer("d2", d2_data);
+
+    // Perform the write and close the array.
+    query.submit();
+    array.close();
+  }
+
+  // Read Again
+  {
+    // Prepare the array for reading
+    Array array(ctx, array_uri, TILEDB_READ);
+
+    // Prepare the vector that will hold the result.
+    // We take an upper bound on the result size, as we do not
+    // know a priori how big it is (since the array is sparse)
+    std::vector<int> a_data(4);
+    std::vector<int> d1_data(4);
+    std::vector<int> d2_data(4);
+
+    // Prepare the query
+    Query query(ctx, array, TILEDB_READ);
+    query.add_range(0, 1, 4)
+        .add_range(1, 1, 4)
+        .set_layout(TILEDB_ROW_MAJOR)
+        .set_data_buffer("a2", a_data)
+        .set_data_buffer("d1", d1_data)
+        .set_data_buffer("d2", d2_data);
+
+    // Submit the query and close the array.
+    query.submit();
+    array.close();
+
+    // Compare the results.
+    auto result_num = (int)query.result_buffer_elements()["a2"].second;
+    CHECK(result_num == 4);
+    CHECK_THAT(a_data, Catch::Matchers::Equals(std::vector<int>{1, 3, 2, 4}));
+    CHECK_THAT(d1_data, Catch::Matchers::Equals(std::vector<int>{1, 2, 2, 3}));
+    CHECK_THAT(d2_data, Catch::Matchers::Equals(std::vector<int>{1, 3, 4, 1}));
+  }
+
+  // Evolve again, rename attribute a2 to a3
+  {
+    ArraySchemaEvolution schemaEvolution = ArraySchemaEvolution(ctx);
+
+    // rename attriburte a2 to a3
+    schemaEvolution.rename_attribute("a2", "a3");
+
+    // evolve array
+    schemaEvolution.array_evolve(array_uri);
+
+    // read schema
+    auto read_schema = Array::load_schema(ctx, array_uri);
+
+    auto attrs = read_schema.attributes();
+    CHECK(attrs.count("a1") == 0);
+    CHECK(attrs.count("a2") == 0);
+    CHECK(attrs.count("a3") == 1);
+  }
+
+  // Write again to renamed a3
+  {
+    // Write some simple data to cells (3,2).
+    std::vector<int> d1_data = {3};
+    std::vector<int> d2_data = {2};
+    std::vector<int> a_data = {5};
+
+    // Open the array for writing and create the query.
+    Array array(ctx, array_uri, TILEDB_WRITE);
+    Query query(ctx, array, TILEDB_WRITE);
+    query.set_layout(TILEDB_UNORDERED)
+        .set_data_buffer("a3", a_data)
+        .set_data_buffer("d1", d1_data)
+        .set_data_buffer("d2", d2_data);
+
+    // Perform the write and close the array.
+    query.submit();
+    array.close();
+  }
+
+  // Read Again on attribute a3
+  {
+    // Prepare the array for reading
+    Array array(ctx, array_uri, TILEDB_READ);
+
+    // Prepare the vector that will hold the result.
+    // We take an upper bound on the result size, as we do not
+    // know a priori how big it is (since the array is sparse)
+    std::vector<int> a_data(5);
+    std::vector<int> d1_data(5);
+    std::vector<int> d2_data(5);
+
+    // Prepare the query
+    Query query(ctx, array, TILEDB_READ);
+    query.add_range(0, 1, 4)
+        .add_range(1, 1, 4)
+        .set_layout(TILEDB_ROW_MAJOR)
+        .set_data_buffer("a3", a_data)
+        .set_data_buffer("d1", d1_data)
+        .set_data_buffer("d2", d2_data);
+
+    // Submit the query and close the array.
+    query.submit();
+    array.close();
+
+    // Compare the results.
+    auto result_num = (int)query.result_buffer_elements()["a3"].second;
+    CHECK(result_num == 5);
+    CHECK_THAT(
+        a_data, Catch::Matchers::Equals(std::vector<int>{1, 3, 2, 4, 5}));
+    CHECK_THAT(
+        d1_data, Catch::Matchers::Equals(std::vector<int>{1, 2, 2, 3, 3}));
+    CHECK_THAT(
+        d2_data, Catch::Matchers::Equals(std::vector<int>{1, 3, 4, 1, 2}));
+  }
+
+  // Clean up
+  if (vfs.is_dir(array_uri)) {
+    vfs.remove_dir(array_uri);
+  }
+}
+
+TEST_CASE(
+    "C++ API: SchemaEvolution, rename attribute and add",
+    "[cppapi][schema][evolution][rename][add]") {
+  using namespace tiledb;
+  Context ctx;
+  VFS vfs(ctx);
+
+  std::string array_uri = "test_schema_evolution_array_read";
+
+  // Create
+  {
+    Domain domain(ctx);
+    auto id1 = Dimension::create<int>(ctx, "d1", {{-100, 100}}, 10);
+    auto id2 = Dimension::create<int>(ctx, "d2", {{0, 100}}, 5);
+    domain.add_dimension(id1).add_dimension(id2);
+
+    auto a = Attribute::create<int>(ctx, "a1");
+
+    ArraySchema schema(ctx, TILEDB_SPARSE);
+    schema.set_domain(domain);
+    schema.add_attribute(a);
+    schema.set_cell_order(TILEDB_ROW_MAJOR);
+    schema.set_tile_order(TILEDB_COL_MAJOR);
+
+    if (vfs.is_dir(array_uri)) {
+      vfs.remove_dir(array_uri);
+    }
+
+    Array::create(array_uri, schema);
+  }
+
+  // Write data
+  {
+    // Write some simple data to cells (1, 1), (2, 4) and (2, 3).
+    std::vector<int> d1_data = {1, 2, 2};
+    std::vector<int> d2_data = {1, 4, 3};
+    std::vector<int> data = {1, 2, 3};
+
+    // Open the array for writing and create the query.
+    Array array(ctx, array_uri, TILEDB_WRITE);
+    Query query(ctx, array, TILEDB_WRITE);
+    query.set_layout(TILEDB_UNORDERED)
+        .set_data_buffer("a1", data)
+        .set_data_buffer("d1", d1_data)
+        .set_data_buffer("d2", d2_data);
+
+    // Perform the write and close the array.
+    query.submit();
+    array.close();
+  }
+
+  // Read
+  {
+    // Prepare the array for reading
+    Array array(ctx, array_uri, TILEDB_READ);
+
+    // Prepare the vector that will hold the result.
+    // We take an upper bound on the result size, as we do not
+    // know a priori how big it is (since the array is sparse)
+    std::vector<int> data(3);
+    std::vector<int> d1_data(3);
+    std::vector<int> d2_data(3);
+
+    // Prepare the query
+    Query query(ctx, array, TILEDB_READ);
+    query.add_range(0, 1, 4)
+        .add_range(1, 1, 4)
+        .set_layout(TILEDB_ROW_MAJOR)
+        .set_data_buffer("a1", data)
+        .set_data_buffer("d1", d1_data)
+        .set_data_buffer("d2", d2_data);
+
+    // Submit the query and close the array.
+    query.submit();
+    array.close();
+
+    // Compare the results.
+    auto result_num = (int)query.result_buffer_elements()["a1"].second;
+    CHECK(result_num == 3);
+    CHECK_THAT(data, Catch::Matchers::Equals(std::vector<int>{1, 3, 2}));
+    CHECK_THAT(d1_data, Catch::Matchers::Equals(std::vector<int>{1, 2, 2}));
+    CHECK_THAT(d2_data, Catch::Matchers::Equals(std::vector<int>{1, 3, 4}));
+  }
+
+  // Evolve, rename attribute a1 to a2
+  {
+    ArraySchemaEvolution schemaEvolution = ArraySchemaEvolution(ctx);
+
+    // rename attriburte a1 to a2
+    schemaEvolution.rename_attribute("a1", "a2");
+
+    // evolve array
+    schemaEvolution.array_evolve(array_uri);
+
+    // read schema
+    auto read_schema = Array::load_schema(ctx, array_uri);
+
+    auto attrs = read_schema.attributes();
+    CHECK(attrs.count("a1") == 0);
+    CHECK(attrs.count("a2") == 1);
+  }
+
+  // Write again
+  {
+    // Write some simple data to cells (3,1).
+    std::vector<int> d1_data = {3};
+    std::vector<int> d2_data = {1};
+    std::vector<int> a_data = {4};
+
+    // Open the array for writing and create the query.
+    Array array(ctx, array_uri, TILEDB_WRITE);
+    Query query(ctx, array, TILEDB_WRITE);
+    query.set_layout(TILEDB_UNORDERED)
+        .set_data_buffer("a2", a_data)
+        .set_data_buffer("d1", d1_data)
+        .set_data_buffer("d2", d2_data);
+
+    // Perform the write and close the array.
+    query.submit();
+    array.close();
+  }
+
+  // Read Again
+  {
+    // Prepare the array for reading
+    Array array(ctx, array_uri, TILEDB_READ);
+
+    // Prepare the vector that will hold the result.
+    // We take an upper bound on the result size, as we do not
+    // know a priori how big it is (since the array is sparse)
+    std::vector<int> a_data(4);
+    std::vector<int> d1_data(4);
+    std::vector<int> d2_data(4);
+
+    // Prepare the query
+    Query query(ctx, array, TILEDB_READ);
+    query.add_range(0, 1, 4)
+        .add_range(1, 1, 4)
+        .set_layout(TILEDB_ROW_MAJOR)
+        .set_data_buffer("a2", a_data)
+        .set_data_buffer("d1", d1_data)
+        .set_data_buffer("d2", d2_data);
+
+    // Submit the query and close the array.
+    query.submit();
+    array.close();
+
+    // Compare the results.
+    auto result_num = (int)query.result_buffer_elements()["a2"].second;
+    CHECK(result_num == 4);
+    CHECK_THAT(a_data, Catch::Matchers::Equals(std::vector<int>{1, 3, 2, 4}));
+    CHECK_THAT(d1_data, Catch::Matchers::Equals(std::vector<int>{1, 2, 2, 3}));
+    CHECK_THAT(d2_data, Catch::Matchers::Equals(std::vector<int>{1, 3, 4, 1}));
+  }
+
+  // Evolve, add an attribute with old name a1
+  {
+    auto evolution = ArraySchemaEvolution(ctx);
+
+    // add a new attribute a3
+    auto a = Attribute::create<int>(ctx, "a1");
+    evolution.add_attribute(a);
+
+    // evolve array
+    evolution.array_evolve(array_uri);
+
+    // read schema
+    auto read_schema = Array::load_schema(ctx, array_uri);
+
+    auto attrs = read_schema.attributes();
+    CHECK(attrs.count("a1") == 1);
+    CHECK(attrs.count("a2") == 1);
+  }
+
+  // Write to new added attribute a1
+  {
+    // Write some simple data to cells (1, 1), (2, 4), (2, 3) and (3, 1).
+    std::vector<int> d1_data = {1, 2, 2, 3};
+    std::vector<int> d2_data = {1, 4, 3, 1};
+    std::vector<int> data1 = {11, 12, 13, 14};
+    std::vector<int> data2 = {21, 22, 23, 24};
+
+    // Open the array for writing and create the query.
+    Array array(ctx, array_uri, TILEDB_WRITE);
+    Query query(ctx, array, TILEDB_WRITE);
+    query.set_layout(TILEDB_UNORDERED)
+        .set_data_buffer("a1", data1)
+        .set_data_buffer("a2", data2)
+        .set_data_buffer("d1", d1_data)
+        .set_data_buffer("d2", d2_data);
+
+    // Perform the write and close the array.
+    query.submit();
+    array.close();
+  }
+
+  // Clean up
+  if (vfs.is_dir(array_uri)) {
+    vfs.remove_dir(array_uri);
+  }
+}
