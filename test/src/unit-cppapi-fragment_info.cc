@@ -214,6 +214,10 @@ TEST_CASE(
     auto uri = fragment_info.fragment_uri(1);
     CHECK(uri == written_frag_uri);
 
+    // Get fragment schema name
+    auto schema_name = fragment_info.array_schema_name(1);
+    CHECK(schema_name.size() == 62);
+
     // Get fragment size
     auto size = fragment_info.fragment_size(1);
     CHECK(size == 1662);

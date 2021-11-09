@@ -222,6 +222,9 @@ class FragmentInfo {
   /** Retrieves the array schema of the fragment with the given index. */
   Status get_array_schema(uint32_t fid, ArraySchema** array_schema);
 
+  /** Retrieves the array schema name of the fragment with the given index. */
+  Status get_array_schema_name(uint32_t fid, const char** schema_name);
+
   /**
    * Checks if the fragment with the given index has consolidated metadata.
    */
