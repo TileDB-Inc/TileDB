@@ -239,10 +239,6 @@ Array
     :project: TileDB-C
 .. doxygenfunction:: tiledb_array_get_non_empty_domain
     :project: TileDB-C
-.. doxygenfunction:: tiledb_array_max_buffer_size
-    :project: TileDB-C
-.. doxygenfunction:: tiledb_array_max_buffer_size_var
-    :project: TileDB-C
 .. doxygenfunction:: tiledb_array_get_uri
     :project: TileDB-C
 .. doxygenfunction:: tiledb_array_encryption_type

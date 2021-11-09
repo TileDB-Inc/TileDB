@@ -4556,41 +4556,6 @@ int32_t tiledb_array_get_non_empty_domain_var_from_name(
   return TILEDB_OK;
 }
 
-int32_t tiledb_array_max_buffer_size(
-    tiledb_ctx_t* ctx,
-    tiledb_array_t* array,
-    const char* name,
-    const void* subarray,
-    uint64_t* buffer_size) {
-  if (sanity_check(ctx) == TILEDB_ERR || sanity_check(ctx, array) == TILEDB_ERR)
-    return TILEDB_ERR;
-
-  if (SAVE_ERROR_CATCH(
-          ctx, array->array_->get_max_buffer_size(name, subarray, buffer_size)))
-    return TILEDB_ERR;
-
-  return TILEDB_OK;
-}
-
-int32_t tiledb_array_max_buffer_size_var(
-    tiledb_ctx_t* ctx,
-    tiledb_array_t* array,
-    const char* name,
-    const void* subarray,
-    uint64_t* buffer_off_size,
-    uint64_t* buffer_val_size) {
-  if (sanity_check(ctx) == TILEDB_ERR || sanity_check(ctx, array) == TILEDB_ERR)
-    return TILEDB_ERR;
-
-  if (SAVE_ERROR_CATCH(
-          ctx,
-          array->array_->get_max_buffer_size(
-              name, subarray, buffer_off_size, buffer_val_size)))
-    return TILEDB_ERR;
-
-  return TILEDB_OK;
-}
-
 int32_t tiledb_array_get_uri(
     tiledb_ctx_t* ctx, tiledb_array_t* array, const char** array_uri) {
   // Sanity checks
