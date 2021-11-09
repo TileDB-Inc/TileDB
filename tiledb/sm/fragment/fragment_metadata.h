@@ -127,7 +127,6 @@ class FragmentMetadata {
    * bounds is added to those in `buffer_sizes`. Applicable only to the dense
    * case.
    *
-   * @param encryption_key The encryption key the array was opened with.
    * @param subarray The targeted subarray.
    * @param buffer_sizes The upper bounds will be added to this map. The latter
    *     maps an attribute to a buffer size pair. For fix-sized attributes, only
@@ -136,7 +135,6 @@ class FragmentMetadata {
    * @return Status
    */
   Status add_max_buffer_sizes_dense(
-      const EncryptionKey& encryption_key,
       const void* subarray,
       std::unordered_map<std::string, std::pair<uint64_t, uint64_t>>*
           buffer_sizes);
@@ -148,7 +146,6 @@ class FragmentMetadata {
    * case.
    *
    * @tparam T The coordinates type.
-   * @param encryption_key The encryption key the array was opened with.
    * @param subarray The targeted subarray.
    * @param buffer_sizes The upper bounds will be added to this map. The latter
    *     maps an attribute to a buffer size pair. For fix-sized attributes, only
@@ -158,7 +155,6 @@ class FragmentMetadata {
    */
   template <class T>
   Status add_max_buffer_sizes_dense(
-      const EncryptionKey& encryption_key,
       const T* subarray,
       std::unordered_map<std::string, std::pair<uint64_t, uint64_t>>*
           buffer_sizes);
@@ -374,49 +370,37 @@ class FragmentMetadata {
    * or dimension in the file. If the attribute/dimension is var-sized, it
    * returns the starting offset of the offsets tile.
    *
-   * @param encryption_key The key the array got opened with.
    * @param name The input attribute/dimension.
    * @param tile_idx The index of the tile in the metadata.
    * @param offset The file offset to be retrieved.
    * @return Status
    */
   Status file_offset(
-      const EncryptionKey& encryption_key,
-      const std::string& name,
-      uint64_t tile_idx,
-      uint64_t* offset);
+      const std::string& name, uint64_t tile_idx, uint64_t* offset);
 
   /**
    * Retrieves the starting offset of the input tile of input attribute or
    * dimension in the file. The attribute/dimension must be var-sized.
    *
-   * @param encryption_key The key the array got opened with.
    * @param name The input attribute/dimension.
    * @param tile_idx The index of the tile in the metadata.
    * @param offset The file offset to be retrieved.
    * @return Status
    */
   Status file_var_offset(
-      const EncryptionKey& encryption_key,
-      const std::string& name,
-      uint64_t tile_idx,
-      uint64_t* offset);
+      const std::string& name, uint64_t tile_idx, uint64_t* offset);
 
   /**
    * Retrieves the starting offset of the input validity tile of the
    * input attribute in the file.
    *
-   * @param encryption_key The key the array got opened with.
    * @param name The input attribute.
    * @param tile_idx The index of the tile in the metadata.
    * @param offset The file offset to be retrieved.
    * @return Status
    */
   Status file_validity_offset(
-      const EncryptionKey& encryption_key,
-      const std::string& name,
-      uint64_t tile_idx,
-      uint64_t* offset);
+      const std::string& name, uint64_t tile_idx, uint64_t* offset);
 
   /**
    * Retrieves the size of the fragment metadata footer
@@ -438,50 +422,38 @@ class FragmentMetadata {
    * If the attribute/dimension is var-sized, this will return the persisted
    * size of the offsets tile.
    *
-   * @param encryption_key The key the array got opened with.
    * @param name The input attribute/dimension.
    * @param tile_idx The index of the tile in the metadata.
    * @param tile_size The tile size to be retrieved.
    * @return Status
    */
   Status persisted_tile_size(
-      const EncryptionKey& encryption_key,
-      const std::string& name,
-      uint64_t tile_idx,
-      uint64_t* tile_size);
+      const std::string& name, uint64_t tile_idx, uint64_t* tile_size);
 
   /**
    * Retrieves the size of the tile when it is persisted (e.g. the size of the
    * compressed tile on disk) for a given var-sized attribute or dimension
    * and tile index.
    *
-   * @param encryption_key The key the array got opened with.
    * @param name The input attribute/dimension.
    * @param tile_idx The index of the tile in the metadata.
    * @param tile_size The tile size to be retrieved.
    * @return Status
    */
   Status persisted_tile_var_size(
-      const EncryptionKey& encryption_key,
-      const std::string& name,
-      uint64_t tile_idx,
-      uint64_t* tile_size);
+      const std::string& name, uint64_t tile_idx, uint64_t* tile_size);
 
   /**
    * Retrieves the size of the validity tile when it is persisted (e.g. the size
    * of the compressed tile on disk) for a given attribute.
    *
-   * @param encryption_key The key the array got opened with.
    * @param name The input attribute.
    * @param tile_idx The index of the tile in the metadata.
    * @param tile_size The tile size to be retrieved.
    * @return Status
    */
   Status persisted_tile_validity_size(
-      const EncryptionKey& encryption_key,
-      const std::string& name,
-      uint64_t tile_idx,
-      uint64_t* tile_size);
+      const std::string& name, uint64_t tile_idx, uint64_t* tile_size);
 
   /**
    * Returns the (uncompressed) tile size for a given attribute or dimension
@@ -498,17 +470,13 @@ class FragmentMetadata {
    * Retrieves the (uncompressed) tile size for a given var-sized attribute or
    * dimension and tile index.
    *
-   * @param encryption_key The key the array got opened with.
    * @param name The input attribute/dimension.
    * @param tile_idx The index of the tile in the metadata.
    * @param tile_size The tile size to be retrieved.
    * @return Status
    */
   Status tile_var_size(
-      const EncryptionKey& encryption_key,
-      const std::string& name,
-      uint64_t tile_idx,
-      uint64_t* tile_size);
+      const std::string& name, uint64_t tile_idx, uint64_t* tile_size);
 
   /** Returns the first timestamp of the fragment timestamp range. */
   uint64_t first_timestamp() const;

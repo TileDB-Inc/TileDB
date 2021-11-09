@@ -239,13 +239,13 @@ Status DenseReader::dense_read() {
 
   // For easy reference.
   auto& subarray = read_state_.partitioner_.current();
-
   RETURN_NOT_OK(subarray.compute_tile_coords<DimType>());
 
   // Compute result space tiles. The result space tiles hold all the
   // relevant result tiles of the dense fragments.
   std::map<const DimType*, ResultSpaceTile<DimType>> result_space_tiles;
-  compute_result_space_tiles<DimType>(subarray, &result_space_tiles);
+  compute_result_space_tiles<DimType>(
+      &subarray, read_state_.partitioner_.subarray(), &result_space_tiles);
 
   std::vector<ResultTile*> result_tiles;
   for (const auto& result_space_tile : result_space_tiles) {
@@ -321,7 +321,8 @@ Status DenseReader::dense_read() {
 
   // Pre-load all attribute offsets into memory for attributes
   // in query condition to be read.
-  RETURN_CANCEL_OR_ERROR(load_tile_offsets(&subarray, &names));
+  RETURN_CANCEL_OR_ERROR(
+      load_tile_offsets(read_state_.partitioner_.subarray(), &names));
 
   // Read and unfilter tiles.
   RETURN_CANCEL_OR_ERROR(read_attribute_tiles(&names, &result_tiles));

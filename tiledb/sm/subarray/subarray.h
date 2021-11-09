@@ -328,7 +328,6 @@ class Subarray {
    * @return Status
    */
   Status compute_relevant_fragment_est_result_sizes(
-      const EncryptionKey* encryption_key,
       const ArraySchema* array_schema,
       bool all_dims_same_type,
       bool all_dims_fixed,
@@ -731,7 +730,12 @@ class Subarray {
   /**
    * Return relevant fragments as computed
    */
-  std::vector<unsigned> relevant_fragments() const;
+  const std::vector<unsigned>* relevant_fragments() const;
+
+  /**
+   * Return relevant fragments as computed
+   */
+  std::vector<unsigned>* relevant_fragments();
 
   /**
    * For flattened ("total order") start/end range indexes,
