@@ -358,7 +358,8 @@ Status subarray_partitioner_from_capnp(
       memory_budget_var,
       memory_budget_validity,
       compute_tp,
-      reader_stats);
+      reader_stats,
+      dummy_logger);
 
   // Per-attr mem budgets
   if (reader.hasBudget()) {
