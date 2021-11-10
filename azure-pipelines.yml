@@ -138,6 +138,8 @@ stages:
   # NOTE: this section cannot be conditional because `Build.Repository.Name` is an agent-scoped variable.
   - stage: Github_Release
     condition: startsWith(variables['Build.SourceBranch'], 'refs/tags')
+    pool:
+      vmImage: 'ubuntu-latest'
     jobs:
      - job:
        steps:
