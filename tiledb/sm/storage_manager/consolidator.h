@@ -34,6 +34,7 @@
 #define TILEDB_CONSOLIDATOR_H
 
 #include "tiledb/common/heap_memory.h"
+#include "tiledb/common/logger_public.h"
 #include "tiledb/common/status.h"
 #include "tiledb/sm/array/array.h"
 #include "tiledb/sm/filesystem/filelock.h"
@@ -173,6 +174,12 @@ class Consolidator {
 
   /** The class stats. */
   stats::Stats* stats_;
+
+  /** The class logger. */
+  tdb_shared_ptr<Logger> logger_;
+
+  /** UID of the logger instance */
+  inline static std::atomic<uint64_t> logger_id_ = 0;
 
   /* ********************************* */
   /*          PRIVATE METHODS           */

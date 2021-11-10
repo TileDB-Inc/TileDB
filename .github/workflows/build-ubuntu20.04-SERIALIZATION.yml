@@ -45,7 +45,7 @@ jobs:
         id: test
         run: |
 
-          git clone https://github.com/TileDB-Inc/TileDB-Unit-Test-Arrays.git --branch 2.3.0 test/inputs/arrays/read_compatibility_test
+          git clone https://github.com/TileDB-Inc/TileDB-Unit-Test-Arrays.git --branch 2.4.0 test/inputs/arrays/read_compatibility_test
 
           #   name: 'Clone Unit-Test-Arrays'
 

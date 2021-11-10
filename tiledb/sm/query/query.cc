@@ -84,9 +84,9 @@ Query::Query(StorageManager* storage_manager, Array* array, URI fragment_uri)
     assert(st.ok());
 
     if (type_ == QueryType::WRITE) {
-      subarray_ = Subarray(array, stats_);
+      subarray_ = Subarray(array, stats_, logger_);
     } else {
-      subarray_ = Subarray(array, Layout::ROW_MAJOR, stats_);
+      subarray_ = Subarray(array, Layout::ROW_MAJOR, stats_, logger_);
     }
 
     fragment_metadata_ = array->fragment_metadata();
@@ -1806,7 +1806,7 @@ Status Query::set_subarray(const void* subarray) {
                            "domains with variable-sized dimensions"));
 
   // Prepare a subarray object
-  Subarray sub(array_, layout_, stats_);
+  Subarray sub(array_, layout_, stats_, logger_);
   if (subarray != nullptr) {
     auto dim_num = array_schema_->dim_num();
     auto s_ptr = (const unsigned char*)subarray;
@@ -1868,7 +1868,7 @@ Status Query::set_subarray_unsafe(const Subarray& subarray) {
 
 Status Query::set_subarray_unsafe(const NDRange& subarray) {
   // Prepare a subarray object
-  Subarray sub(array_, layout_, stats_);
+  Subarray sub(array_, layout_, stats_, logger_);
   if (!subarray.empty()) {
     auto dim_num = array_schema_->dim_num();
     for (unsigned d = 0; d < dim_num; ++d)

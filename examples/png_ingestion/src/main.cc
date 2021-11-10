@@ -266,20 +266,23 @@ void slice_and_desaturate(
   auto output_height = subarray[1] - subarray[0] + 1,
        output_width = subarray[3] - subarray[2] + 1;
 
-  // Allocate buffers to read into.
-  auto max_elements = array.max_buffer_elements(subarray);
-  std::vector<uint8_t> red(max_elements["red"].second),
-      green(max_elements["green"].second), blue(max_elements["blue"].second),
-      alpha(max_elements["alpha"].second);
-
-  // Read from the array.
+  // Allocate query and set subarray
   Query query(ctx, array);
-  query.set_layout(TILEDB_ROW_MAJOR)
-      .set_subarray(subarray)
-      .set_data_buffer("red", red)
+  query.set_layout(TILEDB_ROW_MAJOR).set_subarray(subarray);
+
+  // Allocate buffers to read into.
+  std::vector<uint8_t> red(query.est_result_size("red"));
+  std::vector<uint8_t> green(query.est_result_size("green"));
+  std::vector<uint8_t> blue(query.est_result_size("blue"));
+  std::vector<uint8_t> alpha(query.est_result_size("alpha"));
+
+  // Set buffers
+  query.set_data_buffer("red", red)
       .set_data_buffer("green", green)
       .set_data_buffer("blue", blue)
       .set_data_buffer("alpha", alpha);
+
+  // Read from the array.
   query.submit();
   query.finalize();
   array.close();

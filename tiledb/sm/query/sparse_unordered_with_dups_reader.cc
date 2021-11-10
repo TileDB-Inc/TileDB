@@ -486,9 +486,14 @@ Status SparseUnorderedWithDupsReader::create_result_tiles() {
                 &budget_exceeded));
 
             if (budget_exceeded) {
+              logger_->debug(
+                  "Budget exceeded adding result tiles, fragment {0}, tile {1}",
+                  f,
+                  t);
               if (result_tiles_.empty())
-                return LOG_STATUS(Status::SparseUnorderedWithDupsReaderError(
-                    "Cannot load a single tile, increase memory budget"));
+                return logger_->status(
+                    Status::SparseUnorderedWithDupsReaderError(
+                        "Cannot load a single tile, increase memory budget"));
               break;
             }
           }
@@ -528,8 +533,12 @@ Status SparseUnorderedWithDupsReader::create_result_tiles() {
               &budget_exceeded));
 
           if (budget_exceeded) {
+            logger_->debug(
+                "Budget exceeded adding result tiles, fragment {0}, tile {1}",
+                f,
+                t);
             if (result_tiles_.empty())
-              return LOG_STATUS(Status::SparseUnorderedWithDupsReaderError(
+              return logger_->status(Status::SparseUnorderedWithDupsReaderError(
                   "Cannot load a single tile, increase memory budget"));
             break;
           }
@@ -542,6 +551,13 @@ Status SparseUnorderedWithDupsReader::create_result_tiles() {
   bool done_adding_result_tiles = true;
   for (unsigned int f = 0; f < fragment_num; f++) {
     done_adding_result_tiles &= all_tiles_loaded_[f];
+  }
+
+  logger_->debug(
+      "Done adding result tiles, num result tiles {0}", result_tiles_.size());
+
+  if (done_adding_result_tiles) {
+    logger_->debug("All result tiles loaded");
   }
 
   read_state_.done_adding_result_tiles_ = done_adding_result_tiles;
@@ -766,9 +782,15 @@ Status SparseUnorderedWithDupsReader::create_result_cell_slabs(
     }
 
     // If we busted our memory budget, exit.
-    if (memory_used_rcs_ >= memory_budget)
+    if (memory_used_rcs_ >= memory_budget) {
+      logger_->debug("Exceeded RCS memory budget");
       break;
+    }
   }
+
+  logger_->debug(
+      "Done creating result cell slabs, num slabs {0}",
+      read_state_.result_cell_slabs_.size());
 
   return Status::Ok();
 };
@@ -847,6 +869,11 @@ Status SparseUnorderedWithDupsReader::end_iteration() {
     assert(memory_used_result_tile_ranges_ == 0);
     assert(memory_used_result_tiles_ == 0);
   }
+
+  logger_->debug(
+      "Done with iteration, num slabs {0}, num result tiles {1}",
+      read_state_.result_cell_slabs_.size(),
+      result_tiles_.size());
 
   array_memory_tracker_->set_budget(uint64_t_max);
   return Status::Ok();
