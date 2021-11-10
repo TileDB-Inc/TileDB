@@ -467,6 +467,11 @@ Status SparseGlobalOrderReader::create_result_tiles(bool* tiles_found) {
             }
 
             if (budget_exceeded) {
+              logger_->debug(
+                  "Budget exceeded adding result tiles, fragment {0}, tile {1}",
+                  f,
+                  t);
+
               if (result_tiles_[f].empty())
                 return logger_->status(Status::SparseGlobalOrderReaderError(
                     "Cannot load a single tile for fragment, increase memory "
@@ -505,6 +510,11 @@ Status SparseGlobalOrderReader::create_result_tiles(bool* tiles_found) {
             *tiles_found = true;
 
             if (budget_exceeded) {
+              logger_->debug(
+                  "Budget exceeded adding result tiles, fragment {0}, tile {1}",
+                  f,
+                  t);
+
               if (result_tiles_[f].empty())
                 return logger_->status(Status::SparseGlobalOrderReaderError(
                     "Cannot load a single tile for fragment, increase memory "
@@ -519,8 +529,16 @@ Status SparseGlobalOrderReader::create_result_tiles(bool* tiles_found) {
   }
 
   bool done_adding_result_tiles = true;
+  uint64_t num_rt = 0;
   for (unsigned int f = 0; f < fragment_num; f++) {
+    num_rt += result_tiles_[f].size();
     done_adding_result_tiles &= all_tiles_loaded_[f];
+  }
+
+  logger_->debug("Done adding result tiles, num result tiles {0}", num_rt);
+
+  if (done_adding_result_tiles) {
+    logger_->debug("All result tiles loaded");
   }
 
   read_state_.done_adding_result_tiles_ = done_adding_result_tiles;
@@ -975,9 +993,15 @@ Status SparseGlobalOrderReader::merge_result_cell_slabs(
     }
 
     // If we busted our memory budget, exit.
-    if (memory_used_rcs_ >= memory_budget)
+    if (memory_used_rcs_ >= memory_budget) {
+      logger_->debug("Exceeded RCS memory budget");
       break;
+    }
   }
+
+  logger_->debug(
+      "Done merging result cell slabs, num slabs {0}",
+      read_state_.result_cell_slabs_.size());
 
   return Status::Ok();
 };
@@ -1086,6 +1110,16 @@ Status SparseGlobalOrderReader::end_iteration() {
     assert(memory_used_result_tile_ranges_ == 0);
     assert(memory_used_result_tiles_ == 0);
   }
+
+  uint64_t num_rt = 0;
+  for (unsigned int f = 0; f < fragment_num; f++) {
+    num_rt += result_tiles_[f].size();
+  }
+
+  logger_->debug(
+      "Done with iteration, num slabs {0}, num result tiles {1}",
+      read_state_.result_cell_slabs_.size(),
+      num_rt);
 
   array_memory_tracker_->set_budget(std::numeric_limits<uint64_t>::max());
   return Status::Ok();

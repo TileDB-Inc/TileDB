@@ -191,6 +191,7 @@ Status SparseIndexReaderBase::load_initial_data() {
   }
   RETURN_CANCEL_OR_ERROR(load_tile_var_sizes(&subarray_, &var_size_to_load));
 
+  logger_->debug("Initial data loaded");
   initial_data_loaded_ = true;
   return Status::Ok();
 }
