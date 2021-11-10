@@ -672,11 +672,11 @@ Status FragmentInfo::get_array_schema(
     uint32_t fid, ArraySchema** array_schema) {
   if (array_schema == nullptr)
     return LOG_STATUS(Status::FragmentInfoError(
-        "Cannot get array schema URI; schema URI argument cannot be null"));
+        "Cannot get array schema; schema argument cannot be null"));
 
   if (fid >= fragments_.size())
     return LOG_STATUS(Status::FragmentInfoError(
-        "Cannot get array schema URI; Invalid fragment index"));
+        "Cannot get array schema; Invalid fragment index"));
   URI schema_uri;
   uint32_t version = fragments_[fid].format_version();
   if (version >= 10) {
@@ -689,6 +689,26 @@ Status FragmentInfo::get_array_schema(
   EncryptionKey encryption_key;
   RETURN_NOT_OK(storage_manager_->load_array_schema_from_uri(
       schema_uri, encryption_key, array_schema));
+
+  return Status::Ok();
+}
+
+Status FragmentInfo::get_array_schema_name(
+    uint32_t fid, const char** schema_name) {
+  if (schema_name == nullptr)
+    return LOG_STATUS(Status::FragmentInfoError(
+        "Cannot get array schema URI; schema name argument cannot be null"));
+
+  if (fid >= fragments_.size())
+    return LOG_STATUS(Status::FragmentInfoError(
+        "Cannot get array schema name; Invalid fragment index"));
+
+  uint32_t version = fragments_[fid].format_version();
+  if (version >= 10) {
+    *schema_name = fragments_[fid].array_schema_name().c_str();
+  } else {
+    *schema_name = constants::array_schema_filename.c_str();
+  }
 
   return Status::Ok();
 }
