@@ -215,8 +215,26 @@ steps:
     }
   displayName: "Test status check"
 
+- task: ArchiveFiles@2
+  inputs:
+    rootFolderOrFile: '$(Agent.BuildDirectory)\'
+    includeRootFolder: false
+    archiveType: 'zip' # Options: zip, 7z, tar, wim
+    archiveFile: $(Build.ArtifactStagingDirectory)/tiledb-windows-build-dir.zip
+    replaceExistingArchive: true
+    verbose: true # Optional
+  displayName: "Archive Build Directory"
+  condition: or(failed(), succeeded()) # only run this job if the build step failed
+
+- task: PublishBuildArtifacts@1
+  inputs:
+    pathToPublish: '$(Build.ArtifactStagingDirectory)/tiledb-windows-build-dir.zip'
+    artifactName: 'build-dirs'
+  displayName: "Build Directory Artifacts"
+  condition: or(failed(), succeeded()) # only run this job if the build step failed
+
 - powershell: |
-    (Get-ChildItem -Path $env:BUILD_SOURCESDIRECTORY -Include *.log -Recurse).fullname | ForEach-Object {echo $_ ---; Get-Content $_; echo ===}
+      (Get-ChildItem -Path $env:BUILD_SOURCESDIRECTORY -Include *.log -Recurse).fullname | ForEach-Object {echo $_ ---; Get-Content $_; echo ===}
   condition: failed() # only run this job if the build step failed
   displayName: "Print log files (failed build only)"
 
