@@ -42,8 +42,7 @@ list(APPEND SOURCES
   ${SOURCE_DIR}/src/shuffle-generic.c
   ${SOURCE_DIR}/src/bitshuffle-stub.c
 )
-try_compile(AVX2_DETECTED ${CMAKE_CURRENT_BINARY_DIR} ${SOURCE_DIR}/cmake/detect-avx2.c)
-if(AVX2_DETECTED)
+if(COMPILER_SUPPORTS_AVX2)
   list(APPEND SOURCES
     ${CMAKE_CURRENT_SOURCE_DIR}/src/shuffle-avx2.c
     )
