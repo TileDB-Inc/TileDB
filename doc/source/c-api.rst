@@ -634,6 +634,10 @@ Fragment Info
     :project: TileDB-C
 .. doxygenfunction:: tiledb_fragment_info_load_with_key
     :project: TileDB-C
+.. doxygenfunction:: tiledb_fragment_info_get_array_schema
+    :project: TileDB-C
+.. doxygenfunction:: tiledb_fragment_info_get_array_schema_name
+    :project: TileDB-C
 .. doxygenfunction:: tiledb_fragment_info_get_fragment_num
     :project: TileDB-C
 .. doxygenfunction:: tiledb_fragment_info_get_fragment_uri
