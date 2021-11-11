@@ -1,7 +1,7 @@
 # C++ Style Guide
 
-
-When in doubt and not in conflict with this document, follow [C++ Core Guidelines](https://isocpp.github.io/CppCoreGuidelines/CppCoreGuidelines)
+When in doubt and not in conflict with this style guide, follow [C++ Core
+Guidelines](https://isocpp.github.io/CppCoreGuidelines/CppCoreGuidelines)
 
 ## C++ Standards
 
@@ -9,6 +9,11 @@ Where possible we should use up to C++17. Some external packages, such as PDAL a
 limited in what they can use. Where we control the environment we should strive
 for C++17 usage.
 
-## Memory Handling
+## [Functions](Functions.md)
+
+* [Inputs on the right. Outputs on the left.](Functions.md#inputs-on-the-right-outputs-on-the-left)
+
+## [Memory Handling](Memory.md)
 
 See [Memory.md](Memory.md)
+
