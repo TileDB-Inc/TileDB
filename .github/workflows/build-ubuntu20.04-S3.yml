@@ -1,13 +1,7 @@
 name: build-ubuntu-20.04-S3
 on:
   push:
-    branches:
-      - dev
-      - release-*
-      - refs/tags/*
   pull_request:
-    branches:
-      - '*'  # must quote since "*" is a YAML reserved character; we want a string
 env:
   BACKWARDS_COMPATIBILITY_ARRAYS: OFF
   TILEDB_STATIC: OFF
