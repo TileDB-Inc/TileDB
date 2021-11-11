@@ -85,23 +85,43 @@ if (NOT MAGIC_FOUND)
       set(CXXFLAGS_DEF "${CMAKE_CXX_FLAGS} -fPIC")
     endif()
 
-    ExternalProject_Add(ep_magic
-      PREFIX "externals"
-      URL "ftp://ftp.astron.com/pub/file/file-5.41.tar.gz"
-      URL_HASH SHA1=8d80d2d50f4000e087aa60ffae4f099c63376762
-      DOWNLOAD_NAME "file-5.41.tar.gz"
-      UPDATE_COMMAND ""
-      CONFIGURE_COMMAND
-            ${TILEDB_EP_BASE}/src/ep_magic/configure --prefix=${TILEDB_EP_INSTALL_PREFIX} CFLAGS=${CFLAGS_DEF} CXXFLAGS=${CXXFLAGS_DEF}
-      BUILD_IN_SOURCE TRUE
-      BUILD_COMMAND $(MAKE)
-      INSTALL_COMMAND $(MAKE) install
-      LOG_DOWNLOAD TRUE
-      LOG_CONFIGURE TRUE
-      LOG_BUILD TRUE
-      LOG_INSTALL TRUE
-      LOG_OUTPUT_ON_FAILURE ${TILEDB_LOG_OUTPUT_ON_FAILURE}
-    )
+    if (WIN32)
+      # For windows we need to use file-windows from julian-r who has build a cmake version and patched for msvc++
+      ExternalProject_Add(ep_magic
+              PREFIX "externals"
+              GIT_REPOSITORY "https://github.com/TileDB-Inc/file-windows.git"
+              GIT_TAG "cmake-install-support"
+              GIT_SUBMODULES_RECURSE TRUE
+              UPDATE_COMMAND ""
+              CMAKE_ARGS
+                -DCMAKE_INSTALL_PREFIX=${TILEDB_EP_INSTALL_PREFIX}
+                -DCMAKE_BUILD_TYPE=${CMAKE_BUILD_TYPE}
+                "-DCMAKE_C_FLAGS=${CFLAGS_DEF}"
+              LOG_DOWNLOAD TRUE
+              LOG_CONFIGURE TRUE
+              LOG_BUILD TRUE
+              LOG_INSTALL TRUE
+              LOG_OUTPUT_ON_FAILURE ${TILEDB_LOG_OUTPUT_ON_FAILURE}
+              )
+    else()
+      ExternalProject_Add(ep_magic
+        PREFIX "externals"
+        URL "ftp://ftp.astron.com/pub/file/file-5.41.tar.gz"
+        URL_HASH SHA1=8d80d2d50f4000e087aa60ffae4f099c63376762
+        DOWNLOAD_NAME "file-5.41.tar.gz"
+        UPDATE_COMMAND ""
+        CONFIGURE_COMMAND
+              ${TILEDB_EP_BASE}/src/ep_magic/configure --prefix=${TILEDB_EP_INSTALL_PREFIX} CFLAGS=${CFLAGS_DEF} CXXFLAGS=${CXXFLAGS_DEF}
+        BUILD_IN_SOURCE TRUE
+        BUILD_COMMAND $(MAKE)
+        INSTALL_COMMAND $(MAKE) install
+        LOG_DOWNLOAD TRUE
+        LOG_CONFIGURE TRUE
+        LOG_BUILD TRUE
+        LOG_INSTALL TRUE
+        LOG_OUTPUT_ON_FAILURE ${TILEDB_LOG_OUTPUT_ON_FAILURE}
+      )
+    endif()
     list(APPEND TILEDB_EXTERNAL_PROJECTS ep_magic)
     list(APPEND FORWARD_EP_CMAKE_ARGS
       -DTILEDB_MAGIC_EP_BUILT=TRUE
