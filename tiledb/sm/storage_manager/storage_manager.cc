@@ -508,7 +508,7 @@ Status StorageManager::array_consolidate(
     uint32_t key_length,
     const Config* config) {
   // Check array URI
-  URI array_uri = URI(array_name);
+  URI array_uri(array_name);
   if (array_uri.is_invalid()) {
     return logger_->status(
         Status::StorageManagerError("Cannot consolidate array; Invalid URI"));
@@ -576,7 +576,7 @@ Status StorageManager::array_vacuum(
     config = &config_;
   }
 
-  URI array_uri = URI(array_name);
+  URI array_uri(array_name);
   std::string array_path = array_uri.to_string();
 
   // Get mode
@@ -619,7 +619,7 @@ Status StorageManager::array_vacuum_fragments(
         "Cannot vacuum fragments; Array name cannot be null"));
 
   // Get all URIs in the array directory
-  URI array_uri = URI(array_name);
+  URI array_uri(array_name);
   std::vector<URI> uris;
   RETURN_NOT_OK(vfs_->ls(array_uri.add_trailing_slash(), &uris));
 
@@ -665,7 +665,7 @@ Status StorageManager::array_vacuum_fragment_meta(const char* array_name) {
 
   // Get the consolidated fragment metadata URIs to be deleted
   // (all except the last one)
-  URI array_uri = URI(array_name);
+  URI array_uri(array_name);
   std::vector<URI> uris, to_vacuum;
   URI last;
   RETURN_NOT_OK(vfs_->ls(array_uri.add_trailing_slash(), &uris));
@@ -697,7 +697,7 @@ Status StorageManager::array_vacuum_array_meta(
         "Cannot vacuum array metadata; Array name cannot be null"));
 
   // Get all URIs in the array directory
-  URI array_uri = URI(array_name);
+  URI array_uri(array_name);
   auto meta_uri = array_uri.join_path(constants::array_metadata_folder_name);
   std::vector<URI> uris;
   RETURN_NOT_OK(vfs_->ls(meta_uri.add_trailing_slash(), &uris));
@@ -735,7 +735,7 @@ Status StorageManager::array_metadata_consolidate(
     uint32_t key_length,
     const Config* config) {
   // Check array URI
-  URI array_uri = URI(array_name);
+  URI array_uri(array_name);
   if (array_uri.is_invalid()) {
     return logger_->status(Status::StorageManagerError(
         "Cannot consolidate array metadata; Invalid URI"));
@@ -1305,7 +1305,7 @@ Status StorageManager::array_get_non_empty_domain_var_from_name(
 
 Status StorageManager::array_get_encryption(
     const std::string& array_uri, EncryptionType* encryption_type) {
-  URI uri = URI(array_uri);
+  URI uri(array_uri);
 
   if (uri.is_invalid())
     return logger_->status(Status::StorageManagerError(
@@ -1688,7 +1688,7 @@ Status StorageManager::get_fragment_info(
 
 Status StorageManager::group_create(const std::string& group) {
   // Create group URI
-  URI uri = URI(group);
+  URI uri(group);
   if (uri.is_invalid())
     return logger_->status(Status::StorageManagerError(
         "Cannot create group '" + group + "'; Invalid group URI"));
@@ -2117,7 +2117,7 @@ Status StorageManager::object_type(const URI& uri, ObjectType* type) const {
 Status StorageManager::object_iter_begin(
     ObjectIter** obj_iter, const char* path, WalkOrder order) {
   // Sanity check
-  URI path_uri = URI(path);
+  URI path_uri(path);
   if (path_uri.is_invalid()) {
     return logger_->status(Status::StorageManagerError(
         "Cannot create object iterator; Invalid input path"));
@@ -2149,7 +2149,7 @@ Status StorageManager::object_iter_begin(
 Status StorageManager::object_iter_begin(
     ObjectIter** obj_iter, const char* path) {
   // Sanity check
-  URI path_uri = URI(path);
+  URI path_uri(path);
   if (path_uri.is_invalid()) {
     return logger_->status(Status::StorageManagerError(
         "Cannot create object iterator; Invalid input path"));
