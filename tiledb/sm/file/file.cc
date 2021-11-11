@@ -247,7 +247,7 @@ Status File::save_from_vfs_fh(VFSFileHandle* file, const Config* config) {
     RETURN_NOT_OK(put_metadata(
         constants::file_metadata_original_file_name_key.c_str(),
         Datatype::STRING_ASCII,
-        uri_basename.size(),
+        static_cast<uint32_t>(uri_basename.size()),
         uri_basename.c_str()));
 
     Buffer file_metadata;
@@ -261,7 +261,7 @@ Status File::save_from_vfs_fh(VFSFileHandle* file, const Config* config) {
     RETURN_NOT_OK(put_metadata(
         constants::file_metadata_ext_key.c_str(),
         Datatype::STRING_ASCII,
-        extension.size(),
+        static_cast<uint32_t>(extension.size()),
         extension.c_str()));
     store_mime_type(file_metadata, metadata_read_size);
     store_mime_encoding(file_metadata, metadata_read_size);

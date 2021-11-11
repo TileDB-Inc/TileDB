@@ -156,14 +156,14 @@ tdb_shared_ptr<Attribute> FileSchema::create_attribute(
 
 uint64_t FileSchema::compute_tile_extent_based_on_file_size(
     const uint64_t file_size) {
-  if (file_size > 1024UL * 1024 * 1024 * 10) {   // 10GB
-    return 1024UL * 1024 * 100;                  // 100MB
-  } else if (file_size > 1024UL * 1024 * 100) {  // 100MB
-    return 1024UL * 1024 * 1;                    // 1MB
-  } else if (file_size > 1024UL * 1024 * 1) {    // 1MB
-    return 1024UL * 256;                         // 1KB
+  if (file_size > 1024ULL * 1024ULL * 1024ULL * 10ULL) {  // 10GB
+    return 1024ULL * 1024 * 100;                          // 100MB
+  } else if (file_size > 1024UL * 1024 * 100) {           // 100MB
+    return 1024ULL * 1024 * 1;                            // 1MB
+  } else if (file_size > 1024UL * 1024 * 1) {             // 1MB
+    return 1024ULL * 256;                                 // 1KB
   } else {
-    return 1024UL;  // 1KB
+    return 1024ULL;  // 1KB
   }
 }
 
