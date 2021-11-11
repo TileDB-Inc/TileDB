@@ -25,56 +25,58 @@
 #
 # Finds the Magic library, installing with an ExternalProject as necessary.
 # This module defines:
-#   - MAGIC_INCLUDE_DIR, directory containing headers
-#   - MAGIC_LIBRARIES, the Magic library path
-#   - MAGIC_FOUND, whether Magic has been found
-#   - The Magic::Magic imported target
+#   - libmagic_INCLUDE_DIR, directory containing headers
+#   - libmagic_LIBRARIES, the Magic library path
+#   - libmagic_FOUND, whether Magic has been found
+#   - The libmagic imported target
 
 # Include some common helper functions.
 include(TileDBCommon)
 
 # Search the path set during the superbuild for the EP.
-set(MAGIC_PATHS ${TILEDB_EP_INSTALL_PREFIX})
+set(LIBMAGIC_PATHS ${TILEDB_EP_INSTALL_PREFIX})
 
 # Try the builtin find module unless built w/ EP superbuild
-if ((NOT TILEDB_FORCE_ALL_DEPS) AND (NOT TILEDB_MAGIC_EP_BUILT))
-  find_package(magic ${TILEDB_DEPS_NO_DEFAULT_PATH} QUIET)
+if ((NOT TILEDB_FORCE_ALL_DEPS) AND (NOT TILEDB_LIBMAGIC_EP_BUILT))
+  find_package(libmagic ${TILEDB_DEPS_NO_DEFAULT_PATH} QUIET)
+elseif(TILEDB_LIBMAGIC_EP_BUILT)
+  find_package(libmagic PATHS ${TILEDB_EP_INSTALL_PREFIX} ${TILEDB_DEPS_NO_DEFAULT_PATH})
 endif()
 
 # Next try finding the superbuild external project
-if (NOT MAGIC_FOUND)
-  find_path(MAGIC_INCLUDE_DIR
+if (NOT libmagic_FOUND)
+  find_path(libmagic_INCLUDE_DIR
     NAMES magic.h
-    PATHS ${MAGIC_PATHS}
+    PATHS ${LIBMAGIC_PATHS}
     PATH_SUFFIXES include
     ${TILEDB_DEPS_NO_DEFAULT_PATH}
   )
 
-  if (NOT MAGIC_INCLUDE_DIR)
-    find_path(MAGIC_INCLUDE_DIR
+  if (NOT libmagic_INCLUDE_DIR)
+    find_path(libmagic_INCLUDE_DIR
       NAMES file/file.h
-      PATHS ${MAGIC_PATHS}
+      PATHS ${LIBMAGIC_PATHS}
       PATH_SUFFIXES include
       ${TILEDB_DEPS_NO_DEFAULT_PATH}
     )
   endif()
 
   # Link statically if installed with the EP.
-  find_library(MAGIC_LIBRARIES
+  find_library(libmagic_LIBRARIES
     magic
-    PATHS ${MAGIC_PATHS}
+    PATHS ${LIBMAGIC_PATHS}
     PATH_SUFFIXES lib
     ${TILEDB_DEPS_NO_DEFAULT_PATH}
   )
 
   include(FindPackageHandleStandardArgs)
-  FIND_PACKAGE_HANDLE_STANDARD_ARGS(Magic
-    REQUIRED_VARS MAGIC_LIBRARIES MAGIC_INCLUDE_DIR
+  FIND_PACKAGE_HANDLE_STANDARD_ARGS(libmagic
+    REQUIRED_VARS libmagic_LIBRARIES libmagic_INCLUDE_DIR
   )
 endif()
 
 # If not found, add it as an external project
-if (NOT MAGIC_FOUND)
+if (NOT libmagic_FOUND)
   if (TILEDB_SUPERBUILD)
     message(STATUS "Adding Magic as an external project")
 
@@ -124,26 +126,26 @@ if (NOT MAGIC_FOUND)
     endif()
     list(APPEND TILEDB_EXTERNAL_PROJECTS ep_magic)
     list(APPEND FORWARD_EP_CMAKE_ARGS
-      -DTILEDB_MAGIC_EP_BUILT=TRUE
+      -DTILEDB_LIBMAGIC_EP_BUILT=TRUE
     )
 
-    set(TILEDB_MAGIC_DIR "${TILEDB_EP_INSTALL_PREFIX}")
+    set(TILEDB_LIBMAGIC_DIR "${TILEDB_EP_INSTALL_PREFIX}")
 
   else()
     message(FATAL_ERROR "Unable to find Magic")
   endif()
 endif()
 
-if (MAGIC_FOUND AND NOT TARGET Magic::Magic)
-  message(STATUS "Found Magic, adding imported target: ${MAGIC_LIBRARIES}")
-  add_library(Magic::Magic UNKNOWN IMPORTED)
-  set_target_properties(Magic::Magic PROPERTIES
-    IMPORTED_LOCATION "${MAGIC_LIBRARIES}"
-    INTERFACE_INCLUDE_DIRECTORIES "${MAGIC_INCLUDE_DIR}"
+if (libmagic_FOUND AND NOT TARGET libmagic)
+  message(STATUS "Found Magic, adding imported target: ${libmagic_LIBRARIES}")
+  add_library(libmagic UNKNOWN IMPORTED)
+  set_target_properties(libmagic PROPERTIES
+    IMPORTED_LOCATION "${libmagic_LIBRARIES}"
+    INTERFACE_INCLUDE_DIRECTORIES "${libmagic_INCLUDE_DIR}"
   )
 endif()
 
 # If we built a static EP, install it if required.
-if (TILEDB_MAGIC_EP_BUILT AND TILEDB_INSTALL_STATIC_DEPS)
-  install_target_libs(Magic::Magic)
+if (TILEDB_LIBMAGIC_EP_BUILT AND TILEDB_INSTALL_STATIC_DEPS)
+  install_target_libs(libmagic)
 endif()

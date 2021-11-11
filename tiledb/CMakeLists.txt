@@ -473,7 +473,7 @@ target_link_libraries(TILEDB_CORE_OBJECTS_ILIB
     spdlog::spdlog
     Zlib::Zlib
     Zstd::Zstd
-    Magic::Magic
+    libmagic
 )
 
 # GCC <9 need to link against libc++fs for c++17 filesystem library
@@ -745,7 +745,7 @@ if (TILEDB_STATIC)
   append_dep_lib(GCSSDK::google_cloud_cpp_common)
   append_dep_lib(GCSSDK::crc32c)
   append_dep_lib(spdlog::spdlog)
-  append_dep_lib(Magic::Magic)
+  append_dep_lib(libmagic)
 endif()
 
 ############################################################
