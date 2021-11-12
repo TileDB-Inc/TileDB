@@ -198,7 +198,10 @@ uint64_t Subarray::cell_num(uint64_t range_idx) const {
   uint64_t cell_num = 1, range;
   auto array_schema = array_->array_schema();
   unsigned dim_num = array_schema->dim_num();
-  auto layout = (layout_ == Layout::UNORDERED) ? cell_order_ : layout_;
+  auto layout =
+      (layout_ == Layout::UNORDERED) ?
+          ((cell_order_ == Layout::HILBERT) ? Layout::ROW_MAJOR : cell_order_) :
+          layout_;
   uint64_t tmp_idx = range_idx;
 
   // Unary case or GLOBAL_ORDER
@@ -963,7 +966,10 @@ std::vector<uint64_t> Subarray::get_range_coords(uint64_t range_idx) const {
 
   uint64_t tmp_idx = range_idx;
   auto dim_num = this->dim_num();
-  auto layout = (layout_ == Layout::UNORDERED) ? cell_order_ : layout_;
+  auto layout =
+      (layout_ == Layout::UNORDERED) ?
+          ((cell_order_ == Layout::HILBERT) ? Layout::ROW_MAJOR : cell_order_) :
+          layout_;
 
   if (layout == Layout::ROW_MAJOR) {
     for (unsigned i = 0; i < dim_num; ++i) {
@@ -992,7 +998,10 @@ std::vector<uint64_t> Subarray::get_range_coords(uint64_t range_idx) const {
 void Subarray::get_next_range_coords(
     std::vector<uint64_t>* range_coords) const {
   auto dim_num = array_->array_schema()->dim_num();
-  auto layout = (layout_ == Layout::UNORDERED) ? cell_order_ : layout_;
+  auto layout =
+      (layout_ == Layout::UNORDERED) ?
+          ((cell_order_ == Layout::HILBERT) ? Layout::ROW_MAJOR : cell_order_) :
+          layout_;
 
   if (layout == Layout::ROW_MAJOR) {
     auto d = dim_num - 1;
@@ -1049,7 +1058,10 @@ NDRange Subarray::ndrange(uint64_t range_idx) const {
   NDRange ret;
   uint64_t tmp_idx = range_idx;
   auto dim_num = this->dim_num();
-  auto layout = (layout_ == Layout::UNORDERED) ? cell_order_ : layout_;
+  auto layout =
+      (layout_ == Layout::UNORDERED) ?
+          ((cell_order_ == Layout::HILBERT) ? Layout::ROW_MAJOR : cell_order_) :
+          layout_;
   ret.reserve(dim_num);
 
   // Unary case or GLOBAL_ORDER
@@ -1230,7 +1242,10 @@ Status Subarray::compute_relevant_fragment_est_result_sizes(
   auto array_schema = array_->array_schema();
   auto fragment_metadata = array_->fragment_metadata();
   auto dim_num = array_->array_schema()->dim_num();
-  auto layout = (layout_ == Layout::UNORDERED) ? cell_order_ : layout_;
+  auto layout =
+      (layout_ == Layout::UNORDERED) ?
+          ((cell_order_ == Layout::HILBERT) ? Layout::ROW_MAJOR : cell_order_) :
+          layout_;
 
   RETURN_NOT_OK(load_relevant_fragment_tile_var_sizes(names, compute_tp));
 
@@ -1584,7 +1599,10 @@ void Subarray::compute_range_offsets() {
   range_offsets_.clear();
 
   auto dim_num = this->dim_num();
-  auto layout = (layout_ == Layout::UNORDERED) ? cell_order_ : layout_;
+  auto layout =
+      (layout_ == Layout::UNORDERED) ?
+          ((cell_order_ == Layout::HILBERT) ? Layout::ROW_MAJOR : cell_order_) :
+          layout_;
 
   if (layout == Layout::COL_MAJOR) {
     range_offsets_.push_back(1);
@@ -2444,7 +2462,9 @@ void Subarray::get_expanded_coordinates(
   // This is only applicable to row-major, column-major, or unordered
   // layouts. We will treat unordered layouts as the cell layout.
   const Layout coords_layout =
-      (layout_ == Layout::UNORDERED) ? cell_order_ : layout_;
+      (layout_ == Layout::UNORDERED) ?
+          ((cell_order_ == Layout::HILBERT) ? Layout::ROW_MAJOR : cell_order_) :
+          layout_;
   if (coords_layout == Layout::GLOBAL_ORDER ||
       coords_layout == Layout::HILBERT) {
     assert(*start_coords == *end_coords);
