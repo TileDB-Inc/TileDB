@@ -171,7 +171,9 @@ if (TILEDB_SUPERBUILD)
   message(STATUS "Starting TileDB superbuild.")
   include("cmake/TileDB-Superbuild.cmake")
   message(STATUS "Install prefix is ${CMAKE_INSTALL_PREFIX}")
-  # Stop processing this file here.
+  # The superbuild file incorporates this file as an external project with the
+  # superbuild off. Thus we stop processing this file here, knowing that we'll
+  # come back later.
   return()
 endif()
 
