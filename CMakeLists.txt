@@ -68,7 +68,8 @@ if (NOT TILEDB_ALLOW_REGEX_CHAR_PATH)
 endif()
 
 ############################################################
-set(CMAKE_MODULE_PATH ${CMAKE_MODULE_PATH} "${CMAKE_CURRENT_SOURCE_DIR}/cmake/Modules/")
+list(APPEND CMAKE_MODULE_PATH "${CMAKE_CURRENT_SOURCE_DIR}/cmake")
+list(APPEND CMAKE_MODULE_PATH "${CMAKE_CURRENT_SOURCE_DIR}/cmake/Modules")
 
 set(TILEDB_CMAKE_INPUTS_DIR "${CMAKE_CURRENT_SOURCE_DIR}/cmake/inputs")
 
@@ -265,7 +266,7 @@ if (TILEDB_TESTS)
   # Add cmake target for "tests" to build all unit tests executables
   add_custom_target(tests)
   add_dependencies(tests tiledb_unit)
-  add_dependencies(tests unit_interval)
+  add_dependencies(tests unit_interval unit_thread_pool)
 endif()
 
 # Build tools
