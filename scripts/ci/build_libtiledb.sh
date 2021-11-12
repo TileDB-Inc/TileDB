@@ -41,7 +41,6 @@ make -j4
 make examples -j4
 make -C tiledb install
 
-#- run: |
 cd $GITHUB_WORKSPACE/build
 ls -la
 
