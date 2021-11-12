@@ -1,10 +1,9 @@
 # TileDB v2.5.0 Release Notes
 
-## Disk Format
-
 ## Breaking C API changes
 
-## Breaking behavior
+* Remove deprecated c-api `tiledb_array_max_buffer_size` and `tiledb_array_max_buffer_size_var` [#2579](https://github.com/TileDB-Inc/TileDB/pull/2579)
+* Remove deprecated cpp-api `Array::max_buffer_elements` [#2579](https://github.com/TileDB-Inc/TileDB/pull/2579)
 
 ## New features
 
@@ -33,6 +32,10 @@
 * Removed all aspects of posix_code from Status [#2571](https://github.com/TileDB-Inc/TileDB/pull/2571)
 * Fixing pre-loading for tile offsets in various readers. [#2570](https://github.com/TileDB-Inc/TileDB/pull/2570)
 * Use the new logger in Subarray, SubarrayPartitioner and Consolidator classes. [#2574](https://github.com/TileDB-Inc/TileDB/pull/2574)
+* Add tiledb_fragment_info_get_schema_name [#2581](https://github.com/TileDB-Inc/TileDB/pull/2581)
+* Enable CMake AVX2 check [#2591](https://github.com/TileDB-Inc/TileDB/pull/2591)
+* Adding logging for sparse refactored readers. [#2575](https://github.com/TileDB-Inc/TileDB/pull/2575)
+* use ROW_MAJOR read paths for unordered reads of Hilbert layout array [#2551](https://github.com/TileDB-Inc/TileDB/pull/2551)
 
 ## Bug fixes
 
@@ -48,10 +51,13 @@
 ### C API
 
 * Expose MBR in Fragment Info API [#2222](https://github.com/TileDB-Inc/TileDB/pull/2222)
+* Add `tiledb_fragment_info_get_array_schema_name` for fetching array name used by fragment [#2581](https://github.com/TileDB-Inc/TileDB/pull/2581)
 
 ### C++ API
 
 * Expose MBR in Fragment Info API [#2222](https://github.com/TileDB-Inc/TileDB/pull/2222)
+* Add `FragmentInfo::array_schema_name` for fetching array name used by fragment [#2581](https://github.com/TileDB-Inc/TileDB/pull/2581)
+
 
 # TileDB v2.4.3 Release Notes
 
