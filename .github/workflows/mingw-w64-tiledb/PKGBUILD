@@ -35,6 +35,7 @@ build() {
     -DCMAKE_BUILD_TYPE=Release \
     -DTILEDB_STATIC=ON \
     -DTILEDB_S3=ON \
+    -DTILEDB_EXPERIMENTAL_FEATURES=ON \
     ..
   make
   make -C tiledb
