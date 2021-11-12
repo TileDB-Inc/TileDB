@@ -103,7 +103,6 @@ set(TILEDB_CORE_SOURCES
   ${TILEDB_CORE_INCLUDE_DIR}/tiledb/common/logger.cc
   ${TILEDB_CORE_INCLUDE_DIR}/tiledb/common/memory.cc
   ${TILEDB_CORE_INCLUDE_DIR}/tiledb/common/status.cc
-  ${TILEDB_CORE_INCLUDE_DIR}/tiledb/common/thread_pool.cc
   ${TILEDB_CORE_INCLUDE_DIR}/tiledb/common/interval/interval.cc
   ${TILEDB_CORE_INCLUDE_DIR}/tiledb/sm/array/array.cc
   ${TILEDB_CORE_INCLUDE_DIR}/tiledb/sm/array_schema/array_schema.cc
@@ -200,6 +199,7 @@ set(TILEDB_CORE_SOURCES
   ${TILEDB_CORE_INCLUDE_DIR}/tiledb/sm/tile/tile.cc
   ${TILEDB_CORE_INCLUDE_DIR}/tiledb/sm/tile/generic_tile_io.cc
 )
+list(APPEND TILEDB_CORE_SOURCES ${TILEDB_COMMON_SOURCES})
 
 if (TILEDB_SERIALIZATION)
   list(APPEND TILEDB_CORE_SOURCES
@@ -236,20 +236,30 @@ if (TILEDB_SERIALIZATION)
 endif()
 
 # 'External' source files included in the source tree.
-set(TILEDB_EXTERNALS_INCLUDE_DIRS
+list(APPEND TILEDB_EXTERNALS_INCLUDE_DIRS
   "${CMAKE_CURRENT_SOURCE_DIR}/../external/include"
   "${CMAKE_CURRENT_SOURCE_DIR}/../external/include/bitshuffle"
   "${CMAKE_CURRENT_SOURCE_DIR}/../external/include/blosc"
 )
-set(TILEDB_EXTERNALS_SOURCES
+list(APPEND TILEDB_EXTERNALS_SOURCES
   ${CMAKE_CURRENT_SOURCE_DIR}/../external/src/md5/md5.cc
   ${CMAKE_CURRENT_SOURCE_DIR}/../external/src/bitshuffle/iochain.cc
   ${CMAKE_CURRENT_SOURCE_DIR}/../external/src/bitshuffle/bitshuffle_core.cc
-  ${CMAKE_CURRENT_SOURCE_DIR}/../external/src/blosc/shuffle.cc
-  ${CMAKE_CURRENT_SOURCE_DIR}/../external/src/blosc/shuffle-avx2.cc
-  ${CMAKE_CURRENT_SOURCE_DIR}/../external/src/blosc/shuffle-generic.cc
-  ${CMAKE_CURRENT_SOURCE_DIR}/../external/src/blosc/shuffle-sse2.cc
 )
+
+#
+# Delegate configuration and detection of platform-specific code generation to
+# the subdirectory. For why the separation isn't clean, see comments there.
+#
+add_subdirectory(
+  ${CMAKE_CURRENT_SOURCE_DIR}/../external/blosc
+  ${CMAKE_CURRENT_BINARY_DIR}/../external/blosc)
+list(APPEND TILEDB_EXTERNALS_INCLUDE_DIRS ${TileDB_blosc_INCLUDE_DIRS})
+list(APPEND TILEDB_EXTERNALS_SOURCES ${TileDB_blosc_SOURCES})
+set_source_files_properties(
+  ${TileDB_blosc_SOURCES}
+  PROPERTIES COMPILE_OPTIONS "${TileDB_blosc_COMPILE_OPTIONS}")
+
 
 ############################################################
 # Build core objects as a reusable object library
@@ -347,6 +357,9 @@ endif()
 # on TILEDB_CORE_OBJECTS. This workaround uses an interface library
 # so we can use the targets created by the calls to find_package().
 add_library(TILEDB_CORE_OBJECTS_ILIB INTERFACE)
+
+# blosc link dependencies
+target_link_libraries(TILEDB_CORE_OBJECTS_ILIB INTERFACE ${TileDB_blosc_LINK_OPTIONS})
 
 # Find OpenSSL first in case it's needed for S3 or Azure
 if (NOT WIN32)

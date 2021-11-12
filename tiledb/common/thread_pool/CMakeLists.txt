@@ -1,5 +1,5 @@
 #
-# tiledb/common/CMakeLists.txt
+# tiledb/common/thread_pool/CMakeLists.txt
 #
 # The MIT License
 #
@@ -24,13 +24,43 @@
 # THE SOFTWARE.
 #
 
-include(common-root)
+include(common NO_POLICY_SCOPE)
 
-add_subdirectory(thread_pool)
+list(APPEND SOURCES
+    thread_pool.cc
+)
+gather_sources(${SOURCES})
+
+list(APPEND DEPENDENT_SOURCES
+    ../heap_memory.cc
+    ../heap_profiler.cc
+    ../logger.cc
+    ../status.cc
+)
 
 if (TILEDB_TESTS)
-    add_subdirectory(interval)
-endif()
+    find_package(Catch_EP REQUIRED)
+    find_package(Spdlog_EP REQUIRED)
 
-get_gathered(COMMON_SOURCES)
-set(TILEDB_COMMON_SOURCES ${COMMON_SOURCES} PARENT_SCOPE)
+    add_executable(unit_thread_pool EXCLUDE_FROM_ALL)
+    target_link_libraries(unit_thread_pool PUBLIC Catch2::Catch2)
+    target_link_libraries(unit_thread_pool PUBLIC spdlog::spdlog)
+
+    # Sources for code under test
+    target_sources(unit_thread_pool PUBLIC ${SOURCES})
+
+    # Sources for code elsewhere required for tests
+    target_sources(unit_thread_pool PUBLIC ${DEPENDENT_SOURCES})
+
+    # Sources for tests
+    target_sources(unit_thread_pool PUBLIC
+            test/main.cc
+            test/unit_thread_pool.cc
+            )
+
+    add_test(
+            NAME "unit_thread_pool"
+            COMMAND $<TARGET_FILE:unit_thread_pool>
+            WORKING_DIRECTORY ${CMAKE_CURRENT_SOURCE_DIR}
+    )
+endif()

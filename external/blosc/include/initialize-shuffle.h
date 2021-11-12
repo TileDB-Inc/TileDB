@@ -1,11 +1,11 @@
 /**
- * @file thread_pool.h
+ * @file initialize-shuffle.h
  *
  * @section LICENSE
  *
  * The MIT License
  *
- * @copyright Copyright (c) 2018-2021 TileDB, Inc.
+ * @copyright Copyright (c) 2021 TileDB, Inc.
  *
  * Permission is hereby granted, free of charge, to any person obtaining a copy
  * of this software and associated documentation files (the "Software"), to deal
@@ -24,6 +24,23 @@
  * LIABILITY, WHETHER IN AN ACTION OF CONTRACT, TORT OR OTHERWISE, ARISING FROM,
  * OUT OF OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN
  * THE SOFTWARE.
+ *
+ * @section DESCRIPTION
+ *
+ * Initializes `host_implementation` by using C++ static initialization,
+ * avoiding the use of pthreads for the same purpose.
  */
 
-#include "tiledb/common/thread_pool/thread_pool.h"
+#ifndef TILEDB_INITIALIZE_SHUFFLE_H
+#define TILEDB_INITIALIZE_SHUFFLE_H
+
+namespace blosc {
+namespace detail {
+  class dummy_user
+  {
+    template<class T>
+    short init();
+  };
+}}
+
+#endif  // TILEDB_INITIALIZE_SHUFFLE_H

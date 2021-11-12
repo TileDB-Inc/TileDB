@@ -1,5 +1,5 @@
 #
-# tiledb/common/CMakeLists.txt
+# cmake/common-root.cmake
 #
 # The MIT License
 #
@@ -23,14 +23,12 @@
 # OUT OF OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN
 # THE SOFTWARE.
 #
+############################################################
 
-include(common-root)
+include(common-lib)
 
-add_subdirectory(thread_pool)
+#
+# Every common-root directory defines a gathering point for sources underneath it.
+#
+gathering_point()
 
-if (TILEDB_TESTS)
-    add_subdirectory(interval)
-endif()
-
-get_gathered(COMMON_SOURCES)
-set(TILEDB_COMMON_SOURCES ${COMMON_SOURCES} PARENT_SCOPE)

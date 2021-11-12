@@ -1,11 +1,11 @@
 /**
- * @file thread_pool.h
+ * @file   tiledb-shuffle.h
  *
  * @section LICENSE
  *
  * The MIT License
  *
- * @copyright Copyright (c) 2018-2021 TileDB, Inc.
+ * @copyright Copyright (c) 2021 TileDB, Inc.
  *
  * Permission is hereby granted, free of charge, to any person obtaining a copy
  * of this software and associated documentation files (the "Software"), to deal
@@ -24,6 +24,22 @@
  * LIABILITY, WHETHER IN AN ACTION OF CONTRACT, TORT OR OTHERWISE, ARISING FROM,
  * OUT OF OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN
  * THE SOFTWARE.
+ *
+ * @section DESCRIPTION
+ *
+ * Create function references in the namespace `blosc` for functions in the
+ * blosc library with extern "C" linkage.
  */
 
-#include "tiledb/common/thread_pool/thread_pool.h"
+#ifndef TILEDB_SHUFFLE_H
+#define TILEDB_SHUFFLE_H
+
+// This blosc header contains an extern "C" statement, so we don't need to.
+#include "shuffle.h"
+
+namespace blosc {
+  const auto &shuffle = blosc_internal_shuffle;
+  const auto &unshuffle = blosc_internal_unshuffle;
+} // namespace blosc
+
+#endif // TILEDB_SHUFFLE_H

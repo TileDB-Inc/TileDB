@@ -1,11 +1,11 @@
 /**
- * @file thread_pool.h
+ * @file detect-avx2.c
  *
  * @section LICENSE
  *
  * The MIT License
  *
- * @copyright Copyright (c) 2018-2021 TileDB, Inc.
+ * @copyright Copyright (c) 2021 TileDB, Inc.
  *
  * Permission is hereby granted, free of charge, to any person obtaining a copy
  * of this software and associated documentation files (the "Software"), to deal
@@ -24,6 +24,13 @@
  * LIABILITY, WHETHER IN AN ACTION OF CONTRACT, TORT OR OTHERWISE, ARISING FROM,
  * OUT OF OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN
  * THE SOFTWARE.
+ *
+ * @section DESCRIPTION
+ *
+ * Used by try_compile. Compilation succeeds if __AVX2__ is defined. Uses the
+ * same detection that shuffle-avx2.c does.
  */
 
-#include "tiledb/common/thread_pool/thread_pool.h"
+#if !defined(__AVX2__)
+  #error __AVX2__ is not defined
+#endif

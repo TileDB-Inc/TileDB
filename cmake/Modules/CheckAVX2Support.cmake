@@ -58,27 +58,26 @@ endfunction()
 #    COMPILER_AVX2_FLAG - Set to the appropriate flag to enable AVX2.
 #
 function (CheckAVX2Support)
-  # Check for cached variable.
-  if (DEFINED COMPILER_SUPPORTS_AVX2)
-    return()
+  # If defined to a false value other than "", return without checking for avx2 support
+  if (DEFINED COMPILER_SUPPORTS_AVX2 AND
+    NOT COMPILER_SUPPORTS_AVX2 STREQUAL "" AND
+    NOT COMPILER_SUPPORTS_AVX2)
+      message("AVX2 compiler support disabled by COMPILER_SUPPORTS_AVX2=${COMPILER_SUPPORTS_AVX2}")
+      return()
   endif()
 
   if (MSVC)
     CheckAVX2Flag(/arch:AVX2)
     if (HAVE_AVX2)
-      set(COMPILER_SUPPORTS_AVX2 TRUE CACHE BOOL "True if the compiler supports AVX2.")
       set(COMPILER_AVX2_FLAG "/arch:AVX2" CACHE STRING "Compiler flag for AVX2 support.")
-      return()
     endif()
   else()
     CheckAVX2Flag(-mavx2)
     if (HAVE_AVX2)
-      set(COMPILER_SUPPORTS_AVX2 TRUE CACHE BOOL "True if the compiler supports AVX2.")
       set(COMPILER_AVX2_FLAG "-mavx2" CACHE STRING "Compiler flag for AVX2 support.")
-      return()
     endif()
   endif()
 
-
+  set(COMPILER_SUPPORTS_AVX2 "${HAVE_AVX2}" CACHE BOOL "True if the compiler supports AVX2." FORCE)
   unset(HAVE_AVX2 CACHE)
 endfunction()

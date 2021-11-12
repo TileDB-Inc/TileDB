@@ -1,11 +1,11 @@
 /**
- * @file thread_pool.h
+ * @file bitshuffle-stub.c
  *
  * @section LICENSE
  *
  * The MIT License
  *
- * @copyright Copyright (c) 2018-2021 TileDB, Inc.
+ * @copyright Copyright (c) 2021 TileDB, Inc.
  *
  * Permission is hereby granted, free of charge, to any person obtaining a copy
  * of this software and associated documentation files (the "Software"), to deal
@@ -24,6 +24,26 @@
  * LIABILITY, WHETHER IN AN ACTION OF CONTRACT, TORT OR OTHERWISE, ARISING FROM,
  * OUT OF OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN
  * THE SOFTWARE.
+ *
+ * @section DESCRIPTION
+ *
+ * Defines stubs for bitshuffle functions in blosc that we don't actually use,
+ * but pointers to which are required to initialize an implementation structure
+ * in shuffle.c
  */
+#include "bitshuffle-generic.h"
 
-#include "tiledb/common/thread_pool/thread_pool.h"
+BLOSC_NO_EXPORT int64_t
+blosc_internal_bshuf_trans_bit_elem_scal(const void* in, void* out, const size_t size,
+                                         const size_t elem_size, void* tmp_buf)
+{
+  return 0;
+}
+
+BLOSC_NO_EXPORT int64_t
+blosc_internal_bshuf_untrans_bit_elem_scal(const void* in, void* out, const size_t size,
+                                         const size_t elem_size, void* tmp_buf)
+{
+  return 0;
+}
+
