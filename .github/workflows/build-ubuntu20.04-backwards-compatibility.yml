@@ -1,18 +1,20 @@
-name: build-ubuntu-20.04-SERIALIZATION
+name: build-ubuntu-20.04-backwards-compatibility
 on:
   push:
   pull_request:
 env:
-  TILEDB_SERIALIZATION: ON # NOTE: currently defined directly inline
   CXX: g++
-  BACKWARDS_COMPATIBILITY_ARRAYS: ON
 
 jobs:
   build:
     runs-on: ubuntu-20.04
     if: ${{ startsWith(github.ref , 'refs/tags') != true && startsWith(github.ref , 'build-') != true }}
+    strategy:
+      matrix:
+        # Note: v2_1_0 arrays were never created so its currently skipped
+        tiledb_version: ["v1_4_0", "v1_5_0", "v1_6_0", "v1_7_0", "v2_0_0", "v2_2_0", "v2_2_3", "v2_3_0", "v2_4_0"]
     timeout-minutes: 120
-    name: Build - ubuntu-20.04 - SERIALIZATION
+    name: Ubuntu-20.04-back-comp
     steps:
       - uses: actions/checkout@v2
       - name: 'Print env'
@@ -25,6 +27,8 @@ jobs:
           echo "uname -v: " $(uname -v)
           printenv
         shell: bash
+        env:
+          TILEDB_COMPATIBILITY_VERSION: ${{ matrix.tiledb_version }}
 
       # Need this for virtualenv and arrow tests if enabled
       - uses: actions/setup-python@v2
@@ -36,33 +40,30 @@ jobs:
         shell: bash
 
       - name: 'Build and test libtiledb'
+        env:
+          TILEDB_COMPATIBILITY_VERSION: ${{ matrix.tiledb_version }}
         id: test
         run: |
-          bootstrap_args="${bootstrap_args} --enable-serialization";
+
+          git clone https://github.com/TileDB-Inc/TileDB-Unit-Test-Arrays.git --branch 2.4.0 test/inputs/arrays/read_compatibility_test
+
+          # Remove all arrays besides the current matrix version
+          ls test/inputs/arrays/read_compatibility_test/ | grep -v ${TILEDB_COMPATIBILITY_VERSION} | grep -v "__tiledb_group.tdb" | xargs -I{} echo "rm -r test/inputs/arrays/read_compatibility_test/{}"
+          ls test/inputs/arrays/read_compatibility_test/ | grep -v ${TILEDB_COMPATIBILITY_VERSION} | grep -v "__tiledb_group.tdb" | xargs -I{} rm -r test/inputs/arrays/read_compatibility_test/{}
+          rm -r test/inputs/arrays/read_compatibility_test/.git
+          rm test/inputs/arrays/read_compatibility_test/.gitignore
+          ls -lah test/inputs/arrays/read_compatibility_test/
+          ls -lah test/inputs/arrays/read_compatibility_test/${TILEDB_COMPATIBILITY_VERSION}/
+
+          #   name: 'Clone Unit-Test-Arrays'
+
+          bootstrap_args="${bootstrap_args}";
           source $GITHUB_WORKSPACE/scripts/ci/build_libtiledb.sh
 
           # Bypass Catch2 Framework stdout interception with awk on test output
           # make check | awk '/1: ::set-output/{sub(/.*1: /, ""); print; next} 1'
-          ./tiledb/test/tiledb_unit -d yes | awk '/1: ::set-output/{sub(/.*1: /, ""); print; next} 1'
+          ./tiledb/test/tiledb_unit -d yes "[backwards-compat]"| awk '/1: ::set-output/{sub(/.*1: /, ""); print; next} 1'
 
-
-          # - bash: |
-          pushd $GITHUB_WORKSPACE/examples/cmake_project
-          mkdir build && cd build
-          cmake -DCMAKE_PREFIX_PATH=$GITHUB_WORKSPACE/dist .. && make
-          ./ExampleExe
-          popd
-          # Build and run the PNG ingestion example.
-          # libpng (example dependency)
-          sudo apt-get install libpng-dev
-
-          pushd $GITHUB_WORKSPACE/examples/png_ingestion;
-          mkdir build && cd build;
-          cmake -DCMAKE_PREFIX_PATH=$GITHUB_WORKSPACE/dist .. && make;
-          ./tiledb_png $GITHUB_WORKSPACE/doc/source/figures/Scarlet-Macaw-small.png /tmp/pngarray output.png;
-          popd;
-
-          source $GITHUB_WORKSPACE/scripts/ci/build_benchmarks.sh
 
       - name: 'Test status check'
         run: |
