@@ -36,11 +36,11 @@
 #include <iostream>
 #include <sstream>
 
+#include "experimental/tiledb/sm/array_schema/array_schema_evolution.h"
 #include "tiledb/common/heap_memory.h"
 #include "tiledb/common/logger.h"
 #include "tiledb/sm/array/array.h"
 #include "tiledb/sm/array_schema/array_schema.h"
-#include "tiledb/sm/array_schema/array_schema_evolution.h"
 #include "tiledb/sm/cache/buffer_lru_cache.h"
 #include "tiledb/sm/enums/array_type.h"
 #include "tiledb/sm/enums/layout.h"

@@ -35,7 +35,7 @@
 
 #include <unordered_map>
 
-#include "tiledb/common/status.h"
+#include "../../../../tiledb/common/status.h"
 
 using namespace tiledb::common;
 

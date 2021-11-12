@@ -33,7 +33,7 @@
 // clang-format off
 #ifdef TILEDB_SERIALIZATION
 #include "tiledb/sm/serialization/capnp_utils.h"
-#include "tiledb/sm/serialization/array_schema_evolution.h"
+#include "experimental/tiledb/sm/serialization/array_schema_evolution.h"
 #include "tiledb/sm/serialization/query.h"
 #include "tiledb/sm/serialization/tiledb-rest.h"
 #include "tiledb/sm/rest/curl.h" // must be included last to avoid Windows.h

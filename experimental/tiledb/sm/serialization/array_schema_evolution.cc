@@ -35,19 +35,14 @@
 #include "tiledb/sm/serialization/capnp_utils.h"
 #endif
 
+#include "experimental/tiledb/sm/array_schema/array_schema_evolution.h"
 #include "tiledb/common/heap_memory.h"
 #include "tiledb/common/logger.h"
-#include "tiledb/sm/array/array.h"
-#include "tiledb/sm/array_schema/array_schema_evolution.h"
 #include "tiledb/sm/array_schema/attribute.h"
-#include "tiledb/sm/array_schema/dimension.h"
-#include "tiledb/sm/array_schema/domain.h"
 #include "tiledb/sm/enums/array_type.h"
-#include "tiledb/sm/enums/compressor.h"
 #include "tiledb/sm/enums/datatype.h"
 #include "tiledb/sm/enums/filter_option.h"
 #include "tiledb/sm/enums/filter_type.h"
-#include "tiledb/sm/enums/layout.h"
 #include "tiledb/sm/enums/serialization_type.h"
 #include "tiledb/sm/misc/constants.h"
 #include "tiledb/sm/serialization/array_schema.h"
@@ -65,7 +60,7 @@ namespace serialization {
 Status array_schema_evolution_to_capnp(
     const ArraySchemaEvolution* array_schema_evolution,
     capnp::ArraySchemaEvolution::Builder* array_schema_evolution_builder,
-    const bool client_side) {
+    [[maybe_unused]] const bool client_side) {
   if (array_schema_evolution == nullptr)
     return LOG_STATUS(
         Status::SerializationError("Error serializing array schema evolution; "

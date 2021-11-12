@@ -51,8 +51,10 @@ set(TILEDB_PUBLIC_HEADERS
   ${TILEDB_CORE_INCLUDE_DIR}/tiledb/sm/c_api/tiledb.h
   ${TILEDB_CORE_INCLUDE_DIR}/tiledb/sm/c_api/tiledb_enum.h
   ${TILEDB_CORE_INCLUDE_DIR}/tiledb/sm/c_api/tiledb_version.h
-  ${TILEDB_CORE_INCLUDE_DIR}/tiledb/sm/c_api/tiledb_experimental.h
 )
+if(TILEDB_EXPERIMENTAL_FEATURES)
+  list(APPEND TILEDB_PUBLIC_HEADERS ${TILEDB_CORE_INCLUDE_DIR}/experimental/tiledb/sm/c_api/tiledb_experimental.h)
+endif()
 
 if (TILEDB_SERIALIZATION)
   list(APPEND TILEDB_PUBLIC_HEADERS
@@ -63,10 +65,8 @@ endif()
 if (TILEDB_CPP_API)
   list(APPEND TILEDB_PUBLIC_HEADERS
     ${TILEDB_CORE_INCLUDE_DIR}/tiledb/sm/cpp_api/tiledb
-    ${TILEDB_CORE_INCLUDE_DIR}/tiledb/sm/cpp_api/tiledb_experimental
     ${TILEDB_CORE_INCLUDE_DIR}/tiledb/sm/cpp_api/array.h
     ${TILEDB_CORE_INCLUDE_DIR}/tiledb/sm/cpp_api/array_schema.h
-    ${TILEDB_CORE_INCLUDE_DIR}/tiledb/sm/cpp_api/array_schema_evolution.h
     ${TILEDB_CORE_INCLUDE_DIR}/tiledb/sm/cpp_api/attribute.h
     ${TILEDB_CORE_INCLUDE_DIR}/tiledb/sm/cpp_api/config.h
     ${TILEDB_CORE_INCLUDE_DIR}/tiledb/sm/cpp_api/context.h
@@ -92,6 +92,13 @@ if (TILEDB_CPP_API)
     ${TILEDB_CORE_INCLUDE_DIR}/tiledb/sm/cpp_api/arrowio
     ${TILEDB_CORE_INCLUDE_DIR}/tiledb/sm/cpp_api/arrow_io_impl.h
   )
+  if(TILEDB_EXPERIMENTAL_FEATURES)
+    list(APPEND TILEDB_PUBLIC_HEADERS
+            ${TILEDB_CORE_INCLUDE_DIR}/experimental/tiledb/sm/cpp_api/array_schema_evolution.h
+            ${TILEDB_CORE_INCLUDE_DIR}/experimental/tiledb/sm/cpp_api/tiledb_experimental
+    )
+  endif()
+
 else()
   message(STATUS "TileDB C++ API is not built.")
 endif()
@@ -106,7 +113,6 @@ set(TILEDB_CORE_SOURCES
   ${TILEDB_CORE_INCLUDE_DIR}/tiledb/common/interval/interval.cc
   ${TILEDB_CORE_INCLUDE_DIR}/tiledb/sm/array/array.cc
   ${TILEDB_CORE_INCLUDE_DIR}/tiledb/sm/array_schema/array_schema.cc
-  ${TILEDB_CORE_INCLUDE_DIR}/tiledb/sm/array_schema/array_schema_evolution.cc
   ${TILEDB_CORE_INCLUDE_DIR}/tiledb/sm/array_schema/attribute.cc
   ${TILEDB_CORE_INCLUDE_DIR}/tiledb/sm/array_schema/dimension.cc
   ${TILEDB_CORE_INCLUDE_DIR}/tiledb/sm/array_schema/domain.cc
@@ -182,7 +188,6 @@ set(TILEDB_CORE_SOURCES
   ${TILEDB_CORE_INCLUDE_DIR}/tiledb/sm/rest/rest_client.cc
   ${TILEDB_CORE_INCLUDE_DIR}/tiledb/sm/rtree/rtree.cc
   ${TILEDB_CORE_INCLUDE_DIR}/tiledb/sm/serialization/array_schema.cc
-  ${TILEDB_CORE_INCLUDE_DIR}/tiledb/sm/serialization/array_schema_evolution.cc
   ${TILEDB_CORE_INCLUDE_DIR}/tiledb/sm/serialization/config.cc
   ${TILEDB_CORE_INCLUDE_DIR}/tiledb/sm/serialization/query.cc
   ${TILEDB_CORE_INCLUDE_DIR}/tiledb/sm/stats/global_stats.cc
@@ -200,6 +205,9 @@ set(TILEDB_CORE_SOURCES
   ${TILEDB_CORE_INCLUDE_DIR}/tiledb/sm/tile/generic_tile_io.cc
 )
 list(APPEND TILEDB_CORE_SOURCES ${TILEDB_COMMON_SOURCES})
+if (TILEDB_EXPERIMENTAL_FEATURES)
+  list(APPEND TILEDB_CORE_SOURCES ${TILEDB_EXPERIMENTAL_SOURCES})
+endif()
 
 if (TILEDB_SERIALIZATION)
   list(APPEND TILEDB_CORE_SOURCES
@@ -210,7 +218,6 @@ if (TILEDB_SERIALIZATION)
     set_source_files_properties(
       ${TILEDB_CORE_INCLUDE_DIR}/tiledb/sm/rest/rest_client.cc
       ${TILEDB_CORE_INCLUDE_DIR}/tiledb/sm/serialization/array_schema.cc
-      ${TILEDB_CORE_INCLUDE_DIR}/tiledb/sm/serialization/array_schema_evolution.cc
       ${TILEDB_CORE_INCLUDE_DIR}/tiledb/sm/serialization/config.cc
       ${TILEDB_CORE_INCLUDE_DIR}/tiledb/sm/serialization/query.cc
       ${TILEDB_CORE_INCLUDE_DIR}/tiledb/sm/serialization/tiledb-rest.capnp.c++
@@ -222,7 +229,6 @@ if (TILEDB_SERIALIZATION)
     set_source_files_properties(
       ${TILEDB_CORE_INCLUDE_DIR}/tiledb/sm/rest/rest_client.cc
       ${TILEDB_CORE_INCLUDE_DIR}/tiledb/sm/serialization/array_schema.cc
-      ${TILEDB_CORE_INCLUDE_DIR}/tiledb/sm/serialization/array_schema_evolution.cc
       ${TILEDB_CORE_INCLUDE_DIR}/tiledb/sm/serialization/config.cc
       ${TILEDB_CORE_INCLUDE_DIR}/tiledb/sm/serialization/query.cc
       ${TILEDB_CORE_INCLUDE_DIR}/tiledb/sm/serialization/tiledb-rest.capnp.c++

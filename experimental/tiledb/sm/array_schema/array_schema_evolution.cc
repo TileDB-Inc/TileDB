@@ -31,7 +31,7 @@
  * This file implements the ArraySchemaEvolution class.
  */
 
-#include "tiledb/sm/array_schema/array_schema_evolution.h"
+#include "array_schema_evolution.h"
 #include "tiledb/common/heap_memory.h"
 #include "tiledb/common/logger.h"
 #include "tiledb/sm/array_schema/array_schema.h"

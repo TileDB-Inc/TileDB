@@ -215,19 +215,6 @@ inline int32_t sanity_check(
   return TILEDB_OK;
 }
 
-inline int32_t sanity_check(
-    tiledb_ctx_t* ctx,
-    const tiledb_array_schema_evolution_t* schema_evolution) {
-  if (schema_evolution == nullptr ||
-      schema_evolution->array_schema_evolution_ == nullptr) {
-    auto st = Status::Error("Invalid TileDB array schema evolution object");
-    LOG_STATUS(st);
-    save_error(ctx, st);
-    return TILEDB_ERR;
-  }
-  return TILEDB_OK;
-}
-
 inline int32_t sanity_check(tiledb_ctx_t* ctx, const tiledb_domain_t* domain) {
   if (domain == nullptr || domain->domain_ == nullptr) {
     auto st = Status::Error("Invalid TileDB domain object");

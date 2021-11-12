@@ -46,8 +46,8 @@
 #else
 #include "tiledb/sm/filesystem/posix.h"
 #endif
+#include "experimental/tiledb/sm/c_api/tiledb_experimental.h"
 #include "tiledb/sm/c_api/tiledb.h"
-#include "tiledb/sm/c_api/tiledb_experimental.h"
 #include "tiledb/sm/c_api/tiledb_serialization.h"
 #include "tiledb/sm/enums/serialization_type.h"
 #include "tiledb/sm/misc/utils.h"

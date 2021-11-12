@@ -58,6 +58,7 @@ Configuration:
     --enable-tools                  enables TileDB CLI tools (experimental)
     --enable-ccache                 enables use of ccache (if present)
     --enable-arrow-tests            enables the compilation of the arrow adapter unit tests
+    --enable-experimental-features  enables experimental TileDB features
     --enable=arg1,arg2...           same as "--enable-arg1 --enable-arg2 ..."
 
 
@@ -97,6 +98,7 @@ tiledb_serialization="OFF"
 tiledb_tools="OFF"
 tiledb_ccache="OFF"
 tiledb_arrow_tests="OFF"
+tiledb_experimental_features="OFF"
 enable_multiple=""
 while test $# != 0; do
     case "$1" in
@@ -125,6 +127,7 @@ while test $# != 0; do
     --enable-tools) tiledb_tools="ON";;
     --enable-ccache) tiledb_ccache="ON";;
     --enable-arrow-tests) tiledb_arrow_tests="ON";;
+    --enable-experimental-features) tiledb_experimental_features="ON";;
     --enable=*) s=`arg "$1"`
                 enable_multiple="$s";;
     --help) usage ;;
@@ -150,6 +153,7 @@ for en in "${enables[@]}"; do
     arrow-tests) tiledb_arrow_tests="ON";;
     hdfs) tiledb_hdfs="ON";;
     static-tiledb) tiledb_static="ON";;
+    experimental-features) tiledb_experimental_features="ON";;
     *) die "Unknown option: --enable-$en" ;;
   esac
 done
@@ -205,6 +209,7 @@ ${cmake} -DCMAKE_BUILD_TYPE=${build_type} \
     -DTILEDB_ARROW_TESTS=${tiledb_arrow_tests} \
     -DTILEDB_FORCE_ALL_DEPS=${tiledb_force_all_deps} \
     -DSANITIZER="${sanitizer}" \
+    -DTILEDB_EXPERIMENTAL_FEATURES=${tiledb_experimental_features} \
     ${tiledb_disable_avx2} \
     "${source_dir}" || die "failed to configure the project"
 
