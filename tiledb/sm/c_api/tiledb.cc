@@ -31,15 +31,17 @@
  * This file defines the C API of TileDB.
  */
 
-#include "tiledb/sm/c_api/tiledb.h"
+#include "tiledb.h"
+#include "api_exception_safety.h"
+#include "tiledb_experimental.h"
+#include "tiledb_serialization.h"
+#include "tiledb_struct_def.h"
+
 #include "tiledb/common/dynamic_memory/dynamic_memory.h"
 #include "tiledb/common/heap_profiler.h"
 #include "tiledb/common/logger.h"
 #include "tiledb/sm/array/array.h"
 #include "tiledb/sm/array_schema/array_schema.h"
-#include "tiledb/sm/c_api/tiledb_experimental.h"
-#include "tiledb/sm/c_api/tiledb_serialization.h"
-#include "tiledb/sm/c_api/tiledb_struct_def.h"
 #include "tiledb/sm/config/config.h"
 #include "tiledb/sm/config/config_iter.h"
 #include "tiledb/sm/cpp_api/core_interface.h"
@@ -78,6 +80,24 @@
 #include <sstream>
 
 using namespace tiledb::common;
+
+/* ****************************** */
+/*  IMPLEMENTATION FUNCTIONS      */
+/* ****************************** */
+/*
+ * The `detail` namespace block contains all the implementations of the C API
+ * functions defined below. The C API functions themselves are outside the
+ * `detail` namespace and each wraps its implementation function with a standard
+ * wrapper. See `api_exception_safety.h` for the definition of the wrapper
+ * function `api_entry`.
+ *
+ * Each C API function requires an implementation function defined in this block
+ * and a corresponding wrapped C API function below. The convention reuses
+ * `function_name` in two namespaces. We have a `detail::function_name`
+ * definition for the unwrapped function and a `function_name` definition for
+ * the wrapped function.
+ */
+namespace tiledb::common::detail {
 
 /* ****************************** */
 /*       ENUMS TO/FROM STR        */
@@ -295,6 +315,159 @@ int32_t tiledb_vfs_mode_from_str(const char* str, tiledb_vfs_mode_t* vfs_mode) {
   *vfs_mode = (tiledb_vfs_mode_t)val;
   return TILEDB_OK;
 }
+
+}  // namespace tiledb::common::detail
+
+/* ****************************** */
+/*  C API FUNCTIONS               */
+/* ****************************** */
+/*
+ * C API function forward their arguments to an implementation function of the
+ * same name defined in the `detail` namespace above. See
+ * `api_exception_safety.h` for the definition of `api_entry`.
+ *
+ * Note: `std::forward` is not used here because it's not necessary. The C API
+ * uses C linkage, and none of the types used in the signatures of the C API
+ * function change with `std::forward`.
+ */
+
+/* ****************************** */
+/*       ENUMS TO/FROM STR        */
+/* ****************************** */
+int32_t tiledb_query_type_to_str(
+    tiledb_query_type_t query_type, const char** str) {
+  return api_entry<detail::tiledb_query_type_to_str>(query_type, str);
+}
+
+int32_t tiledb_query_type_from_str(
+    const char* str, tiledb_query_type_t* query_type) {
+  return api_entry<detail::tiledb_query_type_from_str>(str, query_type);
+}
+
+int32_t tiledb_object_type_to_str(
+    tiledb_object_t object_type, const char** str) {
+  return api_entry<detail::tiledb_object_type_to_str>(object_type, str);
+}
+
+int32_t tiledb_object_type_from_str(
+    const char* str, tiledb_object_t* object_type) {
+  return api_entry<detail::tiledb_object_type_from_str>(str, object_type);
+}
+
+int32_t tiledb_filesystem_to_str(
+    tiledb_filesystem_t filesystem, const char** str) {
+  return api_entry<detail::tiledb_filesystem_to_str>(filesystem, str);
+}
+
+int32_t tiledb_filesystem_from_str(
+    const char* str, tiledb_filesystem_t* filesystem) {
+  return api_entry<detail::tiledb_filesystem_from_str>(str, filesystem);
+}
+
+int32_t tiledb_datatype_to_str(tiledb_datatype_t datatype, const char** str) {
+  return api_entry<detail::tiledb_datatype_to_str>(datatype, str);
+}
+
+int32_t tiledb_datatype_from_str(const char* str, tiledb_datatype_t* datatype) {
+  return api_entry<detail::tiledb_datatype_from_str>(str, datatype);
+}
+
+int32_t tiledb_array_type_to_str(
+    tiledb_array_type_t array_type, const char** str) {
+  return api_entry<detail::tiledb_array_type_to_str>(array_type, str);
+}
+
+int32_t tiledb_array_type_from_str(
+    const char* str, tiledb_array_type_t* array_type) {
+  return api_entry<detail::tiledb_array_type_from_str>(str, array_type);
+}
+
+int32_t tiledb_layout_to_str(tiledb_layout_t layout, const char** str) {
+  return api_entry<detail::tiledb_layout_to_str>(layout, str);
+}
+
+int32_t tiledb_layout_from_str(const char* str, tiledb_layout_t* layout) {
+  return api_entry<detail::tiledb_layout_from_str>(str, layout);
+}
+
+int32_t tiledb_filter_type_to_str(
+    tiledb_filter_type_t filter_type, const char** str) {
+  return api_entry<detail::tiledb_filter_type_to_str>(filter_type, str);
+}
+
+int32_t tiledb_filter_type_from_str(
+    const char* str, tiledb_filter_type_t* filter_type) {
+  return api_entry<detail::tiledb_filter_type_from_str>(str, filter_type);
+}
+
+int32_t tiledb_filter_option_to_str(
+    tiledb_filter_option_t filter_option, const char** str) {
+  return api_entry<detail::tiledb_filter_option_to_str>(filter_option, str);
+}
+
+int32_t tiledb_filter_option_from_str(
+    const char* str, tiledb_filter_option_t* filter_option) {
+  return api_entry<detail::tiledb_filter_option_from_str>(str, filter_option);
+}
+
+int32_t tiledb_encryption_type_to_str(
+    tiledb_encryption_type_t encryption_type, const char** str) {
+  return api_entry<detail::tiledb_encryption_type_to_str>(encryption_type, str);
+}
+
+int32_t tiledb_encryption_type_from_str(
+    const char* str, tiledb_encryption_type_t* encryption_type) {
+  return api_entry<detail::tiledb_encryption_type_from_str>(
+      str, encryption_type);
+}
+
+int32_t tiledb_query_status_to_str(
+    tiledb_query_status_t query_status, const char** str) {
+  return api_entry<detail::tiledb_query_status_to_str>(query_status, str);
+}
+
+int32_t tiledb_query_status_from_str(
+    const char* str, tiledb_query_status_t* query_status) {
+  return api_entry<detail::tiledb_query_status_from_str>(str, query_status);
+}
+
+int32_t tiledb_serialization_type_to_str(
+    tiledb_serialization_type_t serialization_type, const char** str) {
+  return api_entry<detail::tiledb_serialization_type_to_str>(
+      serialization_type, str);
+}
+
+int32_t tiledb_serialization_type_from_str(
+    const char* str, tiledb_serialization_type_t* serialization_type) {
+  return api_entry<detail::tiledb_serialization_type_from_str>(
+      str, serialization_type);
+}
+
+int32_t tiledb_walk_order_to_str(
+    tiledb_walk_order_t walk_order, const char** str) {
+  return api_entry<detail::tiledb_walk_order_to_str>(walk_order, str);
+}
+
+int32_t tiledb_walk_order_from_str(
+    const char* str, tiledb_walk_order_t* walk_order) {
+  return api_entry<detail::tiledb_walk_order_from_str>(str, walk_order);
+}
+
+int32_t tiledb_vfs_mode_to_str(tiledb_vfs_mode_t vfs_mode, const char** str) {
+  return api_entry<detail::tiledb_vfs_mode_to_str>(vfs_mode, str);
+}
+
+int32_t tiledb_vfs_mode_from_str(const char* str, tiledb_vfs_mode_t* vfs_mode) {
+  return api_entry<detail::tiledb_vfs_mode_from_str>(str, vfs_mode);
+}
+
+/* ****************************** */
+/*  C API FUNCTIONS, NOT WRAPPED  */
+/* ****************************** */
+/*
+ * The C API functions below have not yet been converted to implementation-and-
+ * wrapper form.
+ */
 
 /* ****************************** */
 /*            CONSTANTS           */
