@@ -18,7 +18,7 @@ Useful Links
 
 - `Main Developer Docs <https://docs.tiledb.com/>`_
 - `Installation <https://docs.tiledb.com/developer/installation/quick-install>`_
-- `Quickstart <https://docs.tiledb.com/main/solutions/tiledb-embedded/usage>`_
+- `Quickstart <https://docs.tiledb.com/main/how-to/installation/usage>`_
 - `TileDB Github Repo <https://github.com/TileDB-Inc/TileDB>`_
 - `TileDB, Inc. Official Website <https://tiledb.com>`_
 
