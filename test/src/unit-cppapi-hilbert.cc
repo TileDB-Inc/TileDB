@@ -353,6 +353,41 @@ TEST_CASE(
     CHECK(r_buff_d2 == c_buff_d2);
   }
 
+  // Read
+  SECTION("- Unordered, overlapped") {
+    // regression test for sc-11244
+    Array array_r(ctx, array_name, TILEDB_READ);
+    Query query_r(ctx, array_r, TILEDB_READ);
+    // There are only 6 results but we have to over-allocate
+    // the buffer here in order for the overlapped query to complete.
+    // We check the result count below.
+    std::vector<int32_t> r_buff_a(7);
+    std::vector<int32_t> r_buff_d1(7);
+    std::vector<int32_t> r_buff_d2(7);
+
+    query_r.set_data_buffer("a", r_buff_a);
+    query_r.set_data_buffer("d1", r_buff_d1);
+    query_r.set_data_buffer("d2", r_buff_d2);
+
+    query_r.add_range("d1", (int32_t)1, (int32_t)5);
+    query_r.add_range("d2", (int32_t)1, (int32_t)3);
+    query_r.add_range("d2", (int32_t)2, (int32_t)4);
+    query_r.set_layout(TILEDB_UNORDERED);
+    CHECK_NOTHROW(query_r.submit());
+    CHECK(query_r.query_status() == tiledb::Query::Status::COMPLETE);
+    // check number of results
+    CHECK(query_r.result_buffer_elements()["a"].second == 6);
+    array_r.close();
+
+    // Check results
+    std::vector<int32_t> c_buff_a = {2, 3, 1, 2, 4, 1, 0};
+    std::vector<int32_t> c_buff_d1 = {1, 1, 4, 1, 5, 4, 0};
+    std::vector<int32_t> c_buff_d2 = {3, 1, 2, 3, 4, 2, 0};
+    CHECK(r_buff_a == c_buff_a);
+    CHECK(r_buff_d1 == c_buff_d1);
+    CHECK(r_buff_d2 == c_buff_d2);
+  }
+
   // Remove array
   if (vfs.is_dir(array_name))
     CHECK_NOTHROW(vfs.remove_dir(array_name));
