@@ -239,10 +239,6 @@ Array
     :project: TileDB-C
 .. doxygenfunction:: tiledb_array_get_non_empty_domain
     :project: TileDB-C
-.. doxygenfunction:: tiledb_array_max_buffer_size
-    :project: TileDB-C
-.. doxygenfunction:: tiledb_array_max_buffer_size_var
-    :project: TileDB-C
 .. doxygenfunction:: tiledb_array_get_uri
     :project: TileDB-C
 .. doxygenfunction:: tiledb_array_encryption_type
@@ -637,6 +633,10 @@ Fragment Info
 .. doxygenfunction:: tiledb_fragment_info_load
     :project: TileDB-C
 .. doxygenfunction:: tiledb_fragment_info_load_with_key
+    :project: TileDB-C
+.. doxygenfunction:: tiledb_fragment_info_get_array_schema
+    :project: TileDB-C
+.. doxygenfunction:: tiledb_fragment_info_get_array_schema_name
     :project: TileDB-C
 .. doxygenfunction:: tiledb_fragment_info_get_fragment_num
     :project: TileDB-C

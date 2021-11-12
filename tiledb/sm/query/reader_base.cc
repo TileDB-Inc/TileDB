@@ -1811,6 +1811,8 @@ Status ReaderBase::apply_query_condition(
   RETURN_NOT_OK(condition_.apply(
       array_schema_, result_cell_slabs, stride, memory_budget_rcs));
 
+  logger_->debug("Done applying query condition");
+
   return Status::Ok();
 }
 

@@ -18,6 +18,7 @@ steps:
 - bash: |
     set -e pipefail
     $SUDO rm -Rf /Library/Developer/CommandLineTools/SDKs/* # Remove SDKs without ARM support
+
   condition: eq(variables['Agent.OS'], 'Darwin')
   displayName: 'Remove sdks for testing (OSX only)'
 
@@ -41,60 +42,59 @@ steps:
 
     # Set up arguments for bootstrap.sh
     BUILD_BINARIESDIRECTORY=${BUILD_BINARIESDIRECTORY:-$BUILD_REPOSITORY_LOCALPATH/dist}
-    bootstrap_args="--prefix=${BUILD_BINARIESDIRECTORY} --disable-tests";
+    cmake_args="-DCMAKE_INSTALL_PREFIX=${BUILD_BINARIESDIRECTORY} -DTILEDB_TESTS=OFF -DTILEDB_INSTALL_LIBDIR=lib";
+    mkdir -p ${BUILD_BINARIESDIRECTORY}
 
     # Enable TILEDB_STATIC by default
     [ "$TILEDB_STATIC" ] || TILEDB_STATIC=ON
     if [[ "$TILEDB_STATIC" == "ON" ]]; then
-      bootstrap_args="${bootstrap_args} --enable-static-tiledb";
+      cmake_args="${cmake_args} -DTILEDB_STATIC=ON";
     fi
     if [[ "$TILEDB_HDFS" == "ON" ]]; then
-      bootstrap_args="${bootstrap_args} --enable-hdfs";
+      cmake_args="${cmake_args} -DTILEDB_HDFS=ON";
     fi;
     if [[ "$TILEDB_S3" == "ON" ]]; then
-      bootstrap_args="${bootstrap_args} --enable-s3";
+      cmake_args="${cmake_args} -DTILEDB_S3=ON";
     fi;
     if [[ "$TILEDB_AZURE" == "ON" ]]; then
-      bootstrap_args="${bootstrap_args} --enable-azure";
+      cmake_args="${cmake_args} -DTILEDB_AZURE=ON";
     fi;
     if [[ "$TILEDB_GCS" == "ON" ]]; then
-      bootstrap_args="${bootstrap_args} --enable-gcs";
+      cmake_args="${cmake_args} -DTILEDB_GCS=ON";
     fi;
     if [[ "$TILEDB_TOOLS" == "ON" ]]; then
-      bootstrap_args="${bootstrap_args} --enable-tools";
+      cmake_args="${cmake_args} -DTILEDB_TOOLS=ON";
     fi
     if [[ "$TILEDB_DEBUG" == "ON" ]]; then
-      bootstrap_args="${bootstrap_args} --enable-debug";
+      cmake_args="${cmake_args} -DCMAKE_BUILD_TYPE=Debug";
     fi
     if [[ "$TILEDB_CI_ASAN" == "ON" ]]; then
       # Add address sanitizer flag if necessary
-      bootstrap_args="${bootstrap_args} --enable-sanitizer=address --enable-debug";
+      cmake_args="${cmake_args} -DSANITIZER=address";
     fi
     if [[ "$TILEDB_CI_TSAN" == "ON" ]]; then
       # Add thread sanitizer flag if necessary
-      bootstrap_args="${bootstrap_args} --enable-sanitizer=thread --enable-debug";
+      cmake_args="${cmake_args} -DSANITIZER=thread";
     fi
     if [[ "$TILEDB_SERIALIZATION" == "ON" ]]; then
       # Add serialization flag if necessary
-      bootstrap_args="${bootstrap_args} --enable-serialization";
+      cmake_args="${cmake_args} -DTILEDB_SERIALIZATION=ON";
     fi
     if [[ "$TILEDB_FORCE_BUILD_DEPS" == "ON" ]]; then
       # Add superbuild flag
-      bootstrap_args="${bootstrap_args} --force-build-all-deps";
+      cmake_args="${cmake_args} -DTILEDB_FORCE_ALL_DEPS=ON";
     fi
     if [[ "$TILEDB_WERROR" == "OFF" ]]; then
       # Add superbuild flag
-      bootstrap_args="${bootstrap_args} --disable-werror";
+      cmake_args="${cmake_args} -DTILEDB_WERROR=OFF";
     fi
-
-    # displayName: 'Install dependencies'
 
     mkdir -p $BUILD_REPOSITORY_LOCALPATH/build
     cd $BUILD_REPOSITORY_LOCALPATH/build
 
     # Configure and build TileDB
-    echo "Bootstrapping with '$bootstrap_args'"
-    $BUILD_REPOSITORY_LOCALPATH/bootstrap $bootstrap_args
+    echo "Running cmake with '${cmake_args}'"
+    cmake .. ${cmake_args}
 
     make -j4
     make -C tiledb install
