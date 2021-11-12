@@ -1469,6 +1469,7 @@ TEST_CASE("RootPath", "[cppapi][config][rootpath]") {
     vfs.remove_dir(root_path);
   }
 }
+
 TEST_CASE(
     "C++ API: Sparse global order, dimension only read",
     "[cppapi][sparse][global][read][dimension-only]") {
