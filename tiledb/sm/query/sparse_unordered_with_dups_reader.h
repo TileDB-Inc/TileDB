@@ -56,6 +56,7 @@ class Array;
 class StorageManager;
 
 /** Processes sparse unordered with duplicates read queries. */
+template <class BitmapType>
 class SparseUnorderedWithDupsReader : public SparseIndexReaderBase,
                                       public IQueryStrategy {
  public:
@@ -109,13 +110,6 @@ class SparseUnorderedWithDupsReader : public SparseIndexReaderBase,
   /** Resets the reader object. */
   void reset();
 
-  /** Clears the result tiles. Used by serialization. */
-  Status clear_result_tiles();
-
-  /** Add a result tile with no memory budget checks. Used by serialization. */
-  ResultTile* add_result_tile_unsafe(
-      unsigned f, uint64_t t, const Domain* domain);
-
  private:
   /* ********************************* */
   /*         PRIVATE ATTRIBUTES        */
@@ -125,39 +119,59 @@ class SparseUnorderedWithDupsReader : public SparseIndexReaderBase,
   inline static std::atomic<uint64_t> logger_id_ = 0;
 
   /** The result tiles currently loaded. */
-  std::list<ResultTile> result_tiles_;
+  ResultTileListPerFragment<BitmapType> result_tiles_;
 
   /* ********************************* */
   /*           PRIVATE METHODS         */
   /* ********************************* */
 
-  /** Load a coordinate tile, making sure maximum budget is respected. */
+  /** Add a result tile to process, making sure maximum budget is respected. */
   Status add_result_tile(
-      unsigned dim_num,
-      uint64_t memory_budget_result_tiles,
-      uint64_t memory_budget_qc_tiles,
-      uint64_t memory_budget_coords_tiles,
-      unsigned f,
-      uint64_t t,
-      uint64_t last_t,
-      const Domain* domain,
+      const unsigned dim_num,
+      const uint64_t memory_budget_qc_tiles,
+      const uint64_t memory_budget_coords_tiles,
+      const unsigned f,
+      const uint64_t t,
+      const uint64_t last_t,
+      const Domain* const domain,
       bool* budget_exceeded);
-
-  /** corrects memory usage after de-serialization. */
-  Status fix_memory_usage_after_serialization();
 
   /** Create the result tiles. */
   Status create_result_tiles();
 
-  /** Populate a result cell slab to process. */
-  Status compute_result_cell_slab();
+  /** Copy offsets. */
+  template <class OffType>
+  Status copy_offsets(
+      const std::string& name,
+      ResultTileWithBitmap<BitmapType>* rt,
+      OffType* buffer,
+      const bool nullable,
+      uint8_t* val_buffer,
+      void** var_data,
+      const OffType div);
 
-  /** Create the result cell slabs once tiles are loaded. */
-  Status create_result_cell_slabs(uint64_t memory_budget);
+  /** Copy fixed size data. */
+  Status copy_fixed_data(
+      const std::string& name,
+      ResultTileWithBitmap<BitmapType>* rt,
+      uint8_t* buffer,
+      const bool nullable,
+      uint8_t* val_buffer,
+      const uint64_t cell_size,
+      const bool is_dim,
+      const unsigned dim_idx);
+
+  /** Compute initial max rt index for the copy. */
+  Status compute_initial_copy_bound(uint64_t* max_rt_idx);
+
+  /** Copy tiles. */
+  template <class OffType>
+  Status copy_tiles();
 
   /** Remove a result tile from memory */
   Status remove_result_tile(
-      unsigned frag_idx, std::list<ResultTile>::iterator rt);
+      const unsigned frag_idx,
+      typename std::list<ResultTileWithBitmap<BitmapType>>::iterator rt);
 
   /** Clean up processed data after copying and get ready for the next
    * iteration. */

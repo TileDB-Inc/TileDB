@@ -395,6 +395,10 @@ class Config {
    *    Which reader to use for sparse unordered with dups queries.
    *    "refactored" or "legacy".<br>
    *    **Default**: refactored
+   * - `sm.query.sparse_unordered_with_dups.non_overlapping_ranges` <br>
+   *    Ensure ranges for sparse unordered with dups queries are not
+   * overlapping. "true" or "false".<br>
+   *    **Default**: false
    * - `sm.mem.malloc_trim` <br>
    *    Should malloc_trim be called on context and query destruction? This
    *    might reduce residual memory usage. <br>
@@ -418,10 +422,6 @@ class Config {
    *    Ratio of the budget allocated for array data in the sparse global
    *    order reader. <br>
    *    **Default**: 0.1
-   * - `sm.mem.reader.sparse_global_order.ratio_result_tiles` <br>
-   *    Ratio of the budget allocated for result tiles in the sparse global
-   *    order reader. <br>
-   *    **Default**: 0.05
    * - `sm.mem.reader.sparse_global_order.ratio_rcs` <br>
    *    Ratio of the budget allocated for result cell slabs in the sparse
    *    global order reader. <br>
@@ -442,14 +442,6 @@ class Config {
    *    Ratio of the budget allocated for array data in the sparse unordered
    *    with duplicates reader. <br>
    *    **Default**: 0.1
-   * - `sm.mem.reader.sparse_unordered_with_dups.ratio_result_tiles` <br>
-   *    Ratio of the budget allocated for result tiles in the sparse
-   *    unordered with duplicates reader. <br>
-   *    **Default**: 0.05
-   * - `sm.mem.reader.sparse_unordered_with_dups.ratio_rcs` <br>
-   *    Ratio of the budget allocated for result cell slabs in the sparse
-   *    unordered with duplicates reader. <br>
-   * - `vfs.read_ahead_size` <br>
    *    The maximum byte size to read-ahead from the backend. <br>
    *    **Default**: 102400
    * -  `vfs.read_ahead_cache_size` <br>

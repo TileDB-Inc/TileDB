@@ -243,6 +243,21 @@ class ResultTile {
       std::mutex& mtx);
 
   /**
+   * Applicable only to sparse arrays.
+   *
+   * Computes a result bitmap for the input dimension for the coordinates that
+   * fall in the input range.
+   */
+  template <class T>
+  static void compute_results_bitmap_sparse(
+      const ResultTile* result_tile,
+      unsigned dim_idx,
+      const Range& range,
+      bool has_previous_dim,
+      std::vector<uint8_t>* result_bitmap,
+      const Layout& cell_order);
+
+  /**
    * Applicable only to sparse tiles of dense arrays.
    *
    * Accummulates to a result bitmap for the coordinates that
@@ -287,6 +302,19 @@ class ResultTile {
       std::vector<uint64_t>* prev_dim_result_count,
       const Layout& cell_order,
       std::mutex& mtx) const;
+
+  /**
+   * Applicable only to sparse arrays.
+   *
+   * Accummulates to a result bitmap for the coordinates that
+   * fall in the input range, checking only dimensions `dim_idx`.
+   */
+  Status compute_results_bitmap_sparse(
+      unsigned dim_idx,
+      const Range& range,
+      bool has_previous_dim,
+      std::vector<uint8_t>* result_bitmap,
+      const Layout& cell_order) const;
 
  private:
   /* ********************************* */
@@ -349,7 +377,7 @@ class ResultTile {
 
   /**
    * Stores the appropriate templated compute_results_count_sparse() function
-   * based for each dimension, based on the dimension datatype.
+   * for each dimension, based on the dimension datatype.
    */
   std::vector<std::function<void(
       const ResultTile*,
@@ -361,6 +389,19 @@ class ResultTile {
       const Layout&,
       std::mutex&)>>
       compute_results_count_sparse_func_;
+
+  /**
+   * Stores the appropriate templated compute_results_bitmap_sparse() function
+   * for each dimension, based on the dimension datatype.
+   */
+  std::vector<std::function<void(
+      const ResultTile*,
+      unsigned,
+      const Range&,
+      bool,
+      std::vector<uint8_t>*,
+      const Layout&)>>
+      compute_results_bitmap_sparse_func_;
 
   /* ********************************* */
   /*          PRIVATE METHODS          */

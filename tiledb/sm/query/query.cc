@@ -1017,17 +1017,40 @@ Status Query::create_strategy() {
         !array_schema_->dense() && layout_ == Layout::UNORDERED &&
         array_schema_->allows_dups()) {
       use_default = false;
-      strategy_ = tdb_unique_ptr<IQueryStrategy>(tdb_new(
-          SparseUnorderedWithDupsReader,
-          stats_->create_child("Reader"),
-          logger_,
-          storage_manager_,
-          array_,
-          config_,
-          buffers_,
-          subarray_,
-          layout_,
-          condition_));
+
+      bool found = false;
+      bool non_overlapping_ranges = false;
+      RETURN_NOT_OK(config_.get<bool>(
+          "sm.query.sparse_unordered_with_dups.non_overlapping_ranges",
+          &non_overlapping_ranges,
+          &found));
+      assert(found);
+
+      if (non_overlapping_ranges || !subarray_.is_set()) {
+        strategy_ = tdb_unique_ptr<IQueryStrategy>(tdb_new(
+            SparseUnorderedWithDupsReader<uint8_t>,
+            stats_->create_child("Reader"),
+            logger_,
+            storage_manager_,
+            array_,
+            config_,
+            buffers_,
+            subarray_,
+            layout_,
+            condition_));
+      } else {
+        strategy_ = tdb_unique_ptr<IQueryStrategy>(tdb_new(
+            SparseUnorderedWithDupsReader<uint64_t>,
+            stats_->create_child("Reader"),
+            logger_,
+            storage_manager_,
+            array_,
+            config_,
+            buffers_,
+            subarray_,
+            layout_,
+            condition_));
+      }
     } else if (
         use_refactored_sparse_global_order_reader() &&
         !array_schema_->dense() &&
