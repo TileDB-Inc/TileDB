@@ -84,11 +84,12 @@ regex_new = re.compile(r"new\s+(\(std::nothrow\))?\w+\s*[([]")
 regex_delete = re.compile(r"delete\s*(\[\])?\s+\*?\w+\s*[;)]")
 
 # Match C++ make_shared routine.
-regex_make_shared = re.compile(r"make_shared<")
+regex_make_shared = re.compile(r"std::make_shared<")
 
 # Contains per-file exceptions to violations of "make_shared".
 make_shared_exceptions = {
     "*": ["tdb::make_shared"],
+    "*": ["tiledb::common::make_shared"],
 }
 
 # Match C++ unique_ptr objects.
