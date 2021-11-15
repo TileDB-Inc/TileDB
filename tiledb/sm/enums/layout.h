@@ -82,7 +82,7 @@ inline Status layout_enum(const std::string& layout_str, Layout* layout) {
   else if (layout_str == constants::hilbert_str)
     *layout = Layout::HILBERT;
   else {
-    return Status::Error("Invalid Layout " + layout_str);
+    return Status_Error("Invalid Layout " + layout_str);
   }
   return Status::Ok();
 }

@@ -47,11 +47,11 @@ Status GZip::compress(
     int level, ConstBuffer* input_buffer, Buffer* output_buffer) {
   // Sanity check
   if (input_buffer->data() == nullptr || output_buffer->data() == nullptr)
-    return LOG_STATUS(Status::CompressionError(
+    return LOG_STATUS(Status_CompressionError(
         "Failed compressing with GZip; invalid buffer format"));
 
   if (level > GZip::maximum_level())
-    return LOG_STATUS(Status::CompressionError(
+    return LOG_STATUS(Status_CompressionError(
         "Failed compressing with GZip; invalid compression level."));
 
   int ret;
@@ -65,7 +65,8 @@ Status GZip::compress(
 
   if (ret != Z_OK) {
     (void)deflateEnd(&strm);
-    return LOG_STATUS(Status::GZipError("Cannot compress with GZIP"));
+    return LOG_STATUS(
+        Status_GZipError("Cannot compress with GZIP"));
   }
 
   // Compress
@@ -80,7 +81,8 @@ Status GZip::compress(
 
   // Return
   if (ret == Z_STREAM_ERROR || strm.avail_in != 0)
-    return LOG_STATUS(Status::GZipError("Cannot compress with GZIP"));
+    return LOG_STATUS(
+        Status_GZipError("Cannot compress with GZIP"));
 
   // Set size of compressed data
   uint64_t compressed_size = output_buffer->free_space() - strm.avail_out;
@@ -94,7 +96,7 @@ Status GZip::decompress(
     ConstBuffer* input_buffer, PreallocatedBuffer* output_buffer) {
   // Sanity check
   if (input_buffer->data() == nullptr || output_buffer->data() == nullptr)
-    return LOG_STATUS(Status::CompressionError(
+    return LOG_STATUS(Status_CompressionError(
         "Failed decompressing with GZip; invalid buffer format"));
 
   int ret;
@@ -109,7 +111,8 @@ Status GZip::decompress(
   ret = inflateInit(&strm);
 
   if (ret != Z_OK) {
-    return LOG_STATUS(Status::GZipError("Cannot decompress with GZIP"));
+    return LOG_STATUS(
+        Status_GZipError("Cannot decompress with GZIP"));
   }
 
   // Decompress
@@ -120,8 +123,7 @@ Status GZip::decompress(
   ret = inflate(&strm, Z_FINISH);
 
   if (ret != Z_STREAM_END) {
-    return LOG_STATUS(
-        Status::GZipError("Cannot decompress with GZIP, Stream Error"));
+    return LOG_STATUS(Status_GZipError("Cannot decompress with GZIP, Stream Error"));
   }
 
   // Set size of decompressed data

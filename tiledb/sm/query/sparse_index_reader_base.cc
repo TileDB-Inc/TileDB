@@ -235,8 +235,8 @@ Status SparseIndexReaderBase::load_initial_data() {
 
     if (memory_used_result_tile_ranges_ >
         memory_budget_ratio_tile_ranges_ * memory_budget_)
-      return logger_->status(
-          Status::ReaderError("Exceeded memory budget for result tile ranges"));
+      return logger_->status(Status_ReaderError(
+          "Exceeded memory budget for result tile ranges"));
   }
 
   // Set a limit to the array memory.
@@ -642,7 +642,7 @@ Status SparseIndexReaderBase::add_extra_offset() {
           &elements,
           offsets_bytesize());
     } else {
-      return logger_->status(Status::ReaderError(
+      return logger_->status(Status_ReaderError(
           "Cannot add extra offset to buffer; Unsupported offsets format"));
     }
   }
