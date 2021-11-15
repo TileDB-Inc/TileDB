@@ -240,10 +240,10 @@ add_definitions(-D_FILE_OFFSET_BITS=64)
 
 # AVX2 flag
 include(CheckAVX2Support)
-CheckAVX2Support()
-if (COMPILER_SUPPORTS_AVX2)
-  add_compile_options(${COMPILER_AVX2_FLAG})
-endif()
+#CheckAVX2Support()
+#if (COMPILER_SUPPORTS_AVX2)
+#  add_compile_options(${COMPILER_AVX2_FLAG})
+#endif()
 
 ############################################################
 # Enable testing and add subdirectories
