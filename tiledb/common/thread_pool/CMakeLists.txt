@@ -36,6 +36,7 @@ list(APPEND DEPENDENT_SOURCES
     ../heap_profiler.cc
     ../logger.cc
     ../status.cc
+    ../status_code.cc
 )
 
 if (TILEDB_TESTS)
