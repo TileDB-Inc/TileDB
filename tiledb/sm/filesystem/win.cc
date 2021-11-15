@@ -348,7 +348,7 @@ err:
   if (find_h != INVALID_HANDLE_VALUE) {
     FindClose(find_h);
   }
-  std::string errmsg ("Failed to list directory \"" + path + "\"");
+  std::string errmsg("Failed to list directory \"" + path + "\"");
   return LOG_STATUS(Status::IOError(errmsg));
 }
 
