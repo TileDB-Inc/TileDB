@@ -66,12 +66,3 @@ TEST_CASE("Status: Test code_to_string", "[status]") {
   Status err = Status::Error("err message");
   CHECK_THAT(err.code_to_string(), Catch::Equals("Error"));
 }
-
-TEST_CASE("Status: Test posix_code", "[status]") {
-  Status st = Status::Ok();
-  // check that posix code is < 0 by default
-  CHECK(st.posix_code() == -1);
-
-  st = Status::Error("err msg");
-  CHECK(st.posix_code() == -1);
-}

@@ -1,7 +1,6 @@
 #
 # tiledb/common/CMakeLists.txt
 #
-#
 # The MIT License
 #
 # Copyright (c) 2021 TileDB, Inc.
@@ -25,6 +24,13 @@
 # THE SOFTWARE.
 #
 
+include(common-root)
+
+add_subdirectory(thread_pool)
+
 if (TILEDB_TESTS)
     add_subdirectory(interval)
 endif()
+
+get_gathered(COMMON_SOURCES)
+set(TILEDB_COMMON_SOURCES ${COMMON_SOURCES} PARENT_SCOPE)

@@ -33,6 +33,7 @@
 #ifndef TILEDB_STRATEGY_BASE_H
 #define TILEDB_STRATEGY_BASE_H
 
+#include "tiledb/common/logger_public.h"
 #include "tiledb/common/status.h"
 #include "tiledb/sm/array_schema/dimension.h"
 #include "tiledb/sm/misc/types.h"
@@ -55,6 +56,7 @@ class StrategyBase {
   /** Constructor. */
   StrategyBase(
       stats::Stats* stats,
+      tdb_shared_ptr<Logger> logger,
       StorageManager* storage_manager,
       Array* array,
       Config& config,
@@ -97,6 +99,9 @@ class StrategyBase {
 
   /** The class stats. */
   stats::Stats* stats_;
+
+  /** The class logger. */
+  tdb_shared_ptr<Logger> logger_;
 
   /** The array. */
   const Array* array_;

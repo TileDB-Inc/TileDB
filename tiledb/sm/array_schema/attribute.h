@@ -70,6 +70,26 @@ class Attribute {
   Attribute(const std::string& name, Datatype type, bool nullable = false);
 
   /**
+   * Constructor.
+   *
+   * @param name The name of the attribute.
+   * @param type The type of the attribute.
+   * @param nullable The nullable of the attribute.
+   * @param cell_val_num The cell number of the attribute.
+   * @param filter_pipeline The filters of the attribute.
+   * @param fill_value The fill value of the attribute.
+   * @param fill_value_validity The validity of fill_value.
+   */
+  Attribute(
+      const std::string& name,
+      Datatype type,
+      bool nullable,
+      uint32_t cell_val_num,
+      const FilterPipeline& filter_pipeline,
+      const ByteVecValue& fill_value,
+      uint8_t fill_value_validity);
+
+  /**
    * Constructor. It clones the input attribute.
    *
    * @param attr The attribute to be cloned.
@@ -85,6 +105,9 @@ class Attribute {
 
   /** Copy-assignment operator. */
   DISABLE_COPY_ASSIGN(Attribute);
+
+  /** Move constructor. */
+  Attribute(Attribute&&) = default;
 
   /** Destructor. */
   ~Attribute();
@@ -107,9 +130,10 @@ class Attribute {
    *
    * @param buff The buffer to deserialize from.
    * @param version The format spec version.
-   * @return Status
+   * @return Status and Attribute
    */
-  Status deserialize(ConstBuffer* buff, uint32_t version);
+  static std::tuple<Status, std::optional<Attribute>> deserialize(
+      ConstBuffer* buff, uint32_t version);
 
   /** Dumps the attribute contents in ASCII form in the selected output. */
   void dump(FILE* out) const;
@@ -237,6 +261,10 @@ class Attribute {
 
   /** Sets the default fill value. */
   void set_default_fill_value();
+
+  /** The default fill value. */
+  static ByteVecValue default_fill_value(
+      Datatype datatype, uint32_t cell_val_num);
 
   /** Returns the fill value in string form. */
   std::string fill_value_str() const;

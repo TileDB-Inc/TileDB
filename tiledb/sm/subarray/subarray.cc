@@ -30,7 +30,12 @@
  * This file implements class Subarray.
  */
 
-#include "tiledb/sm/subarray/subarray.h"
+#include <algorithm>
+#include <cmath>
+#include <iomanip>
+#include <sstream>
+#include <unordered_set>
+
 #include "tiledb/common/logger.h"
 #include "tiledb/sm/array/array.h"
 #include "tiledb/sm/array_schema/array_schema.h"
@@ -40,15 +45,11 @@
 #include "tiledb/sm/enums/layout.h"
 #include "tiledb/sm/fragment/fragment_metadata.h"
 #include "tiledb/sm/misc/parallel_functions.h"
+#include "tiledb/sm/misc/resource_pool.h"
 #include "tiledb/sm/misc/utils.h"
 #include "tiledb/sm/rtree/rtree.h"
 #include "tiledb/sm/stats/global_stats.h"
-
-#include <algorithm>
-#include <cmath>
-#include <iomanip>
-#include <sstream>
-#include <unordered_set>
+#include "tiledb/sm/subarray/subarray.h"
 
 using namespace tiledb::common;
 using namespace tiledb::sm::stats;
@@ -69,16 +70,22 @@ Subarray::Subarray()
 }
 
 Subarray::Subarray(
-    const Array* array, Stats* const parent_stats, const bool coalesce_ranges)
-    : Subarray(array, Layout::UNORDERED, parent_stats, coalesce_ranges) {
+    const Array* array,
+    Stats* const parent_stats,
+    tdb_shared_ptr<Logger> logger,
+    const bool coalesce_ranges)
+    : Subarray(
+          array, Layout::UNORDERED, parent_stats, logger, coalesce_ranges) {
 }
 
 Subarray::Subarray(
     const Array* const array,
     const Layout layout,
     Stats* const parent_stats,
+    tdb_shared_ptr<Logger> logger,
     const bool coalesce_ranges)
     : stats_(parent_stats->create_child("Subarray"))
+    , logger_(logger->clone("Subarray", ++logger_id_))
     , array_(array)
     , layout_(layout)
     , cell_order_(array_->array_schema()->cell_order())
@@ -126,7 +133,7 @@ Status Subarray::add_range(
     uint32_t dim_idx, Range&& range, const bool read_range_oob_error) {
   auto dim_num = array_->array_schema()->dim_num();
   if (dim_idx >= dim_num)
-    return LOG_STATUS(Status::SubarrayError(
+    return logger_->status(Status::SubarrayError(
         "Cannot add range to dimension; Invalid dimension index"));
 
   // Must reset the result size and tile overlap
@@ -191,7 +198,10 @@ uint64_t Subarray::cell_num(uint64_t range_idx) const {
   uint64_t cell_num = 1, range;
   auto array_schema = array_->array_schema();
   unsigned dim_num = array_schema->dim_num();
-  auto layout = (layout_ == Layout::UNORDERED) ? cell_order_ : layout_;
+  auto layout =
+      (layout_ == Layout::UNORDERED) ?
+          ((cell_order_ == Layout::HILBERT) ? Layout::ROW_MAJOR : cell_order_) :
+          layout_;
   uint64_t tmp_idx = range_idx;
 
   // Unary case or GLOBAL_ORDER
@@ -295,7 +305,8 @@ bool Subarray::coincides_with_tiles() const {
 
 template <class T>
 Subarray Subarray::crop_to_tile(const T* tile_coords, Layout layout) const {
-  Subarray ret(array_, layout, stats_->parent(), coalesce_ranges_);
+  // TBD: is it ok that Subarray log id will increase as if it's a new subarray?
+  Subarray ret(array_, layout, stats_->parent(), logger_, coalesce_ranges_);
 
   T new_range[2];
   bool overlaps;
@@ -346,7 +357,7 @@ bool Subarray::empty() const {
 
 Status Subarray::get_query_type(QueryType* type) const {
   if (array_ == nullptr)
-    return LOG_STATUS(Status::SubarrayError(
+    return logger_->status(Status::SubarrayError(
         "Cannot get query type from array; Invalid array"));
 
   return array_->get_query_type(type);
@@ -356,12 +367,12 @@ Status Subarray::get_range(
     uint32_t dim_idx, uint64_t range_idx, const Range** range) const {
   auto dim_num = array_->array_schema()->dim_num();
   if (dim_idx >= dim_num)
-    return LOG_STATUS(
+    return logger_->status(
         Status::SubarrayError("Cannot get range; Invalid dimension index"));
 
   auto range_num = ranges_[dim_idx].size();
   if (range_idx >= range_num)
-    return LOG_STATUS(
+    return logger_->status(
         Status::SubarrayError("Cannot get range; Invalid range index"));
 
   *range = &ranges_[dim_idx][range_idx];
@@ -376,12 +387,12 @@ Status Subarray::get_range(
     const void** end) const {
   auto dim_num = array_->array_schema()->dim_num();
   if (dim_idx >= dim_num)
-    return LOG_STATUS(
+    return logger_->status(
         Status::SubarrayError("Cannot get range; Invalid dimension index"));
 
   auto range_num = ranges_[dim_idx].size();
   if (range_idx >= range_num)
-    return LOG_STATUS(
+    return logger_->status(
         Status::SubarrayError("Cannot get range; Invalid range index"));
 
   *start = ranges_[dim_idx][range_idx].start();
@@ -398,18 +409,18 @@ Status Subarray::get_range_var_size(
   auto schema = array_->array_schema();
   auto dim_num = schema->dim_num();
   if (dim_idx >= dim_num)
-    return LOG_STATUS(Status::SubarrayError(
+    return logger_->status(Status::SubarrayError(
         "Cannot get var range size; Invalid dimension index"));
 
   auto dim = schema->domain()->dimension(dim_idx);
   if (!dim->var_size())
-    return LOG_STATUS(Status::SubarrayError(
+    return logger_->status(Status::SubarrayError(
         "Cannot get var range size; Dimension " + dim->name() +
         " is not var sized"));
 
   auto range_num = ranges_[dim_idx].size();
   if (range_idx >= range_num)
-    return LOG_STATUS(Status::SubarrayError(
+    return logger_->status(Status::SubarrayError(
         "Cannot get var range size; Invalid range index"));
 
   *start = ranges_[dim_idx][range_idx].start_size();
@@ -421,7 +432,7 @@ Status Subarray::get_range_var_size(
 Status Subarray::get_range_num(uint32_t dim_idx, uint64_t* range_num) const {
   auto dim_num = array_->array_schema()->dim_num();
   if (dim_idx >= dim_num)
-    return LOG_STATUS(
+    return logger_->status(
         Status::SubarrayError("Cannot get number of ranges for a dimension; "
                               "Invalid dimension index"));
 
@@ -431,7 +442,8 @@ Status Subarray::get_range_num(uint32_t dim_idx, uint64_t* range_num) const {
 }
 
 Subarray Subarray::get_subarray(uint64_t start, uint64_t end) const {
-  Subarray ret(array_, layout_, stats_->parent(), coalesce_ranges_);
+  // TBD: is it ok that Subarray log id will increase as if it's a new subarray?
+  Subarray ret(array_, layout_, stats_->parent(), logger_, coalesce_ranges_);
 
   auto start_coords = get_range_coords(start);
   auto end_coords = get_range_coords(end);
@@ -504,7 +516,7 @@ void Subarray::set_layout(Layout layout) {
 
 Status Subarray::to_byte_vec(std::vector<uint8_t>* byte_vec) const {
   if (range_num() != 1)
-    return LOG_STATUS(Status::SubarrayError(
+    return logger_->status(Status::SubarrayError(
         "Cannot export to byte vector; The subarray must be unary"));
 
   byte_vec->clear();
@@ -529,13 +541,13 @@ Status Subarray::get_est_result_size(
     ThreadPool* const compute_tp) {
   // Check attribute/dimension name
   if (name == nullptr)
-    return LOG_STATUS(
+    return logger_->status(
         Status::SubarrayError("Cannot get estimated result size; "
                               "Attribute/Dimension name cannot be null"));
 
   // Check size pointer
   if (size == nullptr)
-    return LOG_STATUS(Status::SubarrayError(
+    return logger_->status(Status::SubarrayError(
         "Cannot get estimated result size; Input size cannot be null"));
 
   // Check if name is attribute or dimension
@@ -545,19 +557,19 @@ Status Subarray::get_est_result_size(
 
   // Check if attribute/dimension exists
   if (name != constants::coords && !is_dim && !is_attr)
-    return LOG_STATUS(Status::SubarrayError(
+    return logger_->status(Status::SubarrayError(
         std::string("Cannot get estimated result size; Attribute/Dimension '") +
         name + "' does not exist"));
 
   // Check if the attribute/dimension is fixed-sized
   if (array_schema->var_size(name))
-    return LOG_STATUS(
+    return logger_->status(
         Status::SubarrayError("Cannot get estimated result size; "
                               "Attribute/Dimension must be fixed-sized"));
 
   // Check if attribute/dimension is nullable
   if (array_schema->is_nullable(name))
-    return LOG_STATUS(
+    return logger_->status(
         Status::SubarrayError("Cannot get estimated result size; "
                               "Attribute/Dimension must not be nullable"));
 
@@ -582,13 +594,13 @@ Status Subarray::get_est_result_size(
     ThreadPool* const compute_tp) {
   // Check attribute/dimension name
   if (name == nullptr)
-    return LOG_STATUS(
+    return logger_->status(
         Status::SubarrayError("Cannot get estimated result size; "
                               "Attribute/Dimension name cannot be null"));
 
   // Check size pointer
   if (size_off == nullptr || size_val == nullptr)
-    return LOG_STATUS(Status::SubarrayError(
+    return logger_->status(Status::SubarrayError(
         "Cannot get estimated result size; Input sizes cannot be null"));
 
   // Check if name is attribute or dimension
@@ -598,19 +610,19 @@ Status Subarray::get_est_result_size(
 
   // Check if attribute/dimension exists
   if (name != constants::coords && !is_dim && !is_attr)
-    return LOG_STATUS(Status::SubarrayError(
+    return logger_->status(Status::SubarrayError(
         std::string("Cannot get estimated result size; Attribute/Dimension '") +
         name + "' does not exist"));
 
   // Check if the attribute/dimension is var-sized
   if (!array_schema->var_size(name))
-    return LOG_STATUS(
+    return logger_->status(
         Status::SubarrayError("Cannot get estimated result size; "
                               "Attribute/Dimension must be var-sized"));
 
   // Check if attribute/dimension is nullable
   if (array_schema->is_nullable(name))
-    return LOG_STATUS(
+    return logger_->status(
         Status::SubarrayError("Cannot get estimated result size; "
                               "Attribute/Dimension must not be nullable"));
 
@@ -647,13 +659,13 @@ Status Subarray::get_est_result_size_nullable(
     ThreadPool* const compute_tp) {
   // Check attribute/dimension name
   if (name == nullptr)
-    return LOG_STATUS(
+    return logger_->status(
         Status::SubarrayError("Cannot get estimated result size; "
                               "Attribute name cannot be null"));
 
   // Check size pointer
   if (size == nullptr || size_validity == nullptr)
-    return LOG_STATUS(Status::SubarrayError(
+    return logger_->status(Status::SubarrayError(
         "Cannot get estimated result size; Input sizes cannot be null"));
 
   // Check if name is attribute
@@ -662,19 +674,19 @@ Status Subarray::get_est_result_size_nullable(
 
   // Check if attribute exists
   if (!is_attr)
-    return LOG_STATUS(Status::SubarrayError(
+    return logger_->status(Status::SubarrayError(
         std::string("Cannot get estimated result size; Attribute '") + name +
         "' does not exist"));
 
   // Check if the attribute is fixed-sized
   if (array_schema->var_size(name))
-    return LOG_STATUS(
+    return logger_->status(
         Status::SubarrayError("Cannot get estimated result size; "
                               "Attribute must be fixed-sized"));
 
   // Check if attribute is nullable
   if (!array_schema->is_nullable(name))
-    return LOG_STATUS(
+    return logger_->status(
         Status::SubarrayError("Cannot get estimated result size; "
                               "Attribute must be nullable"));
 
@@ -704,13 +716,13 @@ Status Subarray::get_est_result_size_nullable(
     ThreadPool* const compute_tp) {
   // Check attribute/dimension name
   if (name == nullptr)
-    return LOG_STATUS(
+    return logger_->status(
         Status::SubarrayError("Cannot get estimated result size; "
                               "Attribute name cannot be null"));
 
   // Check size pointer
   if (size_off == nullptr || size_val == nullptr || size_validity == nullptr)
-    return LOG_STATUS(Status::SubarrayError(
+    return logger_->status(Status::SubarrayError(
         "Cannot get estimated result size; Input sizes cannot be null"));
 
   // Check if name is attribute
@@ -719,19 +731,19 @@ Status Subarray::get_est_result_size_nullable(
 
   // Check if attribute exists
   if (!is_attr)
-    return LOG_STATUS(Status::SubarrayError(
+    return logger_->status(Status::SubarrayError(
         std::string("Cannot get estimated result size; Attribute '") + name +
         "' does not exist"));
 
   // Check if the attribute is var-sized
   if (!array_schema->var_size(name))
-    return LOG_STATUS(
+    return logger_->status(
         Status::SubarrayError("Cannot get estimated result size; "
                               "Attribute must be var-sized"));
 
   // Check if attribute is nullable
   if (!array_schema->is_nullable(name))
-    return LOG_STATUS(
+    return logger_->status(
         Status::SubarrayError("Cannot get estimated result size; "
                               "Attribute must be nullable"));
 
@@ -774,12 +786,12 @@ Status Subarray::get_max_memory_size(
     ThreadPool* const compute_tp) {
   // Check attribute/dimension name
   if (name == nullptr)
-    return LOG_STATUS(Status::SubarrayError(
+    return logger_->status(Status::SubarrayError(
         "Cannot get max memory size; Attribute/Dimension cannot be null"));
 
   // Check size pointer
   if (size == nullptr)
-    return LOG_STATUS(Status::SubarrayError(
+    return logger_->status(Status::SubarrayError(
         "Cannot get max memory size; Input size cannot be null"));
 
   // Check if name is attribute or dimension
@@ -789,18 +801,18 @@ Status Subarray::get_max_memory_size(
 
   // Check if attribute/dimension exists
   if (name != constants::coords && !is_dim && !is_attr)
-    return LOG_STATUS(Status::SubarrayError(
+    return logger_->status(Status::SubarrayError(
         std::string("Cannot get max memory size; Attribute/Dimension '") +
         name + "' does not exist"));
 
   // Check if the attribute/dimension is fixed-sized
   if (name != constants::coords && array_schema->var_size(name))
-    return LOG_STATUS(Status::SubarrayError(
+    return logger_->status(Status::SubarrayError(
         "Cannot get max memory size; Attribute/Dimension must be fixed-sized"));
 
   // Check if attribute/dimension is nullable
   if (array_schema->is_nullable(name))
-    return LOG_STATUS(
+    return logger_->status(
         Status::SubarrayError("Cannot get estimated result size; "
                               "Attribute/Dimension must not be nullable"));
 
@@ -819,12 +831,12 @@ Status Subarray::get_max_memory_size(
     ThreadPool* const compute_tp) {
   // Check attribute/dimension name
   if (name == nullptr)
-    return LOG_STATUS(Status::SubarrayError(
+    return logger_->status(Status::SubarrayError(
         "Cannot get max memory size; Attribute/Dimension cannot be null"));
 
   // Check size pointer
   if (size_off == nullptr || size_val == nullptr)
-    return LOG_STATUS(Status::SubarrayError(
+    return logger_->status(Status::SubarrayError(
         "Cannot get max memory size; Input sizes cannot be null"));
 
   // Check if name is attribute or dimension
@@ -834,18 +846,18 @@ Status Subarray::get_max_memory_size(
 
   // Check if attribute/dimension exists
   if (name != constants::coords && !is_dim && !is_attr)
-    return LOG_STATUS(Status::SubarrayError(
+    return logger_->status(Status::SubarrayError(
         std::string("Cannot get max memory size; Attribute/Dimension '") +
         name + "' does not exist"));
 
   // Check if the attribute/dimension is var-sized
   if (!array_schema->var_size(name))
-    return LOG_STATUS(Status::SubarrayError(
+    return logger_->status(Status::SubarrayError(
         "Cannot get max memory size; Attribute/Dimension must be var-sized"));
 
   // Check if attribute/dimension is nullable
   if (array_schema->is_nullable(name))
-    return LOG_STATUS(
+    return logger_->status(
         Status::SubarrayError("Cannot get estimated result size; "
                               "Attribute/Dimension must not be nullable"));
 
@@ -865,12 +877,12 @@ Status Subarray::get_max_memory_size_nullable(
     ThreadPool* const compute_tp) {
   // Check attribute name
   if (name == nullptr)
-    return LOG_STATUS(Status::SubarrayError(
+    return logger_->status(Status::SubarrayError(
         "Cannot get max memory size; Attribute cannot be null"));
 
   // Check size pointer
   if (size == nullptr || size_validity == nullptr)
-    return LOG_STATUS(Status::SubarrayError(
+    return logger_->status(Status::SubarrayError(
         "Cannot get max memory size; Input sizes cannot be null"));
 
   // Check if name is attribute
@@ -879,18 +891,18 @@ Status Subarray::get_max_memory_size_nullable(
 
   // Check if attribute exists
   if (!is_attr)
-    return LOG_STATUS(Status::SubarrayError(
+    return logger_->status(Status::SubarrayError(
         std::string("Cannot get max memory size; Attribute '") + name +
         "' does not exist"));
 
   // Check if the attribute is fixed-sized
   if (array_schema->var_size(name))
-    return LOG_STATUS(Status::SubarrayError(
+    return logger_->status(Status::SubarrayError(
         "Cannot get max memory size; Attribute must be fixed-sized"));
 
   // Check if attribute is nullable
   if (!array_schema->is_nullable(name))
-    return LOG_STATUS(
+    return logger_->status(
         Status::SubarrayError("Cannot get estimated result size; "
                               "Attribute must be nullable"));
 
@@ -911,12 +923,12 @@ Status Subarray::get_max_memory_size_nullable(
     ThreadPool* const compute_tp) {
   // Check attribute/dimension name
   if (name == nullptr)
-    return LOG_STATUS(Status::SubarrayError(
+    return logger_->status(Status::SubarrayError(
         "Cannot get max memory size; Attribute/Dimension cannot be null"));
 
   // Check size pointer
   if (size_off == nullptr || size_val == nullptr || size_validity == nullptr)
-    return LOG_STATUS(Status::SubarrayError(
+    return logger_->status(Status::SubarrayError(
         "Cannot get max memory size; Input sizes cannot be null"));
 
   // Check if name is attribute or dimension
@@ -925,18 +937,18 @@ Status Subarray::get_max_memory_size_nullable(
 
   // Check if attribute exists
   if (!is_attr)
-    return LOG_STATUS(Status::SubarrayError(
+    return logger_->status(Status::SubarrayError(
         std::string("Cannot get max memory size; Attribute '") + name +
         "' does not exist"));
 
   // Check if the attribute is var-sized
   if (!array_schema->var_size(name))
-    return LOG_STATUS(Status::SubarrayError(
+    return logger_->status(Status::SubarrayError(
         "Cannot get max memory size; Attribute/Dimension must be var-sized"));
 
   // Check if attribute is nullable
   if (!array_schema->is_nullable(name))
-    return LOG_STATUS(
+    return logger_->status(
         Status::SubarrayError("Cannot get estimated result size; "
                               "Attribute must be nullable"));
 
@@ -954,7 +966,10 @@ std::vector<uint64_t> Subarray::get_range_coords(uint64_t range_idx) const {
 
   uint64_t tmp_idx = range_idx;
   auto dim_num = this->dim_num();
-  auto layout = (layout_ == Layout::UNORDERED) ? cell_order_ : layout_;
+  auto layout =
+      (layout_ == Layout::UNORDERED) ?
+          ((cell_order_ == Layout::HILBERT) ? Layout::ROW_MAJOR : cell_order_) :
+          layout_;
 
   if (layout == Layout::ROW_MAJOR) {
     for (unsigned i = 0; i < dim_num; ++i) {
@@ -983,7 +998,10 @@ std::vector<uint64_t> Subarray::get_range_coords(uint64_t range_idx) const {
 void Subarray::get_next_range_coords(
     std::vector<uint64_t>* range_coords) const {
   auto dim_num = array_->array_schema()->dim_num();
-  auto layout = (layout_ == Layout::UNORDERED) ? cell_order_ : layout_;
+  auto layout =
+      (layout_ == Layout::UNORDERED) ?
+          ((cell_order_ == Layout::HILBERT) ? Layout::ROW_MAJOR : cell_order_) :
+          layout_;
 
   if (layout == Layout::ROW_MAJOR) {
     auto d = dim_num - 1;
@@ -1040,7 +1058,10 @@ NDRange Subarray::ndrange(uint64_t range_idx) const {
   NDRange ret;
   uint64_t tmp_idx = range_idx;
   auto dim_num = this->dim_num();
-  auto layout = (layout_ == Layout::UNORDERED) ? cell_order_ : layout_;
+  auto layout =
+      (layout_ == Layout::UNORDERED) ?
+          ((cell_order_ == Layout::HILBERT) ? Layout::ROW_MAJOR : cell_order_) :
+          layout_;
   ret.reserve(dim_num);
 
   // Unary case or GLOBAL_ORDER
@@ -1106,8 +1127,8 @@ Status Subarray::split(
     Subarray* r2) const {
   assert(r1 != nullptr);
   assert(r2 != nullptr);
-  *r1 = Subarray(array_, layout_, stats_->parent(), coalesce_ranges_);
-  *r2 = Subarray(array_, layout_, stats_->parent(), coalesce_ranges_);
+  *r1 = Subarray(array_, layout_, stats_->parent(), logger_, coalesce_ranges_);
+  *r2 = Subarray(array_, layout_, stats_->parent(), logger_, coalesce_ranges_);
 
   auto dim_num = array_->array_schema()->dim_num();
 
@@ -1138,8 +1159,8 @@ Status Subarray::split(
     Subarray* r2) const {
   assert(r1 != nullptr);
   assert(r2 != nullptr);
-  *r1 = Subarray(array_, layout_, stats_->parent(), coalesce_ranges_);
-  *r2 = Subarray(array_, layout_, stats_->parent(), coalesce_ranges_);
+  *r1 = Subarray(array_, layout_, stats_->parent(), logger_, coalesce_ranges_);
+  *r2 = Subarray(array_, layout_, stats_->parent(), logger_, coalesce_ranges_);
 
   // For easy reference
   auto array_schema = array_->array_schema();
@@ -1220,9 +1241,11 @@ Status Subarray::compute_relevant_fragment_est_result_sizes(
   // For easy reference
   auto array_schema = array_->array_schema();
   auto fragment_metadata = array_->fragment_metadata();
-  auto encryption_key = array_->encryption_key();
   auto dim_num = array_->array_schema()->dim_num();
-  auto layout = (layout_ == Layout::UNORDERED) ? cell_order_ : layout_;
+  auto layout =
+      (layout_ == Layout::UNORDERED) ?
+          ((cell_order_ == Layout::HILBERT) ? Layout::ROW_MAJOR : cell_order_) :
+          layout_;
 
   RETURN_NOT_OK(load_relevant_fragment_tile_var_sizes(names, compute_tp));
 
@@ -1254,7 +1277,6 @@ Status Subarray::compute_relevant_fragment_est_result_sizes(
     auto r_coords = get_range_coords(r_start);
     for (uint64_t r = r_start; r <= r_end; ++r) {
       RETURN_NOT_OK(compute_relevant_fragment_est_result_sizes(
-          encryption_key,
           array_schema,
           all_dims_same_type,
           all_dims_fixed,
@@ -1321,8 +1343,8 @@ Status Subarray::compute_relevant_fragment_est_result_sizes(
               mem_vec[i].size_validity_ +=
                   tile_size / cell_size * constants::cell_validity_size;
           } else {
-            RETURN_NOT_OK(meta->tile_var_size(
-                *encryption_key, names[i], ft.second, &tile_var_size));
+            RETURN_NOT_OK(
+                meta->tile_var_size(names[i], ft.second, &tile_var_size));
             mem_vec[i].size_fixed_ += tile_size;
             mem_vec[i].size_var_ += tile_var_size;
             if (nullable[i])
@@ -1577,7 +1599,10 @@ void Subarray::compute_range_offsets() {
   range_offsets_.clear();
 
   auto dim_num = this->dim_num();
-  auto layout = (layout_ == Layout::UNORDERED) ? cell_order_ : layout_;
+  auto layout =
+      (layout_ == Layout::UNORDERED) ?
+          ((cell_order_ == Layout::HILBERT) ? Layout::ROW_MAJOR : cell_order_) :
+          layout_;
 
   if (layout == Layout::COL_MAJOR) {
     range_offsets_.push_back(1);
@@ -1717,7 +1742,6 @@ bool Subarray::est_result_size_computed() {
 }
 
 Status Subarray::compute_relevant_fragment_est_result_sizes(
-    const EncryptionKey* encryption_key,
     const ArraySchema* array_schema,
     bool all_dims_same_type,
     bool all_dims_fixed,
@@ -1768,8 +1792,7 @@ Status Subarray::compute_relevant_fragment_est_result_sizes(
                   constants::cell_validity_size;
           } else {
             (*result_sizes)[n].size_fixed_ += tile_size;
-            RETURN_NOT_OK(meta->tile_var_size(
-                *encryption_key, names[n], tid, &tile_var_size));
+            RETURN_NOT_OK(meta->tile_var_size(names[n], tid, &tile_var_size));
             (*result_sizes)[n].size_var_ += tile_var_size;
             if (nullable[n])
               (*result_sizes)[n].size_validity_ +=
@@ -1808,8 +1831,7 @@ Status Subarray::compute_relevant_fragment_est_result_sizes(
 
         } else {
           (*result_sizes)[n].size_fixed_ += tile_size * ratio;
-          RETURN_NOT_OK(meta->tile_var_size(
-              *encryption_key, names[n], tid, &tile_var_size));
+          RETURN_NOT_OK(meta->tile_var_size(names[n], tid, &tile_var_size));
           (*result_sizes)[n].size_var_ += tile_var_size * ratio;
           if (nullable[n])
             (*result_sizes)[n].size_validity_ +=
@@ -2099,14 +2121,18 @@ Status Subarray::precompute_all_ranges_tile_overlap(
       compute_relevant_fragments(compute_tp, nullptr, &relevant_fragment_ctx));
   RETURN_NOT_OK(load_relevant_fragment_rtrees(compute_tp));
 
-  // Make one bitmap per dimensions. Using thread_local to reuse bitmaps when
-  // on the same thead.
-  thread_local std::vector<std::vector<uint8_t>> tile_bitmaps;
+  // Each thread will use one bitmap per dimensions.
+  const auto num_threads = compute_tp->concurrency_level();
+  ResourcePool<std::vector<std::vector<uint8_t>>> all_threads_tile_bitmaps(
+      num_threads);
 
   // Run all fragments in parallel.
   auto status =
       parallel_for(compute_tp, 0, relevant_fragments_.size(), [&](uint64_t i) {
         const auto f = relevant_fragments_[i];
+        auto tile_bitmaps_resource_guard =
+            ResourceGuard(all_threads_tile_bitmaps);
+        auto tile_bitmaps = tile_bitmaps_resource_guard.get();
 
         // Make sure all bitmaps have the correct size.
         if (tile_bitmaps.size() == 0) {
@@ -2117,6 +2143,8 @@ Status Subarray::precompute_all_ranges_tile_overlap(
           uint64_t memset_length =
               std::min((uint64_t)tile_bitmaps[0].size(), meta[f]->tile_num());
           for (unsigned d = 0; d < dim_num; d++) {
+            // TODO we might be able to skip the memset if
+            // tile_bitmaps.capacity() <= meta[f]->tile_num().
             memset(tile_bitmaps[d].data(), 0, memset_length * sizeof(uint8_t));
             tile_bitmaps[d].resize(meta[f]->tile_num());
           }
@@ -2124,11 +2152,7 @@ Status Subarray::precompute_all_ranges_tile_overlap(
 
         for (unsigned d = 0; d < dim_num; d++) {
           // Run all ranges in parallel.
-          const auto num_threads = compute_tp->concurrency_level();
           const uint64_t range_num = ranges_[d].size();
-
-          // Make this tile bitmap non thread_local.
-          auto current_bitmap = &tile_bitmaps[d];
 
           // Compute tile bitmaps for this fragment.
           const auto ranges_per_thread =
@@ -2140,7 +2164,7 @@ Status Subarray::precompute_all_ranges_tile_overlap(
                     std::min((t + 1) * ranges_per_thread - 1, range_num - 1);
                 for (uint64_t r = r_start; r <= r_end; ++r) {
                   meta[f]->compute_tile_bitmap(
-                      ranges_[d][r], d, current_bitmap);
+                      ranges_[d][r], d, &tile_bitmaps[d]);
                 }
 
                 return Status::Ok();
@@ -2184,6 +2208,7 @@ Status Subarray::precompute_all_ranges_tile_overlap(
 Subarray Subarray::clone() const {
   Subarray clone;
   clone.stats_ = stats_;
+  clone.logger_ = logger_;
   clone.array_ = array_;
   clone.layout_ = layout_;
   clone.cell_order_ = cell_order_;
@@ -2330,6 +2355,7 @@ TileOverlap Subarray::compute_tile_overlap(
 
 void Subarray::swap(Subarray& subarray) {
   std::swap(stats_, subarray.stats_);
+  std::swap(logger_, subarray.logger_);
   std::swap(array_, subarray.array_);
   std::swap(layout_, subarray.layout_);
   std::swap(cell_order_, subarray.cell_order_);
@@ -2436,7 +2462,9 @@ void Subarray::get_expanded_coordinates(
   // This is only applicable to row-major, column-major, or unordered
   // layouts. We will treat unordered layouts as the cell layout.
   const Layout coords_layout =
-      (layout_ == Layout::UNORDERED) ? cell_order_ : layout_;
+      (layout_ == Layout::UNORDERED) ?
+          ((cell_order_ == Layout::HILBERT) ? Layout::ROW_MAJOR : cell_order_) :
+          layout_;
   if (coords_layout == Layout::GLOBAL_ORDER ||
       coords_layout == Layout::HILBERT) {
     assert(*start_coords == *end_coords);
@@ -2640,8 +2668,12 @@ Status Subarray::load_relevant_fragment_tile_var_sizes(
   return Status::Ok();
 }
 
-std::vector<unsigned> Subarray::relevant_fragments() const {
-  return relevant_fragments_;
+const std::vector<unsigned>* Subarray::relevant_fragments() const {
+  return &relevant_fragments_;
+}
+
+std::vector<unsigned>* Subarray::relevant_fragments() {
+  return &relevant_fragments_;
 }
 
 stats::Stats* Subarray::stats() const {

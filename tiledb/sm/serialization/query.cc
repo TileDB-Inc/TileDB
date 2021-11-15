@@ -74,6 +74,8 @@ namespace serialization {
 
 enum class SerializationContext { CLIENT, SERVER, BACKUP };
 
+tdb_shared_ptr<Logger> dummy_logger = tdb_make_shared(Logger, "");
+
 Status stats_to_capnp(Stats& stats, capnp::Stats::Builder* stats_builder) {
   // Build counters
   const auto counters = stats.counters();
@@ -127,7 +129,6 @@ Status stats_from_capnp(
 
 Status array_to_capnp(
     const Array& array, capnp::Array::Builder* array_builder) {
-  array_builder->setUri(array.array_uri().to_string());
   array_builder->setStartTimestamp(array.timestamp_start());
   array_builder->setEndTimestamp(array.timestamp_end());
 
@@ -136,7 +137,6 @@ Status array_to_capnp(
 
 Status array_from_capnp(
     const capnp::Array::Reader& array_reader, Array* array) {
-  RETURN_NOT_OK(array->set_uri(array_reader.getUri().cStr()));
   RETURN_NOT_OK(array->set_timestamp_start(array_reader.getStartTimestamp()));
   RETURN_NOT_OK(array->set_timestamp_end(array_reader.getEndTimestamp()));
 
@@ -181,6 +181,14 @@ Status subarray_to_capnp(
   if (stats != nullptr) {
     auto stats_builder = builder->initStats();
     RETURN_NOT_OK(stats_to_capnp(*stats, &stats_builder));
+  }
+
+  if (subarray->relevant_fragments()->size() > 0) {
+    auto relevant_fragments_builder =
+        builder->initRelevantFragments(subarray->relevant_fragments()->size());
+    for (size_t i = 0; i < subarray->relevant_fragments()->size(); ++i) {
+      relevant_fragments_builder.set(i, subarray->relevant_fragments()->at(i));
+    }
   }
 
   return Status::Ok();
@@ -233,6 +241,15 @@ Status subarray_from_capnp(
     // We should always have a stats here
     if (stats != nullptr) {
       RETURN_NOT_OK(stats_from_capnp(reader.getStats(), stats));
+    }
+  }
+
+  if (reader.hasRelevantFragments()) {
+    auto relevant_fragments = reader.getRelevantFragments();
+    size_t count = relevant_fragments.size();
+    subarray->relevant_fragments()->reserve(count);
+    for (size_t i = 0; i < count; i++) {
+      subarray->relevant_fragments()->emplace_back(relevant_fragments[i]);
     }
   }
 
@@ -349,7 +366,7 @@ Status subarray_partitioner_from_capnp(
   RETURN_NOT_OK(layout_enum(subarray_reader.getLayout(), &layout));
 
   // Subarray, which is used to initialize the partitioner.
-  Subarray subarray(array, layout, reader_stats, false);
+  Subarray subarray(array, layout, reader_stats, dummy_logger, false);
   RETURN_NOT_OK(subarray_from_capnp(reader.getSubarray(), &subarray));
   *partitioner = SubarrayPartitioner(
       config,
@@ -358,7 +375,8 @@ Status subarray_partitioner_from_capnp(
       memory_budget_var,
       memory_budget_validity,
       compute_tp,
-      reader_stats);
+      reader_stats,
+      dummy_logger);
 
   // Per-attr mem budgets
   if (reader.hasBudget()) {
@@ -406,7 +424,8 @@ Status subarray_partitioner_from_capnp(
     partition_info->end_ = partition_info_reader.getEnd();
     partition_info->split_multi_range_ =
         partition_info_reader.getSplitMultiRange();
-    partition_info->partition_ = Subarray(array, layout, reader_stats, false);
+    partition_info->partition_ =
+        Subarray(array, layout, reader_stats, dummy_logger, false);
     RETURN_NOT_OK(subarray_from_capnp(
         partition_info_reader.getSubarray(), &partition_info->partition_));
 
@@ -429,7 +448,8 @@ Status subarray_partitioner_from_capnp(
   const unsigned num_sr = sr_reader.size();
   for (unsigned i = 0; i < num_sr; i++) {
     auto subarray_reader_ = sr_reader[i];
-    state->single_range_.emplace_back(array, layout, reader_stats, false);
+    state->single_range_.emplace_back(
+        array, layout, reader_stats, dummy_logger, false);
     Subarray& subarray_ = state->single_range_.back();
     RETURN_NOT_OK(subarray_from_capnp(subarray_reader_, &subarray_));
   }
@@ -437,7 +457,8 @@ Status subarray_partitioner_from_capnp(
   const unsigned num_m = m_reader.size();
   for (unsigned i = 0; i < num_m; i++) {
     auto subarray_reader_ = m_reader[i];
-    state->multi_range_.emplace_back(array, layout, reader_stats, false);
+    state->multi_range_.emplace_back(
+        array, layout, reader_stats, dummy_logger, false);
     Subarray& subarray_ = state->multi_range_.back();
     RETURN_NOT_OK(subarray_from_capnp(subarray_reader_, &subarray_));
   }
@@ -483,6 +504,9 @@ Status index_read_state_to_capnp(
     const SparseIndexReaderBase::ReadState* read_state,
     capnp::ReaderIndex::Builder* builder) {
   auto read_state_builder = builder->initReadState();
+
+  read_state_builder.setDoneAddingResultTiles(
+      read_state->done_adding_result_tiles_);
 
   auto rcs_builder = read_state_builder.initResultCellSlab(
       read_state->result_cell_slabs_.size());
@@ -559,8 +583,10 @@ Status index_read_state_from_capnp(
     const capnp::ReadStateIndex::Reader& read_state_reader,
     SparseIndexReaderBase* reader) {
   auto read_state = reader->read_state();
-  auto dim_num = schema->dim_num();
   const auto* domain = schema->domain();
+
+  read_state->done_adding_result_tiles_ =
+      read_state_reader.getDoneAddingResultTiles();
 
   assert(read_state_reader.hasResultCellSlab());
   RETURN_NOT_OK(reader->clear_result_tiles());
@@ -583,7 +609,7 @@ Status index_read_state_from_capnp(
     if (it != result_tile_map.end()) {
       rt = it->second;
     } else {
-      rt = reader->add_result_tile_unsafe(dim_num, frag_idx, tile_idx, domain);
+      rt = reader->add_result_tile_unsafe(frag_idx, tile_idx, domain);
       result_tile_map.emplace(
           std::pair<unsigned, uint64_t>(frag_idx, tile_idx), rt);
     }
@@ -828,7 +854,7 @@ Status reader_from_capnp(
   RETURN_NOT_OK(query->set_layout_unsafe(layout));
 
   // Subarray
-  Subarray subarray(array, layout, reader->stats(), false);
+  Subarray subarray(array, layout, reader->stats(), dummy_logger, false);
   auto subarray_reader = reader_reader.getSubarray();
   RETURN_NOT_OK(subarray_from_capnp(subarray_reader, &subarray));
   RETURN_NOT_OK(query->set_subarray_unsafe(subarray));
@@ -870,7 +896,7 @@ Status index_reader_from_capnp(
   RETURN_NOT_OK(layout_enum(reader_reader.getLayout(), &layout));
 
   // Subarray
-  Subarray subarray(array, layout, reader->stats(), false);
+  Subarray subarray(array, layout, reader->stats(), dummy_logger, false);
   auto subarray_reader = reader_reader.getSubarray();
   RETURN_NOT_OK(subarray_from_capnp(subarray_reader, &subarray));
   RETURN_NOT_OK(query->set_subarray_unsafe(subarray));
@@ -913,7 +939,7 @@ Status dense_reader_from_capnp(
   RETURN_NOT_OK(layout_enum(reader_reader.getLayout(), &layout));
 
   // Subarray
-  Subarray subarray(array, layout, reader->stats(), false);
+  Subarray subarray(array, layout, reader->stats(), dummy_logger, false);
   auto subarray_reader = reader_reader.getSubarray();
   RETURN_NOT_OK(subarray_from_capnp(subarray_reader, &subarray));
   RETURN_NOT_OK(query->set_subarray_unsafe(subarray));
@@ -1090,13 +1116,21 @@ Status query_to_capnp(Query& query, capnp::Query::Builder* query_builder) {
     bool all_dense = true;
     for (auto& frag_md : array->fragment_metadata())
       all_dense &= frag_md->dense();
-    bool found = false;
-    bool use_refactored_readers = false;
-    RETURN_NOT_OK(query.config()->get<bool>(
-        "sm.use_refactored_readers", &use_refactored_readers, &found));
-    assert(found);
-    if (use_refactored_readers && !schema->dense() &&
-        layout == Layout::GLOBAL_ORDER) {
+    if (query.use_refactored_sparse_unordered_with_dups_reader() &&
+        !schema->dense() && layout == Layout::UNORDERED &&
+        schema->allows_dups()) {
+      auto builder = query_builder->initReaderIndex();
+      auto reader = (SparseUnorderedWithDupsReader*)query.strategy();
+
+      query_builder->setVarOffsetsMode(reader->offsets_mode());
+      query_builder->setVarOffsetsAddExtraElement(
+          reader->offsets_extra_element());
+      query_builder->setVarOffsetsBitsize(reader->offsets_bitsize());
+      RETURN_NOT_OK(index_reader_to_capnp(query, *reader, &builder));
+    } else if (
+        query.use_refactored_sparse_global_order_reader() && !schema->dense() &&
+        (layout == Layout::GLOBAL_ORDER ||
+         (layout == Layout::UNORDERED && query.subarray()->range_num() <= 1))) {
       auto builder = query_builder->initReaderIndex();
       auto reader = (SparseGlobalOrderReader*)query.strategy();
 
@@ -1106,17 +1140,7 @@ Status query_to_capnp(Query& query, capnp::Query::Builder* query_builder) {
       query_builder->setVarOffsetsBitsize(reader->offsets_bitsize());
       RETURN_NOT_OK(index_reader_to_capnp(query, *reader, &builder));
     } else if (
-        use_refactored_readers && !schema->dense() &&
-        layout == Layout::UNORDERED && schema->allows_dups()) {
-      auto builder = query_builder->initReaderIndex();
-      auto reader = (SparseUnorderedWithDupsReader*)query.strategy();
-
-      query_builder->setVarOffsetsMode(reader->offsets_mode());
-      query_builder->setVarOffsetsAddExtraElement(
-          reader->offsets_extra_element());
-      query_builder->setVarOffsetsBitsize(reader->offsets_bitsize());
-      RETURN_NOT_OK(index_reader_to_capnp(query, *reader, &builder));
-    } else if (use_refactored_readers && all_dense && schema->dense()) {
+        query.use_refactored_dense_reader() && all_dense && schema->dense()) {
       auto builder = query_builder->initDenseReader();
       auto reader = (DenseReader*)query.strategy();
 
@@ -1665,6 +1689,8 @@ Status query_from_capnp(
             reader->set_offsets_bitsize(query_reader.getVarOffsetsBitsize()));
       }
 
+      RETURN_NOT_OK(reader->initialize_memory_budget());
+
       RETURN_NOT_OK(
           index_reader_from_capnp(schema, reader_reader, query, reader));
     } else if (
@@ -1689,6 +1715,8 @@ Status query_from_capnp(
         RETURN_NOT_OK(
             reader->set_offsets_bitsize(query_reader.getVarOffsetsBitsize()));
       }
+
+      RETURN_NOT_OK(reader->initialize_memory_budget());
 
       RETURN_NOT_OK(
           index_reader_from_capnp(schema, reader_reader, query, reader));
@@ -1768,7 +1796,7 @@ Status query_from_capnp(
 
       // Subarray
       if (writer_reader.hasSubarrayRanges()) {
-        Subarray subarray(array, layout, writer->stats(), false);
+        Subarray subarray(array, layout, writer->stats(), dummy_logger, false);
         auto subarray_reader = writer_reader.getSubarrayRanges();
         RETURN_NOT_OK(subarray_from_capnp(subarray_reader, &subarray));
         RETURN_NOT_OK(query->set_subarray_unsafe(subarray));

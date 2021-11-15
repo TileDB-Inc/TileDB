@@ -107,6 +107,7 @@ class ReaderBase : public StrategyBase {
   /** Constructor. */
   ReaderBase(
       stats::Stats* stats,
+      tdb_shared_ptr<Logger> logger,
       StorageManager* storage_manager,
       Array* array,
       Config& config,
@@ -234,6 +235,17 @@ class ReaderBase : public StrategyBase {
    * @return Status
    */
   Status load_tile_offsets(
+      Subarray* subarray, const std::vector<std::string>* names);
+
+  /**
+   * Loads tile var sizes for each attribute/dimension name into
+   * their associated element in `fragment_metadata_`.
+   *
+   * @param subarray The subarray to load tiles for.
+   * @param names The attribute/dimension names.
+   * @return Status
+   */
+  Status load_tile_var_sizes(
       Subarray* subarray, const std::vector<std::string>* names);
 
   /**
@@ -661,23 +673,26 @@ class ReaderBase : public StrategyBase {
    * Get the size of an attribute tile.
    *
    * @param name The attribute name.
-   * @param result_tile The result tile.
+   * @param f The fragment idx.
+   * @param t The tile idx.
    * @param tile_size The return tile size.
    * @return Status
    */
   Status get_attribute_tile_size(
-      const std::string& name, ResultTile* result_tile, uint64_t* tile_size);
+      const std::string& name, unsigned f, uint64_t t, uint64_t* tile_size);
 
   /**
-   * Computes the result space tiles based on the input subarray.
+   * Computes the result space tiles based on the current partition.
    *
    * @tparam T The domain datatype.
    * @param subarray The input subarray.
+   * @param partitioner_subarray The partitioner subarray.
    * @param result_space_tiles The result space tiles to be computed.
    */
   template <class T>
   void compute_result_space_tiles(
-      const Subarray& subarray,
+      const Subarray* subarray,
+      const Subarray* partitioner_subarray,
       std::map<const T*, ResultSpaceTile<T>>* result_space_tiles) const;
 
   /** Returns `true` if the coordinates are included in the attributes. */

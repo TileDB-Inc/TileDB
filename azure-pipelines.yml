@@ -10,8 +10,8 @@ pr:
     - '*'  # must quote since "*" is a YAML reserved character; we want a string
 
 variables:
-  - name: manylinuxImage
-    value: quay.io/pypa/manylinux2010_x86_64:2021-06-07-00faba2
+  - name: MANYLINUX_IMAGE
+    value: quay.io/pypa/manylinux2010_x86_64:2021-11-07-28723f3
 
 stages:
   - stage: CI
@@ -42,7 +42,7 @@ stages:
 
     - job: linux_manylinux
       pool: { vmImage: $(imageName) }
-      container: ${{ variables.manylinuxImage }}
+      container: ${{ variables.MANYLINUX_IMAGE }}
       variables:
         imageName: 'ubuntu-20.04'
         TILEDB_SERIALIZATION: ON
@@ -110,7 +110,7 @@ stages:
        - template: scripts/azure-linux_mac-release.yml
      - job: linux_manylinux
        pool: { vmImage: 'ubuntu-20.04' }
-       container: ${{ variables.manylinuxImage }}
+       container: ${{ variables.MANYLINUX_IMAGE }}
        variables:
          CXX: g++
          CFLAGS: "-lrt"
@@ -138,6 +138,8 @@ stages:
   # NOTE: this section cannot be conditional because `Build.Repository.Name` is an agent-scoped variable.
   - stage: Github_Release
     condition: startsWith(variables['Build.SourceBranch'], 'refs/tags')
+    pool:
+      vmImage: 'ubuntu-latest'
     jobs:
      - job:
        steps:

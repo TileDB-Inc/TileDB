@@ -350,6 +350,15 @@ class FragmentInfo {
     return ArraySchema(ctx, schema);
   }
 
+  /** Returns the array schema name of the fragment with the given index. */
+  std::string array_schema_name(uint32_t fid) const {
+    auto& ctx = ctx_.get();
+    const char* schema_name;
+    ctx.handle_error(tiledb_fragment_info_get_array_schema_name(
+        ctx.ptr().get(), fragment_info_.get(), fid, &schema_name));
+    return std::string(schema_name);
+  }
+
   /**
    * Returns true if the fragment with the given index has
    * consolidated metadata.

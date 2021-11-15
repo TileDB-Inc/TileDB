@@ -601,7 +601,7 @@ struct Subarray {
   class Pipeline;
 
   struct _capnpPrivate {
-    CAPNP_DECLARE_STRUCT_HEADER(dba20dec138adac9, 0, 3)
+    CAPNP_DECLARE_STRUCT_HEADER(dba20dec138adac9, 0, 4)
 #if !CAPNP_LITE
     static constexpr ::capnp::_::RawBrandedSchema const* brand() {
       return &schema->defaultBrand;
@@ -773,7 +773,7 @@ struct ReadStateIndex {
   class Pipeline;
 
   struct _capnpPrivate {
-    CAPNP_DECLARE_STRUCT_HEADER(c86c77b5f6a2bf0f, 0, 2)
+    CAPNP_DECLARE_STRUCT_HEADER(c86c77b5f6a2bf0f, 1, 2)
 #if !CAPNP_LITE
     static constexpr ::capnp::_::RawBrandedSchema const* brand() {
       return &schema->defaultBrand;
@@ -4764,6 +4764,10 @@ class Subarray::Reader {
   inline bool hasStats() const;
   inline ::tiledb::sm::serialization::capnp::Stats::Reader getStats() const;
 
+  inline bool hasRelevantFragments() const;
+  inline ::capnp::List<::uint32_t, ::capnp::Kind::PRIMITIVE>::Reader
+  getRelevantFragments() const;
+
  private:
   ::capnp::_::StructReader _reader;
   template <typename, ::capnp::Kind>
@@ -4839,6 +4843,20 @@ class Subarray::Builder {
       ::capnp::Orphan<::tiledb::sm::serialization::capnp::Stats>&& value);
   inline ::capnp::Orphan<::tiledb::sm::serialization::capnp::Stats>
   disownStats();
+
+  inline bool hasRelevantFragments();
+  inline ::capnp::List<::uint32_t, ::capnp::Kind::PRIMITIVE>::Builder
+  getRelevantFragments();
+  inline void setRelevantFragments(
+      ::capnp::List<::uint32_t, ::capnp::Kind::PRIMITIVE>::Reader value);
+  inline void setRelevantFragments(::kj::ArrayPtr<const ::uint32_t> value);
+  inline ::capnp::List<::uint32_t, ::capnp::Kind::PRIMITIVE>::Builder
+  initRelevantFragments(unsigned int size);
+  inline void adoptRelevantFragments(
+      ::capnp::Orphan<::capnp::List<::uint32_t, ::capnp::Kind::PRIMITIVE>>&&
+          value);
+  inline ::capnp::Orphan<::capnp::List<::uint32_t, ::capnp::Kind::PRIMITIVE>>
+  disownRelevantFragments();
 
  private:
   ::capnp::_::StructBuilder _builder;
@@ -6107,6 +6125,8 @@ class ReadStateIndex::Reader {
       ::capnp::Kind::STRUCT>::Reader
   getFragTileIdx() const;
 
+  inline bool getDoneAddingResultTiles() const;
+
  private:
   ::capnp::_::StructReader _reader;
   template <typename, ::capnp::Kind>
@@ -6188,6 +6208,9 @@ class ReadStateIndex::Builder {
       ::tiledb::sm::serialization::capnp::FragmentIndex,
       ::capnp::Kind::STRUCT>>
   disownFragTileIdx();
+
+  inline bool getDoneAddingResultTiles();
+  inline void setDoneAddingResultTiles(bool value);
 
  private:
   ::capnp::_::StructBuilder _builder;
@@ -12293,6 +12316,64 @@ Subarray::Builder::disownStats() {
           _builder.getPointerField(::capnp::bounded<2>() * ::capnp::POINTERS));
 }
 
+inline bool Subarray::Reader::hasRelevantFragments() const {
+  return !_reader.getPointerField(::capnp::bounded<3>() * ::capnp::POINTERS)
+              .isNull();
+}
+inline bool Subarray::Builder::hasRelevantFragments() {
+  return !_builder.getPointerField(::capnp::bounded<3>() * ::capnp::POINTERS)
+              .isNull();
+}
+inline ::capnp::List<::uint32_t, ::capnp::Kind::PRIMITIVE>::Reader
+Subarray::Reader::getRelevantFragments() const {
+  return ::capnp::_::
+      PointerHelpers<::capnp::List<::uint32_t, ::capnp::Kind::PRIMITIVE>>::get(
+          _reader.getPointerField(::capnp::bounded<3>() * ::capnp::POINTERS));
+}
+inline ::capnp::List<::uint32_t, ::capnp::Kind::PRIMITIVE>::Builder
+Subarray::Builder::getRelevantFragments() {
+  return ::capnp::_::
+      PointerHelpers<::capnp::List<::uint32_t, ::capnp::Kind::PRIMITIVE>>::get(
+          _builder.getPointerField(::capnp::bounded<3>() * ::capnp::POINTERS));
+}
+inline void Subarray::Builder::setRelevantFragments(
+    ::capnp::List<::uint32_t, ::capnp::Kind::PRIMITIVE>::Reader value) {
+  ::capnp::_::
+      PointerHelpers<::capnp::List<::uint32_t, ::capnp::Kind::PRIMITIVE>>::set(
+          _builder.getPointerField(::capnp::bounded<3>() * ::capnp::POINTERS),
+          value);
+}
+inline void Subarray::Builder::setRelevantFragments(
+    ::kj::ArrayPtr<const ::uint32_t> value) {
+  ::capnp::_::
+      PointerHelpers<::capnp::List<::uint32_t, ::capnp::Kind::PRIMITIVE>>::set(
+          _builder.getPointerField(::capnp::bounded<3>() * ::capnp::POINTERS),
+          value);
+}
+inline ::capnp::List<::uint32_t, ::capnp::Kind::PRIMITIVE>::Builder
+Subarray::Builder::initRelevantFragments(unsigned int size) {
+  return ::capnp::_::
+      PointerHelpers<::capnp::List<::uint32_t, ::capnp::Kind::PRIMITIVE>>::init(
+          _builder.getPointerField(::capnp::bounded<3>() * ::capnp::POINTERS),
+          size);
+}
+inline void Subarray::Builder::adoptRelevantFragments(
+    ::capnp::Orphan<::capnp::List<::uint32_t, ::capnp::Kind::PRIMITIVE>>&&
+        value) {
+  ::capnp::_::PointerHelpers<
+      ::capnp::List<::uint32_t, ::capnp::Kind::PRIMITIVE>>::
+      adopt(
+          _builder.getPointerField(::capnp::bounded<3>() * ::capnp::POINTERS),
+          kj::mv(value));
+}
+inline ::capnp::Orphan<::capnp::List<::uint32_t, ::capnp::Kind::PRIMITIVE>>
+Subarray::Builder::disownRelevantFragments() {
+  return ::capnp::_::PointerHelpers<
+      ::capnp::List<::uint32_t, ::capnp::Kind::PRIMITIVE>>::
+      disown(
+          _builder.getPointerField(::capnp::bounded<3>() * ::capnp::POINTERS));
+}
+
 inline bool SubarrayPartitioner::Reader::hasSubarray() const {
   return !_reader.getPointerField(::capnp::bounded<0>() * ::capnp::POINTERS)
               .isNull();
@@ -13722,6 +13803,17 @@ ReadStateIndex::Builder::disownFragTileIdx() {
                                           .getPointerField(
                                               ::capnp::bounded<1>() *
                                               ::capnp::POINTERS));
+}
+
+inline bool ReadStateIndex::Reader::getDoneAddingResultTiles() const {
+  return _reader.getDataField<bool>(::capnp::bounded<0>() * ::capnp::ELEMENTS);
+}
+
+inline bool ReadStateIndex::Builder::getDoneAddingResultTiles() {
+  return _builder.getDataField<bool>(::capnp::bounded<0>() * ::capnp::ELEMENTS);
+}
+inline void ReadStateIndex::Builder::setDoneAddingResultTiles(bool value) {
+  _builder.setDataField<bool>(::capnp::bounded<0>() * ::capnp::ELEMENTS, value);
 }
 
 inline bool ReaderIndex::Reader::hasLayout() const {

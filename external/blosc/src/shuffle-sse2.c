@@ -4,14 +4,15 @@
   Author: Francesc Alted <francesc@blosc.org>
 
   See LICENSES/BLOSC.txt for details about copyright and rights to use.
-
-  Modifications for TileDB by Tyler Denniston <tyler@tiledb.io>
 **********************************************************************/
 
 #include "shuffle-generic.h"
 #include "shuffle-sse2.h"
 
-#ifdef __SSE2__
+/* Make sure SSE2 is available for the compilation target and compiler. */
+#if !defined(__SSE2__)
+  #error SSE2 is not supported by the target architecture/platform and/or this compiler.
+#endif
 
 #include <emmintrin.h>
 
@@ -34,7 +35,6 @@ static void printxmm(__m128i xmm0)
 }
 #endif
 
-namespace blosc {
 
 /* Routine optimized for shuffling a buffer for a type size of 2 bytes. */
 static void
@@ -512,8 +512,8 @@ unshuffle16_tiled_sse2(uint8_t* const dest, const uint8_t* const orig,
 
 /* Shuffle a block.  This can never fail. */
 void
-shuffle_sse2(const size_t bytesoftype, const size_t blocksize,
-             const uint8_t* const _src, uint8_t* const _dest) {
+blosc_internal_shuffle_sse2(const size_t bytesoftype, const size_t blocksize,
+                            const uint8_t* const _src, uint8_t* const _dest) {
   const size_t vectorized_chunk_size = bytesoftype * sizeof(__m128i);
   /* If the blocksize is not a multiple of both the typesize and
      the vector size, round the blocksize down to the next value
@@ -527,7 +527,7 @@ shuffle_sse2(const size_t bytesoftype, const size_t blocksize,
   /* If the block size is too small to be vectorized,
      use the generic implementation. */
   if (blocksize < vectorized_chunk_size) {
-    shuffle_generic(bytesoftype, blocksize, _src, _dest);
+    blosc_internal_shuffle_generic(bytesoftype, blocksize, _src, _dest);
     return;
   }
 
@@ -552,7 +552,7 @@ shuffle_sse2(const size_t bytesoftype, const size_t blocksize,
     }
     else {
       /* Non-optimized shuffle */
-      shuffle_generic(bytesoftype, blocksize, _src, _dest);
+      blosc_internal_shuffle_generic(bytesoftype, blocksize, _src, _dest);
       /* The non-optimized function covers the whole buffer,
          so we're done processing here. */
       return;
@@ -569,8 +569,8 @@ shuffle_sse2(const size_t bytesoftype, const size_t blocksize,
 
 /* Unshuffle a block.  This can never fail. */
 void
-unshuffle_sse2(const size_t bytesoftype, const size_t blocksize,
-               const uint8_t* const _src, uint8_t* const _dest) {
+blosc_internal_unshuffle_sse2(const size_t bytesoftype, const size_t blocksize,
+                              const uint8_t* const _src, uint8_t* const _dest) {
   const size_t vectorized_chunk_size = bytesoftype * sizeof(__m128i);
   /* If the blocksize is not a multiple of both the typesize and
      the vector size, round the blocksize down to the next value
@@ -585,7 +585,7 @@ unshuffle_sse2(const size_t bytesoftype, const size_t blocksize,
   /* If the block size is too small to be vectorized,
      use the generic implementation. */
   if (blocksize < vectorized_chunk_size) {
-    unshuffle_generic(bytesoftype, blocksize, _src, _dest);
+    blosc_internal_unshuffle_generic(bytesoftype, blocksize, _src, _dest);
     return;
   }
 
@@ -610,7 +610,7 @@ unshuffle_sse2(const size_t bytesoftype, const size_t blocksize,
     }
     else {
       /* Non-optimized unshuffle */
-      unshuffle_generic(bytesoftype, blocksize, _src, _dest);
+      blosc_internal_unshuffle_generic(bytesoftype, blocksize, _src, _dest);
       /* The non-optimized function covers the whole buffer,
          so we're done processing here. */
       return;
@@ -624,7 +624,3 @@ unshuffle_sse2(const size_t bytesoftype, const size_t blocksize,
     unshuffle_generic_inline(bytesoftype, vectorizable_bytes, blocksize, _src, _dest);
   }
 }
-
-}
-
-#endif

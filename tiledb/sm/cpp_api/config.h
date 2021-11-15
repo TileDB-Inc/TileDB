@@ -384,9 +384,17 @@ class Config {
    *    The offsets format (`bytes` or `elements`) to be used for
    *    var-sized attributes.<br>
    *    **Default**: bytes
-   * - `sm.use_refactored_readers` <br>
-   *    Use the refactored readers or not. <br>
-   *    **Default**: false
+   * - `sm.query.dense.reader` <br>
+   *    Which reader to use for dense queries. "refactored" or "legacy".<br>
+   *    **Default**: lagacy
+   * - `sm.query.sparse_global_order.reader` <br>
+   *    Which reader to use for sparse global order queries. "refactored"
+   *    or "legacy".<br>
+   *    **Default**: legacy
+   * - `sm.query.sparse_unordered_with_dups.reader` <br>
+   *    Which reader to use for sparse unordered with dups queries.
+   *    "refactored" or "legacy".<br>
+   *    **Default**: refactored
    * - `sm.mem.malloc_trim` <br>
    *    Should malloc_trim be called on context and query destruction? This
    *    might reduce residual memory usage. <br>
@@ -668,6 +676,9 @@ class Config {
    *    "2": warn, "3": info "4": debug, "5": trace <br>
    *    **Default**: "1" if --enable-verbose bootstrap flag is provided,
    *    "0" otherwise <br>
+   * - `config.logging_format` <br>
+   *    The logging format configured (DEFAULT or JSON)
+   *    **Default**: "DEFAULT"
    * - `rest.server_address` <br>
    *    URL for REST server to use for remote arrays. <br>
    *    **Default**: "https://api.tiledb.com"

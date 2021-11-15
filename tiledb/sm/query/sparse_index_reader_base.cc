@@ -51,6 +51,7 @@ namespace sm {
 
 SparseIndexReaderBase::SparseIndexReaderBase(
     stats::Stats* stats,
+    tdb_shared_ptr<Logger> logger,
     StorageManager* storage_manager,
     Array* array,
     Config& config,
@@ -60,6 +61,7 @@ SparseIndexReaderBase::SparseIndexReaderBase(
     QueryCondition& condition)
     : ReaderBase(
           stats,
+          logger,
           storage_manager,
           array,
           config,
@@ -67,7 +69,6 @@ SparseIndexReaderBase::SparseIndexReaderBase(
           subarray,
           layout,
           condition)
-    , done_adding_result_tiles_(false)
     , initial_data_loaded_(false)
     , memory_budget_(0)
     , array_memory_tracker_(nullptr)
@@ -83,6 +84,7 @@ SparseIndexReaderBase::SparseIndexReaderBase(
     , memory_budget_ratio_result_tiles_(0.05)
     , memory_budget_ratio_rcs_(0.05)
     , coords_loaded_(true) {
+  read_state_.done_adding_result_tiles_ = false;
 }
 
 /* ****************************** */
@@ -106,8 +108,8 @@ Status SparseIndexReaderBase::get_coord_tiles_size(
 
     if (is_dim_var_size_[d]) {
       uint64_t temp = 0;
-      RETURN_NOT_OK(fragment_metadata_[f]->tile_var_size(
-          *array_->encryption_key(), dim_names_[d], t, &temp));
+      RETURN_NOT_OK(
+          fragment_metadata_[f]->tile_var_size(dim_names_[d], t, &temp));
       *tiles_size += temp;
     }
   }
@@ -120,7 +122,7 @@ Status SparseIndexReaderBase::load_initial_data() {
     return Status::Ok();
 
   auto timer_se = stats_->start_timer("load_initial_data");
-  done_adding_result_tiles_ = false;
+  read_state_.done_adding_result_tiles_ = false;
 
   // For easy reference.
   auto fragment_num = fragment_metadata_.size();
@@ -152,7 +154,7 @@ Status SparseIndexReaderBase::load_initial_data() {
 
     if (memory_used_result_tile_ranges_ >
         memory_budget_ratio_tile_ranges_ * memory_budget_)
-      return LOG_STATUS(
+      return logger_->status(
           Status::ReaderError("Exceeded memory budget for result tile ranges"));
   }
 
@@ -170,12 +172,26 @@ Status SparseIndexReaderBase::load_initial_data() {
   const auto dim_num = array_schema_->dim_num();
   dim_names_.reserve(dim_num);
   is_dim_var_size_.reserve(dim_num);
+  std::vector<std::string> var_size_to_load;
   for (unsigned d = 0; d < dim_num; ++d) {
     dim_names_.emplace_back(array_schema_->dimension(d)->name());
     is_dim_var_size_[d] = array_schema_->var_size(dim_names_[d]);
+    if (is_dim_var_size_[d])
+      var_size_to_load.emplace_back(dim_names_[d]);
   }
   RETURN_CANCEL_OR_ERROR(load_tile_offsets(&subarray_, &dim_names_));
 
+  for (auto& it : buffers_) {
+    const auto& name = it.first;
+    if (array_schema_->is_dim(name))
+      continue;
+
+    if (array_schema_->var_size(name))
+      var_size_to_load.emplace_back(name);
+  }
+  RETURN_CANCEL_OR_ERROR(load_tile_var_sizes(&subarray_, &var_size_to_load));
+
+  logger_->debug("Initial data loaded");
   initial_data_loaded_ = true;
   return Status::Ok();
 }
@@ -289,7 +305,7 @@ Status SparseIndexReaderBase::add_extra_offset() {
           &elements,
           offsets_bytesize());
     } else {
-      return LOG_STATUS(Status::ReaderError(
+      return logger_->status(Status::ReaderError(
           "Cannot add extra offset to buffer; Unsupported offsets format"));
     }
   }

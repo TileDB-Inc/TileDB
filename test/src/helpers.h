@@ -33,6 +33,7 @@
 #ifndef TILEDB_TEST_HELPERS_H
 #define TILEDB_TEST_HELPERS_H
 
+#include <tiledb/common/logger_public.h>
 #include "tiledb.h"
 #include "tiledb/sm/array/array.h"
 #include "tiledb/sm/enums/layout.h"
@@ -76,6 +77,10 @@ namespace test {
 // never used.
 static tiledb::sm::stats::Stats g_helper_stats("test");
 
+// A dummy `Logger` instance. This is useful for constructing
+// objects that require a parent `Logger` object.
+tdb_shared_ptr<Logger> g_helper_logger(void);
+
 // For easy reference
 typedef std::pair<tiledb_filter_type_t, int> Compressor;
 template <class T>
@@ -106,11 +111,25 @@ struct QueryBuffer {
 typedef std::map<std::string, QueryBuffer> QueryBuffers;
 
 /**
- * Get the config for using the refactored readers.
+ * Get the config for using the refactored dense reader.
  *
- * @return Using the refactored readers or not.
+ * @return Using the refactored reader or not.
  */
-bool use_refactored_readers();
+bool use_refactored_dense_reader();
+
+/**
+ * Get the config for using the refactored sparse global order reader.
+ *
+ * @return Using the refactored reader or not.
+ */
+bool use_refactored_sparse_global_order_reader();
+
+/**
+ * Get the config for using the refactored unordered with dups reader.
+ *
+ * @return Using the refactored reader or not.
+ */
+bool use_refactored_sparse_unordered_with_dups_reader();
 
 /**
  * Checks that the input partitioner produces the input partitions

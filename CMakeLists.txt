@@ -30,7 +30,7 @@
 # CMake setup
 ############################################################
 
-cmake_minimum_required(VERSION 3.3)
+cmake_minimum_required(VERSION 3.21)
 
 ############################################################
 # Parse version file
@@ -68,7 +68,8 @@ if (NOT TILEDB_ALLOW_REGEX_CHAR_PATH)
 endif()
 
 ############################################################
-set(CMAKE_MODULE_PATH ${CMAKE_MODULE_PATH} "${CMAKE_CURRENT_SOURCE_DIR}/cmake/Modules/")
+list(APPEND CMAKE_MODULE_PATH "${CMAKE_CURRENT_SOURCE_DIR}/cmake")
+list(APPEND CMAKE_MODULE_PATH "${CMAKE_CURRENT_SOURCE_DIR}/cmake/Modules")
 
 set(TILEDB_CMAKE_INPUTS_DIR "${CMAKE_CURRENT_SOURCE_DIR}/cmake/inputs")
 
@@ -171,7 +172,9 @@ if (TILEDB_SUPERBUILD)
   message(STATUS "Starting TileDB superbuild.")
   include("cmake/TileDB-Superbuild.cmake")
   message(STATUS "Install prefix is ${CMAKE_INSTALL_PREFIX}")
-  # Stop processing this file here.
+  # The superbuild file incorporates this file as an external project with the
+  # superbuild off. Thus we stop processing this file here, knowing that we'll
+  # come back later.
   return()
 endif()
 
@@ -265,7 +268,7 @@ if (TILEDB_TESTS)
   # Add cmake target for "tests" to build all unit tests executables
   add_custom_target(tests)
   add_dependencies(tests tiledb_unit)
-  add_dependencies(tests unit_interval)
+  add_dependencies(tests unit_interval unit_thread_pool)
 endif()
 
 # Build tools

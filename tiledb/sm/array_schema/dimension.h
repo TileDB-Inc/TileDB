@@ -40,6 +40,7 @@
 #include <sstream>
 #include <string>
 
+#include "tiledb/common/blank.h"
 #include "tiledb/common/logger_public.h"
 #include "tiledb/common/status.h"
 #include "tiledb/sm/misc/types.h"
@@ -67,8 +68,10 @@ class Dimension {
   /*     CONSTRUCTORS & DESTRUCTORS    */
   /* ********************************* */
 
-  /** Constructor. */
-  Dimension();
+  /**
+   * No default constructor by C.41
+   */
+  Dimension() = delete;
 
   /**
    * Constructor.
@@ -1164,5 +1167,12 @@ class Dimension {
 
 }  // namespace sm
 }  // namespace tiledb
+
+namespace tiledb::common {
+template <>
+struct blank<tiledb::sm::Dimension> : public tiledb::sm::Dimension {
+  blank();
+};
+}  // namespace tiledb::common
 
 #endif  // TILEDB_DIMENSION_H

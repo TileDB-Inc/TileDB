@@ -353,6 +353,41 @@ TEST_CASE(
     CHECK(r_buff_d2 == c_buff_d2);
   }
 
+  // Read
+  SECTION("- Unordered, overlapped") {
+    // regression test for sc-11244
+    Array array_r(ctx, array_name, TILEDB_READ);
+    Query query_r(ctx, array_r, TILEDB_READ);
+    // There are only 6 results but we have to over-allocate
+    // the buffer here in order for the overlapped query to complete.
+    // We check the result count below.
+    std::vector<int32_t> r_buff_a(7);
+    std::vector<int32_t> r_buff_d1(7);
+    std::vector<int32_t> r_buff_d2(7);
+
+    query_r.set_data_buffer("a", r_buff_a);
+    query_r.set_data_buffer("d1", r_buff_d1);
+    query_r.set_data_buffer("d2", r_buff_d2);
+
+    query_r.add_range("d1", (int32_t)1, (int32_t)5);
+    query_r.add_range("d2", (int32_t)1, (int32_t)3);
+    query_r.add_range("d2", (int32_t)2, (int32_t)4);
+    query_r.set_layout(TILEDB_UNORDERED);
+    CHECK_NOTHROW(query_r.submit());
+    CHECK(query_r.query_status() == tiledb::Query::Status::COMPLETE);
+    // check number of results
+    CHECK(query_r.result_buffer_elements()["a"].second == 6);
+    array_r.close();
+
+    // Check results
+    std::vector<int32_t> c_buff_a = {2, 3, 1, 2, 4, 1, 0};
+    std::vector<int32_t> c_buff_d1 = {1, 1, 4, 1, 5, 4, 0};
+    std::vector<int32_t> c_buff_d2 = {3, 1, 2, 3, 4, 2, 0};
+    CHECK(r_buff_a == c_buff_a);
+    CHECK(r_buff_d1 == c_buff_d1);
+    CHECK(r_buff_d2 == c_buff_d2);
+  }
+
   // Remove array
   if (vfs.is_dir(array_name))
     CHECK_NOTHROW(vfs.remove_dir(array_name));
@@ -407,9 +442,10 @@ TEST_CASE(
 
     // Check results again
     CHECK(
-        query_r.query_status() == (test::use_refactored_readers() ?
-                                       Query::Status::COMPLETE :
-                                       Query::Status::INCOMPLETE));
+        query_r.query_status() ==
+        (test::use_refactored_sparse_global_order_reader() ?
+             Query::Status::COMPLETE :
+             Query::Status::INCOMPLETE));
     CHECK(query_r.result_buffer_elements()["a"].second == 2);
     c_buff_a = {4, 1};
     c_buff_d1 = {5, 4};
@@ -422,7 +458,7 @@ TEST_CASE(
      * Old reader needs an extra round here to finish processing all the
      * partitions in the subarray. New reader is done earlier.
      */
-    if (!test::use_refactored_readers()) {
+    if (!test::use_refactored_sparse_global_order_reader()) {
       // Read until complete
       CHECK_NOTHROW(query_r.submit());
       CHECK(query_r.query_status() == Query::Status::COMPLETE);
@@ -869,9 +905,10 @@ TEST_CASE(
 
     // Check results again
     CHECK(
-        query_r.query_status() == (test::use_refactored_readers() ?
-                                       Query::Status::COMPLETE :
-                                       Query::Status::INCOMPLETE));
+        query_r.query_status() ==
+        (test::use_refactored_sparse_global_order_reader() ?
+             Query::Status::COMPLETE :
+             Query::Status::INCOMPLETE));
     CHECK(query_r.result_buffer_elements()["a"].second == 2);
     c_buff_a = {4, 1};
     c_buff_d1 = {-45, -46};
@@ -884,7 +921,7 @@ TEST_CASE(
      * Old reader needs an extra round here to finish processing all the
      * partitions in the subarray. New reader is done earlier.
      */
-    if (!test::use_refactored_readers()) {
+    if (!test::use_refactored_sparse_global_order_reader()) {
       // Read until complete
       CHECK_NOTHROW(query_r.submit());
       CHECK(query_r.query_status() == Query::Status::COMPLETE);
@@ -1284,9 +1321,10 @@ TEST_CASE(
 
     // Check results again
     CHECK(
-        query_r.query_status() == (test::use_refactored_readers() ?
-                                       Query::Status::COMPLETE :
-                                       Query::Status::INCOMPLETE));
+        query_r.query_status() ==
+        (test::use_refactored_sparse_global_order_reader() ?
+             Query::Status::COMPLETE :
+             Query::Status::INCOMPLETE));
     CHECK(query_r.result_buffer_elements()["a"].second == 2);
     c_buff_a = {1, 4};
     c_buff_d1 = {0.41f, 0.4f};
@@ -1299,7 +1337,7 @@ TEST_CASE(
      * Old reader needs an extra round here to finish processing all the
      * partitions in the subarray. New reader is done earlier.
      */
-    if (!test::use_refactored_readers()) {
+    if (!test::use_refactored_sparse_global_order_reader()) {
       // Read until complete
       CHECK_NOTHROW(query_r.submit());
       CHECK(query_r.query_status() == Query::Status::COMPLETE);
@@ -1338,9 +1376,10 @@ TEST_CASE(
 
     // Check results again
     CHECK(
-        query_r.query_status() == (test::use_refactored_readers() ?
-                                       Query::Status::COMPLETE :
-                                       Query::Status::INCOMPLETE));
+        query_r.query_status() ==
+        (test::use_refactored_sparse_global_order_reader() ?
+             Query::Status::COMPLETE :
+             Query::Status::INCOMPLETE));
     CHECK(query_r.result_buffer_elements()["a"].second == 2);
     c_buff_a = {1, 4};
     c_buff_d1 = {0.41f, 0.4f};
@@ -1353,7 +1392,7 @@ TEST_CASE(
      * Old reader needs an extra round here to finish processing all the
      * partitions in the subarray. New reader is done earlier.
      */
-    if (!test::use_refactored_readers()) {
+    if (!test::use_refactored_sparse_global_order_reader()) {
       // Read until complete
       CHECK_NOTHROW(query_r.submit());
       CHECK(query_r.query_status() == Query::Status::COMPLETE);
@@ -2050,7 +2089,7 @@ TEST_CASE(
      * Refactored reader tries to fill as much as possible.
      * Old reader splits partition in two.
      */
-    if (test::use_refactored_readers()) {
+    if (test::use_refactored_sparse_global_order_reader()) {
       CHECK(query_r.result_buffer_elements()["a"].second == 3);
       c_buff_a = {3, 2, 1};
       c_buff_d1 = std::string("dogcamel33");
@@ -2087,7 +2126,7 @@ TEST_CASE(
     r_off_d2.resize(query_r.result_buffer_elements()["d2"].first);
     r_buff_a.resize(query_r.result_buffer_elements()["a"].second);
 
-    if (test::use_refactored_readers()) {
+    if (test::use_refactored_sparse_global_order_reader()) {
       CHECK(query_r.result_buffer_elements()["a"].second == 1);
       c_buff_a = {4};
       c_buff_d1 = std::string("1a");
@@ -2154,7 +2193,7 @@ TEST_CASE(
      * Refactored reader tries to fill as much as possible.
      * Old reader splits partition in two.
      */
-    if (test::use_refactored_readers()) {
+    if (test::use_refactored_sparse_global_order_reader()) {
       CHECK(query_r.result_buffer_elements()["a"].second == 3);
       c_buff_a = {3, 2, 1};
       c_buff_d1 = std::string("dogcamel33");
@@ -2191,7 +2230,7 @@ TEST_CASE(
     r_off_d2.resize(query_r.result_buffer_elements()["d2"].first);
     r_buff_a.resize(query_r.result_buffer_elements()["a"].second);
 
-    if (test::use_refactored_readers()) {
+    if (test::use_refactored_sparse_global_order_reader()) {
       CHECK(query_r.result_buffer_elements()["a"].second == 1);
       c_buff_a = {4};
       c_buff_d1 = std::string("1a");

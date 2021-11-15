@@ -248,6 +248,18 @@ TEST_CASE(
   CHECK(rc == TILEDB_OK);
   CHECK(std::string(uri) == written_frag_uri);
 
+  // Get schema name
+  const char* schema_name;
+  rc = tiledb_fragment_info_get_array_schema_name(
+      ctx, fragment_info, 0, &schema_name);
+  CHECK(rc == TILEDB_OK);
+
+  // Check schema name
+  // TODO: currently this is hard-coded with the expected result
+  //       ideally we would check the as-written schema timestamp
+  std::string schema_name_str(schema_name != nullptr ? schema_name : "");
+  CHECK(schema_name_str.size() == 62);
+
   // Get fragment size
   uint64_t size;
   rc = tiledb_fragment_info_get_fragment_size(ctx, fragment_info, 1, &size);

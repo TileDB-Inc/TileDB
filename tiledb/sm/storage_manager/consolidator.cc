@@ -61,7 +61,8 @@ namespace sm {
 
 Consolidator::Consolidator(StorageManager* storage_manager)
     : storage_manager_(storage_manager)
-    , stats_(storage_manager_->stats()->create_child("Consolidator")) {
+    , stats_(storage_manager_->stats()->create_child("Consolidator"))
+    , logger_(storage_manager_->logger()->clone("Consolidator", ++logger_id_)) {
 }
 
 Consolidator::~Consolidator() = default;
@@ -91,7 +92,7 @@ Status Consolidator::consolidate(
     return consolidate_array_meta(
         array_name, encryption_type, encryption_key, key_length);
 
-  return LOG_STATUS(Status::ConsolidatorError(
+  return logger_->status(Status::ConsolidatorError(
       "Cannot consolidate; Invalid consolidation mode"));
 }
 
@@ -578,7 +579,7 @@ Status Consolidator::create_queries(
   RETURN_NOT_OK((*query_r)->set_layout(Layout::GLOBAL_ORDER));
 
   // Refactored reader optimizes for no subarray.
-  if (!config_.use_refactored_readers_ ||
+  if (!config_.use_refactored_reader_ ||
       array_for_reads->array_schema()->dense())
     RETURN_NOT_OK((*query_r)->set_subarray_unsafe(subarray));
 
@@ -881,7 +882,7 @@ Status Consolidator::set_config(const Config* config) {
   assert(found);
   const std::string mode = merged_config.get("sm.consolidation.mode", &found);
   if (!found)
-    return LOG_STATUS(Status::ConsolidatorError(
+    return logger_->status(Status::ConsolidatorError(
         "Cannot consolidate; Consolidation mode cannot be null"));
   config_.mode_ = mode;
   RETURN_NOT_OK(merged_config.get<uint64_t>(
@@ -890,21 +891,22 @@ Status Consolidator::set_config(const Config* config) {
   RETURN_NOT_OK(merged_config.get<uint64_t>(
       "sm.consolidation.timestamp_end", &config_.timestamp_end_, &found));
   assert(found);
-  RETURN_NOT_OK(merged_config.get<bool>(
-      "sm.use_refactored_readers", &config_.use_refactored_readers_, &found));
+  std::string reader =
+      merged_config.get("sm.query.sparse_global_order.reader", &found);
   assert(found);
+  config_.use_refactored_reader_ = reader.compare("reafctored") == 0;
 
   // Sanity checks
   if (config_.min_frags_ > config_.max_frags_)
-    return LOG_STATUS(Status::ConsolidatorError(
+    return logger_->status(Status::ConsolidatorError(
         "Invalid configuration; Minimum fragments config parameter is larger "
         "than the maximum"));
   if (config_.size_ratio_ > 1.0f || config_.size_ratio_ < 0.0f)
-    return LOG_STATUS(Status::ConsolidatorError(
+    return logger_->status(Status::ConsolidatorError(
         "Invalid configuration; Step size ratio config parameter must be in "
         "[0.0, 1.0]"));
   if (config_.amplification_ < 0)
-    return LOG_STATUS(
+    return logger_->status(
         Status::ConsolidatorError("Invalid configuration; Amplification config "
                                   "parameter must be non-negative"));
 

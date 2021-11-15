@@ -32,6 +32,7 @@
 
 #include "helpers.h"
 #include "catch.hpp"
+#include "tiledb/common/logger.h"
 #include "tiledb/sm/cpp_api/tiledb"
 #include "tiledb/sm/enums/encryption_type.h"
 #include "tiledb/sm/global_state/unit_test_config.h"
@@ -47,7 +48,7 @@ namespace test {
 // Command line arguments.
 extern std::string g_vfs;
 
-bool use_refactored_readers() {
+bool use_refactored_dense_reader() {
   const char* value = nullptr;
   tiledb_config_t* cfg;
   tiledb_error_t* err = nullptr;
@@ -55,15 +56,60 @@ bool use_refactored_readers() {
   REQUIRE(rc == TILEDB_OK);
   REQUIRE(err == nullptr);
 
-  rc = tiledb_config_get(cfg, "sm.use_refactored_readers", &value, &err);
+  rc = tiledb_config_get(cfg, "sm.query.dense.reader", &value, &err);
   CHECK(rc == TILEDB_OK);
   CHECK(err == nullptr);
 
-  bool use_refactored_readers = strcmp(value, "true") == 0;
+  bool use_refactored_readers = strcmp(value, "refactored") == 0;
 
   tiledb_config_free(&cfg);
 
   return use_refactored_readers;
+}
+
+bool use_refactored_sparse_global_order_reader() {
+  const char* value = nullptr;
+  tiledb_config_t* cfg;
+  tiledb_error_t* err = nullptr;
+  auto rc = tiledb_config_alloc(&cfg, &err);
+  REQUIRE(rc == TILEDB_OK);
+  REQUIRE(err == nullptr);
+
+  rc = tiledb_config_get(
+      cfg, "sm.query.sparse_global_order.reader", &value, &err);
+  CHECK(rc == TILEDB_OK);
+  CHECK(err == nullptr);
+
+  bool use_refactored_readers = strcmp(value, "refactored") == 0;
+
+  tiledb_config_free(&cfg);
+
+  return use_refactored_readers;
+}
+
+bool use_refactored_sparse_unordered_with_dups_reader() {
+  const char* value = nullptr;
+  tiledb_config_t* cfg;
+  tiledb_error_t* err = nullptr;
+  auto rc = tiledb_config_alloc(&cfg, &err);
+  REQUIRE(rc == TILEDB_OK);
+  REQUIRE(err == nullptr);
+
+  rc = tiledb_config_get(
+      cfg, "sm.query.sparse_unordered_with_dups.reader", &value, &err);
+  CHECK(rc == TILEDB_OK);
+  CHECK(err == nullptr);
+
+  bool use_refactored_readers = strcmp(value, "refactored") == 0;
+
+  tiledb_config_free(&cfg);
+
+  return use_refactored_readers;
+}
+
+tdb_shared_ptr<Logger> g_helper_logger(void) {
+  static tdb_shared_ptr<Logger> g_helper_logger = tdb_make_shared(Logger, "");
+  return g_helper_logger;
 }
 
 template <class T>
@@ -520,7 +566,8 @@ void create_subarray(
     tiledb::sm::Layout layout,
     tiledb::sm::Subarray* subarray,
     bool coalesce_ranges) {
-  tiledb::sm::Subarray ret(array, layout, &g_helper_stats, coalesce_ranges);
+  tiledb::sm::Subarray ret(
+      array, layout, &g_helper_stats, g_helper_logger(), coalesce_ranges);
 
   auto dim_num = (unsigned)ranges.size();
   for (unsigned d = 0; d < dim_num; ++d) {

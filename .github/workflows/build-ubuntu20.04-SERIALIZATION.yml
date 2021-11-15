@@ -44,11 +44,6 @@ jobs:
       - name: 'Build and test libtiledb'
         id: test
         run: |
-
-          git clone https://github.com/TileDB-Inc/TileDB-Unit-Test-Arrays.git --branch 2.3.0 test/inputs/arrays/read_compatibility_test
-
-          #   name: 'Clone Unit-Test-Arrays'
-
           bootstrap_args="${bootstrap_args} --enable-serialization";
           source $GITHUB_WORKSPACE/scripts/ci/build_libtiledb.sh
 

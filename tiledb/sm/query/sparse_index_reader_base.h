@@ -72,6 +72,9 @@ class SparseIndexReaderBase : public ReaderBase {
 
     /** The tile index inside of each fragments. */
     std::vector<std::pair<uint64_t, uint64_t>> frag_tile_idx_;
+
+    /** Is the reader done with the query. */
+    bool done_adding_result_tiles_;
   };
 
   /* ********************************* */
@@ -81,6 +84,7 @@ class SparseIndexReaderBase : public ReaderBase {
   /** Constructor. */
   SparseIndexReaderBase(
       stats::Stats* stats,
+      tdb_shared_ptr<Logger> logger,
       StorageManager* storage_manager,
       Array* array,
       Config& config,
@@ -107,7 +111,7 @@ class SparseIndexReaderBase : public ReaderBase {
 
   /** Add a result tile with no memory budget checks. Used by serialization. */
   virtual ResultTile* add_result_tile_unsafe(
-      unsigned dim_num, unsigned f, uint64_t t, const Domain* domain) = 0;
+      unsigned f, uint64_t t, const Domain* domain) = 0;
 
  protected:
   /* ********************************* */
@@ -116,9 +120,6 @@ class SparseIndexReaderBase : public ReaderBase {
 
   /** Read state. */
   ReadState read_state_;
-
-  /** Is the reader done with the query. */
-  bool done_adding_result_tiles_;
 
   /** Have we loaded all thiles for this fragment. */
   std::vector<bool> all_tiles_loaded_;

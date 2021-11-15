@@ -33,6 +33,8 @@
 #ifndef TILEDB_WRITER_H
 #define TILEDB_WRITER_H
 
+#include <atomic>
+
 #include "tiledb/common/status.h"
 #include "tiledb/sm/fragment/written_fragment_info.h"
 #include "tiledb/sm/misc/types.h"
@@ -91,6 +93,7 @@ class Writer : public StrategyBase, public IQueryStrategy {
   /** Constructor. */
   Writer(
       stats::Stats* stats,
+      tdb_shared_ptr<Logger> logger,
       StorageManager* storage_manager,
       Array* array,
       Config& config,
@@ -134,6 +137,9 @@ class Writer : public StrategyBase, public IQueryStrategy {
 
   /** Initializes the writer. */
   Status init();
+
+  /** Initialize the memory budget variables. */
+  Status initialize_memory_budget();
 
   /** Sets current setting of check_coord_dups_ */
   void set_check_coord_dups(bool b);
@@ -211,6 +217,9 @@ class Writer : public StrategyBase, public IQueryStrategy {
 
   /** Allocated buffers that neeed to be cleaned upon destruction. */
   std::vector<void*> to_clean_;
+
+  /** UID of the logger instance */
+  inline static std::atomic<uint64_t> logger_id_ = 0;
 
   /* ********************************* */
   /*           PRIVATE METHODS         */

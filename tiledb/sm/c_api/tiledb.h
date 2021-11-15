@@ -1036,9 +1036,17 @@ TILEDB_EXPORT void tiledb_config_free(tiledb_config_t** config);
  *    The offsets format (`bytes` or `elements`) to be used for
  *    var-sized attributes.<br>
  *    **Default**: bytes
- * - `sm.use_refactored_readers` <br>
- *    Use the refactored readers or not. <br>
- *    **Default**: false
+ * - `sm.query.dense.reader` <br>
+ *    Which reader to use for dense queries. "refactored" or "legacy".<br>
+ *    **Default**: lagacy
+ * - `sm.query.sparse_global_order.reader` <br>
+ *    Which reader to use for sparse global order queries. "refactored"
+ *    or "legacy".<br>
+ *    **Default**: legacy
+ * - `sm.query.sparse_unordered_with_dups.reader` <br>
+ *    Which reader to use for sparse unordered with dups queries.
+ *    "refactored" or "legacy".<br>
+ *    **Default**: refactored
  * - `sm.mem.malloc_trim` <br>
  *    Should malloc_trim be called on context and query destruction? This might
  * reduce residual memory usage. <br>
@@ -1320,6 +1328,9 @@ TILEDB_EXPORT void tiledb_config_free(tiledb_config_t** config);
  *    "2": warn, "3": info "4": debug, "5": trace <br>
  *    **Default**: "1" if --enable-verbose bootstrap flag is provided,
  *    "0" otherwise <br>
+ * - `config.logging_format` <br>
+ *    The logging format configured (DEFAULT or JSON)
+ *    **Default**: "DEFAULT"
  * - `rest.server_address` <br>
  *    URL for REST server to use for remote arrays. <br>
  *    **Default**: "https://api.tiledb.com"
@@ -5884,71 +5895,6 @@ TILEDB_EXPORT int32_t tiledb_array_get_non_empty_domain_var_from_name(
     int32_t* is_empty);
 
 /**
- * Computes an upper bound on the buffer size (in bytes) required for a read
- * query, for a given **fixed-sized* attribute/dimension and subarray.
- *
- * **Example:**
- *
- * @code{.c}
- * tiledb_array_t* array;
- * tiledb_array_alloc(ctx, "my_array", &array);
- * tiledb_array_open(ctx, array, TILEDB_READ);
- * uint64_t buffer_size;
- * const char* attribute = "attr_1";
- * uint64_t subarray[] = {10, 20, 10, 100};
- * tiledb_array_max_buffer_size(ctx, array, attribute, subarray, buffer_size);
- * @endcode
- *
- * @param ctx The TileDB context.
- * @param array The array object (must be opened beforehand).
- * @param name The fixed-sized attribute/dimension to focus on.
- * @param subarray The subarray to focus on. Note that it must have the same
- *     underlying type as the array domain.
- * @param buffer_size The buffer size (in bytes) to be retrieved.
- * @return `TILEDB_OK` for success and `TILEDB_ERR` for error.
- */
-TILEDB_DEPRECATED_EXPORT int32_t tiledb_array_max_buffer_size(
-    tiledb_ctx_t* ctx,
-    tiledb_array_t* array,
-    const char* name,
-    const void* subarray,
-    uint64_t* buffer_size);
-
-/**
- * Computes an upper bound on the buffer size (in bytes) required for a read
- * query, for a given **var-sized* attribute/dimension and subarray.
- *
- * **Example:**
- *
- * @code{.c}
- * tiledb_array_t* array;
- * tiledb_array_alloc(ctx, "my_array", &array);
- * tiledb_array_open(ctx, array, TILEDB_READ);
- * uint64_t buffer_off_size, buffer_val_size;
- * const char* attribute = "attr_2";
- * uint64_t subarray[] = {10, 20, 10, 100};
- * tiledb_array_max_buffer_size_var(
- *     ctx, array, attribute, subarray, buffer_off_size, buffer_val_size);
- * @endcode
- *
- * @param ctx The TileDB context.
- * @param array The array object (must be opened beforehand).
- * @param name The var-sized attribute/dimension to focus on.
- * @param subarray The subarray to focus on. Note that it must have the same
- *     underlying type as the array domain.
- * @param buffer_off_size The offsets buffer size (in bytes) to be retrieved.
- * @param buffer_val_size The values buffer size (in bytes) to be retrieved.
- * @return `TILEDB_OK` for success and `TILEDB_ERR` for error.
- */
-TILEDB_DEPRECATED_EXPORT int32_t tiledb_array_max_buffer_size_var(
-    tiledb_ctx_t* ctx,
-    tiledb_array_t* array,
-    const char* name,
-    const void* subarray,
-    uint64_t* buffer_off_size,
-    uint64_t* buffer_val_size);
-
-/**
  * Retrieves the URI the array was opened with. It outputs an error
  * if the array is not open.
  *
@@ -7771,6 +7717,27 @@ TILEDB_EXPORT int32_t tiledb_fragment_info_get_array_schema(
     tiledb_fragment_info_t* fragment_info,
     uint32_t fid,
     tiledb_array_schema_t** array_schema);
+
+/**
+ * Get the fragment info schema name.
+ *
+ * **Example:**
+ *
+ * @code{.c}
+ * char* name;
+ * tiledb_fragment_info_schema_name(ctx, fragment_info, &schema_name);
+ * @endcode
+ *
+ * @param ctx The TileDB context.
+ * @param fragment_info The fragment info object.
+ * @param name The schema name.
+ * @return `TILEDB_OK` for success and `TILEDB_ERR` for error.
+ */
+TILEDB_EXPORT int32_t tiledb_fragment_info_get_array_schema_name(
+    tiledb_ctx_t* ctx,
+    tiledb_fragment_info_t* fragment_info,
+    uint32_t fid,
+    const char** schema_name);
 
 /**
  * Dumps the fragment info in ASCII format in the selected output.

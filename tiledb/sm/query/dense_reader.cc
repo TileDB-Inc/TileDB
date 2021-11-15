@@ -30,13 +30,15 @@
  * This file implements class DenseReader.
  */
 
-#include "tiledb/sm/query/dense_reader.h"
+#include "tiledb/common/logger.h"
+
 #include "tiledb/sm/array/array.h"
 #include "tiledb/sm/array_schema/array_schema.h"
 #include "tiledb/sm/array_schema/dimension.h"
 #include "tiledb/sm/fragment/fragment_metadata.h"
 #include "tiledb/sm/misc/parallel_functions.h"
 #include "tiledb/sm/misc/utils.h"
+#include "tiledb/sm/query/dense_reader.h"
 #include "tiledb/sm/query/query_macros.h"
 #include "tiledb/sm/query/result_tile.h"
 #include "tiledb/sm/stats/global_stats.h"
@@ -57,6 +59,7 @@ namespace sm {
 
 DenseReader::DenseReader(
     stats::Stats* stats,
+    tdb_shared_ptr<Logger> logger,
     StorageManager* storage_manager,
     Array* array,
     Config& config,
@@ -66,6 +69,7 @@ DenseReader::DenseReader(
     QueryCondition& condition)
     : ReaderBase(
           stats,
+          logger->clone("DenseReader", ++logger_id_),
           storage_manager,
           array,
           config,
@@ -108,6 +112,10 @@ Status DenseReader::init() {
   // Check the validity buffer sizes.
   RETURN_NOT_OK(check_validity_buffer_sizes());
 
+  return Status::Ok();
+}
+
+Status DenseReader::initialize_memory_budget() {
   return Status::Ok();
 }
 
@@ -231,13 +239,13 @@ Status DenseReader::dense_read() {
 
   // For easy reference.
   auto& subarray = read_state_.partitioner_.current();
-
   RETURN_NOT_OK(subarray.compute_tile_coords<DimType>());
 
   // Compute result space tiles. The result space tiles hold all the
   // relevant result tiles of the dense fragments.
   std::map<const DimType*, ResultSpaceTile<DimType>> result_space_tiles;
-  compute_result_space_tiles<DimType>(subarray, &result_space_tiles);
+  compute_result_space_tiles<DimType>(
+      &subarray, read_state_.partitioner_.subarray(), &result_space_tiles);
 
   std::vector<ResultTile*> result_tiles;
   for (const auto& result_space_tile : result_space_tiles) {
@@ -313,7 +321,8 @@ Status DenseReader::dense_read() {
 
   // Pre-load all attribute offsets into memory for attributes
   // in query condition to be read.
-  RETURN_CANCEL_OR_ERROR(load_tile_offsets(&subarray, &names));
+  RETURN_CANCEL_OR_ERROR(
+      load_tile_offsets(read_state_.partitioner_.subarray(), &names));
 
   // Read and unfilter tiles.
   RETURN_CANCEL_OR_ERROR(read_attribute_tiles(&names, &result_tiles));
@@ -422,7 +431,8 @@ Status DenseReader::init_read_state() {
       memory_budget_var,
       memory_budget_validity,
       storage_manager_->compute_tp(),
-      stats_);
+      stats_,
+      logger_);
   read_state_.overflowed_ = false;
   read_state_.unsplittable_ = false;
 

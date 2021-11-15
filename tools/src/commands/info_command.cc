@@ -33,6 +33,7 @@
 #include "commands/info_command.h"
 #include "misc/common.h"
 
+#include "tiledb/common/logger.h"
 #include "tiledb/sm/array/array.h"
 #include "tiledb/sm/array_schema/array_schema.h"
 #include "tiledb/sm/array_schema/attribute.h"
@@ -119,7 +120,7 @@ void InfoCommand::run() {
 
 void InfoCommand::print_tile_sizes() const {
   stats::Stats stats("");
-  StorageManager sm(&compute_tp_, &io_tp_, &stats);
+  StorageManager sm(&compute_tp_, &io_tp_, &stats, tdb_make_shared(Logger, ""));
   THROW_NOT_OK(sm.init(nullptr));
 
   // Open the array
@@ -141,18 +142,20 @@ void InfoCommand::print_tile_sizes() const {
     uint64_t num_tiles = 0;
     for (const auto& f : fragment_metadata) {
       uint64_t tile_num = f->tile_num();
+      std::vector<std::string> names;
+      names.push_back(name);
+      THROW_NOT_OK(f->load_tile_offsets(enc_key, std::move(names)));
+      THROW_NOT_OK(f->load_tile_var_sizes(enc_key, name));
       for (uint64_t tile_idx = 0; tile_idx < tile_num; tile_idx++) {
         uint64_t tile_size = 0;
-        THROW_NOT_OK(
-            f->persisted_tile_size(enc_key, name, tile_idx, &tile_size));
+        THROW_NOT_OK(f->persisted_tile_size(name, tile_idx, &tile_size));
         persisted_tile_size += tile_size;
         in_memory_tile_size += f->tile_size(name, tile_idx);
         num_tiles++;
         if (var_size) {
-          THROW_NOT_OK(
-              f->persisted_tile_var_size(enc_key, name, tile_idx, &tile_size));
+          THROW_NOT_OK(f->persisted_tile_var_size(name, tile_idx, &tile_size));
           persisted_tile_size += tile_size;
-          THROW_NOT_OK(f->tile_var_size(enc_key, name, tile_idx, &tile_size));
+          THROW_NOT_OK(f->tile_var_size(name, tile_idx, &tile_size));
           in_memory_tile_size += tile_size;
           num_tiles++;
         }
@@ -191,7 +194,7 @@ void InfoCommand::print_tile_sizes() const {
 
 void InfoCommand::print_schema_info() const {
   stats::Stats stats("");
-  StorageManager sm(&compute_tp_, &io_tp_, &stats);
+  StorageManager sm(&compute_tp_, &io_tp_, &stats, tdb_make_shared(Logger, ""));
   THROW_NOT_OK(sm.init(nullptr));
 
   // Open the array
@@ -208,7 +211,7 @@ void InfoCommand::print_schema_info() const {
 
 void InfoCommand::write_svg_mbrs() const {
   stats::Stats stats("");
-  StorageManager sm(&compute_tp_, &io_tp_, &stats);
+  StorageManager sm(&compute_tp_, &io_tp_, &stats, tdb_make_shared(Logger, ""));
   THROW_NOT_OK(sm.init(nullptr));
 
   // Open the array
@@ -283,7 +286,7 @@ void InfoCommand::write_svg_mbrs() const {
 
 void InfoCommand::write_text_mbrs() const {
   stats::Stats stats("");
-  StorageManager sm(&compute_tp_, &io_tp_, &stats);
+  StorageManager sm(&compute_tp_, &io_tp_, &stats, tdb_make_shared(Logger, ""));
   THROW_NOT_OK(sm.init(nullptr));
 
   // Open the array

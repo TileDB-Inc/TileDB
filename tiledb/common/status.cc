@@ -51,7 +51,7 @@
 namespace tiledb {
 namespace common {
 
-Status::Status(StatusCode code, const std::string& msg, int16_t posix_code) {
+Status::Status(StatusCode code, const std::string& msg) {
   assert(code != StatusCode::Ok);
   size_t msg_size = msg.size();
   // assert(msg_size < std::numeric_limits<uint32_t>::max());
@@ -59,7 +59,8 @@ Status::Status(StatusCode code, const std::string& msg, int16_t posix_code) {
   auto result = tdb_new_array(char, size + 7);
   memcpy(result, &size, sizeof(size));
   result[4] = static_cast<char>(code);
-  memcpy(result + 5, &posix_code, sizeof(posix_code));
+  int16_t reserved = 0;
+  memcpy(result + 5, &reserved, sizeof(reserved));
   memcpy(result + 7, msg.c_str(), msg_size);
   state_ = result;
 }
@@ -238,15 +239,6 @@ std::string Status::code_to_string() const {
       type = "[TileDB::?] Error:";
   }
   return std::string(type);
-}
-
-int16_t Status::posix_code() const {
-  int16_t code = -1;
-  if (state_ == nullptr)
-    return code;
-
-  memcpy(&code, state_ + 5, sizeof(code));
-  return code;
 }
 
 }  // namespace common

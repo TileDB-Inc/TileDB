@@ -219,6 +219,7 @@ void check_save_to_file() {
   // an std::[ordered_]map is where the comparison values saved to file
   // come from.
   ss << "config.env_var_prefix TILEDB_\n";
+  ss << "config.logging_format DEFAULT\n";
 #ifdef TILEDB_VERBOSE
   ss << "config.logging_level 1\n";
 #else
@@ -269,11 +270,13 @@ void check_save_to_file() {
   ss << "sm.mem.total_budget 10737418240\n";
   ss << "sm.memory_budget 5368709120\n";
   ss << "sm.memory_budget_var 10737418240\n";
+  ss << "sm.query.dense.reader legacy\n";
+  ss << "sm.query.sparse_global_order.reader legacy\n";
+  ss << "sm.query.sparse_unordered_with_dups.reader refactored\n";
   ss << "sm.read_range_oob warn\n";
   ss << "sm.skip_checksum_validation false\n";
   ss << "sm.skip_est_size_partitioning false\n";
   ss << "sm.tile_cache_size 10000000\n";
-  ss << "sm.use_refactored_readers false\n";
   ss << "sm.vacuum.mode fragments\n";
   ss << "sm.vacuum.timestamp_end " << std::to_string(UINT64_MAX) << "\n";
   ss << "sm.vacuum.timestamp_start 0\n";
@@ -522,6 +525,9 @@ TEST_CASE("C API: Test config iter", "[capi][config]") {
   rc = tiledb_config_set(config, "config.logging_level", "2", &error);
   CHECK(rc == TILEDB_OK);
   CHECK(error == nullptr);
+  rc = tiledb_config_set(config, "config.logging_format", "JSON", &error);
+  CHECK(rc == TILEDB_OK);
+  CHECK(error == nullptr);
   rc = tiledb_config_set(config, "sm.tile_cache_size", "100", &error);
   CHECK(rc == TILEDB_OK);
   CHECK(error == nullptr);
@@ -546,6 +552,7 @@ TEST_CASE("C API: Test config iter", "[capi][config]") {
   std::map<std::string, std::string> all_param_values;
   all_param_values["config.env_var_prefix"] = "TILEDB_";
   all_param_values["config.logging_level"] = "2";
+  all_param_values["config.logging_format"] = "JSON";
   all_param_values["rest.server_address"] = "https://api.tiledb.com";
   all_param_values["rest.server_serialization_format"] = "CAPNP";
   all_param_values["rest.http_compressor"] = "any";
@@ -563,7 +570,9 @@ TEST_CASE("C API: Test config iter", "[capi][config]") {
   all_param_values["sm.skip_est_size_partitioning"] = "false";
   all_param_values["sm.memory_budget"] = "5368709120";
   all_param_values["sm.memory_budget_var"] = "10737418240";
-  all_param_values["sm.use_refactored_readers"] = "false";
+  all_param_values["sm.query.dense.reader"] = "legacy";
+  all_param_values["sm.query.sparse_global_order.reader"] = "legacy";
+  all_param_values["sm.query.sparse_unordered_with_dups.reader"] = "refactored";
   all_param_values["sm.mem.malloc_trim"] = "true";
   all_param_values["sm.mem.total_budget"] = "10737418240";
   all_param_values["sm.mem.reader.sparse_global_order.ratio_coords"] = "0.5";

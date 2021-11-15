@@ -44,16 +44,16 @@
 
 using namespace tiledb::common;
 
+tiledb::common::blank<tiledb::sm::Dimension>::blank()
+    : tiledb::sm::Dimension{"", tiledb::sm::Datatype::INT32} {
+}
+
 namespace tiledb {
 namespace sm {
 
 /* ********************************* */
 /*     CONSTRUCTORS & DESTRUCTORS    */
 /* ********************************* */
-
-Dimension::Dimension()
-    : Dimension("", Datatype::INT32) {
-}
 
 Dimension::Dimension(const std::string& name, Datatype type)
     : name_(name)
