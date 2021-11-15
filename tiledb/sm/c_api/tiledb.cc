@@ -426,8 +426,7 @@ inline int32_t sanity_check(tiledb_ctx_t* ctx, const tiledb_config_t* config) {
 inline int32_t sanity_check(
     tiledb_config_iter_t* config_iter, tiledb_error_t** error) {
   if (config_iter == nullptr || config_iter->config_iter_ == nullptr) {
-    auto st =
-        Status_Error("Cannot set config; Invalid config iterator object");
+    auto st = Status_Error("Cannot set config; Invalid config iterator object");
     LOG_STATUS(st);
     create_error(error, st);
     return TILEDB_ERR;
@@ -2581,8 +2580,7 @@ int32_t tiledb_array_schema_get_domain(
   if ((*domain)->domain_ == nullptr) {
     delete *domain;
     *domain = nullptr;
-    auto st =
-        Status_Error("Failed to allocate TileDB domain object in object");
+    auto st = Status_Error("Failed to allocate TileDB domain object in object");
     LOG_STATUS(st);
     save_error(ctx, st);
     return TILEDB_OOM;
@@ -2754,8 +2752,8 @@ int32_t tiledb_array_schema_evolution_alloc(
   // Create schema evolution struct
   *array_schema_evolution = new (std::nothrow) tiledb_array_schema_evolution_t;
   if (*array_schema_evolution == nullptr) {
-    auto st = Status_Error(
-        "Failed to allocate TileDB array schema evolution object");
+    auto st =
+        Status_Error("Failed to allocate TileDB array schema evolution object");
     LOG_STATUS(st);
     save_error(ctx, st);
     return TILEDB_OOM;
@@ -2767,8 +2765,8 @@ int32_t tiledb_array_schema_evolution_alloc(
   if ((*array_schema_evolution)->array_schema_evolution_ == nullptr) {
     delete *array_schema_evolution;
     *array_schema_evolution = nullptr;
-    auto st = Status_Error(
-        "Failed to allocate TileDB array schema evolution object");
+    auto st =
+        Status_Error("Failed to allocate TileDB array schema evolution object");
     LOG_STATUS(st);
     save_error(ctx, st);
     return TILEDB_OOM;
@@ -3906,8 +3904,7 @@ int32_t tiledb_array_alloc(
   // Check array URI
   auto uri = tiledb::sm::URI(array_uri);
   if (uri.is_invalid()) {
-    auto st =
-        Status_Error("Failed to create TileDB array object; Invalid URI");
+    auto st = Status_Error("Failed to create TileDB array object; Invalid URI");
     delete *array;
     *array = nullptr;
     LOG_STATUS(st);
@@ -5370,8 +5367,7 @@ int32_t tiledb_vfs_ls(
   if (sanity_check(ctx) == TILEDB_ERR)
     return TILEDB_ERR;
   if (callback == nullptr) {
-    auto st =
-        Status_Error("Cannot initiate VFS ls; Invalid callback function");
+    auto st = Status_Error("Cannot initiate VFS ls; Invalid callback function");
     LOG_STATUS(st);
     save_error(ctx, st);
     return TILEDB_ERR;
@@ -5654,8 +5650,8 @@ int32_t tiledb_deserialize_array_schema_evolution(
   // Create array schema struct
   *array_schema_evolution = new (std::nothrow) tiledb_array_schema_evolution_t;
   if (*array_schema_evolution == nullptr) {
-    auto st = Status_Error(
-        "Failed to allocate TileDB array schema evolution object");
+    auto st =
+        Status_Error("Failed to allocate TileDB array schema evolution object");
     LOG_STATUS(st);
     save_error(ctx, st);
     return TILEDB_OOM;

@@ -213,8 +213,7 @@ std::vector<Status> ThreadPool::wait_all_status(std::vector<Task>& tasks) {
   for (auto& task : tasks) {
     if (!task.valid()) {
       LOG_ERROR("Waiting on invalid task future.");
-      statuses.push_back(
-          Status_ThreadPoolError("Invalid task future"));
+      statuses.push_back(Status_ThreadPoolError("Invalid task future"));
     } else {
       Status status = wait_or_work(std::move(task));
       if (!status.ok()) {

@@ -380,9 +380,9 @@ Status DenseReader::init_read_state() {
   if (subarray_.layout() == Layout::GLOBAL_ORDER && subarray_.range_num() != 1)
     return LOG_STATUS(
         Status_ReaderError("Cannot initialize read "
-                                   "state; Multi-range "
-                                   "subarrays do not "
-                                   "support global order"));
+                           "state; Multi-range "
+                           "subarrays do not "
+                           "support global order"));
 
   // Get config values.
   bool found = false;
@@ -399,9 +399,9 @@ Status DenseReader::init_read_state() {
   offsets_format_mode_ = config_.get("sm.var_offsets.mode", &found);
   assert(found);
   if (offsets_format_mode_ != "bytes" && offsets_format_mode_ != "elements") {
-    return LOG_STATUS(Status_ReaderError(
-        "Cannot initialize reader; Unsupported offsets "
-        "format in configuration"));
+    return LOG_STATUS(
+        Status_ReaderError("Cannot initialize reader; Unsupported offsets "
+                           "format in configuration"));
   }
   elements_mode_ = offsets_format_mode_ == "elements";
 
@@ -412,9 +412,9 @@ Status DenseReader::init_read_state() {
   RETURN_NOT_OK(config_.get<uint32_t>(
       "sm.var_offsets.bitsize", &offsets_bitsize_, &found));
   if (offsets_bitsize_ != 32 && offsets_bitsize_ != 64) {
-    return LOG_STATUS(Status_ReaderError(
-        "Cannot initialize reader; Unsupported offsets "
-        "bitsize in configuration"));
+    return LOG_STATUS(
+        Status_ReaderError("Cannot initialize reader; Unsupported offsets "
+                           "bitsize in configuration"));
   }
   assert(found);
 

@@ -219,7 +219,7 @@ Status RestClient::get_array_non_empty_domain(
   if (returned_data.data() == nullptr || returned_data.size() == 0)
     return LOG_STATUS(
         Status_RestError("Error getting array non-empty domain "
-                          "from REST; server returned no data."));
+                         "from REST; server returned no data."));
 
   // Deserialize data returned
   return serialization::nonempty_domain_deserialize(
@@ -257,7 +257,7 @@ Status RestClient::get_array_max_buffer_sizes(
   if (returned_data.data() == nullptr || returned_data.size() == 0)
     return LOG_STATUS(
         Status_RestError("Error getting array max buffer sizes "
-                          "from REST; server returned no data."));
+                         "from REST; server returned no data."));
 
   // Deserialize data returned
   return serialization::max_buffer_sizes_deserialize(
@@ -825,33 +825,33 @@ RestClient::RestClient() {
 }
 
 Status RestClient::init(stats::Stats*, const Config*, ThreadPool*) {
-  return LOG_STATUS(Status_RestError(
-      "Cannot use rest client; serialization not enabled."));
+  return LOG_STATUS(
+      Status_RestError("Cannot use rest client; serialization not enabled."));
 }
 
 Status RestClient::set_header(const std::string&, const std::string&) {
-  return LOG_STATUS(Status_RestError(
-      "Cannot use rest client; serialization not enabled."));
+  return LOG_STATUS(
+      Status_RestError("Cannot use rest client; serialization not enabled."));
 }
 
 Status RestClient::get_array_schema_from_rest(const URI&, ArraySchema**) {
-  return LOG_STATUS(Status_RestError(
-      "Cannot use rest client; serialization not enabled."));
+  return LOG_STATUS(
+      Status_RestError("Cannot use rest client; serialization not enabled."));
 }
 
 Status RestClient::post_array_schema_to_rest(const URI&, ArraySchema*) {
-  return LOG_STATUS(Status_RestError(
-      "Cannot use rest client; serialization not enabled."));
+  return LOG_STATUS(
+      Status_RestError("Cannot use rest client; serialization not enabled."));
 }
 
 Status RestClient::deregister_array_from_rest(const URI&) {
-  return LOG_STATUS(Status_RestError(
-      "Cannot use rest client; serialization not enabled."));
+  return LOG_STATUS(
+      Status_RestError("Cannot use rest client; serialization not enabled."));
 }
 
 Status RestClient::get_array_non_empty_domain(Array*, uint64_t, uint64_t) {
-  return LOG_STATUS(Status_RestError(
-      "Cannot use rest client; serialization not enabled."));
+  return LOG_STATUS(
+      Status_RestError("Cannot use rest client; serialization not enabled."));
 }
 
 Status RestClient::get_array_max_buffer_sizes(
@@ -859,41 +859,41 @@ Status RestClient::get_array_max_buffer_sizes(
     const ArraySchema*,
     const void*,
     std::unordered_map<std::string, std::pair<uint64_t, uint64_t>>*) {
-  return LOG_STATUS(Status_RestError(
-      "Cannot use rest client; serialization not enabled."));
+  return LOG_STATUS(
+      Status_RestError("Cannot use rest client; serialization not enabled."));
 }
 
 Status RestClient::get_array_metadata_from_rest(
     const URI&, uint64_t, uint64_t, Array*) {
-  return LOG_STATUS(Status_RestError(
-      "Cannot use rest client; serialization not enabled."));
+  return LOG_STATUS(
+      Status_RestError("Cannot use rest client; serialization not enabled."));
 }
 
 Status RestClient::post_array_metadata_to_rest(
     const URI&, uint64_t, uint64_t, Array*) {
-  return LOG_STATUS(Status_RestError(
-      "Cannot use rest client; serialization not enabled."));
+  return LOG_STATUS(
+      Status_RestError("Cannot use rest client; serialization not enabled."));
 }
 
 Status RestClient::submit_query_to_rest(const URI&, Query*) {
-  return LOG_STATUS(Status_RestError(
-      "Cannot use rest client; serialization not enabled."));
+  return LOG_STATUS(
+      Status_RestError("Cannot use rest client; serialization not enabled."));
 }
 
 Status RestClient::finalize_query_to_rest(const URI&, Query*) {
-  return LOG_STATUS(Status_RestError(
-      "Cannot use rest client; serialization not enabled."));
+  return LOG_STATUS(
+      Status_RestError("Cannot use rest client; serialization not enabled."));
 }
 
 Status RestClient::get_query_est_result_sizes(const URI&, Query*) {
-  return LOG_STATUS(Status_RestError(
-      "Cannot use rest client; serialization not enabled."));
+  return LOG_STATUS(
+      Status_RestError("Cannot use rest client; serialization not enabled."));
 }
 
 Status RestClient::post_array_schema_evolution_to_rest(
     const URI&, ArraySchemaEvolution*) {
-  return LOG_STATUS(Status_RestError(
-      "Cannot use rest client; serialization not enabled."));
+  return LOG_STATUS(
+      Status_RestError("Cannot use rest client; serialization not enabled."));
 }
 
 #endif  // TILEDB_SERIALIZATION

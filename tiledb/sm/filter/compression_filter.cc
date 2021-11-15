@@ -167,16 +167,16 @@ Compressor CompressionFilter::filter_to_compressor(FilterType type) {
 Status CompressionFilter::set_option_impl(
     FilterOption option, const void* value) {
   if (value == nullptr)
-    return LOG_STATUS(Status_FilterError(
-        "Compression filter error; invalid option value"));
+    return LOG_STATUS(
+        Status_FilterError("Compression filter error; invalid option value"));
 
   switch (option) {
     case FilterOption::COMPRESSION_LEVEL:
       level_ = *(int*)value;
       return Status::Ok();
     default:
-      return LOG_STATUS(Status_FilterError(
-          "Compression filter error; unknown option"));
+      return LOG_STATUS(
+          Status_FilterError("Compression filter error; unknown option"));
   }
 }
 
@@ -187,8 +187,8 @@ Status CompressionFilter::get_option_impl(
       *(int*)value = level_;
       return Status::Ok();
     default:
-      return LOG_STATUS(Status_FilterError(
-          "Compression filter error; unknown option"));
+      return LOG_STATUS(
+          Status_FilterError("Compression filter error; unknown option"));
   }
 }
 
@@ -205,7 +205,8 @@ Status CompressionFilter::run_forward(
   }
 
   if (input->size() > std::numeric_limits<uint32_t>::max())
-    return LOG_STATUS(Status_FilterError("Input is too large to be compressed."));
+    return LOG_STATUS(
+        Status_FilterError("Input is too large to be compressed."));
 
   // Compute the upper bound on the size of the output.
   std::vector<ConstBuffer> data_parts = input->buffers(),
@@ -312,7 +313,8 @@ Status CompressionFilter::compress_part(
   }
 
   if (output->size() > std::numeric_limits<uint32_t>::max())
-    return LOG_STATUS(Status_FilterError("Compressed output exceeds uint32 max."));
+    return LOG_STATUS(
+        Status_FilterError("Compressed output exceeds uint32 max."));
 
   // Write part original and compressed size to metadata
   uint32_t input_size = (uint32_t)part->size(),

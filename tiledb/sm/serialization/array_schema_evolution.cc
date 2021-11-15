@@ -69,7 +69,7 @@ Status array_schema_evolution_to_capnp(
   if (array_schema_evolution == nullptr)
     return LOG_STATUS(
         Status_SerializationError("Error serializing array schema evolution; "
-                                   "array schema evolution is null."));
+                                  "array schema evolution is null."));
 
   // Attributes to drop
   std::vector<std::string> attr_names_to_drop =
@@ -166,8 +166,8 @@ Status array_schema_evolution_serialize(
       default: {
         return LOG_STATUS(
             Status_SerializationError("Error serializing array schema "
-                                       "evolution; Unknown serialization type "
-                                       "passed"));
+                                      "evolution; Unknown serialization type "
+                                      "passed"));
       }
     }
 
@@ -222,8 +222,8 @@ Status array_schema_evolution_deserialize(
       default: {
         return LOG_STATUS(
             Status_SerializationError("Error deserializing array schema "
-                                       "evolution; Unknown serialization type "
-                                       "passed"));
+                                      "evolution; Unknown serialization type "
+                                      "passed"));
       }
     }
 

@@ -175,7 +175,8 @@ Status FilterBuffer::copy_to(void* dest) const {
 Status FilterBuffer::get_const_buffer(
     uint64_t nbytes, ConstBuffer* buffer) const {
   if (current_buffer_ == buffers_.end())
-    return LOG_STATUS(Status_FilterError("FilterBuffer error; no current buffer."));
+    return LOG_STATUS(
+        Status_FilterError("FilterBuffer error; no current buffer."));
 
   Buffer* buf = current_buffer_->buffer();
   uint64_t bytes_in_buf = buf->size() - current_relative_offset_;
@@ -264,8 +265,8 @@ bool FilterBuffer::read_only() const {
 
 Status FilterBuffer::write(const void* buffer, uint64_t nbytes) {
   if (read_only_)
-    return LOG_STATUS(Status_FilterError(
-        "FilterBuffer error; cannot set write: read-only."));
+    return LOG_STATUS(
+        Status_FilterError("FilterBuffer error; cannot set write: read-only."));
 
   uint64_t bytes_left = nbytes;
   uint64_t src_offset = 0;
@@ -329,8 +330,8 @@ Status FilterBuffer::write(const void* buffer, uint64_t nbytes) {
 
 Status FilterBuffer::write(FilterBuffer* other, uint64_t nbytes) {
   if (read_only_)
-    return LOG_STATUS(Status_FilterError(
-        "FilterBuffer error; cannot write: read-only."));
+    return LOG_STATUS(
+        Status_FilterError("FilterBuffer error; cannot write: read-only."));
 
   auto list_node = other->current_buffer_;
   uint64_t relative_offset = other->current_relative_offset_;
@@ -459,13 +460,13 @@ Status FilterBuffer::prepend_buffer(uint64_t nbytes) {
 
     // Check for errors
     if (!fixed_allocation_op_allowed_)
-      return LOG_STATUS(Status_FilterError(
-          "FilterBuffer error; cannot prepend buffer: "
-          "fixed allocation is set."));
+      return LOG_STATUS(
+          Status_FilterError("FilterBuffer error; cannot prepend buffer: "
+                             "fixed allocation is set."));
     else if (nbytes > buffers_.front().buffer()->size())
-      return LOG_STATUS(Status_FilterError(
-          "FilterBuffer error; cannot prepend buffer: "
-          "fixed allocation not large enough."));
+      return LOG_STATUS(
+          Status_FilterError("FilterBuffer error; cannot prepend buffer: "
+                             "fixed allocation not large enough."));
 
     // Disallow further operations
     fixed_allocation_op_allowed_ = false;
@@ -493,8 +494,9 @@ Status FilterBuffer::append_view(
       return LOG_STATUS(Status_FilterError(
           "FilterBuffer error; cannot append view: fixed allocation set."));
     else if (nbytes > buffers_.front().buffer()->size())
-      return LOG_STATUS(Status_FilterError("FilterBuffer error; cannot append view: "
-                                     "fixed allocation not large enough."));
+      return LOG_STATUS(
+          Status_FilterError("FilterBuffer error; cannot append view: "
+                             "fixed allocation not large enough."));
 
     // Disallow further operations
     fixed_allocation_op_allowed_ = false;
@@ -543,8 +545,8 @@ Status FilterBuffer::append_view(const FilterBuffer* other) {
 
 Status FilterBuffer::clear() {
   if (read_only_)
-    return LOG_STATUS(Status_FilterError(
-        "FilterBuffer error; cannot clear: read-only."));
+    return LOG_STATUS(
+        Status_FilterError("FilterBuffer error; cannot clear: read-only."));
 
   offset_ = 0;
 

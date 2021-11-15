@@ -136,8 +136,7 @@ std::string Win::current_dir() {
   unsigned long length = GetCurrentDirectory(0, nullptr);
   char* path = (char*)tdb_malloc(length * sizeof(char));
   if (path == nullptr || GetCurrentDirectory(length, path) == 0) {
-    LOG_STATUS(Status_IOError(
-        std::string("Failed to get current directory.")));
+    LOG_STATUS(Status_IOError(std::string("Failed to get current directory.")));
   }
   dir = path;
   tdb_free(path);
@@ -193,8 +192,8 @@ err:
   if (find_h != INVALID_HANDLE_VALUE) {
     FindClose(find_h);
   }
-  return LOG_STATUS(Status_IOError(
-      std::string("Failed to remove directory '" + path + "'")));
+  return LOG_STATUS(
+      Status_IOError(std::string("Failed to remove directory '" + path + "'")));
 }
 
 Status Win::remove_dir(const std::string& path) const {
@@ -208,8 +207,8 @@ Status Win::remove_dir(const std::string& path) const {
 
 Status Win::remove_file(const std::string& path) const {
   if (!DeleteFile(path.c_str())) {
-    return LOG_STATUS(Status_IOError(
-        std::string("Failed to delete file '" + path + "'")));
+    return LOG_STATUS(
+        Status_IOError(std::string("Failed to delete file '" + path + "'")));
   }
   return Status::Ok();
 }
@@ -274,7 +273,8 @@ Status Win::filelock_unlock(filelock_t fd) const {
   OVERLAPPED overlapped = {0, 0, {{0, 0}}, 0};
   if (UnlockFileEx(fd, 0, MAXDWORD, MAXDWORD, &overlapped) == 0) {
     CloseHandle(fd);
-    return LOG_STATUS(Status_IOError(std::string("Failed to unlock file lock")));
+    return LOG_STATUS(
+        Status_IOError(std::string("Failed to unlock file lock")));
   }
   CloseHandle(fd);
   return Status::Ok();
@@ -282,7 +282,8 @@ Status Win::filelock_unlock(filelock_t fd) const {
 
 Status Win::init(const Config& config, ThreadPool* vfs_thread_pool) {
   if (vfs_thread_pool == nullptr) {
-    return LOG_STATUS(Status_VFSError("Cannot initialize with null thread pool"));
+    return LOG_STATUS(
+        Status_VFSError("Cannot initialize with null thread pool"));
   }
 
   config_ = config;
@@ -411,13 +412,14 @@ Status Win::sync(const std::string& path) const {
       FILE_ATTRIBUTE_NORMAL,
       NULL);
   if (file_h == INVALID_HANDLE_VALUE) {
-    return LOG_STATUS(Status_IOError(
-        "Cannot sync file '" + path + "'; File opening error"));
+    return LOG_STATUS(
+        Status_IOError("Cannot sync file '" + path + "'; File opening error"));
   }
 
   if (FlushFileBuffers(file_h) == 0) {
     CloseHandle(file_h);
-    return LOG_STATUS(Status_IOError("Cannot sync file '" + path + "'; Sync error"));
+    return LOG_STATUS(
+        Status_IOError("Cannot sync file '" + path + "'; Sync error"));
   }
 
   if (CloseHandle(file_h) == 0) {
@@ -459,8 +461,8 @@ Status Win::write(
   LARGE_INTEGER file_size_lg_int;
   if (!GetFileSizeEx(file_h, &file_size_lg_int)) {
     CloseHandle(file_h);
-    return LOG_STATUS(Status_IOError(
-        "Cannot write to file '" + path + "'; File size error"));
+    return LOG_STATUS(
+        Status_IOError("Cannot write to file '" + path + "'; File size error"));
   }
   uint64_t file_offset = file_size_lg_int.QuadPart;
   // Ensure that each thread is responsible for at least min_parallel_size
@@ -470,7 +472,8 @@ Status Win::write(
   if (num_ops == 1) {
     if (!write_at(file_h, file_offset, buffer, buffer_size).ok()) {
       CloseHandle(file_h);
-      return LOG_STATUS(Status_IOError(std::string("Cannot write to file '") + path));
+      return LOG_STATUS(
+          Status_IOError(std::string("Cannot write to file '") + path));
     }
   } else {
     std::vector<ThreadPool::Task> results;

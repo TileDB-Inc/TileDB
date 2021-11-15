@@ -156,7 +156,8 @@ Status BitWidthReductionFilter::run_forward(
       return run_forward<int64_t>(
           input_metadata, input, output_metadata, output);
     default:
-      return LOG_STATUS(Status_FilterError("Cannot filter; Unsupported input type"));
+      return LOG_STATUS(
+          Status_FilterError("Cannot filter; Unsupported input type"));
   }
 }
 
@@ -329,7 +330,8 @@ Status BitWidthReductionFilter::run_reverse(
       return run_reverse<int64_t>(
           input_metadata, input, output_metadata, output);
     default:
-      return LOG_STATUS(Status_FilterError("Cannot filter; Unsupported input type"));
+      return LOG_STATUS(
+          Status_FilterError("Cannot filter; Unsupported input type"));
   }
 }
 

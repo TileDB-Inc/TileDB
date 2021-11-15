@@ -390,8 +390,8 @@ Status HDFS::remove_file(const URI& uri) {
   RETURN_NOT_OK(connect(&fs));
   int ret = libhdfs_->hdfsDelete(fs, uri.to_path().c_str(), 0);
   if (ret < 0) {
-    return LOG_STATUS(Status_HDFSError(
-        std::string("Cannot delete file ") + uri.to_string()));
+    return LOG_STATUS(
+        Status_HDFSError(std::string("Cannot delete file ") + uri.to_string()));
   }
   return Status::Ok();
 }

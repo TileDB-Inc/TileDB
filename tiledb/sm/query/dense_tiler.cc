@@ -192,7 +192,8 @@ Status DenseTiler<T>::get_tile(
 
   // Checks
   if (id >= tile_num_)
-    return LOG_STATUS(Status_DenseTilerError("Cannot get tile; Invalid tile id"));
+    return LOG_STATUS(
+        Status_DenseTilerError("Cannot get tile; Invalid tile id"));
   if (!array_schema_->is_attr(name))
     return LOG_STATUS(Status_DenseTilerError(
         std::string("Cannot get tile; '") + name + "' is not an attribute"));
@@ -226,7 +227,8 @@ Status DenseTiler<T>::get_tile_null(
     uint64_t id, const std::string& name, Tile* tile) const {
   // Checks
   if (id >= tile_num_)
-    return LOG_STATUS(Status_DenseTilerError("Cannot get tile; Invalid tile id"));
+    return LOG_STATUS(
+        Status_DenseTilerError("Cannot get tile; Invalid tile id"));
   if (!array_schema_->is_attr(name))
     return LOG_STATUS(Status_DenseTilerError(
         std::string("Cannot get tile; '") + name + "' is not an attribute"));
@@ -262,7 +264,8 @@ Status DenseTiler<T>::get_tile_var(
     Tile* tile_val) const {
   // Checks
   if (id >= tile_num_)
-    return LOG_STATUS(Status_DenseTilerError("Cannot get tile; Invalid tile id"));
+    return LOG_STATUS(
+        Status_DenseTilerError("Cannot get tile; Invalid tile id"));
   if (!array_schema_->is_attr(name))
     return LOG_STATUS(Status_DenseTilerError(
         std::string("Cannot get tile; '") + name + "' is not an attribute"));

@@ -118,7 +118,8 @@ Status PositiveDeltaFilter::run_forward(
       return run_forward<int64_t>(
           input_metadata, input, output_metadata, output);
     default:
-      return LOG_STATUS(Status_FilterError("Cannot filter; Unsupported input type"));
+      return LOG_STATUS(
+          Status_FilterError("Cannot filter; Unsupported input type"));
   }
 }
 
@@ -287,7 +288,8 @@ Status PositiveDeltaFilter::run_reverse(
       return run_reverse<int64_t>(
           input_metadata, input, output_metadata, output);
     default:
-      return LOG_STATUS(Status_FilterError("Cannot filter; Unsupported input type"));
+      return LOG_STATUS(
+          Status_FilterError("Cannot filter; Unsupported input type"));
   }
 }
 
@@ -353,8 +355,8 @@ Status PositiveDeltaFilter::set_option_impl(
       max_window_size_ = *(uint32_t*)value;
       return Status::Ok();
     default:
-      return LOG_STATUS(Status_FilterError(
-          "Positive delta filter error; unknown option"));
+      return LOG_STATUS(
+          Status_FilterError("Positive delta filter error; unknown option"));
   }
 }
 
@@ -365,8 +367,8 @@ Status PositiveDeltaFilter::get_option_impl(
       *(uint32_t*)value = max_window_size_;
       return Status::Ok();
     default:
-      return LOG_STATUS(Status_FilterError(
-          "Positive delta filter error; unknown option"));
+      return LOG_STATUS(
+          Status_FilterError("Positive delta filter error; unknown option"));
   }
 }
 

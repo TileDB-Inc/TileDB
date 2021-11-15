@@ -395,8 +395,7 @@ uint64_t PreallocatedBuffer::free_space() const {
 
 Status PreallocatedBuffer::write(const void* buffer, const uint64_t nbytes) {
   if (nbytes > size_ - offset_)
-    return Status_PreallocatedBufferError(
-        "Write would overflow buffer.");
+    return Status_PreallocatedBufferError("Write would overflow buffer.");
 
   std::memcpy((char*)data_ + offset_, buffer, nbytes);
   offset_ += nbytes;

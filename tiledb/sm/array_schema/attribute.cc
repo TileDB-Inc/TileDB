@@ -290,8 +290,9 @@ Status Attribute::set_filter_pipeline(const FilterPipeline* pipeline) {
   for (unsigned i = 0; i < pipeline->size(); ++i) {
     if (datatype_is_real(type_) &&
         pipeline->get_filter(i)->type() == FilterType::FILTER_DOUBLE_DELTA)
-      return LOG_STATUS(Status_AttributeError("Cannot set DOUBLE DELTA filter to a "
-                                        "dimension with a real datatype"));
+      return LOG_STATUS(
+          Status_AttributeError("Cannot set DOUBLE DELTA filter to a "
+                                "dimension with a real datatype"));
   }
 
   filters_ = *pipeline;
@@ -310,13 +311,13 @@ Status Attribute::set_fill_value(const void* value, uint64_t size) {
   }
 
   if (size == 0) {
-    return LOG_STATUS(Status_AttributeError(
-        "Cannot set fill value; Input size cannot be 0"));
+    return LOG_STATUS(
+        Status_AttributeError("Cannot set fill value; Input size cannot be 0"));
   }
 
   if (nullable()) {
-    return LOG_STATUS(Status_AttributeError(
-        "Cannot set fill value; Attribute is nullable"));
+    return LOG_STATUS(
+        Status_AttributeError("Cannot set fill value; Attribute is nullable"));
   }
 
   if (!var_size() && size != cell_size()) {
@@ -343,8 +344,8 @@ Status Attribute::get_fill_value(const void** value, uint64_t* size) const {
   }
 
   if (nullable()) {
-    return LOG_STATUS(Status_AttributeError(
-        "Cannot get fill value; Attribute is nullable"));
+    return LOG_STATUS(
+        Status_AttributeError("Cannot get fill value; Attribute is nullable"));
   }
 
   *value = fill_value_.data();
@@ -361,8 +362,8 @@ Status Attribute::set_fill_value(
   }
 
   if (size == 0) {
-    return LOG_STATUS(Status_AttributeError(
-        "Cannot set fill value; Input size cannot be 0"));
+    return LOG_STATUS(
+        Status_AttributeError("Cannot set fill value; Input size cannot be 0"));
   }
 
   if (!nullable()) {

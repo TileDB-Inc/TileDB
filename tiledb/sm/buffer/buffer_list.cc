@@ -133,8 +133,7 @@ Status BufferList::seek(off_t offset, int whence) {
       return Status_BufferError(
           "SEEK_END operation not supported for BufferList");
     default:
-      return Status_BufferError(
-          "Invalid seek operation for BufferList");
+      return Status_BufferError("Invalid seek operation for BufferList");
   }
 
   return Status::Ok();

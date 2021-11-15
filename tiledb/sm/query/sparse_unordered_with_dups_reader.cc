@@ -96,17 +96,14 @@ bool SparseUnorderedWithDupsReader::incomplete() const {
 Status SparseUnorderedWithDupsReader::init() {
   // Sanity checks
   if (storage_manager_ == nullptr)
-    return logger_->status(
-        Status_SparseUnorderedWithDupsReaderError(
+    return logger_->status(Status_SparseUnorderedWithDupsReaderError(
         "Cannot initialize sparse global order reader; Storage manager not "
         "set"));
   if (array_schema_ == nullptr)
-    return logger_->status(
-        Status_SparseUnorderedWithDupsReaderError(
+    return logger_->status(Status_SparseUnorderedWithDupsReaderError(
         "Cannot initialize sparse global order reader; Array schema not set"));
   if (buffers_.empty())
-    return logger_->status(
-        Status_SparseUnorderedWithDupsReaderError(
+    return logger_->status(Status_SparseUnorderedWithDupsReaderError(
         "Cannot initialize sparse global order reader; Buffers not set"));
 
   // Check subarray
@@ -117,9 +114,9 @@ Status SparseUnorderedWithDupsReader::init() {
   offsets_format_mode_ = config_.get("sm.var_offsets.mode", &found);
   assert(found);
   if (offsets_format_mode_ != "bytes" && offsets_format_mode_ != "elements") {
-    return logger_->status(Status_ReaderError(
-        "Cannot initialize reader; Unsupported offsets "
-        "format in configuration"));
+    return logger_->status(
+        Status_ReaderError("Cannot initialize reader; Unsupported offsets "
+                           "format in configuration"));
   }
   RETURN_NOT_OK(config_.get<bool>(
       "sm.var_offsets.extra_element", &offsets_extra_element_, &found));
@@ -127,8 +124,7 @@ Status SparseUnorderedWithDupsReader::init() {
   RETURN_NOT_OK(config_.get<uint32_t>(
       "sm.var_offsets.bitsize", &offsets_bitsize_, &found));
   if (offsets_bitsize_ != 32 && offsets_bitsize_ != 64) {
-    return logger_->status(
-        Status_SparseUnorderedWithDupsReaderError(
+    return logger_->status(Status_SparseUnorderedWithDupsReaderError(
         "Cannot initialize reader; "
         "Unsupported offsets bitsize in configuration"));
   }
@@ -542,9 +538,8 @@ Status SparseUnorderedWithDupsReader::create_result_tiles() {
                 f,
                 t);
             if (result_tiles_.empty())
-              return logger_->status(
-                  Status_SparseUnorderedWithDupsReaderError(
-                      "Cannot load a single tile, increase memory budget"));
+              return logger_->status(Status_SparseUnorderedWithDupsReaderError(
+                  "Cannot load a single tile, increase memory budget"));
             break;
           }
         }

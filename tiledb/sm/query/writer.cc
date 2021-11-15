@@ -209,14 +209,14 @@ Status Writer::check_var_attr_offsets() const {
 Status Writer::init() {
   // Sanity checks
   if (storage_manager_ == nullptr)
-    return logger_->status(Status_WriterError(
-        "Cannot initialize query; Storage manager not set"));
+    return logger_->status(
+        Status_WriterError("Cannot initialize query; Storage manager not set"));
   if (array_schema_ == nullptr)
-    return logger_->status(Status_WriterError(
-        "Cannot initialize writer; Array schema not set"));
+    return logger_->status(
+        Status_WriterError("Cannot initialize writer; Array schema not set"));
   if (buffers_.empty())
-    return logger_->status(Status_WriterError(
-        "Cannot initialize writer; Buffers not set"));
+    return logger_->status(
+        Status_WriterError("Cannot initialize writer; Buffers not set"));
   if (array_schema_->dense() &&
       (layout_ == Layout::ROW_MAJOR || layout_ == Layout::COL_MAJOR)) {
     for (const auto& b : buffers_) {
@@ -246,9 +246,9 @@ Status Writer::init() {
   offsets_format_mode_ = config_.get("sm.var_offsets.mode", &found);
   assert(found);
   if (offsets_format_mode_ != "bytes" && offsets_format_mode_ != "elements") {
-    return logger_->status(Status_WriterError(
-        "Cannot initialize writer; Unsupported offsets "
-        "format in configuration"));
+    return logger_->status(
+        Status_WriterError("Cannot initialize writer; Unsupported offsets "
+                           "format in configuration"));
   }
   RETURN_NOT_OK(config_.get<bool>(
       "sm.var_offsets.extra_element", &offsets_extra_element_, &found));
@@ -256,9 +256,9 @@ Status Writer::init() {
   RETURN_NOT_OK(config_.get<uint32_t>(
       "sm.var_offsets.bitsize", &offsets_bitsize_, &found));
   if (offsets_bitsize_ != 32 && offsets_bitsize_ != 64) {
-    return logger_->status(Status_WriterError(
-        "Cannot initialize writer; Unsupported offsets "
-        "bitsize in configuration"));
+    return logger_->status(
+        Status_WriterError("Cannot initialize writer; Unsupported offsets "
+                           "bitsize in configuration"));
   }
   assert(found);
 
@@ -374,8 +374,9 @@ Status Writer::check_coord_dups(const std::vector<uint64_t>& cell_pos) const {
     return Status::Ok();
 
   if (!coords_info_.has_coords_) {
-    return logger_->status(Status_WriterError("Cannot check for coordinate duplicates; "
-                                   "Coordinates buffer not found"));
+    return logger_->status(
+        Status_WriterError("Cannot check for coordinate duplicates; "
+                           "Coordinates buffer not found"));
   }
 
   if (coords_info_.coords_num_ < 2)
@@ -469,8 +470,9 @@ Status Writer::check_coord_dups() const {
     return Status::Ok();
 
   if (!coords_info_.has_coords_) {
-    return logger_->status(Status_WriterError("Cannot check for coordinate duplicates; "
-                                   "Coordinates buffer not found"));
+    return logger_->status(
+        Status_WriterError("Cannot check for coordinate duplicates; "
+                           "Coordinates buffer not found"));
   }
 
   if (coords_info_.coords_num_ < 2)
@@ -682,15 +684,15 @@ Status Writer::check_global_order_hilbert() const {
 
 Status Writer::check_subarray() const {
   if (array_schema_ == nullptr)
-    return logger_->status(Status_WriterError(
-        "Cannot check subarray; Array schema not set"));
+    return logger_->status(
+        Status_WriterError("Cannot check subarray; Array schema not set"));
 
   if (array_schema_->dense()) {
     if (layout_ == Layout::GLOBAL_ORDER && !subarray_.coincides_with_tiles())
-      return logger_->status(Status_WriterError(
-          "Cannot initialize query; In global writes for "
-          "dense arrays, the subarray "
-          "must coincide with the tile bounds"));
+      return logger_->status(
+          Status_WriterError("Cannot initialize query; In global writes for "
+                             "dense arrays, the subarray "
+                             "must coincide with the tile bounds"));
   }
 
   return Status::Ok();
@@ -755,8 +757,9 @@ Status Writer::compute_coord_dups(
   auto timer_se = stats_->start_timer("compute_coord_dups");
 
   if (!coords_info_.has_coords_) {
-    return logger_->status(Status_WriterError("Cannot check for coordinate duplicates; "
-                                   "Coordinates buffer not found"));
+    return logger_->status(
+        Status_WriterError("Cannot check for coordinate duplicates; "
+                           "Coordinates buffer not found"));
   }
 
   if (coords_info_.coords_num_ < 2)
@@ -845,8 +848,9 @@ Status Writer::compute_coord_dups(std::set<uint64_t>* coord_dups) const {
   auto timer_se = stats_->start_timer("compute_coord_dups");
 
   if (!coords_info_.has_coords_) {
-    return logger_->status(Status_WriterError("Cannot check for coordinate duplicates; "
-                                   "Coordinates buffer not found"));
+    return logger_->status(
+        Status_WriterError("Cannot check for coordinate duplicates; "
+                           "Coordinates buffer not found"));
   }
 
   if (coords_info_.coords_num_ < 2)
@@ -1309,9 +1313,9 @@ bool Writer::all_last_tiles_empty() const {
 Status Writer::init_global_write_state() {
   // Create global array state object
   if (global_write_state_ != nullptr)
-    return logger_->status(Status_WriterError(
-        "Cannot initialize global write state; State not "
-        "properly finalized"));
+    return logger_->status(
+        Status_WriterError("Cannot initialize global write state; State not "
+                           "properly finalized"));
   global_write_state_.reset(new GlobalWriteState);
 
   // Create fragment

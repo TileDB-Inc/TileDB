@@ -64,8 +64,7 @@ Status generate_uuid_win32(std::string* uuid_str) {
   UUID uuid;
   RPC_STATUS rc = UuidCreate(&uuid);
   if (rc != RPC_S_OK)
-    return Status_UtilsError(
-        "Unable to generate Win32 UUID: creation error");
+    return Status_UtilsError("Unable to generate Win32 UUID: creation error");
 
   char* buf = nullptr;
   rc = UuidToStringA(&uuid, reinterpret_cast<RPC_CSTR*>(&buf));
@@ -77,8 +76,7 @@ Status generate_uuid_win32(std::string* uuid_str) {
 
   rc = RpcStringFreeA(reinterpret_cast<RPC_CSTR*>(&buf));
   if (rc != RPC_S_OK)
-    return Status_UtilsError(
-        "Unable to generate Win32 UUID: free error");
+    return Status_UtilsError("Unable to generate Win32 UUID: free error");
 
   return Status::Ok();
 }

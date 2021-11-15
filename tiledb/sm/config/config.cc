@@ -374,7 +374,8 @@ Config::~Config() = default;
 Status Config::load_from_file(const std::string& filename) {
   // Do nothing if filename is empty
   if (filename.empty())
-    return LOG_STATUS(Status_ConfigError("Cannot load from file; Invalid filename"));
+    return LOG_STATUS(
+        Status_ConfigError("Cannot load from file; Invalid filename"));
 
   std::ifstream ifs(filename);
   if (!ifs.is_open()) {
@@ -424,7 +425,8 @@ Status Config::load_from_file(const std::string& filename) {
 Status Config::save_to_file(const std::string& filename) {
   // Do nothing if filename is empty
   if (filename.empty())
-    return LOG_STATUS(Status_ConfigError("Cannot save to file; Invalid filename"));
+    return LOG_STATUS(
+        Status_ConfigError("Cannot save to file; Invalid filename"));
 
   std::ofstream ofs(filename);
   if (!ofs.is_open()) {
@@ -804,7 +806,8 @@ Status Config::sanity_check(
     RETURN_NOT_OK(utils::parse::convert(value, &v32));
   } else if (param == "config.logging_format") {
     if (value != "DEFAULT" && value != "JSON")
-      return LOG_STATUS(Status_ConfigError("Invalid logging format parameter value"));
+      return LOG_STATUS(
+          Status_ConfigError("Invalid logging format parameter value"));
   } else if (param == "sm.dedup_coords") {
     RETURN_NOT_OK(utils::parse::convert(value, &v));
   } else if (param == "sm.check_coord_dups") {
@@ -843,7 +846,8 @@ Status Config::sanity_check(
     RETURN_NOT_OK(utils::parse::convert(value, &v));
   } else if (param == "sm.var_offsets.mode") {
     if (value != "bytes" && value != "elements")
-      return LOG_STATUS(Status_ConfigError("Invalid offsets format parameter value"));
+      return LOG_STATUS(
+          Status_ConfigError("Invalid offsets format parameter value"));
   } else if (param == "vfs.min_parallel_size") {
     RETURN_NOT_OK(utils::parse::convert(value, &vuint64));
   } else if (param == "vfs.min_batch_gap") {
@@ -864,7 +868,8 @@ Status Config::sanity_check(
     RETURN_NOT_OK(utils::parse::convert(value, &v));
   } else if (param == "vfs.s3.scheme") {
     if (value != "http" && value != "https")
-      return LOG_STATUS(Status_ConfigError("Invalid S3 scheme parameter value"));
+      return LOG_STATUS(
+          Status_ConfigError("Invalid S3 scheme parameter value"));
   } else if (param == "vfs.s3.use_virtual_addressing") {
     RETURN_NOT_OK(utils::parse::convert(value, &v));
   } else if (param == "vfs.s3.skit_init") {

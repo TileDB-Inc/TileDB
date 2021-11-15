@@ -1875,9 +1875,9 @@ Status ReaderBase::fill_dense_coords(const Subarray& subarray) {
   // This path does not use result cell slabs, which will fill coordinates
   // for cells that should be filtered out.
   if (!condition_.empty()) {
-    return logger_->status(Status_ReaderError(
-        "Cannot read dense coordinates; dense coordinate "
-        "reads are unsupported with a query condition"));
+    return logger_->status(
+        Status_ReaderError("Cannot read dense coordinates; dense coordinate "
+                           "reads are unsupported with a query condition"));
   }
 
   // Prepare buffers

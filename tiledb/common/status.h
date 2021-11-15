@@ -299,7 +299,8 @@ inline Status Status_SparseGlobalOrderReaderError(const std::string& msg) {
 }
 /** Return a Status_SparseUnorderedWithDupsReaderError error class Status with
  * a given message **/
-inline Status Status_SparseUnorderedWithDupsReaderError(const std::string& msg) {
+inline Status Status_SparseUnorderedWithDupsReaderError(
+    const std::string& msg) {
   return Status(StatusCode::SparseUnorderedWithDupsReaderError, msg);
 }
 /** Return a Status_DenseReaderError error class Status with a given message

@@ -324,8 +324,8 @@ Status StorageManager::array_open_for_writes(
   ObjectType obj_type;
   RETURN_NOT_OK(this->object_type(array_uri, &obj_type));
   if (obj_type != ObjectType::ARRAY) {
-    return logger_->status(Status_StorageManagerError(
-        "Cannot open array; Array does not exist"));
+    return logger_->status(
+        Status_StorageManagerError("Cannot open array; Array does not exist"));
   }
 
   auto open_array = (OpenArray*)nullptr;
@@ -374,8 +374,7 @@ Status StorageManager::array_open_for_writes(
     err << constants::format_version << ")";
     open_array->mtx_unlock();
     array_close_for_writes(array_uri, encryption_key, nullptr);
-    return logger_->status(
-        Status_StorageManagerError(err.str()));
+    return logger_->status(Status_StorageManagerError(err.str()));
   }
 
   // No fragment metadata to be loaded
@@ -511,8 +510,8 @@ Status StorageManager::array_consolidate(
   // Check array URI
   URI array_uri(array_name);
   if (array_uri.is_invalid()) {
-    return logger_->status(Status_StorageManagerError(
-        "Cannot consolidate array; Invalid URI"));
+    return logger_->status(
+        Status_StorageManagerError("Cannot consolidate array; Invalid URI"));
   }
 
   // Check if array exists
@@ -604,8 +603,8 @@ Status StorageManager::array_vacuum(
     RETURN_NOT_OK(
         array_vacuum_array_meta(array_name, timestamp_start, timestamp_end));
   else
-    return logger_->status(Status_StorageManagerError(
-        "Cannot vacuum array; Invalid vacuum mode"));
+    return logger_->status(
+        Status_StorageManagerError("Cannot vacuum array; Invalid vacuum mode"));
 
   return Status::Ok();
 }
@@ -798,8 +797,8 @@ Status StorageManager::array_create(
     const EncryptionKey& encryption_key) {
   // Check array schema
   if (array_schema == nullptr) {
-    return logger_->status(Status_StorageManagerError(
-        "Cannot create array; Empty array schema"));
+    return logger_->status(
+        Status_StorageManagerError("Cannot create array; Empty array schema"));
   }
 
   // Check if array exists
@@ -1110,8 +1109,7 @@ Status StorageManager::array_get_non_empty_domain_from_index(
     std::string errmsg = "Cannot get non-empty domain; Dimension '";
     errmsg += array_domain->dimension(idx)->name();
     errmsg += "' is variable-sized";
-    return logger_->status(
-        Status_StorageManagerError(errmsg));
+    return logger_->status(Status_StorageManagerError(errmsg));
   }
 
   NDRange dom;
@@ -1143,8 +1141,7 @@ Status StorageManager::array_get_non_empty_domain_from_name(
       if (array_domain->dimension(d)->var_size()) {
         std::string errmsg = "Cannot get non-empty domain; Dimension '";
         errmsg += dim_name + "' is variable-sized";
-        return logger_->status(
-            Status_StorageManagerError(errmsg));
+        return logger_->status(Status_StorageManagerError(errmsg));
       }
 
       if (!*is_empty)
@@ -1176,8 +1173,7 @@ Status StorageManager::array_get_non_empty_domain_var_size_from_index(
     std::string errmsg = "Cannot get non-empty domain; Dimension '";
     errmsg += array_domain->dimension(idx)->name();
     errmsg += "' is fixed-sized";
-    return logger_->status(
-        Status_StorageManagerError(errmsg));
+    return logger_->status(Status_StorageManagerError(errmsg));
   }
 
   NDRange dom;
@@ -1218,8 +1214,7 @@ Status StorageManager::array_get_non_empty_domain_var_size_from_name(
       if (!array_domain->dimension(d)->var_size()) {
         std::string errmsg = "Cannot get non-empty domain; Dimension '";
         errmsg += dim_name + "' is fixed-sized";
-        return logger_->status(
-            Status_StorageManagerError(errmsg));
+        return logger_->status(Status_StorageManagerError(errmsg));
       }
 
       if (*is_empty) {
@@ -1253,8 +1248,7 @@ Status StorageManager::array_get_non_empty_domain_var_from_index(
     std::string errmsg = "Cannot get non-empty domain; Dimension '";
     errmsg += array_domain->dimension(idx)->name();
     errmsg += "' is fixed-sized";
-    return logger_->status(
-        Status_StorageManagerError(errmsg));
+    return logger_->status(Status_StorageManagerError(errmsg));
   }
 
   NDRange dom;
@@ -1289,8 +1283,7 @@ Status StorageManager::array_get_non_empty_domain_var_from_name(
       if (!array_domain->dimension(d)->var_size()) {
         std::string errmsg = "Cannot get non-empty domain; Dimension '";
         errmsg += dim_name + "' is fixed-sized";
-        return logger_->status(
-            Status_StorageManagerError(errmsg));
+        return logger_->status(Status_StorageManagerError(errmsg));
       }
 
       if (!*is_empty) {
@@ -1889,7 +1882,8 @@ Status StorageManager::get_latest_array_schema_uri(
   }
   *uri = schema_uris.back();
   if (uri->is_invalid()) {
-    return logger_->status(Status_StorageManagerError("Could not find array schema URI"));
+    return logger_->status(
+        Status_StorageManagerError("Could not find array schema URI"));
   }
 
   return Status::Ok();
@@ -2490,8 +2484,8 @@ Status StorageManager::array_open_without_fragments(
   if (!vfs_->supports_uri_scheme(array_uri))
     return logger_->status(
         Status_StorageManagerError("Cannot open array; "
-                                           "URI scheme "
-                                           "unsupported."));
+                                   "URI scheme "
+                                   "unsupported."));
 
   // Lock mutexes
   {

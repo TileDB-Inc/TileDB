@@ -267,9 +267,9 @@ Status DoubleDelta::compute_bitsize(
   }
   // Handle error
   if (delta_out_of_bounds) {
-    return LOG_STATUS(Status_CompressionError(
-        "Cannot compress with DoubleDelta; Some "
-        "negative double delta is out of bounds"));
+    return LOG_STATUS(
+        Status_CompressionError("Cannot compress with DoubleDelta; Some "
+                                "negative double delta is out of bounds"));
   }
   // Calculate bitsize of the maximum absolute double delta
   do {
