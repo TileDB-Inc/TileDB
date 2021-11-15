@@ -127,6 +127,12 @@ class Context {
   /*                API                */
   /* ********************************* */
 
+  tiledb_error_t* last_error() {
+    tiledb_error_t* err = nullptr;
+    tiledb_ctx_get_last_error(ctx_.get(), &err);
+    return err;
+  }
+
   /**
    * Error handler for the TileDB C API calls. Throws an exception
    * in case of error.

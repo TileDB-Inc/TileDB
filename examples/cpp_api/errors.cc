@@ -42,6 +42,10 @@ int main() {
     tiledb::create_group(ctx, "my_group");
     tiledb::create_group(ctx, "my_group");
   } catch (tiledb::TileDBError& e) {
+    tiledb_error_t* err = ctx.last_error();
+    const char* msg;
+    tiledb_error_message(err, &msg);
+    printf("Last error: %s\n", msg);
     std::cout << "TileDB exception:\n" << e.what() << "\n";
   }
 
