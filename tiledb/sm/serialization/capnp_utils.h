@@ -187,7 +187,7 @@ Status set_capnp_array_ptr(
       builder.setFloat64(kj::arrayPtr(static_cast<const double*>(ptr), size));
       break;
     default:
-      return Status::SerializationError(
+      return Status_SerializationError(
           "Cannot set capnp array pointer; unknown TileDB datatype.");
   }
 
@@ -262,7 +262,7 @@ Status set_capnp_scalar(
       builder.setFloat64(*static_cast<const double*>(value));
       break;
     default:
-      return Status::SerializationError(
+      return Status_SerializationError(
           "Cannot set capnp scalar; unknown TileDB datatype.");
   }
 
@@ -378,7 +378,7 @@ Status copy_capnp_list(
         RETURN_NOT_OK(copy_capnp_list<double>(reader.getFloat64(), buffer));
       break;
     default:
-      return Status::SerializationError(
+      return Status_SerializationError(
           "Cannot copy capnp list; unhandled TileDB datatype.");
   }
 
@@ -492,7 +492,7 @@ Status serialize_subarray(
     const auto coords_type = dimension->type();
 
     if (coords_type != first_dimension_datatype) {
-      return Status::SerializationError(
+      return Status_SerializationError(
           "Subarray dimension datatypes must be homogeneous");
     }
 
@@ -506,7 +506,7 @@ Status serialize_subarray(
       case tiledb::sm::Datatype::STRING_UCS4:
       case tiledb::sm::Datatype::ANY:
         // String dimensions not yet supported
-        return LOG_STATUS(Status::SerializationError(
+        return LOG_STATUS(Status_SerializationError(
             "Cannot serialize subarray; unsupported domain type."));
       default:
         break;
@@ -537,7 +537,7 @@ Status deserialize_subarray(
     const auto coords_type = dimension->type();
 
     if (coords_type != first_dimension_datatype) {
-      return Status::SerializationError(
+      return Status_SerializationError(
           "Subarray dimension datatypes must be homogeneous");
     }
 
@@ -551,7 +551,7 @@ Status deserialize_subarray(
       case tiledb::sm::Datatype::STRING_UCS4:
       case tiledb::sm::Datatype::ANY:
         // String dimensions not yet supported
-        return LOG_STATUS(Status::SerializationError(
+        return LOG_STATUS(Status_SerializationError(
             "Cannot deserialize subarray; unsupported domain type."));
       default:
         break;

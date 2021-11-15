@@ -261,7 +261,7 @@ Status ChecksumSHA256Filter::compare_checksum_part(
     message << shastring_existing;
     message << " got ";
     message << shastring;
-    return Status::ChecksumError(message.str());
+    return Status_ChecksumError(message.str());
   }
 
   return Status::Ok();

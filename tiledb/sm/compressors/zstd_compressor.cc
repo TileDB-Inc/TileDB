@@ -46,14 +46,14 @@ Status ZStd::compress(
     int level, ConstBuffer* input_buffer, Buffer* output_buffer) {
   // Sanity check
   if (input_buffer->data() == nullptr || output_buffer->data() == nullptr)
-    return LOG_STATUS(Status::CompressionError(
+    return LOG_STATUS(Status_CompressionError(
         "Failed compressing with ZStd; invalid buffer format"));
 
   // Create context
   std::unique_ptr<ZSTD_CCtx, decltype(&ZSTD_freeCCtx)> ctx(
       ZSTD_createCCtx(), ZSTD_freeCCtx);
   if (ctx.get() == nullptr)
-    return LOG_STATUS(Status::CompressionError(
+    return LOG_STATUS(Status_CompressionError(
         std::string("ZStd compression failed; could not allocate context.")));
 
   // Compress
@@ -68,7 +68,7 @@ Status ZStd::compress(
   // Handle error
   if (ZSTD_isError(zstd_ret) != 0) {
     const char* msg = ZSTD_getErrorName(zstd_ret);
-    return LOG_STATUS(Status::CompressionError(
+    return LOG_STATUS(Status_CompressionError(
         std::string("ZStd compression failed: ") + msg));
   }
 
@@ -83,14 +83,14 @@ Status ZStd::decompress(
     ConstBuffer* input_buffer, PreallocatedBuffer* output_buffer) {
   // Sanity check
   if (input_buffer->data() == nullptr || output_buffer->data() == nullptr)
-    return LOG_STATUS(Status::CompressionError(
+    return LOG_STATUS(Status_CompressionError(
         "Failed decompressing with ZStd; invalid buffer format"));
 
   // Create context
   std::unique_ptr<ZSTD_DCtx, decltype(&ZSTD_freeDCtx)> ctx(
       ZSTD_createDCtx(), ZSTD_freeDCtx);
   if (ctx.get() == nullptr)
-    return LOG_STATUS(Status::CompressionError(
+    return LOG_STATUS(Status_CompressionError(
         std::string("ZStd decompression failed; could not allocate context.")));
 
   // Decompress
@@ -104,7 +104,7 @@ Status ZStd::decompress(
   // Check error
   if (ZSTD_isError(zstd_ret) != 0) {
     const char* msg = ZSTD_getErrorName(zstd_ret);
-    return LOG_STATUS(Status::CompressionError(
+    return LOG_STATUS(Status_CompressionError(
         std::string("ZStd decompression failed: ") + msg));
   }
 

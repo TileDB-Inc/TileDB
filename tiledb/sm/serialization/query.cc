@@ -1031,22 +1031,22 @@ Status query_to_capnp(Query& query, capnp::Query::Builder* query_builder) {
 
   if (layout == Layout::GLOBAL_ORDER && query.type() == QueryType::WRITE)
     return LOG_STATUS(
-        Status::SerializationError("Cannot serialize; global order "
+        Status_SerializationError("Cannot serialize; global order "
                                    "serialization not supported for writes."));
 
   if (array == nullptr)
     return LOG_STATUS(
-        Status::SerializationError("Cannot serialize; array is null."));
+        Status_SerializationError("Cannot serialize; array is null."));
 
   const auto* schema = query.array_schema();
   if (schema == nullptr)
     return LOG_STATUS(
-        Status::SerializationError("Cannot serialize; array schema is null."));
+        Status_SerializationError("Cannot serialize; array schema is null."));
 
   const auto* domain = schema->domain();
   if (domain == nullptr)
     return LOG_STATUS(
-        Status::SerializationError("Cannot serialize; array domain is null."));
+        Status_SerializationError("Cannot serialize; array domain is null."));
 
   // Serialize basic fields
   query_builder->setType(query_type_str(type));
@@ -1199,23 +1199,23 @@ Status query_from_capnp(
 
   const auto* schema = query->array_schema();
   if (schema == nullptr)
-    return LOG_STATUS(Status::SerializationError(
+    return LOG_STATUS(Status_SerializationError(
         "Cannot deserialize; array schema is null."));
 
   const auto* domain = schema->domain();
   if (domain == nullptr)
-    return LOG_STATUS(Status::SerializationError(
+    return LOG_STATUS(Status_SerializationError(
         "Cannot deserialize; array domain is null."));
 
   if (array == nullptr)
-    return LOG_STATUS(Status::SerializationError(
+    return LOG_STATUS(Status_SerializationError(
         "Cannot deserialize; array pointer is null."));
 
   // Deserialize query type (sanity check).
   QueryType query_type = QueryType::READ;
   RETURN_NOT_OK(query_type_enum(query_reader.getType().cStr(), &query_type));
   if (query_type != type)
-    return LOG_STATUS(Status::SerializationError(
+    return LOG_STATUS(Status_SerializationError(
         "Cannot deserialize; Query opened for " + query_type_str(type) +
         " but got serialized type for " + query_reader.getType().cStr()));
 
@@ -1239,7 +1239,7 @@ Status query_from_capnp(
 
   // Deserialize and set attribute buffers.
   if (!query_reader.hasAttributeBufferHeaders())
-    return LOG_STATUS(Status::SerializationError(
+    return LOG_STATUS(Status_SerializationError(
         "Cannot deserialize; no attribute buffer headers in message."));
 
   auto buffer_headers = query_reader.getAttributeBufferHeaders();
@@ -1391,7 +1391,7 @@ Status query_from_capnp(
           (var_size && offset_size_left >= fixedlen_size) || !var_size;
       const bool has_mem_for_validity = validity_size_left >= validitylen_size;
       if (!has_mem_for_data || !has_mem_for_offset || !has_mem_for_validity) {
-        return LOG_STATUS(Status::SerializationError(
+        return LOG_STATUS(Status_SerializationError(
             "Error deserializing read query; buffer too small for buffer "
             "'" +
             name + "'."));
@@ -1511,7 +1511,7 @@ Status query_from_capnp(
       // Always expect null buffers when deserializing.
       if (existing_buffer != nullptr || existing_offset_buffer != nullptr ||
           existing_validity_buffer != nullptr)
-        return LOG_STATUS(Status::SerializationError(
+        return LOG_STATUS(Status_SerializationError(
             "Error deserializing read query; unexpected "
             "buffer set on server-side."));
 
@@ -1829,12 +1829,12 @@ Status query_serialize(
     bool clientside,
     BufferList* serialized_buffer) {
   if (serialize_type == SerializationType::JSON)
-    return LOG_STATUS(Status::SerializationError(
+    return LOG_STATUS(Status_SerializationError(
         "Cannot serialize query; json format not supported."));
 
   const auto* array_schema = query->array_schema();
   if (array_schema == nullptr || query->array() == nullptr)
-    return LOG_STATUS(Status::SerializationError(
+    return LOG_STATUS(Status_SerializationError(
         "Cannot serialize; array or array schema is null."));
 
   try {
@@ -1909,15 +1909,15 @@ Status query_serialize(
         break;
       }
       default:
-        return LOG_STATUS(Status::SerializationError(
+        return LOG_STATUS(Status_SerializationError(
             "Cannot serialize; unknown serialization type"));
     }
   } catch (kj::Exception& e) {
-    return LOG_STATUS(Status::SerializationError(
+    return LOG_STATUS(Status_SerializationError(
         "Cannot serialize; kj::Exception: " +
         std::string(e.getDescription().cStr())));
   } catch (std::exception& e) {
-    return LOG_STATUS(Status::SerializationError(
+    return LOG_STATUS(Status_SerializationError(
         "Cannot serialize; exception: " + std::string(e.what())));
   }
 
@@ -1932,7 +1932,7 @@ Status do_query_deserialize(
     Query* query,
     ThreadPool* compute_tp) {
   if (serialize_type == SerializationType::JSON)
-    return LOG_STATUS(Status::SerializationError(
+    return LOG_STATUS(Status_SerializationError(
         "Cannot deserialize query; json format not supported."));
 
   try {
@@ -1953,7 +1953,7 @@ Status do_query_deserialize(
       case SerializationType::CAPNP: {
         // Capnp FlatArrayMessageReader requires 64-bit alignment.
         if (!utils::is_aligned<sizeof(uint64_t)>(serialized_buffer.cur_data()))
-          return LOG_STATUS(Status::SerializationError(
+          return LOG_STATUS(Status_SerializationError(
               "Could not deserialize query; buffer is not 8-byte aligned."));
 
         // Set traversal limit to 10GI (TODO: make this a config option)
@@ -1977,15 +1977,15 @@ Status do_query_deserialize(
             query_reader, context, buffer_start, copy_state, query, compute_tp);
       }
       default:
-        return LOG_STATUS(Status::SerializationError(
+        return LOG_STATUS(Status_SerializationError(
             "Cannot deserialize; unknown serialization type."));
     }
   } catch (kj::Exception& e) {
-    return LOG_STATUS(Status::SerializationError(
+    return LOG_STATUS(Status_SerializationError(
         "Cannot deserialize; kj::Exception: " +
         std::string(e.getDescription().cStr())));
   } catch (std::exception& e) {
-    return LOG_STATUS(Status::SerializationError(
+    return LOG_STATUS(Status_SerializationError(
         "Cannot deserialize; exception: " + std::string(e.what())));
   }
   return Status::Ok();
@@ -2161,15 +2161,15 @@ Status query_est_result_size_serialize(
         break;
       }
       default:
-        return LOG_STATUS(Status::SerializationError(
+        return LOG_STATUS(Status_SerializationError(
             "Cannot serialize; unknown serialization type"));
     }
   } catch (kj::Exception& e) {
-    return LOG_STATUS(Status::SerializationError(
+    return LOG_STATUS(Status_SerializationError(
         "Cannot serialize; kj::Exception: " +
         std::string(e.getDescription().cStr())));
   } catch (std::exception& e) {
-    return LOG_STATUS(Status::SerializationError(
+    return LOG_STATUS(Status_SerializationError(
         "Cannot serialize; exception: " + std::string(e.what())));
   }
 
@@ -2212,17 +2212,17 @@ Status query_est_result_size_deserialize(
       }
       default: {
         return LOG_STATUS(
-            Status::SerializationError("Error deserializing query est result "
+            Status_SerializationError("Error deserializing query est result "
                                        "size; Unknown serialization type "
                                        "passed"));
       }
     }
   } catch (kj::Exception& e) {
-    return LOG_STATUS(Status::SerializationError(
+    return LOG_STATUS(Status_SerializationError(
         "Error deserializing query est result size; kj::Exception: " +
         std::string(e.getDescription().cStr())));
   } catch (std::exception& e) {
-    return LOG_STATUS(Status::SerializationError(
+    return LOG_STATUS(Status_SerializationError(
         "Error deserializing query est result size; exception " +
         std::string(e.what())));
   }
@@ -2233,25 +2233,25 @@ Status query_est_result_size_deserialize(
 #else
 
 Status query_serialize(Query*, SerializationType, bool, BufferList*) {
-  return LOG_STATUS(Status::SerializationError(
+  return LOG_STATUS(Status_SerializationError(
       "Cannot serialize; serialization not enabled."));
 }
 
 Status query_deserialize(
     const Buffer&, SerializationType, bool, CopyState*, Query*, ThreadPool*) {
-  return LOG_STATUS(Status::SerializationError(
+  return LOG_STATUS(Status_SerializationError(
       "Cannot deserialize; serialization not enabled."));
 }
 
 Status query_est_result_size_serialize(
     Query*, SerializationType, bool, Buffer*) {
-  return LOG_STATUS(Status::SerializationError(
+  return LOG_STATUS(Status_SerializationError(
       "Cannot serialize; serialization not enabled."));
 }
 
 Status query_est_result_size_deserialize(
     Query*, SerializationType, bool, const Buffer&) {
-  return LOG_STATUS(Status::SerializationError(
+  return LOG_STATUS(Status_SerializationError(
       "Cannot deserialize; serialization not enabled."));
 }
 

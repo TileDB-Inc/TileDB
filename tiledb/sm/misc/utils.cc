@@ -87,7 +87,7 @@ Status convert(const std::string& str, int* value) {
   if (!is_int(str)) {
     auto errmsg = std::string("Failed to convert string '") + str +
                   "' to int; Invalid argument";
-    return LOG_STATUS(Status::UtilsError(errmsg));
+    return LOG_STATUS(Status_UtilsError(errmsg));
   }
 
   try {
@@ -95,11 +95,11 @@ Status convert(const std::string& str, int* value) {
   } catch (std::invalid_argument& e) {
     auto errmsg = std::string("Failed to convert string '") + str +
                   "' to int; Invalid argument";
-    return LOG_STATUS(Status::UtilsError(errmsg));
+    return LOG_STATUS(Status_UtilsError(errmsg));
   } catch (std::out_of_range& e) {
     auto errmsg = std::string("Failed to convert string '") + str +
                   "' to int; Value out of range";
-    return LOG_STATUS(Status::UtilsError(errmsg));
+    return LOG_STATUS(Status_UtilsError(errmsg));
   }
 
   return Status::Ok();
@@ -109,7 +109,7 @@ Status convert(const std::string& str, uint32_t* value) {
   if (!is_uint(str)) {
     auto errmsg = std::string("Failed to convert string '") + str +
                   "' to uint32_t; Invalid argument";
-    return LOG_STATUS(Status::UtilsError(errmsg));
+    return LOG_STATUS(Status_UtilsError(errmsg));
   }
 
   try {
@@ -120,11 +120,11 @@ Status convert(const std::string& str, uint32_t* value) {
   } catch (std::invalid_argument& e) {
     auto errmsg = std::string("Failed to convert string '") + str +
                   "' to uint32_t; Invalid argument";
-    return LOG_STATUS(Status::UtilsError(errmsg));
+    return LOG_STATUS(Status_UtilsError(errmsg));
   } catch (std::out_of_range& e) {
     auto errmsg = std::string("Failed to convert string '") + str +
                   "' to uint32_t; Value out of range";
-    return LOG_STATUS(Status::UtilsError(errmsg));
+    return LOG_STATUS(Status_UtilsError(errmsg));
   }
 
   return Status::Ok();
@@ -134,7 +134,7 @@ Status convert(const std::string& str, uint64_t* value) {
   if (!is_uint(str)) {
     auto errmsg = std::string("Failed to convert string '") + str +
                   "' to uint64_t; Invalid argument";
-    return LOG_STATUS(Status::UtilsError(errmsg));
+    return LOG_STATUS(Status_UtilsError(errmsg));
   }
 
   try {
@@ -142,11 +142,11 @@ Status convert(const std::string& str, uint64_t* value) {
   } catch (std::invalid_argument& e) {
     auto errmsg = std::string("Failed to convert string '") + str +
                   "' to uint64_t; Invalid argument";
-    return LOG_STATUS(Status::UtilsError(errmsg));
+    return LOG_STATUS(Status_UtilsError(errmsg));
   } catch (std::out_of_range& e) {
     auto errmsg = std::string("Failed to convert string '") + str +
                   "' to uint64_t; Value out of range";
-    return LOG_STATUS(Status::UtilsError(errmsg));
+    return LOG_STATUS(Status_UtilsError(errmsg));
   }
 
   return Status::Ok();
@@ -156,7 +156,7 @@ Status convert(const std::string& str, int64_t* value) {
   if (!is_int(str)) {
     auto errmsg = std::string("Failed to convert string '") + str +
                   "' to int64_t; Invalid argument";
-    return LOG_STATUS(Status::UtilsError(errmsg));
+    return LOG_STATUS(Status_UtilsError(errmsg));
   }
 
   try {
@@ -164,11 +164,11 @@ Status convert(const std::string& str, int64_t* value) {
   } catch (std::invalid_argument& e) {
     auto errmsg = std::string("Failed to convert string '") + str +
                   "' to int64_t; Invalid argument";
-    return LOG_STATUS(Status::UtilsError(errmsg));
+    return LOG_STATUS(Status_UtilsError(errmsg));
   } catch (std::out_of_range& e) {
     auto errmsg = std::string("Failed to convert string '") + str +
                   "' to int64_t; Value out of range";
-    return LOG_STATUS(Status::UtilsError(errmsg));
+    return LOG_STATUS(Status_UtilsError(errmsg));
   }
 
   return Status::Ok();
@@ -178,10 +178,10 @@ Status convert(const std::string& str, float* value) {
   try {
     *value = std::stof(str);
   } catch (std::invalid_argument& e) {
-    return LOG_STATUS(Status::UtilsError(
+    return LOG_STATUS(Status_UtilsError(
         "Failed to convert string to float32_t; Invalid argument"));
   } catch (std::out_of_range& e) {
-    return LOG_STATUS(Status::UtilsError(
+    return LOG_STATUS(Status_UtilsError(
         "Failed to convert string to float32_t; Value out of range"));
   }
 
@@ -192,10 +192,10 @@ Status convert(const std::string& str, double* value) {
   try {
     *value = std::stod(str);
   } catch (std::invalid_argument& e) {
-    return LOG_STATUS(Status::UtilsError(
+    return LOG_STATUS(Status_UtilsError(
         "Failed to convert string to float64_t; Invalid argument"));
   } catch (std::out_of_range& e) {
-    return LOG_STATUS(Status::UtilsError(
+    return LOG_STATUS(Status_UtilsError(
         "Failed to convert string to float64_t; Value out of range"));
   }
 
@@ -210,7 +210,7 @@ Status convert(const std::string& str, bool* value) {
   } else if (lvalue == "false") {
     *value = false;
   } else {
-    return LOG_STATUS(Status::UtilsError(
+    return LOG_STATUS(Status_UtilsError(
         "Failed to convert string to bool; Value not 'true' or 'false'"));
   }
 
@@ -225,9 +225,9 @@ Status convert(const std::string& str, SerializationType* value) {
   } else if (lvalue == "capnp") {
     *value = SerializationType::CAPNP;
   } else {
-    return LOG_STATUS(
-        Status::UtilsError("Failed to convert string to SerializationType; "
-                           "Value not 'json' or 'capnp'"));
+    return LOG_STATUS(Status_UtilsError(
+        "Failed to convert string to SerializationType; "
+        "Value not 'json' or 'capnp'"));
   }
 
   return Status::Ok();
@@ -474,7 +474,7 @@ template <>
 Status check_template_type_to_datatype<int8_t>(Datatype datatype) {
   if (datatype == Datatype::INT8)
     return Status::Ok();
-  return Status::Error(
+  return Status_Error(
       "Template of type int8_t but datatype is not Datatype::INT8");
 }
 template <>
@@ -486,7 +486,7 @@ Status check_template_type_to_datatype<uint8_t>(Datatype datatype) {
   else if (datatype == Datatype::STRING_UTF8)
     return Status::Ok();
 
-  return Status::Error(
+  return Status_Error(
       "Template of type uint8_t but datatype is not Datatype::UINT8 nor "
       "Datatype::STRING_ASCII nor atatype::STRING_UTF8");
 }
@@ -494,7 +494,7 @@ template <>
 Status check_template_type_to_datatype<int16_t>(Datatype datatype) {
   if (datatype == Datatype::INT16)
     return Status::Ok();
-  return Status::Error(
+  return Status_Error(
       "Template of type int16_t but datatype is not Datatype::INT16");
 }
 template <>
@@ -505,7 +505,7 @@ Status check_template_type_to_datatype<uint16_t>(Datatype datatype) {
     return Status::Ok();
   else if (datatype == Datatype::STRING_UCS2)
     return Status::Ok();
-  return Status::Error(
+  return Status_Error(
       "Template of type uint16_t but datatype is not Datatype::UINT16 nor "
       "Datatype::STRING_UTF16 nor Datatype::STRING_UCS2");
 }
@@ -513,7 +513,7 @@ template <>
 Status check_template_type_to_datatype<int32_t>(Datatype datatype) {
   if (datatype == Datatype::INT32)
     return Status::Ok();
-  return Status::Error(
+  return Status_Error(
       "Template of type int32_t but datatype is not Datatype::INT32");
 }
 template <>
@@ -524,7 +524,7 @@ Status check_template_type_to_datatype<uint32_t>(Datatype datatype) {
     return Status::Ok();
   else if (datatype == Datatype::STRING_UCS4)
     return Status::Ok();
-  return Status::Error(
+  return Status_Error(
       "Template of type uint32_t but datatype is not Datatype::UINT32 nor "
       "Datatype::STRING_UTF32 nor Datatype::STRING_UCS4");
 }
@@ -532,35 +532,35 @@ template <>
 Status check_template_type_to_datatype<int64_t>(Datatype datatype) {
   if (datatype == Datatype::INT64)
     return Status::Ok();
-  return Status::Error(
+  return Status_Error(
       "Template of type int64_t but datatype is not Datatype::INT64");
 }
 template <>
 Status check_template_type_to_datatype<uint64_t>(Datatype datatype) {
   if (datatype == Datatype::UINT64)
     return Status::Ok();
-  return Status::Error(
+  return Status_Error(
       "Template of type uint64_t but datatype is not Datatype::UINT64");
 }
 template <>
 Status check_template_type_to_datatype<float>(Datatype datatype) {
   if (datatype == Datatype::FLOAT32)
     return Status::Ok();
-  return Status::Error(
+  return Status_Error(
       "Template of type float but datatype is not Datatype::FLOAT32");
 }
 template <>
 Status check_template_type_to_datatype<double>(Datatype datatype) {
   if (datatype == Datatype::FLOAT64)
     return Status::Ok();
-  return Status::Error(
+  return Status_Error(
       "Template of type double but datatype is not Datatype::FLOAT64");
 }
 template <>
 Status check_template_type_to_datatype<char>(Datatype datatype) {
   if (datatype == Datatype::CHAR)
     return Status::Ok();
-  return Status::Error(
+  return Status_Error(
       "Template of type char but datatype is not Datatype::CHAR");
 }
 

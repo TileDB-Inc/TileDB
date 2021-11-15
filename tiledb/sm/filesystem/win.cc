@@ -90,7 +90,7 @@ std::string Win::abs_path(const std::string& path) {
   char result[MAX_PATH];
   std::string str_result;
   if (PathCanonicalize(result, full_path.c_str()) == FALSE) {
-    LOG_STATUS(Status::IOError(std::string("Cannot canonicalize path.")));
+    LOG_STATUS(Status_IOError(std::string("Cannot canonicalize path.")));
   } else {
     str_result = result;
   }
@@ -99,12 +99,12 @@ std::string Win::abs_path(const std::string& path) {
 
 Status Win::create_dir(const std::string& path) const {
   if (is_dir(path)) {
-    return LOG_STATUS(Status::IOError(
+    return LOG_STATUS(Status_IOError(
         std::string("Cannot create directory '") + path +
         "'; Directory already exists"));
   }
   if (CreateDirectory(path.c_str(), nullptr) == 0) {
-    return LOG_STATUS(Status::IOError(
+    return LOG_STATUS(Status_IOError(
         std::string("Cannot create directory '") + path +
         "': " + get_last_error_msg()));
   }
@@ -125,7 +125,7 @@ Status Win::touch(const std::string& filename) const {
       FILE_ATTRIBUTE_NORMAL,
       nullptr);
   if (file_h == INVALID_HANDLE_VALUE || CloseHandle(file_h) == 0) {
-    return LOG_STATUS(Status::IOError(
+    return LOG_STATUS(Status_IOError(
         std::string("Failed to create file '") + filename + "'"));
   }
   return Status::Ok();
@@ -136,8 +136,8 @@ std::string Win::current_dir() {
   unsigned long length = GetCurrentDirectory(0, nullptr);
   char* path = (char*)tdb_malloc(length * sizeof(char));
   if (path == nullptr || GetCurrentDirectory(length, path) == 0) {
-    LOG_STATUS(
-        Status::IOError(std::string("Failed to get current directory.")));
+    LOG_STATUS(Status_IOError(
+        std::string("Failed to get current directory.")));
   }
   dir = path;
   tdb_free(path);
@@ -193,7 +193,7 @@ err:
   if (find_h != INVALID_HANDLE_VALUE) {
     FindClose(find_h);
   }
-  return LOG_STATUS(Status::IOError(
+  return LOG_STATUS(Status_IOError(
       std::string("Failed to remove directory '" + path + "'")));
 }
 
@@ -201,15 +201,15 @@ Status Win::remove_dir(const std::string& path) const {
   if (is_dir(path)) {
     return recursively_remove_directory(path);
   } else {
-    return LOG_STATUS(Status::IOError(std::string(
+    return LOG_STATUS(Status_IOError(std::string(
         "Failed to delete path '" + path + "'; not a valid path.")));
   }
 }
 
 Status Win::remove_file(const std::string& path) const {
   if (!DeleteFile(path.c_str())) {
-    return LOG_STATUS(
-        Status::IOError(std::string("Failed to delete file '" + path + "'")));
+    return LOG_STATUS(Status_IOError(
+        std::string("Failed to delete file '" + path + "'")));
   }
   return Status::Ok();
 }
@@ -225,12 +225,12 @@ Status Win::file_size(const std::string& path, uint64_t* size) const {
       FILE_ATTRIBUTE_NORMAL,
       NULL);
   if (file_h == INVALID_HANDLE_VALUE) {
-    return LOG_STATUS(Status::IOError(
+    return LOG_STATUS(Status_IOError(
         std::string("Failed to get file size for '" + path + "'")));
   }
   if (!GetFileSizeEx(file_h, &nbytes)) {
     CloseHandle(file_h);
-    return LOG_STATUS(Status::IOError(
+    return LOG_STATUS(Status_IOError(
         std::string("Failed to get file size for '" + path + "'")));
   }
   *size = nbytes.QuadPart;
@@ -249,7 +249,7 @@ Status Win::filelock_lock(
       FILE_ATTRIBUTE_NORMAL,
       NULL);
   if (file_h == INVALID_HANDLE_VALUE) {
-    return LOG_STATUS(Status::IOError(
+    return LOG_STATUS(Status_IOError(
         std::string("Failed to lock '" + filename + "'; CreateFile error")));
   }
   OVERLAPPED overlapped = {0, 0, {{0, 0}}, 0};
@@ -262,7 +262,7 @@ Status Win::filelock_lock(
           &overlapped) == 0) {
     CloseHandle(file_h);
     *fd = INVALID_FILELOCK;
-    return LOG_STATUS(Status::IOError(
+    return LOG_STATUS(Status_IOError(
         std::string("Failed to lock '" + filename + "'; LockFile error")));
   }
 
@@ -274,8 +274,7 @@ Status Win::filelock_unlock(filelock_t fd) const {
   OVERLAPPED overlapped = {0, 0, {{0, 0}}, 0};
   if (UnlockFileEx(fd, 0, MAXDWORD, MAXDWORD, &overlapped) == 0) {
     CloseHandle(fd);
-    return LOG_STATUS(
-        Status::IOError(std::string("Failed to unlock file lock")));
+    return LOG_STATUS(Status_IOError(std::string("Failed to unlock file lock")));
   }
   CloseHandle(fd);
   return Status::Ok();
@@ -283,8 +282,7 @@ Status Win::filelock_unlock(filelock_t fd) const {
 
 Status Win::init(const Config& config, ThreadPool* vfs_thread_pool) {
   if (vfs_thread_pool == nullptr) {
-    return LOG_STATUS(
-        Status::VFSError("Cannot initialize with null thread pool"));
+    return LOG_STATUS(Status_VFSError("Cannot initialize with null thread pool"));
   }
 
   config_ = config;
@@ -340,14 +338,14 @@ err:
   if (find_h != INVALID_HANDLE_VALUE) {
     FindClose(find_h);
   }
-  return LOG_STATUS(Status::IOError(std::string("Failed to list directory.")));
+  return LOG_STATUS(Status_IOError(std::string("Failed to list directory.")));
 }
 
 Status Win::move_path(
     const std::string& old_path, const std::string& new_path) const {
   if (MoveFileEx(
           old_path.c_str(), new_path.c_str(), MOVEFILE_REPLACE_EXISTING) == 0) {
-    return LOG_STATUS(Status::IOError(std::string(
+    return LOG_STATUS(Status_IOError(std::string(
         "Failed to rename '" + old_path + "' to '" + new_path + "'.")));
   }
   return Status::Ok();
@@ -369,7 +367,7 @@ Status Win::read(
       FILE_ATTRIBUTE_NORMAL,
       NULL);
   if (file_h == INVALID_HANDLE_VALUE) {
-    return LOG_STATUS(Status::IOError(
+    return LOG_STATUS(Status_IOError(
         "Cannot read from file '" + path + "'; File opening error"));
   }
 
@@ -377,7 +375,7 @@ Status Win::read(
   offset_lg_int.QuadPart = offset;
   if (SetFilePointerEx(file_h, offset_lg_int, NULL, FILE_BEGIN) == 0) {
     CloseHandle(file_h);
-    return LOG_STATUS(Status::IOError(
+    return LOG_STATUS(Status_IOError(
         "Cannot read from file '" + path + "'; File seek error"));
   }
 
@@ -385,12 +383,12 @@ Status Win::read(
   if (ReadFile(file_h, buffer, nbytes, &num_bytes_read, NULL) == 0 ||
       num_bytes_read != nbytes) {
     CloseHandle(file_h);
-    return LOG_STATUS(Status::IOError(
+    return LOG_STATUS(Status_IOError(
         "Cannot read from file '" + path + "'; File read error"));
   }
 
   if (CloseHandle(file_h) == 0) {
-    return LOG_STATUS(Status::IOError(
+    return LOG_STATUS(Status_IOError(
         "Cannot read from file '" + path + "'; File closing error"));
   }
 
@@ -413,18 +411,17 @@ Status Win::sync(const std::string& path) const {
       FILE_ATTRIBUTE_NORMAL,
       NULL);
   if (file_h == INVALID_HANDLE_VALUE) {
-    return LOG_STATUS(
-        Status::IOError("Cannot sync file '" + path + "'; File opening error"));
+    return LOG_STATUS(Status_IOError(
+        "Cannot sync file '" + path + "'; File opening error"));
   }
 
   if (FlushFileBuffers(file_h) == 0) {
     CloseHandle(file_h);
-    return LOG_STATUS(
-        Status::IOError("Cannot sync file '" + path + "'; Sync error"));
+    return LOG_STATUS(Status_IOError("Cannot sync file '" + path + "'; Sync error"));
   }
 
   if (CloseHandle(file_h) == 0) {
-    return LOG_STATUS(Status::IOError(
+    return LOG_STATUS(Status_IOError(
         "Cannot read from file '" + path + "'; File closing error"));
   }
 
@@ -455,14 +452,14 @@ Status Win::write(
       FILE_ATTRIBUTE_NORMAL,
       NULL);
   if (file_h == INVALID_HANDLE_VALUE) {
-    return LOG_STATUS(Status::IOError(
+    return LOG_STATUS(Status_IOError(
         "Cannot write to file '" + path + "'; File opening error"));
   }
   // Get the current file size.
   LARGE_INTEGER file_size_lg_int;
   if (!GetFileSizeEx(file_h, &file_size_lg_int)) {
     CloseHandle(file_h);
-    return LOG_STATUS(Status::IOError(
+    return LOG_STATUS(Status_IOError(
         "Cannot write to file '" + path + "'; File size error"));
   }
   uint64_t file_offset = file_size_lg_int.QuadPart;
@@ -473,8 +470,7 @@ Status Win::write(
   if (num_ops == 1) {
     if (!write_at(file_h, file_offset, buffer, buffer_size).ok()) {
       CloseHandle(file_h);
-      return LOG_STATUS(
-          Status::IOError(std::string("Cannot write to file '") + path));
+      return LOG_STATUS(Status_IOError(std::string("Cannot write to file '") + path));
     }
   } else {
     std::vector<ThreadPool::Task> results;
@@ -497,12 +493,12 @@ Status Win::write(
       CloseHandle(file_h);
       std::stringstream errmsg;
       errmsg << "Cannot write to file '" << path << "'; " << st.message();
-      return LOG_STATUS(Status::IOError(errmsg.str()));
+      return LOG_STATUS(Status_IOError(errmsg.str()));
     }
   }
   // Always close the handle.
   if (CloseHandle(file_h) == 0) {
-    return LOG_STATUS(Status::IOError(
+    return LOG_STATUS(Status_IOError(
         "Cannot write to file '" + path + "'; File closing error"));
   }
   return st;
@@ -534,7 +530,7 @@ Status Win::write_at(
             &bytes_written,
             &ov) == 0 ||
         bytes_written != constants::max_write_bytes) {
-      return LOG_STATUS(Status::IOError(std::string(
+      return LOG_STATUS(Status_IOError(std::string(
           "Cannot write to file; File writing error: " +
           get_last_error_msg())));
     }
@@ -551,7 +547,7 @@ Status Win::write_at(
           file_h, byte_buffer + byte_idx, buffer_size, &bytes_written, &ov) ==
           0 ||
       bytes_written != buffer_size) {
-    return LOG_STATUS(Status::IOError(std::string(
+    return LOG_STATUS(Status_IOError(std::string(
         "Cannot write to file; File writing error: " + get_last_error_msg())));
   }
   return Status::Ok();
@@ -566,7 +562,7 @@ std::string Win::uri_from_path(const std::string& path) {
   char uri[INTERNET_MAX_URL_LENGTH];
   std::string str_uri;
   if (UrlCreateFromPath(path.c_str(), uri, &uri_length, 0) != S_OK) {
-    LOG_STATUS(Status::IOError(
+    LOG_STATUS(Status_IOError(
         std::string("Failed to convert path '" + path + "' to URI.")));
   }
   str_uri = uri;
@@ -592,7 +588,7 @@ std::string Win::path_from_uri(const std::string& uri) {
   std::string str_path;
   if (PathCreateFromUrl(uri_with_scheme.c_str(), path, &path_length, 0) !=
       S_OK) {
-    LOG_STATUS(Status::IOError(std::string(
+    LOG_STATUS(Status_IOError(std::string(
         "Failed to convert URI '" + uri_with_scheme + "' to path.")));
   }
   str_path = path;

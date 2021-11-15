@@ -118,8 +118,7 @@ Status PositiveDeltaFilter::run_forward(
       return run_forward<int64_t>(
           input_metadata, input, output_metadata, output);
     default:
-      return LOG_STATUS(
-          Status::FilterError("Cannot filter; Unsupported input type"));
+      return LOG_STATUS(Status_FilterError("Cannot filter; Unsupported input type"));
   }
 }
 
@@ -207,7 +206,7 @@ Status PositiveDeltaFilter::encode_part(
       for (uint32_t j = 0; j < window_nelts; j++) {
         T curr_value = input->value<T>();
         if (curr_value < prev_value)
-          return LOG_STATUS(Status::FilterError(
+          return LOG_STATUS(Status_FilterError(
               "Positive delta filter error: delta is not positive."));
 
         T delta = curr_value - prev_value;
@@ -288,8 +287,7 @@ Status PositiveDeltaFilter::run_reverse(
       return run_reverse<int64_t>(
           input_metadata, input, output_metadata, output);
     default:
-      return LOG_STATUS(
-          Status::FilterError("Cannot filter; Unsupported input type"));
+      return LOG_STATUS(Status_FilterError("Cannot filter; Unsupported input type"));
   }
 }
 
@@ -347,7 +345,7 @@ Status PositiveDeltaFilter::run_reverse(
 Status PositiveDeltaFilter::set_option_impl(
     FilterOption option, const void* value) {
   if (value == nullptr)
-    return LOG_STATUS(Status::FilterError(
+    return LOG_STATUS(Status_FilterError(
         "Positive delta filter error; invalid option value"));
 
   switch (option) {
@@ -355,8 +353,8 @@ Status PositiveDeltaFilter::set_option_impl(
       max_window_size_ = *(uint32_t*)value;
       return Status::Ok();
     default:
-      return LOG_STATUS(
-          Status::FilterError("Positive delta filter error; unknown option"));
+      return LOG_STATUS(Status_FilterError(
+          "Positive delta filter error; unknown option"));
   }
 }
 
@@ -367,8 +365,8 @@ Status PositiveDeltaFilter::get_option_impl(
       *(uint32_t*)value = max_window_size_;
       return Status::Ok();
     default:
-      return LOG_STATUS(
-          Status::FilterError("Positive delta filter error; unknown option"));
+      return LOG_STATUS(Status_FilterError(
+          "Positive delta filter error; unknown option"));
   }
 }
 

@@ -83,7 +83,8 @@ Status QueryCondition::init(
     const uint64_t condition_value_size,
     const QueryConditionOp op) {
   if (!clauses_.empty()) {
-    return Status::QueryConditionError("Cannot reinitialize query condition");
+    return Status_QueryConditionError(
+        "Cannot reinitialize query condition");
   }
 
   clauses_.emplace_back(
@@ -99,27 +100,27 @@ Status QueryCondition::check(const ArraySchema* const array_schema) const {
 
     const Attribute* const attribute = array_schema->attribute(field_name);
     if (!attribute) {
-      return Status::QueryConditionError(
+      return Status_QueryConditionError(
           "Clause field name is not an attribute " + field_name);
     }
 
     if (clause.condition_value_ == nullptr) {
       if (clause.op_ != QueryConditionOp::EQ &&
           clause.op_ != QueryConditionOp::NE) {
-        return Status::QueryConditionError(
+        return Status_QueryConditionError(
             "Null value can only be used with equality operators");
       }
 
       if ((!attribute->nullable()) &&
           attribute->type() != Datatype::STRING_ASCII) {
-        return Status::QueryConditionError(
+        return Status_QueryConditionError(
             "Null value can only be used with nullable attributes");
       }
     }
 
     if (attribute->var_size() && attribute->type() != Datatype::STRING_ASCII &&
         clause.condition_value_ != nullptr) {
-      return Status::QueryConditionError(
+      return Status_QueryConditionError(
           "Clause non-empty attribute may only be var-sized for ASCII "
           "strings: " +
           field_name);
@@ -128,7 +129,7 @@ Status QueryCondition::check(const ArraySchema* const array_schema) const {
     if (attribute->cell_val_num() != 1 &&
         attribute->type() != Datatype::STRING_ASCII &&
         (!attribute->var_size())) {
-      return Status::QueryConditionError(
+      return Status_QueryConditionError(
           "Clause attribute must have one value per cell for non-string fixed "
           "size "
           "attributes: " +
@@ -140,7 +141,7 @@ Status QueryCondition::check(const ArraySchema* const array_schema) const {
         !(attribute->nullable() && clause.condition_value_ == nullptr) &&
         attribute->type() != Datatype::STRING_ASCII &&
         (!attribute->var_size())) {
-      return Status::QueryConditionError(
+      return Status_QueryConditionError(
           "Clause condition value size mismatch: " +
           std::to_string(attribute->cell_size()) +
           " != " + std::to_string(condition_value_size));
@@ -148,14 +149,14 @@ Status QueryCondition::check(const ArraySchema* const array_schema) const {
 
     switch (attribute->type()) {
       case Datatype::ANY:
-        return Status::QueryConditionError(
+        return Status_QueryConditionError(
             "Clause attribute type may not be of type 'ANY': " + field_name);
       case Datatype::STRING_UTF8:
       case Datatype::STRING_UTF16:
       case Datatype::STRING_UTF32:
       case Datatype::STRING_UCS2:
       case Datatype::STRING_UCS4:
-        return Status::QueryConditionError(
+        return Status_QueryConditionError(
             "Clause attribute type may not be a UTF/UCS string: " + field_name);
       default:
         break;
@@ -171,7 +172,7 @@ Status QueryCondition::combine(
     QueryCondition* const combined_cond) const {
   assert(combination_op == QueryConditionCombinationOp::AND);
   if (combination_op != QueryConditionCombinationOp::AND) {
-    return Status::QueryConditionError(
+    return Status_QueryConditionError(
         "Cannot combine query conditions; Only the 'AND' "
         "combination op is supported");
   }
@@ -622,7 +623,7 @@ Status QueryCondition::apply_clause(
           out_result_cell_slabs);
       break;
     default:
-      return Status::QueryConditionError(
+      return Status_QueryConditionError(
           "Cannot perform query comparison; Unknown query "
           "condition operator");
   }
@@ -639,7 +640,7 @@ Status QueryCondition::apply_clause(
   const Attribute* const attribute =
       array_schema->attribute(clause.field_name_);
   if (!attribute) {
-    return Status::QueryConditionError(
+    return Status_QueryConditionError(
         "Unknown attribute " + clause.field_name_);
   }
 
@@ -783,7 +784,7 @@ Status QueryCondition::apply_clause(
     case Datatype::STRING_UCS2:
     case Datatype::STRING_UCS4:
     default:
-      return Status::QueryConditionError(
+      return Status_QueryConditionError(
           "Cannot perform query comparison; Unsupported query "
           "conditional type on " +
           clause.field_name_);
@@ -818,7 +819,7 @@ Status QueryCondition::apply(
           tmp_result_cell_slabs.size() - result_cell_slabs->size();
       memory_increase *= sizeof(ResultCellSlab);
       if (memory_increase > memory_budget) {
-        return Status::QueryConditionError(
+        return Status_QueryConditionError(
             "Exceeded result cell slab budget applying query condition");
       }
     }
@@ -1029,7 +1030,7 @@ Status QueryCondition::apply_clause_dense(
           result_buffer);
       break;
     default:
-      return Status::QueryConditionError(
+      return Status_QueryConditionError(
           "Cannot perform query comparison; Unknown query "
           "condition operator");
   }
@@ -1051,7 +1052,7 @@ Status QueryCondition::apply_clause_dense(
   const Attribute* const attribute =
       array_schema->attribute(clause.field_name_);
   if (!attribute) {
-    return Status::QueryConditionError(
+    return Status_QueryConditionError(
         "Unknown attribute " + clause.field_name_);
   }
 
@@ -1246,7 +1247,7 @@ Status QueryCondition::apply_clause_dense(
     case Datatype::STRING_UCS2:
     case Datatype::STRING_UCS4:
     default:
-      return Status::QueryConditionError(
+      return Status_QueryConditionError(
           "Cannot perform query comparison; Unsupported query "
           "conditional type on " +
           clause.field_name_);

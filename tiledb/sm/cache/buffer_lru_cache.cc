@@ -77,8 +77,8 @@ Status BufferLRUCache::read(
 
   // Check the bounds of the read.
   if (cached_buffer->size() < offset + nbytes) {
-    return LOG_STATUS(
-        Status::LRUCacheError("Failed to read item; Byte range out of bounds"));
+    return LOG_STATUS(Status_LRUCacheError(
+        "Failed to read item; Byte range out of bounds"));
   }
 
   // Copy the requested range intout the output `buffer`.

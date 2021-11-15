@@ -172,7 +172,7 @@ void ReaderBase::zero_out_buffer_sizes() {
 
 Status ReaderBase::check_subarray() const {
   if (subarray_.layout() == Layout::GLOBAL_ORDER && subarray_.range_num() != 1)
-    return logger_->status(Status::ReaderError(
+    return logger_->status(Status_ReaderError(
         "Cannot initialize reader; Multi-range subarrays with "
         "global order layout are not supported"));
 
@@ -212,7 +212,7 @@ Status ReaderBase::check_validity_buffer_sizes() const {
               "given for ";
         ss << "attribute '" << name << "'";
         ss << " (" << cell_validity_num << " < " << min_cell_num << ")";
-        return logger_->status(Status::ReaderError(ss.str()));
+        return logger_->status(Status_ReaderError(ss.str()));
       }
     }
   }
@@ -1574,7 +1574,7 @@ Status ReaderBase::process_tiles(
       }
 
       if (*memory_used_for_tiles > memory_budget) {
-        return Status::ReaderError(
+        return Status_ReaderError(
             "Exceeded tile memory budget applying query condition");
       }
     } else {
@@ -1609,7 +1609,7 @@ Status ReaderBase::process_tiles(
         for (uint64_t i = 0; i < result_cell_slabs->size(); i++) {
           if (result_cell_slabs->at(i).tile_ == last_tile) {
             if (i == 0) {
-              return Status::ReaderError(
+              return Status_ReaderError(
                   "Unable to copy one tile with current budget");
             }
             last_idx = i;
@@ -1875,9 +1875,9 @@ Status ReaderBase::fill_dense_coords(const Subarray& subarray) {
   // This path does not use result cell slabs, which will fill coordinates
   // for cells that should be filtered out.
   if (!condition_.empty()) {
-    return logger_->status(
-        Status::ReaderError("Cannot read dense coordinates; dense coordinate "
-                            "reads are unsupported with a query condition"));
+    return logger_->status(Status_ReaderError(
+        "Cannot read dense coordinates; dense coordinate "
+        "reads are unsupported with a query condition"));
   }
 
   // Prepare buffers

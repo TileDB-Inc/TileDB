@@ -131,7 +131,7 @@ uint32_t StrategyBase::offsets_bitsize() const {
 
 Status StrategyBase::set_offsets_bitsize(const uint32_t bitsize) {
   if (bitsize != 32 && bitsize != 64) {
-    return logger_->status(Status::ReaderError(
+    return logger_->status(Status_ReaderError(
         "Cannot set offset bitsize to " + std::to_string(bitsize) +
         "; Only 32 and 64 are acceptable bitsize values"));
   }

@@ -97,14 +97,17 @@ bool SparseGlobalOrderReader::incomplete() const {
 Status SparseGlobalOrderReader::init() {
   // Sanity checks
   if (storage_manager_ == nullptr)
-    return logger_->status(Status::SparseGlobalOrderReaderError(
+    return logger_->status(
+        Status_SparseGlobalOrderReaderError(
         "Cannot initialize sparse global order reader; Storage manager not "
         "set"));
   if (array_schema_ == nullptr)
-    return logger_->status(Status::SparseGlobalOrderReaderError(
+    return logger_->status(
+        Status_SparseGlobalOrderReaderError(
         "Cannot initialize sparse global order reader; Array schema not set"));
   if (buffers_.empty())
-    return logger_->status(Status::SparseGlobalOrderReaderError(
+    return logger_->status(
+        Status_SparseGlobalOrderReaderError(
         "Cannot initialize sparse global order reader; Buffers not set"));
 
   // Check subarray
@@ -115,9 +118,9 @@ Status SparseGlobalOrderReader::init() {
   offsets_format_mode_ = config_.get("sm.var_offsets.mode", &found);
   assert(found);
   if (offsets_format_mode_ != "bytes" && offsets_format_mode_ != "elements") {
-    return logger_->status(
-        Status::ReaderError("Cannot initialize reader; Unsupported offsets "
-                            "format in configuration"));
+    return logger_->status(Status_ReaderError(
+        "Cannot initialize reader; Unsupported offsets "
+        "format in configuration"));
   }
   RETURN_NOT_OK(config_.get<bool>(
       "sm.var_offsets.extra_element", &offsets_extra_element_, &found));
@@ -125,7 +128,8 @@ Status SparseGlobalOrderReader::init() {
   RETURN_NOT_OK(config_.get<uint32_t>(
       "sm.var_offsets.bitsize", &offsets_bitsize_, &found));
   if (offsets_bitsize_ != 32 && offsets_bitsize_ != 64) {
-    return logger_->status(Status::SparseGlobalOrderReaderError(
+    return logger_->status(
+        Status_SparseGlobalOrderReaderError(
         "Cannot initialize reader; "
         "Unsupported offsets bitsize in configuration"));
   }
@@ -473,9 +477,10 @@ Status SparseGlobalOrderReader::create_result_tiles(bool* tiles_found) {
                   t);
 
               if (result_tiles_[f].empty())
-                return logger_->status(Status::SparseGlobalOrderReaderError(
-                    "Cannot load a single tile for fragment, increase memory "
-                    "budget"));
+                return logger_->status(
+                    Status_SparseGlobalOrderReaderError(
+                        "Cannot load a single tile for fragment, increase memory "
+                        "budget"));
               break;
             }
             range_it++;
@@ -516,9 +521,10 @@ Status SparseGlobalOrderReader::create_result_tiles(bool* tiles_found) {
                   t);
 
               if (result_tiles_[f].empty())
-                return logger_->status(Status::SparseGlobalOrderReaderError(
-                    "Cannot load a single tile for fragment, increase memory "
-                    "budget"));
+                return logger_->status(
+                    Status_SparseGlobalOrderReaderError(
+                        "Cannot load a single tile for fragment, increase memory "
+                        "budget"));
               break;
             }
           }

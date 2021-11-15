@@ -433,7 +433,7 @@ inline Status logger_format_from_string(
   else if (format_type_str == "JSON")
     *format_type = Logger::Format::JSON;
   else {
-    return Status::Error("Unsupported logging format: " + format_type_str);
+    return Status_Error("Unsupported logging format: " + format_type_str);
   }
   return Status::Ok();
 }

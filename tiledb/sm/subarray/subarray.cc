@@ -133,7 +133,7 @@ Status Subarray::add_range(
     uint32_t dim_idx, Range&& range, const bool read_range_oob_error) {
   auto dim_num = array_->array_schema()->dim_num();
   if (dim_idx >= dim_num)
-    return logger_->status(Status::SubarrayError(
+    return logger_->status(Status_SubarrayError(
         "Cannot add range to dimension; Invalid dimension index"));
 
   // Must reset the result size and tile overlap
@@ -357,7 +357,7 @@ bool Subarray::empty() const {
 
 Status Subarray::get_query_type(QueryType* type) const {
   if (array_ == nullptr)
-    return logger_->status(Status::SubarrayError(
+    return logger_->status(Status_SubarrayError(
         "Cannot get query type from array; Invalid array"));
 
   return array_->get_query_type(type);
@@ -367,13 +367,12 @@ Status Subarray::get_range(
     uint32_t dim_idx, uint64_t range_idx, const Range** range) const {
   auto dim_num = array_->array_schema()->dim_num();
   if (dim_idx >= dim_num)
-    return logger_->status(
-        Status::SubarrayError("Cannot get range; Invalid dimension index"));
+    return logger_->status(Status_SubarrayError(
+        "Cannot get range; Invalid dimension index"));
 
   auto range_num = ranges_[dim_idx].size();
   if (range_idx >= range_num)
-    return logger_->status(
-        Status::SubarrayError("Cannot get range; Invalid range index"));
+    return logger_->status(Status_SubarrayError("Cannot get range; Invalid range index"));
 
   *range = &ranges_[dim_idx][range_idx];
 
@@ -387,13 +386,12 @@ Status Subarray::get_range(
     const void** end) const {
   auto dim_num = array_->array_schema()->dim_num();
   if (dim_idx >= dim_num)
-    return logger_->status(
-        Status::SubarrayError("Cannot get range; Invalid dimension index"));
+    return logger_->status(Status_SubarrayError(
+        "Cannot get range; Invalid dimension index"));
 
   auto range_num = ranges_[dim_idx].size();
   if (range_idx >= range_num)
-    return logger_->status(
-        Status::SubarrayError("Cannot get range; Invalid range index"));
+    return logger_->status(Status_SubarrayError("Cannot get range; Invalid range index"));
 
   *start = ranges_[dim_idx][range_idx].start();
   *end = ranges_[dim_idx][range_idx].end();
@@ -409,18 +407,18 @@ Status Subarray::get_range_var_size(
   auto schema = array_->array_schema();
   auto dim_num = schema->dim_num();
   if (dim_idx >= dim_num)
-    return logger_->status(Status::SubarrayError(
+    return logger_->status(Status_SubarrayError(
         "Cannot get var range size; Invalid dimension index"));
 
   auto dim = schema->domain()->dimension(dim_idx);
   if (!dim->var_size())
-    return logger_->status(Status::SubarrayError(
+    return logger_->status(Status_SubarrayError(
         "Cannot get var range size; Dimension " + dim->name() +
         " is not var sized"));
 
   auto range_num = ranges_[dim_idx].size();
   if (range_idx >= range_num)
-    return logger_->status(Status::SubarrayError(
+    return logger_->status(Status_SubarrayError(
         "Cannot get var range size; Invalid range index"));
 
   *start = ranges_[dim_idx][range_idx].start_size();
@@ -432,9 +430,9 @@ Status Subarray::get_range_var_size(
 Status Subarray::get_range_num(uint32_t dim_idx, uint64_t* range_num) const {
   auto dim_num = array_->array_schema()->dim_num();
   if (dim_idx >= dim_num)
-    return logger_->status(
-        Status::SubarrayError("Cannot get number of ranges for a dimension; "
-                              "Invalid dimension index"));
+    return logger_->status(Status_SubarrayError(
+        "Cannot get number of ranges for a dimension; "
+        "Invalid dimension index"));
 
   *range_num = ranges_[dim_idx].size();
 
@@ -516,7 +514,7 @@ void Subarray::set_layout(Layout layout) {
 
 Status Subarray::to_byte_vec(std::vector<uint8_t>* byte_vec) const {
   if (range_num() != 1)
-    return logger_->status(Status::SubarrayError(
+    return logger_->status(Status_SubarrayError(
         "Cannot export to byte vector; The subarray must be unary"));
 
   byte_vec->clear();
@@ -541,13 +539,13 @@ Status Subarray::get_est_result_size(
     ThreadPool* const compute_tp) {
   // Check attribute/dimension name
   if (name == nullptr)
-    return logger_->status(
-        Status::SubarrayError("Cannot get estimated result size; "
-                              "Attribute/Dimension name cannot be null"));
+    return logger_->status(Status_SubarrayError(
+        "Cannot get estimated result size; "
+        "Attribute/Dimension name cannot be null"));
 
   // Check size pointer
   if (size == nullptr)
-    return logger_->status(Status::SubarrayError(
+    return logger_->status(Status_SubarrayError(
         "Cannot get estimated result size; Input size cannot be null"));
 
   // Check if name is attribute or dimension
@@ -557,21 +555,21 @@ Status Subarray::get_est_result_size(
 
   // Check if attribute/dimension exists
   if (name != constants::coords && !is_dim && !is_attr)
-    return logger_->status(Status::SubarrayError(
+    return logger_->status(Status_SubarrayError(
         std::string("Cannot get estimated result size; Attribute/Dimension '") +
         name + "' does not exist"));
 
   // Check if the attribute/dimension is fixed-sized
   if (array_schema->var_size(name))
-    return logger_->status(
-        Status::SubarrayError("Cannot get estimated result size; "
-                              "Attribute/Dimension must be fixed-sized"));
+    return logger_->status(Status_SubarrayError(
+        "Cannot get estimated result size; "
+        "Attribute/Dimension must be fixed-sized"));
 
   // Check if attribute/dimension is nullable
   if (array_schema->is_nullable(name))
-    return logger_->status(
-        Status::SubarrayError("Cannot get estimated result size; "
-                              "Attribute/Dimension must not be nullable"));
+    return logger_->status(Status_SubarrayError(
+        "Cannot get estimated result size; "
+        "Attribute/Dimension must not be nullable"));
 
   // Compute tile overlap for each fragment
   RETURN_NOT_OK(compute_est_result_size(config, compute_tp));
@@ -594,13 +592,13 @@ Status Subarray::get_est_result_size(
     ThreadPool* const compute_tp) {
   // Check attribute/dimension name
   if (name == nullptr)
-    return logger_->status(
-        Status::SubarrayError("Cannot get estimated result size; "
-                              "Attribute/Dimension name cannot be null"));
+    return logger_->status(Status_SubarrayError(
+        "Cannot get estimated result size; "
+        "Attribute/Dimension name cannot be null"));
 
   // Check size pointer
   if (size_off == nullptr || size_val == nullptr)
-    return logger_->status(Status::SubarrayError(
+    return logger_->status(Status_SubarrayError(
         "Cannot get estimated result size; Input sizes cannot be null"));
 
   // Check if name is attribute or dimension
@@ -610,21 +608,20 @@ Status Subarray::get_est_result_size(
 
   // Check if attribute/dimension exists
   if (name != constants::coords && !is_dim && !is_attr)
-    return logger_->status(Status::SubarrayError(
+    return logger_->status(Status_SubarrayError(
         std::string("Cannot get estimated result size; Attribute/Dimension '") +
         name + "' does not exist"));
 
   // Check if the attribute/dimension is var-sized
   if (!array_schema->var_size(name))
-    return logger_->status(
-        Status::SubarrayError("Cannot get estimated result size; "
-                              "Attribute/Dimension must be var-sized"));
+    return logger_->status(Status_SubarrayError("Cannot get estimated result size; "
+                                     "Attribute/Dimension must be var-sized"));
 
   // Check if attribute/dimension is nullable
   if (array_schema->is_nullable(name))
-    return logger_->status(
-        Status::SubarrayError("Cannot get estimated result size; "
-                              "Attribute/Dimension must not be nullable"));
+    return logger_->status(Status_SubarrayError(
+        "Cannot get estimated result size; "
+        "Attribute/Dimension must not be nullable"));
 
   // Compute tile overlap for each fragment
   RETURN_NOT_OK(compute_est_result_size(config, compute_tp));
@@ -659,13 +656,12 @@ Status Subarray::get_est_result_size_nullable(
     ThreadPool* const compute_tp) {
   // Check attribute/dimension name
   if (name == nullptr)
-    return logger_->status(
-        Status::SubarrayError("Cannot get estimated result size; "
-                              "Attribute name cannot be null"));
+    return logger_->status(Status_SubarrayError("Cannot get estimated result size; "
+                                     "Attribute name cannot be null"));
 
   // Check size pointer
   if (size == nullptr || size_validity == nullptr)
-    return logger_->status(Status::SubarrayError(
+    return logger_->status(Status_SubarrayError(
         "Cannot get estimated result size; Input sizes cannot be null"));
 
   // Check if name is attribute
@@ -674,21 +670,19 @@ Status Subarray::get_est_result_size_nullable(
 
   // Check if attribute exists
   if (!is_attr)
-    return logger_->status(Status::SubarrayError(
+    return logger_->status(Status_SubarrayError(
         std::string("Cannot get estimated result size; Attribute '") + name +
         "' does not exist"));
 
   // Check if the attribute is fixed-sized
   if (array_schema->var_size(name))
-    return logger_->status(
-        Status::SubarrayError("Cannot get estimated result size; "
-                              "Attribute must be fixed-sized"));
+    return logger_->status(Status_SubarrayError("Cannot get estimated result size; "
+                                     "Attribute must be fixed-sized"));
 
   // Check if attribute is nullable
   if (!array_schema->is_nullable(name))
-    return logger_->status(
-        Status::SubarrayError("Cannot get estimated result size; "
-                              "Attribute must be nullable"));
+    return logger_->status(Status_SubarrayError("Cannot get estimated result size; "
+                                     "Attribute must be nullable"));
 
   // Compute tile overlap for each fragment
   RETURN_NOT_OK(compute_est_result_size(config, compute_tp));
@@ -716,13 +710,12 @@ Status Subarray::get_est_result_size_nullable(
     ThreadPool* const compute_tp) {
   // Check attribute/dimension name
   if (name == nullptr)
-    return logger_->status(
-        Status::SubarrayError("Cannot get estimated result size; "
-                              "Attribute name cannot be null"));
+    return logger_->status(Status_SubarrayError("Cannot get estimated result size; "
+                                     "Attribute name cannot be null"));
 
   // Check size pointer
   if (size_off == nullptr || size_val == nullptr || size_validity == nullptr)
-    return logger_->status(Status::SubarrayError(
+    return logger_->status(Status_SubarrayError(
         "Cannot get estimated result size; Input sizes cannot be null"));
 
   // Check if name is attribute
@@ -731,21 +724,19 @@ Status Subarray::get_est_result_size_nullable(
 
   // Check if attribute exists
   if (!is_attr)
-    return logger_->status(Status::SubarrayError(
+    return logger_->status(Status_SubarrayError(
         std::string("Cannot get estimated result size; Attribute '") + name +
         "' does not exist"));
 
   // Check if the attribute is var-sized
   if (!array_schema->var_size(name))
-    return logger_->status(
-        Status::SubarrayError("Cannot get estimated result size; "
-                              "Attribute must be var-sized"));
+    return logger_->status(Status_SubarrayError("Cannot get estimated result size; "
+                                     "Attribute must be var-sized"));
 
   // Check if attribute is nullable
   if (!array_schema->is_nullable(name))
-    return logger_->status(
-        Status::SubarrayError("Cannot get estimated result size; "
-                              "Attribute must be nullable"));
+    return logger_->status(Status_SubarrayError("Cannot get estimated result size; "
+                                     "Attribute must be nullable"));
 
   // Compute tile overlap for each fragment
   RETURN_NOT_OK(compute_est_result_size(config, compute_tp));
@@ -786,12 +777,12 @@ Status Subarray::get_max_memory_size(
     ThreadPool* const compute_tp) {
   // Check attribute/dimension name
   if (name == nullptr)
-    return logger_->status(Status::SubarrayError(
+    return logger_->status(Status_SubarrayError(
         "Cannot get max memory size; Attribute/Dimension cannot be null"));
 
   // Check size pointer
   if (size == nullptr)
-    return logger_->status(Status::SubarrayError(
+    return logger_->status(Status_SubarrayError(
         "Cannot get max memory size; Input size cannot be null"));
 
   // Check if name is attribute or dimension
@@ -801,20 +792,20 @@ Status Subarray::get_max_memory_size(
 
   // Check if attribute/dimension exists
   if (name != constants::coords && !is_dim && !is_attr)
-    return logger_->status(Status::SubarrayError(
+    return logger_->status(Status_SubarrayError(
         std::string("Cannot get max memory size; Attribute/Dimension '") +
         name + "' does not exist"));
 
   // Check if the attribute/dimension is fixed-sized
   if (name != constants::coords && array_schema->var_size(name))
-    return logger_->status(Status::SubarrayError(
+    return logger_->status(Status_SubarrayError(
         "Cannot get max memory size; Attribute/Dimension must be fixed-sized"));
 
   // Check if attribute/dimension is nullable
   if (array_schema->is_nullable(name))
-    return logger_->status(
-        Status::SubarrayError("Cannot get estimated result size; "
-                              "Attribute/Dimension must not be nullable"));
+    return logger_->status(Status_SubarrayError(
+        "Cannot get estimated result size; "
+        "Attribute/Dimension must not be nullable"));
 
   // Compute tile overlap for each fragment
   compute_est_result_size(config, compute_tp);
@@ -831,12 +822,12 @@ Status Subarray::get_max_memory_size(
     ThreadPool* const compute_tp) {
   // Check attribute/dimension name
   if (name == nullptr)
-    return logger_->status(Status::SubarrayError(
+    return logger_->status(Status_SubarrayError(
         "Cannot get max memory size; Attribute/Dimension cannot be null"));
 
   // Check size pointer
   if (size_off == nullptr || size_val == nullptr)
-    return logger_->status(Status::SubarrayError(
+    return logger_->status(Status_SubarrayError(
         "Cannot get max memory size; Input sizes cannot be null"));
 
   // Check if name is attribute or dimension
@@ -846,20 +837,20 @@ Status Subarray::get_max_memory_size(
 
   // Check if attribute/dimension exists
   if (name != constants::coords && !is_dim && !is_attr)
-    return logger_->status(Status::SubarrayError(
+    return logger_->status(Status_SubarrayError(
         std::string("Cannot get max memory size; Attribute/Dimension '") +
         name + "' does not exist"));
 
   // Check if the attribute/dimension is var-sized
   if (!array_schema->var_size(name))
-    return logger_->status(Status::SubarrayError(
+    return logger_->status(Status_SubarrayError(
         "Cannot get max memory size; Attribute/Dimension must be var-sized"));
 
   // Check if attribute/dimension is nullable
   if (array_schema->is_nullable(name))
-    return logger_->status(
-        Status::SubarrayError("Cannot get estimated result size; "
-                              "Attribute/Dimension must not be nullable"));
+    return logger_->status(Status_SubarrayError(
+        "Cannot get estimated result size; "
+        "Attribute/Dimension must not be nullable"));
 
   // Compute tile overlap for each fragment
   compute_est_result_size(config, compute_tp);
@@ -877,12 +868,12 @@ Status Subarray::get_max_memory_size_nullable(
     ThreadPool* const compute_tp) {
   // Check attribute name
   if (name == nullptr)
-    return logger_->status(Status::SubarrayError(
+    return logger_->status(Status_SubarrayError(
         "Cannot get max memory size; Attribute cannot be null"));
 
   // Check size pointer
   if (size == nullptr || size_validity == nullptr)
-    return logger_->status(Status::SubarrayError(
+    return logger_->status(Status_SubarrayError(
         "Cannot get max memory size; Input sizes cannot be null"));
 
   // Check if name is attribute
@@ -891,20 +882,19 @@ Status Subarray::get_max_memory_size_nullable(
 
   // Check if attribute exists
   if (!is_attr)
-    return logger_->status(Status::SubarrayError(
+    return logger_->status(Status_SubarrayError(
         std::string("Cannot get max memory size; Attribute '") + name +
         "' does not exist"));
 
   // Check if the attribute is fixed-sized
   if (array_schema->var_size(name))
-    return logger_->status(Status::SubarrayError(
+    return logger_->status(Status_SubarrayError(
         "Cannot get max memory size; Attribute must be fixed-sized"));
 
   // Check if attribute is nullable
   if (!array_schema->is_nullable(name))
-    return logger_->status(
-        Status::SubarrayError("Cannot get estimated result size; "
-                              "Attribute must be nullable"));
+    return logger_->status(Status_SubarrayError("Cannot get estimated result size; "
+                                     "Attribute must be nullable"));
 
   // Compute tile overlap for each fragment
   compute_est_result_size(config, compute_tp);
@@ -923,12 +913,12 @@ Status Subarray::get_max_memory_size_nullable(
     ThreadPool* const compute_tp) {
   // Check attribute/dimension name
   if (name == nullptr)
-    return logger_->status(Status::SubarrayError(
+    return logger_->status(Status_SubarrayError(
         "Cannot get max memory size; Attribute/Dimension cannot be null"));
 
   // Check size pointer
   if (size_off == nullptr || size_val == nullptr || size_validity == nullptr)
-    return logger_->status(Status::SubarrayError(
+    return logger_->status(Status_SubarrayError(
         "Cannot get max memory size; Input sizes cannot be null"));
 
   // Check if name is attribute or dimension
@@ -937,20 +927,19 @@ Status Subarray::get_max_memory_size_nullable(
 
   // Check if attribute exists
   if (!is_attr)
-    return logger_->status(Status::SubarrayError(
+    return logger_->status(Status_SubarrayError(
         std::string("Cannot get max memory size; Attribute '") + name +
         "' does not exist"));
 
   // Check if the attribute is var-sized
   if (!array_schema->var_size(name))
-    return logger_->status(Status::SubarrayError(
+    return logger_->status(Status_SubarrayError(
         "Cannot get max memory size; Attribute/Dimension must be var-sized"));
 
   // Check if attribute is nullable
   if (!array_schema->is_nullable(name))
-    return logger_->status(
-        Status::SubarrayError("Cannot get estimated result size; "
-                              "Attribute must be nullable"));
+    return logger_->status(Status_SubarrayError("Cannot get estimated result size; "
+                                     "Attribute must be nullable"));
 
   // Compute tile overlap for each fragment
   compute_est_result_size(config, compute_tp);

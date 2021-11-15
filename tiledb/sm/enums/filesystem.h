@@ -78,7 +78,7 @@ inline Status filesystem_enum(
   else if (filesystem_type_str == constants::filesystem_type_mem_str)
     *filesystem_type = Filesystem::MEMFS;
   else
-    return Status::Error("Invalid Filesystem " + filesystem_type_str);
+    return Status_Error("Invalid Filesystem " + filesystem_type_str);
 
   return Status::Ok();
 }
