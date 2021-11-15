@@ -190,8 +190,8 @@ class MemFilesystem::File : public MemFilesystem::FSNode {
     assert(buffer);
 
     if (offset + nbytes > size_)
-      return LOG_STATUS(Status_MemFSError(
-          "Cannot read from file; Read exceeds file size"));
+      return LOG_STATUS(
+          Status_MemFSError("Cannot read from file; Read exceeds file size"));
 
     memcpy(buffer, (char*)data_ + offset, nbytes);
     return Status::Ok();
@@ -220,8 +220,8 @@ class MemFilesystem::File : public MemFilesystem::FSNode {
       new_data = tdb_realloc(data_, size_ + nbytes);
 
       if (new_data == nullptr) {
-        return LOG_STATUS(Status_MemFSError(
-            "Out of memory, cannot append new data to file"));
+        return LOG_STATUS(
+            Status_MemFSError("Out of memory, cannot append new data to file"));
       }
 
       memcpy((char*)new_data + size_, data, nbytes);
@@ -358,8 +358,8 @@ Status MemFilesystem::file_size(
   RETURN_NOT_OK(lookup_node(path, &cur, &cur_lock));
 
   if (cur == nullptr) {
-    return LOG_STATUS(Status_MemFSError(
-        std::string("Cannot get file size of :" + path)));
+    return LOG_STATUS(
+        Status_MemFSError(std::string("Cannot get file size of :" + path)));
   }
 
   return cur->get_size(size);
@@ -419,8 +419,8 @@ Status MemFilesystem::move(
     const std::string& old_path, const std::string& new_path) const {
   std::vector<std::string> old_path_tokens = tokenize(old_path);
   if (old_path_tokens.size() <= 1) {
-    return LOG_STATUS(Status_MemFSError(
-        std::string("Cannot move the root directory")));
+    return LOG_STATUS(
+        Status_MemFSError(std::string("Cannot move the root directory")));
   }
 
   // Remove the last token so that `old_path_tokens` contains the path
@@ -449,8 +449,8 @@ Status MemFilesystem::move(
   // parent of the new node.
   std::vector<std::string> new_path_tokens = tokenize(new_path);
   if (new_path_tokens.size() <= 1) {
-    return LOG_STATUS(Status_MemFSError(
-        std::string("Cannot move to the root directory")));
+    return LOG_STATUS(
+        Status_MemFSError(std::string("Cannot move to the root directory")));
   }
 
   // Remove the last token so that `new_path_tokens` contains the path
@@ -514,13 +514,13 @@ Status MemFilesystem::remove(const std::string& path, const bool is_dir) const {
   }
 
   if (cur == root_.get()) {
-    return LOG_STATUS(Status_MemFSError(
-        std::string("Cannot remove the root directory")));
+    return LOG_STATUS(
+        Status_MemFSError(std::string("Cannot remove the root directory")));
   }
 
   if (cur->is_dir() != is_dir) {
-    return LOG_STATUS(Status_MemFSError(
-        std::string("Remove failed, wrong file type")));
+    return LOG_STATUS(
+        Status_MemFSError(std::string("Remove failed, wrong file type")));
   }
 
   cur_lock.unlock();

@@ -397,8 +397,8 @@ Status dimension_from_capnp(
 Status domain_to_capnp(
     const Domain* domain, capnp::Domain::Builder* domainBuilder) {
   if (domain == nullptr)
-    return LOG_STATUS(Status_SerializationError(
-        "Error serializing domain; domain is null."));
+    return LOG_STATUS(
+        Status_SerializationError("Error serializing domain; domain is null."));
 
   domainBuilder->setType(datatype_str(domain->dimension(0)->type()));
   domainBuilder->setTileOrder(layout_str(domain->tile_order()));

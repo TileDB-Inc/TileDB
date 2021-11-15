@@ -52,7 +52,8 @@ Filter* Filter::clone() const {
 
 Status Filter::get_option(FilterOption option, void* value) const {
   if (value == nullptr)
-    return LOG_STATUS(Status_FilterError("Cannot get option; null value pointer"));
+    return LOG_STATUS(
+        Status_FilterError("Cannot get option; null value pointer"));
 
   return get_option_impl(option, value);
 }
@@ -92,15 +93,13 @@ Status Filter::serialize(Buffer* buff) const {
 Status Filter::get_option_impl(FilterOption option, void* value) const {
   (void)option;
   (void)value;
-  return LOG_STATUS(
-      Status_FilterError("Filter does not support options."));
+  return LOG_STATUS(Status_FilterError("Filter does not support options."));
 }
 
 Status Filter::set_option_impl(FilterOption option, const void* value) {
   (void)option;
   (void)value;
-  return LOG_STATUS(
-      Status_FilterError("Filter does not support options."));
+  return LOG_STATUS(Status_FilterError("Filter does not support options."));
 }
 
 Status Filter::deserialize_impl(ConstBuffer* buff) {

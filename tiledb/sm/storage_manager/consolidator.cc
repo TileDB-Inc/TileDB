@@ -906,9 +906,9 @@ Status Consolidator::set_config(const Config* config) {
         "Invalid configuration; Step size ratio config parameter must be in "
         "[0.0, 1.0]"));
   if (config_.amplification_ < 0)
-    return logger_->status(Status_ConsolidatorError(
-        "Invalid configuration; Amplification config "
-        "parameter must be non-negative"));
+    return logger_->status(
+        Status_ConsolidatorError("Invalid configuration; Amplification config "
+                                 "parameter must be non-negative"));
 
   return Status::Ok();
 }

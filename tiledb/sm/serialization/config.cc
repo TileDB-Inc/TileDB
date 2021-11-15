@@ -62,8 +62,8 @@ namespace serialization {
 Status config_to_capnp(
     const Config* config, capnp::Config::Builder* config_builder) {
   if (config == nullptr)
-    return LOG_STATUS(Status_SerializationError(
-        "Error serializing config; config is null."));
+    return LOG_STATUS(
+        Status_SerializationError("Error serializing config; config is null."));
 
   auto entries = config_builder->initEntries(config->param_values().size());
   uint64_t i = 0;

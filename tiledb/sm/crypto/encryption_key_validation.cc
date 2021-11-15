@@ -76,12 +76,10 @@ Status EncryptionKeyValidation::check_encryption_key(
   }
 
   if (output.size() != ENCRYPTION_KEY_CHECK_DATA.size())
-    return LOG_STATUS(
-        Status_EncryptionError("Invalid encryption key."));
+    return LOG_STATUS(Status_EncryptionError("Invalid encryption key."));
   for (uint64_t i = 0; i < output.size(); i++) {
     if (output.value<char>(i * sizeof(char)) != ENCRYPTION_KEY_CHECK_DATA[i])
-      return LOG_STATUS(
-          Status_EncryptionError("Invalid encryption key."));
+      return LOG_STATUS(Status_EncryptionError("Invalid encryption key."));
   }
 
   return Status::Ok();

@@ -219,8 +219,8 @@ const FilterPipeline& ArraySchema::cell_validity_filters() const {
 
 Status ArraySchema::check() const {
   if (domain_ == nullptr)
-    return LOG_STATUS(Status_ArraySchemaError(
-        "Array schema check failed; Domain not set"));
+    return LOG_STATUS(
+        Status_ArraySchemaError("Array schema check failed; Domain not set"));
 
   auto dim_num = this->dim_num();
   if (dim_num == 0)
@@ -236,9 +236,9 @@ Status ArraySchema::check() const {
   if (array_type_ == ArrayType::DENSE) {
     auto type = domain_->dimension(0)->type();
     if (datatype_is_real(type)) {
-      return LOG_STATUS(Status_ArraySchemaError(
-          "Array schema check failed; Dense arrays "
-          "cannot have floating point domains"));
+      return LOG_STATUS(
+          Status_ArraySchemaError("Array schema check failed; Dense arrays "
+                                  "cannot have floating point domains"));
     }
     if (attributes_.size() == 0) {
       return LOG_STATUS(Status_ArraySchemaError(
@@ -249,9 +249,9 @@ Status ArraySchema::check() const {
   RETURN_NOT_OK(check_double_delta_compressor());
 
   if (!check_attribute_dimension_names())
-    return LOG_STATUS(Status_ArraySchemaError(
-        "Array schema check failed; Attributes "
-        "and dimensions must have unique names"));
+    return LOG_STATUS(
+        Status_ArraySchemaError("Array schema check failed; Attributes "
+                                "and dimensions must have unique names"));
 
   // Success
   return Status::Ok();
@@ -517,13 +517,14 @@ Status ArraySchema::add_attribute(const Attribute* attr, bool check_special) {
 Status ArraySchema::drop_attribute(const std::string& attr_name) {
   std::lock_guard<std::mutex> lock(mtx_);
   if (attr_name.empty()) {
-    return LOG_STATUS(Status_ArraySchemaError(
-        "Cannot remove an empty name attribute"));
+    return LOG_STATUS(
+        Status_ArraySchemaError("Cannot remove an empty name attribute"));
   }
 
   if (attribute_map_.find(attr_name) == attribute_map_.end()) {
     // Not exists.
-    return LOG_STATUS(Status_ArraySchemaError("Cannot remove a non-exist attribute"));
+    return LOG_STATUS(
+        Status_ArraySchemaError("Cannot remove a non-exist attribute"));
   }
   attribute_map_.erase(attr_name);
 
@@ -654,9 +655,9 @@ Status ArraySchema::set_cell_var_offsets_filter_pipeline(
 
 Status ArraySchema::set_cell_order(Layout cell_order) {
   if (dense() && cell_order == Layout::HILBERT)
-    return LOG_STATUS(Status_ArraySchemaError(
-        "Cannot set cell order; Hilbert order is only "
-        "applicable to sparse arrays"));
+    return LOG_STATUS(
+        Status_ArraySchemaError("Cannot set cell order; Hilbert order is only "
+                                "applicable to sparse arrays"));
 
   cell_order_ = cell_order;
 
@@ -671,8 +672,8 @@ Status ArraySchema::set_cell_validity_filter_pipeline(
 
 Status ArraySchema::set_domain(Domain* domain) {
   if (domain == nullptr)
-    return LOG_STATUS(Status_ArraySchemaError(
-        "Cannot set domain; Input domain is nullptr"));
+    return LOG_STATUS(
+        Status_ArraySchemaError("Cannot set domain; Input domain is nullptr"));
 
   if (domain->dim_num() == 0)
     return LOG_STATUS(Status_ArraySchemaError(
@@ -680,9 +681,9 @@ Status ArraySchema::set_domain(Domain* domain) {
 
   if (array_type_ == ArrayType::DENSE) {
     if (!domain->all_dims_same_type())
-      return LOG_STATUS(Status_ArraySchemaError(
-          "Cannot set domain; In dense arrays, all "
-          "dimensions must have the same datatype"));
+      return LOG_STATUS(
+          Status_ArraySchemaError("Cannot set domain; In dense arrays, all "
+                                  "dimensions must have the same datatype"));
 
     auto type = domain->dimension(0)->type();
     if (!datatype_is_integer(type) && !datatype_is_datetime(type) &&
@@ -769,7 +770,8 @@ void ArraySchema::set_uri(const URI& uri) {
 
 Status ArraySchema::get_uri(URI* uri) {
   if (uri_.is_invalid()) {
-    return LOG_STATUS(Status_ArraySchemaError("Error in ArraySchema; invalid URI"));
+    return LOG_STATUS(
+        Status_ArraySchemaError("Error in ArraySchema; invalid URI"));
   }
   *uri = uri_;
   return Status::Ok();
@@ -785,7 +787,8 @@ std::string ArraySchema::name() {
 
 Status ArraySchema::get_name(std::string* name) const {
   if (name_.empty()) {
-    return LOG_STATUS(Status_ArraySchemaError("Error in ArraySchema; Empty name"));
+    return LOG_STATUS(
+        Status_ArraySchemaError("Error in ArraySchema; Empty name"));
   }
   *name = name_;
   return Status::Ok();
@@ -828,9 +831,9 @@ Status ArraySchema::check_double_delta_compressor() const {
     const auto& dim_filters = dim->filters();
     auto dim_type = dim->type();
     if (datatype_is_real(dim_type) && dim_filters.empty())
-      return LOG_STATUS(Status_ArraySchemaError(
-          "Real dimension cannot inherit coordinate "
-          "filters with DOUBLE DELTA compression"));
+      return LOG_STATUS(
+          Status_ArraySchemaError("Real dimension cannot inherit coordinate "
+                                  "filters with DOUBLE DELTA compression"));
   }
 
   return Status::Ok();

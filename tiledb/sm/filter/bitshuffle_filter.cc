@@ -134,8 +134,8 @@ Status BitshuffleFilter::shuffle_part(
 
   switch (bytes_processed) {
     case -1:
-      return LOG_STATUS(Status_FilterError(
-          "Bitshuffle error; Failed to allocate memory."));
+      return LOG_STATUS(
+          Status_FilterError("Bitshuffle error; Failed to allocate memory."));
     case -11:
       return LOG_STATUS(Status_FilterError("Bitshuffle error; Missing SSE."));
     case -12:
@@ -147,9 +147,9 @@ Status BitshuffleFilter::shuffle_part(
       return LOG_STATUS(Status_FilterError(
           "Bitshuffle error; Block size not a multiple of 8."));
     case -91:
-      return LOG_STATUS(Status_FilterError(
-          "Bitshuffle error; Decompression error, wrong "
-          "number of bytes processed."));
+      return LOG_STATUS(
+          Status_FilterError("Bitshuffle error; Decompression error, wrong "
+                             "number of bytes processed."));
     default: {
       if (bytes_processed != (int64_t)part->size())
         return LOG_STATUS(Status_FilterError(
@@ -220,8 +220,8 @@ Status BitshuffleFilter::unshuffle_part(
 
   switch (bytes_processed) {
     case -1:
-      return LOG_STATUS(Status_FilterError(
-          "Bitshuffle error; Failed to allocate memory."));
+      return LOG_STATUS(
+          Status_FilterError("Bitshuffle error; Failed to allocate memory."));
     case -11:
       return LOG_STATUS(Status_FilterError("Bitshuffle error; Missing SSE."));
     case -12:
@@ -233,9 +233,9 @@ Status BitshuffleFilter::unshuffle_part(
       return LOG_STATUS(Status_FilterError(
           "Bitshuffle error; Block size not a multiple of 8."));
     case -91:
-      return LOG_STATUS(Status_FilterError(
-          "Bitshuffle error; Decompression error, wrong "
-          "number of bytes processed."));
+      return LOG_STATUS(
+          Status_FilterError("Bitshuffle error; Decompression error, wrong "
+                             "number of bytes processed."));
     default: {
       if (bytes_processed != (int64_t)part->size())
         return LOG_STATUS(Status_FilterError(

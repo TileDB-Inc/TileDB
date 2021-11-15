@@ -1949,10 +1949,10 @@ Status FragmentMetadata::load_tile_validity_offsets(
   // Get number of tile offsets
   st = buff->read(&tile_validity_offsets_num, sizeof(uint64_t));
   if (!st.ok()) {
-    return LOG_STATUS(Status_FragmentMetadataError(
-        "Cannot load fragment metadata; Reading "
-        "number of validity tile offsets "
-        "failed"));
+    return LOG_STATUS(
+        Status_FragmentMetadataError("Cannot load fragment metadata; Reading "
+                                     "number of validity tile offsets "
+                                     "failed"));
   }
 
   // Get tile offsets
@@ -2349,9 +2349,9 @@ Status FragmentMetadata::write_generic_tile_offsets(Buffer* buff) const {
   for (unsigned i = 0; i < num; ++i) {
     st = buff->write(&gt_offsets_.tile_var_offsets_[i], sizeof(uint64_t));
     if (!st.ok()) {
-      return LOG_STATUS(Status_FragmentMetadataError(
-          "Cannot serialize fragment metadata; "
-          "Writing tile var offsets failed"));
+      return LOG_STATUS(
+          Status_FragmentMetadataError("Cannot serialize fragment metadata; "
+                                       "Writing tile var offsets failed"));
     }
   }
 
@@ -2402,9 +2402,9 @@ Status FragmentMetadata::write_last_tile_cell_num(Buffer* buff) const {
 
   Status st = buff->write(&last_tile_cell_num, sizeof(uint64_t));
   if (!st.ok()) {
-    return LOG_STATUS(Status_FragmentMetadataError(
-        "Cannot serialize fragment metadata; "
-        "Writing last tile cell number failed"));
+    return LOG_STATUS(
+        Status_FragmentMetadataError("Cannot serialize fragment metadata; "
+                                     "Writing last tile cell number failed"));
   }
   return Status::Ok();
 }
@@ -2660,9 +2660,9 @@ Status FragmentMetadata::write_tile_var_sizes(unsigned idx, Buffer* buff) {
     st = buff->write(
         &tile_var_sizes_[idx][0], tile_var_sizes_num * sizeof(uint64_t));
     if (!st.ok()) {
-      return LOG_STATUS(Status_FragmentMetadataError(
-          "Cannot serialize fragment metadata; "
-          "Writing variable tile sizes failed"));
+      return LOG_STATUS(
+          Status_FragmentMetadataError("Cannot serialize fragment metadata; "
+                                       "Writing variable tile sizes failed"));
     }
   }
   return Status::Ok();
@@ -2689,10 +2689,10 @@ Status FragmentMetadata::write_tile_validity_offsets(
   uint64_t tile_validity_offsets_num = tile_validity_offsets_[idx].size();
   st = buff->write(&tile_validity_offsets_num, sizeof(uint64_t));
   if (!st.ok()) {
-    return LOG_STATUS(Status_FragmentMetadataError(
-        "Cannot serialize fragment metadata; "
-        "Writing number of validity tile offsets "
-        "failed"));
+    return LOG_STATUS(
+        Status_FragmentMetadataError("Cannot serialize fragment metadata; "
+                                     "Writing number of validity tile offsets "
+                                     "failed"));
   }
 
   // Write tile offsets

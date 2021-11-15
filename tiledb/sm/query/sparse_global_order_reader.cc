@@ -495,10 +495,9 @@ Status SparseGlobalOrderReader::create_result_tiles(bool* tiles_found) {
                   t);
 
               if (result_tiles_[f].empty())
-                return logger_->status(
-                    Status_SparseGlobalOrderReaderError(
-                        "Cannot load a single tile for fragment, increase memory "
-                        "budget"));
+                return logger_->status(Status_SparseGlobalOrderReaderError(
+                    "Cannot load a single tile for fragment, increase memory "
+                    "budget"));
               break;
             }
             range_it++;
@@ -541,10 +540,9 @@ Status SparseGlobalOrderReader::create_result_tiles(bool* tiles_found) {
                   t);
 
               if (result_tiles_[f].empty())
-                return logger_->status(
-                    Status_SparseGlobalOrderReaderError(
-                        "Cannot load a single tile for fragment, increase memory "
-                        "budget"));
+                return logger_->status(Status_SparseGlobalOrderReaderError(
+                    "Cannot load a single tile for fragment, increase memory "
+                    "budget"));
               break;
             }
           }

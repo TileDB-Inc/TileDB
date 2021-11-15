@@ -400,7 +400,8 @@ Status FilterPipeline::run_reverse_internal(
     const Config& config) const {
   Buffer* const filtered_buffer = tile->filtered_buffer();
   if (filtered_buffer == nullptr)
-    return LOG_STATUS(Status_FilterError("Filter error; tile has null buffer."));
+    return LOG_STATUS(
+        Status_FilterError("Filter error; tile has null buffer."));
 
   assert(tile->buffer());
   assert(tile->buffer()->size() == 0);

@@ -1100,11 +1100,11 @@ class Dimension {
 
     // Check for NAN and INF
     if (std::isinf(domain[0]) || std::isinf(domain[1]))
-      return LOG_STATUS(Status_DimensionError(
-          "Domain check failed; domain contains NaN"));
+      return LOG_STATUS(
+          Status_DimensionError("Domain check failed; domain contains NaN"));
     if (std::isnan(domain[0]) || std::isnan(domain[1]))
-      return LOG_STATUS(Status_DimensionError(
-          "Domain check failed; domain contains NaN"));
+      return LOG_STATUS(
+          Status_DimensionError("Domain check failed; domain contains NaN"));
 
     // Upper bound should not be smaller than lower
     if (domain[1] < domain[0])

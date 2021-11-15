@@ -370,9 +370,8 @@ Status SparseUnorderedWithDupsReader<BitmapType>::create_result_tiles() {
                 f,
                 t);
             if (result_tiles_[0].empty())
-              return logger_->status(
-                  Status_SparseUnorderedWithDupsReaderError(
-                      "Cannot load a single tile, increase memory budget"));
+              return logger_->status(Status_SparseUnorderedWithDupsReaderError(
+                  "Cannot load a single tile, increase memory budget"));
             break;
           }
         }

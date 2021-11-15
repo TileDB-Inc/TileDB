@@ -1051,7 +1051,7 @@ Status query_to_capnp(Query& query, capnp::Query::Builder* query_builder) {
   if (layout == Layout::GLOBAL_ORDER && query.type() == QueryType::WRITE)
     return LOG_STATUS(
         Status_SerializationError("Cannot serialize; global order "
-                                   "serialization not supported for writes."));
+                                  "serialization not supported for writes."));
 
   if (array == nullptr)
     return LOG_STATUS(
@@ -1238,13 +1238,13 @@ Status query_from_capnp(
 
   const auto* schema = query->array_schema();
   if (schema == nullptr)
-    return LOG_STATUS(Status_SerializationError(
-        "Cannot deserialize; array schema is null."));
+    return LOG_STATUS(
+        Status_SerializationError("Cannot deserialize; array schema is null."));
 
   const auto* domain = schema->domain();
   if (domain == nullptr)
-    return LOG_STATUS(Status_SerializationError(
-        "Cannot deserialize; array domain is null."));
+    return LOG_STATUS(
+        Status_SerializationError("Cannot deserialize; array domain is null."));
 
   if (array == nullptr)
     return LOG_STATUS(Status_SerializationError(
@@ -2285,8 +2285,8 @@ Status query_est_result_size_deserialize(
       default: {
         return LOG_STATUS(
             Status_SerializationError("Error deserializing query est result "
-                                       "size; Unknown serialization type "
-                                       "passed"));
+                                      "size; Unknown serialization type "
+                                      "passed"));
       }
     }
   } catch (kj::Exception& e) {

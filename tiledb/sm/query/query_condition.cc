@@ -83,8 +83,7 @@ Status QueryCondition::init(
     const uint64_t condition_value_size,
     const QueryConditionOp op) {
   if (!clauses_.empty()) {
-    return Status_QueryConditionError(
-        "Cannot reinitialize query condition");
+    return Status_QueryConditionError("Cannot reinitialize query condition");
   }
 
   clauses_.emplace_back(

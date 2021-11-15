@@ -1127,14 +1127,14 @@ Status Azure::upload_block(
           length);
 
   if (!result.valid()) {
-    return LOG_STATUS(Status_AzureError(
-        std::string("Upload block failed on: " + blob_path)));
+    return LOG_STATUS(
+        Status_AzureError(std::string("Upload block failed on: " + blob_path)));
   }
 
   azure::storage_lite::storage_outcome<void> outcome = result.get();
   if (!outcome.success()) {
-    return LOG_STATUS(Status_AzureError(
-        std::string("Upload block failed on: " + blob_path)));
+    return LOG_STATUS(
+        Status_AzureError(std::string("Upload block failed on: " + blob_path)));
   }
 
   return Status::Ok();

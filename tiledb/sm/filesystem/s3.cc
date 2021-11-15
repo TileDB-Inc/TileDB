@@ -1515,7 +1515,7 @@ Status S3::flush_direct(const URI& uri) {
   if (md5_hex.str() != put_object_outcome.GetResult().GetETag()) {
     return LOG_STATUS(
         Status_S3Error("Object uploaded successfully, but MD5 hash does not "
-                        "match result from server!' "));
+                       "match result from server!' "));
   }
 
   wait_for_object_to_propagate(

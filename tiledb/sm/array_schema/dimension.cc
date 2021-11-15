@@ -135,9 +135,9 @@ unsigned int Dimension::cell_val_num() const {
 Status Dimension::set_cell_val_num(unsigned int cell_val_num) {
   // Error checkls
   if (datatype_is_string(type_) && cell_val_num != constants::var_num)
-    return LOG_STATUS(Status_DimensionError(
-        "Cannot set non-variable number of values per "
-        "coordinate for a string dimension"));
+    return LOG_STATUS(
+        Status_DimensionError("Cannot set non-variable number of values per "
+                              "coordinate for a string dimension"));
   if (!datatype_is_string(type_) && cell_val_num != 1)
     return LOG_STATUS(Status_DimensionError(
         "Cannot set number of values per coordinate; Currently only one value "
@@ -1608,8 +1608,9 @@ Status Dimension::set_filter_pipeline(const FilterPipeline* pipeline) {
   for (unsigned i = 0; i < pipeline->size(); ++i) {
     if (datatype_is_real(type_) &&
         pipeline->get_filter(i)->type() == FilterType::FILTER_DOUBLE_DELTA)
-      return LOG_STATUS(Status_DimensionError("Cannot set DOUBLE DELTA filter to a "
-                                        "dimension with a real datatype"));
+      return LOG_STATUS(
+          Status_DimensionError("Cannot set DOUBLE DELTA filter to a "
+                                "dimension with a real datatype"));
   }
 
   filters_ = *pipeline;
@@ -1701,15 +1702,15 @@ Status Dimension::set_null_tile_extent_to_range() {
     case Datatype::STRING_ASCII:
       return Status::Ok();  // Do nothing for strings
     default:
-      return LOG_STATUS(Status_DimensionError(
-          "Cannot set null tile extent to domain range; "
-          "Invalid dimension domain type"));
+      return LOG_STATUS(
+          Status_DimensionError("Cannot set null tile extent to domain range; "
+                                "Invalid dimension domain type"));
   }
 
   assert(false);
-  return LOG_STATUS(Status_DimensionError(
-      "Cannot set null tile extent to domain range; "
-      "Unsupported dimension type"));
+  return LOG_STATUS(
+      Status_DimensionError("Cannot set null tile extent to domain range; "
+                            "Unsupported dimension type"));
 }
 
 template <class T>
@@ -1871,8 +1872,8 @@ Status Dimension::check_tile_extent() const {
 template <class T>
 Status Dimension::check_tile_extent() const {
   if (domain_.empty())
-    return LOG_STATUS(Status_DimensionError(
-        "Tile extent check failed; Domain not set"));
+    return LOG_STATUS(
+        Status_DimensionError("Tile extent check failed; Domain not set"));
 
   if (!tile_extent_)
     return Status::Ok();
@@ -1889,8 +1890,9 @@ Status Dimension::check_tile_extent() const {
           "Tile extent check failed; Tile extent must be greater than 0"));
 
     if (*tile_extent > (domain[1] - domain[0] + 1))
-      return LOG_STATUS(Status_DimensionError("Tile extent check failed; Tile extent "
-                                        "exceeds dimension domain range"));
+      return LOG_STATUS(
+          Status_DimensionError("Tile extent check failed; Tile extent "
+                                "exceeds dimension domain range"));
   } else {
     // Check if tile extent is 0
     if (*tile_extent == 0)
@@ -1900,8 +1902,9 @@ Status Dimension::check_tile_extent() const {
     // Check if tile extent exceeds domain
     uint64_t range = (uint64_t)domain[1] - (uint64_t)domain[0] + 1;
     if (uint64_t(*tile_extent) > range)
-      return LOG_STATUS(Status_DimensionError("Tile extent check failed; Tile extent "
-                                        "exceeds dimension domain range"));
+      return LOG_STATUS(
+          Status_DimensionError("Tile extent check failed; Tile extent "
+                                "exceeds dimension domain range"));
 
     // In the worst case one tile extent will be added to the upper domain
     // for the dense case, so check if the expanded domain will exceed type

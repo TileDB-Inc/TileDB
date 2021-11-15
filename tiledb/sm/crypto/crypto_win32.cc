@@ -113,8 +113,8 @@ Status Win32CNG::encrypt_aes256gcm(
           sizeof(BCRYPT_CHAIN_MODE_GCM),
           0))) {
     BCryptCloseAlgorithmProvider(alg_handle, 0);
-    return LOG_STATUS(Status_EncryptionError(
-        "Win32CNG error; error setting chaining mode."));
+    return LOG_STATUS(
+        Status_EncryptionError("Win32CNG error; error setting chaining mode."));
   }
 
   // Initialize authentication info struct.
@@ -155,8 +155,8 @@ Status Win32CNG::encrypt_aes256gcm(
           key_buffer.size(),
           0))) {
     BCryptCloseAlgorithmProvider(alg_handle, 0);
-    return LOG_STATUS(Status_EncryptionError(
-        "Win32CNG error; error importing key blob."));
+    return LOG_STATUS(
+        Status_EncryptionError("Win32CNG error; error importing key blob."));
   }
 
   // Encrypt the input.
@@ -174,7 +174,8 @@ Status Win32CNG::encrypt_aes256gcm(
           0))) {
     BCryptDestroyKey(key_handle);
     BCryptCloseAlgorithmProvider(alg_handle, 0);
-    return LOG_STATUS(Status_EncryptionError("Win32CNG error; error encrypting."));
+    return LOG_STATUS(
+        Status_EncryptionError("Win32CNG error; error encrypting."));
   }
 
   output->advance_size(output_len);
@@ -217,8 +218,8 @@ Status Win32CNG::decrypt_aes256gcm(
           sizeof(BCRYPT_CHAIN_MODE_GCM),
           0))) {
     BCryptCloseAlgorithmProvider(alg_handle, 0);
-    return LOG_STATUS(Status_EncryptionError(
-        "Win32CNG error; error setting chaining mode."));
+    return LOG_STATUS(
+        Status_EncryptionError("Win32CNG error; error setting chaining mode."));
   }
 
   // Initialize authentication info struct.
@@ -259,8 +260,8 @@ Status Win32CNG::decrypt_aes256gcm(
           key_buffer.size(),
           0))) {
     BCryptCloseAlgorithmProvider(alg_handle, 0);
-    return LOG_STATUS(Status_EncryptionError(
-        "Win32CNG error; error importing key blob."));
+    return LOG_STATUS(
+        Status_EncryptionError("Win32CNG error; error importing key blob."));
   }
 
   // Decrypt the input.
@@ -278,7 +279,8 @@ Status Win32CNG::decrypt_aes256gcm(
           0))) {
     BCryptDestroyKey(key_handle);
     BCryptCloseAlgorithmProvider(alg_handle, 0);
-    return LOG_STATUS(Status_EncryptionError("Win32CNG error; error decrypting."));
+    return LOG_STATUS(
+        Status_EncryptionError("Win32CNG error; error decrypting."));
   }
 
   if (output->owns_data())
@@ -356,8 +358,7 @@ Status Win32CNG::hash_bytes(
   // close the hash
   if (!NT_SUCCESS(BCryptFinishHash(
           hash, (PUCHAR)output->data(), output->alloced_size(), 0))) {
-    return Status_ChecksumError(
-        "Win32CNG error; could not close hash object.");
+    return Status_ChecksumError("Win32CNG error; could not close hash object.");
   }
 
   return Status::Ok();

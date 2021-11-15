@@ -252,8 +252,8 @@ Status Metadata::get(
     build_metadata_index();
 
   if (index >= metadata_index_.size())
-    return LOG_STATUS(Status_MetadataError(
-        "Cannot get metadata; index out of bounds"));
+    return LOG_STATUS(
+        Status_MetadataError("Cannot get metadata; index out of bounds"));
 
   // Get key
   auto& key_str = *(metadata_index_[index].first);
