@@ -1770,7 +1770,8 @@ Status Query::set_layout(Layout layout) {
     return logger_->status(Status::QueryError(
         "Cannot set layout; Hilbert order is not applicable to queries"));
 
-  if (array_schema_->dense() && layout == Layout::UNORDERED) {
+  if (type_ == QueryType::WRITE && array_schema_->dense() &&
+      layout == Layout::UNORDERED) {
     return logger_->status(Status::QueryError(
         "Unordered writes are only possible for sparse arrays"));
   }
