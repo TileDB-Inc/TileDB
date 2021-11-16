@@ -54,7 +54,7 @@ You can find the detailed TileDB documentation at [https://docs.tiledb.com](http
 
 ## Building from source
 
-Please see [building from source](https://docs.tiledb.com/main/solutions/tiledb-embedded/installation/building-from-source) in
+Please see [building from source](https://docs.tiledb.com/main/how-to/installation/building-from-source) in
 the documentation.
 
 ## Format Specification
