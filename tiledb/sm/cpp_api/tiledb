@@ -43,6 +43,7 @@
 #include "deleter.h"
 #include "dimension.h"
 #include "domain.h"
+#include "error.h"
 #include "exception.h"
 #include "filter.h"
 #include "filter_list.h"
