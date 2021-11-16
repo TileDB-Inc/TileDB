@@ -14,7 +14,7 @@ env:
   TILEDB_AZURE: ON
   TILEDB_STATIC: OFF
   TILEDB_ARROW_TESTS: ON
-  CXX: g++
+  #CXX: g++
 
 jobs:
   build:
@@ -24,13 +24,18 @@ jobs:
         #os: [ubuntu-20.04, macos-10.15]
         #os: [macos-10.15]
         os:
-          #- ubuntu-20.04
+          #~ - ubuntu-20.04
+            #~ cxx: g++
+            #~ tiledb_serialization: OFF
+            #~ artifact_os: macOS_azure
+            #~ tiledb_try_png_ingestion: ON
           - macos-10.15
         include:
           - os: 'macos-10.15'
             cxx: clang++
             tiledb_serialization: ON
             artifact_os: macOS_azure
+            try_png_ingestion: OFF
     if: ${{ startsWith(github.ref , 'refs/tags') != true && startsWith(github.ref , 'build-') != true }}
     timeout-minutes: 90
     #name: Build - ubuntu-20.04 - AZURE
@@ -41,6 +46,7 @@ jobs:
       CXX: ${{ matrix.cxx }}
       TILEDB_SERIALIZATION: ${{ matrix.tiledb_serialization }}
       ARTIFACT_OS: ${{ matrix.artifact_os }}
+      TILEDB_TRY_PNG_INGESTION: ${{ matrix.try_png_ingestion }}
     steps:
       - uses: actions/checkout@v2
 
@@ -116,15 +122,18 @@ jobs:
           ./ExampleExe
 
           popd
-          # Build and run the PNG ingestion example.
-          # libpng (example dependency)
-          sudo apt-get install libpng-dev
+          
+          if [[ $TILEDB_TRY_PNG_INGESTION == "ON" ]]; then
+            # Build and run the PNG ingestion example.
+            # libpng (example dependency)
+            sudo apt-get install libpng-dev
 
-          pushd $GITHUB_WORKSPACE/examples/png_ingestion;
-          mkdir build && cd build;
-          cmake -DCMAKE_PREFIX_PATH=$GITHUB_WORKSPACE/dist .. && make;
-          ./tiledb_png $GITHUB_WORKSPACE/doc/source/figures/Scarlet-Macaw-small.png /tmp/pngarray output.png;
-          popd;
+            pushd $GITHUB_WORKSPACE/examples/png_ingestion;
+            mkdir build && cd build;
+            cmake -DCMAKE_PREFIX_PATH=$GITHUB_WORKSPACE/dist .. && make;
+            ./tiledb_png $GITHUB_WORKSPACE/doc/source/figures/Scarlet-Macaw-small.png /tmp/pngarray output.png;
+            popd;
+          fi
 
           source $GITHUB_WORKSPACE/scripts/ci/build_benchmarks.sh
 
