@@ -191,7 +191,7 @@ Status SparseGlobalOrderReader::dowork() {
         }
       }
 
-      // Compute the tile bitmaps.
+      // Read and unfilter coords.
       RETURN_NOT_OK(read_and_unfilter_coords(true, &tmp_result_tiles));
 
       // Compute the tile bitmaps.

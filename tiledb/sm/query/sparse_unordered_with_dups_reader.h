@@ -139,34 +139,89 @@ class SparseUnorderedWithDupsReader : public SparseIndexReaderBase,
   /** Create the result tiles. */
   Status create_result_tiles();
 
-  /** Copy offsets. */
+  /** Copy offsets tile. */
   template <class OffType>
-  Status copy_offsets(
+  Status copy_offsets_tile(
       const std::string& name,
+      const bool nullable,
+      const OffType offset_div,
       ResultTileWithBitmap<BitmapType>* rt,
       OffType* buffer,
+      uint8_t* val_buffer,
+      void** var_data);
+
+  /** Copy offsets tiles. */
+  template <class OffType>
+  Status copy_offsets_tiles(
+      const std::string& name,
       const bool nullable,
+      const OffType offset_div,
+      const uint64_t max_rt_idx,
+      OffType* buffer,
       uint8_t* val_buffer,
       void** var_data,
-      const OffType div);
+      uint64_t* global_cell_offset,
+      typename std::list<ResultTileWithBitmap<BitmapType>>::iterator*
+          result_tiles_it);
 
-  /** Copy fixed size data. */
-  Status copy_fixed_data(
+  /** Copy var data tile. */
+  template <class OffType>
+  Status copy_var_data_tile(
+      const bool last_tile,
+      const uint64_t cell_offset,
+      const uint64_t offset_div,
+      const uint64_t last_offset,
+      const ResultTileWithBitmap<BitmapType>* rt,
+      const void** var_data,
+      const OffType* offsets_buffer,
+      uint8_t* var_data_buffer);
+
+  /** Copy var data tiles. */
+  template <class OffType>
+  Status copy_var_data_tiles(
+      const OffType offset_div,
+      const uint64_t last_offset,
+      const uint64_t max_rt_idx,
+      OffType* offsets_buffer,
+      uint8_t* var_data_buffer,
+      const void** var_data,
+      uint64_t* global_cell_offset);
+
+  /** Copy fixed size data tile. */
+  Status copy_fixed_data_tile(
       const std::string& name,
+      const bool is_dim,
+      const bool nullable,
+      const unsigned dim_idx,
+      const uint64_t cell_size,
       ResultTileWithBitmap<BitmapType>* rt,
       uint8_t* buffer,
-      const bool nullable,
-      uint8_t* val_buffer,
-      const uint64_t cell_size,
+      uint8_t* val_buffer);
+
+  /** Copy fixed size data tiles. */
+  Status copy_fixed_data_tiles(
+      const std::string& name,
       const bool is_dim,
-      const unsigned dim_idx);
+      const bool nullable,
+      const uint64_t dim_idx,
+      const uint64_t max_rt_idx,
+      const uint64_t cell_size,
+      uint8_t* buffer,
+      uint8_t* val_buffer,
+      uint64_t* global_cell_offset,
+      typename std::list<ResultTileWithBitmap<BitmapType>>::iterator*
+          result_tiles_it);
 
   /** Compute initial max rt index for the copy. */
   Status compute_initial_copy_bound(uint64_t* max_rt_idx);
 
+  /** Read and unfilter an attribute. */
+  Status read_and_unfilter_attribute(
+      const std::string& name, std::vector<ResultTile*>* result_tiles);
+
   /** Copy tiles. */
   template <class OffType>
-  Status copy_tiles();
+  Status process_tiles();
 
   /** Remove a result tile from memory */
   Status remove_result_tile(

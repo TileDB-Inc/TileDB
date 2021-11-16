@@ -396,14 +396,14 @@ Status ReaderBase::init_tile_nullable(
 Status ReaderBase::read_attribute_tiles(
     const std::vector<std::string>* names,
     const std::vector<ResultTile*>* result_tiles) const {
-  auto timer_se = stats_->start_timer("attr_tiles");
+  auto timer_se = stats_->start_timer("read_attribute_tiles");
   return read_tiles(names, result_tiles);
 }
 
 Status ReaderBase::read_coordinate_tiles(
     const std::vector<std::string>* names,
     const std::vector<ResultTile*>* result_tiles) const {
-  auto timer_se = stats_->start_timer("coord_tiles");
+  auto timer_se = stats_->start_timer("read_coordinate_tiles");
   return read_tiles(names, result_tiles);
 }
 
