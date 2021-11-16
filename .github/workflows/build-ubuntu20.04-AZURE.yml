@@ -25,10 +25,10 @@ jobs:
         os:
           #- ubuntu-20.04
           - macos-10.15
-            env:
-              CXX: clang++
-              TILEDB_SERIALIZATION: ON
-              ARTIFACT_OS: macOS_azure
+            #doesn't like this.... env:
+            CXX: clang++
+            TILEDB_SERIALIZATION: ON
+            ARTIFACT_OS: macOS_azure
         include:
           - os: 'macos-10.15'
     if: ${{ startsWith(github.ref , 'refs/tags') != true && startsWith(github.ref , 'build-') != true }}
