@@ -22,7 +22,15 @@ jobs:
     strategy:
       matrix:
         #os: [ubuntu-20.04, macos-10.15]
-        os: [macos-10.15]
+        os:
+          #- ubuntu-20.04
+          - macos-10.15
+            env:
+              CXX: clang++
+              TILEDB_SERIALIZATION: ON
+              ARTIFACT_OS: macOS_azure
+        include:
+          - os: 'macos-10.15'
     if: ${{ startsWith(github.ref , 'refs/tags') != true && startsWith(github.ref , 'build-') != true }}
     timeout-minutes: 90
     #name: Build - ubuntu-20.04 - AZURE
@@ -33,17 +41,17 @@ jobs:
     steps:
       - uses: actions/checkout@v2
 
-      - name: 'prep env'
-        run: |
-          if [[ $TILEDB_GA_IMAGE_NAME == 'ubuntu-20.04' ]] ; then
-            echo "CXX=g++" >> "$GITHUB_ENV"
-          fi
-          if [[ $TILEDB_GA_IMAGE_NAME == 'macos-10.15' ]] ; then
-            echo "CXX=clang++" >> "$GITHUB_ENV"
-            echo "TILEDB_SERIALIZATION=ON" >> "$GITHUB_ENV"
-            echo "ARTIFACT_OS=macOS_azure" >> "$GITHUB_ENV"
-          fi
-        shell: bash
+      #~ - name: 'prep env'
+        #~ run: |
+          #~ if [[ $TILEDB_GA_IMAGE_NAME == 'ubuntu-20.04' ]] ; then
+            #~ echo "CXX=g++" >> "$GITHUB_ENV"
+          #~ fi
+          #~ if [[ $TILEDB_GA_IMAGE_NAME == 'macos-10.15' ]] ; then
+            #~ echo "CXX=clang++" >> "$GITHUB_ENV"
+            #~ echo "TILEDB_SERIALIZATION=ON" >> "$GITHUB_ENV"
+            #~ echo "ARTIFACT_OS=macOS_azure" >> "$GITHUB_ENV"
+          #~ fi
+        #~ shell: bash
         
       - name: 'Print env'
         run: |
