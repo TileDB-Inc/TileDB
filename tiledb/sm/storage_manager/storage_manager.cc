@@ -356,14 +356,16 @@ Status StorageManager::array_open_for_writes(
 
   // No shared filelock needed to be acquired
 
-  // Load latest array schema if not fetched already
-  if (open_array->array_schema() == nullptr) {
-    auto st = load_array_schema(array_uri, open_array, encryption_key);
-    if (!st.ok()) {
-      open_array->mtx_unlock();
-      array_close_for_writes(array_uri, encryption_key, nullptr);
-      return st;
-    }
+  // When opening the array we want to always reload the schema
+  // Fragments are always relisted, now with schema evolution we
+  // need to make sure we list out any new schemas too.
+  // Fragment listing is significantly slower than listing schemas
+  // and they happen in parallel so this is low impact
+  auto st = load_array_schema(array_uri, open_array, encryption_key);
+  if (!st.ok()) {
+    open_array->mtx_unlock();
+    array_close_for_writes(array_uri, encryption_key, nullptr);
+    return st;
   }
 
   // This library should not be able to write to newer-versioned arrays
@@ -1994,7 +1996,7 @@ Status StorageManager::load_all_array_schemas(
 
   std::vector<URI> schema_uris;
   RETURN_NOT_OK(get_array_schema_uris(array_uri, &schema_uris));
-  if (schema_uris.size() == 0) {
+  if (schema_uris.empty()) {
     return logger_->status(Status::StorageManagerError(
         "Can not get the array schema vector; No array schemas found."));
   }
@@ -2529,14 +2531,16 @@ Status StorageManager::array_open_without_fragments(
     return st;
   }
 
-  // Load array schema if not fetched already
-  if ((*open_array)->array_schema() == nullptr) {
-    auto st = load_array_schema(array_uri, *open_array, encryption_key);
-    if (!st.ok()) {
-      (*open_array)->mtx_unlock();
-      array_close_for_reads(array_uri);
-      return st;
-    }
+  // When opening the array we want to always reload the schema
+  // Fragments are always relisted, now with schema evolution we
+  // need to make sure we list out any new schemas too.
+  // Fragment listing is significantly slower than listing schemas
+  // and they happen in parallel so this is low impact
+  st = load_array_schema(array_uri, *open_array, encryption_key);
+  if (!st.ok()) {
+    (*open_array)->mtx_unlock();
+    array_close_for_reads(array_uri);
+    return st;
   }
 
   return Status::Ok();
