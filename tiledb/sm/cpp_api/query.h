@@ -852,6 +852,10 @@ class Query {
 
   /**
    * Retrieves the estimated result size for a fixed-size attribute.
+   * This is an estimate and may not be sufficient to read all results for the
+   * requested range, for sparse arrays or array with
+   * var-length attributes.
+   * Query status must be checked and resubmitted if not complete.
    *
    * **Example:**
    *
@@ -872,6 +876,10 @@ class Query {
 
   /**
    * Retrieves the estimated result size for a variable-size attribute.
+   * This is an estimate and may not be sufficient to read all results for
+   * the requested ranges, for sparse arrays or any array with
+   * var-length attributes.
+   * Query status must be checked and resubmitted if not complete.
    *
    * **Example:**
    *
@@ -900,6 +908,10 @@ class Query {
 
   /**
    * Retrieves the estimated result size for a fixed-size, nullable attribute.
+   * This is an estimate and may not be sufficient to read all results for
+   * the requested ranges, for sparse arrays or any array with
+   * var-length attributes.
+   * Query status must be checked and resubmitted if not complete.
    *
    * **Example:**
    *

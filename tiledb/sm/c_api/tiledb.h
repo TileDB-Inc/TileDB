@@ -4712,6 +4712,10 @@ TILEDB_EXPORT int32_t tiledb_query_get_range_var_from_name(
 
 /**
  * Retrieves the estimated result size for a fixed-sized attribute/dimension.
+ * This is an estimate and may not be sufficient to read all results for the
+ * requested range, in particular for sparse arrays or array with
+ * var-length attributes.
+ * Query status must be checked and resubmitted if not complete.
  *
  * **Example:**
  *
@@ -4734,6 +4738,10 @@ TILEDB_EXPORT int32_t tiledb_query_get_est_result_size(
 
 /**
  * Retrieves the estimated result size for a var-sized attribute/dimension.
+ * This is an estimate and may not be sufficient to read all results for the
+ * requested range, for sparse arrays or any array with
+ * var-length attributes.
+ * Query status must be checked and resubmitted if not complete.
  *
  * **Example:**
  *
@@ -4759,6 +4767,10 @@ TILEDB_EXPORT int32_t tiledb_query_get_est_result_size_var(
 
 /**
  * Retrieves the estimated result size for a fixed-sized, nullable attribute.
+ * This is an estimate and may not be sufficient to read all results for the
+ * requested range, for sparse arrays or any array with
+ * var-length attributes.
+ * Query status must be checked and resubmitted if not complete.
  *
  * **Example:**
  *
