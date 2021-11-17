@@ -98,6 +98,8 @@ jobs:
           ls -ld /cores
           ulimit -c
           which crash
+          which groups
+          groups
           pwd; ls -la ./
           echo "starting permissions test of https://stackoverflow.com/a/21308843"
           sync
