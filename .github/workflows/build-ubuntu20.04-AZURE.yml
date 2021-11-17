@@ -152,6 +152,8 @@ jobs:
           echo "check /cores 1"
           ls -ld /cores
           ls -la /cores
+          nfiles=$(ls /cores | wc -l)
+          echo "found $nfiles core files"
           
       - uses: actions/checkout@v2
 
@@ -249,9 +251,15 @@ jobs:
           #echo -e "import resource as res\nprint(res.getrlimit(res.RLIMIT_CORE))\nres.setrlimit(res.RLIMIT_CORE,(res.RLIM_INFINITY,res.RLIM_INFINITY))\nprint(res.getrlimit(res.RLIMIT_CORE))\nimport os \nos.abort()" | python3
           
       - name: 'nobuild - Save cores dump stacks if any'
-        if: ${{ failure() == true && startsWith(matrix.os, 'macos-') == true }} # only run this job if the build step failed
+        #if: ${{ failure() == true && startsWith(matrix.os, 'macos-') == true }} # only run this job if the build step failed
+        if: ${{ always() == true   && startsWith(matrix.os, 'macos-') == true }} # only run this job if the build step failed
         run: |
           pwd; ls -la ./
+          nfiles=$(ls /cores | wc -l)
+          if [[ $nfiles -eq 0 ]]; then
+            echo "no core files found"
+            exit 0
+          fi
           cd $TILEDB_HOME
           pwd; ls -la ./
           #ls -la ./tdbcores
@@ -259,6 +267,11 @@ jobs:
           find . -name '*core*'
           echo 'done hunting *core* files'
           ls -la /cores
+          for f in $(find $TILEDB_HOME/tdbcores);
+            do
+              echo "stack trace for $f"
+              lldb -c $f --batch -o 'bt all' -o 'quit'
+            done;
           mkdir $TILEDB_HOME/tdbcores
           mv /cores/core.* $TILEDB_HOME/tdbcores/core.1
           ls -la $TILEDB_HOME/tdbcores
@@ -266,6 +279,7 @@ jobs:
           lldb -c $TILEDB_HOME/tdbcores/core.1 --batch -o 'bt all' -o 'quit'
           #for f in $(find $TILEDB_HOME/tdbcores);
           #  do
+          #    echo "stack trace for $f"
           #    lldb -c $f --batch -o 'bt all' -o 'quit'
           #  done;
 
