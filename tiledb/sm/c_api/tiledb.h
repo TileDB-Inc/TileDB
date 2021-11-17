@@ -42,6 +42,15 @@
 #include <stdint.h>
 #include <stdio.h>
 
+/* ****************************** */
+/*            CONSTANTS           */
+/* ****************************** */
+
+#define TILEDB_FILTER_GZIP_DEFAULT_LEVEL -1
+#define TILEDB_FILTER_ZSTD_DEFAULT_LEVEL 3
+#define TILEDB_FILTER_LZ4_DEFAULT_LEVEL -1
+#define TILEDB_FILTER_BZIP_DEFAULT_LEVEL 1
+
 /* ********************************* */
 /*               MACROS              */
 /* ********************************* */

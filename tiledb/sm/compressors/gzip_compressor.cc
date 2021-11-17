@@ -90,6 +90,11 @@ Status GZip::compress(
   return Status::Ok();
 }
 
+Status GZip::compress(ConstBuffer* input_buffer, Buffer* output_buffer) {
+  return GZip::compress(
+      TILEDB_FILTER_GZIP_DEFAULT_LEVEL, input_buffer, output_buffer);
+}
+
 Status GZip::decompress(
     ConstBuffer* input_buffer, PreallocatedBuffer* output_buffer) {
   // Sanity check

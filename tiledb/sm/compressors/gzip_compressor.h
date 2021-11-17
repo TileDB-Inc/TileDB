@@ -33,6 +33,7 @@
 #ifndef TILEDB_GZIP_H
 #define TILEDB_GZIP_H
 
+#include "tiledb.h"
 #include "tiledb/common/status.h"
 
 #include <cmath>
@@ -53,12 +54,22 @@ class GZip {
    * Compression function.
    *
    * @param level Compression level.
+   *  Use TILEDB_FILTER_GZIP_DEFAULT_LEVEL for GZip's default level.
    * @param input_buffer Input buffer to read from.
    * @param output_buffer Output buffer to write to the compressed data.
    * @return Status
    */
   static Status compress(
       int level, ConstBuffer* input_buffer, Buffer* output_buffer);
+
+  /**
+   * Overloaded compression function with default compression level.
+   *
+   * @param input_buffer Input buffer to read from.
+   * @param output_buffer Output buffer to write to the compressed data.
+   * @return Status
+   */
+  static Status compress(ConstBuffer* input_buffer, Buffer* output_buffer);
 
   /**
    * Decompression function.
@@ -80,7 +91,7 @@ class GZip {
 
   /** Returns the default compression level. */
   static int default_level() {
-    return -1;
+    return TILEDB_FILTER_GZIP_DEFAULT_LEVEL;
   }
 };
 

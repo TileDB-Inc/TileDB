@@ -78,6 +78,11 @@ Status LZ4::compress(
   return Status::Ok();
 }
 
+Status LZ4::compress(ConstBuffer* input_buffer, Buffer* output_buffer) {
+  return LZ4::compress(
+      TILEDB_FILTER_LZ4_DEFAULT_LEVEL, input_buffer, output_buffer);
+}
+
 Status LZ4::decompress(
     ConstBuffer* input_buffer, PreallocatedBuffer* output_buffer) {
   // Sanity check

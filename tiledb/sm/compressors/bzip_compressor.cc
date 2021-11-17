@@ -91,6 +91,11 @@ Status BZip::compress(
   return Status::Ok();
 }
 
+Status BZip::compress(ConstBuffer* input_buffer, Buffer* output_buffer) {
+  return BZip::compress(
+      TILEDB_FILTER_BZIP_DEFAULT_LEVEL, input_buffer, output_buffer);
+}
+
 Status BZip::decompress(
     ConstBuffer* input_buffer, PreallocatedBuffer* output_buffer) {
   // Sanity check

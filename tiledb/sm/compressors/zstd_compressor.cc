@@ -63,7 +63,7 @@ Status ZStd::compress(
       output_buffer->free_space(),
       input_buffer->data(),
       input_buffer->size(),
-      level < 0 ? ZStd::default_level() : level);
+      level < -7 ? ZStd::default_level() : level);
 
   // Handle error
   if (ZSTD_isError(zstd_ret) != 0) {
@@ -77,6 +77,11 @@ Status ZStd::compress(
   output_buffer->advance_offset(zstd_ret);
 
   return Status::Ok();
+}
+
+Status ZStd::compress(ConstBuffer* input_buffer, Buffer* output_buffer) {
+  return ZStd::compress(
+      TILEDB_FILTER_ZSTD_DEFAULT_LEVEL, input_buffer, output_buffer);
 }
 
 Status ZStd::decompress(

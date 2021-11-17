@@ -33,6 +33,7 @@
 #ifndef TILEDB_BZIP_COMPRESSOR_H
 #define TILEDB_BZIP_COMPRESSOR_H
 
+#include "tiledb.h"
 #include "tiledb/common/status.h"
 
 using namespace tiledb::common;
@@ -51,12 +52,22 @@ class BZip {
    * Compression function.
    *
    * @param level Compression level.
+   *  Use TILEDB_FILTER_BZIP_DEFAULT_LEVEL for BZip's default level.
    * @param input_buffer Input buffer to read from.
    * @param output_buffer Output buffer to write to the compressed data.
    * @return Status
    */
   static Status compress(
       int level, ConstBuffer* input_buffer, Buffer* output_buffer);
+
+  /**
+   * Overloaded compression function with default compression level.
+   *
+   * @param input_buffer Input buffer to read from.
+   * @param output_buffer Output buffer to write to the compressed data.
+   * @return Status
+   */
+  static Status compress(ConstBuffer* input_buffer, Buffer* output_buffer);
 
   /**
    * Decompression function.
@@ -70,7 +81,7 @@ class BZip {
 
   /** Returns the default compression level. */
   static int default_level() {
-    return 1;
+    return TILEDB_FILTER_BZIP_DEFAULT_LEVEL;
   }
 
   /** Returns the compression overhead for the given input. */
