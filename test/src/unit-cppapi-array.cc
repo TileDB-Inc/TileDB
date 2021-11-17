@@ -1592,11 +1592,10 @@ TEST_CASE(
     vfs.remove_dir(array_name);
 }
 
-TEST_CASE("C++ API: Truncated values (ch12024)", "[cppapi][sparse]") {
+TEST_CASE("C++ API: Truncated values in error messages", "[cppapi][sparse][defect-exhibit][sc-12024]") {
   const std::string array_name_1d = "cpp_unit_array_1d";
   Context ctx;
   VFS vfs(ctx);
-
   if (vfs.is_dir(array_name_1d))
     vfs.remove_dir(array_name_1d);
 
@@ -1612,31 +1611,45 @@ TEST_CASE("C++ API: Truncated values (ch12024)", "[cppapi][sparse]") {
 
   std::vector<int> a = {42};
   std::vector<double> coords;
-  {
-    Query q(ctx, array, TILEDB_WRITE);
-    q.set_layout(TILEDB_GLOBAL_ORDER);
-    q.set_data_buffer("a", a);
+  Query q(ctx, array, TILEDB_WRITE);
+  q.set_layout(TILEDB_GLOBAL_ORDER);
+  q.set_data_buffer("a", a);
+
+  SECTION("Z out of bounds below") {
     coords = {139200.35, -682.75};
     q.set_coordinates(coords);
-    REQUIRE_THROWS_WITH(
-        q.submit(),
-        "[TileDB::Dimension] Error: Coordinate -682.75 is out of domain "
-        "bounds [-682.74, 929.43] on dimension 'Z'");
+    SECTION("Should throw") {
+      REQUIRE_THROWS(q.submit());
+    }
+    SECTION("Should throw with specific error") {
+      REQUIRE_THROWS_WITH(
+          q.submit(),
+          "[TileDB::Dimension] Error: Coordinate -682.75 is out of domain "
+          "bounds [-682.74, 929.43] on dimension 'Z'");
+    }
   }
-  {
-    Query q(ctx, array, TILEDB_WRITE);
-    q.set_layout(TILEDB_GLOBAL_ORDER);
-    q.set_data_buffer("a", a);
+  SECTION("Y at lower bound") {
+    coords = {139200.34375, -682.73};
+    q.set_coordinates(coords);
+    SECTION("Should not throw") {
+      REQUIRE_NOTHROW(q.submit());
+    }
+  }
+  SECTION ("Y out of bounds below") {
     coords = {139200.34, -682.73};
     q.set_coordinates(coords);
-    REQUIRE_THROWS_WITH(
-        q.submit(),
-        "[TileDB::Dimension] Error: Coordinate 139200.34 is out of domain "
-        "bounds [139200.34, 140000.19] on dimension 'Y'");
+    SECTION("Should throw") {
+      REQUIRE_THROWS(q.submit());
+    }
+    SECTION("Should throw with specific error") {
+      REQUIRE_THROWS_WITH(
+          q.submit(),
+          "[TileDB::Dimension] Error: Coordinate 139200.34 is out of domain "
+          "bounds [139200.34, 140000.19] on dimension 'Y'");
+    }
   }
 
   array.close();
-
   if (vfs.is_dir(array_name_1d))
     vfs.remove_dir(array_name_1d);
 }
