@@ -267,7 +267,7 @@ jobs:
           find . -name '*core*'
           echo 'done hunting *core* files'
           ls -la /cores
-          for f in $(find $TILEDB_HOME/tdbcores);
+          for f in $(find /cores);
             do
               echo "stack trace for $f"
               lldb -c $f --batch -o 'bt all' -o 'quit'
