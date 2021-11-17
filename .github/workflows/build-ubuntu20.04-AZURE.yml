@@ -96,15 +96,18 @@ jobs:
           ls -la /cores
           ulimit -c
           pwd; ls -la ./
+          echo "starting permissions test of https://stackoverflow.com/a/21308843"
           touch /cores/test
           ls -la /cores
           rm /cores/test
+          echo "done permissions test"
           ls -la /cores
           #https://stackoverflow.com/a/21308843
+          echo "starting effort of https://stackoverflow.com/a/21308843"
           ulimit -c unlimited
           sleep 100 &
           sleeppid=$!
-          echo "about to killall..."
+          echo "sleeppid $sleeppid, about to killall..."
           #killall -SIGSEGV sleep # then press enter... huh?
           killall -SIGILL sleep # then press enter... huh?
           sleep 5
