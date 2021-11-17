@@ -329,8 +329,10 @@ jobs:
             cat /var/log/apport.log
           fi
           which lldb
+          sync
           #cd $TILEDB_HOME
-          mkdir $TILEDB_HOME/tdbcores
+          mkdir -p $TILEDB_HOME/tdbcores
+          sync
           #ls -la ./tdbcores
           #echo 'hunting core* files'
           #find . -name 'core*'
