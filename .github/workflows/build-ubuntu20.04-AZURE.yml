@@ -328,6 +328,7 @@ jobs:
           if [[ -f /var/log/apport.log ]]; then
             cat /var/log/apport.log
           fi
+          echo $PATH
           #which lldb
           #sync
           #cd $TILEDB_HOME
@@ -336,6 +337,8 @@ jobs:
           if [[ ! -d $TILEDB_HOME/tdbcores ]]; then
             mkdir -p $TILEDB_HOME/tdbcores
           fi
+          ls -ld $TILEDB_HOME/tdbcores
+          ls -la $TILEDB_HOME/tdbcores
           sync
           #ls -la ./tdbcores
           #echo 'hunting core* files'
