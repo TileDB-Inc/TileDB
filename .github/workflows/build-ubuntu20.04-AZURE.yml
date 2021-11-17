@@ -132,14 +132,14 @@ jobs:
           sleeppid=$!
           echo "sleeppid $sleeppid, about to killall..."
           #killall -SIGSEGV sleep # then press enter... huh?
-          killall -SIGILL sleep # then press enter... huh?
-          sleep 5
-          wait $sleeppid
+          #killall -SIGILL sleep # then press enter... huh?
+          #sleep 5
+          #wait $sleeppid
           ls -la /cores
           defaults write com.apple.finder AppleShowAllFiles TRUE
           ls /cores
-          mv /cores/core.* /cores/core.1
-          lldb -c /cores/core.1 --batch -o 'bt all' -o 'quit'
+          #mv /cores/core.* /cores/core.1
+          #lldb -c /cores/core.1 --batch -o 'bt all' -o 'quit'
           #TBD -e valid in macos environ?
           #echo -e "print('about to abort!') \nimport os \nos.abort()" | python
           echo -e "nl=\"\\\n\"\nprint('aborting...'+nl)\nimport resource as res\nprint(res.getrlimit(res.RLIMIT_CORE))\nprint(nl)\nres.setrlimit(res.RLIMIT_CORE,(res.RLIM_INFINITY,res.RLIM_INFINITY))\nprint(res.getrlimit(res.RLIMIT_CORE))\nimport sys\nsys.stdout.flush()\nsys.stderr.flush()\nimport os \nos.abort()" | python3
@@ -147,6 +147,11 @@ jobs:
           #echo "about to exit with 137..."
           #exit 137
         
+      - name: 'check /cores 1'
+        run: |
+          echo "check /cores 1"
+          ls -ld /cores
+          
       - uses: actions/checkout@v2
 
       #~ - name: 'prep env'
