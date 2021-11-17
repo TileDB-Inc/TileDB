@@ -68,7 +68,10 @@ jobs:
           ls -la /cores
           #kill -QUIT $lastpid
           #kill -ABRT $lastpid
-          kill -SEGV $lastpid
+          #kill -SEGV $lastpid
+          kill -l
+          kill -SIGABRT $lastpid 
+          #kill -SIGSEGV $lastpid
           ls -la /cores
         
       - uses: actions/checkout@v2
