@@ -91,20 +91,25 @@ jobs:
           #echo "waiting on $lastpid..."
           #wait $lastpid
           #kill -L
-          which python
-          which python3
           which crash
           which groups
+          which python
+          which python3
+          sync
           groups
+          sync
           ls -l /
           ls -la /cores
           ls -ld /cores
+          sync
           which ulimit
+          sync
           ulimit -c
           pwd; ls -la ./
           echo "starting permissions test of https://stackoverflow.com/a/21308843"
           sync
           whoami
+          echo "about to touch /cores/test"
           touch /cores/test
           ls -la /cores
           rm /cores/test
