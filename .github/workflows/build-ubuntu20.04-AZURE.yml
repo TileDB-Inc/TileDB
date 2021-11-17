@@ -60,7 +60,8 @@ jobs:
           # try to force a core dump to test core dump artifacts gathering
           echo "hello, about to sleep in sub-bash..."
           #sh -c "sleep 5" &
-          bash -c "echo $BASHPID, $$; ulimit -c unlimited; ulimit -c; ps -A; sleep 20; kill -6 $BASHPID" &
+          # appears macos kill is different than some others...
+          bash -c "echo $BASHPID, $$; ulimit -c unlimited; ulimit -c; ps -A; sleep 20; kill -n 6 $BASHPID" &
           lastpid=$!
           echo sub-bash sleep invoked...
           #kill --help
@@ -83,7 +84,7 @@ jobs:
           ls -la /cores
           echo "waiting on $lastpid..."
           wait $lastpid
-          kill -L
+          #kill -L
           echo "about to exit with 137..."
           exit 137
         
