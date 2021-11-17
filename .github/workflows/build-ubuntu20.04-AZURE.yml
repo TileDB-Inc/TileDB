@@ -67,8 +67,12 @@ jobs:
       - name: 'prep ubuntu for core dumps'
         if: ${{ always() == true   && startsWith(matrix.os, 'ubuntu-') == true }} # only run this job if the build step failed
         run: |
+          echo "core_pattern follows..."
+          cat /proc/sys/kernel/core_pattern
+          echo "...core_pattern above"
           ulimit -c unlimited     # Enable core dumps to be captured (must be in same run block)
           ulimit -c
+          sudo service apport stop
 
       - name: 'short force core attempt'
         continue-on-error: true
@@ -318,6 +322,11 @@ jobs:
         #if: ${{ failure() == true && startsWith(matrix.os, 'macos-') == true }} # only run this job if the build step failed
         if: ${{ always() == true   && startsWith(matrix.os, 'ubuntu-') == true }} # only run this job if the build step failed
         run: |
+          # https://stackoverflow.com/questions/2065912/core-dumped-but-core-file-is-not-in-the-current-directory
+          cat /proc/sys/kernel/core_pattern
+          if [[ -f /var/log/apport.log ]]; then
+            cat /var/log/apport.log
+          fi
           pwd; ls -la ./
           cd $TILEDB_HOME
           pwd; ls -la ./
