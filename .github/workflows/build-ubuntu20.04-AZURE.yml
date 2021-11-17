@@ -52,15 +52,20 @@ jobs:
     
       - name: 'force core attempt'
         run: |
+          ls -la /core
           # enable core dumps
           ulimit -c               # should output 0 if disabled
           ulimit -c unlimited     # Enable core dumps to be captured (must be in same run block)
           ulimit -c               # should output 'unlimited' now
           # try to force a core dump to test core dump artifacts gathering
-          sh -c "sleep 5" &
+          echo "hello, about to sleep in sub-bash..."
+          #sh -c "sleep 5" &
+          bash -c "sleep 20" &
           lastpid=$!
-          kill -QUIT $lastpid
-          kill -ABRT $lastpid
+          echo "sub-bash lastpid is $lastpid"
+          ps
+          #kill -QUIT $lastpid
+          #kill -ABRT $lastpid
           kill -SEGV $lastpid
         
       - uses: actions/checkout@v2
