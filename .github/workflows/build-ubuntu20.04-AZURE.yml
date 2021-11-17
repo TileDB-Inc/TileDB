@@ -328,8 +328,8 @@ jobs:
           if [[ -f /var/log/apport.log ]]; then
             cat /var/log/apport.log
           fi
-          which lldb
-          sync
+          #which lldb
+          #sync
           #cd $TILEDB_HOME
           echo "checking on tdbcores"
           sync
