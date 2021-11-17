@@ -65,7 +65,8 @@ jobs:
           echo sub-bash sleep invoked...
           #kill --help
           echo "sub-bash lastpid is $lastpid"
-          ps -A
+          which ps
+          #ps -A
           #ls -la /cores
           #kill -QUIT $lastpid
           #kill -ABRT $lastpid
@@ -78,7 +79,9 @@ jobs:
           #kill -11 $lastpid # SIGSEGV
           #kill -SIGSEGV $lastpid
           ls -la /cores
+          echo "waiting on $lastpid..."
           wait $lastpid
+          echo "about to exit with 737..."
           exit 737
         
       - uses: actions/checkout@v2
