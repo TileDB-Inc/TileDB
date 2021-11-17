@@ -93,14 +93,18 @@ jobs:
           #kill -L
           which python
           which python3
+          ls -l /
           ls -la /cores
+          ls -l /cores/.
           ulimit -c
           pwd; ls -la ./
           echo "starting permissions test of https://stackoverflow.com/a/21308843"
+          sync
           touch /cores/test
           ls -la /cores
           rm /cores/test
           echo "done permissions test"
+          sync
           ls -la /cores
           #https://stackoverflow.com/a/21308843
           echo "starting effort of https://stackoverflow.com/a/21308843"
