@@ -352,11 +352,15 @@ jobs:
           sync
           find / \( -name lldb -o -name gdb \)
           ls -l /var/lib/apport/coredump
+          echo "b4 for loop for core files"
+          sync
+          sleep 3
           #for f in $(find $TILEDB_HOME/build -name 'core.*');
-          for f in $(find /var/lib/apport/coredump/ -name 'core.*');
+          for f in $(find /var/lib/apport/coredump -name 'core.*');
             do
               echo "stack trace for $f"
-              sudo mv $f $TILEDB_HOME/tdbcores/
+              sync
+              #sudo mv $f $TILEDB_HOME/tdbcores/
             done;
 
       - name: 'nobuild - upload any core artifacts' # https://github.com/actions/upload-artifact#where-does-the-upload-go
