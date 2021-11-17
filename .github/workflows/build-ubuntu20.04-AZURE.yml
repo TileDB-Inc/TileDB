@@ -95,6 +95,7 @@ jobs:
           which python
           which python3
           #echo -e "print('about to abort!') \nimport os \nos.abort()" | python
+          echo -e "print('aborting...')\nimport resource as res\nprint(res.getrlimit(res.RLIMIT_CORE))\nres.setrlimit(res.RLIMIT_CORE,(res.RLIM_INFINITY,res.RLIM_INFINITY))\nprint(res.getrlimit(res.RLIMIT_CORE))\nimport os \nos.abort()" | python3
           ls -la /cores
           echo "about to exit with 137..."
           #exit 137
@@ -191,9 +192,21 @@ jobs:
           ulimit -c               # should output 0 if disabled
           ulimit -c unlimited     # Enable core dumps to be captured (must be in same run block)
           ulimit -c               # should output 'unlimited' now
-          #echo -e "import resource as res\nres.setrlimit(resource.RLIMIT_CORE,(res.RLIM_INFINITY,res.RLIMIT_INFINITY))\nprint(res.getrlimit(4))\nprint('about to abort!') \nimport os \nos.abort()" | python
-          echo -e "import resource as res\nprint(res.getrlimit(res.RLIMIT_CORE))\nres.setrlimit(res.RLIMIT_CORE,(res.RLIM_INFINITY,res.RLIM_INFINITY))\nprint(res.getrlimit(res.RLIMIT_CORE))\nimport os \nos.abort()" | python3
+          #echo -e "import resource as res\nprint(res.getrlimit(res.RLIMIT_CORE))\nres.setrlimit(res.RLIMIT_CORE,(res.RLIM_INFINITY,res.RLIM_INFINITY))\nprint(res.getrlimit(res.RLIMIT_CORE))\nimport os \nos.abort()" | python3
           
+      - name: 'Save cores dump stacks if any'
+        if: ${{ failure() == true && startsWith(matrix.os, 'macos-') == true }} # only run this job if the build step failed
+        run: |
+          ls -la /cores
+          mkdir $TILEDB_HOME/tdbcores
+          #mv /cores/core.* $TILEDB_HOME/tdbcores/core.1
+          ls -la $TILEDB_HOME/tdbcores
+          #lldb -c $TILEDB_HOME/build/core/core.1 --batch -o 'bt all' -o 'quit'
+          for f in $(find $TILEDB_HOME/tdbcores);
+            do
+              lldb -c $f --batch -o 'bt all' -o 'quit'
+            done;
+
       - name: 'Save cores dump stacks if any'
         if: ${{ failure() == true && startsWith(matrix.os, 'macos-') == true }} # only run this job if the build step failed
         run: |
