@@ -4966,7 +4966,7 @@ TILEDB_EXPORT int32_t tiledb_query_get_fragment_timestamp_range(
  *
  * @code{.c}
  * tiledb_subarray_t* subarray;
- * tiledb_query_get_subarray(array, &subarray);
+ * tiledb_query_get_subarray_t(array, &subarray);
  * @endcode
  *
  * @param ctx The TileDB context.
@@ -4975,7 +4975,7 @@ TILEDB_EXPORT int32_t tiledb_query_get_fragment_timestamp_range(
  * @return `TILEDB_OK` for success or `TILEDB_OOM` or `TILEDB_ERR` for error.
  */
 TILEDB_EXPORT
-int32_t tiledb_query_get_subarray(
+int32_t tiledb_query_get_subarray_t(
     tiledb_ctx_t* ctx,
     const tiledb_query_t* query,
     tiledb_subarray_t** subarray);

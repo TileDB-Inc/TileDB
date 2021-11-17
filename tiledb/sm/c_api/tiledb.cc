@@ -3767,7 +3767,7 @@ int32_t tiledb_query_get_fragment_timestamp_range(
   return TILEDB_OK;
 }
 
-int32_t tiledb_query_get_subarray(
+int32_t tiledb_query_get_subarray_t(
     tiledb_ctx_t* ctx,
     const tiledb_query_t* query,
     tiledb_subarray_t** subarray) {

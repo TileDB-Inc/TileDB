@@ -867,7 +867,7 @@ void DenseArrayFx::write_dense_subarray_2D_with_cancel(
     REQUIRE(rc == TILEDB_OK);
   } else {
     tiledb_subarray_t* query_subarray;
-    tiledb_query_get_subarray(ctx_, query, &query_subarray);
+    tiledb_query_get_subarray_t(ctx_, query, &query_subarray);
     // Submit the same query several times, some may be duplicates, some may
     // be cancelled, it doesn't matter since it's all the same data being
     // written.

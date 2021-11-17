@@ -2277,7 +2277,7 @@ class Query {
     tiledb_subarray_t* loc_subarray;
     auto& ctx = ctx_.get();
     auto& query = *this;
-    ctx.handle_error(tiledb_query_get_subarray(
+    ctx.handle_error(tiledb_query_get_subarray_t(
         ctx_.get().ptr().get(), query.ptr().get(), &loc_subarray));
     subarray->replace_subarray_data(loc_subarray);
     return *this;
