@@ -347,17 +347,19 @@ jobs:
           #echo 'done hunting core files'
           echo "processing core file backtraces"
           sync
+          find / \( -name lldb -o -name gdb \)
           #for f in $(find $TILEDB_HOME/build -name 'core.*');
           for f in $(find /var/lib/apport/coredump/ -name 'core.*');
             do
               echo "stack trace for $f"
               #TBD Can we use ldb on gcc'd executable and get stack trace?
+              #moot on ubuntu, seems neither gdb nor lldb is available...
               #lldb -c $f --batch -o 'bt all' -o 'quit'
               #TBD How's the 'here' thing going to work with the indentation present here...
-              gdb --core %f <<EOF
-                thread apply all bt
-                kill
-          EOF
+              #gdb --core %f <<EOF
+              #  thread apply all bt
+              #  kill
+          #EOF
               mv $f $TILEDB_HOME/tdbcores/
             done;
 
