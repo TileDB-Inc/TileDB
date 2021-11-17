@@ -52,6 +52,10 @@ jobs:
     
       - name: 'force core attempt'
         run: |
+          # enable core dumps
+          ulimit -c               # should output 0 if disabled
+          ulimit -c unlimited     # Enable core dumps to be captured (must be in same run block)
+          ulimit -c               # should output 'unlimited' now
           # try to force a core dump to test core dump artifacts gathering
           sh -c "sleep 5" &
           lastpid=$!
