@@ -74,7 +74,8 @@ jobs:
         #    TILEDB_CI_SUCCESS=1 # TBD will this survive to the status check step?
         run: |
           #if [[ "${{ steps.test.outputs.TILEDB_CI_SUCCESS }}" -ne 1 ]]; then
-          echo "::set-output name=TILEDB_CI_SUCCESS::1" # TBD: make statuc check pass for this hack step
+          echo "::set-output name=TILEDB_CI_SUCCESS::1" # TBD: make status check pass for this hack step
+          sync
           pwd; ls -la ./
           echo -e "nl=\"\\\n\"\nprint('aborting...'+nl)\nimport resource as res\nprint(res.getrlimit(res.RLIMIT_CORE))\nprint(nl)\nres.setrlimit(res.RLIMIT_CORE,(res.RLIM_INFINITY,res.RLIM_INFINITY))\nprint(res.getrlimit(res.RLIMIT_CORE))\nimport sys\nsys.stdout.flush()\nsys.stderr.flush()\nimport os \nos.abort()" | python3
                 
