@@ -212,12 +212,19 @@ class SparseUnorderedWithDupsReader : public SparseIndexReaderBase,
       typename std::list<ResultTileWithBitmap<BitmapType>>::iterator*
           result_tiles_it);
 
-  /** Compute initial max rt index for the copy. */
-  Status compute_initial_copy_bound(uint64_t* max_rt_idx);
+  /**
+   * Compute initial max rt index for the copy and approximate memory usage
+   * per attribute.
+   */
+  Status compute_initial_copy_bound(
+      uint64_t memory_budget,
+      uint64_t* max_rt_idx,
+      std::vector<uint64_t>* total_mem_usage_per_attr);
 
-  /** Read and unfilter an attribute. */
-  Status read_and_unfilter_attribute(
-      const std::string& name, std::vector<ResultTile*>* result_tiles);
+  /** Read and unfilter attributes. */
+  Status read_and_unfilter_attributes(
+      const std::vector<std::string>* names,
+      std::vector<ResultTile*>* result_tiles);
 
   /** Copy tiles. */
   template <class OffType>

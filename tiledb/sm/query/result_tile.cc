@@ -787,11 +787,9 @@ void ResultTile::compute_results_count_sparse_string(
               range.end_str());
         }
 
-        if (count != 0) {
-          for (uint64_t pos = first_c_pos; pos < first_c_pos + c_partition_size;
-               ++pos) {
-            r_count[pos] = count;
-          }
+        for (uint64_t pos = first_c_pos; pos < first_c_pos + c_partition_size;
+             ++pos) {
+          r_count[pos] = count;
         }
       } else {
         // Compute results
