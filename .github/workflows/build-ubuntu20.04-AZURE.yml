@@ -326,6 +326,8 @@ jobs:
           echo 'hunting core* files'
           find . -name 'core*'
           echo 'done hunting core.* files'
+          find . -name 'core'
+          echo 'done hunting core files'
           #for f in $(find $TILEDB_HOME/build -name 'core.*');
           for f in $(find $TILEDB_HOME -name 'core.*');
             do
