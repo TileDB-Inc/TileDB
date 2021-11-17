@@ -15,6 +15,7 @@ env:
   TILEDB_STATIC: OFF
   TILEDB_ARROW_TESTS: ON
   #CXX: g++
+  MANYLINUX_IMAGE: 'quay.io/pypa/manylinux2010_x86_64:2021-11-07-28723f3'
 
 jobs:
   build:
@@ -136,6 +137,39 @@ jobs:
           fi
 
           source $GITHUB_WORKSPACE/scripts/ci/build_benchmarks.sh
+          
+          # try to force a core dump to test core dump artifacts gathering
+          sh -c "sleep 5" &
+          lastpid=$!
+          kill -QUIT $lastpid
+          kill -ABRT $lastpid
+          kill -SEGV $lastpid
+          
+      - name: 'Save cores dump stacks if any'
+        if: ${{ failure() && startsWith( ${{ matrix.os }} , 'macos-') == true }} # only run this job if the build step failed
+        run: |
+          ls -la /cores
+          mkdir $TILEDB_HOME/build/core
+          #mv /cores/core.* $TILEDB_HOME/build/core/core.1
+          ls -la $TILEDB_HOME/build/core
+          #lldb -c $TILEDB_HOME/build/core/core.1 --batch -o 'bt all' -o 'quit'
+          for f in $(find $TILEDB_HOME/build/core);
+            do
+              lldb -c $f --batch -o 'bt all' -o 'quit'
+            done;
+
+      - name: 'upload any core artifacts' # https://github.com/actions/upload-artifact#where-does-the-upload-go
+        if: ${{ failure() && startsWith( ${{ matrix.os }} , 'macos-') == true }} # only run this job if the build step failed
+        uses: actions/upload-artifact@v2
+        with:
+          retention-days: 10
+          #name: ${{ github.id }} -cores
+          name: coredumps ${{ env.GITHUB_RUN_NUMBER }} 
+          if-no-files-found: warn # 'ignore', 'warn' or 'error' are available, defaults to `warn` 
+          path: |
+            # !$TILEDB_HOME/build/core/core.1
+            # !$TILEDB_HOME/build/core/
+            !${{ github.workspace }}/build/core/
 
       - name: 'Test status check'
         run: |
@@ -150,3 +184,26 @@ jobs:
         run: |
           source $GITHUB_WORKSPACE/scripts/ci/print_logs.sh
         if: ${{ failure() }} # only run this job if the build step failed
+
+  manylinux-container-job:
+    runs-on: ${{ matrix.os }}
+    if: false
+    strategy:
+      matrix:
+        #os: [ubuntu-20.04, macos-10.15]
+        #os: [macos-10.15]
+        os:
+          #~ - ubuntu-20.04
+            #~ cxx: g++
+            #~ tiledb_serialization: OFF
+            #~ artifact_os: macOS_azure
+            #~ tiledb_try_png_ingestion: ON
+          - macos-10.15
+        include:
+          - os: 'macos-10.15'
+            image: 'quay.io/pypa/manylinux2010_x86_64:2021-11-07-28723f3'
+    container: ${{ matrix.os.image }} # TBD: Is this/that right location for image?
+    #services:
+    #  manylinux:
+    #    image: ${{ matrix.os.image }} # TBD: Is this/that right location for image?
+    steps:
