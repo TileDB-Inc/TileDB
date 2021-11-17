@@ -296,6 +296,18 @@ jobs:
           #    lldb -c $f --batch -o 'bt all' -o 'quit'
           #  done;
 
+      - name: 'nobuild - upload any core artifacts' # https://github.com/actions/upload-artifact#where-does-the-upload-go
+        if: ${{ always() == true && startsWith(matrix.os, 'macos-') == true }} # only run this job if the build step failed
+        uses: actions/upload-artifact@v2
+        with:
+          retention-days: 10
+          #name: ${{ github.id }} -cores
+          name: coredumps ${{ env.GITHUB_RUN_NUMBER }} 
+          if-no-files-found: warn # 'ignore', 'warn' or 'error' are available, defaults to `warn` 
+          path: |
+            ${{ github.workspace }}/tdbcores/
+            /cores/
+
       - name: 'Save cores dump stacks if any'
         if: ${{ failure() == true && startsWith(matrix.os, 'macos-') == true }} # only run this job if the build step failed
         run: |
