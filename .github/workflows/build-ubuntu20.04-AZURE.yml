@@ -327,27 +327,18 @@ jobs:
           if [[ -f /var/log/apport.log ]]; then
             cat /var/log/apport.log
           fi
-          pwd; ls -la ./
-          cd $TILEDB_HOME
-          pwd; ls -la ./
+          #cd $TILEDB_HOME
           mkdir $TILEDB_HOME/tdbcores
           #ls -la ./tdbcores
-          echo 'hunting core* files'
-          find . -name 'core*'
-          sudo find / -name 'core*'
-          echo 'done hunting core.* files'
-          find . -name 'core'
-          sudo find / -name 'core'
-          echo 'done hunting core files'
+          #echo 'hunting core* files'
+          #find . -name 'core*'
+          #sudo find / -name 'core*'
+          #echo 'done hunting core.* files'
+          #find . -name 'core'
+          #sudo find / -name 'core'
+          #echo 'done hunting core files'
           #for f in $(find $TILEDB_HOME/build -name 'core.*');
-          for f in $(find $TILEDB_HOME -name 'core.*');
-            do
-              echo "stack trace for $f"
-              #TBD Can we use ldb on gcc'd executable and get stack trace?
-              lldb -c $f --batch -o 'bt all' -o 'quit'
-              mv $f $TILEDB_HOME/tdbcores/
-            done;
-          for f in $(find $TILEDB_HOME -name 'core');
+          for f in $(find /var/lib/apport/coredump/ -name 'core.*');
             do
               echo "stack trace for $f"
               #TBD Can we use ldb on gcc'd executable and get stack trace?
