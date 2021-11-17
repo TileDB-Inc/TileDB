@@ -52,7 +52,6 @@ class BZip {
    * Compression function.
    *
    * @param level Compression level.
-   *  Use TILEDB_FILTER_BZIP_DEFAULT_LEVEL for BZip's default level.
    * @param input_buffer Input buffer to read from.
    * @param output_buffer Output buffer to write to the compressed data.
    * @return Status
@@ -81,7 +80,7 @@ class BZip {
 
   /** Returns the default compression level. */
   static int default_level() {
-    return TILEDB_FILTER_BZIP_DEFAULT_LEVEL;
+    return 1;
   }
 
   /** Returns the compression overhead for the given input. */

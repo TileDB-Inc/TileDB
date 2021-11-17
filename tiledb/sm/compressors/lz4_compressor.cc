@@ -79,8 +79,7 @@ Status LZ4::compress(
 }
 
 Status LZ4::compress(ConstBuffer* input_buffer, Buffer* output_buffer) {
-  return LZ4::compress(
-      TILEDB_FILTER_LZ4_DEFAULT_LEVEL, input_buffer, output_buffer);
+  return LZ4::compress(LZ4::default_level(), input_buffer, output_buffer);
 }
 
 Status LZ4::decompress(

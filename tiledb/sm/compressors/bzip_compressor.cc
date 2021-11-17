@@ -92,8 +92,7 @@ Status BZip::compress(
 }
 
 Status BZip::compress(ConstBuffer* input_buffer, Buffer* output_buffer) {
-  return BZip::compress(
-      TILEDB_FILTER_BZIP_DEFAULT_LEVEL, input_buffer, output_buffer);
+  return BZip::compress(BZip::default_level(), input_buffer, output_buffer);
 }
 
 Status BZip::decompress(

@@ -91,8 +91,7 @@ Status GZip::compress(
 }
 
 Status GZip::compress(ConstBuffer* input_buffer, Buffer* output_buffer) {
-  return GZip::compress(
-      TILEDB_FILTER_GZIP_DEFAULT_LEVEL, input_buffer, output_buffer);
+  return GZip::compress(GZip::default_level(), input_buffer, output_buffer);
 }
 
 Status GZip::decompress(

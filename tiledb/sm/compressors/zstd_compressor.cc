@@ -80,8 +80,7 @@ Status ZStd::compress(
 }
 
 Status ZStd::compress(ConstBuffer* input_buffer, Buffer* output_buffer) {
-  return ZStd::compress(
-      TILEDB_FILTER_ZSTD_DEFAULT_LEVEL, input_buffer, output_buffer);
+  return ZStd::compress(ZStd::default_level(), input_buffer, output_buffer);
 }
 
 Status ZStd::decompress(

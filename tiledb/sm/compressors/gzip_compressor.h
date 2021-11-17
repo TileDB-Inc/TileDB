@@ -54,7 +54,6 @@ class GZip {
    * Compression function.
    *
    * @param level Compression level.
-   *  Use TILEDB_FILTER_GZIP_DEFAULT_LEVEL for GZip's default level.
    * @param input_buffer Input buffer to read from.
    * @param output_buffer Output buffer to write to the compressed data.
    * @return Status
@@ -91,7 +90,7 @@ class GZip {
 
   /** Returns the default compression level. */
   static int default_level() {
-    return TILEDB_FILTER_GZIP_DEFAULT_LEVEL;
+    return -1;
   }
 };
 
