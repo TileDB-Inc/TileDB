@@ -81,8 +81,8 @@ Subarray::Subarray(
     : Subarray(
           array,
           Layout::UNORDERED,
-	  logger,
           parent_stats,
+          logger,
           coalesce_ranges,
           storage_manager) {
 }

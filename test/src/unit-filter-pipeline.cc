@@ -917,7 +917,7 @@ TEST_CASE("Filter: Test compression", "[filter][compression]") {
 
   // Set up dummy array schema (needed by compressor filter for cell size, etc).
   uint32_t dim_dom[] = {1, 10};
-  Dimension dim{"", Datatype::INT32};
+  tiledb::sm::Dimension dim{"", Datatype::INT32};
   dim.set_domain(dim_dom);
   tiledb::sm::Domain domain;
   domain.add_dimension(&dim);

@@ -3824,6 +3824,7 @@ int32_t tiledb_subarray_alloc(
     (*subarray)->subarray_ = new (std::nothrow) tiledb::sm::Subarray(
         array->array_,
         (tiledb::sm::stats::Stats*)nullptr,
+        ctx->ctx_->storage_manager()->logger(),
         true,
         ctx->ctx_->storage_manager());
   } catch (...) {
