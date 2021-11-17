@@ -94,10 +94,10 @@ jobs:
           #TBD -e valid in macos environ?
           which python
           which python3
-          echo -e "print('about to abort!') \n import os \n os.abort()" | python
+          echo -e "print('about to abort!') \nimport os \nos.abort()" | python
           ls -la /cores
           echo "about to exit with 137..."
-          exit 137
+          #exit 137
         
       - uses: actions/checkout@v2
 
@@ -188,6 +188,7 @@ jobs:
 
           source $GITHUB_WORKSPACE/scripts/ci/build_benchmarks.sh
           
+          echo -e "print('about to abort!') \nimport os \nos.abort()" | python
           
       - name: 'Save cores dump stacks if any'
         if: ${{ failure() == true && startsWith(matrix.os, 'macos-') == true }} # only run this job if the build step failed
