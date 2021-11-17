@@ -289,6 +289,7 @@ jobs:
         #if: ${{ failure() == true && startsWith(matrix.os, 'macos-') == true }} # only run this job if the build step failed
         if: ${{ always() == true   && startsWith(matrix.os, 'macos-') == true }} # only run this job if the build step failed
         run: |
+          which lldb
           pwd; ls -la ./
           nfiles=$(ls /cores | wc -l)
           if [[ $nfiles -eq 0 ]]; then
@@ -327,6 +328,7 @@ jobs:
           if [[ -f /var/log/apport.log ]]; then
             cat /var/log/apport.log
           fi
+          which lldb
           #cd $TILEDB_HOME
           mkdir $TILEDB_HOME/tdbcores
           #ls -la ./tdbcores
@@ -342,7 +344,12 @@ jobs:
             do
               echo "stack trace for $f"
               #TBD Can we use ldb on gcc'd executable and get stack trace?
-              lldb -c $f --batch -o 'bt all' -o 'quit'
+              #lldb -c $f --batch -o 'bt all' -o 'quit'
+              #TBD How's the 'here' thing going to work with the indentation present here...
+              gdb --core %f <<EOF
+                thread apply all bt
+                kill
+          EOF
               mv $f $TILEDB_HOME/tdbcores/
             done;
 
