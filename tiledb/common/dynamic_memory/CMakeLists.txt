@@ -1,5 +1,5 @@
 #
-# tiledb/common/thread_pool/CMakeLists.txt
+# tiledb/common/dynamic_memory/CMakeLists.txt
 #
 # The MIT License
 #
@@ -27,41 +27,52 @@
 include(common NO_POLICY_SCOPE)
 
 list(APPEND SOURCES
-    thread_pool.cc
+    dynamic_memory.cc
 )
 gather_sources(${SOURCES})
 
 list(APPEND DEPENDENT_SOURCES
-    ../heap_memory.cc
-    ../heap_profiler.cc
-    ../logger.cc
-    ../status.cc
     ../governor/governor.cc
+    ../heap_profiler.cc
 )
 
 if (TILEDB_TESTS)
     find_package(Catch_EP REQUIRED)
-    find_package(Spdlog_EP REQUIRED)
 
-    add_executable(unit_thread_pool EXCLUDE_FROM_ALL)
-    target_link_libraries(unit_thread_pool PUBLIC Catch2::Catch2)
-    target_link_libraries(unit_thread_pool PUBLIC spdlog::spdlog)
+    add_executable(unit_dynamic_memory EXCLUDE_FROM_ALL)
+    target_link_libraries(unit_dynamic_memory PUBLIC Catch2::Catch2)
+    #
+    # The heap_profiler dependency is as loose files rather than as a library
+    # of some sort. The pthread requirement below should ideally be carried
+    # on a library interface rather than specified directly.
+    #
+    if (CMAKE_CXX_COMPILER_ID MATCHES "GNU")
+        # Apparently gcc requires pthread to be linked for <thread> definitions
+        target_link_libraries(unit_dynamic_memory PUBLIC pthread)
+    endif()
 
     # Sources for code under test
-    target_sources(unit_thread_pool PUBLIC ${SOURCES})
+    target_sources(unit_dynamic_memory PUBLIC ${SOURCES})
 
-    # Sources for code elsewhere required for tests
-    target_sources(unit_thread_pool PUBLIC ${DEPENDENT_SOURCES})
+    # Sources for required code
+    target_sources(unit_dynamic_memory PUBLIC ${DEPENDENT_SOURCES})
 
     # Sources for tests
-    target_sources(unit_thread_pool PUBLIC
-            test/main.cc
-            test/unit_thread_pool.cc
-            )
+    target_sources(unit_dynamic_memory PUBLIC
+        test/main.cc
+        test/unit_dynamic_memory.cc
+    )
 
     add_test(
-            NAME "unit_thread_pool"
-            COMMAND $<TARGET_FILE:unit_thread_pool>
-            WORKING_DIRECTORY ${CMAKE_CURRENT_SOURCE_DIR}
+        NAME "unit_dynamic_memory"
+        COMMAND $<TARGET_FILE:unit_dynamic_memory>
+        WORKING_DIRECTORY ${CMAKE_CURRENT_SOURCE_DIR}
     )
 endif()
+
+# TODO: Implementation of allocator_unique
+
+# TODO: Provenance with copy constructor
+# TODO: Provenance with select_on_copy_construction
+
+# TODO: TracedAllocator variant with its own std::string storage

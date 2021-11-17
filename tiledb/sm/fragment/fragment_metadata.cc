@@ -31,7 +31,8 @@
  * This file implements the FragmentMetadata class.
  */
 
-#include "tiledb/sm/fragment/fragment_metadata.h"
+#include "tiledb/common/common.h"
+
 #include "tiledb/common/heap_memory.h"
 #include "tiledb/common/logger.h"
 #include "tiledb/sm/array_schema/array_schema.h"
@@ -40,6 +41,7 @@
 #include "tiledb/sm/array_schema/domain.h"
 #include "tiledb/sm/buffer/buffer.h"
 #include "tiledb/sm/filesystem/vfs.h"
+#include "tiledb/sm/fragment/fragment_metadata.h"
 #include "tiledb/sm/misc/constants.h"
 #include "tiledb/sm/misc/utils.h"
 #include "tiledb/sm/stats/global_stats.h"
@@ -511,7 +513,7 @@ Status FragmentMetadata::load(
     const EncryptionKey& encryption_key,
     Buffer* f_buff,
     uint64_t offset,
-    std::unordered_map<std::string, tiledb_shared_ptr<ArraySchema>>
+    std::unordered_map<std::string, tdb_shared_ptr<ArraySchema>>
         array_schemas) {
   auto meta_uri = fragment_uri_.join_path(
       std::string(constants::fragment_metadata_filename));
@@ -2135,7 +2137,7 @@ Status FragmentMetadata::load_v3_or_higher(
     const EncryptionKey& encryption_key,
     Buffer* f_buff,
     uint64_t offset,
-    std::unordered_map<std::string, tiledb_shared_ptr<ArraySchema>>
+    std::unordered_map<std::string, tdb_shared_ptr<ArraySchema>>
         array_schemas) {
   RETURN_NOT_OK(load_footer(encryption_key, f_buff, offset, array_schemas));
   return Status::Ok();
@@ -2145,7 +2147,7 @@ Status FragmentMetadata::load_footer(
     const EncryptionKey& encryption_key,
     Buffer* f_buff,
     uint64_t offset,
-    std::unordered_map<std::string, tiledb_shared_ptr<ArraySchema>>
+    std::unordered_map<std::string, tdb_shared_ptr<ArraySchema>>
         array_schemas) {
   (void)encryption_key;  // Not used for now, perhaps in the future
   std::lock_guard<std::mutex> lock(mtx_);
@@ -2158,12 +2160,12 @@ Status FragmentMetadata::load_footer(
   if (f_buff == nullptr) {
     has_consolidated_footer_ = false;
     RETURN_NOT_OK(read_file_footer(&buff, &footer_offset_, &footer_size_));
-    cbuff = tdb_make_shared(ConstBuffer, &buff);
+    cbuff = tdb::make_shared<ConstBuffer>(HERE(), &buff);
   } else {
     footer_size_ = 0;
     footer_offset_ = offset;
     has_consolidated_footer_ = true;
-    cbuff = tdb_make_shared(ConstBuffer, f_buff);
+    cbuff = tdb::make_shared<ConstBuffer>(HERE(), f_buff);
     cbuff->set_offset(offset);
   }
 

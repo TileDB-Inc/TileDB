@@ -106,7 +106,7 @@ Query::Query(StorageManager* storage_manager, Array* array, URI fragment_uri)
   if (storage_manager != nullptr)
     config_ = storage_manager->config();
 
-  rest_scratch_ = tdb_make_shared(Buffer);
+  rest_scratch_ = make_shared<Buffer>(HERE());
 }
 
 Query::~Query() {

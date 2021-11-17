@@ -31,6 +31,8 @@
  * This file implements the StorageManager class.
  */
 
+#include "tiledb/common/common.h"
+
 #include <algorithm>
 #include <functional>
 #include <iostream>
@@ -1643,8 +1645,8 @@ Status StorageManager::get_fragment_info(
   }
 
   // Get fragment non-empty domain
-  auto meta = tdb_make_shared(
-      FragmentMetadata,
+  auto meta = tdb::make_shared<FragmentMetadata>(
+      HERE(),
       this,
       array.array_schema(),
       fragment_uri,
@@ -1654,7 +1656,7 @@ Status StorageManager::get_fragment_info(
       *array.encryption_key(),
       nullptr,
       0,
-      std::unordered_map<std::string, tiledb_shared_ptr<ArraySchema>>()));
+      std::unordered_map<std::string, tdb_shared_ptr<ArraySchema>>()));
 
   // This is important for format version > 2
   sparse = !meta->dense();
@@ -2606,7 +2608,7 @@ Status StorageManager::load_array_metadata(
       RETURN_NOT_OK(tile_io.read_generic(&tile, 0, encryption_key, config_));
 
       auto buffer = tile->buffer();
-      metadata_buff = tdb_make_shared(Buffer);
+      metadata_buff = tdb::make_shared<Buffer>(HERE());
       RETURN_NOT_OK(metadata_buff->realloc(buffer->size()));
       metadata_buff->set_size(buffer->size());
       buffer->reset_offset();
@@ -2669,16 +2671,11 @@ Status StorageManager::load_fragment_metadata(
       if (f_version == 1) {  // This is equivalent to format version <=2
         bool sparse;
         RETURN_NOT_OK(vfs_->is_file(coords_uri, &sparse));
-        metadata = tdb_make_shared(
-            FragmentMetadata,
-            this,
-            array_schema,
-            sf.uri_,
-            sf.timestamp_range_,
-            !sparse);
+        metadata = tdb::make_shared<FragmentMetadata>(
+            HERE(), this, array_schema, sf.uri_, sf.timestamp_range_, !sparse);
       } else {  // Format version > 2
-        metadata = tdb_make_shared(
-            FragmentMetadata, this, array_schema, sf.uri_, sf.timestamp_range_);
+        metadata = tdb::make_shared<FragmentMetadata>(
+            HERE(), this, array_schema, sf.uri_, sf.timestamp_range_);
       }
 
       // Potentially find the basic fragment metadata in the consolidated
