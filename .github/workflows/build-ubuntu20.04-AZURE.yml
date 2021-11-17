@@ -104,7 +104,9 @@ jobs:
           ulimit -c unlimited
           sleep 100 &
           sleeppid=$!
-          killall -SIGSEGV sleep # then press enter... huh?
+          echo "about to killall..."
+          #killall -SIGSEGV sleep # then press enter... huh?
+          killall -SIGILL sleep # then press enter... huh?
           sleep 5
           wait $sleeppid
           ls /cores
