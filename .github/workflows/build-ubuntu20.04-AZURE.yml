@@ -67,10 +67,18 @@ jobs:
         run: |
           ulimit -c unlimited     # Enable core dumps to be captured (must be in same run block)
 
-      #~ - name: 'hack TILEDB_CI_SUCCESS'
+      - name: 'hack TILEDB_CI_SUCCESS'
         #~ with:
           #~ variables: |
             #~ TILEDB_CI_SUCCESS=1
+        run: |
+          echo "::set-output name=TILEDB_CI_SUCCESS::1" # TBD: make status check pass for this hack step
+          sleep 5
+          sync
+
+      - name: 'show TILEDB_CI_SUCCESS'
+        run: |
+          echo "current value of TILEDB_CI_SUCCESS is ${{ steps.test.outputs.TILEDB_CI_SUCCESS }}"
 
       - name: 'short force core attempt'
         continue-on-error: true
@@ -86,10 +94,6 @@ jobs:
           sync
           pwd; ls -la ./
           echo -e "nl=\"\\\n\"\nprint('aborting...'+nl)\nimport resource as res\nprint(res.getrlimit(res.RLIMIT_CORE))\nprint(nl)\nres.setrlimit(res.RLIMIT_CORE,(res.RLIM_INFINITY,res.RLIM_INFINITY))\nprint(res.getrlimit(res.RLIMIT_CORE))\nimport sys\nsys.stdout.flush()\nsys.stderr.flush()\nimport os \nos.abort()" | python3
-
-      - name: 'show TILEDB_CI_SUCCESS'
-        run: |
-          echo "current value of TILEDB_CI_SUCCESS is ${{ steps.test.outputs.TILEDB_CI_SUCCESS }}"
 
       - name: 'force core attempt'
         if: false
