@@ -216,7 +216,7 @@ jobs:
           name: coredumps ${{ env.GITHUB_RUN_NUMBER }} 
           if-no-files-found: warn # 'ignore', 'warn' or 'error' are available, defaults to `warn` 
           path: |
-            !${{ github.workspace }}/build/core/
+            ${{ github.workspace }}/build/core/
 
       - name: 'Test status check'
         run: |
