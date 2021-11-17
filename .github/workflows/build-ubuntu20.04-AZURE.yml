@@ -88,17 +88,17 @@ jobs:
           #kill -4 $lastpid # SIGILL
           #kill -SIGSEGV $lastpid
           #ls -la /cores
-          echo "waiting on $lastpid..."
+          #echo "waiting on $lastpid..."
           #wait $lastpid
           #kill -L
-          #TBD -e valid in macos environ?
           which python
           which python3
           ls -la /cores
           ulimit -c
           pwd; ls -la ./
+          #TBD -e valid in macos environ?
           #echo -e "print('about to abort!') \nimport os \nos.abort()" | python
-          echo -e "print('aborting...')\nimport resource as res\nprint(res.getrlimit(res.RLIMIT_CORE))\nres.setrlimit(res.RLIMIT_CORE,(res.RLIM_INFINITY,res.RLIM_INFINITY))\nprint(res.getrlimit(res.RLIMIT_CORE))\nimport os \nos.abort()" | python3
+          echo -e "print('aborting...\n')\nimport resource as res\nprint(res.getrlimit(res.RLIMIT_CORE))\nprint("\n")\nres.setrlimit(res.RLIMIT_CORE,(res.RLIM_INFINITY,res.RLIM_INFINITY))\nprint(res.getrlimit(res.RLIMIT_CORE))\nimport os \nos.abort()" | python3
           ls -la /cores
           echo "about to exit with 137..."
           #exit 137
