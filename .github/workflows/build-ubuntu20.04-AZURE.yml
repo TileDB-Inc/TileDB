@@ -62,6 +62,7 @@ jobs:
           #sh -c "sleep 5" &
           bash -c "sleep 20" &
           echo sub-bash sleep invoked...
+          kill --help
           lastpid=$!
           echo "sub-bash lastpid is $lastpid"
           ps
@@ -69,8 +70,10 @@ jobs:
           #kill -QUIT $lastpid
           #kill -ABRT $lastpid
           #kill -SEGV $lastpid
-          kill -l
-          kill -SIGABRT $lastpid 
+          #kill -l
+          kill --list
+          #kill -SIGABRT $lastpid 
+          kill -s SIGABRT $lastpid 
           #kill -SIGSEGV $lastpid
           ls -la /cores
         
