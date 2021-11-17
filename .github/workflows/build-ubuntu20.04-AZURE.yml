@@ -51,7 +51,7 @@ jobs:
     steps:
     
       - name: 'force core attempt'
-        runs: |
+        run: |
           # try to force a core dump to test core dump artifacts gathering
           sh -c "sleep 5" &
           lastpid=$!
