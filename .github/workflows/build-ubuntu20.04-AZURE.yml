@@ -60,13 +60,13 @@ jobs:
           # try to force a core dump to test core dump artifacts gathering
           echo "hello, about to sleep in sub-bash..."
           #sh -c "sleep 5" &
-          bash -c "sleep 20" &
+          bash -c "ps & sleep 20" &
           echo sub-bash sleep invoked...
           #kill --help
           lastpid=$!
           echo "sub-bash lastpid is $lastpid"
           ps
-          ls -la /cores
+          #ls -la /cores
           #kill -QUIT $lastpid
           #kill -ABRT $lastpid
           #kill -SEGV $lastpid
@@ -74,10 +74,11 @@ jobs:
           #kill --list
           #kill -SIGABRT $lastpid 
           #kill -s SIGABRT $lastpid 
-          kill -6 $lastpid # SIGABRT
+          #kill -6 $lastpid # SIGABRT
           #kill -11 $lastpid # SIGSEGV
           #kill -SIGSEGV $lastpid
           ls -la /cores
+          exit 737
         
       - uses: actions/checkout@v2
 
