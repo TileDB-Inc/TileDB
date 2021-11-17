@@ -69,11 +69,12 @@ jobs:
 
       - name: 'short force core attempt'
         continue-on-error: true
-        #with:
-        #  variables: |
-        #    TILEDB_CI_SUCCESS=1 # TBD will this survive to the status check step?
+        with:
+          variables: |
+            TILEDB_CI_SUCCESS=1 # TBD will this survive to the status check step?
         run: |
           #if [[ "${{ steps.test.outputs.TILEDB_CI_SUCCESS }}" -ne 1 ]]; then
+          #the echo ::set-output doesn't seem to be working, possibly due to abort, even with sync attempt
           echo "::set-output name=TILEDB_CI_SUCCESS::1" # TBD: make status check pass for this hack step
           sync
           pwd; ls -la ./
