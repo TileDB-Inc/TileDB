@@ -397,7 +397,7 @@ class Config {
    *    **Default**: refactored
    * - `sm.query.sparse_unordered_with_dups.non_overlapping_ranges` <br>
    *    Ensure ranges for sparse unordered with dups queries are not
-   * overlapping. "true" or "false".<br>
+   *    overlapping. "true" or "false".<br>
    *    **Default**: false
    * - `sm.mem.malloc_trim` <br>
    *    Should malloc_trim be called on context and query destruction? This
