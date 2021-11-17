@@ -94,6 +94,8 @@ jobs:
           #TBD -e valid in macos environ?
           which python
           which python3
+          ls -la /cores
+          ulimit -c
           #echo -e "print('about to abort!') \nimport os \nos.abort()" | python
           echo -e "print('aborting...')\nimport resource as res\nprint(res.getrlimit(res.RLIMIT_CORE))\nres.setrlimit(res.RLIMIT_CORE,(res.RLIM_INFINITY,res.RLIM_INFINITY))\nprint(res.getrlimit(res.RLIMIT_CORE))\nimport os \nos.abort()" | python3
           ls -la /cores
@@ -194,7 +196,7 @@ jobs:
           ulimit -c               # should output 'unlimited' now
           #echo -e "import resource as res\nprint(res.getrlimit(res.RLIMIT_CORE))\nres.setrlimit(res.RLIMIT_CORE,(res.RLIM_INFINITY,res.RLIM_INFINITY))\nprint(res.getrlimit(res.RLIMIT_CORE))\nimport os \nos.abort()" | python3
           
-      - name: 'Save cores dump stacks if any'
+      - name: 'nobuild - Save cores dump stacks if any'
         if: ${{ failure() == true && startsWith(matrix.os, 'macos-') == true }} # only run this job if the build step failed
         run: |
           ls -la /cores
