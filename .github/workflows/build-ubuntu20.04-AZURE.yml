@@ -49,6 +49,16 @@ jobs:
       ARTIFACT_OS: ${{ matrix.artifact_os }}
       TILEDB_TRY_PNG_INGESTION: ${{ matrix.try_png_ingestion }}
     steps:
+    
+      - name: 'force core attempt'
+        runs: |
+          # try to force a core dump to test core dump artifacts gathering
+          sh -c "sleep 5" &
+          lastpid=$!
+          kill -QUIT $lastpid
+          kill -ABRT $lastpid
+          kill -SEGV $lastpid
+        
       - uses: actions/checkout@v2
 
       #~ - name: 'prep env'
@@ -98,13 +108,6 @@ jobs:
           # azure run does not treat intermediate failure as error
           # https://github.com/Microsoft/azure-pipelines-yaml/issues/135
           set -e pipefail
-
-          # try to force a core dump to test core dump artifacts gathering
-          sh -c "sleep 5" &
-          lastpid=$!
-          kill -QUIT $lastpid
-          kill -ABRT $lastpid
-          kill -SEGV $lastpid
 
           git config --global user.name 'Azure Pipeline'
           git config --global user.email 'no-reply@tiledb.io'
