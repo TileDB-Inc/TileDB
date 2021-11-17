@@ -207,3 +207,4 @@ jobs:
     #  manylinux:
     #    image: ${{ matrix.os.image }} # TBD: Is this/that right location for image?
     steps:
+      run: echo running in container? # to be replaced with something more substantial (azure-linux_mac.yml GA quiv?)
