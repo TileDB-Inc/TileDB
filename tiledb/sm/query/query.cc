@@ -1886,28 +1886,34 @@ Status Query::set_subarray_unsafe(const NDRange& subarray) {
 Status Query::check_buffers_correctness() {
   // Iterate through each attribute
   for (auto& attr : buffer_names()) {
-    if (buffer(attr).buffer_ == nullptr)
-      return logger_->status(Status::QueryError(
-          std::string("Data buffer is not set for " + attr)));
     if (array_schema_->var_size(attr)) {
-      // Var-sized
-      // Check for data buffer under buffer_var
-      bool exists_data = buffer(attr).buffer_var_ != nullptr;
-      bool exists_offset = buffer(attr).buffer_ != nullptr;
-      if ((!exists_data && *buffer(attr).buffer_var_size_ != 0) ||
-          !exists_offset) {
+      // Check for data buffer under buffer_var and offsets buffer under buffer
+      if (type_ == QueryType::READ) {
+        if (buffer(attr).buffer_var_ == nullptr) {
+          return logger_->status(Status::QueryError(
+              std::string("Var-Sized input attribute/dimension '") + attr +
+              "' is not set correctly. \nVar size buffer is not set."));
+        }
+      } else {
+        if (buffer(attr).buffer_var_ == nullptr &&
+            *buffer(attr).buffer_var_size_ != 0) {
+          return logger_->status(Status::QueryError(
+              std::string("Var-Sized input attribute/dimension '") + attr +
+              "' is not set correctly. \nVar size buffer is not set and buffer "
+              "size if not 0."));
+        }
+      }
+      if (buffer(attr).buffer_ == nullptr) {
         return logger_->status(Status::QueryError(
             std::string("Var-Sized input attribute/dimension '") + attr +
-            "' is not set correctly \nOffsets buffer is not set"));
+            "' is not set correctly. \nOffsets buffer is not set."));
       }
     } else {
       // Fixed sized
-      bool exists_data = buffer(attr).buffer_ != nullptr;
-      bool exists_offset = buffer(attr).buffer_var_ != nullptr;
-      if (!exists_data || exists_offset) {
+      if (buffer(attr).buffer_ == nullptr) {
         return logger_->status(Status::QueryError(
             std::string("Fix-Sized input attribute/dimension '") + attr +
-            "' is not set correctly \nOffsets buffer is not set"));
+            "' is not set correctly. \nData buffer is not set."));
       }
     }
     if (array_schema_->is_nullable(attr)) {
