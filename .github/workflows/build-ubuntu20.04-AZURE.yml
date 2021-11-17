@@ -98,9 +98,9 @@ jobs:
           pwd; ls -la ./
           #TBD -e valid in macos environ?
           #echo -e "print('about to abort!') \nimport os \nos.abort()" | python
-          echo -e "print('aborting...\n')\nimport resource as res\nprint(res.getrlimit(res.RLIMIT_CORE))\nprint("\n")\nres.setrlimit(res.RLIMIT_CORE,(res.RLIM_INFINITY,res.RLIM_INFINITY))\nprint(res.getrlimit(res.RLIMIT_CORE))\nimport os \nos.abort()" | python3
+          echo -e "nl=\"\\\n\"\nprint('aborting...'+nl)\nimport resource as res\nprint(res.getrlimit(res.RLIMIT_CORE))\nprint(nl)\nres.setrlimit(res.RLIMIT_CORE,(res.RLIM_INFINITY,res.RLIM_INFINITY))\nprint(res.getrlimit(res.RLIMIT_CORE))\nimport sys\nsys.stdout.flush()\nsys.stderr.flush()\nimport os \nos.abort()" | python3
           ls -la /cores
-          echo "about to exit with 137..."
+          #echo "about to exit with 137..."
           #exit 137
         
       - uses: actions/checkout@v2
