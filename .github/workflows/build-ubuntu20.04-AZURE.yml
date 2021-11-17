@@ -91,7 +91,7 @@ jobs:
           #echo "waiting on $lastpid..."
           #wait $lastpid
           #kill -L
-          #Is this causing crash...? which crash
+          #Is this causing crash...? apparently... which crash
           which groups
           which python
           which python3
@@ -112,6 +112,12 @@ jobs:
           sync
           whoami
           echo "about to touch /cores/test"
+          #mac, this seems to cause failure with default settings... touch /cores/test
+          #see if can change those permissions and succeed...
+          ls -ld /cores
+          sudo chown :staff /cores
+          sudo chmod g+w /cores
+          ls -ld /cores
           touch /cores/test
           ls -la /cores
           rm /cores/test
