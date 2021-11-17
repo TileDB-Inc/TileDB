@@ -33,15 +33,20 @@
 #include <iostream>
 #include <tiledb/tiledb>
 
+using namespace tiledb;
+
 int main() {
   // Create TileDB context
-  tiledb::Context ctx;
+  Context ctx;
 
   // Catch an error
   try {
-    tiledb::create_group(ctx, "my_group");
-    tiledb::create_group(ctx, "my_group");
+    create_group(ctx, "my_group");
+    create_group(ctx, "my_group");
   } catch (tiledb::TileDBError& e) {
+    Error err(ctx);
+    std::string msg = err.error_message();
+    std::cout << "Last error: " << msg << "\n";
     std::cout << "TileDB exception:\n" << e.what() << "\n";
   }
 
@@ -49,7 +54,7 @@ int main() {
   ctx.set_error_handler([](std::string msg) {
     std::cout << "Callback:\n" << msg << "\n";
   });
-  tiledb::create_group(ctx, "my_group");
+  create_group(ctx, "my_group");
 
   return 0;
 }

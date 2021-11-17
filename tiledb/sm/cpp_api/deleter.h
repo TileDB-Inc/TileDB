@@ -119,6 +119,10 @@ class Deleter {
     tiledb_fragment_info_free(&p);
   }
 
+  void operator()(tiledb_error_t* p) const {
+    tiledb_error_free(&p);
+  }
+
  private:
   /* ********************************* */
   /*         PRIVATE ATTRIBUTES        */
