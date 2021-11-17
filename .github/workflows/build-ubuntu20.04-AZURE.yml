@@ -52,7 +52,7 @@ jobs:
     
       - name: 'force core attempt'
         run: |
-          ls -la /core
+          ls -la /cores
           # enable core dumps
           ulimit -c               # should output 0 if disabled
           ulimit -c unlimited     # Enable core dumps to be captured (must be in same run block)
@@ -67,6 +67,7 @@ jobs:
           #kill -QUIT $lastpid
           #kill -ABRT $lastpid
           kill -SEGV $lastpid
+          ls -la /cores
         
       - uses: actions/checkout@v2
 
