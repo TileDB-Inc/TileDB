@@ -191,7 +191,7 @@ jobs:
           ulimit -c               # should output 0 if disabled
           ulimit -c unlimited     # Enable core dumps to be captured (must be in same run block)
           ulimit -c               # should output 'unlimited' now
-          echo -e "import resource as res\nres.setrlimit(resource.RLIMIT_CORE,(res.RLIM_INFINITY,res.RLIMIT_INFINITY))\nprint(res.getrlimit(4))\nprint('about to abort!') \nimport os \nos.abort()" | python
+          #echo -e "import resource as res\nres.setrlimit(resource.RLIMIT_CORE,(res.RLIM_INFINITY,res.RLIMIT_INFINITY))\nprint(res.getrlimit(4))\nprint('about to abort!') \nimport os \nos.abort()" | python
           echo -e "import resource as res\nprint(res.getrlimit(res.RLIMIT_CORE))\nres.setrlimit(res.RLIMIT_CORE,(res.RLIM_INFINITY,res.RLIM_INFINITY))\nprint(res.getrlimit(res.RLIMIT_CORE))\nimport os \nos.abort()" | python3
           
       - name: 'Save cores dump stacks if any'
@@ -216,8 +216,6 @@ jobs:
           name: coredumps ${{ env.GITHUB_RUN_NUMBER }} 
           if-no-files-found: warn # 'ignore', 'warn' or 'error' are available, defaults to `warn` 
           path: |
-            # !$TILEDB_HOME/build/core/core.1
-            # !$TILEDB_HOME/build/core/
             !${{ github.workspace }}/build/core/
 
       - name: 'Test status check'
