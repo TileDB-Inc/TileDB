@@ -341,13 +341,6 @@ TEST_CASE_METHOD(
 }
 
 TEST_CASE_METHOD(S3Fx, "Test S3 use BucketCannedACL", "[s3]") {
-  /** Use local s3 definitions for trying various canned ACL settings. */
-  const std::string S3_PREFIX = "s3://";
-  const tiledb::sm::URI S3_BUCKET =
-      tiledb::sm::URI(S3_PREFIX + random_name("tiledb") + "/");
-  const std::string TEST_DIR = S3_BUCKET.to_string() + "tiledb_test_dir/";
-  ThreadPool thread_pool_;
-
   Config config;
 #ifndef TILEDB_TESTS_AWS_S3_CONFIG
   REQUIRE(config.set("vfs.s3.endpoint_override", "localhost:9999").ok());
@@ -391,13 +384,6 @@ TEST_CASE_METHOD(S3Fx, "Test S3 use BucketCannedACL", "[s3]") {
 }
 
 TEST_CASE_METHOD(S3Fx, "Test S3 use Bucket/Object CannedACL", "[s3]") {
-  /** Use local s3 definitions for trying various canned ACL settings. */
-  const std::string S3_PREFIX = "s3://";
-  const tiledb::sm::URI S3_BUCKET =
-      tiledb::sm::URI(S3_PREFIX + random_name("tiledb") + "/");
-  const std::string TEST_DIR = S3_BUCKET.to_string() + "tiledb_test_dir/";
-  ThreadPool thread_pool_;
-
   Config config;
 #ifndef TILEDB_TESTS_AWS_S3_CONFIG
   REQUIRE(config.set("vfs.s3.endpoint_override", "localhost:9999").ok());

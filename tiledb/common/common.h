@@ -1,11 +1,11 @@
 /**
- * @file   errors.cc
+ * @file   tiledb/common/common.h
  *
  * @section LICENSE
  *
  * The MIT License
  *
- * @copyright Copyright (c) 2017-2021 TileDB, Inc.
+ * @copyright Copyright (c) 2021 TileDB, Inc.
  *
  * Permission is hereby granted, free of charge, to any person obtaining a copy
  * of this software and associated documentation files (the "Software"), to deal
@@ -27,34 +27,32 @@
  *
  * @section DESCRIPTION
  *
- * This example shows how to catch errors in TileDB.
+ * Common facilities of the TileDB library.
+ *
+ * The common facilities here are common by policy, not by convenience. The
+ * elements here are expected to be used as ordinary language features. Each
+ * element originates in some included file and then is incorporated into the
+ * default namespace with a `using` declaration. The expectation is that common
+ * elements be used *without* explicit namespace qualification.
  */
 
-#include <iostream>
-#include <tiledb/tiledb>
+#ifndef TILEDB_COMMON_COMMON_H
+#define TILEDB_COMMON_COMMON_H
 
-using namespace tiledb;
+/*
+ * All the standard library commonality is declared in "common-std.h".
+ */
+#include "common-std.h"
 
-int main() {
-  // Create TileDB context
-  Context ctx;
+namespace tiledb::common {}
+namespace tdb = tiledb::common;
 
-  // Catch an error
-  try {
-    create_group(ctx, "my_group");
-    create_group(ctx, "my_group");
-  } catch (tiledb::TileDBError& e) {
-    Error err(ctx);
-    std::string msg = err.error_message();
-    std::cout << "Last error: " << msg << "\n";
-    std::cout << "TileDB exception:\n" << e.what() << "\n";
-  }
+/*
+ * Dynamic memory
+ */
+#include "dynamic_memory/dynamic_memory.h"
+using tiledb::common::allocator;
+using tiledb::common::make_shared;
+// using tiledb::common::make_unique;
 
-  // Set a different error handler
-  ctx.set_error_handler([](std::string msg) {
-    std::cout << "Callback:\n" << msg << "\n";
-  });
-  create_group(ctx, "my_group");
-
-  return 0;
-}
+#endif  // TILEDB_COMMON_COMMON_H

@@ -30,7 +30,8 @@
  * This file implements class Writer.
  */
 
-#include "tiledb/sm/query/writer.h"
+#include "tiledb/common/common.h"
+
 #include "tiledb/common/heap_memory.h"
 #include "tiledb/common/logger.h"
 #include "tiledb/sm/array/array.h"
@@ -44,6 +45,7 @@
 #include "tiledb/sm/misc/utils.h"
 #include "tiledb/sm/misc/uuid.h"
 #include "tiledb/sm/query/query_macros.h"
+#include "tiledb/sm/query/writer.h"
 #include "tiledb/sm/stats/global_stats.h"
 #include "tiledb/sm/storage_manager/storage_manager.h"
 #include "tiledb/sm/tile/generic_tile_io.h"
@@ -995,14 +997,8 @@ Status Writer::create_fragment(
     uri = array_schema_->array_uri().join_path(new_fragment_str);
   }
   auto timestamp_range = std::pair<uint64_t, uint64_t>(timestamp, timestamp);
-
-  frag_meta = tdb_make_shared(
-      FragmentMetadata,
-      storage_manager_,
-      array_schema_,
-      uri,
-      timestamp_range,
-      dense);
+  frag_meta = tdb::make_shared<FragmentMetadata>(
+      HERE(), storage_manager_, array_schema_, uri, timestamp_range, dense);
 
   RETURN_NOT_OK((frag_meta)->init(subarray_.ndrange(0)));
   return storage_manager_->create_dir(uri);
@@ -1319,7 +1315,7 @@ Status Writer::init_global_write_state() {
   global_write_state_.reset(new GlobalWriteState);
 
   // Create fragment
-  global_write_state_->frag_meta_ = tdb_make_shared(FragmentMetadata);
+  global_write_state_->frag_meta_ = tdb::make_shared<FragmentMetadata>(HERE());
   RETURN_NOT_OK(create_fragment(
       !coords_info_.has_coords_, global_write_state_->frag_meta_));
   auto uri = global_write_state_->frag_meta_->fragment_uri();
@@ -1607,7 +1603,7 @@ Status Writer::ordered_write() {
   auto timer_se = stats_->start_timer("filter_tile");
 
   // Create new fragment
-  auto frag_meta = tdb_make_shared(FragmentMetadata);
+  auto frag_meta = tdb::make_shared<FragmentMetadata>(HERE());
   RETURN_CANCEL_OR_ERROR(create_fragment(true, frag_meta));
   const auto& uri = frag_meta->fragment_uri();
 
@@ -2390,7 +2386,7 @@ Status Writer::unordered_write() {
     RETURN_CANCEL_OR_ERROR(compute_coord_dups(cell_pos, &coord_dups));
 
   // Create new fragment
-  auto frag_meta = tdb_make_shared(FragmentMetadata);
+  auto frag_meta = tdb::make_shared<FragmentMetadata>(HERE());
   RETURN_CANCEL_OR_ERROR(create_fragment(false, frag_meta));
   const auto& uri = frag_meta->fragment_uri();
 

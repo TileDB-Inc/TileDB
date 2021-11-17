@@ -1,11 +1,11 @@
 /**
- * @file   errors.cc
+ * @file tiledb/common/dynamic_memory/test/testing_allocators.h
  *
  * @section LICENSE
  *
  * The MIT License
  *
- * @copyright Copyright (c) 2017-2021 TileDB, Inc.
+ * @copyright Copyright (c) 2021 TileDB, Inc.
  *
  * Permission is hereby granted, free of charge, to any person obtaining a copy
  * of this software and associated documentation files (the "Software"), to deal
@@ -26,35 +26,37 @@
  * THE SOFTWARE.
  *
  * @section DESCRIPTION
- *
- * This example shows how to catch errors in TileDB.
  */
 
-#include <iostream>
-#include <tiledb/tiledb>
+#ifndef TILEDB_COMMON_DYNAMIC_MEMORY_TEST_TESTING_ALLOCATORS_H
+#define TILEDB_COMMON_DYNAMIC_MEMORY_TEST_TESTING_ALLOCATORS_H
 
-using namespace tiledb;
+#include <new>
 
-int main() {
-  // Create TileDB context
-  Context ctx;
+/**
+ * An allocator that always throws bad_alloc for all allocations.
+ *
+ * The nickname for this allocator is Rage Against The Machine: "I won't do what
+ * you tell me."
+ *
+ * @tparam T The allocator's value_type
+ */
+template <class T>
+class ThrowingAllocator {
+ public:
+  using value_type = T;
 
-  // Catch an error
-  try {
-    create_group(ctx, "my_group");
-    create_group(ctx, "my_group");
-  } catch (tiledb::TileDBError& e) {
-    Error err(ctx);
-    std::string msg = err.error_message();
-    std::cout << "Last error: " << msg << "\n";
-    std::cout << "TileDB exception:\n" << e.what() << "\n";
+  ThrowingAllocator() = default;
+  template <class U>
+  ThrowingAllocator(ThrowingAllocator<U> const&) noexcept {
   }
 
-  // Set a different error handler
-  ctx.set_error_handler([](std::string msg) {
-    std::cout << "Callback:\n" << msg << "\n";
-  });
-  create_group(ctx, "my_group");
+  T* allocate(std::size_t) {
+    throw std::bad_alloc();
+  }
 
-  return 0;
-}
+  void deallocate(T*, std::size_t) noexcept {
+  }
+};
+
+#endif  // TILEDB_COMMON_DYNAMIC_MEMORY_TEST_TESTING_ALLOCATORS_H

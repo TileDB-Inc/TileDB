@@ -88,6 +88,8 @@ struct ArraySchemaFx {
   const char* DIM1_TILE_EXTENT_STR = "10";
   const char* DIM2_TILE_EXTENT_STR = "5";
   const uint64_t TILE_EXTENT_SIZE = sizeof(TILE_EXTENTS) / DIM_NUM;
+  const std::string arrays_dir =
+      std::string(TILEDB_TEST_INPUTS_DIR) + "/arrays";
 
   /**
    * If true, array schema is serialized before submission, to test the
@@ -2222,4 +2224,80 @@ TEST_CASE_METHOD(
   tiledb_array_free(&array);
   delete_array(array_name);
   remove_temp_dir(local_fs.file_prefix() + local_fs.temp_dir());
+}
+
+TEST_CASE_METHOD(
+    ArraySchemaFx,
+    "C API: Test v1.4.0 array schema attribute drop and add",
+    "[capi][array-schema][attribute-drop][attribute-add][backwards-compat]") {
+  // Instantiate local class
+  SupportedFsLocal local_fs;
+
+  std::string array_uri(arrays_dir + "/non_split_coords_v1_4_0");
+  // Remove any failed tests
+  remove_temp_dir(
+      array_uri + "/" + tiledb::sm::constants::array_schema_folder_name);
+
+  // Create an array schema evolution
+  tiledb_array_schema_evolution_t* array_schema_evolution;
+  int32_t rc =
+      tiledb_array_schema_evolution_alloc(ctx_, &array_schema_evolution);
+  REQUIRE(rc == TILEDB_OK);
+
+  tiledb_attribute_t* attr2;
+  rc = tiledb_attribute_alloc(ctx_, "a2", TILEDB_INT32, &attr2);
+  REQUIRE(rc == TILEDB_OK);
+  rc = tiledb_array_schema_evolution_add_attribute(
+      ctx_, array_schema_evolution, attr2);
+  REQUIRE(rc == TILEDB_OK);
+
+  // Remove attribute a
+  rc = tiledb_array_schema_evolution_drop_attribute(
+      ctx_, array_schema_evolution, "a");
+  REQUIRE(rc == TILEDB_OK);
+
+  // Evolve schema
+  rc = tiledb_array_evolve_wrapper(
+      ctx_, array_uri.c_str(), array_schema_evolution);
+  REQUIRE(rc == TILEDB_OK);
+
+  // Clean up array schema evolution
+  tiledb_attribute_free(&attr2);
+  tiledb_array_schema_evolution_free(&array_schema_evolution);
+
+  // Open array
+  tiledb_array_t* array;
+  rc = tiledb_array_alloc(ctx_, array_uri.c_str(), &array);
+  REQUIRE(rc == TILEDB_OK);
+  rc = tiledb_array_open(ctx_, array, TILEDB_READ);
+  REQUIRE(rc == TILEDB_OK);
+  tiledb_array_schema_t* read_schema;
+  rc = array_get_schema_wrapper(array, &read_schema);
+  REQUIRE(rc == TILEDB_OK);
+
+  uint32_t attr_num;
+  rc = tiledb_array_schema_get_attribute_num(ctx_, read_schema, &attr_num);
+  REQUIRE(rc == TILEDB_OK);
+  REQUIRE(attr_num == 1);
+
+  tiledb_attribute_t* read_attr;
+  rc = tiledb_array_schema_get_attribute_from_index(
+      ctx_, read_schema, 0, &read_attr);
+  REQUIRE(rc == TILEDB_OK);
+  const char* attr_name;
+  rc = tiledb_attribute_get_name(ctx_, read_attr, &attr_name);
+  REQUIRE(rc == TILEDB_OK);
+  CHECK_THAT(attr_name, Catch::Equals("a2"));
+
+  // Close array
+  rc = tiledb_array_close(ctx_, array);
+  REQUIRE(rc == TILEDB_OK);
+
+  // Clean up
+  tiledb_attribute_free(&read_attr);
+  tiledb_array_schema_free(&read_schema);
+  tiledb_array_free(&array);
+  remove_temp_dir(local_fs.file_prefix() + local_fs.temp_dir());
+  remove_temp_dir(
+      array_uri + "/" + tiledb::sm::constants::array_schema_folder_name);
 }

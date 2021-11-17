@@ -74,7 +74,7 @@ namespace serialization {
 
 enum class SerializationContext { CLIENT, SERVER, BACKUP };
 
-tdb_shared_ptr<Logger> dummy_logger = tdb_make_shared(Logger, "");
+tdb_shared_ptr<Logger> dummy_logger = make_shared<Logger>(HERE(), "");
 
 Status stats_to_capnp(Stats& stats, capnp::Stats::Builder* stats_builder) {
   // Build counters

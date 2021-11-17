@@ -39,6 +39,7 @@
 #include <memory>
 #include <string>
 
+#include "tiledb/common/dynamic_memory/dynamic_memory.h"
 #include "tiledb/common/heap_profiler.h"
 
 namespace tiledb {
@@ -124,94 +125,6 @@ void tiledb_delete_array(T* const p) {
   heap_profiler.record_dealloc(p);
 }
 
-/** TileDB variant of `std::shared_ptr`. */
-template <class T>
-class tiledb_shared_ptr {
- public:
-  tiledb_shared_ptr() = default;
-
-  tiledb_shared_ptr(std::nullptr_t p)
-      : sp_(p, tiledb_delete<T>) {
-  }
-
-  tiledb_shared_ptr(T* const p)
-      : sp_(p, tiledb_delete<T>) {
-  }
-
-  tiledb_shared_ptr(const tiledb_shared_ptr& rhs)
-      : sp_(rhs.sp_) {
-  }
-
-  tiledb_shared_ptr(tiledb_shared_ptr&& rhs)
-      : sp_(std::move(rhs.sp_)) {
-  }
-
-  tiledb_shared_ptr& operator=(const tiledb_shared_ptr& rhs) {
-    sp_ = rhs.sp_;
-    return *this;
-  }
-
-  template <class Y>
-  tiledb_shared_ptr& operator=(const tiledb_shared_ptr<Y>& rhs) {
-    sp_ = rhs.inner_sp();
-    return *this;
-  }
-
-  tiledb_shared_ptr& operator=(tiledb_shared_ptr&& rhs) {
-    sp_ = std::move(rhs.sp_);
-    return *this;
-  }
-
-  template <class Y>
-  tiledb_shared_ptr& operator=(tiledb_shared_ptr<Y>&& rhs) {
-    sp_ = std::move(rhs.inner_sp());
-    return *this;
-  }
-
-  bool operator==(const tiledb_shared_ptr& rhs) const {
-    return sp_ == rhs.sp_;
-  }
-
-  bool operator!=(const tiledb_shared_ptr& rhs) const {
-    return sp_ != rhs.sp_;
-  }
-
-  void swap(tiledb_shared_ptr& rhs) noexcept {
-    sp_.swap(rhs.sp_);
-  }
-
-  void reset(T* const p) {
-    sp_.reset(p, tiledb_delete<T>);
-  }
-
-  T* get() const noexcept {
-    return sp_.get();
-  }
-
-  T& operator*() const noexcept {
-    return sp_.operator*();
-  }
-
-  T* operator->() const noexcept {
-    return sp_.operator->();
-  }
-
-  explicit operator bool() const noexcept {
-    return sp_ ? true : false;
-  }
-
-  long int use_count() const noexcept {
-    return sp_.use_count();
-  }
-
-  std::shared_ptr<T> inner_sp() {
-    return sp_;
-  }
-
- private:
-  std::shared_ptr<T> sp_;
-};
-
 /** TileDB variant of `std::unique_ptr`. */
 template <class T>
 struct TileDBUniquePtrDeleter {
@@ -222,19 +135,10 @@ struct TileDBUniquePtrDeleter {
 template <class T>
 using tiledb_unique_ptr = std::unique_ptr<T, TileDBUniquePtrDeleter<T>>;
 
-/** TileDB variant of `std::make_shared`. */
-template <class T, typename... Args>
-tiledb_shared_ptr<T> tiledb_make_shared(
-    const std::string& label, Args&&... args) {
-  return tiledb_shared_ptr<T>(
-      tiledb_new<T>(label, std::forward<Args>(args)...));
-}
-
 }  // namespace common
 }  // namespace tiledb
 
-#define TILEDB_HEAP_MEM_LABEL \
-  std::string(__FILE__) + std::string(":") + std::to_string(__LINE__)
+#define TILEDB_HEAP_MEM_LABEL HERE()
 
 #define tdb_malloc(size) \
   tiledb::common::tiledb_malloc(size, TILEDB_HEAP_MEM_LABEL)
@@ -262,16 +166,6 @@ tiledb_shared_ptr<T> tiledb_make_shared(
 
 #define tdb_delete_array(p) tiledb::common::tiledb_delete_array(p)
 
-#define tdb_shared_ptr tiledb::common::tiledb_shared_ptr
-
 #define tdb_unique_ptr tiledb::common::tiledb_unique_ptr
-
-#ifdef _MSC_VER
-#define tdb_make_shared(T, ...) \
-  tiledb::common::tiledb_make_shared<T>(TILEDB_HEAP_MEM_LABEL, __VA_ARGS__)
-#else
-#define tdb_make_shared(T, ...) \
-  tiledb::common::tiledb_make_shared<T>(TILEDB_HEAP_MEM_LABEL, ##__VA_ARGS__)
-#endif
 
 #endif  // TILEDB_HEAP_MEMORY_H

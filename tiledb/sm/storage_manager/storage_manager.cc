@@ -31,6 +31,8 @@
  * This file implements the StorageManager class.
  */
 
+#include "tiledb/common/common.h"
+
 #include <algorithm>
 #include <functional>
 #include <iostream>
@@ -918,6 +920,7 @@ Status StorageManager::array_evolve_schema(
   Status st = store_array_schema(array_schema_evolved, encryption_key);
   if (!st.ok()) {
     tdb_delete(array_schema_evolved);
+    logger_->status(st);
     return logger_->status(Status::StorageManagerError(
         "Cannot evovle schema;  Not able to store evolved array schema."));
   }
@@ -1642,8 +1645,8 @@ Status StorageManager::get_fragment_info(
   }
 
   // Get fragment non-empty domain
-  auto meta = tdb_make_shared(
-      FragmentMetadata,
+  auto meta = tdb::make_shared<FragmentMetadata>(
+      HERE(),
       this,
       array.array_schema(),
       fragment_uri,
@@ -1653,7 +1656,7 @@ Status StorageManager::get_fragment_info(
       *array.encryption_key(),
       nullptr,
       0,
-      std::unordered_map<std::string, tiledb_shared_ptr<ArraySchema>>()));
+      std::unordered_map<std::string, tdb_shared_ptr<ArraySchema>>()));
 
   // This is important for format version > 2
   sparse = !meta->dense();
@@ -2337,6 +2340,15 @@ Status StorageManager::store_array_schema(
   if (exists)
     RETURN_NOT_OK(vfs_->remove_file(schema_uri));
 
+  // Check if the array schema directory exists
+  // If not create it, this is caused by a pre-v10 array
+  bool schema_dir_exists = false;
+  URI array_schema_folder_uri =
+      array_schema->array_uri().join_path(constants::array_schema_folder_name);
+  RETURN_NOT_OK(is_dir(array_schema_folder_uri, &schema_dir_exists));
+  if (!schema_dir_exists)
+    RETURN_NOT_OK(create_dir(array_schema_folder_uri));
+
   // Write to file
   Tile tile(
       constants::generic_tile_datatype,
@@ -2596,7 +2608,7 @@ Status StorageManager::load_array_metadata(
       RETURN_NOT_OK(tile_io.read_generic(&tile, 0, encryption_key, config_));
 
       auto buffer = tile->buffer();
-      metadata_buff = tdb_make_shared(Buffer);
+      metadata_buff = tdb::make_shared<Buffer>(HERE());
       RETURN_NOT_OK(metadata_buff->realloc(buffer->size()));
       metadata_buff->set_size(buffer->size());
       buffer->reset_offset();
@@ -2659,16 +2671,11 @@ Status StorageManager::load_fragment_metadata(
       if (f_version == 1) {  // This is equivalent to format version <=2
         bool sparse;
         RETURN_NOT_OK(vfs_->is_file(coords_uri, &sparse));
-        metadata = tdb_make_shared(
-            FragmentMetadata,
-            this,
-            array_schema,
-            sf.uri_,
-            sf.timestamp_range_,
-            !sparse);
+        metadata = tdb::make_shared<FragmentMetadata>(
+            HERE(), this, array_schema, sf.uri_, sf.timestamp_range_, !sparse);
       } else {  // Format version > 2
-        metadata = tdb_make_shared(
-            FragmentMetadata, this, array_schema, sf.uri_, sf.timestamp_range_);
+        metadata = tdb::make_shared<FragmentMetadata>(
+            HERE(), this, array_schema, sf.uri_, sf.timestamp_range_);
       }
 
       // Potentially find the basic fragment metadata in the consolidated

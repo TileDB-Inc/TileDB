@@ -230,7 +230,7 @@ class ThreadPool {
     template <class Fn_T>
     explicit PackagedTask(Fn_T&& fn, tdb_shared_ptr<PackagedTask>&& parent) {
       fn_ = std::move(fn);
-      task_state_ = tdb_make_shared(TaskState);
+      task_state_ = make_shared<TaskState>(HERE());
       parent_ = std::move(parent);
     }
 

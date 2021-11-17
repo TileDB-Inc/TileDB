@@ -1,11 +1,11 @@
 /**
- * @file   errors.cc
+ * @file common/governor/governor.cc
  *
  * @section LICENSE
  *
  * The MIT License
  *
- * @copyright Copyright (c) 2017-2021 TileDB, Inc.
+ * @copyright Copyright (c) 2021 TileDB, Inc.
  *
  * Permission is hereby granted, free of charge, to any person obtaining a copy
  * of this software and associated documentation files (the "Software"), to deal
@@ -27,34 +27,20 @@
  *
  * @section DESCRIPTION
  *
- * This example shows how to catch errors in TileDB.
  */
 
-#include <iostream>
-#include <tiledb/tiledb>
+#include "governor.h"
+#include "tiledb/common/heap_profiler.h"
 
-using namespace tiledb;
+namespace tiledb::common {
 
-int main() {
-  // Create TileDB context
-  Context ctx;
-
-  // Catch an error
-  try {
-    create_group(ctx, "my_group");
-    create_group(ctx, "my_group");
-  } catch (tiledb::TileDBError& e) {
-    Error err(ctx);
-    std::string msg = err.error_message();
-    std::cout << "Last error: " << msg << "\n";
-    std::cout << "TileDB exception:\n" << e.what() << "\n";
-  }
-
-  // Set a different error handler
-  ctx.set_error_handler([](std::string msg) {
-    std::cout << "Callback:\n" << msg << "\n";
-  });
-  create_group(ctx, "my_group");
-
-  return 0;
+void Governor::memory_panic() {
+  heap_profiler.dump_and_terminate();
 }
+
+}  // namespace tiledb::common
+
+/*
+ * change interface to heap_profiler to allow dump-with-flush
+ * call panic from my code; remove calls to exit() from heap_profiler
+ */
