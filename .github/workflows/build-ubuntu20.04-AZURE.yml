@@ -61,11 +61,14 @@ jobs:
           sudo chown :staff /cores
           sudo chmod g+w /cores
           ulimit -c unlimited     # Enable core dumps to be captured (must be in same run block)
+          ls -ld /cores
+          ulimit -c
 
       - name: 'prep ubuntu for core dumps'
         if: ${{ always() == true   && startsWith(matrix.os, 'ubuntu-') == true }} # only run this job if the build step failed
         run: |
           ulimit -c unlimited     # Enable core dumps to be captured (must be in same run block)
+          ulimit -c
 
       - name: 'short force core attempt'
         continue-on-error: true
@@ -325,6 +328,13 @@ jobs:
           echo 'done hunting core.* files'
           #for f in $(find $TILEDB_HOME/build -name 'core.*');
           for f in $(find $TILEDB_HOME -name 'core.*');
+            do
+              echo "stack trace for $f"
+              #TBD Can we use ldb on gcc'd executable and get stack trace?
+              lldb -c $f --batch -o 'bt all' -o 'quit'
+              mv $f $TILEDB_HOME/tdbcores/
+            done;
+          for f in $(find $TILEDB_HOME -name 'core');
             do
               echo "stack trace for $f"
               #TBD Can we use ldb on gcc'd executable and get stack trace?
