@@ -237,8 +237,9 @@
 #include <stdexcept>
 #include <tuple>
 
-using std::tuple, std::optional, std::nullopt, std::isnan, std::isinf,
-    std::isfinite;
+#include "tiledb/common/common-std.h"
+
+using std::isnan, std::isinf, std::isfinite;
 
 namespace tiledb::common {
 namespace detail {

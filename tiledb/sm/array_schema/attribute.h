@@ -33,6 +33,7 @@
 #ifndef TILEDB_ATTRIBUTE_H
 #define TILEDB_ATTRIBUTE_H
 
+#include "tiledb/common/common.h"
 #include "tiledb/common/status.h"
 #include "tiledb/sm/filter/filter_pipeline.h"
 #include "tiledb/sm/misc/types.h"
@@ -132,7 +133,7 @@ class Attribute {
    * @param version The format spec version.
    * @return Status and Attribute
    */
-  static std::tuple<Status, std::optional<Attribute>> deserialize(
+  static tuple<Status, optional<Attribute>> deserialize(
       ConstBuffer* buff, uint32_t version);
 
   /** Dumps the attribute contents in ASCII form in the selected output. */

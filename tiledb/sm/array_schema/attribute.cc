@@ -109,7 +109,7 @@ unsigned int Attribute::cell_val_num() const {
   return cell_val_num_;
 }
 
-std::tuple<Status, std::optional<Attribute>> Attribute::deserialize(
+tuple<Status, optional<Attribute>> Attribute::deserialize(
     ConstBuffer* buff, const uint32_t version) {
   Status st;
   // Load attribute name
@@ -174,7 +174,7 @@ std::tuple<Status, std::optional<Attribute>> Attribute::deserialize(
   }
 
   return {Status::Ok(),
-          std::optional<Attribute>(
+          optional<Attribute>(
               std::in_place,
               name,
               datatype,
