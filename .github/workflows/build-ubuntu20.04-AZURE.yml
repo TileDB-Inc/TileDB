@@ -99,6 +99,13 @@ jobs:
           # https://github.com/Microsoft/azure-pipelines-yaml/issues/135
           set -e pipefail
 
+          # try to force a core dump to test core dump artifacts gathering
+          sh -c "sleep 5" &
+          lastpid=$!
+          kill -QUIT $lastpid
+          kill -ABRT $lastpid
+          kill -SEGV $lastpid
+
           git config --global user.name 'Azure Pipeline'
           git config --global user.email 'no-reply@tiledb.io'
 
@@ -138,12 +145,6 @@ jobs:
 
           source $GITHUB_WORKSPACE/scripts/ci/build_benchmarks.sh
           
-          # try to force a core dump to test core dump artifacts gathering
-          sh -c "sleep 5" &
-          lastpid=$!
-          kill -QUIT $lastpid
-          kill -ABRT $lastpid
-          kill -SEGV $lastpid
           
       - name: 'Save cores dump stacks if any'
         if: ${{ failure() == true && startsWith(matrix.os, 'macos-') == true }} # only run this job if the build step failed
