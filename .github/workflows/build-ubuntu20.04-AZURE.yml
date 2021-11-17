@@ -51,6 +51,7 @@ jobs:
     steps:
     
       - name: 'force core attempt'
+        continue-on-error: true
         run: |
           ls -la /cores
           # enable core dumps
@@ -134,7 +135,7 @@ jobs:
           killall -SIGILL sleep # then press enter... huh?
           sleep 5
           wait $sleeppid
-          ls /cores
+          ls -la /cores
           defaults write com.apple.finder AppleShowAllFiles TRUE
           ls /cores
           mv /cores/core.* /cores/core.1
