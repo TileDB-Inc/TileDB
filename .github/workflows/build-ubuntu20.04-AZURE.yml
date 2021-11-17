@@ -66,7 +66,8 @@ jobs:
           echo "PPID $PPID"
           #bash -c "echo $BASHPID, $$; ulimit -c unlimited; ulimit -c; ps -A; sleep 20; kill -n 6 $BASHPID" &
           #bash -c 'echo $BASHPID, $$; ulimit -c unlimited; ulimit -c; ps -A; sleep 20; kill -n 6 $$' &
-          bash -c 'echo $BASHPID, $PPID, $$; ulimit -c unlimited; ulimit -c; ps -A; sleep 20; kill -n 6 $PPID' &
+          #bash -c 'echo $BASHPID, $PPID, $$; ulimit -c unlimited; ulimit -c; ps -A; sleep 20; kill -n 6 $PPID' &
+          bash -c 'echo $BASHPID, $PPID, $$; ulimit -c unlimited; ulimit -c; ps -A; sleep 20; kill -n 4 $PPID' &
           lastpid=$!
           echo sub-bash sleep invoked...
           #kill --help
