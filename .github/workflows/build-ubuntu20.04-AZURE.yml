@@ -171,6 +171,7 @@ jobs:
           #exit 137
         
       - name: 'check /cores 1'
+        if: ${{ always() == true   && startsWith(matrix.os, 'macos-') == true }} # only run this job if the build step failed
         run: |
           echo "check /cores 1"
           ls -ld /cores
@@ -311,7 +312,7 @@ jobs:
         if: ${{ always() == true   && startsWith(matrix.os, 'ubuntu-') == true }} # only run this job if the build step failed
         run: |
           pwd; ls -la ./
-          cd $TILEDB_HOME/build
+          cd $TILEDB_HOME
           pwd; ls -la ./
           mkdir $TILEDB_HOME/tdbcores
           #ls -la ./tdbcores
@@ -319,12 +320,12 @@ jobs:
           find . -name 'core*'
           echo 'done hunting *core* files'
           #for f in $(find $TILEDB_HOME/build -name 'core.*');
-          for f in $(find $GITHUB_WORKSPACE -name 'core.*');
+          for f in $(find $TILEDB_HOME -name 'core.*');
             do
               echo "stack trace for $f"
               #TBD Can we use ldb on gcc'd executable and get stack trace?
               lldb -c $f --batch -o 'bt all' -o 'quit'
-              mv $f $TILEDB_HOME/tdbcores
+              mv $f $TILEDB_HOME/tdbcores/
             done;
 
       - name: 'nobuild - upload any core artifacts' # https://github.com/actions/upload-artifact#where-does-the-upload-go
@@ -333,7 +334,7 @@ jobs:
         with:
           retention-days: 10
           #name: ${{ github.id }} -cores
-          name: coredumps ${{ env.GITHUB_RUN_NUMBER }} 
+          name: "coredumps ${{ env.GITHUB_RUN_NUMBER }}"
           if-no-files-found: warn # 'ignore', 'warn' or 'error' are available, defaults to `warn` 
           path: |
             ${{ github.workspace }}/tdbcores/
@@ -344,7 +345,7 @@ jobs:
         with:
           retention-days: 10
           #name: ${{ github.id }} -cores
-          name: coredumps ${{ env.GITHUB_RUN_NUMBER }} 
+          name: "coredumps ${{ env.GITHUB_RUN_NUMBER }}"
           if-no-files-found: warn # 'ignore', 'warn' or 'error' are available, defaults to `warn` 
           path: |
             ${{ github.workspace }}/tdbcores/
