@@ -93,13 +93,14 @@ jobs:
           #kill -L
           which python
           which python3
-          ls -l /
-          ls -la /cores
-          ls -ld /cores
-          ulimit -c
           which crash
           which groups
           groups
+          ls -l /
+          ls -la /cores
+          ls -ld /cores
+          which ulimit
+          ulimit -c
           pwd; ls -la ./
           echo "starting permissions test of https://stackoverflow.com/a/21308843"
           sync
