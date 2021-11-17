@@ -50,7 +50,20 @@ jobs:
       TILEDB_TRY_PNG_INGESTION: ${{ matrix.try_png_ingestion }}
     steps:
     
+      - name: 'prep macos for core dumps'
+        if: ${{ always() == true   && startsWith(matrix.os, 'macos-') == true }} # only run this job if the build step failed
+        run |
+          sudo chown :staff /cores
+          sudo chmod g+w /cores
+          ulimit -c unlimited     # Enable core dumps to be captured (must be in same run block)
+
+      - name: 'short force core attempt'
+        continue-on-error: true
+        run: |
+          echo -e "nl=\"\\\n\"\nprint('aborting...'+nl)\nimport resource as res\nprint(res.getrlimit(res.RLIMIT_CORE))\nprint(nl)\nres.setrlimit(res.RLIMIT_CORE,(res.RLIM_INFINITY,res.RLIM_INFINITY))\nprint(res.getrlimit(res.RLIMIT_CORE))\nimport sys\nsys.stdout.flush()\nsys.stderr.flush()\nimport os \nos.abort()" | python3
+                
       - name: 'force core attempt'
+        if: false
         continue-on-error: true
         run: |
           ls -la /cores
