@@ -57,6 +57,11 @@ jobs:
           sudo chmod g+w /cores
           ulimit -c unlimited     # Enable core dumps to be captured (must be in same run block)
 
+      - name: 'prep ubuntu for core dumps'
+        if: ${{ always() == true   && startsWith(matrix.os, 'ubuntu-') == true }} # only run this job if the build step failed
+        run: |
+          ulimit -c unlimited     # Enable core dumps to be captured (must be in same run block)
+
       - name: 'short force core attempt'
         continue-on-error: true
         run: |
@@ -263,7 +268,7 @@ jobs:
           ulimit -c               # should output 'unlimited' now
           #echo -e "import resource as res\nprint(res.getrlimit(res.RLIMIT_CORE))\nres.setrlimit(res.RLIMIT_CORE,(res.RLIM_INFINITY,res.RLIM_INFINITY))\nprint(res.getrlimit(res.RLIMIT_CORE))\nimport os \nos.abort()" | python3
           
-      - name: 'nobuild - Save cores dump stacks if any'
+      - name: 'nobuild - mac - Save cores dump stacks if any'
         #if: ${{ failure() == true && startsWith(matrix.os, 'macos-') == true }} # only run this job if the build step failed
         if: ${{ always() == true   && startsWith(matrix.os, 'macos-') == true }} # only run this job if the build step failed
         run: |
@@ -295,6 +300,38 @@ jobs:
           #    echo "stack trace for $f"
           #    lldb -c $f --batch -o 'bt all' -o 'quit'
           #  done;
+
+      - name: 'nobuild - ubuntu - Save cores dump stacks if any'
+        #if: ${{ failure() == true && startsWith(matrix.os, 'macos-') == true }} # only run this job if the build step failed
+        if: ${{ always() == true   && startsWith(matrix.os, 'ubuntu-') == true }} # only run this job if the build step failed
+        run: |
+          pwd; ls -la ./
+          cd $TILEDB_HOME/build
+          pwd; ls -la ./
+          mkdir $TILEDB_HOME/tdbcores
+          #ls -la ./tdbcores
+          echo 'hunting core* files'
+          find . -name 'core*'
+          echo 'done hunting *core* files'
+          #for f in $(find $TILEDB_HOME/build -name 'core.*');
+          for f in $(find $GITHUB_WORKSPACE -name 'core.*');
+            do
+              echo "stack trace for $f"
+              #TBD Can we use ldb on gcc'd executable and get stack trace?
+              lldb -c $f --batch -o 'bt all' -o 'quit'
+              mv $f $TILEDB_HOME/tdbcores
+            done;
+
+      - name: 'nobuild - upload any core artifacts' # https://github.com/actions/upload-artifact#where-does-the-upload-go
+        if: ${{ always() == true && startsWith(matrix.os, 'ubuntu-') == true }} # only run this job if the build step failed
+        uses: actions/upload-artifact@v2
+        with:
+          retention-days: 10
+          #name: ${{ github.id }} -cores
+          name: coredumps ${{ env.GITHUB_RUN_NUMBER }} 
+          if-no-files-found: warn # 'ignore', 'warn' or 'error' are available, defaults to `warn` 
+          path: |
+            ${{ github.workspace }}/tdbcores/
 
       - name: 'nobuild - upload any core artifacts' # https://github.com/actions/upload-artifact#where-does-the-upload-go
         if: ${{ always() == true && startsWith(matrix.os, 'macos-') == true }} # only run this job if the build step failed
