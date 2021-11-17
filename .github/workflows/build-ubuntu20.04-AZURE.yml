@@ -91,10 +91,12 @@ jobs:
           #echo "waiting on $lastpid..."
           #wait $lastpid
           #kill -L
-          which crash
+          #Is this causing crash...? which crash
           which groups
           which python
           which python3
+          sync
+          echo "requesting groups..."
           sync
           groups
           sync
