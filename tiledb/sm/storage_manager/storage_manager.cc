@@ -918,6 +918,7 @@ Status StorageManager::array_evolve_schema(
   Status st = store_array_schema(array_schema_evolved, encryption_key);
   if (!st.ok()) {
     tdb_delete(array_schema_evolved);
+    logger_->status(st);
     return logger_->status(Status::StorageManagerError(
         "Cannot evovle schema;  Not able to store evolved array schema."));
   }
@@ -2336,6 +2337,15 @@ Status StorageManager::store_array_schema(
   RETURN_NOT_OK(is_file(schema_uri, &exists));
   if (exists)
     RETURN_NOT_OK(vfs_->remove_file(schema_uri));
+
+  // Check if the array schema directory exists
+  // If not create it, this is caused by a pre-v10 array
+  bool schema_dir_exists = false;
+  URI array_schema_folder_uri =
+      array_schema->array_uri().join_path(constants::array_schema_folder_name);
+  RETURN_NOT_OK(is_dir(array_schema_folder_uri, &schema_dir_exists));
+  if (!schema_dir_exists)
+    RETURN_NOT_OK(create_dir(array_schema_folder_uri));
 
   // Write to file
   Tile tile(

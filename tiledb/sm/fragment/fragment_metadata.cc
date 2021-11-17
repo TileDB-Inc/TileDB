@@ -535,7 +535,7 @@ Status FragmentMetadata::load(
   //  - Version 3 corresponds to version 5 or higher
   //    * __t1_t2_uuid_version
   if (f_version == 1)
-    return load_v1_v2(encryption_key);
+    return load_v1_v2(encryption_key, array_schemas);
   return load_v3_or_higher(encryption_key, f_buff, offset, array_schemas);
 }
 
@@ -1756,6 +1756,7 @@ Status FragmentMetadata::load_tile_var_offsets(ConstBuffer* buff) {
     // Get number of tile offsets
     st = buff->read(&tile_var_offsets_num, sizeof(uint64_t));
     if (!st.ok()) {
+      LOG_STATUS(st);
       return LOG_STATUS(Status::FragmentMetadataError(
           "Cannot load fragment metadata; Reading number of variable tile "
           "offsets failed"));
@@ -1776,6 +1777,7 @@ Status FragmentMetadata::load_tile_var_offsets(ConstBuffer* buff) {
     tile_var_offsets_[i].resize(tile_var_offsets_num);
     st = buff->read(&tile_var_offsets_[i][0], size);
     if (!st.ok()) {
+      LOG_STATUS(st);
       return LOG_STATUS(Status::FragmentMetadataError(
           "Cannot load fragment metadata; Reading variable tile offsets "
           "failed"));
@@ -1796,6 +1798,7 @@ Status FragmentMetadata::load_tile_var_offsets(
   // Get number of tile offsets
   st = buff->read(&tile_var_offsets_num, sizeof(uint64_t));
   if (!st.ok()) {
+    LOG_STATUS(st);
     return LOG_STATUS(Status::FragmentMetadataError(
         "Cannot load fragment metadata; Reading number of variable tile "
         "offsets failed"));
@@ -1814,6 +1817,7 @@ Status FragmentMetadata::load_tile_var_offsets(
     tile_var_offsets_[idx].resize(tile_var_offsets_num);
     st = buff->read(&tile_var_offsets_[idx][0], size);
     if (!st.ok()) {
+      LOG_STATUS(st);
       return LOG_STATUS(Status::FragmentMetadataError(
           "Cannot load fragment metadata; Reading variable tile offsets "
           "failed"));
@@ -2080,7 +2084,10 @@ Status FragmentMetadata::load_array_schema_name(ConstBuffer* buff) {
   return Status::Ok();
 }
 
-Status FragmentMetadata::load_v1_v2(const EncryptionKey& encryption_key) {
+Status FragmentMetadata::load_v1_v2(
+    const EncryptionKey& encryption_key,
+    const std::unordered_map<std::string, tiledb_shared_ptr<ArraySchema>>&
+        array_schemas) {
   URI fragment_metadata_uri = fragment_uri_.join_path(
       std::string(constants::fragment_metadata_filename));
   // Read metadata
@@ -2098,6 +2105,14 @@ Status FragmentMetadata::load_v1_v2(const EncryptionKey& encryption_key) {
   tdb_delete(tile);
 
   storage_manager_->stats()->add_counter("read_frag_meta_size", buff.size());
+
+  // Pre-v10 format fragments we need to set the schema and schema name to
+  // the "old" schema. This way "old" fragments are still loaded fine
+  array_schema_name_ = tiledb::sm::constants::array_schema_filename;
+  auto schema = array_schemas.find(array_schema_name_);
+  if (schema != array_schemas.end()) {
+    set_array_schema(schema->second.get());
+  }
 
   // Deserialize
   ConstBuffer cbuff(&buff);
@@ -2155,6 +2170,14 @@ Status FragmentMetadata::load_footer(
   RETURN_NOT_OK(load_version(cbuff.get()));
   if (version_ >= 10) {
     RETURN_NOT_OK(load_array_schema_name(cbuff.get()));
+    auto schema = array_schemas.find(array_schema_name_);
+    if (schema != array_schemas.end()) {
+      set_array_schema(schema->second.get());
+    }
+  } else {
+    // Pre-v10 format fragments we need to set the schema and schema name to
+    // the "old" schema. This way "old" fragments are still loaded fine
+    array_schema_name_ = tiledb::sm::constants::array_schema_filename;
     auto schema = array_schemas.find(array_schema_name_);
     if (schema != array_schemas.end()) {
       set_array_schema(schema->second.get());
