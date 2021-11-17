@@ -201,6 +201,11 @@ jobs:
         if: ${{ failure() == true && startsWith(matrix.os, 'macos-') == true }} # only run this job if the build step failed
         run: |
           pwd; ls -la ./
+          cd $TILEDB_HOME
+          pwd; ls -la ./; ls -la ./tdbcores
+          echo 'hunting *core* files'
+          find . -name '*core*'
+          echo 'done hunting *core* files'
           ls -la /cores
           mkdir $TILEDB_HOME/tdbcores
           #mv /cores/core.* $TILEDB_HOME/tdbcores/core.1
