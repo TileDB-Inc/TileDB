@@ -127,7 +127,7 @@ option(TILEDB_SKIP_S3AWSSDK_DIR_LENGTH_CHECK "If true, skip check needed path le
 
 set(TILEDB_INSTALL_LIBDIR "" CACHE STRING "If non-empty, install TileDB library to this directory instead of CMAKE_INSTALL_LIBDIR.")
 
-# early WIN32 audit of path length for aws sdk build where 
+# early WIN32 audit of path length for aws sdk build where
 # insufficient available path length causes sdk build failure.
 if (WIN32 AND NOT TILEDB_SKIP_S3AWSSDK_DIR_LENGTH_CHECK)
   if (TILEDB_SUPERBUILD)
@@ -213,7 +213,7 @@ if (MSVC)
   add_compile_options(
                       "$<$<CONFIG:Debug>:/DDEBUG /Od /Zi /bigobj>"
                       "$<$<CONFIG:Release>:/DNDEBUG /Ox>"
-                      "$<$<CONFIG:RelWithDebInfo>:/DNDEBUG /Ox /Zi>"
+                      "$<$<CONFIG:RelWithDebInfo,OptWithDebInfo>:/DNDEBUG /Ox /Zi>"
                       )
 else()
   add_compile_options(-Wall -Wextra)
@@ -221,19 +221,27 @@ else()
     add_compile_options(-Werror)
   endif()
   # Build-specific flags
-  if (CMAKE_BUILD_TYPE MATCHES "Debug")
+  if (CMAKE_BUILD_TYPE MATCHES "^Debug$")
     add_compile_options(-DDEBUG -O0 -g3 -ggdb3 -gdwarf-3)
-  elseif (CMAKE_BUILD_TYPE MATCHES "Release")
+  elseif (CMAKE_BUILD_TYPE MATCHES "^Release$")
     add_compile_options(-DNDEBUG -O3)
-  elseif (CMAKE_BUILD_TYPE MATCHES "RelWithDebInfo")
+  elseif (CMAKE_BUILD_TYPE MATCHES "^(Rel|Opt)WithDebInfo$")
     add_compile_options(-DNDEBUG -O3 -g3 -ggdb3 -gdwarf-3)
-  elseif (CMAKE_BUILD_TYPE MATCHES "Coverage")
+  elseif (CMAKE_BUILD_TYPE MATCHES "^Coverage$")
     add_compile_options(-DDEBUG -g3 -gdwarf-3 --coverage)
   endif()
 
   # Use -Wno-literal-suffix on Linux with C++ sources.
   if (NOT CMAKE_CXX_COMPILER_ID MATCHES "Clang")
     add_compile_options($<$<COMPILE_LANGUAGE:CXX>:-Wno-literal-suffix>)
+  endif()
+endif()
+
+if (NOT DEFINED LIBRARY_CMAKE_BUILD_TYPE)
+  if (CMAKE_BUILD_TYPE MATCHES "^OptWithDebInfo$")
+    set(LIBRARY_CMAKE_BUILD_TYPE "Release")
+  else()
+    set(LIBRARY_CMAKE_BUILD_TYPE "$CMAKE_BUILD_TYPE")
   endif()
 endif()
 
