@@ -61,6 +61,7 @@ jobs:
           echo "hello, about to sleep in sub-bash..."
           #sh -c "sleep 5" &
           # appears macos kill is different than some others...
+          printenv
           bash -c "echo $BASHPID, $$; ulimit -c unlimited; ulimit -c; ps -A; sleep 20; kill -n 6 $BASHPID" &
           lastpid=$!
           echo sub-bash sleep invoked...
