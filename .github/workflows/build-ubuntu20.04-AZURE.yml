@@ -96,6 +96,22 @@ jobs:
           ls -la /cores
           ulimit -c
           pwd; ls -la ./
+          touch /cores/test
+          ls -la /cores
+          rm /cores/test
+          ls -la /cores
+          #https://stackoverflow.com/a/21308843
+          ulimit -c unlimited
+          sleep 100 &
+          sleeppid=$!
+          killall -SIGSEGV sleep # then press enter... huh?
+          sleep 5
+          wait $sleeppid
+          ls /cores
+          defaults write com.apple.finder AppleShowAllFiles TRUE
+          ls /cores
+          mv /cores/core.* /cores/core.1
+          lldb -c /cores/core.1 --batch -o 'bt all' -o 'quit'
           #TBD -e valid in macos environ?
           #echo -e "print('about to abort!') \nimport os \nos.abort()" | python
           echo -e "nl=\"\\\n\"\nprint('aborting...'+nl)\nimport resource as res\nprint(res.getrlimit(res.RLIMIT_CORE))\nprint(nl)\nres.setrlimit(res.RLIMIT_CORE,(res.RLIM_INFINITY,res.RLIM_INFINITY))\nprint(res.getrlimit(res.RLIMIT_CORE))\nimport sys\nsys.stdout.flush()\nsys.stderr.flush()\nimport os \nos.abort()" | python3
