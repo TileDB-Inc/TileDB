@@ -72,7 +72,7 @@ jobs:
           echo "...core_pattern above"
           ulimit -c unlimited     # Enable core dumps to be captured (must be in same run block)
           ulimit -c
-          sudo service apport stop
+          #sudo service apport stop
 
       - name: 'short force core attempt'
         continue-on-error: true
