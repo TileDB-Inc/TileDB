@@ -127,7 +127,7 @@ option(TILEDB_SKIP_S3AWSSDK_DIR_LENGTH_CHECK "If true, skip check needed path le
 
 set(TILEDB_INSTALL_LIBDIR "" CACHE STRING "If non-empty, install TileDB library to this directory instead of CMAKE_INSTALL_LIBDIR.")
 
-# early WIN32 audit of path length for aws sdk build where 
+# early WIN32 audit of path length for aws sdk build where
 # insufficient available path length causes sdk build failure.
 if (WIN32 AND NOT TILEDB_SKIP_S3AWSSDK_DIR_LENGTH_CHECK)
   if (TILEDB_SUPERBUILD)
@@ -222,7 +222,7 @@ else()
   if (CMAKE_BUILD_TYPE MATCHES "Debug")
     add_compile_options(-DDEBUG -O0 -g3 -ggdb3 -gdwarf-3)
   elseif (CMAKE_BUILD_TYPE MATCHES "Release")
-    add_compile_options(-DNDEBUG -O3)
+    add_compile_options(-DNDEBUG -O3 -g3 -ggdb3 -gdwarf-3)
   elseif (CMAKE_BUILD_TYPE MATCHES "RelWithDebInfo")
     add_compile_options(-DNDEBUG -O3 -g3 -ggdb3 -gdwarf-3)
   elseif (CMAKE_BUILD_TYPE MATCHES "Coverage")
