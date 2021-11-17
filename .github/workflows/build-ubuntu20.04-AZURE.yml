@@ -69,9 +69,10 @@ jobs:
 
       - name: 'short force core attempt'
         continue-on-error: true
-        with:
-          variables: |
-            TILEDB_CI_SUCCESS=1 # TBD will this survive to the status check step?
+        #apparently the with/variables not valid with run:, "Unexpected value 'run'
+        #with:
+        #  variables: |
+        #    TILEDB_CI_SUCCESS=1 # TBD will this survive to the status check step?
         run: |
           #if [[ "${{ steps.test.outputs.TILEDB_CI_SUCCESS }}" -ne 1 ]]; then
           #the echo ::set-output doesn't seem to be working, possibly due to abort, even with sync attempt
@@ -79,7 +80,11 @@ jobs:
           sync
           pwd; ls -la ./
           echo -e "nl=\"\\\n\"\nprint('aborting...'+nl)\nimport resource as res\nprint(res.getrlimit(res.RLIMIT_CORE))\nprint(nl)\nres.setrlimit(res.RLIMIT_CORE,(res.RLIM_INFINITY,res.RLIM_INFINITY))\nprint(res.getrlimit(res.RLIMIT_CORE))\nimport sys\nsys.stdout.flush()\nsys.stderr.flush()\nimport os \nos.abort()" | python3
-                
+
+      - name: 'show TILEDB_CI_SUCCESS'
+        run: |
+          echo "current value of TILEDB_CI_SUCCESS is ${{ steps.test.outputs.TILEDB_CI_SUCCESS }}"
+
       - name: 'force core attempt'
         if: false
         continue-on-error: true
