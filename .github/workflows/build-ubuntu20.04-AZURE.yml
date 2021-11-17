@@ -30,14 +30,14 @@ jobs:
             #~ tiledb_serialization: OFF
             #~ artifact_os: macOS_azure
             #~ tiledb_try_png_ingestion: ON
-          - macos-10.15
+          #~ - macos-10.15
           - ubuntu-20.04
         include:
-          - os: 'macos-10.15'
-            cxx: clang++
-            tiledb_serialization: ON
-            #artifact_os: macOS_azure
-            try_png_ingestion: OFF
+          #~ - os: 'macos-10.15'
+            #~ cxx: clang++
+            #~ tiledb_serialization: ON
+            #~ #artifact_os: macOS_azure
+            #~ try_png_ingestion: OFF
           - os: 'ubuntu-20.04'
             cxx: g++
             tiledb_serialization: OFF
@@ -351,19 +351,12 @@ jobs:
           echo "processing core file backtraces"
           sync
           find / \( -name lldb -o -name gdb \)
+          ls -l /var/lib/apport/coredump
           #for f in $(find $TILEDB_HOME/build -name 'core.*');
           for f in $(find /var/lib/apport/coredump/ -name 'core.*');
             do
               echo "stack trace for $f"
-              #TBD Can we use ldb on gcc'd executable and get stack trace?
-              #moot on ubuntu, seems neither gdb nor lldb is available...
-              #lldb -c $f --batch -o 'bt all' -o 'quit'
-              #TBD How's the 'here' thing going to work with the indentation present here...
-              #gdb --core %f <<EOF
-              #  thread apply all bt
-              #  kill
-          #EOF
-              mv $f $TILEDB_HOME/tdbcores/
+              sudo mv $f $TILEDB_HOME/tdbcores/
             done;
 
       - name: 'nobuild - upload any core artifacts' # https://github.com/actions/upload-artifact#where-does-the-upload-go
