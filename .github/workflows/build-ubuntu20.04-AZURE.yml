@@ -67,7 +67,7 @@ jobs:
           #bash -c "echo $BASHPID, $$; ulimit -c unlimited; ulimit -c; ps -A; sleep 20; kill -n 6 $BASHPID" &
           #bash -c 'echo $BASHPID, $$; ulimit -c unlimited; ulimit -c; ps -A; sleep 20; kill -n 6 $$' &
           #bash -c 'echo $BASHPID, $PPID, $$; ulimit -c unlimited; ulimit -c; ps -A; sleep 20; kill -n 6 $PPID' &
-          bash -c 'echo $BASHPID, $PPID, $$; ulimit -c unlimited; ulimit -c; ps -A; sleep 20; kill -n 4 $PPID' &
+          #bash -c 'echo $BASHPID, $PPID, $$; ulimit -c unlimited; ulimit -c; ps -A; sleep 20; kill -n 4 $PPID' &
           lastpid=$!
           echo sub-bash sleep invoked...
           #kill --help
@@ -87,10 +87,11 @@ jobs:
           #kill -11 $lastpid # SIGSEGV
           #kill -4 $lastpid # SIGILL
           #kill -SIGSEGV $lastpid
-          ls -la /cores
+          #ls -la /cores
           echo "waiting on $lastpid..."
-          wait $lastpid
+          #wait $lastpid
           #kill -L
+          echo "print('about to abort!') \n import os \n os.abort()" | python
           echo "about to exit with 137..."
           exit 137
         
