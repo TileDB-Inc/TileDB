@@ -91,7 +91,11 @@ jobs:
           echo "waiting on $lastpid..."
           #wait $lastpid
           #kill -L
-          echo "print('about to abort!') \n import os \n os.abort()" | python
+          #TBD -e valid in macos environ?
+          which python
+          which python3
+          echo -e "print('about to abort!') \n import os \n os.abort()" | python
+          ls -la /cores
           echo "about to exit with 137..."
           exit 137
         
