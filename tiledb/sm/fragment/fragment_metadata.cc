@@ -2088,7 +2088,7 @@ Status FragmentMetadata::load_array_schema_name(ConstBuffer* buff) {
 
 Status FragmentMetadata::load_v1_v2(
     const EncryptionKey& encryption_key,
-    const std::unordered_map<std::string, tiledb_shared_ptr<ArraySchema>>&
+    const std::unordered_map<std::string, tdb_shared_ptr<ArraySchema>>&
         array_schemas) {
   URI fragment_metadata_uri = fragment_uri_.join_path(
       std::string(constants::fragment_metadata_filename));

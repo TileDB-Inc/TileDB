@@ -928,7 +928,7 @@ class FragmentMetadata {
   /** Loads the basic metadata from storage (version 2 or before). */
   Status load_v1_v2(
       const EncryptionKey& encryption_key,
-      const std::unordered_map<std::string, tiledb_shared_ptr<ArraySchema>>&
+      const std::unordered_map<std::string, tdb_shared_ptr<ArraySchema>>&
           array_schemas);
 
   /**
