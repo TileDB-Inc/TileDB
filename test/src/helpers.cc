@@ -108,7 +108,8 @@ bool use_refactored_sparse_unordered_with_dups_reader() {
 }
 
 tdb_shared_ptr<Logger> g_helper_logger(void) {
-  static tdb_shared_ptr<Logger> g_helper_logger = tdb_make_shared(Logger, "");
+  static tdb_shared_ptr<Logger> g_helper_logger =
+      make_shared<Logger>(HERE(), "");
   return g_helper_logger;
 }
 

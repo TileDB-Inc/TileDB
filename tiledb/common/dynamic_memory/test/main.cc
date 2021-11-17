@@ -1,11 +1,11 @@
 /**
- * @file   errors.cc
+ * @file tiledb/common/dynamic_memory/test/main.cc
  *
  * @section LICENSE
  *
  * The MIT License
  *
- * @copyright Copyright (c) 2017-2021 TileDB, Inc.
+ * @copyright Copyright (c) 2021 TileDB, Inc.
  *
  * Permission is hereby granted, free of charge, to any person obtaining a copy
  * of this software and associated documentation files (the "Software"), to deal
@@ -27,34 +27,24 @@
  *
  * @section DESCRIPTION
  *
- * This example shows how to catch errors in TileDB.
+ * This file defines a test `main()`
  */
 
-#include <iostream>
-#include <tiledb/tiledb>
+#define CATCH_CONFIG_MAIN
+#include "unit_dynamic_memory.h"
 
-using namespace tiledb;
+using namespace tiledb::common::detail;
 
-int main() {
-  // Create TileDB context
-  Context ctx;
+bool TestGovernor::memory_panicked_ = false;
+std::vector<TestTraceEntry> TestTracer::log_;
 
-  // Catch an error
-  try {
-    create_group(ctx, "my_group");
-    create_group(ctx, "my_group");
-  } catch (tiledb::TileDBError& e) {
-    Error err(ctx);
-    std::string msg = err.error_message();
-    std::cout << "Last error: " << msg << "\n";
-    std::cout << "TileDB exception:\n" << e.what() << "\n";
-  }
+TEST_CASE("White-box constructor, label argument") {
+  auto label = TracingLabel(std::string_view("foo", 3));
+  WhiteboxTracedAllocator<int, std::allocator, TestTracer> x{label};
+  CHECK(x.origin() == "foo");
+}
 
-  // Set a different error handler
-  ctx.set_error_handler([](std::string msg) {
-    std::cout << "Callback:\n" << msg << "\n";
-  });
-  create_group(ctx, "my_group");
-
-  return 0;
+TEST_CASE("White-box constructor, const-char argument") {
+  WhiteboxTracedAllocator<int, std::allocator, TestTracer> x{"foo"};
+  CHECK(x.origin() == "foo");
 }

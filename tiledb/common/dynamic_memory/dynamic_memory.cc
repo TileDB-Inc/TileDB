@@ -1,11 +1,11 @@
 /**
- * @file   errors.cc
+ * @file heap_memory.cc
  *
  * @section LICENSE
  *
  * The MIT License
  *
- * @copyright Copyright (c) 2017-2021 TileDB, Inc.
+ * @copyright Copyright (c) 2021 TileDB, Inc.
  *
  * Permission is hereby granted, free of charge, to any person obtaining a copy
  * of this software and associated documentation files (the "Software"), to deal
@@ -25,36 +25,15 @@
  * OUT OF OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN
  * THE SOFTWARE.
  *
- * @section DESCRIPTION
+ * @section Description
  *
- * This example shows how to catch errors in TileDB.
+ * Implements TileDB-variants of dynamic (heap) memory allocation routines.
  */
 
-#include <iostream>
-#include <tiledb/tiledb>
+#include "dynamic_memory.h"
 
-using namespace tiledb;
+namespace tiledb::common {
 
-int main() {
-  // Create TileDB context
-  Context ctx;
+std::atomic<unsigned long> TracingLabel::master_serial_number_ = 1;
 
-  // Catch an error
-  try {
-    create_group(ctx, "my_group");
-    create_group(ctx, "my_group");
-  } catch (tiledb::TileDBError& e) {
-    Error err(ctx);
-    std::string msg = err.error_message();
-    std::cout << "Last error: " << msg << "\n";
-    std::cout << "TileDB exception:\n" << e.what() << "\n";
-  }
-
-  // Set a different error handler
-  ctx.set_error_handler([](std::string msg) {
-    std::cout << "Callback:\n" << msg << "\n";
-  });
-  create_group(ctx, "my_group");
-
-  return 0;
-}
+}  // namespace tiledb::common

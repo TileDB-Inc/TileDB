@@ -38,6 +38,7 @@
 #include <unordered_map>
 #include <vector>
 
+#include "tiledb/common/common.h"
 #include "tiledb/common/status.h"
 #include "tiledb/sm/misc/types.h"
 #include "tiledb/sm/misc/uri.h"
@@ -246,7 +247,7 @@ class FragmentMetadata {
       const EncryptionKey& encryption_key,
       Buffer* f_buff,
       uint64_t offset,
-      std::unordered_map<std::string, tiledb_shared_ptr<ArraySchema>>
+      std::unordered_map<std::string, tdb_shared_ptr<ArraySchema>>
           array_schemas);
 
   /** Stores all the metadata to storage. */
@@ -925,7 +926,10 @@ class FragmentMetadata {
   Status load_sparse_tile_num(ConstBuffer* buff);
 
   /** Loads the basic metadata from storage (version 2 or before). */
-  Status load_v1_v2(const EncryptionKey& encryption_key);
+  Status load_v1_v2(
+      const EncryptionKey& encryption_key,
+      const std::unordered_map<std::string, tdb_shared_ptr<ArraySchema>>&
+          array_schemas);
 
   /**
    * Loads the basic metadata from storage or the input `f_buff` if
@@ -935,7 +939,7 @@ class FragmentMetadata {
       const EncryptionKey& encryption_key,
       Buffer* f_buff,
       uint64_t offset,
-      std::unordered_map<std::string, tiledb_shared_ptr<ArraySchema>>
+      std::unordered_map<std::string, tdb_shared_ptr<ArraySchema>>
           array_schemas);
 
   /**
@@ -948,7 +952,7 @@ class FragmentMetadata {
       const EncryptionKey& encryption_key,
       Buffer* f_buff,
       uint64_t offset,
-      std::unordered_map<std::string, tiledb_shared_ptr<ArraySchema>>
+      std::unordered_map<std::string, tdb_shared_ptr<ArraySchema>>
           array_schemas);
 
   /** Writes the sizes of each attribute file to the buffer. */

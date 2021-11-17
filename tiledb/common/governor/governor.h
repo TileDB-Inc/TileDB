@@ -1,11 +1,11 @@
 /**
- * @file   errors.cc
+ * @file common/governor/governor.h
  *
  * @section LICENSE
  *
  * The MIT License
  *
- * @copyright Copyright (c) 2017-2021 TileDB, Inc.
+ * @copyright Copyright (c) 2021 TileDB, Inc.
  *
  * Permission is hereby granted, free of charge, to any person obtaining a copy
  * of this software and associated documentation files (the "Software"), to deal
@@ -27,34 +27,32 @@
  *
  * @section DESCRIPTION
  *
- * This example shows how to catch errors in TileDB.
  */
 
-#include <iostream>
-#include <tiledb/tiledb>
+#ifndef TILEDB_COMMON_GOVERNOR_H
+#define TILEDB_COMMON_GOVERNOR_H
 
-using namespace tiledb;
+namespace tiledb::common {
 
-int main() {
-  // Create TileDB context
-  Context ctx;
+/**
+ * The governor grants top-level permissions for resource use.
+ *
+ * 1. Execution resources. The governor may revoke permission to execute, which
+ *    allows orderly shutdown of threads. This allows for recovery from
+ *    otherwise-unrecoverable conditions such as memory exhaustion.
+ * 2. Memory resources.
+ *
+ * Currently the governor is a stub with minimal functionality. It only has the
+ * ability to receive a signal about memory exhaustion.
+ */
+class Governor {
+ public:
+  /**
+   * Signal to the governor that the system is out of memory.
+   */
+  static void memory_panic();
+};
 
-  // Catch an error
-  try {
-    create_group(ctx, "my_group");
-    create_group(ctx, "my_group");
-  } catch (tiledb::TileDBError& e) {
-    Error err(ctx);
-    std::string msg = err.error_message();
-    std::cout << "Last error: " << msg << "\n";
-    std::cout << "TileDB exception:\n" << e.what() << "\n";
-  }
+}  // namespace tiledb::common
 
-  // Set a different error handler
-  ctx.set_error_handler([](std::string msg) {
-    std::cout << "Callback:\n" << msg << "\n";
-  });
-  create_group(ctx, "my_group");
-
-  return 0;
-}
+#endif  // TILEDB_COMMON_GOVERNOR_H

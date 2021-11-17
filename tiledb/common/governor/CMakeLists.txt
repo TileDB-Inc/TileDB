@@ -1,5 +1,6 @@
 #
-# tiledb/common/CMakeLists.txt
+# tiledb/common/governor/CMakeLists.txt
+#
 #
 # The MIT License
 #
@@ -24,15 +25,33 @@
 # THE SOFTWARE.
 #
 
-include(common-root)
+include(common NO_POLICY_SCOPE)
 
-add_subdirectory(thread_pool)
-add_subdirectory(dynamic_memory)
-add_subdirectory(governor)
+list(APPEND SOURCES
+    governor.cc
+)
+gather_sources(${SOURCES})
 
-if (TILEDB_TESTS)
-    add_subdirectory(interval)
+if (FALSE AND TILEDB_TESTS) # reserved for later
+    find_package(Catch_EP REQUIRED)
+
+    add_executable(unit_governor EXCLUDE_FROM_ALL)
+    target_link_libraries(unit_governor PUBLIC Catch2::Catch2)
+
+    # Sources for code under test
+    target_sources(unit_dynamic_memory PUBLIC
+      ${TILEDB_COMMON_GOVERNOR_SOURCES}
+    )
+
+    # Sources for tests
+    target_sources(unit_governor PUBLIC
+      test/main.cc
+      test/unit_governor.cc
+    )
+
+    add_test(
+            NAME "unit_governor"
+            COMMAND $<TARGET_FILE:unit_governor>
+            WORKING_DIRECTORY ${CMAKE_CURRENT_SOURCE_DIR}
+    )
 endif()
-
-get_gathered(COMMON_SOURCES)
-set(TILEDB_COMMON_SOURCES ${COMMON_SOURCES} PARENT_SCOPE)
