@@ -52,7 +52,7 @@ jobs:
     
       - name: 'prep macos for core dumps'
         if: ${{ always() == true   && startsWith(matrix.os, 'macos-') == true }} # only run this job if the build step failed
-        run |
+        run: |
           sudo chown :staff /cores
           sudo chmod g+w /cores
           ulimit -c unlimited     # Enable core dumps to be captured (must be in same run block)
