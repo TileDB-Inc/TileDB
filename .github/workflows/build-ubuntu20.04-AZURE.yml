@@ -351,7 +351,8 @@ jobs:
           echo "processing core file backtraces"
           sync
           find / \( -name lldb -o -name gdb \)
-          ls -l /var/lib/apport/coredump
+          sudo ls -ld /var/lib/apport/coredump
+          sudo ls -la /var/lib/apport/coredump
           echo "b4 for loop for core files"
           sync
           sleep 3
