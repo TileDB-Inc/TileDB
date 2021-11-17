@@ -151,6 +151,7 @@ jobs:
         run: |
           echo "check /cores 1"
           ls -ld /cores
+          ls -la /cores
           
       - uses: actions/checkout@v2
 
