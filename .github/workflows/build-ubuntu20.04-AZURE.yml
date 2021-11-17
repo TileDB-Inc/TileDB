@@ -190,6 +190,7 @@ jobs:
         shell: bash
 
       - name: 'Build and test libtiledb'
+        if: false
         id: test
         run: |
           # Azure sets "SYSTEM=build" for unknown reasonas, which breaks the OpenSSL configure script
