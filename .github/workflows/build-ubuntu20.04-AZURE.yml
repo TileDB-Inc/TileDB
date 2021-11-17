@@ -95,11 +95,13 @@ jobs:
           which python3
           ls -l /
           ls -la /cores
-          ls -l /cores/.
+          ls -ld /cores
           ulimit -c
+          which crash
           pwd; ls -la ./
           echo "starting permissions test of https://stackoverflow.com/a/21308843"
           sync
+          whoami
           touch /cores/test
           ls -la /cores
           rm /cores/test
