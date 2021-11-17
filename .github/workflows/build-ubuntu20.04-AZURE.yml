@@ -70,6 +70,7 @@ jobs:
       - name: 'short force core attempt'
         continue-on-error: true
         run: |
+          pwd; ls -la ./
           echo -e "nl=\"\\\n\"\nprint('aborting...'+nl)\nimport resource as res\nprint(res.getrlimit(res.RLIMIT_CORE))\nprint(nl)\nres.setrlimit(res.RLIMIT_CORE,(res.RLIM_INFINITY,res.RLIM_INFINITY))\nprint(res.getrlimit(res.RLIMIT_CORE))\nimport sys\nsys.stdout.flush()\nsys.stderr.flush()\nimport os \nos.abort()" | python3
                 
       - name: 'force core attempt'
@@ -318,7 +319,7 @@ jobs:
           #ls -la ./tdbcores
           echo 'hunting core* files'
           find . -name 'core*'
-          echo 'done hunting *core* files'
+          echo 'done hunting core.* files'
           #for f in $(find $TILEDB_HOME/build -name 'core.*');
           for f in $(find $TILEDB_HOME -name 'core.*');
             do
