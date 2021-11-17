@@ -62,6 +62,12 @@ Query
     :project: TileDB-C++
     :members:
 
+Subarray
+--------
+.. doxygenclass:: tiledb::Subarray
+   :project: TileDB-C++
+   :members:
+
 Filter
 ------
 .. doxygenclass:: tiledb::Filter
