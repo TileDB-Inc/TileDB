@@ -81,7 +81,7 @@ StorageManager::StorageManager(
     stats::Stats* const parent_stats,
     tdb_shared_ptr<Logger> logger)
     : stats_(parent_stats->create_child("StorageManager"))
-    , logger_(logger->clone("Context", ++logger_id_))
+    , logger_(logger)
     , cancellation_in_progress_(false)
     , queries_in_progress_(0)
     , compute_tp_(compute_tp)
