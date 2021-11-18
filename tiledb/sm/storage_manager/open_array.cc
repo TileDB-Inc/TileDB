@@ -68,9 +68,15 @@ ArraySchema* OpenArray::array_schema() const {
   return array_schema_;
 }
 
-std::unordered_map<std::string, tdb_shared_ptr<ArraySchema>>&
+const std::unordered_map<std::string, tdb_shared_ptr<ArraySchema>>&
 OpenArray::array_schemas() {
   return array_schemas_;
+}
+
+void OpenArray::set_array_schemas(
+    const std::unordered_map<std::string, tdb_shared_ptr<ArraySchema>>&
+        array_schemas) {
+  array_schemas_ = array_schemas;
 }
 
 Status OpenArray::get_array_schema(

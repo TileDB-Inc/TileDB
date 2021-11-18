@@ -171,11 +171,15 @@ class StorageManager {
    *     1970-01-01 00:00:00 +0000 (UTC).
    * @return Status
    */
-  Status array_open_for_reads(
+  std::tuple<
+      Status,
+      std::optional<ArraySchema*>,
+      std::optional<
+          std::unordered_map<std::string, tdb_shared_ptr<ArraySchema>>>,
+      std::optional<std::vector<tdb_shared_ptr<FragmentMetadata>>>>
+  array_open_for_reads(
       const URI& array_uri,
       const EncryptionKey& enc_key,
-      ArraySchema** array_schema,
-      std::vector<tdb_shared_ptr<FragmentMetadata>>* fragment_metadata,
       uint64_t timestamp_start,
       uint64_t timestamp_end);
 
@@ -197,11 +201,14 @@ class StorageManager {
    *
    * @param array_uri The array URI.
    * @param enc_key The encryption key.
-   * @param array_schema The array schema to be retrieved after the
-   *     array is opened.
-   * @return
+   * @return tuple of Status, latest ArraySchema and map of all array schemas
    */
-  Status array_open_for_writes(
+  std::tuple<
+      Status,
+      std::optional<ArraySchema*>,
+      std::optional<
+          std::unordered_map<std::string, tdb_shared_ptr<ArraySchema>>>>
+  array_open_for_writes(
       const URI& array_uri,
       const EncryptionKey& enc_key,
       ArraySchema** array_schema);
@@ -750,14 +757,15 @@ class StorageManager {
    *
    * @param array_uri The URI path of the array.
    * @param encryption_key The encryption key to use.
-   * @param array_schemas The array schema pointermap to be retrieved.
-   * @return Status
+   * @return tuple of Status and optional unordered map. If Status is an error
+   * the unordered_map will be nullopt
    */
-  Status load_all_array_schemas(
-      const URI& array_uri,
-      const EncryptionKey& encryption_key,
-      std::unordered_map<std::string, tdb_shared_ptr<ArraySchema>>&
-          array_schemas);
+  std::tuple<
+      Status,
+      std::optional<
+          std::unordered_map<std::string, tdb_shared_ptr<ArraySchema>>>>
+  load_all_array_schemas(
+      const URI& array_uri, const EncryptionKey& encryption_key);
 
   /**
    * Loads the array metadata from persistent storage that were created

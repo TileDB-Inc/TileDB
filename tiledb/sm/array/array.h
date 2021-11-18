@@ -79,6 +79,15 @@ class Array {
   /** Returns the array schema. */
   ArraySchema* array_schema() const;
 
+  /** Returns array schemas map. */
+  const std::unordered_map<std::string, tdb_shared_ptr<ArraySchema>>&
+  array_schemas() const;
+
+  /** Set the array schemas map. */
+  void set_array_schemas(
+      const std::unordered_map<std::string, tdb_shared_ptr<ArraySchema>>&
+          array_schemas);
+
   /** Returns the array URI. */
   const URI& array_uri() const;
 
@@ -341,8 +350,13 @@ class Array {
   /*         PRIVATE ATTRIBUTES        */
   /* ********************************* */
 
-  /** The array schema. */
+  /** The latest array schema. */
   ArraySchema* array_schema_;
+
+  /**
+   * A map of all array_schemas
+   */
+  std::unordered_map<std::string, tdb_shared_ptr<ArraySchema>> array_schemas_;
 
   /** The array URI. */
   URI array_uri_;

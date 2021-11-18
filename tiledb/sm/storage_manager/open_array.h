@@ -89,7 +89,13 @@ class OpenArray {
   ArraySchema* array_schema() const;
 
   /** Returns array schemas map. */
-  std::unordered_map<std::string, tdb_shared_ptr<ArraySchema>>& array_schemas();
+  const std::unordered_map<std::string, tdb_shared_ptr<ArraySchema>>&
+  array_schemas();
+
+  /** Set the array schemas map. */
+  void set_array_schemas(
+      const std::unordered_map<std::string, tdb_shared_ptr<ArraySchema>>&
+          array_schemas);
 
   /** Gets the array schema given a array schema name. */
   Status get_array_schema(

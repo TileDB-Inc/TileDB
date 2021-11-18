@@ -256,16 +256,27 @@ Status Array::open(
     RETURN_NOT_OK(
         rest_client->get_array_schema_from_rest(array_uri_, &array_schema_));
   } else if (query_type == QueryType::READ) {
-    RETURN_NOT_OK(storage_manager_->array_open_for_reads(
-        array_uri_,
-        *encryption_key_,
-        &array_schema_,
-        &fragment_metadata_,
-        timestamp_start_,
-        timestamp_end_opened_at_));
+    auto&& [st, array_schema, array_schemas, fragment_metadata] =
+        (storage_manager_->array_open_for_reads(
+            array_uri_,
+            *encryption_key_,
+            timestamp_start_,
+            timestamp_end_opened_at_));
+    if (!st.ok())
+      return st;
+    // Set schemas
+    array_schema_ = array_schema.value();
+    array_schemas_ = array_schemas.value();
   } else {
-    RETURN_NOT_OK(storage_manager_->array_open_for_writes(
-        array_uri_, *encryption_key_, &array_schema_));
+    auto&& [st, array_schema, array_schemas] =
+        storage_manager_->array_open_for_writes(
+            array_uri_, *encryption_key_, &array_schema_);
+    if (!st.ok())
+      return st;
+    // Set schemas
+    array_schema_ = array_schema.value();
+    array_schemas_ = array_schemas.value();
+
     metadata_.reset(timestamp_end_opened_at_);
   }
 
@@ -960,6 +971,17 @@ Status Array::compute_non_empty_domain() {
   }
   non_empty_domain_computed_ = true;
   return Status::Ok();
+}
+
+const std::unordered_map<std::string, tdb_shared_ptr<ArraySchema>>&
+Array::array_schemas() const {
+  return array_schemas_;
+}
+
+void Array::set_array_schemas(
+    const std::unordered_map<std::string, tdb_shared_ptr<ArraySchema>>&
+        array_schemas) {
+  array_schemas_ = array_schemas;
 }
 
 }  // namespace sm
