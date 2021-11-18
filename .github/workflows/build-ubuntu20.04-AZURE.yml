@@ -356,7 +356,7 @@ jobs:
           sudo find / \( -name lldb -o -name gdb \)
           echo "after lldb/gdb find"
           echo "which lldb"
-          sudo which lldb
+          #fails on ubuntu, w/wo sudo... sudo which lldb
           echo "which gdb"
           sudo which gdb
           echo "b4 for loop for core files"
