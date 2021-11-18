@@ -49,7 +49,8 @@ Context::Context()
     : last_error_(Status::Ok())
     , storage_manager_(nullptr)
     , stats_(tdb::make_shared<stats::Stats>(HERE(), "Context"))
-    , logger_(tdb::make_shared<Logger>(HERE(), "")) {
+    , logger_(tdb::make_shared<Logger>(
+          HERE(), "Context: " + std::to_string(++logger_id_))) {
 }
 
 Context::~Context() {
@@ -93,9 +94,6 @@ Status Context::init(Config* const config) {
 
   // Initialize storage manager
   auto sm = storage_manager_->init(config);
-
-  // Use the logger created for the storage manager
-  logger_ = storage_manager_->logger();
 
   return sm;
 }
