@@ -402,7 +402,7 @@ jobs:
               #sudo $dbgr $dbgropts
               #for lldb
               sudo $dbgr -core $f --batch  -o 'bt all' -o 'quit'
-              sudo mv $f $TILEDB_HOME/tdbcores/
+              #sudo mv $f $TILEDB_HOME/tdbcores/
             done;
 
       - name: 'nobuild - upload any core artifacts' # https://github.com/actions/upload-artifact#where-does-the-upload-go
@@ -424,6 +424,7 @@ jobs:
           if-no-files-found: warn # 'ignore', 'warn' or 'error' are available, defaults to `warn` 
           path: |
             ${{ github.workspace }}/tdbcores/
+            /var/lib/apport/coredump/
 
       - name: 'nobuild - upload any core artifacts' # https://github.com/actions/upload-artifact#where-does-the-upload-go
         if: ${{ always() == true && startsWith(matrix.os, 'macos-') == true }} # only run this job if the build step failed
