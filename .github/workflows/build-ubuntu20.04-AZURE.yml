@@ -45,7 +45,8 @@ jobs:
     if: ${{ startsWith(github.ref , 'refs/tags') != true && startsWith(github.ref , 'build-') != true }}
     timeout-minutes: 90
     #name: Build - ubuntu-20.04 - AZURE
-    name: Build - macos-10.15 - AZURE
+    #name: Build - macos-10.15 - AZURE
+    name: Build - ${{matrix.os}} - AZURE
     env:
       TILEDB_HOME: ${{ github.workspace }}
       TILEDB_GA_IMAGE_NAME: ${{ matrix.os }}
@@ -411,8 +412,13 @@ jobs:
         with:
           retention-days: 10
           #name: ${{ github.id }} -cores
+          #TBT, ok, so the 'job_id' for 'build' is sposed to be the 'name:' from 'build:', with spaces to be repl with underscores...
+          #https://docs.github.com/en/actions/learn-github-actions/workflow-syntax-for-github-actions#jobsjob_id
           #name: "coredumps.${{ jobs.build.env.GITHUB_JOB }}.${{ matrix.os }}.${{ jobs.build.env.GITHUB_RUN_NUMBER }}"
-          name: "coredumps.${{ env.GITHUB_JOB }}.${{ matrix.os }}.${{ env.GITHUB_RUN_NUMBER }}"
+          #name: Build - ${{matrix.os}} - AZURE
+          #Build_-_${{matrix.os}}_-_AZURE
+          name: "coredumps.${{ jobs.Build_-_${{matrix.os}}_-_AZURE.env.GITHUB_JOB }}.${{ matrix.os }}.${{ jobs.Build_-_${{matrix.os}}_-_AZURE.env.GITHUB_RUN_NUMBER }}"
+          #name: "coredumps.${{ env.GITHUB_JOB }}.${{ matrix.os }}.${{ env.GITHUB_RUN_NUMBER }}"
           if-no-files-found: warn # 'ignore', 'warn' or 'error' are available, defaults to `warn` 
           path: |
             ${{ github.workspace }}/tdbcores/
