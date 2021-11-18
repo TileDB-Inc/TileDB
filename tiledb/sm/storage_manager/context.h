@@ -111,6 +111,8 @@ class Context {
   /** The class logger. */
   tdb_shared_ptr<Logger> logger_;
 
+  inline static std::atomic<uint64_t> logger_id_ = 0;
+
   /* ********************************* */
   /*         PRIVATE METHODS           */
   /* ********************************* */
