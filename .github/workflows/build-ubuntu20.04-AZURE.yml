@@ -63,6 +63,8 @@ jobs:
           dir \windbg* /s
           dir c:\windbg* /s
           dir d:\windbg* /s
+          path
+          c:\msys64\usr\bin\which windbg
           exit 1
           
       - name: 'prep macos for core dumps'
