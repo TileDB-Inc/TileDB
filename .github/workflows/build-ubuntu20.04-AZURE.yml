@@ -58,6 +58,7 @@ jobs:
     steps:
     
       - name: 'is windbg present?'
+        shell: cmd
         run: |
           dir \windbg* /s
           exit 1
