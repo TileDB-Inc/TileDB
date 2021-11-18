@@ -309,11 +309,11 @@ jobs:
               echo "stack trace for $f"
               lldb -c $f --batch -o 'bt all' -o 'quit'
             done;
-          mkdir $TILEDB_HOME/tdbcores
-          mv /cores/core.* $TILEDB_HOME/tdbcores/core.1
-          ls -la $TILEDB_HOME/tdbcores
-          #lldb -c $TILEDB_HOME/build/core/core.1 --batch -o 'bt all' -o 'quit'
-          lldb -c $TILEDB_HOME/tdbcores/core.1 --batch -o 'bt all' -o 'quit'
+          #~ mkdir $TILEDB_HOME/tdbcores
+          #~ mv /cores/core.* $TILEDB_HOME/tdbcores/core.1
+          #~ ls -la $TILEDB_HOME/tdbcores
+          #~ #lldb -c $TILEDB_HOME/build/core/core.1 --batch -o 'bt all' -o 'quit'
+          #~ lldb -c $TILEDB_HOME/tdbcores/core.1 --batch -o 'bt all' -o 'quit'
           #for f in $(find $TILEDB_HOME/tdbcores -name 'core*');
           #  do
           #    echo "stack trace for $f"
@@ -443,15 +443,38 @@ jobs:
       - name: 'Save cores dump stacks if any'
         if: ${{ failure() == true && startsWith(matrix.os, 'macos-') == true }} # only run this job if the build step failed
         run: |
+          #~ ls -la /cores
+          #~ mkdir $TILEDB_HOME/build/core
+          #~ #mv /cores/core.* $TILEDB_HOME/build/core/core.1
+          #~ ls -la $TILEDB_HOME/build/core
+          #~ #lldb -c $TILEDB_HOME/build/core/core.1 --batch -o 'bt all' -o 'quit'
+          #~ for f in $(find $TILEDB_HOME/build/core);
+            #~ do
+              #~ lldb -c $f --batch -o 'bt all' -o 'quit'
+            #~ done;
+          nfiles=$(ls /cores | wc -l)
+          if [[ $nfiles -eq 0 ]]; then
+            echo "no core files found"
+            exit 0
+          fi
+          cd $TILEDB_HOME
           ls -la /cores
-          mkdir $TILEDB_HOME/build/core
-          #mv /cores/core.* $TILEDB_HOME/build/core/core.1
-          ls -la $TILEDB_HOME/build/core
-          #lldb -c $TILEDB_HOME/build/core/core.1 --batch -o 'bt all' -o 'quit'
-          for f in $(find $TILEDB_HOME/build/core);
+          for f in $(find /cores -name 'core.*');
             do
+              echo "stack trace for $f"
               lldb -c $f --batch -o 'bt all' -o 'quit'
             done;
+          #~ mkdir $TILEDB_HOME/tdbcores
+          #~ mv /cores/core.* $TILEDB_HOME/tdbcores/core.1
+          #~ ls -la $TILEDB_HOME/tdbcores
+          #~ #lldb -c $TILEDB_HOME/build/core/core.1 --batch -o 'bt all' -o 'quit'
+          #~ lldb -c $TILEDB_HOME/tdbcores/core.1 --batch -o 'bt all' -o 'quit'
+          #for f in $(find $TILEDB_HOME/tdbcores -name 'core*');
+          #  do
+          #    echo "stack trace for $f"
+          #    lldb -c $f --batch -o 'bt all' -o 'quit'
+          #  done;
+
 
       - name: 'upload any core artifacts' # https://github.com/actions/upload-artifact#where-does-the-upload-go
         if: ${{ failure() == true && startsWith(matrix.os, 'macos-') == true }} # only run this job if the build step failed
@@ -463,9 +486,14 @@ jobs:
           #name: coredumps.${{ jobs.build.env.GITHUB_JOB }}.${{ matrix.os }}.${{ jobs.build.env.GITHUB_RUN_NUMBER }} 
           #name: coredumps.${{ env.GITHUB_JOB }}.${{ matrix.os }}.${{ env.GITHUB_RUN_NUMBER }}.${{env.GITHUB_RUN_ID}}.${{env.GITHUB_ACTION}} 
           name: "coredumps.${{ github.job }}.${{ matrix.os }}.${{ github.run_number }}.${{github.run_id}}.${{github.run_attempt}}.${{github.action}}"
-          if-no-files-found: warn # 'ignore', 'warn' or 'error' are available, defaults to `warn` 
+          if-no-files-found: warn # 'ignore/', 'warn' or 'error' are available, defaults to `warn` 
           path: |
-            ${{ github.workspace }}/build/core/
+            ${{ github.workspace }}/tdbcores/
+            /cores/
+          #~ name: "coredumps.${{ github.job }}.${{ matrix.os }}.${{ github.run_number }}.${{github.run_id}}.${{github.run_attempt}}.${{github.action}}"
+          #~ if-no-files-found: warn # 'ignore', 'warn' or 'error' are available, defaults to `warn` 
+          #~ path: |
+            #~ ${{ github.workspace }}/build/core/
 
       - name: 'Test status check'
         run: |
