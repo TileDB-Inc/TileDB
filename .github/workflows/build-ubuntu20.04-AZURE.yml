@@ -361,16 +361,22 @@ jobs:
           #fails on ubuntu-20.04 runner, w/wo sudo... sudo which gdb
           sleep 3
           echo "b4 trying to locate debugger"
+          echo "ls -la /usr/share"
+          sync
           sudo ls -la /usr/share
+          echo "ls -la /usr/share/gdb"
+          sync
           sudo ls -la /usr/share/gdb
-          sudo ls -la /usr/lib/llvm-11/lldb
+          echo "ls -la /usr/lib/llvm-11/bin/lldb"
+          sync
+          sudo ls -la /usr/lib/llvm-11/bin/lldb
           if [[ -f /usr/share/gdb ]]; then
             dbgr="/usr/share/gdb"
             #TBD does this gdb support -ex, many ref's don't list the switch at all
             dbgropts=" -q --core \"\$f\" --batch -ex \"thread apply all bt\" -ex \"quit\""
             #dbgropts= -q --core '\$f' -ex 'thread apply all bt' -ex 'quit'"
-          elif [[ -f /usr/lib/llvm-11/lldb ]]; then
-            dbgr="/usr/lib/llvlm-11/lldb"
+          elif [[ -f /usr/lib/llvm-11/bin/lldb ]]; then
+            dbgr="/usr/lib/llvlm-11/bin/lldb"
             #lldb -c $f --batch -o 'bt all' -o 'quit'
             dbgropts=" -core \"\$f\" --batch -o 'thread apply all bt' -o 'quit'"
             #dbgropts=" -core '\$f' --batch -o 'thread apply all bt' -o 'quit'"
