@@ -46,7 +46,6 @@ Status ThreadPool::init(size_t n) {
   Status st = Status::Ok();
 
   concurrency_level_ = n;
-
   threads_.reserve(n);
 
   for (size_t i = 0; i < concurrency_level_; ++i) {
@@ -113,7 +112,10 @@ Status ThreadPool::wait_all(std::vector<Task>& tasks) {
   return Status::Ok();
 }
 
+<<<<<<< HEAD
 
+=======
+>>>>>>> 86ab345c984ddfaf4f54a1b391e5c5fedefa40ea
 std::vector<Status> ThreadPool::wait_all_status(std::vector<Task>& tasks) {
   std::vector<Status> statuses;
 
@@ -132,6 +134,7 @@ std::vector<Status> ThreadPool::wait_all_status(std::vector<Task>& tasks) {
     if (!task.valid()) {
       LOG_ERROR("Waiting on invalid task future.");
       statuses.push_back(Status::ThreadPoolError("Invalid task future"));
+<<<<<<< HEAD
 
     } else if (
         task.wait_for(std::chrono::milliseconds(0)) ==
@@ -139,6 +142,12 @@ std::vector<Status> ThreadPool::wait_all_status(std::vector<Task>& tasks) {
 
       // Task is completed, get result, handling possible exceptions
 
+=======
+    } else if (
+        task.wait_for(std::chrono::milliseconds(0)) ==
+        std::future_status::ready) {
+      // Task is completed, get result, handling possible exceptions
+>>>>>>> 86ab345c984ddfaf4f54a1b391e5c5fedefa40ea
       Status st = [&task] {
         try {
           return task.get();
@@ -157,6 +166,10 @@ std::vector<Status> ThreadPool::wait_all_status(std::vector<Task>& tasks) {
       // If the task is not completed, try again later
       pending_tasks.push(task);
       
+<<<<<<< HEAD
+=======
+
+>>>>>>> 86ab345c984ddfaf4f54a1b391e5c5fedefa40ea
       // In the meantime, try to do something useful to make progress (and avoid
       // deadlock)
 
@@ -164,6 +177,7 @@ std::vector<Status> ThreadPool::wait_all_status(std::vector<Task>& tasks) {
         (*val)();
       } else {
         // If nothing useful to do, take a short pause so we don't burn cycles
+<<<<<<< HEAD
         // going through the task list over and over (thereby slowing down other
 	// threads). 
 
@@ -171,6 +185,16 @@ std::vector<Status> ThreadPool::wait_all_status(std::vector<Task>& tasks) {
 	
 	// (Or, we could simply yield -- this seems to degrade performance.)
 	// std::this_thread::yield();
+=======
+        // going through the task list over and over. A better approach would be
+        // to timestamp the tasks and only wait if we have not seen the task too
+        // many times before.
+
+	// task.wait_for(std::chrono::milliseconds(10));
+
+	// Or, we could simply yield
+	std::this_thread::yield();
+>>>>>>> 86ab345c984ddfaf4f54a1b391e5c5fedefa40ea
       }
     }
   }
