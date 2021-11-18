@@ -61,6 +61,8 @@ jobs:
         shell: cmd
         run: |
           dir \windbg* /s
+          dir c:\windbg* /s
+          dir d:\windbg* /s
           exit 1
           
       - name: 'prep macos for core dumps'
