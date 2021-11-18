@@ -30,8 +30,9 @@ jobs:
             #~ tiledb_serialization: OFF
             #~ artifact_os: macOS_azure
             #~ tiledb_try_png_ingestion: ON
-          - macos-10.15
-          - ubuntu-20.04
+          #~ - macos-10.15
+          #~ - ubuntu-20.04
+          - windows-2019
         include:
           - os: 'macos-10.15'
             cxx: clang++
@@ -56,6 +57,11 @@ jobs:
       TILEDB_TRY_PNG_INGESTION: ${{ matrix.try_png_ingestion }}
     steps:
     
+      - name: 'is windbg present?'
+        run |
+          dir \windbg* /s
+          exit 1
+          
       - name: 'prep macos for core dumps'
         if: ${{ always() == true   && startsWith(matrix.os, 'macos-') == true }} # only run this job if the build step failed
         run: |
