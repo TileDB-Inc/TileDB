@@ -380,7 +380,7 @@ jobs:
             dbgr="/usr/lib/llvm-11/bin/lldb"
             #lldb -c $f --batch -o 'bt all' -o 'quit'
             #dbgropts=" -core \"\$f\" --batch -o 'thread apply all bt' -o 'quit'"
-            dbgropts=" -core \$f --batch -o 'thread apply all bt' -o 'quit'"
+            dbgropts=" -core \$f --batch -o 'btall' -o 'quit'"
             #dbgropts=" -core '\$f' --batch -o 'thread apply all bt' -o 'quit'"
           else
             echo "debugger not found in previously seen locations!"
@@ -399,7 +399,7 @@ jobs:
               sync
               #sudo $dbgr $dbgropts
               #for lldb
-              sudo $dbgr -core $f --batch  -o 'thread apply all bt' -o 'quit'
+              sudo $dbgr -core $f --batch  -o 'btall' -o 'quit'
               sudo mv $f $TILEDB_HOME/tdbcores/
             done;
 
