@@ -411,7 +411,8 @@ jobs:
         with:
           retention-days: 10
           #name: ${{ github.id }} -cores
-          name: "coredumps.${{ jobs.build.env.GITHUB_JOB }}.${{ matrix.os }}.${{ jobs.build.env.GITHUB_RUN_NUMBER }}"
+          #name: "coredumps.${{ jobs.build.env.GITHUB_JOB }}.${{ matrix.os }}.${{ jobs.build.env.GITHUB_RUN_NUMBER }}"
+          name: "coredumps.${{ env.GITHUB_JOB }}.${{ matrix.os }}.${{ env.GITHUB_RUN_NUMBER }}"
           if-no-files-found: warn # 'ignore', 'warn' or 'error' are available, defaults to `warn` 
           path: |
             ${{ github.workspace }}/tdbcores/
@@ -423,7 +424,8 @@ jobs:
         with:
           retention-days: 10
           #name: ${{ github.id }} -cores
-          name: "coredumps.${{ jobs.build.env.GITHUB_JOB }}.${{ matrix.os }}.${{ jobs.build.env.GITHUB_RUN_NUMBER }}"
+          #name: "coredumps.${{ jobs.build.env.GITHUB_JOB }}.${{ matrix.os }}.${{ jobs.build.env.GITHUB_RUN_NUMBER }}"
+          name: "coredumps.${{ env.GITHUB_JOB }}.${{ matrix.os }}.${{ env.GITHUB_RUN_NUMBER }}"
           if-no-files-found: warn # 'ignore/', 'warn' or 'error' are available, defaults to `warn` 
           path: |
             ${{ github.workspace }}/tdbcores/
@@ -449,7 +451,8 @@ jobs:
         with:
           retention-days: 10
           #name: ${{ github.id }} -cores
-          name: coredumps.${{ jobs.build.env.GITHUB_JOB }}.${{ matrix.os }}.${{ jobs.build.env.GITHUB_RUN_NUMBER }} 
+          #name: coredumps.${{ jobs.build.env.GITHUB_JOB }}.${{ matrix.os }}.${{ jobs.build.env.GITHUB_RUN_NUMBER }} 
+          name: coredumps.${{ env.GITHUB_JOB }}.${{ matrix.os }}.${{ env.GITHUB_RUN_NUMBER }} 
           if-no-files-found: warn # 'ignore', 'warn' or 'error' are available, defaults to `warn` 
           path: |
             ${{ github.workspace }}/build/core/
