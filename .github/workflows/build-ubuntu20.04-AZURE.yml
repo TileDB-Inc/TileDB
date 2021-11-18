@@ -356,18 +356,34 @@ jobs:
           sudo find / \( -name lldb -o -name gdb \)
           echo "after lldb/gdb find"
           echo "which lldb"
-          which lldb
+          sudo which lldb
           echo "which gdb"
-          which gdb
+          sudo which gdb
           echo "b4 for loop for core files"
           sync
           sleep 3
+          if [[ -f /usr/share/gdb ]]; then
+            dbgr="/usr/share/gdb"
+            dbgropts=" -q --core \"\$f\" --batch -ex \"thread apply all bt\" -ex \"quit\""
+            "dbgropts=" -q --core '\$f' -ex 'thread apply all bt' -ex 'quit'"
+          elif [[ -f /usr/lib/llvm-11/lldb ]]; then
+            dbgr="/usr/lib/llvlm-11/lldb"
+            #lldb -c $f --batch -o 'bt all' -o 'quit'
+            dbgropts=" -core \"\$f\" --batch -o 'thread apply all bt' -o 'quit'"
+            #dbgropts=" -core '\$f' --batch -o 'thread apply all bt' -o 'quit'"
+          else
+            echo "debugger not found in previously seen locations!"
+            dbgr="<none>"
+            dbgropts="<noopts>"
+          fi
+          echo "dbgr $dbgr, dbgropts $dbgropts"
           #for f in $(find $TILEDB_HOME/build -name 'core.*');
           for f in $(find /var/lib/apport/coredump -name 'core.*');
             do
               echo "stack trace for $f"
               sync
-              #sudo mv $f $TILEDB_HOME/tdbcores/
+              #sudo $dbgr $dbgropts
+              sudo mv $f $TILEDB_HOME/tdbcores/
             done;
 
       - name: 'nobuild - upload any core artifacts' # https://github.com/actions/upload-artifact#where-does-the-upload-go
