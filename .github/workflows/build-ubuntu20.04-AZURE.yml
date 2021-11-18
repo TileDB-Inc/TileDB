@@ -409,7 +409,7 @@ jobs:
         with:
           retention-days: 10
           #name: ${{ github.id }} -cores
-          name: "coredumps ${{ env.GITHUB_RUN_NUMBER }}"
+          name: "coredumps.${{ matrix.os }}.${{ env.GITHUB_RUN_NUMBER }}"
           if-no-files-found: warn # 'ignore', 'warn' or 'error' are available, defaults to `warn` 
           path: |
             ${{ github.workspace }}/tdbcores/
@@ -420,8 +420,8 @@ jobs:
         with:
           retention-days: 10
           #name: ${{ github.id }} -cores
-          name: "coredumps ${{ env.GITHUB_RUN_NUMBER }}"
-          if-no-files-found: warn # 'ignore', 'warn' or 'error' are available, defaults to `warn` 
+          name: "coredumps.${{ matrix.os }}.${{ env.GITHUB_RUN_NUMBER }}"
+          if-no-files-found: warn # 'ignore/', 'warn' or 'error' are available, defaults to `warn` 
           path: |
             ${{ github.workspace }}/tdbcores/
             /cores/
