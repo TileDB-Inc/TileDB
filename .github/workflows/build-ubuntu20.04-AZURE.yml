@@ -361,6 +361,9 @@ jobs:
           #fails on ubuntu-20.04 runner, w/wo sudo... sudo which gdb
           sleep 3
           echo "b4 trying to locate debugger"
+          sudo ls -la /usr/share
+          sudo ls -la /usr/share/gdb
+          sudo ls -la /usr/lib/llvm-11/lldb
           if [[ -f /usr/share/gdb ]]; then
             dbgr="/usr/share/gdb"
             #TBD does this gdb support -ex, many ref's don't list the switch at all
