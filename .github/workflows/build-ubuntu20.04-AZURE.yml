@@ -355,15 +355,16 @@ jobs:
           #hmm, without sudo the find was apparently failing after reporting some results
           sudo find / \( -name lldb -o -name gdb \)
           echo "after lldb/gdb find"
-          echo "which lldb"
-          #fails on ubuntu, w/wo sudo... sudo which lldb
-          echo "which gdb"
-          sudo which gdb
+          #echo "which lldb"
+          #fails on ubuntu-20.04 runner, w/wo sudo... sudo which lldb
+          #echo "which gdb"
+          #fails on ubuntu-20.04 runner, w/wo sudo... sudo which gdb
           echo "b4 for loop for core files"
           sync
           sleep 3
           if [[ -f /usr/share/gdb ]]; then
             dbgr="/usr/share/gdb"
+            #TBD does this gdb support -ex, many ref's don't list the switch at all
             dbgropts=" -q --core \"\$f\" --batch -ex \"thread apply all bt\" -ex \"quit\""
             "dbgropts=" -q --core '\$f' -ex 'thread apply all bt' -ex 'quit'"
           elif [[ -f /usr/lib/llvm-11/lldb ]]; then
