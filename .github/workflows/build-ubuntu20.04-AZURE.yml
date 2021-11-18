@@ -397,8 +397,10 @@ jobs:
               echo "stack trace for $f"
               echo $dbgr $dbgropts
               sync
-              sudo $dbgr $dbgropts
-              sudo mv "$f" $TILEDB_HOME/tdbcores/
+              #sudo $dbgr $dbgropts
+              #for lldb
+              sudo $dbgr -core $f --batch  -o 'thread apply all bt' -o 'quit'"
+              sudo mv $f $TILEDB_HOME/tdbcores/
             done;
 
       - name: 'nobuild - upload any core artifacts' # https://github.com/actions/upload-artifact#where-does-the-upload-go
