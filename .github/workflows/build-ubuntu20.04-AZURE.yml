@@ -376,7 +376,7 @@ jobs:
             dbgropts=" -q --core \"\$f\" --batch -ex \"thread apply all bt\" -ex \"quit\""
             #dbgropts= -q --core '\$f' -ex 'thread apply all bt' -ex 'quit'"
           elif [[ -f /usr/lib/llvm-11/bin/lldb ]]; then
-            dbgr="/usr/lib/llvlm-11/bin/lldb"
+            dbgr="/usr/lib/llvm-11/bin/lldb"
             #lldb -c $f --batch -o 'bt all' -o 'quit'
             dbgropts=" -core \"\$f\" --batch -o 'thread apply all bt' -o 'quit'"
             #dbgropts=" -core '\$f' --batch -o 'thread apply all bt' -o 'quit'"
