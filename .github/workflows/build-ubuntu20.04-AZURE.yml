@@ -393,8 +393,9 @@ jobs:
           for f in $(find /var/lib/apport/coredump -name 'core.*');
             do
               echo "stack trace for $f"
+              echo $dbgr $dbgropts
               sync
-              #sudo $dbgr $dbgropts
+              sudo $dbgr $dbgropts
               sudo mv "$f" $TILEDB_HOME/tdbcores/
             done;
 
