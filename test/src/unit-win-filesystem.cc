@@ -108,6 +108,13 @@ TEST_CASE_METHOD(WinFx, "Test Windows filesystem", "[windows]") {
   CHECK(Win::is_win_path("path1/path2"));
   CHECK(Win::is_win_path("c:/path"));
   CHECK(Win::is_win_path("c:path1/path2"));
+  CHECK(Win::is_win_path("c://path1/path2"));
+  CHECK(Win::is_win_path("c://path1//path2"));
+  CHECK(Win::is_win_path("c:\\\\path1\\\\path2"));
+  CHECK(Win::is_win_path("\\"));
+  CHECK(Win::is_win_path("\\\\"));
+  CHECK(Win::is_win_path("/"));
+  CHECK(Win::is_win_path("//"));
   // (Even file:) 'URL's are not being considered as windows paths by
   // is_win_path.
   CHECK(!Win::is_win_path("file:///c:path"));
