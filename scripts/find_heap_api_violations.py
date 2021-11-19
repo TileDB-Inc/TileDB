@@ -10,6 +10,9 @@ ignored_dirs = frozenset(["c_api", "cpp_api"])
 # Do not check for violations in these files.
 ignored_files = frozenset(
     [
+        "allocate_unique.h",
+        "dynamic_memory.h",
+        "unit_dynamic_memory.cc",
         "heap_profiler.h",
         "heap_profiler.cc",
         "heap_memory.h",
@@ -80,45 +83,13 @@ regex_new = re.compile(r"new\s+(\(std::nothrow\))?\w+\s*[([]")
 #  delete *Foo;
 regex_delete = re.compile(r"delete\s*(\[\])?\s+\*?\w+\s*[;)]")
 
-# Match C++ shared_ptr objects.
-regex_shared_ptr = re.compile(r"shared_ptr<")
-
-# Contains per-file exceptions to violations of "shared_ptr".
-shared_ptr_exceptions = {
-    "*": ["tdb_shared_ptr", "tiledb_shared_ptr"],
-    "logger.h": ["std::shared_ptr<spdlog::logger>"],
-    "logger.cc": ["std::shared_ptr<spdlog::logger>"],
-    "gcs.cc": ["std::shared_ptr<google::cloud::storage::oauth2::Credentials>"],
-    "s3.cc": [
-        "std::shared_ptr<Aws::IOStream>",
-        "std::shared_ptr<Aws::Auth::AWSCredentialsProvider>",
-    ],
-    "s3.h": ["std::shared_ptr<S3ThreadPoolExecutor>"],
-    "azure.cc": [
-        "std::shared_ptr<azure::storage_lite::storage_credential>",
-        "std::shared_ptr<azure::storage_lite::storage_account>",
-        "azure::storage_lite::shared_access_signature_credential>",
-    ],
-}
-
 # Match C++ make_shared routine.
-regex_make_shared = re.compile(r"make_shared<")
+regex_make_shared = re.compile(r"std::make_shared<")
 
 # Contains per-file exceptions to violations of "make_shared".
 make_shared_exceptions = {
-    "*": ["tdb_make_shared", "tiledb_make_shared"],
-    "s3.cc": [
-        "std::make_shared<S3ThreadPoolExecutor>",
-        "std::make_shared<Aws::Auth::SimpleAWSCredentialsProvider>",
-        "std::make_shared<Aws::Auth::STSAssumeRoleCredentialsProvider>",
-    ],
-    "azure.cc": [
-        "std::make_shared<azure::storage_lite::shared_key_credential>",
-        "std::make_shared<azure::storage_lite::storage_account>",
-        "std::make_shared<azure::storage_lite::tinyxml2_parser>",
-        "std::make_shared<AzureRetryPolicy>",
-        "std::make_shared<azure::storage_lite::shared_access_signature_credential>",
-    ],
+    "*": ["tdb::make_shared"],
+    "*": ["tiledb::common::make_shared"],
 }
 
 # Match C++ unique_ptr objects.
@@ -168,7 +139,6 @@ violation_checkers = [
     ViolationChecker("free", regex_free, free_exceptions),
     ViolationChecker("new", regex_new),
     ViolationChecker("delete", regex_delete),
-    ViolationChecker("shared_ptr<", regex_shared_ptr, shared_ptr_exceptions),
     ViolationChecker("make_shared<", regex_make_shared, make_shared_exceptions),
     ViolationChecker("unique_ptr<", regex_unique_ptr, unique_ptr_exceptions),
 ]

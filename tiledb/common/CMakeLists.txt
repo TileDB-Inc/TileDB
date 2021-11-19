@@ -27,6 +27,8 @@
 include(common-root)
 
 add_subdirectory(thread_pool)
+add_subdirectory(dynamic_memory)
+add_subdirectory(governor)
 
 if (TILEDB_TESTS)
     add_subdirectory(interval)

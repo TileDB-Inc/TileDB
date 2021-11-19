@@ -106,7 +106,7 @@ Query::Query(StorageManager* storage_manager, Array* array, URI fragment_uri)
   if (storage_manager != nullptr)
     config_ = storage_manager->config();
 
-  rest_scratch_ = tdb_make_shared(Buffer);
+  rest_scratch_ = make_shared<Buffer>(HERE());
 }
 
 Query::~Query() {
@@ -387,7 +387,7 @@ Status Query::get_est_result_size(const char* name, uint64_t* size) {
         rest_client->get_query_est_result_sizes(array_->array_uri(), this));
   }
 
-  return subarray_.get_est_result_size(
+  return subarray_.get_est_result_size_internal(
       name, size, &config_, storage_manager_->compute_tp());
 }
 
@@ -1770,7 +1770,8 @@ Status Query::set_layout(Layout layout) {
     return logger_->status(Status::QueryError(
         "Cannot set layout; Hilbert order is not applicable to queries"));
 
-  if (array_schema_->dense() && layout == Layout::UNORDERED) {
+  if (type_ == QueryType::WRITE && array_schema_->dense() &&
+      layout == Layout::UNORDERED) {
     return logger_->status(Status::QueryError(
         "Unordered writes are only possible for sparse arrays"));
   }
@@ -1866,6 +1867,31 @@ Status Query::set_subarray_unsafe(const Subarray& subarray) {
   return Status::Ok();
 }
 
+Status Query::set_subarray(const tiledb::sm::Subarray& subarray) {
+  auto query_status = status();
+  if (query_status != tiledb::sm::QueryStatus::UNINITIALIZED &&
+      query_status != tiledb::sm::QueryStatus::COMPLETED) {
+    // Can be in this initialized state when query has been de-serialized
+    // server-side and are trying to perform local submit.
+    // Don't change anything and return indication of success.
+    return Status::Ok();
+  }
+
+  // Set subarray
+  if (!subarray.is_set())
+    // Nothing useful to set here, will leave query with its current
+    // settings and consider successful.
+    return Status::Ok();
+
+  auto prev_layout = subarray_.layout();
+  subarray_ = subarray;
+  subarray_.set_layout(prev_layout);
+
+  status_ = QueryStatus::UNINITIALIZED;
+
+  return Status::Ok();
+}
+
 Status Query::set_subarray_unsafe(const NDRange& subarray) {
   // Prepare a subarray object
   Subarray sub(array_, layout_, stats_, logger_);
@@ -1875,6 +1901,7 @@ Status Query::set_subarray_unsafe(const NDRange& subarray) {
       RETURN_NOT_OK(sub.add_range_unsafe(d, subarray[d]));
   }
 
+  assert(layout_ == sub.layout());
   subarray_ = sub;
 
   status_ = QueryStatus::UNINITIALIZED;
@@ -1885,28 +1912,34 @@ Status Query::set_subarray_unsafe(const NDRange& subarray) {
 Status Query::check_buffers_correctness() {
   // Iterate through each attribute
   for (auto& attr : buffer_names()) {
-    if (buffer(attr).buffer_ == nullptr)
-      return logger_->status(Status::QueryError(
-          std::string("Data buffer is not set for " + attr)));
     if (array_schema_->var_size(attr)) {
-      // Var-sized
-      // Check for data buffer under buffer_var
-      bool exists_data = buffer(attr).buffer_var_ != nullptr;
-      bool exists_offset = buffer(attr).buffer_ != nullptr;
-      if ((!exists_data && *buffer(attr).buffer_var_size_ != 0) ||
-          !exists_offset) {
+      // Check for data buffer under buffer_var and offsets buffer under buffer
+      if (type_ == QueryType::READ) {
+        if (buffer(attr).buffer_var_ == nullptr) {
+          return logger_->status(Status::QueryError(
+              std::string("Var-Sized input attribute/dimension '") + attr +
+              "' is not set correctly. \nVar size buffer is not set."));
+        }
+      } else {
+        if (buffer(attr).buffer_var_ == nullptr &&
+            *buffer(attr).buffer_var_size_ != 0) {
+          return logger_->status(Status::QueryError(
+              std::string("Var-Sized input attribute/dimension '") + attr +
+              "' is not set correctly. \nVar size buffer is not set and buffer "
+              "size if not 0."));
+        }
+      }
+      if (buffer(attr).buffer_ == nullptr) {
         return logger_->status(Status::QueryError(
             std::string("Var-Sized input attribute/dimension '") + attr +
-            "' is not set correctly \nOffsets buffer is not set"));
+            "' is not set correctly. \nOffsets buffer is not set."));
       }
     } else {
       // Fixed sized
-      bool exists_data = buffer(attr).buffer_ != nullptr;
-      bool exists_offset = buffer(attr).buffer_var_ != nullptr;
-      if (!exists_data || exists_offset) {
+      if (buffer(attr).buffer_ == nullptr) {
         return logger_->status(Status::QueryError(
             std::string("Fix-Sized input attribute/dimension '") + attr +
-            "' is not set correctly \nOffsets buffer is not set"));
+            "' is not set correctly. \nData buffer is not set."));
       }
     }
     if (array_schema_->is_nullable(attr)) {

@@ -828,6 +828,17 @@ class Query {
   /** Returns the query subarray. */
   const Subarray* subarray() const;
 
+  /**
+   * Sets the query subarray.
+   *
+   * @param subarray The subarray to be set.
+   * @return Status
+   *
+   * @note Calling set_subarray for sparse arrays, or for dense arrays
+   *     when performing unordered (sparse) writes, has no effect.
+   */
+  Status set_subarray(const tiledb::sm::Subarray& subarray);
+
   /** Sets the query subarray, without performing any checks. */
   Status set_subarray_unsafe(const Subarray& subarray);
 
