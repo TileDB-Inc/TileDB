@@ -294,27 +294,26 @@ StorageManager::array_open_for_reads(
           fragment_metadata};
 }
 
-Status StorageManager::array_open_for_reads_without_fragments(
-    const URI& array_uri,
-    const EncryptionKey& enc_key,
-    ArraySchema** array_schema) {
+std::tuple<
+    Status,
+    std::optional<ArraySchema*>,
+    std::optional<std::unordered_map<std::string, tdb_shared_ptr<ArraySchema>>>>
+StorageManager::array_open_for_reads_without_fragments(
+    const URI& array_uri, const EncryptionKey& enc_key) {
   auto timer_se = stats_->start_timer("read_array_open");
 
   auto open_array = (OpenArray*)nullptr;
   Status st = array_open_without_fragments(array_uri, enc_key, &open_array);
   if (!st.ok()) {
-    *array_schema = nullptr;
-    return st;
+    return {st, std::nullopt, std::nullopt};
   }
-
-  // Retrieve array schema
-  *array_schema = open_array->array_schema();
 
   // Unlock the array mutex
   open_array->mtx_unlock();
 
   // Note that we retain the (shared) lock on the array filelock
-  return Status::Ok();
+  return {
+      Status::Ok(), open_array->array_schema(), open_array->array_schemas()};
 }
 
 std::tuple<
@@ -322,9 +321,7 @@ std::tuple<
     std::optional<ArraySchema*>,
     std::optional<std::unordered_map<std::string, tdb_shared_ptr<ArraySchema>>>>
 StorageManager::array_open_for_writes(
-    const URI& array_uri,
-    const EncryptionKey& encryption_key,
-    ArraySchema** array_schema) {
+    const URI& array_uri, const EncryptionKey& encryption_key) {
   if (!vfs_->supports_uri_scheme(array_uri))
     return {logger_->status(Status::StorageManagerError(
                 "Cannot open array; URI scheme unsupported.")),
@@ -402,9 +399,6 @@ StorageManager::array_open_for_writes(
             std::nullopt};
   }
 
-  // No fragment metadata to be loaded
-  *array_schema = open_array->array_schema();
-
   // Unlock the array mutex
   open_array->mtx_unlock();
 
@@ -460,14 +454,20 @@ Status StorageManager::array_load_fragments(
   return st;
 }
 
-Status StorageManager::array_reopen(
+std::tuple<
+    Status,
+    std::optional<ArraySchema*>,
+    std::optional<std::unordered_map<std::string, tdb_shared_ptr<ArraySchema>>>,
+    std::optional<std::vector<tdb_shared_ptr<FragmentMetadata>>>>
+StorageManager::array_reopen(
     const URI& array_uri,
     const EncryptionKey& enc_key,
-    ArraySchema** array_schema,
-    std::vector<tdb_shared_ptr<FragmentMetadata>>* fragment_metadata,
     uint64_t timestamp_start,
     uint64_t timestamp_end) {
   auto timer_se = stats_->start_timer("read_array_open");
+
+  //  ArraySchema** array_schema;
+  std::vector<tdb_shared_ptr<FragmentMetadata>> fragment_metadata;
 
   auto open_array = (OpenArray*)nullptr;
 
@@ -478,11 +478,17 @@ Status StorageManager::array_reopen(
     // Find the open array entry
     auto it = open_arrays_for_reads_.find(array_uri.to_string());
     if (it == open_arrays_for_reads_.end()) {
-      return logger_->status(Status::StorageManagerError(
-          std::string("Cannot reopen array ") + array_uri.to_string() +
-          "; Array not open"));
+      return {logger_->status(Status::StorageManagerError(
+                  std::string("Cannot reopen array ") + array_uri.to_string() +
+                  "; Array not open")),
+              std::nullopt,
+              std::nullopt,
+              std::nullopt};
     }
-    RETURN_NOT_OK(it->second->set_encryption_key(enc_key));
+    auto st = it->second->set_encryption_key(enc_key);
+    if (!st.ok())
+      return {st, std::nullopt, std::nullopt, std::nullopt};
+
     open_array = it->second;
 
     // Lock the array
@@ -493,38 +499,42 @@ Status StorageManager::array_reopen(
   std::vector<TimestampedURI> fragments_to_load;
   std::vector<URI> fragment_uris;
   URI meta_uri;
-  RETURN_NOT_OK(get_fragment_uris(array_uri, &fragment_uris, &meta_uri));
-  RETURN_NOT_OK(get_sorted_uris(
-      fragment_uris, &fragments_to_load, timestamp_start, timestamp_end));
+  auto st = get_fragment_uris(array_uri, &fragment_uris, &meta_uri);
+  if (!st.ok())
+    return {st, std::nullopt, std::nullopt, std::nullopt};
+  st = get_sorted_uris(
+      fragment_uris, &fragments_to_load, timestamp_start, timestamp_end);
+  if (!st.ok())
+    return {st, std::nullopt, std::nullopt, std::nullopt};
 
   // Get the consolidated fragment metadata
   Buffer f_buff;
   std::unordered_map<std::string, uint64_t> offsets;
-  RETURN_NOT_OK(
-      load_consolidated_fragment_meta(meta_uri, enc_key, &f_buff, &offsets));
+  st = load_consolidated_fragment_meta(meta_uri, enc_key, &f_buff, &offsets);
+  if (!st.ok())
+    return {st, std::nullopt, std::nullopt, std::nullopt};
 
   // Get fragment metadata in the case of reads, if not fetched already
-  auto st = load_fragment_metadata(
+  st = load_fragment_metadata(
       open_array,
       enc_key,
       fragments_to_load,
       &f_buff,
       offsets,
-      fragment_metadata);
+      &fragment_metadata);
   if (!st.ok()) {
     open_array->mtx_unlock();
     array_close_for_reads(array_uri);
-    *array_schema = nullptr;
-    return st;
+    return {st, std::nullopt, std::nullopt, std::nullopt};
   }
-
-  // Get the array schema
-  *array_schema = open_array->array_schema();
 
   // Unlock the mutexes
   open_array->mtx_unlock();
 
-  return st;
+  return {st,
+          open_array->array_schema(),
+          open_array->array_schemas(),
+          fragment_metadata};
 }
 
 Status StorageManager::array_consolidate(
@@ -1519,20 +1529,19 @@ Status StorageManager::get_fragment_info(
   fragment_info->set_dim_info(
       array_schema->dim_names(), array_schema->dim_types());
 
-  std::vector<tdb_shared_ptr<FragmentMetadata>> fragment_metadata;
-
   // Get encryption key from config
-  RETURN_NOT_OK(array_reopen(
-      array.array_uri(),
-      *array.encryption_key(),
-      &array_schema,
-      &fragment_metadata,
-      array_type == ArrayType::SPARSE ? timestamp_start : 0,
-      timestamp_end));
+  auto&& [st, array_schema_opt, array_schemas_opt, fragment_metadata_opt] =
+      array_reopen(
+          array.array_uri(),
+          *array.encryption_key(),
+          array_type == ArrayType::SPARSE ? timestamp_start : 0,
+          timestamp_end);
 
   // Return if array is empty
-  if (fragment_metadata.empty())
+  if (fragment_metadata_opt.value().empty())
     return Status::Ok();
+
+  const auto& fragment_metadata = fragment_metadata_opt.value();
 
   std::vector<uint64_t> sizes(fragment_metadata.size());
 
@@ -1557,7 +1566,7 @@ Status StorageManager::get_fragment_info(
 
     if (meta->timestamp_range().first < timestamp_start) {
       fragment_info->expand_anterior_ndrange(
-          array_schema->domain(), non_empty_domain);
+          meta->array_schema()->domain(), non_empty_domain);
     } else {
       const auto& uri = meta->fragment_uri();
       bool sparse = !meta->dense();
@@ -1565,7 +1574,8 @@ Status StorageManager::get_fragment_info(
       // compute expanded non-empty domain (only for dense fragments)
       auto expanded_non_empty_domain = non_empty_domain;
       if (!sparse)
-        array_schema->domain()->expand_to_tiles(&expanded_non_empty_domain);
+        meta->array_schema()->domain()->expand_to_tiles(
+            &expanded_non_empty_domain);
 
       // Push new fragment info
       fragment_info->append(SingleFragmentInfo(

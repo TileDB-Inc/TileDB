@@ -146,8 +146,14 @@ Status Array::open_without_fragments(
     RETURN_NOT_OK(
         rest_client->get_array_schema_from_rest(array_uri_, &array_schema_));
   } else {
-    RETURN_NOT_OK(storage_manager_->array_open_for_reads_without_fragments(
-        array_uri_, *encryption_key_, &array_schema_));
+    auto&& [st, array_schema, array_schemas] =
+        storage_manager_->array_open_for_reads_without_fragments(
+            array_uri_, *encryption_key_);
+    if (!st.ok())
+      return st;
+
+    array_schema_ = array_schema.value();
+    array_schemas_ = array_schemas.value();
   }
 
   is_open_ = true;
@@ -267,10 +273,10 @@ Status Array::open(
     // Set schemas
     array_schema_ = array_schema.value();
     array_schemas_ = array_schemas.value();
+    fragment_metadata_ = fragment_metadata.value();
   } else {
     auto&& [st, array_schema, array_schemas] =
-        storage_manager_->array_open_for_writes(
-            array_uri_, *encryption_key_, &array_schema_);
+        storage_manager_->array_open_for_writes(array_uri_, *encryption_key_);
     if (!st.ok())
       return st;
     // Set schemas
@@ -541,13 +547,19 @@ Status Array::reopen(uint64_t timestamp_start, uint64_t timestamp_end) {
         encryption_key_->key().size());
   }
 
-  RETURN_NOT_OK(storage_manager_->array_reopen(
-      array_uri_,
-      *encryption_key_,
-      &array_schema_,
-      &fragment_metadata_,
-      timestamp_start_,
-      timestamp_end_opened_at_));
+  auto&& [st, array_schema, array_schemas, fragment_metadata] =
+      storage_manager_->array_reopen(
+          array_uri_,
+          *encryption_key_,
+          timestamp_start_,
+          timestamp_end_opened_at_);
+
+  if (!st.ok())
+    return st;
+
+  array_schema_ = array_schema.value();
+  array_schemas_ = array_schemas.value();
+  fragment_metadata_ = fragment_metadata.value();
 
   return Status::Ok();
 }

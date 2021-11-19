@@ -160,16 +160,13 @@ class StorageManager {
    *
    * @param array_uri The array URI.
    * @param enc_key The encryption key to use.
-   * @param array_schema The array schema to be retrieved after the
-   *     array is opened.
-   * @param fragment_metadata The fragment metadata to be retrieved
-   *     after the array is opened.
    * @param timestamp_start The (optional) starting timestamp to open the array
    * between, starting at this timestamp and ending at `timestamp_end`.
    * @param timestamp_end The timestamp at which the array will be opened.
    *     In TileDB, timestamps are in ms elapsed since
    *     1970-01-01 00:00:00 +0000 (UTC).
-   * @return Status
+   * @return tuple of Status, latest ArraySchema, map of all array schemas and
+   * vector of FragmentMetadata
    */
   std::tuple<
       Status,
@@ -188,14 +185,15 @@ class StorageManager {
    *
    * @param array_uri The array URI.
    * @param enc_key The encryption key to use.
-   * @param array_schema The array schema to be retrieved after the
-   *     array is opened.
-   * @return Status
+   * @return tuple of Status, latest ArraySchema and map of all array schemas
    */
-  Status array_open_for_reads_without_fragments(
-      const URI& array_uri,
-      const EncryptionKey& enc_key,
-      ArraySchema** array_schema);
+  std::tuple<
+      Status,
+      std::optional<ArraySchema*>,
+      std::optional<
+          std::unordered_map<std::string, tdb_shared_ptr<ArraySchema>>>>
+  array_open_for_reads_without_fragments(
+      const URI& array_uri, const EncryptionKey& enc_key);
 
   /** Opens an array for writes.
    *
@@ -208,10 +206,7 @@ class StorageManager {
       std::optional<ArraySchema*>,
       std::optional<
           std::unordered_map<std::string, tdb_shared_ptr<ArraySchema>>>>
-  array_open_for_writes(
-      const URI& array_uri,
-      const EncryptionKey& enc_key,
-      ArraySchema** array_schema);
+  array_open_for_writes(const URI& array_uri, const EncryptionKey& enc_key);
 
   /**
    * Load fragments for an already open array.
@@ -245,13 +240,18 @@ class StorageManager {
    * @param timestamp_end The timestamp at which the array will be opened.
    *     In TileDB, timestamps are in ms elapsed since
    *     1970-01-01 00:00:00 +0000 (UTC).
-   * @return Status
+   * @return tuple of Status, latest ArraySchema, map of all array schemas and
+   * vector of FragmentMetadata
    */
-  Status array_reopen(
+  std::tuple<
+      Status,
+      std::optional<ArraySchema*>,
+      std::optional<
+          std::unordered_map<std::string, tdb_shared_ptr<ArraySchema>>>,
+      std::optional<std::vector<tdb_shared_ptr<FragmentMetadata>>>>
+  array_reopen(
       const URI& array_uri,
       const EncryptionKey& enc_key,
-      ArraySchema** array_schema,
-      std::vector<tdb_shared_ptr<FragmentMetadata>>* fragment_metadata,
       uint64_t timestamp_start,
       uint64_t timestamp_end);
 
