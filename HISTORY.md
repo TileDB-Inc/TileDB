@@ -1,3 +1,13 @@
+# TileDB v2.4.4 Release Notes
+
+## Improvements
+
+* use ROW_MAJOR read paths for unordered reads of Hilbert layout array [#2551](https://github.com/TileDB-Inc/TileDB/pull/2551)
+
+## Bug fixes
+
+* Fix bug in Arrow schema construction [#2554](https://github.com/TileDB-Inc/TileDB/pull/2554)
+
 # TileDB v2.4.3 Release Notes
 
 ## Bug fixes
