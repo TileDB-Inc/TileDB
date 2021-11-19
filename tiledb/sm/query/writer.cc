@@ -690,13 +690,17 @@ Status Writer::check_subarray() const {
         Status::WriterError("Cannot check subarray; Array schema not set"));
 
   if (array_schema_->dense()) {
+    if (subarray_.range_num() != 1)
+      return LOG_STATUS(
+          Status::WriterError("Multi-range dense writes "
+                              "are not supported"));
+
     if (layout_ == Layout::GLOBAL_ORDER && !subarray_.coincides_with_tiles())
       return logger_->status(
           Status::WriterError("Cannot initialize query; In global writes for "
                               "dense arrays, the subarray "
                               "must coincide with the tile bounds"));
   }
-
   return Status::Ok();
 }
 
