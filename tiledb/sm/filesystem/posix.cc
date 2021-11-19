@@ -35,6 +35,7 @@
 #include "tiledb/sm/filesystem/posix.h"
 #include "tiledb/common/logger.h"
 #include "tiledb/common/thread_pool.h"
+#include "tiledb/common/stdx_string.h"
 #include "tiledb/sm/misc/constants.h"
 #include "tiledb/sm/misc/utils.h"
 

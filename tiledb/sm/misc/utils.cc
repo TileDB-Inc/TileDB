@@ -344,19 +344,6 @@ bool is_uint(const std::string& str) {
   return true;
 }
 
-bool starts_with(const std::string& value, const std::string& prefix) {
-  if (prefix.size() > value.size())
-    return false;
-  return std::equal(prefix.begin(), prefix.end(), value.begin());
-}
-
-bool ends_with(const std::string& value, const std::string& suffix) {
-  if (suffix.size() > value.size())
-    return false;
-  return value.compare(value.size() - suffix.size(), suffix.size(), suffix) ==
-         0;
-}
-
 template <class T>
 std::string to_str(const T& value) {
   std::stringstream ss;
