@@ -37,6 +37,8 @@
 #include "tiledb/sm/filesystem/vfs.h"
 #include "tiledb/sm/fragment/fragment_metadata.h"
 #include "tiledb/sm/misc/parallel_functions.h"
+#include "tiledb/sm/misc/resource_pool.h"
+#include "tiledb/sm/query/iquery_strategy.h"
 #include "tiledb/sm/query/query_macros.h"
 #include "tiledb/sm/query/strategy_base.h"
 #include "tiledb/sm/storage_manager/open_array_memory_tracker.h"
@@ -73,16 +75,12 @@ SparseIndexReaderBase::SparseIndexReaderBase(
     , memory_budget_(0)
     , array_memory_tracker_(nullptr)
     , memory_used_for_coords_total_(0)
-    , memory_used_qc_tiles_(0)
-    , memory_used_rcs_(0)
-    , memory_used_result_tiles_(0)
+    , memory_used_qc_tiles_total_(0)
     , memory_used_result_tile_ranges_(0)
     , memory_budget_ratio_coords_(0.5)
     , memory_budget_ratio_query_condition_(0.25)
     , memory_budget_ratio_tile_ranges_(0.1)
     , memory_budget_ratio_array_data_(0.1)
-    , memory_budget_ratio_result_tiles_(0.05)
-    , memory_budget_ratio_rcs_(0.05)
     , coords_loaded_(true) {
   read_state_.done_adding_result_tiles_ = false;
 }
@@ -91,26 +89,98 @@ SparseIndexReaderBase::SparseIndexReaderBase(
 /*        PROTECTED METHODS       */
 /* ****************************** */
 
-const SparseIndexReaderBase::ReadState* SparseIndexReaderBase::read_state()
-    const {
+const typename SparseIndexReaderBase::ReadState*
+SparseIndexReaderBase::read_state() const {
   return &read_state_;
 }
 
-SparseIndexReaderBase::ReadState* SparseIndexReaderBase::read_state() {
+typename SparseIndexReaderBase::ReadState* SparseIndexReaderBase::read_state() {
   return &read_state_;
 }
 
+Status SparseIndexReaderBase::init() {
+  // Sanity checks
+  if (storage_manager_ == nullptr)
+    return logger_->status(Status::ReaderError(
+        "Cannot initialize sparse global order reader; Storage manager not "
+        "set"));
+  if (array_schema_ == nullptr)
+    return logger_->status(Status::ReaderError(
+        "Cannot initialize sparse global order reader; Array schema not set"));
+  if (buffers_.empty())
+    return logger_->status(Status::ReaderError(
+        "Cannot initialize sparse global order reader; Buffers not set"));
+
+  // Check subarray
+  RETURN_NOT_OK(check_subarray());
+
+  // Load offset configuration options.
+  bool found = false;
+  offsets_format_mode_ = config_.get("sm.var_offsets.mode", &found);
+  assert(found);
+  if (offsets_format_mode_ != "bytes" && offsets_format_mode_ != "elements") {
+    return logger_->status(
+        Status::ReaderError("Cannot initialize reader; Unsupported offsets "
+                            "format in configuration"));
+  }
+  elements_mode_ = offsets_format_mode_ == "elements";
+
+  RETURN_NOT_OK(config_.get<bool>(
+      "sm.var_offsets.extra_element", &offsets_extra_element_, &found));
+  assert(found);
+  RETURN_NOT_OK(config_.get<uint32_t>(
+      "sm.var_offsets.bitsize", &offsets_bitsize_, &found));
+  if (offsets_bitsize_ != 32 && offsets_bitsize_ != 64) {
+    return logger_->status(
+        Status::ReaderError("Cannot initialize reader; "
+                            "Unsupported offsets bitsize in configuration"));
+  }
+
+  // Check the validity buffer sizes.
+  RETURN_NOT_OK(check_validity_buffer_sizes());
+
+  return Status::Ok();
+}
+
+template <class BitmapType>
 Status SparseIndexReaderBase::get_coord_tiles_size(
-    unsigned dim_num, unsigned f, uint64_t t, uint64_t* tiles_size) {
+    bool include_coords,
+    unsigned dim_num,
+    unsigned f,
+    uint64_t t,
+    uint64_t* tiles_size,
+    uint64_t* tiles_size_qc) {
   *tiles_size = 0;
-  for (unsigned d = 0; d < dim_num; d++) {
-    *tiles_size += fragment_metadata_[f]->tile_size(dim_names_[d], t);
 
-    if (is_dim_var_size_[d]) {
-      uint64_t temp = 0;
-      RETURN_NOT_OK(
-          fragment_metadata_[f]->tile_var_size(dim_names_[d], t, &temp));
-      *tiles_size += temp;
+  // Add the coordinate tiles size.
+  if (include_coords) {
+    for (unsigned d = 0; d < dim_num; d++) {
+      *tiles_size += fragment_metadata_[f]->tile_size(dim_names_[d], t);
+
+      if (is_dim_var_size_[d]) {
+        uint64_t temp = 0;
+        RETURN_NOT_OK(
+            fragment_metadata_[f]->tile_var_size(dim_names_[d], t, &temp));
+        *tiles_size += temp;
+      }
+    }
+  }
+
+  // Add the result tile structure size.
+  *tiles_size += sizeof(ResultTileWithBitmap<BitmapType>);
+
+  // Add the tile bitmap size if there is a subarray.
+  if (subarray_.is_set())
+    *tiles_size += fragment_metadata_[f]->cell_num(t) * sizeof(BitmapType);
+
+  // Compute query condition tile sizes.
+  *tiles_size_qc = 0;
+  if (!qc_loaded_names_.empty()) {
+    for (auto& name : qc_loaded_names_) {
+      // Calculate memory consumption for this tile.
+      uint64_t tile_size = 0;
+      RETURN_NOT_OK(get_attribute_tile_size(name, f, t, &tile_size));
+      *tiles_size_qc += tile_size;
     }
   }
 
@@ -123,6 +193,15 @@ Status SparseIndexReaderBase::load_initial_data() {
 
   auto timer_se = stats_->start_timer("load_initial_data");
   read_state_.done_adding_result_tiles_ = false;
+
+  // Make a list of dim/attr that will be loaded for query condition.
+  if (!initial_data_loaded_) {
+    if (!condition_.empty()) {
+      for (auto& name : condition_.field_names()) {
+        qc_loaded_names_.emplace_back(name);
+      }
+    }
+  }
 
   // For easy reference.
   auto fragment_num = fragment_metadata_.size();
@@ -181,67 +260,232 @@ Status SparseIndexReaderBase::load_initial_data() {
   }
   RETURN_CANCEL_OR_ERROR(load_tile_offsets(&subarray_, &dim_names_));
 
+  // Compute tile offsets to load and var size to load for attributes.
+  std::vector<std::string> attr_tile_offsets_to_load;
   for (auto& it : buffers_) {
     const auto& name = it.first;
     if (array_schema_->is_dim(name))
       continue;
 
+    attr_tile_offsets_to_load.emplace_back(name);
+
     if (array_schema_->var_size(name))
       var_size_to_load.emplace_back(name);
   }
+
+  // Load tile offsets and var sizes for attributes.
   RETURN_CANCEL_OR_ERROR(load_tile_var_sizes(&subarray_, &var_size_to_load));
+  RETURN_CANCEL_OR_ERROR(
+      load_tile_offsets(&subarray_, &attr_tile_offsets_to_load));
 
   logger_->debug("Initial data loaded");
   initial_data_loaded_ = true;
   return Status::Ok();
 }
 
-// Sort vector elements by second element of tuples.
-bool reverse_tuple_sort_by_second(
-    const tuple<uint64_t, uint64_t, uint64_t>& a,
-    const tuple<uint64_t, uint64_t, uint64_t>& b) {
-  return (std::get<1>(a) > std::get<1>(b));
-}
+Status SparseIndexReaderBase::read_and_unfilter_coords(
+    bool include_coords, const std::vector<ResultTile*>* result_tiles) {
+  auto timer_se = stats_->start_timer("read_and_unfilter_coords");
 
-Status SparseIndexReaderBase::compute_coord_tiles_result_bitmap(
-    ResultTile* tile,
-    uint64_t range_idx,
-    std::vector<uint8_t>* coord_tiles_result_bitmap) {
-  auto timer_se = stats_->start_timer("compute_coord_tiles_result_bitmap");
+  // Not including coords or no query condition, exit.
+  if (!include_coords && condition_.empty())
+    return Status::Ok();
 
-  // For easy reference.
-  auto dim_num = array_schema_->dim_num();
-  auto cell_order = array_schema_->cell_order();
-  auto range_coords = subarray_.get_range_coords(range_idx);
+  if (subarray_.is_set() || include_coords) {
+    // Read and unfilter zipped coordinate tiles. Note that
+    // this will ignore fragments with a version >= 5.
+    std::vector<std::string> zipped_coords_names = {constants::coords};
+    RETURN_CANCEL_OR_ERROR(
+        read_coordinate_tiles(&zipped_coords_names, result_tiles));
+    RETURN_CANCEL_OR_ERROR(unfilter_tiles(constants::coords, result_tiles));
 
-  // Compute result and overwritten bitmap per dimension
-  for (unsigned d = 0; d < dim_num; ++d) {
-    // For col-major cell ordering, iterate the dimensions
-    // in reverse.
-    const unsigned dim_idx =
-        cell_order == Layout::COL_MAJOR ? dim_num - d - 1 : d;
-    if (!subarray_.is_default(dim_idx)) {
-      const auto& ranges = subarray_.ranges_for_dim(dim_idx);
-      RETURN_NOT_OK(tile->compute_results_sparse(
-          dim_idx,
-          ranges[range_coords[dim_idx]],
-          coord_tiles_result_bitmap,
-          cell_order));
+    // Read and unfilter unzipped coordinate tiles. Note that
+    // this will ignore fragments with a version < 5.
+    RETURN_CANCEL_OR_ERROR(read_coordinate_tiles(&dim_names_, result_tiles));
+    for (const auto& dim_name : dim_names_) {
+      RETURN_CANCEL_OR_ERROR(unfilter_tiles(dim_name, result_tiles));
     }
   }
 
+  if (!condition_.empty()) {
+    // Read and unfilter tiles for querty condition.
+    RETURN_CANCEL_OR_ERROR(
+        read_attribute_tiles(&qc_loaded_names_, result_tiles));
+
+    for (const auto& name : qc_loaded_names_) {
+      RETURN_CANCEL_OR_ERROR(unfilter_tiles(name, result_tiles));
+    }
+  }
+
+  logger_->debug("Done reading and unfiltering coords tiles");
   return Status::Ok();
 }
 
-Status SparseIndexReaderBase::resize_output_buffers() {
-  // Count number of elements actually copied.
-  uint64_t cells_copied = 0;
-  for (uint64_t i = 0; i < copy_end_.first - 1; i++) {
-    cells_copied += read_state_.result_cell_slabs_[i].length_;
+/** Template specialisation for uint64_t which does result count. */
+template <class BitmapType>
+Status SparseIndexReaderBase::compute_tile_bitmaps(
+    ResultTileListPerFragment<BitmapType>* result_tiles) {
+  auto timer_se = stats_->start_timer("compute_tile_bitmaps");
+
+  // For easy reference.
+  const auto domain = array_schema_->domain();
+  const auto dim_num = array_schema_->dim_num();
+  const auto cell_order = array_schema_->cell_order();
+
+  // No subarray set, return.
+  if (!subarray_.is_set()) {
+    return Status::Ok();
   }
 
-  cells_copied += copy_end_.second;
+  // These vector will contain a list of indices for ranges to process when
+  // computing the tile bitmaps.
+  const auto num_threads = storage_manager_->compute_tp()->concurrency_level();
+  ResourcePool<std::vector<uint64_t>> all_threads_range_indexes(num_threads);
 
+  // Compute the max size for the range index vectors.
+  uint64_t max_range_size = 0;
+  for (unsigned d = 0; d < dim_num; d++) {
+    uint64_t range_num;
+    RETURN_NOT_OK(subarray_.get_range_num(d, &range_num));
+    max_range_size = std::max(max_range_size, range_num);
+  }
+
+  // Process all tiles in parallel.
+  auto result_tiles_it = ResultTileIt(result_tiles);
+  auto status = parallel_for(
+      storage_manager_->compute_tp(), 0, result_tiles_it.size(), [&](uint64_t) {
+        // Take a result tile.
+        auto rt = result_tiles_it.get_next();
+
+        // Bitmap was already computed for this tile.
+        if (rt->bitmap_num_cells != std::numeric_limits<uint64_t>::max()) {
+          return Status::Ok();
+        }
+
+        // Get a range indexes vector ready.
+        auto range_indexes_resource_guard =
+            ResourceGuard(all_threads_range_indexes);
+        auto range_indexes = range_indexes_resource_guard.get();
+        range_indexes.resize(max_range_size);
+
+        // Get the MBR for this tile.
+        const auto& mbr =
+            fragment_metadata_[rt->frag_idx()]->mbr(rt->tile_idx());
+
+        // Compute bitmaps one dimension at a time.
+        for (unsigned d = 0; d < dim_num; d++) {
+          // For col-major cell ordering, iterate the dimensions
+          // in reverse.
+          const unsigned dim_idx =
+              cell_order == Layout::COL_MAJOR ? dim_num - d - 1 : d;
+
+          // No need to compute bitmaps for default dimensions.
+          if (subarray_.is_default(dim_idx))
+            continue;
+
+          // For non overlapping range, if we have any range that fully covers
+          // the tile, leave the bitmap untouched.
+          const auto dim = domain->dimension(dim_idx);
+          const auto& ranges_for_dim = subarray_.ranges_for_dim(dim_idx);
+          bool full_overlap = false;
+          const bool is_uint8_t = std::is_same<BitmapType, uint8_t>::value;
+          if (is_uint8_t) {
+            for (uint64_t r = 0; r < ranges_for_dim.size(); r++) {
+              if (dim->covered(mbr[dim_idx], ranges_for_dim[r])) {
+                full_overlap = true;
+                break;
+              }
+            }
+          }
+          if (full_overlap)
+            continue;
+
+          // Compute the list of range index to process in
+          // compute_results_count_sparse.
+          uint64_t num_ranges = 0;
+          for (uint64_t r = 0; r < ranges_for_dim.size(); r++) {
+            if (domain->dimension(dim_idx)->overlap(
+                    ranges_for_dim[r], mbr[dim_idx])) {
+              range_indexes[num_ranges++] = r;
+            }
+          }
+
+          // Calculate the bitmap for the cells.
+          rt->bitmap.resize(rt->cell_num(), 1);
+          RETURN_NOT_OK(rt->compute_results_count_sparse(
+              dim_idx,
+              ranges_for_dim,
+              &range_indexes,
+              num_ranges,
+              &rt->bitmap,
+              cell_order));
+        }
+
+        // Compute number of cells in this tile. If the bitmap was not resized,
+        // we have full overlap on a non overlapping range.
+        if (rt->bitmap.size() == 0) {
+          rt->bitmap_num_cells = rt->cell_num();
+        } else {
+          rt->bitmap_num_cells = 0;
+          for (uint64_t c = 0; c < rt->cell_num(); ++c) {
+            rt->bitmap_num_cells += rt->bitmap[c];
+          }
+        }
+
+        return Status::Ok();
+      });
+  RETURN_NOT_OK_ELSE(status, logger_->status(status));
+
+  logger_->debug("Done computing tile bitmaps");
+  return Status::Ok();
+}
+
+template <class BitmapType>
+Status SparseIndexReaderBase::apply_query_condition(
+    ResultTileListPerFragment<BitmapType>* result_tiles) {
+  auto timer_se = stats_->start_timer("apply_query_condition");
+
+  if (!condition_.empty()) {
+    // Process all tiles in parallel.
+    auto result_tiles_it = ResultTileIt(result_tiles);
+    auto status = parallel_for(
+        storage_manager_->compute_tp(),
+        0,
+        result_tiles_it.size(),
+        [&](uint64_t) {
+          // Take a result tile.
+          auto rt = result_tiles_it.get_next();
+
+          // Set num_cells if no subarray as it's used to filter below.
+          if (!subarray_.is_set()) {
+            rt->bitmap_num_cells = rt->cell_num();
+          }
+
+          // Max bitmap_num_cells means the tile had no overlap, skip it.
+          if (!rt->qc_processed &&
+              rt->bitmap_num_cells != std::numeric_limits<uint64_t>::max()) {
+            // Full overlap in bitmap calculation, make a bitmap.
+            if (rt->bitmap.size() == 0) {
+              rt->bitmap.resize(rt->cell_num(), 1);
+              rt->bitmap_num_cells = rt->cell_num();
+            }
+
+            // Compute the result of the query condition for this tile.
+            RETURN_NOT_OK(condition_.apply_sparse<BitmapType>(
+                array_schema_, &*rt, rt->bitmap.data(), &rt->bitmap_num_cells));
+            rt->qc_processed = true;
+          }
+
+          return Status::Ok();
+        });
+    RETURN_NOT_OK_ELSE(status, logger_->status(status));
+  }
+
+  logger_->debug("Done applying query condition");
+  return Status::Ok();
+}
+
+Status SparseIndexReaderBase::resize_output_buffers(uint64_t cells_copied) {
   // Resize buffers if the result cell slabs was truncated.
   for (auto& it : buffers_) {
     const auto& name = it.first;
@@ -265,8 +509,17 @@ Status SparseIndexReaderBase::resize_output_buffers() {
 
         // Since the buffer is shrunk, there is an offset for the next element
         // loaded, use it.
-        *(it.second.buffer_var_size_) =
-            ((uint64_t*)it.second.buffer_)[cells_copied];
+        if (offsets_bitsize_ == 64) {
+          uint64_t offset_div =
+              elements_mode_ ? datatype_size(array_schema_->type(name)) : 1;
+          *it.second.buffer_var_size_ =
+              ((uint64_t*)it.second.buffer_)[cells_copied] * offset_div;
+        } else {
+          uint32_t offset_div =
+              elements_mode_ ? datatype_size(array_schema_->type(name)) : 1;
+          *it.second.buffer_var_size_ =
+              ((uint32_t*)it.second.buffer_)[cells_copied] * offset_div;
+        }
       }
     } else {
       // Always adjust the size for fixed size attributes.
@@ -320,6 +573,20 @@ void SparseIndexReaderBase::remove_result_tile_range(uint64_t f) {
     memory_used_result_tile_ranges_ -= sizeof(std::pair<uint64_t, uint64_t>);
   }
 }
+
+// Explicit template instantiations
+template Status SparseIndexReaderBase::get_coord_tiles_size<uint64_t>(
+    bool, unsigned, unsigned, uint64_t, uint64_t*, uint64_t*);
+template Status SparseIndexReaderBase::get_coord_tiles_size<uint8_t>(
+    bool, unsigned, unsigned, uint64_t, uint64_t*, uint64_t*);
+template Status SparseIndexReaderBase::apply_query_condition(
+    ResultTileListPerFragment<uint64_t>*);
+template Status SparseIndexReaderBase::apply_query_condition(
+    ResultTileListPerFragment<uint8_t>*);
+template Status SparseIndexReaderBase::compute_tile_bitmaps<uint64_t>(
+    ResultTileListPerFragment<uint64_t>* result_tiles);
+template Status SparseIndexReaderBase::compute_tile_bitmaps<uint8_t>(
+    ResultTileListPerFragment<uint8_t>* result_tiles);
 
 }  // namespace sm
 }  // namespace tiledb
