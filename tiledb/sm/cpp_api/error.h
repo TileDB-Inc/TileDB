@@ -91,7 +91,8 @@ class Error {
     const char* msg = nullptr;
     tiledb_error_message(error_.get(), &msg);
     if (msg == nullptr)
-      return std::string("(empty error string returned from tiledb_error_message)");
+      return std::string(
+          "(empty error string returned from tiledb_error_message)");
     else
       return std::string(msg);
   }
