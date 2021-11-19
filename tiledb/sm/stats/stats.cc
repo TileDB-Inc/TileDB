@@ -30,6 +30,7 @@
  * This file defines class Stats.
  */
 
+#include "tiledb/common/stdx_string.h"
 #include "tiledb/sm/stats/stats.h"
 #include "tiledb/common/stdx_string.h"
 #include "tiledb/sm/misc/utils.h"
