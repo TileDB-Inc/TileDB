@@ -57,18 +57,22 @@ jobs:
       TILEDB_TRY_PNG_INGESTION: ${{ matrix.try_png_ingestion }}
     steps:
     
-      - name: 'is windbg present?'
+      - name: 'is windbg etc. present?'
         shell: cmd
         run: |
-          dir \windbg* /s
-          dir c:\windbg* /s
-          dir d:\windbg* /s
           path
           c:\msys64\usr\bin\which windbg
+          which reg
+          reg query "HKEY_LOCAL_MACHINE\SOFTWARE\Microsoft\Windows\Windows Error Reporting" /s
+          reg query "HKEY_LOCAL_MACHINE\SOFTWARE\Microsoft\Windows\Windows Error Reporting\LocalDumps" /s
+          reg query "HKEY_LOCAL_MACHINE\SOFTWARE\Microsoft\Windows NT\CurrentVersion\AeDebug" /s
+          #dir \windbg* /s
+          dir c:\windbg* /s
+          #dir d:\windbg* /s
           exit 1
           
       - name: 'prep macos for core dumps'
-        if: ${{ always() == true   && startsWith(matrix.os, 'macos-') == true }} # only run this job if the build step failed
+        if: ${{ always() == true && startsWith(matrix.os, 'macos-') == true }} # only run this job if the build step failed
         run: |
           sudo chown :staff /cores
           sudo chmod g+w /cores
@@ -77,7 +81,7 @@ jobs:
           ulimit -c
 
       - name: 'prep ubuntu for core dumps'
-        if: ${{ always() == true   && startsWith(matrix.os, 'ubuntu-') == true }} # only run this job if the build step failed
+        if: ${{ always() == true && startsWith(matrix.os, 'ubuntu-') == true }} # only run this job if the build step failed
         run: |
           echo "core_pattern follows..."
           cat /proc/sys/kernel/core_pattern
