@@ -387,7 +387,7 @@ Status Query::get_est_result_size(const char* name, uint64_t* size) {
         rest_client->get_query_est_result_sizes(array_->array_uri(), this));
   }
 
-  return subarray_.get_est_result_size(
+  return subarray_.get_est_result_size_internal(
       name, size, &config_, storage_manager_->compute_tp());
 }
 
@@ -1867,6 +1867,31 @@ Status Query::set_subarray_unsafe(const Subarray& subarray) {
   return Status::Ok();
 }
 
+Status Query::set_subarray(const tiledb::sm::Subarray& subarray) {
+  auto query_status = status();
+  if (query_status != tiledb::sm::QueryStatus::UNINITIALIZED &&
+      query_status != tiledb::sm::QueryStatus::COMPLETED) {
+    // Can be in this initialized state when query has been de-serialized
+    // server-side and are trying to perform local submit.
+    // Don't change anything and return indication of success.
+    return Status::Ok();
+  }
+
+  // Set subarray
+  if (!subarray.is_set())
+    // Nothing useful to set here, will leave query with its current
+    // settings and consider successful.
+    return Status::Ok();
+
+  auto prev_layout = subarray_.layout();
+  subarray_ = subarray;
+  subarray_.set_layout(prev_layout);
+
+  status_ = QueryStatus::UNINITIALIZED;
+
+  return Status::Ok();
+}
+
 Status Query::set_subarray_unsafe(const NDRange& subarray) {
   // Prepare a subarray object
   Subarray sub(array_, layout_, stats_, logger_);
@@ -1876,6 +1901,7 @@ Status Query::set_subarray_unsafe(const NDRange& subarray) {
       RETURN_NOT_OK(sub.add_range_unsafe(d, subarray[d]));
   }
 
+  assert(layout_ == sub.layout());
   subarray_ = sub;
 
   status_ = QueryStatus::UNINITIALIZED;

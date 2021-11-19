@@ -1,5 +1,5 @@
 /**
- * @file   unit-capi-serialized_queries.cc
+ * @file   unit-capi-serialized_queries_using_subarray.cc
  *
  * @section LICENSE
  *
@@ -27,12 +27,14 @@
  *
  * @section DESCRIPTION
  *
- * Tests for query serialization/deserialization.
+ * Tests for query serialization/deserialization using separate subarray.
+ *
+ * @note This module tests the capi by using the cppapi entities which are built
+ * on the capi functionality.
  */
 
 #include "catch.hpp"
-#include "test/src/helpers.h"
-#include "tiledb/sm/c_api/tiledb.h"
+
 #include "tiledb/sm/c_api/tiledb_serialization.h"
 #include "tiledb/sm/c_api/tiledb_struct_def.h"
 #include "tiledb/sm/cpp_api/tiledb"
@@ -188,7 +190,9 @@ struct SerializationFx {
 
     Array array(ctx, array_uri, TILEDB_WRITE);
     Query query(ctx, array);
-    query.set_subarray(subarray);
+    Subarray cppapi_subarray(ctx, array);
+    cppapi_subarray.set_subarray(subarray);
+    query.set_subarray(cppapi_subarray);
     query.set_data_buffer("a1", a1);
     query.set_data_buffer("a2", a2);
     query.set_validity_buffer("a2", a2_nullable);
@@ -240,8 +244,10 @@ struct SerializationFx {
 
     Array array(ctx, array_uri, TILEDB_WRITE);
     Query query(ctx, array);
-    query.add_range(0, subarray[0], subarray[1]);
-    query.add_range(1, subarray[2], subarray[3]);
+    Subarray cppapi_subarray(ctx, array);
+    cppapi_subarray.add_range(0, subarray[0], subarray[1]);
+    cppapi_subarray.add_range(1, subarray[2], subarray[3]);
+    query.set_subarray(cppapi_subarray);
     query.set_data_buffer("a1", a1);
     query.set_data_buffer("a2", a2);
     query.set_validity_buffer("a2", a2_nullable);
@@ -255,15 +261,8 @@ struct SerializationFx {
     Query query2(ctx, array2);
     deserialize_query(ctx, serialized, &query2, false);
     query2.submit();
-
-    // Make sure query2 has logged stats
-    check_write_stats(query2);
-
     serialize_query(ctx, query2, &serialized, false);
     deserialize_query(ctx, serialized, &query, true);
-
-    // The deserialized query should also include the write stats
-    check_write_stats(query);
   }
 
   void write_sparse_array() {
@@ -306,14 +305,8 @@ struct SerializationFx {
     Query query2(ctx, array2);
     deserialize_query(ctx, serialized, &query2, false);
     query2.submit();
-
-    // Make sure query2 has logged stats
-    check_write_stats(query2);
     serialize_query(ctx, query2, &serialized, false);
     deserialize_query(ctx, serialized, &query, true);
-
-    // The deserialized query should also include the write stats
-    check_write_stats(query);
   }
 
   void write_sparse_array_split_coords() {
@@ -359,15 +352,8 @@ struct SerializationFx {
     Query query2(ctx, array2);
     deserialize_query(ctx, serialized, &query2, false);
     query2.submit();
-
-    // Make sure query2 has logged stats
-    check_write_stats(query2);
-
     serialize_query(ctx, query2, &serialized, false);
     deserialize_query(ctx, serialized, &query, true);
-
-    // The deserialized query should also include the write stats
-    check_write_stats(query);
   }
 
   /**
@@ -479,6 +465,7 @@ struct SerializationFx {
         "a2",
         &unused3,
         &a2_validity_size));
+
     ctx.handle_error(tiledb_query_get_data_buffer(
         ctx.ptr().get(), query->ptr().get(), "a3", &unused1, &a3_size));
     ctx.handle_error(tiledb_query_get_offsets_buffer(
@@ -542,7 +529,7 @@ struct SerializationFx {
 
 TEST_CASE_METHOD(
     SerializationFx,
-    "Query serialization, dense",
+    "subarray - Query serialization, dense",
     "[query][dense][serialization]") {
   create_array(TILEDB_DENSE);
   auto expected_results = write_dense_array();
@@ -557,7 +544,9 @@ TEST_CASE_METHOD(
     std::vector<uint64_t> a3_offsets(1000);
     std::vector<int32_t> subarray = {1, 10, 1, 10};
 
-    query.set_subarray(subarray);
+    Subarray cppapi_subarray(ctx, array);
+    cppapi_subarray.set_subarray(subarray);
+    query.set_subarray(cppapi_subarray);
     query.set_data_buffer("a1", a1);
     query.set_data_buffer("a2", a2);
     query.set_validity_buffer("a2", a2_nullable);
@@ -578,15 +567,9 @@ TEST_CASE_METHOD(
     query2.submit();
     serialize_query(ctx, query2, &serialized, false);
 
-    // Make sure query2 has logged stats
-    check_read_stats(query2);
-
     // Deserialize into original query (client side).
     deserialize_query(ctx, serialized, &query, true);
     REQUIRE(query.query_status() == Query::Status::COMPLETE);
-
-    // The deserialized query should also include the write stats
-    check_read_stats(query);
 
     auto result_el = query.result_buffer_elements_nullable();
     REQUIRE(std::get<1>(result_el["a1"]) == 100);
@@ -594,12 +577,6 @@ TEST_CASE_METHOD(
     REQUIRE(std::get<2>(result_el["a2"]) == 100);
     REQUIRE(std::get<0>(result_el["a3"]) == 100);
     REQUIRE(std::get<1>(result_el["a3"]) == 5050);
-
-    REQUIRE(check_result(a1, expected_results["a1"]));
-    REQUIRE(check_result(a2, expected_results["a2"]));
-    REQUIRE(check_result(a2_nullable, expected_results["a2_nullable"]));
-    REQUIRE(check_result(a3_data, expected_results["a3_data"]));
-    REQUIRE(check_result(a3_offsets, expected_results["a3_offsets"]));
 
     for (void* b : to_free)
       std::free(b);
@@ -615,7 +592,9 @@ TEST_CASE_METHOD(
     std::vector<uint64_t> a3_offsets(1000);
     std::vector<int32_t> subarray = {1, 10, 1, 10};
 
-    query.set_subarray(subarray);
+    Subarray cppapi_subarray(ctx, array);
+    cppapi_subarray.set_subarray(subarray);
+    query.set_subarray(cppapi_subarray);
     query.set_data_buffer("a1", a1);
     query.set_data_buffer("a2", a2);
     query.set_validity_buffer("a2", a2_nullable);
@@ -652,33 +631,13 @@ TEST_CASE_METHOD(
     check_read_stats(query);
 
     // We expect all cells where `a1` >= `cmp_value` to be filtered
-    // out. For the refactored reader, filtered out means the value is
-    // replaced with the fill value.
+    // out.
     auto result_el = query.result_buffer_elements_nullable();
-    if (test::use_refactored_dense_reader()) {
-      REQUIRE(std::get<1>(result_el["a1"]) == 100);
-      REQUIRE(std::get<1>(result_el["a2"]) == 200);
-      REQUIRE(std::get<2>(result_el["a2"]) == 100);
-      REQUIRE(std::get<0>(result_el["a3"]) == 100);
-      REQUIRE(std::get<1>(result_el["a3"]) == 110);
-
-      auto null_val = std::numeric_limits<uint32_t>::max();
-      auto null_val_char = std::numeric_limits<int8_t>::min();
-      for (uint64_t i = 5; i < 100; i++) {
-        REQUIRE(a1[i] == null_val);
-        REQUIRE(a2[i * 2] == null_val);
-        REQUIRE(a2[i * 2 + 1] == null_val);
-        REQUIRE(a2_nullable[i] == 0);
-        REQUIRE(a3_offsets[i] == 10 + i);
-        REQUIRE(a3_data[10 + i] == null_val_char);
-      }
-    } else {
-      REQUIRE(std::get<1>(result_el["a1"]) == 5);
-      REQUIRE(std::get<1>(result_el["a2"]) == 10);
-      REQUIRE(std::get<2>(result_el["a2"]) == 5);
-      REQUIRE(std::get<0>(result_el["a3"]) == 5);
-      REQUIRE(std::get<1>(result_el["a3"]) == 15);
-    }
+    REQUIRE(std::get<1>(result_el["a1"]) == 5);
+    REQUIRE(std::get<1>(result_el["a2"]) == 10);
+    REQUIRE(std::get<2>(result_el["a2"]) == 5);
+    REQUIRE(std::get<0>(result_el["a3"]) == 5);
+    REQUIRE(std::get<1>(result_el["a3"]) == 15);
 
     REQUIRE(check_result(a1, expected_results["a1"], 0, 5));
     REQUIRE(check_result(a2, expected_results["a2"], 0, 10));
@@ -700,7 +659,9 @@ TEST_CASE_METHOD(
     std::vector<uint64_t> a3_offsets(1000);
     std::vector<int32_t> subarray = {3, 4, 3, 4};
 
-    query.set_subarray(subarray);
+    Subarray cppapi_subarray(ctx, array);
+    cppapi_subarray.set_subarray(subarray);
+    query.set_subarray(cppapi_subarray);
     query.set_data_buffer("a1", a1);
     query.set_data_buffer("a2", a2);
     query.set_validity_buffer("a2", a2_nullable);
@@ -721,15 +682,9 @@ TEST_CASE_METHOD(
     query2.submit();
     serialize_query(ctx, query2, &serialized, false);
 
-    // Make sure query2 has logged stats
-    check_read_stats(query2);
-
     // Deserialize into original query (client side).
     deserialize_query(ctx, serialized, &query, true);
     REQUIRE(query.query_status() == Query::Status::COMPLETE);
-
-    // The deserialized query should also include the write stats
-    check_read_stats(query);
 
     auto result_el = query.result_buffer_elements_nullable();
     REQUIRE(std::get<1>(result_el["a1"]) == 4);
@@ -737,20 +692,6 @@ TEST_CASE_METHOD(
     REQUIRE(std::get<2>(result_el["a2"]) == 4);
     REQUIRE(std::get<0>(result_el["a3"]) == 4);
     REQUIRE(std::get<1>(result_el["a3"]) == 114);
-
-    a1.resize(4);
-    a2.resize(8);
-    a2_nullable.resize(4);
-    a3_offsets.resize(4);
-    a3_data.resize(114);
-    auto a3_exp = std::any_cast<decltype(a3_data)>(expected_results["a3_data"]);
-    a3_exp.resize(114);
-    REQUIRE(a1 == decltype(a1)({22, 23, 32, 33}));
-    REQUIRE(a2 == decltype(a2)({22, 44, 23, 46, 32, 64, 33, 66}));
-    REQUIRE(
-        a2_nullable == decltype(a2_nullable)({'\x01', '\x01', '\x01', '\x01'}));
-    REQUIRE(a3_data == a3_exp);
-    REQUIRE(a3_offsets == decltype(a3_offsets)({0, 23, 47, 80}));
 
     for (void* b : to_free)
       std::free(b);
@@ -765,7 +706,9 @@ TEST_CASE_METHOD(
     std::vector<char> a3_data(60);
     std::vector<uint64_t> a3_offsets(4);
     std::vector<int32_t> subarray = {3, 4, 3, 4};
-    query.set_subarray(subarray);
+    Subarray cppapi_subarray(ctx, array);
+    cppapi_subarray.set_subarray(subarray);
+    query.set_subarray(cppapi_subarray);
 
     auto set_buffers = [&](Query& q) {
       q.set_data_buffer("a1", a1);
@@ -790,14 +733,8 @@ TEST_CASE_METHOD(
       query2.submit();
       serialize_query(ctx, query2, &serialized, false);
 
-      // Make sure query2 has logged stats
-      check_read_stats(query2);
-
       // Deserialize into original query (client side).
       deserialize_query(ctx, serialized, &q, true);
-
-      // The deserialized query should also include the write stats
-      check_read_stats(query);
 
       for (void* b : to_free)
         std::free(b);
@@ -806,8 +743,8 @@ TEST_CASE_METHOD(
     // Submit initial query.
     set_buffers(query);
     serialize_and_submit(query);
-    REQUIRE(query.query_status() == Query::Status::INCOMPLETE);
 
+    REQUIRE(query.query_status() == Query::Status::INCOMPLETE);
     auto result_el = query.result_buffer_elements_nullable();
     REQUIRE(std::get<1>(result_el["a1"]) == 2);
     REQUIRE(std::get<1>(result_el["a2"]) == 4);
@@ -827,8 +764,6 @@ TEST_CASE_METHOD(
     REQUIRE(std::get<0>(result_el["a3"]) == 1);
     REQUIRE(std::get<1>(result_el["a3"]) == 33);
 
-    // TODO: check results
-
     // Reset buffers, serialize and resubmit
     set_buffers(query);
     serialize_and_submit(query);
@@ -840,14 +775,12 @@ TEST_CASE_METHOD(
     REQUIRE(std::get<2>(result_el["a2"]) == 1);
     REQUIRE(std::get<0>(result_el["a3"]) == 1);
     REQUIRE(std::get<1>(result_el["a3"]) == 34);
-
-    // TODO: check results
   }
 }
 
 TEST_CASE_METHOD(
     SerializationFx,
-    "Query serialization, sparse",
+    "subarray - Query serialization, sparse",
     "[query][sparse][serialization]") {
   create_array(TILEDB_SPARSE);
   write_sparse_array();
@@ -863,7 +796,10 @@ TEST_CASE_METHOD(
     std::vector<uint64_t> a3_offsets(1000);
     std::vector<int32_t> subarray = {1, 10, 1, 10};
 
-    query.set_subarray(subarray);
+    Subarray cppapi_subarray(ctx, array);
+    cppapi_subarray.set_subarray(subarray);
+    query.set_subarray(cppapi_subarray);
+
     query.set_coordinates(coords);
     query.set_data_buffer("a1", a1);
     query.set_data_buffer("a2", a2);
@@ -881,15 +817,9 @@ TEST_CASE_METHOD(
     query2.submit();
     serialize_query(ctx, query2, &serialized, false);
 
-    // Make sure query2 has logged stats
-    check_read_stats(query2);
-
     // Deserialize into original query
     deserialize_query(ctx, serialized, &query, true);
     REQUIRE(query.query_status() == Query::Status::COMPLETE);
-
-    // The deserialized query should also include the write stats
-    check_read_stats(query);
 
     auto result_el = query.result_buffer_elements_nullable();
     REQUIRE(std::get<1>(result_el["a1"]) == 10);
@@ -898,8 +828,6 @@ TEST_CASE_METHOD(
     REQUIRE(std::get<0>(result_el["a3"]) == 10);
     REQUIRE(std::get<1>(result_el["a3"]) == 55);
 
-    // TODO: check results
-
     for (void* b : to_free)
       std::free(b);
   }
@@ -907,7 +835,7 @@ TEST_CASE_METHOD(
 
 TEST_CASE_METHOD(
     SerializationFx,
-    "Query serialization, split coords, sparse",
+    "subarray - Query serialization, split coords, sparse",
     "[query][sparse][serialization][split-coords]") {
   create_array(TILEDB_SPARSE);
   write_sparse_array_split_coords();
@@ -923,7 +851,9 @@ TEST_CASE_METHOD(
     std::vector<uint64_t> a3_offsets(1000);
     std::vector<int32_t> subarray = {1, 10, 1, 10};
 
-    query.set_subarray(subarray);
+    Subarray cppapi_subarray(ctx, array);
+    cppapi_subarray.set_subarray(subarray);
+    query.set_subarray(cppapi_subarray);
     query.set_coordinates(coords);
     query.set_data_buffer("a1", a1);
     query.set_data_buffer("a2", a2);
@@ -941,15 +871,9 @@ TEST_CASE_METHOD(
     query2.submit();
     serialize_query(ctx, query2, &serialized, false);
 
-    // Make sure query2 has logged stats
-    check_read_stats(query2);
-
     // Deserialize into original query
     deserialize_query(ctx, serialized, &query, true);
     REQUIRE(query.query_status() == Query::Status::COMPLETE);
-
-    // The deserialized query should also include the write stats
-    check_read_stats(query);
 
     auto result_el = query.result_buffer_elements_nullable();
     REQUIRE(std::get<1>(result_el[TILEDB_COORDS]) == 20);
@@ -959,8 +883,6 @@ TEST_CASE_METHOD(
     REQUIRE(std::get<0>(result_el["a3"]) == 10);
     REQUIRE(std::get<1>(result_el["a3"]) == 55);
 
-    // TODO: check results
-
     for (void* b : to_free)
       std::free(b);
   }
@@ -968,7 +890,7 @@ TEST_CASE_METHOD(
 
 TEST_CASE_METHOD(
     SerializationFx,
-    "Query serialization, dense ranges",
+    "subarray - Query serialization, dense ranges",
     "[query][dense][serialization]") {
   create_array(TILEDB_DENSE);
   write_dense_array_ranges();
@@ -983,8 +905,10 @@ TEST_CASE_METHOD(
     std::vector<uint64_t> a3_offsets(1000);
     std::vector<int32_t> subarray = {1, 10, 1, 10};
 
-    query.add_range(0, subarray[0], subarray[1]);
-    query.add_range(1, subarray[2], subarray[3]);
+    Subarray cppapi_subarray(ctx, array);
+    cppapi_subarray.add_range(0, subarray[0], subarray[1]);
+    cppapi_subarray.add_range(1, subarray[2], subarray[3]);
+    query.set_subarray(cppapi_subarray);
     query.set_data_buffer("a1", a1);
     query.set_data_buffer("a2", a2);
     query.set_validity_buffer("a2", a2_nullable);
@@ -1005,15 +929,9 @@ TEST_CASE_METHOD(
     query2.submit();
     serialize_query(ctx, query2, &serialized, false);
 
-    // Make sure query2 has logged stats
-    check_read_stats(query2);
-
     // Deserialize into original query (client side).
     deserialize_query(ctx, serialized, &query, true);
     REQUIRE(query.query_status() == Query::Status::COMPLETE);
-
-    // The deserialized query should also include the write stats
-    check_read_stats(query);
 
     auto result_el = query.result_buffer_elements_nullable();
     REQUIRE(std::get<1>(result_el["a1"]) == 100);
@@ -1021,8 +939,6 @@ TEST_CASE_METHOD(
     REQUIRE(std::get<2>(result_el["a2"]) == 100);
     REQUIRE(std::get<0>(result_el["a3"]) == 100);
     REQUIRE(std::get<1>(result_el["a3"]) == 5050);
-
-    // TODO: check results
 
     for (void* b : to_free)
       std::free(b);
@@ -1038,8 +954,10 @@ TEST_CASE_METHOD(
     std::vector<uint64_t> a3_offsets(1000);
     std::vector<int32_t> subarray = {3, 4, 3, 4};
 
-    query.add_range(0, subarray[0], subarray[1]);
-    query.add_range(1, subarray[2], subarray[3]);
+    Subarray cppapi_subarray(ctx, array);
+    cppapi_subarray.add_range(0, subarray[0], subarray[1]);
+    cppapi_subarray.add_range(1, subarray[2], subarray[3]);
+    query.set_subarray(cppapi_subarray);
     query.set_data_buffer("a1", a1);
     query.set_data_buffer("a2", a2);
     query.set_validity_buffer("a2", a2_nullable);
@@ -1060,15 +978,9 @@ TEST_CASE_METHOD(
     query2.submit();
     serialize_query(ctx, query2, &serialized, false);
 
-    // Make sure query2 has logged stats
-    check_read_stats(query2);
-
     // Deserialize into original query (client side).
     deserialize_query(ctx, serialized, &query, true);
     REQUIRE(query.query_status() == Query::Status::COMPLETE);
-
-    // The deserialized query should also include the write stats
-    check_read_stats(query);
 
     auto result_el = query.result_buffer_elements_nullable();
     REQUIRE(std::get<1>(result_el["a1"]) == 4);
@@ -1076,8 +988,6 @@ TEST_CASE_METHOD(
     REQUIRE(std::get<2>(result_el["a2"]) == 4);
     REQUIRE(std::get<0>(result_el["a3"]) == 4);
     REQUIRE(std::get<1>(result_el["a3"]) == 114);
-
-    // TODO: check results
 
     for (void* b : to_free)
       std::free(b);
@@ -1092,8 +1002,10 @@ TEST_CASE_METHOD(
     std::vector<char> a3_data(60);
     std::vector<uint64_t> a3_offsets(4);
     std::vector<int32_t> subarray = {3, 4, 3, 4};
-    query.add_range(0, subarray[0], subarray[1]);
-    query.add_range(1, subarray[2], subarray[3]);
+    Subarray cppapi_subarray(ctx, array);
+    cppapi_subarray.add_range(0, subarray[0], subarray[1]);
+    cppapi_subarray.add_range(1, subarray[2], subarray[3]);
+    query.set_subarray(cppapi_subarray);
 
     auto set_buffers = [&](Query& q) {
       q.set_data_buffer("a1", a1);
@@ -1118,14 +1030,8 @@ TEST_CASE_METHOD(
       query2.submit();
       serialize_query(ctx, query2, &serialized, false);
 
-      // Make sure query2 has logged stats
-      check_read_stats(query2);
-
       // Deserialize into original query (client side).
       deserialize_query(ctx, serialized, &q, true);
-
-      // The deserialized query should also include the write stats
-      check_read_stats(query);
 
       for (void* b : to_free)
         std::free(b);
@@ -1166,7 +1072,5 @@ TEST_CASE_METHOD(
     REQUIRE(std::get<2>(result_el["a2"]) == 1);
     REQUIRE(std::get<0>(result_el["a3"]) == 1);
     REQUIRE(std::get<1>(result_el["a3"]) == 34);
-
-    // TODO: check results
   }
 }
