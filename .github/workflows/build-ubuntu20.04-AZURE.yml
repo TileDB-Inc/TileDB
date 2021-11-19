@@ -67,7 +67,8 @@ jobs:
           reg query "HKEY_LOCAL_MACHINE\SOFTWARE\Microsoft\Windows\Windows Error Reporting\LocalDumps" /s
           reg query "HKEY_LOCAL_MACHINE\SOFTWARE\Microsoft\Windows NT\CurrentVersion\AeDebug" /s
           #dir \windbg* /s
-          dir c:\windbg* /s
+          #dir c:\windbg* /s
+          c:\Program Files (x86)\Windows Kits\10\Debuggers\x64\windbg.exe
           #dir d:\windbg* /s
           exit 1
           
