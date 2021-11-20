@@ -128,7 +128,7 @@ jobs:
         uses: actions/upload-artifact@v2
         with:
           retention-days: 10
-          name: "${{github.action}}.${{ github.job }}.${{ matrix.os }}.${{ github.run_number }}.${{github.run_id}}.${{github.run_attempt}}.${{jobs.build.name}}"
+          name: "coredumps.${{ github.job }}.${{ matrix.os }}.${{ github.run_number }}.${{github.run_id}}.${{github.run_attempt}}.${{github.action}}"
           if-no-files-found: warn # 'ignore', 'warn' or 'error' are available, defaults to `warn` 
           path: |
             /var/lib/apport/coredump/ # ubuntu specific
