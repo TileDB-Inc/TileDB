@@ -1,7 +1,7 @@
 name: build-ubuntu-20.04-backwards-compatibility
 on:
   push:
-  #~ pull_request:
+  pull_request:
 env:
   CXX: g++
 
