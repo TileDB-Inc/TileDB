@@ -942,6 +942,7 @@ Status SparseUnorderedWithDupsReader<BitmapType>::compute_initial_copy_bound(
     if (cell_offset + cell_num > max_num_cells)
       break;
 
+    cell_offset += cell_num;
     rt_idx++;
   }
 
