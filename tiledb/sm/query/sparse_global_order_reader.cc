@@ -197,10 +197,10 @@ Status SparseGlobalOrderReader::dowork() {
       RETURN_NOT_OK(read_and_unfilter_coords(true, &tmp_result_tiles));
 
       // Compute the tile bitmaps.
-      RETURN_NOT_OK(compute_tile_bitmaps<uint8_t>(&result_tiles_));
+      RETURN_NOT_OK(compute_tile_bitmaps<uint8_t>(&tmp_result_tiles));
 
       // Apply query condition.
-      RETURN_NOT_OK(apply_query_condition<uint8_t>(&result_tiles_));
+      RETURN_NOT_OK(apply_query_condition<uint8_t>(&tmp_result_tiles));
 
       // Clear result tiles that are not necessary anymore.
       auto status = parallel_for(
@@ -218,7 +218,8 @@ Status SparseGlobalOrderReader::dowork() {
             }
 
             // Adjust tile ranges.
-            if (subarray_.is_set() && result_tiles_[f].empty()) {
+            if (subarray_.is_set() && result_tiles_[f].empty() &&
+                all_tiles_loaded_[f]) {
               while (!result_tile_ranges_[f].empty())
                 remove_result_tile_range(f);
             }
