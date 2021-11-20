@@ -894,7 +894,7 @@ Status Consolidator::set_config(const Config* config) {
   std::string reader =
       merged_config.get("sm.query.sparse_global_order.reader", &found);
   assert(found);
-  config_.use_refactored_reader_ = reader.compare("reafctored") == 0;
+  config_.use_refactored_reader_ = reader.compare("refactored") == 0;
 
   // Sanity checks
   if (config_.min_frags_ > config_.max_frags_)
