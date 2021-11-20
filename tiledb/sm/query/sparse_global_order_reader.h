@@ -127,6 +127,9 @@ class SparseGlobalOrderReader : public SparseIndexReaderBase,
   /** The result tiles currently loaded. */
   ResultTileListPerFragment<uint8_t> result_tiles_;
 
+  /** Is the result tile list empty. */
+  bool empty_result_tiles_;
+
   /** Memory used for coordinates tiles per fragment. */
   std::vector<uint64_t> memory_used_for_coords_;
 
