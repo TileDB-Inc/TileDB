@@ -694,8 +694,11 @@ void ResultTile::compute_results_count_sparse_string(
     const std::vector<uint64_t>* range_indexes,
     const uint64_t num_indexes,
     std::vector<BitmapType>* result_count,
-    const Layout& cell_order) {
-  auto coords_num = result_tile->cell_num();
+    const Layout& cell_order,
+    const uint64_t min_cell,
+    const uint64_t max_cell) {
+  auto cell_num = result_tile->cell_num();
+  auto coords_num = max_cell - min_cell;
   auto dim_num = result_tile->domain()->dim_num();
   auto& r_count = (*result_count);
 
@@ -753,7 +756,7 @@ void ResultTile::compute_results_count_sparse_string(
 
       // Calculate the position of the first and last coordinates
       // in this partition.
-      const uint64_t first_c_pos = p * c_partition_size_div;
+      const uint64_t first_c_pos = min_cell + p * c_partition_size_div;
       const uint64_t last_c_pos = first_c_pos + c_partition_size - 1;
       assert(first_c_pos < last_c_pos);
 
@@ -763,7 +766,7 @@ void ResultTile::compute_results_count_sparse_string(
       const uint64_t first_c_offset = buff_off[first_c_pos];
       const uint64_t last_c_offset = buff_off[last_c_pos];
       const uint64_t first_c_size = buff_off[first_c_pos + 1] - first_c_offset;
-      const uint64_t last_c_size = (last_c_pos == coords_num - 1) ?
+      const uint64_t last_c_size = (last_c_pos == cell_num - 1) ?
                                        buff_str_size - last_c_offset :
                                        buff_off[last_c_pos + 1] - last_c_offset;
 
@@ -796,8 +799,8 @@ void ResultTile::compute_results_count_sparse_string(
         uint64_t c_offset = 0, c_size = 0;
         for (uint64_t pos = first_c_pos; pos <= last_c_pos; ++pos) {
           c_offset = buff_off[pos];
-          c_size = (pos < coords_num - 1) ? buff_off[pos + 1] - c_offset :
-                                            buff_str_size - c_offset;
+          c_size = (pos < cell_num - 1) ? buff_off[pos + 1] - c_offset :
+                                          buff_str_size - c_offset;
           uint64_t count = 0;
           for (uint64_t i = 0; i < num_indexes; i++) {
             auto& range = ranges[range_indexes->at(i)];
@@ -829,9 +832,9 @@ void ResultTile::compute_results_count_sparse_string(
   // bytes. We will only get a benefit if we successfully find a `memcmp` on a
   // much larger range.
   const uint64_t zeroed_size = coords_num < 256 ? coords_num : 256;
-  for (uint64_t i = 0; i < coords_num; i += zeroed_size) {
+  for (uint64_t i = min_cell; i < min_cell + coords_num; i += zeroed_size) {
     const uint64_t partition_size =
-        (i < coords_num - zeroed_size) ? zeroed_size : coords_num - i;
+        (i < cell_num - zeroed_size) ? zeroed_size : cell_num - i;
 
     // Check if all `r_count` values are zero between `i` and
     // `partition_size`.
@@ -851,8 +854,8 @@ void ResultTile::compute_results_count_sparse_string(
           continue;
 
         c_offset = buff_off[pos];
-        c_size = (pos < coords_num - 1) ? buff_off[pos + 1] - c_offset :
-                                          buff_str_size - c_offset;
+        c_size = (pos < cell_num - 1) ? buff_off[pos + 1] - c_offset :
+                                        buff_str_size - c_offset;
         uint64_t count = 0;
         for (uint64_t i = 0; i < num_indexes; i++) {
           auto& range = ranges[range_indexes->at(i)];
@@ -874,12 +877,13 @@ void ResultTile::compute_results_count_sparse(
     const std::vector<uint64_t>* range_indexes,
     const uint64_t num_indexes,
     std::vector<BitmapType>* result_count,
-    const Layout& cell_order) {
+    const Layout& cell_order,
+    const uint64_t min_cell,
+    const uint64_t max_cell) {
   // We don't use cell_order for this template type.
   (void)cell_order;
 
   // For easy reference.
-  auto coords_num = result_tile->cell_num();
   auto stores_zipped_coords = result_tile->stores_zipped_coords();
   auto dim_num = result_tile->domain()->dim_num();
   auto& r_count = (*result_count);
@@ -891,7 +895,7 @@ void ResultTile::compute_results_count_sparse(
     const T* const coords = static_cast<const T*>(buffer->data());
     {
       // Iterate over all cells.
-      for (uint64_t pos = 0; pos < coords_num; ++pos) {
+      for (uint64_t pos = min_cell; pos < max_cell; ++pos) {
         // We have a previous count.
         if (r_count[pos]) {
           T c = coords[pos];
@@ -919,7 +923,7 @@ void ResultTile::compute_results_count_sparse(
   Buffer* const buffer = coords_tile.buffer();
   const T* const coords = static_cast<const T*>(buffer->data());
   {
-    for (uint64_t pos = 0; pos < coords_num; ++pos) {
+    for (uint64_t pos = min_cell; pos < max_cell; ++pos) {
       if (r_count[pos]) {
         T c = coords[pos * dim_num + dim_idx];
         uint64_t count = 0;
@@ -971,7 +975,9 @@ Status ResultTile::compute_results_count_sparse<uint8_t>(
     const std::vector<uint64_t>* range_indexes,
     const uint64_t num_indexes,
     std::vector<uint8_t>* result_count,
-    const Layout& cell_order) const {
+    const Layout& cell_order,
+    const uint64_t min_cell,
+    const uint64_t max_cell) const {
   assert(compute_results_count_sparse_uint8_t_func_[dim_idx] != nullptr);
   compute_results_count_sparse_uint8_t_func_[dim_idx](
       this,
@@ -980,7 +986,9 @@ Status ResultTile::compute_results_count_sparse<uint8_t>(
       range_indexes,
       num_indexes,
       result_count,
-      cell_order);
+      cell_order,
+      min_cell,
+      max_cell);
   return Status::Ok();
 }
 
@@ -991,7 +999,9 @@ Status ResultTile::compute_results_count_sparse<uint64_t>(
     const std::vector<uint64_t>* range_indexes,
     const uint64_t num_indexes,
     std::vector<uint64_t>* result_count,
-    const Layout& cell_order) const {
+    const Layout& cell_order,
+    const uint64_t min_cell,
+    const uint64_t max_cell) const {
   assert(compute_results_count_sparse_uint64_t_func_[dim_idx] != nullptr);
   compute_results_count_sparse_uint64_t_func_[dim_idx](
       this,
@@ -1000,7 +1010,9 @@ Status ResultTile::compute_results_count_sparse<uint64_t>(
       range_indexes,
       num_indexes,
       result_count,
-      cell_order);
+      cell_order,
+      min_cell,
+      max_cell);
   return Status::Ok();
 }
 

@@ -88,84 +88,6 @@ template <typename BitmapType>
 using ResultTileListPerFragment =
     std::vector<std::list<ResultTileWithBitmap<BitmapType>>>;
 
-/**
- * Iterates in a thread safe manner over a ResultTileListPerFragment. This will
- * be used where we have parallel_for's the need to iterate over all tiles. As
- * we have a vector of lists, we cannot retreive the ResultTile at a certain
- * index easily so this helper gives us one ResultTile at a time until we are
- * done.
- */
-template <class BitmapType>
-class ResultTileIt {
- public:
-  /* ********************************* */
-  /*     CONSTRUCTORS & DESTRUCTORS    */
-  /* ********************************* */
-  ResultTileIt(ResultTileListPerFragment<BitmapType>* result_tiles)
-      : result_tiles_(result_tiles)
-      , it_(result_tiles->at(0).begin())
-      , f_(0) {
-  }
-
-  /* ********************************* */
-  /*          PUBLIC METHODS           */
-  /* ********************************* */
-
-  /** Returns the size. */
-  uint64_t size() {
-    uint64_t size = 0;
-    for (auto& rt_list : *result_tiles_)
-      size += rt_list.size();
-
-    return size;
-  }
-
-  /** Returns the next result tile iterator. */
-  typename std::list<ResultTileWithBitmap<BitmapType>>::iterator get_next() {
-    std::unique_lock<std::mutex> ul(mtx_);
-    ensure_not_end();
-    return it_++;
-  }
-
- private:
-  /* ********************************* */
-  /*         PRIVATE METHODS           */
-  /* ********************************* */
-
-  /**
-   * Make sure that we are not at the end of a fragment list by moving to the
-   * next fragment that still has tiles available.
-   */
-  void ensure_not_end() {
-    while (it_ == result_tiles_->at(f_).end()) {
-      if (f_ == result_tiles_->size() - 1) {
-        break;
-      }
-      f_++;
-      it_ = result_tiles_->at(f_).begin();
-    }
-  }
-
-  /* ********************************* */
-  /*         PRIVATE ATTRIBUTES        */
-  /* ********************************* */
-
-  /**
-   * List of tiles, per fragments. For unordered with dups reader, everything
-   * will be in fragment 0.
-   */
-  ResultTileListPerFragment<BitmapType>* result_tiles_;
-
-  /** Iterator to the current result tile. */
-  typename std::list<ResultTileWithBitmap<BitmapType>>::iterator it_;
-
-  /** Fragment index. */
-  unsigned f_;
-
-  /** Mutex to make the iterator thread safe. */
-  std::mutex mtx_;
-};
-
 /** Processes read queries. */
 class SparseIndexReaderBase : public ReaderBase {
  public:
@@ -304,15 +226,24 @@ class SparseIndexReaderBase : public ReaderBase {
   Status read_and_unfilter_coords(
       bool include_coords, const std::vector<ResultTile*>* result_tiles);
 
+  /** Allocate a tile bitmap if required for this tile. */
+  template <class BitmapType>
+  Status allocate_tile_bitmap(
+      const unsigned dim_num,
+      const Domain* domain,
+      ResultTileWithBitmap<BitmapType>* rt);
+
   /** Compute tile bitmaps. */
   template <class BitmapType>
-  Status compute_tile_bitmaps(
-      ResultTileListPerFragment<BitmapType>* result_tiles);
+  Status compute_tile_bitmaps(std::vector<ResultTile*>* result_tiles);
+
+  /** Count the number of cells in a bitmap. */
+  template <class BitmapType>
+  Status count_tile_bitmap_cells(ResultTileWithBitmap<BitmapType>* rt);
 
   /** Apply query condition. */
   template <class BitmapType>
-  Status apply_query_condition(
-      ResultTileListPerFragment<BitmapType>* result_tiles);
+  Status apply_query_condition(std::vector<ResultTile*>* result_tiles);
 
   /**
    * Adds an extra offset in the end of the offsets buffer indicating the
