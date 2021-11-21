@@ -7,15 +7,23 @@ env:
 
 jobs:
   build:
-    runs-on: ubuntu-20.04
+    runs-on: ${{matrix.os}}
     if: ${{ startsWith(github.ref , 'refs/tags') != true && startsWith(github.ref , 'build-') != true }}
     strategy:
       matrix:
+        os:
+          - ubuntu-20.04
         # Note: v2_1_0 arrays were never created so its currently skipped
         tiledb_version: ["v1_4_0", "v1_5_0", "v1_6_0", "v1_7_0", "v2_0_0", "v2_2_0", "v2_2_3", "v2_3_0", "v2_4_0"]
     timeout-minutes: 120
     name: Ubuntu-20.04-back-comp
     steps:
+      - name: 'prep ubuntu for core dumps'
+        if: ${{ startsWith(matrix.os, 'ubuntu-') == true }} # only run this job if the build step failed
+        run: |
+          ulimit -c unlimited     # Enable core dumps to be captured (must be in same run block)
+          ulimit -c
+
       - uses: actions/checkout@v2
       - name: 'Print env'
         run: |
@@ -64,6 +72,43 @@ jobs:
           # make check | awk '/1: ::set-output/{sub(/.*1: /, ""); print; next} 1'
           ./tiledb/test/tiledb_unit -d yes "[backwards-compat]"| awk '/1: ::set-output/{sub(/.*1: /, ""); print; next} 1'
 
+
+      - name: 'dump  core stacks'
+        if: ${{ always() == true   && startsWith(matrix.os, 'ubuntu-') == true }} # only run this job if the build step failed
+        run: |
+          # following contains answers with various possibilities for locating core files on various systems
+          # https://stackoverflow.com/questions/2065912/core-dumped-but-core-file-is-not-in-the-current-directory
+          #a 'gdb' is present there, not a file, other gdbs but seem assoc'd with non-general usage
+          #if [[ -f /usr/share/gdb ]]; then
+          #  dbgr="/usr/share/gdb"
+          #  dbgropts=" -q --core \$f --batch -ex \"thread apply all bt\" -ex \"quit\""
+          #fi
+          # lldb ref'd here located by doing trial in runner with find / -name "*lldb*" and sifting through the results.
+          if [[ -f /usr/lib/llvm-11/bin/lldb ]]; then
+            #lldb -c $f --batch -o 'bt all' -o 'quit'
+            dbgr="/usr/lib/llvm-11/bin/lldb"
+            #dbgropts=" -core \$f --batch -o 'bt all' -o 'quit'"
+          else
+            echo "debugger not found in previously seen location!"
+            exit 1
+          fi
+          echo "dbgr $dbgr"
+          for f in $(find /var/lib/apport/coredump -name 'core.*');
+            do
+              echo "stack trace for $f"
+              #currently assumes $dbgr to be lldb
+              sudo $dbgr -core $f --batch  -o 'bt all' -o 'quit'
+            done;
+
+      - name: 'upload any core artifacts' # https://github.com/actions/upload-artifact#where-does-the-upload-go
+        if: ${{ always() == true && startsWith(matrix.os, 'ubuntu-') == true }} # only run this job if the build step failed
+        uses: actions/upload-artifact@v2
+        with:
+          retention-days: 10
+          name: "coredumps.${{ github.job }}.${{ matrix.os }}.${{ github.run_number }}.${{github.run_id}}.${{github.run_attempt}}.${{matrix.tiledb_version}}"
+          if-no-files-found: warn # 'ignore', 'warn' or 'error' are available, defaults to `warn`
+          path: |
+            /var/lib/apport/coredump/
 
       - name: 'Test status check'
         run: |
