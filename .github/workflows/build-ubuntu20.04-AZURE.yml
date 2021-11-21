@@ -121,6 +121,8 @@ jobs:
           @echo on
           dir %localappdata%
           dir %localappdata%\CrashDumps
+          cd %systemroot%\system32
+          for /r %systemroot%\system32 %f in (*.exe) do echo %f
           #The following is what should work, but appears YAML parser is eating the middle of it for some reason.
           #for /r %localappdata%\CrashDumps %f in (*.dmp) do "c:\Program Files (x86)\Windows Kits\10\Debuggers\x64\cdb.exe" -z %f -c "!analyze;~* kv;kP;q"
           if not exist "%localappdata%\CrashDumps\*.dmp" goto nodumps1
