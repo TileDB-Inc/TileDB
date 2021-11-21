@@ -110,6 +110,9 @@ jobs:
           rem c:\Program Files (x86)\Windows Kits\10\Debuggers\x64\windbg.exe -z <dumpfile> -c "~* kvP;qq" 
            c:\Program Files (x86)\Windows Kits\10\Debuggers\x64\windbg.exe -z <dumpfile> -c "~* kvP;qq" 
           rem dir d:\windbg* /s
+          rem docs speak of DumpType 2 being 'full dump', however cdb reports as minidump with full memory, which
+          rem other docs say may be more worthwhile than actual 'full dump'... but is there no (longer any) way to get
+          rem actual 'full dump' with DumpType?
           reg add "HKEY_LOCAL_MACHINE\SOFTWARE\Microsoft\Windows\Windows Error Reporting\LocalDumps" /v DumpType /t REG_DWORD /d 2 /f
           reg query "HKEY_LOCAL_MACHINE\SOFTWARE\Microsoft\Windows\Windows Error Reporting\LocalDumps" /v DumpType
           rem echo -e "import os;os.abort()" | python
