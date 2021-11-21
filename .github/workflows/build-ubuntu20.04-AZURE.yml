@@ -60,6 +60,9 @@ jobs:
       - name: 'is windbg etc. present?'
         shell: cmd
         run: |
+          rem freespace available for dump files?
+          dir c:\
+          dir d:\
           path
           c:\msys64\usr\bin\which windbg
           c:\msys64\usr\bin\which reg
@@ -69,6 +72,7 @@ jobs:
           cd 
           echo %localappdata%
           dir %localappdata%
+          rem appears _NT_SYMBOL_PATH not set, do we want to?
           echo _NT_SYMBOL_PATH is %_NT_SYMBOL_PATH%
           dir %_NT_SYMBOL_PATH%
           set
@@ -79,7 +83,8 @@ jobs:
 
           reg query "HKEY_LOCAL_MACHINE\SOFTWARE\Microsoft\Windows NT\CurrentVersion\AeDebug" /s
           rem reg add "HKEY_LOCAL_MACHINE\SOFTWARE\Microsoft\Windows\Windows Error Reporting\LocalDumps\DumpCount" /t REG_DWORD /v 10
-          rem reg add "HKEY_LOCAL_MACHINE\SOFTWARE\Microsoft\Windows\Windows Error Reporting\LocalDumps\DumpType" /t REG_DWORD /v 1
+          rem dump type full == 2, mini == 1, do we want full ?
+          rem reg add "HKEY_LOCAL_MACHINE\SOFTWARE\Microsoft\Windows\Windows Error Reporting\LocalDumps\DumpType" /t REG_DWORD /v 2
           rem user dumps located at C:\Users\<user>\AppData\Local\CrashDumps
           rem dumps from processes under system account at C:\Windows\System32\config\systemprofile\AppData\Local\CrashDumps
           c:\msys64\usr\bin\which python python2 python3
