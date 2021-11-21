@@ -62,13 +62,20 @@ jobs:
         run: |
           path
           c:\msys64\usr\bin\which windbg
-          which reg
+          c:\msys64\usr\bin\which reg
+          whoami
+          echo %localappdata%
+          dir %localappdata%
+          echo %_NT_SYMBOL_PATH%
+          dir %_NT_SYMBOL_PATH%
           reg query "HKEY_LOCAL_MACHINE\SOFTWARE\Microsoft\Windows\Windows Error Reporting" /s
           reg query "HKEY_LOCAL_MACHINE\SOFTWARE\Microsoft\Windows\Windows Error Reporting\LocalDumps" /s
           reg query "HKEY_LOCAL_MACHINE\SOFTWARE\Microsoft\Windows NT\CurrentVersion\AeDebug" /s
+          dir \python* /s
           #dir \windbg* /s
           #dir c:\windbg* /s
-          c:\Program Files (x86)\Windows Kits\10\Debuggers\x64\windbg.exe
+          c:\Program Files (x86)\Windows Kits\10\Debuggers\x64\windbg.exe -c "q"
+          #c:\Program Files (x86)\Windows Kits\10\Debuggers\x64\windbg.exe -c "~* kvP;q" -z <dumpfile> 
           #dir d:\windbg* /s
           exit 1
           
