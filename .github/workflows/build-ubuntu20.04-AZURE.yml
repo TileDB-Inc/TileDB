@@ -93,8 +93,11 @@ jobs:
           dir \python* /s
           rem dir \windbg* /s
           rem dir c:\windbg* /s
-          "c:\Program Files (x86)\Windows Kits\10\Debuggers\x64\windbg.exe" -c "q"
+          rem 'q' doesn't seem to be working, maybe try 'qq'...
+          rem "c:\Program Files (x86)\Windows Kits\10\Debuggers\x64\windbg.exe" -c "q"
+          "c:\Program Files (x86)\Windows Kits\10\Debuggers\x64\windbg.exe" -c "qq"
           rem c:\Program Files (x86)\Windows Kits\10\Debuggers\x64\windbg.exe -z <dumpfile> -c "~* kvP;q" 
+          rem c:\Program Files (x86)\Windows Kits\10\Debuggers\x64\windbg.exe -z <dumpfile> -c "~* kvP;qq" 
           rem dir d:\windbg* /s
           rem echo -e "import os;os.abort()" | python
           (echo import os & echo: & echo os.abort^(^)) > pythoninput.txt
