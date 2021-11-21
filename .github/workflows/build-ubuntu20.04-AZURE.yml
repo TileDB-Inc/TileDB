@@ -71,11 +71,16 @@ jobs:
           reg query "HKEY_LOCAL_MACHINE\SOFTWARE\Microsoft\Windows\Windows Error Reporting" /s
           reg query "HKEY_LOCAL_MACHINE\SOFTWARE\Microsoft\Windows\Windows Error Reporting\LocalDumps" /s
           reg query "HKEY_LOCAL_MACHINE\SOFTWARE\Microsoft\Windows NT\CurrentVersion\AeDebug" /s
+          #reg add "HKEY_LOCAL_MACHINE\SOFTWARE\Microsoft\Windows\Windows Error Reporting\LocalDumps\DumpCount" /t REG_DWORD /v 10
+          #reg add "HKEY_LOCAL_MACHINE\SOFTWARE\Microsoft\Windows\Windows Error Reporting\LocalDumps\DumpType" /t REG_DWORD /v 1
+          #user dumps located at C:\Users\<user>\AppData\Local\CrashDumps
+          #dumps from processes under system account at C:\Windows\System32\config\systemprofile\AppData\Local\CrashDumps
+          c:\msys64\usr\bin\which python python2 python3
           dir \python* /s
           #dir \windbg* /s
           #dir c:\windbg* /s
           c:\Program Files (x86)\Windows Kits\10\Debuggers\x64\windbg.exe -c "q"
-          #c:\Program Files (x86)\Windows Kits\10\Debuggers\x64\windbg.exe -c "~* kvP;q" -z <dumpfile> 
+          #c:\Program Files (x86)\Windows Kits\10\Debuggers\x64\windbg.exe -z <dumpfile> -c "~* kvP;q" 
           #dir d:\windbg* /s
           exit 1
           
