@@ -64,24 +64,31 @@ jobs:
           c:\msys64\usr\bin\which windbg
           c:\msys64\usr\bin\which reg
           whoami
+          rem user is 'runneradmin'
+          rem current directory is?
+          cd 
           echo %localappdata%
           dir %localappdata%
-          echo %_NT_SYMBOL_PATH%
+          echo _NT_SYMBOL_PATH is %_NT_SYMBOL_PATH%
           dir %_NT_SYMBOL_PATH%
+          set
           reg query "HKEY_LOCAL_MACHINE\SOFTWARE\Microsoft\Windows\Windows Error Reporting" /s
           reg query "HKEY_LOCAL_MACHINE\SOFTWARE\Microsoft\Windows\Windows Error Reporting\LocalDumps" /s
+          reg query "HKEY_LOCAL_MACHINE\SOFTWARE\Microsoft\Windows\Windows Error Reporting\LocalDumps\DumpCount" /s
+          reg query "HKEY_LOCAL_MACHINE\SOFTWARE\Microsoft\Windows\Windows Error Reporting\LocalDumps\DumpFolder" /s
+
           reg query "HKEY_LOCAL_MACHINE\SOFTWARE\Microsoft\Windows NT\CurrentVersion\AeDebug" /s
-          #reg add "HKEY_LOCAL_MACHINE\SOFTWARE\Microsoft\Windows\Windows Error Reporting\LocalDumps\DumpCount" /t REG_DWORD /v 10
-          #reg add "HKEY_LOCAL_MACHINE\SOFTWARE\Microsoft\Windows\Windows Error Reporting\LocalDumps\DumpType" /t REG_DWORD /v 1
-          #user dumps located at C:\Users\<user>\AppData\Local\CrashDumps
-          #dumps from processes under system account at C:\Windows\System32\config\systemprofile\AppData\Local\CrashDumps
+          rem reg add "HKEY_LOCAL_MACHINE\SOFTWARE\Microsoft\Windows\Windows Error Reporting\LocalDumps\DumpCount" /t REG_DWORD /v 10
+          rem reg add "HKEY_LOCAL_MACHINE\SOFTWARE\Microsoft\Windows\Windows Error Reporting\LocalDumps\DumpType" /t REG_DWORD /v 1
+          rem user dumps located at C:\Users\<user>\AppData\Local\CrashDumps
+          rem dumps from processes under system account at C:\Windows\System32\config\systemprofile\AppData\Local\CrashDumps
           c:\msys64\usr\bin\which python python2 python3
           dir \python* /s
-          #dir \windbg* /s
-          #dir c:\windbg* /s
+          rem dir \windbg* /s
+          rem dir c:\windbg* /s
           c:\Program Files (x86)\Windows Kits\10\Debuggers\x64\windbg.exe -c "q"
-          #c:\Program Files (x86)\Windows Kits\10\Debuggers\x64\windbg.exe -z <dumpfile> -c "~* kvP;q" 
-          #dir d:\windbg* /s
+          rem c:\Program Files (x86)\Windows Kits\10\Debuggers\x64\windbg.exe -z <dumpfile> -c "~* kvP;q" 
+          rem dir d:\windbg* /s
           exit 1
           
       - name: 'prep macos for core dumps'
