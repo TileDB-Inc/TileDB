@@ -93,6 +93,14 @@ jobs:
           dir \python* /s
           rem dir \windbg* /s
           rem dir c:\windbg* /s
+          if exit "c:\Program Files (x86)\Windows Kits\10\Debuggers\x64\cdb.exe" goto foundit
+          dir c:\cdb* /s
+          goto :exit1
+          :foundit
+          echo following should be dir of windbg!
+          dir "c:\Program Files (x86)\Windows Kits\10\Debuggers\x64\"
+          goto :exit1
+          :exit1
           rem 'q' doesn't seem to be working, maybe try 'qq'...
           rem "c:\Program Files (x86)\Windows Kits\10\Debuggers\x64\windbg.exe" -c "q"
           rem hmm... hanging... "c:\Program Files (x86)\Windows Kits\10\Debuggers\x64\windbg.exe" -c "qq"
