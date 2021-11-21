@@ -103,31 +103,3 @@ target_link_libraries(compile_byteshuffle_filter PRIVATE byteshuffle_filter)
 target_sources(compile_byteshuffle_filter PRIVATE
     test/compile_byteshuffle_filter_main.cc $<TARGET_OBJECTS:byteshuffle_filter>
 )
-
-##
-## `filter_pipeline` object library
-##
-#add_library(filter_pipeline OBJECT
-#    filter_pipeline.cc filter_create.cc
-#    bit_width_reduction_filter.cc
-#    checksum_md5_filter.cc checksum_sha256_filter.cc compression_filter.cc
-#    encryption_aes256gcm_filter.cc noop_filter.cc positive_delta_filter.cc
-#    # for expediency---belongs in future unit
-#
-#    )
-#target_link_libraries(filter_pipeline PUBLIC baseline $<TARGET_OBJECTS:baseline>)
-#target_link_libraries(filter_pipeline PUBLIC buffer $<TARGET_OBJECTS:buffer>)
-#target_link_libraries(filter_pipeline PUBLIC constants $<TARGET_OBJECTS:constants>)
-#target_link_libraries(filter_pipeline PUBLIC filter $<TARGET_OBJECTS:filter>)
-#target_link_libraries(filter_pipeline PUBLIC bitshuffle_filter $<TARGET_OBJECTS:bitshuffle_filter>)
-#target_link_libraries(filter_pipeline PUBLIC byteshuffle_filter $<TARGET_OBJECTS:byteshuffle_filter>)
-#target_link_libraries(filter_pipeline PUBLIC stats $<TARGET_OBJECTS:stats>)
-#target_link_libraries(filter_pipeline PUBLIC thread_pool $<TARGET_OBJECTS:thread_pool>)
-##
-## Test-compile of object library ensures link-completeness
-##
-#add_executable(compile_filter_pipeline EXCLUDE_FROM_ALL)
-#target_link_libraries(compile_filter_pipeline PRIVATE filter_pipeline)
-#target_sources(compile_filter_pipeline PRIVATE
-#    test/compile_filter_pipeline_main.cc $<TARGET_OBJECTS:filter_pipeline>
-#)
