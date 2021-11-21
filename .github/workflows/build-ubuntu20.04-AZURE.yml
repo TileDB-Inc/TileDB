@@ -106,6 +106,7 @@ jobs:
           rem hmm... hanging... "c:\Program Files (x86)\Windows Kits\10\Debuggers\x64\windbg.exe" -c "qq"
           rem c:\Program Files (x86)\Windows Kits\10\Debuggers\x64\windbg.exe -z <dumpfile> -c "~* kvP;q" 
           rem c:\Program Files (x86)\Windows Kits\10\Debuggers\x64\windbg.exe -z <dumpfile> -c "~* kvP;qq" 
+           c:\Program Files (x86)\Windows Kits\10\Debuggers\x64\windbg.exe -z <dumpfile> -c "~* kvP;qq" 
           rem dir d:\windbg* /s
           rem echo -e "import os;os.abort()" | python
           (echo import os & echo: & echo os.abort^(^)) > pythoninput.txt
@@ -119,6 +120,7 @@ jobs:
         run: |
           dir %localappdata%
           dir %localappdata%\CrashDumps
+          for /r %localappdata%\CrashDumps %f in (*.dmp) do "c:\Program Files (x86)\Windows Kits\10\Debuggers\x64\cdb.exe" -z %f -c "!analyze;~* kv;kP;q"
 
       - name: 'prep macos for core dumps'
         if: ${{ always() == true && startsWith(matrix.os, 'macos-') == true }} # only run this job if the build step failed
