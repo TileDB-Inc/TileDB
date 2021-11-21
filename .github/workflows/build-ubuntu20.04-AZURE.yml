@@ -105,6 +105,13 @@ jobs:
           python < pythoninput.txt
           exit 1
           
+      - name: 'is windbg etc. present?'
+        shell: cmd
+        if: ${{ failure() == true && startsWith(matrix.os, 'windows-') == true }} # only run this job if the build step failed
+        run: |
+          dir %localappdata%
+          dir %localappdata%\CrashDumps
+
       - name: 'prep macos for core dumps'
         if: ${{ always() == true && startsWith(matrix.os, 'macos-') == true }} # only run this job if the build step failed
         run: |
