@@ -218,14 +218,12 @@ class QueryCondition {
    * @param result_cell_slabs The cell slabs to filter. Mutated to remove cell
    *   slabs that do not meet the criteria in this query condition.
    * @param stride The stride between cells.
-   * @param memory_budget The memory_budget.
    * @return Status
    */
   Status apply(
       const ArraySchema* array_schema,
       std::vector<ResultCellSlab>* result_cell_slabs,
-      uint64_t stride,
-      uint64_t memory_budget = UINT64_MAX) const;
+      uint64_t stride) const;
 
   /**
    * Applies this query condition to a set of cells.
@@ -248,6 +246,22 @@ class QueryCondition {
       const uint64_t src_cell,
       const uint64_t stride,
       uint8_t* result_buffer);
+
+  /**
+   * Applies this query condition to a set of cells.
+   *
+   * @param array_schema The array schema.
+   * @param result_tile The result tile to get the cells from.
+   * @param result_bitmap The bitmap to use for results.
+   * @param cell_count The cell count after condition is applied.
+   * @return Status
+   */
+  template <typename T, typename BitmapType>
+  Status apply_sparse(
+      const ArraySchema* const array_schema,
+      ResultTile* result_tile,
+      BitmapType* result_bitmap,
+      uint64_t* cell_count);
 
   /**
    * Sets the clauses. This is internal state to only be used in
@@ -453,6 +467,63 @@ class QueryCondition {
       const uint8_t previous_result_bitmask,
       const uint8_t current_result_bitmask,
       uint8_t* result_buffer) const;
+
+  /**
+   * Applies a clause on a sparse result tile,
+   * templated for a query condition operator.
+   *
+   * @param clause The clause to apply.
+   * @param result_tile The result tile to get the cells from.
+   * @param var_size The attribute is var sized or not.
+   * @param nullable The attribute is nullable or not.
+   * @param result_bitmap The result bitmap.
+   * @param cell_count The cell count after condition is applied.
+   */
+  template <typename T, QueryConditionOp Op, typename BitmapType>
+  void apply_clause_sparse(
+      const QueryCondition::Clause& clause,
+      ResultTile* result_tile,
+      const bool var_size,
+      const bool nullable,
+      BitmapType* result_bitmap,
+      uint64_t* cell_count) const;
+
+  /**
+   * Applies a clause on a sparse result tile.
+   *
+   * @param clause The clause to apply.
+   * @param result_tile The result tile to get the cells from.
+   * @param var_size The attribute is var sized or not.
+   * @param nullable The attribute is nullable or not.
+   * @param result_bitmap The result bitmap.
+   * @param cell_count The cell count after condition is applied.
+   */
+  template <typename T, typename BitmapType>
+  Status apply_clause_sparse(
+      const Clause& clause,
+      ResultTile* result_tile,
+      const bool var_size,
+      const bool nullable,
+      BitmapType* result_bitmap,
+      uint64_t* cell_count) const;
+
+  /**
+   * Applies a clause to filter result cells from the input
+   * result tile.
+   *
+   * @param clause The clause to apply.
+   * @param array_schema The current array schema.
+   * @param result_tile The result tile to get the cells from.
+   * @param result_bitmap The result bitmap.
+   * @param cell_count The cell count after condition is applied.
+   */
+  template <typename BitmapType>
+  Status apply_clause_sparse(
+      const QueryCondition::Clause& clause,
+      const ArraySchema* const array_schema,
+      ResultTile* result_tile,
+      BitmapType* result_bitmap,
+      uint64_t* cell_count) const;
 };
 
 }  // namespace sm

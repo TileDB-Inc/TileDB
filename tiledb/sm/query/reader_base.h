@@ -623,7 +623,6 @@ class ReaderBase : public StrategyBase {
    * @param subarray Specifies the current subarray.
    * @param stride The stride between cells, UINT64_MAX for contiguous.
    * @param memory_budget The memory budget, UINT64_MAX for unlimited.
-   * @param memory_used_for_tiles The memory used for tiles that will not be
    * unloaded.
    */
   Status process_tiles(
@@ -632,42 +631,7 @@ class ReaderBase : public StrategyBase {
       std::vector<ResultCellSlab>* result_cell_slabs,
       Subarray* subarray,
       uint64_t stride,
-      uint64_t memory_budget,
-      uint64_t* memory_used_for_tiles);
-
-  /**
-   * Builds and returns an association from each tile in `result_cell_slabs`
-   * to the cell slabs it contains.
-   */
-  tdb_unique_ptr<ResultCellSlabsIndex> compute_rcs_index(
-      const std::vector<ResultCellSlab>* result_cell_slabs) const;
-
-  /**
-   * Applies the query condition, `condition_`, to filter cell indexes
-   * within `result_cell_slabs`. This mutates `result_cell_slabs`.
-   *
-   * @param result_cell_slabs The unfiltered cell slabs.
-   * @param result_tiles The result tiles that must contain values for
-   *   attributes within `condition_`.
-   * @param subarray Specifies the current subarray.
-   * @param stride The stride between cells, defaulting to UINT64_MAX
-   *   for contiguous cells.
-   * @param memory_budget_rcs The memory budget for tiles, defaulting
-   *   to UINT64_MAX for unlimited budget.
-   * @param memory_budget_tiles The memory budget for result cell slabs,
-   *   defaulting to UINT64_MAX for unlimited budget.
-   * @param memory_used_for_tiles The memory used for tiles that will
-   *   not be unloaded.
-   * @return Status
-   */
-  Status apply_query_condition(
-      std::vector<ResultCellSlab>* result_cell_slabs,
-      std::vector<ResultTile*>* result_tiles,
-      Subarray* subarray,
-      uint64_t stride = UINT64_MAX,
-      uint64_t memory_budget_rcs = UINT64_MAX,
-      uint64_t memory_budget_tiles = UINT64_MAX,
-      uint64_t* memory_used_for_tiles = nullptr);
+      uint64_t memory_budget);
 
   /**
    * Get the size of an attribute tile.
