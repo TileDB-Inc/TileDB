@@ -88,6 +88,7 @@ jobs:
           rem dump type full == 2, mini == 1, do we want full ?
           rem reg add "HKEY_LOCAL_MACHINE\SOFTWARE\Microsoft\Windows\Windows Error Reporting\LocalDumps\DumpType" /t REG_DWORD /v 2
           reg add "HKEY_LOCAL_MACHINE\SOFTWARE\Microsoft\Windows\Windows Error Reporting\LocalDumps\DumpType" /t REG_DWORD /v 2 /f
+          reg query "HKEY_LOCAL_MACHINE\SOFTWARE\Microsoft\Windows\Windows Error Reporting\LocalDumps\DumpType"
           rem user dumps located at C:\Users\<user>\AppData\Local\CrashDumps
           rem dumps from processes under system account at C:\Windows\System32\config\systemprofile\AppData\Local\CrashDumps
           c:\msys64\usr\bin\which python python2 python3
