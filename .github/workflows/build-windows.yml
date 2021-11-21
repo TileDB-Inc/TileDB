@@ -104,10 +104,6 @@ jobs:
           # allow double-checking path
           cmd /c "echo $PATH"
 
-          # TODO DEBUG move this back in the TILEDB_S3 section
-          # currently we do not run S3 tests on Windows because tests time out (minio+azure slow?)
-          # & "$env:BUILD_SOURCESDIRECTORY\scripts\install-minio.ps1"
-
           $bootstrapOptions = $env:TILEDB_BASE_BOOTSTRAP_OPTIONS
           if ($env:TILEDB_S3 -eq "ON") {
             $bootstrapOptions = "-EnableS3 " + $bootstrapOptions
@@ -179,17 +175,20 @@ jobs:
         run: |
           write-host "begin run: 'Test'"
 
-          $env:MINIO_ACCESS_KEY = "minio"
-          $env:MINIO_SECRET_KEY = "miniosecretkey"
-          $env:AWS_ACCESS_KEY_ID = "minio"
-          $env:AWS_SECRET_ACCESS_KEY = "miniosecretkey"
-          
           # Clone backwards compatibility test arrays
           if ($env:BACKWARDS_COMPATIBILITY_ARRAYS -eq "ON") {
             git clone https://github.com/TileDB-Inc/TileDB-Unit-Test-Arrays.git --branch 2.2.3 $env:BUILD_SOURCESDIRECTORY/test/inputs/arrays/read_compatibility_test
           }
 
           if ($env:TILEDB_S3 -eq "ON") {
+            $env:MINIO_ACCESS_KEY = "minio"
+            $env:MINIO_SECRET_KEY = "miniosecretkey"
+            $env:AWS_ACCESS_KEY_ID = "minio"
+            $env:AWS_SECRET_ACCESS_KEY = "miniosecretkey"
+            # TODO DEBUG move this back in the TILEDB_S3 section
+            # currently we do not run S3 tests on Windows because tests time out (minio+azure slow?)
+            # & "$env:BUILD_SOURCESDIRECTORY\scripts\install-minio.ps1"
+
             # update CMake to disable S3 for the test configuration, see minio note above
             cmake -B $env:BUILD_BUILDDIRECTORY\tiledb -DTILEDB_S3=0 $env:BUILD_SOURCESDIRECTORY
           }
@@ -281,10 +280,6 @@ jobs:
           .\Release\ExampleExe.exe
 
           .\Release\ExampleExe_static.exe
-
-          #cd $env:BUILD_BUILDDIRECTORY
-
-          #7z a tiledb-windows-x64.zip $env:BUILD_SOURCESDIRECTORY\dist
 
       - name: 'Test status check'
         shell: bash
