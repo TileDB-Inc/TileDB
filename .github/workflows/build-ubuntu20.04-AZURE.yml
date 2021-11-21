@@ -113,7 +113,16 @@ jobs:
           type pythoninput.txt
           python < pythoninput.txt
           exit 1
-          
+
+      - name: 'gen crash dump'
+        shell: cmd
+        run: |
+          rem There is a possibility that the same pid could be re-used (as in prev. step) and we
+          rem still have only one crash dump file, but probably not usually...
+          (echo import os & echo: & echo os.abort^(^)) > pythoninput.txt
+          type pythoninput.txt
+          python < pythoninput.txt
+                  
       - name: 'dir crashdumps'
         shell: cmd
         if: ${{ failure() == true && startsWith(matrix.os, 'windows-') == true }} # only run this job if the build step failed
@@ -123,12 +132,12 @@ jobs:
           dir %localappdata%\CrashDumps
           cd %systemroot%\system32
           for /r %systemroot%\system32 %%f in (*.exe) do echo %%f
-          #The following is what should work, but appears YAML parser is eating the middle of it for some reason.
-          #for /r %localappdata%\CrashDumps %f in (*.dmp) do "c:\Program Files (x86)\Windows Kits\10\Debuggers\x64\cdb.exe" -z %f -c "!analyze;~* kv;kP;q"
+          rem The following is what should work, but appears YAML parser is eating the middle of it for some reason.
+          rem for /r %localappdata%\CrashDumps %f in (*.dmp) do "c:\Program Files (x86)\Windows Kits\10\Debuggers\x64\cdb.exe" -z %f -c "!analyze;~* kv;kP;q"
           for /r %localappdata%\CrashDumps %%f in (*.dmp) do "c:\Program Files (x86)\Windows Kits\10\Debuggers\x64\cdb.exe" -z %%f -c "!analyze;~* kv;kP;q"
           if not exist "%localappdata%\CrashDumps\*.dmp" goto nodumps1
             cd "%localappdata%\CrashDumps"
-            for /r %f in (*.dmp) do "c:\Program Files (x86)\Windows Kits\10\Debuggers\x64\cdb.exe" -z %f -c "!analyze;~* kv;kP;q"
+            for /r %%f in (*.dmp) do "c:\Program Files (x86)\Windows Kits\10\Debuggers\x64\cdb.exe" -z %%f -c "!analyze;~* kv;kP;q"
           :nodumps1
 
       - name: 'prep macos for core dumps'
