@@ -31,6 +31,7 @@
  */
 
 #include <clipp.h>
+
 #include <iostream>
 #include <map>
 #include <string>
@@ -39,17 +40,18 @@
 #include "commands/info_command.h"
 
 using namespace tiledb::cli;
-using namespace clipp;
 
 int main(int argc, char** argv) {
   enum class Mode { Undef, Info, Help };
   Mode mode = Mode::Undef;
 
   InfoCommand info;
-  auto info_mode = (command("info").set(mode, Mode::Info), info.get_cli());
+  auto info_mode =
+      (clipp::command("info").set(mode, Mode::Info), info.get_cli());
 
   HelpCommand help;
-  auto help_mode = (command("help").set(mode, Mode::Help), help.get_cli());
+  auto help_mode =
+      (clipp::command("help").set(mode, Mode::Help), help.get_cli());
 
   auto all_args = help_mode | info_mode;
 

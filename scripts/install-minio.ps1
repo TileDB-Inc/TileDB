@@ -1,9 +1,12 @@
 <#
 .SYNOPSIS
-This is a Powershell script to install the Minio server on Windows.
+This is a Powershell script to install/run the Minio server on Windows.
 
 .DESCRIPTION
-This is a Powershell script to install the Minio server on Windows.
+This is a Powershell script to install/run the Minio server on Windows.
+
+.PARAMETER RunMinio
+Attempt to execute minio without installing (assumes already installed.)
 
 .LINK
 https://github.com/TileDB-Inc/TileDB
@@ -11,6 +14,7 @@ https://github.com/TileDB-Inc/TileDB
 
 [CmdletBinding()]
 Param(
+    [switch]$RunMinio
 )
 
 # Return the directory containing this script file.
@@ -63,8 +67,7 @@ function Run-Minio {
     if (!(Test-Path $ServerConfigDir)) {
         New-Item -ItemType Directory -Path $ServerConfigDir
     }
-    Start-Process -FilePath $ExePath -ArgumentList "server --address 127.0.0.1:9999 --config-dir `"$ServerConfigDir`" --certs-dir `"$CertsDir`" `"$ServerDataDir`""
-
+    $minioproc = Start-Process -FilePath $ExePath -ArgumentList "server --address 127.0.0.1:9999 --config-dir `"$ServerConfigDir`" --certs-dir `"$CertsDirectory`" `"$ServerDataDir`"" -PassThru -RedirectStandardError miniostderr.txt -RedirectStandardOutput miniostdout.txt
     Start-Sleep 1.0
 
     if ($PSVersionTable.PSVersion.Major -ge 6) {
@@ -81,10 +84,13 @@ function Install-All-Deps {
         New-Item -ItemType Directory -Path $StagingDirectory
     }
     Install-Minio
-    Export-Env
-    Run-Minio
 }
 
-Install-All-Deps
+if (! $RunMinio) {
+    Install-All-Deps
+}
+
+Export-Env
+Run-Minio
 
 Write-Host "Finished."
