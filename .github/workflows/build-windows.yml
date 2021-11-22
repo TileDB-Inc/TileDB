@@ -83,6 +83,8 @@ jobs:
         continue-on-error: true
         #if: ${{ failure() == true }}
         run: |
+          echo LOCALAPPDATA is ${{ env.LOCALAPPDATA }}
+          echo localappdata is ${{ env.localappdata }}
           rem There is a possibility that the same pid could be re-used (as in prev. step) and we
           rem still have only one crash dump file, but probably not usually...
           (echo import os & echo: & echo os.abort^(^)) > pythoninput.txt
@@ -329,6 +331,7 @@ jobs:
           dir %localappdata%\CrashDumps
           rem for /r %localappdata%\CrashDumps %%f in (*.dmp) do "c:\Program Files (x86)\Windows Kits\10\Debuggers\x64\cdb.exe" -z %%f -c "!analyze;~* kv;kP;q"
           if not exist "%localappdata%\CrashDumps\*.dmp" goto nodumps1
+            dir "%localappdata%\CrashDumps"
             cd "%localappdata%\CrashDumps"
             for /r %%f in (*.dmp) do "c:\Program Files (x86)\Windows Kits\10\Debuggers\x64\cdb.exe" -z %%f -c "!analyze;~* kv;kP;q"
           :nodumps1
