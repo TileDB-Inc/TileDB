@@ -83,11 +83,6 @@ class Array {
   const std::unordered_map<std::string, tdb_shared_ptr<ArraySchema>>&
   array_schemas() const;
 
-  /** Set the array schemas map. */
-  void set_array_schemas(
-      const std::unordered_map<std::string, tdb_shared_ptr<ArraySchema>>&
-          array_schemas);
-
   /** Returns the array URI. */
   const URI& array_uri() const;
 

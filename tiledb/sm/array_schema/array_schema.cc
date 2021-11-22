@@ -111,6 +111,8 @@ ArraySchema::ArraySchema(const ArraySchema* array_schema) {
   for (auto attr : array_schema->attributes_)
     add_attribute(attr, false);
 
+  // This has to be the last thing set because add_attribute sets the name
+  // TODO: This behavior needs to be changed
   name_ = array_schema->name_;
 }
 

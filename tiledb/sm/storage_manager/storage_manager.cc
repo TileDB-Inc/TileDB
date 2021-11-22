@@ -1537,6 +1537,9 @@ Status StorageManager::get_fragment_info(
           array_type == ArrayType::SPARSE ? timestamp_start : 0,
           timestamp_end);
 
+  if (!st.ok())
+    return st;
+
   // Return if array is empty
   if (fragment_metadata_opt.value().empty())
     return Status::Ok();
@@ -2018,7 +2021,6 @@ std::tuple<
 StorageManager::load_all_array_schemas(
     const URI& array_uri, const EncryptionKey& encryption_key) {
   auto timer_se = stats_->start_timer("read_load_all_array_schemas");
-  std::unordered_map<std::string, tdb_shared_ptr<ArraySchema>> array_schemas;
 
   if (array_uri.is_invalid())
     return {logger_->status(Status::StorageManagerError(
@@ -2049,6 +2051,7 @@ StorageManager::load_all_array_schemas(
       });
   RETURN_NOT_OK_TUPLE(status);
 
+  std::unordered_map<std::string, tdb_shared_ptr<ArraySchema>> array_schemas;
   for (const auto& array_schema : schema_vector) {
     array_schemas[array_schema->name()] =
         tdb_shared_ptr<ArraySchema>(array_schema);

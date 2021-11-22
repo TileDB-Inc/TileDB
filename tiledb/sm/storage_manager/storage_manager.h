@@ -167,6 +167,12 @@ class StorageManager {
    *     1970-01-01 00:00:00 +0000 (UTC).
    * @return tuple of Status, latest ArraySchema, map of all array schemas and
    * vector of FragmentMetadata
+   *        Status Ok on success, else error
+   *        ArraySchema The array schema to be retrieved after the
+   *           array is opened.
+   *        ArraySchemaMap Map of all array schemas found keyed by name
+   *        fragment_metadata The fragment metadata to be retrieved
+   *           after the array is opened.
    */
   std::tuple<
       Status,
@@ -186,6 +192,10 @@ class StorageManager {
    * @param array_uri The array URI.
    * @param enc_key The encryption key to use.
    * @return tuple of Status, latest ArraySchema and map of all array schemas
+   *        Status Ok on success, else error
+   *        ArraySchema The array schema to be retrieved after the
+   *          array is opened.
+   *        ArraySchemaMap Map of all array schemas found keyed by name
    */
   std::tuple<
       Status,
@@ -200,6 +210,10 @@ class StorageManager {
    * @param array_uri The array URI.
    * @param enc_key The encryption key.
    * @return tuple of Status, latest ArraySchema and map of all array schemas
+   *        Status Ok on success, else error
+   *        ArraySchema The array schema to be retrieved after the
+   *          array is opened.
+   *        ArraySchemaMap Map of all array schemas found keyed by name
    */
   std::tuple<
       Status,
@@ -214,7 +228,7 @@ class StorageManager {
    * @param array_uri The array URI.
    * @param enc_key The encryption key to use.
    * @param fragment_metadata The fragment metadata to be retrieved
-   *     after the array is opened.
+   *          after the array is opened.
    * @param fragment_info The list of fragment info.
    * @return Status
    */
@@ -231,10 +245,6 @@ class StorageManager {
    *
    * @param array_uri The array URI.
    * @param enc_key The encryption key to use.
-   * @param array_schema The array schema to be retrieved after the
-   *     array is opened.
-   * @param fragment_metadata The fragment metadata to be retrieved
-   *     after the array is opened.
    * @param timestamp_start The optional first timestamp between which the
    *     array will be opened.
    * @param timestamp_end The timestamp at which the array will be opened.
@@ -242,6 +252,12 @@ class StorageManager {
    *     1970-01-01 00:00:00 +0000 (UTC).
    * @return tuple of Status, latest ArraySchema, map of all array schemas and
    * vector of FragmentMetadata
+   *        Status Ok on success, else error
+   *        ArraySchema The array schema to be retrieved after the
+   *          array is opened.
+   *        ArraySchemaMap Map of all array schemas found keyed by name
+   *        FragmentMetadata The fragment metadata to be retrieved
+   *          after the array is opened.
    */
   std::tuple<
       Status,
@@ -759,6 +775,8 @@ class StorageManager {
    * @param encryption_key The encryption key to use.
    * @return tuple of Status and optional unordered map. If Status is an error
    * the unordered_map will be nullopt
+   *        Status Ok on success, else error
+   *        ArraySchemaMap Map of all array schemas found keyed by name
    */
   std::tuple<
       Status,

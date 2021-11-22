@@ -263,11 +263,11 @@ Status Array::open(
         rest_client->get_array_schema_from_rest(array_uri_, &array_schema_));
   } else if (query_type == QueryType::READ) {
     auto&& [st, array_schema, array_schemas, fragment_metadata] =
-        (storage_manager_->array_open_for_reads(
+        storage_manager_->array_open_for_reads(
             array_uri_,
             *encryption_key_,
             timestamp_start_,
-            timestamp_end_opened_at_));
+            timestamp_end_opened_at_);
     if (!st.ok())
       return st;
     // Set schemas
@@ -988,12 +988,6 @@ Status Array::compute_non_empty_domain() {
 const std::unordered_map<std::string, tdb_shared_ptr<ArraySchema>>&
 Array::array_schemas() const {
   return array_schemas_;
-}
-
-void Array::set_array_schemas(
-    const std::unordered_map<std::string, tdb_shared_ptr<ArraySchema>>&
-        array_schemas) {
-  array_schemas_ = array_schemas;
 }
 
 }  // namespace sm
