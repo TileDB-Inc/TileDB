@@ -78,6 +78,7 @@ SparseGlobalOrderReader::SparseGlobalOrderReader(
           subarray,
           layout,
           condition)
+    , empty_result_tiles_(true)
     , memory_used_rcs_(0)
     , memory_budget_ratio_rcs_(0.05) {
   // Defines specific bahavior in the tile copy code for this reader.
@@ -93,7 +94,7 @@ SparseGlobalOrderReader::SparseGlobalOrderReader(
 
 bool SparseGlobalOrderReader::incomplete() const {
   return copy_overflowed_ || !read_state_.result_cell_slabs_.empty() ||
-         !read_state_.done_adding_result_tiles_;
+         !read_state_.done_adding_result_tiles_ || !empty_result_tiles_;
 }
 
 Status SparseGlobalOrderReader::init() {
@@ -156,6 +157,7 @@ Status SparseGlobalOrderReader::dowork() {
   // Handle empty array.
   if (fragment_metadata_.empty()) {
     read_state_.done_adding_result_tiles_ = true;
+    empty_result_tiles_ = true;
     zero_out_buffer_sizes();
     return Status::Ok();
   }
@@ -223,15 +225,16 @@ Status SparseGlobalOrderReader::dowork() {
             return Status::Ok();
           });
       RETURN_NOT_OK_ELSE(status, logger_->status(status));
-
-      // Compute RCS.
-      RETURN_NOT_OK(compute_result_cell_slab());
     }
+
+    // Compute RCS.
+    RETURN_NOT_OK(compute_result_cell_slab());
   }
 
   // No more tiles to process, done.
   if (read_state_.result_cell_slabs_.empty()) {
     read_state_.done_adding_result_tiles_ = true;
+    empty_result_tiles_ = true;
     zero_out_buffer_sizes();
     return Status::Ok();
   }
@@ -374,6 +377,8 @@ Status SparseGlobalOrderReader::clear_result_tiles() {
 
 ResultTile* SparseGlobalOrderReader::add_result_tile_unsafe(
     unsigned f, uint64_t t, const Domain* domain) {
+  empty_result_tiles_ = false;
+
   if (result_tiles_.size() < f + 1) {
     result_tiles_.resize(f + 1);
   }
@@ -413,6 +418,7 @@ Status SparseGlobalOrderReader::add_result_tile(
   memory_used_for_qc_tiles_[f] += tiles_size_qc;
 
   // Add the tile.
+  empty_result_tiles_ = false;
   result_tiles_[f].emplace_back(f, t, domain);
 
   return Status::Ok();
@@ -1076,6 +1082,7 @@ Status SparseGlobalOrderReader::end_iteration() {
   for (unsigned int f = 0; f < fragment_num; f++) {
     num_rt += result_tiles_[f].size();
   }
+  empty_result_tiles_ = num_rt == 0;
 
   logger_->debug(
       "Done with iteration, num slabs {0}, num result tiles {1}",
