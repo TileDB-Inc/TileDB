@@ -92,7 +92,7 @@ jobs:
       - name: 'gen crash dump 2'
         shell: cmd
         #continue-on-error: true
-        if: ${{ failure() == true }}
+        #if: ${{ failure() == true }}
         run: |
           rem There is a possibility that the same pid could be re-used (as in prev. step) and we
           rem still have only one crash dump file, but probably not usually...
