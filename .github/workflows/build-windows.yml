@@ -65,6 +65,10 @@ jobs:
       - name: 'dump file settings prep'
         shell: cmd
         run: |
+          path
+          c:\msys64\usr\bin\which python
+          c:\msys64\usr\bin\which python2
+          c:\msys64\usr\bin\which python3
           reg query "HKEY_LOCAL_MACHINE\SOFTWARE\Microsoft\Windows\Windows Error Reporting\LocalDumps" /v DumpType
           reg query "HKEY_LOCAL_MACHINE\SOFTWARE\Microsoft\Windows\Windows Error Reporting\LocalDumps" /v DumpFolder
           reg query "HKEY_LOCAL_MACHINE\SOFTWARE\Microsoft\Windows\Windows Error Reporting\LocalDumps" /v DumpCount
@@ -77,7 +81,7 @@ jobs:
       - name: 'gen crash dump 1'
         shell: cmd
         continue-on-error: true
-        if: ${{ failure() == true }}
+        #if: ${{ failure() == true }}
         run: |
           rem There is a possibility that the same pid could be re-used (as in prev. step) and we
           rem still have only one crash dump file, but probably not usually...
