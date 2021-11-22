@@ -66,6 +66,7 @@ jobs:
         shell: cmd
         run: |
           path
+          echo source change so can push again...
           c:\msys64\usr\bin\which python
           c:\msys64\usr\bin\which python2
           c:\msys64\usr\bin\which python3
