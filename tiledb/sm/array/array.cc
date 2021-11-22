@@ -64,7 +64,7 @@ namespace sm {
 /* ********************************* */
 
 Array::Array(const URI& array_uri, StorageManager* storage_manager)
-    : array_schema_(nullptr)
+    : array_schema_latest_(nullptr)
     , array_uri_(array_uri)
     , encryption_key_(tdb::make_shared<EncryptionKey>(HERE()))
     , is_open_(false)
@@ -78,7 +78,7 @@ Array::Array(const URI& array_uri, StorageManager* storage_manager)
     , non_empty_domain_computed_(false){};
 
 Array::Array(const Array& rhs)
-    : array_schema_(rhs.array_schema_)
+    : array_schema_latest_(rhs.array_schema_latest_)
     , array_uri_(rhs.array_uri_)
     , encryption_key_(rhs.encryption_key_)
     , fragment_metadata_(rhs.fragment_metadata_)
@@ -101,9 +101,9 @@ Array::Array(const Array& rhs)
 /*                API                */
 /* ********************************* */
 
-ArraySchema* Array::array_schema() const {
+ArraySchema* Array::array_schema_latest() const {
   std::unique_lock<std::mutex> lck(mtx_);
-  return array_schema_;
+  return array_schema_latest_;
 }
 
 const URI& Array::array_uri() const {
@@ -143,8 +143,8 @@ Status Array::open_without_fragments(
     if (rest_client == nullptr)
       return LOG_STATUS(Status::ArrayError(
           "Cannot open array; remote array with no REST client."));
-    RETURN_NOT_OK(
-        rest_client->get_array_schema_from_rest(array_uri_, &array_schema_));
+    RETURN_NOT_OK(rest_client->get_array_schema_from_rest(
+        array_uri_, &array_schema_latest_));
   } else {
     auto&& [st, array_schema, array_schemas] =
         storage_manager_->array_open_for_reads_without_fragments(
@@ -152,8 +152,8 @@ Status Array::open_without_fragments(
     if (!st.ok())
       return st;
 
-    array_schema_ = array_schema.value();
-    array_schemas_ = array_schemas.value();
+    array_schema_latest_ = array_schema.value();
+    array_schemas_all_ = array_schemas.value();
   }
 
   is_open_ = true;
@@ -259,8 +259,8 @@ Status Array::open(
     if (rest_client == nullptr)
       return LOG_STATUS(Status::ArrayError(
           "Cannot open array; remote array with no REST client."));
-    RETURN_NOT_OK(
-        rest_client->get_array_schema_from_rest(array_uri_, &array_schema_));
+    RETURN_NOT_OK(rest_client->get_array_schema_from_rest(
+        array_uri_, &array_schema_latest_));
   } else if (query_type == QueryType::READ) {
     auto&& [st, array_schema, array_schemas, fragment_metadata] =
         storage_manager_->array_open_for_reads(
@@ -271,8 +271,8 @@ Status Array::open(
     if (!st.ok())
       return st;
     // Set schemas
-    array_schema_ = array_schema.value();
-    array_schemas_ = array_schemas.value();
+    array_schema_latest_ = array_schema.value();
+    array_schemas_all_ = array_schemas.value();
     fragment_metadata_ = fragment_metadata.value();
   } else {
     auto&& [st, array_schema, array_schemas] =
@@ -280,8 +280,8 @@ Status Array::open(
     if (!st.ok())
       return st;
     // Set schemas
-    array_schema_ = array_schema.value();
-    array_schemas_ = array_schemas.value();
+    array_schema_latest_ = array_schema.value();
+    array_schemas_all_ = array_schemas.value();
 
     metadata_.reset(timestamp_end_opened_at_);
   }
@@ -320,10 +320,10 @@ Status Array::close() {
     }
 
     // Storage manager does not own the array schema for remote arrays.
-    tdb_delete(array_schema_);
-    array_schema_ = nullptr;
+    tdb_delete(array_schema_latest_);
+    array_schema_latest_ = nullptr;
   } else {
-    array_schema_ = nullptr;
+    array_schema_latest_ = nullptr;
     if (query_type_ == QueryType::READ) {
       RETURN_NOT_OK(storage_manager_->array_close_for_reads(array_uri_));
     } else {
@@ -365,7 +365,7 @@ Status Array::get_array_schema(ArraySchema** array_schema) const {
     return LOG_STATUS(
         Status::ArrayError("Cannot get array schema; Array is not open"));
 
-  *array_schema = array_schema_;
+  *array_schema = array_schema_latest_;
 
   return Status::Ok();
 }
@@ -403,20 +403,20 @@ Status Array::get_max_buffer_size(
         "Cannot get max buffer size; Attribute/Dimension name is null"));
 
   // Not applicable to heterogeneous domains
-  if (!array_schema_->domain()->all_dims_same_type())
+  if (!array_schema_latest_->domain()->all_dims_same_type())
     return LOG_STATUS(
         Status::ArrayError("Cannot get max buffer size; Function not "
                            "applicable to heterogeneous domains"));
 
   // Not applicable to variable-sized dimensions
-  if (!array_schema_->domain()->all_dims_fixed())
+  if (!array_schema_latest_->domain()->all_dims_fixed())
     return LOG_STATUS(Status::ArrayError(
         "Cannot get max buffer size; Function not "
         "applicable to domains with variable-sized dimensions"));
 
   // Check if name is attribute or dimension
-  bool is_dim = array_schema_->is_dim(name);
-  bool is_attr = array_schema_->is_attr(name);
+  bool is_dim = array_schema_latest_->is_dim(name);
+  bool is_attr = array_schema_latest_->is_attr(name);
 
   // Check if attribute/dimension exists
   if (name != constants::coords && !is_dim && !is_attr)
@@ -425,7 +425,7 @@ Status Array::get_max_buffer_size(
         name + "' does not exist"));
 
   // Check if attribute/dimension is fixed sized
-  if (array_schema_->var_size(name))
+  if (array_schema_latest_->var_size(name))
     return LOG_STATUS(Status::ArrayError(
         std::string("Cannot get max buffer size; Attribute/Dimension '") +
         name + "' is var-sized"));
@@ -464,13 +464,13 @@ Status Array::get_max_buffer_size(
         "Cannot get max buffer size; Attribute/Dimension name is null"));
 
   // Not applicable to heterogeneous domains
-  if (!array_schema_->domain()->all_dims_same_type())
+  if (!array_schema_latest_->domain()->all_dims_same_type())
     return LOG_STATUS(
         Status::ArrayError("Cannot get max buffer size; Function not "
                            "applicable to heterogeneous domains"));
 
   // Not applicable to variable-sized dimensions
-  if (!array_schema_->domain()->all_dims_fixed())
+  if (!array_schema_latest_->domain()->all_dims_fixed())
     return LOG_STATUS(Status::ArrayError(
         "Cannot get max buffer size; Function not "
         "applicable to domains with variable-sized dimensions"));
@@ -485,7 +485,7 @@ Status Array::get_max_buffer_size(
         name + "' does not exist"));
 
   // Check if attribute/dimension is var-sized
-  if (!array_schema_->var_size(name))
+  if (!array_schema_latest_->var_size(name))
     return LOG_STATUS(Status::ArrayError(
         std::string("Cannot get max buffer size; Attribute/Dimension '") +
         name + "' is fixed-sized"));
@@ -557,8 +557,8 @@ Status Array::reopen(uint64_t timestamp_start, uint64_t timestamp_end) {
   if (!st.ok())
     return st;
 
-  array_schema_ = array_schema.value();
-  array_schemas_ = array_schemas.value();
+  array_schema_latest_ = array_schema.value();
+  array_schemas_all_ = array_schemas.value();
   fragment_metadata_ = fragment_metadata.value();
 
   return Status::Ok();
@@ -804,14 +804,14 @@ void Array::clear_last_max_buffer_sizes() {
 
 Status Array::compute_max_buffer_sizes(const void* subarray) {
   // Applicable only to domains where all dimensions have the same type
-  if (!array_schema_->domain()->all_dims_same_type())
+  if (!array_schema_latest_->domain()->all_dims_same_type())
     return LOG_STATUS(
         Status::ArrayError("Cannot compute max buffer sizes; Inapplicable when "
                            "dimension domains have different types"));
 
   // Allocate space for max buffer sizes subarray
-  auto dim_num = array_schema_->dim_num();
-  auto coord_size = array_schema_->domain()->dimension(0)->coord_size();
+  auto dim_num = array_schema_latest_->dim_num();
+  auto coord_size = array_schema_latest_->domain()->dimension(0)->coord_size();
   auto subarray_size = 2 * dim_num * coord_size;
   last_max_buffer_sizes_subarray_.resize(subarray_size);
 
@@ -822,7 +822,7 @@ Status Array::compute_max_buffer_sizes(const void* subarray) {
     last_max_buffer_sizes_.clear();
 
     // Get all attributes and coordinates
-    auto attributes = array_schema_->attributes();
+    auto attributes = array_schema_latest_->attributes();
     last_max_buffer_sizes_.clear();
     for (const auto& attr : attributes)
       last_max_buffer_sizes_[attr->name()] =
@@ -830,8 +830,9 @@ Status Array::compute_max_buffer_sizes(const void* subarray) {
     last_max_buffer_sizes_[constants::coords] =
         std::pair<uint64_t, uint64_t>(0, 0);
     for (unsigned d = 0; d < dim_num; ++d)
-      last_max_buffer_sizes_[array_schema_->domain()->dimension(d)->name()] =
-          std::pair<uint64_t, uint64_t>(0, 0);
+      last_max_buffer_sizes_
+          [array_schema_latest_->domain()->dimension(d)->name()] =
+              std::pair<uint64_t, uint64_t>(0, 0);
 
     RETURN_NOT_OK(compute_max_buffer_sizes(subarray, &last_max_buffer_sizes_));
   }
@@ -852,7 +853,7 @@ Status Array::compute_max_buffer_sizes(
       return LOG_STATUS(Status::ArrayError(
           "Cannot get max buffer sizes; remote array with no REST client."));
     return rest_client->get_array_max_buffer_sizes(
-        array_uri_, array_schema_, subarray, buffer_sizes);
+        array_uri_, array_schema_latest_, subarray, buffer_sizes);
   }
 
   // Return if there are no metadata
@@ -867,46 +868,49 @@ Status Array::compute_max_buffer_sizes(
         meta->add_max_buffer_sizes(*encryption_key_, subarray, buffer_sizes));
 
   // Prepare an NDRange for the subarray
-  auto dim_num = array_schema_->dim_num();
+  auto dim_num = array_schema_latest_->dim_num();
   NDRange sub(dim_num);
   auto sub_ptr = (const unsigned char*)subarray;
   uint64_t offset = 0;
   for (unsigned d = 0; d < dim_num; ++d) {
-    auto r_size = 2 * array_schema_->dimension(d)->coord_size();
+    auto r_size = 2 * array_schema_latest_->dimension(d)->coord_size();
     sub[d] = Range(&sub_ptr[offset], r_size);
     offset += r_size;
   }
 
   // Rectify bound for dense arrays
-  if (array_schema_->dense()) {
-    auto cell_num = array_schema_->domain()->cell_num(sub);
+  if (array_schema_latest_->dense()) {
+    auto cell_num = array_schema_latest_->domain()->cell_num(sub);
     // `cell_num` becomes 0 when `subarray` is huge, leading to a
     // `uint64_t` overflow.
     if (cell_num != 0) {
       for (auto& it : *buffer_sizes) {
-        if (array_schema_->var_size(it.first)) {
+        if (array_schema_latest_->var_size(it.first)) {
           it.second.first = cell_num * constants::cell_var_offset_size;
           it.second.second +=
-              cell_num * datatype_size(array_schema_->type(it.first));
+              cell_num * datatype_size(array_schema_latest_->type(it.first));
         } else {
-          it.second.first = cell_num * array_schema_->cell_size(it.first);
+          it.second.first =
+              cell_num * array_schema_latest_->cell_size(it.first);
         }
       }
     }
   }
 
   // Rectify bound for sparse arrays with integer domain, without duplicates
-  if (!array_schema_->dense() && !array_schema_->allows_dups() &&
-      array_schema_->domain()->all_dims_int()) {
-    auto cell_num = array_schema_->domain()->cell_num(sub);
+  if (!array_schema_latest_->dense() && !array_schema_latest_->allows_dups() &&
+      array_schema_latest_->domain()->all_dims_int()) {
+    auto cell_num = array_schema_latest_->domain()->cell_num(sub);
     // `cell_num` becomes 0 when `subarray` is huge, leading to a
     // `uint64_t` overflow.
     if (cell_num != 0) {
       for (auto& it : *buffer_sizes) {
-        if (!array_schema_->var_size(it.first)) {
+        if (!array_schema_latest_->var_size(it.first)) {
           // Check for overflow
-          uint64_t new_size = cell_num * array_schema_->cell_size(it.first);
-          if (new_size / array_schema_->cell_size((it.first)) != cell_num)
+          uint64_t new_size =
+              cell_num * array_schema_latest_->cell_size(it.first);
+          if (new_size / array_schema_latest_->cell_size((it.first)) !=
+              cell_num)
             continue;
 
           // Potentially rectify size
@@ -970,7 +974,8 @@ Status Array::compute_non_empty_domain() {
       // corrupt for these cases we want to check to prevent any segfaults
       // later.
       if (!meta_dom.empty())
-        array_schema_->domain()->expand_ndrange(meta_dom, &non_empty_domain_);
+        array_schema_latest_->domain()->expand_ndrange(
+            meta_dom, &non_empty_domain_);
       else {
         // If the fragment's non-empty domain is indeed empty, lets log it so
         // the user gets a message warning that this fragment might be corrupt
@@ -984,11 +989,5 @@ Status Array::compute_non_empty_domain() {
   non_empty_domain_computed_ = true;
   return Status::Ok();
 }
-
-const std::unordered_map<std::string, tdb_shared_ptr<ArraySchema>>&
-Array::array_schemas() const {
-  return array_schemas_;
-}
-
 }  // namespace sm
 }  // namespace tiledb

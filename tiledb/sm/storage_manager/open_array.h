@@ -86,14 +86,14 @@ class OpenArray {
   /* ********************************* */
 
   /** Returns the array schema. */
-  ArraySchema* array_schema() const;
+  ArraySchema* array_schema_latest() const;
 
   /** Returns array schemas map. */
   const std::unordered_map<std::string, tdb_shared_ptr<ArraySchema>>&
-  array_schemas();
+  array_schemas_all();
 
   /** Set the array schemas map. */
-  void set_array_schemas(
+  void set_array_schemas_all(
       const std::unordered_map<std::string, tdb_shared_ptr<ArraySchema>>&
           array_schemas);
 
@@ -194,12 +194,13 @@ class OpenArray {
   /* ********************************* */
 
   /** The latest array schema. */
-  ArraySchema* array_schema_;
+  ArraySchema* array_schema_latest_;
 
   /**
-   * A map of all array_schemas
+   * A map of all array_schemas_all
    */
-  std::unordered_map<std::string, tdb_shared_ptr<ArraySchema>> array_schemas_;
+  std::unordered_map<std::string, tdb_shared_ptr<ArraySchema>>
+      array_schemas_all_;
 
   /** The array URI. */
   URI array_uri_;
