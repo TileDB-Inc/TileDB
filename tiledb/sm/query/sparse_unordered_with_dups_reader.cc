@@ -190,23 +190,37 @@ Status SparseUnorderedWithDupsReader<BitmapType>::dowork() {
       read_and_unfilter_coords(subarray_.is_set(), &tmp_result_tiles));
 
   // Compute the tile bitmaps.
-  RETURN_NOT_OK(compute_tile_bitmaps<BitmapType>(&result_tiles_));
+  RETURN_NOT_OK(compute_tile_bitmaps<BitmapType>(&tmp_result_tiles));
 
   // Apply query condition.
-  RETURN_NOT_OK(apply_query_condition<BitmapType>(&result_tiles_));
+  RETURN_NOT_OK(apply_query_condition<BitmapType>(&tmp_result_tiles));
 
   // Clear result tiles that are not necessary anymore.
   auto it = result_tiles_[0].begin();
+  std::vector<uint64_t> per_fragment_tile_count(fragment_metadata_.size());
   while (it != result_tiles_[0].end()) {
+    auto f = it->frag_idx();
     if (it->bitmap_num_cells == 0 ||
         (subarray_.is_set() &&
          it->bitmap_num_cells == std::numeric_limits<uint64_t>::max())) {
-      auto f = it->frag_idx();
       RETURN_NOT_OK(remove_result_tile(f, it++));
     } else {
+      per_fragment_tile_count[f]++;
       it++;
     }
   }
+
+  // Clear result tile ranges that are not necessary anymore.
+  if (subarray_.is_set()) {
+    for (unsigned f = 0; f < fragment_metadata_.size(); f++) {
+      // Adjust tile ranges.
+      if (per_fragment_tile_count[f] == 0 && all_tiles_loaded_[f]) {
+        while (!result_tile_ranges_[f].empty())
+          remove_result_tile_range(f);
+      }
+    }
+  }
+  per_fragment_tile_count.clear();
 
   // No more tiles to process, done.
   if (result_tiles_[0].empty()) {
@@ -636,6 +650,7 @@ Status SparseUnorderedWithDupsReader<BitmapType>::copy_var_data_tiles(
   // Process all tiles in parallel.
   std::mutex it_mtx;
   auto result_tiles_it = result_tiles_[0].begin();
+  uint64_t rt_idx = 0;
   auto status = parallel_for(
       storage_manager_->compute_tp(), 0, max_rt_idx, [&](uint64_t) {
         // Take a result tile in the list and calculate the cell offset for
@@ -648,12 +663,13 @@ Status SparseUnorderedWithDupsReader<BitmapType>::copy_var_data_tiles(
         {
           std::unique_lock<std::mutex> ul(it_mtx);
           rt = result_tiles_it++;
+          rt_idx++;
           cell_offset = *global_cell_offset;
           *global_cell_offset +=
               subarray_.is_set() ?
                   rt->bitmap_num_cells :
                   fragment_metadata_[rt->frag_idx()]->cell_num(rt->tile_idx());
-          last_tile = result_tiles_it == result_tiles_[0].end();
+          last_tile = rt_idx == max_rt_idx;
         }
 
         RETURN_NOT_OK(copy_var_data_tile(
