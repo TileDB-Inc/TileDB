@@ -88,9 +88,12 @@ jobs:
         shell: cmd
         continue-on-error: true
         #if: ${{ failure() == true }}
+        env:
+          DLHNAME: ${{ env.LOCALAPPDATA }}
         run: |
           echo LOCALAPPDATA is ${{ env.LOCALAPPDATA }}
           echo localappdata is ${{ env.localappdata }}
+          echo DLHNAME is %DLHNAME%
           rem There is a possibility that the same pid could be re-used (as in prev. step) and we
           rem still have only one crash dump file, but probably not usually...
           (echo import os & echo: & echo os.abort^(^)) > pythoninput.txt
