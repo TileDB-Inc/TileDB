@@ -754,8 +754,14 @@ TEST_CASE(
   REQUIRE(st == Query::Status::INCOMPLETE);
   result_elts = query.result_buffer_elements();
   result_num = result_elts[TILEDB_COORDS].second / 2;
-  REQUIRE(result_num == 1);
-  REQUIRE(data[0] == 'c');
+  if (test::use_refactored_sparse_global_order_reader()) {
+    REQUIRE(result_num == 2);
+    REQUIRE(data[0] == 'c');
+    REQUIRE(data[1] == 'n');
+  } else {
+    REQUIRE(result_num == 1);
+    REQUIRE(data[0] == 'c');
+  }
 
   // Resubmit
   query.set_subarray(subarray);
@@ -764,8 +770,13 @@ TEST_CASE(
   result_elts = query.result_buffer_elements();
   result_num = result_elts[TILEDB_COORDS].second / 2;
   REQUIRE(result_num == 2);
-  REQUIRE(data[0] == 'n');
-  REQUIRE(data[1] == 'd');
+  if (test::use_refactored_sparse_global_order_reader()) {
+    REQUIRE(data[0] == 'd');
+    REQUIRE(data[1] == 'e');
+  } else {
+    REQUIRE(data[0] == 'n');
+    REQUIRE(data[1] == 'd');
+  }
 
   // Resubmit
   query.set_subarray(subarray);
@@ -773,8 +784,14 @@ TEST_CASE(
   REQUIRE(st == Query::Status::INCOMPLETE);
   result_elts = query.result_buffer_elements();
   result_num = result_elts[TILEDB_COORDS].second / 2;
-  REQUIRE(result_num == 1);
-  REQUIRE(data[0] == 'e');
+  if (test::use_refactored_sparse_global_order_reader()) {
+    REQUIRE(result_num == 2);
+    REQUIRE(data[0] == 'f');
+    REQUIRE(data[1] == 'g');
+  } else {
+    REQUIRE(result_num == 1);
+    REQUIRE(data[0] == 'e');
+  }
 
   // Resubmit
   query.set_subarray(subarray);
@@ -782,37 +799,51 @@ TEST_CASE(
   REQUIRE(st == Query::Status::INCOMPLETE);
   result_elts = query.result_buffer_elements();
   result_num = result_elts[TILEDB_COORDS].second / 2;
-  REQUIRE(result_num == 1);
-  REQUIRE(data[0] == 'f');
+  if (test::use_refactored_sparse_global_order_reader()) {
+    REQUIRE(result_num == 2);
+    REQUIRE(data[0] == 'h');
+    REQUIRE(data[1] == 'i');
+  } else {
+    REQUIRE(result_num == 1);
+    REQUIRE(data[0] == 'f');
+  }
 
   // Resubmit
   query.set_subarray(subarray);
   st = query.submit();
-  REQUIRE(st == Query::Status::INCOMPLETE);
+  if (test::use_refactored_sparse_global_order_reader()) {
+    REQUIRE(st == Query::Status::COMPLETE);
+  } else {
+    REQUIRE(st == Query::Status::INCOMPLETE);
+  }
   result_elts = query.result_buffer_elements();
   result_num = result_elts[TILEDB_COORDS].second / 2;
-  REQUIRE(result_num == 2);
-  REQUIRE(data[0] == 'g');
-  REQUIRE(data[1] == 'h');
+  if (test::use_refactored_sparse_global_order_reader()) {
+    REQUIRE(result_num == 2);
+    REQUIRE(data[0] == 'j');
+    REQUIRE(data[1] == 'k');
+  } else {
+    REQUIRE(result_num == 2);
+    REQUIRE(data[0] == 'g');
+    REQUIRE(data[1] == 'h');
 
-  // Resubmit
-  query.set_subarray(subarray);
-  st = query.submit();
-  REQUIRE(st == Query::Status::INCOMPLETE);
-  result_elts = query.result_buffer_elements();
-  result_num = result_elts[TILEDB_COORDS].second / 2;
-  REQUIRE(result_num == 1);
-  REQUIRE(data[0] == 'i');
+    // Resubmit
+    st = query.submit();
+    REQUIRE(st == Query::Status::INCOMPLETE);
+    result_elts = query.result_buffer_elements();
+    result_num = result_elts[TILEDB_COORDS].second / 2;
+    REQUIRE(result_num == 1);
+    REQUIRE(data[0] == 'i');
 
-  // Resubmit
-  query.set_subarray(subarray);
-  st = query.submit();
-  REQUIRE(st == Query::Status::COMPLETE);
-  result_elts = query.result_buffer_elements();
-  result_num = result_elts[TILEDB_COORDS].second / 2;
-  REQUIRE(result_num == 2);
-  REQUIRE(data[0] == 'j');
-  REQUIRE(data[1] == 'k');
+    // Resubmit
+    st = query.submit();
+    REQUIRE(st == Query::Status::COMPLETE);
+    result_elts = query.result_buffer_elements();
+    result_num = result_elts[TILEDB_COORDS].second / 2;
+    REQUIRE(result_num == 2);
+    REQUIRE(data[0] == 'j');
+    REQUIRE(data[1] == 'k');
+  }
 
   // Close array.
   array.close();

@@ -74,9 +74,8 @@ struct CICompletionStatusListener : Catch::TestEventListenerBase {
       if (testRunStats.totals.testCases.allOk() == 1) {
         // set TILEDB_CI_SUCCESS job-level variable in azure pipelines
         // note: this variable is only set in subsequest tasks.
-        std::cout << "::set-output name=TILEDB_CI_SUCCESS::1" << std::endl;
-        std::cout << "##vso[task.setvariable variable=TILEDB_CI_SUCCESS]1"
-                  << std::endl;
+        printf("::set-output name=TILEDB_CI_SUCCESS::1\n");
+        printf("##vso[task.setvariable variable=TILEDB_CI_SUCCESS]1\n");
       }
     }
   }
