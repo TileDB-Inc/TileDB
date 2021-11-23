@@ -119,6 +119,7 @@ jobs:
           echo "TDBLOCALAPPDATA=%LOCALAPPDATA%" >> "$env:GITHUB_ENV"
           echo "TDBLOCALAPPDATA=%LOCALAPPDATA%" >> "$env:GITHUB_ENV"
           echo TDBLOCALAPPDATA2=%LOCALAPPDATA% >> "$env:GITHUB_ENV"
+          echo TDBLOCALAPPDATA3=$env:LOCALAPPDATA >> "$env:GITHUB_ENV"
           
       - name: 'env var test 2b'
         shell: cmd
@@ -129,6 +130,7 @@ jobs:
           echo from 2b... DLHLOCALAPPDATA2 IS ${{ env.DLHLOCALAPPDATA2 }}
           echo from 2b... TDBLOCALAPPDATA IS ${{ env.TDBLOCALAPPDATA }}
           echo from 2b... TDBLOCALAPPDATA2 IS ${{ env.TDBLOCALAPPDATA2 }}
+          echo from 2b... TDBLOCALAPPDATA3 IS ${{ env.TDBLOCALAPPDATA3 }}
 
       - name: 'gen crash dump 1'
         shell: cmd
@@ -403,7 +405,7 @@ jobs:
           if-no-files-found: warn # 'ignore/', 'warn' or 'error' are available, defaults to `warn` 
           #  ${{ env.LOCALAPPDATA }}/CrashDumps/*.dmp
           path: |
-            ${{ env.TDBLOCALAPPDATA2 }}/CrashDumps/*.dmp
+            ${{ env.TDBLOCALAPPDATA3 }}/CrashDumps/*.dmp
 
       - name: 'Test status check'
         shell: bash
