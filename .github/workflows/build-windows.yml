@@ -62,6 +62,10 @@ jobs:
           write-host "BUILD_BUILDDIRECTORY=$env:BUILD_BUILDDIRECTORY" *>> $env:GITHUB_ENV
           write-host "BUILD_SOURCESDIRECTORY=$env:BUILD_SOURCESDIRECTORY" *>> $env:GITHUB_ENV
 
+      - name: 'Print env'
+        run: |
+          set
+
       - name: 'dump file settings prep'
         shell: cmd
         run: |
@@ -103,9 +107,6 @@ jobs:
           type pythoninput.txt
           python < pythoninput.txt
 
-      - name: 'Print env'
-        run: |
-          set
         shell: cmd
       - name: ARROW python needs
         shell: bash
