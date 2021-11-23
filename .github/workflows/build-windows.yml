@@ -90,11 +90,14 @@ jobs:
         #if: ${{ failure() == true }}
         env:
           DLHNAME: ${{ env.LOCALAPPDATA }}
+          #try, given https://github.com/actions/upload-artifact/issues/56#issuecomment-598427132
+          DLHNAME2: ${ env.LOCALAPPDATA }
         run: |
           echo LOCALAPPDATA is ${{ env.LOCALAPPDATA }} or %LOCALAPPDATA%
           echo localappdata is ${{ env.localappdata }} or %localappdata%
           set
           echo DLHNAME is %DLHNAME%
+          echo DLHNAME2 is %DLHNAME2%
           rem There is a possibility that the same pid could be re-used (as in prev. step) and we
           rem still have only one crash dump file, but probably not usually...
           (echo import os & echo: & echo os.abort^(^)) > pythoninput.txt
