@@ -58,7 +58,9 @@ int main(const int argc, char** const argv) {
     return rc;
 
   if (doCrash) {
-    *(int*)0 = 0;
+    // compilation in mac environ prohibited use of direct "*(int *)0 = 0;"
+    int* ptr_to_null = 0; 
+    *ptr_to_null = 0;
     // should not reach here!
   }
   // Validate and store the VFS command line argument.
