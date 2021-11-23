@@ -177,12 +177,6 @@ void partial_read_and_check_sparse_array(
     std::vector<int32_t>& exp_data_part2,
     std::vector<uint64_t>& exp_off_part2,
     tiledb_layout_t layout) {
-  // Sparse unordered with dups reader does not track cell progress meaning
-  // it only copies full tiles for now. Disable these cases until it does.
-  if (test::use_refactored_sparse_unordered_with_dups_reader() &&
-      layout == TILEDB_UNORDERED)
-    return;
-
   // The size of read buffers is smaller than the size
   // of all the data, so we'll do partial reads
   std::vector<int32_t> attr_val(exp_data_part1.size());
