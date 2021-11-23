@@ -1042,10 +1042,10 @@ Status SparseUnorderedWithDupsReader<BitmapType>::read_and_unfilter_attributes(
   auto timer_se = stats_->start_timer("read_and_unfilter_attribute");
 
   // Read and unfilter tiles.
-  RETURN_NOT_OK(read_attribute_tiles(names, result_tiles));
+  RETURN_NOT_OK(read_attribute_tiles(names, result_tiles, true));
 
   for (auto& name : *names)
-    RETURN_NOT_OK(unfilter_tiles(name, result_tiles));
+    RETURN_NOT_OK(unfilter_tiles(name, result_tiles, true));
 
   return Status::Ok();
 }
