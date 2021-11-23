@@ -443,14 +443,14 @@ class ResultTile {
    *    at `c_offset`.
    * @param range_start The starting range value.
    * @param range_end The ending range value.
-   * @return uint8_t 0 for no intersection, 1 for instersection.
+   * @return false for no intersection, true for instersection.
    */
-  static uint8_t str_coord_intersects(
+  static bool str_coord_intersects(
       const uint64_t c_offset,
       const uint64_t c_size,
       const char* const buff_str,
-      const std::string& range_start,
-      const std::string& range_end);
+      const std::basic_string_view<char>& range_start,
+      const std::basic_string_view<char>& range_end);
 };
 
 }  // namespace sm

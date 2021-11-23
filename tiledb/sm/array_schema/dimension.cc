@@ -528,8 +528,8 @@ void Dimension::expand_range_var_v(const char* v, uint64_t v_size, Range* r) {
   assert(v != nullptr);
   assert(r != nullptr);
 
-  auto start = r->start_str();
-  auto end = r->end_str();
+  std::string start(r->start_str());
+  std::string end(r->end_str());
   auto v_str = std::string(v, v_size);
 
   r->set_str_range(
@@ -560,8 +560,8 @@ void Dimension::expand_range_var(const Range& r1, Range* r2) const {
   auto r2_start = r2->start_str();
   auto r2_end = r2->end_str();
 
-  auto min = (r1_start < r2_start) ? r1_start : r2_start;
-  auto max = (r1_end < r2_end) ? r2_end : r1_end;
+  std::string min((r1_start < r2_start) ? r1_start : r2_start);
+  std::string max((r1_end < r2_end) ? r2_end : r1_end);
 
   r2->set_str_range(min, max);
 }
@@ -841,8 +841,8 @@ void Dimension::split_range<char>(
 
   // First range
   auto min_string = std::string("\x0", 1);
-  auto new_r1_start = !r.start_str().empty() ? r.start_str() : min_string;
-  auto new_r1_end = v.rvalue_as<std::string>();
+  std::string new_r1_start(!r.start_str().empty() ? r.start_str() : min_string);
+  std::string new_r1_end(v.rvalue_as<std::string>());
   auto new_r1_end_size = (int)new_r1_end.size();
   int pos;
   for (pos = 0; pos < new_r1_end_size; ++pos) {
@@ -870,7 +870,7 @@ void Dimension::split_range<char>(
   new_r2_start.resize(pos + 1);
 
   auto max_string = std::string("\x7F", 1);
-  auto new_r2_end = !r.end_str().empty() ? r.end_str() : max_string;
+  std::string new_r2_end(!r.end_str().empty() ? r.end_str() : max_string);
 
   assert(new_r2_start > new_r1_end);
   assert(new_r2_start <= new_r2_end);
@@ -955,8 +955,9 @@ void Dimension::splitting_value<char>(
   uint8_t end_pref = end.empty() ? 127 : (uint8_t)end[pref_size];
   auto start_c = (start.size() == pref_size) ? 0 : start[pref_size];
   auto split_v = (end_pref - start_c) / 2;
-  auto split_str =
-      start.substr(0, pref_size) + (char)(start_c + split_v) + "\x80";
+  std::string split_str(start.substr(0, pref_size));
+  split_str += (char)(start_c + split_v);
+  split_str += "\x80";
   assert(split_str >= start);
 
   v->resize(split_str.size());
@@ -1357,7 +1358,6 @@ bool Dimension::smaller_than<char>(
 
   auto value_str = value.rvalue_as<std::string>();
   auto range_start_str = range.start_str();
-  auto range_end_str = range.end_str();
 
   // If the range start is empty, then it is essentially -inf
   if (range_start_str.empty())
