@@ -41,7 +41,6 @@
 #include "tiledb/sm/misc/tile_overlap.h"
 #include "tiledb/sm/misc/uri.h"
 #include "tiledb/sm/subarray/subarray_partitioner.h"
-#include "tiledb/sm/c_api/tiledb_struct_def.h"
 
 std::mutex catch2_macro_mutex;
 

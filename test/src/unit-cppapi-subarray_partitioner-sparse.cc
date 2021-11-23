@@ -363,7 +363,6 @@ void CPPAPISubarrayPartitionerSparseFx::test_subarray_partitioner(
       &cppvfs_.context(), cpparray_, ranges, subarray_layout, &tdb_subarray);
   tdb_subarray->set_layout((tiledb_layout_t)subarray_layout);
   check_subarray_equiv<T>(
-//      coresubarray, *(tdb_subarray->capi_subarray()->subarray_));
       coresubarray,
       *(tdb_subarray->ptr()->subarray_));
 
@@ -412,7 +411,6 @@ void CPPAPISubarrayPartitionerSparseFx::test_subarray_partitioner(
       &cppvfs_.context(), cpparray_, ranges, subarray_layout, &tdb_subarray);
   tdb_subarray->set_layout((tiledb_layout_t)subarray_layout);
   check_subarray_equiv<T>(
-//      coresubarray, *(tdb_subarray->capi_subarray()->subarray_));
       coresubarray,
       *(tdb_subarray->ptr()->subarray_));
 
@@ -429,7 +427,6 @@ void CPPAPISubarrayPartitionerSparseFx::test_subarray_partitioner(
       &tdb_retrieve_partition_subarray);
   check_subarray_equiv<T>(
       coresubarray,
-//      *(tdb_retrieve_partition_subarray->capi_subarray()->subarray_));
       *(tdb_retrieve_partition_subarray->ptr()->subarray_));
 
   check_partitions(
@@ -463,7 +460,6 @@ void CPPAPISubarrayPartitionerSparseFx::test_subarray_partitioner(
   create_subarray(
       &cppvfs_.context(), cpparray_, ranges, subarray_layout, &tdb_subarray);
   check_subarray_equiv<T>(
-//      coresubarray, *(tdb_subarray->capi_subarray()->subarray_));
       coresubarray,
       *(tdb_subarray->ptr()->subarray_));
 
@@ -491,7 +487,6 @@ void CPPAPISubarrayPartitionerSparseFx::test_subarray_partitioner(
       subarray_layout,
       &tdb_retrieve_partition_subarray);
   check_subarray_equiv<T>(
-//      coresubarray, *(tdb_subarray->capi_subarray()->subarray_));
       coresubarray,
       *(tdb_subarray->ptr()->subarray_));
 
@@ -768,7 +763,8 @@ TEST_CASE_METHOD(
   ThreadPool tp;
   CHECK(tp.init(4).ok());
   Config cfg;
-  tiledb::sm::SubarrayPartitioner subarray_partitioner(&cfg, //in april, joeM added config* as first parameter, where to obtain?
+  tiledb::sm::SubarrayPartitioner subarray_partitioner(
+      &cfg,
       subarray,
       memory_budget_,
       memory_budget_var_,
@@ -2374,12 +2370,12 @@ TEST_CASE_METHOD(
       array->array_, layout, &g_helper_stats, g_helper_logger());
   tiledb::sm::Range r;
   r.set_str_range("bb", "bb");
-  //subarray.add_range(0, r);
   subarray.add_range(0, std::move(r));
   ThreadPool tp;
   CHECK(tp.init(4).ok());
   Config cfg;
-  tiledb::sm::SubarrayPartitioner partitioner(&cfg,
+  tiledb::sm::SubarrayPartitioner partitioner(
+      &cfg,
       subarray,
       memory_budget_,
       memory_budget_var_,
@@ -2412,9 +2408,7 @@ TEST_CASE_METHOD(
   tiledb::sm::Subarray subarray_full(
       array->array_, layout, &g_helper_stats, g_helper_logger());
   r.set_str_range("a", "bb");
-//  subarray_full.add_range(0, r);
   subarray_full.add_range(0, std::move(r));
-  //Config cfg;
   tiledb::sm::SubarrayPartitioner partitioner_full(
       &cfg,
       subarray_full,
@@ -2442,10 +2436,9 @@ TEST_CASE_METHOD(
   tiledb::sm::Subarray subarray_split(
       array->array_, layout, &g_helper_stats, g_helper_logger());
   r.set_str_range("a", "bb");
-//  subarray_split.add_range(0, r);
   subarray_split.add_range(0, std::move(r));
-  //Config cfg;
-  SubarrayPartitioner partitioner_split(&cfg,
+  SubarrayPartitioner partitioner_split(
+      &cfg,
       subarray_split,
       memory_budget_,
       memory_budget_var_,
@@ -2481,10 +2474,9 @@ TEST_CASE_METHOD(
   tiledb::sm::Subarray subarray_no_split(
       array->array_, layout, &g_helper_stats, g_helper_logger());
   r.set_str_range("bb", "cc");
-//  subarray_no_split.add_range(0, r);
   subarray_no_split.add_range(0, std::move(r));
-//  Config cfg;
-  SubarrayPartitioner partitioner_no_split(&cfg,
+  SubarrayPartitioner partitioner_no_split(
+      &cfg,
       subarray_no_split,
       memory_budget_,
       memory_budget_var_,
@@ -2512,10 +2504,9 @@ TEST_CASE_METHOD(
   tiledb::sm::Subarray subarray_split_2(
       array->array_, layout, &g_helper_stats, g_helper_logger());
   r.set_str_range("bb", "cc");
-//  subarray_split_2.add_range(0, r);
   subarray_split_2.add_range(0, std::move(r));
-//  Config cfg;
-  tiledb::sm::SubarrayPartitioner partitioner_split_2(&cfg,
+  tiledb::sm::SubarrayPartitioner partitioner_split_2(
+      &cfg,
       subarray_split_2,
       memory_budget_,
       memory_budget_var_,
@@ -2650,12 +2641,12 @@ TEST_CASE_METHOD(
       array->array_, layout, &g_helper_stats, g_helper_logger());
   tiledb::sm::Range r;
   r.set_str_range("cc", "ccd");
-//  subarray.add_range(0, r);
   subarray.add_range(0, std::move(r));
   ThreadPool tp;
   CHECK(tp.init(4).ok());
   Config cfg;
-  SubarrayPartitioner partitioner(&cfg,
+  SubarrayPartitioner partitioner(
+      &cfg,
       subarray,
       memory_budget_,
       memory_budget_var_,
