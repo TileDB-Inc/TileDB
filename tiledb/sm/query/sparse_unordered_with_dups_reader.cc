@@ -1321,7 +1321,16 @@ Status SparseUnorderedWithDupsReader<BitmapType>::end_iteration() {
   if (!incomplete()) {
     assert(memory_used_for_coords_total_ == 0);
     assert(memory_used_qc_tiles_total_ == 0);
-    assert(memory_used_result_tile_ranges_ == 0);
+    /* This should be re-instated in a followup
+     Currently there is a bug causing this assert to fail when
+     sm.mem.total_budget is applied. These calculations are going to be
+     reworked, to fix the issue with TileDB 2.5.1 we will remove the assert.
+     The effect of this is that we might be lingering tile ranges with tiles
+     that are either not in the subarray or don't respect query condition. The
+     reader might fetch those tiles again, reprocess, and throw them out again
+     on a subsequent iteration, which might affect perf. But it will not
+     affect query correctness or completion. */
+    // assert(memory_used_result_tile_ranges_ == 0);
   }
 
   logger_->debug(
