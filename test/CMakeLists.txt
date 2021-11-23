@@ -137,6 +137,9 @@ set(TILEDB_TEST_SOURCES
   src/unit-capi-sparse_real_2.cc
   src/unit-capi-string.cc
   src/unit-capi-string_dims.cc
+  src/unit-capi-subarray_2.cc
+  src/unit-capi-subarray_partitioner-dense.cc
+  src/unit-capi-subarray_partitioner-sparse.cc
   src/unit-capi-uri.cc
   src/unit-capi-version.cc
   src/unit-capi-vfs.cc
@@ -200,6 +203,8 @@ if (TILEDB_CPP_API)
     src/unit-cppapi-schema.cc
     src/unit-cppapi-string-dims.cc
     src/unit-cppapi-subarray.cc
+    src/unit-cppapi-subarray_partitioner-dense.cc
+    src/unit-cppapi-subarray_partitioner-sparse.cc
     src/unit-cppapi-type.cc
     src/unit-cppapi-updates.cc
     src/unit-cppapi-util.cc

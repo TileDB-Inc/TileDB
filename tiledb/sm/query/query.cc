@@ -1907,9 +1907,7 @@ Status Query::set_subarray(const tiledb::sm::Subarray& subarray) {
     // settings and consider successful.
     return Status::Ok();
 
-  auto prev_layout = subarray_.layout();
   subarray_ = subarray;
-  subarray_.set_layout(prev_layout);
 
   status_ = QueryStatus::UNINITIALIZED;
 

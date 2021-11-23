@@ -58,6 +58,10 @@ struct tiledb_subarray_t {
   tiledb::sm::Subarray* subarray_ = nullptr;
 };
 
+struct tiledb_subarray_partitioner_t {
+  tiledb::sm::SubarrayPartitioner* partitioner_ = nullptr;
+};
+
 struct tiledb_buffer_t {
   tiledb::sm::Datatype datatype_ = tiledb::sm::Datatype::UINT8;
   tiledb::sm::Buffer* buffer_ = nullptr;

@@ -56,6 +56,7 @@
 #include "schema_base.h"
 #include "stats.h"
 #include "subarray.h"
+#include "subarray_partitioner.h"
 #include "tiledb.h"
 #include "utils.h"
 #include "version.h"

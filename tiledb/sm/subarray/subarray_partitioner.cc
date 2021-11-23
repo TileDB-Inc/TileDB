@@ -367,13 +367,72 @@ Status SubarrayPartitioner::get_memory_budget(
   return Status::Ok();
 }
 
+uint64_t SubarrayPartitioner::partition_series_num() {
+  return partitions_series_.size();
+}
+
+/** Retrieve pointer to internal instance of specific computed subarray.
+ *
+ * Note: This will only remain valid while the partitioner remains valid and the
+ * partition series is not re-computed or otherwise released.
+ */
+Status SubarrayPartitioner::subarray_from_partition_series(
+    uint64_t part_idx, Subarray** subarray) {
+  if (part_idx >= partitions_series_.size()) {
+    std::stringstream msg;
+    // assumes part_idx to be zero-based
+    msg << "Requested partition index " << part_idx << " greater than last ("
+        << partitions_series_.size() - 1 << ") computed partition.";
+    return LOG_STATUS(Status::SubarrayPartitionerError(msg.str()));
+  }
+  //*subarray = &partitions_series_[part_idx].partition_;
+  **subarray = partitions_series_[part_idx].partition_;
+  return Status::Ok();
+}
+
+Status SubarrayPartitioner::compute_partition_series(
+    std::vector<PartitionInfo>* partitions_series) {
+  std::vector<PartitionInfo> partitions_local;
+  std::vector<PartitionInfo>& partitions =
+      partitions_series == nullptr ? partitions_series_ : partitions_local;
+
+  bool unsplittable = false;
+
+  partitions.clear();
+
+  // 1)If initial 'subarray_' is empty(), then done() will be true, initial
+  // next() will return Ok()...
+  //- but then are there any partitions, or empty partitions would be correct?
+  if (!done()) {
+    while (next(&unsplittable).ok()) {
+      partitions.emplace_back(current_);
+      // checking unsplittable and breaking avoids failure in a unit test where
+      // 6 partitions are produced without checking this, but only one when
+      // checking it.
+      if (unsplittable)
+        break;
+      if (done())
+        break;
+    }
+  }
+
+  return Status::Ok();
+}
+
 Status SubarrayPartitioner::next(bool* unsplittable) {
   auto timer_se = stats_->start_timer("read_next_partition");
 
   *unsplittable = false;
 
-  if (done())
+  // TBD: ??? do this or not???
+  // having makes done()ness a bit less ambiguous, but might break existing code
+  // if they depend on that ambiguity (last 'current()' remaining last obtained)
+  // note: no basic config build unit tests fail when .clear() is done.
+  // current_.partition_.clear();
+
+  if (done()) {
     return Status::Ok();
+  }
 
   // Handle single range partitions, remaining from previous iteration
   if (!state_.single_range_.empty())

@@ -666,6 +666,7 @@ TEST_CASE(
   tiledb::Array array(ctx, array_name, TILEDB_READ);
   tiledb::Query query(ctx, array);
   tiledb::Subarray subarray(ctx, array);
+  subarray.set_layout(TILEDB_UNORDERED);
   query.set_layout(TILEDB_UNORDERED);
 
   // Set up subarray for read

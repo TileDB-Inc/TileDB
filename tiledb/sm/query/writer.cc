@@ -700,6 +700,16 @@ Status Writer::check_subarray() const {
           Status::WriterError("Cannot initialize query; In global writes for "
                               "dense arrays, the subarray "
                               "must coincide with the tile bounds"));
+    if (layout_ == Layout::UNORDERED && subarray_.is_set())
+      return LOG_STATUS(Status::WriterError(
+          "Cannot initialize query; Setting a subarray in unordered writes for "
+          "dense arrays is inapplicable"));
+  } else {
+    assert(!array_schema_->dense());
+    if (subarray_.is_set())
+      return LOG_STATUS(
+          Status::WriterError("Subarray range for a write query is not "
+                              "supported in sparse arrays"));
   }
   return Status::Ok();
 }

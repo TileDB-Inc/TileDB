@@ -4179,7 +4179,7 @@ TILEDB_EXPORT int32_t tiledb_query_get_validity_buffer(
  *      any particular order, which will often lead to better performance.
  * * @return `TILEDB_OK` for success and `TILEDB_ERR` for error.
  */
-TILEDB_EXPORT int32_t tiledb_query_set_layout(
+TILEDB_DEPRECATED_EXPORT int32_t tiledb_query_set_layout(
     tiledb_ctx_t* ctx, tiledb_query_t* query, tiledb_layout_t layout);
 
 /**
@@ -5150,6 +5150,39 @@ TILEDB_EXPORT int32_t tiledb_subarray_set_config(
  * @param subarray The subarray object to be freed.
  */
 TILEDB_EXPORT void tiledb_subarray_free(tiledb_subarray_t** subarray);
+
+/**
+ * Sets the layout of the cells to be written or read.
+ *
+ * **Example:**
+ *
+ * @code{.c}
+ * tiledb_subarray_set_layout(ctx, subarray, TILEDB_ROW_MAJOR);
+ * @endcode
+ *
+ * @param ctx The TileDB context.
+ * @param subarray The TileDB subarray.
+ * @param layout For a write query, this specifies the order of the cells
+ *     provided by the user in the buffers. For a read query, this specifies
+ *     the order of the cells that will be retrieved as results and stored
+ *     in the user buffers. The layout can be one of the following:
+ *    - `TILEDB_COL_MAJOR`:
+ *      This means column-major order with respect to the subarray.
+ *    - `TILEDB_ROW_MAJOR`:
+ *      This means row-major order with respect to the subarray.
+ *    - `TILEDB_GLOBAL_ORDER`:
+ *      This means that cells are stored or retrieved in the array global
+ *      cell order.
+ *    - `TILEDB_UNORDERED`:
+ *      This is applicable only to reads and writes for sparse arrays, or for
+ *      sparse writes to dense arrays. For writes, it specifies that the cells
+ *      are unordered and, hence, TileDB must sort the cells in the global cell
+ *      order prior to writing. For reads, TileDB will return the cells without
+ *      any particular order, which will often lead to better performance.
+ * * @return `TILEDB_OK` for success or `TILEDB_ERR` for error.
+ */
+TILEDB_EXPORT int32_t tiledb_subarray_set_layout(
+    tiledb_ctx_t* ctx, tiledb_subarray_t* subarray, tiledb_layout_t layout);
 
 /**
  * Set coalesce_ranges property on a TileDB subarray object.
