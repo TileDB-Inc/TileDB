@@ -34,6 +34,7 @@
 #define TILEDB_FILTER_H
 
 #include "tiledb/common/status.h"
+#include "tiledb/common/dynamic_memory/dynamic_memory.h"
 #include "tiledb/sm/config/config.h"
 
 using namespace tiledb::common;
@@ -79,16 +80,16 @@ class Filter {
    * @param type Filter type to create
    * @return New Filter instance or nullptr on error.
    */
-  static Filter* create(FilterType type);
+  static std::tuple<Status, std::optional<std::unique_ptr<Filter>>> create(
+      FilterType type);
 
   /**
    * Deserializes a new Filter instance from the data in the given buffer.
    *
    * @param buff The buffer to deserialize from.
-   * @param filter New filter instance (caller's responsibility to free).
-   * @return Status
+   * @return Status and Filter pointer
    */
-  static Status deserialize(ConstBuffer* buff, Filter** filter);
+  static std::tuple<Status, std::optional<std::unique_ptr<Filter>>> deserialize(ConstBuffer* buff);
 
   /**
    * Gets an option from this filter.

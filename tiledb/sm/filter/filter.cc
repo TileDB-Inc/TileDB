@@ -63,34 +63,35 @@ Filter* Filter::clone() const {
   return clone;
 }
 
-Filter* Filter::create(FilterType type) {
+std::tuple<Status, std::optional<std::unique_ptr<Filter>>> Filter::create(
+    FilterType type) {
   switch (type) {
     case FilterType::FILTER_NONE:
-      return tdb_new(NoopFilter);
+      return {Status::Ok(), std::make_unique<NoopFilter>()};
     case FilterType::FILTER_GZIP:
     case FilterType::FILTER_ZSTD:
     case FilterType::FILTER_LZ4:
     case FilterType::FILTER_RLE:
     case FilterType::FILTER_BZIP2:
     case FilterType::FILTER_DOUBLE_DELTA:
-      return tdb_new(CompressionFilter, type, -1);
+      return {Status::Ok(), std::make_unique<CompressionFilter>(type,-1)};
     case FilterType::FILTER_BIT_WIDTH_REDUCTION:
-      return tdb_new(BitWidthReductionFilter);
+      return {Status::Ok(), std::make_unique<BitWidthReductionFilter>()};
     case FilterType::FILTER_BITSHUFFLE:
-      return tdb_new(BitshuffleFilter);
+      return {Status::Ok(), std::make_unique<BitshuffleFilter>()};
     case FilterType::FILTER_BYTESHUFFLE:
-      return tdb_new(ByteshuffleFilter);
+      return {Status::Ok(), std::make_unique<ByteshuffleFilter>()};
     case FilterType::FILTER_POSITIVE_DELTA:
-      return tdb_new(PositiveDeltaFilter);
+      return {Status::Ok(), std::make_unique<PositiveDeltaFilter>()};
     case FilterType::INTERNAL_FILTER_AES_256_GCM:
-      return tdb_new(EncryptionAES256GCMFilter);
+      return {Status::Ok(), std::make_unique<EncryptionAES256GCMFilter>()};
     case FilterType::FILTER_CHECKSUM_MD5:
-      return tdb_new(ChecksumMD5Filter);
+      return {Status::Ok(), std::make_unique<ChecksumMD5Filter>()};
     case FilterType::FILTER_CHECKSUM_SHA256:
-      return tdb_new(ChecksumSHA256Filter);
+      return {Status::Ok(), std::make_unique<ChecksumSHA256Filter>()};
     default:
       assert(false);
-      return nullptr;
+      return {Status::Ok(), std::nullopt};
   }
 }
 
@@ -106,28 +107,37 @@ Status Filter::set_option(FilterOption option, const void* value) {
   return set_option_impl(option, value);
 }
 
-Status Filter::deserialize(ConstBuffer* buff, Filter** filter) {
+std::tuple<Status, std::optional<std::unique_ptr<Filter>>> Filter::deserialize(
+    ConstBuffer* buff) {
+  Status st;
   uint8_t type;
-  RETURN_NOT_OK(buff->read(&type, sizeof(uint8_t)));
+  st = buff->read(&type, sizeof(uint8_t));
+  if (!st.ok()) {
+    return {Status::Ok(), std::nullopt};
+  }
   uint32_t filter_metadata_len;
-  RETURN_NOT_OK(buff->read(&filter_metadata_len, sizeof(uint32_t)));
-
-  auto* f = create(static_cast<FilterType>(type));
-  if (f == nullptr)
-    return LOG_STATUS(Status::FilterError("Deserialization error."));
-
-  auto offset = buff->offset();
-  RETURN_NOT_OK_ELSE(f->deserialize_impl(buff), tdb_delete(f));
-
-  if (buff->offset() - offset != filter_metadata_len) {
-    tdb_delete(f);
-    return LOG_STATUS(Status::FilterError(
-        "Deserialization error; unexpected metadata length"));
+  st = buff->read(&filter_metadata_len, sizeof(uint32_t));
+  if (!st.ok()) {
+    return {Status::Ok(), std::nullopt};
   }
 
-  *filter = f;
+  auto&& [st_filter, filter]{create(static_cast<FilterType>(type))};
+  if (!st_filter.ok()) {
+    return {st_filter, std::nullopt};
+  }
 
-  return Status::Ok();
+  std::unique_ptr<Filter> f = std::move(filter.value());
+  auto offset = buff->offset();
+  st = f->deserialize_impl(buff);
+  if (!st.ok()) {
+    return {st_filter, std::nullopt};
+  }
+  
+  if (buff->offset() - offset != filter_metadata_len) {
+    return {Status::FilterError("Deserialization error; unexpected metadata length"), std::nullopt};
+  }
+   
+  return {Status::Ok(), std::move(f)};
 }
 
 // ===== FORMAT =====
