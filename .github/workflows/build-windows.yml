@@ -84,20 +84,21 @@ jobs:
           reg query "HKEY_LOCAL_MACHINE\SOFTWARE\Microsoft\Windows\Windows Error Reporting\LocalDumps" /v DumpFolder
           reg query "HKEY_LOCAL_MACHINE\SOFTWARE\Microsoft\Windows\Windows Error Reporting\LocalDumps" /v DumpCount
 
-      - name: 'env var test'
-        shell: pwsh
-        continue-on-error: true
-        #if: ${{ failure() == true }}
-        env:
-          DLHNAME: ${{ env.LOCALAPPDATA }}
-          #try, given https://github.com/actions/upload-artifact/issues/56#issuecomment-598427132
-          DLHNAME2: ${ env.LOCALAPPDATA }
-        run: |
-          echo LOCALAPPDATA is ${{ env.LOCALAPPDATA }} or $env:LOCALAPPDATA
-          echo localappdata is ${{ env.localappdata }} or $env:localappdata
-          echo DLHNAME is $env:DLHNAME
-          echo DLHNAME2 is $env:DLHNAME2
-          set
+      #~ - name: 'env var test'
+        #~ shell: pwsh
+        #~ continue-on-error: true
+        #~ #if: ${{ failure() == true }}
+        #~ env:
+          #~ DLHNAME: ${{ env.LOCALAPPDATA }}
+          #~ #try, given https://github.com/actions/upload-artifact/issues/56#issuecomment-598427132
+          #~ DLHNAME2: ${ env.LOCALAPPDATA }
+        #~ run: |
+          #~ echo LOCALAPPDATA is ${{ env.LOCALAPPDATA }} or $env:LOCALAPPDATA
+          #~ echo localappdata is ${{ env.localappdata }} or $env:localappdata
+          #~ echo DLHNAME is $env:DLHNAME
+          #~ echo DLHNAME2 is $env:DLHNAME2
+          #~ set
+
       - name: 'proxy localappdata'
         shell: pwsh
         run: |
@@ -142,27 +143,27 @@ jobs:
           #~ echo from 2b... TDBLOCALAPPDATA2 IS ${{ env.TDBLOCALAPPDATA2 }}
           #~ echo from 2b... TDBLOCALAPPDATA3 IS ${{ env.TDBLOCALAPPDATA3 }}
 
-      - name: 'gen crash dump 1'
-        shell: cmd
-        continue-on-error: true
-        #if: ${{ failure() == true }}
-        run: |
-          rem There is a possibility that the same pid could be re-used (as in prev. step) and we
-          rem still have only one crash dump file, but probably not usually...
-          (echo import os & echo: & echo os.abort^(^)) > pythoninput.txt
-          type pythoninput.txt
-          python < pythoninput.txt
+      #~ - name: 'gen crash dump 1'
+        #~ shell: cmd
+        #~ continue-on-error: true
+        #~ #if: ${{ failure() == true }}
+        #~ run: |
+          #~ rem There is a possibility that the same pid could be re-used (as in prev. step) and we
+          #~ rem still have only one crash dump file, but probably not usually...
+          #~ (echo import os & echo: & echo os.abort^(^)) > pythoninput.txt
+          #~ type pythoninput.txt
+          #~ python < pythoninput.txt
 
-      - name: 'gen crash dump 2'
-        shell: cmd
-        #continue-on-error: true
-        #if: ${{ failure() == true }}
-        run: |
-          rem There is a possibility that the same pid could be re-used (as in prev. step) and we
-          rem still have only one crash dump file, but probably not usually...
-          (echo import os & echo: & echo os.abort^(^)) > pythoninput.txt
-          type pythoninput.txt
-          python < pythoninput.txt
+      #~ - name: 'gen crash dump 2'
+        #~ shell: cmd
+        #~ #continue-on-error: true
+        #~ #if: ${{ failure() == true }}
+        #~ run: |
+          #~ rem There is a possibility that the same pid could be re-used (as in prev. step) and we
+          #~ rem still have only one crash dump file, but probably not usually...
+          #~ (echo import os & echo: & echo os.abort^(^)) > pythoninput.txt
+          #~ type pythoninput.txt
+          #~ python < pythoninput.txt
 
       - name: ARROW python needs
         shell: bash
@@ -323,7 +324,8 @@ jobs:
           #~ Write-Host "cmds: '$cmds'"
           #~ Invoke-Expression $cmds
           #$cmds = "$env:BUILD_BUILDDIRECTORY\tiledb\test\Release\tiledb_unit.exe -d=yes | c:\msys64\usr\bin\awk '/1: ::set-output/{sub(/.*1: /, `"`"); print; next} 1'" 
-          $cmds = "$env:BUILD_BUILDDIRECTORY\tiledb\test\Release\tiledb_unit.exe -d=yes" 
+          #$cmds = "$env:BUILD_BUILDDIRECTORY\tiledb\test\Release\tiledb_unit.exe -d=yes" 
+          $cmds = "$env:BUILD_BUILDDIRECTORY\tiledb\test\Release\tiledb_unit.exe -d=yes --crash" 
           Write-Host "cmds: '$cmds'"
           Invoke-Expression $cmds
 
