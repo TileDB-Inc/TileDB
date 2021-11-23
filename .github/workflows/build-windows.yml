@@ -63,6 +63,7 @@ jobs:
           write-host "BUILD_SOURCESDIRECTORY=$env:BUILD_SOURCESDIRECTORY" *>> $env:GITHUB_ENV
 
       - name: 'Print env'
+        shell: cmd
         run: |
           set
 
@@ -107,7 +108,6 @@ jobs:
           type pythoninput.txt
           python < pythoninput.txt
 
-        shell: cmd
       - name: ARROW python needs
         shell: bash
         if: ${{ matrix.TILEDB_ARROW_TESTS == 'ON' }}
