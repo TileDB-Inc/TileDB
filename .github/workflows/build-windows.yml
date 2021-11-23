@@ -401,7 +401,8 @@ jobs:
         uses: actions/upload-artifact@v2
         with:
           retention-days: 10
-          name: "coredumps.${{ github.job }}.${{ matrix.os }}.${{ github.run_number }}.${{github.run_id}}.${{github.run_attempt}}.${{github.action}}"
+          #name: "coredumps.${{ github.job }}.${{ matrix.os }}.${{ github.run_number }}.${{github.run_id}}.${{github.run_attempt}}.${{github.action}}"
+          name: "coredumps.${{ github.job }}.${{ matrix.os }}.${{matrix.environ}}.${{ github.run_number }}.${{github.run_id}}.${{github.run_attempt}}"
           if-no-files-found: warn # 'ignore/', 'warn' or 'error' are available, defaults to `warn` 
           #  ${{ env.LOCALAPPDATA }}/CrashDumps/*.dmp
           path: |
