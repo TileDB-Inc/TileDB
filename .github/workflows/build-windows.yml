@@ -111,6 +111,7 @@ jobs:
           echo LOCALAPPDATA is ${{ env.LOCALAPPDATA }} or $env:LOCALAPPDATA
           echo "DLHLOCALAPPDATA=%LOCALAPPDATA%" >> "%GITHUB_ENV%"
           echo "DLHLOCALAPPDATA2=%LOCALAPPDATA%" >> "$env:GITHUB_ENV"
+          echo "TDBLOCALAPPDATA=%LOCALAPPDATA%" >> "$env:GITHUB_ENV"
           
       - name: 'env var test 2b'
         shell: cmd
@@ -391,8 +392,9 @@ jobs:
           retention-days: 10
           name: "coredumps.${{ github.job }}.${{ matrix.os }}.${{ github.run_number }}.${{github.run_id}}.${{github.run_attempt}}.${{github.action}}"
           if-no-files-found: warn # 'ignore/', 'warn' or 'error' are available, defaults to `warn` 
+          #  ${{ env.LOCALAPPDATA }}/CrashDumps/*.dmp
           path: |
-            ${{ env.LOCALAPPDATA }}/CrashDumps/*.dmp
+            ${{ env.TDBLOCALAPPDATA }}/CrashDumps/*.dmp
 
       - name: 'Test status check'
         shell: bash
