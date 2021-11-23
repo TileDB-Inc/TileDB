@@ -99,6 +99,27 @@ jobs:
           echo DLHNAME2 is $env:DLHNAME2
           set
 
+      - name: 'env var test 2a'
+        shell: pwsh
+        continue-on-error: true
+        #if: ${{ failure() == true }}
+        env:
+          DLHNAME: ${{ env.LOCALAPPDATA }}
+          #try, given https://github.com/actions/upload-artifact/issues/56#issuecomment-598427132
+          DLHNAME2: ${ env.LOCALAPPDATA }
+        run: |
+          echo LOCALAPPDATA is ${{ env.LOCALAPPDATA }} or $env:LOCALAPPDATA
+          echo "DLHLOCALAPPDATA=%LOCALAPPDATA%" >> "%GITHUB_ENV%"
+          echo "DLHLOCALAPPDATA2=%LOCALAPPDATA%" >> "$env:GITHUB_ENV"
+          
+      - name: 'env var test 2b'
+        shell: cmd
+        run: |
+          echo from 2b... DLHLOCALAPPDATA is %DLHLOCALAPPDATA%
+          echo from 2b... DLHLOCALAPPDATA2 is %DLHLOCALAPPDATA2%
+          echo from 2b... DLHLOCALAPPDATA IS ${{ env.DLHLOCALAPPDATA }}
+          echo from 2b... DLHLOCALAPPDATA2 IS ${{ env.DLHLOCALAPPDATA2 }}
+
       - name: 'gen crash dump 1'
         shell: cmd
         continue-on-error: true
