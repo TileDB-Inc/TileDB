@@ -110,8 +110,15 @@ jobs:
         run: |
           echo LOCALAPPDATA is ${{ env.LOCALAPPDATA }} or $env:LOCALAPPDATA
           echo "DLHLOCALAPPDATA=%LOCALAPPDATA%" >> "%GITHUB_ENV%"
+          #so, apparently env context is *NOT* populated from runner machine environ...
+          #https://github.com/actions/runner/issues/740
+          #and considered to be doc'd as so, tho the ref'd doc doesn't really seem to outline that, but behaviour fails...
+          #https://github.com/actions/runner/blob/main/docs/adrs/0278-env-context.md#dont-populate-the-env-context-with-environment-variables-from-runner-machine
+          #but, it seems *we* can populate our own var from our actions, and access it in file upload...
           echo "DLHLOCALAPPDATA2=%LOCALAPPDATA%" >> "$env:GITHUB_ENV"
           echo "TDBLOCALAPPDATA=%LOCALAPPDATA%" >> "$env:GITHUB_ENV"
+          echo "TDBLOCALAPPDATA=%LOCALAPPDATA%" >> "$env:GITHUB_ENV"
+          echo TDBLOCALAPPDATA2=%LOCALAPPDATA% >> "$env:GITHUB_ENV"
           
       - name: 'env var test 2b'
         shell: cmd
@@ -120,6 +127,8 @@ jobs:
           echo from 2b... DLHLOCALAPPDATA2 is %DLHLOCALAPPDATA2%
           echo from 2b... DLHLOCALAPPDATA IS ${{ env.DLHLOCALAPPDATA }}
           echo from 2b... DLHLOCALAPPDATA2 IS ${{ env.DLHLOCALAPPDATA2 }}
+          echo from 2b... TDBLOCALAPPDATA IS ${{ env.TDBLOCALAPPDATA }}
+          echo from 2b... TDBLOCALAPPDATA2 IS ${{ env.TDBLOCALAPPDATA2 }}
 
       - name: 'gen crash dump 1'
         shell: cmd
@@ -394,7 +403,7 @@ jobs:
           if-no-files-found: warn # 'ignore/', 'warn' or 'error' are available, defaults to `warn` 
           #  ${{ env.LOCALAPPDATA }}/CrashDumps/*.dmp
           path: |
-            ${{ env.TDBLOCALAPPDATA }}/CrashDumps/*.dmp
+            ${{ env.TDBLOCALAPPDATA2 }}/CrashDumps/*.dmp
 
       - name: 'Test status check'
         shell: bash
