@@ -67,7 +67,7 @@ jobs:
         run: |
           set
 
-      - name: 'dump file settings prep'
+      - name: 'dump file prep'
         shell: cmd
         run: |
           path
@@ -98,54 +98,55 @@ jobs:
           echo DLHNAME is $env:DLHNAME
           echo DLHNAME2 is $env:DLHNAME2
           set
-
-      - name: 'env var test 2a'
+      - name: 'proxy localappdata'
         shell: pwsh
-        continue-on-error: true
-        #if: ${{ failure() == true }}
-        env:
-          DLHNAME: ${{ env.LOCALAPPDATA }}
-          #try, given https://github.com/actions/upload-artifact/issues/56#issuecomment-598427132
-          DLHNAME2: ${ env.LOCALAPPDATA }
         run: |
-          echo LOCALAPPDATA is ${{ env.LOCALAPPDATA }} or $env:LOCALAPPDATA
-          echo "DLHLOCALAPPDATA=%LOCALAPPDATA%" >> "%GITHUB_ENV%"
           #so, apparently env context is *NOT* populated from runner machine environ...
           #https://github.com/actions/runner/issues/740
+          #i.e. for us ${{ env.LOCALAPPDATA }} does not work directly (wanted in artifact upload path)
           #and considered to be doc'd as so, tho the ref'd doc doesn't really seem to outline that, but behaviour fails...
           #https://github.com/actions/runner/blob/main/docs/adrs/0278-env-context.md#dont-populate-the-env-context-with-environment-variables-from-runner-machine
           #but, it seems *we* can populate our own var from our actions, and access it in file upload...
-          echo "DLHLOCALAPPDATA2=%LOCALAPPDATA%" >> "$env:GITHUB_ENV"
-          echo "TDBLOCALAPPDATA=%LOCALAPPDATA%" >> "$env:GITHUB_ENV"
-          echo "TDBLOCALAPPDATA=%LOCALAPPDATA%" >> "$env:GITHUB_ENV"
-          echo TDBLOCALAPPDATA2=%LOCALAPPDATA% >> "$env:GITHUB_ENV"
-          echo TDBLOCALAPPDATA3=$env:LOCALAPPDATA >> "$env:GITHUB_ENV"
+          echo TDBLOCALAPPDATA=$env:LOCALAPPDATA >> "$env:GITHUB_ENV"
+
+      #~ - name: 'env var test 2a'
+        #~ shell: pwsh
+        #~ continue-on-error: true
+        #~ #if: ${{ failure() == true }}
+        #~ env:
+          #~ DLHNAME: ${{ env.LOCALAPPDATA }}
+          #~ #try, given https://github.com/actions/upload-artifact/issues/56#issuecomment-598427132
+          #~ DLHNAME2: ${ env.LOCALAPPDATA }
+        #~ run: |
+          #~ echo LOCALAPPDATA is ${{ env.LOCALAPPDATA }} or $env:LOCALAPPDATA
+          #~ echo "DLHLOCALAPPDATA=%LOCALAPPDATA%" >> "%GITHUB_ENV%"
+          #~ #so, apparently env context is *NOT* populated from runner machine environ...
+          #~ #https://github.com/actions/runner/issues/740
+          #~ #and considered to be doc'd as so, tho the ref'd doc doesn't really seem to outline that, but behaviour fails...
+          #~ #https://github.com/actions/runner/blob/main/docs/adrs/0278-env-context.md#dont-populate-the-env-context-with-environment-variables-from-runner-machine
+          #~ #but, it seems *we* can populate our own var from our actions, and access it in file upload...
+          #~ echo "DLHLOCALAPPDATA2=%LOCALAPPDATA%" >> "$env:GITHUB_ENV"
+          #~ echo "TDBLOCALAPPDATA=%LOCALAPPDATA%" >> "$env:GITHUB_ENV"
+          #~ echo "TDBLOCALAPPDATA=%LOCALAPPDATA%" >> "$env:GITHUB_ENV"
+          #~ echo TDBLOCALAPPDATA2=%LOCALAPPDATA% >> "$env:GITHUB_ENV"
+          #~ echo TDBLOCALAPPDATA3=$env:LOCALAPPDATA >> "$env:GITHUB_ENV"
           
-      - name: 'env var test 2b'
-        shell: cmd
-        run: |
-          echo from 2b... DLHLOCALAPPDATA is %DLHLOCALAPPDATA%
-          echo from 2b... DLHLOCALAPPDATA2 is %DLHLOCALAPPDATA2%
-          echo from 2b... DLHLOCALAPPDATA IS ${{ env.DLHLOCALAPPDATA }}
-          echo from 2b... DLHLOCALAPPDATA2 IS ${{ env.DLHLOCALAPPDATA2 }}
-          echo from 2b... TDBLOCALAPPDATA IS ${{ env.TDBLOCALAPPDATA }}
-          echo from 2b... TDBLOCALAPPDATA2 IS ${{ env.TDBLOCALAPPDATA2 }}
-          echo from 2b... TDBLOCALAPPDATA3 IS ${{ env.TDBLOCALAPPDATA3 }}
+      #~ - name: 'env var test 2b'
+        #~ shell: cmd
+        #~ run: |
+          #~ echo from 2b... DLHLOCALAPPDATA is %DLHLOCALAPPDATA%
+          #~ echo from 2b... DLHLOCALAPPDATA2 is %DLHLOCALAPPDATA2%
+          #~ echo from 2b... DLHLOCALAPPDATA IS ${{ env.DLHLOCALAPPDATA }}
+          #~ echo from 2b... DLHLOCALAPPDATA2 IS ${{ env.DLHLOCALAPPDATA2 }}
+          #~ echo from 2b... TDBLOCALAPPDATA IS ${{ env.TDBLOCALAPPDATA }}
+          #~ echo from 2b... TDBLOCALAPPDATA2 IS ${{ env.TDBLOCALAPPDATA2 }}
+          #~ echo from 2b... TDBLOCALAPPDATA3 IS ${{ env.TDBLOCALAPPDATA3 }}
 
       - name: 'gen crash dump 1'
         shell: cmd
         continue-on-error: true
         #if: ${{ failure() == true }}
-        env:
-          DLHNAME: ${{ env.LOCALAPPDATA }}
-          #try, given https://github.com/actions/upload-artifact/issues/56#issuecomment-598427132
-          DLHNAME2: ${ env.LOCALAPPDATA }
         run: |
-          echo LOCALAPPDATA is ${{ env.LOCALAPPDATA }} or %LOCALAPPDATA%
-          echo localappdata is ${{ env.localappdata }} or %localappdata%
-          set
-          echo DLHNAME is %DLHNAME% 
-          echo DLHNAME2 is %DLHNAME2%
           rem There is a possibility that the same pid could be re-used (as in prev. step) and we
           rem still have only one crash dump file, but probably not usually...
           (echo import os & echo: & echo os.abort^(^)) > pythoninput.txt
@@ -401,12 +402,11 @@ jobs:
         uses: actions/upload-artifact@v2
         with:
           retention-days: 10
-          #name: "coredumps.${{ github.job }}.${{ matrix.os }}.${{ github.run_number }}.${{github.run_id}}.${{github.run_attempt}}.${{github.action}}"
           name: "coredumps.${{ github.job }}.${{ matrix.os }}.${{matrix.environ}}.${{ github.run_number }}.${{github.run_id}}.${{github.run_attempt}}"
           if-no-files-found: warn # 'ignore/', 'warn' or 'error' are available, defaults to `warn` 
-          #  ${{ env.LOCALAPPDATA }}/CrashDumps/*.dmp
+          # fails, empty env context... ${{ env.LOCALAPPDATA }}/CrashDumps/*.dmp
           path: |
-            ${{ env.TDBLOCALAPPDATA3 }}/CrashDumps/*.dmp
+            ${{ env.TDBLOCALAPPDATA }}/CrashDumps/*.dmp
 
       - name: 'Test status check'
         shell: bash
