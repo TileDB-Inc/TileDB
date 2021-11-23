@@ -33,8 +33,8 @@
 #ifndef TILEDB_FILTER_H
 #define TILEDB_FILTER_H
 
-#include "tiledb/common/status.h"
 #include "tiledb/common/dynamic_memory/dynamic_memory.h"
+#include "tiledb/common/status.h"
 #include "tiledb/sm/config/config.h"
 
 using namespace tiledb::common;
@@ -89,7 +89,8 @@ class Filter {
    * @param buff The buffer to deserialize from.
    * @return Status and Filter pointer
    */
-  static std::tuple<Status, std::optional<std::unique_ptr<Filter>>> deserialize(ConstBuffer* buff);
+  static std::tuple<Status, std::optional<std::unique_ptr<Filter>>> deserialize(
+      ConstBuffer* buff);
 
   /**
    * Gets an option from this filter.

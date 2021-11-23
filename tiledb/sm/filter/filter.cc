@@ -74,7 +74,7 @@ std::tuple<Status, std::optional<std::unique_ptr<Filter>>> Filter::create(
     case FilterType::FILTER_RLE:
     case FilterType::FILTER_BZIP2:
     case FilterType::FILTER_DOUBLE_DELTA:
-      return {Status::Ok(), std::make_unique<CompressionFilter>(type,-1)};
+      return {Status::Ok(), std::make_unique<CompressionFilter>(type, -1)};
     case FilterType::FILTER_BIT_WIDTH_REDUCTION:
       return {Status::Ok(), std::make_unique<BitWidthReductionFilter>()};
     case FilterType::FILTER_BITSHUFFLE:
@@ -132,11 +132,13 @@ std::tuple<Status, std::optional<std::unique_ptr<Filter>>> Filter::deserialize(
   if (!st.ok()) {
     return {st_filter, std::nullopt};
   }
-  
+
   if (buff->offset() - offset != filter_metadata_len) {
-    return {Status::FilterError("Deserialization error; unexpected metadata length"), std::nullopt};
+    return {Status::FilterError(
+                "Deserialization error; unexpected metadata length"),
+            std::nullopt};
   }
-   
+
   return {Status::Ok(), std::move(f)};
 }
 
