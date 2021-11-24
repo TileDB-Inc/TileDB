@@ -368,10 +368,12 @@ jobs:
             # Add superbuild flag
             bootstrap_args="${bootstrap_args} --force-build-all-deps";
           fi
-          if [[ "${{ matrix.os }} " == "Darwin" ]]; then
+#          if [[ "${{ matrix.os }}" == "Darwin" ]]; then
+          if [[ "${{ matrix.os }}" == "macos-10.15" ]]; then
             # We want to be able to print a stack trace when a core dump occurs
             sudo chmod 1777 /cores
-            bootstrap_args="${bootstrap_args} --enable-debug";
+            #bootstrap_args="${bootstrap_args} --enable-debug";
+            bootstrap_args="${bootstrap_args} --enable-release-symbols";
           fi
 
           #~ # displayName: 'Install dependencies'
@@ -391,11 +393,12 @@ jobs:
           #~ cd $BUILD_REPOSITORY_LOCALPATH/build
           #~ ls -la
 
-          #~ if [[ ( "$AGENT_OS" == "Linux" && "$TILEDB_S3" == "ON" ) ]]; then
-            #~ # make sure docker is still running...
-            #~ printenv
-            #~ docker ps -a
-          #~ fi
+          #if [[ ( "$AGENT_OS" == "Linux" && "$TILEDB_S3" == "ON" ) ]]; then
+          if [[ ( "${{ matrix.os }}" == "ubuntu-20.04" && "$TILEDB_S3" == "ON" ) ]]; then
+            # make sure docker is still running...
+            printenv
+            docker ps -a
+          fi
 
           #~ make -j4 -C tiledb tiledb_unit
 
@@ -410,7 +413,8 @@ jobs:
           
           echo one AZURITE_PID IS "$AZURITE_PID" TILEDB_AZURE IS "$TILEDB_AZURE"
 
-          source $GITHUB_WORKSPACE/scripts/ci/build_libtiledb.sh
+          #TBD: reinstate me
+          #~ source $GITHUB_WORKSPACE/scripts/ci/build_libtiledb.sh
 
           if [[ "$TILEDB_CI_ASAN" == "ON" ]]; then
             export ASAN_OPTIONS=detect_leaks=0 LD_PRELOAD=/usr/lib/x86_64-linux-gnu/libasan.so.5
@@ -427,7 +431,8 @@ jobs:
           else
             # run directly the executable, cmake catches the segfault and blocks
             # the core dump
-            ./tiledb/test/tiledb_unit -d yes
+            #TBD: reinstate me
+            #~ ./tiledb/test/tiledb_unit -d yes
           fi
 
           echo two AZURITE_PID IS "$AZURITE_PID" TILEDB_AZURE IS "$TILEDB_AZURE"
