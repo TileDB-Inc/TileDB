@@ -205,14 +205,15 @@ jobs:
         #os: [ubuntu-20.04, macos-10.15]
         #os: [macos-10.15]
         os:
-          #~ - ubuntu-20.04
+          - ubuntu-20.04
             #~ cxx: g++
             #~ tiledb_serialization: OFF
             #~ artifact_os: macOS_azure
             #~ tiledb_try_png_ingestion: ON
-          - macos-10.15
+          #- macos-10.15
         include:
-          - os: 'macos-10.15'
+          #~ - os: 'macos-10.15'
+          - os: ubuntu-20.04
             image: 'quay.io/pypa/manylinux2010_x86_64:2021-11-07-28723f3'
     container: ${{ matrix.os.image }} # TBD: Is this/that right location for image?
     env:
