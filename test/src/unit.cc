@@ -45,8 +45,9 @@ int main(const int argc, char** const argv) {
 
   // Add a '--vfs' command line argument to override the default VFS.
   std::string vfs;
+  bool doCrash = false;
   Catch::clara::Parser cli =
-      session.cli() |
+      session.cli() | Catch::clara::Opt(doCrash)["--crash"]("force crash") |
       Catch::clara::Opt(vfs, vfs_fs_oss.str())["--vfs"](
           "Override the VFS filesystem to use for generic tests");
 
@@ -56,6 +57,12 @@ int main(const int argc, char** const argv) {
   if (rc != 0)
     return rc;
 
+  if (doCrash) {
+    // compilation in mac environ prohibited use of direct "*(int *)0 = 0;"
+    int* ptr_to_null = nullptr;
+    *ptr_to_null = 0;
+    // should not reach here!
+  }
   // Validate and store the VFS command line argument.
   rc = store_g_vfs(std::move(vfs), std::move(vfs_fs));
   if (rc != 0)
@@ -74,9 +81,8 @@ struct CICompletionStatusListener : Catch::TestEventListenerBase {
       if (testRunStats.totals.testCases.allOk() == 1) {
         // set TILEDB_CI_SUCCESS job-level variable in azure pipelines
         // note: this variable is only set in subsequest tasks.
-        std::cout << "::set-output name=TILEDB_CI_SUCCESS::1" << std::endl;
-        std::cout << "##vso[task.setvariable variable=TILEDB_CI_SUCCESS]1"
-                  << std::endl;
+        printf("::set-output name=TILEDB_CI_SUCCESS::1\n");
+        printf("##vso[task.setvariable variable=TILEDB_CI_SUCCESS]1\n");
       }
     }
   }
