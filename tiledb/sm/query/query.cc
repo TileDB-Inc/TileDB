@@ -78,7 +78,7 @@ Query::Query(StorageManager* storage_manager, Array* array, URI fragment_uri)
     , fragment_uri_(fragment_uri) {
   if (array != nullptr) {
     assert(array->is_open());
-    array_schema_ = array->array_schema();
+    array_schema_ = array->array_schema_latest();
 
     auto st = array->get_query_type(&type_);
     assert(st.ok());
