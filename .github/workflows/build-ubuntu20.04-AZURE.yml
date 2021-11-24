@@ -288,6 +288,13 @@ jobs:
       - name: 'Build and test libtiledb'
         run: |
 
+          which node
+          if [[ ! $(which node) ]]; then
+            echo did not find node
+          else
+            echo found node!
+          fi
+          node --version
           exit 1
 
           # enable core dumps
