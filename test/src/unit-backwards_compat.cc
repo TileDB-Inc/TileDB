@@ -198,10 +198,11 @@ TEST_CASE(
       .set_data_buffer("a", a_read)
       .set_coordinates(coords_read);
   query_r.submit();
-  array.close();
 
   for (int i = 0; i < 4; i++)
     REQUIRE(a_read[i] == i + 1);
+
+  array.close();
 }
 
 TEST_CASE(
