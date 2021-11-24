@@ -272,9 +272,24 @@ jobs:
           sudo installer -pkg /Library/Developer/CommandLineTools/Packages/macOS_SDK_headers_for_macOS_10.14.pkg -allowUntrusted -target /
         shell: bash
         if: ${{ runner.os == 'macOS' && env.imageName == 'macOS-10.14' }}
+        
+      - name: 'install-nodejs'
+        run: |
+          which node
+          if [[ ! $(which node) ]]; then
+            sudo yum install epel_release
+            sudo yum install nodejs
+            which node
+            node --version
+            sudo yum install npm
+            which npm
+          fi
 
       - name: 'Build and test libtiledb'
         run: |
+
+          exit 1
+
           # enable core dumps
           ulimit -c               # should output 0 if disabled
           ulimit -c unlimited     # Enable core dumps to be captured (must be in same run block)
