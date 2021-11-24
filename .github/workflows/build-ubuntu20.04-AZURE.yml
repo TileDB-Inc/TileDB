@@ -231,6 +231,8 @@ jobs:
       - name: 'something to fill til real work coded'
         run: echo running in container? # to be replaced with something more substantial (azure-linux_mac.yml GA quiv?)
 
+      - uses: actions/checkout@v2
+
       # 'porting' of 'actions' from azure-linux_mac.yml
       - name: 'Print env'
         run: |
