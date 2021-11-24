@@ -57,219 +57,219 @@ jobs:
       TILEDB_TRY_PNG_INGESTION: ${{ matrix.try_png_ingestion }}
     steps:
     
-      - name: 'is windbg etc. present?'
-        shell: cmd
-        run: |
-          rem freespace available for dump files?
-          dir c:\
-          dir d:\
-          c:\msys64\usr\bin\which bash
-          c:\msys64\usr\bin\which git
-          path
-          c:\msys64\usr\bin\which windbg
-          c:\msys64\usr\bin\which reg
-          whoami
-          rem user is 'runneradmin'
-          rem current directory is?
-          cd 
-          echo %localappdata%
-          dir %localappdata%
-          rem appears _NT_SYMBOL_PATH not set, do we want to?
-          echo _NT_SYMBOL_PATH is %_NT_SYMBOL_PATH%
-          dir %_NT_SYMBOL_PATH%
-          set
-          reg query "HKEY_LOCAL_MACHINE\SOFTWARE\Microsoft\Windows\Windows Error Reporting" /s
-          reg query "HKEY_LOCAL_MACHINE\SOFTWARE\Microsoft\Windows\Windows Error Reporting\LocalDumps" /s
-          reg query "HKEY_LOCAL_MACHINE\SOFTWARE\Microsoft\Windows\Windows Error Reporting\LocalDumps\DumpCount" /s
-          reg query "HKEY_LOCAL_MACHINE\SOFTWARE\Microsoft\Windows\Windows Error Reporting\LocalDumps\DumpFolder" /s
+      #~ - name: 'is windbg etc. present?'
+        #~ shell: cmd
+        #~ run: |
+          #~ rem freespace available for dump files?
+          #~ dir c:\
+          #~ dir d:\
+          #~ c:\msys64\usr\bin\which bash
+          #~ c:\msys64\usr\bin\which git
+          #~ path
+          #~ c:\msys64\usr\bin\which windbg
+          #~ c:\msys64\usr\bin\which reg
+          #~ whoami
+          #~ rem user is 'runneradmin'
+          #~ rem current directory is?
+          #~ cd 
+          #~ echo %localappdata%
+          #~ dir %localappdata%
+          #~ rem appears _NT_SYMBOL_PATH not set, do we want to?
+          #~ echo _NT_SYMBOL_PATH is %_NT_SYMBOL_PATH%
+          #~ dir %_NT_SYMBOL_PATH%
+          #~ set
+          #~ reg query "HKEY_LOCAL_MACHINE\SOFTWARE\Microsoft\Windows\Windows Error Reporting" /s
+          #~ reg query "HKEY_LOCAL_MACHINE\SOFTWARE\Microsoft\Windows\Windows Error Reporting\LocalDumps" /s
+          #~ reg query "HKEY_LOCAL_MACHINE\SOFTWARE\Microsoft\Windows\Windows Error Reporting\LocalDumps\DumpCount" /s
+          #~ reg query "HKEY_LOCAL_MACHINE\SOFTWARE\Microsoft\Windows\Windows Error Reporting\LocalDumps\DumpFolder" /s
 
-          reg query "HKEY_LOCAL_MACHINE\SOFTWARE\Microsoft\Windows NT\CurrentVersion\AeDebug" /s
-          rem reg add "HKEY_LOCAL_MACHINE\SOFTWARE\Microsoft\Windows\Windows Error Reporting\LocalDumps\DumpCount" /t REG_DWORD /v 10
-          rem dump type full == 2, mini == 1, do we want full ?
-          rem reg add "HKEY_LOCAL_MACHINE\SOFTWARE\Microsoft\Windows\Windows Error Reporting\LocalDumps\DumpType" /t REG_DWORD /v 2
-          reg add "HKEY_LOCAL_MACHINE\SOFTWARE\Microsoft\Windows\Windows Error Reporting\LocalDumps\DumpType" /t REG_DWORD /v 2 /f
-          reg query "HKEY_LOCAL_MACHINE\SOFTWARE\Microsoft\Windows\Windows Error Reporting\LocalDumps\DumpType"
-          rem user dumps located at C:\Users\<user>\AppData\Local\CrashDumps
-          rem dumps from processes under system account at C:\Windows\System32\config\systemprofile\AppData\Local\CrashDumps
-          c:\msys64\usr\bin\which python python2 python3
-          dir \python* /s
-          rem dir \windbg* /s
-          rem dir c:\windbg* /s
-          if exist "c:\Program Files (x86)\Windows Kits\10\Debuggers\x64\cdb.exe" goto foundit
-          dir c:\cdb* /s
-          goto :exit1
-          :foundit
-          echo following should be dir of windbg!
-          dir "c:\Program Files (x86)\Windows Kits\10\Debuggers\x64\"
-          goto :exit1
-          :exit1
-          rem 'q' doesn't seem to be working, maybe try 'qq'...
-          rem "c:\Program Files (x86)\Windows Kits\10\Debuggers\x64\windbg.exe" -c "q"
-          rem hmm... hanging... "c:\Program Files (x86)\Windows Kits\10\Debuggers\x64\windbg.exe" -c "qq"
-          rem c:\Program Files (x86)\Windows Kits\10\Debuggers\x64\windbg.exe -z <dumpfile> -c "~* kvP;q" 
-          rem c:\Program Files (x86)\Windows Kits\10\Debuggers\x64\windbg.exe -z <dumpfile> -c "~* kvP;qq" 
-           c:\Program Files (x86)\Windows Kits\10\Debuggers\x64\windbg.exe -z <dumpfile> -c "~* kvP;qq" 
-          rem dir d:\windbg* /s
-          rem docs speak of DumpType 2 being 'full dump', however cdb reports as minidump with full memory, which
-          rem other docs say may be more worthwhile than actual 'full dump'... but is there no (longer any) way to get
-          rem actual 'full dump' with DumpType?
-          reg add "HKEY_LOCAL_MACHINE\SOFTWARE\Microsoft\Windows\Windows Error Reporting\LocalDumps" /v DumpType /t REG_DWORD /d 2 /f
-          reg query "HKEY_LOCAL_MACHINE\SOFTWARE\Microsoft\Windows\Windows Error Reporting\LocalDumps" /v DumpType
-          rem echo -e "import os;os.abort()" | python
-          (echo import os & echo: & echo os.abort^(^)) > pythoninput.txt
-          type pythoninput.txt
-          python < pythoninput.txt
-          exit 1
+          #~ reg query "HKEY_LOCAL_MACHINE\SOFTWARE\Microsoft\Windows NT\CurrentVersion\AeDebug" /s
+          #~ rem reg add "HKEY_LOCAL_MACHINE\SOFTWARE\Microsoft\Windows\Windows Error Reporting\LocalDumps\DumpCount" /t REG_DWORD /v 10
+          #~ rem dump type full == 2, mini == 1, do we want full ?
+          #~ rem reg add "HKEY_LOCAL_MACHINE\SOFTWARE\Microsoft\Windows\Windows Error Reporting\LocalDumps\DumpType" /t REG_DWORD /v 2
+          #~ reg add "HKEY_LOCAL_MACHINE\SOFTWARE\Microsoft\Windows\Windows Error Reporting\LocalDumps\DumpType" /t REG_DWORD /v 2 /f
+          #~ reg query "HKEY_LOCAL_MACHINE\SOFTWARE\Microsoft\Windows\Windows Error Reporting\LocalDumps\DumpType"
+          #~ rem user dumps located at C:\Users\<user>\AppData\Local\CrashDumps
+          #~ rem dumps from processes under system account at C:\Windows\System32\config\systemprofile\AppData\Local\CrashDumps
+          #~ c:\msys64\usr\bin\which python python2 python3
+          #~ dir \python* /s
+          #~ rem dir \windbg* /s
+          #~ rem dir c:\windbg* /s
+          #~ if exist "c:\Program Files (x86)\Windows Kits\10\Debuggers\x64\cdb.exe" goto foundit
+          #~ dir c:\cdb* /s
+          #~ goto :exit1
+          #~ :foundit
+          #~ echo following should be dir of windbg!
+          #~ dir "c:\Program Files (x86)\Windows Kits\10\Debuggers\x64\"
+          #~ goto :exit1
+          #~ :exit1
+          #~ rem 'q' doesn't seem to be working, maybe try 'qq'...
+          #~ rem "c:\Program Files (x86)\Windows Kits\10\Debuggers\x64\windbg.exe" -c "q"
+          #~ rem hmm... hanging... "c:\Program Files (x86)\Windows Kits\10\Debuggers\x64\windbg.exe" -c "qq"
+          #~ rem c:\Program Files (x86)\Windows Kits\10\Debuggers\x64\windbg.exe -z <dumpfile> -c "~* kvP;q" 
+          #~ rem c:\Program Files (x86)\Windows Kits\10\Debuggers\x64\windbg.exe -z <dumpfile> -c "~* kvP;qq" 
+           #~ c:\Program Files (x86)\Windows Kits\10\Debuggers\x64\windbg.exe -z <dumpfile> -c "~* kvP;qq" 
+          #~ rem dir d:\windbg* /s
+          #~ rem docs speak of DumpType 2 being 'full dump', however cdb reports as minidump with full memory, which
+          #~ rem other docs say may be more worthwhile than actual 'full dump'... but is there no (longer any) way to get
+          #~ rem actual 'full dump' with DumpType?
+          #~ reg add "HKEY_LOCAL_MACHINE\SOFTWARE\Microsoft\Windows\Windows Error Reporting\LocalDumps" /v DumpType /t REG_DWORD /d 2 /f
+          #~ reg query "HKEY_LOCAL_MACHINE\SOFTWARE\Microsoft\Windows\Windows Error Reporting\LocalDumps" /v DumpType
+          #~ rem echo -e "import os;os.abort()" | python
+          #~ (echo import os & echo: & echo os.abort^(^)) > pythoninput.txt
+          #~ type pythoninput.txt
+          #~ python < pythoninput.txt
+          #~ exit 1
 
-      - name: 'gen crash dump'
-        shell: cmd
-        if: ${{ failure() == true }}
-        run: |
-          rem There is a possibility that the same pid could be re-used (as in prev. step) and we
-          rem still have only one crash dump file, but probably not usually...
-          (echo import os & echo: & echo os.abort^(^)) > pythoninput.txt
-          type pythoninput.txt
-          python < pythoninput.txt
+      #~ - name: 'gen crash dump'
+        #~ shell: cmd
+        #~ if: ${{ failure() == true }}
+        #~ run: |
+          #~ rem There is a possibility that the same pid could be re-used (as in prev. step) and we
+          #~ rem still have only one crash dump file, but probably not usually...
+          #~ (echo import os & echo: & echo os.abort^(^)) > pythoninput.txt
+          #~ type pythoninput.txt
+          #~ python < pythoninput.txt
                   
-      - name: 'dir crashdumps'
-        shell: cmd
-        if: ${{ failure() == true && startsWith(matrix.os, 'windows-') == true }} # only run this job if the build step failed
-        run: |
-          @echo on
-          dir %localappdata%
-          dir %localappdata%\CrashDumps
-          cd %systemroot%\system32
-          rem for /r %systemroot%\system32 %%f in (*.exe) do echo %%f
-          rem The following is what should work, but appears YAML parser is eating the middle of it for some reason.
-          rem for /r %localappdata%\CrashDumps %f in (*.dmp) do "c:\Program Files (x86)\Windows Kits\10\Debuggers\x64\cdb.exe" -z %f -c "!analyze;~* kv;kP;q"
-          for /r %localappdata%\CrashDumps %%f in (*.dmp) do "c:\Program Files (x86)\Windows Kits\10\Debuggers\x64\cdb.exe" -z %%f -c "!analyze;~* kv;kP;q"
-          if not exist "%localappdata%\CrashDumps\*.dmp" goto nodumps1
-            cd "%localappdata%\CrashDumps"
-            for /r %%f in (*.dmp) do "c:\Program Files (x86)\Windows Kits\10\Debuggers\x64\cdb.exe" -z %%f -c "!analyze;~* kv;kP;q"
-          :nodumps1
+      #~ - name: 'dir crashdumps'
+        #~ shell: cmd
+        #~ if: ${{ failure() == true && startsWith(matrix.os, 'windows-') == true }} # only run this job if the build step failed
+        #~ run: |
+          #~ @echo on
+          #~ dir %localappdata%
+          #~ dir %localappdata%\CrashDumps
+          #~ cd %systemroot%\system32
+          #~ rem for /r %systemroot%\system32 %%f in (*.exe) do echo %%f
+          #~ rem The following is what should work, but appears YAML parser is eating the middle of it for some reason.
+          #~ rem for /r %localappdata%\CrashDumps %f in (*.dmp) do "c:\Program Files (x86)\Windows Kits\10\Debuggers\x64\cdb.exe" -z %f -c "!analyze;~* kv;kP;q"
+          #~ for /r %localappdata%\CrashDumps %%f in (*.dmp) do "c:\Program Files (x86)\Windows Kits\10\Debuggers\x64\cdb.exe" -z %%f -c "!analyze;~* kv;kP;q"
+          #~ if not exist "%localappdata%\CrashDumps\*.dmp" goto nodumps1
+            #~ cd "%localappdata%\CrashDumps"
+            #~ for /r %%f in (*.dmp) do "c:\Program Files (x86)\Windows Kits\10\Debuggers\x64\cdb.exe" -z %%f -c "!analyze;~* kv;kP;q"
+          #~ :nodumps1
 
-      - name: 'prep macos for core dumps'
-        if: ${{ always() == true && startsWith(matrix.os, 'macos-') == true }} # only run this job if the build step failed
-        run: |
-          sudo chown :staff /cores
-          sudo chmod g+w /cores
-          ulimit -c unlimited     # Enable core dumps to be captured (must be in same run block)
-          ls -ld /cores
-          ulimit -c
+      #~ - name: 'prep macos for core dumps'
+        #~ if: ${{ always() == true && startsWith(matrix.os, 'macos-') == true }} # only run this job if the build step failed
+        #~ run: |
+          #~ sudo chown :staff /cores
+          #~ sudo chmod g+w /cores
+          #~ ulimit -c unlimited     # Enable core dumps to be captured (must be in same run block)
+          #~ ls -ld /cores
+          #~ ulimit -c
 
-      - name: 'prep ubuntu for core dumps'
-        if: ${{ always() == true && startsWith(matrix.os, 'ubuntu-') == true }} # only run this job if the build step failed
-        run: |
-          echo "core_pattern follows..."
-          cat /proc/sys/kernel/core_pattern
-          echo "...core_pattern above"
-          ulimit -c unlimited     # Enable core dumps to be captured (must be in same run block)
-          ulimit -c
-          #sudo service apport stop
+      #~ - name: 'prep ubuntu for core dumps'
+        #~ if: ${{ always() == true && startsWith(matrix.os, 'ubuntu-') == true }} # only run this job if the build step failed
+        #~ run: |
+          #~ echo "core_pattern follows..."
+          #~ cat /proc/sys/kernel/core_pattern
+          #~ echo "...core_pattern above"
+          #~ ulimit -c unlimited     # Enable core dumps to be captured (must be in same run block)
+          #~ ulimit -c
+          #~ #sudo service apport stop
 
-      - name: 'short force core attempt'
-        continue-on-error: true
-        run: |
-          pwd; ls -la ./
-          echo -e "nl=\"\\\n\"\nprint('aborting...'+nl)\nimport resource as res\nprint(res.getrlimit(res.RLIMIT_CORE))\nprint(nl)\nres.setrlimit(res.RLIMIT_CORE,(res.RLIM_INFINITY,res.RLIM_INFINITY))\nprint(res.getrlimit(res.RLIMIT_CORE))\nimport sys\nsys.stdout.flush()\nsys.stderr.flush()\nimport os \nos.abort()" | python3
+      #~ - name: 'short force core attempt'
+        #~ continue-on-error: true
+        #~ run: |
+          #~ pwd; ls -la ./
+          #~ echo -e "nl=\"\\\n\"\nprint('aborting...'+nl)\nimport resource as res\nprint(res.getrlimit(res.RLIMIT_CORE))\nprint(nl)\nres.setrlimit(res.RLIMIT_CORE,(res.RLIM_INFINITY,res.RLIM_INFINITY))\nprint(res.getrlimit(res.RLIMIT_CORE))\nimport sys\nsys.stdout.flush()\nsys.stderr.flush()\nimport os \nos.abort()" | python3
 
-      - name: 'force core attempt'
-        if: false
-        continue-on-error: true
-        run: |
-          ls -la /cores
-          # enable core dumps
-          ulimit -c               # should output 0 if disabled
-          ulimit -c unlimited     # Enable core dumps to be captured (must be in same run block)
-          ulimit -c               # should output 'unlimited' now
-          # try to force a core dump to test core dump artifacts gathering
-          echo "hello, about to sleep in sub-bash..."
-          #sh -c "sleep 5" &
-          # appears macos kill is different than some others...
-          printenv
-          echo "BASHPID $BASHPID"
-          echo "PPID $PPID"
-          #bash -c "echo $BASHPID, $$; ulimit -c unlimited; ulimit -c; ps -A; sleep 20; kill -n 6 $BASHPID" &
-          #bash -c 'echo $BASHPID, $$; ulimit -c unlimited; ulimit -c; ps -A; sleep 20; kill -n 6 $$' &
-          #bash -c 'echo $BASHPID, $PPID, $$; ulimit -c unlimited; ulimit -c; ps -A; sleep 20; kill -n 6 $PPID' &
-          #bash -c 'echo $BASHPID, $PPID, $$; ulimit -c unlimited; ulimit -c; ps -A; sleep 20; kill -n 4 $PPID' &
-          lastpid=$!
-          echo sub-bash sleep invoked...
-          #kill --help
-          echo "sub-bash lastpid is $lastpid"
-          which ps
-          which kill
-          #ps -A
-          #ls -la /cores
-          #kill -QUIT $lastpid
-          #kill -ABRT $lastpid
-          #kill -SEGV $lastpid
-          #kill -l
-          #kill --list
-          #kill -SIGABRT $lastpid 
-          #kill -s SIGABRT $lastpid 
-          #kill -6 $lastpid # SIGABRT
-          #kill -11 $lastpid # SIGSEGV
-          #kill -4 $lastpid # SIGILL
-          #kill -SIGSEGV $lastpid
-          #ls -la /cores
-          #echo "waiting on $lastpid..."
-          #wait $lastpid
-          #kill -L
-          #Is this causing crash...? apparently... which crash
-          which groups
-          which python
-          which python3
-          sync
-          echo "requesting groups..."
-          sync
-          groups
-          sync
-          ls -l /
-          ls -la /cores
-          ls -ld /cores
-          sync
-          which ulimit
-          sync
-          ulimit -c
-          pwd; ls -la ./
-          echo "starting permissions test of https://stackoverflow.com/a/21308843"
-          sync
-          whoami
-          echo "about to touch /cores/test"
-          #mac, this seems to cause failure with default settings... touch /cores/test
-          #see if can change those permissions and succeed...
-          ls -ld /cores
-          sudo chown :staff /cores
-          sudo chmod g+w /cores
-          ls -ld /cores
-          touch /cores/test
-          ls -la /cores
-          rm /cores/test
-          echo "done permissions test"
-          sync
-          ls -la /cores
-          #https://stackoverflow.com/a/21308843
-          echo "starting effort of https://stackoverflow.com/a/21308843"
-          ulimit -c unlimited
-          sleep 100 &
-          sleeppid=$!
-          echo "sleeppid $sleeppid, about to killall..."
-          #killall -SIGSEGV sleep # then press enter... huh?
-          #killall -SIGILL sleep # then press enter... huh?
-          #sleep 5
-          #wait $sleeppid
-          ls -la /cores
-          defaults write com.apple.finder AppleShowAllFiles TRUE
-          ls /cores
-          #mv /cores/core.* /cores/core.1
-          #lldb -c /cores/core.1 --batch -o 'bt all' -o 'quit'
-          #TBD -e valid in macos environ?
-          #echo -e "print('about to abort!') \nimport os \nos.abort()" | python
-          echo -e "nl=\"\\\n\"\nprint('aborting...'+nl)\nimport resource as res\nprint(res.getrlimit(res.RLIMIT_CORE))\nprint(nl)\nres.setrlimit(res.RLIMIT_CORE,(res.RLIM_INFINITY,res.RLIM_INFINITY))\nprint(res.getrlimit(res.RLIMIT_CORE))\nimport sys\nsys.stdout.flush()\nsys.stderr.flush()\nimport os \nos.abort()" | python3
-          ls -la /cores
-          #echo "about to exit with 137..."
-          #exit 137
+      #~ - name: 'force core attempt'
+        #~ if: false
+        #~ continue-on-error: true
+        #~ run: |
+          #~ ls -la /cores
+          #~ # enable core dumps
+          #~ ulimit -c               # should output 0 if disabled
+          #~ ulimit -c unlimited     # Enable core dumps to be captured (must be in same run block)
+          #~ ulimit -c               # should output 'unlimited' now
+          #~ # try to force a core dump to test core dump artifacts gathering
+          #~ echo "hello, about to sleep in sub-bash..."
+          #~ #sh -c "sleep 5" &
+          #~ # appears macos kill is different than some others...
+          #~ printenv
+          #~ echo "BASHPID $BASHPID"
+          #~ echo "PPID $PPID"
+          #~ #bash -c "echo $BASHPID, $$; ulimit -c unlimited; ulimit -c; ps -A; sleep 20; kill -n 6 $BASHPID" &
+          #~ #bash -c 'echo $BASHPID, $$; ulimit -c unlimited; ulimit -c; ps -A; sleep 20; kill -n 6 $$' &
+          #~ #bash -c 'echo $BASHPID, $PPID, $$; ulimit -c unlimited; ulimit -c; ps -A; sleep 20; kill -n 6 $PPID' &
+          #~ #bash -c 'echo $BASHPID, $PPID, $$; ulimit -c unlimited; ulimit -c; ps -A; sleep 20; kill -n 4 $PPID' &
+          #~ lastpid=$!
+          #~ echo sub-bash sleep invoked...
+          #~ #kill --help
+          #~ echo "sub-bash lastpid is $lastpid"
+          #~ which ps
+          #~ which kill
+          #~ #ps -A
+          #~ #ls -la /cores
+          #~ #kill -QUIT $lastpid
+          #~ #kill -ABRT $lastpid
+          #~ #kill -SEGV $lastpid
+          #~ #kill -l
+          #~ #kill --list
+          #~ #kill -SIGABRT $lastpid 
+          #~ #kill -s SIGABRT $lastpid 
+          #~ #kill -6 $lastpid # SIGABRT
+          #~ #kill -11 $lastpid # SIGSEGV
+          #~ #kill -4 $lastpid # SIGILL
+          #~ #kill -SIGSEGV $lastpid
+          #~ #ls -la /cores
+          #~ #echo "waiting on $lastpid..."
+          #~ #wait $lastpid
+          #~ #kill -L
+          #~ #Is this causing crash...? apparently... which crash
+          #~ which groups
+          #~ which python
+          #~ which python3
+          #~ sync
+          #~ echo "requesting groups..."
+          #~ sync
+          #~ groups
+          #~ sync
+          #~ ls -l /
+          #~ ls -la /cores
+          #~ ls -ld /cores
+          #~ sync
+          #~ which ulimit
+          #~ sync
+          #~ ulimit -c
+          #~ pwd; ls -la ./
+          #~ echo "starting permissions test of https://stackoverflow.com/a/21308843"
+          #~ sync
+          #~ whoami
+          #~ echo "about to touch /cores/test"
+          #~ #mac, this seems to cause failure with default settings... touch /cores/test
+          #~ #see if can change those permissions and succeed...
+          #~ ls -ld /cores
+          #~ sudo chown :staff /cores
+          #~ sudo chmod g+w /cores
+          #~ ls -ld /cores
+          #~ touch /cores/test
+          #~ ls -la /cores
+          #~ rm /cores/test
+          #~ echo "done permissions test"
+          #~ sync
+          #~ ls -la /cores
+          #~ #https://stackoverflow.com/a/21308843
+          #~ echo "starting effort of https://stackoverflow.com/a/21308843"
+          #~ ulimit -c unlimited
+          #~ sleep 100 &
+          #~ sleeppid=$!
+          #~ echo "sleeppid $sleeppid, about to killall..."
+          #~ #killall -SIGSEGV sleep # then press enter... huh?
+          #~ #killall -SIGILL sleep # then press enter... huh?
+          #~ #sleep 5
+          #~ #wait $sleeppid
+          #~ ls -la /cores
+          #~ defaults write com.apple.finder AppleShowAllFiles TRUE
+          #~ ls /cores
+          #~ #mv /cores/core.* /cores/core.1
+          #~ #lldb -c /cores/core.1 --batch -o 'bt all' -o 'quit'
+          #~ #TBD -e valid in macos environ?
+          #~ #echo -e "print('about to abort!') \nimport os \nos.abort()" | python
+          #~ echo -e "nl=\"\\\n\"\nprint('aborting...'+nl)\nimport resource as res\nprint(res.getrlimit(res.RLIMIT_CORE))\nprint(nl)\nres.setrlimit(res.RLIMIT_CORE,(res.RLIM_INFINITY,res.RLIM_INFINITY))\nprint(res.getrlimit(res.RLIMIT_CORE))\nimport sys\nsys.stdout.flush()\nsys.stderr.flush()\nimport os \nos.abort()" | python3
+          #~ ls -la /cores
+          #~ #echo "about to exit with 137..."
+          #~ #exit 137
         
       - name: 'check /cores 1'
         if: ${{ always() == true   && startsWith(matrix.os, 'macos-') == true }} # only run this job if the build step failed
@@ -282,18 +282,18 @@ jobs:
           
       - uses: actions/checkout@v2
 
-      #~ - name: 'prep env'
-        #~ run: |
-          #~ if [[ $TILEDB_GA_IMAGE_NAME == 'ubuntu-20.04' ]] ; then
-            #~ echo "CXX=g++" >> "$GITHUB_ENV"
-          #~ fi
-          #~ if [[ $TILEDB_GA_IMAGE_NAME == 'macos-10.15' ]] ; then
-            #~ echo "CXX=clang++" >> "$GITHUB_ENV"
-            #~ echo "TILEDB_SERIALIZATION=ON" >> "$GITHUB_ENV"
-            #~ echo "ARTIFACT_OS=macOS_azure" >> "$GITHUB_ENV"
-          #~ fi
-        #~ shell: bash
-        
+      - name: 'prep env'
+        run: |
+          if [[ $TILEDB_GA_IMAGE_NAME == 'ubuntu-20.04' ]] ; then
+            echo "CXX=g++" >> "$GITHUB_ENV"
+          fi
+          if [[ $TILEDB_GA_IMAGE_NAME == 'macos-10.15' ]] ; then
+            echo "CXX=clang++" >> "$GITHUB_ENV"
+            echo "TILEDB_SERIALIZATION=ON" >> "$GITHUB_ENV"
+            echo "ARTIFACT_OS=macOS_azure" >> "$GITHUB_ENV"
+          fi
+        shell: bash
+
       - name: 'Print env'
         run: |
           echo "'uname -s' is:"
@@ -319,9 +319,9 @@ jobs:
       - name: 'Build and test libtiledb'
         id: test
         run: |
-          #TBD: REMOVEME for production
-          echo "::set-output name=TILEDB_CI_SUCCESS::1" # TBD: make status check pass for this hack step
-          exit 0
+          #~ #TBD: REMOVEME for production
+          #~ echo "::set-output name=TILEDB_CI_SUCCESS::1" # TBD: make status check pass for this hack step
+          #~ exit 0
           
           # Azure sets "SYSTEM=build" for unknown reasonas, which breaks the OpenSSL configure script
           #   - openssl configure uses ENV{SYSTEM} if available:
@@ -378,160 +378,160 @@ jobs:
           ulimit -c               # should output 'unlimited' now
           #echo -e "import resource as res\nprint(res.getrlimit(res.RLIMIT_CORE))\nres.setrlimit(res.RLIMIT_CORE,(res.RLIM_INFINITY,res.RLIM_INFINITY))\nprint(res.getrlimit(res.RLIMIT_CORE))\nimport os \nos.abort()" | python3
           
-      - name: 'nobuild - mac - Save cores dump stacks if any'
-        #if: ${{ failure() == true && startsWith(matrix.os, 'macos-') == true }} # only run this job if the build step failed
-        if: ${{ always() == true   && startsWith(matrix.os, 'macos-') == true }} # only run this job if the build step failed
-        run: |
-          which lldb
-          pwd; ls -la ./
-          nfiles=$(ls /cores | wc -l)
-          if [[ $nfiles -eq 0 ]]; then
-            echo "no core files found"
-            exit 0
-          fi
-          cd $TILEDB_HOME
-          pwd; ls -la ./
-          #ls -la ./tdbcores
-          echo 'hunting *core* files'
-          find . -name '*core*'
-          echo 'done hunting *core* files'
-          ls -la /cores
-          for f in $(find /cores -name 'core.*');
-            do
-              echo "stack trace for $f"
-              lldb -c $f --batch -o 'bt all' -o 'quit'
-            done;
-          #~ mkdir $TILEDB_HOME/tdbcores
-          #~ mv /cores/core.* $TILEDB_HOME/tdbcores/core.1
-          #~ ls -la $TILEDB_HOME/tdbcores
-          #~ #lldb -c $TILEDB_HOME/build/core/core.1 --batch -o 'bt all' -o 'quit'
-          #~ lldb -c $TILEDB_HOME/tdbcores/core.1 --batch -o 'bt all' -o 'quit'
-          #for f in $(find $TILEDB_HOME/tdbcores -name 'core*');
-          #  do
-          #    echo "stack trace for $f"
-          #    lldb -c $f --batch -o 'bt all' -o 'quit'
-          #  done;
-
-      - name: 'nobuild - ubuntu - Save cores dump stacks if any'
-        #if: ${{ failure() == true && startsWith(matrix.os, 'macos-') == true }} # only run this job if the build step failed
-        if: ${{ always() == true   && startsWith(matrix.os, 'ubuntu-') == true }} # only run this job if the build step failed
-        run: |
-          # https://stackoverflow.com/questions/2065912/core-dumped-but-core-file-is-not-in-the-current-directory
-          cat /proc/sys/kernel/core_pattern
-          if [[ -f /var/log/apport.log ]]; then
-            cat /var/log/apport.log
-          fi
-          echo $PATH
-          #sync
-          #cd $TILEDB_HOME
-          echo "checking on tdbcores"
-          sync
-          if [[ ! -d $TILEDB_HOME/tdbcores ]]; then
-            mkdir -p $TILEDB_HOME/tdbcores
-          fi
-          ls -ld $TILEDB_HOME/tdbcores
+      #~ - name: 'nobuild - mac - Save cores dump stacks if any'
+        #~ #if: ${{ failure() == true && startsWith(matrix.os, 'macos-') == true }} # only run this job if the build step failed
+        #~ if: ${{ always() == true   && startsWith(matrix.os, 'macos-') == true }} # only run this job if the build step failed
+        #~ run: |
+          #~ which lldb
+          #~ pwd; ls -la ./
+          #~ nfiles=$(ls /cores | wc -l)
+          #~ if [[ $nfiles -eq 0 ]]; then
+            #~ echo "no core files found"
+            #~ exit 0
+          #~ fi
+          #~ cd $TILEDB_HOME
+          #~ pwd; ls -la ./
+          #~ #ls -la ./tdbcores
+          #~ echo 'hunting *core* files'
+          #~ find . -name '*core*'
+          #~ echo 'done hunting *core* files'
+          #~ ls -la /cores
+          #~ for f in $(find /cores -name 'core.*');
+            #~ do
+              #~ echo "stack trace for $f"
+              #~ lldb -c $f --batch -o 'bt all' -o 'quit'
+            #~ done;
+          mkdir $TILEDB_HOME/tdbcores
+          mv /cores/core.* $TILEDB_HOME/tdbcores/core.1
           ls -la $TILEDB_HOME/tdbcores
-          sync
-          #ls -la ./tdbcores
-          #echo 'hunting core* files'
-          #find . -name 'core*'
-          #sudo find / -name 'core*'
-          #echo 'done hunting core.* files'
-          #find . -name 'core'
-          #sudo find / -name 'core'
-          #echo 'done hunting core files'
-          echo "processing core file backtraces"
-          sync
-          sudo ls -ld /var/lib/apport/coredump
-          sudo ls -la /var/lib/apport/coredump
-          echo "before lldb/gdb find"
-          #hmm, without sudo the find was apparently failing after reporting some results
-          #sudo find / \( -name lldb -o -name gdb \)
-          sudo find / -type f -executable \( -name lldb -o -name gdb \) -exec ls -l {} \;
-          echo "after lldb/gdb find"
-          #echo "which lldb"
-          #fails on ubuntu-20.04 runner, w/wo sudo... sudo which lldb
-          #echo "which gdb"
-          #fails on ubuntu-20.04 runner, w/wo sudo... sudo which gdb
-          sleep 3
-          echo "b4 trying to locate debugger"
-          echo "ls -la /usr/share"
-          sync
-          sudo ls -la /usr/share
-          echo "ls -la /usr/share/gdb"
-          sync
-          sudo ls -la /usr/share/gdb
-          echo "ls -la /usr/lib/llvm-11/bin/lldb"
-          sync
-          sudo ls -la /usr/lib/llvm-11/bin/lldb
-          if [[ -f /usr/share/gdb ]]; then
-            dbgr="/usr/share/gdb"
-            #TBD does this gdb support -ex, many ref's don't list the switch at all
-            #dbgropts=" -q --core \"\$f\" --batch -ex \"thread apply all bt\" -ex \"quit\""
-            dbgropts=" -q --core \$f --batch -ex \"thread apply all bt\" -ex \"quit\""
-            #dbgropts= -q --core '\$f' -ex 'thread apply all bt' -ex 'quit'"
-          elif [[ -f /usr/lib/llvm-11/bin/lldb ]]; then
-            dbgr="/usr/lib/llvm-11/bin/lldb"
-            #lldb -c $f --batch -o 'bt all' -o 'quit'
-            #dbgropts=" -core \"\$f\" --batch -o 'thread apply all bt' -o 'quit'"
-            dbgropts=" -core \$f --batch -o 'bt all' -o 'quit'"
-            #dbgropts=" -core '\$f' --batch -o 'thread apply all bt' -o 'quit'"
-          else
-            echo "debugger not found in previously seen locations!"
-            dbgr="<none>"
-            dbgropts="<noopts>"
-          fi
-          echo "dbgr $dbgr, dbgropts $dbgropts"
-          sync
-          echo "b4 for loop for core files"
-          sync
-          #for f in $(find $TILEDB_HOME/build -name 'core.*');
-          for f in $(find /var/lib/apport/coredump -name 'core.*');
-            do
-              echo "stack trace for $f"
-              echo $dbgr $dbgropts
-              sync
-              #sudo $dbgr $dbgropts
-              #for lldb
-              sudo $dbgr -core $f --batch  -o 'bt all' -o 'quit'
-              #sudo mv $f $TILEDB_HOME/tdbcores/
-            done;
+          #lldb -c $TILEDB_HOME/build/core/core.1 --batch -o 'bt all' -o 'quit'
+          lldb -c $TILEDB_HOME/tdbcores/core.1 --batch -o 'bt all' -o 'quit'
+          #~ #for f in $(find $TILEDB_HOME/tdbcores -name 'core*');
+          #~ #  do
+          #~ #    echo "stack trace for $f"
+          #~ #    lldb -c $f --batch -o 'bt all' -o 'quit'
+          #~ #  done;
 
-      - name: 'nobuild - upload any core artifacts' # https://github.com/actions/upload-artifact#where-does-the-upload-go
-        if: ${{ always() == true && startsWith(matrix.os, 'ubuntu-') == true }} # only run this job if the build step failed
-        id: 'nobuild-ubuntu-coredumps'
-        uses: actions/upload-artifact@v2
-        with:
-          retention-days: 10
-          #name: ${{ github.id }} -cores
-          #TBT, ok, so the 'job_id' for 'build' is sposed to be the 'name:' from 'build:', with spaces to be repl with underscores...
-          #https://docs.github.com/en/actions/learn-github-actions/workflow-syntax-for-github-actions#jobsjob_id
-          #name: "coredumps.${{ jobs.build.env.GITHUB_JOB }}.${{ matrix.os }}.${{ jobs.build.env.GITHUB_RUN_NUMBER }}"
-          #name: Build - ${{matrix.os}} - AZURE
-          #Build_-_${{matrix.os}}_-_AZURE
-          #nope, just doesn't like 'jobs' here...
-          #name: "coredumps.${{ jobs.Build_-_${{matrix.os}}_-_AZURE.env.GITHUB_JOB }}.${{ matrix.os }}.${{ jobs.Build_-_${{matrix.os}}_-_AZURE.env.GITHUB_RUN_NUMBER }}"
-          #name: "coredumps.${{ env.GITHUB_JOB }}.${{ matrix.os }}.${{ env.GITHUB_RUN_NUMBER }}.${{env.GITHUB_RUN_ID}}.${{env.GITHUB_ACTION}}"
-          name: "coredumps.${{ github.job }}.${{ matrix.os }}.${{ github.run_number }}.${{github.run_id}}.${{github.run_attempt}}.${{github.action}}"
-          if-no-files-found: warn # 'ignore', 'warn' or 'error' are available, defaults to `warn` 
-          path: |
-            ${{ github.workspace }}/tdbcores/
-            /var/lib/apport/coredump/
+      #~ - name: 'nobuild - ubuntu - Save cores dump stacks if any'
+        #~ #if: ${{ failure() == true && startsWith(matrix.os, 'macos-') == true }} # only run this job if the build step failed
+        #~ if: ${{ always() == true   && startsWith(matrix.os, 'ubuntu-') == true }} # only run this job if the build step failed
+        #~ run: |
+          #~ # https://stackoverflow.com/questions/2065912/core-dumped-but-core-file-is-not-in-the-current-directory
+          #~ cat /proc/sys/kernel/core_pattern
+          #~ if [[ -f /var/log/apport.log ]]; then
+            #~ cat /var/log/apport.log
+          #~ fi
+          #~ echo $PATH
+          #~ #sync
+          #~ #cd $TILEDB_HOME
+          #~ echo "checking on tdbcores"
+          #~ sync
+          #~ if [[ ! -d $TILEDB_HOME/tdbcores ]]; then
+            #~ mkdir -p $TILEDB_HOME/tdbcores
+          #~ fi
+          #~ ls -ld $TILEDB_HOME/tdbcores
+          #~ ls -la $TILEDB_HOME/tdbcores
+          #~ sync
+          #~ #ls -la ./tdbcores
+          #~ #echo 'hunting core* files'
+          #~ #find . -name 'core*'
+          #~ #sudo find / -name 'core*'
+          #~ #echo 'done hunting core.* files'
+          #~ #find . -name 'core'
+          #~ #sudo find / -name 'core'
+          #~ #echo 'done hunting core files'
+          #~ echo "processing core file backtraces"
+          #~ sync
+          #~ sudo ls -ld /var/lib/apport/coredump
+          #~ sudo ls -la /var/lib/apport/coredump
+          #~ echo "before lldb/gdb find"
+          #~ #hmm, without sudo the find was apparently failing after reporting some results
+          #~ #sudo find / \( -name lldb -o -name gdb \)
+          #~ sudo find / -type f -executable \( -name lldb -o -name gdb \) -exec ls -l {} \;
+          #~ echo "after lldb/gdb find"
+          #~ #echo "which lldb"
+          #~ #fails on ubuntu-20.04 runner, w/wo sudo... sudo which lldb
+          #~ #echo "which gdb"
+          #~ #fails on ubuntu-20.04 runner, w/wo sudo... sudo which gdb
+          #~ sleep 3
+          #~ echo "b4 trying to locate debugger"
+          #~ echo "ls -la /usr/share"
+          #~ sync
+          #~ sudo ls -la /usr/share
+          #~ echo "ls -la /usr/share/gdb"
+          #~ sync
+          #~ sudo ls -la /usr/share/gdb
+          #~ echo "ls -la /usr/lib/llvm-11/bin/lldb"
+          #~ sync
+          #~ sudo ls -la /usr/lib/llvm-11/bin/lldb
+          #~ if [[ -f /usr/share/gdb ]]; then
+            #~ dbgr="/usr/share/gdb"
+            #~ #TBD does this gdb support -ex, many ref's don't list the switch at all
+            #~ #dbgropts=" -q --core \"\$f\" --batch -ex \"thread apply all bt\" -ex \"quit\""
+            #~ dbgropts=" -q --core \$f --batch -ex \"thread apply all bt\" -ex \"quit\""
+            #~ #dbgropts= -q --core '\$f' -ex 'thread apply all bt' -ex 'quit'"
+          #~ elif [[ -f /usr/lib/llvm-11/bin/lldb ]]; then
+            #~ dbgr="/usr/lib/llvm-11/bin/lldb"
+            #~ #lldb -c $f --batch -o 'bt all' -o 'quit'
+            #~ #dbgropts=" -core \"\$f\" --batch -o 'thread apply all bt' -o 'quit'"
+            #~ dbgropts=" -core \$f --batch -o 'bt all' -o 'quit'"
+            #~ #dbgropts=" -core '\$f' --batch -o 'thread apply all bt' -o 'quit'"
+          #~ else
+            #~ echo "debugger not found in previously seen locations!"
+            #~ dbgr="<none>"
+            #~ dbgropts="<noopts>"
+          #~ fi
+          #~ echo "dbgr $dbgr, dbgropts $dbgropts"
+          #~ sync
+          #~ echo "b4 for loop for core files"
+          #~ sync
+          #~ #for f in $(find $TILEDB_HOME/build -name 'core.*');
+          #~ for f in $(find /var/lib/apport/coredump -name 'core.*');
+            #~ do
+              #~ echo "stack trace for $f"
+              #~ echo $dbgr $dbgropts
+              #~ sync
+              #~ #sudo $dbgr $dbgropts
+              #~ #for lldb
+              #~ sudo $dbgr -core $f --batch  -o 'bt all' -o 'quit'
+              #~ #sudo mv $f $TILEDB_HOME/tdbcores/
+            #~ done;
 
-      - name: 'nobuild - upload any core artifacts' # https://github.com/actions/upload-artifact#where-does-the-upload-go
-        if: ${{ always() == true && startsWith(matrix.os, 'macos-') == true }} # only run this job if the build step failed
-        id: 'nobuild-macos-coredumps'
-        uses: actions/upload-artifact@v2
-        with:
-          retention-days: 10
-          #name: ${{ github.id }} -cores
-          #name: "coredumps.${{ jobs.build.env.GITHUB_JOB }}.${{ matrix.os }}.${{ jobs.build.env.GITHUB_RUN_NUMBER }}"
-          #name: "coredumps.${{ env.GITHUB_JOB }}.${{ matrix.os }}.${{ env.GITHUB_RUN_NUMBER }}.${{env.GITHUB_RUN_ID}}.${{env.GITHUB_ACTION}}"
-          name: "coredumps.${{ github.job }}.${{ matrix.os }}.${{ github.run_number }}.${{github.run_id}}.${{github.run_attempt}}.${{github.action}}"
-          if-no-files-found: warn # 'ignore/', 'warn' or 'error' are available, defaults to `warn` 
-          path: |
-            ${{ github.workspace }}/tdbcores/
-            /cores/
+      #~ - name: 'nobuild - upload any core artifacts' # https://github.com/actions/upload-artifact#where-does-the-upload-go
+        #~ if: ${{ always() == true && startsWith(matrix.os, 'ubuntu-') == true }} # only run this job if the build step failed
+        #~ id: 'nobuild-ubuntu-coredumps'
+        #~ uses: actions/upload-artifact@v2
+        #~ with:
+          #~ retention-days: 10
+          #~ #name: ${{ github.id }} -cores
+          #~ #TBT, ok, so the 'job_id' for 'build' is sposed to be the 'name:' from 'build:', with spaces to be repl with underscores...
+          #~ #https://docs.github.com/en/actions/learn-github-actions/workflow-syntax-for-github-actions#jobsjob_id
+          #~ #name: "coredumps.${{ jobs.build.env.GITHUB_JOB }}.${{ matrix.os }}.${{ jobs.build.env.GITHUB_RUN_NUMBER }}"
+          #~ #name: Build - ${{matrix.os}} - AZURE
+          #~ #Build_-_${{matrix.os}}_-_AZURE
+          #~ #nope, just doesn't like 'jobs' here...
+          #~ #name: "coredumps.${{ jobs.Build_-_${{matrix.os}}_-_AZURE.env.GITHUB_JOB }}.${{ matrix.os }}.${{ jobs.Build_-_${{matrix.os}}_-_AZURE.env.GITHUB_RUN_NUMBER }}"
+          #~ #name: "coredumps.${{ env.GITHUB_JOB }}.${{ matrix.os }}.${{ env.GITHUB_RUN_NUMBER }}.${{env.GITHUB_RUN_ID}}.${{env.GITHUB_ACTION}}"
+          #~ name: "coredumps.${{ github.job }}.${{ matrix.os }}.${{ github.run_number }}.${{github.run_id}}.${{github.run_attempt}}.${{github.action}}"
+          #~ if-no-files-found: warn # 'ignore', 'warn' or 'error' are available, defaults to `warn` 
+          #~ path: |
+            #~ ${{ github.workspace }}/tdbcores/
+            #~ /var/lib/apport/coredump/
+
+      #~ - name: 'nobuild - upload any core artifacts' # https://github.com/actions/upload-artifact#where-does-the-upload-go
+        #~ if: ${{ always() == true && startsWith(matrix.os, 'macos-') == true }} # only run this job if the build step failed
+        #~ id: 'nobuild-macos-coredumps'
+        #~ uses: actions/upload-artifact@v2
+        #~ with:
+          #~ retention-days: 10
+          #~ #name: ${{ github.id }} -cores
+          #~ #name: "coredumps.${{ jobs.build.env.GITHUB_JOB }}.${{ matrix.os }}.${{ jobs.build.env.GITHUB_RUN_NUMBER }}"
+          #~ #name: "coredumps.${{ env.GITHUB_JOB }}.${{ matrix.os }}.${{ env.GITHUB_RUN_NUMBER }}.${{env.GITHUB_RUN_ID}}.${{env.GITHUB_ACTION}}"
+          #~ name: "coredumps.${{ github.job }}.${{ matrix.os }}.${{ github.run_number }}.${{github.run_id}}.${{github.run_attempt}}.${{github.action}}"
+          #~ if-no-files-found: warn # 'ignore/', 'warn' or 'error' are available, defaults to `warn` 
+          #~ path: |
+            #~ ${{ github.workspace }}/tdbcores/
+            #~ /cores/
 
       - name: 'Save cores dump stacks if any'
         if: ${{ failure() == true && startsWith(matrix.os, 'macos-') == true }} # only run this job if the build step failed
