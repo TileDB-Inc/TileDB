@@ -242,9 +242,9 @@ jobs:
           printenv
         shell: bash
 
-      - name: 'usepythonversion@0'
-        if: ${{ env.TILEDB_ARROW_TESTS == "ON" }}
-        #uses: ?
+      #~ - name: 'usepythonversion@0'
+        #~ if: ${{ env.TILEDB_ARROW_TESTS == "ON" }}
+        #~ #uses: ?
 
       - name: 'pythonitems'
         if: ${{ env.TILEDB_ARROW_TESTS == "ON" }}
