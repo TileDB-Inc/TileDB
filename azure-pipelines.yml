@@ -111,13 +111,24 @@ stages:
      - job: linux_manylinux
        pool: { vmImage: 'ubuntu-20.04' }
        container: ${{ variables.manylinuxImage }}
-       variables:
-         CXX: g++
-         CFLAGS: "-lrt"
-         CXXFLAGS: "-lrt"
-         ARTIFACT_OS: 'linux'
-         ARTIFACT_ARCH: 'x86_64'
-         SUDO: ''
+       strategy:
+         matrix:
+           standard:
+             CXX: g++
+             CFLAGS: "-lrt"
+             CXXFLAGS: "-lrt"
+             ARTIFACT_OS: 'linux'
+             ARTIFACT_ARCH: "x86_64"
+             TILEDB_AVX2: ON
+             SUDO: ''
+           noavx2:
+             CXX: g++
+             CFLAGS: "-lrt"
+             CXXFLAGS: "-lrt"
+             ARTIFACT_OS: 'linux'
+             ARTIFACT_ARCH: "x86_64-noavx2"
+             TILEDB_AVX2: OFF
+             SUDO: ''
        steps:
        - template: scripts/azure-linux_mac-release.yml
      - job: Windows
