@@ -100,6 +100,8 @@ set(TILEDB_TEST_SOURCES
   src/helpers.h
   src/helpers.cc
   src/helpers-dimension.h
+  src/helpers-sparse_refactored_readers.h
+  src/helpers-sparse_refactored_readers.cc
   src/unit-azure.cc
   src/unit-backwards_compat.cc
   src/unit-buffer.cc
