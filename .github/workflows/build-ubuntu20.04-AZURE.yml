@@ -490,7 +490,7 @@ jobs:
 
           echo after poss. minio term
           sync
-          exit 1
+          #got here... exit 1
           
           # Kill the running Azurite server
           if [[ "$TILEDB_AZURE" == "ON" ]]; then
