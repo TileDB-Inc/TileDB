@@ -368,7 +368,7 @@ jobs:
             # Add superbuild flag
             bootstrap_args="${bootstrap_args} --force-build-all-deps";
           fi
-#          if [[ "${{ matrix.os }}" == "Darwin" ]]; then
+          #if [[ "${{ matrix.os }}" == "Darwin" ]]; then
           if [[ "${{ matrix.os }}" == "macos-10.15" ]]; then
             # We want to be able to print a stack trace when a core dump occurs
             sudo chmod 1777 /cores
