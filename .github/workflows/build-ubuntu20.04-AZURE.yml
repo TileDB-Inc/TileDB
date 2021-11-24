@@ -474,8 +474,11 @@ jobs:
           sync
           #got this far... exit 1
 
-          echo two AZURITE_PID IS "$AZURITE_PID" TILEDB_AZURE IS "$TILEDB_AZURE"
-          ps -A
+          #echo two AZURITE_PID IS "$AZURITE_PID" TILEDB_AZURE IS "$TILEDB_AZURE"
+          #ps -A
+          
+          echo after ps -A (or where it was)
+          sync
           
           exit 1
 
