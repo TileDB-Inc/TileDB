@@ -405,6 +405,10 @@ jobs:
           # Start Azurite - Azure is enabled
           source scripts/install-azurite.sh;
           source scripts/run-azurite.sh;
+          
+          ps -A
+          
+          echo one AZURITE_PID IS "$AZURITE_PID" TILEDB_AZURE IS "$TILEDB_AZURE"
 
           source $GITHUB_WORKSPACE/scripts/ci/build_libtiledb.sh
 
@@ -426,6 +430,9 @@ jobs:
             ./tiledb/test/tiledb_unit -d yes
           fi
 
+          echo two AZURITE_PID IS "$AZURITE_PID" TILEDB_AZURE IS "$TILEDB_AZURE"
+          ps -A
+
           # Kill the running Minio server, OSX only because Linux runs it within
           # docker.
           if [[ ( ${{matrix.os}} == "macos-10.15" && "$TILEDB_S3" == "ON" ) ]]; then
@@ -434,6 +441,7 @@ jobs:
 
           # Kill the running Azurite server
           if [[ "$TILEDB_AZURE" == "ON" ]]; then
+            echo ATTEMPTING KILL \$ AZURITE_PID "$AZURITE_PID"
             kill -9 $AZURITE_PID
           fi
 
