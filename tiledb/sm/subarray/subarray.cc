@@ -147,6 +147,11 @@ Status Subarray::add_range(
   }
 
   // Correctness checks
+  if (layout_ == Layout::GLOBAL_ORDER && ranges_[dim_idx].size() > 0) {
+    return logger_->status(Status::SubarrayError(
+        "Cannot add more than one range per dimension to global order query"));
+  }
+
   auto dim = array_->array_schema()->dimension(dim_idx);
   if (!read_range_oob_error)
     RETURN_NOT_OK(dim->adjust_range_oob(&range));
