@@ -406,8 +406,8 @@ jobs:
           git config --global user.email 'no-reply@tiledb.io'
 
           # Start Azurite - Azure is enabled
-          source scripts/install-azurite.sh;
-          source scripts/run-azurite.sh;
+          #~ source scripts/install-azurite.sh;
+          #~ source scripts/run-azurite.sh;
           
           ps -A
           
