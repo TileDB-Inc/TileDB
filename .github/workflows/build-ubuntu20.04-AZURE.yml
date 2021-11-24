@@ -247,7 +247,9 @@ jobs:
         #~ #uses: ?
 
       - name: 'pythonitems'
-        if: ${{ env.TILEDB_ARROW_TESTS == "ON" }}
+        #if: ${{ env.TILEDB_ARROW_TESTS == "ON" }}
+        if: ${{ env.TILEDB_ARROW_TESTS == 'ON' }}
+        #if: ${{ startswith(env.TILEDB_ARROW_TESTS, 'ON') == true }}
         run: |
           set -e pipefail
           python -m pip install --upgrade pip virtualenv
