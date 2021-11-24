@@ -436,12 +436,18 @@ jobs:
           ps -A
           
           #TBD how far is script getting?
-          exit 1
+          #did get this far... exit 1
           
           echo one AZURITE_PID IS "$AZURITE_PID" TILEDB_AZURE IS "$TILEDB_AZURE"
 
+          echo about to build
           #TBD: reinstate me
           source $GITHUB_WORKSPACE/scripts/ci/build_libtiledb.sh
+          
+          echo build done
+          sync
+          
+          exit 1
 
           if [[ "$TILEDB_CI_ASAN" == "ON" ]]; then
             export ASAN_OPTIONS=detect_leaks=0 LD_PRELOAD=/usr/lib/x86_64-linux-gnu/libasan.so.5
