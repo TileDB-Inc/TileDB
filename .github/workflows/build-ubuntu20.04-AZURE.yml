@@ -200,6 +200,8 @@ jobs:
   manylinux-container-job:
     runs-on: ${{ matrix.os }}
     if: true
+    #TBD: remove or up, lowered trying short term exploration...
+    timeout-minutes: 90
     strategy:
       matrix:
         #os: [ubuntu-20.04, macos-10.15]
@@ -394,11 +396,11 @@ jobs:
           #~ ls -la
 
           #if [[ ( "$AGENT_OS" == "Linux" && "$TILEDB_S3" == "ON" ) ]]; then
-          if [[ ( "${{ matrix.os }}" == "ubuntu-20.04" && "$TILEDB_S3" == "ON" ) ]]; then
-            # make sure docker is still running...
-            printenv
-            docker ps -a
-          fi
+          #~ if [[ ( "${{ matrix.os }}" == "ubuntu-20.04" && "$TILEDB_S3" == "ON" ) ]]; then
+            #~ # make sure docker is still running...
+            #~ printenv
+            #~ docker ps -a
+          #~ fi
 
           #~ make -j4 -C tiledb tiledb_unit
 
@@ -414,7 +416,7 @@ jobs:
           echo one AZURITE_PID IS "$AZURITE_PID" TILEDB_AZURE IS "$TILEDB_AZURE"
 
           #TBD: reinstate me
-          #~ source $GITHUB_WORKSPACE/scripts/ci/build_libtiledb.sh
+          source $GITHUB_WORKSPACE/scripts/ci/build_libtiledb.sh
 
           if [[ "$TILEDB_CI_ASAN" == "ON" ]]; then
             export ASAN_OPTIONS=detect_leaks=0 LD_PRELOAD=/usr/lib/x86_64-linux-gnu/libasan.so.5
@@ -432,9 +434,9 @@ jobs:
             # run directly the executable, cmake catches the segfault and blocks
             # the core dump
             #echo  bash unhappy with nothing in 'else'?, or somen else cause 'syntax error near unexpected token fi'
-            echo  passing thru empty else...
+            #echo  passing thru empty else...
             #TBD: reinstate me
-            #~ ./tiledb/test/tiledb_unit -d yes
+            ./tiledb/test/tiledb_unit -d yes
           fi
 
           echo two AZURITE_PID IS "$AZURITE_PID" TILEDB_AZURE IS "$TILEDB_AZURE"
@@ -459,6 +461,7 @@ jobs:
           fi
           
           echo reached end of build/test action, are you still running?
+          ./tiledb/test/tiledb_unit -d yes --crash
           exit 0
 
           #  displayName: 'Build examples, PNG test, and benchmarks (build-only)'
