@@ -401,11 +401,11 @@ jobs:
               #~ echo "stack trace for $f"
               #~ lldb -c $f --batch -o 'bt all' -o 'quit'
             #~ done;
-          mkdir $TILEDB_HOME/tdbcores
-          mv /cores/core.* $TILEDB_HOME/tdbcores/core.1
-          ls -la $TILEDB_HOME/tdbcores
-          #lldb -c $TILEDB_HOME/build/core/core.1 --batch -o 'bt all' -o 'quit'
-          lldb -c $TILEDB_HOME/tdbcores/core.1 --batch -o 'bt all' -o 'quit'
+          #~ mkdir $TILEDB_HOME/tdbcores
+          #~ mv /cores/core.* $TILEDB_HOME/tdbcores/core.1
+          #~ ls -la $TILEDB_HOME/tdbcores
+          #~ #lldb -c $TILEDB_HOME/build/core/core.1 --batch -o 'bt all' -o 'quit'
+          #~ lldb -c $TILEDB_HOME/tdbcores/core.1 --batch -o 'bt all' -o 'quit'
           #~ #for f in $(find $TILEDB_HOME/tdbcores -name 'core*');
           #~ #  do
           #~ #    echo "stack trace for $f"
