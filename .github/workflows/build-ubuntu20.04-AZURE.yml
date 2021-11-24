@@ -368,7 +368,7 @@ jobs:
             # Add superbuild flag
             bootstrap_args="${bootstrap_args} --force-build-all-deps";
           fi
-          if [[ "$AGENT_OS" == "Darwin" ]]; then
+          if [[ "${{ matrix.os }} " == "Darwin" ]]; then
             # We want to be able to print a stack trace when a core dump occurs
             sudo chmod 1777 /cores
             bootstrap_args="${bootstrap_args} --enable-debug";
@@ -399,7 +399,7 @@ jobs:
 
           #~ make -j4 -C tiledb tiledb_unit
 
-          git config --global user.name 'Azure Pipeline'
+          git config --global user.name 'GACI Pipeline'
           git config --global user.email 'no-reply@tiledb.io'
 
           # Start Azurite - Azure is enabled
@@ -412,10 +412,11 @@ jobs:
             export ASAN_OPTIONS=detect_leaks=0 LD_PRELOAD=/usr/lib/x86_64-linux-gnu/libasan.so.5
           fi
 
-          if [[ "$AGENT_OS" == "Darwin" && "$TILEDB_GCS" == "ON" ]]; then
+          if [[ ${{matrix.os}} == "macos-10.15" && "$TILEDB_GCS" == "ON" ]]; then
             # GCS unit tests are temporarily unsupported on CI for MACOS. Fake success with
             # this echo.
-            echo "##vso[task.setvariable variable=TILEDB_CI_SUCCESS]1"
+            #echo "##vso[task.setvariable variable=TILEDB_CI_SUCCESS]1"
+            echo "::set-output name=TILEDB_CI_SUCCESS::1" # TBD: make status check pass for this hack step
           else
             # run directly the executable, cmake catches the segfault and blocks
             # the core dump
@@ -424,7 +425,7 @@ jobs:
 
           # Kill the running Minio server, OSX only because Linux runs it within
           # docker.
-          if [[ ( "$AGENT_OS" == "Darwin" && "$TILEDB_S3" == "ON" ) ]]; then
+          if [[ ( ${{matrix.os}} == "macos-10.15" && "$TILEDB_S3" == "ON" ) ]]; then
             kill -9 $MINIO_PID
           fi
 
@@ -435,7 +436,7 @@ jobs:
 
           # Kill the running GCS emulator server Linux only because OSX does not
           # run the emulator
-          if [[ "$AGENT_OS" != "Darwin" && "$TILEDB_GCS" == "ON" ]]; then
+          if [[ ${{matrix.os}} == "macos-10.15" && "$TILEDB_GCS" == "ON" ]]; then
             kill -9 $GCS_PID
           fi
 
