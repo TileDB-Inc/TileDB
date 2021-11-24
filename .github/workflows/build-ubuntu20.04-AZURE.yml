@@ -476,6 +476,8 @@ jobs:
 
           echo two AZURITE_PID IS "$AZURITE_PID" TILEDB_AZURE IS "$TILEDB_AZURE"
           ps -A
+          
+          exit 1
 
           # Kill the running Minio server, OSX only because Linux runs it within
           # docker.
