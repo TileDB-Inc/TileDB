@@ -233,13 +233,14 @@ jobs:
       # 'porting' of 'actions' from azure-linux_mac.yml
       - name: 'Print env'
         run: |
-        echo "'uname -s' is:"
-        echo "uname: " $(uname)
-        echo "uname -m: " $(uname -m)
-        echo "uname -r:" $(uname -r)
-        echo "uname -s: " $(uname -s)
-        echo "uname -v: " $(uname -v)
-        printenv
+          echo "'uname -s' is:"
+          echo "uname: " $(uname)
+          echo "uname -m: " $(uname -m)
+          echo "uname -r:" $(uname -r)
+          echo "uname -s: " $(uname -s)
+          echo "uname -v: " $(uname -v)
+          printenv
+        shell: bash
 
       - name: 'usepythonversion@0'
         if: ${{ env.TILEDB_ARROW_TESTS == "ON" }}
