@@ -435,6 +435,9 @@ jobs:
           
           ps -A
           
+          #TBD how far is script getting?
+          exit 1
+          
           echo one AZURITE_PID IS "$AZURITE_PID" TILEDB_AZURE IS "$TILEDB_AZURE"
 
           #TBD: reinstate me
