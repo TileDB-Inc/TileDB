@@ -432,6 +432,7 @@ jobs:
             # run directly the executable, cmake catches the segfault and blocks
             # the core dump
             #TBD: reinstate me
+            echo bash unhappy with nothing in 'else'?, or somen else cause 'syntax error near unexpected token fi'
             #~ ./tiledb/test/tiledb_unit -d yes
           fi
 
