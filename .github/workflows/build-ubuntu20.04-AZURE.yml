@@ -295,7 +295,7 @@ jobs:
             echo found node!
           fi
           node --version
-          exit 1
+          #exit 1
 
           # enable core dumps
           ulimit -c               # should output 0 if disabled
