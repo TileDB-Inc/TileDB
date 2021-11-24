@@ -494,7 +494,7 @@ jobs:
           
           # Kill the running Azurite server
           if [[ "$TILEDB_AZURE" == "ON" ]]; then
-            echo ATTEMPTING KILL \$ AZURITE_PID "$AZURITE_PID"
+            echo "ATTEMPTING KILL \$ AZURITE_PID $AZURITE_PID"
             kill -9 $AZURITE_PID
           fi
           
