@@ -447,7 +447,7 @@ jobs:
           echo build done
           sync
           
-          exit 1
+          #got to here... exit 1
 
           if [[ "$TILEDB_CI_ASAN" == "ON" ]]; then
             export ASAN_OPTIONS=detect_leaks=0 LD_PRELOAD=/usr/lib/x86_64-linux-gnu/libasan.so.5
@@ -469,6 +469,10 @@ jobs:
             #TBD: reinstate me
             ./tiledb/test/tiledb_unit -d yes
           fi
+          
+          echo after tiledb_unit or faked success
+          sync
+          exit 1
 
           echo two AZURITE_PID IS "$AZURITE_PID" TILEDB_AZURE IS "$TILEDB_AZURE"
           ps -A
@@ -479,11 +483,17 @@ jobs:
             kill -9 $MINIO_PID
           fi
 
+          echo after poss. minio term
+          sync
+          
           # Kill the running Azurite server
           if [[ "$TILEDB_AZURE" == "ON" ]]; then
             echo ATTEMPTING KILL \$ AZURITE_PID "$AZURITE_PID"
             kill -9 $AZURITE_PID
           fi
+          
+          echo after poss. azurite term
+          sync
 
           # Kill the running GCS emulator server Linux only because OSX does not
           # run the emulator
@@ -491,8 +501,19 @@ jobs:
             kill -9 $GCS_PID
           fi
           
+          echo after poss. gcs term
+          sync
+          
           echo reached end of build/test action, are you still running?
+          sync
+          
+          exit 1
+          
+          echo about to attempt forcing crash...
+          sync
+          
           ./tiledb/test/tiledb_unit -d yes --crash
+          
           exit 0
 
           #  displayName: 'Build examples, PNG test, and benchmarks (build-only)'
