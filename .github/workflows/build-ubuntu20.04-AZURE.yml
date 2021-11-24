@@ -412,6 +412,9 @@ jobs:
             export ASAN_OPTIONS=detect_leaks=0 LD_PRELOAD=/usr/lib/x86_64-linux-gnu/libasan.so.5
           fi
 
+          #TBD: diagnostic, remove me
+          set -x 
+          
           if [[ ${{matrix.os}} == "macos-10.15" && "$TILEDB_GCS" == "ON" ]]; then
             # GCS unit tests are temporarily unsupported on CI for MACOS. Fake success with
             # this echo.
