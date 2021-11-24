@@ -855,6 +855,15 @@ Status SparseUnorderedWithDupsReader::end_iteration() {
     RETURN_NOT_OK(remove_result_tile(last_f, result_tiles_.begin()));
   }
 
+  // Patch: if we have a query condition set, we might not clean up some reault
+  // tiles properly, clean them up here.
+  if (!condition_.empty() && read_state_.result_cell_slabs_.empty()) {
+    while (!result_tiles_.empty()) {
+      auto f = result_tiles_.begin()->frag_idx();
+      RETURN_NOT_OK(remove_result_tile(f, result_tiles_.begin()));
+    }
+  }
+
   auto uint64_t_max = std::numeric_limits<uint64_t>::max();
   copy_end_ = std::pair<uint64_t, uint64_t>(uint64_t_max, uint64_t_max);
 
