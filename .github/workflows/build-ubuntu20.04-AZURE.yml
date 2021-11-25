@@ -216,8 +216,10 @@ jobs:
         include:
           #~ - os: 'macos-10.15'
           - os: ubuntu-20.04
-            image: 'quay.io/pypa/manylinux2010_x86_64:2021-11-07-28723f3'
-    container: ${{ matrix.os.image }} # TBD: Is this/that right location for image?
+            #image: 'quay.io/pypa/manylinux2010_x86_64:2021-11-07-28723f3'
+    container: #${{ matrix.os.image }} # TBD: Is this/that right location for image?
+      image: 'quay.io/pypa/manylinux2010_x86_64:2021-11-07-28723f3'      
+      optios: "--entrypoint /bin/bash"
     env:
       TILEDB_SERIALIZATION: ON
       CXX: g++
@@ -232,7 +234,9 @@ jobs:
     #    image: ${{ matrix.os.image }} # TBD: Is this/that right location for image?
     steps:
       - name: 'something to fill til real work coded'
-        run: echo running in container? # to be replaced with something more substantial (azure-linux_mac.yml GA quiv?)
+        run: |
+          echo running in container? # to be replaced with something more substantial (azure-linux_mac.yml GA quiv?)
+          uname -a
 
       - uses: actions/checkout@v2
 
