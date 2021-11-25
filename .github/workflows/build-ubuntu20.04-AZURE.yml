@@ -243,6 +243,11 @@ jobs:
       
       - name: 'fetch source'
         run: |
+          yum search perlbrew
+          if [[ $(which perlbrew) ]]; then
+            perlbrew init
+            perlbrew available
+          fi
           pwd
           ls -l
           uname -a
