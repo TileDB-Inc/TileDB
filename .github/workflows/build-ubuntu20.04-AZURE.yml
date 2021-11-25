@@ -306,9 +306,12 @@ jobs:
             find / -name 'python3' -exec ls -l {} \;
             find / -type f -name 'python*' -exec ls -l {} \;
             find / -type f -name 'python3.8' -exec ls -l {} \;
-            /opt/_internal/cpython-3.8.12/bin/python3.8 --version
-            /__t/Python/3.8.12/x64/bin/python3.8 --version
-            /__t/Python/3.8.12/x64/bin/python3.8 --version
+            #~ /opt/_internal/cpython-3.8.12/bin/python3.8 --version
+            #~ /__t/Python/3.8.12/x64/bin/python3.8 --version
+            #~ /__t/Python/3.8.12/x64/bin/python3.8 --version
+            ldd /opt/_internal/cpython-3.8.12/bin/python3.8
+            ldd /__t/Python/3.8.12/x64/bin/python3.8
+            ldd /__t/Python/3.8.12/x64/bin/python3.8
           fi
           if [[ $(which python3) ]]; then
             python3 --version
