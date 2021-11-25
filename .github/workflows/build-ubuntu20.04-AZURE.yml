@@ -250,8 +250,9 @@ jobs:
           nslookup microsoft.com
           echo where is yahoo.com?
           nslookup yahoo.com
-          echo where is google.com?
-          nslookup google.com?
+          #echo where is google.com?
+          #huh, can't find google.com?
+          #nslookup google.com?
           echo where is duckduckgo.com?
           nslookup duckduckgo.com
           echo whereis github.com?
