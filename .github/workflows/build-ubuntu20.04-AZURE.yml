@@ -288,6 +288,9 @@ jobs:
           fi
           yum search wget
           yum search python3
+          if [[ ! $(which curl) ]]; then
+            echo "did not find 'curl'!"
+          fi
           #which wget
           if [[ $(which wget) ]]; then
             cd ..
