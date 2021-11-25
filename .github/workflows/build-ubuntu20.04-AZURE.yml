@@ -293,6 +293,7 @@ jobs:
           fi
           #which python3
           export PATH=$PATH:/__t/Python/3.8.12/x64/lib/
+          echo $PATH
           if [[ ! $(which python3) ]]; then
             echo "install python A"
             yum search python3
@@ -316,7 +317,9 @@ jobs:
             ldd /__t/Python/3.8.12/x64/bin/python3.8
             echo ldd /__t/Python/3.8.12/x64/bin/python3.8
             ldd /__t/Python/3.8.12/x64/bin/python3.8
+            echo $PATH
             find / -name libpython3.8.so.1.0
+            LD_LIBRARY_PATH=$LD_LIBRARY_PATH:/__t/Python/3.8.12/x64/lib/
             /__t/Python/3.8.12/x64/bin/python3.8 --version
             echo mount
             mount
