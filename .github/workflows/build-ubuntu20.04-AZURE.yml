@@ -375,6 +375,8 @@ jobs:
           sync
           if [[ ! $(which yum) ]]; then
             echo "did not find 'yum'!!"
+          else
+            ls -l $(which yum)
           fi
           echo b4 which yum
           set -x
