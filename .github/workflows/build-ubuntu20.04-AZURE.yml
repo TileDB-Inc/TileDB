@@ -260,7 +260,10 @@ jobs:
           git clone https://github.com/TileDB-Inc/TileDB.git ./TileDB
           pwd
           ls -l
-          #cd TileDB
+          cd TileDB
+          git checkout $GITHUB_REF_NAME
+          pwd
+          ls -l
           #TBD: need to get correct branch, is there a $GITHUB_something to identify?
           #How does actions/checkout@v2 do it?
           echo "GITHUB_REF_NAME is $GITHUB_REF_NAME"
@@ -268,8 +271,8 @@ jobs:
           echo "GITHUB_SHA is $GITHUB_SHA"
           # reportedly GITHUB_WORKSPACE is initially empty, so guess may have to set it
           echo "\$ GITHUB_WORKSPACE is $GITHUB_WORKSPACE"
-          ls
-          printenv
+          ls -l
+          #printenv
 
       # 'porting' of 'actions' from azure-linux_mac.yml
       - name: 'Print env'
