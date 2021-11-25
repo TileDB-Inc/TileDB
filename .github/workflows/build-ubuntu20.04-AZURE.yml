@@ -522,6 +522,12 @@ jobs:
           else
             echo found npm!
           fi
+          
+          if [[ $(which sudo) ]]; then
+            ls -l $(which sudo)
+          else
+            echo "did not find sudo!"
+          fi
           #exit 1
 
           # enable core dumps
