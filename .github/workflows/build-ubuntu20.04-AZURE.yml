@@ -304,6 +304,7 @@ jobs:
             yum -y -v install rh-python36
             echo "install python D"
             find / -name 'python3' -exec ls -l {} \;
+            find / -type 4 -name 'python*' -exec ls -l {} \;
           fi
           if [[ $(which python3) ]]; then
             python3 --version
