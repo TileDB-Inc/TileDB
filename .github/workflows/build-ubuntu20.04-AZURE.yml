@@ -521,6 +521,8 @@ jobs:
           echo about to attempt forcing crash...
           sync
           
+          uname -a
+
           ./tiledb/test/tiledb_unit -d yes --crash
           
           echo "after using tiledb_unit to try to force crash..."
@@ -534,6 +536,7 @@ jobs:
         if: ${{ failure() == true }}
         run: |
           uname -a
+          cat /proc/sys/kernel/core_pattern
           find . -name 'core.*'
 
       - name: 'Test status check'
