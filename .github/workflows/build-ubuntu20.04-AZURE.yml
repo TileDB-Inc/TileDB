@@ -386,8 +386,8 @@ jobs:
           #yum search wget # found wget.x86_64, what's name needed to install???
           #yum -v -y install wget
           #syntax error? yum list
-          yum --help
-          sync
+          #~ yum --help
+          #~ sync
           #echo getting syntax errors from yum commands I thought had prev worked...
           #~ yum -vy install wget
           #~ echo after install wget
