@@ -238,7 +238,16 @@ jobs:
           echo running in container? # to be replaced with something more substantial (azure-linux_mac.yml GA quiv?)
           uname -a
 
-      - uses: actions/checkout@v2
+      #- uses: actions/checkout@v2
+      - name: 'fetch source'
+        run: |
+          pwd
+          git checkout https://github.com/TileDB-Inc/TileDB.git ./TileDB
+          cd TileDB
+          #TBD: need to get correct branch, is there a $GITHUB_something to identify?
+          #How does actions/checkout@v2 do it?
+          ls
+          printenv
 
       # 'porting' of 'actions' from azure-linux_mac.yml
       - name: 'Print env'
