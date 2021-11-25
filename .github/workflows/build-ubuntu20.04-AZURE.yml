@@ -381,11 +381,11 @@ jobs:
           echo b4 which yum
           set -x
           which yum
-          echo b4 install wget
-          sync
+          #~ echo b4 install wget
+          #~ sync
           #yum search wget # found wget.x86_64, what's name needed to install???
           #yum -v -y install wget
-          yum list
+          #syntax error? yum list
           yum --help
           sync
           #echo getting syntax errors from yum commands I thought had prev worked...
