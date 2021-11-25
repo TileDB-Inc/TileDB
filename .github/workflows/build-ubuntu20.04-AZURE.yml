@@ -238,7 +238,9 @@ jobs:
           echo running in container? # to be replaced with something more substantial (azure-linux_mac.yml GA quiv?)
           uname -a
 
+      #the actions/checkout@v2 is failing in the container...
       #- uses: actions/checkout@v2
+      
       - name: 'fetch source'
         run: |
           pwd
@@ -246,6 +248,11 @@ jobs:
           cd TileDB
           #TBD: need to get correct branch, is there a $GITHUB_something to identify?
           #How does actions/checkout@v2 do it?
+          echo "GITHUB_REF_NAME is $GITHUB_REF_NAME"
+          echo "GITHUB_REF is $GITHUB_REF"
+          echo "GITHUB_SHA is $GITHUB_SHA"
+          # reportedly GITHUB_WORKSPACE is initially empty, so guess may have to set it
+          echo "\$ GITHUB_WORKSPACE is $GITHUB_WORKSPACE"
           ls
           printenv
 
