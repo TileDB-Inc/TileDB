@@ -273,6 +273,14 @@ jobs:
           echo "\$ GITHUB_WORKSPACE is $GITHUB_WORKSPACE"
           ls -l
           #printenv
+          which python
+          if [[ $(which python) ]]; then
+            python --version
+          fi
+          which python3
+          if [[ $(which python3) ]]; then
+            python3 --version
+          fi
 
       # 'porting' of 'actions' from azure-linux_mac.yml
       - name: 'Print env'
