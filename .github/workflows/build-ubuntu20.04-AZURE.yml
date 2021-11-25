@@ -292,9 +292,9 @@ jobs:
             python --version
           fi
           #which python3
-          export PATH=$PATH:/__t/Python/3.8.12/x64/lib/
+          #export PATH=$PATH:/__t/Python/3.8.12/x64/lib/
           #echo "$PATH" >> $GITHUB_ENV
-          echo "PATH=$PATH" >> $GITHUB_ENV
+          #echo "PATH=$PATH" >> $GITHUB_ENV
           echo $PATH
           if [[ ! $(which python3) ]]; then
             echo "install python A"
@@ -315,6 +315,9 @@ jobs:
             find / -type f -name 'python3.6' -exec ls -l {} \;
             echo 'trying /opt/rh/rh-python36/root/usr/bin/python3.6'
             /opt/rh/rh-python36/root/usr/bin/python3.6 --version
+            echo "hunting pip..."
+            #find /opt/rh/rh-python36/root/usr/bin/python3.6 -name 'pip*'
+            find /opt/rh/rh-python36/ -name 'pip*'
             ls -l /usr/bin/python*
             #what's inside this, not big enough to be actual python...
             echo exploring /usr/bin/python2.6
@@ -462,6 +465,7 @@ jobs:
         if: ${{ env.TILEDB_ARROW_TESTS == 'ON' }}
         #if: ${{ startswith(env.TILEDB_ARROW_TESTS, 'ON') == true }}
         run: |
+          echo "path is $PATH"
           set -e pipefail
           python -m pip install --upgrade pip virtualenv
           if [[ "$TILEDB_ARROW_TESTS" == "ON" ]]; then
