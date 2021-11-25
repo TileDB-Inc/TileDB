@@ -315,6 +315,7 @@ jobs:
             find / -type f -name 'python3.6' -exec ls -l {} \;
             echo 'trying /opt/rh/rh-python36/root/usr/bin/python3.6'
             /opt/rh/rh-python36/root/usr/bin/python3.6 --version
+            echo "PYTHONHOME is $PYTHONHOME"
             echo "hunting pip..."
             #find /opt/rh/rh-python36/root/usr/bin/python3.6 -name 'pip*'
             find /opt/rh/rh-python36/ -name 'pip*'
