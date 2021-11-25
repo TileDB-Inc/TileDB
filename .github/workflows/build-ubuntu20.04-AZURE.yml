@@ -244,6 +244,8 @@ jobs:
       - name: 'fetch source'
         run: |
           pwd
+          ls -l
+          uname -a
           git checkout https://github.com/TileDB-Inc/TileDB.git ./TileDB
           cd TileDB
           #TBD: need to get correct branch, is there a $GITHUB_something to identify?
