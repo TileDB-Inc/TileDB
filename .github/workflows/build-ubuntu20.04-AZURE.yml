@@ -70,10 +70,10 @@ jobs:
           printenv
         shell: bash
 
-      # Need this for virtualenv and arrow tests if enabled
-      - uses: actions/setup-python@v2
-        with:
-          python-version: '3.8'
+      #~ # Need this for virtualenv and arrow tests if enabled
+      #~ - uses: actions/setup-python@v2
+        #~ with:
+          #~ python-version: '3.8'
 
       #~ - run: |
           #~ set -e pipefail
@@ -317,6 +317,10 @@ jobs:
           #~ else
             echo "did not find wget"
           fi
+          yum search virtualenv
+          if [[ ! $(which virtualenv) ]]; then
+            echo did not find virtualenv~
+          fi
 
       # 'porting' of 'actions' from azure-linux_mac.yml
       - name: 'Print env'
@@ -331,9 +335,9 @@ jobs:
         shell: bash
 
       # Need this for virtualenv and arrow tests if enabled
-      #- uses: actions/setup-python@v2
-      #  with:
-      #    python-version: '3.8'
+      - uses: actions/setup-python@v2
+        with:
+          python-version: '3.8'
 
       - name: 'pythonitems'
         #if: ${{ env.TILEDB_ARROW_TESTS == "ON" }}
