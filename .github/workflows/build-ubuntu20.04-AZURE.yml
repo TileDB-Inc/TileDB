@@ -311,6 +311,8 @@ jobs:
             find / -type f -name 'python*' -exec ls -l {} \;
             echo "find / -type f -name 'python3.6' -exec ls -l {} \;"
             find / -type f -name 'python3.6' -exec ls -l {} \;
+            echo 'trying /opt/rh/rh-python36/root/usr/bin/python3.6'
+            /opt/rh/rh-python36/root/usr/bin/python3.6 --version
             echo "find / -type f -name 'python3.8' -exec ls -l {} \;"
             find / -type f -name 'python3.8' -exec ls -l {} \;
             echo "done hunting pythons"
