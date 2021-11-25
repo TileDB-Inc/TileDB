@@ -241,32 +241,21 @@ jobs:
       #the actions/checkout@v2 is failing in the container...
       #- uses: actions/checkout@v2
       
-      - name: 'install-nodejs'
-        run: |
-          #which node
-          yum search nodejs
-          yum search npm
-          if [[ ! $(which node) ]]; then
-            echo "installing nodejs"
-            #not on manylinux?... yum -yv install epel_release
-            yum -yv install nodejs
-            which node
-            node --version
-            yum -yv install npm
-            which npm
-          else
-            echo "node already installed, $(which node)."
-          fi
+      # Need this for virtualenv and arrow tests if enabled
+      #- uses: actions/setup-python@v2
+      - uses: actions/setup-python@v1
+        with:
+          python-version: '3.8'
 
       - name: 'fetch source'
         run: |
-          yum search perlbrew
-          yum -yv install perlbrew
-          if [[ $(which perlbrew) ]]; then
-            perlbrew init
-            source ~/perl5/perlbrew/etc/bashrc
-            perlbrew available
-          fi
+          #~ yum search perlbrew
+          #~ yum -yv install perlbrew
+          #~ if [[ $(which perlbrew) ]]; then
+            #~ perlbrew init
+            #~ source ~/perl5/perlbrew/etc/bashrc
+            #~ perlbrew available
+          #~ fi
           pwd
           ls -l
           uname -a
@@ -341,6 +330,23 @@ jobs:
             #~ echo did not find virtualenv~
           #~ fi
 
+      - name: 'install-nodejs'
+        run: |
+          #which node
+          yum search nodejs
+          yum search npm
+          if [[ ! $(which node) ]]; then
+            echo "installing nodejs"
+            #not on manylinux?... yum -yv install epel_release
+            yum -yv install nodejs
+            which node
+            node --version
+            yum -yv install npm
+            which npm
+          else
+            echo "node already installed, $(which node)."
+          fi
+
       # 'porting' of 'actions' from azure-linux_mac.yml
       - name: 'Print env'
         run: |
@@ -352,12 +358,6 @@ jobs:
           echo "uname -v: " $(uname -v)
           printenv
         shell: bash
-
-      # Need this for virtualenv and arrow tests if enabled
-      #- uses: actions/setup-python@v2
-      - uses: actions/setup-python@v1
-        with:
-          python-version: '3.8'
 
       - name: 'pythonitems'
         #if: ${{ env.TILEDB_ARROW_TESTS == "ON" }}
