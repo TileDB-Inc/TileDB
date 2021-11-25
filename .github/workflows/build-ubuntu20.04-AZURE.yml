@@ -436,22 +436,22 @@ jobs:
           #~ fi
           echo end of 'get source'
 
-      #~ - name: 'install-nodejs'
-        #~ run: |
-          #~ #which node
-          #~ yum search nodejs
-          #~ yum search npm
-          #~ if [[ ! $(which node) ]]; then
-            #~ echo "installing nodejs"
-            #~ #not on manylinux?... yum -yv install epel_release
-            #~ yum -yv install nodejs
-            #~ which node
-            #~ node --version
-            #~ yum -yv install npm
-            #~ which npm
-          #~ else
-            #~ echo "node already installed, $(which node)."
-          #~ fi
+      - name: 'install-nodejs'
+        run: |
+          #which node
+          yum search nodejs
+          yum search npm
+          if [[ ! $(which node) ]]; then
+            echo "installing nodejs"
+            #not on manylinux?... yum -yv install epel_release
+            yum -yv install nodejs
+            which node
+            node --version
+            yum -yv install npm
+            which npm
+          else
+            echo "node already installed, $(which node)."
+          fi
 
       # 'porting' of 'actions' from azure-linux_mac.yml
       - name: 'Print env'
