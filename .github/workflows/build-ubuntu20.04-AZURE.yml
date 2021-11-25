@@ -303,6 +303,7 @@ jobs:
             #yum -y -v install python3
             yum -y -v install rh-python36
             echo "install python D"
+            find / -name 'python3'
           fi
           if [[ $(which python3) ]]; then
             python3 --version
