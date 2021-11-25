@@ -292,6 +292,7 @@ jobs:
             python --version
           fi
           #which python3
+          export PATH=$PATH:/__t/Python/3.8.12/x64/lib/
           if [[ ! $(which python3) ]]; then
             echo "install python A"
             yum search python3
