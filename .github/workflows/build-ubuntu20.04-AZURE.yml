@@ -320,6 +320,7 @@ jobs:
             hexdump -C /usr/bin/python2.6
             mv /usr/bin/python /usr/bin/python.fromimage
             ln -s /opt/rh/rh-python36/root/usr/bin/python3.6 /usr/bin/python
+            ls -l /usr/bin/python*
             which python
             python --version
             echo "find / -type f -name 'python3.8' -exec ls -l {} \;"
