@@ -318,6 +318,10 @@ jobs:
             echo exploring /usr/bin/python2.6
             #cat /usr/bin/python2.6
             hexdump -C /usr/bin/python2.6
+            mv /usr/bin/python /usr/bin/python.fromimage
+            ln -s /opt/rh/rh-python36/root/usr/bin/python3.6 /usr/bin/python
+            which python
+            python --version
             echo "find / -type f -name 'python3.8' -exec ls -l {} \;"
             find / -type f -name 'python3.8' -exec ls -l {} \;
             echo "done hunting pythons"
