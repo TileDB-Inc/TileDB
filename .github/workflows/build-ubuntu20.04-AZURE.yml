@@ -277,11 +277,13 @@ jobs:
           if [[ $(which python) ]]; then
             python --version
           fi
-          which python3
+          #which python3
           if [[ $(which python3) ]]; then
             python3 --version
+          else
+            echo did not find python3
           fi
-          which wget
+          #which wget
           if [[ $(which get) ]]; then
             cd ..
             pwd
@@ -292,6 +294,8 @@ jobs:
             sudo make altinstall
             python3.8 --version
             pip3.8 --version
+          else
+            echo "did not find wget"
           fi
 
       # 'porting' of 'actions' from azure-linux_mac.yml
