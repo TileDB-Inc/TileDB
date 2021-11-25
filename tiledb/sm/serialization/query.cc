@@ -380,7 +380,7 @@ Status subarray_partitioner_from_capnp(
 
   // Per-attr mem budgets
   if (reader.hasBudget()) {
-    const ArraySchema* schema = array->array_schema();
+    const ArraySchema* schema = array->array_schema_latest();
     auto mem_budgets_reader = reader.getBudget();
     auto num_attrs = mem_budgets_reader.size();
     for (size_t i = 0; i < num_attrs; i++) {

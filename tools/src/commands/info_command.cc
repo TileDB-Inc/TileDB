@@ -131,7 +131,7 @@ void InfoCommand::print_tile_sizes() const {
   EncryptionKey enc_key;
 
   // Compute and report mean persisted tile sizes over all attributes.
-  const auto* schema = array.array_schema();
+  const auto* schema = array.array_schema_latest();
   auto fragment_metadata = array.fragment_metadata();
   auto attributes = schema->attributes();
   uint64_t total_persisted_size = 0, total_in_memory_size = 0;
@@ -203,7 +203,7 @@ void InfoCommand::print_schema_info() const {
   THROW_NOT_OK(
       array.open(QueryType::READ, EncryptionType::NO_ENCRYPTION, nullptr, 0));
 
-  array.array_schema()->dump(stdout);
+  array.array_schema_latest()->dump(stdout);
 
   // Close the array.
   THROW_NOT_OK(array.close());
@@ -220,7 +220,7 @@ void InfoCommand::write_svg_mbrs() const {
   THROW_NOT_OK(
       array.open(QueryType::READ, EncryptionType::NO_ENCRYPTION, nullptr, 0));
 
-  const auto* schema = array.array_schema();
+  const auto* schema = array.array_schema_latest();
   auto dim_num = schema->dim_num();
   if (dim_num < 2) {
     THROW_NOT_OK(array.close());
@@ -296,7 +296,7 @@ void InfoCommand::write_text_mbrs() const {
       array.open(QueryType::READ, EncryptionType::NO_ENCRYPTION, nullptr, 0));
 
   auto encryption_key = array.encryption_key();
-  const auto* schema = array.array_schema();
+  const auto* schema = array.array_schema_latest();
   auto dim_num = schema->dim_num();
   auto fragment_metadata = array.fragment_metadata();
   std::stringstream text;

@@ -1060,7 +1060,7 @@ class Subarray {
 
   /**
    * Constructs `add_or_coalesce_range_func_` for all dimensions
-   * in `array_->array_schema()`.
+   * in `array_->array_schema_latest()`.
    */
   void set_add_or_coalesce_range_func();
 

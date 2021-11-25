@@ -694,7 +694,8 @@ void SparseArrayFx::test_random_subarrays(
     int64_t domain_size_0,
     int64_t domain_size_1,
     int iter_num) {
-  // write array_schema cells with value = row id * columns + col id to disk
+  // write array_schema_latest cells with value = row id * columns + col id to
+  // disk
   write_sparse_array_unsorted_2D(array_name, domain_size_0, domain_size_1);
 
   // test random subarrays and check with corresponding value set by
