@@ -61,11 +61,11 @@ install_deps() {
     else
       SUDO=
     fi
-    $(SUDO) npm config set strict-ssl false
-    $(SUDO) npm cache clean -f
-    $(SUDO) npm install -g n
-    $(SUDO) n stable
-    $(SUDO) npm install -g $AZURITE_PACKAGE
+    $SUDO npm config set strict-ssl false
+    $SUDO npm cache clean -f
+    $SUDO npm install -g n
+    $SUDO n stable
+    $SUDO npm install -g $AZURITE_PACKAGE
   elif [[ $OSTYPE == darwin* ]]; then
     if [ -n "$(command -v brew)" ]; then
       install_brew_pkgs
