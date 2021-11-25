@@ -281,6 +281,18 @@ jobs:
           if [[ $(which python3) ]]; then
             python3 --version
           fi
+          which wget
+          if [[ $(which get) ]]; then
+            cd ..
+            pwd
+            wget https://www.python.org/ftp/python/3.8.12/Python-3.8.12.tgz
+            tar xvf Python-3.8.12.tgz
+            cd Python-3.8*/
+            ./configure --enable-optimizations
+            sudo make altinstall
+            python3.8 --version
+            pip3.8 --version
+          fi
 
       # 'porting' of 'actions' from azure-linux_mac.yml
       - name: 'Print env'
