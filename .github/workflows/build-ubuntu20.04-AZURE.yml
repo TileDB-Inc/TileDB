@@ -9,7 +9,7 @@ on:
     #~ branches:
       #~ - '*'  # must quote since "*" is a YAML reserved character; we want a string
 
-env:
+env:_
   BACKWARDS_COMPATIBILITY_ARRAYS: OFF
   TILEDB_AZURE: ON
   TILEDB_STATIC: OFF
@@ -75,11 +75,11 @@ jobs:
         with:
           python-version: '3.8'
 
-      - run: |
-          set -e pipefail
-          python -m pip install --upgrade pip virtualenv
-          pip install pyarrow pybind11 numpy
-        shell: bash
+      #~ - run: |
+          #~ set -e pipefail
+          #~ python -m pip install --upgrade pip virtualenv
+          #~ pip install pyarrow pybind11 numpy
+        #~ shell: bash
 
       - name: 'Build and test libtiledb'
         id: test
@@ -334,16 +334,16 @@ jobs:
       #  with:
       #    python-version: '3.8'
 
-      - name: 'pythonitems'
-        #if: ${{ env.TILEDB_ARROW_TESTS == "ON" }}
-        if: ${{ env.TILEDB_ARROW_TESTS == 'ON' }}
-        #if: ${{ startswith(env.TILEDB_ARROW_TESTS, 'ON') == true }}
-        run: |
-          set -e pipefail
-          python -m pip install --upgrade pip virtualenv
-          if [[ "$TILEDB_ARROW_TESTS" == "ON" ]]; then
-            pip install pyarrow pybind11 numpy
-          fi
+      #~ - name: 'pythonitems'
+        #~ #if: ${{ env.TILEDB_ARROW_TESTS == "ON" }}
+        #~ if: ${{ env.TILEDB_ARROW_TESTS == 'ON' }}
+        #~ #if: ${{ startswith(env.TILEDB_ARROW_TESTS, 'ON') == true }}
+        #~ run: |
+          #~ set -e pipefail
+          #~ python -m pip install --upgrade pip virtualenv
+          #~ if [[ "$TILEDB_ARROW_TESTS" == "ON" ]]; then
+            #~ pip install pyarrow pybind11 numpy
+          #~ fi
 
       # maybe not needed for manylinux effort, but in azure-linux_mac.yml
       - name: 'Install system headers (OSX 10.14 only)'
