@@ -379,7 +379,9 @@ jobs:
           echo b4 install wget
           sync
           #yum search wget # found wget.x86_64, what's name needed to install???
-          yum -v -y install wget
+          #yum -v -y install wget
+          yum -vy install wget
+          echo after install wget
           if [[ ! $(which wget) ]]; then
             echo "tried yum install wget, still not found?"
           fi
@@ -388,6 +390,7 @@ jobs:
           if [[ ! $(which curl) ]]; then
             echo "did not find 'curl'!"
           fi
+          echo after which curl
           #which wget
           #~ if [[ $(which wget) ]]; then
             #~ cd ..
