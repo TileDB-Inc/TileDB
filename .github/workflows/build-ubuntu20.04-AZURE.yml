@@ -257,7 +257,7 @@ jobs:
           nslookup duckduckgo.com
           echo whereis github.com?
           nslookup github.com
-          git checkout https://github.com/TileDB-Inc/TileDB.git ./TileDB
+          git clone https://github.com/TileDB-Inc/TileDB.git ./TileDB
           pwd
           ls -l
           #cd TileDB
