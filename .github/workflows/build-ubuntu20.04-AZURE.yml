@@ -301,26 +301,26 @@ jobs:
             echo "did not find 'curl'!"
           fi
           #which wget
-          if [[ $(which wget) ]]; then
-            cd ..
-            pwd
-            wget https://www.python.org/ftp/python/3.8.12/Python-3.8.12.tgz
-            tar xvf Python-3.8.12.tgz
-            cd Python-3.8*/
-            #./configure --enable-optimizations
-            ./configure
-            #sudo make altinstall
-            make altinstall
-            python3.8 --version
-            pip3.8 --version
-            which python3.8
+          #~ if [[ $(which wget) ]]; then
+            #~ cd ..
+            #~ pwd
+            #~ wget https://www.python.org/ftp/python/3.8.12/Python-3.8.12.tgz
+            #~ tar xvf Python-3.8.12.tgz
+            #~ cd Python-3.8*/
+            #~ #./configure --enable-optimizations
+            #~ ./configure
+            #~ #sudo make altinstall
+            #~ make altinstall
+            #~ python3.8 --version
+            #~ pip3.8 --version
+            #~ which python3.8
           #~ else
-            echo "did not find wget"
-          fi
-          yum search virtualenv
-          if [[ ! $(which virtualenv) ]]; then
-            echo did not find virtualenv~
-          fi
+            #~ echo "did not find wget"
+          #~ fi
+          #~ yum search virtualenv
+          #~ if [[ ! $(which virtualenv) ]]; then
+            #~ echo did not find virtualenv~
+          #~ fi
 
       # 'porting' of 'actions' from azure-linux_mac.yml
       - name: 'Print env'
