@@ -380,6 +380,7 @@ jobs:
           sync
           #yum search wget # found wget.x86_64, what's name needed to install???
           #yum -v -y install wget
+          set -x
           yum help
           sync
           yum -vy install wget
