@@ -380,10 +380,12 @@ jobs:
           sync
           #yum search wget # found wget.x86_64, what's name needed to install???
           #yum -v -y install wget
-          #yum -vy install wget
+          yum help
+          sync
+          yum -vy install wget
           echo after install wget
           if [[ ! $(which wget) ]]; then
-            yum -vy install wget
+            #yum -vy install wget
             echo "tried yum install wget, still not found?"
           fi
           #yum search python3
