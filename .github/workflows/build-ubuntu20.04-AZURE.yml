@@ -307,11 +307,12 @@ jobs:
             wget https://www.python.org/ftp/python/3.8.12/Python-3.8.12.tgz
             tar xvf Python-3.8.12.tgz
             cd Python-3.8*/
-            ./configure --enable-optimizations
-            sudo make altinstall
-            python3.8 --version
-            pip3.8 --version
-            which python3.8
+            #~ ./configure --enable-optimizations
+            #~ ./configure
+            #~ sudo make altinstall
+            #~ python3.8 --version
+            #~ pip3.8 --version
+            #~ which python3.8
           else
             echo "did not find wget"
           fi
