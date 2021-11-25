@@ -316,6 +316,7 @@ jobs:
             echo ldd /__t/Python/3.8.12/x64/bin/python3.8
             ldd /__t/Python/3.8.12/x64/bin/python3.8
             /__t/Python/3.8.12/x64/bin/python3.8 --version
+            find / -name libpython3.8.so.1.0
             echo mount
             mount
           fi
