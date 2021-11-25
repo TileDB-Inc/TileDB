@@ -73,7 +73,7 @@ author = 'TileDB, Inc.'
 # The short X.Y version.
 version = '2.5'
 # The full version, including alpha/beta/rc tags.
-release = '2.5.1'
+release = '2.5.2'
 
 # Breathe extension configuration.
 tiledb_dir = '../../'
