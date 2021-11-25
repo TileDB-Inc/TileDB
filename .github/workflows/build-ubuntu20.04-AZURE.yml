@@ -307,13 +307,14 @@ jobs:
             wget https://www.python.org/ftp/python/3.8.12/Python-3.8.12.tgz
             tar xvf Python-3.8.12.tgz
             cd Python-3.8*/
-            #~ ./configure --enable-optimizations
-            #~ ./configure
-            #~ sudo make altinstall
-            #~ python3.8 --version
-            #~ pip3.8 --version
-            #~ which python3.8
-          else
+            #./configure --enable-optimizations
+            ./configure
+            #sudo make altinstall
+            make altinstall
+            python3.8 --version
+            pip3.8 --version
+            which python3.8
+          #~ else
             echo "did not find wget"
           fi
 
@@ -334,16 +335,16 @@ jobs:
       #  with:
       #    python-version: '3.8'
 
-      #~ - name: 'pythonitems'
-        #~ #if: ${{ env.TILEDB_ARROW_TESTS == "ON" }}
-        #~ if: ${{ env.TILEDB_ARROW_TESTS == 'ON' }}
-        #~ #if: ${{ startswith(env.TILEDB_ARROW_TESTS, 'ON') == true }}
-        #~ run: |
-          #~ set -e pipefail
-          #~ python -m pip install --upgrade pip virtualenv
-          #~ if [[ "$TILEDB_ARROW_TESTS" == "ON" ]]; then
-            #~ pip install pyarrow pybind11 numpy
-          #~ fi
+      - name: 'pythonitems'
+        #if: ${{ env.TILEDB_ARROW_TESTS == "ON" }}
+        if: ${{ env.TILEDB_ARROW_TESTS == 'ON' }}
+        #if: ${{ startswith(env.TILEDB_ARROW_TESTS, 'ON') == true }}
+        run: |
+          set -e pipefail
+          python -m pip install --upgrade pip virtualenv
+          if [[ "$TILEDB_ARROW_TESTS" == "ON" ]]; then
+            pip install pyarrow pybind11 numpy
+          fi
 
       # maybe not needed for manylinux effort, but in azure-linux_mac.yml
       - name: 'Install system headers (OSX 10.14 only)'
