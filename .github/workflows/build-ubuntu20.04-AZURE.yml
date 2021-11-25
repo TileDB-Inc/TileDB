@@ -357,7 +357,7 @@ jobs:
             find / -name GLIBC_2.17*
             LD_LIBRARY_PATH=$LD_LIBRARY_PATH:/__t/Python/3.8.12/x64/lib/
             echo $LD_LIBRARY_PATH
-            /__t/Python/3.8.12/x64/bin/python3.8 --version
+            #/__t/Python/3.8.12/x64/bin/python3.8 --version
             echo mount
             mount
           fi
