@@ -243,9 +243,10 @@ jobs:
       
       # Need this for virtualenv and arrow tests if enabled
       #- uses: actions/setup-python@v2
-      - uses: actions/setup-python@v1
-        with:
-          python-version: '3.8'
+      #@v1 still attempts node12 which wants library versions apparently not present in manylinux...
+      #~ - uses: actions/setup-python@v1
+        #~ with:
+          #~ python-version: '3.8'
 
       - name: 'fetch source'
         run: |
@@ -291,6 +292,9 @@ jobs:
             python --version
           fi
           #which python3
+          if [[ ! $(which python3) ]]; then
+            yum -yvb install python3
+          fi
           if [[ $(which python3) ]]; then
             python3 --version
           else
