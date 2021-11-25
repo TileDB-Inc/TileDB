@@ -293,7 +293,9 @@ jobs:
           fi
           #which python3
           if [[ ! $(which python3) ]]; then
-            yum -yvb install python3
+            #yum -yvb install python3
+            yum --help
+            yum -yv install python3
           fi
           if [[ $(which python3) ]]; then
             python3 --version
@@ -329,27 +331,27 @@ jobs:
           #~ else
             #~ echo "did not find wget"
           #~ fi
-          #~ yum search virtualenv
-          #~ if [[ ! $(which virtualenv) ]]; then
-            #~ echo did not find virtualenv~
-          #~ fi
-
-      - name: 'install-nodejs'
-        run: |
-          #which node
-          yum search nodejs
-          yum search npm
-          if [[ ! $(which node) ]]; then
-            echo "installing nodejs"
-            #not on manylinux?... yum -yv install epel_release
-            yum -yv install nodejs
-            which node
-            node --version
-            yum -yv install npm
-            which npm
-          else
-            echo "node already installed, $(which node)."
+          yum search virtualenv
+          if [[ ! $(which virtualenv) ]]; then
+            echo did not find virtualenv~
           fi
+
+      #~ - name: 'install-nodejs'
+        #~ run: |
+          #~ #which node
+          #~ yum search nodejs
+          #~ yum search npm
+          #~ if [[ ! $(which node) ]]; then
+            #~ echo "installing nodejs"
+            #~ #not on manylinux?... yum -yv install epel_release
+            #~ yum -yv install nodejs
+            #~ which node
+            #~ node --version
+            #~ yum -yv install npm
+            #~ which npm
+          #~ else
+            #~ echo "node already installed, $(which node)."
+          #~ fi
 
       # 'porting' of 'actions' from azure-linux_mac.yml
       - name: 'Print env'
