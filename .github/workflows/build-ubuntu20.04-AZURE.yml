@@ -316,6 +316,10 @@ jobs:
             echo 'trying /opt/rh/rh-python36/root/usr/bin/python3.6'
             /opt/rh/rh-python36/root/usr/bin/python3.6 --version
             echo "PYTHONHOME is $PYTHONHOME"
+            export PATH=$PATH:/opt/rh/rh-python36/root/usr/bin/
+            echo "PATH is $PATH"
+            echo "PATH=$PATH" >> $GITHUB_ENV
+            which pip
             echo "hunting pip..."
             #find /opt/rh/rh-python36/root/usr/bin/python3.6 -name 'pip*'
             find /opt/rh/rh-python36/ -name 'pip*'
