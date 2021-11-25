@@ -293,6 +293,8 @@ jobs:
           fi
           #which python3
           export PATH=$PATH:/__t/Python/3.8.12/x64/lib/
+          #echo "$PATH" >> $GITHUB_ENV
+          echo "PATH=$PATH" >> $GITHUB_ENV
           echo $PATH
           if [[ ! $(which python3) ]]; then
             echo "install python A"
