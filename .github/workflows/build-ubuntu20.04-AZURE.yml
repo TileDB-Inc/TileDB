@@ -532,7 +532,7 @@ jobs:
           
       - name: 'huntcorefiles'
         if: ${{ failure() == true }}
-        run |
+        run: |
           uname -a
           find . -name 'core.*'
 
