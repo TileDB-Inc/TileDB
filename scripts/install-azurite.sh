@@ -57,7 +57,7 @@ install_deps() {
     fi
 
     if [[ $(which sudo) ]]; then
-      SUDO=$(which node)
+      SUDO=$(which sudo)
     else
       SUDO=
     fi
