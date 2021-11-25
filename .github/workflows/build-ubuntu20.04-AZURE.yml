@@ -252,7 +252,7 @@ jobs:
             yum -yv install nodejs
             which node
             node --version
-            yum install npm
+            yum -yv install npm
             which npm
           else
             echo "node already installed, $(which node)."
