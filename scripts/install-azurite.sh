@@ -58,6 +58,8 @@ install_deps() {
 
     if [[ $(which sudo) ]]; then
       SUDO=$(which sudo)
+      #temp for manylinux not having functioning sudo
+      SUDO=
     else
       SUDO=
     fi
