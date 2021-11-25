@@ -284,7 +284,7 @@ jobs:
             echo did not find python3
           fi
           #which wget
-          if [[ $(which get) ]]; then
+          if [[ $(which wget) ]]; then
             cd ..
             pwd
             wget https://www.python.org/ftp/python/3.8.12/Python-3.8.12.tgz
