@@ -363,17 +363,21 @@ jobs:
             mount
           fi
           echo b4 which python3 hunt
+          sync
           if [[ $(which python3) ]]; then
             #which python3
             #python3 --version
+            echo found python3
           else
             echo did not find python3
           fi
           echo b4 yum check
+          sync
           if [[ ! $(which yum) ]]; then
             echo "did not find 'yum'!!"
           fi
           echo b4 install wget
+          sync
           #yum search wget # found wget.x86_64, what's name needed to install???
           yum -v -y install wget
           if [[ ! $(which wget) ]]; then
