@@ -506,6 +506,8 @@ jobs:
       - name: 'Build and test libtiledb'
         run: |
 
+          find . -name install-azurite.sh
+          cd TileDB
           which node
           if [[ ! $(which node) ]]; then
             echo did not find node
