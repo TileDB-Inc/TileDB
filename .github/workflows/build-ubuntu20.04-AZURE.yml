@@ -319,6 +319,14 @@ jobs:
             ldd /__t/Python/3.8.12/x64/bin/python3.8
             echo $PATH
             find / -name libpython3.8.so.1.0
+            find / -name GLIBC_2.29
+            find / -name GLIBC_2.25
+            find / -name GLIBC_2.26
+            find / -name GLIBC_2.28
+            find / -name GLIBC_2.27
+            find / -name GLIBC_2.14
+            find / -name GLIBC_2.15
+            find / -name GLIBC_2.17
             LD_LIBRARY_PATH=$LD_LIBRARY_PATH:/__t/Python/3.8.12/x64/lib/
             /__t/Python/3.8.12/x64/bin/python3.8 --version
             echo mount
