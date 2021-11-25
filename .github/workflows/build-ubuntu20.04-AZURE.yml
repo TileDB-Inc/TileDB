@@ -283,6 +283,11 @@ jobs:
           else
             echo did not find python3
           fi
+          if [[ ! $(which yum) ]]; then
+            echo "did not find 'yum'!!"
+          fi
+          yum search wget
+          yum search python3
           #which wget
           if [[ $(which wget) ]]; then
             cd ..
@@ -294,6 +299,7 @@ jobs:
             sudo make altinstall
             python3.8 --version
             pip3.8 --version
+            which python3.8
           else
             echo "did not find wget"
           fi
