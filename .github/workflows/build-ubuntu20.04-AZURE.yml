@@ -9,7 +9,7 @@ on:
     #~ branches:
       #~ - '*'  # must quote since "*" is a YAML reserved character; we want a string
 
-env:_
+env:
   BACKWARDS_COMPATIBILITY_ARRAYS: OFF
   TILEDB_AZURE: ON
   TILEDB_STATIC: OFF
