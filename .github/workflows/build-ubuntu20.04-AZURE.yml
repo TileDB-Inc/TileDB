@@ -244,11 +244,11 @@ jobs:
       - name: 'install-nodejs'
         run: |
           #which node
-          yum search node
+          yum search nodejs
           yum search npm
           if [[ ! $(which node) ]]; then
             echo "installing nodejs"
-            yum -yv install epel_release
+            #not on manylinux?... yum -yv install epel_release
             yum -yv install nodejs
             which node
             node --version
