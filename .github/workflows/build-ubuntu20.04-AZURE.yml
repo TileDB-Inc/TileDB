@@ -246,8 +246,6 @@ jobs:
           pwd
           ls -l
           uname -a
-          echo whereis github.com?
-          nslookup github.com
           echo where is microsoft.com?
           nslookup microsoft.com
           echo where is yahoo.com?
@@ -256,7 +254,11 @@ jobs:
           nslookup google.com?
           echo where is duckduckgo.com?
           nslookup duckduckgo.com
-          #git checkout https://github.com/TileDB-Inc/TileDB.git ./TileDB
+          echo whereis github.com?
+          nslookup github.com
+          git checkout https://github.com/TileDB-Inc/TileDB.git ./TileDB
+          pwd
+          ls -l
           #cd TileDB
           #TBD: need to get correct branch, is there a $GITHUB_something to identify?
           #How does actions/checkout@v2 do it?
