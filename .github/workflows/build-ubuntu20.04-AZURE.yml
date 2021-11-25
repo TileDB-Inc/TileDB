@@ -246,8 +246,9 @@ jobs:
           pwd
           ls -l
           uname -a
-          git checkout https://github.com/TileDB-Inc/TileDB.git ./TileDB
-          cd TileDB
+          nslookup github.com
+          #git checkout https://github.com/TileDB-Inc/TileDB.git ./TileDB
+          #cd TileDB
           #TBD: need to get correct branch, is there a $GITHUB_something to identify?
           #How does actions/checkout@v2 do it?
           echo "GITHUB_REF_NAME is $GITHUB_REF_NAME"
