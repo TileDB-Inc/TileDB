@@ -293,8 +293,9 @@ jobs:
           fi
           #which python3
           if [[ ! $(which python3) ]]; then
+            yum search python3
             #yum -yvb install python3
-            yum --help
+            yum help
             yum -yv install python3
           fi
           if [[ $(which python3) ]]; then
