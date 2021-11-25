@@ -305,9 +305,13 @@ jobs:
             #yum -y -v install python3
             yum -y -v install rh-python36
             echo "install python D"
+            echo "find / -name 'python3' -exec ls -l {} \;"
             find / -name 'python3' -exec ls -l {} \;
+            echo "find / -type f -name 'python*' -exec ls -l {} \;"
             find / -type f -name 'python*' -exec ls -l {} \;
+            echo "find / -type f -name 'python3.8' -exec ls -l {} \;"
             find / -type f -name 'python3.8' -exec ls -l {} \;
+            echo "done hunting pythons"
             #~ /opt/_internal/cpython-3.8.12/bin/python3.8 --version
             #~ /__t/Python/3.8.12/x64/bin/python3.8 --version
             #~ /__t/Python/3.8.12/x64/bin/python3.8 --version
@@ -321,6 +325,7 @@ jobs:
             echo 
             echo find / -name libpython3.8.so.1.0
             find / -name libpython3.8.so.1.0
+            #So, can't find -any- of these apparently ref'd by 'that' libpython3.8.so.1.0
             echo find / -name GLIBC_2.29
             find / -name GLIBC_2.29*
             echo find / -name GLIBC_2.25
