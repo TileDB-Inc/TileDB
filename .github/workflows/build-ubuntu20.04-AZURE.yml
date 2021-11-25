@@ -515,6 +515,13 @@ jobs:
             echo found node!
           fi
           node --version
+          
+          which npm
+          if [[ ! $(which npm) ]]; then
+            echo did not find node
+          else
+            echo found npm!
+          fi
           #exit 1
 
           # enable core dumps
