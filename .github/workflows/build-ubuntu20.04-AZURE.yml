@@ -529,6 +529,12 @@ jobs:
           #exit 0
 
           #  displayName: 'Build examples, PNG test, and benchmarks (build-only)'
+          
+      - name: 'huntcorefiles'
+        if: ${{ failure() == true }}
+        run |
+          uname -a
+          find . -name 'core.*'
 
       - name: 'Test status check'
         run: |
