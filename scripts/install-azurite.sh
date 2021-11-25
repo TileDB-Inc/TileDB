@@ -56,6 +56,12 @@ install_deps() {
       install_yum_pkgs
     fi
 
+    if [[ $(which npm) ]]; then
+      echo "found $(which npm)"
+    else
+      echo "did not find npm!"
+    fi
+    
     if [[ $(which sudo) ]]; then
       SUDO=$(which sudo)
       #temp for manylinux not having functioning sudo
