@@ -297,8 +297,8 @@ jobs:
             yum search python3
             #yum -yvb install python3
             echo "install python B"
-            yum help
-            sync
+            #yum help
+            #sync
             echo "install python C"
             #yum -y -v install python3
             yum -y -v install rh-python36
