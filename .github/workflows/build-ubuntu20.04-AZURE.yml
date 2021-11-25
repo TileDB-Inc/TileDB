@@ -287,7 +287,7 @@ jobs:
             echo "did not find 'yum'!!"
           fi
           #yum search wget # found wget.x86_64, what's name needed to install???
-          yum install wget
+          yum -v -y install wget
           if [[ ! $(which wget) ]]; then
             echo "tried yum install wget, still not found?"
           fi
