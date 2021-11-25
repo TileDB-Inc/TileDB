@@ -225,7 +225,7 @@ jobs:
       CXXFLAGS: "-lrt"
       CFLAGS: "-lrt"
       USE_MANYLINUX: ON
-      TILEDB_CI_ASAN: ON
+      TILEDB_CI_ASAN: OFF
     #?container: ${{ matrix.os.include.image }} # TBD: Is this/that right location for image?
     #services:
     #  manylinux:
@@ -277,12 +277,15 @@ jobs:
         run: |
           which node
           if [[ ! $(which node) ]]; then
+            echo "installing nodejs"
             sudo yum install epel_release
             sudo yum install nodejs
             which node
             node --version
             sudo yum install npm
             which npm
+          else
+            echo "node already installed, $(which node)."
           fi
 
       - name: 'Build and test libtiledb'
