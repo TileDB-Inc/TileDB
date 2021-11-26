@@ -362,9 +362,7 @@ void CPPAPISubarrayPartitionerSparseFx::test_subarray_partitioner(
   create_subarray(
       &cppvfs_.context(), cpparray_, ranges, subarray_layout, &tdb_subarray);
   tdb_subarray->set_layout((tiledb_layout_t)subarray_layout);
-  check_subarray_equiv<T>(
-      coresubarray,
-      *(tdb_subarray->ptr()->subarray_));
+  check_subarray_equiv<T>(coresubarray, *(tdb_subarray->ptr()->subarray_));
 
   tiledb::SubarrayPartitioner subarray_partitioner(
       cppvfs_.context(), *tdb_subarray, memory_budget_, memory_budget_var_, 0);
@@ -410,9 +408,7 @@ void CPPAPISubarrayPartitionerSparseFx::test_subarray_partitioner(
   create_subarray(
       &cppvfs_.context(), cpparray_, ranges, subarray_layout, &tdb_subarray);
   tdb_subarray->set_layout((tiledb_layout_t)subarray_layout);
-  check_subarray_equiv<T>(
-      coresubarray,
-      *(tdb_subarray->ptr()->subarray_));
+  check_subarray_equiv<T>(coresubarray, *(tdb_subarray->ptr()->subarray_));
 
   tiledb::SubarrayPartitioner subarray_partitioner(
       cppvfs_.context(), *tdb_subarray, memory_budget, memory_budget_var, 0);
@@ -426,8 +422,7 @@ void CPPAPISubarrayPartitionerSparseFx::test_subarray_partitioner(
       subarray_layout,
       &tdb_retrieve_partition_subarray);
   check_subarray_equiv<T>(
-      coresubarray,
-      *(tdb_retrieve_partition_subarray->ptr()->subarray_));
+      coresubarray, *(tdb_retrieve_partition_subarray->ptr()->subarray_));
 
   check_partitions(
       &subarray_partitioner,
@@ -459,9 +454,7 @@ void CPPAPISubarrayPartitionerSparseFx::test_subarray_partitioner(
   tiledb::Subarray* tdb_subarray;
   create_subarray(
       &cppvfs_.context(), cpparray_, ranges, subarray_layout, &tdb_subarray);
-  check_subarray_equiv<T>(
-      coresubarray,
-      *(tdb_subarray->ptr()->subarray_));
+  check_subarray_equiv<T>(coresubarray, *(tdb_subarray->ptr()->subarray_));
 
   tiledb::SubarrayPartitioner subarray_partitioner(
       cppvfs_.context(),
@@ -486,9 +479,7 @@ void CPPAPISubarrayPartitionerSparseFx::test_subarray_partitioner(
       ranges,
       subarray_layout,
       &tdb_retrieve_partition_subarray);
-  check_subarray_equiv<T>(
-      coresubarray,
-      *(tdb_subarray->ptr()->subarray_));
+  check_subarray_equiv<T>(coresubarray, *(tdb_subarray->ptr()->subarray_));
 
   check_partitions(
       &subarray_partitioner,
