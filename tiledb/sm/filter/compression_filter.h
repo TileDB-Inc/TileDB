@@ -91,6 +91,7 @@ class CompressionFilter : public Filter {
    */
   CompressionFilter(FilterType compressor, int level);
 
+
   /** Return the compressor used by this filter instance. */
   Compressor compressor() const;
 

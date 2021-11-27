@@ -80,7 +80,7 @@ class Filter {
    * @param type Filter type to create
    * @return New Filter instance or nullptr on error.
    */
-  static std::tuple<Status, std::optional<std::unique_ptr<Filter>>> create(
+  static std::tuple<Status, std::optional<std::shared_ptr<Filter>>> create(
       FilterType type);
 
   /**
@@ -89,7 +89,7 @@ class Filter {
    * @param buff The buffer to deserialize from.
    * @return Status and Filter pointer
    */
-  static std::tuple<Status, std::optional<std::unique_ptr<Filter>>> deserialize(
+  static std::tuple<Status, std::optional<std::shared_ptr<Filter>>> deserialize(
       ConstBuffer* buff);
 
   /**
