@@ -100,7 +100,8 @@ std::tuple<Status, std::optional<std::shared_ptr<Filter>>> Filter::create(
               tiledb::common::make_shared<ChecksumSHA256Filter>(HERE())};
     default:
       assert(false);
-      return {Status::Ok(), std::nullopt};
+      return {Status::FilterError("Cannot create Filter; invalid FilterType"),
+              std::nullopt};
   }
 }
 
@@ -122,12 +123,12 @@ std::tuple<Status, std::optional<std::shared_ptr<Filter>>> Filter::deserialize(
   uint8_t type;
   st = buff->read(&type, sizeof(uint8_t));
   if (!st.ok()) {
-    return {Status::Ok(), std::nullopt};
+    return {st, std::nullopt};
   }
   uint32_t filter_metadata_len;
   st = buff->read(&filter_metadata_len, sizeof(uint32_t));
   if (!st.ok()) {
-    return {Status::Ok(), std::nullopt};
+    return {st, std::nullopt};
   }
 
   auto&& [st_filter, filter]{create(static_cast<FilterType>(type))};

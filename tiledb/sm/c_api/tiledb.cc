@@ -1354,6 +1354,11 @@ int32_t tiledb_filter_alloc(
   // Create a new Filter object of the given type
   auto&& [st_filter, filter_ptr]{
       tiledb::sm::Filter::create(static_cast<tiledb::sm::FilterType>(type))};
+  if (!st_filter.ok()) {
+    LOG_STATUS(st_filter);
+    save_error(ctx, st_filter);
+    return TILEDB_OOM;
+  }
   // Clone to raw pointer
   (*filter)->filter_ = filter_ptr.value()->clone();
   if ((*filter)->filter_ == nullptr) {
