@@ -85,10 +85,10 @@ class BitWidthReductionFilter : public Filter {
   /** Constructor. */
   BitWidthReductionFilter();
 
-  /** Constructor. 
-  * 
-  * @param max_window_size
-  */
+  /** Constructor.
+   *
+   * @param max_window_size
+   */
   BitWidthReductionFilter(uint32_t max_window_size);
 
   /** Dumps the filter details in ASCII format in the selected output. */

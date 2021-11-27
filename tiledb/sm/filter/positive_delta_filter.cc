@@ -49,7 +49,7 @@ PositiveDeltaFilter::PositiveDeltaFilter()
   max_window_size_ = 1024;
 }
 
-PositiveDeltaFilter::PositiveDeltaFilter(uint32_t max_window_size) 
+PositiveDeltaFilter::PositiveDeltaFilter(uint32_t max_window_size)
     : Filter(FilterType::FILTER_POSITIVE_DELTA)
     , max_window_size_(max_window_size) {
 }

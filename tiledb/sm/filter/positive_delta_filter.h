@@ -76,10 +76,10 @@ class PositiveDeltaFilter : public Filter {
   /** Constructor. */
   PositiveDeltaFilter();
 
-  /** Constructor. 
-  * 
-  * @param max_window_size
-  */
+  /** Constructor.
+   *
+   * @param max_window_size
+   */
   PositiveDeltaFilter(uint32_t max_window_size);
 
   /** Return the max window size used by the filter. */
