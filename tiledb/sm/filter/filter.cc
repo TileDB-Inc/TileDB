@@ -33,6 +33,7 @@
 #include "tiledb/sm/filter/filter.h"
 #include "tiledb/common/heap_memory.h"
 #include "tiledb/common/logger.h"
+#include "tiledb/common/dynamic_memory/dynamic_memory.h"
 #include "tiledb/sm/buffer/buffer.h"
 #include "tiledb/sm/enums/filter_type.h"
 #include "tiledb/sm/filter/bit_width_reduction_filter.h"
@@ -67,28 +68,28 @@ std::tuple<Status, std::optional<std::shared_ptr<Filter>>> Filter::create(
     FilterType type) {
   switch (type) {
     case FilterType::FILTER_NONE:
-      return {Status::Ok(), std::make_shared<NoopFilter>()};
+      return {Status::Ok(), tiledb::common::make_shared<NoopFilter>(HERE())};
     case FilterType::FILTER_GZIP:
     case FilterType::FILTER_ZSTD:
     case FilterType::FILTER_LZ4:
     case FilterType::FILTER_RLE:
     case FilterType::FILTER_BZIP2:
     case FilterType::FILTER_DOUBLE_DELTA:
-      return {Status::Ok(), std::make_shared<CompressionFilter>(type, -1)};
+      return {Status::Ok(), tiledb::common::make_shared<CompressionFilter>(HERE(),type, -1)};
     case FilterType::FILTER_BIT_WIDTH_REDUCTION:
-      return {Status::Ok(), std::make_shared<BitWidthReductionFilter>()};
+      return {Status::Ok(), tiledb::common::make_shared<BitWidthReductionFilter>(HERE())};
     case FilterType::FILTER_BITSHUFFLE:
-      return {Status::Ok(), std::make_shared<BitshuffleFilter>()};
+      return {Status::Ok(), tiledb::common::make_shared<BitshuffleFilter>(HERE())};
     case FilterType::FILTER_BYTESHUFFLE:
-      return {Status::Ok(), std::make_shared<ByteshuffleFilter>()};
+      return {Status::Ok(), tiledb::common::make_shared<ByteshuffleFilter>(HERE())};
     case FilterType::FILTER_POSITIVE_DELTA:
-      return {Status::Ok(), std::make_shared<PositiveDeltaFilter>()};
+      return {Status::Ok(), tiledb::common::make_shared<PositiveDeltaFilter>(HERE())};
     case FilterType::INTERNAL_FILTER_AES_256_GCM:
-      return {Status::Ok(), std::make_shared<EncryptionAES256GCMFilter>()};
+      return {Status::Ok(), tiledb::common::make_shared<EncryptionAES256GCMFilter>(HERE())};
     case FilterType::FILTER_CHECKSUM_MD5:
-      return {Status::Ok(), std::make_shared<ChecksumMD5Filter>()};
+      return {Status::Ok(), tiledb::common::make_shared<ChecksumMD5Filter>(HERE())};
     case FilterType::FILTER_CHECKSUM_SHA256:
-      return {Status::Ok(), std::make_shared<ChecksumSHA256Filter>()};
+      return {Status::Ok(), tiledb::common::make_shared<ChecksumSHA256Filter>(HERE())};
     default:
       assert(false);
       return {Status::Ok(), std::nullopt};
