@@ -50,13 +50,13 @@ namespace sm {
 OpenArray::OpenArray(const URI& array_uri, QueryType query_type)
     : array_uri_(array_uri)
     , query_type_(query_type) {
-  array_schema_ = nullptr;
+  array_schema_latest_ = nullptr;
   cnt_ = 0;
   filelock_ = INVALID_FILELOCK;
 }
 
 OpenArray::~OpenArray() {
-  tdb_delete(array_schema_);
+  tdb_delete(array_schema_latest_);
   fragment_metadata_.clear();
 }
 
@@ -64,20 +64,27 @@ OpenArray::~OpenArray() {
 /*               API              */
 /* ****************************** */
 
-ArraySchema* OpenArray::array_schema() const {
-  return array_schema_;
+ArraySchema* OpenArray::array_schema_latest() const {
+  return array_schema_latest_;
 }
 
-std::unordered_map<std::string, tdb_shared_ptr<ArraySchema>>&
-OpenArray::array_schemas() {
-  return array_schemas_;
+const std::unordered_map<std::string, tdb_shared_ptr<ArraySchema>>&
+OpenArray::array_schemas_all() {
+  return array_schemas_all_;
+}
+
+void OpenArray::set_array_schemas_all(
+    const std::unordered_map<std::string, tdb_shared_ptr<ArraySchema>>&
+        array_schemas) {
+  array_schemas_all_ = array_schemas;
 }
 
 Status OpenArray::get_array_schema(
     const std::string& schema_name, tdb_shared_ptr<ArraySchema>* array_schema) {
-  (*array_schema) = (array_schemas_.find(schema_name) == array_schemas_.end()) ?
-                        tdb_shared_ptr<ArraySchema>(nullptr) :
-                        array_schemas_[schema_name];
+  (*array_schema) =
+      (array_schemas_all_.find(schema_name) == array_schemas_all_.end()) ?
+          tdb_shared_ptr<ArraySchema>(nullptr) :
+          array_schemas_all_[schema_name];
   return Status::Ok();
 }
 
@@ -154,7 +161,7 @@ QueryType OpenArray::query_type() const {
 }
 
 void OpenArray::set_array_schema(ArraySchema* array_schema) {
-  array_schema_ = array_schema;
+  array_schema_latest_ = array_schema;
 }
 
 void OpenArray::insert_fragment_metadata(

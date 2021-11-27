@@ -333,7 +333,8 @@ Status SparseGlobalOrderReader::dowork() {
       &read_state_.result_cell_slabs_,
       subarray_,
       memory_budget_copy,
-      !coords_loaded_));
+      !coords_loaded_,
+      true));
 
   // copy_coordinates will only have an unrecoverable overflow if a single cell
   // is too big for the user's buffers.

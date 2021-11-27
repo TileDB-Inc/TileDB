@@ -316,11 +316,13 @@ class ReaderBase : public StrategyBase {
    * @param names The attribute names.
    * @param result_tiles The retrieved tiles will be stored inside the
    *     `ResultTile` instances in this vector.
+   * @param disable_cache Disable the tile cache or not.
    * @return Status
    */
   Status read_attribute_tiles(
       const std::vector<std::string>* names,
-      const std::vector<ResultTile*>* result_tiles) const;
+      const std::vector<ResultTile*>* result_tiles,
+      const bool disable_cache = false) const;
 
   /**
    * Concurrently executes across each name in `names` and each result tile
@@ -332,11 +334,13 @@ class ReaderBase : public StrategyBase {
    * @param names The coordinate/dimension names.
    * @param result_tiles The retrieved tiles will be stored inside the
    *     `ResultTile` instances in this vector.
+   * @param disable_cache Disable the tile cache or not.
    * @return Status
    */
   Status read_coordinate_tiles(
       const std::vector<std::string>* names,
-      const std::vector<ResultTile*>* result_tiles) const;
+      const std::vector<ResultTile*>* result_tiles,
+      const bool disable_cache = false) const;
 
   /**
    * Retrieves the tiles on a list of attribute or dimension and stores it
@@ -348,11 +352,13 @@ class ReaderBase : public StrategyBase {
    * @param names The attribute/dimension names.
    * @param result_tiles The retrieved tiles will be stored inside the
    *     `ResultTile` instances in this vector.
+   * @param disable_cache Disable the tile cache or not.
    * @return Status
    */
   Status read_tiles(
       const std::vector<std::string>* names,
-      const std::vector<ResultTile*>* result_tiles) const;
+      const std::vector<ResultTile*>* result_tiles,
+      const bool disable_cache = false) const;
 
   /**
    * Filters the tiles on a particular attribute/dimension from all input
@@ -360,11 +366,13 @@ class ReaderBase : public StrategyBase {
    *
    * @param name Attribute/dimension whose tiles will be unfiltered.
    * @param result_tiles Vector containing the tiles to be unfiltered.
+   * @param disable_cache Disable the filtered buffers cache or not.
    * @return Status
    */
   Status unfilter_tiles(
       const std::string& name,
-      const std::vector<ResultTile*>* result_tiles) const;
+      const std::vector<ResultTile*>* result_tiles,
+      const bool disable_cache = false) const;
 
   /**
    * Runs the input fixed-sized tile for the input attribute or dimension
@@ -438,7 +446,8 @@ class ReaderBase : public StrategyBase {
       std::vector<ResultCellSlab>* result_cell_slabs,
       Subarray& subarray,
       uint64_t memory_budget = UINT64_MAX,
-      bool include_dim = false);
+      bool include_dim = false,
+      const bool disable_cache = false);
 
   /**
    * Copies the cells for the input **fixed-sized** attribute/dimension and
@@ -600,7 +609,8 @@ class ReaderBase : public StrategyBase {
    * @param subarray Specifies the current subarray.
    * @param stride The stride between cells, UINT64_MAX for contiguous.
    * @param memory_budget The memory budget, UINT64_MAX for unlimited.
-   * unloaded.
+   * @param disable_cache disable the filtered buffer cache.
+   * @return Status
    */
   Status process_tiles(
       const std::unordered_map<std::string, ProcessTileFlags>* names,
@@ -608,7 +618,8 @@ class ReaderBase : public StrategyBase {
       std::vector<ResultCellSlab>* result_cell_slabs,
       Subarray* subarray,
       uint64_t stride,
-      uint64_t memory_budget);
+      uint64_t memory_budget,
+      const bool disable_cache = false);
 
   /**
    * Get the size of an attribute tile.

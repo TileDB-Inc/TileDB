@@ -140,7 +140,7 @@ class DenseTiler {
    * Constructor.
    *
    * @note It is assumed that `buffers` contains correct attributes
-   *     complying with the array_schema (which can be retrieved
+   *     complying with the array_schema_latest (which can be retrieved
    *     from `subarray`). Otherwise, an assertion is raised.
    */
   DenseTiler(

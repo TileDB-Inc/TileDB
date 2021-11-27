@@ -997,7 +997,9 @@ Status Writer::create_fragment(
   } else {
     std::string new_fragment_str;
     RETURN_NOT_OK(new_fragment_name(
-        timestamp, array_->array_schema()->write_version(), &new_fragment_str));
+        timestamp,
+        array_->array_schema_latest()->write_version(),
+        &new_fragment_str));
     uri = array_schema_->array_uri().join_path(new_fragment_str);
   }
   auto timestamp_range = std::pair<uint64_t, uint64_t>(timestamp, timestamp);

@@ -76,8 +76,14 @@ class Array {
   /*                API                */
   /* ********************************* */
 
-  /** Returns the array schema. */
-  ArraySchema* array_schema() const;
+  /** Returns the latest array schema. */
+  ArraySchema* array_schema_latest() const;
+
+  /** Returns array schemas map. */
+  inline const std::unordered_map<std::string, tdb_shared_ptr<ArraySchema>>&
+  array_schemas_all() const {
+    return array_schemas_all_;
+  }
 
   /** Returns the array URI. */
   const URI& array_uri() const;
@@ -321,9 +327,9 @@ class Array {
    * @note This is potentially an unsafe operation
    * it could have contention with locks from lazy loading of metadata.
    * This should only be used by the serialization class
-   * (tiledb/sm/serialization/array_schema.cc). In that class we need to fetch
-   * the underlying Metadata object to set the values we are loading from REST.
-   * A lock should already by taken before load_metadata is called.
+   * (tiledb/sm/serialization/array_schema_latest.cc). In that class we need to
+   * fetch the underlying Metadata object to set the values we are loading from
+   * REST. A lock should already by taken before load_metadata is called.
    */
   Metadata* metadata();
 
@@ -341,8 +347,14 @@ class Array {
   /*         PRIVATE ATTRIBUTES        */
   /* ********************************* */
 
-  /** The array schema. */
-  ArraySchema* array_schema_;
+  /** The latest array schema. */
+  ArraySchema* array_schema_latest_;
+
+  /**
+   * A map of all array_schemas_all
+   */
+  std::unordered_map<std::string, tdb_shared_ptr<ArraySchema>>
+      array_schemas_all_;
 
   /** The array URI. */
   URI array_uri_;
