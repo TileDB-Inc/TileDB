@@ -407,6 +407,9 @@ uint64_t CompressionFilter::overhead(uint64_t nbytes) const {
 }
 
 Status CompressionFilter::serialize_impl(Buffer* buff) const {
+  if (compressor_ == Compressor::NO_COMPRESSION) {
+    return Status::Ok();
+  }
   auto compressor_char = static_cast<uint8_t>(compressor_);
   RETURN_NOT_OK(buff->write(&compressor_char, sizeof(uint8_t)));
   RETURN_NOT_OK(buff->write(&level_, sizeof(int32_t)));
