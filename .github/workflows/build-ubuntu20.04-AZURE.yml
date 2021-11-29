@@ -52,8 +52,10 @@ jobs:
             echo ""
           fi
 
-          if [[ $(sudo find / -type f -executable -name "*gdb*" -exec ls -l {}; {} -ex "show configuration" -ex "q" \;) ]]; then
-            echo ""
+          if [[ $(sudo find / -type f -executable -name "*gdb*" -exec ls -l {}\;) ]]; then
+            if [[ $(sudo find / -type f -executable -name "*gdb*" -exec {} -ex "show configuration" -ex "q" \;) ]]; then
+              echo ""
+            fi
           fi
 
           if [[ $(sudo find / -type d -name "*gdb*") ]]; then
