@@ -1,5 +1,5 @@
 #
-# tiledb/common/CMakeLists.txt
+# tiledb/sm/buffer/CMakeLists.txt
 #
 # The MIT License
 #
@@ -24,34 +24,19 @@
 # THE SOFTWARE.
 #
 
-include(common-root)
-include(common)
-
-add_subdirectory(thread_pool)
-add_subdirectory(dynamic_memory)
-add_subdirectory(governor)
-
-if (TILEDB_TESTS)
-    add_subdirectory(interval)
-endif()
-
-get_gathered(COMMON_SOURCES)
-set(TILEDB_COMMON_SOURCES ${COMMON_SOURCES} PARENT_SCOPE)
+include(common NO_POLICY_SCOPE)
 
 #
 # Object library for other units to depend upon
 #
-add_library(baseline OBJECT
-    logger.cc status.cc governor/governor.cc heap_profiler.cc heap_memory.cc
-)
-find_package(Spdlog_EP REQUIRED)
-target_link_libraries(baseline PUBLIC spdlog::spdlog)
+add_library(buffer OBJECT buffer.cc)
+target_link_libraries(buffer PUBLIC baseline $<TARGET_OBJECTS:baseline>)
 
 #
 # Test-compile of object library ensures link-completeness
 #
-add_executable(compile_baseline EXCLUDE_FROM_ALL)
-target_link_libraries(compile_baseline PRIVATE baseline)
-target_sources(compile_baseline PRIVATE
-    test/compile_baseline_main.cc $<TARGET_OBJECTS:baseline>
+add_executable(compile_buffer EXCLUDE_FROM_ALL)
+target_link_libraries(compile_buffer PRIVATE buffer)
+target_sources(compile_buffer PRIVATE
+    test/compile_buffer_main.cc $<TARGET_OBJECTS:buffer>
 )

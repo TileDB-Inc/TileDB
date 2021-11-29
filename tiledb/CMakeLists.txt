@@ -38,6 +38,7 @@ cmake_policy(SET CMP0063 NEW)
 ############################################################
 
 add_subdirectory(common)
+add_subdirectory(sm)
 
 ############################################################
 # Source files
