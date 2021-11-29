@@ -495,6 +495,7 @@ Status FilterPipeline::deserialize(ConstBuffer* buff) {
 
   for (uint32_t i = 0; i < num_filters; i++) {
     auto&& [st_filter, filter]{Filter::deserialize(buff)};
+    RETURN_NOT_OK(st_filter);
     RETURN_NOT_OK(add_filter(*filter.value()));
   }
 

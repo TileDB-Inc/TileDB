@@ -1,5 +1,5 @@
 /**
- * @file unit-filter-buffer.cc
+ * @file unit-filter.cc
  *
  * @section LICENSE
  *
@@ -33,9 +33,6 @@
 
 #include "test/src/helpers.h"
 #include "tiledb/common/status.h"
-#include "tiledb/sm/array_schema/array_schema.h"
-#include "tiledb/sm/array_schema/dimension.h"
-#include "tiledb/sm/array_schema/domain.h"
 #include "tiledb/sm/buffer/buffer.h"
 #include "tiledb/sm/config/config.h"
 #include "tiledb/sm/crypto/encryption_key.h"
