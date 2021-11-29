@@ -46,7 +46,7 @@ jobs:
             echo "'which' did not find gdb in path"
           fi
           if [[ $(sudo find / -type f -executable -name "gdb") ]]; then
-            if [[ $(sudo find / -type f -executable -name "gdb" -exec ls -l {}\;) ]]; then
+            if [[ $(sudo find / -type f -executable -name "gdb" -exec ls -l {} \;) ]]; then
               echo ""
             fi
           fi
