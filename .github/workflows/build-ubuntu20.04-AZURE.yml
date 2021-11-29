@@ -41,7 +41,7 @@ jobs:
         run: |
           set -x
           dpkg -l | grep gdb
-          /usr/sbin/time sudo apt install gdb
+          /usr/bin/time sudo apt install gdb
           if [[ $(which gdb) ]]; then
             echo "found gdb, $(which gdb)"
           else
