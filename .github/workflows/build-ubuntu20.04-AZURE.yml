@@ -40,7 +40,11 @@ jobs:
         if: ${{ matrix.os == 'ubuntu-20.04' }}
         run: |
           set -x
-          which gdb
+          if [[ $(which gdb) ]]; then
+            echo "found gdb, $(which gdb)"
+          else
+            echo "'which' did not find gdb in path"
+          fi
           find / -type f -name "*gdb*"
           find / -type f -executable -name "*gdb*"
           find / -type f -executable -name "*gdb*" -exec ls -l {}; {} -ex "show configuration" -ex "q" \;
