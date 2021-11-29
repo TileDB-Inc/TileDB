@@ -36,6 +36,18 @@ jobs:
       TILEDB_TRY_PNG_INGESTION: ${{ matrix.try_png_ingestion }}
     steps:
     
+      - name: 'eval-gdb-items'
+        if: ${{ matrix.os == "ubuntu-20.04" }}
+        run: |
+          set -x
+          find / -type f -name "*gdb*"
+          find / -type f -executable -name "*gdb*"
+          find / -type f -executable -name "*gdb*" -exec ls -l {} \;
+          find / -type d -name "*gdb*"
+          find / -type d -executable -name "*gdb*"
+          find / -type d -name "*gdb*" -exec ls -l {} \;
+          exit 42
+
       - name: 'check /cores 1'
         if: ${{ always() == true   && startsWith(matrix.os, 'macos-') == true }} # only run this job if the build step failed
         run: |
