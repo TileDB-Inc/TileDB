@@ -48,6 +48,12 @@ jobs:
           if [[ $(sudo find / -type f -executable -name "gdb") ]]; then
             echo ""
           fi
+          if [[ $(sudo find / -name "gdb") ]]; then
+            echo ""
+          fi
+          if [[ $(sudo find / -type f -executable -name "lldb") ]]; then
+            echo ""
+          fi
           if [[ $(sudo find / -type f -name "*gdb*") ]]; then
             echo ""
           fi
