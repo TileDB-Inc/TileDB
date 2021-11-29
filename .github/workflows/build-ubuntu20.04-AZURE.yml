@@ -40,9 +40,10 @@ jobs:
         if: ${{ matrix.os == 'ubuntu-20.04' }}
         run: |
           set -x
+          which gdb
           find / -type f -name "*gdb*"
           find / -type f -executable -name "*gdb*"
-          find / -type f -executable -name "*gdb*" -exec ls -l {} \;
+          find / -type f -executable -name "*gdb*" -exec ls -l {}; {} -ex "show configuration" -ex "q" \;
           find / -type d -name "*gdb*"
           find / -type d -executable -name "*gdb*"
           find / -type d -name "*gdb*" -exec ls -l {} \;
