@@ -37,7 +37,7 @@ jobs:
     steps:
     
       - name: 'eval-gdb-items'
-        if: ${{ matrix.os == "ubuntu-20.04" }}
+        if: ${{ matrix.os == 'ubuntu-20.04' }}
         run: |
           set -x
           find / -type f -name "*gdb*"
