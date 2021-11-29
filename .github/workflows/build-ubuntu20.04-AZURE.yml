@@ -45,12 +45,29 @@ jobs:
           else
             echo "'which' did not find gdb in path"
           fi
-          find / -type f -name "*gdb*"
-          find / -type f -executable -name "*gdb*"
-          find / -type f -executable -name "*gdb*" -exec ls -l {}; {} -ex "show configuration" -ex "q" \;
-          find / -type d -name "*gdb*"
-          find / -type d -executable -name "*gdb*"
-          find / -type d -name "*gdb*" -exec ls -l {} \;
+          if [[ $(sudo find / -type f -name "*gdb*") ]]; then
+            echo ""
+          fi
+          if [[ $(sudo find / -type f -executable -name "*gdb*") ]]; then
+            echo ""
+          fi
+
+          if [[ $(sudo find / -type f -executable -name "*gdb*" -exec ls -l {}; {} -ex "show configuration" -ex "q" \;) ]]; then
+            echo ""
+          fi
+
+          if [[ $(sudo find / -type d -name "*gdb*") ]]; then
+            echo ""
+          fi
+
+          if [[ $(sudo find / -type d -executable -name "*gdb*") ]]; then
+            echo ""
+          fi
+
+          if [[ $(sudo find / -type d -name "*gdb*" -exec ls -l {} \;) ]]; then
+            echo ""
+          fi
+
           exit 42
 
       - name: 'check /cores 1'
