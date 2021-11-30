@@ -217,7 +217,7 @@ TEST_CASE_METHOD(
   std::vector<NDRange> domain_slices = {ds};
   const auto& tile_coords = subarray.tile_coords();
   std::map<const uint64_t*, ResultSpaceTile<uint64_t>> result_space_tiles;
-  auto dom = array_->array_->array_schema()->domain();
+  auto dom = array_->array_->array_schema_latest()->domain();
   create_result_space_tiles(
       dom,
       dom->domain(),
@@ -277,7 +277,7 @@ TEST_CASE_METHOD(
   std::vector<NDRange> domain_slices = {ds};
   const auto& tile_coords = subarray.tile_coords();
   std::map<const uint64_t*, ResultSpaceTile<uint64_t>> result_space_tiles;
-  auto dom = array_->array_->array_schema()->domain();
+  auto dom = array_->array_->array_schema_latest()->domain();
   create_result_space_tiles(
       dom,
       dom->domain(),
@@ -340,7 +340,7 @@ TEST_CASE_METHOD(
   std::vector<NDRange> domain_slices = {ds1, ds2};
   const auto& tile_coords = subarray.tile_coords();
   std::map<const uint64_t*, ResultSpaceTile<uint64_t>> result_space_tiles;
-  auto dom = array_->array_->array_schema()->domain();
+  auto dom = array_->array_->array_schema_latest()->domain();
   create_result_space_tiles(
       dom,
       dom->domain(),
@@ -407,7 +407,7 @@ TEST_CASE_METHOD(
   std::vector<NDRange> domain_slices = {ds};
   const auto& tile_coords = subarray.tile_coords();
   std::map<const uint64_t*, ResultSpaceTile<uint64_t>> result_space_tiles;
-  auto dom = array_->array_->array_schema()->domain();
+  auto dom = array_->array_->array_schema_latest()->domain();
   create_result_space_tiles(
       dom,
       dom->domain(),
@@ -630,7 +630,7 @@ TEST_CASE_METHOD(
   std::vector<NDRange> domain_slices = {ds};
   const auto& tile_coords = subarray.tile_coords();
   std::map<const uint64_t*, ResultSpaceTile<uint64_t>> result_space_tiles;
-  auto dom = array_->array_->array_schema()->domain();
+  auto dom = array_->array_->array_schema_latest()->domain();
   create_result_space_tiles(
       dom,
       dom->domain(),
@@ -802,7 +802,7 @@ TEST_CASE_METHOD(
   std::vector<NDRange> domain_slices = {ds};
   const auto& tile_coords = subarray.tile_coords();
   std::map<const uint64_t*, ResultSpaceTile<uint64_t>> result_space_tiles;
-  auto dom = array_->array_->array_schema()->domain();
+  auto dom = array_->array_->array_schema_latest()->domain();
   create_result_space_tiles(
       dom,
       dom->domain(),
@@ -987,7 +987,7 @@ TEST_CASE_METHOD(
   std::vector<NDRange> domain_slices = {ds};
   const auto& tile_coords = subarray.tile_coords();
   std::map<const uint64_t*, ResultSpaceTile<uint64_t>> result_space_tiles;
-  auto dom = array_->array_->array_schema()->domain();
+  auto dom = array_->array_->array_schema_latest()->domain();
   create_result_space_tiles(
       dom,
       dom->domain(),
@@ -1218,7 +1218,7 @@ TEST_CASE_METHOD(
   std::vector<NDRange> domain_slices = {ds1, ds2};
   const auto& tile_coords = subarray.tile_coords();
   std::map<const uint64_t*, ResultSpaceTile<uint64_t>> result_space_tiles;
-  auto dom = array_->array_->array_schema()->domain();
+  auto dom = array_->array_->array_schema_latest()->domain();
   create_result_space_tiles(
       dom,
       dom->domain(),

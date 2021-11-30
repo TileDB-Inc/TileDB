@@ -223,7 +223,7 @@ Status Consolidator::consolidate_fragments(
     // Find the next fragments to be consolidated
     NDRange union_non_empty_domains;
     st = compute_next_to_consolidate(
-        array_for_reads.array_schema(),
+        array_for_reads.array_schema_latest(),
         fragment_info,
         &to_consolidate,
         &union_non_empty_domains);
@@ -321,7 +321,7 @@ Status Consolidator::consolidate(
   }
 
   // Get schema
-  auto array_schema = array_for_reads.array_schema();
+  auto array_schema = array_for_reads.array_schema_latest();
 
   // Prepare buffers
   std::vector<ByteVec> buffers;
@@ -418,7 +418,7 @@ Status Consolidator::consolidate_fragment_meta(
   auto first = meta.front()->fragment_uri();
   auto last = meta.back()->fragment_uri();
   RETURN_NOT_OK(compute_new_fragment_uri(
-      first, last, array.array_schema()->write_version(), &uri));
+      first, last, array.array_schema_latest()->write_version(), &uri));
   uri = URI(uri.to_string() + constants::meta_file_suffix);
 
   // Get the consolidated fragment metadata version
@@ -580,7 +580,7 @@ Status Consolidator::create_queries(
 
   // Refactored reader optimizes for no subarray.
   if (!config_.use_refactored_reader_ ||
-      array_for_reads->array_schema()->dense())
+      array_for_reads->array_schema_latest()->dense())
     RETURN_NOT_OK((*query_r)->set_subarray_unsafe(subarray));
 
   // Get last fragment URI, which will be the URI of the consolidated fragment
@@ -590,7 +590,7 @@ Status Consolidator::create_queries(
   RETURN_NOT_OK(compute_new_fragment_uri(
       first,
       last,
-      array_for_reads->array_schema()->write_version(),
+      array_for_reads->array_schema_latest()->write_version(),
       new_fragment_uri));
 
   // Create write query
@@ -598,7 +598,7 @@ Status Consolidator::create_queries(
       tdb_new(Query, storage_manager_, array_for_writes, *new_fragment_uri);
   RETURN_NOT_OK((*query_w)->set_layout(Layout::GLOBAL_ORDER));
   RETURN_NOT_OK((*query_w)->disable_check_global_order());
-  if (array_for_reads->array_schema()->dense())
+  if (array_for_reads->array_schema_latest()->dense())
     RETURN_NOT_OK((*query_w)->set_subarray_unsafe(subarray));
 
   return Status::Ok();
@@ -894,7 +894,7 @@ Status Consolidator::set_config(const Config* config) {
   std::string reader =
       merged_config.get("sm.query.sparse_global_order.reader", &found);
   assert(found);
-  config_.use_refactored_reader_ = reader.compare("reafctored") == 0;
+  config_.use_refactored_reader_ = reader.compare("refactored") == 0;
 
   // Sanity checks
   if (config_.min_frags_ > config_.max_frags_)

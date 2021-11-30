@@ -198,7 +198,6 @@ TEST_CASE(
       .set_data_buffer("a", a_read)
       .set_coordinates(coords_read);
   query_r.submit();
-  array.close();
 
   // Note: If you encounter a failure here, in particular with a_read[0] == 100
   // (instead of 1), be sure non_split_coords_v1_4_0 has not become 'corrupt',
@@ -207,6 +206,8 @@ TEST_CASE(
   // corrupt can refresh from repository to correct initial state.
   for (int i = 0; i < 4; i++)
     REQUIRE(a_read[i] == i + 1);
+
+  array.close();
 }
 
 TEST_CASE(

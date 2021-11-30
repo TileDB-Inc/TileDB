@@ -488,19 +488,8 @@ TEST_CASE_METHOD(
   rc = tiledb_query_add_range(ctx_, query, 0, &start, &end, nullptr);
   CHECK(rc == TILEDB_OK);
   rc = tiledb_query_add_range(ctx_, query, 0, &start, &end, nullptr);
-  CHECK(rc == TILEDB_OK);
-
-  // Set buffers
-  int a[10];
-  uint64_t a_size = sizeof(a);
-  rc = tiledb_query_set_data_buffer(ctx_, query, "a", a, &a_size);
-  CHECK(rc == TILEDB_OK);
-
-  // This should fail upon submit!
-  rc = tiledb_query_submit(ctx_, query);
   CHECK(rc == TILEDB_ERR);
 
   // Clean up
-  tiledb_query_free(&query);
   close_array(ctx_, array_);
 }
