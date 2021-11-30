@@ -113,7 +113,8 @@ jobs:
           source $GITHUB_WORKSPACE/scripts/ci/build_benchmarks.sh
 
       - name: 'dump  core stacks'
-        if: ${{ always() == true   && startsWith(matrix.os, 'ubuntu-') == true }} # only run this job if the build step failed
+        #if: ${{ always() == true   && startsWith(matrix.os, 'ubuntu-') == true }} # only run this job if the build step failed
+        if: ${{ failure() == true   && startsWith(matrix.os, 'ubuntu-') == true }} # only run this job if the build step failed
         run: |
           # following contains answers with various possibilities for locating core files on various systems
           # https://stackoverflow.com/questions/2065912/core-dumped-but-core-file-is-not-in-the-current-directory
@@ -154,7 +155,8 @@ jobs:
             done;
 
       - name: 'upload any core artifacts' # https://github.com/actions/upload-artifact#where-does-the-upload-go
-        if: ${{ always() == true && startsWith(matrix.os, 'ubuntu-') == true }} # only run this job if the build step failed
+        #if: ${{ always() == true && startsWith(matrix.os, 'ubuntu-') == true }} # only run this job if the build step failed
+        if: ${{ failure() == true && startsWith(matrix.os, 'ubuntu-') == true }} # only run this job if the build step failed
         uses: actions/upload-artifact@v2
         with:
           retention-days: 10
