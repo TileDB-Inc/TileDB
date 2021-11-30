@@ -169,7 +169,6 @@ set(TILEDB_TEST_SOURCES
   src/unit-SubarrayPartitioner-dense.cc
   src/unit-SubarrayPartitioner-error.cc
   src/unit-SubarrayPartitioner-sparse.cc
-  src/unit-threadpool.cc
   src/unit-Tile.cc
   src/unit-TileDomain.cc
   src/unit-uri.cc
