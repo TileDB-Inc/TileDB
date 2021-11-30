@@ -83,8 +83,25 @@ Status config_from_capnp(
 
   if (config_reader.hasEntries()) {
     auto entries = config_reader.getEntries();
+    bool found_refactored_reader_config = false;
     for (const auto kv : entries) {
       RETURN_NOT_OK((*config)->set(kv.getKey().cStr(), kv.getValue().cStr()));
+      if (kv.getKey() == "sm.use_refactored_readers" ||
+          kv.getKey() == "sm.query.dense.reader" ||
+          kv.getKey() == "sm.query.sparse_global_order.reader" ||
+          kv.getKey() == "sm.query.sparse_unordered_with_dups.reader")
+        found_refactored_reader_config = true;
+    }
+
+    // If we are on a pre TileDB 2.4 client, they will not have the reader
+    // options set. For those cases we need to set the reader to the legacy
+    // option
+    if (!found_refactored_reader_config) {
+      RETURN_NOT_OK((*config)->set("sm.query.dense.reader", "legacy"));
+      RETURN_NOT_OK(
+          (*config)->set("sm.query.sparse_global_order.reader", "legacy"));
+      RETURN_NOT_OK((*config)->set(
+          "sm.query.sparse_unordered_with_dups.reader", "legacy"));
     }
   }
   return Status::Ok();
