@@ -795,8 +795,7 @@ Status QueryCondition::apply_clause(
 Status QueryCondition::apply(
     const ArraySchema* const array_schema,
     std::vector<ResultCellSlab>* const result_cell_slabs,
-    const uint64_t stride,
-    uint64_t memory_budget) const {
+    const uint64_t stride) const {
   if (clauses_.empty()) {
     return Status::Ok();
   }
@@ -813,15 +812,6 @@ Status QueryCondition::apply(
         stride,
         *result_cell_slabs,
         &tmp_result_cell_slabs));
-    if (tmp_result_cell_slabs.size() > result_cell_slabs->size()) {
-      uint64_t memory_increase =
-          tmp_result_cell_slabs.size() - result_cell_slabs->size();
-      memory_increase *= sizeof(ResultCellSlab);
-      if (memory_increase > memory_budget) {
-        return Status::QueryConditionError(
-            "Exceeded result cell slab budget applying query condition");
-      }
-    }
     *result_cell_slabs = tmp_result_cell_slabs;
   }
 
@@ -1289,6 +1279,243 @@ Status QueryCondition::apply_dense(
   return Status::Ok();
 }
 
+template <typename T, QueryConditionOp Op, typename BitmapType>
+void QueryCondition::apply_clause_sparse(
+    const QueryCondition::Clause& clause,
+    ResultTile* result_tile,
+    const bool var_size,
+    const bool nullable,
+    BitmapType* result_bitmap,
+    uint64_t* cell_count) const {
+  const std::string& field_name = clause.field_name_;
+
+  // Get the nullable buffer.
+  const auto tile_tuple = result_tile->tile_tuple(field_name);
+  uint8_t* buffer_validity = nullptr;
+
+  if (nullable) {
+    const auto& tile_validity = std::get<2>(*tile_tuple);
+    buffer_validity = static_cast<uint8_t*>(tile_validity.buffer()->data());
+  }
+
+  if (var_size) {
+    // Get var data buffer and tile offsets buffer.
+    const auto& tile = std::get<1>(*tile_tuple);
+    const char* buffer = static_cast<char*>(tile.buffer()->data());
+    const uint64_t buffer_size = tile.size();
+
+    const auto& tile_offsets = std::get<0>(*tile_tuple);
+    const uint64_t* buffer_offsets =
+        static_cast<uint64_t*>(tile_offsets.buffer()->data());
+    const uint64_t buffer_offsets_el =
+        tile_offsets.size() / constants::cell_var_offset_size;
+
+    // Iterate through each cell.
+    for (uint64_t c = 0; c < buffer_offsets_el; ++c) {
+      if (result_bitmap[c] != 0) {
+        const uint64_t buffer_offset = buffer_offsets[c];
+        const uint64_t next_cell_offset =
+            (c + 1 < buffer_offsets_el) ? buffer_offsets[c + 1] : buffer_size;
+        const uint64_t cell_size = next_cell_offset - buffer_offset;
+
+        const bool null_cell = nullable && buffer_validity[c] == 0;
+
+        // Get the cell value.
+        const void* const cell_value =
+            null_cell ? nullptr : buffer + buffer_offset;
+
+        // Compare the cell value against the value in the clause.
+        const bool cmp = BinaryCmp<T, Op>::cmp(
+            cell_value,
+            cell_size,
+            clause.condition_value_,
+            clause.condition_value_data_.size());
+
+        // Set the value.
+        if (!cmp) {
+          result_bitmap[c] = 0;
+        }
+
+        *cell_count += result_bitmap[c];
+      }
+    }
+  } else {
+    // Get the fixed size data buffers.
+    const auto& tile = std::get<0>(*tile_tuple);
+    const char* buffer = static_cast<char*>(tile.buffer()->data());
+    const uint64_t cell_size = tile.cell_size();
+    const uint64_t buffer_el = tile.size() / cell_size;
+
+    // Iterate through each cell.
+    for (uint64_t c = 0; c < buffer_el; ++c) {
+      if (result_bitmap[c] != 0) {
+        const bool null_cell = nullable && buffer_validity[c] == 0;
+
+        // Get the cell value.
+        const void* const cell_value =
+            null_cell ? nullptr : buffer + c * cell_size;
+
+        // Compare the cell value against the value in the clause.
+        const bool cmp = BinaryCmp<T, Op>::cmp(
+            cell_value,
+            cell_size,
+            clause.condition_value_,
+            clause.condition_value_data_.size());
+
+        // Set the value.
+        if (!cmp) {
+          result_bitmap[c] = 0;
+        }
+
+        *cell_count += result_bitmap[c];
+      }
+    }
+  }
+}
+
+template <typename T, typename BitmapType>
+Status QueryCondition::apply_clause_sparse(
+    const Clause& clause,
+    ResultTile* result_tile,
+    const bool var_size,
+    const bool nullable,
+    BitmapType* result_bitmap,
+    uint64_t* cell_count) const {
+  switch (clause.op_) {
+    case QueryConditionOp::LT:
+      apply_clause_sparse<T, QueryConditionOp::LT>(
+          clause, result_tile, var_size, nullable, result_bitmap, cell_count);
+      break;
+    case QueryConditionOp::LE:
+      apply_clause_sparse<T, QueryConditionOp::LE>(
+          clause, result_tile, var_size, nullable, result_bitmap, cell_count);
+      break;
+    case QueryConditionOp::GT:
+      apply_clause_sparse<T, QueryConditionOp::GT>(
+          clause, result_tile, var_size, nullable, result_bitmap, cell_count);
+      break;
+    case QueryConditionOp::GE:
+      apply_clause_sparse<T, QueryConditionOp::GE>(
+          clause, result_tile, var_size, nullable, result_bitmap, cell_count);
+      break;
+    case QueryConditionOp::EQ:
+      apply_clause_sparse<T, QueryConditionOp::EQ>(
+          clause, result_tile, var_size, nullable, result_bitmap, cell_count);
+      break;
+    case QueryConditionOp::NE:
+      apply_clause_sparse<T, QueryConditionOp::NE>(
+          clause, result_tile, var_size, nullable, result_bitmap, cell_count);
+      break;
+    default:
+      return Status::QueryConditionError(
+          "Cannot perform query comparison; Unknown query "
+          "condition operator");
+  }
+
+  return Status::Ok();
+}
+
+template <typename BitmapType>
+Status QueryCondition::apply_clause_sparse(
+    const QueryCondition::Clause& clause,
+    const ArraySchema* const array_schema,
+    ResultTile* result_tile,
+    BitmapType* result_bitmap,
+    uint64_t* cell_count) const {
+  const Attribute* const attribute =
+      array_schema->attribute(clause.field_name_);
+  if (!attribute) {
+    return Status::QueryConditionError(
+        "Unknown attribute " + clause.field_name_);
+  }
+
+  const bool var_size = attribute->var_size();
+  const bool nullable = attribute->nullable();
+  switch (attribute->type()) {
+    case Datatype::INT8:
+      return apply_clause_sparse<int8_t, BitmapType>(
+          clause, result_tile, var_size, nullable, result_bitmap, cell_count);
+    case Datatype::UINT8:
+      return apply_clause_sparse<uint8_t, BitmapType>(
+          clause, result_tile, var_size, nullable, result_bitmap, cell_count);
+    case Datatype::INT16:
+      return apply_clause_sparse<int16_t, BitmapType>(
+          clause, result_tile, var_size, nullable, result_bitmap, cell_count);
+    case Datatype::UINT16:
+      return apply_clause_sparse<uint16_t, BitmapType>(
+          clause, result_tile, var_size, nullable, result_bitmap, cell_count);
+    case Datatype::INT32:
+      return apply_clause_sparse<int32_t, BitmapType>(
+          clause, result_tile, var_size, nullable, result_bitmap, cell_count);
+    case Datatype::UINT32:
+      return apply_clause_sparse<uint32_t, BitmapType>(
+          clause, result_tile, var_size, nullable, result_bitmap, cell_count);
+    case Datatype::INT64:
+      return apply_clause_sparse<int64_t, BitmapType>(
+          clause, result_tile, var_size, nullable, result_bitmap, cell_count);
+    case Datatype::UINT64:
+      return apply_clause_sparse<uint64_t, BitmapType>(
+          clause, result_tile, var_size, nullable, result_bitmap, cell_count);
+    case Datatype::FLOAT32:
+      return apply_clause_sparse<float, BitmapType>(
+          clause, result_tile, var_size, nullable, result_bitmap, cell_count);
+    case Datatype::FLOAT64:
+      return apply_clause_sparse<double, BitmapType>(
+          clause, result_tile, var_size, nullable, result_bitmap, cell_count);
+    case Datatype::STRING_ASCII:
+      return apply_clause_sparse<char*, BitmapType>(
+          clause, result_tile, var_size, nullable, result_bitmap, cell_count);
+    case Datatype::CHAR:
+      return apply_clause_sparse<char, BitmapType>(
+          clause, result_tile, var_size, nullable, result_bitmap, cell_count);
+    case Datatype::DATETIME_YEAR:
+    case Datatype::DATETIME_MONTH:
+    case Datatype::DATETIME_WEEK:
+    case Datatype::DATETIME_DAY:
+    case Datatype::DATETIME_HR:
+    case Datatype::DATETIME_MIN:
+    case Datatype::DATETIME_SEC:
+    case Datatype::DATETIME_MS:
+    case Datatype::DATETIME_US:
+    case Datatype::DATETIME_NS:
+    case Datatype::DATETIME_PS:
+    case Datatype::DATETIME_FS:
+    case Datatype::DATETIME_AS:
+      return apply_clause_sparse<int64_t, BitmapType>(
+          clause, result_tile, var_size, nullable, result_bitmap, cell_count);
+    case Datatype::ANY:
+    case Datatype::STRING_UTF8:
+    case Datatype::STRING_UTF16:
+    case Datatype::STRING_UTF32:
+    case Datatype::STRING_UCS2:
+    case Datatype::STRING_UCS4:
+    default:
+      return Status::QueryConditionError(
+          "Cannot perform query comparison; Unsupported query "
+          "conditional type on " +
+          clause.field_name_);
+  }
+
+  return Status::Ok();
+}
+
+template <typename T, typename BitmapType>
+Status QueryCondition::apply_sparse(
+    const ArraySchema* const array_schema,
+    ResultTile* result_tile,
+    BitmapType* result_bitmap,
+    uint64_t* cell_count) {
+  // Iterate through each clause.
+  // This assumes all clauses are combined with a logical "AND".
+  for (const auto& clause : clauses_) {
+    *cell_count = 0;
+    RETURN_NOT_OK(apply_clause_sparse(
+        clause, array_schema, result_tile, result_bitmap, cell_count));
+  }
+
+  return Status::Ok();
+}
+
 void QueryCondition::set_clauses(std::vector<Clause>&& clauses) {
   clauses_ = std::move(clauses);
 }
@@ -1372,6 +1599,37 @@ template Status QueryCondition::apply_dense<uint64_t>(
     const uint64_t,
     const uint64_t,
     uint8_t*);
-
+template Status QueryCondition::apply_sparse<int8_t, uint8_t>(
+    const ArraySchema* const, ResultTile*, uint8_t*, uint64_t*);
+template Status QueryCondition::apply_sparse<uint8_t, uint8_t>(
+    const ArraySchema* const, ResultTile*, uint8_t*, uint64_t*);
+template Status QueryCondition::apply_sparse<int16_t, uint8_t>(
+    const ArraySchema* const, ResultTile*, uint8_t*, uint64_t*);
+template Status QueryCondition::apply_sparse<uint16_t, uint8_t>(
+    const ArraySchema* const, ResultTile*, uint8_t*, uint64_t*);
+template Status QueryCondition::apply_sparse<int32_t, uint8_t>(
+    const ArraySchema* const, ResultTile*, uint8_t*, uint64_t*);
+template Status QueryCondition::apply_sparse<uint32_t, uint8_t>(
+    const ArraySchema* const, ResultTile*, uint8_t*, uint64_t*);
+template Status QueryCondition::apply_sparse<int64_t, uint8_t>(
+    const ArraySchema* const, ResultTile*, uint8_t*, uint64_t*);
+template Status QueryCondition::apply_sparse<uint64_t, uint8_t>(
+    const ArraySchema* const, ResultTile*, uint8_t*, uint64_t*);
+template Status QueryCondition::apply_sparse<int8_t, uint64_t>(
+    const ArraySchema* const, ResultTile*, uint64_t*, uint64_t*);
+template Status QueryCondition::apply_sparse<uint8_t, uint64_t>(
+    const ArraySchema* const, ResultTile*, uint64_t*, uint64_t*);
+template Status QueryCondition::apply_sparse<int16_t, uint64_t>(
+    const ArraySchema* const, ResultTile*, uint64_t*, uint64_t*);
+template Status QueryCondition::apply_sparse<uint16_t, uint64_t>(
+    const ArraySchema* const, ResultTile*, uint64_t*, uint64_t*);
+template Status QueryCondition::apply_sparse<int32_t, uint64_t>(
+    const ArraySchema* const, ResultTile*, uint64_t*, uint64_t*);
+template Status QueryCondition::apply_sparse<uint32_t, uint64_t>(
+    const ArraySchema* const, ResultTile*, uint64_t*, uint64_t*);
+template Status QueryCondition::apply_sparse<int64_t, uint64_t>(
+    const ArraySchema* const, ResultTile*, uint64_t*, uint64_t*);
+template Status QueryCondition::apply_sparse<uint64_t, uint64_t>(
+    const ArraySchema* const, ResultTile*, uint64_t*, uint64_t*);
 }  // namespace sm
 }  // namespace tiledb

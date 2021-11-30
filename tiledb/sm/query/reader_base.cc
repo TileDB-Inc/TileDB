@@ -396,14 +396,14 @@ Status ReaderBase::init_tile_nullable(
 Status ReaderBase::read_attribute_tiles(
     const std::vector<std::string>* names,
     const std::vector<ResultTile*>* result_tiles) const {
-  auto timer_se = stats_->start_timer("attr_tiles");
+  auto timer_se = stats_->start_timer("read_attribute_tiles");
   return read_tiles(names, result_tiles);
 }
 
 Status ReaderBase::read_coordinate_tiles(
     const std::vector<std::string>* names,
     const std::vector<ResultTile*>* result_tiles) const {
-  auto timer_se = stats_->start_timer("coord_tiles");
+  auto timer_se = stats_->start_timer("read_coordinate_tiles");
   return read_tiles(names, result_tiles);
 }
 
@@ -961,8 +961,7 @@ Status ReaderBase::copy_attribute_values(
         result_cell_slabs,
         &subarray,
         stride,
-        memory_budget,
-        nullptr));
+        memory_budget));
   }
 
   return Status::Ok();
@@ -1529,8 +1528,7 @@ Status ReaderBase::process_tiles(
     std::vector<ResultCellSlab>* result_cell_slabs,
     Subarray* subarray,
     const uint64_t stride,
-    uint64_t memory_budget,
-    uint64_t* memory_used_for_tiles) {
+    uint64_t memory_budget) {
   // If a name needs to be read, we put it on `read_names` vector (it may
   // contain other flags). Otherwise, we put the name on the `copy_names`
   // vector if it needs to be copied back to the user buffer.
@@ -1538,18 +1536,14 @@ Status ReaderBase::process_tiles(
   // separately from `copy_names`.
   std::vector<std::string> read_names;
   std::vector<std::string> copy_names;
-  bool is_apply_query_condition = true;
   read_names.reserve(names->size());
   for (const auto& name_pair : *names) {
     const std::string name = name_pair.first;
     const ProcessTileFlags flags = name_pair.second;
     if (flags & ProcessTileFlag::READ) {
-      if (flags & ProcessTileFlag::COPY)
-        is_apply_query_condition = false;
       read_names.push_back(name);
     } else if (flags & ProcessTileFlag::COPY) {
       copy_names.push_back(name);
-      is_apply_query_condition = false;
     }
   }
 
@@ -1559,68 +1553,47 @@ Status ReaderBase::process_tiles(
 
   // Respect the memory budget if it is set.
   if (memory_budget != std::numeric_limits<uint64_t>::max()) {
-    // For query condition, make sure all tiles fit in memory budget.
-    if (is_apply_query_condition) {
-      for (const auto& name_pair : *names) {
-        const std::string name = name_pair.first;
-        assert(name_pair.second == ProcessTileFlag::READ);
-
-        for (const auto& rt : *result_tiles) {
-          uint64_t tile_size = 0;
-          RETURN_NOT_OK(get_attribute_tile_size(
-              name, rt->frag_idx(), rt->tile_idx(), &tile_size));
-          *memory_used_for_tiles += tile_size;
+    // Make sure that for each attribute, all tiles can fit in the budget.
+    uint64_t new_result_tile_size = result_tiles->size();
+    for (const auto& name_pair : *names) {
+      uint64_t mem_usage = 0;
+      for (uint64_t i = 0; i < result_tiles->size() && i < new_result_tile_size;
+           i++) {
+        const auto& rt = result_tiles->at(i);
+        uint64_t tile_size = 0;
+        RETURN_NOT_OK(get_attribute_tile_size(
+            name_pair.first, rt->frag_idx(), rt->tile_idx(), &tile_size));
+        if (mem_usage + tile_size > memory_budget) {
+          new_result_tile_size = i;
+          break;
         }
+        mem_usage += tile_size;
       }
+    }
 
-      if (*memory_used_for_tiles > memory_budget) {
-        return Status::ReaderError(
-            "Exceeded tile memory budget applying query condition");
-      }
-    } else {
-      // Make sure that for each attribute, all tiles can fit in the budget.
-      uint64_t new_result_tile_size = result_tiles->size();
-      for (const auto& name_pair : *names) {
-        uint64_t mem_usage = 0;
-        for (uint64_t i = 0;
-             i < result_tiles->size() && i < new_result_tile_size;
-             i++) {
-          const auto& rt = result_tiles->at(i);
-          uint64_t tile_size = 0;
-          RETURN_NOT_OK(get_attribute_tile_size(
-              name_pair.first, rt->frag_idx(), rt->tile_idx(), &tile_size));
-          if (mem_usage + tile_size > memory_budget) {
-            new_result_tile_size = i;
-            break;
+    if (new_result_tile_size != result_tiles->size()) {
+      // Erase tiles from result tiles.
+      result_tiles->erase(
+          result_tiles->begin() + new_result_tile_size - 1,
+          result_tiles->end());
+
+      // Find the result cell slab index to end the copy opeation.
+      auto& last_tile = result_tiles->back();
+      uint64_t last_idx = 0;
+      for (uint64_t i = 0; i < result_cell_slabs->size(); i++) {
+        if (result_cell_slabs->at(i).tile_ == last_tile) {
+          if (i == 0) {
+            return Status::ReaderError(
+                "Unable to copy one tile with current budget");
           }
-          mem_usage += tile_size;
+          last_idx = i;
         }
       }
 
-      if (new_result_tile_size != result_tiles->size()) {
-        // Erase tiles from result tiles.
-        result_tiles->erase(
-            result_tiles->begin() + new_result_tile_size - 1,
-            result_tiles->end());
-
-        // Find the result cell slab index to end the copy opeation.
-        auto& last_tile = result_tiles->back();
-        uint64_t last_idx = 0;
-        for (uint64_t i = 0; i < result_cell_slabs->size(); i++) {
-          if (result_cell_slabs->at(i).tile_ == last_tile) {
-            if (i == 0) {
-              return Status::ReaderError(
-                  "Unable to copy one tile with current budget");
-            }
-            last_idx = i;
-          }
-        }
-
-        // Adjust copy_end_
-        if (copy_end_.first > last_idx + 1) {
-          copy_end_.first = last_idx + 1;
-          copy_end_.second = result_cell_slabs->at(last_idx).length_;
-        }
+      // Adjust copy_end_
+      if (copy_end_.first > last_idx + 1) {
+        copy_end_.first = last_idx + 1;
+        copy_end_.second = result_cell_slabs->at(last_idx).length_;
       }
     }
   }
@@ -1708,76 +1681,6 @@ Status ReaderBase::process_tiles(
 
     idx += inner_names.size();
   }
-
-  return Status::Ok();
-}
-
-tdb_unique_ptr<ReaderBase::ResultCellSlabsIndex> ReaderBase::compute_rcs_index(
-    const std::vector<ResultCellSlab>* result_cell_slabs) const {
-  // Build an association from the result tile to the cell slab ranges
-  // that it contains.
-  tdb_unique_ptr<ReaderBase::ResultCellSlabsIndex> rcs_index =
-      tdb_unique_ptr<ReaderBase::ResultCellSlabsIndex>(
-          tdb_new(ResultCellSlabsIndex));
-
-  std::vector<ResultCellSlab>::const_iterator it = result_cell_slabs->cbegin();
-  while (it != result_cell_slabs->cend()) {
-    std::pair<uint64_t, uint64_t> range =
-        std::make_pair(it->start_, it->start_ + it->length_);
-    if (rcs_index->find(it->tile_) == rcs_index->end()) {
-      std::vector<std::pair<uint64_t, uint64_t>> ranges(1, std::move(range));
-      rcs_index->insert(std::make_pair(it->tile_, std::move(ranges)));
-    } else {
-      (*rcs_index)[it->tile_].emplace_back(std::move(range));
-    }
-    ++it;
-  }
-
-  return rcs_index;
-}
-
-Status ReaderBase::apply_query_condition(
-    std::vector<ResultCellSlab>* const result_cell_slabs,
-    std::vector<ResultTile*>* result_tiles,
-    Subarray* subarray,
-    uint64_t stride,
-    uint64_t memory_budget_rcs,
-    uint64_t memory_budget_tiles,
-    uint64_t* memory_used_for_tiles) {
-  if (condition_.empty() || result_cell_slabs->empty())
-    return Status::Ok();
-
-  // To evaluate the query condition, we need to read tiles for the
-  // attributes used in the query condition. Build a map of attribute
-  // names to read.
-  const std::unordered_set<std::string>& condition_names =
-      condition_.field_names();
-  std::unordered_map<std::string, ProcessTileFlags> names;
-  for (const auto& condition_name : condition_names) {
-    names[condition_name] = ProcessTileFlag::READ;
-  }
-
-  // Each element in `names` has been flagged with `ProcessTileFlag::READ`.
-  // This will read the tiles, but will not copy them into the user buffers.
-  RETURN_NOT_OK(process_tiles(
-      &names,
-      result_tiles,
-      result_cell_slabs,
-      subarray,
-      stride,
-      memory_budget_tiles,
-      memory_used_for_tiles));
-
-  // The `UINT64_MAX` is a sentinel value to indicate that we do not
-  // use a stride in the cell index calculation. To simplify our logic,
-  // assign this to `1`.
-  if (stride == UINT64_MAX)
-    stride = 1;
-
-  RETURN_NOT_OK(condition_.apply(
-      array_schema_, result_cell_slabs, stride, memory_budget_rcs));
-
-  logger_->debug("Done applying query condition");
 
   return Status::Ok();
 }
@@ -2080,44 +1983,37 @@ void ReaderBase::fill_dense_coords_col_slab(
 
 // Explicit template instantiations
 template void ReaderBase::compute_result_space_tiles<int8_t>(
-    const Subarray* subarray,
-    const Subarray* partitioner_subarray,
-    std::map<const int8_t*, ResultSpaceTile<int8_t>>* result_space_tiles) const;
+    const Subarray*,
+    const Subarray*,
+    std::map<const int8_t*, ResultSpaceTile<int8_t>>*) const;
 template void ReaderBase::compute_result_space_tiles<uint8_t>(
-    const Subarray* subarray,
-    const Subarray* partitioner_subarray,
-    std::map<const uint8_t*, ResultSpaceTile<uint8_t>>* result_space_tiles)
-    const;
+    const Subarray*,
+    const Subarray*,
+    std::map<const uint8_t*, ResultSpaceTile<uint8_t>>*) const;
 template void ReaderBase::compute_result_space_tiles<int16_t>(
-    const Subarray* subarray,
-    const Subarray* partitioner_subarray,
-    std::map<const int16_t*, ResultSpaceTile<int16_t>>* result_space_tiles)
-    const;
+    const Subarray*,
+    const Subarray*,
+    std::map<const int16_t*, ResultSpaceTile<int16_t>>*) const;
 template void ReaderBase::compute_result_space_tiles<uint16_t>(
-    const Subarray* subarray,
-    const Subarray* partitioner_subarray,
-    std::map<const uint16_t*, ResultSpaceTile<uint16_t>>* result_space_tiles)
-    const;
+    const Subarray*,
+    const Subarray*,
+    std::map<const uint16_t*, ResultSpaceTile<uint16_t>>*) const;
 template void ReaderBase::compute_result_space_tiles<int32_t>(
-    const Subarray* subarray,
-    const Subarray* partitioner_subarray,
-    std::map<const int32_t*, ResultSpaceTile<int32_t>>* result_space_tiles)
-    const;
+    const Subarray*,
+    const Subarray*,
+    std::map<const int32_t*, ResultSpaceTile<int32_t>>*) const;
 template void ReaderBase::compute_result_space_tiles<uint32_t>(
-    const Subarray* subarray,
-    const Subarray* partitioner_subarray,
-    std::map<const uint32_t*, ResultSpaceTile<uint32_t>>* result_space_tiles)
-    const;
+    const Subarray*,
+    const Subarray*,
+    std::map<const uint32_t*, ResultSpaceTile<uint32_t>>*) const;
 template void ReaderBase::compute_result_space_tiles<int64_t>(
-    const Subarray* subarray,
-    const Subarray* partitioner_subarray,
-    std::map<const int64_t*, ResultSpaceTile<int64_t>>* result_space_tiles)
-    const;
+    const Subarray*,
+    const Subarray*,
+    std::map<const int64_t*, ResultSpaceTile<int64_t>>*) const;
 template void ReaderBase::compute_result_space_tiles<uint64_t>(
-    const Subarray* subarray,
-    const Subarray* partitioner_subarray,
-    std::map<const uint64_t*, ResultSpaceTile<uint64_t>>* result_space_tiles)
-    const;
+    const Subarray*,
+    const Subarray*,
+    std::map<const uint64_t*, ResultSpaceTile<uint64_t>>*) const;
 
 template Status ReaderBase::fill_dense_coords<int8_t>(const Subarray&);
 template Status ReaderBase::fill_dense_coords<uint8_t>(const Subarray&);

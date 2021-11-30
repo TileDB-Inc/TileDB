@@ -222,6 +222,24 @@ class Reader : public ReaderBase, public IQueryStrategy {
   /* ********************************* */
 
   /**
+   * Applies the query condition, `condition_`, to filter cell indexes
+   * within `result_cell_slabs`. This mutates `result_cell_slabs`.
+   *
+   * @param result_cell_slabs The unfiltered cell slabs.
+   * @param result_tiles The result tiles that must contain values for
+   *   attributes within `condition_`.
+   * @param subarray Specifies the current subarray.
+   * @param stride The stride between cells, defaulting to UINT64_MAX
+   *   for contiguous cells.
+   * @return Status
+   */
+  Status apply_query_condition(
+      std::vector<ResultCellSlab>* result_cell_slabs,
+      std::vector<ResultTile*>* result_tiles,
+      Subarray* subarray,
+      uint64_t stride = UINT64_MAX);
+
+  /**
    * Compute the maximal cell slabs of contiguous sparse coordinates.
    *
    * @param coords The coordinates to compute the slabs from.
