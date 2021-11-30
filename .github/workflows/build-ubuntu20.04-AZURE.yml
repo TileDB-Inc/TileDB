@@ -134,6 +134,8 @@ jobs:
             #~ exit 1
           #~ fi
           #~ echo "dbgr $dbgr"
+          echo "ls -l /var/lib/apport/coredump"
+          ls -l /var/lib/apport/coredump
           for f in $(find /var/lib/apport/coredump -name 'core.*');
             do
               echo "stack trace for $f"
