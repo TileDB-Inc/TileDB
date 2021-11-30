@@ -32,6 +32,11 @@ jobs:
           ulimit -c unlimited     # Enable core dumps to be captured (must be in same run block)
           ulimit -c
           sudo apt-get -y install gdb
+          if [[ -f $(which gdb) ]]; then
+            echo found $(which gdb)
+          else
+            echo tried to install gdb, but gdb not found!
+          fi
 
       - uses: actions/checkout@v2
       - name: 'Print env'
@@ -82,7 +87,8 @@ jobs:
           
           # Bypass Catch2 Framework stdout interception with awk on test output
           # make check | awk '/1: ::set-output/{sub(/.*1: /, ""); print; next} 1'
-          ./tiledb/test/tiledb_unit -d yes | awk '/1: ::set-output/{sub(/.*1: /, ""); print; next} 1'
+          #./tiledb/test/tiledb_unit -d yes | awk '/1: ::set-output/{sub(/.*1: /, ""); print; next} 1'
+          ./tiledb/test/tiledb_unit -d yes --crash
 
           # Kill the running Azurite server
           kill -n 9 $AZURITE_PID
