@@ -58,9 +58,7 @@ struct CSparseUnorderedWithDupsFx {
   std::string total_budget_;
   std::string ratio_tile_ranges_;
   std::string ratio_array_data_;
-  std::string ratio_result_tiles_;
   std::string ratio_coords_;
-  std::string ratio_rcs_;
   std::string ratio_query_condition_;
 
   void create_default_array_1d();
@@ -106,9 +104,7 @@ void CSparseUnorderedWithDupsFx::reset_config() {
   total_budget_ = "1048576";
   ratio_tile_ranges_ = "0.1";
   ratio_array_data_ = "0.1";
-  ratio_result_tiles_ = "0.05";
   ratio_coords_ = "0.5";
-  ratio_rcs_ = "0.05";
   ratio_query_condition_ = "0.25";
   update_config();
 }
@@ -158,24 +154,8 @@ void CSparseUnorderedWithDupsFx::update_config() {
   REQUIRE(
       tiledb_config_set(
           config,
-          "sm.mem.reader.sparse_unordered_with_dups.ratio_result_tiles",
-          ratio_result_tiles_.c_str(),
-          &error) == TILEDB_OK);
-  REQUIRE(error == nullptr);
-
-  REQUIRE(
-      tiledb_config_set(
-          config,
           "sm.mem.reader.sparse_unordered_with_dups.ratio_coords",
           ratio_coords_.c_str(),
-          &error) == TILEDB_OK);
-  REQUIRE(error == nullptr);
-
-  REQUIRE(
-      tiledb_config_set(
-          config,
-          "sm.mem.reader.sparse_unordered_with_dups.ratio_rcs",
-          ratio_rcs_.c_str(),
           &error) == TILEDB_OK);
   REQUIRE(error == nullptr);
 
@@ -279,7 +259,7 @@ int32_t CSparseUnorderedWithDupsFx::read(
     tiledb_query_condition_t* query_condition = nullptr;
     rc = tiledb_query_condition_alloc(ctx_, &query_condition);
     CHECK(rc == TILEDB_OK);
-    int32_t val = 10;
+    int32_t val = 11;
     rc = tiledb_query_condition_init(
         ctx_, query_condition, "a", &val, sizeof(int32_t), TILEDB_LT);
     CHECK(rc == TILEDB_OK);
@@ -294,8 +274,7 @@ int32_t CSparseUnorderedWithDupsFx::read(
   CHECK(rc == TILEDB_OK);
   rc = tiledb_query_set_data_buffer(ctx_, query, "a", data, data_size);
   CHECK(rc == TILEDB_OK);
-  rc = tiledb_query_set_data_buffer(
-      ctx_, query, TILEDB_COORDS, coords, coords_size);
+  rc = tiledb_query_set_data_buffer(ctx_, query, "d", coords, coords_size);
   CHECK(rc == TILEDB_OK);
 
   // Submit query.
@@ -407,159 +386,6 @@ TEST_CASE_METHOD(
 
 TEST_CASE_METHOD(
     CSparseUnorderedWithDupsFx,
-    "Sparse unordered with dups reader: result tiles budget forcing one tile "
-    "at a time",
-    "[sparse-unordered-with-dups][small-rt-budget]") {
-  // Create default array.
-  reset_config();
-  create_default_array_1d();
-
-  bool use_subarray = false;
-  SECTION("- No subarray") {
-    use_subarray = false;
-  }
-  SECTION("- Subarray") {
-    use_subarray = true;
-  }
-
-  // Write a fragment.
-  int coords[] = {1, 2, 3, 4, 5};
-  uint64_t coords_size = sizeof(coords);
-  int data[] = {1, 2, 3, 4, 5};
-  uint64_t data_size = sizeof(data);
-  write_1d_fragment(coords, &coords_size, data, &data_size);
-
-  // Two result tile (~880) will be bigger than the budget (500).
-  total_budget_ = "10000";
-  ratio_result_tiles_ = "0.05";
-  update_config();
-
-  tiledb_array_t* array = nullptr;
-  tiledb_query_t* query = nullptr;
-
-  // Try to read.
-  int coords_r[5];
-  int data_r[5];
-  uint64_t coords_r_size = sizeof(coords_r);
-  uint64_t data_r_size = sizeof(data_r);
-  auto rc = read(
-      use_subarray,
-      false,
-      coords_r,
-      &coords_r_size,
-      data_r,
-      &data_r_size,
-      &query,
-      &array);
-  CHECK(rc == TILEDB_OK);
-
-  // Check incomplete query status.
-  tiledb_query_status_t status;
-  tiledb_query_get_status(ctx_, query, &status);
-  CHECK(status == TILEDB_INCOMPLETE);
-
-  // Should only read one tile (2 values).
-  CHECK(8 == data_r_size);
-  CHECK(8 == coords_r_size);
-
-  int coords_c[] = {1, 2};
-  int data_c[] = {1, 2};
-  CHECK(!std::memcmp(coords_c, coords_r, coords_r_size));
-  CHECK(!std::memcmp(data_c, data_r, data_r_size));
-
-  // Read again.
-  rc = tiledb_query_submit(ctx_, query);
-  CHECK(rc == TILEDB_OK);
-
-  // Check incomplete query status.
-  tiledb_query_get_status(ctx_, query, &status);
-  CHECK(status == TILEDB_INCOMPLETE);
-
-  // Should only read one more tile (2 values).
-  CHECK(8 == data_r_size);
-  CHECK(8 == coords_r_size);
-
-  int coords_c_2[] = {3, 4};
-  int data_c_2[] = {3, 4};
-  CHECK(!std::memcmp(coords_c_2, coords_r, coords_r_size));
-  CHECK(!std::memcmp(data_c_2, data_r, data_r_size));
-
-  // Read again.
-  rc = tiledb_query_submit(ctx_, query);
-  CHECK(rc == TILEDB_OK);
-
-  // Check complete query status.
-  tiledb_query_get_status(ctx_, query, &status);
-  CHECK(status == TILEDB_COMPLETED);
-
-  // Should read last tile (1 value).
-  CHECK(4 == data_r_size);
-  CHECK(4 == coords_r_size);
-
-  int coords_c_3[] = {5};
-  int data_c_3[] = {5};
-  CHECK(!std::memcmp(coords_c_3, coords_r, coords_r_size));
-  CHECK(!std::memcmp(data_c_3, data_r, data_r_size));
-
-  // Clean up.
-  rc = tiledb_array_close(ctx_, array);
-  CHECK(rc == TILEDB_OK);
-  tiledb_array_free(&array);
-  tiledb_query_free(&query);
-}
-
-TEST_CASE_METHOD(
-    CSparseUnorderedWithDupsFx,
-    "Sparse unordered with dups reader: result tiles budget too small",
-    "[sparse-unordered-with-dups][rt-budget][too-small]") {
-  // Create default array.
-  reset_config();
-  create_default_array_1d();
-
-  bool use_subarray = false;
-  SECTION("- No subarray") {
-    use_subarray = false;
-  }
-  SECTION("- Subarray") {
-    use_subarray = true;
-  }
-
-  // Write a fragment.
-  int coords[] = {1, 2, 3, 4, 5};
-  uint64_t coords_size = sizeof(coords);
-  int data[] = {1, 2, 3, 4, 5};
-  uint64_t data_size = sizeof(data);
-  write_1d_fragment(coords, &coords_size, data, &data_size);
-
-  // One result tile will be bigger than the budget (10).
-  total_budget_ = "10000";
-  ratio_result_tiles_ = "0.001";
-  update_config();
-
-  // Try to read.
-  int coords_r[5];
-  int data_r[5];
-  uint64_t coords_r_size = sizeof(coords_r);
-  uint64_t data_r_size = sizeof(data_r);
-  auto rc =
-      read(use_subarray, false, coords_r, &coords_r_size, data_r, &data_r_size);
-  CHECK(rc == TILEDB_ERR);
-
-  // Check we hit the correct error.
-  tiledb_error_t* error = NULL;
-  rc = tiledb_ctx_get_last_error(ctx_, &error);
-  CHECK(rc == TILEDB_OK);
-
-  const char* msg;
-  rc = tiledb_error_message(error, &msg);
-  CHECK(rc == TILEDB_OK);
-
-  std::string error_str(msg);
-  CHECK(error_str.find("Cannot load a single tile") != std::string::npos);
-}
-
-TEST_CASE_METHOD(
-    CSparseUnorderedWithDupsFx,
     "Sparse unordered with dups reader: coords budget forcing one tile at a "
     "time",
     "[sparse-unordered-with-dups][small-coords-budget]") {
@@ -568,91 +394,117 @@ TEST_CASE_METHOD(
   create_default_array_1d();
 
   bool use_subarray = false;
+  int num_frags = 0;
   SECTION("- No subarray") {
     use_subarray = false;
+    SECTION("- One fragment") {
+      num_frags = 1;
+    }
+    SECTION("- Two fragments") {
+      num_frags = 2;
+    }
   }
   SECTION("- Subarray") {
     use_subarray = true;
+    SECTION("- One fragment") {
+      num_frags = 1;
+    }
+    SECTION("- Two fragments") {
+      num_frags = 2;
+    }
   }
 
-  // Write a fragment.
-  int coords[] = {1, 2, 3, 4, 5};
-  uint64_t coords_size = sizeof(coords);
-  int data[] = {1, 2, 3, 4, 5};
-  uint64_t data_size = sizeof(data);
-  write_1d_fragment(coords, &coords_size, data, &data_size);
+  for (int i = 0; i < num_frags; i++) {
+    // Write a fragment.
+    int coords[] = {1 + i * 5, 2 + i * 5, 3 + i * 5, 4 + i * 5, 5 + i * 5};
+    uint64_t coords_size = sizeof(coords);
+    int data[] = {1 + i * 5, 2 + i * 5, 3 + i * 5, 4 + i * 5, 5 + i * 5};
+    uint64_t data_size = sizeof(data);
+    write_1d_fragment(coords, &coords_size, data, &data_size);
+  }
 
-  // Two result tile (2 * 8) will be bigger than the budget (10).
+  // Two result tile (2 * ~505) will be bigger than the budget (800).
   total_budget_ = "10000";
-  ratio_coords_ = "0.001";
+  ratio_coords_ = "0.08";
   update_config();
 
   tiledb_array_t* array = nullptr;
   tiledb_query_t* query = nullptr;
 
-  // Try to read.
-  int coords_r[5];
-  int data_r[5];
-  uint64_t coords_r_size = sizeof(coords_r);
-  uint64_t data_r_size = sizeof(data_r);
-  auto rc = read(
-      use_subarray,
-      false,
-      coords_r,
-      &coords_r_size,
-      data_r,
-      &data_r_size,
-      &query,
-      &array);
-  CHECK(rc == TILEDB_OK);
+  uint32_t rc;
+  uint64_t coords_r_size;
+  uint64_t data_r_size;
+  for (int i = 0; i < num_frags; i++) {
+    // Try to read.
+    int coords_r[5];
+    int data_r[5];
+    coords_r_size = sizeof(coords_r);
+    data_r_size = sizeof(data_r);
 
-  // Check incomplete query status.
-  tiledb_query_status_t status;
-  tiledb_query_get_status(ctx_, query, &status);
-  CHECK(status == TILEDB_INCOMPLETE);
+    if (i == 0) {
+      rc = read(
+          use_subarray,
+          false,
+          coords_r,
+          &coords_r_size,
+          data_r,
+          &data_r_size,
+          &query,
+          &array);
+    } else {
+      rc = tiledb_query_submit(ctx_, query);
+    }
+    CHECK(rc == TILEDB_OK);
 
-  // Should only read one tile (2 values).
-  CHECK(8 == data_r_size);
-  CHECK(8 == coords_r_size);
+    // Check incomplete query status.
+    tiledb_query_status_t status;
+    tiledb_query_get_status(ctx_, query, &status);
+    CHECK(status == TILEDB_INCOMPLETE);
 
-  int coords_c[] = {1, 2};
-  int data_c[] = {1, 2};
-  CHECK(!std::memcmp(coords_c, coords_r, coords_r_size));
-  CHECK(!std::memcmp(data_c, data_r, data_r_size));
+    // Should only read one tile (2 values).
+    CHECK(8 == data_r_size);
+    CHECK(8 == coords_r_size);
 
-  // Read again.
-  rc = tiledb_query_submit(ctx_, query);
-  CHECK(rc == TILEDB_OK);
+    int coords_c[] = {1 + i * 5, 2 + i * 5};
+    int data_c[] = {1 + i * 5, 2 + i * 5};
+    CHECK(!std::memcmp(coords_c, coords_r, coords_r_size));
+    CHECK(!std::memcmp(data_c, data_r, data_r_size));
 
-  // Check incomplete query status.
-  tiledb_query_get_status(ctx_, query, &status);
-  CHECK(status == TILEDB_INCOMPLETE);
+    // Read again.
+    rc = tiledb_query_submit(ctx_, query);
+    CHECK(rc == TILEDB_OK);
 
-  // Should only read one more tile (2 values).
-  CHECK(8 == data_r_size);
-  CHECK(8 == coords_r_size);
+    // Check incomplete query status.
+    tiledb_query_get_status(ctx_, query, &status);
+    CHECK(status == TILEDB_INCOMPLETE);
 
-  int coords_c_2[] = {3, 4};
-  int data_c_2[] = {3, 4};
-  CHECK(!std::memcmp(coords_c_2, coords_r, coords_r_size));
-  CHECK(!std::memcmp(data_c_2, data_r, data_r_size));
+    // Should only read one more tile (2 values).
+    CHECK(8 == data_r_size);
+    CHECK(8 == coords_r_size);
 
-  // Read again.
-  rc = tiledb_query_submit(ctx_, query);
-  CHECK(rc == TILEDB_OK);
+    int coords_c_2[] = {3 + i * 5, 4 + i * 5};
+    int data_c_2[] = {3 + i * 5, 4 + i * 5};
+    CHECK(!std::memcmp(coords_c_2, coords_r, coords_r_size));
+    CHECK(!std::memcmp(data_c_2, data_r, data_r_size));
 
-  // Check complete query status.
-  tiledb_query_get_status(ctx_, query, &status);
-  CHECK(status == TILEDB_COMPLETED);
+    // Read again.
+    rc = tiledb_query_submit(ctx_, query);
+    CHECK(rc == TILEDB_OK);
 
-  // Should read last tile (1 value).
-  CHECK(4 == data_r_size);
-  CHECK(4 == coords_r_size);
+    // Check complete query status.
+    tiledb_query_get_status(ctx_, query, &status);
+    CHECK(
+        status == (i == num_frags - 1 ? TILEDB_COMPLETED : TILEDB_INCOMPLETE));
 
-  int coords_c_3[] = {5};
-  int data_c_3[] = {5};
-  CHECK(!std::memcmp(coords_c_3, coords_r, coords_r_size));
-  CHECK(!std::memcmp(data_c_3, data_r, data_r_size));
+    // Should read last tile (1 value).
+    CHECK(4 == data_r_size);
+    CHECK(4 == coords_r_size);
+
+    int coords_c_3[] = {5 + i * 5};
+    int data_c_3[] = {5 + i * 5};
+    CHECK(!std::memcmp(coords_c_3, coords_r, coords_r_size));
+    CHECK(!std::memcmp(data_c_3, data_r, data_r_size));
+  }
 
   // Clean up.
   rc = tiledb_array_close(ctx_, array);
@@ -684,7 +536,7 @@ TEST_CASE_METHOD(
   uint64_t data_size = sizeof(data);
   write_1d_fragment(coords, &coords_size, data, &data_size);
 
-  // One result tile (8) will be bigger than the budget (5).
+  // One result tile (~505) will be bigger than the budget (5).
   total_budget_ = "10000";
   ratio_coords_ = "0.0005";
   update_config();
@@ -709,210 +561,6 @@ TEST_CASE_METHOD(
 
   std::string error_str(msg);
   CHECK(error_str.find("Cannot load a single tile") != std::string::npos);
-}
-
-TEST_CASE_METHOD(
-    CSparseUnorderedWithDupsFx,
-    "Sparse unordered with dups reader: rcs budget forcing one tile at a time",
-    "[sparse-unordered-with-dups][small-rcs-budget]") {
-  // Create default array.
-  reset_config();
-  create_default_array_1d();
-
-  bool use_subarray = false;
-  SECTION("- No subarray") {
-    use_subarray = false;
-  }
-  SECTION("- Subarray") {
-    use_subarray = true;
-  }
-
-  // Write a fragment.
-  int coords[] = {1, 2, 3, 4, 5};
-  uint64_t coords_size = sizeof(coords);
-  int data[] = {1, 2, 3, 4, 5};
-  uint64_t data_size = sizeof(data);
-  write_1d_fragment(coords, &coords_size, data, &data_size);
-
-  // One cell slab (24) will be bigger than the budget (10).
-  total_budget_ = "10000";
-  ratio_rcs_ = "0.001";
-  update_config();
-
-  tiledb_array_t* array = nullptr;
-  tiledb_query_t* query = nullptr;
-
-  // Try to read.
-  int coords_r[5];
-  int data_r[5];
-  uint64_t coords_r_size = sizeof(coords_r);
-  uint64_t data_r_size = sizeof(data_r);
-  auto rc = read(
-      use_subarray,
-      false,
-      coords_r,
-      &coords_r_size,
-      data_r,
-      &data_r_size,
-      &query,
-      &array);
-  CHECK(rc == TILEDB_OK);
-
-  // Check incomplete query status.
-  tiledb_query_status_t status;
-  tiledb_query_get_status(ctx_, query, &status);
-  CHECK(status == TILEDB_INCOMPLETE);
-
-  // Should only read one tile (2 values).
-  CHECK(8 == data_r_size);
-  CHECK(8 == coords_r_size);
-
-  int coords_c[] = {1, 2};
-  int data_c[] = {1, 2};
-  CHECK(!std::memcmp(coords_c, coords_r, coords_r_size));
-  CHECK(!std::memcmp(data_c, data_r, data_r_size));
-
-  // Read again.
-  rc = tiledb_query_submit(ctx_, query);
-  CHECK(rc == TILEDB_OK);
-
-  // Check incomplete query status.
-  tiledb_query_get_status(ctx_, query, &status);
-  CHECK(status == TILEDB_INCOMPLETE);
-
-  // Should only read one more tile (2 values).
-  CHECK(8 == data_r_size);
-  CHECK(8 == coords_r_size);
-
-  int coords_c_2[] = {3, 4};
-  int data_c_2[] = {3, 4};
-  CHECK(!std::memcmp(coords_c_2, coords_r, coords_r_size));
-  CHECK(!std::memcmp(data_c_2, data_r, data_r_size));
-
-  // Read again.
-  rc = tiledb_query_submit(ctx_, query);
-  CHECK(rc == TILEDB_OK);
-
-  // Check complete query status.
-  tiledb_query_get_status(ctx_, query, &status);
-  CHECK(status == TILEDB_COMPLETED);
-
-  // Should read last tile (1 value).
-  CHECK(4 == data_r_size);
-  CHECK(4 == coords_r_size);
-
-  int coords_c_3[] = {5};
-  int data_c_3[] = {5};
-  CHECK(!std::memcmp(coords_c_3, coords_r, coords_r_size));
-  CHECK(!std::memcmp(data_c_3, data_r, data_r_size));
-
-  // Clean up.
-  rc = tiledb_array_close(ctx_, array);
-  CHECK(rc == TILEDB_OK);
-  tiledb_array_free(&array);
-  tiledb_query_free(&query);
-}
-
-TEST_CASE_METHOD(
-    CSparseUnorderedWithDupsFx,
-    "Sparse unordered with dups reader: qc budget forcing one tile at a time",
-    "[sparse-unordered-with-dups][small-qc-budget]") {
-  // Create default array.
-  reset_config();
-  create_default_array_1d();
-
-  bool use_subarray = false;
-  SECTION("- No subarray") {
-    use_subarray = false;
-  }
-  SECTION("- Subarray") {
-    use_subarray = true;
-  }
-
-  // Write a fragment.
-  int coords[] = {1, 2, 3, 4, 5};
-  uint64_t coords_size = sizeof(coords);
-  int data[] = {1, 2, 3, 4, 5};
-  uint64_t data_size = sizeof(data);
-  write_1d_fragment(coords, &coords_size, data, &data_size);
-
-  // Two qc tile (16) will be bigger than the budget (10).
-  total_budget_ = "10000";
-  ratio_query_condition_ = "0.001";
-  update_config();
-
-  tiledb_array_t* array = nullptr;
-  tiledb_query_t* query = nullptr;
-
-  // Try to read.
-  int coords_r[5];
-  int data_r[5];
-  uint64_t coords_r_size = sizeof(coords_r);
-  uint64_t data_r_size = sizeof(data_r);
-  auto rc = read(
-      use_subarray,
-      true,
-      coords_r,
-      &coords_r_size,
-      data_r,
-      &data_r_size,
-      &query,
-      &array);
-  CHECK(rc == TILEDB_OK);
-
-  // Check incomplete query status.
-  tiledb_query_status_t status;
-  tiledb_query_get_status(ctx_, query, &status);
-  CHECK(status == TILEDB_INCOMPLETE);
-
-  // Should only read one tile (2 values).
-  CHECK(8 == data_r_size);
-  CHECK(8 == coords_r_size);
-
-  int coords_c[] = {1, 2};
-  int data_c[] = {1, 2};
-  CHECK(!std::memcmp(coords_c, coords_r, coords_r_size));
-  CHECK(!std::memcmp(data_c, data_r, data_r_size));
-
-  // Read again.
-  rc = tiledb_query_submit(ctx_, query);
-  CHECK(rc == TILEDB_OK);
-
-  // Check incomplete query status.
-  tiledb_query_get_status(ctx_, query, &status);
-  CHECK(status == TILEDB_INCOMPLETE);
-
-  // Should only read one more tile (2 values).
-  CHECK(8 == data_r_size);
-  CHECK(8 == coords_r_size);
-
-  int coords_c_2[] = {3, 4};
-  int data_c_2[] = {3, 4};
-  CHECK(!std::memcmp(coords_c_2, coords_r, coords_r_size));
-  CHECK(!std::memcmp(data_c_2, data_r, data_r_size));
-
-  // Read again.
-  rc = tiledb_query_submit(ctx_, query);
-  CHECK(rc == TILEDB_OK);
-
-  // Check complete query status.
-  tiledb_query_get_status(ctx_, query, &status);
-  CHECK(status == TILEDB_COMPLETED);
-
-  // Should read last tile (1 value).
-  CHECK(4 == data_r_size);
-  CHECK(4 == coords_r_size);
-
-  int coords_c_3[] = {5};
-  int data_c_3[] = {5};
-  CHECK(!std::memcmp(coords_c_3, coords_r, coords_r_size));
-  CHECK(!std::memcmp(data_c_3, data_r, data_r_size));
-
-  // Clean up.
-  rc = tiledb_array_close(ctx_, array);
-  CHECK(rc == TILEDB_OK);
-  tiledb_array_free(&array);
-  tiledb_query_free(&query);
 }
 
 TEST_CASE_METHOD(
@@ -963,4 +611,221 @@ TEST_CASE_METHOD(
 
   std::string error_str(msg);
   CHECK(error_str.find("Cannot load a single tile") != std::string::npos);
+}
+
+TEST_CASE_METHOD(
+    CSparseUnorderedWithDupsFx,
+    "Sparse unordered with dups reader: qc budget forcing one tile at a time",
+    "[sparse-unordered-with-dups][small-qc-budget]") {
+  // Create default array.
+  reset_config();
+  create_default_array_1d();
+
+  bool use_subarray = false;
+  int num_frags = 0;
+  SECTION("- No subarray") {
+    use_subarray = false;
+    SECTION("- One fragment") {
+      num_frags = 1;
+    }
+    SECTION("- Two fragments") {
+      num_frags = 2;
+    }
+  }
+  SECTION("- Subarray") {
+    use_subarray = true;
+    SECTION("- One fragment") {
+      num_frags = 1;
+    }
+    SECTION("- Two fragments") {
+      num_frags = 2;
+    }
+  }
+
+  for (int i = 0; i < num_frags; i++) {
+    // Write a fragment.
+    int coords[] = {1 + i * 5, 2 + i * 5, 3 + i * 5, 4 + i * 5, 5 + i * 5};
+    uint64_t coords_size = sizeof(coords);
+    int data[] = {1 + i * 5, 2 + i * 5, 3 + i * 5, 4 + i * 5, 5 + i * 5};
+    uint64_t data_size = sizeof(data);
+    write_1d_fragment(coords, &coords_size, data, &data_size);
+  }
+
+  // Two qc tile (16) will be bigger than the budget (10).
+  total_budget_ = "10000";
+  ratio_query_condition_ = "0.001";
+  update_config();
+
+  tiledb_array_t* array = nullptr;
+  tiledb_query_t* query = nullptr;
+
+  uint32_t rc;
+  uint64_t coords_r_size;
+  uint64_t data_r_size;
+  for (int i = 0; i < num_frags; i++) {
+    // Try to read.
+    int coords_r[5];
+    int data_r[5];
+    coords_r_size = sizeof(coords_r);
+    data_r_size = sizeof(data_r);
+
+    if (i == 0) {
+      rc = read(
+          use_subarray,
+          true,
+          coords_r,
+          &coords_r_size,
+          data_r,
+          &data_r_size,
+          &query,
+          &array);
+    } else {
+      rc = tiledb_query_submit(ctx_, query);
+    }
+    CHECK(rc == TILEDB_OK);
+
+    // Check incomplete query status.
+    tiledb_query_status_t status;
+    tiledb_query_get_status(ctx_, query, &status);
+    CHECK(status == TILEDB_INCOMPLETE);
+
+    // Should only read one tile (2 values).
+    CHECK(8 == data_r_size);
+    CHECK(8 == coords_r_size);
+
+    int coords_c[] = {1 + i * 5, 2 + i * 5};
+    int data_c[] = {1 + i * 5, 2 + i * 5};
+    CHECK(!std::memcmp(coords_c, coords_r, coords_r_size));
+    CHECK(!std::memcmp(data_c, data_r, data_r_size));
+
+    // Read again.
+    rc = tiledb_query_submit(ctx_, query);
+    CHECK(rc == TILEDB_OK);
+
+    // Check incomplete query status.
+    tiledb_query_get_status(ctx_, query, &status);
+    CHECK(status == TILEDB_INCOMPLETE);
+
+    // Should only read one more tile (2 values).
+    CHECK(8 == data_r_size);
+    CHECK(8 == coords_r_size);
+
+    int coords_c_2[] = {3 + i * 5, 4 + i * 5};
+    int data_c_2[] = {3 + i * 5, 4 + i * 5};
+    CHECK(!std::memcmp(coords_c_2, coords_r, coords_r_size));
+    CHECK(!std::memcmp(data_c_2, data_r, data_r_size));
+
+    // Read again.
+    rc = tiledb_query_submit(ctx_, query);
+    CHECK(rc == TILEDB_OK);
+
+    // Check complete query status.
+    tiledb_query_get_status(ctx_, query, &status);
+    CHECK(
+        status == (i == num_frags - 1 ? TILEDB_COMPLETED : TILEDB_INCOMPLETE));
+
+    // Should read last tile (1 value).
+    CHECK(4 == data_r_size);
+    CHECK(4 == coords_r_size);
+
+    int coords_c_3[] = {5 + i * 5};
+    int data_c_3[] = {5 + i * 5};
+    CHECK(!std::memcmp(coords_c_3, coords_r, coords_r_size));
+    CHECK(!std::memcmp(data_c_3, data_r, data_r_size));
+  }
+
+  // Clean up.
+  rc = tiledb_array_close(ctx_, array);
+  CHECK(rc == TILEDB_OK);
+  tiledb_array_free(&array);
+  tiledb_query_free(&query);
+}
+
+TEST_CASE_METHOD(
+    CSparseUnorderedWithDupsFx,
+    "Sparse unordered with dups reader: fixed user buffer too small",
+    "[sparse-unordered-with-dups][small-fixed-buffer]") {
+  // Create default array.
+  reset_config();
+  create_default_array_1d();
+
+  // Write a fragment.
+  int coords[] = {1, 2, 3, 4, 5};
+  uint64_t coords_size = sizeof(coords);
+  int data[] = {1, 2, 3, 4, 5};
+  uint64_t data_size = sizeof(data);
+  write_1d_fragment(coords, &coords_size, data, &data_size);
+
+  tiledb_array_t* array = nullptr;
+  tiledb_query_t* query = nullptr;
+
+  // Try to read.
+  int coords_r[2];  // only room for one tile.
+  int data_r[2];
+  uint64_t coords_r_size = sizeof(coords_r);
+  uint64_t data_r_size = sizeof(data_r);
+  auto rc = read(
+      false,
+      false,
+      coords_r,
+      &coords_r_size,
+      data_r,
+      &data_r_size,
+      &query,
+      &array);
+  CHECK(rc == TILEDB_OK);
+
+  // Check incomplete query status.
+  tiledb_query_status_t status;
+  tiledb_query_get_status(ctx_, query, &status);
+  CHECK(status == TILEDB_INCOMPLETE);
+
+  // Should only read one tile (2 values).
+  CHECK(8 == data_r_size);
+  CHECK(8 == coords_r_size);
+
+  int coords_c_1[] = {1, 2};
+  int data_c_1[] = {1, 2};
+  CHECK(!std::memcmp(coords_c_1, coords_r, coords_r_size));
+  CHECK(!std::memcmp(data_c_1, data_r, data_r_size));
+
+  // Read again.
+  rc = tiledb_query_submit(ctx_, query);
+  CHECK(rc == TILEDB_OK);
+
+  // Check incomplete query status.
+  tiledb_query_get_status(ctx_, query, &status);
+  CHECK(status == TILEDB_INCOMPLETE);
+
+  // Should only read one more tile (2 values).
+  CHECK(8 == data_r_size);
+  CHECK(8 == coords_r_size);
+
+  int coords_c_2[] = {3, 4};
+  int data_c_2[] = {3, 4};
+  CHECK(!std::memcmp(coords_c_2, coords_r, coords_r_size));
+  CHECK(!std::memcmp(data_c_2, data_r, data_r_size));
+
+  // Read again.
+  rc = tiledb_query_submit(ctx_, query);
+  CHECK(rc == TILEDB_OK);
+
+  // Check completed query status.
+  tiledb_query_get_status(ctx_, query, &status);
+  CHECK(status == TILEDB_COMPLETED);
+
+  // Should read last tile (1 value).
+  CHECK(4 == data_r_size);
+  CHECK(4 == coords_r_size);
+
+  int coords_c_3[] = {5};
+  int data_c_3[] = {5};
+  CHECK(!std::memcmp(coords_c_3, coords_r, coords_r_size));
+  CHECK(!std::memcmp(data_c_3, data_r, data_r_size));
+
+  // Clean up.
+  rc = tiledb_array_close(ctx_, array);
+  CHECK(rc == TILEDB_OK);
+  tiledb_array_free(&array);
+  tiledb_query_free(&query);
 }

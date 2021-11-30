@@ -79,6 +79,9 @@ const std::string Config::SM_QUERY_DENSE_READER = "legacy";
 const std::string Config::SM_QUERY_SPARSE_GLOBAL_ORDER_READER = "legacy";
 const std::string Config::SM_QUERY_SPARSE_UNORDERED_WITH_DUPS_READER =
     "refactored";
+const std::string
+    Config::SM_QUERY_SPARSE_UNORDERED_WITH_DUPS_NON_OVERLAPPING_RANGES =
+        "false";
 const std::string Config::SM_MEM_MALLOC_TRIM = "true";
 const std::string Config::SM_MEM_TOTAL_BUDGET = "10737418240";  // 10GB;
 const std::string Config::SM_MEM_SPARSE_GLOBAL_ORDER_RATIO_COORDS = "0.5";
@@ -86,8 +89,6 @@ const std::string Config::SM_MEM_SPARSE_GLOBAL_ORDER_RATIO_QUERY_CONDITION =
     "0.25";
 const std::string Config::SM_MEM_SPARSE_GLOBAL_ORDER_RATIO_TILE_RANGES = "0.1";
 const std::string Config::SM_MEM_SPARSE_GLOBAL_ORDER_RATIO_ARRAY_DATA = "0.1";
-const std::string Config::SM_MEM_SPARSE_GLOBAL_ORDER_RATIO_RESULT_TILES =
-    "0.05";
 const std::string Config::SM_MEM_SPARSE_GLOBAL_ORDER_RATIO_RCS = "0.05";
 const std::string Config::SM_MEM_SPARSE_UNORDERED_WITH_DUPS_RATIO_COORDS =
     "0.5";
@@ -97,9 +98,6 @@ const std::string Config::SM_MEM_SPARSE_UNORDERED_WITH_DUPS_RATIO_TILE_RANGES =
     "0.1";
 const std::string Config::SM_MEM_SPARSE_UNORDERED_WITH_DUPS_RATIO_ARRAY_DATA =
     "0.1";
-const std::string Config::SM_MEM_SPARSE_UNORDERED_WITH_DUPS_RATIO_RESULT_TILES =
-    "0.05";
-const std::string Config::SM_MEM_SPARSE_UNORDERED_WITH_DUPS_RATIO_RCS = "0.05";
 const std::string Config::SM_ENABLE_SIGNAL_HANDLERS = "true";
 const std::string Config::SM_COMPUTE_CONCURRENCY_LEVEL =
     utils::parse::to_str(std::thread::hardware_concurrency());
@@ -243,6 +241,8 @@ Config::Config() {
       SM_QUERY_SPARSE_GLOBAL_ORDER_READER;
   param_values_["sm.query.sparse_unordered_with_dups.reader"] =
       SM_QUERY_SPARSE_UNORDERED_WITH_DUPS_READER;
+  param_values_["sm.query.sparse_unordered_with_dups.non_overlapping_ranges"] =
+      SM_QUERY_SPARSE_UNORDERED_WITH_DUPS_NON_OVERLAPPING_RANGES;
   param_values_["sm.mem.malloc_trim"] = SM_MEM_MALLOC_TRIM;
   param_values_["sm.mem.total_budget"] = SM_MEM_TOTAL_BUDGET;
   param_values_["sm.mem.reader.sparse_global_order.ratio_coords"] =
@@ -253,8 +253,6 @@ Config::Config() {
       SM_MEM_SPARSE_GLOBAL_ORDER_RATIO_TILE_RANGES;
   param_values_["sm.mem.reader.sparse_global_order.ratio_array_data"] =
       SM_MEM_SPARSE_GLOBAL_ORDER_RATIO_ARRAY_DATA;
-  param_values_["sm.mem.reader.sparse_global_order.ratio_result_tiles"] =
-      SM_MEM_SPARSE_GLOBAL_ORDER_RATIO_RESULT_TILES;
   param_values_["sm.mem.reader.sparse_global_order.ratio_rcs"] =
       SM_MEM_SPARSE_GLOBAL_ORDER_RATIO_RCS;
   param_values_["sm.mem.reader.sparse_unordered_with_dups.ratio_coords"] =
@@ -266,10 +264,6 @@ Config::Config() {
       SM_MEM_SPARSE_UNORDERED_WITH_DUPS_RATIO_TILE_RANGES;
   param_values_["sm.mem.reader.sparse_unordered_with_dups.ratio_array_data"] =
       SM_MEM_SPARSE_UNORDERED_WITH_DUPS_RATIO_ARRAY_DATA;
-  param_values_["sm.mem.reader.sparse_unordered_with_dups.ratio_result_tiles"] =
-      SM_MEM_SPARSE_UNORDERED_WITH_DUPS_RATIO_RESULT_TILES;
-  param_values_["sm.mem.reader.sparse_unordered_with_dups.ratio_rcs"] =
-      SM_MEM_SPARSE_UNORDERED_WITH_DUPS_RATIO_RCS;
   param_values_["sm.enable_signal_handlers"] = SM_ENABLE_SIGNAL_HANDLERS;
   param_values_["sm.compute_concurrency_level"] = SM_COMPUTE_CONCURRENCY_LEVEL;
   param_values_["sm.io_concurrency_level"] = SM_IO_CONCURRENCY_LEVEL;
@@ -534,6 +528,11 @@ Status Config::unset(const std::string& param) {
   } else if (param == "sm.query.sparse_unordered_with_dups.reader") {
     param_values_["sm.query.sparse_unordered_with_dups.reader"] =
         SM_QUERY_SPARSE_UNORDERED_WITH_DUPS_READER;
+  } else if (
+      param == "sm.query.sparse_unordered_with_dups.non_overlapping_ranges") {
+    param_values_
+        ["sm.query.sparse_unordered_with_dups.non_overlapping_ranges"] =
+            SM_QUERY_SPARSE_UNORDERED_WITH_DUPS_NON_OVERLAPPING_RANGES;
   } else if (param == "sm.mem.malloc_trim") {
     param_values_["sm.mem.malloc_trim"] = SM_MEM_MALLOC_TRIM;
   } else if (param == "sm.mem.total_budget") {
@@ -551,9 +550,6 @@ Status Config::unset(const std::string& param) {
   } else if (param == "sm.mem.reader.sparse_global_order.ratio_array_data") {
     param_values_["sm.mem.reader.sparse_global_order.ratio_array_data"] =
         SM_MEM_SPARSE_GLOBAL_ORDER_RATIO_ARRAY_DATA;
-  } else if (param == "sm.mem.reader.sparse_global_order.ratio_result_tiles") {
-    param_values_["sm.mem.reader.sparse_global_order.ratio_result_tiles"] =
-        SM_MEM_SPARSE_GLOBAL_ORDER_RATIO_RESULT_TILES;
   } else if (param == "sm.mem.reader.sparse_global_order.ratio_rcs") {
     param_values_["sm.mem.reader.sparse_global_order.ratio_rcs"] =
         SM_MEM_SPARSE_GLOBAL_ORDER_RATIO_RCS;
@@ -575,14 +571,6 @@ Status Config::unset(const std::string& param) {
       param == "sm.mem.reader.sparse_unordered_with_dups.ratio_array_data") {
     param_values_["sm.mem.reader.sparse_unordered_with_dups.ratio_array_data"] =
         SM_MEM_SPARSE_UNORDERED_WITH_DUPS_RATIO_ARRAY_DATA;
-  } else if (
-      param == "sm.mem.reader.sparse_unordered_with_dups.ratio_result_tiles") {
-    param_values_
-        ["sm.mem.reader.sparse_unordered_with_dups.ratio_result_tiles"] =
-            SM_MEM_SPARSE_UNORDERED_WITH_DUPS_RATIO_RESULT_TILES;
-  } else if (param == "sm.mem.reader.sparse_unordered_with_dups.ratio_rcs") {
-    param_values_["sm.mem.reader.sparse_unordered_with_dups.ratio_rcs"] =
-        SM_MEM_SPARSE_UNORDERED_WITH_DUPS_RATIO_RCS;
   } else if (param == "sm.enable_signal_handlers") {
     param_values_["sm.enable_signal_handlers"] = SM_ENABLE_SIGNAL_HANDLERS;
   } else if (param == "sm.compute_concurrency_level") {

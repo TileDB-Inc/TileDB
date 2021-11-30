@@ -125,7 +125,10 @@ class SparseGlobalOrderReader : public SparseIndexReaderBase,
   inline static std::atomic<uint64_t> logger_id_ = 0;
 
   /** The result tiles currently loaded. */
-  std::vector<std::list<ResultTile>> result_tiles_;
+  ResultTileListPerFragment<uint8_t> result_tiles_;
+
+  /** Is the result tile list empty. */
+  bool empty_result_tiles_;
 
   /** Memory used for coordinates tiles per fragment. */
   std::vector<uint64_t> memory_used_for_coords_;
@@ -133,18 +136,30 @@ class SparseGlobalOrderReader : public SparseIndexReaderBase,
   /** Memory budget per fragment. */
   double per_fragment_memory_;
 
+  /** Memory used for qc tiles per fragment. */
+  std::vector<uint64_t> memory_used_for_qc_tiles_;
+
+  /** Memory budget per fragment for qc tiles. */
+  double per_fragment_qc_memory_;
+
+  /** Memory used for result cell slabs. */
+  uint64_t memory_used_rcs_;
+
+  /** How much of the memory budget is reserved for result cell slabs. */
+  double memory_budget_ratio_rcs_;
+
   /* ********************************* */
   /*           PRIVATE METHODS         */
   /* ********************************* */
 
-  /** Load a coordinate tile, making sure maximum budget is respected. */
+  /** Add a result tile to process, making sure maximum budget is respected. */
   Status add_result_tile(
-      unsigned dim_num,
-      uint64_t memory_budget_result_tiles,
-      uint64_t memory_budget_coords_tiles,
-      unsigned f,
-      uint64_t t,
-      const Domain* domain,
+      const unsigned dim_num,
+      const uint64_t memory_budget_coords_tiles,
+      const uint64_t memory_budget_qc_tiles,
+      const unsigned f,
+      const uint64_t t,
+      const Domain* const domain,
       bool* budget_exceeded);
 
   /** corrects memory usage after de-serialization. */
@@ -165,9 +180,9 @@ class SparseGlobalOrderReader : public SparseIndexReaderBase,
       bool subarray_set,
       unsigned int frag_idx,
       uint64_t cell_idx,
-      std::vector<std::list<ResultTile>::iterator>& result_tiles_it,
+      std::vector<std::list<ResultTileWithBitmap<uint8_t>>::iterator>&
+          result_tiles_it,
       std::vector<bool>& result_tile_used,
-      std::vector<std::vector<uint8_t>>& coord_tiles_result_bitmap,
       std::priority_queue<ResultCoords, std::vector<ResultCoords>, T>&
           tile_queue,
       std::mutex& tile_queue_mutex,
@@ -177,10 +192,7 @@ class SparseGlobalOrderReader : public SparseIndexReaderBase,
   /** Computes a tile's Hilbert values, stores them in the comparator. */
   template <class T>
   Status calculate_hilbert_values(
-      bool subarray_set,
-      ResultTile* tile,
-      std::vector<std::vector<uint8_t>>& coord_tiles_result_bitmap,
-      T& cmp);
+      bool subarray_set, ResultTileWithBitmap<uint8_t>* tile, T& cmp);
 
   /** Compute the result cell slabs once tiles are loaded. */
   template <class T>
@@ -188,7 +200,8 @@ class SparseGlobalOrderReader : public SparseIndexReaderBase,
 
   /** Remove a result tile from memory */
   Status remove_result_tile(
-      unsigned frag_idx, std::list<ResultTile>::iterator rt);
+      const unsigned frag_idx,
+      std::list<ResultTileWithBitmap<uint8_t>>::iterator rt);
 
   /** Clean up processed data after copying and get ready for the next
    * iteration. */

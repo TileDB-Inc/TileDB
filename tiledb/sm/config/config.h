@@ -156,6 +156,11 @@ class Config {
   /** Which reader to use for sparse unordered with dups queries. */
   static const std::string SM_QUERY_SPARSE_UNORDERED_WITH_DUPS_READER;
 
+  /** Non overlapping ranges guaranteed for sparse unordered with dups queries.
+   */
+  static const std::string
+      SM_QUERY_SPARSE_UNORDERED_WITH_DUPS_NON_OVERLAPPING_RANGES;
+
   /** Should malloc_trim be called on query/ctx destructors. */
   static const std::string SM_MEM_MALLOC_TRIM;
 
@@ -175,9 +180,6 @@ class Config {
 
   /** Ratio of the sparse global order reader budget used for array data. */
   static const std::string SM_MEM_SPARSE_GLOBAL_ORDER_RATIO_ARRAY_DATA;
-
-  /** Ratio of the sparse global order reader budget used for result tiles. */
-  static const std::string SM_MEM_SPARSE_GLOBAL_ORDER_RATIO_RESULT_TILES;
 
   /** Ratio of the sparse global order reader budget used for result cell slabs.
    */
@@ -204,18 +206,6 @@ class Config {
    * data.
    */
   static const std::string SM_MEM_SPARSE_UNORDERED_WITH_DUPS_RATIO_ARRAY_DATA;
-
-  /**
-   * Ratio of the sparse unordered with dups reader budget used for result
-   * tiles.
-   */
-  static const std::string SM_MEM_SPARSE_UNORDERED_WITH_DUPS_RATIO_RESULT_TILES;
-
-  /**
-   * Ratio of the sparse unordered with dups reader budget used for result
-   * cell slabs.
-   */
-  static const std::string SM_MEM_SPARSE_UNORDERED_WITH_DUPS_RATIO_RCS;
 
   /** Whether or not the signal handlers are installed. */
   static const std::string SM_ENABLE_SIGNAL_HANDLERS;

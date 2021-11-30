@@ -2114,6 +2114,11 @@ Status FragmentMetadata::load_v1_v2(
   auto schema = array_schemas.find(array_schema_name_);
   if (schema != array_schemas.end()) {
     set_array_schema(schema->second.get());
+  } else {
+    return Status::FragmentMetadataError(
+        "Could not find schema" + array_schema_name_ +
+        " in map of schemas loaded.\n" +
+        "Consider reloading the array to check for new array schemas.");
   }
 
   // Deserialize
@@ -2175,6 +2180,11 @@ Status FragmentMetadata::load_footer(
     auto schema = array_schemas.find(array_schema_name_);
     if (schema != array_schemas.end()) {
       set_array_schema(schema->second.get());
+    } else {
+      return Status::FragmentMetadataError(
+          "Could not find schema" + array_schema_name_ +
+          " in map of schemas loaded.\n" +
+          "Consider reloading the array to check for new array schemas.");
     }
   } else {
     // Pre-v10 format fragments we need to set the schema and schema name to
@@ -2183,6 +2193,11 @@ Status FragmentMetadata::load_footer(
     auto schema = array_schemas.find(array_schema_name_);
     if (schema != array_schemas.end()) {
       set_array_schema(schema->second.get());
+    } else {
+      return Status::FragmentMetadataError(
+          "Could not find schema" + array_schema_name_ +
+          " in map of schemas loaded.\n" +
+          "Consider reloading the array to check for new array schemas.");
     }
   }
   RETURN_NOT_OK(load_dense(cbuff.get()));

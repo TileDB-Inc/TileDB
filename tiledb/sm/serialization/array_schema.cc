@@ -844,7 +844,7 @@ Status nonempty_domain_serialize(
     return LOG_STATUS(Status::SerializationError(
         "Error serializing nonempty domain; nonempty domain is null."));
 
-  const auto* schema = array->array_schema();
+  const auto* schema = array->array_schema_latest();
   if (schema == nullptr)
     return LOG_STATUS(Status::SerializationError(
         "Error serializing nonempty domain; array schema is null."));
@@ -915,7 +915,7 @@ Status nonempty_domain_deserialize(
     return LOG_STATUS(Status::SerializationError(
         "Error deserializing nonempty domain; nonempty domain is null."));
 
-  const auto* schema = array->array_schema();
+  const auto* schema = array->array_schema_latest();
   if (schema == nullptr)
     return LOG_STATUS(Status::SerializationError(
         "Error deserializing nonempty domain; array schema is null."));
@@ -990,7 +990,7 @@ Status nonempty_domain_deserialize(
 
 Status nonempty_domain_serialize(
     Array* array, SerializationType serialize_type, Buffer* serialized_buffer) {
-  const auto* schema = array->array_schema();
+  const auto* schema = array->array_schema_latest();
   if (schema == nullptr)
     return LOG_STATUS(Status::SerializationError(
         "Error serializing nonempty domain; array schema is null."));
@@ -1101,7 +1101,7 @@ Status max_buffer_sizes_serialize(
     const void* subarray,
     SerializationType serialize_type,
     Buffer* serialized_buffer) {
-  const auto* schema = array->array_schema();
+  const auto* schema = array->array_schema_latest();
   if (schema == nullptr)
     return LOG_STATUS(Status::SerializationError(
         "Error serializing max buffer sizes; array schema is null."));

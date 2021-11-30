@@ -37,7 +37,6 @@
 #include "tiledb/sm/misc/utils.h"
 
 using namespace tiledb;
-
 using namespace tiledb::test;
 
 TEST_CASE("C++ API: Test subarray", "[cppapi][sparse][subarray]") {
@@ -754,8 +753,14 @@ TEST_CASE(
   REQUIRE(st == Query::Status::INCOMPLETE);
   result_elts = query.result_buffer_elements();
   result_num = result_elts[TILEDB_COORDS].second / 2;
-  REQUIRE(result_num == 1);
-  REQUIRE(data[0] == 'c');
+  if (test::use_refactored_sparse_global_order_reader()) {
+    REQUIRE(result_num == 2);
+    REQUIRE(data[0] == 'c');
+    REQUIRE(data[1] == 'n');
+  } else {
+    REQUIRE(result_num == 1);
+    REQUIRE(data[0] == 'c');
+  }
 
   // Resubmit
   query.set_subarray(subarray);
@@ -764,8 +769,13 @@ TEST_CASE(
   result_elts = query.result_buffer_elements();
   result_num = result_elts[TILEDB_COORDS].second / 2;
   REQUIRE(result_num == 2);
-  REQUIRE(data[0] == 'n');
-  REQUIRE(data[1] == 'd');
+  if (test::use_refactored_sparse_global_order_reader()) {
+    REQUIRE(data[0] == 'd');
+    REQUIRE(data[1] == 'e');
+  } else {
+    REQUIRE(data[0] == 'n');
+    REQUIRE(data[1] == 'd');
+  }
 
   // Resubmit
   query.set_subarray(subarray);
@@ -773,8 +783,14 @@ TEST_CASE(
   REQUIRE(st == Query::Status::INCOMPLETE);
   result_elts = query.result_buffer_elements();
   result_num = result_elts[TILEDB_COORDS].second / 2;
-  REQUIRE(result_num == 1);
-  REQUIRE(data[0] == 'e');
+  if (test::use_refactored_sparse_global_order_reader()) {
+    REQUIRE(result_num == 2);
+    REQUIRE(data[0] == 'f');
+    REQUIRE(data[1] == 'g');
+  } else {
+    REQUIRE(result_num == 1);
+    REQUIRE(data[0] == 'e');
+  }
 
   // Resubmit
   query.set_subarray(subarray);
@@ -782,37 +798,51 @@ TEST_CASE(
   REQUIRE(st == Query::Status::INCOMPLETE);
   result_elts = query.result_buffer_elements();
   result_num = result_elts[TILEDB_COORDS].second / 2;
-  REQUIRE(result_num == 1);
-  REQUIRE(data[0] == 'f');
+  if (test::use_refactored_sparse_global_order_reader()) {
+    REQUIRE(result_num == 2);
+    REQUIRE(data[0] == 'h');
+    REQUIRE(data[1] == 'i');
+  } else {
+    REQUIRE(result_num == 1);
+    REQUIRE(data[0] == 'f');
+  }
 
   // Resubmit
   query.set_subarray(subarray);
   st = query.submit();
-  REQUIRE(st == Query::Status::INCOMPLETE);
+  if (test::use_refactored_sparse_global_order_reader()) {
+    REQUIRE(st == Query::Status::COMPLETE);
+  } else {
+    REQUIRE(st == Query::Status::INCOMPLETE);
+  }
   result_elts = query.result_buffer_elements();
   result_num = result_elts[TILEDB_COORDS].second / 2;
-  REQUIRE(result_num == 2);
-  REQUIRE(data[0] == 'g');
-  REQUIRE(data[1] == 'h');
+  if (test::use_refactored_sparse_global_order_reader()) {
+    REQUIRE(result_num == 2);
+    REQUIRE(data[0] == 'j');
+    REQUIRE(data[1] == 'k');
+  } else {
+    REQUIRE(result_num == 2);
+    REQUIRE(data[0] == 'g');
+    REQUIRE(data[1] == 'h');
 
-  // Resubmit
-  query.set_subarray(subarray);
-  st = query.submit();
-  REQUIRE(st == Query::Status::INCOMPLETE);
-  result_elts = query.result_buffer_elements();
-  result_num = result_elts[TILEDB_COORDS].second / 2;
-  REQUIRE(result_num == 1);
-  REQUIRE(data[0] == 'i');
+    // Resubmit
+    st = query.submit();
+    REQUIRE(st == Query::Status::INCOMPLETE);
+    result_elts = query.result_buffer_elements();
+    result_num = result_elts[TILEDB_COORDS].second / 2;
+    REQUIRE(result_num == 1);
+    REQUIRE(data[0] == 'i');
 
-  // Resubmit
-  query.set_subarray(subarray);
-  st = query.submit();
-  REQUIRE(st == Query::Status::COMPLETE);
-  result_elts = query.result_buffer_elements();
-  result_num = result_elts[TILEDB_COORDS].second / 2;
-  REQUIRE(result_num == 2);
-  REQUIRE(data[0] == 'j');
-  REQUIRE(data[1] == 'k');
+    // Resubmit
+    st = query.submit();
+    REQUIRE(st == Query::Status::COMPLETE);
+    result_elts = query.result_buffer_elements();
+    result_num = result_elts[TILEDB_COORDS].second / 2;
+    REQUIRE(result_num == 2);
+    REQUIRE(data[0] == 'j');
+    REQUIRE(data[1] == 'k');
+  }
 
   // Close array.
   array.close();
@@ -974,6 +1004,47 @@ TEST_CASE(
   REQUIRE(result_num == 2);
   REQUIRE(data[0] == 'l');
   REQUIRE(data[1] == 'm');
+
+  // Close array.
+  array.close();
+
+  if (vfs.is_dir(array_name))
+    vfs.remove_dir(array_name);
+}
+
+TEST_CASE(
+    "C++ API: Test subarray - error on multi-range for global layout",
+    "[cppapi][subarray][error]") {
+  // parameterize over cell order and read layout
+  auto test_pair = GENERATE(
+      std::make_pair(TILEDB_HILBERT, TILEDB_GLOBAL_ORDER),
+      std::make_pair(TILEDB_ROW_MAJOR, TILEDB_GLOBAL_ORDER));
+
+  const std::string array_name = "cpp_unit_array";
+  Context ctx;
+  VFS vfs(ctx);
+
+  if (vfs.is_dir(array_name))
+    vfs.remove_dir(array_name);
+
+  // Create
+  Domain domain(ctx);
+  domain.add_dimension(Dimension::create<int>(ctx, "rows", {{0, 100}}, 101))
+      .add_dimension(Dimension::create<int>(ctx, "cols", {{0, 100}}, 101));
+  ArraySchema schema(ctx, TILEDB_SPARSE);
+  schema.set_domain(domain)
+      .set_order({{TILEDB_COL_MAJOR, test_pair.first}})
+      .set_capacity(10000);
+  schema.add_attribute(Attribute::create<char>(ctx, "a"));
+  Array::create(array_name, schema);
+
+  // Open array for reading
+  tiledb::Array array(ctx, array_name, TILEDB_READ);
+  tiledb::Query query(ctx, array);
+
+  query.set_layout(test_pair.second);
+  query.add_range(0, 0, 0);
+  CHECK_THROWS(query.add_range(0, 1, 1));
 
   // Close array.
   array.close();

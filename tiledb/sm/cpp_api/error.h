@@ -90,7 +90,10 @@ class Error {
   const std::string error_message() {
     const char* msg = nullptr;
     tiledb_error_message(error_.get(), &msg);
-    return std::string(msg);
+    if (msg == nullptr)
+      return std::string();
+    else
+      return std::string(msg);
   }
 
  private:

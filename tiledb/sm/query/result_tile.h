@@ -229,18 +229,49 @@ class ResultTile {
    * Applicable only to sparse arrays.
    *
    * Computes a result count for the input dimension for the coordinates that
-   * fall in the input range.
+   * fall in the input ranges and multiply with the previous count.
+   *
+   * This only processes cells from min_cell to max_cell as we might
+   * parallelize on cells.
+   *
+   * When called over multiple ranges, this follows the formula:
+   * total_count = d1_count * d2_count ... dN_count.
    */
-  template <class T>
+  template <class BitmapType, class T>
   static void compute_results_count_sparse(
       const ResultTile* result_tile,
       unsigned dim_idx,
-      const Range& range,
-      std::vector<uint64_t>* result_count,
-      bool use_prev_dim_result_count,
-      std::vector<uint64_t>* prev_dim_result_count,
+      const NDRange& ranges,
+      const std::vector<uint64_t>* range_indexes,
+      const uint64_t num_indexes,
+      std::vector<BitmapType>* result_count,
       const Layout& cell_order,
-      std::mutex& mtx);
+      const uint64_t min_cell,
+      const uint64_t max_cell);
+
+  /**
+   * Applicable only to sparse arrays.
+   *
+   * Computes a result count for the input string dimension for the coordinates
+   * that fall in the input ranges and multiply with the previous count.
+   *
+   * This only processes cells from min_cell to max_cell as we might
+   * parallelize on cells.
+   *
+   * When called over multiple ranges, this follows the formula:
+   * total_count = d1_count * d2_count ... dN_count.
+   */
+  template <class BitmapType>
+  static void compute_results_count_sparse_string(
+      const ResultTile* result_tile,
+      unsigned dim_idx,
+      const NDRange& ranges,
+      const std::vector<uint64_t>* range_indexes,
+      const uint64_t num_indexes,
+      std::vector<BitmapType>* result_count,
+      const Layout& cell_order,
+      const uint64_t min_cell,
+      const uint64_t max_cell);
 
   /**
    * Applicable only to sparse tiles of dense arrays.
@@ -276,17 +307,25 @@ class ResultTile {
   /**
    * Applicable only to sparse arrays.
    *
-   * Accummulates to a result count for the coordinates that
-   * fall in the input range, checking only dimensions `dim_idx`.
+   * Computes a result count for the input dimension for the coordinates that
+   * fall in the input ranges and multiply with the previous count.
+   *
+   * This only processes cells from min_cell to max_cell as we might
+   * parallelize on cells.
+   *
+   * When called over multiple ranges, this follows the formula:
+   * total_count = d1_count * d2_count ... dN_count.
    */
+  template <class BitmapType>
   Status compute_results_count_sparse(
       unsigned dim_idx,
-      const Range& range,
-      std::vector<uint64_t>* result_count,
-      bool use_prev_dim_result_count,
-      std::vector<uint64_t>* prev_dim_result_count,
+      const NDRange& ranges,
+      const std::vector<uint64_t>* range_indexes,
+      const uint64_t num_indexes,
+      std::vector<BitmapType>* result_count,
       const Layout& cell_order,
-      std::mutex& mtx) const;
+      const uint64_t min_cell,
+      const uint64_t max_cell) const;
 
  private:
   /* ********************************* */
@@ -349,18 +388,35 @@ class ResultTile {
 
   /**
    * Stores the appropriate templated compute_results_count_sparse() function
-   * based for each dimension, based on the dimension datatype.
+   * for each dimension, based on the dimension datatype.
    */
   std::vector<std::function<void(
       const ResultTile*,
       unsigned,
-      const Range&,
-      std::vector<uint64_t>*,
-      bool,
+      const NDRange&,
+      const std::vector<uint64_t>*,
+      const uint64_t,
       std::vector<uint64_t>*,
       const Layout&,
-      std::mutex&)>>
-      compute_results_count_sparse_func_;
+      const uint64_t,
+      const uint64_t)>>
+      compute_results_count_sparse_uint64_t_func_;
+
+  /**
+   * Stores the appropriate templated compute_results_count_sparse() function
+   * for each dimension, based on the dimension datatype.
+   */
+  std::vector<std::function<void(
+      const ResultTile*,
+      unsigned,
+      const NDRange&,
+      const std::vector<uint64_t>*,
+      const uint64_t,
+      std::vector<uint8_t>*,
+      const Layout&,
+      const uint64_t,
+      const uint64_t)>>
+      compute_results_count_sparse_uint8_t_func_;
 
   /* ********************************* */
   /*          PRIVATE METHODS          */
