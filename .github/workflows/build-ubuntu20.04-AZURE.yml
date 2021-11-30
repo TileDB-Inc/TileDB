@@ -37,6 +37,9 @@ jobs:
           else
             echo tried to install gdb, but gdb not found!
           fi
+          echo "core_pattern follows..."
+          cat /proc/sys/kernel/core_pattern
+          echo "...core_pattern above"
 
       - uses: actions/checkout@v2
       - name: 'Print env'
@@ -112,7 +115,7 @@ jobs:
 
           source $GITHUB_WORKSPACE/scripts/ci/build_benchmarks.sh
 
-      - name: 'dump  core stacks'
+      - name: 'dump core stacks'
         #if: ${{ always() == true   && startsWith(matrix.os, 'ubuntu-') == true }} # only run this job if the build step failed
         #if: ${{ failure() == true   && startsWith(matrix.os, 'ubuntu-') == true }} # only run this job if the build step failed
         if: ${{ failure() && startsWith(matrix.os, 'ubuntu-') == true }} # only run this job if the build step failed
@@ -142,6 +145,7 @@ jobs:
               echo 'Unable to find expected core.* files!'
             fi
           fi
+          ulimit -c
           echo "ls -l /var/lib/apport/coredump"
           ls -l /var/lib/apport/coredump
           for f in $(find /var/lib/apport/coredump -name 'core.*');
