@@ -128,6 +128,8 @@ std::string_view to_string_view(const StatusCode& sc) {
       return "[TileDB::DenseTiler] Error";
     case StatusCode::QueryConditionError:
       return "[TileDB::QueryCondition] Error";
+    case StatusCode::TaskError:
+      return "[TileDB::Task] Error";
     default:
       return "[TileDB::?] Error:";
   }

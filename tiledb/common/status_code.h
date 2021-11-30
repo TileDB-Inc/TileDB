@@ -94,7 +94,8 @@ enum class StatusCode : char {
   ThreadPoolError,
   FragmentInfoError,
   DenseTilerError,
-  QueryConditionError
+  QueryConditionError,
+  TaskError
 };
 
 std::string to_string(const StatusCode& sc);
