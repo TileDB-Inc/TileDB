@@ -31,6 +31,10 @@ list(APPEND SOURCES
 )
 gather_sources(${SOURCES})
 
+list(APPEND DEPENDENT_SOURCES
+    ../../sm/misc/cancelable_tasks.cc
+)
+
 #
 # Object library for other units to depend upon
 #
@@ -51,6 +55,9 @@ if (TILEDB_TESTS)
     target_link_libraries(unit_thread_pool PUBLIC thread_pool)
     find_package(Catch_EP REQUIRED)
     target_link_libraries(unit_thread_pool PUBLIC Catch2::Catch2)
+
+    # Sources for code elsewhere required for tests
+    target_sources(unit_thread_pool PUBLIC ${DEPENDENT_SOURCES})
 
     # Sources for tests
     target_sources(unit_thread_pool PUBLIC

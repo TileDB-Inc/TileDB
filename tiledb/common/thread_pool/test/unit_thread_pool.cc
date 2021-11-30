@@ -1,5 +1,5 @@
 /**
- * @file   unit-threadpool.cc
+ * @file tiledb/common/thread_pool/test/unit_thread_pool.cc
  *
  * @section LICENSE
  *
@@ -30,14 +30,15 @@
  * Tests the `ThreadPool` class.
  */
 
+#include "unit_thread_pool.h"
+
 #include <atomic>
 #include <catch.hpp>
 #include <iostream>
+
 #include "tiledb/common/thread_pool.h"
 #include "tiledb/sm/misc/cancelable_tasks.h"
 
-using namespace tiledb::common;
-using namespace tiledb::sm;
 
 TEST_CASE("ThreadPool: Test empty", "[threadpool]") {
   for (int i = 0; i < 10; i++) {
@@ -50,7 +51,7 @@ TEST_CASE("ThreadPool: Test single thread", "[threadpool]") {
   int result = 0;
   std::vector<ThreadPool::Task> results;
   ThreadPool pool;
-  REQUIRE(pool.init().ok());
+  REQUIRE(pool.init(1).ok());
   for (int i = 0; i < 100; i++) {
     ThreadPool::Task task = pool.execute([&result]() {
       result++;
@@ -115,7 +116,7 @@ TEST_CASE(
     "ThreadPool: Test pending task cancellation", "[threadpool][cancel]") {
   SECTION("- No cancellation callback") {
     ThreadPool pool;
-    CancelableTasks cancelable_tasks;
+    tiledb::sm::CancelableTasks cancelable_tasks;
     REQUIRE(pool.init(2).ok());
     std::atomic<int> result(0);
     std::vector<ThreadPool::Task> tasks;
@@ -145,7 +146,7 @@ TEST_CASE(
 
   SECTION("- With cancellation callback") {
     ThreadPool pool;
-    CancelableTasks cancelable_tasks;
+    tiledb::sm::CancelableTasks cancelable_tasks;
     REQUIRE(pool.init(2).ok());
     std::atomic<int> result(0), num_cancelled(0);
     std::vector<ThreadPool::Task> tasks;
