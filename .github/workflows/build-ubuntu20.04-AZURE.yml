@@ -134,6 +134,14 @@ jobs:
             #~ exit 1
           #~ fi
           #~ echo "dbgr $dbgr"
+          #echo "find / -name 'core.*'"
+          #find / -name 'core.*'
+          pwd
+          if [[ ! $(find . -name 'core.*') ]]; then
+            if [[ ! $(find / -name 'core.*') ]]; then
+              echo 'Unable to find expected core.* files!'
+            fi
+          fi
           echo "ls -l /var/lib/apport/coredump"
           ls -l /var/lib/apport/coredump
           for f in $(find /var/lib/apport/coredump -name 'core.*');
