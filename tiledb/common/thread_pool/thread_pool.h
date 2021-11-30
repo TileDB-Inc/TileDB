@@ -33,112 +33,40 @@
 #ifndef TILEDB_THREAD_POOL_H
 #define TILEDB_THREAD_POOL_H
 
-#include <condition_variable>
-#include <functional>
-#include <mutex>
-#include <stack>
-#include <thread>
-#include <unordered_map>
-#include <unordered_set>
-#include <vector>
+#include "producer_consumer_queue.h"
 
+#include <functional>
+#include <future>
+
+#include "tiledb/common/logger.h"
 #include "tiledb/common/macros.h"
 #include "tiledb/common/status.h"
 
-namespace tiledb {
-namespace common {
+namespace tiledb::common {
 
-/**
- * A recusive-safe thread pool.
- */
 class ThreadPool {
- private:
-  /* ********************************* */
-  /*          PRIVATE DATATYPES        */
-  /* ********************************* */
-
-  // Forward-declaration.
-  struct TaskState;
-
-  // Forward-declaration.
-  class PackagedTask;
-
  public:
-  /* ********************************* */
-  /*          PUBLIC DATATYPES         */
-  /* ********************************* */
-
-  class Task {
-   public:
-    /** Constructor. */
-    Task()
-        : task_state_(nullptr) {
-    }
-
-    /** Move constructor. */
-    Task(Task&& rhs) {
-      task_state_ = std::move(rhs.task_state_);
-    }
-
-    /** Move-assign operator. */
-    Task& operator=(Task&& rhs) {
-      task_state_ = std::move(rhs.task_state_);
-      return *this;
-    }
-
-    /** Returns true if this instance is associated with a valid task. */
-    bool valid() {
-      return task_state_ != nullptr;
-    }
-
-   private:
-    /** Value constructor. */
-    Task(const tdb_shared_ptr<TaskState>& task_state)
-        : task_state_(std::move(task_state)) {
-    }
-
-    DISABLE_COPY_AND_COPY_ASSIGN(Task);
-
-    /** Blocks until the task has completed or there are other tasks to service.
-     */
-    void wait() {
-      std::unique_lock<std::mutex> ul(task_state_->return_st_mutex_);
-      if (!task_state_->return_st_set_ && !task_state_->check_task_stack_)
-        task_state_->cv_.wait(ul);
-    }
-
-    /** Returns true if the associated task has completed. */
-    bool done() {
-      std::lock_guard<std::mutex> lg(task_state_->return_st_mutex_);
-      return task_state_->return_st_set_;
-    }
-
-    /**
-     * Returns the result value from the task. If the task
-     * has not completed, it will wait.
-     */
-    Status get() {
-      wait();
-      std::lock_guard<std::mutex> lg(task_state_->return_st_mutex_);
-      return task_state_->return_st_;
-    }
-
-    /** The shared task state between futures and their associated task. */
-    tdb_shared_ptr<TaskState> task_state_;
-
-    friend ThreadPool;
-    friend PackagedTask;
-  };
+  using Task = std::shared_future<Status>;
 
   /* ********************************* */
   /*     CONSTRUCTORS & DESTRUCTORS    */
   /* ********************************* */
 
   /** Constructor. */
-  ThreadPool();
+  ThreadPool()
+      : concurrency_level_(0) {
+  }
+
+  /** Constructor. */
+  explicit ThreadPool(
+      size_t n) {  // There shouldn't be an uninitalized threadpool (IMO)
+    init(n);
+  }
 
   /** Destructor. */
-  ~ThreadPool();
+  ~ThreadPool() {
+    shutdown();
+  }
 
   /* ********************************* */
   /*                API                */
@@ -147,27 +75,74 @@ class ThreadPool {
   /**
    * Initialize the thread pool.
    *
-   * @param concurrency_level Maximum level of concurrency.
+   * @param concurrency_level Maximum level of concurrency. Defaults to
+   * available hardware concurrency.
    * @return Status
    */
-  Status init(uint64_t concurrency_level = 1);
+  Status init(size_t concurrency_level = std::thread::hardware_concurrency());
+
+  size_t concurrency_level() {
+    return concurrency_level_;
+  }
 
   /**
-   * Schedule a new task to be executed. If the returned `Task` object
-   * is valid, `function` is guaranteed to execute. The 'function' may
-   * execute immediately on the calling thread. To avoid deadlock, `function`
-   * should not aquire non-recursive locks held by the calling thread.
+   * Schedule a new task to be executed. If the returned future object
+   * is valid, `f` is execute asynchronously. To avoid deadlock, `f`
+   * should not acquire non-recursive locks held by the calling thread.
+   * A std::shared_future is returned instead of a std::future so that get() can
+   * be called multiple times.
    *
-   * @param function Task function to execute.
-   * @return Task for the return status of the task.
+   * @param task Callable object to call
+   * @param args... Parameters to pass to f
+   * @return std::future referring to the shared state created by this call
    */
-  Task execute(std::function<Status()>&& function);
+  template <
+      class Fn,
+      class... Args,
+      class R = std::invoke_result_t<std::decay_t<Fn>, std::decay_t<Args>...>>
+  std::shared_future<R> async(const Fn& f, const Args&... args) {
+    if (concurrency_level_ == 0) {
+      Task invalid_future;
+      LOG_ERROR("Cannot execute task; thread pool uninitialized.");
+      return invalid_future;
+    }
 
-  /** Return the maximum level of concurrency. */
-  uint64_t concurrency_level() const;
+    std::shared_ptr<std::promise<R>> task_promise(new std::promise<R>);
+    std::shared_future<R> future = task_promise->get_future();
+
+    task_queue_.push([f, args..., task_promise] {
+      try {
+        // Separately handle the case of future<void>
+        if constexpr (std::is_void_v<R>) {
+          f(args...);
+          task_promise->set_value();
+        } else {
+          task_promise->set_value(f(args...));
+        }
+      } catch (...) {
+        try {
+          task_promise->set_exception(std::current_exception());
+        } catch (...) {
+        }
+      }
+    });
+
+    return future;
+  }
 
   /**
-   * Wait on all the given tasks to complete. This is safe to call recusively
+   * Alias for async()
+   */
+  template <
+      class Fn,
+      class... Args,
+      class R = std::invoke_result_t<std::decay_t<Fn>, std::decay_t<Args>...>>
+  std::shared_future<R> execute(const Fn& task, const Args&... args) {
+    return async(task, args...);
+  }
+
+  /**
+   * Wait on all the given tasks to complete. This is safe to call recursively
    * and may execute pending tasks on the calling thread while waiting.
    *
    * @param tasks Task list to wait on.
@@ -178,7 +153,7 @@ class ThreadPool {
 
   /**
    * Wait on all the given tasks to complete, return a vector of their return
-   * Status. This is safe to call recusively and may execute pending tasks
+   * Status. This is safe to call recursively and may execute pending tasks
    * on the calling thread while waiting.
    *
    * @param tasks Task list to wait on
@@ -186,196 +161,27 @@ class ThreadPool {
    */
   std::vector<Status> wait_all_status(std::vector<Task>& tasks);
 
- private:
-  /* ********************************* */
-  /*          PRIVATE DATATYPES        */
-  /* ********************************* */
-
-  struct TaskState {
-    /** Constructor. */
-    TaskState()
-        : return_st_()
-        , check_task_stack_(false)
-        , return_st_set_(false) {
-    }
-
-    DISABLE_COPY_AND_COPY_ASSIGN(TaskState);
-    DISABLE_MOVE_AND_MOVE_ASSIGN(TaskState);
-
-    /** The return status from an executed task. */
-    Status return_st_;
-
-    bool check_task_stack_;
-
-    /** True if the `return_st_` has been set. */
-    bool return_st_set_;
-
-    /** Waits for a task to complete. */
-    std::condition_variable cv_;
-
-    /** Protects `return_st_`, `return_st_set_`, and `cv_`. */
-    std::mutex return_st_mutex_;
-  };
-
-  class PackagedTask {
-   public:
-    /** Constructor. */
-    PackagedTask()
-        : fn_(nullptr)
-        , task_state_(nullptr)
-        , parent_(nullptr) {
-    }
-
-    /** Value constructor. */
-    template <class Fn_T>
-    explicit PackagedTask(Fn_T&& fn, tdb_shared_ptr<PackagedTask>&& parent) {
-      fn_ = std::move(fn);
-      task_state_ = make_shared<TaskState>(HERE());
-      parent_ = std::move(parent);
-    }
-
-    /** Function-call operator. */
-    void operator()() {
-      const Status r = fn_();
-      {
-        std::lock_guard<std::mutex> lg(task_state_->return_st_mutex_);
-        task_state_->return_st_set_ = true;
-        task_state_->return_st_ = r;
-      }
-      task_state_->cv_.notify_all();
-
-      fn_ = std::function<Status()>();
-      task_state_ = nullptr;
-    }
-
-    /** Returns the future associated with this task. */
-    ThreadPool::Task get_future() const {
-      return Task(task_state_);
-    }
-
-    PackagedTask* get_parent() const {
-      return parent_.get();
-    }
-
-   private:
-    DISABLE_COPY_AND_COPY_ASSIGN(PackagedTask);
-    DISABLE_MOVE_AND_MOVE_ASSIGN(PackagedTask);
-
-    /** The packaged function. */
-    std::function<Status()> fn_;
-
-    /** The task state to share with futures. */
-    tdb_shared_ptr<TaskState> task_state_;
-
-    /** The parent task that executed this task. */
-    tdb_shared_ptr<PackagedTask> parent_;
-  };
-
   /* ********************************* */
   /*         PRIVATE ATTRIBUTES        */
   /* ********************************* */
 
-  /**
-   * The maximum level of concurrency among a single waiter and all
-   * of the the `threads_`.
-   */
-  uint64_t concurrency_level_;
+ private:
+  /** The worker thread routine */
+  void worker();
 
-  /** Protects `task_stack_`, `idle_threads_`, and `task_stack_clock_`. */
-  std::mutex task_stack_mutex_;
+  /** Terminate threads in the thread pool */
+  void shutdown();
 
-  /** Notifies work threads to check `task_stack_` for work. */
-  std::condition_variable task_stack_cv_;
+  /** Producer-consumer queue where functions to be executed are kept */
+  producer_consumer_queue<std::function<void()>> task_queue_;
 
-  /** Pending tasks in LIFO ordering. */
-  std::vector<tdb_shared_ptr<PackagedTask>> task_stack_;
-
-  /*
-   * A logical, monotonically increasing clock that is incremented
-   * when a task is either added or removed from `task_stack_`. This
-   * is used by threads to determine if `task_stack_` has been modified
-   * between two points in time.
-   */
-  uint64_t task_stack_clock_;
-
-  /**
-   * The number of threads waiting for the `task_stack_` to
-   * become non-empty.
-   */
-  uint64_t idle_threads_;
-
-  /** The worker threads. */
+  /** The worker threads */
   std::vector<std::thread> threads_;
 
-  /** When true, all pending tasks will remain unscheduled. */
-  bool should_terminate_;
-
-  /** All tasks that threads in this instance are waiting on. */
-  struct BlockedTasksHasher {
-    size_t operator()(const tdb_shared_ptr<TaskState>& task) const {
-      return reinterpret_cast<size_t>(task.get());
-    }
-  };
-  std::unordered_set<tdb_shared_ptr<TaskState>, BlockedTasksHasher>
-      blocked_tasks_;
-
-  /** Protects `blocked_tasks_`. */
-  std::mutex blocked_tasks_mutex_;
-
-  /** Indexes thread ids to the ThreadPool instance they belong to. */
-  static std::unordered_map<std::thread::id, ThreadPool*> tp_index_;
-
-  /** Protects 'tp_index_'. */
-  static std::mutex tp_index_lock_;
-
-  /** Indexes thread ids to the task it is currently executing. */
-  static std::unordered_map<std::thread::id, tdb_shared_ptr<PackagedTask>>
-      task_index_;
-
-  /** Protects 'task_index_'. */
-  static std::mutex task_index_lock_;
-
-  /* ********************************* */
-  /*          PRIVATE METHODS          */
-  /* ********************************* */
-
-  /**
-   * Waits for `task`, but will execute other tasks from `task_stack_`
-   * while waiting. While this may be an performance optimization
-   * to perform work on this thread rather than waiting, the primary
-   * motiviation is to prevent deadlock when tasks are enqueued recursively.
-   */
-  Status wait_or_work(Task&& task);
-
-  /** Terminate the threads in the thread pool. */
-  void terminate();
-
-  /** The worker thread routine. */
-  static void worker(ThreadPool& pool);
-
-  // Add indexes from each thread to this instance.
-  void add_tp_index();
-
-  // Remove indexes from each thread to this instance.
-  void remove_tp_index();
-
-  // Lookup the thread pool instance that contains `tid`.
-  static ThreadPool* lookup_tp(std::thread::id tid);
-
-  // Add indexes for each thread on the `task_index_`.
-  void add_task_index();
-
-  // Remove indexes for each thread on the `task_index_`.
-  void remove_task_index();
-
-  // Lookup the task executing on `tid`.
-  static tdb_shared_ptr<PackagedTask> lookup_task(std::thread::id tid);
-
-  // Wrapper to update `task_index_` and execute `task`.
-  static void exec_packaged_task(tdb_shared_ptr<PackagedTask> task);
+  /** The maximum level of concurrency among all of the worker threads */
+  std::atomic<size_t> concurrency_level_;
 };
 
-}  // namespace common
-}  // namespace tiledb
+}  // namespace tiledb::common
 
 #endif  // TILEDB_THREAD_POOL_H
