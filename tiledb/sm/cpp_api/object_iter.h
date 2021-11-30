@@ -155,7 +155,7 @@ class ObjectIter {
     using difference_type = std::ptrdiff_t;
     using pointer = value_type*;
     using reference = value_type&;
-   
+
     iterator()
         : cur_obj_(0) {
     }
