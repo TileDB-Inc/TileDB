@@ -23,6 +23,15 @@ jobs:
         run: |
           ulimit -c unlimited     # Enable core dumps to be captured (must be in same run block)
           ulimit -c
+          sudo apt-get -y install gdb
+          if [[ -f $(which gdb) ]]; then
+            echo found $(which gdb)
+          else
+            echo tried to install gdb, but gdb not found!
+          fi
+          echo "core_pattern follows..."
+          cat /proc/sys/kernel/core_pattern
+          echo "...core_pattern above"
 
       - uses: actions/checkout@v2
       - name: 'Print env'
@@ -52,6 +61,8 @@ jobs:
           TILEDB_COMPATIBILITY_VERSION: ${{ matrix.tiledb_version }}
         id: test
         run: |
+          ulimit -c unlimited
+          ulimit -c
 
           git clone https://github.com/TileDB-Inc/TileDB-Unit-Test-Arrays.git --branch 2.4.0 test/inputs/arrays/read_compatibility_test
 
@@ -74,30 +85,48 @@ jobs:
 
 
       - name: 'dump  core stacks'
-        if: ${{ always() == true   && startsWith(matrix.os, 'ubuntu-') == true }} # only run this job if the build step failed
+        if: ${{ failure() && startsWith(matrix.os, 'ubuntu-') == true }} # only run this job if the build step failed
         run: |
           # following contains answers with various possibilities for locating core files on various systems
           # https://stackoverflow.com/questions/2065912/core-dumped-but-core-file-is-not-in-the-current-directory
-          #a 'gdb' is present there, not a file, other gdbs but seem assoc'd with non-general usage
-          #if [[ -f /usr/share/gdb ]]; then
-          #  dbgr="/usr/share/gdb"
-          #  dbgropts=" -q --core \$f --batch -ex \"thread apply all bt\" -ex \"quit\""
-          #fi
-          # lldb ref'd here located by doing trial in runner with find / -name "*lldb*" and sifting through the results.
-          if [[ -f /usr/lib/llvm-11/bin/lldb ]]; then
-            #lldb -c $f --batch -o 'bt all' -o 'quit'
-            dbgr="/usr/lib/llvm-11/bin/lldb"
-            #dbgropts=" -core \$f --batch -o 'bt all' -o 'quit'"
+          pwd
+          if [[ ! $(find /var/lib/apport/coredump -name 'core.*') ]]; then
+            # if we don't find the core files where/as expected, then
+            # the artifacts won't get uploaded (haven't figured out how to
+            # dynamically specify location to upload action), but we
+            # can still present stack traces for the ones we find.
+            echo "core files not found where expected!"
+            if [[ $(find . -name 'core.*') ]]; then
+              echo "core files found at/under $(pwd)"
+              corefiles=$(find . -name 'core.*')
+            elif [[ $(find / -name 'core.*') ]]; then
+              echo "core founds found!"
+              corefiles=$(find / -name 'core.*')
+            else
+              echo "core files expected but not found!"
+              corefiles=
+            fi
           else
-            echo "debugger not found in previously seen location!"
-            exit 1
+            corefiles=$(find /var/lib/apport/coredump -name 'core.*')
           fi
-          echo "dbgr $dbgr"
-          for f in $(find /var/lib/apport/coredump -name 'core.*');
+          ulimit -c
+          echo "ls -l /var/lib/apport/coredump"
+          ls -l /var/lib/apport/coredump
+          for f in $corefiles;
             do
               echo "stack trace for $f"
-              #currently assumes $dbgr to be lldb
-              sudo $dbgr -core $f --batch  -o 'bt all' -o 'quit'
+              if [[ -f $(which gdb) ]]; then
+                dbgr=$(which gdb)
+                sudo $dbgr -q --core $f -ex "thread apply all bt" -ex "quit"
+              #fi
+              # lldb ref'd here located by doing trial in runner with find / -name "*lldb*" and sifting through the results.
+              elif [[ -f /usr/lib/llvm-11/bin/lldb ]]; then
+                dbgr="/usr/lib/llvm-11/bin/lldb"
+                sudo $dbgr -core $f --batch  -o 'bt all' -o 'quit'
+              else
+                echo "debugger not found in previously seen location!"
+                exit 1
+              fi
             done;
 
       - name: 'upload any core artifacts' # https://github.com/actions/upload-artifact#where-does-the-upload-go
