@@ -31,6 +31,7 @@ jobs:
         run: |
           ulimit -c unlimited     # Enable core dumps to be captured (must be in same run block)
           ulimit -c
+          sudo apt-get -y install gdb
 
       - uses: actions/checkout@v2
       - name: 'Print env'
@@ -111,25 +112,39 @@ jobs:
           # following contains answers with various possibilities for locating core files on various systems
           # https://stackoverflow.com/questions/2065912/core-dumped-but-core-file-is-not-in-the-current-directory
           #a 'gdb' is present there, not a file, other gdbs but seem assoc'd with non-general usage
-          #if [[ -f /usr/share/gdb ]]; then
+          #if [[ -f $(which gdb) ]]; then
           #  dbgr="/usr/share/gdb"
           #  dbgropts=" -q --core \$f --batch -ex \"thread apply all bt\" -ex \"quit\""
           #fi
           # lldb ref'd here located by doing trial in runner with find / -name "*lldb*" and sifting through the results.
-          if [[ -f /usr/lib/llvm-11/bin/lldb ]]; then
-            #lldb -c $f --batch -o 'bt all' -o 'quit'
-            dbgr="/usr/lib/llvm-11/bin/lldb"
-            #dbgropts=" -core \$f --batch -o 'bt all' -o 'quit'"
-          else
-            echo "debugger not found in previously seen location!"
-            exit 1
-          fi
-          echo "dbgr $dbgr"
+          #~ if [[ -f /usr/lib/llvm-11/bin/lldb ]]; then
+            #~ #lldb -c $f --batch -o 'bt all' -o 'quit'
+            #~ dbgr="/usr/lib/llvm-11/bin/lldb"
+            #~ #dbgropts=" -core \$f --batch -o 'bt all' -o 'quit'"
+          #~ else
+            #~ echo "debugger not found in previously seen location!"
+            #~ exit 1
+          #~ fi
+          #~ echo "dbgr $dbgr"
           for f in $(find /var/lib/apport/coredump -name 'core.*');
             do
               echo "stack trace for $f"
               #currently assumes $dbgr to be lldb
-              sudo $dbgr -core $f --batch  -o 'bt all' -o 'quit'
+              #sudo $dbgr -core $f --batch  -o 'bt all' -o 'quit'
+              if [[ -f $(which gdb) ]]; then
+                dbgr=$(which gdb)
+                sudo $dbgr -q --core $f -ex "thread apply all bt" -ex "quit"
+              #fi
+              # lldb ref'd here located by doing trial in runner with find / -name "*lldb*" and sifting through the results.
+              elif [[ -f /usr/lib/llvm-11/bin/lldb ]]; then
+                #lldb -c $f --batch -o 'bt all' -o 'quit'
+                dbgr="/usr/lib/llvm-11/bin/lldb"
+                #dbgropts=" -core \$f --batch -o 'bt all' -o 'quit'"
+                sudo $dbgr -core $f --batch  -o 'bt all' -o 'quit'
+              else
+                echo "debugger not found in previously seen location!"
+                exit 1
+              fi
             done;
 
       - name: 'upload any core artifacts' # https://github.com/actions/upload-artifact#where-does-the-upload-go
