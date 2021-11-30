@@ -1,5 +1,5 @@
 #
-# tiledb/common/thread_pool/CMakeLists.txt
+# tiledb/sm/misc/CMakeLists.txt
 #
 # The MIT License
 #
@@ -22,45 +22,19 @@
 # LIABILITY, WHETHER IN AN ACTION OF CONTRACT, TORT OR OTHERWISE, ARISING FROM,
 # OUT OF OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN
 # THE SOFTWARE.
-#
 
 include(common NO_POLICY_SCOPE)
-
-list(APPEND SOURCES
-    thread_pool.cc
-)
-gather_sources(${SOURCES})
 
 #
 # Object library for other units to depend upon
 #
-add_library(thread_pool OBJECT ${SOURCES})
-target_link_libraries(thread_pool PUBLIC baseline $<TARGET_OBJECTS:baseline>)
+add_library(constants OBJECT constants.cc)
 
 #
 # Test-compile of object library ensures link-completeness
 #
-add_executable(compile_thread_pool EXCLUDE_FROM_ALL)
-target_link_libraries(compile_thread_pool PRIVATE thread_pool)
-target_sources(compile_thread_pool PRIVATE
-    test/compile_thread_pool_main.cc $<TARGET_OBJECTS:thread_pool>
+add_executable(compile_constants EXCLUDE_FROM_ALL)
+target_link_libraries(compile_constants PRIVATE constants)
+target_sources(compile_constants PRIVATE
+    test/compile_constants_main.cc $<TARGET_OBJECTS:constants>
 )
-
-if (TILEDB_TESTS)
-    add_executable(unit_thread_pool EXCLUDE_FROM_ALL)
-    target_link_libraries(unit_thread_pool PUBLIC thread_pool)
-    find_package(Catch_EP REQUIRED)
-    target_link_libraries(unit_thread_pool PUBLIC Catch2::Catch2)
-
-    # Sources for tests
-    target_sources(unit_thread_pool PUBLIC
-            test/main.cc
-            test/unit_thread_pool.cc
-            )
-
-    add_test(
-            NAME "unit_thread_pool"
-            COMMAND $<TARGET_FILE:unit_thread_pool>
-            WORKING_DIRECTORY ${CMAKE_CURRENT_SOURCE_DIR}
-    )
-endif()

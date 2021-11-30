@@ -42,6 +42,7 @@
 
 #include "tiledb/sm/filesystem/hdfs_filesystem.h"
 #include "tiledb/common/logger.h"
+#include "tiledb/common/stdx_string.h"
 #include "tiledb/sm/config/config.h"
 #include "tiledb/sm/misc/constants.h"
 #include "tiledb/sm/misc/uri.h"
