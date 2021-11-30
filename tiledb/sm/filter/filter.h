@@ -80,8 +80,7 @@ class Filter {
    * @param type Filter type to create
    * @return New Filter instance or nullptr on error.
    */
-  static std::tuple<Status, std::optional<std::shared_ptr<Filter>>> create(
-      FilterType type);
+  static Filter* create(FilterType type);
 
   /**
    * Deserializes a new Filter instance from the data in the given buffer.
@@ -180,18 +179,6 @@ class Filter {
    * to be cloned without knowing their derived types.
    */
   virtual Filter* clone_impl() const = 0;
-
-  /**
-   * Deserialization function that can be implemented by a specific Filter
-   * subclass for filter-specific metadata.
-   *
-   * If a filter subclass has no specific metadata, it's not necessary to
-   * implement this method.
-   *
-   * @param buff The buffer to deserialize from
-   * @return Status
-   */
-  virtual Status deserialize_impl(ConstBuffer* buff);
 
   /** Optional subclass specific get_option method. */
   virtual Status get_option_impl(FilterOption option, void* value) const;

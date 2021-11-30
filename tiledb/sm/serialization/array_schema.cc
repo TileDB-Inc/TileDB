@@ -127,12 +127,12 @@ Status filter_pipeline_from_capnp(
   for (auto filter_reader : filter_list_reader) {
     FilterType type = FilterType::FILTER_NONE;
     RETURN_NOT_OK(filter_type_enum(filter_reader.getType().cStr(), &type));
-    auto&& [st_filter, filter_ptr]{tiledb::sm::Filter::create(type)};
+    tdb_unique_ptr<Filter> filter(Filter::create(type));
 
-    if (!st_filter.ok() || (!filter_ptr.value()))
+    if (filter == nullptr)
       return LOG_STATUS(Status::SerializationError(
           "Error deserializing filter pipeline; failed to create filter."));
-    auto& filter = filter_ptr.value();
+
     switch (filter->type()) {
       case FilterType::FILTER_BIT_WIDTH_REDUCTION: {
         auto data = filter_reader.getData();

@@ -64,44 +64,34 @@ Filter* Filter::clone() const {
   return clone;
 }
 
-std::tuple<Status, std::optional<std::shared_ptr<Filter>>> Filter::create(
-    FilterType type) {
+Filter* Filter::create(FilterType type) {
   switch (type) {
     case FilterType::FILTER_NONE:
-      return {Status::Ok(), tiledb::common::make_shared<NoopFilter>(HERE())};
+      return tdb_new(NoopFilter);
     case FilterType::FILTER_GZIP:
     case FilterType::FILTER_ZSTD:
     case FilterType::FILTER_LZ4:
     case FilterType::FILTER_RLE:
     case FilterType::FILTER_BZIP2:
     case FilterType::FILTER_DOUBLE_DELTA:
-      return {Status::Ok(),
-              tiledb::common::make_shared<CompressionFilter>(HERE(), type, -1)};
+      return tdb_new(CompressionFilter, type, -1);
     case FilterType::FILTER_BIT_WIDTH_REDUCTION:
-      return {Status::Ok(),
-              tiledb::common::make_shared<BitWidthReductionFilter>(HERE())};
+      return tdb_new(BitWidthReductionFilter);
     case FilterType::FILTER_BITSHUFFLE:
-      return {Status::Ok(),
-              tiledb::common::make_shared<BitshuffleFilter>(HERE())};
+      return tdb_new(BitshuffleFilter);
     case FilterType::FILTER_BYTESHUFFLE:
-      return {Status::Ok(),
-              tiledb::common::make_shared<ByteshuffleFilter>(HERE())};
+      return tdb_new(ByteshuffleFilter);
     case FilterType::FILTER_POSITIVE_DELTA:
-      return {Status::Ok(),
-              tiledb::common::make_shared<PositiveDeltaFilter>(HERE())};
+      return tdb_new(PositiveDeltaFilter);
     case FilterType::INTERNAL_FILTER_AES_256_GCM:
-      return {Status::Ok(),
-              tiledb::common::make_shared<EncryptionAES256GCMFilter>(HERE())};
+      return tdb_new(EncryptionAES256GCMFilter);
     case FilterType::FILTER_CHECKSUM_MD5:
-      return {Status::Ok(),
-              tiledb::common::make_shared<ChecksumMD5Filter>(HERE())};
+      return tdb_new(ChecksumMD5Filter);
     case FilterType::FILTER_CHECKSUM_SHA256:
-      return {Status::Ok(),
-              tiledb::common::make_shared<ChecksumSHA256Filter>(HERE())};
+      return tdb_new(ChecksumSHA256Filter);
     default:
       assert(false);
-      return {Status::FilterError("Cannot create Filter; invalid FilterType"),
-              std::nullopt};
+      return nullptr;
   }
 }
 
@@ -125,21 +115,75 @@ std::tuple<Status, std::optional<std::shared_ptr<Filter>>> Filter::deserialize(
   if (!st.ok()) {
     return {st, std::nullopt};
   }
+  FilterType filtertype = static_cast<FilterType>(type);
   uint32_t filter_metadata_len;
   st = buff->read(&filter_metadata_len, sizeof(uint32_t));
   if (!st.ok()) {
     return {st, std::nullopt};
   }
-
-  auto&& [st_filter, filter]{create(static_cast<FilterType>(type))};
-  if (!st_filter.ok()) {
-    return {st_filter, std::nullopt};
-  }
-
+  std::shared_ptr<Filter> filter;
+  uint8_t compressor_char;
+  Compressor compressor;
+  int compression_level;
+  uint32_t max_window_size;
   auto offset = buff->offset();
-  st = filter.value()->deserialize_impl(buff);
-  if (!st.ok()) {
-    return {st_filter, std::nullopt};
+  switch (filtertype) {
+    case FilterType::FILTER_NONE:
+      filter = tiledb::common::make_shared<NoopFilter>(HERE());
+      break;
+    case FilterType::FILTER_GZIP:
+    case FilterType::FILTER_ZSTD:
+    case FilterType::FILTER_LZ4:
+    case FilterType::FILTER_RLE:
+    case FilterType::FILTER_BZIP2:
+    case FilterType::FILTER_DOUBLE_DELTA:
+      st = (buff->read(&compressor_char, sizeof(uint8_t)));
+      if (!st.ok()) {
+        return {st, std::nullopt};
+      }
+      compressor = static_cast<Compressor>(compressor_char);
+      st = buff->read(&compression_level, sizeof(int32_t));
+      if (!st.ok()) {
+        return {st, std::nullopt};
+      }
+      filter = tiledb::common::make_shared<CompressionFilter>(
+          HERE(), compressor, compression_level);
+      break;
+    case FilterType::FILTER_BIT_WIDTH_REDUCTION:
+      st = buff->read(&max_window_size, sizeof(uint32_t));
+      if (!st.ok()) {
+        return {st, std::nullopt};
+      }
+      filter = tiledb::common::make_shared<BitWidthReductionFilter>(
+          HERE(), max_window_size);
+      break;
+    case FilterType::FILTER_BITSHUFFLE:
+      filter = tiledb::common::make_shared<BitshuffleFilter>(HERE());
+      break;
+    case FilterType::FILTER_BYTESHUFFLE:
+      filter = tiledb::common::make_shared<ByteshuffleFilter>(HERE());
+      break;
+    case FilterType::FILTER_POSITIVE_DELTA:
+      st = buff->read(&max_window_size, sizeof(uint32_t));
+      if (!st.ok()) {
+        return {st, std::nullopt};
+      }
+      filter = tiledb::common::make_shared<PositiveDeltaFilter>(
+          HERE(), max_window_size);
+      break;
+    case FilterType::INTERNAL_FILTER_AES_256_GCM:
+      filter = tiledb::common::make_shared<EncryptionAES256GCMFilter>(HERE());
+      break;
+    case FilterType::FILTER_CHECKSUM_MD5:
+      filter = tiledb::common::make_shared<ChecksumMD5Filter>(HERE());
+      break;
+    case FilterType::FILTER_CHECKSUM_SHA256:
+      filter = tiledb::common::make_shared<ChecksumSHA256Filter>(HERE());
+      break;
+    default:
+      assert(false);
+      st = Status::FilterError("Deserialization error; unknown type");
+      break;
   }
 
   if (buff->offset() - offset != filter_metadata_len) {
@@ -148,7 +192,7 @@ std::tuple<Status, std::optional<std::shared_ptr<Filter>>> Filter::deserialize(
             std::nullopt};
   }
 
-  return {Status::Ok(), filter.value()};
+  return {Status::Ok(), filter};
 }
 
 // ===== FORMAT =====
@@ -190,11 +234,6 @@ Status Filter::set_option_impl(FilterOption option, const void* value) {
   (void)option;
   (void)value;
   return LOG_STATUS(Status::FilterError("Filter does not support options."));
-}
-
-Status Filter::deserialize_impl(ConstBuffer* buff) {
-  (void)buff;
-  return Status::Ok();
 }
 
 Status Filter::serialize_impl(Buffer* buff) const {

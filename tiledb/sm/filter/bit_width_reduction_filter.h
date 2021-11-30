@@ -157,7 +157,7 @@ class BitWidthReductionFilter : public Filter {
       ConstBuffer* buffer, uint32_t num_elements, T* min_value) const;
 
   /** Deserializes this filter's metadata from the given buffer. */
-  Status deserialize_impl(ConstBuffer* buff) override;
+  Status deserialize_impl(ConstBuffer* buff);
 
   /** Gets an option from this filter. */
   Status get_option_impl(FilterOption option, void* value) const override;
