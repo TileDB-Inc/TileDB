@@ -67,17 +67,8 @@ jobs:
       - name: 'Build and test libtiledb'
         id: test
         run: |
-          echo ulimit -c
-          ulimit -c
           ulimit -c unlimited
           ulimit -c
-          if [[ -f $(which python3) ]]; then
-          #echo -e "nl=\"\\\n\"\nprint('aborting...'+nl)\nimport resource as res\nprint(res.getrlimit(res.RLIMIT_CORE))\nprint(nl)\nres.setrlimit(res.RLIMIT_CORE,(res.RLIM_INFINITY,res.RLIM_INFINITY))\nprint(res.getrlimit(res.RLIMIT_CORE))\nimport sys\nsys.stdout.flush()\nsys.stderr.flush()\nimport os \nos.abort()" | python3          # Azure sets "SYSTEM=build" for unknown reasonas, which breaks the OpenSSL configure script
-          echo -e "nl=\"\\\n\"\nprint('aborting...'+nl)\nimport resource as res\nimport time,threading\nprint(res.getrlimit(res.RLIMIT_CORE))\nprint(nl)\nres.setrlimit(res.RLIMIT_CORE,(res.RLIM_INFINITY,res.RLIM_INFINITY))\nprint(res.getrlimit(res.RLIMIT_CORE))\nt1=threading.Thread(name='thd1', target=lambda: time.sleep(5))\nt1.start()\nt2=threading.Thread(name='thd2', target=lambda: time.sleep(5))\nt2.start()\nimport sys\nsys.stdout.flush()\nsys.stderr.flush()\nimport os \nos.abort()" | python3
-          else
-            echo "unable to find python3!"
-            exit 42
-          fi
           #   - openssl configure uses ENV{SYSTEM} if available:
           #     https://github.com/openssl/openssl/blob/6d745d740d37d680ff696486218b650512bbbbc6/config#L56
           #   - error description:
@@ -126,39 +117,31 @@ jobs:
           source $GITHUB_WORKSPACE/scripts/ci/build_benchmarks.sh
 
       - name: 'dump core stacks'
-        #if: ${{ always() == true   && startsWith(matrix.os, 'ubuntu-') == true }} # only run this job if the build step failed
-        #if: ${{ failure() == true   && startsWith(matrix.os, 'ubuntu-') == true }} # only run this job if the build step failed
         if: ${{ failure() && startsWith(matrix.os, 'ubuntu-') == true }} # only run this job if the build step failed
         run: |
           # following contains answers with various possibilities for locating core files on various systems
           # https://stackoverflow.com/questions/2065912/core-dumped-but-core-file-is-not-in-the-current-directory
-          #a 'gdb' is present there, not a file, other gdbs but seem assoc'd with non-general usage
-          #if [[ -f $(which gdb) ]]; then
-          #  dbgr="/usr/share/gdb"
-          #  dbgropts=" -q --core \$f --batch -ex \"thread apply all bt\" -ex \"quit\""
-          #fi
-          # lldb ref'd here located by doing trial in runner with find / -name "*lldb*" and sifting through the results.
-          #~ if [[ -f /usr/lib/llvm-11/bin/lldb ]]; then
-            #~ #lldb -c $f --batch -o 'bt all' -o 'quit'
-            #~ dbgr="/usr/lib/llvm-11/bin/lldb"
-            #~ #dbgropts=" -core \$f --batch -o 'bt all' -o 'quit'"
-          #~ else
-            #~ echo "debugger not found in previously seen location!"
-            #~ exit 1
-          #~ fi
-          #~ echo "dbgr $dbgr"
-          #echo "find / -name 'core.*'"
-          #find / -name 'core.*'
           pwd
-          if [[ ! $(find . -name 'core.*') ]]; then
-            if [[ ! $(find / -name 'core.*') ]]; then
-              echo 'Unable to find expected core.* files!'
+          if [[ ! $(find /var/lib/apport/coredump -name 'core.*') ]]; then
+            echo "core files not found where expected!"
+            if [[ $(find . -name 'core.*') ]]; then
+              echo "core files found at/under $(pwd)"
+              corefiles=$(find . -name 'core.*')
+            elif [[ $(find / -name 'core.*') ]]; then
+              echo "core founds found!"
+              corefiles=$(find / -name 'core.*')
+            else
+              echo "core files expected but not found!"
+              corefiles=
             fi
+          else
+            corefiles=$(find /var/lib/apport/coredump -name 'core.*')
           fi
           ulimit -c
           echo "ls -l /var/lib/apport/coredump"
           ls -l /var/lib/apport/coredump
-          for f in $(find /var/lib/apport/coredump -name 'core.*');
+          #for f in $(find /var/lib/apport/coredump -name 'core.*');
+          for f in $corefiles;
             do
               echo "stack trace for $f"
               #currently assumes $dbgr to be lldb
