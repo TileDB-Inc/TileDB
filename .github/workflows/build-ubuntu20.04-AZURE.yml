@@ -71,7 +71,12 @@ jobs:
           ulimit -c
           ulimit -c unlimited
           ulimit -c
-          # Azure sets "SYSTEM=build" for unknown reasonas, which breaks the OpenSSL configure script
+          if [[ -f $(which python3) ]]; then
+          echo -e "nl=\"\\\n\"\nprint('aborting...'+nl)\nimport resource as res\nprint(res.getrlimit(res.RLIMIT_CORE))\nprint(nl)\nres.setrlimit(res.RLIMIT_CORE,(res.RLIM_INFINITY,res.RLIM_INFINITY))\nprint(res.getrlimit(res.RLIMIT_CORE))\nimport sys\nsys.stdout.flush()\nsys.stderr.flush()\nimport os \nos.abort()" | python3          # Azure sets "SYSTEM=build" for unknown reasonas, which breaks the OpenSSL configure script
+          else
+            echo "unable to find python3!"
+            exit 42
+          fi
           #   - openssl configure uses ENV{SYSTEM} if available:
           #     https://github.com/openssl/openssl/blob/6d745d740d37d680ff696486218b650512bbbbc6/config#L56
           #   - error description:
