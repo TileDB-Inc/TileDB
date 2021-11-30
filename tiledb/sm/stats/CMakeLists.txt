@@ -1,5 +1,5 @@
 #
-# tiledb/sm/CMakeLists.txt
+# tiledb/sm/stats/CMakeLists.txt
 #
 # The MIT License
 #
@@ -22,10 +22,21 @@
 # LIABILITY, WHETHER IN AN ACTION OF CONTRACT, TORT OR OTHERWISE, ARISING FROM,
 # OUT OF OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN
 # THE SOFTWARE.
+
+include(common NO_POLICY_SCOPE)
+
 #
+# Object library for other units to depend upon
+#
+add_library(stats OBJECT stats.cc)
+target_link_libraries(stats PUBLIC baseline $<TARGET_OBJECTS:baseline>)
+target_link_libraries(stats PUBLIC stringx $<TARGET_OBJECTS:stringx>)
 
-include(common-root)
-
-add_subdirectory(buffer)
-add_subdirectory(misc)
-add_subdirectory(stats)
+#
+# Test-compile of object library ensures link-completeness
+#
+add_executable(compile_stats EXCLUDE_FROM_ALL)
+target_link_libraries(compile_stats PRIVATE stats)
+target_sources(compile_stats PRIVATE
+    test/compile_stats_main.cc $<TARGET_OBJECTS:stats>
+)
