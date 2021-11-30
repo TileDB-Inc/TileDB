@@ -67,6 +67,10 @@ jobs:
       - name: 'Build and test libtiledb'
         id: test
         run: |
+          echo ulimit -c
+          ulimit -c
+          ulimit -c unlimited
+          ulimit -c
           # Azure sets "SYSTEM=build" for unknown reasonas, which breaks the OpenSSL configure script
           #   - openssl configure uses ENV{SYSTEM} if available:
           #     https://github.com/openssl/openssl/blob/6d745d740d37d680ff696486218b650512bbbbc6/config#L56
