@@ -58,6 +58,7 @@ install_deps() {
 
     if [[ $(which npm) ]]; then
       echo "found $(which npm)"
+      ls -l $(which npm)
     else
       echo "did not find npm!"
     fi
