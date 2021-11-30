@@ -67,7 +67,7 @@ if (TILEDB_TESTS)
 
     add_test(
             NAME "unit_thread_pool"
-            COMMAND $<TARGET_FILE:unit_thread_pool>
+            COMMAND $<TARGET_FILE:unit_thread_pool> --durations=yes
             WORKING_DIRECTORY ${CMAKE_CURRENT_SOURCE_DIR}
     )
 endif()
