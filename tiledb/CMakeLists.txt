@@ -710,13 +710,14 @@ if (TILEDB_STATIC)
   macro(append_dep_lib APPEND_LIB)
     if (TARGET ${APPEND_LIB})
       get_installed_location(TARGET_LOC ${APPEND_LIB})
+      cmake_path(GET TARGET_LOC FILENAME TARGET_LOC_FILENAME)
       get_target_property(TARGET_LIBS ${APPEND_LIB} INTERFACE_LINK_LIBRARIES)
 
       string(CONCAT TILEDB_STATIC_DEP_STRING
         "${TILEDB_STATIC_DEP_STRING}"
         "if (NOT TARGET ${APPEND_LIB})\n"
         "  add_library(${APPEND_LIB} UNKNOWN IMPORTED)\n"
-        "  set_target_properties(${APPEND_LIB} PROPERTIES IMPORTED_LOCATION ${TARGET_LOC})\n"
+        "  set_target_properties(${APPEND_LIB} PROPERTIES IMPORTED_LOCATION \${PACKAGE_PREFIX_DIR}/lib/${TARGET_LOC_FILENAME})\n"
       )
 
       string(CONCAT TILEDB_STATIC_DEP_STRING
