@@ -133,19 +133,19 @@ runs:
 
         # displayName: 'Install dependencies'
 
-        mkdir -p $BUILD_REPOSITORY_LOCALPATH/build
-        cd $BUILD_REPOSITORY_LOCALPATH/build
+        mkdir -p $GITHUB_WORKSPACE/build
+        cd $GITHUB_WORKSPACE/build
 
         # Configure and build TileDB
         echo "Bootstrapping with '$bootstrap_args'"
-        $BUILD_REPOSITORY_LOCALPATH/bootstrap $bootstrap_args
+        $GITHUB_WORKSPACE/bootstrap $bootstrap_args
 
         make -j4
         make examples -j4
         make -C tiledb install
 
         #- bash: |
-        cd $BUILD_REPOSITORY_LOCALPATH/build
+        cd $GITHUB_WORKSPACE/build
         ls -la
 
         if [[ ( "$AGENT_OS" == "Linux" && "$TILEDB_S3" == "ON" ) ]]; then
