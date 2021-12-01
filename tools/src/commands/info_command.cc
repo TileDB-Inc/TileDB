@@ -498,8 +498,8 @@ std::vector<std::string> InfoCommand::mbr_to_string(
     auto type = domain->dimension(d)->type();
     switch (type) {
       case sm::Datatype::STRING_ASCII:
-        result.push_back(mbr[d].start_str());
-        result.push_back(mbr[d].end_str());
+        result.push_back(std::string(mbr[d].start_str()));
+        result.push_back(std::string(mbr[d].end_str()));
         break;
       case Datatype::INT8:
         r8 = (const int8_t*)mbr[d].data();

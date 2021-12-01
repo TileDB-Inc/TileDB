@@ -185,7 +185,9 @@ std::string to_str(const T& value);
 std::string to_str(const void* value, Datatype type);
 
 /** Returns the size of the common prefix between `a` and `b`. */
-uint64_t common_prefix_size(const std::string& a, const std::string& b);
+uint64_t common_prefix_size(
+    const std::basic_string_view<char>& a,
+    const std::basic_string_view<char>& b);
 
 }  // namespace parse
 
