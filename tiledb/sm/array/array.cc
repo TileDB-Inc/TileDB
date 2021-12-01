@@ -66,6 +66,7 @@ namespace sm {
 Array::Array(const URI& array_uri, StorageManager* storage_manager)
     : array_schema_latest_(nullptr)
     , array_uri_(array_uri)
+    , array_uri_serialized_(array_uri)
     , encryption_key_(tdb::make_shared<EncryptionKey>(HERE()))
     , is_open_(false)
     , timestamp_start_(0)
@@ -80,6 +81,7 @@ Array::Array(const URI& array_uri, StorageManager* storage_manager)
 Array::Array(const Array& rhs)
     : array_schema_latest_(rhs.array_schema_latest_)
     , array_uri_(rhs.array_uri_)
+    , array_uri_serialized_(rhs.array_uri_serialized_)
     , encryption_key_(rhs.encryption_key_)
     , fragment_metadata_(rhs.fragment_metadata_)
     , is_open_(rhs.is_open_.load())
@@ -109,6 +111,11 @@ ArraySchema* Array::array_schema_latest() const {
 const URI& Array::array_uri() const {
   std::unique_lock<std::mutex> lck(mtx_);
   return array_uri_;
+}
+
+const URI& Array::array_uri_serialized() const {
+  std::unique_lock<std::mutex> lck(mtx_);
+  return array_uri_serialized_;
 }
 
 const EncryptionKey* Array::encryption_key() const {
@@ -603,6 +610,12 @@ Config Array::config() const {
 Status Array::set_uri(const std::string& uri) {
   std::unique_lock<std::mutex> lck(mtx_);
   array_uri_ = URI(uri);
+  return Status::Ok();
+}
+
+Status Array::set_uri_serialized(const std::string& uri) {
+  std::unique_lock<std::mutex> lck(mtx_);
+  array_uri_serialized_ = URI(uri);
   return Status::Ok();
 }
 
