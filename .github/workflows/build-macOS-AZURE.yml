@@ -14,7 +14,7 @@ env:
   TILEDB_AZURE: ON
   TILEDB_SERIALIZATION: ON
   TILEDB_STATIC: OFF
-  CXX: g++
+  CXX: clang++
 
 jobs:
   build:
@@ -26,3 +26,22 @@ jobs:
       - uses: actions/checkout@v2
 
       - uses: ./.github/actions/linux_mac
+
+  #~ build_linux_asan:
+    #~ runs-on: ubuntu-20.04
+    #~ if: ${{ startsWith(github.ref , 'refs/tags') != true && startsWith(github.ref , 'build-') != true }}
+    #~ timeout-minutes: 90
+    #~ name: Build - linux_asan
+    #~ env:
+      #~ #BACKWARDS_COMPATIBILITY_ARRAYS: OFF
+      #~ #TILEDB_GCS: OFF
+      #~ #TILEDB_AZURE: ON
+      #~ TILEDB_CI_ASAN: ON
+      #~ TILEDB_SERIALIZATION: ON
+      #~ #TILEDB_STATIC: OFF
+      #~ CXX: g++
+      #~ CC: gcc
+    #~ steps:
+      #~ - uses: actions/checkout@v2
+
+      #~ - uses: ./.github/actions/linux_mac
