@@ -45,7 +45,7 @@ runs:
         # https://github.com/Microsoft/azure-pipelines-yaml/issues/135
         set -xe pipefail
 
-        git config --global user.name 'Azure Pipeline'
+        git config --global user.name 'GA CI'
         git config --global user.email 'no-reply@tiledb.io'
 
         if [[ "$BACKWARDS_COMPATIBILITY_ARRAYS" == "ON" ]]; then
