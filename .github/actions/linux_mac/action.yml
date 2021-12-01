@@ -1,7 +1,5 @@
 name: linux-mac-steps
 
-inputs:
-
 runs:
   using: "composite"
   steps:
