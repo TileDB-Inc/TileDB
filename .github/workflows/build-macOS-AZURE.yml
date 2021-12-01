@@ -1,4 +1,4 @@
-name: build-macos-10.14-GCS
+name: build-macos-AZURE
 on:
   push:
     branches:
