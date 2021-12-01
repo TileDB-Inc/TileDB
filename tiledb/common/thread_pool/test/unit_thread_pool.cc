@@ -202,7 +202,7 @@ TEST_CASE("ThreadPool: Test execute with empty pool", "[threadpool]") {
 size_t random_ms() {
   static std::random_device             rdev;
   static std::mt19937                   rgen(rdev());
-  std::uniform_int_distribution<size_t> idist(0, 5);
+  std::uniform_int_distribution<size_t> idist(0, 2);
   return idist(rgen);
 }
 
