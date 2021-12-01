@@ -129,6 +129,13 @@ Status stats_from_capnp(
 
 Status array_to_capnp(
     const Array& array, capnp::Array::Builder* array_builder) {
+  // The serialized URI is set if it exists
+  // this is used for backwards compatibility with pre TileDB 2.5 clients that
+  // want to serialized a query object TileDB >= 2.5 no longer needs to send the
+  // array URI
+  if (!array.array_uri_serialized().to_string().empty()) {
+    array_builder->setUri(array.array_uri_serialized());
+  }
   array_builder->setStartTimestamp(array.timestamp_start());
   array_builder->setEndTimestamp(array.timestamp_end());
 
@@ -137,6 +144,13 @@ Status array_to_capnp(
 
 Status array_from_capnp(
     const capnp::Array::Reader& array_reader, Array* array) {
+  // The serialized URI is set if it exists
+  // this is used for backwards compatibility with pre TileDB 2.5 clients that
+  // want to serialized a query object TileDB >= 2.5 no longer needs to receive
+  // the array URI
+  if (array_reader.hasUri()) {
+    RETURN_NOT_OK(array->set_uri_serialized(array_reader.getUri().cStr()));
+  }
   RETURN_NOT_OK(array->set_timestamp_start(array_reader.getStartTimestamp()));
   RETURN_NOT_OK(array->set_timestamp_end(array_reader.getEndTimestamp()));
 
