@@ -263,6 +263,7 @@ class FilterPipeline {
   /**
    * Run the given buffer forward through the pipeline.
    *
+   * @param tile Current tile on which the filter pipeline is being run
    * @param input buffer to process.
    * @param chunk_size chunk size.
    * @param output buffer where output of the last stage
@@ -280,6 +281,7 @@ class FilterPipeline {
   /**
    * Run the given list of chunks in reverse through the pipeline.
    *
+   * @param tile Current tile on which the filter pipeline is being run
    * @param input Filtered chunk buffers to reverse.
    * @param output Chunked buffer where output of the last stage
    *    will be written.

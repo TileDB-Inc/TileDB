@@ -102,6 +102,7 @@ class ByteshuffleFilter : public Filter {
   /**
    * Perform byte shuffling on the given input buffer.
    *
+   * @param tile Current tile on which the filter is being run
    * @param part Buffer containing data to be shuffled.
    * @param output Buffer to hold shuffled data.
    * @return Status
@@ -112,6 +113,7 @@ class ByteshuffleFilter : public Filter {
   /**
    * Perform byte unshuffling on the given input buffer.
    *
+   * @param tile Current tile on which the filter is being run
    * @param part Buffer containing shuffled data.
    * @param output Buffer to hold unshuffled data.
    * @return Status
