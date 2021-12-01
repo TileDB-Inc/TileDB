@@ -247,9 +247,6 @@ class Array {
   /** Retrieves a reference to the array config. */
   Config config() const;
 
-  /** Directly set the array URI. */
-  Status set_uri(const std::string& uri);
-
   /** Directly set the array URI for serialized compatibility with pre
    * TileDB 2.5 clients */
   Status set_uri_serialized(const std::string& uri);

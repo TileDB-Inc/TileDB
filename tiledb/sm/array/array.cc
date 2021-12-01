@@ -607,12 +607,6 @@ Config Array::config() const {
   return config_;
 }
 
-Status Array::set_uri(const std::string& uri) {
-  std::unique_lock<std::mutex> lck(mtx_);
-  array_uri_ = URI(uri);
-  return Status::Ok();
-}
-
 Status Array::set_uri_serialized(const std::string& uri) {
   std::unique_lock<std::mutex> lck(mtx_);
   array_uri_serialized_ = URI(uri);
