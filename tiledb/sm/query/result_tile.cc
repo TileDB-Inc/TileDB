@@ -440,51 +440,14 @@ void ResultTile::compute_results_dense(
   }
 }
 
-inline uint8_t ResultTile::str_coord_intersects(
+inline bool ResultTile::str_coord_intersects(
     const uint64_t c_offset,
     const uint64_t c_size,
     const char* const buff_str,
-    const std::string& range_start,
-    const std::string& range_end) {
-  // Test against start
-  bool geq_start = true;
-  bool all_chars_match = true;
-  uint64_t min_size = std::min<uint64_t>(c_size, range_start.size());
-  for (uint64_t i = 0; i < min_size; ++i) {
-    if (buff_str[c_offset + i] < range_start[i]) {
-      geq_start = false;
-      all_chars_match = false;
-      break;
-    } else if (buff_str[c_offset + i] > range_start[i]) {
-      all_chars_match = false;
-      break;
-    }  // Else characters match
-  }
-  if (geq_start && all_chars_match && c_size < range_start.size()) {
-    geq_start = false;
-  }
-
-  // Test against end
-  bool seq_end = false;
-  if (geq_start) {
-    seq_end = true;
-    all_chars_match = true;
-    min_size = std::min<uint64_t>(c_size, range_end.size());
-    for (uint64_t i = 0; i < min_size; ++i) {
-      if (buff_str[c_offset + i] > range_end[i]) {
-        geq_start = false;
-        break;
-      } else if (buff_str[c_offset + i] < range_end[i]) {
-        all_chars_match = false;
-        break;
-      }  // Else characters match
-    }
-    if (seq_end && all_chars_match && c_size > range_end.size()) {
-      seq_end = false;
-    }
-  }
-
-  return geq_start && seq_end;
+    const std::basic_string_view<char>& range_start,
+    const std::basic_string_view<char>& range_end) {
+  std::basic_string_view<char> str(buff_str + c_offset, c_size);
+  return str >= range_start && str <= range_end;
 }
 
 template <>
