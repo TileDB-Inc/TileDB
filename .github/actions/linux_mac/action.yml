@@ -186,9 +186,6 @@ runs:
           kill -9 $GCS_PID
         fi
 
-        #  displayName: 'Build examples, PNG test, and benchmarks (build-only)'
-      displayName: 'Build and test libtiledb'
-
     - name: 'macOS core dump stacks'
       if: ${{ failure() == true && startsWith(runner.name, 'macos-') == true }} # only run this job if the build step failed
       run: |
