@@ -28,7 +28,7 @@
  *
  * @section DESCRIPTION
  *
- * Tests the `FilterBuffer` class.
+ * Tests the `Filter` class.
  */
 
 #include "test/src/helpers.h"
@@ -66,7 +66,7 @@ TEST_CASE(
 
   ConstBuffer constbuffer(&buffer);
   auto&& [st_filter, filter1]{Filter::deserialize(&constbuffer)};
-  CHECK(st_filter.ok());
+  REQUIRE(st_filter.ok());
 
   // Check type
   CHECK(filter0.type() == filter1.value()->type());
@@ -77,7 +77,6 @@ TEST_CASE(
           ->get_option(FilterOption::BIT_WIDTH_MAX_WINDOW, &max_window_size1)
           .ok());
   CHECK(max_window_size0 == max_window_size1);
-  buffer.clear();
 }
 
 TEST_CASE(
@@ -89,11 +88,10 @@ TEST_CASE(
 
   ConstBuffer constbuffer(&buffer);
   auto&& [st_filter, filter1]{Filter::deserialize(&constbuffer)};
-  CHECK(st_filter.ok());
+  REQUIRE(st_filter.ok());
 
   // Check type
   CHECK(filter0.type() == filter1.value()->type());
-  buffer.clear();
 }
 
 TEST_CASE(
@@ -105,11 +103,10 @@ TEST_CASE(
 
   ConstBuffer constbuffer(&buffer);
   auto&& [st_filter, filter1]{Filter::deserialize(&constbuffer)};
-  CHECK(st_filter.ok());
+  REQUIRE(st_filter.ok());
 
   // Check type
   CHECK(filter0.type() == filter1.value()->type());
-  buffer.clear();
 }
 
 TEST_CASE(
@@ -121,11 +118,10 @@ TEST_CASE(
 
   ConstBuffer constbuffer(&buffer);
   auto&& [st_filter, filter1]{Filter::deserialize(&constbuffer)};
-  CHECK(st_filter.ok());
+  REQUIRE(st_filter.ok());
 
   // Check type
   CHECK(filter0.type() == filter1.value()->type());
-  buffer.clear();
 }
 
 TEST_CASE(
@@ -137,11 +133,10 @@ TEST_CASE(
 
   ConstBuffer constbuffer(&buffer);
   auto&& [st_filter, filter1]{Filter::deserialize(&constbuffer)};
-  CHECK(st_filter.ok());
+  REQUIRE(st_filter.ok());
 
   // Check type
   CHECK(filter0.type() == filter1.value()->type());
-  buffer.clear();
 }
 
 TEST_CASE(
@@ -157,11 +152,10 @@ TEST_CASE(
 
   ConstBuffer constbuffer(&buffer);
   auto&& [st_filter, filter1]{Filter::deserialize(&constbuffer)};
-  CHECK(st_filter.ok());
+  REQUIRE(st_filter.ok());
 
   // Check type
   CHECK(filter0.type() == filter1.value()->type());
-  buffer.clear();
 }
 
 TEST_CASE(
@@ -177,11 +171,10 @@ TEST_CASE(
 
     ConstBuffer constbuffer(&buffer);
     auto&& [st_filter, filter1]{Filter::deserialize(&constbuffer)};
-    CHECK(st_filter.ok());
+    REQUIRE(st_filter.ok());
 
     // Check type
     CHECK(filter0.type() == filter1.value()->type());
-    buffer.clear();
   }
 
   SECTION("gzip") {
@@ -193,7 +186,7 @@ TEST_CASE(
 
     ConstBuffer constbuffer(&buffer);
     auto&& [st_filter, filter1]{Filter::deserialize(&constbuffer)};
-    CHECK(st_filter.ok());
+    REQUIRE(st_filter.ok());
 
     // Check type
     CHECK(filter0.type() == filter1.value()->type());
@@ -204,7 +197,6 @@ TEST_CASE(
             ->get_option(FilterOption::COMPRESSION_LEVEL, &compressionlevel1)
             .ok());
     CHECK(compressionlevel0 == compressionlevel1);
-    buffer.clear();
   }
 
   SECTION("zstd") {
@@ -217,7 +209,7 @@ TEST_CASE(
 
     ConstBuffer constbuffer(&buffer);
     auto&& [st_filter, filter1]{Filter::deserialize(&constbuffer)};
-    CHECK(st_filter.ok());
+    REQUIRE(st_filter.ok());
 
     // Check type
     CHECK(filter0.type() == filter1.value()->type());
@@ -228,7 +220,6 @@ TEST_CASE(
             ->get_option(FilterOption::COMPRESSION_LEVEL, &compressionlevel1)
             .ok());
     CHECK(compressionlevel0 == compressionlevel1);
-    buffer.clear();
   }
 
   SECTION("lz4") {
@@ -241,7 +232,7 @@ TEST_CASE(
 
     ConstBuffer constbuffer(&buffer);
     auto&& [st_filter, filter1]{Filter::deserialize(&constbuffer)};
-    CHECK(st_filter.ok());
+    REQUIRE(st_filter.ok());
 
     // Check type
     CHECK(filter0.type() == filter1.value()->type());
@@ -252,7 +243,6 @@ TEST_CASE(
             ->get_option(FilterOption::COMPRESSION_LEVEL, &compressionlevel1)
             .ok());
     CHECK(compressionlevel0 == compressionlevel1);
-    buffer.clear();
   }
 
   SECTION("bzip2") {
@@ -265,7 +255,7 @@ TEST_CASE(
 
     ConstBuffer constbuffer(&buffer);
     auto&& [st_filter, filter1]{Filter::deserialize(&constbuffer)};
-    CHECK(st_filter.ok());
+    REQUIRE(st_filter.ok());
 
     // Check type
     CHECK(filter0.type() == filter1.value()->type());
@@ -276,7 +266,6 @@ TEST_CASE(
             ->get_option(FilterOption::COMPRESSION_LEVEL, &compressionlevel1)
             .ok());
     CHECK(compressionlevel0 == compressionlevel1);
-    buffer.clear();
   }
 }
 
@@ -287,7 +276,7 @@ TEST_CASE("Filter: Test noop filter deserialization", "[filter][noop]") {
 
   ConstBuffer constbuffer(&buffer);
   auto&& [st_filter, filter1]{Filter::deserialize(&constbuffer)};
-  CHECK(st_filter.ok());
+  REQUIRE(st_filter.ok());
 
   // Check type
   CHECK(filter0.type() == filter1.value()->type());
@@ -303,7 +292,7 @@ TEST_CASE(
 
   ConstBuffer constbuffer(&buffer);
   auto&& [st_filter, filter1]{Filter::deserialize(&constbuffer)};
-  CHECK(st_filter.ok());
+  REQUIRE(st_filter.ok());
 
   // Check type
   CHECK(filter0.type() == filter1.value()->type());
@@ -314,5 +303,4 @@ TEST_CASE(
                   FilterOption::POSITIVE_DELTA_MAX_WINDOW, &max_window_size1)
               .ok());
   CHECK(max_window_size0 == max_window_size1);
-  buffer.clear();
 }

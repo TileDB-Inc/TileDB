@@ -36,6 +36,7 @@
 #include "tiledb/common/dynamic_memory/dynamic_memory.h"
 #include "tiledb/common/status.h"
 #include "tiledb/sm/config/config.h"
+#include "tiledb/sm/crypto/encryption_key.h"
 
 using namespace tiledb::common;
 
@@ -81,6 +82,16 @@ class Filter {
    * @return New Filter instance or nullptr on error.
    */
   static Filter* create(FilterType type);
+
+  /**
+   * Deserializes a new Filter instance from the data in the given buffer.
+   *
+   * @param buff The buffer to deserialize from.
+   * @param encryptionkey.
+   * @return Status and Filter pointer
+   */
+  static std::tuple<Status, std::optional<std::shared_ptr<Filter>>> deserialize(
+      ConstBuffer* buff, const EncryptionKey& encryptionkey);
 
   /**
    * Deserializes a new Filter instance from the data in the given buffer.

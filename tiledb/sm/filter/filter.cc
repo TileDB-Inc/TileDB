@@ -35,6 +35,7 @@
 #include "tiledb/common/heap_memory.h"
 #include "tiledb/common/logger.h"
 #include "tiledb/sm/buffer/buffer.h"
+#include "tiledb/sm/enums/encryption_type.h"
 #include "tiledb/sm/enums/filter_type.h"
 #include "tiledb/sm/filter/bit_width_reduction_filter.h"
 #include "tiledb/sm/filter/bitshuffle_filter.h"
@@ -108,7 +109,7 @@ Status Filter::set_option(FilterOption option, const void* value) {
 }
 
 std::tuple<Status, std::optional<std::shared_ptr<Filter>>> Filter::deserialize(
-    ConstBuffer* buff) {
+    ConstBuffer* buff, const EncryptionKey& encryption_key) {
   Status st;
   uint8_t type;
   st = buff->read(&type, sizeof(uint8_t));
@@ -172,7 +173,12 @@ std::tuple<Status, std::optional<std::shared_ptr<Filter>>> Filter::deserialize(
           HERE(), max_window_size);
       break;
     case FilterType::INTERNAL_FILTER_AES_256_GCM:
-      filter = tiledb::common::make_shared<EncryptionAES256GCMFilter>(HERE());
+      if (encryption_key.encryption_type() == EncryptionType::AES_256_GCM) {
+        filter = tiledb::common::make_shared<EncryptionAES256GCMFilter>(
+            HERE(), encryption_key);
+      } else {
+        filter = tiledb::common::make_shared<EncryptionAES256GCMFilter>(HERE());
+      }
       break;
     case FilterType::FILTER_CHECKSUM_MD5:
       filter = tiledb::common::make_shared<ChecksumMD5Filter>(HERE());
@@ -193,6 +199,12 @@ std::tuple<Status, std::optional<std::shared_ptr<Filter>>> Filter::deserialize(
   }
 
   return {Status::Ok(), filter};
+}
+
+std::tuple<Status, std::optional<std::shared_ptr<Filter>>> Filter::deserialize(
+    ConstBuffer* buff) {
+  EncryptionKey encryption_key;
+  return Filter::deserialize(buff, encryption_key);
 }
 
 // ===== FORMAT =====

@@ -552,11 +552,6 @@ BitWidthReductionFilter* BitWidthReductionFilter::clone_impl() const {
   return clone;
 }
 
-Status BitWidthReductionFilter::deserialize_impl(ConstBuffer* buff) {
-  RETURN_NOT_OK(buff->read(&max_window_size_, sizeof(uint32_t)));
-  return Status::Ok();
-}
-
 Status BitWidthReductionFilter::serialize_impl(Buffer* buff) const {
   RETURN_NOT_OK(buff->write(&max_window_size_, sizeof(uint32_t)));
   return Status::Ok();

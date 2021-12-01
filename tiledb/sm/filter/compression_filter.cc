@@ -417,14 +417,5 @@ Status CompressionFilter::serialize_impl(Buffer* buff) const {
   return Status::Ok();
 }
 
-Status CompressionFilter::deserialize_impl(ConstBuffer* buff) {
-  uint8_t compressor_char;
-  RETURN_NOT_OK(buff->read(&compressor_char, sizeof(uint8_t)));
-  compressor_ = static_cast<Compressor>(compressor_char);
-  RETURN_NOT_OK(buff->read(&level_, sizeof(int32_t)));
-
-  return Status::Ok();
-}
-
 }  // namespace sm
 }  // namespace tiledb
