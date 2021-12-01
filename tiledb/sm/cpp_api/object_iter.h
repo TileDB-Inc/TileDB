@@ -148,9 +148,14 @@ class ObjectIter {
   }
 
   /** The actual iterator implementation in this class. */
-  class iterator
-      : public std::iterator<std::forward_iterator_tag, const Object> {
+  class iterator {
    public:
+    using iterator_category = std::forward_iterator_tag;
+    using value_type = const Object;
+    using difference_type = std::ptrdiff_t;
+    using pointer = value_type*;
+    using reference = value_type&;
+
     iterator()
         : cur_obj_(0) {
     }
