@@ -30,8 +30,8 @@
  * This file declares a classic/basic generic producer-consumer queue.
  */
 
-#ifndef TILEDB_PEODUCER_CONSUMER_QUEUE_H
-#define TILEDB_PEODUCER_CONSUMER_QUEUE_H
+#ifndef TILEDB_PRODUCER_CONSUMER_QUEUE_H
+#define TILEDB_PRODUCER_CONSUMER_QUEUE_H
 
 #define USE_DEQUE
 
@@ -49,12 +49,12 @@
 
 namespace tiledb::common {
 
-template <typename Item>
-class producer_consumer_queue {
+template <class Item>
+class ProducerConsumerQueue {
  public:
-  producer_consumer_queue() = default;
-  producer_consumer_queue(const producer_consumer_queue<Item>&) = delete;
-  producer_consumer_queue& operator=(const producer_consumer_queue<Item>&) =
+  ProducerConsumerQueue() = default;
+  ProducerConsumerQueue(const ProducerConsumerQueue<Item>&) = delete;
+  ProducerConsumerQueue& operator=(const ProducerConsumerQueue<Item>&) =
       delete;
 
   auto push(const Item& item) {
@@ -150,4 +150,4 @@ class producer_consumer_queue {
 
 }  // namespace tiledb::common
 
-#endif
+#endif // TILEDB_PRODUCER_CONSUMER_QUEUE_H
