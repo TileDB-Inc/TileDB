@@ -740,3 +740,92 @@ TEST_CASE_METHOD(
   tiledb_array_free(&array);
   tiledb_query_free(&query);
 }
+
+TEST_CASE_METHOD(
+    CSparseUnorderedWithDupsFx,
+    "Sparse unordered with dups reader: fixed user buffer too small",
+    "[sparse-unordered-with-dups][small-fixed-buffer]") {
+  // Create default array.
+  reset_config();
+  create_default_array_1d();
+
+  // Write a fragment.
+  int coords[] = {1, 2, 3, 4, 5};
+  uint64_t coords_size = sizeof(coords);
+  int data[] = {1, 2, 3, 4, 5};
+  uint64_t data_size = sizeof(data);
+  write_1d_fragment(coords, &coords_size, data, &data_size);
+
+  tiledb_array_t* array = nullptr;
+  tiledb_query_t* query = nullptr;
+
+  // Try to read.
+  int coords_r[2];  // only room for one tile.
+  int data_r[2];
+  uint64_t coords_r_size = sizeof(coords_r);
+  uint64_t data_r_size = sizeof(data_r);
+  auto rc = read(
+      false,
+      false,
+      coords_r,
+      &coords_r_size,
+      data_r,
+      &data_r_size,
+      &query,
+      &array);
+  CHECK(rc == TILEDB_OK);
+
+  // Check incomplete query status.
+  tiledb_query_status_t status;
+  tiledb_query_get_status(ctx_, query, &status);
+  CHECK(status == TILEDB_INCOMPLETE);
+
+  // Should only read one tile (2 values).
+  CHECK(8 == data_r_size);
+  CHECK(8 == coords_r_size);
+
+  int coords_c_1[] = {1, 2};
+  int data_c_1[] = {1, 2};
+  CHECK(!std::memcmp(coords_c_1, coords_r, coords_r_size));
+  CHECK(!std::memcmp(data_c_1, data_r, data_r_size));
+
+  // Read again.
+  rc = tiledb_query_submit(ctx_, query);
+  CHECK(rc == TILEDB_OK);
+
+  // Check incomplete query status.
+  tiledb_query_get_status(ctx_, query, &status);
+  CHECK(status == TILEDB_INCOMPLETE);
+
+  // Should only read one more tile (2 values).
+  CHECK(8 == data_r_size);
+  CHECK(8 == coords_r_size);
+
+  int coords_c_2[] = {3, 4};
+  int data_c_2[] = {3, 4};
+  CHECK(!std::memcmp(coords_c_2, coords_r, coords_r_size));
+  CHECK(!std::memcmp(data_c_2, data_r, data_r_size));
+
+  // Read again.
+  rc = tiledb_query_submit(ctx_, query);
+  CHECK(rc == TILEDB_OK);
+
+  // Check completed query status.
+  tiledb_query_get_status(ctx_, query, &status);
+  CHECK(status == TILEDB_COMPLETED);
+
+  // Should read last tile (1 value).
+  CHECK(4 == data_r_size);
+  CHECK(4 == coords_r_size);
+
+  int coords_c_3[] = {5};
+  int data_c_3[] = {5};
+  CHECK(!std::memcmp(coords_c_3, coords_r, coords_r_size));
+  CHECK(!std::memcmp(data_c_3, data_r, data_r_size));
+
+  // Clean up.
+  rc = tiledb_array_close(ctx_, array);
+  CHECK(rc == TILEDB_OK);
+  tiledb_array_free(&array);
+  tiledb_query_free(&query);
+}
