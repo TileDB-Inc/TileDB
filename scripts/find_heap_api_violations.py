@@ -99,9 +99,9 @@ regex_unique_ptr = re.compile(r"unique_ptr<")
 unique_ptr_exceptions = {
     "*": ["tdb_unique_ptr", "tiledb_unique_ptr"],
     "zstd_compressor.cc": [
-        "std::unique_ptr<ZSTD_DCtx, decltype(&ZSTD_freeDCtx)> ctx(",
-        "std::unique_ptr<ZSTD_CCtx, decltype(&ZSTD_freeCCtx)> ctx(",
-    ],
+        "std::unique_ptr<ZSTD_CCtx, decltype(&ZSTD_freeCCtx)> ctx("],
+    "zstd_compressor.h": [
+        "std::unique_ptr<ZSTD_DCtx, decltype(&ZSTD_freeDCtx)> ctx("],
     "curl.h": ["std::unique_ptr<CURL, decltype(&curl_easy_cleanup)>"],
 }
 
