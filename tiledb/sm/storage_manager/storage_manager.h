@@ -51,7 +51,6 @@
 #include "tiledb/common/thread_pool.h"
 #include "tiledb/sm/config/config.h"
 #include "tiledb/sm/enums/walk_order.h"
-#include "tiledb/sm/filesystem/filelock.h"
 #include "tiledb/sm/fragment/single_fragment_info.h"
 #include "tiledb/sm/misc/cancelable_tasks.h"
 #include "tiledb/sm/misc/uri.h"
@@ -555,8 +554,8 @@ class StorageManager {
    */
   Status array_xlock(const URI& array_uri);
 
-  /** Releases an exclusive lock for the input array. */
-  Status array_xunlock(const URI& array_uri);
+  /** Releases an exclusive lock. */
+  Status array_xunlock();
 
   /**
    * Pushes an async query to the queue.
@@ -1084,9 +1083,6 @@ class StorageManager {
 
   /** Stores the TileDB configuration parameters. */
   Config config_;
-
-  /** Stores exclusive filelocks for arrays. */
-  std::unordered_map<std::string, filelock_t> xfilelocks_;
 
   /** Mutex for managing OpenArray objects for reads. */
   std::mutex open_array_for_reads_mtx_;

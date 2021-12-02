@@ -52,7 +52,6 @@ OpenArray::OpenArray(const URI& array_uri, QueryType query_type)
     , query_type_(query_type) {
   array_schema_latest_ = nullptr;
   cnt_ = 0;
-  filelock_ = INVALID_FILELOCK;
 }
 
 OpenArray::~OpenArray() {
@@ -112,23 +111,6 @@ bool OpenArray::is_empty(uint64_t timestamp) const {
   std::lock_guard<std::mutex> lock(local_mtx_);
   return fragment_metadata_.empty() ||
          (*fragment_metadata_.cbegin())->first_timestamp() > timestamp;
-}
-
-Status OpenArray::file_lock(VFS* vfs) {
-  auto uri = array_uri_.join_path(constants::filelock_name);
-  if (filelock_ == INVALID_FILELOCK)
-    RETURN_NOT_OK(vfs->filelock_lock(uri, &filelock_, true));
-
-  return Status::Ok();
-}
-
-Status OpenArray::file_unlock(VFS* vfs) {
-  auto uri = array_uri_.join_path(constants::filelock_name);
-  if (filelock_ != INVALID_FILELOCK)
-    RETURN_NOT_OK(vfs->filelock_unlock(uri));
-  filelock_ = INVALID_FILELOCK;
-
-  return Status::Ok();
 }
 
 tdb_shared_ptr<FragmentMetadata> OpenArray::fragment_metadata(
