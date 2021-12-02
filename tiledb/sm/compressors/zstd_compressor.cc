@@ -90,6 +90,11 @@ Status ZStd::decompress(
     return LOG_STATUS(Status::CompressionError(
         "Failed decompressing with ZStd; invalid buffer format"));
 
+  if (decompress_ctx_pool == nullptr) {
+    return LOG_STATUS(Status::CompressionError(
+        "Failed decompressing with ZStd; Resource pool not initialized"));
+  }
+
   ResourceGuard context_guard(*decompress_ctx_pool);
   auto& context = context_guard.get();
 
