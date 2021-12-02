@@ -55,7 +55,7 @@ jobs:
       SUDO: ''
     container: #${{ matrix.os.image }} # TBD: Is this/that right location for image?
       image: 'quay.io/pypa/manylinux2010_x86_64:2021-11-07-28723f3'      
-      options: "--entrypoint /bin/bash"
+      #options: "--entrypoint /bin/bash"
     steps:
       - uses: actions/checkout@v2
 
