@@ -307,8 +307,10 @@ class ReaderBase : public StrategyBase {
       Tile* tile_validity) const;
 
   /**
-   * Concurrently executes `read_tiles` for each name in `names`. This
-   * must be the entry point for reading attribute tiles because it
+   * Concurrently executes across each name in `names` and each result tile
+   * in 'result_tiles'.
+   *
+   * This must be the entry point for reading attribute tiles because it
    * generates stats for reading attributes.
    *
    * @param names The attribute names.
@@ -321,8 +323,10 @@ class ReaderBase : public StrategyBase {
       const std::vector<ResultTile*>* result_tiles) const;
 
   /**
-   * Concurrently executes `read_tiles` for each name in `names`. This
-   * must be the entry point for reading coordinate tiles because it
+   * Concurrently executes across each name in `names` and each result tile
+   * in 'result_tiles'.
+   *
+   * This must be the entry point for reading coordinate tiles because it
    * generates stats for reading coordinates.
    *
    * @param names The coordinate/dimension names.
@@ -335,7 +339,11 @@ class ReaderBase : public StrategyBase {
       const std::vector<ResultTile*>* result_tiles) const;
 
   /**
-   * Concurrently executes `read_tiles` for each name in `names`.
+   * Retrieves the tiles on a list of attribute or dimension and stores it
+   * in the appropriate result tile.
+   *
+   * Concurrently executes across each name in `names` and each result tile
+   * in 'result_tiles'.
    *
    * @param names The attribute/dimension names.
    * @param result_tiles The retrieved tiles will be stored inside the
@@ -345,37 +353,6 @@ class ReaderBase : public StrategyBase {
   Status read_tiles(
       const std::vector<std::string>* names,
       const std::vector<ResultTile*>* result_tiles) const;
-
-  /**
-   * Retrieves the tiles on a particular attribute or dimension and stores it
-   * in the appropriate result tile.
-   *
-   * @param name The attribute/dimension name.
-   * @param result_tiles The retrieved tiles will be stored inside the
-   *     `ResultTile` instances in this vector.
-   * @return Status
-   */
-  Status read_tiles(
-      const std::string& name,
-      const std::vector<ResultTile*>* result_tiles) const;
-
-  /**
-   * Retrieves the tiles on a particular attribute or dimension and stores it
-   * in the appropriate result tile.
-   *
-   * The reads are done asynchronously, and futures for each read operation are
-   * added to the output parameter.
-   *
-   * @param name The attribute/dimension name.
-   * @param result_tiles The retrieved tiles will be stored inside the
-   *     `ResultTile` instances in this vector.
-   * @param tasks Vector to hold futures for the read tasks.
-   * @return Status
-   */
-  Status read_tiles(
-      const std::string& name,
-      const std::vector<ResultTile*>* result_tiles,
-      std::vector<ThreadPool::Task>* tasks) const;
 
   /**
    * Filters the tiles on a particular attribute/dimension from all input
