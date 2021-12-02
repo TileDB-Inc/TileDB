@@ -29,7 +29,7 @@ runs:
         $SUDO rm -Rf /Library/Developer/CommandLineTools/SDKs/* # Remove SDKs without ARM support
 
     - name: 'Build libtiledb'
-      continue-on-error: true
+      #not availa le in (composite) action? continue-on-error: true
       shell: bash
       run: |
         # DELETEME work-around for https://github.com/microsoft/azure-pipelines-image-generation/issues/969
