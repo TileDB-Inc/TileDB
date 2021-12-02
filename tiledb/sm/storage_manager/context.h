@@ -64,11 +64,8 @@ class Context {
   /*                API                */
   /* ********************************* */
 
-private:
   /** Initializes the context with the input config. */
   Status init(Config* config);
-
-public:
 
   /** Returns the last error status. */
   Status last_error();

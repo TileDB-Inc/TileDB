@@ -39,7 +39,6 @@
 #include "tiledb/common/thread_pool.h"
 #include "tiledb/sm/misc/cancelable_tasks.h"
 
-
 TEST_CASE("ThreadPool: Test empty", "[threadpool]") {
   for (int i = 0; i < 10; i++) {
     ThreadPool pool;
@@ -118,7 +117,6 @@ TEST_CASE("ThreadPool: Test no wait", "[threadpool]") {
 TEST_CASE(
     "ThreadPool: Test pending task cancellation", "[threadpool][cancel]") {
   SECTION("- No cancellation callback") {
-
     ThreadPool pool;
 
     tiledb::sm::CancelableTasks cancelable_tasks;
@@ -182,7 +180,6 @@ TEST_CASE(
 
     REQUIRE(result == num_ok);
     REQUIRE(num_cancelled == ((int64_t)tasks.size() - num_ok));
-
   }
 }
 
@@ -198,14 +195,12 @@ TEST_CASE("ThreadPool: Test execute with empty pool", "[threadpool]") {
   REQUIRE(result == 0);
 }
 
-
 size_t random_ms() {
-  static std::random_device             rdev;
-  static std::mt19937                   rgen(rdev());
+  static std::random_device rdev;
+  static std::mt19937 rgen(rdev());
   std::uniform_int_distribution<size_t> idist(0, 2);
   return idist(rgen);
 }
-
 
 TEST_CASE("ThreadPool: Test recursion", "[threadpool]") {
   ThreadPool pool;
@@ -228,12 +223,11 @@ TEST_CASE("ThreadPool: Test recursion", "[threadpool]") {
   const size_t num_nested_tasks = 10;
   std::vector<ThreadPool::Task> tasks;
   for (size_t i = 0; i < num_tasks; ++i) {
-
     auto task = pool.execute([&]() {
       std::vector<ThreadPool::Task> inner_tasks;
       for (size_t j = 0; j < num_nested_tasks; ++j) {
         auto inner_task = pool.execute([&]() {
-	  std::this_thread::sleep_for(std::chrono::milliseconds(random_ms()));
+          std::this_thread::sleep_for(std::chrono::milliseconds(random_ms()));
           ++result;
           return Status::Ok();
         });
@@ -259,8 +253,7 @@ TEST_CASE("ThreadPool: Test recursion", "[threadpool]") {
     auto task = pool.execute([&]() {
       for (size_t j = 0; j < num_nested_tasks; ++j) {
         pool.execute([&]() {
-
-	  std::this_thread::sleep_for(std::chrono::milliseconds(random_ms()));
+          std::this_thread::sleep_for(std::chrono::milliseconds(random_ms()));
 
           std::unique_lock<std::mutex> ul(cv_mutex);
           if (--result == 0) {
@@ -284,7 +277,6 @@ TEST_CASE("ThreadPool: Test recursion", "[threadpool]") {
   while (result > 0)
     cv.wait(ul);
 }
-
 
 TEST_CASE("ThreadPool: Test recursion, two pools", "[threadpool]") {
   ThreadPool pool_a;
@@ -310,7 +302,6 @@ TEST_CASE("ThreadPool: Test recursion, two pools", "[threadpool]") {
     REQUIRE(pool_b.init(20).ok());
   }
 
-
   // This test logic is relatively inexpensive, run it 50 times
   // to increase the chance of encountering race conditions.
   for (int t = 0; t < 50; ++t) {
@@ -328,7 +319,8 @@ TEST_CASE("ThreadPool: Test recursion, two pools", "[threadpool]") {
             std::vector<ThreadPool::Task> tasks_c;
             for (size_t k = 0; k < num_tasks_b; ++k) {
               auto task_c = pool_a.execute([&result]() {
-		std::this_thread::sleep_for(std::chrono::milliseconds(random_ms()));
+                std::this_thread::sleep_for(
+                    std::chrono::milliseconds(random_ms()));
                 ++result;
                 return Status::Ok();
               });
@@ -365,7 +357,8 @@ TEST_CASE("ThreadPool: Test recursion, two pools", "[threadpool]") {
             std::vector<ThreadPool::Task> tasks_c;
             for (size_t k = 0; k < num_tasks_c; ++k) {
               auto task_c = pool_a.execute([&]() {
-		std::this_thread::sleep_for(std::chrono::milliseconds(random_ms()));
+                std::this_thread::sleep_for(
+                    std::chrono::milliseconds(random_ms()));
                 if (--result == 0) {
                   std::unique_lock<std::mutex> ul(cv_mutex);
                   cv.notify_all();
@@ -399,123 +392,119 @@ TEST_CASE("ThreadPool: Test recursion, two pools", "[threadpool]") {
   }
 }
 
-
 TEST_CASE("ThreadPool: Test Exceptions", "[threadpool]") {
   std::atomic<int> result(0);
   std::vector<ThreadPool::Task> results;
   ThreadPool pool;
 
   REQUIRE(pool.init(7).ok());
-  
+
   SECTION("One task error exception") {
-    
     for (int i = 0; i < 207; ++i) {
       results.push_back(pool.execute([&result]() {
-	auto tmp = result++;
-	if (tmp == 13) {
-	  throw(std::string("Unripe banana"));
-	}
-	return Status::Ok();
+        auto tmp = result++;
+        if (tmp == 13) {
+          throw(std::string("Unripe banana"));
+        }
+        return Status::Ok();
       }));
     }
-    
+
     REQUIRE(pool.wait_all(results).code() == StatusCode::TaskError);
     REQUIRE(result == 207);
   }
 
-
   SECTION("One tile error exception") {
-
     for (int i = 0; i < 207; ++i) {
       results.push_back(pool.execute([&result]() {
-	auto tmp = result++;
-	if (tmp == 31) {
-	  throw(Status::TileError("Unbaked potato"));
-	}
-	return Status::Ok();
+        auto tmp = result++;
+        if (tmp == 31) {
+          throw(Status::TileError("Unbaked potato"));
+        }
+        return Status::Ok();
       }));
     }
-    
+
     REQUIRE(pool.wait_all(results).code() == StatusCode::Tile);
     REQUIRE(result == 207);
   }
 
   SECTION("Two exceptions") {
-
     for (int i = 0; i < 207; ++i) {
       results.push_back(pool.execute([&result]() {
-	auto tmp = result++;
-	if (tmp == 13) {
-	  throw(std::string("Unripe banana"));
-	}
-	if (tmp == 31) {
-	  throw(Status::TileError("Unbaked potato"));
-	}
-	
-	return Status::Ok();
+        auto tmp = result++;
+        if (tmp == 13) {
+          throw(std::string("Unripe banana"));
+        }
+        if (tmp == 31) {
+          throw(Status::TileError("Unbaked potato"));
+        }
+
+        return Status::Ok();
       }));
     }
-    
-    REQUIRE(((pool.wait_all(results).code() == StatusCode::TaskError) || (pool.wait_all(results).code() == StatusCode::Tile)));
+
+    REQUIRE(
+        ((pool.wait_all(results).code() == StatusCode::TaskError) ||
+         (pool.wait_all(results).code() == StatusCode::Tile)));
     REQUIRE(result == 207);
   }
 
   SECTION("Two exceptions reverse order") {
-
     for (int i = 0; i < 207; ++i) {
       results.push_back(pool.execute([&result]() {
-	auto tmp = result++;
-	if (tmp == 31) {
-	  throw(std::string("Unripe banana"));
-	}
-	if (tmp == 13) {
-	  throw(Status::TileError("Unbaked potato"));
-	}
-	
-	return Status::Ok();
+        auto tmp = result++;
+        if (tmp == 31) {
+          throw(std::string("Unripe banana"));
+        }
+        if (tmp == 13) {
+          throw(Status::TileError("Unbaked potato"));
+        }
+
+        return Status::Ok();
       }));
     }
-    
-    REQUIRE(((pool.wait_all(results).code() == StatusCode::TaskError) || (pool.wait_all(results).code() == StatusCode::Tile)));
+
+    REQUIRE(
+        ((pool.wait_all(results).code() == StatusCode::TaskError) ||
+         (pool.wait_all(results).code() == StatusCode::Tile)));
     REQUIRE(result == 207);
   }
 
   SECTION("Two exceptions strict order") {
-
     for (int i = 0; i < 207; ++i) {
-      results.push_back(pool.execute([i,&result]() {
-	result++;
-	if (i == 13) {
-	  throw(std::string("Unripe banana"));
-	}
-	if (i == 31) {
-	  throw(Status::TileError("Unbaked potato"));
-	}
-	
-	return Status::Ok();
+      results.push_back(pool.execute([i, &result]() {
+        result++;
+        if (i == 13) {
+          throw(std::string("Unripe banana"));
+        }
+        if (i == 31) {
+          throw(Status::TileError("Unbaked potato"));
+        }
+
+        return Status::Ok();
       }));
     }
-    
+
     REQUIRE(pool.wait_all(results).code() == StatusCode::TaskError);
     REQUIRE(result == 207);
   }
 
   SECTION("Two exceptions strict reverse order") {
-
     for (int i = 0; i < 207; ++i) {
-      results.push_back(pool.execute([i,&result]() {
-	++result;
-	if (i == 31) {
-	  throw(std::string("Unripe banana"));
-	}
-	if (i == 13) {
-	  throw(Status::TileError("Unbaked potato"));
-	}
-	
-	return Status::Ok();
+      results.push_back(pool.execute([i, &result]() {
+        ++result;
+        if (i == 31) {
+          throw(std::string("Unripe banana"));
+        }
+        if (i == 13) {
+          throw(Status::TileError("Unbaked potato"));
+        }
+
+        return Status::Ok();
       }));
     }
-    
+
     REQUIRE(pool.wait_all(results).code() == StatusCode::Tile);
     REQUIRE(result == 207);
   }

@@ -80,11 +80,9 @@ class ThreadPool {
    * @return Status
    */
 
-
   Status init(size_t concurrency_level = std::thread::hardware_concurrency());
 
-public:
-
+ public:
   size_t concurrency_level() {
     return concurrency_level_;
   }
@@ -177,7 +175,10 @@ public:
   void shutdown();
 
   /** Producer-consumer queue where functions to be executed are kept */
-  ProducerConsumerQueue<std::function<void()>> task_queue_;
+  ProducerConsumerQueue<
+      std::function<void()>,
+      std::deque<std::function<void()>>>
+      task_queue_;
 
   /** The worker threads */
   std::vector<std::thread> threads_;

@@ -132,8 +132,7 @@ std::vector<Status> ThreadPool::wait_all_status(std::vector<Task>& tasks) {
       statuses.push_back(Status::ThreadPoolError("Invalid task future"));
     } else if (
         task.wait_for(std::chrono::milliseconds(0)) ==
-	    std::future_status::ready) {
-
+        std::future_status::ready) {
       // Task is completed, get result, handling possible exceptions
 
       Status st = [&task] {
@@ -153,7 +152,7 @@ std::vector<Status> ThreadPool::wait_all_status(std::vector<Task>& tasks) {
     } else {
       // If the task is not completed, try again later
       pending_tasks.push(task);
-      
+
       // In the meantime, try to do something useful to make progress (and avoid
       // deadlock)
 
@@ -162,12 +161,12 @@ std::vector<Status> ThreadPool::wait_all_status(std::vector<Task>& tasks) {
       } else {
         // If nothing useful to do, take a short pause so we don't burn cycles
         // going through the task list over and over (thereby slowing down other
-	// threads). 
+        // threads).
 
-	task.wait_for(std::chrono::milliseconds(10));
-	
-	// (Or, we could simply yield -- this seems to degrade performance.)
-	// std::this_thread::yield();
+        task.wait_for(std::chrono::milliseconds(10));
+
+        // (Or, we could simply yield -- this seems to degrade performance.)
+        // std::this_thread::yield();
       }
     }
   }
