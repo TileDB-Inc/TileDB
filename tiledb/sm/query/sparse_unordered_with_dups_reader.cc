@@ -415,7 +415,8 @@ Status SparseUnorderedWithDupsReader<uint64_t>::copy_offsets_tile(
   const auto src_buff = (uint64_t*)t->buffer()->data();
   const auto src_var_buff = (char*)t_var->buffer()->data();
   const auto t_val = &std::get<2>(*tile_tuple);
-  const auto last_c = rt->cell_num() - 1;
+  const auto last_c =
+      fragment_metadata_[rt->frag_idx()]->cell_num(rt->tile_idx()) - 1;
 
   // process all cells. Last cell is taken out for vectorization.
   for (uint64_t c = 0; c < last_c; c++) {
@@ -471,7 +472,8 @@ Status SparseUnorderedWithDupsReader<uint8_t>::copy_offsets_tile(
   // 0 sized bitmap means full tile, full tile copy done below.
   if (rt->bitmap.size() != 0) {
     // process all cells. Last cell is taken out for vectorization.
-    const auto last_c = rt->cell_num() - 1;
+    const auto last_c =
+        fragment_metadata_[rt->frag_idx()]->cell_num(rt->tile_idx()) - 1;
     for (uint64_t c = 0; c < last_c; c++) {
       if (rt->bitmap[c]) {
         *buffer = (OffType)(src_buff[c + 1] - src_buff[c]) / offset_div;
@@ -499,7 +501,8 @@ Status SparseUnorderedWithDupsReader<uint8_t>::copy_offsets_tile(
     }
   } else {
     // Copy full tile. Last cell is taken out for vectorization.
-    const auto last_c = rt->cell_num() - 1;
+    const auto last_c =
+        fragment_metadata_[rt->frag_idx()]->cell_num(rt->tile_idx()) - 1;
     for (uint64_t c = 0; c < last_c; c++) {
       *buffer = (OffType)(src_buff[c + 1] - src_buff[c]) / offset_div;
       buffer++;
@@ -555,7 +558,9 @@ Status SparseUnorderedWithDupsReader<BitmapType>::copy_offsets_tiles(
           rt = (*result_tiles_it)++;
           cell_offset = *global_cell_offset;
           *global_cell_offset +=
-              subarray_.is_set() ? rt->bitmap_num_cells : rt->cell_num();
+              subarray_.is_set() ?
+                  rt->bitmap_num_cells :
+                  fragment_metadata_[rt->frag_idx()]->cell_num(rt->tile_idx());
         }
 
         // Copy tile.
@@ -590,7 +595,9 @@ Status SparseUnorderedWithDupsReader<BitmapType>::copy_var_data_tile(
   // Copy the data cells by cells. Last copy taken out for
   // vectorization.
   uint64_t num_cells =
-      subarray_.is_set() ? rt->bitmap_num_cells : rt->cell_num();
+      subarray_.is_set() ?
+          rt->bitmap_num_cells :
+          fragment_metadata_[rt->frag_idx()]->cell_num(rt->tile_idx());
   if (num_cells > 0) {
     auto max_cell = last_tile ? num_cells - 1 : num_cells;
     for (uint64_t c = 0; c < max_cell; c++) {
@@ -643,7 +650,9 @@ Status SparseUnorderedWithDupsReader<BitmapType>::copy_var_data_tiles(
           rt = result_tiles_it++;
           cell_offset = *global_cell_offset;
           *global_cell_offset +=
-              subarray_.is_set() ? rt->bitmap_num_cells : rt->cell_num();
+              subarray_.is_set() ?
+                  rt->bitmap_num_cells :
+                  fragment_metadata_[rt->frag_idx()]->cell_num(rt->tile_idx());
           last_tile = result_tiles_it == result_tiles_[0].end();
         }
 
@@ -683,7 +692,9 @@ Status SparseUnorderedWithDupsReader<uint64_t>::copy_fixed_data_tile(
 
   // Copy values.
   if (!stores_zipped_coords) {
-    for (uint64_t c = 0; c < rt->cell_num(); c++) {
+    for (uint64_t c = 0;
+         c < fragment_metadata_[rt->frag_idx()]->cell_num(rt->tile_idx());
+         c++) {
       for (uint64_t i = 0; i < rt->bitmap[c]; i++) {
         memcpy(buffer, src_buff + c * cell_size, cell_size);
         buffer += cell_size;
@@ -691,7 +702,9 @@ Status SparseUnorderedWithDupsReader<uint64_t>::copy_fixed_data_tile(
     }
   } else {  // Copy for zipped coords.
     const auto dim_num = rt->domain()->dim_num();
-    for (uint64_t c = 0; c < rt->cell_num(); c++) {
+    for (uint64_t c = 0;
+         c < fragment_metadata_[rt->frag_idx()]->cell_num(rt->tile_idx());
+         c++) {
       for (uint64_t i = 0; i < rt->bitmap[c]; i++) {
         auto pos = c * dim_num + dim_idx;
         memcpy(buffer, src_buff + pos * cell_size, cell_size);
@@ -704,7 +717,9 @@ Status SparseUnorderedWithDupsReader<uint64_t>::copy_fixed_data_tile(
   if (nullable) {
     const auto t_val = &std::get<2>(*tile_tuple);
     const auto src_val_buff = (uint8_t*)t_val->buffer()->data();
-    for (uint64_t c = 0; c < rt->cell_num(); c++) {
+    for (uint64_t c = 0;
+         c < fragment_metadata_[rt->frag_idx()]->cell_num(rt->tile_idx());
+         c++) {
       for (uint64_t i = 0; i < rt->bitmap[c]; i++) {
         *val_buffer = src_val_buff[c];
         val_buffer++;
@@ -741,7 +756,9 @@ Status SparseUnorderedWithDupsReader<uint8_t>::copy_fixed_data_tile(
       // memcpy.
       uint64_t length = 0;
       uint64_t start = 0;
-      for (uint64_t c = 0; c < rt->cell_num(); c++) {
+      for (uint64_t c = 0;
+           c < fragment_metadata_[rt->frag_idx()]->cell_num(rt->tile_idx());
+           c++) {
         if (rt->bitmap[c]) {
           length++;
         } else {
@@ -762,7 +779,9 @@ Status SparseUnorderedWithDupsReader<uint8_t>::copy_fixed_data_tile(
       }
     } else {  // Copy for zipped coords.
       const auto dim_num = rt->domain()->dim_num();
-      for (uint64_t c = 0; c < rt->cell_num(); c++) {
+      for (uint64_t c = 0;
+           c < fragment_metadata_[rt->frag_idx()]->cell_num(rt->tile_idx());
+           c++) {
         if (rt->bitmap[c]) {
           auto pos = c * dim_num + dim_idx;
           memcpy(buffer, src_buff + pos * cell_size, cell_size);
@@ -778,7 +797,9 @@ Status SparseUnorderedWithDupsReader<uint8_t>::copy_fixed_data_tile(
       uint64_t length = 0;
       uint64_t start = 0;
       const auto src_val_buff = (uint8_t*)t_val->buffer()->data();
-      for (uint64_t c = 0; c < rt->cell_num(); c++) {
+      for (uint64_t c = 0;
+           c < fragment_metadata_[rt->frag_idx()]->cell_num(rt->tile_idx());
+           c++) {
         if (rt->bitmap[c]) {
           length++;
         } else {
@@ -799,11 +820,18 @@ Status SparseUnorderedWithDupsReader<uint8_t>::copy_fixed_data_tile(
       }
     }
   } else {  // Copy full tile.
-    memcpy(buffer, src_buff, cell_size * rt->cell_num());
+    memcpy(
+        buffer,
+        src_buff,
+        cell_size *
+            fragment_metadata_[rt->frag_idx()]->cell_num(rt->tile_idx()));
 
     if (nullable) {
       const auto src_val_buff = (uint8_t*)t_val->buffer()->data();
-      memcpy(val_buffer, src_val_buff, rt->cell_num());
+      memcpy(
+          val_buffer,
+          src_val_buff,
+          fragment_metadata_[rt->frag_idx()]->cell_num(rt->tile_idx()));
     }
   }
 
@@ -841,7 +869,9 @@ Status SparseUnorderedWithDupsReader<BitmapType>::copy_fixed_data_tiles(
           rt = (*result_tiles_it)++;
           cell_offset = *global_cell_offset;
           *global_cell_offset +=
-              subarray_.is_set() ? rt->bitmap_num_cells : rt->cell_num();
+              subarray_.is_set() ?
+                  rt->bitmap_num_cells :
+                  fragment_metadata_[rt->frag_idx()]->cell_num(rt->tile_idx());
         }
 
         // Copy tile.
@@ -1083,7 +1113,9 @@ Status SparseUnorderedWithDupsReader<BitmapType>::process_tiles() {
         i = 0;
         for (auto it = result_tiles_[0].begin(); i < max_rt_idx; i++, it++) {
           num_cells_copied +=
-              subarray_.is_set() ? it->bitmap_num_cells : it->cell_num();
+              subarray_.is_set() ?
+                  it->bitmap_num_cells :
+                  fragment_metadata_[it->frag_idx()]->cell_num(it->tile_idx());
         }
       }
 
@@ -1138,9 +1170,11 @@ Status SparseUnorderedWithDupsReader<BitmapType>::process_tiles() {
         // Make sure var size buffer can fit the data.
         while (*qb.buffer_var_size_ < (uint64_t)var_offset) {
           result_tiles_it--;
-          auto num_cells = subarray_.is_set() ?
-                               result_tiles_it->bitmap_num_cells :
-                               result_tiles_it->cell_num();
+          auto num_cells =
+              subarray_.is_set() ?
+                  result_tiles_it->bitmap_num_cells :
+                  fragment_metadata_[result_tiles_it->frag_idx()]->cell_num(
+                      result_tiles_it->tile_idx());
           global_cell_offset -= num_cells;
           var_offset = ((OffType*)qb.buffer_)[global_cell_offset];
           max_rt_idx--;
