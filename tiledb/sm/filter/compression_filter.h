@@ -34,7 +34,9 @@
 #define TILEDB_COMPRESSION_FILTER_H
 
 #include "tiledb/common/status.h"
+#include "tiledb/sm/compressors/zstd_compressor.h"
 #include "tiledb/sm/filter/filter.h"
+#include "tiledb/sm/misc/resource_pool.h"
 
 using namespace tiledb::common;
 
@@ -134,6 +136,11 @@ class CompressionFilter : public Filter {
   /** The compression level. */
   int level_;
 
+  /** A resource pool to be used in ZStd decompressor for improved performance
+   */
+  std::shared_ptr<ResourcePool<ZStd::ZSTD_Decompress_Context>>
+      zstd_decompress_ctx_pool_;
+
   /** Returns a new clone of this filter. */
   CompressionFilter* clone_impl() const override;
 
@@ -174,6 +181,9 @@ class CompressionFilter : public Filter {
 
   /** Serializes this filter's metadata to the given buffer. */
   Status serialize_impl(Buffer* buff) const override;
+
+  /** Initializes the compression filter resource pools */
+  void init_resource_pools(uint64_t size) override;
 };
 
 }  // namespace sm
