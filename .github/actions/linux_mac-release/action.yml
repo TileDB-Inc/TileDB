@@ -112,6 +112,7 @@ runs:
         # get this into 'env' context since runners don't automatically place items
         # from env into context on startup!
         echo "GITHUB_SHA=$GITHUB_SHA" >> "$GITHUB_ENV"
+        echo "GITHUB_WORKSPACE=$GITHUB_WORKSPACE" >> "$GITHUB_ENV"
 
     - name: 'ArchiveFiles@2' # https://github.com/actions/upload-artifact#where-does-the-upload-go
       #if: ${{ failure() == true && startsWith(runner.name, 'macos-') == true }} # only run this job if the build step failed
@@ -123,8 +124,8 @@ runs:
         name: tiledb-${{ env.ARTIFACT_OS }}-build-dir-${{ env.ARTIFACT_EXTRAS }}.tar.gz
         if-no-files-found: warn # 'ignore/', 'warn' or 'error' are available, defaults to `warn`
         path: |
-          ${{ $GITHUB_WORKSPACE }}/
-          !${{ $GITHUB_WORKSPACE }}/build/
+          ${{ env.GITHUB_WORKSPACE }}/
+          !${{ env.GITHUB_WORKSPACE }}/build/
 
     - name: Git Hash 7-digit
       shell: bash
@@ -147,4 +148,4 @@ runs:
         name: tiledb-${{ env.ARTIFACT_OS }}-build-dir-${{ env.ARTIFACT_EXTRAS }}.tar.gz
         if-no-files-found: warn # 'ignore/', 'warn' or 'error' are available, defaults to `warn`
         path: |
-          ${{ $GITHUB_WORKSPACE }}/build/
+          ${{ env.GITHUB_WORKSPACE }}/build/
