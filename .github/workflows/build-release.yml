@@ -2,7 +2,9 @@ name: linux_mac-release
 
 on:
   push:
-    - release-*
+    branches:
+      - release-*
+      - dlh/ch10040-azr-osx-lnxto-ga
     
 env:
   SUDO: 'sudo'
