@@ -1,5 +1,5 @@
 /**
- * @file   noop_filter.h
+ * @file filter_create.h
  *
  * @section LICENSE
  *
@@ -27,60 +27,37 @@
  *
  * @section DESCRIPTION
  *
- * This file declares class NoopFilter.
+ * This file declares class FilterCreate, which contains the factory for the C
+ * API and the deserialize function.
  */
 
-#ifndef TILEDB_NOOP_FILTER_H
-#define TILEDB_NOOP_FILTER_H
+#ifndef TILEDB_FILTER_CREATE_H
+#define TILEDB_FILTER_CREATE_H
 
-#include "tiledb/common/status.h"
-#include "tiledb/sm/filter/filter.h"
+#include "filter.h"
 
-using namespace tiledb::common;
+namespace tiledb::sm {
 
-namespace tiledb {
-namespace sm {
-
-/**
- * A filter that does nothing. Input is passed unmodified to the output.
- */
-class NoopFilter : public Filter {
+class FilterCreate {
  public:
   /**
-   * Constructor.
+   * Factory method to make a new Filter instance of the given type.
+   *
+   * @param type Filter type to make
+   * @return New Filter instance or nullptr on error.
    */
-  NoopFilter();
-
-  /** Dumps the filter details in ASCII format in the selected output. */
-  void dump(FILE* out) const override;
+  static tiledb::sm::Filter* make(tiledb::sm::FilterType type);
 
   /**
-   * Run forward.
+   * Deserializes a new Filter instance from the data in the given buffer.
+   *
+   * @param buff The buffer to deserialize from.
+   * @param filter New filter instance (caller's responsibility to free).
+   * @return Status
    */
-  Status run_forward(
-      const Tile& tile,
-      FilterBuffer* input_metadata,
-      FilterBuffer* input,
-      FilterBuffer* output_metadata,
-      FilterBuffer* output) const override;
-
-  /**
-   * Run reverse.
-   */
-  Status run_reverse(
-      const Tile& tile,
-      FilterBuffer* input_metadata,
-      FilterBuffer* input,
-      FilterBuffer* output_metadata,
-      FilterBuffer* output,
-      const Config& config) const override;
-
- private:
-  /** Returns a new clone of this filter. */
-  NoopFilter* clone_impl() const override;
+  static Status deserialize(ConstBuffer* buff, Filter** filter);
 };
 
-}  // namespace sm
-}  // namespace tiledb
+}  // namespace tiledb::sm
 
-#endif  // TILEDB_NOOP_FILTER_H
+#endif  // TILEDB_FILTER_CREATE_H

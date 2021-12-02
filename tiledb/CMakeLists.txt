@@ -150,6 +150,7 @@ set(TILEDB_CORE_SOURCES
   ${TILEDB_CORE_INCLUDE_DIR}/tiledb/sm/filter/encryption_aes256gcm_filter.cc
   ${TILEDB_CORE_INCLUDE_DIR}/tiledb/sm/filter/filter.cc
   ${TILEDB_CORE_INCLUDE_DIR}/tiledb/sm/filter/filter_buffer.cc
+  ${TILEDB_CORE_INCLUDE_DIR}/tiledb/sm/filter/filter_create.cc
   ${TILEDB_CORE_INCLUDE_DIR}/tiledb/sm/filter/filter_pipeline.cc
   ${TILEDB_CORE_INCLUDE_DIR}/tiledb/sm/filter/filter_storage.cc
   ${TILEDB_CORE_INCLUDE_DIR}/tiledb/sm/filter/noop_filter.cc
