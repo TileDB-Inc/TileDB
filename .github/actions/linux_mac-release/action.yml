@@ -1,0 +1,150 @@
+name: act-linux_mac-release
+
+runs:
+  using: "composite"
+  steps:
+    - name: 'Print env'
+      run: |
+        echo "'uname -s' is:"
+        echo "uname: " $(uname)
+        echo "uname -m: " $(uname -m)
+        echo "uname -r:" $(uname -r)
+        echo "uname -s: " $(uname -s)
+        echo "uname -v: " $(uname -v)
+        printenv
+      shell: bash
+
+    - name: 'Uninstall brew packages for curl (OSX only)'
+      if: ${{ runner.os == 'macOS' }}
+      shell: bash
+      run: |
+        set -e pipefail
+        brew uninstall --ignore-dependencies libidn2 brotli rtmpdump
+
+    - name: 'Remove sdks for testing (OSX only)'
+      if: ${{ runner.os == 'macOS' }}
+      shell: bash
+      run: |
+        set -e pipefail
+        $SUDO rm -Rf /Library/Developer/CommandLineTools/SDKs/* # Remove SDKs without ARM support
+
+    - name: 'Build libtiledb'
+      continue-on-error: true
+      shell: bash
+      run: |
+        # DELETEME work-around for https://github.com/microsoft/azure-pipelines-image-generation/issues/969
+        #Needed for GA CI or not?... $SUDO chown root.root /
+
+        # Azure sets "SYSTEM=build" for unknown reasonas, which breaks the OpenSSL configure script
+        #   - openssl configure uses ENV{SYSTEM} if available:
+        #     https://github.com/openssl/openssl/blob/6d745d740d37d680ff696486218b650512bbbbc6/config#L56
+        #   - error description:
+        #     https://developercommunity.visualstudio.com/content/problem/602584/openssl-build-error-when-using-pipelines.htm
+        unset SYSTEM
+
+        # azure bash does not treat intermediate failure as error
+        # https://github.com/Microsoft/azure-pipelines-yaml/issues/135
+        set -e pipefail
+
+        git config --global user.name 'GACI Pipeline'
+        git config --global user.email 'no-reply@tiledb.io'
+
+        BUILD_REPOSITORY_LOCALPATH=$GITHUB_WORKSPACE
+        # Set up arguments for bootstrap.sh
+        BUILD_BINARIESDIRECTORY=${BUILD_BINARIESDIRECTORY:-$BUILD_REPOSITORY_LOCALPATH/dist}
+        cmake_args="-DCMAKE_INSTALL_PREFIX=${BUILD_BINARIESDIRECTORY} -DTILEDB_TESTS=OFF -DTILEDB_INSTALL_LIBDIR=lib";
+        mkdir -p ${BUILD_BINARIESDIRECTORY}
+
+        # Enable TILEDB_STATIC by default
+        [ "$TILEDB_STATIC" ] || TILEDB_STATIC=ON
+        if [[ "$TILEDB_STATIC" == "ON" ]]; then
+          cmake_args="${cmake_args} -DTILEDB_STATIC=ON";
+        fi
+        if [[ "$TILEDB_HDFS" == "ON" ]]; then
+          cmake_args="${cmake_args} -DTILEDB_HDFS=ON";
+        fi;
+        if [[ "$TILEDB_S3" == "ON" ]]; then
+          cmake_args="${cmake_args} -DTILEDB_S3=ON";
+        fi;
+        if [[ "$TILEDB_AZURE" == "ON" ]]; then
+          cmake_args="${cmake_args} -DTILEDB_AZURE=ON";
+        fi;
+        if [[ "$TILEDB_GCS" == "ON" ]]; then
+          cmake_args="${cmake_args} -DTILEDB_GCS=ON";
+        fi;
+        if [[ "$TILEDB_TOOLS" == "ON" ]]; then
+          cmake_args="${cmake_args} -DTILEDB_TOOLS=ON";
+        fi
+        if [[ "$TILEDB_DEBUG" == "ON" ]]; then
+          cmake_args="${cmake_args} -DCMAKE_BUILD_TYPE=Debug";
+        fi
+        if [[ "$TILEDB_CI_ASAN" == "ON" ]]; then
+          # Add address sanitizer flag if necessary
+          cmake_args="${cmake_args} -DSANITIZER=address";
+        fi
+        if [[ "$TILEDB_CI_TSAN" == "ON" ]]; then
+          # Add thread sanitizer flag if necessary
+          cmake_args="${cmake_args} -DSANITIZER=thread";
+        fi
+        if [[ "$TILEDB_SERIALIZATION" == "ON" ]]; then
+          # Add serialization flag if necessary
+          cmake_args="${cmake_args} -DTILEDB_SERIALIZATION=ON";
+        fi
+        if [[ "$TILEDB_FORCE_BUILD_DEPS" == "ON" ]]; then
+          # Add superbuild flag
+          cmake_args="${cmake_args} -DTILEDB_FORCE_ALL_DEPS=ON";
+        fi
+        if [[ "$TILEDB_WERROR" == "OFF" ]]; then
+          # Add superbuild flag
+          cmake_args="${cmake_args} -DTILEDB_WERROR=OFF";
+        fi
+
+        mkdir -p $BUILD_REPOSITORY_LOCALPATH/build
+        cd $BUILD_REPOSITORY_LOCALPATH/build
+
+        # Configure and build TileDB
+        echo "Running cmake with '${cmake_args}'"
+        cmake .. ${cmake_args}
+
+        make -j4
+        make -C tiledb install
+        
+        # get this into 'env' context since runners don't automatically place items
+        # from env into context on startup!
+        echo "GITHUB_SHA=$GITHUB_SHA" >> "$GITHUB_ENV"
+
+    - name: 'ArchiveFiles@2' # https://github.com/actions/upload-artifact#where-does-the-upload-go
+      #if: ${{ failure() == true && startsWith(runner.name, 'macos-') == true }} # only run this job if the build step failed
+      uses: actions/upload-artifact@v2
+      with:
+        retention-days: 10
+        #name: "${{ runner.name }}.coredumps.${{ github.job }}.${{ github.run_number }}.${{github.run_id}}.${{github.run_attempt}}"
+        #name: tiledb-$(ARTIFACT_OS)-build-dir-$(ARTIFACT_EXTRAS).tar.gz
+        name: tiledb-${{ env.ARTIFACT_OS }}-build-dir-${{ env.ARTIFACT_EXTRAS }}.tar.gz
+        if-no-files-found: warn # 'ignore/', 'warn' or 'error' are available, defaults to `warn`
+        path: |
+          ${{ $GITHUB_WORKSPACE }}/
+          !${{ $GITHUB_WORKSPACE }}/build/
+
+    - name: Git Hash 7-digit
+      shell: bash
+      env: 
+        sourceVersion: ${{ env.GITHUB_SHA }}
+      run: |
+        echo $sourceVersion
+        commitHash=${sourceVersion:0:7}
+        echo $commitHash
+        #echo "##vso[task.setvariable variable=commitHash]$commitHash" ## Set variable for using in other tasks.
+        echo "::set-output name=commitHash::$commitHash" # TBD: make status check pass for this hack step
+
+    - name: 'ArchiveFiles@2' # https://github.com/actions/upload-artifact#where-does-the-upload-go
+      #if: ${{ failure() == true && startsWith(runner.name, 'macos-') == true }} # only run this job if the build step failed
+      uses: actions/upload-artifact@v2
+      with:
+        retention-days: 10
+        #name: "${{ runner.name }}.coredumps.${{ github.job }}.${{ github.run_number }}.${{github.run_id}}.${{github.run_attempt}}"
+        #name: tiledb-$(ARTIFACT_OS)-build-dir-$(ARTIFACT_EXTRAS).tar.gz
+        name: tiledb-${{ env.ARTIFACT_OS }}-build-dir-${{ env.ARTIFACT_EXTRAS }}.tar.gz
+        if-no-files-found: warn # 'ignore/', 'warn' or 'error' are available, defaults to `warn`
+        path: |
+          ${{ $GITHUB_WORKSPACE }}/build/
