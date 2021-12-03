@@ -1432,9 +1432,11 @@ TEST_CASE("RootPath", "[cppapi][config][rootpath]") {
 
 #ifdef _WIN32
   std::string root_path = tiledb::sm::Win::current_dir() + "\\test_root_path";
+  std::string full_array_name = root_path + "\\test_array";
 #else
   std::string root_path = std::string("file://") +
                           tiledb::sm::Posix::current_dir() + "/test_root_path";
+  std::string full_array_name = root_path + "/test_array";
 #endif
 
   tiledb::Config cfg;
@@ -1442,8 +1444,8 @@ TEST_CASE("RootPath", "[cppapi][config][rootpath]") {
   tiledb::Context ctx(cfg);
   tiledb::VFS vfs(ctx);
 
-  if (vfs.is_dir(array_name)) {
-    vfs.remove_dir(array_name);
+  if (vfs.is_dir(full_array_name)) {
+    vfs.remove_dir(full_array_name);
   }
 
   vfs.create_dir(root_path);
