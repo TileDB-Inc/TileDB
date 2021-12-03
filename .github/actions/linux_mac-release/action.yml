@@ -172,6 +172,8 @@ runs:
         
         ls -l $TDB_SOURCE_ARCHIVE_PATH
         ls -l $TDB_BINARY_ARCHIVE_PATH
+        
+        find / -name 'tiledb-*-linux-build-*.tar.gz'
 
     - name: 'are variables in env context?'
       shell: bash
@@ -197,6 +199,7 @@ runs:
           #~ ls -l ${{ env.GITHUB_WORKSPACE }}/../tiledb-${{ env.ARTIFACT_OS }}-build-dir-${{ env.ARTIFACT_EXTRAS }}.tar.gz
         #~ fi
         #~ pwd
+        find / -name 'tiledb-*-linux-build-*.tar.gz'
         sync
 
     - name: 'ArchiveFiles@2' # https://github.com/actions/upload-artifact#where-does-the-upload-go
