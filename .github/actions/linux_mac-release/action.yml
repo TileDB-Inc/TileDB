@@ -127,13 +127,15 @@ runs:
         #sleep 10
         # move up a directory level so we are writing archive where tar won't fail reporting change while reading...
         cd $GITHUB_WORKSPACE/..
-        tar --exclude=build -zcf tiledb-${{ env.ARTIFACT_OS }}-build-dir-${{ env.ARTIFACT_EXTRAS }}.tar.gz ./TileDB
+        pwd
+        tar --exclude=build -vzcf tiledb-${{ env.ARTIFACT_OS }}-build-dir-${{ env.ARTIFACT_EXTRAS }}.tar.gz ./TileDB
         sync
         #sleep 10
         # move up a directory level so we are writing archive where tar won't fail reporting change while reading...
         cd $GITHUB_WORKSPACE/..
+        pwd
         #tar -zcf tiledb-${{ env.ARTIFACT_OS }}-build-dir-${{ env.ARTIFACT_EXTRAS }}.tar.gz $GITHUB_WORKSPACE/build
-        tar -zcf tiledb-${{ env.ARTIFACT_OS }}-build-dir-${{ env.ARTIFACT_EXTRAS }}.tar.gz ./TileDB/build
+        tar -vzcf tiledb-${{ env.ARTIFACT_OS }}-build-dir-${{ env.ARTIFACT_EXTRAS }}.tar.gz ./TileDB/build
         ls -l $GITHUB_WORKSPACE/..
 
     - name: 'are variables in env context?'
@@ -144,6 +146,10 @@ runs:
         echo "env.ARTIFACT_OS is ${{ env.ARTIFACT_OS }}"
         echo "env.ARTIFACT_EXTRAS is ${{ env.ARTIFACT_EXTRAS }}"
         echo "tiledb-${{ env.ARTIFACT_OS }}-build-dir-${{ env.ARTIFACT_EXTRAS }}.tar.gz"
+        echo "${{ env.GITHUB_WORKSPACE }}/../tiledb-${{ env.ARTIFACT_OS }}-build-dir-${{ env.ARTIFACT_EXTRAS }}.tar.gz"
+        ls -l ${{ env.GITHUB_WORKSPACE }}/../tiledb-${{ env.ARTIFACT_OS }}-build-dir-${{ env.ARTIFACT_EXTRAS }}.tar.gz
+        pwd
+        ls -l ${{ env.GITHUB_WORKSPACE }}/..
         sync
 
     - name: 'ArchiveFiles@2' # https://github.com/actions/upload-artifact#where-does-the-upload-go
@@ -151,7 +157,7 @@ runs:
       #uses: actions/upload-artifact@v2
       uses: actions/upload-artifact@v1
       with:
-        # @v1 does not recognize 'retention-days', 'if-no-files-found'
+        # @v1 does not recognize 'retention-days', 'if-no-files-found', path enhancments, prob more
         #retention-days: 10
         #name: "${{ runner.name }}.coredumps.${{ github.job }}.${{ github.run_number }}.${{github.run_id}}.${{github.run_attempt}}"
         #name: tiledb-$(ARTIFACT_OS)-build-dir-$(ARTIFACT_EXTRAS).tar.gz
@@ -174,7 +180,7 @@ runs:
         echo "::set-output name=commitHash::$commitHash" # TBD: make status check pass for this hack step
         
     - name: 'ArchiveFiles@2' # https://github.com/actions/upload-artifact#where-does-the-upload-go
-        # @v1 does not recognize 'retention-days', 'if-no-files-found'
+      # @v1 does not recognize 'retention-days', 'if-no-files-found', path enhancments, prob more
       #if: ${{ failure() == true && startsWith(runner.name, 'macos-') == true }} # only run this job if the build step failed
       #uses: actions/upload-artifact@v2
       uses: actions/upload-artifact@v1
