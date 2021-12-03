@@ -93,7 +93,8 @@ jobs:
 
       - uses: ./.github/actions/linux_mac-release
 
-  build-release-manylinux-artifacts:
+  #build-release-manylinux-artifacts:
+  artifacts-build-release-manylinux:
     needs: build-release-manylinux
     runs-on: ubuntu-20.04
     steps:
