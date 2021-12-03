@@ -426,10 +426,10 @@ Status StorageManager::array_load_fragments(
     }
     RETURN_NOT_OK(it->second->set_encryption_key(enc_key));
     open_array = it->second;
-
-    // Lock the array
-    open_array->mtx_lock();
   }
+
+  // Lock the array
+  open_array->mtx_lock();
 
   std::unordered_map<std::string, uint64_t> offsets;
 
@@ -486,10 +486,10 @@ StorageManager::array_reopen(
       return {st, std::nullopt, std::nullopt, std::nullopt};
 
     open_array = it->second;
-
-    // Lock the array
-    open_array->mtx_lock();
   }
+
+  // Lock the array
+  open_array->mtx_lock();
 
   // Determine which fragments to load
   std::vector<TimestampedURI> fragments_to_load;
@@ -2075,10 +2075,10 @@ Status StorageManager::load_array_metadata(
     auto it = open_arrays_for_reads_.find(array_uri.to_string());
     assert(it != open_arrays_for_reads_.end());
     open_array = it->second;
-
-    // Lock the array
-    open_array->mtx_lock();
   }
+
+  // Lock the array
+  open_array->mtx_lock();
 
   // Determine which array metadata to load
   std::vector<TimestampedURI> array_metadata_to_load;
