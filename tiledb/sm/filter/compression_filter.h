@@ -182,8 +182,8 @@ class CompressionFilter : public Filter {
   /** Serializes this filter's metadata to the given buffer. */
   Status serialize_impl(Buffer* buff) const override;
 
-  /** Initializes the compression filter resource pools */
-  void init_resource_pools(uint64_t size) override;
+  /** Initializes the compression filter resource pool */
+  void init_resource_pool(uint64_t size) override;
 };
 
 }  // namespace sm

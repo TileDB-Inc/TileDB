@@ -432,7 +432,7 @@ Status CompressionFilter::deserialize_impl(ConstBuffer* buff) {
   return Status::Ok();
 }
 
-void CompressionFilter::init_resource_pools(uint64_t size) {
+void CompressionFilter::init_resource_pool(uint64_t size) {
   if (zstd_decompress_ctx_pool_ == nullptr) {
     zstd_decompress_ctx_pool_ =
         tdb::make_shared<ResourcePool<ZStd::ZSTD_Decompress_Context>>(

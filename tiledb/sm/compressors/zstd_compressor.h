@@ -51,7 +51,7 @@ class PreallocatedBuffer;
 /** Handles compression/decompression with the zstd library. */
 class ZStd {
  public:
-  /** wrapper around the decompress ZST context so that it can be used in a
+  /** wrapper around the decompress ZSTD context so that it can be used in a
    * resource pool */
   class ZSTD_Decompress_Context {
    public:

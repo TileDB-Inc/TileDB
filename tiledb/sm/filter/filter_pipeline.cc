@@ -307,7 +307,7 @@ Status FilterPipeline::filter_chunks_reverse(
             output_chunk_buffer, orig_chunk_len));
       }
 
-      f->init_resource_pools(compute_tp->concurrency_level());
+      f->init_resource_pool(compute_tp->concurrency_level());
 
       RETURN_NOT_OK(f->run_reverse(
           tile,
