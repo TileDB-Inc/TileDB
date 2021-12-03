@@ -118,6 +118,7 @@ runs:
         #tar --exclude=build -zcf tiledb-${{ env.ARTIFACT_OS }}-build-dir-${{ env.ARTIFACT_EXTRAS }}.tar.gz $GITHUB_WORKSPACE
         cd $GITHUB_WORKSPACE
         tar --exclude=build -zcf tiledb-${{ env.ARTIFACT_OS }}-build-dir-${{ env.ARTIFACT_EXTRAS }}.tar.gz ./
+        sync
         #tar -zcf tiledb-${{ env.ARTIFACT_OS }}-build-dir-${{ env.ARTIFACT_EXTRAS }}.tar.gz $GITHUB_WORKSPACE/build
         tar -zcf tiledb-${{ env.ARTIFACT_OS }}-build-dir-${{ env.ARTIFACT_EXTRAS }}.tar.gz ./build
 
