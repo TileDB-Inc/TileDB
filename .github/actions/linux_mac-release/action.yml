@@ -119,18 +119,22 @@ runs:
         set -x
         pwd
         #tar --exclude=build -zcf tiledb-${{ env.ARTIFACT_OS }}-build-dir-${{ env.ARTIFACT_EXTRAS }}.tar.gz $GITHUB_WORKSPACE
-        cd $GITHUB_WORKSPACE/..
         pwd
         # sync in effort to avoid "tar: .: file changed as we read it" errors, guessing
         # based on logs seen, poss. due to files from install just above not yet having 
         # been completely written out with flushing happening during following 'tar' efforts.
         sync
         #sleep 10
+        # move up a directory level so we are writing archive where tar won't fail reporting change while reading...
+        cd $GITHUB_WORKSPACE/..
         tar --exclude=build -zcf tiledb-${{ env.ARTIFACT_OS }}-build-dir-${{ env.ARTIFACT_EXTRAS }}.tar.gz ./TileDB
         sync
         #sleep 10
+        # move up a directory level so we are writing archive where tar won't fail reporting change while reading...
+        cd $GITHUB_WORKSPACE/..
         #tar -zcf tiledb-${{ env.ARTIFACT_OS }}-build-dir-${{ env.ARTIFACT_EXTRAS }}.tar.gz $GITHUB_WORKSPACE/build
         tar -zcf tiledb-${{ env.ARTIFACT_OS }}-build-dir-${{ env.ARTIFACT_EXTRAS }}.tar.gz ./TileDB/build
+        ls -l $GITHUB_WORKSPACE/..
 
     - name: 'are variables in env context?'
       shell: bash
