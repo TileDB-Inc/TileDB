@@ -31,6 +31,7 @@
  */
 
 #include "tiledb/sm/filter/compression_filter.h"
+#include "tiledb/common/common.h"
 #include "tiledb/common/heap_memory.h"
 #include "tiledb/common/logger.h"
 #include "tiledb/sm/buffer/buffer.h"
@@ -53,16 +54,17 @@ namespace tiledb {
 namespace sm {
 
 CompressionFilter::CompressionFilter(FilterType compressor, int level)
-    : Filter(compressor) {
-  compressor_ = filter_to_compressor(compressor);
-  level_ = level;
+    : Filter(compressor)
+    , compressor_(filter_to_compressor(compressor))
+    , level_(level)
+    , zstd_decompress_ctx_pool_(nullptr) {
 }
 
 CompressionFilter::CompressionFilter(Compressor compressor, int level)
-    : Filter(FilterType::FILTER_NONE) {
-  compressor_ = compressor;
-  level_ = level;
-  type_ = compressor_to_filter(compressor);
+    : Filter(compressor_to_filter(compressor))
+    , compressor_(compressor)
+    , level_(level)
+    , zstd_decompress_ctx_pool_(nullptr) {
 }
 
 Compressor CompressionFilter::compressor() const {
@@ -366,7 +368,8 @@ Status CompressionFilter::decompress_part(
       st = GZip::decompress(&input_buffer, &output_buffer);
       break;
     case Compressor::ZSTD:
-      st = ZStd::decompress(&input_buffer, &output_buffer);
+      st = ZStd::decompress(
+          zstd_decompress_ctx_pool_, &input_buffer, &output_buffer);
       break;
     case Compressor::LZ4:
       st = LZ4::decompress(&input_buffer, &output_buffer);
@@ -427,6 +430,14 @@ Status CompressionFilter::deserialize_impl(ConstBuffer* buff) {
   RETURN_NOT_OK(buff->read(&level_, sizeof(int32_t)));
 
   return Status::Ok();
+}
+
+void CompressionFilter::init_resource_pool(uint64_t size) {
+  if (zstd_decompress_ctx_pool_ == nullptr) {
+    zstd_decompress_ctx_pool_ =
+        tdb::make_shared<ResourcePool<ZStd::ZSTD_Decompress_Context>>(
+            HERE(), size);
+  }
 }
 
 }  // namespace sm

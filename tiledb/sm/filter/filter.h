@@ -129,6 +129,14 @@ class Filter {
       const Config& config) const = 0;
 
   /**
+   * Initializes the filter resource pool if any
+   *
+   * @param size the size of the resource pool to initiliaze
+   *
+   * */
+  virtual void init_resource_pool(uint64_t size);
+
+  /**
    * Sets an option on this filter.
    *
    * @param option Option whose value to get

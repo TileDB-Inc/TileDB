@@ -129,5 +129,9 @@ FilterType Filter::type() const {
   return type_;
 }
 
+void Filter::init_resource_pool(uint64_t size) {
+  (void)size;
+}
+
 }  // namespace sm
 }  // namespace tiledb
