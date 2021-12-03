@@ -202,48 +202,48 @@ runs:
         find / -name 'tiledb-*-linux-build-*.tar.gz' -exec ls -l {} \;
         sync
 
-    #~ - name: 'ArchiveFiles@2' # https://github.com/actions/upload-artifact#where-does-the-upload-go
-      #~ #if: ${{ failure() == true && startsWith(runner.name, 'macos-') == true }} # only run this job if the build step failed
-      #~ #uses: actions/upload-artifact@v2
-      #~ uses: actions/upload-artifact@v1
-      #~ with:
-        #~ # @v1 does not recognize 'retention-days', 'if-no-files-found', path enhancments, prob more
-        #~ #retention-days: 10
-        #~ #name: "${{ runner.name }}.coredumps.${{ github.job }}.${{ github.run_number }}.${{github.run_id}}.${{github.run_attempt}}"
-        #~ #name: tiledb-$(ARTIFACT_OS)-build-dir-$(ARTIFACT_EXTRAS).tar.gz
-        #~ name: tiledb-${{ env.ARTIFACT_OS }}-build-dir-${{ env.ARTIFACT_EXTRAS }}.${{github.job}}.tar.gz
-        #~ #if-no-files-found: warn # 'ignore/', 'warn' or 'error' are available, defaults to `warn`
-        #~ #${{ env.GITHUB_WORKSPACE }}/
-        #~ #!${{ env.GITHUB_WORKSPACE }}/build/
-        #~ #${{ env.GITHUB_WORKSPACE }}/../tiledb-${{ env.ARTIFACT_OS }}-build-dir-${{ env.ARTIFACT_EXTRAS }}.tar.gz
-        #~ #${{ env.TDB_SOURCE_ARCHIVE_PATH }}
-        #~ path: |
-          #~ CMakeLists.txt
+    - name: 'ArchiveFiles@2' # https://github.com/actions/upload-artifact#where-does-the-upload-go
+      #if: ${{ failure() == true && startsWith(runner.name, 'macos-') == true }} # only run this job if the build step failed
+      #uses: actions/upload-artifact@v2
+      uses: actions/upload-artifact@v1
+      with:
+        # @v1 does not recognize 'retention-days', 'if-no-files-found', path enhancments, prob more
+        #retention-days: 10
+        #name: "${{ runner.name }}.coredumps.${{ github.job }}.${{ github.run_number }}.${{github.run_id}}.${{github.run_attempt}}"
+        #name: tiledb-$(ARTIFACT_OS)-build-dir-$(ARTIFACT_EXTRAS).tar.gz
+        name: tiledb-${{ env.ARTIFACT_OS }}-build-dir-${{ env.ARTIFACT_EXTRAS }}.${{github.job}}.tar.gz
+        #if-no-files-found: warn # 'ignore/', 'warn' or 'error' are available, defaults to `warn`
+        #${{ env.GITHUB_WORKSPACE }}/
+        #!${{ env.GITHUB_WORKSPACE }}/build/
+        #${{ env.GITHUB_WORKSPACE }}/../tiledb-${{ env.ARTIFACT_OS }}-build-dir-${{ env.ARTIFACT_EXTRAS }}.tar.gz
+        #${{ env.TDB_SOURCE_ARCHIVE_PATH }}
+        path: |
+          CMakeLists.txt
 
-    #~ - name: Git Hash 7-digit
-      #~ shell: bash
-      #~ env: 
-        #~ sourceVersion: ${{ env.GITHUB_SHA }}
-      #~ run: |
-        #~ echo $sourceVersion
-        #~ commitHash=${sourceVersion:0:7}
-        #~ echo $commitHash
-        #~ #echo "##vso[task.setvariable variable=commitHash]$commitHash" ## Set variable for using in other tasks.
-        #~ echo "::set-output name=commitHash::$commitHash" # TBD: make status check pass for this hack step
+    - name: Git Hash 7-digit
+      shell: bash
+      env: 
+        sourceVersion: ${{ env.GITHUB_SHA }}
+      run: |
+        echo $sourceVersion
+        commitHash=${sourceVersion:0:7}
+        echo $commitHash
+        #echo "##vso[task.setvariable variable=commitHash]$commitHash" ## Set variable for using in other tasks.
+        echo "::set-output name=commitHash::$commitHash" # TBD: make status check pass for this hack step
         
-    #~ - name: 'ArchiveFiles@2' # https://github.com/actions/upload-artifact#where-does-the-upload-go
-      #~ # @v1 does not recognize 'retention-days', 'if-no-files-found', path enhancments, prob more
-      #~ #if: ${{ failure() == true && startsWith(runner.name, 'macos-') == true }} # only run this job if the build step failed
-      #~ #uses: actions/upload-artifact@v2
-      #~ uses: actions/upload-artifact@v1
-      #~ with:
-        #~ #retention-days: 10
-        #~ #name: "${{ runner.name }}.coredumps.${{ github.job }}.${{ github.run_number }}.${{github.run_id}}.${{github.run_attempt}}"
-        #~ #name: tiledb-$(ARTIFACT_OS)-build-dir-$(ARTIFACT_EXTRAS).tar.gz
-        #~ name: tiledb-${{ env.ARTIFACT_OS }}-build-dir-${{ env.ARTIFACT_EXTRAS }}.${{github.job}}.tar.gz
-        #~ #if-no-files-found: warn # 'ignore/', 'warn' or 'error' are available, defaults to `warn`
-        #~ #${{ env.GITHUB_WORKSPACE }}/build/
-        #~ #${{ env.GITHUB_WORKSPACE }}/../tiledb-${{ env.ARTIFACT_OS }}-build-dir-${{ env.ARTIFACT_EXTRAS }}.tar.gz
-        #~ #${{ env.TDB_BINARY_ARCHIVE_PATH }}
-        #~ path: |
-          #~ CMakeLists.txt
+    - name: 'ArchiveFiles@2' # https://github.com/actions/upload-artifact#where-does-the-upload-go
+      # @v1 does not recognize 'retention-days', 'if-no-files-found', path enhancments, prob more
+      #if: ${{ failure() == true && startsWith(runner.name, 'macos-') == true }} # only run this job if the build step failed
+      #uses: actions/upload-artifact@v2
+      uses: actions/upload-artifact@v1
+      with:
+        #retention-days: 10
+        #name: "${{ runner.name }}.coredumps.${{ github.job }}.${{ github.run_number }}.${{github.run_id}}.${{github.run_attempt}}"
+        #name: tiledb-$(ARTIFACT_OS)-build-dir-$(ARTIFACT_EXTRAS).tar.gz
+        name: tiledb-${{ env.ARTIFACT_OS }}-build-dir-${{ env.ARTIFACT_EXTRAS }}.${{github.job}}.tar.gz
+        #if-no-files-found: warn # 'ignore/', 'warn' or 'error' are available, defaults to `warn`
+        #${{ env.GITHUB_WORKSPACE }}/build/
+        #${{ env.GITHUB_WORKSPACE }}/../tiledb-${{ env.ARTIFACT_OS }}-build-dir-${{ env.ARTIFACT_EXTRAS }}.tar.gz
+        #${{ env.TDB_BINARY_ARCHIVE_PATH }}
+        path: |
+          CMakeLists.txt
