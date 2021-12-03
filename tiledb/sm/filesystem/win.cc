@@ -597,7 +597,7 @@ std::string Win::path_from_uri(const std::string& uri) {
           "file:///" + uri;
 
   unsigned long path_length = MAX_PATH;
-  char path[INTERNET_MAX_URL_LENGTH];
+  char path[MAX_PATH];
   std::string str_path;
   if (PathCreateFromUrl(uri_with_scheme.c_str(), path, &path_length, 0) !=
       S_OK) {
