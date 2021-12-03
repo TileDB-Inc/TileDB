@@ -128,24 +128,32 @@ runs:
         # move up a directory level so we are writing archive where tar won't fail reporting change while reading...
         cd $GITHUB_WORKSPACE/..
         pwd
-        tar --exclude=build -vzcf tiledb-${{ env.ARTIFACT_OS }}-build-dir-${{ env.ARTIFACT_EXTRAS }}.tar.gz ./TileDB
+        tar --exclude=build -vzcf tiledb-source-${{ env.ARTIFACT_OS }}-build-dir-${{ env.ARTIFACT_EXTRAS }}.tar.gz ./TileDB
         sync
         #sleep 10
         # move up a directory level so we are writing archive where tar won't fail reporting change while reading...
         cd $GITHUB_WORKSPACE/..
         pwd
         #tar -zcf tiledb-${{ env.ARTIFACT_OS }}-build-dir-${{ env.ARTIFACT_EXTRAS }}.tar.gz $GITHUB_WORKSPACE/build
-        tar -vzcf tiledb-${{ env.ARTIFACT_OS }}-build-dir-${{ env.ARTIFACT_EXTRAS }}.tar.gz ./TileDB/build
+        tar -vzcf tiledb-binary-${{ env.ARTIFACT_OS }}-build-dir-${{ env.ARTIFACT_EXTRAS }}.tar.gz ./TileDB/build
         ls -l $GITHUB_WORKSPACE/..
+        TDB_SOURCE_ARCHIVE_PATH=`dirname $GITHUB_WORKSPACE/..`/tiledb-source-${{ env.ARTIFACT_OS }}-build-dir-${{ env.ARTIFACT_EXTRAS }}.tar.gz
+        TDB_BINARY_ARCHIVE_PATH=`dirname $GITHUB_WORKSPACE/..`/tiledb-binary-${{ env.ARTIFACT_OS }}-build-dir-${{ env.ARTIFACT_EXTRAS }}.tar.gz
+        #echo "ARTIFACT_EXTRAS=$ARTIFACT_EXTRAS" >> "$GITHUB_ENV"
+        echo "TDB_SOURCE_ARCHIVE_PATH=$TDB_SOURCE_ARCHIVE_PATH" >> "$GITHUB_ENV"
+        echo "TDB_BINARY_ARCHIVE_PATH=$TDB_BINARY_ARCHIVE_PATH" >> "$GITHUB_ENV"
 
     - name: 'are variables in env context?'
       shell: bash
       run: |
+        set -x
         echo "env.GITHUB_WORKSPACE is ${{ env.GITHUB_WORKSPACE }}"
         echo "env.GITHUB_SHA is ${{ env.GITHUB_SHA }}"
         echo "env.ARTIFACT_OS is ${{ env.ARTIFACT_OS }}"
         echo "env.ARTIFACT_EXTRAS is ${{ env.ARTIFACT_EXTRAS }}"
         echo "tiledb-${{ env.ARTIFACT_OS }}-build-dir-${{ env.ARTIFACT_EXTRAS }}.tar.gz"
+        echo "TDB_SOURCE_ARCHIVE_PATH is $TDB_SOURCE_ARCHIVE_PATH"
+        echo "TDB_BINARY_ARCHIVE_PATH is $TDB_BINARY_ARCHIVE_PATH"
         echo "${{ env.GITHUB_WORKSPACE }}/../tiledb-${{ env.ARTIFACT_OS }}-build-dir-${{ env.ARTIFACT_EXTRAS }}.tar.gz"
         ls -l ${{ env.GITHUB_WORKSPACE }}/../tiledb-${{ env.ARTIFACT_OS }}-build-dir-${{ env.ARTIFACT_EXTRAS }}.tar.gz
         pwd
@@ -165,8 +173,9 @@ runs:
         #if-no-files-found: warn # 'ignore/', 'warn' or 'error' are available, defaults to `warn`
         #${{ env.GITHUB_WORKSPACE }}/
         #!${{ env.GITHUB_WORKSPACE }}/build/
+        #${{ env.GITHUB_WORKSPACE }}/../tiledb-${{ env.ARTIFACT_OS }}-build-dir-${{ env.ARTIFACT_EXTRAS }}.tar.gz
         path: |
-          ${{ env.GITHUB_WORKSPACE }}/../tiledb-${{ env.ARTIFACT_OS }}-build-dir-${{ env.ARTIFACT_EXTRAS }}.tar.gz
+          ${{ env.TDB_SOURCE_ARCHIVE_PATH }}
 
     - name: Git Hash 7-digit
       shell: bash
@@ -191,5 +200,6 @@ runs:
         name: tiledb-${{ env.ARTIFACT_OS }}-build-dir-${{ env.ARTIFACT_EXTRAS }}.${{github.job}}.tar.gz
         #if-no-files-found: warn # 'ignore/', 'warn' or 'error' are available, defaults to `warn`
         #${{ env.GITHUB_WORKSPACE }}/build/
+        #${{ env.GITHUB_WORKSPACE }}/../tiledb-${{ env.ARTIFACT_OS }}-build-dir-${{ env.ARTIFACT_EXTRAS }}.tar.gz
         path: |
-          ${{ env.GITHUB_WORKSPACE }}/../tiledb-${{ env.ARTIFACT_OS }}-build-dir-${{ env.ARTIFACT_EXTRAS }}.tar.gz
+          ${{ env.TDB_BINARY_ARCHIVE_PATH }}
