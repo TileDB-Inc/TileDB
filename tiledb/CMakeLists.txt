@@ -38,6 +38,7 @@ cmake_policy(SET CMP0063 NEW)
 ############################################################
 
 add_subdirectory(common)
+add_subdirectory(sm)
 
 ############################################################
 # Source files
@@ -105,6 +106,7 @@ set(TILEDB_CORE_SOURCES
   ${TILEDB_CORE_INCLUDE_DIR}/tiledb/common/logger.cc
   ${TILEDB_CORE_INCLUDE_DIR}/tiledb/common/memory.cc
   ${TILEDB_CORE_INCLUDE_DIR}/tiledb/common/status.cc
+  ${TILEDB_CORE_INCLUDE_DIR}/tiledb/common/stdx_string.cc
   ${TILEDB_CORE_INCLUDE_DIR}/tiledb/common/interval/interval.cc
   ${TILEDB_CORE_INCLUDE_DIR}/tiledb/sm/array/array.cc
   ${TILEDB_CORE_INCLUDE_DIR}/tiledb/sm/array_schema/array_schema.cc
@@ -148,6 +150,7 @@ set(TILEDB_CORE_SOURCES
   ${TILEDB_CORE_INCLUDE_DIR}/tiledb/sm/filter/encryption_aes256gcm_filter.cc
   ${TILEDB_CORE_INCLUDE_DIR}/tiledb/sm/filter/filter.cc
   ${TILEDB_CORE_INCLUDE_DIR}/tiledb/sm/filter/filter_buffer.cc
+  ${TILEDB_CORE_INCLUDE_DIR}/tiledb/sm/filter/filter_create.cc
   ${TILEDB_CORE_INCLUDE_DIR}/tiledb/sm/filter/filter_pipeline.cc
   ${TILEDB_CORE_INCLUDE_DIR}/tiledb/sm/filter/filter_storage.cc
   ${TILEDB_CORE_INCLUDE_DIR}/tiledb/sm/filter/noop_filter.cc
@@ -710,13 +713,14 @@ if (TILEDB_STATIC)
   macro(append_dep_lib APPEND_LIB)
     if (TARGET ${APPEND_LIB})
       get_installed_location(TARGET_LOC ${APPEND_LIB})
+      cmake_path(GET TARGET_LOC FILENAME TARGET_LOC_FILENAME)
       get_target_property(TARGET_LIBS ${APPEND_LIB} INTERFACE_LINK_LIBRARIES)
 
       string(CONCAT TILEDB_STATIC_DEP_STRING
         "${TILEDB_STATIC_DEP_STRING}"
         "if (NOT TARGET ${APPEND_LIB})\n"
         "  add_library(${APPEND_LIB} UNKNOWN IMPORTED)\n"
-        "  set_target_properties(${APPEND_LIB} PROPERTIES IMPORTED_LOCATION ${TARGET_LOC})\n"
+        "  set_target_properties(${APPEND_LIB} PROPERTIES IMPORTED_LOCATION \${PACKAGE_PREFIX_DIR}/lib/${TARGET_LOC_FILENAME})\n"
       )
 
       string(CONCAT TILEDB_STATIC_DEP_STRING

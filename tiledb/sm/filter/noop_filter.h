@@ -58,6 +58,7 @@ class NoopFilter : public Filter {
    * Run forward.
    */
   Status run_forward(
+      const Tile& tile,
       FilterBuffer* input_metadata,
       FilterBuffer* input,
       FilterBuffer* output_metadata,
@@ -67,6 +68,7 @@ class NoopFilter : public Filter {
    * Run reverse.
    */
   Status run_reverse(
+      const Tile& tile,
       FilterBuffer* input_metadata,
       FilterBuffer* input,
       FilterBuffer* output_metadata,

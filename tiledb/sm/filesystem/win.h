@@ -43,7 +43,6 @@
 #include "tiledb/common/thread_pool.h"
 #include "tiledb/sm/buffer/buffer.h"
 #include "tiledb/sm/config/config.h"
-#include "tiledb/sm/filesystem/filelock.h"
 #include "tiledb/sm/misc/uri.h"
 
 using namespace tiledb::common;
@@ -114,26 +113,6 @@ class Win {
    * @return Status
    */
   Status file_size(const std::string& path, uint64_t* size) const;
-
-  /**
-   * Lock a given filename and retrieve an open file descriptor handle.
-   *
-   * @param filename The filelock to lock
-   * @param fd A pointer to a file descriptor
-   * @param shared *True* if this is a shared lock, *false* if it is an
-   * exclusive lock.
-   * @return Status
-   */
-  Status filelock_lock(
-      const std::string& filename, filelock_t* fd, bool shared) const;
-
-  /**
-   * Unlock an opened file descriptor
-   *
-   * @param fd the open file descriptor to unlock
-   * @return Status
-   */
-  Status filelock_unlock(filelock_t fd) const;
 
   /**
    * Initialize this instance with the given parameters.

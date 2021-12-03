@@ -31,6 +31,7 @@
  */
 
 #include "tiledb/sm/filter/filter_pipeline.h"
+#include "filter_create.h"
 #include "tiledb/common/heap_memory.h"
 #include "tiledb/common/logger.h"
 #include "tiledb/sm/crypto/encryption_key.h"
@@ -51,15 +52,13 @@ namespace tiledb {
 namespace sm {
 
 FilterPipeline::FilterPipeline()
-    : current_tile_(nullptr)
-    , max_chunk_size_(constants::max_tile_chunk_size) {
+    : max_chunk_size_(constants::max_tile_chunk_size) {
 }
 
 FilterPipeline::FilterPipeline(const FilterPipeline& other) {
   for (auto& filter : other.filters_) {
     add_filter(*filter);
   }
-  current_tile_ = other.current_tile_;
   max_chunk_size_ = other.max_chunk_size_;
 }
 
@@ -82,7 +81,6 @@ FilterPipeline& FilterPipeline::operator=(FilterPipeline&& other) {
 
 Status FilterPipeline::add_filter(const Filter& filter) {
   tdb_unique_ptr<Filter> copy(filter.clone());
-  copy->set_pipeline(this);
   filters_.push_back(std::move(copy));
   return Status::Ok();
 }
@@ -91,11 +89,8 @@ void FilterPipeline::clear() {
   filters_.clear();
 }
 
-const Tile* FilterPipeline::current_tile() const {
-  return current_tile_;
-}
-
 Status FilterPipeline::filter_chunks_forward(
+    const Tile& tile,
     const Buffer& input,
     uint32_t chunk_size,
     Buffer* const output,
@@ -143,7 +138,7 @@ Status FilterPipeline::filter_chunks_forward(
       output_metadata.clear();
 
       RETURN_NOT_OK(f->run_forward(
-          &input_metadata, &input_data, &output_metadata, &output_data));
+          tile, &input_metadata, &input_data, &output_metadata, &output_data));
 
       input_data.set_read_only(false);
       input_data.swap(output_data);
@@ -242,6 +237,7 @@ Status FilterPipeline::filter_chunks_forward(
 }
 
 Status FilterPipeline::filter_chunks_reverse(
+    const Tile& tile,
     const std::vector<std::tuple<void*, uint32_t, uint32_t, uint32_t>>& input,
     Buffer* const output,
     ThreadPool* const compute_tp,
@@ -311,7 +307,10 @@ Status FilterPipeline::filter_chunks_reverse(
             output_chunk_buffer, orig_chunk_len));
       }
 
+      f->init_resource_pool(compute_tp->concurrency_level());
+
       RETURN_NOT_OK(f->run_reverse(
+          tile,
           &input_metadata,
           &input_data,
           &output_metadata,
@@ -356,7 +355,8 @@ Status FilterPipeline::run_forward(
     stats::Stats* const writer_stats,
     Tile* const tile,
     ThreadPool* const compute_tp) const {
-  current_tile_ = tile;
+  RETURN_NOT_OK(
+      tile ? Status::Ok() : Status::Error("invalid argument: null Tile*"));
 
   writer_stats->add_counter("write_filtered_byte_num", tile->size());
 
@@ -368,7 +368,11 @@ Status FilterPipeline::run_forward(
   // 'filtered_buffer'.
   RETURN_NOT_OK_ELSE(
       filter_chunks_forward(
-          *tile->buffer(), chunk_size, tile->filtered_buffer(), compute_tp),
+          *tile,
+          *tile->buffer(),
+          chunk_size,
+          tile->filtered_buffer(),
+          compute_tp),
       tile->filtered_buffer()->clear());
 
   // The contents of 'buffer' have been filtered and stored
@@ -404,8 +408,6 @@ Status FilterPipeline::run_reverse_internal(
     return LOG_STATUS(Status::FilterError(
         "Filter error; tile has allocated uncompressed chunk buffers."));
 
-  current_tile_ = tile;
-
   // First make a pass over the tile to get the chunk information.
   filtered_buffer->reset_offset();
   uint64_t num_chunks;
@@ -434,7 +436,7 @@ Status FilterPipeline::run_reverse_internal(
   reader_stats->add_counter("read_unfiltered_byte_num", total_orig_size);
 
   const Status st = filter_chunks_reverse(
-      filtered_chunks, tile->buffer(), compute_tp, config);
+      *tile, filtered_chunks, tile->buffer(), compute_tp, config);
   if (!st.ok()) {
     tile->buffer()->clear();
     return st;
@@ -495,7 +497,7 @@ Status FilterPipeline::deserialize(ConstBuffer* buff) {
 
   for (uint32_t i = 0; i < num_filters; i++) {
     Filter* filter;
-    RETURN_NOT_OK(Filter::deserialize(buff, &filter));
+    RETURN_NOT_OK(FilterCreate::deserialize(buff, &filter));
     RETURN_NOT_OK_ELSE(add_filter(*filter), tdb_delete(filter));
     tdb_delete(filter);
   }
@@ -527,14 +529,6 @@ bool FilterPipeline::empty() const {
 
 void FilterPipeline::swap(FilterPipeline& other) {
   filters_.swap(other.filters_);
-
-  for (auto& f : filters_)
-    f->set_pipeline(this);
-
-  for (auto& f : other.filters_)
-    f->set_pipeline(&other);
-
-  std::swap(current_tile_, other.current_tile_);
   std::swap(max_chunk_size_, other.max_chunk_size_);
 }
 

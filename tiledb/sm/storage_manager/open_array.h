@@ -41,7 +41,6 @@
 #include <unordered_map>
 
 #include "tiledb/sm/crypto/encryption_key_validation.h"
-#include "tiledb/sm/filesystem/filelock.h"
 #include "tiledb/sm/fragment/fragment_metadata.h"
 #include "tiledb/sm/misc/uri.h"
 #include "tiledb/sm/storage_manager/open_array_memory_tracker.h"
@@ -86,10 +85,16 @@ class OpenArray {
   /* ********************************* */
 
   /** Returns the array schema. */
-  ArraySchema* array_schema() const;
+  ArraySchema* array_schema_latest() const;
 
   /** Returns array schemas map. */
-  std::unordered_map<std::string, tdb_shared_ptr<ArraySchema>>& array_schemas();
+  const std::unordered_map<std::string, tdb_shared_ptr<ArraySchema>>&
+  array_schemas_all();
+
+  /** Set the array schemas map. */
+  void set_array_schemas_all(
+      const std::unordered_map<std::string, tdb_shared_ptr<ArraySchema>>&
+          array_schemas);
 
   /** Gets the array schema given a array schema name. */
   Status get_array_schema(
@@ -121,12 +126,6 @@ class OpenArray {
    * empty if there are no fragments at or before the given timestamp.
    */
   bool is_empty(uint64_t timestamp) const;
-
-  /** Retrieves a (shared) filelock for the array. */
-  Status file_lock(VFS* vfs);
-
-  /** Retrieves a (shared) filelock for the array. */
-  Status file_unlock(VFS* vfs);
 
   /**
    * Returns the `FragmentMetadata` object of the input fragment URI,
@@ -188,12 +187,13 @@ class OpenArray {
   /* ********************************* */
 
   /** The latest array schema. */
-  ArraySchema* array_schema_;
+  ArraySchema* array_schema_latest_;
 
   /**
-   * A map of all array_schemas
+   * A map of all array_schemas_all
    */
-  std::unordered_map<std::string, tdb_shared_ptr<ArraySchema>> array_schemas_;
+  std::unordered_map<std::string, tdb_shared_ptr<ArraySchema>>
+      array_schemas_all_;
 
   /** The array URI. */
   URI array_uri_;
@@ -203,9 +203,6 @@ class OpenArray {
 
   /** Used to validate keys when opening an already opened array. */
   EncryptionKeyValidation key_validation_;
-
-  /** Filelock handle. */
-  filelock_t filelock_;
 
   /** The fragment metadata of the open array. */
   std::set<tdb_shared_ptr<FragmentMetadata>, cmp_frag_meta_ptr>

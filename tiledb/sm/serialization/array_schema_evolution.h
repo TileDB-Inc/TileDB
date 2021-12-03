@@ -1,5 +1,5 @@
 /**
- * @file   array_schema.h
+ * @file   array_schema_evolution.h
  *
  * @section LICENSE
  *

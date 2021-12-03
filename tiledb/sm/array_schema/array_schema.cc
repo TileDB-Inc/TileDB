@@ -93,7 +93,6 @@ ArraySchema::ArraySchema(const ArraySchema* array_schema) {
   allows_dups_ = array_schema->allows_dups_;
   array_uri_ = array_schema->array_uri_;
   uri_ = array_schema->uri_;
-  name_ = array_schema->name_;
   array_type_ = array_schema->array_type_;
   domain_ = nullptr;
   timestamp_range_ = array_schema->timestamp_range_;
@@ -111,6 +110,10 @@ ArraySchema::ArraySchema(const ArraySchema* array_schema) {
   attribute_map_.clear();
   for (auto attr : array_schema->attributes_)
     add_attribute(attr, false);
+
+  // This has to be the last thing set because add_attribute sets the name
+  // TODO: This behavior needs to be changed
+  name_ = array_schema->name_;
 }
 
 ArraySchema::~ArraySchema() {

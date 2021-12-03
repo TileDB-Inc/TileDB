@@ -160,23 +160,6 @@ bool is_int(const std::string& str);
 /** Returns `true` if the input string is an unsigned integer. */
 bool is_uint(const std::string& str);
 
-/**
- * Checks if a string starts with a certain prefix.
- *
- * @param value The base string.
- * @param prefix The prefix string to be tested.
- * @return *true* if *value* starts with the *prefix*, and *false* otherwise.
- */
-bool starts_with(const std::string& value, const std::string& prefix);
-
-/**
- * Checks if a string ends with a certain suffix.
- * @param value The base string.
- * @param suffix The suffix to be tested.
- * @return *true* if *value* ends with the *suffix*, and *false* otherwise.
- */
-bool ends_with(const std::string& value, const std::string& suffix);
-
 /** Converts the input value to string. */
 template <class T>
 std::string to_str(const T& value);
@@ -185,7 +168,9 @@ std::string to_str(const T& value);
 std::string to_str(const void* value, Datatype type);
 
 /** Returns the size of the common prefix between `a` and `b`. */
-uint64_t common_prefix_size(const std::string& a, const std::string& b);
+uint64_t common_prefix_size(
+    const std::basic_string_view<char>& a,
+    const std::basic_string_view<char>& b);
 
 }  // namespace parse
 

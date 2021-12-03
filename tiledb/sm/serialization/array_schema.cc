@@ -48,6 +48,7 @@
 #include "tiledb/sm/enums/filter_type.h"
 #include "tiledb/sm/enums/layout.h"
 #include "tiledb/sm/enums/serialization_type.h"
+#include "tiledb/sm/filter/filter_create.h"
 #include "tiledb/sm/misc/constants.h"
 #include "tiledb/sm/serialization/array_schema.h"
 
@@ -127,7 +128,7 @@ Status filter_pipeline_from_capnp(
   for (auto filter_reader : filter_list_reader) {
     FilterType type = FilterType::FILTER_NONE;
     RETURN_NOT_OK(filter_type_enum(filter_reader.getType().cStr(), &type));
-    tdb_unique_ptr<Filter> filter(Filter::create(type));
+    tdb_unique_ptr<Filter> filter(FilterCreate::make(type));
     if (filter == nullptr)
       return LOG_STATUS(Status::SerializationError(
           "Error deserializing filter pipeline; failed to create filter."));
@@ -844,7 +845,7 @@ Status nonempty_domain_serialize(
     return LOG_STATUS(Status::SerializationError(
         "Error serializing nonempty domain; nonempty domain is null."));
 
-  const auto* schema = array->array_schema();
+  const auto* schema = array->array_schema_latest();
   if (schema == nullptr)
     return LOG_STATUS(Status::SerializationError(
         "Error serializing nonempty domain; array schema is null."));
@@ -915,7 +916,7 @@ Status nonempty_domain_deserialize(
     return LOG_STATUS(Status::SerializationError(
         "Error deserializing nonempty domain; nonempty domain is null."));
 
-  const auto* schema = array->array_schema();
+  const auto* schema = array->array_schema_latest();
   if (schema == nullptr)
     return LOG_STATUS(Status::SerializationError(
         "Error deserializing nonempty domain; array schema is null."));
@@ -990,7 +991,7 @@ Status nonempty_domain_deserialize(
 
 Status nonempty_domain_serialize(
     Array* array, SerializationType serialize_type, Buffer* serialized_buffer) {
-  const auto* schema = array->array_schema();
+  const auto* schema = array->array_schema_latest();
   if (schema == nullptr)
     return LOG_STATUS(Status::SerializationError(
         "Error serializing nonempty domain; array schema is null."));
@@ -1101,7 +1102,7 @@ Status max_buffer_sizes_serialize(
     const void* subarray,
     SerializationType serialize_type,
     Buffer* serialized_buffer) {
-  const auto* schema = array->array_schema();
+  const auto* schema = array->array_schema_latest();
   if (schema == nullptr)
     return LOG_STATUS(Status::SerializationError(
         "Error serializing max buffer sizes; array schema is null."));

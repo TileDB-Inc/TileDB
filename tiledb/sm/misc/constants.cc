@@ -122,9 +122,6 @@ Compressor real_coords_compression = Compressor::ZSTD;
 /** The default compression level for the coordinates. */
 int coords_compression_level = -1;
 
-/** The filelock name. */
-const std::string filelock_name = "__lock.tdb";
-
 /** The special value for an empty int32. */
 const int empty_int32 = std::numeric_limits<int32_t>::min();
 

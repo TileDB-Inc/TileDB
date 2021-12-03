@@ -78,7 +78,7 @@ Query::Query(StorageManager* storage_manager, Array* array, URI fragment_uri)
     , fragment_uri_(fragment_uri) {
   if (array != nullptr) {
     assert(array->is_open());
-    array_schema_ = array->array_schema();
+    array_schema_ = array->array_schema_latest();
 
     auto st = array->get_query_type(&type_);
     assert(st.ok());
@@ -1017,17 +1017,41 @@ Status Query::create_strategy() {
         !array_schema_->dense() && layout_ == Layout::UNORDERED &&
         array_schema_->allows_dups()) {
       use_default = false;
-      strategy_ = tdb_unique_ptr<IQueryStrategy>(tdb_new(
-          SparseUnorderedWithDupsReader,
-          stats_->create_child("Reader"),
-          logger_,
-          storage_manager_,
-          array_,
-          config_,
-          buffers_,
-          subarray_,
-          layout_,
-          condition_));
+
+      bool found = false;
+      bool non_overlapping_ranges = false;
+      RETURN_NOT_OK(config_.get<bool>(
+          "sm.query.sparse_unordered_with_dups.non_overlapping_ranges",
+          &non_overlapping_ranges,
+          &found));
+      assert(found);
+
+      if (non_overlapping_ranges || !subarray_.is_set() ||
+          subarray_.range_num() == 1) {
+        strategy_ = tdb_unique_ptr<IQueryStrategy>(tdb_new(
+            SparseUnorderedWithDupsReader<uint8_t>,
+            stats_->create_child("Reader"),
+            logger_,
+            storage_manager_,
+            array_,
+            config_,
+            buffers_,
+            subarray_,
+            layout_,
+            condition_));
+      } else {
+        strategy_ = tdb_unique_ptr<IQueryStrategy>(tdb_new(
+            SparseUnorderedWithDupsReader<uint64_t>,
+            stats_->create_child("Reader"),
+            logger_,
+            storage_manager_,
+            array_,
+            config_,
+            buffers_,
+            subarray_,
+            layout_,
+            condition_));
+      }
     } else if (
         use_refactored_sparse_global_order_reader() &&
         !array_schema_->dense() &&
@@ -2017,25 +2041,71 @@ tdb_shared_ptr<Buffer> Query::rest_scratch() const {
 }
 
 bool Query::use_refactored_dense_reader() {
+  bool use_refactored_readers = false;
   bool found = false;
-  std::string val = config_.get("sm.query.dense.reader", &found);
+  // First check for legacy option
+  config_.get<bool>(
+      "sm.use_refactored_readers", &use_refactored_readers, &found);
+  // If the legacy/deprecated option is set use it over the new parameters
+  // This facilitates backwards compatibility
+  if (found) {
+    logger_->warn(
+        "sm.use_refactored_readers config option is deprecated.\nPlease use "
+        "'sm.query.dense.reader' with value of 'refactored' or 'legacy'");
+    return use_refactored_readers;
+  }
+
+  const std::string& val = config_.get("sm.query.dense.reader", &found);
   assert(found);
-  return val.compare("refactored") == 0;
+
+  return val == "refactored";
 }
 
 bool Query::use_refactored_sparse_global_order_reader() {
+  bool use_refactored_readers = false;
   bool found = false;
-  std::string val = config_.get("sm.query.sparse_global_order.reader", &found);
+  // First check for legacy option
+  config_.get<bool>(
+      "sm.use_refactored_readers", &use_refactored_readers, &found);
+  // If the legacy/deprecated option is set use it over the new parameters
+  // This facilitates backwards compatibility
+  if (found) {
+    logger_->warn(
+        "sm.use_refactored_readers config option is deprecated.\nPlease use "
+        "'sm.query.sparse_global_order.reader' with value of 'refactored' or "
+        "'legacy'");
+    return use_refactored_readers;
+  }
+
+  const std::string& val =
+      config_.get("sm.query.sparse_global_order.reader", &found);
   assert(found);
-  return val.compare("refactored") == 0;
+
+  return val == "refactored";
 }
 
 bool Query::use_refactored_sparse_unordered_with_dups_reader() {
+  bool use_refactored_readers = false;
   bool found = false;
-  std::string val =
+
+  // First check for legacy option
+  config_.get<bool>(
+      "sm.use_refactored_readers", &use_refactored_readers, &found);
+  // If the legacy/deprecated option is set use it over the new parameters
+  // This facilitates backwards compatibility
+  if (found) {
+    logger_->warn(
+        "sm.use_refactored_readers config option is deprecated.\nPlease use "
+        "'sm.query.sparse_unordered_with_dups.reader' with value of "
+        "'refactored' or 'legacy'");
+    return use_refactored_readers;
+  }
+
+  const std::string& val =
       config_.get("sm.query.sparse_unordered_with_dups.reader", &found);
   assert(found);
-  return val.compare("refactored") == 0;
+
+  return val == "refactored";
 }
 
 /* ****************************** */

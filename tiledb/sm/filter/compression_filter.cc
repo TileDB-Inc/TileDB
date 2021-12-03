@@ -31,6 +31,7 @@
  */
 
 #include "tiledb/sm/filter/compression_filter.h"
+#include "tiledb/common/common.h"
 #include "tiledb/common/heap_memory.h"
 #include "tiledb/common/logger.h"
 #include "tiledb/sm/buffer/buffer.h"
@@ -53,16 +54,17 @@ namespace tiledb {
 namespace sm {
 
 CompressionFilter::CompressionFilter(FilterType compressor, int level)
-    : Filter(compressor) {
-  compressor_ = filter_to_compressor(compressor);
-  level_ = level;
+    : Filter(compressor)
+    , compressor_(filter_to_compressor(compressor))
+    , level_(level)
+    , zstd_decompress_ctx_pool_(nullptr) {
 }
 
 CompressionFilter::CompressionFilter(Compressor compressor, int level)
-    : Filter(FilterType::FILTER_NONE) {
-  compressor_ = compressor;
-  level_ = level;
-  type_ = compressor_to_filter(compressor);
+    : Filter(compressor_to_filter(compressor))
+    , compressor_(compressor)
+    , level_(level)
+    , zstd_decompress_ctx_pool_(nullptr) {
 }
 
 Compressor CompressionFilter::compressor() const {
@@ -193,6 +195,7 @@ Status CompressionFilter::get_option_impl(
 }
 
 Status CompressionFilter::run_forward(
+    const Tile& tile,
     FilterBuffer* input_metadata,
     FilterBuffer* input,
     FilterBuffer* output_metadata,
@@ -216,9 +219,9 @@ Status CompressionFilter::run_forward(
        total_num_parts = num_data_parts + num_metadata_parts;
   uint64_t output_size_ub = 0;
   for (const auto& part : metadata_parts)
-    output_size_ub += part.size() + overhead(part.size());
+    output_size_ub += part.size() + overhead(tile, part.size());
   for (const auto& part : data_parts)
-    output_size_ub += part.size() + overhead(part.size());
+    output_size_ub += part.size() + overhead(tile, part.size());
 
   // Ensure space in output buffer for worst case.
   RETURN_NOT_OK(output->prepend_buffer(output_size_ub));
@@ -235,14 +238,15 @@ Status CompressionFilter::run_forward(
 
   // Compress all parts.
   for (auto& part : metadata_parts)
-    RETURN_NOT_OK(compress_part(&part, buffer_ptr, output_metadata));
+    RETURN_NOT_OK(compress_part(tile, &part, buffer_ptr, output_metadata));
   for (auto& part : data_parts)
-    RETURN_NOT_OK(compress_part(&part, buffer_ptr, output_metadata));
+    RETURN_NOT_OK(compress_part(tile, &part, buffer_ptr, output_metadata));
 
   return Status::Ok();
 }
 
 Status CompressionFilter::run_reverse(
+    const Tile& tile,
     FilterBuffer* input_metadata,
     FilterBuffer* input,
     FilterBuffer* output_metadata,
@@ -271,21 +275,24 @@ Status CompressionFilter::run_reverse(
   assert(metadata_buffer != nullptr);
 
   for (uint32_t i = 0; i < num_metadata_parts; i++)
-    RETURN_NOT_OK(decompress_part(input, metadata_buffer, input_metadata));
+    RETURN_NOT_OK(
+        decompress_part(tile, input, metadata_buffer, input_metadata));
   for (uint32_t i = 0; i < num_data_parts; i++)
-    RETURN_NOT_OK(decompress_part(input, data_buffer, input_metadata));
+    RETURN_NOT_OK(decompress_part(tile, input, data_buffer, input_metadata));
 
   return Status::Ok();
 }
 
 Status CompressionFilter::compress_part(
-    ConstBuffer* part, Buffer* output, FilterBuffer* output_metadata) const {
+    const Tile& tile,
+    ConstBuffer* part,
+    Buffer* output,
+    FilterBuffer* output_metadata) const {
   // Create const buffer
   ConstBuffer input_buffer(part->data(), part->size());
 
-  auto tile = pipeline_->current_tile();
-  auto cell_size = tile->cell_size();
-  auto type = tile->type();
+  auto cell_size = tile.cell_size();
+  auto type = tile.type();
 
   // Invoke the proper compressor
   uint32_t orig_size = (uint32_t)output->size();
@@ -326,10 +333,12 @@ Status CompressionFilter::compress_part(
 }
 
 Status CompressionFilter::decompress_part(
-    FilterBuffer* input, Buffer* output, FilterBuffer* input_metadata) const {
-  auto tile = pipeline_->current_tile();
-  auto cell_size = tile->cell_size();
-  auto type = tile->type();
+    const Tile& tile,
+    FilterBuffer* input,
+    Buffer* output,
+    FilterBuffer* input_metadata) const {
+  auto cell_size = tile.cell_size();
+  auto type = tile.type();
 
   // Read the part metadata
   uint32_t compressed_size, uncompressed_size;
@@ -359,7 +368,8 @@ Status CompressionFilter::decompress_part(
       st = GZip::decompress(&input_buffer, &output_buffer);
       break;
     case Compressor::ZSTD:
-      st = ZStd::decompress(&input_buffer, &output_buffer);
+      st = ZStd::decompress(
+          zstd_decompress_ctx_pool_, &input_buffer, &output_buffer);
       break;
     case Compressor::LZ4:
       st = LZ4::decompress(&input_buffer, &output_buffer);
@@ -383,9 +393,8 @@ Status CompressionFilter::decompress_part(
   return st;
 }
 
-uint64_t CompressionFilter::overhead(uint64_t nbytes) const {
-  auto tile = pipeline_->current_tile();
-  auto cell_size = tile->cell_size();
+uint64_t CompressionFilter::overhead(const Tile& tile, uint64_t nbytes) const {
+  auto cell_size = tile.cell_size();
 
   switch (compressor_) {
     case Compressor::GZIP:
@@ -421,6 +430,14 @@ Status CompressionFilter::deserialize_impl(ConstBuffer* buff) {
   RETURN_NOT_OK(buff->read(&level_, sizeof(int32_t)));
 
   return Status::Ok();
+}
+
+void CompressionFilter::init_resource_pool(uint64_t size) {
+  if (zstd_decompress_ctx_pool_ == nullptr) {
+    zstd_decompress_ctx_pool_ =
+        tdb::make_shared<ResourcePool<ZStd::ZSTD_Decompress_Context>>(
+            HERE(), size);
+  }
 }
 
 }  // namespace sm
