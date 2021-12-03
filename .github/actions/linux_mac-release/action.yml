@@ -129,6 +129,7 @@ runs:
         cd $GITHUB_WORKSPACE/..
         pwd
         tar --exclude=build -vzcf tiledb-source-${{ env.ARTIFACT_OS }}-build-dir-${{ env.ARTIFACT_EXTRAS }}.tar.gz ./TileDB
+        ls -l $GITHUB_WORKSPACE/..
         sync
         #sleep 10
         # move up a directory level so we are writing archive where tar won't fail reporting change while reading...
@@ -137,10 +138,14 @@ runs:
         #tar -zcf tiledb-${{ env.ARTIFACT_OS }}-build-dir-${{ env.ARTIFACT_EXTRAS }}.tar.gz $GITHUB_WORKSPACE/build
         tar -vzcf tiledb-binary-${{ env.ARTIFACT_OS }}-build-dir-${{ env.ARTIFACT_EXTRAS }}.tar.gz ./TileDB/build
         ls -l $GITHUB_WORKSPACE/..
+        sync
         TDB_SOURCE_ARCHIVE_PATH=`dirname $GITHUB_WORKSPACE/..`/tiledb-source-${{ env.ARTIFACT_OS }}-build-dir-${{ env.ARTIFACT_EXTRAS }}.tar.gz
         echo "TDB_SOURCE_ARCHIVE_PATH=$TDB_SOURCE_ARCHIVE_PATH"
         echo -e "import sys\nimport os\nprint (os.path.realpath(\"$TDB_SOURCE_ARCHIVE_PATH\"))\n" | /opt/rh/rh-python36/root/usr/bin/python
-        TDB_SOURCE_ARCHIVE_PATH=$(echo -e "import sys\nimport os\nprint (os.path.realpath(\"$TDB_SOURCE_ARCHIVE_PATH\"))\n" | /opt/rh/rh-python36/root/usr/bin/python)
+        #would like to use 'realpath', but seems not present in manylinux, and failed finding package that has it, whereas
+        #seems python functionality is present in all environs.
+        #TDB_SOURCE_ARCHIVE_PATH=$(echo -e "import sys\nimport os\nprint (os.path.realpath(\"$TDB_SOURCE_ARCHIVE_PATH\"))\n" | /opt/rh/rh-python36/root/usr/bin/python)
+        TDB_SOURCE_ARCHIVE_PATH=$(echo -e "import sys\nimport os\nprint (os.path.realpath(\"$TDB_SOURCE_ARCHIVE_PATH\"))\n" | python)
         echo "TDB_SOURCE_ARCHIVE_PATH=$TDB_SOURCE_ARCHIVE_PATH"
         #TDB_SOURCE_ARCHIVE_PATH=`dirname $TDB_SOURCE_ARCHIVE_PATH`
         #echo "TDB_SOURCE_ARCHIVE_PATH=$TDB_SOURCE_ARCHIVE_PATH"
@@ -148,8 +153,10 @@ runs:
 
         TDB_BINARY_ARCHIVE_PATH=`dirname $GITHUB_WORKSPACE/..`/tiledb-binary-${{ env.ARTIFACT_OS }}-build-dir-${{ env.ARTIFACT_EXTRAS }}.tar.gz
         echo "TDB_BINARY_ARCHIVE_PATH=$TDB_BINARY_ARCHIVE_PATH"
+        #'realpath' not available everywhere, see comment above.
         echo -e "import sys\nimport os\nprint (os.path.realpath(\"$TDB_BINARY_ARCHIVE_PATH\"))\n" | /opt/rh/rh-python36/root/usr/bin/python
-        TDB_BINARY_ARCHIVE_PATH=$(echo -e "import sys\nimport os\nprint (os.path.realpath(\"$TDB_BINARY_ARCHIVE_PATH\"))\n" | /opt/rh/rh-python36/root/usr/bin/python)
+        #TDB_BINARY_ARCHIVE_PATH=$(echo -e "import sys\nimport os\nprint (os.path.realpath(\"$TDB_BINARY_ARCHIVE_PATH\"))\n" | /opt/rh/rh-python36/root/usr/bin/python)
+        TDB_BINARY_ARCHIVE_PATH=$(echo -e "import sys\nimport os\nprint (os.path.realpath(\"$TDB_BINARY_ARCHIVE_PATH\"))\n" | python)
         #TDB_BINARY_ARCHIVE_PATH=`dirname $TDB_BINARY_ARCHIVE_PATH`
         echo "TDB_BINARY_ARCHIVE_PATH=$TDB_BINARY_ARCHIVE_PATH"
         #echo "ARTIFACT_EXTRAS=$ARTIFACT_EXTRAS" >> "$GITHUB_ENV"
