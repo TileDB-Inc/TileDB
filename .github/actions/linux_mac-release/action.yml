@@ -206,7 +206,13 @@ runs:
         else
           echo "couldn't figure out who I am"
         fi
-        sudo ls -l
+        #no sudo... sudo ls -l
+        if [[ $(ls -l /) ]]; then
+          ls -l /
+        else
+          echo "unable to ls -l /"
+        fi
+        ls -l
         sync
 
     - name: 'ArchiveFiles@2' # https://github.com/actions/upload-artifact#where-does-the-upload-go
