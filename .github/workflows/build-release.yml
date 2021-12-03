@@ -57,6 +57,17 @@ jobs:
       image: 'quay.io/pypa/manylinux2010_x86_64:2021-11-07-28723f3'      
       options: "--entrypoint /bin/bash"
     steps:
+      - name: 'are we in container?'
+        shell: baseh
+        run: |
+        if [[ $(ls -l /etc/system-release) ]]; then
+          echo "found system-release"
+          cat /etc/system-release
+        else
+          echo "did not find system-release"
+        fi
+        exit 45
+
       - uses: actions/checkout@v1
 
       - uses: ./.github/actions/linux_mac-release
