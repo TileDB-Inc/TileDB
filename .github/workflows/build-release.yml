@@ -101,10 +101,11 @@ jobs:
       - name: diagnosing
         shell: bash
         run: |
+          set -x
           whoami
           echo $HOME
           pwd
-          ls -l -d */
+          ls -l 
           sudo find . -name '*.tar.gz'
           
       #- name: 'ArchiveFiles@2 B' # https://github.com/actions/upload-artifact#where-does-the-upload-go
