@@ -32,6 +32,9 @@ include(common NO_POLICY_SCOPE)
 add_library(filter OBJECT filter.cc filter_buffer.cc filter_storage.cc)
 target_link_libraries(filter PUBLIC baseline $<TARGET_OBJECTS:baseline>)
 target_link_libraries(filter PUBLIC buffer $<TARGET_OBJECTS:buffer>)
+
+find_package(Zstd_EP REQUIRED)
+target_link_libraries(filter PUBLIC Zstd::Zstd)
 #
 # Test-compile of object library ensures link-completeness
 #
