@@ -98,6 +98,11 @@ tiledb::sm::FilterCreate::deserialize(
   int compression_level;
   uint32_t max_window_size;
   auto offset = buff->offset();
+  if ((buff->size() - offset) < filter_metadata_len) {
+    return {Status::FilterError(
+                "Deserialization error; no enough data in buffer for metadata"),
+            std::nullopt};
+  }
   switch (filtertype) {
     case FilterType::FILTER_NONE:
       filter = tiledb::common::make_shared<NoopFilter>(HERE());
@@ -161,12 +166,6 @@ tiledb::sm::FilterCreate::deserialize(
       assert(false);
       st = Status::FilterError("Deserialization error; unknown type");
       break;
-  }
-
-  if (buff->offset() - offset != filter_metadata_len) {
-    return {Status::FilterError(
-                "Deserialization error; unexpected metadata length"),
-            std::nullopt};
   }
 
   return {Status::Ok(), filter};
