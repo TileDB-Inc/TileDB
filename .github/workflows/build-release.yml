@@ -44,7 +44,16 @@ jobs:
 
       - uses: ./.github/actions/linux_mac-release
 
+  configure-for-manylinux-container:
+    runs-on: ubuntu-20.04
+    outputs:
+      uid_gid: ${{ steps.get-user.outputs.uid_gid }}
+    steps:
+      - id: get-user
+        run: echo "::set-output name=uid_gid::$(id -u):$(id -g)"
+          
   build-release-manylinux:
+    needs: configure-for-manylinux-container
     runs-on: ubuntu-20.04
     env:
       CXX: g++
@@ -56,17 +65,18 @@ jobs:
     container: #${{ matrix.os.image }} # TBD: Is this/that right location for image?
       image: 'quay.io/pypa/manylinux2010_x86_64:2021-11-07-28723f3'      
       #options: "--entrypoint /bin/bash"
+      options: --user ${{ needs.configure-for-manylinux-container.outputs.uid_gid }}
     steps:
-      - name: 'are we in container?'
-        shell: bash
-        run: |
-          if [[ $(ls -l /etc/system-release) ]]; then
-            echo "found system-release"
-            cat /etc/system-release
-          else
-            echo "did not find system-release"
-          fi
-          exit 45
+      #~ - name: 'are we in container?'
+        #~ shell: bash
+        #~ run: |
+          #~ if [[ $(ls -l /etc/system-release) ]]; then
+            #~ echo "found system-release"
+            #~ cat /etc/system-release
+          #~ else
+            #~ echo "did not find system-release"
+          #~ fi
+          #~ exit 45
 
       - uses: actions/checkout@v1
 
