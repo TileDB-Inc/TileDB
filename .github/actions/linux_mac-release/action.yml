@@ -139,6 +139,7 @@ runs:
         echo "env.GITHUB_SHA is ${{ env.GITHUB_SHA }}"
         echo "env.ARTIFACT_OS is ${{ env.ARTIFACT_OS }}"
         echo "env.ARTIFACT_EXTRAS is ${{ env.ARTIFACT_EXTRAS }}"
+        echo "tiledb-${{ env.ARTIFACT_OS }}-build-dir-${{ env.ARTIFACT_EXTRAS }}.tar.gz"
         sync
 
     - name: 'ArchiveFiles@2' # https://github.com/actions/upload-artifact#where-does-the-upload-go
@@ -146,14 +147,15 @@ runs:
       #uses: actions/upload-artifact@v2
       uses: actions/upload-artifact@v1
       with:
-        retention-days: 10
+        # @v1 does not recognize 'retention-days', 'if-no-files-found'
+        #retention-days: 10
         #name: "${{ runner.name }}.coredumps.${{ github.job }}.${{ github.run_number }}.${{github.run_id}}.${{github.run_attempt}}"
         #name: tiledb-$(ARTIFACT_OS)-build-dir-$(ARTIFACT_EXTRAS).tar.gz
-        name: tiledb-${{ env.ARTIFACT_OS }}-build-dir-${{ env.ARTIFACT_EXTRAS }}.tar.gz
-        if-no-files-found: warn # 'ignore/', 'warn' or 'error' are available, defaults to `warn`
+        name: tiledb-${{ env.ARTIFACT_OS }}-build-dir-${{ env.ARTIFACT_EXTRAS }}.${{github.job}}.tar.gz
+        #if-no-files-found: warn # 'ignore/', 'warn' or 'error' are available, defaults to `warn`
+        #${{ env.GITHUB_WORKSPACE }}/
+        #!${{ env.GITHUB_WORKSPACE }}/build/
         path: |
-          #${{ env.GITHUB_WORKSPACE }}/
-          #!${{ env.GITHUB_WORKSPACE }}/build/
           tiledb-${{ env.ARTIFACT_OS }}-build-dir-${{ env.ARTIFACT_EXTRAS }}.tar.gz
 
     - name: Git Hash 7-digit
@@ -168,15 +170,16 @@ runs:
         echo "::set-output name=commitHash::$commitHash" # TBD: make status check pass for this hack step
         
     - name: 'ArchiveFiles@2' # https://github.com/actions/upload-artifact#where-does-the-upload-go
+        # @v1 does not recognize 'retention-days', 'if-no-files-found'
       #if: ${{ failure() == true && startsWith(runner.name, 'macos-') == true }} # only run this job if the build step failed
       #uses: actions/upload-artifact@v2
       uses: actions/upload-artifact@v1
       with:
-        retention-days: 10
+        #retention-days: 10
         #name: "${{ runner.name }}.coredumps.${{ github.job }}.${{ github.run_number }}.${{github.run_id}}.${{github.run_attempt}}"
         #name: tiledb-$(ARTIFACT_OS)-build-dir-$(ARTIFACT_EXTRAS).tar.gz
-        name: tiledb-${{ env.ARTIFACT_OS }}-build-dir-${{ env.ARTIFACT_EXTRAS }}.tar.gz
-        if-no-files-found: warn # 'ignore/', 'warn' or 'error' are available, defaults to `warn`
+        name: tiledb-${{ env.ARTIFACT_OS }}-build-dir-${{ env.ARTIFACT_EXTRAS }}.${{github.job}}.tar.gz
+        #if-no-files-found: warn # 'ignore/', 'warn' or 'error' are available, defaults to `warn`
+        #${{ env.GITHUB_WORKSPACE }}/build/
         path: |
-          #${{ env.GITHUB_WORKSPACE }}/build/
           tiledb-${{ env.ARTIFACT_OS }}-build-dir-${{ env.ARTIFACT_EXTRAS }}.tar.gz
