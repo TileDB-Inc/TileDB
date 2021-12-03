@@ -200,6 +200,7 @@ runs:
         #~ fi
         #~ pwd
         find / -name 'tiledb-*-linux-build-*.tar.gz' -exec ls -l {} \;
+        printenv
         sync
 
     - name: 'ArchiveFiles@2' # https://github.com/actions/upload-artifact#where-does-the-upload-go
