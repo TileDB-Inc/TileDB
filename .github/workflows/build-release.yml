@@ -58,7 +58,7 @@ jobs:
       options: "--entrypoint /bin/bash"
     steps:
       - name: 'are we in container?'
-        shell: baseh
+        shell: bash
         run: |
           if [[ $(ls -l /etc/system-release) ]]; then
             echo "found system-release"
