@@ -144,18 +144,14 @@ class Range {
     std::memcpy(&range_[0], start, fixed_size);
   }
 
-  /** Returns the start as a string. */
-  std::string start_str() const {
-    if (start_size() == 0)
-      return std::string();
-    return std::string((const char*)start(), start_size());
+  /** Returns the start as a string view. */
+  std::basic_string_view<char> start_str() const {
+    return std::basic_string_view<char>((const char*)start(), start_size());
   }
 
-  /** Returns the end as a string. */
-  std::string end_str() const {
-    if (end_size() == 0)
-      return std::string();
-    return std::string((const char*)end(), end_size());
+  /** Returns the end as a string view. */
+  std::basic_string_view<char> end_str() const {
+    return std::basic_string_view<char>((const char*)end(), end_size());
   }
 
   /**

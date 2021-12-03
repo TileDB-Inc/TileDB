@@ -27,5 +27,6 @@
 include(common-root)
 
 add_subdirectory(buffer)
+add_subdirectory(filter)
 add_subdirectory(misc)
 add_subdirectory(stats)

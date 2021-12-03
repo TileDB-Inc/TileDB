@@ -56,6 +56,7 @@
 #include "tiledb/sm/filesystem/vfs.h"
 #include "tiledb/sm/filesystem/vfs_file_handle.h"
 #include "tiledb/sm/filter/compression_filter.h"
+#include "tiledb/sm/filter/filter_create.h"
 #include "tiledb/sm/filter/filter_pipeline.h"
 #include "tiledb/sm/misc/utils.h"
 #include "tiledb/sm/query/query.h"
@@ -1353,7 +1354,7 @@ int32_t tiledb_filter_alloc(
 
   // Create a new Filter object of the given type
   (*filter)->filter_ =
-      tiledb::sm::Filter::create(static_cast<tiledb::sm::FilterType>(type));
+      tiledb::sm::FilterCreate::make(static_cast<tiledb::sm::FilterType>(type));
   if ((*filter)->filter_ == nullptr) {
     delete *filter;
     *filter = nullptr;

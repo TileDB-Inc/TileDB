@@ -338,10 +338,6 @@ bool Tile::stores_coords() const {
   return dim_num_ > 0;
 }
 
-Datatype Tile::type() const {
-  return type_;
-}
-
 Status Tile::write(ConstBuffer* buf) {
   assert(!filtered());
   RETURN_NOT_OK(buffer_->write(buf->cur_data(), buf->size()));
