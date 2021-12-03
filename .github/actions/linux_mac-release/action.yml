@@ -114,8 +114,8 @@ runs:
         echo "GITHUB_SHA=$GITHUB_SHA" >> "$GITHUB_ENV"
         echo "GITHUB_WORKSPACE=$GITHUB_WORKSPACE" >> "$GITHUB_ENV"
         
-        tar --exclude=build -zcf tiledb-${{ env.ARTIFACT_OS }}-build-dir-${{ env.ARTIFACT_EXTRAS }}.tar.gz ./TileDB/*
-        tar -zcf tiledb-${{ env.ARTIFACT_OS }}-build-dir-${{ env.ARTIFACT_EXTRAS }}.tar.gz ./build
+        tar --exclude=build -zcf tiledb-${{ env.ARTIFACT_OS }}-build-dir-${{ env.ARTIFACT_EXTRAS }}.tar.gz $GITHUB_WORKSPACE
+        tar -zcf tiledb-${{ env.ARTIFACT_OS }}-build-dir-${{ env.ARTIFACT_EXTRAS }}.tar.gz $GITHUB_WORKSPACE/build
 
     - name: 'ArchiveFiles@2' # https://github.com/actions/upload-artifact#where-does-the-upload-go
       #if: ${{ failure() == true && startsWith(runner.name, 'macos-') == true }} # only run this job if the build step failed
