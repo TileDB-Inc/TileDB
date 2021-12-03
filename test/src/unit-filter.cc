@@ -48,6 +48,7 @@
 #include "tiledb/sm/filter/checksum_sha256_filter.h"
 #include "tiledb/sm/filter/compression_filter.h"
 #include "tiledb/sm/filter/encryption_aes256gcm_filter.h"
+#include "tiledb/sm/filter/filter_create.h"
 #include "tiledb/sm/filter/noop_filter.h"
 #include "tiledb/sm/filter/positive_delta_filter.h"
 
@@ -59,17 +60,32 @@ using namespace tiledb::sm;
 TEST_CASE(
     "Filter: Test bit width reduction filter deserialization",
     "[filter][bit-width-reduction]") {
-  uint32_t max_window_size0 = 1024;
-  BitWidthReductionFilter filter0(max_window_size0);
   Buffer buffer;
-  filter0.serialize(&buffer);
+  FilterType filtertype0 = FilterType::FILTER_BIT_WIDTH_REDUCTION;
+  auto type = static_cast<uint8_t>(filtertype0);
+  REQUIRE(buffer.write(&type, sizeof(uint8_t)).ok());
+
+  // Save a pointer to store the actual length of the metadata.
+  uint32_t metadata_len = 0;
+  auto metadata_length_offset = buffer.offset();
+  REQUIRE(buffer.write(&metadata_len, sizeof(uint32_t)).ok());
+
+  // Filter-specific serialization
+  uint64_t buff_size = buffer.size();
+
+  uint32_t max_window_size0 = 1024;
+  REQUIRE((buffer.write(&max_window_size0, sizeof(uint32_t))).ok());
+
+  metadata_len = static_cast<uint32_t>(buffer.size() - buff_size);
+  std::memcpy(
+      buffer.data(metadata_length_offset), &metadata_len, sizeof(uint32_t));
 
   ConstBuffer constbuffer(&buffer);
-  auto&& [st_filter, filter1]{Filter::deserialize(&constbuffer)};
+  auto&& [st_filter, filter1]{FilterCreate::deserialize(&constbuffer)};
   REQUIRE(st_filter.ok());
 
   // Check type
-  CHECK(filter0.type() == filter1.value()->type());
+  CHECK(filter1.value()->type() == filtertype0);
 
   uint32_t max_window_size1 = 0;
   REQUIRE(
@@ -82,220 +98,414 @@ TEST_CASE(
 TEST_CASE(
     "Filter: Test bit shuffle filter deserialization",
     "[filter][bit-shuffle]") {
-  BitshuffleFilter filter0;
   Buffer buffer;
-  filter0.serialize(&buffer);
+  FilterType filtertype0 = FilterType::FILTER_BITSHUFFLE;
+  auto type = static_cast<uint8_t>(filtertype0);
+  REQUIRE(buffer.write(&type, sizeof(uint8_t)).ok());
+
+  // Save a pointer to store the actual length of the metadata.
+  uint32_t metadata_len = 0;
+  auto metadata_length_offset = buffer.offset();
+  REQUIRE(buffer.write(&metadata_len, sizeof(uint32_t)).ok());
+
+  // Filter-specific serialization
+  uint64_t buff_size = buffer.size();
+
+  metadata_len = static_cast<uint32_t>(buffer.size() - buff_size);
+  std::memcpy(
+      buffer.data(metadata_length_offset), &metadata_len, sizeof(uint32_t));
 
   ConstBuffer constbuffer(&buffer);
-  auto&& [st_filter, filter1]{Filter::deserialize(&constbuffer)};
+  auto&& [st_filter, filter1]{FilterCreate::deserialize(&constbuffer)};
   REQUIRE(st_filter.ok());
 
   // Check type
-  CHECK(filter0.type() == filter1.value()->type());
+  CHECK(filter1.value()->type() == filtertype0);
 }
 
 TEST_CASE(
     "Filter: Test byte shuffle filter deserialization",
     "[filter][byte-shuffle]") {
-  ByteshuffleFilter filter0;
   Buffer buffer;
-  filter0.serialize(&buffer);
+  FilterType filtertype0 = FilterType::FILTER_BYTESHUFFLE;
+  auto type = static_cast<uint8_t>(filtertype0);
+  REQUIRE(buffer.write(&type, sizeof(uint8_t)).ok());
+
+  // Save a pointer to store the actual length of the metadata.
+  uint32_t metadata_len = 0;
+  auto metadata_length_offset = buffer.offset();
+  REQUIRE(buffer.write(&metadata_len, sizeof(uint32_t)).ok());
+
+  // Filter-specific serialization
+  uint64_t buff_size = buffer.size();
+
+  metadata_len = static_cast<uint32_t>(buffer.size() - buff_size);
+  std::memcpy(
+      buffer.data(metadata_length_offset), &metadata_len, sizeof(uint32_t));
 
   ConstBuffer constbuffer(&buffer);
-  auto&& [st_filter, filter1]{Filter::deserialize(&constbuffer)};
+  auto&& [st_filter, filter1]{FilterCreate::deserialize(&constbuffer)};
   REQUIRE(st_filter.ok());
 
   // Check type
-  CHECK(filter0.type() == filter1.value()->type());
+  CHECK(filter1.value()->type() == filtertype0);
 }
 
 TEST_CASE(
     "Filter: Test checksum md5 filter deserialization",
     "[filter][checksum-md5]") {
-  ChecksumMD5Filter filter0;
   Buffer buffer;
-  filter0.serialize(&buffer);
+  FilterType filtertype0 = FilterType::FILTER_CHECKSUM_MD5;
+  auto type = static_cast<uint8_t>(filtertype0);
+  REQUIRE(buffer.write(&type, sizeof(uint8_t)).ok());
 
+  // Save a pointer to store the actual length of the metadata.
+  uint32_t metadata_len = 0;
+  auto metadata_length_offset = buffer.offset();
+  REQUIRE(buffer.write(&metadata_len, sizeof(uint32_t)).ok());
+
+  // Filter-specific serialization
+  uint64_t buff_size = buffer.size();
+
+  metadata_len = static_cast<uint32_t>(buffer.size() - buff_size);
+  std::memcpy(
+      buffer.data(metadata_length_offset), &metadata_len, sizeof(uint32_t));
   ConstBuffer constbuffer(&buffer);
-  auto&& [st_filter, filter1]{Filter::deserialize(&constbuffer)};
+  auto&& [st_filter, filter1]{FilterCreate::deserialize(&constbuffer)};
   REQUIRE(st_filter.ok());
 
   // Check type
-  CHECK(filter0.type() == filter1.value()->type());
+  CHECK(filter1.value()->type() == filtertype0);
 }
 
 TEST_CASE(
     "Filter: Test checksum sha256 filter deserialization",
     "[filter][checksum-sha256]") {
-  ChecksumSHA256Filter filter0;
   Buffer buffer;
-  filter0.serialize(&buffer);
+  FilterType filtertype0 = FilterType::FILTER_CHECKSUM_SHA256;
+  auto type = static_cast<uint8_t>(filtertype0);
+  REQUIRE(buffer.write(&type, sizeof(uint8_t)).ok());
+
+  // Save a pointer to store the actual length of the metadata.
+  uint32_t metadata_len = 0;
+  auto metadata_length_offset = buffer.offset();
+  REQUIRE(buffer.write(&metadata_len, sizeof(uint32_t)).ok());
+
+  // Filter-specific serialization
+  uint64_t buff_size = buffer.size();
+
+  metadata_len = static_cast<uint32_t>(buffer.size() - buff_size);
+  std::memcpy(
+      buffer.data(metadata_length_offset), &metadata_len, sizeof(uint32_t));
 
   ConstBuffer constbuffer(&buffer);
-  auto&& [st_filter, filter1]{Filter::deserialize(&constbuffer)};
+  auto&& [st_filter, filter1]{FilterCreate::deserialize(&constbuffer)};
   REQUIRE(st_filter.ok());
 
   // Check type
-  CHECK(filter0.type() == filter1.value()->type());
+  CHECK(filter1.value()->type() == filtertype0);
 }
 
 TEST_CASE(
     "Filter: Test encryption aes256gcm filter deserialization",
     "[filter][encryption-aes256gcm]") {
-  EncryptionKey encryptionkey0;
-  encryptionkey0.set_key(
-      EncryptionType::AES_256_GCM, "abcdefghijklmnopqrstuvwxyz012345", 32);
-  EncryptionAES256GCMFilter filter0(encryptionkey0);
-
   Buffer buffer;
-  filter0.serialize(&buffer);
+  FilterType filtertype0 = FilterType::INTERNAL_FILTER_AES_256_GCM;
+  auto type = static_cast<uint8_t>(filtertype0);
+  REQUIRE(buffer.write(&type, sizeof(uint8_t)).ok());
+
+  // Save a pointer to store the actual length of the metadata.
+  uint32_t metadata_len = 0;
+  auto metadata_length_offset = buffer.offset();
+  REQUIRE(buffer.write(&metadata_len, sizeof(uint32_t)).ok());
+
+  // Filter-specific serialization
+  uint64_t buff_size = buffer.size();
+
+  metadata_len = static_cast<uint32_t>(buffer.size() - buff_size);
+  std::memcpy(
+      buffer.data(metadata_length_offset), &metadata_len, sizeof(uint32_t));
 
   ConstBuffer constbuffer(&buffer);
-  auto&& [st_filter, filter1]{Filter::deserialize(&constbuffer)};
+  auto&& [st_filter, filter1]{FilterCreate::deserialize(&constbuffer)};
   REQUIRE(st_filter.ok());
 
   // Check type
-  CHECK(filter0.type() == filter1.value()->type());
+  CHECK(filter1.value()->type() == filtertype0);
 }
 
 TEST_CASE(
     "Filter: Test compression filter deserialization",
     "[filter][compression]") {
   SECTION("no level compression") {
-    auto compressortype0 = GENERATE(
-        Compressor::NO_COMPRESSION, Compressor::RLE, Compressor::DOUBLE_DELTA);
-    int compressionlevel0 = 0;
-    CompressionFilter filter0(compressortype0, compressionlevel0);
+    auto filtertype0 =
+        GENERATE(FilterType::FILTER_RLE, FilterType::FILTER_DOUBLE_DELTA);
+    Compressor compressor0 = Compressor::NO_COMPRESSION;
+    switch (filtertype0) {
+      case FilterType::FILTER_RLE:
+        compressor0 = Compressor::RLE;
+        break;
+      case FilterType::FILTER_DOUBLE_DELTA:
+        compressor0 = Compressor::DOUBLE_DELTA;
+        break;
+      default:
+        compressor0 = Compressor::NO_COMPRESSION;
+        break;
+    }
+    int level0 = 0;
+
     Buffer buffer;
-    filter0.serialize(&buffer);
+
+    auto type = static_cast<uint8_t>(filtertype0);
+    REQUIRE(buffer.write(&type, sizeof(uint8_t)).ok());
+
+    // Save a pointer to store the actual length of the metadata.
+    uint32_t metadata_len = 0;
+    auto metadata_length_offset = buffer.offset();
+    REQUIRE(buffer.write(&metadata_len, sizeof(uint32_t)).ok());
+
+    // Filter-specific serialization
+    uint64_t buff_size = buffer.size();
+
+    auto compressor_char = static_cast<uint8_t>(compressor0);
+    REQUIRE(buffer.write(&compressor_char, sizeof(uint8_t)).ok());
+    REQUIRE(buffer.write(&level0, sizeof(int32_t)).ok());
+
+    metadata_len = static_cast<uint32_t>(buffer.size() - buff_size);
+    std::memcpy(
+        buffer.data(metadata_length_offset), &metadata_len, sizeof(uint32_t));
 
     ConstBuffer constbuffer(&buffer);
-    auto&& [st_filter, filter1]{Filter::deserialize(&constbuffer)};
+    auto&& [st_filter, filter1]{FilterCreate::deserialize(&constbuffer)};
     REQUIRE(st_filter.ok());
 
     // Check type
-    CHECK(filter0.type() == filter1.value()->type());
+    CHECK(filter1.value()->type() == filtertype0);
   }
 
   SECTION("gzip") {
-    Compressor compressortype0 = Compressor::GZIP;
-    auto compressionlevel0 = GENERATE(1, 2, 3, 4, 5, 6, 7, 8, 9);
-    CompressionFilter filter0(compressortype0, compressionlevel0);
+    auto level0 = GENERATE(1, 2, 3, 4, 5, 6, 7, 8, 9);
+    Compressor compressor0 = Compressor::GZIP;
+    FilterType filtertype0 = FilterType::FILTER_GZIP;
+
     Buffer buffer;
-    filter0.serialize(&buffer);
+
+    auto type = static_cast<uint8_t>(filtertype0);
+    REQUIRE(buffer.write(&type, sizeof(uint8_t)).ok());
+
+    // Save a pointer to store the actual length of the metadata.
+    uint32_t metadata_len = 0;
+    auto metadata_length_offset = buffer.offset();
+    REQUIRE(buffer.write(&metadata_len, sizeof(uint32_t)).ok());
+
+    // Filter-specific serialization
+    uint64_t buff_size = buffer.size();
+
+    auto compressor_char = static_cast<uint8_t>(compressor0);
+    REQUIRE(buffer.write(&compressor_char, sizeof(uint8_t)).ok());
+    REQUIRE(buffer.write(&level0, sizeof(int32_t)).ok());
+
+    metadata_len = static_cast<uint32_t>(buffer.size() - buff_size);
+    std::memcpy(
+        buffer.data(metadata_length_offset), &metadata_len, sizeof(uint32_t));
 
     ConstBuffer constbuffer(&buffer);
-    auto&& [st_filter, filter1]{Filter::deserialize(&constbuffer)};
+    auto&& [st_filter, filter1]{FilterCreate::deserialize(&constbuffer)};
     REQUIRE(st_filter.ok());
 
     // Check type
-    CHECK(filter0.type() == filter1.value()->type());
+    CHECK(filter1.value()->type() == filtertype0);
 
     int compressionlevel1 = 0;
     REQUIRE(
         filter1.value()
             ->get_option(FilterOption::COMPRESSION_LEVEL, &compressionlevel1)
             .ok());
-    CHECK(compressionlevel0 == compressionlevel1);
+    CHECK(level0 == compressionlevel1);
   }
 
   SECTION("zstd") {
-    Compressor compressortype0 = Compressor::ZSTD;
     // zstd levels range from -7(fastest) to 22
-    auto compressionlevel0 = GENERATE(-7, -5, -3, 3, 5, 7, 9, 15, 22);
-    CompressionFilter filter0(compressortype0, compressionlevel0);
+    auto level0 = GENERATE(-7, -5, -3, 3, 5, 7, 9, 15, 22);
+    Compressor compressor0 = Compressor::ZSTD;
+    FilterType filtertype0 = FilterType::FILTER_ZSTD;
+
     Buffer buffer;
-    filter0.serialize(&buffer);
+
+    auto type = static_cast<uint8_t>(filtertype0);
+    REQUIRE(buffer.write(&type, sizeof(uint8_t)).ok());
+
+    // Save a pointer to store the actual length of the metadata.
+    uint32_t metadata_len = 0;
+    auto metadata_length_offset = buffer.offset();
+    REQUIRE(buffer.write(&metadata_len, sizeof(uint32_t)).ok());
+
+    // Filter-specific serialization
+    uint64_t buff_size = buffer.size();
+
+    auto compressor_char = static_cast<uint8_t>(compressor0);
+    REQUIRE(buffer.write(&compressor_char, sizeof(uint8_t)).ok());
+    REQUIRE(buffer.write(&level0, sizeof(int32_t)).ok());
+
+    metadata_len = static_cast<uint32_t>(buffer.size() - buff_size);
+    std::memcpy(
+        buffer.data(metadata_length_offset), &metadata_len, sizeof(uint32_t));
 
     ConstBuffer constbuffer(&buffer);
-    auto&& [st_filter, filter1]{Filter::deserialize(&constbuffer)};
+    auto&& [st_filter, filter1]{FilterCreate::deserialize(&constbuffer)};
     REQUIRE(st_filter.ok());
 
     // Check type
-    CHECK(filter0.type() == filter1.value()->type());
+    CHECK(filter1.value()->type() == filtertype0);
 
     int compressionlevel1 = 0;
     REQUIRE(
         filter1.value()
             ->get_option(FilterOption::COMPRESSION_LEVEL, &compressionlevel1)
             .ok());
-    CHECK(compressionlevel0 == compressionlevel1);
+    CHECK(level0 == compressionlevel1);
   }
 
   SECTION("lz4") {
-    Compressor compressortype0 = Compressor::LZ4;
     // lz4 levels range from 1 to 12
-    auto compressionlevel0 = GENERATE(1, 2, 3, 5, 7, 8, 9, 11, 12);
-    CompressionFilter filter0(compressortype0, compressionlevel0);
+    auto level0 = GENERATE(1, 2, 3, 5, 7, 8, 9, 11, 12);
+    Compressor compressor0 = Compressor::LZ4;
+    FilterType filtertype0 = FilterType::FILTER_LZ4;
+
     Buffer buffer;
-    filter0.serialize(&buffer);
+
+    auto type = static_cast<uint8_t>(filtertype0);
+    REQUIRE(buffer.write(&type, sizeof(uint8_t)).ok());
+
+    // Save a pointer to store the actual length of the metadata.
+    uint32_t metadata_len = 0;
+    auto metadata_length_offset = buffer.offset();
+    REQUIRE(buffer.write(&metadata_len, sizeof(uint32_t)).ok());
+
+    // Filter-specific serialization
+    uint64_t buff_size = buffer.size();
+
+    auto compressor_char = static_cast<uint8_t>(compressor0);
+    REQUIRE(buffer.write(&compressor_char, sizeof(uint8_t)).ok());
+    REQUIRE(buffer.write(&level0, sizeof(int32_t)).ok());
+
+    metadata_len = static_cast<uint32_t>(buffer.size() - buff_size);
+    std::memcpy(
+        buffer.data(metadata_length_offset), &metadata_len, sizeof(uint32_t));
 
     ConstBuffer constbuffer(&buffer);
-    auto&& [st_filter, filter1]{Filter::deserialize(&constbuffer)};
+    auto&& [st_filter, filter1]{FilterCreate::deserialize(&constbuffer)};
     REQUIRE(st_filter.ok());
 
     // Check type
-    CHECK(filter0.type() == filter1.value()->type());
+    CHECK(filter1.value()->type() == filtertype0);
 
     int compressionlevel1 = 0;
     REQUIRE(
         filter1.value()
             ->get_option(FilterOption::COMPRESSION_LEVEL, &compressionlevel1)
             .ok());
-    CHECK(compressionlevel0 == compressionlevel1);
+    CHECK(level0 == compressionlevel1);
   }
 
   SECTION("bzip2") {
-    Compressor compressortype0 = Compressor::BZIP2;
     // bzip2 levels range from 1 to 9
-    auto compressionlevel0 = GENERATE(1, 2, 3, 4, 5, 6, 7, 8, 9);
-    CompressionFilter filter0(compressortype0, compressionlevel0);
+    auto level0 = GENERATE(1, 2, 3, 4, 5, 6, 7, 8, 9);
+    Compressor compressor0 = Compressor::BZIP2;
+    FilterType filtertype0 = FilterType::FILTER_BZIP2;
+
     Buffer buffer;
-    filter0.serialize(&buffer);
+
+    auto type = static_cast<uint8_t>(filtertype0);
+    REQUIRE(buffer.write(&type, sizeof(uint8_t)).ok());
+
+    // Save a pointer to store the actual length of the metadata.
+    uint32_t metadata_len = 0;
+    auto metadata_length_offset = buffer.offset();
+    REQUIRE(buffer.write(&metadata_len, sizeof(uint32_t)).ok());
+
+    // Filter-specific serialization
+    uint64_t buff_size = buffer.size();
+
+    auto compressor_char = static_cast<uint8_t>(compressor0);
+    REQUIRE(buffer.write(&compressor_char, sizeof(uint8_t)).ok());
+    REQUIRE(buffer.write(&level0, sizeof(int32_t)).ok());
+
+    metadata_len = static_cast<uint32_t>(buffer.size() - buff_size);
+    std::memcpy(
+        buffer.data(metadata_length_offset), &metadata_len, sizeof(uint32_t));
 
     ConstBuffer constbuffer(&buffer);
-    auto&& [st_filter, filter1]{Filter::deserialize(&constbuffer)};
+    auto&& [st_filter, filter1]{FilterCreate::deserialize(&constbuffer)};
     REQUIRE(st_filter.ok());
 
     // Check type
-    CHECK(filter0.type() == filter1.value()->type());
+    CHECK(filter1.value()->type() == filtertype0);
 
     int compressionlevel1 = 0;
     REQUIRE(
         filter1.value()
             ->get_option(FilterOption::COMPRESSION_LEVEL, &compressionlevel1)
             .ok());
-    CHECK(compressionlevel0 == compressionlevel1);
+    CHECK(level0 == compressionlevel1);
   }
 }
 
 TEST_CASE("Filter: Test noop filter deserialization", "[filter][noop]") {
-  NoopFilter filter0;
   Buffer buffer;
-  filter0.serialize(&buffer);
+  FilterType filtertype0 = FilterType::FILTER_NONE;
+  auto type = static_cast<uint8_t>(filtertype0);
+  REQUIRE(buffer.write(&type, sizeof(uint8_t)).ok());
+
+  // Save a pointer to store the actual length of the metadata.
+  uint32_t metadata_len = 0;
+  auto metadata_length_offset = buffer.offset();
+  REQUIRE(buffer.write(&metadata_len, sizeof(uint32_t)).ok());
+
+  // Filter-specific serialization
+  uint64_t buff_size = buffer.size();
+
+  metadata_len = static_cast<uint32_t>(buffer.size() - buff_size);
+  std::memcpy(
+      buffer.data(metadata_length_offset), &metadata_len, sizeof(uint32_t));
 
   ConstBuffer constbuffer(&buffer);
-  auto&& [st_filter, filter1]{Filter::deserialize(&constbuffer)};
+  auto&& [st_filter, filter1]{FilterCreate::deserialize(&constbuffer)};
   REQUIRE(st_filter.ok());
 
   // Check type
-  CHECK(filter0.type() == filter1.value()->type());
+  CHECK(filter1.value()->type() == filtertype0);
 }
 
 TEST_CASE(
     "Filter: Test positive delta filter deserialization",
     "[filter][positive-delta]") {
-  uint32_t max_window_size0 = 1024;
-  PositiveDeltaFilter filter0(max_window_size0);
   Buffer buffer;
-  filter0.serialize(&buffer);
+  FilterType filtertype0 = FilterType::FILTER_POSITIVE_DELTA;
+  auto type = static_cast<uint8_t>(filtertype0);
+  REQUIRE(buffer.write(&type, sizeof(uint8_t)).ok());
+
+  // Save a pointer to store the actual length of the metadata.
+  uint32_t metadata_len = 0;
+  auto metadata_length_offset = buffer.offset();
+  REQUIRE(buffer.write(&metadata_len, sizeof(uint32_t)).ok());
+
+  // Filter-specific serialization
+  uint64_t buff_size = buffer.size();
+
+  uint32_t max_window_size0 = 1024;
+  REQUIRE((buffer.write(&max_window_size0, sizeof(uint32_t))).ok());
+
+  metadata_len = static_cast<uint32_t>(buffer.size() - buff_size);
+  std::memcpy(
+      buffer.data(metadata_length_offset), &metadata_len, sizeof(uint32_t));
 
   ConstBuffer constbuffer(&buffer);
-  auto&& [st_filter, filter1]{Filter::deserialize(&constbuffer)};
+  auto&& [st_filter, filter1]{FilterCreate::deserialize(&constbuffer)};
   REQUIRE(st_filter.ok());
 
   // Check type
-  CHECK(filter0.type() == filter1.value()->type());
+  CHECK(filter1.value()->type() == filtertype0);
 
   uint32_t max_window_size1 = 0;
   REQUIRE(filter1.value()

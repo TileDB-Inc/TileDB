@@ -278,7 +278,9 @@ class Tile {
   bool stores_coords() const;
 
   /** Returns the tile data type. */
-  Datatype type() const;
+  inline Datatype type() const {
+    return type_;
+  }
 
   /** Writes as much data as possibly can be read from the input buffer. */
   Status write(ConstBuffer* buf);

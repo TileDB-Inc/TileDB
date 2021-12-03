@@ -101,6 +101,7 @@ class BitWidthReductionFilter : public Filter {
    * Reduce the bit size of the given input into the given output.
    */
   Status run_forward(
+      const Tile& tile,
       FilterBuffer* input_metadata,
       FilterBuffer* input,
       FilterBuffer* output_metadata,
@@ -110,6 +111,7 @@ class BitWidthReductionFilter : public Filter {
    * Restore the bit size the given input into the given output.
    */
   Status run_reverse(
+      const Tile& tile,
       FilterBuffer* input_metadata,
       FilterBuffer* input,
       FilterBuffer* output_metadata,
@@ -176,6 +178,7 @@ class BitWidthReductionFilter : public Filter {
   /** Run_forward method templated on the tile cell datatype. */
   template <typename T>
   Status run_forward(
+      const Tile& tile,
       FilterBuffer* input_metadata,
       FilterBuffer* input,
       FilterBuffer* output_metadata,
@@ -184,6 +187,7 @@ class BitWidthReductionFilter : public Filter {
   /** Run_reverse method templated on the tile cell datatype. */
   template <typename T>
   Status run_reverse(
+      const Tile& tile,
       FilterBuffer* input_metadata,
       FilterBuffer* input,
       FilterBuffer* output_metadata,

@@ -78,6 +78,7 @@ class Add1InPlace : public tiledb::sm::Filter {
   }
 
   Status run_forward(
+      const Tile&,
       FilterBuffer* input_metadata,
       FilterBuffer* input,
       FilterBuffer* output_metadata,
@@ -100,6 +101,7 @@ class Add1InPlace : public tiledb::sm::Filter {
   }
 
   Status run_reverse(
+      const Tile&,
       FilterBuffer* input_metadata,
       FilterBuffer* input,
       FilterBuffer* output_metadata,
@@ -145,6 +147,7 @@ class Add1OutOfPlace : public tiledb::sm::Filter {
   }
 
   Status run_forward(
+      const Tile&,
       FilterBuffer* input_metadata,
       FilterBuffer* input,
       FilterBuffer* output_metadata,
@@ -178,6 +181,7 @@ class Add1OutOfPlace : public tiledb::sm::Filter {
   }
 
   Status run_reverse(
+      const Tile&,
       FilterBuffer* input_metadata,
       FilterBuffer* input,
       FilterBuffer* output_metadata,
@@ -234,6 +238,7 @@ class AddNInPlace : public tiledb::sm::Filter {
   }
 
   Status run_forward(
+      const Tile&,
       FilterBuffer* input_metadata,
       FilterBuffer* input,
       FilterBuffer* output_metadata,
@@ -255,6 +260,7 @@ class AddNInPlace : public tiledb::sm::Filter {
   }
 
   Status run_reverse(
+      const Tile&,
       FilterBuffer* input_metadata,
       FilterBuffer* input,
       FilterBuffer* output_metadata,
@@ -313,6 +319,7 @@ class PseudoChecksumFilter : public tiledb::sm::Filter {
   }
 
   Status run_forward(
+      const Tile&,
       FilterBuffer* input_metadata,
       FilterBuffer* input,
       FilterBuffer* output_metadata,
@@ -342,6 +349,7 @@ class PseudoChecksumFilter : public tiledb::sm::Filter {
   }
 
   Status run_reverse(
+      const Tile&,
       FilterBuffer* input_metadata,
       FilterBuffer* input,
       FilterBuffer* output_metadata,
@@ -400,6 +408,7 @@ class Add1IncludingMetadataFilter : public tiledb::sm::Filter {
   }
 
   Status run_forward(
+      const Tile&,
       FilterBuffer* input_metadata,
       FilterBuffer* input,
       FilterBuffer* output_metadata,
@@ -453,6 +462,7 @@ class Add1IncludingMetadataFilter : public tiledb::sm::Filter {
   }
 
   Status run_reverse(
+      const Tile&,
       FilterBuffer* input_metadata,
       FilterBuffer* input,
       FilterBuffer* output_metadata,

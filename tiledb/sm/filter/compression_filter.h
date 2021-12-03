@@ -104,6 +104,7 @@ class CompressionFilter : public Filter {
    * Compress the given input into the given output.
    */
   Status run_forward(
+      const Tile& tile,
       FilterBuffer* input_metadata,
       FilterBuffer* input,
       FilterBuffer* output_metadata,
@@ -113,6 +114,7 @@ class CompressionFilter : public Filter {
    * Decompress the given input into the given output.
    */
   Status run_reverse(
+      const Tile& tile,
       FilterBuffer* input_metadata,
       FilterBuffer* input,
       FilterBuffer* output_metadata,
@@ -137,7 +139,10 @@ class CompressionFilter : public Filter {
 
   /** Helper function to compress a single contiguous buffer (part). */
   Status compress_part(
-      ConstBuffer* part, Buffer* output, FilterBuffer* output_metadata) const;
+      const Tile& tile,
+      ConstBuffer* part,
+      Buffer* output,
+      FilterBuffer* output_metadata) const;
 
   /** Return the FilterType corresponding to the given Compressor. */
   static FilterType compressor_to_filter(Compressor compressor);
@@ -147,7 +152,10 @@ class CompressionFilter : public Filter {
    * onto the single output buffer.
    */
   Status decompress_part(
-      FilterBuffer* input, Buffer* output, FilterBuffer* input_metadata) const;
+      const Tile& tile,
+      FilterBuffer* input,
+      Buffer* output,
+      FilterBuffer* input_metadata) const;
 
   /** Gets an option from this filter. */
   Status get_option_impl(FilterOption option, void* value) const override;
@@ -156,7 +164,7 @@ class CompressionFilter : public Filter {
   static Compressor filter_to_compressor(FilterType type);
 
   /** Computes the compression overhead on nbytes of the input data. */
-  uint64_t overhead(uint64_t nbytes) const;
+  uint64_t overhead(const Tile& tile, uint64_t nbytes) const;
 
   /** Sets an option on this filter. */
   Status set_option_impl(FilterOption option, const void* value) override;
