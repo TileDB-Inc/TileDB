@@ -156,7 +156,7 @@ runs:
         #${{ env.GITHUB_WORKSPACE }}/
         #!${{ env.GITHUB_WORKSPACE }}/build/
         path: |
-          tiledb-${{ env.ARTIFACT_OS }}-build-dir-${{ env.ARTIFACT_EXTRAS }}.tar.gz
+          ${{ env.GITHUB_WORKSPACE }}/../tiledb-${{ env.ARTIFACT_OS }}-build-dir-${{ env.ARTIFACT_EXTRAS }}.tar.gz
 
     - name: Git Hash 7-digit
       shell: bash
@@ -182,4 +182,4 @@ runs:
         #if-no-files-found: warn # 'ignore/', 'warn' or 'error' are available, defaults to `warn`
         #${{ env.GITHUB_WORKSPACE }}/build/
         path: |
-          tiledb-${{ env.ARTIFACT_OS }}-build-dir-${{ env.ARTIFACT_EXTRAS }}.tar.gz
+          ${{ env.GITHUB_WORKSPACE }}/../tiledb-${{ env.ARTIFACT_OS }}-build-dir-${{ env.ARTIFACT_EXTRAS }}.tar.gz
