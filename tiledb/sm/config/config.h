@@ -331,9 +331,6 @@ class Config {
   /** The default maximum number of parallel file:/// operations. */
   static const std::string VFS_FILE_MAX_PARALLEL_OPS;
 
-  /** Whether or not filelocks are enabled for VFS. */
-  static const std::string VFS_FILE_ENABLE_FILELOCKS;
-
   /** The maximum size (in bytes) to read-ahead in the VFS. */
   static const std::string VFS_READ_AHEAD_SIZE;
 

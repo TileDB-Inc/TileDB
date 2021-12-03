@@ -239,49 +239,6 @@ Status Win::file_size(const std::string& path, uint64_t* size) const {
   return Status::Ok();
 }
 
-Status Win::filelock_lock(
-    const std::string& filename, filelock_t* fd, bool shared) const {
-  HANDLE file_h = CreateFile(
-      filename.c_str(),
-      GENERIC_READ | GENERIC_WRITE,
-      FILE_SHARE_READ | FILE_SHARE_WRITE,
-      NULL,
-      OPEN_EXISTING,
-      FILE_ATTRIBUTE_NORMAL,
-      NULL);
-  if (file_h == INVALID_HANDLE_VALUE) {
-    return LOG_STATUS(Status::IOError(
-        std::string("Failed to lock '" + filename + "'; CreateFile error")));
-  }
-  OVERLAPPED overlapped = {0, 0, {{0, 0}}, 0};
-  if (LockFileEx(
-          file_h,
-          shared ? 0 : LOCKFILE_EXCLUSIVE_LOCK,
-          0,
-          MAXDWORD,
-          MAXDWORD,
-          &overlapped) == 0) {
-    CloseHandle(file_h);
-    *fd = INVALID_FILELOCK;
-    return LOG_STATUS(Status::IOError(
-        std::string("Failed to lock '" + filename + "'; LockFile error")));
-  }
-
-  *fd = file_h;
-  return Status::Ok();
-}
-
-Status Win::filelock_unlock(filelock_t fd) const {
-  OVERLAPPED overlapped = {0, 0, {{0, 0}}, 0};
-  if (UnlockFileEx(fd, 0, MAXDWORD, MAXDWORD, &overlapped) == 0) {
-    CloseHandle(fd);
-    return LOG_STATUS(
-        Status::IOError(std::string("Failed to unlock file lock")));
-  }
-  CloseHandle(fd);
-  return Status::Ok();
-}
-
 Status Win::init(const Config& config, ThreadPool* vfs_thread_pool) {
   if (vfs_thread_pool == nullptr) {
     return LOG_STATUS(
