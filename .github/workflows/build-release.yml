@@ -67,6 +67,17 @@ jobs:
       #options: "--entrypoint /bin/bash"
       options: --user ${{ needs.configure-for-manylinux-container.outputs.uid_gid }}
     steps:
+      - name: diagnosing
+        shell: bash
+        run: |
+          set -x
+          echo $HOME
+          whoami
+          pwd
+          mount
+          ls -l
+          find . -name '*'
+
       #~ - name: 'are we in container?'
         #~ shell: bash
         #~ run: |
@@ -82,3 +93,15 @@ jobs:
 
       - uses: ./.github/actions/linux_mac-release
 
+  build-release-manylinux-artifacts:
+    needs: build-release-manylinux
+    runs-on: ubuntu-20.04
+    steps:
+      - name: diagnosing
+        shell: bash
+        run: |
+          whoami
+          echo $HOME
+          pwd
+          ls -l -d */
+          sudo find . -name '*.tar.gz'
