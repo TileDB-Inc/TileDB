@@ -201,6 +201,12 @@ runs:
         #~ pwd
         find / -name 'tiledb-*-linux-build-*.tar.gz' -exec ls -l {} \;
         printenv
+        if [[ $(whoami) ]]; then
+          echo $(whoami)
+        else
+          echo "couldn't figure out who I am"
+        fi
+        sudo ls -l
         sync
 
     - name: 'ArchiveFiles@2' # https://github.com/actions/upload-artifact#where-does-the-upload-go
