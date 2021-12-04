@@ -8,6 +8,7 @@ runs:
       shell: bash
       run: |
         set -x
+        #when checked, was node v0.10.48, will it run the upload-artifacts index.js, which wanted node12?
         yum -y install nodejs
         pwd
         git clone https://github.com/actions/upload-artifact ./gh.upload-artifact
@@ -25,8 +26,11 @@ runs:
         #~ EOF
         echo "s/using: 'node12'/using: 'composite'/" > sed-upload-artifacts.patch
         echo "s/main: 'dist\/index.js'/steps:/" >> sed-upload-artifacts.patch
-        echo "\$a\ \ \ \ - shell: bash" >> sed-upload-artifacts.patch
-        echo "\$a\ \ \ \ \ \ run: node dist/index.js" >> sed-upload-artifacts.patch
+        #echo "\$a\ \ \ \ - shell: bash" >> sed-upload-artifacts.patch
+        echo "\$a\\ \\ \\ \\ - shell: bash" >> sed-upload-artifacts.patch
+        #echo "\$a\ \ \ \ \ \ run: node dist/index.js" >> sed-upload-artifacts.patch
+        #echo "\$a\ \ \ \ \ \ run: node \$GITHUB_WORKSPACE/gh.upload-artifacts/dist/index.js" >> sed-upload-artifacts.patch
+        echo "\$a\\ \\ \\ \\ \\ \\ run: node \$GITHUB_WORKSPACE/gh.upload-artifacts/dist/index.js" >> sed-upload-artifacts.patch
         cat sed-upload-artifacts.patch
         hexdump -C sed-upload-artifacts.patch
         sed -f ./sed-upload-artifacts.patch action.yml > patched.action.yml
