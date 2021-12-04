@@ -359,8 +359,9 @@ runs:
         #!${{ env.GITHUB_WORKSPACE }}/build/
         #${{ env.GITHUB_WORKSPACE }}/../tiledb-${{ env.ARTIFACT_OS }}-build-dir-${{ env.ARTIFACT_EXTRAS }}.tar.gz
         #${{ env.TDB_SOURCE_ARCHIVE_PATH }}
+        #CMakeLists.txt
         path: |
-          CMakeLists.txt
+          ${{ env.TDB_SOURCE_ARCHIVE_PATH }}
 
     - name: Git Hash 7-digit
       shell: bash
@@ -388,5 +389,6 @@ runs:
         #${{ env.GITHUB_WORKSPACE }}/build/
         #${{ env.GITHUB_WORKSPACE }}/../tiledb-${{ env.ARTIFACT_OS }}-build-dir-${{ env.ARTIFACT_EXTRAS }}.tar.gz
         #${{ env.TDB_BINARY_ARCHIVE_PATH }}
+        #CMakeLists.txt
         path: |
-          CMakeLists.txt
+          ${{ env.TDB_BINARY_ARCHIVE_PATH }}
