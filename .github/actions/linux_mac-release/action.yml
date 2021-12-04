@@ -24,19 +24,19 @@ runs:
           #~ $a\ \ \ \ - shell: bash
           #~ $a\ \ \ \ \ \ run: node dist/index.js
         #~ EOF
-        echo "s/using: 'node12'/using: 'composite'/" > sed-upload-artifacts.patch
-        echo "s/main: 'dist\/index.js'/steps:/" >> sed-upload-artifacts.patch
-        #echo "\$a\ \ \ \ - shell: bash" >> sed-upload-artifacts.patch
-        echo "\$a\\ \\ \\ \\ - shell: bash" >> sed-upload-artifacts.patch
-        #echo "\$a\ \ \ \ \ \ run: node dist/index.js" >> sed-upload-artifacts.patch
-        #echo "\$a\ \ \ \ \ \ run: node \$GITHUB_WORKSPACE/gh.upload-artifacts/dist/index.js" >> sed-upload-artifacts.patch
-        echo "\$a\\ \\ \\ \\ \\ \\ run: node \$GITHUB_WORKSPACE/gh.upload-artifacts/dist/index.js" >> sed-upload-artifacts.patch
-        cat sed-upload-artifacts.patch
-        hexdump -C sed-upload-artifacts.patch
-        sed -f ./sed-upload-artifacts.patch action.yml > patched.action.yml
+        echo "s/using: 'node12'/using: 'composite'/" > sed-upload-artifact.patch
+        echo "s/main: 'dist\/index.js'/steps:/" >> sed-upload-artifact.patch
+        #echo "\$a\ \ \ \ - shell: bash" >> sed-upload-artifact.patch
+        echo "\$a\\ \\ \\ \\ - shell: bash" >> sed-upload-artifact.patch
+        #echo "\$a\ \ \ \ \ \ run: node dist/index.js" >> sed-upload-artifact.patch
+        #echo "\$a\ \ \ \ \ \ run: node \$GITHUB_WORKSPACE/gh.upload-artifact/dist/index.js" >> sed-upload-artifact.patch
+        echo "\$a\\ \\ \\ \\ \\ \\ run: node \$GITHUB_WORKSPACE/gh.upload-artifact/dist/index.js" >> sed-upload-artifact.patch
+        cat sed-upload-artifact.patch
+        hexdump -C sed-upload-artifact.patch
+        sed -f ./sed-upload-artifact.patch action.yml > patched.action.yml
         rm action.yml
         mv patched.action.yml action.yml
-        #~ cat > vi-upload-artifacts.patch <<EOF
+        #~ cat > vi-upload-artifact.patch <<EOF
           #~ :%s/using: 'node12'/using: 'composite'/g
           #~ :%s/main: 'dist\/index.js'/steps:/g
           #~ G
