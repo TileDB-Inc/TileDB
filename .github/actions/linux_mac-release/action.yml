@@ -8,6 +8,9 @@ runs:
       shell: bash
       run: |
         set -x
+        yum search wget
+        yum -y install wget
+        which wget
         #when checked, was node v0.10.48, will it run the upload-artifacts index.js, which wanted node12?
         #nope, 10.48 doesn't do it... yum -y install nodejs
         #installing nodejs from source on centos6, https://www.subhosting.net/kb/how-to-install-nodejs-on-centos-6/
