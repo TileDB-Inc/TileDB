@@ -3,6 +3,38 @@ name: act-linux_mac-release
 runs:
   using: "composite"
   steps:
+    - name: get-prep-location-upload-artifact
+      shell: bash
+      run: |
+        pwd
+        git clone https://github.com/actions/upload-artifact ./gh.upload-artifact
+        cd gh.upload-artifact
+        git checkout tags/v2.2.4
+        #sed "s/using: 'node12'/using: 'composite'/" action.yml
+        #sed "s/main: 'dist/index.js'/steps:/" action.yml
+        #sed "$a\ \ \ \ - shell: bash" action.yml
+        #sed "$a\ \ \ \ \ \ run: node dist/index.js" action.yml
+        cat > sed-upload-artifacts.patch <<EOF
+          s/using: 'node12'/using: 'composite'/
+          s/main: 'dist\/index.js'/steps:/
+          $a\ \ \ \ - shell: bash
+          $a\ \ \ \ \ \ run: node dist/index.js        
+        EOF
+        cat sed-upload-artifacts.patch
+        hexdump -C sed-upload-artifacts.patch
+        sed -f ./sed-upload-artifacts.patch action.yml > patched.action.yml
+        rm action.yml
+        mv patched.action.yml action.yml
+        #~ cat > vi-upload-artifacts.patch <<EOF
+          #~ :%s/using: 'node12'/using: 'composite'/g
+          #~ :%s/main: 'dist\/index.js'/steps:/g
+          #~ G
+          #~ A    - shell: bash
+                #~ run: node dist/index.js
+          #~ #how to insert ESCape to exit insert mode? <sigh>
+        #~ EOF
+        cat ./action.yml
+
     - name: 'Print env'
       run: |
         echo "'uname -s' is:"
@@ -199,7 +231,7 @@ runs:
           #~ ls -l ${{ env.GITHUB_WORKSPACE }}/../tiledb-${{ env.ARTIFACT_OS }}-build-dir-${{ env.ARTIFACT_EXTRAS }}.tar.gz
         #~ fi
         #~ pwd
-        find / -name 'tiledb-*-linux-build-*.tar.gz' -exec ls -l {} \;
+        find ${{ env.GITHUB_WORKSPACE }}/.. -name 'tiledb-*-linux-build-*.tar.gz' -exec ls -l {} \;
         printenv
         if [[ $(whoami) ]]; then
           echo $(whoami)
@@ -215,18 +247,37 @@ runs:
         ls -l
         sync
         
-    - name: get-prep-location-upload-artifact
-      shell: bash
-      run: |
-        pwd
-        git clone https://github.com/actions/upload-artifact ./gh.upload-artifact
-        cd gh.upload-artifact
-        git checkout tags/v2.2.4
-        sed "s/using: 'node12'/using: 'composite'/" action.yml
-        sed "s/main: 'dist/index.js'/steps:/" action.yml
-        sed "$a\ \ \ \ - shell: bash" action.yml
-        sed "$a\ \ \ \ \ \ run: node dist/index.js" action.yml
-        cat ./action.yml
+    #~ - name: get-prep-location-upload-artifact
+      #~ shell: bash
+      #~ run: |
+        #~ pwd
+        #~ git clone https://github.com/actions/upload-artifact ./gh.upload-artifact
+        #~ cd gh.upload-artifact
+        #~ git checkout tags/v2.2.4
+        #~ #sed "s/using: 'node12'/using: 'composite'/" action.yml
+        #~ #sed "s/main: 'dist/index.js'/steps:/" action.yml
+        #~ #sed "$a\ \ \ \ - shell: bash" action.yml
+        #~ #sed "$a\ \ \ \ \ \ run: node dist/index.js" action.yml
+        #~ cat > sed-upload-artifacts.patch <<EOF
+          #~ s/using: 'node12'/using: 'composite'/
+          #~ s/main: 'dist\/index.js'/steps:/
+          #~ $a\ \ \ \ - shell: bash
+          #~ $a\ \ \ \ \ \ run: node dist/index.js        
+        #~ EOF
+        #~ cat sed-upload-artifacts.patch
+        #~ hexdump -C sed-upload-artifacts.patch
+        #~ sed -f ./sed-upload-artifacts.patch action.yml > patched.action.yml
+        #~ rm action.yml
+        #~ mv patched.action.yml action.yml
+        cat > vi-upload-artifacts.patch <<EOF
+          :%s/using: 'node12'/using: 'composite'/g
+          :%s/main: 'dist\/index.js'/steps:/g
+          G
+          A    - shell: bash
+                run: node dist/index.js
+          #how to insert ESCape to exit insert mode? <sigh>
+        EOF
+        #~ cat ./action.yml
         
     - name: 'ArchiveFiles@2A' # https://github.com/actions/upload-artifact#where-does-the-upload-go
       #if: ${{ failure() == true && startsWith(runner.name, 'macos-') == true }} # only run this job if the build step failed
