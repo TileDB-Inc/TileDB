@@ -1,4 +1,4 @@
- name: act-linux_mac-release
+name: act-linux_mac-release
 
 runs:
   using: "composite"
@@ -70,6 +70,7 @@ runs:
         #echo "\$a\ \ \ \ \ \ run: node dist/index.js" >> sed-upload-artifact.patch
         #echo "\$a\ \ \ \ \ \ run: node \$GITHUB_WORKSPACE/gh.upload-artifact/dist/index.js" >> sed-upload-artifact.patch
         echo "\$a\\ \\ \\ \\ \\ \\ run: node \$GITHUB_WORKSPACE/gh.upload-artifact/dist/index.js" >> sed-upload-artifact.patch
+        #https://github.com/actions/runner/issues/665 prob with 'inputs' for custom actions, work around.
         echo "\$a\\ \\ \\ \\ \\ \\ env:" >> sed-upload-artifact.patch
         echo "\$a\\ \\ \\ \\ \\ \\ \\ \\ INPUT_PATH: \${{ inputs.path }}" >> sed-upload-artifact.patch
         echo "\$a\\ \\ \\ \\ \\ \\ \\ \\ INPUT_NAME: \${{ inputs.name }}" >> sed-upload-artifact.patch
