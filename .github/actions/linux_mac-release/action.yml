@@ -7,12 +7,13 @@ runs:
     - name: 'get-prep-location-upload-artifact'
       shell: bash
       run: |
+        set -x
         pwd
         git clone https://github.com/actions/upload-artifact ./gh.upload-artifact
         cd gh.upload-artifact
         git checkout tags/v2.2.4
         #sed "s/using: 'node12'/using: 'composite'/" action.yml
-        #sed "s/main: 'dist/index.js'/steps:/" action.yml
+        #sed "s/main: 'dist\/index.js'/steps:/" action.yml
         #sed "$a\ \ \ \ - shell: bash" action.yml
         #sed "$a\ \ \ \ \ \ run: node dist/index.js" action.yml
         #~ cat > sed-upload-artifacts.patch <<EOF
