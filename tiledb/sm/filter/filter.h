@@ -33,10 +33,8 @@
 #ifndef TILEDB_FILTER_H
 #define TILEDB_FILTER_H
 
-#include "tiledb/common/dynamic_memory/dynamic_memory.h"
 #include "tiledb/common/status.h"
 #include "tiledb/sm/config/config.h"
-#include "tiledb/sm/crypto/encryption_key.h"
 
 using namespace tiledb::common;
 
@@ -129,6 +127,14 @@ class Filter {
       FilterBuffer* output_metadata,
       FilterBuffer* output,
       const Config& config) const = 0;
+
+  /**
+   * Initializes the filter resource pool if any
+   *
+   * @param size the size of the resource pool to initiliaze
+   *
+   * */
+  virtual void init_resource_pool(uint64_t size);
 
   /**
    * Sets an option on this filter.

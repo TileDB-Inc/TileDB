@@ -759,7 +759,7 @@ TEST_CASE(
   CHECK_NOTHROW(Array::consolidate(ctx, array_name, &config));
   CHECK_NOTHROW(Array::vacuum(ctx, array_name, &config));
   auto contents = vfs.ls(array_name);
-  CHECK(contents.size() == 5);
+  CHECK(contents.size() == 4);
 
   Array array_r(ctx, array_name, TILEDB_READ);
   Query query_r(ctx, array_r, TILEDB_READ);
@@ -1138,7 +1138,7 @@ TEST_CASE(
   CHECK_NOTHROW(Array::consolidate(ctx, array_name, &config));
   CHECK_NOTHROW(Array::vacuum(ctx, array_name, &config));
   auto contents = vfs.ls(array_name);
-  CHECK(contents.size() == 5);
+  CHECK(contents.size() == 4);
 
   Array array_r(ctx, array_name, TILEDB_READ);
   Query query_r(ctx, array_r, TILEDB_READ);
@@ -1579,7 +1579,7 @@ TEST_CASE(
   CHECK_NOTHROW(Array::consolidate(ctx, array_name, &config));
   CHECK_NOTHROW(Array::vacuum(ctx, array_name, &config));
   auto contents = vfs.ls(array_name);
-  CHECK(contents.size() == 5);
+  CHECK(contents.size() == 4);
 
   Array array_r(ctx, array_name, TILEDB_READ);
   Query query_r(ctx, array_r, TILEDB_READ);
@@ -1864,7 +1864,7 @@ TEST_CASE(
   CHECK_NOTHROW(Array::consolidate(ctx, array_name, &config));
   CHECK_NOTHROW(Array::vacuum(ctx, array_name, &config));
   auto contents = vfs.ls(array_name);
-  CHECK(contents.size() == 5);
+  CHECK(contents.size() == 4);
 
   // Read
   Array array_r(ctx, array_name, TILEDB_READ);

@@ -2708,7 +2708,7 @@ void FragmentMetadata::clean_up() {
 
   storage_manager_->close_file(fragment_metadata_uri);
   storage_manager_->vfs()->remove_file(fragment_metadata_uri);
-  storage_manager_->array_xunlock(array_uri_);
+  storage_manager_->array_xunlock();
 }
 
 const ArraySchema* FragmentMetadata::array_schema() const {

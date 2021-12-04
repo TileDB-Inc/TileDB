@@ -1,11 +1,11 @@
 /**
- * @file   filelock.h
+ * @file compile_filter_main.cc
  *
  * @section LICENSE
  *
  * The MIT License
  *
- * @copyright Copyright (c) 2017-2021 TileDB, Inc.
+ * @copyright Copyright (c) 2021 TileDB, Inc.
  *
  * Permission is hereby granted, free of charge, to any person obtaining a copy
  * of this software and associated documentation files (the "Software"), to deal
@@ -24,26 +24,21 @@
  * LIABILITY, WHETHER IN AN ACTION OF CONTRACT, TORT OR OTHERWISE, ARISING FROM,
  * OUT OF OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN
  * THE SOFTWARE.
- *
- * @section DESCRIPTION
- *
- * This file declares a simple platform-agnostic file lock type.
  */
 
-#ifndef TILEDB_FILELOCK_H
-#define TILEDB_FILELOCK_H
+#include "../bzip_compressor.h"
+#include "../dd_compressor.h"
+#include "../gzip_compressor.h"
+#include "../lz4_compressor.h"
+#include "../rle_compressor.h"
+#include "../zstd_compressor.h"
 
-namespace tiledb {
-namespace sm {
-
-#ifdef _WIN32
-typedef void* filelock_t;
-const filelock_t INVALID_FILELOCK = nullptr;
-#else
-typedef int filelock_t;
-const filelock_t INVALID_FILELOCK = -1;
-#endif
-}  // namespace sm
-}  // namespace tiledb
-
-#endif  // TILEDB_FILELOCK_H
+int main() {
+  (void)sizeof(tiledb::sm::BZip);
+  (void)sizeof(tiledb::sm::DoubleDelta);
+  (void)sizeof(tiledb::sm::GZip);
+  (void)sizeof(tiledb::sm::LZ4);
+  (void)sizeof(tiledb::sm::RLE);
+  (void)sizeof(tiledb::sm::ZStd);
+  return 0;
+}

@@ -98,22 +98,14 @@ StorageManager::~StorageManager() {
   if (vfs_ != nullptr)
     cancel_all_tasks();
 
-  // Release all filelocks and delete all opened arrays for reads
+  // Delete all opened arrays for reads
   for (auto& open_array_it : open_arrays_for_reads_) {
-    open_array_it.second->file_unlock(vfs_);
     tdb_delete(open_array_it.second);
   }
 
   // Delete all opened arrays for writes
   for (auto& open_array_it : open_arrays_for_writes_)
     tdb_delete(open_array_it.second);
-
-  for (auto& fl_it : xfilelocks_) {
-    auto filelock = fl_it.second;
-    auto lock_uri = URI(fl_it.first).join_path(constants::filelock_name);
-    if (filelock != INVALID_FILELOCK)
-      vfs_->filelock_unlock(lock_uri);
-  }
 
   if (vfs_ != nullptr) {
     const Status st = vfs_->terminate();
@@ -150,12 +142,6 @@ Status StorageManager::array_close_for_reads(const URI& array_uri) {
 
   // Close the array if the counter reaches 0
   if (open_array->cnt() == 0) {
-    // Release file lock
-    auto st = open_array->file_unlock(vfs_);
-    if (!st.ok()) {
-      open_array->mtx_unlock();
-      return st;
-    }
     // Remove open array entry
     open_array->mtx_unlock();
     tdb_delete(open_array);
@@ -286,7 +272,6 @@ StorageManager::array_open_for_reads(
   // Unlock the array mutex
   open_array->mtx_unlock();
 
-  // Note that we retain the (shared) lock on the array filelock
   return {Status::Ok(),
           open_array->array_schema_latest(),
           open_array->array_schemas_all(),
@@ -310,7 +295,6 @@ StorageManager::array_open_for_reads_without_fragments(
   // Unlock the array mutex
   open_array->mtx_unlock();
 
-  // Note that we retain the (shared) lock on the array filelock
   return {Status::Ok(),
           open_array->array_schema_latest(),
           open_array->array_schemas_all()};
@@ -369,8 +353,6 @@ StorageManager::array_open_for_writes(
     open_array->mtx_lock();
     open_array->cnt_incr();
   }
-
-  // No shared filelock needed to be acquired
 
   // When opening the array we want to always reload the schema
   // Fragments are always relisted, now with schema evolution we
@@ -670,8 +652,8 @@ Status StorageManager::array_vacuum_fragments(
 
         return Status::Ok();
       });
-  RETURN_NOT_OK_ELSE(status, array_xunlock(array_uri));
-  RETURN_NOT_OK(array_xunlock(array_uri));
+  RETURN_NOT_OK_ELSE(status, array_xunlock());
+  RETURN_NOT_OK(array_xunlock());
 
   // Delete fragment directories
   status = parallel_for(compute_tp_, 0, to_vacuum.size(), [&, this](size_t i) {
@@ -717,8 +699,8 @@ Status StorageManager::array_vacuum_fragment_meta(const char* array_name) {
         RETURN_NOT_OK(vfs_->remove_file(to_vacuum[i]));
         return Status::Ok();
       });
-  RETURN_NOT_OK_ELSE(status, array_xunlock(array_uri));
-  RETURN_NOT_OK(array_xunlock(array_uri));
+  RETURN_NOT_OK_ELSE(status, array_xunlock());
+  RETURN_NOT_OK(array_xunlock());
 
   return Status::Ok();
 }
@@ -748,8 +730,8 @@ Status StorageManager::array_vacuum_array_meta(
 
         return Status::Ok();
       });
-  RETURN_NOT_OK_ELSE(status, array_xunlock(array_uri));
-  RETURN_NOT_OK(array_xunlock(array_uri));
+  RETURN_NOT_OK_ELSE(status, array_xunlock());
+  RETURN_NOT_OK(array_xunlock());
 
   // Delete vacuum files
   status = parallel_for(compute_tp_, 0, vac_uris.size(), [&, this](size_t i) {
@@ -904,14 +886,6 @@ Status StorageManager::array_create(
   }
 
   // Store array schema
-  if (!st.ok()) {
-    vfs_->remove_dir(array_uri);
-    return st;
-  }
-
-  // Create array and array metadata filelocks
-  URI array_filelock_uri = array_uri.join_path(constants::filelock_name);
-  st = vfs_->touch(array_filelock_uri);
   if (!st.ok()) {
     vfs_->remove_dir(array_uri);
     return st;
@@ -1368,30 +1342,10 @@ Status StorageManager::array_xlock(const URI& array_uri) {
            open_arrays_for_reads_.end();
   });
 
-  // Get exclusive lock for processes through a filelock
-  filelock_t filelock = INVALID_FILELOCK;
-  auto lock_uri = array_uri.join_path(constants::filelock_name);
-  RETURN_NOT_OK_ELSE(
-      vfs_->filelock_lock(lock_uri, &filelock, false), xlock_mtx_.unlock());
-  xfilelocks_[array_uri.to_string()] = filelock;
-
   return Status::Ok();
 }
 
-Status StorageManager::array_xunlock(const URI& array_uri) {
-  // Get filelock if it exists
-  auto it = xfilelocks_.find(array_uri.to_string());
-  if (it == xfilelocks_.end())
-    return logger_->status(Status::StorageManagerError(
-        "Cannot unlock array exclusive lock; Filelock not found"));
-  auto filelock = it->second;
-
-  // Release exclusive lock for processes through the filelock
-  auto lock_uri = array_uri.join_path(constants::filelock_name);
-  if (filelock != INVALID_FILELOCK)
-    RETURN_NOT_OK(vfs_->filelock_unlock(lock_uri));
-  xfilelocks_.erase(it);
-
+Status StorageManager::array_xunlock() {
   // Release exclusive lock for threads
   xlock_mtx_.unlock();
 
@@ -2558,20 +2512,12 @@ Status StorageManager::array_open_without_fragments(
     (*open_array)->cnt_incr();
   }
 
-  // Acquire a shared filelock
-  auto st = (*open_array)->file_lock(vfs_);
-  if (!st.ok()) {
-    (*open_array)->mtx_unlock();
-    array_close_for_reads(array_uri);
-    return st;
-  }
-
-  // When opening the array we want to always reload the schema
+  // When opening the array we want to always reload the schema.
   // Fragments are always relisted, now with schema evolution we
   // need to make sure we list out any new schemas too.
   // Fragment listing is significantly slower than listing schemas
   // and they happen in parallel so this is low impact
-  st = load_array_schema(array_uri, *open_array, encryption_key);
+  auto st = load_array_schema(array_uri, *open_array, encryption_key);
   if (!st.ok()) {
     (*open_array)->mtx_unlock();
     array_close_for_reads(array_uri);

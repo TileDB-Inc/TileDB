@@ -57,30 +57,23 @@
 
 using namespace tiledb::sm;
 
+template <class T, int n>
+inline T& buffer_offset(void* p) {
+  return *static_cast<T*>(static_cast<void*>(static_cast<char*>(p) + n));
+}
+
 TEST_CASE(
     "Filter: Test bit width reduction filter deserialization",
     "[filter][bit-width-reduction]") {
-  Buffer buffer;
   FilterType filtertype0 = FilterType::FILTER_BIT_WIDTH_REDUCTION;
-  auto type = static_cast<uint8_t>(filtertype0);
-  REQUIRE(buffer.write(&type, sizeof(uint8_t)).ok());
-
-  // Save a pointer to store the actual length of the metadata.
-  uint32_t metadata_len = 0;
-  auto metadata_length_offset = buffer.offset();
-  REQUIRE(buffer.write(&metadata_len, sizeof(uint32_t)).ok());
-
-  // Filter-specific serialization
-  uint64_t buff_size = buffer.size();
-
   uint32_t max_window_size0 = 1024;
-  REQUIRE((buffer.write(&max_window_size0, sizeof(uint32_t))).ok());
+  char serialized_buffer[9];
+  char* p = &serialized_buffer[0];
+  buffer_offset<uint8_t, 0>(p) = static_cast<uint8_t>(filtertype0);
+  buffer_offset<uint32_t, 1>(p) = sizeof(uint32_t);  // metadata_length
+  buffer_offset<uint32_t, 5>(p) = max_window_size0;
 
-  metadata_len = static_cast<uint32_t>(buffer.size() - buff_size);
-  std::memcpy(
-      buffer.data(metadata_length_offset), &metadata_len, sizeof(uint32_t));
-
-  ConstBuffer constbuffer(&buffer);
+  ConstBuffer constbuffer(&serialized_buffer, sizeof(serialized_buffer));
   auto&& [st_filter, filter1]{FilterCreate::deserialize(&constbuffer)};
   REQUIRE(st_filter.ok());
 
@@ -98,24 +91,13 @@ TEST_CASE(
 TEST_CASE(
     "Filter: Test bit shuffle filter deserialization",
     "[filter][bit-shuffle]") {
-  Buffer buffer;
   FilterType filtertype0 = FilterType::FILTER_BITSHUFFLE;
-  auto type = static_cast<uint8_t>(filtertype0);
-  REQUIRE(buffer.write(&type, sizeof(uint8_t)).ok());
+  char serialized_buffer[5];
+  char* p = &serialized_buffer[0];
+  buffer_offset<uint8_t, 0>(p) = static_cast<uint8_t>(filtertype0);
+  buffer_offset<uint32_t, 1>(p) = 0;  // metadata_length
 
-  // Save a pointer to store the actual length of the metadata.
-  uint32_t metadata_len = 0;
-  auto metadata_length_offset = buffer.offset();
-  REQUIRE(buffer.write(&metadata_len, sizeof(uint32_t)).ok());
-
-  // Filter-specific serialization
-  uint64_t buff_size = buffer.size();
-
-  metadata_len = static_cast<uint32_t>(buffer.size() - buff_size);
-  std::memcpy(
-      buffer.data(metadata_length_offset), &metadata_len, sizeof(uint32_t));
-
-  ConstBuffer constbuffer(&buffer);
+  ConstBuffer constbuffer(&serialized_buffer, sizeof(serialized_buffer));
   auto&& [st_filter, filter1]{FilterCreate::deserialize(&constbuffer)};
   REQUIRE(st_filter.ok());
 
@@ -126,24 +108,13 @@ TEST_CASE(
 TEST_CASE(
     "Filter: Test byte shuffle filter deserialization",
     "[filter][byte-shuffle]") {
-  Buffer buffer;
   FilterType filtertype0 = FilterType::FILTER_BYTESHUFFLE;
-  auto type = static_cast<uint8_t>(filtertype0);
-  REQUIRE(buffer.write(&type, sizeof(uint8_t)).ok());
+  char serialized_buffer[5];
+  char* p = &serialized_buffer[0];
+  buffer_offset<uint8_t, 0>(p) = static_cast<uint8_t>(filtertype0);
+  buffer_offset<uint32_t, 1>(p) = 0;  // metadata_length
 
-  // Save a pointer to store the actual length of the metadata.
-  uint32_t metadata_len = 0;
-  auto metadata_length_offset = buffer.offset();
-  REQUIRE(buffer.write(&metadata_len, sizeof(uint32_t)).ok());
-
-  // Filter-specific serialization
-  uint64_t buff_size = buffer.size();
-
-  metadata_len = static_cast<uint32_t>(buffer.size() - buff_size);
-  std::memcpy(
-      buffer.data(metadata_length_offset), &metadata_len, sizeof(uint32_t));
-
-  ConstBuffer constbuffer(&buffer);
+  ConstBuffer constbuffer(&serialized_buffer, sizeof(serialized_buffer));
   auto&& [st_filter, filter1]{FilterCreate::deserialize(&constbuffer)};
   REQUIRE(st_filter.ok());
 
@@ -154,23 +125,13 @@ TEST_CASE(
 TEST_CASE(
     "Filter: Test checksum md5 filter deserialization",
     "[filter][checksum-md5]") {
-  Buffer buffer;
   FilterType filtertype0 = FilterType::FILTER_CHECKSUM_MD5;
-  auto type = static_cast<uint8_t>(filtertype0);
-  REQUIRE(buffer.write(&type, sizeof(uint8_t)).ok());
+  char serialized_buffer[5];
+  char* p = &serialized_buffer[0];
+  buffer_offset<uint8_t, 0>(p) = static_cast<uint8_t>(filtertype0);
+  buffer_offset<uint32_t, 1>(p) = 0;  // metadata_length
 
-  // Save a pointer to store the actual length of the metadata.
-  uint32_t metadata_len = 0;
-  auto metadata_length_offset = buffer.offset();
-  REQUIRE(buffer.write(&metadata_len, sizeof(uint32_t)).ok());
-
-  // Filter-specific serialization
-  uint64_t buff_size = buffer.size();
-
-  metadata_len = static_cast<uint32_t>(buffer.size() - buff_size);
-  std::memcpy(
-      buffer.data(metadata_length_offset), &metadata_len, sizeof(uint32_t));
-  ConstBuffer constbuffer(&buffer);
+  ConstBuffer constbuffer(&serialized_buffer, sizeof(serialized_buffer));
   auto&& [st_filter, filter1]{FilterCreate::deserialize(&constbuffer)};
   REQUIRE(st_filter.ok());
 
@@ -181,24 +142,13 @@ TEST_CASE(
 TEST_CASE(
     "Filter: Test checksum sha256 filter deserialization",
     "[filter][checksum-sha256]") {
-  Buffer buffer;
   FilterType filtertype0 = FilterType::FILTER_CHECKSUM_SHA256;
-  auto type = static_cast<uint8_t>(filtertype0);
-  REQUIRE(buffer.write(&type, sizeof(uint8_t)).ok());
+  char serialized_buffer[5];
+  char* p = &serialized_buffer[0];
+  buffer_offset<uint8_t, 0>(p) = static_cast<uint8_t>(filtertype0);
+  buffer_offset<uint32_t, 1>(p) = 0;  // metadata_length
 
-  // Save a pointer to store the actual length of the metadata.
-  uint32_t metadata_len = 0;
-  auto metadata_length_offset = buffer.offset();
-  REQUIRE(buffer.write(&metadata_len, sizeof(uint32_t)).ok());
-
-  // Filter-specific serialization
-  uint64_t buff_size = buffer.size();
-
-  metadata_len = static_cast<uint32_t>(buffer.size() - buff_size);
-  std::memcpy(
-      buffer.data(metadata_length_offset), &metadata_len, sizeof(uint32_t));
-
-  ConstBuffer constbuffer(&buffer);
+  ConstBuffer constbuffer(&serialized_buffer, sizeof(serialized_buffer));
   auto&& [st_filter, filter1]{FilterCreate::deserialize(&constbuffer)};
   REQUIRE(st_filter.ok());
 
@@ -209,24 +159,13 @@ TEST_CASE(
 TEST_CASE(
     "Filter: Test encryption aes256gcm filter deserialization",
     "[filter][encryption-aes256gcm]") {
-  Buffer buffer;
   FilterType filtertype0 = FilterType::INTERNAL_FILTER_AES_256_GCM;
-  auto type = static_cast<uint8_t>(filtertype0);
-  REQUIRE(buffer.write(&type, sizeof(uint8_t)).ok());
+  char serialized_buffer[5];
+  char* p = &serialized_buffer[0];
+  buffer_offset<uint8_t, 0>(p) = static_cast<uint8_t>(filtertype0);
+  buffer_offset<uint32_t, 1>(p) = 0;  // metadata_length
 
-  // Save a pointer to store the actual length of the metadata.
-  uint32_t metadata_len = 0;
-  auto metadata_length_offset = buffer.offset();
-  REQUIRE(buffer.write(&metadata_len, sizeof(uint32_t)).ok());
-
-  // Filter-specific serialization
-  uint64_t buff_size = buffer.size();
-
-  metadata_len = static_cast<uint32_t>(buffer.size() - buff_size);
-  std::memcpy(
-      buffer.data(metadata_length_offset), &metadata_len, sizeof(uint32_t));
-
-  ConstBuffer constbuffer(&buffer);
+  ConstBuffer constbuffer(&serialized_buffer, sizeof(serialized_buffer));
   auto&& [st_filter, filter1]{FilterCreate::deserialize(&constbuffer)};
   REQUIRE(st_filter.ok());
 
@@ -254,28 +193,15 @@ TEST_CASE(
     }
     int level0 = 0;
 
-    Buffer buffer;
+    char serialized_buffer[10];
+    char* p = &serialized_buffer[0];
+    buffer_offset<uint8_t, 0>(p) = static_cast<uint8_t>(filtertype0);
+    buffer_offset<uint32_t, 1>(p) =
+        sizeof(uint8_t) + sizeof(int32_t);  // metadata_length
+    buffer_offset<uint8_t, 5>(p) = static_cast<uint8_t>(compressor0);
+    buffer_offset<int32_t, 6>(p) = level0;
 
-    auto type = static_cast<uint8_t>(filtertype0);
-    REQUIRE(buffer.write(&type, sizeof(uint8_t)).ok());
-
-    // Save a pointer to store the actual length of the metadata.
-    uint32_t metadata_len = 0;
-    auto metadata_length_offset = buffer.offset();
-    REQUIRE(buffer.write(&metadata_len, sizeof(uint32_t)).ok());
-
-    // Filter-specific serialization
-    uint64_t buff_size = buffer.size();
-
-    auto compressor_char = static_cast<uint8_t>(compressor0);
-    REQUIRE(buffer.write(&compressor_char, sizeof(uint8_t)).ok());
-    REQUIRE(buffer.write(&level0, sizeof(int32_t)).ok());
-
-    metadata_len = static_cast<uint32_t>(buffer.size() - buff_size);
-    std::memcpy(
-        buffer.data(metadata_length_offset), &metadata_len, sizeof(uint32_t));
-
-    ConstBuffer constbuffer(&buffer);
+    ConstBuffer constbuffer(&serialized_buffer, sizeof(serialized_buffer));
     auto&& [st_filter, filter1]{FilterCreate::deserialize(&constbuffer)};
     REQUIRE(st_filter.ok());
 
@@ -288,28 +214,15 @@ TEST_CASE(
     Compressor compressor0 = Compressor::GZIP;
     FilterType filtertype0 = FilterType::FILTER_GZIP;
 
-    Buffer buffer;
+    char serialized_buffer[10];
+    char* p = &serialized_buffer[0];
+    buffer_offset<uint8_t, 0>(p) = static_cast<uint8_t>(filtertype0);
+    buffer_offset<uint32_t, 1>(p) =
+        sizeof(uint8_t) + sizeof(int32_t);  // metadata_length
+    buffer_offset<uint8_t, 5>(p) = static_cast<uint8_t>(compressor0);
+    buffer_offset<int32_t, 6>(p) = level0;
 
-    auto type = static_cast<uint8_t>(filtertype0);
-    REQUIRE(buffer.write(&type, sizeof(uint8_t)).ok());
-
-    // Save a pointer to store the actual length of the metadata.
-    uint32_t metadata_len = 0;
-    auto metadata_length_offset = buffer.offset();
-    REQUIRE(buffer.write(&metadata_len, sizeof(uint32_t)).ok());
-
-    // Filter-specific serialization
-    uint64_t buff_size = buffer.size();
-
-    auto compressor_char = static_cast<uint8_t>(compressor0);
-    REQUIRE(buffer.write(&compressor_char, sizeof(uint8_t)).ok());
-    REQUIRE(buffer.write(&level0, sizeof(int32_t)).ok());
-
-    metadata_len = static_cast<uint32_t>(buffer.size() - buff_size);
-    std::memcpy(
-        buffer.data(metadata_length_offset), &metadata_len, sizeof(uint32_t));
-
-    ConstBuffer constbuffer(&buffer);
+    ConstBuffer constbuffer(&serialized_buffer, sizeof(serialized_buffer));
     auto&& [st_filter, filter1]{FilterCreate::deserialize(&constbuffer)};
     REQUIRE(st_filter.ok());
 
@@ -330,28 +243,15 @@ TEST_CASE(
     Compressor compressor0 = Compressor::ZSTD;
     FilterType filtertype0 = FilterType::FILTER_ZSTD;
 
-    Buffer buffer;
+    char serialized_buffer[10];
+    char* p = &serialized_buffer[0];
+    buffer_offset<uint8_t, 0>(p) = static_cast<uint8_t>(filtertype0);
+    buffer_offset<uint32_t, 1>(p) =
+        sizeof(uint8_t) + sizeof(int32_t);  // metadata_length
+    buffer_offset<uint8_t, 5>(p) = static_cast<uint8_t>(compressor0);
+    buffer_offset<int32_t, 6>(p) = level0;
 
-    auto type = static_cast<uint8_t>(filtertype0);
-    REQUIRE(buffer.write(&type, sizeof(uint8_t)).ok());
-
-    // Save a pointer to store the actual length of the metadata.
-    uint32_t metadata_len = 0;
-    auto metadata_length_offset = buffer.offset();
-    REQUIRE(buffer.write(&metadata_len, sizeof(uint32_t)).ok());
-
-    // Filter-specific serialization
-    uint64_t buff_size = buffer.size();
-
-    auto compressor_char = static_cast<uint8_t>(compressor0);
-    REQUIRE(buffer.write(&compressor_char, sizeof(uint8_t)).ok());
-    REQUIRE(buffer.write(&level0, sizeof(int32_t)).ok());
-
-    metadata_len = static_cast<uint32_t>(buffer.size() - buff_size);
-    std::memcpy(
-        buffer.data(metadata_length_offset), &metadata_len, sizeof(uint32_t));
-
-    ConstBuffer constbuffer(&buffer);
+    ConstBuffer constbuffer(&serialized_buffer, sizeof(serialized_buffer));
     auto&& [st_filter, filter1]{FilterCreate::deserialize(&constbuffer)};
     REQUIRE(st_filter.ok());
 
@@ -372,28 +272,15 @@ TEST_CASE(
     Compressor compressor0 = Compressor::LZ4;
     FilterType filtertype0 = FilterType::FILTER_LZ4;
 
-    Buffer buffer;
+    char serialized_buffer[10];
+    char* p = &serialized_buffer[0];
+    buffer_offset<uint8_t, 0>(p) = static_cast<uint8_t>(filtertype0);
+    buffer_offset<uint32_t, 1>(p) =
+        sizeof(uint8_t) + sizeof(int32_t);  // metadata_length
+    buffer_offset<uint8_t, 5>(p) = static_cast<uint8_t>(compressor0);
+    buffer_offset<int32_t, 6>(p) = level0;
 
-    auto type = static_cast<uint8_t>(filtertype0);
-    REQUIRE(buffer.write(&type, sizeof(uint8_t)).ok());
-
-    // Save a pointer to store the actual length of the metadata.
-    uint32_t metadata_len = 0;
-    auto metadata_length_offset = buffer.offset();
-    REQUIRE(buffer.write(&metadata_len, sizeof(uint32_t)).ok());
-
-    // Filter-specific serialization
-    uint64_t buff_size = buffer.size();
-
-    auto compressor_char = static_cast<uint8_t>(compressor0);
-    REQUIRE(buffer.write(&compressor_char, sizeof(uint8_t)).ok());
-    REQUIRE(buffer.write(&level0, sizeof(int32_t)).ok());
-
-    metadata_len = static_cast<uint32_t>(buffer.size() - buff_size);
-    std::memcpy(
-        buffer.data(metadata_length_offset), &metadata_len, sizeof(uint32_t));
-
-    ConstBuffer constbuffer(&buffer);
+    ConstBuffer constbuffer(&serialized_buffer, sizeof(serialized_buffer));
     auto&& [st_filter, filter1]{FilterCreate::deserialize(&constbuffer)};
     REQUIRE(st_filter.ok());
 
@@ -414,28 +301,15 @@ TEST_CASE(
     Compressor compressor0 = Compressor::BZIP2;
     FilterType filtertype0 = FilterType::FILTER_BZIP2;
 
-    Buffer buffer;
+    char serialized_buffer[10];
+    char* p = &serialized_buffer[0];
+    buffer_offset<uint8_t, 0>(p) = static_cast<uint8_t>(filtertype0);
+    buffer_offset<uint32_t, 1>(p) =
+        sizeof(uint8_t) + sizeof(int32_t);  // metadata_length
+    buffer_offset<uint8_t, 5>(p) = static_cast<uint8_t>(compressor0);
+    buffer_offset<int32_t, 6>(p) = level0;
 
-    auto type = static_cast<uint8_t>(filtertype0);
-    REQUIRE(buffer.write(&type, sizeof(uint8_t)).ok());
-
-    // Save a pointer to store the actual length of the metadata.
-    uint32_t metadata_len = 0;
-    auto metadata_length_offset = buffer.offset();
-    REQUIRE(buffer.write(&metadata_len, sizeof(uint32_t)).ok());
-
-    // Filter-specific serialization
-    uint64_t buff_size = buffer.size();
-
-    auto compressor_char = static_cast<uint8_t>(compressor0);
-    REQUIRE(buffer.write(&compressor_char, sizeof(uint8_t)).ok());
-    REQUIRE(buffer.write(&level0, sizeof(int32_t)).ok());
-
-    metadata_len = static_cast<uint32_t>(buffer.size() - buff_size);
-    std::memcpy(
-        buffer.data(metadata_length_offset), &metadata_len, sizeof(uint32_t));
-
-    ConstBuffer constbuffer(&buffer);
+    ConstBuffer constbuffer(&serialized_buffer, sizeof(serialized_buffer));
     auto&& [st_filter, filter1]{FilterCreate::deserialize(&constbuffer)};
     REQUIRE(st_filter.ok());
 
@@ -454,22 +328,12 @@ TEST_CASE(
 TEST_CASE("Filter: Test noop filter deserialization", "[filter][noop]") {
   Buffer buffer;
   FilterType filtertype0 = FilterType::FILTER_NONE;
-  auto type = static_cast<uint8_t>(filtertype0);
-  REQUIRE(buffer.write(&type, sizeof(uint8_t)).ok());
+  char serialized_buffer[5];
+  char* p = &serialized_buffer[0];
+  buffer_offset<uint8_t, 0>(p) = static_cast<uint8_t>(filtertype0);
+  buffer_offset<uint32_t, 1>(p) = 0;  // metadata_length
 
-  // Save a pointer to store the actual length of the metadata.
-  uint32_t metadata_len = 0;
-  auto metadata_length_offset = buffer.offset();
-  REQUIRE(buffer.write(&metadata_len, sizeof(uint32_t)).ok());
-
-  // Filter-specific serialization
-  uint64_t buff_size = buffer.size();
-
-  metadata_len = static_cast<uint32_t>(buffer.size() - buff_size);
-  std::memcpy(
-      buffer.data(metadata_length_offset), &metadata_len, sizeof(uint32_t));
-
-  ConstBuffer constbuffer(&buffer);
+  ConstBuffer constbuffer(&serialized_buffer, sizeof(serialized_buffer));
   auto&& [st_filter, filter1]{FilterCreate::deserialize(&constbuffer)};
   REQUIRE(st_filter.ok());
 
@@ -480,27 +344,14 @@ TEST_CASE("Filter: Test noop filter deserialization", "[filter][noop]") {
 TEST_CASE(
     "Filter: Test positive delta filter deserialization",
     "[filter][positive-delta]") {
-  Buffer buffer;
   FilterType filtertype0 = FilterType::FILTER_POSITIVE_DELTA;
-  auto type = static_cast<uint8_t>(filtertype0);
-  REQUIRE(buffer.write(&type, sizeof(uint8_t)).ok());
-
-  // Save a pointer to store the actual length of the metadata.
-  uint32_t metadata_len = 0;
-  auto metadata_length_offset = buffer.offset();
-  REQUIRE(buffer.write(&metadata_len, sizeof(uint32_t)).ok());
-
-  // Filter-specific serialization
-  uint64_t buff_size = buffer.size();
-
   uint32_t max_window_size0 = 1024;
-  REQUIRE((buffer.write(&max_window_size0, sizeof(uint32_t))).ok());
-
-  metadata_len = static_cast<uint32_t>(buffer.size() - buff_size);
-  std::memcpy(
-      buffer.data(metadata_length_offset), &metadata_len, sizeof(uint32_t));
-
-  ConstBuffer constbuffer(&buffer);
+  char serialized_buffer[9];
+  char* p = &serialized_buffer[0];
+  buffer_offset<uint8_t, 0>(p) = static_cast<uint8_t>(filtertype0);
+  buffer_offset<uint32_t, 1>(p) = sizeof(uint32_t);  // metadata_length
+  buffer_offset<uint32_t, 5>(p) = max_window_size0;
+  ConstBuffer constbuffer(&serialized_buffer, sizeof(serialized_buffer));
   auto&& [st_filter, filter1]{FilterCreate::deserialize(&constbuffer)};
   REQUIRE(st_filter.ok());
 

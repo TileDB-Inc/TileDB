@@ -331,7 +331,7 @@ Status SparseIndexReaderBase::allocate_tile_bitmap(
   auto cell_num = fragment_metadata_[rt->frag_idx()]->cell_num(rt->tile_idx());
 
   // Bitmap was already computed for this tile.
-  if (rt->bitmap_num_cells != std::numeric_limits<uint64_t>::max()) {
+  if (rt->bitmap_result_num_ != std::numeric_limits<uint64_t>::max()) {
     return Status::Ok();
   }
 
@@ -367,9 +367,9 @@ Status SparseIndexReaderBase::allocate_tile_bitmap(
   }
 
   if (!full_overlap) {
-    rt->bitmap.resize(cell_num, 1);
+    rt->bitmap_.resize(cell_num, 1);
   } else {
-    rt->bitmap_num_cells = cell_num;
+    rt->bitmap_result_num_ = cell_num;
   }
 
   return Status::Ok();
@@ -444,7 +444,7 @@ Status SparseIndexReaderBase::compute_tile_bitmaps(
             fragment_metadata_[rt->frag_idx()]->cell_num(rt->tile_idx());
 
         // Bitmap was already computed for this tile.
-        if (rt->bitmap_num_cells != std::numeric_limits<uint64_t>::max())
+        if (rt->bitmap_result_num_ != std::numeric_limits<uint64_t>::max())
           return Status::Ok();
 
         // Allocate the bitmap if not preallocated.
@@ -453,7 +453,7 @@ Status SparseIndexReaderBase::compute_tile_bitmaps(
 
         // Bitmap was not allocated, meaning we have full overlap, skip
         // computation.
-        if (rt->bitmap.size() == 0)
+        if (rt->bitmap_.size() == 0)
           return Status::Ok();
 
         // Prevent processing past the end of the cells in case there are more
@@ -507,7 +507,7 @@ Status SparseIndexReaderBase::compute_tile_bitmaps(
               ranges_for_dim,
               &range_indexes,
               num_ranges,
-              &rt->bitmap,
+              &rt->bitmap_,
               cell_order,
               min,
               max));
@@ -548,18 +548,18 @@ Status SparseIndexReaderBase::count_tile_bitmap_cells(
   auto cell_num = fragment_metadata_[rt->frag_idx()]->cell_num(rt->tile_idx());
 
   // Bitmap was already computed for this tile.
-  if (rt->bitmap_num_cells != std::numeric_limits<uint64_t>::max()) {
+  if (rt->bitmap_result_num_ != std::numeric_limits<uint64_t>::max()) {
     return Status::Ok();
   }
 
   // Compute number of cells in this tile. If the bitmap was not resized,
   // we have full overlap on a non overlapping range.
-  if (rt->bitmap.size() == 0) {
-    rt->bitmap_num_cells = cell_num;
+  if (rt->bitmap_.size() == 0) {
+    rt->bitmap_result_num_ = cell_num;
   } else {
-    rt->bitmap_num_cells = 0;
+    rt->bitmap_result_num_ = 0;
     for (uint64_t c = 0; c < cell_num; ++c) {
-      rt->bitmap_num_cells += rt->bitmap[c];
+      rt->bitmap_result_num_ += rt->bitmap_[c];
     }
   }
 
@@ -586,22 +586,24 @@ Status SparseIndexReaderBase::apply_query_condition(
 
           // Set num_cells if no subarray as it's used to filter below.
           if (!subarray_.is_set()) {
-            rt->bitmap_num_cells = cell_num;
+            rt->bitmap_result_num_ = cell_num;
           }
 
-          // Max bitmap_num_cells means the tile had no overlap, skip it.
-          if (!rt->qc_processed &&
-              rt->bitmap_num_cells != std::numeric_limits<uint64_t>::max()) {
+          // Don't process already processed tiles.
+          if (!rt->qc_processed_) {
             // Full overlap in bitmap calculation, make a bitmap.
-            if (rt->bitmap.size() == 0) {
-              rt->bitmap.resize(cell_num, 1);
-              rt->bitmap_num_cells = cell_num;
+            if (rt->bitmap_.size() == 0) {
+              rt->bitmap_.resize(cell_num, 1);
+              rt->bitmap_result_num_ = cell_num;
             }
 
             // Compute the result of the query condition for this tile.
             RETURN_NOT_OK(condition_.apply_sparse<BitmapType>(
-                array_schema_, &*rt, rt->bitmap.data(), &rt->bitmap_num_cells));
-            rt->qc_processed = true;
+                array_schema_,
+                &*rt,
+                rt->bitmap_.data(),
+                &rt->bitmap_result_num_));
+            rt->qc_processed_ = true;
           }
 
           return Status::Ok();

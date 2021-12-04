@@ -128,7 +128,6 @@ const std::string Config::VFS_FILE_POSIX_FILE_PERMISSIONS = "644";
 const std::string Config::VFS_FILE_POSIX_DIRECTORY_PERMISSIONS = "755";
 const std::string Config::VFS_FILE_MAX_PARALLEL_OPS =
     Config::SM_IO_CONCURRENCY_LEVEL;
-const std::string Config::VFS_FILE_ENABLE_FILELOCKS = "true";
 const std::string Config::VFS_READ_AHEAD_SIZE = "102400";          // 100KiB
 const std::string Config::VFS_READ_AHEAD_CACHE_SIZE = "10485760";  // 10MiB;
 const std::string Config::VFS_AZURE_STORAGE_ACCOUNT_NAME = "";
@@ -300,7 +299,6 @@ Config::Config() {
   param_values_["vfs.file.posix_directory_permissions"] =
       VFS_FILE_POSIX_DIRECTORY_PERMISSIONS;
   param_values_["vfs.file.max_parallel_ops"] = VFS_FILE_MAX_PARALLEL_OPS;
-  param_values_["vfs.file.enable_filelocks"] = VFS_FILE_ENABLE_FILELOCKS;
   param_values_["vfs.azure.storage_account_name"] =
       VFS_AZURE_STORAGE_ACCOUNT_NAME;
   param_values_["vfs.azure.storage_account_key"] =
@@ -635,8 +633,6 @@ Status Config::unset(const std::string& param) {
         VFS_FILE_POSIX_DIRECTORY_PERMISSIONS;
   } else if (param == "vfs.file.max_parallel_ops") {
     param_values_["vfs.file.max_parallel_ops"] = VFS_FILE_MAX_PARALLEL_OPS;
-  } else if (param == "vfs.file.enable_filelocks") {
-    param_values_["vfs.file.enable_filelocks"] = VFS_FILE_ENABLE_FILELOCKS;
   } else if (param == "vfs.azure.storage_account_name") {
     param_values_["vfs.azure.storage_account_name"] =
         VFS_AZURE_STORAGE_ACCOUNT_NAME;
@@ -852,8 +848,6 @@ Status Config::sanity_check(
     RETURN_NOT_OK(utils::parse::convert(value, &v32));
   } else if (param == "vfs.file.max_parallel_ops") {
     RETURN_NOT_OK(utils::parse::convert(value, &vuint64));
-  } else if (param == "vfs.file.enable_filelocks") {
-    RETURN_NOT_OK(utils::parse::convert(value, &v));
   } else if (param == "vfs.s3.scheme") {
     if (value != "http" && value != "https")
       return LOG_STATUS(

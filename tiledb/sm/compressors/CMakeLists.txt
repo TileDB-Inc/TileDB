@@ -1,5 +1,6 @@
 #
-# tiledb/sm/CMakeLists.txt
+# tiledb/sm/compressors/CMakeLists.txt
+#
 #
 # The MIT License
 #
@@ -23,11 +24,22 @@
 # OUT OF OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN
 # THE SOFTWARE.
 #
+include(common NO_POLICY_SCOPE)
 
-include(common-root)
+#
+# `compressors` object library
+#
+add_library(compressors OBJECT bzip_compressor.cc dd_compressor.cc gzip_compressor.cc lz4_compressor.cc rle_compressor.cc zstd_compressor.cc)
+target_link_libraries(compressors PUBLIC baseline $<TARGET_OBJECTS:baseline>)
+target_link_libraries(compressors PUBLIC buffer $<TARGET_OBJECTS:buffer>)
 
-add_subdirectory(buffer)
-add_subdirectory(compressors)
-add_subdirectory(filter)
-add_subdirectory(misc)
-add_subdirectory(stats)
+find_package(Zstd_EP REQUIRED)
+target_link_libraries(compressors PUBLIC Zstd::Zstd)
+#
+# Test-compile of object library ensures link-completeness
+#
+add_executable(compile_compressors EXCLUDE_FROM_ALL)
+target_link_libraries(compile_compressors PRIVATE compressors)
+target_sources(compile_compressors PRIVATE
+        test/compile_compressors_main.cc $<TARGET_OBJECTS:compressors>
+)

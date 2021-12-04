@@ -41,7 +41,6 @@
 #include <unordered_map>
 
 #include "tiledb/sm/crypto/encryption_key_validation.h"
-#include "tiledb/sm/filesystem/filelock.h"
 #include "tiledb/sm/fragment/fragment_metadata.h"
 #include "tiledb/sm/misc/uri.h"
 #include "tiledb/sm/storage_manager/open_array_memory_tracker.h"
@@ -128,12 +127,6 @@ class OpenArray {
    */
   bool is_empty(uint64_t timestamp) const;
 
-  /** Retrieves a (shared) filelock for the array. */
-  Status file_lock(VFS* vfs);
-
-  /** Retrieves a (shared) filelock for the array. */
-  Status file_unlock(VFS* vfs);
-
   /**
    * Returns the `FragmentMetadata` object of the input fragment URI,
    * or `nullptr` if the fragment metadata do no exist.
@@ -210,9 +203,6 @@ class OpenArray {
 
   /** Used to validate keys when opening an already opened array. */
   EncryptionKeyValidation key_validation_;
-
-  /** Filelock handle. */
-  filelock_t filelock_;
 
   /** The fragment metadata of the open array. */
   std::set<tdb_shared_ptr<FragmentMetadata>, cmp_frag_meta_ptr>

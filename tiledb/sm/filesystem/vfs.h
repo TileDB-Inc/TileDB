@@ -45,7 +45,6 @@
 #include "tiledb/sm/buffer/buffer.h"
 #include "tiledb/sm/cache/lru_cache.h"
 #include "tiledb/sm/config/config.h"
-#include "tiledb/sm/filesystem/filelock.h"
 #include "tiledb/sm/filesystem/mem_filesystem.h"
 #include "tiledb/sm/misc/cancelable_tasks.h"
 #include "tiledb/sm/misc/uri.h"
@@ -196,27 +195,6 @@ class VFS {
    * @return Status
    */
   Status remove_file(const URI& uri) const;
-
-  /**
-   * Locks a filelock.
-   *
-   * @param uri The URI of the filelock.
-   * @param lock A handle for the filelock (used in unlocking the
-   *     filelock).
-   * @param shared *True* if it is a shared lock, *false* if it is an
-   *     exclusive lock.
-   * @return Status
-   */
-  Status filelock_lock(const URI& uri, filelock_t* lock, bool shared) const;
-
-  /**
-   * Unlocks a filelock.
-   *
-   * @param uri The URI of the filelock.
-   * @param lock The handle of the filelock.
-   * @return Status
-   */
-  Status filelock_unlock(const URI& uri) const;
 
   /**
    * Retrieves the size of a file.
@@ -713,15 +691,6 @@ class VFS {
       void* const buffer,
       const uint64_t nbytes,
       const bool use_read_ahead);
-
-  /**
-   * Decrement the lock count of the given URI.
-   *
-   * @param uri The URI
-   * @param lock The filelock_t that is held, or INVALID_FILELOCK
-   * @return Status
-   */
-  Status decr_lock_count(const URI& uri, bool* is_zero, filelock_t* lock) const;
 
   /**
    * Retrieves the backend-specific max number of parallel operations for VFS
