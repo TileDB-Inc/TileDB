@@ -17,6 +17,7 @@ runs:
         #the gcc present in the manylinux image is v8.something-or-other
         #unclear what version of nodejs12 github actions 'node12' is using...
         #v12.22.7 requires python2.7, won't configure
+        #managed to gain access to python2.7, but then 12.22.7 trying to link items not found (get_clock and related)
         #wget https://nodejs.org/dist/v12.22.7/node-v12.22.7.tar.gz
         #tar xzf node-v12.22.7.tar.gz
         #cd node-v12.22.7
@@ -43,6 +44,7 @@ runs:
         ./configure
         make -j2 #do the runner's vm's really only have 2 cores?
         make install
+        cd $GITHUB_WORKSPACE
         which node
         node --version
         which npm
@@ -81,6 +83,7 @@ runs:
                 #~ run: node dist/index.js
           #~ #how to insert ESCape to exit insert mode? <sigh>
         #~ EOF
+        pwd
         cat ./action.yml
 
     - name: 'Print env'
@@ -293,6 +296,19 @@ runs:
           echo "unable to ls -l /"
         fi
         ls -l
+        if [[ $(ls -l ./gh.upload-artifact) ]]; then
+          #ls -l ./gh.upload-artifact
+          echo "have gh.upload-artifact"
+          if [[ $(ls -l ./gh.upload-artifact/action.yml) ]]; then
+            echo "appears action.yml is where expected..."
+          else
+            echo "action.yml NOT WHERE EXPECTED!"
+          fi
+        else
+          echo 'where are we?'
+          pwd
+          echo 'did not find gh.upload-artifact'
+        fi
         sync
         
     #~ - name: get-prep-location-upload-artifact
