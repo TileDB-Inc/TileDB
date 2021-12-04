@@ -92,11 +92,7 @@ tiledb::sm::FilterCreate::deserialize(
   if (!st.ok()) {
     return {st, nullopt};
   }
-  std::shared_ptr<Filter> filter;
-  uint8_t compressor_char;
-  Compressor compressor;
-  int compression_level;
-  uint32_t max_window_size;
+
   auto offset = buff->offset();
   if ((buff->size() - offset) < filter_metadata_len) {
     return {
@@ -112,12 +108,14 @@ tiledb::sm::FilterCreate::deserialize(
     case FilterType::FILTER_LZ4:
     case FilterType::FILTER_RLE:
     case FilterType::FILTER_BZIP2:
-    case FilterType::FILTER_DOUBLE_DELTA:
+    case FilterType::FILTER_DOUBLE_DELTA: {
+      uint8_t compressor_char;
+      int compression_level;
       st = (buff->read(&compressor_char, sizeof(uint8_t)));
       if (!st.ok()) {
         return {st, nullopt};
       }
-      compressor = static_cast<Compressor>(compressor_char);
+      Compressor compressor = static_cast<Compressor>(compressor_char);
       st = buff->read(&compression_level, sizeof(int32_t));
       if (!st.ok()) {
         return {st, nullopt};
@@ -125,7 +123,9 @@ tiledb::sm::FilterCreate::deserialize(
       return {Status::Ok(),
               tiledb::common::make_shared<CompressionFilter>(
                   HERE(), compressor, compression_level)};
-    case FilterType::FILTER_BIT_WIDTH_REDUCTION:
+    }
+    case FilterType::FILTER_BIT_WIDTH_REDUCTION: {
+      uint32_t max_window_size;
       st = buff->read(&max_window_size, sizeof(uint32_t));
       if (!st.ok()) {
         return {st, nullopt};
@@ -133,13 +133,15 @@ tiledb::sm::FilterCreate::deserialize(
       return {Status::Ok(),
               tiledb::common::make_shared<BitWidthReductionFilter>(
                   HERE(), max_window_size)};
+    }
     case FilterType::FILTER_BITSHUFFLE:
       return {Status::Ok(),
               tiledb::common::make_shared<BitshuffleFilter>(HERE())};
     case FilterType::FILTER_BYTESHUFFLE:
       return {Status::Ok(),
               tiledb::common::make_shared<ByteshuffleFilter>(HERE())};
-    case FilterType::FILTER_POSITIVE_DELTA:
+    case FilterType::FILTER_POSITIVE_DELTA: {
+      uint32_t max_window_size;
       st = buff->read(&max_window_size, sizeof(uint32_t));
       if (!st.ok()) {
         return {st, nullopt};
@@ -148,6 +150,7 @@ tiledb::sm::FilterCreate::deserialize(
                 tiledb::common::make_shared<PositiveDeltaFilter>(
                     HERE(), max_window_size)};
       }
+    }
     case FilterType::INTERNAL_FILTER_AES_256_GCM:
       if (encryption_key.encryption_type() ==
           tiledb::sm::EncryptionType::AES_256_GCM) {
