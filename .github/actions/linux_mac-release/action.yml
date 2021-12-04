@@ -14,12 +14,16 @@ runs:
         #sed "s/main: 'dist/index.js'/steps:/" action.yml
         #sed "$a\ \ \ \ - shell: bash" action.yml
         #sed "$a\ \ \ \ \ \ run: node dist/index.js" action.yml
-        cat > sed-upload-artifacts.patch <<EOF
-          s/using: 'node12'/using: 'composite'/
-          s/main: 'dist\/index.js'/steps:/
-          $a\ \ \ \ - shell: bash
-          $a\ \ \ \ \ \ run: node dist/index.js        
-        EOF
+        #~ cat > sed-upload-artifacts.patch <<EOF
+          #~ s/using: 'node12'/using: 'composite'/
+          #~ s/main: 'dist\/index.js'/steps:/
+          #~ $a\ \ \ \ - shell: bash
+          #~ $a\ \ \ \ \ \ run: node dist/index.js
+        #~ EOF
+        echo "s/using: 'node12'/using: 'composite'/" > sed-upload-artifacts.patch
+        echo "s/main: 'dist\/index.js'/steps:/" >> sed-upload-artifacts.patch
+        echo "$a\ \ \ \ - shell: bash" >> sed-upload-artifacts.patch
+        echo "$a\ \ \ \ \ \ run: node dist/index.js" >> sed-upload-artifacts.patch
         cat sed-upload-artifacts.patch
         hexdump -C sed-upload-artifacts.patch
         sed -f ./sed-upload-artifacts.patch action.yml > patched.action.yml
