@@ -3,7 +3,8 @@ name: act-linux_mac-release
 runs:
   using: "composite"
   steps:
-    - name: get-prep-location-upload-artifact
+  
+    - name: 'get-prep-location-upload-artifact'
       shell: bash
       run: |
         pwd
@@ -22,8 +23,8 @@ runs:
         #~ EOF
         echo "s/using: 'node12'/using: 'composite'/" > sed-upload-artifacts.patch
         echo "s/main: 'dist\/index.js'/steps:/" >> sed-upload-artifacts.patch
-        echo "$a\ \ \ \ - shell: bash" >> sed-upload-artifacts.patch
-        echo "$a\ \ \ \ \ \ run: node dist/index.js" >> sed-upload-artifacts.patch
+        echo "\$a\ \ \ \ - shell: bash" >> sed-upload-artifacts.patch
+        echo "\$a\ \ \ \ \ \ run: node dist/index.js" >> sed-upload-artifacts.patch
         cat sed-upload-artifacts.patch
         hexdump -C sed-upload-artifacts.patch
         sed -f ./sed-upload-artifacts.patch action.yml > patched.action.yml
@@ -273,14 +274,14 @@ runs:
         #~ sed -f ./sed-upload-artifacts.patch action.yml > patched.action.yml
         #~ rm action.yml
         #~ mv patched.action.yml action.yml
-        cat > vi-upload-artifacts.patch <<EOF
-          :%s/using: 'node12'/using: 'composite'/g
-          :%s/main: 'dist\/index.js'/steps:/g
-          G
-          A    - shell: bash
-                run: node dist/index.js
-          #how to insert ESCape to exit insert mode? <sigh>
-        EOF
+        #~ cat > vi-upload-artifacts.patch <<EOF
+          #~ :%s/using: 'node12'/using: 'composite'/g
+          #~ :%s/main: 'dist\/index.js'/steps:/g
+          #~ G
+          #~ A    - shell: bash
+                #~ run: node dist/index.js
+          #~ #how to insert ESCape to exit insert mode? <sigh>
+        #~ EOF
         #~ cat ./action.yml
         
     - name: 'ArchiveFiles@2A' # https://github.com/actions/upload-artifact#where-does-the-upload-go
