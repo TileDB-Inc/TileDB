@@ -11,6 +11,7 @@ env:
     
 jobs:
   build-release-macos:
+    if: false
     runs-on: ${{ matrix.os }}
     env:
       TILEDB_S3: ON

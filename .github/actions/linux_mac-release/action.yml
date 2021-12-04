@@ -8,6 +8,7 @@ runs:
       shell: bash
       run: |
         set -x
+        yum -y install nodejs
         pwd
         git clone https://github.com/actions/upload-artifact ./gh.upload-artifact
         cd gh.upload-artifact
