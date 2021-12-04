@@ -9,7 +9,41 @@ runs:
       run: |
         set -x
         #when checked, was node v0.10.48, will it run the upload-artifacts index.js, which wanted node12?
-        yum -y install nodejs
+        #nope, 10.48 doesn't do it... yum -y install nodejs
+        #installing nodejs from source on centos6, https://www.subhosting.net/kb/how-to-install-nodejs-on-centos-6/
+        #the gcc present in the manylinux image is v8.something-or-other
+        #unclear what version of nodejs12 github actions 'node12' is using...
+        #v12.22.7 requires python2.7, won't configure
+        #wget https://nodejs.org/dist/v12.22.7/node-v12.22.7.tar.gz
+        #tar xzf node-v12.22.7.tar.gz
+        #cd node-v12.22.7
+        #version v12.0.0 wants python2.7 but will accommodate the 2.6 we have using
+        #some floating patch from somewhere...
+        #but ran into absence of module 'argparse', seems manylinux does have python27 avail for install
+        #only apparently its ghostly, I encountered similar to https://stackoverflow.com/questions/37748404/where-does-yum-install-python-on-centos-6-6
+        #then found https://gist.github.com/dalegaspi/dec44117fa5e7597a559
+        yum -y install python27
+        # will we need:
+        #cd /opt/rh/python27/root/usr/bin/ # cd to the directory where SCL installs python
+        #sudo LD_LIBRARY_PATH=$LD_LIBRARY_PATH ./easy_install-2.7 pip
+        wget https://nodejs.org/dist/v12.0.0/node-v12.0.0.tar.gz
+        tar xzf node-v12.0.0.tar.gz
+        cd node-v12.0.0
+        #scl enable python27 bash #hmm, but this won't see rest of run, will it...
+        #potentially helpful https://stackoverflow.com/questions/16631461/scl-enable-python27-bash
+        source /opt/rh/python27/enable
+        if [[ $(which python) ]]; then
+          python --version
+        else
+          echo "didn't find python"
+        fi
+        ./configure
+        make -j2 #do the runner's vm's really only have 2 cores?
+        make install
+        which node
+        node --version
+        which npm
+        npm --version
         pwd
         git clone https://github.com/actions/upload-artifact ./gh.upload-artifact
         cd gh.upload-artifact
