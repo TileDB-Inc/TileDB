@@ -354,8 +354,6 @@ runs:
       #uses: actions/upload-artifact@v1
       uses: ./gh.upload-artifact
       #https://github.com/airtower-luna/hello-github-actions/blob/main/composite-action/action.yaml
-      env:
-        
       with:
         # @v1 does not recognize 'retention-days', 'if-no-files-found', path enhancments, prob more
         #retention-days: 10
