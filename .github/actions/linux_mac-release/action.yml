@@ -85,8 +85,12 @@ runs:
         #~ #https://github.com/actions/runner/issues/665 prob with 'inputs' for custom actions, work around.
         #github actions only mentions using 'node12' or 'node16' which they must provide somewhere,
         #can we simply use the 'node' (v12.0.0) that was built locally (and will run with the local libraries)???
-        echo "s/using: 'node12'/using: 'node'/" > sed-upload-artifact.patch
+        #echo "s/using: 'node12'/using: 'node'/" > sed-upload-artifact.patch
         
+        #https://github.com/borkdude/nbb-action-example/blob/v0.0.1/run.cjs
+        echo -e "child = require('child_process');\npath = require('path');\n// fork to system-installed node which is local build v120.0 at this time of writing\nchild.fork(path.resolve(__dirname, 'dist/index.js'), [], {execPath: \"node\"});" > run.cjs
+        echo "s/main: 'dist\/index.js'/main: 'run.cjs'/" >> sed-upload-artifact.patch
+
         #diagnostic, trying to see if 'node12', 'node16' are in environment, or does runner do
         #something else hidden to equate these to something else in environ?
         if [[ $(which node12) ]]; then
