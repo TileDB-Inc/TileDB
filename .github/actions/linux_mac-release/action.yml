@@ -63,22 +63,38 @@ runs:
           #~ $a\ \ \ \ - shell: bash
           #~ $a\ \ \ \ \ \ run: node dist/index.js
         #~ EOF
-        echo "s/using: 'node12'/using: 'composite'/" > sed-upload-artifact.patch
-        echo "s/main: 'dist\/index.js'/steps:/" >> sed-upload-artifact.patch
-        #echo "\$a\ \ \ \ - shell: bash" >> sed-upload-artifact.patch
-        echo "\$a\\ \\ \\ \\ - shell: bash" >> sed-upload-artifact.patch
-        #echo "\$a\ \ \ \ \ \ run: node dist/index.js" >> sed-upload-artifact.patch
-        #echo "\$a\ \ \ \ \ \ run: node \$GITHUB_WORKSPACE/gh.upload-artifact/dist/index.js" >> sed-upload-artifact.patch
-        echo "\$a\\ \\ \\ \\ \\ \\ env:" >> sed-upload-artifact.patch
-        echo "\$a\\ \\ \\ \\ \\ \\ \\ \\ INPUT_PATH: \$\{\{ inputs.path \}\}" >> sed-upload-artifact.patch
-        echo "\$a\\ \\ \\ \\ \\ \\ \\ \\ INPUT_NAME: \$\{\{ inputs.name \}\}" >> sed-upload-artifact.patch
-        echo "\$a\\ \\ \\ \\ \\ \\ \\ \\ INPUT_IF-NO-FILES-FOUND: \$\{\{ inputs.if-no-files-found \}\}" >> sed-upload-artifact.patch
-        #echo "\$a\\ \\ \\ \\ \\ \\ run: printenv" >> sed-upload-artifact.patch
-        #echo "\$a\\ \\ \\ \\ \\ \\ run: node \$GITHUB_WORKSPACE/gh.upload-artifact/dist/index.js" >> sed-upload-artifact.patch
-        echo "\$a\\ \\ \\ \\ \\ \\ run: |"  >> sed-upload-artifact.patch
-        echo "\$a\\ \\ \\ \\ \\ \\ \\ \\ printenv" >> sed-upload-artifact.patch
-        echo "\$a\\ \\ \\ \\ \\ \\ \\ \\ node \$GITHUB_WORKSPACE/gh.upload-artifact/dist/index.js" >> sed-upload-artifact.patch
-        #https://github.com/actions/runner/issues/665 prob with 'inputs' for custom actions, work around.
+        #This section built patch to turn the cloned custom action into a composite action, but
+        #turns out runner env does -not- treat composite action setup same as non-composite, so
+        #still fails, not finding 'hidden' environment variables for which github actions apparently
+        #does not document...
+        #~ echo "s/using: 'node12'/using: 'composite'/" > sed-upload-artifact.patch
+        #~ echo "s/main: 'dist\/index.js'/steps:/" >> sed-upload-artifact.patch
+        #~ #echo "\$a\ \ \ \ - shell: bash" >> sed-upload-artifact.patch
+        #~ echo "\$a\\ \\ \\ \\ - shell: bash" >> sed-upload-artifact.patch
+        #~ #echo "\$a\ \ \ \ \ \ run: node dist/index.js" >> sed-upload-artifact.patch
+        #~ #echo "\$a\ \ \ \ \ \ run: node \$GITHUB_WORKSPACE/gh.upload-artifact/dist/index.js" >> sed-upload-artifact.patch
+        #~ echo "\$a\\ \\ \\ \\ \\ \\ env:" >> sed-upload-artifact.patch
+        #~ echo "\$a\\ \\ \\ \\ \\ \\ \\ \\ INPUT_PATH: \$\{\{ inputs.path \}\}" >> sed-upload-artifact.patch
+        #~ echo "\$a\\ \\ \\ \\ \\ \\ \\ \\ INPUT_NAME: \$\{\{ inputs.name \}\}" >> sed-upload-artifact.patch
+        #~ echo "\$a\\ \\ \\ \\ \\ \\ \\ \\ INPUT_IF-NO-FILES-FOUND: \$\{\{ inputs.if-no-files-found \}\}" >> sed-upload-artifact.patch
+        #~ #echo "\$a\\ \\ \\ \\ \\ \\ run: printenv" >> sed-upload-artifact.patch
+        #~ #echo "\$a\\ \\ \\ \\ \\ \\ run: node \$GITHUB_WORKSPACE/gh.upload-artifact/dist/index.js" >> sed-upload-artifact.patch
+        #~ echo "\$a\\ \\ \\ \\ \\ \\ run: |"  >> sed-upload-artifact.patch
+        #~ echo "\$a\\ \\ \\ \\ \\ \\ \\ \\ printenv" >> sed-upload-artifact.patch
+        #~ echo "\$a\\ \\ \\ \\ \\ \\ \\ \\ node \$GITHUB_WORKSPACE/gh.upload-artifact/dist/index.js" >> sed-upload-artifact.patch
+        #~ #https://github.com/actions/runner/issues/665 prob with 'inputs' for custom actions, work around.
+        #github actions only mentions using 'node12' or 'node16' which they must provide somewhere,
+        #can we simply use the 'node' (v12.0.0) that was built locally (and will run with the local libraries)???
+        echo "s/using: 'node12'/using: 'node'/" > sed-upload-artifact.patch
+        
+        #diagnostic, trying to see if 'node12', 'node16' are in environment, or does runner do
+        #something else hidden to equate these to something else in environ?
+        if [[ $(which node12) ]]; then
+          echo "found node12"
+        fi
+        if [[ $(which node16) ]]; then
+          echo "found node16"
+        fi
         
         #TBD: how to handle inputs/env-vars with dashes, what does GA do with them for custom non-composite actions?
         cat sed-upload-artifact.patch
