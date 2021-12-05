@@ -53,6 +53,16 @@ jobs:
       - id: get-user
         run: echo "::set-output name=uid_gid::$(id -u):$(id -g)"
           
+          
+  try-manylinux-container-step:
+    if: true
+    runs-on: ubuntu-20.04
+    steps:
+      - name: check container
+        uses: 'quay.io/pypa/manylinux2010_x86_64:2021-11-07-28723f3'      
+        with:
+          args: /bin/bash -c "cat /etc/system-release"
+          
   build-release-manylinux:
     needs: configure-for-manylinux-container
     runs-on: ubuntu-20.04
@@ -68,7 +78,7 @@ jobs:
       #options: "--entrypoint /bin/bash"
       #options: --user ${{ needs.configure-for-manylinux-container.outputs.uid_gid }}
     steps:
-      - name: diagnosing
+      - name: diagnosing workflow
         shell: bash
         run: |
           set -x
@@ -83,6 +93,13 @@ jobs:
           printenv
           env
           set
+          # container at 'thistime' has /etc/system-release containing centos 6.10 (final)
+          if [[ $(ls -l /etc/system-release) ]]; then
+            echo "found system-release"
+            cat /etc/system-release
+          else
+            echo "did not find system-release"
+          fi
           exit 17
 
       #~ - name: 'are we in container?'

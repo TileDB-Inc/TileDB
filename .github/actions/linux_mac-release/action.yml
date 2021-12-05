@@ -10,7 +10,7 @@ runs:
       run: |
         docker run -it "quay.io/pypa/manylinux2010_x86_64:2021-11-07-28723f3" /bin/bash
         
-    - name: 'diagnose-explore'
+    - name: 'diagnose-explore-inside-action'
       if: true
       shell: bash
       run: |
