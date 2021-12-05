@@ -73,11 +73,17 @@ jobs:
         run: |
           set -x
           echo $HOME
+          echo $GITHUB_WORKSPACE
+          echo $GITHUB_EVENT_PATH
           whoami
           pwd
           mount
           ls -l
           find . -name '*'
+          printenv
+          env
+          set
+          exit 17
 
       #~ - name: 'are we in container?'
         #~ shell: bash
