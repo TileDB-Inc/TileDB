@@ -4,6 +4,24 @@ runs:
   using: "composite"
   steps:
   
+    - name: 'invokebuildindockercontainer'
+      if: false
+      shell: bash
+      run: |
+        docker run -it "quay.io/pypa/manylinux2010_x86_64:2021-11-07-28723f3" /bin/bash
+        
+    - name: 'diagnose-explore'
+      if: true
+      shell: bash
+      run: |
+        set -x
+        printenv > printenv.txt
+        env > env.txt
+        diff printenv.txt env.txt
+        printenv
+        env
+        exit 14
+        
     - name: 'get-prep-location-upload-artifact'
       shell: bash
       run: |
@@ -87,7 +105,12 @@ runs:
         #can we simply use the 'node' (v12.0.0) that was built locally (and will run with the local libraries)???
         #echo "s/using: 'node12'/using: 'node'/" > sed-upload-artifact.patch
         
+        #command to invoke manylinux container image locally for exploring its contents
+        #docker run -it "quay.io/pypa/manylinux2010_x86_64:2021-11-07-28723f3" /bin/bash
+        
         #https://github.com/borkdude/nbb-action-example/blob/v0.0.1/run.cjs
+        #<sigh>, of course this still won't work because it's still invoking the node12 to initiate the 
+        #call redirecting, and it's that node12 that problematically won't work, <sigh>.
         echo -e "child = require('child_process');\npath = require('path');\n// fork to system-installed node which is local build v120.0 at this time of writing\nchild.fork(path.resolve(__dirname, 'dist/index.js'), [], {execPath: \"node\"});" > run.cjs
         echo "s/main: 'dist\/index.js'/main: 'run.cjs'/" >> sed-upload-artifact.patch
 
