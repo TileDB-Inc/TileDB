@@ -30,11 +30,11 @@
  * This file implements the zstd compressor class.
  */
 
-#include "tiledb/sm/compressors/zstd_compressor.h"
+#include "zstd_compressor.h"
+
 #include "tiledb/common/logger.h"
 #include "tiledb/sm/buffer/buffer.h"
 
-#include <zstd.h>
 #include <iostream>
 
 using namespace tiledb::common;
@@ -80,22 +80,26 @@ Status ZStd::compress(
 }
 
 Status ZStd::decompress(
-    ConstBuffer* input_buffer, PreallocatedBuffer* output_buffer) {
+    tdb_shared_ptr<ResourcePool<ZStd::ZSTD_Decompress_Context>>
+        decompress_ctx_pool,
+    ConstBuffer* input_buffer,
+    PreallocatedBuffer* output_buffer) {
   // Sanity check
   if (input_buffer->data() == nullptr || output_buffer->data() == nullptr)
     return LOG_STATUS(Status::CompressionError(
         "Failed decompressing with ZStd; invalid buffer format"));
 
-  // Create context
-  std::unique_ptr<ZSTD_DCtx, decltype(&ZSTD_freeDCtx)> ctx(
-      ZSTD_createDCtx(), ZSTD_freeDCtx);
-  if (ctx.get() == nullptr)
+  if (decompress_ctx_pool == nullptr) {
     return LOG_STATUS(Status::CompressionError(
-        std::string("ZStd decompression failed; could not allocate context.")));
+        "Failed decompressing with ZStd; Resource pool not initialized"));
+  }
+
+  ResourceGuard context_guard(*decompress_ctx_pool);
+  auto& context = context_guard.get();
 
   // Decompress
   uint64_t zstd_ret = ZSTD_decompressDCtx(
-      ctx.get(),
+      context.ptr(),
       output_buffer->cur_data(),
       output_buffer->free_space(),
       input_buffer->data(),

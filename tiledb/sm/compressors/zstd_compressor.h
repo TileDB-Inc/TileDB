@@ -35,6 +35,10 @@
 
 #include "tiledb/common/status.h"
 
+#include "tiledb/sm/misc/resource_pool.h"
+
+#include <zstd.h>
+
 using namespace tiledb::common;
 
 namespace tiledb {
@@ -47,6 +51,22 @@ class PreallocatedBuffer;
 /** Handles compression/decompression with the zstd library. */
 class ZStd {
  public:
+  /** wrapper around the decompress ZSTD context so that it can be used in a
+   * resource pool */
+  class ZSTD_Decompress_Context {
+   public:
+    ZSTD_Decompress_Context()
+        : ctx_(ZSTD_createDCtx(), ZSTD_freeDCtx) {
+    }
+
+    ZSTD_DCtx* ptr() {
+      return ctx_.get();
+    }
+
+   private:
+    std::unique_ptr<ZSTD_DCtx, decltype(&ZSTD_freeDCtx)> ctx_;
+  };
+
   /**
    * Compression function.
    *
@@ -61,12 +81,17 @@ class ZStd {
   /**
    * Decompression function.
    *
+   * @param decompress_ctx_pool Resource pool to manage decompression context
+   * reuse
    * @param input_buffer Input buffer to read from.
    * @param output_buffer Output buffer to write the decompressed data to.
    * @return Status
    */
   static Status decompress(
-      ConstBuffer* input_buffer, PreallocatedBuffer* output_buffer);
+      tdb_shared_ptr<ResourcePool<ZStd::ZSTD_Decompress_Context>>
+          decompress_ctx_pool,
+      ConstBuffer* input_buffer,
+      PreallocatedBuffer* output_buffer);
 
   /** Returns the default compression level. */
   static int default_level() {
