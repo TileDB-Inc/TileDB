@@ -999,9 +999,8 @@ template Status Config::get<float>(
     const std::string& param, float* value, bool* found) const;
 template Status Config::get<double>(
     const std::string& param, double* value, bool* found) const;
-template
-    Status Config::get_vector<uint32_t>(const std::string& param, std::vector<uint32_t>* value, bool* found) const;
-
+template Status Config::get_vector<uint32_t>(
+    const std::string& param, std::vector<uint32_t>* value, bool* found) const;
 
 }  // namespace sm
 }  // namespace tiledb

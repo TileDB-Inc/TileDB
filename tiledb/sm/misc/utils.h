@@ -45,7 +45,6 @@
 #include "tiledb/common/status.h"
 #include "tiledb/sm/misc/types.h"
 
-
 namespace tiledb {
 namespace sm {
 

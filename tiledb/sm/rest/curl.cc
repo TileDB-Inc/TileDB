@@ -302,8 +302,8 @@ Status Curl::init(
   // Ignore ssl validation if the user has set rest.ignore_ssl_validation = true
   bool ignore_ssl_validation = false;
   bool found;
-  RETURN_NOT_OK(
-      config_->get<bool>("rest.ignore_ssl_validation", &ignore_ssl_validation, &found));
+  RETURN_NOT_OK(config_->get<bool>(
+      "rest.ignore_ssl_validation", &ignore_ssl_validation, &found));
   assert(found);
 
   if (ignore_ssl_validation) {
