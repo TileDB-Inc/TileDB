@@ -83,6 +83,11 @@ jobs:
         shell: bash
         run: |
           set -x
+          if [[ $(which docker) ]]; then
+            echo "found docker"
+          else
+            echo "did not find docker"
+          fi
           echo $HOME
           echo $GITHUB_WORKSPACE
           echo $GITHUB_EVENT_PATH
