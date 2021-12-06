@@ -1,5 +1,5 @@
 #
-# tiledb/sm/CMakeLists.txt
+# tiledb/sm/filter/CMakeLists.txt
 #
 # The MIT License
 #
@@ -32,17 +32,13 @@ include(common NO_POLICY_SCOPE)
 add_library(filter OBJECT filter.cc filter_buffer.cc filter_storage.cc)
 target_link_libraries(filter PUBLIC baseline $<TARGET_OBJECTS:baseline>)
 target_link_libraries(filter PUBLIC buffer $<TARGET_OBJECTS:buffer>)
-
-find_package(Zstd_EP REQUIRED)
-target_link_libraries(filter PUBLIC Zstd::Zstd)
+target_link_libraries(filter PUBLIC crypto $<TARGET_OBJECTS:crypto>)
 #
 # Test-compile of object library ensures link-completeness
 #
 add_executable(compile_filter EXCLUDE_FROM_ALL)
 target_link_libraries(compile_filter PRIVATE filter)
-target_sources(compile_filter PRIVATE
-    test/compile_filter_main.cc $<TARGET_OBJECTS:filter>
-)
+target_sources(compile_filter PRIVATE test/compile_filter_main.cc)
 
 #
 # `bitshuffle_filter` object library
@@ -69,9 +65,7 @@ set_source_files_properties(
 #
 add_executable(compile_bitshuffle_filter EXCLUDE_FROM_ALL)
 target_link_libraries(compile_bitshuffle_filter PRIVATE bitshuffle_filter)
-target_sources(compile_bitshuffle_filter PRIVATE
-    test/compile_bitshuffle_filter_main.cc $<TARGET_OBJECTS:bitshuffle_filter>
-)
+target_sources(compile_bitshuffle_filter PRIVATE test/compile_bitshuffle_filter_main.cc)
 
 #
 # `bitshuffle_filter` object library
@@ -103,6 +97,87 @@ set_source_files_properties(${TileDB_blosc_SOURCES} PROPERTIES COMPILE_OPTIONS "
 #
 add_executable(compile_byteshuffle_filter EXCLUDE_FROM_ALL)
 target_link_libraries(compile_byteshuffle_filter PRIVATE byteshuffle_filter)
-target_sources(compile_byteshuffle_filter PRIVATE
-    test/compile_byteshuffle_filter_main.cc $<TARGET_OBJECTS:byteshuffle_filter>
+target_sources(compile_byteshuffle_filter PRIVATE test/compile_byteshuffle_filter_main.cc)
+
+#
+# `checksum_filters` object library
+#
+cmake_path(APPEND TILEDB_SOURCE_ROOT "external/src/md5" OUTPUT_VARIABLE MD5_SOURCE_ROOT)
+add_library(checksum_filters OBJECT
+    checksum_md5_filter.cc ${MD5_SOURCE_ROOT}/md5.cc
+    checksum_sha256_filter.cc
 )
+target_link_libraries(checksum_filters PUBLIC config $<TARGET_OBJECTS:config>)
+target_link_libraries(checksum_filters PUBLIC filter $<TARGET_OBJECTS:filter>)
+set_source_files_properties(${MD5_SOURCE_ROOT}/md5.cc PROPERTIES INCLUDE_DIRECTORIES "${TILEDB_EXTERNAL_INCLUDE}")
+#
+# Test-compile of object library ensures link-completeness
+#
+add_executable(compile_checksum_filters EXCLUDE_FROM_ALL)
+target_link_libraries(compile_checksum_filters PRIVATE checksum_filters)
+target_sources(compile_checksum_filters PRIVATE test/compile_checksum_filters_main.cc)
+
+#
+# `compression_filter` object library
+#
+add_library(compression_filter OBJECT compression_filter.cc)
+target_link_libraries(compression_filter PUBLIC filter $<TARGET_OBJECTS:filter>)
+target_link_libraries(compression_filter PUBLIC compressors $<TARGET_OBJECTS:compressors>)
+#
+# Test-compile of object library ensures link-completeness
+#
+add_executable(compile_compression_filter EXCLUDE_FROM_ALL)
+target_link_libraries(compile_compression_filter PRIVATE compression_filter)
+target_sources(compile_compression_filter PRIVATE test/compile_compression_filter_main.cc)
+
+#
+# `encryption_filters` object library
+#
+add_library(encryption_filters OBJECT encryption_aes256gcm_filter.cc)
+target_link_libraries(encryption_filters PUBLIC crypto $<TARGET_OBJECTS:crypto>)
+target_link_libraries(encryption_filters PUBLIC filter $<TARGET_OBJECTS:filter>)
+#
+# Test-compile of object library ensures link-completeness
+#
+add_executable(compile_encryption_filters EXCLUDE_FROM_ALL)
+target_link_libraries(compile_encryption_filters PRIVATE encryption_filters)
+target_sources(compile_encryption_filters PRIVATE test/compile_encryption_filters_main.cc)
+
+#
+# `all_filters` object library
+#
+add_library(all_filters OBJECT
+    filter_create.cc
+    bit_width_reduction_filter.cc noop_filter.cc positive_delta_filter.cc
+)
+target_link_libraries(all_filters PUBLIC bitshuffle_filter $<TARGET_OBJECTS:bitshuffle_filter>)
+target_link_libraries(all_filters PUBLIC byteshuffle_filter $<TARGET_OBJECTS:byteshuffle_filter>)
+target_link_libraries(all_filters PUBLIC checksum_filters $<TARGET_OBJECTS:checksum_filters>)
+target_link_libraries(all_filters PUBLIC compression_filter $<TARGET_OBJECTS:compression_filter>)
+target_link_libraries(all_filters PUBLIC encryption_filters $<TARGET_OBJECTS:encryption_filters>)
+#
+# Test-compile of object library ensures link-completeness
+#
+add_executable(compile_all_filters EXCLUDE_FROM_ALL)
+target_link_libraries(compile_all_filters PRIVATE all_filters)
+target_sources(compile_all_filters PRIVATE test/compile_all_filters_main.cc)
+
+#
+# `filter_pipeline` object library
+#
+add_library(filter_pipeline OBJECT
+    filter_pipeline.cc
+)
+target_link_libraries(filter_pipeline PUBLIC all_filters $<TARGET_OBJECTS:all_filters>)
+target_link_libraries(filter_pipeline PUBLIC baseline $<TARGET_OBJECTS:baseline>)
+target_link_libraries(filter_pipeline PUBLIC buffer $<TARGET_OBJECTS:buffer>)
+target_link_libraries(filter_pipeline PUBLIC constants $<TARGET_OBJECTS:constants>)
+target_link_libraries(filter_pipeline PUBLIC stats $<TARGET_OBJECTS:stats>)
+target_link_libraries(filter_pipeline PUBLIC thread_pool $<TARGET_OBJECTS:thread_pool>)
+target_link_libraries(filter_pipeline PUBLIC tile $<TARGET_OBJECTS:tile>)
+#
+# Test-compile of object library ensures link-completeness
+#
+add_executable(compile_filter_pipeline EXCLUDE_FROM_ALL)
+target_link_libraries(compile_filter_pipeline PRIVATE filter_pipeline)
+target_sources(compile_filter_pipeline PRIVATE test/compile_filter_pipeline_main.cc)

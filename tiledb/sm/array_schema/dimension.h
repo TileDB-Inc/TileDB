@@ -44,7 +44,6 @@
 #include "tiledb/common/logger_public.h"
 #include "tiledb/common/status.h"
 #include "tiledb/sm/misc/types.h"
-#include "tiledb/sm/misc/utils.h"
 #include "tiledb/sm/query/query_buffer.h"
 #include "tiledb/sm/query/result_coords.h"
 #include "tiledb/sm/tile/tile.h"

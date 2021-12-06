@@ -38,6 +38,7 @@
 #include "tiledb/sm/enums/query_status.h"
 #include "tiledb/sm/enums/query_type.h"
 #include "tiledb/sm/fragment/fragment_metadata.h"
+#include "tiledb/sm/misc/parse_argument.h"
 #include "tiledb/sm/query/dense_reader.h"
 #include "tiledb/sm/query/query_condition.h"
 #include "tiledb/sm/query/reader.h"

@@ -32,9 +32,12 @@ include(common NO_POLICY_SCOPE)
 add_library(compressors OBJECT bzip_compressor.cc dd_compressor.cc gzip_compressor.cc lz4_compressor.cc rle_compressor.cc zstd_compressor.cc)
 target_link_libraries(compressors PUBLIC baseline $<TARGET_OBJECTS:baseline>)
 target_link_libraries(compressors PUBLIC buffer $<TARGET_OBJECTS:buffer>)
-
+find_package(Bzip2_EP REQUIRED)
+find_package(LZ4_EP REQUIRED)
+find_package(Zlib_EP REQUIRED)
 find_package(Zstd_EP REQUIRED)
-target_link_libraries(compressors PUBLIC Zstd::Zstd)
+target_link_libraries(compressors PUBLIC Bzip2::Bzip2 LZ4::LZ4 Zlib::Zlib Zstd::Zstd)
+
 #
 # Test-compile of object library ensures link-completeness
 #

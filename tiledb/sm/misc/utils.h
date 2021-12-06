@@ -45,10 +45,11 @@
 #include "tiledb/common/status.h"
 #include "tiledb/sm/misc/types.h"
 
-using namespace tiledb::common;
 
 namespace tiledb {
 namespace sm {
+
+using namespace tiledb::common;
 
 class Posix;
 class URI;
@@ -75,58 +76,6 @@ namespace parse {
 /* ********************************* */
 /*          PARSING FUNCTIONS        */
 /* ********************************* */
-
-/** Converts the input string into an `int` value. */
-Status convert(const std::string& str, int* value);
-
-/** Converts the input string into an `int64_t` value. */
-Status convert(const std::string& str, int64_t* value);
-
-/** Converts the input string into a `uint64_t` value. */
-Status convert(const std::string& str, uint64_t* value);
-
-/** Converts the input string into a `uint32_t` value. */
-Status convert(const std::string& str, uint32_t* value);
-
-/** Converts the input string into a `float` value. */
-Status convert(const std::string& str, float* value);
-
-/** Converts the input string into a `double` value. */
-Status convert(const std::string& str, double* value);
-
-/** Converts the input string into a `bool` value. */
-Status convert(const std::string& str, bool* value);
-
-/** Converts the input string into a `std::vector<T>` value. */
-
-template <class T>
-Status convert(const std::string& str, std::vector<T>* value) {
-  try {
-    uint64_t start = 0;
-    auto end = str.find(constants::config_delimiter);
-    do {
-      T v;
-      RETURN_NOT_OK(convert(str.substr(start, end - start), &v));
-      value->emplace_back(v);
-      start = end + constants::config_delimiter.length();
-      end = str.find(constants::config_delimiter, start);
-    } while (end != std::string::npos);
-
-  } catch (std::invalid_argument& e) {
-    return LOG_STATUS(Status::UtilsError(
-        "Failed to convert string to vector of " +
-        std::string(typeid(T).name()) + "; Invalid argument"));
-  } catch (std::out_of_range& e) {
-    return LOG_STATUS(Status::UtilsError(
-        "Failed to convert string to vector of " +
-        std::string(typeid(T).name()) + "; Value out of range"));
-  }
-
-  return Status::Ok();
-}
-
-/** Converts the input string into a `SerializationType` value. */
-Status convert(const std::string& str, SerializationType* value);
 
 /**
  * Retrieves the timestamp range from the input

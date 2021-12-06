@@ -1,5 +1,5 @@
 #
-# tiledb/sm/CMakeLists.txt
+# tiledb/sm/crypto/CMakeLists.txt
 #
 # The MIT License
 #
@@ -24,13 +24,23 @@
 # THE SOFTWARE.
 #
 
-include(common-root)
+include(common NO_POLICY_SCOPE)
 
-add_subdirectory(buffer)
-add_subdirectory(compressors)
-add_subdirectory(config)
-add_subdirectory(crypto)
-add_subdirectory(filter)
-add_subdirectory(misc)
-add_subdirectory(stats)
-add_subdirectory(tile)
+#
+# `filter` object library
+#
+add_library(crypto OBJECT crypto.cc crypto_openssl.cc crypto_win32.cc encryption_key.cc)
+target_link_libraries(crypto PUBLIC buffer $<TARGET_OBJECTS:buffer>)
+if(WIN32)
+    find_library(BCRYPT_LIBRARY bcrypt REQUIRED)
+    target_link_libraries(crypto PUBLIC ${BCRYPT_LIBRARY})
+else()
+    find_package(OpenSSL_EP REQUIRED)
+    target_link_libraries(crypto PUBLIC OpenSSL::Crypto)
+endif()
+#
+# Test-compile of object library ensures link-completeness
+#
+add_executable(compile_crypto EXCLUDE_FROM_ALL)
+target_link_libraries(compile_crypto PRIVATE crypto)
+target_sources(compile_crypto PRIVATE test/compile_crypto_main.cc)

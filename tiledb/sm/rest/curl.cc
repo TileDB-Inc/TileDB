@@ -300,14 +300,11 @@ Status Curl::init(
         "Error initializing libcurl; failed to set CURLOPT_HEADERDATA"));
 
   // Ignore ssl validation if the user has set rest.ignore_ssl_validation = true
-  const char* ignore_ssl_validation_str = nullptr;
-  RETURN_NOT_OK(
-      config_->get("rest.ignore_ssl_validation", &ignore_ssl_validation_str));
-
   bool ignore_ssl_validation = false;
-  if (ignore_ssl_validation_str != nullptr)
-    RETURN_NOT_OK(tiledb::sm::utils::parse::convert(
-        ignore_ssl_validation_str, &ignore_ssl_validation));
+  bool found;
+  RETURN_NOT_OK(
+      config_->get<bool>("rest.ignore_ssl_validation", &ignore_ssl_validation, &found));
+  assert(found);
 
   if (ignore_ssl_validation) {
     curl_easy_setopt(curl_.get(), CURLOPT_SSL_VERIFYHOST, 0);
@@ -326,7 +323,6 @@ Status Curl::init(
   }
 #endif
 
-  bool found;
   RETURN_NOT_OK(
       config_->get<uint64_t>("rest.retry_count", &retry_count_, &found));
   assert(found);
