@@ -54,14 +54,15 @@ jobs:
         run: echo "::set-output name=uid_gid::$(id -u):$(id -g)"
           
           
-  try-manylinux-container-step:
-    if: true
-    runs-on: ubuntu-20.04
-    steps:
-      - name: check container
-        uses: 'quay.io/pypa/manylinux2010_x86_64:2021-11-07-28723f3'      
-        with:
-          args: /bin/bash -c "cat /etc/system-release"
+  #nope, the `uses' attribute must be a path, a Docker image, or owner/repo@ref
+  #~ try-manylinux-container-step:
+    #~ if: true
+    #~ runs-on: ubuntu-20.04
+    #~ steps:
+      #~ - name: check container
+        #~ uses: 'quay.io/pypa/manylinux2010_x86_64:2021-11-07-28723f3'      
+        #~ with:
+          #~ args: /bin/bash -c "cat /etc/system-release"
           
   build-release-manylinux:
     needs: configure-for-manylinux-container
