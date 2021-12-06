@@ -231,6 +231,9 @@ class ResultTile {
    * Computes a result count for the input dimension for the coordinates that
    * fall in the input ranges and multiply with the previous count.
    *
+   * This only processes cells from min_cell to max_cell as we might
+   * parallelize on cells.
+   *
    * When called over multiple ranges, this follows the formula:
    * total_count = d1_count * d2_count ... dN_count.
    */
@@ -242,13 +245,18 @@ class ResultTile {
       const std::vector<uint64_t>* range_indexes,
       const uint64_t num_indexes,
       std::vector<BitmapType>* result_count,
-      const Layout& cell_order);
+      const Layout& cell_order,
+      const uint64_t min_cell,
+      const uint64_t max_cell);
 
   /**
    * Applicable only to sparse arrays.
    *
    * Computes a result count for the input string dimension for the coordinates
    * that fall in the input ranges and multiply with the previous count.
+   *
+   * This only processes cells from min_cell to max_cell as we might
+   * parallelize on cells.
    *
    * When called over multiple ranges, this follows the formula:
    * total_count = d1_count * d2_count ... dN_count.
@@ -261,7 +269,9 @@ class ResultTile {
       const std::vector<uint64_t>* range_indexes,
       const uint64_t num_indexes,
       std::vector<BitmapType>* result_count,
-      const Layout& cell_order);
+      const Layout& cell_order,
+      const uint64_t min_cell,
+      const uint64_t max_cell);
 
   /**
    * Applicable only to sparse tiles of dense arrays.
@@ -300,6 +310,9 @@ class ResultTile {
    * Computes a result count for the input dimension for the coordinates that
    * fall in the input ranges and multiply with the previous count.
    *
+   * This only processes cells from min_cell to max_cell as we might
+   * parallelize on cells.
+   *
    * When called over multiple ranges, this follows the formula:
    * total_count = d1_count * d2_count ... dN_count.
    */
@@ -310,7 +323,9 @@ class ResultTile {
       const std::vector<uint64_t>* range_indexes,
       const uint64_t num_indexes,
       std::vector<BitmapType>* result_count,
-      const Layout& cell_order) const;
+      const Layout& cell_order,
+      const uint64_t min_cell,
+      const uint64_t max_cell) const;
 
  private:
   /* ********************************* */
@@ -382,7 +397,9 @@ class ResultTile {
       const std::vector<uint64_t>*,
       const uint64_t,
       std::vector<uint64_t>*,
-      const Layout&)>>
+      const Layout&,
+      const uint64_t,
+      const uint64_t)>>
       compute_results_count_sparse_uint64_t_func_;
 
   /**
@@ -396,7 +413,9 @@ class ResultTile {
       const std::vector<uint64_t>*,
       const uint64_t,
       std::vector<uint8_t>*,
-      const Layout&)>>
+      const Layout&,
+      const uint64_t,
+      const uint64_t)>>
       compute_results_count_sparse_uint8_t_func_;
 
   /* ********************************* */

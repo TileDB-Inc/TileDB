@@ -1026,7 +1026,8 @@ Status Query::create_strategy() {
           &found));
       assert(found);
 
-      if (non_overlapping_ranges || !subarray_.is_set()) {
+      if (non_overlapping_ranges || !subarray_.is_set() ||
+          subarray_.range_num() == 1) {
         strategy_ = tdb_unique_ptr<IQueryStrategy>(tdb_new(
             SparseUnorderedWithDupsReader<uint8_t>,
             stats_->create_child("Reader"),
