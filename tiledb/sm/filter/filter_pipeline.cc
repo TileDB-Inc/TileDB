@@ -257,7 +257,8 @@ Status FilterPipeline::filter_chunks_reverse(
   RETURN_NOT_OK(output->realloc(total_size));
 
   // Run each chunk through the entire pipeline.
-  auto status = parallel_for(compute_tp, 0, input.size(), [&](uint64_t i) {
+//  auto status = parallel_for(compute_tp, 0, input.size(), [&](uint64_t i) {
+  for(uint64_t i = 0; i < input.size(); i++) {
     const auto& chunk_input = input[i];
 
     const uint32_t filtered_chunk_len = std::get<1>(chunk_input);
@@ -327,10 +328,10 @@ Status FilterPipeline::filter_chunks_reverse(
       }
     }
 
-    return Status::Ok();
-  });
+//    return Status::Ok();
+  }
 
-  RETURN_NOT_OK(status);
+//  RETURN_NOT_OK(status);
 
   // Since we did not use the 'write' interface above, the 'output' size
   // will still be 0. We wrote the entire capacity of the output buffer,
