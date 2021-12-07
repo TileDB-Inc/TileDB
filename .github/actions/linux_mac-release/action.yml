@@ -11,7 +11,7 @@ runs:
         docker run -it "quay.io/pypa/manylinux2010_x86_64:2021-11-07-28723f3" /bin/bash
         
     - name: 'diagnose-explore-inside-action'
-      if: true
+      if: false
       shell: bash
       run: |
         set -x
@@ -23,6 +23,7 @@ runs:
         exit 14
         
     - name: 'get-prep-location-upload-artifact'
+      if: false
       shell: bash
       run: |
         set -x
