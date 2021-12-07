@@ -107,7 +107,7 @@ jobs:
           pwd
           mount
           ls -l
-          find . -name '*'
+          #find . -name '*'
           printenv
           #env
           #set

@@ -1,3 +1,4 @@
+echo "BEGIN, inside linux-mac_release_buildtiledb.sh"
 echo ${0}
 set -x
 # DELETEME work-around for https://github.com/microsoft/azure-pipelines-image-generation/issues/969
@@ -142,3 +143,5 @@ ls -l $TDB_SOURCE_ARCHIVE_PATH
 ls -l $TDB_BINARY_ARCHIVE_PATH
 
 find / -name 'tiledb-*-linux-build-*.tar.gz' -exec ls -l {} \;
+
+echo "END, inside linux-mac_release_buildtiledb.sh"
