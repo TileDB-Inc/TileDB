@@ -37,6 +37,7 @@
 #include "tiledb/sm/array_schema/domain.h"
 #include "tiledb/sm/misc/constants.h"
 #include "tiledb/sm/misc/parallel_functions.h"
+#include "tiledb/sm/misc/utils.h"
 #include "tiledb/sm/tile/tile.h"
 
 using namespace tiledb::common;

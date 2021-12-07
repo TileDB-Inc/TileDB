@@ -45,6 +45,7 @@
 #include "tiledb/sm/enums/layout.h"
 #include "tiledb/sm/filter/compression_filter.h"
 #include "tiledb/sm/misc/hilbert.h"
+#include "tiledb/sm/misc/utils.h"
 
 #include <cassert>
 #include <iostream>

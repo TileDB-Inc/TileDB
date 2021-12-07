@@ -51,7 +51,7 @@
 #include "tiledb/sm/enums/query_type.h"
 #include "tiledb/sm/enums/serialization_type.h"
 #include "tiledb/sm/fragment/fragment_metadata.h"
-#include "tiledb/sm/misc/utils.h"
+#include "tiledb/sm/misc/hash.h"
 #include "tiledb/sm/misc/parse_argument.h"
 #include "tiledb/sm/query/query.h"
 #include "tiledb/sm/query/reader.h"

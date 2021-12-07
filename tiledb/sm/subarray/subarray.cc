@@ -47,7 +47,7 @@
 #include "tiledb/sm/fragment/fragment_metadata.h"
 #include "tiledb/sm/misc/parallel_functions.h"
 #include "tiledb/sm/misc/resource_pool.h"
-#include "tiledb/sm/misc/utils.h"
+#include "tiledb/sm/misc/hash.h"
 #include "tiledb/sm/query/query.h"
 #include "tiledb/sm/rest/rest_client.h"
 #include "tiledb/sm/rtree/rtree.h"
