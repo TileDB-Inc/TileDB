@@ -333,8 +333,8 @@ runs:
         docker ps
         sync
         docker container exec \
-          manylinux_container_for_build \
           -it \
+          manylinux_container_for_build \
           /bin/bash -c "pwd; ls -l; . ./scripts/ci/linux-mac_release_buildtiledb.sh"
         sync
         docker ps
