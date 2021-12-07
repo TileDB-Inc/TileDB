@@ -154,6 +154,11 @@ jobs:
             "quay.io/pypa/manylinux2010_x86_64:2021-11-07-28723f3" \
             /bin/bash -c "pwd; cd $GITHUB_WORKSPACE; pwd; ls -l; source ./tdbtempscript.sh"
           echo "end workflow docker attempt ========================###########================"
+          docker container run \
+            -v "$GITHUB_WORKSPACE:$GITHUB_WORKSPACE" --env-file tdbenvfile.txt \
+            -w $GITHUB_WORKSPACE \
+            "quay.io/pypa/manylinux2010_x86_64:2021-11-07-28723f3" \
+            /bin/bash -c "pwd; ls -l; . ./scripts/ci/linux-mac_release_buildtiledb.sh"
           exit 17
 
       #~ - name: 'are we in container?'
