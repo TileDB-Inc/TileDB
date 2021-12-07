@@ -354,6 +354,9 @@ std::string to_str(const T& value) {
 std::string to_str(const void* value, Datatype type) {
   std::stringstream ss;
   switch (type) {
+    case Datatype::BYTE:
+      ss << *(const uint8_t*)value;
+      break;
     case Datatype::INT8:
       ss << *(const int8_t*)value;
       break;
@@ -470,6 +473,8 @@ template <>
 Status check_template_type_to_datatype<uint8_t>(Datatype datatype) {
   if (datatype == Datatype::UINT8)
     return Status::Ok();
+  else if (datatype == Datatype::BYTE)
+    return Status::Ok();
   else if (datatype == Datatype::STRING_ASCII)
     return Status::Ok();
   else if (datatype == Datatype::STRING_UTF8)
@@ -477,7 +482,7 @@ Status check_template_type_to_datatype<uint8_t>(Datatype datatype) {
 
   return Status::Error(
       "Template of type uint8_t but datatype is not Datatype::UINT8 nor "
-      "Datatype::STRING_ASCII nor atatype::STRING_UTF8");
+      "Datatype::BYTE nor Datatype::STRING_ASCII nor atatype::STRING_UTF8");
 }
 template <>
 Status check_template_type_to_datatype<int16_t>(Datatype datatype) {

@@ -647,6 +647,15 @@ Status QueryCondition::apply_clause(
   const bool var_size = attribute->var_size();
   const bool nullable = attribute->nullable();
   switch (attribute->type()) {
+    case Datatype::BYTE:
+      return apply_clause<std::byte>(
+          clause,
+          stride,
+          var_size,
+          nullable,
+          fill_value,
+          result_cell_slabs,
+          out_result_cell_slabs);
     case Datatype::INT8:
       return apply_clause<int8_t>(
           clause,
@@ -1048,6 +1057,19 @@ Status QueryCondition::apply_clause_dense(
   const bool var_size = attribute->var_size();
   const bool nullable = attribute->nullable();
   switch (attribute->type()) {
+    case Datatype::BYTE:
+      return apply_clause_dense<std::byte>(
+          clause,
+          result_tile,
+          start,
+          length,
+          src_cell,
+          stride,
+          var_size,
+          nullable,
+          previous_result_bitmask,
+          current_result_bitmask,
+          result_buffer);
     case Datatype::INT8:
       return apply_clause_dense<int8_t>(
           clause,
@@ -1432,6 +1454,9 @@ Status QueryCondition::apply_clause_sparse(
   const bool var_size = attribute->var_size();
   const bool nullable = attribute->nullable();
   switch (attribute->type()) {
+    case Datatype::BYTE:
+      return apply_clause_sparse<std::byte, BitmapType>(
+          clause, result_tile, var_size, nullable, result_bitmap, cell_count);
     case Datatype::INT8:
       return apply_clause_sparse<int8_t, BitmapType>(
           clause, result_tile, var_size, nullable, result_bitmap, cell_count);

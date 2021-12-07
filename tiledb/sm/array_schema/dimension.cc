@@ -1876,6 +1876,7 @@ std::string Dimension::domain_str() const {
       ss << "[" << domain_int64[0] << "," << domain_int64[1] << "]";
       return ss.str();
 
+    case Datatype::BYTE:
     case Datatype::CHAR:
     case Datatype::STRING_ASCII:
     case Datatype::STRING_UTF8:
@@ -1973,6 +1974,7 @@ std::string Dimension::tile_extent_str() const {
       ss << *tile_extent_uint64;
       return ss.str();
 
+    case Datatype::BYTE:
     case Datatype::CHAR:
     case Datatype::STRING_ASCII:
     case Datatype::STRING_UTF8:

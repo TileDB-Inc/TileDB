@@ -742,8 +742,12 @@ void test_apply(const Datatype type, bool var_size, bool nullable) {
   test_apply_tile<T>(field_name, cells, type, &array_schema, &result_tile);
 }
 
+/* Note: Arithmetic operations cannot be performed on std::byte.
+    We will use uint8_t for the Datatype::BYTE case as it is the same size as
+   std::byte and can have arithmetic perfomed on it. */
 TEST_CASE("QueryCondition: Test apply", "[QueryCondition][apply]") {
   test_apply<int8_t>(Datatype::INT8);
+  test_apply<uint8_t>(Datatype::BYTE);
   test_apply<uint8_t>(Datatype::UINT8);
   test_apply<int16_t>(Datatype::INT16);
   test_apply<uint16_t>(Datatype::UINT16);
