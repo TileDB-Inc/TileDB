@@ -83,6 +83,16 @@ jobs:
         shell: bash
         run: |
           set -x
+          #exploring line continuations...
+          #https://stackoverflow.com/questions/59954185/github-action-split-long-command-into-multiple-lines
+          echo "the" \
+          " quick brown fox" \
+          " jumped over" \
+          " the lazy dog."
+          echo "the" \
+            " quicker brown fox" \
+            " jumped over" \
+            " the lazier dog."
           if [[ $(which docker) ]]; then
             echo "found docker"
           else
