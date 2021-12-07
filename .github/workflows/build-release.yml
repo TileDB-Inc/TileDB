@@ -83,6 +83,7 @@ jobs:
 
       - name: diagnosing workflow
         shell: bash
+        if: false
         run: |
           set -x
           #exploring line continuations...
@@ -177,4 +178,4 @@ jobs:
 
       #- uses: actions/checkout@v1
 
-      #- uses: ./.github/actions/linux_mac-release
+      - uses: ./.github/actions/linux_mac-release
