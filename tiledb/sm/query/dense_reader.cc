@@ -554,7 +554,7 @@ Status DenseReader::apply_query_condition(
                       &start,
                       &end)) {
                 RETURN_NOT_OK(condition_.apply_dense<DimType>(
-                    array_schema_,
+                    fragment_metadata_[frag_domains[i].first]->array_schema(),
                     it->second.result_tile(frag_domains[i].first),
                     start,
                     end - start + 1,
