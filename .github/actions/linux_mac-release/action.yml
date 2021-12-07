@@ -327,6 +327,11 @@ runs:
           /bin/bash -c "pwd; ls -l; . ./scripts/ci/linux-mac_release_buildtiledb.sh"
         set -x
         docker ps
+        sync
+        docker container ls
+        sync
+        docker image ls
+        sync
         if [[ $(ls -l $GITHUB_WORKSPACE/..) ]]; then
           echo "any files above? (TDBRETENVVARS.TXT?)"
         fi
