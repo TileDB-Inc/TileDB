@@ -646,13 +646,6 @@ template double safe_mul<double>(double a, double b);
 
 }  // namespace math
 
-namespace parse {
-
-template std::string to_str<int32_t>(const int32_t& value);
-template std::string to_str<uint32_t>(const uint32_t& value);
-
-}  // namespace parse
-
 }  // namespace utils
 
 }  // namespace sm
