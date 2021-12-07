@@ -335,7 +335,7 @@ runs:
         sync
         docker inspect manylinux_container_for_build
         sync
-        docker cp manylinux_container_for_build:$GITHUB_WORKSPACE/.. $GITHUB_WORKSPACE/..
+        docker cp 'manylinux_container_for_build:$GITHUB_WORKSPACE/../*.tar.gz' $GITHUB_WORKSPACE/..
         if [[ $(ls -l $GITHUB_WORKSPACE/..) ]]; then
           echo "any files above? (TDBRETENVVARS.TXT?)"
         fi
