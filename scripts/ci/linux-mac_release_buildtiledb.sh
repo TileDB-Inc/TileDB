@@ -140,6 +140,10 @@ echo "TDB_BINARY_ARCHIVE_PATH=$TDB_BINARY_ARCHIVE_PATH"
 #echo "ARTIFACT_EXTRAS=$ARTIFACT_EXTRAS" >> "$GITHUB_ENV"
 ##echo "TDB_BINARY_ARCHIVE_PATH=$TDB_BINARY_ARCHIVE_PATH" >> "$GITHUB_ENV"
 
+echo "TDB_BINARY_ARCHIVE_PATH=$TDB_BINARY_ARCHIVE_PATH" >> "$GITHUB_WORKSPACE/../TDBRETENVVARS.TXT"
+echo "TDB_SOURCE_ARCHIVE_PATH=$TDB_SOURCE_ARCHIVE_PATH" >> "$GITHUB_WORKSPACE/../TDBRETENVVARS.TXT"
+
+
 pwd
 ls -l $GITHUB_WORKSPACE/..
 if [[ $(ls -l $TDB_SOURCE_ARCHIVE_PATH) ]]; then
@@ -155,6 +159,6 @@ if [[ $(ls -l $TDB_BINARY_ARCHIVE_PATH2) ]]; then
   echo "found $TDB_BINARY_ARCHIVE_PATH2"
 fi
 
-find / -name 'tiledb-*-linux-build-*.tar.gz' -exec ls -l {} \;
+#$SUDO find / -name 'tiledb-*-linux-build-*.tar.gz' -exec ls -l {} \;
 
 echo "END, inside linux-mac_release_buildtiledb.sh"

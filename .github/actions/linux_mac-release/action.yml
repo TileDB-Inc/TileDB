@@ -166,18 +166,6 @@ runs:
         set -e pipefail
         $SUDO rm -Rf /Library/Developer/CommandLineTools/SDKs/* # Remove SDKs without ARM support
 
-    - name: 'Build libtiledb scripted'
-      if: true
-      #not availa le in (composite) action? continue-on-error: true
-      shell: bash
-      run: |
-          for ev in GITHUB_WORKSPACE GITHUB_EVENT_PATH CXX CC CFLAGS CXXFLAGS ARTIFACT_OS ARTIFACT_EXTRAS ARTIFACT_ARCH SUDO RUNNER_OS GITHUB_REF RUNNER_TRACKING_ID RUNNER_ARCH GITHUB_RUN_NUMBER GITHUB_RUN_ID GITHUB_EVENT_NAME GITHUB_ACTOR GITHUB_REF_NAME GITHUB_JOB GITHUB_REPOSITORY RUNNER_WORKSPACE GITHUB_WORKFLOW; do tmp=$ev; echo "$ev=${!tmp}"; done >> tdbenvfile.txt
-          docker container run \
-            -v "$GITHUB_WORKSPACE:$GITHUB_WORKSPACE" --env-file tdbenvfile.txt \
-            -w $GITHUB_WORKSPACE \
-            "quay.io/pypa/manylinux2010_x86_64:2021-11-07-28723f3" \
-            /bin/bash -c "pwd; ls -l; . ./scripts/ci/linux-mac_release_buildtiledb.sh"
-
     - name: 'Build libtiledb orig'
       if: false
       #not availa le in (composite) action? continue-on-error: true
@@ -326,6 +314,21 @@ runs:
         
         find / -name 'tiledb-*-linux-build-*.tar.gz' -exec ls -l {} \;
 
+    - name: 'Build libtiledb scripted'
+      if: true
+      #not availa le in (composite) action? continue-on-error: true
+      shell: bash
+      run: |
+        for ev in GITHUB_WORKSPACE GITHUB_EVENT_PATH CXX CC CFLAGS CXXFLAGS ARTIFACT_OS ARTIFACT_EXTRAS ARTIFACT_ARCH SUDO RUNNER_OS GITHUB_REF RUNNER_TRACKING_ID RUNNER_ARCH GITHUB_RUN_NUMBER GITHUB_RUN_ID GITHUB_EVENT_NAME GITHUB_ACTOR GITHUB_REF_NAME GITHUB_JOB GITHUB_REPOSITORY RUNNER_WORKSPACE GITHUB_WORKFLOW; do tmp=$ev; echo "$ev=${!tmp}"; done >> tdbenvfile.txt
+        docker container run \
+          -v "$GITHUB_WORKSPACE:$GITHUB_WORKSPACE" --env-file tdbenvfile.txt \
+          -w $GITHUB_WORKSPACE \
+          "quay.io/pypa/manylinux2010_x86_64:2021-11-07-28723f3" \
+          /bin/bash -c "pwd; ls -l; . ./scripts/ci/linux-mac_release_buildtiledb.sh"
+        source $GITHUB_WORKSPACE/../TDBRETENVVARS.TXT
+        echo "TDB_BINARY_ARCHIVE_PATH=$TDB_BINARY_ARCHIVE_PATH" >> "$GITHUB_ENV"
+        echo "TDB_SOURCE_ARCHIVE_PATH=$TDB_SOURCE_ARCHIVE_PATH" >> "$GITHUB_ENV"
+        
     - name: 'are variables in env context?'
       shell: bash
       run: |
