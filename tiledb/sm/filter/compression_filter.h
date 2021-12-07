@@ -136,6 +136,9 @@ class CompressionFilter : public Filter {
   /** The compression level. */
   int level_;
 
+  /** Mutex guarding zstd_decompress_ctx_pool */
+  std::mutex zstd_decompress_ctx_pool_mtx_;
+
   /** A resource pool to be used in ZStd decompressor for improved performance
    */
   std::shared_ptr<ResourcePool<ZStd::ZSTD_Decompress_Context>>
