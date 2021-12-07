@@ -103,7 +103,6 @@ Status RestClient::init(
   bool found;
   RETURN_NOT_OK(config_->get<bool>(
       "rest.resubmit_incomplete", &resubmit_incomplete_, &found));
-  assert(found);
 
   return Status::Ok();
 }
