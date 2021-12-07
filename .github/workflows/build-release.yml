@@ -119,6 +119,9 @@ jobs:
           fi
           echo "start workflow docker attempt ========================###########================"
           #https://stackoverflow.com/questions/69982822/is-there-a-way-to-escape-and-single-quotes-together-in-bash
+          pwd
+          cd $GITHUB_WORKSPACE
+          pwd
           cat > tdbtempscript.sh <<"EOF"
           set -x
           echo "HI! script items running inside tdbtempscript.sh... "
@@ -135,6 +138,7 @@ jobs:
           set
           typeset
           EOF
+          pwd
           echo "vvvvvvvvvvvvvvvvvvvv"
           cat tdbtempscript.sh
           printenv > tdbenvfile.txt
@@ -145,7 +149,7 @@ jobs:
             -v /__w/__w --env-file tdbenvfile.txt \
             -w /__w/TILEDB/TILEDB \
             "quay.io/pypa/manylinux2010_x86_64:2021-11-07-28723f3" \
-            /bin/bash -c "pwd; ls -l; source tdbtempscript.sh"
+            /bin/bash -c "pwd; cd $GITHUB_WORKSPACE; pwd; ls -l; source ./tdbtempscript.sh"
           echo "end workflow docker attempt ========================###########================"
           exit 17
 
