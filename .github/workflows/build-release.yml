@@ -109,9 +109,9 @@ jobs:
           ls -l
           find . -name '*'
           printenv
-          env
-          set
-          typeset
+          #env
+          #set
+          #typeset
           # container at 'thistime' has /etc/system-release containing centos 6.10 (final)
           if [[ $(ls -l /etc/system-release) ]]; then
             echo "found system-release"
@@ -137,9 +137,9 @@ jobs:
           ls -l
           find . -name '*'
           printenv
-          env
-          set
-          typeset
+          #env
+          #set
+          #typeset
           echo "END tdbtempscript.sh"
           EOF
           pwd
