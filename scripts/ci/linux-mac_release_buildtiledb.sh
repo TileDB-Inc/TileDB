@@ -142,8 +142,18 @@ echo "TDB_BINARY_ARCHIVE_PATH=$TDB_BINARY_ARCHIVE_PATH"
 
 pwd
 ls -l $GITHUB_WORKSPACE/..
-ls -l $TDB_SOURCE_ARCHIVE_PATH2
-ls -l $TDB_BINARY_ARCHIVE_PATH2
+if [[ $(ls -l $TDB_SOURCE_ARCHIVE_PATH) ]]; then
+  echo "found $TDB_SOURCE_ARCHIVE_PATH"
+fi
+if [[ $(ls -l $TDB_BINARY_ARCHIVE_PATH) ]]; then
+  echo "found $TDB_BINARY_ARCHIVE_PATH"
+fi
+if [[ $(ls -l $TDB_SOURCE_ARCHIVE_PATH2) ]]; then
+  echo "found $TDB_SOURCE_ARCHIVE_PATH2"
+fi
+if [[ $(ls -l $TDB_BINARY_ARCHIVE_PATH2) ]]; then
+  echo "found $TDB_BINARY_ARCHIVE_PATH2"
+fi
 
 find / -name 'tiledb-*-linux-build-*.tar.gz' -exec ls -l {} \;
 
