@@ -118,20 +118,21 @@ jobs:
             echo "did not find system-release"
           fi
           echo "start workflow docker attempt ========================###########================"
-          cat > tdbtempscript.sh << EOF \
-          set -x \
+          #https://stackoverflow.com/questions/69982822/is-there-a-way-to-escape-and-single-quotes-together-in-bash
+          cat > tdbtempscript.sh <<"EOF"
+          set -x
           echo "HI! script items running inside tdbtempscript.sh... "
-          echo $HOME \
-          echo $GITHUB_WORKSPACE \
-          echo $GITHUB_EVENT_PATH \
-          whoami \
-          pwd \
-          mount \
-          ls -l \
-          find . -name '*' \
-          printenv \
-          env \
-          set \
+          echo $HOME
+          echo $GITHUB_WORKSPACE
+          echo $GITHUB_EVENT_PATH
+          whoami
+          pwd
+          mount
+          ls -l
+          find . -name '*'
+          printenv
+          env
+          set
           typeset
           EOF
           echo "vvvvvvvvvvvvvvvvvvvv"
@@ -140,7 +141,7 @@ jobs:
           echo "-------------------------"
           cat tdbenvfile.txt
           echo "^^^^^^^^^^^^^^^^^^^^"
-          docker run -it \
+          docker container run \
             -v /__w:/__w --env-file tdbenvfile.txt \
             -w /__w:/TILEDB/TILEDB \
             "quay.io/pypa/manylinux2010_x86_64:2021-11-07-28723f3" \
