@@ -98,7 +98,7 @@ sync
 # move up a directory level so we are writing archive where tar won't fail reporting change while reading...
 cd $GITHUB_WORKSPACE/..
 pwd
-tar --exclude=build -vzcf tiledb-source-${ARTIFACT_OS}-build-dir-${ARTIFACT_EXTRAS}.tar.gz ./TileDB
+tar --exclude=build -zcf tiledb-source-${ARTIFACT_OS}-build-dir-${ARTIFACT_EXTRAS}.tar.gz ./TileDB
 ls -l $GITHUB_WORKSPACE/..
 sync
 #sleep 10
@@ -106,7 +106,7 @@ sync
 cd $GITHUB_WORKSPACE/..
 pwd
 #tar -zcf tiledb-${{ env.ARTIFACT_OS }}-build-dir-${{ env.ARTIFACT_EXTRAS }}.tar.gz $GITHUB_WORKSPACE/build
-tar -vzcf tiledb-binary-${ARTIFACT_OS}-build-dir-${ARTIFACT_EXTRAS}.tar.gz ./TileDB/build
+tar -zcf tiledb-binary-${ARTIFACT_OS}-build-dir-${ARTIFACT_EXTRAS}.tar.gz ./TileDB/build
 ls -l $GITHUB_WORKSPACE/..
 sync
 TDB_SOURCE_ARCHIVE_PATH=`dirname $GITHUB_WORKSPACE/..`/tiledb-source-${ARTIFACT_OS}-${ARTIFACT_ARCH}-build-dir-${ARTIFACT_EXTRAS}.tar.gz
@@ -140,8 +140,10 @@ echo "TDB_BINARY_ARCHIVE_PATH=$TDB_BINARY_ARCHIVE_PATH"
 #echo "ARTIFACT_EXTRAS=$ARTIFACT_EXTRAS" >> "$GITHUB_ENV"
 ##echo "TDB_BINARY_ARCHIVE_PATH=$TDB_BINARY_ARCHIVE_PATH" >> "$GITHUB_ENV"
 
-ls -l $TDB_SOURCE_ARCHIVE_PATH
-ls -l $TDB_BINARY_ARCHIVE_PATH
+pwd
+ls -l $GITHUB_WORKSPACE/..
+ls -l $TDB_SOURCE_ARCHIVE_PATH2
+ls -l $TDB_BINARY_ARCHIVE_PATH2
 
 find / -name 'tiledb-*-linux-build-*.tar.gz' -exec ls -l {} \;
 
