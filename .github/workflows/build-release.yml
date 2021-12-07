@@ -79,6 +79,8 @@ jobs:
       #options: "--entrypoint /bin/bash"
       #options: --user ${{ needs.configure-for-manylinux-container.outputs.uid_gid }}
     steps:
+      - uses: actions/checkout@v2
+
       - name: diagnosing workflow
         shell: bash
         run: |
@@ -172,6 +174,6 @@ jobs:
           #~ fi
           #~ exit 45
 
-      - uses: actions/checkout@v1
+      #- uses: actions/checkout@v1
 
-      - uses: ./.github/actions/linux_mac-release
+      #- uses: ./.github/actions/linux_mac-release
