@@ -321,6 +321,7 @@ runs:
       run: |
         for ev in GITHUB_WORKSPACE GITHUB_EVENT_PATH CXX CC CFLAGS CXXFLAGS ARTIFACT_OS ARTIFACT_EXTRAS ARTIFACT_ARCH SUDO RUNNER_OS GITHUB_REF RUNNER_TRACKING_ID RUNNER_ARCH GITHUB_RUN_NUMBER GITHUB_RUN_ID GITHUB_EVENT_NAME GITHUB_ACTOR GITHUB_REF_NAME GITHUB_JOB GITHUB_REPOSITORY RUNNER_WORKSPACE GITHUB_WORKFLOW; do tmp=$ev; echo "$ev=${!tmp}"; done >> tdbenvfile.txt
         docker container run \
+          -d --name manylinux_containe_for_build \
           -v "$GITHUB_WORKSPACE:$GITHUB_WORKSPACE" --env-file tdbenvfile.txt \
           -w $GITHUB_WORKSPACE \
           "quay.io/pypa/manylinux2010_x86_64:2021-11-07-28723f3" \
@@ -343,6 +344,9 @@ runs:
         source $(realpath $GITHUB_WORKSPACE/../TDBRETENVVARS.TXT)
         echo "TDB_BINARY_ARCHIVE_PATH=$TDB_BINARY_ARCHIVE_PATH" >> "$GITHUB_ENV"
         echo "TDB_SOURCE_ARCHIVE_PATH=$TDB_SOURCE_ARCHIVE_PATH" >> "$GITHUB_ENV"
+        #TBD: copy the artifact data out of the container...
+        #docker cp ???
+        docker stop manylinux_containe_for_build
         
     - name: 'are variables in env context?'
       shell: bash
