@@ -145,9 +145,10 @@ jobs:
           echo "-------------------------"
           cat tdbenvfile.txt
           echo "^^^^^^^^^^^^^^^^^^^^"
+          #  -v /__w:/__w --env-file tdbenvfile.txt \
           docker container run \
-            -v /__w/__w --env-file tdbenvfile.txt \
-            -w /__w/TILEDB/TILEDB \
+            -v "$GITHUB_WORKSPACE:$GITHUB_WORKSPACE" --env-file tdbenvfile.txt \
+            -w $GITHUB_WORKSPACE \
             "quay.io/pypa/manylinux2010_x86_64:2021-11-07-28723f3" \
             /bin/bash -c "pwd; cd $GITHUB_WORKSPACE; pwd; ls -l; source ./tdbtempscript.sh"
           echo "end workflow docker attempt ========================###########================"
