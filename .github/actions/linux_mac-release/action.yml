@@ -325,7 +325,16 @@ runs:
           -w $GITHUB_WORKSPACE \
           "quay.io/pypa/manylinux2010_x86_64:2021-11-07-28723f3" \
           /bin/bash -c "pwd; ls -l; . ./scripts/ci/linux-mac_release_buildtiledb.sh"
-        source $GITHUB_WORKSPACE/../TDBRETENVVARS.TXT
+        set -x
+        if [[ $(ls -l $GITHUB_WORKSPACE/..) ]]; then
+          echo "any files above? (TDBRETENVVARS.TXT?)"
+        fi
+        if [[ $(ls -l $GITHUB_WORKSPACE/../TDBRETENVVARS.TXT) ]]; then
+          echo "file there..."
+        else
+          echo "file TDBRETENVVARS.TXT not found :("
+        fi
+        source $(realpath $GITHUB_WORKSPACE/../TDBRETENVVARS.TXT)
         echo "TDB_BINARY_ARCHIVE_PATH=$TDB_BINARY_ARCHIVE_PATH" >> "$GITHUB_ENV"
         echo "TDB_SOURCE_ARCHIVE_PATH=$TDB_SOURCE_ARCHIVE_PATH" >> "$GITHUB_ENV"
         
