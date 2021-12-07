@@ -146,7 +146,7 @@ jobs:
           echo "vvvvvvvvvvvvvvvvvvvv"
           cat tdbtempscript.sh
           #printenv > tdbenvfile.txt
-          for ev in GITHUB_WORKSPACE GITHUB_EVENT_PATH CXX CC CFLAGS CXXFLAGS ARTIFACT_OS ARTIFACT_EXTRAS ARTIFACT_ARCH SUDO; do tmp=$ev; echo "$ev=${!tmp}"; done >> tdbenvfile.txt
+          for ev in GITHUB_WORKSPACE GITHUB_EVENT_PATH CXX CC CFLAGS CXXFLAGS ARTIFACT_OS ARTIFACT_EXTRAS ARTIFACT_ARCH SUDO RUNNER_OS GITHUB_REF RUNNER_TRACKING_ID RUNNER_ARCH GITHUB_RUN_NUMBER GITHUB_RUN_ID GITHUB_EVENT_NAME GITHUB_ACTOR GITHUB_REF_NAME GITHUB_JOB GITHUB_REPOSITORY RUNNER_WORKSPACE GITHUB_WORKFLOW; do tmp=$ev; echo "$ev=${!tmp}"; done >> tdbenvfile.txt
           echo "-------------------------"
           cat tdbenvfile.txt
           echo "^^^^^^^^^^^^^^^^^^^^"
