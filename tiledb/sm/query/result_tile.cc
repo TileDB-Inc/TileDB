@@ -162,7 +162,8 @@ const void* ResultTile::zipped_coord(uint64_t pos, unsigned dim_idx) const {
   return ret;
 }
 
-std::string ResultTile::coord_string(uint64_t pos, unsigned dim_idx) const {
+std::string_view ResultTile::coord_string(
+    uint64_t pos, unsigned dim_idx) const {
   const auto& coord_tile_off = std::get<0>(coord_tiles_[dim_idx].second);
   const auto& coord_tile_val = std::get<1>(coord_tiles_[dim_idx].second);
   auto cell_num = coord_tile_off.cell_num();
@@ -185,7 +186,7 @@ std::string ResultTile::coord_string(uint64_t pos, unsigned dim_idx) const {
   auto size = next_offset - offset;
 
   auto* buffer = static_cast<char*>(coord_tile_val.buffer()->data()) + offset;
-  return std::string(buffer, size);
+  return std::string_view(buffer, size);
 }
 
 uint64_t ResultTile::coord_size(unsigned dim_idx) const {
@@ -444,9 +445,9 @@ inline bool ResultTile::str_coord_intersects(
     const uint64_t c_offset,
     const uint64_t c_size,
     const char* const buff_str,
-    const std::basic_string_view<char>& range_start,
-    const std::basic_string_view<char>& range_end) {
-  std::basic_string_view<char> str(buff_str + c_offset, c_size);
+    const std::string_view& range_start,
+    const std::string_view& range_end) {
+  std::string_view str(buff_str + c_offset, c_size);
   return str >= range_start && str <= range_end;
 }
 
