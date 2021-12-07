@@ -106,3 +106,5 @@ target_link_libraries(compile_byteshuffle_filter PRIVATE byteshuffle_filter)
 target_sources(compile_byteshuffle_filter PRIVATE
     test/compile_byteshuffle_filter_main.cc $<TARGET_OBJECTS:byteshuffle_filter>
 )
+
+

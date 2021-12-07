@@ -1,5 +1,5 @@
 /**
- * @file unit-filter.cc
+ * @file unit-filter-create.cc
  *
  * @section LICENSE
  *
@@ -28,7 +28,7 @@
  *
  * @section DESCRIPTION
  *
- * Tests the `Filter` class.
+ * Tests the `FilterCreate` class.
  */
 
 #include "test/src/helpers.h"
@@ -191,7 +191,6 @@ TEST_CASE(
         compressor0 = Compressor::NO_COMPRESSION;
         break;
     }
-    int level0 = 0;
 
     char serialized_buffer[10];
     char* p = &serialized_buffer[0];
@@ -199,7 +198,6 @@ TEST_CASE(
     buffer_offset<uint32_t, 1>(p) =
         sizeof(uint8_t) + sizeof(int32_t);  // metadata_length
     buffer_offset<uint8_t, 5>(p) = static_cast<uint8_t>(compressor0);
-    buffer_offset<int32_t, 6>(p) = level0;
 
     ConstBuffer constbuffer(&serialized_buffer, sizeof(serialized_buffer));
     auto&& [st_filter, filter1]{FilterCreate::deserialize(&constbuffer)};
