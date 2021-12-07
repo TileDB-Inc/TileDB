@@ -188,12 +188,12 @@ class Tile {
   void advance_offset(uint64_t nbytes);
 
   /** Returns the internal buffer. */
-  inline Buffer* Tile::buffer() const {
+  inline Buffer* buffer() const {
     return buffer_;
   }
 
   /** Returns the cell size. */
-  inline uint64_t Tile::cell_size() const {
+  inline uint64_t cell_size() const {
     return cell_size_;
   }
 
@@ -216,7 +216,7 @@ class Tile {
   bool owns_buff() const;
 
   /** Returns the number of dimensions (0 if this is an attribute tile). */
-  inline unsigned int Tile::dim_num() const {
+  inline unsigned int dim_num() const {
     return dim_num_;
   }
 
@@ -227,7 +227,7 @@ class Tile {
    * Returns the current filtered state of the tile data in the buffer. When
    * `true`, the buffer contains the filtered, on-disk format of the tile.
    */
-  inline bool Tile::filtered() const {
+  inline bool filtered() const {
     assert(!(filtered_buffer_.alloced_size() > 0 && buffer_->size() > 0));
     return filtered_buffer_.alloced_size() > 0;
   }
@@ -235,12 +235,12 @@ class Tile {
   /**
    * Returns the buffer that contains the filtered, on-disk format.
    */
-  inline Buffer* Tile::filtered_buffer() {
+  inline Buffer* filtered_buffer() {
     return &filtered_buffer_;
   }
 
   /** Gets the format version number of the data in this Tile. */
-  inline uint32_t Tile::format_version() const {
+  inline uint32_t format_version() const {
     return format_version_;
   }
 
@@ -285,13 +285,13 @@ class Tile {
   void set_pre_filtered_size(uint64_t pre_filtered_size);
 
   /** Returns the tile size. */
-  inline uint64_t Tile::size() const {
+  inline uint64_t size() const {
     assert(!filtered());
     return (buffer_ == nullptr) ? 0 : buffer_->size();
   }
 
   /** Returns *true* if the tile stores coordinates. */
-  inline bool Tile::stores_coords() const {
+  inline bool stores_coords() const {
     return dim_num_ > 0;
   }
 
