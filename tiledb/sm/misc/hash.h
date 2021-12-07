@@ -50,6 +50,6 @@ struct pair_hash {
   }
 };
 
-}  // namespace hash
+}  // namespace tiledb::sm::utils::hash
 
 #endif  // TILEDB_MISC_HASH_H
