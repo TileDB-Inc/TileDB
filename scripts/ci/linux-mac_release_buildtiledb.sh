@@ -1,3 +1,4 @@
+set -x
         # DELETEME work-around for https://github.com/microsoft/azure-pipelines-image-generation/issues/969
         #Needed for GA CI or not?... $SUDO chown root.root /
 
