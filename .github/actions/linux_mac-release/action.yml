@@ -347,7 +347,7 @@ runs:
         sync
         #docker cp 'manylinux_container_for_build:$GITHUB_WORKSPACE/../*.tar.gz' $GITHUB_WORKSPACE/..
         realpathtocp=$(echo -e "import sys\nimport os\nprint (os.path.realpath(\"$GITHUB_WORKSPACE/..\"))" | python3)
-        docker cp 'manylinux_container_for_build:$realpathtocp/*.tar.gz' $GITHUB_WORKSPACE/..
+        docker cp "manylinux_container_for_build:$realpathtocp/*.tar.gz" $GITHUB_WORKSPACE/..
         if [[ $(ls -l $GITHUB_WORKSPACE/..) ]]; then
           echo "any files above? (TDBRETENVVARS.TXT?)"
         fi
