@@ -324,7 +324,7 @@ runs:
         sync
         docker container run \
           -d --name manylinux_container_for_build \
-          -it
+          -it \
           -v "$GITHUB_WORKSPACE:$GITHUB_WORKSPACE" --env-file tdbenvfile.txt \
           -w $GITHUB_WORKSPACE \
           "quay.io/pypa/manylinux2010_x86_64:2021-11-07-28723f3" \
