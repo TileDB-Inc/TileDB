@@ -156,7 +156,6 @@ set(TILEDB_CORE_SOURCES
   ${TILEDB_CORE_INCLUDE_DIR}/tiledb/sm/fragment/fragment_metadata.cc
   ${TILEDB_CORE_INCLUDE_DIR}/tiledb/sm/global_state/global_state.cc
   ${TILEDB_CORE_INCLUDE_DIR}/tiledb/sm/global_state/libcurl_state.cc
-  ${TILEDB_CORE_INCLUDE_DIR}/tiledb/sm/global_state/openssl_state.cc
   ${TILEDB_CORE_INCLUDE_DIR}/tiledb/sm/global_state/signal_handlers.cc
   ${TILEDB_CORE_INCLUDE_DIR}/tiledb/sm/global_state/watchdog.cc
   ${TILEDB_CORE_INCLUDE_DIR}/tiledb/sm/metadata/metadata.cc
