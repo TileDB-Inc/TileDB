@@ -117,6 +117,35 @@ jobs:
           else
             echo "did not find system-release"
           fi
+          echo "start workflow docker attempt ========================###########================"
+          cat > tdbtempscript.sh << EOF \
+          set -x \
+          echo "HI! script items running inside tdbtempscript.sh... "
+          echo $HOME \
+          echo $GITHUB_WORKSPACE \
+          echo $GITHUB_EVENT_PATH \
+          whoami \
+          pwd \
+          mount \
+          ls -l \
+          find . -name '*' \
+          printenv \
+          env \
+          set \
+          typeset
+          EOF
+          echo "vvvvvvvvvvvvvvvvvvvv"
+          cat tdbtempscript.sh
+          printenv > tdbenvfile.txt
+          echo "-------------------------"
+          cat tdbenvfile.txt
+          echo "^^^^^^^^^^^^^^^^^^^^"
+          docker run -it \
+            -v /__w:/__w --env-file tdbenvfile.txt \
+            -w /__w:/TILEDB/TILEDB \
+            "quay.io/pypa/manylinux2010_x86_64:2021-11-07-28723f3" \
+            /bin/bash . tdbtempscript.sh
+          echo "end workflow docker attempt ========================###########================"
           exit 17
 
       #~ - name: 'are we in container?'
