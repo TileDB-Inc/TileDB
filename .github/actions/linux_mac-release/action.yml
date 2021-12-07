@@ -321,12 +321,12 @@ runs:
       run: |
         for ev in GITHUB_WORKSPACE GITHUB_EVENT_PATH CXX CC CFLAGS CXXFLAGS ARTIFACT_OS ARTIFACT_EXTRAS ARTIFACT_ARCH SUDO RUNNER_OS GITHUB_REF RUNNER_TRACKING_ID RUNNER_ARCH GITHUB_RUN_NUMBER GITHUB_RUN_ID GITHUB_EVENT_NAME GITHUB_ACTOR GITHUB_REF_NAME GITHUB_JOB GITHUB_REPOSITORY RUNNER_WORKSPACE GITHUB_WORKFLOW; do tmp=$ev; echo "$ev=${!tmp}"; done >> tdbenvfile.txt
         docker container run \
-          -v "$(realpath $GITHUB_WORKSPACE/..):$(realpath $GITHUB_WORKSPACE)" --env-file tdbenvfile.txt \
+          -v "$GITHUB_WORKSPACE:$GITHUB_WORKSPACE" --env-file tdbenvfile.txt \
           -w $GITHUB_WORKSPACE \
           "quay.io/pypa/manylinux2010_x86_64:2021-11-07-28723f3" \
           /bin/bash -c "pwd; ls -l; . ./scripts/ci/linux-mac_release_buildtiledb.sh"
-        docker ps
         set -x
+        docker ps
         if [[ $(ls -l $GITHUB_WORKSPACE/..) ]]; then
           echo "any files above? (TDBRETENVVARS.TXT?)"
         fi
