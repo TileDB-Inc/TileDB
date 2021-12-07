@@ -145,7 +145,7 @@ jobs:
             -v /__w:/__w --env-file tdbenvfile.txt \
             -w /__w:/TILEDB/TILEDB \
             "quay.io/pypa/manylinux2010_x86_64:2021-11-07-28723f3" \
-            /bin/bash -c "source tdbtempscript.sh"
+            /bin/bash -c "pwd; ls -l; source tdbtempscript.sh"
           echo "end workflow docker attempt ========================###########================"
           exit 17
 
