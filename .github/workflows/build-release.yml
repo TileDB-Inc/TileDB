@@ -124,6 +124,7 @@ jobs:
           pwd
           cat > tdbtempscript.sh <<"EOF"
           set -x
+          echo "BEGIN tdbtempscript.sh"
           echo "HI! script items running inside tdbtempscript.sh... "
           echo $HOME
           echo $GITHUB_WORKSPACE
@@ -137,6 +138,7 @@ jobs:
           env
           set
           typeset
+          echo "END tdbtempscript.sh"
           EOF
           pwd
           echo "vvvvvvvvvvvvvvvvvvvv"
