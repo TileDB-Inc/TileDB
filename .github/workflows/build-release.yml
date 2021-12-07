@@ -145,7 +145,8 @@ jobs:
           pwd
           echo "vvvvvvvvvvvvvvvvvvvv"
           cat tdbtempscript.sh
-          printenv > tdbenvfile.txt
+          #printenv > tdbenvfile.txt
+          for ev in GITHUB_WORKSPACE GITHUB_EVENT_PATH CXX CC CFLAGS CXXFLAGS ARTIFACT_OS ARTIFACT_EXTRAS ARTIFACT_ARCH SUDO; do tmp=$ev; echo "$ev=${!tmp}"; done >> tdbenvfile.txt
           echo "-------------------------"
           cat tdbenvfile.txt
           echo "^^^^^^^^^^^^^^^^^^^^"
