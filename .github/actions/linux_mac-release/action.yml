@@ -389,10 +389,10 @@ runs:
         fi
         echo "XSUDO is $XSUDO"
         sync
-        #~ #if [[ $($XSUDO find / -name datafromcontainer.txt -exec ls -l {} \;) ]]; then
-        #~ #if [[ $(find / -name datafromcontainer.txt -exec ls -l {} \;) ]]; then
-        #~ if [[ $(find / -name datafromcontainer.txt) ]]; then
-          #~ echo "found datafromcontainer.txt"
+        #if [[ $($XSUDO find / -name datafromcontainer.txt -exec ls -l {} \;) ]]; then
+        #if [[ $(find / -name datafromcontainer.txt -exec ls -l {} \;) ]]; then
+        if [[ $(find / -name datafromcontainer.txt) ]]; then
+          echo "found datafromcontainer.txt"
           #~ ls -l
           #~ if [[ $(cat datafromcontainer.txt) ]]; then
             #~ echo "data from container above?
@@ -400,10 +400,10 @@ runs:
           #~ sync
           #~ #docker cp $up1level:datafromcontainer.txt ./copieddatafromcontainer.txt
           #~ #sync
-        #~ else
-          #~ echo "did not find datafromcontainer.txt"
-        #~ fi
-        #~ sync
+        else
+          echo "did not find datafromcontainer.txt"
+        fi
+        sync
         docker container stop dlhdataxfer
         sync
         docker container rm dlhdataxfer
