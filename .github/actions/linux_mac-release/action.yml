@@ -384,6 +384,7 @@ runs:
         sync
         pwd
         sync
+        ls -l
         ls -l ..
         sync
         if [[ ! $(ls -l ../*.tar.gz) ]]; then
