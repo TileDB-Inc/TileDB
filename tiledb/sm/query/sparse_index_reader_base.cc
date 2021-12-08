@@ -381,7 +381,7 @@ Status SparseIndexReaderBase::compute_tile_bitmaps(
   // These vector will contain a list of indices for ranges to process when
   // computing the tile bitmaps.
   ResourcePool<std::vector<uint64_t>> all_threads_range_indexes(num_threads);
-  ResourcePool<std::vector<uint8_t>> all_threads_range_bitmaps(num_threads);
+  ResourcePool<std::vector<bool>> all_threads_range_bitmaps(num_threads);
 
   // Compute the max size for the range index vectors.
   uint64_t max_range_size = 0;
@@ -427,7 +427,8 @@ Status SparseIndexReaderBase::compute_tile_bitmaps(
         auto range_indexes_resource_guard =
             ResourceGuard(all_threads_range_indexes);
         auto range_indexes = range_indexes_resource_guard.get();
-        range_indexes.resize(max_range_size);
+//        range_indexes.resize(max_range_size);
+        range_indexes.reserve(max_range_size);
 
         // Get a range bitmap vector ready.
         auto range_bitmap_resource_guard =
@@ -456,12 +457,22 @@ Status SparseIndexReaderBase::compute_tile_bitmaps(
           // there is no need to compute bitmaps.
           const bool is_uint8_t = std::is_same<BitmapType, uint8_t>::value;
           if (is_uint8_t) {
+            bool skip = false;
             domain->dimension(dim_idx)->covered_vec(
-                ranges_for_dim, mbr[dim_idx], &range_bitmap);
-            if (range_bitmap[0] == 0 && memcmp(
-                                            &range_bitmap[0],
-                                            &range_bitmap[1],
-                                            ranges_for_dim.size()) == 0)
+                ranges_for_dim, mbr[dim_idx], range_bitmap);
+//            if (range_bitmap[0] == 0 && memcmp(
+//                                            &range_bitmap[0],
+//                                            &range_bitmap[1],
+//                                            ranges_for_dim.size()) == 0)
+//            if (range_bitmap[0] == 0) {
+//              for (uint64_t i = 0; i < range_bitmap.size(); i++) {
+            for(const auto& b : range_bitmap) {
+              if (b) {
+                skip = true;
+                break;
+              }
+            }
+            if (skip)
               continue;
           }
 
@@ -469,12 +480,16 @@ Status SparseIndexReaderBase::compute_tile_bitmaps(
           // compute_results_count_sparse.
           uint64_t num_ranges = 0;
           domain->dimension(dim_idx)->overlap_vec(
-              ranges_for_dim, mbr[dim_idx], &range_bitmap);
+              ranges_for_dim, mbr[dim_idx], range_bitmap);
           for (uint64_t r = 0; r < ranges_for_dim.size(); r++) {
             if (range_bitmap[r]) {
-              range_indexes[num_ranges++] = r;
+              range_indexes.push_back(r);
+//              range_indexes[num_ranges] = r;
+//              num_ranges += range_bitmap[r];
             }
           }
+//          range_indexes.resize(num_ranges);
+          num_ranges = range_indexes.size();
 
           // Compute the cells to process.
           auto part_num = std::min(cell_num, num_range_threads);

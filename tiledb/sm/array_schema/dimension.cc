@@ -841,77 +841,73 @@ double Dimension::overlap_ratio(const Range& r1, const Range& r2) const {
 void Dimension::overlap_vec(
     const NDRange& ranges,
     const Range& mbr,
-    std::vector<uint8_t>* overlap) const {
+    std::vector<bool>& overlap) const {
   assert(overlap_vec_func_ != nullptr);
   return overlap_vec_func_(ranges, mbr, overlap);
 }
 
 template <>
 void Dimension::overlap_vec<char>(
-    const NDRange& ranges, const Range& mbr, std::vector<uint8_t>* overlap) {
-  auto& ret = *overlap;
+    const NDRange& ranges, const Range& mbr, std::vector<bool>& overlap) {
   for (uint64_t r = 0; r < ranges.size(); r++) {
-    auto r1_start = ranges[r].start_str();
-    auto r1_end = ranges[r].end_str();
-    auto r2_start = mbr.start_str();
-    auto r2_end = mbr.end_str();
+    auto r2_start = ranges[r].start_str();
+    auto r2_end = ranges[r].end_str();
+    auto r1_start = mbr.start_str();
+    auto r1_end = mbr.end_str();
 
     auto r1_after_r2 =
         !r1_start.empty() && !r2_end.empty() && r1_start > r2_end;
     auto r2_after_r1 =
         !r2_start.empty() && !r1_end.empty() && r2_start > r1_end;
 
-    ret[r] = !r1_after_r2 && !r2_after_r1;
+    overlap[r] = !r1_after_r2 && !r2_after_r1;
   }
 }
 
 template <class T>
 void Dimension::overlap_vec(
-    const NDRange& ranges, const Range& mbr, std::vector<uint8_t>* overlap) {
-  auto& ret = *overlap;
+    const NDRange& ranges, const Range& mbr, std::vector<bool>& overlap) {
   for (uint64_t r = 0; r < ranges.size(); r++) {
-    auto d1 = (const T*)ranges[r].data();
-    auto d2 = (const T*)mbr.data();
+    auto d2 = (const T*)ranges[r].data();
+    auto d1 = (const T*)mbr.data();
 
-    ret[r] = !(d1[0] > d2[1] || d1[1] < d2[0]);
+    overlap[r] = !(d1[0] > d2[1] || d1[1] < d2[0]);
   }
 }
 
 void Dimension::covered_vec(
     const NDRange& ranges,
     const Range& mbr,
-    std::vector<uint8_t>* covered) const {
+    std::vector<bool>& covered) const {
   assert(covered_vec_func_ != nullptr);
   return covered_vec_func_(ranges, mbr, covered);
 }
 
 template <>
 void Dimension::covered_vec<char>(
-    const NDRange& ranges, const Range& mbr, std::vector<uint8_t>* covered) {
-  auto& ret = *covered;
+    const NDRange& ranges, const Range& mbr, std::vector<bool>& covered) {
   for (uint64_t r = 0; r < ranges.size(); r++) {
-    auto r1_start = ranges[r].start_str();
-    auto r1_end = ranges[r].end_str();
-    auto r2_start = mbr.start_str();
-    auto r2_end = mbr.end_str();
+    auto r2_start = ranges[r].start_str();
+    auto r2_end = ranges[r].end_str();
+    auto r1_start = mbr.start_str();
+    auto r1_end = mbr.end_str();
 
     auto r1_after_r2 =
         !r1_start.empty() && !r2_start.empty() && r1_start >= r2_start;
     auto r2_after_r1 = !r1_end.empty() && !r2_end.empty() && r1_end <= r2_end;
 
-    ret[r] = r1_after_r2 && r2_after_r1;
+    covered[r] = r1_after_r2 && r2_after_r1;
   }
 }
 
 template <class T>
 void Dimension::covered_vec(
-    const NDRange& ranges, const Range& mbr, std::vector<uint8_t>* covered) {
-  auto& ret = *covered;
+    const NDRange& ranges, const Range& mbr, std::vector<bool>& covered) {
   for (uint64_t r = 0; r < ranges.size(); r++) {
-    auto d1 = (const T*)ranges[r].data();
-    auto d2 = (const T*)mbr.data();
+    auto d2 = (const T*)ranges[r].data();
+    auto d1 = (const T*)mbr.data();
 
-    ret[r] = d1[0] >= d2[0] && d1[1] <= d2[1];
+    covered[r] = d1[0] >= d2[0] && d1[1] <= d2[1];
   }
 }
 

@@ -651,23 +651,23 @@ class Dimension {
   void overlap_vec(
       const NDRange& ranges,
       const Range& mbr,
-      std::vector<uint8_t>* overlap) const;
+      std::vector<bool>& overlap) const;
 
   /** Compute overlap on a set of ranges. */
   template <class T>
   static void overlap_vec(
-      const NDRange& ranges, const Range& mbr, std::vector<uint8_t>* overlap);
+      const NDRange& ranges, const Range& mbr, std::vector<bool>& overlap);
 
   /** Compute covered on a set of ranges. */
   void covered_vec(
       const NDRange& ranges,
       const Range& mbr,
-      std::vector<uint8_t>* covered) const;
+      std::vector<bool>& covered) const;
 
   /** Compute covered on a set of ranges. */
   template <class T>
   static void covered_vec(
-      const NDRange& ranges, const Range& mbr, std::vector<uint8_t>* covered);
+      const NDRange& ranges, const Range& mbr, std::vector<bool>& covered);
 
   /** Splits `r` at point `v`, producing 1D ranges `r1` and `r2`. */
   void split_range(
@@ -975,14 +975,14 @@ class Dimension {
    * Stores the appropriate templated overlap_vec() function based
    * on the dimension datatype.
    */
-  std::function<void(const NDRange&, const Range&, std::vector<uint8_t>*)>
+  std::function<void(const NDRange&, const Range&, std::vector<bool>&)>
       overlap_vec_func_;
 
   /**
    * Stores the appropriate templated covered_vec() function based on the
    * dimension datatype.
    */
-  std::function<void(const NDRange&, const Range&, std::vector<uint8_t>*)>
+  std::function<void(const NDRange&, const Range&, std::vector<bool>&)>
       covered_vec_func_;
 
   /**
