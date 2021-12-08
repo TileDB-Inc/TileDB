@@ -56,7 +56,7 @@
 #undef TIME_MS
 #endif
 // Forward declaration
-namespace azure::storage_lite{
+namespace azure::storage_lite {
 class blob_client;
 }
 
