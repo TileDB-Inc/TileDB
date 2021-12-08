@@ -366,22 +366,23 @@ runs:
         sync
         docker container exec \
           dlhdataxfer \
-          /bin/bash -c "pwd; ls -l; echo hello from container > datafromcontainer.txt"
+          /bin/bash -c "pwd; ls -l; echo hello from container on/at $(date) > datafromcontainer.txt"
         pwd
         docker container inspect dlhdataxfer
         sync
         if [[ $($SUDO find / -name datafromcontainer.txt -exec ls {} \;) ]]; then
           echo "found datafromcontainer.txt"
-          docker cp $up1level:datafromcontainer.txt ./copieddatafromcontainer.txt
+          ls -l
+          if [[ $(cat copieddatafromcontainer.txt) ]]; then
+            echo "data from container above?
+          fi
           sync
+          #docker cp $up1level:datafromcontainer.txt ./copieddatafromcontainer.txt
+          #sync
         else
           echo "did not find datafromcontainer.txt"
         fi
         sync
-        ls -l
-        if [[ $(cat copieddatafromcontainer.txt) ]]; then
-          echo "data from container above?
-        fi
         docker container rm dlhdataxfer
         sync
         exit 19
