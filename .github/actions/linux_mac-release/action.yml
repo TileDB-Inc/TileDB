@@ -315,7 +315,7 @@ runs:
         find / -name 'tiledb-*-linux-build-*.tar.gz' -exec ls -l {} \;
 
     - name: 'Build libtiledb scripted'
-      if: true
+      if: false #true
       #not availa le in (composite) action? continue-on-error: true
       shell: bash
       run: |
@@ -393,7 +393,7 @@ runs:
           echo "found \*.tar.gz above?"
         fi
         sync
-        docker container inspect dlhdataxfer
+        #docker container inspect dlhdataxfer
         sync
         echo "hunting datafromcontainer.txt..."
         sync
@@ -433,58 +433,65 @@ runs:
         sync
         docker container rm dlhdataxfer
         sync
-        exit 19
+        #exit 19
         
     - name: 'Build libtiledb scripted B'
-      if: false
+      if: true
       #not availa le in (composite) action? continue-on-error: true
       shell: bash
       run: |
-        #~ #  -v "$GITHUB_WORKSPACE:$GITHUB_WORKSPACE" --env-file tdbenvfile.txt \
-        #~ containername=dlhmanylinux
-        #~ docker container run \
-          #~ -d --name $containername \
-          #~ -it \
-          #~ -v "$up1level:$up1level" --env-file tdbenvfile.txt \
-          #~ -w $GITHUB_WORKSPACE \
-          #~ "quay.io/pypa/manylinux2010_x86_64:2021-11-07-28723f3" \
-          #~ /bin/bash # -c "pwd; ls -l; . ./scripts/ci/linux-mac_release_buildtiledb.sh"
-        #~ sync
-        #~ docker ps
-        #~ sync
-        #~ echo "0 docker volume ls"
-        #~ docker volume ls
-        #~ sync
-        #~ docker inspect $containername
-        #~ sync
+        #  -v "$GITHUB_WORKSPACE:$GITHUB_WORKSPACE" --env-file tdbenvfile.txt \
+        containername=dlhmanylinux
+        docker container run \
+          -d --name $containername \
+          -it \
+          -v "$up1level:$up1level" --env-file tdbenvfile.txt \
+          -w $GITHUB_WORKSPACE \
+          "quay.io/pypa/manylinux2010_x86_64:2021-11-07-28723f3" \
+          /bin/bash # -c "pwd; ls -l; . ./scripts/ci/linux-mac_release_buildtiledb.sh"
+        sync
+        docker ps
+        sync
+        echo "0 docker volume ls"
+        docker volume ls
+        sync
+        docker inspect $containername
+        sync
         #~ echo "A docker volume ls"
         #~ docker volume ls
         #~ echo "any volumes above?"
         #~ sync
-        #~ #  -it \ ......
-        #~ docker container exec \
-          #~ $containername \
-          #~ /bin/bash -c "pwd; ls -l; . ./scripts/ci/linux-mac_release_buildtiledb.sh"
-        #~ sync
+        #  -it \ ......
+        docker container exec \
+          $containername \
+          /bin/bash -c "pwd; ls -l; . ./scripts/ci/linux-mac_release_buildtiledb.sh; pwd; ls -l; pwd; ls -l .."
+        sync
+        pwd
+        sync
+        ls -l
+        sync
+        ls -l ..
+        syn
         #~ echo "B docker volume ls"
         #~ docker volume ls
         #~ echo "any volumes above?"
         #~ sync
-        #~ #TBD: if this is detached, will we actally see nothing?
-        #~ #and attempts to use -it with detached were rejected, complaints about terminal
-        #~ docker exec $containername bash -c "pwd; ls -l; ls -l ../*.tar.gz"
-        #~ sync
-        #~ docker ps
-        #~ sync
+        #TBD: if this is detached, will we actally see nothing?
+        #and attempts to use -it with detached were rejected, complaints about terminal
+        #docker exec $containername bash -c "pwd; ls -l; ls -l ../*.tar.gz"
+        docker exec $containername /bin/bash -c "pwd; ls -l; ls -l .."
+        sync
+        docker ps
+        sync
         #~ docker container ls
         #~ sync
         #~ docker image ls
         #~ sync
         #~ docker volume ls
         #~ sync
-        #~ #docker inspect manylinux_container_for_build
-        #~ docker inspect $containername
-        #~ sync
+        #docker inspect manylinux_container_for_build
+        #docker inspect $containername
+        #sync
         #~ #docker cp 'manylinux_container_for_build:$GITHUB_WORKSPACE/../*.tar.gz' $GITHUB_WORKSPACE/..
         #~ realpathtocopy=$(echo -e "import sys\nimport os\nprint (os.path.realpath(\"$GITHUB_WORKSPACE/../TDBRETENVVARS.TXT\"))" | python3)
         #~ echo "realpathtocopy is $realpathtocopy"
