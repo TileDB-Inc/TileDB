@@ -36,16 +36,18 @@
 #define NOMINMAX  // avoid min/max macros from windows headers
 #endif
 
-#include "tiledb/common/common.h"
-
-#include <blob/blob_client.h>
-#include <put_block_list_request_base.h>
 #include <future>
 
-#include "tiledb/common/logger.h"
+#include "tiledb/common/common.h"
+#include "tiledb/common/logger_public.h"
 #include "tiledb/sm/filesystem/azure.h"
 #include "tiledb/sm/global_state/global_state.h"
 #include "tiledb/sm/misc/utils.h"
+
+// blob_client.h needs to be included after logger_public.h to avoid
+// macro definitions that blob_client.h has on some platforms
+#include <blob/blob_client.h>
+#include <put_block_list_request_base.h>
 
 using namespace tiledb::common;
 
