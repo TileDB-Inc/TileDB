@@ -403,6 +403,8 @@ runs:
           #~ echo "did not find datafromcontainer.txt"
         #~ fi
         #~ sync
+        docker container stop dlhdataxfer
+        sync
         docker container rm dlhdataxfer
         sync
         exit 19
