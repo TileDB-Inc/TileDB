@@ -663,7 +663,6 @@ class Dimension {
       const NDRange& ranges,
       const Range& mbr,
       const std::vector<uint64_t>& relevant_ranges,
-      const uint64_t num_ranges,
       std::vector<bool>& covered) const;
 
   /** Compute covered on a set of relevant ranges. */
@@ -672,7 +671,6 @@ class Dimension {
       const NDRange& ranges,
       const Range& mbr,
       const std::vector<uint64_t>& relevant_ranges,
-      const uint64_t num_ranges,
       std::vector<bool>& covered);
 
   /** Splits `r` at point `v`, producing 1D ranges `r1` and `r2`. */
@@ -992,7 +990,6 @@ class Dimension {
       const NDRange&,
       const Range&,
       const std::vector<uint64_t>&,
-      const uint64_t,
       std::vector<bool>&)>
       covered_vec_func_;
 

@@ -866,8 +866,8 @@ template <class T>
 void Dimension::overlap_vec(
     const NDRange& ranges, const Range& mbr, std::vector<bool>& overlap) {
   for (uint64_t r = 0; r < ranges.size(); r++) {
-    auto d1 = (const T*)ranges[r].data();
-    auto d2 = (const T*)mbr.data();
+    auto d1 = (const T*)ranges[r].start();
+    auto d2 = (const T*)mbr.start();
 
     overlap[r] = !(d1[0] > d2[1] || d1[1] < d2[0]);
   }
@@ -877,10 +877,9 @@ void Dimension::covered_vec(
     const NDRange& ranges,
     const Range& mbr,
     const std::vector<uint64_t>& relevant_ranges,
-    const uint64_t num_ranges,
     std::vector<bool>& covered) const {
   assert(covered_vec_func_ != nullptr);
-  return covered_vec_func_(ranges, mbr, relevant_ranges, num_ranges, covered);
+  return covered_vec_func_(ranges, mbr, relevant_ranges, covered);
 }
 
 template <>
@@ -888,9 +887,8 @@ void Dimension::covered_vec<char>(
     const NDRange& ranges,
     const Range& mbr,
     const std::vector<uint64_t>& relevant_ranges,
-    const uint64_t num_ranges,
     std::vector<bool>& covered) {
-  for (uint64_t i = 0; i < num_ranges; i++) {
+  for (uint64_t i = 0; i < relevant_ranges.size(); i++) {
     auto r = relevant_ranges[i];
     auto r1_start = mbr.start_str();
     auto r1_end = mbr.end_str();
@@ -910,12 +908,11 @@ void Dimension::covered_vec(
     const NDRange& ranges,
     const Range& mbr,
     const std::vector<uint64_t>& relevant_ranges,
-    const uint64_t num_ranges,
     std::vector<bool>& covered) {
-  for (uint64_t i = 0; i < num_ranges; i++) {
+  for (uint64_t i = 0; i < relevant_ranges.size(); i++) {
     auto r = relevant_ranges[i];
-    auto d1 = (const T*)mbr.data();
-    auto d2 = (const T*)ranges[r].data();
+    auto d1 = (const T*)mbr.start();
+    auto d2 = (const T*)ranges[r].start();
 
     covered[i] = d1[0] >= d2[0] && d1[1] <= d2[1];
   }
