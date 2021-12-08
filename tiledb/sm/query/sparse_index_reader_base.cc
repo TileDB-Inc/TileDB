@@ -323,11 +323,124 @@ Status SparseIndexReaderBase::read_and_unfilter_coords(
   return Status::Ok();
 }
 
+template <class T>
+bool covered_test(const std::vector<Range>& vr1, const std::vector<Range>& vr2) {
+  std::vector<bool> results(vr1.size());
+
+  for (uint64_t r = 0; r < vr1.size(); r++) {
+    auto r1 = vr1[r];
+    auto r2 = vr2[r];
+    auto d1 = (const T*)r1.data();
+    auto d2 = (const T*)r2.data();
+    //    assert(!r1.empty());
+    //    assert(!r2.empty());
+
+    //    assert(d1[0] <= d1[1]);
+    //    assert(d2[0] <= d2[1]);
+
+    results[r] = d1[0] >= d2[0] && d1[1] <= d2[1];
+  }
+
+  for (const auto& result : results)
+    if (result)
+      return true;
+
+  return false;
+}
+
+template <>
+bool covered_test<char>(const std::vector<Range>& vr1, const std::vector<Range>& vr2) {
+  std::vector<bool> results(vr1.size());
+
+  for (uint64_t r = 0; r < vr1.size(); r++) {
+    auto r1 = vr1[r];
+    auto r2 = vr2[r];
+
+    auto r1_start = r1.start_str();
+    auto r1_end = r1.end_str();
+    auto r2_start = r2.start_str();
+    auto r2_end = r2.end_str();
+
+    auto r1_after_r2 =
+        !r1_start.empty() && !r2_start.empty() && r1_start >= r2_start;
+    auto r2_after_r1 = !r1_end.empty() && !r2_end.empty() && r1_end <= r2_end;
+
+    results[r] = r1_after_r2 && r2_after_r1;
+  }
+
+  for (const auto& result : results)
+    if (result)
+      return true;
+
+  return false;
+}
+
+bool covered_test(const std::vector<Range>& vr1, const std::vector<Range>& vr2, Datatype datatype) {
+  switch (datatype) {
+    case Datatype::INT32:
+      return covered_test<int32_t>(vr1, vr2);
+    case Datatype::INT64:
+      return covered_test<int64_t>(vr1, vr2);
+    case Datatype::FLOAT32:
+      return covered_test<float>(vr1, vr2);
+    case Datatype::FLOAT64:
+      return covered_test<double>(vr1, vr2);
+    case Datatype::CHAR:
+      return covered_test<char>(vr1, vr2);
+    case Datatype::INT8:
+      return covered_test<int8_t>(vr1, vr2);
+    case Datatype::UINT8:
+      return covered_test<uint8_t>(vr1, vr2);
+    case Datatype::INT16:
+      return covered_test<int16_t>(vr1, vr2);
+    case Datatype::UINT16:
+      return covered_test<uint16_t>(vr1, vr2);
+    case Datatype::UINT32:
+      return covered_test<uint32_t>(vr1, vr2);
+    case Datatype::UINT64:
+      return covered_test<uint64_t>(vr1, vr2);
+    case Datatype::STRING_ASCII:
+    case Datatype::STRING_UTF8:
+    case Datatype::STRING_UTF16:
+    case Datatype::STRING_UTF32:
+    case Datatype::STRING_UCS2:
+    case Datatype::STRING_UCS4:
+    case Datatype::ANY:
+      break;
+    case Datatype::DATETIME_YEAR:
+    case Datatype::DATETIME_MONTH:
+    case Datatype::DATETIME_WEEK:
+    case Datatype::DATETIME_DAY:
+    case Datatype::DATETIME_HR:
+    case Datatype::DATETIME_MIN:
+    case Datatype::DATETIME_SEC:
+    case Datatype::DATETIME_MS:
+    case Datatype::DATETIME_US:
+    case Datatype::DATETIME_NS:
+    case Datatype::DATETIME_PS:
+    case Datatype::DATETIME_FS:
+    case Datatype::DATETIME_AS:
+    case Datatype::TIME_HR:
+    case Datatype::TIME_MIN:
+    case Datatype::TIME_SEC:
+    case Datatype::TIME_MS:
+    case Datatype::TIME_US:
+    case Datatype::TIME_NS:
+    case Datatype::TIME_PS:
+    case Datatype::TIME_FS:
+    case Datatype::TIME_AS:
+      return covered_test<int64_t>(vr1, vr2);
+  }
+
+  return false;
+}
+
 template <class BitmapType>
 Status SparseIndexReaderBase::allocate_tile_bitmap(
     const unsigned dim_num,
     const Domain* domain,
     ResultTileWithBitmap<BitmapType>* rt) {
+  auto timer_se = stats_->start_timer("allocate_tile_bitmap");
   auto cell_num = fragment_metadata_[rt->frag_idx()]->cell_num(rt->tile_idx());
 
   // Bitmap was already computed for this tile.
@@ -346,23 +459,37 @@ Status SparseIndexReaderBase::allocate_tile_bitmap(
     // Get the MBR for this tile.
     const auto& mbr = fragment_metadata_[rt->frag_idx()]->mbr(rt->tile_idx());
 
-    // See if we have full overlap one dimension at a time.
-    for (unsigned d = 0; d < dim_num; d++) {
-      // No need to compute bitmaps for default dimensions.
-      if (subarray_.is_default(d))
-        continue;
+    bool found;
+    if (config_.get("test_vectorization", &found) == "true") {
+      // See if we have full overlap one dimension at a time.
+      for (unsigned d = 0; d < dim_num; d++) {
+        // No need to compute bitmaps for default dimensions.
+        if (subarray_.is_default(d))
+          continue;
 
-      bool dim_full_overlap = false;
-      const auto dim = domain->dimension(d);
-      const auto& ranges_for_dim = subarray_.ranges_for_dim(d);
-      for (uint64_t r = 0; r < ranges_for_dim.size(); r++) {
-        if (dim->covered(mbr[d], ranges_for_dim[r])) {
-          dim_full_overlap = true;
-          break;
-        }
+        const auto dim = domain->dimension(d);
+        const auto& ranges_for_dim = subarray_.ranges_for_dim(d);
+        full_overlap &= covered_test(mbr, ranges_for_dim, dim->type());
       }
+    } else {
+      // See if we have full overlap one dimension at a time.
+      for (unsigned d = 0; d < dim_num; d++) {
+        // No need to compute bitmaps for default dimensions.
+        if (subarray_.is_default(d))
+          continue;
 
-      full_overlap &= dim_full_overlap;
+        bool dim_full_overlap = false;
+        const auto dim = domain->dimension(d);
+        const auto& ranges_for_dim = subarray_.ranges_for_dim(d);
+        for (uint64_t r = 0; r < ranges_for_dim.size(); r++) {
+          if (dim->covered(mbr[d], ranges_for_dim[r])) {
+            dim_full_overlap = true;
+            break;
+          }
+        }
+
+        full_overlap &= dim_full_overlap;
+      }
     }
   }
 
