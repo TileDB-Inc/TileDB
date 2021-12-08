@@ -331,6 +331,7 @@ runs:
         for ev in GITHUB_WORKSPACE GITHUB_EVENT_PATH CXX CC CFLAGS CXXFLAGS ARTIFACT_OS ARTIFACT_EXTRAS ARTIFACT_ARCH SUDO RUNNER_OS GITHUB_REF RUNNER_TRACKING_ID RUNNER_ARCH GITHUB_RUN_NUMBER GITHUB_RUN_ID GITHUB_EVENT_NAME GITHUB_ACTOR GITHUB_REF_NAME GITHUB_JOB GITHUB_REPOSITORY RUNNER_WORKSPACE GITHUB_WORKFLOW TDB_SOURCE_ARCHIVE_PATH TDB_BINARY_ARCHIVE_PATH; do tmp=$ev; echo "$ev=${!tmp}"; done >> tdbenvfile.txt
         sync
         up1level=$(echo -e "import sys\nimport os\nprint (os.path.realpath(\"$GITHUB_WORKSPACE/..\"))" | python3)
+        echo "up1level is $up1level"
         #  -v "$GITHUB_WORKSPACE:$GITHUB_WORKSPACE" --env-file tdbenvfile.txt \
         containername=dlhmanylinux
         docker container run \
@@ -343,11 +344,15 @@ runs:
         sync
         docker ps
         sync
+        echo "A docker volume ls"
+        docker volume ls
+        sync
         #  -it \ ......
         docker container exec \
           $containername \
           /bin/bash -c "pwd; ls -l; . ./scripts/ci/linux-mac_release_buildtiledb.sh"
         sync
+        echo "B docker volume ls"
         docker volume ls
         sync
         #TBD: if this is detached, will we actally see nothing?
