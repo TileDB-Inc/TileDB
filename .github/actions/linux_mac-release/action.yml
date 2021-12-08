@@ -370,16 +370,16 @@ runs:
         pwd
         docker container inspect dlhdataxfer
         sync
-        if [[ $($SUDO find / -name datafromcontainer.txt) -exec ls {} \; ]]; then
+        if [[ $($SUDO find / -name datafromcontainer.txt -exec ls {} \;) ]]; then
           echo "found datafromcontainer.txt"
+          docker cp $up1level:datafromcontainer.txt ./copieddatafromcontainer.txt
+          sync
         else
           echo "did not find datafromcontainer.txt"
         fi
         sync
-        docker cp $up1level:datafromcontainer.txt ./copieddatafromcontainer.txt
-        sync
         ls -l
-        if [[ ($cat copieddatafromcontainer.txt) ]]; then
+        if [[ $(cat copieddatafromcontainer.txt) ]]; then
           echo "data from container above?
         fi
         docker container rm dlhdataxfer
