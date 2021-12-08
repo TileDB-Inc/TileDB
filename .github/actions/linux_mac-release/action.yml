@@ -324,8 +324,9 @@ runs:
         sync
         up1level=$(echo -e "import sys\nimport os\nprint (os.path.realpath(\"$GITHUB_WORKSPACE/..\"))" | python3)
         #  -v "$GITHUB_WORKSPACE:$GITHUB_WORKSPACE" --env-file tdbenvfile.txt \
+        containername=dlhmanylinux
         docker container run \
-          -d --name manylinux_container_for_build \
+          -d --name $containername \
           -it \
           -v "$up1level:$up1level" --env-file tdbenvfile.txt \
           -w $GITHUB_WORKSPACE \
@@ -336,8 +337,14 @@ runs:
         sync
         #  -it \ ......
         docker container exec \
-          manylinux_container_for_build \
+          $containername \
           /bin/bash -c "pwd; ls -l; . ./scripts/ci/linux-mac_release_buildtiledb.sh"
+        sync
+        docker volume ls
+        sync
+        #TBD: if this is detached, will we actally see nothing?
+        #and attempts to use -it with detached were rejected, complaints about terminal
+        docker exec $containername bash -c "pwd; ls -l; ls -l ../*.tar.gz"
         sync
         docker ps
         sync
@@ -349,7 +356,8 @@ runs:
         sync
         #docker cp 'manylinux_container_for_build:$GITHUB_WORKSPACE/../*.tar.gz' $GITHUB_WORKSPACE/..
         realpathtocp=$(echo -e "import sys\nimport os\nprint (os.path.realpath(\"$GITHUB_WORKSPACE/..\"))" | python3)
-        docker cp "manylinux_container_for_build:$realpathtocp/*.tar.gz" $GITHUB_WORKSPACE/..
+        #docker cp "manylinux_container_for_build:$realpathtocp/*.tar.gz" $GITHUB_WORKSPACE/..
+        docker cp "$containername:$realpathtocp/*.tar.gz" $GITHUB_WORKSPACE/..
         if [[ $(ls -l $GITHUB_WORKSPACE/..) ]]; then
           echo "any files above? (TDBRETENVVARS.TXT?)"
         fi
@@ -363,7 +371,8 @@ runs:
         echo "TDB_SOURCE_ARCHIVE_PATH=$TDB_SOURCE_ARCHIVE_PATH" >> "$GITHUB_ENV"
         #TBD: copy the artifact data out of the container...
         #docker cp ???
-        docker stop manylinux_containe_for_build
+        #docker stop manylinux_containe_for_build
+        docker stop $containername
         
     - name: 'are variables in env context?'
       shell: bash
