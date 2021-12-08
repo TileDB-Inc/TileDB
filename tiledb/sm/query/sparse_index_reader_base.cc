@@ -492,9 +492,9 @@ Status SparseIndexReaderBase::compute_tile_bitmaps(
           RETURN_NOT_OK(rt->compute_results_count_sparse(
               dim_idx,
               ranges_for_dim,
-              &range_indexes,
+              range_indexes,
               num_ranges,
-              &rt->bitmap_,
+              rt->bitmap_,
               cell_order,
               min,
               max));
