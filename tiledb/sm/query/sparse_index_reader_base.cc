@@ -44,6 +44,8 @@
 #include "tiledb/sm/storage_manager/open_array_memory_tracker.h"
 #include "tiledb/sm/subarray/subarray.h"
 
+#include <numeric>
+
 namespace tiledb {
 namespace sm {
 
@@ -380,7 +382,6 @@ Status SparseIndexReaderBase::compute_tile_bitmaps(
 
   // These vector will contain a list of indices for ranges to process when
   // computing the tile bitmaps.
-  ResourcePool<std::vector<uint64_t>> all_threads_range_indexes(num_threads);
   ResourcePool<std::vector<bool>> all_threads_range_bitmaps(num_threads);
 
   // Compute the max size for the range index vectors.
@@ -423,12 +424,6 @@ Status SparseIndexReaderBase::compute_tile_bitmaps(
           return Status::Ok();
         }
 
-        // Get a range indexes vector ready.
-        auto range_indexes_resource_guard =
-            ResourceGuard(all_threads_range_indexes);
-        auto range_indexes = range_indexes_resource_guard.get();
-        range_indexes.reserve(max_range_size);
-
         // Get a range bitmap vector ready.
         auto range_bitmap_resource_guard =
             ResourceGuard(all_threads_range_bitmaps);
@@ -456,6 +451,13 @@ Status SparseIndexReaderBase::compute_tile_bitmaps(
           // compute_results_count_sparse.
           domain->dimension(dim_idx)->overlap_vec(
               ranges_for_dim, mbr[dim_idx], range_bitmap);
+
+          uint64_t count = std::accumulate(
+              range_bitmap.begin(),
+              range_bitmap.begin() + ranges_for_dim.size(),
+              0);
+          std::vector<uint64_t> range_indexes;
+          range_indexes.reserve(count);
           for (uint64_t r = 0; r < ranges_for_dim.size(); r++) {
             if (range_bitmap[r]) {
               range_indexes.push_back(r);
@@ -468,13 +470,12 @@ Status SparseIndexReaderBase::compute_tile_bitmaps(
           if (is_uint8_t) {
             domain->dimension(dim_idx)->covered_vec(
                 ranges_for_dim, mbr[dim_idx], range_indexes, range_bitmap);
+            count = std::accumulate(
+                range_bitmap.begin(),
+                range_bitmap.begin() + range_indexes.size(),
+                0);
 
-            bool full_overlap = false;
-            for (uint64_t i = 0; i < range_indexes.size(); i++) {
-              full_overlap |= range_bitmap[i];
-            }
-
-            if (full_overlap)
+            if (count != 0)
               continue;
           }
 
@@ -490,7 +491,6 @@ Status SparseIndexReaderBase::compute_tile_bitmaps(
               dim_idx,
               ranges_for_dim,
               range_indexes,
-              range_bitmap,
               rt->bitmap_,
               cell_order,
               min,
