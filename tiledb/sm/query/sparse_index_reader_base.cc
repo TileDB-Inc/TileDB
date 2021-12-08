@@ -427,7 +427,7 @@ Status SparseIndexReaderBase::compute_tile_bitmaps(
         auto range_indexes_resource_guard =
             ResourceGuard(all_threads_range_indexes);
         auto range_indexes = range_indexes_resource_guard.get();
-        range_indexes.resize(max_range_size);
+        range_indexes.reserve(max_range_size);
 
         // Get a range bitmap vector ready.
         auto range_bitmap_resource_guard =
@@ -454,12 +454,11 @@ Status SparseIndexReaderBase::compute_tile_bitmaps(
 
           // Compute the list of range index to process in
           // compute_results_count_sparse.
-          uint64_t num_ranges = 0;
           domain->dimension(dim_idx)->overlap_vec(
               ranges_for_dim, mbr[dim_idx], range_bitmap);
           for (uint64_t r = 0; r < ranges_for_dim.size(); r++) {
             if (range_bitmap[r]) {
-              range_indexes[num_ranges++] = r;
+              range_indexes.push_back(r);
             }
           }
 
@@ -468,14 +467,10 @@ Status SparseIndexReaderBase::compute_tile_bitmaps(
           const bool is_uint8_t = std::is_same<BitmapType, uint8_t>::value;
           if (is_uint8_t) {
             domain->dimension(dim_idx)->covered_vec(
-                ranges_for_dim,
-                mbr[dim_idx],
-                range_indexes,
-                num_ranges,
-                range_bitmap);
+                ranges_for_dim, mbr[dim_idx], range_indexes, range_bitmap);
 
             bool full_overlap = false;
-            for (uint64_t i = 0; i < num_ranges; i++) {
+            for (uint64_t i = 0; i < range_indexes.size(); i++) {
               full_overlap |= range_bitmap[i];
             }
 
@@ -494,9 +489,9 @@ Status SparseIndexReaderBase::compute_tile_bitmaps(
           RETURN_NOT_OK(rt->compute_results_count_sparse(
               dim_idx,
               ranges_for_dim,
-              &range_indexes,
-              num_ranges,
-              &rt->bitmap_,
+              range_indexes,
+              range_bitmap,
+              rt->bitmap_,
               cell_order,
               min,
               max));
