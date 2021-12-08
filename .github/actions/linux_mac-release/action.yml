@@ -352,7 +352,8 @@ runs:
         sync
         docker image ls
         sync
-        docker inspect manylinux_container_for_build
+        #docker inspect manylinux_container_for_build
+        docker inspect $containername
         sync
         #docker cp 'manylinux_container_for_build:$GITHUB_WORKSPACE/../*.tar.gz' $GITHUB_WORKSPACE/..
         realpathtocp=$(echo -e "import sys\nimport os\nprint (os.path.realpath(\"$GITHUB_WORKSPACE/..\"))" | python3)
