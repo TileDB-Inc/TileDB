@@ -39,9 +39,9 @@
 #include <string>
 #include <vector>
 
+#include "tiledb/common/common.h"
 #include "tiledb/common/macros.h"
 #include "tiledb/common/status.h"
-#include "tiledb/common/thread_pool.h"
 #include "tiledb/sm/buffer/buffer.h"
 #include "tiledb/sm/cache/lru_cache.h"
 #include "tiledb/sm/config/config.h"
