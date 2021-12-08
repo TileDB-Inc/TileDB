@@ -373,7 +373,7 @@ runs:
         if [[ $(sudo find / -name datafromcontainer.txt -exec ls {} \;) ]]; then
           echo "found datafromcontainer.txt"
           ls -l
-          if [[ $(cat copieddatafromcontainer.txt) ]]; then
+          if [[ $(cat datafromcontainer.txt) ]]; then
             echo "data from container above?
           fi
           sync
