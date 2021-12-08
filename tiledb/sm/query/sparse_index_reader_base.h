@@ -269,10 +269,7 @@ class SparseIndexReaderBase : public ReaderBase {
 
   /** Allocate a tile bitmap if required for this tile. */
   template <class BitmapType>
-  Status allocate_tile_bitmap(
-      const unsigned dim_num,
-      const Domain* domain,
-      ResultTileWithBitmap<BitmapType>* rt);
+  Status allocate_tile_bitmap(ResultTileWithBitmap<BitmapType>* rt);
 
   /** Compute tile bitmaps. */
   template <class BitmapType>

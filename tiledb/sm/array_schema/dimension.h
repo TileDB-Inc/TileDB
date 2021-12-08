@@ -647,6 +647,34 @@ class Dimension {
   template <class T>
   static double overlap_ratio(const Range& r1, const Range& r2);
 
+  /** Compute overlap on a set of ranges. */
+  void overlap_vec(
+      const NDRange& ranges,
+      const Range& mbr,
+      std::vector<bool>& overlap) const;
+
+  /** Compute overlap on a set of ranges. */
+  template <class T>
+  static void overlap_vec(
+      const NDRange& ranges, const Range& mbr, std::vector<bool>& overlap);
+
+  /** Compute covered on a set of relevant ranges. */
+  void covered_vec(
+      const NDRange& ranges,
+      const Range& mbr,
+      const std::vector<uint64_t>& relevant_ranges,
+      const uint64_t num_ranges,
+      std::vector<bool>& covered) const;
+
+  /** Compute covered on a set of relevant ranges. */
+  template <class T>
+  static void covered_vec(
+      const NDRange& ranges,
+      const Range& mbr,
+      const std::vector<uint64_t>& relevant_ranges,
+      const uint64_t num_ranges,
+      std::vector<bool>& covered);
+
   /** Splits `r` at point `v`, producing 1D ranges `r1` and `r2`. */
   void split_range(
       const Range& r, const ByteVecValue& v, Range* r1, Range* r2) const;
@@ -950,6 +978,25 @@ class Dimension {
   std::function<double(const Range&, const Range&)> overlap_ratio_func_;
 
   /**
+   * Stores the appropriate templated overlap_vec() function based
+   * on the dimension datatype.
+   */
+  std::function<void(const NDRange&, const Range&, std::vector<bool>&)>
+      overlap_vec_func_;
+
+  /**
+   * Stores the appropriate templated covered_vec() function based on the
+   * dimension datatype.
+   */
+  std::function<void(
+      const NDRange&,
+      const Range&,
+      const std::vector<uint64_t>&,
+      const uint64_t,
+      std::vector<bool>&)>
+      covered_vec_func_;
+
+  /**
    * Stores the appropriate templated split_range() function based on the
    * dimension datatype.
    */
@@ -1139,6 +1186,12 @@ class Dimension {
 
   /** Sets the templated overlap_ratio() function. */
   void set_overlap_ratio_func();
+
+  /** Sets the templated overlap_vec() function. */
+  void set_overlap_vec_func();
+
+  /** Sets the templated covered_vec() function. */
+  void set_covered_vec_func();
 
   /** Sets the templated split_range() function. */
   void set_split_range_func();
