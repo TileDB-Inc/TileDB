@@ -427,7 +427,6 @@ Status SparseIndexReaderBase::compute_tile_bitmaps(
         auto range_indexes_resource_guard =
             ResourceGuard(all_threads_range_indexes);
         auto range_indexes = range_indexes_resource_guard.get();
-//        range_indexes.resize(max_range_size);
         range_indexes.reserve(max_range_size);
 
         // Get a range bitmap vector ready.
@@ -460,13 +459,7 @@ Status SparseIndexReaderBase::compute_tile_bitmaps(
             bool skip = false;
             domain->dimension(dim_idx)->covered_vec(
                 ranges_for_dim, mbr[dim_idx], range_bitmap);
-//            if (range_bitmap[0] == 0 && memcmp(
-//                                            &range_bitmap[0],
-//                                            &range_bitmap[1],
-//                                            ranges_for_dim.size()) == 0)
-//            if (range_bitmap[0] == 0) {
-//              for (uint64_t i = 0; i < range_bitmap.size(); i++) {
-            for(const auto& b : range_bitmap) {
+            for (const auto& b : range_bitmap) {
               if (b) {
                 skip = true;
                 break;
@@ -484,11 +477,8 @@ Status SparseIndexReaderBase::compute_tile_bitmaps(
           for (uint64_t r = 0; r < ranges_for_dim.size(); r++) {
             if (range_bitmap[r]) {
               range_indexes.push_back(r);
-//              range_indexes[num_ranges] = r;
-//              num_ranges += range_bitmap[r];
             }
           }
-//          range_indexes.resize(num_ranges);
           num_ranges = range_indexes.size();
 
           // Compute the cells to process.

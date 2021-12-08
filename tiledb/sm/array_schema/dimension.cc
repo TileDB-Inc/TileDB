@@ -839,9 +839,7 @@ double Dimension::overlap_ratio(const Range& r1, const Range& r2) const {
 }
 
 void Dimension::overlap_vec(
-    const NDRange& ranges,
-    const Range& mbr,
-    std::vector<bool>& overlap) const {
+    const NDRange& ranges, const Range& mbr, std::vector<bool>& overlap) const {
   assert(overlap_vec_func_ != nullptr);
   return overlap_vec_func_(ranges, mbr, overlap);
 }
@@ -876,9 +874,7 @@ void Dimension::overlap_vec(
 }
 
 void Dimension::covered_vec(
-    const NDRange& ranges,
-    const Range& mbr,
-    std::vector<bool>& covered) const {
+    const NDRange& ranges, const Range& mbr, std::vector<bool>& covered) const {
   assert(covered_vec_func_ != nullptr);
   return covered_vec_func_(ranges, mbr, covered);
 }
