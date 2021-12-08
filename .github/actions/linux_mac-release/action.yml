@@ -370,7 +370,17 @@ runs:
         pwd
         docker container inspect dlhdataxfer
         sync
-        if [[ $(sudo find / -name datafromcontainer.txt -exec ls {} \;) ]]; then
+        echo "hunting datafromcontainer.txt..."
+        sync
+        if [[ $(which sudo) ]]; then
+          echo "found 'sudo'"
+          XSUDO=sudo
+        else
+          echo "did not find 'sudo'"
+        fi
+        echo "XSUDO is $XSUDO"
+        sync
+        if [[ $(XSUDO find / -name datafromcontainer.txt -exec ls -l {} \;) ]]; then
           echo "found datafromcontainer.txt"
           ls -l
           if [[ $(cat datafromcontainer.txt) ]]; then
