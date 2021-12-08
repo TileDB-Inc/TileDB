@@ -559,37 +559,39 @@ runs:
         #~ else
           #~ ls -l ${{ env.GITHUB_WORKSPACE }}/../tiledb-${{ env.ARTIFACT_OS }}-build-dir-${{ env.ARTIFACT_EXTRAS }}.tar.gz
         #~ fi
-        #~ pwd
-        if [[ ! $(find $GITHUB_WORKSPACE/.. -name '*.tar.gz' -exec ls -l {} \;) ]]; then
+        pwd
+        sync
+        if [[ ! $(find $(realpath $GITHUB_WORKSPACE/..) -name '*.tar.gz' -exec ls -l {} \;) ]]; then
           echo "did not find *.tar.gz"
+          sync
         fi
-        printenv
+        #printenv
         if [[ $(whoami) ]]; then
           echo $(whoami)
         else
           echo "couldn't figure out who I am"
         fi
         #no sudo... sudo ls -l
-        if [[ $(ls -l /) ]]; then
-          ls -l /
-        else
-          echo "unable to ls -l /"
-        fi
-        ls -l
-        if [[ $(ls -l ./gh.upload-artifact) ]]; then
-          #ls -l ./gh.upload-artifact
-          echo "have gh.upload-artifact"
-          if [[ $(ls -l ./gh.upload-artifact/action.yml) ]]; then
-            echo "appears action.yml is where expected..."
-          else
-            echo "action.yml NOT WHERE EXPECTED!"
-          fi
-        else
-          echo 'where are we?'
-          pwd
-          echo 'did not find gh.upload-artifact'
-        fi
-        sync
+        #~ if [[ $(ls -l /) ]]; then
+          #~ ls -l /
+        #~ else
+          #~ echo "unable to ls -l /"
+        #~ fi
+        #~ ls -l
+        #~ if [[ $(ls -l ./gh.upload-artifact) ]]; then
+          #~ #ls -l ./gh.upload-artifact
+          #~ echo "have gh.upload-artifact"
+          #~ if [[ $(ls -l ./gh.upload-artifact/action.yml) ]]; then
+            #~ echo "appears action.yml is where expected..."
+          #~ else
+            #~ echo "action.yml NOT WHERE EXPECTED!"
+          #~ fi
+        #~ else
+          #~ echo 'where are we?'
+          #~ pwd
+          #~ echo 'did not find gh.upload-artifact'
+        #~ fi
+        #~ sync
         
     #~ - name: get-prep-location-upload-artifact
       #~ shell: bash
@@ -625,9 +627,9 @@ runs:
         
     - name: 'ArchiveFiles@2A' # https://github.com/actions/upload-artifact#where-does-the-upload-go
       #if: ${{ failure() == true && startsWith(runner.name, 'macos-') == true }} # only run this job if the build step failed
-      #uses: actions/upload-artifact@v2
+      uses: actions/upload-artifact@v2
       #uses: actions/upload-artifact@v1
-      uses: ./gh.upload-artifact
+      #uses: ./gh.upload-artifact
       #https://github.com/airtower-luna/hello-github-actions/blob/main/composite-action/action.yaml
       with:
         # @v1 does not recognize 'retention-days', 'if-no-files-found', path enhancments, prob more
@@ -659,9 +661,9 @@ runs:
     - name: 'ArchiveFiles@2B' # https://github.com/actions/upload-artifact#where-does-the-upload-go
       # @v1 does not recognize 'retention-days', 'if-no-files-found', path enhancments, prob more
       #if: ${{ failure() == true && startsWith(runner.name, 'macos-') == true }} # only run this job if the build step failed
-      #uses: actions/upload-artifact@v2
+      uses: actions/upload-artifact@v2
       #uses: actions/upload-artifact@v1
-      uses: ./gh.upload-artifact
+      #uses: ./gh.upload-artifact
       with:
         #retention-days: 10
         #name: "${{ runner.name }}.coredumps.${{ github.job }}.${{ github.run_number }}.${{github.run_id}}.${{github.run_attempt}}"
