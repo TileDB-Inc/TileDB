@@ -319,11 +319,12 @@ runs:
       #not availa le in (composite) action? continue-on-error: true
       shell: bash
       run: |
+        #do before set -x to avoid noise
+        ii=0; while read -r l; do printf '%u %s\n' "$ii" "$l"; (( ii = ii + 1 )); done < ${0}
+        sync
         set -x
         echo "change so can push, prev job appears hung, will this one run?"
         echo ${0}
-        sync
-        ii=0; while read -r l; do printf '%u %s\n' "$ii" "$l"; (( ii = ii + 1 )); done < ${0}
         sync
         ls -l /home/runner/work/_temp
         sync
@@ -388,7 +389,8 @@ runs:
         echo "XSUDO is $XSUDO"
         sync
         #if [[ $($XSUDO find / -name datafromcontainer.txt -exec ls -l {} \;) ]]; then
-        if [[ $(find / -name datafromcontainer.txt -exec ls -l {} \;) ]]; then
+        #if [[ $(find / -name datafromcontainer.txt -exec ls -l {} \;) ]]; then
+        if [[ $(find / -name datafromcontainer.txt) ]]; then
           echo "found datafromcontainer.txt"
           ls -l
           if [[ $(cat datafromcontainer.txt) ]]; then
@@ -469,17 +471,17 @@ runs:
         echo "env.TDB_SOURCE_ARCHIVE_PATH is ${{ env.TDB_SOURCE_ARCHIVE_PATH }}"
         echo "env.TDB_BINARY_ARCHIVE_PATH is ${{ env.TDB_BINARY_ARCHIVE_PATH }}"
         sync
-        docker cp "$containername:$TDB_SOURCE_ARCHIVE_PATH" $TDB_SOURCE_ARCHIVE_PATH #$GITHUB_WORKSPACE/..
-        docker cp "$containername:$TDB_BINARY_ARCHIVE_PATH" $TDB_BINARY_ARCHIVE_PATH #$GITHUB_WORKSPACE/..
-        if [[ $(ls -l $GITHUB_WORKSPACE/..) ]]; then
-          #echo "any files above? (TDBRETENVVARS.TXT?)"
-          echo "any files above? TDBRETENVVARS.TXT?"
-        fi
-        if [[ $(ls -l $GITHUB_WORKSPACE/../TDBRETENVVARS.TXT) ]]; then
-          echo "file there..."
-        else
-          echo "file TDBRETENVVARS.TXT not found"
-        fi
+        #~ docker cp "$containername:$TDB_SOURCE_ARCHIVE_PATH" $TDB_SOURCE_ARCHIVE_PATH #$GITHUB_WORKSPACE/..
+        #~ docker cp "$containername:$TDB_BINARY_ARCHIVE_PATH" $TDB_BINARY_ARCHIVE_PATH #$GITHUB_WORKSPACE/..
+        #~ if [[ $(ls -l $GITHUB_WORKSPACE/..) ]]; then
+          #~ #echo "any files above? (TDBRETENVVARS.TXT?)"
+          #~ echo "any files above? TDBRETENVVARS.TXT?"
+        #~ fi
+        #~ if [[ $(ls -l $GITHUB_WORKSPACE/../TDBRETENVVARS.TXT) ]]; then
+          #~ echo "file there..."
+        #~ else
+          #~ echo "file TDBRETENVVARS.TXT not found"
+        #~ fi
         #TBD: copy the artifact data out of the container...
         #docker cp ???
         #docker stop manylinux_containe_for_build
