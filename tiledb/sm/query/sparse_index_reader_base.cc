@@ -406,7 +406,7 @@ bool covered_test(const std::vector<Range>& vr1, const std::vector<Range>& vr2, 
     case Datatype::STRING_UCS2:
     case Datatype::STRING_UCS4:
     case Datatype::ANY:
-      break;
+      return covered_test<char>(vr1, vr2);
     case Datatype::DATETIME_YEAR:
     case Datatype::DATETIME_MONTH:
     case Datatype::DATETIME_WEEK:
@@ -501,6 +501,122 @@ Status SparseIndexReaderBase::allocate_tile_bitmap(
 
   return Status::Ok();
 }
+
+template <class T>
+std::vector<bool> overlap_test(const std::vector<Range>& vr1, const Range& r2) {
+  std::vector<bool> results(vr1.size());
+
+  for(uint64_t i = 0; i < vr1.size(); i++) {
+    const auto& r1 = vr1[i];
+//    const auto& r2 = vr2[i];
+
+    assert(!r1.empty());
+    assert(!r2.empty());
+
+    auto d1 = (const T*)r1.data();
+    auto d2 = (const T*)r2.data();
+    results[i] = !(d1[0] > d2[1] || d1[1] < d2[0]);
+  }
+
+//  for (const auto& result : results)
+//    if (result)
+//      return result;
+//
+//  return false;
+  return results;
+}
+
+
+template <>
+std::vector<bool> overlap_test<char>(const std::vector<Range>& vr1, const Range& r2) {
+  std::vector<bool> results(vr1.size());
+
+  for (uint64_t i = 0; i < vr1.size(); i++) {
+    const auto& r1 = vr1[i];
+//    const auto& r2 = vr2[i];
+    auto r1_start = r1.start_str();
+    auto r1_end = r1.end_str();
+    auto r2_start = r2.start_str();
+    auto r2_end = r2.end_str();
+
+    auto r1_after_r2 =
+        !r1_start.empty() && !r2_end.empty() && r1_start > r2_end;
+    auto r2_after_r1 =
+        !r2_start.empty() && !r1_end.empty() && r2_start > r1_end;
+
+    results[i] = !r1_after_r2 && !r2_after_r1;
+  }
+
+//  for (const auto& result : results)
+//    if (result)
+//      return result;
+//
+//  return false;
+  return results;
+}
+
+std::vector<bool> overlap_test(const std::vector<Range>& vr1, const Range& vr2, Datatype datatype) {
+  switch (datatype) {
+    case Datatype::INT32:
+      return overlap_test<int32_t>(vr1, vr2);
+    case Datatype::INT64:
+      return overlap_test<int64_t>(vr1, vr2);
+    case Datatype::FLOAT32:
+      return overlap_test<float>(vr1, vr2);
+    case Datatype::FLOAT64:
+      return overlap_test<double>(vr1, vr2);
+    case Datatype::CHAR:
+      return overlap_test<char>(vr1, vr2);
+    case Datatype::INT8:
+      return overlap_test<int8_t>(vr1, vr2);
+    case Datatype::UINT8:
+      return overlap_test<uint8_t>(vr1, vr2);
+    case Datatype::INT16:
+      return overlap_test<int16_t>(vr1, vr2);
+    case Datatype::UINT16:
+      return overlap_test<uint16_t>(vr1, vr2);
+    case Datatype::UINT32:
+      return overlap_test<uint32_t>(vr1, vr2);
+    case Datatype::UINT64:
+      return overlap_test<uint64_t>(vr1, vr2);
+    case Datatype::STRING_ASCII:
+      return overlap_test<char>(vr1, vr2);
+    case Datatype::STRING_UTF8:
+    case Datatype::STRING_UTF16:
+    case Datatype::STRING_UTF32:
+    case Datatype::STRING_UCS2:
+    case Datatype::STRING_UCS4:
+    case Datatype::ANY:
+      break;
+    case Datatype::DATETIME_YEAR:
+    case Datatype::DATETIME_MONTH:
+    case Datatype::DATETIME_WEEK:
+    case Datatype::DATETIME_DAY:
+    case Datatype::DATETIME_HR:
+    case Datatype::DATETIME_MIN:
+    case Datatype::DATETIME_SEC:
+    case Datatype::DATETIME_MS:
+    case Datatype::DATETIME_US:
+    case Datatype::DATETIME_NS:
+    case Datatype::DATETIME_PS:
+    case Datatype::DATETIME_FS:
+    case Datatype::DATETIME_AS:
+    case Datatype::TIME_HR:
+    case Datatype::TIME_MIN:
+    case Datatype::TIME_SEC:
+    case Datatype::TIME_MS:
+    case Datatype::TIME_US:
+    case Datatype::TIME_NS:
+    case Datatype::TIME_PS:
+    case Datatype::TIME_FS:
+    case Datatype::TIME_AS:
+      return overlap_test<int64_t>(vr1, vr2);
+  }
+
+  std::cout << "noooo" << std::endl;
+  return {};
+}
+
 
 template <class BitmapType>
 Status SparseIndexReaderBase::compute_tile_bitmaps(
@@ -614,12 +730,23 @@ Status SparseIndexReaderBase::compute_tile_bitmaps(
           // compute_results_count_sparse.
           uint64_t num_ranges = 0;
           const auto& ranges_for_dim = subarray_.ranges_for_dim(dim_idx);
-          for (uint64_t r = 0; r < ranges_for_dim.size(); r++) {
-            if (domain->dimension(dim_idx)->overlap(
-                    ranges_for_dim[r], mbr[dim_idx])) {
-              range_indexes[num_ranges++] = r;
+          bool found;
+          if (config_.get("test_vectorization", &found) == "true") {
+            const auto& results = overlap_test(ranges_for_dim, mbr[dim_idx], domain->dimension(d)->type());
+            for (uint64_t r = 0; r < results.size(); r++) {
+              if (results[r]) {
+                range_indexes[num_ranges++] = r;
+              }
+            }
+          } else {
+            for (uint64_t r = 0; r < ranges_for_dim.size(); r++) {
+              if (domain->dimension(dim_idx)->overlap(
+                      ranges_for_dim[r], mbr[dim_idx])) {
+                range_indexes[num_ranges++] = r;
+              }
             }
           }
+
 
           // Compute the cells to process.
           auto part_num = std::min(cell_num, num_range_threads);
