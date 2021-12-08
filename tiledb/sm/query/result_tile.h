@@ -149,7 +149,7 @@ class ResultTile {
    * Returns the string coordinate at position `pos` for
    * dimension `dim_idx`. Applicable only to string dimensions.
    */
-  std::string coord_string(uint64_t pos, unsigned dim_idx) const;
+  std::string_view coord_string(uint64_t pos, unsigned dim_idx) const;
 
   /** Returns the coordinate size on the input dimension. */
   uint64_t coord_size(unsigned dim_idx) const;
@@ -449,8 +449,8 @@ class ResultTile {
       const uint64_t c_offset,
       const uint64_t c_size,
       const char* const buff_str,
-      const std::basic_string_view<char>& range_start,
-      const std::basic_string_view<char>& range_end);
+      const std::string_view& range_start,
+      const std::string_view& range_end);
 };
 
 }  // namespace sm
