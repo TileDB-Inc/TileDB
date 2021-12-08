@@ -479,7 +479,7 @@ runs:
         ls -l
         sync
         ls -l ..
-        syn
+        sync
         #~ echo "B docker volume ls"
         #~ docker volume ls
         #~ echo "any volumes above?"
