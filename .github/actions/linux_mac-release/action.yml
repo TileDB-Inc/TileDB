@@ -370,9 +370,15 @@ runs:
         echo "realpathtocopy is $realpathtocopy"
         #copypath=$(realpath $GITHUB_WORKSPACE/../TDBRETENVVARS.TXT)
         docker cp "$containername:$realpathtocopy" $realpathtocopy #$GITHUB_WORKSPACE/..
+        ls -l $GITHUB_WORKSPACE/..
         source $(realpath $GITHUB_WORKSPACE/../TDBRETENVVARS.TXT)
-        echo "TDB_BINARY_ARCHIVE_PATH=$TDB_BINARY_ARCHIVE_PATH" >> "$GITHUB_ENV"
-        echo "TDB_SOURCE_ARCHIVE_PATH=$TDB_SOURCE_ARCHIVE_PATH" >> "$GITHUB_ENV"
+        if [[ $(cat $GITHUB_WORKSPACE/../TDBRETENVVARS.TXT) ]]; then
+          echo "returned info above?"
+        else
+          echo "returned info not found"
+        fi
+        echo "TDB_BINARY_ARCHIVE_PATH=$TDB_BINARY_ARCHIVE_PATH"
+        echo "TDB_SOURCE_ARCHIVE_PATH=$TDB_SOURCE_ARCHIVE_PATH"
         #docker cp "manylinux_container_for_build:$realpathtocp/*.tar.gz" $GITHUB_WORKSPACE/..
         #docker cp "$containername:$realpathtocp/*.tar.gz" $GITHUB_WORKSPACE/..
         echo "env.TDB_SOURCE_ARCHIVE_PATH is ${{ env.TDB_SOURCE_ARCHIVE_PATH }}"
