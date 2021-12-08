@@ -377,6 +377,15 @@ runs:
           dlhdataxfer \
           /bin/bash -c "pwd; ls -l; echo hello from container on/at $(date) > datafromcontainer.txt; echo goodbye from container on/at $(date) > ../moredatafromcontainer.txt"
         pwd
+        cd $GITHUB_WORKSPACE/..
+        docker container exec \
+          dlhdataxfer \
+          /bin/bash -c "pwd; ls -l; tar --exclude=build -zcf tiledb-source-${ARTIFACT_OS}-${ARTIFACT_ARCH}-build-dir-${ARTIFACT_EXTRAS}.tar.gz ./TileDB; ls -l $GITHUB_WORKSPACE/.."
+        if [[ ! $(ls -l ../*.tar.gz) ]]; then
+          echo "failed to find \*.tar.gz"
+        else
+          echo "found \*.tar.gz above?"
+        fi
         docker container inspect dlhdataxfer
         sync
         echo "hunting datafromcontainer.txt..."
