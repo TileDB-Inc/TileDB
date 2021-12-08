@@ -867,7 +867,7 @@ void ResultTile::compute_results_count_sparse(
 
           // Iterate through all ranges and compute the count for this dim.
           for (uint64_t i = 0; i < range_indexes.size(); i++) {
-            auto range = (const T*)ranges[range_indexes[i]].start();
+            const auto& range = (const T*)ranges[range_indexes[i]].start();
             counts[i] = c >= range[0] && c <= range[1];
           }
 
@@ -893,7 +893,7 @@ void ResultTile::compute_results_count_sparse(
       if (result_count[pos]) {
         T c = coords[pos * dim_num + dim_idx];
         for (uint64_t i = 0; i < range_indexes.size(); i++) {
-          auto range = (const T*)ranges[range_indexes[i]].start();
+          const auto& range = (const T*)ranges[range_indexes[i]].start();
           counts[i] = c >= range[0] && c <= range[1];
         }
 

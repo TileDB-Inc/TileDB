@@ -651,12 +651,12 @@ class Dimension {
   void overlap_vec(
       const NDRange& ranges,
       const Range& mbr,
-      std::vector<bool>& overlap) const;
+      std::vector<uint64_t>& overlap) const;
 
   /** Compute overlap on a set of ranges. */
   template <class T>
   static void overlap_vec(
-      const NDRange& ranges, const Range& mbr, std::vector<bool>& overlap);
+      const NDRange& ranges, const Range& mbr, std::vector<uint64_t>& overlap);
 
   /** Compute covered on a set of relevant ranges. */
   void covered_vec(
@@ -979,7 +979,7 @@ class Dimension {
    * Stores the appropriate templated overlap_vec() function based
    * on the dimension datatype.
    */
-  std::function<void(const NDRange&, const Range&, std::vector<bool>&)>
+  std::function<void(const NDRange&, const Range&, std::vector<uint64_t>&)>
       overlap_vec_func_;
 
   /**
