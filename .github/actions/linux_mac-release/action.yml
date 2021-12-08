@@ -471,12 +471,13 @@ runs:
         docker cp "$containername:$TDB_SOURCE_ARCHIVE_PATH" $TDB_SOURCE_ARCHIVE_PATH #$GITHUB_WORKSPACE/..
         docker cp "$containername:$TDB_BINARY_ARCHIVE_PATH" $TDB_BINARY_ARCHIVE_PATH #$GITHUB_WORKSPACE/..
         if [[ $(ls -l $GITHUB_WORKSPACE/..) ]]; then
-          echo "any files above? (TDBRETENVVARS.TXT?)"
+          #echo "any files above? (TDBRETENVVARS.TXT?)"
+          echo "any files above? TDBRETENVVARS.TXT?"
         fi
         if [[ $(ls -l $GITHUB_WORKSPACE/../TDBRETENVVARS.TXT) ]]; then
           echo "file there..."
         else
-          echo "file TDBRETENVVARS.TXT not found :("
+          echo "file TDBRETENVVARS.TXT not found"
         fi
         #TBD: copy the artifact data out of the container...
         #docker cp ???
