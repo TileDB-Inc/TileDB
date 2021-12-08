@@ -344,8 +344,14 @@ runs:
         sync
         docker ps
         sync
+        echo "0 docker volume ls"
+        docker volume ls
+        sync
+        docker inspect $containername
+        sync
         echo "A docker volume ls"
         docker volume ls
+        echo "any volumes above?"
         sync
         #  -it \ ......
         docker container exec \
@@ -354,6 +360,7 @@ runs:
         sync
         echo "B docker volume ls"
         docker volume ls
+        echo "any volumes above?"
         sync
         #TBD: if this is detached, will we actally see nothing?
         #and attempts to use -it with detached were rejected, complaints about terminal
