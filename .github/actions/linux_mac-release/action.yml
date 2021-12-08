@@ -407,70 +407,71 @@ runs:
         sync
         exit 19
         
-        #  -v "$GITHUB_WORKSPACE:$GITHUB_WORKSPACE" --env-file tdbenvfile.txt \
-        containername=dlhmanylinux
-        docker container run \
-          -d --name $containername \
-          -it \
-          -v "$up1level:$up1level" --env-file tdbenvfile.txt \
-          -w $GITHUB_WORKSPACE \
-          "quay.io/pypa/manylinux2010_x86_64:2021-11-07-28723f3" \
-          /bin/bash # -c "pwd; ls -l; . ./scripts/ci/linux-mac_release_buildtiledb.sh"
-        sync
-        docker ps
-        sync
-        echo "0 docker volume ls"
-        docker volume ls
-        sync
-        docker inspect $containername
-        sync
-        echo "A docker volume ls"
-        docker volume ls
-        echo "any volumes above?"
-        sync
-        #  -it \ ......
-        docker container exec \
-          $containername \
-          /bin/bash -c "pwd; ls -l; . ./scripts/ci/linux-mac_release_buildtiledb.sh"
-        sync
-        echo "B docker volume ls"
-        docker volume ls
-        echo "any volumes above?"
-        sync
-        #TBD: if this is detached, will we actally see nothing?
-        #and attempts to use -it with detached were rejected, complaints about terminal
-        docker exec $containername bash -c "pwd; ls -l; ls -l ../*.tar.gz"
-        sync
-        docker ps
-        sync
-        docker container ls
-        sync
-        docker image ls
-        sync
-        docker volume ls
-        sync
-        #docker inspect manylinux_container_for_build
-        docker inspect $containername
-        sync
-        #docker cp 'manylinux_container_for_build:$GITHUB_WORKSPACE/../*.tar.gz' $GITHUB_WORKSPACE/..
-        realpathtocopy=$(echo -e "import sys\nimport os\nprint (os.path.realpath(\"$GITHUB_WORKSPACE/../TDBRETENVVARS.TXT\"))" | python3)
-        echo "realpathtocopy is $realpathtocopy"
-        #copypath=$(realpath $GITHUB_WORKSPACE/../TDBRETENVVARS.TXT)
-        docker cp "$containername:$realpathtocopy" $realpathtocopy #$GITHUB_WORKSPACE/..
-        ls -l $GITHUB_WORKSPACE/..
-        source $(realpath $GITHUB_WORKSPACE/../TDBRETENVVARS.TXT)
-        if [[ $(cat $GITHUB_WORKSPACE/../TDBRETENVVARS.TXT) ]]; then
-          echo "returned info above?"
-        else
-          echo "returned info not found"
-        fi
-        echo "TDB_BINARY_ARCHIVE_PATH=$TDB_BINARY_ARCHIVE_PATH"
-        echo "TDB_SOURCE_ARCHIVE_PATH=$TDB_SOURCE_ARCHIVE_PATH"
-        #docker cp "manylinux_container_for_build:$realpathtocp/*.tar.gz" $GITHUB_WORKSPACE/..
-        #docker cp "$containername:$realpathtocp/*.tar.gz" $GITHUB_WORKSPACE/..
-        echo "env.TDB_SOURCE_ARCHIVE_PATH is ${{ env.TDB_SOURCE_ARCHIVE_PATH }}"
-        echo "env.TDB_BINARY_ARCHIVE_PATH is ${{ env.TDB_BINARY_ARCHIVE_PATH }}"
-        sync
+        #~ #  -v "$GITHUB_WORKSPACE:$GITHUB_WORKSPACE" --env-file tdbenvfile.txt \
+        #~ containername=dlhmanylinux
+        #~ docker container run \
+          #~ -d --name $containername \
+          #~ -it \
+          #~ -v "$up1level:$up1level" --env-file tdbenvfile.txt \
+          #~ -w $GITHUB_WORKSPACE \
+          #~ "quay.io/pypa/manylinux2010_x86_64:2021-11-07-28723f3" \
+          #~ /bin/bash # -c "pwd; ls -l; . ./scripts/ci/linux-mac_release_buildtiledb.sh"
+        #~ sync
+        #~ docker ps
+        #~ sync
+        #~ echo "0 docker volume ls"
+        #~ docker volume ls
+        #~ sync
+        #~ docker inspect $containername
+        #~ sync
+        #~ echo "A docker volume ls"
+        #~ docker volume ls
+        #~ echo "any volumes above?"
+        #~ sync
+        #~ #  -it \ ......
+        #~ docker container exec \
+          #~ $containername \
+          #~ /bin/bash -c "pwd; ls -l; . ./scripts/ci/linux-mac_release_buildtiledb.sh"
+        #~ sync
+        #~ echo "B docker volume ls"
+        #~ docker volume ls
+        #~ echo "any volumes above?"
+        #~ sync
+        #~ #TBD: if this is detached, will we actally see nothing?
+        #~ #and attempts to use -it with detached were rejected, complaints about terminal
+        #~ docker exec $containername bash -c "pwd; ls -l; ls -l ../*.tar.gz"
+        #~ sync
+        #~ docker ps
+        #~ sync
+        #~ docker container ls
+        #~ sync
+        #~ docker image ls
+        #~ sync
+        #~ docker volume ls
+        #~ sync
+        #~ #docker inspect manylinux_container_for_build
+        #~ docker inspect $containername
+        #~ sync
+        #~ #docker cp 'manylinux_container_for_build:$GITHUB_WORKSPACE/../*.tar.gz' $GITHUB_WORKSPACE/..
+        #~ realpathtocopy=$(echo -e "import sys\nimport os\nprint (os.path.realpath(\"$GITHUB_WORKSPACE/../TDBRETENVVARS.TXT\"))" | python3)
+        #~ echo "realpathtocopy is $realpathtocopy"
+        #~ #copypath=$(realpath $GITHUB_WORKSPACE/../TDBRETENVVARS.TXT)
+        #~ docker cp "$containername:$realpathtocopy" $realpathtocopy #$GITHUB_WORKSPACE/..
+        #~ ls -l $GITHUB_WORKSPACE/..
+        #~ source $(realpath $GITHUB_WORKSPACE/../TDBRETENVVARS.TXT)
+        #~ if [[ $(cat $GITHUB_WORKSPACE/../TDBRETENVVARS.TXT) ]]; then
+          #~ echo "returned info above?"
+        #~ else
+          #~ echo "returned info not found"
+        #~ fi
+        #~ echo "TDB_BINARY_ARCHIVE_PATH=$TDB_BINARY_ARCHIVE_PATH"
+        #~ echo "TDB_SOURCE_ARCHIVE_PATH=$TDB_SOURCE_ARCHIVE_PATH"
+        #~ #docker cp "manylinux_container_for_build:$realpathtocp/*.tar.gz" $GITHUB_WORKSPACE/..
+        #~ #docker cp "$containername:$realpathtocp/*.tar.gz" $GITHUB_WORKSPACE/..
+        #~ echo "env.TDB_SOURCE_ARCHIVE_PATH is ${{ env.TDB_SOURCE_ARCHIVE_PATH }}"
+        #~ echo "env.TDB_BINARY_ARCHIVE_PATH is ${{ env.TDB_BINARY_ARCHIVE_PATH }}"
+        #~ sync
+        #--------------------------------
         #~ docker cp "$containername:$TDB_SOURCE_ARCHIVE_PATH" $TDB_SOURCE_ARCHIVE_PATH #$GITHUB_WORKSPACE/..
         #~ docker cp "$containername:$TDB_BINARY_ARCHIVE_PATH" $TDB_BINARY_ARCHIVE_PATH #$GITHUB_WORKSPACE/..
         #~ if [[ $(ls -l $GITHUB_WORKSPACE/..) ]]; then
