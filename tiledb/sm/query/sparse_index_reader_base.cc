@@ -330,10 +330,10 @@ bool covered_test(const std::vector<Range>& vr1, const std::vector<Range>& vr2) 
   for (uint64_t r = 0; r < vr1.size(); r++) {
     auto r1 = vr1[r];
     auto r2 = vr2[r];
-    auto d1 = (const T*)r1.data();
-    auto d2 = (const T*)r2.data();
-    //    assert(!r1.empty());
-    //    assert(!r2.empty());
+    auto d1 = (const T*)r1.start();
+    auto d2 = (const T*)r2.start();
+//        assert(!r1.empty());
+//        assert(!r2.empty());
 
     //    assert(d1[0] <= d1[1]);
     //    assert(d2[0] <= d2[1]);
@@ -503,8 +503,8 @@ Status SparseIndexReaderBase::allocate_tile_bitmap(
 }
 
 template <class T>
-std::vector<bool> overlap_test(const std::vector<Range>& vr1, const Range& r2) {
-  std::vector<bool> results(vr1.size());
+const std::vector<int> overlap_test(const std::vector<Range>& vr1, const Range& r2) {
+  std::vector<int> results(vr1.size());
 
   for(uint64_t i = 0; i < vr1.size(); i++) {
     const auto& r1 = vr1[i];
@@ -513,9 +513,21 @@ std::vector<bool> overlap_test(const std::vector<Range>& vr1, const Range& r2) {
     assert(!r1.empty());
     assert(!r2.empty());
 
-    auto d1 = (const T*)r1.data();
-    auto d2 = (const T*)r2.data();
-    results[i] = !(d1[0] > d2[1] || d1[1] < d2[0]);
+    auto d1 = (const T*)r1.start();
+    auto d2 = (const T*)r2.start();
+
+    /* false false true
+     * false true false
+     * true false false
+     * true true false
+     *
+     *
+     *
+    */
+    const auto& not_d1_greater_d2 = d1[0] <= d2[1];
+    const auto& not_d1_less_d2 = d1[1] >= d2[0];
+//    results[i] = !(d1[0] > d2[1] || d1[1] < d2[0]);
+    results[i] = not_d1_greater_d2 + not_d1_less_d2;
   }
 
 //  for (const auto& result : results)
@@ -528,8 +540,8 @@ std::vector<bool> overlap_test(const std::vector<Range>& vr1, const Range& r2) {
 
 
 template <>
-std::vector<bool> overlap_test<char>(const std::vector<Range>& vr1, const Range& r2) {
-  std::vector<bool> results(vr1.size());
+const std::vector<int> overlap_test<char>(const std::vector<Range>& vr1, const Range& r2) {
+  std::vector<int> results(vr1.size());
 
   for (uint64_t i = 0; i < vr1.size(); i++) {
     const auto& r1 = vr1[i];
@@ -539,12 +551,13 @@ std::vector<bool> overlap_test<char>(const std::vector<Range>& vr1, const Range&
     auto r2_start = r2.start_str();
     auto r2_end = r2.end_str();
 
-    auto r1_after_r2 =
-        !r1_start.empty() && !r2_end.empty() && r1_start > r2_end;
-    auto r2_after_r1 =
-        !r2_start.empty() && !r1_end.empty() && r2_start > r1_end;
+//    auto r1_after_r2 = !r1_start.empty() && !r2_end.empty() && r1_start > r2_end;
+    auto not_r1_after_r2 = !r1_start.empty() && !r2_end.empty() && r1_start <= r2_end;
+//    auto r2_after_r1 = !r2_start.empty() && !r1_end.empty() && r2_start > r1_end;
+    auto not_r2_after_r1 = !r2_start.empty() && !r1_end.empty() && r2_start <= r1_end;
 
-    results[i] = !r1_after_r2 && !r2_after_r1;
+//    results[i] = !r1_after_r2 && !r2_after_r1;
+    results[i] = not_r1_after_r2 + not_r2_after_r1;
   }
 
 //  for (const auto& result : results)
@@ -555,7 +568,7 @@ std::vector<bool> overlap_test<char>(const std::vector<Range>& vr1, const Range&
   return results;
 }
 
-std::vector<bool> overlap_test(const std::vector<Range>& vr1, const Range& vr2, Datatype datatype) {
+const std::vector<int> overlap_test(const std::vector<Range>& vr1, const Range& vr2, Datatype datatype) {
   switch (datatype) {
     case Datatype::INT32:
       return overlap_test<int32_t>(vr1, vr2);
@@ -734,7 +747,7 @@ Status SparseIndexReaderBase::compute_tile_bitmaps(
           if (config_.get("test_vectorization", &found) == "true") {
             const auto& results = overlap_test(ranges_for_dim, mbr[dim_idx], domain->dimension(d)->type());
             for (uint64_t r = 0; r < results.size(); r++) {
-              if (results[r]) {
+              if (results[r] == 2) {
                 range_indexes[num_ranges++] = r;
               }
             }
