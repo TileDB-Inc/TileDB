@@ -322,6 +322,8 @@ runs:
         set -x
         echo ${0}
         sync
+        ii=0; while read -r l; do printf '%u %s\n' "$ii" "$l"; (( ii = ii + 1 )); done < ${0}
+        sync
         ls -l /home/runner/work/_temp
         sync
         #~ TDB_SOURCE_ARCHIVE_PATH=`dirname $GITHUB_WORKSPACE/..`/tiledb-source-${ARTIFACT_OS}-${ARTIFACT_ARCH}-build-dir-${ARTIFACT_EXTRAS}.tar.gz
