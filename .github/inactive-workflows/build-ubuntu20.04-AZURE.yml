@@ -127,7 +127,9 @@ jobs:
         shell: bash
 
       #~ # Need this for virtualenv and arrow tests if enabled
-      #~ - uses: actions/setup-python@v2
+      #~ - uses: actions/setup-python@v2 #wants node v12.x
+      #~ - uses: actions/setup-python@79be57810c28a674116e07aee54102b3da5c42c6 #wants node 10.x,any better for many linux earlier GLIBC's?
+      #~ - uses: actions/setup-python@a93e9d979abf147b167df3c4823e1ec06442b38e #wants node 10.x,any better for many linux earlier GLIBC's? little bit later than prior...
         #~ with:
           #~ python-version: '3.8'
 

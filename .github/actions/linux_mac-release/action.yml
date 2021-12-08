@@ -349,6 +349,23 @@ runs:
         docker volume rm tdb-vol
         sync
         docker volume ls
+        docker container run \
+          -d --name dlhdataxfer \
+          -it \
+          -v "$up1level:$up1level" --env-file tdbenvfile.txt \
+          -w $GITHUB_WORKSPACE \
+          "quay.io/pypa/manylinux2010_x86_64:2021-11-07-28723f3" \
+          /bin/bash # -c "pwd; ls -l; . ./scripts/ci/linux-mac_release_buildtiledb.sh"
+        docker ps
+        sync
+        docker volume ls
+        sync
+        docker container ls
+        sync
+        docker container inspect dlhdataxfer
+        sync
+        docker container rm dlhdataxfer
+        sync
         #  -v "$GITHUB_WORKSPACE:$GITHUB_WORKSPACE" --env-file tdbenvfile.txt \
         containername=dlhmanylinux
         docker container run \
