@@ -334,9 +334,21 @@ runs:
         echo "up1level is $up1level"
         if [[ $(find ~/.docker -name '*') ]]; then
           echo "found .docker user config I think"
+          cat ~/.docker/config.json
         else
           echo "unable to find ~/.docker"
         fi
+        docker --version
+        sync
+        docker volume create tdb-vol
+        sync
+        docker volume ls
+        sync
+        docker volume inspect tdb-vol
+        sync
+        docker volume rm tdb-vol
+        sync
+        docker volume ls
         #  -v "$GITHUB_WORKSPACE:$GITHUB_WORKSPACE" --env-file tdbenvfile.txt \
         containername=dlhmanylinux
         docker container run \
