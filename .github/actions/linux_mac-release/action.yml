@@ -375,7 +375,7 @@ runs:
         sync
         docker container exec \
           dlhdataxfer \
-          /bin/bash -c "pwd; ls -l; echo hello from container on/at $(date) > datafromcontainer.txt"
+          /bin/bash -c "pwd; ls -l; echo hello from container on/at $(date) > datafromcontainer.txt; echo goodbye from container on/at $(date) > ../moredatafromcontainer.txt"
         pwd
         docker container inspect dlhdataxfer
         sync
@@ -403,6 +403,14 @@ runs:
           #sync
         else
           echo "did not find datafromcontainer.txt"
+        fi
+        if [[ ! (ls -l ../moredatafromcontainer.txt) ]]; then
+          if [[ $($XSUDO find / -name moredatafromcontainer.txt -exec ls -l {} \;) ]]; then
+            echo "found datafromcontainer.txt"
+          fi
+        else
+          cat ../moredatafromcontainer.txt
+          echo "contents of moredatafromcontainer.txt above?"
         fi
         sync
         docker container stop dlhdataxfer
