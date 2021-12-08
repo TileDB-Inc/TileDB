@@ -389,9 +389,10 @@ runs:
         fi
         echo "XSUDO is $XSUDO"
         sync
-        #if [[ $($XSUDO find / -name datafromcontainer.txt -exec ls -l {} \;) ]]; then
+        pwd
+        if [[ $($XSUDO find / -name datafromcontainer.txt -exec ls -l {} \;) ]]; then
         #if [[ $(find / -name datafromcontainer.txt -exec ls -l {} \;) ]]; then
-        if [[ $(find / -name datafromcontainer.txt) ]]; then
+        #if [[ $(find / -name datafromcontainer.txt) ]]; then
           echo "found datafromcontainer.txt"
           ls -l
           if [[ $(cat datafromcontainer.txt) ]]; then
