@@ -315,7 +315,7 @@ runs:
         find / -name 'tiledb-*-linux-build-*.tar.gz' -exec ls -l {} \;
 
     - name: 'Build libtiledb scripted'
-      if: false #true
+      if: true
       #not availa le in (composite) action? continue-on-error: true
       shell: bash
       run: |
@@ -339,6 +339,12 @@ runs:
         #~ export TDB_BINARY_ARCHIVE_PATH
         for ev in GITHUB_WORKSPACE GITHUB_EVENT_PATH CXX CC CFLAGS CXXFLAGS ARTIFACT_OS ARTIFACT_EXTRAS ARTIFACT_ARCH SUDO RUNNER_OS GITHUB_REF RUNNER_TRACKING_ID RUNNER_ARCH GITHUB_RUN_NUMBER GITHUB_RUN_ID GITHUB_EVENT_NAME GITHUB_ACTOR GITHUB_REF_NAME GITHUB_JOB GITHUB_REPOSITORY RUNNER_WORKSPACE GITHUB_WORKFLOW TDB_SOURCE_ARCHIVE_PATH TDB_BINARY_ARCHIVE_PATH; do tmp=$ev; echo "$ev=${!tmp}"; done >> tdbenvfile.txt
         sync
+        
+    - name: 'Build libtiledb scripted A'
+      if: false #true
+      #not availa le in (composite) action? continue-on-error: true
+      shell: bash
+      run: |
         up1level=$(echo -e "import sys\nimport os\nprint (os.path.realpath(\"$GITHUB_WORKSPACE/..\"))" | python3)
         echo "up1level is $up1level"
         if [[ $(find ~/.docker -name '*') ]]; then
