@@ -393,13 +393,13 @@ runs:
         #if [[ $(find / -name datafromcontainer.txt -exec ls -l {} \;) ]]; then
         if [[ $(find / -name datafromcontainer.txt) ]]; then
           echo "found datafromcontainer.txt"
-          #~ ls -l
-          #~ if [[ $(cat datafromcontainer.txt) ]]; then
-            #~ echo "data from container above?
-          #~ fi
-          #~ sync
-          #~ #docker cp $up1level:datafromcontainer.txt ./copieddatafromcontainer.txt
-          #~ #sync
+          ls -l
+          if [[ $(cat datafromcontainer.txt) ]]; then
+            echo "datafromcontainer.txt contents above?"
+          fi
+          sync
+          #docker cp $up1level:datafromcontainer.txt ./copieddatafromcontainer.txt
+          #sync
         else
           echo "did not find datafromcontainer.txt"
         fi
