@@ -26,7 +26,7 @@ jobs:
     name: Build - ${{matrix.os}} - GCS
     steps:
       - name: 'prep macos for core dumps'
-        if: ${{ startsWith(matrix.os, 'macos-') == true }} # only run this job if the build step failed
+        if: ${{ startsWith(matrix.os, 'macos-') == true }}
         run: |
           sudo chown :staff /cores
           sudo chmod g+w /cores
@@ -60,6 +60,9 @@ jobs:
       - name: 'Build and test libtiledb'
         id: test
         run: |
+          ulimit -c unlimited     # Enable core dumps to be captured (must be in same run block)
+          ls -ld /cores
+          ulimit -c
           # Start GCS Emulator if GCS is enabled
           source scripts/install-gcs-emu.sh;
           source scripts/run-gcs-emu.sh;

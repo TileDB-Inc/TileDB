@@ -68,6 +68,9 @@ jobs:
       - name: 'Build and test libtiledb'
         id: test
         run: |
+          ulimit -c unlimited     # Enable core dumps to be captured (must be in same run block)
+          ls -ld /cores
+          ulimit -c
 
           # Start minio server if S3 is enabled
           source scripts/install-minio.sh;
