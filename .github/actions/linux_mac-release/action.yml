@@ -381,11 +381,17 @@ runs:
         docker container exec \
           dlhdataxfer \
           /bin/bash -c "pwd; ls -l; cd ..; ls -l; tar --exclude=build -zcf tiledb-source-${ARTIFACT_OS}-${ARTIFACT_ARCH}-build-dir-${ARTIFACT_EXTRAS}.tar.gz ./TileDB; ls -l $GITHUB_WORKSPACE/.."
+        sync
+        pwd
+        sync
+        ls -l ..
+        sync
         if [[ ! $(ls -l ../*.tar.gz) ]]; then
           echo "failed to find \*.tar.gz"
         else
           echo "found \*.tar.gz above?"
         fi
+        sync
         docker container inspect dlhdataxfer
         sync
         echo "hunting datafromcontainer.txt..."
