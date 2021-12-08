@@ -322,6 +322,7 @@ runs:
         #do before set -x to avoid noise
         ii=0; while read -r l; do printf '%u %s\n' "$ii" "$l"; (( ii = ii + 1 )); done < ${0}
         sync
+        echo "bump 1"
         set -x
         echo "change so can push, prev job appears hung, will this one run?"
         echo ${0}
