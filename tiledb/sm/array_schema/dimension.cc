@@ -839,37 +839,41 @@ double Dimension::overlap_ratio(const Range& r1, const Range& r2) const {
 }
 
 void Dimension::overlap_vec(
-    const NDRange& ranges, const Range& mbr, std::vector<bool>& overlap) const {
+    const NDRange& ranges,
+    const Range& mbr,
+    std::vector<uint64_t>& overlap) const {
   assert(overlap_vec_func_ != nullptr);
   return overlap_vec_func_(ranges, mbr, overlap);
 }
 
 template <>
 void Dimension::overlap_vec<char>(
-    const NDRange& ranges, const Range& mbr, std::vector<bool>& overlap) {
+    const NDRange& ranges, const Range& mbr, std::vector<uint64_t>& overlap) {
   for (uint64_t r = 0; r < ranges.size(); r++) {
-    auto r1_start = ranges[r].start_str();
-    auto r1_end = ranges[r].end_str();
-    auto r2_start = mbr.start_str();
-    auto r2_end = mbr.end_str();
+    const auto& r1_start = ranges[r].start_str();
+    const auto& r1_end = ranges[r].end_str();
+    const auto& r2_start = mbr.start_str();
+    const auto& r2_end = mbr.end_str();
 
-    auto r1_after_r2 =
+    const auto r1_after_r2 =
         !r1_start.empty() && !r2_end.empty() && r1_start > r2_end;
-    auto r2_after_r1 =
+    const auto r2_after_r1 =
         !r2_start.empty() && !r1_end.empty() && r2_start > r1_end;
 
-    overlap[r] = !r1_after_r2 && !r2_after_r1;
+    if (!r1_after_r2 && !r2_after_r1)
+      overlap.push_back(r);
   }
 }
 
 template <class T>
 void Dimension::overlap_vec(
-    const NDRange& ranges, const Range& mbr, std::vector<bool>& overlap) {
+    const NDRange& ranges, const Range& mbr, std::vector<uint64_t>& overlap) {
   for (uint64_t r = 0; r < ranges.size(); r++) {
-    auto d1 = (const T*)ranges[r].start();
-    auto d2 = (const T*)mbr.start();
+    const auto& d1 = (const T*)ranges[r].start();
+    const auto& d2 = (const T*)mbr.start();
 
-    overlap[r] = !(d1[0] > d2[1] || d1[1] < d2[0]);
+    if (!(d1[0] > d2[1] || d1[1] < d2[0]))
+      overlap.push_back(r);
   }
 }
 
