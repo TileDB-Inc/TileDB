@@ -364,8 +364,24 @@ runs:
         sync
         docker container inspect dlhdataxfer
         sync
+        docker container exec \
+          dlhdataxfer \
+          /bin/bash -c "pwd; ls -l; echo hello from container > datafromcontainer.txt"
+        pwd
+        docker container inspect dlhdataxfer
+        sync
+        find / -name datafromcontainer.txt
+        sync
+        docker cp $up1level:datafromcontainer.txt ./copieddatafromcontainer.txt
+        sync
+        ls -l
+        if [[ ($cat copieddatafromcontainer.txt) ]]; then
+          echo "data from container above?
+        fi
         docker container rm dlhdataxfer
         sync
+        exit 19
+        
         #  -v "$GITHUB_WORKSPACE:$GITHUB_WORKSPACE" --env-file tdbenvfile.txt \
         containername=dlhmanylinux
         docker container run \
