@@ -560,7 +560,9 @@ runs:
           #~ ls -l ${{ env.GITHUB_WORKSPACE }}/../tiledb-${{ env.ARTIFACT_OS }}-build-dir-${{ env.ARTIFACT_EXTRAS }}.tar.gz
         #~ fi
         #~ pwd
-        find ${{ env.GITHUB_WORKSPACE }}/.. -name 'tiledb-*-linux-build-*.tar.gz' -exec ls -l {} \;
+        if [[ ! $(find $GITHUB_WORKSPACE/.. -name '*.tar.gz' -exec ls -l {} \;) ]]; then
+          echo "did not find *.tar.gz"
+        fi
         printenv
         if [[ $(whoami) ]]; then
           echo $(whoami)

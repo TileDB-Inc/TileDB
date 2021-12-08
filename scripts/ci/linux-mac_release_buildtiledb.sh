@@ -73,11 +73,11 @@ mkdir -p $BUILD_REPOSITORY_LOCALPATH/build
 cd $BUILD_REPOSITORY_LOCALPATH/build
 
 # Configure and build TileDB
-echo "Running cmake with '${cmake_args}'"
-cmake .. ${cmake_args}
+#~ echo "Running cmake with '${cmake_args}'"
+#~ cmake .. ${cmake_args}
 
-make -j4
-make -C tiledb install
+#~ make -j4
+#~ make -C tiledb install
 
 # get this into 'env' context since runners don't automatically place items
 # from env into context on startup!
