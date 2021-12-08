@@ -370,7 +370,7 @@ runs:
         pwd
         docker container inspect dlhdataxfer
         sync
-        if [[ $($SUDO find / -name datafromcontainer.txt -exec ls {} \;) ]]; then
+        if [[ $(sudo find / -name datafromcontainer.txt -exec ls {} \;) ]]; then
           echo "found datafromcontainer.txt"
           ls -l
           if [[ $(cat copieddatafromcontainer.txt) ]]; then
