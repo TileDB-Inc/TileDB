@@ -401,7 +401,11 @@ runs:
         ls -l ..
         sync
         if [[ ! $(ls -l ../*.tar.gz) ]]; then
-          echo "failed to find \*.tar.gz"
+          if [[ ! $(ls -l ./*.tar.gz) ]]; then
+            echo "failed to find \*.tar.gz"
+          else
+            echo "found *.tar.gz above?"
+          fi
         else
           echo "found \*.tar.gz above?"
         fi
