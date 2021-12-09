@@ -480,6 +480,7 @@ runs:
         realpath .
         ls -l .
         sync
+        echo "are .tar.gz files following?"
         realpath ..
         ls -l ..
         sync
