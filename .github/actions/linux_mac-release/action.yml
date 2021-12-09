@@ -337,7 +337,7 @@ runs:
         #~ TDB_BINARY_ARCHIVE_PATH=$(echo -e "import sys\nimport os\nprint (os.path.realpath(\"$TDB_BINARY_ARCHIVE_PATH2\"))\n" | python)
         #~ export TDB_SOURCE_ARCHIVE_PATH
         #~ export TDB_BINARY_ARCHIVE_PATH
-        for ev in GITHUB_WORKSPACE GITHUB_EVENT_PATH CXX CC CFLAGS CXXFLAGS ARTIFACT_OS ARTIFACT_EXTRAS ARTIFACT_ARCH SUDO RUNNER_OS GITHUB_REF RUNNER_TRACKING_ID RUNNER_ARCH GITHUB_RUN_NUMBER GITHUB_RUN_ID GITHUB_EVENT_NAME GITHUB_ACTOR GITHUB_REF_NAME GITHUB_JOB GITHUB_REPOSITORY RUNNER_WORKSPACE GITHUB_WORKFLOW TDB_SOURCE_ARCHIVE_PATH TDB_BINARY_ARCHIVE_PATH; do tmp=$ev; echo "$ev=${!tmp}"; done >> tdbenvfile.txt
+        for ev in GITHUB_REF_NAME GITHUB_REF_TYPE GITHUB_WORKSPACE GITHUB_EVENT_PATH CXX CC CFLAGS CXXFLAGS ARTIFACT_OS ARTIFACT_EXTRAS ARTIFACT_ARCH SUDO RUNNER_OS GITHUB_REF RUNNER_TRACKING_ID RUNNER_ARCH GITHUB_RUN_NUMBER GITHUB_RUN_ID GITHUB_EVENT_NAME GITHUB_ACTOR GITHUB_REF_NAME GITHUB_JOB GITHUB_REPOSITORY RUNNER_WORKSPACE GITHUB_WORKFLOW TDB_SOURCE_ARCHIVE_PATH TDB_BINARY_ARCHIVE_PATH; do tmp=$ev; echo "$ev=${!tmp}"; done >> tdbenvfile.txt
         sync
         
     - name: 'Build libtiledb scripted A'
@@ -692,7 +692,10 @@ runs:
         #retention-days: 10
         #name: "${{ runner.name }}.coredumps.${{ github.job }}.${{ github.run_number }}.${{github.run_id}}.${{github.run_attempt}}"
         #name: tiledb-$(ARTIFACT_OS)-build-dir-$(ARTIFACT_EXTRAS).tar.gz
-        name: tiledb-${{ env.ARTIFACT_OS }}-${{ env.ARTIFACT_ARCH }}-build-dir-${{ env.ARTIFACT_EXTRAS }}.${{github.job}}.tar.gz
+        #name: tiledb-${{ env.ARTIFACT_OS }}-${{ env.ARTIFACT_ARCH }}-build-dir-${{ env.ARTIFACT_EXTRAS }}.${{github.job}}.tar.gz
+        #TBD: should be ok for release branches/tags, but 
+        #suspect a '/' in the dev branch names will not be well-received, but we'll try.
+        name: tiledb-${{ env.ARTIFACT_OS }}-${{ env.ARTIFACT_ARCH }}-build-dir-${{ env.ARTIFACT_EXTRAS }}.${{env.GITHUB_REF_NAME}}.tar.gz
         #if-no-files-found: warn # 'ignore/', 'warn' or 'error' are available, defaults to `warn`
         #${{ env.GITHUB_WORKSPACE }}/
         #!${{ env.GITHUB_WORKSPACE }}/build/
@@ -726,7 +729,7 @@ runs:
         #retention-days: 10
         #name: "${{ runner.name }}.coredumps.${{ github.job }}.${{ github.run_number }}.${{github.run_id}}.${{github.run_attempt}}"
         #name: tiledb-$(ARTIFACT_OS)-build-dir-$(ARTIFACT_EXTRAS).tar.gz
-        name: tiledb-${{ env.ARTIFACT_OS }}-${{ env.ARTIFACT_ARCH }}-build-dir-${{ env.ARTIFACT_EXTRAS }}.${{env.commitHash}}.tar.gz
+        name: tiledb-${{ env.ARTIFACT_OS }}-${{ env.ARTIFACT_ARCH }}-build-dir-${{ env.ARTIFACT_EXTRAS }}.${{env.GITHUB_REF_NAME}}.${{env.commitHash}}.tar.gz
         #if-no-files-found: warn # 'ignore/', 'warn' or 'error' are available, defaults to `warn`
         #${{ env.GITHUB_WORKSPACE }}/build/
         #${{ env.GITHUB_WORKSPACE }}/../tiledb-${{ env.ARTIFACT_OS }}-build-dir-${{ env.ARTIFACT_EXTRAS }}.tar.gz
