@@ -63,6 +63,8 @@ steps:
     sudo chmod 1777 /cores
     sudo chown $(whoami) /cores
 
+    sudo ls -l /
+    
     ps -A
     ls -l /cores
     gcc ./abortprog.c
