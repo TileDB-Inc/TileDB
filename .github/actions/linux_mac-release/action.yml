@@ -493,6 +493,12 @@ runs:
         #docker exec $containername bash -c "pwd; ls -l; ls -l ../*.tar.gz"
         docker exec $containername /bin/bash -c "echo \"insA\";pwd; ls -l; ls -l ..;echo \"insB, end\""
         sync
+        pwd
+        sync
+        ls -l .
+        sync
+        ls -l ..
+        sync
         docker ps
         sync
         #~ docker container ls
