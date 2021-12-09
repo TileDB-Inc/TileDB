@@ -527,6 +527,20 @@ runs:
         sync
         docker ps
         sync
+        if [[ ! $(ls -l $up1level/TDBRETENVVARS.TXT) ]]; then
+          if [[ $($XSUDO find / -name TDBRETENVVARS.TXT -exec ls -l {} \;) ]]; then
+            echo "found TDBRETENVVARS.TXT not where expected"
+          fi
+        else
+          echo "found TDBRETENVVARS.TXT at $up1level"
+          cat $up1level/TDBRETENVVARS.TXT
+          echo "contents of TDBRETENVVARS.TXT above?"
+          source $up1level/TDBRETENVVARS.TXT
+          echo "TDB_BINARY_ARCHIVE_PATH=$TDB_BINARY_ARCHIVE_PATH" >> "$GITHUB_ENV"
+          echo "TDB_SOURCE_ARCHIVE_PATH=$TDB_SOURCE_ARCHIVE_PATH" >> "$GITHUB_ENV"
+          
+        fi
+        sync
         #~ docker container ls
         #~ sync
         #~ docker image ls
