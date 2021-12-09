@@ -36,6 +36,19 @@ steps:
     ulimit -c unlimited     # Enable core dumps to be captured (must be in same run block)
     ulimit -c               # should output 'unlimited' now
     
+    #https://stackoverflow.com/questions/65278351/no-core-dump-file-generated-after-segmentation-fault-in-macos-big-sur
+    sysctl -a | grep core
+    
+    cat > abortprog.c <<EOF
+    #include <stdlib.h>
+    int main() {
+    abort();
+    }
+    EOF
+    
+    gcc ./abortprog.c
+    ./a.out
+    
     #https://developer.apple.com/forums/thread/53023?answerId=158378022#158378022
     #~ sudo chmod 1775 /cores
     #~ sudo chown $(whoami) /cores
