@@ -194,9 +194,14 @@ steps:
 - bash: |
     ls -la /cores
     mkdir $BUILD_REPOSITORY_LOCALPATH/build/core
-    mv /cores/core.* $BUILD_REPOSITORY_LOCALPATH/build/core/core.1
+    mv /cores/core.* $BUILD_REPOSITORY_LOCALPATH/build/core/
     ls -la $BUILD_REPOSITORY_LOCALPATH/build/core
-    lldb -c $BUILD_REPOSITORY_LOCALPATH/build/core/core.1 --batch -o 'bt all' -o 'quit'
+    #lldb -c $BUILD_REPOSITORY_LOCALPATH/build/core/core.1 --batch -o 'bt all' -o 'quit'
+    for f in $(find $BUILD_REPOSITORY_LOCALPATH/build/core -name 'core.*');
+      do
+        echo "stack trace for $f"
+        lldb -c $f --batch -o 'bt all' -o 'quit'
+      done;
   condition: and(failed(), eq(variables['Agent.OS'], 'Darwin')) # only run this job if the build step failed
   displayName: 'Print stack trace'
 
