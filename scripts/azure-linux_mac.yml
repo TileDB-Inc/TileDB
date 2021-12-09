@@ -41,8 +41,12 @@ steps:
     
     cat > abortprog.c <<EOF
     #include <stdlib.h>
+    #include <sys/types.h>
+    #include <unistd.h>
+    #include <signal.h>
     int main() {
-    abort();
+    //no core dump... abort();
+    kill(getpid(), 4); //4==SIGILL
     }
     EOF
     
