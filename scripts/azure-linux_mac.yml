@@ -67,7 +67,8 @@ steps:
     ls -l /cores
     gcc ./abortprog.c
     ./a.out
-    ./a.out 9
+    ./a.out 9 //SIGKILL
+    ./a.out 11 //SIGSEGV
     sudo ./a.out
     
     ls -l /cores
