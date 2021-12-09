@@ -400,7 +400,7 @@ runs:
         sync
         ls -l ..
         sync
-        if [[ ! $(ls -l $up1level/*.tar.gz)) ]]; then
+        if [[ ! $(ls -l $up1level/*.tar.gz) ]]; then
           if [[ ! $(ls -l ./*.tar.gz) ]]; then
             echo "failed to find \*.tar.gz"
           else
