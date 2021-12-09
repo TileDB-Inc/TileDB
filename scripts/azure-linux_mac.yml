@@ -36,6 +36,7 @@ steps:
     ulimit -c unlimited     # Enable core dumps to be captured (must be in same run block)
     ulimit -c               # should output 'unlimited' now
     
+    echo "bump 1 for azure pipelines status page 'An unexpected error has occurred within this region of the page'"
     touch /cores/areyouhere.txt
     echo "some garbage" >> /cores/areyouthere.txt
     if [[ -f /cores/areyouthere.txt ]]; then
