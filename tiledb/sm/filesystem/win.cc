@@ -78,13 +78,21 @@ std::string get_last_error_msg() {
 }
 }  // namespace
 
+std::string Win::slashes_to_backslashes(std::string pathsegments) {
+  std::replace(pathsegments.begin(), pathsegments.end(), '/', '\\');
+  return pathsegments;
+}
+
 std::string Win::abs_path(const std::string& path) {
   if (path.length() == 0) {
     return current_dir();
   }
-  std::string full_path;
-  if (PathIsRelative(path.c_str())) {
-    full_path = current_dir() + "\\" + path;
+  std::string full_path(slashes_to_backslashes(path));
+  // If some problem leads here, note the following
+  // PathIsRelative("/") unexpectedly returns true.
+  // PathIsRelative("c:somedir\somesubdir") unexpectedly returns false
+  if (PathIsRelative(full_path.c_str())) {
+    full_path = current_dir() + "\\" + full_path;
   } else {
     full_path = path;
   }
@@ -298,7 +306,8 @@ err:
   if (find_h != INVALID_HANDLE_VALUE) {
     FindClose(find_h);
   }
-  return LOG_STATUS(Status::IOError(std::string("Failed to list directory.")));
+  std::string errmsg("Failed to list directory \"" + path + "\"");
+  return LOG_STATUS(Status::IOError(errmsg));
 }
 
 Status Win::move_path(
@@ -557,7 +566,8 @@ std::string Win::path_from_uri(const std::string& uri) {
   return str_path;
 }
 
-bool Win::is_win_path(const std::string& path) {
+bool Win::is_win_path(const std::string& p_path) {
+  std::string path(slashes_to_backslashes(p_path));
   if (path.empty()) {
     // Special case to match the behavior of posix_filesystem.
     return true;
