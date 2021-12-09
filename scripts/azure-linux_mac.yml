@@ -36,6 +36,25 @@ steps:
     ulimit -c unlimited     # Enable core dumps to be captured (must be in same run block)
     ulimit -c               # should output 'unlimited' now
     
+    touch /cores/areyouhere.txt
+    echo "some garbage" >> /cores/areyouthere.txt
+    if [[ -f /cores/areyouthere.txt) ]]; then
+      cat /cores/areyouthere.txt
+    else
+      echo "why no /cores/areyouthere.txt?"
+    fi
+    ls -l /cores
+    ls -d /*/
+    ls -d /*/cores/
+    
+    sudo chown $(whoami) /cores
+    echo "more garbage" >> /cores/areyoutherenow.txt
+    if [[ -f /cores/areyoutherenow.txt ]]; then
+      cat /cores/areyoutherenow.txt
+    else
+      echo "still nothing, missing /cores/areyoutherenow.txt"
+    fi
+    
     if [[ -f $(which python) ]]; then
     #echo -e "nl=\"\\\n\"\nprint('aborting...'+nl)\nimport resource as res\nprint(res.getrlimit(res.RLIMIT_CORE))\nprint(nl)\nres.setrlimit(res.RLIMIT_CORE,(res.RLIM_INFINITY,res.RLIM_INFINITY))\nprint(res.getrlimit(res.RLIMIT_CORE))\nimport sys\nsys.stdout.flush()\nsys.stderr.flush()\nimport os \nos.abort()" | python3          # Azure sets "SYSTEM=build" for unknown reasonas, which breaks the OpenSSL configure script
     #try for one
