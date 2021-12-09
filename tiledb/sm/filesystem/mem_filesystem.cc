@@ -164,8 +164,8 @@ class MemFilesystem::File : public MemFilesystem::FSNode {
     (void)full_path;
     (void)children;
 
-    return Status::MemFSError(
-        std::string("Cannot get children, the path is a file"));
+    return LOG_STATUS(Status::MemFSError(
+        std::string("Cannot get children, the path is a file")));
   }
 
   bool has_child(const std::string& child) const override {
@@ -310,8 +310,8 @@ class MemFilesystem::Directory : public MemFilesystem::FSNode {
     assert(size);
 
     (void)size;
-    return Status::MemFSError(
-        std::string("Cannot get size, the path is a directory"));
+    return LOG_STATUS(Status::MemFSError(
+        std::string("Cannot get size, the path is a directory")));
   }
 
   Status read(const uint64_t offset, void* buffer, const uint64_t nbytes)
@@ -322,8 +322,8 @@ class MemFilesystem::Directory : public MemFilesystem::FSNode {
     (void)offset;
     (void)buffer;
     (void)nbytes;
-    return Status::MemFSError(
-        std::string("Cannot read contents, the path is a directory"));
+    return LOG_STATUS(Status::MemFSError(
+        std::string("Cannot read contents, the path is a directory")));
   }
 
   Status append(const void* const data, const uint64_t nbytes) override {
@@ -332,8 +332,8 @@ class MemFilesystem::Directory : public MemFilesystem::FSNode {
 
     (void)data;
     (void)nbytes;
-    return Status::MemFSError(
-        std::string("Cannot append contents, the path is a directory"));
+    return LOG_STATUS(Status::MemFSError(
+        std::string("Cannot append contents, the path is a directory")));
   }
 };
 
@@ -400,8 +400,8 @@ Status MemFilesystem::ls(
     dir = dir + token + "/";
 
     if (cur->children_.count(token) != 1) {
-      return Status::MemFSError(
-          std::string("Unable to list on non-existent path ") + path);
+      return LOG_STATUS(Status::MemFSError(
+          std::string("Unable to list on non-existent path ") + path));
     }
 
     cur = cur->children_[token].get();
