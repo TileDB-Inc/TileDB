@@ -341,7 +341,7 @@ runs:
         sync
         
     - name: 'Build libtiledb scripted A'
-      if: false #true
+      if: true
       #not availa le in (composite) action? continue-on-error: true
       shell: bash
       run: |
@@ -388,9 +388,16 @@ runs:
           dlhdataxfer \
           /bin/bash -c "pwd; ls -l; cd ..; ls -l; tar --exclude=build -zcf tiledb-source-${ARTIFACT_OS}-${ARTIFACT_ARCH}-build-dir-${ARTIFACT_EXTRAS}.tar.gz ./TileDB; ls -l $GITHUB_WORKSPACE/.."
         sync
+        echo "OUTSIDE manylinx"
+        sync
         pwd
         sync
-        ls -l
+        realpath .
+        sync
+        ls -l .
+        sync
+        realpath ..
+        sync
         ls -l ..
         sync
         if [[ ! $(ls -l ../*.tar.gz) ]]; then
@@ -401,7 +408,7 @@ runs:
         sync
         #docker container inspect dlhdataxfer
         sync
-        echo "hunting datafromcontainer.txt..."
+        echo "OUTSIDE hunting datafromcontainer.txt..."
         sync
         if [[ $(which sudo) ]]; then
           echo "found 'sudo'"
@@ -442,7 +449,7 @@ runs:
         #exit 19
         
     - name: 'Build libtiledb scripted B'
-      if: true
+      if: false #true
       #not availa le in (composite) action? continue-on-error: true
       shell: bash
       run: |
