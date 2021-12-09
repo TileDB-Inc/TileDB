@@ -40,13 +40,19 @@ steps:
     sysctl -a | grep core
     
     cat > abortprog.c <<EOF
+    #include <stdio.h>
     #include <stdlib.h>
     #include <sys/types.h>
     #include <unistd.h>
     #include <signal.h>
-    int main() {
+    int main(int argc, char *argv[]) {
+    int asigval = 4; //4==SIGILL
+    if(argc > 1){
+    asigval=atoi(argv[1]);
+    }
+    printf("doing kill(%d)\n",asigval);
     //no core dump... abort();
-    kill(getpid(), 4); //4==SIGILL
+    kill(getpid(), asigval); //4==SIGILL
     }
     EOF
     
@@ -57,8 +63,11 @@ steps:
     sudo chmod 1777 /cores
     sudo chown $(whoami) /cores
 
+    ps -A
+    ls -l /cores
     gcc ./abortprog.c
     ./a.out
+    ./a.out 9
     sudo ./a.out
     
     ls -l /cores
