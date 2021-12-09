@@ -8,6 +8,11 @@ on:
   pull_request:
     branches:
       - '*'  # must quote since "*" is a YAML reserved character; we want a string
+
+concurrency:
+  group: ${{ github.workflow }}
+  cancel-in-progress: true
+
 env:
   BACKWARDS_COMPATIBILITY_ARRAYS: OFF
   TILEDB_STATIC: OFF

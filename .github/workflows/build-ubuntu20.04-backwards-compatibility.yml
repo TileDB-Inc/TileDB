@@ -2,6 +2,11 @@ name: build-ubuntu-20.04-backwards-compatibility
 on:
   push:
   pull_request:
+
+concurrency:
+  group: ${{ github.workflow }}
+  cancel-in-progress: true
+
 env:
   CXX: g++
 
