@@ -447,6 +447,19 @@ runs:
           cat $up1level/moredatafromcontainer.txt
           echo "contents of moredatafromcontainer.txt above?"
         fi
+        if [[ ! $(ls -l $up1level/TDBRETENVVARS.TXT) ]]; then
+          if [[ $($XSUDO find / -name TDBRETENVVARS.TXT -exec ls -l {} \;) ]]; then
+            echo "found TDBRETENVVARS.TXT"
+          fi
+        else
+          echo "found TDBRETENVVARS.TXT at $up1level"
+          cat $up1level/TDBRETENVVARS.TXT
+          echo "contents of TDBRETENVVARS.TXT above?"
+          source $up1level/TDBRETENVVARS.TXT
+          echo "TDB_BINARY_ARCHIVE_PATH=$TDB_BINARY_ARCHIVE_PATH" >> "$GITHUB_ENV"
+          echo "TDB_SOURCE_ARCHIVE_PATH=$TDB_SOURCE_ARCHIVE_PATH" >> "$GITHUB_ENV"
+          
+        fi
         sync
         docker container stop dlhdataxfer
         sync
@@ -566,6 +579,7 @@ runs:
         echo "env.GITHUB_WORKSPACE is ${{ env.GITHUB_WORKSPACE }}"
         echo "env.GITHUB_SHA is ${{ env.GITHUB_SHA }}"
         echo "env.ARTIFACT_OS is ${{ env.ARTIFACT_OS }}"
+        echo "env.ARTIFACT_ARCH is ${{ env.ARTIFACT_ARCH }}"
         echo "env.ARTIFACT_EXTRAS is ${{ env.ARTIFACT_EXTRAS }}"
         echo "tiledb-${{ env.ARTIFACT_OS }}-build-dir-${{ env.ARTIFACT_EXTRAS }}.tar.gz"
         echo "TDB_SOURCE_ARCHIVE_PATH is $TDB_SOURCE_ARCHIVE_PATH"
@@ -575,19 +589,22 @@ runs:
         echo "env.TDB_SOURCE_ARCHIVE_PATH is ${{ env.TDB_SOURCE_ARCHIVE_PATH }}"
         echo "env.TDB_BINARY_ARCHIVE_PATH is ${{ env.TDB_BINARY_ARCHIVE_PATH }}"
         sync
-        #~ ls -l ${{ env.GITHUB_WORKSPACE }}/..
-        #~ echo "${{ env.GITHUB_WORKSPACE }}/../tiledb-${{ env.ARTIFACT_OS }}-build-dir-${{ env.ARTIFACT_EXTRAS }}.tar.gz"
-        #~ if [[ ! $(ls -l ${{ env.GITHUB_WORKSPACE }}/../tiledb-${{ env.ARTIFACT_OS }}-build-dir-${{ env.ARTIFACT_EXTRAS }}.tar.gz) ]]; then
-          #~ echo failed ls -l ${{ env.GITHUB_WORKSPACE }}/../tiledb-${{ env.ARTIFACT_OS }}-build-dir-${{ env.ARTIFACT_EXTRAS }}.tar.gz
-        #~ else
-          #~ ls -l ${{ env.GITHUB_WORKSPACE }}/../tiledb-${{ env.ARTIFACT_OS }}-build-dir-${{ env.ARTIFACT_EXTRAS }}.tar.gz
-        #~ fi
+        ls -l ${{ env.GITHUB_WORKSPACE }}/..
+        echo "${{ env.GITHUB_WORKSPACE }}/../tiledb-${{ env.ARTIFACT_OS }}-${{ env.ARTIFACT_ARCH }}-build-dir-${{ env.ARTIFACT_EXTRAS }}.tar.gz"
+        if [[ ! $(ls -l ${{ env.GITHUB_WORKSPACE }}/../tiledb-${{ env.ARTIFACT_OS }}-${{ env.ARTIFACT_ARCH }}-build-dir-${{ env.ARTIFACT_EXTRAS }}.tar.gz) ]]; then
+          echo failed ls -l ${{ env.GITHUB_WORKSPACE }}/../tiledb-${{ env.ARTIFACT_OS }}-${{ env.ARTIFACT_ARCH }}-build-dir-${{ env.ARTIFACT_EXTRAS }}.tar.gz
+        else
+          ls -l ${{ env.GITHUB_WORKSPACE }}/../tiledb-${{ env.ARTIFACT_OS }}-${{ env.ARTIFACT_ARCH }}-build-dir-${{ env.ARTIFACT_EXTRAS }}.tar.gz
+        fi
         pwd
         sync
         ls -l
         ls -l ..
         if [[ ! $(find $(realpath $GITHUB_WORKSPACE/..) -name '*.tar.gz' -exec ls -l {} \;) ]]; then
           echo "did not find *.tar.gz"
+          sync
+        else
+          echo "found *.targ.z, above?"
           sync
         fi
         #printenv
