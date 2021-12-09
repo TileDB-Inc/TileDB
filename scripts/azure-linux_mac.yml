@@ -36,6 +36,9 @@ steps:
     ulimit -c unlimited     # Enable core dumps to be captured (must be in same run block)
     ulimit -c               # should output 'unlimited' now
     
+    #https://developer.apple.com/forums/thread/53023?answerId=158378022#158378022
+    sudo chmod 1775 /cores
+    
     echo "bump 1 for azure pipelines status page 'An unexpected error has occurred within this region of the page'"
     touch /cores/areyouhere.txt
     echo "some garbage" >> /cores/areyouthere.txt
