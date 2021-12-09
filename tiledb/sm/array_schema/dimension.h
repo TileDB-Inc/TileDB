@@ -647,16 +647,18 @@ class Dimension {
   template <class T>
   static double overlap_ratio(const Range& r1, const Range& r2);
 
-  /** Compute overlap on a set of ranges. */
-  void overlap_vec(
+  /** Compute relevant ranges for a set of ranges. */
+  void relevant_ranges(
       const NDRange& ranges,
       const Range& mbr,
-      std::vector<uint64_t>& overlap) const;
+      std::vector<uint64_t>& relevant_ranges) const;
 
-  /** Compute overlap on a set of ranges. */
+  /** Compute relevant ranges for a set of ranges. */
   template <class T>
-  static void overlap_vec(
-      const NDRange& ranges, const Range& mbr, std::vector<uint64_t>& overlap);
+  static void relevant_ranges(
+      const NDRange& ranges,
+      const Range& mbr,
+      std::vector<uint64_t>& relevant_ranges);
 
   /** Compute covered on a set of relevant ranges. */
   void covered_vec(
@@ -976,11 +978,11 @@ class Dimension {
   std::function<double(const Range&, const Range&)> overlap_ratio_func_;
 
   /**
-   * Stores the appropriate templated overlap_vec() function based
+   * Stores the appropriate templated relevant_ranges() function based
    * on the dimension datatype.
    */
   std::function<void(const NDRange&, const Range&, std::vector<uint64_t>&)>
-      overlap_vec_func_;
+      relevant_ranges_func_;
 
   /**
    * Stores the appropriate templated covered_vec() function based on the
@@ -1184,8 +1186,8 @@ class Dimension {
   /** Sets the templated overlap_ratio() function. */
   void set_overlap_ratio_func();
 
-  /** Sets the templated overlap_vec() function. */
-  void set_overlap_vec_func();
+  /** Sets the templated relevant_ranges() function. */
+  void set_relevant_ranges_func();
 
   /** Sets the templated covered_vec() function. */
   void set_covered_vec_func();
