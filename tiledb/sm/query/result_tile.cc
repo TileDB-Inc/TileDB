@@ -874,6 +874,7 @@ void ResultTile::compute_results_count_sparse(
           // Sum to get the true count.
           const uint64_t count =
               std::accumulate(counts.begin(), counts.end(), 0);
+
           // Multiply the past count by this dimension's count.
           result_count[pos] *= count;
         }
@@ -899,6 +900,7 @@ void ResultTile::compute_results_count_sparse(
 
         // Sum to get the true count.
         const uint64_t count = std::accumulate(counts.begin(), counts.end(), 0);
+
         // Multiply the past count by this dimension's count.
         result_count[pos] *= count;
       }

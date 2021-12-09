@@ -73,7 +73,7 @@ Dimension::Dimension(const std::string& name, Datatype type)
   set_covered_func();
   set_overlap_func();
   set_overlap_ratio_func();
-  set_overlap_vec_func();
+  set_relevant_ranges_func();
   set_covered_vec_func();
   set_split_range_func();
   set_splitting_value_func();
@@ -108,7 +108,7 @@ Dimension::Dimension(const Dimension* dim) {
   covered_func_ = dim->covered_func_;
   overlap_func_ = dim->overlap_func_;
   overlap_ratio_func_ = dim->overlap_ratio_func_;
-  overlap_vec_func_ = dim->overlap_vec_func_;
+  relevant_ranges_func_ = dim->relevant_ranges_func_;
   covered_vec_func_ = dim->covered_vec_func_;
   split_range_func_ = dim->split_range_func_;
   splitting_value_func_ = dim->splitting_value_func_;
@@ -295,7 +295,7 @@ Status Dimension::deserialize(
   set_covered_func();
   set_overlap_func();
   set_overlap_ratio_func();
-  set_overlap_vec_func();
+  set_relevant_ranges_func();
   set_covered_vec_func();
   set_split_range_func();
   set_splitting_value_func();
@@ -838,17 +838,19 @@ double Dimension::overlap_ratio(const Range& r1, const Range& r2) const {
   return overlap_ratio_func_(r1, r2);
 }
 
-void Dimension::overlap_vec(
+void Dimension::relevant_ranges(
     const NDRange& ranges,
     const Range& mbr,
-    std::vector<uint64_t>& overlap) const {
-  assert(overlap_vec_func_ != nullptr);
-  return overlap_vec_func_(ranges, mbr, overlap);
+    std::vector<uint64_t>& relevant_ranges) const {
+  assert(relevant_ranges_func_ != nullptr);
+  return relevant_ranges_func_(ranges, mbr, relevant_ranges);
 }
 
 template <>
-void Dimension::overlap_vec<char>(
-    const NDRange& ranges, const Range& mbr, std::vector<uint64_t>& overlap) {
+void Dimension::relevant_ranges<char>(
+    const NDRange& ranges,
+    const Range& mbr,
+    std::vector<uint64_t>& relevant_ranges) {
   for (uint64_t r = 0; r < ranges.size(); r++) {
     const auto& r1_start = ranges[r].start_str();
     const auto& r1_end = ranges[r].end_str();
@@ -861,19 +863,21 @@ void Dimension::overlap_vec<char>(
         !r2_start.empty() && !r1_end.empty() && r2_start > r1_end;
 
     if (!r1_after_r2 && !r2_after_r1)
-      overlap.push_back(r);
+      relevant_ranges.push_back(r);
   }
 }
 
 template <class T>
-void Dimension::overlap_vec(
-    const NDRange& ranges, const Range& mbr, std::vector<uint64_t>& overlap) {
+void Dimension::relevant_ranges(
+    const NDRange& ranges,
+    const Range& mbr,
+    std::vector<uint64_t>& relevant_ranges) {
   for (uint64_t r = 0; r < ranges.size(); r++) {
     const auto& d1 = (const T*)ranges[r].start();
     const auto& d2 = (const T*)mbr.start();
 
     if (!(d1[0] > d2[1] || d1[1] < d2[0]))
-      overlap.push_back(r);
+      relevant_ranges.push_back(r);
   }
 }
 
@@ -2967,37 +2971,37 @@ void Dimension::set_overlap_ratio_func() {
   }
 }
 
-void Dimension::set_overlap_vec_func() {
+void Dimension::set_relevant_ranges_func() {
   switch (type_) {
     case Datatype::INT32:
-      overlap_vec_func_ = overlap_vec<int32_t>;
+      relevant_ranges_func_ = relevant_ranges<int32_t>;
       break;
     case Datatype::INT64:
-      overlap_vec_func_ = overlap_vec<int64_t>;
+      relevant_ranges_func_ = relevant_ranges<int64_t>;
       break;
     case Datatype::INT8:
-      overlap_vec_func_ = overlap_vec<int8_t>;
+      relevant_ranges_func_ = relevant_ranges<int8_t>;
       break;
     case Datatype::UINT8:
-      overlap_vec_func_ = overlap_vec<uint8_t>;
+      relevant_ranges_func_ = relevant_ranges<uint8_t>;
       break;
     case Datatype::INT16:
-      overlap_vec_func_ = overlap_vec<int16_t>;
+      relevant_ranges_func_ = relevant_ranges<int16_t>;
       break;
     case Datatype::UINT16:
-      overlap_vec_func_ = overlap_vec<uint16_t>;
+      relevant_ranges_func_ = relevant_ranges<uint16_t>;
       break;
     case Datatype::UINT32:
-      overlap_vec_func_ = overlap_vec<uint32_t>;
+      relevant_ranges_func_ = relevant_ranges<uint32_t>;
       break;
     case Datatype::UINT64:
-      overlap_vec_func_ = overlap_vec<uint64_t>;
+      relevant_ranges_func_ = relevant_ranges<uint64_t>;
       break;
     case Datatype::FLOAT32:
-      overlap_vec_func_ = overlap_vec<float>;
+      relevant_ranges_func_ = relevant_ranges<float>;
       break;
     case Datatype::FLOAT64:
-      overlap_vec_func_ = overlap_vec<double>;
+      relevant_ranges_func_ = relevant_ranges<double>;
       break;
     case Datatype::DATETIME_YEAR:
     case Datatype::DATETIME_MONTH:
@@ -3021,14 +3025,14 @@ void Dimension::set_overlap_vec_func() {
     case Datatype::TIME_PS:
     case Datatype::TIME_FS:
     case Datatype::TIME_AS:
-      overlap_vec_func_ = overlap_vec<int64_t>;
+      relevant_ranges_func_ = relevant_ranges<int64_t>;
       break;
     case Datatype::STRING_ASCII:
       assert(var_size());
-      overlap_vec_func_ = overlap_vec<char>;
+      relevant_ranges_func_ = relevant_ranges<char>;
       break;
     default:
-      overlap_vec_func_ = nullptr;
+      relevant_ranges_func_ = nullptr;
       break;
   }
 }
