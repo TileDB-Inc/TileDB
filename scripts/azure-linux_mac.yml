@@ -77,7 +77,7 @@ steps:
     ls -l /cores
     
     
-    #~ echo "bump 1 for azure pipelines status page 'An unexpected error has occurred within this region of the page'"
+    echo "bump 2 for azure pipelines status page 'An unexpected error has occurred within this region of the page'"
     #~ touch /cores/areyouhere.txt
     #~ echo "some garbage" >> /cores/areyouthere.txt
     #~ if [[ -f /cores/areyouthere.txt ]]; then
