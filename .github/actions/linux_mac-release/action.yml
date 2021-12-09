@@ -491,7 +491,7 @@ runs:
         #TBD: if this is detached, will we actally see nothing?
         #and attempts to use -it with detached were rejected, complaints about terminal
         #docker exec $containername bash -c "pwd; ls -l; ls -l ../*.tar.gz"
-        docker exec $containername /bin/bash -c "pwd; ls -l; ls -l .."
+        docker exec $containername /bin/bash -c "echo \"insA\";pwd; ls -l; ls -l ..;echo \"insB, end\""
         sync
         docker ps
         sync
