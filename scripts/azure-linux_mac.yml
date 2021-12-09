@@ -45,10 +45,11 @@ steps:
       echo "why no /cores/areyouthere.txt?"
     fi
     ls -l /cores
-    ls -d /*/
-    ls -d /*/cores/
+    ls -l /
     
     sudo chown $(whoami) /cores
+    ls -l /
+    
     echo "more garbage" >> /cores/areyoutherenow.txt
     if [[ -f /cores/areyoutherenow.txt ]]; then
       cat /cores/areyoutherenow.txt
