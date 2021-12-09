@@ -35,6 +35,39 @@ jobs:
           ls -ld /cores
           ulimit -c
 
+      - name: 'test macos core dumps'
+        if: ${{ startsWith(matrix.os, 'macos-') == true }} # only run this job if the build step failed
+        run: |
+          ulimit -c               # should output 0 if disabled
+          ulimit -c unlimited     # Enable core dumps to be captured (must be in same run block)
+          ulimit -c               # should output 'unlimited' now
+
+          cat > abortprog.c <<EOF
+          #include <stdio.h>
+          #include <stdlib.h>
+          #include <sys/types.h>
+          #include <unistd.h>
+          #include <signal.h>
+          int main(int argc, char *argv[]) {
+          int asigval = 4; //4==SIGILL
+          if(argc > 1){
+          asigval=atoi(argv[1]);
+          }
+          printf("doing kill(%d)\n",asigval);
+          //no core dump... abort();
+          kill(getpid(), asigval); //4==SIGILL
+          }
+          EOF
+
+          gcc ./abortprog.c
+          ./a.out
+          ./a.out 6 #SIGABRT
+          ./a.out 9 #SIGKILL
+          ./a.out 11 #SIGSEGV
+          sudo ./a.out
+          
+          ls -l /cores
+
       - uses: actions/checkout@v2
       - name: 'Print env'
         run: |
