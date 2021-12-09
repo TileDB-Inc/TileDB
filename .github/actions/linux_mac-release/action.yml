@@ -561,6 +561,8 @@ runs:
         #~ fi
         pwd
         sync
+        ls -l
+        ls -l ..
         if [[ ! $(find $(realpath $GITHUB_WORKSPACE/..) -name '*.tar.gz' -exec ls -l {} \;) ]]; then
           echo "did not find *.tar.gz"
           sync
@@ -655,8 +657,8 @@ runs:
         commitHash=${sourceVersion:0:7}
         echo $commitHash
         #echo "##vso[task.setvariable variable=commitHash]$commitHash" ## Set variable for using in other tasks.
-        echo "::set-output name=commitHash::$commitHash" # TBD: make status check pass for this hack step
-        echo "commitHash::$commitHash" >> "$GITHUB_ENV" # TBD: make status check pass for this hack step
+        #echo "::set-output name=commitHash::$commitHash" # TBD: make status check pass for this hack step
+        echo "commitHash=$commitHash" >> "$GITHUB_ENV" # TBD: make status check pass for this hack step
         
     - name: 'ArchiveFiles@2B' # https://github.com/actions/upload-artifact#where-does-the-upload-go
       # @v1 does not recognize 'retention-days', 'if-no-files-found', path enhancments, prob more
