@@ -427,9 +427,10 @@ runs:
         #if [[ $(find / -name datafromcontainer.txt -exec ls -l {} \;) ]]; then
         #if [[ $(find / -name datafromcontainer.txt) ]]; then
           echo "found datafromcontainer.txt"
-          ls -l
-          if [[ $(cat datafromcontainer.txt) ]]; then
-            echo "datafromcontainer.txt contents above?"
+          if [[ $(ls -l $GITHUB_WORKSPACE/datafromcontainer.txt) ]]; then
+            cat $GITHUB_WORKSPACE/datafromcontainer.txt
+          elif [[ $(ls -l $up1level/datafromcontainer.txt) ]]; then
+            cat $up1level/datafromcontainer.txt
           fi
           sync
           #docker cp $up1level:datafromcontainer.txt ./copieddatafromcontainer.txt
@@ -437,12 +438,13 @@ runs:
         else
           echo "did not find datafromcontainer.txt"
         fi
-        if [[ ! $(ls -l ../moredatafromcontainer.txt) ]]; then
+        if [[ ! $(ls -l $up1level/moredatafromcontainer.txt) ]]; then
           if [[ $($XSUDO find / -name moredatafromcontainer.txt -exec ls -l {} \;) ]]; then
             echo "found datafromcontainer.txt"
           fi
         else
-          cat ../moredatafromcontainer.txt
+          echo "found moredatafromcontainer.txt at $up1level"
+          cat $up1level/moredatafromcontainer.txt
           echo "contents of moredatafromcontainer.txt above?"
         fi
         sync
