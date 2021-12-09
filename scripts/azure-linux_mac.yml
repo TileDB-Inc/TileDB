@@ -36,12 +36,12 @@ steps:
     ulimit -c unlimited     # Enable core dumps to be captured (must be in same run block)
     ulimit -c               # should output 'unlimited' now
     
-    if [[ -f $(which python3) ]]; then
+    if [[ -f $(which python) ]]; then
     #echo -e "nl=\"\\\n\"\nprint('aborting...'+nl)\nimport resource as res\nprint(res.getrlimit(res.RLIMIT_CORE))\nprint(nl)\nres.setrlimit(res.RLIMIT_CORE,(res.RLIM_INFINITY,res.RLIM_INFINITY))\nprint(res.getrlimit(res.RLIMIT_CORE))\nimport sys\nsys.stdout.flush()\nsys.stderr.flush()\nimport os \nos.abort()" | python3          # Azure sets "SYSTEM=build" for unknown reasonas, which breaks the OpenSSL configure script
     #try for one
-    echo -e "nl=\"\\\n\"\nprint('aborting...'+nl)\nimport resource as res\nimport time,threading\nprint(res.getrlimit(res.RLIMIT_CORE))\nprint(nl)\nres.setrlimit(res.RLIMIT_CORE,(res.RLIM_INFINITY,res.RLIM_INFINITY))\nprint(res.getrlimit(res.RLIMIT_CORE))\nt1=threading.Thread(name='thd1', target=lambda: time.sleep(5))\nt1.start()\nt2=threading.Thread(name='thd2', target=lambda: time.sleep(5))\nt2.start()\nimport sys\nsys.stdout.flush()\nsys.stderr.flush()\nimport os \nos.abort()" | python3
+    echo -e "nl=\"\\\n\"\nprint('aborting...'+nl)\nimport resource as res\nimport time,threading\nprint(res.getrlimit(res.RLIMIT_CORE))\nprint(nl)\nres.setrlimit(res.RLIMIT_CORE,(res.RLIM_INFINITY,res.RLIM_INFINITY))\nprint(res.getrlimit(res.RLIMIT_CORE))\nt1=threading.Thread(name='thd1', target=lambda: time.sleep(5))\nt1.start()\nt2=threading.Thread(name='thd2', target=lambda: time.sleep(5))\nt2.start()\nimport sys\nsys.stdout.flush()\nsys.stderr.flush()\nimport os \nos.abort()" | python
     #try for two
-    echo -e "nl=\"\\\n\"\nprint('aborting...'+nl)\nimport resource as res\nimport time,threading\nprint(res.getrlimit(res.RLIMIT_CORE))\nprint(nl)\nres.setrlimit(res.RLIMIT_CORE,(res.RLIM_INFINITY,res.RLIM_INFINITY))\nprint(res.getrlimit(res.RLIMIT_CORE))\nt1=threading.Thread(name='thd1', target=lambda: time.sleep(5))\nt1.start()\nt2=threading.Thread(name='thd2', target=lambda: time.sleep(5))\nt2.start()\nimport sys\nsys.stdout.flush()\nsys.stderr.flush()\nimport os \nos.abort()" | python3
+    echo -e "nl=\"\\\n\"\nprint('aborting...'+nl)\nimport resource as res\nimport time,threading\nprint(res.getrlimit(res.RLIMIT_CORE))\nprint(nl)\nres.setrlimit(res.RLIMIT_CORE,(res.RLIM_INFINITY,res.RLIM_INFINITY))\nprint(res.getrlimit(res.RLIMIT_CORE))\nt1=threading.Thread(name='thd1', target=lambda: time.sleep(5))\nt1.start()\nt2=threading.Thread(name='thd2', target=lambda: time.sleep(5))\nt2.start()\nimport sys\nsys.stdout.flush()\nsys.stderr.flush()\nimport os \nos.abort()" | python
     else
       echo "unable to find python3!"
       exit 42
