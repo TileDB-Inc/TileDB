@@ -474,10 +474,13 @@ runs:
           $containername \
           /bin/bash -c "pwd; ls -l; . ./scripts/ci/linux-mac_release_buildtiledb.sh; pwd; ls -l; pwd; ls -l .."
         sync
+        echo "OUTSIDE of manylinux"
         pwd
         sync
-        ls -l
+        realpath .
+        ls -l .
         sync
+        realpath ..
         ls -l ..
         sync
         #~ echo "B docker volume ls"
