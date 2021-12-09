@@ -38,7 +38,7 @@ steps:
     
     touch /cores/areyouhere.txt
     echo "some garbage" >> /cores/areyouthere.txt
-    if [[ -f /cores/areyouthere.txt) ]]; then
+    if [[ -f /cores/areyouthere.txt ]]; then
       cat /cores/areyouthere.txt
     else
       echo "why no /cores/areyouthere.txt?"
