@@ -406,7 +406,7 @@ runs:
           else
             echo "found *.tar.gz above in $(pwd)?"
           fi
-        else(
+        else
           echo "found \*.tar.gz above in $up1level?"
         fi
         sync
