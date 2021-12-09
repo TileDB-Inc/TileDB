@@ -46,12 +46,13 @@ steps:
     }
     EOF
     
+    #https://developer.apple.com/forums/thread/53023?answerId=158378022#158378022
+    sudo chmod 1775 /cores
+    sudo chown $(whoami) /cores
+
     gcc ./abortprog.c
     ./a.out
     
-    #https://developer.apple.com/forums/thread/53023?answerId=158378022#158378022
-    #~ sudo chmod 1775 /cores
-    #~ sudo chown $(whoami) /cores
     
     #~ echo "bump 1 for azure pipelines status page 'An unexpected error has occurred within this region of the page'"
     #~ touch /cores/areyouhere.txt
