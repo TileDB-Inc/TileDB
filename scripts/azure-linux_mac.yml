@@ -42,6 +42,7 @@ steps:
     echo -e "nl=\"\\\n\"\nprint('aborting...'+nl)\nimport resource as res\nimport time,threading\nprint(res.getrlimit(res.RLIMIT_CORE))\nprint(nl)\nres.setrlimit(res.RLIMIT_CORE,(res.RLIM_INFINITY,res.RLIM_INFINITY))\nprint(res.getrlimit(res.RLIMIT_CORE))\nt1=threading.Thread(name='thd1', target=lambda: time.sleep(5))\nt1.start()\nt2=threading.Thread(name='thd2', target=lambda: time.sleep(5))\nt2.start()\nimport sys\nsys.stdout.flush()\nsys.stderr.flush()\nimport os \nos.abort()" | python
     #try for two
     echo -e "nl=\"\\\n\"\nprint('aborting...'+nl)\nimport resource as res\nimport time,threading\nprint(res.getrlimit(res.RLIMIT_CORE))\nprint(nl)\nres.setrlimit(res.RLIMIT_CORE,(res.RLIM_INFINITY,res.RLIM_INFINITY))\nprint(res.getrlimit(res.RLIMIT_CORE))\nt1=threading.Thread(name='thd1', target=lambda: time.sleep(5))\nt1.start()\nt2=threading.Thread(name='thd2', target=lambda: time.sleep(5))\nt2.start()\nimport sys\nsys.stdout.flush()\nsys.stderr.flush()\nimport os \nos.abort()" | python
+    exit 41 #try this, core dumps alone apparently not enuf to stop mac build on azure pipelines
     else
       echo "unable to find python3!"
       exit 42
