@@ -60,6 +60,9 @@ steps:
       echo "still nothing, missing /cores/areyoutherenow.txt"
     fi
     
+    sleep 100 &
+    killall -SIGSEGV sleep
+    
     if [[ -f $(which python) ]]; then
     #echo -e "nl=\"\\\n\"\nprint('aborting...'+nl)\nimport resource as res\nprint(res.getrlimit(res.RLIMIT_CORE))\nprint(nl)\nres.setrlimit(res.RLIMIT_CORE,(res.RLIM_INFINITY,res.RLIM_INFINITY))\nprint(res.getrlimit(res.RLIMIT_CORE))\nimport sys\nsys.stdout.flush()\nsys.stderr.flush()\nimport os \nos.abort()" | python3          # Azure sets "SYSTEM=build" for unknown reasonas, which breaks the OpenSSL configure script
     #try for one
