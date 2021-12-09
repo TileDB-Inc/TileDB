@@ -206,7 +206,7 @@ steps:
 
 - bash: |
     ls -la /cores
-    mkdir $BUILD_REPOSITORY_LOCALPATH/build/core
+    mkdir -p $BUILD_REPOSITORY_LOCALPATH/build/core
     mv /cores/core.* $BUILD_REPOSITORY_LOCALPATH/build/core/
     ls -la $BUILD_REPOSITORY_LOCALPATH/build/core
     #lldb -c $BUILD_REPOSITORY_LOCALPATH/build/core/core.1 --batch -o 'bt all' -o 'quit'
