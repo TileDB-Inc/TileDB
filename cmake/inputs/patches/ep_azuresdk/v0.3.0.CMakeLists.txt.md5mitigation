@@ -160,15 +160,15 @@ endif()
 #openssl3 md5 deprecation mitigation
 if(UNIX)
   #sledge hammer approach
-#  target_compile_definitions(azure-storage-lite PRIVATE "-Wno-deprecated-declarations")
+  target_compile_definitions(azure-storage-lite PRIVATE "-Wno-deprecated-declarations")
   #dainty approach
-  set_source_files_properties(hash.cc PROPERTIES COMPILE_OPTIONS "-Wno-deprecated-declarations")
+#  set_source_files_properties(hash.cc PROPERTIES COMPILE_OPTIONS "-Wno-deprecated-declarations")
 endif()
 if(MSVC)
   #sledge hammer approach
-#  target_compile_definitions(azure-storage-lite PRIVATE "/Wd4996")
+  target_compile_definitions(azure-storage-lite PRIVATE "/Wd4996")
   #dainty approach
-  set_source_files_properties(hash.cc PROPERTIES COMPILE_OPTIONS "/Wd4996") 
+#  set_source_files_properties(hash.cc PROPERTIES COMPILE_OPTIONS "/Wd4996") 
 endif()
 
 if(BUILD_TESTS)
