@@ -31,10 +31,102 @@ steps:
   displayName: 'Install system headers (OSX 10.14 only)'
 
 - bash: |
+    #https://stackoverflow.com/questions/65278351/no-core-dump-file-generated-after-segmentation-fault-in-macos-big-sur
+    sysctl -a | grep core
+    
+    #https://developer.apple.com/forums/thread/53023?answerId=158378022#158378022
+    #sudo chmod 1775 /cores
+    #https://developer.apple.com/forums/thread/127503?answerId=401103022#401103022
+    #so seems after change to 1777, the 'runner' attempt did core dump, while the sudo version did not...
+    sudo chmod 1777 /cores
+    sudo chown $(whoami) /cores
+
+    sudo ls -l /
+    
+    ps -A
+    ls -l /cores
+  condition: and(eq(variables['Agent.OS'], 'Darwin'), startsWith(variables['imageName'], 'macOS-'))
+  displayName: 'prep macOS for "runner" core dumps'
+
+- bash: |
     # enable core dumps
     ulimit -c               # should output 0 if disabled
     ulimit -c unlimited     # Enable core dumps to be captured (must be in same run block)
     ulimit -c               # should output 'unlimited' now
+
+    cat > abortprog.c <<EOF
+    #include <stdio.h>
+    #include <stdlib.h>
+    #include <sys/types.h>
+    #include <unistd.h>
+    #include <signal.h>
+    int main(int argc, char *argv[]) {
+    int asigval = 4; //4==SIGILL
+    if(argc > 1){
+    asigval=atoi(argv[1]);
+    }
+    printf("doing kill(%d)\n",asigval);
+    //no core dump... abort();
+    kill(getpid(), asigval); //4==SIGILL
+    }
+    EOF
+
+    gcc ./abortprog.c
+    ./a.out
+    ./a.out 6 #SIGABRT
+    ./a.out 9 #SIGKILL
+    ./a.out 11 #SIGSEGV
+    sudo ./a.out
+    
+    ls -l /cores
+    
+    echo "bump 2 for azure pipelines status page 'An unexpected error has occurred within this region of the page'"
+    #~ touch /cores/areyouhere.txt
+    #~ echo "some garbage" >> /cores/areyouthere.txt
+    #~ if [[ -f /cores/areyouthere.txt ]]; then
+      #~ cat /cores/areyouthere.txt
+    #~ else
+      #~ echo "why no /cores/areyouthere.txt?"
+    #~ fi
+    #~ ls -l /cores
+    #~ ls -l /
+    
+    #~ ls -l /
+    
+    #~ echo "more garbage" >> /cores/areyoutherenow.txt
+    #~ if [[ -f /cores/areyoutherenow.txt ]]; then
+      #~ cat /cores/areyoutherenow.txt
+    #~ else
+      #~ echo "still nothing, missing /cores/areyoutherenow.txt"
+    #~ fi
+    
+    #~ sleep 100 &
+    #~ killall -SIGSEGV sleep
+    #~ sleep 100 &
+    #~ killall -SIGILL sleep
+    
+    if [[ -f $(which python) ]]; then
+      #echo -e "nl=\"\\\n\"\nprint('aborting...'+nl)\nimport resource as res\nprint(res.getrlimit(res.RLIMIT_CORE))\nprint(nl)\nres.setrlimit(res.RLIMIT_CORE,(res.RLIM_INFINITY,res.RLIM_INFINITY))\nprint(res.getrlimit(res.RLIMIT_CORE))\nimport sys\nsys.stdout.flush()\nsys.stderr.flush()\nimport os \nos.abort()" | python3          # Azure sets "SYSTEM=build" for unknown reasonas, which breaks the OpenSSL configure script
+      #try for one
+      echo -e "nl=\"\\\n\"\nprint('aborting...'+nl)\nimport resource as res\nimport time,threading\nprint(res.getrlimit(res.RLIMIT_CORE))\nprint(nl)\nres.setrlimit(res.RLIMIT_CORE,(res.RLIM_INFINITY,res.RLIM_INFINITY))\nprint(res.getrlimit(res.RLIMIT_CORE))\nt1=threading.Thread(name='thd1', target=lambda: time.sleep(5))\nt1.start()\nt2=threading.Thread(name='thd2', target=lambda: time.sleep(5))\nt2.start()\nimport sys\nsys.stdout.flush()\nsys.stderr.flush()\nimport os \nos.abort()" | python
+      #try for two
+      echo -e "nl=\"\\\n\"\nprint('aborting...'+nl)\nimport resource as res\nimport time,threading\nprint(res.getrlimit(res.RLIMIT_CORE))\nprint(nl)\nres.setrlimit(res.RLIMIT_CORE,(res.RLIM_INFINITY,res.RLIM_INFINITY))\nprint(res.getrlimit(res.RLIMIT_CORE))\nt1=threading.Thread(name='thd1', target=lambda: time.sleep(5))\nt1.start()\nt2=threading.Thread(name='thd2', target=lambda: time.sleep(5))\nt2.start()\nimport sys\nsys.stdout.flush()\nsys.stderr.flush()\nimport os \nos.abort()" | python
+      sleep 2s
+      ls -l /cores
+      #exit 41 #try this, core dumps alone apparently not enuf to stop mac build on azure pipelines
+    else
+      echo "unable to find python!"
+      #exit 42
+    fi
+  condition: and(true, eq(variables['Agent.OS'], 'Darwin'), startsWith(variables['imageName'], 'macOS-'))
+  displayName: 'check macOS "runner" core dumps'
+
+- bash: |
+    # enable core dumps
+    ulimit -c               # should output 0 if disabled
+    ulimit -c unlimited     # Enable core dumps to be captured (must be in same run block)
+    ulimit -c               # should output 'unlimited' now
+    
     # Azure sets "SYSTEM=build" for unknown reasons, which breaks the OpenSSL configure script
     #   - openssl configure uses ENV{SYSTEM} if available:
     #     https://github.com/openssl/openssl/blob/6d745d740d37d680ff696486218b650512bbbbc6/config#L56
@@ -142,6 +234,11 @@ steps:
     $BUILD_REPOSITORY_LOCALPATH/bootstrap $bootstrap_args
 
     make -j4
+    #vvvvvvvvvvvvvvvvv
+    #remove us
+    #~ make -j4 -C tiledb tiledb_unit
+    #~ ./tiledb/test/tiledb_unit -d yes --crash
+    #^^^^^^^^^^^^^^
     make examples -j4
     make -C tiledb install
 
@@ -193,10 +290,15 @@ steps:
 
 - bash: |
     ls -la /cores
-    mkdir $BUILD_REPOSITORY_LOCALPATH/build/core
-    mv /cores/core.* $BUILD_REPOSITORY_LOCALPATH/build/core/core.1
+    mkdir -p $BUILD_REPOSITORY_LOCALPATH/build/core
+    mv /cores/core.* $BUILD_REPOSITORY_LOCALPATH/build/core/
     ls -la $BUILD_REPOSITORY_LOCALPATH/build/core
-    lldb -c $BUILD_REPOSITORY_LOCALPATH/build/core/core.1 --batch -o 'bt all' -o 'quit'
+    #lldb -c $BUILD_REPOSITORY_LOCALPATH/build/core/core.1 --batch -o 'bt all' -o 'quit'
+    for f in $(find $BUILD_REPOSITORY_LOCALPATH/build/core -name 'core.*');
+      do
+        echo "stack trace for $f"
+        lldb -c $f --batch -o 'bt all' -o 'quit'
+      done;
   condition: and(failed(), eq(variables['Agent.OS'], 'Darwin')) # only run this job if the build step failed
   displayName: 'Print stack trace'
 
