@@ -205,6 +205,13 @@ set(TILEDB_CORE_SOURCES
 )
 list(APPEND TILEDB_CORE_SOURCES ${TILEDB_COMMON_SOURCES})
 
+#openssl3 md5 deprecation mitigation
+if(MSVC)
+  set_source_files_properties(hash.cc PROPERTIES COMPILE_OPTIONS "/Wd4996") 
+else()
+  set_source_files_properties(hash.cc PROPERTIES COMPILE_OPTIONS "-Wno-deprecated-declarations")
+endif()
+
 if (TILEDB_SERIALIZATION)
   list(APPEND TILEDB_CORE_SOURCES
     ${TILEDB_CORE_INCLUDE_DIR}/tiledb/sm/rest/curl.cc
