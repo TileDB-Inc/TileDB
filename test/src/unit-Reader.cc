@@ -32,6 +32,7 @@
 
 #include "test/src/helpers.h"
 #include "test/src/vfs_helpers.h"
+#include "tiledb/common/dynamic_memory/dynamic_memory.h"
 #include "tiledb/common/heap_memory.h"
 #include "tiledb/common/logger.h"
 #include "tiledb/sm/c_api/tiledb_struct_def.h"
@@ -185,11 +186,26 @@ TEST_CASE_METHOD(
   Domain dom;
   CHECK(dom.add_dimension(&d1).ok());
   CHECK(dom.add_dimension(&d2).ok());
+  ArraySchema schema;
+  CHECK(schema.set_domain(&dom).ok());
+
+  std::vector<tdb_shared_ptr<FragmentMetadata>> fragments;
+  for (uint64_t i = 0; i < frag_tile_domains.size(); i++) {
+    tdb_shared_ptr<FragmentMetadata> fragment =
+        tdb::make_shared<FragmentMetadata>(
+            HERE(),
+            nullptr,
+            &schema,
+            URI(),
+            std::make_pair<uint64_t, uint64_t>(0, 0),
+            true);
+    fragments.emplace_back(std::move(fragment));
+  }
 
   // Compute result space tiles map
   std::map<const int32_t*, ResultSpaceTile<int32_t>> result_space_tiles;
   Reader::compute_result_space_tiles<int32_t>(
-      &dom,
+      fragments,
       tile_coords,
       array_tile_domain,
       frag_tile_domains,
@@ -197,15 +213,15 @@ TEST_CASE_METHOD(
   CHECK(result_space_tiles.size() == 6);
 
   // Result tiles for fragment #1
-  ResultTile result_tile_1_0_1(1, 0, &dom);
-  ResultTile result_tile_1_2_1(1, 2, &dom);
+  ResultTile result_tile_1_0_1(1, 0, &schema);
+  ResultTile result_tile_1_2_1(1, 2, &schema);
 
   // Result tiles for fragment #2
-  ResultTile result_tile_1_0_2(2, 0, &dom);
+  ResultTile result_tile_1_0_2(2, 0, &schema);
 
   // Result tiles for fragment #3
-  ResultTile result_tile_2_0_3(3, 0, &dom);
-  ResultTile result_tile_3_0_3(3, 2, &dom);
+  ResultTile result_tile_2_0_3(3, 0, &schema);
+  ResultTile result_tile_3_0_3(3, 2, &schema);
 
   // Initialize result_space_tiles
   ResultSpaceTile<int32_t> rst_1_0;

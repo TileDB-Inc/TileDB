@@ -51,12 +51,17 @@ namespace sm {
 /* ****************************** */
 
 ResultTile::ResultTile(
-    unsigned frag_idx, uint64_t tile_idx, const Domain* domain)
-    : domain_(domain)
-    , frag_idx_(frag_idx)
+    unsigned frag_idx, uint64_t tile_idx, const ArraySchema* array_schema)
+    : frag_idx_(frag_idx)
     , tile_idx_(tile_idx) {
-  assert(domain != nullptr);
-  coord_tiles_.resize(domain->dim_num());
+  assert(array_schema != nullptr);
+  domain_ = array_schema->domain();
+  coord_tiles_.resize(domain_->dim_num());
+  attr_tiles_.resize(array_schema->attribute_num());
+  for (uint64_t i = 0; i < array_schema->attribute_num(); i++) {
+    const Attribute* attribute = array_schema->attribute(i);
+    attr_tiles_[i] = std::make_pair(attribute->name(), std::nullopt);
+  }
   set_compute_results_func();
 
   // Default `coord_func_` to fetch from `coord_tile_` until at least
@@ -79,8 +84,13 @@ uint64_t ResultTile::cell_num() const {
   if (!std::get<0>(coords_tile_).empty())
     return std::get<0>(coords_tile_).cell_num();
 
-  if (!attr_tiles_.empty())
-    return std::get<0>(attr_tiles_.begin()->second).cell_num();
+  if (!attr_tiles_.empty()) {
+    for (const auto& attr : attr_tiles_) {
+      if (attr.second.has_value()) {
+        return std::get<0>(attr.second.value()).cell_num();
+      }
+    }
+  }
 
   return 0;
 }
@@ -105,7 +115,12 @@ void ResultTile::erase_tile(const std::string& name) {
   }
 
   // Handle attribute tile
-  attr_tiles_.erase(name);
+  for (auto& at : attr_tiles_) {
+    if (at.first == name) {
+      at.second = TileTuple(Tile(), Tile(), Tile());
+      return;
+    }
+  }
 }
 
 void ResultTile::init_attr_tile(const std::string& name) {
@@ -114,8 +129,12 @@ void ResultTile::init_attr_tile(const std::string& name) {
     return;
 
   // Handle attributes
-  if (attr_tiles_.empty() || attr_tiles_.find(name) == attr_tiles_.end())
-    attr_tiles_.emplace(name, TileTuple(Tile(), Tile(), Tile()));
+  for (auto& at : attr_tiles_) {
+    if (at.first == name && at.second == std::nullopt) {
+      at.second = TileTuple(Tile(), Tile(), Tile());
+      return;
+    }
+  }
 }
 
 void ResultTile::init_coord_tile(const std::string& name, unsigned dim_idx) {
@@ -133,9 +152,10 @@ ResultTile::TileTuple* ResultTile::tile_tuple(const std::string& name) {
     return &coords_tile_;
 
   // Handle attribute tile
-  auto it = attr_tiles_.find(name);
-  if (it != attr_tiles_.end())
-    return &(it->second);
+  for (auto& at : attr_tiles_) {
+    if (at.first == name && at.second.has_value())
+      return &(at.second.value());
+  }
 
   // Handle separate coordinates tile
   for (auto& ct : coord_tiles_) {
@@ -850,10 +870,10 @@ void ResultTile::compute_results_count_sparse(
   auto stores_zipped_coords = result_tile->stores_zipped_coords();
   auto dim_num = result_tile->domain()->dim_num();
 
-  // Vector to get the status of each cell
+  // Vector to get the status of each cell.
   std::vector<bool> counts(range_indexes.size());
 
-  // Handle separate coordinate tiles
+  // Handle separate coordinate tiles.
   if (!stores_zipped_coords) {
     const auto& coord_tile = std::get<0>(result_tile->coord_tile(dim_idx));
     Buffer* const buffer = coord_tile.buffer();
@@ -884,7 +904,7 @@ void ResultTile::compute_results_count_sparse(
     return;
   }
 
-  // Handle zipped coordinates tile
+  // Handle zipped coordinates tile.
   assert(stores_zipped_coords);
   const auto& coords_tile = result_tile->zipped_coords_tile();
   Buffer* const buffer = coords_tile.buffer();

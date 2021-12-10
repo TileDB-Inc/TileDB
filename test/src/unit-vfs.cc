@@ -63,13 +63,19 @@ TEST_CASE("VFS: Test read batching", "[vfs]") {
   REQUIRE(vfs->write(testfile, data_write, nelts * sizeof(uint32_t)).ok());
   REQUIRE(vfs->terminate().ok());
 
-  std::vector<std::tuple<uint64_t, void*, uint64_t>> batches;
+  Tile tile[nelts];
+  for (uint64_t i = 0; i < nelts; i++) {
+    Buffer buff(&data_read[i], nelts - i);
+    tile[i].filtered_buffer()->swap(buff);
+  }
+
+  std::vector<std::tuple<uint64_t, Tile*, uint64_t, uint64_t>> batches;
   std::vector<ThreadPool::Task> tasks;
 
   SECTION("- Default config") {
     // Check reading in one batch: single read operation.
     std::memset(data_read, 0, nelts * sizeof(uint32_t));
-    batches.emplace_back(0, data_read, nelts * sizeof(uint32_t));
+    batches.emplace_back(0, &tile[0], nelts * sizeof(uint32_t), 0);
     REQUIRE(
         vfs->init(&g_helper_stats, &compute_tp, &io_tp, nullptr, nullptr).ok());
     REQUIRE(vfs->read_all(testfile, batches, &io_tp, &tasks).ok());
@@ -82,9 +88,9 @@ TEST_CASE("VFS: Test read batching", "[vfs]") {
     // batch size.
     std::memset(data_read, 0, nelts * sizeof(uint32_t));
     batches.clear();
-    batches.emplace_back(0, &data_read[0], sizeof(uint32_t));
+    batches.emplace_back(0, &tile[0], sizeof(uint32_t), 0);
     batches.emplace_back(
-        (nelts - 1) * sizeof(uint32_t), &data_read[1], sizeof(uint32_t));
+        (nelts - 1) * sizeof(uint32_t), &tile[1], sizeof(uint32_t), 0);
     REQUIRE(vfs->read_all(testfile, batches, &io_tp, &tasks).ok());
     REQUIRE(io_tp.wait_all(tasks).ok());
     tasks.clear();
@@ -96,8 +102,7 @@ TEST_CASE("VFS: Test read batching", "[vfs]") {
     std::memset(data_read, 0, nelts * sizeof(uint32_t));
     batches.clear();
     for (unsigned i = 0; i < nelts; i++)
-      batches.emplace_back(
-          i * sizeof(uint32_t), &data_read[i], sizeof(uint32_t));
+      batches.emplace_back(i * sizeof(uint32_t), &tile[i], sizeof(uint32_t), 0);
     REQUIRE(vfs->read_all(testfile, batches, &io_tp, &tasks).ok());
     REQUIRE(io_tp.wait_all(tasks).ok());
     tasks.clear();
@@ -121,7 +126,7 @@ TEST_CASE("VFS: Test read batching", "[vfs]") {
 
     // Check large batches are not split up.
     std::memset(data_read, 0, nelts * sizeof(uint32_t));
-    batches.emplace_back(0, data_read, nelts * sizeof(uint32_t));
+    batches.emplace_back(0, &tile[0], nelts * sizeof(uint32_t), 0);
     REQUIRE(vfs->read_all(testfile, batches, &io_tp, &tasks).ok());
     REQUIRE(io_tp.wait_all(tasks).ok());
     tasks.clear();
@@ -134,7 +139,7 @@ TEST_CASE("VFS: Test read batching", "[vfs]") {
     batches.clear();
     for (unsigned i = 0; i < nelts / 2; i++)
       batches.emplace_back(
-          2 * i * sizeof(uint32_t), &data_read[i], sizeof(uint32_t));
+          2 * i * sizeof(uint32_t), &tile[i], sizeof(uint32_t), 0);
     REQUIRE(vfs->read_all(testfile, batches, &io_tp, &tasks).ok());
     REQUIRE(io_tp.wait_all(tasks).ok());
     tasks.clear();
@@ -145,9 +150,9 @@ TEST_CASE("VFS: Test read batching", "[vfs]") {
     // whole region is too big).
     std::memset(data_read, 0, nelts * sizeof(uint32_t));
     batches.clear();
-    batches.emplace_back(0, &data_read[0], sizeof(uint32_t));
+    batches.emplace_back(0, &tile[0], sizeof(uint32_t), 0);
     batches.emplace_back(
-        (nelts - 1) * sizeof(uint32_t), &data_read[1], sizeof(uint32_t));
+        (nelts - 1) * sizeof(uint32_t), &tile[1], sizeof(uint32_t), 0);
     REQUIRE(vfs->read_all(testfile, batches, &io_tp, &tasks).ok());
     REQUIRE(io_tp.wait_all(tasks).ok());
     tasks.clear();
@@ -172,8 +177,7 @@ TEST_CASE("VFS: Test read batching", "[vfs]") {
     std::memset(data_read, 0, nelts * sizeof(uint32_t));
     batches.clear();
     for (unsigned i = 0; i < nelts; i++)
-      batches.emplace_back(
-          i * sizeof(uint32_t), &data_read[i], sizeof(uint32_t));
+      batches.emplace_back(i * sizeof(uint32_t), &tile[i], sizeof(uint32_t), 0);
     REQUIRE(vfs->read_all(testfile, batches, &io_tp, &tasks).ok());
     REQUIRE(io_tp.wait_all(tasks).ok());
     tasks.clear();
@@ -198,8 +202,7 @@ TEST_CASE("VFS: Test read batching", "[vfs]") {
     std::memset(data_read, 0, nelts * sizeof(uint32_t));
     batches.clear();
     for (unsigned i = 0; i < nelts; i++)
-      batches.emplace_back(
-          i * sizeof(uint32_t), &data_read[i], sizeof(uint32_t));
+      batches.emplace_back(i * sizeof(uint32_t), &tile[i], sizeof(uint32_t), 0);
     REQUIRE(vfs->read_all(testfile, batches, &io_tp, &tasks).ok());
     REQUIRE(io_tp.wait_all(tasks).ok());
     tasks.clear();

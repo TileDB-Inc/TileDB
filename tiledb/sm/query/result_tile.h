@@ -38,6 +38,7 @@
 #include <unordered_map>
 #include <vector>
 
+#include "tiledb/sm/array_schema/array_schema.h"
 #include "tiledb/sm/enums/layout.h"
 #include "tiledb/sm/misc/constants.h"
 #include "tiledb/sm/misc/types.h"
@@ -80,7 +81,7 @@ class ResultTile {
    * Constructor. The number of dimensions `dim_num` is used to allocate
    * the separate coordinate tiles.
    */
-  ResultTile(unsigned frag_idx, uint64_t tile_idx, const Domain* domain);
+  ResultTile(unsigned frag_idx, uint64_t tile_idx, const ArraySchema* schema);
 
   /** Default destructor. */
   ~ResultTile() = default;
@@ -338,8 +339,8 @@ class ResultTile {
   /** The id of the tile (which helps locating the physical attribute tiles). */
   uint64_t tile_idx_ = UINT64_MAX;
 
-  /** Maps attribute names to tiles. */
-  std::unordered_map<std::string, TileTuple> attr_tiles_;
+  /** Attribute names to tiles based on attribute ordering from array schema. */
+  std::vector<std::pair<std::string, std::optional<TileTuple>>> attr_tiles_;
 
   /** The zipped coordinates tile. */
   TileTuple coords_tile_;

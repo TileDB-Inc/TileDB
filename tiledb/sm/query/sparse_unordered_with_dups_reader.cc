@@ -243,7 +243,7 @@ Status SparseUnorderedWithDupsReader<BitmapType>::add_result_tile(
     const unsigned f,
     const uint64_t t,
     const uint64_t last_t,
-    const Domain* const domain,
+    const ArraySchema* const array_schema,
     bool* budget_exceeded) {
   // Calculate memory consumption for this tile.
   uint64_t tiles_size = 0, tiles_size_qc = 0;
@@ -262,7 +262,7 @@ Status SparseUnorderedWithDupsReader<BitmapType>::add_result_tile(
   memory_used_qc_tiles_total_ += tiles_size_qc;
 
   // Add the result tile.
-  result_tiles_[0].emplace_back(f, t, domain);
+  result_tiles_[0].emplace_back(f, t, array_schema);
 
   // Are all tiles loaded for this fragment.
   if (t == last_t)
@@ -277,7 +277,6 @@ Status SparseUnorderedWithDupsReader<BitmapType>::create_result_tiles() {
 
   // For easy reference.
   const auto fragment_num = fragment_metadata_.size();
-  const auto domain = array_schema_->domain();
   const auto dim_num = array_schema_->dim_num();
 
   const uint64_t memory_budget_qc_tiles =
@@ -306,7 +305,7 @@ Status SparseUnorderedWithDupsReader<BitmapType>::create_result_tiles() {
                 f,
                 t,
                 last_t,
-                domain,
+                fragment_metadata_[f]->array_schema(),
                 &budget_exceeded));
 
             // Make sure we can add at least one tile.
@@ -358,7 +357,7 @@ Status SparseUnorderedWithDupsReader<BitmapType>::create_result_tiles() {
               f,
               t,
               tile_num - 1,
-              domain,
+              fragment_metadata_[f]->array_schema(),
               &budget_exceeded));
 
           // Make sure we can add at least one tile.
