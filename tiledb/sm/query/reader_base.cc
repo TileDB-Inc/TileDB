@@ -418,7 +418,8 @@ Status ReaderBase::read_tiles(
     return Status::Ok();
 
   // Populate the list of regions per file to be read.
-  std::map<URI, std::vector<std::tuple<uint64_t, void*, uint64_t>>> all_regions;
+  std::map<URI, std::vector<std::tuple<uint64_t, Tile*, uint64_t, uint64_t>>>
+      all_regions;
   std::mutex all_regions_mutex;
 
   // Mutex protecting attr_tiles_ maps in all ResultTiles.
@@ -501,6 +502,7 @@ Status ReaderBase::read_tiles(
         uint64_t tile_persisted_size;
         RETURN_NOT_OK(fragment->persisted_tile_size(
             name, tile_idx, &tile_persisted_size));
+        uint64_t tile_size = fragment->tile_size(name, tile_idx);
 
         // Try the cache first.
         bool cache_hit = false;
@@ -515,14 +517,9 @@ Status ReaderBase::read_tiles(
 
         if (!cache_hit) {
           // Add the region of the fragment to be read.
-          RETURN_NOT_OK(t->filtered_buffer()->realloc(tile_persisted_size));
-          t->filtered_buffer()->set_size(tile_persisted_size);
-          t->filtered_buffer()->reset_offset();
           std::unique_lock<std::mutex> ul(all_regions_mutex);
           all_regions[tile_attr_uri].emplace_back(
-              tile_attr_offset,
-              t->filtered_buffer()->data(),
-              tile_persisted_size);
+              tile_attr_offset, t, tile_persisted_size, tile_size);
         }
 
         if (var_size) {
@@ -545,15 +542,12 @@ Status ReaderBase::read_tiles(
 
           if (!cache_hit) {
             // Add the region of the fragment to be read.
-            RETURN_NOT_OK(
-                t_var->filtered_buffer()->realloc(tile_var_persisted_size));
-            t_var->filtered_buffer()->set_size(tile_var_persisted_size);
-            t_var->filtered_buffer()->reset_offset();
             std::unique_lock<std::mutex> ul(all_regions_mutex);
             all_regions[tile_attr_var_uri].emplace_back(
                 tile_attr_var_offset,
-                t_var->filtered_buffer()->data(),
-                tile_var_persisted_size);
+                t_var,
+                tile_var_persisted_size,
+                tile_size);
           }
         }
 
@@ -577,22 +571,33 @@ Status ReaderBase::read_tiles(
 
           if (!cache_hit) {
             // Add the region of the fragment to be read.
-            RETURN_NOT_OK(t_validity->filtered_buffer()->realloc(
-                tile_validity_persisted_size));
-            t_validity->filtered_buffer()->set_size(
-                tile_validity_persisted_size);
-            t_validity->filtered_buffer()->reset_offset();
             std::unique_lock<std::mutex> ul(all_regions_mutex);
             all_regions[tile_validity_attr_uri].emplace_back(
                 tile_attr_validity_offset,
-                t_validity->filtered_buffer()->data(),
-                tile_validity_persisted_size);
+                t_validity,
+                tile_validity_persisted_size,
+                tile_size);
           }
         }
 
         return Status::Ok();
       });
   RETURN_NOT_OK(status);
+
+  // Allocate memory for tile filtered/unfiltered buffers.
+  for (const auto& item : all_regions) {
+    for (auto& tuple : item.second) {
+      auto& t = std::get<1>(tuple);
+      auto& persisted_size = std::get<2>(tuple);
+      auto& size = std::get<3>(tuple);
+
+      RETURN_NOT_OK(t->filtered_buffer()->realloc(persisted_size));
+      t->filtered_buffer()->set_size(persisted_size);
+      t->filtered_buffer()->reset_offset();
+
+      RETURN_NOT_OK(t->buffer()->realloc(size));
+    }
+  }
 
   // Do not use the read-ahead cache because tiles will be
   // cached in the tile cache.

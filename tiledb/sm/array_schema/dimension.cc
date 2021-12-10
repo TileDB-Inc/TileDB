@@ -863,7 +863,7 @@ void Dimension::relevant_ranges<char>(
         !r2_start.empty() && !r1_end.empty() && r2_start > r1_end;
 
     if (!r1_after_r2 && !r2_after_r1)
-      relevant_ranges.push_back(r);
+      relevant_ranges.emplace_back(r);
   }
 }
 
@@ -872,12 +872,17 @@ void Dimension::relevant_ranges(
     const NDRange& ranges,
     const Range& mbr,
     std::vector<uint64_t>& relevant_ranges) {
-  for (uint64_t r = 0; r < ranges.size(); r++) {
-    const auto& d1 = (const T*)ranges[r].start();
-    const auto& d2 = (const T*)mbr.start();
+  uint64_t rsize = ranges.size();
 
-    if (!(d1[0] > d2[1] || d1[1] < d2[0]))
-      relevant_ranges.push_back(r);
+  const auto d2 = (const T*)mbr.start();
+  const auto d2_0 = d2[0];
+  const auto d2_1 = d2[1];
+
+  for (uint64_t r = 0; r < rsize; r++) {
+    const auto d1 = (const T*)ranges[r].start();
+
+    if ((d1[0] <= d2_1 && d1[1] >= d2_0))
+      relevant_ranges.emplace_back(r);
   }
 }
 
