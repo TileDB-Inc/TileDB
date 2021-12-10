@@ -210,6 +210,7 @@ if(MSVC)
   set_source_files_properties(hash.cc PROPERTIES COMPILE_OPTIONS "/Wd4996") 
 else()
   set_source_files_properties(hash.cc PROPERTIES COMPILE_OPTIONS "-Wno-deprecated-declarations")
+  set_source_files_properties(crypto_openssl.cc PROPERTIES COMPILE_OPTIONS "-Wno-deprecated-declarations")
 endif()
 
 if (TILEDB_SERIALIZATION)
