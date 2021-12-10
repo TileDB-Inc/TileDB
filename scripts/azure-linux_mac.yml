@@ -48,7 +48,9 @@ steps:
   condition: and(eq(variables['Agent.OS'], 'Darwin'), startsWith(variables['imageName'], 'macOS-'))
   displayName: 'prep macOS for "runner" core dumps'
 
-- bash: |
+- displayName: 'check macOS "runner" core dumps'
+  condition: and(true, eq(variables['Agent.OS'], 'Darwin'), startsWith(variables['imageName'], 'macOS-'))
+  bash: |
     # enable core dumps
     ulimit -c               # should output 0 if disabled
     ulimit -c unlimited     # Enable core dumps to be captured (must be in same run block)
@@ -81,32 +83,8 @@ steps:
     ls -l /cores
     
     echo "bump 2 for azure pipelines status page 'An unexpected error has occurred within this region of the page'"
-    #~ touch /cores/areyouhere.txt
-    #~ echo "some garbage" >> /cores/areyouthere.txt
-    #~ if [[ -f /cores/areyouthere.txt ]]; then
-      #~ cat /cores/areyouthere.txt
-    #~ else
-      #~ echo "why no /cores/areyouthere.txt?"
-    #~ fi
-    #~ ls -l /cores
-    #~ ls -l /
-    
-    #~ ls -l /
-    
-    #~ echo "more garbage" >> /cores/areyoutherenow.txt
-    #~ if [[ -f /cores/areyoutherenow.txt ]]; then
-      #~ cat /cores/areyoutherenow.txt
-    #~ else
-      #~ echo "still nothing, missing /cores/areyoutherenow.txt"
-    #~ fi
-    
-    #~ sleep 100 &
-    #~ killall -SIGSEGV sleep
-    #~ sleep 100 &
-    #~ killall -SIGILL sleep
-    
     if [[ -f $(which python) ]]; then
-      #echo -e "nl=\"\\\n\"\nprint('aborting...'+nl)\nimport resource as res\nprint(res.getrlimit(res.RLIMIT_CORE))\nprint(nl)\nres.setrlimit(res.RLIMIT_CORE,(res.RLIM_INFINITY,res.RLIM_INFINITY))\nprint(res.getrlimit(res.RLIMIT_CORE))\nimport sys\nsys.stdout.flush()\nsys.stderr.flush()\nimport os \nos.abort()" | python3          # Azure sets "SYSTEM=build" for unknown reasonas, which breaks the OpenSSL configure script
+      #echo -e "nl=\"\\\n\"\nprint('aborting...'+nl)\nimport resource as res\nprint(res.getrlimit(res.RLIMIT_CORE))\nprint(nl)\nres.setrlimit(res.RLIMIT_CORE,(res.RLIM_INFINITY,res.RLIM_INFINITY))\nprint(res.getrlimit(res.RLIMIT_CORE))\nimport sys\nsys.stdout.flush()\nsys.stderr.flush()\nimport os \nos.abort()" | python3
       #try for one
       echo -e "nl=\"\\\n\"\nprint('aborting...'+nl)\nimport resource as res\nimport time,threading\nprint(res.getrlimit(res.RLIMIT_CORE))\nprint(nl)\nres.setrlimit(res.RLIMIT_CORE,(res.RLIM_INFINITY,res.RLIM_INFINITY))\nprint(res.getrlimit(res.RLIMIT_CORE))\nt1=threading.Thread(name='thd1', target=lambda: time.sleep(5))\nt1.start()\nt2=threading.Thread(name='thd2', target=lambda: time.sleep(5))\nt2.start()\nimport sys\nsys.stdout.flush()\nsys.stderr.flush()\nimport os \nos.abort()" | python
       #try for two
@@ -118,8 +96,6 @@ steps:
       echo "unable to find python!"
       #exit 42
     fi
-  condition: and(true, eq(variables['Agent.OS'], 'Darwin'), startsWith(variables['imageName'], 'macOS-'))
-  displayName: 'check macOS "runner" core dumps'
 
 - bash: |
     # enable core dumps
@@ -234,11 +210,6 @@ steps:
     $BUILD_REPOSITORY_LOCALPATH/bootstrap $bootstrap_args
 
     make -j4
-    #vvvvvvvvvvvvvvvvv
-    #remove us
-    #~ make -j4 -C tiledb tiledb_unit
-    #~ ./tiledb/test/tiledb_unit -d yes --crash
-    #^^^^^^^^^^^^^^
     make examples -j4
     make -C tiledb install
 
@@ -288,19 +259,25 @@ steps:
     #  displayName: 'Build examples, PNG test, and benchmarks (build-only)'
   displayName: 'Build and test libtiledb'
 
-- bash: |
+- displayName: 'Print stack trace'
+  condition: eq(variables['Agent.OS'], 'Darwin')) # only run this job if the build step failed
+  bash: |
     ls -la /cores
     mkdir -p $BUILD_REPOSITORY_LOCALPATH/build/core
-    mv /cores/core.* $BUILD_REPOSITORY_LOCALPATH/build/core/
+    # cp rather than 'mv' in case some core's might lack permissions to allow cp.
+    cp /cores/core.* $BUILD_REPOSITORY_LOCALPATH/build/core/
     ls -la $BUILD_REPOSITORY_LOCALPATH/build/core
     #lldb -c $BUILD_REPOSITORY_LOCALPATH/build/core/core.1 --batch -o 'bt all' -o 'quit'
+    cntfiles=0
     for f in $(find $BUILD_REPOSITORY_LOCALPATH/build/core -name 'core.*');
       do
         echo "stack trace for $f"
         lldb -c $f --batch -o 'bt all' -o 'quit'
+        (( cntfiles = cntfiles + 1 ))
       done;
-  condition: and(failed(), eq(variables['Agent.OS'], 'Darwin')) # only run this job if the build step failed
-  displayName: 'Print stack trace'
+    if [[ cntfiles -ne 0 ]] ; then
+      exit 17 # in effort to be sure archiving is triggered
+    fi
 
 - task: ArchiveFiles@2
   inputs:
