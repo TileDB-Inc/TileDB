@@ -73,7 +73,6 @@ struct VFSFx {
   bool supports_s3_;
   bool supports_hdfs_;
   bool supports_azure_;
-  bool supports_memfs_;
 
   // Functions
   VFSFx();
@@ -912,9 +911,7 @@ TEST_CASE_METHOD(VFSFx, "C API: Test virtual filesystem", "[capi][vfs]") {
     check_vfs(HDFS_TEMP_DIR);
   else {
     check_vfs(FILE_TEMP_DIR);
-    if (supports_memfs_) {
-      check_vfs(MEMFS_TEMP_DIR);
-    }
+    check_vfs(MEMFS_TEMP_DIR);
   }
 }
 
@@ -978,8 +975,6 @@ TEST_CASE_METHOD(VFSFx, "C API: Test VFS parallel I/O", "[capi][vfs]") {
     check_vfs(HDFS_TEMP_DIR);
   } else {
     check_vfs(FILE_TEMP_DIR);
-    if (supports_memfs_) {
-      check_vfs(MEMFS_TEMP_DIR);
-    }
+    check_vfs(MEMFS_TEMP_DIR);
   }
 }
