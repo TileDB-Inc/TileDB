@@ -84,10 +84,13 @@ std::string VFS::abs_path(const std::string& path) {
   // workaround for older clang (llvm 3.5) compilers (issue #828)
   std::string path_copy = path;
 #ifdef _WIN32
-  if (Win::is_win_path(path))
-    return Win::uri_from_path(Win::abs_path(path));
-  else if (URI::is_file(path))
-    return Win::uri_from_path(Win::abs_path(Win::path_from_uri(path)));
+  {
+    std::string norm_sep_path = Win::slashes_to_backslashes(path);
+    if (Win::is_win_path(norm_sep_path))
+      return Win::uri_from_path(Win::abs_path(norm_sep_path));
+    else if (URI::is_file(path))
+      return Win::uri_from_path(Win::abs_path(Win::path_from_uri(path)));
+  }
 #else
   if (URI::is_file(path))
     return Posix::abs_path(path);

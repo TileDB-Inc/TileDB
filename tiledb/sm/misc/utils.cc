@@ -443,8 +443,7 @@ std::string to_str(const void* value, Datatype type) {
 }
 
 uint64_t common_prefix_size(
-    const std::basic_string_view<char>& a,
-    const std::basic_string_view<char>& b) {
+    const std::string_view& a, const std::string_view& b) {
   auto size = std::min(a.size(), b.size());
   for (size_t i = 0; i < size; ++i) {
     if (a[i] != b[i])
