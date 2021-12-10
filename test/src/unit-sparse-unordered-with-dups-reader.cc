@@ -1133,7 +1133,9 @@ ResultTileWithBitmap<uint64_t> make_tile(uint64_t num_cells) {
   Domain domain;
   Dimension dim("d", Datatype::UINT8);
   REQUIRE(domain.add_dimension(&dim).ok());
-  ResultTileWithBitmap<uint64_t> result_tile(0, 0, &domain);
+  ArraySchema schema;
+  REQUIRE(schema.set_domain(&domain).ok());
+  ResultTileWithBitmap<uint64_t> result_tile(0, 0, &schema);
   result_tile.init_coord_tile("a", 0);
   auto tuple = result_tile.tile_tuple("a");
   REQUIRE(std::get<0>(*tuple)

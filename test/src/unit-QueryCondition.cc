@@ -704,7 +704,7 @@ void test_apply<char*>(const Datatype type, bool var_size, bool nullable) {
   REQUIRE(array_schema.set_domain(&domain).ok());
 
   // Initialize the result tile.
-  ResultTile result_tile(0, 0, &domain);
+  ResultTile result_tile(0, 0, &array_schema);
   result_tile.init_attr_tile(field_name);
 
   test_apply_tile<char*>(field_name, cells, type, &array_schema, &result_tile);
@@ -736,7 +736,7 @@ void test_apply(const Datatype type, bool var_size, bool nullable) {
   REQUIRE(array_schema.set_domain(&domain).ok());
 
   // Initialize the result tile.
-  ResultTile result_tile(0, 0, &domain);
+  ResultTile result_tile(0, 0, &array_schema);
   result_tile.init_attr_tile(field_name);
 
   test_apply_tile<T>(field_name, cells, type, &array_schema, &result_tile);
@@ -791,7 +791,7 @@ TEST_CASE(
   REQUIRE(array_schema.set_domain(&domain).ok());
 
   // Initialize the result tile.
-  ResultTile result_tile(0, 0, &domain);
+  ResultTile result_tile(0, 0, &array_schema);
   result_tile.init_attr_tile(field_name);
   ResultTile::TileTuple* const tile_tuple = result_tile.tile_tuple(field_name);
   Tile* const tile = &std::get<0>(*tile_tuple);
@@ -885,7 +885,7 @@ TEST_CASE(
   REQUIRE(array_schema.set_domain(&domain).ok());
 
   // Initialize the result tile.
-  ResultTile result_tile(0, 0, &domain);
+  ResultTile result_tile(0, 0, &array_schema);
   result_tile.init_attr_tile(field_name);
 
   ResultTile::TileTuple* const tile_tuple = result_tile.tile_tuple(field_name);
