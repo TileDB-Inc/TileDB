@@ -166,9 +166,9 @@ if(UNIX)
 endif()
 if(MSVC)
   #sledge hammer approach
-  target_compile_definitions(azure-storage-lite PRIVATE "/Wd4996")
+  target_compile_definitions(azure-storage-lite PRIVATE "/wd4996")
   #dainty approach
-#  set_source_files_properties(hash.cc PROPERTIES COMPILE_OPTIONS "/Wd4996") 
+#  set_source_files_properties(hash.cc PROPERTIES COMPILE_OPTIONS "/wd4996") 
 endif()
 
 if(BUILD_TESTS)

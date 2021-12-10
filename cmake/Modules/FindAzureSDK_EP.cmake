@@ -126,7 +126,7 @@ if (NOT AZURESDK_FOUND)
         PATCH_COMMAND
           cd ${CMAKE_SOURCE_DIR} &&
           ${GIT_EXECUTABLE} apply --ignore-whitespace -p1 --unsafe-paths --verbose --directory=${TILEDB_EP_SOURCE_DIR}/ep_azuresdk < ${TILEDB_CMAKE_INPUTS_DIR}/patches/ep_azuresdk/v0.3.0-patchset.patch &&
-          ${CMAKE_COMMAND} -E copy ${TILEDB_CMAKE_INPUTS_DIR}/patches/ep_azuresdk/v0.3.0.CMakeLists.txt.md5mitigation ${TILEDB_EP_SOURCE_DIR}/ep_azuresdk
+          ${CMAKE_COMMAND} -E copy ${TILEDB_CMAKE_INPUTS_DIR}/patches/ep_azuresdk/v0.3.0.CMakeLists.txt.md5mitigation ${TILEDB_EP_SOURCE_DIR}/ep_azuresdk/CMakeLists.txt
         LOG_DOWNLOAD TRUE
         LOG_CONFIGURE TRUE
         LOG_BUILD TRUE
@@ -153,7 +153,7 @@ if (NOT AZURESDK_FOUND)
         PATCH_COMMAND
           echo starting patching for azure &&
           ${PATCH} < ${TILEDB_CMAKE_INPUTS_DIR}/patches/ep_azuresdk/v0.3.0-patchset.patch &&
-          ${CMAKE_COMMAND} -E copy ${TILEDB_CMAKE_INPUTS_DIR}/patches/ep_azuresdk/v0.3.0.CMakeLists.txt.md5mitigation ${TILEDB_EP_SOURCE_DIR}/ep_azuresdk &&
+          ${CMAKE_COMMAND} -E copy ${TILEDB_CMAKE_INPUTS_DIR}/patches/ep_azuresdk/v0.3.0.CMakeLists.txt.md5mitigation ${TILEDB_EP_SOURCE_DIR}/ep_azuresdk/CMakeLists.txt &&
           echo done patches for azure
         LOG_DOWNLOAD TRUE
         LOG_CONFIGURE TRUE
