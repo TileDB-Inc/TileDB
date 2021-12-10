@@ -184,7 +184,7 @@ void CSparseGlobalOrderFx::update_config() {
 }
 
 void CSparseGlobalOrderFx::create_default_array_1d() {
-  int domain[] = {1, 10};
+  int domain[] = {1, 20};
   int tile_extent = 2;
   create_array(
       ctx_,
@@ -884,4 +884,92 @@ TEST_CASE_METHOD(
   CHECK(rc == TILEDB_OK);
   tiledb_array_free(&array);
   tiledb_query_free(&query);
+}
+
+TEST_CASE_METHOD(
+    CSparseGlobalOrderFx,
+    "Sparse global order reader: qc removes full tile",
+    "[sparse-global-order][qc-removes-tile]") {
+  // Create default array.
+  reset_config();
+  create_default_array_1d();
+
+  bool use_subarray = false;
+  int tile_idx = 0;
+  SECTION("- No subarray") {
+    use_subarray = false;
+    SECTION("- First tile") {
+      tile_idx = 0;
+    }
+    SECTION("- Second tile") {
+      tile_idx = 1;
+    }
+    SECTION("- Last tile") {
+      tile_idx = 2;
+    }
+  }
+  SECTION("- Subarray") {
+    use_subarray = true;
+    SECTION("- First tile") {
+      tile_idx = 0;
+    }
+    SECTION("- Second tile") {
+      tile_idx = 1;
+    }
+    SECTION("- Last tile") {
+      tile_idx = 2;
+    }
+  }
+
+  int coords_1[] = {1, 2, 3};
+  int data_1[] = {1, 2, 3};
+
+  int coords_2[] = {4, 5, 6};
+  int data_2[] = {4, 5, 6};
+
+  int coords_3[] = {12, 13, 14};
+  int data_3[] = {12, 13, 14};
+
+  uint64_t coords_size = sizeof(coords_1);
+  uint64_t data_size = sizeof(data_1);
+
+  // Create the aray so the removed tile is at the correct index.
+  switch (tile_idx) {
+    case 0:
+      write_1d_fragment(coords_3, &coords_size, data_3, &data_size);
+      write_1d_fragment(coords_1, &coords_size, data_1, &data_size);
+      write_1d_fragment(coords_2, &coords_size, data_2, &data_size);
+      break;
+
+    case 1:
+      write_1d_fragment(coords_1, &coords_size, data_1, &data_size);
+      write_1d_fragment(coords_3, &coords_size, data_3, &data_size);
+      write_1d_fragment(coords_2, &coords_size, data_2, &data_size);
+      break;
+
+    case 2:
+      write_1d_fragment(coords_1, &coords_size, data_1, &data_size);
+      write_1d_fragment(coords_2, &coords_size, data_2, &data_size);
+      write_1d_fragment(coords_3, &coords_size, data_3, &data_size);
+      break;
+  }
+
+  // Read.
+  int coords_r[6];
+  int data_r[6];
+  uint64_t coords_r_size = sizeof(coords_r);
+  uint64_t data_r_size = sizeof(data_r);
+
+  auto rc =
+      read(use_subarray, true, coords_r, &coords_r_size, data_r, &data_r_size);
+  CHECK(rc == TILEDB_OK);
+
+  // Should read two tile (6 values).
+  CHECK(24 == data_r_size);
+  CHECK(24 == coords_r_size);
+
+  int coords_c[] = {1, 2, 3, 4, 5, 6};
+  int data_c[] = {1, 2, 3, 4, 5, 6};
+  CHECK(!std::memcmp(coords_c, coords_r, coords_r_size));
+  CHECK(!std::memcmp(data_c, data_r, data_r_size));
 }
