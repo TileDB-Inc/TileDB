@@ -146,7 +146,7 @@ jobs:
           for f in $(find /cores -name 'core.*');
             do
               echo "stack trace for $f"
-              lldb -c $f --batch -o 'bt all' -o 'quit'
+              lldb -c $f --batch -o 'bt all' -o 'image list' -o 'quit'
             done;
 
       - name: 'upload core artifacts' # https://github.com/actions/upload-artifact#where-does-the-upload-go
