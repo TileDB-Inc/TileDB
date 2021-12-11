@@ -82,7 +82,7 @@ steps:
     
     ls -l /cores
     
-    echo "bump 2 for azure pipelines status page 'An unexpected error has occurred within this region of the page'"
+    echo "bump 3 for azure pipelines (results were not reported, missing evidence of run)"
     if [[ -f $(which python) ]]; then
       #echo -e "nl=\"\\\n\"\nprint('aborting...'+nl)\nimport resource as res\nprint(res.getrlimit(res.RLIMIT_CORE))\nprint(nl)\nres.setrlimit(res.RLIMIT_CORE,(res.RLIM_INFINITY,res.RLIM_INFINITY))\nprint(res.getrlimit(res.RLIMIT_CORE))\nimport sys\nsys.stdout.flush()\nsys.stderr.flush()\nimport os \nos.abort()" | python3
       #try for one
