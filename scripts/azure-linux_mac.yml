@@ -54,6 +54,10 @@ steps:
     ulimit -c unlimited     # Enable core dumps to be captured (must be in same run block)
     ulimit -c               # should output 'unlimited' now
 
+    # azure bash does not treat intermediate failure as error
+    # https://github.com/Microsoft/azure-pipelines-yaml/issues/135
+    set -xe pipefail
+
     cat > abortprog.c <<EOF
     #include <stdio.h>
     #include <stdlib.h>
@@ -72,9 +76,9 @@ steps:
     EOF
 
     gcc ./abortprog.c
+    ./a.out 9 #SIGKILL
     ./a.out
     ./a.out 6 #SIGABRT
-    ./a.out 9 #SIGKILL
     ./a.out 11 #SIGSEGV
     sudo ./a.out
     
@@ -94,7 +98,7 @@ steps:
       echo "unable to find python!"
       #exit 42
     fi
-  condition: and(false, eq(variables['Agent.OS'], 'Darwin'), startsWith(variables['imageName'], 'macOS-'))
+  condition: and(true, eq(variables['Agent.OS'], 'Darwin'), startsWith(variables['imageName'], 'macOS-'))
   displayName: 'check macOS "runner" core dumps'
 
 - bash: |
