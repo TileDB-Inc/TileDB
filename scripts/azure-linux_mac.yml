@@ -48,9 +48,7 @@ steps:
   condition: and(eq(variables['Agent.OS'], 'Darwin'), startsWith(variables['imageName'], 'macOS-'))
   displayName: 'prep macOS for "runner" core dumps'
 
-- displayName: 'check macOS "runner" core dumps'
-  condition: and(true, eq(variables['Agent.OS'], 'Darwin'), startsWith(variables['imageName'], 'macOS-'))
-  bash: |
+- bash: |
     # enable core dumps
     ulimit -c               # should output 0 if disabled
     ulimit -c unlimited     # Enable core dumps to be captured (must be in same run block)
@@ -96,6 +94,8 @@ steps:
       echo "unable to find python!"
       #exit 42
     fi
+  condition: and(true, eq(variables['Agent.OS'], 'Darwin'), startsWith(variables['imageName'], 'macOS-'))
+  displayName: 'check macOS "runner" core dumps'
 
 - bash: |
     # enable core dumps
@@ -259,9 +259,7 @@ steps:
     #  displayName: 'Build examples, PNG test, and benchmarks (build-only)'
   displayName: 'Build and test libtiledb'
 
-- displayName: 'Print stack trace'
-  condition: eq(variables['Agent.OS'], 'Darwin')) # only run this job if the build step failed
-  bash: |
+- bash: |
     ls -la /cores
     mkdir -p $BUILD_REPOSITORY_LOCALPATH/build/core
     # cp rather than 'mv' in case some core's might lack permissions to allow cp.
@@ -278,6 +276,8 @@ steps:
     if [[ cntfiles -ne 0 ]] ; then
       exit 17 # in effort to be sure archiving is triggered
     fi
+  condition: eq(variables['Agent.OS'], 'Darwin')) # only run this job if the build step failed
+  displayName: 'Print stack trace'
 
 - task: ArchiveFiles@2
   inputs:
