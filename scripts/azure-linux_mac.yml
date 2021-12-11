@@ -264,6 +264,7 @@ steps:
   displayName: 'Build and test libtiledb'
 
 - bash: |
+    set -x
     ls -la /cores
     mkdir -p $BUILD_REPOSITORY_LOCALPATH/build/core
     mv /cores/core.* $BUILD_REPOSITORY_LOCALPATH/build/core/
