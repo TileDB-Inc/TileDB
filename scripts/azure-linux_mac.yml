@@ -270,7 +270,7 @@ steps:
     for f in $(find $BUILD_REPOSITORY_LOCALPATH/build/core -name 'core.*');
       do
         echo "stack trace for $f"
-        lldb -c $f --batch -o 'bt all' -o 'quit'
+        lldb -c $f --batch -o 'bt all' -o 'image list' -o 'quit'
         (( cntfiles = cntfiles + 1 ))
       done;
     if [[ cntfiles -ne 0 ]] ; then
