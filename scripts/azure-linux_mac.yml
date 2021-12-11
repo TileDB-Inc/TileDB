@@ -276,7 +276,7 @@ steps:
     if [[ cntfiles -ne 0 ]] ; then
       exit 17 # in effort to be sure archiving is triggered
     fi
-  condition: (eq(variables['Agent.OS'], 'Darwin')) # only run this job if the build step failed
+  condition: eq(variables['Agent.OS'], 'Darwin') # only run this job if the build step failed
   displayName: 'Print stack trace'
 
 - task: ArchiveFiles@2
