@@ -274,7 +274,8 @@ steps:
         (( cntfiles = cntfiles + 1 ))
       done;
     if [[ cntfiles -ne 0 ]] ; then
-      exit 17 # in effort to be sure archiving is triggered
+      #exit 17 # in effort to be sure archiving is triggered
+      export TDB_COREFILE_CNT=$cntfiles
     fi
   condition: eq(variables['Agent.OS'], 'Darwin') # only run this job if the build step failed
   displayName: 'Print stack trace'
@@ -288,7 +289,8 @@ steps:
     archiveFile: '$(Build.ArtifactStagingDirectory)/$(ARTIFACT_OS)-build-dir.tar.gz'
     replaceExistingArchive: true
     verbose: true
-  condition: and(failed(), eq(variables['Agent.OS'], 'Darwin')) # only run this job if the build step failed
+  #condition: and(failed(), eq(variables['Agent.OS'], 'Darwin')) # only run this job if the build step failed
+  condition: and(ne(variables['TDB_COREFILE_CNT'],'0'), eq(variables['Agent.OS'], 'Darwin')) # only run this job if the build step failed
 
 - task: PublishBuildArtifacts@1
   inputs:
