@@ -267,9 +267,9 @@ steps:
     set -x
     ls -la /cores
     mkdir -p $BUILD_REPOSITORY_LOCALPATH/build/core
-    mv /cores/core.* $BUILD_REPOSITORY_LOCALPATH/build/core/
+    mv -v /cores/core.* $BUILD_REPOSITORY_LOCALPATH/build/core/
     # cp rather than 'mv' in case some core's might lack permissions to allow cp.
-    #cp /cores/core.* $BUILD_REPOSITORY_LOCALPATH/build/core/
+    #cp -v /cores/core.* $BUILD_REPOSITORY_LOCALPATH/build/core/
     ls -la $BUILD_REPOSITORY_LOCALPATH/build/core
     #lldb -c $BUILD_REPOSITORY_LOCALPATH/build/core/core.1 --batch -o 'bt all' -o 'quit'
     cntfiles=0
