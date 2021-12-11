@@ -879,11 +879,23 @@ void Dimension::relevant_ranges(
   const auto d2_0 = d2[0];
   const auto d2_1 = d2[1];
 
-  for (uint64_t r = 0; r < rsize; r++) {
+  auto it = std::lower_bound(ranges.begin(), ranges.end(), d2_0, [&](const Range& a, const T value){
+    return ((const T*)a.start())[1] < value;
+  });
+
+  if (it == ranges.end())
+    return;
+
+  uint64_t start_range = std::distance(ranges.begin(), it);
+
+  for (uint64_t r = start_range; r < rsize; r++) {
     const auto d1 = (const T*)ranges[r].start();
 
     if ((d1[0] <= d2_1 && d1[1] >= d2_0))
       relevant_ranges.emplace_back(r);
+
+    if (d1[0] > d2_1)
+      break;
   }
 }
 

@@ -885,10 +885,27 @@ void ResultTile::compute_results_count_sparse(
         if (result_count[pos]) {
           T c = coords[pos];
 
+          auto it = std::lower_bound(range_indexes.begin(), range_indexes.end(), c, [&](const uint64_t& index, const T& value){
+            return ((const T*)ranges[index].start())[1] < value;
+          });
+
+          if (it == range_indexes.end()) {
+            result_count[pos] = 0;
+            continue;
+          }
+
+          uint64_t start_range = std::distance(range_indexes.begin(), it);
+          for (uint64_t i = 0; i < start_range; i++) {
+            counts[i] = false;
+          }
+
           // Iterate through all ranges and compute the count for this dim.
-          for (uint64_t i = 0; i < range_indexes.size(); i++) {
+          for (uint64_t i = start_range; i < range_indexes.size(); i++) {
             const auto& range = (const T*)ranges[range_indexes[i]].start();
             counts[i] = c >= range[0] && c <= range[1];
+
+            if(range[0] > c)
+              break;
           }
 
           // Sum to get the true count.

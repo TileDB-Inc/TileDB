@@ -1946,6 +1946,93 @@ void Subarray::add_or_coalesce_range(
   }
 }
 
+template <typename T>
+Status Subarray::sort_ranges_for_dim(const uint64_t& dim_idx) {
+  auto& ranges = ranges_[dim_idx];
+  std::sort(ranges.begin(), ranges.end(), [&](const Range& a, const Range& b){
+   const T* a_data = static_cast<const T*>(a.start());
+   const T* b_data = static_cast<const T*>(b.start());
+    return a_data[0] < b_data[0] || (a_data[0] == b_data[0] && a_data[1] < b_data[1]);
+  });
+  return Status::Ok();
+}
+
+template<>
+Status Subarray::sort_ranges_for_dim<char>(const uint64_t& dim_idx) {
+  auto& ranges = ranges_[dim_idx];
+  std::sort(ranges.begin(), ranges.end(), [&](const Range& a, const Range& b){
+    return a.start_str() < b.start_str() || (a.start_str() == b.start_str() && a.end_str() < b.end_str());
+  });
+  return Status::Ok();
+}
+
+Status Subarray::sort_ranges_for_dim(const uint64_t& dim_idx) {
+  const Datatype& datatype = array_->array_schema_latest()->dimension(dim_idx)->type();
+  std::cout << "sorting" << std::endl;
+    switch (datatype) {
+      case Datatype::INT8:
+        return sort_ranges_for_dim<int8_t>(dim_idx);
+      case Datatype::UINT8:
+        return sort_ranges_for_dim<uint8_t>(dim_idx);
+      case Datatype::INT16:
+        return sort_ranges_for_dim<int16_t>(dim_idx);
+      case Datatype::UINT16:
+        return sort_ranges_for_dim<uint16_t>(dim_idx);
+      case Datatype::INT32:
+        return sort_ranges_for_dim<int32_t>(dim_idx);
+      case Datatype::UINT32:
+        return sort_ranges_for_dim<uint32_t>(dim_idx);
+      case Datatype::INT64:
+        return sort_ranges_for_dim<int64_t>(dim_idx);
+      case Datatype::UINT64:
+        return sort_ranges_for_dim<uint64_t>(dim_idx);
+      case Datatype::FLOAT32:
+        return sort_ranges_for_dim<float>(dim_idx);
+      case Datatype::FLOAT64:
+        return sort_ranges_for_dim<double>(dim_idx);
+      case Datatype::STRING_ASCII:
+        return sort_ranges_for_dim<char>(dim_idx);
+      case Datatype::CHAR:
+      case Datatype::STRING_UTF8:
+      case Datatype::STRING_UTF16:
+      case Datatype::STRING_UTF32:
+      case Datatype::STRING_UCS2:
+      case Datatype::STRING_UCS4:
+      case Datatype::ANY:
+        return LOG_STATUS(Status::SubarrayError("Invalid datatype " + datatype_str(datatype) + " for sorting"));
+      case Datatype::DATETIME_YEAR:
+      case Datatype::DATETIME_MONTH:
+      case Datatype::DATETIME_WEEK:
+      case Datatype::DATETIME_DAY:
+      case Datatype::DATETIME_HR:
+      case Datatype::DATETIME_MIN:
+      case Datatype::DATETIME_SEC:
+      case Datatype::DATETIME_MS:
+      case Datatype::DATETIME_US:
+      case Datatype::DATETIME_NS:
+      case Datatype::DATETIME_PS:
+      case Datatype::DATETIME_FS:
+      case Datatype::DATETIME_AS:
+      case Datatype::TIME_HR:
+      case Datatype::TIME_MIN:
+      case Datatype::TIME_SEC:
+      case Datatype::TIME_MS:
+      case Datatype::TIME_US:
+      case Datatype::TIME_NS:
+      case Datatype::TIME_PS:
+      case Datatype::TIME_FS:
+      case Datatype::TIME_AS:
+        return sort_ranges_for_dim<int64_t>(dim_idx);
+    }
+  return Status::Ok();
+}
+
+Status Subarray::sort_ranges(ThreadPool* const compute_tp) {
+  return parallel_for(compute_tp, 0, array_->array_schema_latest()->dim_num(), [&](uint64_t dim_idx){
+    return sort_ranges_for_dim(dim_idx);
+  });
+}
+
 /* ****************************** */
 /*          PRIVATE METHODS       */
 /* ****************************** */
