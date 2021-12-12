@@ -1010,7 +1010,7 @@ template <class BitmapType>
 Status SparseUnorderedWithDupsReader<BitmapType>::compute_fixed_results_to_copy(
     std::vector<ResultTile*>* result_tiles,
     std::vector<uint64_t>* cell_offsets) {
-  auto timer_se = stats_->start_timer("compute_initial_copy_bound");
+  auto timer_se = stats_->start_timer("compute_fixed_results_to_copy");
 
   // First try to limit the maximum number of cells we copy using the size
   // of the output buffers for fixed sized attributes. Later we will validate
@@ -1194,7 +1194,10 @@ Status SparseUnorderedWithDupsReader<BitmapType>::compute_var_size_offsets(
 
       auto last_tile_num_cells = last_tile->cell_num();
       (*new_result_tiles_size)++;
-      cell_offsets->at(*new_result_tiles_size) = 0;
+      cell_offsets->at(*new_result_tiles_size) =
+          *new_result_tiles_size > 0 ?
+              cell_offsets->at(*new_result_tiles_size - 1) :
+              0;
 
       const bool has_bmp = last_tile->bitmap_.size() != 0;
       for (uint64_t c = 0; c < last_tile_num_cells - 1; c++) {
@@ -1501,7 +1504,7 @@ Status SparseUnorderedWithDupsReader<BitmapType>::end_iteration() {
   }
 
   logger_->debug(
-      "Done with iteration, num result tiles {1}", result_tiles_[0].size());
+      "Done with iteration, num result tiles {0}", result_tiles_[0].size());
 
   const auto uint64_t_max = std::numeric_limits<uint64_t>::max();
   array_memory_tracker_->set_budget(uint64_t_max);
