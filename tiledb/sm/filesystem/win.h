@@ -213,6 +213,15 @@ class Win {
   static std::string path_from_uri(const std::string& uri);
 
   /**
+   * Converts any '/' to '\\' (single-backslash) and returns the
+   * possibly modified result.
+   *
+   * @param path The path string possibly containing '/' separators.
+   * @status A possibly modified string with any '/' changed to '\\' (.
+   */
+  static std::string slashes_to_backslashes(std::string pathsegments);
+
+  /**
    * Returns true if the given string is a Windows path.
    *
    * @param path The path to check.
