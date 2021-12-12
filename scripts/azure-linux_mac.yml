@@ -98,7 +98,8 @@ steps:
       echo "unable to find python!"
       #exit 42
     fi
-  condition: and(false, eq(variables['Agent.OS'], 'Darwin'), startsWith(variables['imageName'], 'macOS-'))
+  #condition: and(false, eq(variables['Agent.OS'], 'Darwin'), startsWith(variables['imageName'], 'macOS-'))
+  condition: and(true, eq(variables['Agent.OS'], 'Darwin'), startsWith(variables['imageName'], 'macOS-'))
   displayName: 'check macOS "runner" core dumps'
 
 - bash: |
@@ -215,8 +216,8 @@ steps:
 
     make -j4
     #TBD: removeus vvvvvvvvvvvvv
-    make -j4 -C tiledb tiledb_unit
-    ./tiledb/test/tiledb_unit -d yes --crash
+    #make -j4 -C tiledb tiledb_unit
+    #./tiledb/test/tiledb_unit -d yes --crash
     #^^^^^^^^^^^^^^^^
     make examples -j4
     make -C tiledb install
