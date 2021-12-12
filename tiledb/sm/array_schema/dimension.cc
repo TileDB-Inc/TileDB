@@ -879,9 +879,10 @@ void Dimension::relevant_ranges(
   const auto d2_0 = d2[0];
   const auto d2_1 = d2[1];
 
-  auto it = std::lower_bound(ranges.begin(), ranges.end(), d2_0, [&](const Range& a, const T value){
-    return ((const T*)a.start())[1] < value;
-  });
+  auto it = std::lower_bound(
+      ranges.begin(), ranges.end(), d2_0, [&](const Range& a, const T value) {
+        return ((const T*)a.start())[1] < value;
+      });
 
   if (it == ranges.end())
     return;

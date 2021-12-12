@@ -378,9 +378,6 @@ Status SparseIndexReaderBase::compute_tile_bitmaps(
     RETURN_NOT_OK_ELSE(status, logger_->status(status));
   }
 
-  // TODO: Move this somewhere higher in the call stack
-  RETURN_NOT_OK(subarray_.sort_ranges(storage_manager_->compute_tp()));
-
   // Process all tiles/cells in parallel.
   auto status = parallel_for_2d(
       storage_manager_->compute_tp(),

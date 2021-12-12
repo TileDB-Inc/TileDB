@@ -870,8 +870,9 @@ void ResultTile::compute_results_count_sparse(
   auto stores_zipped_coords = result_tile->stores_zipped_coords();
   auto dim_num = result_tile->domain()->dim_num();
 
-  // Vector to get the status of each cell.
-  std::vector<bool> counts(range_indexes.size());
+  // Vector to get the status of each cell
+  const uint64_t range_indexes_size = range_indexes.size();
+  std::vector<bool> counts(range_indexes_size);
 
   // Handle separate coordinate tiles.
   if (!stores_zipped_coords) {
@@ -883,11 +884,15 @@ void ResultTile::compute_results_count_sparse(
       for (uint64_t pos = min_cell; pos < max_cell; ++pos) {
         // We have a previous count.
         if (result_count[pos]) {
-          T c = coords[pos];
+          const T& c = coords[pos];
 
-          auto it = std::lower_bound(range_indexes.begin(), range_indexes.end(), c, [&](const uint64_t& index, const T& value){
-            return ((const T*)ranges[index].start())[1] < value;
-          });
+          auto it = std::lower_bound(
+              range_indexes.begin(),
+              range_indexes.end(),
+              c,
+              [&](const uint64_t& index, const T& value) {
+                return ((const T*)ranges[index].start())[1] < value;
+              });
 
           if (it == range_indexes.end()) {
             result_count[pos] = 0;
@@ -900,12 +905,17 @@ void ResultTile::compute_results_count_sparse(
           }
 
           // Iterate through all ranges and compute the count for this dim.
-          for (uint64_t i = start_range; i < range_indexes.size(); i++) {
+          uint64_t i = 0;
+          for (i = start_range; i < range_indexes_size; i++) {
             const auto& range = (const T*)ranges[range_indexes[i]].start();
             counts[i] = c >= range[0] && c <= range[1];
 
-            if(range[0] > c)
+            if (range[0] > c)
               break;
+          }
+
+          for (; i < range_indexes_size; i++) {
+            counts[i] = false;
           }
 
           // Sum to get the true count.

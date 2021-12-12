@@ -926,9 +926,11 @@ class Subarray {
   std::vector<std::vector<uint64_t>> original_range_idx_;
 
   template <typename T>
-  Status sort_ranges_for_dim(const uint64_t& dim_idx);
+  Status sort_ranges_for_dim(
+      ThreadPool* const compute_tp, const uint64_t& dim_idx);
 
-  Status sort_ranges_for_dim(const uint64_t& dim_idx);
+  Status sort_ranges_for_dim(
+      ThreadPool* const compute_tp, const uint64_t& dim_idx);
 
   Status sort_ranges(ThreadPool* const compute_tp);
 
