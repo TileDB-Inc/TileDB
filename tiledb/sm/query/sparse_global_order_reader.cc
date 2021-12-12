@@ -532,7 +532,7 @@ Status SparseGlobalOrderReader::create_result_tiles(bool* tiles_found) {
   uint64_t num_rt = 0;
   for (unsigned int f = 0; f < fragment_num; f++) {
     num_rt += result_tiles_[f].size();
-    done_adding_result_tiles &= all_tiles_loaded_[f];
+    done_adding_result_tiles &= all_tiles_loaded_[f] != 0;
   }
 
   logger_->debug("Done adding result tiles, num result tiles {0}", num_rt);
