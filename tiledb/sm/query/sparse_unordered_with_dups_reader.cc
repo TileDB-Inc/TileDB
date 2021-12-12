@@ -381,7 +381,7 @@ Status SparseUnorderedWithDupsReader<BitmapType>::create_result_tiles() {
   // Check if we are done adding result tiles.
   bool done_adding_result_tiles = true;
   for (unsigned int f = 0; f < fragment_num; f++) {
-    done_adding_result_tiles &= all_tiles_loaded_[f];
+    done_adding_result_tiles &= all_tiles_loaded_[f] != 0;
   }
 
   logger_->debug(
