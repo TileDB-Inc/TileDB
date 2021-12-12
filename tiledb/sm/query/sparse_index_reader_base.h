@@ -192,7 +192,7 @@ class SparseIndexReaderBase : public ReaderBase {
   ReadState read_state_;
 
   /** Have we loaded all thiles for this fragment. */
-  std::vector<bool> all_tiles_loaded_;
+  std::vector<uint8_t> all_tiles_loaded_;
 
   /** Dimension names. */
   std::vector<std::string> dim_names_;
