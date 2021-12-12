@@ -453,14 +453,18 @@ Status SparseIndexReaderBase::compute_tile_bitmaps(
               cell_num);
 
           // Compute the bitmap for the cells.
-          RETURN_NOT_OK(rt->compute_results_count_sparse(
-              dim_idx,
-              ranges_for_dim,
-              relevant_ranges,
-              rt->bitmap_,
-              cell_order,
-              min,
-              max));
+          {
+            auto timer_compute_results_count_sparse =
+                stats_->start_timer("compute_results_count_sparse");
+            RETURN_NOT_OK(rt->compute_results_count_sparse(
+                dim_idx,
+                ranges_for_dim,
+                relevant_ranges,
+                rt->bitmap_,
+                cell_order,
+                min,
+                max));
+          }
         }
 
         // Only compute bitmap cells here if we are processing a single cell

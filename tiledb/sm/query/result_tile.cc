@@ -900,22 +900,33 @@ void ResultTile::compute_results_count_sparse(
           }
 
           uint64_t start_range = std::distance(range_indexes.begin(), it);
-          for (uint64_t i = 0; i < start_range; i++) {
+          for (uint64_t i = 0; i < start_range; ++i) {
             counts[i] = false;
           }
+
+          auto it2 = std::lower_bound(
+              it,
+              range_indexes.end(),
+              c,
+              [&](const uint64_t& index, const T& value) {
+                return ((const T*)ranges[index].start())[0] < value;
+              });
+          // If the upper bound isn't the end we need to add +1 to the index
+          uint64_t offset = 0;
+          if (it2 != range_indexes.end())
+            offset = 1;
+          uint64_t end_range = std::distance(it, it2) + start_range + offset;
 
           // Iterate through all ranges and compute the count for this dim.
-          uint64_t i = 0;
-          for (i = start_range; i < range_indexes_size; i++) {
-            const auto& range = (const T*)ranges[range_indexes[i]].start();
-            counts[i] = c >= range[0] && c <= range[1];
-
-            if (range[0] > c)
-              break;
+          // Use 2 for loops to facilitate vectorization
+          for (uint64_t j = start_range; j < end_range; ++j) {
+            const auto& range = (const T*)ranges[range_indexes[j]].start();
+            counts[j] = c >= range[0] && c <= range[1];
           }
 
-          for (; i < range_indexes_size; i++) {
-            counts[i] = false;
+          // Loop through rest of range to set to false.
+          for (uint64_t k = end_range; k < range_indexes_size; ++k) {
+            counts[k] = false;
           }
 
           // Sum to get the true count.

@@ -925,13 +925,6 @@ class Subarray {
   /** Stores a vector of 1D ranges per dimension. */
   std::vector<std::vector<uint64_t>> original_range_idx_;
 
-  template <typename T>
-  Status sort_ranges_for_dim(
-      ThreadPool* const compute_tp, const uint64_t& dim_idx);
-
-  Status sort_ranges_for_dim(
-      ThreadPool* const compute_tp, const uint64_t& dim_idx);
-
   Status sort_ranges(ThreadPool* const compute_tp);
 
  private:
@@ -1089,6 +1082,12 @@ class Subarray {
 
   /** State of specific Config item needed from multiple locations. */
   bool err_on_range_oob_ = true;
+
+  /** Indicate if ranges are sorted. */
+  bool ranges_sorted_;
+
+  /** Mutext to protect sorting ranges. */
+  std::mutex ranges_sort_mtx_;
 
   /* ********************************* */
   /*           PRIVATE METHODS         */
@@ -1255,6 +1254,27 @@ class Subarray {
    */
   template <class T>
   void add_or_coalesce_range(uint32_t dim_idx, const Range& range);
+
+  /**
+   *
+   * Sort ranges for a particular dimension
+   * @tparam T dimension type
+   * @param compute_tp threadpool for parallel_sort
+   * @param dim_idx dimension index to sort
+   * @return Status
+   */
+  template <typename T>
+  Status sort_ranges_for_dim(
+      ThreadPool* const compute_tp, const uint64_t& dim_idx);
+
+  /**
+   * Sort ranges for a particular dimension
+   * @param compute_tp threadpool for parallel_sort
+   * @param dim_idx dimension index to sort
+   * @return Status
+   */
+  Status sort_ranges_for_dim(
+      ThreadPool* const compute_tp, const uint64_t& dim_idx);
 };
 
 }  // namespace sm
