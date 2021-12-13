@@ -635,7 +635,7 @@ Status SparseIndexReaderBase::resize_output_buffers(uint64_t cells_copied) {
         // Offsets buffer is trivial.
         *(it.second.buffer_size_) =
             cells_copied * constants::cell_var_offset_size +
-            offsets_extra_element_;
+            offsets_extra_element_ * offsets_bytesize();
 
         // Since the buffer is shrunk, there is an offset for the next element
         // loaded, use it.
