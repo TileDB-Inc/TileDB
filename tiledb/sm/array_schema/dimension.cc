@@ -124,8 +124,10 @@ Dimension::Dimension(const Dimension* dim) {
   assert(dim != nullptr);
 
   cell_val_num_ = dim->cell_val_num_;
+  domain_ = dim->domain();
   filters_ = dim->filters_;
   name_ = dim->name();
+  tile_extent_ = dim->tile_extent();
   type_ = dim->type_;
 
   // Set fuctions
@@ -134,6 +136,7 @@ Dimension::Dimension(const Dimension* dim) {
   check_range_func_ = dim->check_range_func_;
   coincides_with_tiles_func_ = dim->coincides_with_tiles_func_;
   compute_mbr_func_ = dim->compute_mbr_func_;
+  compute_mbr_var_func_ = dim->compute_mbr_var_func_;
   crop_range_func_ = dim->crop_range_func_;
   domain_range_func_ = dim->domain_range_func_;
   expand_range_v_func_ = dim->expand_range_v_func_;
@@ -151,9 +154,6 @@ Dimension::Dimension(const Dimension* dim) {
   map_to_uint64_3_func_ = dim->map_to_uint64_3_func_;
   map_from_uint64_func_ = dim->map_from_uint64_func_;
   smaller_than_func_ = dim->smaller_than_func_;
-
-  domain_ = dim->domain();
-  tile_extent_ = dim->tile_extent();
 }
 
 /* ********************************* */

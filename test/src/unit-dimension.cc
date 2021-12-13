@@ -43,6 +43,11 @@ using namespace tiledb::common;
 using namespace tiledb::sm;
 using namespace tiledb::test;
 
+template <class T, int n>
+inline T& dim_buffer_offset(void* p) {
+  return *static_cast<T*>(static_cast<void*>(static_cast<char*>(p) + n));
+}
+
 TEST_CASE(
     "Dimension: Test map_to_uint64, integers",
     "[dimension][map_to_uint64][int]") {
@@ -747,4 +752,56 @@ TEST_CASE(
   typedef int32_t T;
   auto max = std::numeric_limits<T>::max();
   basic_verify_overlap_ratio<T>(0, 1, -2, max - 2);
+}
+
+TEST_CASE("Dimension: Test deserialize,int32", "[dimension][deserialize]") {
+  char serialized_buffer[40];
+  char* p = &serialized_buffer[0];
+  uint32_t dimension_name_size = 2;
+  std::string dimension_name = "d1";
+  dim_buffer_offset<uint32_t, 0>(p) = dimension_name_size;
+  std::memcpy(
+      &dim_buffer_offset<char, 4>(p),
+      dimension_name.c_str(),
+      dimension_name_size);
+
+  uint8_t datatype = (uint8_t)Datatype::INT32;
+  dim_buffer_offset<uint8_t, 6>(p) = datatype;
+
+  uint32_t cell_val_num =
+      (datatype_is_string(Datatype::INT32)) ? constants::var_num : 1;
+  dim_buffer_offset<uint32_t, 7>(p) = cell_val_num;
+
+  uint32_t max_chunk_size = constants::max_tile_chunk_size;
+  dim_buffer_offset<uint32_t, 11>(p) = max_chunk_size;
+
+  uint32_t num_filters = 0;
+  dim_buffer_offset<uint32_t, 15>(p) = num_filters;
+
+  // Write domain and tile extent
+  uint64_t domain_size = 2 * datatype_size(Datatype::INT32);
+  dim_buffer_offset<uint64_t, 19>(p) = domain_size;
+  dim_buffer_offset<int32_t, 27>(p) = 1;
+  dim_buffer_offset<int32_t, 31>(p) = 100;
+
+  uint8_t null_tile_extent = 0;
+  dim_buffer_offset<uint8_t, 35>(p) = null_tile_extent;
+
+  int32_t tile_extent = 16;
+  dim_buffer_offset<int32_t, 36>(p) = tile_extent;
+
+  ConstBuffer constbuffer(&serialized_buffer, sizeof(serialized_buffer));
+  auto&& [st_dim, dim]{
+      Dimension::deserialize(&constbuffer, 10, Datatype::INT32)};
+
+  REQUIRE(st_dim.ok());
+
+  // Check name
+  CHECK(dim.value()->name() == dimension_name);
+
+  // Check type
+  CHECK(dim.value()->type() == Datatype::INT32);
+
+  CHECK(dim.value()->cell_val_num() == 1);
+  CHECK(dim.value()->var_size() == false);
 }
