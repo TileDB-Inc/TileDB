@@ -247,7 +247,6 @@ steps:
     replaceExistingArchive: true
     verbose: true
   condition: and(failed(), eq(variables['Agent.OS'], 'Darwin')) # only run this job if the build step failed
-  #condition: and(ne(variables['TDB_COREFILE_CNT'],'0'), eq(variables['Agent.OS'], 'Darwin')) # only run this job if the build step failed
 
 - task: PublishBuildArtifacts@1
   inputs:
