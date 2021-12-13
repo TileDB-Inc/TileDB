@@ -1954,7 +1954,7 @@ Status Subarray::sort_ranges(ThreadPool* const compute_tp) {
     return Status::Ok();
 
   auto timer = stats_->start_timer("sort_ranges");
-  return parallel_for(
+  auto st = parallel_for(
       compute_tp,
       0,
       array_->array_schema_latest()->dim_num(),
@@ -1962,7 +1962,10 @@ Status Subarray::sort_ranges(ThreadPool* const compute_tp) {
         return sort_ranges_for_dim(compute_tp, dim_idx);
       });
 
+  RETURN_NOT_OK(st);
   ranges_sorted_ = true;
+
+  return Status::Ok();
 }
 
 /* ****************************** */
