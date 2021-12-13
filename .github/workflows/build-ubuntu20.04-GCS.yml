@@ -129,7 +129,7 @@ jobs:
               # lldb ref'd here located by doing trial in runner with find / -name "*lldb*" and sifting through the results.
               elif [[ -f /usr/lib/llvm-11/bin/lldb ]]; then
                 dbgr="/usr/lib/llvm-11/bin/lldb"
-                sudo $dbgr -core $f --batch  -o 'bt all' -o 'quit'
+                sudo $dbgr -core $f --batch  -o 'bt all' -o 'image list' -o 'quit'
               else
                 echo "debugger not found in previously seen location!"
                 exit 1
