@@ -97,6 +97,7 @@ Dimension::Dimension(const Dimension* dim) {
   check_range_func_ = dim->check_range_func_;
   coincides_with_tiles_func_ = dim->coincides_with_tiles_func_;
   compute_mbr_func_ = dim->compute_mbr_func_;
+  compute_mbr_var_func_ = dim->compute_mbr_var_func_;
   crop_range_func_ = dim->crop_range_func_;
   domain_range_func_ = dim->domain_range_func_;
   expand_range_v_func_ = dim->expand_range_v_func_;
