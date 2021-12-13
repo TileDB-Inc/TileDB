@@ -254,6 +254,10 @@ class Subarray {
   Status add_range(
       unsigned dim_idx, const void* start, const void* end, const void* stride);
 
+  /** WIP */
+  Status set_ranges_bulk(
+      unsigned dim_idx, const void* start, uint64_t count);
+
   /**
    * Adds a variable-sized range to the (read/write) query on the input
    * dimension by index, in the form of (start, end).

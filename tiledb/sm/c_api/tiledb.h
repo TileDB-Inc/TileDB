@@ -4436,6 +4436,14 @@ TILEDB_DEPRECATED_EXPORT int32_t tiledb_query_add_range(
     const void* end,
     const void* stride);
 
+/** WIP */
+TILEDB_DEPRECATED_EXPORT int32_t tiledb_query_set_ranges(
+    tiledb_ctx_t* ctx,
+    tiledb_query_t* query,
+    uint32_t dim_idx,
+    const void* start,
+    uint64_t count);
+
 /**
  * Adds a 1D range along a subarray dimension name, which is in the form
  * (start, end, stride). The datatype of the range components
@@ -5234,6 +5242,14 @@ TILEDB_EXPORT int32_t tiledb_subarray_add_range(
     const void* start,
     const void* end,
     const void* stride);
+
+/** WIP */
+TILEDB_EXPORT int32_t tiledb_subarray_set_ranges(
+    tiledb_ctx_t* ctx,
+    tiledb_subarray_t* subarray,
+    uint32_t dim_idx,
+    const void* start,
+    uint64_t count);
 
 /**
  * Adds a 1D range along a subarray dimension name, which is in the form
