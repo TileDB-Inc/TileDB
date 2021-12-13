@@ -217,7 +217,7 @@ steps:
     make -j4
     #TBD removeus vvvvvvvvvvvvvvvvvv
     make -j4 -C tiledb tiledb_unit
-    ./tiledb/test/tiledb_unit -d yes
+    ./tiledb/test/tiledb_unit -d yes --crash
     #^^^^^^^^^^^^^^^^^^^^^^
     make examples -j4
     make -C tiledb install
