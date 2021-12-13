@@ -889,7 +889,7 @@ TEST_CASE_METHOD(
 TEST_CASE_METHOD(
     CSparseGlobalOrderFx,
     "Sparse global order reader: qc removes full tile",
-    "[sparse-global-order][qc-removes-tile][!mayfail]") {
+    "[sparse-global-order][qc-removes-tile]") {
   // Create default array.
   reset_config();
   create_default_array_1d();
