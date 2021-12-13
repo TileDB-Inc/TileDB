@@ -211,7 +211,6 @@ steps:
       kill -9 $GCS_PID
     fi
 
-    #  displayName: 'Build examples, PNG test, and benchmarks (build-only)'
   displayName: 'Build and test libtiledb'
 
 - bash: |
@@ -220,9 +219,8 @@ steps:
     mkdir -p $BUILD_REPOSITORY_LOCALPATH/build/core
     mv -v /cores/core.* $BUILD_REPOSITORY_LOCALPATH/build/core/
     # cp rather than 'mv' in case some core's might lack permissions to allow cp.
-    #cp -v /cores/core.* $BUILD_REPOSITORY_LOCALPATH/build/core/
+    # but cp turns out to be potentially too 'space expensive', staying with 'mv'.
     ls -la $BUILD_REPOSITORY_LOCALPATH/build/core
-    #lldb -c $BUILD_REPOSITORY_LOCALPATH/build/core/core.1 --batch -o 'bt all' -o 'quit'
     cntfiles=0
     for f in $(find $BUILD_REPOSITORY_LOCALPATH/build/core -name 'core.*');
       do
@@ -231,7 +229,6 @@ steps:
         (( cntfiles = cntfiles + 1 ))
       done;
     if [[ cntfiles -ne 0 ]] ; then
-      #exit 17 # in effort to be sure archiving is triggered
       export TDB_COREFILE_CNT=$cntfiles
     fi
   condition: and(failed(), eq(variables['Agent.OS'], 'Darwin')) # only run this job if the build step failed
