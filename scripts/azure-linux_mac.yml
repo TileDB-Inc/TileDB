@@ -215,6 +215,10 @@ steps:
     $BUILD_REPOSITORY_LOCALPATH/bootstrap $bootstrap_args
 
     make -j4
+    #TBD removeus vvvvvvvvvvvvvvvvvv
+    make -j4 -C tiledb tiledb_unit
+    ./tiledb/test/tiledb_unit -d yes
+    #^^^^^^^^^^^^^^^^^^^^^^
     make examples -j4
     make -C tiledb install
 
@@ -284,7 +288,7 @@ steps:
       #exit 17 # in effort to be sure archiving is triggered
       export TDB_COREFILE_CNT=$cntfiles
     fi
-  condition: eq(variables['Agent.OS'], 'Darwin') # only run this job if the build step failed
+  condition: and(failed(), eq(variables['Agent.OS'], 'Darwin')) # only run this job if the build step failed
   displayName: 'Print stack trace'
 
 - task: ArchiveFiles@2
@@ -296,8 +300,8 @@ steps:
     archiveFile: '$(Build.ArtifactStagingDirectory)/$(ARTIFACT_OS)-build-dir.tar.gz'
     replaceExistingArchive: true
     verbose: true
-  #condition: and(failed(), eq(variables['Agent.OS'], 'Darwin')) # only run this job if the build step failed
-  condition: and(ne(variables['TDB_COREFILE_CNT'],'0'), eq(variables['Agent.OS'], 'Darwin')) # only run this job if the build step failed
+  condition: and(failed(), eq(variables['Agent.OS'], 'Darwin')) # only run this job if the build step failed
+  #condition: and(ne(variables['TDB_COREFILE_CNT'],'0'), eq(variables['Agent.OS'], 'Darwin')) # only run this job if the build step failed
 
 - task: PublishBuildArtifacts@1
   inputs:
