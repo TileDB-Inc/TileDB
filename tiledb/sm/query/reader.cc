@@ -588,7 +588,6 @@ Status Reader::compute_sparse_result_tiles(
   auto timer_se = stats_->start_timer("compute_sparse_result_tiles");
 
   // For easy reference
-  auto domain = array_schema_->domain();
   auto& partitioner = read_state_.partitioner_;
   const auto& subarray = partitioner.current();
   auto range_num = subarray.range_num();
@@ -616,7 +615,8 @@ Status Reader::compute_sparse_result_tiles(
           auto pair = std::pair<unsigned, uint64_t>(f, t);
           // Add tile only if it does not already exist
           if (result_tile_map->find(pair) == result_tile_map->end()) {
-            result_tiles->emplace_back(f, t, domain);
+            result_tiles->emplace_back(
+                f, t, fragment_metadata_[f]->array_schema());
             (*result_tile_map)[pair] = result_tiles->size() - 1;
           }
           // Always check range for multiple fragments
@@ -634,7 +634,8 @@ Status Reader::compute_sparse_result_tiles(
         auto pair = std::pair<unsigned, uint64_t>(f, t);
         // Add tile only if it does not already exist
         if (result_tile_map->find(pair) == result_tile_map->end()) {
-          result_tiles->emplace_back(f, t, domain);
+          result_tiles->emplace_back(
+              f, t, fragment_metadata_[f]->array_schema());
           (*result_tile_map)[pair] = result_tiles->size() - 1;
         }
         // Always check range for multiple fragments
