@@ -59,8 +59,8 @@ class ResultTileWithBitmap : public ResultTile {
   /*     CONSTRUCTORS & DESTRUCTORS    */
   /* ********************************* */
   ResultTileWithBitmap(
-      unsigned frag_idx, uint64_t tile_idx, const Domain* domain)
-      : ResultTile(frag_idx, tile_idx, domain)
+      unsigned frag_idx, uint64_t tile_idx, const ArraySchema* array_schema)
+      : ResultTile(frag_idx, tile_idx, array_schema)
       , bitmap_result_num_(std::numeric_limits<uint64_t>::max())
       , qc_processed_(false) {
   }
@@ -269,10 +269,7 @@ class SparseIndexReaderBase : public ReaderBase {
 
   /** Allocate a tile bitmap if required for this tile. */
   template <class BitmapType>
-  Status allocate_tile_bitmap(
-      const unsigned dim_num,
-      const Domain* domain,
-      ResultTileWithBitmap<BitmapType>* rt);
+  Status allocate_tile_bitmap(ResultTileWithBitmap<BitmapType>* rt);
 
   /** Compute tile bitmaps. */
   template <class BitmapType>

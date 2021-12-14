@@ -40,6 +40,7 @@
 #include "tiledb/sm/misc/parallel_functions.h"
 #include "tiledb/sm/misc/utils.h"
 #include "tiledb/sm/stats/global_stats.h"
+#include "tiledb/sm/tile/tile.h"
 
 #include <iostream>
 #include <list>
@@ -1607,7 +1608,7 @@ Status VFS::read_ahead_impl(
 
 Status VFS::read_all(
     const URI& uri,
-    const std::vector<std::tuple<uint64_t, void*, uint64_t>>& regions,
+    const std::vector<std::tuple<uint64_t, Tile*, uint64_t, uint64_t>>& regions,
     ThreadPool* thread_pool,
     std::vector<ThreadPool::Task>* tasks,
     const bool use_read_ahead) {
@@ -1639,7 +1640,7 @@ Status VFS::read_all(
           for (uint64_t i = 0; i < batch_copy.regions.size(); i++) {
             const auto& region = batch_copy.regions[i];
             uint64_t offset = std::get<0>(region);
-            void* dest = std::get<1>(region);
+            void* dest = std::get<1>(region)->filtered_buffer()->data();
             uint64_t nbytes = std::get<2>(region);
             std::memcpy(dest, buffer.data(offset - batch_copy.offset), nbytes);
           }
@@ -1654,7 +1655,7 @@ Status VFS::read_all(
 }
 
 Status VFS::compute_read_batches(
-    const std::vector<std::tuple<uint64_t, void*, uint64_t>>& regions,
+    const std::vector<std::tuple<uint64_t, Tile*, uint64_t, uint64_t>>& regions,
     std::vector<BatchedRead>* batches) const {
   // Get config params
   bool found;
@@ -1668,14 +1669,14 @@ Status VFS::compute_read_batches(
   assert(found);
 
   // Ensure the regions are sorted on offset.
-  std::vector<std::tuple<uint64_t, void*, uint64_t>> sorted_regions(
+  std::vector<std::tuple<uint64_t, Tile*, uint64_t, uint64_t>> sorted_regions(
       regions.begin(), regions.end());
   parallel_sort(
       compute_tp_,
       sorted_regions.begin(),
       sorted_regions.end(),
-      [](const std::tuple<uint64_t, void*, uint64_t>& a,
-         const std::tuple<uint64_t, void*, uint64_t>& b) {
+      [](const std::tuple<uint64_t, Tile*, uint64_t, uint64_t>& a,
+         const std::tuple<uint64_t, Tile*, uint64_t, uint64_t>& b) {
         return std::get<0>(a) < std::get<0>(b);
       });
 
