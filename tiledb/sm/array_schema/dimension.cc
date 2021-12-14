@@ -854,7 +854,7 @@ void Dimension::relevant_ranges<char>(
     std::vector<uint64_t>& relevant_ranges) {
   const auto& r2_start = mbr.start_str();
   const auto& r2_end = mbr.end_str();
-  // Find lower bound
+  // Find lower bound to start comparisons at
   auto it = std::lower_bound(
       ranges.begin(),
       ranges.end(),
@@ -863,12 +863,15 @@ void Dimension::relevant_ranges<char>(
         return a.end_str() < value;
       });
 
+  // If we have no ranges just exit early
   if (it == ranges.end())
     return;
 
+  // Set start index
   const uint64_t start_range = std::distance(ranges.begin(), it);
 
-  // Find upper bound
+  // Find upper bound to end comparisons. Finding this early allows avoiding the
+  // conditional exit in the for loop below
   auto it2 = std::lower_bound(
       it,
       ranges.end(),
@@ -903,8 +906,6 @@ void Dimension::relevant_ranges(
     const NDRange& ranges,
     const Range& mbr,
     std::vector<uint64_t>& relevant_ranges) {
-  //  uint64_t rsize = ranges.size();
-
   const auto d2 = (const T*)mbr.start();
   const auto d2_0 = d2[0];
   const auto d2_1 = d2[1];
@@ -920,7 +921,8 @@ void Dimension::relevant_ranges(
 
   const uint64_t start_range = std::distance(ranges.begin(), it);
 
-  // Find upper bound
+  // Find upper bound to end comparisons. Finding this early allows avoiding the
+  // conditional exit in the for loop below
   auto it2 = std::lower_bound(
       it, ranges.end(), d2_1, [&](const Range& a, const T value) {
         return ((const T*)a.start())[0] < value;

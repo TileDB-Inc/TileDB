@@ -886,6 +886,7 @@ void ResultTile::compute_results_count_sparse(
         if (result_count[pos]) {
           const T& c = coords[pos];
 
+          // Find lower bound to start comparison at
           auto it = std::lower_bound(
               range_indexes.begin(),
               range_indexes.end(),
@@ -894,16 +895,20 @@ void ResultTile::compute_results_count_sparse(
                 return ((const T*)ranges[index].start())[1] < value;
               });
 
+          // If we didn't find a range we can set count to 0 and skip to next
           if (it == range_indexes.end()) {
             result_count[pos] = 0;
             continue;
           }
 
+          // Set all counts for existing ranges to 0
           uint64_t start_range = std::distance(range_indexes.begin(), it);
           for (uint64_t i = 0; i < start_range; ++i) {
             counts[i] = false;
           }
 
+          // Find max range so we have an end condition
+          // This avoids the conditional exit in the for loop below
           auto it2 = std::lower_bound(
               it,
               range_indexes.end(),
