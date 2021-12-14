@@ -259,8 +259,8 @@ class QueryCondition {
   template <typename T, typename BitmapType>
   Status apply_sparse(
       const ArraySchema* const array_schema,
-      ResultTile* result_tile,
-      BitmapType* result_bitmap,
+      ResultTile& result_tile,
+      std::vector<BitmapType>& result_bitmap,
       uint64_t* cell_count);
 
   /**
@@ -292,6 +292,17 @@ class QueryCondition {
   /* ********************************* */
   /*         PRIVATE DATATYPES         */
   /* ********************************* */
+
+  /**
+   * Performs a binary comparison between two primitive types.
+   * We use a `struct` here because it can support partial
+   * template specialization while a standard function does not.
+   *
+   * Note that this comparator includes if statements that will
+   * prevent vectorization.
+   */
+  template <typename T, QueryConditionOp Cmp>
+  struct BinaryCmpNullChecks;
 
   /**
    * Performs a binary comparison between two primitive types.
@@ -475,18 +486,14 @@ class QueryCondition {
    * @param clause The clause to apply.
    * @param result_tile The result tile to get the cells from.
    * @param var_size The attribute is var sized or not.
-   * @param nullable The attribute is nullable or not.
    * @param result_bitmap The result bitmap.
-   * @param cell_count The cell count after condition is applied.
    */
   template <typename T, QueryConditionOp Op, typename BitmapType>
   void apply_clause_sparse(
       const QueryCondition::Clause& clause,
-      ResultTile* result_tile,
+      ResultTile& result_tile,
       const bool var_size,
-      const bool nullable,
-      BitmapType* result_bitmap,
-      uint64_t* cell_count) const;
+      std::vector<BitmapType>& result_bitmap) const;
 
   /**
    * Applies a clause on a sparse result tile.
@@ -494,18 +501,14 @@ class QueryCondition {
    * @param clause The clause to apply.
    * @param result_tile The result tile to get the cells from.
    * @param var_size The attribute is var sized or not.
-   * @param nullable The attribute is nullable or not.
    * @param result_bitmap The result bitmap.
-   * @param cell_count The cell count after condition is applied.
    */
   template <typename T, typename BitmapType>
   Status apply_clause_sparse(
       const Clause& clause,
-      ResultTile* result_tile,
+      ResultTile& result_tile,
       const bool var_size,
-      const bool nullable,
-      BitmapType* result_bitmap,
-      uint64_t* cell_count) const;
+      std::vector<BitmapType>& result_bitmap) const;
 
   /**
    * Applies a clause to filter result cells from the input
@@ -515,15 +518,13 @@ class QueryCondition {
    * @param array_schema The current array schema.
    * @param result_tile The result tile to get the cells from.
    * @param result_bitmap The result bitmap.
-   * @param cell_count The cell count after condition is applied.
    */
   template <typename BitmapType>
   Status apply_clause_sparse(
       const QueryCondition::Clause& clause,
       const ArraySchema* const array_schema,
-      ResultTile* result_tile,
-      BitmapType* result_bitmap,
-      uint64_t* cell_count) const;
+      ResultTile& result_tile,
+      std::vector<BitmapType>& result_bitmap) const;
 };
 
 }  // namespace sm
