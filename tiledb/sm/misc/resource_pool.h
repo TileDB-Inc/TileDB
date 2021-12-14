@@ -34,6 +34,8 @@
 #ifndef RESOURCE_POOL_H
 #define RESOURCE_POOL_H
 
+#include <vector>
+
 namespace tiledb {
 namespace sm {
 

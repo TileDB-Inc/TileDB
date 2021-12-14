@@ -344,19 +344,6 @@ bool is_uint(const std::string& str) {
   return true;
 }
 
-bool starts_with(const std::string& value, const std::string& prefix) {
-  if (prefix.size() > value.size())
-    return false;
-  return std::equal(prefix.begin(), prefix.end(), value.begin());
-}
-
-bool ends_with(const std::string& value, const std::string& suffix) {
-  if (suffix.size() > value.size())
-    return false;
-  return value.compare(value.size() - suffix.size(), suffix.size(), suffix) ==
-         0;
-}
-
 template <class T>
 std::string to_str(const T& value) {
   std::stringstream ss;
@@ -452,7 +439,8 @@ std::string to_str(const void* value, Datatype type) {
   return ss.str();
 }
 
-uint64_t common_prefix_size(const std::string& a, const std::string& b) {
+uint64_t common_prefix_size(
+    const std::string_view& a, const std::string_view& b) {
   auto size = std::min(a.size(), b.size());
   for (size_t i = 0; i < size; ++i) {
     if (a[i] != b[i])

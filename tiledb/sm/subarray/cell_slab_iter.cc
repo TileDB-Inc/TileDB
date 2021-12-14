@@ -62,7 +62,7 @@ CellSlabIter<T>::CellSlabIter(const Subarray* subarray)
     : subarray_(subarray) {
   end_ = true;
   if (subarray != nullptr) {
-    auto array_schema = subarray->array()->array_schema();
+    auto array_schema = subarray->array()->array_schema_latest();
     auto dim_num = array_schema->dim_num();
     auto coord_size = array_schema->dimension(0)->coord_size();
     aux_tile_coords_.resize(dim_num);
@@ -245,7 +245,7 @@ template <class T>
 Status CellSlabIter<T>::init_ranges() {
   // For easy reference
   auto dim_num = subarray_->dim_num();
-  auto array_schema = subarray_->array()->array_schema();
+  auto array_schema = subarray_->array()->array_schema_latest();
   auto array_domain = array_schema->domain()->domain();
   uint64_t range_num;
   T tile_extent, dim_domain_start;
@@ -281,7 +281,7 @@ Status CellSlabIter<T>::sanity_check() const {
 
   // Check type
   bool error;
-  auto array_schema = subarray_->array()->array_schema();
+  auto array_schema = subarray_->array()->array_schema_latest();
   auto type = array_schema->domain()->dimension(0)->type();
   switch (type) {
     case Datatype::INT8:

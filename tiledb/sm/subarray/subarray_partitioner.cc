@@ -159,7 +159,7 @@ Status SubarrayPartitioner::get_result_budget(
         "Cannot get result budget; Invalid budget input"));
 
   // For easy reference
-  auto array_schema = subarray_.array()->array_schema();
+  auto array_schema = subarray_.array()->array_schema_latest();
   bool is_dim = array_schema->is_dim(name);
   bool is_attr = array_schema->is_attr(name);
 
@@ -214,7 +214,7 @@ Status SubarrayPartitioner::get_result_budget(
         "must be var-sized"));
 
   // For easy reference
-  auto array_schema = subarray_.array()->array_schema();
+  auto array_schema = subarray_.array()->array_schema_latest();
   bool is_dim = array_schema->is_dim(name);
   bool is_attr = array_schema->is_attr(name);
 
@@ -264,7 +264,7 @@ Status SubarrayPartitioner::get_result_budget_nullable(
         "Cannot get result budget; Invalid budget input"));
 
   // For easy reference
-  auto array_schema = subarray_.array()->array_schema();
+  auto array_schema = subarray_.array()->array_schema_latest();
   bool is_attr = array_schema->is_attr(name);
 
   // Check if attribute exists
@@ -317,7 +317,7 @@ Status SubarrayPartitioner::get_result_budget_nullable(
         "Cannot get result budget; Invalid budget input"));
 
   // For easy reference
-  auto array_schema = subarray_.array()->array_schema();
+  auto array_schema = subarray_.array()->array_schema_latest();
   bool is_attr = array_schema->is_attr(name);
 
   // Check if attribute exists
@@ -478,7 +478,7 @@ Status SubarrayPartitioner::set_result_budget(
         "Cannot set result budget; Attribute/Dimension name cannot be null"));
 
   // For easy reference
-  auto array_schema = subarray_.array()->array_schema();
+  auto array_schema = subarray_.array()->array_schema_latest();
   bool is_dim = array_schema->is_dim(name);
   bool is_attr = array_schema->is_attr(name);
 
@@ -520,7 +520,7 @@ Status SubarrayPartitioner::set_result_budget(
         "must be var-sized"));
 
   // For easy reference
-  auto array_schema = subarray_.array()->array_schema();
+  auto array_schema = subarray_.array()->array_schema_latest();
   bool is_dim = array_schema->is_dim(name);
   bool is_attr = array_schema->is_attr(name);
 
@@ -556,7 +556,7 @@ Status SubarrayPartitioner::set_result_budget_nullable(
         "Cannot set result budget; Attribute name cannot be null"));
 
   // For easy reference
-  auto array_schema = subarray_.array()->array_schema();
+  auto array_schema = subarray_.array()->array_schema_latest();
   bool is_attr = array_schema->is_attr(name);
 
   // Check if attribute exists
@@ -595,7 +595,7 @@ Status SubarrayPartitioner::set_result_budget_nullable(
         "Cannot set result budget; Attribute name cannot be null"));
 
   // For easy reference
-  auto array_schema = subarray_.array()->array_schema();
+  auto array_schema = subarray_.array()->array_schema_latest();
   bool is_attr = array_schema->is_attr(name);
 
   // Check if attribute exists
@@ -731,7 +731,7 @@ Status SubarrayPartitioner::calibrate_current_start_end(bool* must_split_slab) {
   }
 
   auto layout = subarray_.layout();
-  auto cell_order = subarray_.array()->array_schema()->cell_order();
+  auto cell_order = subarray_.array()->array_schema_latest()->cell_order();
   cell_order = (cell_order == Layout::HILBERT) ? Layout::ROW_MAJOR : cell_order;
   layout = (layout == Layout::UNORDERED) ? cell_order : layout;
   assert(layout == Layout::ROW_MAJOR || layout == Layout::COL_MAJOR);
@@ -939,13 +939,13 @@ void SubarrayPartitioner::compute_splitting_value_on_tiles(
   *unsplittable = true;
 
   // Inapplicable to Hilbert cell order
-  if (subarray_.array()->array_schema()->cell_order() == Layout::HILBERT)
+  if (subarray_.array()->array_schema_latest()->cell_order() == Layout::HILBERT)
     return;
 
   // For easy reference
-  auto array_schema = subarray_.array()->array_schema();
-  auto dim_num = subarray_.array()->array_schema()->dim_num();
-  auto layout = subarray_.array()->array_schema()->tile_order();
+  auto array_schema = subarray_.array()->array_schema_latest();
+  auto dim_num = subarray_.array()->array_schema_latest()->dim_num();
+  auto layout = subarray_.array()->array_schema_latest()->tile_order();
   *splitting_dim = UINT32_MAX;
 
   std::vector<unsigned> dims;
@@ -997,7 +997,7 @@ void SubarrayPartitioner::compute_splitting_value_single_range(
   }
 
   // For easy reference
-  auto array_schema = subarray_.array()->array_schema();
+  auto array_schema = subarray_.array()->array_schema_latest();
   auto dim_num = array_schema->dim_num();
   auto cell_order = array_schema->cell_order();
   assert(!range.is_unary());
@@ -1057,7 +1057,7 @@ void SubarrayPartitioner::compute_splitting_value_single_range_hilbert(
     bool* normal_order,
     bool* unsplittable) {
   // For easy reference
-  auto array_schema = subarray_.array()->array_schema();
+  auto array_schema = subarray_.array()->array_schema_latest();
   auto dim_num = array_schema->dim_num();
   Hilbert h(dim_num);
 
@@ -1118,7 +1118,7 @@ Status SubarrayPartitioner::compute_splitting_value_multi_range(
 
   // Multi-range partition
   auto layout = subarray_.layout();
-  auto array_schema = subarray_.array()->array_schema();
+  auto array_schema = subarray_.array()->array_schema_latest();
   auto dim_num = array_schema->dim_num();
   auto cell_order = (array_schema->cell_order() == Layout::HILBERT) ?
                         Layout::ROW_MAJOR :
@@ -1164,7 +1164,7 @@ Status SubarrayPartitioner::compute_splitting_value_multi_range(
 }
 
 bool SubarrayPartitioner::must_split(Subarray* partition) {
-  auto array_schema = subarray_.array()->array_schema();
+  auto array_schema = subarray_.array()->array_schema_latest();
   bool must_split = false;
 
   uint64_t size_fixed;
@@ -1423,7 +1423,7 @@ void SubarrayPartitioner::compute_range_uint64(
     std::vector<std::array<uint64_t, 2>>* range_uint64,
     bool* unsplittable) const {
   // Initializations
-  auto array_schema = subarray_.array()->array_schema();
+  auto array_schema = subarray_.array()->array_schema_latest();
   auto dim_num = array_schema->dim_num();
   const Range* r;
   *unsplittable = true;
@@ -1468,7 +1468,7 @@ void SubarrayPartitioner::compute_splitting_dim_hilbert(
     const std::vector<std::array<uint64_t, 2>>& range_uint64,
     uint32_t* splitting_dim) const {
   // For easy reference
-  auto array_schema = subarray_.array()->array_schema();
+  auto array_schema = subarray_.array()->array_schema_latest();
   auto dim_num = array_schema->dim_num();
 
   // Prepare candidate splitting dimensions
@@ -1542,7 +1542,7 @@ void SubarrayPartitioner::compute_splitting_value_hilbert(
     const std::array<uint64_t, 2>& range_uint64,
     uint32_t splitting_dim,
     ByteVecValue* splitting_value) const {
-  auto array_schema = subarray_.array()->array_schema();
+  auto array_schema = subarray_.array()->array_schema_latest();
   auto dim_num = array_schema->dim_num();
   uint64_t splitting_value_uint64 = range_uint64[0];  // Splitting value
   if (range_uint64[0] + 1 != range_uint64[1]) {

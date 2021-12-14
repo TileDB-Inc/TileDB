@@ -59,10 +59,51 @@ class ResultTileWithBitmap : public ResultTile {
   /*     CONSTRUCTORS & DESTRUCTORS    */
   /* ********************************* */
   ResultTileWithBitmap(
-      unsigned frag_idx, uint64_t tile_idx, const Domain* domain)
-      : ResultTile(frag_idx, tile_idx, domain)
-      , bitmap_num_cells(std::numeric_limits<uint64_t>::max())
-      , qc_processed(false) {
+      unsigned frag_idx, uint64_t tile_idx, const ArraySchema* array_schema)
+      : ResultTile(frag_idx, tile_idx, array_schema)
+      , bitmap_result_num_(std::numeric_limits<uint64_t>::max())
+      , qc_processed_(false) {
+  }
+
+  /* ********************************* */
+  /*          PUBLIC METHODS           */
+  /* ********************************* */
+
+  /**
+   * Returns the number of cells that are before a certain cell index in the
+   * bitmap.
+   */
+  uint64_t result_num_between_pos(uint64_t start_pos, uint64_t end_pos) const {
+    if (bitmap_.size() == 0)
+      return end_pos - start_pos;
+
+    uint64_t result_num = 0;
+    for (uint64_t c = start_pos; c < end_pos; c++)
+      result_num += bitmap_[c];
+
+    return result_num;
+  }
+
+  /**
+   * Returns cell index from a number of cells inside of the bitmap.
+   */
+  uint64_t pos_with_given_result_sum(uint64_t result_num) const {
+    assert(
+        bitmap_result_num_ != std::numeric_limits<uint64_t>::max() &&
+        result_num != 0);
+    if (bitmap_.size() == 0)
+      return result_num - 1;
+
+    uint64_t sum = 0;
+    for (uint64_t c = 0; c < bitmap_.size(); c++) {
+      sum += bitmap_[c];
+      if (sum == result_num) {
+        return c;
+      }
+    }
+
+    assert(false);
+    return std::numeric_limits<uint64_t>::max();
   }
 
   /* ********************************* */
@@ -70,13 +111,13 @@ class ResultTileWithBitmap : public ResultTile {
   /* ********************************* */
 
   /** Bitmap for this tile. */
-  std::vector<BitmapType> bitmap;
+  std::vector<BitmapType> bitmap_;
 
   /** Number of cells in this bitmap. */
-  uint64_t bitmap_num_cells;
+  uint64_t bitmap_result_num_;
 
   /** Was the query condition processed for this tile. */
-  bool qc_processed;
+  bool qc_processed_;
 };
 
 /**
@@ -151,7 +192,7 @@ class SparseIndexReaderBase : public ReaderBase {
   ReadState read_state_;
 
   /** Have we loaded all thiles for this fragment. */
-  std::vector<bool> all_tiles_loaded_;
+  std::vector<uint8_t> all_tiles_loaded_;
 
   /** Dimension names. */
   std::vector<std::string> dim_names_;
@@ -228,10 +269,7 @@ class SparseIndexReaderBase : public ReaderBase {
 
   /** Allocate a tile bitmap if required for this tile. */
   template <class BitmapType>
-  Status allocate_tile_bitmap(
-      const unsigned dim_num,
-      const Domain* domain,
-      ResultTileWithBitmap<BitmapType>* rt);
+  Status allocate_tile_bitmap(ResultTileWithBitmap<BitmapType>* rt);
 
   /** Compute tile bitmaps. */
   template <class BitmapType>

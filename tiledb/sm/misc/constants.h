@@ -59,9 +59,6 @@ extern const double est_result_size_amplification;
 /** Default fanout for RTrees. */
 extern const unsigned rtree_fanout;
 
-/** The object filelock name. */
-extern const std::string filelock_name;
-
 /** The array schema file name. */
 extern const std::string array_schema_filename;
 

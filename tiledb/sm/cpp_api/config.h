@@ -49,10 +49,13 @@ class Config;  // Forward decl for impl classes
 
 namespace impl {
 
-class ConfigIter : public std::iterator<
-                       std::forward_iterator_tag,
-                       const std::pair<std::string, std::string>> {
+class ConfigIter {
  public:
+  using iterator_category = std::forward_iterator_tag;
+  using value_type = const std::pair<std::string, std::string>;
+  using difference_type = std::ptrdiff_t;
+  using pointer = value_type*;
+  using reference = value_type&;
   /* ********************************* */
   /*     CONSTRUCTORS & DESTRUCTORS    */
   /* ********************************* */
@@ -469,10 +472,6 @@ class Config {
    *    The maximum number of parallel operations on objects with `file:///`
    *    URIs. <br>
    *    **Default**: `sm.io_concurrency_level`
-   * - `vfs.file.enable_filelocks` <br>
-   *    If set to `false`, file locking operations are no-ops for `file:///`
-   *    URIs in VFS. <br>
-   *    **Default**: `true`
    * - `vfs.azure.storage_account_name` <br>
    *    Set the Azure Storage Account name. <br>
    *    **Default**: ""

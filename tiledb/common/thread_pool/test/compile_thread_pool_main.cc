@@ -1,11 +1,11 @@
 /**
- * @file   openssl_state.h
+ * @file compile_thread_pool_main.cc
  *
  * @section LICENSE
  *
  * The MIT License
  *
- * @copyright Copyright (c) 2018-2021 TileDB, Inc.
+ * @copyright Copyright (c) 2021 TileDB, Inc.
  *
  * Permission is hereby granted, free of charge, to any person obtaining a copy
  * of this software and associated documentation files (the "Software"), to deal
@@ -24,32 +24,11 @@
  * LIABILITY, WHETHER IN AN ACTION OF CONTRACT, TORT OR OTHERWISE, ARISING FROM,
  * OUT OF OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN
  * THE SOFTWARE.
- *
- * @section DESCRIPTION
- *
- This file declares the OpenSSL state, if OpenSSL is present.
  */
 
-#ifndef TILEDB_OPENSSL_STATE_H
-#define TILEDB_OPENSSL_STATE_H
+#include "../thread_pool.h"
 
-#include "tiledb/common/status.h"
-
-using namespace tiledb::common;
-
-namespace tiledb {
-namespace sm {
-namespace global_state {
-
-/**
- * Initializes any required state for the OpenSSL library.
- *
- * @return Status
- */
-Status init_openssl();
-
-}  // namespace global_state
-}  // namespace sm
-}  // namespace tiledb
-
-#endif
+int main() {
+  (void)sizeof(tiledb::common::ThreadPool);
+  return 0;
+}

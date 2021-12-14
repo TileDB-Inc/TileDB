@@ -34,6 +34,7 @@
 
 #include "tiledb/sm/filesystem/posix.h"
 #include "tiledb/common/logger.h"
+#include "tiledb/common/stdx_string.h"
 #include "tiledb/common/thread_pool.h"
 #include "tiledb/sm/misc/constants.h"
 #include "tiledb/sm/misc/utils.h"
@@ -251,41 +252,6 @@ Status Posix::file_size(const std::string& path, uint64_t* size) const {
   *size = (uint64_t)st.st_size;
 
   close(fd);
-  return Status::Ok();
-}
-
-Status Posix::filelock_lock(
-    const std::string& filename, filelock_t* fd, bool shared) const {
-  // Prepare the flock struct
-  struct flock fl;
-  memset(&fl, 0, sizeof(struct flock));
-  if (shared)
-    fl.l_type = F_RDLCK;
-  else
-    fl.l_type = F_WRLCK;
-  fl.l_whence = SEEK_SET;
-  fl.l_start = 0;
-  fl.l_len = 0;
-  fl.l_pid = getpid();
-
-  // Open the file
-  *fd = ::open(filename.c_str(), shared ? O_RDONLY : O_WRONLY);
-  if (*fd == -1) {
-    return LOG_STATUS(Status::IOError(
-        "Cannot open filelock '" + filename + "'; " + strerror(errno)));
-  }
-  // Acquire the lock
-  if (fcntl(*fd, F_SETLKW, &fl) == -1) {
-    return LOG_STATUS(Status::IOError(
-        "Cannot lock filelock '" + filename + "'; " + strerror(errno)));
-  }
-  return Status::Ok();
-}
-
-Status Posix::filelock_unlock(filelock_t fd) const {
-  if (::close(fd) == -1)
-    return LOG_STATUS(Status::IOError(
-        std::string("Cannot unlock filelock: ") + strerror(errno)));
   return Status::Ok();
 }
 
