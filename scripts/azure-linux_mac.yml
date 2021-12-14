@@ -76,12 +76,12 @@ steps:
     }
     EOF
 
-    gcc ./abortprog.c
-    ./a.out
-    ./a.out 6 #SIGABRT
-    ./a.out 9 #SIGKILL
-    ./a.out 11 #SIGSEGV
-    sudo ./a.out
+    gcc ./abortprog.c -o abortprog.exe
+    ./abortprog.exe
+    ./abortprog.exe 6 #SIGABRT
+    ./abortprog.exe 9 #SIGKILL
+    ./abortprog.exe 11 #SIGSEGV
+    sudo ./abortprog.exe
     
     ls -l /cores
     
