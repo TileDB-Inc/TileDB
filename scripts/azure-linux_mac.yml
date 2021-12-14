@@ -49,6 +49,7 @@ steps:
   displayName: 'prep macOS for "runner" core dumps'
 
 - bash: |
+    set -x
     # enable core dumps
     ulimit -c               # should output 0 if disabled
     ulimit -c unlimited     # Enable core dumps to be captured (must be in same run block)
@@ -56,7 +57,7 @@ steps:
 
     # azure bash does not treat intermediate failure as error
     # https://github.com/Microsoft/azure-pipelines-yaml/issues/135
-    #set -xe pipefail
+    set -xe pipefail
 
     cat > abortprog.c <<EOF
     #include <stdio.h>
