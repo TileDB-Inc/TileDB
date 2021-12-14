@@ -78,7 +78,6 @@ TEST_CASE("Buffer: Test resource pool", "[resource-pool]") {
 
 TEST_CASE("Buffer: Test blocking resource pool", "[resource-pool]") {
   std::thread t1;
-  auto blocked = true;
 
   BlockingResourcePool<int> pool(3);
 
@@ -95,7 +94,6 @@ TEST_CASE("Buffer: Test blocking resource pool", "[resource-pool]") {
     // Request a resource when pool is full, the thread should block.
     t1 = std::thread([&] {
       ResourceGuard r4(pool);
-      blocked = false;
       r4.get() = 10;
     });
 
@@ -107,15 +105,6 @@ TEST_CASE("Buffer: Test blocking resource pool", "[resource-pool]") {
     // take r3 resource out of scope to release it
   }
 
-  // wait for thread to get unblocked
-  for (int i = 0; (i < 10) && blocked; i++) {
-    std::this_thread::sleep_for(std::chrono::milliseconds(1));
-  }
-
-  if (blocked) {
-    FAIL("Failing test, thread took too long to get unblocked");
-  }
-
   t1.join();
 
   ResourceGuard r4(pool);
@@ -124,4 +113,63 @@ TEST_CASE("Buffer: Test blocking resource pool", "[resource-pool]") {
   REQUIRE(r2.get() == 8);
   // check the old resource is gone, and one of the new ones is there
   REQUIRE(r4.get() == 10);
+}
+
+TEST_CASE(
+    "Buffer: Test blocking resource pool possible deadlock",
+    "[resource-pool]") {
+  std::thread t1, t2;
+
+  BlockingResourcePool<int> pool(3);
+
+  ResourceGuard r1(pool);
+  r1.get() = 7;
+
+  {
+    ResourceGuard r2(pool);
+    r2.get() = 8;
+
+    {
+      // Get another resouce to reach maximum pool capacity
+      ResourceGuard r3(pool);
+      r3.get() = 9;
+
+      // Request a resource when pool is full, the thread should block.
+      t1 = std::thread([&] {
+        ResourceGuard r4(pool);
+        r4.get() = 10;
+        // wait so that resource is not immediately released
+        std::this_thread::sleep_for(std::chrono::milliseconds(1));
+      });
+
+      t2 = std::thread([&] {
+        ResourceGuard r5(pool);
+        r5.get() = 11;
+        // wait so that resource is not immediately released
+        std::this_thread::sleep_for(std::chrono::milliseconds(1));
+      });
+
+      // Validate we can get access to the first 3 resources.
+      REQUIRE(r1.get() == 7);
+      REQUIRE(r2.get() == 8);
+      REQUIRE(r3.get() == 9);
+
+      // wait before releasing so that threads request for a resource and block
+      std::this_thread::sleep_for(std::chrono::milliseconds(1));
+
+      // take r3 resource out of scope to release it
+    }
+    // take r2 resource out of scope to release it
+  }
+
+  t1.join();
+  t2.join();
+
+  ResourceGuard r4(pool);
+  ResourceGuard r5(pool);
+
+  REQUIRE(r1.get() == 7);
+  REQUIRE((r4.get() == 11 || r4.get() == 10));
+  auto other_thread_value = (r4.get() == 11) ? 10 : 11;
+  REQUIRE(r5.get() == other_thread_value);
 }

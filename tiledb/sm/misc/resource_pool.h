@@ -34,7 +34,9 @@
 #ifndef RESOURCE_POOL_H
 #define RESOURCE_POOL_H
 
+#include <condition_variable>
 #include <vector>
+
 #include "tiledb/common/common.h"
 
 using namespace tiledb::common;
@@ -151,38 +153,58 @@ class BlockingResourcePool {
   BlockingResourcePool(unsigned int n)
       : resources_(n)
       , unused_(n)
-      , unused_idx_(n - 1) {
+      , unused_idx_(n - 1)
+      , num_blocked_threads_(0) {
     for (unsigned int i = 0; i < n; i++)
       unused_[i] = i;
   }
 
   /** Take a resource from the pool. */
   resource_handle take() {
-    std::unique_lock<std::mutex> lk1(m_, std::defer_lock);
-    std::unique_lock<std::mutex> lk2(exhaustion_mtx_, std::defer_lock);
-    std::lock(lk1, lk2);
-    if (unused_idx_ == -1) {
-      // resource exhaustion: block until available again
-      exhaustion_cv_.wait(lk2, [this]() { return unused_idx_ != -1; });
+    if (resources_exhausted()) {
+      // block until available again
+      std::unique_lock<std::mutex> e_lck(exhaustion_mtx_);
+      num_blocked_threads_++;
+      exhaustion_cv_.wait(e_lck, [this]() { return !resources_exhausted(); });
+      num_blocked_threads_--;
     }
-    return ResourceHandle(*this, unused_[unused_idx_--]);
+    return add_resource();
   }
 
  private:
   /** Release a resource from the pool. */
   void release(unsigned int n) {
-    std::unique_lock<std::mutex> lk1(m_, std::defer_lock);
-    std::unique_lock<std::mutex> lk2(exhaustion_mtx_, std::defer_lock);
-    std::lock(lk1, lk2);
-    unused_[++unused_idx_] = n;
-    if (unused_idx_ == 0) {
+    remove_resource(n);
+    if (blocked_threads())
       exhaustion_cv_.notify_one();
-    }
   }
 
   /** Access a resource from the internal vector. */
   T& at(unsigned int n) {
     return resources_.at(n);
+  }
+
+  /** Check if resource pool is full */
+  inline bool resources_exhausted() {
+    return (unused_idx_ == -1);
+  }
+
+  /** Check if there is any blocked thread */
+  inline bool blocked_threads() {
+    std::unique_lock<std::mutex> e_lck(exhaustion_mtx_);
+    return (num_blocked_threads_ > 0);
+  }
+
+  /** Remove a resource from the pool */
+  inline void remove_resource(unsigned int n) {
+    std::lock_guard m_lck(m_);
+    unused_[++unused_idx_] = n;
+  }
+
+  /** Add a resource to the pool */
+  inline resource_handle add_resource() {
+    std::lock_guard m_lck(m_);
+    return ResourceHandle(*this, unused_[unused_idx_--]);
   }
 
   /** Vector of resources. */
@@ -194,14 +216,18 @@ class BlockingResourcePool {
   /** Index of the last valid resource in the unused vector. */
   int unused_idx_;
 
-  /** Mutex protecting unused_ and unused_idx.*/
+  /** Mutex protecting unused_, unused_idx_. */
   std::mutex m_;
 
-  /** Mutex protecting exhaustion_cv_ condition variable. */
-  std::mutex exhaustion_mtx_;
+  /** Number of threads blocked waiting for resource availability. */
+  int num_blocked_threads_;
 
   /** For signal-and-waiting on resource availability. */
   std::condition_variable exhaustion_cv_;
+
+  /** Mutex protecting exhaustion_cv_ condition variable and
+   * num_blocked_threads_. */
+  std::mutex exhaustion_mtx_;
 
   friend class ResourceHandle<T, tiledb::sm::BlockingResourcePool>;
 };
