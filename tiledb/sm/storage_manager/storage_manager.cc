@@ -1491,6 +1491,9 @@ Status StorageManager::get_fragment_info(
           array_type == ArrayType::SPARSE ? timestamp_start : 0,
           timestamp_end);
 
+  (void)array_schemas_opt;
+  (void)array_schema_opt;  // -Wno-unused GCC 7.3
+
   if (!st.ok())
     return st;
 

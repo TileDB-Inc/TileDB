@@ -39,6 +39,7 @@
 #include <cassert>
 #include <iostream>
 #include <list>
+#include <numeric>
 
 using namespace tiledb::common;
 
@@ -50,12 +51,17 @@ namespace sm {
 /* ****************************** */
 
 ResultTile::ResultTile(
-    unsigned frag_idx, uint64_t tile_idx, const Domain* domain)
-    : domain_(domain)
-    , frag_idx_(frag_idx)
+    unsigned frag_idx, uint64_t tile_idx, const ArraySchema* array_schema)
+    : frag_idx_(frag_idx)
     , tile_idx_(tile_idx) {
-  assert(domain != nullptr);
-  coord_tiles_.resize(domain->dim_num());
+  assert(array_schema != nullptr);
+  domain_ = array_schema->domain();
+  coord_tiles_.resize(domain_->dim_num());
+  attr_tiles_.resize(array_schema->attribute_num());
+  for (uint64_t i = 0; i < array_schema->attribute_num(); i++) {
+    const Attribute* attribute = array_schema->attribute(i);
+    attr_tiles_[i] = std::make_pair(attribute->name(), std::nullopt);
+  }
   set_compute_results_func();
 
   // Default `coord_func_` to fetch from `coord_tile_` until at least
@@ -78,8 +84,13 @@ uint64_t ResultTile::cell_num() const {
   if (!std::get<0>(coords_tile_).empty())
     return std::get<0>(coords_tile_).cell_num();
 
-  if (!attr_tiles_.empty())
-    return std::get<0>(attr_tiles_.begin()->second).cell_num();
+  if (!attr_tiles_.empty()) {
+    for (const auto& attr : attr_tiles_) {
+      if (attr.second.has_value()) {
+        return std::get<0>(attr.second.value()).cell_num();
+      }
+    }
+  }
 
   return 0;
 }
@@ -104,7 +115,12 @@ void ResultTile::erase_tile(const std::string& name) {
   }
 
   // Handle attribute tile
-  attr_tiles_.erase(name);
+  for (auto& at : attr_tiles_) {
+    if (at.first == name) {
+      at.second = TileTuple(Tile(), Tile(), Tile());
+      return;
+    }
+  }
 }
 
 void ResultTile::init_attr_tile(const std::string& name) {
@@ -113,8 +129,12 @@ void ResultTile::init_attr_tile(const std::string& name) {
     return;
 
   // Handle attributes
-  if (attr_tiles_.empty() || attr_tiles_.find(name) == attr_tiles_.end())
-    attr_tiles_.emplace(name, TileTuple(Tile(), Tile(), Tile()));
+  for (auto& at : attr_tiles_) {
+    if (at.first == name && at.second == std::nullopt) {
+      at.second = TileTuple(Tile(), Tile(), Tile());
+      return;
+    }
+  }
 }
 
 void ResultTile::init_coord_tile(const std::string& name, unsigned dim_idx) {
@@ -132,9 +152,10 @@ ResultTile::TileTuple* ResultTile::tile_tuple(const std::string& name) {
     return &coords_tile_;
 
   // Handle attribute tile
-  auto it = attr_tiles_.find(name);
-  if (it != attr_tiles_.end())
-    return &(it->second);
+  for (auto& at : attr_tiles_) {
+    if (at.first == name && at.second.has_value())
+      return &(at.second.value());
+  }
 
   // Handle separate coordinates tile
   for (auto& ct : coord_tiles_) {
@@ -162,7 +183,8 @@ const void* ResultTile::zipped_coord(uint64_t pos, unsigned dim_idx) const {
   return ret;
 }
 
-std::string ResultTile::coord_string(uint64_t pos, unsigned dim_idx) const {
+std::string_view ResultTile::coord_string(
+    uint64_t pos, unsigned dim_idx) const {
   const auto& coord_tile_off = std::get<0>(coord_tiles_[dim_idx].second);
   const auto& coord_tile_val = std::get<1>(coord_tiles_[dim_idx].second);
   auto cell_num = coord_tile_off.cell_num();
@@ -185,7 +207,7 @@ std::string ResultTile::coord_string(uint64_t pos, unsigned dim_idx) const {
   auto size = next_offset - offset;
 
   auto* buffer = static_cast<char*>(coord_tile_val.buffer()->data()) + offset;
-  return std::string(buffer, size);
+  return std::string_view(buffer, size);
 }
 
 uint64_t ResultTile::coord_size(unsigned dim_idx) const {
@@ -444,9 +466,9 @@ inline bool ResultTile::str_coord_intersects(
     const uint64_t c_offset,
     const uint64_t c_size,
     const char* const buff_str,
-    const std::basic_string_view<char>& range_start,
-    const std::basic_string_view<char>& range_end) {
-  std::basic_string_view<char> str(buff_str + c_offset, c_size);
+    const std::string_view& range_start,
+    const std::string_view& range_end) {
+  std::string_view str(buff_str + c_offset, c_size);
   return str >= range_start && str <= range_end;
 }
 
@@ -654,16 +676,14 @@ void ResultTile::compute_results_count_sparse_string(
     const ResultTile* result_tile,
     unsigned dim_idx,
     const NDRange& ranges,
-    const std::vector<uint64_t>* range_indexes,
-    const uint64_t num_indexes,
-    std::vector<BitmapType>* result_count,
+    const std::vector<uint64_t>& range_indexes,
+    std::vector<BitmapType>& result_count,
     const Layout& cell_order,
     const uint64_t min_cell,
     const uint64_t max_cell) {
   auto cell_num = result_tile->cell_num();
   auto coords_num = max_cell - min_cell;
   auto dim_num = result_tile->domain()->dim_num();
-  auto& r_count = (*result_count);
 
   // Sanity check.
   assert(coords_num != 0);
@@ -743,8 +763,8 @@ void ResultTile::compute_results_count_sparse_string(
       if (first_c_size == last_c_size &&
           strncmp(first_c_coord, second_coord, first_c_size) == 0) {
         uint64_t count = 0;
-        for (uint64_t i = 0; i < num_indexes; i++) {
-          auto& range = ranges[range_indexes->at(i)];
+        for (auto i : range_indexes) {
+          auto& range = ranges[i];
           count += str_coord_intersects(
               first_c_offset,
               first_c_size,
@@ -755,7 +775,7 @@ void ResultTile::compute_results_count_sparse_string(
 
         for (uint64_t pos = first_c_pos; pos < first_c_pos + c_partition_size;
              ++pos) {
-          r_count[pos] = count;
+          result_count[pos] = count;
         }
       } else {
         // Compute results
@@ -765,13 +785,13 @@ void ResultTile::compute_results_count_sparse_string(
           c_size = (pos < cell_num - 1) ? buff_off[pos + 1] - c_offset :
                                           buff_str_size - c_offset;
           uint64_t count = 0;
-          for (uint64_t i = 0; i < num_indexes; i++) {
-            auto& range = ranges[range_indexes->at(i)];
+          for (auto i : range_indexes) {
+            auto& range = ranges[i];
             count += str_coord_intersects(
                 c_offset, c_size, buff_str, range.start_str(), range.end_str());
           }
 
-          r_count[pos] = count;
+          result_count[pos] = count;
         }
       }
     }
@@ -801,10 +821,11 @@ void ResultTile::compute_results_count_sparse_string(
 
     // Check if all `r_count` values are zero between `i` and
     // `partition_size`.
-    if (r_count[i] == 0 && memcmp(
-                               &r_count[i],
-                               &r_count[i + 1],
-                               (partition_size - 1) * sizeof(uint64_t)) == 0)
+    if (result_count[i] == 0 &&
+        memcmp(
+            &result_count[i],
+            &result_count[i + 1],
+            (partition_size - 1) * sizeof(uint64_t)) == 0)
       continue;
 
     {
@@ -813,20 +834,20 @@ void ResultTile::compute_results_count_sparse_string(
       // each value for an intersection.
       uint64_t c_offset = 0, c_size = 0;
       for (uint64_t pos = i; pos < i + partition_size; ++pos) {
-        if (r_count[pos] == 0)
+        if (result_count[pos] == 0)
           continue;
 
         c_offset = buff_off[pos];
         c_size = (pos < cell_num - 1) ? buff_off[pos + 1] - c_offset :
                                         buff_str_size - c_offset;
         uint64_t count = 0;
-        for (uint64_t i = 0; i < num_indexes; i++) {
-          auto& range = ranges[range_indexes->at(i)];
+        for (auto j : range_indexes) {
+          auto& range = ranges[j];
           count += str_coord_intersects(
               c_offset, c_size, buff_str, range.start_str(), range.end_str());
         }
 
-        r_count[pos] *= count;
+        result_count[pos] *= count;
       }
     }
   }
@@ -837,9 +858,8 @@ void ResultTile::compute_results_count_sparse(
     const ResultTile* result_tile,
     unsigned dim_idx,
     const NDRange& ranges,
-    const std::vector<uint64_t>* range_indexes,
-    const uint64_t num_indexes,
-    std::vector<BitmapType>* result_count,
+    const std::vector<uint64_t>& range_indexes,
+    std::vector<BitmapType>& result_count,
     const Layout& cell_order,
     const uint64_t min_cell,
     const uint64_t max_cell) {
@@ -849,9 +869,11 @@ void ResultTile::compute_results_count_sparse(
   // For easy reference.
   auto stores_zipped_coords = result_tile->stores_zipped_coords();
   auto dim_num = result_tile->domain()->dim_num();
-  auto& r_count = (*result_count);
 
-  // Handle separate coordinate tiles
+  // Vector to get the status of each cell.
+  std::vector<bool> counts(range_indexes.size());
+
+  // Handle separate coordinate tiles.
   if (!stores_zipped_coords) {
     const auto& coord_tile = std::get<0>(result_tile->coord_tile(dim_idx));
     Buffer* const buffer = coord_tile.buffer();
@@ -860,19 +882,21 @@ void ResultTile::compute_results_count_sparse(
       // Iterate over all cells.
       for (uint64_t pos = min_cell; pos < max_cell; ++pos) {
         // We have a previous count.
-        if (r_count[pos]) {
+        if (result_count[pos]) {
           T c = coords[pos];
-          uint64_t count = 0;
 
           // Iterate through all ranges and compute the count for this dim.
-          for (uint64_t i = 0; i < num_indexes; i++) {
-            auto range = (const T*)ranges[range_indexes->at(i)].data();
-            if (c >= range[0] && c <= range[1])
-              count++;
+          for (uint64_t i = 0; i < range_indexes.size(); i++) {
+            const auto& range = (const T*)ranges[range_indexes[i]].start();
+            counts[i] = c >= range[0] && c <= range[1];
           }
 
+          // Sum to get the true count.
+          const uint64_t count =
+              std::accumulate(counts.begin(), counts.end(), 0);
+
           // Multiply the past count by this dimension's count.
-          r_count[pos] *= count;
+          result_count[pos] *= count;
         }
       }
     }
@@ -880,22 +904,25 @@ void ResultTile::compute_results_count_sparse(
     return;
   }
 
-  // Handle zipped coordinates tile
+  // Handle zipped coordinates tile.
   assert(stores_zipped_coords);
   const auto& coords_tile = result_tile->zipped_coords_tile();
   Buffer* const buffer = coords_tile.buffer();
   const T* const coords = static_cast<const T*>(buffer->data());
   {
     for (uint64_t pos = min_cell; pos < max_cell; ++pos) {
-      if (r_count[pos]) {
+      if (result_count[pos]) {
         T c = coords[pos * dim_num + dim_idx];
-        uint64_t count = 0;
-        for (uint64_t i = 0; i < num_indexes; i++) {
-          auto range = (const T*)ranges[range_indexes->at(i)].data();
-          if (c >= range[0] && c <= range[1])
-            count++;
+        for (uint64_t i = 0; i < range_indexes.size(); i++) {
+          const auto& range = (const T*)ranges[range_indexes[i]].start();
+          counts[i] = c >= range[0] && c <= range[1];
         }
-        r_count[pos] *= count;
+
+        // Sum to get the true count.
+        const uint64_t count = std::accumulate(counts.begin(), counts.end(), 0);
+
+        // Multiply the past count by this dimension's count.
+        result_count[pos] *= count;
       }
     }
   }
@@ -935,9 +962,8 @@ template <>
 Status ResultTile::compute_results_count_sparse<uint8_t>(
     unsigned dim_idx,
     const NDRange& ranges,
-    const std::vector<uint64_t>* range_indexes,
-    const uint64_t num_indexes,
-    std::vector<uint8_t>* result_count,
+    const std::vector<uint64_t>& range_indexes,
+    std::vector<uint8_t>& result_count,
     const Layout& cell_order,
     const uint64_t min_cell,
     const uint64_t max_cell) const {
@@ -947,7 +973,6 @@ Status ResultTile::compute_results_count_sparse<uint8_t>(
       dim_idx,
       ranges,
       range_indexes,
-      num_indexes,
       result_count,
       cell_order,
       min_cell,
@@ -959,9 +984,8 @@ template <>
 Status ResultTile::compute_results_count_sparse<uint64_t>(
     unsigned dim_idx,
     const NDRange& ranges,
-    const std::vector<uint64_t>* range_indexes,
-    const uint64_t num_indexes,
-    std::vector<uint64_t>* result_count,
+    const std::vector<uint64_t>& range_indexes,
+    std::vector<uint64_t>& result_count,
     const Layout& cell_order,
     const uint64_t min_cell,
     const uint64_t max_cell) const {
@@ -971,7 +995,6 @@ Status ResultTile::compute_results_count_sparse<uint64_t>(
       dim_idx,
       ranges,
       range_indexes,
-      num_indexes,
       result_count,
       cell_order,
       min_cell,

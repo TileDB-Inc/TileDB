@@ -98,7 +98,7 @@ struct ResultCoords {
    * Returns a string coordinate. Applicable only to string
    * dimensions.
    */
-  std::string coord_string(unsigned dim_idx) const {
+  std::string_view coord_string(unsigned dim_idx) const {
     return tile_->coord_string(pos_, dim_idx);
   }
 

@@ -145,13 +145,13 @@ class Range {
   }
 
   /** Returns the start as a string view. */
-  std::basic_string_view<char> start_str() const {
-    return std::basic_string_view<char>((const char*)start(), start_size());
+  std::string_view start_str() const {
+    return std::string_view((const char*)start(), start_size());
   }
 
   /** Returns the end as a string view. */
-  std::basic_string_view<char> end_str() const {
-    return std::basic_string_view<char>((const char*)end(), end_size());
+  std::string_view end_str() const {
+    return std::string_view((const char*)end(), end_size());
   }
 
   /**
