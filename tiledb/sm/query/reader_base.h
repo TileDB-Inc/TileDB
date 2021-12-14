@@ -145,7 +145,7 @@ class ReaderBase : public StrategyBase {
    */
   template <class T>
   static void compute_result_space_tiles(
-      const Domain* domain,
+      const std::vector<tdb_shared_ptr<FragmentMetadata>>& fragment_metadata,
       const std::vector<std::vector<uint8_t>>& tile_coords,
       const TileDomain<T>& array_tile_domain,
       const std::vector<TileDomain<T>>& frag_tile_domains,

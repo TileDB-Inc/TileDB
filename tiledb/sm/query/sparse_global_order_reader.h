@@ -114,7 +114,7 @@ class SparseGlobalOrderReader : public SparseIndexReaderBase,
 
   /** Add a result tile with no memory budget checks. Used by serialization. */
   ResultTile* add_result_tile_unsafe(
-      unsigned f, uint64_t t, const Domain* domain);
+      unsigned f, uint64_t t, const ArraySchema* array_schema);
 
  private:
   /* ********************************* */
@@ -159,7 +159,7 @@ class SparseGlobalOrderReader : public SparseIndexReaderBase,
       const uint64_t memory_budget_qc_tiles,
       const unsigned f,
       const uint64_t t,
-      const Domain* const domain,
+      const ArraySchema* const array_schema,
       bool* budget_exceeded);
 
   /** corrects memory usage after de-serialization. */
