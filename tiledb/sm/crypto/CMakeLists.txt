@@ -44,6 +44,12 @@ else()
     find_package(OpenSSL_EP REQUIRED)
     target_link_libraries(crypto PUBLIC OpenSSL::Crypto)
 endif()
+# OpenSSL-3 deprecates MD5
+if(MSVC)
+    set_source_files_properties(crypto_openssl.cc PROPERTIES COMPILE_OPTIONS "/wd4996")
+else()
+    set_source_files_properties(crypto_openssl.cc PROPERTIES COMPILE_OPTIONS "-Wno-deprecated-declarations")
+endif()
 #
 # Test-compile of object library ensures link-completeness
 #
