@@ -215,13 +215,7 @@ steps:
 - bash: |
     set -x
     ls -la /cores
-    #mkdir -p $BUILD_REPOSITORY_LOCALPATH/build/core
-    #mv -v /cores/core.* $BUILD_REPOSITORY_LOCALPATH/build/core/
-    # cp rather than 'mv' in case some core's might lack permissions to allow cp.
-    # but cp turns out to be potentially too 'space expensive', staying with 'mv'.
-    #ls -la $BUILD_REPOSITORY_LOCALPATH/build/core
     cntfiles=0
-    #for f in $(find $BUILD_REPOSITORY_LOCALPATH/build/core -name 'core.*');
     for f in $(find /cores -name 'core.*');
       do
         echo "stack trace for $f"
