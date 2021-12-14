@@ -32,7 +32,9 @@
  */
 
 #include <mutex>
+#include <thread>
 #include <vector>
+
 #include "tiledb/sm/misc/resource_pool.h"
 
 #include <catch.hpp>
@@ -72,4 +74,54 @@ TEST_CASE("Buffer: Test resource pool", "[resource-pool]") {
     REQUIRE(found[1]);
     REQUIRE(found[2]);
   }
+}
+
+TEST_CASE("Buffer: Test blocking resource pool", "[resource-pool]") {
+  std::thread t1;
+  auto blocked = true;
+
+  BlockingResourcePool<int> pool(3);
+
+  ResourceGuard r1(pool);
+  ResourceGuard r2(pool);
+  r1.get() = 7;
+  r2.get() = 8;
+
+  {
+    // Get another resouce to reach maximum pool capacity
+    ResourceGuard r3(pool);
+    r3.get() = 9;
+
+    // Request a resource when pool is full, the thread should block.
+    t1 = std::thread([&] {
+      ResourceGuard r4(pool);
+      blocked = false;
+      r4.get() = 10;
+    });
+
+    // Validate we can get access to the first 3 resources.
+    REQUIRE(r1.get() == 7);
+    REQUIRE(r2.get() == 8);
+    REQUIRE(r3.get() == 9);
+
+    // take r3 resource out of scope to release it
+  }
+
+  // wait for thread to get unblocked
+  for (int i = 0; (i < 10) && blocked; i++) {
+    std::this_thread::sleep_for(std::chrono::milliseconds(1));
+  }
+
+  if (blocked) {
+    FAIL("Failing test, thread took too long to get unblocked");
+  }
+
+  t1.join();
+
+  ResourceGuard r4(pool);
+
+  REQUIRE(r1.get() == 7);
+  REQUIRE(r2.get() == 8);
+  // check the old resource is gone, and one of the new ones is there
+  REQUIRE(r4.get() == 10);
 }

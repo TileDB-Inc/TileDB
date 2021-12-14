@@ -35,6 +35,9 @@
 #define RESOURCE_POOL_H
 
 #include <vector>
+#include "tiledb/common/common.h"
+
+using namespace tiledb::common;
 
 namespace tiledb {
 namespace sm {
@@ -137,6 +140,70 @@ class ResourcePool {
   std::mutex m_;
 
   friend class ResourceHandle<T, tiledb::sm::ResourcePool>;
+};
+
+template <class T>
+class BlockingResourcePool {
+ public:
+  using resource_handle = ResourceHandle<T, tiledb::sm::BlockingResourcePool>;
+
+  /** Constructor. */
+  BlockingResourcePool(unsigned int n)
+      : resources_(n)
+      , unused_(n)
+      , unused_idx_(n - 1) {
+    for (unsigned int i = 0; i < n; i++)
+      unused_[i] = i;
+  }
+
+  /** Take a resource from the pool. */
+  resource_handle take() {
+    std::unique_lock<std::mutex> lk1(m_, std::defer_lock);
+    std::unique_lock<std::mutex> lk2(exhaustion_mtx_, std::defer_lock);
+    std::lock(lk1, lk2);
+    if (unused_idx_ == -1) {
+      // resource exhaustion: block until available again
+      exhaustion_cv_.wait(lk2, [this]() { return unused_idx_ != -1; });
+    }
+    return ResourceHandle(*this, unused_[unused_idx_--]);
+  }
+
+ private:
+  /** Release a resource from the pool. */
+  void release(unsigned int n) {
+    std::unique_lock<std::mutex> lk1(m_, std::defer_lock);
+    std::unique_lock<std::mutex> lk2(exhaustion_mtx_, std::defer_lock);
+    std::lock(lk1, lk2);
+    unused_[++unused_idx_] = n;
+    if (unused_idx_ == 0) {
+      exhaustion_cv_.notify_one();
+    }
+  }
+
+  /** Access a resource from the internal vector. */
+  T& at(unsigned int n) {
+    return resources_.at(n);
+  }
+
+  /** Vector of resources. */
+  std::vector<T> resources_;
+
+  /** Vector of unused resource indexes. */
+  std::vector<unsigned int> unused_;
+
+  /** Index of the last valid resource in the unused vector. */
+  int unused_idx_;
+
+  /** Mutex protecting unused_ and unused_idx.*/
+  std::mutex m_;
+
+  /** Mutex protecting exhaustion_cv_ condition variable. */
+  std::mutex exhaustion_mtx_;
+
+  /** For signal-and-waiting on resource availability. */
+  std::condition_variable exhaustion_cv_;
+
+  friend class ResourceHandle<T, tiledb::sm::BlockingResourcePool>;
 };
 
 }  // namespace sm
