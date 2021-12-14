@@ -1134,10 +1134,6 @@ TILEDB_EXPORT void tiledb_config_free(tiledb_config_t** config);
  *    The maximum number of parallel operations on objects with `file:///`
  *    URIs. <br>
  *    **Default**: `sm.io_concurrency_level`
- * - `vfs.file.enable_filelocks` <br>
- *    If set to `false`, file locking operations are no-ops for `file:///` URIs
- *    in VFS. <br>
- *    **Default**: `true`
  * - `vfs.azure.storage_account_name` <br>
  *    Set the Azure Storage Account name. <br>
  *    **Default**: ""

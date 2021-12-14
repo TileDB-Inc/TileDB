@@ -64,7 +64,7 @@ StrategyBase::StrategyBase(
     , offsets_extra_element_(false)
     , offsets_bitsize_(constants::cell_var_offset_size * 8) {
   if (array != nullptr) {
-    array_schema_ = array->array_schema();
+    array_schema_ = array->array_schema_latest();
   }
 }
 

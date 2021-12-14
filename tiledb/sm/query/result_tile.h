@@ -38,6 +38,7 @@
 #include <unordered_map>
 #include <vector>
 
+#include "tiledb/sm/array_schema/array_schema.h"
 #include "tiledb/sm/enums/layout.h"
 #include "tiledb/sm/misc/constants.h"
 #include "tiledb/sm/misc/types.h"
@@ -80,7 +81,7 @@ class ResultTile {
    * Constructor. The number of dimensions `dim_num` is used to allocate
    * the separate coordinate tiles.
    */
-  ResultTile(unsigned frag_idx, uint64_t tile_idx, const Domain* domain);
+  ResultTile(unsigned frag_idx, uint64_t tile_idx, const ArraySchema* schema);
 
   /** Default destructor. */
   ~ResultTile() = default;
@@ -149,7 +150,7 @@ class ResultTile {
    * Returns the string coordinate at position `pos` for
    * dimension `dim_idx`. Applicable only to string dimensions.
    */
-  std::string coord_string(uint64_t pos, unsigned dim_idx) const;
+  std::string_view coord_string(uint64_t pos, unsigned dim_idx) const;
 
   /** Returns the coordinate size on the input dimension. */
   uint64_t coord_size(unsigned dim_idx) const;
@@ -231,6 +232,9 @@ class ResultTile {
    * Computes a result count for the input dimension for the coordinates that
    * fall in the input ranges and multiply with the previous count.
    *
+   * This only processes cells from min_cell to max_cell as we might
+   * parallelize on cells.
+   *
    * When called over multiple ranges, this follows the formula:
    * total_count = d1_count * d2_count ... dN_count.
    */
@@ -239,16 +243,20 @@ class ResultTile {
       const ResultTile* result_tile,
       unsigned dim_idx,
       const NDRange& ranges,
-      const std::vector<uint64_t>* range_indexes,
-      const uint64_t num_indexes,
-      std::vector<BitmapType>* result_count,
-      const Layout& cell_order);
+      const std::vector<uint64_t>& range_indexes,
+      std::vector<BitmapType>& result_count,
+      const Layout& cell_order,
+      const uint64_t min_cell,
+      const uint64_t max_cell);
 
   /**
    * Applicable only to sparse arrays.
    *
    * Computes a result count for the input string dimension for the coordinates
    * that fall in the input ranges and multiply with the previous count.
+   *
+   * This only processes cells from min_cell to max_cell as we might
+   * parallelize on cells.
    *
    * When called over multiple ranges, this follows the formula:
    * total_count = d1_count * d2_count ... dN_count.
@@ -258,10 +266,11 @@ class ResultTile {
       const ResultTile* result_tile,
       unsigned dim_idx,
       const NDRange& ranges,
-      const std::vector<uint64_t>* range_indexes,
-      const uint64_t num_indexes,
-      std::vector<BitmapType>* result_count,
-      const Layout& cell_order);
+      const std::vector<uint64_t>& range_indexes,
+      std::vector<BitmapType>& result_count,
+      const Layout& cell_order,
+      const uint64_t min_cell,
+      const uint64_t max_cell);
 
   /**
    * Applicable only to sparse tiles of dense arrays.
@@ -300,6 +309,9 @@ class ResultTile {
    * Computes a result count for the input dimension for the coordinates that
    * fall in the input ranges and multiply with the previous count.
    *
+   * This only processes cells from min_cell to max_cell as we might
+   * parallelize on cells.
+   *
    * When called over multiple ranges, this follows the formula:
    * total_count = d1_count * d2_count ... dN_count.
    */
@@ -307,10 +319,11 @@ class ResultTile {
   Status compute_results_count_sparse(
       unsigned dim_idx,
       const NDRange& ranges,
-      const std::vector<uint64_t>* range_indexes,
-      const uint64_t num_indexes,
-      std::vector<BitmapType>* result_count,
-      const Layout& cell_order) const;
+      const std::vector<uint64_t>& range_indexes,
+      std::vector<BitmapType>& result_count,
+      const Layout& cell_order,
+      const uint64_t min_cell,
+      const uint64_t max_cell) const;
 
  private:
   /* ********************************* */
@@ -326,8 +339,8 @@ class ResultTile {
   /** The id of the tile (which helps locating the physical attribute tiles). */
   uint64_t tile_idx_ = UINT64_MAX;
 
-  /** Maps attribute names to tiles. */
-  std::unordered_map<std::string, TileTuple> attr_tiles_;
+  /** Attribute names to tiles based on attribute ordering from array schema. */
+  std::vector<std::pair<std::string, std::optional<TileTuple>>> attr_tiles_;
 
   /** The zipped coordinates tile. */
   TileTuple coords_tile_;
@@ -379,10 +392,11 @@ class ResultTile {
       const ResultTile*,
       unsigned,
       const NDRange&,
-      const std::vector<uint64_t>*,
+      const std::vector<uint64_t>&,
+      std::vector<uint64_t>&,
+      const Layout&,
       const uint64_t,
-      std::vector<uint64_t>*,
-      const Layout&)>>
+      const uint64_t)>>
       compute_results_count_sparse_uint64_t_func_;
 
   /**
@@ -393,10 +407,11 @@ class ResultTile {
       const ResultTile*,
       unsigned,
       const NDRange&,
-      const std::vector<uint64_t>*,
+      const std::vector<uint64_t>&,
+      std::vector<uint8_t>&,
+      const Layout&,
       const uint64_t,
-      std::vector<uint8_t>*,
-      const Layout&)>>
+      const uint64_t)>>
       compute_results_count_sparse_uint8_t_func_;
 
   /* ********************************* */
@@ -424,14 +439,14 @@ class ResultTile {
    *    at `c_offset`.
    * @param range_start The starting range value.
    * @param range_end The ending range value.
-   * @return uint8_t 0 for no intersection, 1 for instersection.
+   * @return false for no intersection, true for instersection.
    */
-  static uint8_t str_coord_intersects(
+  static bool str_coord_intersects(
       const uint64_t c_offset,
       const uint64_t c_size,
       const char* const buff_str,
-      const std::string& range_start,
-      const std::string& range_end);
+      const std::string_view& range_start,
+      const std::string_view& range_end);
 };
 
 }  // namespace sm

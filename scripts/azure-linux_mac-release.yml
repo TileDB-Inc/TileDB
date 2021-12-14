@@ -88,6 +88,10 @@ steps:
       # Add superbuild flag
       cmake_args="${cmake_args} -DTILEDB_WERROR=OFF";
     fi
+    if [[ "$TILEDB_AVX2" == "OFF" ]]; then
+      # Add superbuild flag
+      cmake_args="${cmake_args} -DCOMPILER_SUPPORTS_AVX2=OFF";
+    fi
 
     mkdir -p $BUILD_REPOSITORY_LOCALPATH/build
     cd $BUILD_REPOSITORY_LOCALPATH/build

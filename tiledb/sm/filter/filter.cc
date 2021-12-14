@@ -30,20 +30,22 @@
  * This file defines class Filter.
  */
 
-#include "tiledb/sm/filter/filter.h"
+#include "filter.h"
+#include "bit_width_reduction_filter.h"
+#include "bitshuffle_filter.h"
+#include "byteshuffle_filter.h"
+#include "checksum_md5_filter.h"
+#include "checksum_sha256_filter.h"
+#include "compression_filter.h"
+#include "encryption_aes256gcm_filter.h"
+#include "filter_create.h"
+#include "noop_filter.h"
+#include "positive_delta_filter.h"
 #include "tiledb/common/heap_memory.h"
 #include "tiledb/common/logger.h"
 #include "tiledb/sm/buffer/buffer.h"
 #include "tiledb/sm/enums/filter_type.h"
-#include "tiledb/sm/filter/bit_width_reduction_filter.h"
-#include "tiledb/sm/filter/bitshuffle_filter.h"
-#include "tiledb/sm/filter/byteshuffle_filter.h"
-#include "tiledb/sm/filter/checksum_md5_filter.h"
-#include "tiledb/sm/filter/checksum_sha256_filter.h"
-#include "tiledb/sm/filter/compression_filter.h"
-#include "tiledb/sm/filter/encryption_aes256gcm_filter.h"
-#include "tiledb/sm/filter/noop_filter.h"
-#include "tiledb/sm/filter/positive_delta_filter.h"
+#include "tiledb/sm/tile/tile.h"
 
 using namespace tiledb::common;
 
@@ -51,47 +53,13 @@ namespace tiledb {
 namespace sm {
 
 Filter::Filter(FilterType type) {
-  pipeline_ = nullptr;
   type_ = type;
 }
 
 Filter* Filter::clone() const {
   // Call subclass-specific clone function
   auto clone = clone_impl();
-  // Ensure the clone does not "belong" to any pipeline.
-  clone->pipeline_ = nullptr;
   return clone;
-}
-
-Filter* Filter::create(FilterType type) {
-  switch (type) {
-    case FilterType::FILTER_NONE:
-      return tdb_new(NoopFilter);
-    case FilterType::FILTER_GZIP:
-    case FilterType::FILTER_ZSTD:
-    case FilterType::FILTER_LZ4:
-    case FilterType::FILTER_RLE:
-    case FilterType::FILTER_BZIP2:
-    case FilterType::FILTER_DOUBLE_DELTA:
-      return tdb_new(CompressionFilter, type, -1);
-    case FilterType::FILTER_BIT_WIDTH_REDUCTION:
-      return tdb_new(BitWidthReductionFilter);
-    case FilterType::FILTER_BITSHUFFLE:
-      return tdb_new(BitshuffleFilter);
-    case FilterType::FILTER_BYTESHUFFLE:
-      return tdb_new(ByteshuffleFilter);
-    case FilterType::FILTER_POSITIVE_DELTA:
-      return tdb_new(PositiveDeltaFilter);
-    case FilterType::INTERNAL_FILTER_AES_256_GCM:
-      return tdb_new(EncryptionAES256GCMFilter);
-    case FilterType::FILTER_CHECKSUM_MD5:
-      return tdb_new(ChecksumMD5Filter);
-    case FilterType::FILTER_CHECKSUM_SHA256:
-      return tdb_new(ChecksumSHA256Filter);
-    default:
-      assert(false);
-      return nullptr;
-  }
 }
 
 Status Filter::get_option(FilterOption option, void* value) const {
@@ -104,30 +72,6 @@ Status Filter::get_option(FilterOption option, void* value) const {
 
 Status Filter::set_option(FilterOption option, const void* value) {
   return set_option_impl(option, value);
-}
-
-Status Filter::deserialize(ConstBuffer* buff, Filter** filter) {
-  uint8_t type;
-  RETURN_NOT_OK(buff->read(&type, sizeof(uint8_t)));
-  uint32_t filter_metadata_len;
-  RETURN_NOT_OK(buff->read(&filter_metadata_len, sizeof(uint32_t)));
-
-  auto* f = create(static_cast<FilterType>(type));
-  if (f == nullptr)
-    return LOG_STATUS(Status::FilterError("Deserialization error."));
-
-  auto offset = buff->offset();
-  RETURN_NOT_OK_ELSE(f->deserialize_impl(buff), tdb_delete(f));
-
-  if (buff->offset() - offset != filter_metadata_len) {
-    tdb_delete(f);
-    return LOG_STATUS(Status::FilterError(
-        "Deserialization error; unexpected metadata length"));
-  }
-
-  *filter = f;
-
-  return Status::Ok();
 }
 
 // ===== FORMAT =====
@@ -181,12 +125,12 @@ Status Filter::serialize_impl(Buffer* buff) const {
   return Status::Ok();
 }
 
-void Filter::set_pipeline(const FilterPipeline* pipeline) {
-  pipeline_ = pipeline;
-}
-
 FilterType Filter::type() const {
   return type_;
+}
+
+void Filter::init_resource_pool(uint64_t size) {
+  (void)size;
 }
 
 }  // namespace sm

@@ -86,6 +86,7 @@ class PositiveDeltaFilter : public Filter {
    * Perform positive-delta encoding of the given input into the given output.
    */
   Status run_forward(
+      const Tile& tile,
       FilterBuffer* input_metadata,
       FilterBuffer* input,
       FilterBuffer* output_metadata,
@@ -95,6 +96,7 @@ class PositiveDeltaFilter : public Filter {
    * Perform positive-delta decoding of the given input into the given output.
    */
   Status run_reverse(
+      const Tile& tile,
       FilterBuffer* input_metadata,
       FilterBuffer* input,
       FilterBuffer* output_metadata,
@@ -135,6 +137,7 @@ class PositiveDeltaFilter : public Filter {
   /** Run_forward method templated on the tile cell datatype. */
   template <typename T>
   Status run_forward(
+      const Tile& tile,
       FilterBuffer* input_metadata,
       FilterBuffer* input,
       FilterBuffer* output_metadata,
@@ -143,6 +146,7 @@ class PositiveDeltaFilter : public Filter {
   /** Run_reverse method templated on the tile cell datatype. */
   template <typename T>
   Status run_reverse(
+      const Tile& tile,
       FilterBuffer* input_metadata,
       FilterBuffer* input,
       FilterBuffer* output_metadata,

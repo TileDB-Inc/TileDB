@@ -129,6 +129,13 @@ Status stats_from_capnp(
 
 Status array_to_capnp(
     const Array& array, capnp::Array::Builder* array_builder) {
+  // The serialized URI is set if it exists
+  // this is used for backwards compatibility with pre TileDB 2.5 clients that
+  // want to serialized a query object TileDB >= 2.5 no longer needs to send the
+  // array URI
+  if (!array.array_uri_serialized().to_string().empty()) {
+    array_builder->setUri(array.array_uri_serialized());
+  }
   array_builder->setStartTimestamp(array.timestamp_start());
   array_builder->setEndTimestamp(array.timestamp_end());
 
@@ -137,6 +144,13 @@ Status array_to_capnp(
 
 Status array_from_capnp(
     const capnp::Array::Reader& array_reader, Array* array) {
+  // The serialized URI is set if it exists
+  // this is used for backwards compatibility with pre TileDB 2.5 clients that
+  // want to serialized a query object TileDB >= 2.5 no longer needs to receive
+  // the array URI
+  if (array_reader.hasUri()) {
+    RETURN_NOT_OK(array->set_uri_serialized(array_reader.getUri().cStr()));
+  }
   RETURN_NOT_OK(array->set_timestamp_start(array_reader.getStartTimestamp()));
   RETURN_NOT_OK(array->set_timestamp_end(array_reader.getEndTimestamp()));
 
@@ -380,7 +394,7 @@ Status subarray_partitioner_from_capnp(
 
   // Per-attr mem budgets
   if (reader.hasBudget()) {
-    const ArraySchema* schema = array->array_schema();
+    const ArraySchema* schema = array->array_schema_latest();
     auto mem_budgets_reader = reader.getBudget();
     auto num_attrs = mem_budgets_reader.size();
     for (size_t i = 0; i < num_attrs; i++) {
@@ -583,7 +597,6 @@ Status index_read_state_from_capnp(
     const capnp::ReadStateIndex::Reader& read_state_reader,
     SparseIndexReaderBase* reader) {
   auto read_state = reader->read_state();
-  const auto* domain = schema->domain();
 
   read_state->done_adding_result_tiles_ =
       read_state_reader.getDoneAddingResultTiles();
@@ -613,7 +626,7 @@ Status index_read_state_from_capnp(
         rt = it->second;
       } else {
         rt = sparse_global_order_reader->add_result_tile_unsafe(
-            frag_idx, tile_idx, domain);
+            frag_idx, tile_idx, schema);
         result_tile_map.emplace(
             std::pair<unsigned, uint64_t>(frag_idx, tile_idx), rt);
       }
