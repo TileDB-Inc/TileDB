@@ -48,6 +48,60 @@ steps:
   condition: and(eq(variables['Agent.OS'], 'Darwin'), startsWith(variables['imageName'], 'macOS-'))
   displayName: 'prep macOS for "runner" core dumps'
 
+- bash: |
+    # enable core dumps
+    ulimit -c               # should output 0 if disabled
+    ulimit -c unlimited     # Enable core dumps to be captured (must be in same run block)
+    ulimit -c               # should output 'unlimited' now
+
+    # azure bash does not treat intermediate failure as error
+    # https://github.com/Microsoft/azure-pipelines-yaml/issues/135
+    #set -xe pipefail
+
+    cat > abortprog.c <<EOF
+    #include <stdio.h>
+    #include <stdlib.h>
+    #include <sys/types.h>
+    #include <unistd.h>
+    #include <signal.h>
+    int main(int argc, char *argv[]) {
+    int asigval = 4; //4==SIGILL
+    if(argc > 1){
+    asigval=atoi(argv[1]);
+    }
+    printf("doing kill(%d)\n",asigval);
+    //no core dump... abort();
+    kill(getpid(), asigval); //4==SIGILL
+    }
+    EOF
+
+    gcc ./abortprog.c
+    ./a.out
+    ./a.out 6 #SIGABRT
+    ./a.out 9 #SIGKILL
+    ./a.out 11 #SIGSEGV
+    sudo ./a.out
+    
+    ls -l /cores
+    
+    echo "bump 3 for azure pipelines (results were not reported, missing evidence of run)"
+    if [[ -f $(which python) ]]; then
+      #echo -e "nl=\"\\\n\"\nprint('aborting...'+nl)\nimport resource as res\nprint(res.getrlimit(res.RLIMIT_CORE))\nprint(nl)\nres.setrlimit(res.RLIMIT_CORE,(res.RLIM_INFINITY,res.RLIM_INFINITY))\nprint(res.getrlimit(res.RLIMIT_CORE))\nimport sys\nsys.stdout.flush()\nsys.stderr.flush()\nimport os \nos.abort()" | python3
+      #try for one
+      echo -e "nl=\"\\\n\"\nprint('aborting...'+nl)\nimport resource as res\nimport time,threading\nprint(res.getrlimit(res.RLIMIT_CORE))\nprint(nl)\nres.setrlimit(res.RLIMIT_CORE,(res.RLIM_INFINITY,res.RLIM_INFINITY))\nprint(res.getrlimit(res.RLIMIT_CORE))\nt1=threading.Thread(name='thd1', target=lambda: time.sleep(5))\nt1.start()\nt2=threading.Thread(name='thd2', target=lambda: time.sleep(5))\nt2.start()\nimport sys\nsys.stdout.flush()\nsys.stderr.flush()\nimport os \nos.abort()" | python
+      #try for two
+      echo -e "nl=\"\\\n\"\nprint('aborting...'+nl)\nimport resource as res\nimport time,threading\nprint(res.getrlimit(res.RLIMIT_CORE))\nprint(nl)\nres.setrlimit(res.RLIMIT_CORE,(res.RLIM_INFINITY,res.RLIM_INFINITY))\nprint(res.getrlimit(res.RLIMIT_CORE))\nt1=threading.Thread(name='thd1', target=lambda: time.sleep(5))\nt1.start()\nt2=threading.Thread(name='thd2', target=lambda: time.sleep(5))\nt2.start()\nimport sys\nsys.stdout.flush()\nsys.stderr.flush()\nimport os \nos.abort()" | python
+      sleep 2s
+      ls -l /cores
+      #exit 41 #try this, core dumps alone apparently not enuf to stop mac build on azure pipelines
+    else
+      echo "unable to find python!"
+      #exit 42
+    fi
+  condition: and(false, eq(variables['Agent.OS'], 'Darwin'), startsWith(variables['imageName'], 'macOS-'))
+  #condition: and(true, eq(variables['Agent.OS'], 'Darwin'), startsWith(variables['imageName'], 'macOS-'))
+  displayName: 'check macOS "runner" core dumps'
+
 
 - bash: |
     # enable core dumps
@@ -216,18 +270,24 @@ steps:
 - bash: |
     set -x
     ls -la /cores
-    mkdir -p $BUILD_REPOSITORY_LOCALPATH/build/core
-    mv -v /cores/core.* $BUILD_REPOSITORY_LOCALPATH/build/core/
+    #mkdir -p $BUILD_REPOSITORY_LOCALPATH/build/core
+    #mv -v /cores/core.* $BUILD_REPOSITORY_LOCALPATH/build/core/
     # cp rather than 'mv' in case some core's might lack permissions to allow cp.
     # but cp turns out to be potentially too 'space expensive', staying with 'mv'.
-    ls -la $BUILD_REPOSITORY_LOCALPATH/build/core
+    #ls -la $BUILD_REPOSITORY_LOCALPATH/build/core
     cntfiles=0
-    for f in $(find $BUILD_REPOSITORY_LOCALPATH/build/core -name 'core.*');
+    #for f in $(find $BUILD_REPOSITORY_LOCALPATH/build/core -name 'core.*');
+    for f in $(find /cores -name 'core.*');
       do
         echo "stack trace for $f"
         lldb -c $f --batch -o 'bt all' -o 'image list' -o 'quit'
         (( cntfiles = cntfiles + 1 ))
       done;
+    #mv whatever we can, possible we won't get all due to permissions
+    #and archiving may have chance of failing due to size constraints in runner VM
+    mkdir -p $BUILD_REPOSITORY_LOCALPATH/build/core
+    mv -v /cores/core.* $BUILD_REPOSITORY_LOCALPATH/build/core/
+    ls -la $BUILD_REPOSITORY_LOCALPATH/build/core
     if [[ cntfiles -ne 0 ]] ; then
       export TDB_COREFILE_CNT=$cntfiles
     fi
