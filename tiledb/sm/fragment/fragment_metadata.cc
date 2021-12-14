@@ -942,7 +942,10 @@ Status FragmentMetadata::load_rtree(const EncryptionKey& encryption_key) {
   assert(memory_tracker);
   if (!memory_tracker->take_memory(buff.size())) {
     return LOG_STATUS(Status::FragmentMetadataError(
-        "Cannot load R-tree; Insufficient memory budget"));
+        "Cannot load R-tree; Insufficient memory budget; Needed " +
+        std::to_string(buff.size()) + " but only had " +
+        std::to_string(memory_tracker->get_memory_available()) +
+        " from budget " + std::to_string(memory_tracker->get_memory_budget())));
   }
 
   ConstBuffer cbuff(&buff);
@@ -1683,7 +1686,11 @@ Status FragmentMetadata::load_tile_offsets(ConstBuffer* buff) {
     assert(memory_tracker);
     if (!memory_tracker->take_memory(size)) {
       return LOG_STATUS(Status::FragmentMetadataError(
-          "Cannot load tile offsets; Insufficient memory budget"));
+          "Cannot load tile offsets; Insufficient memory budget; Needed " +
+          std::to_string(size) + " but only had " +
+          std::to_string(memory_tracker->get_memory_available()) +
+          " from budget " +
+          std::to_string(memory_tracker->get_memory_budget())));
     }
 
     // Get tile offsets
@@ -1720,7 +1727,11 @@ Status FragmentMetadata::load_tile_offsets(unsigned idx, ConstBuffer* buff) {
     assert(memory_tracker);
     if (!memory_tracker->take_memory(size)) {
       return LOG_STATUS(Status::FragmentMetadataError(
-          "Cannot load tile offsets; Insufficient memory budget"));
+          "Cannot load tile offsets; Insufficient memory budget; Needed " +
+          std::to_string(size) + " but only had " +
+          std::to_string(memory_tracker->get_memory_available()) +
+          " from budget " +
+          std::to_string(memory_tracker->get_memory_budget())));
     }
 
     tile_offsets_[idx].resize(tile_offsets_num);
@@ -1770,7 +1781,11 @@ Status FragmentMetadata::load_tile_var_offsets(ConstBuffer* buff) {
     assert(memory_tracker);
     if (!memory_tracker->take_memory(size)) {
       return LOG_STATUS(Status::FragmentMetadataError(
-          "Cannot load tile var offsets; Insufficient memory budget"));
+          "Cannot load tile var offsets; Insufficient memory budget; Needed " +
+          std::to_string(size) + " but only had " +
+          std::to_string(memory_tracker->get_memory_available()) +
+          " from budget " +
+          std::to_string(memory_tracker->get_memory_budget())));
     }
 
     // Get variable tile offsets
@@ -1811,7 +1826,11 @@ Status FragmentMetadata::load_tile_var_offsets(
     assert(memory_tracker);
     if (!memory_tracker->take_memory(size)) {
       return LOG_STATUS(Status::FragmentMetadataError(
-          "Cannot load tile var offsets; Insufficient memory budget"));
+          "Cannot load tile var offsets; Insufficient memory budget; Needed " +
+          std::to_string(size) + " but only had " +
+          std::to_string(memory_tracker->get_memory_available()) +
+          " from budget " +
+          std::to_string(memory_tracker->get_memory_budget())));
     }
 
     tile_var_offsets_[idx].resize(tile_var_offsets_num);
@@ -1860,7 +1879,11 @@ Status FragmentMetadata::load_tile_var_sizes(ConstBuffer* buff) {
     assert(memory_tracker);
     if (!memory_tracker->take_memory(size)) {
       return LOG_STATUS(Status::FragmentMetadataError(
-          "Cannot load tile var sizes; Insufficient memory budget"));
+          "Cannot load tile var sizes; Insufficient memory budget; Needed " +
+          std::to_string(size) + " but only had " +
+          std::to_string(memory_tracker->get_memory_available()) +
+          " from budget " +
+          std::to_string(memory_tracker->get_memory_budget())));
     }
 
     // Get variable tile sizes
@@ -1897,7 +1920,11 @@ Status FragmentMetadata::load_tile_var_sizes(unsigned idx, ConstBuffer* buff) {
     assert(memory_tracker);
     if (!memory_tracker->take_memory(size)) {
       return LOG_STATUS(Status::FragmentMetadataError(
-          "Cannot load tile var sizes; Insufficient memory budget"));
+          "Cannot load tile var sizes; Insufficient memory budget; Needed " +
+          std::to_string(size) + " but only had " +
+          std::to_string(memory_tracker->get_memory_available()) +
+          " from budget " +
+          std::to_string(memory_tracker->get_memory_budget())));
     }
 
     tile_var_sizes_[idx].resize(tile_var_sizes_num);
@@ -1933,7 +1960,12 @@ Status FragmentMetadata::load_tile_validity_offsets(
     assert(memory_tracker);
     if (!memory_tracker->take_memory(size)) {
       return LOG_STATUS(Status::FragmentMetadataError(
-          "Cannot load tile validity offsets; Insufficient memory budget"));
+          "Cannot load tile validity offsets; Insufficient memory budget; "
+          "Needed " +
+          std::to_string(size) + " but only had " +
+          std::to_string(memory_tracker->get_memory_available()) +
+          " from budget " +
+          std::to_string(memory_tracker->get_memory_budget())));
     }
 
     tile_validity_offsets_[idx].resize(tile_validity_offsets_num);
@@ -2472,7 +2504,10 @@ Status FragmentMetadata::read_file_footer(
   assert(memory_tracker);
   if (!memory_tracker->take_memory(*footer_size)) {
     return LOG_STATUS(Status::FragmentMetadataError(
-        "Cannot load file footer; Insufficient memory budget"));
+        "Cannot load file footer; Insufficient memory budget; Needed " +
+        std::to_string(*footer_size) + " but only had " +
+        std::to_string(memory_tracker->get_memory_available()) +
+        " from budget " + std::to_string(memory_tracker->get_memory_budget())));
   }
 
   // Read footer
