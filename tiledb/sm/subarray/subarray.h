@@ -1256,8 +1256,8 @@ class Subarray {
   void add_or_coalesce_range(uint32_t dim_idx, const Range& range);
 
   /**
-   *
    * Sort ranges for a particular dimension
+   *
    * @tparam T dimension type
    * @param compute_tp threadpool for parallel_sort
    * @param dim_idx dimension index to sort
@@ -1269,6 +1269,7 @@ class Subarray {
 
   /**
    * Sort ranges for a particular dimension
+   *
    * @param compute_tp threadpool for parallel_sort
    * @param dim_idx dimension index to sort
    * @return Status

@@ -886,7 +886,7 @@ void ResultTile::compute_results_count_sparse(
         if (result_count[pos]) {
           const T& c = coords[pos];
 
-          // Find lower bound to start comparison at
+          // Binary search to find the first range containing the cell.
           auto it = std::lower_bound(
               range_indexes.begin(),
               range_indexes.end(),
@@ -895,20 +895,19 @@ void ResultTile::compute_results_count_sparse(
                 return ((const T*)ranges[index].start())[1] < value;
               });
 
-          // If we didn't find a range we can set count to 0 and skip to next
+          // If we didn't find a range we can set count to 0 and skip to next.
           if (it == range_indexes.end()) {
             result_count[pos] = 0;
             continue;
           }
 
           // Set all counts for existing ranges to 0
-          uint64_t start_range = std::distance(range_indexes.begin(), it);
-          for (uint64_t i = 0; i < start_range; ++i) {
+          uint64_t start_range_idx = std::distance(range_indexes.begin(), it);
+          for (uint64_t i = 0; i < start_range_idx; ++i) {
             counts[i] = false;
           }
 
-          // Find max range so we have an end condition
-          // This avoids the conditional exit in the for loop below
+          // Binary search to find the last range containing the cell.
           auto it2 = std::lower_bound(
               it,
               range_indexes.end(),
@@ -916,21 +915,23 @@ void ResultTile::compute_results_count_sparse(
               [&](const uint64_t& index, const T& value) {
                 return ((const T*)ranges[index].start())[0] < value;
               });
-          // If the upper bound isn't the end we need to add +1 to the index
+
+          // If the upper bound isn't the end add +1 to the index.
           uint64_t offset = 0;
           if (it2 != range_indexes.end())
             offset = 1;
-          uint64_t end_range = std::distance(it, it2) + start_range + offset;
+          uint64_t end_range_idx =
+              std::distance(it, it2) + start_range_idx + offset;
 
           // Iterate through all ranges and compute the count for this dim.
-          // Use 2 for loops to facilitate vectorization
-          for (uint64_t j = start_range; j < end_range; ++j) {
+          // Use 2 for loops to facilitate vectorization.
+          for (uint64_t j = start_range_idx; j < end_range_idx; ++j) {
             const auto& range = (const T*)ranges[range_indexes[j]].start();
             counts[j] = c >= range[0] && c <= range[1];
           }
 
           // Loop through rest of range to set to false.
-          for (uint64_t k = end_range; k < range_indexes_size; ++k) {
+          for (uint64_t k = end_range_idx; k < range_indexes_size; ++k) {
             counts[k] = false;
           }
 

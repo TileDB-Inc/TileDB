@@ -150,7 +150,7 @@ Status SparseUnorderedWithDupsReader<BitmapType>::dowork() {
   // This reader only has one result tile list.
   result_tiles_.resize(1);
 
-  // This reader benefits from sorting ranges
+  // This reader benefits from sorting ranges.
   RETURN_NOT_OK(subarray_.sort_ranges(storage_manager_->compute_tp()));
 
   // Handle empty array.
