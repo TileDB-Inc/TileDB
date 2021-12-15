@@ -166,10 +166,10 @@ void check_partitions(
 
   int32_t rc;
 
-  tiledb_subarray_partitioner_compute(ctx, partitioner);
+  tiledb_subarray_partitioner_compute_partitions(ctx, partitioner);
 
   uint64_t partition_num = 0;
-  rc = tiledb_subarray_partitioner_get_partition_num(
+  rc = tiledb_subarray_partitioner_get_partitions_num(
       ctx, &partition_num, partitioner);
   CHECK(rc == TILEDB_OK);
   CHECK(partition_num == partitions.size());
@@ -199,7 +199,7 @@ void check_partitions(
   (void)last_unsplittable;  // TBD: Anyway to incorporate this similar to
                             // internal core SubarrayPartitioner tests?
 
-  partitioner->compute();
+  partitioner->compute_partitions();
 
   uint64_t partition_num = 0;
   partition_num = partitioner->get_partition_num();

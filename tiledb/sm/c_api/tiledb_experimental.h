@@ -262,14 +262,14 @@ TILEDB_EXPORT int32_t tiledb_subarray_partitioner_set_layout(
  *
  * @code{.c}
  * tiledb_subarray_partitioner_t *subarray_partitioner;
- * tiledb_subarray_partitioner_compute(ctx, subarray_partitioner);
+ * tiledb_subarray_partitioner_compute_partitions(ctx, subarray_partitioner);
  * @endcode
  *
  * @param The partitioner for which to compute the complete series of (sub)
  * partitions
  * @return `TILEDB_OK` for success or `TILEDB_ERR` for error.
  */
-TILEDB_EXPORT int32_t tiledb_subarray_partitioner_compute(
+TILEDB_EXPORT int32_t tiledb_subarray_partitioner_compute_partitions(
     tiledb_ctx_t* ctx, tiledb_subarray_partitioner_t* partitioner);
 
 /**
@@ -287,7 +287,7 @@ TILEDB_EXPORT int32_t tiledb_subarray_partitioner_compute(
  * subarray.
  * @return `TILEDB_OK` for success or `TILEDB_ERR` for error.
  */
-TILEDB_EXPORT int32_t tiledb_subarray_partitioner_get_partition_num(
+TILEDB_EXPORT int32_t tiledb_subarray_partitioner_get_partitions_num(
     tiledb_ctx_t* ctx,
     uint64_t* num,
     tiledb_subarray_partitioner_t* partitioner);
@@ -299,9 +299,10 @@ TILEDB_EXPORT int32_t tiledb_subarray_partitioner_get_partition_num(
  * **Example:**
  *
  * @code{.c}
- * uint64_t part_id; //# of partition to retrieve, must be less than # computed
- * partitions tiledb_subarray_t *retrieved_subarray;
  * tiledb_subarray_partitioner_t *subarray_partitioner;
+ * uint64_t partition_id; //# of partition to retrieve, must be less than #
+ * computed
+ * partitions tiledb_subarray_t *retrieved_subarray;
  * tiledb_subarray_partitioner_get_partition(ctx, subarray_partitioner,
  * partition_id, retrieved_subarray);
  * @endcode
@@ -317,7 +318,7 @@ TILEDB_EXPORT int32_t tiledb_subarray_partitioner_get_partition_num(
 TILEDB_EXPORT int32_t tiledb_subarray_partitioner_get_partition(
     tiledb_ctx_t* ctx,
     tiledb_subarray_partitioner_t* partitioner,
-    uint64_t part_id,
+    uint64_t partition_id,
     tiledb_subarray_t* subarray);
 
 /**
@@ -328,8 +329,8 @@ TILEDB_EXPORT int32_t tiledb_subarray_partitioner_get_partition(
  * @code{.c}
  * tiledb_subarray_partitioner_t *partitioner;
  * tiledb_ctx_t *ctx;
- * uint64_t budget;
  * char* attrname;
+ * uint64_t budget;
  * tiledb_subarray_partitioner_set_result_budget(ctx, attrname, budget,
  * partitioner);
  * @endcode
@@ -353,9 +354,9 @@ TILEDB_EXPORT int32_t tiledb_subarray_partitioner_set_result_budget(
  * @code{.c}
  * tiledb_subarray_partitioner_t *partitioner;
  * tiledb_ctx_t *ctx;
- * uint64_t *budget;
- * char *attrname;
- * tiledb_subarray_partitioner_get_result_budget_fixed(ctx, attrname, budget,
+ * char attrname[] = "name_of_attr";
+ * uint64_t budget;
+ * tiledb_subarray_partitioner_get_result_budget_fixed(ctx, attrname, &budget,
  * partitioner);
  * @endcode
  *
@@ -375,17 +376,17 @@ TILEDB_EXPORT int32_t tiledb_subarray_partitioner_get_result_budget_fixed(
  * **Example:**
  *
  * @code{.c}
- * tiledb_subarray_partitioner_t *partitioner;
  * tiledb_ctx_t *ctx;
- * uint64_t *budget_off;
- * uint64_t *budget_val;
- * char *attrname;
- * tiledb_subarray_partitioner_get_result_budget_var(ctx, attrname, budget_off,
- * budget_val, partitioner);
+ * char attrname[] = "name_of_attr";
+ * uint64_t budget_off;
+ * uint64_t budget_val;
+ * tiledb_subarray_partitioner_t *partitioner;
+ * tiledb_subarray_partitioner_get_result_budget_var(ctx, attrname, &budget_off,
+ * &budget_val, partitioner);
  * @endcode
  *
- * @param budget_off - The budget in bytes for offsets of var attributes
- * @param budget_val - The budget in bytes for var sized attribute values
+ * @param budget_off - Receive the budget in bytes for offsets of var attributes
+ * @param budget_val - Receive the budget in bytes for var sized attribute values
  * @return `TILEDB_OK` for success or `TILEDB_ERR` for error.
  */
 TILEDB_EXPORT int32_t tiledb_subarray_partitioner_get_result_budget_var(
@@ -402,12 +403,12 @@ TILEDB_EXPORT int32_t tiledb_subarray_partitioner_get_result_budget_var(
  * **Example:**
  *
  * @code{.c}
- * tiledb_subarray_partitioner_t *partitioner;
  * tiledb_ctx_t *ctx;
+ * char attrname[] = "name_of_attr";
  * uint64_t budget;
- * uint64_t budget_validity
- * char *attrname;
- * tiledb_subarray_partitioner_get_result_budget_nullable(ctx, attrname, budget,
+ * uint64_t budget_validity;
+ * tiledb_subarray_partitioner_t *partitioner;
+ * tiledb_subarray_partitioner_set_result_budget_nullable(ctx, attrname, budget,
  * budget_validity, partitioner);
  * @endcode
  *
@@ -431,12 +432,12 @@ tiledb_subarray_partitioner_set_result_budget_nullable_fixed(
  * **Example:**
  *
  * @code{.c}
- * tiledb_subarray_partitioner_t *partitioner;
  * tiledb_ctx_t *ctx;
+ * char attrname[] = "name_of_attr";
  * uint64_t budget_off;
  * uint64_t budget_val;
  * uint64_t budget_validity;
- * char *attrname;
+ * tiledb_subarray_partitioner_t *partitioner;
  * tiledb_subarray_partitioner_set_result_budget_nullable(ctx, attrname,
  * budget_off, budget_val, budget_validity, partitioner);
  * @endcode
@@ -462,13 +463,14 @@ tiledb_subarray_partitioner_set_result_budget_nullable_var(
  * **Example:**
  *
  * @code{.c}
- * tiledb_subarray_partitioner_t *partitioner;
  * tiledb_ctx_t *ctx;
- * uint64_t *budget;
- * uint64_t *budget_validity;
- * char *attrname;
- * tiledb_subarray_partitioner_get_result_budget_nullable(ctx, attrname, budget,
- * budget_validity, partitioner);
+ * char attrname[] = "name_of_attr";
+ * uint64_t budget;
+ * uint64_t budget_validity;
+ * tiledb_subarray_partitioner_t *partitioner;
+ * tiledb_subarray_partitioner_get_result_budget_nullable(ctx, attrname,
+ * &budget,
+ * &budget_validity, partitioner);
  * @endcode
  *
  * @param budget The budget in bytes for the (fixed size) nullable attribute's
@@ -491,19 +493,19 @@ tiledb_subarray_partitioner_get_result_budget_nullable_fixed(
  * **Example:**
  *
  * @code{.c}
- * tiledb_subarray_partitioner_t *partitioner;
  * tiledb_ctx_t *ctx;
- * uint64_t *budget_off;
- * uint64_t *budget_val;
- * uint64_t *budget_validity;
- * char *attrname;
+ * char attrname[] = "name_of_attr";
+ * uint64_t budget_off;
+ * uint64_t budget_val;
+ * uint64_t budget_validity;
+ * tiledb_subarray_partitioner_t *partitioner;
  * tiledb_subarray_partitioner_get_result_budget_nullable(ctx, attrname,
- * budget_off, budget_val, budget_validity, partitioner);
+ * &budget_off, &budget_val, &budget_validity, partitioner);
  * @endcode
  *
- * @param budget_off - The budget in bytes for offsets of var attributes
- * @param budget_val - The budget in bytes for var sized attribute values
- * @param budget_validity The budget in bytes for validity vectors.
+ * @param budget_off - Receives the budget in bytes for offsets of var attributes
+ * @param budget_val - Receives the budget in bytes for var sized attribute values
+ * @param budget_validity Receives the budget in bytes for validity vectors.
  * @return `TILEDB_OK` for success or `TILEDB_ERR` for error.
  */
 TILEDB_EXPORT int32_t
@@ -519,15 +521,15 @@ tiledb_subarray_partitioner_get_result_budget_nullable_var(
  * Get partitioning budget for fixed sized attribute.
  *
  * @code{.c}
- * tiledb_subarray_partitioner_t *partitioner;
  * tiledb_ctx_t *ctx;
- * uint64_t *budget;
- * char *attrname;
- * tiledb_subarray_partitioner_get_result_budget_fixed(ctx, attrname, budget,
+ * char attrname[] = "name_of_attr";
+ * uint64_t budget;
+ * tiledb_subarray_partitioner_t *partitioner;
+ * tiledb_subarray_partitioner_get_result_budget_fixed(ctx, attrname, &budget,
  * partitioner);
  * @endcode
  *
- * @param budget - byte count memory budget for the specified attribute.
+ * @param budget - Receives the byte count memory budget for the specified attribute.
  * @return `TILEDB_OK` for success or `TILEDB_ERR` for error.
  */
 TILEDB_EXPORT int32_t tiledb_subarray_partitioner_get_result_budget_fixed(
@@ -543,11 +545,11 @@ TILEDB_EXPORT int32_t tiledb_subarray_partitioner_get_result_budget_fixed(
  * **Example:**
  *
  * @code{.c}
- * tiledb_subarray_partitioner_t *partitioner;
  * tiledb_ctx_t *ctx;
+ * char attrname[] = "name_of_attr";
  * uint64_t budget_off;
  * uint64_t budget_val;
- * char *attrname;
+ * tiledb_subarray_partitioner_t *partitioner;
  * tiledb_subarray_partitioner_set_result_budget_var(ctx, attrname, budget_off,
  * budget_val, partitioner);
  * @endcode
@@ -597,19 +599,19 @@ TILEDB_EXPORT int32_t tiledb_subarray_partitioner_set_memory_budget(
  * **Example:**
  *
  * @code{.c}
- * tiledb_subarray_partitioner_t *partitioner;
  * tiledb_ctx_t *ctx;
  * uint64_t budget;
  * uint64_t budget_var;
  * uint64_t budget_validity;
- * tiledb_subarray_partitioner_set_memory_budget
+ * tiledb_subarray_partitioner_t *partitioner;
+ * tiledb_subarray_partitioner_get_memory_budget
  *     (ctx, &budget, &budget_var, &budget_validity, partitioner);
  * @endcode
  *
- * @param budget The budget for the fixed-sized attributes and the
+ * @param budget Receives the budget for the fixed-sized attributes and the
  *     offsets of the var-sized attributes.
- * @param budget_var The budget for the var-sized attributes.
- * @param budget_validity The budget for validity vectors.
+ * @param budget_var Receives the budget for the var-sized attributes.
+ * @param budget_validity Receives the budget for validity vectors.
  * @return `TILEDB_OK` for success or `TILEDB_ERR` for error.
  */
 TILEDB_EXPORT int32_t tiledb_subarray_partitioner_get_memory_budget(

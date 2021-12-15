@@ -1,5 +1,5 @@
 /**
- * @file unit-SubarrayPartitioner-dense.cc
+ * @file unit-capi-subarray_partitioner-dense.cc
  *
  * @section LICENSE
  *
@@ -28,6 +28,8 @@
  * @section DESCRIPTION
  *
  * Tests the `capi subarray_partitioner` class for dense arrays.
+ * 
+ * Logically descended from unit-SubarrayPartitioner-dense.cc
  */
 
 #include "test/src/helpers.h"

@@ -1,5 +1,5 @@
 /**
- * @file   external_subarray_partitioner.h
+ * @file   subarray_partitioner.h
  *
  * @section LICENSE
  *
@@ -50,17 +50,12 @@ namespace tiledb {
  * produced if the partition was submitted for a read query
  * can (approximately) fit the user-specified budget for various array
  * attributes. A partition returned by the partitioner (which works
- * similar to an iterator) is always a ``Subarray`` object. The
+ * similar to an iterator) is always a `Subarray` object. The
  * partitioner maintains certain state in order to be able to
  * produce the next partition until it is done.
  */
 class SubarrayPartitioner {
  public:
-  /* ********************************* */
-  /*           TYPE DEFINITIONS        */
-  /* ********************************* */
-
-  // TBD: ???
 
   /* ********************************* */
   /*     CONSTRUCTORS & DESTRUCTORS    */
@@ -125,8 +120,8 @@ class SubarrayPartitioner {
    * Compute a complete series of subarray partitions, retained to be accessed
    * with get_partition().
    */
-  SubarrayPartitioner& compute() {
-    ctx_.get().handle_error(tiledb_subarray_partitioner_compute(
+  SubarrayPartitioner& compute_partitions() {
+    ctx_.get().handle_error(tiledb_subarray_partitioner_compute_partitions(
         ctx_.get().ptr().get(), subarray_partitioner_.get()));
     return *this;
   }
@@ -138,7 +133,7 @@ class SubarrayPartitioner {
    */
   int32_t get_partition_num() {
     uint64_t num;
-    ctx_.get().handle_error(tiledb_subarray_partitioner_get_partition_num(
+    ctx_.get().handle_error(tiledb_subarray_partitioner_get_partitions_num(
         ctx_.get().ptr().get(), &num, subarray_partitioner_.get()));
     return num;
   }
@@ -220,10 +215,6 @@ class SubarrayPartitioner {
     return *this;
   }
 
-  /**
-   * Gets result size budget (in bytes) for the input var-sized
-   * attribute/dimension.
-   */
   /**
    * Gets result size budget (in bytes) for the input var-sized
    * attribute/dimension.
@@ -310,92 +301,6 @@ class SubarrayPartitioner {
             subarray_partitioner_.get()));
     return *this;
   }
-
-#if 0
-//TBD: internally available core SubarrayPartitioner() methods, do we need to support any more not
-//currently in capi?
-
-  /** Returns the current partition. */
-//  Subarray& current() {
-//    return subarray_partitioner_->partitioner_->current();
-//  }
-
-  /** Returns the current partition info. */
-  //TBD: need cppapi PartitionInfo entity as well...
-  //const SubarrayPartitioner::PartitionInfo* current_partition_info() const {
-  //  return subarray_partitioner_->partitioner_->current_partition_info();
-  //}
-
-  /** Returns the current partition info. */
-  //TBD: apparently need cppapi PartitionInfo entity as well...
-  //SubarrayPartitioner::PartitionInfo* current_partition_info() {
-  //  return subarray_partitioner_->partitioner_->current_partition_info();
-  //}
-
-  /**
-   * Returns ``true`` if there are no more partitions, i.e., if the
-   * partitioner iterator is done.
-   */
-//  bool done() const {
-//    return subarray_partitioner_->partitioner_->done();
-//  }
-
-  /**
-   * Returns a pointer to mapping containing all attribute/dimension result
-   * budgets that have been set.
-   */
-  const std::unordered_map<std::string, SubarrayPartitioner::ResultBudget>* get_result_budgets() const {
-    return subarray_partitioner_->partitioner_->get_result_budgets();
-  }
-
-  /**
-   * Gets the memory budget (in bytes).
-   *
-   * @param budget The budget for the fixed-sized attributes and the
-   *     offsets of the var-sized attributes.
-   * @param budget_var The budget for the var-sized attributes.
-   * @return Status
-   */
-  Status get_memory_budget(
-      uint64_t* budget, uint64_t* budget_var, uint64_t* budget_validity) const {
-    return subarray_partitioner_->partitioner_->get_memory_budget(budget, budget_var, budget_validity);
-  }
-
-  /**
-   * The partitioner iterates over the partitions of the subarray it is
-   * associated with. This function advances to compute the next partition
-   * based on the specified budget. If this cannot be retrieved because
-   * the current partition cannot be split further (typically because it
-   * is a single cell whose estimated result does not fit in the budget),
-   * then the function does not advance to the next partition and sets
-   * ``unsplittable`` to ``true``.
-   */
-  Status next(bool* unsplittable) {
-    return subarray_partitioner_->partitioner_->next();
-  }
-
-  /**
-   * Splits the current partition and updates the state, retrieving
-   * a new current partition. This function is typically called
-   * by the reader when the current partition was estimated to fit
-   * the results, but that was not eventually true.
-   */
-  Status split_current(bool* unsplittable) {
-    return subarray_partitioner_->partitioner_->split_current(
-        unsplittable);
-  }
-
-  /** Returns the state. */
-  const SubarrayPartitioner::State* state() const {
-    return subarray_partitioner_->partitioner_->state()
-  }
-
-  /** Returns the state. */
-  SubarrayPartitioner::State* state() {
-    return subarray_partitioner_->partitioner_->state()
-  }
-
-#endif
 
  private:
   /* ********************************* */

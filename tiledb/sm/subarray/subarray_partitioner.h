@@ -208,11 +208,11 @@ class SubarrayPartitioner {
    * caller. If caller requests return of series, it is not retained within the
    * partitioner.
    */
-  Status compute_partition_series(
+  Status compute_partitions(
       std::vector<PartitionInfo>* result_partitions = nullptr);
 
   /** The total number of computed partitions in the series. */
-  uint64_t partition_series_num();
+  uint64_t partitions_num();
 
   /** Retrieve pointer to internal instance of specific computed subarray.
    *
@@ -402,7 +402,7 @@ class SubarrayPartitioner {
   ThreadPool* compute_tp_;
 
   /** The entire series of computed (sub-)partitions. */
-  std::vector<PartitionInfo> partitions_series_;
+  std::vector<PartitionInfo> partitions_;
 
   std::vector<uint32_t> ordered_dims_;
 

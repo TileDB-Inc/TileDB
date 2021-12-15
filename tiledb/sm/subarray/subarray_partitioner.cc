@@ -367,8 +367,8 @@ Status SubarrayPartitioner::get_memory_budget(
   return Status::Ok();
 }
 
-uint64_t SubarrayPartitioner::partition_series_num() {
-  return partitions_series_.size();
+uint64_t SubarrayPartitioner::partitions_num() {
+  return partitions_.size();
 }
 
 /** Retrieve pointer to internal instance of specific computed subarray.
@@ -378,23 +378,22 @@ uint64_t SubarrayPartitioner::partition_series_num() {
  */
 Status SubarrayPartitioner::subarray_from_partition_series(
     uint64_t part_idx, Subarray** subarray) {
-  if (part_idx >= partitions_series_.size()) {
+  if (part_idx >= partitions_.size()) {
     std::stringstream msg;
     // assumes part_idx to be zero-based
     msg << "Requested partition index " << part_idx << " greater than last ("
-        << partitions_series_.size() - 1 << ") computed partition.";
+        << partitions_.size() - 1 << ") computed partition.";
     return LOG_STATUS(Status::SubarrayPartitionerError(msg.str()));
   }
-  //*subarray = &partitions_series_[part_idx].partition_;
-  **subarray = partitions_series_[part_idx].partition_;
+  **subarray = partitions_[part_idx].partition_;
   return Status::Ok();
 }
 
-Status SubarrayPartitioner::compute_partition_series(
+Status SubarrayPartitioner::compute_partitions(
     std::vector<PartitionInfo>* partitions_series) {
   std::vector<PartitionInfo> partitions_local;
   std::vector<PartitionInfo>& partitions =
-      partitions_series == nullptr ? partitions_series_ : partitions_local;
+      partitions_series == nullptr ? partitions_ : partitions_local;
 
   bool unsplittable = false;
 

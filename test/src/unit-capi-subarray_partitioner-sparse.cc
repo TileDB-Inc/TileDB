@@ -1,5 +1,5 @@
 /**
- * @file unit-SubarrayPartitioner-sparse.cc
+ * @file unit-capi-subarray_partitioner-sparse.cc
  *
  * @section LICENSE
  *
@@ -28,6 +28,8 @@
  * @section DESCRIPTION
  *
  * Tests the `capi subarray_partitioner` class for sparse arrays.
+ * 
+ * Logically 'descended' from unit-SubarrayPartitioner-sparse.cc
  */
 
 #include "test/src/helpers.h"

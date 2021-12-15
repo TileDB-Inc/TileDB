@@ -4161,11 +4161,9 @@ int32_t tiledb_subarray_partitioner_alloc(
     tiledb_ctx_t* ctx,
     const tiledb_subarray_t* subarray,
     tiledb_subarray_partitioner_t** subarray_partitioner,
-    // TBD: require these here, or provide a separate set_memory_budget
-    // (subarray_partitioner::set_memory_budget() exists...)
     uint64_t memory_budget,
     uint64_t memory_budget_var,
-    uint64_t memory_budget_validity) {  //,
+    uint64_t memory_budget_validity) {
   // Sanity check
   if (sanity_check(ctx) == TILEDB_ERR ||
       sanity_check(ctx, subarray) == TILEDB_ERR)
@@ -4182,7 +4180,7 @@ int32_t tiledb_subarray_partitioner_alloc(
     (*subarray_partitioner)->partitioner_ = nullptr;
   }
 
-  // Create a new subarray object
+  // Create a new subarray partitioner object
   try {
     (*subarray_partitioner)->partitioner_ =
         new (std::nothrow) tiledb::sm::SubarrayPartitioner(
@@ -4228,14 +4226,13 @@ int32_t tiledb_subarray_partitioner_set_layout(
       sanity_check(ctx, partitioner) == TILEDB_ERR)
     return TILEDB_ERR;
 
-  // TBD: any validation on 'layout'?
   partitioner->partitioner_->subarray()->set_layout(
       static_cast<tiledb::sm::Layout>(layout));
 
   return TILEDB_OK;
 }
 
-int32_t tiledb_subarray_partitioner_compute(
+int32_t tiledb_subarray_partitioner_compute_partitions(
     tiledb_ctx_t* ctx, tiledb_subarray_partitioner_t* partitioner) {
   // Sanity check
   if (sanity_check(ctx) == TILEDB_ERR ||
@@ -4243,13 +4240,13 @@ int32_t tiledb_subarray_partitioner_compute(
     return TILEDB_ERR;
 
   if (SAVE_ERROR_CATCH(
-          ctx, partitioner->partitioner_->compute_partition_series()))
+          ctx, partitioner->partitioner_->compute_partitions()))
     return TILEDB_ERR;
 
   return TILEDB_OK;
 }
 
-int32_t tiledb_subarray_partitioner_get_partition_num(
+int32_t tiledb_subarray_partitioner_get_partitions_num(
     tiledb_ctx_t* ctx,
     uint64_t* num,
     tiledb_subarray_partitioner_t* partitioner) {
@@ -4258,14 +4255,14 @@ int32_t tiledb_subarray_partitioner_get_partition_num(
       sanity_check(ctx, partitioner) == TILEDB_ERR)
     return TILEDB_ERR;
 
-  *num = partitioner->partitioner_->partition_series_num();
+  *num = partitioner->partitioner_->partitions_num();
   return TILEDB_OK;
 }
 
 int32_t tiledb_subarray_partitioner_get_partition(
     tiledb_ctx_t* ctx,
     tiledb_subarray_partitioner_t* partitioner,
-    uint64_t part_id,
+    uint64_t partition_id,
     tiledb_subarray_t* retrieved_subarray) {
   // Sanity check
   if (sanity_check(ctx) == TILEDB_ERR ||
@@ -4276,7 +4273,7 @@ int32_t tiledb_subarray_partitioner_get_partition(
   if (SAVE_ERROR_CATCH(
           ctx,
           partitioner->partitioner_->subarray_from_partition_series(
-              part_id, &retrieved_subarray->subarray_)))
+              partition_id, &retrieved_subarray->subarray_)))
     return TILEDB_ERR;
   return TILEDB_OK;
 }
