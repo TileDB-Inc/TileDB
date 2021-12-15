@@ -35,6 +35,14 @@ target_link_libraries(compressors PUBLIC buffer $<TARGET_OBJECTS:buffer>)
 
 find_package(Zstd_EP REQUIRED)
 target_link_libraries(compressors PUBLIC Zstd::Zstd)
+if(WIN32)
+  find_package(Zlib_EP REQUIRED)
+  target_link_libraries(compressors PUBLIC Zlib::Zlib)
+  find_package(Bzip2_EP REQUIRED)
+  target_link_libraries(compressors PUBLIC Bzip2::Bzip2)
+  find_package(LZ4_EP REQUIRED)
+  target_link_libraries(compressors PUBLIC LZ4::LZ4)
+endif()
 #
 # Test-compile of object library ensures link-completeness
 #
