@@ -819,8 +819,7 @@ TEST_CASE("Dimension: Test deserialize,string", "[dimension][deserialize]") {
   Datatype type = Datatype::STRING_ASCII;
   uint8_t datatype = (uint8_t)type;
   dim_buffer_offset<uint8_t, 6>(p) = datatype;
-  uint32_t cell_val_num =
-      (datatype_is_string(type)) ? constants::var_num : 1;
+  uint32_t cell_val_num = (datatype_is_string(type)) ? constants::var_num : 1;
   dim_buffer_offset<uint32_t, 7>(p) = cell_val_num;
   uint32_t max_chunk_size = constants::max_tile_chunk_size;
   dim_buffer_offset<uint32_t, 11>(p) = max_chunk_size;
@@ -829,7 +828,7 @@ TEST_CASE("Dimension: Test deserialize,string", "[dimension][deserialize]") {
   // Write domain and tile extent
   uint64_t domain_size = 0;
   dim_buffer_offset<uint64_t, 19>(p) = domain_size;
- 
+
   uint8_t null_tile_extent = 1;
   dim_buffer_offset<uint8_t, 27>(p) = null_tile_extent;
 
