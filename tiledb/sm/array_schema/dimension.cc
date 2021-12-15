@@ -34,7 +34,6 @@
 #include "tiledb/common/logger_public.h"
 #include "tiledb/common/stdx_string.h"
 #include "tiledb/sm/buffer/buffer.h"
-#include "tiledb/sm/enums/datatype.h"
 #include "tiledb/sm/enums/filter_type.h"
 
 #include <bitset>
@@ -142,10 +141,6 @@ Status Dimension::set_cell_val_num(unsigned int cell_val_num) {
   cell_val_num_ = cell_val_num;
 
   return Status::Ok();
-}
-
-uint64_t Dimension::coord_size() const {
-  return datatype_size(type_);
 }
 
 Status Dimension::deserialize(

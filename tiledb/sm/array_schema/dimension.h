@@ -43,6 +43,7 @@
 #include "tiledb/common/blank.h"
 #include "tiledb/common/logger_public.h"
 #include "tiledb/common/status.h"
+#include "tiledb/sm/enums/datatype.h"
 #include "tiledb/sm/misc/constants.h"
 #include "tiledb/sm/misc/types.h"
 #include "tiledb/sm/tile/tile.h"
@@ -110,7 +111,9 @@ class Dimension {
   Status set_cell_val_num(unsigned int cell_val_num);
 
   /** Returns the size (in bytes) of a coordinate in this dimension. */
-  uint64_t coord_size() const;
+  [[nodiscard]] inline size_t coord_size() const {
+    return datatype_size(type_);
+  }
 
   /**
    * Populates the object members from the data in the input binary buffer.
