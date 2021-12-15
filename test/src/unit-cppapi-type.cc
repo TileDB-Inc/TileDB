@@ -54,7 +54,7 @@ TEST_CASE("C++ API: Types", "[cppapi][types]") {
            value));
 
   CHECK_THROWS(impl::type_check<MyData>(TILEDB_INT8));
-  CHECK_NOTHROW(impl::type_check<MyData>(TILEDB_CHAR, sizeof(MyData)));
+  CHECK_NOTHROW(impl::type_check<MyData>(TILEDB_STRING_ASCII, sizeof(MyData)));
 
   // static char arrays are ok for tiledb string types as long as the static
   // lengths are equal
@@ -136,10 +136,10 @@ TEST_CASE("C++ API: Types", "[cppapi][types]") {
   CHECK(a1.type() == TILEDB_INT32);
   CHECK(a2.type() == TILEDB_FLOAT32);
   CHECK(a3.type() == TILEDB_FLOAT32);
-  CHECK(a4.type() == TILEDB_CHAR);
-  CHECK(a5.type() == TILEDB_CHAR);
-  CHECK(a6.type() == TILEDB_CHAR);
-  CHECK(a7.type() == TILEDB_CHAR);
+  CHECK(a4.type() == TILEDB_STRING_ASCII);
+  CHECK(a5.type() == TILEDB_STRING_ASCII);
+  CHECK(a6.type() == TILEDB_STRING_ASCII);
+  CHECK(a7.type() == TILEDB_STRING_ASCII);
   CHECK(a8.type() == TILEDB_FLOAT64);
   CHECK(a9.type() == TILEDB_FLOAT64);
 
