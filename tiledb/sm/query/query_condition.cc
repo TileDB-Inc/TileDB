@@ -111,13 +111,15 @@ Status QueryCondition::check(const ArraySchema* const array_schema) const {
       }
 
       if ((!attribute->nullable()) &&
-          attribute->type() != Datatype::STRING_ASCII) {
+          (attribute->type() != Datatype::STRING_ASCII &&
+           attribute->type() != Datatype::CHAR)) {
         return Status::QueryConditionError(
             "Null value can only be used with nullable attributes");
       }
     }
 
     if (attribute->var_size() && attribute->type() != Datatype::STRING_ASCII &&
+        attribute->type() != Datatype::CHAR &&
         clause.condition_value_ != nullptr) {
       return Status::QueryConditionError(
           "Clause non-empty attribute may only be var-sized for ASCII "
@@ -127,7 +129,7 @@ Status QueryCondition::check(const ArraySchema* const array_schema) const {
 
     if (attribute->cell_val_num() != 1 &&
         attribute->type() != Datatype::STRING_ASCII &&
-        (!attribute->var_size())) {
+        attribute->type() != Datatype::CHAR && (!attribute->var_size())) {
       return Status::QueryConditionError(
           "Clause attribute must have one value per cell for non-string fixed "
           "size "
@@ -139,7 +141,7 @@ Status QueryCondition::check(const ArraySchema* const array_schema) const {
         attribute->cell_size() != condition_value_size &&
         !(attribute->nullable() && clause.condition_value_ == nullptr) &&
         attribute->type() != Datatype::STRING_ASCII &&
-        (!attribute->var_size())) {
+        attribute->type() != Datatype::CHAR && (!attribute->var_size())) {
       return Status::QueryConditionError(
           "Clause condition value size mismatch: " +
           std::to_string(attribute->cell_size()) +
@@ -747,6 +749,16 @@ Status QueryCondition::apply_clause(
           result_cell_slabs,
           out_result_cell_slabs);
     case Datatype::CHAR:
+      if (var_size) {
+        return apply_clause<char*>(
+            clause,
+            stride,
+            var_size,
+            nullable,
+            fill_value,
+            result_cell_slabs,
+            out_result_cell_slabs);
+      }
       return apply_clause<char>(
           clause,
           stride,
@@ -1192,6 +1204,20 @@ Status QueryCondition::apply_clause_dense(
           current_result_bitmask,
           result_buffer);
     case Datatype::CHAR:
+      if (var_size) {
+        return apply_clause_dense<char*>(
+            clause,
+            result_tile,
+            start,
+            length,
+            src_cell,
+            stride,
+            var_size,
+            nullable,
+            previous_result_bitmask,
+            current_result_bitmask,
+            result_buffer);
+      }
       return apply_clause_dense<char>(
           clause,
           result_tile,
