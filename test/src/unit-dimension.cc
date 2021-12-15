@@ -805,3 +805,42 @@ TEST_CASE("Dimension: Test deserialize,int32", "[dimension][deserialize]") {
   CHECK(dim.value()->cell_val_num() == 1);
   CHECK(dim.value()->var_size() == false);
 }
+
+TEST_CASE("Dimension: Test deserialize,string", "[dimension][deserialize]") {
+  char serialized_buffer[28];
+  char* p = &serialized_buffer[0];
+  uint32_t dimension_name_size = 2;
+  std::string dimension_name = "d1";
+  dim_buffer_offset<uint32_t, 0>(p) = dimension_name_size;
+  std::memcpy(
+      &dim_buffer_offset<char, 4>(p),
+      dimension_name.c_str(),
+      dimension_name_size);
+  Datatype type = Datatype::STRING_ASCII;
+  uint8_t datatype = (uint8_t)type;
+  dim_buffer_offset<uint8_t, 6>(p) = datatype;
+  uint32_t cell_val_num =
+      (datatype_is_string(type)) ? constants::var_num : 1;
+  dim_buffer_offset<uint32_t, 7>(p) = cell_val_num;
+  uint32_t max_chunk_size = constants::max_tile_chunk_size;
+  dim_buffer_offset<uint32_t, 11>(p) = max_chunk_size;
+  uint32_t num_filters = 0;
+  dim_buffer_offset<uint32_t, 15>(p) = num_filters;
+  // Write domain and tile extent
+  uint64_t domain_size = 0;
+  dim_buffer_offset<uint64_t, 19>(p) = domain_size;
+ 
+  uint8_t null_tile_extent = 1;
+  dim_buffer_offset<uint8_t, 27>(p) = null_tile_extent;
+
+  ConstBuffer constbuffer(&serialized_buffer, sizeof(serialized_buffer));
+  auto&& [st_dim, dim]{
+      Dimension::deserialize(&constbuffer, 10, Datatype::INT32)};
+  REQUIRE(st_dim.ok());
+  // Check name
+  CHECK(dim.value()->name() == dimension_name);
+  // Check type
+  CHECK(dim.value()->type() == type);
+  CHECK(dim.value()->cell_val_num() == constants::var_num);
+  CHECK(dim.value()->var_size() == true);
+}
