@@ -168,11 +168,11 @@ TEST_CASE_METHOD(
 
   std::vector<TileDomain<int32_t>> frag_tile_domains;
   frag_tile_domains.emplace_back(
-      TileDomain<int32_t>(3, domain, ds3, tile_extents, layout));
+      TileDomain<int32_t>(2, domain, ds3, tile_extents, layout));
   frag_tile_domains.emplace_back(
-      TileDomain<int32_t>(2, domain, ds2, tile_extents, layout));
+      TileDomain<int32_t>(1, domain, ds2, tile_extents, layout));
   frag_tile_domains.emplace_back(
-      TileDomain<int32_t>(1, domain, ds1, tile_extents, layout));
+      TileDomain<int32_t>(0, domain, ds1, tile_extents, layout));
   TileDomain<int32_t> array_tile_domain(
       UINT32_MAX, domain, dsd, tile_extents, layout);
 
@@ -210,38 +210,38 @@ TEST_CASE_METHOD(
       &result_space_tiles);
   CHECK(result_space_tiles.size() == 6);
 
+  // Result tiles for fragment #0
+  ResultTile result_tile_1_0_0(0, 0, &schema);
+  ResultTile result_tile_1_2_0(0, 2, &schema);
+
   // Result tiles for fragment #1
   ResultTile result_tile_1_0_1(1, 0, &schema);
-  ResultTile result_tile_1_2_1(1, 2, &schema);
 
   // Result tiles for fragment #2
-  ResultTile result_tile_1_0_2(2, 0, &schema);
-
-  // Result tiles for fragment #3
-  ResultTile result_tile_2_0_3(3, 0, &schema);
-  ResultTile result_tile_3_0_3(3, 2, &schema);
+  ResultTile result_tile_2_0_2(2, 0, &schema);
+  ResultTile result_tile_3_0_2(2, 2, &schema);
 
   // Initialize result_space_tiles
   ResultSpaceTile<int32_t> rst_1_0;
   rst_1_0.set_start_coords({3, 1});
-  rst_1_0.append_frag_domain(2, ds2);
-  rst_1_0.append_frag_domain(1, ds1);
+  rst_1_0.append_frag_domain(1, ds2);
+  rst_1_0.append_frag_domain(0, ds1);
+  rst_1_0.set_result_tile(0, result_tile_1_0_0);
   rst_1_0.set_result_tile(1, result_tile_1_0_1);
-  rst_1_0.set_result_tile(2, result_tile_1_0_2);
   ResultSpaceTile<int32_t> rst_1_2;
   rst_1_2.set_start_coords({3, 11});
-  rst_1_2.append_frag_domain(1, ds1);
-  rst_1_2.set_result_tile(1, result_tile_1_2_1);
+  rst_1_2.append_frag_domain(0, ds1);
+  rst_1_2.set_result_tile(0, result_tile_1_2_0);
   ResultSpaceTile<int32_t> rst_2_0;
   rst_2_0.set_start_coords({5, 1});
-  rst_2_0.append_frag_domain(3, ds3);
-  rst_2_0.set_result_tile(3, result_tile_2_0_3);
+  rst_2_0.append_frag_domain(2, ds3);
+  rst_2_0.set_result_tile(2, result_tile_2_0_2);
   ResultSpaceTile<int32_t> rst_2_2;
   rst_2_2.set_start_coords({5, 11});
   ResultSpaceTile<int32_t> rst_3_0;
   rst_3_0.set_start_coords({7, 1});
-  rst_3_0.append_frag_domain(3, ds3);
-  rst_3_0.set_result_tile(3, result_tile_3_0_3);
+  rst_3_0.append_frag_domain(2, ds3);
+  rst_3_0.set_result_tile(2, result_tile_3_0_2);
   ResultSpaceTile<int32_t> rst_3_2;
   rst_3_2.set_start_coords({7, 11});
 
