@@ -1322,6 +1322,7 @@ TEST_CASE_METHOD(
         true);
     fragments.emplace_back(std::move(fragment));
   }
+
   create_result_space_tiles(
       fragments,
       dom,
