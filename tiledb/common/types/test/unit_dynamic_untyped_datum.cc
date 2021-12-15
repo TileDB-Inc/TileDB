@@ -1,5 +1,5 @@
 /**
- * @file compile_constants_main.cc
+ * @file tiledb/common/types/test/unit_dynamic_untyped_datum.cc
  *
  * @section LICENSE
  *
@@ -24,12 +24,21 @@
  * LIABILITY, WHETHER IN AN ACTION OF CONTRACT, TORT OR OTHERWISE, ARISING FROM,
  * OUT OF OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN
  * THE SOFTWARE.
+ *
+ * @section DESCRIPTION
+ *
+ * This file defines a test `main()`
  */
 
-#include "../parse_argument.h"
+#include <catch.hpp>
+#include <sstream>
+#include "../dynamic_typed_datum.h"
+using Datatype = tiledb::sm::Datatype;
 
-int main() {
-  int x;
-  (void)tiledb::sm::utils::parse::convert("0", &x);
-  return 0;
+TEST_CASE("DynamicTypedDatumView - stream output - INT32") {
+  std::ostringstream ss;
+  int32_t x{1337};
+  DynamicTypedDatumView y{UntypedDatumView{&x, sizeof(x)}, Datatype::INT32};
+  ss << y;
+  CHECK(ss.str() == "1337");
 }

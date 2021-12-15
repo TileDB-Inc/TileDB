@@ -1,5 +1,5 @@
 #
-# tiledb/sm/misc/CMakeLists.txt
+# tiledb/sm/query/CMakeLists.txt
 #
 # The MIT License
 #
@@ -22,39 +22,22 @@
 # LIABILITY, WHETHER IN AN ACTION OF CONTRACT, TORT OR OTHERWISE, ARISING FROM,
 # OUT OF OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN
 # THE SOFTWARE.
+#
 
 include(common NO_POLICY_SCOPE)
 
-#
-# `constants` object library
-#
-add_library(constants OBJECT constants.cc)
-#
-# Test-compile of object library ensures link-completeness
-#
-add_executable(compile_constants EXCLUDE_FROM_ALL)
-target_link_libraries(compile_constants PRIVATE constants)
-target_sources(compile_constants PRIVATE test/compile_constants_main.cc)
+# Skeleton for future use
+if (FALSE AND TILEDB_TESTS)
+    add_executable(unit_query_writer EXCLUDE_FROM_ALL)
+    find_package(Catch_EP REQUIRED)
+    target_link_libraries(unit_query_writer PUBLIC Catch2::Catch2)
 
-#
-# `misc_types` object library
-#
-add_library(misc_types OBJECT types.cc)
-#
-# Test-compile of object library ensures link-completeness
-#
-add_executable(compile_misc_types EXCLUDE_FROM_ALL)
-target_link_libraries(compile_misc_types PRIVATE misc_types)
-target_sources(compile_misc_types PRIVATE test/compile_misc_types_main.cc)
+    # Sources for tests
+    target_sources(unit_query_writer PUBLIC test/unit_query_writer_main.cc)
 
-#
-# `parse_arguments` object library
-#
-add_library(parse_argument OBJECT parse_argument.cc)
-target_link_libraries(parse_argument PUBLIC baseline $<TARGET_OBJECTS:baseline>)
-#
-# Test-compile of object library ensures link-completeness
-#
-add_executable(compile_parse_argument EXCLUDE_FROM_ALL)
-target_link_libraries(compile_parse_argument PRIVATE parse_argument)
-target_sources(compile_parse_argument PRIVATE test/compile_parse_argument_main.cc)
+    add_test(
+        NAME "unit_query_writer"
+        COMMAND $<TARGET_FILE:unit_query_writer>
+        WORKING_DIRECTORY ${CMAKE_CURRENT_SOURCE_DIR}
+    )
+endif()

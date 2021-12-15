@@ -1,5 +1,5 @@
 /**
- * @file compile_constants_main.cc
+ * @file untyped_datum.cc
  *
  * @section LICENSE
  *
@@ -26,10 +26,4 @@
  * THE SOFTWARE.
  */
 
-#include "../parse_argument.h"
-
-int main() {
-  int x;
-  (void)tiledb::sm::utils::parse::convert("0", &x);
-  return 0;
-}
+#include "untyped_datum.h"

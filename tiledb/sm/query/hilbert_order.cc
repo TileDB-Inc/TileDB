@@ -1,5 +1,5 @@
 /**
- * @file compile_constants_main.cc
+ * @file tiledb/sm/query/hilbert_order.cc
  *
  * @section LICENSE
  *
@@ -26,10 +26,34 @@
  * THE SOFTWARE.
  */
 
-#include "../parse_argument.h"
+#include "hilbert_order.h"
+#include "tiledb/common/common.h"
+#include "tiledb/sm/array_schema/dimension.h"
+#include "tiledb/sm/query/query_buffer.h"
+#include "tiledb/sm/query/result_coords.h"
 
-int main() {
-  int x;
-  (void)tiledb::sm::utils::parse::convert("0", &x);
-  return 0;
+namespace tiledb::sm::hilbert_order {
+
+uint64_t map_to_uint64(
+    const Dimension& dim,
+    const QueryBuffer* buff,
+    uint64_t c,
+    int bits,
+    uint64_t max_bucket_val) {
+  auto d{buff->dimension_datum_at(dim, c)};
+  return dim.map_to_uint64(
+      d.datum().content(), d.datum().size(), bits, max_bucket_val);
 }
+
+uint64_t map_to_uint64(
+    const Dimension& dim,
+    const ResultCoords& coord,
+    uint32_t dim_idx,
+    int bits,
+    uint64_t max_bucket_val) {
+  auto d{coord.dimension_datum(dim, dim_idx)};
+  return dim.map_to_uint64(
+      d.datum().content(), d.datum().size(), bits, max_bucket_val);
+}
+
+}  // namespace tiledb::sm::hilbert_order

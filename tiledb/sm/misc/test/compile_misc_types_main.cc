@@ -1,5 +1,5 @@
 /**
- * @file compile_constants_main.cc
+ * @file compile_misc_types_main.cc
  *
  * @section LICENSE
  *
@@ -26,10 +26,10 @@
  * THE SOFTWARE.
  */
 
-#include "../parse_argument.h"
+#include <string>
+#include "../types.h"
 
 int main() {
-  int x;
-  (void)tiledb::sm::utils::parse::convert("0", &x);
+  (void)&tiledb::sm::ByteVecValue::rvalue_as<std::string>;
   return 0;
 }

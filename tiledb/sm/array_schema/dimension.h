@@ -43,9 +43,8 @@
 #include "tiledb/common/blank.h"
 #include "tiledb/common/logger_public.h"
 #include "tiledb/common/status.h"
+#include "tiledb/sm/misc/constants.h"
 #include "tiledb/sm/misc/types.h"
-#include "tiledb/sm/query/query_buffer.h"
-#include "tiledb/sm/query/result_coords.h"
 #include "tiledb/sm/tile/tile.h"
 
 using namespace tiledb::common;
@@ -112,15 +111,6 @@ class Dimension {
 
   /** Returns the size (in bytes) of a coordinate in this dimension. */
   uint64_t coord_size() const;
-
-  /**
-   *  Returns a coordinate in string format.
-   *
-   * @param buff The query buffer that contains all coordinates.
-   * @param i The position of the coordinate in the buffer.
-   * @return The coordinate in string format.
-   */
-  std::string coord_to_str(const QueryBuffer& buff, uint64_t i) const;
 
   /**
    * Populates the object members from the data in the input binary buffer.
@@ -706,32 +696,6 @@ class Dimension {
   static uint64_t tile_num(const Dimension* dim, const Range& range);
 
   /**
-   * Maps the c-th cell in the input query buffer to a uint64 value,
-   * based on discretizing the domain from 0 to `max_bucket_val`.
-   * This value is used to compute a Hilbert value.
-   */
-  uint64_t map_to_uint64(
-      const QueryBuffer* buff,
-      uint64_t c,
-      uint64_t coords_num,
-      int bits,
-      uint64_t max_bucket_val) const;
-
-  /**
-   * Maps the c-th cell in the input query buffer to a uint64 value,
-   * based on discretizing the domain from 0 to `max_bucket_val`.
-   * This value is used to compute a Hilbert value.
-   */
-  template <class T>
-  static uint64_t map_to_uint64(
-      const Dimension* dim,
-      const QueryBuffer* buff,
-      uint64_t c,
-      uint64_t coords_num,
-      int bits,
-      uint64_t max_bucket_val);
-
-  /**
    * Maps the input coordinate to a uint64 value,
    * based on discretizing the domain from 0 to `max_bucket_val`.
    * This value is used to compute a Hilbert value.
@@ -752,30 +716,6 @@ class Dimension {
       const Dimension* dim,
       const void* coord,
       uint64_t coord_size,
-      int bits,
-      uint64_t max_bucket_val);
-
-  /**
-   * Maps the input result coordinate to a uint64 value,
-   * based on discretizing the domain from 0 to `max_bucket_val`.
-   * This value is used to compute a Hilbert value.
-   */
-  uint64_t map_to_uint64(
-      const ResultCoords& coord,
-      uint32_t dim_idx,
-      int bits,
-      uint64_t max_bucket_val) const;
-
-  /**
-   * Maps the input result coordinate to a uint64 value,
-   * based on discretizing the domain from 0 to `max_bucket_val`.
-   * This value is used to compute a Hilbert value.
-   */
-  template <class T>
-  static uint64_t map_to_uint64_3(
-      const Dimension* dim,
-      const ResultCoords& coord,
-      uint32_t dim_idx,
       int bits,
       uint64_t max_bucket_val);
 
@@ -851,13 +791,19 @@ class Dimension {
   Status set_null_tile_extent_to_range();
 
   /** Returns the tile extent. */
-  const ByteVecValue& tile_extent() const;
+  inline const ByteVecValue& tile_extent() const {
+    return tile_extent_;
+  }
 
   /** Returns the dimension type. */
-  Datatype type() const;
+  inline Datatype type() const {
+    return type_;
+  }
 
   /** Returns true if the dimension is var-sized. */
-  bool var_size() const;
+  inline bool var_size() const {
+    return cell_val_num_ == constants::var_num;
+  }
 
  private:
   /* ********************************* */
@@ -1015,28 +961,12 @@ class Dimension {
   std::function<uint64_t(const Dimension* dim, const Range&)> tile_num_func_;
 
   /**
-   * Stores the appropriate templated map_to_uint64() function based on
-   * the dimension datatype.
-   */
-  std::function<uint64_t(
-      const Dimension*, const QueryBuffer*, uint64_t, uint64_t, int, uint64_t)>
-      map_to_uint64_func_;
-
-  /**
    * Stores the appropriate templated map_to_uint64_2() function based on
    * the dimension datatype.
    */
   std::function<uint64_t(
       const Dimension*, const void*, uint64_t, int, uint64_t)>
       map_to_uint64_2_func_;
-
-  /**
-   * Stores the appropriate templated map_to_uint64_3() function based on
-   * the dimension datatype.
-   */
-  std::function<uint64_t(
-      const Dimension*, const ResultCoords&, uint32_t, int, uint64_t)>
-      map_to_uint64_3_func_;
 
   /**
    * Stores the appropriate templated map_from_uint64() function based on
@@ -1200,14 +1130,8 @@ class Dimension {
   /** Sets the templated tile_num() function. */
   void set_tile_num_func();
 
-  /** Sets the templated map_to_uint64() function. */
-  void set_map_to_uint64_func();
-
   /** Sets the templated map_to_uint64_2() function. */
   void set_map_to_uint64_2_func();
-
-  /** Sets the templated map_to_uint64_3() function. */
-  void set_map_to_uint64_3_func();
 
   /** Sets the templated map_from_uint64() function. */
   void set_map_from_uint64_func();

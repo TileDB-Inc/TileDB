@@ -158,17 +158,6 @@ Status get_fragment_version(const std::string& name, uint32_t* version) {
   return Status::Ok();
 }
 
-uint64_t common_prefix_size(
-    const std::string_view& a, const std::string_view& b) {
-  auto size = std::min(a.size(), b.size());
-  for (size_t i = 0; i < size; ++i) {
-    if (a[i] != b[i])
-      return i;
-  }
-
-  return size;
-}
-
 }  // namespace parse
 
 /* ****************************** */

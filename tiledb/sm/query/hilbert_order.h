@@ -1,5 +1,5 @@
 /**
- * @file compile_constants_main.cc
+ * @file tiledb/sm/query/hilbert_order.h
  *
  * @section LICENSE
  *
@@ -26,10 +26,29 @@
  * THE SOFTWARE.
  */
 
-#include "../parse_argument.h"
+#ifndef TILEDB_QUERY_HILBERT_ORDER_H
+#define TILEDB_QUERY_HILBERT_ORDER_H
 
-int main() {
-  int x;
-  (void)tiledb::sm::utils::parse::convert("0", &x);
-  return 0;
-}
+#include "tiledb/common/common.h"
+class Dimension;
+class QueryBuffer;
+class ResultCoords;
+
+namespace tiledb::sm::hilbert_order {
+
+uint64_t map_to_uint64(
+    const Dimension& dim,
+    const QueryBuffer* buff,
+    uint64_t c,
+    int bits,
+    uint64_t max_bucket_val);
+
+uint64_t map_to_uint64(
+    const Dimension& dim,
+    const ResultCoords& coord,
+    uint32_t dim_idx,
+    int bits,
+    uint64_t max_bucket_val);
+
+}  // namespace tiledb::sm::hilbert_order
+#endif  // TILEDB_QUERY_HILBERT_ORDER_H

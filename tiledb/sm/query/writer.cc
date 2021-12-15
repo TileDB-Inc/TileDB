@@ -30,8 +30,8 @@
  * This file implements class Writer.
  */
 
+#include "tiledb/sm/query/writer.h"
 #include "tiledb/common/common.h"
-
 #include "tiledb/common/heap_memory.h"
 #include "tiledb/common/logger.h"
 #include "tiledb/sm/array/array.h"
@@ -44,8 +44,8 @@
 #include "tiledb/sm/misc/parallel_functions.h"
 #include "tiledb/sm/misc/utils.h"
 #include "tiledb/sm/misc/uuid.h"
+#include "tiledb/sm/query/hilbert_order.h"
 #include "tiledb/sm/query/query_macros.h"
-#include "tiledb/sm/query/writer.h"
 #include "tiledb/sm/stats/global_stats.h"
 #include "tiledb/sm/storage_manager/storage_manager.h"
 #include "tiledb/sm/tile/generic_tile_io.h"
@@ -2714,7 +2714,7 @@ std::string Writer::coords_to_str(uint64_t i) const {
   for (unsigned d = 0; d < dim_num; ++d) {
     auto dim = array_schema_->dimension(d);
     const auto& dim_name = dim->name();
-    ss << dim->coord_to_str(buffers_.find(dim_name)->second, i);
+    ss << buffers_.find(dim_name)->second.dimension_datum_at(*dim, i);
     if (d < dim_num - 1)
       ss << ", ";
   }
@@ -2746,8 +2746,8 @@ Status Writer::calculate_hilbert_values(
         std::vector<uint64_t> coords(dim_num);
         for (uint32_t d = 0; d < dim_num; ++d) {
           auto dim = array_schema_->dimension(d);
-          coords[d] = dim->map_to_uint64(
-              buffs[d], c, coords_info_.coords_num_, bits, max_bucket_val);
+          coords[d] = hilbert_order::map_to_uint64(
+              *dim, buffs[d], c, bits, max_bucket_val);
         }
         (*hilbert_values)[c] = h.coords_to_hilbert(&coords[0]);
 

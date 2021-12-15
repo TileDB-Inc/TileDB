@@ -1,5 +1,5 @@
 /**
- * @file compile_constants_main.cc
+ * @file untyped_datum.h
  *
  * @section LICENSE
  *
@@ -26,10 +26,31 @@
  * THE SOFTWARE.
  */
 
-#include "../parse_argument.h"
+#ifndef TILEDB_COMMON_UNTYPED_DATUM_H
+#define TILEDB_COMMON_UNTYPED_DATUM_H
 
-int main() {
-  int x;
-  (void)tiledb::sm::utils::parse::convert("0", &x);
-  return 0;
-}
+#include <ostream>
+
+namespace tiledb::common {
+
+/**
+ * A non-owning view of a datum of any type.
+ */
+class UntypedDatumView {
+  const void* datum_content_;
+  size_t datum_size_;
+
+ public:
+  UntypedDatumView(const void* content, size_t size)
+      : datum_content_(content)
+      , datum_size_(size) {
+  }
+  [[nodiscard]] inline const void* content() const {
+    return datum_content_;
+  }
+  [[nodiscard]] inline size_t size() const {
+    return datum_size_;
+  }
+};
+}  // namespace tiledb::common
+#endif  // TILEDB_COMMON_UNTYPED_DATUM_H

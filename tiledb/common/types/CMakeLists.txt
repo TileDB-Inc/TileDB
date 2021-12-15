@@ -1,5 +1,5 @@
 #
-# tiledb/sm/misc/CMakeLists.txt
+# tiledb/common/types/CMakeLists.txt
 #
 # The MIT License
 #
@@ -22,39 +22,33 @@
 # LIABILITY, WHETHER IN AN ACTION OF CONTRACT, TORT OR OTHERWISE, ARISING FROM,
 # OUT OF OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN
 # THE SOFTWARE.
+#
 
 include(common NO_POLICY_SCOPE)
 
 #
-# `constants` object library
+# `datum` object library
 #
-add_library(constants OBJECT constants.cc)
+add_library(datum OBJECT untyped_datum.cc dynamic_typed_datum.cc)
 #
 # Test-compile of object library ensures link-completeness
 #
-add_executable(compile_constants EXCLUDE_FROM_ALL)
-target_link_libraries(compile_constants PRIVATE constants)
-target_sources(compile_constants PRIVATE test/compile_constants_main.cc)
+add_executable(compile_datum EXCLUDE_FROM_ALL)
+target_link_libraries(compile_datum PRIVATE datum)
+target_sources(compile_datum PRIVATE test/compile_datum_main.cc)
 
-#
-# `misc_types` object library
-#
-add_library(misc_types OBJECT types.cc)
-#
-# Test-compile of object library ensures link-completeness
-#
-add_executable(compile_misc_types EXCLUDE_FROM_ALL)
-target_link_libraries(compile_misc_types PRIVATE misc_types)
-target_sources(compile_misc_types PRIVATE test/compile_misc_types_main.cc)
+if (TILEDB_TESTS)
+    add_executable(unit_datum EXCLUDE_FROM_ALL)
+    target_link_libraries(unit_datum PRIVATE datum)
+    find_package(Catch_EP REQUIRED)
+    target_link_libraries(unit_datum PUBLIC Catch2::Catch2)
 
-#
-# `parse_arguments` object library
-#
-add_library(parse_argument OBJECT parse_argument.cc)
-target_link_libraries(parse_argument PUBLIC baseline $<TARGET_OBJECTS:baseline>)
-#
-# Test-compile of object library ensures link-completeness
-#
-add_executable(compile_parse_argument EXCLUDE_FROM_ALL)
-target_link_libraries(compile_parse_argument PRIVATE parse_argument)
-target_sources(compile_parse_argument PRIVATE test/compile_parse_argument_main.cc)
+    # Sources for tests
+    target_sources(unit_datum PUBLIC test/main.cc test/unit_dynamic_untyped_datum.cc)
+
+    add_test(
+            NAME "unit_datum"
+            COMMAND $<TARGET_FILE:unit_datum>
+            WORKING_DIRECTORY ${CMAKE_CURRENT_SOURCE_DIR}
+    )
+endif()

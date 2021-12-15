@@ -40,6 +40,7 @@
 #include "tiledb/sm/misc/hilbert.h"
 #include "tiledb/sm/misc/parallel_functions.h"
 #include "tiledb/sm/misc/utils.h"
+#include "tiledb/sm/query/hilbert_order.h"
 #include "tiledb/sm/query/query_macros.h"
 #include "tiledb/sm/query/read_cell_slab_iter.h"
 #include "tiledb/sm/query/result_tile.h"
@@ -1240,8 +1241,8 @@ Status Reader::calculate_hilbert_values(
         std::vector<uint64_t> coords(dim_num);
         for (uint32_t d = 0; d < dim_num; ++d) {
           auto dim = array_schema_->dimension(d);
-          coords[d] =
-              dim->map_to_uint64(*(iter_begin + c), d, bits, max_bucket_val);
+          coords[d] = hilbert_order::map_to_uint64(
+              *dim, *(iter_begin + c), d, bits, max_bucket_val);
         }
         (*hilbert_values)[c] =
             std::pair<uint64_t, uint64_t>(h.coords_to_hilbert(&coords[0]), c);

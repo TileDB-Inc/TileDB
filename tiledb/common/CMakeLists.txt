@@ -30,6 +30,7 @@ include(common)
 add_subdirectory(thread_pool)
 add_subdirectory(dynamic_memory)
 add_subdirectory(governor)
+add_subdirectory(types)
 
 if (TILEDB_TESTS)
     add_subdirectory(interval)
