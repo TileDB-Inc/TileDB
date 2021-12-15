@@ -144,7 +144,7 @@ Status Query::add_range(
 
   // Prepare a temp range
   std::vector<uint8_t> range;
-  uint8_t coord_size = array_schema_->dimension(dim_idx)->coord_size();
+  auto coord_size = array_schema_->dimension(dim_idx)->coord_size();
   range.resize(2 * coord_size);
   std::memcpy(&range[0], start, coord_size);
   std::memcpy(&range[coord_size], end, coord_size);
