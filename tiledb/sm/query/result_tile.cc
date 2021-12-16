@@ -870,10 +870,6 @@ void ResultTile::compute_results_count_sparse(
   auto stores_zipped_coords = result_tile->stores_zipped_coords();
   auto dim_num = result_tile->domain()->dim_num();
 
-  // Vector to get the status of each cell
-  const uint64_t range_indexes_size = range_indexes.size();
-  std::vector<bool> counts(range_indexes_size);
-
   // Handle separate coordinate tiles.
   if (!stores_zipped_coords) {
     const auto& coord_tile = std::get<0>(result_tile->coord_tile(dim_idx));
@@ -900,12 +896,7 @@ void ResultTile::compute_results_count_sparse(
             result_count[pos] = 0;
             continue;
           }
-
-          // Set all counts for existing ranges to 0
           uint64_t start_range_idx = std::distance(range_indexes.begin(), it);
-          for (uint64_t i = 0; i < start_range_idx; ++i) {
-            counts[i] = false;
-          }
 
           // Binary search to find the last range containing the cell.
           auto it2 = std::lower_bound(
@@ -923,21 +914,13 @@ void ResultTile::compute_results_count_sparse(
           uint64_t end_range_idx =
               std::distance(it, it2) + start_range_idx + offset;
 
-          // Iterate through all ranges and compute the count for this dim.
-          // Use 2 for loops to facilitate vectorization.
+          // Iterate through all relevant ranges and compute the count for this
+          // dim.
+          uint64_t count = 0;
           for (uint64_t j = start_range_idx; j < end_range_idx; ++j) {
             const auto& range = (const T*)ranges[range_indexes[j]].start();
-            counts[j] = c >= range[0] && c <= range[1];
+            count += c >= range[0] && c <= range[1];
           }
-
-          // Loop through rest of range to set to false.
-          for (uint64_t k = end_range_idx; k < range_indexes_size; ++k) {
-            counts[k] = false;
-          }
-
-          // Sum to get the true count.
-          const uint64_t count =
-              std::accumulate(counts.begin(), counts.end(), 0);
 
           // Multiply the past count by this dimension's count.
           result_count[pos] *= count;
@@ -957,13 +940,11 @@ void ResultTile::compute_results_count_sparse(
     for (uint64_t pos = min_cell; pos < max_cell; ++pos) {
       if (result_count[pos]) {
         T c = coords[pos * dim_num + dim_idx];
+        uint64_t count = 0;
         for (uint64_t i = 0; i < range_indexes.size(); i++) {
           const auto& range = (const T*)ranges[range_indexes[i]].start();
-          counts[i] = c >= range[0] && c <= range[1];
+          count += c >= range[0] && c <= range[1];
         }
-
-        // Sum to get the true count.
-        const uint64_t count = std::accumulate(counts.begin(), counts.end(), 0);
 
         // Multiply the past count by this dimension's count.
         result_count[pos] *= count;
