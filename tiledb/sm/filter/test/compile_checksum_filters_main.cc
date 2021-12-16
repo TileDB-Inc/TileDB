@@ -1,5 +1,5 @@
 /**
- * @file   memory.h
+ * @file compile_checksum_filters_main.cc
  *
  * @section LICENSE
  *
@@ -24,18 +24,13 @@
  * LIABILITY, WHETHER IN AN ACTION OF CONTRACT, TORT OR OTHERWISE, ARISING FROM,
  * OUT OF OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN
  * THE SOFTWARE.
- *
- * @section DESCRIPTION
- *
- * This file defines common memory functions
  */
 
-#ifndef TILEDB_COMMON_H
-#define TILEDB_COMMON_H
+#include "../checksum_md5_filter.h"
+#include "../checksum_sha256_filter.h"
 
-namespace tiledb {
-namespace common {
-void tdb_malloc_trim();
-}  // namespace common
-}  // namespace tiledb
-#endif  // TILEDB_COMMON_H
+int main() {
+  (void)sizeof(tiledb::sm::ChecksumMD5Filter);
+  (void)sizeof(tiledb::sm::ChecksumSHA256Filter);
+  return 0;
+}

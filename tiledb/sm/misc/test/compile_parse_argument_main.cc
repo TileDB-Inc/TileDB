@@ -1,5 +1,5 @@
 /**
- * @file   memory.h
+ * @file compile_constants_main.cc
  *
  * @section LICENSE
  *
@@ -24,18 +24,12 @@
  * LIABILITY, WHETHER IN AN ACTION OF CONTRACT, TORT OR OTHERWISE, ARISING FROM,
  * OUT OF OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN
  * THE SOFTWARE.
- *
- * @section DESCRIPTION
- *
- * This file defines common memory functions
  */
 
-#ifndef TILEDB_COMMON_H
-#define TILEDB_COMMON_H
+#include "../parse_argument.h"
 
-namespace tiledb {
-namespace common {
-void tdb_malloc_trim();
-}  // namespace common
-}  // namespace tiledb
-#endif  // TILEDB_COMMON_H
+int main() {
+  int x;
+  (void)tiledb::sm::utils::parse::convert("", &x);
+  return 0;
+}

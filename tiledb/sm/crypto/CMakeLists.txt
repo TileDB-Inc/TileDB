@@ -1,6 +1,5 @@
 #
-# tiledb/sm/compressors/CMakeLists.txt
-#
+# tiledb/sm/crypto/CMakeLists.txt
 #
 # The MIT License
 #
@@ -24,25 +23,36 @@
 # OUT OF OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN
 # THE SOFTWARE.
 #
+
 include(common NO_POLICY_SCOPE)
 
 #
-# `compressors` object library
+# `filter` object library
 #
-add_library(compressors OBJECT bzip_compressor.cc dd_compressor.cc gzip_compressor.cc lz4_compressor.cc rle_compressor.cc zstd_compressor.cc)
-target_link_libraries(compressors PUBLIC baseline $<TARGET_OBJECTS:baseline>)
-target_link_libraries(compressors PUBLIC buffer $<TARGET_OBJECTS:buffer>)
-find_package(Bzip2_EP REQUIRED)
-find_package(LZ4_EP REQUIRED)
-find_package(Zlib_EP REQUIRED)
-find_package(Zstd_EP REQUIRED)
-target_link_libraries(compressors PUBLIC Bzip2::Bzip2 LZ4::LZ4 Zlib::Zlib Zstd::Zstd)
-
+add_library(crypto OBJECT crypto.cc crypto_openssl.cc crypto_win32.cc encryption_key.cc)
+target_link_libraries(crypto PUBLIC buffer $<TARGET_OBJECTS:buffer>)
+if(WIN32)
+    if(MSVC)
+        find_library(BCRYPT_LIBRARY bcrypt)
+        message(STATUS "Found Win32 lib bcrypt: ${BCRYPT_LIBRARY}")
+        target_link_libraries(crypto PUBLIC ${BCRYPT_LIBRARY})
+    else()
+        message(STATUS "Linking to Win32 lib bcrypt")
+        target_link_libraries(crypto PUBLIC -lbcrypt)
+    endif()
+else()
+    find_package(OpenSSL_EP REQUIRED)
+    target_link_libraries(crypto PUBLIC OpenSSL::Crypto)
+endif()
+# OpenSSL-3 deprecates MD5
+if(MSVC)
+    set_source_files_properties(crypto_openssl.cc PROPERTIES COMPILE_OPTIONS "/wd4996")
+else()
+    set_source_files_properties(crypto_openssl.cc PROPERTIES COMPILE_OPTIONS "-Wno-deprecated-declarations")
+endif()
 #
 # Test-compile of object library ensures link-completeness
 #
-add_executable(compile_compressors EXCLUDE_FROM_ALL)
-target_link_libraries(compile_compressors PRIVATE compressors)
-target_sources(compile_compressors PRIVATE
-        test/compile_compressors_main.cc $<TARGET_OBJECTS:compressors>
-)
+add_executable(compile_crypto EXCLUDE_FROM_ALL)
+target_link_libraries(compile_crypto PRIVATE crypto)
+target_sources(compile_crypto PRIVATE test/compile_crypto_main.cc)

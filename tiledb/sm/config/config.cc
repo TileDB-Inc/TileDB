@@ -30,11 +30,11 @@
  * This file implements class Config.
  */
 
-#include "tiledb/sm/config/config.h"
+#include "config.h"
 #include "tiledb/common/logger.h"
 #include "tiledb/sm/enums/serialization_type.h"
 #include "tiledb/sm/misc/constants.h"
-#include "tiledb/sm/misc/utils.h"
+#include "tiledb/sm/misc/parse_argument.h"
 
 #include <fstream>
 #include <iostream>
@@ -465,6 +465,22 @@ Status Config::get(const std::string& param, T* value, bool* found) const {
 
   // Parameter found, retrieve value
   return utils::parse::convert(val, value);
+}
+
+/*
+ * Template definition not in header; explicitly instantiated below. It's here
+ * to deal with legacy difficulties with header dependencies.
+ */
+template <class T>
+Status Config::get_vector(
+    const std::string& param, std::vector<T>* value, bool* found) const {
+  // Check if parameter exists
+  const char* val = get_from_config_or_env(param, found);
+  if (!*found)
+    return Status::Ok();
+
+  // Parameter found, retrieve value
+  return utils::parse::convert<T>(val, value);
 }
 
 const std::map<std::string, std::string>& Config::param_values() const {
@@ -966,7 +982,9 @@ const char* Config::get_from_config_or_env(
   return *found ? value_config : "";
 }
 
-// Explicit template instantiations
+/*
+ * Explicit instantiations
+ */
 template Status Config::get<bool>(
     const std::string& param, bool* value, bool* found) const;
 template Status Config::get<int>(
@@ -981,6 +999,8 @@ template Status Config::get<float>(
     const std::string& param, float* value, bool* found) const;
 template Status Config::get<double>(
     const std::string& param, double* value, bool* found) const;
+template Status Config::get_vector<uint32_t>(
+    const std::string& param, std::vector<uint32_t>* value, bool* found) const;
 
 }  // namespace sm
 }  // namespace tiledb

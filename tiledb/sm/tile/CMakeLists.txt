@@ -1,5 +1,5 @@
 #
-# tiledb/sm/CMakeLists.txt
+# tiledb/sm/tile/CMakeLists.txt
 #
 # The MIT License
 #
@@ -24,13 +24,20 @@
 # THE SOFTWARE.
 #
 
-include(common-root)
+include(common NO_POLICY_SCOPE)
 
-add_subdirectory(buffer)
-add_subdirectory(compressors)
-add_subdirectory(config)
-add_subdirectory(crypto)
-add_subdirectory(filter)
-add_subdirectory(misc)
-add_subdirectory(stats)
-add_subdirectory(tile)
+#
+# `filter` object library
+#
+add_library(tile OBJECT tile.cc)
+target_link_libraries(tile PUBLIC baseline $<TARGET_OBJECTS:baseline>)
+target_link_libraries(tile PUBLIC buffer $<TARGET_OBJECTS:buffer>)
+target_link_libraries(tile PUBLIC constants $<TARGET_OBJECTS:constants>)
+#
+# Test-compile of object library ensures link-completeness
+#
+add_executable(compile_tile EXCLUDE_FROM_ALL)
+target_link_libraries(compile_tile PRIVATE tile)
+target_sources(compile_tile PRIVATE
+    test/compile_tile_main.cc $<TARGET_OBJECTS:tile>
+)

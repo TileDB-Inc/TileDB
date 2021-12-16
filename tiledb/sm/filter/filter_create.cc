@@ -42,6 +42,7 @@
 #include "filter.h"
 #include "noop_filter.h"
 #include "positive_delta_filter.h"
+#include "tiledb/common/logger_public.h"
 #include "tiledb/sm/enums/filter_type.h"
 
 tiledb::sm::Filter* tiledb::sm::FilterCreate::make(FilterType type) {

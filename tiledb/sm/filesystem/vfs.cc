@@ -30,9 +30,8 @@
  * This file implements the VFS class.
  */
 
-#include "tiledb/sm/filesystem/vfs.h"
-#include "tiledb/common/heap_memory.h"
-#include "tiledb/common/logger.h"
+#include "vfs.h"
+#include "tiledb/common/logger_public.h"
 #include "tiledb/sm/buffer/buffer.h"
 #include "tiledb/sm/enums/filesystem.h"
 #include "tiledb/sm/enums/vfs_mode.h"

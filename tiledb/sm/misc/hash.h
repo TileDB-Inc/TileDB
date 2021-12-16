@@ -1,11 +1,12 @@
 /**
- * @file   memory.h
+ * @file hash.h
  *
  * @section LICENSE
  *
  * The MIT License
  *
- * @copyright Copyright (c) 2021 TileDB, Inc.
+ * @copyright Copyright (c) 2017-2021 TileDB, Inc.
+ * @copyright Copyright (c) 2016 MIT and Intel Corporation
  *
  * Permission is hereby granted, free of charge, to any person obtaining a copy
  * of this software and associated documentation files (the "Software"), to deal
@@ -27,15 +28,28 @@
  *
  * @section DESCRIPTION
  *
- * This file defines common memory functions
+ * This file contains useful (global) functions.
  */
 
-#ifndef TILEDB_COMMON_H
-#define TILEDB_COMMON_H
+#include <utility>
 
-namespace tiledb {
-namespace common {
-void tdb_malloc_trim();
-}  // namespace common
-}  // namespace tiledb
-#endif  // TILEDB_COMMON_H
+#ifndef TILEDB_MISC_HASH_H
+#define TILEDB_MISC_HASH_H
+/* ********************************* */
+/*          HASH FUNCTIONS           */
+/* ********************************* */
+
+namespace tiledb::sm::utils::hash {
+
+struct pair_hash {
+  template <class T1, class T2>
+  size_t operator()(std::pair<T1, T2> const& pair) const {
+    std::size_t h1 = std::hash<T1>()(pair.first);
+    std::size_t h2 = std::hash<T2>()(pair.second);
+    return h1 ^ h2;
+  }
+};
+
+}  // namespace tiledb::sm::utils::hash
+
+#endif  // TILEDB_MISC_HASH_H
