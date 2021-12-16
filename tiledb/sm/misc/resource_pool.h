@@ -161,20 +161,21 @@ class BlockingResourcePool {
 
   /** Take a resource from the pool. */
   resource_handle take() {
-    if (resources_exhausted()) {
+    std::unique_lock<std::mutex> lck(m_);
+    while (resources_exhausted()) {
       // block until available again
-      std::unique_lock<std::mutex> e_lck(exhaustion_mtx_);
       num_blocked_threads_++;
-      exhaustion_cv_.wait(e_lck, [this]() { return !resources_exhausted(); });
+      exhaustion_cv_.wait(lck, [this]() { return !resources_exhausted(); });
       num_blocked_threads_--;
     }
-    return add_resource();
+    return {*this, unused_[unused_idx_--]};
   }
 
  private:
   /** Release a resource from the pool. */
   void release(unsigned int n) {
-    remove_resource(n);
+    std::unique_lock<std::mutex> lck(m_);
+    unused_[++unused_idx_] = n;
     if (blocked_threads())
       exhaustion_cv_.notify_one();
   }
@@ -184,27 +185,14 @@ class BlockingResourcePool {
     return resources_.at(n);
   }
 
-  /** Check if resource pool is full */
+  /** Check if resource pool is full without acquiring a lock */
   inline bool resources_exhausted() {
     return (unused_idx_ == -1);
   }
 
-  /** Check if there is any blocked thread */
+  /** Check if there is any blocked thread without acquiring a lock */
   inline bool blocked_threads() {
-    std::unique_lock<std::mutex> e_lck(exhaustion_mtx_);
     return (num_blocked_threads_ > 0);
-  }
-
-  /** Remove a resource from the pool */
-  inline void remove_resource(unsigned int n) {
-    std::lock_guard m_lck(m_);
-    unused_[++unused_idx_] = n;
-  }
-
-  /** Add a resource to the pool */
-  inline resource_handle add_resource() {
-    std::lock_guard m_lck(m_);
-    return ResourceHandle(*this, unused_[unused_idx_--]);
   }
 
   /** Vector of resources. */
@@ -216,18 +204,15 @@ class BlockingResourcePool {
   /** Index of the last valid resource in the unused vector. */
   int unused_idx_;
 
-  /** Mutex protecting unused_, unused_idx_. */
-  std::mutex m_;
-
   /** Number of threads blocked waiting for resource availability. */
   int num_blocked_threads_;
 
   /** For signal-and-waiting on resource availability. */
   std::condition_variable exhaustion_cv_;
 
-  /** Mutex protecting exhaustion_cv_ condition variable and
-   * num_blocked_threads_. */
-  std::mutex exhaustion_mtx_;
+  /** Mutex protecting unused_, unused_idx_, exhaustion_cv_ and
+   * num_blocked_threads_ */
+  std::mutex m_;
 
   friend class ResourceHandle<T, tiledb::sm::BlockingResourcePool>;
 };

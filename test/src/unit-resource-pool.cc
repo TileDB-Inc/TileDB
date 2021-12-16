@@ -115,9 +115,12 @@ TEST_CASE("Buffer: Test blocking resource pool", "[resource-pool]") {
   REQUIRE(r4.get() == 10);
 }
 
-TEST_CASE(
-    "Buffer: Test blocking resource pool possible deadlock",
-    "[resource-pool]") {
+/*
+ * Test disabled to avoid non-deterministic behaviour on CI, as flow-control is
+ * done unreliably using sleep_for. When `barrier` (C++20) will be available, it
+ * could be adapted and enabled.
+ */
+TEST_CASE("Buffer: Test blocking resource pool possible deadlock", "[.]") {
   std::thread t1, t2;
 
   BlockingResourcePool<int> pool(3);
