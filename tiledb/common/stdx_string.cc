@@ -27,6 +27,7 @@
  */
 
 #include "stdx_string.h"
+#include <algorithm>
 
 namespace tiledb::stdx::string {
 
