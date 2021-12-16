@@ -36,13 +36,18 @@
 #define NOMINMAX  // avoid min/max macros from windows headers
 #endif
 
-#include <put_block_list_request_base.h>
 #include <future>
 
-#include "tiledb/common/logger.h"
+#include "tiledb/common/common.h"
+#include "tiledb/common/logger_public.h"
 #include "tiledb/sm/filesystem/azure.h"
 #include "tiledb/sm/global_state/global_state.h"
 #include "tiledb/sm/misc/utils.h"
+
+// blob_client.h needs to be included after logger_public.h to avoid
+// macro definitions that blob_client.h has on some platforms
+#include <blob/blob_client.h>
+#include <put_block_list_request_base.h>
 
 using namespace tiledb::common;
 
@@ -130,19 +135,18 @@ Status Azure::init(const Config& config, ThreadPool* const thread_pool) {
 
   // Initialize a credential object
   std::shared_ptr<azure::storage_lite::storage_credential> credential =
-      std::make_shared<azure::storage_lite::shared_key_credential>(
-          account_name, account_key);
+      tdb::make_shared<azure::storage_lite::shared_key_credential>(
+          HERE(), account_name, account_key);
 
   // Use the SAS token, if provided.
   if (!sas_token.empty()) {
     // clang-format off
-    credential = std::make_shared<azure::storage_lite::shared_access_signature_credential>(sas_token);
+    credential = tdb::make_shared<azure::storage_lite::shared_access_signature_credential>(HERE(), sas_token);
     // clang-format on
   }
 
-  std::shared_ptr<azure::storage_lite::storage_account> account =
-      std::make_shared<azure::storage_lite::storage_account>(
-          account_name, credential, use_https, blob_endpoint);
+  auto account = tdb::make_shared<azure::storage_lite::storage_account>(
+      HERE(), account_name, credential, use_https, blob_endpoint);
 
   // Construct the Azure SDK blob client with a concurrency level
   // equal to 'thread_pool_->concurrency_level'. Internally, the client
@@ -156,24 +160,19 @@ Status Azure::init(const Config& config, ThreadPool* const thread_pool) {
   // Linux.
   const std::string cert_file =
       global_state::GlobalState::GetGlobalState().cert_file();
-  client_ = tdb_make_shared(
-      azure::storage_lite::blob_client,
-      account,
-      thread_pool_->concurrency_level(),
-      cert_file);
+  client_ = tdb::make_shared<azure::storage_lite::blob_client>(
+      HERE(), account, thread_pool_->concurrency_level(), cert_file);
 #else
-  client_ = tdb_make_shared(
-      azure::storage_lite::blob_client,
-      account,
-      thread_pool_->concurrency_level());
+  client_ = tdb::make_shared<azure::storage_lite::blob_client>(
+      HERE(), account, thread_pool_->concurrency_level());
 #endif
 
   // The Azure SDK does not provide a way to configure the retry
   // policy or construct a client with our own retry policy. This
   // re-assigns the context with our own retry policy.
   *client_->context() = azure::storage_lite::executor_context(
-      std::make_shared<azure::storage_lite::tinyxml2_parser>(),
-      std::make_shared<AzureRetryPolicy>());
+      tdb::make_shared<azure::storage_lite::tinyxml2_parser>(HERE()),
+      tdb::make_shared<AzureRetryPolicy>(HERE()));
 
   return Status::Ok();
 }

@@ -207,6 +207,7 @@ class SmokeTestFx {
    * @param cell_order The cell order of the array.
    * @param tile_order The tile order of the array.
    * @param write_order The write layout.
+   * @param read_order The read layout.
    * @param encryption_type The encryption type.
    */
   void smoke_test(
@@ -217,6 +218,7 @@ class SmokeTestFx {
       tiledb_layout_t cell_order,
       tiledb_layout_t tile_order,
       tiledb_layout_t write_order,
+      tiledb_layout_t read_order,
       tiledb_encryption_type_t encryption_type);
 
  private:
@@ -282,6 +284,7 @@ class SmokeTestFx {
    * @param test_query_conditions The attribute conditions to filter on.
    * @param test_query_buffers The query buffers to read.
    * @param subarray The subarray to read.
+   * @param read_order The read layout.
    * @param encryption_type The encryption type of the array.
    */
   void read(
@@ -289,6 +292,7 @@ class SmokeTestFx {
       const vector<shared_ptr<test_query_condition_t>>& test_query_conditions,
       const vector<test_query_buffer_t>& test_query_buffers,
       const void* subarray,
+      tiledb_layout_t read_order,
       tiledb_encryption_type_t encryption_type);
 };
 
@@ -492,6 +496,9 @@ void SmokeTestFx::create_array(
     rc = tiledb_array_schema_add_attribute(ctx_, array_schema, attr);
     REQUIRE(rc == TILEDB_OK);
   }
+  if (array_type != TILEDB_DENSE) {
+    rc = tiledb_array_schema_set_allows_dups(ctx_, array_schema, true);
+  }
 
   // Check array schema
   rc = tiledb_array_schema_check(ctx_, array_schema);
@@ -673,6 +680,7 @@ void SmokeTestFx::read(
     const vector<shared_ptr<test_query_condition_t>>& test_query_conditions,
     const vector<test_query_buffer_t>& test_query_buffers,
     const void* subarray,
+    tiledb_layout_t read_order,
     tiledb_encryption_type_t encryption_type) {
   // Open the array for reading (with or without encryption).
   tiledb_array_t* array;
@@ -704,6 +712,10 @@ void SmokeTestFx::read(
   // Create the read query.
   tiledb_query_t* query;
   rc = tiledb_query_alloc(ctx_, array, TILEDB_READ, &query);
+  REQUIRE(rc == TILEDB_OK);
+
+  // Set the layout.
+  rc = tiledb_query_set_layout(ctx_, query, read_order);
   REQUIRE(rc == TILEDB_OK);
 
   // Set the query buffers.
@@ -848,6 +860,7 @@ void SmokeTestFx::smoke_test(
     tiledb_layout_t cell_order,
     tiledb_layout_t tile_order,
     tiledb_layout_t write_order,
+    tiledb_layout_t read_order,
     tiledb_encryption_type_t encryption_type) {
   const string array_name = "smoke_test_array";
 
@@ -857,10 +870,11 @@ void SmokeTestFx::smoke_test(
     return;
   }
 
-  // Skip unordered writes for dense arrays.
-  if (array_type == TILEDB_DENSE && write_order == TILEDB_UNORDERED) {
-    return;
-  }
+  // Skip unordered writes/reads and global order reads for dense arrays.
+  if (array_type == TILEDB_DENSE)
+    if (write_order == TILEDB_UNORDERED || read_order == TILEDB_UNORDERED ||
+        read_order == TILEDB_GLOBAL_ORDER)
+      return;
 
   // String_ascii, float32, and float64 types can only be
   // written to sparse arrays.
@@ -1164,6 +1178,7 @@ void SmokeTestFx::smoke_test(
       test_query_conditions,
       read_query_buffers,
       subarray_full,
+      read_order,
       encryption_type);
 
   // Map each cell value to a bool that indicates whether or
@@ -1182,7 +1197,8 @@ void SmokeTestFx::smoke_test(
   for (const auto& test_query_condition : test_query_conditions) {
     if (test_query_condition->name_ == "a") {
       for (uint64_t i = 0; i < total_cells; ++i) {
-        const bool expected = test_query_condition->cmp(&a_write_buffer[i]);
+        const bool expected = test_query_condition->cmp(&a_write_buffer[i]) &&
+                              a_write_buffer_validity[i];
         if (!expected) {
           expected_a_values_read[i] = false;
         }
@@ -1380,19 +1396,24 @@ TEST_CASE_METHOD(
                  {TILEDB_NO_ENCRYPTION, TILEDB_AES_256_GCM}) {
               for (const tiledb_layout_t write_order :
                    {TILEDB_ROW_MAJOR, TILEDB_UNORDERED}) {
-                vector<test_dim_t> test_dims;
-                for (const test_dim_t& dim : dims) {
-                  test_dims.emplace_back(dim);
+                for (const tiledb_layout_t read_order : {TILEDB_ROW_MAJOR,
+                                                         TILEDB_UNORDERED,
+                                                         TILEDB_GLOBAL_ORDER}) {
+                  vector<test_dim_t> test_dims;
+                  for (const test_dim_t& dim : dims) {
+                    test_dims.emplace_back(dim);
 
-                  smoke_test(
-                      test_attrs,
-                      query_conditions,
-                      test_dims,
-                      array_type,
-                      cell_order,
-                      tile_order,
-                      write_order,
-                      encryption_type);
+                    smoke_test(
+                        test_attrs,
+                        query_conditions,
+                        test_dims,
+                        array_type,
+                        cell_order,
+                        tile_order,
+                        write_order,
+                        read_order,
+                        encryption_type);
+                  }
                 }
               }
             }

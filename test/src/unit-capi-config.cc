@@ -258,20 +258,18 @@ void check_save_to_file() {
   ss << "sm.mem.reader.sparse_global_order.ratio_coords 0.5\n";
   ss << "sm.mem.reader.sparse_global_order.ratio_query_condition 0.25\n";
   ss << "sm.mem.reader.sparse_global_order.ratio_rcs 0.05\n";
-  ss << "sm.mem.reader.sparse_global_order.ratio_result_tiles 0.05\n";
   ss << "sm.mem.reader.sparse_global_order.ratio_tile_ranges 0.1\n";
   ss << "sm.mem.reader.sparse_unordered_with_dups.ratio_array_data 0.1\n";
   ss << "sm.mem.reader.sparse_unordered_with_dups.ratio_coords 0.5\n";
   ss << "sm.mem.reader.sparse_unordered_with_dups.ratio_query_condition "
         "0.25\n";
-  ss << "sm.mem.reader.sparse_unordered_with_dups.ratio_rcs 0.05\n";
-  ss << "sm.mem.reader.sparse_unordered_with_dups.ratio_result_tiles 0.05\n";
   ss << "sm.mem.reader.sparse_unordered_with_dups.ratio_tile_ranges 0.1\n";
   ss << "sm.mem.total_budget 10737418240\n";
   ss << "sm.memory_budget 5368709120\n";
   ss << "sm.memory_budget_var 10737418240\n";
   ss << "sm.query.dense.reader legacy\n";
   ss << "sm.query.sparse_global_order.reader legacy\n";
+  ss << "sm.query.sparse_unordered_with_dups.non_overlapping_ranges false\n";
   ss << "sm.query.sparse_unordered_with_dups.reader refactored\n";
   ss << "sm.read_range_oob warn\n";
   ss << "sm.skip_checksum_validation false\n";
@@ -288,7 +286,6 @@ void check_save_to_file() {
      << "\n";
   ss << "vfs.azure.use_block_list_upload true\n";
   ss << "vfs.azure.use_https true\n";
-  ss << "vfs.file.enable_filelocks true\n";
   ss << "vfs.file.max_parallel_ops " << std::thread::hardware_concurrency()
      << "\n";
   ss << "vfs.file.posix_directory_permissions 755\n";
@@ -573,6 +570,8 @@ TEST_CASE("C API: Test config iter", "[capi][config]") {
   all_param_values["sm.query.dense.reader"] = "legacy";
   all_param_values["sm.query.sparse_global_order.reader"] = "legacy";
   all_param_values["sm.query.sparse_unordered_with_dups.reader"] = "refactored";
+  all_param_values
+      ["sm.query.sparse_unordered_with_dups.non_overlapping_ranges"] = "false";
   all_param_values["sm.mem.malloc_trim"] = "true";
   all_param_values["sm.mem.total_budget"] = "10737418240";
   all_param_values["sm.mem.reader.sparse_global_order.ratio_coords"] = "0.5";
@@ -582,8 +581,6 @@ TEST_CASE("C API: Test config iter", "[capi][config]") {
       "0.1";
   all_param_values["sm.mem.reader.sparse_global_order.ratio_array_data"] =
       "0.1";
-  all_param_values["sm.mem.reader.sparse_global_order.ratio_result_tiles"] =
-      "0.05";
   all_param_values["sm.mem.reader.sparse_global_order.ratio_rcs"] = "0.05";
   all_param_values["sm.mem.reader.sparse_unordered_with_dups.ratio_coords"] =
       "0.5";
@@ -594,10 +591,6 @@ TEST_CASE("C API: Test config iter", "[capi][config]") {
       ["sm.mem.reader.sparse_unordered_with_dups.ratio_tile_ranges"] = "0.1";
   all_param_values
       ["sm.mem.reader.sparse_unordered_with_dups.ratio_array_data"] = "0.1";
-  all_param_values
-      ["sm.mem.reader.sparse_unordered_with_dups.ratio_result_tiles"] = "0.05";
-  all_param_values["sm.mem.reader.sparse_unordered_with_dups.ratio_rcs"] =
-      "0.05";
   all_param_values["sm.enable_signal_handlers"] = "true";
   all_param_values["sm.compute_concurrency_level"] =
       std::to_string(std::thread::hardware_concurrency());
@@ -647,7 +640,6 @@ TEST_CASE("C API: Test config iter", "[capi][config]") {
   all_param_values["vfs.file.posix_directory_permissions"] = "755";
   all_param_values["vfs.file.max_parallel_ops"] =
       std::to_string(std::thread::hardware_concurrency());
-  all_param_values["vfs.file.enable_filelocks"] = "true";
   all_param_values["vfs.s3.scheme"] = "https";
   all_param_values["vfs.s3.region"] = "us-east-1";
   all_param_values["vfs.s3.aws_access_key_id"] = "";
@@ -711,7 +703,6 @@ TEST_CASE("C API: Test config iter", "[capi][config]") {
   vfs_param_values["file.posix_directory_permissions"] = "755";
   vfs_param_values["file.max_parallel_ops"] =
       std::to_string(std::thread::hardware_concurrency());
-  vfs_param_values["file.enable_filelocks"] = "true";
   vfs_param_values["s3.scheme"] = "https";
   vfs_param_values["s3.region"] = "us-east-1";
   vfs_param_values["s3.aws_access_key_id"] = "";

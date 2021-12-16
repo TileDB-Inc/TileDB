@@ -464,6 +464,46 @@ Query
 .. doxygenfunction:: tiledb_query_get_fragment_timestamp_range
     :project: TileDB-C
 
+.. doxygenfunction:: tiledb_query_set_subarray_t
+    :project: TileDB-C
+.. doxygenfunction:: tiledb_query_get_subarray_t
+    :project: TileDB-C
+
+Subarray
+--------
+.. doxygenfunction:: tiledb_subarray_alloc
+    :project: TileDB-C
+.. doxygenfunction:: tiledb_subarray_free
+    :project: TileDB-C
+.. doxygenfunction:: tiledb_subarray_set_coalesce_ranges
+    :project: TileDB-C
+.. doxygenfunction:: tiledb_subarray_set_subarray
+    :project: TileDB-C
+.. doxygenfunction:: tiledb_subarray_add_range
+    :project: TileDB-C
+.. doxygenfunction:: tiledb_subarray_add_range_by_name
+    :project: TileDB-C
+.. doxygenfunction:: tiledb_subarray_add_range_var
+    :project: TileDB-C
+.. doxygenfunction:: tiledb_subarray_add_range_var_by_name
+    :project: TileDB-C
+.. doxygenfunction:: tiledb_subarray_get_range_num
+    :project: TileDB-C
+.. doxygenfunction:: tiledb_subarray_get_range_num_from_name
+    :project: TileDB-C
+.. doxygenfunction:: tiledb_subarray_get_range
+    :project: TileDB-C
+.. doxygenfunction:: tiledb_subarray_get_range_from_name
+    :project: TileDB-C
+.. doxygenfunction:: tiledb_subarray_get_range_var_size
+    :project: TileDB-C
+.. doxygenfunction:: tiledb_subarray_get_range_var_size_from_name
+    :project: TileDB-C
+.. doxygenfunction:: tiledb_subarray_get_range_var
+    :project: TileDB-C
+.. doxygenfunction:: tiledb_subarray_get_range_var_from_name
+    :project: TileDB-C
+
 Filter
 ------
 .. doxygenfunction:: tiledb_filter_alloc

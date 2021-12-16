@@ -30,9 +30,8 @@
  * This file implements the VFS class.
  */
 
-#include "tiledb/sm/filesystem/vfs.h"
-#include "tiledb/common/heap_memory.h"
-#include "tiledb/common/logger.h"
+#include "vfs.h"
+#include "tiledb/common/logger_public.h"
 #include "tiledb/sm/buffer/buffer.h"
 #include "tiledb/sm/enums/filesystem.h"
 #include "tiledb/sm/enums/vfs_mode.h"
@@ -40,6 +39,7 @@
 #include "tiledb/sm/misc/parallel_functions.h"
 #include "tiledb/sm/misc/utils.h"
 #include "tiledb/sm/stats/global_stats.h"
+#include "tiledb/sm/tile/tile.h"
 
 #include <iostream>
 #include <list>
@@ -50,20 +50,6 @@ using namespace tiledb::common;
 
 namespace tiledb {
 namespace sm {
-
-/* ********************************* */
-/*          GLOBAL VARIABLES         */
-/* ********************************* */
-
-/**
- * Map of file URI -> number of current locks. This is shared across the entire
- * process.
- */
-static std::unordered_map<std::string, std::pair<uint64_t, filelock_t>>
-    process_filelocks_;
-
-/** Mutex protecting the filelock process and the filelock counts map. */
-static std::mutex filelock_mtx_;
 
 /* ********************************* */
 /*     CONSTRUCTORS & DESTRUCTORS    */
@@ -98,10 +84,13 @@ std::string VFS::abs_path(const std::string& path) {
   // workaround for older clang (llvm 3.5) compilers (issue #828)
   std::string path_copy = path;
 #ifdef _WIN32
-  if (Win::is_win_path(path))
-    return Win::uri_from_path(Win::abs_path(path));
-  else if (URI::is_file(path))
-    return Win::uri_from_path(Win::abs_path(Win::path_from_uri(path)));
+  {
+    std::string norm_sep_path = Win::slashes_to_backslashes(path);
+    if (Win::is_win_path(norm_sep_path))
+      return Win::uri_from_path(Win::abs_path(norm_sep_path));
+    else if (URI::is_file(path))
+      return Win::uri_from_path(Win::abs_path(Win::path_from_uri(path)));
+  }
 #else
   if (URI::is_file(path))
     return Posix::abs_path(path);
@@ -513,172 +502,6 @@ Status VFS::remove_file(const URI& uri) const {
   }
   return LOG_STATUS(
       Status::VFSError("Unsupported URI scheme: " + uri.to_string()));
-}
-
-Status VFS::filelock_lock(const URI& uri, filelock_t* lock, bool shared) const {
-  if (!init_)
-    return LOG_STATUS(
-        Status::VFSError("Cannot lock filelock; VFS not initialized"));
-
-  // Get config
-  bool found = false;
-  bool enable_filelocks = false;
-  RETURN_NOT_OK(config_.get<bool>(
-      "vfs.file.enable_filelocks", &enable_filelocks, &found));
-  assert(found);
-
-  if (!enable_filelocks)
-    return Status::Ok();
-
-  // Hold the lock while updating counts and performing the lock.
-  std::unique_lock<std::mutex> lck(filelock_mtx_);
-
-  auto it = process_filelocks_.find(uri.to_string());
-  if (it != process_filelocks_.end()) {
-    it->second.first++;
-    // we need to return the lock for the xlock semantics
-    *lock = it->second.second;
-    return Status::Ok();
-  }
-
-  // We must hold the fd in the global map in order to free from any context
-  if (uri.is_file()) {
-#ifdef _WIN32
-    auto st = win_.filelock_lock(uri.to_path(), lock, shared);
-#else
-    auto st = posix_.filelock_lock(uri.to_path(), lock, shared);
-#endif
-
-    if (st.ok())
-      process_filelocks_[uri.to_string()] = {1, *lock};
-    return st;
-  }
-
-  if (uri.is_memfs()) {
-    return Status::Ok();
-  }
-  if (uri.is_hdfs()) {
-#ifdef HAVE_HDFS
-    return Status::Ok();
-#else
-    return LOG_STATUS(
-        Status::VFSError("TileDB was built without HDFS support"));
-#endif
-  }
-  if (uri.is_s3()) {
-#ifdef HAVE_S3
-    return Status::Ok();
-#else
-    return LOG_STATUS(Status::VFSError("TileDB was built without S3 support"));
-#endif
-  }
-  if (uri.is_azure()) {
-#ifdef HAVE_AZURE
-    return Status::Ok();
-#else
-    return LOG_STATUS(
-        Status::VFSError("TileDB was built without Azure support"));
-#endif
-  }
-  if (uri.is_gcs()) {
-#ifdef HAVE_GCS
-    return Status::Ok();
-#else
-    return LOG_STATUS(Status::VFSError("TileDB was built without GCS support"));
-#endif
-  }
-  return LOG_STATUS(
-      Status::VFSError("Unsupported URI scheme: " + uri.to_string()));
-}
-
-Status VFS::filelock_unlock(const URI& uri) const {
-  if (!init_)
-    return LOG_STATUS(
-        Status::VFSError("Cannot unlock filelock; VFS not initialized"));
-
-  // Get config
-  bool found = false;
-  bool enable_filelocks = false;
-  RETURN_NOT_OK(config_.get<bool>(
-      "vfs.file.enable_filelocks", &enable_filelocks, &found));
-  assert(found);
-
-  if (!enable_filelocks)
-    return Status::Ok();
-
-  // Hold the lock while updating counts and performing the unlock.
-  std::unique_lock<std::mutex> lck(filelock_mtx_);
-
-  // Decrement the lock counter and return if the counter is still > 0.
-  bool should_unlock = false;
-  filelock_t fd = INVALID_FILELOCK;
-  Status st = decr_lock_count(uri, &should_unlock, &fd);
-  if (!st.ok() || !should_unlock) {
-    return st;
-  }
-
-  if (uri.is_file()) {
-#ifdef _WIN32
-    return win_.filelock_unlock(fd);
-#else
-    return posix_.filelock_unlock(fd);
-#endif
-  }
-  if (uri.is_hdfs()) {
-#ifdef HAVE_HDFS
-    return Status::Ok();
-#else
-    return LOG_STATUS(
-        Status::VFSError("TileDB was built without HDFS support"));
-#endif
-  }
-  if (uri.is_s3()) {
-#ifdef HAVE_S3
-    return Status::Ok();
-#else
-    return LOG_STATUS(Status::VFSError("TileDB was built without S3 support"));
-#endif
-  }
-  if (uri.is_azure()) {
-#ifdef HAVE_AZURE
-    return Status::Ok();
-#else
-    return LOG_STATUS(
-        Status::VFSError("TileDB was built without Azure support"));
-#endif
-  }
-  if (uri.is_gcs()) {
-#ifdef HAVE_GCS
-    return Status::Ok();
-#else
-    return LOG_STATUS(Status::VFSError("TileDB was built without GCS support"));
-#endif
-  }
-  return LOG_STATUS(
-      Status::VFSError("Unsupported URI scheme: " + uri.to_string()));
-}
-
-Status VFS::decr_lock_count(
-    const URI& uri, bool* is_zero, filelock_t* lock) const {
-  auto it = process_filelocks_.find(uri.to_string());
-  if (it == process_filelocks_.end()) {
-    return LOG_STATUS(
-        Status::VFSError("No lock counter for URI " + uri.to_string()));
-  } else if (it->second.first == 0) {
-    return LOG_STATUS(
-        Status::VFSError("Invalid lock count for URI " + uri.to_string()));
-  }
-
-  it->second.first--;
-
-  if (it->second.first == 0) {
-    *is_zero = true;
-    *lock = it->second.second;
-    process_filelocks_.erase(it);
-  } else {
-    *is_zero = false;
-  }
-  return Status::Ok();
 }
 
 Status VFS::max_parallel_ops(const URI& uri, uint64_t* ops) const {
@@ -1607,7 +1430,7 @@ Status VFS::read_ahead_impl(
 
 Status VFS::read_all(
     const URI& uri,
-    const std::vector<std::tuple<uint64_t, void*, uint64_t>>& regions,
+    const std::vector<std::tuple<uint64_t, Tile*, uint64_t, uint64_t>>& regions,
     ThreadPool* thread_pool,
     std::vector<ThreadPool::Task>* tasks,
     const bool use_read_ahead) {
@@ -1639,7 +1462,7 @@ Status VFS::read_all(
           for (uint64_t i = 0; i < batch_copy.regions.size(); i++) {
             const auto& region = batch_copy.regions[i];
             uint64_t offset = std::get<0>(region);
-            void* dest = std::get<1>(region);
+            void* dest = std::get<1>(region)->filtered_buffer()->data();
             uint64_t nbytes = std::get<2>(region);
             std::memcpy(dest, buffer.data(offset - batch_copy.offset), nbytes);
           }
@@ -1654,7 +1477,7 @@ Status VFS::read_all(
 }
 
 Status VFS::compute_read_batches(
-    const std::vector<std::tuple<uint64_t, void*, uint64_t>>& regions,
+    const std::vector<std::tuple<uint64_t, Tile*, uint64_t, uint64_t>>& regions,
     std::vector<BatchedRead>* batches) const {
   // Get config params
   bool found;
@@ -1668,14 +1491,14 @@ Status VFS::compute_read_batches(
   assert(found);
 
   // Ensure the regions are sorted on offset.
-  std::vector<std::tuple<uint64_t, void*, uint64_t>> sorted_regions(
+  std::vector<std::tuple<uint64_t, Tile*, uint64_t, uint64_t>> sorted_regions(
       regions.begin(), regions.end());
   parallel_sort(
       compute_tp_,
       sorted_regions.begin(),
       sorted_regions.end(),
-      [](const std::tuple<uint64_t, void*, uint64_t>& a,
-         const std::tuple<uint64_t, void*, uint64_t>& b) {
+      [](const std::tuple<uint64_t, Tile*, uint64_t, uint64_t>& a,
+         const std::tuple<uint64_t, Tile*, uint64_t, uint64_t>& b) {
         return std::get<0>(a) < std::get<0>(b);
       });
 

@@ -252,8 +252,8 @@ class SingleFragmentInfo {
              << ((int64_t*)non_empty_domain_[d].data())[1] << "]";
           break;
         case Datatype::STRING_ASCII:
-          ss << "[" << non_empty_domain_[d].start_str() << ", "
-             << non_empty_domain_[d].end_str() << "]";
+          ss << "[" << std::string(non_empty_domain_[d].start_str()) << ", "
+             << std::string(non_empty_domain_[d].end_str()) << "]";
           break;
         default:
           assert(false);

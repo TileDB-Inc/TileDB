@@ -76,7 +76,7 @@ class Logger {
       const std::string& name,
       const Logger::Format format = Logger::Format::DEFAULT);
 
-  Logger(std::shared_ptr<spdlog::logger> logger);
+  Logger(tdb_shared_ptr<spdlog::logger> logger);
 
   /** Destructor. */
   ~Logger();

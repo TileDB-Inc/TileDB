@@ -37,6 +37,7 @@
 #include "tiledb/sm/array_schema/domain.h"
 #include "tiledb/sm/misc/constants.h"
 #include "tiledb/sm/misc/parallel_functions.h"
+#include "tiledb/sm/misc/utils.h"
 #include "tiledb/sm/tile/tile.h"
 
 using namespace tiledb::common;
@@ -58,7 +59,7 @@ DenseTiler<T>::DenseTiler(
     uint64_t offsets_bitsize,
     bool offsets_extra_element)
     : stats_(parent_stats->create_child("DenseTiler"))
-    , array_schema_(subarray->array()->array_schema())
+    , array_schema_(subarray->array()->array_schema_latest())
     , buffers_(buffers)
     , subarray_(subarray)
     , offsets_format_mode_(offsets_format_mode)

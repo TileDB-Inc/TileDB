@@ -44,7 +44,6 @@
 #include "tiledb/common/logger_public.h"
 #include "tiledb/common/status.h"
 #include "tiledb/sm/misc/types.h"
-#include "tiledb/sm/misc/utils.h"
 #include "tiledb/sm/query/query_buffer.h"
 #include "tiledb/sm/query/result_coords.h"
 #include "tiledb/sm/tile/tile.h"
@@ -647,6 +646,34 @@ class Dimension {
   template <class T>
   static double overlap_ratio(const Range& r1, const Range& r2);
 
+  /** Compute relevant ranges for a set of ranges. */
+  void relevant_ranges(
+      const NDRange& ranges,
+      const Range& mbr,
+      std::vector<uint64_t>& relevant_ranges) const;
+
+  /** Compute relevant ranges for a set of ranges. */
+  template <class T>
+  static void relevant_ranges(
+      const NDRange& ranges,
+      const Range& mbr,
+      std::vector<uint64_t>& relevant_ranges);
+
+  /** Compute covered on a set of relevant ranges. */
+  void covered_vec(
+      const NDRange& ranges,
+      const Range& mbr,
+      const std::vector<uint64_t>& relevant_ranges,
+      std::vector<bool>& covered) const;
+
+  /** Compute covered on a set of relevant ranges. */
+  template <class T>
+  static void covered_vec(
+      const NDRange& ranges,
+      const Range& mbr,
+      const std::vector<uint64_t>& relevant_ranges,
+      std::vector<bool>& covered);
+
   /** Splits `r` at point `v`, producing 1D ranges `r1` and `r2`. */
   void split_range(
       const Range& r, const ByteVecValue& v, Range* r1, Range* r2) const;
@@ -950,6 +977,24 @@ class Dimension {
   std::function<double(const Range&, const Range&)> overlap_ratio_func_;
 
   /**
+   * Stores the appropriate templated relevant_ranges() function based
+   * on the dimension datatype.
+   */
+  std::function<void(const NDRange&, const Range&, std::vector<uint64_t>&)>
+      relevant_ranges_func_;
+
+  /**
+   * Stores the appropriate templated covered_vec() function based on the
+   * dimension datatype.
+   */
+  std::function<void(
+      const NDRange&,
+      const Range&,
+      const std::vector<uint64_t>&,
+      std::vector<bool>&)>
+      covered_vec_func_;
+
+  /**
    * Stores the appropriate templated split_range() function based on the
    * dimension datatype.
    */
@@ -1139,6 +1184,12 @@ class Dimension {
 
   /** Sets the templated overlap_ratio() function. */
   void set_overlap_ratio_func();
+
+  /** Sets the templated relevant_ranges() function. */
+  void set_relevant_ranges_func();
+
+  /** Sets the templated covered_vec() function. */
+  void set_covered_vec_func();
 
   /** Sets the templated split_range() function. */
   void set_split_range_func();

@@ -34,7 +34,6 @@
 #define TILEDB_CONFIG_H
 
 #include "tiledb/common/status.h"
-#include "tiledb/sm/misc/utils.h"
 
 #include <map>
 #include <set>
@@ -156,6 +155,11 @@ class Config {
   /** Which reader to use for sparse unordered with dups queries. */
   static const std::string SM_QUERY_SPARSE_UNORDERED_WITH_DUPS_READER;
 
+  /** Non overlapping ranges guaranteed for sparse unordered with dups queries.
+   */
+  static const std::string
+      SM_QUERY_SPARSE_UNORDERED_WITH_DUPS_NON_OVERLAPPING_RANGES;
+
   /** Should malloc_trim be called on query/ctx destructors. */
   static const std::string SM_MEM_MALLOC_TRIM;
 
@@ -175,9 +179,6 @@ class Config {
 
   /** Ratio of the sparse global order reader budget used for array data. */
   static const std::string SM_MEM_SPARSE_GLOBAL_ORDER_RATIO_ARRAY_DATA;
-
-  /** Ratio of the sparse global order reader budget used for result tiles. */
-  static const std::string SM_MEM_SPARSE_GLOBAL_ORDER_RATIO_RESULT_TILES;
 
   /** Ratio of the sparse global order reader budget used for result cell slabs.
    */
@@ -204,18 +205,6 @@ class Config {
    * data.
    */
   static const std::string SM_MEM_SPARSE_UNORDERED_WITH_DUPS_RATIO_ARRAY_DATA;
-
-  /**
-   * Ratio of the sparse unordered with dups reader budget used for result
-   * tiles.
-   */
-  static const std::string SM_MEM_SPARSE_UNORDERED_WITH_DUPS_RATIO_RESULT_TILES;
-
-  /**
-   * Ratio of the sparse unordered with dups reader budget used for result
-   * cell slabs.
-   */
-  static const std::string SM_MEM_SPARSE_UNORDERED_WITH_DUPS_RATIO_RCS;
 
   /** Whether or not the signal handlers are installed. */
   static const std::string SM_ENABLE_SIGNAL_HANDLERS;
@@ -340,9 +329,6 @@ class Config {
 
   /** The default maximum number of parallel file:/// operations. */
   static const std::string VFS_FILE_MAX_PARALLEL_OPS;
-
-  /** Whether or not filelocks are enabled for VFS. */
-  static const std::string VFS_FILE_ENABLE_FILELOCKS;
 
   /** The maximum size (in bytes) to read-ahead in the VFS. */
   static const std::string VFS_READ_AHEAD_SIZE;
@@ -546,15 +532,7 @@ class Config {
    */
   template <class T>
   Status get_vector(
-      const std::string& param, std::vector<T>* value, bool* found) const {
-    // Check if parameter exists
-    const char* val = get_from_config_or_env(param, found);
-    if (!*found)
-      return Status::Ok();
-
-    // Parameter found, retrieve value
-    return utils::parse::convert<T>(val, value);
-  }
+      const std::string& param, std::vector<T>* value, bool* found) const;
 
   /** Returns the param -> value map. */
   const std::map<std::string, std::string>& param_values() const;

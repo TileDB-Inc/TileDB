@@ -81,7 +81,7 @@ struct DenseTilerFx {
   void add_ranges(
       const std::vector<const void*>& ranges,
       uint64_t range_size,
-      Subarray* subarray);
+      tiledb::sm::Subarray* subarray);
   template <class T>
   bool check_tile(Tile* tile, const std::vector<T>& data);
 };
@@ -144,7 +144,7 @@ void DenseTilerFx::create_array(
 void DenseTilerFx::add_ranges(
     const std::vector<const void*>& ranges,
     uint64_t range_size,
-    Subarray* subarray) {
+    tiledb::sm::Subarray* subarray) {
   for (size_t i = 0; i < ranges.size(); ++i)
     CHECK(subarray->add_range((uint32_t)i, Range(ranges[i], range_size)).ok());
 }
@@ -203,7 +203,7 @@ TEST_CASE_METHOD(
   // Create subarray
   open_array(array_name, TILEDB_READ);
   int32_t sub1[] = {3, 6};
-  Subarray subarray1(
+  tiledb::sm::Subarray subarray1(
       array_->array_,
       Layout::ROW_MAJOR,
       &test::g_helper_stats,
@@ -224,7 +224,7 @@ TEST_CASE_METHOD(
   close_array();
   open_array(array_name, TILEDB_READ);
   int32_t sub2[] = {6, 9};
-  Subarray subarray2(
+  tiledb::sm::Subarray subarray2(
       array_->array_,
       Layout::ROW_MAJOR,
       &test::g_helper_stats,
@@ -270,7 +270,7 @@ TEST_CASE_METHOD(
   // Create subarray
   open_array(array_name, TILEDB_READ);
   int32_t sub1[] = {3, 6};
-  Subarray subarray1(
+  tiledb::sm::Subarray subarray1(
       array_->array_,
       Layout::ROW_MAJOR,
       &test::g_helper_stats,
@@ -306,7 +306,7 @@ TEST_CASE_METHOD(
   close_array();
   open_array(array_name, TILEDB_READ);
   int32_t sub2[] = {7, 8};
-  Subarray subarray2(
+  tiledb::sm::Subarray subarray2(
       array_->array_,
       Layout::ROW_MAJOR,
       &test::g_helper_stats,
@@ -330,7 +330,7 @@ TEST_CASE_METHOD(
   close_array();
   open_array(array_name, TILEDB_READ);
   int32_t sub3[] = {7, 8};
-  Subarray subarray3(
+  tiledb::sm::Subarray subarray3(
       array_->array_,
       Layout::COL_MAJOR,
       &test::g_helper_stats,
@@ -379,7 +379,7 @@ TEST_CASE_METHOD(
   // Create subarray
   open_array(array_name, TILEDB_READ);
   int32_t sub1[] = {3, 6};
-  Subarray subarray1(
+  tiledb::sm::Subarray subarray1(
       array_->array_,
       Layout::ROW_MAJOR,
       &test::g_helper_stats,
@@ -408,7 +408,7 @@ TEST_CASE_METHOD(
   close_array();
   open_array(array_name, TILEDB_READ);
   int32_t sub2[] = {7, 10};
-  Subarray subarray2(
+  tiledb::sm::Subarray subarray2(
       array_->array_,
       Layout::ROW_MAJOR,
       &test::g_helper_stats,
@@ -428,7 +428,7 @@ TEST_CASE_METHOD(
   close_array();
   open_array(array_name, TILEDB_READ);
   int32_t sub3[] = {7, 10};
-  Subarray subarray3(
+  tiledb::sm::Subarray subarray3(
       array_->array_,
       Layout::COL_MAJOR,
       &test::g_helper_stats,
@@ -473,7 +473,7 @@ TEST_CASE_METHOD(
   // Create subarray
   open_array(array_name, TILEDB_READ);
   int32_t sub1[] = {3, 6};
-  Subarray subarray1(
+  tiledb::sm::Subarray subarray1(
       array_->array_,
       Layout::ROW_MAJOR,
       &test::g_helper_stats,
@@ -527,7 +527,7 @@ TEST_CASE_METHOD(
   // Create subarray
   open_array(array_name, TILEDB_READ);
   int32_t sub1[] = {-2, 1};
-  Subarray subarray1(
+  tiledb::sm::Subarray subarray1(
       array_->array_,
       Layout::ROW_MAJOR,
       &test::g_helper_stats,
@@ -585,7 +585,7 @@ TEST_CASE_METHOD(
   open_array(array_name, TILEDB_READ);
   int32_t sub1_0[] = {4, 6};
   int32_t sub1_1[] = {18, 22};
-  Subarray subarray1(
+  tiledb::sm::Subarray subarray1(
       array_->array_,
       Layout::ROW_MAJOR,
       &test::g_helper_stats,
@@ -607,7 +607,7 @@ TEST_CASE_METHOD(
   open_array(array_name, TILEDB_READ);
   int32_t sub2_0[] = {7, 9};
   int32_t sub2_1[] = {23, 27};
-  Subarray subarray2(
+  tiledb::sm::Subarray subarray2(
       array_->array_,
       Layout::ROW_MAJOR,
       &test::g_helper_stats,
@@ -629,7 +629,7 @@ TEST_CASE_METHOD(
   open_array(array_name, TILEDB_READ);
   int32_t sub3_0[] = {4, 6};
   int32_t sub3_1[] = {18, 22};
-  Subarray subarray3(
+  tiledb::sm::Subarray subarray3(
       array_->array_,
       Layout::COL_MAJOR,
       &test::g_helper_stats,
@@ -651,7 +651,7 @@ TEST_CASE_METHOD(
   open_array(array_name, TILEDB_READ);
   int32_t sub4_0[] = {7, 10};
   int32_t sub4_1[] = {23, 27};
-  Subarray subarray4(
+  tiledb::sm::Subarray subarray4(
       array_->array_,
       Layout::COL_MAJOR,
       &test::g_helper_stats,
@@ -701,7 +701,7 @@ TEST_CASE_METHOD(
   open_array(array_name, TILEDB_READ);
   int32_t sub1_0[] = {4, 6};
   int32_t sub1_1[] = {18, 22};
-  Subarray subarray1(
+  tiledb::sm::Subarray subarray1(
       array_->array_,
       Layout::ROW_MAJOR,
       &test::g_helper_stats,
@@ -723,7 +723,7 @@ TEST_CASE_METHOD(
   open_array(array_name, TILEDB_READ);
   int32_t sub2_0[] = {7, 9};
   int32_t sub2_1[] = {23, 27};
-  Subarray subarray2(
+  tiledb::sm::Subarray subarray2(
       array_->array_,
       Layout::ROW_MAJOR,
       &test::g_helper_stats,
@@ -745,7 +745,7 @@ TEST_CASE_METHOD(
   open_array(array_name, TILEDB_READ);
   int32_t sub3_0[] = {4, 6};
   int32_t sub3_1[] = {18, 22};
-  Subarray subarray3(
+  tiledb::sm::Subarray subarray3(
       array_->array_,
       Layout::COL_MAJOR,
       &test::g_helper_stats,
@@ -767,7 +767,7 @@ TEST_CASE_METHOD(
   open_array(array_name, TILEDB_READ);
   int32_t sub4_0[] = {7, 10};
   int32_t sub4_1[] = {23, 27};
-  Subarray subarray4(
+  tiledb::sm::Subarray subarray4(
       array_->array_,
       Layout::COL_MAJOR,
       &test::g_helper_stats,
@@ -817,7 +817,7 @@ TEST_CASE_METHOD(
   open_array(array_name, TILEDB_READ);
   int32_t sub1_0[] = {4, 6};
   int32_t sub1_1[] = {18, 22};
-  Subarray subarray1(
+  tiledb::sm::Subarray subarray1(
       array_->array_,
       Layout::ROW_MAJOR,
       &test::g_helper_stats,
@@ -876,7 +876,7 @@ TEST_CASE_METHOD(
   open_array(array_name, TILEDB_READ);
   int32_t sub2_0[] = {3, 5};
   int32_t sub2_1[] = {13, 18};
-  Subarray subarray2(
+  tiledb::sm::Subarray subarray2(
       array_->array_,
       Layout::ROW_MAJOR,
       &test::g_helper_stats,
@@ -902,7 +902,7 @@ TEST_CASE_METHOD(
   open_array(array_name, TILEDB_READ);
   int32_t sub3_0[] = {4, 6};
   int32_t sub3_1[] = {18, 22};
-  Subarray subarray3(
+  tiledb::sm::Subarray subarray3(
       array_->array_,
       Layout::COL_MAJOR,
       &test::g_helper_stats,
@@ -965,7 +965,7 @@ TEST_CASE_METHOD(
   open_array(array_name, TILEDB_READ);
   int32_t sub4_0[] = {3, 5};
   int32_t sub4_1[] = {13, 18};
-  Subarray subarray4(
+  tiledb::sm::Subarray subarray4(
       array_->array_,
       Layout::COL_MAJOR,
       &test::g_helper_stats,
@@ -1020,7 +1020,7 @@ TEST_CASE_METHOD(
   open_array(array_name, TILEDB_READ);
   int32_t sub1_0[] = {4, 6};
   int32_t sub1_1[] = {18, 22};
-  Subarray subarray1(
+  tiledb::sm::Subarray subarray1(
       array_->array_,
       Layout::ROW_MAJOR,
       &test::g_helper_stats,
@@ -1083,7 +1083,7 @@ TEST_CASE_METHOD(
   open_array(array_name, TILEDB_READ);
   int32_t sub2_0[] = {3, 5};
   int32_t sub2_1[] = {13, 18};
-  Subarray subarray2(
+  tiledb::sm::Subarray subarray2(
       array_->array_,
       Layout::ROW_MAJOR,
       &test::g_helper_stats,
@@ -1110,7 +1110,7 @@ TEST_CASE_METHOD(
   open_array(array_name, TILEDB_READ);
   int32_t sub3_0[] = {4, 6};
   int32_t sub3_1[] = {18, 22};
-  Subarray subarray3(
+  tiledb::sm::Subarray subarray3(
       array_->array_,
       Layout::COL_MAJOR,
       &test::g_helper_stats,
@@ -1169,7 +1169,7 @@ TEST_CASE_METHOD(
   open_array(array_name, TILEDB_READ);
   int32_t sub4_0[] = {3, 5};
   int32_t sub4_1[] = {13, 18};
-  Subarray subarray4(
+  tiledb::sm::Subarray subarray4(
       array_->array_,
       Layout::COL_MAJOR,
       &test::g_helper_stats,
@@ -1223,7 +1223,7 @@ TEST_CASE_METHOD(
   open_array(array_name, TILEDB_READ);
   int32_t sub1_0[] = {4, 9};
   int32_t sub1_1[] = {11, 20};
-  Subarray subarray1(
+  tiledb::sm::Subarray subarray1(
       array_->array_,
       Layout::ROW_MAJOR,
       &test::g_helper_stats,
@@ -1288,7 +1288,7 @@ TEST_CASE_METHOD(
   open_array(array_name, TILEDB_READ);
   int32_t sub1_0[] = {1, 5};
   int32_t sub1_1[] = {8, 12};
-  Subarray subarray1(
+  tiledb::sm::Subarray subarray1(
       array_->array_,
       Layout::COL_MAJOR,
       &test::g_helper_stats,
@@ -1354,7 +1354,7 @@ TEST_CASE_METHOD(
   open_array(array_name, TILEDB_READ);
   int32_t sub1_0[] = {4, 6};
   int32_t sub1_1[] = {18, 22};
-  Subarray subarray1(
+  tiledb::sm::Subarray subarray1(
       array_->array_,
       Layout::ROW_MAJOR,
       &test::g_helper_stats,
@@ -1421,7 +1421,7 @@ TEST_CASE_METHOD(
   open_array(array_name, TILEDB_READ);
   int32_t sub2_0[] = {3, 5};
   int32_t sub2_1[] = {13, 18};
-  Subarray subarray2(
+  tiledb::sm::Subarray subarray2(
       array_->array_,
       Layout::ROW_MAJOR,
       &test::g_helper_stats,
@@ -1459,7 +1459,7 @@ TEST_CASE_METHOD(
   open_array(array_name, TILEDB_READ);
   int32_t sub3_0[] = {4, 6};
   int32_t sub3_1[] = {18, 22};
-  Subarray subarray3(
+  tiledb::sm::Subarray subarray3(
       array_->array_,
       Layout::COL_MAJOR,
       &test::g_helper_stats,
@@ -1529,7 +1529,7 @@ TEST_CASE_METHOD(
   open_array(array_name, TILEDB_READ);
   int32_t sub4_0[] = {3, 5};
   int32_t sub4_1[] = {13, 18};
-  Subarray subarray4(
+  tiledb::sm::Subarray subarray4(
       array_->array_,
       Layout::COL_MAJOR,
       &test::g_helper_stats,
@@ -1596,7 +1596,7 @@ TEST_CASE_METHOD(
   open_array(array_name, TILEDB_READ);
   int32_t sub1_0[] = {4, 6};
   int32_t sub1_1[] = {18, 22};
-  Subarray subarray1(
+  tiledb::sm::Subarray subarray1(
       array_->array_,
       Layout::ROW_MAJOR,
       &test::g_helper_stats,
@@ -1674,7 +1674,7 @@ TEST_CASE_METHOD(
   open_array(array_name, TILEDB_READ);
   int32_t sub2_0[] = {3, 5};
   int32_t sub2_1[] = {13, 18};
-  Subarray subarray2(
+  tiledb::sm::Subarray subarray2(
       array_->array_,
       Layout::ROW_MAJOR,
       &test::g_helper_stats,
@@ -1730,7 +1730,7 @@ TEST_CASE_METHOD(
   open_array(array_name, TILEDB_READ);
   int32_t sub3_0[] = {4, 6};
   int32_t sub3_1[] = {18, 22};
-  Subarray subarray3(
+  tiledb::sm::Subarray subarray3(
       array_->array_,
       Layout::COL_MAJOR,
       &test::g_helper_stats,
@@ -1811,7 +1811,7 @@ TEST_CASE_METHOD(
   open_array(array_name, TILEDB_READ);
   int32_t sub4_0[] = {3, 5};
   int32_t sub4_1[] = {13, 18};
-  Subarray subarray4(
+  tiledb::sm::Subarray subarray4(
       array_->array_,
       Layout::COL_MAJOR,
       &test::g_helper_stats,
@@ -1899,7 +1899,7 @@ TEST_CASE_METHOD(
   open_array(array_name, TILEDB_READ);
   int32_t sub1_0[] = {4, 9};
   int32_t sub1_1[] = {11, 20};
-  Subarray subarray1(
+  tiledb::sm::Subarray subarray1(
       array_->array_,
       Layout::ROW_MAJOR,
       &test::g_helper_stats,
@@ -1964,7 +1964,7 @@ TEST_CASE_METHOD(
   open_array(array_name, TILEDB_READ);
   int32_t sub1_0[] = {1, 5};
   int32_t sub1_1[] = {8, 12};
-  Subarray subarray1(
+  tiledb::sm::Subarray subarray1(
       array_->array_,
       Layout::COL_MAJOR,
       &test::g_helper_stats,
@@ -2023,7 +2023,7 @@ TEST_CASE_METHOD(
   // Create subarray
   open_array(array_name, TILEDB_READ);
   int32_t sub1[] = {3, 6};
-  Subarray subarray1(
+  tiledb::sm::Subarray subarray1(
       array_->array_,
       Layout::ROW_MAJOR,
       &test::g_helper_stats,
@@ -2059,7 +2059,7 @@ TEST_CASE_METHOD(
   close_array();
   open_array(array_name, TILEDB_READ);
   int32_t sub2[] = {7, 10};
-  Subarray subarray2(
+  tiledb::sm::Subarray subarray2(
       array_->array_,
       Layout::ROW_MAJOR,
       &test::g_helper_stats,
@@ -2080,7 +2080,7 @@ TEST_CASE_METHOD(
   close_array();
   open_array(array_name, TILEDB_READ);
   int32_t sub3[] = {7, 10};
-  Subarray subarray3(
+  tiledb::sm::Subarray subarray3(
       array_->array_,
       Layout::COL_MAJOR,
       &test::g_helper_stats,
@@ -2129,7 +2129,7 @@ TEST_CASE_METHOD(
   // Create subarray
   open_array(array_name, TILEDB_READ);
   int32_t sub1[] = {3, 6};
-  Subarray subarray1(
+  tiledb::sm::Subarray subarray1(
       array_->array_,
       Layout::ROW_MAJOR,
       &test::g_helper_stats,
@@ -2169,7 +2169,7 @@ TEST_CASE_METHOD(
   close_array();
   open_array(array_name, TILEDB_READ);
   int32_t sub2[] = {7, 10};
-  Subarray subarray2(
+  tiledb::sm::Subarray subarray2(
       array_->array_,
       Layout::ROW_MAJOR,
       &test::g_helper_stats,
@@ -2193,7 +2193,7 @@ TEST_CASE_METHOD(
   close_array();
   open_array(array_name, TILEDB_READ);
   int32_t sub3[] = {7, 10};
-  Subarray subarray3(
+  tiledb::sm::Subarray subarray3(
       array_->array_,
       Layout::COL_MAJOR,
       &test::g_helper_stats,
@@ -2254,7 +2254,7 @@ TEST_CASE_METHOD(
   open_array(array_name, TILEDB_READ);
   int32_t sub1_0[] = {4, 6};
   int32_t sub1_1[] = {18, 22};
-  Subarray subarray1(
+  tiledb::sm::Subarray subarray1(
       array_->array_,
       Layout::ROW_MAJOR,
       &test::g_helper_stats,
@@ -2324,7 +2324,7 @@ TEST_CASE_METHOD(
   open_array(array_name, TILEDB_READ);
   int32_t sub2_0[] = {3, 5};
   int32_t sub2_1[] = {13, 18};
-  Subarray subarray2(
+  tiledb::sm::Subarray subarray2(
       array_->array_,
       Layout::ROW_MAJOR,
       &test::g_helper_stats,
@@ -2381,7 +2381,7 @@ TEST_CASE_METHOD(
   open_array(array_name, TILEDB_READ);
   int32_t sub3_0[] = {4, 6};
   int32_t sub3_1[] = {18, 22};
-  Subarray subarray3(
+  tiledb::sm::Subarray subarray3(
       array_->array_,
       Layout::COL_MAJOR,
       &test::g_helper_stats,
@@ -2461,7 +2461,7 @@ TEST_CASE_METHOD(
   open_array(array_name, TILEDB_READ);
   int32_t sub4_0[] = {3, 5};
   int32_t sub4_1[] = {13, 18};
-  Subarray subarray4(
+  tiledb::sm::Subarray subarray4(
       array_->array_,
       Layout::COL_MAJOR,
       &test::g_helper_stats,
@@ -2553,7 +2553,7 @@ TEST_CASE_METHOD(
   open_array(array_name, TILEDB_READ);
   int32_t sub1_0[] = {4, 6};
   int32_t sub1_1[] = {18, 22};
-  Subarray subarray1(
+  tiledb::sm::Subarray subarray1(
       array_->array_,
       Layout::ROW_MAJOR,
       &test::g_helper_stats,
@@ -2693,7 +2693,7 @@ TEST_CASE_METHOD(
   open_array(array_name, TILEDB_READ);
   int32_t sub2_0[] = {3, 5};
   int32_t sub2_1[] = {13, 18};
-  Subarray subarray2(
+  tiledb::sm::Subarray subarray2(
       array_->array_,
       Layout::ROW_MAJOR,
       &test::g_helper_stats,
@@ -2857,7 +2857,7 @@ TEST_CASE_METHOD(
   open_array(array_name, TILEDB_READ);
   int32_t sub1_0[] = {4, 6};
   int32_t sub1_1[] = {18, 22};
-  Subarray subarray1(
+  tiledb::sm::Subarray subarray1(
       array_->array_,
       Layout::ROW_MAJOR,
       &test::g_helper_stats,
@@ -2997,7 +2997,7 @@ TEST_CASE_METHOD(
   open_array(array_name, TILEDB_READ);
   int32_t sub2_0[] = {3, 5};
   int32_t sub2_1[] = {13, 18};
-  Subarray subarray2(
+  tiledb::sm::Subarray subarray2(
       array_->array_,
       Layout::ROW_MAJOR,
       &test::g_helper_stats,
@@ -3181,7 +3181,7 @@ TEST_CASE_METHOD(
   open_array(array_name, TILEDB_READ);
   int32_t sub1_0[] = {4, 6};
   int32_t sub1_1[] = {18, 22};
-  Subarray subarray1(
+  tiledb::sm::Subarray subarray1(
       array_->array_,
       Layout::ROW_MAJOR,
       &test::g_helper_stats,
@@ -3322,7 +3322,7 @@ TEST_CASE_METHOD(
   open_array(array_name, TILEDB_READ);
   int32_t sub2_0[] = {3, 5};
   int32_t sub2_1[] = {13, 18};
-  Subarray subarray2(
+  tiledb::sm::Subarray subarray2(
       array_->array_,
       Layout::ROW_MAJOR,
       &test::g_helper_stats,
@@ -3494,7 +3494,7 @@ TEST_CASE_METHOD(
   open_array(array_name, TILEDB_READ);
   int32_t sub1_0[] = {4, 6};
   int32_t sub1_1[] = {18, 22};
-  Subarray subarray1(
+  tiledb::sm::Subarray subarray1(
       array_->array_,
       Layout::ROW_MAJOR,
       &test::g_helper_stats,
@@ -3635,7 +3635,7 @@ TEST_CASE_METHOD(
   open_array(array_name, TILEDB_READ);
   int32_t sub2_0[] = {3, 5};
   int32_t sub2_1[] = {13, 18};
-  Subarray subarray2(
+  tiledb::sm::Subarray subarray2(
       array_->array_,
       Layout::ROW_MAJOR,
       &test::g_helper_stats,
@@ -3790,7 +3790,7 @@ TEST_CASE_METHOD(
   open_array(array_name, TILEDB_READ);
   int32_t sub1_0[] = {4, 6};
   int32_t sub1_1[] = {18, 22};
-  Subarray subarray1(
+  tiledb::sm::Subarray subarray1(
       array_->array_,
       Layout::ROW_MAJOR,
       &test::g_helper_stats,
@@ -3931,7 +3931,7 @@ TEST_CASE_METHOD(
   open_array(array_name, TILEDB_READ);
   int32_t sub2_0[] = {3, 5};
   int32_t sub2_1[] = {13, 18};
-  Subarray subarray2(
+  tiledb::sm::Subarray subarray2(
       array_->array_,
       Layout::ROW_MAJOR,
       &test::g_helper_stats,

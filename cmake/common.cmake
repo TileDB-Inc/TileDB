@@ -89,6 +89,8 @@ endif()
 # Set include path to the root of the source tree.
 #
 include_directories(${CMAKE_SOURCE_DIR})
+cmake_path(SET TILEDB_SOURCE_ROOT NORMALIZE ${CMAKE_SOURCE_DIR})
+cmake_path(APPEND TILEDB_SOURCE_ROOT "external/include" OUTPUT_VARIABLE TILEDB_EXTERNAL_INCLUDE)
 
 #
 # Policies

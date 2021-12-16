@@ -1,5 +1,5 @@
 /**
- * @file   query.cc
+ * @file query.cc
  *
  * @section LICENSE
  *
@@ -51,7 +51,8 @@
 #include "tiledb/sm/enums/query_type.h"
 #include "tiledb/sm/enums/serialization_type.h"
 #include "tiledb/sm/fragment/fragment_metadata.h"
-#include "tiledb/sm/misc/utils.h"
+#include "tiledb/sm/misc/hash.h"
+#include "tiledb/sm/misc/parse_argument.h"
 #include "tiledb/sm/query/query.h"
 #include "tiledb/sm/query/reader.h"
 #include "tiledb/sm/query/dense_reader.h"
@@ -74,7 +75,7 @@ namespace serialization {
 
 enum class SerializationContext { CLIENT, SERVER, BACKUP };
 
-tdb_shared_ptr<Logger> dummy_logger = tdb_make_shared(Logger, "");
+tdb_shared_ptr<Logger> dummy_logger = make_shared<Logger>(HERE(), "");
 
 Status stats_to_capnp(Stats& stats, capnp::Stats::Builder* stats_builder) {
   // Build counters
@@ -129,6 +130,13 @@ Status stats_from_capnp(
 
 Status array_to_capnp(
     const Array& array, capnp::Array::Builder* array_builder) {
+  // The serialized URI is set if it exists
+  // this is used for backwards compatibility with pre TileDB 2.5 clients that
+  // want to serialized a query object TileDB >= 2.5 no longer needs to send the
+  // array URI
+  if (!array.array_uri_serialized().to_string().empty()) {
+    array_builder->setUri(array.array_uri_serialized());
+  }
   array_builder->setStartTimestamp(array.timestamp_start());
   array_builder->setEndTimestamp(array.timestamp_end());
 
@@ -137,6 +145,13 @@ Status array_to_capnp(
 
 Status array_from_capnp(
     const capnp::Array::Reader& array_reader, Array* array) {
+  // The serialized URI is set if it exists
+  // this is used for backwards compatibility with pre TileDB 2.5 clients that
+  // want to serialized a query object TileDB >= 2.5 no longer needs to receive
+  // the array URI
+  if (array_reader.hasUri()) {
+    RETURN_NOT_OK(array->set_uri_serialized(array_reader.getUri().cStr()));
+  }
   RETURN_NOT_OK(array->set_timestamp_start(array_reader.getStartTimestamp()));
   RETURN_NOT_OK(array->set_timestamp_end(array_reader.getEndTimestamp()));
 
@@ -380,7 +395,7 @@ Status subarray_partitioner_from_capnp(
 
   // Per-attr mem budgets
   if (reader.hasBudget()) {
-    const ArraySchema* schema = array->array_schema();
+    const ArraySchema* schema = array->array_schema_latest();
     auto mem_budgets_reader = reader.getBudget();
     auto num_attrs = mem_budgets_reader.size();
     for (size_t i = 0; i < num_attrs; i++) {
@@ -583,38 +598,42 @@ Status index_read_state_from_capnp(
     const capnp::ReadStateIndex::Reader& read_state_reader,
     SparseIndexReaderBase* reader) {
   auto read_state = reader->read_state();
-  const auto* domain = schema->domain();
 
   read_state->done_adding_result_tiles_ =
       read_state_reader.getDoneAddingResultTiles();
 
-  assert(read_state_reader.hasResultCellSlab());
-  RETURN_NOT_OK(reader->clear_result_tiles());
-  read_state->result_cell_slabs_.clear();
+  // Only sparse global order reader has a result cell slab.
+  if (read_state_reader.hasResultCellSlab()) {
+    SparseGlobalOrderReader* sparse_global_order_reader =
+        (SparseGlobalOrderReader*)reader;
+    RETURN_NOT_OK(sparse_global_order_reader->clear_result_tiles());
+    read_state->result_cell_slabs_.clear();
 
-  std::unordered_map<
-      std::pair<unsigned, uint64_t>,
-      ResultTile*,
-      tiledb::sm::utils::hash::pair_hash>
-      result_tile_map;
-  for (const auto rcs : read_state_reader.getResultCellSlab()) {
-    auto start = rcs.getStart();
-    auto length = rcs.getLength();
-    auto frag_idx = rcs.getFragIdx();
-    auto tile_idx = rcs.getTileIdx();
+    std::unordered_map<
+        std::pair<unsigned, uint64_t>,
+        ResultTile*,
+        tiledb::sm::utils::hash::pair_hash>
+        result_tile_map;
+    for (const auto rcs : read_state_reader.getResultCellSlab()) {
+      auto start = rcs.getStart();
+      auto length = rcs.getLength();
+      auto frag_idx = rcs.getFragIdx();
+      auto tile_idx = rcs.getTileIdx();
 
-    ResultTile* rt = nullptr;
-    auto it =
-        result_tile_map.find(std::pair<unsigned, uint64_t>(frag_idx, tile_idx));
-    if (it != result_tile_map.end()) {
-      rt = it->second;
-    } else {
-      rt = reader->add_result_tile_unsafe(frag_idx, tile_idx, domain);
-      result_tile_map.emplace(
-          std::pair<unsigned, uint64_t>(frag_idx, tile_idx), rt);
+      ResultTile* rt = nullptr;
+      auto it = result_tile_map.find(
+          std::pair<unsigned, uint64_t>(frag_idx, tile_idx));
+      if (it != result_tile_map.end()) {
+        rt = it->second;
+      } else {
+        rt = sparse_global_order_reader->add_result_tile_unsafe(
+            frag_idx, tile_idx, schema);
+        result_tile_map.emplace(
+            std::pair<unsigned, uint64_t>(frag_idx, tile_idx), rt);
+      }
+
+      read_state->result_cell_slabs_.emplace_back(rt, start, length);
     }
-
-    read_state->result_cell_slabs_.emplace_back(rt, start, length);
   }
 
   assert(read_state_reader.hasFragTileIdx());
@@ -1120,13 +1139,33 @@ Status query_to_capnp(Query& query, capnp::Query::Builder* query_builder) {
         !schema->dense() && layout == Layout::UNORDERED &&
         schema->allows_dups()) {
       auto builder = query_builder->initReaderIndex();
-      auto reader = (SparseUnorderedWithDupsReader*)query.strategy();
 
-      query_builder->setVarOffsetsMode(reader->offsets_mode());
-      query_builder->setVarOffsetsAddExtraElement(
-          reader->offsets_extra_element());
-      query_builder->setVarOffsetsBitsize(reader->offsets_bitsize());
-      RETURN_NOT_OK(index_reader_to_capnp(query, *reader, &builder));
+      bool found = false;
+      bool non_overlapping_ranges = false;
+      RETURN_NOT_OK(query.config()->get<bool>(
+          "sm.query.sparse_unordered_with_dups.non_overlapping_ranges",
+          &non_overlapping_ranges,
+          &found));
+      assert(found);
+
+      if (non_overlapping_ranges) {
+        auto reader = (SparseUnorderedWithDupsReader<uint8_t>*)query.strategy();
+
+        query_builder->setVarOffsetsMode(reader->offsets_mode());
+        query_builder->setVarOffsetsAddExtraElement(
+            reader->offsets_extra_element());
+        query_builder->setVarOffsetsBitsize(reader->offsets_bitsize());
+        RETURN_NOT_OK(index_reader_to_capnp(query, *reader, &builder));
+      } else {
+        auto reader =
+            (SparseUnorderedWithDupsReader<uint64_t>*)query.strategy();
+
+        query_builder->setVarOffsetsMode(reader->offsets_mode());
+        query_builder->setVarOffsetsAddExtraElement(
+            reader->offsets_extra_element());
+        query_builder->setVarOffsetsBitsize(reader->offsets_bitsize());
+        RETURN_NOT_OK(index_reader_to_capnp(query, *reader, &builder));
+      }
     } else if (
         query.use_refactored_sparse_global_order_reader() && !schema->dense() &&
         (layout == Layout::GLOBAL_ORDER ||
@@ -1700,26 +1739,59 @@ Status query_from_capnp(
       query->clear_strategy();
       RETURN_NOT_OK(query->set_layout_unsafe(layout));
 
+      bool found = false;
+      bool non_overlapping_ranges = false;
+      RETURN_NOT_OK(query->config()->get<bool>(
+          "sm.query.sparse_unordered_with_dups.non_overlapping_ranges",
+          &non_overlapping_ranges,
+          &found));
+      assert(found);
+
       auto reader_reader = query_reader.getReaderIndex();
-      auto reader = (SparseUnorderedWithDupsReader*)query->strategy();
 
-      if (query_reader.hasVarOffsetsMode()) {
+      if (non_overlapping_ranges) {
+        auto reader =
+            (SparseUnorderedWithDupsReader<uint8_t>*)query->strategy();
+
+        if (query_reader.hasVarOffsetsMode()) {
+          RETURN_NOT_OK(
+              reader->set_offsets_mode(query_reader.getVarOffsetsMode()));
+        }
+
+        RETURN_NOT_OK(reader->set_offsets_extra_element(
+            query_reader.getVarOffsetsAddExtraElement()));
+
+        if (query_reader.getVarOffsetsBitsize() > 0) {
+          RETURN_NOT_OK(
+              reader->set_offsets_bitsize(query_reader.getVarOffsetsBitsize()));
+        }
+
+        RETURN_NOT_OK(reader->initialize_memory_budget());
+
         RETURN_NOT_OK(
-            reader->set_offsets_mode(query_reader.getVarOffsetsMode()));
-      }
+            index_reader_from_capnp(schema, reader_reader, query, reader));
+      } else {
+        auto reader =
+            (SparseUnorderedWithDupsReader<uint64_t>*)query->strategy();
 
-      RETURN_NOT_OK(reader->set_offsets_extra_element(
-          query_reader.getVarOffsetsAddExtraElement()));
+        if (query_reader.hasVarOffsetsMode()) {
+          RETURN_NOT_OK(
+              reader->set_offsets_mode(query_reader.getVarOffsetsMode()));
+        }
 
-      if (query_reader.getVarOffsetsBitsize() > 0) {
+        RETURN_NOT_OK(reader->set_offsets_extra_element(
+            query_reader.getVarOffsetsAddExtraElement()));
+
+        if (query_reader.getVarOffsetsBitsize() > 0) {
+          RETURN_NOT_OK(
+              reader->set_offsets_bitsize(query_reader.getVarOffsetsBitsize()));
+        }
+
+        RETURN_NOT_OK(reader->initialize_memory_budget());
+
         RETURN_NOT_OK(
-            reader->set_offsets_bitsize(query_reader.getVarOffsetsBitsize()));
+            index_reader_from_capnp(schema, reader_reader, query, reader));
       }
-
-      RETURN_NOT_OK(reader->initialize_memory_budget());
-
-      RETURN_NOT_OK(
-          index_reader_from_capnp(schema, reader_reader, query, reader));
     } else if (query_reader.hasDenseReader()) {
       // Strategy needs to be cleared here to create the correct reader.
       query->clear_strategy();

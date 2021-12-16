@@ -51,12 +51,83 @@ class OpenArrayMemoryTracker;
 class StorageManager;
 class Subarray;
 
-constexpr uint64_t ceil_div(uint64_t a, uint64_t b) {
-  auto div = static_cast<float>(a) / static_cast<float>(b);
-  return (static_cast<float>(static_cast<int32_t>(div)) == div) ?
-             static_cast<int32_t>(div) :
-             static_cast<int32_t>(div) + ((div > 0) ? 1 : 0);
-}
+/** Result tile with bitmap. */
+template <class BitmapType>
+class ResultTileWithBitmap : public ResultTile {
+ public:
+  /* ********************************* */
+  /*     CONSTRUCTORS & DESTRUCTORS    */
+  /* ********************************* */
+  ResultTileWithBitmap(
+      unsigned frag_idx, uint64_t tile_idx, const ArraySchema* array_schema)
+      : ResultTile(frag_idx, tile_idx, array_schema)
+      , bitmap_result_num_(std::numeric_limits<uint64_t>::max())
+      , qc_processed_(false) {
+  }
+
+  /* ********************************* */
+  /*          PUBLIC METHODS           */
+  /* ********************************* */
+
+  /**
+   * Returns the number of cells that are before a certain cell index in the
+   * bitmap.
+   */
+  uint64_t result_num_between_pos(uint64_t start_pos, uint64_t end_pos) const {
+    if (bitmap_.size() == 0)
+      return end_pos - start_pos;
+
+    uint64_t result_num = 0;
+    for (uint64_t c = start_pos; c < end_pos; c++)
+      result_num += bitmap_[c];
+
+    return result_num;
+  }
+
+  /**
+   * Returns cell index from a number of cells inside of the bitmap.
+   */
+  uint64_t pos_with_given_result_sum(uint64_t result_num) const {
+    assert(
+        bitmap_result_num_ != std::numeric_limits<uint64_t>::max() &&
+        result_num != 0);
+    if (bitmap_.size() == 0)
+      return result_num - 1;
+
+    uint64_t sum = 0;
+    for (uint64_t c = 0; c < bitmap_.size(); c++) {
+      sum += bitmap_[c];
+      if (sum == result_num) {
+        return c;
+      }
+    }
+
+    assert(false);
+    return std::numeric_limits<uint64_t>::max();
+  }
+
+  /* ********************************* */
+  /*         PUBLIC ATTRIBUTES         */
+  /* ********************************* */
+
+  /** Bitmap for this tile. */
+  std::vector<BitmapType> bitmap_;
+
+  /** Number of cells in this bitmap. */
+  uint64_t bitmap_result_num_;
+
+  /** Was the query condition processed for this tile. */
+  bool qc_processed_;
+};
+
+/**
+ * Result tile list per fragments. For sparse global order reader, this will
+ * be the list of tiles loaded per fragments. For the unordered with duplicates
+ * reader, all tiles will be in fragment 0.
+ */
+template <typename BitmapType>
+using ResultTileListPerFragment =
+    std::vector<std::list<ResultTileWithBitmap<BitmapType>>>;
 
 /** Processes read queries. */
 class SparseIndexReaderBase : public ReaderBase {
@@ -103,15 +174,14 @@ class SparseIndexReaderBase : public ReaderBase {
   /** Returns the current read state. */
   const ReadState* read_state() const;
 
+  /** Initializes the reader. */
+  Status init();
+
+  /** Resize the output buffers to the correct size after copying. */
+  Status resize_output_buffers(uint64_t cells_copied);
+
   /** Returns the current read state. */
   ReadState* read_state();
-
-  /** Clears the result tiles. Used by serialization. */
-  virtual Status clear_result_tiles() = 0;
-
-  /** Add a result tile with no memory budget checks. Used by serialization. */
-  virtual ResultTile* add_result_tile_unsafe(
-      unsigned f, uint64_t t, const Domain* domain) = 0;
 
  protected:
   /* ********************************* */
@@ -122,7 +192,7 @@ class SparseIndexReaderBase : public ReaderBase {
   ReadState read_state_;
 
   /** Have we loaded all thiles for this fragment. */
-  std::vector<bool> all_tiles_loaded_;
+  std::vector<uint8_t> all_tiles_loaded_;
 
   /** Dimension names. */
   std::vector<std::string> dim_names_;
@@ -150,13 +220,7 @@ class SparseIndexReaderBase : public ReaderBase {
   uint64_t memory_used_for_coords_total_;
 
   /** Memory used for query condition tiles. */
-  uint64_t memory_used_qc_tiles_;
-
-  /** Memory used for result cell slabs. */
-  uint64_t memory_used_rcs_;
-
-  /** Memory used for result tiles. */
-  uint64_t memory_used_result_tiles_;
+  uint64_t memory_used_qc_tiles_total_;
 
   /** Memory used for result tile ranges. */
   uint64_t memory_used_result_tile_ranges_;
@@ -173,34 +237,51 @@ class SparseIndexReaderBase : public ReaderBase {
   /** How much of the memory budget is reserved for array data. */
   double memory_budget_ratio_array_data_;
 
-  /** How much of the memory budget is reserved for result tiles. */
-  double memory_budget_ratio_result_tiles_;
-
-  /** How much of the memory budget is reserved for result cell slabs. */
-  double memory_budget_ratio_rcs_;
-
   /** Indicate if the coordinates are loaded for the result tiles. */
   bool coords_loaded_;
+
+  /** Are we in elements mode. */
+  bool elements_mode_;
+
+  /** Names of dim/attr loaded for query condition. */
+  std::vector<std::string> qc_loaded_names_;
 
   /* ********************************* */
   /*         PROTECTED METHODS         */
   /* ********************************* */
 
   /** Get the coordinate tiles size for a dimension. */
+  template <class BitmapType>
   Status get_coord_tiles_size(
-      unsigned dim_num, unsigned f, uint64_t t, uint64_t* tiles_size);
+      bool include_coords,
+      unsigned dim_num,
+      unsigned f,
+      uint64_t t,
+      uint64_t* tiles_size,
+      uint64_t* tiles_size_qc);
 
   /** Load tile offsets and result tile ranges. */
   Status load_initial_data();
 
-  /** Compute the result bitmap for a tile. */
-  Status compute_coord_tiles_result_bitmap(
-      ResultTile* tile,
-      uint64_t range_idx,
-      std::vector<uint8_t>* coord_tiles_result_bitmap);
+  /** Read and unfilter coord tiles. */
+  Status read_and_unfilter_coords(
+      bool include_coords, const std::vector<ResultTile*>* result_tiles);
 
-  /** Resize the output buffers to the correct size after copying. */
-  Status resize_output_buffers();
+  /** Allocate a tile bitmap if required for this tile. */
+  template <class BitmapType>
+  Status allocate_tile_bitmap(ResultTileWithBitmap<BitmapType>* rt);
+
+  /** Compute tile bitmaps. */
+  template <class BitmapType>
+  Status compute_tile_bitmaps(std::vector<ResultTile*>* result_tiles);
+
+  /** Count the number of cells in a bitmap. */
+  template <class BitmapType>
+  Status count_tile_bitmap_cells(ResultTileWithBitmap<BitmapType>* rt);
+
+  /** Apply query condition. */
+  template <class BitmapType>
+  Status apply_query_condition(std::vector<ResultTile*>* result_tiles);
 
   /**
    * Adds an extra offset in the end of the offsets buffer indicating the

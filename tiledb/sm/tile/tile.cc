@@ -217,10 +217,6 @@ void Tile::advance_offset(uint64_t nbytes) {
   buffer_->advance_offset(nbytes);
 }
 
-Buffer* Tile::buffer() const {
-  return buffer_;
-}
-
 Tile Tile::clone(bool deep_copy) const {
   Tile clone;
   clone.cell_size_ = cell_size_;
@@ -247,14 +243,6 @@ Tile Tile::clone(bool deep_copy) const {
   return clone;
 }
 
-uint64_t Tile::cell_size() const {
-  return cell_size_;
-}
-
-unsigned int Tile::dim_num() const {
-  return dim_num_;
-}
-
 void Tile::disown_buff() {
   owns_buffer_ = false;
 }
@@ -266,19 +254,6 @@ bool Tile::owns_buff() const {
 bool Tile::empty() const {
   assert(!filtered());
   return (buffer_ == nullptr) || (buffer_->size() == 0);
-}
-
-bool Tile::filtered() const {
-  assert(!(filtered_buffer_.alloced_size() > 0 && buffer_->size() > 0));
-  return filtered_buffer_.alloced_size() > 0;
-}
-
-Buffer* Tile::filtered_buffer() {
-  return &filtered_buffer_;
-}
-
-uint32_t Tile::format_version() const {
-  return format_version_;
 }
 
 bool Tile::full() const {
@@ -327,19 +302,6 @@ void Tile::set_offset(uint64_t offset) {
 
 void Tile::set_pre_filtered_size(uint64_t pre_filtered_size) {
   pre_filtered_size_ = pre_filtered_size;
-}
-
-uint64_t Tile::size() const {
-  assert(!filtered());
-  return (buffer_ == nullptr) ? 0 : buffer_->size();
-}
-
-bool Tile::stores_coords() const {
-  return dim_num_ > 0;
-}
-
-Datatype Tile::type() const {
-  return type_;
 }
 
 Status Tile::write(ConstBuffer* buf) {

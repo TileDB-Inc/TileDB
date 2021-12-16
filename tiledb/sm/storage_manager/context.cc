@@ -30,9 +30,11 @@
  * This file implements class Context.
  */
 
-#include "tiledb/sm/storage_manager/context.h"
+#include "tiledb/common/common.h"
+
 #include "tiledb/common/logger.h"
 #include "tiledb/common/memory.h"
+#include "tiledb/sm/storage_manager/context.h"
 
 using namespace tiledb::common;
 
@@ -46,8 +48,9 @@ namespace sm {
 Context::Context()
     : last_error_(Status::Ok())
     , storage_manager_(nullptr)
-    , stats_(tdb_make_shared(stats::Stats, "Context"))
-    , logger_(tdb_make_shared(Logger, "")) {
+    , stats_(tdb::make_shared<stats::Stats>(HERE(), "Context"))
+    , logger_(tdb::make_shared<Logger>(
+          HERE(), "Context: " + std::to_string(++logger_id_))) {
 }
 
 Context::~Context() {
@@ -91,9 +94,6 @@ Status Context::init(Config* const config) {
 
   // Initialize storage manager
   auto sm = storage_manager_->init(config);
-
-  // Use the logger created for the storage manager
-  logger_ = storage_manager_->logger();
 
   return sm;
 }

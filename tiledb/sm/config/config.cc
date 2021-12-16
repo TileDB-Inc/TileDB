@@ -30,11 +30,11 @@
  * This file implements class Config.
  */
 
-#include "tiledb/sm/config/config.h"
+#include "config.h"
 #include "tiledb/common/logger.h"
 #include "tiledb/sm/enums/serialization_type.h"
 #include "tiledb/sm/misc/constants.h"
-#include "tiledb/sm/misc/utils.h"
+#include "tiledb/sm/misc/parse_argument.h"
 
 #include <fstream>
 #include <iostream>
@@ -79,6 +79,9 @@ const std::string Config::SM_QUERY_DENSE_READER = "legacy";
 const std::string Config::SM_QUERY_SPARSE_GLOBAL_ORDER_READER = "legacy";
 const std::string Config::SM_QUERY_SPARSE_UNORDERED_WITH_DUPS_READER =
     "refactored";
+const std::string
+    Config::SM_QUERY_SPARSE_UNORDERED_WITH_DUPS_NON_OVERLAPPING_RANGES =
+        "false";
 const std::string Config::SM_MEM_MALLOC_TRIM = "true";
 const std::string Config::SM_MEM_TOTAL_BUDGET = "10737418240";  // 10GB;
 const std::string Config::SM_MEM_SPARSE_GLOBAL_ORDER_RATIO_COORDS = "0.5";
@@ -86,8 +89,6 @@ const std::string Config::SM_MEM_SPARSE_GLOBAL_ORDER_RATIO_QUERY_CONDITION =
     "0.25";
 const std::string Config::SM_MEM_SPARSE_GLOBAL_ORDER_RATIO_TILE_RANGES = "0.1";
 const std::string Config::SM_MEM_SPARSE_GLOBAL_ORDER_RATIO_ARRAY_DATA = "0.1";
-const std::string Config::SM_MEM_SPARSE_GLOBAL_ORDER_RATIO_RESULT_TILES =
-    "0.05";
 const std::string Config::SM_MEM_SPARSE_GLOBAL_ORDER_RATIO_RCS = "0.05";
 const std::string Config::SM_MEM_SPARSE_UNORDERED_WITH_DUPS_RATIO_COORDS =
     "0.5";
@@ -97,9 +98,6 @@ const std::string Config::SM_MEM_SPARSE_UNORDERED_WITH_DUPS_RATIO_TILE_RANGES =
     "0.1";
 const std::string Config::SM_MEM_SPARSE_UNORDERED_WITH_DUPS_RATIO_ARRAY_DATA =
     "0.1";
-const std::string Config::SM_MEM_SPARSE_UNORDERED_WITH_DUPS_RATIO_RESULT_TILES =
-    "0.05";
-const std::string Config::SM_MEM_SPARSE_UNORDERED_WITH_DUPS_RATIO_RCS = "0.05";
 const std::string Config::SM_ENABLE_SIGNAL_HANDLERS = "true";
 const std::string Config::SM_COMPUTE_CONCURRENCY_LEVEL =
     utils::parse::to_str(std::thread::hardware_concurrency());
@@ -130,7 +128,6 @@ const std::string Config::VFS_FILE_POSIX_FILE_PERMISSIONS = "644";
 const std::string Config::VFS_FILE_POSIX_DIRECTORY_PERMISSIONS = "755";
 const std::string Config::VFS_FILE_MAX_PARALLEL_OPS =
     Config::SM_IO_CONCURRENCY_LEVEL;
-const std::string Config::VFS_FILE_ENABLE_FILELOCKS = "true";
 const std::string Config::VFS_READ_AHEAD_SIZE = "102400";          // 100KiB
 const std::string Config::VFS_READ_AHEAD_CACHE_SIZE = "10485760";  // 10MiB;
 const std::string Config::VFS_AZURE_STORAGE_ACCOUNT_NAME = "";
@@ -243,6 +240,8 @@ Config::Config() {
       SM_QUERY_SPARSE_GLOBAL_ORDER_READER;
   param_values_["sm.query.sparse_unordered_with_dups.reader"] =
       SM_QUERY_SPARSE_UNORDERED_WITH_DUPS_READER;
+  param_values_["sm.query.sparse_unordered_with_dups.non_overlapping_ranges"] =
+      SM_QUERY_SPARSE_UNORDERED_WITH_DUPS_NON_OVERLAPPING_RANGES;
   param_values_["sm.mem.malloc_trim"] = SM_MEM_MALLOC_TRIM;
   param_values_["sm.mem.total_budget"] = SM_MEM_TOTAL_BUDGET;
   param_values_["sm.mem.reader.sparse_global_order.ratio_coords"] =
@@ -253,8 +252,6 @@ Config::Config() {
       SM_MEM_SPARSE_GLOBAL_ORDER_RATIO_TILE_RANGES;
   param_values_["sm.mem.reader.sparse_global_order.ratio_array_data"] =
       SM_MEM_SPARSE_GLOBAL_ORDER_RATIO_ARRAY_DATA;
-  param_values_["sm.mem.reader.sparse_global_order.ratio_result_tiles"] =
-      SM_MEM_SPARSE_GLOBAL_ORDER_RATIO_RESULT_TILES;
   param_values_["sm.mem.reader.sparse_global_order.ratio_rcs"] =
       SM_MEM_SPARSE_GLOBAL_ORDER_RATIO_RCS;
   param_values_["sm.mem.reader.sparse_unordered_with_dups.ratio_coords"] =
@@ -266,10 +263,6 @@ Config::Config() {
       SM_MEM_SPARSE_UNORDERED_WITH_DUPS_RATIO_TILE_RANGES;
   param_values_["sm.mem.reader.sparse_unordered_with_dups.ratio_array_data"] =
       SM_MEM_SPARSE_UNORDERED_WITH_DUPS_RATIO_ARRAY_DATA;
-  param_values_["sm.mem.reader.sparse_unordered_with_dups.ratio_result_tiles"] =
-      SM_MEM_SPARSE_UNORDERED_WITH_DUPS_RATIO_RESULT_TILES;
-  param_values_["sm.mem.reader.sparse_unordered_with_dups.ratio_rcs"] =
-      SM_MEM_SPARSE_UNORDERED_WITH_DUPS_RATIO_RCS;
   param_values_["sm.enable_signal_handlers"] = SM_ENABLE_SIGNAL_HANDLERS;
   param_values_["sm.compute_concurrency_level"] = SM_COMPUTE_CONCURRENCY_LEVEL;
   param_values_["sm.io_concurrency_level"] = SM_IO_CONCURRENCY_LEVEL;
@@ -306,7 +299,6 @@ Config::Config() {
   param_values_["vfs.file.posix_directory_permissions"] =
       VFS_FILE_POSIX_DIRECTORY_PERMISSIONS;
   param_values_["vfs.file.max_parallel_ops"] = VFS_FILE_MAX_PARALLEL_OPS;
-  param_values_["vfs.file.enable_filelocks"] = VFS_FILE_ENABLE_FILELOCKS;
   param_values_["vfs.azure.storage_account_name"] =
       VFS_AZURE_STORAGE_ACCOUNT_NAME;
   param_values_["vfs.azure.storage_account_key"] =
@@ -475,6 +467,22 @@ Status Config::get(const std::string& param, T* value, bool* found) const {
   return utils::parse::convert(val, value);
 }
 
+/*
+ * Template definition not in header; explicitly instantiated below. It's here
+ * to deal with legacy difficulties with header dependencies.
+ */
+template <class T>
+Status Config::get_vector(
+    const std::string& param, std::vector<T>* value, bool* found) const {
+  // Check if parameter exists
+  const char* val = get_from_config_or_env(param, found);
+  if (!*found)
+    return Status::Ok();
+
+  // Parameter found, retrieve value
+  return utils::parse::convert<T>(val, value);
+}
+
 const std::map<std::string, std::string>& Config::param_values() const {
   return param_values_;
 }
@@ -534,6 +542,11 @@ Status Config::unset(const std::string& param) {
   } else if (param == "sm.query.sparse_unordered_with_dups.reader") {
     param_values_["sm.query.sparse_unordered_with_dups.reader"] =
         SM_QUERY_SPARSE_UNORDERED_WITH_DUPS_READER;
+  } else if (
+      param == "sm.query.sparse_unordered_with_dups.non_overlapping_ranges") {
+    param_values_
+        ["sm.query.sparse_unordered_with_dups.non_overlapping_ranges"] =
+            SM_QUERY_SPARSE_UNORDERED_WITH_DUPS_NON_OVERLAPPING_RANGES;
   } else if (param == "sm.mem.malloc_trim") {
     param_values_["sm.mem.malloc_trim"] = SM_MEM_MALLOC_TRIM;
   } else if (param == "sm.mem.total_budget") {
@@ -551,9 +564,6 @@ Status Config::unset(const std::string& param) {
   } else if (param == "sm.mem.reader.sparse_global_order.ratio_array_data") {
     param_values_["sm.mem.reader.sparse_global_order.ratio_array_data"] =
         SM_MEM_SPARSE_GLOBAL_ORDER_RATIO_ARRAY_DATA;
-  } else if (param == "sm.mem.reader.sparse_global_order.ratio_result_tiles") {
-    param_values_["sm.mem.reader.sparse_global_order.ratio_result_tiles"] =
-        SM_MEM_SPARSE_GLOBAL_ORDER_RATIO_RESULT_TILES;
   } else if (param == "sm.mem.reader.sparse_global_order.ratio_rcs") {
     param_values_["sm.mem.reader.sparse_global_order.ratio_rcs"] =
         SM_MEM_SPARSE_GLOBAL_ORDER_RATIO_RCS;
@@ -575,14 +585,6 @@ Status Config::unset(const std::string& param) {
       param == "sm.mem.reader.sparse_unordered_with_dups.ratio_array_data") {
     param_values_["sm.mem.reader.sparse_unordered_with_dups.ratio_array_data"] =
         SM_MEM_SPARSE_UNORDERED_WITH_DUPS_RATIO_ARRAY_DATA;
-  } else if (
-      param == "sm.mem.reader.sparse_unordered_with_dups.ratio_result_tiles") {
-    param_values_
-        ["sm.mem.reader.sparse_unordered_with_dups.ratio_result_tiles"] =
-            SM_MEM_SPARSE_UNORDERED_WITH_DUPS_RATIO_RESULT_TILES;
-  } else if (param == "sm.mem.reader.sparse_unordered_with_dups.ratio_rcs") {
-    param_values_["sm.mem.reader.sparse_unordered_with_dups.ratio_rcs"] =
-        SM_MEM_SPARSE_UNORDERED_WITH_DUPS_RATIO_RCS;
   } else if (param == "sm.enable_signal_handlers") {
     param_values_["sm.enable_signal_handlers"] = SM_ENABLE_SIGNAL_HANDLERS;
   } else if (param == "sm.compute_concurrency_level") {
@@ -647,8 +649,6 @@ Status Config::unset(const std::string& param) {
         VFS_FILE_POSIX_DIRECTORY_PERMISSIONS;
   } else if (param == "vfs.file.max_parallel_ops") {
     param_values_["vfs.file.max_parallel_ops"] = VFS_FILE_MAX_PARALLEL_OPS;
-  } else if (param == "vfs.file.enable_filelocks") {
-    param_values_["vfs.file.enable_filelocks"] = VFS_FILE_ENABLE_FILELOCKS;
   } else if (param == "vfs.azure.storage_account_name") {
     param_values_["vfs.azure.storage_account_name"] =
         VFS_AZURE_STORAGE_ACCOUNT_NAME;
@@ -864,8 +864,6 @@ Status Config::sanity_check(
     RETURN_NOT_OK(utils::parse::convert(value, &v32));
   } else if (param == "vfs.file.max_parallel_ops") {
     RETURN_NOT_OK(utils::parse::convert(value, &vuint64));
-  } else if (param == "vfs.file.enable_filelocks") {
-    RETURN_NOT_OK(utils::parse::convert(value, &v));
   } else if (param == "vfs.s3.scheme") {
     if (value != "http" && value != "https")
       return LOG_STATUS(
@@ -984,7 +982,9 @@ const char* Config::get_from_config_or_env(
   return *found ? value_config : "";
 }
 
-// Explicit template instantiations
+/*
+ * Explicit instantiations
+ */
 template Status Config::get<bool>(
     const std::string& param, bool* value, bool* found) const;
 template Status Config::get<int>(
@@ -999,6 +999,8 @@ template Status Config::get<float>(
     const std::string& param, float* value, bool* found) const;
 template Status Config::get<double>(
     const std::string& param, double* value, bool* found) const;
+template Status Config::get_vector<uint32_t>(
+    const std::string& param, std::vector<uint32_t>* value, bool* found) const;
 
 }  // namespace sm
 }  // namespace tiledb
