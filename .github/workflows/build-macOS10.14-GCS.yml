@@ -8,6 +8,11 @@ on:
   pull_request:
     branches:
       - '*'  # must quote since "*" is a YAML reserved character; we want a string
+
+concurrency:
+  group: ${{ github.workflow }}
+  cancel-in-progress: true
+
 env:
   BACKWARDS_COMPATIBILITY_ARRAYS: OFF
   TILEDB_GCS: ON
@@ -16,11 +21,24 @@ env:
 
 jobs:
   build:
-    runs-on: macos-10.14
+    runs-on: ${{ matrix.os }}
+    strategy:
+      matrix:
+        os:
+          -  macos-10.14
     if: ${{ startsWith(github.ref , 'refs/tags') != true && startsWith(github.ref , 'build-') != true }}
     timeout-minutes: 90
-    name: Build - macos-10.14 - GCS
+    name: Build - ${{matrix.os}} - GCS
     steps:
+      - name: 'prep macos for core dumps'
+        if: ${{ startsWith(matrix.os, 'macos-') == true }}
+        run: |
+          sudo chown :staff /cores
+          sudo chmod g+w /cores
+          ulimit -c unlimited     # Enable core dumps to be captured (must be in same run block)
+          ls -ld /cores
+          ulimit -c
+
       - uses: actions/checkout@v2
       - name: 'Print env'
         run: |
@@ -47,6 +65,9 @@ jobs:
       - name: 'Build and test libtiledb'
         id: test
         run: |
+          ulimit -c unlimited     # Enable core dumps to be captured (must be in same run block)
+          ls -ld /cores
+          ulimit -c
           # Start GCS Emulator if GCS is enabled
           source scripts/install-gcs-emu.sh;
           source scripts/run-gcs-emu.sh;
@@ -59,6 +80,31 @@ jobs:
           echo ::set-output name=TILEDB_CI_SUCCESS::1
 
           source $GITHUB_WORKSPACE/scripts/ci/build_benchmarks.sh
+
+      - name: 'core dump stacks'
+        if: ${{ failure() == true && startsWith(matrix.os, 'macos-') == true }} # only run this job if the build step failed
+        run: |
+          nfiles=$(ls /cores | wc -l)
+          if [[ $nfiles -eq 0 ]]; then
+            echo "no core files found"
+            exit 0
+          fi
+          ls -la /cores
+          for f in $(find /cores -name 'core.*');
+            do
+              echo "stack trace for $f"
+              lldb -c $f --batch -o 'bt all' -o 'image list' -o 'quit'
+            done;
+
+      - name: 'upload core artifacts' # https://github.com/actions/upload-artifact#where-does-the-upload-go
+        if: ${{ failure() == true && startsWith(matrix.os, 'macos-') == true }} # only run this job if the build step failed
+        uses: actions/upload-artifact@v2
+        with:
+          retention-days: 10
+          name: "${{ matrix.os }}.coredumps.${{ github.job }}.${{ github.run_number }}.${{github.run_id}}.${{github.run_attempt}}"
+          if-no-files-found: warn # 'ignore/', 'warn' or 'error' are available, defaults to `warn`
+          path: |
+            /cores/
 
       - name: 'Test status check'
         run: |
