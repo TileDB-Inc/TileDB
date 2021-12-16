@@ -1,120 +1,47 @@
 name: build-ubuntu-20.04-AZURE
 on:
   push:
-    #~ branches:
-      #~ - dev
-      #~ - release-*
-      #~ - refs/tags/*
-  #~ pull_request:
-    #~ branches:
-      #~ - '*'  # must quote since "*" is a YAML reserved character; we want a string
-
+    branches:
+      - dev
+      - release-*
+      - refs/tags/*
+  pull_request:
+    branches:
+      - '*'  # must quote since "*" is a YAML reserved character; we want a string
 env:
   BACKWARDS_COMPATIBILITY_ARRAYS: OFF
   TILEDB_AZURE: ON
   TILEDB_STATIC: OFF
   TILEDB_ARROW_TESTS: ON
-  #CXX: g++
-  MANYLINUX_IMAGE: 'quay.io/pypa/manylinux2010_x86_64:2021-11-07-28723f3'
+  CXX: g++
 
 jobs:
   build:
-    runs-on: ${{ matrix.os }} #ubuntu-20.04
+    runs-on: ${{matrix.os}}
     strategy:
       matrix:
         os:
           - ubuntu-20.04
-    if: true #false # ${{ startsWith(github.ref , 'refs/tags') != true && startsWith(github.ref , 'build-') != true }}
+    if: ${{ startsWith(github.ref , 'refs/tags') != true && startsWith(github.ref , 'build-') != true }}
     timeout-minutes: 90
-    name: Build - ${{ matrix.os }} - AZURE
-    env:
-      TILEDB_HOME: ${{ github.workspace }}
-      TILEDB_GA_IMAGE_NAME: ${{ matrix.os }}
-      CXX: ${{ matrix.cxx }}
-      TILEDB_SERIALIZATION: ${{ matrix.tiledb_serialization }}
-      ARTIFACT_OS: ${{ matrix.artifact_os }}
-      TILEDB_TRY_PNG_INGESTION: ${{ matrix.try_png_ingestion }}
+    name: Build - ${{matrix.os}} - AZURE
     steps:
-    
-      - name: 'eval-gdb-items'
-        if: ${{ matrix.os == 'ubuntu-20.04' }}
+      - name: 'prep ubuntu for core dumps'
+        if: ${{ startsWith(matrix.os, 'ubuntu-') == true }} # only run this job if the build step failed
         run: |
-          set -x
-          dpkg -l | grep gdb
-          /usr/bin/time sudo apt install gdb
-          if [[ $(which gdb) ]]; then
-            echo "found gdb, $(which gdb)"
+          ulimit -c unlimited     # Enable core dumps to be captured (must be in same run block)
+          ulimit -c
+          sudo apt-get -y install gdb
+          if [[ -f $(which gdb) ]]; then
+            echo found $(which gdb)
           else
-            echo "'which' did not find gdb in path"
+            echo tried to install gdb, but gdb not found!
           fi
-          if [[ $(sudo find / -name "gdb") ]]; then
-            #if [[ $(sudo find / -name "gdb" -exec ls -l {} \;) ]]; then
-              echo ""
-            #fi
-          fi
-          if [[ $(sudo find / -type f -executable -name "gdb") ]]; then
-            #if [[ $(sudo find / -type f -executable -name "gdb" -exec ls -l {} \;) ]]; then
-              echo ""
-            #fi
-          fi
-          if [[ $(sudo find / -name "lldb") ]]; then
-            echo ""
-          fi
-          if [[ $(sudo find / -type f -executable -name "lldb") ]]; then
-            #if [[ $(sudo find / -type f -executable -name "lldb" -exec ls -l {} \;) ]]; then
-              echo ""
-            #fi
-          fi
-          if [[ $(sudo find / -type f -name "*gdb*") ]]; then
-            echo ""
-          fi
-          if [[ $(sudo find / -type f -executable -name "*gdb*") ]]; then
-            echo ""
-          fi
+          echo "core_pattern follows..."
+          cat /proc/sys/kernel/core_pattern
+          echo "...core_pattern above"
 
-          if [[ $(sudo find / -type f -executable -name "*gdb*" -exec ls -l {}\;) ]]; then
-            if [[ $(sudo find / -type f -executable -name "*gdb*" -exec {} -ex "show configuration" -ex "q" \;) ]]; then
-              echo ""
-            fi
-          fi
-
-          if [[ $(sudo find / -type d -name "*gdb*") ]]; then
-            echo ""
-          fi
-
-          if [[ $(sudo find / -type d -executable -name "*gdb*") ]]; then
-            echo ""
-          fi
-
-          if [[ $(sudo find / -type d -name "*gdb*" -exec ls -ld {} \;) ]]; then
-            echo ""
-          fi
-
-          exit 42
-
-      - name: 'check /cores 1'
-        if: ${{ always() == true   && startsWith(matrix.os, 'macos-') == true }} # only run this job if the build step failed
-        run: |
-          echo "check /cores 1"
-          ls -ld /cores
-          ls -la /cores
-          nfiles=$(ls /cores | wc -l)
-          echo "found $nfiles core files"
-          
       - uses: actions/checkout@v2
-
-      - name: 'prep env'
-        run: |
-          if [[ $TILEDB_GA_IMAGE_NAME == 'ubuntu-20.04' ]] ; then
-            echo "CXX=g++" >> "$GITHUB_ENV"
-          fi
-          if [[ $TILEDB_GA_IMAGE_NAME == 'macos-10.15' ]] ; then
-            echo "CXX=clang++" >> "$GITHUB_ENV"
-            echo "TILEDB_SERIALIZATION=ON" >> "$GITHUB_ENV"
-            echo "ARTIFACT_OS=macOS_azure" >> "$GITHUB_ENV"
-          fi
-        shell: bash
-
       - name: 'Print env'
         run: |
           echo "'uname -s' is:"
@@ -126,27 +53,22 @@ jobs:
           printenv
         shell: bash
 
-      #~ # Need this for virtualenv and arrow tests if enabled
-      #~ - uses: actions/setup-python@v2 #wants node v12.x
-      #~ - uses: actions/setup-python@79be57810c28a674116e07aee54102b3da5c42c6 #wants node 10.x,any better for many linux earlier GLIBC's?
-      #~ - uses: actions/setup-python@a93e9d979abf147b167df3c4823e1ec06442b38e #wants node 10.x,any better for many linux earlier GLIBC's? little bit later than prior...
-        #~ with:
-          #~ python-version: '3.8'
+      # Need this for virtualenv and arrow tests if enabled
+      - uses: actions/setup-python@v2
+        with:
+          python-version: '3.8'
 
-      #~ - run: |
-          #~ set -e pipefail
-          #~ python -m pip install --upgrade pip virtualenv
-          #~ pip install pyarrow pybind11 numpy
-        #~ shell: bash
+      - run: |
+          set -e pipefail
+          python -m pip install --upgrade pip virtualenv
+          pip install pyarrow pybind11 numpy
+        shell: bash
 
       - name: 'Build and test libtiledb'
         id: test
         run: |
-          #~ #TBD: REMOVEME for production
-          #~ echo "::set-output name=TILEDB_CI_SUCCESS::1" # TBD: make status check pass for this hack step
-          #~ exit 0
-          
-          # Azure sets "SYSTEM=build" for unknown reasonas, which breaks the OpenSSL configure script
+          ulimit -c unlimited
+          ulimit -c
           #   - openssl configure uses ENV{SYSTEM} if available:
           #     https://github.com/openssl/openssl/blob/6d745d740d37d680ff696486218b650512bbbbc6/config#L56
           #   - error description:
@@ -169,11 +91,7 @@ jobs:
           
           # Bypass Catch2 Framework stdout interception with awk on test output
           # make check | awk '/1: ::set-output/{sub(/.*1: /, ""); print; next} 1'
-          ./tiledb/test/tiledb_unit -d yes --crash | awk '/1: ::set-output/{sub(/.*1: /, ""); print; next} 1'
-          # ...core dump occurred, but apparently the awk masked the failure...
-          # hmm, could that mask happen in actual production crash??? Probably, hmm...
-          # duh, this file still had dumps for 'macos...'
-          #./tiledb/test/tiledb_unit -d yes --crash
+          ./tiledb/test/tiledb_unit -d yes | awk '/1: ::set-output/{sub(/.*1: /, ""); print; next} 1'
 
           # Kill the running Azurite server
           kill -n 9 $AZURITE_PID
@@ -185,54 +103,67 @@ jobs:
           ./ExampleExe
 
           popd
-          
-          if [[ $TILEDB_TRY_PNG_INGESTION == "ON" ]]; then
-            # Build and run the PNG ingestion example.
-            # libpng (example dependency)
-            sudo apt-get install libpng-dev
+          # Build and run the PNG ingestion example.
+          # libpng (example dependency)
+          sudo apt-get install libpng-dev
 
-            pushd $GITHUB_WORKSPACE/examples/png_ingestion;
-            mkdir build && cd build;
-            cmake -DCMAKE_PREFIX_PATH=$GITHUB_WORKSPACE/dist .. && make;
-            ./tiledb_png $GITHUB_WORKSPACE/doc/source/figures/Scarlet-Macaw-small.png /tmp/pngarray output.png;
-            popd;
-          fi
+          pushd $GITHUB_WORKSPACE/examples/png_ingestion;
+          mkdir build && cd build;
+          cmake -DCMAKE_PREFIX_PATH=$GITHUB_WORKSPACE/dist .. && make;
+          ./tiledb_png $GITHUB_WORKSPACE/doc/source/figures/Scarlet-Macaw-small.png /tmp/pngarray output.png;
+          popd;
 
           source $GITHUB_WORKSPACE/scripts/ci/build_benchmarks.sh
-          
-          ulimit -c               # should output 0 if disabled
-          ulimit -c unlimited     # Enable core dumps to be captured (must be in same run block)
-          ulimit -c               # should output 'unlimited' now
-          #echo -e "import resource as res\nprint(res.getrlimit(res.RLIMIT_CORE))\nres.setrlimit(res.RLIMIT_CORE,(res.RLIM_INFINITY,res.RLIM_INFINITY))\nprint(res.getrlimit(res.RLIMIT_CORE))\nimport os \nos.abort()" | python3
 
-      - name: 'dump  core stacks'
-        if: ${{ always() == true   && startsWith(matrix.os, 'ubuntu-') == true }} # only run this job if the build step failed
+      - name: 'dump core stacks'
+        if: ${{ failure() && startsWith(matrix.os, 'ubuntu-') == true }} # only run this job if the build step failed
         run: |
           # following contains answers with various possibilities for locating core files on various systems
           # https://stackoverflow.com/questions/2065912/core-dumped-but-core-file-is-not-in-the-current-directory
-          #a 'gdb' is present there, not a file, other gdbs but seem assoc'd with non-general usage
-          #if [[ -f /usr/share/gdb ]]; then
-          #  dbgr="/usr/share/gdb"
-          #  dbgropts=" -q --core \$f --batch -ex \"thread apply all bt\" -ex \"quit\""
-          #fi
-          # lldb ref'd here located by doing trial in runner with find / -name "*lldb*" and sifting through the results.
-          if [[ -f /usr/lib/llvm-11/bin/lldb ]]; then
-            #lldb -c $f --batch -o 'bt all' -o 'quit'
-            dbgr="/usr/lib/llvm-11/bin/lldb"
-            #dbgropts=" -core \$f --batch -o 'bt all' -o 'quit'"
+          pwd
+          if [[ ! $(find /var/lib/apport/coredump -name 'core.*') ]]; then
+            # if we don't find the core files where/as expected, then
+            # the artifacts won't get uploaded (haven't figured out how to
+            # dynamically specify location to upload action), but we
+            # can still present stack traces for the ones we find.
+            echo "core files not found where expected!"
+            if [[ $(find . -name 'core.*') ]]; then
+              echo "core files found at/under $(pwd)"
+              corefiles=$(find . -name 'core.*')
+            elif [[ $(find / -name 'core.*') ]]; then
+              echo "core founds found!"
+              corefiles=$(find / -name 'core.*')
+            else
+              echo "core files expected but not found!"
+              corefiles=
+            fi
           else
-            echo "debugger not found in previously seen location!"
-            exit 1
+            corefiles=$(find /var/lib/apport/coredump -name 'core.*')
           fi
-          echo "dbgr $dbgr"
-          for f in $(find /var/lib/apport/coredump -name 'core.*');
+          ulimit -c
+          echo "ls -l /var/lib/apport/coredump"
+          ls -l /var/lib/apport/coredump
+          for f in $corefiles;
             do
               echo "stack trace for $f"
-              #currently assumes $dbgr to be lldb
-              sudo $dbgr -core $f --batch  -o 'bt all' -o 'quit'
+              if [[ -f $(which gdb) ]]; then
+                dbgr=$(which gdb)
+                sudo $dbgr -q --core $f -ex "thread apply all bt" -ex "quit"
+              #fi
+              # lldb ref'd here located by doing trial in runner with find / -name "*lldb*" and sifting through the results.
+              elif [[ -f /usr/lib/llvm-11/bin/lldb ]]; then
+                dbgr="/usr/lib/llvm-11/bin/lldb"
+                sudo $dbgr -core $f --batch  -o 'bt all' -o 'quit'
+              else
+                echo "debugger not found in previously seen location!"
+                exit 1
+              fi
             done;
+
       - name: 'upload any core artifacts' # https://github.com/actions/upload-artifact#where-does-the-upload-go
-        if: ${{ always() == true && startsWith(matrix.os, 'ubuntu-') == true }} # only run this job if the build step failed
+        #if: ${{ always() == true && startsWith(matrix.os, 'ubuntu-') == true }} # only run this job if the build step failed
+        #if: ${{ failure() == true && startsWith(matrix.os, 'ubuntu-') == true }} # only run this job if the build step failed
+        if: ${{ failure() && startsWith(matrix.os, 'ubuntu-') == true }} # only run this job if the build step failed
         uses: actions/upload-artifact@v2
         with:
           retention-days: 10
@@ -240,593 +171,6 @@ jobs:
           if-no-files-found: warn # 'ignore', 'warn' or 'error' are available, defaults to `warn`
           path: |
             /var/lib/apport/coredump/
-
-      - name: 'Test status check'
-        run: |
-          # tiledb_unit is configured to set a job-level variable TILEDB_CI_SUCCESS=1
-          # following the test run. If this variable is not set, the build should fail.
-          # see https://github.com/TileDB-Inc/TileDB/pull/1400 (5f0623f4d3)
-          if [[ "${{ steps.test.outputs.TILEDB_CI_SUCCESS }}" -ne 1 ]]; then
-            exit 1;
-          fi
-
-      - name: "Print log files (failed build only)"
-        run: |
-          source $GITHUB_WORKSPACE/scripts/ci/print_logs.sh
-        if: ${{ failure() }} # only run this job if the build step failed
-
-  manylinux-container-job:
-    runs-on: ${{ matrix.os }}
-    if: true
-    #TBD: remove or up, lowered trying short term exploration...
-    timeout-minutes: 90
-    strategy:
-      matrix:
-        #os: [ubuntu-20.04, macos-10.15]
-        #os: [macos-10.15]
-        os:
-          - ubuntu-20.04
-            #~ cxx: g++
-            #~ tiledb_serialization: OFF
-            #~ artifact_os: macOS_azure
-            #~ tiledb_try_png_ingestion: ON
-          #- macos-10.15
-        include:
-          #~ - os: 'macos-10.15'
-          - os: ubuntu-20.04
-            #image: 'quay.io/pypa/manylinux2010_x86_64:2021-11-07-28723f3'
-    container: #${{ matrix.os.image }} # TBD: Is this/that right location for image?
-      image: 'quay.io/pypa/manylinux2010_x86_64:2021-11-07-28723f3'      
-      options: "--entrypoint /bin/bash"
-    env:
-      TILEDB_SERIALIZATION: ON
-      CXX: g++
-      CC: gcc
-      CXXFLAGS: "-lrt"
-      CFLAGS: "-lrt"
-      USE_MANYLINUX: ON
-      TILEDB_CI_ASAN: OFF
-    #?container: ${{ matrix.os.include.image }} # TBD: Is this/that right location for image?
-    #services:
-    #  manylinux:
-    #    image: ${{ matrix.os.image }} # TBD: Is this/that right location for image?
-    steps:
-      - name: 'something to fill til real work coded'
-        run: |
-          echo running in container? # to be replaced with something more substantial (azure-linux_mac.yml GA quiv?)
-          uname -a
-
-      #the actions/checkout@v2 is failing in the container...
-      #- uses: actions/checkout@v2
-      
-      # Need this for virtualenv and arrow tests if enabled
-      #- uses: actions/setup-python@v2
-      #@v1 still attempts node12 which wants library versions apparently not present in manylinux...
-      #~ - uses: actions/setup-python@v1
-        #~ with:
-          #~ python-version: '3.8'
-
-      - name: 'install-nodejs'
-        run: |
-          #which node
-          yum search nodejs
-          yum search npm
-          if [[ ! $(which node) ]]; then
-            echo "installing nodejs"
-            #not on manylinux?... yum -yv install epel_release
-            yum -yv install nodejs
-            which node
-            node --version
-            yum -yv install npm
-            which npm
-          else
-            echo "node already installed, $(which node)."
-          fi
-
-      - name: 'fetch source'
-        run: |
-          #~ yum search perlbrew
-          #~ yum -yv install perlbrew
-          #~ if [[ $(which perlbrew) ]]; then
-            #~ perlbrew init
-            #~ source ~/perl5/perlbrew/etc/bashrc
-            #~ perlbrew available
-          #~ fi
-          pwd
-          ls -l
-          uname -a
-          echo where is microsoft.com?
-          nslookup microsoft.com
-          echo where is yahoo.com?
-          nslookup yahoo.com
-          #echo where is google.com?
-          #huh, can't find google.com?
-          #nslookup google.com?
-          echo where is duckduckgo.com?
-          nslookup duckduckgo.com
-          echo whereis github.com?
-          nslookup github.com
-          git clone https://github.com/TileDB-Inc/TileDB.git ./TileDB
-          pwd
-          ls -l
-          cd TileDB
-          git checkout $GITHUB_REF_NAME
-          pwd
-          ls -l
-          #TBD: need to get correct branch, is there a $GITHUB_something to identify?
-          #How does actions/checkout@v2 do it?
-          echo "GITHUB_REF_NAME is $GITHUB_REF_NAME"
-          echo "GITHUB_REF is $GITHUB_REF"
-          echo "GITHUB_SHA is $GITHUB_SHA"
-          # reportedly GITHUB_WORKSPACE is initially empty, so guess may have to set it
-          echo "\$ GITHUB_WORKSPACE is $GITHUB_WORKSPACE"
-          ls -l
-          #printenv
-          which python
-          if [[ $(which python) ]]; then
-            python --version
-          fi
-          #which python3
-          #export PATH=$PATH:/__t/Python/3.8.12/x64/lib/
-          #echo "$PATH" >> $GITHUB_ENV
-          #echo "PATH=$PATH" >> $GITHUB_ENV
-          echo $PATH
-          if [[ ! $(which python3) ]]; then
-            echo "install python A"
-            yum search python3
-            #yum -yvb install python3
-            echo "install python B"
-            #yum help
-            #sync
-            echo "install python C"
-            #yum -y -v install python3
-            yum -y -v install rh-python36
-            echo "install python D"
-            echo "find / -name 'python3' -exec ls -l {} \;"
-            find / -name 'python3' -exec ls -l {} \;
-            echo "find / -type f -name 'python*' -exec ls -l {} \;"
-            find / -type f -name 'python*' -exec ls -l {} \;
-            echo "find / -type f -name 'python3.6' -exec ls -l {} \;"
-            find / -type f -name 'python3.6' -exec ls -l {} \;
-            echo 'trying /opt/rh/rh-python36/root/usr/bin/python3.6'
-            /opt/rh/rh-python36/root/usr/bin/python3.6 --version
-            echo "PYTHONHOME is $PYTHONHOME"
-            export PATH=$PATH:/opt/rh/rh-python36/root/usr/bin/
-            echo "PATH is $PATH"
-            echo "PATH=$PATH" >> $GITHUB_ENV
-            which pip
-            echo "hunting pip..."
-            #find /opt/rh/rh-python36/root/usr/bin/python3.6 -name 'pip*'
-            find /opt/rh/rh-python36/ -name 'pip*'
-            ls -l /usr/bin/python*
-            #what's inside this, not big enough to be actual python...
-            echo exploring /usr/bin/python2.6
-            #cat /usr/bin/python2.6
-            hexdump -C /usr/bin/python2.6
-            mv /usr/bin/python /usr/bin/python.fromimage
-            ln -s /opt/rh/rh-python36/root/usr/bin/python3.6 /usr/bin/python
-            ls -l /usr/bin/python*
-            which python
-            python --version
-            echo "find / -type f -name 'python3.8' -exec ls -l {} \;"
-            find / -type f -name 'python3.8' -exec ls -l {} \;
-            echo "done hunting pythons"
-            #~ /opt/_internal/cpython-3.8.12/bin/python3.8 --version
-            #~ /__t/Python/3.8.12/x64/bin/python3.8 --version
-            #~ /__t/Python/3.8.12/x64/bin/python3.8 --version
-            echo ldd /opt/_internal/cpython-3.8.12/bin/python3.8
-            ldd /opt/_internal/cpython-3.8.12/bin/python3.8
-            echo ldd /__t/Python/3.8.12/x64/bin/python3.8
-            ldd /__t/Python/3.8.12/x64/bin/python3.8
-            echo ldd /__t/Python/3.8.12/x64/bin/python3.8
-            #ldd /__t/Python/3.8.12/x64/bin/python3.8
-            echo $PATH
-            echo 
-            echo find / -name libpython3.8.so.1.0
-            find / -name libpython3.8.so.1.0
-            #So, can't find -any- of these apparently ref'd by 'that' libpython3.8.so.1.0
-            echo find / -name GLIBC_2.29
-            find / -name GLIBC_2.29*
-            echo find / -name GLIBC_2.25
-            find / -name GLIBC_2.25*
-            echo find / -name GLIBC_2.26
-            find / -name GLIBC_2.26*
-            echo find / -name GLIBC_2.28
-            find / -name GLIBC_2.28*
-            echo find / -name GLIBC_2.27
-            find / -name GLIBC_2.27*
-            echo find / -name GLIBC_2.14
-            find / -name GLIBC_2.14*
-            echo find / -name GLIBC_2.15
-            find / -name GLIBC_2.15*
-            echo find / -name GLIBC_2.17
-            find / -name GLIBC_2.17*
-            LD_LIBRARY_PATH=$LD_LIBRARY_PATH:/__t/Python/3.8.12/x64/lib/
-            echo $LD_LIBRARY_PATH
-            #/__t/Python/3.8.12/x64/bin/python3.8 --version
-            echo mount
-            mount
-          fi
-          echo b4 which python3 hunt
-          sync
-          if [[ $(which python3) ]]; then
-            #which python3
-            #python3 --version
-            echo found python3
-          else
-            echo did not find python3
-          fi
-          echo b4 yum check
-          sync
-          if [[ ! $(which yum) ]]; then
-            echo "did not find 'yum'!!"
-          else
-            ls -l $(which yum)
-          fi
-          echo b4 which yum
-          set -x
-          which yum
-          #~ echo b4 install wget
-          #~ sync
-          #yum search wget # found wget.x86_64, what's name needed to install???
-          #yum -v -y install wget
-          #syntax error? yum list
-          #~ yum --help
-          #~ sync
-          #echo getting syntax errors from yum commands I thought had prev worked...
-          #~ yum -vy install wget
-          #~ echo after install wget
-          #~ if [[ ! $(which wget) ]]; then
-            #~ #yum -vy install wget
-            #~ echo "tried yum install wget, still not found?"
-          #~ fi
-          #yum search python3
-          echo b4 which curl
-          if [[ ! $(which curl) ]]; then
-            echo "did not find 'curl'!"
-          fi
-          echo after which curl
-          #which wget
-          #~ if [[ $(which wget) ]]; then
-            #~ cd ..
-            #~ pwd
-            #~ wget https://www.python.org/ftp/python/3.8.12/Python-3.8.12.tgz
-            #~ tar xvf Python-3.8.12.tgz
-            #~ cd Python-3.8*/
-            #~ #./configure --enable-optimizations
-            #~ ./configure
-            #~ #sudo make altinstall
-            #~ make altinstall
-            #~ python3.8 --version
-            #~ pip3.8 --version
-            #~ which python3.8
-          #~ else
-            #~ echo "did not find wget"
-          #~ fi
-          #~ echo b4 yum search virtualenv
-          #~ yum search virtualenv
-          #~ echo b4 ! which virtualenv
-          #~ if [[ ! $(which virtualenv) ]]; then
-            #~ echo did not find virtualenv~
-          #~ fi
-          echo end of 'get source'
-
-      #~ - name: 'install-nodejs'
-        #~ run: |
-          #~ #which node
-          #~ yum search nodejs
-          #~ yum search npm
-          #~ if [[ ! $(which node) ]]; then
-            #~ echo "installing nodejs"
-            #~ #not on manylinux?... yum -yv install epel_release
-            #~ yum -yv install nodejs
-            #~ which node
-            #~ node --version
-            #~ yum -yv install npm
-            #~ which npm
-          #~ else
-            #~ echo "node already installed, $(which node)."
-          #~ fi
-
-      # 'porting' of 'actions' from azure-linux_mac.yml
-      - name: 'Print env'
-        run: |
-          echo "'uname -s' is:"
-          echo "uname: " $(uname)
-          echo "uname -m: " $(uname -m)
-          echo "uname -r:" $(uname -r)
-          echo "uname -s: " $(uname -s)
-          echo "uname -v: " $(uname -v)
-          printenv
-        shell: bash
-
-      - name: 'pythonitems'
-        #if: ${{ env.TILEDB_ARROW_TESTS == "ON" }}
-        if: ${{ env.TILEDB_ARROW_TESTS == 'ON' }}
-        #if: ${{ startswith(env.TILEDB_ARROW_TESTS, 'ON') == true }}
-        run: |
-          echo "path is $PATH"
-          set -e pipefail
-          python -m pip install --upgrade pip virtualenv
-          if [[ "$TILEDB_ARROW_TESTS" == "ON" ]]; then
-            pip install pyarrow pybind11 numpy
-          fi
-
-      # maybe not needed for manylinux effort, but in azure-linux_mac.yml
-      - name: 'Install system headers (OSX 10.14 only)'
-        run: |
-          set -e pipefail
-          open /Library/Developer/CommandLineTools/Packages/macOS_SDK_headers_for_macOS_10.14.pkg
-          sudo installer -pkg /Library/Developer/CommandLineTools/Packages/macOS_SDK_headers_for_macOS_10.14.pkg -allowUntrusted -target /
-        shell: bash
-        if: ${{ runner.os == 'macOS' && env.imageName == 'macOS-10.14' }}
-        
-      - name: 'Build and test libtiledb'
-        run: |
-
-          find . -name install-azurite.sh
-          cd TileDB
-          which node
-          if [[ ! $(which node) ]]; then
-            echo did not find node
-          else
-            echo found node!
-          fi
-          node --version
-          
-          which npm
-          if [[ ! $(which npm) ]]; then
-            echo did not find node
-          else
-            echo found npm!
-          fi
-          
-          if [[ $(which sudo) ]]; then
-            echo "ls -l $(which sudo)"
-            ls -l $(which sudo)
-          else
-            echo "did not find sudo!"
-          fi
-          #exit 1
-
-          # enable core dumps
-          ulimit -c               # should output 0 if disabled
-          ulimit -c unlimited     # Enable core dumps to be captured (must be in same run block)
-          ulimit -c               # should output 'unlimited' now
-          # Azure sets "SYSTEM=build" for unknown reasons, which breaks the OpenSSL configure script
-          #   - openssl configure uses ENV{SYSTEM} if available:
-          #     https://github.com/openssl/openssl/blob/6d745d740d37d680ff696486218b650512bbbbc6/config#L56
-          #   - error description:
-          #     https://developercommunity.visualstudio.com/content/problem/602584/openssl-build-error-when-using-pipelines.htm
-          unset SYSTEM
-
-          # azure bash does not treat intermediate failure as error
-          # https://github.com/Microsoft/azure-pipelines-yaml/issues/135
-          set -xe pipefail
-
-          git config --global user.name 'Azure Pipeline'
-          git config --global user.email 'no-reply@tiledb.io'
-
-          if [[ "$BACKWARDS_COMPATIBILITY_ARRAYS" == "ON" ]]; then
-            git clone https://github.com/TileDB-Inc/TileDB-Unit-Test-Arrays.git --branch 2.3.0 test/inputs/arrays/read_compatibility_test
-          fi
-          #   displayName: 'Clone Unit-Test-Arrays'
-
-          # - bash: |
-          # Start HDFS server if enabled
-          if [[ "$TILEDB_HDFS" == "ON" ]]; then
-            # - ssh to localhost is required for HDFS launch...
-            # - /home/vsts has permissions g+w and is owned by user 'docker'
-            #   for VSTS purposes, so disable ssh strictness
-            sudo sed -i "s/StrictModes\ yes/StrictModes\ no/g" /etc/ssh/sshd_config
-
-            source scripts/install-hadoop.sh
-            source scripts/run-hadoop.sh
-          fi
-
-          # Start minio server if S3 is enabled
-          if [[ "$TILEDB_S3" == "ON" ]]; then
-            source scripts/install-minio.sh;
-            source scripts/run-minio.sh;
-          fi
-
-          # Start Azurite if Azure is enabled
-          if [[ "$TILEDB_AZURE" == "ON" ]]; then
-            source scripts/install-azurite.sh;
-            source scripts/run-azurite.sh;
-          fi
-
-          # Start GCS Emulator if GCS is enabled
-          if [[ "$TILEDB_GCS" == "ON" ]]; then
-            source scripts/install-gcs-emu.sh;
-            source scripts/run-gcs-emu.sh;
-          fi
-
-          # Set up arguments for bootstrap.sh
-          bootstrap_args="--enable=verbose";
-
-          # Enable TILEDB_STATIC by default
-          [ "$TILEDB_STATIC" ] || TILEDB_STATIC=ON
-          if [[ "$TILEDB_STATIC" == "ON" ]]; then
-            bootstrap_args="${bootstrap_args} --enable-static-tiledb";
-          fi
-          if [[ "$TILEDB_HDFS" == "ON" ]]; then
-            bootstrap_args="${bootstrap_args} --enable-hdfs";
-          fi;
-          if [[ "$TILEDB_S3" == "ON" ]]; then
-            bootstrap_args="${bootstrap_args} --enable-s3";
-          fi;
-          if [[ "$TILEDB_AZURE" == "ON" ]]; then
-            bootstrap_args="${bootstrap_args} --enable-azure";
-          fi;
-          if [[ "$TILEDB_GCS" == "ON" ]]; then
-            bootstrap_args="${bootstrap_args} --enable-gcs";
-          fi;
-          if [[ "$TILEDB_TOOLS" == "ON" ]]; then
-            bootstrap_args="${bootstrap_args} --enable-tools";
-          fi
-          if [[ "$TILEDB_DEBUG" == "ON" ]]; then
-            bootstrap_args="${bootstrap_args} --enable-debug";
-          fi
-          if [[ "$TILEDB_CI_ASAN" == "ON" ]]; then
-            # Add address sanitizer flag if necessary
-            bootstrap_args="${bootstrap_args} --enable-sanitizer=address --enable-debug";
-          fi
-          if [[ "$TILEDB_CI_TSAN" == "ON" ]]; then
-            # Add thread sanitizer flag if necessary
-            bootstrap_args="${bootstrap_args} --enable-sanitizer=thread --enable-debug";
-          fi
-          if [[ "$TILEDB_SERIALIZATION" == "ON" ]]; then
-            # Add serialization flag if necessary
-            bootstrap_args="${bootstrap_args} --enable-serialization";
-          fi
-          if [[ "$TILEDB_FORCE_BUILD_DEPS" == "ON" ]]; then
-            # Add superbuild flag
-            bootstrap_args="${bootstrap_args} --force-build-all-deps";
-          fi
-          #if [[ "${{ matrix.os }}" == "Darwin" ]]; then
-          if [[ "${{ matrix.os }}" == "macos-10.15" ]]; then
-            # We want to be able to print a stack trace when a core dump occurs
-            sudo chmod 1777 /cores
-            #bootstrap_args="${bootstrap_args} --enable-debug";
-            bootstrap_args="${bootstrap_args} --enable-release-symbols";
-          fi
-
-          #~ # displayName: 'Install dependencies'
-
-          #~ mkdir -p $BUILD_REPOSITORY_LOCALPATH/build
-          #~ cd $BUILD_REPOSITORY_LOCALPATH/build
-
-          #~ # Configure and build TileDB
-          #~ echo "Bootstrapping with '$bootstrap_args'"
-          #~ $BUILD_REPOSITORY_LOCALPATH/bootstrap $bootstrap_args
-
-          #~ make -j4
-          #~ make examples -j4
-          #~ make -C tiledb install
-
-          #~ #- bash: |
-          #~ cd $BUILD_REPOSITORY_LOCALPATH/build
-          #~ ls -la
-
-          #if [[ ( "$AGENT_OS" == "Linux" && "$TILEDB_S3" == "ON" ) ]]; then
-          #~ if [[ ( "${{ matrix.os }}" == "ubuntu-20.04" && "$TILEDB_S3" == "ON" ) ]]; then
-            #~ # make sure docker is still running...
-            #~ printenv
-            #~ docker ps -a
-          #~ fi
-
-          #~ make -j4 -C tiledb tiledb_unit
-
-          git config --global user.name 'GACI Pipeline'
-          git config --global user.email 'no-reply@tiledb.io'
-
-          # Start Azurite - Azure is enabled
-          #~ source scripts/install-azurite.sh;
-          #~ source scripts/run-azurite.sh;
-          
-          ps -A
-          
-          #TBD how far is script getting?
-          #did get this far... exit 1
-          
-          echo one AZURITE_PID IS "$AZURITE_PID" TILEDB_AZURE IS "$TILEDB_AZURE"
-
-          echo about to build
-          #TBD: reinstate me
-          source $GITHUB_WORKSPACE/scripts/ci/build_libtiledb.sh
-          
-          echo build done
-          sync
-          
-          #got to here... exit 1
-
-          if [[ "$TILEDB_CI_ASAN" == "ON" ]]; then
-            export ASAN_OPTIONS=detect_leaks=0 LD_PRELOAD=/usr/lib/x86_64-linux-gnu/libasan.so.5
-          fi
-
-          #TBD: diagnostic, remove me
-          set -x 
-          
-          if [[ ${{matrix.os}} == "macos-10.15" && "$TILEDB_GCS" == "ON" ]]; then
-            # GCS unit tests are temporarily unsupported on CI for MACOS. Fake success with
-            # this echo.
-            #echo "##vso[task.setvariable variable=TILEDB_CI_SUCCESS]1"
-            echo "::set-output name=TILEDB_CI_SUCCESS::1" # TBD: make status check pass for this hack step
-          else
-            # run directly the executable, cmake catches the segfault and blocks
-            # the core dump
-            #echo  bash unhappy with nothing in 'else'?, or somen else cause 'syntax error near unexpected token fi'
-            #echo  passing thru empty else...
-            #TBD: reinstate me
-            ./tiledb/test/tiledb_unit -d yes
-          fi
-          
-          echo after tiledb_unit or faked success
-          sync
-          #got this far... exit 1
-
-          #echo two AZURITE_PID IS "$AZURITE_PID" TILEDB_AZURE IS "$TILEDB_AZURE"
-          #ps -A
-          
-          echo "after ps -A (or where it was)"
-          sync
-          
-          #exit 1
-
-          # Kill the running Minio server, OSX only because Linux runs it within
-          # docker.
-          if [[ ( ${{matrix.os}} == "macos-10.15" && "$TILEDB_S3" == "ON" ) ]]; then
-            kill -9 $MINIO_PID
-          fi
-
-          echo after poss. minio term
-          sync
-          #got here... exit 1
-          
-          # Kill the running Azurite server
-          if [[ "$TILEDB_AZURE" == "ON" ]]; then
-            echo "ATTEMPTING KILL \$ AZURITE_PID $AZURITE_PID"
-            kill -9 $AZURITE_PID
-          fi
-          
-          echo after poss. azurite term
-          sync
-
-          # Kill the running GCS emulator server Linux only because OSX does not
-          # run the emulator
-          if [[ ${{matrix.os}} == "macos-10.15" && "$TILEDB_GCS" == "ON" ]]; then
-            kill -9 $GCS_PID
-          fi
-          
-          echo after poss. gcs term
-          sync
-          
-          echo reached end of build/test action, are you still running?
-          sync
-          
-          #got to here... exit 1
-          
-          echo about to attempt forcing crash...
-          sync
-          
-          uname -a
-
-          ./tiledb/test/tiledb_unit -d yes --crash
-          
-          echo "after using tiledb_unit to try to force crash..."
-          sync
-          
-          #exit 0
-
-          #  displayName: 'Build examples, PNG test, and benchmarks (build-only)'
-          
-      - name: 'huntcorefiles'
-        if: ${{ failure() == true }}
-        run: |
-          uname -a
-          cat /proc/sys/kernel/core_pattern
-          find . -name 'core.*'
 
       - name: 'Test status check'
         run: |
