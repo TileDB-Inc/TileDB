@@ -398,7 +398,7 @@ Status serialize_non_empty_domain(CapnpT& builder, tiledb::sm::Array* array) {
 
   if (!nonEmptyDomain.empty()) {
     auto nonEmptyDomainListBuilder =
-        builder.initNonEmptyDomains(array->array_schema()->dim_num());
+        builder.initNonEmptyDomains(array->array_schema_latest()->dim_num());
 
     for (uint64_t dimIdx = 0; dimIdx < nonEmptyDomain.size(); ++dimIdx) {
       const auto& dimNonEmptyDomain = nonEmptyDomain[dimIdx];

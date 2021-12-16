@@ -80,7 +80,11 @@ if (NOT GCSSDK_FOUND)
       PATCH_COMMAND
         patch -N -p1 < ${TILEDB_CMAKE_INPUTS_DIR}/patches/ep_gcssdk/build.patch &&
         patch -N -p1 < ${TILEDB_CMAKE_INPUTS_DIR}/patches/ep_gcssdk/disable_tests.patch &&
-        patch -N -p1 < ${TILEDB_CMAKE_INPUTS_DIR}/patches/ep_gcssdk/disable_examples.patch
+        patch -N -p1 < ${TILEDB_CMAKE_INPUTS_DIR}/patches/ep_gcssdk/disable_examples.patch &&
+        #The following patch is on top of a patch already done in build.patch above, application order is important!
+        #does add_compile_options() hoping for
+        #"These options are used when compiling targets from the current directory and below."
+        patch -N -p1 < ${TILEDB_CMAKE_INPUTS_DIR}/patches/ep_gcssdk/v1.22.0.CMakelists.txt.openssl3md5deprecationmitigation.patch
       CONFIGURE_COMMAND
          ${CMAKE_COMMAND} -Hsuper -Bcmake-out
         -DCMAKE_BUILD_TYPE=${CMAKE_BUILD_TYPE}

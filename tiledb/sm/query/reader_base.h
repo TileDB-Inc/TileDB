@@ -145,7 +145,7 @@ class ReaderBase : public StrategyBase {
    */
   template <class T>
   static void compute_result_space_tiles(
-      const Domain* domain,
+      const std::vector<tdb_shared_ptr<FragmentMetadata>>& fragment_metadata,
       const std::vector<std::vector<uint8_t>>& tile_coords,
       const TileDomain<T>& array_tile_domain,
       const std::vector<TileDomain<T>>& frag_tile_domains,
@@ -307,75 +307,58 @@ class ReaderBase : public StrategyBase {
       Tile* tile_validity) const;
 
   /**
-   * Concurrently executes `read_tiles` for each name in `names`. This
-   * must be the entry point for reading attribute tiles because it
+   * Concurrently executes across each name in `names` and each result tile
+   * in 'result_tiles'.
+   *
+   * This must be the entry point for reading attribute tiles because it
    * generates stats for reading attributes.
    *
    * @param names The attribute names.
    * @param result_tiles The retrieved tiles will be stored inside the
    *     `ResultTile` instances in this vector.
+   * @param disable_cache Disable the tile cache or not.
    * @return Status
    */
   Status read_attribute_tiles(
       const std::vector<std::string>* names,
-      const std::vector<ResultTile*>* result_tiles) const;
+      const std::vector<ResultTile*>* result_tiles,
+      const bool disable_cache = false) const;
 
   /**
-   * Concurrently executes `read_tiles` for each name in `names`. This
-   * must be the entry point for reading coordinate tiles because it
+   * Concurrently executes across each name in `names` and each result tile
+   * in 'result_tiles'.
+   *
+   * This must be the entry point for reading coordinate tiles because it
    * generates stats for reading coordinates.
    *
    * @param names The coordinate/dimension names.
    * @param result_tiles The retrieved tiles will be stored inside the
    *     `ResultTile` instances in this vector.
+   * @param disable_cache Disable the tile cache or not.
    * @return Status
    */
   Status read_coordinate_tiles(
       const std::vector<std::string>* names,
-      const std::vector<ResultTile*>* result_tiles) const;
+      const std::vector<ResultTile*>* result_tiles,
+      const bool disable_cache = false) const;
 
   /**
-   * Concurrently executes `read_tiles` for each name in `names`.
+   * Retrieves the tiles on a list of attribute or dimension and stores it
+   * in the appropriate result tile.
+   *
+   * Concurrently executes across each name in `names` and each result tile
+   * in 'result_tiles'.
    *
    * @param names The attribute/dimension names.
    * @param result_tiles The retrieved tiles will be stored inside the
    *     `ResultTile` instances in this vector.
+   * @param disable_cache Disable the tile cache or not.
    * @return Status
    */
   Status read_tiles(
       const std::vector<std::string>* names,
-      const std::vector<ResultTile*>* result_tiles) const;
-
-  /**
-   * Retrieves the tiles on a particular attribute or dimension and stores it
-   * in the appropriate result tile.
-   *
-   * @param name The attribute/dimension name.
-   * @param result_tiles The retrieved tiles will be stored inside the
-   *     `ResultTile` instances in this vector.
-   * @return Status
-   */
-  Status read_tiles(
-      const std::string& name,
-      const std::vector<ResultTile*>* result_tiles) const;
-
-  /**
-   * Retrieves the tiles on a particular attribute or dimension and stores it
-   * in the appropriate result tile.
-   *
-   * The reads are done asynchronously, and futures for each read operation are
-   * added to the output parameter.
-   *
-   * @param name The attribute/dimension name.
-   * @param result_tiles The retrieved tiles will be stored inside the
-   *     `ResultTile` instances in this vector.
-   * @param tasks Vector to hold futures for the read tasks.
-   * @return Status
-   */
-  Status read_tiles(
-      const std::string& name,
       const std::vector<ResultTile*>* result_tiles,
-      std::vector<ThreadPool::Task>* tasks) const;
+      const bool disable_cache = false) const;
 
   /**
    * Filters the tiles on a particular attribute/dimension from all input
@@ -383,11 +366,13 @@ class ReaderBase : public StrategyBase {
    *
    * @param name Attribute/dimension whose tiles will be unfiltered.
    * @param result_tiles Vector containing the tiles to be unfiltered.
+   * @param disable_cache Disable the filtered buffers cache or not.
    * @return Status
    */
   Status unfilter_tiles(
       const std::string& name,
-      const std::vector<ResultTile*>* result_tiles) const;
+      const std::vector<ResultTile*>* result_tiles,
+      const bool disable_cache = false) const;
 
   /**
    * Runs the input fixed-sized tile for the input attribute or dimension
@@ -461,7 +446,8 @@ class ReaderBase : public StrategyBase {
       std::vector<ResultCellSlab>* result_cell_slabs,
       Subarray& subarray,
       uint64_t memory_budget = UINT64_MAX,
-      bool include_dim = false);
+      bool include_dim = false,
+      const bool disable_cache = false);
 
   /**
    * Copies the cells for the input **fixed-sized** attribute/dimension and
@@ -623,8 +609,8 @@ class ReaderBase : public StrategyBase {
    * @param subarray Specifies the current subarray.
    * @param stride The stride between cells, UINT64_MAX for contiguous.
    * @param memory_budget The memory budget, UINT64_MAX for unlimited.
-   * @param memory_used_for_tiles The memory used for tiles that will not be
-   * unloaded.
+   * @param disable_cache disable the filtered buffer cache.
+   * @return Status
    */
   Status process_tiles(
       const std::unordered_map<std::string, ProcessTileFlags>* names,
@@ -633,41 +619,7 @@ class ReaderBase : public StrategyBase {
       Subarray* subarray,
       uint64_t stride,
       uint64_t memory_budget,
-      uint64_t* memory_used_for_tiles);
-
-  /**
-   * Builds and returns an association from each tile in `result_cell_slabs`
-   * to the cell slabs it contains.
-   */
-  tdb_unique_ptr<ResultCellSlabsIndex> compute_rcs_index(
-      const std::vector<ResultCellSlab>* result_cell_slabs) const;
-
-  /**
-   * Applies the query condition, `condition_`, to filter cell indexes
-   * within `result_cell_slabs`. This mutates `result_cell_slabs`.
-   *
-   * @param result_cell_slabs The unfiltered cell slabs.
-   * @param result_tiles The result tiles that must contain values for
-   *   attributes within `condition_`.
-   * @param subarray Specifies the current subarray.
-   * @param stride The stride between cells, defaulting to UINT64_MAX
-   *   for contiguous cells.
-   * @param memory_budget_rcs The memory budget for tiles, defaulting
-   *   to UINT64_MAX for unlimited budget.
-   * @param memory_budget_tiles The memory budget for result cell slabs,
-   *   defaulting to UINT64_MAX for unlimited budget.
-   * @param memory_used_for_tiles The memory used for tiles that will
-   *   not be unloaded.
-   * @return Status
-   */
-  Status apply_query_condition(
-      std::vector<ResultCellSlab>* result_cell_slabs,
-      std::vector<ResultTile*>* result_tiles,
-      Subarray* subarray,
-      uint64_t stride = UINT64_MAX,
-      uint64_t memory_budget_rcs = UINT64_MAX,
-      uint64_t memory_budget_tiles = UINT64_MAX,
-      uint64_t* memory_used_for_tiles = nullptr);
+      const bool disable_cache = false);
 
   /**
    * Get the size of an attribute tile.

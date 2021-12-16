@@ -38,6 +38,7 @@
 #else
 #include "tiledb/sm/filesystem/posix.h"
 #endif
+#include "tiledb/common/stdx_string.h"
 #include "tiledb/sm/c_api/tiledb.h"
 #include "tiledb/sm/c_api/tiledb_serialization.h"
 #include "tiledb/sm/enums/serialization_type.h"

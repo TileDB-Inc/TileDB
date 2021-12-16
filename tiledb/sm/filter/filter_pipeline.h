@@ -88,9 +88,6 @@ class FilterPipeline {
   /** Clears the pipeline (removes all filters. */
   void clear();
 
-  /** Returns pointer to the current Tile being processed by run/run_reverse. */
-  const Tile* current_tile() const;
-
   /**
    * Populates the filter pipeline from the data in the input binary buffer.
    *
@@ -260,18 +257,13 @@ class FilterPipeline {
   /** The ordered list of filters comprising the pipeline. */
   std::vector<tdb_unique_ptr<Filter>> filters_;
 
-  /**
-   * The current tile being processed by run()/run_reverse(). This is mutable
-   * because it is the only state modified by those const functions.
-   */
-  mutable const Tile* current_tile_;
-
   /** The max chunk size allowed within tiles. */
   uint32_t max_chunk_size_;
 
   /**
    * Run the given buffer forward through the pipeline.
    *
+   * @param tile Current tile on which the filter pipeline is being run
    * @param input buffer to process.
    * @param chunk_size chunk size.
    * @param output buffer where output of the last stage
@@ -280,14 +272,16 @@ class FilterPipeline {
    * @return Status
    */
   Status filter_chunks_forward(
+      const Tile& tile,
       const Buffer& input,
       uint32_t chunk_size,
-      Buffer* output,
-      ThreadPool* compute_tp) const;
+      Buffer* const output,
+      ThreadPool* const compute_tp) const;
 
   /**
    * Run the given list of chunks in reverse through the pipeline.
    *
+   * @param tile Current tile on which the filter pipeline is being run
    * @param input Filtered chunk buffers to reverse.
    * @param output Chunked buffer where output of the last stage
    *    will be written.
@@ -296,9 +290,10 @@ class FilterPipeline {
    * @return Status
    */
   Status filter_chunks_reverse(
+      const Tile& tile,
       const std::vector<std::tuple<void*, uint32_t, uint32_t, uint32_t>>& input,
-      Buffer* output,
-      ThreadPool* compute_tp,
+      Buffer* const output,
+      ThreadPool* const compute_tp,
       const Config& config) const;
 
   /**

@@ -690,13 +690,17 @@ Status Writer::check_subarray() const {
         Status::WriterError("Cannot check subarray; Array schema not set"));
 
   if (array_schema_->dense()) {
+    if (subarray_.range_num() != 1)
+      return LOG_STATUS(
+          Status::WriterError("Multi-range dense writes "
+                              "are not supported"));
+
     if (layout_ == Layout::GLOBAL_ORDER && !subarray_.coincides_with_tiles())
       return logger_->status(
           Status::WriterError("Cannot initialize query; In global writes for "
                               "dense arrays, the subarray "
                               "must coincide with the tile bounds"));
   }
-
   return Status::Ok();
 }
 
@@ -993,7 +997,9 @@ Status Writer::create_fragment(
   } else {
     std::string new_fragment_str;
     RETURN_NOT_OK(new_fragment_name(
-        timestamp, array_->array_schema()->write_version(), &new_fragment_str));
+        timestamp,
+        array_->array_schema_latest()->write_version(),
+        &new_fragment_str));
     uri = array_schema_->array_uri().join_path(new_fragment_str);
   }
   auto timestamp_range = std::pair<uint64_t, uint64_t>(timestamp, timestamp);

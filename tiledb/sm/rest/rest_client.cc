@@ -51,7 +51,8 @@
 #include "tiledb/sm/array/array.h"
 #include "tiledb/sm/enums/query_type.h"
 #include "tiledb/sm/misc/constants.h"
-#include "tiledb/sm/misc/utils.h"
+#include "tiledb/sm/misc/endian.h"
+#include "tiledb/sm/misc/parse_argument.h"
 #include "tiledb/sm/query/query.h"
 #include "tiledb/sm/rest/rest_client.h"
 #include "tiledb/sm/serialization/array_schema.h"
@@ -99,9 +100,9 @@ Status RestClient::init(
   if (c_str != nullptr)
     RETURN_NOT_OK(serialization_type_enum(c_str, &serialization_type_));
 
-  RETURN_NOT_OK(config_->get("rest.resubmit_incomplete", &c_str));
-  if (c_str != nullptr)
-    RETURN_NOT_OK(utils::parse::convert(c_str, &resubmit_incomplete_));
+  bool found;
+  RETURN_NOT_OK(config_->get<bool>(
+      "rest.resubmit_incomplete", &resubmit_incomplete_, &found));
 
   return Status::Ok();
 }

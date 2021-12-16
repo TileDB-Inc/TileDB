@@ -89,6 +89,32 @@ class OpenArrayMemoryTracker {
     memory_budget_ = size;
   }
 
+  /**
+   * Get the memory usage.
+   */
+  uint64_t get_memory_usage() {
+    std::lock_guard<std::mutex> lg(mutex_);
+    return memory_usage_;
+  }
+
+  /**
+   * Get available room based on budget
+   * @return available amount left in budget
+   */
+  uint64_t get_memory_available() {
+    std::lock_guard<std::mutex> lg(mutex_);
+    return memory_budget_ - memory_usage_;
+  }
+
+  /**
+   * Get memory budget
+   * @return budget
+   */
+  uint64_t get_memory_budget() {
+    std::lock_guard<std::mutex> lg(mutex_);
+    return memory_budget_;
+  }
+
  private:
   /** Protects all member variables. */
   std::mutex mutex_;

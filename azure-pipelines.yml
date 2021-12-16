@@ -53,24 +53,6 @@ stages:
         USE_MANYLINUX: ON
       steps:
       - template: scripts/azure-linux_mac.yml
-    - job: Windows
-      strategy:
-        matrix:
-          VS2017:
-            imageName: 'vs2017-win2016'
-            TILEDB_S3: ON
-            TILEDB_ARROW_TESTS: ON
-          VS2017_azure:
-            imageName: 'vs2017-win2016'
-            TILEDB_AZURE: ON
-            TILEDB_ARROW_TESTS: ON
-          VS2017_serialization:
-            imageName: 'vs2017-win2016'
-            TILEDB_SERIALIZATION: ON
-      pool:
-        vmImage: $(imageName)
-      steps:
-      - template: scripts/azure-windows.yml
 
   - stage: Build_Release
     condition: or(or(or(startsWith(variables['Build.SourceBranch'], 'refs/tags'), eq(variables['Build.SourceBranchName'], 'dev')), startsWith(variables['Build.SourceBranchName'], 'release-')), startsWith(variables['Build.SourceBranchName'], 'build-'))
@@ -111,13 +93,24 @@ stages:
      - job: linux_manylinux
        pool: { vmImage: 'ubuntu-20.04' }
        container: ${{ variables.MANYLINUX_IMAGE }}
-       variables:
-         CXX: g++
-         CFLAGS: "-lrt"
-         CXXFLAGS: "-lrt"
-         ARTIFACT_OS: 'linux'
-         ARTIFACT_ARCH: 'x86_64'
-         SUDO: ''
+       strategy:
+         matrix:
+           standard:
+             CXX: g++
+             CFLAGS: "-lrt"
+             CXXFLAGS: "-lrt"
+             ARTIFACT_OS: 'linux'
+             ARTIFACT_ARCH: "x86_64"
+             TILEDB_AVX2: ON
+             SUDO: ''
+           noavx2:
+             CXX: g++
+             CFLAGS: "-lrt"
+             CXXFLAGS: "-lrt"
+             ARTIFACT_OS: 'linux'
+             ARTIFACT_ARCH: "x86_64-noavx2"
+             TILEDB_AVX2: OFF
+             SUDO: ''
        steps:
        - template: scripts/azure-linux_mac-release.yml
      - job: Windows

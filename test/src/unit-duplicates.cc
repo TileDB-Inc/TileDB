@@ -182,8 +182,7 @@ TEST_CASE_METHOD(
   CHECK(rc == TILEDB_OK);
   rc = tiledb_query_set_data_buffer(ctx_, query, "a", data_r, &data_r_size);
   CHECK(rc == TILEDB_OK);
-  rc = tiledb_query_set_data_buffer(
-      ctx_, query, TILEDB_COORDS, coords_r, &coords_r_size);
+  rc = tiledb_query_set_data_buffer(ctx_, query, "d", coords_r, &coords_r_size);
   CHECK(rc == TILEDB_OK);
 
   // Submit query
@@ -310,8 +309,7 @@ TEST_CASE_METHOD(
   CHECK(rc == TILEDB_OK);
   rc = tiledb_query_set_data_buffer(ctx_, query, "a", data_r, &data_r_size);
   CHECK(rc == TILEDB_OK);
-  rc = tiledb_query_set_data_buffer(
-      ctx_, query, TILEDB_COORDS, coords_r, &coords_r_size);
+  rc = tiledb_query_set_data_buffer(ctx_, query, "d", coords_r, &coords_r_size);
   CHECK(rc == TILEDB_OK);
 
   // Submit query
@@ -361,8 +359,7 @@ TEST_CASE_METHOD(
   CHECK(rc == TILEDB_OK);
   rc = tiledb_query_set_data_buffer(ctx_, query, "a", data_r, &data_r_size);
   CHECK(rc == TILEDB_OK);
-  rc = tiledb_query_set_data_buffer(
-      ctx_, query, TILEDB_COORDS, coords_r, &coords_r_size);
+  rc = tiledb_query_set_data_buffer(ctx_, query, "d", coords_r, &coords_r_size);
   CHECK(rc == TILEDB_OK);
 
   // Submit query
@@ -481,8 +478,7 @@ TEST_CASE_METHOD(
   CHECK(rc == TILEDB_OK);
   rc = tiledb_query_set_data_buffer(ctx_, query, "a", data_r, &data_r_size);
   CHECK(rc == TILEDB_OK);
-  rc = tiledb_query_set_data_buffer(
-      ctx_, query, TILEDB_COORDS, coords_r, &coords_r_size);
+  rc = tiledb_query_set_data_buffer(ctx_, query, "d", coords_r, &coords_r_size);
   CHECK(rc == TILEDB_OK);
 
   // Set multi-range subarray to query
@@ -602,8 +598,7 @@ TEST_CASE_METHOD(
   CHECK(rc == TILEDB_OK);
   rc = tiledb_query_set_data_buffer(ctx_, query, "a", data_r, &data_r_size);
   CHECK(rc == TILEDB_OK);
-  rc = tiledb_query_set_data_buffer(
-      ctx_, query, TILEDB_COORDS, coords_r, &coords_r_size);
+  rc = tiledb_query_set_data_buffer(ctx_, query, "d", coords_r, &coords_r_size);
   CHECK(rc == TILEDB_OK);
 
   // Set empty subarray to query
@@ -692,8 +687,7 @@ TEST_CASE_METHOD(
   CHECK(rc == TILEDB_OK);
   rc = tiledb_query_set_data_buffer(ctx_, query, "a", data_r, &data_r_size);
   CHECK(rc == TILEDB_OK);
-  rc = tiledb_query_set_data_buffer(
-      ctx_, query, TILEDB_COORDS, coords_r, &coords_r_size);
+  rc = tiledb_query_set_data_buffer(ctx_, query, "d", coords_r, &coords_r_size);
   CHECK(rc == TILEDB_OK);
 
   // Set multi-range subarray to query

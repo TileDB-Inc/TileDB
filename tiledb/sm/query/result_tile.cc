@@ -39,6 +39,7 @@
 #include <cassert>
 #include <iostream>
 #include <list>
+#include <numeric>
 
 using namespace tiledb::common;
 
@@ -50,12 +51,17 @@ namespace sm {
 /* ****************************** */
 
 ResultTile::ResultTile(
-    unsigned frag_idx, uint64_t tile_idx, const Domain* domain)
-    : domain_(domain)
-    , frag_idx_(frag_idx)
+    unsigned frag_idx, uint64_t tile_idx, const ArraySchema* array_schema)
+    : frag_idx_(frag_idx)
     , tile_idx_(tile_idx) {
-  assert(domain != nullptr);
-  coord_tiles_.resize(domain->dim_num());
+  assert(array_schema != nullptr);
+  domain_ = array_schema->domain();
+  coord_tiles_.resize(domain_->dim_num());
+  attr_tiles_.resize(array_schema->attribute_num());
+  for (uint64_t i = 0; i < array_schema->attribute_num(); i++) {
+    const Attribute* attribute = array_schema->attribute(i);
+    attr_tiles_[i] = std::make_pair(attribute->name(), std::nullopt);
+  }
   set_compute_results_func();
 
   // Default `coord_func_` to fetch from `coord_tile_` until at least
@@ -78,8 +84,13 @@ uint64_t ResultTile::cell_num() const {
   if (!std::get<0>(coords_tile_).empty())
     return std::get<0>(coords_tile_).cell_num();
 
-  if (!attr_tiles_.empty())
-    return std::get<0>(attr_tiles_.begin()->second).cell_num();
+  if (!attr_tiles_.empty()) {
+    for (const auto& attr : attr_tiles_) {
+      if (attr.second.has_value()) {
+        return std::get<0>(attr.second.value()).cell_num();
+      }
+    }
+  }
 
   return 0;
 }
@@ -104,7 +115,12 @@ void ResultTile::erase_tile(const std::string& name) {
   }
 
   // Handle attribute tile
-  attr_tiles_.erase(name);
+  for (auto& at : attr_tiles_) {
+    if (at.first == name) {
+      at.second = TileTuple(Tile(), Tile(), Tile());
+      return;
+    }
+  }
 }
 
 void ResultTile::init_attr_tile(const std::string& name) {
@@ -113,8 +129,12 @@ void ResultTile::init_attr_tile(const std::string& name) {
     return;
 
   // Handle attributes
-  if (attr_tiles_.empty() || attr_tiles_.find(name) == attr_tiles_.end())
-    attr_tiles_.emplace(name, TileTuple(Tile(), Tile(), Tile()));
+  for (auto& at : attr_tiles_) {
+    if (at.first == name && at.second == std::nullopt) {
+      at.second = TileTuple(Tile(), Tile(), Tile());
+      return;
+    }
+  }
 }
 
 void ResultTile::init_coord_tile(const std::string& name, unsigned dim_idx) {
@@ -132,9 +152,10 @@ ResultTile::TileTuple* ResultTile::tile_tuple(const std::string& name) {
     return &coords_tile_;
 
   // Handle attribute tile
-  auto it = attr_tiles_.find(name);
-  if (it != attr_tiles_.end())
-    return &(it->second);
+  for (auto& at : attr_tiles_) {
+    if (at.first == name && at.second.has_value())
+      return &(at.second.value());
+  }
 
   // Handle separate coordinates tile
   for (auto& ct : coord_tiles_) {
@@ -162,7 +183,8 @@ const void* ResultTile::zipped_coord(uint64_t pos, unsigned dim_idx) const {
   return ret;
 }
 
-std::string ResultTile::coord_string(uint64_t pos, unsigned dim_idx) const {
+std::string_view ResultTile::coord_string(
+    uint64_t pos, unsigned dim_idx) const {
   const auto& coord_tile_off = std::get<0>(coord_tiles_[dim_idx].second);
   const auto& coord_tile_val = std::get<1>(coord_tiles_[dim_idx].second);
   auto cell_num = coord_tile_off.cell_num();
@@ -185,7 +207,7 @@ std::string ResultTile::coord_string(uint64_t pos, unsigned dim_idx) const {
   auto size = next_offset - offset;
 
   auto* buffer = static_cast<char*>(coord_tile_val.buffer()->data()) + offset;
-  return std::string(buffer, size);
+  return std::string_view(buffer, size);
 }
 
 uint64_t ResultTile::coord_size(unsigned dim_idx) const {
@@ -440,51 +462,14 @@ void ResultTile::compute_results_dense(
   }
 }
 
-inline uint8_t ResultTile::str_coord_intersects(
+inline bool ResultTile::str_coord_intersects(
     const uint64_t c_offset,
     const uint64_t c_size,
     const char* const buff_str,
-    const std::string& range_start,
-    const std::string& range_end) {
-  // Test against start
-  bool geq_start = true;
-  bool all_chars_match = true;
-  uint64_t min_size = std::min<uint64_t>(c_size, range_start.size());
-  for (uint64_t i = 0; i < min_size; ++i) {
-    if (buff_str[c_offset + i] < range_start[i]) {
-      geq_start = false;
-      all_chars_match = false;
-      break;
-    } else if (buff_str[c_offset + i] > range_start[i]) {
-      all_chars_match = false;
-      break;
-    }  // Else characters match
-  }
-  if (geq_start && all_chars_match && c_size < range_start.size()) {
-    geq_start = false;
-  }
-
-  // Test against end
-  bool seq_end = false;
-  if (geq_start) {
-    seq_end = true;
-    all_chars_match = true;
-    min_size = std::min<uint64_t>(c_size, range_end.size());
-    for (uint64_t i = 0; i < min_size; ++i) {
-      if (buff_str[c_offset + i] > range_end[i]) {
-        geq_start = false;
-        break;
-      } else if (buff_str[c_offset + i] < range_end[i]) {
-        all_chars_match = false;
-        break;
-      }  // Else characters match
-    }
-    if (seq_end && all_chars_match && c_size > range_end.size()) {
-      seq_end = false;
-    }
-  }
-
-  return geq_start && seq_end;
+    const std::string_view& range_start,
+    const std::string_view& range_end) {
+  std::string_view str(buff_str + c_offset, c_size);
+  return str >= range_start && str <= range_end;
 }
 
 template <>
@@ -604,7 +589,7 @@ void ResultTile::compute_results_sparse<char>(
   // to not intersect with the range in an earlier dimension. For example,
   // if `dim_idx` is 2 for a row-major cell order, we have already checked
   // this coordinate for an intersection in dimension-0 and dimension-1. If
-  // either did not intersect a coordindate, its associated value in
+  // either did not intersect a coordinate, its associated value in
   // `r_bitmap` will be zero. To optimize for the scenario where there are
   // many contiguous zeroes, we can `memcmp` a large range of `r_bitmap`
   // values to avoid a comparison on each individual element.
@@ -686,22 +671,19 @@ void ResultTile::compute_results_sparse(
   }
 }
 
-template <>
-void ResultTile::compute_results_count_sparse<char>(
+template <class BitmapType>
+void ResultTile::compute_results_count_sparse_string(
     const ResultTile* result_tile,
     unsigned dim_idx,
-    const Range& range,
-    std::vector<uint64_t>* result_count,
-    bool use_prev_dim_result_count,
-    std::vector<uint64_t>* prev_dim_result_count,
+    const NDRange& ranges,
+    const std::vector<uint64_t>& range_indexes,
+    std::vector<BitmapType>& result_count,
     const Layout& cell_order,
-    std::mutex& mtx) {
-  auto coords_num = result_tile->cell_num();
+    const uint64_t min_cell,
+    const uint64_t max_cell) {
+  auto cell_num = result_tile->cell_num();
+  auto coords_num = max_cell - min_cell;
   auto dim_num = result_tile->domain()->dim_num();
-  auto range_start = range.start_str();
-  auto range_end = range.end_str();
-  auto& r_count = (*result_count);
-  auto& prev_dim_r_count = (*prev_dim_result_count);
 
   // Sanity check.
   assert(coords_num != 0);
@@ -757,7 +739,7 @@ void ResultTile::compute_results_count_sparse<char>(
 
       // Calculate the position of the first and last coordinates
       // in this partition.
-      const uint64_t first_c_pos = p * c_partition_size_div;
+      const uint64_t first_c_pos = min_cell + p * c_partition_size_div;
       const uint64_t last_c_pos = first_c_pos + c_partition_size - 1;
       assert(first_c_pos < last_c_pos);
 
@@ -767,7 +749,7 @@ void ResultTile::compute_results_count_sparse<char>(
       const uint64_t first_c_offset = buff_off[first_c_pos];
       const uint64_t last_c_offset = buff_off[last_c_pos];
       const uint64_t first_c_size = buff_off[first_c_pos + 1] - first_c_offset;
-      const uint64_t last_c_size = (last_c_pos == coords_num - 1) ?
+      const uint64_t last_c_size = (last_c_pos == cell_num - 1) ?
                                        buff_str_size - last_c_offset :
                                        buff_off[last_c_pos + 1] - last_c_offset;
 
@@ -780,25 +762,36 @@ void ResultTile::compute_results_count_sparse<char>(
       // string value.
       if (first_c_size == last_c_size &&
           strncmp(first_c_coord, second_coord, first_c_size) == 0) {
-        const uint8_t intersects = str_coord_intersects(
-            first_c_offset, first_c_size, buff_str, range_start, range_end);
-        if (intersects) {
-          std::unique_lock<std::mutex> ul(mtx);
-          for (uint64_t pos = first_c_pos; pos < first_c_pos + c_partition_size;
-               ++pos) {
-            r_count[pos]++;
-          }
+        uint64_t count = 0;
+        for (auto i : range_indexes) {
+          auto& range = ranges[i];
+          count += str_coord_intersects(
+              first_c_offset,
+              first_c_size,
+              buff_str,
+              range.start_str(),
+              range.end_str());
+        }
+
+        for (uint64_t pos = first_c_pos; pos < first_c_pos + c_partition_size;
+             ++pos) {
+          result_count[pos] = count;
         }
       } else {
         // Compute results
         uint64_t c_offset = 0, c_size = 0;
-        std::unique_lock<std::mutex> ul(mtx);
         for (uint64_t pos = first_c_pos; pos <= last_c_pos; ++pos) {
           c_offset = buff_off[pos];
-          c_size = (pos < coords_num - 1) ? buff_off[pos + 1] - c_offset :
-                                            buff_str_size - c_offset;
-          r_count[pos] += str_coord_intersects(
-              c_offset, c_size, buff_str, range_start, range_end);
+          c_size = (pos < cell_num - 1) ? buff_off[pos + 1] - c_offset :
+                                          buff_str_size - c_offset;
+          uint64_t count = 0;
+          for (auto i : range_indexes) {
+            auto& range = ranges[i];
+            count += str_coord_intersects(
+                c_offset, c_size, buff_str, range.start_str(), range.end_str());
+          }
+
+          result_count[pos] = count;
         }
       }
     }
@@ -808,112 +801,173 @@ void ResultTile::compute_results_count_sparse<char>(
     return;
   }
 
-  // Here, we're computing on all other dimensions. After the first
-  // dimension, it is possible that coordinates have already been determined
-  // to not intersect with the range in an earlier dimension. For example,
-  // if `dim_idx` is 2 for a row-major cell order, we have already checked
-  // this coordinate for an intersection in dimension-0 and dimension-1. If
-  // either did not intersect a coordindate, its associated value in
-  // `prev_dim_r_count` will be zero. To optimize for the scenario where there
-  // are many contiguous zeroes, we can `memcmp` a large range of
-  // `prev_dim_r_count` values to avoid a comparison on each individual
-  // element.
+  // Here, we're computing on all other dimensions. After the first dimension,
+  // it is possible that coordinates have already been determined to not
+  // intersect with the range in an earlier dimension. For example, if
+  // `dim_idx` is 2 for a row-major cell order, we have already checked this
+  // coordinate for an intersection in dimension-0 and dimension-1. If either
+  // did not intersect a coordinate, its associated value in `r_count` will be
+  // zero. To optimize for the scenario where there are many contiguous zeroes,
+  //  we can `memcmp` a large range of `r_count` values to avoid a comparison
+  // on each individual element.
   //
-  // Often, a memory comparison for one byte is as quick as comparing
-  // 4 or 8 bytes. We will only get a benefit if we successfully
-  // find a `memcmp` on a much larger range.
+  // Often, a memory comparison for one byte is as quick as comparing 4 or 8
+  // bytes. We will only get a benefit if we successfully find a `memcmp` on a
+  // much larger range.
   const uint64_t zeroed_size = coords_num < 256 ? coords_num : 256;
-  for (uint64_t i = 0; i < coords_num; i += zeroed_size) {
+  for (uint64_t i = min_cell; i < min_cell + coords_num; i += zeroed_size) {
     const uint64_t partition_size =
-        (i < coords_num - zeroed_size) ? zeroed_size : coords_num - i;
+        (i < cell_num - zeroed_size) ? zeroed_size : cell_num - i;
 
-    // Check if all `r_bitmap` values are zero between `i` and
+    // Check if all `r_count` values are zero between `i` and
     // `partition_size`.
-    if (use_prev_dim_result_count && prev_dim_r_count[i] == 0 &&
+    if (result_count[i] == 0 &&
         memcmp(
-            &prev_dim_r_count[i],
-            &prev_dim_r_count[i + 1],
+            &result_count[i],
+            &result_count[i + 1],
             (partition_size - 1) * sizeof(uint64_t)) == 0)
       continue;
 
     {
       // Here, we know that there is at least one `1` value within the
-      // `prev_dim_r_count` values within this partition. We must check
+      // `r_count` values within this partition. We must check
       // each value for an intersection.
       uint64_t c_offset = 0, c_size = 0;
-      std::unique_lock<std::mutex> ul(mtx);
       for (uint64_t pos = i; pos < i + partition_size; ++pos) {
-        if (use_prev_dim_result_count && prev_dim_r_count[pos] == 0)
+        if (result_count[pos] == 0)
           continue;
 
         c_offset = buff_off[pos];
-        c_size = (pos < coords_num - 1) ? buff_off[pos + 1] - c_offset :
-                                          buff_str_size - c_offset;
-        r_count[pos] += str_coord_intersects(
-            c_offset, c_size, buff_str, range_start, range_end);
+        c_size = (pos < cell_num - 1) ? buff_off[pos + 1] - c_offset :
+                                        buff_str_size - c_offset;
+        uint64_t count = 0;
+        for (auto j : range_indexes) {
+          auto& range = ranges[j];
+          count += str_coord_intersects(
+              c_offset, c_size, buff_str, range.start_str(), range.end_str());
+        }
+
+        result_count[pos] *= count;
       }
     }
   }
 }
 
-template <class T>
+template <class BitmapType, class T>
 void ResultTile::compute_results_count_sparse(
     const ResultTile* result_tile,
     unsigned dim_idx,
-    const Range& range,
-    std::vector<uint64_t>* result_count,
-    bool use_prev_dim_result_count,
-    std::vector<uint64_t>* prev_dim_result_count,
+    const NDRange& ranges,
+    const std::vector<uint64_t>& range_indexes,
+    std::vector<BitmapType>& result_count,
     const Layout& cell_order,
-    std::mutex& mtx) {
-  // We do not use `cell_order` for this template type.
+    const uint64_t min_cell,
+    const uint64_t max_cell) {
+  // We don't use cell_order for this template type.
   (void)cell_order;
 
   // For easy reference.
-  auto coords_num = result_tile->cell_num();
-  auto r = (const T*)range.data();
   auto stores_zipped_coords = result_tile->stores_zipped_coords();
   auto dim_num = result_tile->domain()->dim_num();
-  auto& r_count = (*result_count);
-  auto& prev_dim_r_count = (*prev_dim_result_count);
 
-  // Variables for the loop over `coords_num`.
-  T c;
-  const T& r0 = r[0];
-  const T& r1 = r[1];
+  // Vector to get the status of each cell
+  const uint64_t range_indexes_size = range_indexes.size();
+  std::vector<bool> counts(range_indexes_size);
 
-  // Handle separate coordinate tiles
+  // Handle separate coordinate tiles.
   if (!stores_zipped_coords) {
     const auto& coord_tile = std::get<0>(result_tile->coord_tile(dim_idx));
     Buffer* const buffer = coord_tile.buffer();
     const T* const coords = static_cast<const T*>(buffer->data());
     {
-      std::unique_lock<std::mutex> ul(mtx);
-      for (uint64_t pos = 0; pos < coords_num; ++pos) {
-        c = coords[pos];
-        bool has_prev_res =
-            !use_prev_dim_result_count || prev_dim_r_count[pos] > 0;
-        if (has_prev_res && c >= r0 && c <= r1)
-          r_count[pos]++;
+      // Iterate over all cells.
+      for (uint64_t pos = min_cell; pos < max_cell; ++pos) {
+        // We have a previous count.
+        if (result_count[pos]) {
+          const T& c = coords[pos];
+
+          // Binary search to find the first range containing the cell.
+          auto it = std::lower_bound(
+              range_indexes.begin(),
+              range_indexes.end(),
+              c,
+              [&](const uint64_t& index, const T& value) {
+                return ((const T*)ranges[index].start())[1] < value;
+              });
+
+          // If we didn't find a range we can set count to 0 and skip to next.
+          if (it == range_indexes.end()) {
+            result_count[pos] = 0;
+            continue;
+          }
+
+          // Set all counts for existing ranges to 0
+          uint64_t start_range_idx = std::distance(range_indexes.begin(), it);
+          for (uint64_t i = 0; i < start_range_idx; ++i) {
+            counts[i] = false;
+          }
+
+          // Binary search to find the last range containing the cell.
+          auto it2 = std::lower_bound(
+              it,
+              range_indexes.end(),
+              c,
+              [&](const uint64_t& index, const T& value) {
+                return ((const T*)ranges[index].start())[0] < value;
+              });
+
+          // If the upper bound isn't the end add +1 to the index.
+          uint64_t offset = 0;
+          if (it2 != range_indexes.end())
+            offset = 1;
+          uint64_t end_range_idx =
+              std::distance(it, it2) + start_range_idx + offset;
+
+          // Iterate through all ranges and compute the count for this dim.
+          // Use 2 for loops to facilitate vectorization.
+          for (uint64_t j = start_range_idx; j < end_range_idx; ++j) {
+            const auto& range = (const T*)ranges[range_indexes[j]].start();
+            counts[j] = c >= range[0] && c <= range[1];
+          }
+
+          // Loop through rest of range to set to false.
+          for (uint64_t k = end_range_idx; k < range_indexes_size; ++k) {
+            counts[k] = false;
+          }
+
+          // Sum to get the true count.
+          const uint64_t count =
+              std::accumulate(counts.begin(), counts.end(), 0);
+
+          // Multiply the past count by this dimension's count.
+          result_count[pos] *= count;
+        }
       }
     }
 
     return;
   }
 
-  // Handle zipped coordinates tile
+  // Handle zipped coordinates tile.
   assert(stores_zipped_coords);
   const auto& coords_tile = result_tile->zipped_coords_tile();
   Buffer* const buffer = coords_tile.buffer();
   const T* const coords = static_cast<const T*>(buffer->data());
   {
-    std::unique_lock<std::mutex> ul(mtx);
-    for (uint64_t pos = 0; pos < coords_num; ++pos) {
-      c = coords[pos * dim_num + dim_idx];
-      bool has_prev_res =
-          !use_prev_dim_result_count || prev_dim_r_count[pos] > 0;
-      if (has_prev_res && c >= r0 && c <= r1)
-        r_count[pos]++;
+    for (uint64_t pos = min_cell; pos < max_cell; ++pos) {
+      if (result_count[pos]) {
+        T c = coords[pos * dim_num + dim_idx];
+        for (uint64_t i = 0; i < range_indexes.size(); i++) {
+          const auto& range = (const T*)ranges[range_indexes[i]].start();
+          counts[i] = c >= range[0] && c <= range[1];
+        }
+
+        // Sum to get the true count.
+        const uint64_t count = std::accumulate(counts.begin(), counts.end(), 0);
+
+        // Multiply the past count by this dimension's count.
+        result_count[pos] *= count;
+      }
     }
   }
 }
@@ -948,24 +1002,47 @@ Status ResultTile::compute_results_sparse(
   return Status::Ok();
 }
 
-Status ResultTile::compute_results_count_sparse(
+template <>
+Status ResultTile::compute_results_count_sparse<uint8_t>(
     unsigned dim_idx,
-    const Range& range,
-    std::vector<uint64_t>* result_count,
-    bool use_prev_dim_result_count,
-    std::vector<uint64_t>* prev_dim_result_count,
+    const NDRange& ranges,
+    const std::vector<uint64_t>& range_indexes,
+    std::vector<uint8_t>& result_count,
     const Layout& cell_order,
-    std::mutex& mtx) const {
-  assert(compute_results_count_sparse_func_[dim_idx] != nullptr);
-  compute_results_count_sparse_func_[dim_idx](
+    const uint64_t min_cell,
+    const uint64_t max_cell) const {
+  assert(compute_results_count_sparse_uint8_t_func_[dim_idx] != nullptr);
+  compute_results_count_sparse_uint8_t_func_[dim_idx](
       this,
       dim_idx,
-      range,
+      ranges,
+      range_indexes,
       result_count,
-      use_prev_dim_result_count,
-      prev_dim_result_count,
       cell_order,
-      mtx);
+      min_cell,
+      max_cell);
+  return Status::Ok();
+}
+
+template <>
+Status ResultTile::compute_results_count_sparse<uint64_t>(
+    unsigned dim_idx,
+    const NDRange& ranges,
+    const std::vector<uint64_t>& range_indexes,
+    std::vector<uint64_t>& result_count,
+    const Layout& cell_order,
+    const uint64_t min_cell,
+    const uint64_t max_cell) const {
+  assert(compute_results_count_sparse_uint64_t_func_[dim_idx] != nullptr);
+  compute_results_count_sparse_uint64_t_func_[dim_idx](
+      this,
+      dim_idx,
+      ranges,
+      range_indexes,
+      result_count,
+      cell_order,
+      min_cell,
+      max_cell);
   return Status::Ok();
 }
 
@@ -977,69 +1054,90 @@ void ResultTile::set_compute_results_func() {
   auto dim_num = domain_->dim_num();
   compute_results_dense_func_.resize(dim_num);
   compute_results_sparse_func_.resize(dim_num);
-  compute_results_count_sparse_func_.resize(dim_num);
+  compute_results_count_sparse_uint8_t_func_.resize(dim_num);
+  compute_results_count_sparse_uint64_t_func_.resize(dim_num);
   for (unsigned d = 0; d < dim_num; ++d) {
     auto dim = domain_->dimension(d);
     switch (dim->type()) {
       case Datatype::INT32:
         compute_results_dense_func_[d] = compute_results_dense<int32_t>;
         compute_results_sparse_func_[d] = compute_results_sparse<int32_t>;
-        compute_results_count_sparse_func_[d] =
-            compute_results_count_sparse<int32_t>;
+        compute_results_count_sparse_uint8_t_func_[d] =
+            compute_results_count_sparse<uint8_t, int32_t>;
+        compute_results_count_sparse_uint64_t_func_[d] =
+            compute_results_count_sparse<uint64_t, int32_t>;
         break;
       case Datatype::INT64:
         compute_results_dense_func_[d] = compute_results_dense<int64_t>;
         compute_results_sparse_func_[d] = compute_results_sparse<int64_t>;
-        compute_results_count_sparse_func_[d] =
-            compute_results_count_sparse<int64_t>;
+        compute_results_count_sparse_uint8_t_func_[d] =
+            compute_results_count_sparse<uint8_t, int64_t>;
+        compute_results_count_sparse_uint64_t_func_[d] =
+            compute_results_count_sparse<uint64_t, int64_t>;
         break;
       case Datatype::INT8:
         compute_results_dense_func_[d] = compute_results_dense<int8_t>;
         compute_results_sparse_func_[d] = compute_results_sparse<int8_t>;
-        compute_results_count_sparse_func_[d] =
-            compute_results_count_sparse<int8_t>;
+        compute_results_count_sparse_uint8_t_func_[d] =
+            compute_results_count_sparse<uint8_t, int8_t>;
+        compute_results_count_sparse_uint64_t_func_[d] =
+            compute_results_count_sparse<uint64_t, int8_t>;
         break;
       case Datatype::UINT8:
         compute_results_dense_func_[d] = compute_results_dense<uint8_t>;
         compute_results_sparse_func_[d] = compute_results_sparse<uint8_t>;
-        compute_results_count_sparse_func_[d] =
-            compute_results_count_sparse<uint8_t>;
+        compute_results_count_sparse_uint8_t_func_[d] =
+            compute_results_count_sparse<uint8_t, uint8_t>;
+        compute_results_count_sparse_uint64_t_func_[d] =
+            compute_results_count_sparse<uint64_t, uint8_t>;
         break;
       case Datatype::INT16:
         compute_results_dense_func_[d] = compute_results_dense<int16_t>;
         compute_results_sparse_func_[d] = compute_results_sparse<int16_t>;
-        compute_results_count_sparse_func_[d] =
-            compute_results_count_sparse<int16_t>;
+        compute_results_count_sparse_uint8_t_func_[d] =
+            compute_results_count_sparse<uint8_t, int16_t>;
+        compute_results_count_sparse_uint64_t_func_[d] =
+            compute_results_count_sparse<uint64_t, int16_t>;
         break;
       case Datatype::UINT16:
         compute_results_dense_func_[d] = compute_results_dense<uint16_t>;
         compute_results_sparse_func_[d] = compute_results_sparse<uint16_t>;
-        compute_results_count_sparse_func_[d] =
-            compute_results_count_sparse<uint16_t>;
+        compute_results_count_sparse_uint8_t_func_[d] =
+            compute_results_count_sparse<uint8_t, uint16_t>;
+        compute_results_count_sparse_uint64_t_func_[d] =
+            compute_results_count_sparse<uint64_t, uint16_t>;
         break;
       case Datatype::UINT32:
         compute_results_dense_func_[d] = compute_results_dense<uint32_t>;
         compute_results_sparse_func_[d] = compute_results_sparse<uint32_t>;
-        compute_results_count_sparse_func_[d] =
-            compute_results_count_sparse<uint32_t>;
+        compute_results_count_sparse_uint8_t_func_[d] =
+            compute_results_count_sparse<uint8_t, uint32_t>;
+        compute_results_count_sparse_uint64_t_func_[d] =
+            compute_results_count_sparse<uint64_t, uint32_t>;
         break;
       case Datatype::UINT64:
         compute_results_dense_func_[d] = compute_results_dense<uint64_t>;
         compute_results_sparse_func_[d] = compute_results_sparse<uint64_t>;
-        compute_results_count_sparse_func_[d] =
-            compute_results_count_sparse<uint64_t>;
+        compute_results_count_sparse_uint8_t_func_[d] =
+            compute_results_count_sparse<uint8_t, uint64_t>;
+        compute_results_count_sparse_uint64_t_func_[d] =
+            compute_results_count_sparse<uint64_t, uint64_t>;
         break;
       case Datatype::FLOAT32:
         compute_results_dense_func_[d] = compute_results_dense<float>;
         compute_results_sparse_func_[d] = compute_results_sparse<float>;
-        compute_results_count_sparse_func_[d] =
-            compute_results_count_sparse<float>;
+        compute_results_count_sparse_uint8_t_func_[d] =
+            compute_results_count_sparse<uint8_t, float>;
+        compute_results_count_sparse_uint64_t_func_[d] =
+            compute_results_count_sparse<uint64_t, float>;
         break;
       case Datatype::FLOAT64:
         compute_results_dense_func_[d] = compute_results_dense<double>;
         compute_results_sparse_func_[d] = compute_results_sparse<double>;
-        compute_results_count_sparse_func_[d] =
-            compute_results_count_sparse<double>;
+        compute_results_count_sparse_uint8_t_func_[d] =
+            compute_results_count_sparse<uint8_t, double>;
+        compute_results_count_sparse_uint64_t_func_[d] =
+            compute_results_count_sparse<uint64_t, double>;
         break;
       case Datatype::DATETIME_YEAR:
       case Datatype::DATETIME_MONTH:
@@ -1065,19 +1163,24 @@ void ResultTile::set_compute_results_func() {
       case Datatype::TIME_AS:
         compute_results_dense_func_[d] = compute_results_dense<int64_t>;
         compute_results_sparse_func_[d] = compute_results_sparse<int64_t>;
-        compute_results_count_sparse_func_[d] =
-            compute_results_count_sparse<int64_t>;
+        compute_results_count_sparse_uint8_t_func_[d] =
+            compute_results_count_sparse<uint8_t, int64_t>;
+        compute_results_count_sparse_uint64_t_func_[d] =
+            compute_results_count_sparse<uint64_t, int64_t>;
         break;
       case Datatype::STRING_ASCII:
         compute_results_dense_func_[d] = nullptr;
         compute_results_sparse_func_[d] = compute_results_sparse<char>;
-        compute_results_count_sparse_func_[d] =
-            compute_results_count_sparse<char>;
+        compute_results_count_sparse_uint8_t_func_[d] =
+            compute_results_count_sparse_string<uint8_t>;
+        compute_results_count_sparse_uint64_t_func_[d] =
+            compute_results_count_sparse_string<uint64_t>;
         break;
       default:
         compute_results_dense_func_[d] = nullptr;
         compute_results_sparse_func_[d] = nullptr;
-        compute_results_count_sparse_func_[d] = nullptr;
+        compute_results_count_sparse_uint8_t_func_[d] = nullptr;
+        compute_results_count_sparse_uint64_t_func_[d] = nullptr;
         break;
     }
   }

@@ -248,6 +248,45 @@ void Reader::reset() {
 /*         PRIVATE METHODS        */
 /* ****************************** */
 
+Status Reader::apply_query_condition(
+    std::vector<ResultCellSlab>* const result_cell_slabs,
+    std::vector<ResultTile*>* result_tiles,
+    Subarray* subarray,
+    uint64_t stride) {
+  if (condition_.empty() || result_cell_slabs->empty())
+    return Status::Ok();
+
+  // To evaluate the query condition, we need to read tiles for the
+  // attributes used in the query condition. Build a map of attribute
+  // names to read.
+  const std::unordered_set<std::string>& condition_names =
+      condition_.field_names();
+  std::unordered_map<std::string, ProcessTileFlags> names;
+  for (const auto& condition_name : condition_names) {
+    names[condition_name] = ProcessTileFlag::READ;
+  }
+
+  // Each element in `names` has been flagged with `ProcessTileFlag::READ`.
+  // This will read the tiles, but will not copy them into the user buffers.
+  RETURN_NOT_OK(process_tiles(
+      &names,
+      result_tiles,
+      result_cell_slabs,
+      subarray,
+      stride,
+      std::numeric_limits<uint64_t>::max()));
+
+  // The `UINT64_MAX` is a sentinel value to indicate that we do not
+  // use a stride in the cell index calculation. To simplify our logic,
+  // assign this to `1`.
+  if (stride == UINT64_MAX)
+    stride = 1;
+
+  RETURN_NOT_OK(condition_.apply(array_schema_, result_cell_slabs, stride));
+
+  return Status::Ok();
+}
+
 Status Reader::compute_result_cell_slabs(
     const std::vector<ResultCoords>& result_coords,
     std::vector<ResultCellSlab>* result_cell_slabs) const {
@@ -549,7 +588,6 @@ Status Reader::compute_sparse_result_tiles(
   auto timer_se = stats_->start_timer("compute_sparse_result_tiles");
 
   // For easy reference
-  auto domain = array_schema_->domain();
   auto& partitioner = read_state_.partitioner_;
   const auto& subarray = partitioner.current();
   auto range_num = subarray.range_num();
@@ -577,7 +615,8 @@ Status Reader::compute_sparse_result_tiles(
           auto pair = std::pair<unsigned, uint64_t>(f, t);
           // Add tile only if it does not already exist
           if (result_tile_map->find(pair) == result_tile_map->end()) {
-            result_tiles->emplace_back(f, t, domain);
+            result_tiles->emplace_back(
+                f, t, fragment_metadata_[f]->array_schema());
             (*result_tile_map)[pair] = result_tiles->size() - 1;
           }
           // Always check range for multiple fragments
@@ -595,7 +634,8 @@ Status Reader::compute_sparse_result_tiles(
         auto pair = std::pair<unsigned, uint64_t>(f, t);
         // Add tile only if it does not already exist
         if (result_tile_map->find(pair) == result_tile_map->end()) {
-          result_tiles->emplace_back(f, t, domain);
+          result_tiles->emplace_back(
+              f, t, fragment_metadata_[f]->array_schema());
           (*result_tile_map)[pair] = result_tiles->size() - 1;
         }
         // Always check range for multiple fragments

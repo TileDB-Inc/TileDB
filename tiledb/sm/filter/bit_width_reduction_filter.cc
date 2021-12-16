@@ -93,11 +93,12 @@ void BitWidthReductionFilter::dump(FILE* out) const {
 }
 
 Status BitWidthReductionFilter::run_forward(
+    const Tile& tile,
     FilterBuffer* input_metadata,
     FilterBuffer* input,
     FilterBuffer* output_metadata,
     FilterBuffer* output) const {
-  auto tile_type = pipeline_->current_tile()->type();
+  auto tile_type = tile.type();
   auto tile_type_size = static_cast<uint8_t>(datatype_size(tile_type));
 
   // If bit width compression can't work, just return the input unmodified.
@@ -110,27 +111,28 @@ Status BitWidthReductionFilter::run_forward(
   switch (tile_type) {
     case Datatype::INT8:
       return run_forward<int8_t>(
-          input_metadata, input, output_metadata, output);
+          tile, input_metadata, input, output_metadata, output);
     case Datatype::UINT8:
       return run_forward<uint8_t>(
-          input_metadata, input, output_metadata, output);
+          tile, input_metadata, input, output_metadata, output);
     case Datatype::INT16:
       return run_forward<int16_t>(
-          input_metadata, input, output_metadata, output);
+          tile, input_metadata, input, output_metadata, output);
     case Datatype::UINT16:
       return run_forward<uint16_t>(
-          input_metadata, input, output_metadata, output);
+          tile, input_metadata, input, output_metadata, output);
     case Datatype::INT32:
-      return run_forward<int>(input_metadata, input, output_metadata, output);
+      return run_forward<int>(
+          tile, input_metadata, input, output_metadata, output);
     case Datatype::UINT32:
       return run_forward<unsigned>(
-          input_metadata, input, output_metadata, output);
+          tile, input_metadata, input, output_metadata, output);
     case Datatype::INT64:
       return run_forward<int64_t>(
-          input_metadata, input, output_metadata, output);
+          tile, input_metadata, input, output_metadata, output);
     case Datatype::UINT64:
       return run_forward<uint64_t>(
-          input_metadata, input, output_metadata, output);
+          tile, input_metadata, input, output_metadata, output);
     case Datatype::DATETIME_YEAR:
     case Datatype::DATETIME_MONTH:
     case Datatype::DATETIME_WEEK:
@@ -154,7 +156,7 @@ Status BitWidthReductionFilter::run_forward(
     case Datatype::TIME_FS:
     case Datatype::TIME_AS:
       return run_forward<int64_t>(
-          input_metadata, input, output_metadata, output);
+          tile, input_metadata, input, output_metadata, output);
     default:
       return LOG_STATUS(
           Status::FilterError("Cannot filter; Unsupported input type"));
@@ -163,6 +165,7 @@ Status BitWidthReductionFilter::run_forward(
 
 template <typename T>
 Status BitWidthReductionFilter::run_forward(
+    const Tile&,
     FilterBuffer* input_metadata,
     FilterBuffer* input,
     FilterBuffer* output_metadata,
@@ -264,6 +267,7 @@ Status BitWidthReductionFilter::compress_part(
 }
 
 Status BitWidthReductionFilter::run_reverse(
+    const Tile& tile,
     FilterBuffer* input_metadata,
     FilterBuffer* input,
     FilterBuffer* output_metadata,
@@ -271,7 +275,7 @@ Status BitWidthReductionFilter::run_reverse(
     const Config& config) const {
   (void)config;
 
-  auto tile_type = pipeline_->current_tile()->type();
+  auto tile_type = tile.type();
   auto tile_type_size = static_cast<uint8_t>(datatype_size(tile_type));
 
   // If bit width compression wasn't applied, just return the input unmodified.
@@ -284,27 +288,28 @@ Status BitWidthReductionFilter::run_reverse(
   switch (tile_type) {
     case Datatype::INT8:
       return run_reverse<int8_t>(
-          input_metadata, input, output_metadata, output);
+          tile, input_metadata, input, output_metadata, output);
     case Datatype::UINT8:
       return run_reverse<uint8_t>(
-          input_metadata, input, output_metadata, output);
+          tile, input_metadata, input, output_metadata, output);
     case Datatype::INT16:
       return run_reverse<int16_t>(
-          input_metadata, input, output_metadata, output);
+          tile, input_metadata, input, output_metadata, output);
     case Datatype::UINT16:
       return run_reverse<uint16_t>(
-          input_metadata, input, output_metadata, output);
+          tile, input_metadata, input, output_metadata, output);
     case Datatype::INT32:
-      return run_reverse<int>(input_metadata, input, output_metadata, output);
+      return run_reverse<int>(
+          tile, input_metadata, input, output_metadata, output);
     case Datatype::UINT32:
       return run_reverse<unsigned>(
-          input_metadata, input, output_metadata, output);
+          tile, input_metadata, input, output_metadata, output);
     case Datatype::INT64:
       return run_reverse<int64_t>(
-          input_metadata, input, output_metadata, output);
+          tile, input_metadata, input, output_metadata, output);
     case Datatype::UINT64:
       return run_reverse<uint64_t>(
-          input_metadata, input, output_metadata, output);
+          tile, input_metadata, input, output_metadata, output);
     case Datatype::DATETIME_YEAR:
     case Datatype::DATETIME_MONTH:
     case Datatype::DATETIME_WEEK:
@@ -328,7 +333,7 @@ Status BitWidthReductionFilter::run_reverse(
     case Datatype::TIME_FS:
     case Datatype::TIME_AS:
       return run_reverse<int64_t>(
-          input_metadata, input, output_metadata, output);
+          tile, input_metadata, input, output_metadata, output);
     default:
       return LOG_STATUS(
           Status::FilterError("Cannot filter; Unsupported input type"));
@@ -337,11 +342,12 @@ Status BitWidthReductionFilter::run_reverse(
 
 template <typename T>
 Status BitWidthReductionFilter::run_reverse(
+    const Tile& tile,
     FilterBuffer* input_metadata,
     FilterBuffer* input,
     FilterBuffer* output_metadata,
     FilterBuffer* output) const {
-  auto tile_type = pipeline_->current_tile()->type();
+  auto tile_type = tile.type();
   auto tile_type_size = datatype_size(tile_type);
 
   uint32_t num_windows, orig_length;
