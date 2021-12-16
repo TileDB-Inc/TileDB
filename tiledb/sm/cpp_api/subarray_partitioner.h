@@ -56,7 +56,6 @@ namespace tiledb {
  */
 class SubarrayPartitioner {
  public:
-
   /* ********************************* */
   /*     CONSTRUCTORS & DESTRUCTORS    */
   /* ********************************* */

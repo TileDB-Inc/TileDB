@@ -4239,8 +4239,7 @@ int32_t tiledb_subarray_partitioner_compute_partitions(
       sanity_check(ctx, partitioner) == TILEDB_ERR)
     return TILEDB_ERR;
 
-  if (SAVE_ERROR_CATCH(
-          ctx, partitioner->partitioner_->compute_partitions()))
+  if (SAVE_ERROR_CATCH(ctx, partitioner->partitioner_->compute_partitions()))
     return TILEDB_ERR;
 
   return TILEDB_OK;

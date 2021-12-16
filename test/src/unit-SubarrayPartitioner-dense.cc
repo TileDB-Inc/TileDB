@@ -95,7 +95,7 @@ struct SubarrayPartitionerDenseFx {
       const SubarrayRanges<T>& ranges,
       const std::vector<SubarrayRanges<T>>& partitions,
       const std::string& attr,  // Attribute to set the budget for
-      uint64_t budget,
+      uint64_t memory_budget,
       bool unsplittable = false);
 
   /**
@@ -108,8 +108,8 @@ struct SubarrayPartitionerDenseFx {
       Layout subarray_layout,
       const SubarrayRanges<T>& ranges,
       const std::vector<SubarrayRanges<T>>& partitions,
-      uint64_t budget,
-      uint64_t budget_var,
+      uint64_t memory_budget,
+      uint64_t memory_budget_var,
       bool unsplittable = false);
 };
 
@@ -246,7 +246,7 @@ void SubarrayPartitionerDenseFx::test_subarray_partitioner(
     const SubarrayRanges<T>& ranges,
     const std::vector<SubarrayRanges<T>>& partitions,
     const std::string& attr,
-    uint64_t budget,
+    uint64_t memory_budget,
     bool unsplittable) {
   Subarray subarray;
   create_subarray(array_->array_, ranges, subarray_layout, &subarray);
@@ -263,7 +263,7 @@ void SubarrayPartitionerDenseFx::test_subarray_partitioner(
       &tp,
       &g_helper_stats,
       g_helper_logger());
-  auto st = subarray_partitioner.set_result_budget(attr.c_str(), budget);
+  auto st = subarray_partitioner.set_result_budget(attr.c_str(), memory_budget);
   CHECK(st.ok());
 
   check_partitions(subarray_partitioner, partitions, unsplittable);
@@ -274,8 +274,8 @@ void SubarrayPartitionerDenseFx::test_subarray_partitioner(
     Layout subarray_layout,
     const SubarrayRanges<T>& ranges,
     const std::vector<SubarrayRanges<T>>& partitions,
-    uint64_t budget,
-    uint64_t budget_var,
+    uint64_t memory_budget,
+    uint64_t memory_budget_var,
     bool unsplittable) {
   Subarray subarray;
   create_subarray(array_->array_, ranges, subarray_layout, &subarray);
@@ -303,7 +303,8 @@ void SubarrayPartitionerDenseFx::test_subarray_partitioner(
   st = subarray_partitioner.set_result_budget("b", 1000000, 1000000);
   CHECK(st.ok());
 
-  st = subarray_partitioner.set_memory_budget(budget, budget_var, 0);
+  st = subarray_partitioner.set_memory_budget(
+      memory_budget, memory_budget_var, 0);
   CHECK(st.ok());
 
   check_partitions(subarray_partitioner, partitions, unsplittable);
@@ -320,7 +321,7 @@ TEST_CASE_METHOD(
   Layout subarray_layout;
   SubarrayRanges<uint64_t> ranges = {};
   std::vector<SubarrayRanges<uint64_t>> partitions = {{{1, 10}}};
-  uint64_t budget = 1000 * sizeof(uint64_t);
+  uint64_t memory_budget = 1000 * sizeof(uint64_t);
   std::string attr = TILEDB_COORDS;
   bool unsplittable = false;
 
@@ -330,22 +331,22 @@ TEST_CASE_METHOD(
   // subarray: global
   subarray_layout = Layout::GLOBAL_ORDER;
   test_subarray_partitioner(
-      subarray_layout, ranges, partitions, attr, budget, unsplittable);
+      subarray_layout, ranges, partitions, attr, memory_budget, unsplittable);
 
   // subarray: row
   subarray_layout = Layout::ROW_MAJOR;
   test_subarray_partitioner(
-      subarray_layout, ranges, partitions, attr, budget, unsplittable);
+      subarray_layout, ranges, partitions, attr, memory_budget, unsplittable);
 
   // subarray: col
   subarray_layout = Layout::COL_MAJOR;
   test_subarray_partitioner(
-      subarray_layout, ranges, partitions, attr, budget, unsplittable);
+      subarray_layout, ranges, partitions, attr, memory_budget, unsplittable);
 
   // subarray: unordered
   subarray_layout = Layout::UNORDERED;
   test_subarray_partitioner(
-      subarray_layout, ranges, partitions, attr, budget, unsplittable);
+      subarray_layout, ranges, partitions, attr, memory_budget, unsplittable);
 
   close_array(ctx_, array_);
 }
@@ -357,7 +358,7 @@ TEST_CASE_METHOD(
   Layout subarray_layout;
   SubarrayRanges<uint64_t> ranges = {};
   std::vector<SubarrayRanges<uint64_t>> partitions = {{{1, 10}}};
-  uint64_t budget = 1000 * sizeof(uint64_t);
+  uint64_t memory_budget = 1000 * sizeof(uint64_t);
   std::string attr = TILEDB_COORDS;
   bool unsplittable = false;
 
@@ -368,22 +369,22 @@ TEST_CASE_METHOD(
   // subarray: global
   subarray_layout = Layout::GLOBAL_ORDER;
   test_subarray_partitioner(
-      subarray_layout, ranges, partitions, attr, budget, unsplittable);
+      subarray_layout, ranges, partitions, attr, memory_budget, unsplittable);
 
   // subarray: row
   subarray_layout = Layout::ROW_MAJOR;
   test_subarray_partitioner(
-      subarray_layout, ranges, partitions, attr, budget, unsplittable);
+      subarray_layout, ranges, partitions, attr, memory_budget, unsplittable);
 
   // subarray: col
   subarray_layout = Layout::COL_MAJOR;
   test_subarray_partitioner(
-      subarray_layout, ranges, partitions, attr, budget, unsplittable);
+      subarray_layout, ranges, partitions, attr, memory_budget, unsplittable);
 
   // subarray: unordered
   subarray_layout = Layout::UNORDERED;
   test_subarray_partitioner(
-      subarray_layout, ranges, partitions, attr, budget, unsplittable);
+      subarray_layout, ranges, partitions, attr, memory_budget, unsplittable);
 
   close_array(ctx_, array_);
 }
@@ -395,7 +396,7 @@ TEST_CASE_METHOD(
   Layout subarray_layout;
   SubarrayRanges<uint64_t> ranges = {{2, 5}};
   std::vector<SubarrayRanges<uint64_t>> partitions;
-  uint64_t budget = 3 * sizeof(int);
+  uint64_t memory_budget = 3 * sizeof(int);
   std::string attr = "a";
   bool unsplittable = false;
 
@@ -407,23 +408,23 @@ TEST_CASE_METHOD(
   subarray_layout = Layout::GLOBAL_ORDER;
   partitions = {{{2, 2}}, {{3, 5}}};
   test_subarray_partitioner(
-      subarray_layout, ranges, partitions, attr, budget, unsplittable);
+      subarray_layout, ranges, partitions, attr, memory_budget, unsplittable);
 
   // subarray: row
   subarray_layout = Layout::ROW_MAJOR;
   partitions = {{{2, 3}}, {{4, 5}}};
   test_subarray_partitioner(
-      subarray_layout, ranges, partitions, attr, budget, unsplittable);
+      subarray_layout, ranges, partitions, attr, memory_budget, unsplittable);
 
   // subarray: col
   subarray_layout = Layout::COL_MAJOR;
   test_subarray_partitioner(
-      subarray_layout, ranges, partitions, attr, budget, unsplittable);
+      subarray_layout, ranges, partitions, attr, memory_budget, unsplittable);
 
   // subarray: unordered
   subarray_layout = Layout::UNORDERED;
   test_subarray_partitioner(
-      subarray_layout, ranges, partitions, attr, budget, unsplittable);
+      subarray_layout, ranges, partitions, attr, memory_budget, unsplittable);
 
   close_array(ctx_, array_);
 }
@@ -435,7 +436,7 @@ TEST_CASE_METHOD(
   Layout subarray_layout;
   SubarrayRanges<uint64_t> ranges = {{4, 4}};
   std::vector<SubarrayRanges<uint64_t>> partitions = {{{4, 4}}};
-  uint64_t budget = 1;
+  uint64_t memory_budget = 1;
   std::string attr = "a";
   bool unsplittable = true;
 
@@ -446,22 +447,22 @@ TEST_CASE_METHOD(
   // subarray: global
   subarray_layout = Layout::GLOBAL_ORDER;
   test_subarray_partitioner(
-      subarray_layout, ranges, partitions, attr, budget, unsplittable);
+      subarray_layout, ranges, partitions, attr, memory_budget, unsplittable);
 
   // subarray: row
   subarray_layout = Layout::ROW_MAJOR;
   test_subarray_partitioner(
-      subarray_layout, ranges, partitions, attr, budget, unsplittable);
+      subarray_layout, ranges, partitions, attr, memory_budget, unsplittable);
 
   // subarray: col
   subarray_layout = Layout::COL_MAJOR;
   test_subarray_partitioner(
-      subarray_layout, ranges, partitions, attr, budget, unsplittable);
+      subarray_layout, ranges, partitions, attr, memory_budget, unsplittable);
 
   // subarray: unordered
   subarray_layout = Layout::UNORDERED;
   test_subarray_partitioner(
-      subarray_layout, ranges, partitions, attr, budget, unsplittable);
+      subarray_layout, ranges, partitions, attr, memory_budget, unsplittable);
 
   close_array(ctx_, array_);
 }
@@ -473,7 +474,7 @@ TEST_CASE_METHOD(
   Layout subarray_layout;
   SubarrayRanges<uint64_t> ranges = {{1, 6}};
   std::vector<SubarrayRanges<uint64_t>> partitions;
-  uint64_t budget = 2 * sizeof(int);
+  uint64_t memory_budget = 2 * sizeof(int);
   std::string attr = "a";
   bool unsplittable = false;
 
@@ -485,23 +486,23 @@ TEST_CASE_METHOD(
   subarray_layout = Layout::GLOBAL_ORDER;
   partitions = {{{1, 2}}, {{3, 4}}, {{5, 6}}};
   test_subarray_partitioner(
-      subarray_layout, ranges, partitions, attr, budget, unsplittable);
+      subarray_layout, ranges, partitions, attr, memory_budget, unsplittable);
 
   // subarray: row
   partitions = {{{1, 2}}, {{3, 3}}, {{4, 5}}, {{6, 6}}};
   subarray_layout = Layout::ROW_MAJOR;
   test_subarray_partitioner(
-      subarray_layout, ranges, partitions, attr, budget, unsplittable);
+      subarray_layout, ranges, partitions, attr, memory_budget, unsplittable);
 
   // subarray: col
   subarray_layout = Layout::COL_MAJOR;
   test_subarray_partitioner(
-      subarray_layout, ranges, partitions, attr, budget, unsplittable);
+      subarray_layout, ranges, partitions, attr, memory_budget, unsplittable);
 
   // subarray: unordered
   subarray_layout = Layout::UNORDERED;
   test_subarray_partitioner(
-      subarray_layout, ranges, partitions, attr, budget, unsplittable);
+      subarray_layout, ranges, partitions, attr, memory_budget, unsplittable);
 
   close_array(ctx_, array_);
 }
@@ -514,7 +515,7 @@ TEST_CASE_METHOD(
   Layout subarray_layout;
   SubarrayRanges<uint64_t> ranges = {{1, 6}};
   std::vector<SubarrayRanges<uint64_t>> partitions = {{{1, 1}}};
-  uint64_t budget = 1;
+  uint64_t memory_budget = 1;
   std::string attr = "a";
   bool unsplittable = true;
 
@@ -525,22 +526,22 @@ TEST_CASE_METHOD(
   // subarray: global
   subarray_layout = Layout::GLOBAL_ORDER;
   test_subarray_partitioner(
-      subarray_layout, ranges, partitions, attr, budget, unsplittable);
+      subarray_layout, ranges, partitions, attr, memory_budget, unsplittable);
 
   // subarray: row
   subarray_layout = Layout::ROW_MAJOR;
   test_subarray_partitioner(
-      subarray_layout, ranges, partitions, attr, budget, unsplittable);
+      subarray_layout, ranges, partitions, attr, memory_budget, unsplittable);
 
   // subarray: col
   subarray_layout = Layout::COL_MAJOR;
   test_subarray_partitioner(
-      subarray_layout, ranges, partitions, attr, budget, unsplittable);
+      subarray_layout, ranges, partitions, attr, memory_budget, unsplittable);
 
   // subarray: unordered
   subarray_layout = Layout::UNORDERED;
   test_subarray_partitioner(
-      subarray_layout, ranges, partitions, attr, budget, unsplittable);
+      subarray_layout, ranges, partitions, attr, memory_budget, unsplittable);
 
   close_array(ctx_, array_);
 }
@@ -596,7 +597,7 @@ TEST_CASE_METHOD(
   Layout subarray_layout;
   SubarrayRanges<uint64_t> ranges = {{2, 3, 5, 8, 9, 10}};
   std::vector<SubarrayRanges<uint64_t>> partitions = {{{2, 3, 5, 8, 9, 10}}};
-  uint64_t budget = 1000000;
+  uint64_t memory_budget = 1000000;
   std::string attr = "a";
   bool unsplittable = false;
 
@@ -607,17 +608,17 @@ TEST_CASE_METHOD(
   // subarray: row
   subarray_layout = Layout::ROW_MAJOR;
   test_subarray_partitioner(
-      subarray_layout, ranges, partitions, attr, budget, unsplittable);
+      subarray_layout, ranges, partitions, attr, memory_budget, unsplittable);
 
   // subarray: col
   subarray_layout = Layout::COL_MAJOR;
   test_subarray_partitioner(
-      subarray_layout, ranges, partitions, attr, budget, unsplittable);
+      subarray_layout, ranges, partitions, attr, memory_budget, unsplittable);
 
   // subarray: unordered
   subarray_layout = Layout::UNORDERED;
   test_subarray_partitioner(
-      subarray_layout, ranges, partitions, attr, budget, unsplittable);
+      subarray_layout, ranges, partitions, attr, memory_budget, unsplittable);
 
   close_array(ctx_, array_);
 }
@@ -630,7 +631,7 @@ TEST_CASE_METHOD(
   SubarrayRanges<uint64_t> ranges = {{2, 3, 5, 8, 9, 10}};
   std::vector<SubarrayRanges<uint64_t>> partitions = {{{2, 3, 5, 8}},
                                                       {{9, 10}}};
-  uint64_t budget = 7 * sizeof(int);
+  uint64_t memory_budget = 7 * sizeof(int);
   std::string attr = "a";
   bool unsplittable = false;
 
@@ -641,17 +642,17 @@ TEST_CASE_METHOD(
   // subarray: row
   subarray_layout = Layout::ROW_MAJOR;
   test_subarray_partitioner(
-      subarray_layout, ranges, partitions, attr, budget, unsplittable);
+      subarray_layout, ranges, partitions, attr, memory_budget, unsplittable);
 
   // subarray: col
   subarray_layout = Layout::COL_MAJOR;
   test_subarray_partitioner(
-      subarray_layout, ranges, partitions, attr, budget, unsplittable);
+      subarray_layout, ranges, partitions, attr, memory_budget, unsplittable);
 
   // subarray: unordered
   subarray_layout = Layout::UNORDERED;
   test_subarray_partitioner(
-      subarray_layout, ranges, partitions, attr, budget, unsplittable);
+      subarray_layout, ranges, partitions, attr, memory_budget, unsplittable);
 
   close_array(ctx_, array_);
 }
@@ -664,7 +665,7 @@ TEST_CASE_METHOD(
   SubarrayRanges<uint64_t> ranges = {{2, 3, 5, 8, 9, 10}};
   std::vector<SubarrayRanges<uint64_t>> partitions = {
       {{2, 3}}, {{5, 8}}, {{9, 10}}};
-  uint64_t budget = 4 * sizeof(int);
+  uint64_t memory_budget = 4 * sizeof(int);
   std::string attr = "a";
   bool unsplittable = false;
 
@@ -675,17 +676,17 @@ TEST_CASE_METHOD(
   // subarray: row
   subarray_layout = Layout::ROW_MAJOR;
   test_subarray_partitioner(
-      subarray_layout, ranges, partitions, attr, budget, unsplittable);
+      subarray_layout, ranges, partitions, attr, memory_budget, unsplittable);
 
   // subarray: col
   subarray_layout = Layout::COL_MAJOR;
   test_subarray_partitioner(
-      subarray_layout, ranges, partitions, attr, budget, unsplittable);
+      subarray_layout, ranges, partitions, attr, memory_budget, unsplittable);
 
   // subarray: unordered
   subarray_layout = Layout::UNORDERED;
   test_subarray_partitioner(
-      subarray_layout, ranges, partitions, attr, budget, unsplittable);
+      subarray_layout, ranges, partitions, attr, memory_budget, unsplittable);
 
   close_array(ctx_, array_);
 }
@@ -698,7 +699,7 @@ TEST_CASE_METHOD(
   SubarrayRanges<uint64_t> ranges = {{2, 3, 5, 8, 9, 10}};
   std::vector<SubarrayRanges<uint64_t>> partitions = {
       {{2, 3}}, {{5, 6}}, {{7, 8}}, {{9, 10}}};
-  uint64_t budget = 2 * sizeof(int);
+  uint64_t memory_budget = 2 * sizeof(int);
   std::string attr = "a";
   bool unsplittable = false;
 
@@ -709,17 +710,17 @@ TEST_CASE_METHOD(
   // subarray: row
   subarray_layout = Layout::ROW_MAJOR;
   test_subarray_partitioner(
-      subarray_layout, ranges, partitions, attr, budget, unsplittable);
+      subarray_layout, ranges, partitions, attr, memory_budget, unsplittable);
 
   // subarray: col
   subarray_layout = Layout::COL_MAJOR;
   test_subarray_partitioner(
-      subarray_layout, ranges, partitions, attr, budget, unsplittable);
+      subarray_layout, ranges, partitions, attr, memory_budget, unsplittable);
 
   // subarray: unordered
   subarray_layout = Layout::UNORDERED;
   test_subarray_partitioner(
-      subarray_layout, ranges, partitions, attr, budget, unsplittable);
+      subarray_layout, ranges, partitions, attr, memory_budget, unsplittable);
 
   close_array(ctx_, array_);
 }
@@ -731,7 +732,7 @@ TEST_CASE_METHOD(
   Layout subarray_layout;
   SubarrayRanges<uint64_t> ranges = {{2, 3, 5, 8, 9, 10}};
   std::vector<SubarrayRanges<uint64_t>> partitions = {{{2, 2}}};
-  uint64_t budget = 0;
+  uint64_t memory_budget = 0;
   std::string attr = "a";
   bool unsplittable = true;
 
@@ -742,17 +743,17 @@ TEST_CASE_METHOD(
   // subarray: row
   subarray_layout = Layout::ROW_MAJOR;
   test_subarray_partitioner(
-      subarray_layout, ranges, partitions, attr, budget, unsplittable);
+      subarray_layout, ranges, partitions, attr, memory_budget, unsplittable);
 
   // subarray: col
   subarray_layout = Layout::COL_MAJOR;
   test_subarray_partitioner(
-      subarray_layout, ranges, partitions, attr, budget, unsplittable);
+      subarray_layout, ranges, partitions, attr, memory_budget, unsplittable);
 
   // subarray: unordered
   subarray_layout = Layout::UNORDERED;
   test_subarray_partitioner(
-      subarray_layout, ranges, partitions, attr, budget, unsplittable);
+      subarray_layout, ranges, partitions, attr, memory_budget, unsplittable);
 
   close_array(ctx_, array_);
 }
@@ -764,8 +765,8 @@ TEST_CASE_METHOD(
   Layout subarray_layout;
   SubarrayRanges<uint64_t> ranges = {};
   std::vector<SubarrayRanges<uint64_t>> partitions = {};
-  uint64_t budget = 16;
-  uint64_t budget_var = 100000;
+  uint64_t memory_budget = 16;
+  uint64_t memory_budget_var = 100000;
   bool unsplittable = false;
 
   create_default_1d_array(TILEDB_ROW_MAJOR, TILEDB_ROW_MAJOR);
@@ -782,7 +783,12 @@ TEST_CASE_METHOD(
       {{9, 10}},
   };
   test_subarray_partitioner(
-      subarray_layout, ranges, partitions, budget, budget_var, unsplittable);
+      subarray_layout,
+      ranges,
+      partitions,
+      memory_budget,
+      memory_budget_var,
+      unsplittable);
 
   // subarray: row
   subarray_layout = Layout::ROW_MAJOR;
@@ -797,17 +803,32 @@ TEST_CASE_METHOD(
       {{9, 10}},
   };
   test_subarray_partitioner(
-      subarray_layout, ranges, partitions, budget, budget_var, unsplittable);
+      subarray_layout,
+      ranges,
+      partitions,
+      memory_budget,
+      memory_budget_var,
+      unsplittable);
 
   // subarray: col
   subarray_layout = Layout::COL_MAJOR;
   test_subarray_partitioner(
-      subarray_layout, ranges, partitions, budget, budget_var, unsplittable);
+      subarray_layout,
+      ranges,
+      partitions,
+      memory_budget,
+      memory_budget_var,
+      unsplittable);
 
   // subarray: unordered
   subarray_layout = Layout::UNORDERED;
   test_subarray_partitioner(
-      subarray_layout, ranges, partitions, budget, budget_var, unsplittable);
+      subarray_layout,
+      ranges,
+      partitions,
+      memory_budget,
+      memory_budget_var,
+      unsplittable);
 
   close_array(ctx_, array_);
 }
@@ -819,7 +840,7 @@ TEST_CASE_METHOD(
   Layout subarray_layout;
   SubarrayRanges<uint64_t> ranges = {{1, 4}, {1, 4}};
   std::vector<SubarrayRanges<uint64_t>> partitions = {{{1, 4}, {1, 4}}};
-  uint64_t budget = 1000 * sizeof(uint64_t);
+  uint64_t memory_budget = 1000 * sizeof(uint64_t);
   std::string attr = TILEDB_COORDS;
   bool unsplittable = false;
 
@@ -831,22 +852,22 @@ TEST_CASE_METHOD(
     // subarray: global
     subarray_layout = Layout::GLOBAL_ORDER;
     test_subarray_partitioner(
-        subarray_layout, ranges, partitions, attr, budget, unsplittable);
+        subarray_layout, ranges, partitions, attr, memory_budget, unsplittable);
 
     // subarray: row
     subarray_layout = Layout::ROW_MAJOR;
     test_subarray_partitioner(
-        subarray_layout, ranges, partitions, attr, budget, unsplittable);
+        subarray_layout, ranges, partitions, attr, memory_budget, unsplittable);
 
     // subarray: col
     subarray_layout = Layout::COL_MAJOR;
     test_subarray_partitioner(
-        subarray_layout, ranges, partitions, attr, budget, unsplittable);
+        subarray_layout, ranges, partitions, attr, memory_budget, unsplittable);
 
     // subarray: unordered
     subarray_layout = Layout::UNORDERED;
     test_subarray_partitioner(
-        subarray_layout, ranges, partitions, attr, budget, unsplittable);
+        subarray_layout, ranges, partitions, attr, memory_budget, unsplittable);
   }
 
   SECTION("# tile: row, cell: col") {
@@ -857,22 +878,22 @@ TEST_CASE_METHOD(
     // subarray: global
     subarray_layout = Layout::GLOBAL_ORDER;
     test_subarray_partitioner(
-        subarray_layout, ranges, partitions, attr, budget, unsplittable);
+        subarray_layout, ranges, partitions, attr, memory_budget, unsplittable);
 
     // subarray: row
     subarray_layout = Layout::ROW_MAJOR;
     test_subarray_partitioner(
-        subarray_layout, ranges, partitions, attr, budget, unsplittable);
+        subarray_layout, ranges, partitions, attr, memory_budget, unsplittable);
 
     // subarray: col
     subarray_layout = Layout::COL_MAJOR;
     test_subarray_partitioner(
-        subarray_layout, ranges, partitions, attr, budget, unsplittable);
+        subarray_layout, ranges, partitions, attr, memory_budget, unsplittable);
 
     // subarray: unordered
     subarray_layout = Layout::UNORDERED;
     test_subarray_partitioner(
-        subarray_layout, ranges, partitions, attr, budget, unsplittable);
+        subarray_layout, ranges, partitions, attr, memory_budget, unsplittable);
   }
 
   SECTION("# tile: col, cell: row") {
@@ -883,22 +904,22 @@ TEST_CASE_METHOD(
     // subarray: global
     subarray_layout = Layout::GLOBAL_ORDER;
     test_subarray_partitioner(
-        subarray_layout, ranges, partitions, attr, budget, unsplittable);
+        subarray_layout, ranges, partitions, attr, memory_budget, unsplittable);
 
     // subarray: row
     subarray_layout = Layout::ROW_MAJOR;
     test_subarray_partitioner(
-        subarray_layout, ranges, partitions, attr, budget, unsplittable);
+        subarray_layout, ranges, partitions, attr, memory_budget, unsplittable);
 
     // subarray: col
     subarray_layout = Layout::COL_MAJOR;
     test_subarray_partitioner(
-        subarray_layout, ranges, partitions, attr, budget, unsplittable);
+        subarray_layout, ranges, partitions, attr, memory_budget, unsplittable);
 
     // subarray: unordered
     subarray_layout = Layout::UNORDERED;
     test_subarray_partitioner(
-        subarray_layout, ranges, partitions, attr, budget, unsplittable);
+        subarray_layout, ranges, partitions, attr, memory_budget, unsplittable);
   }
 
   SECTION("# tile: col, cell: col") {
@@ -909,22 +930,22 @@ TEST_CASE_METHOD(
     // subarray: global
     subarray_layout = Layout::GLOBAL_ORDER;
     test_subarray_partitioner(
-        subarray_layout, ranges, partitions, attr, budget, unsplittable);
+        subarray_layout, ranges, partitions, attr, memory_budget, unsplittable);
 
     // subarray: row
     subarray_layout = Layout::ROW_MAJOR;
     test_subarray_partitioner(
-        subarray_layout, ranges, partitions, attr, budget, unsplittable);
+        subarray_layout, ranges, partitions, attr, memory_budget, unsplittable);
 
     // subarray: col
     subarray_layout = Layout::COL_MAJOR;
     test_subarray_partitioner(
-        subarray_layout, ranges, partitions, attr, budget, unsplittable);
+        subarray_layout, ranges, partitions, attr, memory_budget, unsplittable);
 
     // subarray: unordered
     subarray_layout = Layout::UNORDERED;
     test_subarray_partitioner(
-        subarray_layout, ranges, partitions, attr, budget, unsplittable);
+        subarray_layout, ranges, partitions, attr, memory_budget, unsplittable);
   }
 
   close_array(ctx_, array_);
@@ -937,7 +958,7 @@ TEST_CASE_METHOD(
   Layout subarray_layout;
   SubarrayRanges<uint64_t> ranges = {{2, 4}, {2, 4}};
   std::vector<SubarrayRanges<uint64_t>> partitions = {{{2, 2}, {2, 2}}};
-  uint64_t budget = 0 * sizeof(uint64_t);
+  uint64_t memory_budget = 0 * sizeof(uint64_t);
   std::string attr = TILEDB_COORDS;
   bool unsplittable = true;
 
@@ -949,22 +970,22 @@ TEST_CASE_METHOD(
     // subarray: global
     subarray_layout = Layout::GLOBAL_ORDER;
     test_subarray_partitioner(
-        subarray_layout, ranges, partitions, attr, budget, unsplittable);
+        subarray_layout, ranges, partitions, attr, memory_budget, unsplittable);
 
     // subarray: row
     subarray_layout = Layout::ROW_MAJOR;
     test_subarray_partitioner(
-        subarray_layout, ranges, partitions, attr, budget, unsplittable);
+        subarray_layout, ranges, partitions, attr, memory_budget, unsplittable);
 
     // subarray: col
     subarray_layout = Layout::COL_MAJOR;
     test_subarray_partitioner(
-        subarray_layout, ranges, partitions, attr, budget, unsplittable);
+        subarray_layout, ranges, partitions, attr, memory_budget, unsplittable);
 
     // subarray: unordered
     subarray_layout = Layout::UNORDERED;
     test_subarray_partitioner(
-        subarray_layout, ranges, partitions, attr, budget, unsplittable);
+        subarray_layout, ranges, partitions, attr, memory_budget, unsplittable);
   }
 
   SECTION("# tile: row, cell: col") {
@@ -975,22 +996,22 @@ TEST_CASE_METHOD(
     // subarray: global
     subarray_layout = Layout::GLOBAL_ORDER;
     test_subarray_partitioner(
-        subarray_layout, ranges, partitions, attr, budget, unsplittable);
+        subarray_layout, ranges, partitions, attr, memory_budget, unsplittable);
 
     // subarray: row
     subarray_layout = Layout::ROW_MAJOR;
     test_subarray_partitioner(
-        subarray_layout, ranges, partitions, attr, budget, unsplittable);
+        subarray_layout, ranges, partitions, attr, memory_budget, unsplittable);
 
     // subarray: col
     subarray_layout = Layout::COL_MAJOR;
     test_subarray_partitioner(
-        subarray_layout, ranges, partitions, attr, budget, unsplittable);
+        subarray_layout, ranges, partitions, attr, memory_budget, unsplittable);
 
     // subarray: unordered
     subarray_layout = Layout::UNORDERED;
     test_subarray_partitioner(
-        subarray_layout, ranges, partitions, attr, budget, unsplittable);
+        subarray_layout, ranges, partitions, attr, memory_budget, unsplittable);
   }
 
   SECTION("# tile: col, cell: row") {
@@ -1001,22 +1022,22 @@ TEST_CASE_METHOD(
     // subarray: global
     subarray_layout = Layout::GLOBAL_ORDER;
     test_subarray_partitioner(
-        subarray_layout, ranges, partitions, attr, budget, unsplittable);
+        subarray_layout, ranges, partitions, attr, memory_budget, unsplittable);
 
     // subarray: row
     subarray_layout = Layout::ROW_MAJOR;
     test_subarray_partitioner(
-        subarray_layout, ranges, partitions, attr, budget, unsplittable);
+        subarray_layout, ranges, partitions, attr, memory_budget, unsplittable);
 
     // subarray: col
     subarray_layout = Layout::COL_MAJOR;
     test_subarray_partitioner(
-        subarray_layout, ranges, partitions, attr, budget, unsplittable);
+        subarray_layout, ranges, partitions, attr, memory_budget, unsplittable);
 
     // subarray: unordered
     subarray_layout = Layout::UNORDERED;
     test_subarray_partitioner(
-        subarray_layout, ranges, partitions, attr, budget, unsplittable);
+        subarray_layout, ranges, partitions, attr, memory_budget, unsplittable);
   }
 
   SECTION("# tile: col, cell: col") {
@@ -1027,22 +1048,22 @@ TEST_CASE_METHOD(
     // subarray: global
     subarray_layout = Layout::GLOBAL_ORDER;
     test_subarray_partitioner(
-        subarray_layout, ranges, partitions, attr, budget, unsplittable);
+        subarray_layout, ranges, partitions, attr, memory_budget, unsplittable);
 
     // subarray: row
     subarray_layout = Layout::ROW_MAJOR;
     test_subarray_partitioner(
-        subarray_layout, ranges, partitions, attr, budget, unsplittable);
+        subarray_layout, ranges, partitions, attr, memory_budget, unsplittable);
 
     // subarray: col
     subarray_layout = Layout::COL_MAJOR;
     test_subarray_partitioner(
-        subarray_layout, ranges, partitions, attr, budget, unsplittable);
+        subarray_layout, ranges, partitions, attr, memory_budget, unsplittable);
 
     // subarray: unordered
     subarray_layout = Layout::UNORDERED;
     test_subarray_partitioner(
-        subarray_layout, ranges, partitions, attr, budget, unsplittable);
+        subarray_layout, ranges, partitions, attr, memory_budget, unsplittable);
   }
 
   close_array(ctx_, array_);
@@ -1056,7 +1077,7 @@ TEST_CASE_METHOD(
   SubarrayRanges<uint64_t> ranges = {{2, 4}, {2, 4}};
   std::vector<SubarrayRanges<uint64_t>> partitions;
   ;
-  uint64_t budget = 2 * sizeof(int);
+  uint64_t memory_budget = 2 * sizeof(int);
   std::string attr = "a";
   bool unsplittable = false;
 
@@ -1075,7 +1096,7 @@ TEST_CASE_METHOD(
         {{4, 4}, {3, 4}},
     };
     test_subarray_partitioner(
-        subarray_layout, ranges, partitions, attr, budget, unsplittable);
+        subarray_layout, ranges, partitions, attr, memory_budget, unsplittable);
 
     // subarray: row
     subarray_layout = Layout::ROW_MAJOR;
@@ -1088,7 +1109,7 @@ TEST_CASE_METHOD(
         {{4, 4}, {4, 4}},
     };
     test_subarray_partitioner(
-        subarray_layout, ranges, partitions, attr, budget, unsplittable);
+        subarray_layout, ranges, partitions, attr, memory_budget, unsplittable);
 
     // subarray: col
     subarray_layout = Layout::COL_MAJOR;
@@ -1101,7 +1122,7 @@ TEST_CASE_METHOD(
         {{4, 4}, {4, 4}},
     };
     test_subarray_partitioner(
-        subarray_layout, ranges, partitions, attr, budget, unsplittable);
+        subarray_layout, ranges, partitions, attr, memory_budget, unsplittable);
 
     // subarray: unordered
     subarray_layout = Layout::UNORDERED;
@@ -1114,7 +1135,7 @@ TEST_CASE_METHOD(
         {{4, 4}, {4, 4}},
     };
     test_subarray_partitioner(
-        subarray_layout, ranges, partitions, attr, budget, unsplittable);
+        subarray_layout, ranges, partitions, attr, memory_budget, unsplittable);
   }
 
   SECTION("# tile: row, cell: col") {
@@ -1132,7 +1153,7 @@ TEST_CASE_METHOD(
         {{3, 4}, {4, 4}},
     };
     test_subarray_partitioner(
-        subarray_layout, ranges, partitions, attr, budget, unsplittable);
+        subarray_layout, ranges, partitions, attr, memory_budget, unsplittable);
 
     // subarray: row
     subarray_layout = Layout::ROW_MAJOR;
@@ -1145,7 +1166,7 @@ TEST_CASE_METHOD(
         {{4, 4}, {4, 4}},
     };
     test_subarray_partitioner(
-        subarray_layout, ranges, partitions, attr, budget, unsplittable);
+        subarray_layout, ranges, partitions, attr, memory_budget, unsplittable);
 
     // subarray: col
     subarray_layout = Layout::COL_MAJOR;
@@ -1158,7 +1179,7 @@ TEST_CASE_METHOD(
         {{4, 4}, {4, 4}},
     };
     test_subarray_partitioner(
-        subarray_layout, ranges, partitions, attr, budget, unsplittable);
+        subarray_layout, ranges, partitions, attr, memory_budget, unsplittable);
 
     // subarray: unordered
     subarray_layout = Layout::UNORDERED;
@@ -1171,7 +1192,7 @@ TEST_CASE_METHOD(
         {{4, 4}, {4, 4}},
     };
     test_subarray_partitioner(
-        subarray_layout, ranges, partitions, attr, budget, unsplittable);
+        subarray_layout, ranges, partitions, attr, memory_budget, unsplittable);
   }
 
   SECTION("# tile: col, cell: row") {
@@ -1189,7 +1210,7 @@ TEST_CASE_METHOD(
         {{4, 4}, {3, 4}},
     };
     test_subarray_partitioner(
-        subarray_layout, ranges, partitions, attr, budget, unsplittable);
+        subarray_layout, ranges, partitions, attr, memory_budget, unsplittable);
 
     // subarray: row
     subarray_layout = Layout::ROW_MAJOR;
@@ -1202,7 +1223,7 @@ TEST_CASE_METHOD(
         {{4, 4}, {4, 4}},
     };
     test_subarray_partitioner(
-        subarray_layout, ranges, partitions, attr, budget, unsplittable);
+        subarray_layout, ranges, partitions, attr, memory_budget, unsplittable);
 
     // subarray: col
     subarray_layout = Layout::COL_MAJOR;
@@ -1215,7 +1236,7 @@ TEST_CASE_METHOD(
         {{4, 4}, {4, 4}},
     };
     test_subarray_partitioner(
-        subarray_layout, ranges, partitions, attr, budget, unsplittable);
+        subarray_layout, ranges, partitions, attr, memory_budget, unsplittable);
 
     // subarray: unordered
     subarray_layout = Layout::UNORDERED;
@@ -1228,7 +1249,7 @@ TEST_CASE_METHOD(
         {{4, 4}, {4, 4}},
     };
     test_subarray_partitioner(
-        subarray_layout, ranges, partitions, attr, budget, unsplittable);
+        subarray_layout, ranges, partitions, attr, memory_budget, unsplittable);
   }
 
   SECTION("# tile: col, cell: col") {
@@ -1246,7 +1267,7 @@ TEST_CASE_METHOD(
         {{3, 4}, {4, 4}},
     };
     test_subarray_partitioner(
-        subarray_layout, ranges, partitions, attr, budget, unsplittable);
+        subarray_layout, ranges, partitions, attr, memory_budget, unsplittable);
 
     // subarray: row
     subarray_layout = Layout::ROW_MAJOR;
@@ -1259,7 +1280,7 @@ TEST_CASE_METHOD(
         {{4, 4}, {4, 4}},
     };
     test_subarray_partitioner(
-        subarray_layout, ranges, partitions, attr, budget, unsplittable);
+        subarray_layout, ranges, partitions, attr, memory_budget, unsplittable);
 
     // subarray: col
     subarray_layout = Layout::COL_MAJOR;
@@ -1272,7 +1293,7 @@ TEST_CASE_METHOD(
         {{4, 4}, {4, 4}},
     };
     test_subarray_partitioner(
-        subarray_layout, ranges, partitions, attr, budget, unsplittable);
+        subarray_layout, ranges, partitions, attr, memory_budget, unsplittable);
 
     // subarray: unordered
     subarray_layout = Layout::UNORDERED;
@@ -1285,7 +1306,7 @@ TEST_CASE_METHOD(
         {{4, 4}, {4, 4}},
     };
     test_subarray_partitioner(
-        subarray_layout, ranges, partitions, attr, budget, unsplittable);
+        subarray_layout, ranges, partitions, attr, memory_budget, unsplittable);
   }
 
   close_array(ctx_, array_);
@@ -1299,7 +1320,7 @@ TEST_CASE_METHOD(
   SubarrayRanges<uint64_t> ranges = {{1, 2, 3, 3, 4, 4}, {2, 3, 4, 4}};
   std::vector<SubarrayRanges<uint64_t>> partitions = {
       {{1, 2, 3, 3, 4, 4}, {2, 3, 4, 4}}};
-  uint64_t budget = 100 * sizeof(int);
+  uint64_t memory_budget = 100 * sizeof(int);
   std::string attr = "a";
   bool unsplittable = false;
 
@@ -1311,17 +1332,17 @@ TEST_CASE_METHOD(
     // subarray: row
     subarray_layout = Layout::ROW_MAJOR;
     test_subarray_partitioner(
-        subarray_layout, ranges, partitions, attr, budget, unsplittable);
+        subarray_layout, ranges, partitions, attr, memory_budget, unsplittable);
 
     // subarray: col
     subarray_layout = Layout::COL_MAJOR;
     test_subarray_partitioner(
-        subarray_layout, ranges, partitions, attr, budget, unsplittable);
+        subarray_layout, ranges, partitions, attr, memory_budget, unsplittable);
 
     // subarray: unordered
     subarray_layout = Layout::UNORDERED;
     test_subarray_partitioner(
-        subarray_layout, ranges, partitions, attr, budget, unsplittable);
+        subarray_layout, ranges, partitions, attr, memory_budget, unsplittable);
   }
 
   SECTION("# tile: row, cell: col") {
@@ -1332,17 +1353,17 @@ TEST_CASE_METHOD(
     // subarray: row
     subarray_layout = Layout::ROW_MAJOR;
     test_subarray_partitioner(
-        subarray_layout, ranges, partitions, attr, budget, unsplittable);
+        subarray_layout, ranges, partitions, attr, memory_budget, unsplittable);
 
     // subarray: col
     subarray_layout = Layout::COL_MAJOR;
     test_subarray_partitioner(
-        subarray_layout, ranges, partitions, attr, budget, unsplittable);
+        subarray_layout, ranges, partitions, attr, memory_budget, unsplittable);
 
     // subarray: unordered
     subarray_layout = Layout::UNORDERED;
     test_subarray_partitioner(
-        subarray_layout, ranges, partitions, attr, budget, unsplittable);
+        subarray_layout, ranges, partitions, attr, memory_budget, unsplittable);
   }
 
   SECTION("# tile: col, cell: row") {
@@ -1353,17 +1374,17 @@ TEST_CASE_METHOD(
     // subarray: row
     subarray_layout = Layout::ROW_MAJOR;
     test_subarray_partitioner(
-        subarray_layout, ranges, partitions, attr, budget, unsplittable);
+        subarray_layout, ranges, partitions, attr, memory_budget, unsplittable);
 
     // subarray: col
     subarray_layout = Layout::COL_MAJOR;
     test_subarray_partitioner(
-        subarray_layout, ranges, partitions, attr, budget, unsplittable);
+        subarray_layout, ranges, partitions, attr, memory_budget, unsplittable);
 
     // subarray: unordered
     subarray_layout = Layout::UNORDERED;
     test_subarray_partitioner(
-        subarray_layout, ranges, partitions, attr, budget, unsplittable);
+        subarray_layout, ranges, partitions, attr, memory_budget, unsplittable);
   }
 
   SECTION("# tile: col, cell: col") {
@@ -1374,17 +1395,17 @@ TEST_CASE_METHOD(
     // subarray: row
     subarray_layout = Layout::ROW_MAJOR;
     test_subarray_partitioner(
-        subarray_layout, ranges, partitions, attr, budget, unsplittable);
+        subarray_layout, ranges, partitions, attr, memory_budget, unsplittable);
 
     // subarray: col
     subarray_layout = Layout::COL_MAJOR;
     test_subarray_partitioner(
-        subarray_layout, ranges, partitions, attr, budget, unsplittable);
+        subarray_layout, ranges, partitions, attr, memory_budget, unsplittable);
 
     // subarray: unordered
     subarray_layout = Layout::UNORDERED;
     test_subarray_partitioner(
-        subarray_layout, ranges, partitions, attr, budget, unsplittable);
+        subarray_layout, ranges, partitions, attr, memory_budget, unsplittable);
   }
 
   close_array(ctx_, array_);
@@ -1397,7 +1418,7 @@ TEST_CASE_METHOD(
   Layout subarray_layout;
   SubarrayRanges<uint64_t> ranges;
   std::vector<SubarrayRanges<uint64_t>> partitions;
-  uint64_t budget = 0;
+  uint64_t memory_budget = 0;
   std::string attr = "a";
   bool unsplittable = false;
 
@@ -1413,9 +1434,9 @@ TEST_CASE_METHOD(
         {{4, 4}, {2, 3, 4, 4}},
     };
     ranges = {{1, 2, 3, 3, 4, 4}, {2, 3, 4, 4}};
-    budget = 9 * sizeof(int);
+    memory_budget = 9 * sizeof(int);
     test_subarray_partitioner(
-        subarray_layout, ranges, partitions, attr, budget, unsplittable);
+        subarray_layout, ranges, partitions, attr, memory_budget, unsplittable);
 
     // subarray: col
     subarray_layout = Layout::COL_MAJOR;
@@ -1424,9 +1445,9 @@ TEST_CASE_METHOD(
         {{1, 2, 3, 3, 4, 4}, {4, 4}},
     };
     ranges = {{1, 2, 3, 3, 4, 4}, {2, 3, 4, 4}};
-    budget = 9 * sizeof(int);
+    memory_budget = 9 * sizeof(int);
     test_subarray_partitioner(
-        subarray_layout, ranges, partitions, attr, budget, unsplittable);
+        subarray_layout, ranges, partitions, attr, memory_budget, unsplittable);
 
     // subarray: unordered
     subarray_layout = Layout::UNORDERED;
@@ -1435,9 +1456,9 @@ TEST_CASE_METHOD(
         {{4, 4}, {2, 3, 4, 4}},
     };
     ranges = {{1, 2, 3, 3, 4, 4}, {2, 3, 4, 4}};
-    budget = 9 * sizeof(int);
+    memory_budget = 9 * sizeof(int);
     test_subarray_partitioner(
-        subarray_layout, ranges, partitions, attr, budget, unsplittable);
+        subarray_layout, ranges, partitions, attr, memory_budget, unsplittable);
   }
 
   SECTION("# tile: row, cell: col") {
@@ -1452,9 +1473,9 @@ TEST_CASE_METHOD(
         {{4, 4}, {2, 3, 4, 4}},
     };
     ranges = {{1, 2, 3, 3, 4, 4}, {2, 3, 4, 4}};
-    budget = 9 * sizeof(int);
+    memory_budget = 9 * sizeof(int);
     test_subarray_partitioner(
-        subarray_layout, ranges, partitions, attr, budget, unsplittable);
+        subarray_layout, ranges, partitions, attr, memory_budget, unsplittable);
 
     // subarray: col
     subarray_layout = Layout::COL_MAJOR;
@@ -1463,9 +1484,9 @@ TEST_CASE_METHOD(
         {{1, 2, 3, 3, 4, 4}, {4, 4}},
     };
     ranges = {{1, 2, 3, 3, 4, 4}, {2, 3, 4, 4}};
-    budget = 9 * sizeof(int);
+    memory_budget = 9 * sizeof(int);
     test_subarray_partitioner(
-        subarray_layout, ranges, partitions, attr, budget, unsplittable);
+        subarray_layout, ranges, partitions, attr, memory_budget, unsplittable);
 
     // subarray: unordered
     subarray_layout = Layout::UNORDERED;
@@ -1474,9 +1495,9 @@ TEST_CASE_METHOD(
         {{1, 2, 3, 3, 4, 4}, {4, 4}},
     };
     ranges = {{1, 2, 3, 3, 4, 4}, {2, 3, 4, 4}};
-    budget = 9 * sizeof(int);
+    memory_budget = 9 * sizeof(int);
     test_subarray_partitioner(
-        subarray_layout, ranges, partitions, attr, budget, unsplittable);
+        subarray_layout, ranges, partitions, attr, memory_budget, unsplittable);
   }
 
   SECTION("# tile: col, cell: row") {
@@ -1491,9 +1512,9 @@ TEST_CASE_METHOD(
         {{4, 4}, {2, 3, 4, 4}},
     };
     ranges = {{1, 2, 3, 3, 4, 4}, {2, 3, 4, 4}};
-    budget = 9 * sizeof(int);
+    memory_budget = 9 * sizeof(int);
     test_subarray_partitioner(
-        subarray_layout, ranges, partitions, attr, budget, unsplittable);
+        subarray_layout, ranges, partitions, attr, memory_budget, unsplittable);
 
     // subarray: col
     subarray_layout = Layout::COL_MAJOR;
@@ -1502,9 +1523,9 @@ TEST_CASE_METHOD(
         {{1, 2, 3, 4}, {4, 4}},
     };
     ranges = {{1, 2, 3, 4}, {1, 2, 3, 3, 4, 4}};
-    budget = 12 * sizeof(int);
+    memory_budget = 12 * sizeof(int);
     test_subarray_partitioner(
-        subarray_layout, ranges, partitions, attr, budget, unsplittable);
+        subarray_layout, ranges, partitions, attr, memory_budget, unsplittable);
 
     // subarray: unordered
     subarray_layout = Layout::UNORDERED;
@@ -1513,9 +1534,9 @@ TEST_CASE_METHOD(
         {{4, 4}, {2, 3, 4, 4}},
     };
     ranges = {{1, 2, 3, 3, 4, 4}, {2, 3, 4, 4}};
-    budget = 9 * sizeof(int);
+    memory_budget = 9 * sizeof(int);
     test_subarray_partitioner(
-        subarray_layout, ranges, partitions, attr, budget, unsplittable);
+        subarray_layout, ranges, partitions, attr, memory_budget, unsplittable);
   }
 
   SECTION("# tile: col, cell: col") {
@@ -1530,9 +1551,9 @@ TEST_CASE_METHOD(
         {{4, 4}, {2, 3, 4, 4}},
     };
     ranges = {{1, 2, 3, 3, 4, 4}, {2, 3, 4, 4}};
-    budget = 9 * sizeof(int);
+    memory_budget = 9 * sizeof(int);
     test_subarray_partitioner(
-        subarray_layout, ranges, partitions, attr, budget, unsplittable);
+        subarray_layout, ranges, partitions, attr, memory_budget, unsplittable);
 
     // subarray: col
     subarray_layout = Layout::COL_MAJOR;
@@ -1541,9 +1562,9 @@ TEST_CASE_METHOD(
         {{1, 2, 3, 4}, {4, 4}},
     };
     ranges = {{1, 2, 3, 4}, {1, 2, 3, 3, 4, 4}};
-    budget = 12 * sizeof(int);
+    memory_budget = 12 * sizeof(int);
     test_subarray_partitioner(
-        subarray_layout, ranges, partitions, attr, budget, unsplittable);
+        subarray_layout, ranges, partitions, attr, memory_budget, unsplittable);
 
     // subarray: unordered
     subarray_layout = Layout::UNORDERED;
@@ -1552,9 +1573,9 @@ TEST_CASE_METHOD(
         {{1, 2, 3, 4}, {4, 4}},
     };
     ranges = {{1, 2, 3, 4}, {1, 2, 3, 3, 4, 4}};
-    budget = 12 * sizeof(int);
+    memory_budget = 12 * sizeof(int);
     test_subarray_partitioner(
-        subarray_layout, ranges, partitions, attr, budget, unsplittable);
+        subarray_layout, ranges, partitions, attr, memory_budget, unsplittable);
   }
 
   close_array(ctx_, array_);
@@ -1568,7 +1589,7 @@ TEST_CASE_METHOD(
   SubarrayRanges<uint64_t> ranges = {{1, 2, 3, 3, 4, 4}, {2, 3, 4, 4}};
   std::vector<SubarrayRanges<uint64_t>> partitions = {
       {{1, 2, 3, 3, 4, 4}, {2, 3, 4, 4}}};
-  uint64_t budget = 100 * sizeof(int);
+  uint64_t memory_budget = 100 * sizeof(int);
   std::string attr = "a";
   bool unsplittable = false;
 
@@ -1584,9 +1605,9 @@ TEST_CASE_METHOD(
         {{4, 4}, {2, 3, 4, 4}},
     };
     ranges = {{1, 2, 3, 3, 4, 4}, {2, 3, 4, 4}};
-    budget = 11 * sizeof(int);
+    memory_budget = 11 * sizeof(int);
     test_subarray_partitioner(
-        subarray_layout, ranges, partitions, attr, budget, unsplittable);
+        subarray_layout, ranges, partitions, attr, memory_budget, unsplittable);
 
     // subarray: col
     subarray_layout = Layout::COL_MAJOR;
@@ -1595,9 +1616,9 @@ TEST_CASE_METHOD(
         {{1, 2, 3, 3, 4, 4}, {4, 4}},
     };
     ranges = {{1, 2, 3, 3, 4, 4}, {2, 3, 4, 4}};
-    budget = 11 * sizeof(int);
+    memory_budget = 11 * sizeof(int);
     test_subarray_partitioner(
-        subarray_layout, ranges, partitions, attr, budget, unsplittable);
+        subarray_layout, ranges, partitions, attr, memory_budget, unsplittable);
 
     // subarray: unordered
     subarray_layout = Layout::UNORDERED;
@@ -1606,9 +1627,9 @@ TEST_CASE_METHOD(
         {{4, 4}, {2, 3, 4, 4}},
     };
     ranges = {{1, 2, 3, 3, 4, 4}, {2, 3, 4, 4}};
-    budget = 11 * sizeof(int);
+    memory_budget = 11 * sizeof(int);
     test_subarray_partitioner(
-        subarray_layout, ranges, partitions, attr, budget, unsplittable);
+        subarray_layout, ranges, partitions, attr, memory_budget, unsplittable);
   }
 
   SECTION("# tile: row, cell: col") {
@@ -1623,9 +1644,9 @@ TEST_CASE_METHOD(
         {{4, 4}, {2, 3, 4, 4}},
     };
     ranges = {{1, 2, 3, 3, 4, 4}, {2, 3, 4, 4}};
-    budget = 11 * sizeof(int);
+    memory_budget = 11 * sizeof(int);
     test_subarray_partitioner(
-        subarray_layout, ranges, partitions, attr, budget, unsplittable);
+        subarray_layout, ranges, partitions, attr, memory_budget, unsplittable);
 
     // subarray: col
     subarray_layout = Layout::COL_MAJOR;
@@ -1634,9 +1655,9 @@ TEST_CASE_METHOD(
         {{1, 2, 3, 3, 4, 4}, {4, 4}},
     };
     ranges = {{1, 2, 3, 3, 4, 4}, {2, 3, 4, 4}};
-    budget = 11 * sizeof(int);
+    memory_budget = 11 * sizeof(int);
     test_subarray_partitioner(
-        subarray_layout, ranges, partitions, attr, budget, unsplittable);
+        subarray_layout, ranges, partitions, attr, memory_budget, unsplittable);
 
     // subarray: unordered
     subarray_layout = Layout::UNORDERED;
@@ -1645,9 +1666,9 @@ TEST_CASE_METHOD(
         {{1, 2, 3, 3, 4, 4}, {4, 4}},
     };
     ranges = {{1, 2, 3, 3, 4, 4}, {2, 3, 4, 4}};
-    budget = 11 * sizeof(int);
+    memory_budget = 11 * sizeof(int);
     test_subarray_partitioner(
-        subarray_layout, ranges, partitions, attr, budget, unsplittable);
+        subarray_layout, ranges, partitions, attr, memory_budget, unsplittable);
   }
 
   SECTION("# tile: col, cell: row") {
@@ -1662,9 +1683,9 @@ TEST_CASE_METHOD(
         {{4, 4}, {2, 3, 4, 4}},
     };
     ranges = {{1, 2, 3, 3, 4, 4}, {2, 3, 4, 4}};
-    budget = 11 * sizeof(int);
+    memory_budget = 11 * sizeof(int);
     test_subarray_partitioner(
-        subarray_layout, ranges, partitions, attr, budget, unsplittable);
+        subarray_layout, ranges, partitions, attr, memory_budget, unsplittable);
 
     // subarray: col
     subarray_layout = Layout::COL_MAJOR;
@@ -1673,9 +1694,9 @@ TEST_CASE_METHOD(
         {{1, 2, 3, 4}, {3, 3, 4, 4}},
     };
     ranges = {{1, 2, 3, 4}, {1, 2, 3, 3, 4, 4}};
-    budget = 10 * sizeof(int);
+    memory_budget = 10 * sizeof(int);
     test_subarray_partitioner(
-        subarray_layout, ranges, partitions, attr, budget, unsplittable);
+        subarray_layout, ranges, partitions, attr, memory_budget, unsplittable);
 
     // subarray: unordered
     subarray_layout = Layout::UNORDERED;
@@ -1684,9 +1705,9 @@ TEST_CASE_METHOD(
         {{4, 4}, {2, 3, 4, 4}},
     };
     ranges = {{1, 2, 3, 3, 4, 4}, {2, 3, 4, 4}};
-    budget = 11 * sizeof(int);
+    memory_budget = 11 * sizeof(int);
     test_subarray_partitioner(
-        subarray_layout, ranges, partitions, attr, budget, unsplittable);
+        subarray_layout, ranges, partitions, attr, memory_budget, unsplittable);
   }
 
   SECTION("# tile: col, cell: col") {
@@ -1701,9 +1722,9 @@ TEST_CASE_METHOD(
         {{4, 4}, {2, 3, 4, 4}},
     };
     ranges = {{1, 2, 3, 3, 4, 4}, {2, 3, 4, 4}};
-    budget = 11 * sizeof(int);
+    memory_budget = 11 * sizeof(int);
     test_subarray_partitioner(
-        subarray_layout, ranges, partitions, attr, budget, unsplittable);
+        subarray_layout, ranges, partitions, attr, memory_budget, unsplittable);
 
     // subarray: col
     subarray_layout = Layout::COL_MAJOR;
@@ -1712,9 +1733,9 @@ TEST_CASE_METHOD(
         {{1, 2, 3, 4}, {3, 3, 4, 4}},
     };
     ranges = {{1, 2, 3, 4}, {1, 2, 3, 3, 4, 4}};
-    budget = 10 * sizeof(int);
+    memory_budget = 10 * sizeof(int);
     test_subarray_partitioner(
-        subarray_layout, ranges, partitions, attr, budget, unsplittable);
+        subarray_layout, ranges, partitions, attr, memory_budget, unsplittable);
 
     // subarray: unordered
     subarray_layout = Layout::UNORDERED;
@@ -1723,9 +1744,9 @@ TEST_CASE_METHOD(
         {{1, 2, 3, 4}, {3, 3, 4, 4}},
     };
     ranges = {{1, 2, 3, 4}, {1, 2, 3, 3, 4, 4}};
-    budget = 10 * sizeof(int);
+    memory_budget = 10 * sizeof(int);
     test_subarray_partitioner(
-        subarray_layout, ranges, partitions, attr, budget, unsplittable);
+        subarray_layout, ranges, partitions, attr, memory_budget, unsplittable);
   }
 
   close_array(ctx_, array_);
@@ -1738,7 +1759,7 @@ TEST_CASE_METHOD(
   Layout subarray_layout;
   SubarrayRanges<uint64_t> ranges;
   std::vector<SubarrayRanges<uint64_t>> partitions;
-  uint64_t budget = 100 * sizeof(int);
+  uint64_t memory_budget = 100 * sizeof(int);
   std::string attr = "a";
   bool unsplittable = false;
 
@@ -1756,9 +1777,9 @@ TEST_CASE_METHOD(
         {{4, 4}, {2, 3, 4, 4}},
     };
     ranges = {{1, 2, 3, 3, 4, 4}, {2, 3, 4, 4}};
-    budget = 3 * sizeof(int);
+    memory_budget = 3 * sizeof(int);
     test_subarray_partitioner(
-        subarray_layout, ranges, partitions, attr, budget, unsplittable);
+        subarray_layout, ranges, partitions, attr, memory_budget, unsplittable);
 
     // subarray: col
     subarray_layout = Layout::COL_MAJOR;
@@ -1771,9 +1792,9 @@ TEST_CASE_METHOD(
         {{4, 4}, {4, 4}},
     };
     ranges = {{1, 2, 3, 3, 4, 4}, {2, 3, 4, 4}};
-    budget = 3 * sizeof(int);
+    memory_budget = 3 * sizeof(int);
     test_subarray_partitioner(
-        subarray_layout, ranges, partitions, attr, budget, unsplittable);
+        subarray_layout, ranges, partitions, attr, memory_budget, unsplittable);
 
     // subarray: unordered
     subarray_layout = Layout::UNORDERED;
@@ -1785,9 +1806,9 @@ TEST_CASE_METHOD(
         {{4, 4}, {2, 3, 4, 4}},
     };
     ranges = {{1, 2, 3, 3, 4, 4}, {2, 3, 4, 4}};
-    budget = 3 * sizeof(int);
+    memory_budget = 3 * sizeof(int);
     test_subarray_partitioner(
-        subarray_layout, ranges, partitions, attr, budget, unsplittable);
+        subarray_layout, ranges, partitions, attr, memory_budget, unsplittable);
   }
 
   SECTION("# tile: row, cell: col") {
@@ -1804,9 +1825,9 @@ TEST_CASE_METHOD(
         {{4, 4}, {2, 3, 4, 4}},
     };
     ranges = {{1, 2, 3, 3, 4, 4}, {2, 3, 4, 4}};
-    budget = 3 * sizeof(int);
+    memory_budget = 3 * sizeof(int);
     test_subarray_partitioner(
-        subarray_layout, ranges, partitions, attr, budget, unsplittable);
+        subarray_layout, ranges, partitions, attr, memory_budget, unsplittable);
 
     // subarray: col
     subarray_layout = Layout::COL_MAJOR;
@@ -1819,9 +1840,9 @@ TEST_CASE_METHOD(
         {{4, 4}, {4, 4}},
     };
     ranges = {{1, 2, 3, 3, 4, 4}, {2, 3, 4, 4}};
-    budget = 3 * sizeof(int);
+    memory_budget = 3 * sizeof(int);
     test_subarray_partitioner(
-        subarray_layout, ranges, partitions, attr, budget, unsplittable);
+        subarray_layout, ranges, partitions, attr, memory_budget, unsplittable);
 
     // subarray: unordered
     subarray_layout = Layout::UNORDERED;
@@ -1834,9 +1855,9 @@ TEST_CASE_METHOD(
         {{4, 4}, {4, 4}},
     };
     ranges = {{1, 2, 3, 3, 4, 4}, {2, 3, 4, 4}};
-    budget = 3 * sizeof(int);
+    memory_budget = 3 * sizeof(int);
     test_subarray_partitioner(
-        subarray_layout, ranges, partitions, attr, budget, unsplittable);
+        subarray_layout, ranges, partitions, attr, memory_budget, unsplittable);
   }
 
   SECTION("# tile: col, cell: row") {
@@ -1853,9 +1874,9 @@ TEST_CASE_METHOD(
         {{4, 4}, {2, 3, 4, 4}},
     };
     ranges = {{1, 2, 3, 3, 4, 4}, {2, 3, 4, 4}};
-    budget = 3 * sizeof(int);
+    memory_budget = 3 * sizeof(int);
     test_subarray_partitioner(
-        subarray_layout, ranges, partitions, attr, budget, unsplittable);
+        subarray_layout, ranges, partitions, attr, memory_budget, unsplittable);
 
     // subarray: col
     subarray_layout = Layout::COL_MAJOR;
@@ -1866,9 +1887,9 @@ TEST_CASE_METHOD(
         {{1, 2, 3, 4}, {4, 4}},
     };
     ranges = {{1, 2, 3, 4}, {1, 2, 3, 3, 4, 4}};
-    budget = 4 * sizeof(int);
+    memory_budget = 4 * sizeof(int);
     test_subarray_partitioner(
-        subarray_layout, ranges, partitions, attr, budget, unsplittable);
+        subarray_layout, ranges, partitions, attr, memory_budget, unsplittable);
 
     // subarray: unordered
     subarray_layout = Layout::UNORDERED;
@@ -1880,9 +1901,9 @@ TEST_CASE_METHOD(
         {{4, 4}, {2, 3, 4, 4}},
     };
     ranges = {{1, 2, 3, 3, 4, 4}, {2, 3, 4, 4}};
-    budget = 3 * sizeof(int);
+    memory_budget = 3 * sizeof(int);
     test_subarray_partitioner(
-        subarray_layout, ranges, partitions, attr, budget, unsplittable);
+        subarray_layout, ranges, partitions, attr, memory_budget, unsplittable);
   }
 
   SECTION("# tile: col, cell: col") {
@@ -1899,9 +1920,9 @@ TEST_CASE_METHOD(
         {{4, 4}, {2, 3, 4, 4}},
     };
     ranges = {{1, 2, 3, 3, 4, 4}, {2, 3, 4, 4}};
-    budget = 3 * sizeof(int);
+    memory_budget = 3 * sizeof(int);
     test_subarray_partitioner(
-        subarray_layout, ranges, partitions, attr, budget, unsplittable);
+        subarray_layout, ranges, partitions, attr, memory_budget, unsplittable);
 
     // subarray: col
     subarray_layout = Layout::COL_MAJOR;
@@ -1912,9 +1933,9 @@ TEST_CASE_METHOD(
         {{1, 2, 3, 4}, {4, 4}},
     };
     ranges = {{1, 2, 3, 4}, {1, 2, 3, 3, 4, 4}};
-    budget = 4 * sizeof(int);
+    memory_budget = 4 * sizeof(int);
     test_subarray_partitioner(
-        subarray_layout, ranges, partitions, attr, budget, unsplittable);
+        subarray_layout, ranges, partitions, attr, memory_budget, unsplittable);
 
     // subarray: unordered
     subarray_layout = Layout::UNORDERED;
@@ -1925,9 +1946,9 @@ TEST_CASE_METHOD(
         {{1, 2, 3, 4}, {4, 4}},
     };
     ranges = {{1, 2, 3, 4}, {1, 2, 3, 3, 4, 4}};
-    budget = 4 * sizeof(int);
+    memory_budget = 4 * sizeof(int);
     test_subarray_partitioner(
-        subarray_layout, ranges, partitions, attr, budget, unsplittable);
+        subarray_layout, ranges, partitions, attr, memory_budget, unsplittable);
   }
 
   close_array(ctx_, array_);
@@ -1940,7 +1961,7 @@ TEST_CASE_METHOD(
   Layout subarray_layout;
   std::vector<SubarrayRanges<uint64_t>> partitions = {{{1, 1}, {2, 2}}};
   SubarrayRanges<uint64_t> ranges = {{1, 2, 3, 3, 4, 4}, {2, 3, 4, 4}};
-  uint64_t budget = 0 * sizeof(int);
+  uint64_t memory_budget = 0 * sizeof(int);
   std::string attr = "a";
   bool unsplittable = true;
 
@@ -1952,17 +1973,17 @@ TEST_CASE_METHOD(
     // subarray: row
     subarray_layout = Layout::ROW_MAJOR;
     test_subarray_partitioner(
-        subarray_layout, ranges, partitions, attr, budget, unsplittable);
+        subarray_layout, ranges, partitions, attr, memory_budget, unsplittable);
 
     // subarray: col
     subarray_layout = Layout::COL_MAJOR;
     test_subarray_partitioner(
-        subarray_layout, ranges, partitions, attr, budget, unsplittable);
+        subarray_layout, ranges, partitions, attr, memory_budget, unsplittable);
 
     // subarray: unordered
     subarray_layout = Layout::UNORDERED;
     test_subarray_partitioner(
-        subarray_layout, ranges, partitions, attr, budget, unsplittable);
+        subarray_layout, ranges, partitions, attr, memory_budget, unsplittable);
   }
 
   SECTION("# tile: row, cell: col") {
@@ -1973,17 +1994,17 @@ TEST_CASE_METHOD(
     // subarray: row
     subarray_layout = Layout::ROW_MAJOR;
     test_subarray_partitioner(
-        subarray_layout, ranges, partitions, attr, budget, unsplittable);
+        subarray_layout, ranges, partitions, attr, memory_budget, unsplittable);
 
     // subarray: col
     subarray_layout = Layout::COL_MAJOR;
     test_subarray_partitioner(
-        subarray_layout, ranges, partitions, attr, budget, unsplittable);
+        subarray_layout, ranges, partitions, attr, memory_budget, unsplittable);
 
     // subarray: unordered
     subarray_layout = Layout::UNORDERED;
     test_subarray_partitioner(
-        subarray_layout, ranges, partitions, attr, budget, unsplittable);
+        subarray_layout, ranges, partitions, attr, memory_budget, unsplittable);
   }
 
   SECTION("# tile: col, cell: row") {
@@ -1994,17 +2015,17 @@ TEST_CASE_METHOD(
     // subarray: row
     subarray_layout = Layout::ROW_MAJOR;
     test_subarray_partitioner(
-        subarray_layout, ranges, partitions, attr, budget, unsplittable);
+        subarray_layout, ranges, partitions, attr, memory_budget, unsplittable);
 
     // subarray: col
     subarray_layout = Layout::COL_MAJOR;
     test_subarray_partitioner(
-        subarray_layout, ranges, partitions, attr, budget, unsplittable);
+        subarray_layout, ranges, partitions, attr, memory_budget, unsplittable);
 
     // subarray: unordered
     subarray_layout = Layout::UNORDERED;
     test_subarray_partitioner(
-        subarray_layout, ranges, partitions, attr, budget, unsplittable);
+        subarray_layout, ranges, partitions, attr, memory_budget, unsplittable);
   }
 
   SECTION("# tile: col, cell: col") {
@@ -2015,17 +2036,17 @@ TEST_CASE_METHOD(
     // subarray: row
     subarray_layout = Layout::ROW_MAJOR;
     test_subarray_partitioner(
-        subarray_layout, ranges, partitions, attr, budget, unsplittable);
+        subarray_layout, ranges, partitions, attr, memory_budget, unsplittable);
 
     // subarray: col
     subarray_layout = Layout::COL_MAJOR;
     test_subarray_partitioner(
-        subarray_layout, ranges, partitions, attr, budget, unsplittable);
+        subarray_layout, ranges, partitions, attr, memory_budget, unsplittable);
 
     // subarray: unordered
     subarray_layout = Layout::UNORDERED;
     test_subarray_partitioner(
-        subarray_layout, ranges, partitions, attr, budget, unsplittable);
+        subarray_layout, ranges, partitions, attr, memory_budget, unsplittable);
   }
 
   close_array(ctx_, array_);

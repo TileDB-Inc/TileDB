@@ -386,7 +386,8 @@ TILEDB_EXPORT int32_t tiledb_subarray_partitioner_get_result_budget_fixed(
  * @endcode
  *
  * @param budget_off - Receive the budget in bytes for offsets of var attributes
- * @param budget_val - Receive the budget in bytes for var sized attribute values
+ * @param budget_val - Receive the budget in bytes for var sized attribute
+ * values
  * @return `TILEDB_OK` for success or `TILEDB_ERR` for error.
  */
 TILEDB_EXPORT int32_t tiledb_subarray_partitioner_get_result_budget_var(
@@ -503,8 +504,10 @@ tiledb_subarray_partitioner_get_result_budget_nullable_fixed(
  * &budget_off, &budget_val, &budget_validity, partitioner);
  * @endcode
  *
- * @param budget_off - Receives the budget in bytes for offsets of var attributes
- * @param budget_val - Receives the budget in bytes for var sized attribute values
+ * @param budget_off - Receives the budget in bytes for offsets of var
+ * attributes
+ * @param budget_val - Receives the budget in bytes for var sized attribute
+ * values
  * @param budget_validity Receives the budget in bytes for validity vectors.
  * @return `TILEDB_OK` for success or `TILEDB_ERR` for error.
  */
@@ -529,7 +532,8 @@ tiledb_subarray_partitioner_get_result_budget_nullable_var(
  * partitioner);
  * @endcode
  *
- * @param budget - Receives the byte count memory budget for the specified attribute.
+ * @param budget - Receives the byte count memory budget for the specified
+ * attribute.
  * @return `TILEDB_OK` for success or `TILEDB_ERR` for error.
  */
 TILEDB_EXPORT int32_t tiledb_subarray_partitioner_get_result_budget_fixed(
