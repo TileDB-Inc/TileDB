@@ -334,6 +334,9 @@ const std::string filter_option_bit_width_max_window_str =
 const std::string filter_option_positive_delta_max_window_str =
     "POSITIVE_DELTA_MAX_WINDOW";
 
+/** The string representation for FilterCompressorLevel type default. */
+const std::string filter_compressor_level_default_str = "DEFAULT";
+
 /** The string representation for type int32. */
 const std::string int32_str = "INT32";
 

@@ -33,7 +33,6 @@
 #ifndef TILEDB_ZSTD_H
 #define TILEDB_ZSTD_H
 
-#include "tiledb.h"
 #include "tiledb/common/status.h"
 
 #include "tiledb/sm/misc/resource_pool.h"

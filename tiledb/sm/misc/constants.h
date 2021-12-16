@@ -321,6 +321,9 @@ extern const std::string filter_option_bit_width_max_window_str;
  */
 extern const std::string filter_option_positive_delta_max_window_str;
 
+/** The string representation for FilterCompressorLevel type default. */
+extern const std::string filter_compressor_level_default_str;
+
 /** The string representation for type int32. */
 extern const std::string int32_str;
 

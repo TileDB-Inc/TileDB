@@ -45,6 +45,7 @@
 #include "tiledb/sm/enums/array_type.h"
 #include "tiledb/sm/enums/encryption_type.h"
 #include "tiledb/sm/enums/filesystem.h"
+#include "tiledb/sm/enums/filter_compressor_level.h"
 #include "tiledb/sm/enums/filter_option.h"
 #include "tiledb/sm/enums/filter_type.h"
 #include "tiledb/sm/enums/layout.h"
@@ -208,6 +209,26 @@ int32_t tiledb_filter_option_from_str(
   if (!tiledb::sm::filter_option_enum(str, &val).ok())
     return TILEDB_ERR;
   *filter_option = (tiledb_filter_option_t)val;
+  return TILEDB_OK;
+}
+
+int32_t tiledb_filter_compressor_level_to_str(
+    tiledb_filter_compressor_level_t filter_compressor_level,
+    const char** str) {
+  const auto& strval = tiledb::sm::filter_compressor_level_str(
+      (tiledb::sm::FilterCompressorLevel)filter_compressor_level);
+  *str = strval.c_str();
+  return strval.empty() ? TILEDB_ERR : TILEDB_OK;
+}
+
+int32_t tiledb_filter_compressor_level_from_str(
+    const char* str,
+    tiledb_filter_compressor_level_t* filter_compressor_level) {
+  tiledb::sm::FilterCompressorLevel val =
+      tiledb::sm::FilterCompressorLevel::FILTER_COMPRESSOR_LEVEL_DEFAULT;
+  if (!tiledb::sm::filter_compressor_level_enum(str, &val).ok())
+    return TILEDB_ERR;
+  *filter_compressor_level = (tiledb_filter_compressor_level_t)val;
   return TILEDB_OK;
 }
 

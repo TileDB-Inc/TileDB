@@ -33,7 +33,6 @@
 #ifndef TILEDB_BZIP_COMPRESSOR_H
 #define TILEDB_BZIP_COMPRESSOR_H
 
-#include "tiledb.h"
 #include "tiledb/common/status.h"
 
 using namespace tiledb::common;

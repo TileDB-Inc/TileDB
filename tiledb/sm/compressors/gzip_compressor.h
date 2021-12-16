@@ -33,7 +33,6 @@
 #ifndef TILEDB_GZIP_H
 #define TILEDB_GZIP_H
 
-#include "tiledb.h"
 #include "tiledb/common/status.h"
 
 #include <cmath>

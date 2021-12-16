@@ -22,6 +22,8 @@
  * THE SOFTWARE.
  */
 
+#include <limits.h>
+
 // clang-format is disabled on the first enum so that we can manually indent it
 // properly.
 // clang-format off
@@ -196,6 +198,12 @@
     TILEDB_FILTER_OPTION_ENUM(BIT_WIDTH_MAX_WINDOW) = 1,
     /** Max window length for positive-delta encoding. Type: `uint32_t`. */
     TILEDB_FILTER_OPTION_ENUM(POSITIVE_DELTA_MAX_WINDOW) = 2,
+#endif
+
+#ifdef TILEDB_FILTER_COMPRESSOR_LEVEL_ENUM
+    /** Default compressor level */
+    TILEDB_FILTER_COMPRESSOR_LEVEL_ENUM(FILTER_COMPRESSOR_LEVEL_DEFAULT) =
+        INT_MIN,
 #endif
 
 #ifdef TILEDB_ENCRYPTION_TYPE_ENUM
