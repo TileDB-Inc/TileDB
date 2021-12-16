@@ -27,6 +27,7 @@
  */
 
 #include "dynamic_typed_datum.h"
+#include <string_view>
 
 std::ostream& operator<<(
     std::ostream& os, const tdb::DynamicTypedDatumView& x) {
