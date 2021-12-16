@@ -39,9 +39,9 @@
 #include <string>
 #include <vector>
 
+#include "tiledb/common/common.h"
 #include "tiledb/common/macros.h"
 #include "tiledb/common/status.h"
-#include "tiledb/common/thread_pool.h"
 #include "tiledb/sm/buffer/buffer.h"
 #include "tiledb/sm/cache/lru_cache.h"
 #include "tiledb/sm/config/config.h"
@@ -76,6 +76,8 @@ using namespace tiledb::common;
 
 namespace tiledb {
 namespace sm {
+
+class Tile;
 
 enum class Filesystem : uint8_t;
 enum class VFSMode : uint8_t;
@@ -342,7 +344,8 @@ class VFS {
    */
   Status read_all(
       const URI& uri,
-      const std::vector<std::tuple<uint64_t, void*, uint64_t>>& regions,
+      const std::vector<std::tuple<uint64_t, Tile*, uint64_t, uint64_t>>&
+          regions,
       ThreadPool* thread_pool,
       std::vector<ThreadPool::Task>* tasks,
       bool use_read_ahead = true);
@@ -410,7 +413,7 @@ class VFS {
    */
   struct BatchedRead {
     /** Construct a BatchedRead consisting of the single given region. */
-    BatchedRead(const std::tuple<uint64_t, void*, uint64_t>& region) {
+    BatchedRead(const std::tuple<uint64_t, Tile*, uint64_t, uint64_t>& region) {
       offset = std::get<0>(region);
       nbytes = std::get<2>(region);
       regions.push_back(region);
@@ -426,7 +429,7 @@ class VFS {
      * Original regions making up the batch. Vector of tuples of the form
      * (offset, dest_buffer, nbytes).
      */
-    std::vector<std::tuple<uint64_t, void*, uint64_t>> regions;
+    std::vector<std::tuple<uint64_t, Tile*, uint64_t, uint64_t>> regions;
   };
 
   /**
@@ -652,7 +655,8 @@ class VFS {
    * @return Status
    */
   Status compute_read_batches(
-      const std::vector<std::tuple<uint64_t, void*, uint64_t>>& regions,
+      const std::vector<std::tuple<uint64_t, Tile*, uint64_t, uint64_t>>&
+          regions,
       std::vector<BatchedRead>* batches) const;
 
   /**

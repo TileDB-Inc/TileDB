@@ -38,6 +38,7 @@
 #include "tiledb/sm/enums/query_status.h"
 #include "tiledb/sm/enums/query_type.h"
 #include "tiledb/sm/fragment/fragment_metadata.h"
+#include "tiledb/sm/misc/parse_argument.h"
 #include "tiledb/sm/query/dense_reader.h"
 #include "tiledb/sm/query/query_condition.h"
 #include "tiledb/sm/query/reader.h"
@@ -105,6 +106,9 @@ Query::Query(StorageManager* storage_manager, Array* array, URI fragment_uri)
 
   if (storage_manager != nullptr)
     config_ = storage_manager->config();
+
+  // Set initial subarray configuration
+  subarray_.set_config(config_);
 
   rest_scratch_ = make_shared<Buffer>(HERE());
 }
@@ -1184,9 +1188,14 @@ Status Query::check_set_fixed_buffer(const std::string& name) {
 Status Query::set_config(const Config& config) {
   config_ = config;
 
-  // Refresh memory budget configutation.
+  // Refresh memory budget configuration.
   if (strategy_ != nullptr)
     RETURN_NOT_OK(strategy_->initialize_memory_budget());
+
+  // Set subarray's config for backwards compatibility
+  // Users expect the query config to effect the subarray based on existing
+  // behavior before subarray was exposed directly
+  subarray_.set_config(config_);
 
   return Status::Ok();
 }

@@ -73,6 +73,8 @@ Dimension::Dimension(const std::string& name, Datatype type)
   set_covered_func();
   set_overlap_func();
   set_overlap_ratio_func();
+  set_relevant_ranges_func();
+  set_covered_vec_func();
   set_split_range_func();
   set_splitting_value_func();
   set_tile_num_func();
@@ -97,6 +99,7 @@ Dimension::Dimension(const Dimension* dim) {
   check_range_func_ = dim->check_range_func_;
   coincides_with_tiles_func_ = dim->coincides_with_tiles_func_;
   compute_mbr_func_ = dim->compute_mbr_func_;
+  compute_mbr_var_func_ = dim->compute_mbr_var_func_;
   crop_range_func_ = dim->crop_range_func_;
   domain_range_func_ = dim->domain_range_func_;
   expand_range_v_func_ = dim->expand_range_v_func_;
@@ -106,6 +109,8 @@ Dimension::Dimension(const Dimension* dim) {
   covered_func_ = dim->covered_func_;
   overlap_func_ = dim->overlap_func_;
   overlap_ratio_func_ = dim->overlap_ratio_func_;
+  relevant_ranges_func_ = dim->relevant_ranges_func_;
+  covered_vec_func_ = dim->covered_vec_func_;
   split_range_func_ = dim->split_range_func_;
   splitting_value_func_ = dim->splitting_value_func_;
   tile_num_func_ = dim->tile_num_func_;
@@ -291,6 +296,8 @@ Status Dimension::deserialize(
   set_covered_func();
   set_overlap_func();
   set_overlap_ratio_func();
+  set_relevant_ranges_func();
+  set_covered_vec_func();
   set_split_range_func();
   set_splitting_value_func();
   set_tile_num_func();
@@ -830,6 +837,157 @@ double Dimension::overlap_ratio(const Range& r1, const Range& r2) {
 double Dimension::overlap_ratio(const Range& r1, const Range& r2) const {
   assert(overlap_ratio_func_ != nullptr);
   return overlap_ratio_func_(r1, r2);
+}
+
+void Dimension::relevant_ranges(
+    const NDRange& ranges,
+    const Range& mbr,
+    std::vector<uint64_t>& relevant_ranges) const {
+  assert(relevant_ranges_func_ != nullptr);
+  return relevant_ranges_func_(ranges, mbr, relevant_ranges);
+}
+
+template <>
+void Dimension::relevant_ranges<char>(
+    const NDRange& ranges,
+    const Range& mbr,
+    std::vector<uint64_t>& relevant_ranges) {
+  const auto& mbr_start = mbr.start_str();
+  const auto& mbr_end = mbr.end_str();
+
+  // Binary search to find the first range containing the start mbr.
+  auto it = std::lower_bound(
+      ranges.begin(),
+      ranges.end(),
+      mbr_start,
+      [&](const Range& a, const std::string_view& value) {
+        return a.end_str() < value;
+      });
+
+  // If we have no ranges just exit early
+  if (it == ranges.end())
+    return;
+
+  // Set start index
+  const uint64_t start_range_idx = std::distance(ranges.begin(), it);
+
+  // Binary search to find the last range containing the start mbr.
+  auto it2 = std::lower_bound(
+      it,
+      ranges.end(),
+      mbr_end,
+      [&](const Range& a, const std::string_view& value) {
+        return a.start_str() < value;
+      });
+
+  // If the upper bound isn't the end add +1 to the index
+  uint64_t offset = 0;
+  if (it2 != ranges.end())
+    offset = 1;
+  const uint64_t end_range_idx =
+      std::distance(it, it2) + start_range_idx + offset;
+
+  // Loop over only potential relevant ranges
+  for (uint64_t r = start_range_idx; r < end_range_idx; ++r) {
+    const auto& r1_start = ranges[r].start_str();
+    const auto& r1_end = ranges[r].end_str();
+
+    const auto r1_after_r2 =
+        !r1_start.empty() && !mbr_end.empty() && r1_start > mbr_end;
+    const auto mbr_after_r1 =
+        !mbr_start.empty() && !r1_end.empty() && mbr_start > r1_end;
+
+    if (!r1_after_r2 && !mbr_after_r1)
+      relevant_ranges.emplace_back(r);
+  }
+}
+
+template <class T>
+void Dimension::relevant_ranges(
+    const NDRange& ranges,
+    const Range& mbr,
+    std::vector<uint64_t>& relevant_ranges) {
+  const auto d2 = (const T*)mbr.start();
+  const auto d2_0 = d2[0];
+  const auto d2_1 = d2[1];
+
+  // Find lower bound
+  auto it = std::lower_bound(
+      ranges.begin(), ranges.end(), d2_0, [&](const Range& a, const T value) {
+        return ((const T*)a.start())[1] < value;
+      });
+
+  if (it == ranges.end())
+    return;
+
+  const uint64_t start_range = std::distance(ranges.begin(), it);
+
+  // Find upper bound to end comparisons. Finding this early allows avoiding the
+  // conditional exit in the for loop below
+  auto it2 = std::lower_bound(
+      it, ranges.end(), d2_1, [&](const Range& a, const T value) {
+        return ((const T*)a.start())[0] < value;
+      });
+
+  // If the upper bound isn't the end add +1 to the index
+  uint64_t offset = 0;
+  if (it2 != ranges.end())
+    offset = 1;
+  const uint64_t end_range = std::distance(it, it2) + start_range + offset;
+
+  // Loop over only potential relevant ranges
+  for (uint64_t r = start_range; r < end_range; ++r) {
+    const auto d1 = (const T*)ranges[r].start();
+
+    if ((d1[0] <= d2_1 && d1[1] >= d2_0))
+      relevant_ranges.emplace_back(r);
+  }
+}
+
+void Dimension::covered_vec(
+    const NDRange& ranges,
+    const Range& mbr,
+    const std::vector<uint64_t>& relevant_ranges,
+    std::vector<bool>& covered) const {
+  assert(covered_vec_func_ != nullptr);
+  return covered_vec_func_(ranges, mbr, relevant_ranges, covered);
+}
+
+template <>
+void Dimension::covered_vec<char>(
+    const NDRange& ranges,
+    const Range& mbr,
+    const std::vector<uint64_t>& relevant_ranges,
+    std::vector<bool>& covered) {
+  const auto& range_start = mbr.start_str();
+  const auto& range_end = mbr.end_str();
+  for (uint64_t i = 0; i < relevant_ranges.size(); i++) {
+    auto r = relevant_ranges[i];
+    auto r2_start = ranges[r].start_str();
+    auto r2_end = ranges[r].end_str();
+
+    auto range_after_r2 =
+        !range_start.empty() && !r2_start.empty() && range_start >= r2_start;
+    auto mbr_after_range_start =
+        !range_end.empty() && !r2_end.empty() && range_end <= r2_end;
+
+    covered[i] = range_after_r2 && mbr_after_range_start;
+  }
+}
+
+template <class T>
+void Dimension::covered_vec(
+    const NDRange& ranges,
+    const Range& mbr,
+    const std::vector<uint64_t>& relevant_ranges,
+    std::vector<bool>& covered) {
+  auto d1 = (const T*)mbr.start();
+  for (uint64_t i = 0; i < relevant_ranges.size(); i++) {
+    auto r = relevant_ranges[i];
+    auto d2 = (const T*)ranges[r].start();
+
+    covered[i] = d1[0] >= d2[0] && d1[1] <= d2[1];
+  }
 }
 
 template <>
@@ -2873,6 +3031,138 @@ void Dimension::set_overlap_ratio_func() {
       break;
     default:
       overlap_ratio_func_ = nullptr;
+      break;
+  }
+}
+
+void Dimension::set_relevant_ranges_func() {
+  switch (type_) {
+    case Datatype::INT32:
+      relevant_ranges_func_ = relevant_ranges<int32_t>;
+      break;
+    case Datatype::INT64:
+      relevant_ranges_func_ = relevant_ranges<int64_t>;
+      break;
+    case Datatype::INT8:
+      relevant_ranges_func_ = relevant_ranges<int8_t>;
+      break;
+    case Datatype::UINT8:
+      relevant_ranges_func_ = relevant_ranges<uint8_t>;
+      break;
+    case Datatype::INT16:
+      relevant_ranges_func_ = relevant_ranges<int16_t>;
+      break;
+    case Datatype::UINT16:
+      relevant_ranges_func_ = relevant_ranges<uint16_t>;
+      break;
+    case Datatype::UINT32:
+      relevant_ranges_func_ = relevant_ranges<uint32_t>;
+      break;
+    case Datatype::UINT64:
+      relevant_ranges_func_ = relevant_ranges<uint64_t>;
+      break;
+    case Datatype::FLOAT32:
+      relevant_ranges_func_ = relevant_ranges<float>;
+      break;
+    case Datatype::FLOAT64:
+      relevant_ranges_func_ = relevant_ranges<double>;
+      break;
+    case Datatype::DATETIME_YEAR:
+    case Datatype::DATETIME_MONTH:
+    case Datatype::DATETIME_WEEK:
+    case Datatype::DATETIME_DAY:
+    case Datatype::DATETIME_HR:
+    case Datatype::DATETIME_MIN:
+    case Datatype::DATETIME_SEC:
+    case Datatype::DATETIME_MS:
+    case Datatype::DATETIME_US:
+    case Datatype::DATETIME_NS:
+    case Datatype::DATETIME_PS:
+    case Datatype::DATETIME_FS:
+    case Datatype::DATETIME_AS:
+    case Datatype::TIME_HR:
+    case Datatype::TIME_MIN:
+    case Datatype::TIME_SEC:
+    case Datatype::TIME_MS:
+    case Datatype::TIME_US:
+    case Datatype::TIME_NS:
+    case Datatype::TIME_PS:
+    case Datatype::TIME_FS:
+    case Datatype::TIME_AS:
+      relevant_ranges_func_ = relevant_ranges<int64_t>;
+      break;
+    case Datatype::STRING_ASCII:
+      assert(var_size());
+      relevant_ranges_func_ = relevant_ranges<char>;
+      break;
+    default:
+      relevant_ranges_func_ = nullptr;
+      break;
+  }
+}
+
+void Dimension::set_covered_vec_func() {
+  switch (type_) {
+    case Datatype::INT32:
+      covered_vec_func_ = covered_vec<int32_t>;
+      break;
+    case Datatype::INT64:
+      covered_vec_func_ = covered_vec<int64_t>;
+      break;
+    case Datatype::INT8:
+      covered_vec_func_ = covered_vec<int8_t>;
+      break;
+    case Datatype::UINT8:
+      covered_vec_func_ = covered_vec<uint8_t>;
+      break;
+    case Datatype::INT16:
+      covered_vec_func_ = covered_vec<int16_t>;
+      break;
+    case Datatype::UINT16:
+      covered_vec_func_ = covered_vec<uint16_t>;
+      break;
+    case Datatype::UINT32:
+      covered_vec_func_ = covered_vec<uint32_t>;
+      break;
+    case Datatype::UINT64:
+      covered_vec_func_ = covered_vec<uint64_t>;
+      break;
+    case Datatype::FLOAT32:
+      covered_vec_func_ = covered_vec<float>;
+      break;
+    case Datatype::FLOAT64:
+      covered_vec_func_ = covered_vec<double>;
+      break;
+    case Datatype::DATETIME_YEAR:
+    case Datatype::DATETIME_MONTH:
+    case Datatype::DATETIME_WEEK:
+    case Datatype::DATETIME_DAY:
+    case Datatype::DATETIME_HR:
+    case Datatype::DATETIME_MIN:
+    case Datatype::DATETIME_SEC:
+    case Datatype::DATETIME_MS:
+    case Datatype::DATETIME_US:
+    case Datatype::DATETIME_NS:
+    case Datatype::DATETIME_PS:
+    case Datatype::DATETIME_FS:
+    case Datatype::DATETIME_AS:
+    case Datatype::TIME_HR:
+    case Datatype::TIME_MIN:
+    case Datatype::TIME_SEC:
+    case Datatype::TIME_MS:
+    case Datatype::TIME_US:
+    case Datatype::TIME_NS:
+    case Datatype::TIME_PS:
+    case Datatype::TIME_FS:
+    case Datatype::TIME_AS:
+      covered_vec_func_ = covered_vec<int64_t>;
+      break;
+    case Datatype::STRING_ASCII:
+      assert(var_size());
+      covered_vec_func_ = covered_vec<char>;
+      break;
+    default:
+      covered_vec_func_ = nullptr;
       break;
   }
 }

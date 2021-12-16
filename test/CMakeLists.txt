@@ -149,8 +149,7 @@ set(TILEDB_TEST_SOURCES
   src/unit-dimension.cc
   src/unit-duplicates.cc
   src/unit-empty-var-length.cc
-  src/unit-filter-buffer.cc
-  src/unit-filter-create.cc  
+  src/unit-filter-buffer.cc 
   src/unit-filter-pipeline.cc
   src/unit-gcs.cc
   src/unit-hdfs-filesystem.cc

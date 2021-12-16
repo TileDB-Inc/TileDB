@@ -1,5 +1,5 @@
 /**
- * @file   query.cc
+ * @file query.cc
  *
  * @section LICENSE
  *
@@ -51,7 +51,8 @@
 #include "tiledb/sm/enums/query_type.h"
 #include "tiledb/sm/enums/serialization_type.h"
 #include "tiledb/sm/fragment/fragment_metadata.h"
-#include "tiledb/sm/misc/utils.h"
+#include "tiledb/sm/misc/hash.h"
+#include "tiledb/sm/misc/parse_argument.h"
 #include "tiledb/sm/query/query.h"
 #include "tiledb/sm/query/reader.h"
 #include "tiledb/sm/query/dense_reader.h"
@@ -597,7 +598,6 @@ Status index_read_state_from_capnp(
     const capnp::ReadStateIndex::Reader& read_state_reader,
     SparseIndexReaderBase* reader) {
   auto read_state = reader->read_state();
-  const auto* domain = schema->domain();
 
   read_state->done_adding_result_tiles_ =
       read_state_reader.getDoneAddingResultTiles();
@@ -627,7 +627,7 @@ Status index_read_state_from_capnp(
         rt = it->second;
       } else {
         rt = sparse_global_order_reader->add_result_tile_unsafe(
-            frag_idx, tile_idx, domain);
+            frag_idx, tile_idx, schema);
         result_tile_map.emplace(
             std::pair<unsigned, uint64_t>(frag_idx, tile_idx), rt);
       }

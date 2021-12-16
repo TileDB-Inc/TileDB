@@ -1197,7 +1197,8 @@ void SmokeTestFx::smoke_test(
   for (const auto& test_query_condition : test_query_conditions) {
     if (test_query_condition->name_ == "a") {
       for (uint64_t i = 0; i < total_cells; ++i) {
-        const bool expected = test_query_condition->cmp(&a_write_buffer[i]);
+        const bool expected = test_query_condition->cmp(&a_write_buffer[i]) &&
+                              a_write_buffer_validity[i];
         if (!expected) {
           expected_a_values_read[i] = false;
         }

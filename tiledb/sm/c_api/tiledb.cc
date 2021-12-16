@@ -222,8 +222,9 @@ int32_t tiledb_encryption_type_to_str(
 int32_t tiledb_encryption_type_from_str(
     const char* str, tiledb_encryption_type_t* encryption_type) {
   auto [st, et] = tiledb::sm::encryption_type_enum(str);
-  if (!st.ok())
+  if (!st.ok()) {
     return TILEDB_ERR;
+  }
   *encryption_type = (tiledb_encryption_type_t)et.value();
   return TILEDB_OK;
 }
@@ -3486,10 +3487,6 @@ int32_t tiledb_query_add_range(
     return TILEDB_ERR;
 
   tiledb_subarray_transient_local_t query_subarray(query);
-  tiledb_config_t local_cfg;
-  // Drop 'const'ness for local usage here
-  local_cfg.config_ = (tiledb::sm::Config*)query->query_->config();
-  tiledb_subarray_set_config(ctx, &query_subarray, &local_cfg);
   return tiledb_subarray_add_range(
       ctx, &query_subarray, dim_idx, start, end, stride);
 }
@@ -5750,8 +5747,10 @@ int32_t tiledb_vfs_ls(
   std::vector<tiledb::sm::URI> children;
   auto st = vfs->vfs_->ls(tiledb::sm::URI(path), &children);
 
-  if (!st.ok())
+  if (!st.ok()) {
+    save_error(ctx, st);
     return TILEDB_ERR;
+  }
 
   // Apply the callback to every child
   int rc = 1;

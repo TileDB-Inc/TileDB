@@ -1,12 +1,11 @@
 /**
- * @file unit-filter-create.cc
+ * @file tiledb/sm/filter/test/unit_filter_create.cc
  *
  * @section LICENSE
  *
  * The MIT License
  *
- * @copyright Copyright (c) 2017-2021 TileDB, Inc.
- * @copyright Copyright (c) 2016 MIT and Intel Corporation
+ * @copyright Copyright (c) 2021 TileDB, Inc.
  *
  * Permission is hereby granted, free of charge, to any person obtaining a copy
  * of this software and associated documentation files (the "Software"), to deal
@@ -27,33 +26,26 @@
  * THE SOFTWARE.
  *
  * @section DESCRIPTION
- *
- * Tests the `FilterCreate` class.
  */
 
-#include "test/src/helpers.h"
-#include "tiledb/common/status.h"
-#include "tiledb/sm/buffer/buffer.h"
-#include "tiledb/sm/config/config.h"
+#include "unit_filter_create.h"
+
+#include "../bit_width_reduction_filter.h"
+#include "../bitshuffle_filter.h"
+#include "../byteshuffle_filter.h"
+#include "../checksum_md5_filter.h"
+#include "../checksum_sha256_filter.h"
+#include "../compression_filter.h"
+#include "../encryption_aes256gcm_filter.h"
+#include "../filter.h"
+#include "../noop_filter.h"
+#include "../positive_delta_filter.h"
+#include "tiledb/common/logger_public.h"
 #include "tiledb/sm/crypto/encryption_key.h"
 #include "tiledb/sm/enums/compressor.h"
-#include "tiledb/sm/enums/datatype.h"
 #include "tiledb/sm/enums/encryption_type.h"
 #include "tiledb/sm/enums/filter_option.h"
 #include "tiledb/sm/enums/filter_type.h"
-#include "tiledb/sm/filter/bit_width_reduction_filter.h"
-#include "tiledb/sm/filter/bitshuffle_filter.h"
-#include "tiledb/sm/filter/byteshuffle_filter.h"
-#include "tiledb/sm/filter/checksum_md5_filter.h"
-#include "tiledb/sm/filter/checksum_sha256_filter.h"
-#include "tiledb/sm/filter/compression_filter.h"
-#include "tiledb/sm/filter/encryption_aes256gcm_filter.h"
-#include "tiledb/sm/filter/filter_create.h"
-#include "tiledb/sm/filter/noop_filter.h"
-#include "tiledb/sm/filter/positive_delta_filter.h"
-
-#include <catch.hpp>
-#include <iostream>
 
 using namespace tiledb::sm;
 

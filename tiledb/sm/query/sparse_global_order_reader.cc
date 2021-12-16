@@ -369,13 +369,13 @@ Status SparseGlobalOrderReader::clear_result_tiles() {
 }
 
 ResultTile* SparseGlobalOrderReader::add_result_tile_unsafe(
-    unsigned f, uint64_t t, const Domain* domain) {
+    unsigned f, uint64_t t, const ArraySchema* array_schema) {
   empty_result_tiles_ = false;
 
   if (result_tiles_.size() < f + 1) {
     result_tiles_.resize(f + 1);
   }
-  result_tiles_[f].emplace_back(f, t, domain);
+  result_tiles_[f].emplace_back(f, t, array_schema);
   return &result_tiles_[f].back();
 }
 
@@ -385,7 +385,7 @@ Status SparseGlobalOrderReader::add_result_tile(
     const uint64_t memory_budget_qc_tiles,
     const unsigned f,
     const uint64_t t,
-    const Domain* const domain,
+    const ArraySchema* const array_schema,
     bool* budget_exceeded) {
   // Calculate memory consumption for this tile.
   uint64_t tiles_size = 0, tiles_size_qc = 0;
@@ -412,7 +412,7 @@ Status SparseGlobalOrderReader::add_result_tile(
 
   // Add the tile.
   empty_result_tiles_ = false;
-  result_tiles_[f].emplace_back(f, t, domain);
+  result_tiles_[f].emplace_back(f, t, array_schema);
 
   return Status::Ok();
 }
@@ -449,7 +449,6 @@ Status SparseGlobalOrderReader::create_result_tiles(bool* tiles_found) {
 
   // For easy reference.
   auto fragment_num = fragment_metadata_.size();
-  auto domain = array_schema_->domain();
   auto dim_num = array_schema_->dim_num();
 
   // Get the number of fragments to process.
@@ -479,7 +478,7 @@ Status SparseGlobalOrderReader::create_result_tiles(bool* tiles_found) {
                   per_fragment_qc_memory_,
                   f,
                   t,
-                  domain,
+                  fragment_metadata_[f]->array_schema(),
                   &budget_exceeded));
               *tiles_found = true;
 
@@ -530,7 +529,7 @@ Status SparseGlobalOrderReader::create_result_tiles(bool* tiles_found) {
                 per_fragment_qc_memory_,
                 f,
                 t,
-                domain,
+                fragment_metadata_[f]->array_schema(),
                 &budget_exceeded));
             *tiles_found = true;
 
@@ -558,7 +557,7 @@ Status SparseGlobalOrderReader::create_result_tiles(bool* tiles_found) {
   uint64_t num_rt = 0;
   for (unsigned int f = 0; f < fragment_num; f++) {
     num_rt += result_tiles_[f].size();
-    done_adding_result_tiles &= all_tiles_loaded_[f];
+    done_adding_result_tiles &= all_tiles_loaded_[f] != 0;
   }
 
   logger_->debug("Done adding result tiles, num result tiles {0}", num_rt);

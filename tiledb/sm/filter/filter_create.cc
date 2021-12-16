@@ -42,6 +42,7 @@
 #include "filter.h"
 #include "noop_filter.h"
 #include "positive_delta_filter.h"
+#include "tiledb/common/logger_public.h"
 #include "tiledb/sm/crypto/encryption_key.h"
 #include "tiledb/sm/enums/encryption_type.h"
 #include "tiledb/sm/enums/filter_type.h"

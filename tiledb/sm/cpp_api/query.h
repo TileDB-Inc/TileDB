@@ -1133,6 +1133,10 @@ class Query {
   /**
    * Set the query config.
    *
+   * Setting the query config will also set the subarray configuration in order
+   * to maintain existing behavior. If you wish the subarray to have a different
+   * configuration than the query, set it after calling Query::set_config.
+   *
    * Setting configuration with this function overrides the following
    * Query-level parameters only:
    *

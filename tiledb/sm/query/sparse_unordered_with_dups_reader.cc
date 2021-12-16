@@ -150,6 +150,9 @@ Status SparseUnorderedWithDupsReader<BitmapType>::dowork() {
   // This reader only has one result tile list.
   result_tiles_.resize(1);
 
+  // This reader benefits from sorting ranges.
+  RETURN_NOT_OK(subarray_.sort_ranges(storage_manager_->compute_tp()));
+
   // Handle empty array.
   if (fragment_metadata_.empty()) {
     read_state_.done_adding_result_tiles_ = true;
@@ -243,7 +246,7 @@ Status SparseUnorderedWithDupsReader<BitmapType>::add_result_tile(
     const unsigned f,
     const uint64_t t,
     const uint64_t last_t,
-    const Domain* const domain,
+    const ArraySchema* const array_schema,
     bool* budget_exceeded) {
   // Calculate memory consumption for this tile.
   uint64_t tiles_size = 0, tiles_size_qc = 0;
@@ -262,7 +265,7 @@ Status SparseUnorderedWithDupsReader<BitmapType>::add_result_tile(
   memory_used_qc_tiles_total_ += tiles_size_qc;
 
   // Add the result tile.
-  result_tiles_[0].emplace_back(f, t, domain);
+  result_tiles_[0].emplace_back(f, t, array_schema);
 
   // Are all tiles loaded for this fragment.
   if (t == last_t)
@@ -277,7 +280,6 @@ Status SparseUnorderedWithDupsReader<BitmapType>::create_result_tiles() {
 
   // For easy reference.
   const auto fragment_num = fragment_metadata_.size();
-  const auto domain = array_schema_->domain();
   const auto dim_num = array_schema_->dim_num();
 
   const uint64_t memory_budget_qc_tiles =
@@ -306,7 +308,7 @@ Status SparseUnorderedWithDupsReader<BitmapType>::create_result_tiles() {
                 f,
                 t,
                 last_t,
-                domain,
+                fragment_metadata_[f]->array_schema(),
                 &budget_exceeded));
 
             // Make sure we can add at least one tile.
@@ -358,7 +360,7 @@ Status SparseUnorderedWithDupsReader<BitmapType>::create_result_tiles() {
               f,
               t,
               tile_num - 1,
-              domain,
+              fragment_metadata_[f]->array_schema(),
               &budget_exceeded));
 
           // Make sure we can add at least one tile.
@@ -381,7 +383,7 @@ Status SparseUnorderedWithDupsReader<BitmapType>::create_result_tiles() {
   // Check if we are done adding result tiles.
   bool done_adding_result_tiles = true;
   for (unsigned int f = 0; f < fragment_num; f++) {
-    done_adding_result_tiles &= all_tiles_loaded_[f];
+    done_adding_result_tiles &= all_tiles_loaded_[f] != 0;
   }
 
   logger_->debug(
@@ -1010,7 +1012,7 @@ template <class BitmapType>
 Status SparseUnorderedWithDupsReader<BitmapType>::compute_fixed_results_to_copy(
     std::vector<ResultTile*>* result_tiles,
     std::vector<uint64_t>* cell_offsets) {
-  auto timer_se = stats_->start_timer("compute_initial_copy_bound");
+  auto timer_se = stats_->start_timer("compute_fixed_results_to_copy");
 
   // First try to limit the maximum number of cells we copy using the size
   // of the output buffers for fixed sized attributes. Later we will validate
@@ -1194,7 +1196,10 @@ Status SparseUnorderedWithDupsReader<BitmapType>::compute_var_size_offsets(
 
       auto last_tile_num_cells = last_tile->cell_num();
       (*new_result_tiles_size)++;
-      cell_offsets->at(*new_result_tiles_size) = 0;
+      cell_offsets->at(*new_result_tiles_size) =
+          *new_result_tiles_size > 0 ?
+              cell_offsets->at(*new_result_tiles_size - 1) :
+              0;
 
       const bool has_bmp = last_tile->bitmap_.size() != 0;
       for (uint64_t c = 0; c < last_tile_num_cells - 1; c++) {
@@ -1501,7 +1506,7 @@ Status SparseUnorderedWithDupsReader<BitmapType>::end_iteration() {
   }
 
   logger_->debug(
-      "Done with iteration, num result tiles {1}", result_tiles_[0].size());
+      "Done with iteration, num result tiles {0}", result_tiles_[0].size());
 
   const auto uint64_t_max = std::numeric_limits<uint64_t>::max();
   array_memory_tracker_->set_budget(uint64_t_max);
