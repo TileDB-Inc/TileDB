@@ -207,24 +207,6 @@ class Config {
    */
   static const std::string SM_MEM_SPARSE_UNORDERED_WITH_DUPS_RATIO_ARRAY_DATA;
 
-  /**
-   * The maximum count of partitions to be generated via CAPI subarray
-   * partitioning.
-   */
-  static const std::string SP_SUBARRAY_PARTITIONER_RESULT_COUNT;
-  /**
-   * TBD: explain me
-   */
-  static const std::string SP_SUBARRAY_PARTITIONER_MODE;
-  /**
-   * TBD: explain me
-   */
-  static const std::string SP_SUBARRAY_PARTITIONER_MEMORY_SIZE;
-  /**
-   * TBD: explain me
-   */
-  static const std::string SP_SUBARRAY_PARTITIONER_COUNT;
-
   /** Whether or not the signal handlers are installed. */
   static const std::string SM_ENABLE_SIGNAL_HANDLERS;
 
