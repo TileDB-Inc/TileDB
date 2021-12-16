@@ -554,8 +554,8 @@ Status SparseIndexReaderBase::apply_query_condition(
             // Compute the result of the query condition for this tile.
             RETURN_NOT_OK(condition_.apply_sparse<BitmapType>(
                 fragment_metadata_[rt->frag_idx()]->array_schema(),
-                &*rt,
-                rt->bitmap_.data(),
+                *rt,
+                rt->bitmap_,
                 &rt->bitmap_result_num_));
             rt->qc_processed_ = true;
           }
