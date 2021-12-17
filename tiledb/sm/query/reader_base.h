@@ -319,7 +319,7 @@ class ReaderBase : public StrategyBase {
    * @param disable_cache Disable the tile cache or not.
    * @return Status
    */
-  Status read_attribute_tiles(
+  Status load_attribute_tiles(
       const std::vector<std::string>* names,
       const std::vector<ResultTile*>* result_tiles,
       const bool disable_cache = false) const;
@@ -337,7 +337,7 @@ class ReaderBase : public StrategyBase {
    * @param disable_cache Disable the tile cache or not.
    * @return Status
    */
-  Status read_coordinate_tiles(
+  Status load_coordinate_tiles(
       const std::vector<std::string>* names,
       const std::vector<ResultTile*>* result_tiles,
       const bool disable_cache = false) const;
@@ -355,7 +355,7 @@ class ReaderBase : public StrategyBase {
    * @param disable_cache Disable the tile cache or not.
    * @return Status
    */
-  Status read_tiles(
+  Status load_tiles(
       const std::vector<std::string>* names,
       const std::vector<ResultTile*>* result_tiles,
       const bool disable_cache = false) const;

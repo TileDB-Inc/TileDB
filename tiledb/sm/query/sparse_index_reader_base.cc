@@ -298,27 +298,18 @@ Status SparseIndexReaderBase::read_and_unfilter_coords(
     // this will ignore fragments with a version >= 5.
     std::vector<std::string> zipped_coords_names = {constants::coords};
     RETURN_CANCEL_OR_ERROR(
-        read_coordinate_tiles(&zipped_coords_names, result_tiles, true));
-    RETURN_CANCEL_OR_ERROR(
-        unfilter_tiles(constants::coords, result_tiles, true));
+        load_coordinate_tiles(&zipped_coords_names, result_tiles, true));
 
     // Read and unfilter unzipped coordinate tiles. Note that
     // this will ignore fragments with a version < 5.
     RETURN_CANCEL_OR_ERROR(
-        read_coordinate_tiles(&dim_names_, result_tiles, true));
-    for (const auto& dim_name : dim_names_) {
-      RETURN_CANCEL_OR_ERROR(unfilter_tiles(dim_name, result_tiles, true));
-    }
+        load_coordinate_tiles(&dim_names_, result_tiles, true));
   }
 
   if (!condition_.empty()) {
     // Read and unfilter tiles for querty condition.
     RETURN_CANCEL_OR_ERROR(
-        read_attribute_tiles(&qc_loaded_names_, result_tiles, true));
-
-    for (const auto& name : qc_loaded_names_) {
-      RETURN_CANCEL_OR_ERROR(unfilter_tiles(name, result_tiles, true));
-    }
+        load_attribute_tiles(&qc_loaded_names_, result_tiles, true));
   }
 
   logger_->debug("Done reading and unfiltering coords tiles");

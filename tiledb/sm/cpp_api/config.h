@@ -451,6 +451,9 @@ class Config {
    *    The the total maximum size of the read-ahead cache, which is an LRU.
    *    <br>
    *    **Default**: 10485760
+   * - `vfs.max_batch_size` <br>
+   *    The maximum number of bytes in a VFS read operation<br>
+   *    **Default**: 100MB
    * - `vfs.min_parallel_size` <br>
    *    The minimum number of bytes in a parallel VFS operation
    *    (except parallel S3 writes, which are controlled by
