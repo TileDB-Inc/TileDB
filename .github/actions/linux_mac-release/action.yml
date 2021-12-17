@@ -718,7 +718,7 @@ runs:
         #name: tiledb-${{ env.ARTIFACT_OS }}-${{ env.ARTIFACT_ARCH }}-build-dir-${{ env.ARTIFACT_EXTRAS }}.${{github.job}}.tar.gz
         #TBD: should be ok for release branches/tags, but 
         #suspect a '/' in the dev branch names will not be well-received, but we'll try.
-        name: tiledb-${{ env.ARTIFACT_OS }}-${{ env.ARTIFACT_ARCH }}-build-dir-${{ env.ARTIFACT_EXTRAS }}.${{env.TDB_REF_NAME}}.tar.gz
+        name: tiledb-source-${{ env.ARTIFACT_OS }}-${{ env.ARTIFACT_ARCH }}-build-dir-${{ env.ARTIFACT_EXTRAS }}.${{env.TDB_REF_NAME}}.tar.gz
         #if-no-files-found: warn # 'ignore/', 'warn' or 'error' are available, defaults to `warn`
         #${{ env.GITHUB_WORKSPACE }}/
         #!${{ env.GITHUB_WORKSPACE }}/build/
@@ -740,7 +740,8 @@ runs:
         #name: tiledb-$(ARTIFACT_OS)-build-dir-$(ARTIFACT_EXTRAS).tar.gz
         #name: tiledb-${{ env.ARTIFACT_OS }}-${{ env.ARTIFACT_ARCH }}-build-dir-${{ env.ARTIFACT_EXTRAS }}.${{env.TDB_REF_NAME}}.${{env.commitHash}}.tar.gz
         #note - using same name here as archive that is created, spec'd in 'path:' below
-        name: tiledb-${ARTIFACT_OS}-${ARTIFACT_ARCH}-$(GITHUB_REF_NAME)-${TDB_COMMIT_HASH}.tar.gz
+        #name: tiledb-${ARTIFACT_OS}-${ARTIFACT_ARCH}-$(GITHUB_REF_NAME)-${TDB_COMMIT_HASH}.tar.gz
+        name: tiledb-${{ env.ARTIFACT_OS }}-${{ env.ARTIFACT_ARCH }}-build-dir-${{ env.ARTIFACT_EXTRAS }}.${{env.TDB_REF_NAME}}.tar.gz
         #if-no-files-found: warn # 'ignore/', 'warn' or 'error' are available, defaults to `warn`
         #${{ env.GITHUB_WORKSPACE }}/build/
         #${{ env.GITHUB_WORKSPACE }}/../tiledb-${{ env.ARTIFACT_OS }}-build-dir-${{ env.ARTIFACT_EXTRAS }}.tar.gz
