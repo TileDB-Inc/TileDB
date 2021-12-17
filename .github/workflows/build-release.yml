@@ -45,15 +45,14 @@ jobs:
 
       - uses: ./.github/actions/linux_mac-release
 
-  configure-for-manylinux-container:
-    runs-on: ubuntu-20.04
-    outputs:
-      uid_gid: ${{ steps.get-user.outputs.uid_gid }}
-    steps:
-      - id: get-user
-        run: echo "::set-output name=uid_gid::$(id -u):$(id -g)"
-          
-          
+  #~ configure-for-manylinux-container:
+    #~ runs-on: ubuntu-20.04
+    #~ outputs:
+      #~ uid_gid: ${{ steps.get-user.outputs.uid_gid }}
+    #~ steps:
+      #~ - id: get-user
+        #~ run: echo "::set-output name=uid_gid::$(id -u):$(id -g)"
+
   #nope, the `uses' attribute must be a path, a Docker image, or owner/repo@ref
   #~ try-manylinux-container-step:
     #~ if: true
@@ -63,9 +62,9 @@ jobs:
         #~ uses: 'quay.io/pypa/manylinux2010_x86_64:2021-11-07-28723f3'      
         #~ with:
           #~ args: /bin/bash -c "cat /etc/system-release"
-          
+
   build-release-manylinux:
-    needs: configure-for-manylinux-container
+    #~ needs: configure-for-manylinux-container
     runs-on: ubuntu-20.04
     env:
       CXX: g++

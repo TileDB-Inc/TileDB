@@ -314,6 +314,24 @@ runs:
         
         find / -name 'tiledb-*-linux-build-*.tar.gz' -exec ls -l {} \;
 
+    - name: Git Hash 7-digit
+      shell: bash
+      #env: 
+      #  sourceVersion: ${{ env.GITHUB_SHA }}
+      run: |
+        # 'member, GA CI does -not- pre-pop env context with items from environment.
+        sourceVersion=$GITHUB_SHA
+        echo "sourceVersion is $sourceVersion"
+        commitHash=${sourceVersion:0:7}
+        echo "commitHash is $commitHash"
+        #echo "##vso[task.setvariable variable=commitHash]$commitHash" ## Set variable for using in other tasks.
+        #echo "::set-output name=commitHash::$commitHash" # TBD: make status check pass for this hack step
+        echo "commitHash=$commitHash" >> "$GITHUB_ENV" # make available to subsequent step
+        echo "TDB_COMMIT_HASH=$commitHash" >> "$GITHUB_ENV" # make available to subsequent step
+        #for ev in GITHUB_REF_NAME GITHUB_REF_TYPE GITHUB_WORKSPACE GITHUB_EVENT_PATH CXX CC CFLAGS CXXFLAGS ARTIFACT_OS ARTIFACT_EXTRAS ARTIFACT_ARCH SUDO RUNNER_OS GITHUB_REF RUNNER_TRACKING_ID RUNNER_ARCH GITHUB_RUN_NUMBER GITHUB_RUN_ID GITHUB_EVENT_NAME GITHUB_ACTOR GITHUB_REF_NAME GITHUB_JOB GITHUB_REPOSITORY RUNNER_WORKSPACE GITHUB_WORKFLOW TDB_SOURCE_ARCHIVE_PATH TDB_BINARY_ARCHIVE_PATH; do tmp=$ev; echo "$ev=${!tmp}"; done >> tdbenvfile.txt
+        #for ev in commitHash; do tmp=$ev; echo "$ev=${!tmp}"; done >> tdbenvfile.txt
+        sync
+        
     - name: 'Build libtiledb scripted inits'
       if: true
       #not availa le in (composite) action? continue-on-error: true
@@ -337,7 +355,7 @@ runs:
         #~ TDB_BINARY_ARCHIVE_PATH=$(echo -e "import sys\nimport os\nprint (os.path.realpath(\"$TDB_BINARY_ARCHIVE_PATH2\"))\n" | python)
         #~ export TDB_SOURCE_ARCHIVE_PATH
         #~ export TDB_BINARY_ARCHIVE_PATH
-        for ev in GITHUB_REF_NAME GITHUB_REF_TYPE GITHUB_WORKSPACE GITHUB_EVENT_PATH CXX CC CFLAGS CXXFLAGS ARTIFACT_OS ARTIFACT_EXTRAS ARTIFACT_ARCH SUDO RUNNER_OS GITHUB_REF RUNNER_TRACKING_ID RUNNER_ARCH GITHUB_RUN_NUMBER GITHUB_RUN_ID GITHUB_EVENT_NAME GITHUB_ACTOR GITHUB_REF_NAME GITHUB_JOB GITHUB_REPOSITORY RUNNER_WORKSPACE GITHUB_WORKFLOW TDB_SOURCE_ARCHIVE_PATH TDB_BINARY_ARCHIVE_PATH; do tmp=$ev; echo "$ev=${!tmp}"; done >> tdbenvfile.txt
+        for ev in TDB_COMMIT_HASH GITHUB_REF_NAME GITHUB_REF_TYPE GITHUB_WORKSPACE GITHUB_EVENT_PATH CXX CC CFLAGS CXXFLAGS ARTIFACT_OS ARTIFACT_EXTRAS ARTIFACT_ARCH SUDO RUNNER_OS GITHUB_REF RUNNER_TRACKING_ID RUNNER_ARCH GITHUB_RUN_NUMBER GITHUB_RUN_ID GITHUB_EVENT_NAME GITHUB_ACTOR GITHUB_REF_NAME GITHUB_JOB GITHUB_REPOSITORY RUNNER_WORKSPACE GITHUB_WORKFLOW TDB_SOURCE_ARCHIVE_PATH TDB_BINARY_ARCHIVE_PATH; do tmp=$ev; echo "$ev=${!tmp}"; done >> tdbenvfile.txt
         sync
         
     - name: 'Build libtiledb scripted A'
@@ -707,20 +725,6 @@ runs:
         path: |
           ${{ env.TDB_SOURCE_ARCHIVE_PATH }}
 
-    - name: Git Hash 7-digit
-      shell: bash
-      #env: 
-      #  sourceVersion: ${{ env.GITHUB_SHA }}
-      run: |
-        # 'member, GA CI does -not- pre-pop env context with items from environment.
-        sourceVersion=$GITHUB_SHA
-        echo "sourceVersion is $sourceVersion"
-        commitHash=${sourceVersion:0:7}
-        echo "commitHash is $commitHash"
-        #echo "##vso[task.setvariable variable=commitHash]$commitHash" ## Set variable for using in other tasks.
-        #echo "::set-output name=commitHash::$commitHash" # TBD: make status check pass for this hack step
-        echo "commitHash=$commitHash" >> "$GITHUB_ENV" # make available to subsequent step
-        
     - name: 'ArchiveFiles@2B' # https://github.com/actions/upload-artifact#where-does-the-upload-go
       # @v1 does not recognize 'retention-days', 'if-no-files-found', path enhancments, prob more
       #if: ${{ failure() == true && startsWith(runner.name, 'macos-') == true }} # only run this job if the build step failed
@@ -731,7 +735,9 @@ runs:
         #retention-days: 10
         #name: "${{ runner.name }}.coredumps.${{ github.job }}.${{ github.run_number }}.${{github.run_id}}.${{github.run_attempt}}"
         #name: tiledb-$(ARTIFACT_OS)-build-dir-$(ARTIFACT_EXTRAS).tar.gz
-        name: tiledb-${{ env.ARTIFACT_OS }}-${{ env.ARTIFACT_ARCH }}-build-dir-${{ env.ARTIFACT_EXTRAS }}.${{env.TDB_REF_NAME}}.${{env.commitHash}}.tar.gz
+        #name: tiledb-${{ env.ARTIFACT_OS }}-${{ env.ARTIFACT_ARCH }}-build-dir-${{ env.ARTIFACT_EXTRAS }}.${{env.TDB_REF_NAME}}.${{env.commitHash}}.tar.gz
+        #note - using same name here as archive that is created, spec'd in 'path:' below
+        name: tiledb-${ARTIFACT_OS}-${ARTIFACT_ARCH}-$(GITHUB_REF_NAME)-${TDB_COMMIT_HASH}.tar.gz
         #if-no-files-found: warn # 'ignore/', 'warn' or 'error' are available, defaults to `warn`
         #${{ env.GITHUB_WORKSPACE }}/build/
         #${{ env.GITHUB_WORKSPACE }}/../tiledb-${{ env.ARTIFACT_OS }}-build-dir-${{ env.ARTIFACT_EXTRAS }}.tar.gz
