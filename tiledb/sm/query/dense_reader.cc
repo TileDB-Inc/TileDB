@@ -325,11 +325,7 @@ Status DenseReader::dense_read() {
       load_tile_offsets(read_state_.partitioner_.subarray(), &names));
 
   // Read and unfilter tiles.
-  RETURN_CANCEL_OR_ERROR(read_attribute_tiles(&names, &result_tiles));
-
-  for (const auto& name : names) {
-    RETURN_CANCEL_OR_ERROR(unfilter_tiles(name, &result_tiles));
-  }
+  RETURN_CANCEL_OR_ERROR(load_attribute_tiles(&names, &result_tiles));
 
   // Compute the result of the query condition.
   std::vector<uint8_t> qc_result;

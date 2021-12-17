@@ -1415,7 +1415,7 @@ Status VFS::read_ahead_impl(
 
 Status VFS::read_all(
     const URI& uri,
-    const std::vector<std::tuple<uint64_t, Tile*, uint64_t, uint64_t>>& regions,
+    const std::vector<std::tuple<uint64_t, Tile*, uint64_t>>& regions,
     ThreadPool* thread_pool,
     std::vector<ThreadPool::Task>* tasks,
     const bool use_read_ahead) {
@@ -1447,9 +1447,11 @@ Status VFS::read_all(
           for (uint64_t i = 0; i < batch_copy.regions.size(); i++) {
             const auto& region = batch_copy.regions[i];
             uint64_t offset = std::get<0>(region);
-            void* dest = std::get<1>(region)->filtered_buffer()->data();
+            auto tile = std::get<1>(region);
+            void* dest = tile->filtered_buffer()->data();
             uint64_t nbytes = std::get<2>(region);
             std::memcpy(dest, buffer.data(offset - batch_copy.offset), nbytes);
+            tile->signal_ready();
           }
 
           return Status::Ok();
@@ -1462,10 +1464,13 @@ Status VFS::read_all(
 }
 
 Status VFS::compute_read_batches(
-    const std::vector<std::tuple<uint64_t, Tile*, uint64_t, uint64_t>>& regions,
+    const std::vector<std::tuple<uint64_t, Tile*, uint64_t>>& regions,
     std::vector<BatchedRead>* batches) const {
   // Get config params
   bool found;
+  uint64_t max_batch_size = 0;
+  RETURN_NOT_OK(
+      config_.get<uint64_t>("vfs.max_batch_size", &max_batch_size, &found));
   uint64_t min_batch_size = 0;
   RETURN_NOT_OK(
       config_.get<uint64_t>("vfs.min_batch_size", &min_batch_size, &found));
@@ -1476,14 +1481,14 @@ Status VFS::compute_read_batches(
   assert(found);
 
   // Ensure the regions are sorted on offset.
-  std::vector<std::tuple<uint64_t, Tile*, uint64_t, uint64_t>> sorted_regions(
+  std::vector<std::tuple<uint64_t, Tile*, uint64_t>> sorted_regions(
       regions.begin(), regions.end());
   parallel_sort(
       compute_tp_,
       sorted_regions.begin(),
       sorted_regions.end(),
-      [](const std::tuple<uint64_t, Tile*, uint64_t, uint64_t>& a,
-         const std::tuple<uint64_t, Tile*, uint64_t, uint64_t>& b) {
+      [](const std::tuple<uint64_t, Tile*, uint64_t>& a,
+         const std::tuple<uint64_t, Tile*, uint64_t>& b) {
         return std::get<0>(a) < std::get<0>(b);
       });
 
@@ -1496,7 +1501,8 @@ Status VFS::compute_read_batches(
     uint64_t nbytes = std::get<2>(region);
     uint64_t new_batch_size = (offset + nbytes) - curr_batch.offset;
     uint64_t gap = offset - (curr_batch.offset + curr_batch.nbytes);
-    if (new_batch_size <= min_batch_size || gap <= min_batch_gap) {
+    if (new_batch_size < max_batch_size &&
+        (new_batch_size <= min_batch_size || gap <= min_batch_gap)) {
       // Extend current batch.
       curr_batch.nbytes = new_batch_size;
       curr_batch.regions.push_back(region);

@@ -79,6 +79,7 @@ Tile::Tile() {
   pre_filtered_size_ = 0;
   format_version_ = 0;
   type_ = Datatype::INT32;
+  tile_status_ = TileStatus::NotReady;
 }
 
 Tile::Tile(
@@ -93,7 +94,8 @@ Tile::Tile(
     , format_version_(0)
     , owns_buffer_(owns_buff)
     , pre_filtered_size_(0)
-    , type_(type) {
+    , type_(type)
+    , tile_status_(TileStatus::NotReady) {
   buffer->reset_offset();
 }
 
@@ -110,7 +112,8 @@ Tile::Tile(
     , format_version_(format_version)
     , owns_buffer_(owns_buff)
     , pre_filtered_size_(0)
-    , type_(type) {
+    , type_(type)
+    , tile_status_(TileStatus::NotReady) {
 }
 
 Tile::Tile(const Tile& tile)
@@ -210,6 +213,8 @@ Status Tile::init_filtered(
     return LOG_STATUS(
         Status_TileError("Cannot initialize tile; Buffer allocation failed"));
 
+  tile_status_ = TileStatus::NotReady;
+
   return Status::Ok();
 }
 
@@ -225,6 +230,7 @@ Tile Tile::clone(bool deep_copy) const {
   clone.pre_filtered_size_ = pre_filtered_size_;
   clone.type_ = type_;
   clone.filtered_buffer_ = filtered_buffer_;
+  clone.tile_status_ = tile_status_;
 
   if (deep_copy) {
     clone.owns_buffer_ = owns_buffer_;
@@ -364,6 +370,36 @@ Status Tile::zip_coordinates() {
   return Status::Ok();
 }
 
+Status Tile::wait_ready() {
+  std::unique_lock<std::mutex> lck(tile_status_mtx_);
+  while (tile_status_ == TileStatus::NotReady) {
+    tile_status_ready_cv_.wait(
+        lck, [this]() { return tile_status_ != TileStatus::NotReady; });
+  }
+
+  if (tile_status_ == TileStatus::Error) {
+    return LOG_STATUS(Status::TileError("Error reading tiles"));
+  }
+
+  return Status::Ok();
+}
+
+void Tile::signal_ready() {
+  std::unique_lock<std::mutex> lck(tile_status_mtx_);
+  if (tile_status_ == TileStatus::NotReady) {
+    tile_status_ = TileStatus::Ready;
+    tile_status_ready_cv_.notify_one();
+  }
+}
+
+void Tile::signal_error() {
+  std::unique_lock<std::mutex> lck(tile_status_mtx_);
+  if (tile_status_ == TileStatus::NotReady) {
+    tile_status_ = TileStatus::Error;
+    tile_status_ready_cv_.notify_one();
+  }
+}
+
 /* ****************************** */
 /*          PRIVATE METHODS       */
 /* ****************************** */
@@ -378,6 +414,7 @@ void Tile::swap(Tile& tile) {
   std::swap(owns_buffer_, tile.owns_buffer_);
   std::swap(pre_filtered_size_, tile.pre_filtered_size_);
   std::swap(type_, tile.type_);
+  std::swap(tile_status_, tile.tile_status_);
 }
 
 }  // namespace sm

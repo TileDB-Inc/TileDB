@@ -52,6 +52,8 @@ namespace sm {
  */
 class Tile {
  public:
+  enum class TileStatus : char { NotReady, Ready, Error };
+
   /**
    * Computes the chunk size for a tile.
    *
@@ -326,6 +328,15 @@ class Tile {
    */
   Status zip_coordinates();
 
+  /** Wait for a tile to become ready. */
+  Status wait_ready();
+
+  /** Signal a tile is not ready to be unfiltered. */
+  void signal_ready();
+
+  /** Signal a tile had an error while reading. */
+  void signal_error();
+
  private:
   /* ********************************* */
   /*         PRIVATE ATTRIBUTES        */
@@ -365,6 +376,15 @@ class Tile {
    * public API, all other public API routines operate on 'buffer_'.
    */
   Buffer filtered_buffer_;
+
+  /** Condition variable to wait on the tile being ready. */
+  std::condition_variable tile_status_ready_cv_;
+
+  /** The tile status, not ready, ready or error. */
+  TileStatus tile_status_;
+
+  /** Mutex protecting tile_status_ready_cv_ and tile_status_. */
+  std::mutex tile_status_mtx_;
 
   /* ********************************* */
   /*          PRIVATE METHODS          */

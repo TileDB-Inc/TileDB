@@ -254,7 +254,7 @@ Status FilterPipeline::filter_chunks_reverse(
     total_size += std::get<2>(input[i]);
   }
 
-  if (total_size != output->size())
+  if (total_size != output->alloced_size())
     RETURN_NOT_OK(output->realloc(total_size));
 
   // Run each chunk through the entire pipeline.
