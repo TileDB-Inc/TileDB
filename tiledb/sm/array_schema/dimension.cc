@@ -757,18 +757,52 @@ void Dimension::relevant_ranges<char>(
     const NDRange& ranges,
     const Range& mbr,
     std::vector<uint64_t>& relevant_ranges) {
-  for (uint64_t r = 0; r < ranges.size(); r++) {
+  const auto& mbr_start = mbr.start_str();
+  const auto& mbr_end = mbr.end_str();
+
+  // Binary search to find the first range containing the start mbr.
+  auto it = std::lower_bound(
+      ranges.begin(),
+      ranges.end(),
+      mbr_start,
+      [&](const Range& a, const std::string_view& value) {
+        return a.end_str() < value;
+      });
+
+  // If we have no ranges just exit early
+  if (it == ranges.end())
+    return;
+
+  // Set start index
+  const uint64_t start_range_idx = std::distance(ranges.begin(), it);
+
+  // Binary search to find the last range containing the start mbr.
+  auto it2 = std::lower_bound(
+      it,
+      ranges.end(),
+      mbr_end,
+      [&](const Range& a, const std::string_view& value) {
+        return a.start_str() < value;
+      });
+
+  // If the upper bound isn't the end add +1 to the index
+  uint64_t offset = 0;
+  if (it2 != ranges.end())
+    offset = 1;
+  const uint64_t end_range_idx =
+      std::distance(it, it2) + start_range_idx + offset;
+
+  // Loop over only potential relevant ranges
+  for (uint64_t r = start_range_idx; r < end_range_idx; ++r) {
     const auto& r1_start = ranges[r].start_str();
     const auto& r1_end = ranges[r].end_str();
-    const auto& r2_start = mbr.start_str();
-    const auto& r2_end = mbr.end_str();
 
     const auto r1_after_r2 =
-        !r1_start.empty() && !r2_end.empty() && r1_start > r2_end;
-    const auto r2_after_r1 =
-        !r2_start.empty() && !r1_end.empty() && r2_start > r1_end;
+        !r1_start.empty() && !mbr_end.empty() && r1_start > mbr_end;
+    const auto mbr_after_r1 =
+        !mbr_start.empty() && !r1_end.empty() && mbr_start > r1_end;
 
-    if (!r1_after_r2 && !r2_after_r1)
+    if (!r1_after_r2 && !mbr_after_r1)
       relevant_ranges.emplace_back(r);
   }
 }
@@ -778,13 +812,36 @@ void Dimension::relevant_ranges(
     const NDRange& ranges,
     const Range& mbr,
     std::vector<uint64_t>& relevant_ranges) {
-  uint64_t rsize = ranges.size();
-
   const auto d2 = (const T*)mbr.start();
   const auto d2_0 = d2[0];
   const auto d2_1 = d2[1];
 
-  for (uint64_t r = 0; r < rsize; r++) {
+  // Find lower bound
+  auto it = std::lower_bound(
+      ranges.begin(), ranges.end(), d2_0, [&](const Range& a, const T value) {
+        return ((const T*)a.start())[1] < value;
+      });
+
+  if (it == ranges.end())
+    return;
+
+  const uint64_t start_range = std::distance(ranges.begin(), it);
+
+  // Find upper bound to end comparisons. Finding this early allows avoiding the
+  // conditional exit in the for loop below
+  auto it2 = std::lower_bound(
+      it, ranges.end(), d2_1, [&](const Range& a, const T value) {
+        return ((const T*)a.start())[0] < value;
+      });
+
+  // If the upper bound isn't the end add +1 to the index
+  uint64_t offset = 0;
+  if (it2 != ranges.end())
+    offset = 1;
+  const uint64_t end_range = std::distance(it, it2) + start_range + offset;
+
+  // Loop over only potential relevant ranges
+  for (uint64_t r = start_range; r < end_range; ++r) {
     const auto d1 = (const T*)ranges[r].start();
 
     if ((d1[0] <= d2_1 && d1[1] >= d2_0))
@@ -807,18 +864,19 @@ void Dimension::covered_vec<char>(
     const Range& mbr,
     const std::vector<uint64_t>& relevant_ranges,
     std::vector<bool>& covered) {
+  const auto& range_start = mbr.start_str();
+  const auto& range_end = mbr.end_str();
   for (uint64_t i = 0; i < relevant_ranges.size(); i++) {
     auto r = relevant_ranges[i];
-    auto r1_start = mbr.start_str();
-    auto r1_end = mbr.end_str();
     auto r2_start = ranges[r].start_str();
     auto r2_end = ranges[r].end_str();
 
-    auto r1_after_r2 =
-        !r1_start.empty() && !r2_start.empty() && r1_start >= r2_start;
-    auto r2_after_r1 = !r1_end.empty() && !r2_end.empty() && r1_end <= r2_end;
+    auto range_after_r2 =
+        !range_start.empty() && !r2_start.empty() && range_start >= r2_start;
+    auto mbr_after_range_start =
+        !range_end.empty() && !r2_end.empty() && range_end <= r2_end;
 
-    covered[i] = r1_after_r2 && r2_after_r1;
+    covered[i] = range_after_r2 && mbr_after_range_start;
   }
 }
 
@@ -828,9 +886,9 @@ void Dimension::covered_vec(
     const Range& mbr,
     const std::vector<uint64_t>& relevant_ranges,
     std::vector<bool>& covered) {
+  auto d1 = (const T*)mbr.start();
   for (uint64_t i = 0; i < relevant_ranges.size(); i++) {
     auto r = relevant_ranges[i];
-    auto d1 = (const T*)mbr.start();
     auto d2 = (const T*)ranges[r].start();
 
     covered[i] = d1[0] >= d2[0] && d1[1] <= d2[1];

@@ -190,7 +190,7 @@ TEST_CASE_METHOD(
   CHECK(schema.set_domain(&dom).ok());
 
   std::vector<tdb_shared_ptr<FragmentMetadata>> fragments;
-  for (uint64_t i = 0; i < frag_tile_domains.size(); i++) {
+  for (uint64_t i = 0; i < frag_tile_domains.size() + 1; i++) {
     tdb_shared_ptr<FragmentMetadata> fragment =
         tdb::make_shared<FragmentMetadata>(
             HERE(),
