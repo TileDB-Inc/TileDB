@@ -165,7 +165,7 @@ class BlockingResourcePool {
     while (resources_exhausted()) {
       // block until available again
       num_blocked_threads_++;
-      exhaustion_cv_.wait(lck, [this]() { return !resources_exhausted(); });
+      exhaustion_cv_.wait(lck);
       num_blocked_threads_--;
     }
     return {*this, unused_[unused_idx_--]};
