@@ -631,8 +631,8 @@ runs:
         else
           ls -l ${{ env.GITHUB_WORKSPACE }}/../tiledb-${{ env.ARTIFACT_OS }}-${{ env.ARTIFACT_ARCH }}-build-dir-${{ env.ARTIFACT_EXTRAS }}.tar.gz
         fi
-        TDB_REF_NAME=${GITHUB_REF_NAME//\//-} # replace '/' with '-'
-        echo "TDB_REF_NAME=$TDB_REF_NAME" >> "$GITHUB_ENV"
+        #TDB_REF_NAME=${GITHUB_REF_NAME//\//-} # replace '/' with '-'
+        #echo "TDB_REF_NAME=$TDB_REF_NAME" >> "$GITHUB_ENV"
         pwd
         sync
         ls -l
