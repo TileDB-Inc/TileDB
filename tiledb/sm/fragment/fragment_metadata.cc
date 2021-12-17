@@ -2147,7 +2147,7 @@ Status FragmentMetadata::load_v1_v2(
   if (schema != array_schemas.end()) {
     set_array_schema(schema->second.get());
   } else {
-    return Status::FragmentMetadataError(
+    return Status_FragmentMetadataError(
         "Could not find schema" + array_schema_name_ +
         " in map of schemas loaded.\n" +
         "Consider reloading the array to check for new array schemas.");
@@ -2213,7 +2213,7 @@ Status FragmentMetadata::load_footer(
     if (schema != array_schemas.end()) {
       set_array_schema(schema->second.get());
     } else {
-      return Status::FragmentMetadataError(
+      return Status_FragmentMetadataError(
           "Could not find schema" + array_schema_name_ +
           " in map of schemas loaded.\n" +
           "Consider reloading the array to check for new array schemas.");
@@ -2226,7 +2226,7 @@ Status FragmentMetadata::load_footer(
     if (schema != array_schemas.end()) {
       set_array_schema(schema->second.get());
     } else {
-      return Status::FragmentMetadataError(
+      return Status_FragmentMetadataError(
           "Could not find schema" + array_schema_name_ +
           " in map of schemas loaded.\n" +
           "Consider reloading the array to check for new array schemas.");

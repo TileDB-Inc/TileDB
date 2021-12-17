@@ -357,7 +357,7 @@ Status FilterPipeline::run_forward(
     Tile* const tile,
     ThreadPool* const compute_tp) const {
   RETURN_NOT_OK(
-      tile ? Status::Ok() : Status::Error("invalid argument: null Tile*"));
+      tile ? Status::Ok() : Status_Error("invalid argument: null Tile*"));
 
   writer_stats->add_counter("write_filtered_byte_num", tile->size());
 

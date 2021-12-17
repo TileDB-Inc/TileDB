@@ -1152,7 +1152,7 @@ Status SparseUnorderedWithDupsReader<BitmapType>::respect_copy_memory_budget(
   RETURN_NOT_OK_ELSE(status, logger_->status(status));
 
   if (max_rt_idx == 0)
-    return Status::SparseUnorderedWithDupsReaderError(
+    return Status_SparseUnorderedWithDupsReaderError(
         "Unable to copy one tile with current budget/buffers");
 
   // Resize the result tiles vector.
@@ -1219,7 +1219,7 @@ Status SparseUnorderedWithDupsReader<BitmapType>::compute_var_size_offsets(
   }
 
   if (*var_buffer_size == 0) {
-    return Status::SparseUnorderedWithDupsReaderError(
+    return Status_SparseUnorderedWithDupsReaderError(
         "Var size buffer cannot fit a single cell for var attribute");
   }
 

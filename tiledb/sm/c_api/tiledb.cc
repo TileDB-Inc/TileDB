@@ -375,7 +375,7 @@ inline int32_t sanity_check(
     tiledb_ctx_t* ctx, const tiledb_subarray_t* subarray) {
   if (subarray == nullptr || subarray->subarray_ == nullptr ||
       subarray->subarray_->array() == nullptr) {
-    auto st = Status::Error("Invalid TileDB subarray object");
+    auto st = Status_Error("Invalid TileDB subarray object");
     LOG_STATUS(st);
     save_error(ctx, st);
     return TILEDB_ERR;
@@ -3797,7 +3797,7 @@ int32_t tiledb_subarray_alloc(
 
   // Error if array is not open
   if (!array->array_->is_open()) {
-    auto st = Status::Error("Cannot create subarray; array is not open");
+    auto st = Status_Error("Cannot create subarray; array is not open");
     *subarray = nullptr;
     LOG_STATUS(st);
     save_error(ctx, st);
@@ -3807,7 +3807,7 @@ int32_t tiledb_subarray_alloc(
   // Create a buffer struct
   *subarray = new (std::nothrow) tiledb_subarray_t;
   if (*subarray == nullptr) {
-    auto st = Status::Error("Failed to allocate TileDB subarray object");
+    auto st = Status_Error("Failed to allocate TileDB subarray object");
     LOG_STATUS(st);
     save_error(ctx, st);
     return TILEDB_OOM;
@@ -3827,7 +3827,7 @@ int32_t tiledb_subarray_alloc(
   }
   if ((*subarray)->subarray_ == nullptr) {
     delete *subarray;
-    auto st = Status::Error("Failed to allocate TileDB subarray object");
+    auto st = Status_Error("Failed to allocate TileDB subarray object");
     LOG_STATUS(st);
     save_error(ctx, st);
     return TILEDB_OOM;

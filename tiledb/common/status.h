@@ -81,6 +81,14 @@ namespace common {
     }                                \
   } while (false)
 
+#define RETURN_NOT_OK_TUPLE(s)   \
+  do {                           \
+    Status _s = (s);             \
+    if (!_s.ok()) {              \
+      return {_s, std::nullopt}; \
+    }                            \
+  } while (false)
+
 class Status {
  public:
   /* ********************************* */

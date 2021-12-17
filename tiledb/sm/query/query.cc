@@ -1950,14 +1950,14 @@ Status Query::check_buffers_correctness() {
       // Check for data buffer under buffer_var and offsets buffer under buffer
       if (type_ == QueryType::READ) {
         if (buffer(attr).buffer_var_ == nullptr) {
-          return logger_->status(Status::QueryError(
+          return logger_->status(Status_QueryError(
               std::string("Var-Sized input attribute/dimension '") + attr +
               "' is not set correctly. \nVar size buffer is not set."));
         }
       } else {
         if (buffer(attr).buffer_var_ == nullptr &&
             *buffer(attr).buffer_var_size_ != 0) {
-          return logger_->status(Status::QueryError(
+          return logger_->status(Status_QueryError(
               std::string("Var-Sized input attribute/dimension '") + attr +
               "' is not set correctly. \nVar size buffer is not set and buffer "
               "size if not 0."));

@@ -812,7 +812,6 @@ Status QueryCondition::apply(
         stride,
         *result_cell_slabs,
         &tmp_result_cell_slabs));
-        return Status_QueryConditionError(
     *result_cell_slabs = tmp_result_cell_slabs;
   }
 
@@ -1529,7 +1528,7 @@ Status QueryCondition::apply_clause_sparse(
           clause, result_tile, var_size, result_bitmap);
       break;
     default:
-      return Status::QueryConditionError(
+      return Status_QueryConditionError(
           "Cannot perform query comparison; Unknown query "
           "condition operator");
   }
@@ -1546,7 +1545,7 @@ Status QueryCondition::apply_clause_sparse(
   const Attribute* const attribute =
       array_schema->attribute(clause.field_name_);
   if (!attribute) {
-    return Status::QueryConditionError(
+    return Status_QueryConditionError(
         "Unknown attribute " + clause.field_name_);
   }
 
@@ -1639,7 +1638,7 @@ Status QueryCondition::apply_clause_sparse(
     case Datatype::STRING_UCS2:
     case Datatype::STRING_UCS4:
     default:
-      return Status::QueryConditionError(
+      return Status_QueryConditionError(
           "Cannot perform query comparison; Unsupported query "
           "conditional type on " +
           clause.field_name_);

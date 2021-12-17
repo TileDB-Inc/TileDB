@@ -167,7 +167,7 @@ Status Subarray::add_range(
 
   // Correctness checks
   if (layout_ == Layout::GLOBAL_ORDER && ranges_[dim_idx].size() > 0) {
-    return logger_->status(Status::SubarrayError(
+    return logger_->status(Status_SubarrayError(
         "Cannot add more than one range per dimension to global order query"));
   }
 
@@ -202,12 +202,12 @@ Status Subarray::add_range_unsafe(uint32_t dim_idx, const Range& range) {
 Status Subarray::set_subarray(const void* subarray) {
   if (!array_->array_schema_latest()->domain()->all_dims_same_type())
     return LOG_STATUS(
-        Status::SubarrayError("Cannot set subarray; Function not applicable to "
+        Status_SubarrayError("Cannot set subarray; Function not applicable to "
                               "heterogeneous domains"));
 
   if (!array_->array_schema_latest()->domain()->all_dims_fixed())
     return LOG_STATUS(
-        Status::SubarrayError("Cannot set subarray; Function not applicable to "
+        Status_SubarrayError("Cannot set subarray; Function not applicable to "
                               "domains with variable-sized dimensions"));
 
   ranges_.clear();
@@ -232,27 +232,27 @@ Status Subarray::add_range(
     unsigned dim_idx, const void* start, const void* end, const void* stride) {
   if (dim_idx >= this->array_->array_schema_latest()->dim_num())
     return LOG_STATUS(
-        Status::SubarrayError("Cannot add range; Invalid dimension index"));
+        Status_SubarrayError("Cannot add range; Invalid dimension index"));
 
   QueryType array_query_type;
   RETURN_NOT_OK(array_->get_query_type(&array_query_type));
   if (array_query_type == tiledb::sm::QueryType::WRITE) {
     if (!array_->array_schema_latest()->dense()) {
-      return LOG_STATUS(Status::SubarrayError(
+      return LOG_STATUS(Status_SubarrayError(
           "Adding a subarray range to a write query is not "
           "supported in sparse arrays"));
     }
     if (this->is_set(dim_idx))
       return LOG_STATUS(
-          Status::SubarrayError("Cannot add range; Multi-range dense writes "
+          Status_SubarrayError("Cannot add range; Multi-range dense writes "
                                 "are not supported"));
   }
 
   if (start == nullptr || end == nullptr)
-    return LOG_STATUS(Status::SubarrayError("Cannot add range; Invalid range"));
+    return LOG_STATUS(Status_SubarrayError("Cannot add range; Invalid range"));
 
   if (stride != nullptr)
-    return LOG_STATUS(Status::SubarrayError(
+    return LOG_STATUS(Status_SubarrayError(
         "Cannot add range; Setting range stride is currently unsupported"));
 
   if (this->array_->array_schema_latest()
@@ -260,7 +260,7 @@ Status Subarray::add_range(
           ->dimension(dim_idx)
           ->var_size())
     return LOG_STATUS(
-        Status::SubarrayError("Cannot add range; Range must be fixed-sized"));
+        Status_SubarrayError("Cannot add range; Range must be fixed-sized"));
 
   // Prepare a temp range
   std::vector<uint8_t> range;
@@ -295,20 +295,20 @@ Status Subarray::add_range_var(
     uint64_t end_size) {
   if (dim_idx >= array_->array_schema_latest()->dim_num())
     return LOG_STATUS(
-        Status::SubarrayError("Cannot add range; Invalid dimension index"));
+        Status_SubarrayError("Cannot add range; Invalid dimension index"));
 
   if ((start == nullptr && start_size != 0) ||
       (end == nullptr && end_size != 0))
-    return LOG_STATUS(Status::SubarrayError("Cannot add range; Invalid range"));
+    return LOG_STATUS(Status_SubarrayError("Cannot add range; Invalid range"));
 
   if (!array_->array_schema_latest()->domain()->dimension(dim_idx)->var_size())
-    return LOG_STATUS(Status::SubarrayError(
+    return LOG_STATUS(Status_SubarrayError(
         "Cannot add range; Range must be variable-sized"));
 
   QueryType array_query_type;
   RETURN_NOT_OK(array_->get_query_type(&array_query_type));
   if (array_query_type == tiledb::sm::QueryType::WRITE)
-    return LOG_STATUS(Status::SubarrayError(
+    return LOG_STATUS(Status_SubarrayError(
         "Cannot add range; Function applicable only to reads"));
 
   // Get read_range_oob config setting
@@ -317,7 +317,7 @@ Status Subarray::add_range_var(
   assert(found);
 
   if (read_range_oob != "error" && read_range_oob != "warn")
-    return LOG_STATUS(Status::SubarrayError(
+    return LOG_STATUS(Status_SubarrayError(
         "Invalid value " + read_range_oob +
         " for sm.read_range_obb. Acceptable values are 'error' or 'warn'."));
 
@@ -345,7 +345,7 @@ Status Subarray::get_range_var(
   QueryType array_query_type;
   RETURN_NOT_OK(array_->get_query_type(&array_query_type));
   if (array_query_type == tiledb::sm::QueryType::WRITE)
-    return LOG_STATUS(Status::SubarrayError(
+    return LOG_STATUS(Status_SubarrayError(
         "Getting a var range for a write query is not applicable"));
 
   uint64_t start_size = 0;
@@ -384,7 +384,7 @@ Status Subarray::get_range(
   if (array_query_type == tiledb::sm::QueryType::WRITE) {
     if (!array_->array_schema_latest()->dense())
       return LOG_STATUS(
-          Status::SubarrayError("Getting a range from a write query is not "
+          Status_SubarrayError("Getting a range from a write query is not "
                                 "applicable to sparse arrays"));
   }
 
@@ -697,7 +697,7 @@ Status Subarray::get_range_num(uint32_t dim_idx, uint64_t* range_num) const {
   if (array_query_type == tiledb::sm::QueryType::WRITE &&
       !array_->array_schema_latest()->dense()) {
     return LOG_STATUS(
-        Status::SubarrayError("Getting the number of ranges from a write query "
+        Status_SubarrayError("Getting the number of ranges from a write query "
                               "is not applicable to sparse arrays"));
   }
 
@@ -798,7 +798,7 @@ Status Subarray::set_config(const Config& config) {
     std::string read_range_oob_str = config.get("sm.read_range_oob", &found);
     assert(found);
     if (read_range_oob_str != "error" && read_range_oob_str != "warn")
-      return LOG_STATUS(Status::SubarrayError(
+      return LOG_STATUS(Status_SubarrayError(
           "Invalid value " + read_range_oob_str +
           " for sm.read_range_obb. Acceptable values are 'error' or 'warn'."));
     err_on_range_oob_ = read_range_oob_str == "error";
@@ -814,7 +814,7 @@ const Config* Subarray::config() const {
 Status Subarray::set_coalesce_ranges(bool coalesce_ranges) {
   if (count_set_ranges())
     return LOG_STATUS(
-        Status::SubarrayError("non-default ranges have been set, cannot change "
+        Status_SubarrayError("non-default ranges have been set, cannot change "
                               "coalesce_ranges setting!"));
   // trying to mimic conditions at ctor()
   coalesce_ranges_ = coalesce_ranges;
@@ -904,34 +904,34 @@ Status Subarray::get_est_result_size(
   RETURN_NOT_OK(array_->get_query_type(&type));
 
   if (type == QueryType::WRITE)
-    return LOG_STATUS(Status::SubarrayError(
+    return LOG_STATUS(Status_SubarrayError(
         "Cannot get estimated result size; Operation currently "
         "unsupported for write queries"));
 
   if (name == nullptr)
-    return LOG_STATUS(Status::SubarrayError(
+    return LOG_STATUS(Status_SubarrayError(
         "Cannot get estimated result size; Name cannot be null"));
 
   if (name == constants::coords &&
       !array_->array_schema_latest()->domain()->all_dims_same_type())
-    return LOG_STATUS(Status::SubarrayError(
+    return LOG_STATUS(Status_SubarrayError(
         "Cannot get estimated result size; Not applicable to zipped "
         "coordinates in arrays with heterogeneous domain"));
 
   if (name == constants::coords &&
       !array_->array_schema_latest()->domain()->all_dims_fixed())
-    return LOG_STATUS(Status::SubarrayError(
+    return LOG_STATUS(Status_SubarrayError(
         "Cannot get estimated result size; Not applicable to zipped "
         "coordinates in arrays with domains with variable-sized dimensions"));
 
   if (array_->array_schema_latest()->is_nullable(name))
-    return LOG_STATUS(Status::SubarrayError(
+    return LOG_STATUS(Status_SubarrayError(
         std::string(
             "Cannot get estimated result size; Input attribute/dimension '") +
         name + "' is nullable"));
 
   if (array_->is_remote()) {
-    return LOG_STATUS(Status::SubarrayError(
+    return LOG_STATUS(Status_SubarrayError(
         std::string("Error in query estimate result size; remote/REST "
                     "array functionality not implemented.")));
   }
@@ -1045,7 +1045,7 @@ Status Subarray::get_est_result_size_nullable(
                              "Attribute must be nullable"));
 
   if (array_->is_remote() && !this->est_result_size_computed()) {
-    return LOG_STATUS(Status::SubarrayError(
+    return LOG_STATUS(Status_SubarrayError(
         "Error in query estimate result size; unimplemented "
         "for nullable attributes in remote arrays."));
   }
@@ -1108,7 +1108,7 @@ Status Subarray::get_est_result_size_nullable(
                              "Attribute must be nullable"));
 
   if (array_->is_remote() && !this->est_result_size_computed()) {
-    return LOG_STATUS(Status::SubarrayError(
+    return LOG_STATUS(Status_SubarrayError(
         "Error in query estimate result size; unimplemented "
         "for nullable attributes in remote arrays."));
   }
@@ -3136,7 +3136,7 @@ Status Subarray::sort_ranges_for_dim(
     case Datatype::STRING_UCS2:
     case Datatype::STRING_UCS4:
     case Datatype::ANY:
-      return LOG_STATUS(Status::SubarrayError(
+      return LOG_STATUS(Status_SubarrayError(
           "Invalid datatype " + datatype_str(datatype) + " for sorting"));
     case Datatype::DATETIME_YEAR:
     case Datatype::DATETIME_MONTH:
