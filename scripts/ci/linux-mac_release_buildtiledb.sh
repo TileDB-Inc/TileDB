@@ -79,13 +79,6 @@ cmake .. ${cmake_args}
 make -j4
 make -C tiledb install
 
-# get this into 'env' context since runners don't automatically place items
-# from env into context on startup!
-#echo "GITHUB_SHA=$GITHUB_SHA" >> "$GITHUB_ENV"
-#echo "GITHUB_WORKSPACE=$GITHUB_WORKSPACE" >> "$GITHUB_ENV"
-#echo "ARTIFACT_OS=$ARTIFACT_OS" >> "$GITHUB_ENV"
-#echo "ARTIFACT_EXTRAS=$ARTIFACT_EXTRAS" >> "$GITHUB_ENV"
-
 set -x
 pwd
 #tar --exclude=build -zcf tiledb-${{ env.ARTIFACT_OS }}-build-dir-${{ env.ARTIFACT_EXTRAS }}.tar.gz $GITHUB_WORKSPACE
@@ -98,7 +91,10 @@ sync
 # move up a directory level so we are writing archive where tar won't fail reporting change while reading...
 cd $GITHUB_WORKSPACE/..
 pwd
-tar --exclude=build -zcf tiledb-source-${ARTIFACT_OS}-${ARTIFACT_ARCH}-build-dir-${ARTIFACT_EXTRAS}.tar.gz ./TileDB
+#tar --exclude=build -zcf tiledb-source-${ARTIFACT_OS}-${ARTIFACT_ARCH}-build-dir-${ARTIFACT_EXTRAS}.tar.gz ./TileDB
+#source_archive_name=tiledb-source-${ARTIFACT_OS}-${ARTIFACT_ARCH}-build-dir-${ARTIFACT_EXTRAS}.tar.gz
+source_archive_name=tiledb-source-${TDB_REF_NAME}-${TDB_COMMIT_HASH}.tar.gz
+tar --exclude=build -zcf ${source_archive_name} ./TileDB
 ls -l $GITHUB_WORKSPACE/..
 sync
 #sleep 10
@@ -112,39 +108,12 @@ binary_archive_name="tiledb-${ARTIFACT_OS}-${ARTIFACT_ARCH}-${TDB_REF_NAME}-${TD
 tar -zcf ${binary_archive_name} ./TileDB/build
 ls -l $GITHUB_WORKSPACE/..
 sync
-TDB_SOURCE_ARCHIVE_PATH=`dirname $GITHUB_WORKSPACE/..`/tiledb-source-${ARTIFACT_OS}-${ARTIFACT_ARCH}-build-dir-${ARTIFACT_EXTRAS}.tar.gz
-TDB_SOURCE_ARCHIVE_PATH2="$GITHUB_WORKSPACE/../tiledb-source-${ARTIFACT_OS}-${ARTIFACT_ARCH}-build-dir-${ARTIFACT_EXTRAS}.tar.gz"
-#~ echo "TDB_SOURCE_ARCHIVE_PATH=$TDB_SOURCE_ARCHIVE_PATH"
-#~ #echo -e "import sys\nimport os\nprint (os.path.realpath(\"$TDB_SOURCE_ARCHIVE_PATH\"))\n" | /opt/rh/rh-python36/root/usr/bin/python
-#~ echo -e "import sys\nimport os\nprint (os.path.realpath(\"$TDB_SOURCE_ARCHIVE_PATH\"))\n" | python
-#~ echo -e "import sys\nimport os\nprint (os.path.realpath(\"$TDB_SOURCE_ARCHIVE_PATH2\"))\n" | python
-#~ #would like to use 'realpath', but seems not present in manylinux, and failed finding package that has it, and
-#~ #seems realpath expects the item to exist, whereas
-#~ #seems python functionality is present in all environs, and python does -not- expect item to be present in filesystem.
-#~ #TDB_SOURCE_ARCHIVE_PATH=$(echo -e "import sys\nimport os\nprint (os.path.realpath(\"$TDB_SOURCE_ARCHIVE_PATH\"))\n" | /opt/rh/rh-python36/root/usr/bin/python)
-#~ #TDB_SOURCE_ARCHIVE_PATH=$(echo -e "import sys\nimport os\nprint (os.path.realpath(\"$TDB_SOURCE_ARCHIVE_PATH\"))\n" | python)
-TDB_SOURCE_ARCHIVE_PATH=$(echo -e "import sys\nimport os\nprint (os.path.realpath(\"$TDB_SOURCE_ARCHIVE_PATH2\"))\n" | python)
-#~ echo "TDB_SOURCE_ARCHIVE_PATH=$TDB_SOURCE_ARCHIVE_PATH"
-#~ #TDB_SOURCE_ARCHIVE_PATH=`dirname $TDB_SOURCE_ARCHIVE_PATH`
-#~ #echo "TDB_SOURCE_ARCHIVE_PATH=$TDB_SOURCE_ARCHIVE_PATH"
-#~ ##echo "TDB_SOURCE_ARCHIVE_PATH=$TDB_SOURCE_ARCHIVE_PATH" >> "$GITHUB_ENV"
 
-TDB_BINARY_ARCHIVE_PATH=`dirname $GITHUB_WORKSPACE/..`/tiledb-binary-${ARTIFACT_OS}-${ARTIFACT_ARCH}-build-dir-${ARTIFACT_EXTRAS}.tar.gz
-#TDB_BINARY_ARCHIVE_PATH2="$GITHUB_WORKSPACE/../tiledb-binary-${ARTIFACT_OS}-${ARTIFACT_ARCH}-build-dir-${ARTIFACT_EXTRAS}.tar.gz"
-#TDB_BINARY_ARCHIVE_PATH2="$GITHUB_WORKSPACE/../tiledb-${ARTIFACT_OS}-${ARTIFACT_ARCH}-${TDB_REF_NAME}-${TDB_COMMIT_HASH}.tar.gz"
+TDB_SOURCE_ARCHIVE_PATH2="$GITHUB_WORKSPACE/../${source_archive_name}"
+TDB_SOURCE_ARCHIVE_PATH=$(echo -e "import sys\nimport os\nprint (os.path.realpath(\"$TDB_SOURCE_ARCHIVE_PATH2\"))\n" | python)
+
 TDB_BINARY_ARCHIVE_PATH2="$GITHUB_WORKSPACE/../${binary_archive_name}"
-#~ echo "TDB_BINARY_ARCHIVE_PATH=$TDB_BINARY_ARCHIVE_PATH"
-#~ #'realpath' not available everywhere, see comment above.
-#~ #echo -e "import sys\nimport os\nprint (os.path.realpath(\"$TDB_BINARY_ARCHIVE_PATH\"))\n" | /opt/rh/rh-python36/root/usr/bin/python
-#~ echo -e "import sys\nimport os\nprint (os.path.realpath(\"$TDB_BINARY_ARCHIVE_PATH\"))\n" | python
-#~ echo -e "import sys\nimport os\nprint (os.path.realpath(\"$TDB_BINARY_ARCHIVE_PATH2\"))\n" | python
-#~ #TDB_BINARY_ARCHIVE_PATH=$(echo -e "import sys\nimport os\nprint (os.path.realpath(\"$TDB_BINARY_ARCHIVE_PATH\"))\n" | /opt/rh/rh-python36/root/usr/bin/python)
-#~ #TDB_BINARY_ARCHIVE_PATH=$(echo -e "import sys\nimport os\nprint (os.path.realpath(\"$TDB_BINARY_ARCHIVE_PATH\"))\n" | python)
 TDB_BINARY_ARCHIVE_PATH=$(echo -e "import sys\nimport os\nprint (os.path.realpath(\"$TDB_BINARY_ARCHIVE_PATH2\"))\n" | python)
-#~ #TDB_BINARY_ARCHIVE_PATH=`dirname $TDB_BINARY_ARCHIVE_PATH`
-#~ echo "TDB_BINARY_ARCHIVE_PATH=$TDB_BINARY_ARCHIVE_PATH"
-#~ #echo "ARTIFACT_EXTRAS=$ARTIFACT_EXTRAS" >> "$GITHUB_ENV"
-#~ ##echo "TDB_BINARY_ARCHIVE_PATH=$TDB_BINARY_ARCHIVE_PATH" >> "$GITHUB_ENV"
 
 echo "TDB_BINARY_ARCHIVE_PATH=$TDB_BINARY_ARCHIVE_PATH" >> "$GITHUB_WORKSPACE/../TDBRETENVVARS.TXT"
 echo "TDB_SOURCE_ARCHIVE_PATH=$TDB_SOURCE_ARCHIVE_PATH" >> "$GITHUB_WORKSPACE/../TDBRETENVVARS.TXT"
@@ -168,7 +137,5 @@ fi
 if [[ $(ls -l $TDB_BINARY_ARCHIVE_PATH2) ]]; then
   echo "found $TDB_BINARY_ARCHIVE_PATH2"
 fi
-
-#$SUDO find / -name 'tiledb-*-linux-build-*.tar.gz' -exec ls -l {} \;
 
 echo "END, inside linux-mac_release_buildtiledb.sh"
