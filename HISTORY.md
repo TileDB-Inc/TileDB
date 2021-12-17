@@ -1,3 +1,17 @@
+# TileDB v2.5.3 Release Notes
+
+## Improvements
+
+* Removing unnecessary openssl callback function. [#2705](https://github.com/TileDB-Inc/TileDB/pull/2705)
+* openssl3 md5 deprecation mitigation [#2716](https://github.com/TileDB-Inc/TileDB/pull/2716)
+* Sparse refactored reader: change all_tiles_loaded_ to vector of uint8_t. [#2724](https://github.com/TileDB-Inc/TileDB/pull/2724)
+
+## Bug fixes
+
+* Properly check and use legacy readers instead of refactored in serialized query. [#2667](https://github.com/TileDB-Inc/TileDB/pull/2667)
+* Set array URI in cap'n proto object for compatibility with repeated opened array usage in TileDB 2.4 and older. [#2676](https://github.com/TileDB-Inc/TileDB/pull/2676)
+* Add the compute_mbr_var_func_pointer assignment in Dimension constructor [#2730](https://github.com/TileDB-Inc/TileDB/pull/2730)
+
 # TileDB v2.5.2 Release Notes
 
 ## Improvements
