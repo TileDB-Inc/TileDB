@@ -693,7 +693,7 @@ Status Writer::check_subarray() const {
     if (subarray_.range_num() != 1)
       return LOG_STATUS(
           Status_WriterError("Multi-range dense writes "
-                              "are not supported"));
+                             "are not supported"));
 
     if (layout_ == Layout::GLOBAL_ORDER && !subarray_.coincides_with_tiles())
       return logger_->status(

@@ -123,7 +123,7 @@ Status SparseIndexReaderBase::init() {
   if (offsets_format_mode_ != "bytes" && offsets_format_mode_ != "elements") {
     return logger_->status(
         Status_ReaderError("Cannot initialize reader; Unsupported offsets "
-                            "format in configuration"));
+                           "format in configuration"));
   }
   elements_mode_ = offsets_format_mode_ == "elements";
 
@@ -135,7 +135,7 @@ Status SparseIndexReaderBase::init() {
   if (offsets_bitsize_ != 32 && offsets_bitsize_ != 64) {
     return logger_->status(
         Status_ReaderError("Cannot initialize reader; "
-                            "Unsupported offsets bitsize in configuration"));
+                           "Unsupported offsets bitsize in configuration"));
   }
 
   // Check the validity buffer sizes.

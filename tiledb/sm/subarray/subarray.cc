@@ -203,12 +203,12 @@ Status Subarray::set_subarray(const void* subarray) {
   if (!array_->array_schema_latest()->domain()->all_dims_same_type())
     return LOG_STATUS(
         Status_SubarrayError("Cannot set subarray; Function not applicable to "
-                              "heterogeneous domains"));
+                             "heterogeneous domains"));
 
   if (!array_->array_schema_latest()->domain()->all_dims_fixed())
     return LOG_STATUS(
         Status_SubarrayError("Cannot set subarray; Function not applicable to "
-                              "domains with variable-sized dimensions"));
+                             "domains with variable-sized dimensions"));
 
   ranges_.clear();
   add_default_ranges();
@@ -245,7 +245,7 @@ Status Subarray::add_range(
     if (this->is_set(dim_idx))
       return LOG_STATUS(
           Status_SubarrayError("Cannot add range; Multi-range dense writes "
-                                "are not supported"));
+                               "are not supported"));
   }
 
   if (start == nullptr || end == nullptr)
@@ -302,8 +302,8 @@ Status Subarray::add_range_var(
     return LOG_STATUS(Status_SubarrayError("Cannot add range; Invalid range"));
 
   if (!array_->array_schema_latest()->domain()->dimension(dim_idx)->var_size())
-    return LOG_STATUS(Status_SubarrayError(
-        "Cannot add range; Range must be variable-sized"));
+    return LOG_STATUS(
+        Status_SubarrayError("Cannot add range; Range must be variable-sized"));
 
   QueryType array_query_type;
   RETURN_NOT_OK(array_->get_query_type(&array_query_type));
@@ -385,7 +385,7 @@ Status Subarray::get_range(
     if (!array_->array_schema_latest()->dense())
       return LOG_STATUS(
           Status_SubarrayError("Getting a range from a write query is not "
-                                "applicable to sparse arrays"));
+                               "applicable to sparse arrays"));
   }
 
   *stride = nullptr;
@@ -698,7 +698,7 @@ Status Subarray::get_range_num(uint32_t dim_idx, uint64_t* range_num) const {
       !array_->array_schema_latest()->dense()) {
     return LOG_STATUS(
         Status_SubarrayError("Getting the number of ranges from a write query "
-                              "is not applicable to sparse arrays"));
+                             "is not applicable to sparse arrays"));
   }
 
   *range_num = ranges_[dim_idx].size();
@@ -815,7 +815,7 @@ Status Subarray::set_coalesce_ranges(bool coalesce_ranges) {
   if (count_set_ranges())
     return LOG_STATUS(
         Status_SubarrayError("non-default ranges have been set, cannot change "
-                              "coalesce_ranges setting!"));
+                             "coalesce_ranges setting!"));
   // trying to mimic conditions at ctor()
   coalesce_ranges_ = coalesce_ranges;
   ranges_.clear();

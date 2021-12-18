@@ -190,7 +190,7 @@ Status convert(const std::string& str, SerializationType* value) {
   } else {
     return LOG_STATUS(
         Status_UtilsError("Failed to convert string to SerializationType; "
-                           "Value not 'json' or 'capnp'"));
+                          "Value not 'json' or 'capnp'"));
   }
 
   return Status::Ok();
