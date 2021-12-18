@@ -1945,8 +1945,7 @@ Status Query::set_subarray_unsafe(const NDRange& subarray) {
 Status Query::check_buffers_correctness() {
   // Iterate through each attribute
   for (auto& attr : buffer_names()) {
-      return logger_->status(Status_QueryError(
-          std::string("Data buffer is not set for " + attr)));    if (array_schema_->var_size(attr)) {
+    if (array_schema_->var_size(attr)) {
       // Check for data buffer under buffer_var and offsets buffer under buffer
       if (type_ == QueryType::READ) {
         if (buffer(attr).buffer_var_ == nullptr) {
