@@ -95,6 +95,10 @@ pwd
 #source_archive_name=tiledb-source-${ARTIFACT_OS}-${ARTIFACT_ARCH}-build-dir-${ARTIFACT_EXTRAS}.tar.gz
 source_archive_name=tiledb-source-${TDB_REF_NAME}-${TDB_COMMIT_HASH}.tar.gz
 tar --exclude=build -zcf ${source_archive_name} ./TileDB
+#source_archivefilename=$(Build.ArtifactStagingDirectory)/tiledb-$(ARTIFACT_OS)-build-dir-$(ARTIFACT_EXTRAS).tar.gz
+#following name closer to azure pipelines version...
+#so, this could be same for two mac runs (intel, arm), would one artifact replace other, what happens 'out there'?
+#source_archivefilename=tiledb-${ARTIFACT_OS}-build-dir-${ARTIFACT_EXTRAS}.tar.gz
 ls -l $GITHUB_WORKSPACE/..
 sync
 #sleep 10
@@ -106,6 +110,9 @@ pwd
 #tar -zcf tiledb-${ARTIFACT_OS}-${ARTIFACT_ARCH}-${TDB_REF_NAME}-${TDB_COMMIT_HASH}.tar.gz ./TileDB/build
 binary_archive_name="tiledb-${ARTIFACT_OS}-${ARTIFACT_ARCH}-${TDB_REF_NAME}-${TDB_COMMIT_HASH}.tar.gz"
 tar -zcf ${binary_archive_name} ./TileDB/build
+#following name closer to azure pipelines version...
+#binary_archivefilename=$(Build.ArtifactStagingDirectory)/tiledb-$(ARTIFACT_OS)-$(ARTIFACT_ARCH)-$(Build.SourceBranchName)-$(commitHash).tar.gz
+#binary_archivefilename=tiledb-${ARTIFACT_OS}-${ARTIFACT_ARCH}-${Build.SourceBranchName}-${TDB_COMMIT_HASH}.tar.gz
 ls -l $GITHUB_WORKSPACE/..
 sync
 
