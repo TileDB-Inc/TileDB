@@ -59,24 +59,24 @@ static std::mutex uuid_mtx;
  */
 Status generate_uuid_win32(std::string* uuid_str) {
   if (uuid_str == nullptr)
-    return Status::UtilsError("Null UUID string argument");
+    return Status_UtilsError("Null UUID string argument");
 
   UUID uuid;
   RPC_STATUS rc = UuidCreate(&uuid);
   if (rc != RPC_S_OK)
-    return Status::UtilsError("Unable to generate Win32 UUID: creation error");
+    return Status_UtilsError("Unable to generate Win32 UUID: creation error");
 
   char* buf = nullptr;
   rc = UuidToStringA(&uuid, reinterpret_cast<RPC_CSTR*>(&buf));
   if (rc != RPC_S_OK)
-    return Status::UtilsError(
+    return Status_UtilsError(
         "Unable to generate Win32 UUID: string conversion error");
 
   *uuid_str = std::string(buf);
 
   rc = RpcStringFreeA(reinterpret_cast<RPC_CSTR*>(&buf));
   if (rc != RPC_S_OK)
-    return Status::UtilsError("Unable to generate Win32 UUID: free error");
+    return Status_UtilsError("Unable to generate Win32 UUID: free error");
 
   return Status::Ok();
 }
@@ -91,7 +91,7 @@ Status generate_uuid_win32(std::string* uuid_str) {
  */
 Status generate_uuid_openssl(std::string* uuid_str) {
   if (uuid_str == nullptr)
-    return Status::UtilsError("Null UUID string argument");
+    return Status_UtilsError("Null UUID string argument");
 
   union {
     struct {
@@ -109,7 +109,7 @@ Status generate_uuid_openssl(std::string* uuid_str) {
   if (rc < 1) {
     char err_msg[256];
     ERR_error_string_n(ERR_get_error(), err_msg, sizeof(err_msg));
-    return Status::UtilsError(
+    return Status_UtilsError(
         "Cannot generate random bytes with OpenSSL: " + std::string(err_msg));
   }
 
@@ -138,7 +138,7 @@ Status generate_uuid_openssl(std::string* uuid_str) {
       uuid.node[5]);
 
   if (rc < 0)
-    return Status::UtilsError("Error formatting UUID string");
+    return Status_UtilsError("Error formatting UUID string");
 
   *uuid_str = std::string(buf);
 
@@ -149,7 +149,7 @@ Status generate_uuid_openssl(std::string* uuid_str) {
 
 Status generate_uuid(std::string* uuid, bool hyphenate) {
   if (uuid == nullptr)
-    return Status::UtilsError("Null UUID string argument");
+    return Status_UtilsError("Null UUID string argument");
 
   std::string uuid_str;
   {

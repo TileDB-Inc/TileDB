@@ -42,7 +42,7 @@ set(TILEDB_COMMON_SOURCES ${COMMON_SOURCES} PARENT_SCOPE)
 # `baseline` object library
 #
 add_library(baseline OBJECT
-    logger.cc status.cc governor/governor.cc heap_profiler.cc heap_memory.cc
+    logger.cc status.cc status_code.cc governor/governor.cc heap_profiler.cc heap_memory.cc
 )
 find_package(Spdlog_EP REQUIRED)
 target_link_libraries(baseline PUBLIC spdlog::spdlog)

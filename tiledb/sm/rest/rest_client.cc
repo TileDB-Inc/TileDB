@@ -81,7 +81,7 @@ Status RestClient::init(
     ThreadPool* compute_tp) {
   if (config == nullptr)
     return LOG_STATUS(
-        Status::RestError("Error initializing rest client; config is null."));
+        Status_RestError("Error initializing rest client; config is null."));
 
   stats_ = parent_stats->create_child("RestClient");
 
@@ -93,7 +93,7 @@ Status RestClient::init(
   if (c_str != nullptr)
     rest_server_ = std::string(c_str);
   if (rest_server_.empty())
-    return LOG_STATUS(Status::RestError(
+    return LOG_STATUS(Status_RestError(
         "Error initializing rest client; server address is empty."));
 
   RETURN_NOT_OK(config_->get("rest.server_serialization_format", &c_str));
@@ -130,7 +130,7 @@ Status RestClient::get_array_schema_from_rest(
   RETURN_NOT_OK(curlc.get_data(
       stats_, url, serialization_type_, &returned_data, cache_key));
   if (returned_data.data() == nullptr || returned_data.size() == 0)
-    return LOG_STATUS(Status::RestError(
+    return LOG_STATUS(Status_RestError(
         "Error getting array schema from REST; server returned no data."));
 
   return serialization::array_schema_deserialize(
@@ -194,9 +194,9 @@ Status RestClient::get_array_non_empty_domain(
     Array* array, uint64_t timestamp_start, uint64_t timestamp_end) {
   if (array == nullptr)
     return LOG_STATUS(
-        Status::RestError("Cannot get array non-empty domain; array is null"));
+        Status_RestError("Cannot get array non-empty domain; array is null"));
   if (array->array_uri().to_string().empty())
-    return LOG_STATUS(Status::RestError(
+    return LOG_STATUS(Status_RestError(
         "Cannot get array non-empty domain; array URI is empty"));
 
   // Init curl and form the URL
@@ -219,8 +219,8 @@ Status RestClient::get_array_non_empty_domain(
 
   if (returned_data.data() == nullptr || returned_data.size() == 0)
     return LOG_STATUS(
-        Status::RestError("Error getting array non-empty domain "
-                          "from REST; server returned no data."));
+        Status_RestError("Error getting array non-empty domain "
+                         "from REST; server returned no data."));
 
   // Deserialize data returned
   return serialization::nonempty_domain_deserialize(
@@ -257,8 +257,8 @@ Status RestClient::get_array_max_buffer_sizes(
 
   if (returned_data.data() == nullptr || returned_data.size() == 0)
     return LOG_STATUS(
-        Status::RestError("Error getting array max buffer sizes "
-                          "from REST; server returned no data."));
+        Status_RestError("Error getting array max buffer sizes "
+                         "from REST; server returned no data."));
 
   // Deserialize data returned
   return serialization::max_buffer_sizes_deserialize(
@@ -271,7 +271,7 @@ Status RestClient::get_array_metadata_from_rest(
     uint64_t timestamp_end,
     Array* array) {
   if (array == nullptr)
-    return LOG_STATUS(Status::RestError(
+    return LOG_STATUS(Status_RestError(
         "Error getting array metadata from REST; array is null."));
 
   // Init curl and form the URL
@@ -292,7 +292,7 @@ Status RestClient::get_array_metadata_from_rest(
   RETURN_NOT_OK(curlc.get_data(
       stats_, url, serialization_type_, &returned_data, cache_key));
   if (returned_data.data() == nullptr || returned_data.size() == 0)
-    return LOG_STATUS(Status::RestError(
+    return LOG_STATUS(Status_RestError(
         "Error getting array metadata from REST; server returned no data."));
 
   return serialization::array_metadata_deserialize(
@@ -305,7 +305,7 @@ Status RestClient::post_array_metadata_to_rest(
     uint64_t timestamp_end,
     Array* array) {
   if (array == nullptr)
-    return LOG_STATUS(Status::RestError(
+    return LOG_STATUS(Status_RestError(
         "Error posting array metadata to REST; array is null."));
 
   Buffer buff;
@@ -355,7 +355,7 @@ Status RestClient::post_query_submit(
   const Array* array = query->array();
   if (array == nullptr) {
     return LOG_STATUS(
-        Status::RestError("Error submitting query to REST; null array."));
+        Status_RestError("Error submitting query to REST; null array."));
   }
 
   auto rest_scratch = query->rest_scratch();
@@ -410,7 +410,7 @@ Status RestClient::post_query_submit(
       cache_key);
 
   if (!st.ok() && copy_state->empty()) {
-    return LOG_STATUS(Status::RestError(
+    return LOG_STATUS(Status_RestError(
         "Error submitting query to REST; "
         "server returned no data. "
         "Curl error: " +
@@ -618,7 +618,7 @@ Status RestClient::finalize_query_to_rest(const URI& uri, Query* query) {
 
   if (returned_data.data() == nullptr || returned_data.size() == 0)
     return LOG_STATUS(
-        Status::RestError("Error finalizing query; server returned no data."));
+        Status_RestError("Error finalizing query; server returned no data."));
 
   // Deserialize data returned
   returned_data.reset_offset();
@@ -695,7 +695,7 @@ Status RestClient::subarray_to_str(
         ss << ((const double*)subarray)[i];
         break;
       default:
-        return LOG_STATUS(Status::RestError(
+        return LOG_STATUS(Status_RestError(
             "Error converting subarray to string; unhandled datatype."));
     }
 
@@ -730,13 +730,13 @@ Status RestClient::update_attribute_buffer_sizes(
 
 Status RestClient::get_query_est_result_sizes(const URI& uri, Query* query) {
   if (query == nullptr)
-    return LOG_STATUS(Status::RestError(
+    return LOG_STATUS(Status_RestError(
         "Error getting query estimated result size from REST; Query is null."));
 
   // Get array
   const Array* array = query->array();
   if (array == nullptr) {
-    return LOG_STATUS(Status::RestError(
+    return LOG_STATUS(Status_RestError(
         "Error festing query estimated result size from REST; null array."));
   }
 
@@ -773,7 +773,7 @@ Status RestClient::get_query_est_result_sizes(const URI& uri, Query* query) {
       &returned_data,
       cache_key));
   if (returned_data.data() == nullptr || returned_data.size() == 0)
-    return LOG_STATUS(Status::RestError(
+    return LOG_STATUS(Status_RestError(
         "Error getting array metadata from REST; server returned no data."));
 
   return serialization::query_est_result_size_deserialize(
@@ -827,32 +827,32 @@ RestClient::RestClient() {
 
 Status RestClient::init(stats::Stats*, const Config*, ThreadPool*) {
   return LOG_STATUS(
-      Status::RestError("Cannot use rest client; serialization not enabled."));
+      Status_RestError("Cannot use rest client; serialization not enabled."));
 }
 
 Status RestClient::set_header(const std::string&, const std::string&) {
   return LOG_STATUS(
-      Status::RestError("Cannot use rest client; serialization not enabled."));
+      Status_RestError("Cannot use rest client; serialization not enabled."));
 }
 
 Status RestClient::get_array_schema_from_rest(const URI&, ArraySchema**) {
   return LOG_STATUS(
-      Status::RestError("Cannot use rest client; serialization not enabled."));
+      Status_RestError("Cannot use rest client; serialization not enabled."));
 }
 
 Status RestClient::post_array_schema_to_rest(const URI&, ArraySchema*) {
   return LOG_STATUS(
-      Status::RestError("Cannot use rest client; serialization not enabled."));
+      Status_RestError("Cannot use rest client; serialization not enabled."));
 }
 
 Status RestClient::deregister_array_from_rest(const URI&) {
   return LOG_STATUS(
-      Status::RestError("Cannot use rest client; serialization not enabled."));
+      Status_RestError("Cannot use rest client; serialization not enabled."));
 }
 
 Status RestClient::get_array_non_empty_domain(Array*, uint64_t, uint64_t) {
   return LOG_STATUS(
-      Status::RestError("Cannot use rest client; serialization not enabled."));
+      Status_RestError("Cannot use rest client; serialization not enabled."));
 }
 
 Status RestClient::get_array_max_buffer_sizes(
@@ -861,40 +861,40 @@ Status RestClient::get_array_max_buffer_sizes(
     const void*,
     std::unordered_map<std::string, std::pair<uint64_t, uint64_t>>*) {
   return LOG_STATUS(
-      Status::RestError("Cannot use rest client; serialization not enabled."));
+      Status_RestError("Cannot use rest client; serialization not enabled."));
 }
 
 Status RestClient::get_array_metadata_from_rest(
     const URI&, uint64_t, uint64_t, Array*) {
   return LOG_STATUS(
-      Status::RestError("Cannot use rest client; serialization not enabled."));
+      Status_RestError("Cannot use rest client; serialization not enabled."));
 }
 
 Status RestClient::post_array_metadata_to_rest(
     const URI&, uint64_t, uint64_t, Array*) {
   return LOG_STATUS(
-      Status::RestError("Cannot use rest client; serialization not enabled."));
+      Status_RestError("Cannot use rest client; serialization not enabled."));
 }
 
 Status RestClient::submit_query_to_rest(const URI&, Query*) {
   return LOG_STATUS(
-      Status::RestError("Cannot use rest client; serialization not enabled."));
+      Status_RestError("Cannot use rest client; serialization not enabled."));
 }
 
 Status RestClient::finalize_query_to_rest(const URI&, Query*) {
   return LOG_STATUS(
-      Status::RestError("Cannot use rest client; serialization not enabled."));
+      Status_RestError("Cannot use rest client; serialization not enabled."));
 }
 
 Status RestClient::get_query_est_result_sizes(const URI&, Query*) {
   return LOG_STATUS(
-      Status::RestError("Cannot use rest client; serialization not enabled."));
+      Status_RestError("Cannot use rest client; serialization not enabled."));
 }
 
 Status RestClient::post_array_schema_evolution_to_rest(
     const URI&, ArraySchemaEvolution*) {
   return LOG_STATUS(
-      Status::RestError("Cannot use rest client; serialization not enabled."));
+      Status_RestError("Cannot use rest client; serialization not enabled."));
 }
 
 #endif  // TILEDB_SERIALIZATION

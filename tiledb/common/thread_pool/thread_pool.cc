@@ -58,7 +58,7 @@ ThreadPool::~ThreadPool() {
 
 Status ThreadPool::init(const uint64_t concurrency_level) {
   if (concurrency_level == 0) {
-    return Status::ThreadPoolError(
+    return Status_ThreadPoolError(
         "Unable to initialize a thread pool with a concurrency level of 0.");
   }
 
@@ -72,7 +72,7 @@ Status ThreadPool::init(const uint64_t concurrency_level) {
     try {
       threads_.emplace_back([this]() { worker(*this); });
     } catch (const std::exception& e) {
-      st = Status::ThreadPoolError(
+      st = Status_ThreadPoolError(
           "Error initializing thread pool of concurrency level " +
           std::to_string(concurrency_level) + "; " + e.what());
       LOG_STATUS(st);
@@ -213,7 +213,7 @@ std::vector<Status> ThreadPool::wait_all_status(std::vector<Task>& tasks) {
   for (auto& task : tasks) {
     if (!task.valid()) {
       LOG_ERROR("Waiting on invalid task future.");
-      statuses.push_back(Status::ThreadPoolError("Invalid task future"));
+      statuses.push_back(Status_ThreadPoolError("Invalid task future"));
     } else {
       Status status = wait_or_work(std::move(task));
       if (!status.ok()) {

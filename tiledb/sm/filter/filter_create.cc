@@ -84,14 +84,14 @@ Status tiledb::sm::FilterCreate::deserialize(
 
   auto* f = make(static_cast<FilterType>(type));
   if (f == nullptr)
-    return LOG_STATUS(Status::FilterError("Deserialization error."));
+    return LOG_STATUS(Status_FilterError("Deserialization error."));
 
   auto offset = buff->offset();
   RETURN_NOT_OK_ELSE(f->deserialize_impl(buff), tdb_delete(f));
 
   if (buff->offset() - offset != filter_metadata_len) {
     tdb_delete(f);
-    return LOG_STATUS(Status::FilterError(
+    return LOG_STATUS(Status_FilterError(
         "Deserialization error; unexpected metadata length"));
   }
 

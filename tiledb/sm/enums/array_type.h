@@ -69,7 +69,7 @@ inline Status array_type_enum(
   else if (array_type_str == constants::sparse_str)
     *array_type_enum = ArrayType::SPARSE;
   else {
-    return Status::Error("Invalid ArrayType " + array_type_str);
+    return Status_Error("Invalid ArrayType " + array_type_str);
   }
   return Status::Ok();
 }

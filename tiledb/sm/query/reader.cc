@@ -129,16 +129,16 @@ bool Reader::incomplete() const {
 Status Reader::init() {
   // Sanity checks
   if (storage_manager_ == nullptr)
-    return logger_->status(Status::ReaderError(
+    return logger_->status(Status_ReaderError(
         "Cannot initialize reader; Storage manager not set"));
   if (array_schema_ == nullptr)
-    return logger_->status(Status::ReaderError(
-        "Cannot initialize reader; Array metadata not set"));
+    return logger_->status(
+        Status_ReaderError("Cannot initialize reader; Array metadata not set"));
   if (buffers_.empty())
     return logger_->status(
-        Status::ReaderError("Cannot initialize reader; Buffers not set"));
+        Status_ReaderError("Cannot initialize reader; Buffers not set"));
   if (array_schema_->dense() && !subarray_.is_set())
-    return logger_->status(Status::ReaderError(
+    return logger_->status(Status_ReaderError(
         "Cannot initialize reader; Dense reads must have a subarray set"));
 
   // Check subarray
@@ -302,7 +302,7 @@ Status Reader::compute_result_cell_slabs(
   auto coords_end = result_coords.end();
   auto it = skip_invalid_elements(result_coords.begin(), coords_end);
   if (it == coords_end) {
-    return logger_->status(Status::ReaderError("Unexpected empty cell range."));
+    return logger_->status(Status_ReaderError("Unexpected empty cell range."));
   }
   uint64_t start_pos = it->pos_;
   uint64_t end_pos = start_pos;
@@ -892,7 +892,7 @@ Status Reader::dense_read() {
     case Datatype::TIME_AS:
       return dense_read<int64_t>();
     default:
-      return logger_->status(Status::ReaderError(
+      return logger_->status(Status_ReaderError(
           "Cannot read dense array; Unsupported domain type"));
   }
 
@@ -981,10 +981,10 @@ Status Reader::init_read_state() {
   // Check subarray
   if (subarray_.layout() == Layout::GLOBAL_ORDER && subarray_.range_num() != 1)
     return logger_->status(
-        Status::ReaderError("Cannot initialize read "
-                            "state; Multi-range "
-                            "subarrays do not "
-                            "support global order"));
+        Status_ReaderError("Cannot initialize read "
+                           "state; Multi-range "
+                           "subarrays do not "
+                           "support global order"));
 
   // Get config
   bool found = false;
@@ -1000,8 +1000,8 @@ Status Reader::init_read_state() {
   assert(found);
   if (offsets_format_mode_ != "bytes" && offsets_format_mode_ != "elements") {
     return logger_->status(
-        Status::ReaderError("Cannot initialize reader; Unsupported offsets "
-                            "format in configuration"));
+        Status_ReaderError("Cannot initialize reader; Unsupported offsets "
+                           "format in configuration"));
   }
   RETURN_NOT_OK(config_.get<bool>(
       "sm.var_offsets.extra_element", &offsets_extra_element_, &found));
@@ -1010,8 +1010,8 @@ Status Reader::init_read_state() {
       "sm.var_offsets.bitsize", &offsets_bitsize_, &found));
   if (offsets_bitsize_ != 32 && offsets_bitsize_ != 64) {
     return logger_->status(
-        Status::ReaderError("Cannot initialize reader; Unsupported offsets "
-                            "bitsize in configuration"));
+        Status_ReaderError("Cannot initialize reader; Unsupported offsets "
+                           "bitsize in configuration"));
   }
   assert(found);
 
@@ -1169,7 +1169,7 @@ Status Reader::add_extra_offset() {
           &elements,
           offsets_bytesize());
     } else {
-      return logger_->status(Status::ReaderError(
+      return logger_->status(Status_ReaderError(
           "Cannot add extra offset to buffer; Unsupported offsets format"));
     }
   }
