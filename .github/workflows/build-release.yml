@@ -11,7 +11,7 @@ env:
     
 jobs:
   build-release-macos:
-    if: false
+    if: true
     runs-on: ${{ matrix.os }}
     env:
       TILEDB_S3: ON
@@ -60,7 +60,7 @@ jobs:
             MACOSX_DEPLOYMENT_TARGET: 11
 
     steps:
-      - uses: actions/checkout@v1
+      - uses: actions/checkout@v2
 
       - uses: ./.github/actions/linux_mac-release
 
