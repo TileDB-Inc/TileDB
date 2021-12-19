@@ -196,4 +196,4 @@ jobs:
 
       #- uses: actions/checkout@v1
 
-      - uses: ./.github/actions/linux_mac-release
+      - uses: ./.github/actions/manylinux-release
