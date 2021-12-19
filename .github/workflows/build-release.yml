@@ -84,7 +84,15 @@ jobs:
 
   build-release-manylinux:
     #~ needs: configure-for-manylinux-container
-    runs-on: ubuntu-20.04
+    #~ runs-on: ubuntu-20.04
+    #~ env:
+      #~ CXX: g++
+      #~ CFLAGS: "-lrt"
+      #~ CXXFLAGS: "-lrt"
+      #~ ARTIFACT_OS: 'linux'
+      #~ ARTIFACT_ARCH: 'x86_64'
+      #~ SUDO: ''
+    runs-on: ${{ matrix.os }}
     env:
       CXX: g++
       CFLAGS: "-lrt"
@@ -92,6 +100,29 @@ jobs:
       ARTIFACT_OS: 'linux'
       ARTIFACT_ARCH: 'x86_64'
       SUDO: ''
+    strategy:
+      matrix:
+        #https://github.community/t/create-matrix-with-multiple-os-and-env-for-each-one/16895/5
+        #try this approach for same os, different environs, worked elsewhere
+        os: [ubuntu-20.04]
+        environ: [standard, noavx2]
+        include:
+          - environ: standard
+            CXX: g++
+            CFLAGS: "-lrt"
+            CXXFLAGS: "-lrt"
+            ARTIFACT_OS: 'linux'
+            ARTIFACT_ARCH: "x86_64"
+            TILEDB_AVX2: ON
+            SUDO: ''
+          - environ: noavx2
+            CXX: g++
+            CFLAGS: "-lrt"
+            CXXFLAGS: "-lrt"
+            ARTIFACT_OS: 'linux'
+            ARTIFACT_ARCH: "x86_64-noavx2"
+            TILEDB_AVX2: OFF
+            SUDO: ''
     #~ container: #${{ matrix.os.image }} # TBD: Is this/that right location for image?
       #~ image: 'quay.io/pypa/manylinux2010_x86_64:2021-11-07-28723f3'      
       #options: "--entrypoint /bin/bash"
