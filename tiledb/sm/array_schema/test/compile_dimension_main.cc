@@ -1,5 +1,5 @@
 /**
- * @file compile_constants_main.cc
+ * @file compile_attribute_main.cc
  *
  * @section LICENSE
  *
@@ -26,10 +26,9 @@
  * THE SOFTWARE.
  */
 
-#include "../parse_argument.h"
+#include "../dimension.h"
 
 int main() {
-  int x;
-  (void)tiledb::sm::utils::parse::convert("0", &x);
+  (void)sizeof(tiledb::sm::Dimension);
   return 0;
 }

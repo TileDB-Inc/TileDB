@@ -1,5 +1,5 @@
 /**
- * @file compile_constants_main.cc
+ * @file compile_untyped_datum_main.cc
  *
  * @section LICENSE
  *
@@ -26,10 +26,11 @@
  * THE SOFTWARE.
  */
 
-#include "../parse_argument.h"
+#include "../dynamic_typed_datum.h"
+#include "../untyped_datum.h"
 
 int main() {
-  int x;
-  (void)tiledb::sm::utils::parse::convert("0", &x);
+  (void)sizeof(tiledb::common::UntypedDatumView);
+  (void)sizeof(tiledb::common::DynamicTypedDatumView);
   return 0;
 }

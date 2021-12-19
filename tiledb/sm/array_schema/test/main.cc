@@ -1,5 +1,5 @@
 /**
- * @file compile_constants_main.cc
+ * @file tiledb/sm/array_schema/test/main.cc
  *
  * @section LICENSE
  *
@@ -24,12 +24,11 @@
  * LIABILITY, WHETHER IN AN ACTION OF CONTRACT, TORT OR OTHERWISE, ARISING FROM,
  * OUT OF OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN
  * THE SOFTWARE.
+ *
+ * @section DESCRIPTION
+ *
+ * This file defines a test `main()`
  */
 
-#include "../parse_argument.h"
-
-int main() {
-  int x;
-  (void)tiledb::sm::utils::parse::convert("0", &x);
-  return 0;
-}
+#define CATCH_CONFIG_MAIN
+#include <catch.hpp>

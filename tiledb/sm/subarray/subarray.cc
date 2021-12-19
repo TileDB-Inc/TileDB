@@ -264,7 +264,7 @@ Status Subarray::add_range(
 
   // Prepare a temp range
   std::vector<uint8_t> range;
-  uint8_t coord_size =
+  auto coord_size =
       this->array_->array_schema_latest()->dimension(dim_idx)->coord_size();
   range.resize(2 * coord_size);
   std::memcpy(&range[0], start, coord_size);

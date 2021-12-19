@@ -1049,7 +1049,7 @@ uint64_t FragmentMetadata::footer_size_v3_v4() const {
 uint64_t FragmentMetadata::footer_size_v5_v6() const {
   auto dim_num = array_schema_->dim_num();
   auto num = array_schema_->attribute_num() + dim_num + 1;
-  uint64_t domain_size = 0;
+  size_t domain_size = 0;
 
   if (non_empty_domain_.empty()) {
     // For var-sized dimensions, this function would be called only upon

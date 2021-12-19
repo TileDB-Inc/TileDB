@@ -1,5 +1,5 @@
 #
-# tiledb/common/CMakeLists.txt
+# tiledb/common/types/CMakeLists.txt
 #
 # The MIT License
 #
@@ -24,49 +24,31 @@
 # THE SOFTWARE.
 #
 
-include(common-root)
-include(common)
+include(common NO_POLICY_SCOPE)
 
-add_subdirectory(thread_pool)
-add_subdirectory(dynamic_memory)
-add_subdirectory(governor)
-add_subdirectory(types)
+#
+# `datum` object library
+#
+add_library(datum OBJECT untyped_datum.cc dynamic_typed_datum.cc)
+#
+# Test-compile of object library ensures link-completeness
+#
+add_executable(compile_datum EXCLUDE_FROM_ALL)
+target_link_libraries(compile_datum PRIVATE datum)
+target_sources(compile_datum PRIVATE test/compile_datum_main.cc)
 
 if (TILEDB_TESTS)
-    add_subdirectory(interval)
+    add_executable(unit_datum EXCLUDE_FROM_ALL)
+    target_link_libraries(unit_datum PRIVATE datum)
+    find_package(Catch_EP REQUIRED)
+    target_link_libraries(unit_datum PUBLIC Catch2::Catch2)
+
+    # Sources for tests
+    target_sources(unit_datum PUBLIC test/main.cc test/unit_dynamic_untyped_datum.cc)
+
+    add_test(
+            NAME "unit_datum"
+            COMMAND $<TARGET_FILE:unit_datum>
+            WORKING_DIRECTORY ${CMAKE_CURRENT_SOURCE_DIR}
+    )
 endif()
-
-get_gathered(COMMON_SOURCES)
-set(TILEDB_COMMON_SOURCES ${COMMON_SOURCES} PARENT_SCOPE)
-
-#
-# `baseline` object library
-#
-add_library(baseline OBJECT
-    logger.cc status.cc status_code.cc governor/governor.cc heap_profiler.cc heap_memory.cc
-)
-find_package(Spdlog_EP REQUIRED)
-target_link_libraries(baseline PUBLIC spdlog::spdlog)
-#
-# Test-compile of object library ensures link-completeness
-#
-add_executable(compile_baseline EXCLUDE_FROM_ALL)
-target_link_libraries(compile_baseline PRIVATE baseline)
-target_sources(compile_baseline PRIVATE
-    test/compile_baseline_main.cc $<TARGET_OBJECTS:baseline>
-)
-
-#
-# `stringx` object library
-#
-add_library(stringx OBJECT
-    stdx_string.cc
-)
-#
-# Test-compile of object library ensures link-completeness
-#
-add_executable(compile_stringx EXCLUDE_FROM_ALL)
-target_link_libraries(compile_stringx PRIVATE stringx)
-target_sources(compile_stringx PRIVATE
-    test/compile_stringx_main.cc $<TARGET_OBJECTS:stringx>
-)
