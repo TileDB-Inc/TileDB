@@ -345,7 +345,8 @@ runs:
         echo "change so can push, prev job appears hung, will this one run?"
         echo ${0}
         sync
-        ls -l /home/runner/work/_temp
+        current_runner_script_path=$(dirname ${0})
+        ls -l ${current_runner_script_path} #/home/runner/work/_temp <== ubuntu runner, not mac
         sync
         TDB_REF_NAME=${GITHUB_REF_NAME//\//-} # replace '/' with '-'
         echo "TDB_REF_NAME=$TDB_REF_NAME" >> "$GITHUB_ENV"
