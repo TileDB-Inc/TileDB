@@ -4,142 +4,6 @@ runs:
   using: "composite"
   steps:
   
-    - name: 'invokebuildindockercontainer'
-      if: false
-      shell: bash
-      run: |
-        docker run -it "quay.io/pypa/manylinux2010_x86_64:2021-11-07-28723f3" /bin/bash
-        
-    - name: 'diagnose-explore-inside-action'
-      if: false
-      shell: bash
-      run: |
-        set -x
-        printenv > printenv.txt
-        env > env.txt
-        diff printenv.txt env.txt
-        printenv
-        env
-        exit 14
-        
-    - name: 'get-prep-location-upload-artifact'
-      if: false
-      shell: bash
-      run: |
-        set -x
-        yum search wget
-        yum -y install wget
-        which wget
-        #when checked, was node v0.10.48, will it run the upload-artifacts index.js, which wanted node12?
-        #nope, 10.48 doesn't do it... yum -y install nodejs
-        #installing nodejs from source on centos6, https://www.subhosting.net/kb/how-to-install-nodejs-on-centos-6/
-        #the gcc present in the manylinux image is v8.something-or-other
-        #unclear what version of nodejs12 github actions 'node12' is using...
-        #v12.22.7 requires python2.7, won't configure
-        #managed to gain access to python2.7, but then 12.22.7 trying to link items not found (get_clock and related)
-        #wget https://nodejs.org/dist/v12.22.7/node-v12.22.7.tar.gz
-        #tar xzf node-v12.22.7.tar.gz
-        #cd node-v12.22.7
-        #version v12.0.0 wants python2.7 but will accommodate the 2.6 we have using
-        #some floating patch from somewhere...
-        #but ran into absence of module 'argparse', seems manylinux does have python27 avail for install
-        #only apparently its ghostly, I encountered similar to https://stackoverflow.com/questions/37748404/where-does-yum-install-python-on-centos-6-6
-        #then found https://gist.github.com/dalegaspi/dec44117fa5e7597a559
-        yum -y install python27
-        # will we need:
-        #cd /opt/rh/python27/root/usr/bin/ # cd to the directory where SCL installs python
-        #sudo LD_LIBRARY_PATH=$LD_LIBRARY_PATH ./easy_install-2.7 pip
-        wget https://nodejs.org/dist/v12.0.0/node-v12.0.0.tar.gz
-        tar xzf node-v12.0.0.tar.gz
-        cd node-v12.0.0
-        #scl enable python27 bash #hmm, but this won't see rest of run, will it...
-        #potentially helpful https://stackoverflow.com/questions/16631461/scl-enable-python27-bash
-        source /opt/rh/python27/enable
-        if [[ $(which python) ]]; then
-          python --version
-        else
-          echo "didn't find python"
-        fi
-        ./configure
-        make -j2 #do the runner's vm's really only have 2 cores?
-        make install
-        cd $GITHUB_WORKSPACE
-        which node
-        node --version
-        which npm
-        npm --version
-        pwd
-        git clone https://github.com/actions/upload-artifact ./gh.upload-artifact
-        cd gh.upload-artifact
-        git checkout tags/v2.2.4
-        #sed "s/using: 'node12'/using: 'composite'/" action.yml
-        #sed "s/main: 'dist\/index.js'/steps:/" action.yml
-        #sed "$a\ \ \ \ - shell: bash" action.yml
-        #sed "$a\ \ \ \ \ \ run: node dist/index.js" action.yml
-        #~ cat > sed-upload-artifacts.patch <<EOF
-          #~ s/using: 'node12'/using: 'composite'/
-          #~ s/main: 'dist\/index.js'/steps:/
-          #~ $a\ \ \ \ - shell: bash
-          #~ $a\ \ \ \ \ \ run: node dist/index.js
-        #~ EOF
-        #This section built patch to turn the cloned custom action into a composite action, but
-        #turns out runner env does -not- treat composite action setup same as non-composite, so
-        #still fails, not finding 'hidden' environment variables for which github actions apparently
-        #does not document...
-        #~ echo "s/using: 'node12'/using: 'composite'/" > sed-upload-artifact.patch
-        #~ echo "s/main: 'dist\/index.js'/steps:/" >> sed-upload-artifact.patch
-        #~ #echo "\$a\ \ \ \ - shell: bash" >> sed-upload-artifact.patch
-        #~ echo "\$a\\ \\ \\ \\ - shell: bash" >> sed-upload-artifact.patch
-        #~ #echo "\$a\ \ \ \ \ \ run: node dist/index.js" >> sed-upload-artifact.patch
-        #~ #echo "\$a\ \ \ \ \ \ run: node \$GITHUB_WORKSPACE/gh.upload-artifact/dist/index.js" >> sed-upload-artifact.patch
-        #~ echo "\$a\\ \\ \\ \\ \\ \\ env:" >> sed-upload-artifact.patch
-        #~ echo "\$a\\ \\ \\ \\ \\ \\ \\ \\ INPUT_PATH: \$\{\{ inputs.path \}\}" >> sed-upload-artifact.patch
-        #~ echo "\$a\\ \\ \\ \\ \\ \\ \\ \\ INPUT_NAME: \$\{\{ inputs.name \}\}" >> sed-upload-artifact.patch
-        #~ echo "\$a\\ \\ \\ \\ \\ \\ \\ \\ INPUT_IF-NO-FILES-FOUND: \$\{\{ inputs.if-no-files-found \}\}" >> sed-upload-artifact.patch
-        #~ #echo "\$a\\ \\ \\ \\ \\ \\ run: printenv" >> sed-upload-artifact.patch
-        #~ #echo "\$a\\ \\ \\ \\ \\ \\ run: node \$GITHUB_WORKSPACE/gh.upload-artifact/dist/index.js" >> sed-upload-artifact.patch
-        #~ echo "\$a\\ \\ \\ \\ \\ \\ run: |"  >> sed-upload-artifact.patch
-        #~ echo "\$a\\ \\ \\ \\ \\ \\ \\ \\ printenv" >> sed-upload-artifact.patch
-        #~ echo "\$a\\ \\ \\ \\ \\ \\ \\ \\ node \$GITHUB_WORKSPACE/gh.upload-artifact/dist/index.js" >> sed-upload-artifact.patch
-        #~ #https://github.com/actions/runner/issues/665 prob with 'inputs' for custom actions, work around.
-        #github actions only mentions using 'node12' or 'node16' which they must provide somewhere,
-        #can we simply use the 'node' (v12.0.0) that was built locally (and will run with the local libraries)???
-        #echo "s/using: 'node12'/using: 'node'/" > sed-upload-artifact.patch
-        
-        #command to invoke manylinux container image locally for exploring its contents
-        #docker run -it "quay.io/pypa/manylinux2010_x86_64:2021-11-07-28723f3" /bin/bash
-        
-        #https://github.com/borkdude/nbb-action-example/blob/v0.0.1/run.cjs
-        #<sigh>, of course this still won't work because it's still invoking the node12 to initiate the 
-        #call redirecting, and it's that node12 that problematically won't work, <sigh>.
-        echo -e "child = require('child_process');\npath = require('path');\n// fork to system-installed node which is local build v120.0 at this time of writing\nchild.fork(path.resolve(__dirname, 'dist/index.js'), [], {execPath: \"node\"});" > run.cjs
-        echo "s/main: 'dist\/index.js'/main: 'run.cjs'/" >> sed-upload-artifact.patch
-
-        #diagnostic, trying to see if 'node12', 'node16' are in environment, or does runner do
-        #something else hidden to equate these to something else in environ?
-        if [[ $(which node12) ]]; then
-          echo "found node12"
-        fi
-        if [[ $(which node16) ]]; then
-          echo "found node16"
-        fi
-        
-        #TBD: how to handle inputs/env-vars with dashes, what does GA do with them for custom non-composite actions?
-        cat sed-upload-artifact.patch
-        hexdump -C sed-upload-artifact.patch
-        sed -f ./sed-upload-artifact.patch action.yml > patched.action.yml
-        rm action.yml
-        mv patched.action.yml action.yml
-        #~ cat > vi-upload-artifact.patch <<EOF
-          #~ :%s/using: 'node12'/using: 'composite'/g
-          #~ :%s/main: 'dist\/index.js'/steps:/g
-          #~ G
-          #~ A    - shell: bash
-                #~ run: node dist/index.js
-          #~ #how to insert ESCape to exit insert mode? <sigh>
-        #~ EOF
-        pwd
-        cat ./action.yml
 
     - name: 'Print env'
       run: |
@@ -165,6 +29,55 @@ runs:
       run: |
         set -e pipefail
         $SUDO rm -Rf /Library/Developer/CommandLineTools/SDKs/* # Remove SDKs without ARM support
+
+    - name: Git Hash 7-digit
+      shell: bash
+      #env: 
+      #  sourceVersion: ${{ env.GITHUB_SHA }}
+      run: |
+        # 'member, GA CI does -not- pre-pop env context with items from environment.
+        sourceVersion=$GITHUB_SHA
+        echo "sourceVersion is $sourceVersion"
+        commitHash=${sourceVersion:0:7}
+        echo "commitHash is $commitHash"
+        #echo "##vso[task.setvariable variable=commitHash]$commitHash" ## Set variable for using in other tasks.
+        #echo "::set-output name=commitHash::$commitHash" # TBD: make status check pass for this hack step
+        echo "commitHash=$commitHash" >> "$GITHUB_ENV" # make available to subsequent step
+        echo "TDB_COMMIT_HASH=$commitHash" >> "$GITHUB_ENV" # make available to subsequent step
+        #for ev in GITHUB_REF_NAME GITHUB_REF_TYPE GITHUB_WORKSPACE GITHUB_EVENT_PATH CXX CC CFLAGS CXXFLAGS ARTIFACT_OS ARTIFACT_EXTRAS ARTIFACT_ARCH SUDO RUNNER_OS GITHUB_REF RUNNER_TRACKING_ID RUNNER_ARCH GITHUB_RUN_NUMBER GITHUB_RUN_ID GITHUB_EVENT_NAME GITHUB_ACTOR GITHUB_REF_NAME GITHUB_JOB GITHUB_REPOSITORY RUNNER_WORKSPACE GITHUB_WORKFLOW TDB_SOURCE_ARCHIVE_PATH TDB_BINARY_ARCHIVE_PATH; do tmp=$ev; echo "$ev=${!tmp}"; done >> tdbenvfile.txt
+        #for ev in commitHash; do tmp=$ev; echo "$ev=${!tmp}"; done >> tdbenvfile.txt
+        sync
+        
+    - name: 'Build libtiledb scripted inits'
+      if: true
+      #not availa le in (composite) action? continue-on-error: true
+      shell: bash
+      run: |
+        #do before set -x to avoid noise
+        ii=0; while read -r l; do printf '%u %s\n' "$ii" "$l"; (( ii = ii + 1 )); done < ${0}
+        sync
+        echo "bump 1"
+        set -x
+        echo "change so can push, prev job appears hung, will this one run?"
+        echo ${0}
+        sync
+        current_runner_script_path=$(dirname ${0})
+        ls -l ${current_runner_script_path} #/home/runner/work/_temp <== ubuntu runner, not mac
+        sync
+        TDB_REF_NAME=${GITHUB_REF_NAME//\//-} # replace '/' with '-'
+        echo "TDB_REF_NAME=$TDB_REF_NAME" >> "$GITHUB_ENV"
+        for ev in TDB_COMMIT_HASH TDB_REF_NAME GITHUB_REF_NAME GITHUB_REF_TYPE GITHUB_WORKSPACE GITHUB_EVENT_PATH CXX CC CFLAGS CXXFLAGS ARTIFACT_OS ARTIFACT_EXTRAS ARTIFACT_ARCH SUDO RUNNER_OS GITHUB_REF RUNNER_TRACKING_ID RUNNER_ARCH GITHUB_RUN_NUMBER GITHUB_RUN_ID GITHUB_EVENT_NAME GITHUB_ACTOR GITHUB_REF_NAME GITHUB_JOB GITHUB_REPOSITORY RUNNER_WORKSPACE GITHUB_WORKFLOW TDB_SOURCE_ARCHIVE_PATH TDB_BINARY_ARCHIVE_PATH; do tmp=$ev; echo "$ev=${!tmp}"; done >> tdbenvfile.txt
+        #for ev in TDB_COMMIT_HASH TDB_REF_NAME GITHUB_REF_NAME GITHUB_REF_TYPE GITHUB_WORKSPACE GITHUB_EVENT_PATH CXX CC CFLAGS CXXFLAGS ARTIFACT_OS ARTIFACT_EXTRAS ARTIFACT_ARCH SUDO RUNNER_OS GITHUB_REF RUNNER_TRACKING_ID RUNNER_ARCH GITHUB_RUN_NUMBER GITHUB_RUN_ID GITHUB_EVENT_NAME GITHUB_ACTOR GITHUB_REF_NAME GITHUB_JOB GITHUB_REPOSITORY RUNNER_WORKSPACE GITHUB_WORKFLOW TDB_SOURCE_ARCHIVE_PATH TDB_BINARY_ARCHIVE_PATH; do tmp=$ev; echo "$ev=${!tmp}" >> "$GITHUB_ENV"; done 
+        echo "TDB_REF_NAME=${TDB_REF_NAME}" >> "$GITHUB_ENV"
+        cat tdbenvfile.txt
+        sync
+        
+    - name: 'Build libtiledb via script'
+      if: true # false
+      #not availa le in (composite) action? continue-on-error: true
+      shell: bash
+      run: |
+        . ./scripts/ci/linux-mac_release_buildtiledb.sh
 
     - name: 'Build libtiledb orig'
       if: false
@@ -314,46 +227,6 @@ runs:
         
         find / -name 'tiledb-*-linux-build-*.tar.gz' -exec ls -l {} \;
 
-    - name: Git Hash 7-digit
-      shell: bash
-      #env: 
-      #  sourceVersion: ${{ env.GITHUB_SHA }}
-      run: |
-        # 'member, GA CI does -not- pre-pop env context with items from environment.
-        sourceVersion=$GITHUB_SHA
-        echo "sourceVersion is $sourceVersion"
-        commitHash=${sourceVersion:0:7}
-        echo "commitHash is $commitHash"
-        #echo "##vso[task.setvariable variable=commitHash]$commitHash" ## Set variable for using in other tasks.
-        #echo "::set-output name=commitHash::$commitHash" # TBD: make status check pass for this hack step
-        echo "commitHash=$commitHash" >> "$GITHUB_ENV" # make available to subsequent step
-        echo "TDB_COMMIT_HASH=$commitHash" >> "$GITHUB_ENV" # make available to subsequent step
-        #for ev in GITHUB_REF_NAME GITHUB_REF_TYPE GITHUB_WORKSPACE GITHUB_EVENT_PATH CXX CC CFLAGS CXXFLAGS ARTIFACT_OS ARTIFACT_EXTRAS ARTIFACT_ARCH SUDO RUNNER_OS GITHUB_REF RUNNER_TRACKING_ID RUNNER_ARCH GITHUB_RUN_NUMBER GITHUB_RUN_ID GITHUB_EVENT_NAME GITHUB_ACTOR GITHUB_REF_NAME GITHUB_JOB GITHUB_REPOSITORY RUNNER_WORKSPACE GITHUB_WORKFLOW TDB_SOURCE_ARCHIVE_PATH TDB_BINARY_ARCHIVE_PATH; do tmp=$ev; echo "$ev=${!tmp}"; done >> tdbenvfile.txt
-        #for ev in commitHash; do tmp=$ev; echo "$ev=${!tmp}"; done >> tdbenvfile.txt
-        sync
-        
-    - name: 'Build libtiledb scripted inits'
-      if: true
-      #not availa le in (composite) action? continue-on-error: true
-      shell: bash
-      run: |
-        #do before set -x to avoid noise
-        ii=0; while read -r l; do printf '%u %s\n' "$ii" "$l"; (( ii = ii + 1 )); done < ${0}
-        sync
-        echo "bump 1"
-        set -x
-        echo "change so can push, prev job appears hung, will this one run?"
-        echo ${0}
-        sync
-        current_runner_script_path=$(dirname ${0})
-        ls -l ${current_runner_script_path} #/home/runner/work/_temp <== ubuntu runner, not mac
-        sync
-        TDB_REF_NAME=${GITHUB_REF_NAME//\//-} # replace '/' with '-'
-        echo "TDB_REF_NAME=$TDB_REF_NAME" >> "$GITHUB_ENV"
-        for ev in TDB_COMMIT_HASH TDB_REF_NAME GITHUB_REF_NAME GITHUB_REF_TYPE GITHUB_WORKSPACE GITHUB_EVENT_PATH CXX CC CFLAGS CXXFLAGS ARTIFACT_OS ARTIFACT_EXTRAS ARTIFACT_ARCH SUDO RUNNER_OS GITHUB_REF RUNNER_TRACKING_ID RUNNER_ARCH GITHUB_RUN_NUMBER GITHUB_RUN_ID GITHUB_EVENT_NAME GITHUB_ACTOR GITHUB_REF_NAME GITHUB_JOB GITHUB_REPOSITORY RUNNER_WORKSPACE GITHUB_WORKFLOW TDB_SOURCE_ARCHIVE_PATH TDB_BINARY_ARCHIVE_PATH; do tmp=$ev; echo "$ev=${!tmp}"; done >> tdbenvfile.txt
-        cat tdbenvfile.txt
-        sync
-        
     - name: 'Build libtiledb scripted A'
       if: false #true
       #not availa le in (composite) action? continue-on-error: true
@@ -482,7 +355,7 @@ runs:
         #exit 19
         
     - name: 'Build libtiledb scripted B'
-      if: true
+      if: false #true
       #not availa le in (composite) action? continue-on-error: true
       shell: bash
       run: |
@@ -602,6 +475,7 @@ runs:
         
     - name: 'are variables in env context?'
       shell: bash
+      if: false
       run: |
         set -x
         echo "env.GITHUB_WORKSPACE is ${{ env.GITHUB_WORKSPACE }}"
