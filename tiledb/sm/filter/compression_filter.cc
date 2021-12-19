@@ -436,7 +436,7 @@ void CompressionFilter::init_resource_pool(uint64_t size) {
   std::lock_guard g(zstd_decompress_ctx_pool_mtx_);
   if (zstd_decompress_ctx_pool_ == nullptr) {
     zstd_decompress_ctx_pool_ =
-        tdb::make_shared<ResourcePool<ZStd::ZSTD_Decompress_Context>>(
+        tdb::make_shared<BlockingResourcePool<ZStd::ZSTD_Decompress_Context>>(
             HERE(), size);
   }
 }
