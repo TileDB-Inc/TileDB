@@ -139,7 +139,7 @@ class CompressionFilter : public Filter {
 
   /** A resource pool to be used in ZStd decompressor for improved performance
    */
-  tdb_shared_ptr<ResourcePool<ZStd::ZSTD_Decompress_Context>>
+  tdb_shared_ptr<BlockingResourcePool<ZStd::ZSTD_Decompress_Context>>
       zstd_decompress_ctx_pool_;
 
   /** Returns a new clone of this filter. */
