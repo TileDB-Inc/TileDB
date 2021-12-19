@@ -62,7 +62,7 @@ jobs:
     steps:
       - uses: actions/checkout@v2
 
-      - uses: ./.github/actions/linux_mac-release
+      - uses: ./.github/actions/mac-release
 
   #~ configure-for-manylinux-container:
     #~ runs-on: ubuntu-20.04
