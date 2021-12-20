@@ -66,6 +66,8 @@ class Logger {
  public:
   enum class Format : char;
   enum class Level : char;
+  template <typename T>
+  friend class LoggerDistinct;
 
   /* ********************************* */
   /*     CONSTRUCTORS & DESTRUCTORS    */
@@ -285,6 +287,19 @@ class Logger {
   void critical(const std::stringstream& msg);
 
   /**
+   * A formatted critical statment.
+   *
+   * @param fmt A fmtlib format string, see http://fmtlib.net/latest/ for
+   *     details.
+   * @param arg positional argument to format.
+   * @param args optional additional positional arguments to format.
+   */
+  template <typename Arg1, typename... Args>
+  void critical(const char* fmt, const Arg1& arg1, const Args&... args) {
+    logger_->critical(fmt, arg1, args...);
+  }
+
+  /**
    * Log a message from a Status object and return
    * the same Status object
    *
@@ -314,7 +329,7 @@ class Logger {
   void fatal(const std::stringstream& msg);
 
   /**
-   * A formatted critical statment.
+   * A formatted fatal statment.
    *
    * @param fmt A fmtlib format string, see http://fmtlib.net/latest/ for
    *     details.
@@ -322,8 +337,9 @@ class Logger {
    * @param args optional additional positional arguments to format.
    */
   template <typename Arg1, typename... Args>
-  void critical(const char* fmt, const Arg1& arg1, const Args&... args) {
-    logger_->critical(fmt, arg1, args...);
+  void fatal(const char* fmt, const Arg1& arg1, const Args&... args) {
+    logger_->error(fmt, arg1, args...);
+    exit(1);
   }
 
   /**
@@ -341,6 +357,14 @@ class Logger {
    * logs in the default tiledb format
    */
   void set_format(Logger::Format fmt);
+
+  /**
+   * Set the logger name.
+   *
+   * @param tags The string to use as a name, usually a
+   * concatenation of [tag:id] strings
+   */
+  void set_name(const std::string& tags);
 
   /* ********************************* */
   /*          PUBLIC ATTRIBUTES        */
@@ -368,9 +392,9 @@ class Logger {
   /** The name of the global logger in json format */
   static inline constexpr char global_logger_json_name[] = "\"Global\":\"1\"";
 
- private:
+ protected:
   /* ********************************* */
-  /*         PRIVATE ATTRIBUTES        */
+  /*         PROTECTED ATTRIBUTES      */
   /* ********************************* */
 
   /** The logger object. */
@@ -383,19 +407,11 @@ class Logger {
   static inline Logger::Format fmt_ = Logger::Format::DEFAULT;
 
   /** A counter of logger class instances */
-  static inline std::atomic<uint64_t> instance_count = 0;
+  static inline std::atomic<uint64_t> instance_count_ = 0;
 
   /* ********************************* */
-  /*          PRIVATE METHODS          */
+  /*          PROTECTED METHODS        */
   /* ********************************* */
-
-  /**
-   * Set the logger name.
-   *
-   * @param tags The string to use as a name, usually a
-   * concatenation of [tag:id] strings
-   */
-  void set_name(const std::string& tags);
 
   /**
    * Create a new string by appending a [tag:id] to the current
