@@ -239,53 +239,6 @@ std::vector<std::array<T, 2>> intersection(
 
 }  // namespace geometry
 
-/* ********************************* */
-/*          TIME FUNCTIONS           */
-/* ********************************* */
-
-namespace time {
-
-/**
- * Returns the current time in milliseconds since
- * 1970-01-01 00:00:00 +0000 (UTC).
- */
-uint64_t timestamp_now_ms();
-
-}  // namespace time
-
-/* ********************************* */
-/*          MATH FUNCTIONS           */
-/* ********************************* */
-
-namespace math {
-
-/** Returns the value of x/y (integer division) rounded up. */
-uint64_t ceil(uint64_t x, uint64_t y);
-
-/** Returns log_b(x). */
-double log(double b, double x);
-
-/**
- * Computes a * b, but it checks for overflow. In case the product
- * overflows, it returns std::numeric_limits<T>::max().
- */
-template <class T>
-T safe_mul(T a, T b);
-
-/**
- * Returns the maximum power of 2 minus one that is smaller than
- * or equal to `value`.
- */
-uint64_t left_p2_m1(uint64_t value);
-
-/**
- * Returns the minimum power of 2 minus one that is larger than
- * or equal to `value`.
- */
-uint64_t right_p2_m1(uint64_t value);
-
-}  // namespace math
-
 }  // namespace utils
 }  // namespace sm
 }  // namespace tiledb

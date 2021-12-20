@@ -42,6 +42,7 @@
 #include "tiledb/common/logger_public.h"
 #include "tiledb/sm/filesystem/azure.h"
 #include "tiledb/sm/global_state/global_state.h"
+#include "tiledb/sm/misc/math.h"
 #include "tiledb/sm/misc/utils.h"
 
 // blob_client.h needs to be included after logger_public.h to avoid

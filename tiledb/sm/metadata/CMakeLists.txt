@@ -1,5 +1,5 @@
 #
-# tiledb/sm/tile/CMakeLists.txt
+# tiledb/sm/metadata/CMakeLists.txt
 #
 # The MIT License
 #
@@ -22,20 +22,22 @@
 # LIABILITY, WHETHER IN AN ACTION OF CONTRACT, TORT OR OTHERWISE, ARISING FROM,
 # OUT OF OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN
 # THE SOFTWARE.
-#
 
 include(common NO_POLICY_SCOPE)
 
 #
-# `tile` object library
+# `constants` object library
 #
-add_library(tile OBJECT tile.cc)
-target_link_libraries(tile PUBLIC baseline $<TARGET_OBJECTS:baseline>)
-target_link_libraries(tile PUBLIC buffer $<TARGET_OBJECTS:buffer>)
-target_link_libraries(tile PUBLIC constants $<TARGET_OBJECTS:constants>)
+add_library(metadata OBJECT metadata.cc)
+target_link_libraries(metadata PUBLIC baseline $<TARGET_OBJECTS:baseline>)
+target_link_libraries(metadata PUBLIC buffer $<TARGET_OBJECTS:buffer>)
+target_link_libraries(metadata PUBLIC constants $<TARGET_OBJECTS:constants>)
+target_link_libraries(metadata PUBLIC time $<TARGET_OBJECTS:time>)
+target_link_libraries(metadata PUBLIC uuid $<TARGET_OBJECTS:uuid>)
+target_link_libraries(metadata PUBLIC vfs $<TARGET_OBJECTS:vfs>)
 #
 # Test-compile of object library ensures link-completeness
 #
-add_executable(compile_tile EXCLUDE_FROM_ALL)
-target_link_libraries(compile_tile PRIVATE tile)
-target_sources(compile_tile PRIVATE test/compile_tile_main.cc)
+add_executable(compile_metadata EXCLUDE_FROM_ALL)
+target_link_libraries(compile_metadata PRIVATE metadata)
+target_sources(compile_metadata PRIVATE test/compile_metadata_main.cc)

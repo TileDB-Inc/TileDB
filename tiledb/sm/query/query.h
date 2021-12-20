@@ -45,7 +45,6 @@
 #include "tiledb/sm/array_schema/dimension.h"
 #include "tiledb/sm/array_schema/domain.h"
 #include "tiledb/sm/fragment/written_fragment_info.h"
-#include "tiledb/sm/misc/utils.h"
 #include "tiledb/sm/query/iquery_strategy.h"
 #include "tiledb/sm/query/query_condition.h"
 #include "tiledb/sm/query/validity_vector.h"

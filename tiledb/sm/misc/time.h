@@ -1,11 +1,12 @@
 /**
- * @file   written_fragment_info.h
+ * @file time.h
  *
  * @section LICENSE
  *
  * The MIT License
  *
  * @copyright Copyright (c) 2017-2021 TileDB, Inc.
+ * @copyright Copyright (c) 2016 MIT and Intel Corporation
  *
  * Permission is hereby granted, free of charge, to any person obtaining a copy
  * of this software and associated documentation files (the "Software"), to deal
@@ -27,41 +28,22 @@
  *
  * @section DESCRIPTION
  *
- * This file defines struct WrittenFragmentInfo.
+ * This file declares a timestamp function
  */
 
-#ifndef TILEDB_WRITTEN_FRAGMENT_INFO_H
-#define TILEDB_WRITTEN_FRAGMENT_INFO_H
+#include <cstdint>
 
-#include <utility>
+#ifndef TILEDB_MISC_TIME_H
+#define TILEDB_MISC_TIME_H
 
-#include "tiledb/sm/filesystem/uri.h"
-
-using namespace tiledb::common;
-
-namespace tiledb {
-namespace sm {
+namespace tiledb::sm::utils::time {
 
 /**
- * Stores information about a fragment that is being written by a
- * WRITE query.
+ * Returns the current time in milliseconds since
+ * 1970-01-01 00:00:00 +0000 (UTC).
  */
-struct WrittenFragmentInfo {
-  /** The URI of the fragment. */
-  URI uri_;
+uint64_t timestamp_now_ms();
 
-  /** The timestamp range of the fragment. */
-  std::pair<uint64_t, uint64_t> timestamp_range_;
+}  // namespace tiledb::sm::utils::time
 
-  /** Constructor. */
-  WrittenFragmentInfo(
-      const URI& uri, const std::pair<uint64_t, uint64_t>& timestamp_range)
-      : uri_(uri)
-      , timestamp_range_(timestamp_range) {
-  }
-};
-
-}  // namespace sm
-}  // namespace tiledb
-
-#endif  // TILEDB_WRITTEN_FRAGMENT_INFO_H
+#endif  // TILEDB_MISC_TIME_H

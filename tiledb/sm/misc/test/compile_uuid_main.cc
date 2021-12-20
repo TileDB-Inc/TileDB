@@ -1,11 +1,11 @@
 /**
- * @file   written_fragment_info.h
+ * @file compile_uuid_main.cc
  *
  * @section LICENSE
  *
  * The MIT License
  *
- * @copyright Copyright (c) 2017-2021 TileDB, Inc.
+ * @copyright Copyright (c) 2021 TileDB, Inc.
  *
  * Permission is hereby granted, free of charge, to any person obtaining a copy
  * of this software and associated documentation files (the "Software"), to deal
@@ -24,44 +24,11 @@
  * LIABILITY, WHETHER IN AN ACTION OF CONTRACT, TORT OR OTHERWISE, ARISING FROM,
  * OUT OF OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN
  * THE SOFTWARE.
- *
- * @section DESCRIPTION
- *
- * This file defines struct WrittenFragmentInfo.
  */
 
-#ifndef TILEDB_WRITTEN_FRAGMENT_INFO_H
-#define TILEDB_WRITTEN_FRAGMENT_INFO_H
+#include "../uuid.h"
 
-#include <utility>
-
-#include "tiledb/sm/filesystem/uri.h"
-
-using namespace tiledb::common;
-
-namespace tiledb {
-namespace sm {
-
-/**
- * Stores information about a fragment that is being written by a
- * WRITE query.
- */
-struct WrittenFragmentInfo {
-  /** The URI of the fragment. */
-  URI uri_;
-
-  /** The timestamp range of the fragment. */
-  std::pair<uint64_t, uint64_t> timestamp_range_;
-
-  /** Constructor. */
-  WrittenFragmentInfo(
-      const URI& uri, const std::pair<uint64_t, uint64_t>& timestamp_range)
-      : uri_(uri)
-      , timestamp_range_(timestamp_range) {
-  }
-};
-
-}  // namespace sm
-}  // namespace tiledb
-
-#endif  // TILEDB_WRITTEN_FRAGMENT_INFO_H
+int main() {
+  (void)tiledb::sm::uuid::generate_uuid(nullptr, false);
+  return 0;
+}

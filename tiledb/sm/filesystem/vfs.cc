@@ -31,11 +31,13 @@
  */
 
 #include "vfs.h"
+#include "path_win.h"
 #include "tiledb/common/logger_public.h"
 #include "tiledb/sm/buffer/buffer.h"
 #include "tiledb/sm/enums/filesystem.h"
 #include "tiledb/sm/enums/vfs_mode.h"
 #include "tiledb/sm/filesystem/hdfs_filesystem.h"
+#include "tiledb/sm/misc/math.h"
 #include "tiledb/sm/misc/parallel_functions.h"
 #include "tiledb/sm/misc/utils.h"
 #include "tiledb/sm/stats/global_stats.h"
@@ -85,11 +87,12 @@ std::string VFS::abs_path(const std::string& path) {
   std::string path_copy = path;
 #ifdef _WIN32
   {
-    std::string norm_sep_path = Win::slashes_to_backslashes(path);
-    if (Win::is_win_path(norm_sep_path))
-      return Win::uri_from_path(Win::abs_path(norm_sep_path));
+    std::string norm_sep_path = path_win::slashes_to_backslashes(path);
+    if (path_win::is_win_path(norm_sep_path))
+      return path_win::uri_from_path(Win::abs_path(norm_sep_path));
     else if (URI::is_file(path))
-      return Win::uri_from_path(Win::abs_path(Win::path_from_uri(path)));
+      return path_win::uri_from_path(
+          Win::abs_path(path_win::path_from_uri(path)));
   }
 #else
   if (URI::is_file(path))
