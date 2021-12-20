@@ -1,5 +1,4 @@
 #derived from step in old azure-linux_mac.yml for use in github actions CI operations
-
 echo "BEGIN, inside GA-linux-mac_buildtiledb.sh"
 echo ${0}
 set -x
@@ -18,7 +17,7 @@ unset SYSTEM
 
 # azure bash does not treat intermediate failure as error
 # https://github.com/Microsoft/azure-pipelines-yaml/issues/135
-set -xe pipefail
+set -e pipefail
 
 git config --global user.name 'Azure Pipeline'
 git config --global user.email 'no-reply@tiledb.io'
