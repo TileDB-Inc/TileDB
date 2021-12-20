@@ -136,8 +136,15 @@ class CompressionFilter : public Filter {
   /** The compression level. */
   int level_;
 
+  /** Mutex guarding zstd_compress_ctx_pool */
+  std::mutex zstd_compress_ctx_pool_mtx_;
+
   /** Mutex guarding zstd_decompress_ctx_pool */
   std::mutex zstd_decompress_ctx_pool_mtx_;
+
+  /** A resource pool to be used in ZStd compressor for improved performance */
+  std::shared_ptr<BlockingResourcePool<ZStd::ZSTD_Compress_Context>>
+      zstd_compress_ctx_pool_;
 
   /** A resource pool to be used in ZStd decompressor for improved performance
    */
@@ -185,8 +192,11 @@ class CompressionFilter : public Filter {
   /** Serializes this filter's metadata to the given buffer. */
   Status serialize_impl(Buffer* buff) const override;
 
-  /** Initializes the compression filter resource pool */
-  void init_resource_pool(uint64_t size) override;
+  /** Initializes the compression resource pool */
+  void init_compression_resource_pool(uint64_t size) override;
+
+  /** Initializes the decompression resource pool */
+  void init_decompression_resource_pool(uint64_t size) override;
 };
 
 }  // namespace sm
