@@ -27,8 +27,8 @@
 // clang-format off
 /**
  * NOTE: The values of these enums are serialized to the array schema and/or
- * fragment metadata. Therefore, the values below should never change (i.e.
- * don't modify the checks below), otherwise backwards compatibility breaks.
+ * fragment metadata. Therefore, the values below should never change, 
+ * otherwise backwards compatibility breaks.
  */
 #ifdef TILEDB_QUERY_TYPE_ENUM
     /** Read query */
@@ -143,7 +143,7 @@
     /** Time with attosecond resolution */
     TILEDB_DATATYPE_ENUM(TIME_AS) = 39,
     /** std::byte */
-    TILEDB_DATATYPE_ENUM(BYTE) = 40,
+    TILEDB_DATATYPE_ENUM(BLOB) = 40,
 #endif
 
 #ifdef TILEDB_ARRAY_TYPE_ENUM

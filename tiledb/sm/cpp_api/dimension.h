@@ -247,7 +247,7 @@ class Dimension {
         // Strings have null domains so let's return an empty string
         // representation
         return "";
-      case TILEDB_BYTE:
+      case TILEDB_BLOB:
       case TILEDB_CHAR:
       case TILEDB_STRING_UTF8:
       case TILEDB_STRING_UTF16:
@@ -365,7 +365,7 @@ class Dimension {
         // Strings have null tile extents so let's return an empty string
         // representation
         return "";
-      case TILEDB_BYTE:
+      case TILEDB_BLOB:
       case TILEDB_CHAR:
       case TILEDB_STRING_UTF8:
       case TILEDB_STRING_UTF16:

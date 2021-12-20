@@ -125,8 +125,8 @@ extern const double empty_float64;
 /** The special value for an empty char. */
 extern const char empty_char;
 
-/** The special value for an empty byte. */
-extern const std::byte empty_byte;
+/** The special value for an empty blob. */
+extern const std::byte empty_blob;
 
 /** The special value for an empty int8. */
 extern const int8_t empty_int8;
@@ -339,8 +339,8 @@ extern const std::string float64_str;
 /** The string representation for type char. */
 extern const std::string char_str;
 
-/** The string representation for type byte. */
-extern const std::string byte_str;
+/** The string representation for type blob. */
+extern const std::string blob_str;
 
 /** The string representation for type int8. */
 extern const std::string int8_str;

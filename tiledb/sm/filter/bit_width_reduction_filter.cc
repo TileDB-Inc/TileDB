@@ -109,13 +109,13 @@ Status BitWidthReductionFilter::run_forward(
   }
 
   /* Note: Arithmetic operations cannot be performed on std::byte.
-    We will use uint8_t for the Datatype::BYTE case as it is the same size as
+    We will use uint8_t for the Datatype::BLOB case as it is the same size as
     std::byte and can have arithmetic perfomed on it. */
   switch (tile_type) {
     case Datatype::INT8:
       return run_forward<int8_t>(
           tile, input_metadata, input, output_metadata, output);
-    case Datatype::BYTE:
+    case Datatype::BLOB:
     case Datatype::UINT8:
       return run_forward<uint8_t>(
           tile, input_metadata, input, output_metadata, output);
@@ -290,13 +290,13 @@ Status BitWidthReductionFilter::run_reverse(
   }
 
   /* Note: Arithmetic operations cannot be performed on std::byte.
-    We will use uint8_t for the Datatype::BYTE case as it is the same size as
+    We will use uint8_t for the Datatype::BLOB case as it is the same size as
     std::byte and can have arithmetic perfomed on it. */
   switch (tile_type) {
     case Datatype::INT8:
       return run_reverse<int8_t>(
           tile, input_metadata, input, output_metadata, output);
-    case Datatype::BYTE:
+    case Datatype::BLOB:
     case Datatype::UINT8:
       return run_reverse<uint8_t>(
           tile, input_metadata, input, output_metadata, output);

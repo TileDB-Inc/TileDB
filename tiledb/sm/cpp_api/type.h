@@ -87,8 +87,8 @@ struct type_to_tiledb {
 template <>
 struct type_to_tiledb<std::byte> {
   using type = std::byte;
-  static const tiledb_datatype_t tiledb_type = TILEDB_BYTE;
-  static constexpr const char* name = "BYTE";
+  static const tiledb_datatype_t tiledb_type = TILEDB_BLOB;
+  static constexpr const char* name = "BLOB";
 };
 
 template <>
@@ -173,10 +173,10 @@ struct tiledb_to_type<TILEDB_CHAR> {
 };
 
 template <>
-struct tiledb_to_type<TILEDB_BYTE> {
+struct tiledb_to_type<TILEDB_BLOB> {
   using type = std::byte;
-  static const tiledb_datatype_t tiledb_type = TILEDB_BYTE;
-  static constexpr const char* name = "BYTE";
+  static const tiledb_datatype_t tiledb_type = TILEDB_BLOB;
+  static constexpr const char* name = "BLOB";
 };
 
 template <>

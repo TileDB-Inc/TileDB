@@ -287,7 +287,7 @@ TEST_CASE_METHOD(
 
     create_temp_dir(temp_dir);
 
-    create_dense_vector(array_name, attr_name, TILEDB_BYTE);
+    create_dense_vector(array_name, attr_name, TILEDB_BLOB);
 
     // Prepare cell buffers
     uint8_t buffer_a1[] = {1, 2, 3, 4, 5, 6, 7, 8, 9, 10};
