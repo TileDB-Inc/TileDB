@@ -1,4 +1,4 @@
-name: linux_mac-release
+name: linux_manylinux
 
 on:
   push:
