@@ -483,7 +483,7 @@ runs:
         
     - name: 'Build libtiledb scripted B'
       if: true
-      #not available in (composite) action? continue-on-error: true
+      #not availa le in (composite) action? continue-on-error: true
       shell: bash
       run: |
         up1level=$(echo -e "import sys\nimport os\nprint (os.path.realpath(\"$GITHUB_WORKSPACE/..\"))" | python3)
@@ -496,7 +496,7 @@ runs:
           -v "$up1level:$up1level" --env-file tdbenvfile.txt \
           -w $GITHUB_WORKSPACE \
           "quay.io/pypa/manylinux2010_x86_64:2021-11-07-28723f3" \
-          /bin/bash # -c "pwd; ls -l; . ./scripts/ci/GA-linux-mac_buildtiledb.sh; pwd; ls -l; pwd; ls -l .."
+          /bin/bash # -c "pwd; ls -l; . ./scripts/ci/linux-mac_release_buildtiledb.sh"
         sync
         docker ps
         sync
@@ -512,7 +512,7 @@ runs:
         #  -it \ ......
         docker container exec \
           $containername \
-          /bin/bash -c "pwd; ls -l; . ./scripts/ci/GA-linux-mac_buildtiledb.sh; pwd; ls -l; pwd; ls -l .."
+          /bin/bash -c "pwd; ls -l; . ./scripts/ci/linux-mac_release_buildtiledb.sh; pwd; ls -l; pwd; ls -l .."
         sync
         echo "OUTSIDE of manylinux"
         pwd
