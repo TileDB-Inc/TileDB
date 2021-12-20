@@ -42,8 +42,6 @@
 #include "tiledb/sm/subarray/cell_slab_iter.h"
 #include "tiledb/sm/subarray/subarray.h"
 
-#include <future>
-
 namespace tiledb {
 namespace sm {
 
@@ -396,26 +394,28 @@ Status ReaderBase::init_tile_nullable(
   return Status::Ok();
 }
 
-Status ReaderBase::load_attribute_tiles(
+Status ReaderBase::read_attribute_tiles(
     const std::vector<std::string>* names,
     const std::vector<ResultTile*>* result_tiles,
     const bool disable_cache) const {
-  auto timer_se = stats_->start_timer("load_attribute_tiles");
-  return load_tiles(names, result_tiles, disable_cache);
+  auto timer_se = stats_->start_timer("read_attribute_tiles");
+  return read_tiles(names, result_tiles, disable_cache);
 }
 
-Status ReaderBase::load_coordinate_tiles(
+Status ReaderBase::read_coordinate_tiles(
     const std::vector<std::string>* names,
     const std::vector<ResultTile*>* result_tiles,
     const bool disable_cache) const {
-  auto timer_se = stats_->start_timer("load_coordinate_tiles");
-  return load_tiles(names, result_tiles, disable_cache);
+  auto timer_se = stats_->start_timer("read_coordinate_tiles");
+  return read_tiles(names, result_tiles, disable_cache);
 }
 
-Status ReaderBase::load_tiles(
+Status ReaderBase::read_tiles(
     const std::vector<std::string>* names,
     const std::vector<ResultTile*>* result_tiles,
     const bool disable_cache) const {
+  auto timer_se = stats_->start_timer("read_tiles");
+
   // Shortcut for empty tile vec
   if (result_tiles->empty())
     return Status::Ok();
@@ -510,9 +510,7 @@ Status ReaderBase::load_tiles(
               &cache_hit));
         }
 
-        if (cache_hit) {
-          t->signal_ready();
-        } else {
+        if (!cache_hit) {
           // Add the region of the fragment to be read.
           all_regions[tile_attr_uri].emplace_back(
               tile_attr_offset, t, tile_persisted_size);
@@ -542,9 +540,7 @@ Status ReaderBase::load_tiles(
                 &cache_hit));
           }
 
-          if (cache_hit) {
-            t_var->signal_ready();
-          } else {
+          if (!cache_hit) {
             // Add the region of the fragment to be read.
             all_regions[tile_attr_var_uri].emplace_back(
                 tile_attr_var_offset, t_var, tile_var_persisted_size);
@@ -576,9 +572,7 @@ Status ReaderBase::load_tiles(
                 &cache_hit));
           }
 
-          if (cache_hit) {
-            t_validity->signal_ready();
-          } else {
+          if (!cache_hit) {
             // Add the region of the fragment to be read.
             all_regions[tile_validity_attr_uri].emplace_back(
                 tile_attr_validity_offset,
@@ -605,72 +599,22 @@ Status ReaderBase::load_tiles(
   // Read the tiles asynchronously
   std::vector<ThreadPool::Task> tasks;
 
-  {
-    auto timer_se = stats_->start_timer("allocate_read_tasks");
-
-    // Enqueue all regions to be read.
-    for (const auto& item : all_regions) {
-      RETURN_NOT_OK(storage_manager_->vfs()->read_all(
-          item.first,
-          item.second,
-          storage_manager_->io_tp(),
-          &tasks,
-          use_read_ahead));
-    }
+  // Enqueue all regions to be read.
+  for (const auto& item : all_regions) {
+    RETURN_NOT_OK(storage_manager_->vfs()->read_all(
+        item.first,
+        item.second,
+        storage_manager_->io_tp(),
+        &tasks,
+        use_read_ahead));
   }
 
-  std::vector<ThreadPool::Task> read_status_task;
-  read_status_task.push_back(storage_manager_->io_tp()->execute(
-      [this, &tasks, &names, &result_tiles]() {
-        // Wait for the reads to finish and check statuses.
-        auto statuses = storage_manager_->io_tp()->wait_all_status(tasks);
-        for (const auto& st : statuses) {
-          if (!st.ok()) {
-            for (auto& name : *names) {
-              for (auto& tile : *result_tiles) {
-                ResultTile::TileTuple* tile_tuple = tile->tile_tuple(name);
-                assert(tile_tuple != nullptr);
-                Tile* const t = &std::get<0>(*tile_tuple);
-                if (t)
-                  t->signal_error();
+  // Wait for the reads to finish and check statuses.
+  auto statuses = storage_manager_->io_tp()->wait_all_status(tasks);
+  for (const auto& st : statuses)
+    RETURN_CANCEL_OR_ERROR(st);
 
-                Tile* const t_var = &std::get<1>(*tile_tuple);
-                if (t_var)
-                  t_var->signal_error();
-
-                Tile* const t_validity = &std::get<2>(*tile_tuple);
-                if (t_validity)
-                  t_validity->signal_error();
-              }
-            }
-
-            return Status::ReaderError("Error reading tiles");
-          }
-        }
-
-        return Status::Ok();
-      }));
-
-  // If the tile cache is in use, wait for reads to complete before unfilering
-  // as tiles could be evicted from the cache before they get processed.
-  Status ret;
-  if (!disable_cache) {
-    auto status = storage_manager_->io_tp()->wait_all_status(read_status_task);
-    ret = status[0];
-  }
-
-  // Unfilter tiles.
-  for (const auto& name : *names) {
-    RETURN_CANCEL_OR_ERROR(unfilter_tiles(name, result_tiles));
-  }
-
-  // Check the read statuses for errors.
-  if (disable_cache) {
-    auto status = storage_manager_->io_tp()->wait_all_status(read_status_task);
-    ret = status[0];
-  }
-
-  return ret;
+  return Status::Ok();
 }
 
 Status ReaderBase::unfilter_tiles(
@@ -757,26 +701,16 @@ Status ReaderBase::unfilter_tiles(
           // Unfilter 't' for fixed-sized tiles, otherwise unfilter both 't' and
           // 't_var' for var-sized tiles.
           if (!var_size) {
-            if (!nullable) {
-              RETURN_NOT_OK(t.wait_ready());
+            if (!nullable)
               RETURN_NOT_OK(unfilter_tile(name, &t));
-            } else {
-              RETURN_NOT_OK(t.wait_ready());
-              RETURN_NOT_OK(t_validity.wait_ready());
+            else
               RETURN_NOT_OK(unfilter_tile_nullable(name, &t, &t_validity));
-            }
           } else {
-            if (!nullable) {
-              RETURN_NOT_OK(t.wait_ready());
-              RETURN_NOT_OK(t_var.wait_ready());
+            if (!nullable)
               RETURN_NOT_OK(unfilter_tile(name, &t, &t_var));
-            } else {
-              RETURN_NOT_OK(t.wait_ready());
-              RETURN_NOT_OK(t_var.wait_ready());
-              RETURN_NOT_OK(t_validity.wait_ready());
+            else
               RETURN_NOT_OK(
                   unfilter_tile_nullable(name, &t, &t_var, &t_validity));
-            }
           }
         }
 
@@ -1704,7 +1638,7 @@ Status ReaderBase::process_tiles(
     // Read the tiles for the names in `inner_names`. Each attribute
     // name will be read concurrently.
     RETURN_CANCEL_OR_ERROR(
-        load_attribute_tiles(&inner_names, result_tiles, disable_cache));
+        read_attribute_tiles(&inner_names, result_tiles, disable_cache));
 
     // Copy the cells into the associated `buffers_`, and then clear the cells
     // from the tiles. The cell copies are not thread safe. Clearing tiles are
@@ -1712,6 +1646,9 @@ Status ReaderBase::process_tiles(
     // separate threads.
     for (const auto& inner_name : inner_names) {
       const ProcessTileFlags flags = names->at(inner_name);
+
+      RETURN_CANCEL_OR_ERROR(
+          unfilter_tiles(inner_name, result_tiles, disable_cache));
 
       if (flags & ProcessTileFlag::COPY) {
         if (!array_schema_->var_size(inner_name)) {
