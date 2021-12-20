@@ -76,7 +76,7 @@ Status ArraySchemaEvolution::evolve_schema(
     const ArraySchema* orig_schema, ArraySchema** new_schema) {
   std::lock_guard<std::mutex> lock(mtx_);
   if (orig_schema == nullptr) {
-    return LOG_STATUS(Status::ArraySchemaEvolutionError(
+    return LOG_STATUS(Status_ArraySchemaEvolutionError(
         "Cannot evolve schema; Input array schema is null"));
   }
 
@@ -106,12 +106,12 @@ Status ArraySchemaEvolution::add_attribute(const Attribute* attr) {
   std::lock_guard<std::mutex> lock(mtx_);
   // Sanity check
   if (attr == nullptr)
-    return LOG_STATUS(Status::ArraySchemaEvolutionError(
+    return LOG_STATUS(Status_ArraySchemaEvolutionError(
         "Cannot add attribute; Input attribute is null"));
 
   if (attributes_to_add_map_.find(attr->name()) !=
       attributes_to_add_map_.end()) {
-    return LOG_STATUS(Status::ArraySchemaEvolutionError(
+    return LOG_STATUS(Status_ArraySchemaEvolutionError(
         "Cannot add attribute; Input attribute name is already there"));
   }
 

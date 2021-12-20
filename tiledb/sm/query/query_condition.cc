@@ -38,9 +38,9 @@
 #include "tiledb/sm/misc/utils.h"
 
 #include <iostream>
-
 #include <map>
 #include <mutex>
+#include <numeric>
 
 using namespace tiledb::common;
 
@@ -83,7 +83,7 @@ Status QueryCondition::init(
     const uint64_t condition_value_size,
     const QueryConditionOp op) {
   if (!clauses_.empty()) {
-    return Status::QueryConditionError("Cannot reinitialize query condition");
+    return Status_QueryConditionError("Cannot reinitialize query condition");
   }
 
   clauses_.emplace_back(
@@ -99,27 +99,27 @@ Status QueryCondition::check(const ArraySchema* const array_schema) const {
 
     const Attribute* const attribute = array_schema->attribute(field_name);
     if (!attribute) {
-      return Status::QueryConditionError(
+      return Status_QueryConditionError(
           "Clause field name is not an attribute " + field_name);
     }
 
     if (clause.condition_value_ == nullptr) {
       if (clause.op_ != QueryConditionOp::EQ &&
           clause.op_ != QueryConditionOp::NE) {
-        return Status::QueryConditionError(
+        return Status_QueryConditionError(
             "Null value can only be used with equality operators");
       }
 
       if ((!attribute->nullable()) &&
           attribute->type() != Datatype::STRING_ASCII) {
-        return Status::QueryConditionError(
+        return Status_QueryConditionError(
             "Null value can only be used with nullable attributes");
       }
     }
 
     if (attribute->var_size() && attribute->type() != Datatype::STRING_ASCII &&
         clause.condition_value_ != nullptr) {
-      return Status::QueryConditionError(
+      return Status_QueryConditionError(
           "Clause non-empty attribute may only be var-sized for ASCII "
           "strings: " +
           field_name);
@@ -128,7 +128,7 @@ Status QueryCondition::check(const ArraySchema* const array_schema) const {
     if (attribute->cell_val_num() != 1 &&
         attribute->type() != Datatype::STRING_ASCII &&
         (!attribute->var_size())) {
-      return Status::QueryConditionError(
+      return Status_QueryConditionError(
           "Clause attribute must have one value per cell for non-string fixed "
           "size "
           "attributes: " +
@@ -140,7 +140,7 @@ Status QueryCondition::check(const ArraySchema* const array_schema) const {
         !(attribute->nullable() && clause.condition_value_ == nullptr) &&
         attribute->type() != Datatype::STRING_ASCII &&
         (!attribute->var_size())) {
-      return Status::QueryConditionError(
+      return Status_QueryConditionError(
           "Clause condition value size mismatch: " +
           std::to_string(attribute->cell_size()) +
           " != " + std::to_string(condition_value_size));
@@ -148,14 +148,14 @@ Status QueryCondition::check(const ArraySchema* const array_schema) const {
 
     switch (attribute->type()) {
       case Datatype::ANY:
-        return Status::QueryConditionError(
+        return Status_QueryConditionError(
             "Clause attribute type may not be of type 'ANY': " + field_name);
       case Datatype::STRING_UTF8:
       case Datatype::STRING_UTF16:
       case Datatype::STRING_UTF32:
       case Datatype::STRING_UCS2:
       case Datatype::STRING_UCS4:
-        return Status::QueryConditionError(
+        return Status_QueryConditionError(
             "Clause attribute type may not be a UTF/UCS string: " + field_name);
       default:
         break;
@@ -171,7 +171,7 @@ Status QueryCondition::combine(
     QueryCondition* const combined_cond) const {
   assert(combination_op == QueryConditionCombinationOp::AND);
   if (combination_op != QueryConditionCombinationOp::AND) {
-    return Status::QueryConditionError(
+    return Status_QueryConditionError(
         "Cannot combine query conditions; Only the 'AND' "
         "combination op is supported");
   }
@@ -208,7 +208,7 @@ std::unordered_set<std::string> QueryCondition::field_names() const {
 
 /** Full template specialization for `char*` and `QueryConditionOp::LT`. */
 template <>
-struct QueryCondition::BinaryCmp<char*, QueryConditionOp::LT> {
+struct QueryCondition::BinaryCmpNullChecks<char*, QueryConditionOp::LT> {
   static inline bool cmp(
       const void* lhs, uint64_t lhs_size, const void* rhs, uint64_t rhs_size) {
     if (lhs == nullptr) {
@@ -228,7 +228,7 @@ struct QueryCondition::BinaryCmp<char*, QueryConditionOp::LT> {
 
 /** Partial template specialization for `char*` and `QueryConditionOp::LE. */
 template <>
-struct QueryCondition::BinaryCmp<char*, QueryConditionOp::LE> {
+struct QueryCondition::BinaryCmpNullChecks<char*, QueryConditionOp::LE> {
   static inline bool cmp(
       const void* lhs, uint64_t lhs_size, const void* rhs, uint64_t rhs_size) {
     if (lhs == nullptr) {
@@ -248,7 +248,7 @@ struct QueryCondition::BinaryCmp<char*, QueryConditionOp::LE> {
 
 /** Partial template specialization for `char*` and `QueryConditionOp::GT`. */
 template <>
-struct QueryCondition::BinaryCmp<char*, QueryConditionOp::GT> {
+struct QueryCondition::BinaryCmpNullChecks<char*, QueryConditionOp::GT> {
   static inline bool cmp(
       const void* lhs, uint64_t lhs_size, const void* rhs, uint64_t rhs_size) {
     if (lhs == nullptr) {
@@ -268,7 +268,7 @@ struct QueryCondition::BinaryCmp<char*, QueryConditionOp::GT> {
 
 /** Partial template specialization for `char*` and `QueryConditionOp::GE`. */
 template <>
-struct QueryCondition::BinaryCmp<char*, QueryConditionOp::GE> {
+struct QueryCondition::BinaryCmpNullChecks<char*, QueryConditionOp::GE> {
   static inline bool cmp(
       const void* lhs, uint64_t lhs_size, const void* rhs, uint64_t rhs_size) {
     if (lhs == nullptr) {
@@ -288,7 +288,7 @@ struct QueryCondition::BinaryCmp<char*, QueryConditionOp::GE> {
 
 /** Partial template specialization for `char*` and `QueryConditionOp::EQ`. */
 template <>
-struct QueryCondition::BinaryCmp<char*, QueryConditionOp::EQ> {
+struct QueryCondition::BinaryCmpNullChecks<char*, QueryConditionOp::EQ> {
   static inline bool cmp(
       const void* lhs, uint64_t lhs_size, const void* rhs, uint64_t rhs_size) {
     if (lhs == rhs) {
@@ -312,7 +312,7 @@ struct QueryCondition::BinaryCmp<char*, QueryConditionOp::EQ> {
 
 /** Partial template specialization for `char*` and `QueryConditionOp::NE`. */
 template <>
-struct QueryCondition::BinaryCmp<char*, QueryConditionOp::NE> {
+struct QueryCondition::BinaryCmpNullChecks<char*, QueryConditionOp::NE> {
   static inline bool cmp(
       const void* lhs, uint64_t lhs_size, const void* rhs, uint64_t rhs_size) {
     if (rhs == nullptr && lhs != nullptr) {
@@ -336,7 +336,7 @@ struct QueryCondition::BinaryCmp<char*, QueryConditionOp::NE> {
 
 /** Partial template specialization for `QueryConditionOp::LT`. */
 template <typename T>
-struct QueryCondition::BinaryCmp<T, QueryConditionOp::LT> {
+struct QueryCondition::BinaryCmpNullChecks<T, QueryConditionOp::LT> {
   static inline bool cmp(const void* lhs, uint64_t, const void* rhs, uint64_t) {
     return lhs != nullptr &&
            *static_cast<const T*>(lhs) < *static_cast<const T*>(rhs);
@@ -345,7 +345,7 @@ struct QueryCondition::BinaryCmp<T, QueryConditionOp::LT> {
 
 /** Partial template specialization for `QueryConditionOp::LE`. */
 template <typename T>
-struct QueryCondition::BinaryCmp<T, QueryConditionOp::LE> {
+struct QueryCondition::BinaryCmpNullChecks<T, QueryConditionOp::LE> {
   static inline bool cmp(const void* lhs, uint64_t, const void* rhs, uint64_t) {
     return lhs != nullptr &&
            *static_cast<const T*>(lhs) <= *static_cast<const T*>(rhs);
@@ -354,7 +354,7 @@ struct QueryCondition::BinaryCmp<T, QueryConditionOp::LE> {
 
 /** Partial template specialization for `QueryConditionOp::GT`. */
 template <typename T>
-struct QueryCondition::BinaryCmp<T, QueryConditionOp::GT> {
+struct QueryCondition::BinaryCmpNullChecks<T, QueryConditionOp::GT> {
   static inline bool cmp(const void* lhs, uint64_t, const void* rhs, uint64_t) {
     return lhs != nullptr &&
            *static_cast<const T*>(lhs) > *static_cast<const T*>(rhs);
@@ -363,7 +363,7 @@ struct QueryCondition::BinaryCmp<T, QueryConditionOp::GT> {
 
 /** Partial template specialization for `QueryConditionOp::GE`. */
 template <typename T>
-struct QueryCondition::BinaryCmp<T, QueryConditionOp::GE> {
+struct QueryCondition::BinaryCmpNullChecks<T, QueryConditionOp::GE> {
   static inline bool cmp(const void* lhs, uint64_t, const void* rhs, uint64_t) {
     return lhs != nullptr &&
            *static_cast<const T*>(lhs) >= *static_cast<const T*>(rhs);
@@ -372,7 +372,7 @@ struct QueryCondition::BinaryCmp<T, QueryConditionOp::GE> {
 
 /** Partial template specialization for `QueryConditionOp::EQ`. */
 template <typename T>
-struct QueryCondition::BinaryCmp<T, QueryConditionOp::EQ> {
+struct QueryCondition::BinaryCmpNullChecks<T, QueryConditionOp::EQ> {
   static inline bool cmp(const void* lhs, uint64_t, const void* rhs, uint64_t) {
     if (lhs == rhs) {
       return true;
@@ -388,7 +388,7 @@ struct QueryCondition::BinaryCmp<T, QueryConditionOp::EQ> {
 
 /** Partial template specialization for `QueryConditionOp::NE`. */
 template <typename T>
-struct QueryCondition::BinaryCmp<T, QueryConditionOp::NE> {
+struct QueryCondition::BinaryCmpNullChecks<T, QueryConditionOp::NE> {
   static inline bool cmp(const void* lhs, uint64_t, const void* rhs, uint64_t) {
     if (rhs == nullptr && lhs != nullptr) {
       return true;
@@ -439,7 +439,7 @@ void QueryCondition::apply_clause(
 
     // Handle an empty range.
     if (result_tile == nullptr && !nullable) {
-      const bool cmp = BinaryCmp<T, Op>::cmp(
+      const bool cmp = BinaryCmpNullChecks<T, Op>::cmp(
           fill_value.data(),
           fill_value.size(),
           clause.condition_value_,
@@ -490,7 +490,7 @@ void QueryCondition::apply_clause(
               null_cell ? nullptr : buffer + buffer_offset;
 
           // Compare the cell value against the value in the clause.
-          const bool cmp = BinaryCmp<T, Op>::cmp(
+          const bool cmp = BinaryCmpNullChecks<T, Op>::cmp(
               cell_value,
               cell_size,
               clause.condition_value_,
@@ -525,7 +525,7 @@ void QueryCondition::apply_clause(
           buffer_offset += buffer_offset_inc;
 
           // Compare the cell value against the value in the clause.
-          const bool cmp = BinaryCmp<T, Op>::cmp(
+          const bool cmp = BinaryCmpNullChecks<T, Op>::cmp(
               cell_value,
               cell_size,
               clause.condition_value_,
@@ -622,7 +622,7 @@ Status QueryCondition::apply_clause(
           out_result_cell_slabs);
       break;
     default:
-      return Status::QueryConditionError(
+      return Status_QueryConditionError(
           "Cannot perform query comparison; Unknown query "
           "condition operator");
   }
@@ -639,7 +639,7 @@ Status QueryCondition::apply_clause(
   const Attribute* const attribute =
       array_schema->attribute(clause.field_name_);
   if (!attribute) {
-    return Status::QueryConditionError(
+    return Status_QueryConditionError(
         "Unknown attribute " + clause.field_name_);
   }
 
@@ -783,7 +783,7 @@ Status QueryCondition::apply_clause(
     case Datatype::STRING_UCS2:
     case Datatype::STRING_UCS4:
     default:
-      return Status::QueryConditionError(
+      return Status_QueryConditionError(
           "Cannot perform query comparison; Unsupported query "
           "conditional type on " +
           clause.field_name_);
@@ -872,7 +872,7 @@ void QueryCondition::apply_clause_dense(
           null_cell ? nullptr : buffer + buffer_offset;
 
       // Compare the cell value against the value in the clause.
-      const bool cmp = BinaryCmp<T, Op>::cmp(
+      const bool cmp = BinaryCmpNullChecks<T, Op>::cmp(
           cell_value,
           cell_size,
           clause.condition_value_,
@@ -904,7 +904,7 @@ void QueryCondition::apply_clause_dense(
       buffer_offset += buffer_offset_inc;
 
       // Compare the cell value against the value in the clause.
-      const bool cmp = BinaryCmp<T, Op>::cmp(
+      const bool cmp = BinaryCmpNullChecks<T, Op>::cmp(
           cell_value,
           cell_size,
           clause.condition_value_,
@@ -1019,7 +1019,7 @@ Status QueryCondition::apply_clause_dense(
           result_buffer);
       break;
     default:
-      return Status::QueryConditionError(
+      return Status_QueryConditionError(
           "Cannot perform query comparison; Unknown query "
           "condition operator");
   }
@@ -1041,7 +1041,7 @@ Status QueryCondition::apply_clause_dense(
   const Attribute* const attribute =
       array_schema->attribute(clause.field_name_);
   if (!attribute) {
-    return Status::QueryConditionError(
+    return Status_QueryConditionError(
         "Unknown attribute " + clause.field_name_);
   }
 
@@ -1236,7 +1236,7 @@ Status QueryCondition::apply_clause_dense(
     case Datatype::STRING_UCS2:
     case Datatype::STRING_UCS4:
     default:
-      return Status::QueryConditionError(
+      return Status_QueryConditionError(
           "Cannot perform query comparison; Unsupported query "
           "conditional type on " +
           clause.field_name_);
@@ -1279,24 +1279,159 @@ Status QueryCondition::apply_dense(
   return Status::Ok();
 }
 
+/** Full template specialization for `char*` and `QueryConditionOp::LT`. */
+template <>
+struct QueryCondition::BinaryCmp<char*, QueryConditionOp::LT> {
+  static inline bool cmp(
+      const void* lhs, uint64_t lhs_size, const void* rhs, uint64_t rhs_size) {
+    const size_t min_size = std::min<size_t>(lhs_size, rhs_size);
+    const int cmp = strncmp(
+        static_cast<const char*>(lhs), static_cast<const char*>(rhs), min_size);
+    if (cmp != 0) {
+      return cmp < 0;
+    }
+
+    return lhs_size < rhs_size;
+  }
+};
+
+/** Partial template specialization for `char*` and `QueryConditionOp::LE. */
+template <>
+struct QueryCondition::BinaryCmp<char*, QueryConditionOp::LE> {
+  static inline bool cmp(
+      const void* lhs, uint64_t lhs_size, const void* rhs, uint64_t rhs_size) {
+    const size_t min_size = std::min<size_t>(lhs_size, rhs_size);
+    const int cmp = strncmp(
+        static_cast<const char*>(lhs), static_cast<const char*>(rhs), min_size);
+    if (cmp != 0) {
+      return cmp < 0;
+    }
+
+    return lhs_size <= rhs_size;
+  }
+};
+
+/** Partial template specialization for `char*` and `QueryConditionOp::GT`. */
+template <>
+struct QueryCondition::BinaryCmp<char*, QueryConditionOp::GT> {
+  static inline bool cmp(
+      const void* lhs, uint64_t lhs_size, const void* rhs, uint64_t rhs_size) {
+    const size_t min_size = std::min<size_t>(lhs_size, rhs_size);
+    const int cmp = strncmp(
+        static_cast<const char*>(lhs), static_cast<const char*>(rhs), min_size);
+    if (cmp != 0) {
+      return cmp > 0;
+    }
+
+    return lhs_size > rhs_size;
+  }
+};
+
+/** Partial template specialization for `char*` and `QueryConditionOp::GE`. */
+template <>
+struct QueryCondition::BinaryCmp<char*, QueryConditionOp::GE> {
+  static inline bool cmp(
+      const void* lhs, uint64_t lhs_size, const void* rhs, uint64_t rhs_size) {
+    const size_t min_size = std::min<size_t>(lhs_size, rhs_size);
+    const int cmp = strncmp(
+        static_cast<const char*>(lhs), static_cast<const char*>(rhs), min_size);
+    if (cmp != 0) {
+      return cmp > 0;
+    }
+
+    return lhs_size >= rhs_size;
+  }
+};
+
+/** Partial template specialization for `char*` and `QueryConditionOp::EQ`. */
+template <>
+struct QueryCondition::BinaryCmp<char*, QueryConditionOp::EQ> {
+  static inline bool cmp(
+      const void* lhs, uint64_t lhs_size, const void* rhs, uint64_t rhs_size) {
+    if (lhs_size != rhs_size) {
+      return false;
+    }
+
+    return strncmp(
+               static_cast<const char*>(lhs),
+               static_cast<const char*>(rhs),
+               lhs_size) == 0;
+  }
+};
+
+/** Partial template specialization for `char*` and `QueryConditionOp::NE`. */
+template <>
+struct QueryCondition::BinaryCmp<char*, QueryConditionOp::NE> {
+  static inline bool cmp(
+      const void* lhs, uint64_t lhs_size, const void* rhs, uint64_t rhs_size) {
+    if (lhs_size != rhs_size) {
+      return true;
+    }
+
+    return strncmp(
+               static_cast<const char*>(lhs),
+               static_cast<const char*>(rhs),
+               lhs_size) != 0;
+  }
+};
+
+/** Partial template specialization for `QueryConditionOp::LT`. */
+template <typename T>
+struct QueryCondition::BinaryCmp<T, QueryConditionOp::LT> {
+  static inline bool cmp(const void* lhs, uint64_t, const void* rhs, uint64_t) {
+    return *static_cast<const T*>(lhs) < *static_cast<const T*>(rhs);
+  }
+};
+
+/** Partial template specialization for `QueryConditionOp::LE`. */
+template <typename T>
+struct QueryCondition::BinaryCmp<T, QueryConditionOp::LE> {
+  static inline bool cmp(const void* lhs, uint64_t, const void* rhs, uint64_t) {
+    return *static_cast<const T*>(lhs) <= *static_cast<const T*>(rhs);
+  }
+};
+
+/** Partial template specialization for `QueryConditionOp::GT`. */
+template <typename T>
+struct QueryCondition::BinaryCmp<T, QueryConditionOp::GT> {
+  static inline bool cmp(const void* lhs, uint64_t, const void* rhs, uint64_t) {
+    return *static_cast<const T*>(lhs) > *static_cast<const T*>(rhs);
+  }
+};
+
+/** Partial template specialization for `QueryConditionOp::GE`. */
+template <typename T>
+struct QueryCondition::BinaryCmp<T, QueryConditionOp::GE> {
+  static inline bool cmp(const void* lhs, uint64_t, const void* rhs, uint64_t) {
+    return *static_cast<const T*>(lhs) >= *static_cast<const T*>(rhs);
+  }
+};
+
+/** Partial template specialization for `QueryConditionOp::EQ`. */
+template <typename T>
+struct QueryCondition::BinaryCmp<T, QueryConditionOp::EQ> {
+  static inline bool cmp(const void* lhs, uint64_t, const void* rhs, uint64_t) {
+    return *static_cast<const T*>(lhs) == *static_cast<const T*>(rhs);
+  }
+};
+
+/** Partial template specialization for `QueryConditionOp::NE`. */
+template <typename T>
+struct QueryCondition::BinaryCmp<T, QueryConditionOp::NE> {
+  static inline bool cmp(const void* lhs, uint64_t, const void* rhs, uint64_t) {
+    return *static_cast<const T*>(lhs) != *static_cast<const T*>(rhs);
+  }
+};
+
 template <typename T, QueryConditionOp Op, typename BitmapType>
 void QueryCondition::apply_clause_sparse(
     const QueryCondition::Clause& clause,
-    ResultTile* result_tile,
+    ResultTile& result_tile,
     const bool var_size,
-    const bool nullable,
-    BitmapType* result_bitmap,
-    uint64_t* cell_count) const {
+    std::vector<BitmapType>& result_bitmap) const {
+  // For easy reference.
   const std::string& field_name = clause.field_name_;
-
-  // Get the nullable buffer.
-  const auto tile_tuple = result_tile->tile_tuple(field_name);
-  uint8_t* buffer_validity = nullptr;
-
-  if (nullable) {
-    const auto& tile_validity = std::get<2>(*tile_tuple);
-    buffer_validity = static_cast<uint8_t*>(tile_validity.buffer()->data());
-  }
+  const auto tile_tuple = result_tile.tile_tuple(field_name);
 
   if (var_size) {
     // Get var data buffer and tile offsets buffer.
@@ -1312,17 +1447,17 @@ void QueryCondition::apply_clause_sparse(
 
     // Iterate through each cell.
     for (uint64_t c = 0; c < buffer_offsets_el; ++c) {
+      // Check the previous cell here, which breaks vectorization but as this
+      // is string data requiring a strcmp which cannot be vectorized, this is
+      // ok.
       if (result_bitmap[c] != 0) {
         const uint64_t buffer_offset = buffer_offsets[c];
         const uint64_t next_cell_offset =
             (c + 1 < buffer_offsets_el) ? buffer_offsets[c + 1] : buffer_size;
         const uint64_t cell_size = next_cell_offset - buffer_offset;
 
-        const bool null_cell = nullable && buffer_validity[c] == 0;
-
         // Get the cell value.
-        const void* const cell_value =
-            null_cell ? nullptr : buffer + buffer_offset;
+        const void* const cell_value = buffer + buffer_offset;
 
         // Compare the cell value against the value in the clause.
         const bool cmp = BinaryCmp<T, Op>::cmp(
@@ -1332,11 +1467,7 @@ void QueryCondition::apply_clause_sparse(
             clause.condition_value_data_.size());
 
         // Set the value.
-        if (!cmp) {
-          result_bitmap[c] = 0;
-        }
-
-        *cell_count += result_bitmap[c];
+        result_bitmap[c] *= cmp;
       }
     }
   } else {
@@ -1346,29 +1477,21 @@ void QueryCondition::apply_clause_sparse(
     const uint64_t cell_size = tile.cell_size();
     const uint64_t buffer_el = tile.size() / cell_size;
 
-    // Iterate through each cell.
+    // Iterate through each cell without checking the bitmap to enable
+    // vectorization.
     for (uint64_t c = 0; c < buffer_el; ++c) {
-      if (result_bitmap[c] != 0) {
-        const bool null_cell = nullable && buffer_validity[c] == 0;
+      // Get the cell value.
+      const void* const cell_value = buffer + c * cell_size;
 
-        // Get the cell value.
-        const void* const cell_value =
-            null_cell ? nullptr : buffer + c * cell_size;
+      // Compare the cell value against the value in the clause.
+      const bool cmp = BinaryCmp<T, Op>::cmp(
+          cell_value,
+          cell_size,
+          clause.condition_value_,
+          clause.condition_value_data_.size());
 
-        // Compare the cell value against the value in the clause.
-        const bool cmp = BinaryCmp<T, Op>::cmp(
-            cell_value,
-            cell_size,
-            clause.condition_value_,
-            clause.condition_value_data_.size());
-
-        // Set the value.
-        if (!cmp) {
-          result_bitmap[c] = 0;
-        }
-
-        *cell_count += result_bitmap[c];
-      }
+      // Set the value.
+      result_bitmap[c] *= cmp;
     }
   }
 }
@@ -1376,38 +1499,36 @@ void QueryCondition::apply_clause_sparse(
 template <typename T, typename BitmapType>
 Status QueryCondition::apply_clause_sparse(
     const Clause& clause,
-    ResultTile* result_tile,
+    ResultTile& result_tile,
     const bool var_size,
-    const bool nullable,
-    BitmapType* result_bitmap,
-    uint64_t* cell_count) const {
+    std::vector<BitmapType>& result_bitmap) const {
   switch (clause.op_) {
     case QueryConditionOp::LT:
       apply_clause_sparse<T, QueryConditionOp::LT>(
-          clause, result_tile, var_size, nullable, result_bitmap, cell_count);
+          clause, result_tile, var_size, result_bitmap);
       break;
     case QueryConditionOp::LE:
       apply_clause_sparse<T, QueryConditionOp::LE>(
-          clause, result_tile, var_size, nullable, result_bitmap, cell_count);
+          clause, result_tile, var_size, result_bitmap);
       break;
     case QueryConditionOp::GT:
       apply_clause_sparse<T, QueryConditionOp::GT>(
-          clause, result_tile, var_size, nullable, result_bitmap, cell_count);
+          clause, result_tile, var_size, result_bitmap);
       break;
     case QueryConditionOp::GE:
       apply_clause_sparse<T, QueryConditionOp::GE>(
-          clause, result_tile, var_size, nullable, result_bitmap, cell_count);
+          clause, result_tile, var_size, result_bitmap);
       break;
     case QueryConditionOp::EQ:
       apply_clause_sparse<T, QueryConditionOp::EQ>(
-          clause, result_tile, var_size, nullable, result_bitmap, cell_count);
+          clause, result_tile, var_size, result_bitmap);
       break;
     case QueryConditionOp::NE:
       apply_clause_sparse<T, QueryConditionOp::NE>(
-          clause, result_tile, var_size, nullable, result_bitmap, cell_count);
+          clause, result_tile, var_size, result_bitmap);
       break;
     default:
-      return Status::QueryConditionError(
+      return Status_QueryConditionError(
           "Cannot perform query comparison; Unknown query "
           "condition operator");
   }
@@ -1419,55 +1540,82 @@ template <typename BitmapType>
 Status QueryCondition::apply_clause_sparse(
     const QueryCondition::Clause& clause,
     const ArraySchema* const array_schema,
-    ResultTile* result_tile,
-    BitmapType* result_bitmap,
-    uint64_t* cell_count) const {
+    ResultTile& result_tile,
+    std::vector<BitmapType>& result_bitmap) const {
   const Attribute* const attribute =
       array_schema->attribute(clause.field_name_);
   if (!attribute) {
-    return Status::QueryConditionError(
+    return Status_QueryConditionError(
         "Unknown attribute " + clause.field_name_);
   }
 
   const bool var_size = attribute->var_size();
   const bool nullable = attribute->nullable();
+
+  // Process the validity buffer now.
+  const auto tile_tuple = result_tile.tile_tuple(clause.field_name_);
+  uint8_t* buffer_validity = nullptr;
+
+  if (nullable) {
+    const auto& tile_validity = std::get<2>(*tile_tuple);
+    buffer_validity = static_cast<uint8_t*>(tile_validity.buffer()->data());
+
+    // Null values can only be specified for equality operators.
+    if (clause.condition_value_ == nullptr) {
+      if (clause.op_ == QueryConditionOp::NE) {
+        for (uint64_t c = 0; c < result_tile.cell_num(); c++) {
+          result_bitmap[c] *= buffer_validity[c] != 0;
+        }
+      } else {
+        for (uint64_t c = 0; c < result_tile.cell_num(); c++) {
+          result_bitmap[c] *= buffer_validity[c] == 0;
+        }
+      }
+    } else {
+      // Turn off bitmap values for null cells.
+      for (uint64_t c = 0; c < result_tile.cell_num(); c++) {
+        result_bitmap[c] *= buffer_validity[c] != 0;
+      }
+    }
+  }
+
   switch (attribute->type()) {
     case Datatype::INT8:
       return apply_clause_sparse<int8_t, BitmapType>(
-          clause, result_tile, var_size, nullable, result_bitmap, cell_count);
+          clause, result_tile, var_size, result_bitmap);
     case Datatype::UINT8:
       return apply_clause_sparse<uint8_t, BitmapType>(
-          clause, result_tile, var_size, nullable, result_bitmap, cell_count);
+          clause, result_tile, var_size, result_bitmap);
     case Datatype::INT16:
       return apply_clause_sparse<int16_t, BitmapType>(
-          clause, result_tile, var_size, nullable, result_bitmap, cell_count);
+          clause, result_tile, var_size, result_bitmap);
     case Datatype::UINT16:
       return apply_clause_sparse<uint16_t, BitmapType>(
-          clause, result_tile, var_size, nullable, result_bitmap, cell_count);
+          clause, result_tile, var_size, result_bitmap);
     case Datatype::INT32:
       return apply_clause_sparse<int32_t, BitmapType>(
-          clause, result_tile, var_size, nullable, result_bitmap, cell_count);
+          clause, result_tile, var_size, result_bitmap);
     case Datatype::UINT32:
       return apply_clause_sparse<uint32_t, BitmapType>(
-          clause, result_tile, var_size, nullable, result_bitmap, cell_count);
+          clause, result_tile, var_size, result_bitmap);
     case Datatype::INT64:
       return apply_clause_sparse<int64_t, BitmapType>(
-          clause, result_tile, var_size, nullable, result_bitmap, cell_count);
+          clause, result_tile, var_size, result_bitmap);
     case Datatype::UINT64:
       return apply_clause_sparse<uint64_t, BitmapType>(
-          clause, result_tile, var_size, nullable, result_bitmap, cell_count);
+          clause, result_tile, var_size, result_bitmap);
     case Datatype::FLOAT32:
       return apply_clause_sparse<float, BitmapType>(
-          clause, result_tile, var_size, nullable, result_bitmap, cell_count);
+          clause, result_tile, var_size, result_bitmap);
     case Datatype::FLOAT64:
       return apply_clause_sparse<double, BitmapType>(
-          clause, result_tile, var_size, nullable, result_bitmap, cell_count);
+          clause, result_tile, var_size, result_bitmap);
     case Datatype::STRING_ASCII:
       return apply_clause_sparse<char*, BitmapType>(
-          clause, result_tile, var_size, nullable, result_bitmap, cell_count);
+          clause, result_tile, var_size, result_bitmap);
     case Datatype::CHAR:
       return apply_clause_sparse<char, BitmapType>(
-          clause, result_tile, var_size, nullable, result_bitmap, cell_count);
+          clause, result_tile, var_size, result_bitmap);
     case Datatype::DATETIME_YEAR:
     case Datatype::DATETIME_MONTH:
     case Datatype::DATETIME_WEEK:
@@ -1482,7 +1630,7 @@ Status QueryCondition::apply_clause_sparse(
     case Datatype::DATETIME_FS:
     case Datatype::DATETIME_AS:
       return apply_clause_sparse<int64_t, BitmapType>(
-          clause, result_tile, var_size, nullable, result_bitmap, cell_count);
+          clause, result_tile, var_size, result_bitmap);
     case Datatype::ANY:
     case Datatype::STRING_UTF8:
     case Datatype::STRING_UTF16:
@@ -1490,7 +1638,7 @@ Status QueryCondition::apply_clause_sparse(
     case Datatype::STRING_UCS2:
     case Datatype::STRING_UCS4:
     default:
-      return Status::QueryConditionError(
+      return Status_QueryConditionError(
           "Cannot perform query comparison; Unsupported query "
           "conditional type on " +
           clause.field_name_);
@@ -1502,16 +1650,17 @@ Status QueryCondition::apply_clause_sparse(
 template <typename T, typename BitmapType>
 Status QueryCondition::apply_sparse(
     const ArraySchema* const array_schema,
-    ResultTile* result_tile,
-    BitmapType* result_bitmap,
+    ResultTile& result_tile,
+    std::vector<BitmapType>& result_bitmap,
     uint64_t* cell_count) {
   // Iterate through each clause.
   // This assumes all clauses are combined with a logical "AND".
   for (const auto& clause : clauses_) {
-    *cell_count = 0;
-    RETURN_NOT_OK(apply_clause_sparse(
-        clause, array_schema, result_tile, result_bitmap, cell_count));
+    RETURN_NOT_OK(
+        apply_clause_sparse(clause, array_schema, result_tile, result_bitmap));
   }
+
+  *cell_count = std::accumulate(result_bitmap.begin(), result_bitmap.end(), 0);
 
   return Status::Ok();
 }
@@ -1600,36 +1749,36 @@ template Status QueryCondition::apply_dense<uint64_t>(
     const uint64_t,
     uint8_t*);
 template Status QueryCondition::apply_sparse<int8_t, uint8_t>(
-    const ArraySchema* const, ResultTile*, uint8_t*, uint64_t*);
+    const ArraySchema* const, ResultTile&, std::vector<uint8_t>&, uint64_t*);
 template Status QueryCondition::apply_sparse<uint8_t, uint8_t>(
-    const ArraySchema* const, ResultTile*, uint8_t*, uint64_t*);
+    const ArraySchema* const, ResultTile&, std::vector<uint8_t>&, uint64_t*);
 template Status QueryCondition::apply_sparse<int16_t, uint8_t>(
-    const ArraySchema* const, ResultTile*, uint8_t*, uint64_t*);
+    const ArraySchema* const, ResultTile&, std::vector<uint8_t>&, uint64_t*);
 template Status QueryCondition::apply_sparse<uint16_t, uint8_t>(
-    const ArraySchema* const, ResultTile*, uint8_t*, uint64_t*);
+    const ArraySchema* const, ResultTile&, std::vector<uint8_t>&, uint64_t*);
 template Status QueryCondition::apply_sparse<int32_t, uint8_t>(
-    const ArraySchema* const, ResultTile*, uint8_t*, uint64_t*);
+    const ArraySchema* const, ResultTile&, std::vector<uint8_t>&, uint64_t*);
 template Status QueryCondition::apply_sparse<uint32_t, uint8_t>(
-    const ArraySchema* const, ResultTile*, uint8_t*, uint64_t*);
+    const ArraySchema* const, ResultTile&, std::vector<uint8_t>&, uint64_t*);
 template Status QueryCondition::apply_sparse<int64_t, uint8_t>(
-    const ArraySchema* const, ResultTile*, uint8_t*, uint64_t*);
+    const ArraySchema* const, ResultTile&, std::vector<uint8_t>&, uint64_t*);
 template Status QueryCondition::apply_sparse<uint64_t, uint8_t>(
-    const ArraySchema* const, ResultTile*, uint8_t*, uint64_t*);
+    const ArraySchema* const, ResultTile&, std::vector<uint8_t>&, uint64_t*);
 template Status QueryCondition::apply_sparse<int8_t, uint64_t>(
-    const ArraySchema* const, ResultTile*, uint64_t*, uint64_t*);
+    const ArraySchema* const, ResultTile&, std::vector<uint64_t>&, uint64_t*);
 template Status QueryCondition::apply_sparse<uint8_t, uint64_t>(
-    const ArraySchema* const, ResultTile*, uint64_t*, uint64_t*);
+    const ArraySchema* const, ResultTile&, std::vector<uint64_t>&, uint64_t*);
 template Status QueryCondition::apply_sparse<int16_t, uint64_t>(
-    const ArraySchema* const, ResultTile*, uint64_t*, uint64_t*);
+    const ArraySchema* const, ResultTile&, std::vector<uint64_t>&, uint64_t*);
 template Status QueryCondition::apply_sparse<uint16_t, uint64_t>(
-    const ArraySchema* const, ResultTile*, uint64_t*, uint64_t*);
+    const ArraySchema* const, ResultTile&, std::vector<uint64_t>&, uint64_t*);
 template Status QueryCondition::apply_sparse<int32_t, uint64_t>(
-    const ArraySchema* const, ResultTile*, uint64_t*, uint64_t*);
+    const ArraySchema* const, ResultTile&, std::vector<uint64_t>&, uint64_t*);
 template Status QueryCondition::apply_sparse<uint32_t, uint64_t>(
-    const ArraySchema* const, ResultTile*, uint64_t*, uint64_t*);
+    const ArraySchema* const, ResultTile&, std::vector<uint64_t>&, uint64_t*);
 template Status QueryCondition::apply_sparse<int64_t, uint64_t>(
-    const ArraySchema* const, ResultTile*, uint64_t*, uint64_t*);
+    const ArraySchema* const, ResultTile&, std::vector<uint64_t>&, uint64_t*);
 template Status QueryCondition::apply_sparse<uint64_t, uint64_t>(
-    const ArraySchema* const, ResultTile*, uint64_t*, uint64_t*);
+    const ArraySchema* const, ResultTile&, std::vector<uint64_t>&, uint64_t*);
 }  // namespace sm
 }  // namespace tiledb

@@ -40,6 +40,7 @@
 #include "tiledb/sm/misc/hilbert.h"
 #include "tiledb/sm/misc/parallel_functions.h"
 #include "tiledb/sm/misc/utils.h"
+#include "tiledb/sm/query/hilbert_order.h"
 #include "tiledb/sm/query/query_macros.h"
 #include "tiledb/sm/query/read_cell_slab_iter.h"
 #include "tiledb/sm/query/result_tile.h"
@@ -129,16 +130,16 @@ bool Reader::incomplete() const {
 Status Reader::init() {
   // Sanity checks
   if (storage_manager_ == nullptr)
-    return logger_->status(Status::ReaderError(
+    return logger_->status(Status_ReaderError(
         "Cannot initialize reader; Storage manager not set"));
   if (array_schema_ == nullptr)
-    return logger_->status(Status::ReaderError(
-        "Cannot initialize reader; Array metadata not set"));
+    return logger_->status(
+        Status_ReaderError("Cannot initialize reader; Array metadata not set"));
   if (buffers_.empty())
     return logger_->status(
-        Status::ReaderError("Cannot initialize reader; Buffers not set"));
+        Status_ReaderError("Cannot initialize reader; Buffers not set"));
   if (array_schema_->dense() && !subarray_.is_set())
-    return logger_->status(Status::ReaderError(
+    return logger_->status(Status_ReaderError(
         "Cannot initialize reader; Dense reads must have a subarray set"));
 
   // Check subarray
@@ -302,7 +303,7 @@ Status Reader::compute_result_cell_slabs(
   auto coords_end = result_coords.end();
   auto it = skip_invalid_elements(result_coords.begin(), coords_end);
   if (it == coords_end) {
-    return logger_->status(Status::ReaderError("Unexpected empty cell range."));
+    return logger_->status(Status_ReaderError("Unexpected empty cell range."));
   }
   uint64_t start_pos = it->pos_;
   uint64_t end_pos = start_pos;
@@ -588,7 +589,6 @@ Status Reader::compute_sparse_result_tiles(
   auto timer_se = stats_->start_timer("compute_sparse_result_tiles");
 
   // For easy reference
-  auto domain = array_schema_->domain();
   auto& partitioner = read_state_.partitioner_;
   const auto& subarray = partitioner.current();
   auto range_num = subarray.range_num();
@@ -616,7 +616,8 @@ Status Reader::compute_sparse_result_tiles(
           auto pair = std::pair<unsigned, uint64_t>(f, t);
           // Add tile only if it does not already exist
           if (result_tile_map->find(pair) == result_tile_map->end()) {
-            result_tiles->emplace_back(f, t, domain);
+            result_tiles->emplace_back(
+                f, t, fragment_metadata_[f]->array_schema());
             (*result_tile_map)[pair] = result_tiles->size() - 1;
           }
           // Always check range for multiple fragments
@@ -634,7 +635,8 @@ Status Reader::compute_sparse_result_tiles(
         auto pair = std::pair<unsigned, uint64_t>(f, t);
         // Add tile only if it does not already exist
         if (result_tile_map->find(pair) == result_tile_map->end()) {
-          result_tiles->emplace_back(f, t, domain);
+          result_tiles->emplace_back(
+              f, t, fragment_metadata_[f]->array_schema());
           (*result_tile_map)[pair] = result_tiles->size() - 1;
         }
         // Always check range for multiple fragments
@@ -891,7 +893,7 @@ Status Reader::dense_read() {
     case Datatype::TIME_AS:
       return dense_read<int64_t>();
     default:
-      return logger_->status(Status::ReaderError(
+      return logger_->status(Status_ReaderError(
           "Cannot read dense array; Unsupported domain type"));
   }
 
@@ -980,10 +982,10 @@ Status Reader::init_read_state() {
   // Check subarray
   if (subarray_.layout() == Layout::GLOBAL_ORDER && subarray_.range_num() != 1)
     return logger_->status(
-        Status::ReaderError("Cannot initialize read "
-                            "state; Multi-range "
-                            "subarrays do not "
-                            "support global order"));
+        Status_ReaderError("Cannot initialize read "
+                           "state; Multi-range "
+                           "subarrays do not "
+                           "support global order"));
 
   // Get config
   bool found = false;
@@ -999,8 +1001,8 @@ Status Reader::init_read_state() {
   assert(found);
   if (offsets_format_mode_ != "bytes" && offsets_format_mode_ != "elements") {
     return logger_->status(
-        Status::ReaderError("Cannot initialize reader; Unsupported offsets "
-                            "format in configuration"));
+        Status_ReaderError("Cannot initialize reader; Unsupported offsets "
+                           "format in configuration"));
   }
   RETURN_NOT_OK(config_.get<bool>(
       "sm.var_offsets.extra_element", &offsets_extra_element_, &found));
@@ -1009,8 +1011,8 @@ Status Reader::init_read_state() {
       "sm.var_offsets.bitsize", &offsets_bitsize_, &found));
   if (offsets_bitsize_ != 32 && offsets_bitsize_ != 64) {
     return logger_->status(
-        Status::ReaderError("Cannot initialize reader; Unsupported offsets "
-                            "bitsize in configuration"));
+        Status_ReaderError("Cannot initialize reader; Unsupported offsets "
+                           "bitsize in configuration"));
   }
   assert(found);
 
@@ -1168,7 +1170,7 @@ Status Reader::add_extra_offset() {
           &elements,
           offsets_bytesize());
     } else {
-      return logger_->status(Status::ReaderError(
+      return logger_->status(Status_ReaderError(
           "Cannot add extra offset to buffer; Unsupported offsets format"));
     }
   }
@@ -1239,8 +1241,8 @@ Status Reader::calculate_hilbert_values(
         std::vector<uint64_t> coords(dim_num);
         for (uint32_t d = 0; d < dim_num; ++d) {
           auto dim = array_schema_->dimension(d);
-          coords[d] =
-              dim->map_to_uint64(*(iter_begin + c), d, bits, max_bucket_val);
+          coords[d] = hilbert_order::map_to_uint64(
+              *dim, *(iter_begin + c), d, bits, max_bucket_val);
         }
         (*hilbert_values)[c] =
             std::pair<uint64_t, uint64_t>(h.coords_to_hilbert(&coords[0]), c);

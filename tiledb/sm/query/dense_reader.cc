@@ -91,16 +91,16 @@ bool DenseReader::incomplete() const {
 Status DenseReader::init() {
   // Sanity checks.
   if (storage_manager_ == nullptr)
-    return LOG_STATUS(Status::DenseReaderError(
+    return LOG_STATUS(Status_DenseReaderError(
         "Cannot initialize dense reader; Storage manager not set"));
   if (array_schema_ == nullptr)
-    return LOG_STATUS(Status::DenseReaderError(
+    return LOG_STATUS(Status_DenseReaderError(
         "Cannot initialize dense reader; Array schema not set"));
   if (buffers_.empty())
-    return LOG_STATUS(Status::DenseReaderError(
+    return LOG_STATUS(Status_DenseReaderError(
         "Cannot initialize dense reader; Buffers not set"));
   if (!subarray_.is_set())
-    return LOG_STATUS(Status::ReaderError(
+    return LOG_STATUS(Status_ReaderError(
         "Cannot initialize reader; Dense reads must have a subarray set"));
 
   // Check subarray.
@@ -225,7 +225,7 @@ Status DenseReader::dense_read() {
     case Datatype::TIME_AS:
       return dense_read<int64_t, OffType>();
     default:
-      return LOG_STATUS(Status::ReaderError(
+      return LOG_STATUS(Status_ReaderError(
           "Cannot read dense array; Unsupported domain type"));
   }
 
@@ -379,10 +379,10 @@ Status DenseReader::init_read_state() {
   // Check subarray.
   if (subarray_.layout() == Layout::GLOBAL_ORDER && subarray_.range_num() != 1)
     return LOG_STATUS(
-        Status::ReaderError("Cannot initialize read "
-                            "state; Multi-range "
-                            "subarrays do not "
-                            "support global order"));
+        Status_ReaderError("Cannot initialize read "
+                           "state; Multi-range "
+                           "subarrays do not "
+                           "support global order"));
 
   // Get config values.
   bool found = false;
@@ -400,8 +400,8 @@ Status DenseReader::init_read_state() {
   assert(found);
   if (offsets_format_mode_ != "bytes" && offsets_format_mode_ != "elements") {
     return LOG_STATUS(
-        Status::ReaderError("Cannot initialize reader; Unsupported offsets "
-                            "format in configuration"));
+        Status_ReaderError("Cannot initialize reader; Unsupported offsets "
+                           "format in configuration"));
   }
   elements_mode_ = offsets_format_mode_ == "elements";
 
@@ -413,8 +413,8 @@ Status DenseReader::init_read_state() {
       "sm.var_offsets.bitsize", &offsets_bitsize_, &found));
   if (offsets_bitsize_ != 32 && offsets_bitsize_ != 64) {
     return LOG_STATUS(
-        Status::ReaderError("Cannot initialize reader; Unsupported offsets "
-                            "bitsize in configuration"));
+        Status_ReaderError("Cannot initialize reader; Unsupported offsets "
+                           "bitsize in configuration"));
   }
   assert(found);
 
@@ -1411,7 +1411,7 @@ Status DenseReader::add_extra_offset() {
                       datatype_size(array_schema_->type(name));
       memcpy(buffer + *it.second.buffer_size_, &elements, offsets_bytesize());
     } else {
-      return LOG_STATUS(Status::ReaderError(
+      return LOG_STATUS(Status_ReaderError(
           "Cannot add extra offset to buffer; Unsupported offsets format"));
     }
 

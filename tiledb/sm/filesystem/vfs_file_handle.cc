@@ -61,7 +61,7 @@ Status VFSFileHandle::close() {
   if (!is_open_) {
     std::stringstream msg;
     msg << "Cannot close file '" << uri_.to_string() << "'; File is not open";
-    auto st = Status::VFSFileHandleError(msg.str());
+    auto st = Status_VFSFileHandleError(msg.str());
     return LOG_STATUS(st);
   }
 
@@ -94,7 +94,7 @@ Status VFSFileHandle::read(uint64_t offset, void* buffer, uint64_t nbytes) {
     std::stringstream msg;
     msg << "Cannot read from file '" << uri_.to_string()
         << "'; File is not open";
-    auto st = Status::VFSFileHandleError(msg.str());
+    auto st = Status_VFSFileHandleError(msg.str());
     return LOG_STATUS(st);
   }
 
@@ -105,7 +105,7 @@ Status VFSFileHandle::sync() {
   if (!is_open_) {
     std::stringstream msg;
     msg << "Cannot sync file '" << uri_.to_string() << "'; File is not open";
-    auto st = Status::VFSFileHandleError(msg.str());
+    auto st = Status_VFSFileHandleError(msg.str());
     return LOG_STATUS(st);
   }
 
@@ -121,7 +121,7 @@ Status VFSFileHandle::write(const void* buffer, uint64_t nbytes) {
     std::stringstream msg;
     msg << "Cannot write to file '" << uri_.to_string()
         << "'; File is not open";
-    auto st = Status::VFSFileHandleError(msg.str());
+    auto st = Status_VFSFileHandleError(msg.str());
     return LOG_STATUS(st);
   }
 

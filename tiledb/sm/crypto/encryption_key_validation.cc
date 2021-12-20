@@ -71,15 +71,15 @@ Status EncryptionKeyValidation::check_encryption_key(
       break;
     }
     default:
-      return LOG_STATUS(Status::EncryptionError(
+      return LOG_STATUS(Status_EncryptionError(
           "Invalid encryption key; invalid encryption type."));
   }
 
   if (output.size() != ENCRYPTION_KEY_CHECK_DATA.size())
-    return LOG_STATUS(Status::EncryptionError("Invalid encryption key."));
+    return LOG_STATUS(Status_EncryptionError("Invalid encryption key."));
   for (uint64_t i = 0; i < output.size(); i++) {
     if (output.value<char>(i * sizeof(char)) != ENCRYPTION_KEY_CHECK_DATA[i])
-      return LOG_STATUS(Status::EncryptionError("Invalid encryption key."));
+      return LOG_STATUS(Status_EncryptionError("Invalid encryption key."));
   }
 
   return Status::Ok();
@@ -117,7 +117,7 @@ Status EncryptionKeyValidation::init_encryption_key_check_data(
       break;
     }
     default:
-      return LOG_STATUS(Status::EncryptionError(
+      return LOG_STATUS(Status_EncryptionError(
           "Invalid encryption key; invalid encryption type."));
   }
 

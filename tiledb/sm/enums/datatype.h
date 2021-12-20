@@ -291,7 +291,7 @@ inline Status datatype_enum(
   else if (datatype_str == constants::time_as_str)
     *datatype = Datatype::TIME_AS;
   else {
-    return Status::Error("Invalid Datatype " + datatype_str);
+    return Status_Error("Invalid Datatype " + datatype_str);
   }
   return Status::Ok();
 }

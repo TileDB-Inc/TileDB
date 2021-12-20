@@ -310,7 +310,7 @@ Status Domain::deserialize(ConstBuffer* buff, uint32_t version) {
   for (uint32_t i = 0; i < dim_num_; ++i) {
     auto&& [st_dim, dim]{Dimension::deserialize(buff, version, type)};
     if (!st_dim.ok()) {
-      return Status::DomainError("Cannot deserialize dimension.");
+      return Status_DomainError("Cannot deserialize dimension.");
     }
     dimensions_.emplace_back(tdb_new(Dimension, dim.value().get()));
   }
@@ -522,7 +522,7 @@ Status Domain::get_dimension_index(
     }
   }
 
-  return Status::DomainError(
+  return Status_DomainError(
       "Cannot get dimension index; Invalid dimension name");
 }
 

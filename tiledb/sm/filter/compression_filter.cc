@@ -170,7 +170,7 @@ Status CompressionFilter::set_option_impl(
     FilterOption option, const void* value) {
   if (value == nullptr)
     return LOG_STATUS(
-        Status::FilterError("Compression filter error; invalid option value"));
+        Status_FilterError("Compression filter error; invalid option value"));
 
   switch (option) {
     case FilterOption::COMPRESSION_LEVEL:
@@ -178,7 +178,7 @@ Status CompressionFilter::set_option_impl(
       return Status::Ok();
     default:
       return LOG_STATUS(
-          Status::FilterError("Compression filter error; unknown option"));
+          Status_FilterError("Compression filter error; unknown option"));
   }
 }
 
@@ -190,7 +190,7 @@ Status CompressionFilter::get_option_impl(
       return Status::Ok();
     default:
       return LOG_STATUS(
-          Status::FilterError("Compression filter error; unknown option"));
+          Status_FilterError("Compression filter error; unknown option"));
   }
 }
 
@@ -209,7 +209,7 @@ Status CompressionFilter::run_forward(
 
   if (input->size() > std::numeric_limits<uint32_t>::max())
     return LOG_STATUS(
-        Status::FilterError("Input is too large to be compressed."));
+        Status_FilterError("Input is too large to be compressed."));
 
   // Compute the upper bound on the size of the output.
   std::vector<ConstBuffer> data_parts = input->buffers(),
@@ -321,7 +321,7 @@ Status CompressionFilter::compress_part(
 
   if (output->size() > std::numeric_limits<uint32_t>::max())
     return LOG_STATUS(
-        Status::FilterError("Compressed output exceeds uint32 max."));
+        Status_FilterError("Compressed output exceeds uint32 max."));
 
   // Write part original and compressed size to metadata
   uint32_t input_size = (uint32_t)part->size(),
@@ -349,7 +349,7 @@ Status CompressionFilter::decompress_part(
   if (output->owns_data()) {
     RETURN_NOT_OK(output->realloc(output->alloced_size() + uncompressed_size));
   } else if (output->offset() + uncompressed_size > output->size()) {
-    return LOG_STATUS(Status::FilterError(
+    return LOG_STATUS(Status_FilterError(
         "CompressionFilter error; output buffer too small."));
   }
 
@@ -436,7 +436,7 @@ void CompressionFilter::init_resource_pool(uint64_t size) {
   std::lock_guard g(zstd_decompress_ctx_pool_mtx_);
   if (zstd_decompress_ctx_pool_ == nullptr) {
     zstd_decompress_ctx_pool_ =
-        tdb::make_shared<ResourcePool<ZStd::ZSTD_Decompress_Context>>(
+        tdb::make_shared<BlockingResourcePool<ZStd::ZSTD_Decompress_Context>>(
             HERE(), size);
   }
 }

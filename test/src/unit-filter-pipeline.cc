@@ -371,7 +371,7 @@ class PseudoChecksumFilter : public tiledb::sm::Filter {
     }
 
     if (sum != input_sum)
-      return Status::FilterError("Filter error; sum does not match.");
+      return Status_FilterError("Filter error; sum does not match.");
 
     // The output metadata is just a view on the input metadata, skipping the
     // checksum bytes.
@@ -471,7 +471,7 @@ class Add1IncludingMetadataFilter : public tiledb::sm::Filter {
     (void)config;
 
     if (input_metadata->size() != 2 * sizeof(uint32_t))
-      return Status::FilterError("Unexpected input metadata length");
+      return Status_FilterError("Unexpected input metadata length");
 
     uint32_t orig_input_size, orig_md_size;
     RETURN_NOT_OK(input_metadata->read(&orig_input_size, sizeof(uint32_t)));

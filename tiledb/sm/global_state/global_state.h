@@ -47,6 +47,7 @@ namespace sm {
 
 class OpenArrayMemoryTracker;
 class StorageManager;
+class URI;
 
 namespace global_state {
 

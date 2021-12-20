@@ -3512,6 +3512,10 @@ TILEDB_EXPORT int32_t tiledb_query_get_stats(
 /**
  * Set the query config
  *
+ * Setting the query config will also set the subarray configuration in order to
+ * maintain existing behavior. If you wish the subarray to have a different
+ * configuration than the query, set it after calling tiledb_query_set_config.
+ *
  * Setting the configuration with this function overrides the following
  * Query-level parameters only:
  *

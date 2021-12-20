@@ -43,10 +43,9 @@
 #include "tiledb/common/blank.h"
 #include "tiledb/common/logger_public.h"
 #include "tiledb/common/status.h"
+#include "tiledb/sm/enums/datatype.h"
+#include "tiledb/sm/misc/constants.h"
 #include "tiledb/sm/misc/types.h"
-#include "tiledb/sm/misc/utils.h"
-#include "tiledb/sm/query/query_buffer.h"
-#include "tiledb/sm/query/result_coords.h"
 #include "tiledb/sm/tile/tile.h"
 
 using namespace tiledb::common;
@@ -130,16 +129,9 @@ class Dimension {
   Status set_cell_val_num(unsigned int cell_val_num);
 
   /** Returns the size (in bytes) of a coordinate in this dimension. */
-  uint64_t coord_size() const;
-
-  /**
-   *  Returns a coordinate in string format.
-   *
-   * @param buff The query buffer that contains all coordinates.
-   * @param i The position of the coordinate in the buffer.
-   * @return The coordinate in string format.
-   */
-  std::string coord_to_str(const QueryBuffer& buff, uint64_t i) const;
+  [[nodiscard]] inline size_t coord_size() const {
+    return datatype_size(type_);
+  }
 
   /**
    * Populates the object members from the data in the input binary buffer.
@@ -666,6 +658,34 @@ class Dimension {
   template <class T>
   static double overlap_ratio(const Range& r1, const Range& r2);
 
+  /** Compute relevant ranges for a set of ranges. */
+  void relevant_ranges(
+      const NDRange& ranges,
+      const Range& mbr,
+      std::vector<uint64_t>& relevant_ranges) const;
+
+  /** Compute relevant ranges for a set of ranges. */
+  template <class T>
+  static void relevant_ranges(
+      const NDRange& ranges,
+      const Range& mbr,
+      std::vector<uint64_t>& relevant_ranges);
+
+  /** Compute covered on a set of relevant ranges. */
+  void covered_vec(
+      const NDRange& ranges,
+      const Range& mbr,
+      const std::vector<uint64_t>& relevant_ranges,
+      std::vector<bool>& covered) const;
+
+  /** Compute covered on a set of relevant ranges. */
+  template <class T>
+  static void covered_vec(
+      const NDRange& ranges,
+      const Range& mbr,
+      const std::vector<uint64_t>& relevant_ranges,
+      std::vector<bool>& covered);
+
   /** Splits `r` at point `v`, producing 1D ranges `r1` and `r2`. */
   void split_range(
       const Range& r, const ByteVecValue& v, Range* r1, Range* r2) const;
@@ -698,32 +718,6 @@ class Dimension {
   static uint64_t tile_num(const Dimension* dim, const Range& range);
 
   /**
-   * Maps the c-th cell in the input query buffer to a uint64 value,
-   * based on discretizing the domain from 0 to `max_bucket_val`.
-   * This value is used to compute a Hilbert value.
-   */
-  uint64_t map_to_uint64(
-      const QueryBuffer* buff,
-      uint64_t c,
-      uint64_t coords_num,
-      int bits,
-      uint64_t max_bucket_val) const;
-
-  /**
-   * Maps the c-th cell in the input query buffer to a uint64 value,
-   * based on discretizing the domain from 0 to `max_bucket_val`.
-   * This value is used to compute a Hilbert value.
-   */
-  template <class T>
-  static uint64_t map_to_uint64(
-      const Dimension* dim,
-      const QueryBuffer* buff,
-      uint64_t c,
-      uint64_t coords_num,
-      int bits,
-      uint64_t max_bucket_val);
-
-  /**
    * Maps the input coordinate to a uint64 value,
    * based on discretizing the domain from 0 to `max_bucket_val`.
    * This value is used to compute a Hilbert value.
@@ -744,30 +738,6 @@ class Dimension {
       const Dimension* dim,
       const void* coord,
       uint64_t coord_size,
-      int bits,
-      uint64_t max_bucket_val);
-
-  /**
-   * Maps the input result coordinate to a uint64 value,
-   * based on discretizing the domain from 0 to `max_bucket_val`.
-   * This value is used to compute a Hilbert value.
-   */
-  uint64_t map_to_uint64(
-      const ResultCoords& coord,
-      uint32_t dim_idx,
-      int bits,
-      uint64_t max_bucket_val) const;
-
-  /**
-   * Maps the input result coordinate to a uint64 value,
-   * based on discretizing the domain from 0 to `max_bucket_val`.
-   * This value is used to compute a Hilbert value.
-   */
-  template <class T>
-  static uint64_t map_to_uint64_3(
-      const Dimension* dim,
-      const ResultCoords& coord,
-      uint32_t dim_idx,
       int bits,
       uint64_t max_bucket_val);
 
@@ -843,13 +813,19 @@ class Dimension {
   Status set_null_tile_extent_to_range();
 
   /** Returns the tile extent. */
-  const ByteVecValue& tile_extent() const;
+  inline const ByteVecValue& tile_extent() const {
+    return tile_extent_;
+  }
 
   /** Returns the dimension type. */
-  Datatype type() const;
+  inline Datatype type() const {
+    return type_;
+  }
 
   /** Returns true if the dimension is var-sized. */
-  bool var_size() const;
+  inline bool var_size() const {
+    return cell_val_num_ == constants::var_num;
+  }
 
  private:
   /* ********************************* */
@@ -969,6 +945,24 @@ class Dimension {
   std::function<double(const Range&, const Range&)> overlap_ratio_func_;
 
   /**
+   * Stores the appropriate templated relevant_ranges() function based
+   * on the dimension datatype.
+   */
+  std::function<void(const NDRange&, const Range&, std::vector<uint64_t>&)>
+      relevant_ranges_func_;
+
+  /**
+   * Stores the appropriate templated covered_vec() function based on the
+   * dimension datatype.
+   */
+  std::function<void(
+      const NDRange&,
+      const Range&,
+      const std::vector<uint64_t>&,
+      std::vector<bool>&)>
+      covered_vec_func_;
+
+  /**
    * Stores the appropriate templated split_range() function based on the
    * dimension datatype.
    */
@@ -989,28 +983,12 @@ class Dimension {
   std::function<uint64_t(const Dimension* dim, const Range&)> tile_num_func_;
 
   /**
-   * Stores the appropriate templated map_to_uint64() function based on
-   * the dimension datatype.
-   */
-  std::function<uint64_t(
-      const Dimension*, const QueryBuffer*, uint64_t, uint64_t, int, uint64_t)>
-      map_to_uint64_func_;
-
-  /**
    * Stores the appropriate templated map_to_uint64_2() function based on
    * the dimension datatype.
    */
   std::function<uint64_t(
       const Dimension*, const void*, uint64_t, int, uint64_t)>
       map_to_uint64_2_func_;
-
-  /**
-   * Stores the appropriate templated map_to_uint64_3() function based on
-   * the dimension datatype.
-   */
-  std::function<uint64_t(
-      const Dimension*, const ResultCoords&, uint32_t, int, uint64_t)>
-      map_to_uint64_3_func_;
 
   /**
    * Stores the appropriate templated map_from_uint64() function based on
@@ -1046,7 +1024,7 @@ class Dimension {
 
     // Upper bound should not be smaller than lower
     if (domain[1] < domain[0])
-      return LOG_STATUS(Status::DimensionError(
+      return LOG_STATUS(Status_DimensionError(
           "Domain check failed; Upper domain bound should "
           "not be smaller than the lower one"));
 
@@ -1054,7 +1032,7 @@ class Dimension {
     // for integer domains
     if (domain[0] == std::numeric_limits<T>::min() &&
         domain[1] == std::numeric_limits<T>::max())
-      return LOG_STATUS(Status::DimensionError(
+      return LOG_STATUS(Status_DimensionError(
           "Domain check failed; Domain range (upper + lower + 1) is larger "
           "than the maximum unsigned number"));
 
@@ -1075,14 +1053,14 @@ class Dimension {
     // Check for NAN and INF
     if (std::isinf(domain[0]) || std::isinf(domain[1]))
       return LOG_STATUS(
-          Status::DimensionError("Domain check failed; domain contains NaN"));
+          Status_DimensionError("Domain check failed; domain contains NaN"));
     if (std::isnan(domain[0]) || std::isnan(domain[1]))
       return LOG_STATUS(
-          Status::DimensionError("Domain check failed; domain contains NaN"));
+          Status_DimensionError("Domain check failed; domain contains NaN"));
 
     // Upper bound should not be smaller than lower
     if (domain[1] < domain[0])
-      return LOG_STATUS(Status::DimensionError(
+      return LOG_STATUS(Status_DimensionError(
           "Domain check failed; Upper domain bound should "
           "not be smaller than the lower one"));
 
@@ -1159,6 +1137,12 @@ class Dimension {
   /** Sets the templated overlap_ratio() function. */
   void set_overlap_ratio_func();
 
+  /** Sets the templated relevant_ranges() function. */
+  void set_relevant_ranges_func();
+
+  /** Sets the templated covered_vec() function. */
+  void set_covered_vec_func();
+
   /** Sets the templated split_range() function. */
   void set_split_range_func();
 
@@ -1168,14 +1152,8 @@ class Dimension {
   /** Sets the templated tile_num() function. */
   void set_tile_num_func();
 
-  /** Sets the templated map_to_uint64() function. */
-  void set_map_to_uint64_func();
-
   /** Sets the templated map_to_uint64_2() function. */
   void set_map_to_uint64_2_func();
-
-  /** Sets the templated map_to_uint64_3() function. */
-  void set_map_to_uint64_3_func();
 
   /** Sets the templated map_from_uint64() function. */
   void set_map_from_uint64_func();

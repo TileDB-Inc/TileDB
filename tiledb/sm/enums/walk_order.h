@@ -65,7 +65,7 @@ inline Status walkorder_enum(
   else if (walkorder_str == constants::walkorder_postorder_str)
     *walkorder = WalkOrder::POSTORDER;
   else
-    return Status::Error("Invalid WalkOrder " + walkorder_str);
+    return Status_Error("Invalid WalkOrder " + walkorder_str);
 
   return Status::Ok();
 }

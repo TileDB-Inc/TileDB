@@ -188,10 +188,14 @@ class Tile {
   void advance_offset(uint64_t nbytes);
 
   /** Returns the internal buffer. */
-  Buffer* buffer() const;
+  inline Buffer* buffer() const {
+    return buffer_;
+  }
 
   /** Returns the cell size. */
-  uint64_t cell_size() const;
+  inline uint64_t cell_size() const {
+    return cell_size_;
+  }
 
   /**
    * Returns a shallow or deep copy of this Tile.
@@ -212,7 +216,9 @@ class Tile {
   bool owns_buff() const;
 
   /** Returns the number of dimensions (0 if this is an attribute tile). */
-  unsigned int dim_num() const;
+  inline unsigned int dim_num() const {
+    return dim_num_;
+  }
 
   /** Checks if the tile is empty. */
   bool empty() const;
@@ -221,15 +227,22 @@ class Tile {
    * Returns the current filtered state of the tile data in the buffer. When
    * `true`, the buffer contains the filtered, on-disk format of the tile.
    */
-  bool filtered() const;
+  inline bool filtered() const {
+    assert(!(filtered_buffer_.alloced_size() > 0 && buffer_->size() > 0));
+    return filtered_buffer_.alloced_size() > 0;
+  }
 
   /**
    * Returns the buffer that contains the filtered, on-disk format.
    */
-  Buffer* filtered_buffer();
+  inline Buffer* filtered_buffer() {
+    return &filtered_buffer_;
+  }
 
   /** Gets the format version number of the data in this Tile. */
-  uint32_t format_version() const;
+  inline uint32_t format_version() const {
+    return format_version_;
+  }
 
   /** Checks if the tile is full. */
   bool full() const;
@@ -272,10 +285,15 @@ class Tile {
   void set_pre_filtered_size(uint64_t pre_filtered_size);
 
   /** Returns the tile size. */
-  uint64_t size() const;
+  inline uint64_t size() const {
+    assert(!filtered());
+    return (buffer_ == nullptr) ? 0 : buffer_->size();
+  }
 
   /** Returns *true* if the tile stores coordinates. */
-  bool stores_coords() const;
+  inline bool stores_coords() const {
+    return dim_num_ > 0;
+  }
 
   /** Returns the tile data type. */
   inline Datatype type() const {

@@ -262,7 +262,7 @@ Status Attribute::serialize(Buffer* buff, const uint32_t version) {
 
 Status Attribute::set_cell_val_num(unsigned int cell_val_num) {
   if (type_ == Datatype::ANY)
-    return LOG_STATUS(Status::AttributeError(
+    return LOG_STATUS(Status_AttributeError(
         "Cannot set number of values per cell; Attribute datatype `ANY` is "
         "always variable-sized"));
 
@@ -284,15 +284,15 @@ Status Attribute::get_nullable(bool* const nullable) {
 
 Status Attribute::set_filter_pipeline(const FilterPipeline* pipeline) {
   if (pipeline == nullptr)
-    return LOG_STATUS(Status::AttributeError(
+    return LOG_STATUS(Status_AttributeError(
         "Cannot set filter pipeline to attribute; Pipeline cannot be null"));
 
   for (unsigned i = 0; i < pipeline->size(); ++i) {
     if (datatype_is_real(type_) &&
         pipeline->get_filter(i)->type() == FilterType::FILTER_DOUBLE_DELTA)
       return LOG_STATUS(
-          Status::AttributeError("Cannot set DOUBLE DELTA filter to a "
-                                 "dimension with a real datatype"));
+          Status_AttributeError("Cannot set DOUBLE DELTA filter to a "
+                                "dimension with a real datatype"));
   }
 
   filters_ = *pipeline;
@@ -306,22 +306,22 @@ void Attribute::set_name(const std::string& name) {
 
 Status Attribute::set_fill_value(const void* value, uint64_t size) {
   if (value == nullptr) {
-    return LOG_STATUS(Status::AttributeError(
+    return LOG_STATUS(Status_AttributeError(
         "Cannot set fill value; Input value cannot be null"));
   }
 
   if (size == 0) {
-    return LOG_STATUS(Status::AttributeError(
-        "Cannot set fill value; Input size cannot be 0"));
+    return LOG_STATUS(
+        Status_AttributeError("Cannot set fill value; Input size cannot be 0"));
   }
 
   if (nullable()) {
     return LOG_STATUS(
-        Status::AttributeError("Cannot set fill value; Attribute is nullable"));
+        Status_AttributeError("Cannot set fill value; Attribute is nullable"));
   }
 
   if (!var_size() && size != cell_size()) {
-    return LOG_STATUS(Status::AttributeError(
+    return LOG_STATUS(Status_AttributeError(
         "Cannot set fill value; Input size is not the same as cell size"));
   }
 
@@ -334,18 +334,18 @@ Status Attribute::set_fill_value(const void* value, uint64_t size) {
 
 Status Attribute::get_fill_value(const void** value, uint64_t* size) const {
   if (value == nullptr) {
-    return LOG_STATUS(Status::AttributeError(
+    return LOG_STATUS(Status_AttributeError(
         "Cannot get fill value; Input value cannot be null"));
   }
 
   if (size == nullptr) {
-    return LOG_STATUS(Status::AttributeError(
+    return LOG_STATUS(Status_AttributeError(
         "Cannot get fill value; Input size cannot be null"));
   }
 
   if (nullable()) {
     return LOG_STATUS(
-        Status::AttributeError("Cannot get fill value; Attribute is nullable"));
+        Status_AttributeError("Cannot get fill value; Attribute is nullable"));
   }
 
   *value = fill_value_.data();
@@ -357,22 +357,22 @@ Status Attribute::get_fill_value(const void** value, uint64_t* size) const {
 Status Attribute::set_fill_value(
     const void* value, uint64_t size, uint8_t valid) {
   if (value == nullptr) {
-    return LOG_STATUS(Status::AttributeError(
+    return LOG_STATUS(Status_AttributeError(
         "Cannot set fill value; Input value cannot be null"));
   }
 
   if (size == 0) {
-    return LOG_STATUS(Status::AttributeError(
-        "Cannot set fill value; Input size cannot be 0"));
+    return LOG_STATUS(
+        Status_AttributeError("Cannot set fill value; Input size cannot be 0"));
   }
 
   if (!nullable()) {
-    return LOG_STATUS(Status::AttributeError(
+    return LOG_STATUS(Status_AttributeError(
         "Cannot set fill value; Attribute is not nullable"));
   }
 
   if (!var_size() && size != cell_size()) {
-    return LOG_STATUS(Status::AttributeError(
+    return LOG_STATUS(Status_AttributeError(
         "Cannot set fill value; Input size is not the same as cell size"));
   }
 
@@ -387,17 +387,17 @@ Status Attribute::set_fill_value(
 Status Attribute::get_fill_value(
     const void** value, uint64_t* size, uint8_t* valid) const {
   if (value == nullptr) {
-    return LOG_STATUS(Status::AttributeError(
+    return LOG_STATUS(Status_AttributeError(
         "Cannot get fill value; Input value cannot be null"));
   }
 
   if (size == nullptr) {
-    return LOG_STATUS(Status::AttributeError(
+    return LOG_STATUS(Status_AttributeError(
         "Cannot get fill value; Input size cannot be null"));
   }
 
   if (!nullable()) {
-    return LOG_STATUS(Status::AttributeError(
+    return LOG_STATUS(Status_AttributeError(
         "Cannot get fill value; Attribute is not nullable"));
   }
 

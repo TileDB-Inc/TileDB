@@ -45,7 +45,6 @@
 #define NOMINMAX  // avoid min/max macros from windows headers
 #endif
 #include <base64.h>
-#include <blob/blob_client.h>
 #include <retry.h>
 #include <storage_account.h>
 #include <storage_credential.h>
@@ -56,6 +55,10 @@
 #ifdef TIME_MS
 #undef TIME_MS
 #endif
+// Forward declaration
+namespace azure::storage_lite {
+class blob_client;
+}
 
 using namespace tiledb::common;
 
