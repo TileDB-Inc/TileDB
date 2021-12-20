@@ -86,7 +86,7 @@ TEST_CASE("ThreadPool: Test wait status", "[threadpool]") {
   for (int i = 0; i < 100; i++) {
     results.push_back(pool.execute([&result, i]() {
       result++;
-      return i == 50 ? Status::Error("Generic error") : Status::Ok();
+      return i == 50 ? Status_Error("Generic error") : Status::Ok();
     }));
   }
   REQUIRE(!pool.wait_all(results).ok());

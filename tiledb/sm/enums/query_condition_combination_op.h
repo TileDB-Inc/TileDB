@@ -85,7 +85,7 @@ inline Status query_condition_combination_op_enum(
       constants::query_condition_combination_op_not_str)
     *query_condition_combination_op = QueryConditionCombinationOp::NOT;
   else {
-    return Status::Error(
+    return Status_Error(
         "Invalid QueryConditionCombinationOp " +
         query_condition_combination_op_str);
   }

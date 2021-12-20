@@ -97,7 +97,7 @@ tiledb::sm::FilterCreate::deserialize(
   auto offset = buff->offset();
   if ((buff->size() - offset) < filter_metadata_len) {
     return {
-        Status::FilterError(
+        Status_FilterError(
             "Deserialization error; not enough data in buffer for metadata"),
         nullopt};
   }
@@ -170,7 +170,7 @@ tiledb::sm::FilterCreate::deserialize(
               tiledb::common::make_shared<ChecksumSHA256Filter>(HERE())};
     default:
       assert(false);
-      return {Status::FilterError("Deserialization error; unknown type"),
+      return {Status_FilterError("Deserialization error; unknown type"),
               nullopt};
   }
 }

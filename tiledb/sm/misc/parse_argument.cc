@@ -50,7 +50,7 @@ Status convert(const std::string& str, int* value) {
   if (!is_int(str)) {
     auto errmsg = std::string("Failed to convert string '") + str +
                   "' to int; Invalid argument";
-    return LOG_STATUS(Status::UtilsError(errmsg));
+    return LOG_STATUS(Status_UtilsError(errmsg));
   }
 
   try {
@@ -58,11 +58,11 @@ Status convert(const std::string& str, int* value) {
   } catch (std::invalid_argument& e) {
     auto errmsg = std::string("Failed to convert string '") + str +
                   "' to int; Invalid argument";
-    return LOG_STATUS(Status::UtilsError(errmsg));
+    return LOG_STATUS(Status_UtilsError(errmsg));
   } catch (std::out_of_range& e) {
     auto errmsg = std::string("Failed to convert string '") + str +
                   "' to int; Value out of range";
-    return LOG_STATUS(Status::UtilsError(errmsg));
+    return LOG_STATUS(Status_UtilsError(errmsg));
   }
 
   return Status::Ok();
@@ -72,7 +72,7 @@ Status convert(const std::string& str, uint32_t* value) {
   if (!is_uint(str)) {
     auto errmsg = std::string("Failed to convert string '") + str +
                   "' to uint32_t; Invalid argument";
-    return LOG_STATUS(Status::UtilsError(errmsg));
+    return LOG_STATUS(Status_UtilsError(errmsg));
   }
 
   try {
@@ -83,11 +83,11 @@ Status convert(const std::string& str, uint32_t* value) {
   } catch (std::invalid_argument& e) {
     auto errmsg = std::string("Failed to convert string '") + str +
                   "' to uint32_t; Invalid argument";
-    return LOG_STATUS(Status::UtilsError(errmsg));
+    return LOG_STATUS(Status_UtilsError(errmsg));
   } catch (std::out_of_range& e) {
     auto errmsg = std::string("Failed to convert string '") + str +
                   "' to uint32_t; Value out of range";
-    return LOG_STATUS(Status::UtilsError(errmsg));
+    return LOG_STATUS(Status_UtilsError(errmsg));
   }
 
   return Status::Ok();
@@ -97,7 +97,7 @@ Status convert(const std::string& str, uint64_t* value) {
   if (!is_uint(str)) {
     auto errmsg = std::string("Failed to convert string '") + str +
                   "' to uint64_t; Invalid argument";
-    return LOG_STATUS(Status::UtilsError(errmsg));
+    return LOG_STATUS(Status_UtilsError(errmsg));
   }
 
   try {
@@ -105,11 +105,11 @@ Status convert(const std::string& str, uint64_t* value) {
   } catch (std::invalid_argument& e) {
     auto errmsg = std::string("Failed to convert string '") + str +
                   "' to uint64_t; Invalid argument";
-    return LOG_STATUS(Status::UtilsError(errmsg));
+    return LOG_STATUS(Status_UtilsError(errmsg));
   } catch (std::out_of_range& e) {
     auto errmsg = std::string("Failed to convert string '") + str +
                   "' to uint64_t; Value out of range";
-    return LOG_STATUS(Status::UtilsError(errmsg));
+    return LOG_STATUS(Status_UtilsError(errmsg));
   }
 
   return Status::Ok();
@@ -119,7 +119,7 @@ Status convert(const std::string& str, int64_t* value) {
   if (!is_int(str)) {
     auto errmsg = std::string("Failed to convert string '") + str +
                   "' to int64_t; Invalid argument";
-    return LOG_STATUS(Status::UtilsError(errmsg));
+    return LOG_STATUS(Status_UtilsError(errmsg));
   }
 
   try {
@@ -127,11 +127,11 @@ Status convert(const std::string& str, int64_t* value) {
   } catch (std::invalid_argument& e) {
     auto errmsg = std::string("Failed to convert string '") + str +
                   "' to int64_t; Invalid argument";
-    return LOG_STATUS(Status::UtilsError(errmsg));
+    return LOG_STATUS(Status_UtilsError(errmsg));
   } catch (std::out_of_range& e) {
     auto errmsg = std::string("Failed to convert string '") + str +
                   "' to int64_t; Value out of range";
-    return LOG_STATUS(Status::UtilsError(errmsg));
+    return LOG_STATUS(Status_UtilsError(errmsg));
   }
 
   return Status::Ok();
@@ -141,10 +141,10 @@ Status convert(const std::string& str, float* value) {
   try {
     *value = std::stof(str);
   } catch (std::invalid_argument& e) {
-    return LOG_STATUS(Status::UtilsError(
+    return LOG_STATUS(Status_UtilsError(
         "Failed to convert string to float32_t; Invalid argument"));
   } catch (std::out_of_range& e) {
-    return LOG_STATUS(Status::UtilsError(
+    return LOG_STATUS(Status_UtilsError(
         "Failed to convert string to float32_t; Value out of range"));
   }
 
@@ -155,10 +155,10 @@ Status convert(const std::string& str, double* value) {
   try {
     *value = std::stod(str);
   } catch (std::invalid_argument& e) {
-    return LOG_STATUS(Status::UtilsError(
+    return LOG_STATUS(Status_UtilsError(
         "Failed to convert string to float64_t; Invalid argument"));
   } catch (std::out_of_range& e) {
-    return LOG_STATUS(Status::UtilsError(
+    return LOG_STATUS(Status_UtilsError(
         "Failed to convert string to float64_t; Value out of range"));
   }
 
@@ -173,7 +173,7 @@ Status convert(const std::string& str, bool* value) {
   } else if (lvalue == "false") {
     *value = false;
   } else {
-    return LOG_STATUS(Status::UtilsError(
+    return LOG_STATUS(Status_UtilsError(
         "Failed to convert string to bool; Value not 'true' or 'false'"));
   }
 
@@ -189,8 +189,8 @@ Status convert(const std::string& str, SerializationType* value) {
     *value = SerializationType::CAPNP;
   } else {
     return LOG_STATUS(
-        Status::UtilsError("Failed to convert string to SerializationType; "
-                           "Value not 'json' or 'capnp'"));
+        Status_UtilsError("Failed to convert string to SerializationType; "
+                          "Value not 'json' or 'capnp'"));
   }
 
   return Status::Ok();

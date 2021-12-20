@@ -60,7 +60,7 @@ Status Tile::compute_chunk_size(
   chunk_size64 = chunk_size64 / dim_cell_size * dim_cell_size;
   chunk_size64 = std::max(chunk_size64, dim_cell_size);
   if (chunk_size64 > std::numeric_limits<uint32_t>::max()) {
-    return LOG_STATUS(Status::TileError("Chunk size exceeds uint32_t"));
+    return LOG_STATUS(Status_TileError("Chunk size exceeds uint32_t"));
   }
 
   *chunk_size = chunk_size64;
@@ -183,7 +183,7 @@ Status Tile::init_unfiltered(
   buffer_ = tdb_new(Buffer);
   if (buffer_ == nullptr)
     return LOG_STATUS(
-        Status::TileError("Cannot initialize tile; Buffer allocation failed"));
+        Status_TileError("Cannot initialize tile; Buffer allocation failed"));
 
   RETURN_NOT_OK(buffer_->realloc(tile_size));
 
@@ -208,7 +208,7 @@ Status Tile::init_filtered(
   buffer_ = tdb_new(Buffer);
   if (buffer_ == nullptr)
     return LOG_STATUS(
-        Status::TileError("Cannot initialize tile; Buffer allocation failed"));
+        Status_TileError("Cannot initialize tile; Buffer allocation failed"));
 
   return Status::Ok();
 }

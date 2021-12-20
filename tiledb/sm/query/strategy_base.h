@@ -43,8 +43,10 @@ namespace sm {
 
 class Array;
 class ArraySchema;
+enum class Layout : uint8_t;
 class StorageManager;
 class Subarray;
+class QueryBuffer;
 
 /** Processes read or write queries. */
 class StrategyBase {

@@ -34,9 +34,18 @@ add_library(constants OBJECT constants.cc)
 #
 add_executable(compile_constants EXCLUDE_FROM_ALL)
 target_link_libraries(compile_constants PRIVATE constants)
-target_sources(compile_constants PRIVATE
-    test/compile_constants_main.cc $<TARGET_OBJECTS:constants>
-)
+target_sources(compile_constants PRIVATE test/compile_constants_main.cc)
+
+#
+# `misc_types` object library
+#
+add_library(misc_types OBJECT types.cc)
+#
+# Test-compile of object library ensures link-completeness
+#
+add_executable(compile_misc_types EXCLUDE_FROM_ALL)
+target_link_libraries(compile_misc_types PRIVATE misc_types)
+target_sources(compile_misc_types PRIVATE test/compile_misc_types_main.cc)
 
 #
 # `parse_arguments` object library
@@ -48,6 +57,4 @@ target_link_libraries(parse_argument PUBLIC baseline $<TARGET_OBJECTS:baseline>)
 #
 add_executable(compile_parse_argument EXCLUDE_FROM_ALL)
 target_link_libraries(compile_parse_argument PRIVATE parse_argument)
-target_sources(compile_parse_argument PRIVATE
-    test/compile_parse_argument_main.cc $<TARGET_OBJECTS:parse_argument>
-    )
+target_sources(compile_parse_argument PRIVATE test/compile_parse_argument_main.cc)

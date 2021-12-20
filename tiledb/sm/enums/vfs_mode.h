@@ -68,7 +68,7 @@ inline Status vfsmode_enum(const std::string& vfsmode_str, VFSMode* vfsmode) {
   else if (vfsmode_str == constants::vfsmode_append_str)
     *vfsmode = VFSMode::VFS_APPEND;
   else
-    return Status::Error("Invalid VFSMode " + vfsmode_str);
+    return Status_Error("Invalid VFSMode " + vfsmode_str);
 
   return Status::Ok();
 }

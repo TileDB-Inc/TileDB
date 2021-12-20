@@ -88,7 +88,7 @@ class ZStd {
    * @return Status
    */
   static Status decompress(
-      std::shared_ptr<ResourcePool<ZStd::ZSTD_Decompress_Context>>
+      shared_ptr<BlockingResourcePool<ZStd::ZSTD_Decompress_Context>>
           decompress_ctx_pool,
       ConstBuffer* input_buffer,
       PreallocatedBuffer* output_buffer);

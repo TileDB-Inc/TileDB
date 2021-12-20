@@ -36,6 +36,7 @@
 #include <iostream>
 #include <vector>
 
+#include "tiledb/common/types/dynamic_typed_datum.h"
 #include "tiledb/sm/query/result_tile.h"
 
 using namespace tiledb::common;
@@ -76,7 +77,7 @@ struct ResultCoords {
   }
 
   /** Moves to the next cell */
-  bool next() {
+  inline bool next() {
     if (pos_ == tile_->cell_num() - 1)
       return false;
 
@@ -85,12 +86,12 @@ struct ResultCoords {
   }
 
   /** Invalidate this instance. */
-  void invalidate() {
+  inline void invalidate() {
     valid_ = false;
   }
 
   /** Return true if this instance is valid. */
-  bool valid() const {
+  inline bool valid() const {
     return valid_;
   }
 
@@ -98,7 +99,7 @@ struct ResultCoords {
    * Returns a string coordinate. Applicable only to string
    * dimensions.
    */
-  std::string_view coord_string(unsigned dim_idx) const {
+  inline std::string_view coord_string(unsigned dim_idx) const {
     return tile_->coord_string(pos_, dim_idx);
   }
 
@@ -109,8 +110,21 @@ struct ResultCoords {
    * @param dim_idx The index of the dimension to retrieve the coordinate for.
    * @return A constant pointer to the requested coordinate.
    */
-  const void* coord(unsigned dim_idx) const {
+  inline const void* coord(unsigned dim_idx) const {
     return tile_->coord(pos_, dim_idx);
+  }
+
+  inline DynamicTypedDatumView dimension_datum(
+      const Dimension& dim, unsigned dim_idx) const {
+    auto type = dim.type();
+    if (dim.var_size()) {
+      auto x{tile_->coord_string(pos_, dim_idx)};
+      return tdb::DynamicTypedDatumView{UntypedDatumView{x.data(), x.size()},
+                                        type};
+    } else {
+      return tdb::DynamicTypedDatumView{
+          UntypedDatumView{coord(dim_idx), dim.coord_size()}, type};
+    }
   }
 
   /**

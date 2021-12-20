@@ -57,6 +57,15 @@ bool starts_with(const std::string& value, const std::string& prefix);
  */
 bool ends_with(const std::string& value, const std::string& suffix);
 
+/**
+ * Returns the size of the common prefix between `a` and `b`.
+ *
+ * Postcondition: Let n be the return value.
+ *      a[0..n) == b[0..n)  (These ranges are empty if n == 0.)
+ *      n == length of a or n == length of b or a[n] != b[n]
+ */
+size_t common_prefix_size(const std::string_view& a, const std::string_view& b);
+
 }  // namespace tiledb::stdx::string
 
 /*

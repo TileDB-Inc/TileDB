@@ -30,6 +30,6 @@
 
 int main() {
   int x;
-  (void)tiledb::sm::utils::parse::convert("", &x);
+  (void)tiledb::sm::utils::parse::convert("0", &x);
   return 0;
 }

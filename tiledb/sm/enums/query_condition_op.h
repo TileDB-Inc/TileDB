@@ -89,7 +89,7 @@ inline Status query_condition_op_enum(
   else if (query_condition_op_str == constants::query_condition_op_ne_str)
     *query_condition_op = QueryConditionOp::NE;
   else {
-    return Status::Error("Invalid QueryConditionOp " + query_condition_op_str);
+    return Status_Error("Invalid QueryConditionOp " + query_condition_op_str);
   }
   return Status::Ok();
 }

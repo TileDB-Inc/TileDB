@@ -164,7 +164,7 @@ Status BitWidthReductionFilter::run_forward(
           tile, input_metadata, input, output_metadata, output);
     default:
       return LOG_STATUS(
-          Status::FilterError("Cannot filter; Unsupported input type"));
+          Status_FilterError("Cannot filter; Unsupported input type"));
   }
 }
 
@@ -341,7 +341,7 @@ Status BitWidthReductionFilter::run_reverse(
           tile, input_metadata, input, output_metadata, output);
     default:
       return LOG_STATUS(
-          Status::FilterError("Cannot filter; Unsupported input type"));
+          Status_FilterError("Cannot filter; Unsupported input type"));
   }
 }
 
@@ -519,7 +519,7 @@ Status BitWidthReductionFilter::read_compressed_value(
 Status BitWidthReductionFilter::set_option_impl(
     FilterOption option, const void* value) {
   if (value == nullptr)
-    return LOG_STATUS(Status::FilterError(
+    return LOG_STATUS(Status_FilterError(
         "Bit width reduction filter error; invalid option value"));
 
   switch (option) {
@@ -527,7 +527,7 @@ Status BitWidthReductionFilter::set_option_impl(
       max_window_size_ = *(uint32_t*)value;
       return Status::Ok();
     default:
-      return LOG_STATUS(Status::FilterError(
+      return LOG_STATUS(Status_FilterError(
           "Bit width reduction filter error; unknown option"));
   }
 }
@@ -539,7 +539,7 @@ Status BitWidthReductionFilter::get_option_impl(
       *(uint32_t*)value = max_window_size_;
       return Status::Ok();
     default:
-      return LOG_STATUS(Status::FilterError(
+      return LOG_STATUS(Status_FilterError(
           "Bit width reduction filter error; unknown option"));
   }
 }
