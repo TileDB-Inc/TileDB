@@ -397,6 +397,10 @@ inline Status Status_DenseTilerError(const std::string& msg) {
 inline Status Status_QueryConditionError(const std::string& msg) {
   return Status(StatusCode::QueryConditionError, msg);
 }
+/** Return a Status_TaskError error class Status with a given message **/
+inline Status Status_TaskError(const std::string& msg) {
+  return Status(StatusCode::TaskError, msg);
+}
 }  // namespace common
 }  // namespace tiledb
 

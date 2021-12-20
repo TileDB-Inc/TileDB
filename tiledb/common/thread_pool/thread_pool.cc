@@ -40,7 +40,7 @@ namespace tiledb::common {
 
 Status ThreadPool::init(size_t n) {
   if (n == 0) {
-    return Status::ThreadPoolError(
+    return Status_ThreadPoolError(
         "Unable to initialize a thread pool with a concurrency level of 0.");
   }
   Status st = Status::Ok();
@@ -62,7 +62,7 @@ Status ThreadPool::init(size_t n) {
       } catch (const std::system_error& e) {
         if (e.code() != std::errc::resource_unavailable_try_again ||
             tries == 0) {
-          st = Status::ThreadPoolError(
+          st = Status_ThreadPoolError(
               "Error initializing thread pool of concurrency level " +
               std::to_string(concurrency_level_) + "; " + e.what());
           LOG_STATUS(st);
@@ -129,7 +129,7 @@ std::vector<Status> ThreadPool::wait_all_status(std::vector<Task>& tasks) {
 
     if (!task.valid()) {
       LOG_ERROR("Waiting on invalid task future.");
-      statuses.push_back(Status::ThreadPoolError("Invalid task future"));
+      statuses.push_back(Status_ThreadPoolError("Invalid task future"));
     } else if (
         task.wait_for(std::chrono::milliseconds(0)) ==
         std::future_status::ready) {
@@ -139,11 +139,11 @@ std::vector<Status> ThreadPool::wait_all_status(std::vector<Task>& tasks) {
         try {
           return task.get();
         } catch (const std::string& msg) {
-          return Status::TaskError("Caught " + msg);
+          return Status_TaskError("Caught " + msg);
         } catch (const Status& stat) {
           return stat;
         } catch (...) {
-          return Status::TaskError("Caught ... ");
+          return Status_TaskError("Caught ... ");
         }
       }();
 

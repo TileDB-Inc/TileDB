@@ -89,7 +89,7 @@ TEST_CASE("ThreadPool: Test wait status", "[threadpool]") {
   for (int i = 0; i < 100; i++) {
     results.push_back(pool.execute([&result, i]() {
       result++;
-      return i == 50 ? Status::Error("Generic error") : Status::Ok();
+      return i == 50 ? Status_Error("Generic error") : Status::Ok();
     }));
   }
   REQUIRE(!pool.wait_all(results).ok());
@@ -397,6 +397,9 @@ TEST_CASE("ThreadPool: Test Exceptions", "[threadpool]") {
   std::vector<ThreadPool::Task> results;
   ThreadPool pool;
 
+  Status unripe_banana_status = Status_TaskError("Caught Unripe banana");
+  Status unbaked_potato_status = Status_TileError("Unbaked potato");
+
   REQUIRE(pool.init(7).ok());
 
   SECTION("One task error exception") {
@@ -410,22 +413,25 @@ TEST_CASE("ThreadPool: Test Exceptions", "[threadpool]") {
       }));
     }
 
-    REQUIRE(pool.wait_all(results).code() == StatusCode::TaskError);
+    REQUIRE(
+        pool.wait_all(results).to_string() == unripe_banana_status.to_string());
     REQUIRE(result == 207);
   }
 
   SECTION("One tile error exception") {
     for (int i = 0; i < 207; ++i) {
-      results.push_back(pool.execute([&result]() {
+      results.push_back(pool.execute([&result, &unbaked_potato_status]() {
         auto tmp = result++;
         if (tmp == 31) {
-          throw(Status::TileError("Unbaked potato"));
+          throw(unbaked_potato_status);
         }
         return Status::Ok();
       }));
     }
 
-    REQUIRE(pool.wait_all(results).code() == StatusCode::Tile);
+    REQUIRE(
+        pool.wait_all(results).to_string() ==
+        unbaked_potato_status.to_string());
     REQUIRE(result == 207);
   }
 
@@ -437,7 +443,7 @@ TEST_CASE("ThreadPool: Test Exceptions", "[threadpool]") {
           throw(std::string("Unripe banana"));
         }
         if (tmp == 31) {
-          throw(Status::TileError("Unbaked potato"));
+          throw(Status_TileError("Unbaked potato"));
         }
 
         return Status::Ok();
@@ -445,8 +451,10 @@ TEST_CASE("ThreadPool: Test Exceptions", "[threadpool]") {
     }
 
     REQUIRE(
-        ((pool.wait_all(results).code() == StatusCode::TaskError) ||
-         (pool.wait_all(results).code() == StatusCode::Tile)));
+        ((pool.wait_all(results).to_string() ==
+          unripe_banana_status.to_string()) ||
+         (pool.wait_all(results).to_string() ==
+          unbaked_potato_status.to_string())));
     REQUIRE(result == 207);
   }
 
@@ -458,7 +466,7 @@ TEST_CASE("ThreadPool: Test Exceptions", "[threadpool]") {
           throw(std::string("Unripe banana"));
         }
         if (tmp == 13) {
-          throw(Status::TileError("Unbaked potato"));
+          throw(Status_TileError("Unbaked potato"));
         }
 
         return Status::Ok();
@@ -466,8 +474,10 @@ TEST_CASE("ThreadPool: Test Exceptions", "[threadpool]") {
     }
 
     REQUIRE(
-        ((pool.wait_all(results).code() == StatusCode::TaskError) ||
-         (pool.wait_all(results).code() == StatusCode::Tile)));
+        ((pool.wait_all(results).to_string() ==
+          unripe_banana_status.to_string()) ||
+         (pool.wait_all(results).to_string() ==
+          unbaked_potato_status.to_string())));
     REQUIRE(result == 207);
   }
 
@@ -479,14 +489,15 @@ TEST_CASE("ThreadPool: Test Exceptions", "[threadpool]") {
           throw(std::string("Unripe banana"));
         }
         if (i == 31) {
-          throw(Status::TileError("Unbaked potato"));
+          throw(Status_TileError("Unbaked potato"));
         }
 
         return Status::Ok();
       }));
     }
 
-    REQUIRE(pool.wait_all(results).code() == StatusCode::TaskError);
+    REQUIRE(
+        pool.wait_all(results).to_string() == unripe_banana_status.to_string());
     REQUIRE(result == 207);
   }
 
@@ -498,14 +509,16 @@ TEST_CASE("ThreadPool: Test Exceptions", "[threadpool]") {
           throw(std::string("Unripe banana"));
         }
         if (i == 13) {
-          throw(Status::TileError("Unbaked potato"));
+          throw(Status_TileError("Unbaked potato"));
         }
 
         return Status::Ok();
       }));
     }
 
-    REQUIRE(pool.wait_all(results).code() == StatusCode::Tile);
+    REQUIRE(
+        pool.wait_all(results).to_string() ==
+        unbaked_potato_status.to_string());
     REQUIRE(result == 207);
   }
 }
