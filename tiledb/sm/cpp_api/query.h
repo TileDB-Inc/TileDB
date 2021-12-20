@@ -2271,6 +2271,14 @@ class Query {
     return "";  // silence error
   }
 
+  const Context& ctx() const {
+    return ctx_.get();
+  }
+
+  const Array& array() const {
+    return array_.get();
+  }
+
  private:
   /* ********************************* */
   /*         PRIVATE ATTRIBUTES        */
