@@ -28,7 +28,8 @@
  * @section DESCRIPTION
  */
 
-#include "unit_filter_create.h"
+#include <catch.hpp>
+#include "../filter_create.h"
 
 #include "../bit_width_reduction_filter.h"
 #include "../bitshuffle_filter.h"
