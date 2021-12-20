@@ -263,7 +263,7 @@ Status ChecksumMD5Filter::compare_checksum_part(
     message << md5string_existing;
     message << " got ";
     message << md5string;
-    return Status::ChecksumError(message.str());
+    return Status_ChecksumError(message.str());
   }
 
   return Status::Ok();

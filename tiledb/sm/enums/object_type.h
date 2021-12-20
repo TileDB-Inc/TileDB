@@ -67,7 +67,7 @@ inline Status object_type_enum(
   else if (object_type_str == constants::object_type_array_str)
     *object_type = ObjectType::ARRAY;
   else
-    return Status::Error("Invalid ObjectType " + object_type_str);
+    return Status_Error("Invalid ObjectType " + object_type_str);
 
   return Status::Ok();
 }

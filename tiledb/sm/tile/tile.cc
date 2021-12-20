@@ -60,7 +60,7 @@ Status Tile::compute_chunk_size(
   chunk_size64 = chunk_size64 / dim_cell_size * dim_cell_size;
   chunk_size64 = std::max(chunk_size64, dim_cell_size);
   if (chunk_size64 > std::numeric_limits<uint32_t>::max()) {
-    return LOG_STATUS(Status::TileError("Chunk size exceeds uint32_t"));
+    return LOG_STATUS(Status_TileError("Chunk size exceeds uint32_t"));
   }
 
   *chunk_size = chunk_size64;
@@ -183,7 +183,7 @@ Status Tile::init_unfiltered(
   buffer_ = tdb_new(Buffer);
   if (buffer_ == nullptr)
     return LOG_STATUS(
-        Status::TileError("Cannot initialize tile; Buffer allocation failed"));
+        Status_TileError("Cannot initialize tile; Buffer allocation failed"));
 
   RETURN_NOT_OK(buffer_->realloc(tile_size));
 
@@ -208,17 +208,13 @@ Status Tile::init_filtered(
   buffer_ = tdb_new(Buffer);
   if (buffer_ == nullptr)
     return LOG_STATUS(
-        Status::TileError("Cannot initialize tile; Buffer allocation failed"));
+        Status_TileError("Cannot initialize tile; Buffer allocation failed"));
 
   return Status::Ok();
 }
 
 void Tile::advance_offset(uint64_t nbytes) {
   buffer_->advance_offset(nbytes);
-}
-
-Buffer* Tile::buffer() const {
-  return buffer_;
 }
 
 Tile Tile::clone(bool deep_copy) const {
@@ -247,14 +243,6 @@ Tile Tile::clone(bool deep_copy) const {
   return clone;
 }
 
-uint64_t Tile::cell_size() const {
-  return cell_size_;
-}
-
-unsigned int Tile::dim_num() const {
-  return dim_num_;
-}
-
 void Tile::disown_buff() {
   owns_buffer_ = false;
 }
@@ -266,19 +254,6 @@ bool Tile::owns_buff() const {
 bool Tile::empty() const {
   assert(!filtered());
   return (buffer_ == nullptr) || (buffer_->size() == 0);
-}
-
-bool Tile::filtered() const {
-  assert(!(filtered_buffer_.alloced_size() > 0 && buffer_->size() > 0));
-  return filtered_buffer_.alloced_size() > 0;
-}
-
-Buffer* Tile::filtered_buffer() {
-  return &filtered_buffer_;
-}
-
-uint32_t Tile::format_version() const {
-  return format_version_;
 }
 
 bool Tile::full() const {
@@ -327,15 +302,6 @@ void Tile::set_offset(uint64_t offset) {
 
 void Tile::set_pre_filtered_size(uint64_t pre_filtered_size) {
   pre_filtered_size_ = pre_filtered_size;
-}
-
-uint64_t Tile::size() const {
-  assert(!filtered());
-  return (buffer_ == nullptr) ? 0 : buffer_->size();
-}
-
-bool Tile::stores_coords() const {
-  return dim_num_ > 0;
 }
 
 Status Tile::write(ConstBuffer* buf) {

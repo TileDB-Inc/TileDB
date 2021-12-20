@@ -86,7 +86,7 @@ Status CancelableTasks::fn_wrapper(
     if (--outstanding_tasks_ == 0) {
       outstanding_tasks_cv_.notify_all();
     }
-    return Status::Error("Task cancelled before execution.");
+    return Status_Error("Task cancelled before execution.");
   } else {
     lck.unlock();
     Status st = fn();

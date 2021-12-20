@@ -49,7 +49,7 @@ namespace sm {
     if (!_s.ok()) {                                            \
       return _s;                                               \
     } else if (storage_manager_->cancellation_in_progress()) { \
-      return Status::QueryError("Query cancelled.");           \
+      return Status_QueryError("Query cancelled.");            \
     }                                                          \
   } while (false)
 #endif
@@ -68,7 +68,7 @@ namespace sm {
       return _s;                                               \
     } else if (storage_manager_->cancellation_in_progress()) { \
       _else;                                                   \
-      return Status::QueryError("Query cancelled.");           \
+      return Status_QueryError("Query cancelled.");            \
     }                                                          \
   } while (false)
 #endif
@@ -85,7 +85,7 @@ namespace sm {
       outer_st = _s;                                           \
       break;                                                   \
     } else if (storage_manager_->cancellation_in_progress()) { \
-      outer_st = Status::QueryError("Query cancelled.");       \
+      outer_st = Status_QueryError("Query cancelled.");        \
       break;                                                   \
     }                                                          \
   } while (false)

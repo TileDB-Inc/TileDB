@@ -44,6 +44,8 @@
 #include "tiledb/sm/storage_manager/open_array_memory_tracker.h"
 #include "tiledb/sm/subarray/subarray.h"
 
+#include <numeric>
+
 namespace tiledb {
 namespace sm {
 
@@ -101,14 +103,14 @@ typename SparseIndexReaderBase::ReadState* SparseIndexReaderBase::read_state() {
 Status SparseIndexReaderBase::init() {
   // Sanity checks
   if (storage_manager_ == nullptr)
-    return logger_->status(Status::ReaderError(
+    return logger_->status(Status_ReaderError(
         "Cannot initialize sparse global order reader; Storage manager not "
         "set"));
   if (array_schema_ == nullptr)
-    return logger_->status(Status::ReaderError(
+    return logger_->status(Status_ReaderError(
         "Cannot initialize sparse global order reader; Array schema not set"));
   if (buffers_.empty())
-    return logger_->status(Status::ReaderError(
+    return logger_->status(Status_ReaderError(
         "Cannot initialize sparse global order reader; Buffers not set"));
 
   // Check subarray
@@ -120,8 +122,8 @@ Status SparseIndexReaderBase::init() {
   assert(found);
   if (offsets_format_mode_ != "bytes" && offsets_format_mode_ != "elements") {
     return logger_->status(
-        Status::ReaderError("Cannot initialize reader; Unsupported offsets "
-                            "format in configuration"));
+        Status_ReaderError("Cannot initialize reader; Unsupported offsets "
+                           "format in configuration"));
   }
   elements_mode_ = offsets_format_mode_ == "elements";
 
@@ -132,8 +134,8 @@ Status SparseIndexReaderBase::init() {
       "sm.var_offsets.bitsize", &offsets_bitsize_, &found));
   if (offsets_bitsize_ != 32 && offsets_bitsize_ != 64) {
     return logger_->status(
-        Status::ReaderError("Cannot initialize reader; "
-                            "Unsupported offsets bitsize in configuration"));
+        Status_ReaderError("Cannot initialize reader; "
+                           "Unsupported offsets bitsize in configuration"));
   }
 
   // Check the validity buffer sizes.
@@ -234,7 +236,7 @@ Status SparseIndexReaderBase::load_initial_data() {
     if (memory_used_result_tile_ranges_ >
         memory_budget_ratio_tile_ranges_ * memory_budget_)
       return logger_->status(
-          Status::ReaderError("Exceeded memory budget for result tile ranges"));
+          Status_ReaderError("Exceeded memory budget for result tile ranges"));
   }
 
   // Set a limit to the array memory.
@@ -325,52 +327,14 @@ Status SparseIndexReaderBase::read_and_unfilter_coords(
 
 template <class BitmapType>
 Status SparseIndexReaderBase::allocate_tile_bitmap(
-    const unsigned dim_num,
-    const Domain* domain,
     ResultTileWithBitmap<BitmapType>* rt) {
-  auto cell_num = fragment_metadata_[rt->frag_idx()]->cell_num(rt->tile_idx());
-
   // Bitmap was already computed for this tile.
   if (rt->bitmap_result_num_ != std::numeric_limits<uint64_t>::max()) {
     return Status::Ok();
   }
 
-  bool full_overlap = false;
-
-  // For non overlapping ranges, if we have full overlap on any range on
-  // every dimensions, there is no need to allocate a tile bitmap.
-  const bool is_uint8_t = std::is_same<BitmapType, uint8_t>::value;
-  if (is_uint8_t) {
-    full_overlap = true;
-
-    // Get the MBR for this tile.
-    const auto& mbr = fragment_metadata_[rt->frag_idx()]->mbr(rt->tile_idx());
-
-    // See if we have full overlap one dimension at a time.
-    for (unsigned d = 0; d < dim_num; d++) {
-      // No need to compute bitmaps for default dimensions.
-      if (subarray_.is_default(d))
-        continue;
-
-      bool dim_full_overlap = false;
-      const auto dim = domain->dimension(d);
-      const auto& ranges_for_dim = subarray_.ranges_for_dim(d);
-      for (uint64_t r = 0; r < ranges_for_dim.size(); r++) {
-        if (dim->covered(mbr[d], ranges_for_dim[r])) {
-          dim_full_overlap = true;
-          break;
-        }
-      }
-
-      full_overlap &= dim_full_overlap;
-    }
-  }
-
-  if (!full_overlap) {
-    rt->bitmap_.resize(cell_num, 1);
-  } else {
-    rt->bitmap_result_num_ = cell_num;
-  }
+  auto cell_num = fragment_metadata_[rt->frag_idx()]->cell_num(rt->tile_idx());
+  rt->bitmap_.resize(cell_num, 1);
 
   return Status::Ok();
 }
@@ -409,25 +373,9 @@ Status SparseIndexReaderBase::compute_tile_bitmaps(
         result_tiles->size(),
         [&](uint64_t t) {
           return allocate_tile_bitmap(
-              dim_num,
-              domain,
               (ResultTileWithBitmap<BitmapType>*)result_tiles->at(t));
         });
     RETURN_NOT_OK_ELSE(status, logger_->status(status));
-  }
-
-  // Now process the bitmaps, parallelizing on tiles and cells.
-
-  // These vector will contain a list of indices for ranges to process when
-  // computing the tile bitmaps.
-  ResourcePool<std::vector<uint64_t>> all_threads_range_indexes(num_threads);
-
-  // Compute the max size for the range index vectors.
-  uint64_t max_range_size = 0;
-  for (unsigned d = 0; d < dim_num; d++) {
-    uint64_t range_num;
-    RETURN_NOT_OK(subarray_.get_range_num(d, &range_num));
-    max_range_size = std::max(max_range_size, range_num);
   }
 
   // Process all tiles/cells in parallel.
@@ -449,24 +397,13 @@ Status SparseIndexReaderBase::compute_tile_bitmaps(
 
         // Allocate the bitmap if not preallocated.
         if (num_range_threads == 1)
-          RETURN_NOT_OK(allocate_tile_bitmap(dim_num, domain, rt));
-
-        // Bitmap was not allocated, meaning we have full overlap, skip
-        // computation.
-        if (rt->bitmap_.size() == 0)
-          return Status::Ok();
+          RETURN_NOT_OK(allocate_tile_bitmap(rt));
 
         // Prevent processing past the end of the cells in case there are more
         // threads than cells.
         if (range_thread_idx > cell_num - 1) {
           return Status::Ok();
         }
-
-        // Get a range indexes vector ready.
-        auto range_indexes_resource_guard =
-            ResourceGuard(all_threads_range_indexes);
-        auto range_indexes = range_indexes_resource_guard.get();
-        range_indexes.resize(max_range_size);
 
         // Get the MBR for this tile.
         const auto& mbr =
@@ -483,15 +420,29 @@ Status SparseIndexReaderBase::compute_tile_bitmaps(
           if (subarray_.is_default(dim_idx))
             continue;
 
-          // Compute the list of range index to process in
-          // compute_results_count_sparse.
-          uint64_t num_ranges = 0;
-          const auto& ranges_for_dim = subarray_.ranges_for_dim(dim_idx);
-          for (uint64_t r = 0; r < ranges_for_dim.size(); r++) {
-            if (domain->dimension(dim_idx)->overlap(
-                    ranges_for_dim[r], mbr[dim_idx])) {
-              range_indexes[num_ranges++] = r;
-            }
+          auto& ranges_for_dim = subarray_.ranges_for_dim(dim_idx);
+
+          // Compute the list of range index to process.
+          std::vector<uint64_t> relevant_ranges;
+          relevant_ranges.reserve(ranges_for_dim.size());
+          domain->dimension(dim_idx)->relevant_ranges(
+              ranges_for_dim, mbr[dim_idx], relevant_ranges);
+
+          // For non overlapping ranges, if we have full overlap on any range
+          // there is no need to compute bitmaps.
+          const bool is_uint8_t = std::is_same<BitmapType, uint8_t>::value;
+          if (is_uint8_t) {
+            std::vector<bool> covered_bitmap;
+            covered_bitmap.reserve(relevant_ranges.size());
+            domain->dimension(dim_idx)->covered_vec(
+                ranges_for_dim, mbr[dim_idx], relevant_ranges, covered_bitmap);
+
+            // See if any range is covered.
+            uint64_t count = std::accumulate(
+                covered_bitmap.begin(), covered_bitmap.end(), 0);
+
+            if (count != 0)
+              continue;
           }
 
           // Compute the cells to process.
@@ -502,15 +453,18 @@ Status SparseIndexReaderBase::compute_tile_bitmaps(
               cell_num);
 
           // Compute the bitmap for the cells.
-          RETURN_NOT_OK(rt->compute_results_count_sparse(
-              dim_idx,
-              ranges_for_dim,
-              &range_indexes,
-              num_ranges,
-              &rt->bitmap_,
-              cell_order,
-              min,
-              max));
+          {
+            auto timer_compute_results_count_sparse =
+                stats_->start_timer("compute_results_count_sparse");
+            RETURN_NOT_OK(rt->compute_results_count_sparse(
+                dim_idx,
+                ranges_for_dim,
+                relevant_ranges,
+                rt->bitmap_,
+                cell_order,
+                min,
+                max));
+          }
         }
 
         // Only compute bitmap cells here if we are processing a single cell
@@ -545,22 +499,22 @@ Status SparseIndexReaderBase::compute_tile_bitmaps(
 template <class BitmapType>
 Status SparseIndexReaderBase::count_tile_bitmap_cells(
     ResultTileWithBitmap<BitmapType>* rt) {
-  auto cell_num = fragment_metadata_[rt->frag_idx()]->cell_num(rt->tile_idx());
-
   // Bitmap was already computed for this tile.
   if (rt->bitmap_result_num_ != std::numeric_limits<uint64_t>::max()) {
     return Status::Ok();
   }
 
-  // Compute number of cells in this tile. If the bitmap was not resized,
-  // we have full overlap on a non overlapping range.
-  if (rt->bitmap_.size() == 0) {
-    rt->bitmap_result_num_ = cell_num;
-  } else {
-    rt->bitmap_result_num_ = 0;
-    for (uint64_t c = 0; c < cell_num; ++c) {
-      rt->bitmap_result_num_ += rt->bitmap_[c];
-    }
+  // Compute number of cells in this tile.
+  auto cell_num = fragment_metadata_[rt->frag_idx()]->cell_num(rt->tile_idx());
+  rt->bitmap_result_num_ = 0;
+  for (uint64_t c = 0; c < cell_num; ++c) {
+    rt->bitmap_result_num_ += rt->bitmap_[c];
+  }
+
+  // Clear the bitmap, which will also signal the copy operation to copy the
+  // whole tile.
+  if (rt->bitmap_result_num_ == cell_num) {
+    rt->bitmap_.resize(0);
   }
 
   return Status::Ok();
@@ -600,8 +554,8 @@ Status SparseIndexReaderBase::apply_query_condition(
             // Compute the result of the query condition for this tile.
             RETURN_NOT_OK(condition_.apply_sparse<BitmapType>(
                 fragment_metadata_[rt->frag_idx()]->array_schema(),
-                &*rt,
-                rt->bitmap_.data(),
+                *rt,
+                rt->bitmap_,
                 &rt->bitmap_result_num_));
             rt->qc_processed_ = true;
           }
@@ -635,7 +589,7 @@ Status SparseIndexReaderBase::resize_output_buffers(uint64_t cells_copied) {
         // Offsets buffer is trivial.
         *(it.second.buffer_size_) =
             cells_copied * constants::cell_var_offset_size +
-            offsets_extra_element_;
+            offsets_extra_element_ * offsets_bytesize();
 
         // Since the buffer is shrunk, there is an offset for the next element
         // loaded, use it.
@@ -688,7 +642,7 @@ Status SparseIndexReaderBase::add_extra_offset() {
           &elements,
           offsets_bytesize());
     } else {
-      return logger_->status(Status::ReaderError(
+      return logger_->status(Status_ReaderError(
           "Cannot add extra offset to buffer; Unsupported offsets format"));
     }
   }

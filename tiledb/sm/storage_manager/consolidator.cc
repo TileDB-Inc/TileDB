@@ -92,7 +92,7 @@ Status Consolidator::consolidate(
     return consolidate_array_meta(
         array_name, encryption_type, encryption_key, key_length);
 
-  return logger_->status(Status::ConsolidatorError(
+  return logger_->status(Status_ConsolidatorError(
       "Cannot consolidate; Invalid consolidation mode"));
 }
 
@@ -882,7 +882,7 @@ Status Consolidator::set_config(const Config* config) {
   assert(found);
   const std::string mode = merged_config.get("sm.consolidation.mode", &found);
   if (!found)
-    return logger_->status(Status::ConsolidatorError(
+    return logger_->status(Status_ConsolidatorError(
         "Cannot consolidate; Consolidation mode cannot be null"));
   config_.mode_ = mode;
   RETURN_NOT_OK(merged_config.get<uint64_t>(
@@ -898,17 +898,17 @@ Status Consolidator::set_config(const Config* config) {
 
   // Sanity checks
   if (config_.min_frags_ > config_.max_frags_)
-    return logger_->status(Status::ConsolidatorError(
+    return logger_->status(Status_ConsolidatorError(
         "Invalid configuration; Minimum fragments config parameter is larger "
         "than the maximum"));
   if (config_.size_ratio_ > 1.0f || config_.size_ratio_ < 0.0f)
-    return logger_->status(Status::ConsolidatorError(
+    return logger_->status(Status_ConsolidatorError(
         "Invalid configuration; Step size ratio config parameter must be in "
         "[0.0, 1.0]"));
   if (config_.amplification_ < 0)
     return logger_->status(
-        Status::ConsolidatorError("Invalid configuration; Amplification config "
-                                  "parameter must be non-negative"));
+        Status_ConsolidatorError("Invalid configuration; Amplification config "
+                                 "parameter must be non-negative"));
 
   return Status::Ok();
 }

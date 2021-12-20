@@ -34,7 +34,6 @@
 #define TILEDB_CONFIG_H
 
 #include "tiledb/common/status.h"
-#include "tiledb/sm/misc/utils.h"
 
 #include <map>
 #include <set>
@@ -533,15 +532,7 @@ class Config {
    */
   template <class T>
   Status get_vector(
-      const std::string& param, std::vector<T>* value, bool* found) const {
-    // Check if parameter exists
-    const char* val = get_from_config_or_env(param, found);
-    if (!*found)
-      return Status::Ok();
-
-    // Parameter found, retrieve value
-    return utils::parse::convert<T>(val, value);
-  }
+      const std::string& param, std::vector<T>* value, bool* found) const;
 
   /** Returns the param -> value map. */
   const std::map<std::string, std::string>& param_values() const;

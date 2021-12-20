@@ -125,9 +125,6 @@ extern const double empty_float64;
 /** The special value for an empty char. */
 extern const char empty_char;
 
-/** The special value for an empty blob. */
-extern const std::byte empty_blob;
-
 /** The special value for an empty int8. */
 extern const int8_t empty_int8;
 

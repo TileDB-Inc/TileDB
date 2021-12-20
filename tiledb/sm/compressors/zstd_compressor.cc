@@ -46,14 +46,14 @@ Status ZStd::compress(
     int level, ConstBuffer* input_buffer, Buffer* output_buffer) {
   // Sanity check
   if (input_buffer->data() == nullptr || output_buffer->data() == nullptr)
-    return LOG_STATUS(Status::CompressionError(
+    return LOG_STATUS(Status_CompressionError(
         "Failed compressing with ZStd; invalid buffer format"));
 
   // Create context
   std::unique_ptr<ZSTD_CCtx, decltype(&ZSTD_freeCCtx)> ctx(
       ZSTD_createCCtx(), ZSTD_freeCCtx);
   if (ctx.get() == nullptr)
-    return LOG_STATUS(Status::CompressionError(
+    return LOG_STATUS(Status_CompressionError(
         std::string("ZStd compression failed; could not allocate context.")));
 
   // Compress
@@ -68,7 +68,7 @@ Status ZStd::compress(
   // Handle error
   if (ZSTD_isError(zstd_ret) != 0) {
     const char* msg = ZSTD_getErrorName(zstd_ret);
-    return LOG_STATUS(Status::CompressionError(
+    return LOG_STATUS(Status_CompressionError(
         std::string("ZStd compression failed: ") + msg));
   }
 
@@ -80,17 +80,17 @@ Status ZStd::compress(
 }
 
 Status ZStd::decompress(
-    std::shared_ptr<ResourcePool<ZStd::ZSTD_Decompress_Context>>
+    shared_ptr<BlockingResourcePool<ZStd::ZSTD_Decompress_Context>>
         decompress_ctx_pool,
     ConstBuffer* input_buffer,
     PreallocatedBuffer* output_buffer) {
   // Sanity check
   if (input_buffer->data() == nullptr || output_buffer->data() == nullptr)
-    return LOG_STATUS(Status::CompressionError(
+    return LOG_STATUS(Status_CompressionError(
         "Failed decompressing with ZStd; invalid buffer format"));
 
   if (decompress_ctx_pool == nullptr) {
-    return LOG_STATUS(Status::CompressionError(
+    return LOG_STATUS(Status_CompressionError(
         "Failed decompressing with ZStd; Resource pool not initialized"));
   }
 
@@ -108,7 +108,7 @@ Status ZStd::decompress(
   // Check error
   if (ZSTD_isError(zstd_ret) != 0) {
     const char* msg = ZSTD_getErrorName(zstd_ret);
-    return LOG_STATUS(Status::CompressionError(
+    return LOG_STATUS(Status_CompressionError(
         std::string("ZStd decompression failed: ") + msg));
   }
 

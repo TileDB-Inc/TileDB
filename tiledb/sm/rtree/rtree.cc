@@ -292,12 +292,11 @@ Status RTree::serialize(Buffer* buff) const {
 
 Status RTree::set_leaf(uint64_t leaf_id, const NDRange& mbr) {
   if (levels_.size() != 1)
-    return LOG_STATUS(Status::RTreeError(
+    return LOG_STATUS(Status_RTreeError(
         "Cannot set leaf; There are more than one levels in the tree"));
 
   if (leaf_id >= levels_[0].size())
-    return LOG_STATUS(
-        Status::RTreeError("Cannot set leaf; Invalid lead index"));
+    return LOG_STATUS(Status_RTreeError("Cannot set leaf; Invalid lead index"));
 
   levels_[0][leaf_id] = mbr;
 
@@ -318,8 +317,8 @@ Status RTree::set_leaf_num(uint64_t num) {
 
   if (num < levels_[0].size())
     return LOG_STATUS(
-        Status::RTreeError("Cannot set number of leaves; provided number "
-                           "cannot be smaller than the current leaf number"));
+        Status_RTreeError("Cannot set number of leaves; provided number "
+                          "cannot be smaller than the current leaf number"));
 
   levels_[0].resize(num);
   return Status::Ok();

@@ -30,11 +30,11 @@
  * This file implements class Config.
  */
 
-#include "tiledb/sm/config/config.h"
+#include "config.h"
 #include "tiledb/common/logger.h"
 #include "tiledb/sm/enums/serialization_type.h"
 #include "tiledb/sm/misc/constants.h"
-#include "tiledb/sm/misc/utils.h"
+#include "tiledb/sm/misc/parse_argument.h"
 
 #include <fstream>
 #include <iostream>
@@ -367,13 +367,13 @@ Status Config::load_from_file(const std::string& filename) {
   // Do nothing if filename is empty
   if (filename.empty())
     return LOG_STATUS(
-        Status::ConfigError("Cannot load from file; Invalid filename"));
+        Status_ConfigError("Cannot load from file; Invalid filename"));
 
   std::ifstream ifs(filename);
   if (!ifs.is_open()) {
     std::stringstream msg;
     msg << "Failed to open config file '" << filename << "'";
-    return LOG_STATUS(Status::ConfigError(msg.str()));
+    return LOG_STATUS(Status_ConfigError(msg.str()));
   }
 
   size_t linenum = 0;
@@ -394,7 +394,7 @@ Status Config::load_from_file(const std::string& filename) {
       std::stringstream msg;
       msg << "Failed to parse config file '" << filename << "'; ";
       msg << "Missing parameter value (line: " << linenum << ")";
-      return LOG_STATUS(Status::ConfigError(msg.str()));
+      return LOG_STATUS(Status_ConfigError(msg.str()));
     }
 
     // Parse extra
@@ -403,7 +403,7 @@ Status Config::load_from_file(const std::string& filename) {
       std::stringstream msg;
       msg << "Failed to parse config file '" << filename << "'; ";
       msg << "Invalid line format (line: " << linenum << ")";
-      return LOG_STATUS(Status::ConfigError(msg.str()));
+      return LOG_STATUS(Status_ConfigError(msg.str()));
     }
 
     // Set param-value pair
@@ -418,13 +418,13 @@ Status Config::save_to_file(const std::string& filename) {
   // Do nothing if filename is empty
   if (filename.empty())
     return LOG_STATUS(
-        Status::ConfigError("Cannot save to file; Invalid filename"));
+        Status_ConfigError("Cannot save to file; Invalid filename"));
 
   std::ofstream ofs(filename);
   if (!ofs.is_open()) {
     std::stringstream msg;
     msg << "Failed to open config file '" << filename << "' for writing";
-    return LOG_STATUS(Status::ConfigError(msg.str()));
+    return LOG_STATUS(Status_ConfigError(msg.str()));
   }
   for (auto& pv : param_values_) {
     if (unserialized_params_.count(pv.first) != 0)
@@ -465,6 +465,22 @@ Status Config::get(const std::string& param, T* value, bool* found) const {
 
   // Parameter found, retrieve value
   return utils::parse::convert(val, value);
+}
+
+/*
+ * Template definition not in header; explicitly instantiated below. It's here
+ * to deal with legacy difficulties with header dependencies.
+ */
+template <class T>
+Status Config::get_vector(
+    const std::string& param, std::vector<T>* value, bool* found) const {
+  // Check if parameter exists
+  const char* val = get_from_config_or_env(param, found);
+  if (!*found)
+    return Status::Ok();
+
+  // Parameter found, retrieve value
+  return utils::parse::convert<T>(val, value);
 }
 
 const std::map<std::string, std::string>& Config::param_values() const {
@@ -791,7 +807,7 @@ Status Config::sanity_check(
   } else if (param == "config.logging_format") {
     if (value != "DEFAULT" && value != "JSON")
       return LOG_STATUS(
-          Status::ConfigError("Invalid logging format parameter value"));
+          Status_ConfigError("Invalid logging format parameter value"));
   } else if (param == "sm.dedup_coords") {
     RETURN_NOT_OK(utils::parse::convert(value, &v));
   } else if (param == "sm.check_coord_dups") {
@@ -831,7 +847,7 @@ Status Config::sanity_check(
   } else if (param == "sm.var_offsets.mode") {
     if (value != "bytes" && value != "elements")
       return LOG_STATUS(
-          Status::ConfigError("Invalid offsets format parameter value"));
+          Status_ConfigError("Invalid offsets format parameter value"));
   } else if (param == "vfs.min_parallel_size") {
     RETURN_NOT_OK(utils::parse::convert(value, &vuint64));
   } else if (param == "vfs.min_batch_gap") {
@@ -851,7 +867,7 @@ Status Config::sanity_check(
   } else if (param == "vfs.s3.scheme") {
     if (value != "http" && value != "https")
       return LOG_STATUS(
-          Status::ConfigError("Invalid S3 scheme parameter value"));
+          Status_ConfigError("Invalid S3 scheme parameter value"));
   } else if (param == "vfs.s3.use_virtual_addressing") {
     RETURN_NOT_OK(utils::parse::convert(value, &v));
   } else if (param == "vfs.s3.skit_init") {
@@ -889,7 +905,7 @@ Status Config::sanity_check(
             (value == "bucket_owner_full_control"))))) {
       std::stringstream msg;
       msg << "value " << param << " invalid canned acl for " << param;
-      return Status::Error(msg.str());
+      return Status_Error(msg.str());
     }
   }
 
@@ -966,7 +982,9 @@ const char* Config::get_from_config_or_env(
   return *found ? value_config : "";
 }
 
-// Explicit template instantiations
+/*
+ * Explicit instantiations
+ */
 template Status Config::get<bool>(
     const std::string& param, bool* value, bool* found) const;
 template Status Config::get<int>(
@@ -981,6 +999,8 @@ template Status Config::get<float>(
     const std::string& param, float* value, bool* found) const;
 template Status Config::get<double>(
     const std::string& param, double* value, bool* found) const;
+template Status Config::get_vector<uint32_t>(
+    const std::string& param, std::vector<uint32_t>* value, bool* found) const;
 
 }  // namespace sm
 }  // namespace tiledb

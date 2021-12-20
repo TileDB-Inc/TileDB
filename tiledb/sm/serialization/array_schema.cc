@@ -66,7 +66,7 @@ Status filter_pipeline_to_capnp(
     const FilterPipeline* filter_pipeline,
     capnp::FilterPipeline::Builder* filter_pipeline_builder) {
   if (filter_pipeline == nullptr)
-    return LOG_STATUS(Status::SerializationError(
+    return LOG_STATUS(Status_SerializationError(
         "Error serializing filter pipeline; filter pipeline is null."));
 
   const unsigned num_filters = filter_pipeline->size();
@@ -130,7 +130,7 @@ Status filter_pipeline_from_capnp(
     RETURN_NOT_OK(filter_type_enum(filter_reader.getType().cStr(), &type));
     tdb_unique_ptr<Filter> filter(FilterCreate::make(type));
     if (filter == nullptr)
-      return LOG_STATUS(Status::SerializationError(
+      return LOG_STATUS(Status_SerializationError(
           "Error deserializing filter pipeline; failed to create filter."));
 
     switch (filter->type()) {
@@ -173,7 +173,7 @@ Status filter_pipeline_from_capnp(
 Status attribute_to_capnp(
     const Attribute* attribute, capnp::Attribute::Builder* attribute_builder) {
   if (attribute == nullptr)
-    return LOG_STATUS(Status::SerializationError(
+    return LOG_STATUS(Status_SerializationError(
         "Error serializing attribute; attribute is null."));
 
   attribute_builder->setName(attribute->name());
@@ -256,7 +256,7 @@ Status attribute_from_capnp(
 Status dimension_to_capnp(
     const Dimension* dimension, capnp::Dimension::Builder* dimension_builder) {
   if (dimension == nullptr)
-    return LOG_STATUS(Status::SerializationError(
+    return LOG_STATUS(Status_SerializationError(
         "Error serializing dimension; dimension is null."));
 
   dimension_builder->setName(dimension->name());
@@ -386,7 +386,7 @@ Status dimension_from_capnp(
         break;
       }
       default:
-        return LOG_STATUS(Status::SerializationError(
+        return LOG_STATUS(Status_SerializationError(
             "Error deserializing dimension; unknown datatype."));
     }
   }
@@ -397,8 +397,8 @@ Status dimension_from_capnp(
 Status domain_to_capnp(
     const Domain* domain, capnp::Domain::Builder* domainBuilder) {
   if (domain == nullptr)
-    return LOG_STATUS(Status::SerializationError(
-        "Error serializing domain; domain is null."));
+    return LOG_STATUS(
+        Status_SerializationError("Error serializing domain; domain is null."));
 
   domainBuilder->setType(datatype_str(domain->dimension(0)->type()));
   domainBuilder->setTileOrder(layout_str(domain->tile_order()));
@@ -436,7 +436,7 @@ Status array_schema_to_capnp(
     capnp::ArraySchema::Builder* array_schema_builder,
     const bool client_side) {
   if (array_schema == nullptr)
-    return LOG_STATUS(Status::SerializationError(
+    return LOG_STATUS(Status_SerializationError(
         "Error serializing array schema; array schema is null."));
 
   // Only set the URI if client side
@@ -597,18 +597,18 @@ Status array_schema_serialize(
         break;
       }
       default: {
-        return LOG_STATUS(Status::SerializationError(
+        return LOG_STATUS(Status_SerializationError(
             "Error serializing array schema; Unknown serialization type "
             "passed"));
       }
     }
 
   } catch (kj::Exception& e) {
-    return LOG_STATUS(Status::SerializationError(
+    return LOG_STATUS(Status_SerializationError(
         "Error serializing array schema; kj::Exception: " +
         std::string(e.getDescription().cStr())));
   } catch (std::exception& e) {
-    return LOG_STATUS(Status::SerializationError(
+    return LOG_STATUS(Status_SerializationError(
         "Error serializing array schema; exception " + std::string(e.what())));
   }
 
@@ -650,23 +650,23 @@ Status array_schema_deserialize(
         break;
       }
       default: {
-        return LOG_STATUS(Status::SerializationError(
+        return LOG_STATUS(Status_SerializationError(
             "Error deserializing array schema; Unknown serialization type "
             "passed"));
       }
     }
 
     if (decoded_array_schema == nullptr)
-      return LOG_STATUS(Status::SerializationError(
+      return LOG_STATUS(Status_SerializationError(
           "Error serializing array schema; deserialized schema is null"));
 
     *array_schema = decoded_array_schema.release();
   } catch (kj::Exception& e) {
-    return LOG_STATUS(Status::SerializationError(
+    return LOG_STATUS(Status_SerializationError(
         "Error deserializing array schema; kj::Exception: " +
         std::string(e.getDescription().cStr())));
   } catch (std::exception& e) {
-    return LOG_STATUS(Status::SerializationError(
+    return LOG_STATUS(Status_SerializationError(
         "Error deserializing array schema; exception " +
         std::string(e.what())));
   }
@@ -681,7 +681,7 @@ Status nonempty_domain_serialize(
     SerializationType serialize_type,
     Buffer* serialized_buffer) {
   if (!is_empty && nonempty_domain == nullptr)
-    return LOG_STATUS(Status::SerializationError(
+    return LOG_STATUS(Status_SerializationError(
         "Error serializing nonempty domain; nonempty domain is null."));
 
   try {
@@ -721,18 +721,18 @@ Status nonempty_domain_serialize(
         break;
       }
       default: {
-        return LOG_STATUS(Status::SerializationError(
+        return LOG_STATUS(Status_SerializationError(
             "Error serializing nonempty domain; Unknown serialization type "
             "passed"));
       }
     }
 
   } catch (kj::Exception& e) {
-    return LOG_STATUS(Status::SerializationError(
+    return LOG_STATUS(Status_SerializationError(
         "Error serializing nonempty domain; kj::Exception: " +
         std::string(e.getDescription().cStr())));
   } catch (std::exception& e) {
-    return LOG_STATUS(Status::SerializationError(
+    return LOG_STATUS(Status_SerializationError(
         "Error serializing nonempty domain; exception " +
         std::string(e.what())));
   }
@@ -747,7 +747,7 @@ Status nonempty_domain_deserialize(
     void* nonempty_domain,
     bool* is_empty) {
   if (nonempty_domain == nullptr)
-    return LOG_STATUS(Status::SerializationError(
+    return LOG_STATUS(Status_SerializationError(
         "Error deserializing nonempty domain; nonempty domain is null."));
 
   try {
@@ -794,17 +794,17 @@ Status nonempty_domain_deserialize(
         break;
       }
       default: {
-        return LOG_STATUS(Status::SerializationError(
+        return LOG_STATUS(Status_SerializationError(
             "Error deserializing nonempty domain; Unknown serialization type "
             "passed"));
       }
     }
   } catch (kj::Exception& e) {
-    return LOG_STATUS(Status::SerializationError(
+    return LOG_STATUS(Status_SerializationError(
         "Error deserializing nonempty domain; kj::Exception: " +
         std::string(e.getDescription().cStr())));
   } catch (std::exception& e) {
-    return LOG_STATUS(Status::SerializationError(
+    return LOG_STATUS(Status_SerializationError(
         "Error deserializing nonempty domain; exception " +
         std::string(e.what())));
   }
@@ -819,12 +819,12 @@ Status nonempty_domain_serialize(
     SerializationType serialize_type,
     Buffer* serialized_buffer) {
   if (!is_empty && nonempty_domain == nullptr)
-    return LOG_STATUS(Status::SerializationError(
+    return LOG_STATUS(Status_SerializationError(
         "Error serializing nonempty domain; nonempty domain is null."));
 
   const auto* schema = array->array_schema_latest();
   if (schema == nullptr)
-    return LOG_STATUS(Status::SerializationError(
+    return LOG_STATUS(Status_SerializationError(
         "Error serializing nonempty domain; array schema is null."));
 
   try {
@@ -864,18 +864,18 @@ Status nonempty_domain_serialize(
         break;
       }
       default: {
-        return LOG_STATUS(Status::SerializationError(
+        return LOG_STATUS(Status_SerializationError(
             "Error serializing nonempty domain; Unknown serialization type "
             "passed"));
       }
     }
 
   } catch (kj::Exception& e) {
-    return LOG_STATUS(Status::SerializationError(
+    return LOG_STATUS(Status_SerializationError(
         "Error serializing nonempty domain; kj::Exception: " +
         std::string(e.getDescription().cStr())));
   } catch (std::exception& e) {
-    return LOG_STATUS(Status::SerializationError(
+    return LOG_STATUS(Status_SerializationError(
         "Error serializing nonempty domain; exception " +
         std::string(e.what())));
   }
@@ -890,12 +890,12 @@ Status nonempty_domain_deserialize(
     void* nonempty_domain,
     bool* is_empty) {
   if (nonempty_domain == nullptr)
-    return LOG_STATUS(Status::SerializationError(
+    return LOG_STATUS(Status_SerializationError(
         "Error deserializing nonempty domain; nonempty domain is null."));
 
   const auto* schema = array->array_schema_latest();
   if (schema == nullptr)
-    return LOG_STATUS(Status::SerializationError(
+    return LOG_STATUS(Status_SerializationError(
         "Error deserializing nonempty domain; array schema is null."));
 
   try {
@@ -948,17 +948,17 @@ Status nonempty_domain_deserialize(
         break;
       }
       default: {
-        return LOG_STATUS(Status::SerializationError(
+        return LOG_STATUS(Status_SerializationError(
             "Error deserializing nonempty domain; Unknown serialization type "
             "passed"));
       }
     }
   } catch (kj::Exception& e) {
-    return LOG_STATUS(Status::SerializationError(
+    return LOG_STATUS(Status_SerializationError(
         "Error deserializing nonempty domain; kj::Exception: " +
         std::string(e.getDescription().cStr())));
   } catch (std::exception& e) {
-    return LOG_STATUS(Status::SerializationError(
+    return LOG_STATUS(Status_SerializationError(
         "Error deserializing nonempty domain; exception " +
         std::string(e.what())));
   }
@@ -970,7 +970,7 @@ Status nonempty_domain_serialize(
     Array* array, SerializationType serialize_type, Buffer* serialized_buffer) {
   const auto* schema = array->array_schema_latest();
   if (schema == nullptr)
-    return LOG_STATUS(Status::SerializationError(
+    return LOG_STATUS(Status_SerializationError(
         "Error serializing nonempty domain; array schema is null."));
 
   try {
@@ -1005,18 +1005,18 @@ Status nonempty_domain_serialize(
         break;
       }
       default: {
-        return LOG_STATUS(Status::SerializationError(
+        return LOG_STATUS(Status_SerializationError(
             "Error serializing nonempty domain; Unknown serialization type "
             "passed"));
       }
     }
 
   } catch (kj::Exception& e) {
-    return LOG_STATUS(Status::SerializationError(
+    return LOG_STATUS(Status_SerializationError(
         "Error serializing nonempty domain; kj::Exception: " +
         std::string(e.getDescription().cStr())));
   } catch (std::exception& e) {
-    return LOG_STATUS(Status::SerializationError(
+    return LOG_STATUS(Status_SerializationError(
         "Error serializing nonempty domain; exception " +
         std::string(e.what())));
   }
@@ -1056,17 +1056,17 @@ Status nonempty_domain_deserialize(
         break;
       }
       default: {
-        return LOG_STATUS(Status::SerializationError(
+        return LOG_STATUS(Status_SerializationError(
             "Error deserializing nonempty domain; Unknown serialization type "
             "passed"));
       }
     }
   } catch (kj::Exception& e) {
-    return LOG_STATUS(Status::SerializationError(
+    return LOG_STATUS(Status_SerializationError(
         "Error deserializing nonempty domain; kj::Exception: " +
         std::string(e.getDescription().cStr())));
   } catch (std::exception& e) {
-    return LOG_STATUS(Status::SerializationError(
+    return LOG_STATUS(Status_SerializationError(
         "Error deserializing nonempty domain; exception " +
         std::string(e.what())));
   }
@@ -1081,7 +1081,7 @@ Status max_buffer_sizes_serialize(
     Buffer* serialized_buffer) {
   const auto* schema = array->array_schema_latest();
   if (schema == nullptr)
-    return LOG_STATUS(Status::SerializationError(
+    return LOG_STATUS(Status_SerializationError(
         "Error serializing max buffer sizes; array schema is null."));
 
   try {
@@ -1147,18 +1147,18 @@ Status max_buffer_sizes_serialize(
         break;
       }
       default: {
-        return LOG_STATUS(Status::SerializationError(
+        return LOG_STATUS(Status_SerializationError(
             "Error serializing max buffer sizes; Unknown serialization type "
             "passed"));
       }
     }
 
   } catch (kj::Exception& e) {
-    return LOG_STATUS(Status::SerializationError(
+    return LOG_STATUS(Status_SerializationError(
         "Error serializing max buffer sizes; kj::Exception: " +
         std::string(e.getDescription().cStr())));
   } catch (std::exception& e) {
-    return LOG_STATUS(Status::SerializationError(
+    return LOG_STATUS(Status_SerializationError(
         "Error serializing max buffer sizes; exception " +
         std::string(e.what())));
   }
@@ -1173,7 +1173,7 @@ Status max_buffer_sizes_deserialize(
     std::unordered_map<std::string, std::pair<uint64_t, uint64_t>>*
         buffer_sizes) {
   if (schema == nullptr)
-    return LOG_STATUS(Status::SerializationError(
+    return LOG_STATUS(Status_SerializationError(
         "Error deserializing max buffer sizes; array schema is null."));
 
   try {
@@ -1232,17 +1232,17 @@ Status max_buffer_sizes_deserialize(
         break;
       }
       default: {
-        return LOG_STATUS(Status::SerializationError(
+        return LOG_STATUS(Status_SerializationError(
             "Error deserializing max buffer sizes; Unknown serialization type "
             "passed"));
       }
     }
   } catch (kj::Exception& e) {
-    return LOG_STATUS(Status::SerializationError(
+    return LOG_STATUS(Status_SerializationError(
         "Error deserializing max buffer sizes; kj::Exception: " +
         std::string(e.getDescription().cStr())));
   } catch (std::exception& e) {
-    return LOG_STATUS(Status::SerializationError(
+    return LOG_STATUS(Status_SerializationError(
         "Error deserializing max buffer sizes; exception " +
         std::string(e.what())));
   }
@@ -1253,7 +1253,7 @@ Status max_buffer_sizes_deserialize(
 Status array_metadata_serialize(
     Array* array, SerializationType serialize_type, Buffer* serialized_buffer) {
   if (array == nullptr)
-    return LOG_STATUS(Status::SerializationError(
+    return LOG_STATUS(Status_SerializationError(
         "Error serializing array metadata; array instance is null"));
 
   Metadata* metadata;
@@ -1261,7 +1261,7 @@ Status array_metadata_serialize(
   RETURN_NOT_OK(array->metadata(&metadata));
 
   if (metadata == nullptr)
-    return LOG_STATUS(Status::SerializationError(
+    return LOG_STATUS(Status_SerializationError(
         "Error serializing array metadata; array metadata instance is null"));
 
   try {
@@ -1308,18 +1308,18 @@ Status array_metadata_serialize(
         break;
       }
       default: {
-        return LOG_STATUS(Status::SerializationError(
+        return LOG_STATUS(Status_SerializationError(
             "Error serializing array metadata; Unknown serialization type "
             "passed"));
       }
     }
 
   } catch (kj::Exception& e) {
-    return LOG_STATUS(Status::SerializationError(
+    return LOG_STATUS(Status_SerializationError(
         "Error serializing array metadata; kj::Exception: " +
         std::string(e.getDescription().cStr())));
   } catch (std::exception& e) {
-    return LOG_STATUS(Status::SerializationError(
+    return LOG_STATUS(Status_SerializationError(
         "Error serializing array metadata; exception " +
         std::string(e.what())));
   }
@@ -1332,10 +1332,10 @@ Status array_metadata_deserialize(
     SerializationType serialize_type,
     const Buffer& serialized_buffer) {
   if (array == nullptr)
-    return LOG_STATUS(Status::SerializationError(
+    return LOG_STATUS(Status_SerializationError(
         "Error deserializing array metadata; null array instance given."));
   if (array->metadata() == nullptr)
-    return LOG_STATUS(Status::SerializationError(
+    return LOG_STATUS(Status_SerializationError(
         "Error deserializing array metadata; null metadata instance."));
 
   Metadata* metadata = array->metadata();
@@ -1364,7 +1364,7 @@ Status array_metadata_deserialize(
           auto value_ptr = entry_reader.getValue();
           const void* value = (void*)value_ptr.begin();
           if (value_ptr.size() != datatype_size(type) * value_num)
-            return LOG_STATUS(Status::SerializationError(
+            return LOG_STATUS(Status_SerializationError(
                 "Error deserializing array metadata; value size sanity check "
                 "failed."));
 
@@ -1398,7 +1398,7 @@ Status array_metadata_deserialize(
           auto value_ptr = entry_reader.getValue();
           const void* value = (void*)value_ptr.begin();
           if (value_ptr.size() != datatype_size(type) * value_num)
-            return LOG_STATUS(Status::SerializationError(
+            return LOG_STATUS(Status_SerializationError(
                 "Error deserializing array metadata; value size sanity check "
                 "failed."));
 
@@ -1412,17 +1412,17 @@ Status array_metadata_deserialize(
         break;
       }
       default: {
-        return LOG_STATUS(Status::SerializationError(
+        return LOG_STATUS(Status_SerializationError(
             "Error deserializing array metadata; Unknown serialization type "
             "passed"));
       }
     }
   } catch (kj::Exception& e) {
-    return LOG_STATUS(Status::SerializationError(
+    return LOG_STATUS(Status_SerializationError(
         "Error deserializing array metadata; kj::Exception: " +
         std::string(e.getDescription().cStr())));
   } catch (std::exception& e) {
-    return LOG_STATUS(Status::SerializationError(
+    return LOG_STATUS(Status_SerializationError(
         "Error deserializing array metadata; exception " +
         std::string(e.what())));
   }
@@ -1434,41 +1434,41 @@ Status array_metadata_deserialize(
 
 Status array_schema_serialize(
     ArraySchema*, SerializationType, Buffer*, const bool) {
-  return LOG_STATUS(Status::SerializationError(
+  return LOG_STATUS(Status_SerializationError(
       "Cannot serialize; serialization not enabled."));
 }
 
 Status array_schema_deserialize(
     ArraySchema**, SerializationType, const Buffer&) {
-  return LOG_STATUS(Status::SerializationError(
+  return LOG_STATUS(Status_SerializationError(
       "Cannot serialize; serialization not enabled."));
 }
 
 Status nonempty_domain_serialize(Array*, SerializationType, Buffer*) {
-  return LOG_STATUS(Status::SerializationError(
+  return LOG_STATUS(Status_SerializationError(
       "Cannot serialize; serialization not enabled."));
 }
 
 Status nonempty_domain_deserialize(Array*, const Buffer&, SerializationType) {
-  return LOG_STATUS(Status::SerializationError(
+  return LOG_STATUS(Status_SerializationError(
       "Cannot serialize; serialization not enabled."));
 }
 
 Status nonempty_domain_serialize(
     const Array*, const void*, bool, SerializationType, Buffer*) {
-  return LOG_STATUS(Status::SerializationError(
+  return LOG_STATUS(Status_SerializationError(
       "Cannot serialize; serialization not enabled."));
 }
 
 Status nonempty_domain_deserialize(
     const Array*, const Buffer&, SerializationType, void*, bool*) {
-  return LOG_STATUS(Status::SerializationError(
+  return LOG_STATUS(Status_SerializationError(
       "Cannot serialize; serialization not enabled."));
 }
 
 Status max_buffer_sizes_serialize(
     Array*, const void*, SerializationType, Buffer*) {
-  return LOG_STATUS(Status::SerializationError(
+  return LOG_STATUS(Status_SerializationError(
       "Cannot serialize; serialization not enabled."));
 }
 
@@ -1477,17 +1477,17 @@ Status max_buffer_sizes_deserialize(
     const Buffer&,
     SerializationType,
     std::unordered_map<std::string, std::pair<uint64_t, uint64_t>>*) {
-  return LOG_STATUS(Status::SerializationError(
+  return LOG_STATUS(Status_SerializationError(
       "Cannot serialize; serialization not enabled."));
 }
 
 Status array_metadata_serialize(Array*, SerializationType, Buffer*) {
-  return LOG_STATUS(Status::SerializationError(
+  return LOG_STATUS(Status_SerializationError(
       "Cannot serialize; serialization not enabled."));
 }
 
 Status array_metadata_deserialize(Array*, SerializationType, const Buffer&) {
-  return LOG_STATUS(Status::SerializationError(
+  return LOG_STATUS(Status_SerializationError(
       "Cannot serialize; serialization not enabled."));
 }
 

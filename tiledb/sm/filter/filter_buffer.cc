@@ -102,7 +102,7 @@ FilterBuffer::FilterBuffer(FilterStorage* storage) {
 
 Status FilterBuffer::swap(FilterBuffer& other) {
   if (read_only_ || other.read_only_)
-    return LOG_STATUS(Status::FilterError(
+    return LOG_STATUS(Status_FilterError(
         "FilterBuffer error; cannot swap read-only buffers."));
 
   buffers_.swap(other.buffers_);
@@ -119,13 +119,13 @@ Status FilterBuffer::swap(FilterBuffer& other) {
 
 Status FilterBuffer::init(void* data, uint64_t nbytes) {
   if (!buffers_.empty())
-    return LOG_STATUS(Status::FilterError(
+    return LOG_STATUS(Status_FilterError(
         "FilterBuffer error; cannot init buffer: not empty."));
   else if (data == nullptr)
-    return LOG_STATUS(Status::FilterError(
+    return LOG_STATUS(Status_FilterError(
         "FilterBuffer error; cannot init buffer: nullptr given."));
   else if (read_only_)
-    return LOG_STATUS(Status::FilterError(
+    return LOG_STATUS(Status_FilterError(
         "FilterBuffer error; cannot init buffer: read-only."));
 
   tdb_shared_ptr<Buffer> buffer(tdb_new(Buffer, data, nbytes));
@@ -138,10 +138,10 @@ Status FilterBuffer::init(void* data, uint64_t nbytes) {
 
 Status FilterBuffer::set_fixed_allocation(void* buffer, uint64_t nbytes) {
   if (!buffers_.empty() || fixed_allocation_data_ != nullptr)
-    return LOG_STATUS(Status::FilterError(
+    return LOG_STATUS(Status_FilterError(
         "FilterBuffer error; cannot set fixed allocation: not empty."));
   else if (read_only_)
-    return LOG_STATUS(Status::FilterError(
+    return LOG_STATUS(Status_FilterError(
         "FilterBuffer error; cannot set fixed allocation: read-only."));
 
   RETURN_NOT_OK(init(buffer, nbytes));
@@ -176,12 +176,12 @@ Status FilterBuffer::get_const_buffer(
     uint64_t nbytes, ConstBuffer* buffer) const {
   if (current_buffer_ == buffers_.end())
     return LOG_STATUS(
-        Status::FilterError("FilterBuffer error; no current buffer."));
+        Status_FilterError("FilterBuffer error; no current buffer."));
 
   Buffer* buf = current_buffer_->buffer();
   uint64_t bytes_in_buf = buf->size() - current_relative_offset_;
   if (bytes_in_buf < nbytes)
-    return LOG_STATUS(Status::FilterError(
+    return LOG_STATUS(Status_FilterError(
         "FilterBuffer error; ConstBuffer would span multiple regions."));
 
   *buffer = ConstBuffer(buf->data(current_relative_offset_), nbytes);
@@ -243,7 +243,7 @@ Status FilterBuffer::read(void* buffer, uint64_t nbytes) {
   }
 
   if (bytes_left > 0)
-    return LOG_STATUS(Status::FilterError(
+    return LOG_STATUS(Status_FilterError(
         "FilterBuffer error; could not read requested byte count."));
 
   // Adjust the offset and advance to next buffer if we're at the end of it.
@@ -265,8 +265,8 @@ bool FilterBuffer::read_only() const {
 
 Status FilterBuffer::write(const void* buffer, uint64_t nbytes) {
   if (read_only_)
-    return LOG_STATUS(Status::FilterError(
-        "FilterBuffer error; cannot set write: read-only."));
+    return LOG_STATUS(
+        Status_FilterError("FilterBuffer error; cannot set write: read-only."));
 
   uint64_t bytes_left = nbytes;
   uint64_t src_offset = 0;
@@ -276,7 +276,7 @@ Status FilterBuffer::write(const void* buffer, uint64_t nbytes) {
         dest->owns_data() ? dest->alloced_size() : dest->size();
     uint64_t bytes_avail_in_dest = dest_buffer_size - current_relative_offset_;
     if (bytes_avail_in_dest == 0)
-      return LOG_STATUS(Status::FilterError(
+      return LOG_STATUS(Status_FilterError(
           "FilterBuffer error; could not write: buffer is full."));
 
     // Write to the destination. We can't use Buffer::write() here as the
@@ -310,7 +310,7 @@ Status FilterBuffer::write(const void* buffer, uint64_t nbytes) {
   }
 
   if (bytes_left > 0)
-    return LOG_STATUS(Status::FilterError(
+    return LOG_STATUS(Status_FilterError(
         "FilterBuffer error; could not write requested byte count."));
 
   // Adjust the offset and advance to next buffer if we're at the end of it.
@@ -331,7 +331,7 @@ Status FilterBuffer::write(const void* buffer, uint64_t nbytes) {
 Status FilterBuffer::write(FilterBuffer* other, uint64_t nbytes) {
   if (read_only_)
     return LOG_STATUS(
-        Status::FilterError("FilterBuffer error; cannot write: read-only."));
+        Status_FilterError("FilterBuffer error; cannot write: read-only."));
 
   auto list_node = other->current_buffer_;
   uint64_t relative_offset = other->current_relative_offset_;
@@ -352,7 +352,7 @@ Status FilterBuffer::write(FilterBuffer* other, uint64_t nbytes) {
   }
 
   if (bytes_left > 0)
-    return LOG_STATUS(Status::FilterError(
+    return LOG_STATUS(Status_FilterError(
         "FilterBuffer error; could not write requested byte count."));
 
   return Status::Ok();
@@ -374,7 +374,7 @@ Status FilterBuffer::get_relative_offset(
     rel_offset -= buffer_size;
   }
 
-  return LOG_STATUS(Status::FilterError(
+  return LOG_STATUS(Status_FilterError(
       "FilterBuffer error; cannot determine relative offset."));
 }
 
@@ -440,7 +440,7 @@ void FilterBuffer::advance_offset(uint64_t nbytes) {
 
 Status FilterBuffer::prepend_buffer(uint64_t nbytes) {
   if (read_only_)
-    return LOG_STATUS(Status::FilterError(
+    return LOG_STATUS(Status_FilterError(
         "FilterBuffer error; cannot prepend buffer: read-only."));
 
   if (fixed_allocation_data_ == nullptr) {
@@ -461,12 +461,12 @@ Status FilterBuffer::prepend_buffer(uint64_t nbytes) {
     // Check for errors
     if (!fixed_allocation_op_allowed_)
       return LOG_STATUS(
-          Status::FilterError("FilterBuffer error; cannot prepend buffer: "
-                              "fixed allocation is set."));
+          Status_FilterError("FilterBuffer error; cannot prepend buffer: "
+                             "fixed allocation is set."));
     else if (nbytes > buffers_.front().buffer()->size())
       return LOG_STATUS(
-          Status::FilterError("FilterBuffer error; cannot prepend buffer: "
-                              "fixed allocation not large enough."));
+          Status_FilterError("FilterBuffer error; cannot prepend buffer: "
+                             "fixed allocation not large enough."));
 
     // Disallow further operations
     fixed_allocation_op_allowed_ = false;
@@ -480,7 +480,7 @@ Status FilterBuffer::prepend_buffer(uint64_t nbytes) {
 Status FilterBuffer::append_view(
     const FilterBuffer* other, uint64_t offset, uint64_t nbytes) {
   if (read_only_)
-    return LOG_STATUS(Status::FilterError(
+    return LOG_STATUS(Status_FilterError(
         "FilterBuffer error; cannot append view: read-only."));
 
   // Empty views can be skipped.
@@ -491,12 +491,12 @@ Status FilterBuffer::append_view(
   if (fixed_allocation_data_ != nullptr) {
     assert(!buffers_.empty());
     if (!fixed_allocation_op_allowed_)
-      return LOG_STATUS(Status::FilterError(
+      return LOG_STATUS(Status_FilterError(
           "FilterBuffer error; cannot append view: fixed allocation set."));
     else if (nbytes > buffers_.front().buffer()->size())
       return LOG_STATUS(
-          Status::FilterError("FilterBuffer error; cannot append view: "
-                              "fixed allocation not large enough."));
+          Status_FilterError("FilterBuffer error; cannot append view: "
+                             "fixed allocation not large enough."));
 
     // Disallow further operations
     fixed_allocation_op_allowed_ = false;
@@ -546,7 +546,7 @@ Status FilterBuffer::append_view(const FilterBuffer* other) {
 Status FilterBuffer::clear() {
   if (read_only_)
     return LOG_STATUS(
-        Status::FilterError("FilterBuffer error; cannot clear: read-only."));
+        Status_FilterError("FilterBuffer error; cannot clear: read-only."));
 
   offset_ = 0;
 
