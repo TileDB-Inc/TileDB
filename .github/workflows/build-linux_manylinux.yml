@@ -82,7 +82,7 @@ jobs:
         #~ with:
           #~ args: /bin/bash -c "cat /etc/system-release"
 
-  build-release-manylinux:
+  build-manylinux:
     #~ needs: configure-for-manylinux-container
     #~ runs-on: ubuntu-20.04
     #~ env:
