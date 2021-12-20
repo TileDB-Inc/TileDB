@@ -297,7 +297,8 @@ Status DenseReader::dense_read() {
   std::vector<std::string> names;
   std::vector<std::string> fixed_names;
   std::vector<std::string> var_names;
-  for (auto& name : condition_.field_names()) {
+  auto condition_names = condition_.field_names();
+  for (auto& name : condition_names) {
     names.emplace_back(name);
   }
 
@@ -308,7 +309,7 @@ Status DenseReader::dense_read() {
       continue;
     }
 
-    if (condition_.field_names().find(name) == condition_.field_names().end()) {
+    if (condition_names.count(name) == 0) {
       names.emplace_back(name);
     }
 
@@ -325,7 +326,11 @@ Status DenseReader::dense_read() {
       load_tile_offsets(read_state_.partitioner_.subarray(), &names));
 
   // Read and unfilter tiles.
-  RETURN_CANCEL_OR_ERROR(load_attribute_tiles(&names, &result_tiles));
+  RETURN_CANCEL_OR_ERROR(read_attribute_tiles(&names, &result_tiles));
+
+  for (const auto& name : names) {
+    RETURN_CANCEL_OR_ERROR(unfilter_tiles(name, &result_tiles));
+  }
 
   // Compute the result of the query condition.
   std::vector<uint8_t> qc_result;

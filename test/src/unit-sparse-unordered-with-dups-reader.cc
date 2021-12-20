@@ -614,9 +614,9 @@ TEST_CASE_METHOD(
     write_1d_fragment(coords, &coords_size, data, &data_size);
   }
 
-  // Two result tile (2 * ~828) will be bigger than the budget (1000).
+  // Two result tile (2 * ~505) will be bigger than the budget (800).
   total_budget_ = "10000";
-  ratio_coords_ = "0.1";
+  ratio_coords_ = "0.08";
   update_config();
 
   tiledb_array_t* array = nullptr;
@@ -727,7 +727,7 @@ TEST_CASE_METHOD(
   uint64_t data_size = sizeof(data);
   write_1d_fragment(coords, &coords_size, data, &data_size);
 
-  // One result tile (~828) will be bigger than the budget (5).
+  // One result tile (~505) will be bigger than the budget (5).
   total_budget_ = "10000";
   ratio_coords_ = "0.0005";
   update_config();

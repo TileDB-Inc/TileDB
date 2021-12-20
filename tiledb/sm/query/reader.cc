@@ -260,10 +260,8 @@ Status Reader::apply_query_condition(
   // To evaluate the query condition, we need to read tiles for the
   // attributes used in the query condition. Build a map of attribute
   // names to read.
-  const std::unordered_set<std::string>& condition_names =
-      condition_.field_names();
   std::unordered_map<std::string, ProcessTileFlags> names;
-  for (const auto& condition_name : condition_names) {
+  for (const auto& condition_name : condition_.field_names()) {
     names[condition_name] = ProcessTileFlag::READ;
   }
 
@@ -801,13 +799,16 @@ Status Reader::compute_result_coords(
 
   // Read and unfilter zipped coordinate tiles. Note that
   // this will ignore fragments with a version >= 5.
-  std::vector<ThreadPool::Task> read_tasks;
   RETURN_CANCEL_OR_ERROR(
-      load_coordinate_tiles(&zipped_coords_names, &tmp_result_tiles));
+      read_coordinate_tiles(&zipped_coords_names, &tmp_result_tiles));
+  RETURN_CANCEL_OR_ERROR(unfilter_tiles(constants::coords, &tmp_result_tiles));
 
   // Read and unfilter unzipped coordinate tiles. Note that
   // this will ignore fragments with a version < 5.
-  RETURN_CANCEL_OR_ERROR(load_coordinate_tiles(&dim_names, &tmp_result_tiles));
+  RETURN_CANCEL_OR_ERROR(read_coordinate_tiles(&dim_names, &tmp_result_tiles));
+  for (const auto& dim_name : dim_names) {
+    RETURN_CANCEL_OR_ERROR(unfilter_tiles(dim_name, &tmp_result_tiles));
+  }
 
   // Compute the read coordinates for all fragments for each subarray range.
   std::vector<std::vector<ResultCoords>> range_result_coords;

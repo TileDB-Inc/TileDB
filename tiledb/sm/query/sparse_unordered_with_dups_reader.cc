@@ -1096,7 +1096,7 @@ Status SparseUnorderedWithDupsReader<BitmapType>::compute_fixed_results_to_copy(
 
 template <class BitmapType>
 Status SparseUnorderedWithDupsReader<BitmapType>::respect_copy_memory_budget(
-    const std::vector<std::string> names,
+    const std::vector<std::string>& names,
     const uint64_t memory_budget,
     const std::vector<uint64_t>* cell_offsets,
     std::vector<ResultTile*>* result_tiles,
@@ -1114,8 +1114,7 @@ Status SparseUnorderedWithDupsReader<BitmapType>::respect_copy_memory_budget(
         // For dimensions, when we have a subarray, tiles are already all
         // loaded in memory.
         if ((subarray_.is_set() && array_schema_->is_dim(name)) ||
-            condition_.field_names().find(name) !=
-                condition_.field_names().end())
+            condition_.field_names().count(name) != 0)
           return Status::Ok();
 
         // Get the size for this tile.
@@ -1258,7 +1257,10 @@ Status SparseUnorderedWithDupsReader<BitmapType>::read_and_unfilter_attributes(
   }
 
   // Read and unfilter tiles.
-  RETURN_NOT_OK(load_attribute_tiles(&names_to_read, result_tiles, true));
+  RETURN_NOT_OK(read_attribute_tiles(&names_to_read, result_tiles, true));
+
+  for (auto& name : names_to_read)
+    RETURN_NOT_OK(unfilter_tiles(name, result_tiles, true));
 
   return Status::Ok();
 }
