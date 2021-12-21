@@ -1024,7 +1024,7 @@ void ReaderBase::compute_fixed_cs_partitions(
     return;
   }
 
-  const int num_copy_threads =
+  const auto num_copy_threads =
       storage_manager_->compute_tp()->concurrency_level();
 
   // Calculate the partition sizes.
@@ -1218,7 +1218,7 @@ void ReaderBase::compute_var_cs_partitions(
     return;
   }
 
-  const int num_copy_threads =
+  const auto num_copy_threads =
       storage_manager_->compute_tp()->concurrency_level();
 
   // Calculate the partition range.

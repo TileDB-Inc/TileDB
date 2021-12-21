@@ -2587,7 +2587,7 @@ Status Subarray::precompute_all_ranges_tile_overlap(
   // Each thread will use one bitmap per dimensions.
   const auto num_threads = compute_tp->concurrency_level();
   BlockingResourcePool<std::vector<std::vector<uint8_t>>>
-      all_threads_tile_bitmaps(num_threads);
+      all_threads_tile_bitmaps(static_cast<unsigned int>(num_threads));
 
   // Run all fragments in parallel.
   auto status =
