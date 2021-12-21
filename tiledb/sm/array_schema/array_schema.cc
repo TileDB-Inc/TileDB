@@ -638,6 +638,10 @@ void ArraySchema::set_array_uri(const URI& array_uri) {
   array_uri_ = array_uri;
 }
 
+void ArraySchema::set_name(const std::string& name) {
+  name_ = name;
+}
+
 void ArraySchema::set_capacity(uint64_t capacity) {
   capacity_ = capacity;
 }
