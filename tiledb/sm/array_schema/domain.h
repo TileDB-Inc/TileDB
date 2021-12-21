@@ -63,6 +63,13 @@ class Domain {
   /** Empty constructor. */
   Domain();
 
+  /** Constructor.*/
+  Domain(
+      uint64_t cell_num_per_tile,
+      Layout cell_order,
+      const std::vector<std::shared_ptr<Dimension>> dimensions,
+      Layout tile_order);
+
   /**
    * Constructor that clones the input domain.
    *
@@ -192,9 +199,14 @@ class Domain {
    *
    * @param buff The buffer to deserialize from.
    * @param version The array schema version.
-   * @return Status
+   * @return Status and Domain
    */
-  Status deserialize(ConstBuffer* buff, uint32_t version);
+  static std::tuple<Status, optional<std::shared_ptr<Domain>>> deserialize(
+      ConstBuffer* buff,
+      uint32_t version,
+      uint64_t cell_num_per_tile = 0,
+      Layout cell_order = Layout::ROW_MAJOR,
+      Layout tile_order = Layout::ROW_MAJOR);
 
   /** Returns the cell order. */
   Layout cell_order() const;
@@ -489,7 +501,7 @@ class Domain {
   Layout cell_order_;
 
   /** The domain dimensions. */
-  std::vector<tdb_unique_ptr<Dimension>> dimensions_;
+  std::vector<std::shared_ptr<Dimension>> dimensions_;
 
   /** The number of dimensions. */
   unsigned dim_num_;

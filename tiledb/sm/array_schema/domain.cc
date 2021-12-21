@@ -60,6 +60,19 @@ Domain::Domain() {
   cell_num_per_tile_ = 0;
 }
 
+Domain::Domain(
+    uint64_t cell_num_per_tile,
+    Layout cell_order,
+    const std::vector<std::shared_ptr<Dimension>> dimensions,
+    Layout tile_order)
+    : cell_num_per_tile_(cell_num_per_tile)
+    , cell_order_(cell_order)
+    , dimensions_(dimensions)
+    , tile_order_(tile_order) {
+  dim_num_ = dimensions.size();
+  set_tile_cell_order_cmp_funcs();
+}
+
 Domain::Domain(const Domain* domain) {
   cell_num_per_tile_ = domain->cell_num_per_tile_;
   cell_order_ = domain->cell_order_;
@@ -296,26 +309,38 @@ void Domain::crop_ndrange(NDRange* ndrange) const {
     dimensions_[d]->crop_range(&(*ndrange)[d]);
 }
 
-Status Domain::deserialize(ConstBuffer* buff, uint32_t version) {
+std::tuple<Status, optional<std::shared_ptr<Domain>>> Domain::deserialize(
+    ConstBuffer* buff,
+    uint32_t version,
+    uint64_t cell_num_per_tile,
+    Layout cell_order,
+    Layout tile_order) {
+  Status st;
   // Load type
   Datatype type = Datatype::INT32;
   if (version < 5) {
     uint8_t type_c;
-    RETURN_NOT_OK(buff->read(&type_c, sizeof(uint8_t)));
+    st = buff->read(&type_c, sizeof(uint8_t));
+    if (!st.ok()) {
+      return {st, nullopt};
+    }
     type = static_cast<Datatype>(type_c);
   }
 
+  std::vector<std::shared_ptr<Dimension>> dimensions;
   // Load dimensions
-  RETURN_NOT_OK(buff->read(&dim_num_, sizeof(uint32_t)));
-  for (uint32_t i = 0; i < dim_num_; ++i) {
-    auto dim = tdb_new(tiledb::common::blank<Dimension>);
+  uint32_t dim_num;
+  st = buff->read(&dim_num, sizeof(uint32_t));
+  for (uint32_t i = 0; i < dim_num; ++i) {
+    std::shared_ptr<Dimension> dim =
+        tiledb::common::make_shared<Dimension>(HERE(), "", type);
     dim->deserialize(buff, version, type);
-    dimensions_.emplace_back(dim);
+    dimensions.emplace_back(dim);
   }
 
-  set_tile_cell_order_cmp_funcs();
-
-  return Status::Ok();
+  return {Status::Ok(),
+          tiledb::common::make_shared<Domain>(
+              HERE(), cell_num_per_tile, cell_order, dimensions, tile_order)};
 }
 
 unsigned int Domain::dim_num() const {
