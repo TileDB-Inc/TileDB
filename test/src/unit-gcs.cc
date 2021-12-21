@@ -38,6 +38,7 @@
 #include "tiledb/sm/filesystem/gcs.h"
 #include "tiledb/sm/global_state/unit_test_config.h"
 #include "tiledb/sm/misc/math.h"
+#include "tiledb/sm/misc/time.h"
 #include "tiledb/sm/misc/utils.h"
 
 #include <sstream>
