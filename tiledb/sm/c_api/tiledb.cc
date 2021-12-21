@@ -3451,6 +3451,22 @@ int32_t tiledb_query_add_range(
   return TILEDB_OK;
 }
 
+int32_t tiledb_query_add_point_ranges(
+    tiledb_ctx_t* ctx,
+    tiledb_query_t* query,
+    uint32_t dim_idx,
+    const void* start,
+    uint64_t count) {
+  if (sanity_check(ctx) == TILEDB_ERR || sanity_check(ctx, query) == TILEDB_ERR)
+    return TILEDB_ERR;
+
+  if (SAVE_ERROR_CATCH(
+          ctx, query->query_->add_point_ranges(dim_idx, start, count)))
+    return TILEDB_ERR;
+
+  return TILEDB_OK;
+}
+
 int32_t tiledb_query_add_range_by_name(
     tiledb_ctx_t* ctx,
     tiledb_query_t* query,
