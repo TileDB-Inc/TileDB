@@ -178,6 +178,61 @@ Status Query::add_range(
   return subarray_.add_range(dim_idx, std::move(r), read_range_oob_error);
 }
 
+Status Query::add_point_ranges(
+    unsigned dim_idx, const void* start, uint64_t count) {
+  if (dim_idx >= this->array_->array_schema_latest()->dim_num())
+    return LOG_STATUS(
+        Status::QueryError("Cannot add range; Invalid dimension index"));
+
+  QueryType array_query_type;
+  RETURN_NOT_OK(array_->get_query_type(&array_query_type));
+  if (array_query_type == tiledb::sm::QueryType::WRITE) {
+    if (!array_->array_schema_latest()->dense()) {
+      return LOG_STATUS(
+          Status::QueryError("Adding a subarray range to a write query is not "
+                             "supported in sparse arrays"));
+    }
+    if (subarray_.is_set(dim_idx))
+      return LOG_STATUS(
+          Status::QueryError("Cannot add range; Multi-range dense writes "
+                             "are not supported"));
+  }
+
+  if (start == nullptr)
+    return LOG_STATUS(
+        Status::QueryError("Cannot add ranges; Invalid start pointer"));
+
+  if (this->array_->array_schema_latest()
+          ->domain()
+          ->dimension(dim_idx)
+          ->var_size())
+    return LOG_STATUS(
+        Status::QueryError("Cannot add range; Range must be fixed-sized"));
+
+  // Prepare a temp range
+  std::vector<uint8_t> range;
+  uint8_t coord_size =
+      this->array_->array_schema_latest()->dimension(dim_idx)->coord_size();
+  range.resize(2 * coord_size);
+
+  // subarray_.ranges_[dim_idx].reserve(subarray_.ranges_[dim_idx].size() +
+  // count);
+  for (size_t i = 0; i < count; i++) {
+    uint8_t* ptr = (uint8_t*)start + coord_size * i;
+    // point ranges
+    std::memcpy(&range[0], ptr, coord_size);
+    std::memcpy(&range[coord_size], ptr, coord_size);
+
+    // Add range
+    auto st = subarray_.add_range(
+        dim_idx, Range(&range[0], 2 * coord_size), /* no-op */ false);
+    if (!st.ok()) {
+      return LOG_STATUS(std::move(st));
+    }
+  }
+  return Status::Ok();
+}
+
 Status Query::add_range_var(
     unsigned dim_idx,
     const void* start,
