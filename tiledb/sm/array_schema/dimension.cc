@@ -109,6 +109,8 @@ Dimension::Dimension(
   set_covered_func();
   set_overlap_func();
   set_overlap_ratio_func();
+  set_relevant_ranges_func();
+  set_covered_vec_func();
   set_split_range_func();
   set_splitting_value_func();
   set_tile_num_func();
