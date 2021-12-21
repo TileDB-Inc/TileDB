@@ -279,36 +279,36 @@ Status Subarray::add_point_ranges(
     unsigned dim_idx, const void* start, uint64_t count) {
   if (dim_idx >= this->array_->array_schema_latest()->dim_num())
     return LOG_STATUS(
-        Status::SubarrayError("Cannot add range; Invalid dimension index"));
+        Status_SubarrayError("Cannot add range; Invalid dimension index"));
 
   QueryType array_query_type;
   RETURN_NOT_OK(array_->get_query_type(&array_query_type));
   if (array_query_type == tiledb::sm::QueryType::WRITE) {
     if (!array_->array_schema_latest()->dense()) {
-      return LOG_STATUS(Status::SubarrayError(
+      return LOG_STATUS(Status_SubarrayError(
           "Adding a subarray range to a write query is not "
           "supported in sparse arrays"));
     }
     if (this->is_set(dim_idx))
       return LOG_STATUS(
-          Status::SubarrayError("Cannot add range; Multi-range dense writes "
-                                "are not supported"));
+          Status_SubarrayError("Cannot add range; Multi-range dense writes "
+                               "are not supported"));
   }
 
   if (start == nullptr)
     return LOG_STATUS(
-        Status::SubarrayError("Cannot add ranges; Invalid start pointer"));
+        Status_SubarrayError("Cannot add ranges; Invalid start pointer"));
 
   if (this->array_->array_schema_latest()
           ->domain()
           ->dimension(dim_idx)
           ->var_size())
     return LOG_STATUS(
-        Status::SubarrayError("Cannot add range; Range must be fixed-sized"));
+        Status_SubarrayError("Cannot add range; Range must be fixed-sized"));
 
   // Prepare a temp range
   std::vector<uint8_t> range;
-  uint8_t coord_size =
+  auto coord_size =
       this->array_->array_schema_latest()->dimension(dim_idx)->coord_size();
   range.resize(2 * coord_size);
 
