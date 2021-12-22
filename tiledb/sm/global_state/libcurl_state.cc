@@ -47,7 +47,7 @@ Status init_libcurl() {
 #ifdef TILEDB_SERIALIZATION
   auto rc = curl_global_init(CURL_GLOBAL_DEFAULT);
   if (rc != 0)
-    return LOG_STATUS(Status::Error(
+    return LOG_STATUS(Status_Error(
         "Cannot initialize libcurl global state: got non-zero return code " +
         std::to_string(rc)));
 #endif

@@ -51,6 +51,7 @@ namespace tdb = tiledb::common;
  * Dynamic memory
  */
 #include "dynamic_memory/dynamic_memory.h"
+using std::shared_ptr;
 using tiledb::common::allocator;
 using tiledb::common::make_shared;
 // using tiledb::common::make_unique;

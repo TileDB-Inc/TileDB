@@ -95,11 +95,11 @@ Status convert(const std::string& str, std::vector<T>* value) {
     } while (end != std::string::npos);
 
   } catch (std::invalid_argument& e) {
-    return LOG_STATUS(Status::UtilsError(
+    return LOG_STATUS(Status_UtilsError(
         "Failed to convert string to vector of " +
         std::string(typeid(T).name()) + "; Invalid argument"));
   } catch (std::out_of_range& e) {
-    return LOG_STATUS(Status::UtilsError(
+    return LOG_STATUS(Status_UtilsError(
         "Failed to convert string to vector of " +
         std::string(typeid(T).name()) + "; Value out of range"));
   }

@@ -68,8 +68,8 @@ Status array_schema_evolution_to_capnp(
     const bool client_side) {
   if (array_schema_evolution == nullptr)
     return LOG_STATUS(
-        Status::SerializationError("Error serializing array schema evolution; "
-                                   "array schema evolution is null."));
+        Status_SerializationError("Error serializing array schema evolution; "
+                                  "array schema evolution is null."));
 
   // Attributes to drop
   std::vector<std::string> attr_names_to_drop =
@@ -165,18 +165,18 @@ Status array_schema_evolution_serialize(
       }
       default: {
         return LOG_STATUS(
-            Status::SerializationError("Error serializing array schema "
-                                       "evolution; Unknown serialization type "
-                                       "passed"));
+            Status_SerializationError("Error serializing array schema "
+                                      "evolution; Unknown serialization type "
+                                      "passed"));
       }
     }
 
   } catch (kj::Exception& e) {
-    return LOG_STATUS(Status::SerializationError(
+    return LOG_STATUS(Status_SerializationError(
         "Error serializing array schema evolution; kj::Exception: " +
         std::string(e.getDescription().cStr())));
   } catch (std::exception& e) {
-    return LOG_STATUS(Status::SerializationError(
+    return LOG_STATUS(Status_SerializationError(
         "Error serializing array schema evolution; exception " +
         std::string(e.what())));
   }
@@ -221,24 +221,24 @@ Status array_schema_evolution_deserialize(
       }
       default: {
         return LOG_STATUS(
-            Status::SerializationError("Error deserializing array schema "
-                                       "evolution; Unknown serialization type "
-                                       "passed"));
+            Status_SerializationError("Error deserializing array schema "
+                                      "evolution; Unknown serialization type "
+                                      "passed"));
       }
     }
 
     if (decoded_array_schema_evolution == nullptr)
-      return LOG_STATUS(Status::SerializationError(
+      return LOG_STATUS(Status_SerializationError(
           "Error serializing array schema evolution; deserialized schema "
           "evolution is null"));
 
     *array_schema_evolution = decoded_array_schema_evolution.release();
   } catch (kj::Exception& e) {
-    return LOG_STATUS(Status::SerializationError(
+    return LOG_STATUS(Status_SerializationError(
         "Error deserializing array schema evolution; kj::Exception: " +
         std::string(e.getDescription().cStr())));
   } catch (std::exception& e) {
-    return LOG_STATUS(Status::SerializationError(
+    return LOG_STATUS(Status_SerializationError(
         "Error deserializing array schema evolution; exception " +
         std::string(e.what())));
   }
@@ -250,13 +250,13 @@ Status array_schema_evolution_deserialize(
 
 Status array_schema_evolution_serialize(
     ArraySchemaEvolution*, SerializationType, Buffer*, const bool) {
-  return LOG_STATUS(Status::SerializationError(
+  return LOG_STATUS(Status_SerializationError(
       "Cannot serialize; serialization not enabled."));
 }
 
 Status array_schema_evolution_deserialize(
     ArraySchemaEvolution**, SerializationType, const Buffer&) {
-  return LOG_STATUS(Status::SerializationError(
+  return LOG_STATUS(Status_SerializationError(
       "Cannot serialize; serialization not enabled."));
 }
 

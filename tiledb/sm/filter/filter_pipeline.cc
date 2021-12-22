@@ -137,6 +137,8 @@ Status FilterPipeline::filter_chunks_forward(
       output_data.clear();
       output_metadata.clear();
 
+      f->init_compression_resource_pool(compute_tp->concurrency_level());
+
       RETURN_NOT_OK(f->run_forward(
           tile, &input_metadata, &input_data, &output_metadata, &output_data));
 
@@ -177,7 +179,7 @@ Status FilterPipeline::filter_chunks_forward(
     if (final_stage_output_data.size() > std::numeric_limits<uint32_t>::max() ||
         final_stage_output_metadata.size() >
             std::numeric_limits<uint32_t>::max())
-      return LOG_STATUS(Status::FilterError(
+      return LOG_STATUS(Status_FilterError(
           "Filter error; filtered chunk size exceeds uint32_t"));
 
     // Leave space for the chunk sizes and the data itself.
@@ -308,7 +310,7 @@ Status FilterPipeline::filter_chunks_reverse(
             output_chunk_buffer, orig_chunk_len));
       }
 
-      f->init_resource_pool(compute_tp->concurrency_level());
+      f->init_decompression_resource_pool(compute_tp->concurrency_level());
 
       RETURN_NOT_OK(f->run_reverse(
           tile,
@@ -357,7 +359,7 @@ Status FilterPipeline::run_forward(
     Tile* const tile,
     ThreadPool* const compute_tp) const {
   RETURN_NOT_OK(
-      tile ? Status::Ok() : Status::Error("invalid argument: null Tile*"));
+      tile ? Status::Ok() : Status_Error("invalid argument: null Tile*"));
 
   writer_stats->add_counter("write_filtered_byte_num", tile->size());
 
@@ -401,12 +403,12 @@ Status FilterPipeline::run_reverse_internal(
   Buffer* const filtered_buffer = tile->filtered_buffer();
   if (filtered_buffer == nullptr)
     return LOG_STATUS(
-        Status::FilterError("Filter error; tile has null buffer."));
+        Status_FilterError("Filter error; tile has null buffer."));
 
   assert(tile->buffer());
   assert(tile->buffer()->size() == 0);
   if (tile->buffer()->size() > 0)
-    return LOG_STATUS(Status::FilterError(
+    return LOG_STATUS(Status_FilterError(
         "Filter error; tile has allocated uncompressed chunk buffers."));
 
   // First make a pass over the tile to get the chunk information.
@@ -541,7 +543,7 @@ Status FilterPipeline::append_encryption_filter(
     case EncryptionType::AES_256_GCM:
       return pipeline->add_filter(EncryptionAES256GCMFilter(encryption_key));
     default:
-      return LOG_STATUS(Status::FilterError(
+      return LOG_STATUS(Status_FilterError(
           "Error appending encryption filter; unknown type."));
   }
 }

@@ -30,12 +30,11 @@
  * This file implements class Dimension.
  */
 
-#include "tiledb/sm/array_schema/dimension.h"
-#include "tiledb/common/logger.h"
+#include "dimension.h"
+#include "tiledb/common/logger_public.h"
+#include "tiledb/common/stdx_string.h"
 #include "tiledb/sm/buffer/buffer.h"
-#include "tiledb/sm/enums/datatype.h"
 #include "tiledb/sm/enums/filter_type.h"
-#include "tiledb/sm/misc/utils.h"
 
 #include <bitset>
 #include <cassert>
@@ -78,9 +77,7 @@ Dimension::Dimension(const std::string& name, Datatype type)
   set_split_range_func();
   set_splitting_value_func();
   set_tile_num_func();
-  set_map_to_uint64_func();
   set_map_to_uint64_2_func();
-  set_map_to_uint64_3_func();
   set_map_from_uint64_func();
   set_smaller_than_func();
 }
@@ -114,9 +111,7 @@ Dimension::Dimension(const Dimension* dim) {
   split_range_func_ = dim->split_range_func_;
   splitting_value_func_ = dim->splitting_value_func_;
   tile_num_func_ = dim->tile_num_func_;
-  map_to_uint64_func_ = dim->map_to_uint64_func_;
   map_to_uint64_2_func_ = dim->map_to_uint64_2_func_;
-  map_to_uint64_3_func_ = dim->map_to_uint64_3_func_;
   map_from_uint64_func_ = dim->map_from_uint64_func_;
   smaller_than_func_ = dim->smaller_than_func_;
 
@@ -136,104 +131,16 @@ Status Dimension::set_cell_val_num(unsigned int cell_val_num) {
   // Error checkls
   if (datatype_is_string(type_) && cell_val_num != constants::var_num)
     return LOG_STATUS(
-        Status::DimensionError("Cannot set non-variable number of values per "
-                               "coordinate for a string dimension"));
+        Status_DimensionError("Cannot set non-variable number of values per "
+                              "coordinate for a string dimension"));
   if (!datatype_is_string(type_) && cell_val_num != 1)
-    return LOG_STATUS(Status::DimensionError(
+    return LOG_STATUS(Status_DimensionError(
         "Cannot set number of values per coordinate; Currently only one value "
         "per coordinate is supported"));
 
   cell_val_num_ = cell_val_num;
 
   return Status::Ok();
-}
-
-uint64_t Dimension::coord_size() const {
-  return datatype_size(type_);
-}
-
-std::string Dimension::coord_to_str(const QueryBuffer& buff, uint64_t i) const {
-  std::stringstream ss;
-
-  // Fixed sized
-  if (!var_size()) {
-    auto cbuff = (const unsigned char*)buff.buffer_;
-    auto coord = cbuff + i * coord_size();
-
-    switch (type_) {
-      case Datatype::INT32:
-        ss << *((int32_t*)coord);
-        break;
-      case Datatype::INT64:
-        ss << *((int64_t*)coord);
-        break;
-      case Datatype::INT8:
-        ss << *((int8_t*)coord);
-        break;
-      case Datatype::UINT8:
-        ss << *((uint8_t*)coord);
-        break;
-      case Datatype::INT16:
-        ss << *((int16_t*)coord);
-        break;
-      case Datatype::UINT16:
-        ss << *((uint16_t*)coord);
-        break;
-      case Datatype::UINT32:
-        ss << *((uint32_t*)coord);
-        break;
-      case Datatype::UINT64:
-        ss << *((uint64_t*)coord);
-        break;
-      case Datatype::FLOAT32:
-        ss << *((float*)coord);
-        break;
-      case Datatype::FLOAT64:
-        ss << *((double*)coord);
-        break;
-      case Datatype::DATETIME_YEAR:
-      case Datatype::DATETIME_MONTH:
-      case Datatype::DATETIME_WEEK:
-      case Datatype::DATETIME_DAY:
-      case Datatype::DATETIME_HR:
-      case Datatype::DATETIME_MIN:
-      case Datatype::DATETIME_SEC:
-      case Datatype::DATETIME_MS:
-      case Datatype::DATETIME_US:
-      case Datatype::DATETIME_NS:
-      case Datatype::DATETIME_PS:
-      case Datatype::DATETIME_FS:
-      case Datatype::DATETIME_AS:
-      case Datatype::TIME_HR:
-      case Datatype::TIME_MIN:
-      case Datatype::TIME_SEC:
-      case Datatype::TIME_MS:
-      case Datatype::TIME_US:
-      case Datatype::TIME_NS:
-      case Datatype::TIME_PS:
-      case Datatype::TIME_FS:
-      case Datatype::TIME_AS:
-        ss << *((int64_t*)coord);
-        break;
-      default:
-        break;
-    }
-  } else {  // Var-sized
-    assert(type_ == Datatype::STRING_ASCII);
-    auto offs = (const uint64_t*)buff.buffer_;
-    auto offs_size = *(buff.buffer_size_);
-    auto var_size = *(buff.buffer_var_size_);
-    auto vars = (const char*)buff.buffer_var_;
-    auto coord = &vars[offs[i]];
-    auto next_off = ((i + 1) * constants::cell_var_offset_size == offs_size) ?
-                        var_size :
-                        offs[i + 1];
-    auto coord_size = next_off - offs[i];
-    auto coord_str = std::string(coord, coord_size);
-    ss << coord_str;
-  }
-
-  return ss.str();
 }
 
 Status Dimension::deserialize(
@@ -301,9 +208,7 @@ Status Dimension::deserialize(
   set_split_range_func();
   set_splitting_value_func();
   set_tile_num_func();
-  set_map_to_uint64_func();
   set_map_to_uint64_2_func();
-  set_map_to_uint64_3_func();
   set_map_from_uint64_func();
   set_smaller_than_func();
 
@@ -381,7 +286,7 @@ Status Dimension::check_range(const Range& range) const {
   std::string err_msg;
   auto ret = check_range_func_(this, range, &err_msg);
   if (!ret)
-    return LOG_STATUS(Status::DimensionError(err_msg));
+    return LOG_STATUS(Status_DimensionError(err_msg));
   return Status::Ok();
 }
 
@@ -625,7 +530,7 @@ Status Dimension::oob(const void* coord) const {
   std::string err_msg;
   auto ret = oob_func_(this, coord, &err_msg);
   if (ret)
-    return Status::DimensionError(err_msg);
+    return Status_DimensionError(err_msg);
   return Status::Ok();
 }
 
@@ -710,7 +615,7 @@ double Dimension::overlap_ratio<char>(const Range& r1, const Range& r2) {
   if (r2.unary()) {
     r2_range = 1;
   } else {
-    pref_size = utils::parse::common_prefix_size(r2_start, r2_end);
+    pref_size = stdx::string::common_prefix_size(r2_start, r2_end);
     auto r2_start_c = (r2_start.size() == pref_size) ? 0 : r2_start[pref_size];
     assert(r2_end.size() > pref_size);
     r2_range = r2_end[pref_size] - r2_start_c + 1;
@@ -1093,7 +998,7 @@ void Dimension::splitting_value<char>(
   // Find position to split
   auto start = r.start_str();
   auto end = r.end_str();
-  auto pref_size = utils::parse::common_prefix_size(start, end);
+  auto pref_size = stdx::string::common_prefix_size(start, end);
 
   // String ranges are infinitely splittable. We define a fixed
   // limit on how deep we will split a user-given range. If we
@@ -1243,73 +1148,6 @@ uint64_t Dimension::tile_num(const Range& range) const {
 }
 
 uint64_t Dimension::map_to_uint64(
-    const QueryBuffer* buff,
-    uint64_t c,
-    uint64_t coords_num,
-    int bits,
-    uint64_t max_bucket_val) const {
-  assert(map_to_uint64_func_ != nullptr);
-  return map_to_uint64_func_(this, buff, c, coords_num, bits, max_bucket_val);
-}
-
-template <class T>
-uint64_t Dimension::map_to_uint64(
-    const Dimension* dim,
-    const QueryBuffer* buff,
-    uint64_t c,
-    uint64_t coords_num,
-    int bits,
-    uint64_t max_bucket_val) {
-  assert(dim != nullptr);
-  assert(buff != nullptr);
-  assert(!dim->domain().empty());
-  (void)coords_num;  // Not used here
-  (void)bits;        // Not used here
-
-  double dom_start_T = *(const T*)dim->domain().start();
-  double dom_end_T = *(const T*)dim->domain().end();
-  auto dom_range_T = dom_end_T - dom_start_T;
-  auto norm_coord_T = ((const T*)buff->buffer_)[c] - dom_start_T;
-  return (norm_coord_T / dom_range_T) * max_bucket_val;
-}
-
-template <>
-uint64_t Dimension::map_to_uint64<char>(
-    const Dimension* dim,
-    const QueryBuffer* buff,
-    uint64_t c,
-    uint64_t coords_num,
-    int bits,
-    uint64_t max_bucket_val) {
-  assert(dim != nullptr);
-  assert(buff != nullptr);
-  assert(buff->buffer_ != nullptr);
-  assert(buff->buffer_var_ != nullptr);
-  assert(buff->buffer_var_size_ != nullptr);
-  (void)max_bucket_val;  // Not needed here
-  (void)dim;
-
-  auto offsets = (const uint64_t*)buff->buffer_;
-  auto v_str = &((const char*)(buff->buffer_var_))[offsets[c]];
-  auto v_str_size =
-      ((c == coords_num - 1) ? *(buff->buffer_var_size_) : offsets[c + 1]) -
-      offsets[c];
-
-  // The following will place up to the first 8 characters of the string
-  // in the uint64 value to be returned. For instance, "cat" will be
-  // "cat\0\0\0\0\0" inside the 8-byte uint64 value `ret`.
-  uint64_t ret = 0;
-  for (uint64_t i = 0; i < 8; ++i) {
-    ret <<= 8;  // Shift by one byte
-    if (i < v_str_size)
-      ret |= (uint64_t)v_str[i];  // Add next character (if exists)
-  }
-
-  // Shift to fits in given number of bits
-  return ret >> (64 - bits);
-}
-
-uint64_t Dimension::map_to_uint64(
     const void* coord,
     uint64_t coord_size,
     int bits,
@@ -1322,14 +1160,12 @@ template <class T>
 uint64_t Dimension::map_to_uint64_2(
     const Dimension* dim,
     const void* coord,
-    uint64_t coord_size,
-    int bits,
+    uint64_t,  // coord_size
+    int,       // bits
     uint64_t max_bucket_val) {
   assert(dim != nullptr);
   assert(coord != nullptr);
   assert(!dim->domain().empty());
-  (void)coord_size;  // Not needed here
-  (void)bits;        // Not needed here
 
   double dom_start_T = *(const T*)dim->domain().start();
   double dom_end_T = *(const T*)dim->domain().end();
@@ -1340,73 +1176,15 @@ uint64_t Dimension::map_to_uint64_2(
 
 template <>
 uint64_t Dimension::map_to_uint64_2<char>(
-    const Dimension* dim,
+    const Dimension*,
     const void* coord,
     uint64_t coord_size,
     int bits,
-    uint64_t max_bucket_val) {
-  assert(dim != nullptr);
+    uint64_t) {
   assert(coord != nullptr);
-  (void)max_bucket_val;
-  (void)dim;
 
   auto v_str = (const char*)coord;
   auto v_str_size = coord_size;
-
-  // The following will place up to the first 8 characters of the string
-  // in the uint64 value to be returned. For instance, "cat" will be
-  // "cat\0\0\0\0\0" inside the 8-byte uint64 value `ret`.
-  uint64_t ret = 0;
-  for (uint64_t i = 0; i < 8; ++i) {
-    ret <<= 8;  // Shift by one byte
-    if (i < v_str_size)
-      ret |= (uint64_t)v_str[i];  // Add next character (if exists)
-  }
-
-  // Shift to fit in given number of bits
-  return ret >> (64 - bits);
-}
-
-uint64_t Dimension::map_to_uint64(
-    const ResultCoords& coord,
-    uint32_t dim_idx,
-    int bits,
-    uint64_t max_bucket_val) const {
-  assert(map_to_uint64_3_func_ != nullptr);
-  return map_to_uint64_3_func_(this, coord, dim_idx, bits, max_bucket_val);
-}
-
-template <class T>
-uint64_t Dimension::map_to_uint64_3(
-    const Dimension* dim,
-    const ResultCoords& coord,
-    uint32_t dim_idx,
-    int bits,
-    uint64_t max_bucket_val) {
-  assert(dim != nullptr);
-  assert(!dim->domain().empty());
-  (void)bits;  // Not needed here
-
-  double dom_start_T = *(const T*)dim->domain().start();
-  double dom_end_T = *(const T*)dim->domain().end();
-  auto dom_range_T = dom_end_T - dom_start_T;
-  auto norm_coord_T = *((const T*)coord.coord(dim_idx)) - dom_start_T;
-  return (norm_coord_T / dom_range_T) * max_bucket_val;
-}
-
-template <>
-uint64_t Dimension::map_to_uint64_3<char>(
-    const Dimension* dim,
-    const ResultCoords& coord,
-    uint32_t dim_idx,
-    int bits,
-    uint64_t max_bucket_val) {
-  assert(dim != nullptr);
-  (void)max_bucket_val;  // Not needed here
-  (void)dim;
-
-  auto v_str = coord.coord_string(dim_idx);
-  auto v_str_size = v_str.size();
 
   // The following will place up to the first 8 characters of the string
   // in the uint64 value to be returned. For instance, "cat" will be
@@ -1574,7 +1352,7 @@ Status Dimension::set_domain(const void* domain) {
   if (type_ == Datatype::STRING_ASCII) {
     if (domain == nullptr)
       return Status::Ok();
-    return LOG_STATUS(Status::DimensionError(
+    return LOG_STATUS(Status_DimensionError(
         std::string("Setting the domain to a dimension with type '") +
         datatype_str(type_) + "' is not supported"));
   }
@@ -1602,15 +1380,15 @@ Status Dimension::set_domain_unsafe(const void* domain) {
 
 Status Dimension::set_filter_pipeline(const FilterPipeline* pipeline) {
   if (pipeline == nullptr)
-    return LOG_STATUS(Status::DimensionError(
+    return LOG_STATUS(Status_DimensionError(
         "Cannot set filter pipeline to dimension; Pipeline cannot be null"));
 
   for (unsigned i = 0; i < pipeline->size(); ++i) {
     if (datatype_is_real(type_) &&
         pipeline->get_filter(i)->type() == FilterType::FILTER_DOUBLE_DELTA)
       return LOG_STATUS(
-          Status::DimensionError("Cannot set DOUBLE DELTA filter to a "
-                                 "dimension with a real datatype"));
+          Status_DimensionError("Cannot set DOUBLE DELTA filter to a "
+                                "dimension with a real datatype"));
   }
 
   filters_ = *pipeline;
@@ -1622,7 +1400,7 @@ Status Dimension::set_tile_extent(const void* tile_extent) {
   if (type_ == Datatype::STRING_ASCII) {
     if (tile_extent == nullptr)
       return Status::Ok();
-    return LOG_STATUS(Status::DimensionError(
+    return LOG_STATUS(Status_DimensionError(
         std::string("Setting the tile extent to a dimension with type '") +
         datatype_str(type_) + "' is not supported"));
   }
@@ -1641,12 +1419,12 @@ Status Dimension::set_tile_extent(const ByteVecValue& tile_extent) {
   if (type_ == Datatype::STRING_ASCII) {
     if (!tile_extent)
       return Status::Ok();
-    return LOG_STATUS(Status::DimensionError(
+    return LOG_STATUS(Status_DimensionError(
         std::string("Setting the tile extent to a dimension with type '") +
         datatype_str(type_) + "' is not supported"));
   }
   if (domain_.empty())
-    return LOG_STATUS(Status::DimensionError(
+    return LOG_STATUS(Status_DimensionError(
         "Cannot set tile extent; Domain must be set first"));
 
   tile_extent_ = tile_extent;
@@ -1703,14 +1481,14 @@ Status Dimension::set_null_tile_extent_to_range() {
       return Status::Ok();  // Do nothing for strings
     default:
       return LOG_STATUS(
-          Status::DimensionError("Cannot set null tile extent to domain range; "
-                                 "Invalid dimension domain type"));
+          Status_DimensionError("Cannot set null tile extent to domain range; "
+                                "Invalid dimension domain type"));
   }
 
   assert(false);
   return LOG_STATUS(
-      Status::DimensionError("Cannot set null tile extent to domain range; "
-                             "Unsupported dimension type"));
+      Status_DimensionError("Cannot set null tile extent to domain range; "
+                            "Unsupported dimension type"));
 }
 
 template <class T>
@@ -1721,7 +1499,7 @@ Status Dimension::set_null_tile_extent_to_range() {
 
   // Check empty domain
   if (domain_.empty())
-    return LOG_STATUS(Status::DimensionError(
+    return LOG_STATUS(Status_DimensionError(
         "Cannot set tile extent to domain range; Domain not set"));
 
   // Calculate new tile extent equal to domain range
@@ -1732,7 +1510,7 @@ Status Dimension::set_null_tile_extent_to_range() {
   if (std::is_integral<T>::value) {
     if (domain[0] == std::numeric_limits<T>::min() &&
         domain[1] == std::numeric_limits<T>::max()) {
-      return LOG_STATUS(Status::DimensionError(
+      return LOG_STATUS(Status_DimensionError(
           "Cannot set null tile extent to domain range; "
           "Domain range exceeds domain type max numeric limit"));
     }
@@ -1749,18 +1527,6 @@ Status Dimension::set_null_tile_extent_to_range() {
 
   tile_extent_.assign_as<T>(tile_extent);
   return Status::Ok();
-}
-
-const ByteVecValue& Dimension::tile_extent() const {
-  return tile_extent_;
-}
-
-Datatype Dimension::type() const {
-  return type_;
-}
-
-bool Dimension::var_size() const {
-  return cell_val_num_ == constants::var_num;
 }
 
 /* ********************************* */
@@ -1813,7 +1579,7 @@ Status Dimension::check_domain() const {
     case Datatype::TIME_AS:
       return check_domain<int64_t>();
     default:
-      return LOG_STATUS(Status::DimensionError(
+      return LOG_STATUS(Status_DimensionError(
           "Domain check failed; Invalid dimension domain type"));
   }
 }
@@ -1864,7 +1630,7 @@ Status Dimension::check_tile_extent() const {
     case Datatype::TIME_AS:
       return check_tile_extent<int64_t>();
     default:
-      return LOG_STATUS(Status::DimensionError(
+      return LOG_STATUS(Status_DimensionError(
           "Tile extent check failed; Invalid dimension domain type"));
   }
 }
@@ -1873,7 +1639,7 @@ template <class T>
 Status Dimension::check_tile_extent() const {
   if (domain_.empty())
     return LOG_STATUS(
-        Status::DimensionError("Tile extent check failed; Domain not set"));
+        Status_DimensionError("Tile extent check failed; Domain not set"));
 
   if (!tile_extent_)
     return Status::Ok();
@@ -1886,25 +1652,25 @@ Status Dimension::check_tile_extent() const {
   if (!is_int) {
     // Check if tile extent is negative or 0
     if (*tile_extent <= 0)
-      return LOG_STATUS(Status::DimensionError(
+      return LOG_STATUS(Status_DimensionError(
           "Tile extent check failed; Tile extent must be greater than 0"));
 
     if (*tile_extent > (domain[1] - domain[0] + 1))
       return LOG_STATUS(
-          Status::DimensionError("Tile extent check failed; Tile extent "
-                                 "exceeds dimension domain range"));
+          Status_DimensionError("Tile extent check failed; Tile extent "
+                                "exceeds dimension domain range"));
   } else {
     // Check if tile extent is 0
     if (*tile_extent == 0)
-      return LOG_STATUS(Status::DimensionError(
+      return LOG_STATUS(Status_DimensionError(
           "Tile extent check failed; Tile extent must not be 0"));
 
     // Check if tile extent exceeds domain
     uint64_t range = (uint64_t)domain[1] - (uint64_t)domain[0] + 1;
     if (uint64_t(*tile_extent) > range)
       return LOG_STATUS(
-          Status::DimensionError("Tile extent check failed; Tile extent "
-                                 "exceeds dimension domain range"));
+          Status_DimensionError("Tile extent check failed; Tile extent "
+                                "exceeds dimension domain range"));
 
     // In the worst case one tile extent will be added to the upper domain
     // for the dense case, so check if the expanded domain will exceed type
@@ -1941,7 +1707,7 @@ Status Dimension::check_tile_extent_upper_floor_internal(
   const bool exceeds =
       upper_floor > upper_floor_max || upper_floor > extent_max;
   if (exceeds) {
-    return LOG_STATUS(Status::DimensionError(
+    return LOG_STATUS(Status_DimensionError(
         "Tile extent check failed; domain max expanded to multiple of tile "
         "extent exceeds max value representable by domain type. Reduce "
         "domain max by 1 tile extent to allow for expansion."));
@@ -3363,71 +3129,6 @@ void Dimension::set_tile_num_func() {
   }
 }
 
-void Dimension::set_map_to_uint64_func() {
-  switch (type_) {
-    case Datatype::INT32:
-      map_to_uint64_func_ = map_to_uint64<int32_t>;
-      break;
-    case Datatype::INT64:
-      map_to_uint64_func_ = map_to_uint64<int64_t>;
-      break;
-    case Datatype::INT8:
-      map_to_uint64_func_ = map_to_uint64<int8_t>;
-      break;
-    case Datatype::UINT8:
-      map_to_uint64_func_ = map_to_uint64<uint8_t>;
-      break;
-    case Datatype::INT16:
-      map_to_uint64_func_ = map_to_uint64<int16_t>;
-      break;
-    case Datatype::UINT16:
-      map_to_uint64_func_ = map_to_uint64<uint16_t>;
-      break;
-    case Datatype::UINT32:
-      map_to_uint64_func_ = map_to_uint64<uint32_t>;
-      break;
-    case Datatype::UINT64:
-      map_to_uint64_func_ = map_to_uint64<uint64_t>;
-      break;
-    case Datatype::FLOAT32:
-      map_to_uint64_func_ = map_to_uint64<float>;
-      break;
-    case Datatype::FLOAT64:
-      map_to_uint64_func_ = map_to_uint64<double>;
-      break;
-    case Datatype::DATETIME_YEAR:
-    case Datatype::DATETIME_MONTH:
-    case Datatype::DATETIME_WEEK:
-    case Datatype::DATETIME_DAY:
-    case Datatype::DATETIME_HR:
-    case Datatype::DATETIME_MIN:
-    case Datatype::DATETIME_SEC:
-    case Datatype::DATETIME_MS:
-    case Datatype::DATETIME_US:
-    case Datatype::DATETIME_NS:
-    case Datatype::DATETIME_PS:
-    case Datatype::DATETIME_FS:
-    case Datatype::DATETIME_AS:
-    case Datatype::TIME_HR:
-    case Datatype::TIME_MIN:
-    case Datatype::TIME_SEC:
-    case Datatype::TIME_MS:
-    case Datatype::TIME_US:
-    case Datatype::TIME_NS:
-    case Datatype::TIME_PS:
-    case Datatype::TIME_FS:
-    case Datatype::TIME_AS:
-      map_to_uint64_func_ = map_to_uint64<int64_t>;
-      break;
-    case Datatype::STRING_ASCII:
-      map_to_uint64_func_ = map_to_uint64<char>;
-      break;
-    default:
-      map_to_uint64_func_ = nullptr;
-      break;
-  }
-}
-
 void Dimension::set_map_to_uint64_2_func() {
   switch (type_) {
     case Datatype::INT32:
@@ -3489,71 +3190,6 @@ void Dimension::set_map_to_uint64_2_func() {
       break;
     default:
       map_to_uint64_2_func_ = nullptr;
-      break;
-  }
-}
-
-void Dimension::set_map_to_uint64_3_func() {
-  switch (type_) {
-    case Datatype::INT32:
-      map_to_uint64_3_func_ = map_to_uint64_3<int32_t>;
-      break;
-    case Datatype::INT64:
-      map_to_uint64_3_func_ = map_to_uint64_3<int64_t>;
-      break;
-    case Datatype::INT8:
-      map_to_uint64_3_func_ = map_to_uint64_3<int8_t>;
-      break;
-    case Datatype::UINT8:
-      map_to_uint64_3_func_ = map_to_uint64_3<uint8_t>;
-      break;
-    case Datatype::INT16:
-      map_to_uint64_3_func_ = map_to_uint64_3<int16_t>;
-      break;
-    case Datatype::UINT16:
-      map_to_uint64_3_func_ = map_to_uint64_3<uint16_t>;
-      break;
-    case Datatype::UINT32:
-      map_to_uint64_3_func_ = map_to_uint64_3<uint32_t>;
-      break;
-    case Datatype::UINT64:
-      map_to_uint64_3_func_ = map_to_uint64_3<uint64_t>;
-      break;
-    case Datatype::FLOAT32:
-      map_to_uint64_3_func_ = map_to_uint64_3<float>;
-      break;
-    case Datatype::FLOAT64:
-      map_to_uint64_3_func_ = map_to_uint64_3<double>;
-      break;
-    case Datatype::DATETIME_YEAR:
-    case Datatype::DATETIME_MONTH:
-    case Datatype::DATETIME_WEEK:
-    case Datatype::DATETIME_DAY:
-    case Datatype::DATETIME_HR:
-    case Datatype::DATETIME_MIN:
-    case Datatype::DATETIME_SEC:
-    case Datatype::DATETIME_MS:
-    case Datatype::DATETIME_US:
-    case Datatype::DATETIME_NS:
-    case Datatype::DATETIME_PS:
-    case Datatype::DATETIME_FS:
-    case Datatype::DATETIME_AS:
-    case Datatype::TIME_HR:
-    case Datatype::TIME_MIN:
-    case Datatype::TIME_SEC:
-    case Datatype::TIME_MS:
-    case Datatype::TIME_US:
-    case Datatype::TIME_NS:
-    case Datatype::TIME_PS:
-    case Datatype::TIME_FS:
-    case Datatype::TIME_AS:
-      map_to_uint64_3_func_ = map_to_uint64_3<int64_t>;
-      break;
-    case Datatype::STRING_ASCII:
-      map_to_uint64_3_func_ = map_to_uint64_3<char>;
-      break;
-    default:
-      map_to_uint64_3_func_ = nullptr;
       break;
   }
 }

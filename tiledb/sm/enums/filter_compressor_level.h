@@ -52,7 +52,7 @@ enum class FilterCompressorLevel : int {
 inline const std::string& filter_compressor_level_str(
     FilterCompressorLevel filter_compressor_level_) {
   switch (filter_compressor_level_) {
-    case FilterCompressorLevel::FILTER_COMPRESSOR_LEVEL_DEFAULT:
+    case FilterCompressorLevel::DEFAULT:
       return constants::filter_compressor_level_default_str;
     default:
       return constants::empty_str;
@@ -65,10 +65,9 @@ inline Status filter_compressor_level_enum(
     FilterCompressorLevel* filter_compressor_level_) {
   if (filter_compressor_level_str ==
       constants::filter_compressor_level_default_str)
-    *filter_compressor_level_ =
-        FilterCompressorLevel::FILTER_COMPRESSOR_LEVEL_DEFAULT;
+    *filter_compressor_level_ = FilterCompressorLevel::DEFAULT;
   else
-    return Status::Error(
+    return Status_Error(
         "Invalid FilterCompressorLevel " + filter_compressor_level_str);
 
   return Status::Ok();

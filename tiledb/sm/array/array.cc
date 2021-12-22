@@ -130,11 +130,11 @@ Status Array::open_without_fragments(
   std::unique_lock<std::mutex> lck(mtx_);
 
   if (is_open_)
-    return LOG_STATUS(Status::ArrayError(
+    return LOG_STATUS(Status_ArrayError(
         "Cannot open array without fragments; Array already open"));
 
   if (remote_ && encryption_type != EncryptionType::NO_ENCRYPTION)
-    return LOG_STATUS(Status::ArrayError(
+    return LOG_STATUS(Status_ArrayError(
         "Cannot open array; encrypted remote arrays are not supported."));
 
   // Copy the key bytes.
@@ -148,7 +148,7 @@ Status Array::open_without_fragments(
   if (remote_) {
     auto rest_client = storage_manager_->rest_client();
     if (rest_client == nullptr)
-      return LOG_STATUS(Status::ArrayError(
+      return LOG_STATUS(Status_ArrayError(
           "Cannot open array; remote array with no REST client."));
     RETURN_NOT_OK(rest_client->get_array_schema_from_rest(
         array_uri_, &array_schema_latest_));
@@ -203,7 +203,7 @@ Status Array::open(
 
   if (is_open_)
     return LOG_STATUS(
-        Status::ArrayError("Cannot open array; Array already open"));
+        Status_ArrayError("Cannot open array; Array already open"));
 
   std::string encryption_key_from_cfg;
   if (!encryption_key) {
@@ -238,7 +238,7 @@ Status Array::open(
   }
 
   if (remote_ && encryption_type != EncryptionType::NO_ENCRYPTION)
-    return LOG_STATUS(Status::ArrayError(
+    return LOG_STATUS(Status_ArrayError(
         "Cannot open array; encrypted remote arrays are not supported."));
 
   // Copy the key bytes.
@@ -264,7 +264,7 @@ Status Array::open(
   if (remote_) {
     auto rest_client = storage_manager_->rest_client();
     if (rest_client == nullptr)
-      return LOG_STATUS(Status::ArrayError(
+      return LOG_STATUS(Status_ArrayError(
           "Cannot open array; remote array with no REST client."));
     RETURN_NOT_OK(rest_client->get_array_schema_from_rest(
         array_uri_, &array_schema_latest_));
@@ -320,7 +320,7 @@ Status Array::close() {
       metadata_loaded_ = true;
       auto rest_client = storage_manager_->rest_client();
       if (rest_client == nullptr)
-        return LOG_STATUS(Status::ArrayError(
+        return LOG_STATUS(Status_ArrayError(
             "Error closing array; remote array with no REST client."));
       RETURN_NOT_OK(rest_client->post_array_metadata_to_rest(
           array_uri_, timestamp_start_, timestamp_end_opened_at_, this));
@@ -370,7 +370,7 @@ Status Array::get_array_schema(ArraySchema** array_schema) const {
   // Error if the array is not open
   if (!is_open_)
     return LOG_STATUS(
-        Status::ArrayError("Cannot get array schema; Array is not open"));
+        Status_ArrayError("Cannot get array schema; Array is not open"));
 
   *array_schema = array_schema_latest_;
 
@@ -383,7 +383,7 @@ Status Array::get_query_type(QueryType* query_type) const {
   // Error if the array is not open
   if (!is_open_)
     return LOG_STATUS(
-        Status::ArrayError("Cannot get query_type; Array is not open"));
+        Status_ArrayError("Cannot get query_type; Array is not open"));
 
   *query_type = query_type_;
 
@@ -396,28 +396,28 @@ Status Array::get_max_buffer_size(
   // Check if array is open
   if (!is_open_)
     return LOG_STATUS(
-        Status::ArrayError("Cannot get max buffer size; Array is not open"));
+        Status_ArrayError("Cannot get max buffer size; Array is not open"));
 
   // Error if the array was not opened in read mode
   if (query_type_ != QueryType::READ)
     return LOG_STATUS(
-        Status::ArrayError("Cannot get max buffer size; "
-                           "Array was not opened in read mode"));
+        Status_ArrayError("Cannot get max buffer size; "
+                          "Array was not opened in read mode"));
 
   // Check if name is null
   if (name == nullptr)
-    return LOG_STATUS(Status::ArrayError(
+    return LOG_STATUS(Status_ArrayError(
         "Cannot get max buffer size; Attribute/Dimension name is null"));
 
   // Not applicable to heterogeneous domains
   if (!array_schema_latest_->domain()->all_dims_same_type())
     return LOG_STATUS(
-        Status::ArrayError("Cannot get max buffer size; Function not "
-                           "applicable to heterogeneous domains"));
+        Status_ArrayError("Cannot get max buffer size; Function not "
+                          "applicable to heterogeneous domains"));
 
   // Not applicable to variable-sized dimensions
   if (!array_schema_latest_->domain()->all_dims_fixed())
-    return LOG_STATUS(Status::ArrayError(
+    return LOG_STATUS(Status_ArrayError(
         "Cannot get max buffer size; Function not "
         "applicable to domains with variable-sized dimensions"));
 
@@ -427,13 +427,13 @@ Status Array::get_max_buffer_size(
 
   // Check if attribute/dimension exists
   if (name != constants::coords && !is_dim && !is_attr)
-    return LOG_STATUS(Status::ArrayError(
+    return LOG_STATUS(Status_ArrayError(
         std::string("Cannot get max buffer size; Attribute/Dimension '") +
         name + "' does not exist"));
 
   // Check if attribute/dimension is fixed sized
   if (array_schema_latest_->var_size(name))
-    return LOG_STATUS(Status::ArrayError(
+    return LOG_STATUS(Status_ArrayError(
         std::string("Cannot get max buffer size; Attribute/Dimension '") +
         name + "' is var-sized"));
 
@@ -457,28 +457,28 @@ Status Array::get_max_buffer_size(
   // Check if array is open
   if (!is_open_)
     return LOG_STATUS(
-        Status::ArrayError("Cannot get max buffer size; Array is not open"));
+        Status_ArrayError("Cannot get max buffer size; Array is not open"));
 
   // Error if the array was not opened in read mode
   if (query_type_ != QueryType::READ)
     return LOG_STATUS(
-        Status::ArrayError("Cannot get max buffer size; "
-                           "Array was not opened in read mode"));
+        Status_ArrayError("Cannot get max buffer size; "
+                          "Array was not opened in read mode"));
 
   // Check if name is null
   if (name == nullptr)
-    return LOG_STATUS(Status::ArrayError(
+    return LOG_STATUS(Status_ArrayError(
         "Cannot get max buffer size; Attribute/Dimension name is null"));
 
   // Not applicable to heterogeneous domains
   if (!array_schema_latest_->domain()->all_dims_same_type())
     return LOG_STATUS(
-        Status::ArrayError("Cannot get max buffer size; Function not "
-                           "applicable to heterogeneous domains"));
+        Status_ArrayError("Cannot get max buffer size; Function not "
+                          "applicable to heterogeneous domains"));
 
   // Not applicable to variable-sized dimensions
   if (!array_schema_latest_->domain()->all_dims_fixed())
-    return LOG_STATUS(Status::ArrayError(
+    return LOG_STATUS(Status_ArrayError(
         "Cannot get max buffer size; Function not "
         "applicable to domains with variable-sized dimensions"));
 
@@ -487,13 +487,13 @@ Status Array::get_max_buffer_size(
   // Check if attribute/dimension exists
   auto it = last_max_buffer_sizes_.find(name);
   if (it == last_max_buffer_sizes_.end())
-    return LOG_STATUS(Status::ArrayError(
+    return LOG_STATUS(Status_ArrayError(
         std::string("Cannot get max buffer size; Attribute/Dimension '") +
         name + "' does not exist"));
 
   // Check if attribute/dimension is var-sized
   if (!array_schema_latest_->var_size(name))
-    return LOG_STATUS(Status::ArrayError(
+    return LOG_STATUS(Status_ArrayError(
         std::string("Cannot get max buffer size; Attribute/Dimension '") +
         name + "' is fixed-sized"));
 
@@ -525,12 +525,12 @@ Status Array::reopen(uint64_t timestamp_start, uint64_t timestamp_end) {
 
   if (!is_open_)
     return LOG_STATUS(
-        Status::ArrayError("Cannot reopen array; Array is not open"));
+        Status_ArrayError("Cannot reopen array; Array is not open"));
 
   if (query_type_ != QueryType::READ)
     return LOG_STATUS(
-        Status::ArrayError("Cannot reopen array; Array was "
-                           "not opened in read mode"));
+        Status_ArrayError("Cannot reopen array; Array was "
+                          "not opened in read mode"));
 
   clear_last_max_buffer_sizes();
 
@@ -617,18 +617,18 @@ Status Array::delete_metadata(const char* key) {
   // Check if array is open
   if (!is_open_)
     return LOG_STATUS(
-        Status::ArrayError("Cannot delete metadata. Array is not open"));
+        Status_ArrayError("Cannot delete metadata. Array is not open"));
 
   // Check mode
   if (query_type_ != QueryType::WRITE)
     return LOG_STATUS(
-        Status::ArrayError("Cannot delete metadata. Array was "
-                           "not opened in write mode"));
+        Status_ArrayError("Cannot delete metadata. Array was "
+                          "not opened in write mode"));
 
   // Check if key is null
   if (key == nullptr)
     return LOG_STATUS(
-        Status::ArrayError("Cannot delete metadata. Key cannot be null"));
+        Status_ArrayError("Cannot delete metadata. Key cannot be null"));
 
   RETURN_NOT_OK(metadata_.del(key));
 
@@ -643,23 +643,23 @@ Status Array::put_metadata(
   // Check if array is open
   if (!is_open_)
     return LOG_STATUS(
-        Status::ArrayError("Cannot put metadata; Array is not open"));
+        Status_ArrayError("Cannot put metadata; Array is not open"));
 
   // Check mode
   if (query_type_ != QueryType::WRITE)
     return LOG_STATUS(
-        Status::ArrayError("Cannot put metadata; Array was "
-                           "not opened in write mode"));
+        Status_ArrayError("Cannot put metadata; Array was "
+                          "not opened in write mode"));
 
   // Check if key is null
   if (key == nullptr)
     return LOG_STATUS(
-        Status::ArrayError("Cannot put metadata; Key cannot be null"));
+        Status_ArrayError("Cannot put metadata; Key cannot be null"));
 
   // Check if value type is ANY
   if (value_type == Datatype::ANY)
     return LOG_STATUS(
-        Status::ArrayError("Cannot put metadata; Value type cannot be ANY"));
+        Status_ArrayError("Cannot put metadata; Value type cannot be ANY"));
 
   RETURN_NOT_OK(metadata_.put(key, value_type, value_num, value));
 
@@ -674,18 +674,18 @@ Status Array::get_metadata(
   // Check if array is open
   if (!is_open_)
     return LOG_STATUS(
-        Status::ArrayError("Cannot get metadata; Array is not open"));
+        Status_ArrayError("Cannot get metadata; Array is not open"));
 
   // Check mode
   if (query_type_ != QueryType::READ)
     return LOG_STATUS(
-        Status::ArrayError("Cannot get metadata; Array was "
-                           "not opened in read mode"));
+        Status_ArrayError("Cannot get metadata; Array was "
+                          "not opened in read mode"));
 
   // Check if key is null
   if (key == nullptr)
     return LOG_STATUS(
-        Status::ArrayError("Cannot get metadata; Key cannot be null"));
+        Status_ArrayError("Cannot get metadata; Key cannot be null"));
 
   // Load array metadata, if not loaded yet
   if (!metadata_loaded_)
@@ -706,13 +706,13 @@ Status Array::get_metadata(
   // Check if array is open
   if (!is_open_)
     return LOG_STATUS(
-        Status::ArrayError("Cannot get metadata; Array is not open"));
+        Status_ArrayError("Cannot get metadata; Array is not open"));
 
   // Check mode
   if (query_type_ != QueryType::READ)
     return LOG_STATUS(
-        Status::ArrayError("Cannot get metadata; Array was "
-                           "not opened in read mode"));
+        Status_ArrayError("Cannot get metadata; Array was "
+                          "not opened in read mode"));
 
   // Load array metadata, if not loaded yet
   if (!metadata_loaded_)
@@ -728,13 +728,13 @@ Status Array::get_metadata_num(uint64_t* num) {
   // Check if array is open
   if (!is_open_)
     return LOG_STATUS(
-        Status::ArrayError("Cannot get number of metadata; Array is not open"));
+        Status_ArrayError("Cannot get number of metadata; Array is not open"));
 
   // Check mode
   if (query_type_ != QueryType::READ)
     return LOG_STATUS(
-        Status::ArrayError("Cannot get number of metadata; Array was "
-                           "not opened in read mode"));
+        Status_ArrayError("Cannot get number of metadata; Array was "
+                          "not opened in read mode"));
 
   // Load array metadata, if not loaded yet
   if (!metadata_loaded_)
@@ -750,18 +750,18 @@ Status Array::has_metadata_key(
   // Check if array is open
   if (!is_open_)
     return LOG_STATUS(
-        Status::ArrayError("Cannot get metadata; Array is not open"));
+        Status_ArrayError("Cannot get metadata; Array is not open"));
 
   // Check mode
   if (query_type_ != QueryType::READ)
     return LOG_STATUS(
-        Status::ArrayError("Cannot get metadata; Array was "
-                           "not opened in read mode"));
+        Status_ArrayError("Cannot get metadata; Array was "
+                          "not opened in read mode"));
 
   // Check if key is null
   if (key == nullptr)
     return LOG_STATUS(
-        Status::ArrayError("Cannot get metadata; Key cannot be null"));
+        Status_ArrayError("Cannot get metadata; Key cannot be null"));
 
   // Load array metadata, if not loaded yet
   if (!metadata_loaded_)
@@ -813,8 +813,8 @@ Status Array::compute_max_buffer_sizes(const void* subarray) {
   // Applicable only to domains where all dimensions have the same type
   if (!array_schema_latest_->domain()->all_dims_same_type())
     return LOG_STATUS(
-        Status::ArrayError("Cannot compute max buffer sizes; Inapplicable when "
-                           "dimension domains have different types"));
+        Status_ArrayError("Cannot compute max buffer sizes; Inapplicable when "
+                          "dimension domains have different types"));
 
   // Allocate space for max buffer sizes subarray
   auto dim_num = array_schema_latest_->dim_num();
@@ -857,7 +857,7 @@ Status Array::compute_max_buffer_sizes(
   if (remote_) {
     auto rest_client = storage_manager_->rest_client();
     if (rest_client == nullptr)
-      return LOG_STATUS(Status::ArrayError(
+      return LOG_STATUS(Status_ArrayError(
           "Cannot get max buffer sizes; remote array with no REST client."));
     return rest_client->get_array_max_buffer_sizes(
         array_uri_, array_schema_latest_, subarray, buffer_sizes);
@@ -935,7 +935,7 @@ Status Array::load_metadata() {
   if (remote_) {
     auto rest_client = storage_manager_->rest_client();
     if (rest_client == nullptr)
-      return LOG_STATUS(Status::ArrayError(
+      return LOG_STATUS(Status_ArrayError(
           "Cannot load metadata; remote array with no REST client."));
     RETURN_NOT_OK(rest_client->get_array_metadata_from_rest(
         array_uri_, timestamp_start_, timestamp_end_opened_at_, this));
@@ -955,7 +955,7 @@ Status Array::load_remote_non_empty_domain() {
   if (remote_) {
     auto rest_client = storage_manager_->rest_client();
     if (rest_client == nullptr)
-      return LOG_STATUS(Status::ArrayError(
+      return LOG_STATUS(Status_ArrayError(
           "Cannot load metadata; remote array with no REST client."));
     RETURN_NOT_OK(rest_client->get_array_non_empty_domain(
         this, timestamp_start_, timestamp_end_opened_at_));
@@ -987,7 +987,7 @@ Status Array::compute_non_empty_domain() {
         // If the fragment's non-empty domain is indeed empty, lets log it so
         // the user gets a message warning that this fragment might be corrupt
         // Note: LOG_STATUS only prints if TileDB is built in verbose mode.
-        LOG_STATUS(Status::ArrayError(
+        LOG_STATUS(Status_ArrayError(
             "Non empty domain unexpectedly empty for fragment: " +
             fragment_metadata_[j]->fragment_uri().to_string()));
       }

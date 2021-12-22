@@ -1,4 +1,4 @@
-name: build-macos-10.14-S3
+name: build-macos-11-S3
 on:
   push:
     branches:
@@ -10,7 +10,7 @@ on:
       - '*'  # must quote since "*" is a YAML reserved character; we want a string
 
 concurrency:
-  group: ${{ github.workflow }}
+  group: ${{ github.head_ref }}
   cancel-in-progress: true
 
 env:
@@ -26,7 +26,7 @@ jobs:
     strategy:
       matrix:
         os:
-          -  macos-10.14
+          -  macos-11
     if: ${{ startsWith(github.ref , 'refs/tags') != true && startsWith(github.ref , 'build-') != true }}
     timeout-minutes: 90
     name: Build - ${{ matrix.os }} - S3
