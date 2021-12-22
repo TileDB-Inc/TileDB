@@ -129,12 +129,20 @@ class Filter {
       const Config& config) const = 0;
 
   /**
-   * Initializes the filter resource pool if any
+   * Initializes the filter compression resource pool if any
    *
    * @param size the size of the resource pool to initiliaze
    *
    * */
-  virtual void init_resource_pool(uint64_t size);
+  virtual void init_compression_resource_pool(uint64_t size);
+
+  /**
+   * Initializes the filter decompression resource pool if any
+   *
+   * @param size the size of the resource pool to initiliaze
+   *
+   * */
+  virtual void init_decompression_resource_pool(uint64_t size);
 
   /**
    * Sets an option on this filter.
