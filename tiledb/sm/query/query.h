@@ -332,6 +332,9 @@ class Query {
   /** Retrieves the URI of the written fragment with the input index. */
   Status get_written_fragment_uri(uint32_t idx, const char** uri) const;
 
+  /** Sets the URI of the written fragment with the input index. */
+  Status set_write_fragment_uri(const char* uri);
+
   /**
    * Retrieves the timestamp range [t1,t2] of the written fragment with the
    * input index.
@@ -581,6 +584,12 @@ class Query {
    * @return Status
    */
   Status set_coords_buffer(void* buffer, uint64_t* buffer_size);
+
+  /** TODO **/
+  Status unset_buffer(const std::string& name);
+
+  /** TODO **/
+  Status set_continuation();
 
   /**
    * Sets the data for a fixed/var-sized attribute/dimension.
@@ -978,6 +987,9 @@ class Query {
 
   /* Scratch space used for REST requests. */
   tdb_shared_ptr<Buffer> rest_scratch_;
+
+  /* TODO */
+  bool continuation_ = false;
 
   /* ********************************* */
   /*           PRIVATE METHODS         */

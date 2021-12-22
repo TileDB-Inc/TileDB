@@ -121,6 +121,9 @@ class Writer : public StrategyBase, public IQueryStrategy {
   /** Finalizes the writer. */
   Status finalize();
 
+  /** Enable write continuation. */
+  void continuation();
+
   /** Writer is never in an imcomplete state. */
   bool incomplete() const {
     return false;
@@ -171,6 +174,11 @@ class Writer : public StrategyBase, public IQueryStrategy {
    */
   bool disable_check_global_order_;
 
+  /**
+   * If `true`, it will not sort coordinates or check duplicates.
+   */
+  bool continuation_;
+
   /** Keeps track of the coords data. */
   Query::CoordsInfo& coords_info_;
 
@@ -220,6 +228,12 @@ class Writer : public StrategyBase, public IQueryStrategy {
 
   /** UID of the logger instance */
   inline static std::atomic<uint64_t> logger_id_ = 0;
+
+  /** TODO */
+  std::vector<uint64_t> cell_pos_;
+  std::set<uint64_t> coord_dups_;
+  void set_fragment_uri(const std::string& uri);
+  std::shared_ptr<FragmentMetadata> frag_meta_;
 
   /* ********************************* */
   /*           PRIVATE METHODS         */

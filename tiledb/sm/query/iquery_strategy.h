@@ -55,6 +55,14 @@ class IQueryStrategy {
   /** Performs a query using its set members. */
   virtual Status dowork() = 0;
 
+  /** Enables continuation query (writes only) */
+  virtual void continuation(){};
+
+  /** TODO **/
+  virtual void set_fragment_uri(const std::string& uri) {
+    (void)uri;
+  };
+
   /** Finalizes the strategy. */
   virtual Status finalize() = 0;
 

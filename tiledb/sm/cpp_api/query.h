@@ -1000,6 +1000,21 @@ class Query {
   }
 
   /**
+   * Returns the URI of the written fragment with the input index. Applicable
+   * only to WRITE queries.
+   */
+  Query& set_fragment_uri(const std::string& uri) {
+    if (uri.empty()) {
+      throw TileDBError("Cannot set empty fragment URI");
+    }
+    auto& ctx = ctx_.get();
+    ctx.handle_error(tiledb_query_set_fragment_uri(
+        ctx.ptr().get(), query_.get(), uri.c_str()));
+
+    return *this;
+  }
+
+  /**
    * Returns the timestamp range of the written fragment with the input index.
    * Applicable only to WRITE queries.
    */
@@ -1545,6 +1560,15 @@ class Query {
       impl::type_check<T>(schema_.domain().type());
 
     return set_data_buffer(name, buff, nelements, sizeof(T));
+  }
+
+  Query& unset_buffer(const std::string& name) {
+    auto ctx = ctx_.get();
+
+    ctx.handle_error(
+        tiledb_query_unset_buffer(ctx.ptr().get(), query_.get(), name.c_str()));
+
+    return *this;
   }
 
   /**

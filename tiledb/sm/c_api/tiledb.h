@@ -3847,6 +3847,14 @@ TILEDB_EXPORT int32_t tiledb_query_set_data_buffer(
     void* buffer,
     uint64_t* buffer_size);
 
+/* TODO */
+TILEDB_EXPORT int32_t tiledb_query_unset_buffer(
+    tiledb_ctx_t* ctx, tiledb_query_t* query, const char* name);
+
+/* TODO */
+TILEDB_EXPORT int32_t
+tiledb_query_set_continuation(tiledb_ctx_t* ctx, tiledb_query_t* query);
+
 /**
  * Sets the starting offsets of each cell value in the data buffer.
  *
@@ -4921,6 +4929,31 @@ TILEDB_EXPORT int32_t tiledb_query_get_fragment_uri(
     const tiledb_query_t* query,
     uint64_t idx,
     const char** uri);
+
+/**
+ * Retrieves the URI of the written fragment with the input index. Applicable
+ * only to WRITE queries.
+ *
+ * **Example:**
+ *
+ * @code{.c}
+ * const char* uri;
+ * tiledb_query_get_fragment_uri(
+ *     ctx, query, 0, &uri);
+ * @endcode
+ *
+ * @param ctx The TileDB context
+ * @param query The query.
+ * @param idx The index of the written fragment.
+ * @param uri The URI of the written fragment to be returned.
+ * @return `TILEDB_OK` for success and `TILEDB_ERR` for error.
+ *
+ * @note Make sure to make a copy of `uri` after its retrieval, as the
+ *     constant pointer may be updated internally as new fragments
+ *     are being written.
+ */
+TILEDB_EXPORT int32_t tiledb_query_set_fragment_uri(
+    tiledb_ctx_t* ctx, const tiledb_query_t* query, const char* uri);
 
 /**
  * Retrieves the timestamp range of the written fragment with the input index.

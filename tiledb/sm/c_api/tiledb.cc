@@ -3122,6 +3122,27 @@ int32_t tiledb_query_set_data_buffer(
   return TILEDB_OK;
 }
 
+int32_t tiledb_query_unset_buffer(
+    tiledb_ctx_t* ctx,
+    tiledb_query_t* query,
+    const char* name) {  // Sanity check
+  if (sanity_check(ctx) == TILEDB_ERR || sanity_check(ctx, query) == TILEDB_ERR)
+    return TILEDB_ERR;
+
+  if (SAVE_ERROR_CATCH(ctx, query->query_->unset_buffer(name)))
+    return TILEDB_ERR;
+
+  return TILEDB_OK;
+}
+
+int32_t tiledb_query_set_continuation(
+    tiledb_ctx_t* ctx, tiledb_query_t* query) {
+  if (SAVE_ERROR_CATCH(ctx, query->query_->set_continuation()))
+    return TILEDB_ERR;
+
+  return TILEDB_OK;
+}
+
 int32_t tiledb_query_set_offsets_buffer(
     tiledb_ctx_t* ctx,
     tiledb_query_t* query,
@@ -3759,6 +3780,17 @@ int32_t tiledb_query_get_fragment_uri(
     return TILEDB_ERR;
 
   if (SAVE_ERROR_CATCH(ctx, query->query_->get_written_fragment_uri(idx, uri)))
+    return TILEDB_ERR;
+
+  return TILEDB_OK;
+}
+
+int32_t tiledb_query_set_fragment_uri(
+    tiledb_ctx_t* ctx, const tiledb_query_t* query, const char* uri) {
+  if (sanity_check(ctx) == TILEDB_ERR || sanity_check(ctx, query) == TILEDB_ERR)
+    return TILEDB_ERR;
+
+  if (SAVE_ERROR_CATCH(ctx, query->query_->set_write_fragment_uri(uri)))
     return TILEDB_ERR;
 
   return TILEDB_OK;

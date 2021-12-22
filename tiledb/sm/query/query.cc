@@ -76,7 +76,8 @@ Query::Query(StorageManager* storage_manager, Array* array, URI fragment_uri)
     , data_buffer_name_("")
     , offsets_buffer_name_("")
     , disable_check_global_order_(false)
-    , fragment_uri_(fragment_uri) {
+    , fragment_uri_(fragment_uri)
+    , continuation_(false) {
   if (array != nullptr) {
     assert(array->is_open());
     array_schema_ = array->array_schema_latest();
@@ -536,6 +537,17 @@ Status Query::get_written_fragment_uri(uint32_t idx, const char** uri) const {
         Status_QueryError("Cannot get fragment URI; Invalid fragment index"));
 
   *uri = written_fragment_info_[idx].uri_.c_str();
+
+  return Status::Ok();
+}
+
+Status Query::set_write_fragment_uri(const char* target_uri) {
+  if (type_ != QueryType::WRITE)
+    return logger_->status(Status::QueryError(
+        "Cannot set fragment URI; Applicable only to WRITE mode"));
+
+  fragment_uri_ = URI(target_uri);
+  strategy_->set_fragment_uri(target_uri);
 
   return Status::Ok();
 }
@@ -1015,6 +1027,9 @@ Status Query::create_strategy() {
         disable_check_global_order_,
         coords_info_,
         fragment_uri_));
+    if (continuation_) {
+      strategy_->continuation();
+    }
   } else {
     bool use_default = true;
     if (use_refactored_sparse_unordered_with_dups_reader() &&
@@ -1161,10 +1176,10 @@ Status Query::check_buffer_names() {
                      coord_offsets_buffer_is_set_) ?
                         array_schema_->dim_num() :
                         0;
-    if (buffers_.size() != expected_num)
-      return logger_->status(
-          Status_WriterError("Writes expect all attributes (and coordinates in "
-                             "the sparse/unordered case) to be set"));
+    // if (buffers_.size() != expected_num)
+    //  return logger_->status(Status::WriterError(
+    //      "Writes expect all attributes (and coordinates in "
+    //      "the sparse/unordered case) to be set"));
   }
 
   return Status::Ok();
@@ -1205,6 +1220,31 @@ Status Query::set_coords_buffer(void* buffer, uint64_t* buffer_size) {
   coords_info_.coords_buffer_ = buffer;
   coords_info_.coords_buffer_size_ = buffer_size;
   coords_info_.has_coords_ = true;
+
+  return Status::Ok();
+}
+
+Status Query::set_continuation() {
+  // make this a continuation write
+  continuation_ = true;
+
+  return Status::Ok();
+}
+
+Status Query::unset_buffer(const std::string& name) {
+  if (type_ != QueryType::WRITE)
+    return logger_->status(Status::QueryError(
+        std::string("Cannot unset buffer from non-write query") + name));
+
+  const bool exists = buffers_.find(name) != buffers_.end();
+  if (!exists)
+    return logger_->status(Status::QueryError(
+        std::string("Cannot unset buffer, not set: '") + name + " '"));
+
+  // remove buffer
+  buffers_.erase(name);
+
+  strategy_->continuation();
 
   return Status::Ok();
 }
@@ -1264,8 +1304,8 @@ Status Query::set_buffer(
 
   // Error if setting a new attribute/dimension after initialization
   const bool exists = buffers_.find(name) != buffers_.end();
-  if (status_ != QueryStatus::UNINITIALIZED && !exists)
-    return logger_->status(Status_QueryError(
+  if ((!continuation_ && status_ != QueryStatus::UNINITIALIZED) && !exists)
+    return logger_->status(Status::QueryError(
         std::string("Cannot set buffer for new attribute/dimension '") + name +
         "' after initialization"));
 
@@ -1347,8 +1387,8 @@ Status Query::set_data_buffer(
 
   // Error if setting a new attribute/dimension after initialization
   const bool exists = buffers_.find(name) != buffers_.end();
-  if (status_ != QueryStatus::UNINITIALIZED && !exists)
-    return logger_->status(Status_QueryError(
+  if (!continuation_ && status_ != QueryStatus::UNINITIALIZED && !exists)
+    return logger_->status(Status::QueryError(
         std::string("Cannot set buffer for new attribute/dimension '") + name +
         "' after initialization"));
 
@@ -1430,8 +1470,8 @@ Status Query::set_offsets_buffer(
 
   // Error if setting a new attribute/dimension after initialization
   bool exists = buffers_.find(name) != buffers_.end();
-  if (status_ != QueryStatus::UNINITIALIZED && !exists)
-    return logger_->status(Status_QueryError(
+  if (!continuation_ && status_ != QueryStatus::UNINITIALIZED && !exists)
+    return logger_->status(Status::QueryError(
         std::string("Cannot set buffer for new attribute/dimension '") + name +
         "' after initialization"));
 
@@ -1500,8 +1540,8 @@ Status Query::set_validity_buffer(
 
   // Error if setting a new attribute after initialization
   const bool exists = buffers_.find(name) != buffers_.end();
-  if (status_ != QueryStatus::UNINITIALIZED && !exists)
-    return logger_->status(Status_QueryError(
+  if (!continuation_ && status_ != QueryStatus::UNINITIALIZED && !exists)
+    return logger_->status(Status::QueryError(
         std::string("Cannot set buffer for new attribute '") + name +
         "' after initialization"));
 
@@ -1568,8 +1608,8 @@ Status Query::set_buffer(
 
   // Error if setting a new attribute/dimension after initialization
   const bool exists = buffers_.find(name) != buffers_.end();
-  if (status_ != QueryStatus::UNINITIALIZED && !exists)
-    return logger_->status(Status_QueryError(
+  if (!continuation_ && status_ != QueryStatus::UNINITIALIZED && !exists)
+    return logger_->status(Status::QueryError(
         std::string("Cannot set buffer for new attribute/dimension '") + name +
         "' after initialization"));
 
@@ -1688,8 +1728,8 @@ Status Query::set_buffer(
 
   // Error if setting a new attribute/dimension after initialization
   const bool exists = buffers_.find(name) != buffers_.end();
-  if (status_ != QueryStatus::UNINITIALIZED && !exists)
-    return logger_->status(Status_QueryError(
+  if (!continuation_ && status_ != QueryStatus::UNINITIALIZED && !exists)
+    return logger_->status(Status::QueryError(
         std::string("Cannot set buffer for new attribute '") + name +
         "' after initialization"));
 
@@ -1765,8 +1805,8 @@ Status Query::set_buffer(
 
   // Error if setting a new attribute after initialization
   const bool exists = buffers_.find(name) != buffers_.end();
-  if (status_ != QueryStatus::UNINITIALIZED && !exists)
-    return logger_->status(Status_QueryError(
+  if (!continuation_ && status_ != QueryStatus::UNINITIALIZED && !exists)
+    return logger_->status(Status::QueryError(
         std::string("Cannot set buffer for new attribute '") + name +
         "' after initialization"));
 

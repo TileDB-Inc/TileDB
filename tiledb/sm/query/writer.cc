@@ -110,6 +110,10 @@ Status Writer::finalize() {
   return Status::Ok();
 }
 
+void Writer::continuation() {
+  continuation_ = true;
+}
+
 bool Writer::get_check_coord_dups() const {
   return check_coord_dups_;
 }
@@ -1010,6 +1014,10 @@ Status Writer::create_fragment(
   return storage_manager_->create_dir(uri);
 }
 
+void Writer::set_fragment_uri(const std::string& uri) {
+  fragment_uri_ = URI(uri);
+}
+
 Status Writer::filter_tiles(
     std::unordered_map<std::string, std::vector<Tile>>* tiles) {
   auto timer_se = stats_->start_timer("filter_tiles");
@@ -1153,8 +1161,10 @@ Status Writer::finalize_global_write_state() {
       URI(uri.remove_trailing_slash().to_string() + constants::ok_file_suffix);
   RETURN_NOT_OK_ELSE(storage_manager_->vfs()->touch(ok_uri), clean_up(uri));
 
-  // Delete global write state
-  global_write_state_.reset(nullptr);
+  if (!continuation_) {
+    // Delete global write state
+    global_write_state_.reset(nullptr);
+  }
 
   return st;
 }
@@ -2094,8 +2104,13 @@ Status Writer::prepare_tiles(
 
   // Initialize attribute tiles
   tiles->clear();
-  for (const auto& it : buffers_)
+  for (const auto& it : buffers_) {
+    bool has_dim = false;
+    array_schema_->domain()->has_dimension(it.first, &has_dim);
+    if (continuation_ && has_dim && written_fragment_info_.size() > 0)
+      continue;
     (*tiles)[it.first] = std::vector<Tile>();
+  }
 
   // Prepare tiles for all attributes and coordinates
   auto buffer_num = buffers_.size();
@@ -2104,6 +2119,14 @@ Status Writer::prepare_tiles(
         auto buff_it = buffers_.begin();
         std::advance(buff_it, i);
         const auto& name = buff_it->first;
+
+        /*
+        bool has_dim = false;
+        array_schema_->domain()->has_dimension(name, &has_dim);
+        if (continuation_ && has_dim)
+        return Status::Ok();
+      */
+
         RETURN_CANCEL_OR_ERROR(
             prepare_tiles(name, cell_pos, coord_dups, &((*tiles)[name])));
         return Status::Ok();
@@ -2119,6 +2142,16 @@ Status Writer::prepare_tiles(
     const std::vector<uint64_t>& cell_pos,
     const std::set<uint64_t>& coord_dups,
     std::vector<Tile>* tiles) const {
+  if (name == "b") {
+    std::cout << "here" << std::endl;
+  }
+
+  bool has_dim = false;
+  array_schema_->domain()->has_dimension(name, &has_dim);
+
+  if (continuation_ && has_dim && written_fragment_info_.size() > 0)
+    return Status::Ok();
+
   return array_schema_->var_size(name) ?
              prepare_tiles_var(name, cell_pos, coord_dups, tiles) :
              prepare_tiles_fixed(name, cell_pos, coord_dups, tiles);
@@ -2379,30 +2412,35 @@ Status Writer::unordered_write() {
   assert(layout_ == Layout::UNORDERED);
   assert(!array_schema_->dense());
 
-  // Sort coordinates first
-  std::vector<uint64_t> cell_pos;
-  RETURN_CANCEL_OR_ERROR(sort_coords(&cell_pos));
+  if (written_fragment_info_.size() == 0) {
+    cell_pos_.clear();
+    coord_dups_.clear();
 
-  // Check for coordinate duplicates
-  RETURN_CANCEL_OR_ERROR(check_coord_dups(cell_pos));
+    // Sort coordinates first
+    RETURN_CANCEL_OR_ERROR(sort_coords(&cell_pos_));
 
-  // Retrieve coordinate duplicates
-  std::set<uint64_t> coord_dups;
-  if (dedup_coords_)
-    RETURN_CANCEL_OR_ERROR(compute_coord_dups(cell_pos, &coord_dups));
+    // Check for coordinate duplicates
+    RETURN_CANCEL_OR_ERROR(check_coord_dups(cell_pos_));
 
-  // Create new fragment
-  auto frag_meta = tdb::make_shared<FragmentMetadata>(HERE());
-  RETURN_CANCEL_OR_ERROR(create_fragment(false, frag_meta));
-  const auto& uri = frag_meta->fragment_uri();
+    // Retrieve coordinate duplicates
+    if (dedup_coords_)
+      RETURN_CANCEL_OR_ERROR(compute_coord_dups(cell_pos_, &coord_dups_));
+
+    // Create new fragment
+    frag_meta_ = tdb::make_shared<FragmentMetadata>(HERE());
+    RETURN_CANCEL_OR_ERROR(create_fragment(false, frag_meta_));
+  }
+  const auto& uri = frag_meta_->fragment_uri();
 
   // Prepare tiles
   std::unordered_map<std::string, std::vector<Tile>> tiles;
   RETURN_CANCEL_OR_ERROR_ELSE(
-      prepare_tiles(cell_pos, coord_dups, &tiles), clean_up(uri));
+      prepare_tiles(cell_pos_, coord_dups_, &tiles), clean_up(uri));
 
-  // Clear the boolean vector for coordinate duplicates
-  coord_dups.clear();
+  if (false) {
+    // Clear the boolean vector for coordinate duplicates
+    coord_dups_.clear();
+  }
 
   // No tiles
   if (tiles.empty() || tiles.begin()->second.empty())
@@ -2414,25 +2452,27 @@ Status Writer::unordered_write() {
       1 + (array_schema_->var_size(it->first) ? 1 : 0) +
       (array_schema_->is_nullable(it->first) ? 1 : 0);
   auto tile_num = it->second.size() / tile_num_divisor;
-  frag_meta->set_num_tiles(tile_num);
+  frag_meta_->set_num_tiles(tile_num);
 
   stats_->add_counter("tile_num", tile_num);
-  stats_->add_counter("cell_num", cell_pos.size());
+  stats_->add_counter("cell_num", cell_pos_.size());
 
-  // Compute coordinates metadata
-  RETURN_CANCEL_OR_ERROR_ELSE(
-      compute_coords_metadata(tiles, frag_meta), clean_up(uri));
+  if (written_fragment_info_.size() == 0) {
+    // Compute coordinates metadata
+    RETURN_CANCEL_OR_ERROR_ELSE(
+        compute_coords_metadata(tiles, frag_meta_), clean_up(uri));
+  }
 
   // Filter all tiles
   RETURN_CANCEL_OR_ERROR_ELSE(filter_tiles(&tiles), clean_up(uri));
 
   // Write tiles for all attributes and coordinates
   RETURN_CANCEL_OR_ERROR_ELSE(
-      write_all_tiles(frag_meta, &tiles), clean_up(uri));
+      write_all_tiles(frag_meta_, &tiles), clean_up(uri));
 
   // Write the fragment metadata
   RETURN_CANCEL_OR_ERROR_ELSE(
-      frag_meta->store(array_->get_encryption_key()), clean_up(uri));
+      frag_meta_->store(array_->get_encryption_key()), clean_up(uri));
 
   // Add written fragment info
   RETURN_NOT_OK_ELSE(add_written_fragment_info(uri), clean_up(uri));
@@ -2441,6 +2481,11 @@ Status Writer::unordered_write() {
   auto ok_uri =
       URI(uri.remove_trailing_slash().to_string() + constants::ok_file_suffix);
   RETURN_NOT_OK_ELSE(storage_manager_->vfs()->touch(ok_uri), clean_up(uri));
+
+  // for continuation queries, after the first one we must skip oob
+  if (continuation_) {
+    check_coord_oob_ = false;
+  }
 
   return Status::Ok();
 }
