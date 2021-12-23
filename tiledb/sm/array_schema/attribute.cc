@@ -188,23 +188,9 @@ std::tuple<Status, std::optional<Attribute>> Attribute::deserialize(
 void Attribute::dump(FILE* out) const {
   if (out == nullptr)
     out = stdout;
-  fprintf(out, "### Attribute ###\n");
-  fprintf(out, "- Name: %s\n", name_.c_str());
-  fprintf(out, "- Type: %s\n", datatype_str(type_).c_str());
-  fprintf(out, "- Nullable: %s\n", (nullable_ ? "true" : "false"));
-  if (!var_size())
-    fprintf(out, "- Cell val num: %u\n", cell_val_num_);
-  else
-    fprintf(out, "- Cell val num: var\n");
-  fprintf(out, "- Filters: %u", (unsigned)filters_.size());
-  filters_.dump(out);
-  fprintf(out, "\n");
-  fprintf(out, "- Fill value: %s", fill_value_str().c_str());
-  if (nullable_) {
-    fprintf(out, "\n");
-    fprintf(out, "- Fill value validity: %u", fill_value_validity_);
-  }
-  fprintf(out, "\n");
+  std::stringstream(ss);
+  dump_ss(ss);
+  fprintf(out, "%s", ss.str().c_str());
 }
 
 void Attribute::dump_ss(std::stringstream& ss) const {

@@ -331,40 +331,15 @@ void ArraySchema::dump(FILE* out) const {
   if (out == nullptr)
     out = stdout;
 
-  std::stringstream ss;
-  ss << "- Array type: " << array_type_str(array_type_) << "\n";
-  ss << "- Cell order: " << layout_str(cell_order_) << "\n";
-  ss << "- Tile order: " << layout_str(tile_order_) << "\n";
-  ss << "- Capacity: " << capacity_ << "\n";
-  ss << "- Allows duplicates: " << (allows_dups_ ? "true" : "false") << "\n";
-  ss << "- Coordinates filters: " << coords_filters_.size();
-  fprintf(out, "%s", ss.str().c_str());
-
-  coords_filters_.dump(out);
-  fprintf(
-      out,
-      "\n- Offsets filters: %u",
-      (unsigned)cell_var_offsets_filters_.size());
-  cell_var_offsets_filters_.dump(out);
-  fprintf(
-      out, "\n- Validity filters: %u", (unsigned)cell_validity_filters_.size());
-  cell_validity_filters_.dump(out);
-  fprintf(out, "\n");
-
-  if (domain_ != nullptr)
-    domain_->dump(out);
-
-  for (auto& attr : attributes_) {
-    fprintf(out, "\n");
-    attr->dump(out);
-  }
+  char* txt = nullptr;
+  dump_str(&txt);
+  fprintf(out, "%s", txt);
 }
 
 Status ArraySchema::dump_str(char** out) const {
   if (out == nullptr)
     return LOG_STATUS(Status_Error("out ptr isnull"));
 
-  //  - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - -
   std::stringstream ss;
   ss << "- Array type: " << array_type_str(array_type_) << "\n";
   ss << "- Cell order: " << layout_str(cell_order_) << "\n";
@@ -392,10 +367,8 @@ Status ArraySchema::dump_str(char** out) const {
     attr->dump_ss(ss);
   }
 
-  //  - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - -
   std::string str(ss.str());
 
-  //  - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - -
   *out = static_cast<char*>(std::malloc(str.size() + 1));
   if (*out == nullptr)
     return LOG_STATUS(Status_Error("malloc failure"));

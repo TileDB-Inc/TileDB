@@ -354,11 +354,9 @@ const Dimension* Domain::dimension(const std::string& name) const {
 void Domain::dump(FILE* out) const {
   if (out == nullptr)
     out = stdout;
-
-  for (const auto& dim : dimensions_) {
-    fprintf(out, "\n");
-    dim->dump(out);
-  }
+  std::stringstream(ss);
+  dump_ss(ss);
+  fprintf(out, "%s", ss.str().c_str());
 }
 
 void Domain::dump_ss(std::stringstream& ss) const {

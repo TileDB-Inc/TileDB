@@ -222,26 +222,11 @@ const Range& Dimension::domain() const {
 void Dimension::dump(FILE* out) const {
   if (out == nullptr)
     out = stdout;
-  // Retrieve domain and tile extent strings
-  std::string domain_s = domain_str();
-  std::string tile_extent_s = tile_extent_str();
-
-  // Dump
-  fprintf(out, "### Dimension ###\n");
-  fprintf(out, "- Name: %s\n", name_.c_str());
-  fprintf(out, "- Type: %s\n", datatype_str(type_).c_str());
-  if (!var_size())
-    fprintf(out, "- Cell val num: %u\n", cell_val_num_);
-  else
-    fprintf(out, "- Cell val num: var\n");
-  fprintf(out, "- Domain: %s\n", domain_s.c_str());
-  fprintf(out, "- Tile extent: %s\n", tile_extent_s.c_str());
-  fprintf(out, "- Filters: %u", (unsigned)filters_.size());
-  filters_.dump(out);
-  fprintf(out, "\n");
+  std::stringstream(ss);
+  dump_ss(ss);
+  fprintf(out, "%s", ss.str().c_str());
 }
 
-// TODO: dedupe with helper
 void Dimension::dump_ss(std::stringstream& ss) const {
   // Retrieve domain and tile extent strings
   std::string domain_s = domain_str();
