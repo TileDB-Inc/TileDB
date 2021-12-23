@@ -41,6 +41,7 @@
 #include "tiledb/common/thread_pool.h"
 #include "tiledb/sm/filter/filter.h"
 #include "tiledb/sm/filter/filter_buffer.h"
+#include "tiledb/sm/misc/types.h"
 #include "tiledb/sm/stats/stats.h"
 
 using namespace tiledb::common;
@@ -222,6 +223,16 @@ class FilterPipeline {
       stats::Stats* reader_stats,
       Tile* tile,
       ThreadPool* compute_tp,
+      const Config& config) const;
+
+  // TODO: add docstring
+  Status run_reverse_chunk_range(
+      stats::Stats* const reader_stats,
+      Tile* const tile,
+      const ChunkData& chunk_data,
+      const uint64_t min_chunk_index,
+      const uint64_t max_chunk_index,
+      ThreadPool* const compute_tp,
       const Config& config) const;
 
   /**

@@ -547,6 +547,9 @@ class ReaderBase : public StrategyBase {
       const std::vector<unsigned>& dim_idx,
       const std::vector<QueryBuffer*>& buffers,
       std::vector<uint64_t>& offsets) const;
+
+  Status prepare_unfiltering_buffers(
+      Tile* const tile, ChunkData* chunk_data) const;
 };
 
 }  // namespace sm
