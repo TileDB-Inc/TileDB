@@ -210,7 +210,7 @@ void Attribute::dump_ss(std::stringstream& ss) const {
     ss << "\n";
     ss << "- Fill value validity: " << fill_value_validity_;
   }
-  ss <<  "\n";
+  ss << "\n";
 }
 
 const FilterPipeline& Attribute::filters() const {
