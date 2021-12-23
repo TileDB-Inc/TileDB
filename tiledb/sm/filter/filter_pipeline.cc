@@ -518,6 +518,13 @@ void FilterPipeline::dump(FILE* out) const {
   }
 }
 
+void FilterPipeline::dump_ss(std::stringstream& ss) const {
+  for (const auto& filter : filters_) {
+    ss << "\n  > ";
+    filter->dump_ss(ss);
+  }
+}
+
 void FilterPipeline::set_max_chunk_size(uint32_t max_chunk_size) {
   max_chunk_size_ = max_chunk_size;
 }

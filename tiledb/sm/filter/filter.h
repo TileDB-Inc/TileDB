@@ -72,6 +72,7 @@ class Filter {
 
   /** Dumps the filter details in ASCII format in the selected output. */
   virtual void dump(FILE* out) const = 0;
+  virtual void dump_ss(std::stringstream& ss) const = 0;
 
   /**
    * Gets an option from this filter.

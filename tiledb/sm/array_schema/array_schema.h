@@ -183,6 +183,11 @@ class ArraySchema {
   /** Dumps the array schema in ASCII format in the selected output. */
   void dump(FILE* out) const;
 
+  /** Same as dump, but to string. Suitable for notebook contexts.
+   * @return Status
+   */
+  Status dump_str(char** out) const;
+
   /**
    * Checks if the array schema has a attribute of the given name.
    *

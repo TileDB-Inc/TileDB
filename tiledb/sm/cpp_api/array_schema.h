@@ -227,6 +227,18 @@ class ArraySchema : public Schema {
         tiledb_array_schema_dump(ctx.ptr().get(), schema_.get(), out));
   }
 
+  /**
+   * Dumps the array schema in an ASCII representation as a string.
+   *
+   * @param out Results as a string. May be passed in as `nullptr`
+   * which upon return will contain the output string.
+   */
+  void dump_str(char** out) const override {
+    auto& ctx = ctx_.get();
+    ctx.handle_error(
+        tiledb_array_schema_dump_str(ctx.ptr().get(), schema_.get(), out));
+  }
+
   /** Returns the array type. */
   tiledb_array_type_t array_type() const {
     auto& ctx = ctx_.get();

@@ -58,6 +58,10 @@ void BitshuffleFilter::dump(FILE* out) const {
   fprintf(out, "BitShuffle");
 }
 
+void BitshuffleFilter::dump_ss(std::stringstream& ss) const {
+  ss << "BitShuffle";
+}
+
 Status BitshuffleFilter::run_forward(
     const Tile& tile,
     FilterBuffer* input_metadata,

@@ -60,6 +60,10 @@ void ChecksumSHA256Filter::dump(FILE* out) const {
   fprintf(out, "ChecksumSHA256");
 }
 
+void ChecksumSHA256Filter::dump_ss(std::stringstream& ss) const {
+ ss << "ChecksumSHA256";
+}
+
 Status ChecksumSHA256Filter::run_forward(
     const Tile&,
     FilterBuffer* input_metadata,

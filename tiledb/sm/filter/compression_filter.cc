@@ -111,6 +111,37 @@ void CompressionFilter::dump(FILE* out) const {
   fprintf(out, "%s: COMPRESSION_LEVEL=%i", compressor_str.c_str(), level_);
 }
 
+// TODO: static helper
+void CompressionFilter::dump_ss(std::stringstream& ss) const {
+  switch (compressor_) {
+    case Compressor::NO_COMPRESSION:
+      ss << "NO_COMPRESSION";
+      break;
+    case Compressor::GZIP:
+      ss << "GZIP";
+      break;
+    case Compressor::ZSTD:
+      ss << "ZSTD";
+      break;
+    case Compressor::LZ4:
+      ss << "LZ4";
+      break;
+    case Compressor::RLE:
+      ss << "RLE";
+      break;
+    case Compressor::BZIP2:
+      ss << "BZIP2";
+      break;
+    case Compressor::DOUBLE_DELTA:
+      ss << "DOUBLE_DELTA";
+      break;
+    default:
+      ss << "NO_COMPRESSION";
+  }
+
+  ss << ": COMPRESSION_LEVEL=" << level_;
+}
+
 CompressionFilter* CompressionFilter::clone_impl() const {
   return tdb_new(CompressionFilter, compressor_, level_);
 }

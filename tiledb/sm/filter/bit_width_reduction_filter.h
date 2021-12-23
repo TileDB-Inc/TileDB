@@ -87,6 +87,7 @@ class BitWidthReductionFilter : public Filter {
 
   /** Dumps the filter details in ASCII format in the selected output. */
   void dump(FILE* out) const override;
+  void dump_ss(std::stringstream& ss) const override;
 
   /** Return the max window size used by the filter. */
   uint32_t max_window_size() const;

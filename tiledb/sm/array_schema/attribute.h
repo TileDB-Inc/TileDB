@@ -137,6 +137,7 @@ class Attribute {
 
   /** Dumps the attribute contents in ASCII form in the selected output. */
   void dump(FILE* out) const;
+  void dump_ss(std::stringstream& ss) const;
 
   /** Returns the filter pipeline of this attribute. */
   const FilterPipeline& filters() const;

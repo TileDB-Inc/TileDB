@@ -101,6 +101,7 @@ class CompressionFilter : public Filter {
 
   /** Dumps the filter details in ASCII format in the selected output. */
   void dump(FILE* out) const override;
+  void dump_ss(std::stringstream& ss) const override;
 
   /**
    * Compress the given input into the given output.

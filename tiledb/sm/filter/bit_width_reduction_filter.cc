@@ -92,6 +92,10 @@ void BitWidthReductionFilter::dump(FILE* out) const {
   fprintf(out, "BitWidthReduction: BIT_WIDTH_MAX_WINDOW=%u", max_window_size_);
 }
 
+void BitWidthReductionFilter::dump_ss(std::stringstream& ss) const {
+  ss << "BitWidthReduction: BIT_WIDTH_MAX_WINDOW=" << max_window_size_;
+}
+
 Status BitWidthReductionFilter::run_forward(
     const Tile& tile,
     FilterBuffer* input_metadata,

@@ -241,6 +241,27 @@ void Dimension::dump(FILE* out) const {
   fprintf(out, "\n");
 }
 
+// TODO: dedupe with helper
+void Dimension::dump_ss(std::stringstream& ss) const {
+  // Retrieve domain and tile extent strings
+  std::string domain_s = domain_str();
+  std::string tile_extent_s = tile_extent_str();
+
+  // Dump
+  ss << "### Dimension ###\n";
+  ss << "- Name: " << name_ << "\n";
+  ss << "- Type: " << datatype_str(type_) << "\n";
+  if (!var_size())
+    ss << "- Cell val num: " << cell_val_num_ << "\n";
+  else
+    ss << "- Cell val num: var\n";
+  ss << "- Domain: " << domain_s << "\n";
+  ss << "- Tile extent: " << tile_extent_s << "\n";
+  ss << "- Filters: " << (unsigned)filters_.size();
+  filters_.dump_ss(ss);
+  ss << "\n";
+}
+
 const FilterPipeline& Dimension::filters() const {
   return filters_;
 }

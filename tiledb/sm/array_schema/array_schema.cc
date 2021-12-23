@@ -360,6 +360,52 @@ void ArraySchema::dump(FILE* out) const {
   }
 }
 
+Status ArraySchema::dump_str(char** out) const {
+  if (out == nullptr)
+    return LOG_STATUS(Status_Error("out ptr isnull"));
+
+  //  - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - -
+  std::stringstream ss;
+  ss << "- Array type: " << array_type_str(array_type_) << "\n";
+  ss << "- Cell order: " << layout_str(cell_order_) << "\n";
+  ss << "- Tile order: " << layout_str(tile_order_) << "\n";
+  ss << "- Capacity: " << capacity_ << "\n";
+  ss << "- Allows duplicates: " << (allows_dups_ ? "true" : "false") << "\n";
+
+  ss << "- Coordinates filters: " << coords_filters_.size();
+  coords_filters_.dump_ss(ss);
+  ss << "\n";
+
+  ss << "- Offsets filters: " << cell_var_offsets_filters_.size();
+  cell_var_offsets_filters_.dump_ss(ss);
+  ss << "\n";
+
+  ss << "- Validity filters: " << cell_validity_filters_.size();
+  cell_validity_filters_.dump_ss(ss);
+  ss << "\n";
+
+  if (domain_ != nullptr)
+    domain_->dump_ss(ss);
+
+  for (auto& attr : attributes_) {
+    ss << "\n";
+    attr->dump_ss(ss);
+  }
+
+  //  - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - -
+  std::string str(ss.str());
+
+  //  - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - -
+  *out = static_cast<char*>(std::malloc(str.size() + 1));
+  if (*out == nullptr)
+    return LOG_STATUS(Status_Error("malloc failure"));
+
+  std::memcpy(*out, str.data(), str.size());
+  (*out)[str.size()] = '\0';
+
+  return Status::Ok();
+}
+
 Status ArraySchema::has_attribute(
     const std::string& name, bool* has_attr) const {
   *has_attr = false;

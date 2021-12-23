@@ -184,10 +184,10 @@ std::tuple<Status, std::optional<Attribute>> Attribute::deserialize(
               fill_value,
               fill_value_validity)};
 }
+
 void Attribute::dump(FILE* out) const {
   if (out == nullptr)
     out = stdout;
-  // Dump
   fprintf(out, "### Attribute ###\n");
   fprintf(out, "- Name: %s\n", name_.c_str());
   fprintf(out, "- Type: %s\n", datatype_str(type_).c_str());
@@ -205,6 +205,26 @@ void Attribute::dump(FILE* out) const {
     fprintf(out, "- Fill value validity: %u", fill_value_validity_);
   }
   fprintf(out, "\n");
+}
+
+void Attribute::dump_ss(std::stringstream& ss) const {
+  ss << "### Attribute ###\n";
+  ss << "- Name: " << name_ << "\n";
+  ss << "- Type: " << datatype_str(type_) << "\n";
+  ss << "- Nullable: " << (nullable_ ? "true" : "false") << "\n";
+  if (!var_size())
+    ss << "- Cell val num: " << cell_val_num_ << "\n";
+  else
+    ss << "- Cell val num: var\n";
+  ss << "- Filters: " << (unsigned)filters_.size();
+  filters_.dump_ss(ss);
+  ss << "\n";
+  ss << "- Fill value: " << fill_value_str();
+  if (nullable_) {
+    ss << "\n";
+    ss << "- Fill value validity: " << fill_value_validity_;
+  }
+  ss <<  "\n";
 }
 
 const FilterPipeline& Attribute::filters() const {
