@@ -39,7 +39,7 @@
 #include <utility>
 #include <vector>
 
-#include "tiledb/common/logger_public.h"
+#include "tiledb/common/observable.h"
 #include "tiledb/common/status.h"
 #include "tiledb/sm/array_schema/array_schema.h"
 #include "tiledb/sm/array_schema/dimension.h"
@@ -63,7 +63,7 @@ enum class QueryStatus : uint8_t;
 enum class QueryType : uint8_t;
 
 /** Processes a (read/write) query. */
-class Query {
+class Query : public Observable<Query> {
  public:
   /* ********************************* */
   /*          PUBLIC DATATYPES         */
@@ -917,12 +917,6 @@ class Query {
 
   /** The class stats. */
   stats::Stats* stats_;
-
-  /** The class logger. */
-  tdb_shared_ptr<Logger> logger_;
-
-  /** UID of the logger instance */
-  inline static std::atomic<uint64_t> logger_id_ = 0;
 
   /**
    * Maps attribute/dimension names to their buffers.

@@ -63,11 +63,11 @@ namespace sm {
 /* ****************************** */
 
 Query::Query(StorageManager* storage_manager, Array* array, URI fragment_uri)
-    : array_(array)
+    : Observable<Query>("Query", storage_manager->logger())
+    , array_(array)
     , layout_(Layout::ROW_MAJOR)
     , storage_manager_(storage_manager)
     , stats_(storage_manager_->stats()->create_child("Query"))
-    , logger_(storage_manager->logger()->clone("Query", ++logger_id_))
     , has_coords_buffer_(false)
     , has_zipped_coords_buffer_(false)
     , coord_buffer_is_set_(false)
@@ -85,9 +85,9 @@ Query::Query(StorageManager* storage_manager, Array* array, URI fragment_uri)
     assert(st.ok());
 
     if (type_ == QueryType::WRITE) {
-      subarray_ = Subarray(array, stats_, logger_);
+      subarray_ = Subarray(array, stats_, log_);
     } else {
-      subarray_ = Subarray(array, Layout::ROW_MAJOR, stats_, logger_);
+      subarray_ = Subarray(array, Layout::ROW_MAJOR, stats_, log_);
     }
 
     fragment_metadata_ = array->fragment_metadata();
@@ -130,19 +130,18 @@ Query::~Query() {
 Status Query::add_range(
     unsigned dim_idx, const void* start, const void* end, const void* stride) {
   if (dim_idx >= array_schema_->dim_num())
-    return logger_->status(
+    return log_->status(
         Status_QueryError("Cannot add range; Invalid dimension index"));
 
   if (start == nullptr || end == nullptr)
-    return logger_->status(
-        Status_QueryError("Cannot add range; Invalid range"));
+    return log_->status(Status_QueryError("Cannot add range; Invalid range"));
 
   if (stride != nullptr)
-    return logger_->status(Status_QueryError(
+    return log_->status(Status_QueryError(
         "Cannot add range; Setting range stride is currently unsupported"));
 
   if (array_schema_->domain()->dimension(dim_idx)->var_size())
-    return logger_->status(
+    return log_->status(
         Status_QueryError("Cannot add range; Range must be fixed-sized"));
 
   // Prepare a temp range
@@ -160,19 +159,19 @@ Status Query::add_range(
     assert(found);
 
     if (read_range_oob != "error" && read_range_oob != "warn")
-      return logger_->status(Status_QueryError(
+      return log_->status(Status_QueryError(
           "Invalid value " + read_range_oob +
           " for sm.read_range_obb. Acceptable values are 'error' or 'warn'."));
 
     read_range_oob_error = read_range_oob == "error";
   } else {
     if (!array_schema_->dense())
-      return logger_->status(
+      return log_->status(
           Status_QueryError("Adding a subarray range to a write query is not "
                             "supported in sparse arrays"));
 
     if (subarray_.is_set(dim_idx))
-      return logger_->status(
+      return log_->status(
           Status_QueryError("Cannot add range; Multi-range dense writes "
                             "are not supported"));
   }
@@ -189,20 +188,19 @@ Status Query::add_range_var(
     const void* end,
     uint64_t end_size) {
   if (dim_idx >= array_schema_->dim_num())
-    return logger_->status(
+    return log_->status(
         Status_QueryError("Cannot add range; Invalid dimension index"));
 
   if ((start == nullptr && start_size != 0) ||
       (end == nullptr && end_size != 0))
-    return logger_->status(
-        Status_QueryError("Cannot add range; Invalid range"));
+    return log_->status(Status_QueryError("Cannot add range; Invalid range"));
 
   if (!array_schema_->domain()->dimension(dim_idx)->var_size())
-    return logger_->status(
+    return log_->status(
         Status_QueryError("Cannot add range; Range must be variable-sized"));
 
   if (type_ == QueryType::WRITE)
-    return logger_->status(Status_QueryError(
+    return log_->status(Status_QueryError(
         "Cannot add range; Function applicable only to reads"));
 
   // Get read_range_oob config setting
@@ -211,7 +209,7 @@ Status Query::add_range_var(
   assert(found);
 
   if (read_range_oob != "error" && read_range_oob != "warn")
-    return logger_->status(Status_QueryError(
+    return log_->status(Status_QueryError(
         "Invalid value " + read_range_oob +
         " for sm.read_range_obb. Acceptable values are 'error' or 'warn'."));
 
@@ -223,7 +221,7 @@ Status Query::add_range_var(
 
 Status Query::get_range_num(unsigned dim_idx, uint64_t* range_num) const {
   if (type_ == QueryType::WRITE && !array_schema_->dense())
-    return logger_->status(
+    return log_->status(
         Status_QueryError("Getting the number of ranges from a write query "
                           "is not applicable to sparse arrays"));
 
@@ -237,7 +235,7 @@ Status Query::get_range(
     const void** end,
     const void** stride) const {
   if (type_ == QueryType::WRITE && !array_schema_->dense())
-    return logger_->status(
+    return log_->status(
         Status_QueryError("Getting a range from a write query is not "
                           "applicable to sparse arrays"));
 
@@ -251,7 +249,7 @@ Status Query::get_range_var_size(
     uint64_t* start_size,
     uint64_t* end_size) const {
   if (type_ == QueryType::WRITE)
-    return logger_->status(Status_QueryError(
+    return log_->status(Status_QueryError(
         "Getting a var range size from a write query is not applicable"));
 
   return subarray_.get_range_var_size(dim_idx, range_idx, start_size, end_size);
@@ -261,7 +259,7 @@ Status Query::get_range_var_size(
 Status Query::get_range_var(
     unsigned dim_idx, uint64_t range_idx, void* start, void* end) const {
   if (type_ == QueryType::WRITE)
-    return logger_->status(Status_QueryError(
+    return log_->status(Status_QueryError(
         "Getting a var range from a write query is not applicable"));
 
   uint64_t start_size = 0;
@@ -353,27 +351,27 @@ Status Query::get_range_var_from_name(
 
 Status Query::get_est_result_size(const char* name, uint64_t* size) {
   if (type_ == QueryType::WRITE)
-    return logger_->status(Status_QueryError(
+    return log_->status(Status_QueryError(
         "Cannot get estimated result size; Operation currently "
         "unsupported for write queries"));
 
   if (name == nullptr)
-    return logger_->status(Status_QueryError(
+    return log_->status(Status_QueryError(
         "Cannot get estimated result size; Name cannot be null"));
 
   if (name == constants::coords &&
       !array_schema_->domain()->all_dims_same_type())
-    return logger_->status(Status_QueryError(
+    return log_->status(Status_QueryError(
         "Cannot get estimated result size; Not applicable to zipped "
         "coordinates in arrays with heterogeneous domain"));
 
   if (name == constants::coords && !array_schema_->domain()->all_dims_fixed())
-    return logger_->status(Status_QueryError(
+    return log_->status(Status_QueryError(
         "Cannot get estimated result size; Not applicable to zipped "
         "coordinates in arrays with domains with variable-sized dimensions"));
 
   if (array_schema_->is_nullable(name))
-    return logger_->status(Status_QueryError(
+    return log_->status(Status_QueryError(
         std::string(
             "Cannot get estimated result size; Input attribute/dimension '") +
         name + "' is nullable"));
@@ -381,7 +379,7 @@ Status Query::get_est_result_size(const char* name, uint64_t* size) {
   if (array_->is_remote() && !subarray_.est_result_size_computed()) {
     auto rest_client = storage_manager_->rest_client();
     if (rest_client == nullptr)
-      return logger_->status(
+      return log_->status(
           Status_QueryError("Error in query estimate result size; remote "
                             "array with no rest client."));
 
@@ -398,12 +396,12 @@ Status Query::get_est_result_size(const char* name, uint64_t* size) {
 Status Query::get_est_result_size(
     const char* name, uint64_t* size_off, uint64_t* size_val) {
   if (type_ == QueryType::WRITE)
-    return logger_->status(Status_QueryError(
+    return log_->status(Status_QueryError(
         "Cannot get estimated result size; Operation currently "
         "unsupported for write queries"));
 
   if (array_schema_->is_nullable(name))
-    return logger_->status(Status_QueryError(
+    return log_->status(Status_QueryError(
         std::string(
             "Cannot get estimated result size; Input attribute/dimension '") +
         name + "' is nullable"));
@@ -411,7 +409,7 @@ Status Query::get_est_result_size(
   if (array_->is_remote() && !subarray_.est_result_size_computed()) {
     auto rest_client = storage_manager_->rest_client();
     if (rest_client == nullptr)
-      return logger_->status(
+      return log_->status(
           Status_QueryError("Error in query estimate result size; remote "
                             "array with no rest client."));
 
@@ -428,32 +426,32 @@ Status Query::get_est_result_size(
 Status Query::get_est_result_size_nullable(
     const char* name, uint64_t* size_val, uint64_t* size_validity) {
   if (type_ == QueryType::WRITE)
-    return logger_->status(Status_QueryError(
+    return log_->status(Status_QueryError(
         "Cannot get estimated result size; Operation currently "
         "unsupported for write queries"));
 
   if (name == nullptr)
-    return logger_->status(Status_QueryError(
+    return log_->status(Status_QueryError(
         "Cannot get estimated result size; Name cannot be null"));
 
   if (!array_schema_->attribute(name))
-    return logger_->status(Status_QueryError(
+    return log_->status(Status_QueryError(
         "Cannot get estimated result size; Nullable API is only"
         "applicable to attributes"));
 
   if (!array_schema_->is_nullable(name))
-    return logger_->status(Status_QueryError(
+    return log_->status(Status_QueryError(
         std::string("Cannot get estimated result size; Input attribute '") +
         name + "' is not nullable"));
 
   if (array_->is_remote() && !subarray_.est_result_size_computed()) {
     auto rest_client = storage_manager_->rest_client();
     if (rest_client == nullptr)
-      return logger_->status(
+      return log_->status(
           Status_QueryError("Error in query estimate result size; remote "
                             "array with no rest client."));
 
-    return logger_->status(
+    return log_->status(
         Status_QueryError("Error in query estimate result size; unimplemented "
                           "for nullable attributes in remote arrays."));
   }
@@ -468,28 +466,28 @@ Status Query::get_est_result_size_nullable(
     uint64_t* size_val,
     uint64_t* size_validity) {
   if (type_ == QueryType::WRITE)
-    return logger_->status(Status_QueryError(
+    return log_->status(Status_QueryError(
         "Cannot get estimated result size; Operation currently "
         "unsupported for write queries"));
 
   if (!array_schema_->attribute(name))
-    return logger_->status(Status_QueryError(
+    return log_->status(Status_QueryError(
         "Cannot get estimated result size; Nullable API is only"
         "applicable to attributes"));
 
   if (!array_schema_->is_nullable(name))
-    return logger_->status(Status_QueryError(
+    return log_->status(Status_QueryError(
         std::string("Cannot get estimated result size; Input attribute '") +
         name + "' is not nullable"));
 
   if (array_->is_remote() && !subarray_.est_result_size_computed()) {
     auto rest_client = storage_manager_->rest_client();
     if (rest_client == nullptr)
-      return logger_->status(
+      return log_->status(
           Status_QueryError("Error in query estimate result size; remote "
                             "array with no rest client."));
 
-    return logger_->status(
+    return log_->status(
         Status_QueryError("Error in query estimate result size; unimplemented "
                           "for nullable attributes in remote arrays."));
   }
@@ -517,7 +515,7 @@ Query::get_max_mem_size_map() {
 
 Status Query::get_written_fragment_num(uint32_t* num) const {
   if (type_ != QueryType::WRITE)
-    return logger_->status(Status_QueryError(
+    return log_->status(Status_QueryError(
         "Cannot get number of fragments; Applicable only to WRITE mode"));
 
   *num = (uint32_t)written_fragment_info_.size();
@@ -527,12 +525,12 @@ Status Query::get_written_fragment_num(uint32_t* num) const {
 
 Status Query::get_written_fragment_uri(uint32_t idx, const char** uri) const {
   if (type_ != QueryType::WRITE)
-    return logger_->status(Status_QueryError(
+    return log_->status(Status_QueryError(
         "Cannot get fragment URI; Applicable only to WRITE mode"));
 
   auto num = (uint32_t)written_fragment_info_.size();
   if (idx >= num)
-    return logger_->status(
+    return log_->status(
         Status_QueryError("Cannot get fragment URI; Invalid fragment index"));
 
   *uri = written_fragment_info_[idx].uri_.c_str();
@@ -543,12 +541,12 @@ Status Query::get_written_fragment_uri(uint32_t idx, const char** uri) const {
 Status Query::get_written_fragment_timestamp_range(
     uint32_t idx, uint64_t* t1, uint64_t* t2) const {
   if (type_ != QueryType::WRITE)
-    return logger_->status(Status_QueryError(
+    return log_->status(Status_QueryError(
         "Cannot get fragment timestamp range; Applicable only to WRITE mode"));
 
   auto num = (uint32_t)written_fragment_info_.size();
   if (idx >= num)
-    return logger_->status(Status_QueryError(
+    return log_->status(Status_QueryError(
         "Cannot get fragment timestamp range; Invalid fragment index"));
 
   *t1 = written_fragment_info_[idx].timestamp_range_.first;
@@ -611,7 +609,7 @@ Status Query::finalize() {
   if (array_->is_remote()) {
     auto rest_client = storage_manager_->rest_client();
     if (rest_client == nullptr)
-      return logger_->status(Status_QueryError(
+      return log_->status(Status_QueryError(
           "Error in query finalize; remote array with no rest client."));
 
     array_schema_->set_array_uri(array_->array_uri());
@@ -631,12 +629,12 @@ Status Query::get_buffer(
   if (name != constants::coords) {
     if (array_schema->attribute(name) == nullptr &&
         array_schema->dimension(name) == nullptr)
-      return logger_->status(Status_QueryError(
+      return log_->status(Status_QueryError(
           std::string("Cannot get buffer; Invalid attribute/dimension name '") +
           name + "'"));
   }
   if (array_schema->var_size(name))
-    return logger_->status(Status_QueryError(
+    return log_->status(Status_QueryError(
         std::string("Cannot get buffer; '") + name + "' is var-sized"));
 
   return get_data_buffer(name, buffer, buffer_size);
@@ -651,16 +649,16 @@ Status Query::get_buffer(
   // Check attribute
   auto array_schema = this->array_schema();
   if (name == constants::coords) {
-    return logger_->status(
+    return log_->status(
         Status_QueryError("Cannot get buffer; Coordinates are not var-sized"));
   }
   if (array_schema->attribute(name) == nullptr &&
       array_schema->dimension(name) == nullptr)
-    return logger_->status(Status_QueryError(
+    return log_->status(Status_QueryError(
         std::string("Cannot get buffer; Invalid attribute/dimension name '") +
         name + "'"));
   if (!array_schema->var_size(name))
-    return logger_->status(Status_QueryError(
+    return log_->status(Status_QueryError(
         std::string("Cannot get buffer; '") + name + "' is fixed-sized"));
 
   // Attribute or dimension
@@ -687,16 +685,16 @@ Status Query::get_offsets_buffer(
   // Check attribute
   auto array_schema = this->array_schema();
   if (name == constants::coords) {
-    return logger_->status(
+    return log_->status(
         Status_QueryError("Cannot get buffer; Coordinates are not var-sized"));
   }
   if (array_schema->attribute(name) == nullptr &&
       array_schema->dimension(name) == nullptr)
-    return logger_->status(Status_QueryError(
+    return log_->status(Status_QueryError(
         std::string("Cannot get buffer; Invalid attribute/dimension name '") +
         name + "'"));
   if (!array_schema->var_size(name))
-    return logger_->status(Status_QueryError(
+    return log_->status(Status_QueryError(
         std::string("Cannot get buffer; '") + name + "' is fixed-sized"));
 
   // Attribute or dimension
@@ -721,7 +719,7 @@ Status Query::get_data_buffer(
   if (name != constants::coords) {
     if (array_schema->attribute(name) == nullptr &&
         array_schema->dimension(name) == nullptr)
-      return logger_->status(Status_QueryError(
+      return log_->status(Status_QueryError(
           std::string("Cannot get buffer; Invalid attribute/dimension name '") +
           name + "'"));
   }
@@ -760,7 +758,7 @@ Status Query::get_validity_buffer(
   // Check attribute
   auto array_schema = this->array_schema();
   if (!array_schema->is_nullable(name))
-    return logger_->status(Status_QueryError(
+    return log_->status(Status_QueryError(
         std::string("Cannot get buffer; '") + name + "' is non-nullable"));
 
   // Attribute or dimension
@@ -819,14 +817,14 @@ Status Query::get_buffer(
   // Check nullable attribute
   auto array_schema = this->array_schema();
   if (array_schema->attribute(name) == nullptr)
-    return logger_->status(Status_QueryError(
+    return log_->status(Status_QueryError(
         std::string("Cannot get buffer; Invalid attribute name '") + name +
         "'"));
   if (array_schema->var_size(name))
-    return logger_->status(Status_QueryError(
+    return log_->status(Status_QueryError(
         std::string("Cannot get buffer; '") + name + "' is var-sized"));
   if (!array_schema->is_nullable(name))
-    return logger_->status(Status_QueryError(
+    return log_->status(Status_QueryError(
         std::string("Cannot get buffer; '") + name + "' is non-nullable"));
 
   // Attribute or dimension
@@ -856,14 +854,14 @@ Status Query::get_buffer(
   // Check attribute
   auto array_schema = this->array_schema();
   if (array_schema->attribute(name) == nullptr)
-    return logger_->status(Status_QueryError(
+    return log_->status(Status_QueryError(
         std::string("Cannot get buffer; Invalid attribute name '") + name +
         "'"));
   if (!array_schema->var_size(name))
-    return logger_->status(Status_QueryError(
+    return log_->status(Status_QueryError(
         std::string("Cannot get buffer; '") + name + "' is fixed-sized"));
   if (!array_schema->is_nullable(name))
-    return logger_->status(Status_QueryError(
+    return log_->status(Status_QueryError(
         std::string("Cannot get buffer; '") + name + "' is non-nullable"));
 
   // Attribute or dimension
@@ -909,7 +907,7 @@ Status Query::init() {
   if (status_ == QueryStatus::UNINITIALIZED) {
     // Check if the array got closed
     if (array_ == nullptr || !array_->is_open())
-      return logger_->status(Status_QueryError(
+      return log_->status(Status_QueryError(
           "Cannot init query; The associated array is not open"));
 
     // Check if the array got re-opened with a different query type
@@ -921,7 +919,7 @@ Status Query::init() {
              << "Associated array query type does not match query type: "
              << "(" << query_type_str(array_query_type)
              << " != " << query_type_str(type_) << ")";
-      return logger_->status(Status_QueryError(errmsg.str()));
+      return log_->status(Status_QueryError(errmsg.str()));
     }
 
     RETURN_NOT_OK(check_buffer_names());
@@ -963,7 +961,7 @@ Status Query::cancel() {
 
 Status Query::process() {
   if (status_ == QueryStatus::UNINITIALIZED)
-    return logger_->status(
+    return log_->status(
         Status_QueryError("Cannot process query; Query is not initialized"));
   status_ = QueryStatus::INPROGRESS;
 
@@ -1004,7 +1002,7 @@ Status Query::create_strategy() {
     strategy_ = tdb_unique_ptr<IQueryStrategy>(tdb_new(
         Writer,
         stats_->create_child("Writer"),
-        logger_,
+        log_,
         storage_manager_,
         array_,
         config_,
@@ -1035,7 +1033,7 @@ Status Query::create_strategy() {
         strategy_ = tdb_unique_ptr<IQueryStrategy>(tdb_new(
             SparseUnorderedWithDupsReader<uint8_t>,
             stats_->create_child("Reader"),
-            logger_,
+            log_,
             storage_manager_,
             array_,
             config_,
@@ -1047,7 +1045,7 @@ Status Query::create_strategy() {
         strategy_ = tdb_unique_ptr<IQueryStrategy>(tdb_new(
             SparseUnorderedWithDupsReader<uint64_t>,
             stats_->create_child("Reader"),
-            logger_,
+            log_,
             storage_manager_,
             array_,
             config_,
@@ -1066,7 +1064,7 @@ Status Query::create_strategy() {
       strategy_ = tdb_unique_ptr<IQueryStrategy>(tdb_new(
           SparseGlobalOrderReader,
           stats_->create_child("Reader"),
-          logger_,
+          log_,
           storage_manager_,
           array_,
           config_,
@@ -1084,7 +1082,7 @@ Status Query::create_strategy() {
         strategy_ = tdb_unique_ptr<IQueryStrategy>(tdb_new(
             DenseReader,
             stats_->create_child("Reader"),
-            logger_,
+            log_,
             storage_manager_,
             array_,
             config_,
@@ -1099,7 +1097,7 @@ Status Query::create_strategy() {
       strategy_ = tdb_unique_ptr<IQueryStrategy>(tdb_new(
           Reader,
           stats_->create_child("Reader"),
-          logger_,
+          log_,
           storage_manager_,
           array_,
           config_,
@@ -1111,7 +1109,7 @@ Status Query::create_strategy() {
   }
 
   if (strategy_ == nullptr)
-    return logger_->status(
+    return log_->status(
         Status_QueryError("Cannot create strategy; allocation failed"));
 
   return Status::Ok();
@@ -1130,11 +1128,11 @@ void Query::clear_strategy() {
 
 Status Query::disable_check_global_order() {
   if (status_ != QueryStatus::UNINITIALIZED)
-    return logger_->status(Status_QueryError(
+    return log_->status(Status_QueryError(
         "Cannot disable checking global order after initialization"));
 
   if (type_ == QueryType::READ)
-    return logger_->status(Status_QueryError(
+    return log_->status(Status_QueryError(
         "Cannot disable checking global order; Applicable only to writes"));
 
   disable_check_global_order_ = true;
@@ -1145,13 +1143,13 @@ Status Query::check_buffer_names() {
   if (type_ == QueryType::WRITE) {
     // If the array is sparse, the coordinates must be provided
     if (!array_schema_->dense() && !coords_info_.has_coords_)
-      return logger_->status(Status_WriterError(
+      return log_->status(Status_WriterError(
           "Sparse array writes expect the coordinates of the "
           "cells to be written"));
 
     // If the layout is unordered, the coordinates must be provided
     if (layout_ == Layout::UNORDERED && !coords_info_.has_coords_)
-      return logger_->status(
+      return log_->status(
           Status_WriterError("Unordered writes expect the coordinates of the "
                              "cells to be written"));
 
@@ -1162,7 +1160,7 @@ Status Query::check_buffer_names() {
                         array_schema_->dim_num() :
                         0;
     if (buffers_.size() != expected_num)
-      return logger_->status(
+      return log_->status(
           Status_WriterError("Writes expect all attributes (and coordinates in "
                              "the sparse/unordered case) to be set"));
   }
@@ -1173,12 +1171,12 @@ Status Query::check_buffer_names() {
 Status Query::check_set_fixed_buffer(const std::string& name) {
   if (name == constants::coords &&
       !array_schema_->domain()->all_dims_same_type())
-    return logger_->status(Status_QueryError(
+    return log_->status(Status_QueryError(
         "Cannot set buffer; Setting a buffer for zipped coordinates is not "
         "applicable to heterogeneous domains"));
 
   if (name == constants::coords && !array_schema_->domain()->all_dims_fixed())
-    return logger_->status(Status_QueryError(
+    return log_->status(Status_QueryError(
         "Cannot set buffer; Setting a buffer for zipped coordinates is not "
         "applicable to domains with variable-sized dimensions"));
 
@@ -1218,17 +1216,17 @@ Status Query::set_buffer(
 
   // Check buffer
   if (check_null_buffers && buffer == nullptr)
-    return logger_->status(
+    return log_->status(
         Status_QueryError("Cannot set buffer; " + name + " buffer is null"));
 
   // Check buffer size
   if (check_null_buffers && buffer_size == nullptr)
-    return logger_->status(
+    return log_->status(
         Status_QueryError("Cannot set buffer; " + name + " buffer is null"));
 
   // Array schema must exist
   if (array_schema_ == nullptr)
-    return logger_->status(
+    return log_->status(
         Status_QueryError("Cannot set buffer; Array schema not set"));
 
   // For easy reference
@@ -1237,13 +1235,13 @@ Status Query::set_buffer(
 
   // Check that attribute/dimension exists
   if (name != constants::coords && !is_dim && !is_attr)
-    return logger_->status(Status_QueryError(
+    return log_->status(Status_QueryError(
         std::string("Cannot set buffer; Invalid attribute/dimension '") + name +
         "'"));
 
   // Must not be nullable
   if (array_schema_->is_nullable(name))
-    return logger_->status(Status_QueryError(
+    return log_->status(Status_QueryError(
         std::string("Cannot set buffer; Input attribute/dimension '") + name +
         "' is nullable"));
 
@@ -1251,21 +1249,21 @@ Status Query::set_buffer(
   const bool var_size =
       (name != constants::coords && array_schema_->var_size(name));
   if (var_size)
-    return logger_->status(Status_QueryError(
+    return log_->status(Status_QueryError(
         std::string("Cannot set buffer; Input attribute/dimension '") + name +
         "' is var-sized"));
 
   // Check if zipped coordinates coexist with separate coordinate buffers
   if ((is_dim && has_zipped_coords_buffer_) ||
       (name == constants::coords && has_coords_buffer_))
-    return logger_->status(Status_QueryError(
+    return log_->status(Status_QueryError(
         std::string("Cannot set separate coordinate buffers and "
                     "a zipped coordinate buffer in the same query")));
 
   // Error if setting a new attribute/dimension after initialization
   const bool exists = buffers_.find(name) != buffers_.end();
   if (status_ != QueryStatus::UNINITIALIZED && !exists)
-    return logger_->status(Status_QueryError(
+    return log_->status(Status_QueryError(
         std::string("Cannot set buffer for new attribute/dimension '") + name +
         "' after initialization"));
 
@@ -1281,7 +1279,7 @@ Status Query::set_buffer(
     // Check number of coordinates
     uint64_t coords_num = *buffer_size / array_schema_->cell_size(name);
     if (coord_buffer_is_set_ && coords_num != coords_info_.coords_num_)
-      return logger_->status(Status_QueryError(
+      return log_->status(Status_QueryError(
           std::string("Cannot set buffer; Input buffer for dimension '") +
           name +
           "' has a different number of coordinates than previously "
@@ -1310,17 +1308,17 @@ Status Query::set_data_buffer(
   // Check buffer
   if (check_null_buffers && buffer == nullptr)
     if (type_ != QueryType::WRITE || *buffer_size != 0)
-      return logger_->status(
+      return log_->status(
           Status_QueryError("Cannot set buffer; " + name + " buffer is null"));
 
   // Check buffer size
   if (check_null_buffers && buffer_size == nullptr)
-    return logger_->status(Status_QueryError(
+    return log_->status(Status_QueryError(
         "Cannot set buffer; " + name + " buffer size is null"));
 
   // Array schema must exist
   if (array_schema_ == nullptr)
-    return logger_->status(
+    return log_->status(
         Status_QueryError("Cannot set buffer; Array schema not set"));
 
   // For easy reference
@@ -1329,26 +1327,26 @@ Status Query::set_data_buffer(
 
   // Check that attribute/dimension exists
   if (name != constants::coords && !is_dim && !is_attr)
-    return logger_->status(Status_QueryError(
+    return log_->status(Status_QueryError(
         std::string("Cannot set buffer; Invalid attribute/dimension '") + name +
         "'"));
 
   if (array_schema_->dense() && type_ == QueryType::WRITE && !is_attr) {
-    return logger_->status(Status_QueryError(
+    return log_->status(Status_QueryError(
         std::string("Dense write queries cannot set dimension buffers")));
   }
 
   // Check if zipped coordinates coexist with separate coordinate buffers
   if ((is_dim && has_zipped_coords_buffer_) ||
       (name == constants::coords && has_coords_buffer_))
-    return logger_->status(Status_QueryError(
+    return log_->status(Status_QueryError(
         std::string("Cannot set separate coordinate buffers and "
                     "a zipped coordinate buffer in the same query")));
 
   // Error if setting a new attribute/dimension after initialization
   const bool exists = buffers_.find(name) != buffers_.end();
   if (status_ != QueryStatus::UNINITIALIZED && !exists)
-    return logger_->status(Status_QueryError(
+    return log_->status(Status_QueryError(
         std::string("Cannot set buffer for new attribute/dimension '") + name +
         "' after initialization"));
 
@@ -1365,7 +1363,7 @@ Status Query::set_data_buffer(
     uint64_t coords_num = *buffer_size / array_schema_->cell_size(name);
     if (coord_data_buffer_is_set_ && coords_num != coords_info_.coords_num_ &&
         name == data_buffer_name_)
-      return logger_->status(Status_QueryError(
+      return log_->status(Status_QueryError(
           std::string("Cannot set buffer; Input buffer for dimension '") +
           name +
           "' has a different number of coordinates than previously "
@@ -1399,17 +1397,17 @@ Status Query::set_offsets_buffer(
 
   // Check buffer
   if (check_null_buffers && buffer_offsets == nullptr)
-    return logger_->status(
+    return log_->status(
         Status_QueryError("Cannot set buffer; " + name + " buffer is null"));
 
   // Check buffer size
   if (check_null_buffers && buffer_offsets_size == nullptr)
-    return logger_->status(Status_QueryError(
+    return log_->status(Status_QueryError(
         "Cannot set buffer; " + name + " buffer size is null"));
 
   // Array schema must exist
   if (array_schema_ == nullptr)
-    return logger_->status(
+    return log_->status(
         Status_QueryError("Cannot set buffer; Array schema not set"));
 
   // For easy reference
@@ -1418,20 +1416,20 @@ Status Query::set_offsets_buffer(
 
   // Neither a dimension nor an attribute
   if (!is_dim && !is_attr)
-    return logger_->status(Status_QueryError(
+    return log_->status(Status_QueryError(
         std::string("Cannot set buffer; Invalid buffer name '") + name +
         "' (it should be an attribute or dimension)"));
 
   // Error if it is fixed-sized
   if (!array_schema_->var_size(name))
-    return logger_->status(Status_QueryError(
+    return log_->status(Status_QueryError(
         std::string("Cannot set buffer; Input attribute/dimension '") + name +
         "' is fixed-sized"));
 
   // Error if setting a new attribute/dimension after initialization
   bool exists = buffers_.find(name) != buffers_.end();
   if (status_ != QueryStatus::UNINITIALIZED && !exists)
-    return logger_->status(Status_QueryError(
+    return log_->status(Status_QueryError(
         std::string("Cannot set buffer for new attribute/dimension '") + name +
         "' after initialization"));
 
@@ -1441,7 +1439,7 @@ Status Query::set_offsets_buffer(
         *buffer_offsets_size / constants::cell_var_offset_size;
     if (coord_offsets_buffer_is_set_ &&
         coords_num != coords_info_.coords_num_ && name == offsets_buffer_name_)
-      return logger_->status(Status_QueryError(
+      return log_->status(Status_QueryError(
           std::string("Cannot set buffer; Input buffer for dimension '") +
           name +
           "' has a different number of coordinates than previously "
@@ -1473,35 +1471,35 @@ Status Query::set_validity_buffer(
       buffer_validity_bytemap, buffer_validity_bytemap_size));
   // Check validity buffer
   if (check_null_buffers && validity_vector.buffer() == nullptr)
-    return logger_->status(Status_QueryError(
+    return log_->status(Status_QueryError(
         "Cannot set buffer; " + name + " validity buffer is null"));
 
   // Check validity buffer size
   if (check_null_buffers && validity_vector.buffer_size() == nullptr)
-    return logger_->status(Status_QueryError(
+    return log_->status(Status_QueryError(
         "Cannot set buffer; " + name + " validity buffer size is null"));
 
   // Array schema must exist
   if (array_schema_ == nullptr)
-    return logger_->status(
+    return log_->status(
         Status_QueryError("Cannot set buffer; Array schema not set"));
 
   // Must be an attribute
   if (!array_schema_->is_attr(name))
-    return logger_->status(Status_QueryError(
+    return log_->status(Status_QueryError(
         std::string("Cannot set buffer; Buffer name '") + name +
         "' is not an attribute"));
 
   // Must be nullable
   if (!array_schema_->is_nullable(name))
-    return logger_->status(Status_QueryError(
+    return log_->status(Status_QueryError(
         std::string("Cannot set buffer; Input attribute '") + name +
         "' is not nullable"));
 
   // Error if setting a new attribute after initialization
   const bool exists = buffers_.find(name) != buffers_.end();
   if (status_ != QueryStatus::UNINITIALIZED && !exists)
-    return logger_->status(Status_QueryError(
+    return log_->status(Status_QueryError(
         std::string("Cannot set buffer for new attribute '") + name +
         "' after initialization"));
 
@@ -1521,27 +1519,27 @@ Status Query::set_buffer(
   // Check buffer
   if (check_null_buffers && buffer_val == nullptr)
     if (type_ != QueryType::WRITE || *buffer_val_size != 0)
-      return logger_->status(
+      return log_->status(
           Status_QueryError("Cannot set buffer; " + name + " buffer is null"));
 
   // Check buffer size
   if (check_null_buffers && buffer_val_size == nullptr)
-    return logger_->status(Status_QueryError(
+    return log_->status(Status_QueryError(
         "Cannot set buffer; " + name + " buffer size is null"));
 
   // Check offset buffer
   if (check_null_buffers && buffer_off == nullptr)
-    return logger_->status(Status_QueryError(
+    return log_->status(Status_QueryError(
         "Cannot set buffer; " + name + " offset buffer is null"));
 
   // Check offset buffer size
   if (check_null_buffers && buffer_off_size == nullptr)
-    return logger_->status(Status_QueryError(
+    return log_->status(Status_QueryError(
         "Cannot set buffer; " + name + " offset buffer size is null"));
 
   // Array schema must exist
   if (array_schema_ == nullptr)
-    return logger_->status(
+    return log_->status(
         Status_QueryError("Cannot set buffer; Array schema not set"));
 
   // For easy reference
@@ -1550,26 +1548,26 @@ Status Query::set_buffer(
 
   // Check that attribute/dimension exists
   if (!is_dim && !is_attr)
-    return logger_->status(Status_QueryError(
+    return log_->status(Status_QueryError(
         std::string("Cannot set buffer; Invalid attribute/dimension '") + name +
         "'"));
 
   // Must not be nullable
   if (array_schema_->is_nullable(name))
-    return logger_->status(Status_QueryError(
+    return log_->status(Status_QueryError(
         std::string("Cannot set buffer; Input attribute/dimension '") + name +
         "' is nullable"));
 
   // Check that attribute/dimension is var-sized
   if (!array_schema_->var_size(name))
-    return logger_->status(Status_QueryError(
+    return log_->status(Status_QueryError(
         std::string("Cannot set buffer; Input attribute/dimension '") + name +
         "' is fixed-sized"));
 
   // Error if setting a new attribute/dimension after initialization
   const bool exists = buffers_.find(name) != buffers_.end();
   if (status_ != QueryStatus::UNINITIALIZED && !exists)
-    return logger_->status(Status_QueryError(
+    return log_->status(Status_QueryError(
         std::string("Cannot set buffer for new attribute/dimension '") + name +
         "' after initialization"));
 
@@ -1577,7 +1575,7 @@ Status Query::set_buffer(
     // Check number of coordinates
     uint64_t coords_num = *buffer_off_size / constants::cell_var_offset_size;
     if (coord_buffer_is_set_ && coords_num != coords_info_.coords_num_)
-      return logger_->status(Status_QueryError(
+      return log_->status(Status_QueryError(
           std::string("Cannot set buffer; Input buffer for dimension '") +
           name +
           "' has a different number of coordinates than previously "
@@ -1645,51 +1643,51 @@ Status Query::set_buffer(
 
   // Check buffer
   if (check_null_buffers && buffer == nullptr)
-    return logger_->status(
+    return log_->status(
         Status_QueryError("Cannot set buffer; " + name + " buffer is null"));
 
   // Check buffer size
   if (check_null_buffers && buffer_size == nullptr)
-    return logger_->status(Status_QueryError(
+    return log_->status(Status_QueryError(
         "Cannot set buffer; " + name + " buffer size is null"));
 
   // Check validity buffer offset
   if (check_null_buffers && validity_vector.buffer() == nullptr)
-    return logger_->status(Status_QueryError(
+    return log_->status(Status_QueryError(
         "Cannot set buffer; " + name + " validity buffer is null"));
 
   // Check validity buffer size
   if (check_null_buffers && validity_vector.buffer_size() == nullptr)
-    return logger_->status(Status_QueryError(
+    return log_->status(Status_QueryError(
         "Cannot set buffer; " + name + " validity buffer size is null"));
 
   // Array schema must exist
   if (array_schema_ == nullptr)
-    return logger_->status(
+    return log_->status(
         Status_QueryError("Cannot set buffer; Array schema not set"));
 
   // Must be an attribute
   if (!array_schema_->is_attr(name))
-    return logger_->status(Status_QueryError(
+    return log_->status(Status_QueryError(
         std::string("Cannot set buffer; Buffer name '") + name +
         "' is not an attribute"));
 
   // Must be fixed-size
   if (array_schema_->var_size(name))
-    return logger_->status(Status_QueryError(
+    return log_->status(Status_QueryError(
         std::string("Cannot set buffer; Input attribute '") + name +
         "' is var-sized"));
 
   // Must be nullable
   if (!array_schema_->is_nullable(name))
-    return logger_->status(Status_QueryError(
+    return log_->status(Status_QueryError(
         std::string("Cannot set buffer; Input attribute '") + name +
         "' is not nullable"));
 
   // Error if setting a new attribute/dimension after initialization
   const bool exists = buffers_.find(name) != buffers_.end();
   if (status_ != QueryStatus::UNINITIALIZED && !exists)
-    return logger_->status(Status_QueryError(
+    return log_->status(Status_QueryError(
         std::string("Cannot set buffer for new attribute '") + name +
         "' after initialization"));
 
@@ -1711,62 +1709,62 @@ Status Query::set_buffer(
   // Check buffer
   if (check_null_buffers && buffer_val == nullptr)
     if (type_ != QueryType::WRITE || *buffer_val_size != 0)
-      return logger_->status(
+      return log_->status(
           Status_QueryError("Cannot set buffer; " + name + " buffer is null"));
 
   // Check buffer size
   if (check_null_buffers && buffer_val_size == nullptr)
-    return logger_->status(Status_QueryError(
+    return log_->status(Status_QueryError(
         "Cannot set buffer; " + name + " buffer size is null"));
 
   // Check buffer offset
   if (check_null_buffers && buffer_off == nullptr)
-    return logger_->status(Status_QueryError(
+    return log_->status(Status_QueryError(
         "Cannot set buffer; " + name + " offset buffer is null"));
 
   // Check buffer offset size
   if (check_null_buffers && buffer_off_size == nullptr)
-    return logger_->status(Status_QueryError(
+    return log_->status(Status_QueryError(
         "Cannot set buffer; " + name + " offset buffer size is null"));
   ;
 
   // Check validity buffer offset
   if (check_null_buffers && validity_vector.buffer() == nullptr)
-    return logger_->status(Status_QueryError(
+    return log_->status(Status_QueryError(
         "Cannot set buffer; " + name + " validity buffer is null"));
 
   // Check validity buffer size
   if (check_null_buffers && validity_vector.buffer_size() == nullptr)
-    return logger_->status(Status_QueryError(
+    return log_->status(Status_QueryError(
         "Cannot set buffer; " + name + " validity buffer size is null"));
 
   // Array schema must exist
   if (array_schema_ == nullptr)
-    return logger_->status(
+    return log_->status(
         Status_QueryError("Cannot set buffer; Array schema not set"));
 
   // Must be an attribute
   if (!array_schema_->is_attr(name))
-    return logger_->status(Status_QueryError(
+    return log_->status(Status_QueryError(
         std::string("Cannot set buffer; Buffer name '") + name +
         "' is not an attribute"));
 
   // Must be var-size
   if (!array_schema_->var_size(name))
-    return logger_->status(Status_QueryError(
+    return log_->status(Status_QueryError(
         std::string("Cannot set buffer; Input attribute '") + name +
         "' is fixed-sized"));
 
   // Must be nullable
   if (!array_schema_->is_nullable(name))
-    return logger_->status(Status_QueryError(
+    return log_->status(Status_QueryError(
         std::string("Cannot set buffer; Input attribute '") + name +
         "' is not nullable"));
 
   // Error if setting a new attribute after initialization
   const bool exists = buffers_.find(name) != buffers_.end();
   if (status_ != QueryStatus::UNINITIALIZED && !exists)
-    return logger_->status(Status_QueryError(
+    return log_->status(Status_QueryError(
         std::string("Cannot set buffer for new attribute '") + name +
         "' after initialization"));
 
@@ -1782,7 +1780,7 @@ Status Query::set_est_result_size(
     std::unordered_map<std::string, Subarray::ResultSize>& est_result_size,
     std::unordered_map<std::string, Subarray::MemorySize>& max_mem_size) {
   if (type_ == QueryType::WRITE)
-    return logger_->status(Status_QueryError(
+    return log_->status(Status_QueryError(
         "Cannot set estimated result size; Operation currently "
         "unsupported for write queries"));
   return subarray_.set_est_result_size(est_result_size, max_mem_size);
@@ -1796,16 +1794,16 @@ Status Query::set_layout_unsafe(Layout layout) {
 
 Status Query::set_layout(Layout layout) {
   if (type_ == QueryType::READ && status_ != QueryStatus::UNINITIALIZED)
-    return logger_->status(
+    return log_->status(
         Status_QueryError("Cannot set layout after initialization"));
 
   if (layout == Layout::HILBERT)
-    return logger_->status(Status_QueryError(
+    return log_->status(Status_QueryError(
         "Cannot set layout; Hilbert order is not applicable to queries"));
 
   if (type_ == QueryType::WRITE && array_schema_->dense() &&
       layout == Layout::UNORDERED) {
-    return logger_->status(Status_QueryError(
+    return log_->status(Status_QueryError(
         "Unordered writes are only possible for sparse arrays"));
   }
 
@@ -1816,7 +1814,7 @@ Status Query::set_layout(Layout layout) {
 
 Status Query::set_condition(const QueryCondition& condition) {
   if (type_ == QueryType::WRITE)
-    return logger_->status(Status_QueryError(
+    return log_->status(Status_QueryError(
         "Cannot set query condition; Operation only applicable "
         "to read queries"));
 
@@ -1830,17 +1828,17 @@ void Query::set_status(QueryStatus status) {
 
 Status Query::set_subarray(const void* subarray) {
   if (!array_schema_->domain()->all_dims_same_type())
-    return logger_->status(
+    return log_->status(
         Status_QueryError("Cannot set subarray; Function not applicable to "
                           "heterogeneous domains"));
 
   if (!array_schema_->domain()->all_dims_fixed())
-    return logger_->status(
+    return log_->status(
         Status_QueryError("Cannot set subarray; Function not applicable to "
                           "domains with variable-sized dimensions"));
 
   // Prepare a subarray object
-  Subarray sub(array_, layout_, stats_, logger_);
+  Subarray sub(array_, layout_, stats_, log_);
   if (subarray != nullptr) {
     auto dim_num = array_schema_->dim_num();
     auto s_ptr = (const unsigned char*)subarray;
@@ -1854,7 +1852,7 @@ Status Query::set_subarray(const void* subarray) {
           config()->get("sm.read_range_oob", &found);
       assert(found);
       if (read_range_oob_str != "error" && read_range_oob_str != "warn")
-        return logger_->status(Status_QueryError(
+        return log_->status(Status_QueryError(
             "Invalid value " + read_range_oob_str +
             " for sm.read_range_obb. Acceptable values are 'error' or "
             "'warn'."));
@@ -1872,12 +1870,12 @@ Status Query::set_subarray(const void* subarray) {
   if (type_ == QueryType::WRITE) {
     // Not applicable to sparse arrays
     if (!array_schema_->dense())
-      return logger_->status(Status_WriterError(
+      return log_->status(Status_WriterError(
           "Setting a subarray is not supported in sparse writes"));
 
     // Subarray must be unary for dense writes
     if (sub.range_num() != 1)
-      return logger_->status(
+      return log_->status(
           Status_WriterError("Cannot set subarray; Multi-range dense writes "
                              "are not supported"));
     if (strategy_ != nullptr)
@@ -1927,7 +1925,7 @@ Status Query::set_subarray(const tiledb::sm::Subarray& subarray) {
 
 Status Query::set_subarray_unsafe(const NDRange& subarray) {
   // Prepare a subarray object
-  Subarray sub(array_, layout_, stats_, logger_);
+  Subarray sub(array_, layout_, stats_, log_);
   if (!subarray.empty()) {
     auto dim_num = array_schema_->dim_num();
     for (unsigned d = 0; d < dim_num; ++d)
@@ -1949,28 +1947,28 @@ Status Query::check_buffers_correctness() {
       // Check for data buffer under buffer_var and offsets buffer under buffer
       if (type_ == QueryType::READ) {
         if (buffer(attr).buffer_var_ == nullptr) {
-          return logger_->status(Status_QueryError(
+          return log_->status(Status_QueryError(
               std::string("Var-Sized input attribute/dimension '") + attr +
               "' is not set correctly. \nVar size buffer is not set."));
         }
       } else {
         if (buffer(attr).buffer_var_ == nullptr &&
             *buffer(attr).buffer_var_size_ != 0) {
-          return logger_->status(Status_QueryError(
+          return log_->status(Status_QueryError(
               std::string("Var-Sized input attribute/dimension '") + attr +
               "' is not set correctly. \nVar size buffer is not set and buffer "
               "size if not 0."));
         }
       }
       if (buffer(attr).buffer_ == nullptr) {
-        return logger_->status(Status_QueryError(
+        return log_->status(Status_QueryError(
             std::string("Var-Sized input attribute/dimension '") + attr +
             "' is not set correctly. \nOffsets buffer is not set."));
       }
     } else {
       // Fixed sized
       if (buffer(attr).buffer_ == nullptr) {
-        return logger_->status(Status_QueryError(
+        return log_->status(Status_QueryError(
             std::string("Fix-Sized input attribute/dimension '") + attr +
             "' is not set correctly. \nData buffer is not set."));
       }
@@ -1978,7 +1976,7 @@ Status Query::check_buffers_correctness() {
     if (array_schema_->is_nullable(attr)) {
       bool exists_validity = buffer(attr).validity_vector_.buffer() != nullptr;
       if (!exists_validity) {
-        return logger_->status(Status_QueryError(
+        return log_->status(Status_QueryError(
             std::string("Nullable input attribute/dimension '") + attr +
             "' is not set correctly \nValidity buffer is not set"));
       }
@@ -1999,7 +1997,7 @@ Status Query::submit() {
   if (array_->is_remote()) {
     auto rest_client = storage_manager_->rest_client();
     if (rest_client == nullptr)
-      return logger_->status(Status_QueryError(
+      return log_->status(Status_QueryError(
           "Error in query submission; remote array with no rest client."));
 
     array_schema_->set_array_uri(array_->array_uri());
@@ -2020,7 +2018,7 @@ Status Query::submit_async(
   }
   RETURN_NOT_OK(init());
   if (array_->is_remote())
-    return logger_->status(
+    return log_->status(
         Status_QueryError("Error in async query submission; async queries not "
                           "supported for remote arrays."));
 
@@ -2058,7 +2056,7 @@ bool Query::use_refactored_dense_reader() {
   // If the legacy/deprecated option is set use it over the new parameters
   // This facilitates backwards compatibility
   if (found) {
-    logger_->warn(
+    log_->warn(
         "sm.use_refactored_readers config option is deprecated.\nPlease use "
         "'sm.query.dense.reader' with value of 'refactored' or 'legacy'");
     return use_refactored_readers;
@@ -2079,7 +2077,7 @@ bool Query::use_refactored_sparse_global_order_reader() {
   // If the legacy/deprecated option is set use it over the new parameters
   // This facilitates backwards compatibility
   if (found) {
-    logger_->warn(
+    log_->warn(
         "sm.use_refactored_readers config option is deprecated.\nPlease use "
         "'sm.query.sparse_global_order.reader' with value of 'refactored' or "
         "'legacy'");
@@ -2103,7 +2101,7 @@ bool Query::use_refactored_sparse_unordered_with_dups_reader() {
   // If the legacy/deprecated option is set use it over the new parameters
   // This facilitates backwards compatibility
   if (found) {
-    logger_->warn(
+    log_->warn(
         "sm.use_refactored_readers config option is deprecated.\nPlease use "
         "'sm.query.sparse_unordered_with_dups.reader' with value of "
         "'refactored' or 'legacy'");

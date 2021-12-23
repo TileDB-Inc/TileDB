@@ -33,6 +33,7 @@
 #ifndef TILEDB_CONTEXT_H
 #define TILEDB_CONTEXT_H
 
+#include "tiledb/common/observable.h"
 #include "tiledb/common/status.h"
 #include "tiledb/sm/stats/global_stats.h"
 #include "tiledb/sm/storage_manager/storage_manager.h"
@@ -48,7 +49,7 @@ namespace sm {
  * This class manages the context for the C API, wrapping a
  * storage manager object.
  * */
-class Context {
+class Context : public Observable<Context> {
  public:
   /* ********************************* */
   /*     CONSTRUCTORS & DESTRUCTORS    */
@@ -107,11 +108,6 @@ class Context {
 
   /** The class stats. */
   tdb_shared_ptr<stats::Stats> stats_;
-
-  /** The class logger. */
-  tdb_shared_ptr<Logger> logger_;
-
-  inline static std::atomic<uint64_t> logger_id_ = 0;
 
   /* ********************************* */
   /*         PRIVATE METHODS           */
