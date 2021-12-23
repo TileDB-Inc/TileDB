@@ -354,7 +354,7 @@ const Dimension* Domain::dimension(const std::string& name) const {
 void Domain::dump(FILE* out) const {
   if (out == nullptr)
     out = stdout;
-  std::stringstream(ss);
+  std::stringstream ss;
   dump_ss(ss);
   fprintf(out, "%s", ss.str().c_str());
 }
