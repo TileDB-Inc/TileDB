@@ -2033,6 +2033,10 @@ QueryStatus Query::status() const {
   return status_;
 }
 
+QueryStatusDetailsReason Query::status_details_reason() const {
+  return QueryStatusDetailsReason::REASON_NONE;  // TODO
+}
+
 QueryType Query::type() const {
   return type_;
 }
