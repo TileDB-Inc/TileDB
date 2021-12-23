@@ -76,8 +76,8 @@ class Add1InPlace : public tiledb::sm::Filter {
   void dump(FILE* out) const override {
     (void)out;
   }
-  void dump_str(char** out) const override {
-    (void)out;
+  void dump_ss(std::stringstream& ss) const override {
+    (void)ss;
   }
 
   Status run_forward(
@@ -148,8 +148,8 @@ class Add1OutOfPlace : public tiledb::sm::Filter {
   void dump(FILE* out) const override {
     (void)out;
   }
-  void dump_str(char** out) const override {
-    (void)out;
+  void dump_ss(std::stringstream& ss) const override {
+    (void)ss;
   }
 
   Status run_forward(
@@ -242,8 +242,8 @@ class AddNInPlace : public tiledb::sm::Filter {
   void dump(FILE* out) const override {
     (void)out;
   }
-  void dump_str(char** out) const override {
-    (void)out;
+  void dump_ss(std::stringstream& ss) const override {
+    (void)ss;
   }
 
   Status run_forward(
@@ -326,8 +326,8 @@ class PseudoChecksumFilter : public tiledb::sm::Filter {
   void dump(FILE* out) const override {
     (void)out;
   }
-  void dump_str(char** out) const override {
-    (void)out;
+  void dump_ss(std::stringstream& ss) const override {
+    (void)ss;
   }
 
   Status run_forward(
@@ -418,8 +418,8 @@ class Add1IncludingMetadataFilter : public tiledb::sm::Filter {
   void dump(FILE* out) const override {
     (void)out;
   }
-  void dump_str(char** out) const override {
-    (void)out;
+  void dump_ss(std::stringstream& ss) const override {
+    (void)ss;
   }
 
   Status run_forward(
