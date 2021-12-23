@@ -369,7 +369,7 @@ Status ArraySchema::dump_str(char** out) const {
 
   std::string str(ss.str());
 
-  *out = static_cast<char*>(std::malloc(str.size() + 1));
+  *out = static_cast<char*>(tdb_malloc(str.size() + 1));
   if (*out == nullptr)
     return LOG_STATUS(Status_Error("malloc failure"));
 
