@@ -2034,7 +2034,10 @@ QueryStatus Query::status() const {
 }
 
 QueryStatusDetailsReason Query::status_details_reason() const {
-  return QueryStatusDetailsReason::REASON_NONE;  // TODO
+  if (strategy_ != nullptr)
+    return strategy_->status_details_reason();
+
+  return QueryStatusDetailsReason::REASON_NONE;
 }
 
 QueryType Query::type() const {
