@@ -186,7 +186,7 @@ bool URI::is_tiledb() const {
 Status URI::get_rest_components(
     std::string* array_namespace, std::string* array_uri) const {
   const std::string prefix = "tiledb://";
-  const auto error_st = Status::RestError(
+  const auto error_st = Status_RestError(
       "Invalid array URI for REST service; expected format is "
       "'tiledb://<namespace>/<array-name>' or "
       "'tiledb://<namespace>/<array-uri>'.");

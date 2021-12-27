@@ -275,7 +275,7 @@ Status CellSlabIter<T>::sanity_check() const {
   // Check layout
   auto layout = subarray_->layout();
   if (layout != Layout::ROW_MAJOR && layout != Layout::COL_MAJOR)
-    return LOG_STATUS(Status::CellSlabIterError(
+    return LOG_STATUS(Status_CellSlabIterError(
         "Unsupported subarray layout; the iterator supports only row-major and "
         "column-major layouts"));
 
@@ -338,7 +338,7 @@ Status CellSlabIter<T>::sanity_check() const {
   }
 
   if (error)
-    return LOG_STATUS(Status::CellSlabIterError(
+    return LOG_STATUS(Status_CellSlabIterError(
         "Datatype mismatch between cell slab iterator and subarray"));
 
   return Status::Ok();

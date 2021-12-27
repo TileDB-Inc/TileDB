@@ -38,31 +38,14 @@ using namespace tiledb::common;
 TEST_CASE("Status: Test ok", "[status]") {
   Status st = Status::Ok();
   CHECK(st.ok());
-  st = Status::Error("err msg");
+  st = Status_Error("err msg");
   CHECK(!st.ok());
-}
-
-TEST_CASE("Status: Test code and message", "[status]") {
-  Status ok = Status::Ok();
-  CHECK(StatusCode::Ok == ok.code());
-
-  Status err = Status::Error("err msg");
-  CHECK(StatusCode::Error == err.code());
-  CHECK_THAT(err.message(), Catch::Equals("err msg"));
 }
 
 TEST_CASE("Status: Test to_string", "[status]") {
   Status ok = Status::Ok();
   CHECK_THAT(ok.to_string(), Catch::Equals("Ok"));
 
-  Status err = Status::Error("err msg");
+  Status err = Status_Error("err msg");
   CHECK_THAT(err.to_string(), Catch::Equals("Error: err msg"));
-}
-
-TEST_CASE("Status: Test code_to_string", "[status]") {
-  Status ok = Status::Ok();
-  CHECK_THAT(ok.code_to_string(), Catch::Equals("Ok"));
-
-  Status err = Status::Error("err message");
-  CHECK_THAT(err.code_to_string(), Catch::Equals("Error"));
 }

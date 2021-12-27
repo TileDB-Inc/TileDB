@@ -149,7 +149,7 @@ struct ArraySchema {
   class Pipeline;
 
   struct _capnpPrivate {
-    CAPNP_DECLARE_STRUCT_HEADER(d71de32f98e296fe, 2, 10)
+    CAPNP_DECLARE_STRUCT_HEADER(d71de32f98e296fe, 2, 11)
 #if !CAPNP_LITE
     static constexpr ::capnp::_::RawBrandedSchema const* brand() {
       return &schema->defaultBrand;
@@ -1629,6 +1629,9 @@ class ArraySchema::Reader {
   inline ::tiledb::sm::serialization::capnp::FilterPipeline::Reader
   getValidityFilterPipeline() const;
 
+  inline bool hasName() const;
+  inline ::capnp::Text::Reader getName() const;
+
  private:
   ::capnp::_::StructReader _reader;
   template <typename, ::capnp::Kind>
@@ -1784,6 +1787,13 @@ class ArraySchema::Builder {
           value);
   inline ::capnp::Orphan<::tiledb::sm::serialization::capnp::FilterPipeline>
   disownValidityFilterPipeline();
+
+  inline bool hasName();
+  inline ::capnp::Text::Builder getName();
+  inline void setName(::capnp::Text::Reader value);
+  inline ::capnp::Text::Builder initName(unsigned int size);
+  inline void adoptName(::capnp::Orphan<::capnp::Text>&& value);
+  inline ::capnp::Orphan<::capnp::Text> disownName();
 
  private:
   ::capnp::_::StructBuilder _builder;
@@ -9104,6 +9114,44 @@ ArraySchema::Builder::disownValidityFilterPipeline() {
       ::tiledb::sm::serialization::capnp::FilterPipeline>::
       disown(
           _builder.getPointerField(::capnp::bounded<9>() * ::capnp::POINTERS));
+}
+
+inline bool ArraySchema::Reader::hasName() const {
+  return !_reader.getPointerField(::capnp::bounded<10>() * ::capnp::POINTERS)
+              .isNull();
+}
+inline bool ArraySchema::Builder::hasName() {
+  return !_builder.getPointerField(::capnp::bounded<10>() * ::capnp::POINTERS)
+              .isNull();
+}
+inline ::capnp::Text::Reader ArraySchema::Reader::getName() const {
+  return ::capnp::_::PointerHelpers<::capnp::Text>::get(
+      _reader.getPointerField(::capnp::bounded<10>() * ::capnp::POINTERS));
+}
+inline ::capnp::Text::Builder ArraySchema::Builder::getName() {
+  return ::capnp::_::PointerHelpers<::capnp::Text>::get(
+      _builder.getPointerField(::capnp::bounded<10>() * ::capnp::POINTERS));
+}
+inline void ArraySchema::Builder::setName(::capnp::Text::Reader value) {
+  ::capnp::_::PointerHelpers<::capnp::Text>::set(
+      _builder.getPointerField(::capnp::bounded<10>() * ::capnp::POINTERS),
+      value);
+}
+inline ::capnp::Text::Builder ArraySchema::Builder::initName(
+    unsigned int size) {
+  return ::capnp::_::PointerHelpers<::capnp::Text>::init(
+      _builder.getPointerField(::capnp::bounded<10>() * ::capnp::POINTERS),
+      size);
+}
+inline void ArraySchema::Builder::adoptName(
+    ::capnp::Orphan<::capnp::Text>&& value) {
+  ::capnp::_::PointerHelpers<::capnp::Text>::adopt(
+      _builder.getPointerField(::capnp::bounded<10>() * ::capnp::POINTERS),
+      kj::mv(value));
+}
+inline ::capnp::Orphan<::capnp::Text> ArraySchema::Builder::disownName() {
+  return ::capnp::_::PointerHelpers<::capnp::Text>::disown(
+      _builder.getPointerField(::capnp::bounded<10>() * ::capnp::POINTERS));
 }
 
 inline bool ArraySchemaEvolution::Reader::hasAttributesToDrop() const {

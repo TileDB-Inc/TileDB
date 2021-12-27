@@ -103,14 +103,14 @@ typename SparseIndexReaderBase::ReadState* SparseIndexReaderBase::read_state() {
 Status SparseIndexReaderBase::init() {
   // Sanity checks
   if (storage_manager_ == nullptr)
-    return logger_->status(Status::ReaderError(
+    return logger_->status(Status_ReaderError(
         "Cannot initialize sparse global order reader; Storage manager not "
         "set"));
   if (array_schema_ == nullptr)
-    return logger_->status(Status::ReaderError(
+    return logger_->status(Status_ReaderError(
         "Cannot initialize sparse global order reader; Array schema not set"));
   if (buffers_.empty())
-    return logger_->status(Status::ReaderError(
+    return logger_->status(Status_ReaderError(
         "Cannot initialize sparse global order reader; Buffers not set"));
 
   // Check subarray
@@ -122,8 +122,8 @@ Status SparseIndexReaderBase::init() {
   assert(found);
   if (offsets_format_mode_ != "bytes" && offsets_format_mode_ != "elements") {
     return logger_->status(
-        Status::ReaderError("Cannot initialize reader; Unsupported offsets "
-                            "format in configuration"));
+        Status_ReaderError("Cannot initialize reader; Unsupported offsets "
+                           "format in configuration"));
   }
   elements_mode_ = offsets_format_mode_ == "elements";
 
@@ -134,8 +134,8 @@ Status SparseIndexReaderBase::init() {
       "sm.var_offsets.bitsize", &offsets_bitsize_, &found));
   if (offsets_bitsize_ != 32 && offsets_bitsize_ != 64) {
     return logger_->status(
-        Status::ReaderError("Cannot initialize reader; "
-                            "Unsupported offsets bitsize in configuration"));
+        Status_ReaderError("Cannot initialize reader; "
+                           "Unsupported offsets bitsize in configuration"));
   }
 
   // Check the validity buffer sizes.
@@ -236,7 +236,7 @@ Status SparseIndexReaderBase::load_initial_data() {
     if (memory_used_result_tile_ranges_ >
         memory_budget_ratio_tile_ranges_ * memory_budget_)
       return logger_->status(
-          Status::ReaderError("Exceeded memory budget for result tile ranges"));
+          Status_ReaderError("Exceeded memory budget for result tile ranges"));
   }
 
   // Set a limit to the array memory.
@@ -642,7 +642,7 @@ Status SparseIndexReaderBase::add_extra_offset() {
           &elements,
           offsets_bytesize());
     } else {
-      return logger_->status(Status::ReaderError(
+      return logger_->status(Status_ReaderError(
           "Cannot add extra offset to buffer; Unsupported offsets format"));
     }
   }

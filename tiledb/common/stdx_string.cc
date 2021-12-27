@@ -27,6 +27,7 @@
  */
 
 #include "stdx_string.h"
+#include <algorithm>
 
 namespace tiledb::stdx::string {
 
@@ -41,6 +42,16 @@ bool ends_with(const std::string& value, const std::string& suffix) {
     return false;
   return value.compare(value.size() - suffix.size(), suffix.size(), suffix) ==
          0;
+}
+
+size_t common_prefix_size(
+    const std::string_view& a, const std::string_view& b) {
+  size_t size = std::min(a.size(), b.size());
+  for (size_t i = 0; i < size; ++i) {
+    if (a[i] != b[i])
+      return i;
+  }
+  return size;
 }
 
 }  // namespace tiledb::stdx::string

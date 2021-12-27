@@ -54,7 +54,7 @@ Status BufferList::add_buffer(Buffer&& buffer) {
 
 Status BufferList::get_buffer(uint64_t index, Buffer** buffer) {
   if (index >= buffers_.size())
-    return LOG_STATUS(Status::BufferError(
+    return LOG_STATUS(Status_BufferError(
         "Cannot get buffer " + std::to_string(index) +
         " from buffer list; index out of bounds."));
 
@@ -72,7 +72,7 @@ Status BufferList::read(void* dest, uint64_t nbytes) {
   RETURN_NOT_OK(read(dest, nbytes, &bytes_read));
 
   if (bytes_read != nbytes)
-    return LOG_STATUS(Status::BufferError(
+    return LOG_STATUS(Status_BufferError(
         "BufferList error; could not read requested byte count."));
 
   return Status::Ok();
@@ -130,10 +130,10 @@ Status BufferList::seek(off_t offset, int whence) {
     case SEEK_CUR:
       return read(nullptr, offset);
     case SEEK_END:
-      return Status::BufferError(
+      return Status_BufferError(
           "SEEK_END operation not supported for BufferList");
     default:
-      return Status::BufferError("Invalid seek operation for BufferList");
+      return Status_BufferError("Invalid seek operation for BufferList");
   }
 
   return Status::Ok();

@@ -68,7 +68,7 @@ inline Status query_type_enum(
   else if (query_type_str == constants::query_type_write_str)
     *query_type = QueryType::WRITE;
   else {
-    return Status::Error("Invalid QueryType " + query_type_str);
+    return Status_Error("Invalid QueryType " + query_type_str);
   }
   return Status::Ok();
 }

@@ -132,11 +132,11 @@ void FragmentInfo::dump(FILE* out) const {
 
 Status FragmentInfo::get_dense(uint32_t fid, int32_t* dense) const {
   if (dense == nullptr)
-    return LOG_STATUS(Status::FragmentInfoError(
+    return LOG_STATUS(Status_FragmentInfoError(
         "Cannot check if fragment is dense; Dense argument cannot be null"));
 
   if (fid >= fragments_.size())
-    return LOG_STATUS(Status::FragmentInfoError(
+    return LOG_STATUS(Status_FragmentInfoError(
         "Cannot check if fragment is dense; Invalid fragment index"));
 
   *dense = (int32_t)!fragments_[fid].sparse();
@@ -146,11 +146,11 @@ Status FragmentInfo::get_dense(uint32_t fid, int32_t* dense) const {
 
 Status FragmentInfo::get_sparse(uint32_t fid, int32_t* sparse) const {
   if (sparse == nullptr)
-    return LOG_STATUS(Status::FragmentInfoError(
+    return LOG_STATUS(Status_FragmentInfoError(
         "Cannot check if fragment is sparse; Sparse argument cannot be null"));
 
   if (fid >= fragments_.size())
-    return LOG_STATUS(Status::FragmentInfoError(
+    return LOG_STATUS(Status_FragmentInfoError(
         "Cannot check if fragment is sparse; Invalid fragment index"));
 
   *sparse = (int32_t)fragments_[fid].sparse();
@@ -164,11 +164,11 @@ uint32_t FragmentInfo::fragment_num() const {
 
 Status FragmentInfo::get_cell_num(uint32_t fid, uint64_t* cell_num) const {
   if (cell_num == nullptr)
-    return LOG_STATUS(Status::FragmentInfoError(
+    return LOG_STATUS(Status_FragmentInfoError(
         "Cannot get fragment URI; Cell number argument cannot be null"));
 
   if (fid >= fragments_.size())
-    return LOG_STATUS(Status::FragmentInfoError(
+    return LOG_STATUS(Status_FragmentInfoError(
         "Cannot get fragment URI; Invalid fragment index"));
 
   *cell_num = fragments_[fid].cell_num();
@@ -178,11 +178,11 @@ Status FragmentInfo::get_cell_num(uint32_t fid, uint64_t* cell_num) const {
 
 Status FragmentInfo::get_fragment_size(uint32_t fid, uint64_t* size) const {
   if (size == nullptr)
-    return LOG_STATUS(Status::FragmentInfoError(
+    return LOG_STATUS(Status_FragmentInfoError(
         "Cannot get fragment URI; Size argument cannot be null"));
 
   if (fid >= fragments_.size())
-    return LOG_STATUS(Status::FragmentInfoError(
+    return LOG_STATUS(Status_FragmentInfoError(
         "Cannot get fragment URI; Invalid fragment index"));
 
   *size = fragments_[fid].fragment_size();
@@ -192,11 +192,11 @@ Status FragmentInfo::get_fragment_size(uint32_t fid, uint64_t* size) const {
 
 Status FragmentInfo::get_fragment_uri(uint32_t fid, const char** uri) const {
   if (uri == nullptr)
-    return LOG_STATUS(Status::FragmentInfoError(
+    return LOG_STATUS(Status_FragmentInfoError(
         "Cannot get fragment URI; URI argument cannot be null"));
 
   if (fid >= fragments_.size())
-    return LOG_STATUS(Status::FragmentInfoError(
+    return LOG_STATUS(Status_FragmentInfoError(
         "Cannot get fragment URI; Invalid fragment index"));
 
   *uri = fragments_[fid].uri().c_str();
@@ -206,11 +206,11 @@ Status FragmentInfo::get_fragment_uri(uint32_t fid, const char** uri) const {
 
 Status FragmentInfo::get_to_vacuum_uri(uint32_t fid, const char** uri) const {
   if (uri == nullptr)
-    return LOG_STATUS(Status::FragmentInfoError(
+    return LOG_STATUS(Status_FragmentInfoError(
         "Cannot get URI of fragment to vacuum; URI argument cannot be null"));
 
   if (fid >= to_vacuum_.size())
-    return LOG_STATUS(Status::FragmentInfoError(
+    return LOG_STATUS(Status_FragmentInfoError(
         "Cannot get URI of fragment to vacuum; Invalid fragment index"));
 
   *uri = to_vacuum_[fid].c_str();
@@ -221,15 +221,15 @@ Status FragmentInfo::get_to_vacuum_uri(uint32_t fid, const char** uri) const {
 Status FragmentInfo::get_timestamp_range(
     uint32_t fid, uint64_t* start, uint64_t* end) const {
   if (start == nullptr)
-    return LOG_STATUS(Status::FragmentInfoError(
+    return LOG_STATUS(Status_FragmentInfoError(
         "Cannot get timestamp range; Start argument cannot be null"));
 
   if (end == nullptr)
-    return LOG_STATUS(Status::FragmentInfoError(
+    return LOG_STATUS(Status_FragmentInfoError(
         "Cannot get timestamp range; End argument cannot be null"));
 
   if (fid >= fragments_.size())
-    return LOG_STATUS(Status::FragmentInfoError(
+    return LOG_STATUS(Status_FragmentInfoError(
         "Cannot get fragment URI; Invalid fragment index"));
 
   auto range = fragments_[fid].timestamp_range();
@@ -242,21 +242,21 @@ Status FragmentInfo::get_timestamp_range(
 Status FragmentInfo::get_non_empty_domain(
     uint32_t fid, uint32_t did, void* domain) const {
   if (domain == nullptr)
-    return LOG_STATUS(Status::FragmentInfoError(
+    return LOG_STATUS(Status_FragmentInfoError(
         "Cannot get non-empty domain; Domain argument cannot be null"));
 
   if (fid >= fragments_.size())
-    return LOG_STATUS(Status::FragmentInfoError(
+    return LOG_STATUS(Status_FragmentInfoError(
         "Cannot get non-empty domain; Invalid fragment index"));
 
   const auto& non_empty_domain = fragments_[fid].non_empty_domain();
 
   if (did >= non_empty_domain.size())
-    return LOG_STATUS(Status::FragmentInfoError(
+    return LOG_STATUS(Status_FragmentInfoError(
         "Cannot get non-empty domain; Invalid dimension index"));
 
   if (non_empty_domain[did].var_size())
-    return LOG_STATUS(Status::FragmentInfoError(
+    return LOG_STATUS(Status_FragmentInfoError(
         "Cannot get non-empty domain; Dimension is variable-sized"));
 
   assert(!non_empty_domain[did].empty());
@@ -269,7 +269,7 @@ Status FragmentInfo::get_non_empty_domain(
 Status FragmentInfo::get_non_empty_domain(
     uint32_t fid, const char* dim_name, void* domain) const {
   if (dim_name == nullptr)
-    return LOG_STATUS(Status::FragmentInfoError(
+    return LOG_STATUS(Status_FragmentInfoError(
         "Cannot get non-empty domain; Dimension name argument cannot be null"));
 
   uint32_t did;
@@ -284,7 +284,7 @@ Status FragmentInfo::get_non_empty_domain(
     auto msg =
         std::string("Cannot get non-empty domain; Invalid dimension name '") +
         dim_name + "'";
-    return LOG_STATUS(Status::FragmentInfoError(msg));
+    return LOG_STATUS(Status_FragmentInfoError(msg));
   }
 
   return get_non_empty_domain(fid, did, domain);
@@ -297,26 +297,26 @@ Status FragmentInfo::get_non_empty_domain_var_size(
     uint64_t* end_size) const {
   if (start_size == nullptr)
     return LOG_STATUS(
-        Status::FragmentInfoError("Cannot get non-empty domain var size; Start "
-                                  "size argument cannot be null"));
+        Status_FragmentInfoError("Cannot get non-empty domain var size; Start "
+                                 "size argument cannot be null"));
 
   if (end_size == nullptr)
     return LOG_STATUS(
-        Status::FragmentInfoError("Cannot get non-empty domain var size; End "
-                                  "size argument cannot be null"));
+        Status_FragmentInfoError("Cannot get non-empty domain var size; End "
+                                 "size argument cannot be null"));
 
   if (fid >= fragments_.size())
-    return LOG_STATUS(Status::FragmentInfoError(
+    return LOG_STATUS(Status_FragmentInfoError(
         "Cannot get non-empty domain var size; Invalid fragment index"));
 
   const auto& non_empty_domain = fragments_[fid].non_empty_domain();
 
   if (did >= non_empty_domain.size())
-    return LOG_STATUS(Status::FragmentInfoError(
+    return LOG_STATUS(Status_FragmentInfoError(
         "Cannot get non-empty domain var size; Invalid dimension index"));
 
   if (!non_empty_domain[did].var_size())
-    return LOG_STATUS(Status::FragmentInfoError(
+    return LOG_STATUS(Status_FragmentInfoError(
         "Cannot get non-empty domain var size; Dimension is fixed sized"));
 
   assert(!non_empty_domain[did].empty());
@@ -333,8 +333,8 @@ Status FragmentInfo::get_non_empty_domain_var_size(
     uint64_t* end_size) const {
   if (dim_name == nullptr)
     return LOG_STATUS(
-        Status::FragmentInfoError("Cannot get non-empty domain var size; "
-                                  "Dimension name argument cannot be null"));
+        Status_FragmentInfoError("Cannot get non-empty domain var size; "
+                                 "Dimension name argument cannot be null"));
 
   uint32_t did;
   for (did = 0; did < dim_names_.size(); ++did) {
@@ -349,7 +349,7 @@ Status FragmentInfo::get_non_empty_domain_var_size(
         std::string(
             "Cannot get non-empty domain var size; Invalid dimension name '") +
         dim_name + "'";
-    return LOG_STATUS(Status::FragmentInfoError(msg));
+    return LOG_STATUS(Status_FragmentInfoError(msg));
   }
 
   return get_non_empty_domain_var_size(fid, did, start_size, end_size);
@@ -359,25 +359,25 @@ Status FragmentInfo::get_non_empty_domain_var(
     uint32_t fid, uint32_t did, void* start, void* end) const {
   if (start == nullptr)
     return LOG_STATUS(
-        Status::FragmentInfoError("Cannot get non-empty domain var; Domain "
-                                  "start argument cannot be null"));
+        Status_FragmentInfoError("Cannot get non-empty domain var; Domain "
+                                 "start argument cannot be null"));
 
   if (end == nullptr)
-    return LOG_STATUS(Status::FragmentInfoError(
+    return LOG_STATUS(Status_FragmentInfoError(
         "Cannot get non-empty domain var; Domain end argument cannot be null"));
 
   if (fid >= fragments_.size())
-    return LOG_STATUS(Status::FragmentInfoError(
+    return LOG_STATUS(Status_FragmentInfoError(
         "Cannot get non-empty domain var; Invalid fragment index"));
 
   const auto& non_empty_domain = fragments_[fid].non_empty_domain();
 
   if (did >= non_empty_domain.size())
-    return LOG_STATUS(Status::FragmentInfoError(
+    return LOG_STATUS(Status_FragmentInfoError(
         "Cannot get non-empty domain var; Invalid dimension index"));
 
   if (!non_empty_domain[did].var_size())
-    return LOG_STATUS(Status::FragmentInfoError(
+    return LOG_STATUS(Status_FragmentInfoError(
         "Cannot get non-empty domain var; Dimension is fixed-sized"));
 
   assert(!non_empty_domain[did].empty());
@@ -393,8 +393,8 @@ Status FragmentInfo::get_non_empty_domain_var(
     uint32_t fid, const char* dim_name, void* start, void* end) const {
   if (dim_name == nullptr)
     return LOG_STATUS(
-        Status::FragmentInfoError("Cannot get non-empty domain var; Dimension "
-                                  "name argument cannot be null"));
+        Status_FragmentInfoError("Cannot get non-empty domain var; Dimension "
+                                 "name argument cannot be null"));
 
   uint32_t did;
   for (did = 0; did < dim_names_.size(); ++did) {
@@ -409,7 +409,7 @@ Status FragmentInfo::get_non_empty_domain_var(
         std::string(
             "Cannot get non-empty domain var; Invalid dimension name '") +
         dim_name + "'";
-    return LOG_STATUS(Status::FragmentInfoError(msg));
+    return LOG_STATUS(Status_FragmentInfoError(msg));
   }
 
   return get_non_empty_domain_var(fid, did, start, end);
@@ -417,11 +417,11 @@ Status FragmentInfo::get_non_empty_domain_var(
 
 Status FragmentInfo::get_mbr_num(uint32_t fid, uint64_t* mbr_num) {
   if (mbr_num == nullptr)
-    return LOG_STATUS(Status::FragmentInfoError(
+    return LOG_STATUS(Status_FragmentInfoError(
         "Cannot get fragment URI; MBR number argument cannot be null"));
 
   if (fid >= fragments_.size())
-    return LOG_STATUS(Status::FragmentInfoError(
+    return LOG_STATUS(Status_FragmentInfoError(
         "Cannot get fragment URI; Invalid fragment index"));
 
   if (!fragments_[fid].sparse()) {
@@ -439,16 +439,16 @@ Status FragmentInfo::get_mbr_num(uint32_t fid, uint64_t* mbr_num) {
 Status FragmentInfo::get_mbr(
     uint32_t fid, uint32_t mid, uint32_t did, void* mbr) {
   if (mbr == nullptr)
-    return LOG_STATUS(Status::FragmentInfoError(
+    return LOG_STATUS(Status_FragmentInfoError(
         "Cannot get MBR; mbr argument cannot be null"));
 
   if (fid >= fragments_.size())
     return LOG_STATUS(
-        Status::FragmentInfoError("Cannot get MBR; Invalid fragment index"));
+        Status_FragmentInfoError("Cannot get MBR; Invalid fragment index"));
 
   if (!fragments_[fid].sparse())
     return LOG_STATUS(
-        Status::FragmentInfoError("Cannot get MBR; Fragment is not sparse"));
+        Status_FragmentInfoError("Cannot get MBR; Fragment is not sparse"));
 
   auto meta = fragments_[fid].meta();
   RETURN_NOT_OK(meta->load_rtree(*array_->encryption_key()));
@@ -456,15 +456,15 @@ Status FragmentInfo::get_mbr(
 
   if (mid >= mbrs.size())
     return LOG_STATUS(
-        Status::FragmentInfoError("Cannot get MBR; Invalid MBR index"));
+        Status_FragmentInfoError("Cannot get MBR; Invalid MBR index"));
 
   const auto& minimum_bounding_rectangle = mbrs[mid];
   if (did >= minimum_bounding_rectangle.size())
     return LOG_STATUS(
-        Status::FragmentInfoError("Cannot get MBR; Invalid dimension index"));
+        Status_FragmentInfoError("Cannot get MBR; Invalid dimension index"));
 
   if (minimum_bounding_rectangle[did].var_size())
-    return LOG_STATUS(Status::FragmentInfoError(
+    return LOG_STATUS(Status_FragmentInfoError(
         "Cannot get MBR; Dimension is variable-sized"));
 
   assert(!minimum_bounding_rectangle[did].empty());
@@ -479,7 +479,7 @@ Status FragmentInfo::get_mbr(
 Status FragmentInfo::get_mbr(
     uint32_t fid, uint32_t mid, const char* dim_name, void* mbr) {
   if (dim_name == nullptr)
-    return LOG_STATUS(Status::FragmentInfoError(
+    return LOG_STATUS(Status_FragmentInfoError(
         "Cannot get non-empty domain; Dimension name argument cannot be null"));
 
   uint32_t did;
@@ -494,7 +494,7 @@ Status FragmentInfo::get_mbr(
     auto msg =
         std::string("Cannot get non-empty domain; Invalid dimension name '") +
         dim_name + "'";
-    return LOG_STATUS(Status::FragmentInfoError(msg));
+    return LOG_STATUS(Status_FragmentInfoError(msg));
   }
 
   return get_mbr(fid, mid, did, mbr);
@@ -508,21 +508,21 @@ Status FragmentInfo::get_mbr_var_size(
     uint64_t* end_size) {
   if (start_size == nullptr)
     return LOG_STATUS(
-        Status::FragmentInfoError("Cannot get MBR var size; Start "
-                                  "size argument cannot be null"));
+        Status_FragmentInfoError("Cannot get MBR var size; Start "
+                                 "size argument cannot be null"));
 
   if (end_size == nullptr)
     return LOG_STATUS(
-        Status::FragmentInfoError("Cannot get MBR var size; End "
-                                  "size argument cannot be null"));
+        Status_FragmentInfoError("Cannot get MBR var size; End "
+                                 "size argument cannot be null"));
 
   if (fid >= fragments_.size())
-    return LOG_STATUS(Status::FragmentInfoError(
+    return LOG_STATUS(Status_FragmentInfoError(
         "Cannot get MBR var size; Invalid fragment index"));
 
   if (!fragments_[fid].sparse())
     return LOG_STATUS(
-        Status::FragmentInfoError("Cannot get MBR; Fragment is not sparse"));
+        Status_FragmentInfoError("Cannot get MBR; Fragment is not sparse"));
 
   auto meta = fragments_[fid].meta();
   RETURN_NOT_OK(meta->load_rtree(*array_->encryption_key()));
@@ -530,16 +530,16 @@ Status FragmentInfo::get_mbr_var_size(
 
   if (mid >= mbrs.size())
     return LOG_STATUS(
-        Status::FragmentInfoError("Cannot get MBR; Invalid mbr index"));
+        Status_FragmentInfoError("Cannot get MBR; Invalid mbr index"));
 
   const auto& minimum_bounding_rectangle = mbrs[mid];
 
   if (did >= minimum_bounding_rectangle.size())
-    return LOG_STATUS(Status::FragmentInfoError(
+    return LOG_STATUS(Status_FragmentInfoError(
         "Cannot get MBR var size; Invalid dimension index"));
 
   if (!minimum_bounding_rectangle[did].var_size())
-    return LOG_STATUS(Status::FragmentInfoError(
+    return LOG_STATUS(Status_FragmentInfoError(
         "Cannot get MBR var size; Dimension is fixed sized"));
 
   assert(!minimum_bounding_rectangle[did].empty());
@@ -557,8 +557,8 @@ Status FragmentInfo::get_mbr_var_size(
     uint64_t* end_size) {
   if (dim_name == nullptr)
     return LOG_STATUS(
-        Status::FragmentInfoError("Cannot get MBR var size; "
-                                  "Dimension name argument cannot be null"));
+        Status_FragmentInfoError("Cannot get MBR var size; "
+                                 "Dimension name argument cannot be null"));
 
   uint32_t did;
   for (did = 0; did < dim_names_.size(); ++did) {
@@ -572,7 +572,7 @@ Status FragmentInfo::get_mbr_var_size(
     auto msg =
         std::string("Cannot get MBR var size; Invalid dimension name '") +
         dim_name + "'";
-    return LOG_STATUS(Status::FragmentInfoError(msg));
+    return LOG_STATUS(Status_FragmentInfoError(msg));
   }
 
   return get_mbr_var_size(fid, mid, did, start_size, end_size);
@@ -582,20 +582,20 @@ Status FragmentInfo::get_mbr_var(
     uint32_t fid, uint32_t mid, uint32_t did, void* start, void* end) {
   if (start == nullptr)
     return LOG_STATUS(
-        Status::FragmentInfoError("Cannot get non-empty domain var; Domain "
-                                  "start argument cannot be null"));
+        Status_FragmentInfoError("Cannot get non-empty domain var; Domain "
+                                 "start argument cannot be null"));
 
   if (end == nullptr)
-    return LOG_STATUS(Status::FragmentInfoError(
+    return LOG_STATUS(Status_FragmentInfoError(
         "Cannot get non-empty domain var; Domain end argument cannot be null"));
 
   if (fid >= fragments_.size())
-    return LOG_STATUS(Status::FragmentInfoError(
+    return LOG_STATUS(Status_FragmentInfoError(
         "Cannot get non-empty domain var; Invalid fragment index"));
 
   if (!fragments_[fid].sparse())
     return LOG_STATUS(
-        Status::FragmentInfoError("Cannot get MBR; Fragment is not sparse"));
+        Status_FragmentInfoError("Cannot get MBR; Fragment is not sparse"));
 
   auto meta = fragments_[fid].meta();
   RETURN_NOT_OK(meta->load_rtree(*array_->encryption_key()));
@@ -603,16 +603,16 @@ Status FragmentInfo::get_mbr_var(
 
   if (mid >= mbrs.size())
     return LOG_STATUS(
-        Status::FragmentInfoError("Cannot get MBR; Invalid mbr index"));
+        Status_FragmentInfoError("Cannot get MBR; Invalid mbr index"));
 
   const auto& minimum_bounding_rectangle = mbrs[mid];
 
   if (did >= minimum_bounding_rectangle.size())
-    return LOG_STATUS(Status::FragmentInfoError(
+    return LOG_STATUS(Status_FragmentInfoError(
         "Cannot get non-empty domain var; Invalid dimension index"));
 
   if (!minimum_bounding_rectangle[did].var_size())
-    return LOG_STATUS(Status::FragmentInfoError(
+    return LOG_STATUS(Status_FragmentInfoError(
         "Cannot get non-empty domain var; Dimension is fixed-sized"));
 
   assert(!minimum_bounding_rectangle[did].empty());
@@ -632,8 +632,8 @@ Status FragmentInfo::get_mbr_var(
     uint32_t fid, uint32_t mid, const char* dim_name, void* start, void* end) {
   if (dim_name == nullptr)
     return LOG_STATUS(
-        Status::FragmentInfoError("Cannot get non-empty domain var; Dimension "
-                                  "name argument cannot be null"));
+        Status_FragmentInfoError("Cannot get non-empty domain var; Dimension "
+                                 "name argument cannot be null"));
 
   uint32_t did;
   for (did = 0; did < dim_names_.size(); ++did) {
@@ -648,7 +648,7 @@ Status FragmentInfo::get_mbr_var(
         std::string(
             "Cannot get non-empty domain var; Invalid dimension name '") +
         dim_name + "'";
-    return LOG_STATUS(Status::FragmentInfoError(msg));
+    return LOG_STATUS(Status_FragmentInfoError(msg));
   }
 
   return get_mbr_var(fid, mid, did, start, end);
@@ -656,12 +656,12 @@ Status FragmentInfo::get_mbr_var(
 
 Status FragmentInfo::get_version(uint32_t fid, uint32_t* version) const {
   if (version == nullptr)
-    return LOG_STATUS(Status::FragmentInfoError(
+    return LOG_STATUS(Status_FragmentInfoError(
         "Cannot get version; Version argument cannot be null"));
 
   if (fid >= fragments_.size())
-    return LOG_STATUS(Status::FragmentInfoError(
-        "Cannot get version; Invalid fragment index"));
+    return LOG_STATUS(
+        Status_FragmentInfoError("Cannot get version; Invalid fragment index"));
 
   *version = fragments_[fid].format_version();
 
@@ -671,11 +671,11 @@ Status FragmentInfo::get_version(uint32_t fid, uint32_t* version) const {
 Status FragmentInfo::get_array_schema(
     uint32_t fid, ArraySchema** array_schema) {
   if (array_schema == nullptr)
-    return LOG_STATUS(Status::FragmentInfoError(
+    return LOG_STATUS(Status_FragmentInfoError(
         "Cannot get array schema; schema argument cannot be null"));
 
   if (fid >= fragments_.size())
-    return LOG_STATUS(Status::FragmentInfoError(
+    return LOG_STATUS(Status_FragmentInfoError(
         "Cannot get array schema; Invalid fragment index"));
   URI schema_uri;
   uint32_t version = fragments_[fid].format_version();
@@ -696,11 +696,11 @@ Status FragmentInfo::get_array_schema(
 Status FragmentInfo::get_array_schema_name(
     uint32_t fid, const char** schema_name) {
   if (schema_name == nullptr)
-    return LOG_STATUS(Status::FragmentInfoError(
+    return LOG_STATUS(Status_FragmentInfoError(
         "Cannot get array schema URI; schema name argument cannot be null"));
 
   if (fid >= fragments_.size())
-    return LOG_STATUS(Status::FragmentInfoError(
+    return LOG_STATUS(Status_FragmentInfoError(
         "Cannot get array schema name; Invalid fragment index"));
 
   uint32_t version = fragments_[fid].format_version();
@@ -717,13 +717,13 @@ Status FragmentInfo::has_consolidated_metadata(
     uint32_t fid, int32_t* has) const {
   if (has == nullptr)
     return LOG_STATUS(
-        Status::FragmentInfoError("Cannot check if fragment has consolidated "
-                                  "metadata; Has argument cannot be null"));
+        Status_FragmentInfoError("Cannot check if fragment has consolidated "
+                                 "metadata; Has argument cannot be null"));
 
   if (fid >= fragments_.size())
     return LOG_STATUS(
-        Status::FragmentInfoError("Cannot check if fragment has consolidated "
-                                  "metadata; Invalid fragment index"));
+        Status_FragmentInfoError("Cannot check if fragment has consolidated "
+                                 "metadata; Invalid fragment index"));
 
   *has = fragments_[fid].has_consolidated_footer();
 
@@ -788,7 +788,7 @@ Status FragmentInfo::load(
   if (!is_array) {
     auto msg = std::string("Cannot load fragment info; Array '") +
                array_uri_.to_string() + "' does not exist";
-    return LOG_STATUS(Status::FragmentInfoError(msg));
+    return LOG_STATUS(Status_FragmentInfoError(msg));
   }
 
   RETURN_NOT_OK(

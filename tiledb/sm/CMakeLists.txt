@@ -26,11 +26,13 @@
 
 include(common-root)
 
+add_subdirectory(array_schema)
 add_subdirectory(buffer)
 add_subdirectory(compressors)
 add_subdirectory(config)
 add_subdirectory(crypto)
 add_subdirectory(filter)
 add_subdirectory(misc)
+add_subdirectory(query)
 add_subdirectory(stats)
 add_subdirectory(tile)

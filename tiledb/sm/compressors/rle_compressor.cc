@@ -46,7 +46,7 @@ Status RLE::compress(
     uint64_t value_size, ConstBuffer* input_buffer, Buffer* output_buffer) {
   // Sanity check
   if (input_buffer->data() == nullptr)
-    return LOG_STATUS(Status::CompressionError(
+    return LOG_STATUS(Status_CompressionError(
         "Failed compressing with RLE; null input buffer"));
   unsigned int cur_run_len = 1;
   unsigned int max_run_len = 65535;
@@ -61,7 +61,7 @@ Status RLE::compress(
 
   // Sanity check on input buffer
   if (input_buffer->size() % value_size != 0) {
-    return LOG_STATUS(Status::CompressionError(
+    return LOG_STATUS(Status_CompressionError(
         "Failed compressing with RLE; invalid input buffer format"));
   }
 
@@ -103,7 +103,7 @@ Status RLE::decompress(
     PreallocatedBuffer* output_buffer) {
   // Sanity check
   if (input_buffer->data() == nullptr)
-    return LOG_STATUS(Status::CompressionError(
+    return LOG_STATUS(Status_CompressionError(
         "Failed decompressing with RLE; null input buffer"));
 
   auto input_cur = static_cast<const unsigned char*>(input_buffer->data());
@@ -117,7 +117,7 @@ Status RLE::decompress(
 
   // Sanity check on input buffer format
   if (input_buffer->size() % run_size != 0) {
-    return LOG_STATUS(Status::CompressionError(
+    return LOG_STATUS(Status_CompressionError(
         "Failed decompressing with RLE; invalid input buffer format"));
   }
 

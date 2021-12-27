@@ -520,7 +520,7 @@ Status Domain::get_dimension_index(
     }
   }
 
-  return Status::DomainError(
+  return Status_DomainError(
       "Cannot get dimension index; Invalid dimension name");
 }
 

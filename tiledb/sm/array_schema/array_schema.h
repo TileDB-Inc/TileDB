@@ -335,6 +335,9 @@ class ArraySchema {
   /** Returns the schema name. If it is not set, will returns error status. */
   Status get_name(std::string* name) const;
 
+  /** Set the schema name. */
+  void set_name(const std::string& name);
+
   /** Generates a new array schema URI. */
   Status generate_uri();
 

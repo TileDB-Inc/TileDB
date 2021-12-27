@@ -69,7 +69,7 @@ inline tuple<Status, optional<EncryptionType>> encryption_type_enum(
   else if (encryption_type_str == constants::aes_256_gcm_str)
     encryption_type = EncryptionType::AES_256_GCM;
   else {
-    return {Status::Error("Invalid EncryptionType " + encryption_type_str),
+    return {Status_Error("Invalid EncryptionType " + encryption_type_str),
             nullopt};
   }
   return {Status::Ok(), encryption_type};

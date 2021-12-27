@@ -108,7 +108,7 @@ class ValidityVector {
    */
   Status init_bytemap(uint8_t* const bytemap, uint64_t* bytemap_size) {
     if (buffer_ != nullptr)
-      return Status::ValidityVectorError(
+      return Status_ValidityVectorError(
           "ValidityVector instance already initialized");
 
     buffer_ = bytemap;
