@@ -25,23 +25,6 @@ jobs:
       SUDO: 'sudo'
     strategy:
       matrix:
-        #https://github.community/t/create-matrix-with-multiple-os-and-env-for-each-one/16895/5
-        #don't think the following is running both versions...
-        #~ include:
-          #~ - os: macos-10.15
-            #~ TILEDB_AZURE: ON
-            #~ TILEDB_SERIALIZATION: ON
-            #~ CXX: clang++
-            #~ ARTIFACT_OS: macOS_azure
-          #~ - os: macos-10.15
-            #~ CXX: clang++
-            #~ ARTIFACT_OS: 'macos'
-            #~ ARTIFACT_ARCH: 'arm64'
-            #~ TILEDB_GCS: OFF
-            #~ TILEDB_WERROR: OFF
-            #~ CMAKE_OSX_ARCHITECTURES: "arm64"
-            #~ MACOSX_DEPLOYMENT_TARGET: 11
-        #try this approach for same os, different environs, worked elsewhere
         os: [macos-10.15]
         environ: [intel64, arm64]
         include:
@@ -64,34 +47,8 @@ jobs:
 
       - uses: ./.github/actions/mac-release
 
-  #~ configure-for-manylinux-container:
-    #~ runs-on: ubuntu-20.04
-    #~ outputs:
-      #~ uid_gid: ${{ steps.get-user.outputs.uid_gid }}
-    #~ steps:
-      #~ - id: get-user
-        #~ run: echo "::set-output name=uid_gid::$(id -u):$(id -g)"
-
-  #nope, the `uses' attribute must be a path, a Docker image, or owner/repo@ref
-  #~ try-manylinux-container-step:
-    #~ if: true
-    #~ runs-on: ubuntu-20.04
-    #~ steps:
-      #~ - name: check container
-        #~ uses: 'quay.io/pypa/manylinux2010_x86_64:2021-11-07-28723f3'      
-        #~ with:
-          #~ args: /bin/bash -c "cat /etc/system-release"
 
   build-release-manylinux:
-    #~ needs: configure-for-manylinux-container
-    #~ runs-on: ubuntu-20.04
-    #~ env:
-      #~ CXX: g++
-      #~ CFLAGS: "-lrt"
-      #~ CXXFLAGS: "-lrt"
-      #~ ARTIFACT_OS: 'linux'
-      #~ ARTIFACT_ARCH: 'x86_64'
-      #~ SUDO: ''
     runs-on: ${{ matrix.os }}
     env:
       CXX: g++
@@ -102,8 +59,6 @@ jobs:
       SUDO: ''
     strategy:
       matrix:
-        #https://github.community/t/create-matrix-with-multiple-os-and-env-for-each-one/16895/5
-        #try this approach for same os, different environs, worked elsewhere
         os: [ubuntu-20.04]
         environ: [standard, noavx2]
         include:
@@ -123,108 +78,7 @@ jobs:
             ARTIFACT_ARCH: "x86_64-noavx2"
             TILEDB_AVX2: OFF
             SUDO: ''
-    #~ container: #${{ matrix.os.image }} # TBD: Is this/that right location for image?
-      #~ image: 'quay.io/pypa/manylinux2010_x86_64:2021-11-07-28723f3'      
-      #options: "--entrypoint /bin/bash"
-      #options: --user ${{ needs.configure-for-manylinux-container.outputs.uid_gid }}
     steps:
       - uses: actions/checkout@v2
-
-      - name: diagnosing workflow
-        shell: bash
-        if: false
-        run: |
-          set -x
-          #exploring line continuations...
-          #https://stackoverflow.com/questions/59954185/github-action-split-long-command-into-multiple-lines
-          echo "the" \
-          " quick brown fox" \
-          " jumped over" \
-          " the lazy dog."
-          echo "the" \
-            " quicker brown fox" \
-            " jumped over" \
-            " the lazier dog."
-          if [[ $(which docker) ]]; then
-            echo "found docker"
-          else
-            echo "did not find docker"
-          fi
-          echo $HOME
-          echo $GITHUB_WORKSPACE
-          echo $GITHUB_EVENT_PATH
-          whoami
-          pwd
-          mount
-          ls -l
-          #find . -name '*'
-          printenv
-          #env
-          #set
-          #typeset
-          # container at 'thistime' has /etc/system-release containing centos 6.10 (final)
-          if [[ $(ls -l /etc/system-release) ]]; then
-            echo "found system-release"
-            cat /etc/system-release
-          else
-            echo "did not find system-release"
-          fi
-          echo "start workflow docker attempt ========================###########================"
-          #https://stackoverflow.com/questions/69982822/is-there-a-way-to-escape-and-single-quotes-together-in-bash
-          pwd
-          cd $GITHUB_WORKSPACE
-          pwd
-          cat > tdbtempscript.sh <<"EOF"
-          set -x
-          echo "BEGIN tdbtempscript.sh"
-          echo "HI! script items running inside tdbtempscript.sh... "
-          echo $HOME
-          echo $GITHUB_WORKSPACE
-          echo $GITHUB_EVENT_PATH
-          whoami
-          pwd
-          mount
-          ls -l
-          find . -name '*'
-          printenv
-          #env
-          #set
-          #typeset
-          echo "END tdbtempscript.sh"
-          EOF
-          pwd
-          echo "vvvvvvvvvvvvvvvvvvvv"
-          cat tdbtempscript.sh
-          #printenv > tdbenvfile.txt
-          for ev in GITHUB_WORKSPACE GITHUB_EVENT_PATH CXX CC CFLAGS CXXFLAGS ARTIFACT_OS ARTIFACT_EXTRAS ARTIFACT_ARCH SUDO RUNNER_OS GITHUB_REF RUNNER_TRACKING_ID RUNNER_ARCH GITHUB_RUN_NUMBER GITHUB_RUN_ID GITHUB_EVENT_NAME GITHUB_ACTOR GITHUB_REF_NAME GITHUB_JOB GITHUB_REPOSITORY RUNNER_WORKSPACE GITHUB_WORKFLOW; do tmp=$ev; echo "$ev=${!tmp}"; done >> tdbenvfile.txt
-          echo "-------------------------"
-          cat tdbenvfile.txt
-          echo "^^^^^^^^^^^^^^^^^^^^"
-          #  -v /__w:/__w --env-file tdbenvfile.txt \
-          docker container run \
-            -v "$GITHUB_WORKSPACE:$GITHUB_WORKSPACE" --env-file tdbenvfile.txt \
-            -w $GITHUB_WORKSPACE \
-            "quay.io/pypa/manylinux2010_x86_64:2021-11-07-28723f3" \
-            /bin/bash -c "pwd; cd $GITHUB_WORKSPACE; pwd; ls -l; source ./tdbtempscript.sh"
-          echo "end workflow docker attempt ========================###########================"
-          docker container run \
-            -v "$GITHUB_WORKSPACE:$GITHUB_WORKSPACE" --env-file tdbenvfile.txt \
-            -w $GITHUB_WORKSPACE \
-            "quay.io/pypa/manylinux2010_x86_64:2021-11-07-28723f3" \
-            /bin/bash -c "pwd; ls -l; . ./scripts/ci/linux-mac_release_buildtiledb.sh"
-          exit 17
-
-      #~ - name: 'are we in container?'
-        #~ shell: bash
-        #~ run: |
-          #~ if [[ $(ls -l /etc/system-release) ]]; then
-            #~ echo "found system-release"
-            #~ cat /etc/system-release
-          #~ else
-            #~ echo "did not find system-release"
-          #~ fi
-          #~ exit 45
-
-      #- uses: actions/checkout@v1
 
       - uses: ./.github/actions/manylinux-release

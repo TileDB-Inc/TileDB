@@ -489,7 +489,7 @@ runs:
         up1level=$(echo -e "import sys\nimport os\nprint (os.path.realpath(\"$GITHUB_WORKSPACE/..\"))" | python3)
         #  -v "$GITHUB_WORKSPACE:$GITHUB_WORKSPACE" --env-file tdbenvfile.txt \
         #  -v "$up1level:$up1level" --env-file tdbenvfile.txt \
-        containername=dlhmanylinux
+        containername=tdbmanylinux
         docker container run \
           -d --name $containername \
           -it \
@@ -505,39 +505,11 @@ runs:
         sync
         docker inspect $containername
         sync
-        #~ echo "A docker volume ls"
-        #~ docker volume ls
-        #~ echo "any volumes above?"
-        #~ sync
-        #  -it \ ......
         docker container exec \
           $containername \
           /bin/bash -c "pwd; ls -l; . ./scripts/ci/linux-mac_release_buildtiledb.sh; pwd; ls -l; pwd; ls -l .."
         sync
-        echo "OUTSIDE of manylinux"
-        pwd
-        sync
-        realpath .
-        ls -l .
-        sync
-        echo "are .tar.gz files following?"
-        realpath ..
-        ls -l ..
-        sync
-        #~ echo "B docker volume ls"
-        #~ docker volume ls
-        #~ echo "any volumes above?"
-        #~ sync
-        #TBD: if this is detached, will we actally see nothing?
-        #and attempts to use -it with detached were rejected, complaints about terminal
-        #docker exec $containername bash -c "pwd; ls -l; ls -l ../*.tar.gz"
         docker exec $containername /bin/bash -c "echo \"insA\";pwd; ls -l; ls -l ..;echo \"insB, end\""
-        sync
-        pwd
-        sync
-        ls -l .
-        sync
-        ls -l ..
         sync
         docker ps
         sync
@@ -552,56 +524,15 @@ runs:
           source $up1level/TDBRETENVVARS.TXT
           echo "TDB_BINARY_ARCHIVE_PATH=$TDB_BINARY_ARCHIVE_PATH" >> "$GITHUB_ENV"
           echo "TDB_SOURCE_ARCHIVE_PATH=$TDB_SOURCE_ARCHIVE_PATH" >> "$GITHUB_ENV"
-          
         fi
         sync
-        #~ docker container ls
-        #~ sync
-        #~ docker image ls
-        #~ sync
-        #~ docker volume ls
-        #~ sync
-        #docker inspect manylinux_container_for_build
-        #docker inspect $containername
-        #sync
-        #~ #docker cp 'manylinux_container_for_build:$GITHUB_WORKSPACE/../*.tar.gz' $GITHUB_WORKSPACE/..
-        #~ realpathtocopy=$(echo -e "import sys\nimport os\nprint (os.path.realpath(\"$GITHUB_WORKSPACE/../TDBRETENVVARS.TXT\"))" | python3)
-        #~ echo "realpathtocopy is $realpathtocopy"
-        #~ #copypath=$(realpath $GITHUB_WORKSPACE/../TDBRETENVVARS.TXT)
-        #~ docker cp "$containername:$realpathtocopy" $realpathtocopy #$GITHUB_WORKSPACE/..
-        #~ ls -l $GITHUB_WORKSPACE/..
-        #~ source $(realpath $GITHUB_WORKSPACE/../TDBRETENVVARS.TXT)
-        #~ if [[ $(cat $GITHUB_WORKSPACE/../TDBRETENVVARS.TXT) ]]; then
-          #~ echo "returned info above?"
-        #~ else
-          #~ echo "returned info not found"
-        #~ fi
-        #~ echo "TDB_BINARY_ARCHIVE_PATH=$TDB_BINARY_ARCHIVE_PATH"
-        #~ echo "TDB_SOURCE_ARCHIVE_PATH=$TDB_SOURCE_ARCHIVE_PATH"
-        #~ #docker cp "manylinux_container_for_build:$realpathtocp/*.tar.gz" $GITHUB_WORKSPACE/..
-        #~ #docker cp "$containername:$realpathtocp/*.tar.gz" $GITHUB_WORKSPACE/..
-        #~ echo "env.TDB_SOURCE_ARCHIVE_PATH is ${{ env.TDB_SOURCE_ARCHIVE_PATH }}"
-        #~ echo "env.TDB_BINARY_ARCHIVE_PATH is ${{ env.TDB_BINARY_ARCHIVE_PATH }}"
-        #~ sync
-        #--------------------------------
-        #~ docker cp "$containername:$TDB_SOURCE_ARCHIVE_PATH" $TDB_SOURCE_ARCHIVE_PATH #$GITHUB_WORKSPACE/..
-        #~ docker cp "$containername:$TDB_BINARY_ARCHIVE_PATH" $TDB_BINARY_ARCHIVE_PATH #$GITHUB_WORKSPACE/..
-        #~ if [[ $(ls -l $GITHUB_WORKSPACE/..) ]]; then
-          #~ #echo "any files above? (TDBRETENVVARS.TXT?)"
-          #~ echo "any files above? TDBRETENVVARS.TXT?"
-        #~ fi
-        #~ if [[ $(ls -l $GITHUB_WORKSPACE/../TDBRETENVVARS.TXT) ]]; then
-          #~ echo "file there..."
-        #~ else
-          #~ echo "file TDBRETENVVARS.TXT not found"
-        #~ fi
-        #TBD: copy the artifact data out of the container...
-        #docker cp ???
-        #docker stop manylinux_containe_for_build
+        docker inspect $containername
+        sync
         docker stop $containername
         
     - name: 'are variables in env context?'
       shell: bash
+      if: false
       run: |
         set -x
         echo "env.GITHUB_WORKSPACE is ${{ env.GITHUB_WORKSPACE }}"
@@ -665,52 +596,12 @@ runs:
         #~ fi
         #~ sync
         
-    #~ - name: get-prep-location-upload-artifact
-      #~ shell: bash
-      #~ run: |
-        #~ pwd
-        #~ git clone https://github.com/actions/upload-artifact ./gh.upload-artifact
-        #~ cd gh.upload-artifact
-        #~ git checkout tags/v2.2.4
-        #~ #sed "s/using: 'node12'/using: 'composite'/" action.yml
-        #~ #sed "s/main: 'dist/index.js'/steps:/" action.yml
-        #~ #sed "$a\ \ \ \ - shell: bash" action.yml
-        #~ #sed "$a\ \ \ \ \ \ run: node dist/index.js" action.yml
-        #~ cat > sed-upload-artifacts.patch <<EOF
-          #~ s/using: 'node12'/using: 'composite'/
-          #~ s/main: 'dist\/index.js'/steps:/
-          #~ $a\ \ \ \ - shell: bash
-          #~ $a\ \ \ \ \ \ run: node dist/index.js        
-        #~ EOF
-        #~ cat sed-upload-artifacts.patch
-        #~ hexdump -C sed-upload-artifacts.patch
-        #~ sed -f ./sed-upload-artifacts.patch action.yml > patched.action.yml
-        #~ rm action.yml
-        #~ mv patched.action.yml action.yml
-        #~ cat > vi-upload-artifacts.patch <<EOF
-          #~ :%s/using: 'node12'/using: 'composite'/g
-          #~ :%s/main: 'dist\/index.js'/steps:/g
-          #~ G
-          #~ A    - shell: bash
-                #~ run: node dist/index.js
-          #~ #how to insert ESCape to exit insert mode? <sigh>
-        #~ EOF
-        #~ cat ./action.yml
-        
     - name: 'ArchiveFiles@2A' # https://github.com/actions/upload-artifact#where-does-the-upload-go
       #if: ${{ failure() == true && startsWith(runner.name, 'macos-') == true }} # only run this job if the build step failed
       uses: actions/upload-artifact@v2
-      #uses: actions/upload-artifact@v1
-      #uses: ./gh.upload-artifact
-      #https://github.com/airtower-luna/hello-github-actions/blob/main/composite-action/action.yaml
       with:
         # @v1 does not recognize 'retention-days', 'if-no-files-found', path enhancments, prob more
-        #retention-days: 10
-        #name: "${{ runner.name }}.coredumps.${{ github.job }}.${{ github.run_number }}.${{github.run_id}}.${{github.run_attempt}}"
-        #name: tiledb-$(ARTIFACT_OS)-build-dir-$(ARTIFACT_EXTRAS).tar.gz
-        #name: tiledb-${{ env.ARTIFACT_OS }}-${{ env.ARTIFACT_ARCH }}-build-dir-${{ env.ARTIFACT_EXTRAS }}.${{github.job}}.tar.gz
-        #TBD: should be ok for release branches/tags, but 
-        #suspect a '/' in the dev branch names will not be well-received, but we'll try.
+        retention-days: 10
         name: tiledb-source-${{ env.ARTIFACT_OS }}-${{ env.ARTIFACT_ARCH }}-build-dir-${{ env.ARTIFACT_EXTRAS }}.${{env.TDB_REF_NAME}}.tar.gz
         #if-no-files-found: warn # 'ignore/', 'warn' or 'error' are available, defaults to `warn`
         #${{ env.GITHUB_WORKSPACE }}/
@@ -722,18 +613,10 @@ runs:
           ${{ env.TDB_SOURCE_ARCHIVE_PATH }}
 
     - name: 'ArchiveFiles@2B' # https://github.com/actions/upload-artifact#where-does-the-upload-go
-      # @v1 does not recognize 'retention-days', 'if-no-files-found', path enhancments, prob more
       #if: ${{ failure() == true && startsWith(runner.name, 'macos-') == true }} # only run this job if the build step failed
       uses: actions/upload-artifact@v2
-      #uses: actions/upload-artifact@v1
-      #uses: ./gh.upload-artifact
       with:
-        #retention-days: 10
-        #name: "${{ runner.name }}.coredumps.${{ github.job }}.${{ github.run_number }}.${{github.run_id}}.${{github.run_attempt}}"
-        #name: tiledb-$(ARTIFACT_OS)-build-dir-$(ARTIFACT_EXTRAS).tar.gz
-        #name: tiledb-${{ env.ARTIFACT_OS }}-${{ env.ARTIFACT_ARCH }}-build-dir-${{ env.ARTIFACT_EXTRAS }}.${{env.TDB_REF_NAME}}.${{env.commitHash}}.tar.gz
-        #note - using same name here as archive that is created, spec'd in 'path:' below
-        #name: tiledb-${ARTIFACT_OS}-${ARTIFACT_ARCH}-$(GITHUB_REF_NAME)-${TDB_COMMIT_HASH}.tar.gz
+        retention-days: 10
         name: tiledb-${{ env.ARTIFACT_OS }}-${{ env.ARTIFACT_ARCH }}-build-dir-${{ env.ARTIFACT_EXTRAS }}.${{env.TDB_REF_NAME}}.tar.gz
         #if-no-files-found: warn # 'ignore/', 'warn' or 'error' are available, defaults to `warn`
         #${{ env.GITHUB_WORKSPACE }}/build/
