@@ -116,7 +116,11 @@ FilterType Filter::type() const {
   return type_;
 }
 
-void Filter::init_resource_pool(uint64_t size) {
+void Filter::init_compression_resource_pool(uint64_t size) {
+  (void)size;
+}
+
+void Filter::init_decompression_resource_pool(uint64_t size) {
   (void)size;
 }
 

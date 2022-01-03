@@ -255,6 +255,16 @@ class Subarray {
       unsigned dim_idx, const void* start, const void* end, const void* stride);
 
   /**
+   * @brief Set point ranges from an array
+   *
+   * @param dim_idx Dimension index
+   * @param start Pointer to start of the array
+   * @param count Number of elements to add
+   * @return Status
+   */
+  Status add_point_ranges(unsigned dim_idx, const void* start, uint64_t count);
+
+  /**
    * Adds a variable-sized range to the (read/write) query on the input
    * dimension by index, in the form of (start, end).
    */

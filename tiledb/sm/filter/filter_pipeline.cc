@@ -137,6 +137,8 @@ Status FilterPipeline::filter_chunks_forward(
       output_data.clear();
       output_metadata.clear();
 
+      f->init_compression_resource_pool(compute_tp->concurrency_level());
+
       RETURN_NOT_OK(f->run_forward(
           tile, &input_metadata, &input_data, &output_metadata, &output_data));
 
@@ -254,7 +256,7 @@ Status FilterPipeline::filter_chunks_reverse(
     total_size += std::get<2>(input[i]);
   }
 
-  if (total_size != output->size())
+  if (total_size != output->alloced_size())
     RETURN_NOT_OK(output->realloc(total_size));
 
   // Run each chunk through the entire pipeline.
@@ -308,7 +310,7 @@ Status FilterPipeline::filter_chunks_reverse(
             output_chunk_buffer, orig_chunk_len));
       }
 
-      f->init_resource_pool(compute_tp->concurrency_level());
+      f->init_decompression_resource_pool(compute_tp->concurrency_level());
 
       RETURN_NOT_OK(f->run_reverse(
           tile,
