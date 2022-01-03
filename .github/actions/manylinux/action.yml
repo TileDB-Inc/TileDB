@@ -1,4 +1,4 @@
-name: act-linux_mac-release
+name: act-linux_mac
 
 runs:
   using: "composite"
@@ -10,137 +10,7 @@ runs:
       run: |
         docker run -it "quay.io/pypa/manylinux2010_x86_64:2021-11-07-28723f3" /bin/bash
         
-    - name: 'diagnose-explore-inside-action'
-      if: false
-      shell: bash
-      run: |
-        set -x
-        printenv > printenv.txt
-        env > env.txt
-        diff printenv.txt env.txt
-        printenv
-        env
-        exit 14
         
-    - name: 'get-prep-location-upload-artifact'
-      if: false
-      shell: bash
-      run: |
-        set -x
-        yum search wget
-        yum -y install wget
-        which wget
-        #when checked, was node v0.10.48, will it run the upload-artifacts index.js, which wanted node12?
-        #nope, 10.48 doesn't do it... yum -y install nodejs
-        #installing nodejs from source on centos6, https://www.subhosting.net/kb/how-to-install-nodejs-on-centos-6/
-        #the gcc present in the manylinux image is v8.something-or-other
-        #unclear what version of nodejs12 github actions 'node12' is using...
-        #v12.22.7 requires python2.7, won't configure
-        #managed to gain access to python2.7, but then 12.22.7 trying to link items not found (get_clock and related)
-        #wget https://nodejs.org/dist/v12.22.7/node-v12.22.7.tar.gz
-        #tar xzf node-v12.22.7.tar.gz
-        #cd node-v12.22.7
-        #version v12.0.0 wants python2.7 but will accommodate the 2.6 we have using
-        #some floating patch from somewhere...
-        #but ran into absence of module 'argparse', seems manylinux does have python27 avail for install
-        #only apparently its ghostly, I encountered similar to https://stackoverflow.com/questions/37748404/where-does-yum-install-python-on-centos-6-6
-        #then found https://gist.github.com/dalegaspi/dec44117fa5e7597a559
-        yum -y install python27
-        # will we need:
-        #cd /opt/rh/python27/root/usr/bin/ # cd to the directory where SCL installs python
-        #sudo LD_LIBRARY_PATH=$LD_LIBRARY_PATH ./easy_install-2.7 pip
-        wget https://nodejs.org/dist/v12.0.0/node-v12.0.0.tar.gz
-        tar xzf node-v12.0.0.tar.gz
-        cd node-v12.0.0
-        #scl enable python27 bash #hmm, but this won't see rest of run, will it...
-        #potentially helpful https://stackoverflow.com/questions/16631461/scl-enable-python27-bash
-        source /opt/rh/python27/enable
-        if [[ $(which python) ]]; then
-          python --version
-        else
-          echo "didn't find python"
-        fi
-        ./configure
-        make -j2 #do the runner's vm's really only have 2 cores?
-        make install
-        cd $GITHUB_WORKSPACE
-        which node
-        node --version
-        which npm
-        npm --version
-        pwd
-        git clone https://github.com/actions/upload-artifact ./gh.upload-artifact
-        cd gh.upload-artifact
-        git checkout tags/v2.2.4
-        #sed "s/using: 'node12'/using: 'composite'/" action.yml
-        #sed "s/main: 'dist\/index.js'/steps:/" action.yml
-        #sed "$a\ \ \ \ - shell: bash" action.yml
-        #sed "$a\ \ \ \ \ \ run: node dist/index.js" action.yml
-        #~ cat > sed-upload-artifacts.patch <<EOF
-          #~ s/using: 'node12'/using: 'composite'/
-          #~ s/main: 'dist\/index.js'/steps:/
-          #~ $a\ \ \ \ - shell: bash
-          #~ $a\ \ \ \ \ \ run: node dist/index.js
-        #~ EOF
-        #This section built patch to turn the cloned custom action into a composite action, but
-        #turns out runner env does -not- treat composite action setup same as non-composite, so
-        #still fails, not finding 'hidden' environment variables for which github actions apparently
-        #does not document...
-        #~ echo "s/using: 'node12'/using: 'composite'/" > sed-upload-artifact.patch
-        #~ echo "s/main: 'dist\/index.js'/steps:/" >> sed-upload-artifact.patch
-        #~ #echo "\$a\ \ \ \ - shell: bash" >> sed-upload-artifact.patch
-        #~ echo "\$a\\ \\ \\ \\ - shell: bash" >> sed-upload-artifact.patch
-        #~ #echo "\$a\ \ \ \ \ \ run: node dist/index.js" >> sed-upload-artifact.patch
-        #~ #echo "\$a\ \ \ \ \ \ run: node \$GITHUB_WORKSPACE/gh.upload-artifact/dist/index.js" >> sed-upload-artifact.patch
-        #~ echo "\$a\\ \\ \\ \\ \\ \\ env:" >> sed-upload-artifact.patch
-        #~ echo "\$a\\ \\ \\ \\ \\ \\ \\ \\ INPUT_PATH: \$\{\{ inputs.path \}\}" >> sed-upload-artifact.patch
-        #~ echo "\$a\\ \\ \\ \\ \\ \\ \\ \\ INPUT_NAME: \$\{\{ inputs.name \}\}" >> sed-upload-artifact.patch
-        #~ echo "\$a\\ \\ \\ \\ \\ \\ \\ \\ INPUT_IF-NO-FILES-FOUND: \$\{\{ inputs.if-no-files-found \}\}" >> sed-upload-artifact.patch
-        #~ #echo "\$a\\ \\ \\ \\ \\ \\ run: printenv" >> sed-upload-artifact.patch
-        #~ #echo "\$a\\ \\ \\ \\ \\ \\ run: node \$GITHUB_WORKSPACE/gh.upload-artifact/dist/index.js" >> sed-upload-artifact.patch
-        #~ echo "\$a\\ \\ \\ \\ \\ \\ run: |"  >> sed-upload-artifact.patch
-        #~ echo "\$a\\ \\ \\ \\ \\ \\ \\ \\ printenv" >> sed-upload-artifact.patch
-        #~ echo "\$a\\ \\ \\ \\ \\ \\ \\ \\ node \$GITHUB_WORKSPACE/gh.upload-artifact/dist/index.js" >> sed-upload-artifact.patch
-        #~ #https://github.com/actions/runner/issues/665 prob with 'inputs' for custom actions, work around.
-        #github actions only mentions using 'node12' or 'node16' which they must provide somewhere,
-        #can we simply use the 'node' (v12.0.0) that was built locally (and will run with the local libraries)???
-        #echo "s/using: 'node12'/using: 'node'/" > sed-upload-artifact.patch
-        
-        #command to invoke manylinux container image locally for exploring its contents
-        #docker run -it "quay.io/pypa/manylinux2010_x86_64:2021-11-07-28723f3" /bin/bash
-        
-        #https://github.com/borkdude/nbb-action-example/blob/v0.0.1/run.cjs
-        #<sigh>, of course this still won't work because it's still invoking the node12 to initiate the 
-        #call redirecting, and it's that node12 that problematically won't work, <sigh>.
-        echo -e "child = require('child_process');\npath = require('path');\n// fork to system-installed node which is local build v120.0 at this time of writing\nchild.fork(path.resolve(__dirname, 'dist/index.js'), [], {execPath: \"node\"});" > run.cjs
-        echo "s/main: 'dist\/index.js'/main: 'run.cjs'/" >> sed-upload-artifact.patch
-
-        #diagnostic, trying to see if 'node12', 'node16' are in environment, or does runner do
-        #something else hidden to equate these to something else in environ?
-        if [[ $(which node12) ]]; then
-          echo "found node12"
-        fi
-        if [[ $(which node16) ]]; then
-          echo "found node16"
-        fi
-        
-        #TBD: how to handle inputs/env-vars with dashes, what does GA do with them for custom non-composite actions?
-        cat sed-upload-artifact.patch
-        hexdump -C sed-upload-artifact.patch
-        sed -f ./sed-upload-artifact.patch action.yml > patched.action.yml
-        rm action.yml
-        mv patched.action.yml action.yml
-        #~ cat > vi-upload-artifact.patch <<EOF
-          #~ :%s/using: 'node12'/using: 'composite'/g
-          #~ :%s/main: 'dist\/index.js'/steps:/g
-          #~ G
-          #~ A    - shell: bash
-                #~ run: node dist/index.js
-          #~ #how to insert ESCape to exit insert mode? <sigh>
-        #~ EOF
-        pwd
-        cat ./action.yml
-
     - name: 'Print env'
       run: |
         echo "'uname -s' is:"
@@ -166,170 +36,16 @@ runs:
         set -e pipefail
         $SUDO rm -Rf /Library/Developer/CommandLineTools/SDKs/* # Remove SDKs without ARM support
 
-    - name: 'Build libtiledb orig'
-      if: false
-      #not availa le in (composite) action? continue-on-error: true
-      shell: bash
-      run: |
-        # DELETEME work-around for https://github.com/microsoft/azure-pipelines-image-generation/issues/969
-        #Needed for GA CI or not?... $SUDO chown root.root /
-
-        # Azure sets "SYSTEM=build" for unknown reasonas, which breaks the OpenSSL configure script
-        #   - openssl configure uses ENV{SYSTEM} if available:
-        #     https://github.com/openssl/openssl/blob/6d745d740d37d680ff696486218b650512bbbbc6/config#L56
-        #   - error description:
-        #     https://developercommunity.visualstudio.com/content/problem/602584/openssl-build-error-when-using-pipelines.htm
-        unset SYSTEM
-
-        # azure bash does not treat intermediate failure as error
-        # https://github.com/Microsoft/azure-pipelines-yaml/issues/135
-        set -e pipefail
-
-        git config --global user.name 'GACI Pipeline'
-        git config --global user.email 'no-reply@tiledb.io'
-
-        BUILD_REPOSITORY_LOCALPATH=$GITHUB_WORKSPACE
-        # Set up arguments for bootstrap.sh
-        BUILD_BINARIESDIRECTORY=${BUILD_BINARIESDIRECTORY:-$BUILD_REPOSITORY_LOCALPATH/dist}
-        cmake_args="-DCMAKE_INSTALL_PREFIX=${BUILD_BINARIESDIRECTORY} -DTILEDB_TESTS=OFF -DTILEDB_INSTALL_LIBDIR=lib";
-        mkdir -p ${BUILD_BINARIESDIRECTORY}
-
-        # Enable TILEDB_STATIC by default
-        [ "$TILEDB_STATIC" ] || TILEDB_STATIC=ON
-        if [[ "$TILEDB_STATIC" == "ON" ]]; then
-          cmake_args="${cmake_args} -DTILEDB_STATIC=ON";
-        fi
-        if [[ "$TILEDB_HDFS" == "ON" ]]; then
-          cmake_args="${cmake_args} -DTILEDB_HDFS=ON";
-        fi;
-        if [[ "$TILEDB_S3" == "ON" ]]; then
-          cmake_args="${cmake_args} -DTILEDB_S3=ON";
-        fi;
-        if [[ "$TILEDB_AZURE" == "ON" ]]; then
-          cmake_args="${cmake_args} -DTILEDB_AZURE=ON";
-        fi;
-        if [[ "$TILEDB_GCS" == "ON" ]]; then
-          cmake_args="${cmake_args} -DTILEDB_GCS=ON";
-        fi;
-        if [[ "$TILEDB_TOOLS" == "ON" ]]; then
-          cmake_args="${cmake_args} -DTILEDB_TOOLS=ON";
-        fi
-        if [[ "$TILEDB_DEBUG" == "ON" ]]; then
-          cmake_args="${cmake_args} -DCMAKE_BUILD_TYPE=Debug";
-        fi
-        if [[ "$TILEDB_CI_ASAN" == "ON" ]]; then
-          # Add address sanitizer flag if necessary
-          cmake_args="${cmake_args} -DSANITIZER=address";
-        fi
-        if [[ "$TILEDB_CI_TSAN" == "ON" ]]; then
-          # Add thread sanitizer flag if necessary
-          cmake_args="${cmake_args} -DSANITIZER=thread";
-        fi
-        if [[ "$TILEDB_SERIALIZATION" == "ON" ]]; then
-          # Add serialization flag if necessary
-          cmake_args="${cmake_args} -DTILEDB_SERIALIZATION=ON";
-        fi
-        if [[ "$TILEDB_FORCE_BUILD_DEPS" == "ON" ]]; then
-          # Add superbuild flag
-          cmake_args="${cmake_args} -DTILEDB_FORCE_ALL_DEPS=ON";
-        fi
-        if [[ "$TILEDB_WERROR" == "OFF" ]]; then
-          # Add superbuild flag
-          cmake_args="${cmake_args} -DTILEDB_WERROR=OFF";
-        fi
-
-        mkdir -p $BUILD_REPOSITORY_LOCALPATH/build
-        cd $BUILD_REPOSITORY_LOCALPATH/build
-
-        # Configure and build TileDB
-        echo "Running cmake with '${cmake_args}'"
-        cmake .. ${cmake_args}
-
-        make -j4
-        make -C tiledb install
-        
-        # get this into 'env' context since runners don't automatically place items
-        # from env into context on startup!
-        echo "GITHUB_SHA=$GITHUB_SHA" >> "$GITHUB_ENV"
-        echo "GITHUB_WORKSPACE=$GITHUB_WORKSPACE" >> "$GITHUB_ENV"
-        echo "ARTIFACT_OS=$ARTIFACT_OS" >> "$GITHUB_ENV"
-        echo "ARTIFACT_EXTRAS=$ARTIFACT_EXTRAS" >> "$GITHUB_ENV"
-        
-        set -x
-        pwd
-        #tar --exclude=build -zcf tiledb-${{ env.ARTIFACT_OS }}-build-dir-${{ env.ARTIFACT_EXTRAS }}.tar.gz $GITHUB_WORKSPACE
-        pwd
-        # sync in effort to avoid "tar: .: file changed as we read it" errors, guessing
-        # based on logs seen, poss. due to files from install just above not yet having 
-        # been completely written out with flushing happening during following 'tar' efforts.
-        sync
-        #sleep 10
-        # move up a directory level so we are writing archive where tar won't fail reporting change while reading...
-        cd $GITHUB_WORKSPACE/..
-        pwd
-        tar --exclude=build -vzcf tiledb-source-${{ env.ARTIFACT_OS }}-build-dir-${{ env.ARTIFACT_EXTRAS }}.tar.gz ./TileDB
-        ls -l $GITHUB_WORKSPACE/..
-        sync
-        #sleep 10
-        # move up a directory level so we are writing archive where tar won't fail reporting change while reading...
-        cd $GITHUB_WORKSPACE/..
-        pwd
-        #tar -zcf tiledb-${{ env.ARTIFACT_OS }}-build-dir-${{ env.ARTIFACT_EXTRAS }}.tar.gz $GITHUB_WORKSPACE/build
-        tar -vzcf tiledb-binary-${{ env.ARTIFACT_OS }}-build-dir-${{ env.ARTIFACT_EXTRAS }}.tar.gz ./TileDB/build
-        ls -l $GITHUB_WORKSPACE/..
-        sync
-        TDB_SOURCE_ARCHIVE_PATH=`dirname $GITHUB_WORKSPACE/..`/tiledb-source-${{ env.ARTIFACT_OS }}-build-dir-${{ env.ARTIFACT_EXTRAS }}.tar.gz
-        TDB_SOURCE_ARCHIVE_PATH2="$GITHUB_WORKSPACE/../tiledb-source-${{ env.ARTIFACT_OS }}-build-dir-${{ env.ARTIFACT_EXTRAS }}.tar.gz"
-        echo "TDB_SOURCE_ARCHIVE_PATH=$TDB_SOURCE_ARCHIVE_PATH"
-        #echo -e "import sys\nimport os\nprint (os.path.realpath(\"$TDB_SOURCE_ARCHIVE_PATH\"))\n" | /opt/rh/rh-python36/root/usr/bin/python
-        echo -e "import sys\nimport os\nprint (os.path.realpath(\"$TDB_SOURCE_ARCHIVE_PATH\"))\n" | python
-        echo -e "import sys\nimport os\nprint (os.path.realpath(\"$TDB_SOURCE_ARCHIVE_PATH2\"))\n" | python
-        #would like to use 'realpath', but seems not present in manylinux, and failed finding package that has it, whereas
-        #seems python functionality is present in all environs.
-        #TDB_SOURCE_ARCHIVE_PATH=$(echo -e "import sys\nimport os\nprint (os.path.realpath(\"$TDB_SOURCE_ARCHIVE_PATH\"))\n" | /opt/rh/rh-python36/root/usr/bin/python)
-        #TDB_SOURCE_ARCHIVE_PATH=$(echo -e "import sys\nimport os\nprint (os.path.realpath(\"$TDB_SOURCE_ARCHIVE_PATH\"))\n" | python)
-        TDB_SOURCE_ARCHIVE_PATH=$(echo -e "import sys\nimport os\nprint (os.path.realpath(\"$TDB_SOURCE_ARCHIVE_PATH2\"))\n" | python)
-        echo "TDB_SOURCE_ARCHIVE_PATH=$TDB_SOURCE_ARCHIVE_PATH"
-        #TDB_SOURCE_ARCHIVE_PATH=`dirname $TDB_SOURCE_ARCHIVE_PATH`
-        #echo "TDB_SOURCE_ARCHIVE_PATH=$TDB_SOURCE_ARCHIVE_PATH"
-        echo "TDB_SOURCE_ARCHIVE_PATH=$TDB_SOURCE_ARCHIVE_PATH" >> "$GITHUB_ENV"
-
-        TDB_BINARY_ARCHIVE_PATH=`dirname $GITHUB_WORKSPACE/..`/tiledb-binary-${{ env.ARTIFACT_OS }}-build-dir-${{ env.ARTIFACT_EXTRAS }}.tar.gz
-        TDB_BINARY_ARCHIVE_PATH2="$GITHUB_WORKSPACE/../tiledb-binary-${{ env.ARTIFACT_OS }}-build-dir-${{ env.ARTIFACT_EXTRAS }}.tar.gz"
-        echo "TDB_BINARY_ARCHIVE_PATH=$TDB_BINARY_ARCHIVE_PATH"
-        #'realpath' not available everywhere, see comment above.
-        #echo -e "import sys\nimport os\nprint (os.path.realpath(\"$TDB_BINARY_ARCHIVE_PATH\"))\n" | /opt/rh/rh-python36/root/usr/bin/python
-        echo -e "import sys\nimport os\nprint (os.path.realpath(\"$TDB_BINARY_ARCHIVE_PATH\"))\n" | python
-        echo -e "import sys\nimport os\nprint (os.path.realpath(\"$TDB_BINARY_ARCHIVE_PATH2\"))\n" | python
-        #TDB_BINARY_ARCHIVE_PATH=$(echo -e "import sys\nimport os\nprint (os.path.realpath(\"$TDB_BINARY_ARCHIVE_PATH\"))\n" | /opt/rh/rh-python36/root/usr/bin/python)
-        #TDB_BINARY_ARCHIVE_PATH=$(echo -e "import sys\nimport os\nprint (os.path.realpath(\"$TDB_BINARY_ARCHIVE_PATH\"))\n" | python)
-        TDB_BINARY_ARCHIVE_PATH=$(echo -e "import sys\nimport os\nprint (os.path.realpath(\"$TDB_BINARY_ARCHIVE_PATH2\"))\n" | python)
-        #TDB_BINARY_ARCHIVE_PATH=`dirname $TDB_BINARY_ARCHIVE_PATH`
-        echo "TDB_BINARY_ARCHIVE_PATH=$TDB_BINARY_ARCHIVE_PATH"
-        #echo "ARTIFACT_EXTRAS=$ARTIFACT_EXTRAS" >> "$GITHUB_ENV"
-        echo "TDB_BINARY_ARCHIVE_PATH=$TDB_BINARY_ARCHIVE_PATH" >> "$GITHUB_ENV"
-        
-        ls -l $TDB_SOURCE_ARCHIVE_PATH
-        ls -l $TDB_BINARY_ARCHIVE_PATH
-        
-        find / -name 'tiledb-*-linux-build-*.tar.gz' -exec ls -l {} \;
-
     - name: Git Hash 7-digit
       shell: bash
-      #env: 
-      #  sourceVersion: ${{ env.GITHUB_SHA }}
       run: |
         # 'member, GA CI does -not- pre-pop env context with items from environment.
         sourceVersion=$GITHUB_SHA
         echo "sourceVersion is $sourceVersion"
         commitHash=${sourceVersion:0:7}
         echo "commitHash is $commitHash"
-        #echo "##vso[task.setvariable variable=commitHash]$commitHash" ## Set variable for using in other tasks.
-        #echo "::set-output name=commitHash::$commitHash" # TBD: make status check pass for this hack step
         echo "commitHash=$commitHash" >> "$GITHUB_ENV" # make available to subsequent step
         echo "TDB_COMMIT_HASH=$commitHash" >> "$GITHUB_ENV" # make available to subsequent step
-        #for ev in GITHUB_REF_NAME GITHUB_REF_TYPE GITHUB_WORKSPACE GITHUB_EVENT_PATH CXX CC CFLAGS CXXFLAGS ARTIFACT_OS ARTIFACT_EXTRAS ARTIFACT_ARCH SUDO RUNNER_OS GITHUB_REF RUNNER_TRACKING_ID RUNNER_ARCH GITHUB_RUN_NUMBER GITHUB_RUN_ID GITHUB_EVENT_NAME GITHUB_ACTOR GITHUB_REF_NAME GITHUB_JOB GITHUB_REPOSITORY RUNNER_WORKSPACE GITHUB_WORKFLOW TDB_SOURCE_ARCHIVE_PATH TDB_BINARY_ARCHIVE_PATH; do tmp=$ev; echo "$ev=${!tmp}"; done >> tdbenvfile.txt
-        #for ev in commitHash; do tmp=$ev; echo "$ev=${!tmp}"; done >> tdbenvfile.txt
         sync
         
     - name: 'Build libtiledb scripted inits'
@@ -354,142 +70,12 @@ runs:
         cat tdbenvfile.txt
         sync
         
-    - name: 'Build libtiledb scripted A'
-      if: false #true
-      #not availa le in (composite) action? continue-on-error: true
-      shell: bash
-      run: |
-        up1level=$(echo -e "import sys\nimport os\nprint (os.path.realpath(\"$GITHUB_WORKSPACE/..\"))" | python3)
-        echo "up1level is $up1level"
-        if [[ $(find ~/.docker -name '*') ]]; then
-          echo "found .docker user config I think"
-          cat ~/.docker/config.json
-        else
-          echo "unable to find ~/.docker"
-        fi
-        docker --version
-        sync
-        docker volume create tdb-vol
-        sync
-        docker volume ls
-        sync
-        docker volume inspect tdb-vol
-        sync
-        docker volume rm tdb-vol
-        sync
-        docker volume ls
-        docker container run \
-          -d --name dlhdataxfer \
-          -it \
-          -v "$up1level:$up1level" --env-file tdbenvfile.txt \
-          -w $GITHUB_WORKSPACE \
-          "quay.io/pypa/manylinux2010_x86_64:2021-11-07-28723f3" \
-          /bin/bash # -c "pwd; ls -l; . ./scripts/ci/linux-mac_release_buildtiledb.sh"
-        docker ps
-        sync
-        docker volume ls
-        sync
-        docker container ls
-        sync
-        docker container inspect dlhdataxfer
-        sync
-        docker container exec \
-          dlhdataxfer \
-          /bin/bash -c "pwd; ls -l; echo hello from container on/at $(date) > datafromcontainer.txt; echo goodbye from container on/at $(date) > ../moredatafromcontainer.txt"
-        pwd
-        cd $GITHUB_WORKSPACE/..
-        docker container exec \
-          dlhdataxfer \
-          /bin/bash -c "pwd; ls -l; cd ..; ls -l; tar --exclude=build -zcf tiledb-source-${ARTIFACT_OS}-${ARTIFACT_ARCH}-build-dir-${ARTIFACT_EXTRAS}.tar.gz ./TileDB; ls -l $GITHUB_WORKSPACE/.."
-        sync
-        echo "OUTSIDE manylinx"
-        sync
-        pwd
-        sync
-        realpath .
-        sync
-        ls -l .
-        sync
-        realpath ..
-        sync
-        ls -l ..
-        sync
-        if [[ ! $(ls -l $up1level/*.tar.gz) ]]; then
-          if [[ ! $(ls -l ./*.tar.gz) ]]; then
-            echo "failed to find \*.tar.gz"
-          else
-            echo "found *.tar.gz above in $(pwd)?"
-          fi
-        else
-          echo "found \*.tar.gz above in $up1level?"
-        fi
-        sync
-        #docker container inspect dlhdataxfer
-        sync
-        echo "OUTSIDE hunting datafromcontainer.txt..."
-        sync
-        if [[ $(which sudo) ]]; then
-          echo "found 'sudo'"
-          XSUDO=sudo
-        else
-          echo "did not find 'sudo'"
-        fi
-        echo "XSUDO is $XSUDO"
-        sync
-        pwd
-        if [[ $($XSUDO find / -name datafromcontainer.txt -exec ls -l {} \;) ]]; then
-        #if [[ $(find / -name datafromcontainer.txt -exec ls -l {} \;) ]]; then
-        #if [[ $(find / -name datafromcontainer.txt) ]]; then
-          echo "found datafromcontainer.txt"
-          if [[ $(ls -l $GITHUB_WORKSPACE/datafromcontainer.txt) ]]; then
-            cat $GITHUB_WORKSPACE/datafromcontainer.txt
-          elif [[ $(ls -l $up1level/datafromcontainer.txt) ]]; then
-            cat $up1level/datafromcontainer.txt
-          fi
-          sync
-          #docker cp $up1level:datafromcontainer.txt ./copieddatafromcontainer.txt
-          #sync
-        else
-          echo "did not find datafromcontainer.txt"
-        fi
-        if [[ ! $(ls -l $up1level/moredatafromcontainer.txt) ]]; then
-          if [[ $($XSUDO find / -name moredatafromcontainer.txt -exec ls -l {} \;) ]]; then
-            echo "found datafromcontainer.txt"
-          fi
-        else
-          echo "found moredatafromcontainer.txt at $up1level"
-          cat $up1level/moredatafromcontainer.txt
-          echo "contents of moredatafromcontainer.txt above?"
-        fi
-        if [[ ! $(ls -l $up1level/TDBRETENVVARS.TXT) ]]; then
-          if [[ $($XSUDO find / -name TDBRETENVVARS.TXT -exec ls -l {} \;) ]]; then
-            echo "found TDBRETENVVARS.TXT"
-          fi
-        else
-          echo "found TDBRETENVVARS.TXT at $up1level"
-          cat $up1level/TDBRETENVVARS.TXT
-          echo "contents of TDBRETENVVARS.TXT above?"
-          source $up1level/TDBRETENVVARS.TXT
-          echo "TDB_BINARY_ARCHIVE_PATH=$TDB_BINARY_ARCHIVE_PATH" >> "$GITHUB_ENV"
-          echo "TDB_SOURCE_ARCHIVE_PATH=$TDB_SOURCE_ARCHIVE_PATH" >> "$GITHUB_ENV"
-          
-        fi
-        sync
-        docker container stop dlhdataxfer
-        sync
-        docker container rm dlhdataxfer
-        sync
-        #exit 19
-        
-    - name: 'Build libtiledb scripted B'
+    - name: 'Build libtiledb scripted'
       if: true
-      #not available in (composite) action? continue-on-error: true
       shell: bash
       run: |
         up1level=$(echo -e "import sys\nimport os\nprint (os.path.realpath(\"$GITHUB_WORKSPACE/..\"))" | python3)
-        #  -v "$GITHUB_WORKSPACE:$GITHUB_WORKSPACE" --env-file tdbenvfile.txt \
-        #  -v "$up1level:$up1level" --env-file tdbenvfile.txt \
-        containername=dlhmanylinux
+        containername=tdbmanylinux
         docker container run \
           -d --name $containername \
           -it \
@@ -505,39 +91,17 @@ runs:
         sync
         docker inspect $containername
         sync
-        #~ echo "A docker volume ls"
-        #~ docker volume ls
-        #~ echo "any volumes above?"
-        #~ sync
-        #  -it \ ......
         docker container exec \
           $containername \
           /bin/bash -c "pwd; ls -l; . ./scripts/ci/GA-linux-mac_buildtiledb.sh; pwd; ls -l; pwd; ls -l .."
-        sync
-        echo "OUTSIDE of manylinux"
-        pwd
-        sync
-        realpath .
-        ls -l .
         sync
         echo "are .tar.gz files following?"
         realpath ..
         ls -l ..
         sync
-        #~ echo "B docker volume ls"
-        #~ docker volume ls
-        #~ echo "any volumes above?"
-        #~ sync
-        #TBD: if this is detached, will we actally see nothing?
-        #and attempts to use -it with detached were rejected, complaints about terminal
-        #docker exec $containername bash -c "pwd; ls -l; ls -l ../*.tar.gz"
         docker exec $containername /bin/bash -c "echo \"insA\";pwd; ls -l; ls -l ..;echo \"insB, end\""
         sync
         pwd
-        sync
-        ls -l .
-        sync
-        ls -l ..
         sync
         docker ps
         sync
@@ -555,190 +119,25 @@ runs:
           
         fi
         sync
-        #~ docker container ls
-        #~ sync
-        #~ docker image ls
-        #~ sync
-        #~ docker volume ls
-        #~ sync
-        #docker inspect manylinux_container_for_build
-        #docker inspect $containername
-        #sync
-        #~ #docker cp 'manylinux_container_for_build:$GITHUB_WORKSPACE/../*.tar.gz' $GITHUB_WORKSPACE/..
-        #~ realpathtocopy=$(echo -e "import sys\nimport os\nprint (os.path.realpath(\"$GITHUB_WORKSPACE/../TDBRETENVVARS.TXT\"))" | python3)
-        #~ echo "realpathtocopy is $realpathtocopy"
-        #~ #copypath=$(realpath $GITHUB_WORKSPACE/../TDBRETENVVARS.TXT)
-        #~ docker cp "$containername:$realpathtocopy" $realpathtocopy #$GITHUB_WORKSPACE/..
-        #~ ls -l $GITHUB_WORKSPACE/..
-        #~ source $(realpath $GITHUB_WORKSPACE/../TDBRETENVVARS.TXT)
-        #~ if [[ $(cat $GITHUB_WORKSPACE/../TDBRETENVVARS.TXT) ]]; then
-          #~ echo "returned info above?"
-        #~ else
-          #~ echo "returned info not found"
-        #~ fi
-        #~ echo "TDB_BINARY_ARCHIVE_PATH=$TDB_BINARY_ARCHIVE_PATH"
-        #~ echo "TDB_SOURCE_ARCHIVE_PATH=$TDB_SOURCE_ARCHIVE_PATH"
-        #~ #docker cp "manylinux_container_for_build:$realpathtocp/*.tar.gz" $GITHUB_WORKSPACE/..
-        #~ #docker cp "$containername:$realpathtocp/*.tar.gz" $GITHUB_WORKSPACE/..
-        #~ echo "env.TDB_SOURCE_ARCHIVE_PATH is ${{ env.TDB_SOURCE_ARCHIVE_PATH }}"
-        #~ echo "env.TDB_BINARY_ARCHIVE_PATH is ${{ env.TDB_BINARY_ARCHIVE_PATH }}"
-        #~ sync
-        #--------------------------------
-        #~ docker cp "$containername:$TDB_SOURCE_ARCHIVE_PATH" $TDB_SOURCE_ARCHIVE_PATH #$GITHUB_WORKSPACE/..
-        #~ docker cp "$containername:$TDB_BINARY_ARCHIVE_PATH" $TDB_BINARY_ARCHIVE_PATH #$GITHUB_WORKSPACE/..
-        #~ if [[ $(ls -l $GITHUB_WORKSPACE/..) ]]; then
-          #~ #echo "any files above? (TDBRETENVVARS.TXT?)"
-          #~ echo "any files above? TDBRETENVVARS.TXT?"
-        #~ fi
-        #~ if [[ $(ls -l $GITHUB_WORKSPACE/../TDBRETENVVARS.TXT) ]]; then
-          #~ echo "file there..."
-        #~ else
-          #~ echo "file TDBRETENVVARS.TXT not found"
-        #~ fi
-        #TBD: copy the artifact data out of the container...
-        #docker cp ???
-        #docker stop manylinux_containe_for_build
         docker stop $containername
-        
-    - name: 'are variables in env context?'
-      shell: bash
-      run: |
-        set -x
-        echo "env.GITHUB_WORKSPACE is ${{ env.GITHUB_WORKSPACE }}"
-        echo "env.GITHUB_SHA is ${{ env.GITHUB_SHA }}"
-        echo "env.ARTIFACT_OS is ${{ env.ARTIFACT_OS }}"
-        echo "env.ARTIFACT_ARCH is ${{ env.ARTIFACT_ARCH }}"
-        echo "env.ARTIFACT_EXTRAS is ${{ env.ARTIFACT_EXTRAS }}"
-        echo "tiledb-${{ env.ARTIFACT_OS }}-build-dir-${{ env.ARTIFACT_EXTRAS }}.tar.gz"
-        echo "TDB_SOURCE_ARCHIVE_PATH is $TDB_SOURCE_ARCHIVE_PATH"
-        echo "TDB_BINARY_ARCHIVE_PATH is $TDB_BINARY_ARCHIVE_PATH"
-        ls -l $TDB_SOURCE_ARCHIVE_PATH
-        ls -l $TDB_BINARY_ARCHIVE_PATH
-        echo "env.TDB_SOURCE_ARCHIVE_PATH is ${{ env.TDB_SOURCE_ARCHIVE_PATH }}"
-        echo "env.TDB_BINARY_ARCHIVE_PATH is ${{ env.TDB_BINARY_ARCHIVE_PATH }}"
-        sync
-        ls -l ${{ env.GITHUB_WORKSPACE }}/..
-        echo "${{ env.GITHUB_WORKSPACE }}/../tiledb-${{ env.ARTIFACT_OS }}-${{ env.ARTIFACT_ARCH }}-build-dir-${{ env.ARTIFACT_EXTRAS }}.tar.gz"
-        if [[ ! $(ls -l ${{ env.GITHUB_WORKSPACE }}/../tiledb-${{ env.ARTIFACT_OS }}-${{ env.ARTIFACT_ARCH }}-build-dir-${{ env.ARTIFACT_EXTRAS }}.tar.gz) ]]; then
-          echo failed ls -l ${{ env.GITHUB_WORKSPACE }}/../tiledb-${{ env.ARTIFACT_OS }}-${{ env.ARTIFACT_ARCH }}-build-dir-${{ env.ARTIFACT_EXTRAS }}.tar.gz
-        else
-          ls -l ${{ env.GITHUB_WORKSPACE }}/../tiledb-${{ env.ARTIFACT_OS }}-${{ env.ARTIFACT_ARCH }}-build-dir-${{ env.ARTIFACT_EXTRAS }}.tar.gz
-        fi
-        #TDB_REF_NAME=${GITHUB_REF_NAME//\//-} # replace '/' with '-'
-        #echo "TDB_REF_NAME=$TDB_REF_NAME" >> "$GITHUB_ENV"
-        pwd
-        sync
-        ls -l
-        ls -l ..
-        if [[ ! $(find $(realpath $GITHUB_WORKSPACE/..) -name '*.tar.gz' -exec ls -l {} \;) ]]; then
-          echo "did not find *.tar.gz"
-          sync
-        else
-          echo "found *.targ.z, above?"
-          sync
-        fi
-        #printenv
-        if [[ $(whoami) ]]; then
-          echo $(whoami)
-        else
-          echo "couldn't figure out who I am"
-        fi
-        #no sudo... sudo ls -l
-        #~ if [[ $(ls -l /) ]]; then
-          #~ ls -l /
-        #~ else
-          #~ echo "unable to ls -l /"
-        #~ fi
-        #~ ls -l
-        #~ if [[ $(ls -l ./gh.upload-artifact) ]]; then
-          #~ #ls -l ./gh.upload-artifact
-          #~ echo "have gh.upload-artifact"
-          #~ if [[ $(ls -l ./gh.upload-artifact/action.yml) ]]; then
-            #~ echo "appears action.yml is where expected..."
-          #~ else
-            #~ echo "action.yml NOT WHERE EXPECTED!"
-          #~ fi
-        #~ else
-          #~ echo 'where are we?'
-          #~ pwd
-          #~ echo 'did not find gh.upload-artifact'
-        #~ fi
-        #~ sync
-        
-    #~ - name: get-prep-location-upload-artifact
-      #~ shell: bash
-      #~ run: |
-        #~ pwd
-        #~ git clone https://github.com/actions/upload-artifact ./gh.upload-artifact
-        #~ cd gh.upload-artifact
-        #~ git checkout tags/v2.2.4
-        #~ #sed "s/using: 'node12'/using: 'composite'/" action.yml
-        #~ #sed "s/main: 'dist/index.js'/steps:/" action.yml
-        #~ #sed "$a\ \ \ \ - shell: bash" action.yml
-        #~ #sed "$a\ \ \ \ \ \ run: node dist/index.js" action.yml
-        #~ cat > sed-upload-artifacts.patch <<EOF
-          #~ s/using: 'node12'/using: 'composite'/
-          #~ s/main: 'dist\/index.js'/steps:/
-          #~ $a\ \ \ \ - shell: bash
-          #~ $a\ \ \ \ \ \ run: node dist/index.js        
-        #~ EOF
-        #~ cat sed-upload-artifacts.patch
-        #~ hexdump -C sed-upload-artifacts.patch
-        #~ sed -f ./sed-upload-artifacts.patch action.yml > patched.action.yml
-        #~ rm action.yml
-        #~ mv patched.action.yml action.yml
-        #~ cat > vi-upload-artifacts.patch <<EOF
-          #~ :%s/using: 'node12'/using: 'composite'/g
-          #~ :%s/main: 'dist\/index.js'/steps:/g
-          #~ G
-          #~ A    - shell: bash
-                #~ run: node dist/index.js
-          #~ #how to insert ESCape to exit insert mode? <sigh>
-        #~ EOF
-        #~ cat ./action.yml
         
     - name: 'ArchiveFiles@2A' # https://github.com/actions/upload-artifact#where-does-the-upload-go
       #if: ${{ failure() == true && startsWith(runner.name, 'macos-') == true }} # only run this job if the build step failed
       uses: actions/upload-artifact@v2
-      #uses: actions/upload-artifact@v1
-      #uses: ./gh.upload-artifact
-      #https://github.com/airtower-luna/hello-github-actions/blob/main/composite-action/action.yaml
       with:
-        # @v1 does not recognize 'retention-days', 'if-no-files-found', path enhancments, prob more
-        #retention-days: 10
-        #name: "${{ runner.name }}.coredumps.${{ github.job }}.${{ github.run_number }}.${{github.run_id}}.${{github.run_attempt}}"
-        #name: tiledb-$(ARTIFACT_OS)-build-dir-$(ARTIFACT_EXTRAS).tar.gz
-        #name: tiledb-${{ env.ARTIFACT_OS }}-${{ env.ARTIFACT_ARCH }}-build-dir-${{ env.ARTIFACT_EXTRAS }}.${{github.job}}.tar.gz
-        #TBD: should be ok for release branches/tags, but 
-        #suspect a '/' in the dev branch names will not be well-received, but we'll try.
+        retention-days: 10
+        #a '/' in the dev branch names will not work, needs to be filtered before use (done above for TDB_REF_NAME)
         name: tiledb-source-${{ env.ARTIFACT_OS }}-${{ env.ARTIFACT_ARCH }}-build-dir-${{ env.ARTIFACT_EXTRAS }}.${{env.TDB_REF_NAME}}.tar.gz
         #if-no-files-found: warn # 'ignore/', 'warn' or 'error' are available, defaults to `warn`
-        #${{ env.GITHUB_WORKSPACE }}/
-        #!${{ env.GITHUB_WORKSPACE }}/build/
-        #${{ env.GITHUB_WORKSPACE }}/../tiledb-${{ env.ARTIFACT_OS }}-build-dir-${{ env.ARTIFACT_EXTRAS }}.tar.gz
-        #${{ env.TDB_SOURCE_ARCHIVE_PATH }}
-        #CMakeLists.txt
         path: |
           ${{ env.TDB_SOURCE_ARCHIVE_PATH }}
 
     - name: 'ArchiveFiles@2B' # https://github.com/actions/upload-artifact#where-does-the-upload-go
-      # @v1 does not recognize 'retention-days', 'if-no-files-found', path enhancments, prob more
       #if: ${{ failure() == true && startsWith(runner.name, 'macos-') == true }} # only run this job if the build step failed
       uses: actions/upload-artifact@v2
-      #uses: actions/upload-artifact@v1
-      #uses: ./gh.upload-artifact
       with:
-        #retention-days: 10
-        #name: "${{ runner.name }}.coredumps.${{ github.job }}.${{ github.run_number }}.${{github.run_id}}.${{github.run_attempt}}"
-        #name: tiledb-$(ARTIFACT_OS)-build-dir-$(ARTIFACT_EXTRAS).tar.gz
-        #name: tiledb-${{ env.ARTIFACT_OS }}-${{ env.ARTIFACT_ARCH }}-build-dir-${{ env.ARTIFACT_EXTRAS }}.${{env.TDB_REF_NAME}}.${{env.commitHash}}.tar.gz
-        #note - using same name here as archive that is created, spec'd in 'path:' below
-        #name: tiledb-${ARTIFACT_OS}-${ARTIFACT_ARCH}-$(GITHUB_REF_NAME)-${TDB_COMMIT_HASH}.tar.gz
+        retention-days: 10
         name: tiledb-${{ env.ARTIFACT_OS }}-${{ env.ARTIFACT_ARCH }}-build-dir-${{ env.ARTIFACT_EXTRAS }}.${{env.TDB_REF_NAME}}.tar.gz
         #if-no-files-found: warn # 'ignore/', 'warn' or 'error' are available, defaults to `warn`
-        #${{ env.GITHUB_WORKSPACE }}/build/
-        #${{ env.GITHUB_WORKSPACE }}/../tiledb-${{ env.ARTIFACT_OS }}-build-dir-${{ env.ARTIFACT_EXTRAS }}.tar.gz
-        #${{ env.TDB_BINARY_ARCHIVE_PATH }}
-        #CMakeLists.txt
         path: |
           ${{ env.TDB_BINARY_ARCHIVE_PATH }}
