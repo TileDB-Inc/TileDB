@@ -222,23 +222,29 @@ const Range& Dimension::domain() const {
 void Dimension::dump(FILE* out) const {
   if (out == nullptr)
     out = stdout;
+  std::stringstream ss;
+  dump_ss(ss);
+  fprintf(out, "%s", ss.str().c_str());
+}
+
+void Dimension::dump_ss(std::stringstream& ss) const {
   // Retrieve domain and tile extent strings
   std::string domain_s = domain_str();
   std::string tile_extent_s = tile_extent_str();
 
   // Dump
-  fprintf(out, "### Dimension ###\n");
-  fprintf(out, "- Name: %s\n", name_.c_str());
-  fprintf(out, "- Type: %s\n", datatype_str(type_).c_str());
+  ss << "### Dimension ###\n";
+  ss << "- Name: " << name_ << "\n";
+  ss << "- Type: " << datatype_str(type_) << "\n";
   if (!var_size())
-    fprintf(out, "- Cell val num: %u\n", cell_val_num_);
+    ss << "- Cell val num: " << cell_val_num_ << "\n";
   else
-    fprintf(out, "- Cell val num: var\n");
-  fprintf(out, "- Domain: %s\n", domain_s.c_str());
-  fprintf(out, "- Tile extent: %s\n", tile_extent_s.c_str());
-  fprintf(out, "- Filters: %u", (unsigned)filters_.size());
-  filters_.dump(out);
-  fprintf(out, "\n");
+    ss << "- Cell val num: var\n";
+  ss << "- Domain: " << domain_s << "\n";
+  ss << "- Tile extent: " << tile_extent_s << "\n";
+  ss << "- Filters: " << (unsigned)filters_.size();
+  filters_.dump_ss(ss);
+  ss << "\n";
 }
 
 const FilterPipeline& Dimension::filters() const {

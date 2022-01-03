@@ -130,6 +130,7 @@ class Dimension {
 
   /** Dumps the dimension contents in ASCII form in the selected output. */
   void dump(FILE* out) const;
+  void dump_ss(std::stringstream& ss) const;
 
   /** Returns the filter pipeline of this dimension. */
   const FilterPipeline& filters() const;
