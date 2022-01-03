@@ -2647,6 +2647,15 @@ int32_t tiledb_array_schema_dump(
   return TILEDB_OK;
 }
 
+int32_t tiledb_array_schema_dump_str(
+    tiledb_ctx_t* ctx, const tiledb_array_schema_t* array_schema, char** out) {
+  if (sanity_check(ctx) == TILEDB_ERR ||
+      sanity_check(ctx, array_schema) == TILEDB_ERR)
+    return TILEDB_ERR;
+  array_schema->array_schema_->dump_str(out);
+  return TILEDB_OK;
+}
+
 int32_t tiledb_array_schema_get_attribute_from_index(
     tiledb_ctx_t* ctx,
     const tiledb_array_schema_t* array_schema,

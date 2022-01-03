@@ -3443,7 +3443,7 @@ TILEDB_EXPORT int32_t tiledb_array_schema_has_attribute(
  *
  * **Example:**
  *
- * The following prints the array schema dump in standard output.
+ * The following prints the array-schema dump to standard output.
  *
  * @code{.c}
  * tiledb_array_schema_dump(ctx, array_schema, stdout);
@@ -3456,6 +3456,43 @@ TILEDB_EXPORT int32_t tiledb_array_schema_has_attribute(
  */
 TILEDB_EXPORT int32_t tiledb_array_schema_dump(
     tiledb_ctx_t* ctx, const tiledb_array_schema_t* array_schema, FILE* out);
+
+/**
+ * Returns the array schema in ASCII format as a string.
+ *
+ * **Example:**
+ *
+ * The following retrieves the array-schema dump as a string.
+ *
+ * @code{.c}
+ * char* txt;
+ * tiledb_array_schema_dump_str(ctx, array_schema, &txt);
+ * @endcode
+ *
+ * @param ctx The TileDB context.
+ * @param array_schema The array schema.
+ * @param out Returns the output string. Maybe be passed in as nullptr.
+ * @return `TILEDB_OK` for success and `TILEDB_ERR` for error.
+ */
+TILEDB_EXPORT int32_t tiledb_array_schema_dump_str(
+    tiledb_ctx_t* ctx, const tiledb_array_schema_t* array_schema, char** out);
+
+/**
+ * Dumps the array schema in ASCII format as a string.
+ *
+ * **Example:**
+ *
+ * @code{.c}
+ * char *stats_str;
+ * tiledb_stats_raw_dump_str(&stats_str);
+ * // ...
+ * tiledb_stats_raw_free_str(&stats_str);
+ * @endcode
+ *
+ * @param out Will be set to point to an allocated string containing the stats.
+ * @return `TILEDB_OK` for success and `TILEDB_ERR` for error.
+ */
+TILEDB_EXPORT int32_t tiledb_stats_raw_dump_str(char** out);
 
 /* ********************************* */
 /*               QUERY               */
