@@ -76,6 +76,7 @@ class Add1InPlace : public tiledb::sm::Filter {
   void dump(FILE* out) const override {
     (void)out;
   }
+  // ...
 
   Status run_forward(
       const Tile&,
