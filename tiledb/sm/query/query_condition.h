@@ -209,7 +209,7 @@ class QueryCondition {
   /**
    * Returns a set of all unique field names among the conditional clauses.
    */
-  std::unordered_set<std::string> field_names() const;
+  std::unordered_set<std::string>& field_names() const;
 
   /**
    * Applies this query condition to `result_cell_slabs`.
