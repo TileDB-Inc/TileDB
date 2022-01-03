@@ -3477,23 +3477,6 @@ TILEDB_EXPORT int32_t tiledb_array_schema_dump(
 TILEDB_EXPORT int32_t tiledb_array_schema_dump_str(
     tiledb_ctx_t* ctx, const tiledb_array_schema_t* array_schema, char** out);
 
-/**
- * Dumps the array schema in ASCII format as a string.
- *
- * **Example:**
- *
- * @code{.c}
- * char *stats_str;
- * tiledb_stats_raw_dump_str(&stats_str);
- * // ...
- * tiledb_stats_raw_free_str(&stats_str);
- * @endcode
- *
- * @param out Will be set to point to an allocated string containing the stats.
- * @return `TILEDB_OK` for success and `TILEDB_ERR` for error.
- */
-TILEDB_EXPORT int32_t tiledb_stats_raw_dump_str(char** out);
-
 /* ********************************* */
 /*               QUERY               */
 /* ********************************* */
