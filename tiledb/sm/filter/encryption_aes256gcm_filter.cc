@@ -70,6 +70,10 @@ void EncryptionAES256GCMFilter::dump(FILE* out) const {
   fprintf(out, "EncryptionAES256GCM");
 }
 
+void EncryptionAES256GCMFilter::dump_ss(std::stringstream& ss) const {
+  ss << "EncryptionAES256GCM";
+}
+
 Status EncryptionAES256GCMFilter::run_forward(
     const Tile&,
     FilterBuffer* input_metadata,

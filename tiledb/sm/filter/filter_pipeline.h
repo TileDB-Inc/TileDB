@@ -97,10 +97,16 @@ class FilterPipeline {
   Status deserialize(ConstBuffer* buff);
 
   /**
-   * Dumps the filter pipeline details in ASCII format in the selected
-   * output.
+   * Dumps the filter pipeline details in ASCII format to the selected
+   * output file.
    */
   void dump(FILE* out) const;
+
+  /**
+   * Dumps the filter pipeline details in ASCII format to the selected
+   * output stringstream.
+   */
+  void dump_ss(std::stringstream& ss) const;
 
   /**
    * Returns pointer to the first instance of a filter in the pipeline with the

@@ -55,6 +55,10 @@ void PositiveDeltaFilter::dump(FILE* out) const {
   fprintf(out, "PositiveDelta: POSITIVE_DELTA_MAX_WINDOW=%u", max_window_size_);
 }
 
+void PositiveDeltaFilter::dump_ss(std::stringstream& ss) const {
+  ss << "PositiveDelta: POSITIVE_DELTA_MAX_WINDOW=" << max_window_size_;
+}
+
 Status PositiveDeltaFilter::run_forward(
     const Tile& tile,
     FilterBuffer* input_metadata,

@@ -55,6 +55,10 @@ void NoopFilter::dump(FILE* out) const {
   fprintf(out, "NoOp");
 }
 
+void NoopFilter::dump_ss(std::stringstream& ss) const {
+  ss << "NoOp";
+}
+
 Status NoopFilter::run_forward(
     const Tile&,
     FilterBuffer* input_metadata,
