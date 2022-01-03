@@ -224,6 +224,7 @@ class Domain {
 
   /** Dumps the domain in ASCII format in the selected output. */
   void dump(FILE* out) const;
+  void dump_ss(std::stringstream& ss) const;
 
   /** Expands ND range `r2` using ND range `r1`. */
   void expand_ndrange(const NDRange& r1, NDRange* r2) const;
