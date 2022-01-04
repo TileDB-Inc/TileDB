@@ -709,7 +709,7 @@ Status Writer::check_subarray() const {
     if (subarray_.is_set())
       return LOG_STATUS(
           Status_WriterError("Subarray range for a write query is not "
-                              "supported in sparse arrays"));
+                             "supported in sparse arrays"));
   }
   return Status::Ok();
 }
