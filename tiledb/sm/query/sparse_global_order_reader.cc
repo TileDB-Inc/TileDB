@@ -40,6 +40,7 @@
 #include "tiledb/sm/misc/hilbert.h"
 #include "tiledb/sm/misc/parallel_functions.h"
 #include "tiledb/sm/misc/utils.h"
+#include "tiledb/sm/query/hilbert_order.h"
 #include "tiledb/sm/query/query_macros.h"
 #include "tiledb/sm/query/result_tile.h"
 #include "tiledb/sm/stats/global_stats.h"
@@ -495,7 +496,7 @@ Status SparseGlobalOrderReader::create_result_tiles(bool* tiles_found) {
                   t);
 
               if (result_tiles_[f].empty())
-                return logger_->status(Status::SparseGlobalOrderReaderError(
+                return logger_->status(Status_SparseGlobalOrderReaderError(
                     "Cannot load a single tile for fragment, increase memory "
                     "budget"));
               break;
@@ -540,7 +541,7 @@ Status SparseGlobalOrderReader::create_result_tiles(bool* tiles_found) {
                   t);
 
               if (result_tiles_[f].empty())
-                return logger_->status(Status::SparseGlobalOrderReaderError(
+                return logger_->status(Status_SparseGlobalOrderReaderError(
                     "Cannot load a single tile for fragment, increase memory "
                     "budget"));
               break;
@@ -705,7 +706,8 @@ Status SparseGlobalOrderReader::calculate_hilbert_values<HilbertCmpReverse>(
           for (uint32_t d = 0; d < dim_num; ++d) {
             auto dim = array_schema_->dimension(d);
             auto rc = ResultCoords(tile, c);
-            coords[d] = dim->map_to_uint64(rc, d, bits, max_bucket_val);
+            coords[d] =
+                hilbert_order::map_to_uint64(*dim, rc, d, bits, max_bucket_val);
           }
 
           // Now we are ready to get the final number.

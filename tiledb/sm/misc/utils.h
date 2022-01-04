@@ -45,10 +45,10 @@
 #include "tiledb/common/status.h"
 #include "tiledb/sm/misc/types.h"
 
-using namespace tiledb::common;
-
 namespace tiledb {
 namespace sm {
+
+using namespace tiledb::common;
 
 class Posix;
 class URI;
@@ -75,58 +75,6 @@ namespace parse {
 /* ********************************* */
 /*          PARSING FUNCTIONS        */
 /* ********************************* */
-
-/** Converts the input string into an `int` value. */
-Status convert(const std::string& str, int* value);
-
-/** Converts the input string into an `int64_t` value. */
-Status convert(const std::string& str, int64_t* value);
-
-/** Converts the input string into a `uint64_t` value. */
-Status convert(const std::string& str, uint64_t* value);
-
-/** Converts the input string into a `uint32_t` value. */
-Status convert(const std::string& str, uint32_t* value);
-
-/** Converts the input string into a `float` value. */
-Status convert(const std::string& str, float* value);
-
-/** Converts the input string into a `double` value. */
-Status convert(const std::string& str, double* value);
-
-/** Converts the input string into a `bool` value. */
-Status convert(const std::string& str, bool* value);
-
-/** Converts the input string into a `std::vector<T>` value. */
-
-template <class T>
-Status convert(const std::string& str, std::vector<T>* value) {
-  try {
-    uint64_t start = 0;
-    auto end = str.find(constants::config_delimiter);
-    do {
-      T v;
-      RETURN_NOT_OK(convert(str.substr(start, end - start), &v));
-      value->emplace_back(v);
-      start = end + constants::config_delimiter.length();
-      end = str.find(constants::config_delimiter, start);
-    } while (end != std::string::npos);
-
-  } catch (std::invalid_argument& e) {
-    return LOG_STATUS(Status::UtilsError(
-        "Failed to convert string to vector of " +
-        std::string(typeid(T).name()) + "; Invalid argument"));
-  } catch (std::out_of_range& e) {
-    return LOG_STATUS(Status::UtilsError(
-        "Failed to convert string to vector of " +
-        std::string(typeid(T).name()) + "; Value out of range"));
-  }
-
-  return Status::Ok();
-}
-
-/** Converts the input string into a `SerializationType` value. */
-Status convert(const std::string& str, SerializationType* value);
 
 /**
  * Retrieves the timestamp range from the input
@@ -166,10 +114,6 @@ std::string to_str(const T& value);
 
 /** Converts the input value of input type to string. */
 std::string to_str(const void* value, Datatype type);
-
-/** Returns the size of the common prefix between `a` and `b`. */
-uint64_t common_prefix_size(
-    const std::string_view& a, const std::string_view& b);
 
 }  // namespace parse
 
@@ -296,23 +240,6 @@ std::vector<std::array<T, 2>> intersection(
 }  // namespace geometry
 
 /* ********************************* */
-/*          HASH FUNCTIONS           */
-/* ********************************* */
-
-namespace hash {
-
-struct pair_hash {
-  template <class T1, class T2>
-  std::size_t operator()(std::pair<T1, T2> const& pair) const {
-    std::size_t h1 = std::hash<T1>()(pair.first);
-    std::size_t h2 = std::hash<T2>()(pair.second);
-    return h1 ^ h2;
-  }
-};
-
-}  // namespace hash
-
-/* ********************************* */
 /*          TIME FUNCTIONS           */
 /* ********************************* */
 
@@ -359,73 +286,7 @@ uint64_t right_p2_m1(uint64_t value);
 
 }  // namespace math
 
-/* ********************************* */
-/*          ENDIANNESS FUNCTIONS     */
-/* ********************************* */
-
-namespace endianness {
-
-/**
- * Returns true if the current CPU architecture has little endian byte
- * ordering, false for big endian.
- */
-inline bool is_little_endian() {
-  const int n = 1;
-  return *(char*)&n == 1;
-}
-
-/**
- * Returns true if the current CPU architecture has big endian byte
- * ordering, false for little endian.
- */
-inline bool is_big_endian() {
-  return !is_little_endian();
-}
-
-/**
- * Decodes a little-endian ordered buffer 'data' into a native
- * primitive type, T.
- */
-template <class T>
-inline T decode_le(const void* const data) {
-  const T* const n = reinterpret_cast<const T* const>(data);
-  if (is_little_endian()) {
-    return *n;
-  }
-
-  T le_n;
-  char* const p = reinterpret_cast<char*>(&le_n);
-  for (std::size_t i = 0; i < sizeof(T); ++i) {
-    p[i] = *n >> ((sizeof(T) - i - 1) * 8);
-  }
-
-  return le_n;
-}
-
-/**
- * Decodes a big-endian ordered buffer 'data' into a native
- * primitive type, T.
- */
-template <class T>
-inline T decode_be(const void* const data) {
-  const T* const n = reinterpret_cast<const T* const>(data);
-  if (is_big_endian()) {
-    return *n;
-  }
-
-  T be_n;
-  char* const p = reinterpret_cast<char*>(&be_n);
-  for (std::size_t i = 0; i < sizeof(T); ++i) {
-    p[i] = *n >> (i * 8);
-  }
-
-  return be_n;
-}
-
-}  // namespace endianness
-
 }  // namespace utils
-
 }  // namespace sm
 }  // namespace tiledb
 

@@ -135,24 +135,24 @@ Status BitshuffleFilter::shuffle_part(
   switch (bytes_processed) {
     case -1:
       return LOG_STATUS(
-          Status::FilterError("Bitshuffle error; Failed to allocate memory."));
+          Status_FilterError("Bitshuffle error; Failed to allocate memory."));
     case -11:
-      return LOG_STATUS(Status::FilterError("Bitshuffle error; Missing SSE."));
+      return LOG_STATUS(Status_FilterError("Bitshuffle error; Missing SSE."));
     case -12:
-      return LOG_STATUS(Status::FilterError("Bitshuffle error; Missing AVX."));
+      return LOG_STATUS(Status_FilterError("Bitshuffle error; Missing AVX."));
     case -80:
-      return LOG_STATUS(Status::FilterError(
+      return LOG_STATUS(Status_FilterError(
           "Bitshuffle error; Input size not a multiple of 8."));
     case -81:
-      return LOG_STATUS(Status::FilterError(
+      return LOG_STATUS(Status_FilterError(
           "Bitshuffle error; Block size not a multiple of 8."));
     case -91:
       return LOG_STATUS(
-          Status::FilterError("Bitshuffle error; Decompression error, wrong "
-                              "number of bytes processed."));
+          Status_FilterError("Bitshuffle error; Decompression error, wrong "
+                             "number of bytes processed."));
     default: {
       if (bytes_processed != (int64_t)part->size())
-        return LOG_STATUS(Status::FilterError(
+        return LOG_STATUS(Status_FilterError(
             "Bitshuffle error; Unhandled internal error code " +
             std::to_string(bytes_processed)));
       break;
@@ -221,24 +221,24 @@ Status BitshuffleFilter::unshuffle_part(
   switch (bytes_processed) {
     case -1:
       return LOG_STATUS(
-          Status::FilterError("Bitshuffle error; Failed to allocate memory."));
+          Status_FilterError("Bitshuffle error; Failed to allocate memory."));
     case -11:
-      return LOG_STATUS(Status::FilterError("Bitshuffle error; Missing SSE."));
+      return LOG_STATUS(Status_FilterError("Bitshuffle error; Missing SSE."));
     case -12:
-      return LOG_STATUS(Status::FilterError("Bitshuffle error; Missing AVX."));
+      return LOG_STATUS(Status_FilterError("Bitshuffle error; Missing AVX."));
     case -80:
-      return LOG_STATUS(Status::FilterError(
+      return LOG_STATUS(Status_FilterError(
           "Bitshuffle error; Input size not a multiple of 8."));
     case -81:
-      return LOG_STATUS(Status::FilterError(
+      return LOG_STATUS(Status_FilterError(
           "Bitshuffle error; Block size not a multiple of 8."));
     case -91:
       return LOG_STATUS(
-          Status::FilterError("Bitshuffle error; Decompression error, wrong "
-                              "number of bytes processed."));
+          Status_FilterError("Bitshuffle error; Decompression error, wrong "
+                             "number of bytes processed."));
     default: {
       if (bytes_processed != (int64_t)part->size())
-        return LOG_STATUS(Status::FilterError(
+        return LOG_STATUS(Status_FilterError(
             "Bitshuffle error; Unhandled internal error code " +
             std::to_string(bytes_processed)));
       break;

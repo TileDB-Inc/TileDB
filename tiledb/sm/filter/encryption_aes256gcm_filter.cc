@@ -77,7 +77,7 @@ Status EncryptionAES256GCMFilter::run_forward(
     FilterBuffer* output_metadata,
     FilterBuffer* output) const {
   if (key_bytes_ == nullptr)
-    return LOG_STATUS(Status::FilterError("Encryption error; bad key."));
+    return LOG_STATUS(Status_FilterError("Encryption error; bad key."));
 
   // Allocate an initial output buffer.
   RETURN_NOT_OK(output->prepend_buffer(input->size()));
@@ -125,7 +125,7 @@ Status EncryptionAES256GCMFilter::encrypt_part(
 
   if (output->size() > std::numeric_limits<uint32_t>::max())
     return LOG_STATUS(
-        Status::FilterError("Encrypted output exceeds uint32 max."));
+        Status_FilterError("Encrypted output exceeds uint32 max."));
 
   // Write metadata.
   uint32_t input_size = (uint32_t)part->size(),
@@ -147,7 +147,7 @@ Status EncryptionAES256GCMFilter::run_reverse(
     const Config& config) const {
   (void)config;
   if (key_bytes_ == nullptr)
-    return LOG_STATUS(Status::FilterError("Encryption error; bad key."));
+    return LOG_STATUS(Status_FilterError("Encryption error; bad key."));
 
   // Read the number of parts from input metadata.
   uint32_t num_metadata_parts, num_data_parts;
@@ -194,7 +194,7 @@ Status EncryptionAES256GCMFilter::decrypt_part(
     RETURN_NOT_OK(output->realloc(output->alloced_size() + plaintext_size));
   } else if (output->offset() + plaintext_size > output->size()) {
     return LOG_STATUS(
-        Status::FilterError("Encryption error; output buffer too small."));
+        Status_FilterError("Encryption error; output buffer too small."));
   }
 
   // Set up the input buffer.
@@ -215,12 +215,12 @@ Status EncryptionAES256GCMFilter::set_key(const EncryptionKey& key) {
 
   if (key.encryption_type() != EncryptionType::AES_256_GCM)
     return LOG_STATUS(
-        Status::FilterError("Encryption error; invalid key encryption type."));
+        Status_FilterError("Encryption error; invalid key encryption type."));
 
   if (key_buff.data() == nullptr ||
       key_buff.size() != Crypto::AES256GCM_KEY_BYTES)
     return LOG_STATUS(
-        Status::FilterError("Encryption error; invalid key for AES-256-GCM."));
+        Status_FilterError("Encryption error; invalid key for AES-256-GCM."));
 
   key_bytes_ = key_buff.data();
 

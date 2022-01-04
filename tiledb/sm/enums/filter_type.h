@@ -120,7 +120,7 @@ inline Status filter_type_enum(
   else if (filter_type_str == constants::filter_checksum_sha256_str)
     *filter_type = FilterType::FILTER_CHECKSUM_SHA256;
   else {
-    return Status::Error("Invalid FilterType " + filter_type_str);
+    return Status_Error("Invalid FilterType " + filter_type_str);
   }
   return Status::Ok();
 }

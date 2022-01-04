@@ -148,7 +148,7 @@ void ReadCellSlabIterFx::create_result_space_tiles(
   std::vector<TileDomain<T>> frag_tile_domains;
   for (size_t i = 0; i < domain_slices.size(); ++i) {
     frag_tile_domains.emplace_back(
-        (unsigned)(domain_slices.size() - i),
+        (unsigned)(domain_slices.size() - i - 1),
         domain,
         domain_slices[i],
         tile_extents,
@@ -246,8 +246,8 @@ TEST_CASE_METHOD(
   ReadCellSlabIter<uint64_t> iter(
       &subarray, &result_space_tiles, &result_coords);
   std::vector<std::vector<uint64_t>> c_result_cell_slabs = {
-      {1, 0, 4, 6},
-      {1, 1, 0, 5},
+      {0, 0, 4, 6},
+      {0, 1, 0, 5},
   };
   check_iter<uint64_t>(&iter, c_result_cell_slabs);
 
@@ -397,14 +397,14 @@ TEST_CASE_METHOD(
   ReadCellSlabIter<uint64_t> iter(
       &subarray, &result_space_tiles, &result_coords);
   std::vector<std::vector<uint64_t>> c_result_cell_slabs = {
-      {2, 0, 4, 6},
-      {2, 1, 0, 2},
-      {1, 1, 2, 3},
+      {1, 0, 4, 6},
+      {1, 1, 0, 2},
+      {0, 1, 2, 3},
       {UINT64_MAX, 0, 2, 1},
-      {1, 0, 3, 1},
-      {2, 0, 4, 1},
-      {2, 1, 0, 2},
-      {1, 1, 2, 2},
+      {0, 0, 3, 1},
+      {1, 0, 4, 1},
+      {1, 1, 0, 2},
+      {0, 1, 2, 2},
   };
   check_iter<uint64_t>(&iter, c_result_cell_slabs);
 
@@ -476,9 +476,9 @@ TEST_CASE_METHOD(
 
   // Create result coordinates
   std::vector<ResultCoords> result_coords;
-  ResultTile result_tile_2_0(2, 0, array_->array_->array_schema_latest());
-  ResultTile result_tile_3_0(3, 0, array_->array_->array_schema_latest());
-  ResultTile result_tile_3_1(3, 1, array_->array_->array_schema_latest());
+  ResultTile result_tile_2_0(1, 0, array_->array_->array_schema_latest());
+  ResultTile result_tile_3_0(2, 0, array_->array_->array_schema_latest());
+  ResultTile result_tile_3_1(2, 1, array_->array_->array_schema_latest());
 
   result_tile_2_0.init_coord_tile("d", 0);
   result_tile_3_0.init_coord_tile("d", 0);
@@ -517,17 +517,17 @@ TEST_CASE_METHOD(
   ReadCellSlabIter<uint64_t> iter(
       &subarray, &result_space_tiles, &result_coords);
   std::vector<std::vector<uint64_t>> c_result_cell_slabs = {
-      {2, 0, 1, 1},
+      {1, 0, 1, 1},
+      {0, 0, 3, 1},
       {1, 0, 3, 1},
-      {2, 0, 3, 1},
-      {1, 0, 5, 2},
-      {3, 0, 2, 1},
-      {1, 0, 8, 2},
-      {1, 1, 0, 1},
-      {3, 1, 1, 1},
+      {0, 0, 5, 2},
+      {2, 0, 2, 1},
+      {0, 0, 8, 2},
+      {0, 1, 0, 1},
+      {2, 1, 1, 1},
       {UINT64_MAX, 1, 2, 3},
       {UINT64_MAX, 1, 7, 1},
-      {3, 1, 2, 1},
+      {2, 1, 2, 1},
       {UINT64_MAX, 1, 9, 1},
   };
   check_iter<uint64_t>(&iter, c_result_cell_slabs);
@@ -552,10 +552,10 @@ TEST_CASE_METHOD(
     subarray_layout = Layout::ROW_MAJOR;
     tile_domain_layout = Layout::ROW_MAJOR;
     c_result_cell_slabs = {
-        {1, 0, 4, 2},
-        {1, 1, 3, 3},
-        {1, 0, 7, 2},
-        {1, 1, 6, 3},
+        {0, 0, 4, 2},
+        {0, 1, 3, 3},
+        {0, 0, 7, 2},
+        {0, 1, 6, 3},
     };
   }
 
@@ -565,10 +565,10 @@ TEST_CASE_METHOD(
     subarray_layout = Layout::ROW_MAJOR;
     tile_domain_layout = Layout::ROW_MAJOR;
     c_result_cell_slabs = {
-        {1, 0, 4, 2},
-        {1, 1, 1, 3},
-        {1, 0, 5, 2},
-        {1, 1, 2, 3},
+        {0, 0, 4, 2},
+        {0, 1, 1, 3},
+        {0, 0, 5, 2},
+        {0, 1, 2, 3},
     };
   }
 
@@ -578,10 +578,10 @@ TEST_CASE_METHOD(
     subarray_layout = Layout::ROW_MAJOR;
     tile_domain_layout = Layout::COL_MAJOR;
     c_result_cell_slabs = {
-        {1, 0, 4, 2},
-        {1, 2, 3, 3},
-        {1, 0, 7, 2},
-        {1, 2, 6, 3},
+        {0, 0, 4, 2},
+        {0, 2, 3, 3},
+        {0, 0, 7, 2},
+        {0, 2, 6, 3},
     };
   }
 
@@ -591,10 +591,10 @@ TEST_CASE_METHOD(
     subarray_layout = Layout::ROW_MAJOR;
     tile_domain_layout = Layout::COL_MAJOR;
     c_result_cell_slabs = {
-        {1, 0, 4, 2},
-        {1, 2, 1, 3},
-        {1, 0, 5, 2},
-        {1, 2, 2, 3},
+        {0, 0, 4, 2},
+        {0, 2, 1, 3},
+        {0, 0, 5, 2},
+        {0, 2, 2, 3},
     };
   }
 
@@ -604,11 +604,11 @@ TEST_CASE_METHOD(
     subarray_layout = Layout::COL_MAJOR;
     tile_domain_layout = Layout::ROW_MAJOR;
     c_result_cell_slabs = {
-        {1, 0, 4, 2},
-        {1, 0, 5, 2},
-        {1, 1, 3, 2},
-        {1, 1, 4, 2},
-        {1, 1, 5, 2},
+        {0, 0, 4, 2},
+        {0, 0, 5, 2},
+        {0, 1, 3, 2},
+        {0, 1, 4, 2},
+        {0, 1, 5, 2},
     };
   }
 
@@ -618,11 +618,11 @@ TEST_CASE_METHOD(
     subarray_layout = Layout::COL_MAJOR;
     tile_domain_layout = Layout::ROW_MAJOR;
     c_result_cell_slabs = {
-        {1, 0, 4, 2},
-        {1, 0, 7, 2},
-        {1, 1, 1, 2},
-        {1, 1, 4, 2},
-        {1, 1, 7, 2},
+        {0, 0, 4, 2},
+        {0, 0, 7, 2},
+        {0, 1, 1, 2},
+        {0, 1, 4, 2},
+        {0, 1, 7, 2},
     };
   }
 
@@ -632,11 +632,11 @@ TEST_CASE_METHOD(
     subarray_layout = Layout::COL_MAJOR;
     tile_domain_layout = Layout::COL_MAJOR;
     c_result_cell_slabs = {
-        {1, 0, 4, 2},
-        {1, 0, 5, 2},
-        {1, 2, 3, 2},
-        {1, 2, 4, 2},
-        {1, 2, 5, 2},
+        {0, 0, 4, 2},
+        {0, 0, 5, 2},
+        {0, 2, 3, 2},
+        {0, 2, 4, 2},
+        {0, 2, 5, 2},
     };
   }
 
@@ -646,11 +646,11 @@ TEST_CASE_METHOD(
     subarray_layout = Layout::COL_MAJOR;
     tile_domain_layout = Layout::COL_MAJOR;
     c_result_cell_slabs = {
-        {1, 0, 4, 2},
-        {1, 0, 7, 2},
-        {1, 2, 1, 2},
-        {1, 2, 4, 2},
-        {1, 2, 7, 2},
+        {0, 0, 4, 2},
+        {0, 0, 7, 2},
+        {0, 2, 1, 2},
+        {0, 2, 4, 2},
+        {0, 2, 7, 2},
     };
   }
 
@@ -927,7 +927,7 @@ TEST_CASE_METHOD(
         {UINT64_MAX, 1, 3, 3},
         {UINT64_MAX, 0, 7, 2},
         {UINT64_MAX, 1, 6, 1},
-        {1, 0, 7, 2},
+        {0, 0, 7, 2},
     };
   }
 
@@ -941,7 +941,7 @@ TEST_CASE_METHOD(
         {UINT64_MAX, 1, 1, 3},
         {UINT64_MAX, 0, 5, 2},
         {UINT64_MAX, 1, 2, 1},
-        {1, 0, 5, 2},
+        {0, 0, 5, 2},
     };
   }
 
@@ -955,7 +955,7 @@ TEST_CASE_METHOD(
         {UINT64_MAX, 2, 3, 3},
         {UINT64_MAX, 0, 7, 2},
         {UINT64_MAX, 2, 6, 1},
-        {1, 0, 7, 2},
+        {0, 0, 7, 2},
     };
   }
 
@@ -969,7 +969,7 @@ TEST_CASE_METHOD(
         {UINT64_MAX, 2, 1, 3},
         {UINT64_MAX, 0, 5, 2},
         {UINT64_MAX, 2, 2, 1},
-        {1, 0, 5, 2},
+        {0, 0, 5, 2},
     };
   }
 
@@ -983,9 +983,9 @@ TEST_CASE_METHOD(
         {UINT64_MAX, 0, 5, 2},
         {UINT64_MAX, 1, 3, 2},
         {UINT64_MAX, 1, 4, 1},
-        {1, 0, 7, 1},
+        {0, 0, 7, 1},
         {UINT64_MAX, 1, 5, 1},
-        {1, 0, 8, 1},
+        {0, 0, 8, 1},
     };
   }
 
@@ -999,9 +999,9 @@ TEST_CASE_METHOD(
         {UINT64_MAX, 0, 7, 2},
         {UINT64_MAX, 1, 1, 2},
         {UINT64_MAX, 1, 4, 1},
-        {1, 0, 5, 1},
+        {0, 0, 5, 1},
         {UINT64_MAX, 1, 7, 1},
-        {1, 0, 8, 1},
+        {0, 0, 8, 1},
     };
   }
 
@@ -1015,9 +1015,9 @@ TEST_CASE_METHOD(
         {UINT64_MAX, 0, 5, 2},
         {UINT64_MAX, 2, 3, 2},
         {UINT64_MAX, 2, 4, 1},
-        {1, 0, 7, 1},
+        {0, 0, 7, 1},
         {UINT64_MAX, 2, 5, 1},
-        {1, 0, 8, 1},
+        {0, 0, 8, 1},
     };
   }
 
@@ -1031,9 +1031,9 @@ TEST_CASE_METHOD(
         {UINT64_MAX, 0, 7, 2},
         {UINT64_MAX, 2, 1, 2},
         {UINT64_MAX, 2, 4, 1},
-        {1, 0, 5, 1},
+        {0, 0, 5, 1},
         {UINT64_MAX, 2, 7, 1},
-        {1, 0, 8, 1},
+        {0, 0, 8, 1},
     };
   }
 
@@ -1121,17 +1121,17 @@ TEST_CASE_METHOD(
     subarray_layout = Layout::ROW_MAJOR;
     tile_domain_layout = Layout::ROW_MAJOR;
     c_result_cell_slabs = {
-        {2, 0, 7, 1},
-        {3, 0, 1, 1},
-        {2, 1, 6, 1},
-        {1, 1, 7, 2},
-        {2, 2, 1, 2},
-        {2, 3, 0, 1},
+        {1, 0, 7, 1},
+        {2, 0, 1, 1},
+        {1, 1, 6, 1},
+        {0, 1, 7, 2},
+        {1, 2, 1, 2},
+        {1, 3, 0, 1},
         {UINT64_MAX, 3, 1, 2},
-        {2, 2, 4, 2},
-        {2, 3, 3, 1},
-        {3, 1, 0, 1},
-        {3, 1, 2, 1},
+        {1, 2, 4, 2},
+        {1, 3, 3, 1},
+        {2, 1, 0, 1},
+        {2, 1, 2, 1},
     };
   }
 
@@ -1141,17 +1141,17 @@ TEST_CASE_METHOD(
     subarray_layout = Layout::ROW_MAJOR;
     tile_domain_layout = Layout::ROW_MAJOR;
     c_result_cell_slabs = {
-        {2, 0, 5, 1},
-        {3, 0, 1, 1},
-        {2, 1, 2, 1},
-        {1, 1, 5, 2},
-        {2, 2, 3, 2},
-        {2, 3, 0, 1},
+        {1, 0, 5, 1},
+        {2, 0, 1, 1},
+        {1, 1, 2, 1},
+        {0, 1, 5, 2},
+        {1, 2, 3, 2},
+        {1, 3, 0, 1},
         {UINT64_MAX, 3, 3, 2},
-        {2, 2, 4, 2},
-        {2, 3, 1, 1},
-        {3, 1, 0, 1},
-        {3, 1, 2, 1},
+        {1, 2, 4, 2},
+        {1, 3, 1, 1},
+        {2, 1, 0, 1},
+        {2, 1, 2, 1},
     };
   }
 
@@ -1161,17 +1161,17 @@ TEST_CASE_METHOD(
     subarray_layout = Layout::ROW_MAJOR;
     tile_domain_layout = Layout::COL_MAJOR;
     c_result_cell_slabs = {
-        {2, 0, 7, 1},
-        {3, 0, 1, 1},
-        {2, 2, 6, 1},
-        {1, 1, 7, 2},
-        {2, 1, 1, 2},
-        {2, 3, 0, 1},
+        {1, 0, 7, 1},
+        {2, 0, 1, 1},
+        {1, 2, 6, 1},
+        {0, 1, 7, 2},
+        {1, 1, 1, 2},
+        {1, 3, 0, 1},
         {UINT64_MAX, 3, 1, 2},
-        {2, 1, 4, 2},
-        {2, 3, 3, 1},
-        {3, 1, 0, 1},
-        {3, 1, 2, 1},
+        {1, 1, 4, 2},
+        {1, 3, 3, 1},
+        {2, 1, 0, 1},
+        {2, 1, 2, 1},
     };
   }
 
@@ -1181,17 +1181,17 @@ TEST_CASE_METHOD(
     subarray_layout = Layout::ROW_MAJOR;
     tile_domain_layout = Layout::COL_MAJOR;
     c_result_cell_slabs = {
-        {2, 0, 5, 1},
-        {3, 0, 1, 1},
-        {2, 2, 2, 1},
-        {1, 1, 5, 2},
-        {2, 1, 3, 2},
-        {2, 3, 0, 1},
+        {1, 0, 5, 1},
+        {2, 0, 1, 1},
+        {1, 2, 2, 1},
+        {0, 1, 5, 2},
+        {1, 1, 3, 2},
+        {1, 3, 0, 1},
         {UINT64_MAX, 3, 3, 2},
-        {2, 1, 4, 2},
-        {2, 3, 1, 1},
-        {3, 1, 0, 1},
-        {3, 1, 2, 1},
+        {1, 1, 4, 2},
+        {1, 3, 1, 1},
+        {2, 1, 0, 1},
+        {2, 1, 2, 1},
     };
   }
 
@@ -1201,18 +1201,18 @@ TEST_CASE_METHOD(
     subarray_layout = Layout::COL_MAJOR;
     tile_domain_layout = Layout::ROW_MAJOR;
     c_result_cell_slabs = {
-        {2, 0, 7, 1},
-        {2, 2, 1, 2},
-        {3, 0, 1, 1},
-        {2, 2, 2, 2},
-        {2, 1, 6, 1},
-        {2, 3, 0, 2},
-        {1, 1, 7, 1},
+        {1, 0, 7, 1},
+        {1, 2, 1, 2},
+        {2, 0, 1, 1},
+        {1, 2, 2, 2},
+        {1, 1, 6, 1},
+        {1, 3, 0, 2},
+        {0, 1, 7, 1},
         {UINT64_MAX, 3, 1, 1},
-        {3, 1, 0, 1},
-        {1, 1, 8, 1},
+        {2, 1, 0, 1},
+        {0, 1, 8, 1},
         {UINT64_MAX, 3, 2, 1},
-        {3, 1, 2, 1},
+        {2, 1, 2, 1},
     };
   }
 
@@ -1222,18 +1222,18 @@ TEST_CASE_METHOD(
     subarray_layout = Layout::COL_MAJOR;
     tile_domain_layout = Layout::ROW_MAJOR;
     c_result_cell_slabs = {
-        {2, 0, 5, 1},
-        {2, 2, 3, 2},
-        {3, 0, 1, 1},
-        {2, 2, 6, 2},
-        {2, 1, 2, 1},
-        {2, 3, 0, 2},
-        {1, 1, 5, 1},
+        {1, 0, 5, 1},
+        {1, 2, 3, 2},
+        {2, 0, 1, 1},
+        {1, 2, 6, 2},
+        {1, 1, 2, 1},
+        {1, 3, 0, 2},
+        {0, 1, 5, 1},
         {UINT64_MAX, 3, 3, 1},
-        {3, 1, 0, 1},
-        {1, 1, 8, 1},
+        {2, 1, 0, 1},
+        {0, 1, 8, 1},
         {UINT64_MAX, 3, 6, 1},
-        {3, 1, 2, 1},
+        {2, 1, 2, 1},
     };
   }
 
@@ -1243,18 +1243,18 @@ TEST_CASE_METHOD(
     subarray_layout = Layout::COL_MAJOR;
     tile_domain_layout = Layout::COL_MAJOR;
     c_result_cell_slabs = {
-        {2, 0, 7, 1},
-        {2, 1, 1, 2},
-        {3, 0, 1, 1},
-        {2, 1, 2, 2},
-        {2, 2, 6, 1},
-        {2, 3, 0, 2},
-        {1, 1, 7, 1},
+        {1, 0, 7, 1},
+        {1, 1, 1, 2},
+        {2, 0, 1, 1},
+        {1, 1, 2, 2},
+        {1, 2, 6, 1},
+        {1, 3, 0, 2},
+        {0, 1, 7, 1},
         {UINT64_MAX, 3, 1, 1},
-        {3, 1, 0, 1},
-        {1, 1, 8, 1},
+        {2, 1, 0, 1},
+        {0, 1, 8, 1},
         {UINT64_MAX, 3, 2, 1},
-        {3, 1, 2, 1},
+        {2, 1, 2, 1},
     };
   }
 
@@ -1264,18 +1264,18 @@ TEST_CASE_METHOD(
     subarray_layout = Layout::COL_MAJOR;
     tile_domain_layout = Layout::COL_MAJOR;
     c_result_cell_slabs = {
-        {2, 0, 5, 1},
-        {2, 1, 3, 2},
-        {3, 0, 1, 1},
-        {2, 1, 6, 2},
-        {2, 2, 2, 1},
-        {2, 3, 0, 2},
-        {1, 1, 5, 1},
+        {1, 0, 5, 1},
+        {1, 1, 3, 2},
+        {2, 0, 1, 1},
+        {1, 1, 6, 2},
+        {1, 2, 2, 1},
+        {1, 3, 0, 2},
+        {0, 1, 5, 1},
         {UINT64_MAX, 3, 3, 1},
-        {3, 1, 0, 1},
-        {1, 1, 8, 1},
+        {2, 1, 0, 1},
+        {0, 1, 8, 1},
         {UINT64_MAX, 3, 6, 1},
-        {3, 1, 2, 1},
+        {2, 1, 2, 1},
     };
   }
 
@@ -1329,6 +1329,7 @@ TEST_CASE_METHOD(
             true);
     fragments.emplace_back(std::move(fragment));
   }
+
   create_result_space_tiles(
       fragments,
       dom,
@@ -1340,8 +1341,8 @@ TEST_CASE_METHOD(
 
   // Create result coordinates
   std::vector<ResultCoords> result_coords;
-  ResultTile result_tile_3_0(3, 0, array_->array_->array_schema_latest());
-  ResultTile result_tile_3_1(3, 1, array_->array_->array_schema_latest());
+  ResultTile result_tile_3_0(2, 0, array_->array_->array_schema_latest());
+  ResultTile result_tile_3_1(2, 1, array_->array_->array_schema_latest());
 
   result_tile_3_0.init_coord_tile("d1", 0);
   result_tile_3_0.init_coord_tile("d2", 1);

@@ -57,6 +57,7 @@ CompressionFilter::CompressionFilter(FilterType compressor, int level)
     : Filter(compressor)
     , compressor_(filter_to_compressor(compressor))
     , level_(level)
+    , zstd_compress_ctx_pool_(nullptr)
     , zstd_decompress_ctx_pool_(nullptr) {
 }
 
@@ -64,6 +65,7 @@ CompressionFilter::CompressionFilter(Compressor compressor, int level)
     : Filter(compressor_to_filter(compressor))
     , compressor_(compressor)
     , level_(level)
+    , zstd_compress_ctx_pool_(nullptr)
     , zstd_decompress_ctx_pool_(nullptr) {
 }
 
@@ -170,7 +172,7 @@ Status CompressionFilter::set_option_impl(
     FilterOption option, const void* value) {
   if (value == nullptr)
     return LOG_STATUS(
-        Status::FilterError("Compression filter error; invalid option value"));
+        Status_FilterError("Compression filter error; invalid option value"));
 
   switch (option) {
     case FilterOption::COMPRESSION_LEVEL:
@@ -178,7 +180,7 @@ Status CompressionFilter::set_option_impl(
       return Status::Ok();
     default:
       return LOG_STATUS(
-          Status::FilterError("Compression filter error; unknown option"));
+          Status_FilterError("Compression filter error; unknown option"));
   }
 }
 
@@ -190,7 +192,7 @@ Status CompressionFilter::get_option_impl(
       return Status::Ok();
     default:
       return LOG_STATUS(
-          Status::FilterError("Compression filter error; unknown option"));
+          Status_FilterError("Compression filter error; unknown option"));
   }
 }
 
@@ -209,7 +211,7 @@ Status CompressionFilter::run_forward(
 
   if (input->size() > std::numeric_limits<uint32_t>::max())
     return LOG_STATUS(
-        Status::FilterError("Input is too large to be compressed."));
+        Status_FilterError("Input is too large to be compressed."));
 
   // Compute the upper bound on the size of the output.
   std::vector<ConstBuffer> data_parts = input->buffers(),
@@ -301,7 +303,8 @@ Status CompressionFilter::compress_part(
       RETURN_NOT_OK(GZip::compress(level_, &input_buffer, output));
       break;
     case Compressor::ZSTD:
-      RETURN_NOT_OK(ZStd::compress(level_, &input_buffer, output));
+      RETURN_NOT_OK(ZStd::compress(
+          level_, zstd_compress_ctx_pool_, &input_buffer, output));
       break;
     case Compressor::LZ4:
       RETURN_NOT_OK(LZ4::compress(level_, &input_buffer, output));
@@ -321,7 +324,7 @@ Status CompressionFilter::compress_part(
 
   if (output->size() > std::numeric_limits<uint32_t>::max())
     return LOG_STATUS(
-        Status::FilterError("Compressed output exceeds uint32 max."));
+        Status_FilterError("Compressed output exceeds uint32 max."));
 
   // Write part original and compressed size to metadata
   uint32_t input_size = (uint32_t)part->size(),
@@ -349,7 +352,7 @@ Status CompressionFilter::decompress_part(
   if (output->owns_data()) {
     RETURN_NOT_OK(output->realloc(output->alloced_size() + uncompressed_size));
   } else if (output->offset() + uncompressed_size > output->size()) {
-    return LOG_STATUS(Status::FilterError(
+    return LOG_STATUS(Status_FilterError(
         "CompressionFilter error; output buffer too small."));
   }
 
@@ -432,11 +435,20 @@ Status CompressionFilter::deserialize_impl(ConstBuffer* buff) {
   return Status::Ok();
 }
 
-void CompressionFilter::init_resource_pool(uint64_t size) {
+void CompressionFilter::init_compression_resource_pool(uint64_t size) {
+  std::lock_guard g(zstd_compress_ctx_pool_mtx_);
+  if (zstd_compress_ctx_pool_ == nullptr) {
+    zstd_compress_ctx_pool_ =
+        tdb::make_shared<BlockingResourcePool<ZStd::ZSTD_Compress_Context>>(
+            HERE(), size);
+  }
+}
+
+void CompressionFilter::init_decompression_resource_pool(uint64_t size) {
   std::lock_guard g(zstd_decompress_ctx_pool_mtx_);
   if (zstd_decompress_ctx_pool_ == nullptr) {
     zstd_decompress_ctx_pool_ =
-        tdb::make_shared<ResourcePool<ZStd::ZSTD_Decompress_Context>>(
+        tdb::make_shared<BlockingResourcePool<ZStd::ZSTD_Decompress_Context>>(
             HERE(), size);
   }
 }

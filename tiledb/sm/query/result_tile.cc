@@ -870,9 +870,6 @@ void ResultTile::compute_results_count_sparse(
   auto stores_zipped_coords = result_tile->stores_zipped_coords();
   auto dim_num = result_tile->domain()->dim_num();
 
-  // Vector to get the status of each cell.
-  std::vector<bool> counts(range_indexes.size());
-
   // Handle separate coordinate tiles.
   if (!stores_zipped_coords) {
     const auto& coord_tile = std::get<0>(result_tile->coord_tile(dim_idx));
@@ -883,17 +880,47 @@ void ResultTile::compute_results_count_sparse(
       for (uint64_t pos = min_cell; pos < max_cell; ++pos) {
         // We have a previous count.
         if (result_count[pos]) {
-          T c = coords[pos];
+          const T& c = coords[pos];
 
-          // Iterate through all ranges and compute the count for this dim.
-          for (uint64_t i = 0; i < range_indexes.size(); i++) {
-            const auto& range = (const T*)ranges[range_indexes[i]].start();
-            counts[i] = c >= range[0] && c <= range[1];
+          // Binary search to find the first range containing the cell.
+          auto it = std::lower_bound(
+              range_indexes.begin(),
+              range_indexes.end(),
+              c,
+              [&](const uint64_t& index, const T& value) {
+                return ((const T*)ranges[index].start())[1] < value;
+              });
+
+          // If we didn't find a range we can set count to 0 and skip to next.
+          if (it == range_indexes.end()) {
+            result_count[pos] = 0;
+            continue;
           }
+          uint64_t start_range_idx = std::distance(range_indexes.begin(), it);
 
-          // Sum to get the true count.
-          const uint64_t count =
-              std::accumulate(counts.begin(), counts.end(), 0);
+          // Binary search to find the last range containing the cell.
+          auto it2 = std::lower_bound(
+              it,
+              range_indexes.end(),
+              c,
+              [&](const uint64_t& index, const T& value) {
+                return ((const T*)ranges[index].start())[0] < value;
+              });
+
+          // If the upper bound isn't the end add +1 to the index.
+          uint64_t offset = 0;
+          if (it2 != range_indexes.end())
+            offset = 1;
+          uint64_t end_range_idx =
+              std::distance(it, it2) + start_range_idx + offset;
+
+          // Iterate through all relevant ranges and compute the count for this
+          // dim.
+          uint64_t count = 0;
+          for (uint64_t j = start_range_idx; j < end_range_idx; ++j) {
+            const auto& range = (const T*)ranges[range_indexes[j]].start();
+            count += c >= range[0] && c <= range[1];
+          }
 
           // Multiply the past count by this dimension's count.
           result_count[pos] *= count;
@@ -913,13 +940,11 @@ void ResultTile::compute_results_count_sparse(
     for (uint64_t pos = min_cell; pos < max_cell; ++pos) {
       if (result_count[pos]) {
         T c = coords[pos * dim_num + dim_idx];
+        uint64_t count = 0;
         for (uint64_t i = 0; i < range_indexes.size(); i++) {
           const auto& range = (const T*)ranges[range_indexes[i]].start();
-          counts[i] = c >= range[0] && c <= range[1];
+          count += c >= range[0] && c <= range[1];
         }
-
-        // Sum to get the true count.
-        const uint64_t count = std::accumulate(counts.begin(), counts.end(), 0);
 
         // Multiply the past count by this dimension's count.
         result_count[pos] *= count;

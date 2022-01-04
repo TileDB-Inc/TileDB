@@ -33,8 +33,11 @@
 #ifndef TILEDB_QUERY_BUFFER_H
 #define TILEDB_QUERY_BUFFER_H
 
+#include "tiledb/common/common.h"
 #include "tiledb/common/macros.h"
-#include "tiledb/common/status.h"
+#include "tiledb/common/types/dynamic_typed_datum.h"
+#include "tiledb/common/types/untyped_datum.h"
+#include "tiledb/sm/array_schema/dimension.h"
 #include "tiledb/sm/query/validity_vector.h"
 
 using namespace tiledb::common;
@@ -234,6 +237,47 @@ class QueryBuffer {
     original_validity_vector_size_ = *validity_vector_.buffer_size();
 
     return Status::Ok();
+  }
+
+  /**
+   * Treat this buffer as containing an array of data of fixed size `datum_size`
+   * and retrieve the datum at array position `index`.
+   *
+   * @param datum_size sizeof(T), were this function strongly typed
+   * @param index The index into an array of T
+   * @return A pointer to the retrieved datum
+   */
+  tdb::UntypedDatumView fixed_size_datum_at(
+      size_t index, size_t datum_size) const {
+    return {static_cast<char*>(buffer_) + datum_size * index, datum_size};
+  }
+
+  /**
+   * Treat this buffer as containing a sequence of data of varying sizes and
+   * retrieve the datum at sequence position `index`.
+   *
+   * @param index The index into a sequence of data of varying sizes.
+   * @return tuple<1> A pointer to the retrieved datum. tuple<2> The size of the
+   * retrieved datum.
+   */
+  tdb::UntypedDatumView varying_size_datum_at(size_t index) const {
+    using buffer_type = uint64_t;
+    auto* offsets = static_cast<buffer_type*>(buffer_);
+    size_t start_offset = offsets[index];
+    size_t next_offset = (*buffer_size_ < (index + 1) * sizeof(buffer_type)) ?
+                             offsets[index + 1] :
+                             *buffer_var_size_;
+    return {static_cast<char*>(buffer_var_) + start_offset,
+            next_offset - start_offset};
+  }
+
+  tdb::DynamicTypedDatumView dimension_datum_at(
+      const Dimension& dim, size_t index) const {
+    auto type = dim.type();
+    return dim.var_size() ?
+               tdb::DynamicTypedDatumView{varying_size_datum_at(index), type} :
+               tdb::DynamicTypedDatumView{
+                   fixed_size_datum_at(index, dim.coord_size()), type};
   }
 };
 

@@ -102,7 +102,7 @@ inline Status compressor_enum(
   else if (compressor_type_str == constants::double_delta_str)
     *compressor = Compressor::DOUBLE_DELTA;
   else {
-    return Status::Error("Invalid Compressor " + compressor_type_str);
+    return Status_Error("Invalid Compressor " + compressor_type_str);
   }
   return Status::Ok();
 }

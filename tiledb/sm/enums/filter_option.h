@@ -75,7 +75,7 @@ inline Status filter_option_enum(
       constants::filter_option_positive_delta_max_window_str)
     *filter_option_ = FilterOption::POSITIVE_DELTA_MAX_WINDOW;
   else
-    return Status::Error("Invalid FilterOption " + filter_option_str);
+    return Status_Error("Invalid FilterOption " + filter_option_str);
 
   return Status::Ok();
 }

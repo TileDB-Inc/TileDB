@@ -150,6 +150,9 @@ Status SparseUnorderedWithDupsReader<BitmapType>::dowork() {
   // This reader only has one result tile list.
   result_tiles_.resize(1);
 
+  // This reader benefits from sorting ranges.
+  RETURN_NOT_OK(subarray_.sort_ranges(storage_manager_->compute_tp()));
+
   // Handle empty array.
   if (fragment_metadata_.empty()) {
     read_state_.done_adding_result_tiles_ = true;
@@ -316,7 +319,7 @@ Status SparseUnorderedWithDupsReader<BitmapType>::create_result_tiles() {
                   t);
               if (result_tiles_[0].empty())
                 return logger_->status(
-                    Status::SparseUnorderedWithDupsReaderError(
+                    Status_SparseUnorderedWithDupsReaderError(
                         "Cannot load a single tile, increase memory budget"));
               break;
             }
@@ -367,7 +370,7 @@ Status SparseUnorderedWithDupsReader<BitmapType>::create_result_tiles() {
                 f,
                 t);
             if (result_tiles_[0].empty())
-              return logger_->status(Status::SparseUnorderedWithDupsReaderError(
+              return logger_->status(Status_SparseUnorderedWithDupsReaderError(
                   "Cannot load a single tile, increase memory budget"));
             break;
           }
@@ -1093,7 +1096,7 @@ Status SparseUnorderedWithDupsReader<BitmapType>::compute_fixed_results_to_copy(
 
 template <class BitmapType>
 Status SparseUnorderedWithDupsReader<BitmapType>::respect_copy_memory_budget(
-    const std::vector<std::string> names,
+    const std::vector<std::string>& names,
     const uint64_t memory_budget,
     const std::vector<uint64_t>* cell_offsets,
     std::vector<ResultTile*>* result_tiles,
@@ -1110,7 +1113,8 @@ Status SparseUnorderedWithDupsReader<BitmapType>::respect_copy_memory_budget(
 
         // For dimensions, when we have a subarray, tiles are already all
         // loaded in memory.
-        if (subarray_.is_set() && array_schema_->is_dim(name))
+        if ((subarray_.is_set() && array_schema_->is_dim(name)) ||
+            condition_.field_names().count(name) != 0)
           return Status::Ok();
 
         // Get the size for this tile.
@@ -1149,7 +1153,7 @@ Status SparseUnorderedWithDupsReader<BitmapType>::respect_copy_memory_budget(
   RETURN_NOT_OK_ELSE(status, logger_->status(status));
 
   if (max_rt_idx == 0)
-    return Status::SparseUnorderedWithDupsReaderError(
+    return Status_SparseUnorderedWithDupsReaderError(
         "Unable to copy one tile with current budget/buffers");
 
   // Resize the result tiles vector.
@@ -1216,7 +1220,7 @@ Status SparseUnorderedWithDupsReader<BitmapType>::compute_var_size_offsets(
   }
 
   if (*var_buffer_size == 0) {
-    return Status::SparseUnorderedWithDupsReaderError(
+    return Status_SparseUnorderedWithDupsReaderError(
         "Var size buffer cannot fit a single cell for var attribute");
   }
 

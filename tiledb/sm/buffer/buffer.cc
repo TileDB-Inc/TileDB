@@ -117,7 +117,7 @@ bool BufferBase::end() const {
 
 Status BufferBase::read(void* destination, const uint64_t nbytes) {
   if (nbytes > size_ - offset_) {
-    return LOG_STATUS(Status::BufferError(
+    return LOG_STATUS(Status_BufferError(
         "Read buffer overflow; may not read beyond buffer size"));
   }
   std::memcpy(destination, static_cast<char*>(data_) + offset_, nbytes);
@@ -128,7 +128,7 @@ Status BufferBase::read(void* destination, const uint64_t nbytes) {
 Status BufferBase::read(
     void* destination, const uint64_t offset, const uint64_t nbytes) {
   if (nbytes > size_ - offset) {
-    return LOG_STATUS(Status::BufferError(
+    return LOG_STATUS(Status_BufferError(
         "Read buffer overflow; may not read beyond buffer size"));
   }
   std::memcpy(destination, static_cast<char*>(data_) + offset, nbytes);
@@ -229,21 +229,21 @@ bool Buffer::owns_data() const {
 
 Status Buffer::realloc(const uint64_t nbytes) {
   if (!owns_data_) {
-    return LOG_STATUS(Status::BufferError(
+    return LOG_STATUS(Status_BufferError(
         "Cannot reallocate buffer; Buffer does not own data"));
   }
 
   if (data_ == nullptr) {
     data_ = tdb_malloc(nbytes);
     if (data_ == nullptr) {
-      return LOG_STATUS(Status::BufferError(
+      return LOG_STATUS(Status_BufferError(
           "Cannot allocate buffer; Memory allocation failed"));
     }
     alloced_size_ = nbytes;
   } else if (nbytes > alloced_size_) {
     auto new_data = tdb_realloc(data_, nbytes);
     if (new_data == nullptr) {
-      return LOG_STATUS(Status::BufferError(
+      return LOG_STATUS(Status_BufferError(
           "Cannot reallocate buffer; Memory allocation failed"));
     }
     data_ = new_data;
@@ -274,7 +274,7 @@ Status Buffer::swap(Buffer& other) {
 Status Buffer::write(ConstBuffer* buff) {
   // Sanity check
   if (!owns_data_)
-    return LOG_STATUS(Status::BufferError(
+    return LOG_STATUS(Status_BufferError(
         "Cannot write to buffer; Buffer does not own the already stored data"));
 
   const uint64_t bytes_left_to_write = alloced_size_ - offset_;
@@ -292,7 +292,7 @@ Status Buffer::write(ConstBuffer* buff) {
 Status Buffer::write(ConstBuffer* buff, const uint64_t nbytes) {
   // Sanity check
   if (!owns_data_)
-    return LOG_STATUS(Status::BufferError(
+    return LOG_STATUS(Status_BufferError(
         "Cannot write to buffer; Buffer does not own the already stored data"));
 
   RETURN_NOT_OK(ensure_alloced_size(offset_ + nbytes));
@@ -307,7 +307,7 @@ Status Buffer::write(ConstBuffer* buff, const uint64_t nbytes) {
 Status Buffer::write(const void* buffer, const uint64_t nbytes) {
   // Sanity check
   if (!owns_data_)
-    return LOG_STATUS(Status::BufferError(
+    return LOG_STATUS(Status_BufferError(
         "Cannot write to buffer; Buffer does not own the already stored data"));
 
   RETURN_NOT_OK(ensure_alloced_size(offset_ + nbytes));
@@ -323,7 +323,7 @@ Status Buffer::write(
     const void* buffer, const uint64_t offset, const uint64_t nbytes) {
   // Sanity check
   if (!owns_data_)
-    return LOG_STATUS(Status::BufferError(
+    return LOG_STATUS(Status_BufferError(
         "Cannot write to buffer; Buffer does not own the already stored data"));
 
   RETURN_NOT_OK(ensure_alloced_size(offset + nbytes));
@@ -395,7 +395,7 @@ uint64_t PreallocatedBuffer::free_space() const {
 
 Status PreallocatedBuffer::write(const void* buffer, const uint64_t nbytes) {
   if (nbytes > size_ - offset_)
-    return Status::PreallocatedBufferError("Write would overflow buffer.");
+    return Status_PreallocatedBufferError("Write would overflow buffer.");
 
   std::memcpy((char*)data_ + offset_, buffer, nbytes);
   offset_ += nbytes;

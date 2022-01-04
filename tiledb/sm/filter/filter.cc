@@ -31,21 +31,9 @@
  */
 
 #include "filter.h"
-#include "bit_width_reduction_filter.h"
-#include "bitshuffle_filter.h"
-#include "byteshuffle_filter.h"
-#include "checksum_md5_filter.h"
-#include "checksum_sha256_filter.h"
-#include "compression_filter.h"
-#include "encryption_aes256gcm_filter.h"
-#include "filter_create.h"
-#include "noop_filter.h"
-#include "positive_delta_filter.h"
-#include "tiledb/common/heap_memory.h"
-#include "tiledb/common/logger.h"
+#include "tiledb/common/common.h"
+#include "tiledb/common/logger_public.h"
 #include "tiledb/sm/buffer/buffer.h"
-#include "tiledb/sm/enums/filter_type.h"
-#include "tiledb/sm/tile/tile.h"
 
 using namespace tiledb::common;
 
@@ -65,7 +53,7 @@ Filter* Filter::clone() const {
 Status Filter::get_option(FilterOption option, void* value) const {
   if (value == nullptr)
     return LOG_STATUS(
-        Status::FilterError("Cannot get option; null value pointer"));
+        Status_FilterError("Cannot get option; null value pointer"));
 
   return get_option_impl(option, value);
 }
@@ -94,8 +82,7 @@ Status Filter::serialize(Buffer* buff) const {
   // Compute and write metadata length
   if (buff->size() < buff_size ||
       buff->size() - buff_size > std::numeric_limits<uint32_t>::max())
-    return LOG_STATUS(
-        Status::FilterError("Filter metadata exceeds max length"));
+    return LOG_STATUS(Status_FilterError("Filter metadata exceeds max length"));
   metadata_len = static_cast<uint32_t>(buff->size() - buff_size);
   std::memcpy(
       buff->data(metadata_length_offset), &metadata_len, sizeof(uint32_t));
@@ -106,13 +93,13 @@ Status Filter::serialize(Buffer* buff) const {
 Status Filter::get_option_impl(FilterOption option, void* value) const {
   (void)option;
   (void)value;
-  return LOG_STATUS(Status::FilterError("Filter does not support options."));
+  return LOG_STATUS(Status_FilterError("Filter does not support options."));
 }
 
 Status Filter::set_option_impl(FilterOption option, const void* value) {
   (void)option;
   (void)value;
-  return LOG_STATUS(Status::FilterError("Filter does not support options."));
+  return LOG_STATUS(Status_FilterError("Filter does not support options."));
 }
 
 Status Filter::deserialize_impl(ConstBuffer* buff) {
@@ -129,7 +116,11 @@ FilterType Filter::type() const {
   return type_;
 }
 
-void Filter::init_resource_pool(uint64_t size) {
+void Filter::init_compression_resource_pool(uint64_t size) {
+  (void)size;
+}
+
+void Filter::init_decompression_resource_pool(uint64_t size) {
   (void)size;
 }
 
