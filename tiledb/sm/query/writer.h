@@ -127,7 +127,7 @@ class Writer : public StrategyBase, public IQueryStrategy {
   }
 
   /** Writer is never in an imcomplete state. */
-  QueryStatusDetailsReason status_details_reason() const {
+  QueryStatusDetailsReason status_incomplete_reason() const {
     return QueryStatusDetailsReason::REASON_NONE;
   }
 

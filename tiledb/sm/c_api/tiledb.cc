@@ -7114,7 +7114,6 @@ int32_t tiledb_fragment_info_dump(
 /*          EXPERIMENTAL APIs        */
 /* ********************************* */
 
-/** TODO */
 TILEDB_EXPORT int32_t tiledb_query_get_status_details(
     tiledb_ctx_t* ctx,
     tiledb_query_t* query,
@@ -7124,10 +7123,10 @@ TILEDB_EXPORT int32_t tiledb_query_get_status_details(
     return TILEDB_ERR;
 
   // Currently only one detailed reason. Retrieve it and set to user struct.
-  tiledb_query_status_details_reason_t reason =
+  tiledb_query_status_details_reason_t incomplete_reason =
       (tiledb_query_status_details_reason_t)
-          query->query_->status_details_reason();
-  status->reason = reason;
+          query->query_->status_incomplete_reason();
+  status->incomplete_reason = incomplete_reason;
 
   return TILEDB_OK;
 }

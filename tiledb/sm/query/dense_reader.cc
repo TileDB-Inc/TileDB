@@ -88,7 +88,7 @@ bool DenseReader::incomplete() const {
   return read_state_.overflowed_ || !read_state_.done();
 }
 
-QueryStatusDetailsReason DenseReader::status_details_reason() const {
+QueryStatusDetailsReason DenseReader::status_incomplete_reason() const {
   return incomplete() ? QueryStatusDetailsReason::REASON_USER_BUFFER_SIZE :
                         QueryStatusDetailsReason::REASON_NONE;
 }

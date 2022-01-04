@@ -2033,9 +2033,9 @@ QueryStatus Query::status() const {
   return status_;
 }
 
-QueryStatusDetailsReason Query::status_details_reason() const {
+QueryStatusDetailsReason Query::status_incomplete_reason() const {
   if (strategy_ != nullptr)
-    return strategy_->status_details_reason();
+    return strategy_->status_incomplete_reason();
 
   return QueryStatusDetailsReason::REASON_NONE;
 }

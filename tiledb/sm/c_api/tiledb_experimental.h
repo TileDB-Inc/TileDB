@@ -235,7 +235,7 @@ typedef enum {
 
 /** This should move to c_api/tiledb_struct_defs.h when stabilized */
 struct tiledb_query_status_details_t {
-  tiledb_query_status_details_reason_t reason;
+  tiledb_query_status_details_reason_t incomplete_reason;
 };
 
 /**

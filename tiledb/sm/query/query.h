@@ -860,8 +860,8 @@ class Query {
   /** Returns the query status. */
   QueryStatus status() const;
 
-  /** Returns the query status details reason. */
-  QueryStatusDetailsReason status_details_reason() const;
+  /** Returns the query status incomplete reason. */
+  QueryStatusDetailsReason status_incomplete_reason() const;
 
   /** Returns the query type. */
   QueryType type() const;

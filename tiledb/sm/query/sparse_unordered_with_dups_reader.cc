@@ -96,7 +96,7 @@ bool SparseUnorderedWithDupsReader<BitmapType>::incomplete() const {
 
 template <class BitmapType>
 QueryStatusDetailsReason
-SparseUnorderedWithDupsReader<BitmapType>::status_details_reason() const {
+SparseUnorderedWithDupsReader<BitmapType>::status_incomplete_reason() const {
   if (!incomplete())
     return QueryStatusDetailsReason::REASON_NONE;
 

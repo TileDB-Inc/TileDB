@@ -93,7 +93,7 @@ class DenseReader : public ReaderBase, public IQueryStrategy {
   bool incomplete() const;
 
   /** Returns the status details reason. */
-  QueryStatusDetailsReason status_details_reason() const;
+  QueryStatusDetailsReason status_incomplete_reason() const;
 
   /** Initializes the reader. */
   Status init();
