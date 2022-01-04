@@ -48,17 +48,33 @@ install_brew_pkgs() {
 install_deps() {
   AZURITE_PACKAGE="azurite@3.13.1"
   if [[ $OSTYPE == linux* ]]; then
-    if [ -n "$(command -v apt-get)" ]; then
+    if [[ $(which node) ]]; then
+      echo "node found $(which_node)"
+    elif [ -n "$(command -v apt-get)" ]; then
       install_apt_pkgs
     elif [ -n "$(command -v yum)" ]; then
       install_yum_pkgs
     fi
 
-    sudo npm config set strict-ssl false
-    sudo npm cache clean -f
-    sudo npm install -g n
-    sudo n stable
-    sudo npm install -g $AZURITE_PACKAGE
+    if [[ $(which npm) ]]; then
+      echo "found $(which npm)"
+      ls -l $(which npm)
+    else
+      echo "did not find npm!"
+    fi
+
+    if [[ $(which sudo) ]]; then
+      SUDO=$(which sudo)
+      #temp for manylinux not having functioning sudo
+      SUDO=
+    else
+      SUDO=
+    fi
+    $SUDO npm config set strict-ssl false
+    $SUDO npm cache clean -f
+    $SUDO npm install -g n
+    $SUDO n stable
+    $SUDO npm install -g $AZURITE_PACKAGE
   elif [[ $OSTYPE == darwin* ]]; then
     if [ -n "$(command -v brew)" ]; then
       install_brew_pkgs

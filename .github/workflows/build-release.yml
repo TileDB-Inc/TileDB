@@ -1,0 +1,84 @@
+name: linux_mac-release
+
+on:
+  push:
+    branches:
+      - release-*
+      - dlh/ch10040-azr-osx-lnxto-ga
+
+env:
+  SUDO: 'sudo'
+
+jobs:
+  build-release-macos:
+    if: true
+    runs-on: ${{ matrix.os }}
+    env:
+      TILEDB_S3: ON
+      TILEDB_AZURE: ON
+      TILEDB_GCS: ON
+      TILEDB_HDFS: ON
+      TILEDB_STATIC: OFF
+      TILEDB_SERIALIZATION: ON
+      TILEDB_FORCE_BUILD_DEPS: ON
+      MACOSX_DEPLOYMENT_TARGET: 10.14
+      SUDO: 'sudo'
+    strategy:
+      matrix:
+        os: [macos-10.15]
+        environ: [intel64, arm64]
+        include:
+          - environ: intel64
+            TILEDB_AZURE: ON
+            TILEDB_SERIALIZATION: ON
+            CXX: clang++
+            ARTIFACT_OS: macOS_azure
+          - environ: arm64
+            CXX: clang++
+            ARTIFACT_OS: 'macos'
+            ARTIFACT_ARCH: 'arm64'
+            TILEDB_GCS: OFF
+            TILEDB_WERROR: OFF
+            CMAKE_OSX_ARCHITECTURES: "arm64"
+            MACOSX_DEPLOYMENT_TARGET: 11
+
+    steps:
+      - uses: actions/checkout@v2
+
+      - uses: ./.github/actions/mac-release
+
+
+  build-release-manylinux:
+    runs-on: ${{ matrix.os }}
+    env:
+      CXX: g++
+      CFLAGS: "-lrt"
+      CXXFLAGS: "-lrt"
+      ARTIFACT_OS: 'linux'
+      ARTIFACT_ARCH: 'x86_64'
+      SUDO: ''
+    strategy:
+      matrix:
+        os: [ubuntu-20.04]
+        environ: [standard, noavx2]
+        include:
+          - environ: standard
+            CXX: g++
+            CFLAGS: "-lrt"
+            CXXFLAGS: "-lrt"
+            ARTIFACT_OS: 'linux'
+            ARTIFACT_ARCH: "x86_64"
+            TILEDB_AVX2: ON
+            SUDO: ''
+          - environ: noavx2
+            CXX: g++
+            CFLAGS: "-lrt"
+            CXXFLAGS: "-lrt"
+            ARTIFACT_OS: 'linux'
+            ARTIFACT_ARCH: "x86_64-noavx2"
+            TILEDB_AVX2: OFF
+            SUDO: ''
+    steps:
+      - uses: actions/checkout@v2
+
+      - uses: ./.github/actions/manylinux-release

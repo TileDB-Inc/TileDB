@@ -1,0 +1,146 @@
+name: act-linux_mac-release
+
+runs:
+  using: "composite"
+  steps:
+
+
+    - name: 'Print env'
+      run: |
+        echo "'uname -s' is:"
+        echo "uname: " $(uname)
+        echo "uname -m: " $(uname -m)
+        echo "uname -r:" $(uname -r)
+        echo "uname -s: " $(uname -s)
+        echo "uname -v: " $(uname -v)
+        printenv
+      shell: bash
+
+    - name: 'Uninstall brew packages for curl (OSX only)'
+      if: ${{ runner.os == 'macOS' }}
+      shell: bash
+      run: |
+        set -e pipefail
+        brew uninstall --ignore-dependencies libidn2 brotli rtmpdump
+
+    - name: 'Remove sdks for testing (OSX only)'
+      if: ${{ runner.os == 'macOS' }}
+      shell: bash
+      run: |
+        set -e pipefail
+        $SUDO rm -Rf /Library/Developer/CommandLineTools/SDKs/* # Remove SDKs without ARM support
+
+    - name: Git Hash 7-digit
+      shell: bash
+      #env:
+      #  sourceVersion: ${{ env.GITHUB_SHA }}
+      run: |
+        # 'member, GA CI does -not- pre-pop env context with items from environment.
+        sourceVersion=$GITHUB_SHA
+        echo "sourceVersion is $sourceVersion"
+        commitHash=${sourceVersion:0:7}
+        echo "commitHash is $commitHash"
+        #echo "##vso[task.setvariable variable=commitHash]$commitHash" ## Set variable for using in other tasks.
+        #echo "::set-output name=commitHash::$commitHash" # TBD: make status check pass for this hack step
+        echo "commitHash=$commitHash" >> "$GITHUB_ENV" # make available to subsequent step
+        echo "TDB_COMMIT_HASH=$commitHash" >> "$GITHUB_ENV" # make available to subsequent step
+        #for ev in GITHUB_REF_NAME GITHUB_REF_TYPE GITHUB_WORKSPACE GITHUB_EVENT_PATH CXX CC CFLAGS CXXFLAGS ARTIFACT_OS ARTIFACT_EXTRAS ARTIFACT_ARCH SUDO RUNNER_OS GITHUB_REF RUNNER_TRACKING_ID RUNNER_ARCH GITHUB_RUN_NUMBER GITHUB_RUN_ID GITHUB_EVENT_NAME GITHUB_ACTOR GITHUB_REF_NAME GITHUB_JOB GITHUB_REPOSITORY RUNNER_WORKSPACE GITHUB_WORKFLOW TDB_SOURCE_ARCHIVE_PATH TDB_BINARY_ARCHIVE_PATH; do tmp=$ev; echo "$ev=${!tmp}"; done >> tdbenvfile.txt
+        #for ev in commitHash; do tmp=$ev; echo "$ev=${!tmp}"; done >> tdbenvfile.txt
+        sync
+
+    - name: 'Build libtiledb scripted inits'
+      if: true
+      #not availa le in (composite) action? continue-on-error: true
+      shell: bash
+      run: |
+        #do before set -x to avoid noise
+        ii=0; while read -r l; do printf '%u %s\n' "$ii" "$l"; (( ii = ii + 1 )); done < ${0}
+        sync
+        echo "bump 1"
+        set -x
+        echo "change so can push, prev job appears hung, will this one run?"
+        echo ${0}
+        sync
+        current_runner_script_path=$(dirname ${0})
+        ls -l ${current_runner_script_path} #/home/runner/work/_temp <== ubuntu runner, not mac
+        sync
+        TDB_REF_NAME=${GITHUB_REF_NAME//\//-} # replace '/' with '-'
+        echo "TDB_REF_NAME=$TDB_REF_NAME" >> "$GITHUB_ENV"
+        for ev in TDB_COMMIT_HASH TDB_REF_NAME GITHUB_REF_NAME GITHUB_REF_TYPE GITHUB_WORKSPACE GITHUB_EVENT_PATH CXX CC CFLAGS CXXFLAGS ARTIFACT_OS ARTIFACT_EXTRAS ARTIFACT_ARCH SUDO RUNNER_OS GITHUB_REF RUNNER_TRACKING_ID RUNNER_ARCH GITHUB_RUN_NUMBER GITHUB_RUN_ID GITHUB_EVENT_NAME GITHUB_ACTOR GITHUB_REF_NAME GITHUB_JOB GITHUB_REPOSITORY RUNNER_WORKSPACE GITHUB_WORKFLOW TDB_SOURCE_ARCHIVE_PATH TDB_BINARY_ARCHIVE_PATH; do tmp=$ev; echo "$ev=${!tmp}"; done >> tdbenvfile.txt
+        #for ev in TDB_COMMIT_HASH TDB_REF_NAME GITHUB_REF_NAME GITHUB_REF_TYPE GITHUB_WORKSPACE GITHUB_EVENT_PATH CXX CC CFLAGS CXXFLAGS ARTIFACT_OS ARTIFACT_EXTRAS ARTIFACT_ARCH SUDO RUNNER_OS GITHUB_REF RUNNER_TRACKING_ID RUNNER_ARCH GITHUB_RUN_NUMBER GITHUB_RUN_ID GITHUB_EVENT_NAME GITHUB_ACTOR GITHUB_REF_NAME GITHUB_JOB GITHUB_REPOSITORY RUNNER_WORKSPACE GITHUB_WORKFLOW TDB_SOURCE_ARCHIVE_PATH TDB_BINARY_ARCHIVE_PATH; do tmp=$ev; echo "$ev=${!tmp}" >> "$GITHUB_ENV"; done
+        echo "TDB_REF_NAME=${TDB_REF_NAME}" >> "$GITHUB_ENV"
+        cat tdbenvfile.txt
+        sync
+
+    - name: 'Build libtiledb via script'
+      if: true # false
+      #not availa le in (composite) action? continue-on-error: true
+      shell: bash
+      run: |
+        . ./scripts/ci/linux-mac_release_buildtiledb.sh
+
+    - name: 'Build libtiledb scripted'
+      if: false #true
+      #not availa le in (composite) action? continue-on-error: true
+      shell: bash
+      run: |
+        up1level=$(echo -e "import sys\nimport os\nprint (os.path.realpath(\"$GITHUB_WORKSPACE/..\"))" | python3)
+        containername=dlhmanylinux
+        docker container run \
+          -d --name $containername \
+          -it \
+          -v "$up1level:$up1level" --env-file tdbenvfile.txt \
+          -w $GITHUB_WORKSPACE \
+          "quay.io/pypa/manylinux2010_x86_64:2021-11-07-28723f3" \
+          /bin/bash # -c "pwd; ls -l; . ./scripts/ci/linux-mac_release_buildtiledb.sh"
+        sync
+        docker ps
+        sync
+        docker inspect $containername
+        sync
+        docker container exec \
+          $containername \
+          /bin/bash -c "pwd; ls -l; . ./scripts/ci/linux-mac_release_buildtiledb.sh; pwd; ls -l; pwd; ls -l .."
+        sync
+        echo "are .tar.gz files following?"
+        realpath ..
+        ls -l ..
+        sync
+        docker exec $containername /bin/bash -c "echo \"insA\";pwd; ls -l; ls -l ..;echo \"insB, end\""
+        sync
+        docker ps
+        sync
+        if [[ ! $(ls -l $up1level/TDBRETENVVARS.TXT) ]]; then
+          if [[ $($XSUDO find / -name TDBRETENVVARS.TXT -exec ls -l {} \;) ]]; then
+            echo "found TDBRETENVVARS.TXT not where expected"
+          fi
+        else
+          echo "found TDBRETENVVARS.TXT at $up1level"
+          cat $up1level/TDBRETENVVARS.TXT
+          echo "contents of TDBRETENVVARS.TXT above?"
+          source $up1level/TDBRETENVVARS.TXT
+          echo "TDB_BINARY_ARCHIVE_PATH=$TDB_BINARY_ARCHIVE_PATH" >> "$GITHUB_ENV"
+          echo "TDB_SOURCE_ARCHIVE_PATH=$TDB_SOURCE_ARCHIVE_PATH" >> "$GITHUB_ENV"
+
+        fi
+        sync
+        docker stop $containername
+
+    - name: 'ArchiveFiles@2A' # https://github.com/actions/upload-artifact#where-does-the-upload-go
+      #if: ${{ failure() == true && startsWith(runner.name, 'macos-') == true }} # only run this job if the build step failed
+      uses: actions/upload-artifact@v2
+      with:
+        retention-days: 10
+        name: tiledb-source-${{ env.ARTIFACT_OS }}-${{ env.ARTIFACT_ARCH }}-build-dir-${{ env.ARTIFACT_EXTRAS }}.${{env.TDB_REF_NAME}}.tar.gz
+        #if-no-files-found: warn # 'ignore/', 'warn' or 'error' are available, defaults to `warn`
+        path: |
+          ${{ env.TDB_SOURCE_ARCHIVE_PATH }}
+
+    - name: 'ArchiveFiles@2B' # https://github.com/actions/upload-artifact#where-does-the-upload-go
+      #if: ${{ failure() == true && startsWith(runner.name, 'macos-') == true }} # only run this job if the build step failed
+      uses: actions/upload-artifact@v2
+      with:
+        retention-days: 10
+        name: tiledb-${{ env.ARTIFACT_OS }}-${{ env.ARTIFACT_ARCH }}-build-dir-${{ env.ARTIFACT_EXTRAS }}.${{env.TDB_REF_NAME}}.tar.gz
+        path: |
+          ${{ env.TDB_BINARY_ARCHIVE_PATH }}
