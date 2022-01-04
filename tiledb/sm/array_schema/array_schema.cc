@@ -877,5 +877,20 @@ Status ArraySchema::generate_uri() {
   return Status::Ok();
 }
 
+Status ArraySchema::generate_uri(const std::pair<uint64_t, uint64_t>& timestamp_range) {
+  std::string uuid;
+  RETURN_NOT_OK(uuid::generate_uuid(&uuid, false));
+
+  timestamp_range_ = timestamp_range;
+  std::stringstream ss;
+  ss << "__" << timestamp_range_.first << "_" << timestamp_range_.second << "_"
+     << uuid;
+  name_ = ss.str();
+  uri_ = array_uri_.join_path(constants::array_schema_folder_name)
+             .join_path(name_);
+
+  return Status::Ok();
+}
+
 }  // namespace sm
 }  // namespace tiledb
