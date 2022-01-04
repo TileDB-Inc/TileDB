@@ -57,6 +57,7 @@ CompressionFilter::CompressionFilter(FilterType compressor, int level)
     : Filter(compressor)
     , compressor_(filter_to_compressor(compressor))
     , level_(level)
+    , zstd_compress_ctx_pool_(nullptr)
     , zstd_decompress_ctx_pool_(nullptr) {
 }
 
@@ -64,6 +65,7 @@ CompressionFilter::CompressionFilter(Compressor compressor, int level)
     : Filter(compressor_to_filter(compressor))
     , compressor_(compressor)
     , level_(level)
+    , zstd_compress_ctx_pool_(nullptr)
     , zstd_decompress_ctx_pool_(nullptr) {
 }
 
@@ -301,7 +303,8 @@ Status CompressionFilter::compress_part(
       RETURN_NOT_OK(GZip::compress(level_, &input_buffer, output));
       break;
     case Compressor::ZSTD:
-      RETURN_NOT_OK(ZStd::compress(level_, &input_buffer, output));
+      RETURN_NOT_OK(ZStd::compress(
+          level_, zstd_compress_ctx_pool_, &input_buffer, output));
       break;
     case Compressor::LZ4:
       RETURN_NOT_OK(LZ4::compress(level_, &input_buffer, output));
@@ -432,7 +435,16 @@ Status CompressionFilter::deserialize_impl(ConstBuffer* buff) {
   return Status::Ok();
 }
 
-void CompressionFilter::init_resource_pool(uint64_t size) {
+void CompressionFilter::init_compression_resource_pool(uint64_t size) {
+  std::lock_guard g(zstd_compress_ctx_pool_mtx_);
+  if (zstd_compress_ctx_pool_ == nullptr) {
+    zstd_compress_ctx_pool_ =
+        tdb::make_shared<BlockingResourcePool<ZStd::ZSTD_Compress_Context>>(
+            HERE(), size);
+  }
+}
+
+void CompressionFilter::init_decompression_resource_pool(uint64_t size) {
   std::lock_guard g(zstd_decompress_ctx_pool_mtx_);
   if (zstd_decompress_ctx_pool_ == nullptr) {
     zstd_decompress_ctx_pool_ =

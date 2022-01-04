@@ -257,7 +257,7 @@ class SparseUnorderedWithDupsReader : public SparseIndexReaderBase,
    * the budget.
    */
   Status respect_copy_memory_budget(
-      const std::vector<std::string> names,
+      const std::vector<std::string>& names,
       const uint64_t memory_budget,
       const std::vector<uint64_t>* cell_offsets,
       std::vector<ResultTile*>* result_tiles,
