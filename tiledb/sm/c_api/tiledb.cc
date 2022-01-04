@@ -388,7 +388,7 @@ inline int32_t sanity_check(
     const tiledb_subarray_partitioner_t* subarray_partitioner) {
   if (subarray_partitioner == nullptr ||
       subarray_partitioner->partitioner_ == nullptr) {
-    auto st = Status::Error("Invalid TileDB subarray_partitioner object");
+    auto st = Status_Error("Invalid TileDB subarray_partitioner object");
     LOG_STATUS(st);
     save_error(ctx, st);
     return TILEDB_ERR;
@@ -4201,7 +4201,7 @@ int32_t tiledb_subarray_partitioner_alloc(
   // Create a buffer struct
   *subarray_partitioner = new (std::nothrow) tiledb_subarray_partitioner_t;
   if (*subarray_partitioner == nullptr) {
-    auto st = Status::Error("Failed to allocate TileDB subarray object");
+    auto st = Status_Error("Failed to allocate TileDB subarray object");
     LOG_STATUS(st);
     save_error(ctx, st);
     return TILEDB_OOM;
@@ -4227,7 +4227,7 @@ int32_t tiledb_subarray_partitioner_alloc(
   }
   if ((*subarray_partitioner)->partitioner_ == nullptr) {
     delete *subarray_partitioner;
-    auto st = Status::Error("Failed to allocate TileDB subarray object");
+    auto st = Status_Error("Failed to allocate TileDB subarray object");
     LOG_STATUS(st);
     save_error(ctx, st);
     return TILEDB_OOM;

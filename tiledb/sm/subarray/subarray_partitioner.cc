@@ -383,7 +383,7 @@ Status SubarrayPartitioner::subarray_from_partition_series(
     // assumes part_idx to be zero-based
     msg << "Requested partition index " << part_idx << " greater than last ("
         << partitions_.size() - 1 << ") computed partition.";
-    return LOG_STATUS(Status::SubarrayPartitionerError(msg.str()));
+    return LOG_STATUS(Status_SubarrayPartitionerError(msg.str()));
   }
   **subarray = partitions_[part_idx].partition_;
   return Status::Ok();
