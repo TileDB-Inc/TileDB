@@ -33,6 +33,7 @@ jobs:
             TILEDB_SERIALIZATION: ON
             CXX: clang++
             ARTIFACT_OS: macOS_azure
+            ARTIFACT_ARCH: 'intel64'
           - environ: arm64
             CXX: clang++
             ARTIFACT_OS: 'macos'

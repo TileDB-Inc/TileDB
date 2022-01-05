@@ -108,7 +108,8 @@ pwd
 #tar -zcf tiledb-${{ env.ARTIFACT_OS }}-build-dir-${{ env.ARTIFACT_EXTRAS }}.tar.gz $GITHUB_WORKSPACE/build
 #tar -zcf tiledb-binary-${ARTIFACT_OS}-${ARTIFACT_ARCH}-build-dir-${ARTIFACT_EXTRAS}.tar.gz ./TileDB/build
 #tar -zcf tiledb-${ARTIFACT_OS}-${ARTIFACT_ARCH}-${TDB_REF_NAME}-${TDB_COMMIT_HASH}.tar.gz ./TileDB/build
-binary_archive_name="tiledb-${ARTIFACT_OS}-${ARTIFACT_ARCH}-${TDB_REF_NAME}-${TDB_COMMIT_HASH}.tar.gz"
+#binary_archive_name="tiledb-${ARTIFACT_OS}-${ARTIFACT_ARCH}-${TDB_REF_NAME}-${TDB_COMMIT_HASH}.tar.gz"
+binary_archive_name=tiledb-${ARTIFACT_OS}-${ARTIFACT_ARCH}-${TDB_REF_NAME}-${TDB_COMMIT_HASH}.tar.gz
 tar -zcf ${binary_archive_name} ./TileDB/build
 #following name closer to azure pipelines version...
 #binary_archivefilename=$(Build.ArtifactStagingDirectory)/tiledb-$(ARTIFACT_OS)-$(ARTIFACT_ARCH)-$(Build.SourceBranchName)-$(commitHash).tar.gz

@@ -40,12 +40,8 @@ runs:
         echo "sourceVersion is $sourceVersion"
         commitHash=${sourceVersion:0:7}
         echo "commitHash is $commitHash"
-        #echo "##vso[task.setvariable variable=commitHash]$commitHash" ## Set variable for using in other tasks.
-        #echo "::set-output name=commitHash::$commitHash" # TBD: make status check pass for this hack step
         echo "commitHash=$commitHash" >> "$GITHUB_ENV" # make available to subsequent step
         echo "TDB_COMMIT_HASH=$commitHash" >> "$GITHUB_ENV" # make available to subsequent step
-        #for ev in GITHUB_REF_NAME GITHUB_REF_TYPE GITHUB_WORKSPACE GITHUB_EVENT_PATH CXX CC CFLAGS CXXFLAGS ARTIFACT_OS ARTIFACT_EXTRAS ARTIFACT_ARCH SUDO RUNNER_OS GITHUB_REF RUNNER_TRACKING_ID RUNNER_ARCH GITHUB_RUN_NUMBER GITHUB_RUN_ID GITHUB_EVENT_NAME GITHUB_ACTOR GITHUB_REF_NAME GITHUB_JOB GITHUB_REPOSITORY RUNNER_WORKSPACE GITHUB_WORKFLOW TDB_SOURCE_ARCHIVE_PATH TDB_BINARY_ARCHIVE_PATH; do tmp=$ev; echo "$ev=${!tmp}"; done >> tdbenvfile.txt
-        #for ev in commitHash; do tmp=$ev; echo "$ev=${!tmp}"; done >> tdbenvfile.txt
         sync
 
     - name: 'Build libtiledb scripted inits'
@@ -54,20 +50,20 @@ runs:
       shell: bash
       run: |
         #do before set -x to avoid noise
-        ii=0; while read -r l; do printf '%u %s\n' "$ii" "$l"; (( ii = ii + 1 )); done < ${0}
-        sync
-        echo "bump 1"
+        #ii=0; while read -r l; do printf '%u %s\n' "$ii" "$l"; (( ii = ii + 1 )); done < ${0}
+        #sync
+        #echo "bump 1"
         set -x
-        echo "change so can push, prev job appears hung, will this one run?"
-        echo ${0}
-        sync
-        current_runner_script_path=$(dirname ${0})
-        ls -l ${current_runner_script_path} #/home/runner/work/_temp <== ubuntu runner, not mac
-        sync
+        #echo "change so can push, prev job appears hung, will this one run?"
+        #echo ${0}
+        #sync
+        #current_runner_script_path=$(dirname ${0})
+        #ls -l ${current_runner_script_path} #/home/runner/work/_temp <== ubuntu runner, not mac
+        #sync
         TDB_REF_NAME=${GITHUB_REF_NAME//\//-} # replace '/' with '-'
         echo "TDB_REF_NAME=$TDB_REF_NAME" >> "$GITHUB_ENV"
-        for ev in TDB_COMMIT_HASH TDB_REF_NAME GITHUB_REF_NAME GITHUB_REF_TYPE GITHUB_WORKSPACE GITHUB_EVENT_PATH CXX CC CFLAGS CXXFLAGS ARTIFACT_OS ARTIFACT_EXTRAS ARTIFACT_ARCH SUDO RUNNER_OS GITHUB_REF RUNNER_TRACKING_ID RUNNER_ARCH GITHUB_RUN_NUMBER GITHUB_RUN_ID GITHUB_EVENT_NAME GITHUB_ACTOR GITHUB_REF_NAME GITHUB_JOB GITHUB_REPOSITORY RUNNER_WORKSPACE GITHUB_WORKFLOW TDB_SOURCE_ARCHIVE_PATH TDB_BINARY_ARCHIVE_PATH; do tmp=$ev; echo "$ev=${!tmp}"; done >> tdbenvfile.txt
-        #for ev in TDB_COMMIT_HASH TDB_REF_NAME GITHUB_REF_NAME GITHUB_REF_TYPE GITHUB_WORKSPACE GITHUB_EVENT_PATH CXX CC CFLAGS CXXFLAGS ARTIFACT_OS ARTIFACT_EXTRAS ARTIFACT_ARCH SUDO RUNNER_OS GITHUB_REF RUNNER_TRACKING_ID RUNNER_ARCH GITHUB_RUN_NUMBER GITHUB_RUN_ID GITHUB_EVENT_NAME GITHUB_ACTOR GITHUB_REF_NAME GITHUB_JOB GITHUB_REPOSITORY RUNNER_WORKSPACE GITHUB_WORKFLOW TDB_SOURCE_ARCHIVE_PATH TDB_BINARY_ARCHIVE_PATH; do tmp=$ev; echo "$ev=${!tmp}" >> "$GITHUB_ENV"; done
+        #for ev in TDB_COMMIT_HASH TDB_REF_NAME GITHUB_REF_NAME GITHUB_REF_TYPE GITHUB_WORKSPACE GITHUB_EVENT_PATH CXX CC CFLAGS CXXFLAGS ARTIFACT_OS ARTIFACT_EXTRAS ARTIFACT_ARCH SUDO RUNNER_OS GITHUB_REF RUNNER_TRACKING_ID RUNNER_ARCH GITHUB_RUN_NUMBER GITHUB_RUN_ID GITHUB_EVENT_NAME GITHUB_ACTOR GITHUB_REF_NAME GITHUB_JOB GITHUB_REPOSITORY RUNNER_WORKSPACE GITHUB_WORKFLOW TDB_SOURCE_ARCHIVE_PATH TDB_BINARY_ARCHIVE_PATH; do tmp=$ev; echo "$ev=${!tmp}"; done >> tdbenvfile.txt
+        for ev in TDB_COMMIT_HASH TDB_REF_NAME GITHUB_REF_NAME GITHUB_REF_TYPE GITHUB_WORKSPACE GITHUB_EVENT_PATH CXX CC CFLAGS CXXFLAGS ARTIFACT_OS ARTIFACT_EXTRAS ARTIFACT_ARCH SUDO RUNNER_OS GITHUB_REF RUNNER_TRACKING_ID RUNNER_ARCH GITHUB_RUN_NUMBER GITHUB_RUN_ID GITHUB_EVENT_NAME GITHUB_ACTOR GITHUB_REF_NAME GITHUB_JOB GITHUB_REPOSITORY RUNNER_WORKSPACE GITHUB_WORKFLOW TDB_SOURCE_ARCHIVE_PATH TDB_BINARY_ARCHIVE_PATH; do tmp=$ev; echo "$ev=${!tmp}" >> "$GITHUB_ENV"; done
         echo "TDB_REF_NAME=${TDB_REF_NAME}" >> "$GITHUB_ENV"
         cat tdbenvfile.txt
         sync
