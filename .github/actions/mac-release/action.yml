@@ -73,19 +73,19 @@ runs:
         sync
 
     - name: 'Build libtiledb via script'
-      if: true # false
+      if: false #true # false
       #not availa le in (composite) action? continue-on-error: true
       shell: bash
       run: |
         . ./scripts/ci/linux-mac_release_buildtiledb.sh
 
     - name: 'Build libtiledb scripted'
-      if: false #true
+      if: true #false #true
       #not availa le in (composite) action? continue-on-error: true
       shell: bash
       run: |
         up1level=$(echo -e "import sys\nimport os\nprint (os.path.realpath(\"$GITHUB_WORKSPACE/..\"))" | python3)
-        containername=dlhmanylinux
+        containername=tdbmanylinux
         docker container run \
           -d --name $containername \
           -it \
