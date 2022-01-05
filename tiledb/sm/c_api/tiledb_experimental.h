@@ -206,6 +206,51 @@ TILEDB_DEPRECATED_EXPORT int32_t tiledb_query_add_point_ranges(
     const void* start,
     uint64_t count);
 
+/* ********************************* */
+/*        QUERY STATUS DETAILS       */
+/* ********************************* */
+
+/** This should move to c_api/tiledb.h when stabilized */
+typedef struct tiledb_query_status_details_t tiledb_query_status_details_t;
+
+/** TileDB query status details type. */
+typedef enum {
+/** Helper macro for defining status details type enums. */
+#define TILEDB_QUERY_STATUS_DETAILS_ENUM(id) TILEDB_##id
+#include "tiledb_enum.h"
+#undef TILEDB_QUERY_STATUS_DETAILS_ENUM
+} tiledb_query_status_details_reason_t;
+
+/** This should move to c_api/tiledb_struct_defs.h when stabilized */
+struct tiledb_query_status_details_t {
+  tiledb_query_status_details_reason_t incomplete_reason;
+};
+
+/**
+ * Get extended query status details.
+ *
+ * The contained enumeration tiledb_query_status_details_reason_t
+ * indicates extended information about a returned query status
+ * in order to allow improved client-side handling of buffers and
+ * potential resubmissions.
+ *
+ * **Example:**
+ *
+ * @code{.c}
+ * tiledb_query_status_details_t status_details;
+ * tiledb_query_get_status_details(ctx, query, &status_details);
+ * @endcode
+ *
+ * @param ctx The TileDB context.
+ * @param query The query from which to retrieve status details.
+ * @param status_details The tiledb_query_status_details_t struct.
+ * @return `TILEDB_OK` for success and `TILEDB_ERR` for error.
+ */
+TILEDB_EXPORT int32_t tiledb_query_get_status_details(
+    tiledb_ctx_t* ctx,
+    tiledb_query_t* query,
+    tiledb_query_status_details_t* status);
+
 #ifdef __cplusplus
 }
 #endif

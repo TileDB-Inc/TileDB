@@ -95,6 +95,17 @@ bool SparseUnorderedWithDupsReader<BitmapType>::incomplete() const {
 }
 
 template <class BitmapType>
+QueryStatusDetailsReason
+SparseUnorderedWithDupsReader<BitmapType>::status_incomplete_reason() const {
+  if (!incomplete())
+    return QueryStatusDetailsReason::REASON_NONE;
+
+  return result_tiles_[0].empty() ?
+             QueryStatusDetailsReason::REASON_MEMORY_BUDGET :
+             QueryStatusDetailsReason::REASON_USER_BUFFER_SIZE;
+}
+
+template <class BitmapType>
 Status SparseUnorderedWithDupsReader<BitmapType>::init() {
   RETURN_NOT_OK(SparseIndexReaderBase::init());
 
