@@ -126,6 +126,11 @@ class Writer : public StrategyBase, public IQueryStrategy {
     return false;
   }
 
+  /** Writer is never in an imcomplete state. */
+  QueryStatusDetailsReason status_incomplete_reason() const {
+    return QueryStatusDetailsReason::REASON_NONE;
+  }
+
   /** Returns current setting of check_coord_dups_ */
   bool get_check_coord_dups() const;
 

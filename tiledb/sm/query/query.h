@@ -44,6 +44,7 @@
 #include "tiledb/sm/array_schema/array_schema.h"
 #include "tiledb/sm/array_schema/dimension.h"
 #include "tiledb/sm/array_schema/domain.h"
+#include "tiledb/sm/enums/query_status_details.h"
 #include "tiledb/sm/fragment/written_fragment_info.h"
 #include "tiledb/sm/misc/utils.h"
 #include "tiledb/sm/query/iquery_strategy.h"
@@ -858,6 +859,9 @@ class Query {
 
   /** Returns the query status. */
   QueryStatus status() const;
+
+  /** Returns the query status incomplete reason. */
+  QueryStatusDetailsReason status_incomplete_reason() const;
 
   /** Returns the query type. */
   QueryType type() const;

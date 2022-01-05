@@ -7109,3 +7109,24 @@ int32_t tiledb_fragment_info_dump(
   fragment_info->fragment_info_->dump(out);
   return TILEDB_OK;
 }
+
+/* ********************************* */
+/*          EXPERIMENTAL APIs        */
+/* ********************************* */
+
+TILEDB_EXPORT int32_t tiledb_query_get_status_details(
+    tiledb_ctx_t* ctx,
+    tiledb_query_t* query,
+    tiledb_query_status_details_t* status) {
+  // Sanity check
+  if (sanity_check(ctx) == TILEDB_ERR || sanity_check(ctx, query) == TILEDB_ERR)
+    return TILEDB_ERR;
+
+  // Currently only one detailed reason. Retrieve it and set to user struct.
+  tiledb_query_status_details_reason_t incomplete_reason =
+      (tiledb_query_status_details_reason_t)
+          query->query_->status_incomplete_reason();
+  status->incomplete_reason = incomplete_reason;
+
+  return TILEDB_OK;
+}
