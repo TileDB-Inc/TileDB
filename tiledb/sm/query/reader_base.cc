@@ -528,6 +528,8 @@ Status ReaderBase::read_tiles(
         uint64_t tile_var_persisted_size;
         RETURN_NOT_OK(fragment->persisted_tile_var_size(
             name, tile_idx, &tile_var_persisted_size));
+        uint64_t tile_var_size;
+        RETURN_NOT_OK(fragment->tile_var_size(name, tile_idx, &tile_var_size));
 
         if (!disable_cache) {
           RETURN_NOT_OK(storage_manager_->read_from_cache(
@@ -548,7 +550,7 @@ Status ReaderBase::read_tiles(
           t_var->filtered_buffer()->set_size(tile_var_persisted_size);
           t_var->filtered_buffer()->reset_offset();
 
-          RETURN_NOT_OK(t_var->buffer()->realloc(tile_size));
+          RETURN_NOT_OK(t_var->buffer()->realloc(tile_var_size));
         }
       }
 
@@ -560,6 +562,8 @@ Status ReaderBase::read_tiles(
         uint64_t tile_validity_persisted_size;
         RETURN_NOT_OK(fragment->persisted_tile_validity_size(
             name, tile_idx, &tile_validity_persisted_size));
+        uint64_t tile_validity_size =
+            fragment->cell_num(tile_idx) * constants::cell_validity_size;
 
         if (!disable_cache) {
           RETURN_NOT_OK(storage_manager_->read_from_cache(
@@ -582,7 +586,7 @@ Status ReaderBase::read_tiles(
           t_validity->filtered_buffer()->set_size(tile_validity_persisted_size);
           t_validity->filtered_buffer()->reset_offset();
 
-          RETURN_NOT_OK(t_validity->buffer()->realloc(tile_size));
+          RETURN_NOT_OK(t_validity->buffer()->realloc(tile_validity_size));
         }
       }
     }
