@@ -1193,6 +1193,7 @@ TEST_CASE(
               uint64_t>(
               &tiledb::test::g_helper_stats,
               &result_tiles,
+              0,
               &cell_offsets,
               &query_buffer,
               &new_result_tiles_size,
@@ -1245,6 +1246,7 @@ TEST_CASE(
               uint64_t>(
               &tiledb::test::g_helper_stats,
               &result_tiles,
+              0,
               &cell_offsets,
               &query_buffer,
               &new_result_tiles_size,
