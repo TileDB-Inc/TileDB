@@ -269,7 +269,6 @@ void check_save_to_file() {
   ss << "sm.memory_budget_var 10737418240\n";
   ss << "sm.query.dense.reader legacy\n";
   ss << "sm.query.sparse_global_order.reader legacy\n";
-  ss << "sm.query.sparse_unordered_with_dups.non_overlapping_ranges false\n";
   ss << "sm.query.sparse_unordered_with_dups.reader refactored\n";
   ss << "sm.read_range_oob warn\n";
   ss << "sm.skip_checksum_validation false\n";
@@ -570,8 +569,6 @@ TEST_CASE("C API: Test config iter", "[capi][config]") {
   all_param_values["sm.query.dense.reader"] = "legacy";
   all_param_values["sm.query.sparse_global_order.reader"] = "legacy";
   all_param_values["sm.query.sparse_unordered_with_dups.reader"] = "refactored";
-  all_param_values
-      ["sm.query.sparse_unordered_with_dups.non_overlapping_ranges"] = "false";
   all_param_values["sm.mem.malloc_trim"] = "true";
   all_param_values["sm.mem.total_budget"] = "10737418240";
   all_param_values["sm.mem.reader.sparse_global_order.ratio_coords"] = "0.5";

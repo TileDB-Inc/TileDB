@@ -1022,13 +1022,8 @@ Status Query::create_strategy() {
         array_schema_->allows_dups()) {
       use_default = false;
 
-      bool found = false;
-      bool non_overlapping_ranges = false;
-      RETURN_NOT_OK(config_.get<bool>(
-          "sm.query.sparse_unordered_with_dups.non_overlapping_ranges",
-          &non_overlapping_ranges,
-          &found));
-      assert(found);
+      auto&& [st, non_overlapping_ranges]{Query::non_overlapping_ranges()};
+      RETURN_NOT_OK(st);
 
       if (non_overlapping_ranges || !subarray_.is_set() ||
           subarray_.range_num() == 1) {
@@ -2115,6 +2110,10 @@ bool Query::use_refactored_sparse_unordered_with_dups_reader() {
   assert(found);
 
   return val == "refactored";
+}
+
+std::tuple<Status, bool> Query::non_overlapping_ranges() {
+  return subarray_.non_overlapping_ranges(storage_manager_->compute_tp());
 }
 
 /* ****************************** */
