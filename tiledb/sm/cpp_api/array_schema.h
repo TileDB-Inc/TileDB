@@ -32,7 +32,6 @@
  * This file declares the C++ API for the TileDB ArraySchema object.
  */
 
-
 #ifndef TILEDB_CPP_API_ARRAY_SCHEMA_H
 #define TILEDB_CPP_API_ARRAY_SCHEMA_H
 
@@ -453,7 +452,7 @@ class ArraySchema : public Schema {
     return *this;
   }
 
- /**
+  /**
    * Get timestamp range of schema.
    *
    * **Example:**
@@ -469,7 +468,7 @@ class ArraySchema : public Schema {
     auto& ctx = ctx_.get();
     uint64_t lo, hi;
     ctx.handle_error(tiledb_array_schema_timestamp_range(
-	      ctx.ptr().get(), schema_.get(), &lo, &hi));
+        ctx.ptr().get(), schema_.get(), &lo, &hi));
     return {lo, hi};
   }
 

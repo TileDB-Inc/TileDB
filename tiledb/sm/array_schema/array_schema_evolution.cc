@@ -173,7 +173,8 @@ std::vector<std::string> ArraySchemaEvolution::attribute_names_to_drop() const {
   return names;
 }
 
-Status ArraySchemaEvolution::set_timestamp_range(const std::pair<uint64_t, uint64_t>& timestamp_range) {
+Status ArraySchemaEvolution::set_timestamp_range(
+    const std::pair<uint64_t, uint64_t>& timestamp_range) {
   timestamp_range_ = timestamp_range;
   return Status::Ok();
 }
@@ -195,7 +196,7 @@ void ArraySchemaEvolution::clear() {
 
   attributes_to_drop_.clear();
 
-  timestamp_range_ = { 0, 0 };
+  timestamp_range_ = {0, 0};
 }
 
 }  // namespace sm

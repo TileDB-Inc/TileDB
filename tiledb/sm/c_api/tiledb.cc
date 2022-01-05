@@ -2292,12 +2292,12 @@ int32_t tiledb_array_schema_set_tile_order(
 int32_t tiledb_array_schema_timestamp_range(
     tiledb_ctx_t* ctx,
     tiledb_array_schema_t* array_schema,
-    uint64_t* lo, 
+    uint64_t* lo,
     uint64_t* hi) {
   if (sanity_check(ctx) == TILEDB_ERR ||
       sanity_check(ctx, array_schema) == TILEDB_ERR)
     return TILEDB_ERR;
-  
+
   auto timestamp_range = array_schema->array_schema_->timestamp_range();
   *lo = std::get<0>(timestamp_range);
   *hi = std::get<1>(timestamp_range);
@@ -2869,7 +2869,8 @@ int32_t tiledb_array_schema_evolution_drop_attribute(
 TILEDB_EXPORT int32_t tiledb_array_schema_evolution_set_timestamp_range(
     tiledb_ctx_t* ctx,
     tiledb_array_schema_evolution_t* array_schema_evolution,
-    uint64_t lo, uint64_t hi) {
+    uint64_t lo,
+    uint64_t hi) {
   if (sanity_check(ctx) == TILEDB_ERR ||
       sanity_check(ctx, array_schema_evolution) == TILEDB_ERR)
     return TILEDB_ERR;

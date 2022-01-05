@@ -2032,7 +2032,8 @@ TEST_CASE_METHOD(
   // Set timestamp to avoid race condition
   uint64_t now = tiledb_timestamp_now_ms();
   now = now + 1;
-  rc = tiledb_array_schema_evolution_set_timestamp_range(ctx_, array_schema_evolution, now, now);
+  rc = tiledb_array_schema_evolution_set_timestamp_range(
+      ctx_, array_schema_evolution, now, now);
 
   // Evolve schema
   rc = tiledb_array_evolve_wrapper(
@@ -2173,7 +2174,8 @@ TEST_CASE_METHOD(
   // Set timestamp to avoid race condition
   uint64_t now = tiledb_timestamp_now_ms();
   now = now + 1;
-  rc = tiledb_array_schema_evolution_set_timestamp_range(ctx_, array_schema_evolution, now, now);
+  rc = tiledb_array_schema_evolution_set_timestamp_range(
+      ctx_, array_schema_evolution, now, now);
 
   // Evolve schema
   rc = tiledb_array_evolve_wrapper(
@@ -2260,11 +2262,12 @@ TEST_CASE_METHOD(
   rc = tiledb_array_schema_evolution_drop_attribute(
       ctx_, array_schema_evolution, "a");
   REQUIRE(rc == TILEDB_OK);
-  
+
   // Set timestamp to avoid race condition
   uint64_t now = tiledb_timestamp_now_ms();
   now = now + 1;
-  rc = tiledb_array_schema_evolution_set_timestamp_range(ctx_, array_schema_evolution, now, now);
+  rc = tiledb_array_schema_evolution_set_timestamp_range(
+      ctx_, array_schema_evolution, now, now);
 
   // Evolve schema
   rc = tiledb_array_evolve_wrapper(

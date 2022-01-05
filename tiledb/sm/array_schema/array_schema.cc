@@ -877,7 +877,8 @@ Status ArraySchema::generate_uri() {
   return Status::Ok();
 }
 
-Status ArraySchema::generate_uri(const std::pair<uint64_t, uint64_t>& timestamp_range) {
+Status ArraySchema::generate_uri(
+    const std::pair<uint64_t, uint64_t>& timestamp_range) {
   std::string uuid;
   RETURN_NOT_OK(uuid::generate_uuid(&uuid, false));
 

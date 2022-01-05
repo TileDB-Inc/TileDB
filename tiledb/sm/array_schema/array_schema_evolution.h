@@ -129,10 +129,10 @@ class ArraySchemaEvolution {
   /** The names of array attributes to be dropped. */
   std::unordered_set<std::string> attributes_to_drop_;
 
-   /**
-   * A timestamp to explicitly set the timestamp of 
+  /**
+   * A timestamp to explicitly set the timestamp of
    * the evolved schema.  To be consistent with
-   * the schema timestamp_range_, two identical 
+   * the schema timestamp_range_, two identical
    * timestamps are stored as a pair.
    */
   std::pair<uint64_t, uint64_t> timestamp_range_;

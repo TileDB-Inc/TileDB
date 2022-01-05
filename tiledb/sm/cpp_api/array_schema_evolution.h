@@ -151,7 +151,7 @@ class ArraySchemaEvolution {
     return *this;
   }
 
-   /**
+  /**
    * Sets timestamp range.
    *
    * **Example:**
@@ -164,10 +164,14 @@ class ArraySchemaEvolution {
    *
    * @param timestamp_range The timestamp range to be set
    */
-   void set_timestamp_range(const std::pair<uint64_t, uint64_t>& timestamp_range) {
+  void set_timestamp_range(
+      const std::pair<uint64_t, uint64_t>& timestamp_range) {
     auto& ctx = ctx_.get();
     ctx.handle_error(tiledb_array_schema_evolution_set_timestamp_range(
-        ctx.ptr().get(), evolution_.get(), std::get<0>(timestamp_range), std::get<1>(timestamp_range)));
+        ctx.ptr().get(),
+        evolution_.get(),
+        std::get<0>(timestamp_range),
+        std::get<1>(timestamp_range)));
   }
 
   /**
