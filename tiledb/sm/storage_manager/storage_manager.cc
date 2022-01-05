@@ -2029,7 +2029,8 @@ StorageManager::load_all_array_schemas(
             std::nullopt};
 
   std::vector<URI> schema_uris;
-  RETURN_NOT_OK_TUPLE(get_array_schema_uris(array_uri, &schema_uris));
+  RETURN_NOT_OK_TUPLE(
+      get_array_schema_uris(array_uri, &schema_uris), std::nullopt);
   if (schema_uris.empty()) {
     return {
         logger_->status(Status::StorageManagerError(
@@ -2050,7 +2051,7 @@ StorageManager::load_all_array_schemas(
         schema_vector[schema_ith] = array_schema;
         return Status::Ok();
       });
-  RETURN_NOT_OK_TUPLE(status);
+  RETURN_NOT_OK_TUPLE(status, std::nullopt);
 
   std::unordered_map<std::string, tdb_shared_ptr<ArraySchema>> array_schemas;
   for (const auto& array_schema : schema_vector) {

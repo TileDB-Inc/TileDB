@@ -876,6 +876,9 @@ class Query {
   /** Use the refactored sparse unordered with dups reader or not. */
   bool use_refactored_sparse_unordered_with_dups_reader();
 
+  /** Returns if all ranges for this query are non overlapping. */
+  std::tuple<Status, bool> non_overlapping_ranges();
+
  private:
   /* ********************************* */
   /*         PRIVATE ATTRIBUTES        */
