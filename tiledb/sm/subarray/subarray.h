@@ -935,7 +935,11 @@ class Subarray {
   /** Stores a vector of 1D ranges per dimension. */
   std::vector<std::vector<uint64_t>> original_range_idx_;
 
+  /** Sort ranges per dimension. */
   Status sort_ranges(ThreadPool* const compute_tp);
+
+  /** Returns if all ranges for this subarray are non overlapping. */
+  std::tuple<Status, bool> non_overlapping_ranges(ThreadPool* const compute_tp);
 
  private:
   /* ********************************* */
@@ -1286,6 +1290,25 @@ class Subarray {
    */
   Status sort_ranges_for_dim(
       ThreadPool* const compute_tp, const uint64_t& dim_idx);
+
+  /**
+   * Determine if ranges for a dimension are non overlapping.
+   *
+   * @param dim_idx dimension index.
+   * @return true if the ranges are non overlapping, false otherwise.
+   */
+  template <typename T>
+  std::tuple<Status, bool> non_overlapping_ranges_for_dim(
+      const uint64_t dim_idx);
+
+  /**
+   * Determine if ranges for a dimension are non overlapping.
+   *
+   * @param dim_idx dimension index.
+   * @return true if the ranges are non overlapping, false otherwise.
+   */
+  std::tuple<Status, bool> non_overlapping_ranges_for_dim(
+      const uint64_t dim_idx);
 };
 
 }  // namespace sm
