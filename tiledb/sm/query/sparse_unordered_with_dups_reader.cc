@@ -216,7 +216,6 @@ Status SparseUnorderedWithDupsReader<BitmapType>::dowork() {
 
   // No more tiles to process, done.
   if (result_tiles_[0].empty()) {
-    assert(read_state_.done_adding_result_tiles_);
     zero_out_buffer_sizes();
     return Status::Ok();
   }
