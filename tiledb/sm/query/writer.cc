@@ -198,7 +198,8 @@ Status Writer::check_var_attr_offsets() const {
                *buffer_val_size))
         return logger_->status(Status_WriterError(
             "Invalid offsets for attribute " + attr + "; offset " +
-            std::to_string(cur_offset) + " specified for buffer of size " +
+            std::to_string(cur_offset) + " specified at index " +
+            std::to_string(i) + " for buffer of size " +
             std::to_string(*buffer_val_size)));
 
       prev_offset = cur_offset;
