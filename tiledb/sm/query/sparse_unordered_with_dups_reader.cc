@@ -1167,6 +1167,7 @@ template <class OffType>
 Status SparseUnorderedWithDupsReader<BitmapType>::compute_var_size_offsets(
     stats::Stats* stats,
     const std::vector<ResultTile*>* result_tiles,
+    const uint64_t first_tile_min_pos,
     std::vector<uint64_t>* cell_offsets,
     QueryBuffer* query_buffer,
     uint64_t* new_result_tiles_size,
@@ -1203,7 +1204,8 @@ Status SparseUnorderedWithDupsReader<BitmapType>::compute_var_size_offsets(
               0;
 
       const bool has_bmp = last_tile->bitmap_.size() != 0;
-      for (uint64_t c = 0; c < last_tile_num_cells - 1; c++) {
+      const auto min_pos = *new_result_tiles_size == 0 ? first_tile_min_pos : 0;
+      for (uint64_t c = min_pos; c < last_tile_num_cells - 1; c++) {
         auto cell_count = has_bmp ? last_tile->bitmap_[c] : 1;
         auto new_size = ((OffType*)query_buffer->buffer_)
             [cell_offsets->at(*new_result_tiles_size) + cell_count];
@@ -1374,11 +1376,14 @@ Status SparseUnorderedWithDupsReader<BitmapType>::process_tiles(
       uint64_t new_result_tiles_size = result_tiles->size();
 
       uint64_t var_buffer_size = 0;
+      auto first_tile_min_pos =
+          read_state_.frag_tile_idx_[result_tiles->at(0)->frag_idx()].second;
       if (var_sized) {
         // Adjust the offsets buffer and make sure all data fits.
         RETURN_NOT_OK(compute_var_size_offsets<OffType>(
             stats_,
             result_tiles,
+            first_tile_min_pos,
             &cell_offsets,
             &query_buffer,
             &new_result_tiles_size,
