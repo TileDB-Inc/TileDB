@@ -544,7 +544,7 @@ void FilterPipeline::swap(FilterPipeline& other) {
 Status FilterPipeline::append_encryption_filter(
     FilterPipeline* pipeline, const EncryptionKey& encryption_key) {
   switch (encryption_key.encryption_type()) {
-    case EncryptionType ::NO_ENCRYPTION:
+    case EncryptionType::NO_ENCRYPTION:
       return Status::Ok();
     case EncryptionType::AES_256_GCM:
       return pipeline->add_filter(EncryptionAES256GCMFilter(encryption_key));
