@@ -935,6 +935,11 @@ class Subarray {
   /** Stores a vector of 1D ranges per dimension. */
   std::vector<std::vector<uint64_t>> original_range_idx_;
 
+  /** Returns if ranges are sorted. */
+  bool ranges_sorted() {
+    return ranges_sorted_;
+  }
+
   /** Sort ranges per dimension. */
   Status sort_ranges(ThreadPool* const compute_tp);
 
