@@ -464,7 +464,13 @@ Status Config::get(const std::string& param, T* value, bool* found) const {
     return Status::Ok();
 
   // Parameter found, retrieve value
-  return utils::parse::convert(val, value);
+  auto status = utils::parse::convert(val, value);
+  if (!status.ok()) {
+    return Status_ConfigError(
+        std::string("Failed to parse config value '") + std::string(val) +
+        std::string("' for key '") + param + "' due to: " + status.to_string());
+  }
+  return Status::Ok();
 }
 
 /*

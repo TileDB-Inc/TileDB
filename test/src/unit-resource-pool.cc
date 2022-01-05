@@ -40,6 +40,7 @@
 #include <catch.hpp>
 
 using namespace tiledb::sm;
+using Catch::Matchers::StartsWith;
 
 TEST_CASE("Buffer: Test resource pool", "[resource-pool]") {
   ResourcePool<int> pool(3);
@@ -56,7 +57,8 @@ TEST_CASE("Buffer: Test resource pool", "[resource-pool]") {
 
     // Try to get one more resource should throw an exception.
     REQUIRE_THROWS_WITH(
-        ResourceGuard(pool), "Ran out of resources in resource pool");
+        ResourceGuard(pool),
+        StartsWith("Ran out of resources in resource pool"));
   }
 
   {

@@ -43,22 +43,26 @@ namespace tiledb {
 namespace sm {
 
 Status ZStd::compress(
-    int level, ConstBuffer* input_buffer, Buffer* output_buffer) {
+    int level,
+    shared_ptr<BlockingResourcePool<ZSTD_Compress_Context>> compress_ctx_pool,
+    ConstBuffer* input_buffer,
+    Buffer* output_buffer) {
   // Sanity check
   if (input_buffer->data() == nullptr || output_buffer->data() == nullptr)
     return LOG_STATUS(Status_CompressionError(
         "Failed compressing with ZStd; invalid buffer format"));
 
-  // Create context
-  std::unique_ptr<ZSTD_CCtx, decltype(&ZSTD_freeCCtx)> ctx(
-      ZSTD_createCCtx(), ZSTD_freeCCtx);
-  if (ctx.get() == nullptr)
+  if (compress_ctx_pool == nullptr) {
     return LOG_STATUS(Status_CompressionError(
-        std::string("ZStd compression failed; could not allocate context.")));
+        "Failed compressing with ZStd; Resource pool not initialized"));
+  }
+
+  ResourceGuard context_guard(*compress_ctx_pool);
+  auto& context = context_guard.get();
 
   // Compress
   uint64_t zstd_ret = ZSTD_compressCCtx(
-      ctx.get(),
+      context.ptr(),
       output_buffer->cur_data(),
       output_buffer->free_space(),
       input_buffer->data(),
@@ -80,7 +84,7 @@ Status ZStd::compress(
 }
 
 Status ZStd::decompress(
-    shared_ptr<BlockingResourcePool<ZStd::ZSTD_Decompress_Context>>
+    shared_ptr<BlockingResourcePool<ZSTD_Decompress_Context>>
         decompress_ctx_pool,
     ConstBuffer* input_buffer,
     PreallocatedBuffer* output_buffer) {

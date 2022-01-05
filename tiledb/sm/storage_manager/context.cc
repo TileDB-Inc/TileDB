@@ -56,10 +56,13 @@ Context::Context()
 Context::~Context() {
   bool found = false;
   bool use_malloc_trim = false;
-  const Status& st = storage_manager_->config().get<bool>(
-      "sm.mem.malloc_trim", &use_malloc_trim, &found);
-  if (st.ok() && found && use_malloc_trim) {
-    tdb_malloc_trim();
+
+  if (storage_manager_ != nullptr) {
+    const Status& st = storage_manager_->config().get<bool>(
+        "sm.mem.malloc_trim", &use_malloc_trim, &found);
+    if (st.ok() && found && use_malloc_trim) {
+      tdb_malloc_trim();
+    }
   }
 
   // Delete the `storage_manager_` to ensure it is destructed
