@@ -63,9 +63,9 @@ runs:
         TDB_REF_NAME=${GITHUB_REF_NAME//\//-} # replace '/' with '-'
         echo "TDB_REF_NAME=$TDB_REF_NAME" >> "$GITHUB_ENV"
         #for ev in TDB_COMMIT_HASH TDB_REF_NAME GITHUB_REF_NAME GITHUB_REF_TYPE GITHUB_WORKSPACE GITHUB_EVENT_PATH CXX CC CFLAGS CXXFLAGS ARTIFACT_OS ARTIFACT_EXTRAS ARTIFACT_ARCH SUDO RUNNER_OS GITHUB_REF RUNNER_TRACKING_ID RUNNER_ARCH GITHUB_RUN_NUMBER GITHUB_RUN_ID GITHUB_EVENT_NAME GITHUB_ACTOR GITHUB_REF_NAME GITHUB_JOB GITHUB_REPOSITORY RUNNER_WORKSPACE GITHUB_WORKFLOW TDB_SOURCE_ARCHIVE_PATH TDB_BINARY_ARCHIVE_PATH; do tmp=$ev; echo "$ev=${!tmp}"; done >> tdbenvfile.txt
+        #cat tdbenvfile.txt
         for ev in TDB_COMMIT_HASH TDB_REF_NAME GITHUB_REF_NAME GITHUB_REF_TYPE GITHUB_WORKSPACE GITHUB_EVENT_PATH CXX CC CFLAGS CXXFLAGS ARTIFACT_OS ARTIFACT_EXTRAS ARTIFACT_ARCH SUDO RUNNER_OS GITHUB_REF RUNNER_TRACKING_ID RUNNER_ARCH GITHUB_RUN_NUMBER GITHUB_RUN_ID GITHUB_EVENT_NAME GITHUB_ACTOR GITHUB_REF_NAME GITHUB_JOB GITHUB_REPOSITORY RUNNER_WORKSPACE GITHUB_WORKFLOW TDB_SOURCE_ARCHIVE_PATH TDB_BINARY_ARCHIVE_PATH; do tmp=$ev; echo "$ev=${!tmp}" >> "$GITHUB_ENV"; done
         echo "TDB_REF_NAME=${TDB_REF_NAME}" >> "$GITHUB_ENV"
-        cat tdbenvfile.txt
         sync
 
     - name: 'Build libtiledb via script'
@@ -88,52 +88,6 @@ runs:
           echo "TDB_SOURCE_ARCHIVE_PATH=$TDB_SOURCE_ARCHIVE_PATH" >> "$GITHUB_ENV"
         fi
         sync
-
-    - name: 'Build libtiledb scripted'
-      if: false #true
-      #not availa le in (composite) action? continue-on-error: true
-      shell: bash
-      run: |
-        up1level=$(echo -e "import sys\nimport os\nprint (os.path.realpath(\"$GITHUB_WORKSPACE/..\"))" | python3)
-        containername=tdbmanylinux
-        docker container run \
-          -d --name $containername \
-          -it \
-          -v "$up1level:$up1level" --env-file tdbenvfile.txt \
-          -w $GITHUB_WORKSPACE \
-          "quay.io/pypa/manylinux2010_x86_64:2021-11-07-28723f3" \
-          /bin/bash # -c "pwd; ls -l; . ./scripts/ci/linux-mac_release_buildtiledb.sh"
-        sync
-        docker ps
-        sync
-        docker inspect $containername
-        sync
-        docker container exec \
-          $containername \
-          /bin/bash -c "pwd; ls -l; . ./scripts/ci/linux-mac_release_buildtiledb.sh; pwd; ls -l; pwd; ls -l .."
-        sync
-        echo "are .tar.gz files following?"
-        realpath ..
-        ls -l ..
-        sync
-        docker exec $containername /bin/bash -c "echo \"insA\";pwd; ls -l; ls -l ..;echo \"insB, end\""
-        sync
-        docker ps
-        sync
-        if [[ ! $(ls -l $up1level/TDBRETENVVARS.TXT) ]]; then
-          if [[ $($XSUDO find / -name TDBRETENVVARS.TXT -exec ls -l {} \;) ]]; then
-            echo "found TDBRETENVVARS.TXT not where expected"
-          fi
-        else
-          echo "found TDBRETENVVARS.TXT at $up1level"
-          cat $up1level/TDBRETENVVARS.TXT
-          echo "contents of TDBRETENVVARS.TXT above?"
-          source $up1level/TDBRETENVVARS.TXT
-          echo "TDB_BINARY_ARCHIVE_PATH=$TDB_BINARY_ARCHIVE_PATH" >> "$GITHUB_ENV"
-          echo "TDB_SOURCE_ARCHIVE_PATH=$TDB_SOURCE_ARCHIVE_PATH" >> "$GITHUB_ENV"
-        fi
-        sync
-        docker stop $containername
 
     - name: 'ArchiveFiles@2A' # https://github.com/actions/upload-artifact#where-does-the-upload-go
       #if: ${{ failure() == true && startsWith(runner.name, 'macos-') == true }} # only run this job if the build step failed
