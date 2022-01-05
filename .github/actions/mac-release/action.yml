@@ -61,7 +61,7 @@ runs:
         #ls -l ${current_runner_script_path} #/home/runner/work/_temp <== ubuntu runner, not mac
         #sync
         TDB_REF_NAME=${GITHUB_REF_NAME//\//-} # replace '/' with '-'
-        echo "TDB_REF_NAME=$TDB_REF_NAME" >> "$GITHUB_ENV"
+        #echo "TDB_REF_NAME=$TDB_REF_NAME" >> "$GITHUB_ENV"
         #for ev in TDB_COMMIT_HASH TDB_REF_NAME GITHUB_REF_NAME GITHUB_REF_TYPE GITHUB_WORKSPACE GITHUB_EVENT_PATH CXX CC CFLAGS CXXFLAGS ARTIFACT_OS ARTIFACT_EXTRAS ARTIFACT_ARCH SUDO RUNNER_OS GITHUB_REF RUNNER_TRACKING_ID RUNNER_ARCH GITHUB_RUN_NUMBER GITHUB_RUN_ID GITHUB_EVENT_NAME GITHUB_ACTOR GITHUB_REF_NAME GITHUB_JOB GITHUB_REPOSITORY RUNNER_WORKSPACE GITHUB_WORKFLOW TDB_SOURCE_ARCHIVE_PATH TDB_BINARY_ARCHIVE_PATH; do tmp=$ev; echo "$ev=${!tmp}"; done >> tdbenvfile.txt
         #cat tdbenvfile.txt
         for ev in TDB_COMMIT_HASH TDB_REF_NAME GITHUB_REF_NAME GITHUB_REF_TYPE GITHUB_WORKSPACE GITHUB_EVENT_PATH CXX CC CFLAGS CXXFLAGS ARTIFACT_OS ARTIFACT_EXTRAS ARTIFACT_ARCH SUDO RUNNER_OS GITHUB_REF RUNNER_TRACKING_ID RUNNER_ARCH GITHUB_RUN_NUMBER GITHUB_RUN_ID GITHUB_EVENT_NAME GITHUB_ACTOR GITHUB_REF_NAME GITHUB_JOB GITHUB_REPOSITORY RUNNER_WORKSPACE GITHUB_WORKFLOW TDB_SOURCE_ARCHIVE_PATH TDB_BINARY_ARCHIVE_PATH; do tmp=$ev; echo "$ev=${!tmp}" >> "$GITHUB_ENV"; done
@@ -73,6 +73,7 @@ runs:
       #not availa le in (composite) action? continue-on-error: true
       shell: bash
       run: |
+        printenv
         . ./scripts/ci/linux-mac_release_buildtiledb.sh
         up1level=$(echo -e "import sys\nimport os\nprint (os.path.realpath(\"$GITHUB_WORKSPACE/..\"))" | python3)
         if [[ ! $(ls -l $up1level/TDBRETENVVARS.TXT) ]]; then
