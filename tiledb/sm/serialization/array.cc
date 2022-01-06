@@ -35,15 +35,14 @@
 #include <capnp/compat/json.h>
 #include <capnp/message.h>
 #include <capnp/serialize.h>
+#include "tiledb/sm/serialization/array.h"
+#include "tiledb/sm/serialization/array_schema.h"
 #include "tiledb/sm/serialization/capnp_utils.h"
 #endif
 // clang-format on
 
 #include "tiledb/sm/buffer/buffer_list.h"
 #include "tiledb/sm/enums/serialization_type.h"
-#include "tiledb/sm/enums/query_type.h"
-#include "tiledb/sm/serialization/array.h"
-#include "tiledb/sm/serialization/array_schema.h"
 
 using namespace tiledb::common;
 using namespace tiledb::sm::stats;
@@ -60,14 +59,8 @@ Status array_metadata_to_capnp(
     return LOG_STATUS(Status_SerializationError(
         "Error serializing array metadata; array instance is null"));
 
-  Metadata* metadata = array->metadata();
-  QueryType query_type;
-  RETURN_NOT_OK(array->get_query_type(&query_type));
-  if (query_type == QueryType::WRITE) {
-    array->metadata();
-  } else {
-    RETURN_NOT_OK(array->metadata(&metadata));
-  }
+  Metadata* metadata;
+  RETURN_NOT_OK(array->metadata(&metadata));
 
   if (metadata == nullptr)
     return LOG_STATUS(Status_SerializationError(
@@ -173,33 +166,6 @@ Status array_from_capnp(
   }
   RETURN_NOT_OK(array->set_timestamp_start(array_reader.getStartTimestamp()));
   RETURN_NOT_OK(array->set_timestamp_end(array_reader.getEndTimestamp()));
-
-  if (array_reader.hasArraySchemasAll()) {
-    std::unordered_map<std::string, tdb_shared_ptr<ArraySchema>> all_schemas;
-    auto all_schemas_reader = array_reader.getArraySchemasAll();
-
-    if (all_schemas_reader.hasEntries()) {
-      auto entries = array_reader.getArraySchemasAll().getEntries();
-      for (auto array_schema_build : entries) {
-        tdb_unique_ptr<ArraySchema> schema;
-        RETURN_NOT_OK(
-            array_schema_from_capnp(array_schema_build.getValue(), &schema));
-        schema->set_array_uri(array->array_uri());
-        all_schemas[array_schema_build.getKey()] = std::move(schema);
-      }
-    }
-    RETURN_NOT_OK(array->set_array_schemas_all(all_schemas));
-  }
-
-  if (array_reader.hasArraySchemaLatest()) {
-    tdb_unique_ptr<ArraySchema> array_schema_latest;
-    auto array_schema_latest_reader = array_reader.getArraySchemaLatest();
-    RETURN_NOT_OK(array_schema_from_capnp(
-        array_schema_latest_reader, &array_schema_latest));
-    array_schema_latest->set_array_uri(array->array_uri());
-    RETURN_NOT_OK(
-        array->set_array_schema_latest(array_schema_latest.release()));
-  }
 
   if (array_reader.hasNonEmptyDomain()) {
     const auto& nonempty_domain_reader = array_reader.getNonEmptyDomain();

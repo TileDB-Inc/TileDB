@@ -969,10 +969,7 @@ Status writer_from_capnp(
   return Status::Ok();
 }
 
-Status query_to_capnp(
-    Query& query,
-    capnp::Query::Builder* query_builder,
-    const bool client_side) {
+Status query_to_capnp(Query& query, capnp::Query::Builder* query_builder, const bool client_side) {
   // For easy reference
   auto layout = query.layout();
   auto type = query.type();
