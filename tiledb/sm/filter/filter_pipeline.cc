@@ -499,10 +499,9 @@ Status FilterPipeline::deserialize(ConstBuffer* buff) {
   RETURN_NOT_OK(buff->read(&num_filters, sizeof(uint32_t)));
 
   for (uint32_t i = 0; i < num_filters; i++) {
-    Filter* filter;
-    RETURN_NOT_OK(FilterCreate::deserialize(buff, &filter));
-    RETURN_NOT_OK_ELSE(add_filter(*filter), tdb_delete(filter));
-    tdb_delete(filter);
+    auto&& [st_filter, filter]{FilterCreate::deserialize(buff)};
+    RETURN_NOT_OK(st_filter);
+    RETURN_NOT_OK(add_filter(*filter.value()));
   }
 
   return Status::Ok();

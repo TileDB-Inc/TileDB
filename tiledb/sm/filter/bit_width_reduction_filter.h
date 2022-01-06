@@ -85,6 +85,12 @@ class BitWidthReductionFilter : public Filter {
   /** Constructor. */
   BitWidthReductionFilter();
 
+  /** Constructor.
+   *
+   * @param max_window_size
+   */
+  BitWidthReductionFilter(uint32_t max_window_size);
+
   /** Dumps the filter details in ASCII format in the selected output. */
   void dump(FILE* out) const override;
 
@@ -151,9 +157,6 @@ class BitWidthReductionFilter : public Filter {
   template <typename T>
   uint8_t compute_bits_required(
       ConstBuffer* buffer, uint32_t num_elements, T* min_value) const;
-
-  /** Deserializes this filter's metadata from the given buffer. */
-  Status deserialize_impl(ConstBuffer* buff) override;
 
   /** Gets an option from this filter. */
   Status get_option_impl(FilterOption option, void* value) const override;
