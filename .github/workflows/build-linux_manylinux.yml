@@ -29,19 +29,21 @@ jobs:
         environ: [intel64, arm64]
         include:
           - environ: intel64
-            TILEDB_AZURE: ON
-            TILEDB_SERIALIZATION: ON
-            CXX: clang++
-            ARTIFACT_OS: macOS_azure
-            ARTIFACT_ARCH: 'intel64'
+            env:
+              TILEDB_AZURE: ON
+              TILEDB_SERIALIZATION: ON
+              CXX: clang++
+              ARTIFACT_OS: macOS_azure
+              ARTIFACT_ARCH: 'intel64'
           - environ: arm64
-            CXX: clang++
-            ARTIFACT_OS: 'macos'
-            ARTIFACT_ARCH: 'arm64'
-            TILEDB_GCS: OFF
-            TILEDB_WERROR: OFF
-            CMAKE_OSX_ARCHITECTURES: "arm64"
-            MACOSX_DEPLOYMENT_TARGET: 11
+            env:
+              CXX: clang++
+              ARTIFACT_OS: 'macos'
+              ARTIFACT_ARCH: 'arm64'
+              TILEDB_GCS: OFF
+              TILEDB_WERROR: OFF
+              CMAKE_OSX_ARCHITECTURES: "arm64"
+              MACOSX_DEPLOYMENT_TARGET: 11
 
     steps:
       - name: toplevel show environ
