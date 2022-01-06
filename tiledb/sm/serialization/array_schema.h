@@ -37,6 +37,10 @@
 
 #include "tiledb/common/status.h"
 
+#ifdef TILEDB_SERIALIZATION
+#include "tiledb/sm/serialization/capnp_utils.h"
+#endif
+
 using namespace tiledb::common;
 
 namespace tiledb {
@@ -49,6 +53,34 @@ class Dimension;
 enum class SerializationType : uint8_t;
 
 namespace serialization {
+
+#ifdef TILEDB_SERIALIZATION
+
+/**
+ * Serialize an array schema to cap'n proto object
+ *
+ * @param array_schema Array schema to serialize
+ * @param array_schema_builder Cap' proto class
+ * @param client_side unused
+ * @return Status
+ */
+Status array_schema_to_capnp(
+    ArraySchema* array_schema,
+    capnp::ArraySchema::Builder* array_schema_builder,
+    const bool client_side);
+
+/**
+ * Deserialize an array schema from a cap'n proto object
+ *
+ * @param schema_reader Cap'n proto object
+ * @param array_schema array schema to deserialize to
+ * @return Status
+ */
+Status array_schema_from_capnp(
+    const capnp::ArraySchema::Reader& schema_reader,
+    tdb_unique_ptr<ArraySchema>* array_schema);
+
+#endif  // TILEDB_SERIALIZATION
 
 /**
  * Serialize an array schema via Cap'n Prto
@@ -104,15 +136,6 @@ Status max_buffer_sizes_deserialize(
     SerializationType serialize_type,
     std::unordered_map<std::string, std::pair<uint64_t, uint64_t>>*
         buffer_sizes);
-
-Status array_metadata_serialize(
-    Array* array, SerializationType serialize_type, Buffer* serialized_buffer);
-
-Status array_metadata_deserialize(
-    Array* array,
-    SerializationType serialize_type,
-    const Buffer& serialized_buffer);
-
 }  // namespace serialization
 }  // namespace sm
 }  // namespace tiledb
