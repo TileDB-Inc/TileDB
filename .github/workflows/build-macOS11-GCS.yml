@@ -16,15 +16,11 @@ env:
 
 jobs:
   build:
-<<<<<<< HEAD:.github/workflows/build-macOS10.14-GCS.yml
-    runs-on: macos-10.14
-=======
     runs-on: ${{ matrix.os }}
     strategy:
       matrix:
         os:
           -  macos-11
->>>>>>> e120692b6 (Update github action CI jobs to macOS 11 (#2756)):.github/workflows/build-macOS11-GCS.yml
     if: ${{ startsWith(github.ref , 'refs/tags') != true && startsWith(github.ref , 'build-') != true }}
     timeout-minutes: 90
     name: Build - macos-10.14 - GCS
