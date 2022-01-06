@@ -40,7 +40,7 @@
 
 #include "tiledb/common/heap_memory.h"
 #include "tiledb/common/status.h"
-#include "tiledb/sm/misc/uri.h"
+#include "tiledb/sm/filesystem/uri.h"
 
 using namespace tiledb::common;
 

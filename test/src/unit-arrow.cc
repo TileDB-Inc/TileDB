@@ -34,8 +34,8 @@
 #include "helpers.h"
 #include "tiledb/sm/cpp_api/arrowio"
 #include "tiledb/sm/cpp_api/tiledb"
+#include "tiledb/sm/filesystem/uri.h"
 #include "tiledb/sm/misc/constants.h"
-#include "tiledb/sm/misc/uri.h"
 #include "tiledb/sm/misc/utils.h"
 
 #include <pybind11/embed.h>

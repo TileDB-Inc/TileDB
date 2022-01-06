@@ -32,8 +32,8 @@
 
 #include "tiledb/sm/rest/curl.h"
 #include "tiledb/common/logger.h"
+#include "tiledb/sm/filesystem/uri.h"
 #include "tiledb/sm/global_state/global_state.h"
-#include "tiledb/sm/misc/uri.h"
 #include "tiledb/sm/misc/utils.h"
 #include "tiledb/sm/stats/global_stats.h"
 

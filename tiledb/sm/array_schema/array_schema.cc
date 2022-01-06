@@ -45,7 +45,8 @@
 #include "tiledb/sm/enums/layout.h"
 #include "tiledb/sm/filter/compression_filter.h"
 #include "tiledb/sm/misc/hilbert.h"
-#include "tiledb/sm/misc/utils.h"
+#include "tiledb/sm/misc/time.h"
+#include "tiledb/sm/misc/utils.h"  // get_timestamp_range
 
 #include <cassert>
 #include <iostream>

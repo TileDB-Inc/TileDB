@@ -34,6 +34,7 @@
 #include "tiledb/sm/cpp_api/tiledb"
 
 #ifdef _WIN32
+#include "tiledb/sm/filesystem/path_win.h"
 #include "tiledb/sm/filesystem/win.h"
 #else
 #include "tiledb/sm/filesystem/posix.h"
@@ -77,10 +78,10 @@ TEST_CASE("C++ API: Test VFS ls", "[cppapi][cppapi-vfs][cppapi-vfs-ls]") {
 
 #ifdef _WIN32
   // Normalization only for Windows
-  file = tiledb::sm::Win::uri_from_path(file);
-  file2 = tiledb::sm::Win::uri_from_path(file2);
-  subdir = tiledb::sm::Win::uri_from_path(subdir);
-  subdir2 = tiledb::sm::Win::uri_from_path(subdir2);
+  file = tiledb::sm::path_win::uri_from_path(file);
+  file2 = tiledb::sm::path_win::uri_from_path(file2);
+  subdir = tiledb::sm::path_win::uri_from_path(subdir);
+  subdir2 = tiledb::sm::path_win::uri_from_path(subdir2);
 #endif
 
   // Check results

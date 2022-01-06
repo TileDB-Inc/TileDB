@@ -1,11 +1,12 @@
 /**
- * @file   written_fragment_info.h
+ * @file math.h
  *
  * @section LICENSE
  *
  * The MIT License
  *
  * @copyright Copyright (c) 2017-2021 TileDB, Inc.
+ * @copyright Copyright (c) 2016 MIT and Intel Corporation
  *
  * Permission is hereby granted, free of charge, to any person obtaining a copy
  * of this software and associated documentation files (the "Software"), to deal
@@ -27,41 +28,41 @@
  *
  * @section DESCRIPTION
  *
- * This file defines struct WrittenFragmentInfo.
+ * This file contains useful (global) functions.
  */
 
-#ifndef TILEDB_WRITTEN_FRAGMENT_INFO_H
-#define TILEDB_WRITTEN_FRAGMENT_INFO_H
+#ifndef TILEDB_UTILS_MATH_H
+#define TILEDB_UTILS_MATH_H
 
-#include <utility>
+#include <cstdint>
 
-#include "tiledb/sm/filesystem/uri.h"
+namespace tiledb::sm::utils::math {
 
-using namespace tiledb::common;
+/** Returns the value of x/y (integer division) rounded up. */
+uint64_t ceil(uint64_t x, uint64_t y);
 
-namespace tiledb {
-namespace sm {
+/** Returns log_b(x). */
+double log(double b, double x);
 
 /**
- * Stores information about a fragment that is being written by a
- * WRITE query.
+ * Computes a * b, but it checks for overflow. In case the product
+ * overflows, it returns std::numeric_limits<T>::max().
  */
-struct WrittenFragmentInfo {
-  /** The URI of the fragment. */
-  URI uri_;
+template <class T>
+T safe_mul(T a, T b);
 
-  /** The timestamp range of the fragment. */
-  std::pair<uint64_t, uint64_t> timestamp_range_;
+/**
+ * Returns the maximum power of 2 minus one that is smaller than
+ * or equal to `value`.
+ */
+uint64_t left_p2_m1(uint64_t value);
 
-  /** Constructor. */
-  WrittenFragmentInfo(
-      const URI& uri, const std::pair<uint64_t, uint64_t>& timestamp_range)
-      : uri_(uri)
-      , timestamp_range_(timestamp_range) {
-  }
-};
+/**
+ * Returns the minimum power of 2 minus one that is larger than
+ * or equal to `value`.
+ */
+uint64_t right_p2_m1(uint64_t value);
 
-}  // namespace sm
-}  // namespace tiledb
+}  // namespace tiledb::sm::utils::math
 
-#endif  // TILEDB_WRITTEN_FRAGMENT_INFO_H
+#endif  // TILEDB_UTILS_MATH_H

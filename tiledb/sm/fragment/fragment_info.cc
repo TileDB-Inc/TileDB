@@ -35,7 +35,7 @@
 #include "tiledb/sm/array/array.h"
 #include "tiledb/sm/enums/encryption_type.h"
 #include "tiledb/sm/global_state/unit_test_config.h"
-#include "tiledb/sm/misc/utils.h"
+#include "tiledb/sm/misc/time.h"
 
 using namespace tiledb::sm;
 using namespace tiledb::common;

@@ -1,5 +1,5 @@
 #
-# tiledb/sm/tile/CMakeLists.txt
+# tiledb/sm/vfs/CMakeLists.txt
 #
 # The MIT License
 #
@@ -27,15 +27,30 @@
 include(common NO_POLICY_SCOPE)
 
 #
-# `tile` object library
+# `vfs` object library
 #
-add_library(tile OBJECT tile.cc)
-target_link_libraries(tile PUBLIC baseline $<TARGET_OBJECTS:baseline>)
-target_link_libraries(tile PUBLIC buffer $<TARGET_OBJECTS:buffer>)
-target_link_libraries(tile PUBLIC constants $<TARGET_OBJECTS:constants>)
+add_library(vfs OBJECT vfs.cc mem_filesystem.cc path_win.cc win.cc uri.cc)
+target_link_libraries(vfs PUBLIC baseline $<TARGET_OBJECTS:baseline>)
+target_link_libraries(vfs PUBLIC buffer $<TARGET_OBJECTS:buffer>)
+target_link_libraries(vfs PUBLIC cancelable_tasks $<TARGET_OBJECTS:cancelable_tasks>)
+target_link_libraries(vfs PUBLIC config $<TARGET_OBJECTS:config>)
+target_link_libraries(vfs PUBLIC math $<TARGET_OBJECTS:math>)
+target_link_libraries(vfs PUBLIC stats $<TARGET_OBJECTS:stats>)
+target_link_libraries(vfs PUBLIC stringx $<TARGET_OBJECTS:stringx>)
+target_link_libraries(vfs PUBLIC thread_pool $<TARGET_OBJECTS:thread_pool>)
+if(WIN32)
+    if(MSVC)
+        find_library(SHLWAPI_LIBRARY shlwapi)
+        message(STATUS "Found Win32 lib shlwapi: ${SHLWAPI_LIBRARY}")
+        target_link_libraries(vfs PUBLIC ${SHLWAPI_LIBRARY})
+    else()
+        message(STATUS "Linking to Win32 lib shlwapi")
+        target_link_libraries(vfs PUBLIC -lshlwapi)
+    endif()
+endif()
 #
 # Test-compile of object library ensures link-completeness
 #
-add_executable(compile_tile EXCLUDE_FROM_ALL)
-target_link_libraries(compile_tile PRIVATE tile)
-target_sources(compile_tile PRIVATE test/compile_tile_main.cc)
+add_executable(compile_vfs EXCLUDE_FROM_ALL)
+target_link_libraries(compile_vfs PRIVATE vfs)
+target_sources(compile_vfs PRIVATE test/compile_vfs_main.cc)
