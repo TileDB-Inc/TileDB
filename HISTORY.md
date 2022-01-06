@@ -1,3 +1,75 @@
+# TileDB v2.6.0 Release Notes
+
+## Improvements
+
+* Sparse unordered with dups reader: removing result cell slabs. [#2606](https://github.com/TileDB-Inc/TileDB/pull/2606)
+* Use as-installed path for TileDBConfig CMake static library imports [#2669](https://github.com/TileDB-Inc/TileDB/pull/2669)
+* Check error message variable for nullptr before further use [#2634](https://github.com/TileDB-Inc/TileDB/pull/2634)
+* Fixing str_coord_intersects to use std::basic_string_view. [#2654](https://github.com/TileDB-Inc/TileDB/pull/2654)
+* Sparse unordered with duplicates reader: cell num fix. [#2636](https://github.com/TileDB-Inc/TileDB/pull/2636)
+* Sparse unordered with dups reader: fixing initial bound calculation. [#2638](https://github.com/TileDB-Inc/TileDB/pull/2638)
+* Read_tiles parallelization improvements. [#2644](https://github.com/TileDB-Inc/TileDB/pull/2644)
+* Sparse global order reader: memory management unit tests. [#2645](https://github.com/TileDB-Inc/TileDB/pull/2645)
+* Reduce scope of `open_array_for_reads_mtx_` locks [#2681](https://github.com/TileDB-Inc/TileDB/pull/2681)
+* Sparse refactored readers: better parallelization for tile bitmaps. [#2643](https://github.com/TileDB-Inc/TileDB/pull/2643)
+* ZStd compressor: allocate one context per thread and re-use. [#2691](https://github.com/TileDB-Inc/TileDB/pull/2691)
+* Sparse refactored readers: disable filtered buffer tile cache. [#2651](https://github.com/TileDB-Inc/TileDB/pull/2651)
+* Moving coord_string from returning a std::string to std::basic_string_view. [#2704](https://github.com/TileDB-Inc/TileDB/pull/2704)
+* Sparse unordered w/ dups reader: tracking cell progress. [#2668](https://github.com/TileDB-Inc/TileDB/pull/2668)
+* Sparse unordered w/ dups reader: fixing var size overflow adjustment. [#2713](https://github.com/TileDB-Inc/TileDB/pull/2713)
+* Enable memfs tests that were disabled by mistake [#2648](https://github.com/TileDB-Inc/TileDB/pull/2648)
+* Add helpful details to memory limit error strings. [#2729](https://github.com/TileDB-Inc/TileDB/pull/2729)
+* Sparse refactored readers: Better vectorization for tile bitmaps calculations. [#2711](https://github.com/TileDB-Inc/TileDB/pull/2711)
+* Sort ranges for unordered with duplicate reader and exit comparisons early [#2736](https://github.com/TileDB-Inc/TileDB/pull/2736)
+* Sparse refactored readers: better vectorization for query condition. [#2737](https://github.com/TileDB-Inc/TileDB/pull/2737)
+* Use correct frag index in tiles creation for compute_result_space_tiles. [#2741](https://github.com/TileDB-Inc/TileDB/pull/2741)
+* Use a single uint64 for cell counts [#2749](https://github.com/TileDB-Inc/TileDB/pull/2749)
+* Array Schema name should be included with cap'n proto serialization [#2696](https://github.com/TileDB-Inc/TileDB/pull/2696)
+* Add and use blocking resource pool [#2735](https://github.com/TileDB-Inc/TileDB/pull/2735)
+* Making the allocation part of read_tiles single threaded. [#2753](https://github.com/TileDB-Inc/TileDB/pull/2753)
+* Sparse unordered w/ dups reader: remove invalid assert. [#2778](https://github.com/TileDB-Inc/TileDB/pull/2778)
+* Read tiles: fixing preallocation size for var and validity buffers. [#2781](https://github.com/TileDB-Inc/TileDB/pull/2781)
+* Sparse unordered w/ dups: var buffer overflow on tile continuation fix. [#2777](https://github.com/TileDB-Inc/TileDB/pull/2777)
+* Determine non overlapping ranges automatically. [#2780](https://github.com/TileDB-Inc/TileDB/pull/2780)
+
+## Deprecations
+
+* eliminate usage of std::iterator due to c++17 deprecation [#2675](https://github.com/TileDB-Inc/TileDB/pull/2675)
+
+## Bug fixes
+
+* upgrade to blosc 1.21.0 from 1.14.x [#2422](https://github.com/TileDB-Inc/TileDB/pull/2422)
+* Guard ZStd resource pool to fix initialization race [#2699](https://github.com/TileDB-Inc/TileDB/pull/2699)
+* [C API] Add missing save_error calls in vfs_ls [#2714](https://github.com/TileDB-Inc/TileDB/pull/2714)
+* Use fragment array schema for applying query condition to account for schema evolution [#2698](https://github.com/TileDB-Inc/TileDB/pull/2698)
+* Don't try to read config from uninitialize storage manager [#2771](https://github.com/TileDB-Inc/TileDB/pull/2771)
+
+## API additions
+
+### C API
+
+* Add bulk point-range setter tiledb_query_add_point_ranges [#2765](https://github.com/TileDB-Inc/TileDB/pull/2765)
+* Add experimental query status details API [#2770](https://github.com/TileDB-Inc/TileDB/pull/2770)
+
+### C++ API
+
+* Backport Query::ctx and Query::array getters from 2.7 [#2754](https://github.com/TileDB-Inc/TileDB/pull/2754)
+
+
+# TileDB v2.5.3 Release Notes
+
+## Improvements
+
+* Removing unnecessary openssl callback function. [#2705](https://github.com/TileDB-Inc/TileDB/pull/2705)
+* openssl3 md5 deprecation mitigation [#2716](https://github.com/TileDB-Inc/TileDB/pull/2716)
+* Sparse refactored reader: change all_tiles_loaded_ to vector of uint8_t. [#2724](https://github.com/TileDB-Inc/TileDB/pull/2724)
+
+## Bug fixes
+
+* Properly check and use legacy readers instead of refactored in serialized query. [#2667](https://github.com/TileDB-Inc/TileDB/pull/2667)
+* Set array URI in cap'n proto object for compatibility with repeated opened array usage in TileDB 2.4 and older. [#2676](https://github.com/TileDB-Inc/TileDB/pull/2676)
+* Add the compute_mbr_var_func_pointer assignment in Dimension constructor [#2730](https://github.com/TileDB-Inc/TileDB/pull/2730)
+
 # TileDB v2.5.2 Release Notes
 
 ## Improvements
