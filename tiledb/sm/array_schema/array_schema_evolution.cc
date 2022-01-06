@@ -98,6 +98,12 @@ Status ArraySchemaEvolution::evolve_schema(
 
   // Do other things
 
+  // Set timestamp, if specified
+  if (std::get<0>(timestamp_range_) != 0) {
+    RETURN_NOT_OK(schema->set_timestamp_range(timestamp_range_));
+    RETURN_NOT_OK(schema->generate_uri(timestamp_range_));
+  }
+
   *new_schema = schema;
   return Status::Ok();
 }
@@ -167,6 +173,17 @@ std::vector<std::string> ArraySchemaEvolution::attribute_names_to_drop() const {
   return names;
 }
 
+Status ArraySchemaEvolution::set_timestamp_range(
+    const std::pair<uint64_t, uint64_t>& timestamp_range) {
+  timestamp_range_ = timestamp_range;
+  return Status::Ok();
+}
+
+std::pair<uint64_t, uint64_t> ArraySchemaEvolution::timestamp_range() const {
+  return std::pair<uint64_t, uint64_t>(
+      timestamp_range_.first, timestamp_range_.second);
+}
+
 /* ****************************** */
 /*         PRIVATE METHODS        */
 /* ****************************** */
@@ -178,6 +195,8 @@ void ArraySchemaEvolution::clear() {
   attributes_to_add_map_.clear();
 
   attributes_to_drop_.clear();
+
+  timestamp_range_ = {0, 0};
 }
 
 }  // namespace sm

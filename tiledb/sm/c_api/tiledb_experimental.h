@@ -128,6 +128,38 @@ TILEDB_EXPORT int32_t tiledb_array_schema_evolution_drop_attribute(
     tiledb_array_schema_evolution_t* array_schema_evolution,
     const char* attribute_name);
 
+/**
+ * Sets timestamp range in an array schema evolution
+ *
+ * **Example:**
+ *
+ * @code{.c}
+ * uint64_t timestamp = tiledb_timestamp_now_ms();
+ * tiledb_array_schema_evolution_set_timestamp_range(ctx,
+ * array_schema_evolution, timestamp, timestamp);
+ * @endcode
+ *
+ * @param ctx The TileDB context.
+ * @param array_schema_evolution The schema evolution.
+ * @param attribute_name The name of the attribute to be dropped.
+ * @return `TILEDB_OK` for success and `TILEDB_ERR` for error.
+ */
+TILEDB_EXPORT int32_t tiledb_array_schema_evolution_set_timestamp_range(
+    tiledb_ctx_t* ctx,
+    tiledb_array_schema_evolution_t* array_schema_evolution,
+    uint64_t lo,
+    uint64_t hi);
+
+/* ********************************* */
+/*          ARRAY SCHEMA             */
+/* ********************************* */
+
+TILEDB_EXPORT int32_t tiledb_array_schema_timestamp_range(
+    tiledb_ctx_t* ctx,
+    tiledb_array_schema_t* array_schema,
+    uint64_t* lo,
+    uint64_t* hi);
+
 /* ********************************* */
 /*               ARRAY               */
 /* ********************************* */

@@ -385,6 +385,10 @@ TEST_CASE(
   // drop attribute a1
   evolution.drop_attribute("a1");
 
+  uint64_t now = tiledb_timestamp_now_ms();
+  now = now + 1;
+  evolution.set_timestamp_range({now, now});
+
   // evolve array
   evolution.array_evolve(array_uri);
 
