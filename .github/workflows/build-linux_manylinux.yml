@@ -44,6 +44,12 @@ jobs:
             MACOSX_DEPLOYMENT_TARGET: 11
 
     steps:
+      - name: toplevel show environ
+        shell: bash
+        run: |
+          set -x
+          printenv
+          
       - uses: actions/checkout@v2
 
       - uses: ./.github/actions/mac-release

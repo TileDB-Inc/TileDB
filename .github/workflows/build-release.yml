@@ -32,7 +32,8 @@ jobs:
             TILEDB_AZURE: ON
             TILEDB_SERIALIZATION: ON
             CXX: clang++
-            ARTIFACT_OS: macOS_azure
+            ARTIFACT_OS: macOS
+            ARTIFACT_ARCH: 'intel64'
           - environ: arm64
             CXX: clang++
             ARTIFACT_OS: 'macos'
@@ -43,6 +44,12 @@ jobs:
             MACOSX_DEPLOYMENT_TARGET: 11
 
     steps:
+      - name: toplevel show environ
+        shell: bash
+        run: |
+          set -x
+          printenv
+          
       - uses: actions/checkout@v2
 
       - uses: ./.github/actions/mac-release
