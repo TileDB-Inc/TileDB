@@ -89,22 +89,41 @@ jobs:
         environ: [standard, noavx2]
         include:
           - environ: standard
-            CXX: g++
-            CFLAGS: "-lrt"
-            CXXFLAGS: "-lrt"
-            ARTIFACT_OS: 'linux'
-            ARTIFACT_ARCH: "x86_64"
-            TILEDB_AVX2: ON
-            SUDO: ''
+            v_CXX: g++
+            v_CFLAGS: "-lrt"
+            v_CXXFLAGS: "-lrt"
+            v_ARTIFACT_OS: 'linux'
+            v_ARTIFACT_ARCH: "x86_64"
+            v_TILEDB_AVX2: ON
+            v_SUDO: ''
           - environ: noavx2
-            CXX: g++
-            CFLAGS: "-lrt"
-            CXXFLAGS: "-lrt"
-            ARTIFACT_OS: 'linux'
-            ARTIFACT_ARCH: "x86_64-noavx2"
-            TILEDB_AVX2: OFF
-            SUDO: ''
+            v_CXX: g++
+            v_CFLAGS: "-lrt"
+            v_CXXFLAGS: "-lrt"
+            v_ARTIFACT_OS: 'linux'
+            v_ARTIFACT_ARCH: "x86_64-noavx2"
+            v_TILEDB_AVX2: OFF
+            v_SUDO: ''
     steps:
+      - name: set env vars
+        shell: bash
+        env:
+          CXX: ${{ matrix.v_CXX }}
+          CFLAGS: ${{ matrix.v_CFLAGS }}
+          CXXFLAGS: ${{ matrix.v_CXXFLAGS }}
+          ARTIFACT_OS: ${{ matrix.v_ARTIFACT_OS }}
+          ARTIFACT_ARCH: ${{ matrix.v_ARTIFACT_ARCH }}
+          TILEDB_AVX2: ${{ matrix.v_TILEDB_AVX2 }}
+          SUDO: ${{ matrix.v_SUDO }}
+        run: |
+          echo "CXX=${CXX}" >> "$GITHUB_ENV"
+          echo "CFLAGS=${CFLAGS}" >> "$GITHUB_ENV"
+          echo "CXXFLAGS=${CXXFLAGS}" >> "$GITHUB_ENV"
+          echo "ARTIFACT_OS=${ARTIFACT_OS}" >> "$GITHUB_ENV"
+          echo "ARTIFACT_ARCH=${ARTIFACT_ARCH}" >> "$GITHUB_ENV"
+          echo "TILEDB_AVX2=${TILEDB_AVX2}" >> "$GITHUB_ENV"
+          echo "SUDO=${SUDO}" >> "$GITHUB_ENV"
+
       - uses: actions/checkout@v2
 
       - uses: ./.github/actions/manylinux-release
