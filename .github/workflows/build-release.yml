@@ -26,9 +26,9 @@ jobs:
     strategy:
       matrix:
         os: [macos-10.15]
-        environ: [intel64, arm64]
+        environ: [x86_64, arm64]
         include:
-          - environ: intel64
+          - environ: x86_64
             v_TILEDB_AZURE: ON
             v_TILEDB_SERIALIZATION: ON
             v_CXX: clang++

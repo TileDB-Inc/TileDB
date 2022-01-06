@@ -26,26 +26,43 @@ jobs:
     strategy:
       matrix:
         os: [macos-10.15]
-        environ: [intel64, arm64]
+        environ: [x86_64, arm64]
         include:
-          - environ: intel64
-            env:
-              TILEDB_AZURE: ON
-              TILEDB_SERIALIZATION: ON
-              CXX: clang++
-              ARTIFACT_OS: macOS_azure
-              ARTIFACT_ARCH: 'intel64'
+          - environ: x86_64
+            v_TILEDB_AZURE: ON
+            v_TILEDB_SERIALIZATION: ON
+            v_CXX: clang++
+            v_ARTIFACT_OS: macOS_azure
+            v_ARTIFACT_ARCH: 'intel64'
           - environ: arm64
-            env:
-              CXX: clang++
-              ARTIFACT_OS: 'macos'
-              ARTIFACT_ARCH: 'arm64'
-              TILEDB_GCS: OFF
-              TILEDB_WERROR: OFF
-              CMAKE_OSX_ARCHITECTURES: "arm64"
-              MACOSX_DEPLOYMENT_TARGET: 11
+            v_CXX: clang++
+            v_ARTIFACT_OS: 'macos'
+            v_ARTIFACT_ARCH: 'arm64'
+            v_TILEDB_GCS: OFF
+            v_TILEDB_WERROR: OFF
+            v_CMAKE_OSX_ARCHITECTURES: "arm64"
+            v_MACOSX_DEPLOYMENT_TARGET: 11
 
     steps:
+      - name: set env vars
+        shell: bash
+        env:
+          CXX: ${{ matrix.v_CXX }}
+          ARTIFACT_OS: ${{ matrix.v_ARTIFACT_OS }}
+          ARTIFACT_ARCH: ${{ matrix.v_ARTIFACT_ARCH }}
+          TILEDB_GCS: ${{ matrix.v_TILEDB_GCS }}
+          TILEDB_WERROR: ${{ matrix.v_TILEDB_WERROR }}
+          CMAKE_OSX_ARCHITECTUR: ${{ matrix.v_CMAKE_OSX_ARCHITECTURES }}
+          MACOSX_DEPLOYMENT_TARGET: ${{ matrix.v_MACOSX_DEPLOYMENT_TARGET }}
+        run: |
+          echo "CXX=${CXX}" >> "$GITHUB_ENV"
+          echo "ARTIFACT_OS=${ARTIFACT_OS}" >> "$GITHUB_ENV"
+          echo "ARTIFACT_ARCH=${ARTIFACT_ARCH}" >> "$GITHUB_ENV"
+          echo "TILEDB_GCS=${TILEDB_GCS}" >> "$GITHUB_ENV"
+          echo "TILEDB_WERROR=${TILEDB_WERROR}" >> "$GITHUB_ENV"
+          echo "CMAKE_OSX_ARCHITECTUR=${CMAKE_OSX_ARCHITECTUR}" >> "$GITHUB_ENV"
+          echo "MACOSX_DEPLOYMENT_TARGET=${MACOSX_DEPLOYMENT_TARGET}" >> "$GITHUB_ENV"
+
       - name: toplevel show environ
         shell: bash
         run: |
