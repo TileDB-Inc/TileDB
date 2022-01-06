@@ -65,10 +65,19 @@ class RestClient {
   Status set_header(const std::string& name, const std::string& value);
 
   /**
+   * Get a data encoded array from rest server
+   *
+   * @param uri of array being loaded
+   * @param array array to get from server
+   * @return Status Ok() on success Error() on failures
+   */
+  Status get_array_from_rest(const URI& uri, Array* array);
+
+  /**
    * Get a data encoded array schema from rest server
    *
    * @param uri of array being loaded
-   * @param array_schema array schema to send to server
+   * @param array_schema array schema to get from server
    * @return Status Ok() on success Error() on failures
    */
   Status get_array_schema_from_rest(const URI& uri, ArraySchema** array_schema);
