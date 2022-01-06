@@ -105,6 +105,6 @@ runs:
       uses: actions/upload-artifact@v2
       with:
         retention-days: 10
-        name: tiledb-${{ env.ARTIFACT_OS }}-${{ env.ARTIFACT_ARCH }}-build.${{env.TDB_REF_NAME}}.tar.gz
+        name: tiledb-${{ env.ARTIFACT_OS }}-${{ env.ARTIFACT_ARCH }}-build-dir.${{env.TDB_REF_NAME}}.tar.gz
         path: |
           ${{ env.TDB_BINARY_ARCHIVE_PATH }}
