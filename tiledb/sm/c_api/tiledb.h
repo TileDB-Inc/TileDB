@@ -119,6 +119,12 @@ typedef enum {
 #define TILEDB_DATATYPE_ENUM(id) TILEDB_##id
 #include "tiledb_enum.h"
 #undef TILEDB_DATATYPE_ENUM
+#ifdef TILEDB_CHAR
+#def TILEDB_CHAR_VAL TILEDB_CHAR
+#undef TILEDB_CHAR
+#define TILEDB_CHAR TILEDB_DEPRECATED TILEDB_CHAR_VAL
+#undef TILEDB_CHAR_VAL
+#endif
 } tiledb_datatype_t;
 
 /** Array type. */

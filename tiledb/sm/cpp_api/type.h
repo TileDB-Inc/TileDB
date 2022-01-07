@@ -80,7 +80,7 @@ template <typename T>
 struct type_to_tiledb {
   static_assert(IS_TRIVIALLY_COPYABLE(T), "Type must be trivially copyable.");
   using type = char;
-  static const tiledb_datatype_t tiledb_type = TILEDB_CHAR;
+  static const tiledb_datatype_t tiledb_type = TILEDB_STRING_ASCII;
   static constexpr const char* name = "Trivially Copyable (CHAR)";
 };
 
