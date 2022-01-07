@@ -83,6 +83,41 @@ jobs:
 
       - uses: ./.github/actions/mac-release
 
+      - name: 'upload-release-source-asset'
+        #uses: actions/upload-files-to-a-github-release
+        uses: svenstaro/upload-release-action@2.2.1
+        if: false
+        with:
+          # required items
+          repo_token: ${{ secrets.GITHUB_TOKEN }}
+          file: ${{ env.TDB_SOURCE_ARCHIVE_PATH }}
+          tag: ${{ github.ref }}
+          # optional items
+          #asset_name:
+          #file_glob:
+          overwrite: ${{ github.event.inputs.overwrite_if_needed }}
+          prerelease: ${{ github.event.inputs.is_prelease }}
+          #release_name: # defaults to tag name
+          #body:
+          #repo_name:
+          
+      - name: 'upload-release-binary-asset'
+        #uses: actions/upload-files-to-a-github-release
+        uses: svenstaro/upload-release-action@2.2.1
+        if: false
+        with:
+          # required items
+          repo_token: ${{ secrets.GITHUB_TOKEN }}
+          file: ${{ env.TDB_BINARY_ARCHIVE_PATH }}
+          tag: ${{ github.ref }}
+          # optional items
+          #asset_name:
+          #file_glob:
+          overwrite: ${{ github.event.inputs.overwrite_if_needed }}
+          prerelease: ${{ github.event.inputs.is_prelease }}
+          #release_name: # defaults to tag name
+          #body:
+          #repo_name:
 
   build-release-manylinux:
     runs-on: ${{ matrix.os }}
@@ -137,3 +172,39 @@ jobs:
       - uses: actions/checkout@v2
 
       - uses: ./.github/actions/manylinux-release
+
+      - name: 'upload-release-source-asset'
+        #uses: actions/upload-files-to-a-github-release
+        uses: svenstaro/upload-release-action@2.2.1
+        if: false
+        with:
+          # required items
+          repo_token: ${{ secrets.GITHUB_TOKEN }}
+          file: ${{ env.TDB_SOURCE_ARCHIVE_PATH }}
+          tag: ${{ github.ref }}
+          # optional items
+          #asset_name:
+          #file_glob:
+          overwrite: ${{ github.event.inputs.overwrite_if_needed }}
+          prerelease: ${{ github.event.inputs.is_prelease }}
+          #release_name: # defaults to tag name
+          #body:
+          #repo_name:
+          
+      - name: 'upload-release-binary-asset'
+        #uses: actions/upload-files-to-a-github-release
+        uses: svenstaro/upload-release-action@2.2.1
+        if: false
+        with:
+          # required items
+          repo_token: ${{ secrets.GITHUB_TOKEN }}
+          file: ${{ env.TDB_BINARY_ARCHIVE_PATH }}
+          tag: ${{ github.ref }}
+          # optional items
+          #asset_name:
+          #file_glob:
+          overwrite: ${{ github.event.inputs.overwrite_if_needed }}
+          prerelease: ${{ github.event.inputs.is_prelease }}
+          #release_name: # defaults to tag name
+          #body:
+          #repo_name:
