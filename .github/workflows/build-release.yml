@@ -6,6 +6,7 @@ on:
       - dev
       - release-*
       - build-*
+      - dlh/ch10040-azr-osx-lnxto-ga
   pull_request:
     branches:
       - '*'  # must quote since "*" is a YAML reserved character; we want a string
