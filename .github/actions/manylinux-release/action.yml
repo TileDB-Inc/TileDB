@@ -114,7 +114,7 @@ runs:
     - name: 'ArchiveFiles@2A' # https://github.com/actions/upload-artifact#where-does-the-upload-go
       #if: ${{ failure() == true && startsWith(runner.name, 'macos-') == true }} # only run this job if the build step failed
       #if tag || branch prefix is 'release-' || branch prefix is 'build-'
-      if: startsWith(env.GITHUB_REF, "refs/tags") || startsWith( env.GITHUB_REF_NAME, "release-") || startsWith( env.GITHUB_REF_NAME, "build-")
+      if: startsWith(env.GITHUB_REF, 'refs/tags') || startsWith( env.GITHUB_REF_NAME, 'release-') || startsWith( env.GITHUB_REF_NAME, 'build-')
       uses: actions/upload-artifact@v2
       with:
         retention-days: 10
@@ -144,7 +144,7 @@ runs:
     - name: 'ArchiveFiles@2B' # https://github.com/actions/upload-artifact#where-does-the-upload-go
       #if: ${{ failure() == true && startsWith(runner.name, 'macos-') == true }} # only run this job if the build step failed
       #if tag || branch prefix is 'release-' || branch prefix is 'build-'
-      if: startsWith(env.GITHUB_REF, "refs/tags") || startsWith( env.GITHUB_REF_NAME, "release-") || startsWith( env.GITHUB_REF_NAME, "build-")
+      if: startsWith(env.GITHUB_REF, 'refs/tags') || startsWith( env.GITHUB_REF_NAME, 'release-') || startsWith( env.GITHUB_REF_NAME, 'build-')
       uses: actions/upload-artifact@v2
       with:
         retention-days: 10
