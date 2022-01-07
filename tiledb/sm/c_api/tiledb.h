@@ -3111,6 +3111,29 @@ TILEDB_EXPORT int32_t tiledb_array_schema_set_offsets_filter_list(
     tiledb_filter_list_t* filter_list);
 
 /**
+ * Sets the filter list to use for the validity array of nullable attribute
+ * values.
+ *
+ * **Example:**
+ *
+ * @code{.c}
+ * tiledb_filter_list_t* filter_list;
+ * tiledb_filter_list_alloc(ctx, &filter_list);
+ * tiledb_filter_list_add_filter(ctx, filter_list, filter);
+ * tiledb_array_schema_set_validity_filter_list(ctx, array_schema, filter_list);
+ * @endcode
+ *
+ * @param ctx The TileDB context.
+ * @param array_schema The array schema.
+ * @param filter_list The filter list to be set.
+ * @return `TILEDB_OK` for success and `TILEDB_ERR` for error.
+ */
+TILEDB_EXPORT int32_t tiledb_array_schema_set_validity_filter_list(
+    tiledb_ctx_t* ctx,
+    tiledb_array_schema_t* array_schema,
+    tiledb_filter_list_t* filter_list);
+
+/**
  * Checks the correctness of the array schema.
  *
  * **Example:**
@@ -3282,6 +3305,27 @@ TILEDB_EXPORT int32_t tiledb_array_schema_get_coords_filter_list(
  * @return `TILEDB_OK` for success and `TILEDB_ERR` for error.
  */
 TILEDB_EXPORT int32_t tiledb_array_schema_get_offsets_filter_list(
+    tiledb_ctx_t* ctx,
+    tiledb_array_schema_t* array_schema,
+    tiledb_filter_list_t** filter_list);
+
+/**
+ * Retrieves the filter list used for validity maps.
+ *
+ * **Example:**
+ *
+ * @code{.c}
+ * tiledb_filter_list_t* filter_list;
+ * tiledb_array_schema_get_validity_filter_list(ctx, array_schema,
+ * &filter_list); tiledb_filter_list_free(ctx, &filter_list);
+ * @endcode
+ *
+ * @param ctx The TileDB context.
+ * @param array_schema The array schema.
+ * @param filter_list The filter list to be retrieved.
+ * @return `TILEDB_OK` for success and `TILEDB_ERR` for error.
+ */
+TILEDB_EXPORT int32_t tiledb_array_schema_get_validity_filter_list(
     tiledb_ctx_t* ctx,
     tiledb_array_schema_t* array_schema,
     tiledb_filter_list_t** filter_list);
