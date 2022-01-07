@@ -86,11 +86,11 @@ jobs:
       - name: 'upload-release-source-asset'
         uses: actions/upload-files-to-a-github-release
         #uses: svenstaro/upload-release-action@2.2.1
-        if: false
+        if: true #false
         with:
           # required items
           repo_token: ${{ secrets.GITHUB_TOKEN }}
-          file: ${{ env.TDB_SOURCE_ARCHIVE_PATH }}
+          file: no-file-for-test #${{ env.TDB_SOURCE_ARCHIVE_PATH }}
           tag: ${{ github.ref }}
           # optional items
           #asset_name:
@@ -104,11 +104,11 @@ jobs:
       - name: 'upload-release-binary-asset'
         uses: actions/upload-files-to-a-github-release
         #uses: svenstaro/upload-release-action@2.2.1
-        if: false
+        if: true #false
         with:
           # required items
           repo_token: ${{ secrets.GITHUB_TOKEN }}
-          file: ${{ env.TDB_BINARY_ARCHIVE_PATH }}
+          file: no-file-for-test #${{ env.TDB_BINARY_ARCHIVE_PATH }}
           tag: ${{ github.ref }}
           # optional items
           #asset_name:
@@ -176,11 +176,11 @@ jobs:
       - name: 'upload-release-source-asset'
         uses: actions/upload-files-to-a-github-release
         #uses: svenstaro/upload-release-action@2.2.1
-        if: false
+        if: true #false
         with:
           # required items
           repo_token: ${{ secrets.GITHUB_TOKEN }}
-          file: ${{ env.TDB_SOURCE_ARCHIVE_PATH }}
+          file: no-file-for-test #${{ env.TDB_SOURCE_ARCHIVE_PATH }}
           tag: ${{ github.ref }}
           # optional items
           #asset_name:
@@ -194,11 +194,11 @@ jobs:
       - name: 'upload-release-binary-asset'
         uses: actions/upload-files-to-a-github-release
         #uses: svenstaro/upload-release-action@2.2.1
-        if: false
+        if: true #false
         with:
           # required items
           repo_token: ${{ secrets.GITHUB_TOKEN }}
-          file: ${{ env.TDB_BINARY_ARCHIVE_PATH }}
+          file: no-file-for-test #${{ env.TDB_BINARY_ARCHIVE_PATH }}
           tag: ${{ github.ref }}
           # optional items
           #asset_name:
