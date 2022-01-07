@@ -35,9 +35,9 @@
 #define TILEDB_SINGLE_FRAGMENT_INFO_H
 
 #include "tiledb/sm/enums/datatype.h"
+#include "tiledb/sm/filesystem/uri.h"
 #include "tiledb/sm/fragment/fragment_metadata.h"
 #include "tiledb/sm/misc/types.h"
-#include "tiledb/sm/misc/uri.h"
 
 #include <cinttypes>
 #include <sstream>

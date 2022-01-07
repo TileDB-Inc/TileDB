@@ -1,4 +1,4 @@
-name: build-macos-10.14-GCS
+name: build-macos-11-S3
 on:
   push:
     branches:
@@ -10,13 +10,14 @@ on:
       - '*'  # must quote since "*" is a YAML reserved character; we want a string
 
 concurrency:
-  group: ${{ github.workflow }}
+  group: ${{ github.workflow }}-${{ github.event.pull_request.number || github.ref }}
   cancel-in-progress: true
 
 env:
   BACKWARDS_COMPATIBILITY_ARRAYS: OFF
-  TILEDB_GCS: ON
+  TILEDB_S3: ON
   TILEDB_STATIC: OFF
+  TILEDB_TOOLS: ON
   CXX: g++
 
 jobs:
@@ -25,13 +26,13 @@ jobs:
     strategy:
       matrix:
         os:
-          -  macos-10.14
+          -  macos-11
     if: ${{ startsWith(github.ref , 'refs/tags') != true && startsWith(github.ref , 'build-') != true }}
     timeout-minutes: 90
-    name: Build - ${{matrix.os}} - GCS
+    name: Build - ${{ matrix.os }} - S3
     steps:
       - name: 'prep macos for core dumps'
-        if: ${{ startsWith(matrix.os, 'macos-') == true }}
+        if: ${{ startsWith(matrix.os, 'macos-') == true }} # only run this job if the build step failed
         run: |
           sudo chown :staff /cores
           sudo chmod g+w /cores
@@ -59,8 +60,15 @@ jobs:
       - run: |
           set -e pipefail
           python -m pip install --upgrade pip virtualenv
-          pip install pyarrow pybind11 numpy
         shell: bash
+
+      - name: 'Install system headers (OSX 10.14 only)'
+        run: |
+          set -e pipefail
+          open /Library/Developer/CommandLineTools/Packages/macOS_SDK_headers_for_macOS_10.14.pkg
+          sudo installer -pkg /Library/Developer/CommandLineTools/Packages/macOS_SDK_headers_for_macOS_10.14.pkg -allowUntrusted -target /
+        shell: bash
+        if: ${{ runner.os == 'macOS' && env.imageName == 'macOS-10.14' }}
 
       - name: 'Build and test libtiledb'
         id: test
@@ -68,16 +76,28 @@ jobs:
           ulimit -c unlimited     # Enable core dumps to be captured (must be in same run block)
           ls -ld /cores
           ulimit -c
-          # Start GCS Emulator if GCS is enabled
-          source scripts/install-gcs-emu.sh;
-          source scripts/run-gcs-emu.sh;
 
-          bootstrap_args="${bootstrap_args} --enable-gcs";
+          # Start minio server if S3 is enabled
+          source scripts/install-minio.sh;
+          source scripts/run-minio.sh;
+
+          bootstrap_args="${bootstrap_args} --enable-s3";
+          bootstrap_args="${bootstrap_args} --enable-tools";
+          
           source $GITHUB_WORKSPACE/scripts/ci/build_libtiledb.sh
 
-          # GCS unit tests are temporarily unsupported on CI for MacOS. Fake success with
-          # this echo.
-          echo ::set-output name=TILEDB_CI_SUCCESS::1
+          ./tiledb/test/tiledb_unit -d yes | awk '/1: ::set-output/{sub(/.*1: /, ""); print; next} 1'
+
+          # Kill the running Minio server, OSX only because Linux runs it within
+          # docker.
+          kill -n 9 $MINIO_PID
+
+          pushd $GITHUB_WORKSPACE/examples/cmake_project
+          mkdir build && cd build
+          cmake -DCMAKE_PREFIX_PATH=$GITHUB_WORKSPACE/dist .. && make
+          ./ExampleExe
+
+          popd
 
           source $GITHUB_WORKSPACE/scripts/ci/build_benchmarks.sh
 
@@ -102,7 +122,7 @@ jobs:
         with:
           retention-days: 10
           name: "${{ matrix.os }}.coredumps.${{ github.job }}.${{ github.run_number }}.${{github.run_id}}.${{github.run_attempt}}"
-          if-no-files-found: warn # 'ignore/', 'warn' or 'error' are available, defaults to `warn`
+          if-no-files-found: warn # 'ignore', 'warn' or 'error' are available, defaults to `warn`
           path: |
             /cores/
 
@@ -114,7 +134,6 @@ jobs:
           if [[ "${{ steps.test.outputs.TILEDB_CI_SUCCESS }}" -ne 1 ]]; then
             exit 1;
           fi
-      #
       - name: "Print log files (failed build only)"
         run: |
           source $GITHUB_WORKSPACE/scripts/ci/print_logs.sh

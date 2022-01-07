@@ -34,20 +34,13 @@
 #include "tiledb/sm/misc/utils.h"
 #include "tiledb/common/logger.h"
 #include "tiledb/sm/enums/datatype.h"
+#include "tiledb/sm/filesystem/uri.h"
 #include "tiledb/sm/misc/constants.h"
-#include "tiledb/sm/misc/uri.h"
 
 #include <algorithm>
 #include <iostream>
 #include <set>
 #include <sstream>
-
-#ifdef _WIN32
-#include <sys/timeb.h>
-#include <sys/types.h>
-#else
-#include <sys/time.h>
-#endif
 
 #ifdef __linux__
 #include "tiledb/sm/filesystem/posix.h"
@@ -354,86 +347,6 @@ std::vector<std::array<T, 2>> intersection(
 
 }  // namespace geometry
 
-/* ********************************* */
-/*          TIME FUNCTIONS           */
-/* ********************************* */
-
-namespace time {
-
-uint64_t timestamp_now_ms() {
-#ifdef _WIN32
-  struct _timeb tb;
-  memset(&tb, 0, sizeof(struct _timeb));
-  _ftime_s(&tb);
-  return static_cast<uint64_t>(tb.time * 1000L + tb.millitm);
-#else
-  struct timeval tp;
-  memset(&tp, 0, sizeof(struct timeval));
-  gettimeofday(&tp, nullptr);
-  return static_cast<uint64_t>(tp.tv_sec * 1000L + tp.tv_usec / 1000);
-#endif
-}
-
-}  // namespace time
-
-/* ********************************* */
-/*          MATH FUNCTIONS           */
-/* ********************************* */
-
-namespace math {
-
-uint64_t ceil(uint64_t x, uint64_t y) {
-  if (y == 0)
-    return 0;
-
-  return x / y + (x % y != 0);
-}
-
-double log(double b, double x) {
-  return ::log(x) / ::log(b);
-}
-
-template <class T>
-T safe_mul(T a, T b) {
-  T prod = a * b;
-
-  // Check for overflow only for integers
-  if (std::is_integral<T>::value) {
-    if (prod / a != b)  // Overflow
-      return std::numeric_limits<T>::max();
-  }
-
-  return prod;
-}
-
-uint64_t left_p2_m1(uint64_t value) {
-  // Edge case
-  if (value == UINT64_MAX)
-    return value;
-
-  uint64_t ret = 0;  // Min power of 2 minus 1
-  while (ret <= value) {
-    ret = (ret << 1) | 1;  // Next larger power of 2 minus 1
-  }
-
-  return ret >> 1;
-}
-
-uint64_t right_p2_m1(uint64_t value) {
-  // Edge case
-  if (value == 0)
-    return value;
-
-  uint64_t ret = UINT64_MAX;  // Max power of 2 minus 1
-  while (ret >= value) {
-    ret >>= 1;  // Next smaller power of 2 minus 1
-  }
-
-  return (ret << 1) | 1;
-}
-
-}  // namespace math
-
 // Explicit template instantiations
 
 namespace geometry {
@@ -618,23 +531,6 @@ template std::vector<std::array<uint64_t, 2>> intersection<uint64_t>(
     const std::vector<std::array<uint64_t, 2>>& r2);
 
 }  // namespace geometry
-
-namespace math {
-
-template int8_t safe_mul<int8_t>(int8_t a, int8_t b);
-template uint8_t safe_mul<uint8_t>(uint8_t a, uint8_t b);
-template int16_t safe_mul<int16_t>(int16_t a, int16_t b);
-template uint16_t safe_mul<uint16_t>(uint16_t a, uint16_t b);
-template int32_t safe_mul<int32_t>(int32_t a, int32_t b);
-template uint32_t safe_mul<uint32_t>(uint32_t a, uint32_t b);
-template int64_t safe_mul<int64_t>(int64_t a, int64_t b);
-template uint64_t safe_mul<uint64_t>(uint64_t a, uint64_t b);
-template float safe_mul<float>(float a, float b);
-template double safe_mul<double>(double a, double b);
-
-}  // namespace math
-
 }  // namespace utils
-
 }  // namespace sm
 }  // namespace tiledb

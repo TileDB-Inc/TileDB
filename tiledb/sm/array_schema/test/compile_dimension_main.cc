@@ -1,5 +1,5 @@
 /**
- * @file compile_attribute_main.cc
+ * @file compile_dimension_main.cc
  *
  * @section LICENSE
  *

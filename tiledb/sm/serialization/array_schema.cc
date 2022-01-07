@@ -432,7 +432,7 @@ Status domain_from_capnp(
 }
 
 Status array_schema_to_capnp(
-    const ArraySchema* array_schema,
+    ArraySchema* array_schema,
     capnp::ArraySchema::Builder* array_schema_builder,
     const bool client_side) {
   if (array_schema == nullptr)
@@ -442,6 +442,8 @@ Status array_schema_to_capnp(
   // Only set the URI if client side
   if (client_side)
     array_schema_builder->setUri(array_schema->array_uri().to_string());
+
+  array_schema_builder->setName(array_schema->name());
   auto v = kj::heapArray<int32_t>(1);
   v[0] = array_schema->version();
   array_schema_builder->setVersion(v);
@@ -488,6 +490,12 @@ Status array_schema_to_capnp(
         attribute_to_capnp(array_schema->attribute(i), &attribute_builder));
   }
 
+  // Set timestamp range
+  auto timestamp_builder = array_schema_builder->initTimestampRange(2);
+  const auto& timestamp_range = array_schema->timestamp_range();
+  timestamp_builder.set(0, timestamp_range.first);
+  timestamp_builder.set(1, timestamp_range.second);
+
   return Status::Ok();
 }
 
@@ -505,6 +513,9 @@ Status array_schema_from_capnp(
 
   if (schema_reader.hasUri())
     (*array_schema)->set_array_uri(URI(schema_reader.getUri().cStr()));
+
+  if (schema_reader.hasName())
+    (*array_schema)->set_name(schema_reader.getName().cStr());
 
   (*array_schema)->set_cell_order(layout);
   (*array_schema)->set_capacity(schema_reader.getCapacity());
@@ -553,6 +564,15 @@ Status array_schema_from_capnp(
     tdb_unique_ptr<Attribute> attribute;
     RETURN_NOT_OK(attribute_from_capnp(attr_reader, &attribute));
     RETURN_NOT_OK((*array_schema)->add_attribute(attribute.get(), false));
+  }
+
+  // Set the range if we have two values
+  if (schema_reader.hasTimestampRange() &&
+      schema_reader.getTimestampRange().size() >= 2) {
+    const auto& timestamp_range = schema_reader.getTimestampRange();
+    (*array_schema)
+        ->set_timestamp_range(
+            std::make_pair(timestamp_range[0], timestamp_range[1]));
   }
 
   // Initialize

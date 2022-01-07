@@ -30,14 +30,14 @@
  * This file implements class URI.
  */
 
-#include "tiledb/sm/misc/uri.h"
+#include "tiledb/sm/filesystem/uri.h"
 #include "tiledb/common/logger.h"
 #include "tiledb/common/stdx_string.h"
 #include "tiledb/sm/filesystem/vfs.h"
 #include "tiledb/sm/misc/utils.h"
 
 #ifdef _WIN32
-#include "tiledb/sm/filesystem/win.h"
+#include "tiledb/sm/filesystem/path_win.h"
 #endif
 
 #include <iostream>
@@ -253,7 +253,7 @@ URI URI::parent() const {
 std::string URI::to_path(const std::string& uri) {
   if (is_file(uri)) {
 #ifdef _WIN32
-    return Win::path_from_uri(uri);
+    return path_win::path_from_uri(uri);
 #else
     return uri.substr(std::string("file://").size());
 #endif

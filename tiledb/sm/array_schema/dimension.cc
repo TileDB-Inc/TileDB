@@ -82,12 +82,51 @@ Dimension::Dimension(const std::string& name, Datatype type)
   set_smaller_than_func();
 }
 
+Dimension::Dimension(
+    const std::string& name,
+    Datatype type,
+    uint32_t cell_val_num,
+    const Range& domain,
+    const FilterPipeline& filter_pipeline,
+    const ByteVecValue& tile_extent)
+    : cell_val_num_(cell_val_num)
+    , domain_(domain)
+    , filters_(filter_pipeline)
+    , name_(name)
+    , tile_extent_(tile_extent)
+    , type_(type) {
+  set_ceil_to_tile_func();
+  set_check_range_func();
+  set_adjust_range_oob_func();
+  set_coincides_with_tiles_func();
+  set_compute_mbr_func();
+  set_crop_range_func();
+  set_domain_range_func();
+  set_expand_range_func();
+  set_expand_range_v_func();
+  set_expand_to_tile_func();
+  set_oob_func();
+  set_covered_func();
+  set_overlap_func();
+  set_overlap_ratio_func();
+  set_relevant_ranges_func();
+  set_covered_vec_func();
+  set_split_range_func();
+  set_splitting_value_func();
+  set_tile_num_func();
+  set_map_to_uint64_2_func();
+  set_map_from_uint64_func();
+  set_smaller_than_func();
+}
+
 Dimension::Dimension(const Dimension* dim) {
   assert(dim != nullptr);
 
   cell_val_num_ = dim->cell_val_num_;
+  domain_ = dim->domain();
   filters_ = dim->filters_;
   name_ = dim->name();
+  tile_extent_ = dim->tile_extent();
   type_ = dim->type_;
 
   // Set fuctions
@@ -114,9 +153,6 @@ Dimension::Dimension(const Dimension* dim) {
   map_to_uint64_2_func_ = dim->map_to_uint64_2_func_;
   map_from_uint64_func_ = dim->map_from_uint64_func_;
   smaller_than_func_ = dim->smaller_than_func_;
-
-  domain_ = dim->domain();
-  tile_extent_ = dim->tile_extent();
 }
 
 /* ********************************* */
@@ -143,76 +179,85 @@ Status Dimension::set_cell_val_num(unsigned int cell_val_num) {
   return Status::Ok();
 }
 
-Status Dimension::deserialize(
+std::tuple<Status, optional<std::shared_ptr<Dimension>>> Dimension::deserialize(
     ConstBuffer* buff, uint32_t version, Datatype type) {
+  Status st;
   // Load dimension name
   uint32_t dimension_name_size;
-  RETURN_NOT_OK(buff->read(&dimension_name_size, sizeof(uint32_t)));
-  name_.resize(dimension_name_size);
-  RETURN_NOT_OK(buff->read(&name_[0], dimension_name_size));
+  st = buff->read(&dimension_name_size, sizeof(uint32_t));
+  if (!st.ok())
+    return {st, nullopt};
+  std::string name;
+  name.resize(dimension_name_size);
+  st = buff->read(&name[0], dimension_name_size);
+  if (!st.ok())
+    return {st, nullopt};
 
+  Datatype datatype;
+  uint32_t cell_val_num;
+  FilterPipeline filter_pipeline;
   // Applicable only to version >= 5
   if (version >= 5) {
     // Load type
     uint8_t type;
-    RETURN_NOT_OK(buff->read(&type, sizeof(uint8_t)));
-    type_ = (Datatype)type;
+    st = buff->read(&type, sizeof(uint8_t));
+    if (!st.ok())
+      return {st, nullopt};
+    datatype = (Datatype)type;
 
     // Load cell_val_num_
-    RETURN_NOT_OK(buff->read(&cell_val_num_, sizeof(uint32_t)));
+    st = buff->read(&cell_val_num, sizeof(uint32_t));
+    if (!st.ok())
+      return {st, nullopt};
 
     // Load filter pipeline
-    RETURN_NOT_OK(filters_.deserialize(buff));
+    filter_pipeline.deserialize(buff);
   } else {
-    type_ = type;
+    datatype = type;
+    cell_val_num = (datatype_is_string(datatype)) ? constants::var_num : 1;
   }
 
   // Load domain
   uint64_t domain_size = 0;
   if (version >= 5) {
-    RETURN_NOT_OK(buff->read(&domain_size, sizeof(uint64_t)));
+    st = buff->read(&domain_size, sizeof(uint64_t));
+    if (!st.ok())
+      return {st, nullopt};
   } else {
-    domain_size = 2 * coord_size();
+    domain_size = 2 * datatype_size(datatype);
   }
+  Range domain;
   if (domain_size != 0) {
     std::vector<uint8_t> tmp(domain_size);
-    RETURN_NOT_OK(buff->read(&tmp[0], domain_size));
-    domain_ = Range(&tmp[0], domain_size);
+    st = buff->read(&tmp[0], domain_size);
+    if (!st.ok())
+      return {st, nullopt};
+    domain = Range(&tmp[0], domain_size);
   }
 
+  ByteVecValue tile_extent;
   // Load tile extent
-  tile_extent_.assign_as_void();
+  tile_extent.assign_as_void();
   uint8_t null_tile_extent;
-  RETURN_NOT_OK(buff->read(&null_tile_extent, sizeof(uint8_t)));
+  st = buff->read(&null_tile_extent, sizeof(uint8_t));
+  if (!st.ok())
+    return {st, nullopt};
   if (null_tile_extent == 0) {
-    tile_extent_.resize(coord_size());
-    RETURN_NOT_OK(buff->read(tile_extent_.data(), coord_size()));
+    tile_extent.resize(datatype_size(datatype));
+    st = buff->read(tile_extent.data(), datatype_size(datatype));
+    if (!st.ok())
+      return {st, nullopt};
   }
 
-  set_ceil_to_tile_func();
-  set_check_range_func();
-  set_adjust_range_oob_func();
-  set_coincides_with_tiles_func();
-  set_compute_mbr_func();
-  set_crop_range_func();
-  set_domain_range_func();
-  set_expand_range_func();
-  set_expand_range_v_func();
-  set_expand_to_tile_func();
-  set_oob_func();
-  set_covered_func();
-  set_overlap_func();
-  set_overlap_ratio_func();
-  set_relevant_ranges_func();
-  set_covered_vec_func();
-  set_split_range_func();
-  set_splitting_value_func();
-  set_tile_num_func();
-  set_map_to_uint64_2_func();
-  set_map_from_uint64_func();
-  set_smaller_than_func();
-
-  return Status::Ok();
+  return {Status::Ok(),
+          tiledb::common::make_shared<Dimension>(
+              HERE(),
+              name,
+              datatype,
+              cell_val_num,
+              domain,
+              filter_pipeline,
+              tile_extent)};
 }
 
 const Range& Dimension::domain() const {

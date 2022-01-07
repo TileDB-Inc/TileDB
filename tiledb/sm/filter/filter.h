@@ -129,12 +129,20 @@ class Filter {
       const Config& config) const = 0;
 
   /**
-   * Initializes the filter resource pool if any
+   * Initializes the filter compression resource pool if any
    *
    * @param size the size of the resource pool to initiliaze
    *
    * */
-  virtual void init_resource_pool(uint64_t size);
+  virtual void init_compression_resource_pool(uint64_t size);
+
+  /**
+   * Initializes the filter decompression resource pool if any
+   *
+   * @param size the size of the resource pool to initiliaze
+   *
+   * */
+  virtual void init_decompression_resource_pool(uint64_t size);
 
   /**
    * Sets an option on this filter.
@@ -155,18 +163,6 @@ class Filter {
 
   /** Returns the filter type. */
   FilterType type() const;
-
-  /**
-   * Deserialization function that can be implemented by a specific Filter
-   * subclass for filter-specific metadata.
-   *
-   * If a filter subclass has no specific metadata, it's not necessary to
-   * implement this method.
-   *
-   * @param buff The buffer to deserialize from
-   * @return Status
-   */
-  virtual Status deserialize_impl(ConstBuffer* buff);
 
  protected:
   /** The filter type. */

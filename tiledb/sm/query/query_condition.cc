@@ -196,7 +196,7 @@ bool QueryCondition::empty() const {
   return clauses_.empty();
 }
 
-std::unordered_set<std::string> QueryCondition::field_names() const {
+std::unordered_set<std::string>& QueryCondition::field_names() const {
   if (field_names_.empty()) {
     for (const auto& clause : clauses_) {
       field_names_.insert(clause.field_name_);

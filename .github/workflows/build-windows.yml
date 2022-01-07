@@ -200,7 +200,7 @@ jobs:
 
           # Clone backwards compatibility test arrays
           if ($env:BACKWARDS_COMPATIBILITY_ARRAYS -eq "ON") {
-            git clone https://github.com/TileDB-Inc/TileDB-Unit-Test-Arrays.git --branch 2.2.3 $env:BUILD_SOURCESDIRECTORY/test/inputs/arrays/read_compatibility_test
+            git clone https://github.com/TileDB-Inc/TileDB-Unit-Test-Arrays.git --branch 2.5.0 $env:BUILD_SOURCESDIRECTORY/test/inputs/arrays/read_compatibility_test
           }
 
           if ($env:TILEDB_S3 -eq "ON") {

@@ -37,6 +37,7 @@
 #include "tiledb/sm/array_schema/dimension.h"
 #include "tiledb/sm/enums/datatype.h"
 #include "tiledb/sm/enums/layout.h"
+#include "tiledb/sm/misc/math.h"
 #include "tiledb/sm/misc/utils.h"
 
 #include <cassert>
@@ -308,9 +309,11 @@ Status Domain::deserialize(ConstBuffer* buff, uint32_t version) {
   // Load dimensions
   RETURN_NOT_OK(buff->read(&dim_num_, sizeof(uint32_t)));
   for (uint32_t i = 0; i < dim_num_; ++i) {
-    auto dim = tdb_new(tiledb::common::blank<Dimension>);
-    dim->deserialize(buff, version, type);
-    dimensions_.emplace_back(dim);
+    auto&& [st_dim, dim]{Dimension::deserialize(buff, version, type)};
+    if (!st_dim.ok()) {
+      return Status_DomainError("Cannot deserialize dimension.");
+    }
+    dimensions_.emplace_back(tdb_new(Dimension, dim.value().get()));
   }
 
   set_tile_cell_order_cmp_funcs();

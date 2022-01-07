@@ -36,8 +36,8 @@
 #include "tiledb/common/status.h"
 #include "tiledb/sm/array_schema/domain.h"
 #include "tiledb/sm/crypto/encryption_key.h"
+#include "tiledb/sm/filesystem/uri.h"
 #include "tiledb/sm/fragment/single_fragment_info.h"
-#include "tiledb/sm/misc/uri.h"
 #include "tiledb/sm/storage_manager/storage_manager.h"
 
 using namespace tiledb::common;

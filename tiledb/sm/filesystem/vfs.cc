@@ -31,11 +31,13 @@
  */
 
 #include "vfs.h"
+#include "path_win.h"
 #include "tiledb/common/logger_public.h"
 #include "tiledb/sm/buffer/buffer.h"
 #include "tiledb/sm/enums/filesystem.h"
 #include "tiledb/sm/enums/vfs_mode.h"
 #include "tiledb/sm/filesystem/hdfs_filesystem.h"
+#include "tiledb/sm/misc/math.h"
 #include "tiledb/sm/misc/parallel_functions.h"
 #include "tiledb/sm/misc/utils.h"
 #include "tiledb/sm/stats/global_stats.h"
@@ -85,11 +87,12 @@ std::string VFS::abs_path(const std::string& path) {
   std::string path_copy = path;
 #ifdef _WIN32
   {
-    std::string norm_sep_path = Win::slashes_to_backslashes(path);
-    if (Win::is_win_path(norm_sep_path))
-      return Win::uri_from_path(Win::abs_path(norm_sep_path));
+    std::string norm_sep_path = path_win::slashes_to_backslashes(path);
+    if (path_win::is_win_path(norm_sep_path))
+      return path_win::uri_from_path(Win::abs_path(norm_sep_path));
     else if (URI::is_file(path))
-      return Win::uri_from_path(Win::abs_path(Win::path_from_uri(path)));
+      return path_win::uri_from_path(
+          Win::abs_path(path_win::path_from_uri(path)));
   }
 #else
   if (URI::is_file(path))
@@ -1415,7 +1418,7 @@ Status VFS::read_ahead_impl(
 
 Status VFS::read_all(
     const URI& uri,
-    const std::vector<std::tuple<uint64_t, Tile*, uint64_t, uint64_t>>& regions,
+    const std::vector<std::tuple<uint64_t, Tile*, uint64_t>>& regions,
     ThreadPool* thread_pool,
     std::vector<ThreadPool::Task>* tasks,
     const bool use_read_ahead) {
@@ -1462,7 +1465,7 @@ Status VFS::read_all(
 }
 
 Status VFS::compute_read_batches(
-    const std::vector<std::tuple<uint64_t, Tile*, uint64_t, uint64_t>>& regions,
+    const std::vector<std::tuple<uint64_t, Tile*, uint64_t>>& regions,
     std::vector<BatchedRead>* batches) const {
   // Get config params
   bool found;
@@ -1476,14 +1479,14 @@ Status VFS::compute_read_batches(
   assert(found);
 
   // Ensure the regions are sorted on offset.
-  std::vector<std::tuple<uint64_t, Tile*, uint64_t, uint64_t>> sorted_regions(
+  std::vector<std::tuple<uint64_t, Tile*, uint64_t>> sorted_regions(
       regions.begin(), regions.end());
   parallel_sort(
       compute_tp_,
       sorted_regions.begin(),
       sorted_regions.end(),
-      [](const std::tuple<uint64_t, Tile*, uint64_t, uint64_t>& a,
-         const std::tuple<uint64_t, Tile*, uint64_t, uint64_t>& b) {
+      [](const std::tuple<uint64_t, Tile*, uint64_t>& a,
+         const std::tuple<uint64_t, Tile*, uint64_t>& b) {
         return std::get<0>(a) < std::get<0>(b);
       });
 

@@ -40,13 +40,13 @@
 
 #ifdef HAVE_HDFS
 
-#include "tiledb/sm/filesystem/hdfs_filesystem.h"
+#include "hdfs_filesystem.h"
 #include "tiledb/common/logger.h"
 #include "tiledb/common/stdx_string.h"
 #include "tiledb/sm/config/config.h"
 #include "tiledb/sm/misc/constants.h"
-#include "tiledb/sm/misc/uri.h"
 #include "tiledb/sm/misc/utils.h"
+#include "uri.h"
 
 #include <dlfcn.h>
 #include <cassert>

@@ -127,6 +127,11 @@ bool Reader::incomplete() const {
   return read_state_.overflowed_ || !read_state_.done();
 }
 
+QueryStatusDetailsReason Reader::status_incomplete_reason() const {
+  return incomplete() ? QueryStatusDetailsReason::REASON_USER_BUFFER_SIZE :
+                        QueryStatusDetailsReason::REASON_NONE;
+}
+
 Status Reader::init() {
   // Sanity checks
   if (storage_manager_ == nullptr)
@@ -260,10 +265,8 @@ Status Reader::apply_query_condition(
   // To evaluate the query condition, we need to read tiles for the
   // attributes used in the query condition. Build a map of attribute
   // names to read.
-  const std::unordered_set<std::string>& condition_names =
-      condition_.field_names();
   std::unordered_map<std::string, ProcessTileFlags> names;
-  for (const auto& condition_name : condition_names) {
+  for (const auto& condition_name : condition_.field_names()) {
     names[condition_name] = ProcessTileFlag::READ;
   }
 

@@ -46,7 +46,7 @@ steps:
     git config --global user.email 'no-reply@tiledb.io'
 
     # Clone Unit-Test-Arrays
-    git clone -q https://github.com/TileDB-Inc/TileDB-Unit-Test-Arrays.git --branch 2.3.0 test/inputs/arrays/read_compatibility_test
+    git clone -q https://github.com/TileDB-Inc/TileDB-Unit-Test-Arrays.git --branch 2.5.0 test/inputs/arrays/read_compatibility_test
 
 
     # Set up bootstrap args
