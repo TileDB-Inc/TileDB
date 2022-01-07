@@ -121,6 +121,23 @@ runs:
         path: |
           ${{ env.TDB_SOURCE_ARCHIVE_PATH }}
 
+    - name: 'upload-release-source-asset'
+      uses: actions/upload-files-to-a-github-release
+      if: false
+      with:
+        # required items
+        repo_token: ${{ secrets.GITHUB_TOKEN }}
+        file: ${{ env.TDB_SOURCE_ARCHIVE_PATH }}
+        tag: ${{ github.ref }}
+        # optional items
+        #asset_name:
+        #file_glob:
+        overwrite: ${{ github.event.inputs.overwrite_if_needed }}
+        prerelease: ${{ github.event.inputs.is_prelease }}
+        #release_name: # defaults to tag name
+        #body:
+        #repo_name:
+        
     - name: 'ArchiveFiles@2B' # https://github.com/actions/upload-artifact#where-does-the-upload-go
       #if: ${{ failure() == true && startsWith(runner.name, 'macos-') == true }} # only run this job if the build step failed
       uses: actions/upload-artifact@v2
@@ -130,3 +147,20 @@ runs:
         #if-no-files-found: warn # 'ignore/', 'warn' or 'error' are available, defaults to `warn`
         path: |
           ${{ env.TDB_BINARY_ARCHIVE_PATH }}
+
+    - name: 'upload-release-binary-asset'
+      uses: actions/upload-files-to-a-github-release
+      if: false
+      with:
+        # required items
+        repo_token: ${{ secrets.GITHUB_TOKEN }}
+        file: ${{ env.TDB_BINARY_ARCHIVE_PATH }}
+        tag: ${{ github.ref }}
+        # optional items
+        #asset_name:
+        #file_glob:
+        overwrite: ${{ github.event.inputs.overwrite_if_needed }}
+        prerelease: ${{ github.event.inputs.is_prelease }}
+        #release_name: # defaults to tag name
+        #body:
+        #repo_name:

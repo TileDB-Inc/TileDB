@@ -5,6 +5,16 @@ on:
     branches:
       - release-*
       - dlh/ch10040-azr-osx-lnxto-ga
+  workflow_dispatch:
+    inputs:
+      overwrite_if_needed:
+        description: 'true/false, overwrite any previously same-named entity'
+        required: false
+        default: false
+      is_prelease:
+        description: 'true/false, specify if asset is pre-release status'
+        required: false
+        default: true
 
 env:
   SUDO: 'sudo'
