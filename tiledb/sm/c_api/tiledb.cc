@@ -2341,6 +2341,24 @@ int32_t tiledb_array_schema_set_offsets_filter_list(
   return TILEDB_OK;
 }
 
+int32_t tiledb_array_schema_set_validity_filter_list(
+    tiledb_ctx_t* ctx,
+    tiledb_array_schema_t* array_schema,
+    tiledb_filter_list_t* filter_list) {
+  if (sanity_check(ctx) == TILEDB_ERR ||
+      sanity_check(ctx, array_schema) == TILEDB_ERR ||
+      sanity_check(ctx, filter_list) == TILEDB_ERR)
+    return TILEDB_ERR;
+
+  if (SAVE_ERROR_CATCH(
+          ctx,
+          array_schema->array_schema_->set_cell_validity_filter_pipeline(
+              filter_list->pipeline_)))
+    return TILEDB_ERR;
+
+  return TILEDB_OK;
+}
+
 int32_t tiledb_array_schema_check(
     tiledb_ctx_t* ctx, tiledb_array_schema_t* array_schema) {
   if (sanity_check(ctx) == TILEDB_ERR ||
@@ -2588,6 +2606,38 @@ int32_t tiledb_array_schema_get_offsets_filter_list(
   // Create a new FilterPipeline object
   (*filter_list)->pipeline_ = new (std::nothrow) tiledb::sm::FilterPipeline(
       array_schema->array_schema_->cell_var_offsets_filters());
+  if ((*filter_list)->pipeline_ == nullptr) {
+    delete *filter_list;
+    *filter_list = nullptr;
+    auto st = Status_Error("Failed to allocate TileDB filter list object");
+    LOG_STATUS(st);
+    save_error(ctx, st);
+    return TILEDB_OOM;
+  }
+
+  return TILEDB_OK;
+}
+
+int32_t tiledb_array_schema_get_validity_filter_list(
+    tiledb_ctx_t* ctx,
+    tiledb_array_schema_t* array_schema,
+    tiledb_filter_list_t** filter_list) {
+  if (sanity_check(ctx) == TILEDB_ERR ||
+      sanity_check(ctx, array_schema) == TILEDB_ERR)
+    return TILEDB_ERR;
+
+  // Create a filter list struct
+  *filter_list = new (std::nothrow) tiledb_filter_list_t;
+  if (*filter_list == nullptr) {
+    auto st = Status_Error("Failed to allocate TileDB filter list object");
+    LOG_STATUS(st);
+    save_error(ctx, st);
+    return TILEDB_OOM;
+  }
+
+  // Create a new FilterPipeline object
+  (*filter_list)->pipeline_ = new (std::nothrow) tiledb::sm::FilterPipeline(
+      array_schema->array_schema_->cell_validity_filters());
   if ((*filter_list)->pipeline_ == nullptr) {
     delete *filter_list;
     *filter_list = nullptr;
