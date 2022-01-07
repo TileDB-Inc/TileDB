@@ -1571,6 +1571,7 @@ Status QueryCondition::apply_clause_sparse(
           result_bitmap[c] *= buffer_validity[c] == 0;
         }
       }
+      return Status::Ok();
     } else {
       // Turn off bitmap values for null cells.
       for (uint64_t c = 0; c < result_tile.cell_num(); c++) {
