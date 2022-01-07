@@ -3,8 +3,12 @@ name: linux_manylinux
 on:
   push:
     branches:
+      - dev
       - release-*
-      - dlh/ch10040-azr-osx-lnxto-ga
+      - refs/tags/*
+  pull_request:
+    branches:
+      - '*'  # must quote since "*" is a YAML reserved character; we want a string
 
 env:
   SUDO: 'sudo'

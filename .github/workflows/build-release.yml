@@ -3,8 +3,13 @@ name: linux_mac-release
 on:
   push:
     branches:
+      - dev
       - release-*
-      - dlh/ch10040-azr-osx-lnxto-ga
+      - build-*
+    pull_request:
+      branches:
+        - '*'  # must quote since "*" is a YAML reserved character; we want a string
+
   workflow_dispatch:
     inputs:
       overwrite_if_needed:
@@ -92,8 +97,8 @@ jobs:
         #uses: actions/upload-files-to-a-github-release
         uses: svenstaro/upload-release-action@2.2.1
         #if tag
-        #if: ${{ startsWith( github.ref, "refs/tags") }}
-        if: true #false
+        if: ${{ startsWith( github.ref, "refs/tags") }}
+        #if: true #false
         with:
           # required items
           repo_token: ${{ secrets.GITHUB_TOKEN }}
@@ -112,8 +117,8 @@ jobs:
         #uses: actions/upload-files-to-a-github-release
         uses: svenstaro/upload-release-action@2.2.1
         #if tag
-        #if: ${{ startsWith( github.ref, "refs/tags") }}
-        if: true #false
+        if: ${{ startsWith( github.ref, "refs/tags") }}
+        #if: true #false
         with:
           # required items
           repo_token: ${{ secrets.GITHUB_TOKEN }}
@@ -191,8 +196,8 @@ jobs:
         #uses: actions/upload-files-to-a-github-release
         uses: svenstaro/upload-release-action@2.2.1
         #if tag
-        #if: ${{ startsWith( github.ref, "refs/tags") }}
-        if: true #false
+        if: ${{ startsWith( github.ref, "refs/tags") }}
+        #if: true #false
         with:
           # required items
           repo_token: ${{ secrets.GITHUB_TOKEN }}
@@ -211,8 +216,8 @@ jobs:
         #uses: actions/upload-files-to-a-github-release
         uses: svenstaro/upload-release-action@2.2.1
         #if tag
-        #if: ${{ startsWith( github.ref, "refs/tags") }}
-        if: true #false
+        if: ${{ startsWith( github.ref, "refs/tags") }}
+        #if: true #false
         with:
           # required items
           repo_token: ${{ secrets.GITHUB_TOKEN }}
