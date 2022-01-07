@@ -6,9 +6,9 @@ on:
       - dev
       - release-*
       - build-*
-    pull_request:
-      branches:
-        - '*'  # must quote since "*" is a YAML reserved character; we want a string
+  pull_request:
+    branches:
+      - '*'  # must quote since "*" is a YAML reserved character; we want a string
 
   workflow_dispatch:
     inputs:
