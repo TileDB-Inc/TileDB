@@ -31,6 +31,7 @@
 * Read tiles: fixing preallocation size for var and validity buffers. [#2781](https://github.com/TileDB-Inc/TileDB/pull/2781)
 * Sparse unordered w/ dups: var buffer overflow on tile continuation fix. [#2777](https://github.com/TileDB-Inc/TileDB/pull/2777)
 * Determine non overlapping ranges automatically. [#2780](https://github.com/TileDB-Inc/TileDB/pull/2780)
+* Improve object type detection performance [#2792](https://github.com/TileDB-Inc/TileDB/pull/2792)
 
 ## Deprecations
 
@@ -43,6 +44,7 @@
 * [C API] Add missing save_error calls in vfs_ls [#2714](https://github.com/TileDB-Inc/TileDB/pull/2714)
 * Use fragment array schema for applying query condition to account for schema evolution [#2698](https://github.com/TileDB-Inc/TileDB/pull/2698)
 * Don't try to read config from uninitialize storage manager [#2771](https://github.com/TileDB-Inc/TileDB/pull/2771)
+* Fix segfault in new sparse null `QueryCondition` code [#2794](https://github.com/TileDB-Inc/TileDB/pull/2794)
 
 ## API additions
 
