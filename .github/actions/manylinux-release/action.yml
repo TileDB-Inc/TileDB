@@ -122,7 +122,8 @@ runs:
           ${{ env.TDB_SOURCE_ARCHIVE_PATH }}
 
     - name: 'upload-release-source-asset'
-      uses: actions/upload-files-to-a-github-release
+      #uses: actions/upload-files-to-a-github-release
+      uses: svenstaro/upload-release-action@2.2.1
       if: false
       with:
         # required items
@@ -149,7 +150,8 @@ runs:
           ${{ env.TDB_BINARY_ARCHIVE_PATH }}
 
     - name: 'upload-release-binary-asset'
-      uses: actions/upload-files-to-a-github-release
+      #uses: actions/upload-files-to-a-github-release
+      uses: svenstaro/upload-release-action@2.2.1
       if: false
       with:
         # required items
