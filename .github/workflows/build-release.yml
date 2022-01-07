@@ -84,8 +84,8 @@ jobs:
       - uses: ./.github/actions/mac-release
 
       - name: 'upload-release-source-asset'
-        #uses: actions/upload-files-to-a-github-release
-        uses: svenstaro/upload-release-action@2.2.1
+        uses: actions/upload-files-to-a-github-release
+        #uses: svenstaro/upload-release-action@2.2.1
         if: false
         with:
           # required items
@@ -102,8 +102,8 @@ jobs:
           #repo_name:
           
       - name: 'upload-release-binary-asset'
-        #uses: actions/upload-files-to-a-github-release
-        uses: svenstaro/upload-release-action@2.2.1
+        uses: actions/upload-files-to-a-github-release
+        #uses: svenstaro/upload-release-action@2.2.1
         if: false
         with:
           # required items
@@ -174,8 +174,8 @@ jobs:
       - uses: ./.github/actions/manylinux-release
 
       - name: 'upload-release-source-asset'
-        #uses: actions/upload-files-to-a-github-release
-        uses: svenstaro/upload-release-action@2.2.1
+        uses: actions/upload-files-to-a-github-release
+        #uses: svenstaro/upload-release-action@2.2.1
         if: false
         with:
           # required items
@@ -192,8 +192,8 @@ jobs:
           #repo_name:
           
       - name: 'upload-release-binary-asset'
-        #uses: actions/upload-files-to-a-github-release
-        uses: svenstaro/upload-release-action@2.2.1
+        uses: actions/upload-files-to-a-github-release
+        #uses: svenstaro/upload-release-action@2.2.1
         if: false
         with:
           # required items
