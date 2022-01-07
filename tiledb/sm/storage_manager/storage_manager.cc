@@ -2085,23 +2085,26 @@ Status StorageManager::object_type(const URI& uri, ObjectType* type) const {
     }
   }
 
-  std::vector<URI> child_uris;
-  RETURN_NOT_OK(vfs_->ls(dir_uri, &child_uris));
+  bool exists = false;
+  RETURN_NOT_OK(vfs_->is_dir(
+      dir_uri.join_path(constants::array_schema_folder_name), &exists));
+  if (exists) {
+    *type = ObjectType::ARRAY;
+    return Status::Ok();
+  }
 
-  for (const auto& child_uri : child_uris) {
-    auto uri_str = child_uri.to_string();
-    if (utils::parse::ends_with(uri_str, constants::group_filename)) {
-      *type = ObjectType::GROUP;
-      return Status::Ok();
-    } else if (utils::parse::ends_with(
-                   uri_str, constants::array_schema_filename)) {
-      *type = ObjectType::ARRAY;
-      return Status::Ok();
-    } else if (utils::parse::ends_with(
-                   uri_str, constants::array_schema_folder_name)) {
-      *type = ObjectType::ARRAY;
-      return Status::Ok();
-    }
+  RETURN_NOT_OK(vfs_->is_file(
+      dir_uri.join_path(constants::array_schema_filename), &exists));
+  if (exists) {
+    *type = ObjectType::ARRAY;
+    return Status::Ok();
+  }
+
+  RETURN_NOT_OK(
+      vfs_->is_file(dir_uri.join_path(constants::group_filename), &exists));
+  if (exists) {
+    *type = ObjectType::GROUP;
+    return Status::Ok();
   }
 
   *type = ObjectType::INVALID;
