@@ -37,6 +37,7 @@
 #include <unordered_map>
 #include <vector>
 
+#include "tiledb/common/memory_tracker.h"
 #include "tiledb/common/status.h"
 #include "tiledb/sm/crypto/encryption_key.h"
 #include "tiledb/sm/fragment/fragment_info.h"
@@ -347,6 +348,9 @@ class Array {
   /** Returns the non-empty domain of the opened array. */
   void set_non_empty_domain(const NDRange& non_empty_domain);
 
+  /** Returns the memory tracker. */
+  MemoryTracker* memory_tracker();
+
  private:
   /* ********************************* */
   /*         PRIVATE ATTRIBUTES        */
@@ -430,9 +434,6 @@ class Array {
    */
   std::vector<uint8_t> last_max_buffer_sizes_subarray_;
 
-  /** Mutex for thread-safety. */
-  mutable std::mutex mtx_;
-
   /** True if the array is remote (has `tiledb://` URI scheme). */
   bool remote_;
 
@@ -447,6 +448,9 @@ class Array {
 
   /** The non-empty domain of the array. */
   NDRange non_empty_domain_;
+
+  /** Memory tracker for the array. */
+  MemoryTracker memory_tracker_;
 
   /* ********************************* */
   /*          PRIVATE METHODS          */

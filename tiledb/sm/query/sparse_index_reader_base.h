@@ -46,7 +46,7 @@ namespace sm {
 
 class Array;
 class ArraySchema;
-class OpenArrayMemoryTracker;
+class MemoryTracker;
 class StorageManager;
 class Subarray;
 
@@ -241,7 +241,7 @@ class SparseIndexReaderBase : public ReaderBase {
   std::mutex mem_budget_mtx_;
 
   /** Memory tracker object for the array. */
-  OpenArrayMemoryTracker* array_memory_tracker_;
+  MemoryTracker* array_memory_tracker_;
 
   /** Memory used for coordinates tiles. */
   uint64_t memory_used_for_coords_total_;

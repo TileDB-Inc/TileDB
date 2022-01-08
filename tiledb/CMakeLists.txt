@@ -201,7 +201,6 @@ set(TILEDB_CORE_SOURCES
   ${TILEDB_CORE_INCLUDE_DIR}/tiledb/sm/stats/timer_stat.cc
   ${TILEDB_CORE_INCLUDE_DIR}/tiledb/sm/storage_manager/context.cc
   ${TILEDB_CORE_INCLUDE_DIR}/tiledb/sm/storage_manager/consolidator.cc
-  ${TILEDB_CORE_INCLUDE_DIR}/tiledb/sm/storage_manager/open_array.cc
   ${TILEDB_CORE_INCLUDE_DIR}/tiledb/sm/storage_manager/storage_manager.cc
   ${TILEDB_CORE_INCLUDE_DIR}/tiledb/sm/subarray/cell_slab_iter.cc
   ${TILEDB_CORE_INCLUDE_DIR}/tiledb/sm/subarray/subarray.cc

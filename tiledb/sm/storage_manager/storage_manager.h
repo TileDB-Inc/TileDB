@@ -41,9 +41,9 @@
 #include <map>
 #include <mutex>
 #include <queue>
+#include <set>
 #include <string>
 #include <thread>
-#include <unordered_map>
 
 #include "tiledb/common/heap_memory.h"
 #include "tiledb/common/logger_public.h"
@@ -52,8 +52,8 @@
 #include "tiledb/sm/config/config.h"
 #include "tiledb/sm/enums/walk_order.h"
 #include "tiledb/sm/filesystem/uri.h"
-#include "tiledb/sm/fragment/single_fragment_info.h"
 #include "tiledb/sm/misc/cancelable_tasks.h"
+#include "tiledb/sm/misc/types.h"
 #include "tiledb/sm/stats/global_stats.h"
 
 using namespace tiledb::common;
@@ -72,7 +72,7 @@ class FragmentMetadata;
 class FragmentInfo;
 class Metadata;
 class OpenArray;
-class OpenArrayMemoryTracker;
+class MemoryTracker;
 class Query;
 class RestClient;
 class VFS;
@@ -131,37 +131,30 @@ class StorageManager {
   /**
    * Closes an array opened for reads.
    *
-   * @param array_uri The array URI
+   * @param array The array to be closed.
    * @return Status
    */
-  Status array_close_for_reads(const URI& array_uri);
+  Status array_close_for_reads(Array* array);
 
   /**
    * Closes an array opened for writes.
    *
-   * @param array_uri The array URI
-   * @param encryption_key The array encryption key.
-   * @param array_metadata The array metadata, which the function
-   *     flush to persistent storage.
+   * @param array The array to be closed.
    * @return Status
    */
-  Status array_close_for_writes(
-      const URI& array_uri,
-      const EncryptionKey& encryption_key,
-      Metadata* array_metadata);
+  Status array_close_for_writes(Array* array);
 
   /**
-   * Opens an array for reads at a timestamp. All the metadata of the
-   * fragments created before or at the input timestamp are retrieved.
-   *
-   * If a timestamp_start is provided, this API will open the array between
-   * `timestamp_start` and `timestamp_end`.
+   * Returns the array schemas and fragment metadata for the given array.
+   * The function will focus only on relevant schemas and metadata in
+   * range [timestamp_start, timestamp_end].
    *
    * @param array_uri The array URI.
+   * @param memory_tracker The memory tracker of the array
+   *     for which the fragment metadata is loaded.
    * @param enc_key The encryption key to use.
-   * @param timestamp_start The (optional) starting timestamp to open the array
-   * between, starting at this timestamp and ending at `timestamp_end`.
-   * @param timestamp_end The timestamp at which the array will be opened.
+   * @param timestamp_start The starting timestamp.
+   * @param timestamp_end The end timestamp.
    *     In TileDB, timestamps are in ms elapsed since
    *     1970-01-01 00:00:00 +0000 (UTC).
    * @return tuple of Status, latest ArraySchema, map of all array schemas and
@@ -179,17 +172,42 @@ class StorageManager {
       std::optional<
           std::unordered_map<std::string, tdb_shared_ptr<ArraySchema>>>,
       std::optional<std::vector<tdb_shared_ptr<FragmentMetadata>>>>
-  array_open_for_reads(
+  load_array_schemas_and_fragment_metadata(
       const URI& array_uri,
+      MemoryTracker* memory_tracker,
       const EncryptionKey& enc_key,
       uint64_t timestamp_start,
       uint64_t timestamp_end);
 
   /**
+   * Opens an array for reads at a timestamp. All the metadata of the
+   * fragments created before or at the input timestamp are retrieved.
+   *
+   * If a timestamp_start is provided, this API will open the array between
+   * `timestamp_start` and `timestamp_end`.
+   *
+   * @param array The array to be opened.
+   * @return tuple of Status, latest ArraySchema, map of all array schemas and
+   * vector of FragmentMetadata
+   *        Status Ok on success, else error
+   *        ArraySchema The array schema to be retrieved after the
+   *           array is opened.
+   *        ArraySchemaMap Map of all array schemas found keyed by name
+   *        fragment_metadata The fragment metadata to be retrieved
+   *           after the array is opened.
+   */
+  std::tuple<
+      Status,
+      std::optional<ArraySchema*>,
+      std::optional<
+          std::unordered_map<std::string, tdb_shared_ptr<ArraySchema>>>,
+      std::optional<std::vector<tdb_shared_ptr<FragmentMetadata>>>>
+  array_open_for_reads(Array* array);
+
+  /**
    * Opens an array for reads without fragments.
    *
-   * @param array_uri The array URI.
-   * @param enc_key The encryption key to use.
+   * @param array The array to be opened.
    * @return tuple of Status, latest ArraySchema and map of all array schemas
    *        Status Ok on success, else error
    *        ArraySchema The array schema to be retrieved after the
@@ -201,13 +219,11 @@ class StorageManager {
       std::optional<ArraySchema*>,
       std::optional<
           std::unordered_map<std::string, tdb_shared_ptr<ArraySchema>>>>
-  array_open_for_reads_without_fragments(
-      const URI& array_uri, const EncryptionKey& enc_key);
+  array_open_for_reads_without_fragments(Array* array);
 
   /** Opens an array for writes.
    *
-   * @param array_uri The array URI.
-   * @param enc_key The encryption key.
+   * @param array The array to open.
    * @return tuple of Status, latest ArraySchema and map of all array schemas
    *        Status Ok on success, else error
    *        ArraySchema The array schema to be retrieved after the
@@ -219,36 +235,25 @@ class StorageManager {
       std::optional<ArraySchema*>,
       std::optional<
           std::unordered_map<std::string, tdb_shared_ptr<ArraySchema>>>>
-  array_open_for_writes(const URI& array_uri, const EncryptionKey& enc_key);
+  array_open_for_writes(Array* array);
 
   /**
    * Load fragments for an already open array.
    *
-   * @param array_uri The array URI.
-   * @param enc_key The encryption key to use.
-   * @param fragment_metadata The fragment metadata to be retrieved
-   *          after the array is opened.
+   * @param array The open array.
    * @param fragment_info The list of fragment info.
-   * @return Status
+   * @return Status, the fragment metadata to be loaded.
    */
-  Status array_load_fragments(
-      const URI& array_uri,
-      const EncryptionKey& enc_key,
-      std::vector<tdb_shared_ptr<FragmentMetadata>>* fragment_metadata,
-      const std::vector<TimestampedURI>& fragment_info);
+  std::tuple<
+      Status,
+      std::optional<std::vector<tdb_shared_ptr<FragmentMetadata>>>>
+  array_load_fragments(
+      Array* array, const std::vector<TimestampedURI>& fragment_info);
 
   /**
-   * Reopens an already open array at a potentially new timestamp,
-   * retrieving the fragment metadata of any new fragments written
-   * in the array.
+   * Reopen an array for reads.
    *
-   * @param array_uri The array URI.
-   * @param enc_key The encryption key to use.
-   * @param timestamp_start The optional first timestamp between which the
-   *     array will be opened.
-   * @param timestamp_end The timestamp at which the array will be opened.
-   *     In TileDB, timestamps are in ms elapsed since
-   *     1970-01-01 00:00:00 +0000 (UTC).
+   * @param array The array to reopen.
    * @return tuple of Status, latest ArraySchema, map of all array schemas and
    * vector of FragmentMetadata
    *        Status Ok on success, else error
@@ -264,11 +269,7 @@ class StorageManager {
       std::optional<
           std::unordered_map<std::string, tdb_shared_ptr<ArraySchema>>>,
       std::optional<std::vector<tdb_shared_ptr<FragmentMetadata>>>>
-  array_reopen(
-      const URI& array_uri,
-      const EncryptionKey& enc_key,
-      uint64_t timestamp_start,
-      uint64_t timestamp_end);
+  array_reopen(Array* array);
 
   /**
    * Consolidates the fragments of an array into a single one.
@@ -390,16 +391,6 @@ class StorageManager {
    * @return Status
    */
   Status array_upgrade_version(const URI& array_uri, const Config* config);
-
-  /**
-   * Gets the memory tracker for an open array.
-   *
-   * @param array_uri The array URI.
-   * @param top_level Specifies if the call is the top level call in recursion.
-   * @return The memory tracker.
-   */
-  OpenArrayMemoryTracker* array_memory_tracker(
-      const URI& array_uri, bool top_level = true);
 
   /**
    * Retrieves the non-empty domain from an array. This is the union of the
@@ -537,27 +528,6 @@ class StorageManager {
       const std::string& array_uri, EncryptionType* encryption_type);
 
   /**
-   * Exclusively locks an array preventing it from being opened in
-   * read mode. This function will wait on the array to
-   * be closed if it is already open (always in read mode). After an array
-   * is xlocked, any attempt to open an array in read mode will have to wait
-   * until the array is unlocked with `xunlock_array`.
-   *
-   * An array is exclusively locked only for a short time upon consolidation,
-   * during removing the directories of the old fragments that got consolidated.
-   *
-   * @note Arrays that are opened in write mode need not be xlocked. The
-   *     reason is that the `OpenArray` objects created when opening
-   *     in write mode do not store any fragment metadata and, hence,
-   *     are not affected by a potentially concurrent consolidator deleting
-   *     fragment directories.
-   */
-  Status array_xlock(const URI& array_uri);
-
-  /** Releases an exclusive lock. */
-  Status array_xunlock();
-
-  /**
    * Pushes an async query to the queue.
    *
    * @param query The async query.
@@ -581,41 +551,6 @@ class StorageManager {
   Status touch(const URI& uri);
 
   /**
-   * Gets the fragment information for a given array at a particular
-   * timestamp.
-   *
-   * @param array The array.
-   * @param timestamp_start The function will consider fragments created
-   *     at or after this timestamp.
-   * @param timestamp_end The function will consider fragments created
-   *     at or before this timestamp.
-   * @param fragment_info The fragment information to be retrieved.
-   *     The fragments are sorted in chronological creation order.
-   * @param get_to_vacuum Whether or not to receive information about
-   *     fragments to vacuum.
-   * @return Status
-   */
-  Status get_fragment_info(
-      const Array& array,
-      uint64_t timestamp_start,
-      uint64_t timestamp_end,
-      FragmentInfo* fragment_info,
-      bool get_to_vacuum = false);
-
-  /**
-   * Gets the fragment info for a single fragment URI.
-   *
-   * @param array The array.
-   * @param fragment_uri The fragment URI.
-   * @param fragment_info The fragment info to retrieve.
-   * @return Status
-   */
-  Status get_fragment_info(
-      const Array& array,
-      const URI& fragment_uri,
-      SingleFragmentInfo* fragment_info);
-
-  /**
    * Retrieves all the fragment URIs of an array, along with the latest
    * consolidated fragment metadata URI `meta_uri`.
    */
@@ -623,6 +558,32 @@ class StorageManager {
       const URI& array_uri,
       std::vector<URI>* fragment_uris,
       URI* meta_uri) const;
+
+  /**
+   * It computes the URIs `to_vacuum` from the input `uris`, considering
+   * only the URIs whose first timestamp is greater than or equal to
+   * `timestamp_start` and second timestamp is smaller than or equal to
+   * `timestamp_end`. The function also retrieves the `vac_uris` (files with
+   * `.vac` suffix) that were used to compute `to_vacuum`.
+   *
+   * @param uris The input fragment URIs.
+   * @param timestamp_start The function considers only URIs whose
+   *     timestamps fall into [`timestamp_start`, `timestamp_end`].
+   * @param timestamp_end The function considers only URIs whose
+   *     timestamps fall into [`timestamp_start`, `timestamp_end`].
+   * @param to_vacuum The URIs determined that should be vacuumed.
+   * @param vac_uris The `.vac` files used to determine `to_vacuum`.
+   * @param allow_partial If `true` the function will load URIs
+   *    whose timestamps partial overlap [`timestamp_start`, `timestamp_end`].
+   * @return Status
+   */
+  Status get_uris_to_vacuum(
+      const std::vector<URI>& uris,
+      uint64_t timestamp_start,
+      uint64_t timestamp_end,
+      std::vector<URI>* to_vacuum,
+      std::vector<URI>* vac_uris,
+      bool allow_partial = true) const;
 
   /** Returns the current map of any set tags. */
   const std::unordered_map<std::string, std::string>& tags() const;
@@ -755,17 +716,35 @@ class StorageManager {
       ArraySchema** array_schema);
 
   /**
-   * Loads the schema of an array from persistent storage into memory.
+   * Loads the latest schema of an array from persistent storage into memory.
    *
    * @param array_uri The URI path of the array.
    * @param encryption_key The encryption key to use.
    * @param array_schema The array schema to be retrieved.
    * @return Status
    */
-  Status load_array_schema(
+  Status load_array_schema_latest(
       const URI& array_uri,
       const EncryptionKey& encryption_key,
       ArraySchema** array_schema);
+
+  /**
+   * It loads and returns the latest schema and all the array schemas
+   * (in the presence of schema evolution).
+   *
+   * @param array_uri The URI path of the array.
+   * @param encryption_key The encryption key to use.
+   * @return tuple of Status, latest array schema and all array schemas.
+   *   Status Ok on success, else error
+   *   ArraySchema The latest array schema.
+   *   ArraySchemaMap Map of all array schemas loaded, keyed by name
+   */
+  std::tuple<
+      Status,
+      std::optional<ArraySchema*>,
+      std::optional<
+          std::unordered_map<std::string, tdb_shared_ptr<ArraySchema>>>>
+  load_array_schemas(const URI& array_uri, const EncryptionKey& encryption_key);
 
   /**
    * Loads all schemas of an array from persistent storage into memory.
@@ -1084,20 +1063,11 @@ class StorageManager {
   /** Stores the TileDB configuration parameters. */
   Config config_;
 
-  /** Mutex for managing OpenArray objects for reads. */
-  std::mutex open_array_for_reads_mtx_;
+  /** Keeps track of which arrays are open. */
+  std::set<Array*> open_arrays_;
 
-  /** Mutex for managing OpenArray objects for writes. */
-  std::mutex open_array_for_writes_mtx_;
-
-  /** Mutex for managing exclusive locks. */
-  std::mutex xlock_mtx_;
-
-  /** Stores the currently open arrays for reads. */
-  std::map<std::string, OpenArray*> open_arrays_for_reads_;
-
-  /** Stores the currently open arrays for writes. */
-  std::map<std::string, OpenArray*> open_arrays_for_writes_;
+  /** Mutex for managing open arrays. */
+  std::mutex open_arrays_mtx_;
 
   /** Count of the number of queries currently in progress. */
   uint64_t queries_in_progress_;
@@ -1137,24 +1107,6 @@ class StorageManager {
   /*         PRIVATE METHODS           */
   /* ********************************* */
 
-  /**
-   * This is an auxiliary function to the other `array_open*` functions.
-   * It opens the array, retrieves an `OpenArray` instance, acquires
-   * its mutex and increases its counter. The array schema of the array
-   * is loaded, but not any fragment metadata at this point.
-   *
-   * @param array_uri The array URI.
-   * @param encryption_key The encryption key.
-   * @param open_array The `OpenArray` instance retrieved after opening
-   *      the array. Note that its mutex will be locked and its counter
-   *      will have been incremented when the function returns.
-   * @return Status
-   */
-  Status array_open_without_fragments(
-      const URI& array_uri,
-      const EncryptionKey& encryption_key,
-      OpenArray** open_array);
-
   /** Decrement the count of in-progress queries. */
   void decrement_in_progress();
 
@@ -1166,66 +1118,47 @@ class StorageManager {
   void increment_in_progress();
 
   /**
-   * Loads the array schema into an open array.
-   *
-   * @param array_uri The array URI.
-   * @param open_array The open array object.
-   * @param encryption_key The encryption key to use.
-   * @return Status
-   */
-  Status load_array_schema(
-      const URI& array_uri,
-      OpenArray* open_array,
-      const EncryptionKey& encryption_key);
-
-  /**
-   * Loads the array metadata whose URIs are specified in the input.
-   * The array metadata are cached in binary form in `open_array`.
-   * Only the metadata that have not yet been loaded will be fetched
-   * into the open array object. Eventually, the function will
-   * deserialize the appropriate array metadata into `metadata`.
-   *
-   * @param open_array The open array object.
-   * @param encryption_key The encryption key to use.
-   * @param array_metadata_to_load The timestamped URIs of the array
-   *     metadata to load.
-   * @param metadata The array metadata to be retrieved.
-   * @return Status
-   */
-  Status load_array_metadata(
-      OpenArray* open_array,
-      const EncryptionKey& encryption_key,
-      const std::vector<TimestampedURI>& array_metadata_to_load,
-      Metadata* metadata);
-
-  /**
    * Loads the fragment metadata of an open array given a vector of
-   * fragment URIs `fragments_to_load`. If the fragment metadata
-   * are not already loaded into the array, the function loads them.
+   * fragment URIs `fragments_to_load`.
    * The function stores the fragment metadata of each fragment
-   * in `fragments_to_load` into vector `fragment_metadata`, such
+   * in `fragments_to_load` into the returned vector, such
    * that there is a one-to-one correspondence between the two vectors.
    *
-   * @param open_array The open array object.
+   * If `meta_buf` has data, then some fragment metadata may be contained
+   * in there and does not need to be loaded from storage. In that
+   * case, `offsets` helps identifying each fragment metadata in the
+   * buffer.
+   *
+   * @param memory_tracker The memory tracker of the array
+   *     for which the metadata is loaded. This will be passed to
+   *     the constructor of each of the metadata loaded.
+   * @param array_schema_latest The latest array schema.
+   * @param array_schemas_all All the array schemas in a map keyed by the
+   *     schema filename.
    * @param encryption_key The encryption key to use.
    * @param fragments_to_load The fragments whose metadata to load.
-   * @param meta_buff A buffer that contains the consolidated fragment
+   * @param meta_buff A buffer that may contain the consolidated fragment
    *     metadata.
    * @param offsets A map from a fragment name to an offset in `meta_buff`
-   *     where the basic metadata can be found. If the offset cannot be
-   *     found, then the metadata of that fragment will be loaded from
+   *     where the basic fragment metadata can be found. If the offset
+   *     cannot be found, then the metadata of that fragment will be loaded from
    *     storage instead.
-   * @param fragment_metadata The fragment metadata retrieved in a
-   *     vector.
-   * @return Status
+   * @return tuple of Status and vector of FragmentMetadata
+   *        Status Ok on success, else error
+   *        Vector of FragmentMetadata is the fragment metadata to be retrieved.
    */
-  Status load_fragment_metadata(
-      OpenArray* open_array,
+  std::tuple<
+      Status,
+      std::optional<std::vector<tdb_shared_ptr<FragmentMetadata>>>>
+  load_fragment_metadata(
+      MemoryTracker* memory_tracker,
+      ArraySchema* array_schema_latest,
+      const std::unordered_map<std::string, tdb_shared_ptr<ArraySchema>>&
+          array_schemas_all,
       const EncryptionKey& encryption_key,
       const std::vector<TimestampedURI>& fragments_to_load,
       Buffer* meta_buff,
-      const std::unordered_map<std::string, uint64_t>& offsets,
-      std::vector<tdb_shared_ptr<FragmentMetadata>>* fragment_metadata);
+      const std::unordered_map<std::string, uint64_t>& offsets);
 
   /**
    * Loads the latest consolidated fragment metadata from storage.
@@ -1264,21 +1197,6 @@ class StorageManager {
       std::vector<TimestampedURI>* sorted_uris,
       uint64_t timestamp_start,
       uint64_t timestamp_end) const;
-
-  /**
-   * It computes the URIs `to_vacuum` from the input `uris`, considering
-   * only the URIs whose first timestamp is greater than or equal to
-   * `timestamp_start` and second timestamp is smaller than or equal to
-   * `timestamp_end`. The function also retrieves the `vac_uris` (files with
-   * `.vac` suffix) that were used to compute `to_vacuum`.
-   */
-  Status get_uris_to_vacuum(
-      const std::vector<URI>& uris,
-      uint64_t timestamp_start,
-      uint64_t timestamp_end,
-      std::vector<URI>* to_vacuum,
-      std::vector<URI>* vac_uris,
-      bool allow_partial = true) const;
 
   /** Block until there are zero in-progress queries. */
   void wait_for_zero_in_progress();

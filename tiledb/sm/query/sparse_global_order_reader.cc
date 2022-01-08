@@ -32,6 +32,7 @@
 
 #include "tiledb/sm/query/sparse_global_order_reader.h"
 #include "tiledb/common/logger.h"
+#include "tiledb/common/memory_tracker.h"
 #include "tiledb/sm/array/array.h"
 #include "tiledb/sm/array_schema/array_schema.h"
 #include "tiledb/sm/array_schema/dimension.h"
@@ -45,7 +46,6 @@
 #include "tiledb/sm/query/query_macros.h"
 #include "tiledb/sm/query/result_tile.h"
 #include "tiledb/sm/stats/global_stats.h"
-#include "tiledb/sm/storage_manager/open_array_memory_tracker.h"
 #include "tiledb/sm/storage_manager/storage_manager.h"
 #include "tiledb/sm/subarray/subarray.h"
 
@@ -80,8 +80,7 @@ SparseGlobalOrderReader::SparseGlobalOrderReader(
           subarray,
           layout,
           condition) {
-  array_memory_tracker_ =
-      storage_manager_->array_memory_tracker(array->array_uri());
+  array_memory_tracker_ = array->memory_tracker();
 }
 
 /* ****************************** */

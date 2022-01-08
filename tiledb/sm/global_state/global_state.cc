@@ -114,21 +114,6 @@ std::set<StorageManager*> GlobalState::storage_managers() {
   return storage_managers_;
 }
 
-OpenArrayMemoryTracker* GlobalState::array_memory_tracker(
-    const URI& array_uri, StorageManager* caller) {
-  std::unique_lock<std::mutex> lck(storage_managers_mtx_);
-  for (auto& storage_manager : storage_managers_) {
-    if (storage_manager == caller)
-      continue;
-
-    auto tracker = storage_manager->array_memory_tracker(array_uri, false);
-    if (tracker != nullptr)
-      return tracker;
-  }
-
-  return nullptr;
-}
-
 const std::string& GlobalState::cert_file() {
   return cert_file_;
 }

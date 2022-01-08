@@ -394,6 +394,7 @@ TEST_CASE("C++ API: Test MBR fragment info", "[cppapi][fragment_info][mbr]") {
     fragment_info.get_mbr(1, 1, "d1", &mbr[0]);
     CHECK(mbr == std::vector<uint64_t>{7, 8});
   }
+
   // Clean up
   remove_dir(array_name, ctx.ptr().get(), vfs.ptr().get());
 }

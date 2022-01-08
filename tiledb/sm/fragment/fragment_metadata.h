@@ -52,7 +52,7 @@ namespace sm {
 class ArraySchema;
 class Buffer;
 class EncryptionKey;
-class OpenArrayMemoryTracker;
+class MemoryTracker;
 class StorageManager;
 
 /** Stores the metadata structures of a fragment. */
@@ -71,6 +71,8 @@ class FragmentMetadata {
    * Constructor.
    *
    * @param storage_manager A storage manager instance.
+   * @param memory_tracker The memory tracker of the array this fragment
+   *     metadata corresponds to.
    * @param array_schema The schema of the array the fragment belongs to.
    * @param fragment_uri The fragment URI.
    * @param timestamp_range The timestamp range of the fragment.
@@ -80,6 +82,7 @@ class FragmentMetadata {
    */
   FragmentMetadata(
       StorageManager* storage_manager,
+      MemoryTracker* memory_tracker,
       const ArraySchema* array_schema,
       const URI& fragment_uri,
       const std::pair<uint64_t, uint64_t>& timestamp_range,
@@ -102,6 +105,12 @@ class FragmentMetadata {
 
   /** Returns the number of cells in the tile at the input position. */
   uint64_t cell_num(uint64_t tile_pos) const;
+
+  /**
+   * Returns the dimensions types from the array schema asssociated
+   * with this fragment metadata.
+   */
+  std::vector<Datatype> dim_types() const;
 
   /**
    * Computes an upper bound on the buffer sizes needed when reading a subarray
@@ -568,6 +577,11 @@ class FragmentMetadata {
 
   /** The storage manager. */
   StorageManager* storage_manager_;
+
+  /**
+   * The memory tracker of the array this fragment metadata corresponds to.
+   */
+  MemoryTracker* memory_tracker_;
 
   /** The array schema */
   const ArraySchema* array_schema_;

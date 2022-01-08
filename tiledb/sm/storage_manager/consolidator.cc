@@ -201,12 +201,19 @@ Status Consolidator::consolidate_fragments(
       QueryType::WRITE, encryption_type, encryption_key, key_length));
 
   // Get fragment info
-  FragmentInfo fragment_info;
-  auto st = storage_manager_->get_fragment_info(
-      array_for_reads,
+  // For dense arrays, we need to pass the last parameter to the
+  // `load` function to indicate that all fragment metadata
+  // must be fetched (even before `config_.timestamp_start_`),
+  // to compute the anterior ND range that can help determine
+  // which dense fragments are consolidatable.
+  FragmentInfo fragment_info(URI(array_name), storage_manager_);
+  auto st = fragment_info.load(
       config_.timestamp_start_,
       config_.timestamp_end_,
-      &fragment_info);
+      encryption_type,
+      encryption_key,
+      key_length,
+      array_for_reads.array_schema_latest()->dense());
   if (!st.ok()) {
     array_for_reads.close();
     array_for_writes.close();
@@ -251,18 +258,15 @@ Status Consolidator::consolidate_fragments(
       return st;
     }
 
-    // Get fragment info of the consolidated fragment
-    SingleFragmentInfo new_fragment_info;
-    st = storage_manager_->get_fragment_info(
-        array_for_reads, new_fragment_uri, &new_fragment_info);
+    // Load info of the consolidated fragment and add it
+    // to the fragment info, replacing the fragments that it
+    // consolidated.
+    st = fragment_info.load_and_replace(new_fragment_uri, to_consolidate);
     if (!st.ok()) {
       array_for_reads.close();
       array_for_writes.close();
       return st;
     }
-
-    // Update fragment info
-    update_fragment_info(to_consolidate, new_fragment_info, &fragment_info);
 
     // Advance number of steps
     ++step;
@@ -289,7 +293,7 @@ bool Consolidator::are_consolidatable(
     return false;
 
   // Check overlap of union with earlier fragments
-  const auto& fragments = fragment_info.fragments();
+  const auto& fragments = fragment_info.single_fragment_info_vec();
   for (size_t i = 0; i < start; ++i) {
     if (domain->overlap(
             union_non_empty_domains, fragments[i].non_empty_domain()))
@@ -613,7 +617,7 @@ Status Consolidator::compute_next_to_consolidate(
 
   // Preparation
   auto sparse = !array_schema->dense();
-  const auto& fragments = fragment_info.fragments();
+  const auto& fragments = fragment_info.single_fragment_info_vec();
   auto domain = array_schema->domain();
   to_consolidate->clear();
   auto min = config_.min_frags_;
@@ -818,40 +822,8 @@ Status Consolidator::set_query_buffers(
   return Status::Ok();
 }
 
-void Consolidator::update_fragment_info(
-    const std::vector<TimestampedURI>& to_consolidate,
-    const SingleFragmentInfo& new_fragment_info,
-    FragmentInfo* fragment_info) const {
-  auto to_consolidate_it = to_consolidate.begin();
-  auto fragment_it = fragment_info->fragments().begin();
-  FragmentInfo updated_fragment_info;
-  bool new_fragment_added = false;
-
-  while (fragment_it != fragment_info->fragments().end()) {
-    // No match - add the fragment info and advance `fragment_it`
-    if (to_consolidate_it == to_consolidate.end() ||
-        fragment_it->uri().to_string() != to_consolidate_it->uri_.to_string()) {
-      updated_fragment_info.append(*fragment_it);
-      ++fragment_it;
-    } else {  // Match - add new fragment only once and advance both iterators
-      if (!new_fragment_added) {
-        updated_fragment_info.append(new_fragment_info);
-        new_fragment_added = true;
-      }
-      ++fragment_it;
-      ++to_consolidate_it;
-    }
-  }
-
-  assert(
-      updated_fragment_info.fragment_num() ==
-      fragment_info->fragment_num() - to_consolidate.size() + 1);
-
-  *fragment_info = std::move(updated_fragment_info);
-}
-
 Status Consolidator::set_config(const Config* config) {
-  // Set the config
+  // Set the consolidation config for ease of use
   Config merged_config = storage_manager_->config();
   if (config)
     merged_config.inherit(*config);

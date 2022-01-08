@@ -77,14 +77,14 @@ class FragmentInfo {
   /*                API                */
   /* ********************************* */
 
-  /** Appends the info about a single fragment at the end of `fragments_`. */
-  void append(const SingleFragmentInfo& fragment);
+  /**
+   * Sets a config to the fragment info. Useful for retrieving timestamps
+   * and encryption key.
+   */
+  Status set_config(const Config& config);
 
   /** Expand the non empty domain before start with a new range */
   void expand_anterior_ndrange(const Domain* domain, const NDRange& range);
-
-  /** Clears the object. */
-  void clear();
 
   /** Dumps the fragment info in ASCII format in the selected output. */
   void dump(FILE* out) const;
@@ -231,25 +231,78 @@ class FragmentInfo {
   Status has_consolidated_metadata(uint32_t fid, int32_t* has) const;
 
   /**
-   * Loads the fragment info from an array. The encryption key is used
-   * only if the array is encrypted.
+   * Loads the fragment info from an array.
+   *
+   * @param set_timestamp_range_from_config If `true` the timestamps
+   *     will be set by reading them from `config_`.
+   * @param set_key_from_cfg If `true`, the encryption key and type
+   *     will be set by reading them from `config_`.
+   * @param compute_anterior If `true`, all fragments
+   *     will be loaded and `anterior_ndrange` will be computed for
+   *     those that have a start timestamp smaller than `timestamp_start_`.
+   * @return Status
    */
   Status load(
-      const Config& config,
+      bool set_timestamp_range_from_config,
+      bool set_key_from_config,
+      bool compute_anterior);
+
+  /**
+   * Loads the fragment info from an array using the input key.
+   *
+   * @param encryption_type The encryption type.
+   * @param encryption_key The encryption key.
+   * @param key_length The length of `encryption_key`.
+   * @return Status
+   */
+  Status load(
       EncryptionType encryption_type,
       const void* encryption_key,
       uint32_t key_length);
 
-  /** Set the dimension names and types to the object. */
-  void set_dim_info(
-      const std::vector<std::string>& dim_names,
-      const std::vector<Datatype>& dim_types_);
+  /**
+   * Loads the fragment info from an array using the input key
+   * and timestamps.
+   *
+   * @param timestamp_start This function will load fragments with
+   *      whose timestamps are within [timestamp_start, timestamp_end].
+   * @param timestamp_end This function will load fragments with
+   *      whose timestamps are within [timestamp_start, timestamp_end].
+   * @param encryption_type The encryption type.
+   * @param encryption_key The encryption key.
+   * @param key_length The length of `encryption_key`.
+   * @param compute_anterior If `true`, all fragments
+   *     will be loaded and `anterior_ndrange` will be computed for
+   *     those that have a start timestamp smaller than `timestamp_start_`.
+   * @return Status
+   */
+  Status load(
+      uint64_t timestamp_start,
+      uint64_t timestamp_end,
+      EncryptionType encryption_type,
+      const void* encryption_key,
+      uint32_t key_length,
+      bool compute_anterior);
 
-  /** Sets the URIs of the fragments to vacuum. */
-  void set_to_vacuum(const std::vector<URI>& to_vacuum);
+  /**
+   * It replaces a sequence of SingleFragmentInfo elements in
+   * `single_fragment_info_vec_` which are determined by `to_replace`.
+   * It then loads a SingleFragmentInfo object for the `new_fragment_uri`
+   * fragment, and adds it in `single_fragment_info_vec_` at the postion
+   * of the first element of the corresponding `to_replace` object.
+   *
+   * @param new_fragment_uri The new fragment to be loaded as a
+   *     SingleFragmentInfo object.
+   * @param to_replace The SingleFragmentInfo elements to be replaced
+   *     in `single_fragment_info_vec_` by the new SingleFragmentInfo object.
+   * @return Status
+   */
+  Status load_and_replace(
+      const URI& new_fragment_uri,
+      const std::vector<TimestampedURI>& to_replace);
 
   /** Returns the vector with the info about individual fragments. */
-  const std::vector<SingleFragmentInfo>& fragments() const;
+  const std::vector<SingleFragmentInfo>& single_fragment_info_vec() const;
 
   /** Returns the non empty domain of the fragments before start time. */
   const NDRange& anterior_ndrange() const;
@@ -268,20 +321,30 @@ class FragmentInfo {
   /** The URI of the array the fragments belong to. */
   URI array_uri_;
 
+  /** The config. */
+  Config config_;
+
+  /** The encryption key used if the array is encrypted. */
+  EncryptionKey enc_key_;
+
+  /**
+   * All the array schemas relevant to the loaded fragment metadata
+   * keyed by their file name. These schemas are also stored inside
+   * fragment metadata objects in `fragment_metadata_`, but as pointers,
+   * not shared pointers. Therefore, we need to store the shared pointers
+   * in a separate place here.
+   *
+   * TODO: when we transition to using a shared pointer for ArraySchema
+   * objects everywhere, we will not need to store this here.
+   */
+  std::unordered_map<std::string, tdb_shared_ptr<ArraySchema>>
+      array_schemas_all_;
+
   /** Information about fragments in the array. */
-  std::vector<SingleFragmentInfo> fragments_;
-
-  /** The dimension names of the array. */
-  std::vector<std::string> dim_names_;
-
-  /** The dimension types of the array. */
-  std::vector<Datatype> dim_types_;
+  std::vector<SingleFragmentInfo> single_fragment_info_vec_;
 
   /** The storage manager. */
   StorageManager* storage_manager_;
-
-  /** The pointer to the opened array that the fragments belong to. */
-  Array* array_;
 
   /** The URIs of the fragments to vacuum. */
   std::vector<URI> to_vacuum_;
@@ -289,24 +352,49 @@ class FragmentInfo {
   /** The number of fragments with unconsolidated metadata. */
   uint32_t unconsolidated_metadata_num_;
 
-  /** Non empty domain before the start time specified */
+  /** Non empty domain before the start time specified. */
   NDRange anterior_ndrange_;
+
+  /** Timestamp start used in load. */
+  uint64_t timestamp_start_;
+
+  /** Timestamp end used in load. */
+  uint64_t timestamp_end_;
 
   /* ********************************* */
   /*          PRIVATE METHODS          */
   /* ********************************* */
 
-  /** Returns a copy of this object. */
-  FragmentInfo clone() const;
+  /** Sets the encryption key (if present) from config_. */
+  Status set_enc_key_from_config();
 
   /**
-   * Helper function to open the array before accessing the rtree
+   * Sets the timestamp range from config_. If not present, the timestamp
+   * range is set to [0, now].
    */
-  Status array_open(
-      const Config& config,
-      EncryptionType encryption_type,
-      const void* encryption_key,
-      uint32_t key_length) const;
+  Status set_timestamp_range_from_config();
+
+  /**
+   * Loads the fragment metadata of the input URI and returns a
+   * SingleFragmentInfo object that wraps it.
+   *
+   * @param fragment_uri The URI of the fragment whose metadata
+   *     will be loaded into the returned `SingleFragmentInfo` object.
+   * @return Status, a `SingleFragmentInfo` object
+   */
+  std::tuple<Status, std::optional<SingleFragmentInfo>> load(
+      const URI& fragment_uri) const;
+
+  /**
+   * Replaces the SingleFragmentInfo objects determined by `to_replace`
+   * with `new_single_fragment_info`.
+   */
+  Status replace(
+      const SingleFragmentInfo& new_single_fragment_info,
+      const std::vector<TimestampedURI>& to_replace);
+
+  /** Returns a copy of this object. */
+  FragmentInfo clone() const;
 
   /**
    * Swaps the contents (all field values) of this object with the

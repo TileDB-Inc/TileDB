@@ -1007,7 +1007,13 @@ Status Writer::create_fragment(
   }
   auto timestamp_range = std::pair<uint64_t, uint64_t>(timestamp, timestamp);
   frag_meta = tdb::make_shared<FragmentMetadata>(
-      HERE(), storage_manager_, array_schema_, uri, timestamp_range, dense);
+      HERE(),
+      storage_manager_,
+      nullptr,
+      array_schema_,
+      uri,
+      timestamp_range,
+      dense);
 
   RETURN_NOT_OK((frag_meta)->init(subarray_.ndrange(0)));
   return storage_manager_->create_dir(uri);

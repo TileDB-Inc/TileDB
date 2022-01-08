@@ -5186,7 +5186,7 @@ TILEDB_EXPORT int32_t tiledb_subarray_alloc(
     tiledb_subarray_t** subarray);
 
 /**
- * Set the query config.
+ * Set the subarray config.
  *
  * Setting the configuration with this function overrides the following
  * Subarray-level parameters only:
@@ -7586,6 +7586,30 @@ TILEDB_EXPORT int32_t tiledb_fragment_info_alloc(
  */
 TILEDB_EXPORT void tiledb_fragment_info_free(
     tiledb_fragment_info_t** fragment_info);
+
+/**
+ * Set the fragment info config. Useful for passing timestamp ranges and
+ * encryption key via the config before loading the fragment info.
+ *
+ *  * **Example:**
+ *
+ * @code{.c}
+ * tiledb_fragment_info* fragment_info;
+ * tiledb_fragment_info_alloc(ctx, "array_uri", &fragment_info);
+ *
+ * tiledb_config_t* config;
+ * tiledb_error_t* error = NULL;
+ * tiledb_config_alloc(&config, &error);
+ * tiledb_config_set(config, "sm.tile_cache_size", "1000000", &error);
+ *
+ * tiledb_fragment_info_load(ctx, fragment_info);
+ * @endcode
+
+ */
+TILEDB_EXPORT int32_t tiledb_fragment_info_set_config(
+    tiledb_ctx_t* ctx,
+    tiledb_fragment_info_t* fragment_info,
+    tiledb_config_t* config);
 
 /**
  * Loads the fragment info.

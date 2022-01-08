@@ -356,7 +356,7 @@ class Array {
 
   /** Destructor; calls `close()`. */
   ~Array() {
-    if (owns_c_ptr_) {
+    if (owns_c_ptr_ && is_open()) {
       close();
     }
   }

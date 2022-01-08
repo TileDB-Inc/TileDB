@@ -226,6 +226,7 @@ TEST_CASE_METHOD(
       tdb::make_shared<FragmentMetadata>(
           HERE(),
           nullptr,
+          nullptr,
           array_->array_->array_schema_latest(),
           URI(),
           std::make_pair<uint64_t, uint64_t>(0, 0),
@@ -298,6 +299,7 @@ TEST_CASE_METHOD(
   tdb_shared_ptr<FragmentMetadata> fragment =
       tdb::make_shared<FragmentMetadata>(
           HERE(),
+          nullptr,
           nullptr,
           array_->array_->array_schema_latest(),
           URI(),
@@ -375,6 +377,7 @@ TEST_CASE_METHOD(
     tdb_shared_ptr<FragmentMetadata> fragment =
         tdb::make_shared<FragmentMetadata>(
             HERE(),
+            nullptr,
             nullptr,
             array_->array_->array_schema_latest(),
             URI(),
@@ -457,6 +460,7 @@ TEST_CASE_METHOD(
     tdb_shared_ptr<FragmentMetadata> fragment =
         tdb::make_shared<FragmentMetadata>(
             HERE(),
+            nullptr,
             nullptr,
             array_->array_->array_schema_latest(),
             URI(),
@@ -695,6 +699,7 @@ TEST_CASE_METHOD(
       tdb::make_shared<FragmentMetadata>(
           HERE(),
           nullptr,
+          nullptr,
           array_->array_->array_schema_latest(),
           URI(),
           std::make_pair<uint64_t, uint64_t>(0, 0),
@@ -879,6 +884,7 @@ TEST_CASE_METHOD(
   tdb_shared_ptr<FragmentMetadata> fragment =
       tdb::make_shared<FragmentMetadata>(
           HERE(),
+          nullptr,
           nullptr,
           array_->array_->array_schema_latest(),
           URI(),
@@ -1077,6 +1083,7 @@ TEST_CASE_METHOD(
   tdb_shared_ptr<FragmentMetadata> fragment =
       tdb::make_shared<FragmentMetadata>(
           HERE(),
+          nullptr,
           nullptr,
           array_->array_->array_schema_latest(),
           URI(),
@@ -1322,6 +1329,7 @@ TEST_CASE_METHOD(
     tdb_shared_ptr<FragmentMetadata> fragment =
         tdb::make_shared<FragmentMetadata>(
             HERE(),
+            nullptr,
             nullptr,
             array_->array_->array_schema_latest(),
             URI(),
