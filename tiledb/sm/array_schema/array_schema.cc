@@ -45,7 +45,8 @@
 #include "tiledb/sm/enums/layout.h"
 #include "tiledb/sm/filter/compression_filter.h"
 #include "tiledb/sm/misc/hilbert.h"
-#include "tiledb/sm/misc/utils.h"
+#include "tiledb/sm/misc/time.h"
+#include "tiledb/sm/misc/utils.h"  // get_timestamp_range
 
 #include <cassert>
 #include <iostream>
@@ -867,6 +868,22 @@ Status ArraySchema::generate_uri() {
 
   auto timestamp = utils::time::timestamp_now_ms();
   timestamp_range_ = std::make_pair(timestamp, timestamp);
+  std::stringstream ss;
+  ss << "__" << timestamp_range_.first << "_" << timestamp_range_.second << "_"
+     << uuid;
+  name_ = ss.str();
+  uri_ = array_uri_.join_path(constants::array_schema_folder_name)
+             .join_path(name_);
+
+  return Status::Ok();
+}
+
+Status ArraySchema::generate_uri(
+    const std::pair<uint64_t, uint64_t>& timestamp_range) {
+  std::string uuid;
+  RETURN_NOT_OK(uuid::generate_uuid(&uuid, false));
+
+  timestamp_range_ = timestamp_range;
   std::stringstream ss;
   ss << "__" << timestamp_range_.first << "_" << timestamp_range_.second << "_"
      << uuid;

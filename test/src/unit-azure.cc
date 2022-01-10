@@ -37,7 +37,7 @@
 #include "tiledb/sm/config/config.h"
 #include "tiledb/sm/filesystem/azure.h"
 #include "tiledb/sm/global_state/unit_test_config.h"
-#include "tiledb/sm/misc/utils.h"
+#include "tiledb/sm/misc/time.h"
 
 #include <fstream>
 #include <thread>

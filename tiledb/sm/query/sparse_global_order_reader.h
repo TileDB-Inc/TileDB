@@ -90,12 +90,11 @@ class SparseGlobalOrderReader : public SparseIndexReaderBase,
     return Status::Ok();
   }
 
-  /**
-   * Returns `true` if the query was incomplete, i.e., if all subarray
-   * partitions in the read state have not been processed or there
-   * was some buffer overflow.
-   */
+  /** Returns `true` if the query was incomplete. */
   bool incomplete() const;
+
+  /** Returns the status details reason. */
+  QueryStatusDetailsReason status_incomplete_reason() const;
 
   /** Initializes the reader. */
   Status init();

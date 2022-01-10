@@ -1140,13 +1140,8 @@ Status query_to_capnp(Query& query, capnp::Query::Builder* query_builder) {
         schema->allows_dups()) {
       auto builder = query_builder->initReaderIndex();
 
-      bool found = false;
-      bool non_overlapping_ranges = false;
-      RETURN_NOT_OK(query.config()->get<bool>(
-          "sm.query.sparse_unordered_with_dups.non_overlapping_ranges",
-          &non_overlapping_ranges,
-          &found));
-      assert(found);
+      auto&& [st, non_overlapping_ranges]{query.non_overlapping_ranges()};
+      RETURN_NOT_OK(st);
 
       if (non_overlapping_ranges) {
         auto reader = (SparseUnorderedWithDupsReader<uint8_t>*)query.strategy();
@@ -1739,13 +1734,8 @@ Status query_from_capnp(
       query->clear_strategy();
       RETURN_NOT_OK(query->set_layout_unsafe(layout));
 
-      bool found = false;
-      bool non_overlapping_ranges = false;
-      RETURN_NOT_OK(query->config()->get<bool>(
-          "sm.query.sparse_unordered_with_dups.non_overlapping_ranges",
-          &non_overlapping_ranges,
-          &found));
-      assert(found);
+      auto&& [st, non_overlapping_ranges]{query->non_overlapping_ranges()};
+      RETURN_NOT_OK(st);
 
       auto reader_reader = query_reader.getReaderIndex();
 

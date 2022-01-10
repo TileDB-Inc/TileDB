@@ -82,10 +82,12 @@ const T& identity(const T& t) {
 template <typename T, typename Handler = TypeHandler<T>>
 inline void type_check(tiledb_datatype_t type, unsigned num = 0) {
   if (tiledb_string_type(type)) {
-    if (Handler::tiledb_type != identity(TILEDB_CHAR)) {
+    if (Handler::tiledb_type != identity(TILEDB_STRING_ASCII) &&
+        Handler::tiledb_type != identity(TILEDB_CHAR)) {
       throw TypeError(
           "Static type (" + impl::type_to_str(Handler::tiledb_type) +
-          ") does not match expected container type CHAR for tiledb type (" +
+          ") does not match expected container type STRING_ASCII for tiledb "
+          "type (" +
           impl::type_to_str(type) + ")");
     }
   } else if (tiledb_datetime_type(type)) {

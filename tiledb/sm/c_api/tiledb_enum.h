@@ -218,6 +218,14 @@
     TILEDB_QUERY_STATUS_ENUM(UNINITIALIZED) = 4,
 #endif
 
+#ifdef TILEDB_QUERY_STATUS_DETAILS_ENUM
+    TILEDB_QUERY_STATUS_DETAILS_ENUM(REASON_NONE) = 0,
+    /** User buffers are too small */
+    TILEDB_QUERY_STATUS_DETAILS_ENUM(REASON_USER_BUFFER_SIZE) = 1,
+    /** Exceeded memory budget: can resubmit without resize */
+    TILEDB_QUERY_STATUS_DETAILS_ENUM(REASON_MEMORY_BUDGET) = 2,
+#endif
+
 #ifdef TILEDB_QUERY_CONDITION_OP_ENUM
     /** Less-than operator */
     TILEDB_QUERY_CONDITION_OP_ENUM(LT) = 0,

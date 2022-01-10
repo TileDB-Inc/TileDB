@@ -102,6 +102,12 @@ Status array_schema_evolution_to_capnp(
     RETURN_NOT_OK(attribute_to_capnp(attr_to_add, &attribute_builder));
   }
 
+  auto timestamp_builder =
+      array_schema_evolution_builder->initTimestampRange(2);
+  const auto& timestamp_range = array_schema_evolution->timestamp_range();
+  timestamp_builder.set(0, timestamp_range.first);
+  timestamp_builder.set(1, timestamp_range.second);
+
   return Status::Ok();
 }
 
@@ -123,6 +129,15 @@ Status array_schema_evolution_from_capnp(
     RETURN_NOT_OK(attribute_from_capnp(attr_reader, &attribute));
     const Attribute* attr_to_add = attribute.get();
     RETURN_NOT_OK((*array_schema_evolution)->add_attribute(attr_to_add));
+  }
+
+  // Set the range if we have two values
+  if (evolution_reader.hasTimestampRange() &&
+      evolution_reader.getTimestampRange().size() >= 2) {
+    const auto& timestamp_range = evolution_reader.getTimestampRange();
+    (*array_schema_evolution)
+        ->set_timestamp_range(
+            std::make_pair(timestamp_range[0], timestamp_range[1]));
   }
 
   return Status::Ok();

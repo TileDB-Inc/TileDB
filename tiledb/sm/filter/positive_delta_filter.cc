@@ -49,6 +49,11 @@ PositiveDeltaFilter::PositiveDeltaFilter()
   max_window_size_ = 1024;
 }
 
+PositiveDeltaFilter::PositiveDeltaFilter(uint32_t max_window_size)
+    : Filter(FilterType::FILTER_POSITIVE_DELTA)
+    , max_window_size_(max_window_size) {
+}
+
 void PositiveDeltaFilter::dump(FILE* out) const {
   if (out == nullptr)
     out = stdout;
@@ -390,11 +395,6 @@ PositiveDeltaFilter* PositiveDeltaFilter::clone_impl() const {
   auto clone = new PositiveDeltaFilter;
   clone->max_window_size_ = max_window_size_;
   return clone;
-}
-
-Status PositiveDeltaFilter::deserialize_impl(ConstBuffer* buff) {
-  RETURN_NOT_OK(buff->read(&max_window_size_, sizeof(uint32_t)));
-  return Status::Ok();
 }
 
 Status PositiveDeltaFilter::serialize_impl(Buffer* buff) const {

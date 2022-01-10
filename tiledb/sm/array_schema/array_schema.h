@@ -37,10 +37,10 @@
 #include <unordered_map>
 
 #include "tiledb/common/status.h"
+#include "tiledb/sm/filesystem/uri.h"
 #include "tiledb/sm/filter/filter_pipeline.h"
 #include "tiledb/sm/misc/constants.h"
 #include "tiledb/sm/misc/hilbert.h"
-#include "tiledb/sm/misc/uri.h"
 #include "tiledb/sm/misc/uuid.h"
 
 using namespace tiledb::common;
@@ -340,6 +340,9 @@ class ArraySchema {
 
   /** Generates a new array schema URI. */
   Status generate_uri();
+
+  /** Generates a new array schema URI with specified timestamp range. */
+  Status generate_uri(const std::pair<uint64_t, uint64_t>& timestamp_range);
 
  private:
   /* ********************************* */

@@ -76,6 +76,12 @@ class PositiveDeltaFilter : public Filter {
   /** Constructor. */
   PositiveDeltaFilter();
 
+  /** Constructor.
+   *
+   * @param max_window_size
+   */
+  PositiveDeltaFilter(uint32_t max_window_size);
+
   /** Return the max window size used by the filter. */
   uint32_t max_window_size() const;
 
@@ -127,9 +133,6 @@ class PositiveDeltaFilter : public Filter {
       ConstBuffer* input,
       FilterBuffer* output,
       FilterBuffer* output_metadata) const;
-
-  /** Deserializes this filter's metadata from the given buffer. */
-  Status deserialize_impl(ConstBuffer* buff) override;
 
   /** Gets an option from this filter. */
   Status get_option_impl(FilterOption option, void* value) const override;

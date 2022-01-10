@@ -46,8 +46,10 @@
 #include "tiledb/sm/enums/query_type.h"
 #include "tiledb/sm/fragment/fragment_metadata.h"
 #include "tiledb/sm/misc/hash.h"
+#include "tiledb/sm/misc/math.h"
 #include "tiledb/sm/misc/parallel_functions.h"
 #include "tiledb/sm/misc/resource_pool.h"
+#include "tiledb/sm/misc/utils.h"
 #include "tiledb/sm/query/query.h"
 #include "tiledb/sm/rest/rest_client.h"
 #include "tiledb/sm/rtree/rtree.h"
@@ -2022,6 +2024,25 @@ Status Subarray::sort_ranges(ThreadPool* const compute_tp) {
   return Status::Ok();
 }
 
+std::tuple<Status, bool> Subarray::non_overlapping_ranges(
+    ThreadPool* const compute_tp) {
+  RETURN_NOT_OK_TUPLE(sort_ranges(compute_tp), false);
+
+  std::atomic<bool> non_overlapping_ranges = true;
+  auto st = parallel_for(
+      compute_tp,
+      0,
+      array_->array_schema_latest()->dim_num(),
+      [&](uint64_t dim_idx) {
+        auto&& [status, nor]{non_overlapping_ranges_for_dim(dim_idx)};
+        non_overlapping_ranges = nor;
+        return status;
+      });
+  RETURN_NOT_OK_TUPLE(st, false);
+
+  return {Status::Ok(), non_overlapping_ranges};
+}
+
 /* ****************************** */
 /*          PRIVATE METHODS       */
 /* ****************************** */
@@ -3217,6 +3238,89 @@ Status Subarray::sort_ranges_for_dim(
       return sort_ranges_for_dim<int64_t>(compute_tp, dim_idx);
   }
   return Status::Ok();
+}
+
+template <typename T>
+std::tuple<Status, bool> Subarray::non_overlapping_ranges_for_dim(
+    const uint64_t dim_idx) {
+  const auto& ranges = ranges_[dim_idx];
+  const Dimension* const dim =
+      array_->array_schema_latest()->dimension(dim_idx);
+
+  if (ranges.size() > 1) {
+    for (uint64_t r = 0; r < ranges.size() - 1; r++) {
+      if (dim->overlap<T>(ranges[r], ranges[r + 1]))
+        return {Status::Ok(), false};
+    }
+  }
+
+  return {Status::Ok(), true};
+}
+
+std::tuple<Status, bool> Subarray::non_overlapping_ranges_for_dim(
+    const uint64_t dim_idx) {
+  const Datatype& datatype =
+      array_->array_schema_latest()->dimension(dim_idx)->type();
+  switch (datatype) {
+    case Datatype::INT8:
+      return non_overlapping_ranges_for_dim<int8_t>(dim_idx);
+    case Datatype::UINT8:
+      return non_overlapping_ranges_for_dim<uint8_t>(dim_idx);
+    case Datatype::INT16:
+      return non_overlapping_ranges_for_dim<int16_t>(dim_idx);
+    case Datatype::UINT16:
+      return non_overlapping_ranges_for_dim<uint16_t>(dim_idx);
+    case Datatype::INT32:
+      return non_overlapping_ranges_for_dim<int32_t>(dim_idx);
+    case Datatype::UINT32:
+      return non_overlapping_ranges_for_dim<uint32_t>(dim_idx);
+    case Datatype::INT64:
+      return non_overlapping_ranges_for_dim<int64_t>(dim_idx);
+    case Datatype::UINT64:
+      return non_overlapping_ranges_for_dim<uint64_t>(dim_idx);
+    case Datatype::FLOAT32:
+      return non_overlapping_ranges_for_dim<float>(dim_idx);
+    case Datatype::FLOAT64:
+      return non_overlapping_ranges_for_dim<double>(dim_idx);
+    case Datatype::STRING_ASCII:
+      return non_overlapping_ranges_for_dim<char>(dim_idx);
+    case Datatype::CHAR:
+    case Datatype::STRING_UTF8:
+    case Datatype::STRING_UTF16:
+    case Datatype::STRING_UTF32:
+    case Datatype::STRING_UCS2:
+    case Datatype::STRING_UCS4:
+    case Datatype::ANY:
+      return {
+          LOG_STATUS(Status_SubarrayError(
+              "Invalid datatype " + datatype_str(datatype) + " for sorting")),
+          false};
+    case Datatype::DATETIME_YEAR:
+    case Datatype::DATETIME_MONTH:
+    case Datatype::DATETIME_WEEK:
+    case Datatype::DATETIME_DAY:
+    case Datatype::DATETIME_HR:
+    case Datatype::DATETIME_MIN:
+    case Datatype::DATETIME_SEC:
+    case Datatype::DATETIME_MS:
+    case Datatype::DATETIME_US:
+    case Datatype::DATETIME_NS:
+    case Datatype::DATETIME_PS:
+    case Datatype::DATETIME_FS:
+    case Datatype::DATETIME_AS:
+    case Datatype::TIME_HR:
+    case Datatype::TIME_MIN:
+    case Datatype::TIME_SEC:
+    case Datatype::TIME_MS:
+    case Datatype::TIME_US:
+    case Datatype::TIME_NS:
+    case Datatype::TIME_PS:
+    case Datatype::TIME_FS:
+    case Datatype::TIME_AS:
+      return non_overlapping_ranges_for_dim<int64_t>(dim_idx);
+  }
+  return {Status::Ok(), false};
+  ;
 }
 
 // Explicit instantiations

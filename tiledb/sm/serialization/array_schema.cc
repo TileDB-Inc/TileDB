@@ -490,6 +490,12 @@ Status array_schema_to_capnp(
         attribute_to_capnp(array_schema->attribute(i), &attribute_builder));
   }
 
+  // Set timestamp range
+  auto timestamp_builder = array_schema_builder->initTimestampRange(2);
+  const auto& timestamp_range = array_schema->timestamp_range();
+  timestamp_builder.set(0, timestamp_range.first);
+  timestamp_builder.set(1, timestamp_range.second);
+
   return Status::Ok();
 }
 
@@ -558,6 +564,15 @@ Status array_schema_from_capnp(
     tdb_unique_ptr<Attribute> attribute;
     RETURN_NOT_OK(attribute_from_capnp(attr_reader, &attribute));
     RETURN_NOT_OK((*array_schema)->add_attribute(attribute.get(), false));
+  }
+
+  // Set the range if we have two values
+  if (schema_reader.hasTimestampRange() &&
+      schema_reader.getTimestampRange().size() >= 2) {
+    const auto& timestamp_range = schema_reader.getTimestampRange();
+    (*array_schema)
+        ->set_timestamp_range(
+            std::make_pair(timestamp_range[0], timestamp_range[1]));
   }
 
   // Initialize
