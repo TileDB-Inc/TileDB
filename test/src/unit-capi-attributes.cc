@@ -264,8 +264,8 @@ TEST_CASE_METHOD(
 
 TEST_CASE_METHOD(
     Attributesfx,
-    "C API: Test attributes with tiledb_byte datatype",
-    "[capi][attributes][tiledb_byte]") {
+    "C API: Test attributes with tiledb_blob datatype",
+    "[capi][attributes][tiledb_blob]") {
   for (const auto& fs : fs_vec_) {
     std::string temp_dir = fs->temp_dir();
     std::string array_name = temp_dir;
