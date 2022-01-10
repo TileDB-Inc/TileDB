@@ -125,11 +125,18 @@ class ZStd {
 
   /** Returns the default compression level. */
   static int default_level() {
-    return 3;
+    return default_level_;
   }
 
   /** Returns the compression overhead for the given input. */
   static uint64_t overhead(uint64_t nbytes);
+
+ private:
+  /** The compression level lower limit for legal values. */
+  static const int level_limit_ = -7;
+
+  /** The default filter compression level. */
+  static constexpr int default_level_ = 3;
 };
 
 }  // namespace sm

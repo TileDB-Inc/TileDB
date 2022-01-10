@@ -79,11 +79,18 @@ class BZip {
 
   /** Returns the default compression level. */
   static int default_level() {
-    return 1;
+    return default_level_;
   }
 
   /** Returns the compression overhead for the given input. */
   static uint64_t overhead(uint64_t nbytes);
+
+ private:
+  /** The compression level lower limit for legal values. */
+  static const int level_limit_ = 1;
+
+  /** The default filter compression level. */
+  static constexpr int default_level_ = 1;
 };
 
 };  // namespace sm

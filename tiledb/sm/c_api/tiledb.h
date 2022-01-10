@@ -153,15 +153,6 @@ typedef enum {
 #undef TILEDB_FILTER_OPTION_ENUM
 } tiledb_filter_option_t;
 
-/** Filter compressor level. */
-typedef enum {
-/** Helper macro for defining compressor level enums. */
-#define TILEDB_FILTER_COMPRESSOR_LEVEL_ENUM(id) \
-  TILEDB_FILTER_COMPRESSOR_LEVEL_##id
-#include "tiledb_enum.h"
-#undef TILEDB_FILTER_COMPRESSOR_LEVEL_ENUM
-} tiledb_filter_compressor_level_t;
-
 /** Encryption type. */
 typedef enum {
 /** Helper macro for defining encryption enums. */
@@ -449,6 +440,8 @@ tiledb_vfs_mode_from_str(const char* str, tiledb_vfs_mode_t* vfs_mode);
 #define TILEDB_ERR (-1)
 /** Out of memory */
 #define TILEDB_OOM (-2)
+/** Default compression level */
+#define TILEDB_COMPRESSION_FILTER_DEFAULT_LEVEL (30000)
 /**@}*/
 
 /**

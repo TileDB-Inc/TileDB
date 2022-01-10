@@ -89,8 +89,15 @@ class GZip {
 
   /** Returns the default compression level. */
   static int default_level() {
-    return -1;
+    return default_level_;
   }
+
+ private:
+  /** The compression level lower limit for legal values. */
+  static const int level_limit_ = 0;
+
+  /** The default filter compression level. */
+  static constexpr int default_level_ = -1;
 };
 
 }  // namespace sm

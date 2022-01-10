@@ -57,9 +57,9 @@ Status BZip::compress(
       &out_size,
       (char*)input_buffer->data(),
       in_size,
-      level < 1 ? BZip::default_level() : level,  // block size 100k
-      0,                                          // verbosity
-      0);                                         // work factor
+      level < level_limit_ ? BZip::default_level() : level,  // block size 100k
+      0,                                                     // verbosity
+      0);                                                    // work factor
 
   // Handle error
   if (rc != BZ_OK) {
