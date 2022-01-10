@@ -6,7 +6,8 @@ on:
       - dev
       - release-*
       #- refs/tags/*
-      - dlh/ch10040-azr-osx-lnxto-ga
+      - refs/heads/*
+      #- dlh/ch10040-azr-osx-lnxto-ga
   pull_request:
     branches:
       - '*'  # must quote since "*" is a YAML reserved character; we want a string
