@@ -38,6 +38,8 @@
 
 namespace tiledb::sm {
 
+class EncryptionKey;
+
 class FilterCreate {
  public:
   /**
@@ -52,10 +54,20 @@ class FilterCreate {
    * Deserializes a new Filter instance from the data in the given buffer.
    *
    * @param buff The buffer to deserialize from.
-   * @param filter New filter instance (caller's responsibility to free).
-   * @return Status
+   * @param encryption_key.
+   * @return Status and Filter
    */
-  static Status deserialize(ConstBuffer* buff, Filter** filter);
+  static std::tuple<Status, optional<std::shared_ptr<Filter>>> deserialize(
+      ConstBuffer* buff, const EncryptionKey& encryption_key);
+
+  /**
+   * Deserializes a new Filter instance from the data in the given buffer.
+   *
+   * @param buff The buffer to deserialize from.
+   * @return Status and Filter
+   */
+  static std::tuple<Status, optional<std::shared_ptr<Filter>>> deserialize(
+      ConstBuffer* buff);
 };
 
 }  // namespace tiledb::sm

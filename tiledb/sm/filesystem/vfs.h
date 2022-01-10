@@ -47,8 +47,8 @@
 #include "tiledb/sm/config/config.h"
 #include "tiledb/sm/filesystem/mem_filesystem.h"
 #include "tiledb/sm/misc/cancelable_tasks.h"
-#include "tiledb/sm/misc/uri.h"
 #include "tiledb/sm/stats/stats.h"
+#include "uri.h"
 
 #ifdef _WIN32
 #include "tiledb/sm/filesystem/win.h"

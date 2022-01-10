@@ -102,11 +102,6 @@ Status Filter::set_option_impl(FilterOption option, const void* value) {
   return LOG_STATUS(Status_FilterError("Filter does not support options."));
 }
 
-Status Filter::deserialize_impl(ConstBuffer* buff) {
-  (void)buff;
-  return Status::Ok();
-}
-
 Status Filter::serialize_impl(Buffer* buff) const {
   (void)buff;
   return Status::Ok();

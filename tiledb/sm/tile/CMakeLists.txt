@@ -27,7 +27,7 @@
 include(common NO_POLICY_SCOPE)
 
 #
-# `filter` object library
+# `tile` object library
 #
 add_library(tile OBJECT tile.cc)
 target_link_libraries(tile PUBLIC baseline $<TARGET_OBJECTS:baseline>)
@@ -38,6 +38,4 @@ target_link_libraries(tile PUBLIC constants $<TARGET_OBJECTS:constants>)
 #
 add_executable(compile_tile EXCLUDE_FROM_ALL)
 target_link_libraries(compile_tile PRIVATE tile)
-target_sources(compile_tile PRIVATE
-    test/compile_tile_main.cc $<TARGET_OBJECTS:tile>
-)
+target_sources(compile_tile PRIVATE test/compile_tile_main.cc)

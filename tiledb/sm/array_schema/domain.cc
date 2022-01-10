@@ -37,6 +37,7 @@
 #include "tiledb/sm/array_schema/dimension.h"
 #include "tiledb/sm/enums/datatype.h"
 #include "tiledb/sm/enums/layout.h"
+#include "tiledb/sm/misc/math.h"
 #include "tiledb/sm/misc/utils.h"
 
 #include <cassert>
@@ -328,14 +329,18 @@ std::tuple<Status, optional<std::shared_ptr<Domain>>> Domain::deserialize(
   }
 
   std::vector<std::shared_ptr<Dimension>> dimensions;
-  // Load dimensions
   uint32_t dim_num;
+  // Load dimensions
   st = buff->read(&dim_num, sizeof(uint32_t));
+  if(!st.ok()) {
+    return {st,nullopt};
+  }
   for (uint32_t i = 0; i < dim_num; ++i) {
-    std::shared_ptr<Dimension> dim =
-        tiledb::common::make_shared<Dimension>(HERE(), "", type);
-    dim->deserialize(buff, version, type);
-    dimensions.emplace_back(dim);
+    auto&& [st_dim, dim]{Dimension::deserialize(buff, version, type)};
+    if (!st_dim.ok()) {
+      return {Status_DomainError("Cannot deserialize dimension."), nullopt};
+    }
+    dimensions.emplace_back(std::move(dim.value()));
   }
 
   return {Status::Ok(),

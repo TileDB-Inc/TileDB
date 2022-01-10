@@ -41,9 +41,9 @@
 #include "tiledb/sm/config/config.h"
 #include "tiledb/sm/filesystem/s3_thread_pool_executor.h"
 #include "tiledb/sm/misc/constants.h"
-#include "tiledb/sm/misc/uri.h"
 #include "tiledb/sm/stats/global_stats.h"
 #include "tiledb/sm/stats/stats.h"
+#include "uri.h"
 
 #include <aws/core/Aws.h>
 #include <aws/core/auth/AWSCredentialsProviderChain.h>

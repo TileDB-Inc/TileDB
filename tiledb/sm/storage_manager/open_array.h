@@ -41,8 +41,8 @@
 #include <unordered_map>
 
 #include "tiledb/sm/crypto/encryption_key_validation.h"
+#include "tiledb/sm/filesystem/uri.h"
 #include "tiledb/sm/fragment/fragment_metadata.h"
-#include "tiledb/sm/misc/uri.h"
 #include "tiledb/sm/storage_manager/open_array_memory_tracker.h"
 
 using namespace tiledb::common;

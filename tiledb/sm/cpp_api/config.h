@@ -398,10 +398,6 @@ class Config {
    *    Which reader to use for sparse unordered with dups queries.
    *    "refactored" or "legacy".<br>
    *    **Default**: refactored
-   * - `sm.query.sparse_unordered_with_dups.non_overlapping_ranges` <br>
-   *    Ensure ranges for sparse unordered with dups queries are not
-   *    overlapping. "true" or "false".<br>
-   *    **Default**: false
    * - `sm.mem.malloc_trim` <br>
    *    Should malloc_trim be called on context and query destruction? This
    *    might reduce residual memory usage. <br>

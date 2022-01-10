@@ -35,7 +35,7 @@
 
 #include <utility>
 
-#include "tiledb/sm/misc/uri.h"
+#include "tiledb/sm/filesystem/uri.h"
 
 using namespace tiledb::common;
 

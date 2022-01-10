@@ -155,11 +155,6 @@ class Config {
   /** Which reader to use for sparse unordered with dups queries. */
   static const std::string SM_QUERY_SPARSE_UNORDERED_WITH_DUPS_READER;
 
-  /** Non overlapping ranges guaranteed for sparse unordered with dups queries.
-   */
-  static const std::string
-      SM_QUERY_SPARSE_UNORDERED_WITH_DUPS_NON_OVERLAPPING_RANGES;
-
   /** Should malloc_trim be called on query/ctx destructors. */
   static const std::string SM_MEM_MALLOC_TRIM;
 

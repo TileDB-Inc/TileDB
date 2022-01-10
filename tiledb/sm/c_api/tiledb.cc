@@ -58,7 +58,7 @@
 #include "tiledb/sm/filter/compression_filter.h"
 #include "tiledb/sm/filter/filter_create.h"
 #include "tiledb/sm/filter/filter_pipeline.h"
-#include "tiledb/sm/misc/utils.h"
+#include "tiledb/sm/misc/time.h"
 #include "tiledb/sm/query/query.h"
 #include "tiledb/sm/query/query_condition.h"
 #include "tiledb/sm/rest/rest_client.h"
@@ -2289,6 +2289,22 @@ int32_t tiledb_array_schema_set_tile_order(
   return TILEDB_OK;
 }
 
+int32_t tiledb_array_schema_timestamp_range(
+    tiledb_ctx_t* ctx,
+    tiledb_array_schema_t* array_schema,
+    uint64_t* lo,
+    uint64_t* hi) {
+  if (sanity_check(ctx) == TILEDB_ERR ||
+      sanity_check(ctx, array_schema) == TILEDB_ERR)
+    return TILEDB_ERR;
+
+  auto timestamp_range = array_schema->array_schema_->timestamp_range();
+  *lo = std::get<0>(timestamp_range);
+  *hi = std::get<1>(timestamp_range);
+
+  return TILEDB_OK;
+}
+
 int32_t tiledb_array_schema_set_coords_filter_list(
     tiledb_ctx_t* ctx,
     tiledb_array_schema_t* array_schema,
@@ -2846,6 +2862,26 @@ int32_t tiledb_array_schema_evolution_drop_attribute(
               attribute_name)))
     return TILEDB_ERR;
   return TILEDB_OK;
+  // Success
+  return TILEDB_OK;
+}
+
+TILEDB_EXPORT int32_t tiledb_array_schema_evolution_set_timestamp_range(
+    tiledb_ctx_t* ctx,
+    tiledb_array_schema_evolution_t* array_schema_evolution,
+    uint64_t lo,
+    uint64_t hi) {
+  if (sanity_check(ctx) == TILEDB_ERR ||
+      sanity_check(ctx, array_schema_evolution) == TILEDB_ERR)
+    return TILEDB_ERR;
+
+  if (SAVE_ERROR_CATCH(
+          ctx,
+          array_schema_evolution->array_schema_evolution_->set_timestamp_range(
+              {lo, hi})))
+    return TILEDB_ERR;
+  return TILEDB_OK;
+
   // Success
   return TILEDB_OK;
 }
@@ -7107,5 +7143,26 @@ int32_t tiledb_fragment_info_dump(
       sanity_check(ctx, fragment_info) == TILEDB_ERR)
     return TILEDB_ERR;
   fragment_info->fragment_info_->dump(out);
+  return TILEDB_OK;
+}
+
+/* ********************************* */
+/*          EXPERIMENTAL APIs        */
+/* ********************************* */
+
+TILEDB_EXPORT int32_t tiledb_query_get_status_details(
+    tiledb_ctx_t* ctx,
+    tiledb_query_t* query,
+    tiledb_query_status_details_t* status) {
+  // Sanity check
+  if (sanity_check(ctx) == TILEDB_ERR || sanity_check(ctx, query) == TILEDB_ERR)
+    return TILEDB_ERR;
+
+  // Currently only one detailed reason. Retrieve it and set to user struct.
+  tiledb_query_status_details_reason_t incomplete_reason =
+      (tiledb_query_status_details_reason_t)
+          query->query_->status_incomplete_reason();
+  status->incomplete_reason = incomplete_reason;
+
   return TILEDB_OK;
 }

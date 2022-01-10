@@ -181,3 +181,25 @@ target_link_libraries(filter_pipeline PUBLIC tile $<TARGET_OBJECTS:tile>)
 add_executable(compile_filter_pipeline EXCLUDE_FROM_ALL)
 target_link_libraries(compile_filter_pipeline PRIVATE filter_pipeline)
 target_sources(compile_filter_pipeline PRIVATE test/compile_filter_pipeline_main.cc)
+
+ 
+
+
+if (TILEDB_TESTS)
+    add_executable(unit_filter_create EXCLUDE_FROM_ALL)
+    target_link_libraries(unit_filter_create PUBLIC all_filters)
+    find_package(Catch_EP REQUIRED)
+    target_link_libraries(unit_filter_create PUBLIC Catch2::Catch2)
+
+    # Sources for tests
+    target_sources(unit_filter_create PUBLIC
+            test/main.cc
+            test/unit_filter_create.cc
+            )
+
+    add_test(
+            NAME "unit_filter_create"
+            COMMAND $<TARGET_FILE:unit_filter_create>
+            WORKING_DIRECTORY ${CMAKE_CURRENT_SOURCE_DIR}
+    )
+endif()

@@ -33,8 +33,8 @@
 #include "catch.hpp"
 #include "helpers.h"
 #include "tiledb/sm/cpp_api/tiledb"
+#include "tiledb/sm/filesystem/uri.h"
 #include "tiledb/sm/misc/constants.h"
-#include "tiledb/sm/misc/uri.h"
 #include "tiledb/sm/misc/utils.h"
 
 using namespace tiledb;

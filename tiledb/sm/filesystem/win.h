@@ -43,7 +43,6 @@
 #include "tiledb/common/thread_pool.h"
 #include "tiledb/sm/buffer/buffer.h"
 #include "tiledb/sm/config/config.h"
-#include "tiledb/sm/misc/uri.h"
 
 using namespace tiledb::common;
 
@@ -195,39 +194,6 @@ class Win {
    */
   Status write(
       const std::string& path, const void* buffer, uint64_t buffer_size) const;
-
-  /**
-   * Converts a Windows path to a "file:///" URI.
-   *
-   * @param path The Windows path to convert.
-   * @status A path file URI.
-   */
-  static std::string uri_from_path(const std::string& path);
-
-  /**
-   * Converts a "file:///" URI to a Windows path.
-   *
-   * @param path The URI to convert.
-   * @status A Windows path.
-   */
-  static std::string path_from_uri(const std::string& uri);
-
-  /**
-   * Converts any '/' to '\\' (single-backslash) and returns the
-   * possibly modified result.
-   *
-   * @param path The path string possibly containing '/' separators.
-   * @status A possibly modified string with any '/' changed to '\\' (.
-   */
-  static std::string slashes_to_backslashes(std::string pathsegments);
-
-  /**
-   * Returns true if the given string is a Windows path.
-   *
-   * @param path The path to check.
-   * @return True if the path is a Windows path.
-   */
-  static bool is_win_path(const std::string& path);
 
  private:
   /** Config parameters from parent VFS instance. */

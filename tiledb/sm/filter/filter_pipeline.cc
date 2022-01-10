@@ -499,10 +499,9 @@ Status FilterPipeline::deserialize(ConstBuffer* buff) {
   RETURN_NOT_OK(buff->read(&num_filters, sizeof(uint32_t)));
 
   for (uint32_t i = 0; i < num_filters; i++) {
-    Filter* filter;
-    RETURN_NOT_OK(FilterCreate::deserialize(buff, &filter));
-    RETURN_NOT_OK_ELSE(add_filter(*filter), tdb_delete(filter));
-    tdb_delete(filter);
+    auto&& [st_filter, filter]{FilterCreate::deserialize(buff)};
+    RETURN_NOT_OK(st_filter);
+    RETURN_NOT_OK(add_filter(*filter.value()));
   }
 
   return Status::Ok();
@@ -538,7 +537,7 @@ void FilterPipeline::swap(FilterPipeline& other) {
 Status FilterPipeline::append_encryption_filter(
     FilterPipeline* pipeline, const EncryptionKey& encryption_key) {
   switch (encryption_key.encryption_type()) {
-    case EncryptionType ::NO_ENCRYPTION:
+    case EncryptionType::NO_ENCRYPTION:
       return Status::Ok();
     case EncryptionType::AES_256_GCM:
       return pipeline->add_filter(EncryptionAES256GCMFilter(encryption_key));
