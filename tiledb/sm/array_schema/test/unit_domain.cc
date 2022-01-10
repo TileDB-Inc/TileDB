@@ -46,7 +46,7 @@ inline T& dom_buffer_offset(void* p) {
 TEST_CASE("Domain: Test deserialization", "[domain][deserialize") {
   char serialized_buffer[72];
   char* p = &serialized_buffer[0];
-  
+
   // number of dimensions
   uint32_t dim_num = 2;
 
@@ -55,8 +55,7 @@ TEST_CASE("Domain: Test deserialization", "[domain][deserialize") {
   uint32_t dimension_name_size1 = static_cast<uint32_t>(dimension_name1.size());
   Datatype type1 = Datatype::INT32;
   uint8_t datatype1 = static_cast<uint8_t>(type1);
-  uint32_t cell_val_num1 =
-      (datatype_is_string(type1)) ? constants::var_num : 1;
+  uint32_t cell_val_num1 = (datatype_is_string(type1)) ? constants::var_num : 1;
   uint32_t max_chunk_size1 = constants::max_tile_chunk_size;
   uint32_t num_filters1 = 0;
   // domain and tile extent
@@ -77,7 +76,7 @@ TEST_CASE("Domain: Test deserialization", "[domain][deserialize") {
   uint8_t null_tile_extent2 = 1;
 
   // set dim_num
-  dom_buffer_offset<uint32_t,0>(p) = dim_num;
+  dom_buffer_offset<uint32_t, 0>(p) = dim_num;
 
   // set dimension1 buffer
   dom_buffer_offset<uint32_t, 4>(p) = dimension_name_size1;
@@ -93,7 +92,7 @@ TEST_CASE("Domain: Test deserialization", "[domain][deserialize") {
   dom_buffer_offset<int32_t, 31>(p) = 1;
   dom_buffer_offset<int32_t, 35>(p) = 100;
   dom_buffer_offset<uint8_t, 39>(p) = null_tile_extent1;
-  dom_buffer_offset<int32_t, 40>(p) = tile_extent1;  
+  dom_buffer_offset<int32_t, 40>(p) = tile_extent1;
 
   // set dimension2 buffer
   dom_buffer_offset<uint32_t, 44>(p) = dimension_name_size2;
@@ -109,16 +108,8 @@ TEST_CASE("Domain: Test deserialization", "[domain][deserialize") {
   dom_buffer_offset<uint8_t, 71>(p) = null_tile_extent2;
 
   ConstBuffer constbuffer(&serialized_buffer, sizeof(serialized_buffer));
-  auto&& [st_dom, dom]{
-      Domain::deserialize(&constbuffer, 10, 10,Layout::ROW_MAJOR,Layout::ROW_MAJOR)};
+  auto&& [st_dom, dom]{Domain::deserialize(
+      &constbuffer, 10, 10, Layout::ROW_MAJOR, Layout::ROW_MAJOR)};
 
   REQUIRE(st_dom.ok());
-
-  
-  
-
 }
-
-
-
- 

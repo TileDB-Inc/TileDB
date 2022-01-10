@@ -332,8 +332,8 @@ std::tuple<Status, optional<std::shared_ptr<Domain>>> Domain::deserialize(
   uint32_t dim_num;
   // Load dimensions
   st = buff->read(&dim_num, sizeof(uint32_t));
-  if(!st.ok()) {
-    return {st,nullopt};
+  if (!st.ok()) {
+    return {st, nullopt};
   }
   for (uint32_t i = 0; i < dim_num; ++i) {
     auto&& [st_dim, dim]{Dimension::deserialize(buff, version, type)};
