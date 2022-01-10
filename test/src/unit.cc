@@ -58,7 +58,7 @@ int main(const int argc, char** const argv) {
     return rc;
 
   if (doCrash) {
-    *(int*)0 = 0;
+    *(int*)0 = nullptr;
     // should not reach here!
   }
   // Validate and store the VFS command line argument.
