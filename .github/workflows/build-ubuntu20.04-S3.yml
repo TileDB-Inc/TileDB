@@ -59,6 +59,7 @@ jobs:
 
       - run: |
           set -e pipefail
+          python getsig.py
           python -m pip install --upgrade pip virtualenv
         shell: bash
 
