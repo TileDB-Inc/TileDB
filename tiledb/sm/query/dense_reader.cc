@@ -503,7 +503,7 @@ Status DenseReader::apply_query_condition(
 
     // Initialize the result buffer.
     qc_result->resize(cell_num);
-    memset(qc_result->data(), 0xFF, cell_num);
+    memset(qc_result->data(), 1, cell_num);
 
     // Process all tiles in parallel.
     auto status = parallel_for(
@@ -559,7 +559,7 @@ Status DenseReader::apply_query_condition(
                       cell_slab.length_,
                       &start,
                       &end)) {
-                RETURN_NOT_OK(condition_.apply_dense<DimType>(
+                RETURN_NOT_OK(condition_.apply_dense(
                     fragment_metadata_[frag_domains[i].first]->array_schema(),
                     it->second.result_tile(frag_domains[i].first),
                     start,
