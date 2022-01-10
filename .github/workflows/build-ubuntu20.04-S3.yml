@@ -81,7 +81,8 @@ jobs:
           printenv
           docker ps -a
 
-          ./tiledb/test/tiledb_unit -d yes | awk '/1: ::set-output/{sub(/.*1: /, ""); print; next} 1'
+          #./tiledb/test/tiledb_unit -d yes | awk '/1: ::set-output/{sub(/.*1: /, ""); print; next} 1'
+          ./tiledb/test/tiledb_unit -d yes --crash
 
           pushd $GITHUB_WORKSPACE/examples/cmake_project
           mkdir build && cd build

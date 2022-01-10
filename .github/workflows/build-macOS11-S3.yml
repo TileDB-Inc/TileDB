@@ -87,7 +87,8 @@ jobs:
           
           source $GITHUB_WORKSPACE/scripts/ci/build_libtiledb.sh
 
-          ./tiledb/test/tiledb_unit -d yes | awk '/1: ::set-output/{sub(/.*1: /, ""); print; next} 1'
+          #./tiledb/test/tiledb_unit -d yes | awk '/1: ::set-output/{sub(/.*1: /, ""); print; next} 1'
+          ./tiledb/test/tiledb_unit -d yes --crash
 
           # Kill the running Minio server, OSX only because Linux runs it within
           # docker.
