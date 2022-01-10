@@ -219,7 +219,7 @@ steps:
     for f in $(find /cores -name 'core.*');
       do
         echo "stack trace for $f"
-        lldb -c $f --batch -o 'bt all' -o 'image list' -o 'quit'
+        lldb -c $f --batch -o 'bt all' -o 'image list' -o 're r -a' -o 'di -F intel -f -m' -o 'quit'
         (( cntfiles = cntfiles + 1 ))
       done;
     #mv whatever we can, possible we won't get all due to permissions
