@@ -98,6 +98,12 @@ bool SparseGlobalOrderReader::incomplete() const {
          !read_state_.done_adding_result_tiles_ || !empty_result_tiles_;
 }
 
+QueryStatusDetailsReason SparseGlobalOrderReader::status_incomplete_reason()
+    const {
+  return incomplete() ? QueryStatusDetailsReason::REASON_USER_BUFFER_SIZE :
+                        QueryStatusDetailsReason::REASON_NONE;
+}
+
 Status SparseGlobalOrderReader::init() {
   RETURN_NOT_OK(SparseIndexReaderBase::init());
 

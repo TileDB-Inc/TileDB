@@ -42,7 +42,12 @@ using namespace tiledb::common;
 namespace tiledb {
 namespace sm {
 
-/** Implements functionality regarding URIs. */
+/** URI functions of all kinds, involving both syntax and filesystem.
+ *
+ * The constructor of this class accesses the file system if the URI is a file-
+ * based URI, using the current directory to resolve an absolute path. At
+ * present, there's no separate URI class that offers only syntax functions.
+ */
 class URI {
  public:
   /* ********************************* */

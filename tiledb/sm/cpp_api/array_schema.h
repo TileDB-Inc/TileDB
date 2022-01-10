@@ -453,6 +453,26 @@ class ArraySchema : public Schema {
   }
 
   /**
+   * Get timestamp range of schema.
+   *
+   * **Example:**
+   * @code{.cpp}
+   * tiledb::Context ctx;
+   * tiledb::ArraySchema schema(ctx.ptr().get(), TILEDB_SPARSE);
+   * std::pair<uint64_t, uint64_t> timestamp_range = schema.timestamp_range();
+   * @endcode
+   *
+   * @return Timestamp range of this `ArraySchema` instance.
+   */
+  std::pair<uint64_t, uint64_t> timestamp_range() {
+    auto& ctx = ctx_.get();
+    uint64_t lo, hi;
+    ctx.handle_error(tiledb_array_schema_timestamp_range(
+        ctx.ptr().get(), schema_.get(), &lo, &hi));
+    return {lo, hi};
+  }
+
+  /**
    * Adds an Attribute to the array.
    *
    * **Example:**

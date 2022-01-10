@@ -31,9 +31,10 @@
  */
 
 #include <catch.hpp>
-#include "tiledb/sm/misc/uri.h"
+#include "tiledb/sm/filesystem/uri.h"
 
 #ifdef _WIN32
+#include "tiledb/sm/filesystem/path_win.h"
 #include "tiledb/sm/filesystem/win.h"
 #else
 #include "tiledb/sm/filesystem/posix.h"
@@ -107,7 +108,9 @@ TEST_CASE("URI: Test relative paths", "[uri]") {
   CHECK(uri.to_string().find("file:///") == 0);
   CHECK(uri.to_path() == current_dir() + PATH_SEPARATOR + "path1");
 #ifdef _WIN32
-  CHECK(uri.to_string() == Win::uri_from_path(Win::current_dir()) + "/path1");
+  CHECK(
+      uri.to_string() ==
+      path_win::uri_from_path(Win::current_dir()) + "/path1");
 #else
   CHECK(uri.to_string() == "file://" + Posix::current_dir() + "/path1");
 #endif
@@ -251,7 +254,7 @@ TEST_CASE("URI: Test Windows paths", "[uri]") {
   CHECK(uri.to_string().find("file:///") == 0);
   CHECK(
       uri.to_string() ==
-      Win::uri_from_path(Win::current_dir()) + "/path1/path2");
+      path_win::uri_from_path(Win::current_dir()) + "/path1/path2");
 }
 
 #endif

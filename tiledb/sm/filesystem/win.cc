@@ -31,11 +31,13 @@
  */
 #ifdef _WIN32
 
-#include "tiledb/sm/filesystem/win.h"
+#include "win.h"
+#include "path_win.h"
 #include "tiledb/common/heap_memory.h"
 #include "tiledb/common/logger.h"
 #include "tiledb/common/stdx_string.h"
 #include "tiledb/sm/misc/constants.h"
+#include "tiledb/sm/misc/math.h"
 #include "tiledb/sm/misc/utils.h"
 
 #if !defined(NOMINMAX)
@@ -78,16 +80,11 @@ std::string get_last_error_msg() {
 }
 }  // namespace
 
-std::string Win::slashes_to_backslashes(std::string pathsegments) {
-  std::replace(pathsegments.begin(), pathsegments.end(), '/', '\\');
-  return pathsegments;
-}
-
 std::string Win::abs_path(const std::string& path) {
   if (path.length() == 0) {
     return current_dir();
   }
-  std::string full_path(slashes_to_backslashes(path));
+  std::string full_path(path_win::slashes_to_backslashes(path));
   // If some problem leads here, note the following
   // PathIsRelative("/") unexpectedly returns true.
   // PathIsRelative("c:somedir\somesubdir") unexpectedly returns false
@@ -521,68 +518,6 @@ Status Win::write_at(
         "Cannot write to file; File writing error: " + get_last_error_msg())));
   }
   return Status::Ok();
-}
-
-std::string Win::uri_from_path(const std::string& path) {
-  if (path.length() == 0) {
-    return "";
-  }
-
-  unsigned long uri_length = INTERNET_MAX_URL_LENGTH;
-  char uri[INTERNET_MAX_URL_LENGTH];
-  std::string str_uri;
-  if (UrlCreateFromPath(path.c_str(), uri, &uri_length, 0) != S_OK) {
-    LOG_STATUS(Status_IOError(
-        std::string("Failed to convert path '" + path + "' to URI.")));
-  }
-  str_uri = uri;
-  return str_uri;
-}
-
-std::string Win::path_from_uri(const std::string& uri) {
-  if (uri.length() == 0) {
-    return "";
-  }
-
-  std::string uri_with_scheme =
-      (utils::parse::starts_with(uri, "file://") ||
-       // also accept 'file:/x...'
-       (utils::parse::starts_with(uri, "file:/") && uri.substr(6, 1) != "/")) ?
-          uri
-          // else treat as file: item on 'localhost' (empty host name)
-          :
-          "file:///" + uri;
-
-  unsigned long path_length = MAX_PATH;
-  char path[MAX_PATH];
-  std::string str_path;
-  if (PathCreateFromUrl(uri_with_scheme.c_str(), path, &path_length, 0) !=
-      S_OK) {
-    LOG_STATUS(Status_IOError(std::string(
-        "Failed to convert URI '" + uri_with_scheme + "' to path.")));
-  }
-  str_path = path;
-  return str_path;
-}
-
-bool Win::is_win_path(const std::string& p_path) {
-  std::string path(slashes_to_backslashes(p_path));
-  if (path.empty()) {
-    // Special case to match the behavior of posix_filesystem.
-    return true;
-  } else if (PathIsURL(path.c_str())) {
-    return false;
-  } else {
-    bool definitely_windows = PathIsUNC(path.c_str()) ||
-                              PathGetDriveNumber(path.c_str()) != -1 ||
-                              path.find('\\') != std::string::npos;
-    if (definitely_windows) {
-      return true;
-    } else {
-      // Bare relative path e.g. "filename.txt"
-      return path.find('/') == std::string::npos;
-    }
-  }
 }
 
 }  // namespace sm

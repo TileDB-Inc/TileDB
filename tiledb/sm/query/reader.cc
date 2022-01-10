@@ -127,6 +127,11 @@ bool Reader::incomplete() const {
   return read_state_.overflowed_ || !read_state_.done();
 }
 
+QueryStatusDetailsReason Reader::status_incomplete_reason() const {
+  return incomplete() ? QueryStatusDetailsReason::REASON_USER_BUFFER_SIZE :
+                        QueryStatusDetailsReason::REASON_NONE;
+}
+
 Status Reader::init() {
   // Sanity checks
   if (storage_manager_ == nullptr)

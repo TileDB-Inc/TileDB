@@ -149,7 +149,7 @@ struct ArraySchema {
   class Pipeline;
 
   struct _capnpPrivate {
-    CAPNP_DECLARE_STRUCT_HEADER(d71de32f98e296fe, 2, 11)
+    CAPNP_DECLARE_STRUCT_HEADER(d71de32f98e296fe, 2, 12)
 #if !CAPNP_LITE
     static constexpr ::capnp::_::RawBrandedSchema const* brand() {
       return &schema->defaultBrand;
@@ -166,7 +166,7 @@ struct ArraySchemaEvolution {
   class Pipeline;
 
   struct _capnpPrivate {
-    CAPNP_DECLARE_STRUCT_HEADER(a1b81d67548230d4, 0, 2)
+    CAPNP_DECLARE_STRUCT_HEADER(a1b81d67548230d4, 0, 3)
 #if !CAPNP_LITE
     static constexpr ::capnp::_::RawBrandedSchema const* brand() {
       return &schema->defaultBrand;
@@ -1632,6 +1632,10 @@ class ArraySchema::Reader {
   inline bool hasName() const;
   inline ::capnp::Text::Reader getName() const;
 
+  inline bool hasTimestampRange() const;
+  inline ::capnp::List<::uint64_t, ::capnp::Kind::PRIMITIVE>::Reader
+  getTimestampRange() const;
+
  private:
   ::capnp::_::StructReader _reader;
   template <typename, ::capnp::Kind>
@@ -1795,6 +1799,20 @@ class ArraySchema::Builder {
   inline void adoptName(::capnp::Orphan<::capnp::Text>&& value);
   inline ::capnp::Orphan<::capnp::Text> disownName();
 
+  inline bool hasTimestampRange();
+  inline ::capnp::List<::uint64_t, ::capnp::Kind::PRIMITIVE>::Builder
+  getTimestampRange();
+  inline void setTimestampRange(
+      ::capnp::List<::uint64_t, ::capnp::Kind::PRIMITIVE>::Reader value);
+  inline void setTimestampRange(::kj::ArrayPtr<const ::uint64_t> value);
+  inline ::capnp::List<::uint64_t, ::capnp::Kind::PRIMITIVE>::Builder
+  initTimestampRange(unsigned int size);
+  inline void adoptTimestampRange(
+      ::capnp::Orphan<::capnp::List<::uint64_t, ::capnp::Kind::PRIMITIVE>>&&
+          value);
+  inline ::capnp::Orphan<::capnp::List<::uint64_t, ::capnp::Kind::PRIMITIVE>>
+  disownTimestampRange();
+
  private:
   ::capnp::_::StructBuilder _builder;
   template <typename, ::capnp::Kind>
@@ -1860,6 +1878,10 @@ class ArraySchemaEvolution::Reader {
       ::tiledb::sm::serialization::capnp::Attribute,
       ::capnp::Kind::STRUCT>::Reader
   getAttributesToAdd() const;
+
+  inline bool hasTimestampRange() const;
+  inline ::capnp::List<::uint64_t, ::capnp::Kind::PRIMITIVE>::Reader
+  getTimestampRange() const;
 
  private:
   ::capnp::_::StructReader _reader;
@@ -1935,6 +1957,20 @@ class ArraySchemaEvolution::Builder {
       ::tiledb::sm::serialization::capnp::Attribute,
       ::capnp::Kind::STRUCT>>
   disownAttributesToAdd();
+
+  inline bool hasTimestampRange();
+  inline ::capnp::List<::uint64_t, ::capnp::Kind::PRIMITIVE>::Builder
+  getTimestampRange();
+  inline void setTimestampRange(
+      ::capnp::List<::uint64_t, ::capnp::Kind::PRIMITIVE>::Reader value);
+  inline void setTimestampRange(::kj::ArrayPtr<const ::uint64_t> value);
+  inline ::capnp::List<::uint64_t, ::capnp::Kind::PRIMITIVE>::Builder
+  initTimestampRange(unsigned int size);
+  inline void adoptTimestampRange(
+      ::capnp::Orphan<::capnp::List<::uint64_t, ::capnp::Kind::PRIMITIVE>>&&
+          value);
+  inline ::capnp::Orphan<::capnp::List<::uint64_t, ::capnp::Kind::PRIMITIVE>>
+  disownTimestampRange();
 
  private:
   ::capnp::_::StructBuilder _builder;
@@ -9154,6 +9190,64 @@ inline ::capnp::Orphan<::capnp::Text> ArraySchema::Builder::disownName() {
       _builder.getPointerField(::capnp::bounded<10>() * ::capnp::POINTERS));
 }
 
+inline bool ArraySchema::Reader::hasTimestampRange() const {
+  return !_reader.getPointerField(::capnp::bounded<11>() * ::capnp::POINTERS)
+              .isNull();
+}
+inline bool ArraySchema::Builder::hasTimestampRange() {
+  return !_builder.getPointerField(::capnp::bounded<11>() * ::capnp::POINTERS)
+              .isNull();
+}
+inline ::capnp::List<::uint64_t, ::capnp::Kind::PRIMITIVE>::Reader
+ArraySchema::Reader::getTimestampRange() const {
+  return ::capnp::_::
+      PointerHelpers<::capnp::List<::uint64_t, ::capnp::Kind::PRIMITIVE>>::get(
+          _reader.getPointerField(::capnp::bounded<11>() * ::capnp::POINTERS));
+}
+inline ::capnp::List<::uint64_t, ::capnp::Kind::PRIMITIVE>::Builder
+ArraySchema::Builder::getTimestampRange() {
+  return ::capnp::_::
+      PointerHelpers<::capnp::List<::uint64_t, ::capnp::Kind::PRIMITIVE>>::get(
+          _builder.getPointerField(::capnp::bounded<11>() * ::capnp::POINTERS));
+}
+inline void ArraySchema::Builder::setTimestampRange(
+    ::capnp::List<::uint64_t, ::capnp::Kind::PRIMITIVE>::Reader value) {
+  ::capnp::_::
+      PointerHelpers<::capnp::List<::uint64_t, ::capnp::Kind::PRIMITIVE>>::set(
+          _builder.getPointerField(::capnp::bounded<11>() * ::capnp::POINTERS),
+          value);
+}
+inline void ArraySchema::Builder::setTimestampRange(
+    ::kj::ArrayPtr<const ::uint64_t> value) {
+  ::capnp::_::
+      PointerHelpers<::capnp::List<::uint64_t, ::capnp::Kind::PRIMITIVE>>::set(
+          _builder.getPointerField(::capnp::bounded<11>() * ::capnp::POINTERS),
+          value);
+}
+inline ::capnp::List<::uint64_t, ::capnp::Kind::PRIMITIVE>::Builder
+ArraySchema::Builder::initTimestampRange(unsigned int size) {
+  return ::capnp::_::
+      PointerHelpers<::capnp::List<::uint64_t, ::capnp::Kind::PRIMITIVE>>::init(
+          _builder.getPointerField(::capnp::bounded<11>() * ::capnp::POINTERS),
+          size);
+}
+inline void ArraySchema::Builder::adoptTimestampRange(
+    ::capnp::Orphan<::capnp::List<::uint64_t, ::capnp::Kind::PRIMITIVE>>&&
+        value) {
+  ::capnp::_::PointerHelpers<
+      ::capnp::List<::uint64_t, ::capnp::Kind::PRIMITIVE>>::
+      adopt(
+          _builder.getPointerField(::capnp::bounded<11>() * ::capnp::POINTERS),
+          kj::mv(value));
+}
+inline ::capnp::Orphan<::capnp::List<::uint64_t, ::capnp::Kind::PRIMITIVE>>
+ArraySchema::Builder::disownTimestampRange() {
+  return ::capnp::_::PointerHelpers<
+      ::capnp::List<::uint64_t, ::capnp::Kind::PRIMITIVE>>::
+      disown(
+          _builder.getPointerField(::capnp::bounded<11>() * ::capnp::POINTERS));
+}
+
 inline bool ArraySchemaEvolution::Reader::hasAttributesToDrop() const {
   return !_reader.getPointerField(::capnp::bounded<0>() * ::capnp::POINTERS)
               .isNull();
@@ -9282,6 +9376,64 @@ ArraySchemaEvolution::Builder::disownAttributesToAdd() {
                                           .getPointerField(
                                               ::capnp::bounded<1>() *
                                               ::capnp::POINTERS));
+}
+
+inline bool ArraySchemaEvolution::Reader::hasTimestampRange() const {
+  return !_reader.getPointerField(::capnp::bounded<2>() * ::capnp::POINTERS)
+              .isNull();
+}
+inline bool ArraySchemaEvolution::Builder::hasTimestampRange() {
+  return !_builder.getPointerField(::capnp::bounded<2>() * ::capnp::POINTERS)
+              .isNull();
+}
+inline ::capnp::List<::uint64_t, ::capnp::Kind::PRIMITIVE>::Reader
+ArraySchemaEvolution::Reader::getTimestampRange() const {
+  return ::capnp::_::
+      PointerHelpers<::capnp::List<::uint64_t, ::capnp::Kind::PRIMITIVE>>::get(
+          _reader.getPointerField(::capnp::bounded<2>() * ::capnp::POINTERS));
+}
+inline ::capnp::List<::uint64_t, ::capnp::Kind::PRIMITIVE>::Builder
+ArraySchemaEvolution::Builder::getTimestampRange() {
+  return ::capnp::_::
+      PointerHelpers<::capnp::List<::uint64_t, ::capnp::Kind::PRIMITIVE>>::get(
+          _builder.getPointerField(::capnp::bounded<2>() * ::capnp::POINTERS));
+}
+inline void ArraySchemaEvolution::Builder::setTimestampRange(
+    ::capnp::List<::uint64_t, ::capnp::Kind::PRIMITIVE>::Reader value) {
+  ::capnp::_::
+      PointerHelpers<::capnp::List<::uint64_t, ::capnp::Kind::PRIMITIVE>>::set(
+          _builder.getPointerField(::capnp::bounded<2>() * ::capnp::POINTERS),
+          value);
+}
+inline void ArraySchemaEvolution::Builder::setTimestampRange(
+    ::kj::ArrayPtr<const ::uint64_t> value) {
+  ::capnp::_::
+      PointerHelpers<::capnp::List<::uint64_t, ::capnp::Kind::PRIMITIVE>>::set(
+          _builder.getPointerField(::capnp::bounded<2>() * ::capnp::POINTERS),
+          value);
+}
+inline ::capnp::List<::uint64_t, ::capnp::Kind::PRIMITIVE>::Builder
+ArraySchemaEvolution::Builder::initTimestampRange(unsigned int size) {
+  return ::capnp::_::
+      PointerHelpers<::capnp::List<::uint64_t, ::capnp::Kind::PRIMITIVE>>::init(
+          _builder.getPointerField(::capnp::bounded<2>() * ::capnp::POINTERS),
+          size);
+}
+inline void ArraySchemaEvolution::Builder::adoptTimestampRange(
+    ::capnp::Orphan<::capnp::List<::uint64_t, ::capnp::Kind::PRIMITIVE>>&&
+        value) {
+  ::capnp::_::PointerHelpers<
+      ::capnp::List<::uint64_t, ::capnp::Kind::PRIMITIVE>>::
+      adopt(
+          _builder.getPointerField(::capnp::bounded<2>() * ::capnp::POINTERS),
+          kj::mv(value));
+}
+inline ::capnp::Orphan<::capnp::List<::uint64_t, ::capnp::Kind::PRIMITIVE>>
+ArraySchemaEvolution::Builder::disownTimestampRange() {
+  return ::capnp::_::PointerHelpers<
+      ::capnp::List<::uint64_t, ::capnp::Kind::PRIMITIVE>>::
+      disown(
+          _builder.getPointerField(::capnp::bounded<2>() * ::capnp::POINTERS));
 }
 
 inline ::uint32_t Attribute::Reader::getCellValNum() const {

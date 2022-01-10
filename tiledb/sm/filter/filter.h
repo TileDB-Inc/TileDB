@@ -164,18 +164,6 @@ class Filter {
   /** Returns the filter type. */
   FilterType type() const;
 
-  /**
-   * Deserialization function that can be implemented by a specific Filter
-   * subclass for filter-specific metadata.
-   *
-   * If a filter subclass has no specific metadata, it's not necessary to
-   * implement this method.
-   *
-   * @param buff The buffer to deserialize from
-   * @return Status
-   */
-  virtual Status deserialize_impl(ConstBuffer* buff);
-
  protected:
   /** The filter type. */
   FilterType type_;

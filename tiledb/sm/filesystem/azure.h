@@ -39,7 +39,7 @@
 #include "tiledb/sm/buffer/buffer.h"
 #include "tiledb/sm/config/config.h"
 #include "tiledb/sm/misc/constants.h"
-#include "tiledb/sm/misc/uri.h"
+#include "uri.h"
 
 #if !defined(NOMINMAX)
 #define NOMINMAX  // avoid min/max macros from windows headers

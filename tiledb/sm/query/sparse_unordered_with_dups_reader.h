@@ -94,6 +94,7 @@ class SparseUnorderedWithDupsReader : public SparseIndexReaderBase,
   static Status compute_var_size_offsets(
       stats::Stats* stats,
       const std::vector<ResultTile*>* result_tiles,
+      const uint64_t first_tile_min_pos,
       std::vector<uint64_t>* cell_offsets,
       QueryBuffer* query_buffer,
       uint64_t* new_result_tiles_size,
@@ -108,12 +109,11 @@ class SparseUnorderedWithDupsReader : public SparseIndexReaderBase,
     return Status::Ok();
   }
 
-  /**
-   * Returns `true` if the query was incomplete, i.e., if all subarray
-   * partitions in the read state have not been processed or there
-   * was some buffer overflow.
-   */
+  /** Returns `true` if the query was incomplete. */
   bool incomplete() const;
+
+  /** Returns the status details reason. */
+  QueryStatusDetailsReason status_incomplete_reason() const;
 
   /** Initializes the reader. */
   Status init();

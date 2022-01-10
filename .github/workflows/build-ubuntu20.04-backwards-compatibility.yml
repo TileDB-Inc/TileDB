@@ -64,7 +64,7 @@ jobs:
           ulimit -c unlimited
           ulimit -c
 
-          git clone https://github.com/TileDB-Inc/TileDB-Unit-Test-Arrays.git --branch 2.4.0 test/inputs/arrays/read_compatibility_test
+          git clone https://github.com/TileDB-Inc/TileDB-Unit-Test-Arrays.git --branch 2.5.0 test/inputs/arrays/read_compatibility_test
 
           # Remove all arrays besides the current matrix version
           ls test/inputs/arrays/read_compatibility_test/ | grep -v ${TILEDB_COMPATIBILITY_VERSION} | grep -v "__tiledb_group.tdb" | xargs -I{} echo "rm -r test/inputs/arrays/read_compatibility_test/{}"

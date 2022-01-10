@@ -119,6 +119,12 @@ typedef enum {
 #define TILEDB_DATATYPE_ENUM(id) TILEDB_##id
 #include "tiledb_enum.h"
 #undef TILEDB_DATATYPE_ENUM
+#ifdef TILEDB_CHAR
+#def TILEDB_CHAR_VAL TILEDB_CHAR
+#undef TILEDB_CHAR
+#define TILEDB_CHAR TILEDB_DEPRECATED TILEDB_CHAR_VAL
+#undef TILEDB_CHAR_VAL
+#endif
 } tiledb_datatype_t;
 
 /** Array type. */
@@ -1061,10 +1067,6 @@ TILEDB_EXPORT void tiledb_config_free(tiledb_config_t** config);
  *    Which reader to use for sparse unordered with dups queries.
  *    "refactored" or "legacy".<br>
  *    **Default**: refactored
- * - `sm.query.sparse_unordered_with_dups.non_overlapping_ranges` <br>
- *    Ensure ranges for sparse unordered with dups queries are not overlapping.
- *    "true" or "false".<br>
- *    **Default**: false
  * - `sm.mem.malloc_trim` <br>
  *    Should malloc_trim be called on context and query destruction? This might
  * reduce residual memory usage. <br>

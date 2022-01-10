@@ -174,9 +174,6 @@ class CompressionFilter : public Filter {
       Buffer* output,
       FilterBuffer* input_metadata) const;
 
-  /** Deserializes this filter's metadata from the given buffer. */
-  Status deserialize_impl(ConstBuffer* buff) override;
-
   /** Gets an option from this filter. */
   Status get_option_impl(FilterOption option, void* value) const override;
 

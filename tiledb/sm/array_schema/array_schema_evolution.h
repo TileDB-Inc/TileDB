@@ -38,10 +38,10 @@
 #include <unordered_set>
 
 #include "tiledb/common/status.h"
+#include "tiledb/sm/filesystem/uri.h"
 #include "tiledb/sm/filter/filter_pipeline.h"
 #include "tiledb/sm/misc/constants.h"
 #include "tiledb/sm/misc/hilbert.h"
-#include "tiledb/sm/misc/uri.h"
 #include "tiledb/sm/misc/uuid.h"
 
 using namespace tiledb::common;
@@ -109,6 +109,13 @@ class ArraySchemaEvolution {
   /** Returns the names of attributes to drop. */
   std::vector<std::string> attribute_names_to_drop() const;
 
+  /** Set a timestamp range for the array schema evolution */
+  Status set_timestamp_range(
+      const std::pair<uint64_t, uint64_t>& timestamp_range);
+
+  /** Returns the timestamp range. */
+  std::pair<uint64_t, uint64_t> timestamp_range() const;
+
  private:
   /* ********************************* */
   /*         PRIVATE ATTRIBUTES        */
@@ -121,6 +128,14 @@ class ArraySchemaEvolution {
 
   /** The names of array attributes to be dropped. */
   std::unordered_set<std::string> attributes_to_drop_;
+
+  /**
+   * A timestamp to explicitly set the timestamp of
+   * the evolved schema.  To be consistent with
+   * the schema timestamp_range_, two identical
+   * timestamps are stored as a pair.
+   */
+  std::pair<uint64_t, uint64_t> timestamp_range_;
 
   /** Mutex for thread-safety. */
   mutable std::mutex mtx_;

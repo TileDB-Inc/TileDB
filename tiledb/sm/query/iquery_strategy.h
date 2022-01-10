@@ -35,6 +35,7 @@
 
 #include "tiledb/common/status.h"
 #include "tiledb/sm/enums/layout.h"
+#include "tiledb/sm/enums/query_status_details.h"
 
 using namespace tiledb::common;
 
@@ -58,8 +59,11 @@ class IQueryStrategy {
   /** Finalizes the strategy. */
   virtual Status finalize() = 0;
 
-  /** Returns of the query is incomplete. */
+  /** Returns if the query is incomplete. */
   virtual bool incomplete() const = 0;
+
+  /** Returns the status details reason. */
+  virtual QueryStatusDetailsReason status_incomplete_reason() const = 0;
 
   /** Resets the object */
   virtual void reset() = 0;
