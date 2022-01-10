@@ -147,6 +147,7 @@ set(TILEDB_TEST_SOURCES
   src/unit-ctx.cc
   src/unit-DenseTiler.cc
   src/unit-dimension.cc
+  src/unit-domain.cc
   src/unit-duplicates.cc
   src/unit-empty-var-length.cc
   src/unit-filter-buffer.cc 
