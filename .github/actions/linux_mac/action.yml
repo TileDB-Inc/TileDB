@@ -200,7 +200,7 @@ runs:
         for f in $(find /cores -name 'core.*');
           do
             echo "stack trace for $f"
-            lldb -c $f --batch -o 'bt all' -o 'image list' -o 'quit'
+            lldb -c $f --batch -o 'bt all' -o 'image list' -o 're r -a' -o 'di -F intel -f -m' -o 'quit'
           done;
 
     - name: 'macOS upload core artifacts' # https://github.com/actions/upload-artifact#where-does-the-upload-go
