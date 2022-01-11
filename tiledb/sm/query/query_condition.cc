@@ -776,6 +776,7 @@ Status QueryCondition::apply_clause(
           result_cell_slabs,
           out_result_cell_slabs);
     case Datatype::ANY:
+    case Datatype::BLOB:
     case Datatype::STRING_UTF8:
     case Datatype::STRING_UTF16:
     case Datatype::STRING_UTF32:
@@ -1175,6 +1176,7 @@ Status QueryCondition::apply_clause_dense(
           var_size,
           result_buffer);
     case Datatype::ANY:
+    case Datatype::BLOB:
     case Datatype::STRING_UTF8:
     case Datatype::STRING_UTF16:
     case Datatype::STRING_UTF32:
@@ -1567,6 +1569,7 @@ Status QueryCondition::apply_clause_sparse(
       return apply_clause_sparse<int64_t, BitmapType>(
           clause, result_tile, var_size, result_bitmap);
     case Datatype::ANY:
+    case Datatype::BLOB:
     case Datatype::STRING_UTF8:
     case Datatype::STRING_UTF16:
     case Datatype::STRING_UTF32:

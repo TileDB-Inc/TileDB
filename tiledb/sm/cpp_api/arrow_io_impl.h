@@ -154,6 +154,7 @@ ArrowInfo tiledb_buffer_arrow_fmt(BufferInfo bufferinfo, bool use_list = true) {
       case TILEDB_STRING_UTF8:
       case TILEDB_STRING_ASCII:
         break;
+      case TILEDB_BLOB:
       case TILEDB_INT8:
       case TILEDB_INT16:
       case TILEDB_INT32:
@@ -197,6 +198,8 @@ ArrowInfo tiledb_buffer_arrow_fmt(BufferInfo bufferinfo, bool use_list = true) {
       return ArrowInfo("f");
     case TILEDB_FLOAT64:
       return ArrowInfo("g");
+    case TILEDB_BLOB:
+      return ArrowInfo("B");
     case TILEDB_INT8:
       return ArrowInfo("c");
     case TILEDB_UINT8:
@@ -277,6 +280,8 @@ TypeInfo arrow_type_to_tiledb(ArrowSchema* arw_schema) {
     return {TILEDB_FLOAT32, 4, 1, large};
   else if (fmt == "g")
     return {TILEDB_FLOAT64, 8, 1, large};
+  else if (fmt == "B")
+    return {TILEDB_BLOB, 1, 1, large};
   else if (fmt == "c")
     return {TILEDB_INT8, 1, 1, large};
   else if (fmt == "C")
