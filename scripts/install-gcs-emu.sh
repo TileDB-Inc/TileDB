@@ -40,9 +40,7 @@ install_gcs(){
     #so, staying with our current version and patching to different protocol,
     #since there's currently only one instance in v1.23.0 emulator/requirements.txt,
     #patch git+git:// ==> git+https://
-    #sed -i 's/git+git:/git+https:/' /tmp/google-cloud-cpp-1.23.0/google/cloud/storage/emulator/requirements.txt
-    sed 's/git+git:/git+https:/' /tmp/google-cloud-cpp-1.23.0/google/cloud/storage/emulator/requirements.txt > /tmp/tdbpatchedrequirements.txt
-    cp -f /tmp/tdbpatchedrequirements.txt /tmp/google-cloud-cpp-1.23.0/google/cloud/storage/emulator/requirements.txt
+    sed -i 's/git+git:/git+https:/' /tmp/google-cloud-cpp-1.23.0/google/cloud/storage/emulator/requirements.txt
     pip3 install -r /tmp/google-cloud-cpp-1.23.0/google/cloud/storage/emulator/requirements.txt
 }
 
