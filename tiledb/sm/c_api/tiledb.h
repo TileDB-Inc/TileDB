@@ -125,6 +125,12 @@ typedef enum {
 #define TILEDB_CHAR TILEDB_DEPRECATED TILEDB_CHAR_VAL
 #undef TILEDB_CHAR_VAL
 #endif
+#ifdef TILEDB_ANY
+#def TILEDB_ANY_VAL TILEDB_ANY
+#undef TILEDB_ANY
+#define TILEDB_ANY TILEDB_DEPRECATED TILEDB_ANY_VAL
+#undef TILEDB_ANY_VAL
+#endif
 } tiledb_datatype_t;
 
 /** Array type. */
