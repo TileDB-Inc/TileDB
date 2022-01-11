@@ -1058,7 +1058,7 @@ TILEDB_EXPORT void tiledb_config_free(tiledb_config_t** config);
  *    **Default**: bytes
  * - `sm.query.dense.reader` <br>
  *    Which reader to use for dense queries. "refactored" or "legacy".<br>
- *    **Default**: lagacy
+ *    **Default**: refactored
  * - `sm.query.sparse_global_order.reader` <br>
  *    Which reader to use for sparse global order queries. "refactored"
  *    or "legacy".<br>
