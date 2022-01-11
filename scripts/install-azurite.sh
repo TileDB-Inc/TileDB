@@ -49,7 +49,7 @@ install_deps() {
   AZURITE_PACKAGE="azurite@3.13.1"
   if [[ $OSTYPE == linux* ]]; then
     if [[ $(which node) ]]; then
-      echo "node found $(which_node)"
+      echo "node found $(which node)"
     elif [ -n "$(command -v apt-get)" ]; then
       install_apt_pkgs
     elif [ -n "$(command -v yum)" ]; then
