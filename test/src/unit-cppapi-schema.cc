@@ -509,7 +509,9 @@ TEST_CASE(
 
   // Evolve
   {
+    uint64_t now = tiledb_timestamp_now_ms() + 1;
     ArraySchemaEvolution schemaEvolution = ArraySchemaEvolution(ctx);
+    schemaEvolution.set_timestamp_range(std::make_pair(now, now));
 
     // Add attribute b
     Attribute b = Attribute::create<uint32_t>(ctx, "b");
