@@ -534,10 +534,6 @@ Status FilterPipeline::run_reverse_chunk_range(
     }
   }
 
-  // TODO: Figure out if we need/ how to do this since it's at tile level? some
-  // post-processing after the parallel for 2d?
-  // output->set_size(total_size);
-
   return Status::Ok();
 }
 

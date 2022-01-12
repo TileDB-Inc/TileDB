@@ -37,6 +37,8 @@
 #include "tiledb/sm/enums/encryption_type.h"
 #include "tiledb/sm/enums/filter_type.h"
 #include "tiledb/sm/filesystem/vfs.h"
+#include "tiledb/sm/filter/compression_filter.h"
+#include "tiledb/sm/filter/filter_pipeline.h"
 #include "tiledb/sm/fragment/fragment_metadata.h"
 #include "tiledb/sm/misc/parallel_functions.h"
 #include "tiledb/sm/query/query_macros.h"
@@ -685,8 +687,6 @@ Status ReaderBase::prepare_unfiltering_buffers(
 
   assert(filtered_buffer->offset() == filtered_buffer->size());
 
-  // RETURN_NOT_OK(tile->buffer()->realloc(total_orig_size));
-
   return Status::Ok();
 }
 
@@ -912,6 +912,86 @@ Status ReaderBase::unfilter_tiles(
                 storage_manager_->config()));
           }
         }
+        return Status::Ok();
+      });
+
+  RETURN_CANCEL_OR_ERROR(status);
+
+  status = parallel_for(
+      storage_manager_->compute_tp(), 0, num_tiles, [&](uint64_t i) {
+        auto tile = result_tiles->at(i);
+        // for t in tuple (repeated code here)
+        auto tile_tuple = tile->tile_tuple(name);
+
+        // Skip non-existent attributes/dimensions (e.g. coords in the
+        // dense case).
+        if (tile_tuple == nullptr ||
+            std::get<0>(*tile_tuple).filtered_buffer()->size() == 0)
+          return Status::Ok();
+
+        auto& t = std::get<0>(*tile_tuple);
+        auto& t_var = std::get<1>(*tile_tuple);
+        auto& t_validity = std::get<2>(*tile_tuple);
+
+        auto const fragment = fragment_metadata_[tile->frag_idx()];
+        auto tile_idx = tile->tile_idx();
+        uint64_t tile_size = fragment->tile_size(name, tile_idx);
+        uint64_t tile_var_persisted_size;
+        RETURN_NOT_OK(fragment->persisted_tile_var_size(
+            name, tile_idx, &tile_var_persisted_size));
+        uint64_t tile_validity_size =
+            fragment->cell_num(tile_idx) * constants::cell_validity_size;
+
+        t.buffer()->set_size(tile_size);
+        t_var.buffer()->set_size(tile_var_persisted_size);
+        t_validity.buffer()->set_size(tile_validity_size);
+
+        // t.filtered_buffer()->reset_offset();
+        t.filtered_buffer()->clear();
+        t_var.filtered_buffer()->clear();
+        t_validity.filtered_buffer()->clear();
+
+        FilterPipeline filters = array_schema_->filters(name);
+        // Zip the coords.
+        if (t.stores_coords()) {
+          // Note that format version < 2 only split the coordinates when
+          // compression was used. See
+          // https://github.com/TileDB-Inc/TileDB/issues/1053 For format version
+          // > 4, a tile never stores coordinates
+          bool using_compression =
+              filters.get_filter<CompressionFilter>() != nullptr;
+          auto version = t.format_version();
+          if (version > 1 || using_compression) {
+            RETURN_NOT_OK(t.zip_coordinates());
+          }
+        }
+        // Zip the coords.
+        if (t_var.stores_coords()) {
+          // Note that format version < 2 only split the coordinates when
+          // compression was used. See
+          // https://github.com/TileDB-Inc/TileDB/issues/1053 For format version
+          // > 4, a tile never stores coordinates
+          bool using_compression =
+              filters.get_filter<CompressionFilter>() != nullptr;
+          auto version = t_var.format_version();
+          if (version > 1 || using_compression) {
+            RETURN_NOT_OK(t_var.zip_coordinates());
+          }
+        }
+        // Zip the coords.
+        if (t_validity.stores_coords()) {
+          // Note that format version < 2 only split the coordinates when
+          // compression was used. See
+          // https://github.com/TileDB-Inc/TileDB/issues/1053 For format version
+          // > 4, a tile never stores coordinates
+          bool using_compression =
+              filters.get_filter<CompressionFilter>() != nullptr;
+          auto version = t_validity.format_version();
+          if (version > 1 || using_compression) {
+            RETURN_NOT_OK(t_validity.zip_coordinates());
+          }
+        }
+
         return Status::Ok();
       });
 
