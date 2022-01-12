@@ -1276,6 +1276,9 @@ TEST_CASE_METHOD(
   rc = tiledb_array_schema_set_offsets_filter_list(
       ctx_, array_schema, filter_list);
   REQUIRE(rc == TILEDB_OK);
+  rc = tiledb_array_schema_set_validity_filter_list(
+      ctx_, array_schema, filter_list);
+  REQUIRE(rc == TILEDB_OK);
 
   // Check for invalid array schema
   rc = tiledb_array_schema_check(ctx_, array_schema);
@@ -1310,12 +1313,15 @@ TEST_CASE_METHOD(
   REQUIRE(rc == TILEDB_OK);
 
   // Get filter lists
-  tiledb_filter_list_t *coords_flist, *offsets_flist;
+  tiledb_filter_list_t *coords_flist, *offsets_flist, *validity_flist;
   rc = tiledb_array_schema_get_coords_filter_list(
       ctx_, read_schema, &coords_flist);
   REQUIRE(rc == TILEDB_OK);
   rc = tiledb_array_schema_get_offsets_filter_list(
       ctx_, read_schema, &offsets_flist);
+  REQUIRE(rc == TILEDB_OK);
+  rc = tiledb_array_schema_get_validity_filter_list(
+      ctx_, read_schema, &validity_flist);
   REQUIRE(rc == TILEDB_OK);
 
   unsigned nfilters;
@@ -1323,6 +1329,9 @@ TEST_CASE_METHOD(
   REQUIRE(rc == TILEDB_OK);
   REQUIRE(nfilters == 1);
   rc = tiledb_filter_list_get_nfilters(ctx_, offsets_flist, &nfilters);
+  REQUIRE(rc == TILEDB_OK);
+  REQUIRE(nfilters == 1);
+  rc = tiledb_filter_list_get_nfilters(ctx_, validity_flist, &nfilters);
   REQUIRE(rc == TILEDB_OK);
   REQUIRE(nfilters == 1);
 
@@ -1349,6 +1358,7 @@ TEST_CASE_METHOD(
   tiledb_filter_free(&read_filter);
   tiledb_filter_list_free(&coords_flist);
   tiledb_filter_list_free(&offsets_flist);
+  tiledb_filter_list_free(&validity_flist);
   tiledb_array_schema_free(&read_schema);
   tiledb_array_free(&array);
   delete_array(array_name);
