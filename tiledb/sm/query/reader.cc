@@ -796,11 +796,18 @@ Status Reader::compute_result_coords(
   // ignore fragments with a version < 5.
   const auto dim_num = array_schema_->dim_num();
   std::vector<std::string> dim_names;
+  std::vector<std::string> var_size_dim_names;
   dim_names.reserve(dim_num);
-  for (unsigned d = 0; d < dim_num; ++d)
-    dim_names.emplace_back(array_schema_->dimension(d)->name());
+  for (unsigned d = 0; d < dim_num; ++d) {
+    const auto& name = array_schema_->dimension(d)->name();
+    dim_names.emplace_back(name);
+    if (array_schema_->var_size(name))
+      var_size_dim_names.emplace_back(name);
+  }
   RETURN_CANCEL_OR_ERROR(
       load_tile_offsets(read_state_.partitioner_.subarray(), &dim_names));
+  RETURN_CANCEL_OR_ERROR(load_tile_var_sizes(
+      read_state_.partitioner_.subarray(), &var_size_dim_names));
 
   // Read and unfilter zipped coordinate tiles. Note that
   // this will ignore fragments with a version >= 5.

@@ -294,6 +294,11 @@ Status ReaderBase::load_tile_var_sizes(
 
         auto schema = fragment->array_schema();
         for (const auto& name : *names) {
+          // Not a member of array schema, this field was added in array schema
+          // evolution, ignore for this fragment's tile offsets
+          if (!schema->is_field(name))
+            continue;
+
           // Not a var size attribute.
           if (!schema->var_size(name))
             continue;
@@ -1518,12 +1523,15 @@ Status ReaderBase::process_tiles(
   // separately from `copy_names`.
   std::vector<std::string> read_names;
   std::vector<std::string> copy_names;
+  std::vector<std::string> var_size_read_names;
   read_names.reserve(names->size());
   for (const auto& name_pair : *names) {
     const std::string name = name_pair.first;
     const ProcessTileFlags flags = name_pair.second;
     if (flags & ProcessTileFlag::READ) {
       read_names.push_back(name);
+      if (array_schema_->var_size(name))
+        var_size_read_names.emplace_back(name);
     } else if (flags & ProcessTileFlag::COPY) {
       copy_names.push_back(name);
     }
@@ -1532,6 +1540,10 @@ Status ReaderBase::process_tiles(
   // Pre-load all attribute offsets into memory for attributes
   // to be read.
   RETURN_NOT_OK(load_tile_offsets(subarray, &read_names));
+
+  // Pre-load all va attribute var tile sizes into memory for attributes
+  // to be read.
+  RETURN_NOT_OK(load_tile_var_sizes(subarray, &var_size_read_names));
 
   // Respect the memory budget if it is set.
   if (memory_budget != std::numeric_limits<uint64_t>::max()) {
