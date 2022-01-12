@@ -164,6 +164,7 @@ set(TILEDB_TEST_SOURCES
   src/unit-rtree.cc
   src/unit-s3-no-multipart.cc
   src/unit-s3.cc
+  src/unit-sparse-refactored-readers-helpers.cc
   src/unit-sparse-unordered-with-dups-reader.cc
   src/unit-status.cc
   src/unit-Subarray.cc

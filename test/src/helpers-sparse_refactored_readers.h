@@ -41,12 +41,16 @@
 #include <cmath>
 #include <iostream>
 
-// namespace std::chrono {
 namespace tiledb {
 
 /** Helper struct for the dimensions of an array. */
 template <typename T>
 struct TestDimension {
+  TestDimension(std::string name, std::array<T, 2> domain, uint64_t tile_extent)
+      : name_(name)
+      , domain_(domain)
+      , tile_extent_(tile_extent) {
+  }
   /** Array name. */
   std::string name_;
   /** 2D domain of the array. */
@@ -57,6 +61,10 @@ struct TestDimension {
 
 /** Helper struct for the attributes in an array. */
 struct TestAttribute {
+  TestAttribute(std::string name, tiledb_datatype_t type)
+      : name_(name)
+      , type_(type) {
+  }
   /** Attribute name. */
   std::string name_;
   /** Attribute type. */
@@ -68,6 +76,22 @@ struct TestAttribute {
  * (fixed- or var-sized).
  */
 struct QueryBuffer {
+  QueryBuffer(std::string name, tiledb_datatype_t type, void* data)
+      : name_(name)
+      , type_(type)
+      , data_(data)
+      , offsets_(nullptr) {
+  }
+  QueryBuffer(
+      std::string name,
+      tiledb_datatype_t type,
+      void* data,
+      std::vector<uint64_t>* offsets)
+      : name_(name)
+      , type_(type)
+      , data_(data)
+      , offsets_(offsets) {
+  }
   /** Buffer name. */
   std::string name_;
   /** Buffer type. */
@@ -145,9 +169,10 @@ void create_write_query_buffer(
  * Performs a single write to an array.
  *
  * @param test_query_buffers
- * @return Status OK if succesful
+ * @return true if the write is successful (Status::COMPLETE)
+ * @return false if the write is not successful (!Status::COMPLETE)
  */
-Status write(std::vector<QueryBuffer>& test_query_buffers);
+bool write(std::vector<QueryBuffer>& test_query_buffers);
 
 /**
  * Prepare buffers for writing and then write to them.
@@ -158,6 +183,7 @@ Status write(std::vector<QueryBuffer>& test_query_buffers);
  * @param layout The array layout.
  * @param which_attrs An integer representing which attributes to write.
  *  1 = first, 2 = second, 3 = both
+ * @param perf_analysis True if user wants performance metrics printed.
  * @return true if the write is successful (Status::COMPLETE)
  * @return false if the write is not successful (!Status::COMPLETE)
  */
@@ -166,7 +192,8 @@ bool write_array(
     uint64_t num_fragments,
     std::vector<TestDimension<uint64_t>> dims,
     std::string layout,
-    int which_attrs);
+    int which_attrs,
+    bool per_analysis);
 
 /**
  * Helper method that ensures the array's written data matches the read data.
@@ -200,6 +227,7 @@ void validate_data(
  * @param layout The array layout.
  * @param which_attrs An integer representing which attributes to write.
  *  1 = first, 2 = second, 3 = both
+ * @param perf_analysis True if user wants performance metrics printed.
  * @return true if the read is successful (Status::COMPLETE)
  * @return false if the read is not successful (!Status::COMPLETE)
  */
@@ -208,7 +236,8 @@ bool read_array(
     uint64_t buffer_size,
     bool set_subarray,
     std::string layout,
-    int which_attrs);
+    int which_attrs,
+    bool perf_analysis);
 
 /**
  * Helper method to run a wrapped test on an array with fixed parameters.
@@ -222,6 +251,7 @@ bool read_array(
  * @param layout The array layout.
  * @param which_attrs An integer representing which attributes to write.
  *  1 = first, 2 = second, 3 = both
+ * @param perf_analysis True if user wants performance metrics printed.
  */
 void sparse_global_test(
     uint64_t full_domain,
@@ -230,10 +260,9 @@ void sparse_global_test(
     const std::vector<TestAttribute>& attrs,
     bool set_subarray,
     std::string layout,
-    int which_attrs);
+    int which_attrs,
+    bool perf_analysis);
 
 }  // End of namespace tiledb
-
-//} // End of namespace std::chrono
 
 #endif

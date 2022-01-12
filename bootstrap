@@ -195,6 +195,7 @@ ${cmake} -DCMAKE_BUILD_TYPE=${build_type} \
     -DTILEDB_AZURE=${tiledb_azure} \
     -DTILEDB_GCS=${tiledb_gcs} \
     -DTILEDB_SERIALIZATION=${tiledb_serialization} \
+    -DTILEDB_TOOLS=${tiledb_test_tools} \
     -DTILEDB_TOOLS=${tiledb_tools} \
     -DTILEDB_WERROR=${tiledb_werror} \
     -DTILEDB_CPP_API=${tiledb_cpp_api} \

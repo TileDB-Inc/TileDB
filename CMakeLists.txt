@@ -119,6 +119,7 @@ option(TILEDB_CMAKE_IDE "(Used for CLion builds). Disables superbuild and sets t
 option(TILEDB_STATS "Enables internal TileDB statistics gathering." ON)
 option(TILEDB_STATIC "Enables building TileDB as a static library." OFF)
 option(TILEDB_TESTS "If true, enables building the TileDB unit test suite" ON)
+option(TILEDB_TEST_TOOLS "If true, enables building the test tools" OFF)
 option(TILEDB_TOOLS "If true, enables building the TileDB tools" OFF)
 option(TILEDB_SERIALIZATION "If true, enables building with support for query serialization" OFF)
 option(TILEDB_CCACHE "If true, enables use of 'ccache' (if present)" OFF)
