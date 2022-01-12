@@ -32,6 +32,7 @@
 * Sparse unordered w/ dups: var buffer overflow on tile continuation fix. [#2777](https://github.com/TileDB-Inc/TileDB/pull/2777)
 * Determine non overlapping ranges automatically. [#2780](https://github.com/TileDB-Inc/TileDB/pull/2780)
 * Improve object type detection performance [#2792](https://github.com/TileDB-Inc/TileDB/pull/2792)
+* patch git+git: to git+https: to avoid GH access failure [#2805](https://github.com/TileDB-Inc/TileDB/pull/2805)
 
 ## Deprecations
 
@@ -45,6 +46,8 @@
 * Use fragment array schema for applying query condition to account for schema evolution [#2698](https://github.com/TileDB-Inc/TileDB/pull/2698)
 * Don't try to read config from uninitialize storage manager [#2771](https://github.com/TileDB-Inc/TileDB/pull/2771)
 * Fix segfault in new sparse null `QueryCondition` code [#2794](https://github.com/TileDB-Inc/TileDB/pull/2794)
+* ReaderBase needs to load var sizes [#2809](https://github.com/TileDB-Inc/TileDB/pull/2809)
+
 
 ## API additions
 
@@ -52,10 +55,12 @@
 
 * Add bulk point-range setter tiledb_query_add_point_ranges [#2765](https://github.com/TileDB-Inc/TileDB/pull/2765)
 * Add experimental query status details API [#2770](https://github.com/TileDB-Inc/TileDB/pull/2770)
+* Add {set,get}_validity_filter_list [#2798](https://github.com/TileDB-Inc/TileDB/pull/2798)
 
 ### C++ API
 
 * Backport Query::ctx and Query::array getters from 2.7 [#2754](https://github.com/TileDB-Inc/TileDB/pull/2754)
+* Add validity_filter_list set/get and missing get tests [#2798](https://github.com/TileDB-Inc/TileDB/pull/2798)
 
 
 # TileDB v2.5.3 Release Notes
