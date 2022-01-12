@@ -1,4 +1,4 @@
-name: gdb-build-ubuntu-20.04-S3
+name: build-ubuntu-20.04-S3
 on:
   push:
     branches:
@@ -8,8 +8,6 @@ on:
   pull_request:
     branches:
       - '*'  # must quote since "*" is a YAML reserved character; we want a string
-  workflow_dispatch:
-
 env:
   BACKWARDS_COMPATIBILITY_ARRAYS: OFF
   TILEDB_STATIC: OFF
@@ -24,7 +22,7 @@ jobs:
         os:
           - ubuntu-20.04
     if: ${{ startsWith(github.ref , 'refs/tags') != true && startsWith(github.ref , 'build-') != true }}
-    timeout-minutes: 30
+    timeout-minutes: 90
     name: Build - ${{matrix.os}} - S3
     steps:
       - name: 'prep ubuntu for core dumps'
@@ -41,7 +39,6 @@ jobs:
           echo "core_pattern follows..."
           cat /proc/sys/kernel/core_pattern
           echo "...core_pattern above"
-	  echo 0 | sudo tee /proc/sys/kernel/yama/ptrace_scope
 
       - uses: actions/checkout@v2
       - name: 'Print env'
@@ -83,10 +80,7 @@ jobs:
           printenv
           docker ps -a
 
-          # ./tiledb/test/tiledb_unit -d yes | awk '/1: ::set-output/{sub(/.*1: /, ""); print; next} 1'
-
-	  pushd $GITHUB_WORKSPACE/scripts
-	  bash gdb.bash 
+          ./tiledb/test/tiledb_unit -d yes | awk '/1: ::set-output/{sub(/.*1: /, ""); print; next} 1'
 
           pushd $GITHUB_WORKSPACE/examples/cmake_project
           mkdir build && cd build
