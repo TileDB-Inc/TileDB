@@ -32,5 +32,6 @@ wait_term()
 
 # EXAMPLE USAGE
 prep_term
-~/TileDB/build/tiledb/test/tiledb_unit -d yes &
+# ~/TileDB/build/tiledb/test/tiledb_unit -d yes &
+../build/tiledb/test/tiledb_unit -d yes &
 wait_term
