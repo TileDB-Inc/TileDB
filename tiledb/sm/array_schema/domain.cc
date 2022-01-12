@@ -922,6 +922,7 @@ void Domain::set_tile_cell_order_cmp_funcs() {
         cell_order_cmp_func_[d] = cell_order_cmp<char>;
         cell_order_cmp_func_2_[d] = nullptr;
         break;
+      case Datatype::BLOB:
       case Datatype::CHAR:
       case Datatype::STRING_UTF8:
       case Datatype::STRING_UTF16:

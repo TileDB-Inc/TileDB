@@ -137,6 +137,9 @@ const double empty_float64 = std::numeric_limits<double>::quiet_NaN();
 /** The special value for an empty char. */
 const char empty_char = std::numeric_limits<char>::min();
 
+/** The special value for an empty blob. */
+constexpr std::byte empty_blob{0};
+
 /** The special value for an empty int8. */
 const int8_t empty_int8 = std::numeric_limits<int8_t>::min();
 
@@ -348,6 +351,9 @@ const std::string float64_str = "FLOAT64";
 
 /** The string representation for type char. */
 const std::string char_str = "CHAR";
+
+/** The string representation for type blob. */
+const std::string blob_str = "BLOB";
 
 /** The string representation for type int8. */
 const std::string int8_str = "INT8";
@@ -571,6 +577,8 @@ extern const std::string redirection_header_key = "location";
 
 const void* fill_value(Datatype type) {
   switch (type) {
+    case Datatype::BLOB:
+      return &constants::empty_blob;
     case Datatype::INT8:
       return &constants::empty_int8;
     case Datatype::UINT8:
