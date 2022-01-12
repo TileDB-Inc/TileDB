@@ -67,7 +67,7 @@ Status ZStd::compress(
       output_buffer->free_space(),
       input_buffer->data(),
       input_buffer->size(),
-      level < 0 ? ZStd::default_level() : level);
+      level < level_limit_ ? ZStd::default_level() : level);
 
   // Handle error
   if (ZSTD_isError(zstd_ret) != 0) {

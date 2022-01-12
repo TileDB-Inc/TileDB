@@ -446,6 +446,8 @@ tiledb_vfs_mode_from_str(const char* str, tiledb_vfs_mode_t* vfs_mode);
 #define TILEDB_ERR (-1)
 /** Out of memory */
 #define TILEDB_OOM (-2)
+/** Default compression level */
+#define TILEDB_COMPRESSION_FILTER_DEFAULT_LEVEL (30000)
 /**@}*/
 
 /**
