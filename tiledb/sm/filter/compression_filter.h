@@ -137,7 +137,7 @@ class CompressionFilter : public Filter {
   int level_;
 
   /** The default filter compression level. */
-  static constexpr int default_level_ = 30000;
+  static constexpr int default_level_ = -30000;
 
   /** Mutex guarding zstd_compress_ctx_pool */
   std::mutex zstd_compress_ctx_pool_mtx_;
