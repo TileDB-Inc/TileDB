@@ -1,0 +1,11 @@
+set pagination off
+python 
+import sys
+sys.path.append('.')
+import gdbDisplayLockedThreads
+end
+
+thread apply all bt
+
+blocked
+quit
