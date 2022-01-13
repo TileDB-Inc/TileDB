@@ -79,6 +79,7 @@ The dimension has internal format:
 | Domain | `uint8_t[]` | Byte array of length equal to domain size above, storing the min, max values of the dimension. |
 | Null tile extent | `uint8_t` | `1` if the dimension has a null tile extent, else `0`. |
 | Tile extent | `uint8_t[]` | Byte array of length equal to the dimension datatype size, storing the space tile extent of this dimension. |
+| Labels | [Labels](./dimension_label.md) | The labels available for the dimensions |
 
 ## Attribute
 
