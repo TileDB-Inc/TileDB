@@ -327,6 +327,11 @@ class ReaderBase : public StrategyBase {
       const std::vector<ResultTile*>& result_tiles,
       const bool disable_cache = false) const;
 
+  std::tuple<uint64_t, uint64_t> compute_chunk_min_max(
+      const uint64_t num_chunks,
+      const uint64_t num_range_threads,
+      const uint64_t thread_idx) const;
+
   /**
    * Filters the tiles on a particular attribute/dimension from all input
    * fragments based on the tile info in `result_tiles`.
@@ -341,6 +346,8 @@ class ReaderBase : public StrategyBase {
       const std::vector<ResultTile*>& result_tiles,
       const bool disable_cache = false) const;
 
+  // TODO: FIX ALL DOCSTRINGS
+
   /**
    * Runs the input fixed-sized tile for the input attribute or dimension
    * through the filter pipeline. The tile buffer is modified to contain the
@@ -350,7 +357,12 @@ class ReaderBase : public StrategyBase {
    * @param tile The tile to be unfiltered.
    * @return Status
    */
-  Status unfilter_tile(const std::string& name, Tile* tile) const;
+  Status unfilter_tile(
+      uint64_t num_range_threads,
+      uint64_t thread_idx,
+      const std::string& name,
+      Tile* tile,
+      ChunkData* tile_chunk_data) const;
 
   /**
    * Runs the input var-sized tile for the input attribute or dimension through
@@ -363,7 +375,13 @@ class ReaderBase : public StrategyBase {
    * @return Status
    */
   Status unfilter_tile(
-      const std::string& name, Tile* tile, Tile* tile_var) const;
+      uint64_t num_range_threads,
+      uint64_t thread_idx,
+      const std::string& name,
+      Tile* tile,
+      ChunkData* tile_chunk_data,
+      Tile* tile_var,
+      ChunkData* tile_var_chunk_data) const;
 
   /**
    * Runs the input fixed-sized tile for the input nullable attribute
@@ -376,7 +394,13 @@ class ReaderBase : public StrategyBase {
    * @return Status
    */
   Status unfilter_tile_nullable(
-      const std::string& name, Tile* tile, Tile* tile_validity) const;
+      uint64_t num_range_threads,
+      uint64_t thread_idx,
+      const std::string& name,
+      Tile* tile,
+      ChunkData* tile_chunk_data,
+      Tile* tile_validity,
+      ChunkData* tile_validity_chunk_data) const;
 
   /**
    * Runs the input var-sized tile for the input nullable attribute through
@@ -390,10 +414,15 @@ class ReaderBase : public StrategyBase {
    * @return Status
    */
   Status unfilter_tile_nullable(
+      uint64_t num_range_threads,
+      uint64_t thread_idx,
       const std::string& name,
       Tile* tile,
+      ChunkData* tile_chunk_data,
       Tile* tile_var,
-      Tile* tile_validity) const;
+      ChunkData* tile_var_chunk_data,
+      Tile* tile_validity,
+      ChunkData* tile_validity_chunk_data) const;
 
   /**
    * Returns the configured bytesize for var-sized attribute offsets
@@ -548,7 +577,8 @@ class ReaderBase : public StrategyBase {
       const std::vector<QueryBuffer*>& buffers,
       std::vector<uint64_t>& offsets) const;
 
-  Status prepare_unfiltering_buffers(
+  // TODO: add docstring
+  std::tuple<Status, std::optional<uint64_t>> prepare_unfiltered_buffers(
       Tile* const tile, ChunkData* chunk_data) const;
 };
 

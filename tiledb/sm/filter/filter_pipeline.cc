@@ -462,16 +462,25 @@ Status FilterPipeline::run_forward(
 Status FilterPipeline::run_reverse_chunk_range(
     stats::Stats* const reader_stats,
     Tile* const tile,
-    const ChunkData& chunk_data,
+    ChunkData* chunk_data,
     const uint64_t min_chunk_index,
     const uint64_t max_chunk_index,
     ThreadPool* const compute_tp,
     const Config& config) const {
   // Run each chunk through the entire pipeline.
+  assert(tile->buffer());
+  assert(tile->buffer()->size() == 0);
+  if (tile->buffer()->size() > 0) {
+    return LOG_STATUS(
+        Status_FilterError("Tile has allocated uncompressed chunk buffers."));
+  }
+  assert(tile->buffer()->data());
+  assert(tile->filtered_buffer());
+
   for (size_t i = min_chunk_index; i < max_chunk_index; i++) {
     // TODO(ttd): can we instead allocate one FilterStorage per thread?
     // or make it threadsafe?
-    auto& chunk = chunk_data.filtered_chunks_[i];
+    auto& chunk = chunk_data->filtered_chunks_[i];
     FilterStorage storage;
     FilterBuffer input_data(&storage), output_data(&storage);
     FilterBuffer input_metadata(&storage), output_metadata(&storage);
@@ -485,7 +494,7 @@ Status FilterPipeline::run_reverse_chunk_range(
     // If the pipeline is empty, just copy input to output.
     if (filters_.empty()) {
       void* output_chunk_buffer = static_cast<char*>(tile->buffer()->data()) +
-                                  chunk_data.chunk_offsets_[i];
+                                  chunk_data->chunk_offsets_[i];
       RETURN_NOT_OK(input_data.copy_to(output_chunk_buffer));
       return Status::Ok();
     }
@@ -508,7 +517,7 @@ Status FilterPipeline::run_reverse_chunk_range(
       bool last_filter = filter_idx == 0;
       if (last_filter) {
         void* output_chunk_buffer = static_cast<char*>(tile->buffer()->data()) +
-                                    chunk_data.chunk_offsets_[i];
+                                    chunk_data->chunk_offsets_[i];
         RETURN_NOT_OK(output_data.set_fixed_allocation(
             output_chunk_buffer, chunk.unfiltered_data_size_));
       }

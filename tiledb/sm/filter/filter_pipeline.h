@@ -229,7 +229,7 @@ class FilterPipeline {
   Status run_reverse_chunk_range(
       stats::Stats* const reader_stats,
       Tile* const tile,
-      const ChunkData& chunk_data,
+      ChunkData* chunk_data,
       const uint64_t min_chunk_index,
       const uint64_t max_chunk_index,
       ThreadPool* const compute_tp,

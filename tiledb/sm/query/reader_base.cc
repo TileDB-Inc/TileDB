@@ -38,7 +38,6 @@
 #include "tiledb/sm/enums/filter_type.h"
 #include "tiledb/sm/filesystem/vfs.h"
 #include "tiledb/sm/filter/compression_filter.h"
-#include "tiledb/sm/filter/filter_pipeline.h"
 #include "tiledb/sm/fragment/fragment_metadata.h"
 #include "tiledb/sm/misc/parallel_functions.h"
 #include "tiledb/sm/query/query_macros.h"
@@ -643,24 +642,34 @@ Status ReaderBase::read_tiles(
   return Status::Ok();
 }
 
-Status ReaderBase::prepare_unfiltering_buffers(
+std::tuple<Status, std::optional<uint64_t>>
+ReaderBase::prepare_unfiltered_buffers(
     Tile* const tile, ChunkData* unfiltered_tile) const {
   assert(tile->filtered());
 
   assert(tile->buffer());
   assert(tile->buffer()->size() == 0);
-  if (tile->buffer()->size() > 0)
-    return LOG_STATUS(
+  Status st = Status::Ok();
+  if (tile->buffer()->size() > 0) {
+    st = logger_->status(
         Status_ReaderError("Tile has allocated uncompressed chunk buffers."));
+    return {st, std::nullopt};
+  }
 
   Buffer* const filtered_buffer = tile->filtered_buffer();
-  if (filtered_buffer == nullptr)
-    return LOG_STATUS(Status_ReaderError("Tile has null buffer."));
+  if (filtered_buffer == nullptr) {
+    st = logger_->status(Status_ReaderError("Tile has null buffer."));
+    return {st, std::nullopt};
+  }
 
   // Make a pass over the tile to get the chunk information.
   filtered_buffer->reset_offset();
   uint64_t num_chunks;
-  RETURN_NOT_OK(filtered_buffer->read(&num_chunks, sizeof(uint64_t)));
+  st = filtered_buffer->read(&num_chunks, sizeof(uint64_t));
+  if (!st.ok()) {
+    return {st, std::nullopt};
+  }
+
   auto& filtered_chunks = unfiltered_tile->filtered_chunks_;
   auto& chunk_offsets = unfiltered_tile->chunk_offsets_;
   filtered_chunks.resize(num_chunks);
@@ -668,12 +677,23 @@ Status ReaderBase::prepare_unfiltering_buffers(
   uint64_t total_orig_size = 0;
   for (uint64_t i = 0; i < num_chunks; i++) {
     auto& chunk = filtered_chunks[i];
-    RETURN_NOT_OK(filtered_buffer->read(
-        &(chunk.unfiltered_data_size_), sizeof(uint32_t)));
-    RETURN_NOT_OK(
-        filtered_buffer->read(&(chunk.filtered_data_size_), sizeof(uint32_t)));
-    RETURN_NOT_OK(filtered_buffer->read(
-        &(chunk.filtered_metadata_size_), sizeof(uint32_t)));
+    st =
+        filtered_buffer->read(&(chunk.unfiltered_data_size_), sizeof(uint32_t));
+    if (!st.ok()) {
+      return {st, std::nullopt};
+    }
+
+    st = filtered_buffer->read(&(chunk.filtered_data_size_), sizeof(uint32_t));
+    if (!st.ok()) {
+      return {st, std::nullopt};
+    }
+
+    st = filtered_buffer->read(
+        &(chunk.filtered_metadata_size_), sizeof(uint32_t));
+    if (!st.ok()) {
+      return {st, std::nullopt};
+    }
+
     chunk.filtered_metadata_ = filtered_buffer->cur_data();
     chunk.filtered_data_ =
         (char*)chunk.filtered_metadata_ + chunk.filtered_metadata_size_;
@@ -687,19 +707,27 @@ Status ReaderBase::prepare_unfiltering_buffers(
 
   assert(filtered_buffer->offset() == filtered_buffer->size());
 
-  return Status::Ok();
+  // todo: why we need that??
+  if (total_orig_size != tile->buffer()->alloced_size()) {
+    st = tile->buffer()->realloc(total_orig_size);
+    if (!st.ok()) {
+      return {st, std::nullopt};
+    }
+  }
+
+  return {Status::Ok(), total_orig_size};
 }
 
 Status ReaderBase::unfilter_tiles(
     const std::string& name,
     const std::vector<ResultTile*>& result_tiles,
     const bool disable_cache) const {
-  auto stat_type = (array_schema_->is_attr(name)) ? "unfilter_attr_tiles" :
-                                                    "unfilter_coord_tiles";
-  auto timer_se = stats_->start_timer(stat_type);
-
-  auto var_size = array_schema_->var_size(name);
-  auto nullable = array_schema_->is_nullable(name);
+  const auto stat_type = (array_schema_->is_attr(name)) ?
+                             "unfilter_attr_tiles" :
+                             "unfilter_coord_tiles";
+  const auto timer_se = stats_->start_timer(stat_type);
+  const auto var_size = array_schema_->var_size(name);
+  const auto nullable = array_schema_->is_nullable(name);
   const auto num_tiles = static_cast<uint64_t>(result_tiles.size());
 
   // Compute parallelization parameters.
@@ -710,10 +738,14 @@ Status ReaderBase::unfilter_tiles(
     num_range_threads = 1 + ((num_threads - 1) / num_tiles);
   }
 
-  // A vector with alla the necessary chunk data for unfiltering
+  // Vectors with all the necessary chunk data for unfiltering
   std::vector<ChunkData> tiles_chunk_data(num_tiles);
   std::vector<ChunkData> tiles_chunk_var_data(num_tiles);
   std::vector<ChunkData> tiles_chunk_validity_data(num_tiles);
+  // todo: check if those can be removed
+  std::vector<uint64_t> unfiltered_tile_size(num_tiles);
+  std::vector<uint64_t> unfiltered_tile_var_size(num_tiles);
+  std::vector<uint64_t> unfiltered_tile_validity_size(num_tiles);
 
   // Pre-compute chunk offsets.
   auto status = parallel_for(
@@ -735,25 +767,30 @@ Status ReaderBase::unfilter_tiles(
               std::get<0>(*tile_tuple).filtered_buffer()->size() == 0)
             return Status::Ok();
 
-          auto& t = std::get<0>(*tile_tuple);
-          auto& t_var = std::get<1>(*tile_tuple);
-          auto& t_validity = std::get<2>(*tile_tuple);
+          const auto t = &std::get<0>(*tile_tuple);
+          const auto t_var = &std::get<1>(*tile_tuple);
+          const auto t_validity = &std::get<2>(*tile_tuple);
 
-          RETURN_NOT_OK(
-              prepare_unfiltering_buffers(&t, &tiles_chunk_data.at(i)));
+          auto&& [st, tile_size] =
+              prepare_unfiltered_buffers(t, &tiles_chunk_data.at(i));
+          RETURN_NOT_OK(st);
+          unfiltered_tile_size[i] = tile_size.value();
           if (var_size) {
-            RETURN_NOT_OK(prepare_unfiltering_buffers(
-                &t_var, &tiles_chunk_var_data.at(i)));
+            auto&& [st, tile_var_size] =
+                prepare_unfiltered_buffers(t_var, &tiles_chunk_var_data.at(i));
+            RETURN_NOT_OK(st);
+            unfiltered_tile_var_size[i] = tile_var_size.value();
           }
           if (nullable) {
-            RETURN_NOT_OK(prepare_unfiltering_buffers(
-                &t_validity, &tiles_chunk_validity_data.at(i)));
+            auto&& [st, tile_validity_size] = prepare_unfiltered_buffers(
+                t_validity, &tiles_chunk_validity_data.at(i));
+            RETURN_NOT_OK(st);
+            unfiltered_tile_validity_size[i] = tile_validity_size.value();
           }
         }
         return Status::Ok();
       });
   RETURN_NOT_OK_ELSE(status, logger_->status(status));
-  // }
 
   if (tiles_chunk_data.empty())
     return Status::Ok();
@@ -767,8 +804,15 @@ Status ReaderBase::unfilter_tiles(
       num_range_threads,
       [&](uint64_t i, uint64_t range_thread_idx) {
         ResultTile* const tile = result_tiles[i];
-        auto& tile_chunk_data = tiles_chunk_data.at(i);
-        uint64_t tile_chunk_data_size = tile_chunk_data.chunk_offsets_.size();
+        auto tile_chunk_data = &tiles_chunk_data.at(i);
+        uint64_t num_tile_chunks = tile_chunk_data->filtered_chunks_.size();
+
+        // Prevent processing past the end of chunks in case there are more
+        // threads than chunks.
+        if (range_thread_idx > num_tile_chunks - 1) {
+          return Status::Ok();
+        }
+
         auto& fragment = fragment_metadata_[tile->frag_idx()];
         auto format_version = fragment->format_version();
 
@@ -785,9 +829,9 @@ Status ReaderBase::unfilter_tiles(
               std::get<0>(*tile_tuple).filtered_buffer()->size() == 0)
             return Status::Ok();
 
-          auto& t = std::get<0>(*tile_tuple);
-          auto& t_var = std::get<1>(*tile_tuple);
-          auto& t_validity = std::get<2>(*tile_tuple);
+          auto t = &std::get<0>(*tile_tuple);
+          auto t_var = &std::get<1>(*tile_tuple);
+          auto t_validity = &std::get<2>(*tile_tuple);
 
           if (!disable_cache) {
             logger_->info("using cache");
@@ -799,14 +843,14 @@ Status ReaderBase::unfilter_tiles(
                 fragment->file_offset(name, tile_idx, &tile_attr_offset));
 
             // Cache 't'.
-            if (t.filtered()) {
+            if (t->filtered()) {
               // Store the filtered buffer in the tile cache.
               RETURN_NOT_OK(storage_manager_->write_to_cache(
-                  tile_attr_uri, tile_attr_offset, t.filtered_buffer()));
+                  tile_attr_uri, tile_attr_offset, t->filtered_buffer()));
             }
 
             // Cache 't_var'.
-            if (var_size && t_var.filtered()) {
+            if (var_size && t_var->filtered()) {
               auto tile_attr_var_uri = fragment->var_uri(name);
               uint64_t tile_attr_var_offset;
               RETURN_NOT_OK(fragment->file_var_offset(
@@ -816,100 +860,70 @@ Status ReaderBase::unfilter_tiles(
               RETURN_NOT_OK(storage_manager_->write_to_cache(
                   tile_attr_var_uri,
                   tile_attr_var_offset,
-                  t_var.filtered_buffer()));
+                  t_var->filtered_buffer()));
+            }
+
+            // Cache 't_validity'.
+            if (nullable && t_validity->filtered()) {
+              auto tile_attr_validity_uri = fragment->validity_uri(name);
+              uint64_t tile_attr_validity_offset;
+              RETURN_NOT_OK(fragment->file_validity_offset(
+                  name, tile_idx, &tile_attr_validity_offset));
+
+              // Store the filtered buffer in the tile cache.
+              RETURN_NOT_OK(storage_manager_->write_to_cache(
+                  tile_attr_validity_uri,
+                  tile_attr_validity_offset,
+                  t_validity->filtered_buffer()));
             }
           }
 
-          // Compute the chunks to process.
-          auto t_part_num = std::min(tile_chunk_data_size, num_range_threads);
-          auto t_min =
-              (range_thread_idx * tile_chunk_data_size + t_part_num - 1) /
-              t_part_num;
-          auto t_max = std::min(
-              ((range_thread_idx + 1) * tile_chunk_data_size + t_part_num - 1) /
-                  t_part_num,
-              tile_chunk_data_size);
-
-          FilterPipeline filters = array_schema_->filters(name);
-          // Append an encryption unfilter when necessary.
-          RETURN_NOT_OK(FilterPipeline::append_encryption_filter(
-              &filters, array_->get_encryption_key()));
-
-          // Reverse the tile filters.
-          RETURN_NOT_OK(filters.run_reverse_chunk_range(
-              stats_,
-              &t,
-              tile_chunk_data,
-              t_min,
-              t_max,
-              storage_manager_->compute_tp(),
-              storage_manager_->config()));
-
+          assert(num_tile_chunks != 0);
           // Unfilter 't' for fixed-sized tiles, otherwise unfilter both 't' and
           // 't_var' for var-sized tiles.
-          if (var_size) {
-            auto& tile_chunk_var_data = tiles_chunk_var_data.at(i);
-            uint64_t tile_chunk_var_data_size =
-                tile_chunk_var_data.chunk_offsets_.size();
-            // Compute the chunks to process.
-            auto t_var_part_num =
-                std::min(tile_chunk_var_data_size, num_range_threads);
-            auto t_var_min = (range_thread_idx * tile_chunk_var_data_size +
-                              t_var_part_num - 1) /
-                             t_var_part_num;
-            auto t_var_max = std::min(
-                ((range_thread_idx + 1) * tile_chunk_var_data_size +
-                 t_var_part_num - 1) /
-                    t_var_part_num,
-                tile_chunk_var_data_size);
-
-            FilterPipeline offset_filters =
-                array_schema_->cell_var_offsets_filters();
-            RETURN_NOT_OK(FilterPipeline::append_encryption_filter(
-                &offset_filters, array_->get_encryption_key()));
-
-            // Reverse the tile offset filters.
-            RETURN_NOT_OK(filters.run_reverse_chunk_range(
-                stats_,
-                &t_var,
-                tile_chunk_var_data,
-                t_var_min,
-                t_var_max,
-                storage_manager_->compute_tp(),
-                storage_manager_->config()));
-          }
-
-          if (nullable) {
-            auto& tile_chunk_validity_data = tiles_chunk_validity_data.at(i);
-            uint64_t tile_chunk_validity_data_size =
-                tile_chunk_validity_data.chunk_offsets_.size();
-            // Compute the chunks to process.
-            auto t_validity_part_num =
-                std::min(tile_chunk_validity_data_size, num_range_threads);
-            auto t_validity_min =
-                (range_thread_idx * tile_chunk_validity_data_size +
-                 t_validity_part_num - 1) /
-                t_validity_part_num;
-            auto t_validity_max = std::min(
-                ((range_thread_idx + 1) * tile_chunk_validity_data_size +
-                 t_validity_part_num - 1) /
-                    t_validity_part_num,
-                tile_chunk_validity_data_size);
-
-            FilterPipeline validity_filters =
-                array_schema_->cell_validity_filters();
-            RETURN_NOT_OK(FilterPipeline::append_encryption_filter(
-                &validity_filters, array_->get_encryption_key()));
-
-            // Reverse the validity tile filters.
-            RETURN_NOT_OK(filters.run_reverse_chunk_range(
-                stats_,
-                &t_validity,
-                tile_chunk_validity_data,
-                t_validity_min,
-                t_validity_max,
-                storage_manager_->compute_tp(),
-                storage_manager_->config()));
+          if (!var_size) {
+            if (!nullable)
+              RETURN_NOT_OK(unfilter_tile(
+                  num_range_threads,
+                  range_thread_idx,
+                  name,
+                  t,
+                  tile_chunk_data));
+            else {
+              auto tile_chunk_validity_data = &tiles_chunk_validity_data.at(i);
+              RETURN_NOT_OK(unfilter_tile_nullable(
+                  num_range_threads,
+                  range_thread_idx,
+                  name,
+                  t,
+                  tile_chunk_data,
+                  t_validity,
+                  tile_chunk_validity_data));
+            }
+          } else {
+            auto tile_chunk_var_data = &tiles_chunk_var_data.at(i);
+            if (!nullable)
+              RETURN_NOT_OK(unfilter_tile(
+                  num_range_threads,
+                  range_thread_idx,
+                  name,
+                  t,
+                  tile_chunk_data,
+                  t_var,
+                  tile_chunk_var_data));
+            else {
+              auto tile_chunk_validity_data = &tiles_chunk_validity_data.at(i);
+              RETURN_NOT_OK(unfilter_tile_nullable(
+                  num_range_threads,
+                  range_thread_idx,
+                  name,
+                  t,
+                  tile_chunk_data,
+                  t_var,
+                  tile_chunk_var_data,
+                  t_validity,
+                  tile_chunk_validity_data));
+            }
           }
         }
         return Status::Ok();
@@ -917,100 +931,121 @@ Status ReaderBase::unfilter_tiles(
 
   RETURN_CANCEL_OR_ERROR(status);
 
-  status = parallel_for(
-      storage_manager_->compute_tp(), 0, num_tiles, [&](uint64_t i) {
-        auto tile = result_tiles->at(i);
-        // for t in tuple (repeated code here)
-        auto tile_tuple = tile->tile_tuple(name);
+  for (size_t i = 0; i < num_tiles; i++) {
+    ResultTile* const tile = result_tiles[i];
+    auto& fragment = fragment_metadata_[tile->frag_idx()];
+    auto format_version = fragment->format_version();
 
-        // Skip non-existent attributes/dimensions (e.g. coords in the
-        // dense case).
-        if (tile_tuple == nullptr ||
-            std::get<0>(*tile_tuple).filtered_buffer()->size() == 0)
-          return Status::Ok();
+    // Applicable for zipped coordinates only to versions < 5
+    // Applicable for separate coordinates only to version >= 5
+    if (name != constants::coords ||
+        (name == constants::coords && format_version < 5) ||
+        (array_schema_->is_dim(name) && format_version >= 5)) {
+      auto tile_tuple = tile->tile_tuple(name);
 
-        auto& t = std::get<0>(*tile_tuple);
-        auto& t_var = std::get<1>(*tile_tuple);
-        auto& t_validity = std::get<2>(*tile_tuple);
-
-        auto const fragment = fragment_metadata_[tile->frag_idx()];
-        auto tile_idx = tile->tile_idx();
-        uint64_t tile_size = fragment->tile_size(name, tile_idx);
-        uint64_t tile_var_persisted_size;
-        RETURN_NOT_OK(fragment->persisted_tile_var_size(
-            name, tile_idx, &tile_var_persisted_size));
-        uint64_t tile_validity_size =
-            fragment->cell_num(tile_idx) * constants::cell_validity_size;
-
-        t.buffer()->set_size(tile_size);
-        t_var.buffer()->set_size(tile_var_persisted_size);
-        t_validity.buffer()->set_size(tile_validity_size);
-
-        // t.filtered_buffer()->reset_offset();
-        t.filtered_buffer()->clear();
-        t_var.filtered_buffer()->clear();
-        t_validity.filtered_buffer()->clear();
-
-        FilterPipeline filters = array_schema_->filters(name);
-        // Zip the coords.
-        if (t.stores_coords()) {
-          // Note that format version < 2 only split the coordinates when
-          // compression was used. See
-          // https://github.com/TileDB-Inc/TileDB/issues/1053 For format version
-          // > 4, a tile never stores coordinates
-          bool using_compression =
-              filters.get_filter<CompressionFilter>() != nullptr;
-          auto version = t.format_version();
-          if (version > 1 || using_compression) {
-            RETURN_NOT_OK(t.zip_coordinates());
-          }
-        }
-        // Zip the coords.
-        if (t_var.stores_coords()) {
-          // Note that format version < 2 only split the coordinates when
-          // compression was used. See
-          // https://github.com/TileDB-Inc/TileDB/issues/1053 For format version
-          // > 4, a tile never stores coordinates
-          bool using_compression =
-              filters.get_filter<CompressionFilter>() != nullptr;
-          auto version = t_var.format_version();
-          if (version > 1 || using_compression) {
-            RETURN_NOT_OK(t_var.zip_coordinates());
-          }
-        }
-        // Zip the coords.
-        if (t_validity.stores_coords()) {
-          // Note that format version < 2 only split the coordinates when
-          // compression was used. See
-          // https://github.com/TileDB-Inc/TileDB/issues/1053 For format version
-          // > 4, a tile never stores coordinates
-          bool using_compression =
-              filters.get_filter<CompressionFilter>() != nullptr;
-          auto version = t_validity.format_version();
-          if (version > 1 || using_compression) {
-            RETURN_NOT_OK(t_validity.zip_coordinates());
-          }
-        }
-
+      // Skip non-existent attributes/dimensions (e.g. coords in the
+      // dense case).
+      if (tile_tuple == nullptr ||
+          std::get<0>(*tile_tuple).filtered_buffer()->size() == 0)
         return Status::Ok();
-      });
 
-  RETURN_CANCEL_OR_ERROR(status);
+      auto t = &std::get<0>(*tile_tuple);
+      auto t_var = &std::get<1>(*tile_tuple);
+      auto t_validity = &std::get<2>(*tile_tuple);
+
+      t->buffer()->set_size(unfiltered_tile_size[i]);
+      t->filtered_buffer()->clear();
+      FilterPipeline filters = array_schema_->filters(name);
+      // Zip the coords.
+      if (t->stores_coords()) {
+        // Note that format version < 2 only split the coordinates when
+        // compression was used. See
+        // https://github.com/TileDB-Inc/TileDB/issues/1053 For format
+        // version > 4, a tile never stores coordinates
+        bool using_compression =
+            filters.get_filter<CompressionFilter>() != nullptr;
+        auto version = t->format_version();
+        if (version > 1 || using_compression) {
+          RETURN_NOT_OK(t->zip_coordinates());
+        }
+      }
+
+      if (var_size) {
+        t_var->buffer()->set_size(unfiltered_tile_var_size[i]);
+        t_var->filtered_buffer()->clear();
+        // Zip the coords.
+        if (t_var->stores_coords()) {
+          // Note that format version < 2 only split the coordinates when
+          // compression was used. See
+          // https://github.com/TileDB-Inc/TileDB/issues/1053 For format
+          // version > 4, a tile never stores coordinates
+          bool using_compression =
+              filters.get_filter<CompressionFilter>() != nullptr;
+          auto version = t_var->format_version();
+          if (version > 1 || using_compression) {
+            RETURN_NOT_OK(t_var->zip_coordinates());
+          }
+        }
+      }
+
+      if (nullable) {
+        t_validity->buffer()->set_size(unfiltered_tile_validity_size[i]);
+        t_validity->filtered_buffer()->clear();
+        if (t_validity->stores_coords()) {
+          // Note that format version < 2 only split the coordinates when
+          // compression was used. See
+          // https://github.com/TileDB-Inc/TileDB/issues/1053 For format
+          // version > 4, a tile never stores coordinates
+          bool using_compression =
+              filters.get_filter<CompressionFilter>() != nullptr;
+          auto version = t_validity->format_version();
+          if (version > 1 || using_compression) {
+            RETURN_NOT_OK(t_validity->zip_coordinates());
+          }
+        }
+      }
+    }
+  }
 
   return Status::Ok();
 }
 
-Status ReaderBase::unfilter_tile(const std::string& name, Tile* tile) const {
+std::tuple<uint64_t, uint64_t> ReaderBase::compute_chunk_min_max(
+    const uint64_t num_chunks,
+    const uint64_t num_range_threads,
+    const uint64_t thread_idx) const {
+  auto t_part_num = std::min(num_chunks, num_range_threads);
+  auto t_min = (thread_idx * num_chunks + t_part_num - 1) / t_part_num;
+  auto t_max = std::min(
+      ((thread_idx + 1) * num_chunks + t_part_num - 1) / t_part_num,
+      num_chunks);
+
+  return {t_min, t_max};
+}
+
+Status ReaderBase::unfilter_tile(
+    uint64_t num_range_threads,
+    uint64_t thread_idx,
+    const std::string& name,
+    Tile* tile,
+    ChunkData* tile_chunk_data) const {
   FilterPipeline filters = array_schema_->filters(name);
 
   // Append an encryption unfilter when necessary.
   RETURN_NOT_OK(FilterPipeline::append_encryption_filter(
       &filters, array_->get_encryption_key()));
 
+  // Compute chunk boundaries
+  auto&& [t_min, t_max] = compute_chunk_min_max(
+      tile_chunk_data->chunk_offsets_.size(), num_range_threads, thread_idx);
+
   // Reverse the tile filters.
-  RETURN_NOT_OK(filters.run_reverse(
+  RETURN_NOT_OK(filters.run_reverse_chunk_range(
       stats_,
       tile,
+      tile_chunk_data,
+      t_min,
+      t_max,
       storage_manager_->compute_tp(),
       storage_manager_->config()));
 
@@ -1018,58 +1053,107 @@ Status ReaderBase::unfilter_tile(const std::string& name, Tile* tile) const {
 }
 
 Status ReaderBase::unfilter_tile(
-    const std::string& name, Tile* tile, Tile* tile_var) const {
-  FilterPipeline offset_filters = array_schema_->cell_var_offsets_filters();
-  FilterPipeline filters = array_schema_->filters(name);
-
-  // Append an encryption unfilter when necessary.
-  RETURN_NOT_OK(FilterPipeline::append_encryption_filter(
-      &offset_filters, array_->get_encryption_key()));
-  RETURN_NOT_OK(FilterPipeline::append_encryption_filter(
-      &filters, array_->get_encryption_key()));
-
-  // Reverse the tile filters.
-  RETURN_NOT_OK(offset_filters.run_reverse(
-      stats_, tile, storage_manager_->compute_tp(), config_));
-  RETURN_NOT_OK(filters.run_reverse(
-      stats_, tile_var, storage_manager_->compute_tp(), config_));
-
-  return Status::Ok();
-}
-
-Status ReaderBase::unfilter_tile_nullable(
-    const std::string& name, Tile* tile, Tile* tile_validity) const {
-  FilterPipeline filters = array_schema_->filters(name);
-  FilterPipeline validity_filters = array_schema_->cell_validity_filters();
-
-  // Append an encryption unfilter when necessary.
-  RETURN_NOT_OK(FilterPipeline::append_encryption_filter(
-      &filters, array_->get_encryption_key()));
-  RETURN_NOT_OK(FilterPipeline::append_encryption_filter(
-      &validity_filters, array_->get_encryption_key()));
-
-  // Reverse the tile filters.
-  RETURN_NOT_OK(filters.run_reverse(
-      stats_,
-      tile,
-      storage_manager_->compute_tp(),
-      storage_manager_->config()));
-
-  // Reverse the validity tile filters.
-  RETURN_NOT_OK(validity_filters.run_reverse(
-      stats_,
-      tile_validity,
-      storage_manager_->compute_tp(),
-      storage_manager_->config()));
-
-  return Status::Ok();
-}
-
-Status ReaderBase::unfilter_tile_nullable(
+    uint64_t num_range_threads,
+    uint64_t thread_idx,
     const std::string& name,
     Tile* tile,
+    ChunkData* tile_chunk_data,
     Tile* tile_var,
-    Tile* tile_validity) const {
+    ChunkData* tile_var_chunk_data) const {
+  FilterPipeline offset_filters = array_schema_->cell_var_offsets_filters();
+  FilterPipeline filters = array_schema_->filters(name);
+
+  // Append an encryption unfilter when necessary.
+  RETURN_NOT_OK(FilterPipeline::append_encryption_filter(
+      &offset_filters, array_->get_encryption_key()));
+  RETURN_NOT_OK(FilterPipeline::append_encryption_filter(
+      &filters, array_->get_encryption_key()));
+
+  // Compute chunk boundaries
+  auto&& [t_min, t_max] = compute_chunk_min_max(
+      tile_chunk_data->chunk_offsets_.size(), num_range_threads, thread_idx);
+  auto&& [tvar_min, tvar_max] = compute_chunk_min_max(
+      tile_var_chunk_data->chunk_offsets_.size(),
+      num_range_threads,
+      thread_idx);
+
+  // Reverse the tile filters.
+  RETURN_NOT_OK(offset_filters.run_reverse_chunk_range(
+      stats_,
+      tile,
+      tile_chunk_data,
+      t_min,
+      t_max,
+      storage_manager_->compute_tp(),
+      storage_manager_->config()));
+  RETURN_NOT_OK(filters.run_reverse_chunk_range(
+      stats_,
+      tile_var,
+      tile_var_chunk_data,
+      tvar_min,
+      tvar_max,
+      storage_manager_->compute_tp(),
+      storage_manager_->config()));
+
+  return Status::Ok();
+}
+
+Status ReaderBase::unfilter_tile_nullable(
+    uint64_t num_range_threads,
+    uint64_t thread_idx,
+    const std::string& name,
+    Tile* tile,
+    ChunkData* tile_chunk_data,
+    Tile* tile_validity,
+    ChunkData* tile_validity_chunk_data) const {
+  FilterPipeline filters = array_schema_->filters(name);
+  FilterPipeline validity_filters = array_schema_->cell_validity_filters();
+
+  // Append an encryption unfilter when necessary.
+  RETURN_NOT_OK(FilterPipeline::append_encryption_filter(
+      &filters, array_->get_encryption_key()));
+  RETURN_NOT_OK(FilterPipeline::append_encryption_filter(
+      &validity_filters, array_->get_encryption_key()));
+
+  // Compute chunk boundaries
+  auto&& [t_min, t_max] = compute_chunk_min_max(
+      tile_chunk_data->chunk_offsets_.size(), num_range_threads, thread_idx);
+  auto&& [tval_min, tval_max] = compute_chunk_min_max(
+      tile_validity_chunk_data->chunk_offsets_.size(),
+      num_range_threads,
+      thread_idx);
+
+  // Reverse the tile filters.
+  RETURN_NOT_OK(filters.run_reverse_chunk_range(
+      stats_,
+      tile,
+      tile_chunk_data,
+      t_min,
+      t_max,
+      storage_manager_->compute_tp(),
+      storage_manager_->config()));
+  RETURN_NOT_OK(validity_filters.run_reverse_chunk_range(
+      stats_,
+      tile_validity,
+      tile_validity_chunk_data,
+      tval_min,
+      tval_max,
+      storage_manager_->compute_tp(),
+      storage_manager_->config()));
+
+  return Status::Ok();
+}
+
+Status ReaderBase::unfilter_tile_nullable(
+    uint64_t num_range_threads,
+    uint64_t thread_idx,
+    const std::string& name,
+    Tile* tile,
+    ChunkData* tile_chunk_data,
+    Tile* tile_var,
+    ChunkData* tile_var_chunk_data,
+    Tile* tile_validity,
+    ChunkData* tile_validity_chunk_data) const {
   FilterPipeline offset_filters = array_schema_->cell_var_offsets_filters();
   FilterPipeline filters = array_schema_->filters(name);
   FilterPipeline validity_filters = array_schema_->cell_validity_filters();
@@ -1082,22 +1166,41 @@ Status ReaderBase::unfilter_tile_nullable(
   RETURN_NOT_OK(FilterPipeline::append_encryption_filter(
       &validity_filters, array_->get_encryption_key()));
 
+  // Compute chunk boundaries
+  auto&& [t_min, t_max] = compute_chunk_min_max(
+      tile_chunk_data->chunk_offsets_.size(), num_range_threads, thread_idx);
+  auto&& [tvar_min, tvar_max] = compute_chunk_min_max(
+      tile_var_chunk_data->chunk_offsets_.size(),
+      num_range_threads,
+      thread_idx);
+  auto&& [tval_min, tval_max] = compute_chunk_min_max(
+      tile_validity_chunk_data->chunk_offsets_.size(),
+      num_range_threads,
+      thread_idx);
+
   // Reverse the tile filters.
-  RETURN_NOT_OK(offset_filters.run_reverse(
+  RETURN_NOT_OK(offset_filters.run_reverse_chunk_range(
       stats_,
       tile,
+      tile_chunk_data,
+      t_min,
+      t_max,
       storage_manager_->compute_tp(),
       storage_manager_->config()));
-  RETURN_NOT_OK(filters.run_reverse(
+  RETURN_NOT_OK(filters.run_reverse_chunk_range(
       stats_,
       tile_var,
+      tile_var_chunk_data,
+      tvar_min,
+      tvar_max,
       storage_manager_->compute_tp(),
       storage_manager_->config()));
-
-  // Reverse the validity tile filters.
-  RETURN_NOT_OK(validity_filters.run_reverse(
+  RETURN_NOT_OK(validity_filters.run_reverse_chunk_range(
       stats_,
       tile_validity,
+      tile_validity_chunk_data,
+      tval_min,
+      tval_max,
       storage_manager_->compute_tp(),
       storage_manager_->config()));
 
