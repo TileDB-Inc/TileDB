@@ -4,6 +4,7 @@ on:
   push:
     branches:
       - dev
+      - lums/gdb-thread-pool
   workflow_dispatch:
     inputs:
       logLevel:
