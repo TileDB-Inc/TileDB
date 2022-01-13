@@ -28,7 +28,7 @@ jobs:
         os:
           - ubuntu-20.04
     if: ${{ startsWith(github.ref , 'refs/tags') != true && startsWith(github.ref , 'build-') != true }}
-    timeout-minutes: 30
+    timeout-minutes: 45
     name: Build - ${{matrix.os}} - S3
     steps:
       - name: 'prep ubuntu for core dumps'
