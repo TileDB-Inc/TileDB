@@ -41,7 +41,7 @@ jobs:
           echo "core_pattern follows..."
           cat /proc/sys/kernel/core_pattern
           echo "...core_pattern above"
-	  echo 0 | sudo tee /proc/sys/kernel/yama/ptrace_scope
+          echo 0 | sudo tee /proc/sys/kernel/yama/ptrace_scope
 
       - uses: actions/checkout@v2
       - name: 'Print env'
@@ -85,8 +85,8 @@ jobs:
 
           # ./tiledb/test/tiledb_unit -d yes | awk '/1: ::set-output/{sub(/.*1: /, ""); print; next} 1'
 
-	  pushd $GITHUB_WORKSPACE/scripts
-	  bash gdb.bash 
+          pushd $GITHUB_WORKSPACE/scripts
+          bash gdb.bash 
 
           pushd $GITHUB_WORKSPACE/examples/cmake_project
           mkdir build && cd build
