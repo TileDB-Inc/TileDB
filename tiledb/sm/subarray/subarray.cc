@@ -3205,6 +3205,7 @@ Status Subarray::sort_ranges_for_dim(
     case Datatype::STRING_ASCII:
       return sort_ranges_for_dim<char>(compute_tp, dim_idx);
     case Datatype::CHAR:
+    case Datatype::BLOB:
     case Datatype::STRING_UTF8:
     case Datatype::STRING_UTF16:
     case Datatype::STRING_UTF32:
@@ -3285,6 +3286,7 @@ std::tuple<Status, bool> Subarray::non_overlapping_ranges_for_dim(
     case Datatype::STRING_ASCII:
       return non_overlapping_ranges_for_dim<char>(dim_idx);
     case Datatype::CHAR:
+    case Datatype::BLOB:
     case Datatype::STRING_UTF8:
     case Datatype::STRING_UTF16:
     case Datatype::STRING_UTF32:

@@ -61,7 +61,8 @@ Status GZip::compress(
   strm.zalloc = Z_NULL;
   strm.zfree = Z_NULL;
   strm.opaque = Z_NULL;
-  ret = deflateInit(&strm, level < 0 ? GZip::default_level() : level);
+  ret =
+      deflateInit(&strm, level < level_limit_ ? GZip::default_level() : level);
 
   if (ret != Z_OK) {
     (void)deflateEnd(&strm);
@@ -88,6 +89,10 @@ Status GZip::compress(
   output_buffer->advance_offset(compressed_size);
 
   return Status::Ok();
+}
+
+Status GZip::compress(ConstBuffer* input_buffer, Buffer* output_buffer) {
+  return GZip::compress(GZip::default_level(), input_buffer, output_buffer);
 }
 
 Status GZip::decompress(

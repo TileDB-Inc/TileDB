@@ -65,6 +65,7 @@ jobs:
       - name: 'Build and test libtiledb'
         id: test
         run: |
+          set -x
           ulimit -c unlimited     # Enable core dumps to be captured (must be in same run block)
           ls -ld /cores
           ulimit -c
@@ -73,6 +74,7 @@ jobs:
           source scripts/run-gcs-emu.sh;
 
           bootstrap_args="${bootstrap_args} --enable-gcs";
+          bootstrap_args="${bootstrap_args} --enable-release-symbols";
           source $GITHUB_WORKSPACE/scripts/ci/build_libtiledb.sh
 
           # GCS unit tests are temporarily unsupported on CI for MacOS. Fake success with
@@ -93,7 +95,7 @@ jobs:
           for f in $(find /cores -name 'core.*');
             do
               echo "stack trace for $f"
-              lldb -c $f --batch -o 'bt all' -o 'image list' -o 'quit'
+              lldb -c $f --batch -o 'bt all' -o 'image list' -o 're r -a' -o 'di -F intel -f -m' -o 'quit'
             done;
 
       - name: 'upload core artifacts' # https://github.com/actions/upload-artifact#where-does-the-upload-go

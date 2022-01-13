@@ -25,6 +25,11 @@
 // clang-format is disabled on the first enum so that we can manually indent it
 // properly.
 // clang-format off
+/**
+ * NOTE: The values of these enums are serialized to the array schema and/or
+ * fragment metadata. Therefore, the values below should never change, 
+ * otherwise backwards compatibility breaks.
+ */
 #ifdef TILEDB_QUERY_TYPE_ENUM
     /** Read query */
     TILEDB_QUERY_TYPE_ENUM(READ) = 0,
@@ -137,6 +142,8 @@
     TILEDB_DATATYPE_ENUM(TIME_FS) = 38,
     /** Time with attosecond resolution */
     TILEDB_DATATYPE_ENUM(TIME_AS) = 39,
+    /** std::byte */
+    TILEDB_DATATYPE_ENUM(BLOB) = 40,
 #endif
 
 #ifdef TILEDB_ARRAY_TYPE_ENUM

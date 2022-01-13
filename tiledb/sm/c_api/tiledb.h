@@ -125,6 +125,24 @@ typedef enum {
 #define TILEDB_CHAR TILEDB_DEPRECATED TILEDB_CHAR_VAL
 #undef TILEDB_CHAR_VAL
 #endif
+#ifdef TILEDB_STRING_UCS2
+#def TILEDB_STRING_UCS2_VAL TILEDB_STRING_UCS2
+#undef TILEDB_STRING_UCS2
+#define TILEDB_STRING_UCS2 TILEDB_DEPRECATED TILEDB_STRING_UCS2_VAL
+#undef TILEDB_STRING_UCS2_VAL
+#endif
+#ifdef TILEDB_STRING_UCS4
+#def TILEDB_STRING_UCS4_VAL TILEDB_STRING_UCS4
+#undef TILEDB_STRING_UCS4
+#define TILEDB_STRING_UCS4 TILEDB_DEPRECATED TILEDB_STRING_UCS4_VAL
+#undef TILEDB_STRING_UCS4_VAL
+#endif
+#ifdef TILEDB_ANY
+#def TILEDB_ANY_VAL TILEDB_ANY
+#undef TILEDB_ANY
+#define TILEDB_ANY TILEDB_DEPRECATED TILEDB_ANY_VAL
+#undef TILEDB_ANY_VAL
+#endif
 } tiledb_datatype_t;
 
 /** Array type. */
@@ -446,6 +464,8 @@ tiledb_vfs_mode_from_str(const char* str, tiledb_vfs_mode_t* vfs_mode);
 #define TILEDB_ERR (-1)
 /** Out of memory */
 #define TILEDB_OOM (-2)
+/** Default compression level */
+#define TILEDB_COMPRESSION_FILTER_DEFAULT_LEVEL (-30000)
 /**@}*/
 
 /**
@@ -3127,6 +3147,29 @@ TILEDB_EXPORT int32_t tiledb_array_schema_set_offsets_filter_list(
     tiledb_filter_list_t* filter_list);
 
 /**
+ * Sets the filter list to use for the validity array of nullable attribute
+ * values.
+ *
+ * **Example:**
+ *
+ * @code{.c}
+ * tiledb_filter_list_t* filter_list;
+ * tiledb_filter_list_alloc(ctx, &filter_list);
+ * tiledb_filter_list_add_filter(ctx, filter_list, filter);
+ * tiledb_array_schema_set_validity_filter_list(ctx, array_schema, filter_list);
+ * @endcode
+ *
+ * @param ctx The TileDB context.
+ * @param array_schema The array schema.
+ * @param filter_list The filter list to be set.
+ * @return `TILEDB_OK` for success and `TILEDB_ERR` for error.
+ */
+TILEDB_EXPORT int32_t tiledb_array_schema_set_validity_filter_list(
+    tiledb_ctx_t* ctx,
+    tiledb_array_schema_t* array_schema,
+    tiledb_filter_list_t* filter_list);
+
+/**
  * Checks the correctness of the array schema.
  *
  * **Example:**
@@ -3298,6 +3341,27 @@ TILEDB_EXPORT int32_t tiledb_array_schema_get_coords_filter_list(
  * @return `TILEDB_OK` for success and `TILEDB_ERR` for error.
  */
 TILEDB_EXPORT int32_t tiledb_array_schema_get_offsets_filter_list(
+    tiledb_ctx_t* ctx,
+    tiledb_array_schema_t* array_schema,
+    tiledb_filter_list_t** filter_list);
+
+/**
+ * Retrieves the filter list used for validity maps.
+ *
+ * **Example:**
+ *
+ * @code{.c}
+ * tiledb_filter_list_t* filter_list;
+ * tiledb_array_schema_get_validity_filter_list(ctx, array_schema,
+ * &filter_list); tiledb_filter_list_free(ctx, &filter_list);
+ * @endcode
+ *
+ * @param ctx The TileDB context.
+ * @param array_schema The array schema.
+ * @param filter_list The filter list to be retrieved.
+ * @return `TILEDB_OK` for success and `TILEDB_ERR` for error.
+ */
+TILEDB_EXPORT int32_t tiledb_array_schema_get_validity_filter_list(
     tiledb_ctx_t* ctx,
     tiledb_array_schema_t* array_schema,
     tiledb_filter_list_t** filter_list);

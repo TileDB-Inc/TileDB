@@ -246,8 +246,8 @@ jobs:
           #~ $cmds = "cmake --build $env:BUILD_BUILDDIRECTORY\tiledb --target check --config Release -- /verbosity:minimal"
           #~ Write-Host "cmds: '$cmds'"
           #~ Invoke-Expression $cmds
-          #$cmds = "$env:BUILD_BUILDDIRECTORY\tiledb\test\Release\tiledb_unit.exe -d=yes | c:\msys64\usr\bin\awk '/1: ::set-output/{sub(/.*1: /, `"`"); print; next} 1'" 
-          $cmds = "$env:BUILD_BUILDDIRECTORY\tiledb\test\Release\tiledb_unit.exe -d=yes" 
+          #$cmds = "$env:BUILD_BUILDDIRECTORY\tiledb\test\Release\tiledb_unit.exe -d=yes | c:\msys64\usr\bin\awk '/1: ::set-output/{sub(/.*1: /, `"`"); print; next} 1'"
+          $cmds = "$env:BUILD_BUILDDIRECTORY\tiledb\test\Release\tiledb_unit.exe -d=yes"
           Write-Host "cmds: '$cmds'"
           Invoke-Expression $cmds
 
@@ -313,7 +313,7 @@ jobs:
             cd /d "%localappdata%\CrashDumps"
             cd
             dir
-            for /r %%f in (*.dmp) do "c:\Program Files (x86)\Windows Kits\10\Debuggers\x64\cdb.exe" -z %%f -c "!analyze;~* kv;kP;q"
+            for /r %%f in (*.dmp) do "c:\Program Files (x86)\Windows Kits\10\Debuggers\x64\cdb.exe" -z %%f -c "!analyze;~* kv;kP;r;u;q"
           :nodumps1
 
       - name: 'upload dumpfile artifacts' # https://github.com/actions/upload-artifact#where-does-the-upload-go

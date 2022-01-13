@@ -57,9 +57,9 @@ Status BZip::compress(
       &out_size,
       (char*)input_buffer->data(),
       in_size,
-      level < 1 ? BZip::default_level() : level,  // block size 100k
-      0,                                          // verbosity
-      0);                                         // work factor
+      level < level_limit_ ? BZip::default_level() : level,  // block size 100k
+      0,                                                     // verbosity
+      0);                                                    // work factor
 
   // Handle error
   if (rc != BZ_OK) {
@@ -89,6 +89,10 @@ Status BZip::compress(
   output_buffer->advance_offset(out_size);
 
   return Status::Ok();
+}
+
+Status BZip::compress(ConstBuffer* input_buffer, Buffer* output_buffer) {
+  return BZip::compress(BZip::default_level(), input_buffer, output_buffer);
 }
 
 Status BZip::decompress(

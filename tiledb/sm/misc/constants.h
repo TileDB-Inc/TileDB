@@ -336,6 +336,9 @@ extern const std::string float64_str;
 /** The string representation for type char. */
 extern const std::string char_str;
 
+/** The string representation for type blob. */
+extern const std::string blob_str;
+
 /** The string representation for type int8. */
 extern const std::string int8_str;
 
