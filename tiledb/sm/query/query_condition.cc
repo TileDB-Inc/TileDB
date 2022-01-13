@@ -1164,11 +1164,7 @@ Status QueryCondition::apply_clause_dense(
             length,
             src_cell,
             stride,
-            var_size,
-            nullable,
-            previous_result_bitmask,
-            current_result_bitmask,
-            result_buffer);
+            var_size result_buffer);
       }
       return apply_clause_dense<char>(
           clause,
