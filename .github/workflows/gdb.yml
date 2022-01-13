@@ -1,6 +1,13 @@
 name: gdb-build-ubuntu-20.04-S3
 on:
   workflow_dispatch:
+    inputs:
+      logLevel:
+        description: 'Log level'     
+        required: false
+        default: 'warning'
+      tags:
+        description: 'Obligatory input?'  
 
 env:
   BACKWARDS_COMPATIBILITY_ARRAYS: OFF
