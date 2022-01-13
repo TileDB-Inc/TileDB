@@ -113,7 +113,10 @@ class ResourcePool {
   resource_handle take() {
     std::lock_guard x(m_);
     if (unused_idx_ == -1)
-      throw std::runtime_error("Ran out of resources in resource pool");
+      throw std::runtime_error(
+          std::string(
+              "Ran out of resources in resource pool with contained type: ") +
+          typeid(T).name());
     return ResourceHandle(*this, unused_[unused_idx_--]);
   }
 

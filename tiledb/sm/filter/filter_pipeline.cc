@@ -137,6 +137,8 @@ Status FilterPipeline::filter_chunks_forward(
       output_data.clear();
       output_metadata.clear();
 
+      f->init_compression_resource_pool(compute_tp->concurrency_level());
+
       RETURN_NOT_OK(f->run_forward(
           tile, &input_metadata, &input_data, &output_metadata, &output_data));
 
@@ -254,7 +256,7 @@ Status FilterPipeline::filter_chunks_reverse(
     total_size += std::get<2>(input[i]);
   }
 
-  if (total_size != output->size())
+  if (total_size != output->alloced_size())
     RETURN_NOT_OK(output->realloc(total_size));
 
   // Run each chunk through the entire pipeline.
@@ -308,7 +310,7 @@ Status FilterPipeline::filter_chunks_reverse(
             output_chunk_buffer, orig_chunk_len));
       }
 
-      f->init_resource_pool(compute_tp->concurrency_level());
+      f->init_decompression_resource_pool(compute_tp->concurrency_level());
 
       RETURN_NOT_OK(f->run_reverse(
           tile,
@@ -497,10 +499,9 @@ Status FilterPipeline::deserialize(ConstBuffer* buff) {
   RETURN_NOT_OK(buff->read(&num_filters, sizeof(uint32_t)));
 
   for (uint32_t i = 0; i < num_filters; i++) {
-    Filter* filter;
-    RETURN_NOT_OK(FilterCreate::deserialize(buff, &filter));
-    RETURN_NOT_OK_ELSE(add_filter(*filter), tdb_delete(filter));
-    tdb_delete(filter);
+    auto&& [st_filter, filter]{FilterCreate::deserialize(buff)};
+    RETURN_NOT_OK(st_filter);
+    RETURN_NOT_OK(add_filter(*filter.value()));
   }
 
   return Status::Ok();
@@ -536,7 +537,7 @@ void FilterPipeline::swap(FilterPipeline& other) {
 Status FilterPipeline::append_encryption_filter(
     FilterPipeline* pipeline, const EncryptionKey& encryption_key) {
   switch (encryption_key.encryption_type()) {
-    case EncryptionType ::NO_ENCRYPTION:
+    case EncryptionType::NO_ENCRYPTION:
       return Status::Ok();
     case EncryptionType::AES_256_GCM:
       return pipeline->add_filter(EncryptionAES256GCMFilter(encryption_key));

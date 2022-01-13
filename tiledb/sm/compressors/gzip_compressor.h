@@ -61,6 +61,15 @@ class GZip {
       int level, ConstBuffer* input_buffer, Buffer* output_buffer);
 
   /**
+   * Overloaded compression function with default compression level.
+   *
+   * @param input_buffer Input buffer to read from.
+   * @param output_buffer Output buffer to write to the compressed data.
+   * @return Status
+   */
+  static Status compress(ConstBuffer* input_buffer, Buffer* output_buffer);
+
+  /**
    * Decompression function.
    *
    * @param input_buffer Input buffer to read from.
@@ -80,8 +89,15 @@ class GZip {
 
   /** Returns the default compression level. */
   static int default_level() {
-    return -1;
+    return default_level_;
   }
+
+ private:
+  /** The compression level lower limit for legal values. */
+  static const int level_limit_ = 0;
+
+  /** The default filter compression level. */
+  static constexpr int default_level_ = -1;
 };
 
 }  // namespace sm

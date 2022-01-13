@@ -40,8 +40,8 @@
 
 #include "tiledb/common/common.h"
 #include "tiledb/common/status.h"
+#include "tiledb/sm/filesystem/uri.h"
 #include "tiledb/sm/misc/types.h"
-#include "tiledb/sm/misc/uri.h"
 #include "tiledb/sm/rtree/rtree.h"
 
 using namespace tiledb::common;

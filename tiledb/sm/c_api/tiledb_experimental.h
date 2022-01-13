@@ -128,6 +128,38 @@ TILEDB_EXPORT int32_t tiledb_array_schema_evolution_drop_attribute(
     tiledb_array_schema_evolution_t* array_schema_evolution,
     const char* attribute_name);
 
+/**
+ * Sets timestamp range in an array schema evolution
+ *
+ * **Example:**
+ *
+ * @code{.c}
+ * uint64_t timestamp = tiledb_timestamp_now_ms();
+ * tiledb_array_schema_evolution_set_timestamp_range(ctx,
+ * array_schema_evolution, timestamp, timestamp);
+ * @endcode
+ *
+ * @param ctx The TileDB context.
+ * @param array_schema_evolution The schema evolution.
+ * @param attribute_name The name of the attribute to be dropped.
+ * @return `TILEDB_OK` for success and `TILEDB_ERR` for error.
+ */
+TILEDB_EXPORT int32_t tiledb_array_schema_evolution_set_timestamp_range(
+    tiledb_ctx_t* ctx,
+    tiledb_array_schema_evolution_t* array_schema_evolution,
+    uint64_t lo,
+    uint64_t hi);
+
+/* ********************************* */
+/*          ARRAY SCHEMA             */
+/* ********************************* */
+
+TILEDB_EXPORT int32_t tiledb_array_schema_timestamp_range(
+    tiledb_ctx_t* ctx,
+    tiledb_array_schema_t* array_schema,
+    uint64_t* lo,
+    uint64_t* hi);
+
 /* ********************************* */
 /*               ARRAY               */
 /* ********************************* */
@@ -170,6 +202,98 @@ TILEDB_EXPORT int32_t tiledb_array_evolve(
  */
 TILEDB_EXPORT int32_t tiledb_array_upgrade_version(
     tiledb_ctx_t* ctx, const char* array_uri, tiledb_config_t* config);
+
+/* ********************************* */
+/*               QUERY               */
+/* ********************************* */
+
+/**
+ * Adds point ranges to the given dimension index of the subarray
+ * Effectively `add_range(x_i, x_i)` for `count` points in the
+ * target array, but set in bulk to amortize expensive steps.
+ */
+TILEDB_EXPORT int32_t tiledb_subarray_add_point_ranges(
+    tiledb_ctx_t* ctx,
+    tiledb_subarray_t* subarray,
+    uint32_t dim_idx,
+    const void* start,
+    uint64_t count);
+
+/**
+ * Adds a set of point ranges along subarray dimension index. Each value
+ * in the target array is added as `add_range(x,x)` for count elements.
+ * The datatype of the range components must be the same as the type of
+ * the dimension of the array in the query.
+ *
+ * **Example:**
+ *
+ * @code{.c}
+ * uint32_t dim_idx = 2;
+ * int64_t ranges[] = { 20, 21, 25, 31}
+ * tiledb_query_add_point_ranges(ctx, query, dim_idx, &ranges, 4);
+ * @endcode
+ *
+ * @param ctx The TileDB context.
+ * @param query The query to add the range to.
+ * @param dim_idx The index of the dimension to add the range to.
+ * @param start The start of the ranges array.
+ * @param count Number of ranges to add.
+ * @return `TILEDB_OK` for success and `TILEDB_ERR` for error.
+ *
+ * @note The stride is currently unsupported. Use `nullptr` as the
+ *     stride argument.
+ */
+TILEDB_DEPRECATED_EXPORT int32_t tiledb_query_add_point_ranges(
+    tiledb_ctx_t* ctx,
+    tiledb_query_t* query,
+    uint32_t dim_idx,
+    const void* start,
+    uint64_t count);
+
+/* ********************************* */
+/*        QUERY STATUS DETAILS       */
+/* ********************************* */
+
+/** This should move to c_api/tiledb.h when stabilized */
+typedef struct tiledb_query_status_details_t tiledb_query_status_details_t;
+
+/** TileDB query status details type. */
+typedef enum {
+/** Helper macro for defining status details type enums. */
+#define TILEDB_QUERY_STATUS_DETAILS_ENUM(id) TILEDB_##id
+#include "tiledb_enum.h"
+#undef TILEDB_QUERY_STATUS_DETAILS_ENUM
+} tiledb_query_status_details_reason_t;
+
+/** This should move to c_api/tiledb_struct_defs.h when stabilized */
+struct tiledb_query_status_details_t {
+  tiledb_query_status_details_reason_t incomplete_reason;
+};
+
+/**
+ * Get extended query status details.
+ *
+ * The contained enumeration tiledb_query_status_details_reason_t
+ * indicates extended information about a returned query status
+ * in order to allow improved client-side handling of buffers and
+ * potential resubmissions.
+ *
+ * **Example:**
+ *
+ * @code{.c}
+ * tiledb_query_status_details_t status_details;
+ * tiledb_query_get_status_details(ctx, query, &status_details);
+ * @endcode
+ *
+ * @param ctx The TileDB context.
+ * @param query The query from which to retrieve status details.
+ * @param status_details The tiledb_query_status_details_t struct.
+ * @return `TILEDB_OK` for success and `TILEDB_ERR` for error.
+ */
+TILEDB_EXPORT int32_t tiledb_query_get_status_details(
+    tiledb_ctx_t* ctx,
+    tiledb_query_t* query,
+    tiledb_query_status_details_t* status);
 
 #ifdef __cplusplus
 }

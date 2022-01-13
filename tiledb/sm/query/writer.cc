@@ -41,7 +41,9 @@
 #include "tiledb/sm/fragment/fragment_metadata.h"
 #include "tiledb/sm/misc/comparators.h"
 #include "tiledb/sm/misc/hilbert.h"
+#include "tiledb/sm/misc/math.h"
 #include "tiledb/sm/misc/parallel_functions.h"
+#include "tiledb/sm/misc/time.h"
 #include "tiledb/sm/misc/utils.h"
 #include "tiledb/sm/misc/uuid.h"
 #include "tiledb/sm/query/hilbert_order.h"
@@ -198,7 +200,8 @@ Status Writer::check_var_attr_offsets() const {
                *buffer_val_size))
         return logger_->status(Status_WriterError(
             "Invalid offsets for attribute " + attr + "; offset " +
-            std::to_string(cur_offset) + " specified for buffer of size " +
+            std::to_string(cur_offset) + " specified at index " +
+            std::to_string(i) + " for buffer of size " +
             std::to_string(*buffer_val_size)));
 
       prev_offset = cur_offset;

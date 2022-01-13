@@ -51,9 +51,9 @@
 #include "tiledb/common/thread_pool.h"
 #include "tiledb/sm/config/config.h"
 #include "tiledb/sm/enums/walk_order.h"
+#include "tiledb/sm/filesystem/uri.h"
 #include "tiledb/sm/fragment/single_fragment_info.h"
 #include "tiledb/sm/misc/cancelable_tasks.h"
-#include "tiledb/sm/misc/uri.h"
 #include "tiledb/sm/stats/global_stats.h"
 
 using namespace tiledb::common;

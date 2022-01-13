@@ -86,6 +86,11 @@ BitWidthReductionFilter::BitWidthReductionFilter()
   max_window_size_ = 256;
 }
 
+BitWidthReductionFilter::BitWidthReductionFilter(uint32_t max_window_size)
+    : Filter(FilterType::FILTER_BIT_WIDTH_REDUCTION)
+    , max_window_size_(max_window_size) {
+}
+
 void BitWidthReductionFilter::dump(FILE* out) const {
   if (out == nullptr)
     out = stdout;
@@ -108,10 +113,14 @@ Status BitWidthReductionFilter::run_forward(
     return Status::Ok();
   }
 
+  /* Note: Arithmetic operations cannot be performed on std::byte.
+    We will use uint8_t for the Datatype::BLOB case as it is the same size as
+    std::byte and can have arithmetic perfomed on it. */
   switch (tile_type) {
     case Datatype::INT8:
       return run_forward<int8_t>(
           tile, input_metadata, input, output_metadata, output);
+    case Datatype::BLOB:
     case Datatype::UINT8:
       return run_forward<uint8_t>(
           tile, input_metadata, input, output_metadata, output);
@@ -285,10 +294,14 @@ Status BitWidthReductionFilter::run_reverse(
     return Status::Ok();
   }
 
+  /* Note: Arithmetic operations cannot be performed on std::byte.
+    We will use uint8_t for the Datatype::BLOB case as it is the same size as
+    std::byte and can have arithmetic perfomed on it. */
   switch (tile_type) {
     case Datatype::INT8:
       return run_reverse<int8_t>(
           tile, input_metadata, input, output_metadata, output);
+    case Datatype::BLOB:
     case Datatype::UINT8:
       return run_reverse<uint8_t>(
           tile, input_metadata, input, output_metadata, output);
@@ -551,11 +564,6 @@ BitWidthReductionFilter* BitWidthReductionFilter::clone_impl() const {
   auto clone = new BitWidthReductionFilter;
   clone->max_window_size_ = max_window_size_;
   return clone;
-}
-
-Status BitWidthReductionFilter::deserialize_impl(ConstBuffer* buff) {
-  RETURN_NOT_OK(buff->read(&max_window_size_, sizeof(uint32_t)));
-  return Status::Ok();
 }
 
 Status BitWidthReductionFilter::serialize_impl(Buffer* buff) const {

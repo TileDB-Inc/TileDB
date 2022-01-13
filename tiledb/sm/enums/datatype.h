@@ -64,6 +64,8 @@ inline uint64_t datatype_size(Datatype type) {
       return sizeof(double);
     case Datatype::CHAR:
       return sizeof(char);
+    case Datatype::BLOB:
+      return sizeof(std::byte);
     case Datatype::INT8:
       return sizeof(int8_t);
     case Datatype::UINT8:
@@ -132,6 +134,8 @@ inline const std::string& datatype_str(Datatype type) {
       return constants::float64_str;
     case Datatype::CHAR:
       return constants::char_str;
+    case Datatype::BLOB:
+      return constants::blob_str;
     case Datatype::INT8:
       return constants::int8_str;
     case Datatype::UINT8:
@@ -220,6 +224,8 @@ inline Status datatype_enum(
     *datatype = Datatype::FLOAT64;
   else if (datatype_str == constants::char_str)
     *datatype = Datatype::CHAR;
+  else if (datatype_str == constants::blob_str)
+    *datatype = Datatype::BLOB;
   else if (datatype_str == constants::int8_str)
     *datatype = Datatype::INT8;
   else if (datatype_str == constants::uint8_str)
@@ -307,10 +313,11 @@ inline bool datatype_is_string(Datatype type) {
 /** Returns true if the input datatype is an integer type. */
 inline bool datatype_is_integer(Datatype type) {
   return (
-      type == Datatype::INT8 || type == Datatype::UINT8 ||
-      type == Datatype::INT16 || type == Datatype::UINT16 ||
-      type == Datatype::INT32 || type == Datatype::UINT32 ||
-      type == Datatype::INT64 || type == Datatype::UINT64);
+      type == Datatype::BLOB || type == Datatype::INT8 ||
+      type == Datatype::UINT8 || type == Datatype::INT16 ||
+      type == Datatype::UINT16 || type == Datatype::INT32 ||
+      type == Datatype::UINT32 || type == Datatype::INT64 ||
+      type == Datatype::UINT64);
 }
 
 /** Returns true if the input datatype is a real type. */

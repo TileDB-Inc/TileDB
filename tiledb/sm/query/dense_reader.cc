@@ -88,6 +88,11 @@ bool DenseReader::incomplete() const {
   return read_state_.overflowed_ || !read_state_.done();
 }
 
+QueryStatusDetailsReason DenseReader::status_incomplete_reason() const {
+  return incomplete() ? QueryStatusDetailsReason::REASON_USER_BUFFER_SIZE :
+                        QueryStatusDetailsReason::REASON_NONE;
+}
+
 Status DenseReader::init() {
   // Sanity checks.
   if (storage_manager_ == nullptr)
@@ -297,7 +302,8 @@ Status DenseReader::dense_read() {
   std::vector<std::string> names;
   std::vector<std::string> fixed_names;
   std::vector<std::string> var_names;
-  for (auto& name : condition_.field_names()) {
+  auto condition_names = condition_.field_names();
+  for (auto& name : condition_names) {
     names.emplace_back(name);
   }
 
@@ -308,7 +314,7 @@ Status DenseReader::dense_read() {
       continue;
     }
 
-    if (condition_.field_names().find(name) == condition_.field_names().end()) {
+    if (condition_names.count(name) == 0) {
       names.emplace_back(name);
     }
 
@@ -497,7 +503,7 @@ Status DenseReader::apply_query_condition(
 
     // Initialize the result buffer.
     qc_result->resize(cell_num);
-    memset(qc_result->data(), 0xFF, cell_num);
+    memset(qc_result->data(), 1, cell_num);
 
     // Process all tiles in parallel.
     auto status = parallel_for(
@@ -553,7 +559,7 @@ Status DenseReader::apply_query_condition(
                       cell_slab.length_,
                       &start,
                       &end)) {
-                RETURN_NOT_OK(condition_.apply_dense<DimType>(
+                RETURN_NOT_OK(condition_.apply_dense(
                     fragment_metadata_[frag_domains[i].first]->array_schema(),
                     it->second.result_tile(frag_domains[i].first),
                     start,

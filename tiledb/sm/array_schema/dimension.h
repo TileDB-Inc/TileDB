@@ -81,6 +81,24 @@ class Dimension {
   Dimension(const std::string& name, Datatype type);
 
   /**
+   * Constructor.
+   *
+   * @param name The name of the dimension.
+   * @param type The type of the dimension.
+   * @param cell_val_num The cell value number of the dimension.
+   * @param domain The range of the dimension range.
+   * @param filter_pipeline The filters of the dimension.
+   * @param tile_extent The tile extent of the dimension.
+   */
+  Dimension(
+      const std::string& name,
+      Datatype type,
+      uint32_t cell_val_num,
+      const Range& domain,
+      const FilterPipeline& filter_pipeline,
+      const ByteVecValue& tile_extent);
+
+  /**
    * Constructor. It clones the input.
    *
    * @param dim The dimension to clone.
@@ -121,9 +139,10 @@ class Dimension {
    * @param buff The buffer to deserialize from.
    * @param type The type of the dimension.
    * @param version The array schema version.
-   * @return Status
+   * @return Status and Dimension
    */
-  Status deserialize(ConstBuffer* buff, uint32_t version, Datatype type);
+  static std::tuple<Status, optional<std::shared_ptr<Dimension>>> deserialize(
+      ConstBuffer* buff, uint32_t version, Datatype type);
 
   /** Returns the domain. */
   const Range& domain() const;

@@ -65,9 +65,14 @@ class QueryCondition {
         : field_name_(std::move(field_name))
         , op_(op) {
       condition_value_data_.resize(condition_value_size);
-      condition_value_ =
-          condition_value == nullptr ? nullptr : condition_value_data_.data();
+      condition_value_ = nullptr;
+
       if (condition_value != nullptr) {
+        // Using an empty string litteral for empty string as vector::resize(0)
+        // doesn't guarantee an allocation.
+        condition_value_ = condition_value_size == 0 ?
+                               (void*)"" :
+                               condition_value_data_.data();
         memcpy(
             condition_value_data_.data(),
             condition_value,
@@ -209,7 +214,7 @@ class QueryCondition {
   /**
    * Returns a set of all unique field names among the conditional clauses.
    */
-  std::unordered_set<std::string> field_names() const;
+  std::unordered_set<std::string>& field_names() const;
 
   /**
    * Applies this query condition to `result_cell_slabs`.
@@ -237,7 +242,6 @@ class QueryCondition {
    * @param result_buffer The buffer to use for results.
    * @return Status
    */
-  template <typename T>
   Status apply_dense(
       const ArraySchema* const array_schema,
       ResultTile* result_tile,
@@ -256,7 +260,7 @@ class QueryCondition {
    * @param cell_count The cell count after condition is applied.
    * @return Status
    */
-  template <typename T, typename BitmapType>
+  template <typename BitmapType>
   Status apply_sparse(
       const ArraySchema* const array_schema,
       ResultTile& result_tile,
@@ -404,9 +408,7 @@ class QueryCondition {
    * @param src_cell The cell offset in the source tile.
    * @param stride The stride between cells.
    * @param var_size The attribute is var sized or not.
-   * @param nullable The attribute is nullable or not.
-   * @param previous_result_bitmask The bitmask to get the previous result.
-   * @param current_result_bitmask The bitmask to set the current result.
+
    * @param result_buffer The result buffer.
    */
   template <typename T, QueryConditionOp Op>
@@ -418,9 +420,6 @@ class QueryCondition {
       const uint64_t src_cell,
       const uint64_t stride,
       const bool var_size,
-      const bool nullable,
-      const uint8_t previous_result_bitmask,
-      const uint8_t current_result_bitmask,
       uint8_t* result_buffer) const;
 
   /**
@@ -433,9 +432,6 @@ class QueryCondition {
    * @param src_cell The cell offset in the source tile.
    * @param stride The stride between cells.
    * @param var_size The attribute is var sized or not.
-   * @param nullable The attribute is nullable or not.
-   * @param previous_result_bitmask The bitmask to get the previous result.
-   * @param current_result_bitmask The bitmask to set the current result.
    * @param result_buffer The result buffer.
    */
   template <typename T>
@@ -447,9 +443,6 @@ class QueryCondition {
       const uint64_t src_cell,
       const uint64_t stride,
       const bool var_size,
-      const bool nullable,
-      const uint8_t previous_result_bitmask,
-      const uint8_t current_result_bitmask,
       uint8_t* result_buffer) const;
 
   /**
@@ -463,8 +456,6 @@ class QueryCondition {
    * @param length The number of cells to process.
    * @param src_cell The cell offset in the source tile.
    * @param stride The stride between cells.
-   * @param previous_result_bitmask The bitmask to get the previous result.
-   * @param current_result_bitmask The bitmask to set the current result.
    * @param result_buffer The result buffer.
    */
   Status apply_clause_dense(
@@ -475,8 +466,6 @@ class QueryCondition {
       const uint64_t length,
       const uint64_t src_cell,
       const uint64_t stride,
-      const uint8_t previous_result_bitmask,
-      const uint8_t current_result_bitmask,
       uint8_t* result_buffer) const;
 
   /**

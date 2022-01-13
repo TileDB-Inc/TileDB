@@ -273,6 +273,18 @@ TEST_CASE(
         uint8_t* validity = static_cast<uint8_t*>(malloc(sizeof(uint8_t)));
 
         switch (attr.second.type()) {
+          case TILEDB_BLOB: {
+            set_buffer_wrapper<std::byte>(
+                query,
+                attribute_name,
+                var_sized,
+                nullable,
+                offsets,
+                values,
+                validity,
+                &buffers);
+            break;
+          }
           case TILEDB_INT8: {
             set_buffer_wrapper<int8_t>(
                 query,
@@ -562,6 +574,12 @@ TEST_CASE(
 
         Attribute attribute = array->schema().attribute(buff.first);
         switch (attribute.type()) {
+          case TILEDB_BLOB: {
+            REQUIRE(
+                static_cast<std::byte*>(std::get<1>(buffer))[0] ==
+                static_cast<std::byte>(1));
+            break;
+          }
           case TILEDB_INT8: {
             REQUIRE(static_cast<int8_t*>(std::get<1>(buffer))[0] == 1);
             break;
@@ -747,6 +765,18 @@ TEST_CASE(
         uint8_t* validity = static_cast<uint8_t*>(malloc(sizeof(uint8_t)));
 
         switch (attr.second.type()) {
+          case TILEDB_BLOB: {
+            set_buffer_wrapper<std::byte>(
+                query,
+                attribute_name,
+                attr.second.variable_sized(),
+                attr.second.nullable(),
+                offsets,
+                values,
+                validity,
+                &buffers);
+            break;
+          }
           case TILEDB_INT8: {
             set_buffer_wrapper<int8_t>(
                 query,
@@ -1072,6 +1102,12 @@ TEST_CASE(
 
         Attribute attribute = array->schema().attribute(buff.first);
         switch (attribute.type()) {
+          case TILEDB_BLOB: {
+            REQUIRE(
+                static_cast<std::byte*>(std::get<1>(buffer))[0] ==
+                static_cast<std::byte>(1));
+            break;
+          }
           case TILEDB_INT8: {
             REQUIRE(static_cast<int8_t*>(std::get<1>(buffer))[0] == 1);
             break;

@@ -49,6 +49,11 @@ PositiveDeltaFilter::PositiveDeltaFilter()
   max_window_size_ = 1024;
 }
 
+PositiveDeltaFilter::PositiveDeltaFilter(uint32_t max_window_size)
+    : Filter(FilterType::FILTER_POSITIVE_DELTA)
+    , max_window_size_(max_window_size) {
+}
+
 void PositiveDeltaFilter::dump(FILE* out) const {
   if (out == nullptr)
     out = stdout;
@@ -70,10 +75,14 @@ Status PositiveDeltaFilter::run_forward(
     return Status::Ok();
   }
 
+  /* Note: Arithmetic operations cannot be performed on std::byte.
+    We will use uint8_t for the Datatype::BLOB case as it is the same size as
+    std::byte and can have arithmetic perfomed on it. */
   switch (tile_type) {
     case Datatype::INT8:
       return run_forward<int8_t>(
           tile, input_metadata, input, output_metadata, output);
+    case Datatype::BLOB:
     case Datatype::UINT8:
       return run_forward<uint8_t>(
           tile, input_metadata, input, output_metadata, output);
@@ -243,10 +252,14 @@ Status PositiveDeltaFilter::run_reverse(
     return Status::Ok();
   }
 
+  /* Note: Arithmetic operations cannot be performed on std::byte.
+    We will use uint8_t for the Datatype::BLOB case as it is the same size as
+    std::byte and can have arithmetic perfomed on it. */
   switch (tile_type) {
     case Datatype::INT8:
       return run_reverse<int8_t>(
           tile, input_metadata, input, output_metadata, output);
+    case Datatype::BLOB:
     case Datatype::UINT8:
       return run_reverse<uint8_t>(
           tile, input_metadata, input, output_metadata, output);
@@ -390,11 +403,6 @@ PositiveDeltaFilter* PositiveDeltaFilter::clone_impl() const {
   auto clone = new PositiveDeltaFilter;
   clone->max_window_size_ = max_window_size_;
   return clone;
-}
-
-Status PositiveDeltaFilter::deserialize_impl(ConstBuffer* buff) {
-  RETURN_NOT_OK(buff->read(&max_window_size_, sizeof(uint32_t)));
-  return Status::Ok();
 }
 
 Status PositiveDeltaFilter::serialize_impl(Buffer* buff) const {
