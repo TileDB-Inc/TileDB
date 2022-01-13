@@ -1,13 +1,5 @@
 name: gdb-build-ubuntu-20.04-S3
 on:
-  push:
-    branches:
-      - dev
-      - release-*
-      - refs/tags/*
-  pull_request:
-    branches:
-      - '*'  # must quote since "*" is a YAML reserved character; we want a string
   workflow_dispatch:
 
 env:
