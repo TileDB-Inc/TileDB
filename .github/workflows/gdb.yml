@@ -1,4 +1,4 @@
-name: build-ubuntu-20.04-S3
+name: gdb-build-ubuntu-20.04-S3
 on:
   push:
     branches:
