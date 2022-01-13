@@ -155,6 +155,23 @@ TEST_CASE(
   REQUIRE(query_condition2.field_names().count(field_name) == 1);
 }
 
+TEST_CASE("QueryCondition: Test char", "[QueryCondition][char_value]") {
+  std::string field_name = "foo";
+  char value[] = "bar";
+
+  QueryCondition query_condition;
+  REQUIRE(query_condition
+              .init(
+                  std::string(field_name),
+                  &value,
+                  strlen(value),
+                  QueryConditionOp::LT)
+              .ok());
+  REQUIRE(!query_condition.empty());
+  REQUIRE(!query_condition.field_names().empty());
+  REQUIRE(query_condition.field_names().count(field_name) == 1);
+}
+
 /**
  * Tests a comparison operator on all cells in a tile.
  *
