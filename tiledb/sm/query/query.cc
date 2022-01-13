@@ -1025,7 +1025,7 @@ Status Query::create_strategy() {
       auto&& [st, non_overlapping_ranges]{Query::non_overlapping_ranges()};
       RETURN_NOT_OK(st);
 
-      if (non_overlapping_ranges || !subarray_.is_set() ||
+      if (*non_overlapping_ranges || !subarray_.is_set() ||
           subarray_.range_num() == 1) {
         strategy_ = tdb_unique_ptr<IQueryStrategy>(tdb_new(
             SparseUnorderedWithDupsReader<uint8_t>,
@@ -2119,7 +2119,7 @@ bool Query::use_refactored_sparse_unordered_with_dups_reader() {
   return val == "refactored";
 }
 
-std::tuple<Status, bool> Query::non_overlapping_ranges() {
+std::tuple<Status, std::optional<bool>> Query::non_overlapping_ranges() {
   return subarray_.non_overlapping_ranges(storage_manager_->compute_tp());
 }
 

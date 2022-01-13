@@ -144,8 +144,8 @@ void ReaderBase::compute_result_space_tiles(
 
 void ReaderBase::clear_tiles(
     const std::string& name,
-    const std::vector<ResultTile*>* result_tiles) const {
-  for (auto& result_tile : *result_tiles)
+    const std::vector<ResultTile*>& result_tiles) const {
+  for (auto& result_tile : result_tiles)
     result_tile->erase_tile(name);
 }
 
@@ -873,7 +873,7 @@ Status ReaderBase::copy_coordinates(
       RETURN_CANCEL_OR_ERROR(copy_fixed_cells(
           name, stride, result_cell_slabs, &fixed_cs_partitions));
       if (clear_coords_tiles_on_copy_)
-        clear_tiles(name, result_tiles);
+        clear_tiles(name, *result_tiles);
     }
   }
 
@@ -892,7 +892,7 @@ Status ReaderBase::copy_coordinates(
           &var_cs_partitions,
           total_var_cs_length));
       if (clear_coords_tiles_on_copy_)
-        clear_tiles(name, result_tiles);
+        clear_tiles(name, *result_tiles);
     }
   }
 
@@ -1554,14 +1554,14 @@ Status ReaderBase::process_tiles(
       for (uint64_t i = 0; i < result_tiles->size() && i < new_result_tile_size;
            i++) {
         const auto& rt = result_tiles->at(i);
-        uint64_t tile_size = 0;
-        RETURN_NOT_OK(get_attribute_tile_size(
-            name_pair.first, rt->frag_idx(), rt->tile_idx(), &tile_size));
-        if (mem_usage + tile_size > memory_budget) {
+        auto&& [st, tile_size] = get_attribute_tile_size(
+            name_pair.first, rt->frag_idx(), rt->tile_idx());
+        RETURN_NOT_OK(st);
+        if (mem_usage + *tile_size > memory_budget) {
           new_result_tile_size = i;
           break;
         }
-        mem_usage += tile_size;
+        mem_usage += *tile_size;
       }
     }
 
@@ -1627,7 +1627,7 @@ Status ReaderBase::process_tiles(
     // Copy only here should be attributes in the query condition. They should
     // be treated as coordinates.
     if (clear_coords_tiles_on_copy_)
-      clear_tiles(copy_name, result_tiles);
+      clear_tiles(copy_name, *result_tiles);
   }
 
   // Iterate through all of the attribute names. This loop
@@ -1671,7 +1671,7 @@ Status ReaderBase::process_tiles(
               &var_cs_partitions,
               total_var_cs_length));
         }
-        clear_tiles(inner_name, result_tiles);
+        clear_tiles(inner_name, *result_tiles);
       }
     }
 
@@ -1681,23 +1681,23 @@ Status ReaderBase::process_tiles(
   return Status::Ok();
 }
 
-Status ReaderBase::get_attribute_tile_size(
-    const std::string& name, unsigned f, uint64_t t, uint64_t* tile_size) {
-  *tile_size = 0;
-  *tile_size += fragment_metadata_[f]->tile_size(name, t);
+std::tuple<Status, std::optional<uint64_t>> ReaderBase::get_attribute_tile_size(
+    const std::string& name, unsigned f, uint64_t t) {
+  uint64_t tile_size = 0;
+  tile_size += fragment_metadata_[f]->tile_size(name, t);
 
   if (array_schema_->var_size(name)) {
     uint64_t temp = 0;
-    RETURN_NOT_OK(fragment_metadata_[f]->tile_var_size(name, t, &temp));
-    *tile_size += temp;
+    RETURN_NOT_OK_TUPLE(fragment_metadata_[f]->tile_var_size(name, t, &temp));
+    tile_size += temp;
   }
 
   if (array_schema_->is_nullable(name)) {
-    *tile_size +=
+    tile_size +=
         fragment_metadata_[f]->cell_num(t) * constants::cell_validity_size;
   }
 
-  return Status::Ok();
+  return {Status::Ok(), tile_size};
 }
 
 template <class T>

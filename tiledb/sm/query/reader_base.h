@@ -208,7 +208,7 @@ class ReaderBase : public StrategyBase {
    */
   void clear_tiles(
       const std::string& name,
-      const std::vector<ResultTile*>* result_tiles) const;
+      const std::vector<ResultTile*>& result_tiles) const;
 
   /**
    * Resets the buffer sizes to the original buffer sizes. This is because
@@ -627,11 +627,10 @@ class ReaderBase : public StrategyBase {
    * @param name The attribute name.
    * @param f The fragment idx.
    * @param t The tile idx.
-   * @param tile_size The return tile size.
-   * @return Status
+   * @return Status, tile size.
    */
-  Status get_attribute_tile_size(
-      const std::string& name, unsigned f, uint64_t t, uint64_t* tile_size);
+  std::tuple<Status, std::optional<uint64_t>> get_attribute_tile_size(
+      const std::string& name, unsigned f, uint64_t t);
 
   /**
    * Computes the result space tiles based on the current partition.

@@ -1143,7 +1143,7 @@ Status query_to_capnp(Query& query, capnp::Query::Builder* query_builder) {
       auto&& [st, non_overlapping_ranges]{query.non_overlapping_ranges()};
       RETURN_NOT_OK(st);
 
-      if (non_overlapping_ranges) {
+      if (*non_overlapping_ranges) {
         auto reader = (SparseUnorderedWithDupsReader<uint8_t>*)query.strategy();
 
         query_builder->setVarOffsetsMode(reader->offsets_mode());
@@ -1739,7 +1739,7 @@ Status query_from_capnp(
 
       auto reader_reader = query_reader.getReaderIndex();
 
-      if (non_overlapping_ranges) {
+      if (*non_overlapping_ranges) {
         auto reader =
             (SparseUnorderedWithDupsReader<uint8_t>*)query->strategy();
 
