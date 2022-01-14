@@ -2036,6 +2036,7 @@ std::tuple<Status, std::optional<bool>> Subarray::non_overlapping_ranges(
       [&](uint64_t dim_idx) {
         auto&& [status, nor]{non_overlapping_ranges_for_dim(dim_idx)};
         non_overlapping_ranges = *nor;
+
         return status;
       });
   RETURN_NOT_OK_TUPLE(st);

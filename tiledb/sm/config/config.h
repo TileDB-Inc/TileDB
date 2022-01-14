@@ -175,10 +175,6 @@ class Config {
   /** Ratio of the sparse global order reader budget used for array data. */
   static const std::string SM_MEM_SPARSE_GLOBAL_ORDER_RATIO_ARRAY_DATA;
 
-  /** Ratio of the sparse global order reader budget used for result cell slabs.
-   */
-  static const std::string SM_MEM_SPARSE_GLOBAL_ORDER_RATIO_RCS;
-
   /** Ratio of the sparse unordered with dups reader budget used for coords. */
   static const std::string SM_MEM_SPARSE_UNORDERED_WITH_DUPS_RATIO_COORDS;
 

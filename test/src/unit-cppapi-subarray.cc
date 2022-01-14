@@ -500,14 +500,17 @@ TEST_CASE(
 
   // Allocate buffers large enough to hold 2 cells at a time.
   std::vector<char> data(2, '\0');
-  std::vector<int> coords(4);
-  query.set_coordinates(coords).set_data_buffer("a", data);
+  std::vector<int> rows(2);
+  std::vector<int> cols(2);
+  query.set_data_buffer("rows", rows)
+      .set_data_buffer("cols", cols)
+      .set_data_buffer("a", data);
 
   // Submit query
   auto st = query.submit();
   REQUIRE(st == Query::Status::INCOMPLETE);
   auto result_elts = query.result_buffer_elements();
-  auto result_num = result_elts[TILEDB_COORDS].second / 2;
+  auto result_num = result_elts["rows"].second;
   REQUIRE(result_num == 2);
   REQUIRE(data[0] == 'a');
   REQUIRE(data[1] == 'l');
@@ -516,7 +519,7 @@ TEST_CASE(
   st = query.submit();
   REQUIRE(st == Query::Status::INCOMPLETE);
   result_elts = query.result_buffer_elements();
-  result_num = result_elts[TILEDB_COORDS].second / 2;
+  result_num = result_elts["rows"].second;
   REQUIRE(result_num == 2);
   REQUIRE(data[0] == 'b');
   REQUIRE(data[1] == 'm');
@@ -525,7 +528,7 @@ TEST_CASE(
   st = query.submit();
   REQUIRE(st == Query::Status::INCOMPLETE);
   result_elts = query.result_buffer_elements();
-  result_num = result_elts[TILEDB_COORDS].second / 2;
+  result_num = result_elts["rows"].second;
   if (test::use_refactored_sparse_global_order_reader()) {
     REQUIRE(result_num == 2);
     REQUIRE(data[0] == 'c');
@@ -539,7 +542,7 @@ TEST_CASE(
   st = query.submit();
   REQUIRE(st == Query::Status::INCOMPLETE);
   result_elts = query.result_buffer_elements();
-  result_num = result_elts[TILEDB_COORDS].second / 2;
+  result_num = result_elts["rows"].second;
   REQUIRE(result_num == 2);
 
   if (test::use_refactored_sparse_global_order_reader()) {
@@ -554,7 +557,7 @@ TEST_CASE(
   st = query.submit();
   REQUIRE(st == Query::Status::INCOMPLETE);
   result_elts = query.result_buffer_elements();
-  result_num = result_elts[TILEDB_COORDS].second / 2;
+  result_num = result_elts["rows"].second;
   if (test::use_refactored_sparse_global_order_reader()) {
     REQUIRE(result_num == 2);
     REQUIRE(data[0] == 'f');
@@ -568,7 +571,7 @@ TEST_CASE(
   st = query.submit();
   REQUIRE(st == Query::Status::INCOMPLETE);
   result_elts = query.result_buffer_elements();
-  result_num = result_elts[TILEDB_COORDS].second / 2;
+  result_num = result_elts["rows"].second;
   if (test::use_refactored_sparse_global_order_reader()) {
     REQUIRE(result_num == 2);
     REQUIRE(data[0] == 'h');
@@ -586,7 +589,7 @@ TEST_CASE(
     REQUIRE(st == Query::Status::INCOMPLETE);
   }
   result_elts = query.result_buffer_elements();
-  result_num = result_elts[TILEDB_COORDS].second / 2;
+  result_num = result_elts["rows"].second;
 
   if (test::use_refactored_sparse_global_order_reader()) {
     REQUIRE(result_num == 2);
@@ -601,7 +604,7 @@ TEST_CASE(
     st = query.submit();
     REQUIRE(st == Query::Status::INCOMPLETE);
     result_elts = query.result_buffer_elements();
-    result_num = result_elts[TILEDB_COORDS].second / 2;
+    result_num = result_elts["rows"].second;
     REQUIRE(result_num == 1);
     REQUIRE(data[0] == 'i');
 
@@ -609,7 +612,7 @@ TEST_CASE(
     st = query.submit();
     REQUIRE(st == Query::Status::COMPLETE);
     result_elts = query.result_buffer_elements();
-    result_num = result_elts[TILEDB_COORDS].second / 2;
+    result_num = result_elts["rows"].second;
     REQUIRE(result_num == 2);
     REQUIRE(data[0] == 'j');
     REQUIRE(data[1] == 'k');
@@ -691,8 +694,11 @@ TEST_CASE(
 
   // Allocate buffers large enough to hold 2 cells at a time.
   std::vector<char> data(2, '\0');
-  std::vector<int> coords(4);
-  query.set_coordinates(coords).set_buffer("a", data);
+  std::vector<int> rows(2);
+  std::vector<int> cols(2);
+  query.set_data_buffer("rows", rows)
+      .set_data_buffer("cols", cols)
+      .set_data_buffer("a", data);
 
   {
     tiledb::Query query(ctx, array);
@@ -723,7 +729,7 @@ TEST_CASE(
   auto st = query.submit();
   REQUIRE(st == Query::Status::INCOMPLETE);
   auto result_elts = query.result_buffer_elements();
-  auto result_num = result_elts[TILEDB_COORDS].second / 2;
+  auto result_num = result_elts["rows"].second;
   REQUIRE(result_num == 2);
   REQUIRE(data[0] == 'a');
   REQUIRE(data[1] == 'l');
@@ -742,7 +748,7 @@ TEST_CASE(
   st = query.submit();
   REQUIRE(st == Query::Status::INCOMPLETE);
   result_elts = query.result_buffer_elements();
-  result_num = result_elts[TILEDB_COORDS].second / 2;
+  result_num = result_elts["rows"].second;
   REQUIRE(result_num == 2);
   REQUIRE(data[0] == 'b');
   REQUIRE(data[1] == 'm');
@@ -752,7 +758,7 @@ TEST_CASE(
   st = query.submit();
   REQUIRE(st == Query::Status::INCOMPLETE);
   result_elts = query.result_buffer_elements();
-  result_num = result_elts[TILEDB_COORDS].second / 2;
+  result_num = result_elts["rows"].second;
   if (test::use_refactored_sparse_global_order_reader()) {
     REQUIRE(result_num == 2);
     REQUIRE(data[0] == 'c');
@@ -767,7 +773,7 @@ TEST_CASE(
   st = query.submit();
   REQUIRE(st == Query::Status::INCOMPLETE);
   result_elts = query.result_buffer_elements();
-  result_num = result_elts[TILEDB_COORDS].second / 2;
+  result_num = result_elts["rows"].second;
   REQUIRE(result_num == 2);
   if (test::use_refactored_sparse_global_order_reader()) {
     REQUIRE(data[0] == 'd');
@@ -782,7 +788,7 @@ TEST_CASE(
   st = query.submit();
   REQUIRE(st == Query::Status::INCOMPLETE);
   result_elts = query.result_buffer_elements();
-  result_num = result_elts[TILEDB_COORDS].second / 2;
+  result_num = result_elts["rows"].second;
   if (test::use_refactored_sparse_global_order_reader()) {
     REQUIRE(result_num == 2);
     REQUIRE(data[0] == 'f');
@@ -797,7 +803,7 @@ TEST_CASE(
   st = query.submit();
   REQUIRE(st == Query::Status::INCOMPLETE);
   result_elts = query.result_buffer_elements();
-  result_num = result_elts[TILEDB_COORDS].second / 2;
+  result_num = result_elts["rows"].second;
   if (test::use_refactored_sparse_global_order_reader()) {
     REQUIRE(result_num == 2);
     REQUIRE(data[0] == 'h');
@@ -816,7 +822,7 @@ TEST_CASE(
     REQUIRE(st == Query::Status::INCOMPLETE);
   }
   result_elts = query.result_buffer_elements();
-  result_num = result_elts[TILEDB_COORDS].second / 2;
+  result_num = result_elts["rows"].second;
   if (test::use_refactored_sparse_global_order_reader()) {
     REQUIRE(result_num == 2);
     REQUIRE(data[0] == 'j');
@@ -830,7 +836,7 @@ TEST_CASE(
     st = query.submit();
     REQUIRE(st == Query::Status::INCOMPLETE);
     result_elts = query.result_buffer_elements();
-    result_num = result_elts[TILEDB_COORDS].second / 2;
+    result_num = result_elts["rows"].second;
     REQUIRE(result_num == 1);
     REQUIRE(data[0] == 'i');
 
@@ -838,7 +844,7 @@ TEST_CASE(
     st = query.submit();
     REQUIRE(st == Query::Status::COMPLETE);
     result_elts = query.result_buffer_elements();
-    result_num = result_elts[TILEDB_COORDS].second / 2;
+    result_num = result_elts["rows"].second;
     REQUIRE(result_num == 2);
     REQUIRE(data[0] == 'j');
     REQUIRE(data[1] == 'k');
@@ -903,21 +909,24 @@ TEST_CASE(
 
   // Allocate buffers large enough to hold 2 cells at a time.
   std::vector<char> data(2, '\0');
-  std::vector<int> coords(4);
-  query.set_coordinates(coords).set_data_buffer("a", data);
+  std::vector<int> rows(2);
+  std::vector<int> cols(2);
+  query.set_data_buffer("rows", rows)
+      .set_data_buffer("cols", cols)
+      .set_data_buffer("a", data);
 
   // Submit query
   auto st = query.submit();
   REQUIRE(st == Query::Status::INCOMPLETE);
   auto result_elts = query.result_buffer_elements();
-  auto result_num = result_elts[TILEDB_COORDS].second / 2;
+  auto result_num = result_elts["rows"].second;
   REQUIRE(result_num == 1);
   REQUIRE(data[0] == 'l');
 
   st = query.submit();
   REQUIRE(st == Query::Status::COMPLETE);
   result_elts = query.result_buffer_elements();
-  result_num = result_elts[TILEDB_COORDS].second / 2;
+  result_num = result_elts["rows"].second;
   REQUIRE(result_num == 2);
   REQUIRE(data[0] == 'l');
   REQUIRE(data[1] == 'm');
@@ -984,15 +993,18 @@ TEST_CASE(
 
   // Allocate buffers large enough to hold 2 cells at a time.
   std::vector<char> data(2, '\0');
-  std::vector<int> coords(4);
-  query.set_coordinates(coords).set_buffer("a", data);
+  std::vector<int> rows(2);
+  std::vector<int> cols(2);
+  query.set_data_buffer("rows", rows)
+      .set_data_buffer("cols", cols)
+      .set_data_buffer("a", data);
 
   // Submit query
   query.set_subarray(subarray);
   auto st = query.submit();
   REQUIRE(st == Query::Status::INCOMPLETE);
   auto result_elts = query.result_buffer_elements();
-  auto result_num = result_elts[TILEDB_COORDS].second / 2;
+  auto result_num = result_elts["rows"].second;
   REQUIRE(result_num == 1);
   REQUIRE(data[0] == 'l');
 
@@ -1000,7 +1012,7 @@ TEST_CASE(
   st = query.submit();
   REQUIRE(st == Query::Status::COMPLETE);
   result_elts = query.result_buffer_elements();
-  result_num = result_elts[TILEDB_COORDS].second / 2;
+  result_num = result_elts["rows"].second;
   REQUIRE(result_num == 2);
   REQUIRE(data[0] == 'l');
   REQUIRE(data[1] == 'm');

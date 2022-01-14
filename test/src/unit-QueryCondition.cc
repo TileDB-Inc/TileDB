@@ -53,7 +53,7 @@ TEST_CASE(
 
   ArraySchema array_schema;
   std::vector<ResultCellSlab> result_cell_slabs;
-  REQUIRE(query_condition.apply(&array_schema, &result_cell_slabs, 1).ok());
+  REQUIRE(query_condition.apply(&array_schema, result_cell_slabs, 1).ok());
 }
 
 TEST_CASE("QueryCondition: Test init", "[QueryCondition][value_constructor]") {
@@ -241,7 +241,7 @@ void test_apply_cells<char*>(
   ResultCellSlab result_cell_slab(result_tile, 0, cells);
   std::vector<ResultCellSlab> result_cell_slabs;
   result_cell_slabs.emplace_back(std::move(result_cell_slab));
-  REQUIRE(query_condition.apply(array_schema, &result_cell_slabs, 1).ok());
+  REQUIRE(query_condition.apply(array_schema, result_cell_slabs, 1).ok());
 
   // Verify the result cell slabs contain the expected cells.
   auto expected_iter = expected_cell_idx_vec.begin();
@@ -269,7 +269,7 @@ void test_apply_cells<char*>(
       result_cell_slabs_eq_null.emplace_back(
           std::move(result_cell_slab_eq_null));
       REQUIRE(query_condition_eq_null
-                  .apply(array_schema, &result_cell_slabs_eq_null, 1)
+                  .apply(array_schema, result_cell_slabs_eq_null, 1)
                   .ok());
 
       REQUIRE(result_cell_slabs_eq_null.size() == (cells / 2));
@@ -334,7 +334,7 @@ void test_apply_cells<char*>(
   ResultCellSlab fill_result_cell_slab(nullptr, 0, cells);
   std::vector<ResultCellSlab> fill_result_cell_slabs;
   fill_result_cell_slabs.emplace_back(std::move(fill_result_cell_slab));
-  REQUIRE(query_condition.apply(array_schema, &fill_result_cell_slabs, 1).ok());
+  REQUIRE(query_condition.apply(array_schema, fill_result_cell_slabs, 1).ok());
 
   // Verify the fill result cell slabs contain the expected cells.
   auto fill_expected_iter = fill_expected_cell_idx_vec.begin();
@@ -406,7 +406,7 @@ void test_apply_cells(
   ResultCellSlab result_cell_slab(result_tile, 0, cells);
   std::vector<ResultCellSlab> result_cell_slabs;
   result_cell_slabs.emplace_back(std::move(result_cell_slab));
-  REQUIRE(query_condition.apply(array_schema, &result_cell_slabs, 1).ok());
+  REQUIRE(query_condition.apply(array_schema, result_cell_slabs, 1).ok());
 
   // Verify the result cell slabs contain the expected cells.
   auto expected_iter = expected_cell_idx_vec.begin();
@@ -464,7 +464,7 @@ void test_apply_cells(
   ResultCellSlab fill_result_cell_slab(nullptr, 0, cells);
   std::vector<ResultCellSlab> fill_result_cell_slabs;
   fill_result_cell_slabs.emplace_back(std::move(fill_result_cell_slab));
-  REQUIRE(query_condition.apply(array_schema, &fill_result_cell_slabs, 1).ok());
+  REQUIRE(query_condition.apply(array_schema, fill_result_cell_slabs, 1).ok());
 
   // Verify the fill result cell slabs contain the expected cells.
   auto fill_expected_iter = fill_expected_cell_idx_vec.begin();
@@ -845,7 +845,7 @@ TEST_CASE(
   std::vector<ResultCellSlab> result_cell_slabs;
   result_cell_slabs.emplace_back(std::move(result_cell_slab));
 
-  REQUIRE(query_condition_3.apply(&array_schema, &result_cell_slabs, 1).ok());
+  REQUIRE(query_condition_3.apply(&array_schema, result_cell_slabs, 1).ok());
 
   // Check that the cell slab now contains cell indexes 4, 5, and 6.
   REQUIRE(result_cell_slabs.size() == 1);
@@ -1010,7 +1010,7 @@ TEST_CASE(
   ResultCellSlab result_cell_slab(&result_tile, 0, cells);
   std::vector<ResultCellSlab> result_cell_slabs;
   result_cell_slabs.emplace_back(std::move(result_cell_slab));
-  REQUIRE(query_condition.apply(&array_schema, &result_cell_slabs, 1).ok());
+  REQUIRE(query_condition.apply(&array_schema, result_cell_slabs, 1).ok());
 
   // Verify the result cell slabs contain the expected cells.
   auto expected_iter = expected_cell_idx_vec.begin();
