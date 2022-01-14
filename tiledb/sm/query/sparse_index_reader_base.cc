@@ -180,9 +180,9 @@ Status SparseIndexReaderBase::get_coord_tiles_size(
   if (!qc_loaded_names_.empty()) {
     for (auto& name : qc_loaded_names_) {
       // Calculate memory consumption for this tile.
-      uint64_t tile_size = 0;
-      RETURN_NOT_OK(get_attribute_tile_size(name, f, t, &tile_size));
-      *tiles_size_qc += tile_size;
+      auto&& [st, tile_size] = get_attribute_tile_size(name, f, t);
+      RETURN_NOT_OK(st);
+      *tiles_size_qc += *tile_size;
     }
   }
 

@@ -91,14 +91,12 @@ class SparseUnorderedWithDupsReader : public SparseIndexReaderBase,
    * user buffer.
    */
   template <class OffType>
-  static Status compute_var_size_offsets(
+  static std::tuple<uint64_t, uint64_t> compute_var_size_offsets(
       stats::Stats* stats,
-      const std::vector<ResultTile*>* result_tiles,
+      const std::vector<ResultTile*>& result_tiles,
       const uint64_t first_tile_min_pos,
-      std::vector<uint64_t>* cell_offsets,
-      QueryBuffer* query_buffer,
-      uint64_t* new_result_tiles_size,
-      uint64_t* var_buffer_size);
+      std::vector<uint64_t>& cell_offsets,
+      QueryBuffer& query_buffer);
 
   /* ********************************* */
   /*                 API               */
@@ -142,31 +140,31 @@ class SparseUnorderedWithDupsReader : public SparseIndexReaderBase,
   /*           PRIVATE METHODS         */
   /* ********************************* */
 
+  /** Return how many cells were copied to the users buffers so far. */
+  uint64_t cells_copied(const std::vector<std::string>& names);
+
   /** Add a result tile to process, making sure maximum budget is respected. */
-  Status add_result_tile(
+  std::tuple<Status, std::optional<bool>> add_result_tile(
       const unsigned dim_num,
       const uint64_t memory_budget_qc_tiles,
       const uint64_t memory_budget_coords_tiles,
       const unsigned f,
       const uint64_t t,
       const uint64_t last_t,
-      const ArraySchema* const array_schema,
-      bool* budget_exceeded);
+      const ArraySchema* const array_schema);
 
   /** Create the result tiles. */
   Status create_result_tiles();
 
   /** Compute parallelization parameters for a tile copy operation. */
-  void compute_parallelization_parameters(
+  std::tuple<bool, uint64_t, uint64_t, uint64_t>
+  compute_parallelization_parameters(
       const uint64_t range_thread_idx,
       const uint64_t num_range_threads,
       const uint64_t min_pos_tile,
       const uint64_t max_pos_tile,
-      const ResultTileWithBitmap<BitmapType>* rt,
-      uint64_t* src_min_pos,
-      uint64_t* src_max_pos,
-      uint64_t* dest_cell_offset,
-      bool* skip_copy);
+      const uint64_t cell_offset,
+      const ResultTileWithBitmap<BitmapType>* rt);
 
   /** Copy offsets tile. */
   template <class OffType>
@@ -188,16 +186,16 @@ class SparseUnorderedWithDupsReader : public SparseIndexReaderBase,
       const uint64_t num_range_threads,
       const bool nullable,
       const OffType offset_div,
-      const std::vector<ResultTile*>* result_tiles,
-      const std::vector<uint64_t>* cell_offsets,
-      QueryBuffer* query_buffer,
-      void** var_data);
+      const std::vector<ResultTile*>& result_tiles,
+      const std::vector<uint64_t>& cell_offsets,
+      QueryBuffer& query_buffer,
+      std::vector<void*>& var_data);
 
   /** Copy var data tile. */
   template <class OffType>
   Status copy_var_data_tile(
       const bool last_partition,
-      const uint64_t cell_offset,
+      const uint64_t var_data_offset,
       const uint64_t offset_div,
       const uint64_t var_buffer_size,
       const uint64_t src_min_pos,
@@ -213,10 +211,10 @@ class SparseUnorderedWithDupsReader : public SparseIndexReaderBase,
       const OffType offset_div,
       const uint64_t var_buffer_size,
       const uint64_t result_tiles_size,
-      const std::vector<ResultTile*>* result_tiles,
-      const std::vector<uint64_t>* cell_offsets,
-      QueryBuffer* query_buffer,
-      const void** var_data);
+      const std::vector<ResultTile*>& result_tiles,
+      const std::vector<uint64_t>& cell_offsets,
+      QueryBuffer& query_buffer,
+      std::vector<void*>& var_data);
 
   /** Copy fixed size data tile. */
   Status copy_fixed_data_tile(
@@ -239,46 +237,46 @@ class SparseUnorderedWithDupsReader : public SparseIndexReaderBase,
       const bool nullable,
       const uint64_t dim_idx,
       const uint64_t cell_size,
-      const std::vector<ResultTile*>* result_tiles,
-      const std::vector<uint64_t>* cell_offsets,
-      QueryBuffer* query_buffer);
+      const std::vector<ResultTile*>& result_tiles,
+      const std::vector<uint64_t>& cell_offsets,
+      QueryBuffer& query_buffer);
 
   /**
-   * Compute the maximum vector of result tiles to process amd cell offsets for
+   * Compute the maximum vector of result tiles to process and cell offsets for
    * each tiles using the fixed size buffers from the user.
    */
-  Status compute_fixed_results_to_copy(
-      std::vector<ResultTile*>* result_tiles,
-      std::vector<uint64_t>* cell_offsets);
+  std::vector<uint64_t> compute_fixed_results_to_copy(
+      const std::vector<std::string>& names,
+      std::vector<ResultTile*>& result_tiles);
 
   /**
    * Make sure we respect memory budget for copy operation by making sure that,
    * for all attributes to be copied, the size of tiles in memory can fit into
    * the budget.
    */
-  Status respect_copy_memory_budget(
+  std::tuple<Status, std::optional<std::vector<uint64_t>>>
+  respect_copy_memory_budget(
       const std::vector<std::string>& names,
       const uint64_t memory_budget,
-      const std::vector<uint64_t>* cell_offsets,
-      std::vector<ResultTile*>* result_tiles,
-      std::vector<uint64_t>* total_mem_usage_per_attr);
+      std::vector<ResultTile*>& result_tiles);
 
   /**
    * Read and unfilter as many attributes as can fit in the memory budget and
    * return the names loaded in 'names_to_copy'. Also keep the 'buffer_idx'
    * updated to keep track of progress.
    */
-  Status read_and_unfilter_attributes(
+  std::tuple<Status, std::optional<std::vector<uint64_t>>>
+  read_and_unfilter_attributes(
       const uint64_t memory_budget,
-      const std::vector<std::string>* names,
-      const std::vector<uint64_t>* mem_usage_per_attr,
+      const std::vector<std::string>& names,
+      const std::vector<uint64_t>& mem_usage_per_attr,
       uint64_t* buffer_idx,
-      std::vector<std::string>* names_to_copy,
-      std::vector<ResultTile*>* result_tiles);
+      std::vector<ResultTile*>& result_tiles);
 
   /** Copy tiles. */
   template <class OffType>
-  Status process_tiles(std::vector<ResultTile*>* result_tiles);
+  Status process_tiles(
+      std::vector<std::string>& names, std::vector<ResultTile*>& result_tiles);
 
   /** Remove a result tile from memory */
   Status remove_result_tile(

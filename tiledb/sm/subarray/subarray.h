@@ -944,7 +944,8 @@ class Subarray {
   Status sort_ranges(ThreadPool* const compute_tp);
 
   /** Returns if all ranges for this subarray are non overlapping. */
-  std::tuple<Status, bool> non_overlapping_ranges(ThreadPool* const compute_tp);
+  std::tuple<Status, std::optional<bool>> non_overlapping_ranges(
+      ThreadPool* const compute_tp);
 
  private:
   /* ********************************* */
@@ -1303,7 +1304,7 @@ class Subarray {
    * @return true if the ranges are non overlapping, false otherwise.
    */
   template <typename T>
-  std::tuple<Status, bool> non_overlapping_ranges_for_dim(
+  std::tuple<Status, std::optional<bool>> non_overlapping_ranges_for_dim(
       const uint64_t dim_idx);
 
   /**
@@ -1312,7 +1313,7 @@ class Subarray {
    * @param dim_idx dimension index.
    * @return true if the ranges are non overlapping, false otherwise.
    */
-  std::tuple<Status, bool> non_overlapping_ranges_for_dim(
+  std::tuple<Status, std::optional<bool>> non_overlapping_ranges_for_dim(
       const uint64_t dim_idx);
 };
 
