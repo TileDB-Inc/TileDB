@@ -1214,7 +1214,7 @@ Status SparseUnorderedWithDupsReader<BitmapType>::compute_var_size_offsets(
               0;
 
       const bool has_bmp = last_tile->bitmap_.size() != 0;
-      const auto min_pos = *new_result_tiles_size == 0 ? first_tile_min_pos : 0;
+      const auto min_pos = *new_result_tiles_size == 1 ? first_tile_min_pos : 0;
       for (uint64_t c = min_pos; c < last_tile_num_cells - 1; c++) {
         auto cell_count = has_bmp ? last_tile->bitmap_[c] : 1;
         auto new_size = ((OffType*)query_buffer->buffer_)
