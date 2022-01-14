@@ -31,10 +31,6 @@ list(APPEND SOURCES
 )
 gather_sources(${SOURCES})
 
-list(APPEND DEPENDENT_SOURCES
-    ../../sm/misc/cancelable_tasks.cc
-)
-
 #
 # Object library for other units to depend upon
 #
@@ -56,9 +52,6 @@ if (TILEDB_TESTS)
     find_package(Catch_EP REQUIRED)
     target_link_libraries(unit_thread_pool PUBLIC Catch2::Catch2)
 
-    # Sources for code elsewhere required for tests
-    target_sources(unit_thread_pool PUBLIC ${DEPENDENT_SOURCES})
-
     # Sources for tests
     target_sources(unit_thread_pool PUBLIC
             test/main.cc
@@ -67,7 +60,7 @@ if (TILEDB_TESTS)
 
     add_test(
             NAME "unit_thread_pool"
-            COMMAND $<TARGET_FILE:unit_thread_pool> --durations=yes
+            COMMAND $<TARGET_FILE:unit_thread_pool>
             WORKING_DIRECTORY ${CMAKE_CURRENT_SOURCE_DIR}
     )
 endif()
