@@ -411,12 +411,12 @@ uint64_t create_new_result_slab(
     uint64_t stride,
     uint64_t current,
     ResultTile* const result_tile,
-    std::vector<ResultCellSlab>* const out_result_cell_slabs) {
+    std::vector<ResultCellSlab>& result_cell_slabs) {
   // Create a result cell slab if there are pending cells.
   if (pending_start != start + current) {
     const uint64_t rcs_start = start + ((pending_start - start) * stride);
     const uint64_t rcs_length = current - (pending_start - start);
-    out_result_cell_slabs->emplace_back(result_tile, rcs_start, rcs_length);
+    result_cell_slabs.emplace_back(result_tile, rcs_start, rcs_length);
   }
 
   // Return the new start of the pending result cell slab.
@@ -424,14 +424,14 @@ uint64_t create_new_result_slab(
 }
 
 template <typename T, QueryConditionOp Op>
-void QueryCondition::apply_clause(
+std::vector<ResultCellSlab> QueryCondition::apply_clause(
     const QueryCondition::Clause& clause,
     const uint64_t stride,
     const bool var_size,
     const bool nullable,
     const ByteVecValue& fill_value,
-    const std::vector<ResultCellSlab>& result_cell_slabs,
-    std::vector<ResultCellSlab>* const out_result_cell_slabs) const {
+    const std::vector<ResultCellSlab>& result_cell_slabs) const {
+  std::vector<ResultCellSlab> ret;
   const std::string& field_name = clause.field_name_;
 
   for (const auto& rcs : result_cell_slabs) {
@@ -447,7 +447,7 @@ void QueryCondition::apply_clause(
           clause.condition_value_,
           clause.condition_value_data_.size());
       if (cmp) {
-        out_result_cell_slabs->emplace_back(result_tile, start, length);
+        ret.emplace_back(result_tile, start, length);
       }
     } else {
       const auto tile_tuple = result_tile->tile_tuple(field_name);
@@ -498,12 +498,7 @@ void QueryCondition::apply_clause(
               clause.condition_value_data_.size());
           if (!cmp) {
             pending_start = create_new_result_slab(
-                start,
-                pending_start,
-                stride,
-                c,
-                result_tile,
-                out_result_cell_slabs);
+                start, pending_start, stride, c, result_tile, ret);
           }
 
           ++c;
@@ -533,12 +528,7 @@ void QueryCondition::apply_clause(
               clause.condition_value_data_.size());
           if (!cmp) {
             pending_start = create_new_result_slab(
-                start,
-                pending_start,
-                stride,
-                c,
-                result_tile,
-                out_result_cell_slabs);
+                start, pending_start, stride, c, result_tile, ret);
           }
 
           ++c;
@@ -546,102 +536,70 @@ void QueryCondition::apply_clause(
       }
 
       // Create the final result cell slab if there are pending cells.
-      create_new_result_slab(
-          start, pending_start, stride, c, result_tile, out_result_cell_slabs);
+      create_new_result_slab(start, pending_start, stride, c, result_tile, ret);
     }
   }
+
+  return ret;
 }
 
 template <typename T>
-Status QueryCondition::apply_clause(
+std::tuple<Status, std::optional<std::vector<ResultCellSlab>>>
+QueryCondition::apply_clause(
     const Clause& clause,
     const uint64_t stride,
     const bool var_size,
     const bool nullable,
     const ByteVecValue& fill_value,
-    const std::vector<ResultCellSlab>& result_cell_slabs,
-    std::vector<ResultCellSlab>* const out_result_cell_slabs) const {
+    const std::vector<ResultCellSlab>& result_cell_slabs) const {
+  std::vector<ResultCellSlab> ret;
   switch (clause.op_) {
     case QueryConditionOp::LT:
-      apply_clause<T, QueryConditionOp::LT>(
-          clause,
-          stride,
-          var_size,
-          nullable,
-          fill_value,
-          result_cell_slabs,
-          out_result_cell_slabs);
+      ret = apply_clause<T, QueryConditionOp::LT>(
+          clause, stride, var_size, nullable, fill_value, result_cell_slabs);
       break;
     case QueryConditionOp::LE:
-      apply_clause<T, QueryConditionOp::LE>(
-          clause,
-          stride,
-          var_size,
-          nullable,
-          fill_value,
-          result_cell_slabs,
-          out_result_cell_slabs);
+      ret = apply_clause<T, QueryConditionOp::LE>(
+          clause, stride, var_size, nullable, fill_value, result_cell_slabs);
       break;
     case QueryConditionOp::GT:
-      apply_clause<T, QueryConditionOp::GT>(
-          clause,
-          stride,
-          var_size,
-          nullable,
-          fill_value,
-          result_cell_slabs,
-          out_result_cell_slabs);
+      ret = apply_clause<T, QueryConditionOp::GT>(
+          clause, stride, var_size, nullable, fill_value, result_cell_slabs);
       break;
     case QueryConditionOp::GE:
-      apply_clause<T, QueryConditionOp::GE>(
-          clause,
-          stride,
-          var_size,
-          nullable,
-          fill_value,
-          result_cell_slabs,
-          out_result_cell_slabs);
+      ret = apply_clause<T, QueryConditionOp::GE>(
+          clause, stride, var_size, nullable, fill_value, result_cell_slabs);
       break;
     case QueryConditionOp::EQ:
-      apply_clause<T, QueryConditionOp::EQ>(
-          clause,
-          stride,
-          var_size,
-          nullable,
-          fill_value,
-          result_cell_slabs,
-          out_result_cell_slabs);
+      ret = apply_clause<T, QueryConditionOp::EQ>(
+          clause, stride, var_size, nullable, fill_value, result_cell_slabs);
       break;
     case QueryConditionOp::NE:
-      apply_clause<T, QueryConditionOp::NE>(
-          clause,
-          stride,
-          var_size,
-          nullable,
-          fill_value,
-          result_cell_slabs,
-          out_result_cell_slabs);
+      ret = apply_clause<T, QueryConditionOp::NE>(
+          clause, stride, var_size, nullable, fill_value, result_cell_slabs);
       break;
     default:
-      return Status_QueryConditionError(
-          "Cannot perform query comparison; Unknown query "
-          "condition operator");
+      return {Status_QueryConditionError(
+                  "Cannot perform query comparison; Unknown query "
+                  "condition operator"),
+              std::nullopt};
   }
 
-  return Status::Ok();
+  return {Status::Ok(), std::move(ret)};
 }
 
-Status QueryCondition::apply_clause(
+std::tuple<Status, std::optional<std::vector<ResultCellSlab>>>
+QueryCondition::apply_clause(
     const QueryCondition::Clause& clause,
     const ArraySchema* const array_schema,
     const uint64_t stride,
-    const std::vector<ResultCellSlab>& result_cell_slabs,
-    std::vector<ResultCellSlab>* const out_result_cell_slabs) const {
+    const std::vector<ResultCellSlab>& result_cell_slabs) const {
   const Attribute* const attribute =
       array_schema->attribute(clause.field_name_);
   if (!attribute) {
-    return Status_QueryConditionError(
-        "Unknown attribute " + clause.field_name_);
+    return {
+        Status_QueryConditionError("Unknown attribute " + clause.field_name_),
+        std::nullopt};
   }
 
   const ByteVecValue fill_value = attribute->fill_value();
@@ -650,103 +608,37 @@ Status QueryCondition::apply_clause(
   switch (attribute->type()) {
     case Datatype::INT8:
       return apply_clause<int8_t>(
-          clause,
-          stride,
-          var_size,
-          nullable,
-          fill_value,
-          result_cell_slabs,
-          out_result_cell_slabs);
+          clause, stride, var_size, nullable, fill_value, result_cell_slabs);
     case Datatype::UINT8:
       return apply_clause<uint8_t>(
-          clause,
-          stride,
-          var_size,
-          nullable,
-          fill_value,
-          result_cell_slabs,
-          out_result_cell_slabs);
+          clause, stride, var_size, nullable, fill_value, result_cell_slabs);
     case Datatype::INT16:
       return apply_clause<int16_t>(
-          clause,
-          stride,
-          var_size,
-          nullable,
-          fill_value,
-          result_cell_slabs,
-          out_result_cell_slabs);
+          clause, stride, var_size, nullable, fill_value, result_cell_slabs);
     case Datatype::UINT16:
       return apply_clause<uint16_t>(
-          clause,
-          stride,
-          var_size,
-          nullable,
-          fill_value,
-          result_cell_slabs,
-          out_result_cell_slabs);
+          clause, stride, var_size, nullable, fill_value, result_cell_slabs);
     case Datatype::INT32:
       return apply_clause<int32_t>(
-          clause,
-          stride,
-          var_size,
-          nullable,
-          fill_value,
-          result_cell_slabs,
-          out_result_cell_slabs);
+          clause, stride, var_size, nullable, fill_value, result_cell_slabs);
     case Datatype::UINT32:
       return apply_clause<uint32_t>(
-          clause,
-          stride,
-          var_size,
-          nullable,
-          fill_value,
-          result_cell_slabs,
-          out_result_cell_slabs);
+          clause, stride, var_size, nullable, fill_value, result_cell_slabs);
     case Datatype::INT64:
       return apply_clause<int64_t>(
-          clause,
-          stride,
-          var_size,
-          nullable,
-          fill_value,
-          result_cell_slabs,
-          out_result_cell_slabs);
+          clause, stride, var_size, nullable, fill_value, result_cell_slabs);
     case Datatype::UINT64:
       return apply_clause<uint64_t>(
-          clause,
-          stride,
-          var_size,
-          nullable,
-          fill_value,
-          result_cell_slabs,
-          out_result_cell_slabs);
+          clause, stride, var_size, nullable, fill_value, result_cell_slabs);
     case Datatype::FLOAT32:
       return apply_clause<float>(
-          clause,
-          stride,
-          var_size,
-          nullable,
-          fill_value,
-          result_cell_slabs,
-          out_result_cell_slabs);
+          clause, stride, var_size, nullable, fill_value, result_cell_slabs);
     case Datatype::FLOAT64:
       return apply_clause<double>(
-          clause,
-          stride,
-          var_size,
-          nullable,
-          fill_value,
-          result_cell_slabs,
-          out_result_cell_slabs);
+          clause, stride, var_size, nullable, fill_value, result_cell_slabs);
     case Datatype::STRING_ASCII:
       return apply_clause<char*>(
-          clause,
-          stride,
-          var_size,
-          nullable,
-          fill_value,
-          result_cell_slabs,
-          out_result_cell_slabs);
+          clause, stride, var_size, nullable, fill_value, result_cell_slabs);
     case Datatype::CHAR:
       if (var_size) {
         return apply_clause<char*>(
@@ -759,13 +651,7 @@ Status QueryCondition::apply_clause(
             out_result_cell_slabs);
       }
       return apply_clause<char>(
-          clause,
-          stride,
-          var_size,
-          nullable,
-          fill_value,
-          result_cell_slabs,
-          out_result_cell_slabs);
+          clause, stride, var_size, nullable, fill_value, result_cell_slabs);
     case Datatype::DATETIME_YEAR:
     case Datatype::DATETIME_MONTH:
     case Datatype::DATETIME_WEEK:
@@ -780,13 +666,7 @@ Status QueryCondition::apply_clause(
     case Datatype::DATETIME_FS:
     case Datatype::DATETIME_AS:
       return apply_clause<int64_t>(
-          clause,
-          stride,
-          var_size,
-          nullable,
-          fill_value,
-          result_cell_slabs,
-          out_result_cell_slabs);
+          clause, stride, var_size, nullable, fill_value, result_cell_slabs);
     case Datatype::ANY:
     case Datatype::BLOB:
     case Datatype::STRING_UTF8:
@@ -795,18 +675,19 @@ Status QueryCondition::apply_clause(
     case Datatype::STRING_UCS2:
     case Datatype::STRING_UCS4:
     default:
-      return Status_QueryConditionError(
-          "Cannot perform query comparison; Unsupported query "
-          "conditional type on " +
-          clause.field_name_);
+      return {Status_QueryConditionError(
+                  "Cannot perform query comparison; Unsupported query "
+                  "conditional type on " +
+                  clause.field_name_),
+              std::nullopt};
   }
 
-  return Status::Ok();
+  return {Status::Ok(), std::nullopt};
 }
 
 Status QueryCondition::apply(
     const ArraySchema* const array_schema,
-    std::vector<ResultCellSlab>* const result_cell_slabs,
+    std::vector<ResultCellSlab>& result_cell_slabs,
     const uint64_t stride) const {
   if (clauses_.empty()) {
     return Status::Ok();
@@ -817,14 +698,10 @@ Status QueryCondition::apply(
   // clauses. This assumes all clauses are combined with a
   // logical "AND".
   for (const auto& clause : clauses_) {
-    std::vector<ResultCellSlab> tmp_result_cell_slabs;
-    RETURN_NOT_OK(apply_clause(
-        clause,
-        array_schema,
-        stride,
-        *result_cell_slabs,
-        &tmp_result_cell_slabs));
-    *result_cell_slabs = tmp_result_cell_slabs;
+    auto&& [st, tmp_result_cell_slabs] =
+        apply_clause(clause, array_schema, stride, result_cell_slabs);
+    RETURN_NOT_OK(st);
+    result_cell_slabs = std::move(*tmp_result_cell_slabs);
   }
 
   return Status::Ok();

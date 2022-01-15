@@ -77,7 +77,7 @@ struct ReadCellSlabIterFx {
       Layout layout,
       const std::vector<NDRange>& domain_slices,
       const std::vector<std::vector<uint8_t>>& tile_coords,
-      std::map<const T*, ResultSpaceTile<T>>* result_space_tiles);
+      std::map<const T*, ResultSpaceTile<T>>& result_space_tiles);
 };
 
 ReadCellSlabIterFx::ReadCellSlabIterFx()
@@ -142,7 +142,7 @@ void ReadCellSlabIterFx::create_result_space_tiles(
     Layout layout,
     const std::vector<NDRange>& domain_slices,
     const std::vector<std::vector<uint8_t>>& tile_coords,
-    std::map<const T*, ResultSpaceTile<T>>* result_space_tiles) {
+    std::map<const T*, ResultSpaceTile<T>>& result_space_tiles) {
   auto domain = dom->domain();
   const auto& tile_extents = dom->tile_extents();
   std::vector<TileDomain<T>> frag_tile_domains;
@@ -239,7 +239,7 @@ TEST_CASE_METHOD(
       subarray_layout,
       domain_slices,
       tile_coords,
-      &result_space_tiles);
+      result_space_tiles);
 
   // Check iterator
   std::vector<ResultCoords> result_coords;
@@ -312,7 +312,7 @@ TEST_CASE_METHOD(
       subarray_layout,
       domain_slices,
       tile_coords,
-      &result_space_tiles);
+      result_space_tiles);
 
   // Check iterator
   std::vector<ResultCoords> result_coords;
@@ -390,7 +390,7 @@ TEST_CASE_METHOD(
       subarray_layout,
       domain_slices,
       tile_coords,
-      &result_space_tiles);
+      result_space_tiles);
 
   // Check iterator
   std::vector<ResultCoords> result_coords;
@@ -472,7 +472,7 @@ TEST_CASE_METHOD(
       subarray_layout,
       domain_slices,
       tile_coords,
-      &result_space_tiles);
+      result_space_tiles);
 
   // Create result coordinates
   std::vector<ResultCoords> result_coords;
@@ -708,7 +708,7 @@ TEST_CASE_METHOD(
       tile_domain_layout,
       domain_slices,
       tile_coords,
-      &result_space_tiles);
+      result_space_tiles);
 
   // Create result coordinates
   std::vector<ResultCoords> result_coords;
@@ -893,7 +893,7 @@ TEST_CASE_METHOD(
       tile_domain_layout,
       domain_slices,
       tile_coords,
-      &result_space_tiles);
+      result_space_tiles);
 
   // Create result coordinates
   std::vector<ResultCoords> result_coords;
@@ -1091,7 +1091,7 @@ TEST_CASE_METHOD(
       tile_domain_layout,
       domain_slices,
       tile_coords,
-      &result_space_tiles);
+      result_space_tiles);
 
   // Create result coordinates
   std::vector<ResultCoords> result_coords;
@@ -1337,7 +1337,7 @@ TEST_CASE_METHOD(
       tile_domain_layout,
       domain_slices,
       tile_coords,
-      &result_space_tiles);
+      result_space_tiles);
 
   // Create result coordinates
   std::vector<ResultCoords> result_coords;

@@ -86,7 +86,6 @@ const std::string Config::SM_MEM_SPARSE_GLOBAL_ORDER_RATIO_QUERY_CONDITION =
     "0.25";
 const std::string Config::SM_MEM_SPARSE_GLOBAL_ORDER_RATIO_TILE_RANGES = "0.1";
 const std::string Config::SM_MEM_SPARSE_GLOBAL_ORDER_RATIO_ARRAY_DATA = "0.1";
-const std::string Config::SM_MEM_SPARSE_GLOBAL_ORDER_RATIO_RCS = "0.05";
 const std::string Config::SM_MEM_SPARSE_UNORDERED_WITH_DUPS_RATIO_COORDS =
     "0.5";
 const std::string
@@ -247,8 +246,6 @@ Config::Config() {
       SM_MEM_SPARSE_GLOBAL_ORDER_RATIO_TILE_RANGES;
   param_values_["sm.mem.reader.sparse_global_order.ratio_array_data"] =
       SM_MEM_SPARSE_GLOBAL_ORDER_RATIO_ARRAY_DATA;
-  param_values_["sm.mem.reader.sparse_global_order.ratio_rcs"] =
-      SM_MEM_SPARSE_GLOBAL_ORDER_RATIO_RCS;
   param_values_["sm.mem.reader.sparse_unordered_with_dups.ratio_coords"] =
       SM_MEM_SPARSE_UNORDERED_WITH_DUPS_RATIO_COORDS;
   param_values_
@@ -560,9 +557,6 @@ Status Config::unset(const std::string& param) {
   } else if (param == "sm.mem.reader.sparse_global_order.ratio_array_data") {
     param_values_["sm.mem.reader.sparse_global_order.ratio_array_data"] =
         SM_MEM_SPARSE_GLOBAL_ORDER_RATIO_ARRAY_DATA;
-  } else if (param == "sm.mem.reader.sparse_global_order.ratio_rcs") {
-    param_values_["sm.mem.reader.sparse_global_order.ratio_rcs"] =
-        SM_MEM_SPARSE_GLOBAL_ORDER_RATIO_RCS;
   } else if (param == "sm.mem.reader.sparse_unordered_with_dups.ratio_coords") {
     param_values_["sm.mem.reader.sparse_unordered_with_dups.ratio_coords"] =
         SM_MEM_SPARSE_UNORDERED_WITH_DUPS_RATIO_COORDS;

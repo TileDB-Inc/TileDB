@@ -635,12 +635,12 @@ SubarrayPartitioner::State* SubarrayPartitioner::state() {
   return &state_;
 }
 
-const Subarray* SubarrayPartitioner::subarray() const {
-  return &subarray_;
+const Subarray& SubarrayPartitioner::subarray() const {
+  return subarray_;
 }
 
-Subarray* SubarrayPartitioner::subarray() {
-  return &subarray_;
+Subarray& SubarrayPartitioner::subarray() {
+  return subarray_;
 }
 
 stats::Stats* SubarrayPartitioner::stats() const {

@@ -421,10 +421,6 @@ class Config {
    *    Ratio of the budget allocated for array data in the sparse global
    *    order reader. <br>
    *    **Default**: 0.1
-   * - `sm.mem.reader.sparse_global_order.ratio_rcs` <br>
-   *    Ratio of the budget allocated for result cell slabs in the sparse
-   *    global order reader. <br>
-   *    **Default**: 0.05
    * - `sm.mem.reader.sparse_unordered_with_dups.ratio_coords` <br>
    *    Ratio of the budget allocated for coordinates in the sparse unordered
    *    with duplicates reader. <br>

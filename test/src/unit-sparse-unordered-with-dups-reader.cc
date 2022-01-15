@@ -1122,7 +1122,7 @@ TEST_CASE(
   query_buffer.original_buffer_var_size_ = 6;
 
   // Call the function.
-  auto&& [var_buffer_size, result_tiles_size] =
+  auto&& [buffers_full, var_buffer_size, result_tiles_size] =
       SparseUnorderedWithDupsReader<uint64_t>::compute_var_size_offsets<
           uint64_t>(
           &tiledb::test::g_helper_stats,
@@ -1132,6 +1132,7 @@ TEST_CASE(
           query_buffer);
 
   // Validate results.
+  CHECK(buffers_full == true);
   CHECK(cell_offsets[1] == 3);
   CHECK(result_tiles_size == 1);
   CHECK(var_buffer_size == 6);
@@ -1172,7 +1173,7 @@ TEST_CASE(
   query_buffer.original_buffer_var_size_ = 6;
 
   // Call the function.
-  auto&& [var_buffer_size, result_tiles_size] =
+  auto&& [buffers_full, var_buffer_size, result_tiles_size] =
       SparseUnorderedWithDupsReader<uint64_t>::compute_var_size_offsets<
           uint64_t>(
           &tiledb::test::g_helper_stats,
@@ -1182,6 +1183,7 @@ TEST_CASE(
           query_buffer);
 
   // Validate results.
+  CHECK(buffers_full == true);
   CHECK(cell_offsets[1] == 3);
   CHECK(result_tiles_size == 1);
   CHECK(var_buffer_size == 6);
@@ -1227,7 +1229,7 @@ TEST_CASE(
   query_buffer.original_buffer_var_size_ = 5;
 
   // Call the function.
-  auto&& [var_buffer_size, result_tiles_size] =
+  auto&& [buffers_full, var_buffer_size, result_tiles_size] =
       SparseUnorderedWithDupsReader<uint64_t>::compute_var_size_offsets<
           uint64_t>(
           &tiledb::test::g_helper_stats,
@@ -1237,6 +1239,7 @@ TEST_CASE(
           query_buffer);
 
   // Validate results.
+  CHECK(buffers_full == true);
   CHECK(cell_offsets[1] == 2);
   CHECK(result_tiles_size == 1);
   CHECK(var_buffer_size == 4);

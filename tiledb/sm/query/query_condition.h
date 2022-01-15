@@ -227,7 +227,7 @@ class QueryCondition {
    */
   Status apply(
       const ArraySchema* array_schema,
-      std::vector<ResultCellSlab>* result_cell_slabs,
+      std::vector<ResultCellSlab>& result_cell_slabs,
       uint64_t stride) const;
 
   /**
@@ -347,17 +347,16 @@ class QueryCondition {
    * @param nullable The attribute is nullable or not.
    * @param fill_value The fill value for the cells.
    * @param result_cell_slabs The input cell slabs.
-   * @param out_result_cell_slabs The filtered cell slabs.
+   * @return The filtered cell slabs.
    */
   template <typename T, QueryConditionOp Op>
-  void apply_clause(
+  std::vector<ResultCellSlab> apply_clause(
       const Clause& clause,
       uint64_t stride,
       const bool var_size,
       const bool nullable,
       const ByteVecValue& fill_value,
-      const std::vector<ResultCellSlab>& result_cell_slabs,
-      std::vector<ResultCellSlab>* out_result_cell_slabs) const;
+      const std::vector<ResultCellSlab>& result_cell_slabs) const;
 
   /**
    * Applies a clause on primitive-typed result cell slabs.
@@ -368,17 +367,16 @@ class QueryCondition {
    * @param nullable The attribute is nullable or not.
    * @param fill_value The fill value for the cells.
    * @param result_cell_slabs The input cell slabs.
-   * @param out_result_cell_slabs The filtered cell slabs.
+   * @return Status, filtered cell slabs.
    */
   template <typename T>
-  Status apply_clause(
+  std::tuple<Status, std::optional<std::vector<ResultCellSlab>>> apply_clause(
       const Clause& clause,
       uint64_t stride,
       const bool var_size,
       const bool nullable,
       const ByteVecValue& fill_value,
-      const std::vector<ResultCellSlab>& result_cell_slabs,
-      std::vector<ResultCellSlab>* out_result_cell_slabs) const;
+      const std::vector<ResultCellSlab>& result_cell_slabs) const;
 
   /**
    * Applies a clause to filter result cells from the input
@@ -388,14 +386,13 @@ class QueryCondition {
    * @param array_schema The current array schema.
    * @param stride The stride between cells.
    * @param result_cell_slabs The input cell slabs.
-   * @param out_result_cell_slabs The filtered cell slabs.
+   * @return Status, filtered cell slabs.
    */
-  Status apply_clause(
+  std::tuple<Status, std::optional<std::vector<ResultCellSlab>>> apply_clause(
       const QueryCondition::Clause& clause,
       const ArraySchema* const array_schema,
       uint64_t stride,
-      const std::vector<ResultCellSlab>& result_cell_slabs,
-      std::vector<ResultCellSlab>* out_result_cell_slabs) const;
+      const std::vector<ResultCellSlab>& result_cell_slabs) const;
 
   /**
    * Applies a clause on a dense result tile,
@@ -408,7 +405,6 @@ class QueryCondition {
    * @param src_cell The cell offset in the source tile.
    * @param stride The stride between cells.
    * @param var_size The attribute is var sized or not.
-
    * @param result_buffer The result buffer.
    */
   template <typename T, QueryConditionOp Op>
@@ -433,6 +429,7 @@ class QueryCondition {
    * @param stride The stride between cells.
    * @param var_size The attribute is var sized or not.
    * @param result_buffer The result buffer.
+   * @return Status.
    */
   template <typename T>
   Status apply_clause_dense(
@@ -457,6 +454,7 @@ class QueryCondition {
    * @param src_cell The cell offset in the source tile.
    * @param stride The stride between cells.
    * @param result_buffer The result buffer.
+   * @return Status.
    */
   Status apply_clause_dense(
       const QueryCondition::Clause& clause,
@@ -491,6 +489,7 @@ class QueryCondition {
    * @param result_tile The result tile to get the cells from.
    * @param var_size The attribute is var sized or not.
    * @param result_bitmap The result bitmap.
+   * @return Status.
    */
   template <typename T, typename BitmapType>
   Status apply_clause_sparse(
@@ -507,6 +506,7 @@ class QueryCondition {
    * @param array_schema The current array schema.
    * @param result_tile The result tile to get the cells from.
    * @param result_bitmap The result bitmap.
+   * @return Status.
    */
   template <typename BitmapType>
   Status apply_clause_sparse(
