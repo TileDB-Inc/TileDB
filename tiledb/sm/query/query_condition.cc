@@ -642,13 +642,7 @@ QueryCondition::apply_clause(
     case Datatype::CHAR:
       if (var_size) {
         return apply_clause<char*>(
-            clause,
-            stride,
-            var_size,
-            nullable,
-            fill_value,
-            result_cell_slabs,
-            out_result_cell_slabs);
+            clause, stride, var_size, nullable, fill_value, result_cell_slabs);
       }
       return apply_clause<char>(
           clause, stride, var_size, nullable, fill_value, result_cell_slabs);
