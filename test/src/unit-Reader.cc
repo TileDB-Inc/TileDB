@@ -209,7 +209,7 @@ TEST_CASE_METHOD(
       tile_coords,
       array_tile_domain,
       frag_tile_domains,
-      &result_space_tiles);
+      result_space_tiles);
   CHECK(result_space_tiles.size() == 6);
 
   // Result tiles for fragment #1

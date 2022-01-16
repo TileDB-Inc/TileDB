@@ -392,6 +392,20 @@ class ArraySchema : public Schema {
   }
 
   /**
+   * Returns a copy of the FilterList of the validity arrays. To change the
+   * validity compressor, use `set_validity_filter_list()`.
+   *
+   * @return Copy of the validity FilterList.
+   */
+  FilterList validity_filter_list() const {
+    auto& ctx = ctx_.get();
+    tiledb_filter_list_t* filter_list;
+    ctx.handle_error(tiledb_array_schema_get_validity_filter_list(
+        ctx.ptr().get(), schema_.get(), &filter_list));
+    return FilterList(ctx, filter_list);
+  }
+
+  /**
    * Sets the FilterList for the offsets, which is an ordered list of
    * filters that will be used to process and/or transform the offsets data
    * (such as compression).
@@ -412,6 +426,31 @@ class ArraySchema : public Schema {
   ArraySchema& set_offsets_filter_list(const FilterList& filter_list) {
     auto& ctx = ctx_.get();
     ctx.handle_error(tiledb_array_schema_set_offsets_filter_list(
+        ctx.ptr().get(), schema_.get(), filter_list.ptr().get()));
+    return *this;
+  }
+
+  /**
+   * Sets the FilterList for the validity arrays, which is an ordered list of
+   * filters that will be used to process and/or transform the validity data
+   * (such as compression).
+   *
+   * **Example:**
+   * @code{.cpp}
+   * tiledb::Context ctx;
+   * tiledb::ArraySchema schema(ctx.ptr().get(), TILEDB_SPARSE);
+   * tiledb::FilterList filter_list(ctx);
+   * filter_list.add_filter({ctx, TILEDB_FILTER_POSITIVE_DELTA})
+   *     .add_filter({ctx, TILEDB_FILTER_LZ4});
+   * schema.set_validity_filter_list(filter_list);
+   * @endcode
+   *
+   * @param filter_list FilterList to use
+   * @return Reference to this `ArraySchema` instance.
+   */
+  ArraySchema& set_validity_filter_list(const FilterList& filter_list) {
+    auto& ctx = ctx_.get();
+    ctx.handle_error(tiledb_array_schema_set_validity_filter_list(
         ctx.ptr().get(), schema_.get(), filter_list.ptr().get()));
     return *this;
   }

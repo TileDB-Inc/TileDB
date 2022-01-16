@@ -250,7 +250,7 @@ Status DenseReader::dense_read() {
   // relevant result tiles of the dense fragments.
   std::map<const DimType*, ResultSpaceTile<DimType>> result_space_tiles;
   compute_result_space_tiles<DimType>(
-      &subarray, read_state_.partitioner_.subarray(), &result_space_tiles);
+      subarray, read_state_.partitioner_.subarray(), result_space_tiles);
 
   std::vector<ResultTile*> result_tiles;
   for (const auto& result_space_tile : result_space_tiles) {
@@ -328,13 +328,13 @@ Status DenseReader::dense_read() {
   // Pre-load all attribute offsets into memory for attributes
   // in query condition to be read.
   RETURN_CANCEL_OR_ERROR(
-      load_tile_offsets(read_state_.partitioner_.subarray(), &names));
+      load_tile_offsets(read_state_.partitioner_.subarray(), names));
 
   // Read and unfilter tiles.
-  RETURN_CANCEL_OR_ERROR(read_attribute_tiles(&names, &result_tiles));
+  RETURN_CANCEL_OR_ERROR(read_attribute_tiles(names, result_tiles));
 
   for (const auto& name : names) {
-    RETURN_CANCEL_OR_ERROR(unfilter_tiles(name, &result_tiles));
+    RETURN_CANCEL_OR_ERROR(unfilter_tiles(name, result_tiles));
   }
 
   // Compute the result of the query condition.
@@ -372,8 +372,9 @@ Status DenseReader::dense_read() {
 
   // Fill coordinates if the user requested them.
   if (!read_state_.overflowed_ && has_coords()) {
-    RETURN_CANCEL_OR_ERROR(fill_dense_coords<DimType>(subarray));
-    read_state_.overflowed_ = copy_overflowed_;
+    auto&& [st, overflowed] = fill_dense_coords<DimType>(subarray);
+    RETURN_CANCEL_OR_ERROR(st);
+    read_state_.overflowed_ = *overflowed;
   }
 
   return Status::Ok();
@@ -472,7 +473,6 @@ Status DenseReader::init_read_state() {
 
   read_state_.unsplittable_ = false;
   read_state_.overflowed_ = false;
-  copy_overflowed_ = false;
   read_state_.initialized_ = true;
 
   return Status::Ok();
@@ -503,7 +503,7 @@ Status DenseReader::apply_query_condition(
 
     // Initialize the result buffer.
     qc_result->resize(cell_num);
-    memset(qc_result->data(), 0xFF, cell_num);
+    memset(qc_result->data(), 1, cell_num);
 
     // Process all tiles in parallel.
     auto status = parallel_for(
@@ -559,7 +559,7 @@ Status DenseReader::apply_query_condition(
                       cell_slab.length_,
                       &start,
                       &end)) {
-                RETURN_NOT_OK(condition_.apply_dense<DimType>(
+                RETURN_NOT_OK(condition_.apply_dense(
                     fragment_metadata_[frag_domains[i].first]->array_schema(),
                     it->second.result_tile(frag_domains[i].first),
                     start,

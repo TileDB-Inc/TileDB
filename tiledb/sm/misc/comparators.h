@@ -41,6 +41,7 @@
 #include "tiledb/sm/array_schema/domain.h"
 #include "tiledb/sm/enums/layout.h"
 #include "tiledb/sm/query/result_coords.h"
+#include "tiledb/sm/query/sparse_index_reader_base.h"
 
 using namespace tiledb::common;
 
@@ -147,11 +148,8 @@ class HilbertCmp {
   }
 
   /** Constructor. */
-  HilbertCmp(
-      const Domain* domain,
-      std::vector<std::vector<uint64_t>>* fragments_hilbert_values)
-      : domain_(domain)
-      , fragment_hilbert_values_(fragments_hilbert_values) {
+  HilbertCmp(const Domain* domain)
+      : domain_(domain) {
     dim_num_ = domain->dim_num();
   }
 
@@ -217,8 +215,10 @@ class HilbertCmp {
    * @return `true` if `a` precedes `b` and `false` otherwise.
    */
   bool operator()(const ResultCoords& a, const ResultCoords& b) const {
-    auto hilbert_a = (*fragment_hilbert_values_)[a.tile_->frag_idx()][a.pos_];
-    auto hilbert_b = (*fragment_hilbert_values_)[b.tile_->frag_idx()][b.pos_];
+    auto hilbert_a =
+        ((ResultTileWithBitmap<uint8_t>*)a.tile_)->hilbert_values_[a.pos_];
+    auto hilbert_b =
+        ((ResultTileWithBitmap<uint8_t>*)b.tile_)->hilbert_values_[b.pos_];
     if (hilbert_a < hilbert_b)
       return true;
     else if (hilbert_a > hilbert_b)
@@ -238,16 +238,6 @@ class HilbertCmp {
     return false;
   }
 
-  /**
-   * Sets the values for the coordinates comparator.
-   *
-   * @param f The fragment index.
-   * @param v The values vector for the tile in process.
-   */
-  void set_values_for_fragment(unsigned int f, std::vector<uint64_t>& v) {
-    (*fragment_hilbert_values_)[f] = std::move(v);
-  }
-
  private:
   /**
    * The coordinate buffers, one per dimension, sorted in the order the
@@ -262,8 +252,6 @@ class HilbertCmp {
   std::vector<ResultCoords>::iterator iter_begin_;
   /** The Hilbert values vector. */
   const std::vector<uint64_t>* hilbert_values_;
-  /** The Hilbert values vectors per fragments. */
-  std::vector<std::vector<uint64_t>>* fragment_hilbert_values_;
 };
 
 /**
@@ -276,13 +264,9 @@ class HilbertCmpReverse {
    * Constructor.
    *
    * @param domain The array domain.
-   * @param buff The buffer containing the actual values, used
-   *     in positional comparisons.
    */
-  HilbertCmpReverse(
-      const Domain* domain,
-      std::vector<std::vector<uint64_t>>* fragments_hilbert_values)
-      : cmp_(domain, fragments_hilbert_values) {
+  HilbertCmpReverse(const Domain* domain)
+      : cmp_(domain) {
   }
 
   /**
@@ -294,17 +278,6 @@ class HilbertCmpReverse {
    */
   bool operator()(const ResultCoords& a, const ResultCoords& b) const {
     return !cmp_.operator()(a, b);
-  }
-
-  /**
-   * Sets the values for the coordinates comparator.
-   *
-   * @param f The fragment index.
-   * @param v The values vector for the tile in process.
-   * @return `true` if `a` precedes `b` and `false` otherwise.
-   */
-  void set_values_for_fragment(unsigned int f, std::vector<uint64_t>& v) {
-    cmp_.set_values_for_fragment(f, v);
   }
 
  private:

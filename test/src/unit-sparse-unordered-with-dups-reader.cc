@@ -32,6 +32,7 @@
 
 #include "test/src/helpers.h"
 #include "tiledb/sm/c_api/tiledb.h"
+#include "tiledb/sm/c_api/tiledb_struct_def.h"
 #include "tiledb/sm/query/query_buffer.h"
 #include "tiledb/sm/query/sparse_index_reader_base.h"
 #include "tiledb/sm/query/sparse_unordered_with_dups_reader.h"
@@ -622,80 +623,46 @@ TEST_CASE_METHOD(
   tiledb_array_t* array = nullptr;
   tiledb_query_t* query = nullptr;
 
-  uint32_t rc;
-  uint64_t coords_r_size;
-  uint64_t data_r_size;
-  for (int i = 0; i < num_frags; i++) {
-    // Try to read.
-    int coords_r[5];
-    int data_r[5];
-    coords_r_size = sizeof(coords_r);
-    data_r_size = sizeof(data_r);
+  // Try to read.
+  int coords_r[10];
+  int data_r[10];
+  uint64_t coords_r_size = sizeof(coords_r);
+  uint64_t data_r_size = sizeof(data_r);
 
-    if (i == 0) {
-      rc = read(
-          use_subarray,
-          false,
-          coords_r,
-          &coords_r_size,
-          data_r,
-          &data_r_size,
-          &query,
-          &array);
-    } else {
-      rc = tiledb_query_submit(ctx_, query);
-    }
-    CHECK(rc == TILEDB_OK);
+  auto rc = read(
+      use_subarray,
+      false,
+      coords_r,
+      &coords_r_size,
+      data_r,
+      &data_r_size,
+      &query,
+      &array);
+  CHECK(rc == TILEDB_OK);
 
-    // Check incomplete query status.
-    tiledb_query_status_t status;
-    tiledb_query_get_status(ctx_, query, &status);
-    CHECK(status == TILEDB_INCOMPLETE);
+  // Check the internal loop count against expected value.
+  auto stats =
+      ((SparseUnorderedWithDupsReader<uint8_t>*)query->query_->strategy())
+          ->stats();
+  REQUIRE(stats != nullptr);
+  auto counters = stats->counters();
+  REQUIRE(counters != nullptr);
+  auto loop_num =
+      counters->find("Context.StorageManager.Query.Reader.loop_num");
+  CHECK(uint64_t(num_frags * 3) == loop_num->second);
 
-    // Should only read one tile (2 values).
-    CHECK(8 == data_r_size);
-    CHECK(8 == coords_r_size);
+  // Check query status.
+  tiledb_query_status_t status;
+  tiledb_query_get_status(ctx_, query, &status);
+  CHECK(status == TILEDB_COMPLETED);
 
-    int coords_c[] = {1 + i * 5, 2 + i * 5};
-    int data_c[] = {1 + i * 5, 2 + i * 5};
-    CHECK(!std::memcmp(coords_c, coords_r, coords_r_size));
-    CHECK(!std::memcmp(data_c, data_r, data_r_size));
+  CHECK(uint64_t(num_frags * 20) == data_r_size);
+  CHECK(uint64_t(num_frags * 20) == coords_r_size);
 
-    // Read again.
-    rc = tiledb_query_submit(ctx_, query);
-    CHECK(rc == TILEDB_OK);
-
-    // Check incomplete query status.
-    tiledb_query_get_status(ctx_, query, &status);
-    CHECK(status == TILEDB_INCOMPLETE);
-
-    // Should only read one more tile (2 values).
-    CHECK(8 == data_r_size);
-    CHECK(8 == coords_r_size);
-
-    int coords_c_2[] = {3 + i * 5, 4 + i * 5};
-    int data_c_2[] = {3 + i * 5, 4 + i * 5};
-    CHECK(!std::memcmp(coords_c_2, coords_r, coords_r_size));
-    CHECK(!std::memcmp(data_c_2, data_r, data_r_size));
-
-    // Read again.
-    rc = tiledb_query_submit(ctx_, query);
-    CHECK(rc == TILEDB_OK);
-
-    // Check complete query status.
-    tiledb_query_get_status(ctx_, query, &status);
-    CHECK(
-        status == (i == num_frags - 1 ? TILEDB_COMPLETED : TILEDB_INCOMPLETE));
-
-    // Should read last tile (1 value).
-    CHECK(4 == data_r_size);
-    CHECK(4 == coords_r_size);
-
-    int coords_c_3[] = {5 + i * 5};
-    int data_c_3[] = {5 + i * 5};
-    CHECK(!std::memcmp(coords_c_3, coords_r, coords_r_size));
-    CHECK(!std::memcmp(data_c_3, data_r, data_r_size));
-  }
+  int coords_c[] = {1, 2, 3, 4, 5, 6, 7, 8, 9, 10};
+  int data_c[] = {1, 2, 3, 4, 5, 6, 7, 8, 9, 10};
+  CHECK(!std::memcmp(coords_c, coords_r, coords_r_size));
+  CHECK(!std::memcmp(data_c, data_r, data_r_size));
 
   // Clean up.
   rc = tiledb_array_close(ctx_, array);
@@ -850,80 +817,46 @@ TEST_CASE_METHOD(
   tiledb_array_t* array = nullptr;
   tiledb_query_t* query = nullptr;
 
-  uint32_t rc;
-  uint64_t coords_r_size;
-  uint64_t data_r_size;
-  for (int i = 0; i < num_frags; i++) {
-    // Try to read.
-    int coords_r[5];
-    int data_r[5];
-    coords_r_size = sizeof(coords_r);
-    data_r_size = sizeof(data_r);
+  // Try to read.
+  int coords_r[10];
+  int data_r[10];
+  uint64_t coords_r_size = sizeof(coords_r);
+  uint64_t data_r_size = sizeof(data_r);
 
-    if (i == 0) {
-      rc = read(
-          use_subarray,
-          true,
-          coords_r,
-          &coords_r_size,
-          data_r,
-          &data_r_size,
-          &query,
-          &array);
-    } else {
-      rc = tiledb_query_submit(ctx_, query);
-    }
-    CHECK(rc == TILEDB_OK);
+  auto rc = read(
+      use_subarray,
+      true,
+      coords_r,
+      &coords_r_size,
+      data_r,
+      &data_r_size,
+      &query,
+      &array);
+  CHECK(rc == TILEDB_OK);
 
-    // Check incomplete query status.
-    tiledb_query_status_t status;
-    tiledb_query_get_status(ctx_, query, &status);
-    CHECK(status == TILEDB_INCOMPLETE);
+  // Check the internal loop count against expected value.
+  auto stats =
+      ((SparseUnorderedWithDupsReader<uint8_t>*)query->query_->strategy())
+          ->stats();
+  REQUIRE(stats != nullptr);
+  auto counters = stats->counters();
+  REQUIRE(counters != nullptr);
+  auto loop_num =
+      counters->find("Context.StorageManager.Query.Reader.loop_num");
+  CHECK(uint64_t(num_frags * 3) == loop_num->second);
 
-    // Should only read one tile (2 values).
-    CHECK(8 == data_r_size);
-    CHECK(8 == coords_r_size);
+  // Check query status.
+  tiledb_query_status_t status;
+  tiledb_query_get_status(ctx_, query, &status);
+  CHECK(status == TILEDB_COMPLETED);
 
-    int coords_c[] = {1 + i * 5, 2 + i * 5};
-    int data_c[] = {1 + i * 5, 2 + i * 5};
-    CHECK(!std::memcmp(coords_c, coords_r, coords_r_size));
-    CHECK(!std::memcmp(data_c, data_r, data_r_size));
+  CHECK(uint64_t(num_frags * 20) == data_r_size);
+  CHECK(uint64_t(num_frags * 20) == coords_r_size);
 
-    // Read again.
-    rc = tiledb_query_submit(ctx_, query);
-    CHECK(rc == TILEDB_OK);
-
-    // Check incomplete query status.
-    tiledb_query_get_status(ctx_, query, &status);
-    CHECK(status == TILEDB_INCOMPLETE);
-
-    // Should only read one more tile (2 values).
-    CHECK(8 == data_r_size);
-    CHECK(8 == coords_r_size);
-
-    int coords_c_2[] = {3 + i * 5, 4 + i * 5};
-    int data_c_2[] = {3 + i * 5, 4 + i * 5};
-    CHECK(!std::memcmp(coords_c_2, coords_r, coords_r_size));
-    CHECK(!std::memcmp(data_c_2, data_r, data_r_size));
-
-    // Read again.
-    rc = tiledb_query_submit(ctx_, query);
-    CHECK(rc == TILEDB_OK);
-
-    // Check complete query status.
-    tiledb_query_get_status(ctx_, query, &status);
-    CHECK(
-        status == (i == num_frags - 1 ? TILEDB_COMPLETED : TILEDB_INCOMPLETE));
-
-    // Should read last tile (1 value).
-    CHECK(4 == data_r_size);
-    CHECK(4 == coords_r_size);
-
-    int coords_c_3[] = {5 + i * 5};
-    int data_c_3[] = {5 + i * 5};
-    CHECK(!std::memcmp(coords_c_3, coords_r, coords_r_size));
-    CHECK(!std::memcmp(data_c_3, data_r, data_r_size));
-  }
+  int coords_c[] = {1, 2, 3, 4, 5, 6, 7, 8, 9, 10};
+  int data_c[] = {1, 2, 3, 4, 5, 6, 7, 8, 9, 10};
+  CHECK(!std::memcmp(coords_c, coords_r, coords_r_size));
+  CHECK(!std::memcmp(data_c, data_r, data_r_size));
 
   // Clean up.
   rc = tiledb_array_close(ctx_, array);
@@ -1183,26 +1116,25 @@ TEST_CASE(
   uint64_t offsets_size = sizeof(offsets);
   query_buffer.buffer_ = offsets;
   query_buffer.buffer_size_ = &offsets_size;
-  uint64_t var_size = 6;
-  query_buffer.buffer_var_size_ = &var_size;
+  query_buffer.original_buffer_size_ = offsets_size;
+  uint64_t buffer_var_size = 0;
+  query_buffer.buffer_var_size_ = &buffer_var_size;
+  query_buffer.original_buffer_var_size_ = 6;
 
   // Call the function.
-  uint64_t new_result_tiles_size = result_tiles.size();
-  uint64_t var_buffer_size = 0;
-  REQUIRE(SparseUnorderedWithDupsReader<uint64_t>::compute_var_size_offsets<
-              uint64_t>(
-              &tiledb::test::g_helper_stats,
-              &result_tiles,
-              0,
-              &cell_offsets,
-              &query_buffer,
-              &new_result_tiles_size,
-              &var_buffer_size)
-              .ok());
+  auto&& [buffers_full, var_buffer_size, result_tiles_size] =
+      SparseUnorderedWithDupsReader<uint64_t>::compute_var_size_offsets<
+          uint64_t>(
+          &tiledb::test::g_helper_stats,
+          result_tiles,
+          0,
+          cell_offsets,
+          query_buffer);
 
   // Validate results.
+  CHECK(buffers_full == true);
   CHECK(cell_offsets[1] == 3);
-  CHECK(new_result_tiles_size == 1);
+  CHECK(result_tiles_size == 1);
   CHECK(var_buffer_size == 6);
 }
 
@@ -1236,25 +1168,79 @@ TEST_CASE(
   uint64_t offsets_size = sizeof(offsets);
   query_buffer.buffer_ = offsets;
   query_buffer.buffer_size_ = &offsets_size;
-  uint64_t var_size = 6;
-  query_buffer.buffer_var_size_ = &var_size;
+  uint64_t buffer_var_size = 0;
+  query_buffer.buffer_var_size_ = &buffer_var_size;
+  query_buffer.original_buffer_var_size_ = 6;
 
   // Call the function.
-  uint64_t new_result_tiles_size = result_tiles.size();
-  uint64_t var_buffer_size = 0;
-  REQUIRE(SparseUnorderedWithDupsReader<uint64_t>::compute_var_size_offsets<
-              uint64_t>(
-              &tiledb::test::g_helper_stats,
-              &result_tiles,
-              0,
-              &cell_offsets,
-              &query_buffer,
-              &new_result_tiles_size,
-              &var_buffer_size)
-              .ok());
+  auto&& [buffers_full, var_buffer_size, result_tiles_size] =
+      SparseUnorderedWithDupsReader<uint64_t>::compute_var_size_offsets<
+          uint64_t>(
+          &tiledb::test::g_helper_stats,
+          result_tiles,
+          0,
+          cell_offsets,
+          query_buffer);
 
   // Validate results.
+  CHECK(buffers_full == true);
   CHECK(cell_offsets[1] == 3);
-  CHECK(new_result_tiles_size == 1);
+  CHECK(result_tiles_size == 1);
   CHECK(var_buffer_size == 6);
+}
+
+TEST_CASE(
+    "Sparse unordered with dups reader: test compute_var_size_offsets "
+    "continuation",
+    "[sparse-unordered-with-dups][compute_var_size_offsets][continuation]") {
+  // Make a vector of tiles.
+  std::vector<ResultTileWithBitmap<uint64_t>> rt = {make_tile(5)};
+
+  SECTION("- No bitmap") {
+  }
+
+  SECTION("- With bitmap") {
+    rt[0].bitmap_.resize(5, 1);
+  }
+
+  // Create the result_tiles pointer vector.
+  std::vector<ResultTile*> result_tiles(rt.size());
+  for (uint64_t i = 0; i < rt.size(); i++) {
+    result_tiles[i] = &rt[i];
+  }
+
+  // Create the cell_offsets vector.
+  std::vector<uint64_t> cell_offsets(rt.size() + 1);
+  uint64_t offset = 0;
+  for (uint64_t i = 0; i < rt.size(); i++) {
+    cell_offsets[i] = offset;
+    offset += rt[i].cell_num() - 2;
+  }
+  cell_offsets[rt.size()] = offset;
+
+  // Create a Query buffer.
+  tiledb::sm::QueryBuffer query_buffer;
+  uint64_t offsets[] = {2, 2, 2, 0, 0};
+  uint64_t offsets_size = sizeof(offsets);
+  query_buffer.buffer_ = offsets;
+  query_buffer.buffer_size_ = &offsets_size;
+  uint64_t buffer_var_size = 0;
+  query_buffer.buffer_var_size_ = &buffer_var_size;
+  query_buffer.original_buffer_var_size_ = 5;
+
+  // Call the function.
+  auto&& [buffers_full, var_buffer_size, result_tiles_size] =
+      SparseUnorderedWithDupsReader<uint64_t>::compute_var_size_offsets<
+          uint64_t>(
+          &tiledb::test::g_helper_stats,
+          result_tiles,
+          2,
+          cell_offsets,
+          query_buffer);
+
+  // Validate results.
+  CHECK(buffers_full == true);
+  CHECK(cell_offsets[1] == 2);
+  CHECK(result_tiles_size == 1);
+  CHECK(var_buffer_size == 4);
 }

@@ -263,7 +263,7 @@ class ReadCellSlabIter {
   void compute_result_cell_slabs_empty(
       const ResultSpaceTile<T>& result_space_tile,
       const std::list<CellSlab<T>>& to_process,
-      std::vector<ResultCellSlab>* result_cell_slabs);
+      std::vector<ResultCellSlab>& result_cell_slabs);
 
   /**
    * Splits the input cell slab into up to two new cell slabs based on the

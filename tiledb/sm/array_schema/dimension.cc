@@ -857,13 +857,16 @@ void Dimension::relevant_ranges(
     const NDRange& ranges,
     const Range& mbr,
     std::vector<uint64_t>& relevant_ranges) {
-  const auto d2 = (const T*)mbr.start();
-  const auto d2_0 = d2[0];
-  const auto d2_1 = d2[1];
+  const auto mbr_data = (const T*)mbr.start();
+  const auto mbr_start = mbr_data[0];
+  const auto mbr_end = mbr_data[1];
 
-  // Find lower bound
+  // Binary search to find the first range containing the start mbr.
   auto it = std::lower_bound(
-      ranges.begin(), ranges.end(), d2_0, [&](const Range& a, const T value) {
+      ranges.begin(),
+      ranges.end(),
+      mbr_start,
+      [&](const Range& a, const T value) {
         return ((const T*)a.start())[1] < value;
       });
 
@@ -875,7 +878,7 @@ void Dimension::relevant_ranges(
   // Find upper bound to end comparisons. Finding this early allows avoiding the
   // conditional exit in the for loop below
   auto it2 = std::lower_bound(
-      it, ranges.end(), d2_1, [&](const Range& a, const T value) {
+      it, ranges.end(), mbr_end, [&](const Range& a, const T value) {
         return ((const T*)a.start())[0] < value;
       });
 
@@ -889,7 +892,7 @@ void Dimension::relevant_ranges(
   for (uint64_t r = start_range; r < end_range; ++r) {
     const auto d1 = (const T*)ranges[r].start();
 
-    if ((d1[0] <= d2_1 && d1[1] >= d2_0))
+    if ((d1[0] <= mbr_end && d1[1] >= mbr_start))
       relevant_ranges.emplace_back(r);
   }
 }
@@ -1845,6 +1848,7 @@ std::string Dimension::domain_str() const {
       ss << "[" << domain_int64[0] << "," << domain_int64[1] << "]";
       return ss.str();
 
+    case Datatype::BLOB:
     case Datatype::CHAR:
     case Datatype::STRING_ASCII:
     case Datatype::STRING_UTF8:
@@ -1942,6 +1946,7 @@ std::string Dimension::tile_extent_str() const {
       ss << *tile_extent_uint64;
       return ss.str();
 
+    case Datatype::BLOB:
     case Datatype::CHAR:
     case Datatype::STRING_ASCII:
     case Datatype::STRING_UTF8:

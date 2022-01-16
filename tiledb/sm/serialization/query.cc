@@ -278,7 +278,7 @@ Status subarray_partitioner_to_capnp(
   // Subarray
   auto subarray_builder = builder->initSubarray();
   RETURN_NOT_OK(
-      subarray_to_capnp(schema, partitioner.subarray(), &subarray_builder));
+      subarray_to_capnp(schema, &partitioner.subarray(), &subarray_builder));
 
   // Per-attr/dim mem budgets
   const auto* budgets = partitioner.get_result_budgets();
@@ -523,17 +523,6 @@ Status index_read_state_to_capnp(
   read_state_builder.setDoneAddingResultTiles(
       read_state->done_adding_result_tiles_);
 
-  auto rcs_builder = read_state_builder.initResultCellSlab(
-      read_state->result_cell_slabs_.size());
-  for (size_t i = 0; i < read_state->result_cell_slabs_.size(); ++i) {
-    rcs_builder[i].setFragIdx(
-        read_state->result_cell_slabs_[i].tile_->frag_idx());
-    rcs_builder[i].setTileIdx(
-        read_state->result_cell_slabs_[i].tile_->tile_idx());
-    rcs_builder[i].setStart(read_state->result_cell_slabs_[i].start_);
-    rcs_builder[i].setLength(read_state->result_cell_slabs_[i].length_);
-  }
-
   auto frag_tile_idx_builder =
       read_state_builder.initFragTileIdx(read_state->frag_tile_idx_.size());
   for (size_t i = 0; i < read_state->frag_tile_idx_.size(); ++i) {
@@ -601,40 +590,6 @@ Status index_read_state_from_capnp(
 
   read_state->done_adding_result_tiles_ =
       read_state_reader.getDoneAddingResultTiles();
-
-  // Only sparse global order reader has a result cell slab.
-  if (read_state_reader.hasResultCellSlab()) {
-    SparseGlobalOrderReader* sparse_global_order_reader =
-        (SparseGlobalOrderReader*)reader;
-    RETURN_NOT_OK(sparse_global_order_reader->clear_result_tiles());
-    read_state->result_cell_slabs_.clear();
-
-    std::unordered_map<
-        std::pair<unsigned, uint64_t>,
-        ResultTile*,
-        tiledb::sm::utils::hash::pair_hash>
-        result_tile_map;
-    for (const auto rcs : read_state_reader.getResultCellSlab()) {
-      auto start = rcs.getStart();
-      auto length = rcs.getLength();
-      auto frag_idx = rcs.getFragIdx();
-      auto tile_idx = rcs.getTileIdx();
-
-      ResultTile* rt = nullptr;
-      auto it = result_tile_map.find(
-          std::pair<unsigned, uint64_t>(frag_idx, tile_idx));
-      if (it != result_tile_map.end()) {
-        rt = it->second;
-      } else {
-        rt = sparse_global_order_reader->add_result_tile_unsafe(
-            frag_idx, tile_idx, schema);
-        result_tile_map.emplace(
-            std::pair<unsigned, uint64_t>(frag_idx, tile_idx), rt);
-      }
-
-      read_state->result_cell_slabs_.emplace_back(rt, start, length);
-    }
-  }
 
   assert(read_state_reader.hasFragTileIdx());
   read_state->frag_tile_idx_.clear();
@@ -1143,7 +1098,7 @@ Status query_to_capnp(Query& query, capnp::Query::Builder* query_builder) {
       auto&& [st, non_overlapping_ranges]{query.non_overlapping_ranges()};
       RETURN_NOT_OK(st);
 
-      if (non_overlapping_ranges) {
+      if (*non_overlapping_ranges) {
         auto reader = (SparseUnorderedWithDupsReader<uint8_t>*)query.strategy();
 
         query_builder->setVarOffsetsMode(reader->offsets_mode());
@@ -1739,7 +1694,7 @@ Status query_from_capnp(
 
       auto reader_reader = query_reader.getReaderIndex();
 
-      if (non_overlapping_ranges) {
+      if (*non_overlapping_ranges) {
         auto reader =
             (SparseUnorderedWithDupsReader<uint8_t>*)query->strategy();
 

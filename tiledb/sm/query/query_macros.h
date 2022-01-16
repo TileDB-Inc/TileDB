@@ -54,6 +54,22 @@ namespace sm {
   } while (false)
 #endif
 
+#ifndef RETURN_CANCEL_OR_ERROR_TUPLE
+/**
+ * Returns an error status if the given Status is not Status::Ok, or
+ * if the StorageManager that owns this Query has requested cancellation.
+ */
+#define RETURN_CANCEL_OR_ERROR_TUPLE(s)                             \
+  do {                                                              \
+    Status _s = (s);                                                \
+    if (!_s.ok()) {                                                 \
+      return {_s, std::nullopt};                                    \
+    } else if (storage_manager_->cancellation_in_progress()) {      \
+      return {Status_QueryError("Query cancelled."), std::nullopt}; \
+    }                                                               \
+  } while (false)
+#endif
+
 #ifndef RETURN_CANCEL_OR_ERROR_ELSE
 /**
  * Returns an error status if the given Status is not Status::Ok, or

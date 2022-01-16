@@ -206,7 +206,6 @@ Status Reader::dowork() {
     stats_->add_counter("loop_num", 1);
 
     read_state_.overflowed_ = false;
-    copy_overflowed_ = false;
     reset_buffer_sizes();
 
     // Perform read
@@ -255,11 +254,11 @@ void Reader::reset() {
 /* ****************************** */
 
 Status Reader::apply_query_condition(
-    std::vector<ResultCellSlab>* const result_cell_slabs,
-    std::vector<ResultTile*>* result_tiles,
-    Subarray* subarray,
+    std::vector<ResultCellSlab>& result_cell_slabs,
+    std::vector<ResultTile*>& result_tiles,
+    Subarray& subarray,
     uint64_t stride) {
-  if (condition_.empty() || result_cell_slabs->empty())
+  if (condition_.empty() || result_cell_slabs.empty())
     return Status::Ok();
 
   // To evaluate the query condition, we need to read tiles for the
@@ -272,13 +271,8 @@ Status Reader::apply_query_condition(
 
   // Each element in `names` has been flagged with `ProcessTileFlag::READ`.
   // This will read the tiles, but will not copy them into the user buffers.
-  RETURN_NOT_OK(process_tiles(
-      &names,
-      result_tiles,
-      result_cell_slabs,
-      subarray,
-      stride,
-      std::numeric_limits<uint64_t>::max()));
+  RETURN_NOT_OK(
+      process_tiles(names, result_tiles, result_cell_slabs, subarray, stride));
 
   // The `UINT64_MAX` is a sentinel value to indicate that we do not
   // use a stride in the cell index calculation. To simplify our logic,
@@ -293,7 +287,7 @@ Status Reader::apply_query_condition(
 
 Status Reader::compute_result_cell_slabs(
     const std::vector<ResultCoords>& result_coords,
-    std::vector<ResultCellSlab>* result_cell_slabs) const {
+    std::vector<ResultCellSlab>& result_cell_slabs) const {
   auto timer_se =
       stats_->start_timer("compute_sparse_result_cell_slabs_sparse");
 
@@ -320,7 +314,7 @@ Status Reader::compute_result_cell_slabs(
       end_pos = it->pos_;
     } else {
       // New range - append previous range
-      result_cell_slabs->emplace_back(tile, start_pos, end_pos - start_pos + 1);
+      result_cell_slabs.emplace_back(tile, start_pos, end_pos - start_pos + 1);
       start_pos = it->pos_;
       end_pos = start_pos;
       tile = it->tile_;
@@ -329,21 +323,21 @@ Status Reader::compute_result_cell_slabs(
   }
 
   // Append the last range
-  result_cell_slabs->emplace_back(tile, start_pos, end_pos - start_pos + 1);
+  result_cell_slabs.emplace_back(tile, start_pos, end_pos - start_pos + 1);
 
   return Status::Ok();
 }
 
 Status Reader::compute_range_result_coords(
-    Subarray* subarray,
+    Subarray& subarray,
     unsigned frag_idx,
     ResultTile* tile,
     uint64_t range_idx,
-    std::vector<ResultCoords>* result_coords) {
+    std::vector<ResultCoords>& result_coords) {
   auto coords_num = tile->cell_num();
   auto dim_num = array_schema_->dim_num();
   auto cell_order = array_schema_->cell_order();
-  auto range_coords = subarray->get_range_coords(range_idx);
+  auto range_coords = subarray.get_range_coords(range_idx);
 
   if (array_schema_->dense()) {
     std::vector<uint8_t> result_bitmap(coords_num, 1);
@@ -351,7 +345,7 @@ Status Reader::compute_range_result_coords(
 
     // Compute result and overwritten bitmap per dimension
     for (unsigned d = 0; d < dim_num; ++d) {
-      const auto& ranges = subarray->ranges_for_dim(d);
+      const auto& ranges = subarray.ranges_for_dim(d);
       RETURN_NOT_OK(tile->compute_results_dense(
           d,
           ranges[range_coords[d]],
@@ -364,7 +358,7 @@ Status Reader::compute_range_result_coords(
     // Gather results
     for (uint64_t pos = 0; pos < coords_num; ++pos) {
       if (result_bitmap[pos] && !overwritten_bitmap[pos])
-        result_coords->emplace_back(tile, pos);
+        result_coords.emplace_back(tile, pos);
     }
   } else {  // Sparse
     std::vector<uint8_t> result_bitmap(coords_num, 1);
@@ -375,8 +369,8 @@ Status Reader::compute_range_result_coords(
       // in reverse.
       const unsigned dim_idx =
           cell_order == Layout::COL_MAJOR ? dim_num - d - 1 : d;
-      if (!subarray->is_default(dim_idx)) {
-        const auto& ranges = subarray->ranges_for_dim(dim_idx);
+      if (!subarray.is_default(dim_idx)) {
+        const auto& ranges = subarray.ranges_for_dim(dim_idx);
         RETURN_NOT_OK(tile->compute_results_sparse(
             dim_idx,
             ranges[range_coords[dim_idx]],
@@ -388,7 +382,7 @@ Status Reader::compute_range_result_coords(
     // Gather results
     for (uint64_t pos = 0; pos < coords_num; ++pos) {
       if (result_bitmap[pos])
-        result_coords->emplace_back(tile, pos);
+        result_coords.emplace_back(tile, pos);
     }
   }
 
@@ -396,15 +390,15 @@ Status Reader::compute_range_result_coords(
 }
 
 Status Reader::compute_range_result_coords(
-    Subarray* subarray,
+    Subarray& subarray,
     const std::vector<bool>& single_fragment,
     const std::map<std::pair<unsigned, uint64_t>, size_t>& result_tile_map,
-    std::vector<ResultTile>* result_tiles,
-    std::vector<std::vector<ResultCoords>>* range_result_coords) {
+    std::vector<ResultTile>& result_tiles,
+    std::vector<std::vector<ResultCoords>>& range_result_coords) {
   auto timer_se = stats_->start_timer("compute_range_result_coords");
 
-  auto range_num = subarray->range_num();
-  range_result_coords->resize(range_num);
+  auto range_num = subarray.range_num();
+  range_result_coords.resize(range_num);
   auto cell_order = array_schema_->cell_order();
   auto allows_dups = array_schema_->allows_dups();
 
@@ -428,18 +422,17 @@ Status Reader::compute_range_result_coords(
             r,
             result_tile_map,
             result_tiles,
-            &((*range_result_coords)[r])));
+            range_result_coords[r]));
 
         // Dedup unless there is a single fragment or array schema allows
         // duplicates
         if (!single_fragment[r] && !allows_dups) {
           RETURN_CANCEL_OR_ERROR(sort_result_coords(
-              ((*range_result_coords)[r]).begin(),
-              ((*range_result_coords)[r]).end(),
-              ((*range_result_coords)[r]).size(),
+              range_result_coords[r].begin(),
+              range_result_coords[r].end(),
+              range_result_coords[r].size(),
               sort_layout));
-          RETURN_CANCEL_OR_ERROR(
-              dedup_result_coords(&((*range_result_coords)[r])));
+          RETURN_CANCEL_OR_ERROR(dedup_result_coords(range_result_coords[r]));
         }
 
         return Status::Ok();
@@ -451,22 +444,22 @@ Status Reader::compute_range_result_coords(
 }
 
 Status Reader::compute_range_result_coords(
-    Subarray* subarray,
+    Subarray& subarray,
     uint64_t range_idx,
     uint32_t fragment_idx,
     const std::map<std::pair<unsigned, uint64_t>, size_t>& result_tile_map,
-    std::vector<ResultTile>* result_tiles,
-    std::vector<ResultCoords>* range_result_coords) {
+    std::vector<ResultTile>& result_tiles,
+    std::vector<ResultCoords>& range_result_coords) {
   // Skip dense fragments
   if (fragment_metadata_[fragment_idx]->dense())
     return Status::Ok();
 
   auto tr =
-      subarray->tile_overlap(fragment_idx, range_idx)->tile_ranges_.begin();
+      subarray.tile_overlap(fragment_idx, range_idx)->tile_ranges_.begin();
   auto tr_end =
-      subarray->tile_overlap(fragment_idx, range_idx)->tile_ranges_.end();
-  auto t = subarray->tile_overlap(fragment_idx, range_idx)->tiles_.begin();
-  auto t_end = subarray->tile_overlap(fragment_idx, range_idx)->tiles_.end();
+      subarray.tile_overlap(fragment_idx, range_idx)->tile_ranges_.end();
+  auto t = subarray.tile_overlap(fragment_idx, range_idx)->tiles_.begin();
+  auto t_end = subarray.tile_overlap(fragment_idx, range_idx)->tiles_.end();
 
   while (tr != tr_end || t != t_end) {
     // Handle tile range
@@ -476,7 +469,7 @@ Status Reader::compute_range_result_coords(
         auto tile_it = result_tile_map.find(pair);
         assert(tile_it != result_tile_map.end());
         auto tile_idx = tile_it->second;
-        auto& tile = (*result_tiles)[tile_idx];
+        auto& tile = result_tiles[tile_idx];
 
         // Add results only if the sparse tile MBR is not fully
         // covered by a more recent fragment's non-empty domain
@@ -490,7 +483,7 @@ Status Reader::compute_range_result_coords(
       auto tile_it = result_tile_map.find(pair);
       assert(tile_it != result_tile_map.end());
       auto tile_idx = tile_it->second;
-      auto& tile = (*result_tiles)[tile_idx];
+      auto& tile = result_tiles[tile_idx];
       if (t->second == 1.0) {  // Full overlap
         // Add results only if the sparse tile MBR is not fully
         // covered by a more recent fragment's non-empty domain
@@ -508,11 +501,11 @@ Status Reader::compute_range_result_coords(
 }
 
 Status Reader::compute_range_result_coords(
-    Subarray* subarray,
+    Subarray& subarray,
     uint64_t range_idx,
     const std::map<std::pair<unsigned, uint64_t>, size_t>& result_tile_map,
-    std::vector<ResultTile>* result_tiles,
-    std::vector<ResultCoords>* range_result_coords) {
+    std::vector<ResultTile>& result_tiles,
+    std::vector<ResultCoords>& range_result_coords) {
   // Gather result range coordinates per fragment
   auto fragment_num = fragment_metadata_.size();
   std::vector<std::vector<ResultCoords>> range_result_coords_vec(fragment_num);
@@ -524,32 +517,32 @@ Status Reader::compute_range_result_coords(
             f,
             result_tile_map,
             result_tiles,
-            &range_result_coords_vec[f]);
+            range_result_coords_vec[f]);
       });
   RETURN_NOT_OK(status);
 
   // Consolidate the result coordinates in the single result vector
   for (const auto& vec : range_result_coords_vec) {
     for (const auto& r : vec)
-      range_result_coords->emplace_back(r);
+      range_result_coords.emplace_back(r);
   }
 
   return Status::Ok();
 }
 
 Status Reader::compute_subarray_coords(
-    std::vector<std::vector<ResultCoords>>* range_result_coords,
-    std::vector<ResultCoords>* result_coords) {
+    std::vector<std::vector<ResultCoords>>& range_result_coords,
+    std::vector<ResultCoords>& result_coords) {
   auto timer_se = stats_->start_timer("compute_subarray_coords");
   // The input 'result_coords' is already sorted. Save the current size
   // before inserting new elements.
-  const size_t result_coords_size = result_coords->size();
+  const size_t result_coords_size = result_coords.size();
 
   // Add all valid ``range_result_coords`` to ``result_coords``
-  for (const auto& rv : *range_result_coords) {
+  for (const auto& rv : range_result_coords) {
     for (const auto& c : rv) {
       if (c.valid())
-        result_coords->emplace_back(c.tile_, c.pos_);
+        result_coords.emplace_back(c.tile_, c.pos_);
     }
   }
 
@@ -565,20 +558,20 @@ Status Reader::compute_subarray_coords(
   auto dim_num = array_schema_->dim_num();
   bool must_sort = true;
   auto allows_dups = array_schema_->allows_dups();
-  auto single_range = (range_result_coords->size() == 1);
+  auto single_range = (range_result_coords.size() == 1);
   if (layout_ == Layout::GLOBAL_ORDER || dim_num == 1) {
     must_sort = !belong_to_single_fragment(
-        result_coords->begin() + result_coords_size, result_coords->end());
+        result_coords.begin() + result_coords_size, result_coords.end());
   } else if (single_range && !allows_dups) {
     must_sort = belong_to_single_fragment(
-        result_coords->begin() + result_coords_size, result_coords->end());
+        result_coords.begin() + result_coords_size, result_coords.end());
   }
 
   if (must_sort) {
     RETURN_NOT_OK(sort_result_coords(
-        result_coords->begin() + result_coords_size,
-        result_coords->end(),
-        result_coords->size() - result_coords_size,
+        result_coords.begin() + result_coords_size,
+        result_coords.end(),
+        result_coords.size() - result_coords_size,
         layout_));
   }
 
@@ -586,7 +579,7 @@ Status Reader::compute_subarray_coords(
 }
 
 Status Reader::compute_sparse_result_tiles(
-    std::vector<ResultTile>* result_tiles,
+    std::vector<ResultTile>& result_tiles,
     std::map<std::pair<unsigned, uint64_t>, size_t>* result_tile_map,
     std::vector<bool>* single_fragment) {
   auto timer_se = stats_->start_timer("compute_sparse_result_tiles");
@@ -605,7 +598,7 @@ Status Reader::compute_sparse_result_tiles(
   for (uint64_t i = 0; i < range_num; ++i)
     (*single_fragment)[i] = true;
 
-  result_tiles->clear();
+  result_tiles.clear();
   for (unsigned f = 0; f < fragment_num; ++f) {
     // Skip dense fragments
     if (fragment_metadata_[f]->dense())
@@ -619,9 +612,9 @@ Status Reader::compute_sparse_result_tiles(
           auto pair = std::pair<unsigned, uint64_t>(f, t);
           // Add tile only if it does not already exist
           if (result_tile_map->find(pair) == result_tile_map->end()) {
-            result_tiles->emplace_back(
+            result_tiles.emplace_back(
                 f, t, fragment_metadata_[f]->array_schema());
-            (*result_tile_map)[pair] = result_tiles->size() - 1;
+            (*result_tile_map)[pair] = result_tiles.size() - 1;
           }
           // Always check range for multiple fragments
           if (f > first_fragment[r])
@@ -638,9 +631,9 @@ Status Reader::compute_sparse_result_tiles(
         auto pair = std::pair<unsigned, uint64_t>(f, t);
         // Add tile only if it does not already exist
         if (result_tile_map->find(pair) == result_tile_map->end()) {
-          result_tiles->emplace_back(
+          result_tiles.emplace_back(
               f, t, fragment_metadata_[f]->array_schema());
-          (*result_tile_map)[pair] = result_tiles->size() - 1;
+          (*result_tile_map)[pair] = result_tiles.size() - 1;
         }
         // Always check range for multiple fragments
         if (f > first_fragment[r])
@@ -654,13 +647,751 @@ Status Reader::compute_sparse_result_tiles(
   return Status::Ok();
 }
 
+Status Reader::copy_coordinates(
+    const std::vector<ResultTile*>& result_tiles,
+    std::vector<ResultCellSlab>& result_cell_slabs) {
+  auto timer_se = stats_->start_timer("copy_coordinates");
+
+  if (result_cell_slabs.empty() && result_tiles.empty()) {
+    zero_out_buffer_sizes();
+    return Status::Ok();
+  }
+
+  const uint64_t stride = UINT64_MAX;
+
+  // Build a list of coordinate names to copy, separating them by
+  // whether they are of fixed or variable length. The motivation
+  // is that copying fixed and variable cells require two different
+  // cell slab partitions. Processing them separately allows us to
+  // reduce memory use.
+  std::vector<std::string> fixed_names;
+  std::vector<std::string> var_names;
+
+  for (const auto& it : buffers_) {
+    const auto& name = it.first;
+    if (read_state_.overflowed_)
+      break;
+    if (!(name == constants::coords || array_schema_->is_dim(name)))
+      continue;
+
+    if (array_schema_->var_size(name))
+      var_names.emplace_back(name);
+    else
+      fixed_names.emplace_back(name);
+  }
+
+  // Copy result cells for fixed-sized coordinates.
+  if (!fixed_names.empty()) {
+    std::vector<size_t> fixed_cs_partitions;
+    compute_fixed_cs_partitions(result_cell_slabs, &fixed_cs_partitions);
+
+    for (const auto& name : fixed_names) {
+      RETURN_CANCEL_OR_ERROR(copy_fixed_cells(
+          name, stride, result_cell_slabs, &fixed_cs_partitions));
+      clear_tiles(name, result_tiles);
+    }
+  }
+
+  // Copy result cells for var-sized coordinates.
+  if (!var_names.empty()) {
+    std::vector<std::pair<size_t, size_t>> var_cs_partitions;
+    size_t total_var_cs_length;
+    compute_var_cs_partitions(
+        result_cell_slabs, &var_cs_partitions, &total_var_cs_length);
+
+    for (const auto& name : var_names) {
+      RETURN_CANCEL_OR_ERROR(copy_var_cells(
+          name,
+          stride,
+          result_cell_slabs,
+          &var_cs_partitions,
+          total_var_cs_length));
+      clear_tiles(name, result_tiles);
+    }
+  }
+
+  return Status::Ok();
+}
+
+Status Reader::copy_attribute_values(
+    const uint64_t stride,
+    std::vector<ResultTile*>& result_tiles,
+    std::vector<ResultCellSlab>& result_cell_slabs,
+    Subarray& subarray) {
+  auto timer_se = stats_->start_timer("copy_attr_values");
+
+  if (result_cell_slabs.empty() && result_tiles.empty()) {
+    zero_out_buffer_sizes();
+    return Status::Ok();
+  }
+
+  // Build a set of attribute names to process.
+  std::unordered_map<std::string, ProcessTileFlags> names;
+  for (const auto& it : buffers_) {
+    const auto& name = it.first;
+
+    if (read_state_.overflowed_) {
+      break;
+    }
+
+    if (name == constants::coords || array_schema_->is_dim(name)) {
+      continue;
+    }
+
+    // If the query condition has a clause for `name`, we will only
+    // flag it to copy because we have already preloaded the offsets
+    // and read the tiles in `apply_query_condition`.
+    ProcessTileFlags flags = ProcessTileFlag::COPY;
+    if (condition_.field_names().count(name) == 0) {
+      flags |= ProcessTileFlag::READ;
+    }
+
+    names[name] = flags;
+  }
+
+  if (!names.empty()) {
+    RETURN_NOT_OK(process_tiles(
+        names, result_tiles, result_cell_slabs, subarray, stride));
+  }
+
+  return Status::Ok();
+}
+
+Status Reader::copy_fixed_cells(
+    const std::string& name,
+    uint64_t stride,
+    const std::vector<ResultCellSlab>& result_cell_slabs,
+    std::vector<size_t>* fixed_cs_partitions) {
+  auto stat_type = (array_schema_->is_attr(name)) ? "copy_fixed_attr_values" :
+                                                    "copy_fixed_coords";
+  auto timer_se = stats_->start_timer(stat_type);
+
+  if (result_cell_slabs.empty()) {
+    zero_out_buffer_sizes();
+    return Status::Ok();
+  }
+
+  auto it = buffers_.find(name);
+  auto buffer_size = it->second.buffer_size_;
+  auto cell_size = array_schema_->cell_size(name);
+
+  // Precompute the cell range destination offsets in the buffer.
+  uint64_t buffer_offset = 0;
+  std::vector<uint64_t> cs_offsets(result_cell_slabs.size());
+  for (uint64_t i = 0; i < cs_offsets.size(); i++) {
+    const auto& cs = result_cell_slabs[i];
+    auto cs_length = cs.length_;
+
+    auto bytes_to_copy = cs_length * cell_size;
+    cs_offsets[i] = buffer_offset;
+    buffer_offset += bytes_to_copy;
+  }
+
+  // Handle overflow.
+  if (buffer_offset > *buffer_size) {
+    read_state_.overflowed_ = true;
+    return Status::Ok();
+  }
+
+  // Copy result cell slabs in parallel.
+  std::function<Status(size_t)> copy_fn = std::bind(
+      &Reader::copy_partitioned_fixed_cells,
+      this,
+      std::placeholders::_1,
+      &name,
+      stride,
+      result_cell_slabs,
+      &cs_offsets,
+      fixed_cs_partitions);
+  auto status = parallel_for(
+      storage_manager_->compute_tp(),
+      0,
+      fixed_cs_partitions->size(),
+      std::move(copy_fn));
+
+  RETURN_NOT_OK(status);
+
+  // Update buffer offsets
+  *(buffers_[name].buffer_size_) = buffer_offset;
+  if (array_schema_->is_nullable(name)) {
+    *(buffers_[name].validity_vector_.buffer_size()) =
+        (buffer_offset / cell_size) * constants::cell_validity_size;
+  }
+
+  return Status::Ok();
+}
+
+void Reader::compute_fixed_cs_partitions(
+    const std::vector<ResultCellSlab>& result_cell_slabs,
+    std::vector<size_t>* fixed_cs_partitions) {
+  if (result_cell_slabs.empty()) {
+    return;
+  }
+
+  const int num_copy_threads =
+      storage_manager_->compute_tp()->concurrency_level();
+
+  // Calculate the partition sizes.
+  auto num_cs = result_cell_slabs.size();
+  const uint64_t num_cs_partitions =
+      std::min<uint64_t>(num_copy_threads, num_cs);
+  const uint64_t cs_per_partition = num_cs / num_cs_partitions;
+  const uint64_t cs_per_partition_carry = num_cs % num_cs_partitions;
+
+  // Calculate the partition offsets.
+  uint64_t num_cs_partitioned = 0;
+  fixed_cs_partitions->reserve(num_cs_partitions);
+  for (uint64_t i = 0; i < num_cs_partitions; ++i) {
+    const uint64_t num_cs_in_partition =
+        cs_per_partition + ((i < cs_per_partition_carry) ? 1 : 0);
+    num_cs_partitioned += num_cs_in_partition;
+    fixed_cs_partitions->emplace_back(num_cs_partitioned);
+  }
+}
+
+uint64_t ReaderBase::offsets_bytesize() const {
+  assert(offsets_bitsize_ == 32 || offsets_bitsize_ == 64);
+  return offsets_bitsize_ == 32 ? sizeof(uint32_t) :
+                                  constants::cell_var_offset_size;
+}
+
+Status Reader::copy_partitioned_fixed_cells(
+    const size_t partition_idx,
+    const std::string* const name,
+    const uint64_t stride,
+    const std::vector<ResultCellSlab>& result_cell_slabs,
+    const std::vector<uint64_t>* cs_offsets,
+    const std::vector<size_t>* cs_partitions) {
+  assert(name);
+
+  // For easy reference.
+  auto nullable = array_schema_->is_nullable(*name);
+  auto it = buffers_.find(*name);
+  auto buffer = (unsigned char*)it->second.buffer_;
+  auto buffer_validity = (unsigned char*)it->second.validity_vector_.buffer();
+  auto cell_size = array_schema_->cell_size(*name);
+  ByteVecValue fill_value;
+  uint8_t fill_value_validity = 0;
+  if (array_schema_->is_attr(*name)) {
+    fill_value = array_schema_->attribute(*name)->fill_value();
+    fill_value_validity =
+        array_schema_->attribute(*name)->fill_value_validity();
+  }
+  uint64_t fill_value_size = (uint64_t)fill_value.size();
+
+  // Calculate the partition to operate on.
+  const uint64_t cs_idx_start =
+      partition_idx == 0 ? 0 : cs_partitions->at(partition_idx - 1);
+  const uint64_t cs_idx_end = cs_partitions->at(partition_idx);
+
+  // Copy the cells.
+  for (uint64_t cs_idx = cs_idx_start; cs_idx < cs_idx_end; ++cs_idx) {
+    const auto& cs = result_cell_slabs[cs_idx];
+    uint64_t offset = cs_offsets->at(cs_idx);
+    auto cs_length = cs.length_;
+
+    // Copy
+
+    // First we check if this is an older (pre TileDB 2.0) array with zipped
+    // coordinates and the user has requested split buffer if so we should
+    // proceed to copying the tile If not, and there is no tile or the tile is
+    // empty for the field then this is a read of an older fragment in schema
+    // evolution. In that case we want to set the field to fill values for this
+    // for this tile.
+    const bool split_buffer_for_zipped_coords =
+        array_schema_->is_dim(*name) && cs.tile_->stores_zipped_coords();
+    if ((cs.tile_ == nullptr || cs.tile_->tile_tuple(*name) == nullptr) &&
+        !split_buffer_for_zipped_coords) {  // Empty range or attributed added
+                                            // in schema evolution
+      auto bytes_to_copy = cs_length * cell_size;
+      auto fill_num = bytes_to_copy / fill_value_size;
+      for (uint64_t j = 0; j < fill_num; ++j) {
+        std::memcpy(buffer + offset, fill_value.data(), fill_value_size);
+        if (nullable) {
+          std::memset(
+              buffer_validity +
+                  (offset / cell_size * constants::cell_validity_size),
+              fill_value_validity,
+              constants::cell_validity_size);
+        }
+        offset += fill_value_size;
+      }
+    } else {  // Non-empty range
+      if (stride == UINT64_MAX) {
+        if (!nullable)
+          RETURN_NOT_OK(
+              cs.tile_->read(*name, buffer, offset, cs.start_, cs_length));
+        else
+          RETURN_NOT_OK(cs.tile_->read_nullable(
+              *name, buffer, offset, cs.start_, cs_length, buffer_validity));
+      } else {
+        auto cell_offset = offset;
+        auto start = cs.start_;
+        for (uint64_t j = 0; j < cs_length; ++j) {
+          if (!nullable)
+            RETURN_NOT_OK(cs.tile_->read(*name, buffer, cell_offset, start, 1));
+          else
+            RETURN_NOT_OK(cs.tile_->read_nullable(
+                *name, buffer, cell_offset, start, 1, buffer_validity));
+          cell_offset += cell_size;
+          start += stride;
+        }
+      }
+    }
+  }
+
+  return Status::Ok();
+}
+
+Status Reader::copy_var_cells(
+    const std::string& name,
+    const uint64_t stride,
+    std::vector<ResultCellSlab>& result_cell_slabs,
+    std::vector<std::pair<size_t, size_t>>* var_cs_partitions,
+    size_t total_cs_length) {
+  auto stat_type = (array_schema_->is_attr(name)) ? "copy_var_attr_values" :
+                                                    "copy_var_coords";
+  auto timer_se = stats_->start_timer(stat_type);
+
+  if (result_cell_slabs.empty()) {
+    zero_out_buffer_sizes();
+    return Status::Ok();
+  }
+
+  std::vector<uint64_t> offset_offsets_per_cs(total_cs_length);
+  std::vector<uint64_t> var_offsets_per_cs(total_cs_length);
+
+  // Compute the destinations of offsets and var-len data in the buffers.
+  uint64_t total_offset_size, total_var_size, total_validity_size;
+  RETURN_NOT_OK(compute_var_cell_destinations(
+      name,
+      stride,
+      result_cell_slabs,
+      &offset_offsets_per_cs,
+      &var_offsets_per_cs,
+      &total_offset_size,
+      &total_var_size,
+      &total_validity_size));
+
+  // Check for overflow and return early (without copying) in that case.
+  if (read_state_.overflowed_) {
+    return Status::Ok();
+  }
+
+  // Copy result cell slabs in parallel
+  std::function<Status(size_t)> copy_fn = std::bind(
+      &Reader::copy_partitioned_var_cells,
+      this,
+      std::placeholders::_1,
+      &name,
+      stride,
+      result_cell_slabs,
+      &offset_offsets_per_cs,
+      &var_offsets_per_cs,
+      var_cs_partitions);
+  auto status = parallel_for(
+      storage_manager_->compute_tp(), 0, var_cs_partitions->size(), copy_fn);
+
+  RETURN_NOT_OK(status);
+
+  // Update buffer offsets
+  *(buffers_[name].buffer_size_) = total_offset_size;
+  *(buffers_[name].buffer_var_size_) = total_var_size;
+  if (array_schema_->is_nullable(name))
+    *(buffers_[name].validity_vector_.buffer_size()) = total_validity_size;
+
+  return Status::Ok();
+}
+
+void Reader::compute_var_cs_partitions(
+    const std::vector<ResultCellSlab>& result_cell_slabs,
+    std::vector<std::pair<size_t, size_t>>* var_cs_partitions,
+    size_t* total_var_cs_length) {
+  if (result_cell_slabs.empty()) {
+    return;
+  }
+
+  const int num_copy_threads =
+      storage_manager_->compute_tp()->concurrency_level();
+
+  // Calculate the partition range.
+  const uint64_t num_cs = result_cell_slabs.size();
+  const uint64_t num_cs_partitions =
+      std::min<uint64_t>(num_copy_threads, num_cs);
+  const uint64_t cs_per_partition = num_cs / num_cs_partitions;
+  const uint64_t cs_per_partition_carry = num_cs % num_cs_partitions;
+
+  // Compute the boundary between each partition. Each boundary
+  // is represented by an `std::pair` that contains the total
+  // length of each cell slab in the leading partition and an
+  // exclusive cell slab index that ends the partition.
+  uint64_t next_partition_idx = cs_per_partition;
+  if (cs_per_partition_carry > 0)
+    ++next_partition_idx;
+
+  *total_var_cs_length = 0;
+  var_cs_partitions->reserve(num_cs_partitions);
+  for (uint64_t cs_idx = 0; cs_idx < num_cs; cs_idx++) {
+    if (cs_idx == next_partition_idx) {
+      var_cs_partitions->emplace_back(*total_var_cs_length, cs_idx);
+
+      // The final partition may contain extra cell slabs that did
+      // not evenly divide into the partition range. Set the
+      // `next_partition_idx` to zero and build the last boundary
+      // after this for-loop.
+      if (var_cs_partitions->size() == num_cs_partitions) {
+        next_partition_idx = 0;
+      } else {
+        next_partition_idx += cs_per_partition;
+        if (cs_idx < (cs_per_partition_carry - 1))
+          ++next_partition_idx;
+      }
+    }
+
+    *total_var_cs_length += result_cell_slabs[cs_idx].length_;
+  }
+
+  // Store the final boundary.
+  var_cs_partitions->emplace_back(*total_var_cs_length, num_cs);
+}
+
+Status Reader::compute_var_cell_destinations(
+    const std::string& name,
+    uint64_t stride,
+    std::vector<ResultCellSlab>& result_cell_slabs,
+    std::vector<uint64_t>* offset_offsets_per_cs,
+    std::vector<uint64_t>* var_offsets_per_cs,
+    uint64_t* total_offset_size,
+    uint64_t* total_var_size,
+    uint64_t* total_validity_size) {
+  // For easy reference
+  auto nullable = array_schema_->is_nullable(name);
+  auto num_cs = result_cell_slabs.size();
+  auto offset_size = offsets_bytesize();
+  ByteVecValue fill_value;
+  if (array_schema_->is_attr(name))
+    fill_value = array_schema_->attribute(name)->fill_value();
+  auto fill_value_size = (uint64_t)fill_value.size();
+
+  auto it = buffers_.find(name);
+  auto buffer_size = *it->second.buffer_size_;
+  auto buffer_var_size = *it->second.buffer_var_size_;
+  auto buffer_validity_size = it->second.validity_vector_.buffer_size();
+
+  if (offsets_extra_element_)
+    buffer_size -= offset_size;
+
+  // Compute the destinations for all result cell slabs
+  *total_offset_size = 0;
+  *total_var_size = 0;
+  *total_validity_size = 0;
+  size_t total_cs_length = 0;
+  for (uint64_t cs_idx = 0; cs_idx < num_cs; cs_idx++) {
+    const auto& cs = result_cell_slabs.at(cs_idx);
+    auto cs_length = cs.length_;
+
+    // Get tile information, if the range is nonempty.
+    uint64_t* tile_offsets = nullptr;
+    uint64_t tile_cell_num = 0;
+    uint64_t tile_var_size = 0;
+    if (cs.tile_ != nullptr && cs.tile_->tile_tuple(name) != nullptr) {
+      const auto tile_tuple = cs.tile_->tile_tuple(name);
+      const auto& tile = std::get<0>(*tile_tuple);
+      const auto& tile_var = std::get<1>(*tile_tuple);
+
+      // Get the internal buffer to the offset values.
+      Buffer* const buffer = tile.buffer();
+
+      tile_offsets = (uint64_t*)buffer->data();
+      tile_cell_num = tile.cell_num();
+      tile_var_size = tile_var.size();
+    }
+
+    // Compute the destinations for each cell in the range.
+    uint64_t dest_vec_idx = 0;
+    stride = (stride == UINT64_MAX) ? 1 : stride;
+
+    for (auto cell_idx = cs.start_; dest_vec_idx < cs_length;
+         cell_idx += stride, dest_vec_idx++) {
+      // Get size of variable-sized cell
+      uint64_t cell_var_size = 0;
+      if (cs.tile_ == nullptr || cs.tile_->tile_tuple(name) == nullptr) {
+        cell_var_size = fill_value_size;
+      } else {
+        cell_var_size =
+            (cell_idx != tile_cell_num - 1) ?
+                tile_offsets[cell_idx + 1] - tile_offsets[cell_idx] :
+                tile_var_size - (tile_offsets[cell_idx] - tile_offsets[0]);
+      }
+
+      if (*total_offset_size + offset_size > buffer_size ||
+          *total_var_size + cell_var_size > buffer_var_size ||
+          (buffer_validity_size &&
+           *total_validity_size + constants::cell_validity_size >
+               *buffer_validity_size)) {
+        read_state_.overflowed_ = true;
+
+        // In case an extra offset is configured, we need to account memory for
+        // it on each read
+        *total_offset_size += offsets_extra_element_ ? offset_size : 0;
+
+        return Status::Ok();
+      }
+
+      // Record destination offsets.
+      (*offset_offsets_per_cs)[total_cs_length + dest_vec_idx] =
+          *total_offset_size;
+      (*var_offsets_per_cs)[total_cs_length + dest_vec_idx] = *total_var_size;
+      *total_offset_size += offset_size;
+      *total_var_size += cell_var_size;
+      if (nullable)
+        *total_validity_size += constants::cell_validity_size;
+    }
+
+    total_cs_length += cs_length;
+  }
+
+  // In case an extra offset is configured, we need to account memory for it on
+  // each read
+  *total_offset_size += offsets_extra_element_ ? offset_size : 0;
+
+  return Status::Ok();
+}
+
+Status Reader::copy_partitioned_var_cells(
+    const size_t partition_idx,
+    const std::string* const name,
+    uint64_t stride,
+    const std::vector<ResultCellSlab>& result_cell_slabs,
+    const std::vector<uint64_t>* const offset_offsets_per_cs,
+    const std::vector<uint64_t>* const var_offsets_per_cs,
+    const std::vector<std::pair<size_t, size_t>>* const cs_partitions) {
+  assert(name);
+
+  auto it = buffers_.find(*name);
+  auto nullable = array_schema_->is_nullable(*name);
+  auto buffer = (unsigned char*)it->second.buffer_;
+  auto buffer_var = (unsigned char*)it->second.buffer_var_;
+  auto buffer_validity = (unsigned char*)it->second.validity_vector_.buffer();
+  auto offset_size = offsets_bytesize();
+  ByteVecValue fill_value;
+  uint8_t fill_value_validity = 0;
+  if (array_schema_->is_attr(*name)) {
+    fill_value = array_schema_->attribute(*name)->fill_value();
+    fill_value_validity =
+        array_schema_->attribute(*name)->fill_value_validity();
+  }
+  auto fill_value_size = (uint64_t)fill_value.size();
+  auto attr_datatype_size = datatype_size(array_schema_->type(*name));
+
+  // Fetch the starting array offset into both `offset_offsets_per_cs`
+  // and `var_offsets_per_cs`.
+  size_t arr_offset =
+      partition_idx == 0 ? 0 : (*cs_partitions)[partition_idx - 1].first;
+
+  // Fetch the inclusive starting cell slab index and the exclusive ending
+  // cell slab index.
+  const size_t start_cs_idx =
+      partition_idx == 0 ? 0 : (*cs_partitions)[partition_idx - 1].second;
+  const size_t end_cs_idx = (*cs_partitions)[partition_idx].second;
+
+  // Copy all cells within the range of cell slabs.
+  for (uint64_t cs_idx = start_cs_idx; cs_idx < end_cs_idx; ++cs_idx) {
+    const auto& cs = result_cell_slabs[cs_idx];
+    auto cs_length = cs.length_;
+
+    // Get tile information, if the range is nonempty.
+    uint64_t* tile_offsets = nullptr;
+    Tile* tile_var = nullptr;
+    Tile* tile_validity = nullptr;
+    uint64_t tile_cell_num = 0;
+    if (cs.tile_ != nullptr && cs.tile_->tile_tuple(*name) != nullptr) {
+      const auto tile_tuple = cs.tile_->tile_tuple(*name);
+      Tile* const tile = &std::get<0>(*tile_tuple);
+      tile_var = &std::get<1>(*tile_tuple);
+      tile_validity = &std::get<2>(*tile_tuple);
+
+      // Get the internal buffer to the offset values.
+      Buffer* const buffer = tile->buffer();
+
+      tile_offsets = (uint64_t*)buffer->data();
+      tile_cell_num = tile->cell_num();
+    }
+
+    // Copy each cell in the range
+    uint64_t dest_vec_idx = 0;
+    stride = (stride == UINT64_MAX) ? 1 : stride;
+    for (auto cell_idx = cs.start_; dest_vec_idx < cs_length;
+         cell_idx += stride, dest_vec_idx++) {
+      auto offset_offsets = (*offset_offsets_per_cs)[arr_offset + dest_vec_idx];
+      auto offset_dest = buffer + offset_offsets;
+      auto var_offset = (*var_offsets_per_cs)[arr_offset + dest_vec_idx];
+      auto var_dest = buffer_var + var_offset;
+      auto validity_dest = buffer_validity + (offset_offsets / offset_size);
+
+      if (offsets_format_mode_ == "elements") {
+        var_offset = var_offset / attr_datatype_size;
+      }
+
+      // Copy offset
+      std::memcpy(offset_dest, &var_offset, offset_size);
+
+      // Copy variable-sized value
+      if (cs.tile_ == nullptr || cs.tile_->tile_tuple(*name) == nullptr) {
+        std::memcpy(var_dest, fill_value.data(), fill_value_size);
+        if (nullable)
+          std::memset(
+              validity_dest,
+              fill_value_validity,
+              constants::cell_validity_size);
+      } else {
+        const uint64_t cell_var_size =
+            (cell_idx != tile_cell_num - 1) ?
+                tile_offsets[cell_idx + 1] - tile_offsets[cell_idx] :
+                tile_var->size() - (tile_offsets[cell_idx] - tile_offsets[0]);
+        const uint64_t tile_var_offset =
+            tile_offsets[cell_idx] - tile_offsets[0];
+
+        RETURN_NOT_OK(tile_var->read(var_dest, cell_var_size, tile_var_offset));
+
+        if (nullable)
+          RETURN_NOT_OK(tile_validity->read(
+              validity_dest, constants::cell_validity_size, cell_idx));
+      }
+    }
+
+    arr_offset += cs_length;
+  }
+
+  return Status::Ok();
+}
+
+Status Reader::process_tiles(
+    const std::unordered_map<std::string, ProcessTileFlags>& names,
+    std::vector<ResultTile*>& result_tiles,
+    std::vector<ResultCellSlab>& result_cell_slabs,
+    Subarray& subarray,
+    const uint64_t stride) {
+  // If a name needs to be read, we put it on `read_names` vector (it may
+  // contain other flags). Otherwise, we put the name on the `copy_names`
+  // vector if it needs to be copied back to the user buffer.
+  // We can benefit from concurrent reads by processing `read_names`
+  // separately from `copy_names`.
+  std::vector<std::string> read_names;
+  std::vector<std::string> copy_names;
+  std::vector<std::string> var_size_read_names;
+  read_names.reserve(names.size());
+  for (const auto& name_pair : names) {
+    const std::string name = name_pair.first;
+    const ProcessTileFlags flags = name_pair.second;
+    if (flags & ProcessTileFlag::READ) {
+      read_names.push_back(name);
+      if (array_schema_->var_size(name))
+        var_size_read_names.emplace_back(name);
+    } else if (flags & ProcessTileFlag::COPY) {
+      copy_names.push_back(name);
+    }
+  }
+
+  // Pre-load all attribute offsets into memory for attributes
+  // to be read.
+  RETURN_NOT_OK(load_tile_offsets(subarray, read_names));
+
+  // Pre-load all var attribute var tile sizes into memory for attributes
+  // to be read.
+  RETURN_NOT_OK(load_tile_var_sizes(subarray, var_size_read_names));
+
+  // Get the maximum number of attributes to read and unfilter in parallel.
+  // Each attribute requires additional memory to buffer reads into
+  // before copying them back into `buffers_`. Cells must be copied
+  // before moving onto the next set of concurrent reads to prevent
+  // bloating memory. Additionally, the copy cells paths are performed
+  // in serial, which will bottleneck the read concurrency. Increasing
+  // this number will have diminishing returns on performance.
+  const uint64_t concurrent_reads = constants::concurrent_attr_reads;
+
+  // Instantiate partitions for copying fixed and variable cells.
+  std::vector<size_t> fixed_cs_partitions;
+  compute_fixed_cs_partitions(result_cell_slabs, &fixed_cs_partitions);
+
+  std::vector<std::pair<size_t, size_t>> var_cs_partitions;
+  size_t total_var_cs_length;
+  compute_var_cs_partitions(
+      result_cell_slabs, &var_cs_partitions, &total_var_cs_length);
+
+  // Handle attribute/dimensions that need to be copied but do
+  // not need to be read.
+  for (const auto& copy_name : copy_names) {
+    if (!array_schema_->var_size(copy_name))
+      RETURN_CANCEL_OR_ERROR(copy_fixed_cells(
+          copy_name, stride, result_cell_slabs, &fixed_cs_partitions));
+    else
+      RETURN_CANCEL_OR_ERROR(copy_var_cells(
+          copy_name,
+          stride,
+          result_cell_slabs,
+          &var_cs_partitions,
+          total_var_cs_length));
+    clear_tiles(copy_name, result_tiles);
+  }
+
+  // Iterate through all of the attribute names. This loop
+  // will read, unfilter, and copy tiles back into the `buffers_`.
+  uint64_t idx = 0;
+  tdb_unique_ptr<ResultCellSlabsIndex> rcs_index = nullptr;
+  while (idx < read_names.size()) {
+    // We will perform `concurrent_reads` unless we have a smaller
+    // number of remaining attributes to process.
+    const uint64_t num_reads =
+        std::min(concurrent_reads, read_names.size() - idx);
+
+    // Build a vector of the attribute names to process.
+    std::vector<std::string> inner_names(
+        read_names.begin() + idx, read_names.begin() + idx + num_reads);
+
+    // Read the tiles for the names in `inner_names`. Each attribute
+    // name will be read concurrently.
+    RETURN_CANCEL_OR_ERROR(
+        read_attribute_tiles(inner_names, result_tiles, false));
+
+    // Copy the cells into the associated `buffers_`, and then clear the cells
+    // from the tiles. The cell copies are not thread safe. Clearing tiles are
+    // thread safe, but quick enough that they do not justify scheduling on
+    // separate threads.
+    for (const auto& inner_name : inner_names) {
+      const ProcessTileFlags flags = names.at(inner_name);
+
+      RETURN_CANCEL_OR_ERROR(unfilter_tiles(inner_name, result_tiles, false));
+
+      if (flags & ProcessTileFlag::COPY) {
+        if (!array_schema_->var_size(inner_name)) {
+          RETURN_CANCEL_OR_ERROR(copy_fixed_cells(
+              inner_name, stride, result_cell_slabs, &fixed_cs_partitions));
+        } else {
+          RETURN_CANCEL_OR_ERROR(copy_var_cells(
+              inner_name,
+              stride,
+              result_cell_slabs,
+              &var_cs_partitions,
+              total_var_cs_length));
+        }
+        clear_tiles(inner_name, result_tiles);
+      }
+    }
+
+    idx += inner_names.size();
+  }
+
+  return Status::Ok();
+}
+
 template <class T>
 Status Reader::compute_result_cell_slabs(
     const Subarray& subarray,
-    std::map<const T*, ResultSpaceTile<T>>* result_space_tiles,
-    std::vector<ResultCoords>* result_coords,
-    std::vector<ResultTile*>* result_tiles,
-    std::vector<ResultCellSlab>* result_cell_slabs) const {
+    std::map<const T*, ResultSpaceTile<T>>& result_space_tiles,
+    std::vector<ResultCoords>& result_coords,
+    std::vector<ResultTile*>& result_tiles,
+    std::vector<ResultCellSlab>& result_cell_slabs) const {
   auto timer_se = stats_->start_timer("compute_sparse_result_cell_slabs_dense");
 
   auto layout = subarray.layout();
@@ -673,7 +1404,7 @@ Status Reader::compute_result_cell_slabs(
         result_coords,
         &result_coords_pos,
         result_tiles,
-        &frag_tile_set,
+        frag_tile_set,
         result_cell_slabs);
   } else if (layout == Layout::GLOBAL_ORDER) {
     return compute_result_cell_slabs_global<T>(
@@ -692,36 +1423,36 @@ Status Reader::compute_result_cell_slabs(
 template <class T>
 Status Reader::compute_result_cell_slabs_row_col(
     const Subarray& subarray,
-    std::map<const T*, ResultSpaceTile<T>>* result_space_tiles,
-    std::vector<ResultCoords>* result_coords,
+    std::map<const T*, ResultSpaceTile<T>>& result_space_tiles,
+    std::vector<ResultCoords>& result_coords,
     uint64_t* result_coords_pos,
-    std::vector<ResultTile*>* result_tiles,
-    std::set<std::pair<unsigned, uint64_t>>* frag_tile_set,
-    std::vector<ResultCellSlab>* result_cell_slabs) const {
+    std::vector<ResultTile*>& result_tiles,
+    std::set<std::pair<unsigned, uint64_t>>& frag_tile_set,
+    std::vector<ResultCellSlab>& result_cell_slabs) const {
   // Compute result space tiles. The result space tiles hold all the
   // relevant result tiles of the dense fragments
   compute_result_space_tiles<T>(
-      &subarray, read_state_.partitioner_.subarray(), result_space_tiles);
+      subarray, read_state_.partitioner_.subarray(), result_space_tiles);
 
   // Gather result cell slabs and pointers to result tiles
   // `result_tiles` holds pointers to tiles that store actual results,
   // which can be stored either in `sparse_result_tiles` (sparse)
   // or in `result_space_tiles` (dense).
   auto rcs_it = ReadCellSlabIter<T>(
-      &subarray, result_space_tiles, result_coords, *result_coords_pos);
+      &subarray, &result_space_tiles, &result_coords, *result_coords_pos);
   for (rcs_it.begin(); !rcs_it.end(); ++rcs_it) {
     // Add result cell slab
     auto result_cell_slab = rcs_it.result_cell_slab();
-    result_cell_slabs->push_back(result_cell_slab);
+    result_cell_slabs.push_back(result_cell_slab);
     // Add result tile
     if (result_cell_slab.tile_ != nullptr) {
       auto frag_idx = result_cell_slab.tile_->frag_idx();
       auto tile_idx = result_cell_slab.tile_->tile_idx();
       auto frag_tile_tuple = std::pair<unsigned, uint64_t>(frag_idx, tile_idx);
-      auto it = frag_tile_set->find(frag_tile_tuple);
-      if (it == frag_tile_set->end()) {
-        frag_tile_set->insert(frag_tile_tuple);
-        result_tiles->push_back(result_cell_slab.tile_);
+      auto it = frag_tile_set.find(frag_tile_tuple);
+      if (it == frag_tile_set.end()) {
+        frag_tile_set.insert(frag_tile_tuple);
+        result_tiles.push_back(result_cell_slab.tile_);
       }
     }
   }
@@ -733,10 +1464,10 @@ Status Reader::compute_result_cell_slabs_row_col(
 template <class T>
 Status Reader::compute_result_cell_slabs_global(
     const Subarray& subarray,
-    std::map<const T*, ResultSpaceTile<T>>* result_space_tiles,
-    std::vector<ResultCoords>* result_coords,
-    std::vector<ResultTile*>* result_tiles,
-    std::vector<ResultCellSlab>* result_cell_slabs) const {
+    std::map<const T*, ResultSpaceTile<T>>& result_space_tiles,
+    std::vector<ResultCoords>& result_coords,
+    std::vector<ResultTile*>& result_tiles,
+    std::vector<ResultCellSlab>& result_cell_slabs) const {
   const auto& tile_coords = subarray.tile_coords();
   auto cell_order = array_schema_->cell_order();
   std::vector<Subarray> tile_subarrays;
@@ -756,7 +1487,7 @@ Status Reader::compute_result_cell_slabs_global(
         result_coords,
         &result_coords_pos,
         result_tiles,
-        &frag_tile_set,
+        frag_tile_set,
         result_cell_slabs));
   }
 
@@ -764,8 +1495,8 @@ Status Reader::compute_result_cell_slabs_global(
 }
 
 Status Reader::compute_result_coords(
-    std::vector<ResultTile>* result_tiles,
-    std::vector<ResultCoords>* result_coords) {
+    std::vector<ResultTile>& result_tiles,
+    std::vector<ResultCoords>& result_coords) {
   auto timer_se = stats_->start_timer("compute_result_coords");
 
   // Get overlapping tile indexes
@@ -776,13 +1507,13 @@ Status Reader::compute_result_coords(
   RETURN_CANCEL_OR_ERROR(compute_sparse_result_tiles(
       result_tiles, &result_tile_map, &single_fragment));
 
-  if (result_tiles->empty())
+  if (result_tiles.empty())
     return Status::Ok();
 
   // Create temporary vector with pointers to result tiles, so that
   // `read_tiles`, `unfilter_tiles` below can work without changes
   std::vector<ResultTile*> tmp_result_tiles;
-  for (auto& result_tile : *result_tiles)
+  for (auto& result_tile : result_tiles)
     tmp_result_tiles.push_back(&result_tile);
 
   // Preload zipped coordinate tile offsets. Note that this will
@@ -790,53 +1521,60 @@ Status Reader::compute_result_coords(
   auto& subarray = read_state_.partitioner_.current();
   std::vector<std::string> zipped_coords_names = {constants::coords};
   RETURN_CANCEL_OR_ERROR(load_tile_offsets(
-      read_state_.partitioner_.subarray(), &zipped_coords_names));
+      read_state_.partitioner_.subarray(), zipped_coords_names));
 
   // Preload unzipped coordinate tile offsets. Note that this will
   // ignore fragments with a version < 5.
   const auto dim_num = array_schema_->dim_num();
   std::vector<std::string> dim_names;
+  std::vector<std::string> var_size_dim_names;
   dim_names.reserve(dim_num);
-  for (unsigned d = 0; d < dim_num; ++d)
-    dim_names.emplace_back(array_schema_->dimension(d)->name());
+  for (unsigned d = 0; d < dim_num; ++d) {
+    const auto& name = array_schema_->dimension(d)->name();
+    dim_names.emplace_back(name);
+    if (array_schema_->var_size(name))
+      var_size_dim_names.emplace_back(name);
+  }
   RETURN_CANCEL_OR_ERROR(
-      load_tile_offsets(read_state_.partitioner_.subarray(), &dim_names));
+      load_tile_offsets(read_state_.partitioner_.subarray(), dim_names));
+  RETURN_CANCEL_OR_ERROR(load_tile_var_sizes(
+      read_state_.partitioner_.subarray(), var_size_dim_names));
 
   // Read and unfilter zipped coordinate tiles. Note that
   // this will ignore fragments with a version >= 5.
   RETURN_CANCEL_OR_ERROR(
-      read_coordinate_tiles(&zipped_coords_names, &tmp_result_tiles));
-  RETURN_CANCEL_OR_ERROR(unfilter_tiles(constants::coords, &tmp_result_tiles));
+      read_coordinate_tiles(zipped_coords_names, tmp_result_tiles));
+  RETURN_CANCEL_OR_ERROR(unfilter_tiles(constants::coords, tmp_result_tiles));
 
   // Read and unfilter unzipped coordinate tiles. Note that
   // this will ignore fragments with a version < 5.
-  RETURN_CANCEL_OR_ERROR(read_coordinate_tiles(&dim_names, &tmp_result_tiles));
+  RETURN_CANCEL_OR_ERROR(read_coordinate_tiles(dim_names, tmp_result_tiles));
   for (const auto& dim_name : dim_names) {
-    RETURN_CANCEL_OR_ERROR(unfilter_tiles(dim_name, &tmp_result_tiles));
+    RETURN_CANCEL_OR_ERROR(unfilter_tiles(dim_name, tmp_result_tiles));
   }
 
   // Compute the read coordinates for all fragments for each subarray range.
   std::vector<std::vector<ResultCoords>> range_result_coords;
   RETURN_CANCEL_OR_ERROR(compute_range_result_coords(
-      &subarray,
+      subarray,
       single_fragment,
       result_tile_map,
       result_tiles,
-      &range_result_coords));
+      range_result_coords));
   result_tile_map.clear();
 
   // Compute final coords (sorted in the result layout) of the whole subarray.
   RETURN_CANCEL_OR_ERROR(
-      compute_subarray_coords(&range_result_coords, result_coords));
+      compute_subarray_coords(range_result_coords, result_coords));
   range_result_coords.clear();
 
   return Status::Ok();
 }
 
 Status Reader::dedup_result_coords(
-    std::vector<ResultCoords>* result_coords) const {
-  auto coords_end = result_coords->end();
-  auto it = skip_invalid_elements(result_coords->begin(), coords_end);
+    std::vector<ResultCoords>& result_coords) const {
+  auto coords_end = result_coords.end();
+  auto it = skip_invalid_elements(result_coords.begin(), coords_end);
   while (it != coords_end) {
     auto next_it = skip_invalid_elements(std::next(it), coords_end);
     if (next_it != coords_end && it->same_coords(*next_it)) {
@@ -913,7 +1651,7 @@ Status Reader::dense_read() {
   // sparse fragments
   std::vector<ResultCoords> result_coords;
   std::vector<ResultTile> sparse_result_tiles;
-  RETURN_NOT_OK(compute_result_coords(&sparse_result_tiles, &result_coords));
+  RETURN_NOT_OK(compute_result_coords(sparse_result_tiles, result_coords));
 
   // Compute result cell slabs.
   // `result_space_tiles` will hold all the relevant result tiles of
@@ -927,15 +1665,15 @@ Status Reader::dense_read() {
   RETURN_NOT_OK(subarray.compute_tile_coords<T>());
   RETURN_NOT_OK(compute_result_cell_slabs<T>(
       subarray,
-      &result_space_tiles,
-      &result_coords,
-      &result_tiles,
-      &result_cell_slabs));
+      result_space_tiles,
+      result_coords,
+      result_tiles,
+      result_cell_slabs));
 
   auto stride = array_schema_->domain()->stride<T>(subarray.layout());
   RETURN_NOT_OK(apply_query_condition(
-      &result_cell_slabs,
-      &result_tiles,
+      result_cell_slabs,
+      result_tiles,
       read_state_.partitioner_.subarray(),
       stride));
 
@@ -943,29 +1681,30 @@ Status Reader::dense_read() {
   get_result_cell_stats(result_cell_slabs);
 
   // Clear sparse coordinate tiles (not needed any more)
-  erase_coord_tiles(&sparse_result_tiles);
+  erase_coord_tiles(sparse_result_tiles);
 
   // Needed when copying the cells
   RETURN_NOT_OK(copy_attribute_values(
       stride,
-      &result_tiles,
-      &result_cell_slabs,
-      *read_state_.partitioner_.subarray()));
-  read_state_.overflowed_ = copy_overflowed_;
+      result_tiles,
+      result_cell_slabs,
+      read_state_.partitioner_.subarray()));
 
   // Fill coordinates if the user requested them
-  if (!read_state_.overflowed_ && has_coords())
-    RETURN_CANCEL_OR_ERROR(fill_dense_coords<T>(subarray));
-  read_state_.overflowed_ = copy_overflowed_;
+  if (!read_state_.overflowed_ && has_coords()) {
+    auto&& [st, overflowed] = fill_dense_coords<T>(subarray);
+    RETURN_CANCEL_OR_ERROR(st);
+    read_state_.overflowed_ = *overflowed;
+  }
 
   return Status::Ok();
 }
 
 Status Reader::get_all_result_coords(
-    ResultTile* tile, std::vector<ResultCoords>* result_coords) const {
+    ResultTile* tile, std::vector<ResultCoords>& result_coords) const {
   auto coords_num = tile->cell_num();
   for (uint64_t i = 0; i < coords_num; ++i)
-    result_coords->emplace_back(tile, i);
+    result_coords.emplace_back(tile, i);
 
   return Status::Ok();
 }
@@ -1067,7 +1806,6 @@ Status Reader::init_read_state() {
 
   read_state_.unsplittable_ = false;
   read_state_.overflowed_ = false;
-  copy_overflowed_ = false;
   read_state_.initialized_ = true;
 
   return Status::Ok();
@@ -1118,7 +1856,7 @@ Status Reader::sparse_read() {
   std::vector<ResultCoords> result_coords;
   std::vector<ResultTile> sparse_result_tiles;
 
-  RETURN_NOT_OK(compute_result_coords(&sparse_result_tiles, &result_coords));
+  RETURN_NOT_OK(compute_result_coords(sparse_result_tiles, result_coords));
   std::vector<ResultTile*> result_tiles;
   for (auto& srt : sparse_result_tiles)
     result_tiles.push_back(&srt);
@@ -1126,21 +1864,20 @@ Status Reader::sparse_read() {
   // Compute result cell slabs
   std::vector<ResultCellSlab> result_cell_slabs;
   RETURN_CANCEL_OR_ERROR(
-      compute_result_cell_slabs(result_coords, &result_cell_slabs));
+      compute_result_cell_slabs(result_coords, result_cell_slabs));
   result_coords.clear();
 
   apply_query_condition(
-      &result_cell_slabs, &result_tiles, read_state_.partitioner_.subarray());
+      result_cell_slabs, result_tiles, read_state_.partitioner_.subarray());
   get_result_tile_stats(result_tiles);
   get_result_cell_stats(result_cell_slabs);
 
-  RETURN_NOT_OK(copy_coordinates(&result_tiles, &result_cell_slabs));
+  RETURN_NOT_OK(copy_coordinates(result_tiles, result_cell_slabs));
   RETURN_NOT_OK(copy_attribute_values(
       UINT64_MAX,
-      &result_tiles,
-      &result_cell_slabs,
-      *read_state_.partitioner_.subarray()));
-  read_state_.overflowed_ = copy_overflowed_;
+      result_tiles,
+      result_cell_slabs,
+      read_state_.partitioner_.subarray()));
 
   return Status::Ok();
 }
@@ -1197,8 +1934,8 @@ bool Reader::sparse_tile_overwritten(
   return false;
 }
 
-void Reader::erase_coord_tiles(std::vector<ResultTile>* result_tiles) const {
-  for (auto& tile : *result_tiles) {
+void Reader::erase_coord_tiles(std::vector<ResultTile>& result_tiles) const {
+  for (auto& tile : result_tiles) {
     auto dim_num = array_schema_->dim_num();
     for (unsigned d = 0; d < dim_num; ++d)
       tile.erase_tile(array_schema_->dimension(d)->name());

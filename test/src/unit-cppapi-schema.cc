@@ -76,9 +76,26 @@ TEST_CASE("C++ API: Schema", "[cppapi][schema]") {
     schema.set_tile_order(TILEDB_COL_MAJOR);
     CHECK_THROWS(schema.set_allows_dups(1));
 
+    // Offsets filter list set/get
     FilterList offsets_filters(ctx);
     offsets_filters.add_filter({ctx, TILEDB_FILTER_DOUBLE_DELTA});
     schema.set_offsets_filter_list(offsets_filters);
+
+    FilterList offsets_filters_back = schema.offsets_filter_list();
+    CHECK(offsets_filters_back.nfilters() == 1);
+    CHECK(
+        offsets_filters_back.filter(0).filter_type() ==
+        TILEDB_FILTER_DOUBLE_DELTA);
+
+    // Validity filter list set/get
+    FilterList validity_filters(ctx);
+    validity_filters.add_filter({ctx, TILEDB_FILTER_BZIP2});
+    schema.set_validity_filter_list(validity_filters);
+
+    FilterList validity_filters_back = schema.validity_filter_list();
+    CHECK(validity_filters_back.nfilters() == 1);
+    auto validity_filter_back = validity_filters_back.filter(0);
+    CHECK(validity_filter_back.filter_type() == TILEDB_FILTER_BZIP2);
 
     FilterList coords_filters(ctx);
     coords_filters.add_filter({ctx, TILEDB_FILTER_ZSTD});
@@ -492,7 +509,9 @@ TEST_CASE(
 
   // Evolve
   {
+    uint64_t now = tiledb_timestamp_now_ms() + 1;
     ArraySchemaEvolution schemaEvolution = ArraySchemaEvolution(ctx);
+    schemaEvolution.set_timestamp_range(std::make_pair(now, now));
 
     // Add attribute b
     Attribute b = Attribute::create<uint32_t>(ctx, "b");

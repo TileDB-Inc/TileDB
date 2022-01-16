@@ -33,6 +33,20 @@ jobs:
           cat /proc/sys/kernel/core_pattern
           echo "...core_pattern above"
 
+      - name: cpuprocinfo
+        shell: bash
+        run: |
+          set -x
+          cat /proc/cpuinfo
+
+      - name: ubuntu lscpu
+        shell: bash
+        run: |
+          set -x
+          if [[ $(which lscpu) ]] ; then
+            lscpu
+          fi
+
       - uses: actions/checkout@v2
       - name: 'Print env'
         run: |
@@ -77,12 +91,12 @@ jobs:
           #   name: 'Clone Unit-Test-Arrays'
 
           bootstrap_args="${bootstrap_args}";
+          bootstrap_args="${bootstrap_args} --enable-release-symbols";
           source $GITHUB_WORKSPACE/scripts/ci/build_libtiledb.sh
 
           # Bypass Catch2 Framework stdout interception with awk on test output
           # make check | awk '/1: ::set-output/{sub(/.*1: /, ""); print; next} 1'
           ./tiledb/test/tiledb_unit -d yes "[backwards-compat]"| awk '/1: ::set-output/{sub(/.*1: /, ""); print; next} 1'
-
 
       - name: 'dump  core stacks'
         if: ${{ failure() && startsWith(matrix.os, 'ubuntu-') == true }} # only run this job if the build step failed
@@ -117,12 +131,12 @@ jobs:
               echo "stack trace for $f"
               if [[ -f $(which gdb) ]]; then
                 dbgr=$(which gdb)
-                sudo $dbgr -q --core $f -ex "thread apply all bt" -ex "quit"
+                sudo $dbgr -q --core $f -ex "thread apply all bt" -ex "info registers" -ex "disassemble" -ex "quit"
               #fi
               # lldb ref'd here located by doing trial in runner with find / -name "*lldb*" and sifting through the results.
               elif [[ -f /usr/lib/llvm-11/bin/lldb ]]; then
                 dbgr="/usr/lib/llvm-11/bin/lldb"
-                sudo $dbgr -core $f --batch  -o 'bt all' -o 'quit'
+                sudo $dbgr -c $f --batch -o 'bt all' -o 'image list' -o 're r -a' -o 'di -F intel -f -m' -o 'quit'
               else
                 echo "debugger not found in previously seen location!"
                 exit 1
