@@ -171,11 +171,15 @@ class FilterPipeline {
    * data.
    *
    * @param tile Tile to filter.
+   * @param offsets_tile Offets tile for tile to filter.
    * @param compute_tp The thread pool for compute-bound tasks.
    * @return Status
    */
   Status run_forward(
-      stats::Stats* writer_stats, Tile* tile, ThreadPool* compute_tp) const;
+      stats::Stats* writer_stats,
+      Tile* tile,
+      Tile* offsets_tile,
+      ThreadPool* compute_tp) const;
 
   /**
    * Runs the pipeline in reverse on the given filtered tile. This is used
@@ -266,6 +270,7 @@ class FilterPipeline {
    * @param tile Current tile on which the filter pipeline is being run
    * @param input buffer to process.
    * @param chunk_size chunk size.
+   * @param chunk_offsets chunk offsets computed for var sized attributes.
    * @param output buffer where output of the last stage
    *    will be written.
    * @param compute_tp The thread pool for compute-bound tasks.
@@ -275,6 +280,7 @@ class FilterPipeline {
       const Tile& tile,
       const Buffer& input,
       uint32_t chunk_size,
+      std::vector<uint64_t>& chunk_offsets,
       Buffer* const output,
       ThreadPool* const compute_tp) const;
 

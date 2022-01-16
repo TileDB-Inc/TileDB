@@ -384,13 +384,18 @@ class Writer : public StrategyBase, public IQueryStrategy {
    *
    * @param name The attribute/dimension the tile belong to.
    * @param tile The tile to be filtered.
+   * @param offsets_tile The offsets tile in case of a var tile, or null.
    * @param offsets True if the tile to be filtered contains offsets for a
    *    var-sized attribute/dimension.
    * @param offsets True if the tile to be filtered contains validity values.
    * @return Status
    */
   Status filter_tile(
-      const std::string& name, Tile* tile, bool offsets, bool nullable);
+      const std::string& name,
+      Tile* tile,
+      Tile* offsets_tile,
+      bool offsets,
+      bool nullable);
 
   /** Finalizes the global write state. */
   Status finalize_global_write_state();
