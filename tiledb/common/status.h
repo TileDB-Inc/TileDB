@@ -81,21 +81,21 @@ namespace common {
     }                                \
   } while (false)
 
-#define RETURN_NOT_OK_TUPLE(s)   \
-  do {                           \
-    Status _s = (s);             \
-    if (!_s.ok()) {              \
-      return {_s, std::nullopt}; \
-    }                            \
+#define RETURN_NOT_OK_TUPLE(s, ...) \
+  do {                              \
+    Status _s = (s);                \
+    if (!_s.ok()) {                 \
+      return {_s, __VA_ARGS__};     \
+    }                               \
   } while (false)
 
-#define RETURN_NOT_OK_ELSE_TUPLE(s, else_) \
-  do {                                     \
-    Status _s = (s);                       \
-    if (!_s.ok()) {                        \
-      else_;                               \
-      return {_s, std::nullopt};           \
-    }                                      \
+#define RETURN_NOT_OK_ELSE_TUPLE(s, else_, ...) \
+  do {                                          \
+    Status _s = (s);                            \
+    if (!_s.ok()) {                             \
+      else_;                                    \
+      return {_s, __VA_ARGS__};                 \
+    }                                           \
   } while (false)
 
 class Status {

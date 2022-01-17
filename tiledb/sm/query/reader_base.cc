@@ -827,7 +827,8 @@ std::tuple<Status, std::optional<uint64_t>> ReaderBase::get_attribute_tile_size(
 
   if (array_schema_->var_size(name)) {
     uint64_t temp = 0;
-    RETURN_NOT_OK_TUPLE(fragment_metadata_[f]->tile_var_size(name, t, &temp));
+    RETURN_NOT_OK_TUPLE(
+        fragment_metadata_[f]->tile_var_size(name, t, &temp), std::nullopt);
     tile_size += temp;
   }
 
@@ -944,13 +945,13 @@ std::tuple<Status, std::optional<bool>> ReaderBase::fill_dense_coords(
   if (layout_ == Layout::GLOBAL_ORDER) {
     auto&& [st, of] =
         fill_dense_coords_global<T>(subarray, dim_idx, buffers, offsets);
-    RETURN_NOT_OK_TUPLE(st);
+    RETURN_NOT_OK_TUPLE(st, std::nullopt);
     overflowed = *of;
   } else {
     assert(layout_ == Layout::ROW_MAJOR || layout_ == Layout::COL_MAJOR);
     auto&& [st, of] =
         fill_dense_coords_row_col<T>(subarray, dim_idx, buffers, offsets);
-    RETURN_NOT_OK_TUPLE(st);
+    RETURN_NOT_OK_TUPLE(st, std::nullopt);
     overflowed = *of;
   }
 
@@ -975,7 +976,7 @@ std::tuple<Status, std::optional<bool>> ReaderBase::fill_dense_coords_global(
     auto tile_subarray = subarray.crop_to_tile((const T*)&tc[0], cell_order);
     auto&& [st, of] =
         fill_dense_coords_row_col<T>(tile_subarray, dim_idx, buffers, offsets);
-    RETURN_NOT_OK_TUPLE(st);
+    RETURN_NOT_OK_TUPLE(st, std::nullopt);
     overflowed |= *of;
   }
 
