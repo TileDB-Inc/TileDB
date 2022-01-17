@@ -48,21 +48,20 @@ BufferLRUCache::BufferLRUCache(const uint64_t max_size)
 }
 
 Status BufferLRUCache::insert(
-    const std::string& key, Buffer&& buffer, const bool overwrite) {
-  const uint64_t alloced_size = buffer.alloced_size();
+    const std::string& key, FilteredBuffer&& buffer, const bool overwrite) {
+  const uint64_t alloced_size = buffer.size();
 
   std::lock_guard<std::mutex> lg(lru_mtx_);
-  return LRUCache<std::string, Buffer>::insert(
+  return LRUCache<std::string, FilteredBuffer>::insert(
       key, std::move(buffer), alloced_size, overwrite);
 }
 
 Status BufferLRUCache::read(
     const std::string& key,
-    Buffer* const buffer,
+    FilteredBuffer& buffer,
     const uint64_t offset,
     const uint64_t nbytes,
     bool* const success) {
-  assert(buffer);
   assert(success);
   *success = false;
 
@@ -73,7 +72,7 @@ Status BufferLRUCache::read(
     return Status::Ok();
 
   // Store a reference to the cached buffer.
-  const Buffer* const cached_buffer = get_item(key);
+  const FilteredBuffer* const cached_buffer = get_item(key);
 
   // Check the bounds of the read.
   if (cached_buffer->size() < offset + nbytes) {
@@ -81,8 +80,8 @@ Status BufferLRUCache::read(
         Status_LRUCacheError("Failed to read item; Byte range out of bounds"));
   }
 
-  // Copy the requested range intout the output `buffer`.
-  RETURN_NOT_OK(buffer->write(cached_buffer->data(offset), nbytes));
+  // Copy the requested range into the output `buffer`.
+  memcpy(buffer.data(), cached_buffer->data() + offset, nbytes);
 
   // Touch the item to make it the most recently used item.
   touch_item(key);
@@ -93,24 +92,24 @@ Status BufferLRUCache::read(
 
 void BufferLRUCache::clear() {
   std::lock_guard<std::mutex> lg(lru_mtx_);
-  return LRUCache<std::string, Buffer>::clear();
+  return LRUCache<std::string, FilteredBuffer>::clear();
 }
 
 Status BufferLRUCache::invalidate(const std::string& key, bool* success) {
   std::lock_guard<std::mutex> lg(lru_mtx_);
-  return LRUCache<std::string, Buffer>::invalidate(key, success);
+  return LRUCache<std::string, FilteredBuffer>::invalidate(key, success);
 }
 
 typename std::list<BufferLRUCache::LRUCacheItem>::const_iterator
 BufferLRUCache::item_iter_begin() const {
   std::lock_guard<std::mutex> lg(lru_mtx_);
-  return LRUCache<std::string, Buffer>::item_iter_begin();
+  return LRUCache<std::string, FilteredBuffer>::item_iter_begin();
 }
 
 typename std::list<BufferLRUCache::LRUCacheItem>::const_iterator
 BufferLRUCache::item_iter_end() const {
   std::lock_guard<std::mutex> lg(lru_mtx_);
-  return LRUCache<std::string, Buffer>::item_iter_end();
+  return LRUCache<std::string, FilteredBuffer>::item_iter_end();
 }
 
 }  // namespace sm

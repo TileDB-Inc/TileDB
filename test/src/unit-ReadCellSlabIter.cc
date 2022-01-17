@@ -488,23 +488,36 @@ TEST_CASE_METHOD(
   result_tile_3_0.init_coord_tile("d", 0);
   result_tile_3_1.init_coord_tile("d", 0);
 
-  std::vector<uint64_t> vec_2_0 = {1000, 3, 1000, 5};
-  Buffer buff_2_0(&vec_2_0[0], vec_2_0.size() * sizeof(uint64_t));
-  Tile tile_2_0(Datatype::UINT64, sizeof(uint64_t), 0, &buff_2_0, false);
+  uint64_t* data =
+      reinterpret_cast<uint64_t*>(tdb_malloc(4 * sizeof(uint64_t)));
+  data[0] = 1000;
+  data[1] = 3;
+  data[2] = 1000;
+  data[3] = 5;
+  Tile tile_2_0(
+      Datatype::UINT64, sizeof(uint64_t), 0, data, 4 * sizeof(uint64_t));
   auto tile_tuple = result_tile_2_0.tile_tuple("d");
   REQUIRE(tile_tuple != nullptr);
   std::get<0>(*tile_tuple) = tile_2_0;
 
-  std::vector<uint64_t> vec_3_0 = {1000, 1000, 8, 9};
-  Buffer buff_3_0(&vec_3_0[0], vec_3_0.size() * sizeof(uint64_t));
-  Tile tile_3_0(Datatype::UINT64, sizeof(uint64_t), 0, &buff_3_0, false);
+  data = reinterpret_cast<uint64_t*>(tdb_malloc(4 * sizeof(uint64_t)));
+  data[0] = 1000;
+  data[1] = 1000;
+  data[2] = 8;
+  data[3] = 9;
+  Tile tile_3_0(
+      Datatype::UINT64, sizeof(uint64_t), 0, data, 4 * sizeof(uint64_t));
   tile_tuple = result_tile_3_0.tile_tuple("d");
   REQUIRE(tile_tuple != nullptr);
   std::get<0>(*tile_tuple) = tile_3_0;
 
-  std::vector<uint64_t> vec_3_1 = {1000, 12, 19, 1000};
-  Buffer buff_3_1(&vec_3_1[0], vec_3_1.size() * sizeof(uint64_t));
-  Tile tile_3_1(Datatype::UINT64, sizeof(uint64_t), 0, &buff_3_1, false);
+  data = reinterpret_cast<uint64_t*>(tdb_malloc(4 * sizeof(uint64_t)));
+  data[0] = 1000;
+  data[1] = 12;
+  data[2] = 19;
+  data[3] = 1000;
+  Tile tile_3_1(
+      Datatype::UINT64, sizeof(uint64_t), 0, data, 4 * sizeof(uint64_t));
   tile_tuple = result_tile_3_1.tile_tuple("d");
   REQUIRE(tile_tuple != nullptr);
   std::get<0>(*tile_tuple) = tile_3_1;
@@ -1357,30 +1370,47 @@ TEST_CASE_METHOD(
   result_tile_3_1.init_coord_tile("d1", 0);
   result_tile_3_1.init_coord_tile("d2", 1);
 
-  std::vector<uint64_t> vec_3_0_d1 = {1000, 3, 1000, 1000};
-  Buffer buff_3_0_d1(&vec_3_0_d1[0], vec_3_0_d1.size() * sizeof(uint64_t));
-  Tile tile_3_0_d1(Datatype::UINT64, sizeof(uint64_t), 0, &buff_3_0_d1, false);
+  uint64_t* data =
+      reinterpret_cast<uint64_t*>(tdb_malloc(4 * sizeof(uint64_t)));
+  data[0] = 1000;
+  data[1] = 3;
+  data[2] = 1000;
+  data[3] = 1000;
+  Tile tile_3_0_d1(
+      Datatype::UINT64, sizeof(uint64_t), 0, data, 4 * sizeof(uint64_t));
   auto tile_tuple = result_tile_3_0.tile_tuple("d1");
   REQUIRE(tile_tuple != nullptr);
   std::get<0>(*tile_tuple) = tile_3_0_d1;
 
-  std::vector<uint64_t> vec_3_0_d2 = {1000, 3, 1000, 1000};
-  Buffer buff_3_0_d2(&vec_3_0_d2[0], vec_3_0_d2.size() * sizeof(uint64_t));
-  Tile tile_3_0_d2(Datatype::UINT64, sizeof(uint64_t), 0, &buff_3_0_d2, false);
+  data = reinterpret_cast<uint64_t*>(tdb_malloc(4 * sizeof(uint64_t)));
+  data[0] = 1000;
+  data[1] = 3;
+  data[2] = 1000;
+  data[3] = 1000;
+  Tile tile_3_0_d2(
+      Datatype::UINT64, sizeof(uint64_t), 0, data, 4 * sizeof(uint64_t));
   tile_tuple = result_tile_3_0.tile_tuple("d2");
   REQUIRE(tile_tuple != nullptr);
   std::get<0>(*tile_tuple) = tile_3_0_d2;
 
-  std::vector<uint64_t> vec_3_1_d1 = {5, 1000, 5, 1000};
-  Buffer buff_3_1_d1(&vec_3_1_d1[0], vec_3_1_d1.size() * sizeof(uint64_t));
-  Tile tile_3_1_d1(Datatype::UINT64, sizeof(uint64_t), 0, &buff_3_1_d1, false);
+  data = reinterpret_cast<uint64_t*>(tdb_malloc(4 * sizeof(uint64_t)));
+  data[0] = 5;
+  data[1] = 1000;
+  data[2] = 5;
+  data[3] = 1000;
+  Tile tile_3_1_d1(
+      Datatype::UINT64, sizeof(uint64_t), 0, data, 4 * sizeof(uint64_t));
   tile_tuple = result_tile_3_1.tile_tuple("d1");
   REQUIRE(tile_tuple != nullptr);
   std::get<0>(*tile_tuple) = tile_3_1_d1;
 
-  std::vector<uint64_t> vec_3_1_d2 = {5, 1000, 6, 1000};
-  Buffer buff_3_1_d2(&vec_3_1_d2[0], vec_3_1_d2.size() * sizeof(uint64_t));
-  Tile tile_3_1_d2(Datatype::UINT64, sizeof(uint64_t), 0, &buff_3_1_d2, false);
+  data = reinterpret_cast<uint64_t*>(tdb_malloc(4 * sizeof(uint64_t)));
+  data[0] = 5;
+  data[1] = 1000;
+  data[2] = 6;
+  data[3] = 1000;
+  Tile tile_3_1_d2(
+      Datatype::UINT64, sizeof(uint64_t), 0, data, 4 * sizeof(uint64_t));
   tile_tuple = result_tile_3_1.tile_tuple("d2");
   REQUIRE(tile_tuple != nullptr);
   std::get<0>(*tile_tuple) = tile_3_1_d2;

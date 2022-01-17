@@ -3035,12 +3035,10 @@ Status FragmentMetadata::load_v1_v2(
   RETURN_NOT_OK(tile_io.read_generic(
       &tile, 0, encryption_key, storage_manager_->config()));
 
-  auto buffer = tile->buffer();
   Buffer buff;
-  RETURN_NOT_OK_ELSE(buff.realloc(buffer->size()), tdb_delete(tile));
-  buff.set_size(buffer->size());
-  buffer->reset_offset();
-  RETURN_NOT_OK_ELSE(buffer->read(buff.data(), buff.size()), tdb_delete(tile));
+  RETURN_NOT_OK_ELSE(buff.realloc(tile->size()), tdb_delete(tile));
+  buff.set_size(tile->size());
+  RETURN_NOT_OK_ELSE(tile->read(buff.data(), 0, buff.size()), tdb_delete(tile));
   tdb_delete(tile);
 
   storage_manager_->stats()->add_counter("read_frag_meta_size", buff.size());
@@ -3375,8 +3373,7 @@ Status FragmentMetadata::store_rtree(
   Buffer buff;
   RETURN_NOT_OK(write_rtree(&buff));
 
-  RETURN_NOT_OK(
-      write_generic_tile_to_file(encryption_key, std::move(buff), nbytes));
+  RETURN_NOT_OK(write_generic_tile_to_file(encryption_key, buff, nbytes));
   storage_manager_->stats()->add_counter("write_rtree_size", *nbytes);
 
   return Status::Ok();
@@ -3442,12 +3439,10 @@ Status FragmentMetadata::read_generic_tile_from_file(
   RETURN_NOT_OK(tile_io.read_generic(
       &tile, offset, encryption_key, storage_manager_->config()));
 
-  const auto buffer = tile->buffer();
-  buff->realloc(buffer->size());
-  buff->set_size(buffer->size());
-  buffer->reset_offset();
+  buff->realloc(tile->size());
+  buff->set_size(tile->size());
   RETURN_NOT_OK_ELSE(
-      buffer->read(buff->data(), buff->size()), tdb_delete(tile));
+      tile->read(buff->data(), 0, buff->size()), tdb_delete(tile));
   tdb_delete(tile);
 
   return Status::Ok();
@@ -3479,21 +3474,17 @@ Status FragmentMetadata::read_file_footer(
 }
 
 Status FragmentMetadata::write_generic_tile_to_file(
-    const EncryptionKey& encryption_key,
-    Buffer&& buff,
-    uint64_t* nbytes) const {
+    const EncryptionKey& encryption_key, Buffer& buff, uint64_t* nbytes) const {
   URI fragment_metadata_uri = fragment_uri_.join_path(
       std::string(constants::fragment_metadata_filename));
-
-  Buffer* const buffer = tdb_new(Buffer);
-  buffer->swap(buff);
 
   Tile tile(
       constants::generic_tile_datatype,
       constants::generic_tile_cell_size,
       0,
-      buffer,
-      true);
+      buff.data(),
+      buff.size());
+  buff.disown_data();
 
   GenericTileIO tile_io(storage_manager_, fragment_metadata_uri);
   RETURN_NOT_OK(tile_io.write_generic(&tile, encryption_key, nbytes));
@@ -3519,8 +3510,7 @@ Status FragmentMetadata::store_tile_offsets(
     unsigned idx, const EncryptionKey& encryption_key, uint64_t* nbytes) {
   Buffer buff;
   RETURN_NOT_OK(write_tile_offsets(idx, &buff));
-  RETURN_NOT_OK(
-      write_generic_tile_to_file(encryption_key, std::move(buff), nbytes));
+  RETURN_NOT_OK(write_generic_tile_to_file(encryption_key, buff, nbytes));
 
   storage_manager_->stats()->add_counter("write_tile_offsets_size", *nbytes);
 
@@ -3556,8 +3546,7 @@ Status FragmentMetadata::store_tile_var_offsets(
     unsigned idx, const EncryptionKey& encryption_key, uint64_t* nbytes) {
   Buffer buff;
   RETURN_NOT_OK(write_tile_var_offsets(idx, &buff));
-  RETURN_NOT_OK(
-      write_generic_tile_to_file(encryption_key, std::move(buff), nbytes));
+  RETURN_NOT_OK(write_generic_tile_to_file(encryption_key, buff, nbytes));
 
   storage_manager_->stats()->add_counter(
       "write_tile_var_offsets_size", *nbytes);
@@ -3596,8 +3585,7 @@ Status FragmentMetadata::store_tile_var_sizes(
     unsigned idx, const EncryptionKey& encryption_key, uint64_t* nbytes) {
   Buffer buff;
   RETURN_NOT_OK(write_tile_var_sizes(idx, &buff));
-  RETURN_NOT_OK(
-      write_generic_tile_to_file(encryption_key, std::move(buff), nbytes));
+  RETURN_NOT_OK(write_generic_tile_to_file(encryption_key, buff, nbytes));
 
   storage_manager_->stats()->add_counter("write_tile_var_sizes_size", *nbytes);
 
@@ -3633,8 +3621,7 @@ Status FragmentMetadata::store_tile_validity_offsets(
     unsigned idx, const EncryptionKey& encryption_key, uint64_t* nbytes) {
   Buffer buff;
   RETURN_NOT_OK(write_tile_validity_offsets(idx, &buff));
-  RETURN_NOT_OK(
-      write_generic_tile_to_file(encryption_key, std::move(buff), nbytes));
+  RETURN_NOT_OK(write_generic_tile_to_file(encryption_key, buff, nbytes));
 
   storage_manager_->stats()->add_counter(
       "write_tile_validity_offsets_size", *nbytes);
@@ -3674,8 +3661,7 @@ Status FragmentMetadata::store_tile_mins(
     unsigned idx, const EncryptionKey& encryption_key, uint64_t* nbytes) {
   Buffer buff;
   RETURN_NOT_OK(write_tile_mins(idx, &buff));
-  RETURN_NOT_OK(
-      write_generic_tile_to_file(encryption_key, std::move(buff), nbytes));
+  RETURN_NOT_OK(write_generic_tile_to_file(encryption_key, buff, nbytes));
 
   storage_manager_->stats()->add_counter("write_mins_size", *nbytes);
 
@@ -3732,8 +3718,7 @@ Status FragmentMetadata::store_tile_maxs(
     unsigned idx, const EncryptionKey& encryption_key, uint64_t* nbytes) {
   Buffer buff;
   RETURN_NOT_OK(write_tile_maxs(idx, &buff));
-  RETURN_NOT_OK(
-      write_generic_tile_to_file(encryption_key, std::move(buff), nbytes));
+  RETURN_NOT_OK(write_generic_tile_to_file(encryption_key, buff, nbytes));
 
   storage_manager_->stats()->add_counter("write_maxs_size", *nbytes);
 
@@ -3790,8 +3775,7 @@ Status FragmentMetadata::store_tile_sums(
     unsigned idx, const EncryptionKey& encryption_key, uint64_t* nbytes) {
   Buffer buff;
   RETURN_NOT_OK(write_tile_sums(idx, &buff));
-  RETURN_NOT_OK(
-      write_generic_tile_to_file(encryption_key, std::move(buff), nbytes));
+  RETURN_NOT_OK(write_generic_tile_to_file(encryption_key, buff, nbytes));
 
   storage_manager_->stats()->add_counter("write_sums_size", *nbytes);
 
@@ -3826,8 +3810,7 @@ Status FragmentMetadata::store_tile_null_counts(
     unsigned idx, const EncryptionKey& encryption_key, uint64_t* nbytes) {
   Buffer buff;
   RETURN_NOT_OK(write_tile_null_counts(idx, &buff));
-  RETURN_NOT_OK(
-      write_generic_tile_to_file(encryption_key, std::move(buff), nbytes));
+  RETURN_NOT_OK(write_generic_tile_to_file(encryption_key, buff, nbytes));
 
   storage_manager_->stats()->add_counter("write_null_counts_size", *nbytes);
 

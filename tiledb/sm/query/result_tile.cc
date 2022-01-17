@@ -169,8 +169,7 @@ ResultTile::TileTuple* ResultTile::tile_tuple(const std::string& name) {
 const void* ResultTile::unzipped_coord(uint64_t pos, unsigned dim_idx) const {
   const auto& coord_tile = std::get<0>(coord_tiles_[dim_idx].second);
   const uint64_t offset = pos * coord_tile.cell_size();
-  Buffer* const buffer = coord_tile.buffer();
-  void* const ret = static_cast<char*>(buffer->data()) + offset;
+  void* const ret = static_cast<char*>(coord_tile.data()) + offset;
   return ret;
 }
 
@@ -178,8 +177,8 @@ const void* ResultTile::zipped_coord(uint64_t pos, unsigned dim_idx) const {
   auto coords_size = std::get<0>(coords_tile_).cell_size();
   auto coord_size = coords_size / std::get<0>(coords_tile_).dim_num();
   const uint64_t offset = pos * coords_size + dim_idx * coord_size;
-  Buffer* const buffer = std::get<0>(coords_tile_).buffer();
-  void* const ret = static_cast<char*>(buffer->data()) + offset;
+  void* const ret =
+      static_cast<char*>(std::get<0>(coords_tile_).data()) + offset;
   return ret;
 }
 
@@ -191,22 +190,22 @@ std::string_view ResultTile::coord_string(
   auto val_size = coord_tile_val.size();
 
   uint64_t offset = 0;
-  Status st = coord_tile_off.buffer()->read(
-      &offset, pos * sizeof(uint64_t), sizeof(uint64_t));
+  Status st =
+      coord_tile_off.read(&offset, pos * sizeof(uint64_t), sizeof(uint64_t));
   assert(st.ok());
 
   uint64_t next_offset = 0;
   if (pos == cell_num - 1) {
     next_offset = val_size;
   } else {
-    st = coord_tile_off.buffer()->read(
+    st = coord_tile_off.read(
         &next_offset, (pos + 1) * sizeof(uint64_t), sizeof(uint64_t));
     assert(st.ok());
   }
 
   auto size = next_offset - offset;
 
-  auto* buffer = static_cast<char*>(coord_tile_val.buffer()->data()) + offset;
+  auto* buffer = static_cast<char*>(coord_tile_val.data()) + offset;
   return std::string_view(buffer, size);
 }
 
@@ -266,7 +265,7 @@ Status ResultTile::read(
     auto cell_size = tile.cell_size();
     auto nbytes = len * cell_size;
     auto offset = pos * cell_size;
-    return tile.read(buffer, nbytes, offset);
+    return tile.read(buffer, offset, nbytes);
   } else if (
       name == constants::coords && !coord_tiles_[0].first.empty() &&
       std::get<0>(coords_tile_).empty()) {
@@ -282,7 +281,7 @@ Status ResultTile::read(
         auto cell_size = coord_tile.cell_size();
         auto tile_offset = (pos + c) * cell_size;
         RETURN_NOT_OK(
-            coord_tile.read(buff + buff_offset, cell_size, tile_offset));
+            coord_tile.read(buff + buff_offset, tile_offset, cell_size));
         buff_offset += cell_size;
       }
     }
@@ -304,7 +303,7 @@ Status ResultTile::read(
     uint64_t offset = pos * cell_size + dim_size * dim_offset;
     for (uint64_t c = 0; c < len; ++c) {
       RETURN_NOT_OK(std::get<0>(coords_tile_)
-                        .read(buff + (c * dim_size), dim_size, offset));
+                        .read(buff + (c * dim_size), offset, dim_size));
       offset += cell_size;
     }
   };
@@ -334,9 +333,9 @@ Status ResultTile::read_nullable(
   auto validity_nbytes = len * validity_cell_size;
   auto validity_offset = pos * validity_cell_size;
 
-  RETURN_NOT_OK(tile.read(buffer, nbytes, offset));
+  RETURN_NOT_OK(tile.read(buffer, offset, nbytes));
   RETURN_NOT_OK(
-      tile_validity.read(buffer_validity, validity_nbytes, validity_offset));
+      tile_validity.read(buffer_validity, validity_offset, validity_nbytes));
 
   return Status::Ok();
 }
@@ -377,8 +376,7 @@ void ResultTile::compute_results_dense(
   if (!stores_zipped_coords) {
     const auto& coord_tile = std::get<0>(result_tile->coord_tile(dim_idx));
 
-    Buffer* const buffer = coord_tile.buffer();
-    auto coords = (const T*)buffer->data();
+    auto coords = (const T*)coord_tile.data();
     T c;
 
     if (dim_idx == dim_num - 1) {
@@ -397,8 +395,8 @@ void ResultTile::compute_results_dense(
               for (unsigned d = 0; d < dim_num; ++d) {
                 const auto& coord_tile =
                     std::get<0>(result_tile->coord_tile(dim_idx));
-                Buffer* const buffer = coord_tile.buffer();
-                const T* const coords = static_cast<const T*>(buffer->data());
+                const T* const coords =
+                    static_cast<const T*>(coord_tile.data());
                 auto c_d = coords[pos];
                 auto dom = (const T*)meta->non_empty_domain()[d].data();
                 if (c_d < dom[0] || c_d > dom[1]) {
@@ -424,8 +422,7 @@ void ResultTile::compute_results_dense(
   // Handle zipped coordinates tile
   assert(stores_zipped_coords);
   const auto& coords_tile = result_tile->zipped_coords_tile();
-  Buffer* const buffer = coords_tile.buffer();
-  auto coords = (const T*)buffer->data();
+  auto coords = (const T*)coords_tile.data();
   T c;
 
   if (dim_idx == dim_num - 1) {
@@ -495,11 +492,11 @@ void ResultTile::compute_results_sparse<char>(
 
   // Get offset buffer
   const auto& coord_tile_off = std::get<0>(coord_tile);
-  auto buff_off = static_cast<const uint64_t*>(coord_tile_off.buffer()->data());
+  auto buff_off = static_cast<const uint64_t*>(coord_tile_off.data());
 
   // Get string buffer
   const auto& coord_tile_str = std::get<1>(coord_tile);
-  auto buff_str = static_cast<const char*>(coord_tile_str.buffer()->data());
+  auto buff_str = static_cast<const char*>(coord_tile_str.data());
   auto buff_str_size = coord_tile_str.size();
 
   // For row-major cell orders, the first dimension is sorted.
@@ -650,8 +647,7 @@ void ResultTile::compute_results_sparse(
   // Handle separate coordinate tiles
   if (!stores_zipped_coords) {
     const auto& coord_tile = std::get<0>(result_tile->coord_tile(dim_idx));
-    Buffer* const buffer = coord_tile.buffer();
-    const T* const coords = static_cast<const T*>(buffer->data());
+    const T* const coords = static_cast<const T*>(coord_tile.data());
     for (uint64_t pos = 0; pos < coords_num; ++pos) {
       c = coords[pos];
       r_bitmap[pos] &= (uint8_t)(c >= r0 && c <= r1);
@@ -663,8 +659,7 @@ void ResultTile::compute_results_sparse(
   // Handle zipped coordinates tile
   assert(stores_zipped_coords);
   const auto& coords_tile = result_tile->zipped_coords_tile();
-  Buffer* const buffer = coords_tile.buffer();
-  const T* const coords = static_cast<const T*>(buffer->data());
+  const T* const coords = static_cast<const T*>(coords_tile.data());
   for (uint64_t pos = 0; pos < coords_num; ++pos) {
     c = coords[pos * dim_num + dim_idx];
     r_bitmap[pos] &= (uint8_t)(c >= r0 && c <= r1);
@@ -695,11 +690,11 @@ void ResultTile::compute_results_count_sparse_string(
 
   // Get offset buffer
   const auto& coord_tile_off = std::get<0>(coord_tile);
-  auto buff_off = static_cast<const uint64_t*>(coord_tile_off.buffer()->data());
+  auto buff_off = static_cast<const uint64_t*>(coord_tile_off.data());
 
   // Get string buffer
   const auto& coord_tile_str = std::get<1>(coord_tile);
-  auto buff_str = static_cast<const char*>(coord_tile_str.buffer()->data());
+  auto buff_str = static_cast<const char*>(coord_tile_str.data());
   auto buff_str_size = coord_tile_str.size();
 
   // For row-major cell orders, the first dimension is sorted.
@@ -873,8 +868,7 @@ void ResultTile::compute_results_count_sparse(
   // Handle separate coordinate tiles.
   if (!stores_zipped_coords) {
     const auto& coord_tile = std::get<0>(result_tile->coord_tile(dim_idx));
-    Buffer* const buffer = coord_tile.buffer();
-    const T* const coords = static_cast<const T*>(buffer->data());
+    const T* const coords = static_cast<const T*>(coord_tile.data());
     {
       // Iterate over all cells.
       for (uint64_t pos = min_cell; pos < max_cell; ++pos) {
@@ -934,8 +928,7 @@ void ResultTile::compute_results_count_sparse(
   // Handle zipped coordinates tile.
   assert(stores_zipped_coords);
   const auto& coords_tile = result_tile->zipped_coords_tile();
-  Buffer* const buffer = coords_tile.buffer();
-  const T* const coords = static_cast<const T*>(buffer->data());
+  const T* const coords = static_cast<const T*>(coords_tile.data());
   {
     for (uint64_t pos = min_cell; pos < max_cell; ++pos) {
       if (result_count[pos]) {

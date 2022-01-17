@@ -1450,7 +1450,7 @@ Status VFS::read_all(
           for (uint64_t i = 0; i < batch_copy.regions.size(); i++) {
             const auto& region = batch_copy.regions[i];
             uint64_t offset = std::get<0>(region);
-            void* dest = std::get<1>(region)->filtered_buffer()->data();
+            void* dest = std::get<1>(region)->filtered_buffer().data();
             uint64_t nbytes = std::get<2>(region);
             std::memcpy(dest, buffer.data(offset - batch_copy.offset), nbytes);
           }

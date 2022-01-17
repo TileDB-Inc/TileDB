@@ -110,16 +110,31 @@ class WriterTile : public Tile {
                     uint64_t,
                     const ByteVec*,
                     uint64_t>& md);
+  /**
+   * Write method used for var data. Resizes the internal buffer if needed.
+   *
+   * @param data Pointer to the data to write.
+   * @param offset Offset to write into the tile buffer.
+   * @param nbytes Number of bytes to write.
+   * @return Status.
+   */
+  Status write_var(const void* data, uint64_t offset, uint64_t nbytes);
 
   /**
    * Returns a shallow or deep copy of this WriterTile.
    *
-   * @param deep_copy If true, a deep copy is performed, including potentially
-   *    memcpying the underlying Buffer. If false, a shallow copy is performed,
-   *    which sets the clone's Buffer equal to WriterTile's buffer pointer.
    * @return New WriterTile
    */
-  WriterTile clone(bool deep_copy) const;
+  WriterTile clone() const;
+
+  /**
+   * Sets the final size of a written tile.
+   *
+   * @param size Final size.
+   */
+  inline void final_size(uint64_t size) {
+    size_ = size;
+  }
 
  private:
   /* ********************************* */

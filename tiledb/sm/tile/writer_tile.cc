@@ -106,7 +106,26 @@ void WriterTile::set_metadata(const std::tuple<
   null_count_ = null_count;
 }
 
-WriterTile WriterTile::clone(bool deep_copy) const {
+Status WriterTile::write_var(
+    const void* data, uint64_t offset, uint64_t nbytes) {
+  if (size_ - offset < nbytes) {
+    auto new_alloc_size = size_ == 0 ? offset + nbytes : size_;
+    while (new_alloc_size < offset + nbytes)
+      new_alloc_size *= 2;
+
+    auto new_data = static_cast<char*>(tdb_realloc(data_, new_alloc_size));
+    if (new_data == nullptr) {
+      return LOG_STATUS(Status_TileError(
+          "Cannot reallocate buffer; Memory allocation failed"));
+    }
+    data_ = new_data;
+    size_ = new_alloc_size;
+  }
+
+  return write(data, offset, nbytes);
+}
+
+WriterTile WriterTile::clone() const {
   WriterTile clone;
   clone.pre_filtered_size_ = pre_filtered_size_;
   clone.min_ = min_;
@@ -119,19 +138,13 @@ WriterTile WriterTile::clone(bool deep_copy) const {
   clone.type_ = type_;
   clone.filtered_buffer_ = filtered_buffer_;
 
-  if (deep_copy) {
-    clone.owns_buffer_ = owns_buffer_;
-    if (owns_buffer_ && buffer_ != nullptr) {
-      clone.buffer_ = tdb_new(Buffer);
-      // Calls Buffer copy-assign, which performs a deep copy.
-      *clone.buffer_ = *buffer_;
-    } else {
-      clone.buffer_ = buffer_;
-    }
+  if (data_ != nullptr) {
+    clone.data_ = static_cast<char*>(tdb_malloc(size_));
+    memcpy(clone.data_, data_, size_);
   } else {
-    clone.owns_buffer_ = false;
-    clone.buffer_ = buffer_;
+    clone.data_ = data_;
   }
+  clone.size_ = size_;
 
   return clone;
 }
