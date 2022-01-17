@@ -69,7 +69,7 @@ Domain::Domain(
     : cell_num_per_tile_(cell_num_per_tile)
     , cell_order_(cell_order)
     , dimensions_(dimensions)
-    , dim_num_(dimensions.size())
+    , dim_num_((unsigned int)dimensions.size())
     , tile_order_(tile_order) {
   if (cell_num_per_tile_ == 0) {
     // Compute number of cells per tile
