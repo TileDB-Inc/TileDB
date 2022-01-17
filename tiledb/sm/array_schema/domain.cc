@@ -71,7 +71,21 @@ Domain::Domain(
     , dimensions_(dimensions)
     , dim_num_(dimensions.size())
     , tile_order_(tile_order) {
+  if (cell_num_per_tile_ == 0) {
+    // Compute number of cells per tile
+    compute_cell_num_per_tile();
+  }
+
+  // Compute number of cells per tile
   set_tile_cell_order_cmp_funcs();
+
+  // Set tile_extent to empty if cell order is HILBERT
+  if (cell_order_ == Layout::HILBERT) {
+    ByteVecValue be;
+    for (auto& d : dimensions_) {
+      d->set_tile_extent(be);
+    }
+  }
 }
 
 Domain::Domain(const Domain* domain) {
