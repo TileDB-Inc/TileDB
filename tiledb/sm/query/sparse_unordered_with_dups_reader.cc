@@ -290,7 +290,7 @@ SparseUnorderedWithDupsReader<BitmapType>::add_result_tile(
   // Calculate memory consumption for this tile.
   auto&& [st, tiles_sizes] =
       get_coord_tiles_size<BitmapType>(subarray_.is_set(), dim_num, f, t);
-  RETURN_NOT_OK_TUPLE(st);
+  RETURN_NOT_OK_TUPLE(st, std::nullopt);
   auto tiles_size = tiles_sizes->first;
   auto tiles_size_qc = tiles_sizes->second;
 
@@ -1180,7 +1180,7 @@ SparseUnorderedWithDupsReader<BitmapType>::respect_copy_memory_budget(
 
         return Status::Ok();
       });
-  RETURN_NOT_OK_ELSE_TUPLE(status, logger_->status(status));
+  RETURN_NOT_OK_ELSE_TUPLE(status, logger_->status(status), std::nullopt);
 
   if (max_rt_idx == 0)
     return {Status_SparseUnorderedWithDupsReaderError(
