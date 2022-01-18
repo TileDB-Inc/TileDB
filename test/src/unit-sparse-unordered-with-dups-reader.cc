@@ -1258,3 +1258,61 @@ TEST_CASE(
   CHECK(new_result_tiles_size == 1);
   CHECK(var_buffer_size == 6);
 }
+
+TEST_CASE(
+    "Sparse unordered with dups reader: test compute_var_size_offsets "
+    "continuation",
+    "[sparse-unordered-with-dups][compute_var_size_offsets][continuation]") {
+  // Make a vector of tiles.
+  std::vector<ResultTileWithBitmap<uint64_t>> rt = {make_tile(5)};
+
+  SECTION("- No bitmap") {
+  }
+
+  SECTION("- With bitmap") {
+    rt[0].bitmap_.resize(5, 1);
+  }
+
+  // Create the result_tiles pointer vector.
+  std::vector<ResultTile*> result_tiles(rt.size());
+  for (uint64_t i = 0; i < rt.size(); i++) {
+    result_tiles[i] = &rt[i];
+  }
+
+  // Create the cell_offsets vector.
+  std::vector<uint64_t> cell_offsets(rt.size() + 1);
+  uint64_t offset = 0;
+  for (uint64_t i = 0; i < rt.size(); i++) {
+    cell_offsets[i] = offset;
+    offset += rt[i].cell_num() - 2;
+  }
+  cell_offsets[rt.size()] = offset;
+
+  // Create a Query buffer.
+  tiledb::sm::QueryBuffer query_buffer;
+  uint64_t offsets[] = {2, 2, 2, 0, 0};
+  uint64_t offsets_size = sizeof(offsets);
+  query_buffer.buffer_ = offsets;
+  query_buffer.buffer_size_ = &offsets_size;
+  uint64_t var_size = 5;
+  query_buffer.buffer_var_size_ = &var_size;
+
+  // Call the function.
+  uint64_t new_result_tiles_size = result_tiles.size();
+  uint64_t var_buffer_size = 0;
+  REQUIRE(SparseUnorderedWithDupsReader<uint64_t>::compute_var_size_offsets<
+              uint64_t>(
+              &tiledb::test::g_helper_stats,
+              &result_tiles,
+              2,
+              &cell_offsets,
+              &query_buffer,
+              &new_result_tiles_size,
+              &var_buffer_size)
+              .ok());
+
+  // Validate results.
+  CHECK(cell_offsets[1] == 2);
+  CHECK(new_result_tiles_size == 1);
+  CHECK(var_buffer_size == 4);
+}
