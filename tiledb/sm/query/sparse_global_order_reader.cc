@@ -942,6 +942,7 @@ Status SparseGlobalOrderReader::copy_var_data_tiles(
                 0,
                 rcs.length_,
                 cell_offsets[i]);
+        (void)dest_cell_offset;
         if (skip_copy) {
           return Status::Ok();
         }

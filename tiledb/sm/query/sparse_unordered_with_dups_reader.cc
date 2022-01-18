@@ -402,7 +402,7 @@ Status SparseUnorderedWithDupsReader<BitmapType>::create_result_tiles() {
               t,
               tile_num - 1,
               fragment_metadata_[f]->array_schema());
-
+          (void)st;
           // Make sure we can add at least one tile.
           if (*exceeded) {
             logger_->debug(
@@ -1456,6 +1456,7 @@ Status SparseUnorderedWithDupsReader<BitmapType>::remove_result_tile(
   const auto tile_idx = rt->tile_idx();
   auto&& [st, tiles_sizes] = get_coord_tiles_size<BitmapType>(
       subarray_.is_set(), array_schema_->dim_num(), frag_idx, tile_idx);
+  (void)st;
   auto tiles_size = tiles_sizes->first;
   auto tiles_size_qc = tiles_sizes->second;
 
