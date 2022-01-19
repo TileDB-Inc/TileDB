@@ -1421,12 +1421,18 @@ Status SparseUnorderedWithDupsReader<BitmapType>::process_tiles(
   auto last_tile_cells_copied =
       cell_offsets[result_tiles.size()] - cell_offsets[result_tiles.size() - 1];
   if (frag_tile_idx.first == last_tile->tile_idx()) {
-    last_tile_cells_copied += frag_tile_idx.second;
+    if (last_tile->bitmap_result_num_ != std::numeric_limits<uint64_t>::max()) {
+      last_tile_cells_copied +=
+          last_tile->result_num_between_pos(0, frag_tile_idx.second);
+    } else {
+      last_tile_cells_copied += frag_tile_idx.second;
+    }
   }
 
   // Adjust tile index.
   for (auto rt : result_tiles) {
-    read_state_.frag_tile_idx_[rt->frag_idx()].first = rt->tile_idx() + 1;
+    read_state_.frag_tile_idx_[rt->frag_idx()] =
+        std::make_pair(rt->tile_idx() + 1, 0);
   }
 
   // If the last tile is not fully copied, save the cell index.
