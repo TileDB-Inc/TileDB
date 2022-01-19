@@ -205,8 +205,13 @@ Status SparseUnorderedWithDupsReader::dowork() {
   RETURN_NOT_OK(fix_memory_usage_after_serialization());
 
   // If the result cell slab is empty, populate it.
-  if (read_state_.result_cell_slabs_.empty())
+  while (incomplete() && read_state_.result_cell_slabs_.empty()) {
     RETURN_NOT_OK(compute_result_cell_slab());
+
+    if (read_state_.result_cell_slabs_.empty()) {
+      clear_result_tiles();
+    }
+  }
 
   // No more tiles to process, done.
   if (read_state_.result_cell_slabs_.empty()) {
@@ -463,6 +468,7 @@ Status SparseUnorderedWithDupsReader::create_result_tiles() {
     unsigned int f = 0;
     while (f < fragment_num && !budget_exceeded) {
       if (!all_tiles_loaded_[f]) {
+        all_tiles_loaded_[f] |= (uint8_t)result_tile_ranges_[f].empty();
         auto range_it = result_tile_ranges_[f].rbegin();
         while (range_it != result_tile_ranges_[f].rend()) {
           auto last_t = result_tile_ranges_[f].front().second;
