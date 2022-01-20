@@ -1,3 +1,9 @@
+# TileDB v2.5.4 Release Notes
+
+## Improvements
+
+* Sparse unordered w/ duplicates: query returns completed when incomplete. [#2825](https://github.com/TileDB-Inc/TileDB/pull/2825)
+
 # TileDB v2.5.3 Release Notes
 
 ## Improvements
