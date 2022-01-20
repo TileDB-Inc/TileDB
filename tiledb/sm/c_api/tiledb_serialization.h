@@ -74,6 +74,45 @@ TILEDB_EXPORT int32_t tiledb_serialization_type_from_str(
 /* ****************************** */
 
 /**
+ * Serializes the given array.
+ *
+ * @note The caller must free the returned `tiledb_buffer_t`.
+ *
+ * @param ctx The TileDB context.
+ * @param array The array to serialize.
+ * @param serialization_type Type of serialization to use
+ * @param client_side If set to 1, serialize from "client-side" perspective.
+ *    Else, "server-side."
+ * @param buffer Will be set to a newly allocated buffer containing the
+ *      serialized max buffer sizes.
+ * @return `TILEDB_OK` for success and `TILEDB_ERR` for error.
+ */
+TILEDB_EXPORT int32_t tiledb_serialize_array(
+    tiledb_ctx_t* ctx,
+    const tiledb_array_t* array,
+    tiledb_serialization_type_t serialize_type,
+    int32_t client_side,
+    tiledb_buffer_t** buffer);
+
+/**
+ * Deserializes a new array from the given buffer.
+ *
+ * @param ctx The TileDB context.
+ * @param buffer Buffer to deserialize from
+ * @param serialization_type Type of serialization to use
+ * @param client_side If set to 1, deserialize from "client-side" perspective.
+ *    Else, "server-side."
+ * @param array Will be set to a newly allocated array.
+ * @return `TILEDB_OK` for success and `TILEDB_ERR` for error.
+ */
+TILEDB_EXPORT int32_t tiledb_deserialize_array(
+    tiledb_ctx_t* ctx,
+    const tiledb_buffer_t* buffer,
+    tiledb_serialization_type_t serialize_type,
+    int32_t client_side,
+    tiledb_array_t** array);
+
+/**
  * Serializes the given array schema.
  *
  * @note The caller must free the returned `tiledb_buffer_t`.
