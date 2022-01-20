@@ -104,7 +104,6 @@ Array::Array(const Array& rhs)
 /*                API                */
 /* ********************************* */
 
-<<<<<<< HEAD
 Status Array::set_array_schema_latest(ArraySchema* array_schema) {
   array_schema_latest_ = array_schema;
 
@@ -123,22 +122,6 @@ Status Array::set_array_schemas_all(
   return Status::Ok();
 }
 
-||||||| parent of 55252711 (Support top-level cap'n proto array object)
-=======
-Status Array::set_array_schema_latest(ArraySchema* array_schema) {
-  array_schema_latest_ = array_schema;
-
-  return Status::Ok();
-}
-
-Status Array::set_array_schemas_all(
-    std::unordered_map<std::string, tdb_shared_ptr<ArraySchema>>& all_schemas) {
-  array_schemas_all_ = all_schemas;
-
-  return Status::Ok();
-}
-
->>>>>>> 55252711 (Support top-level cap'n proto array object)
 ArraySchema* Array::array_schema_latest() const {
   return array_schema_latest_;
 }
@@ -312,7 +295,8 @@ Status Array::open(
     if (rest_client == nullptr)
       return LOG_STATUS(Status_ArrayError(
           "Cannot open array; remote array with no REST client."));
-    RETURN_NOT_OK(rest_client->get_array_from_rest(array_uri_, this));
+    RETURN_NOT_OK(rest_client->get_array_schema_from_rest(
+        array_uri_, &array_schema_latest_));
   } else if (query_type == QueryType::READ) {
     auto&& [st, array_schema, array_schemas, fragment_metadata] =
         storage_manager_->array_open_for_reads(this);
