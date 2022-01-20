@@ -265,6 +265,23 @@ class FilterPipeline {
   uint32_t max_chunk_size_;
 
   /**
+   * Get the chunk offsets for a var sized tile so that integral cells are
+   * within a chunk.
+   *
+   * Heuristic is the following when determining to add a cell:
+   *   - If the cell fits in the buffer, add it.
+   *   - If it doesn't fit and new size < 150% capacity, add it.
+   *   - If it doesn't fit and current size < 50% capacity, add it.
+   *
+   * @param chunk_size Target chunk size.
+   * @param tile Var tile.
+   * @param offsets_tile Offsets tile.
+   * @return Status, chunk offsets vector.
+   */
+  std::tuple<Status, std::optional<std::vector<uint64_t>>> get_var_chunk_sizes(
+      uint32_t chunk_size, Tile* const tile, Tile* const offsets_tile) const;
+
+  /**
    * Run the given buffer forward through the pipeline.
    *
    * @param tile Current tile on which the filter pipeline is being run

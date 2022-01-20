@@ -1036,34 +1036,39 @@ Status Writer::filter_tiles(
 Status Writer::filter_tiles(const std::string& name, std::vector<Tile>* tiles) {
   const bool var_size = array_schema_->var_size(name);
   const bool nullable = array_schema_->is_nullable(name);
+  const size_t tile_step = 1 + nullable + var_size;
 
   // Filter all tiles
   auto tile_num = tiles->size();
 
+  // Make sure we have the correct number of tiles.
+  if (tile_num % tile_step != 0) {
+    return logger_->status(
+        Status_WriterError("Incorrect number of tiles in filter_tiles"));
+  }
+
   std::vector<std::tuple<Tile*, Tile*, bool, bool>> args;
   args.reserve(tile_num);
 
-  size_t i = 0;
-  while (i < tile_num) {
-    args.emplace_back(&(*tiles)[i++], nullptr, var_size, false);
+  for (size_t tile_idx = 0; tile_idx < tile_num; tile_idx += tile_step) {
+    args.emplace_back(&(*tiles)[tile_idx], nullptr, var_size, false);
     if (var_size) {
-      args.emplace_back(&(*tiles)[i], &(*tiles)[i - 1], false, false);
-      ++i;
+      args.emplace_back(
+          &(*tiles)[tile_idx + 1], &(*tiles)[tile_idx], false, false);
     }
 
     if (nullable) {
-      args.emplace_back(&(*tiles)[i++], nullptr, false, true);
+      args.emplace_back(
+          &(*tiles)[tile_idx + var_size + 1], nullptr, false, true);
     }
   }
 
   auto status = parallel_for(
       storage_manager_->compute_tp(), 0, tile_num, [&](uint64_t i) {
+        const auto& [tile, offset_tile, contains_offsets, is_nullable] =
+            args[i];
         RETURN_NOT_OK(filter_tile(
-            name,
-            std::get<0>(args[i]),
-            std::get<1>(args[i]),
-            std::get<2>(args[i]),
-            std::get<3>(args[i])));
+            name, tile, offset_tile, contains_offsets, is_nullable));
         return Status::Ok();
       });
 

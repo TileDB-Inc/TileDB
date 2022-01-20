@@ -89,6 +89,62 @@ void FilterPipeline::clear() {
   filters_.clear();
 }
 
+std::tuple<Status, std::optional<std::vector<uint64_t>>>
+FilterPipeline::get_var_chunk_sizes(
+    uint32_t chunk_size, Tile* const tile, Tile* const offsets_tile) const {
+  std::vector<uint64_t> chunk_offsets;
+  if (offsets_tile != nullptr) {
+    uint64_t num_offsets =
+        offsets_tile->buffer()->size() / constants::cell_var_offset_size;
+    auto offsets = (uint64_t*)offsets_tile->buffer()->data();
+
+    uint64_t current_size = 0;
+    uint64_t min_size = chunk_size / 2;
+    uint64_t max_size = chunk_size + chunk_size / 2;
+    chunk_offsets.emplace_back(0);
+    for (uint64_t c = 0; c < num_offsets; c++) {
+      auto cell_size = c == num_offsets - 1 ?
+                           tile->buffer()->size() - offsets[c] :
+                           offsets[c + 1] - offsets[c];
+
+      // Time for a new chunk?
+      auto new_size = current_size + cell_size;
+      if (new_size > chunk_size) {
+        // Do we add this cell to this chunk?
+        if (current_size <= min_size || new_size <= max_size) {
+          if (new_size > std::numeric_limits<uint32_t>::max()) {
+            return {LOG_STATUS(Status_TileError("Chunk size exceeds uint32_t")),
+                    std::nullopt};
+          }
+          chunk_offsets.emplace_back(offsets[c] + cell_size);
+          current_size = 0;
+        } else {  // Start a new chunk.
+          chunk_offsets.emplace_back(offsets[c]);
+
+          // This cell belong in its own chunk.
+          if (cell_size > chunk_size) {
+            if (cell_size > std::numeric_limits<uint32_t>::max()) {
+              return {
+                  LOG_STATUS(Status_TileError("Chunk size exceeds uint32_t")),
+                  std::nullopt};
+            }
+
+            if (c != num_offsets - 1)
+              chunk_offsets.emplace_back(offsets[c] + cell_size);
+            current_size = 0;
+          } else {  // Start a new chunk.
+            current_size = cell_size;
+          }
+        }
+      } else {
+        current_size += cell_size;
+      }
+    }
+  }
+
+  return {Status::Ok(), std::move(chunk_offsets)};
+}
+
 Status FilterPipeline::filter_chunks_forward(
     const Tile& tile,
     const Buffer& input,
@@ -380,59 +436,10 @@ Status FilterPipeline::run_forward(
   RETURN_NOT_OK(Tile::compute_chunk_size(
       tile->size(), tile->dim_num(), tile->cell_size(), &chunk_size));
 
-  // Figure out chunk sizes so that integral cells are within a chunk.
-  // Heuristic is the following when determining to add a cell:
-  //   - If the cell fits in the buffer, add it.
-  //   - If it doesn't fit and new size < 150% capacity, add it.
-  //   - If it doesn't fit and current size < 50% capacity, add it.
-  std::vector<uint64_t> chunk_offsets;
-  if (offsets_tile != nullptr) {
-    uint64_t num_offsets =
-        offsets_tile->buffer()->size() / constants::cell_var_offset_size;
-    auto offsets = (uint64_t*)offsets_tile->buffer()->data();
-
-    uint64_t current_size = 0;
-    uint64_t min_size = chunk_size / 2;
-    uint64_t max_size = chunk_size + chunk_size / 2;
-    chunk_offsets.emplace_back(0);
-    for (uint64_t c = 0; c < num_offsets; c++) {
-      auto cell_size = c == num_offsets - 1 ?
-                           tile->buffer()->size() - offsets[c] :
-                           offsets[c + 1] - offsets[c];
-
-      // Time for a new chunk?
-      auto new_size = current_size + cell_size;
-      if (new_size > chunk_size) {
-        // Do we add this cell to this fragment?
-        if (current_size <= min_size || new_size <= max_size) {
-          if (new_size > std::numeric_limits<uint32_t>::max()) {
-            return LOG_STATUS(Status_TileError("Chunk size exceeds uint32_t"));
-          }
-          chunk_offsets.emplace_back(offsets[c] + cell_size);
-          current_size = 0;
-        } else {  // Start a new chunk.
-          chunk_offsets.emplace_back(offsets[c]);
-          current_size = 0;
-
-          // This cell belong in its own chunk.
-          if (cell_size > chunk_size) {
-            if (cell_size > std::numeric_limits<uint32_t>::max()) {
-              return LOG_STATUS(
-                  Status_TileError("Chunk size exceeds uint32_t"));
-            }
-
-            if (c != num_offsets - 1)
-              chunk_offsets.emplace_back(offsets[c] + cell_size);
-            current_size = 0;
-          } else {  // Start a new chunk.
-            current_size = cell_size;
-          }
-        }
-      } else {
-        current_size += cell_size;
-      }
-    }
-  }
+  // Get the chunk sizes for var size attributes.
+  auto&& [st, chunk_offsets] =
+      get_var_chunk_sizes(chunk_size, tile, offsets_tile);
+  RETURN_NOT_OK_ELSE(st, tile->filtered_buffer()->clear());
 
   // Run the filters over all the chunks and store the result in
   // 'filtered_buffer'.
@@ -441,7 +448,7 @@ Status FilterPipeline::run_forward(
           *tile,
           *tile->buffer(),
           chunk_size,
-          chunk_offsets,
+          *chunk_offsets,
           tile->filtered_buffer(),
           compute_tp),
       tile->filtered_buffer()->clear());
