@@ -1,3 +1,16 @@
+# TileDB v2.6.1 Release Notes
+
+## Bug fixes
+
+* Sparse unordered w/ dups reader: off by one error in query continuation. [#2815](https://github.com/TileDB-Inc/TileDB/pull/2815)
+* Sparse unordered w dups reader: fixing query continuation with subarray. [#2824](https://github.com/TileDB-Inc/TileDB/pull/2824)
+
+## API additions
+
+### C++ API
+
+* tiledb::Array destructor no longer calls ::close for non-owned C ptr [#2823](https://github.com/TileDB-Inc/TileDB/pull/2823)
+
 # TileDB v2.6.0 Release Notes
 
 ## Improvements
