@@ -859,7 +859,7 @@ Status RestClient::set_header(const std::string&, const std::string&) {
       Status_RestError("Cannot use rest client; serialization not enabled."));
 }
 
-Status RestClient::get_array_from_rest(const URI&, Array**) {
+Status RestClient::get_array_from_rest(const URI&, Array*) {
   return LOG_STATUS(
       Status_RestError("Cannot use rest client; serialization not enabled."));
 }

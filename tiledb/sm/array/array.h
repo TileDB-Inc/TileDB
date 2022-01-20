@@ -77,6 +77,18 @@ class Array {
   /*                API                */
   /* ********************************* */
 
+  /** Sets the latest array schema.
+   * @param array_schema The array schema to set.
+   */
+  Status set_array_schema_latest(ArraySchema* array_schema);
+
+  /** Sets all array schemas.
+   * @param all_schemas The array schemas to set.
+   */
+  Status set_array_schemas_all(
+      std::unordered_map<std::string, tdb_shared_ptr<ArraySchema>>&
+          all_schemas);
+
   /** Returns the latest array schema. */
   ArraySchema* array_schema_latest() const;
 
