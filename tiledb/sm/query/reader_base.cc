@@ -34,6 +34,8 @@
 #include "tiledb/common/logger.h"
 #include "tiledb/sm/array/array.h"
 #include "tiledb/sm/array_schema/array_schema.h"
+#include "tiledb/sm/enums/encryption_type.h"
+#include "tiledb/sm/enums/filter_type.h"
 #include "tiledb/sm/filesystem/vfs.h"
 #include "tiledb/sm/fragment/fragment_metadata.h"
 #include "tiledb/sm/misc/parallel_functions.h"
@@ -409,6 +411,7 @@ Status ReaderBase::read_tiles(
     const std::vector<ResultTile*>& result_tiles,
     const bool disable_cache) const {
   auto timer_se = stats_->start_timer("read_tiles");
+  auto enc_type = array_->get_encryption_key().encryption_type();
 
   // Shortcut for empty tile vec
   if (result_tiles.empty())
@@ -511,7 +514,17 @@ Status ReaderBase::read_tiles(
         t->filtered_buffer()->set_size(tile_persisted_size);
         t->filtered_buffer()->reset_offset();
 
-        RETURN_NOT_OK(t->buffer()->realloc(tile_size));
+        // Pre-allocate the unfiltered buffer unless we are using the no-op
+        // filter with no encryption as the no-op filter will reuse the
+        // filtered buffer.
+        const auto& filters =
+            var_size ? fragment->array_schema()->cell_var_offsets_filters() :
+                       fragment->array_schema()->filters(name);
+        if (filters.size() != 1 ||
+            filters.get_filter(0)->type() != FilterType::FILTER_NONE ||
+            enc_type != EncryptionType::NO_ENCRYPTION) {
+          RETURN_NOT_OK(t->buffer()->realloc(tile_size));
+        }
       }
 
       if (var_size) {
@@ -544,7 +557,15 @@ Status ReaderBase::read_tiles(
           t_var->filtered_buffer()->set_size(tile_var_persisted_size);
           t_var->filtered_buffer()->reset_offset();
 
-          RETURN_NOT_OK(t_var->buffer()->realloc(tile_var_size));
+          // Pre-allocate the unfiltered buffer unless we are using the no-op
+          // filter with no encryption as the no-op filter will reuse the
+          // filtered buffer.
+          const auto& filters = fragment->array_schema()->filters(name);
+          if (filters.size() != 1 ||
+              filters.get_filter(0)->type() != FilterType::FILTER_NONE ||
+              enc_type != EncryptionType::NO_ENCRYPTION) {
+            RETURN_NOT_OK(t_var->buffer()->realloc(tile_var_size));
+          }
         }
       }
 
@@ -580,7 +601,16 @@ Status ReaderBase::read_tiles(
           t_validity->filtered_buffer()->set_size(tile_validity_persisted_size);
           t_validity->filtered_buffer()->reset_offset();
 
-          RETURN_NOT_OK(t_validity->buffer()->realloc(tile_validity_size));
+          // Pre-allocate the unfiltered buffer unless we are using the no-op
+          // filter with no encryption as the no-op filter will reuse the
+          // filtered buffer.
+          const auto& filters =
+              fragment->array_schema()->cell_validity_filters();
+          if (filters.size() != 1 ||
+              filters.get_filter(0)->type() != FilterType::FILTER_NONE ||
+              enc_type != EncryptionType::NO_ENCRYPTION) {
+            RETURN_NOT_OK(t_validity->buffer()->realloc(tile_validity_size));
+          }
         }
       }
     }
@@ -827,7 +857,8 @@ std::tuple<Status, std::optional<uint64_t>> ReaderBase::get_attribute_tile_size(
 
   if (array_schema_->var_size(name)) {
     uint64_t temp = 0;
-    RETURN_NOT_OK_TUPLE(fragment_metadata_[f]->tile_var_size(name, t, &temp));
+    RETURN_NOT_OK_TUPLE(
+        fragment_metadata_[f]->tile_var_size(name, t, &temp), std::nullopt);
     tile_size += temp;
   }
 
@@ -944,13 +975,13 @@ std::tuple<Status, std::optional<bool>> ReaderBase::fill_dense_coords(
   if (layout_ == Layout::GLOBAL_ORDER) {
     auto&& [st, of] =
         fill_dense_coords_global<T>(subarray, dim_idx, buffers, offsets);
-    RETURN_NOT_OK_TUPLE(st);
+    RETURN_NOT_OK_TUPLE(st, std::nullopt);
     overflowed = *of;
   } else {
     assert(layout_ == Layout::ROW_MAJOR || layout_ == Layout::COL_MAJOR);
     auto&& [st, of] =
         fill_dense_coords_row_col<T>(subarray, dim_idx, buffers, offsets);
-    RETURN_NOT_OK_TUPLE(st);
+    RETURN_NOT_OK_TUPLE(st, std::nullopt);
     overflowed = *of;
   }
 
@@ -975,7 +1006,7 @@ std::tuple<Status, std::optional<bool>> ReaderBase::fill_dense_coords_global(
     auto tile_subarray = subarray.crop_to_tile((const T*)&tc[0], cell_order);
     auto&& [st, of] =
         fill_dense_coords_row_col<T>(tile_subarray, dim_idx, buffers, offsets);
-    RETURN_NOT_OK_TUPLE(st);
+    RETURN_NOT_OK_TUPLE(st, std::nullopt);
     overflowed |= *of;
   }
 

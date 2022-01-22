@@ -290,7 +290,7 @@ SparseUnorderedWithDupsReader<BitmapType>::add_result_tile(
   // Calculate memory consumption for this tile.
   auto&& [st, tiles_sizes] =
       get_coord_tiles_size<BitmapType>(subarray_.is_set(), dim_num, f, t);
-  RETURN_NOT_OK_TUPLE(st);
+  RETURN_NOT_OK_TUPLE(st, std::nullopt);
   auto tiles_size = tiles_sizes->first;
   auto tiles_size_qc = tiles_sizes->second;
 
@@ -402,7 +402,7 @@ Status SparseUnorderedWithDupsReader<BitmapType>::create_result_tiles() {
               t,
               tile_num - 1,
               fragment_metadata_[f]->array_schema());
-
+          (void)st;
           // Make sure we can add at least one tile.
           if (*exceeded) {
             logger_->debug(
@@ -1180,7 +1180,7 @@ SparseUnorderedWithDupsReader<BitmapType>::respect_copy_memory_budget(
 
         return Status::Ok();
       });
-  RETURN_NOT_OK_ELSE_TUPLE(status, logger_->status(status));
+  RETURN_NOT_OK_ELSE_TUPLE(status, logger_->status(status), std::nullopt);
 
   if (max_rt_idx == 0)
     return {Status_SparseUnorderedWithDupsReaderError(
@@ -1421,12 +1421,18 @@ Status SparseUnorderedWithDupsReader<BitmapType>::process_tiles(
   auto last_tile_cells_copied =
       cell_offsets[result_tiles.size()] - cell_offsets[result_tiles.size() - 1];
   if (frag_tile_idx.first == last_tile->tile_idx()) {
-    last_tile_cells_copied += frag_tile_idx.second;
+    if (last_tile->bitmap_result_num_ != std::numeric_limits<uint64_t>::max()) {
+      last_tile_cells_copied +=
+          last_tile->result_num_between_pos(0, frag_tile_idx.second);
+    } else {
+      last_tile_cells_copied += frag_tile_idx.second;
+    }
   }
 
   // Adjust tile index.
   for (auto rt : result_tiles) {
-    read_state_.frag_tile_idx_[rt->frag_idx()].first = rt->tile_idx() + 1;
+    read_state_.frag_tile_idx_[rt->frag_idx()] =
+        std::make_pair(rt->tile_idx() + 1, 0);
   }
 
   // If the last tile is not fully copied, save the cell index.
@@ -1456,6 +1462,7 @@ Status SparseUnorderedWithDupsReader<BitmapType>::remove_result_tile(
   const auto tile_idx = rt->tile_idx();
   auto&& [st, tiles_sizes] = get_coord_tiles_size<BitmapType>(
       subarray_.is_set(), array_schema_->dim_num(), frag_idx, tile_idx);
+  (void)st;
   auto tiles_size = tiles_sizes->first;
   auto tiles_size_qc = tiles_sizes->second;
 
