@@ -118,6 +118,7 @@ struct DenseArrayFx {
       const std::string& array_name, bool split_coords);
   void read_dense_array_with_coords_subarray_col(
       const std::string& array_name, bool split_coords);
+  void set_small_memory_budget();
   static std::string random_name(const std::string& prefix);
 
   /**
@@ -2987,6 +2988,28 @@ int DenseArrayFx::submit_query_wrapper(
   return rc;
 }
 
+void DenseArrayFx::set_small_memory_budget() {
+  if (ctx_ != nullptr)
+    tiledb_ctx_free(&ctx_);
+
+  if (vfs_ != nullptr)
+    tiledb_vfs_free(&vfs_);
+
+  tiledb_config_t* config;
+  tiledb_error_t* error = nullptr;
+  REQUIRE(tiledb_config_alloc(&config, &error) == TILEDB_OK);
+  REQUIRE(error == nullptr);
+
+  REQUIRE(
+      tiledb_config_set(config, "sm.memory_budget", "10", &error) == TILEDB_OK);
+  REQUIRE(error == nullptr);
+
+  REQUIRE(tiledb_ctx_alloc(config, &ctx_) == TILEDB_OK);
+  REQUIRE(error == nullptr);
+  REQUIRE(tiledb_vfs_alloc(ctx_, config, &vfs_) == TILEDB_OK);
+  tiledb_config_free(&config);
+}
+
 std::string DenseArrayFx::random_name(const std::string& prefix) {
   std::stringstream ss;
   ss << prefix << "-" << std::this_thread::get_id() << "-"
@@ -4419,4 +4442,74 @@ TEST_CASE_METHOD(
   }
 
   tiledb_ctx_free(&ctx);
+}
+
+TEST_CASE_METHOD(
+    DenseArrayFx,
+    "C API: Test dense array, splitting to unary ranges",
+    "[capi][dense][splitting][unary-range]") {
+  SECTION("- No serialization") {
+    serialize_query_ = false;
+  }
+  SECTION("- Serialization") {
+    serialize_query_ = true;
+  }
+
+  SupportedFsLocal local_fs;
+  std::string temp_dir = local_fs.file_prefix() + local_fs.temp_dir();
+  std::string array_name = temp_dir + "default-dim";
+  create_temp_dir(temp_dir);
+
+  // Create and write dense array
+  create_dense_array(array_name);
+  write_dense_array(array_name);
+
+  // Forcing splitting to unary ranges.
+  set_small_memory_budget();
+
+  tiledb_array_t* array;
+  int rc = tiledb_array_alloc(ctx_, array_name.c_str(), &array);
+
+  CHECK(rc == TILEDB_OK);
+  rc = tiledb_array_open(ctx_, array, TILEDB_READ);
+  CHECK(rc == TILEDB_OK);
+
+  tiledb_query_t* query;
+  rc = tiledb_query_alloc(ctx_, array, TILEDB_READ, &query);
+  CHECK(rc == TILEDB_OK);
+
+  int a1[1];
+  uint64_t a1_size = sizeof(a1);
+
+  rc = tiledb_query_set_layout(ctx_, query, TILEDB_ROW_MAJOR);
+  CHECK(rc == TILEDB_OK);
+
+  int64_t range[] = {0, 4};
+  rc = tiledb_query_add_range(ctx_, query, 0, &range[0], &range[1], nullptr);
+  REQUIRE(rc == TILEDB_OK);
+  rc = tiledb_query_add_range(ctx_, query, 1, &range[0], &range[1], nullptr);
+  REQUIRE(rc == TILEDB_OK);
+  rc = tiledb_query_set_data_buffer(ctx_, query, "a1", a1, &a1_size);
+  CHECK(rc == TILEDB_OK);
+
+  // Read all the data.
+  tiledb_query_status_t status;
+  int c_a1[] = {0, 1, 4, 5, 2, 3, 6, 7, 8, 9, 12, 13, 10, 11, 14, 15};
+  for (uint64_t i = 0; i < 16; i++) {
+    rc = submit_query_wrapper(array_name, query);
+    CHECK(rc == TILEDB_OK);
+
+    rc = tiledb_query_get_status(ctx_, query, &status);
+    CHECK(rc == TILEDB_OK);
+    CHECK(status == (i == 15 ? TILEDB_COMPLETED : TILEDB_INCOMPLETE));
+
+    CHECK(a1[0] == c_a1[i]);
+  }
+
+  rc = tiledb_array_close(ctx_, array);
+  CHECK(rc == TILEDB_OK);
+  tiledb_query_free(&query);
+  tiledb_array_free(&array);
+
+  remove_temp_dir(temp_dir);
 }

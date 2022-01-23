@@ -176,6 +176,7 @@ Status DenseReader::dowork() {
         return complete_read_loop();
       }
     } else {
+      read_state_.unsplittable_ = false;
       return complete_read_loop();
     }
   } while (true);
