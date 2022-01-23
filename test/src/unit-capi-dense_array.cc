@@ -4513,3 +4513,63 @@ TEST_CASE_METHOD(
 
   remove_temp_dir(temp_dir);
 }
+
+TEST_CASE_METHOD(
+    DenseArrayFx,
+    "C API: Test dense array, subarray default dim",
+    "[capi][dense][default-dim]") {
+  SECTION("- No serialization") {
+    serialize_query_ = false;
+  }
+  SECTION("- Serialization") {
+    serialize_query_ = true;
+  }
+
+  SupportedFsLocal local_fs;
+  std::string temp_dir = local_fs.file_prefix() + local_fs.temp_dir();
+  std::string array_name = temp_dir + "default-dim";
+  create_temp_dir(temp_dir);
+
+  // Create and write dense array
+  create_dense_array(array_name);
+  write_dense_array(array_name);
+
+  tiledb_array_t* array;
+  int rc = tiledb_array_alloc(ctx_, array_name.c_str(), &array);
+  CHECK(rc == TILEDB_OK);
+  rc = tiledb_array_open(ctx_, array, TILEDB_READ);
+  CHECK(rc == TILEDB_OK);
+
+  tiledb_query_t* query;
+  rc = tiledb_query_alloc(ctx_, array, TILEDB_READ, &query);
+  CHECK(rc == TILEDB_OK);
+
+  int a1[16];
+  uint64_t a1_size = sizeof(a1);
+
+  rc = tiledb_query_set_layout(ctx_, query, TILEDB_ROW_MAJOR);
+  CHECK(rc == TILEDB_OK);
+
+  int64_t range[] = {0, 4};
+  rc = tiledb_query_add_range(ctx_, query, 0, &range[0], &range[1], nullptr);
+  REQUIRE(rc == TILEDB_OK);
+  rc = tiledb_query_set_data_buffer(ctx_, query, "a1", a1, &a1_size);
+  CHECK(rc == TILEDB_OK);
+  rc = submit_query_wrapper(array_name, query);
+  CHECK(rc == TILEDB_OK);
+
+  tiledb_query_status_t status;
+  rc = tiledb_query_get_status(ctx_, query, &status);
+  CHECK(rc == TILEDB_OK);
+  CHECK(status == TILEDB_COMPLETED);
+
+  int c_a1[] = {0, 1, 4, 5, 2, 3, 6, 7, 8, 9, 12, 13, 10, 11, 14, 15};
+  CHECK(!memcmp(a1, c_a1, sizeof(c_a1)));
+
+  rc = tiledb_array_close(ctx_, array);
+  CHECK(rc == TILEDB_OK);
+  tiledb_query_free(&query);
+  tiledb_array_free(&array);
+
+  remove_temp_dir(temp_dir);
+}
