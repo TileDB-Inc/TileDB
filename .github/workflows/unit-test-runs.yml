@@ -41,7 +41,7 @@ jobs:
         shell: bash
         if: ${{ runner.os == 'macOS' && env.imageName == 'macOS-10.14' }}
 
-      - name: 'Build and run interval unit test'
+      - name: 'Build and run standalone unit tests'
         id: test
         run: |
 
