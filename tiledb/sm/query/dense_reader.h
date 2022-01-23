@@ -144,114 +144,108 @@ class DenseReader : public ReaderBase, public IQueryStrategy {
 
   /** Apply the query condition. */
   template <class DimType, class OffType>
-  Status apply_query_condition(
-      Subarray* subarray,
-      std::vector<Subarray>* tile_subarrays,
-      std::vector<uint64_t>* tile_offsets,
-      const std::vector<uint64_t>* const range_offsets,
-      std::map<const DimType*, ResultSpaceTile<DimType>>* result_space_tiles,
-      std::vector<uint8_t>* qc_result);
+  std::tuple<Status, std::optional<std::vector<uint8_t>>> apply_query_condition(
+      Subarray& subarray,
+      std::vector<Subarray>& tile_subarrays,
+      std::vector<uint64_t>& tile_offsets,
+      const std::vector<uint64_t>& range_offsets,
+      std::map<const DimType*, ResultSpaceTile<DimType>>& result_space_tiles);
 
   /** Fix offsets buffer after reading all offsets. */
   template <class OffType>
-  void fix_offsets_buffer(
+  uint64_t fix_offsets_buffer(
       const std::string& name,
       const bool nullable,
       const uint64_t cell_num,
-      std::vector<void*>* var_data,
-      uint64_t* var_buffer_size);
+      std::vector<void*>& var_data);
 
   /** Read attributes into the users buffers. */
   template <class DimType, class OffType>
   Status read_attributes(
-      const std::vector<std::string>* fixed_names,
-      const std::vector<std::string>* var_names,
-      const Subarray* const subarray,
-      const std::vector<Subarray>* const tile_subarrays,
-      const std::vector<uint64_t>* const tile_offsets,
-      const std::vector<uint64_t>* const range_offsets,
-      std::map<const DimType*, ResultSpaceTile<DimType>>* result_space_tiles,
-      const std::vector<uint8_t>* const qc_result);
+      const std::vector<std::string>& fixed_names,
+      const std::vector<std::string>& var_names,
+      const Subarray& subarray,
+      const std::vector<Subarray>& tile_subarrays,
+      const std::vector<uint64_t>& tile_offsets,
+      const std::vector<uint64_t>& range_offsets,
+      std::map<const DimType*, ResultSpaceTile<DimType>>& result_space_tiles,
+      const std::vector<uint8_t>& qc_result);
 
   /** Get the cell position within a tile. */
   template <class DimType>
-  Status get_cell_pos_in_tile(
+  uint64_t get_cell_pos_in_tile(
       const Layout& cell_order,
       const int32_t dim_num,
       const Domain* const domain,
-      const ResultSpaceTile<DimType>* const result_space_tile,
-      const DimType* const coords,
-      uint64_t* cell_pos);
+      const ResultSpaceTile<DimType>& result_space_tile,
+      const DimType* const coords);
 
   /**
    * Checks if a cell slab overlaps a fragment domain range and returns the
    * start and end of the overlap.
    */
   template <class DimType>
-  bool cell_slab_overlaps_range(
+  std::tuple<bool, uint64_t, uint64_t> cell_slab_overlaps_range(
       const unsigned dim_num,
       const NDRange& ndrange,
       const DimType* const coords,
-      const uint64_t length,
-      uint64_t* start,
-      uint64_t* end);
+      const uint64_t length);
 
   /** Get the cell offset in the output buffers to copy data to. */
   template <class DimType>
-  Status get_dest_cell_offset_row_col(
+  uint64_t get_dest_cell_offset_row_col(
       const int32_t dim_num,
-      const Subarray* const subarray,
-      const Subarray* const tile_subarray,
+      const Subarray& subarray,
+      const Subarray& tile_subarray,
       const DimType* const coords,
       const DimType* const range_coords,
-      const std::vector<uint64_t>* const range_offsets,
-      uint64_t* cell_offset);
+      const std::vector<uint64_t>& range_offsets);
 
   /** Copy fixed tiles to the output buffers. */
   template <class DimType>
   Status copy_fixed_tiles(
-      const std::vector<std::string>* names,
-      const std::vector<uint8_t*>* const dst_bufs,
-      const std::vector<uint8_t*>* const dst_val_bufs,
-      const std::vector<const Attribute*>* const attributes,
-      const std::vector<uint64_t>* const cell_sizes,
-      ResultSpaceTile<DimType>* result_space_tile,
-      const Subarray* const subarray,
-      const Subarray* const tile_subarray,
+      const std::vector<std::string>& names,
+      const std::vector<uint8_t*>& dst_bufs,
+      const std::vector<uint8_t*>& dst_val_bufs,
+      const std::vector<const Attribute*>& attributes,
+      const std::vector<uint64_t>& cell_sizes,
+      ResultSpaceTile<DimType>& result_space_tile,
+      const Subarray& subarray,
+      const Subarray& tile_subarray,
       const uint64_t global_cell_offset,
-      const std::vector<uint64_t>* const range_offsets,
-      const std::vector<uint8_t>* const qc_result);
+      const std::vector<uint64_t>& range_offsets,
+      const std::vector<uint8_t>& qc_result);
 
   /** Copy a tile var offsets to the output buffers. */
   template <class DimType, class OffType>
   Status copy_offset_tiles(
-      const std::vector<std::string>* names,
-      const std::vector<uint8_t*>* const dst_bufs,
-      const std::vector<uint8_t*>* const dst_val_bufs,
-      const std::vector<const Attribute*>* const attributes,
-      const std::vector<uint64_t>* const data_type_sizes,
-      ResultSpaceTile<DimType>* result_space_tile,
-      const Subarray* const subarray,
-      const Subarray* const tile_subarray,
+      const std::vector<std::string>& names,
+      const std::vector<uint8_t*>& dst_bufs,
+      const std::vector<uint8_t*>& dst_val_bufs,
+      const std::vector<const Attribute*>& attributes,
+      const std::vector<uint64_t>& data_type_sizes,
+      ResultSpaceTile<DimType>& result_space_tile,
+      const Subarray& subarray,
+      const Subarray& tile_subarray,
       const uint64_t global_cell_offset,
-      std::vector<std::vector<void*>>* var_data,
-      const std::vector<uint64_t>* const range_offsets,
-      const std::vector<uint8_t>* const qc_result);
+      std::vector<std::vector<void*>>& var_data,
+      const std::vector<uint64_t>& range_offsets,
+      const std::vector<uint8_t>& qc_result);
 
   /** Copy a var tile to the output buffers. */
   template <class DimType, class OffType>
   Status copy_var_tiles(
-      const std::vector<std::string>* names,
-      const std::vector<uint8_t*>* const dst_bufs,
-      const std::vector<uint8_t*>* const offsets_bufs,
-      const std::vector<uint64_t>* const data_type_sizes,
-      const Subarray* const subarray,
-      const Subarray* const tile_subarray,
+      const std::vector<std::string>& names,
+      const std::vector<uint8_t*>& dst_bufs,
+      const std::vector<uint8_t*>& offsets_bufs,
+      const std::vector<uint64_t>& data_type_sizes,
+      const Subarray& subarray,
+      const Subarray& tile_subarray,
       const uint64_t global_cell_offset,
-      std::vector<std::vector<void*>>* var_data,
-      const std::vector<uint64_t>* const range_offsets,
+      std::vector<std::vector<void*>>& var_data,
+      const std::vector<uint64_t>& range_offsets,
       bool last_tile,
-      std::vector<uint64_t>* var_buffer_sizes);
+      std::vector<uint64_t>& var_buffer_sizes);
 
   /**
    * Adds an extra offset in the end of the offsets buffer indicating the
