@@ -56,7 +56,7 @@ TEST_CASE("Domain: Test deserialization", "[domain][deserialize") {
   uint32_t dimension_name_size1 = static_cast<uint32_t>(dimension_name1.size());
   Datatype type1 = Datatype::INT32;
   uint8_t datatype1 = static_cast<uint8_t>(type1);
-  uint32_t cell_val_num1 = (datatype_is_string(type1)) ? constants::var_num : 1;
+  uint32_t cell_val_num1 = 1;
   uint32_t max_chunk_size1 = constants::max_tile_chunk_size;
   uint32_t num_filters1 = 0;
   // domain and tile extent
@@ -69,7 +69,7 @@ TEST_CASE("Domain: Test deserialization", "[domain][deserialize") {
   uint32_t dimension_name_size2 = static_cast<uint32_t>(dimension_name2.size());
   Datatype type2 = Datatype::STRING_ASCII;
   uint8_t datatype2 = static_cast<uint8_t>(type2);
-  uint32_t cell_val_num2 = (datatype_is_string(type2)) ? constants::var_num : 1;
+  uint32_t cell_val_num2 = constants::var_num;
   uint32_t max_chunk_size2 = constants::max_tile_chunk_size;
   uint32_t num_filters2 = 0;
   // domain and tile extent
@@ -110,7 +110,7 @@ TEST_CASE("Domain: Test deserialization", "[domain][deserialize") {
 
   ConstBuffer constbuffer(&serialized_buffer, sizeof(serialized_buffer));
   auto&& [st_dom, dom]{Domain::deserialize(
-      &constbuffer, 10, 10, Layout::ROW_MAJOR, Layout::ROW_MAJOR)};
+      &constbuffer, 10, Layout::ROW_MAJOR, Layout::ROW_MAJOR)};
   REQUIRE(st_dom.ok());
   CHECK(dom.value()->dim_num() == dim_num);
 

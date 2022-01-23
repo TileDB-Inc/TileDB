@@ -65,7 +65,6 @@ class Domain {
 
   /** Constructor.*/
   Domain(
-      uint64_t cell_num_per_tile,
       Layout cell_order,
       const std::vector<std::shared_ptr<Dimension>> dimensions,
       Layout tile_order);
@@ -204,9 +203,8 @@ class Domain {
   static std::tuple<Status, optional<std::shared_ptr<Domain>>> deserialize(
       ConstBuffer* buff,
       uint32_t version,
-      uint64_t cell_num_per_tile = 0,
-      Layout cell_order = Layout::ROW_MAJOR,
-      Layout tile_order = Layout::ROW_MAJOR);
+      Layout cell_order,
+      Layout tile_order);
 
   /** Returns the cell order. */
   Layout cell_order() const;

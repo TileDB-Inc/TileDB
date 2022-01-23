@@ -87,7 +87,6 @@ Domain create_domain(
   assert(dim_names.size() == dim_domains.size());
   assert(dim_names.size() == dim_tile_extents.size());
 
-  FilterPipeline filter_pipeline;
   std::vector<std::shared_ptr<Dimension>> dimensions;
   for (size_t d = 0; d < dim_names.size(); ++d) {
     uint32_t cell_val_num =
@@ -108,12 +107,12 @@ Domain create_domain(
         dim_types[d],
         cell_val_num,
         range,
-        filter_pipeline,
+        FilterPipeline(),
         tile_extent);
     dimensions.emplace_back(std::move(dim));
   }
 
-  return Domain(0, Layout::ROW_MAJOR, dimensions, Layout::ROW_MAJOR);
+  return Domain(Layout::ROW_MAJOR, dimensions, Layout::ROW_MAJOR);
 }
 
 TEST_CASE("RTree: Test R-Tree, basic functions", "[rtree][basic]") {

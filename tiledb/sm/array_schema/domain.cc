@@ -62,19 +62,15 @@ Domain::Domain() {
 }
 
 Domain::Domain(
-    uint64_t cell_num_per_tile,
     Layout cell_order,
     const std::vector<std::shared_ptr<Dimension>> dimensions,
     Layout tile_order)
-    : cell_num_per_tile_(cell_num_per_tile)
-    , cell_order_(cell_order)
+    : cell_order_(cell_order)
     , dimensions_(dimensions)
     , dim_num_((unsigned int)dimensions.size())
     , tile_order_(tile_order) {
-  if (cell_num_per_tile_ == 0) {
-    // Compute number of cells per tile
-    compute_cell_num_per_tile();
-  }
+  // Compute number of cells per tile
+  compute_cell_num_per_tile();
 
   // Compute number of cells per tile
   set_tile_cell_order_cmp_funcs();
@@ -325,11 +321,7 @@ void Domain::crop_ndrange(NDRange* ndrange) const {
 }
 
 std::tuple<Status, optional<std::shared_ptr<Domain>>> Domain::deserialize(
-    ConstBuffer* buff,
-    uint32_t version,
-    uint64_t cell_num_per_tile,
-    Layout cell_order,
-    Layout tile_order) {
+    ConstBuffer* buff, uint32_t version, Layout cell_order, Layout tile_order) {
   Status st;
   // Load type
   Datatype type = Datatype::INT32;
@@ -359,7 +351,7 @@ std::tuple<Status, optional<std::shared_ptr<Domain>>> Domain::deserialize(
 
   return {Status::Ok(),
           tiledb::common::make_shared<Domain>(
-              HERE(), cell_num_per_tile, cell_order, dimensions, tile_order)};
+              HERE(), cell_order, dimensions, tile_order)};
 }
 
 unsigned int Domain::dim_num() const {

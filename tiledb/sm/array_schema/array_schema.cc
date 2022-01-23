@@ -580,13 +580,13 @@ Status ArraySchema::deserialize(ConstBuffer* buff) {
     RETURN_NOT_OK(cell_validity_filters_.deserialize(buff));
 
   // Load domain
-  auto&& [st_domain, deserialized_domain]{Domain::deserialize(buff, version_)};
+  auto&& [st_domain, deserialized_domain]{
+      Domain::deserialize(buff, version_, cell_order_, tile_order_)};
   if (!st_domain.ok()) {
     return st_domain;
   }
 
-  domain_ = tdb_new(Domain);
-  *domain_ = Domain(deserialized_domain.value().get());
+  domain_ = tdb_new(Domain, deserialized_domain.value().get());
 
   // Load attributes
   uint32_t attribute_num;
