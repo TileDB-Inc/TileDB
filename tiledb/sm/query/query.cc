@@ -2018,8 +2018,10 @@ Status Query::submit() {
           "Error in query submission; remote array with no rest client."));
 
     array_schema_->set_array_uri(array_->array_uri());
-    RETURN_NOT_OK(create_strategy());
-    RETURN_NOT_OK(strategy_->init());
+    if (status_ == QueryStatus::UNINITIALIZED) {
+      RETURN_NOT_OK(create_strategy());
+      RETURN_NOT_OK(strategy_->init());
+    }
     return rest_client->submit_query_to_rest(array_->array_uri(), this);
   }
   RETURN_NOT_OK(init());
