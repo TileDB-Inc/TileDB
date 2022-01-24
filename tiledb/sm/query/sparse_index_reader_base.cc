@@ -172,7 +172,8 @@ SparseIndexReaderBase::get_coord_tiles_size(
       if (is_dim_var_size_[d]) {
         uint64_t temp = 0;
         RETURN_NOT_OK_TUPLE(
-            fragment_metadata_[f]->tile_var_size(dim_names_[d], t, &temp));
+            fragment_metadata_[f]->tile_var_size(dim_names_[d], t, &temp),
+            std::nullopt);
         tiles_size += temp;
       }
     }
@@ -191,7 +192,7 @@ SparseIndexReaderBase::get_coord_tiles_size(
     for (auto& name : qc_loaded_names_) {
       // Calculate memory consumption for this tile.
       auto&& [st, tile_size] = get_attribute_tile_size(name, f, t);
-      RETURN_NOT_OK_TUPLE(st);
+      RETURN_NOT_OK_TUPLE(st, std::nullopt);
       tiles_size_qc += *tile_size;
     }
   }
@@ -605,10 +606,11 @@ SparseIndexReaderBase::read_and_unfilter_attributes(
   }
 
   // Read and unfilter tiles.
-  RETURN_NOT_OK_TUPLE(read_attribute_tiles(names_to_read, result_tiles, true));
+  RETURN_NOT_OK_TUPLE(
+      read_attribute_tiles(names_to_read, result_tiles, true), std::nullopt);
 
   for (auto& name : names_to_read)
-    RETURN_NOT_OK_TUPLE(unfilter_tiles(name, result_tiles, true));
+    RETURN_NOT_OK_TUPLE(unfilter_tiles(name, result_tiles, true), std::nullopt);
 
   return {Status::Ok(), std::move(index_to_copy)};
 }

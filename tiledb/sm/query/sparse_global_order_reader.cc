@@ -269,7 +269,7 @@ SparseGlobalOrderReader::add_result_tile(
     const ArraySchema* const array_schema) {
   // Calculate memory consumption for this tile.
   auto&& [st, tiles_sizes] = get_coord_tiles_size<uint8_t>(true, dim_num, f, t);
-  RETURN_NOT_OK_TUPLE(st);
+  RETURN_NOT_OK_TUPLE(st, std::nullopt);
   auto tiles_size = tiles_sizes->first;
   auto tiles_size_qc = tiles_sizes->second;
 
@@ -364,7 +364,7 @@ SparseGlobalOrderReader::create_result_tiles() {
           all_tiles_loaded_[f] = true;
           return Status::Ok();
         });
-    RETURN_NOT_OK_ELSE_TUPLE(status, logger_->status(status));
+    RETURN_NOT_OK_ELSE_TUPLE(status, logger_->status(status), std::nullopt);
   } else {
     // Load as many tiles as the memory budget allows.
     auto status = parallel_for(
@@ -406,7 +406,7 @@ SparseGlobalOrderReader::create_result_tiles() {
           all_tiles_loaded_[f] = true;
           return Status::Ok();
         });
-    RETURN_NOT_OK_ELSE_TUPLE(status, logger_->status(status));
+    RETURN_NOT_OK_ELSE_TUPLE(status, logger_->status(status), std::nullopt);
   }
 
   bool done_adding_result_tiles = true;
@@ -634,7 +634,7 @@ SparseGlobalOrderReader::merge_result_cell_slabs(uint64_t num_cells, T cmp) {
 
         return Status::Ok();
       });
-  RETURN_NOT_OK_ELSE_TUPLE(status, logger_->status(status));
+  RETURN_NOT_OK_ELSE_TUPLE(status, logger_->status(status), std::nullopt);
 
   // Process all elements.
   while (!tile_queue.empty() && !need_more_tiles && num_cells > 0) {
@@ -673,7 +673,7 @@ SparseGlobalOrderReader::merge_result_cell_slabs(uint64_t num_cells, T cmp) {
             result_tile_used,
             tile_queue,
             tile_queue_mutex);
-        RETURN_NOT_OK_TUPLE(st);
+        RETURN_NOT_OK_TUPLE(st, std::nullopt);
         need_more_tiles = *more_tiles;
       } else {
         tile_queue.emplace(std::move(next_tile));
@@ -780,7 +780,7 @@ SparseGlobalOrderReader::merge_result_cell_slabs(uint64_t num_cells, T cmp) {
           result_tile_used,
           tile_queue,
           tile_queue_mutex);
-      RETURN_NOT_OK_TUPLE(st);
+      RETURN_NOT_OK_TUPLE(st, std::nullopt);
       need_more_tiles = *more_tiles;
     } else {
       // Put the next cell on the queue to be resorted.
@@ -942,6 +942,7 @@ Status SparseGlobalOrderReader::copy_var_data_tiles(
                 0,
                 rcs.length_,
                 cell_offsets[i]);
+        (void)dest_cell_offset;
         if (skip_copy) {
           return Status::Ok();
         }
@@ -1129,7 +1130,7 @@ SparseGlobalOrderReader::respect_copy_memory_budget(
 
         return Status::Ok();
       });
-  RETURN_NOT_OK_ELSE_TUPLE(status, logger_->status(status));
+  RETURN_NOT_OK_ELSE_TUPLE(status, logger_->status(status), std::nullopt);
 
   if (max_cs_idx == 0)
     return {Status_SparseUnorderedWithDupsReaderError(

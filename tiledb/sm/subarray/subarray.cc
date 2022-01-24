@@ -630,21 +630,19 @@ Subarray Subarray::crop_to_tile(const T* tile_coords, Layout layout) const {
     auto r_size = 2 * array_schema->dimension(d)->coord_size();
     uint64_t i = 0;
     for (size_t r = 0; r < ranges_[d].size(); ++r) {
-      if (!is_default_[d]) {
-        const auto& range = ranges_[d][r];
-        utils::geometry::overlap(
-            (const T*)range.data(),
-            &tile_subarray[2 * d],
-            1,
-            new_range,
-            &overlaps);
+      const auto& range = ranges_[d][r];
+      utils::geometry::overlap(
+          (const T*)range.data(),
+          &tile_subarray[2 * d],
+          1,
+          new_range,
+          &overlaps);
 
-        if (overlaps) {
-          ret.add_range_unsafe(d, Range(new_range, r_size));
-          ret.original_range_idx_.resize(dim_num());
-          ret.original_range_idx_[d].resize(i + 1);
-          ret.original_range_idx_[d][i++] = r;
-        }
+      if (overlaps) {
+        ret.add_range_unsafe(d, Range(new_range, r_size));
+        ret.original_range_idx_.resize(dim_num());
+        ret.original_range_idx_[d].resize(i + 1);
+        ret.original_range_idx_[d][i++] = r;
       }
     }
   }
@@ -2026,7 +2024,7 @@ Status Subarray::sort_ranges(ThreadPool* const compute_tp) {
 
 std::tuple<Status, std::optional<bool>> Subarray::non_overlapping_ranges(
     ThreadPool* const compute_tp) {
-  RETURN_NOT_OK_TUPLE(sort_ranges(compute_tp));
+  RETURN_NOT_OK_TUPLE(sort_ranges(compute_tp), std::nullopt);
 
   std::atomic<bool> non_overlapping_ranges = true;
   auto st = parallel_for(
@@ -2039,7 +2037,7 @@ std::tuple<Status, std::optional<bool>> Subarray::non_overlapping_ranges(
 
         return status;
       });
-  RETURN_NOT_OK_TUPLE(st);
+  RETURN_NOT_OK_TUPLE(st, std::nullopt);
 
   return {Status::Ok(), non_overlapping_ranges};
 }

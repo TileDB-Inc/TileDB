@@ -34,7 +34,7 @@
  */
 
 #include "catch.hpp"
-
+#include "test/src/helpers.h"
 #include "tiledb/sm/c_api/tiledb_serialization.h"
 #include "tiledb/sm/c_api/tiledb_struct_def.h"
 #include "tiledb/sm/cpp_api/tiledb"
@@ -631,13 +631,32 @@ TEST_CASE_METHOD(
     check_read_stats(query);
 
     // We expect all cells where `a1` >= `cmp_value` to be filtered
-    // out.
+    // out. For the refactored reader, filtered out means the value is
+    // replaced with the fill value.
     auto result_el = query.result_buffer_elements_nullable();
-    REQUIRE(std::get<1>(result_el["a1"]) == 5);
-    REQUIRE(std::get<1>(result_el["a2"]) == 10);
-    REQUIRE(std::get<2>(result_el["a2"]) == 5);
-    REQUIRE(std::get<0>(result_el["a3"]) == 5);
-    REQUIRE(std::get<1>(result_el["a3"]) == 15);
+    if (test::use_refactored_dense_reader()) {
+      REQUIRE(std::get<1>(result_el["a1"]) == 100);
+      REQUIRE(std::get<1>(result_el["a2"]) == 200);
+      REQUIRE(std::get<2>(result_el["a2"]) == 100);
+      REQUIRE(std::get<0>(result_el["a3"]) == 100);
+      REQUIRE(std::get<1>(result_el["a3"]) == 110);
+
+      auto null_val = std::numeric_limits<uint32_t>::max();
+      for (uint64_t i = 5; i < 100; i++) {
+        REQUIRE(a1[i] == null_val);
+        REQUIRE(a2[i * 2] == null_val);
+        REQUIRE(a2[i * 2 + 1] == null_val);
+        REQUIRE(a2_nullable[i] == 0);
+        REQUIRE(a3_offsets[i] == 10 + i);
+        REQUIRE(a3_data[10 + i] == 0);
+      }
+    } else {
+      REQUIRE(std::get<1>(result_el["a1"]) == 5);
+      REQUIRE(std::get<1>(result_el["a2"]) == 10);
+      REQUIRE(std::get<2>(result_el["a2"]) == 5);
+      REQUIRE(std::get<0>(result_el["a3"]) == 5);
+      REQUIRE(std::get<1>(result_el["a3"]) == 15);
+    }
 
     REQUIRE(check_result(a1, expected_results["a1"], 0, 5));
     REQUIRE(check_result(a2, expected_results["a2"], 0, 10));
