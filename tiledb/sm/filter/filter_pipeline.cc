@@ -89,20 +89,83 @@ void FilterPipeline::clear() {
   filters_.clear();
 }
 
+std::tuple<Status, std::optional<std::vector<uint64_t>>>
+FilterPipeline::get_var_chunk_sizes(
+    uint32_t chunk_size, Tile* const tile, Tile* const offsets_tile) const {
+  std::vector<uint64_t> chunk_offsets;
+  if (offsets_tile != nullptr) {
+    uint64_t num_offsets =
+        offsets_tile->buffer()->size() / constants::cell_var_offset_size;
+    auto offsets = (uint64_t*)offsets_tile->buffer()->data();
+
+    uint64_t current_size = 0;
+    uint64_t min_size = chunk_size / 2;
+    uint64_t max_size = chunk_size + chunk_size / 2;
+    chunk_offsets.emplace_back(0);
+    for (uint64_t c = 0; c < num_offsets; c++) {
+      auto cell_size = c == num_offsets - 1 ?
+                           tile->buffer()->size() - offsets[c] :
+                           offsets[c + 1] - offsets[c];
+
+      // Time for a new chunk?
+      auto new_size = current_size + cell_size;
+      if (new_size > chunk_size) {
+        // Do we add this cell to this chunk?
+        if (current_size <= min_size || new_size <= max_size) {
+          if (new_size > std::numeric_limits<uint32_t>::max()) {
+            return {LOG_STATUS(Status_TileError("Chunk size exceeds uint32_t")),
+                    std::nullopt};
+          }
+          chunk_offsets.emplace_back(offsets[c] + cell_size);
+          current_size = 0;
+        } else {  // Start a new chunk.
+          chunk_offsets.emplace_back(offsets[c]);
+
+          // This cell belong in its own chunk.
+          if (cell_size > chunk_size) {
+            if (cell_size > std::numeric_limits<uint32_t>::max()) {
+              return {
+                  LOG_STATUS(Status_TileError("Chunk size exceeds uint32_t")),
+                  std::nullopt};
+            }
+
+            if (c != num_offsets - 1)
+              chunk_offsets.emplace_back(offsets[c] + cell_size);
+            current_size = 0;
+          } else {  // Start a new chunk.
+            current_size = cell_size;
+          }
+        }
+      } else {
+        current_size += cell_size;
+      }
+    }
+  }
+
+  return {Status::Ok(), std::move(chunk_offsets)};
+}
+
 Status FilterPipeline::filter_chunks_forward(
     const Tile& tile,
     const Buffer& input,
     uint32_t chunk_size,
+    std::vector<uint64_t>& chunk_offsets,
     Buffer* const output,
     ThreadPool* const compute_tp) const {
   assert(output);
 
-  uint64_t nchunks = input.size() / chunk_size;
-  uint64_t last_buffer_size = input.size() % chunk_size;
-  if (last_buffer_size != 0) {
-    nchunks++;
-  } else {
-    last_buffer_size = chunk_size;
+  bool var_sizes = chunk_offsets.size() > 0;
+  uint64_t nchunks =
+      var_sizes ? chunk_offsets.size() : input.size() / chunk_size;
+  uint64_t last_buffer_size = var_sizes ?
+                                  input.size() - chunk_offsets[nchunks - 1] :
+                                  input.size() % chunk_size;
+  if (!var_sizes) {
+    if (last_buffer_size != 0) {
+      nchunks++;
+    } else {
+      last_buffer_size = chunk_size;
+    }
   }
 
   // Vector storing the input and output of the final pipeline stage for each
@@ -119,9 +182,12 @@ Status FilterPipeline::filter_chunks_forward(
     FilterBuffer input_metadata(&storage), output_metadata(&storage);
 
     // First filter's input is the original chunk.
-    void* chunk_buffer = static_cast<char*>(input.data()) + i * chunk_size;
+    uint64_t offset = var_sizes ? chunk_offsets[i] : i * chunk_size;
+    void* chunk_buffer = static_cast<char*>(input.data()) + offset;
     uint32_t chunk_buffer_size =
-        i == nchunks - 1 ? last_buffer_size : chunk_size;
+        i == nchunks - 1 ?
+            last_buffer_size :
+            var_sizes ? chunk_offsets[i + 1] - chunk_offsets[i] : chunk_size;
     RETURN_NOT_OK(input_data.init(chunk_buffer, chunk_buffer_size));
 
     // Apply the filters sequentially.
@@ -206,7 +272,9 @@ Status FilterPipeline::filter_chunks_forward(
     auto& final_stage_output_data = final_stage_io[i].first.second;
     auto filtered_size = (uint32_t)final_stage_output_data.size();
     uint32_t orig_chunk_size =
-        i == final_stage_io.size() - 1 ? last_buffer_size : chunk_size;
+        i == final_stage_io.size() - 1 ?
+            last_buffer_size :
+            var_sizes ? chunk_offsets[i + 1] - chunk_offsets[i] : chunk_size;
     auto metadata_size = (uint32_t)final_stage_output_metadata.size();
     void* dest = output->data(offsets[i]);
     uint64_t dest_offset = 0;
@@ -357,6 +425,7 @@ uint32_t FilterPipeline::max_chunk_size() const {
 Status FilterPipeline::run_forward(
     stats::Stats* const writer_stats,
     Tile* const tile,
+    Tile* const offsets_tile,
     ThreadPool* const compute_tp) const {
   RETURN_NOT_OK(
       tile ? Status::Ok() : Status_Error("invalid argument: null Tile*"));
@@ -367,6 +436,11 @@ Status FilterPipeline::run_forward(
   RETURN_NOT_OK(Tile::compute_chunk_size(
       tile->size(), tile->dim_num(), tile->cell_size(), &chunk_size));
 
+  // Get the chunk sizes for var size attributes.
+  auto&& [st, chunk_offsets] =
+      get_var_chunk_sizes(chunk_size, tile, offsets_tile);
+  RETURN_NOT_OK_ELSE(st, tile->filtered_buffer()->clear());
+
   // Run the filters over all the chunks and store the result in
   // 'filtered_buffer'.
   RETURN_NOT_OK_ELSE(
@@ -374,6 +448,7 @@ Status FilterPipeline::run_forward(
           *tile,
           *tile->buffer(),
           chunk_size,
+          *chunk_offsets,
           tile->filtered_buffer(),
           compute_tp),
       tile->filtered_buffer()->clear());

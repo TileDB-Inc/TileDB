@@ -983,7 +983,7 @@ Status DenseReader::copy_fixed_tiles(
           const Tile* const tile = &std::get<0>(*tile_tuple);
           const Tile* const tile_nullable = &std::get<2>(*tile_tuple);
 
-          auto src_offset = (src_cell + start * stride);
+          auto src_offset = src_cell + start * stride;
 
           // If the subarray and tile are in the same order, copy the whole
           // slab.

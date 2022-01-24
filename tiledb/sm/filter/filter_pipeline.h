@@ -171,11 +171,15 @@ class FilterPipeline {
    * data.
    *
    * @param tile Tile to filter.
+   * @param offsets_tile Offets tile for tile to filter.
    * @param compute_tp The thread pool for compute-bound tasks.
    * @return Status
    */
   Status run_forward(
-      stats::Stats* writer_stats, Tile* tile, ThreadPool* compute_tp) const;
+      stats::Stats* writer_stats,
+      Tile* tile,
+      Tile* offsets_tile,
+      ThreadPool* compute_tp) const;
 
   /**
    * Runs the pipeline in reverse on the given filtered tile. This is used
@@ -261,11 +265,29 @@ class FilterPipeline {
   uint32_t max_chunk_size_;
 
   /**
+   * Get the chunk offsets for a var sized tile so that integral cells are
+   * within a chunk.
+   *
+   * Heuristic is the following when determining to add a cell:
+   *   - If the cell fits in the buffer, add it.
+   *   - If it doesn't fit and new size < 150% capacity, add it.
+   *   - If it doesn't fit and current size < 50% capacity, add it.
+   *
+   * @param chunk_size Target chunk size.
+   * @param tile Var tile.
+   * @param offsets_tile Offsets tile.
+   * @return Status, chunk offsets vector.
+   */
+  std::tuple<Status, std::optional<std::vector<uint64_t>>> get_var_chunk_sizes(
+      uint32_t chunk_size, Tile* const tile, Tile* const offsets_tile) const;
+
+  /**
    * Run the given buffer forward through the pipeline.
    *
    * @param tile Current tile on which the filter pipeline is being run
    * @param input buffer to process.
    * @param chunk_size chunk size.
+   * @param chunk_offsets chunk offsets computed for var sized attributes.
    * @param output buffer where output of the last stage
    *    will be written.
    * @param compute_tp The thread pool for compute-bound tasks.
@@ -275,6 +297,7 @@ class FilterPipeline {
       const Tile& tile,
       const Buffer& input,
       uint32_t chunk_size,
+      std::vector<uint64_t>& chunk_offsets,
       Buffer* const output,
       ThreadPool* const compute_tp) const;
 

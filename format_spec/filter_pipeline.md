@@ -12,6 +12,11 @@ The filter pipeline has internal format:
 | … | … | … |
 | Filter N | [Filter](#filter) | Nth filter |
 
+For var size data, the filter pipeline tries to fit integral cells in a chunk. It uses the following heuristic if the cell doesn't fit:
+  - If the chunk is not yet at 50% capacity, add the cell to the current chunk.
+  - If the chunk is over 50% capacity and adding the cell would make it less than 150% of the maximum chunk size, add it to this chunk.
+  - Else, start a new chunk.
+
 ## Filter
 
 The filter has internal format:

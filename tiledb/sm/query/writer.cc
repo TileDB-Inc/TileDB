@@ -1036,29 +1036,39 @@ Status Writer::filter_tiles(
 Status Writer::filter_tiles(const std::string& name, std::vector<Tile>* tiles) {
   const bool var_size = array_schema_->var_size(name);
   const bool nullable = array_schema_->is_nullable(name);
+  const size_t tile_step = 1 + nullable + var_size;
 
   // Filter all tiles
   auto tile_num = tiles->size();
 
-  std::vector<std::tuple<Tile*, bool, bool>> args;
+  // Make sure we have the correct number of tiles.
+  if (tile_num % tile_step != 0) {
+    return logger_->status(
+        Status_WriterError("Incorrect number of tiles in filter_tiles"));
+  }
+
+  std::vector<std::tuple<Tile*, Tile*, bool, bool>> args;
   args.reserve(tile_num);
 
-  size_t i = 0;
-  while (i < tile_num) {
-    args.emplace_back(&(*tiles)[i++], var_size, false);
-    if (var_size)
-      args.emplace_back(&(*tiles)[i++], false, false);
-    if (nullable)
-      args.emplace_back(&(*tiles)[i++], false, true);
+  for (size_t tile_idx = 0; tile_idx < tile_num; tile_idx += tile_step) {
+    args.emplace_back(&(*tiles)[tile_idx], nullptr, var_size, false);
+    if (var_size) {
+      args.emplace_back(
+          &(*tiles)[tile_idx + 1], &(*tiles)[tile_idx], false, false);
+    }
+
+    if (nullable) {
+      args.emplace_back(
+          &(*tiles)[tile_idx + var_size + 1], nullptr, false, true);
+    }
   }
 
   auto status = parallel_for(
       storage_manager_->compute_tp(), 0, tile_num, [&](uint64_t i) {
+        const auto& [tile, offset_tile, contains_offsets, is_nullable] =
+            args[i];
         RETURN_NOT_OK(filter_tile(
-            name,
-            std::get<0>(args[i]),
-            std::get<1>(args[i]),
-            std::get<2>(args[i])));
+            name, tile, offset_tile, contains_offsets, is_nullable));
         return Status::Ok();
       });
 
@@ -1070,6 +1080,7 @@ Status Writer::filter_tiles(const std::string& name, std::vector<Tile>* tiles) {
 Status Writer::filter_tile(
     const std::string& name,
     Tile* const tile,
+    Tile* const offsets_tile,
     const bool offsets,
     const bool nullable) {
   auto timer_se = stats_->start_timer("filter_tile");
@@ -1092,8 +1103,8 @@ Status Writer::filter_tile(
       &filters, array_->get_encryption_key()));
 
   assert(!tile->filtered());
-  RETURN_NOT_OK(
-      filters.run_forward(stats_, tile, storage_manager_->compute_tp()));
+  RETURN_NOT_OK(filters.run_forward(
+      stats_, tile, offsets_tile, storage_manager_->compute_tp()));
   assert(tile->filtered());
 
   tile->set_pre_filtered_size(orig_size);
@@ -2796,22 +2807,24 @@ Status Writer::prepare_filter_and_write_tiles(
           if (!var) {
             RETURN_NOT_OK(dense_tiler->get_tile(
                 frag_tile_id + i, name, &tiles[tiles_id]));
-            RETURN_NOT_OK(filter_tile(name, &tiles[tiles_id], false, false));
+            RETURN_NOT_OK(
+                filter_tile(name, &tiles[tiles_id], nullptr, false, false));
           } else {
             RETURN_NOT_OK(dense_tiler->get_tile_var(
                 frag_tile_id + i,
                 name,
                 &tiles[tiles_id],
                 &tiles[tiles_id + 1]));
-            RETURN_NOT_OK(filter_tile(name, &tiles[tiles_id], true, false));
             RETURN_NOT_OK(
-                filter_tile(name, &tiles[tiles_id + 1], false, false));
+                filter_tile(name, &tiles[tiles_id], nullptr, true, false));
+            RETURN_NOT_OK(filter_tile(
+                name, &tiles[tiles_id + 1], &tiles[tiles_id], false, false));
           }
           if (nullable) {
             RETURN_NOT_OK(dense_tiler->get_tile_null(
                 frag_tile_id + i, name, &tiles[tiles_id + 1 + var]));
-            RETURN_NOT_OK(
-                filter_tile(name, &tiles[tiles_id + 1 + var], false, true));
+            RETURN_NOT_OK(filter_tile(
+                name, &tiles[tiles_id + 1 + var], nullptr, false, true));
           }
           return Status::Ok();
         });

@@ -43,6 +43,11 @@ namespace tiledb {
 namespace sm {
 
 /* ****************************** */
+/*           STATIC INIT          */
+/* ****************************** */
+uint64_t Tile::max_tile_chunk_size_ = constants::max_tile_chunk_size;
+
+/* ****************************** */
 /*           STATIC API           */
 /* ****************************** */
 
@@ -55,8 +60,7 @@ Status Tile::compute_chunk_size(
   const uint64_t dim_tile_size = tile_size / dim_num;
   const uint64_t dim_cell_size = tile_cell_size / dim_num;
 
-  uint64_t chunk_size64 =
-      std::min(constants::max_tile_chunk_size, dim_tile_size);
+  uint64_t chunk_size64 = std::min(max_tile_chunk_size_, dim_tile_size);
   chunk_size64 = chunk_size64 / dim_cell_size * dim_cell_size;
   chunk_size64 = std::max(chunk_size64, dim_cell_size);
   if (chunk_size64 > std::numeric_limits<uint32_t>::max()) {
@@ -65,6 +69,10 @@ Status Tile::compute_chunk_size(
 
   *chunk_size = chunk_size64;
   return Status::Ok();
+}
+
+void Tile::set_max_tile_chunk_size(uint64_t max_tile_chunk_size) {
+  max_tile_chunk_size_ = max_tile_chunk_size;
 }
 
 /* ****************************** */

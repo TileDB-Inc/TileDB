@@ -67,6 +67,13 @@ class Tile {
       const uint64_t tile_cell_size,
       uint32_t* const chunk_size);
 
+  /**
+   * Override max_tile_chunk_size_. Used in tests only.
+   *
+   * @param max_tile_chunk_size The maximum chunk size.
+   */
+  static void set_max_tile_chunk_size(uint64_t max_tile_chunk_size);
+
   /* ********************************* */
   /*     CONSTRUCTORS & DESTRUCTORS    */
   /* ********************************* */
@@ -365,6 +372,12 @@ class Tile {
    * public API, all other public API routines operate on 'buffer_'.
    */
   Buffer filtered_buffer_;
+
+  /**
+   * Static variable to store constants::max_tile_chunk_size. This will be used
+   * to override the value in tests.
+   */
+  static uint64_t max_tile_chunk_size_;
 
   /* ********************************* */
   /*          PRIVATE METHODS          */
