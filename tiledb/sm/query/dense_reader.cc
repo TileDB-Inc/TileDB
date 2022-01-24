@@ -925,8 +925,12 @@ Status DenseReader::copy_fixed_tiles(
   const auto dim_num = array_schema_->dim_num();
   const auto domain = array_schema_->domain();
   const auto cell_order = array_schema_->cell_order();
-  const auto stride = array_schema_->domain()->stride<DimType>(layout_);
+  auto stride = array_schema_->domain()->stride<DimType>(layout_);
   const auto& frag_domains = result_space_tile.frag_domains();
+
+  if (stride == UINT64_MAX) {
+    stride = 1;
+  }
 
   // Initialise for global order, will be adjusted later for row/col major.
   uint64_t cell_offset = global_cell_offset;
@@ -979,11 +983,11 @@ Status DenseReader::copy_fixed_tiles(
           const Tile* const tile = &std::get<0>(*tile_tuple);
           const Tile* const tile_nullable = &std::get<2>(*tile_tuple);
 
-          auto src_offset = (src_cell + start);
+          auto src_offset = (src_cell + start * stride);
 
           // If the subarray and tile are in the same order, copy the whole
           // slab.
-          if (stride == UINT64_MAX) {
+          if (stride == 1) {
             std::memcpy(
                 dest_ptr + cell_size * start,
                 (char*)tile->buffer()->data() + cell_size * src_offset,
@@ -1183,7 +1187,7 @@ Status DenseReader::copy_offset_tiles(
 
           // Setup variables for the copy.
           auto src_buff = (uint64_t*)std::get<0>(*tile_tuple).buffer()->data() +
-                          start + src_cell;
+                          start * stride + src_cell;
           auto src_buff_validity =
               attributes[n]->nullable() ?
                   (uint8_t*)std::get<2>(*tile_tuple).buffer()->data() + start +
