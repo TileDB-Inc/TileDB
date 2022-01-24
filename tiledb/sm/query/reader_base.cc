@@ -726,9 +726,19 @@ Status ReaderBase::unfilter_tiles(
                              "unfilter_attr_tiles" :
                              "unfilter_coord_tiles";
   const auto timer_se = stats_->start_timer(stat_type);
+
+  if (disable_cache == false) {
+    return unfilter_tiles_legacy(name, result_tiles);
+  }
+
   const auto var_size = array_schema_->var_size(name);
   const auto nullable = array_schema_->is_nullable(name);
   const auto num_tiles = static_cast<uint64_t>(result_tiles.size());
+
+  if (num_tiles == 0) {
+    // TODO: is that ok?
+    return Status::Ok();
+  }
 
   // Compute parallelization parameters.
   uint64_t num_range_threads = 1;
@@ -833,51 +843,6 @@ Status ReaderBase::unfilter_tiles(
           auto t_var = &std::get<1>(*tile_tuple);
           auto t_validity = &std::get<2>(*tile_tuple);
 
-          if (!disable_cache) {
-            logger_->info("using cache");
-            // Get information about the tile in its fragment.
-            auto tile_attr_uri = fragment->uri(name);
-            auto tile_idx = tile->tile_idx();
-            uint64_t tile_attr_offset;
-            RETURN_NOT_OK(
-                fragment->file_offset(name, tile_idx, &tile_attr_offset));
-
-            // Cache 't'.
-            if (t->filtered()) {
-              // Store the filtered buffer in the tile cache.
-              RETURN_NOT_OK(storage_manager_->write_to_cache(
-                  tile_attr_uri, tile_attr_offset, t->filtered_buffer()));
-            }
-
-            // Cache 't_var'.
-            if (var_size && t_var->filtered()) {
-              auto tile_attr_var_uri = fragment->var_uri(name);
-              uint64_t tile_attr_var_offset;
-              RETURN_NOT_OK(fragment->file_var_offset(
-                  name, tile_idx, &tile_attr_var_offset));
-
-              // Store the filtered buffer in the tile cache.
-              RETURN_NOT_OK(storage_manager_->write_to_cache(
-                  tile_attr_var_uri,
-                  tile_attr_var_offset,
-                  t_var->filtered_buffer()));
-            }
-
-            // Cache 't_validity'.
-            if (nullable && t_validity->filtered()) {
-              auto tile_attr_validity_uri = fragment->validity_uri(name);
-              uint64_t tile_attr_validity_offset;
-              RETURN_NOT_OK(fragment->file_validity_offset(
-                  name, tile_idx, &tile_attr_validity_offset));
-
-              // Store the filtered buffer in the tile cache.
-              RETURN_NOT_OK(storage_manager_->write_to_cache(
-                  tile_attr_validity_uri,
-                  tile_attr_validity_offset,
-                  t_validity->filtered_buffer()));
-            }
-          }
-
           assert(num_tile_chunks != 0);
           // Unfilter 't' for fixed-sized tiles, otherwise unfilter both 't' and
           // 't_var' for var-sized tiles.
@@ -947,7 +912,7 @@ Status ReaderBase::unfilter_tiles(
       // dense case).
       if (tile_tuple == nullptr ||
           std::get<0>(*tile_tuple).filtered_buffer()->size() == 0)
-        return Status::Ok();
+        continue;
 
       auto t = &std::get<0>(*tile_tuple);
       auto t_var = &std::get<1>(*tile_tuple);
@@ -975,10 +940,6 @@ Status ReaderBase::unfilter_tiles(
         t_var->filtered_buffer()->clear();
         // Zip the coords.
         if (t_var->stores_coords()) {
-          // Note that format version < 2 only split the coordinates when
-          // compression was used. See
-          // https://github.com/TileDB-Inc/TileDB/issues/1053 For format
-          // version > 4, a tile never stores coordinates
           bool using_compression =
               filters.get_filter<CompressionFilter>() != nullptr;
           auto version = t_var->format_version();
@@ -992,10 +953,6 @@ Status ReaderBase::unfilter_tiles(
         t_validity->buffer()->set_size(unfiltered_tile_validity_size[i]);
         t_validity->filtered_buffer()->clear();
         if (t_validity->stores_coords()) {
-          // Note that format version < 2 only split the coordinates when
-          // compression was used. See
-          // https://github.com/TileDB-Inc/TileDB/issues/1053 For format
-          // version > 4, a tile never stores coordinates
           bool using_compression =
               filters.get_filter<CompressionFilter>() != nullptr;
           auto version = t_validity->format_version();
@@ -1072,11 +1029,6 @@ Status ReaderBase::unfilter_tile(
   // Compute chunk boundaries
   auto&& [t_min, t_max] = compute_chunk_min_max(
       tile_chunk_data->chunk_offsets_.size(), num_range_threads, thread_idx);
-  auto&& [tvar_min, tvar_max] = compute_chunk_min_max(
-      tile_var_chunk_data->chunk_offsets_.size(),
-      num_range_threads,
-      thread_idx);
-
   // Reverse the tile filters.
   RETURN_NOT_OK(offset_filters.run_reverse_chunk_range(
       stats_,
@@ -1086,14 +1038,22 @@ Status ReaderBase::unfilter_tile(
       t_max,
       storage_manager_->compute_tp(),
       storage_manager_->config()));
-  RETURN_NOT_OK(filters.run_reverse_chunk_range(
-      stats_,
-      tile_var,
-      tile_var_chunk_data,
-      tvar_min,
-      tvar_max,
-      storage_manager_->compute_tp(),
-      storage_manager_->config()));
+
+  // TODO: HOW CAN THIS HAPPEN?
+  if (tile_var_chunk_data->chunk_offsets_.size() > 0) {
+    auto&& [tvar_min, tvar_max] = compute_chunk_min_max(
+        tile_var_chunk_data->chunk_offsets_.size(),
+        num_range_threads,
+        thread_idx);
+    RETURN_NOT_OK(filters.run_reverse_chunk_range(
+        stats_,
+        tile_var,
+        tile_var_chunk_data,
+        tvar_min,
+        tvar_max,
+        storage_manager_->compute_tp(),
+        storage_manager_->config()));
+  }
 
   return Status::Ok();
 }
@@ -1201,6 +1161,214 @@ Status ReaderBase::unfilter_tile_nullable(
       tile_validity_chunk_data,
       tval_min,
       tval_max,
+      storage_manager_->compute_tp(),
+      storage_manager_->config()));
+
+  return Status::Ok();
+}
+
+Status ReaderBase::unfilter_tiles_legacy(
+    const std::string& name,
+    const std::vector<ResultTile*>& result_tiles) const {
+  auto stat_type = (array_schema_->is_attr(name)) ? "unfilter_attr_tiles" :
+                                                    "unfilter_coord_tiles";
+  auto timer_se = stats_->start_timer(stat_type);
+
+  auto var_size = array_schema_->var_size(name);
+  auto nullable = array_schema_->is_nullable(name);
+  auto num_tiles = static_cast<uint64_t>(result_tiles.size());
+
+  auto status = parallel_for(
+      storage_manager_->compute_tp(), 0, num_tiles, [&, this](uint64_t i) {
+        ResultTile* const tile = result_tiles[i];
+
+        auto& fragment = fragment_metadata_[tile->frag_idx()];
+        auto format_version = fragment->format_version();
+
+        // Applicable for zipped coordinates only to versions < 5
+        // Applicable for separate coordinates only to version >= 5
+        if (name != constants::coords ||
+            (name == constants::coords && format_version < 5) ||
+            (array_schema_->is_dim(name) && format_version >= 5)) {
+          auto tile_tuple = tile->tile_tuple(name);
+
+          // Skip non-existent attributes/dimensions (e.g. coords in the
+          // dense case).
+          if (tile_tuple == nullptr ||
+              std::get<0>(*tile_tuple).filtered_buffer()->size() == 0)
+            return Status::Ok();
+
+          auto& t = std::get<0>(*tile_tuple);
+          auto& t_var = std::get<1>(*tile_tuple);
+          auto& t_validity = std::get<2>(*tile_tuple);
+
+          logger_->info("using cache");
+          // Get information about the tile in its fragment.
+          auto tile_attr_uri = fragment->uri(name);
+          auto tile_idx = tile->tile_idx();
+          uint64_t tile_attr_offset;
+          RETURN_NOT_OK(
+              fragment->file_offset(name, tile_idx, &tile_attr_offset));
+
+          // Cache 't'.
+          if (t.filtered()) {
+            // Store the filtered buffer in the tile cache.
+            RETURN_NOT_OK(storage_manager_->write_to_cache(
+                tile_attr_uri, tile_attr_offset, t.filtered_buffer()));
+          }
+
+          // Cache 't_var'.
+          if (var_size && t_var.filtered()) {
+            auto tile_attr_var_uri = fragment->var_uri(name);
+            uint64_t tile_attr_var_offset;
+            RETURN_NOT_OK(fragment->file_var_offset(
+                name, tile_idx, &tile_attr_var_offset));
+
+            // Store the filtered buffer in the tile cache.
+            RETURN_NOT_OK(storage_manager_->write_to_cache(
+                tile_attr_var_uri,
+                tile_attr_var_offset,
+                t_var.filtered_buffer()));
+          }
+
+          // Cache 't_validity'.
+          if (nullable && t_validity.filtered()) {
+            auto tile_attr_validity_uri = fragment->validity_uri(name);
+            uint64_t tile_attr_validity_offset;
+            RETURN_NOT_OK(fragment->file_validity_offset(
+                name, tile_idx, &tile_attr_validity_offset));
+
+            // Store the filtered buffer in the tile cache.
+            RETURN_NOT_OK(storage_manager_->write_to_cache(
+                tile_attr_validity_uri,
+                tile_attr_validity_offset,
+                t_validity.filtered_buffer()));
+          }
+
+          // Unfilter 't' for fixed-sized tiles, otherwise unfilter both 't' and
+          // 't_var' for var-sized tiles.
+          if (!var_size) {
+            if (!nullable)
+              RETURN_NOT_OK(unfilter_tile_legacy(name, &t));
+            else
+              RETURN_NOT_OK(
+                  unfilter_tile_nullable_legacy(name, &t, &t_validity));
+          } else {
+            if (!nullable)
+              RETURN_NOT_OK(unfilter_tile_legacy(name, &t, &t_var));
+            else
+              RETURN_NOT_OK(
+                  unfilter_tile_nullable_legacy(name, &t, &t_var, &t_validity));
+          }
+        }
+
+        return Status::Ok();
+      });
+
+  RETURN_CANCEL_OR_ERROR(status);
+
+  return Status::Ok();
+}
+
+Status ReaderBase::unfilter_tile_legacy(
+    const std::string& name, Tile* tile) const {
+  FilterPipeline filters = array_schema_->filters(name);
+
+  // Append an encryption unfilter when necessary.
+  RETURN_NOT_OK(FilterPipeline::append_encryption_filter(
+      &filters, array_->get_encryption_key()));
+
+  // Reverse the tile filters.
+  RETURN_NOT_OK(filters.run_reverse(
+      stats_,
+      tile,
+      storage_manager_->compute_tp(),
+      storage_manager_->config()));
+
+  return Status::Ok();
+}
+
+Status ReaderBase::unfilter_tile_legacy(
+    const std::string& name, Tile* tile, Tile* tile_var) const {
+  FilterPipeline offset_filters = array_schema_->cell_var_offsets_filters();
+  FilterPipeline filters = array_schema_->filters(name);
+
+  // Append an encryption unfilter when necessary.
+  RETURN_NOT_OK(FilterPipeline::append_encryption_filter(
+      &offset_filters, array_->get_encryption_key()));
+  RETURN_NOT_OK(FilterPipeline::append_encryption_filter(
+      &filters, array_->get_encryption_key()));
+
+  // Reverse the tile filters.
+  RETURN_NOT_OK(offset_filters.run_reverse(
+      stats_, tile, storage_manager_->compute_tp(), config_));
+  RETURN_NOT_OK(filters.run_reverse(
+      stats_, tile_var, storage_manager_->compute_tp(), config_));
+
+  return Status::Ok();
+}
+
+Status ReaderBase::unfilter_tile_nullable_legacy(
+    const std::string& name, Tile* tile, Tile* tile_validity) const {
+  FilterPipeline filters = array_schema_->filters(name);
+  FilterPipeline validity_filters = array_schema_->cell_validity_filters();
+
+  // Append an encryption unfilter when necessary.
+  RETURN_NOT_OK(FilterPipeline::append_encryption_filter(
+      &filters, array_->get_encryption_key()));
+  RETURN_NOT_OK(FilterPipeline::append_encryption_filter(
+      &validity_filters, array_->get_encryption_key()));
+
+  // Reverse the tile filters.
+  RETURN_NOT_OK(filters.run_reverse(
+      stats_,
+      tile,
+      storage_manager_->compute_tp(),
+      storage_manager_->config()));
+
+  // Reverse the validity tile filters.
+  RETURN_NOT_OK(validity_filters.run_reverse(
+      stats_,
+      tile_validity,
+      storage_manager_->compute_tp(),
+      storage_manager_->config()));
+
+  return Status::Ok();
+}
+
+Status ReaderBase::unfilter_tile_nullable_legacy(
+    const std::string& name,
+    Tile* tile,
+    Tile* tile_var,
+    Tile* tile_validity) const {
+  FilterPipeline offset_filters = array_schema_->cell_var_offsets_filters();
+  FilterPipeline filters = array_schema_->filters(name);
+  FilterPipeline validity_filters = array_schema_->cell_validity_filters();
+
+  // Append an encryption unfilter when necessary.
+  RETURN_NOT_OK(FilterPipeline::append_encryption_filter(
+      &offset_filters, array_->get_encryption_key()));
+  RETURN_NOT_OK(FilterPipeline::append_encryption_filter(
+      &filters, array_->get_encryption_key()));
+  RETURN_NOT_OK(FilterPipeline::append_encryption_filter(
+      &validity_filters, array_->get_encryption_key()));
+
+  // Reverse the tile filters.
+  RETURN_NOT_OK(offset_filters.run_reverse(
+      stats_,
+      tile,
+      storage_manager_->compute_tp(),
+      storage_manager_->config()));
+  RETURN_NOT_OK(filters.run_reverse(
+      stats_,
+      tile_var,
+      storage_manager_->compute_tp(),
+      storage_manager_->config()));
+
+  // Reverse the validity tile filters.
+  RETURN_NOT_OK(validity_filters.run_reverse(
+      stats_,
+      tile_validity,
       storage_manager_->compute_tp(),
       storage_manager_->config()));
 

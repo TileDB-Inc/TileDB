@@ -346,8 +346,6 @@ class ReaderBase : public StrategyBase {
       const std::vector<ResultTile*>& result_tiles,
       const bool disable_cache = false) const;
 
-  // TODO: FIX ALL DOCSTRINGS
-
   /**
    * Runs the input fixed-sized tile for the input attribute or dimension
    * through the filter pipeline. The tile buffer is modified to contain the
@@ -423,6 +421,75 @@ class ReaderBase : public StrategyBase {
       ChunkData* tile_var_chunk_data,
       Tile* tile_validity,
       ChunkData* tile_validity_chunk_data) const;
+
+  // TODO: FIX ALL DOCSTRINGS
+
+  /**
+   * Filters the tiles on a particular attribute/dimension from all input
+   * fragments based on the tile info in `result_tiles`.
+   *
+   * @param name Attribute/dimension whose tiles will be unfiltered.
+   * @param result_tiles Vector containing the tiles to be unfiltered.
+   * @param disable_cache Disable the filtered buffers cache or not.
+   * @return Status
+   */
+  Status unfilter_tiles_legacy(
+      const std::string& name,
+      const std::vector<ResultTile*>& result_tiles) const;
+
+  /**
+   * Runs the input fixed-sized tile for the input attribute or dimension
+   * through the filter pipeline. The tile buffer is modified to contain the
+   * output of the pipeline.
+   *
+   * @param name The attribute/dimension the tile belong to.
+   * @param tile The tile to be unfiltered.
+   * @return Status
+   */
+  Status unfilter_tile_legacy(const std::string& name, Tile* tile) const;
+
+  /**
+   * Runs the input var-sized tile for the input attribute or dimension through
+   * the filter pipeline. The tile buffer is modified to contain the output of
+   * the pipeline.
+   *
+   * @param name The attribute/dimension the tile belong to.
+   * @param tile The offsets tile to be unfiltered.
+   * @param tile_var The value tile to be unfiltered.
+   * @return Status
+   */
+  Status unfilter_tile_legacy(
+      const std::string& name, Tile* tile, Tile* tile_var) const;
+
+  /**
+   * Runs the input fixed-sized tile for the input nullable attribute
+   * through the filter pipeline. The tile buffer is modified to contain the
+   * output of the pipeline.
+   *
+   * @param name The attribute/dimension the tile belong to.
+   * @param tile The tile to be unfiltered.
+   * @param tile_validity The validity tile to be unfiltered.
+   * @return Status
+   */
+  Status unfilter_tile_nullable_legacy(
+      const std::string& name, Tile* tile, Tile* tile_validity) const;
+
+  /**
+   * Runs the input var-sized tile for the input nullable attribute through
+   * the filter pipeline. The tile buffer is modified to contain the output of
+   * the pipeline.
+   *
+   * @param name The attribute/dimension the tile belong to.
+   * @param tile The offsets tile to be unfiltered.
+   * @param tile_var The value tile to be unfiltered.
+   * @param tile_validity The validity tile to be unfiltered.
+   * @return Status
+   */
+  Status unfilter_tile_nullable_legacy(
+      const std::string& name,
+      Tile* tile,
+      Tile* tile_var,
+      Tile* tile_validity) const;
 
   /**
    * Returns the configured bytesize for var-sized attribute offsets
