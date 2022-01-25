@@ -1,0 +1,273 @@
+name: act-windows-release
+
+runs:
+  using: "composite"
+  steps:
+
+    - name: 'Build libtiledb scripted inits'
+      if: true
+      #not available in (composite) action? continue-on-error: true
+      shell: bash
+      run: |
+        TDB_REF_NAME=${GITHUB_REF_NAME//\//-} # replace '/' with '-'
+        echo "TDB_REF_NAME=$TDB_REF_NAME" >> "$GITHUB_ENV"
+        #for ev in TDB_COMMIT_HASH TDB_REF_NAME GITHUB_REF_NAME GITHUB_REF_TYPE GITHUB_WORKSPACE GITHUB_EVENT_PATH CXX CC CFLAGS CXXFLAGS ARTIFACT_OS ARTIFACT_ARCH SUDO RUNNER_OS GITHUB_REF RUNNER_TRACKING_ID RUNNER_ARCH GITHUB_RUN_NUMBER GITHUB_RUN_ID GITHUB_EVENT_NAME GITHUB_ACTOR GITHUB_REF_NAME GITHUB_JOB GITHUB_REPOSITORY RUNNER_WORKSPACE GITHUB_WORKFLOW TDB_SOURCE_ARCHIVE_PATH TDB_BINARY_ARCHIVE_PATH; do tmp=$ev; echo "$ev=${!tmp}"; done >> tdbenvfile.txt
+        #cat tdbenvfile.txt
+        for ev in TDB_COMMIT_HASH TDB_REF_NAME GITHUB_REF_NAME GITHUB_REF_TYPE GITHUB_WORKSPACE GITHUB_EVENT_PATH CXX CC CFLAGS CXXFLAGS ARTIFACT_OS ARTIFACT_ARCH SUDO RUNNER_OS GITHUB_REF RUNNER_TRACKING_ID RUNNER_ARCH GITHUB_RUN_NUMBER GITHUB_RUN_ID GITHUB_EVENT_NAME GITHUB_ACTOR GITHUB_REF_NAME GITHUB_JOB GITHUB_REPOSITORY RUNNER_WORKSPACE GITHUB_WORKFLOW TDB_SOURCE_ARCHIVE_PATH TDB_BINARY_ARCHIVE_PATH; do tmp=$ev; echo "$ev=${!tmp}" >> "$GITHUB_ENV"; done
+        #echo "TDB_REF_NAME=${TDB_REF_NAME}" >> "$GITHUB_ENV"
+        sync
+
+    - name: Git Hash 7-digit
+      shell: bash
+      #env:
+      #  sourceVersion: ${{ env.GITHUB_SHA }}
+      run: |
+        # 'member, GA CI does -not- pre-pop env context with items from environment.
+        sourceVersion=$GITHUB_SHA
+        echo "sourceVersion is $sourceVersion"
+        commitHash=${sourceVersion:0:7}
+        echo "commitHash is $commitHash"
+        echo "commitHash=$commitHash" >> "$GITHUB_ENV" # make available to subsequent step
+        echo "TDB_COMMIT_HASH=$commitHash" >> "$GITHUB_ENV" # make available to subsequent step
+        sync
+
+    - name: "Build"
+      shell: powershell
+      run: |
+
+        #directory $env:BUILD_BUILDDIRECTORY was created in step 'tiledb env prep'
+        cd $env:BUILD_BUILDDIRECTORY
+
+        $VSCategory = "Enterprise" # alternate 'Community'
+        if ($env:TILEDB_GA_IMAGE_NAME -eq "windows-2016") {
+          if (!(Test-Path "C:\Program Files (x86)\Microsoft Visual Studio\2017\${VSCategory}\Common7\IDE\CommonExtensions\Microsoft\CMake\CMake\bin")) {
+            Write-Host "ERROR***: Missing C:\Program Files (x86)\Microsoft Visual Studio\2017\${VSCategory}\Common7\IDE\CommonExtensions\Microsoft\CMake\CMake\bin"
+            exit $LastExitCode
+          }
+          $env:Path += ";C:\Program Files (x86)\Microsoft Visual Studio\2017\${VSCategory}\Common7\IDE\CommonExtensions\Microsoft\CMake\CMake\bin"
+        } elseif ($env:TILEDB_GA_IMAGE_NAME -eq "windows-2019") {
+          if (!(Test-Path "C:\Program Files (x86)\Microsoft Visual Studio\2019\${VSCategory}\Common7\IDE\CommonExtensions\Microsoft\CMake\CMake\bin")) {
+            Write-Host "ERROR***: Missing C:\Program Files (x86)\Microsoft Visual Studio\2019\${VSCategory}\Common7\IDE\CommonExtensions\Microsoft\CMake\CMake\bin"
+            exit $LastExitCode
+          }
+          $env:Path += ";C:\Program Files (x86)\Microsoft Visual Studio\2019\${VSCategory}\Common7\IDE\CommonExtensions\Microsoft\CMake\CMake\bin"
+        } else {
+          Write-Host "Unknown image name: '$($env:TILEDB_GA_IMAGE_NAME)'"
+          exit $LastExitCode
+        }
+
+        $bootstrapOptions = "-EnableVerbose -EnableStaticTileDB -EnableBuildDeps"
+        if ($env:TILEDB_S3 -eq "ON") {
+          $bootstrapOptions = "-EnableS3 " + $bootstrapOptions
+        }
+        if ($env:TILEDB_AZURE -eq "ON") {
+          $bootstrapOptions = "-EnableAzure " + $bootstrapOptions
+        }
+        if ($env:TILEDB_GCS -eq "ON") {
+          $bootstrapOptions = "-EnableGCS " + $bootstrapOptions
+          #NOTE: GCS simulator not yet actually in place.
+        }
+        if ($env:TILEDB_SERIALIZATION -eq "ON") {
+          $bootstrapOptions = "-EnableSerialization " + $bootstrapOptions
+        }
+        # static already added above as initial default
+        # if ($env:TILEDB_STATIC -eq "ON") {
+        #  $bootstrapOptions = $bootstrapOptions + " -EnableStaticTileDB"
+        # }
+        # if ($env:TILEDB_HDFS -eq "ON") {
+        #  $bootstrapOptions = $bootstrapOptions + " -EnableHDFS"
+        #}
+        if ($env:TILEDB_TOOLS -eq "ON") {
+          $bootstrapOptions = $bootstrapOptions + " -EnableTools"
+        }
+        if ($env:TILEDB_DEBUG -eq "ON") {
+          $bootstrapOptions = $bootstrapOptions + " -EnableDebug"
+        }
+        # if ($env:TILEDB_CI_ASAN -eq "ON") {
+        #  $bootstrapOptions = $bootstrapOptions + " -EnableSanitizer address -EnableDebug"
+        # }
+        # if ($env:TILEDB_CI_TSAN -eq "ON") {
+        #  $bootstrapOptions = $bootstrapOptions + " -EnableSanitizer thread -EnableDebug"
+        # }
+        # static already added above as initial default
+        # if ($env:TILEDB_FORCE_BUILD_DEPS" -eq "ON") {
+        #   $bootstrapOptions = $bootstrapOptions + " -EnableBuildDeps"
+        # }
+        if ($env:TILEDB_WERROR -eq "OFF") {
+          $bootstrapOptions = $bootstrapOptions + " -DisableWerror"
+        }
+
+        $bootstrapExpression = "& $env:BUILD_SOURCESDIRECTORY\bootstrap.ps1 " + $bootstrapOptions
+        Write-Host "bootstrapExpression: $bootstrapExpression"
+        Invoke-Expression $bootstrapExpression
+
+        if ($LastExitCode -ne 0) {
+           Write-Host "Bootstrap failed."
+           exit $LastExitCode
+        }
+
+        cmake --build $env:BUILD_BUILDDIRECTORY --config Release -j $env:NUMBER_OF_PROCESSORS 2>&1
+
+        if ($LastExitCode -ne 0) {
+           Write-Host "Build failed. CMake exit status: " $LastExitCocde
+           exit $LastExitCode
+        }
+
+        cmake --build $env:BUILD_BUILDDIRECTORY --target install-tiledb --config Release 2>&1
+
+        if ($LastExitCode -ne 0) {
+          Write-Host "Installation failed."
+          $host.SetShouldExit($LastExitCode)
+        }
+
+    - name: build windows asset archives
+      shell: bash
+      run: |
+        set -x
+        pwd
+        # move up a directory level so we are writing archive where tar won't fail reporting change while reading...
+        cd $GITHUB_WORKSPACE/..
+        #cd $BUILD_BUILDDIRFECTORY/..
+        pwd
+        if [[ $(which 7z) ]]; then
+          echo "found 7z!"
+        elif [[ $(which 7za) ]]; then
+          echo "found 7za!"
+        else
+          if [[ $(find / -name '7z*.exe') ]]; then
+            echo "found 7z... somewhere (see above)"
+          else
+            echo "Failed to find 7z...!"
+          fi
+        fi
+        #source_archive_name=tiledb-source-${TDB_REF_NAME}-${TDB_COMMIT_HASH}.tar.gz
+        source_archive_name=tiledb-source-${TDB_REF_NAME}-${TDB_COMMIT_HASH}.zip
+        7z a -r ${source_archive_name} ./TileDB
+        ls -l $GITHUB_WORKSPACE/..
+        #ls -l $BUILD_BUILDDIRFECTORY/..
+        sync
+        # move up a directory level so we are writing archive where tar won't fail reporting change while reading...
+        cd $GITHUB_WORKSPACE/..
+        #ls -l $BUILD_BUILDDIRFECTORY/..
+        pwd
+        #binary_archive_name=tiledb-${ARTIFACT_OS}-${ARTIFACT_ARCH}-${TDB_REF_NAME}-${TDB_COMMIT_HASH}.tar.gz
+        binary_archive_name=tiledb-${ARTIFACT_OS}-${ARTIFACT_ARCH}-${TDB_REF_NAME}-${TDB_COMMIT_HASH}.zip
+        #tar -zcf ${binary_archive_name} ./TileDB/build
+        #tar -zcf ${binary_archive_name} $BUILD_BUILDDIRECTORY
+        #If/when runner environ changes, the '/d/a' will probably require change!!!
+        echo "\$BUILD_BUILDDIRECTORY is $BUILD_BUILDDIRECTORY"
+        echo "\$(cygpath -u \$BUILD_BUILDDIRECTORY) is $(cygpath -u $BUILD_BUILDDIRECTORY)"
+        MSYS2_ENV_CONV_EXCL='BUILD_BUILDDIRECTORY' echo "\$BUILD_BUILDDIRECTORY is $BUILD_BUILDDIRECTORY"
+        #MSYS2_ARG_CONV_EXCL='/d/a' tar -zcf ${binary_archive_name} $BUILD_BUILDDIRECTORY
+        #MSYS2_ENV_CONV_EXCL='BUILD_BUILDDIRECTORY' MSYS2_ARG_CONV_EXCL='/d/a' tar -zcf ${binary_archive_name} $BUILD_BUILDDIRECTORY
+        #MSYS2_ENV_CONV_EXCL='BUILD_BUILDDIRECTORY' MSYS2_ARG_CONV_EXCL='/d/a' tar -zcf ${binary_archive_name} $(cygpath -u $BUILD_BUILDDIRECTORY)
+        #MSYS2_ENV_CONV_EXCL='BUILD_BUILDDIRECTORY' MSYS2_ARG_CONV_EXCL='/d/a' 7z a -r ${binary_archive_name} $(cygpath -u $BUILD_BUILDDIRECTORY)
+        7z a -r ${binary_archive_name} $BUILD_BUILDDIRECTORY
+        ls -l $GITHUB_WORKSPACE/..
+        sync
+
+        #TDB_SOURCE_ARCHIVE_PATH2="$GITHUB_WORKSPACE/../${source_archive_name}"
+        MSYS2_ENV_CONV_EXCL='*' TDB_SOURCE_ARCHIVE_PATH2="$(cygpath -u $GITHUB_WORKSPACE/../${source_archive_name})"
+        
+        MSYS2_ENV_CONV_EXCL='*' TDB_SOURCE_ARCHIVE_PATH3="$(cygpath -u $GITHUB_WORKSPACE/../${source_archive_name})"
+        echo "TDB_SOURCE_ARCHIVE_PATH3=$TDB_SOURCE_ARCHIVE_PATH3" # >> "$GITHUB_WORKSPACE/../TDBRETENVVARS.TXT"
+        
+        #TDB_SOURCE_ARCHIVE_PATH=$(echo -e "import sys\nimport os\nprint (os.path.realpath(\"$TDB_SOURCE_ARCHIVE_PATH2\"))\n" | python)
+        TDB_SOURCE_ARCHIVE_PATH=$(echo -e "import sys\nimport os\nprint (os.path.realpath(\"$(cygpath -m $TDB_SOURCE_ARCHIVE_PATH2)\"))\n" | python)
+
+        #TDB_BINARY_ARCHIVE_PATH2="$GITHUB_WORKSPACE/../${binary_archive_name}"
+        MSYS2_ENV_CONV_EXCL='*' TDB_BINARY_ARCHIVE_PATH2="$(cygpath -u $GITHUB_WORKSPACE/../${binary_archive_name})"
+        #TDB_BINARY_ARCHIVE_PATH=$(echo -e "import sys\nimport os\nprint (os.path.realpath(\"$TDB_BINARY_ARCHIVE_PATH2\"))\n" | python)
+        TDB_BINARY_ARCHIVE_PATH=$(echo -e "import sys\nimport os\nprint (os.path.realpath(\"$(cygpath -m $TDB_BINARY_ARCHIVE_PATH2)\"))\n" | python)
+
+        echo "TDB_BINARY_ARCHIVE_PATH=$TDB_BINARY_ARCHIVE_PATH" >> "$GITHUB_WORKSPACE/../TDBRETENVVARS.TXT"
+        echo "TDB_SOURCE_ARCHIVE_PATH=$TDB_SOURCE_ARCHIVE_PATH" >> "$GITHUB_WORKSPACE/../TDBRETENVVARS.TXT"
+        echo "TDB_BINARY_ARCHIVE_PATH=$TDB_BINARY_ARCHIVE_PATH" >> "$GITHUB_ENV"
+        echo "TDB_SOURCE_ARCHIVE_PATH=$TDB_SOURCE_ARCHIVE_PATH" >> "$GITHUB_ENV"
+        echo "TDB_SOURCE_ARCHIVE_NAME=$source_archive_name" >> "$GITHUB_WORKSPACE/../TDBRETENVVARS.TXT"
+        echo "TDB_SOURCE_ARCHIVE_NAME=$source_archive_name" >> "$GITHUB_ENV"
+        echo "TDB_BINARY_ARCHIVE_NAME=$binary_archive_name" >> "$GITHUB_WORKSPACE/../TDBRETENVVARS.TXT"
+        echo "TDB_BINARY_ARCHIVE_NAME=$binary_archive_name" >> "$GITHUB_ENV"
+
+        if [[ $(find "$GITHUB_WORKSPACE/.." -name TDBRETENVVARS.TXT) ]]; then
+          echo "found TDBRETENVVARS.TXT"
+        fi
+
+        pwd
+        ls -l $GITHUB_WORKSPACE/..
+        if [[ $(ls -l $TDB_SOURCE_ARCHIVE_PATH) ]]; then
+          echo "found $TDB_SOURCE_ARCHIVE_PATH"
+        fi
+        if [[ $(ls -l $TDB_BINARY_ARCHIVE_PATH) ]]; then
+          echo "found $TDB_BINARY_ARCHIVE_PATH"
+        fi
+        if [[ $(ls -l $TDB_SOURCE_ARCHIVE_PATH2) ]]; then
+          echo "found $TDB_SOURCE_ARCHIVE_PATH2"
+        fi
+        if [[ $(ls -l $TDB_BINARY_ARCHIVE_PATH2) ]]; then
+          echo "found $TDB_BINARY_ARCHIVE_PATH2"
+        fi
+
+        echo "END, step build windows asset archives"
+      
+    - name: 'ArchiveFiles@2A' # https://github.com/actions/upload-artifact#where-does-the-upload-go
+      #if: ${{ failure() == true && startsWith(runner.name, 'macos-') == true }} # only run this job if the build step failed
+      #if tag || branch prefix is 'release-' || branch prefix is 'build-'
+      if: startsWith(env.GITHUB_REF, 'refs/tags') || startsWith( env.GITHUB_REF_NAME, 'release-') || startsWith( env.GITHUB_REF_NAME, 'build-')
+      uses: actions/upload-artifact@v2
+      with:
+        retention-days: 10
+        #name: tiledb-source-${{ env.ARTIFACT_OS }}-${{ env.ARTIFACT_ARCH }}.${{env.TDB_REF_NAME}}.tar.gz
+        name: ${{ env.TDB_SOURCE_ARCHIVE_NAME }}
+        #if-no-files-found: warn # 'ignore/', 'warn' or 'error' are available, defaults to `warn`
+        path: |
+          ${{ env.TDB_SOURCE_ARCHIVE_PATH }}
+
+    #~ - name: 'upload-release-source-asset'
+      #~ #uses: actions/upload-files-to-a-github-release
+      #~ uses: svenstaro/upload-release-action@2.2.1
+      #~ if: false
+      #~ with:
+        #~ # required items
+        #~ repo_token: ${{ secrets.GITHUB_TOKEN }}
+        #~ file: ${{ env.TDB_SOURCE_ARCHIVE_PATH }}
+        #~ tag: ${{ github.ref }}
+        #~ # optional items
+        #~ #asset_name:
+        #~ #file_glob:
+        #~ overwrite: ${{ github.event.inputs.overwrite_if_needed }}
+        #~ prerelease: ${{ github.event.inputs.is_prelease }}
+        #~ #release_name: # defaults to tag name
+        #~ #body:
+        #~ #repo_name:
+
+    - name: 'ArchiveFiles@2B' # https://github.com/actions/upload-artifact#where-does-the-upload-go
+      #if: ${{ failure() == true && startsWith(runner.name, 'macos-') == true }} # only run this job if the build step failed
+      #if tag || branch prefix is 'release-' || branch prefix is 'build-'
+      if: startsWith(env.GITHUB_REF, 'refs/tags') || startsWith( env.GITHUB_REF_NAME, 'release-') || startsWith( env.GITHUB_REF_NAME, 'build-')
+      uses: actions/upload-artifact@v2
+      with:
+        retention-days: 10
+        #name: tiledb-${{ env.ARTIFACT_OS }}-${{ env.ARTIFACT_ARCH }}-build-dir.${{env.TDB_REF_NAME}}.tar.gz
+        name: ${{ env.TDB_BINARY_ARCHIVE_NAME }}
+        #if-no-files-found: warn # 'ignore/', 'warn' or 'error' are available, defaults to `warn`
+        path: |
+          ${{ env.TDB_BINARY_ARCHIVE_PATH }}
+
+    #~ - name: 'upload-release-binary-asset'
+      #~ #uses: actions/upload-files-to-a-github-release
+      #~ uses: svenstaro/upload-release-action@2.2.1
+      #~ if: startsWith(env.GITHUB_REF, 'refs/tags') || startsWith( env.GITHUB_REF_NAME, 'release-') || startsWith( env.GITHUB_REF_NAME, 'build-')
+      #~ with:
+        #~ # required items
+        #~ repo_token: ${{ secrets.GITHUB_TOKEN }}
+        #~ file: ${{ env.TDB_BINARY_ARCHIVE_PATH }}
+        #~ tag: ${{ github.ref }}
+        #~ # optional items
+        #~ #asset_name:
+        #~ #file_glob:
+        #~ overwrite: ${{ github.event.inputs.overwrite_if_needed }}
+        #~ prerelease: ${{ github.event.inputs.is_prelease }}
+        #~ #release_name: # defaults to tag name
+        #~ #body:
+        #~ #repo_name:

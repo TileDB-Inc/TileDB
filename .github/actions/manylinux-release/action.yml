@@ -1,4 +1,4 @@
-name: act-linux_mac-release
+name: act-manylinux-release
 
 runs:
   using: "composite"
@@ -63,6 +63,7 @@ runs:
         echo "TDB_REF_NAME=$TDB_REF_NAME" >> "$GITHUB_ENV"
         for ev in TDB_COMMIT_HASH TDB_REF_NAME GITHUB_REF_NAME GITHUB_REF_TYPE GITHUB_WORKSPACE GITHUB_EVENT_PATH CXX CC CFLAGS CXXFLAGS ARTIFACT_OS ARTIFACT_ARCH SUDO RUNNER_OS GITHUB_REF RUNNER_TRACKING_ID RUNNER_ARCH GITHUB_RUN_NUMBER GITHUB_RUN_ID GITHUB_EVENT_NAME GITHUB_ACTOR GITHUB_REF_NAME GITHUB_JOB GITHUB_REPOSITORY RUNNER_WORKSPACE GITHUB_WORKFLOW TDB_SOURCE_ARCHIVE_PATH TDB_BINARY_ARCHIVE_PATH; do tmp=$ev; echo "$ev=${!tmp}"; done >> tdbenvfile.txt
         cat tdbenvfile.txt
+        for ev in TDB_COMMIT_HASH TDB_REF_NAME GITHUB_REF_NAME GITHUB_REF_TYPE GITHUB_WORKSPACE GITHUB_EVENT_PATH CXX CC CFLAGS CXXFLAGS ARTIFACT_OS ARTIFACT_ARCH SUDO RUNNER_OS GITHUB_REF RUNNER_TRACKING_ID RUNNER_ARCH GITHUB_RUN_NUMBER GITHUB_RUN_ID GITHUB_EVENT_NAME GITHUB_ACTOR GITHUB_REF_NAME GITHUB_JOB GITHUB_REPOSITORY RUNNER_WORKSPACE GITHUB_WORKFLOW TDB_SOURCE_ARCHIVE_PATH TDB_BINARY_ARCHIVE_PATH; do tmp=$ev; echo "$ev=${!tmp}" >> "$GITHUB_ENV"; done
         sync
 
     - name: 'Build libtiledb scripted'
@@ -105,20 +106,46 @@ runs:
           source $up1level/TDBRETENVVARS.TXT
           echo "TDB_BINARY_ARCHIVE_PATH=$TDB_BINARY_ARCHIVE_PATH" >> "$GITHUB_ENV"
           echo "TDB_SOURCE_ARCHIVE_PATH=$TDB_SOURCE_ARCHIVE_PATH" >> "$GITHUB_ENV"
+          echo "TDB_BINARY_ARCHIVE_NAME=$TDB_BINARY_ARCHIVE_NAME" >> "$GITHUB_ENV"
+          echo "TDB_SOURCE_ARCHIVE_NAME=$TDB_SOURCE_ARCHIVE_NAME" >> "$GITHUB_ENV"
         fi
         sync
         docker inspect $containername
         sync
         docker stop $containername
+        echo "\$GITHUB_REF IS ${GITHUB_REF}"
+        echo "\$GITHUB_REF_NAME IS ${GITHUB_REF_NAME}"
+        echo "TDB_BINARY_ARCHIVE_PATH is $TDB_BINARY_ARCHIVE_PATH"
+        echo "TDB_SOURCE_ARCHIVE_PATH is $TDB_SOURCE_ARCHIVE_PATH"
+        echo "TDB_BINARY_ARCHIVE_NAME is $TDB_BINARY_ARCHIVE_NAME"
+        echo "TDB_SOURCE_ARCHIVE_NAME is $TDB_SOURCE_ARCHIVE_NAME"
+        
+
+    - name: 'diag step' # https://github.com/actions/upload-artifact#where-does-the-upload-go
+      shell: bash
+      run: |
+        set -x
+        pwd
+        echo "\$GITHUB_REF IS ${GITHUB_REF}"
+        echo "\$GITHUB_REF_NAME IS ${GITHUB_REF_NAME}"
+        echo "TDB_BINARY_ARCHIVE_PATH is $TDB_BINARY_ARCHIVE_PATH"
+        echo "TDB_SOURCE_ARCHIVE_PATH is $TDB_SOURCE_ARCHIVE_PATH"
+        echo "TDB_BINARY_ARCHIVE_NAME is $TDB_BINARY_ARCHIVE_NAME"
+        echo "TDB_SOURCE_ARCHIVE_NAME is $TDB_SOURCE_ARCHIVE_NAME"
+        ls -l $TDB_SOURCE_ARCHIVE_PATH
+        ls -l $TDB_BINARY_ARCHIVE_PATH
+        ls -l $GITHUB_WORKSPACE
+        ls -l $GITHUB_WORKSPACE/..
 
     - name: 'ArchiveFiles@2A' # https://github.com/actions/upload-artifact#where-does-the-upload-go
       #if: ${{ failure() == true && startsWith(runner.name, 'macos-') == true }} # only run this job if the build step failed
       #if tag || branch prefix is 'release-' || branch prefix is 'build-'
-      if: startsWith(env.GITHUB_REF, 'refs/tags') || startsWith( env.GITHUB_REF_NAME, 'release-') || startsWith( env.GITHUB_REF_NAME, 'build-')
+      if: (startsWith(env.GITHUB_REF, 'refs/tags') == true) || (startsWith( env.GITHUB_REF_NAME, 'release-') == true) || (startsWith( env.GITHUB_REF_NAME, 'build-') == true)
       uses: actions/upload-artifact@v2
       with:
         retention-days: 10
-        name: tiledb-source-${{ env.ARTIFACT_OS }}-${{ env.ARTIFACT_ARCH }}.${{env.TDB_REF_NAME}}.tar.gz
+        #name: tiledb-source-${{ env.ARTIFACT_OS }}-${{ env.ARTIFACT_ARCH }}.${{env.TDB_REF_NAME}}.tar.gz
+        name: ${{ env.TDB_SOURCE_ARCHIVE_NAME }}
         #if-no-files-found: warn # 'ignore/', 'warn' or 'error' are available, defaults to `warn`
         path: |
           ${{ env.TDB_SOURCE_ARCHIVE_PATH }}
@@ -148,7 +175,8 @@ runs:
       uses: actions/upload-artifact@v2
       with:
         retention-days: 10
-        name: tiledb-${{ env.ARTIFACT_OS }}-${{ env.ARTIFACT_ARCH }}-build-dir.${{env.TDB_REF_NAME}}.tar.gz
+        #name: tiledb-${{ env.ARTIFACT_OS }}-${{ env.ARTIFACT_ARCH }}-build-dir.${{env.TDB_REF_NAME}}.tar.gz
+        name: ${{ env.TDB_BINARY_ARCHIVE_NAME }}
         #if-no-files-found: warn # 'ignore/', 'warn' or 'error' are available, defaults to `warn`
         path: |
           ${{ env.TDB_BINARY_ARCHIVE_PATH }}
@@ -156,7 +184,7 @@ runs:
     #~ - name: 'upload-release-binary-asset'
       #~ #uses: actions/upload-files-to-a-github-release
       #~ uses: svenstaro/upload-release-action@2.2.1
-      #~ if: false
+      #~ if: startsWith(env.GITHUB_REF, 'refs/tags') || startsWith( env.GITHUB_REF_NAME, 'release-') || startsWith( env.GITHUB_REF_NAME, 'build-')
       #~ with:
         #~ # required items
         #~ repo_token: ${{ secrets.GITHUB_TOKEN }}
