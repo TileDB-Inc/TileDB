@@ -97,6 +97,10 @@ bool SparseUnorderedWithDupsReader<BitmapType>::incomplete() const {
 template <class BitmapType>
 QueryStatusDetailsReason
 SparseUnorderedWithDupsReader<BitmapType>::status_incomplete_reason() const {
+  // Returning early for deserialized incomplete queries.
+  if (result_tiles_.empty())
+    return QueryStatusDetailsReason::REASON_USER_BUFFER_SIZE;
+
   if (!incomplete())
     return QueryStatusDetailsReason::REASON_NONE;
 
@@ -628,13 +632,13 @@ Status SparseUnorderedWithDupsReader<BitmapType>::copy_offsets_tiles(
         if (i == result_tiles->size() - 1) {
           auto to_copy = cell_offsets->at(i + 1) - cell_offsets->at(i);
 
-          // No bitmap, just use the cell offsets. Otherwise, we need to count
-          // cells if the tile is not fully copied.
+          // No bitmap, just use the cell offsets. Otherwise, we need to check
+          // the bitmap to determine the max.
           if (rt->bitmap_result_num_ == std::numeric_limits<uint64_t>::max()) {
             max_pos_tile = min_pos_tile + to_copy;
-          } else if (rt->bitmap_result_num_ != min_pos_tile + to_copy) {
+          } else {
             max_pos_tile =
-                rt->pos_with_given_result_sum(min_pos_tile + to_copy) + 1;
+                rt->pos_with_given_result_sum(min_pos_tile, to_copy) + 1;
           }
         }
 
@@ -971,13 +975,13 @@ Status SparseUnorderedWithDupsReader<BitmapType>::copy_fixed_data_tiles(
         if (i == result_tiles->size() - 1) {
           auto to_copy = cell_offsets->at(i + 1) - cell_offsets->at(i);
 
-          // No bitmap, just use the cell offsets. Otherwise, we need to count
-          // cells if the tile is not fully copied.
+          // No bitmap, just use the cell offsets. Otherwise, we need to check
+          // the bitmap to determine the max.
           if (rt->bitmap_result_num_ == std::numeric_limits<uint64_t>::max()) {
             max_pos_tile = min_pos_tile + to_copy;
-          } else if (rt->bitmap_result_num_ != min_pos_tile + to_copy) {
+          } else {
             max_pos_tile =
-                rt->pos_with_given_result_sum(min_pos_tile + to_copy) + 1;
+                rt->pos_with_given_result_sum(min_pos_tile, to_copy) + 1;
           }
         }
 
@@ -1464,7 +1468,7 @@ Status SparseUnorderedWithDupsReader<BitmapType>::process_tiles(
     if (last_tile->bitmap_result_num_ != last_tile_cells_copied) {
       frag_tile_idx.first = last_tile->tile_idx();
       frag_tile_idx.second =
-          last_tile->pos_with_given_result_sum(last_tile_cells_copied) + 1;
+          last_tile->pos_with_given_result_sum(0, last_tile_cells_copied) + 1;
     }
   } else if (last_tile_num_cells != last_tile_cells_copied) {
     frag_tile_idx.first = last_tile->tile_idx();

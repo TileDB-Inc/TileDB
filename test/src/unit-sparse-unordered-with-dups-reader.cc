@@ -1113,6 +1113,14 @@ TEST_CASE_METHOD(
     CSparseUnorderedWithDupsFx,
     "Sparse unordered with dups reader: single tile query continuation",
     "[sparse-unordered-with-dups][single-tile][continuation]") {
+  bool use_subarray = false;
+  SECTION("- No subarray") {
+    use_subarray = false;
+  }
+  SECTION("- Subarray") {
+    use_subarray = true;
+  }
+
   // Create default array.
   reset_config();
   create_default_array_1d();
@@ -1133,7 +1141,7 @@ TEST_CASE_METHOD(
   uint64_t coords_r_size = sizeof(coords_r);
   uint64_t data_r_size = sizeof(data_r);
   auto rc = read(
-      false,
+      use_subarray,
       false,
       coords_r,
       &coords_r_size,
