@@ -657,13 +657,13 @@ Status SparseUnorderedWithDupsReader<BitmapType>::copy_offsets_tiles(
         if (i == result_tiles.size() - 1) {
           auto to_copy = cell_offsets[i + 1] - cell_offsets[i];
 
-          // No bitmap, just use the cell offsets. Otherwise, we need to count
-          // cells if the tile is not fully copied.
+          // No bitmap, just use the cell offsets. Otherwise, we need to check
+          // the bitmap to determine the max.
           if (rt->bitmap_result_num_ == std::numeric_limits<uint64_t>::max()) {
             max_pos_tile = min_pos_tile + to_copy;
-          } else if (rt->bitmap_result_num_ != min_pos_tile + to_copy) {
+          } else {
             max_pos_tile =
-                rt->pos_with_given_result_sum(0, min_pos_tile + to_copy) + 1;
+                rt->pos_with_given_result_sum(min_pos_tile, to_copy) + 1;
           }
         }
 
@@ -988,13 +988,13 @@ Status SparseUnorderedWithDupsReader<BitmapType>::copy_fixed_data_tiles(
         if (i == result_tiles.size() - 1) {
           auto to_copy = cell_offsets[i + 1] - cell_offsets[i];
 
-          // No bitmap, just use the cell offsets. Otherwise, we need to count
-          // cells if the tile is not fully copied.
+          // No bitmap, just use the cell offsets. Otherwise, we need to check
+          // the bitmap to determine the max.
           if (rt->bitmap_result_num_ == std::numeric_limits<uint64_t>::max()) {
             max_pos_tile = min_pos_tile + to_copy;
-          } else if (rt->bitmap_result_num_ != min_pos_tile + to_copy) {
+          } else {
             max_pos_tile =
-                rt->pos_with_given_result_sum(0, min_pos_tile + to_copy) + 1;
+                rt->pos_with_given_result_sum(min_pos_tile, to_copy) + 1;
           }
         }
 
