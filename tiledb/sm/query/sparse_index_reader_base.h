@@ -87,15 +87,16 @@ class ResultTileWithBitmap : public ResultTile {
   /**
    * Returns cell index from a number of cells inside of the bitmap.
    */
-  uint64_t pos_with_given_result_sum(uint64_t result_num) const {
+  uint64_t pos_with_given_result_sum(
+      uint64_t start_pos, uint64_t result_num) const {
     assert(
         bitmap_result_num_ != std::numeric_limits<uint64_t>::max() &&
         result_num != 0);
     if (bitmap_.size() == 0)
-      return result_num - 1;
+      return start_pos + result_num - 1;
 
     uint64_t sum = 0;
-    for (uint64_t c = 0; c < bitmap_.size(); c++) {
+    for (uint64_t c = start_pos; c < bitmap_.size(); c++) {
       sum += bitmap_[c];
       if (sum == result_num) {
         return c;
