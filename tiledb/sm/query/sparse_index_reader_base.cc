@@ -170,11 +170,10 @@ SparseIndexReaderBase::get_coord_tiles_size(
       tiles_size += fragment_metadata_[f]->tile_size(dim_names_[d], t);
 
       if (is_dim_var_size_[d]) {
-        uint64_t temp = 0;
-        RETURN_NOT_OK_TUPLE(
-            fragment_metadata_[f]->tile_var_size(dim_names_[d], t, &temp),
-            std::nullopt);
-        tiles_size += temp;
+        auto&& [st, temp] =
+            fragment_metadata_[f]->tile_var_size(dim_names_[d], t);
+        RETURN_NOT_OK_TUPLE(st, std::nullopt);
+        tiles_size += *temp;
       }
     }
   }

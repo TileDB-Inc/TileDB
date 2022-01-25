@@ -188,7 +188,6 @@ TEST_CASE("Tile: Test copy constructor", "[Tile][copy_constructor]") {
   CHECK(tile2.format_version() == tile1.format_version());
   CHECK(tile2.full() == tile1.full());
   CHECK(tile2.offset() == tile1.offset());
-  CHECK(tile2.pre_filtered_size() == tile1.pre_filtered_size());
   CHECK(tile2.size() == tile1.size());
   CHECK(tile2.stores_coords() == tile1.stores_coords());
   CHECK(tile2.type() == tile1.type());
@@ -251,7 +250,6 @@ TEST_CASE("Tile: Test move constructor", "[Tile][move_constructor]") {
   CHECK(tile3.format_version() == tile2.format_version());
   CHECK(tile3.full() == tile2.full());
   CHECK(tile3.offset() == tile2.offset());
-  CHECK(tile3.pre_filtered_size() == tile2.pre_filtered_size());
   CHECK(tile3.size() == tile2.size());
   CHECK(tile3.stores_coords() == tile2.stores_coords());
   CHECK(tile3.type() == tile2.type());
@@ -304,7 +302,6 @@ TEST_CASE("Tile: Test assignment", "[Tile][assignment]") {
   CHECK(tile2.format_version() == tile1.format_version());
   CHECK(tile2.full() == tile1.full());
   CHECK(tile2.offset() == tile1.offset());
-  CHECK(tile2.pre_filtered_size() == tile1.pre_filtered_size());
   CHECK(tile2.size() == tile1.size());
   CHECK(tile2.stores_coords() == tile1.stores_coords());
   CHECK(tile2.type() == tile1.type());
@@ -367,7 +364,6 @@ TEST_CASE("Tile: Test move-assignment", "[Tile][move_assignment]") {
   CHECK(tile3.format_version() == tile2.format_version());
   CHECK(tile3.full() == tile2.full());
   CHECK(tile3.offset() == tile2.offset());
-  CHECK(tile3.pre_filtered_size() == tile2.pre_filtered_size());
   CHECK(tile3.size() == tile2.size());
   CHECK(tile3.stores_coords() == tile2.stores_coords());
   CHECK(tile3.type() == tile2.type());

@@ -47,6 +47,7 @@
 #include "tiledb/sm/query/writer.h"
 #include "tiledb/sm/rest/rest_client.h"
 #include "tiledb/sm/storage_manager/storage_manager.h"
+#include "tiledb/sm/tile/writer_tile.h"
 
 #include <cassert>
 #include <iostream>

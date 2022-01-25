@@ -1236,6 +1236,21 @@ int32_t num_fragments(const std::string& array_name) {
   return ret;
 }
 
+std::string random_string(const uint64_t l) {
+  static const char char_set[] =
+      "0123456789"
+      "ABCDEFGHIJKLMNOPQRSTUVWXYZ"
+      "abcdefghijklmnopqrstuvwxyz";
+  std::string s;
+  s.reserve(l);
+
+  for (uint64_t i = 0; i < l; ++i) {
+    s += char_set[rand() % (sizeof(char_set) - 1)];
+  }
+
+  return s;
+}
+
 template void check_subarray<int8_t>(
     tiledb::sm::Subarray& subarray, const SubarrayRanges<int8_t>& ranges);
 template void check_subarray<uint8_t>(
