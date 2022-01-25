@@ -1,15 +1,7 @@
 name: generate-releases
 
 on:
-  #~ # The following workflow_dispatch is as in prepare-release.yml, trying to see in gha...
-  #~ workflow_dispatch:
-    #~ inputs:
-      #~ version:
-        #~ description: 'New version to be released'
-        #~ required: true
-      #~ branch:
-        #~ description: 'Release branch'
-        #~ required: true
+  # Changes to workflow_dispatch likely will not be visible/effective until they are in the 'main' repository branch.
   workflow_dispatch:
     inputs:
       overwrite_if_needed:
