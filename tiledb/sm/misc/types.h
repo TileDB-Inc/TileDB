@@ -356,6 +356,7 @@ class ByteVecValue {
 /** A byte vector. */
 typedef std::vector<uint8_t> ByteVec;
 
+/** The chunk info, buffers and offsets */
 struct ChunkData {
   struct DiskLayout {
     uint32_t unfiltered_data_size_;

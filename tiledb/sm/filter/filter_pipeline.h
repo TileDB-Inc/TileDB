@@ -225,11 +225,22 @@ class FilterPipeline {
       ThreadPool* compute_tp,
       const Config& config) const;
 
-  // TODO: add docstring
+  /**
+   * Run the given chunk range in reverse through the pipeline.
+   *
+   * @param reader_stats Stats to record in the function
+   * @param tile Current tile on which the filter pipeline is being run
+   * @param chunk_data The tile chunk info, buffers and offsets
+   * @param min_chunk_index The chunk range index to start from
+   * @param max_chunk_index The chunk range index to end at
+   * @param compute_tp The thread pool for compute-bound tasks.
+   * @param config The global config.
+   * @return Status
+   */
   Status run_reverse_chunk_range(
       stats::Stats* const reader_stats,
       Tile* const tile,
-      ChunkData* chunk_data,
+      const ChunkData& chunk_data,
       const uint64_t min_chunk_index,
       const uint64_t max_chunk_index,
       ThreadPool* const compute_tp,
