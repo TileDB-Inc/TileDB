@@ -94,6 +94,10 @@ bool SparseUnorderedWithDupsReader<BitmapType>::incomplete() const {
 template <class BitmapType>
 QueryStatusDetailsReason
 SparseUnorderedWithDupsReader<BitmapType>::status_incomplete_reason() const {
+  // Returning early for deserialized incomplete queries.
+  if (result_tiles_.empty())
+    return QueryStatusDetailsReason::REASON_USER_BUFFER_SIZE;
+
   if (!incomplete())
     return QueryStatusDetailsReason::REASON_NONE;
 
