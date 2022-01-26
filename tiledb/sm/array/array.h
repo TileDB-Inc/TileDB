@@ -342,7 +342,7 @@ class Array {
    *  If the non_empty_domain has not been computed or loaded
    *  it will be loaded first
    * */
-  const NDRange& non_empty_domain();
+  std::tuple<Status, std::optional<const NDRange>> non_empty_domain();
 
   /** Returns the non-empty domain of the opened array. */
   void set_non_empty_domain(const NDRange& non_empty_domain);

@@ -397,29 +397,34 @@ Status copy_capnp_list(
  */
 template <typename CapnpT>
 Status serialize_non_empty_domain(CapnpT& builder, tiledb::sm::Array* array) {
-  const auto& nonEmptyDomain = array->non_empty_domain();
+  auto&& [st, nonEmptyDomain_opt] = array->non_empty_domain();
 
-  if (!nonEmptyDomain.empty()) {
-    auto nonEmptyDomainListBuilder =
-        builder.initNonEmptyDomains(array->array_schema_latest()->dim_num());
+  RETURN_NOT_OK(st);
 
-    for (uint64_t dimIdx = 0; dimIdx < nonEmptyDomain.size(); ++dimIdx) {
-      const auto& dimNonEmptyDomain = nonEmptyDomain[dimIdx];
+  if (nonEmptyDomain_opt.has_value()) {
+    const auto& nonEmptyDomain = nonEmptyDomain_opt.value();
+    if (!nonEmptyDomain.empty()) {
+      auto nonEmptyDomainListBuilder =
+          builder.initNonEmptyDomains(array->array_schema_latest()->dim_num());
 
-      auto dim_builder = nonEmptyDomainListBuilder[dimIdx];
-      dim_builder.setIsEmpty(dimNonEmptyDomain.empty());
-      auto range_start_sizes = dim_builder.initSizes(1);
+      for (uint64_t dimIdx = 0; dimIdx < nonEmptyDomain.size(); ++dimIdx) {
+        const auto& dimNonEmptyDomain = nonEmptyDomain[dimIdx];
 
-      if (!dimNonEmptyDomain.empty()) {
-        auto subarray_builder = dim_builder.initNonEmptyDomain();
-        RETURN_NOT_OK(utils::set_capnp_array_ptr(
-            subarray_builder,
-            tiledb::sm::Datatype::UINT8,
-            dimNonEmptyDomain.data(),
-            dimNonEmptyDomain.size()));
+        auto dim_builder = nonEmptyDomainListBuilder[dimIdx];
+        dim_builder.setIsEmpty(dimNonEmptyDomain.empty());
+        auto range_start_sizes = dim_builder.initSizes(1);
 
-        if (dimNonEmptyDomain.start_size() != 0) {
-          range_start_sizes.set(0, dimNonEmptyDomain.start_size());
+        if (!dimNonEmptyDomain.empty()) {
+          auto subarray_builder = dim_builder.initNonEmptyDomain();
+          RETURN_NOT_OK(utils::set_capnp_array_ptr(
+              subarray_builder,
+              tiledb::sm::Datatype::UINT8,
+              dimNonEmptyDomain.data(),
+              dimNonEmptyDomain.size()));
+
+          if (dimNonEmptyDomain.start_size() != 0) {
+            range_start_sizes.set(0, dimNonEmptyDomain.start_size());
+          }
         }
       }
     }
