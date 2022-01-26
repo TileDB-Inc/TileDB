@@ -1,3 +1,10 @@
+# TileDB v2.6.2 Release Notes
+
+## Bug fixes
+
+* Only initialize REST query strategies once [#2836](https://github.com/TileDB-Inc/TileDB/pull/2836)
+* Sparse unordered w dups reader: fixing max pos calculation in tile copy. [#2840](https://github.com/TileDB-Inc/TileDB/pull/2840)
+
 # TileDB v2.6.1 Release Notes
 
 ## Bug fixes
