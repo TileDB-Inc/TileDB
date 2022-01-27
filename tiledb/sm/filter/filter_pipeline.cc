@@ -465,12 +465,12 @@ Status FilterPipeline::run_reverse_chunk_range(
     const ChunkData& chunk_data,
     const uint64_t min_chunk_index,
     const uint64_t max_chunk_index,
-    ThreadPool* const compute_tp,
+    uint64_t concurrency_level,
     const Config& config) const {
-  // Run each chunk through the entire pipeline.
   assert(tile->buffer()->data());
   assert(tile->filtered_buffer());
 
+  // Run each chunk through the entire pipeline.
   for (size_t i = min_chunk_index; i < max_chunk_index; i++) {
     auto& chunk = chunk_data.filtered_chunks_[i];
     FilterStorage storage;
@@ -516,7 +516,7 @@ Status FilterPipeline::run_reverse_chunk_range(
             "read_unfiltered_byte_num", chunk.unfiltered_data_size_);
       }
 
-      f->init_decompression_resource_pool(compute_tp->concurrency_level());
+      f->init_decompression_resource_pool(concurrency_level);
 
       RETURN_NOT_OK(f->run_reverse(
           *tile,
