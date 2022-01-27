@@ -1066,8 +1066,12 @@ Status StorageManager::array_get_non_empty_domain(
     return logger_->status(Status_StorageManagerError(
         "Cannot get non-empty domain; Array not opened for reads"));
 
-  *domain = array->non_empty_domain();
-  *is_empty = domain->empty();
+  auto&& [st, domain_opt] = array->non_empty_domain();
+  RETURN_NOT_OK(st);
+  if (domain_opt.has_value()) {
+    *domain = domain_opt.value();
+    *is_empty = domain->empty();
+  }
 
   return Status::Ok();
 }
