@@ -3327,7 +3327,7 @@ TEST_CASE_METHOD(
 TEST_CASE_METHOD(
     DenseArrayFx,
     "C API: Test dense array, open array checks",
-    "[capi][dense][dense-open-array-checks]") {
+    "[capi][dense][open-array-checks]") {
   SupportedFsLocal local_fs;
   std::string temp_dir = local_fs.file_prefix() + local_fs.temp_dir();
   create_temp_dir(temp_dir);
@@ -4066,7 +4066,7 @@ TEST_CASE_METHOD(
   CHECK(is_open == 0);
 
   rc = tiledb_array_close(ctx_, array);
-  CHECK(rc == TILEDB_OK);
+  CHECK(rc == TILEDB_ERR);  // Array is not open
   tiledb_array_free(&array);
 
   remove_temp_dir(temp_dir);
@@ -4720,7 +4720,7 @@ TEST_CASE_METHOD(
   rc = tiledb_array_close(ctx_, array);
   CHECK(rc == TILEDB_OK);
   rc = tiledb_array_close(ctx_, array);
-  CHECK(rc == TILEDB_OK);
+  CHECK(rc == TILEDB_ERR);  // Closing twice should error out
   tiledb_query_free(&query);
 
   // Read whole tile

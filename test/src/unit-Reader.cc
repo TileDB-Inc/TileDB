@@ -195,6 +195,7 @@ TEST_CASE_METHOD(
         tdb::make_shared<FragmentMetadata>(
             HERE(),
             nullptr,
+            nullptr,
             &schema,
             URI(),
             std::make_pair<uint64_t, uint64_t>(0, 0),

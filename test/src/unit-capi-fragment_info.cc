@@ -92,8 +92,12 @@ TEST_CASE(
   REQUIRE(err == nullptr);
   tiledb_ctx_t* ctx_array_not_encrypted;
   REQUIRE(tiledb_ctx_alloc(cfg, &ctx_array_not_encrypted) == TILEDB_OK);
+  rc = tiledb_fragment_info_set_config(ctx, fragment_info, cfg);
+  CHECK(rc == TILEDB_OK);
   rc = tiledb_fragment_info_load(ctx_array_not_encrypted, fragment_info);
   CHECK(rc == TILEDB_ERR);
+  tiledb_fragment_info_free(&fragment_info);
+
   tiledb_config_free(&cfg);
   tiledb_ctx_free(&ctx_array_not_encrypted);
 
@@ -106,6 +110,10 @@ TEST_CASE(
   write_array(ctx, array_name, 1, subarray, TILEDB_ROW_MAJOR, buffers);
 
   // Load again
+  // We need to allocate the fragment info again with `ctx`, which does not
+  // contain a key.
+  rc = tiledb_fragment_info_alloc(ctx, array_name.c_str(), &fragment_info);
+  CHECK(rc == TILEDB_OK);
   rc = tiledb_fragment_info_load(ctx, fragment_info);
   CHECK(rc == TILEDB_OK);
 
@@ -402,6 +410,8 @@ TEST_CASE(
   REQUIRE(err == nullptr);
   tiledb_ctx_t* ctx_correct_key;
   REQUIRE(tiledb_ctx_alloc(cfg, &ctx_correct_key) == TILEDB_OK);
+  rc = tiledb_fragment_info_set_config(ctx, fragment_info, cfg);
+  CHECK(rc == TILEDB_OK);
   rc = tiledb_fragment_info_load(ctx_correct_key, fragment_info);
   CHECK(rc == TILEDB_OK);
   tiledb_config_free(&cfg);
@@ -706,6 +716,8 @@ TEST_CASE("C API: Test MBR fragment info", "[capi][fragment_info][mbr]") {
   REQUIRE(rc == TILEDB_OK);
   REQUIRE(err == nullptr);
   REQUIRE(tiledb_ctx_alloc(cfg, &ctx) == TILEDB_OK);
+  rc = tiledb_fragment_info_set_config(ctx, fragment_info, cfg);
+  CHECK(rc == TILEDB_OK);
   rc = tiledb_fragment_info_load(ctx, fragment_info);
   CHECK(rc == TILEDB_OK);
   tiledb_config_free(&cfg);

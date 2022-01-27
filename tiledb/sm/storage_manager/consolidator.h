@@ -38,7 +38,6 @@
 #include "tiledb/common/status.h"
 #include "tiledb/sm/array/array.h"
 #include "tiledb/sm/misc/types.h"
-#include "tiledb/sm/storage_manager/open_array.h"
 
 #include <vector>
 
@@ -378,24 +377,6 @@ class Consolidator {
       Query* query,
       std::vector<ByteVec>* buffers,
       std::vector<uint64_t>* buffer_sizes) const;
-
-  /**
-   * Updates the `fragment_info` by removing `to_consolidate` and
-   * replacing those fragment info objects with `new_fragment_info`.
-   *
-   * @param to_consolidate Fragment info objects to remove from `fragment_info`.
-   * @param new_fragment_info The new object that replaces `to_consolidate`
-   *     in `fragment_info`.
-   * @param fragment_info The fragment info vector to be updated.
-   * @return void
-   *
-   * @note The algorithm assumes that to_consolidate is a sub vector of
-   *     `fragment_info` of size >=0.
-   */
-  void update_fragment_info(
-      const std::vector<TimestampedURI>& to_consolidate,
-      const SingleFragmentInfo& new_fragment_info,
-      FragmentInfo* fragment_info) const;
 
   /** Writes the vacuum file that contains the URIs of the consolidated
    * fragments. */
