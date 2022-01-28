@@ -356,6 +356,20 @@ class ByteVecValue {
 /** A byte vector. */
 typedef std::vector<uint8_t> ByteVec;
 
+/** The chunk info, buffers and offsets */
+struct ChunkData {
+  struct DiskLayout {
+    uint32_t unfiltered_data_size_;
+    uint32_t filtered_data_size_;
+    uint32_t filtered_metadata_size_;
+    void* filtered_metadata_;
+    void* filtered_data_;
+  };
+
+  std::vector<uint64_t> chunk_offsets_;
+  std::vector<DiskLayout> filtered_chunks_;
+};
+
 }  // namespace sm
 }  // namespace tiledb
 
