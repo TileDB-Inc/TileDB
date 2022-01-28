@@ -489,9 +489,9 @@ Status ReaderBase::read_tiles(
       auto tile_idx = tile->tile_idx();
       uint64_t tile_attr_offset;
       RETURN_NOT_OK(fragment->file_offset(name, tile_idx, &tile_attr_offset));
-      uint64_t tile_persisted_size;
-      RETURN_NOT_OK(
-          fragment->persisted_tile_size(name, tile_idx, &tile_persisted_size));
+      auto&& [st, tile_persisted_size] =
+          fragment->persisted_tile_size(name, tile_idx);
+      RETURN_NOT_OK(st);
       uint64_t tile_size = fragment->tile_size(name, tile_idx);
 
       // Try the cache first.
@@ -501,17 +501,17 @@ Status ReaderBase::read_tiles(
             tile_attr_uri,
             tile_attr_offset,
             t->filtered_buffer(),
-            tile_persisted_size,
+            *tile_persisted_size,
             &cache_hit));
       }
 
       if (!cache_hit) {
         // Add the region of the fragment to be read.
         all_regions[tile_attr_uri].emplace_back(
-            tile_attr_offset, t, tile_persisted_size);
+            tile_attr_offset, t, *tile_persisted_size);
 
-        RETURN_NOT_OK(t->filtered_buffer()->realloc(tile_persisted_size));
-        t->filtered_buffer()->set_size(tile_persisted_size);
+        RETURN_NOT_OK(t->filtered_buffer()->realloc(*tile_persisted_size));
+        t->filtered_buffer()->set_size(*tile_persisted_size);
         t->filtered_buffer()->reset_offset();
 
         // Pre-allocate the unfiltered buffer unless we are using the no-op
@@ -532,29 +532,29 @@ Status ReaderBase::read_tiles(
         uint64_t tile_attr_var_offset;
         RETURN_NOT_OK(
             fragment->file_var_offset(name, tile_idx, &tile_attr_var_offset));
-        uint64_t tile_var_persisted_size;
-        RETURN_NOT_OK(fragment->persisted_tile_var_size(
-            name, tile_idx, &tile_var_persisted_size));
-        uint64_t tile_var_size;
-        RETURN_NOT_OK(fragment->tile_var_size(name, tile_idx, &tile_var_size));
+        auto&& [st, tile_var_persisted_size] =
+            fragment->persisted_tile_var_size(name, tile_idx);
+        RETURN_NOT_OK(st);
+        auto&& [st_2, tile_var_size] = fragment->tile_var_size(name, tile_idx);
+        RETURN_NOT_OK(st_2);
 
         if (!disable_cache) {
           RETURN_NOT_OK(storage_manager_->read_from_cache(
               tile_attr_var_uri,
               tile_attr_var_offset,
               t_var->filtered_buffer(),
-              tile_var_persisted_size,
+              *tile_var_persisted_size,
               &cache_hit));
         }
 
         if (!cache_hit) {
           // Add the region of the fragment to be read.
           all_regions[tile_attr_var_uri].emplace_back(
-              tile_attr_var_offset, t_var, tile_var_persisted_size);
+              tile_attr_var_offset, t_var, *tile_var_persisted_size);
 
           RETURN_NOT_OK(
-              t_var->filtered_buffer()->realloc(tile_var_persisted_size));
-          t_var->filtered_buffer()->set_size(tile_var_persisted_size);
+              t_var->filtered_buffer()->realloc(*tile_var_persisted_size));
+          t_var->filtered_buffer()->set_size(*tile_var_persisted_size);
           t_var->filtered_buffer()->reset_offset();
 
           // Pre-allocate the unfiltered buffer unless we are using the no-op
@@ -564,7 +564,7 @@ Status ReaderBase::read_tiles(
           if (filters.size() != 1 ||
               filters.get_filter(0)->type() != FilterType::FILTER_NONE ||
               enc_type != EncryptionType::NO_ENCRYPTION) {
-            RETURN_NOT_OK(t_var->buffer()->realloc(tile_var_size));
+            RETURN_NOT_OK(t_var->buffer()->realloc(*tile_var_size));
           }
         }
       }
@@ -574,9 +574,9 @@ Status ReaderBase::read_tiles(
         uint64_t tile_attr_validity_offset;
         RETURN_NOT_OK(fragment->file_validity_offset(
             name, tile_idx, &tile_attr_validity_offset));
-        uint64_t tile_validity_persisted_size;
-        RETURN_NOT_OK(fragment->persisted_tile_validity_size(
-            name, tile_idx, &tile_validity_persisted_size));
+        auto&& [st, tile_validity_persisted_size] =
+            fragment->persisted_tile_validity_size(name, tile_idx);
+        RETURN_NOT_OK(st);
         uint64_t tile_validity_size =
             fragment->cell_num(tile_idx) * constants::cell_validity_size;
 
@@ -585,7 +585,7 @@ Status ReaderBase::read_tiles(
               tile_validity_attr_uri,
               tile_attr_validity_offset,
               t_validity->filtered_buffer(),
-              tile_validity_persisted_size,
+              *tile_validity_persisted_size,
               &cache_hit));
         }
 
@@ -594,11 +594,12 @@ Status ReaderBase::read_tiles(
           all_regions[tile_validity_attr_uri].emplace_back(
               tile_attr_validity_offset,
               t_validity,
-              tile_validity_persisted_size);
+              *tile_validity_persisted_size);
 
           RETURN_NOT_OK(t_validity->filtered_buffer()->realloc(
-              tile_validity_persisted_size));
-          t_validity->filtered_buffer()->set_size(tile_validity_persisted_size);
+              *tile_validity_persisted_size));
+          t_validity->filtered_buffer()->set_size(
+              *tile_validity_persisted_size);
           t_validity->filtered_buffer()->reset_offset();
 
           // Pre-allocate the unfiltered buffer unless we are using the no-op
@@ -856,10 +857,9 @@ std::tuple<Status, std::optional<uint64_t>> ReaderBase::get_attribute_tile_size(
   tile_size += fragment_metadata_[f]->tile_size(name, t);
 
   if (array_schema_->var_size(name)) {
-    uint64_t temp = 0;
-    RETURN_NOT_OK_TUPLE(
-        fragment_metadata_[f]->tile_var_size(name, t, &temp), std::nullopt);
-    tile_size += temp;
+    auto&& [st, temp] = fragment_metadata_[f]->tile_var_size(name, t);
+    RETURN_NOT_OK_TUPLE(st, std::nullopt);
+    tile_size += *temp;
   }
 
   if (array_schema_->is_nullable(name)) {

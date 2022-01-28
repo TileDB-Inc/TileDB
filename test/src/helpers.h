@@ -676,6 +676,11 @@ void read_array(
  */
 int32_t num_fragments(const std::string& array_name);
 
+/**
+ * Creates a random string of length l.
+ */
+std::string random_string(const uint64_t l);
+
 }  // End of namespace test
 
 }  // End of namespace tiledb

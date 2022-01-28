@@ -208,6 +208,8 @@ set(TILEDB_CORE_SOURCES
   ${TILEDB_CORE_INCLUDE_DIR}/tiledb/sm/subarray/subarray_tile_overlap.cc
   ${TILEDB_CORE_INCLUDE_DIR}/tiledb/sm/tile/tile.cc
   ${TILEDB_CORE_INCLUDE_DIR}/tiledb/sm/tile/generic_tile_io.cc
+  ${TILEDB_CORE_INCLUDE_DIR}/tiledb/sm/tile/tile_metadata_generator.cc
+  ${TILEDB_CORE_INCLUDE_DIR}/tiledb/sm/tile/writer_tile.cc
 )
 list(APPEND TILEDB_CORE_SOURCES ${TILEDB_COMMON_SOURCES})
 

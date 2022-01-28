@@ -257,15 +257,6 @@ class Tile {
   /** The current offset in the tile. */
   uint64_t offset() const;
 
-  /**
-   * Returns the pre-filtered size of the tile data in the buffer.
-   *
-   * On writes, the pre-filtered size is the uncompressed size.
-   *
-   * On reads, the pre-filtered size is the persisted (compressed) size.
-   */
-  uint64_t pre_filtered_size() const;
-
   /** Reads from the tile into the input buffer *nbytes*. */
   Status read(void* buffer, uint64_t nbytes);
 
@@ -287,9 +278,6 @@ class Tile {
 
   /** Sets the tile offset. */
   void set_offset(uint64_t offset);
-
-  /** Sets the pre-filtered size value to the given value. */
-  void set_pre_filtered_size(uint64_t pre_filtered_size);
 
   /** Returns the tile size. */
   inline uint64_t size() const {
@@ -333,9 +321,9 @@ class Tile {
    */
   Status zip_coordinates();
 
- private:
+ protected:
   /* ********************************* */
-  /*         PRIVATE ATTRIBUTES        */
+  /*        PROTECTED ATTRIBUTES       */
   /* ********************************* */
 
   /** The buffer backing the tile data. */
@@ -358,9 +346,6 @@ class Tile {
    * it will not delete it.
    */
   bool owns_buffer_;
-
-  /** The size in bytes of the tile data before it has been filtered. */
-  uint64_t pre_filtered_size_;
 
   /** The tile data type. */
   Datatype type_;
