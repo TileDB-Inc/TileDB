@@ -1861,13 +1861,14 @@ Status Writer::prepare_full_tiles_fixed(
     }
   } else {
     for (; cell_idx < cell_num; ++cell_idx) {
-      if (coord_dups.find(cell_idx) == coord_dups.end())
+      if (coord_dups.find(cell_idx) == coord_dups.end()) {
         RETURN_NOT_OK(
             last_tile.write(buffer + cell_idx * cell_size, cell_size));
-      if (nullable) {
-        RETURN_NOT_OK(last_tile_validity.write(
-            buffer_validity + cell_idx * constants::cell_validity_size,
-            constants::cell_validity_size));
+        if (nullable) {
+          RETURN_NOT_OK(last_tile_validity.write(
+              buffer_validity + cell_idx * constants::cell_validity_size,
+              constants::cell_validity_size));
+        }
       }
     }
   }
