@@ -304,7 +304,6 @@ Status Curl::init(
   bool found;
   RETURN_NOT_OK(config_->get<bool>(
       "rest.ignore_ssl_validation", &ignore_ssl_validation, &found));
-  assert(found);
 
   if (ignore_ssl_validation) {
     curl_easy_setopt(curl_.get(), CURLOPT_SSL_VERIFYHOST, 0);
