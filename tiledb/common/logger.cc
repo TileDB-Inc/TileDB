@@ -57,7 +57,6 @@ Logger::Logger(const std::string& name, const Logger::Format format, const bool 
     logger_ = spdlog::stdout_color_mt(name_);
 #endif
   }
-  instance_count += 1;
   if (root && format == Logger::Format::JSON) {
     // If this is the first logger created set up the opening brace and an
     // array named "log"
@@ -254,7 +253,6 @@ tdb_shared_ptr<Logger> Logger::clone(const std::string& tag, uint64_t id) {
   auto new_logger =
       tiledb::common::make_shared<Logger>(HERE(), logger_->clone(new_tags));
   new_logger->set_name(new_tags);
-  ++instance_count;
   return new_logger;
 }
 
