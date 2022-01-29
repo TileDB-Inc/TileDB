@@ -514,9 +514,6 @@ Status array_schema_from_capnp(
   if (schema_reader.hasUri())
     (*array_schema)->set_array_uri(URI(schema_reader.getUri().cStr()));
 
-  if (schema_reader.hasName())
-    (*array_schema)->set_name(schema_reader.getName().cStr());
-
   (*array_schema)->set_cell_order(layout);
   (*array_schema)->set_capacity(schema_reader.getCapacity());
   (*array_schema)->set_allows_dups(schema_reader.getAllowsDuplicates());
@@ -574,6 +571,9 @@ Status array_schema_from_capnp(
         ->set_timestamp_range(
             std::make_pair(timestamp_range[0], timestamp_range[1]));
   }
+
+  if (schema_reader.hasName())
+    (*array_schema)->set_name(schema_reader.getName().cStr());
 
   // Initialize
   RETURN_NOT_OK((*array_schema)->init());

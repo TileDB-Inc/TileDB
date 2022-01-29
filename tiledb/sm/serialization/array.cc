@@ -184,7 +184,7 @@ Status array_from_capnp(
         tdb_unique_ptr<ArraySchema> schema;
         RETURN_NOT_OK(
             array_schema_from_capnp(array_schema_build.getValue(), &schema));
-        //        tdb_shared_ptr<ArraySchema> schema_shared = std::move(schema);
+        schema->set_array_uri(array->array_uri());
         all_schemas[array_schema_build.getKey()] = std::move(schema);
       }
     }
@@ -196,6 +196,7 @@ Status array_from_capnp(
     auto array_schema_latest_reader = array_reader.getArraySchemaLatest();
     RETURN_NOT_OK(array_schema_from_capnp(
         array_schema_latest_reader, &array_schema_latest));
+    array_schema_latest->set_array_uri(array->array_uri());
     RETURN_NOT_OK(
         array->set_array_schema_latest(array_schema_latest.release()));
   }
