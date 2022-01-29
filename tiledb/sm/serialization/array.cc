@@ -179,12 +179,13 @@ Status array_from_capnp(
     auto all_schemas_reader = array_reader.getArraySchemasAll();
 
     if (all_schemas_reader.hasEntries()) {
-      for (auto array_schema_build : entries) {
       auto entries = array_reader.getArraySchemasAll().getEntries();
+      for (auto array_schema_build : entries) {
         tdb_unique_ptr<ArraySchema> schema;
         RETURN_NOT_OK(
             array_schema_from_capnp(array_schema_build.getValue(), &schema));
         schema->set_array_uri(array->array_uri());
+        all_schemas[array_schema_build.getKey()] = std::move(schema);
       }
         all_schemas[array_schema_build.getKey()] = std::move(schema);
     }
