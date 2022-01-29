@@ -180,17 +180,18 @@ Status array_from_capnp(
 
     if (all_schemas_reader.hasEntries()) {
       auto entries = array_reader.getArraySchemasAll().getEntries();
-      for (uint64_t i = 0; i < entries.size(); i++) {
-        auto array_schema_build = entries[i];
+      for (auto array_schema_build : entries) {
         tdb_unique_ptr<ArraySchema> schema;
         RETURN_NOT_OK(
             array_schema_from_capnp(array_schema_build.getValue(), &schema));
-        tdb_shared_ptr<ArraySchema> schema_shared = std::move(schema);
-        all_schemas[array_schema_build.getKey()] = std::move(schema_shared);
+        //        tdb_shared_ptr<ArraySchema> schema_shared = std::move(schema);
+        all_schemas[array_schema_build.getKey()] = std::move(schema);
       }
     }
     RETURN_NOT_OK(array->set_array_schemas_all(all_schemas));
-  } else if (array_reader.hasArraySchemaLatest()) {
+  }
+
+  if (array_reader.hasArraySchemaLatest()) {
     tdb_unique_ptr<ArraySchema> array_schema_latest;
     auto array_schema_latest_reader = array_reader.getArraySchemaLatest();
     RETURN_NOT_OK(array_schema_from_capnp(
