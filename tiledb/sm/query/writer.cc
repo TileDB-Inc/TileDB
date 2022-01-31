@@ -1120,14 +1120,24 @@ Status Writer::filter_tiles(
         Status_WriterError("Incorrect number of tiles in filter_tiles"));
   }
 
+  // Reserve a vector for offsets tiles, they need to be processed after var
+  // data tiles as the processing of var data tiles depends on offset tiles.
   std::vector<std::tuple<WriterTile*, WriterTile*, bool, bool>> args;
-  args.reserve(tile_num);
+  std::vector<std::tuple<WriterTile*, WriterTile*, bool, bool>> args_offsets;
+  if (var_size) {
+    args_offsets.reserve(tile_num / tile_step);
+    args.reserve(tile_num - tile_num / tile_step);
+  } else {
+    args.reserve(tile_num);
+  }
 
   for (size_t tile_idx = 0; tile_idx < tile_num; tile_idx += tile_step) {
-    args.emplace_back(&(*tiles)[tile_idx], nullptr, var_size, false);
     if (var_size) {
+      args_offsets.emplace_back(&(*tiles)[tile_idx], nullptr, true, false);
       args.emplace_back(
           &(*tiles)[tile_idx + 1], &(*tiles)[tile_idx], false, false);
+    } else {
+      args.emplace_back(&(*tiles)[tile_idx], nullptr, false, false);
     }
 
     if (nullable) {
@@ -1136,16 +1146,32 @@ Status Writer::filter_tiles(
     }
   }
 
+  // For fixed size, process everything, for var size, everything minus offsets.
   auto status = parallel_for(
-      storage_manager_->compute_tp(), 0, tile_num, [&](uint64_t i) {
+      storage_manager_->compute_tp(), 0, args.size(), [&](uint64_t i) {
         const auto& [tile, offset_tile, contains_offsets, is_nullable] =
             args[i];
         RETURN_NOT_OK(filter_tile(
             name, tile, offset_tile, contains_offsets, is_nullable));
         return Status::Ok();
       });
-
   RETURN_NOT_OK(status);
+
+  // Process offsets for var size.
+  if (var_size) {
+    auto status = parallel_for(
+        storage_manager_->compute_tp(),
+        0,
+        args_offsets.size(),
+        [&](uint64_t i) {
+          const auto& [tile, offset_tile, contains_offsets, is_nullable] =
+              args_offsets[i];
+          RETURN_NOT_OK(filter_tile(
+              name, tile, offset_tile, contains_offsets, is_nullable));
+          return Status::Ok();
+        });
+    RETURN_NOT_OK(status);
+  }
 
   return Status::Ok();
 }
@@ -3031,8 +3057,8 @@ Status Writer::prepare_filter_and_write_tiles(
                 frag_tile_id + i, name, tile, tile_var));
             md_generator.process_tile(tile, tile_var, tile_val);
             tile->set_metadata(md_generator.metadata());
-            RETURN_NOT_OK(filter_tile(name, tile, nullptr, true, false));
             RETURN_NOT_OK(filter_tile(name, tile_var, tile, false, false));
+            RETURN_NOT_OK(filter_tile(name, tile, nullptr, true, false));
           }
           if (nullable) {
             RETURN_NOT_OK(filter_tile(name, tile_val, nullptr, false, true));
