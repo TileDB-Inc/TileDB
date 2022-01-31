@@ -146,7 +146,9 @@ uint64_t RLE::overhead(uint64_t nbytes, uint64_t value_size) {
   return value_num * 2;
 }
 
-// TODO: move span.hpp to the right folder
+void RLE::set_max_run_length(uint64_t max_run_length) {
+  max_run_length_ = max_run_length;
+}
 
 std::vector<std::string> RLE::compress(nonstd::span<std::string_view> input) {
   uint64_t input_elements = input.size();
@@ -154,18 +156,15 @@ std::vector<std::string> RLE::compress(nonstd::span<std::string_view> input) {
     return {};
 
   std::vector<std::string> output;
-  // TODO: check if needed / reserve to minimize reallocations
+  // TODO: is this useful?
   output.reserve(input.size_bytes());
 
   uint64_t run_length = 1;
   auto previous = input[0];
   for (uint64_t i = 1; i < input_elements; i++) {
-    if (input[i] == previous) {
-      // TODO: when compressing make sure we don't overflow uint64_t run length
-      // if max value is reached, just create another run
+    if (input[i] == previous && run_length < max_run_length_) {
       run_length++;
     } else {
-      // consider using direct assignment for efficiency
       output.emplace_back(std::to_string(run_length));
       output.emplace_back(previous);
       previous = input[i];
@@ -186,15 +185,14 @@ std::vector<std::string> RLE::decompress(nonstd::span<std::string_view> input) {
     return {};
 
   std::vector<std::string> output;
-  // TODO: check if needed / reserve to minimize reallocations
+  // TODO: is this useful?
   output.reserve(input.size_bytes());
+
   uint64_t run_length = 1;
   // Iterate over every other element in input to get run lengths
   for (uint64_t i = 0; i < input_elements; i = i + 2) {
-    // stoull doesn't work on string_views
-    const auto res = std::from_chars(
+    [[maybe_unused]] const auto res = std::from_chars(
         input[i].data(), input[i].data() + input[i].size(), run_length);
-    // log error and return Status instead?
     assert(res.ec == std::errc());
     for (uint64_t j = 0; j < run_length; j++) {
       output.emplace_back(input[i + 1]);
