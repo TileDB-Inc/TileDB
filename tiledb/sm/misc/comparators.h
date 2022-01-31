@@ -135,6 +135,8 @@ class HilbertCmp {
       const std::vector<uint64_t>* hilbert_values)
       : buffs_(buffs)
       , domain_(domain)
+      , dim_num_()
+      , iter_begin_()
       , hilbert_values_(hilbert_values) {
     dim_num_ = domain->dim_num();
   }
@@ -142,14 +144,21 @@ class HilbertCmp {
   /** Constructor. */
   HilbertCmp(
       const Domain* domain, std::vector<ResultCoords>::iterator iter_begin)
-      : domain_(domain)
-      , iter_begin_(iter_begin) {
+      : buffs_(nullptr)
+      , domain_(domain)
+      , dim_num_()
+      , iter_begin_(iter_begin)
+      , hilbert_values_(nullptr) {
     dim_num_ = domain->dim_num();
   }
 
   /** Constructor. */
   HilbertCmp(const Domain* domain)
-      : domain_(domain) {
+      : buffs_(nullptr)
+      , domain_(domain)
+      , dim_num_()
+      , iter_begin_()
+      , hilbert_values_(nullptr) {
     dim_num_ = domain->dim_num();
   }
 
@@ -185,7 +194,6 @@ class HilbertCmp {
   bool operator()(
       const std::pair<uint64_t, uint64_t>& a,
       const std::pair<uint64_t, uint64_t>& b) const {
-    assert(hilbert_values_ != nullptr);
     if (a.first < b.first)
       return true;
     else if (a.first > b.first)
@@ -215,6 +223,7 @@ class HilbertCmp {
    * @return `true` if `a` precedes `b` and `false` otherwise.
    */
   bool operator()(const ResultCoords& a, const ResultCoords& b) const {
+    assert(hilbert_values_ != nullptr);
     auto hilbert_a =
         ((ResultTileWithBitmap<uint8_t>*)a.tile_)->hilbert_values_[a.pos_];
     auto hilbert_b =
