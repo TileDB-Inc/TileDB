@@ -35,7 +35,7 @@
 #include "tiledb/sm/buffer/buffer.h"
 
 #include <cassert>
-#include <iostream>
+#include <charconv>
 
 using namespace tiledb::common;
 
@@ -144,6 +144,64 @@ uint64_t RLE::overhead(uint64_t nbytes, uint64_t value_size) {
   // In the worst case, RLE adds two bytes per every value in the buffer.
   uint64_t value_num = nbytes / value_size;
   return value_num * 2;
+}
+
+// TODO: move span.hpp to the right folder
+
+std::vector<std::string> RLE::compress(nonstd::span<std::string_view> input) {
+  uint64_t input_elements = input.size();
+  if (input_elements == 0)
+    return {};
+
+  std::vector<std::string> output;
+  // TODO: check if needed / reserve to minimize reallocations
+  output.reserve(input.size_bytes());
+
+  uint64_t run_length = 1;
+  auto previous = input[0];
+  for (uint64_t i = 1; i < input_elements; i++) {
+    if (input[i] == previous) {
+      // TODO: when compressing make sure we don't overflow uint64_t run length
+      // if max value is reached, just create another run
+      run_length++;
+    } else {
+      // consider using direct assignment for efficiency
+      output.emplace_back(std::to_string(run_length));
+      output.emplace_back(previous);
+      previous = input[i];
+      run_length = 1;
+    }
+  }
+  output.emplace_back(std::to_string(run_length));
+  output.emplace_back(previous);
+
+  return output;
+}
+
+std::vector<std::string> RLE::decompress(nonstd::span<std::string_view> input) {
+  uint64_t input_elements = input.size();
+  assert(input_elements % 2 == 0);
+
+  if (input_elements == 0)
+    return {};
+
+  std::vector<std::string> output;
+  // TODO: check if needed / reserve to minimize reallocations
+  output.reserve(input.size_bytes());
+  uint64_t run_length = 1;
+  // Iterate over every other element in input to get run lengths
+  for (uint64_t i = 0; i < input_elements; i = i + 2) {
+    // stoull doesn't work on string_views
+    const auto res = std::from_chars(
+        input[i].data(), input[i].data() + input[i].size(), run_length);
+    // log error and return Status instead?
+    assert(res.ec == std::errc());
+    for (uint64_t j = 0; j < run_length; j++) {
+      output.emplace_back(input[i + 1]);
+    }
+  }
+
+  return output;
 }
 
 }  // namespace sm

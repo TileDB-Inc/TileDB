@@ -279,6 +279,7 @@ list(APPEND TILEDB_EXTERNALS_INCLUDE_DIRS
   "${CMAKE_CURRENT_SOURCE_DIR}/../external/include"
   "${CMAKE_CURRENT_SOURCE_DIR}/../external/include/bitshuffle"
   "${CMAKE_CURRENT_SOURCE_DIR}/../external/include/blosc"
+  "${CMAKE_CURRENT_SOURCE_DIR}/../external/include/span"
 )
 list(APPEND TILEDB_EXTERNALS_SOURCES
   ${CMAKE_CURRENT_SOURCE_DIR}/../external/src/md5/md5.cc
