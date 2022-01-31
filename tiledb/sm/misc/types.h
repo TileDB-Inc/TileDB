@@ -92,13 +92,13 @@ class Range {
   /** Sets a fixed-sized range serialized in `r`. */
   void set_range(const void* r, uint64_t r_size) {
     range_.resize(r_size);
-    std::memcpy(&range_[0], r, r_size);
+    std::memcpy(range_.data(), r, r_size);
   }
 
   /** Sets a var-sized range serialized in `r`. */
   void set_range(const void* r, uint64_t r_size, uint64_t range_start_size) {
     range_.resize(r_size);
-    std::memcpy(&range_[0], r, r_size);
+    std::memcpy(range_.data(), r, r_size);
     range_start_size_ = range_start_size;
     var_size_ = true;
   }
@@ -107,8 +107,8 @@ class Range {
   void set_range_var(
       const void* r1, uint64_t r1_size, const void* r2, uint64_t r2_size) {
     range_.resize(r1_size + r2_size);
-    std::memcpy(&range_[0], r1, r1_size);
-    auto c = (char*)(&range_[0]);
+    std::memcpy(range_.data(), r1, r1_size);
+    auto c = (char*)(range_.data());
     std::memcpy(c + r1_size, r2, r2_size);
     range_start_size_ = r1_size;
     var_size_ = true;
@@ -128,12 +128,12 @@ class Range {
 
   /** Returns the pointer to the range flattened bytes. */
   const void* data() const {
-    return range_.empty() ? nullptr : &range_[0];
+    return range_.empty() ? nullptr : range_.data();
   }
 
   /** Returns a pointer to the start of the range. */
   const void* start() const {
-    return &range_[0];
+    return range_.data();
   }
 
   /** Copies 'start' into this range's start bytes for fixed-size ranges. */
@@ -141,7 +141,7 @@ class Range {
     if (var_size_)
       LOG_FATAL("Unexpected var-sized range; cannot set end range.");
     const size_t fixed_size = range_.size() / 2;
-    std::memcpy(&range_[0], start, fixed_size);
+    std::memcpy(range_.data(), start, fixed_size);
   }
 
   /** Returns the start as a string view. */
@@ -216,7 +216,7 @@ class Range {
     bool same_size = !var_size_ || 2 * range_start_size_ == range_.size();
     return same_size &&
            !std::memcmp(
-               &range_[0], &range_[range_.size() / 2], range_.size() / 2);
+               range_.data(), &range_[range_.size() / 2], range_.size() / 2);
   }
 
   /** True if the range is variable sized. */
@@ -355,6 +355,20 @@ class ByteVecValue {
 
 /** A byte vector. */
 typedef std::vector<uint8_t> ByteVec;
+
+/** The chunk info, buffers and offsets */
+struct ChunkData {
+  struct DiskLayout {
+    uint32_t unfiltered_data_size_;
+    uint32_t filtered_data_size_;
+    uint32_t filtered_metadata_size_;
+    void* filtered_metadata_;
+    void* filtered_data_;
+  };
+
+  std::vector<uint64_t> chunk_offsets_;
+  std::vector<DiskLayout> filtered_chunks_;
+};
 
 }  // namespace sm
 }  // namespace tiledb

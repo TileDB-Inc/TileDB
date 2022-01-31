@@ -1,5 +1,5 @@
 /**
- * @file   open_array_memory_tracker.h
+ * @file   memory_tracker.h
  *
  * @section LICENSE
  *
@@ -28,30 +28,30 @@
  *
  * @section DESCRIPTION
  *
- * This file defines class OpenArrayMemoryTracker.
+ * This file defines class MemoryTracker.
  */
 
-#ifndef TILEDB_OPEN_ARRAY_MEMORY_TRACKER_H
-#define TILEDB_OPEN_ARRAY_MEMORY_TRACKER_H
+#ifndef TILEDB_MEMORY_TRACKER_H
+#define TILEDB_MEMORY_TRACKER_H
 
 #include "tiledb/common/status.h"
 
 namespace tiledb {
 namespace sm {
 
-class OpenArrayMemoryTracker {
+class MemoryTracker {
  public:
   /** Constructor. */
-  OpenArrayMemoryTracker() {
+  MemoryTracker() {
     memory_usage_ = 0;
     memory_budget_ = std::numeric_limits<uint32_t>::max();
   };
 
   /** Destructor. */
-  ~OpenArrayMemoryTracker() = default;
+  ~MemoryTracker() = default;
 
-  DISABLE_COPY_AND_COPY_ASSIGN(OpenArrayMemoryTracker);
-  DISABLE_MOVE_AND_MOVE_ASSIGN(OpenArrayMemoryTracker);
+  DISABLE_COPY_AND_COPY_ASSIGN(MemoryTracker);
+  DISABLE_MOVE_AND_MOVE_ASSIGN(MemoryTracker);
 
   /**
    * Take memory from the budget.

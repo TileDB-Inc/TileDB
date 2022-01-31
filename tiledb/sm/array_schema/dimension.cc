@@ -897,23 +897,24 @@ void Dimension::relevant_ranges(
   }
 }
 
-void Dimension::covered_vec(
+std::vector<bool> Dimension::covered_vec(
     const NDRange& ranges,
     const Range& mbr,
-    const std::vector<uint64_t>& relevant_ranges,
-    std::vector<bool>& covered) const {
+    const std::vector<uint64_t>& relevant_ranges) const {
   assert(covered_vec_func_ != nullptr);
-  return covered_vec_func_(ranges, mbr, relevant_ranges, covered);
+  return covered_vec_func_(ranges, mbr, relevant_ranges);
 }
 
 template <>
-void Dimension::covered_vec<char>(
+std::vector<bool> Dimension::covered_vec<char>(
     const NDRange& ranges,
     const Range& mbr,
-    const std::vector<uint64_t>& relevant_ranges,
-    std::vector<bool>& covered) {
+    const std::vector<uint64_t>& relevant_ranges) {
   const auto& range_start = mbr.start_str();
   const auto& range_end = mbr.end_str();
+
+  std::vector<bool> covered;
+  covered.resize(relevant_ranges.size());
   for (uint64_t i = 0; i < relevant_ranges.size(); i++) {
     auto r = relevant_ranges[i];
     auto r2_start = ranges[r].start_str();
@@ -926,21 +927,27 @@ void Dimension::covered_vec<char>(
 
     covered[i] = range_after_r2 && mbr_after_range_start;
   }
+
+  return covered;
 }
 
 template <class T>
-void Dimension::covered_vec(
+std::vector<bool> Dimension::covered_vec(
     const NDRange& ranges,
     const Range& mbr,
-    const std::vector<uint64_t>& relevant_ranges,
-    std::vector<bool>& covered) {
+    const std::vector<uint64_t>& relevant_ranges) {
   auto d1 = (const T*)mbr.start();
+
+  std::vector<bool> covered;
+  covered.resize(relevant_ranges.size());
   for (uint64_t i = 0; i < relevant_ranges.size(); i++) {
     auto r = relevant_ranges[i];
     auto d2 = (const T*)ranges[r].start();
 
     covered[i] = d1[0] >= d2[0] && d1[1] <= d2[1];
   }
+
+  return covered;
 }
 
 template <>

@@ -41,6 +41,7 @@
 #include "tiledb/common/thread_pool.h"
 #include "tiledb/sm/filter/filter.h"
 #include "tiledb/sm/filter/filter_buffer.h"
+#include "tiledb/sm/misc/types.h"
 #include "tiledb/sm/stats/stats.h"
 
 using namespace tiledb::common;
@@ -171,11 +172,15 @@ class FilterPipeline {
    * data.
    *
    * @param tile Tile to filter.
+   * @param offsets_tile Offets tile for tile to filter.
    * @param compute_tp The thread pool for compute-bound tasks.
    * @return Status
    */
   Status run_forward(
-      stats::Stats* writer_stats, Tile* tile, ThreadPool* compute_tp) const;
+      stats::Stats* writer_stats,
+      Tile* tile,
+      Tile* offsets_tile,
+      ThreadPool* compute_tp) const;
 
   /**
    * Runs the pipeline in reverse on the given filtered tile. This is used
@@ -221,6 +226,27 @@ class FilterPipeline {
       const Config& config) const;
 
   /**
+   * Run the given chunk range in reverse through the pipeline.
+   *
+   * @param reader_stats Stats to record in the function
+   * @param tile Current tile on which the filter pipeline is being run
+   * @param chunk_data The tile chunk info, buffers and offsets
+   * @param min_chunk_index The chunk range index to start from
+   * @param max_chunk_index The chunk range index to end at
+   * @param concurrency_level The maximum level of concurrency
+   * @param config The global config.
+   * @return Status
+   */
+  Status run_reverse_chunk_range(
+      stats::Stats* const reader_stats,
+      Tile* const tile,
+      const ChunkData& chunk_data,
+      const uint64_t min_chunk_index,
+      const uint64_t max_chunk_index,
+      uint64_t concurrency_level,
+      const Config& config) const;
+
+  /**
    * Serializes the pipeline metadata into a binary buffer.
    *
    * @param buff The buffer to serialize the data into.
@@ -261,11 +287,29 @@ class FilterPipeline {
   uint32_t max_chunk_size_;
 
   /**
+   * Get the chunk offsets for a var sized tile so that integral cells are
+   * within a chunk.
+   *
+   * Heuristic is the following when determining to add a cell:
+   *   - If the cell fits in the buffer, add it.
+   *   - If it doesn't fit and new size < 150% capacity, add it.
+   *   - If it doesn't fit and current size < 50% capacity, add it.
+   *
+   * @param chunk_size Target chunk size.
+   * @param tile Var tile.
+   * @param offsets_tile Offsets tile.
+   * @return Status, chunk offsets vector.
+   */
+  std::tuple<Status, std::optional<std::vector<uint64_t>>> get_var_chunk_sizes(
+      uint32_t chunk_size, Tile* const tile, Tile* const offsets_tile) const;
+
+  /**
    * Run the given buffer forward through the pipeline.
    *
    * @param tile Current tile on which the filter pipeline is being run
    * @param input buffer to process.
    * @param chunk_size chunk size.
+   * @param chunk_offsets chunk offsets computed for var sized attributes.
    * @param output buffer where output of the last stage
    *    will be written.
    * @param compute_tp The thread pool for compute-bound tasks.
@@ -275,6 +319,7 @@ class FilterPipeline {
       const Tile& tile,
       const Buffer& input,
       uint32_t chunk_size,
+      std::vector<uint64_t>& chunk_offsets,
       Buffer* const output,
       ThreadPool* const compute_tp) const;
 

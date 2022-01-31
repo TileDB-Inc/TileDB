@@ -176,6 +176,7 @@ Status DenseReader::dowork() {
         return complete_read_loop();
       }
     } else {
+      read_state_.unsplittable_ = false;
       return complete_read_loop();
     }
   } while (true);
@@ -338,15 +339,13 @@ Status DenseReader::dense_read() {
   }
 
   // Compute the result of the query condition.
-  std::vector<uint8_t> qc_result;
-  status = apply_query_condition<DimType, OffType>(
-      &subarray,
-      &tile_subarrays,
-      &tile_offsets,
-      &range_offsets,
-      &result_space_tiles,
-      &qc_result);
-  RETURN_CANCEL_OR_ERROR(status);
+  auto&& [st, qc_result] = apply_query_condition<DimType, OffType>(
+      subarray,
+      tile_subarrays,
+      tile_offsets,
+      range_offsets,
+      result_space_tiles);
+  RETURN_CANCEL_OR_ERROR(st);
 
   // Process each attributes one at a time.
   for (const auto& name : names) {
@@ -356,14 +355,14 @@ Status DenseReader::dense_read() {
 
     // Copy attribute data to users buffers.
     auto status = read_attributes<DimType, OffType>(
-        &fixed_names,
-        &var_names,
-        &subarray,
-        &tile_subarrays,
-        &tile_offsets,
-        &range_offsets,
-        &result_space_tiles,
-        &qc_result);
+        fixed_names,
+        var_names,
+        subarray,
+        tile_subarrays,
+        tile_offsets,
+        range_offsets,
+        result_space_tiles,
+        *qc_result);
     RETURN_CANCEL_OR_ERROR(status);
 
     if (read_state_.overflowed_)
@@ -480,17 +479,18 @@ Status DenseReader::init_read_state() {
 
 /** Apply the query condition. */
 template <class DimType, class OffType>
-Status DenseReader::apply_query_condition(
-    Subarray* subarray,
-    std::vector<Subarray>* tile_subarrays,
-    std::vector<uint64_t>* tile_offsets,
-    const std::vector<uint64_t>* const range_offsets,
-    std::map<const DimType*, ResultSpaceTile<DimType>>* result_space_tiles,
-    std::vector<uint8_t>* qc_result) {
+std::tuple<Status, std::optional<std::vector<uint8_t>>>
+DenseReader::apply_query_condition(
+    Subarray& subarray,
+    std::vector<Subarray>& tile_subarrays,
+    std::vector<uint64_t>& tile_offsets,
+    const std::vector<uint64_t>& range_offsets,
+    std::map<const DimType*, ResultSpaceTile<DimType>>& result_space_tiles) {
+  std::vector<uint8_t> qc_result;
   if (!condition_.clauses().empty()) {
     // For easy reference.
-    const auto& tile_coords = subarray->tile_coords();
-    const auto cell_num = subarray->cell_num();
+    const auto& tile_coords = subarray.tile_coords();
+    const auto cell_num = subarray.cell_num();
     const auto dim_num = array_schema_->dim_num();
     auto stride = array_schema_->domain()->stride<DimType>(layout_);
     const auto domain = array_schema_->domain();
@@ -502,63 +502,55 @@ Status DenseReader::apply_query_condition(
     }
 
     // Initialize the result buffer.
-    qc_result->resize(cell_num);
-    memset(qc_result->data(), 1, cell_num);
+    qc_result.resize(cell_num, 1);
 
     // Process all tiles in parallel.
     auto status = parallel_for(
         storage_manager_->compute_tp(), 0, tile_coords.size(), [&](uint64_t t) {
           // Find out result space tile and tile subarray.
           const DimType* tc = (DimType*)&tile_coords[t][0];
-          auto it = result_space_tiles->find(tc);
-          assert(it != result_space_tiles->end());
-          const auto tile_subarray = &tile_subarrays->at(t);
+          auto it = result_space_tiles.find(tc);
+          assert(it != result_space_tiles.end());
 
           const auto& frag_domains = it->second.frag_domains();
-          uint64_t cell_offset = global_order ? tile_offsets->at(t) : 0;
-          auto dest_ptr = qc_result->data() + cell_offset;
+          uint64_t cell_offset = global_order ? tile_offsets[t] : 0;
+          auto dest_ptr = qc_result.data() + cell_offset;
 
           // Iterate over all coordinates, retrieved in cell slab.
-          CellSlabIter<DimType> iter(tile_subarray);
+          CellSlabIter<DimType> iter(&tile_subarrays[t]);
           RETURN_NOT_OK(iter.begin());
           while (!iter.end()) {
             auto cell_slab = iter.cell_slab();
 
             // Compute destination pointer for row/col major orders.
             if (!global_order) {
-              RETURN_NOT_OK(get_dest_cell_offset_row_col(
+              cell_offset = get_dest_cell_offset_row_col(
                   dim_num,
                   subarray,
-                  tile_subarray,
+                  tile_subarrays[t],
                   cell_slab.coords_.data(),
                   iter.range_coords(),
-                  range_offsets,
-                  &cell_offset));
-              dest_ptr = qc_result->data() + cell_offset;
+                  range_offsets);
+              dest_ptr = qc_result.data() + cell_offset;
             }
 
             // Get the source cell offset.
-            uint64_t src_cell = 0;
-            RETURN_NOT_OK(get_cell_pos_in_tile(
+            uint64_t src_cell = get_cell_pos_in_tile(
                 cell_order,
                 dim_num,
                 domain,
-                &it->second,
-                cell_slab.coords_.data(),
-                &src_cell));
+                it->second,
+                cell_slab.coords_.data());
 
             for (int32_t i = (int32_t)frag_domains.size() - 1; i >= 0; --i) {
               // If the cell slab overlaps this fragment domain range, apply
               // clause.
-              uint64_t start = 0;
-              uint64_t end = 0;
-              if (cell_slab_overlaps_range(
-                      dim_num,
-                      frag_domains[i].second,
-                      cell_slab.coords_.data(),
-                      cell_slab.length_,
-                      &start,
-                      &end)) {
+              auto&& [overlaps, start, end] = cell_slab_overlaps_range(
+                  dim_num,
+                  frag_domains[i].second,
+                  cell_slab.coords_.data(),
+                  cell_slab.length_);
+              if (overlaps) {
                 RETURN_NOT_OK(condition_.apply_dense(
                     fragment_metadata_[frag_domains[i].first]->array_schema(),
                     it->second.result_tile(frag_domains[i].first),
@@ -580,19 +572,18 @@ Status DenseReader::apply_query_condition(
 
           return Status::Ok();
         });
-    RETURN_NOT_OK(status);
+    RETURN_NOT_OK_TUPLE(status, std::nullopt);
   }
 
-  return Status::Ok();
+  return {Status::Ok(), qc_result};
 }
 
 template <class OffType>
-void DenseReader::fix_offsets_buffer(
+uint64_t DenseReader::fix_offsets_buffer(
     const std::string& name,
     const bool nullable,
     const uint64_t cell_num,
-    std::vector<void*>* var_data,
-    uint64_t* var_buffer_size) {
+    std::vector<void*>& var_data) {
   // For easy reference.
   const auto& fill_value = array_schema_->attribute(name)->fill_value();
   const auto fill_value_size = (OffType)fill_value.size();
@@ -608,7 +599,7 @@ void DenseReader::fix_offsets_buffer(
       tmp = fill_value_size;
 
       // Set the pointer for the var data.
-      var_data->at(i) = (void*)fill_value.data();
+      var_data[i] = (void*)fill_value.data();
     }
     offsets_buffer[i] = offset;
     offset += tmp;
@@ -621,27 +612,27 @@ void DenseReader::fix_offsets_buffer(
     *buffers_[name].validity_vector_.buffer_size() = cell_num;
 
   // Return the buffer size.
-  *var_buffer_size = offset;
+  return offset;
 }
 
 template <class DimType, class OffType>
 Status DenseReader::read_attributes(
-    const std::vector<std::string>* fixed_names,
-    const std::vector<std::string>* var_names,
-    const Subarray* const subarray,
-    const std::vector<Subarray>* const tile_subarrays,
-    const std::vector<uint64_t>* const tile_offsets,
-    const std::vector<uint64_t>* const range_offsets,
-    std::map<const DimType*, ResultSpaceTile<DimType>>* result_space_tiles,
-    const std::vector<uint8_t>* const qc_result) {
+    const std::vector<std::string>& fixed_names,
+    const std::vector<std::string>& var_names,
+    const Subarray& subarray,
+    const std::vector<Subarray>& tile_subarrays,
+    const std::vector<uint64_t>& tile_offsets,
+    const std::vector<uint64_t>& range_offsets,
+    std::map<const DimType*, ResultSpaceTile<DimType>>& result_space_tiles,
+    const std::vector<uint8_t>& qc_result) {
   // For easy reference
-  const auto& tile_coords = subarray->tile_coords();
-  const auto cell_num = subarray->cell_num();
+  const auto& tile_coords = subarray.tile_coords();
+  const auto cell_num = subarray.cell_num();
   const auto global_order = layout_ == Layout::GLOBAL_ORDER;
 
-  if (!var_names->empty()) {
+  if (!var_names.empty()) {
     // Make sure the user offset buffers are big enough.
-    for (auto& name : *var_names) {
+    for (auto& name : var_names) {
       const auto required_size =
           (cell_num + offsets_extra_element_) * sizeof(OffType);
       if (required_size > *buffers_[name].buffer_size_) {
@@ -651,7 +642,7 @@ Status DenseReader::read_attributes(
     }
 
     // Vector to hold pointers to the var data.
-    std::vector<std::vector<void*>> var_data(var_names->size());
+    std::vector<std::vector<void*>> var_data(var_names.size());
     for (auto& var_data_buff : var_data) {
       var_data_buff.resize(cell_num);
     }
@@ -662,13 +653,13 @@ Status DenseReader::read_attributes(
     std::vector<uint8_t*> dst_val_bufs;
     std::vector<const Attribute*> attributes;
     std::vector<uint64_t> data_type_sizes;
-    dst_off_bufs.reserve(var_names->size());
-    dst_var_bufs.reserve(var_names->size());
-    dst_val_bufs.reserve(var_names->size());
-    attributes.reserve(var_names->size());
-    data_type_sizes.reserve(var_names->size());
+    dst_off_bufs.reserve(var_names.size());
+    dst_var_bufs.reserve(var_names.size());
+    dst_val_bufs.reserve(var_names.size());
+    attributes.reserve(var_names.size());
+    data_type_sizes.reserve(var_names.size());
 
-    for (auto& name : *var_names) {
+    for (auto& name : var_names) {
       dst_off_bufs.push_back((uint8_t*)buffers_[name].buffer_);
       dst_var_bufs.push_back((uint8_t*)buffers_[name].buffer_var_);
       dst_val_bufs.push_back(buffers_[name].validity_vector_.buffer());
@@ -681,35 +672,34 @@ Status DenseReader::read_attributes(
         storage_manager_->compute_tp(), 0, tile_coords.size(), [&](uint64_t t) {
           // Find out result space tile and tile subarray.
           const DimType* tc = (DimType*)&tile_coords[t][0];
-          auto it = result_space_tiles->find(tc);
-          assert(it != result_space_tiles->end());
-          const auto tile_subarray = &tile_subarrays->at(t);
+          auto it = result_space_tiles.find(tc);
+          assert(it != result_space_tiles.end());
 
           // Copy the tile offsets.
           return copy_offset_tiles<DimType, OffType>(
               var_names,
-              &dst_off_bufs,
-              &dst_val_bufs,
-              &attributes,
-              &data_type_sizes,
-              &it->second,
+              dst_off_bufs,
+              dst_val_bufs,
+              attributes,
+              data_type_sizes,
+              it->second,
               subarray,
-              tile_subarray,
-              global_order ? tile_offsets->at(t) : 0,
-              &var_data,
+              tile_subarrays[t],
+              global_order ? tile_offsets[t] : 0,
+              var_data,
               range_offsets,
               qc_result);
         });
     RETURN_NOT_OK(status);
 
     // We have the cell lengths in the users buffer, convert to offsets.
-    std::vector<uint64_t> var_buffer_sizes(var_names->size());
+    std::vector<uint64_t> var_buffer_sizes(var_names.size());
     status = parallel_for(
-        storage_manager_->compute_tp(), 0, var_names->size(), [&](uint64_t n) {
-          const auto& name = var_names->at(n);
+        storage_manager_->compute_tp(), 0, var_names.size(), [&](uint64_t n) {
+          const auto& name = var_names[n];
           const bool nullable = array_schema_->is_nullable(name);
-          fix_offsets_buffer<OffType>(
-              name, nullable, cell_num, &var_data[n], &var_buffer_sizes[n]);
+          var_buffer_sizes[n] = fix_offsets_buffer<OffType>(
+              name, nullable, cell_num, var_data[n]);
 
           // Make sure the user var buffer is big enough.
           uint64_t required_var_size = var_buffer_sizes[n];
@@ -735,29 +725,27 @@ Status DenseReader::read_attributes(
     // Process var data in parallel.
     status = parallel_for(
         storage_manager_->compute_tp(), 0, tile_coords.size(), [&](uint64_t t) {
-          const auto tile_subarray = &tile_subarrays->at(t);
-
           return copy_var_tiles<DimType, OffType>(
               var_names,
-              &dst_var_bufs,
-              &dst_off_bufs,
-              &data_type_sizes,
+              dst_var_bufs,
+              dst_off_bufs,
+              data_type_sizes,
               subarray,
-              tile_subarray,
-              global_order ? tile_offsets->at(t) : 0,
-              &var_data,
+              tile_subarrays[t],
+              global_order ? tile_offsets[t] : 0,
+              var_data,
               range_offsets,
               t == tile_coords.size() - 1,
-              &var_buffer_sizes);
+              var_buffer_sizes);
 
           return Status::Ok();
         });
     RETURN_NOT_OK(status);
   }
 
-  if (!fixed_names->empty()) {
+  if (!fixed_names.empty()) {
     // Make sure the user fixed buffers are big enough.
-    for (auto& name : *fixed_names) {
+    for (auto& name : fixed_names) {
       const auto required_size = cell_num * array_schema_->cell_size(name);
       if (required_size > *buffers_[name].buffer_size_) {
         read_state_.overflowed_ = true;
@@ -770,12 +758,12 @@ Status DenseReader::read_attributes(
     std::vector<uint8_t*> dst_val_bufs;
     std::vector<const Attribute*> attributes;
     std::vector<uint64_t> cell_sizes;
-    dst_bufs.reserve(fixed_names->size());
-    dst_val_bufs.reserve(fixed_names->size());
-    attributes.reserve(fixed_names->size());
-    cell_sizes.reserve(fixed_names->size());
+    dst_bufs.reserve(fixed_names.size());
+    dst_val_bufs.reserve(fixed_names.size());
+    attributes.reserve(fixed_names.size());
+    cell_sizes.reserve(fixed_names.size());
 
-    for (auto& name : *fixed_names) {
+    for (auto& name : fixed_names) {
       dst_bufs.push_back((uint8_t*)buffers_[name].buffer_);
       dst_val_bufs.push_back(buffers_[name].validity_vector_.buffer());
       attributes.push_back(array_schema_->attribute(name));
@@ -787,21 +775,20 @@ Status DenseReader::read_attributes(
         storage_manager_->compute_tp(), 0, tile_coords.size(), [&](uint64_t t) {
           // Find out result space tile and tile subarray.
           const DimType* tc = (DimType*)&tile_coords[t][0];
-          auto it = result_space_tiles->find(tc);
-          assert(it != result_space_tiles->end());
-          const auto tile_subarray = &tile_subarrays->at(t);
+          auto it = result_space_tiles.find(tc);
+          assert(it != result_space_tiles.end());
 
           // Copy the tile fixed values.
           RETURN_NOT_OK(copy_fixed_tiles(
               fixed_names,
-              &dst_bufs,
-              &dst_val_bufs,
-              &attributes,
-              &cell_sizes,
-              &it->second,
+              dst_bufs,
+              dst_val_bufs,
+              attributes,
+              cell_sizes,
+              it->second,
               subarray,
-              tile_subarray,
-              global_order ? tile_offsets->at(t) : 0,
+              tile_subarrays[t],
+              global_order ? tile_offsets[t] : 0,
               range_offsets,
               qc_result));
 
@@ -810,7 +797,7 @@ Status DenseReader::read_attributes(
     RETURN_NOT_OK(status);
 
     // Set the output size for the fixed buffer.
-    for (auto& name : *fixed_names) {
+    for (auto& name : fixed_names) {
       const auto required_size = cell_num * array_schema_->cell_size(name);
 
       // Set the output size for the fixed buffer.
@@ -825,17 +812,16 @@ Status DenseReader::read_attributes(
 }
 
 template <class DimType>
-Status DenseReader::get_cell_pos_in_tile(
+uint64_t DenseReader::get_cell_pos_in_tile(
     const Layout& cell_order,
     const int32_t dim_num,
     const Domain* const domain,
-    const ResultSpaceTile<DimType>* const result_space_tile,
-    const DimType* const coords,
-    uint64_t* cell_pos) {
+    const ResultSpaceTile<DimType>& result_space_tile,
+    const DimType* const coords) {
   uint64_t pos = 0;
   uint64_t mult = 1;
 
-  const auto& start = result_space_tile->start_coords();
+  const auto& start = result_space_tile.start_coords();
   if (cell_order == Layout::COL_MAJOR) {
     for (int32_t d = 0; d < dim_num; d++) {
       pos += mult * (coords[d] - start[d]);
@@ -848,18 +834,15 @@ Status DenseReader::get_cell_pos_in_tile(
     }
   }
 
-  *cell_pos = pos;
-  return Status::Ok();
+  return pos;
 }
 
 template <class DimType>
-bool DenseReader::cell_slab_overlaps_range(
+std::tuple<bool, uint64_t, uint64_t> DenseReader::cell_slab_overlaps_range(
     const unsigned dim_num,
     const NDRange& ndrange,
     const DimType* coords,
-    const uint64_t length,
-    uint64_t* start,
-    uint64_t* end) {
+    const uint64_t length) {
   const unsigned slab_dim = (layout_ == Layout::COL_MAJOR) ? 0 : dim_num - 1;
   const DimType slab_start = coords[slab_dim];
   const DimType slab_end = slab_start + length - 1;
@@ -869,45 +852,44 @@ bool DenseReader::cell_slab_overlaps_range(
     auto dom = (const DimType*)ndrange[d].data();
     if (d == slab_dim) {
       if (slab_end < dom[0] || slab_start > dom[1]) {
-        return false;
+        return {false, 0, 0};
       }
     } else if (coords[d] < dom[0] || coords[d] > dom[1]) {
-      return false;
+      return {false, 0, 0};
     }
   }
 
   // Compute the normalized start and end coordinates for the slab.
   auto dom = (const DimType*)ndrange[slab_dim].data();
-  *start = std::max(slab_start, dom[0]) - slab_start;
-  *end = std::min(slab_end, dom[1]) - slab_start;
-  return true;
+  auto start = std::max(slab_start, dom[0]) - slab_start;
+  auto end = std::min(slab_end, dom[1]) - slab_start;
+  return {true, start, end};
 }
 
 template <class DimType>
-Status DenseReader::get_dest_cell_offset_row_col(
+uint64_t DenseReader::get_dest_cell_offset_row_col(
     const int32_t dim_num,
-    const Subarray* const subarray,
-    const Subarray* const tile_subarray,
+    const Subarray& subarray,
+    const Subarray& tile_subarray,
     const DimType* const coords,
     const DimType* const range_coords,
-    const std::vector<uint64_t>* const range_offsets,
-    uint64_t* cell_offset) {
+    const std::vector<uint64_t>& range_offsets) {
   uint64_t ret = 0;
   uint64_t mult = 1;
 
   uint64_t r = 0;
   std::vector<uint64_t> converted_range_coords(dim_num);
-  if (subarray->range_num() > 1) {
-    tile_subarray->get_original_range_coords(
+  if (subarray.range_num() > 1) {
+    tile_subarray.get_original_range_coords(
         range_coords, &converted_range_coords);
-    r = subarray->range_idx(converted_range_coords);
+    r = subarray.range_idx(converted_range_coords);
   }
 
-  if (subarray->layout() == Layout::COL_MAJOR) {
+  if (subarray.layout() == Layout::COL_MAJOR) {
     for (int32_t d = 0; d < dim_num; d++) {
       auto subarray_dom =
           (DimType*)subarray
-              ->ranges_for_dim((uint32_t)d)[converted_range_coords[d]]
+              .ranges_for_dim((uint32_t)d)[converted_range_coords[d]]
               .data();
       ret += mult * (coords[d] - subarray_dom[0]);
       mult *= subarray_dom[1] - subarray_dom[0] + 1;
@@ -916,140 +898,142 @@ Status DenseReader::get_dest_cell_offset_row_col(
     for (int32_t d = dim_num - 1; d >= 0; d--) {
       auto subarray_dom =
           (DimType*)subarray
-              ->ranges_for_dim((uint32_t)d)[converted_range_coords[d]]
+              .ranges_for_dim((uint32_t)d)[converted_range_coords[d]]
               .data();
       ret += mult * (coords[d] - subarray_dom[0]);
       mult *= subarray_dom[1] - subarray_dom[0] + 1;
     }
   }
 
-  *cell_offset = ret + range_offsets->at(r);
-  return Status::Ok();
+  return ret + range_offsets[r];
 }
 
 template <class DimType>
 Status DenseReader::copy_fixed_tiles(
-    const std::vector<std::string>* names,
-    const std::vector<uint8_t*>* const dst_bufs,
-    const std::vector<uint8_t*>* const dst_val_bufs,
-    const std::vector<const Attribute*>* const attributes,
-    const std::vector<uint64_t>* const cell_sizes,
-    ResultSpaceTile<DimType>* result_space_tile,
-    const Subarray* const subarray,
-    const Subarray* const tile_subarray,
+    const std::vector<std::string>& names,
+    const std::vector<uint8_t*>& dst_bufs,
+    const std::vector<uint8_t*>& dst_val_bufs,
+    const std::vector<const Attribute*>& attributes,
+    const std::vector<uint64_t>& cell_sizes,
+    ResultSpaceTile<DimType>& result_space_tile,
+    const Subarray& subarray,
+    const Subarray& tile_subarray,
     const uint64_t global_cell_offset,
-    const std::vector<uint64_t>* const range_offsets,
-    const std::vector<uint8_t>* const qc_result) {
+    const std::vector<uint64_t>& range_offsets,
+    const std::vector<uint8_t>& qc_result) {
   // For easy reference
   const auto dim_num = array_schema_->dim_num();
   const auto domain = array_schema_->domain();
   const auto cell_order = array_schema_->cell_order();
-  const auto stride = array_schema_->domain()->stride<DimType>(layout_);
-  const auto& frag_domains = result_space_tile->frag_domains();
+  auto stride = array_schema_->domain()->stride<DimType>(layout_);
+  const auto& frag_domains = result_space_tile.frag_domains();
+
+  if (stride == UINT64_MAX) {
+    stride = 1;
+  }
 
   // Initialise for global order, will be adjusted later for row/col major.
   uint64_t cell_offset = global_cell_offset;
 
   // Iterate over all coordinates, retrieved in cell slab.
-  CellSlabIter<DimType> iter(tile_subarray);
+  CellSlabIter<DimType> iter(&tile_subarray);
   RETURN_CANCEL_OR_ERROR(iter.begin());
   while (!iter.end()) {
     auto cell_slab = iter.cell_slab();
 
     // Compute cell offset for row/col major orders.
     if (layout_ != Layout::GLOBAL_ORDER) {
-      RETURN_NOT_OK(get_dest_cell_offset_row_col(
+      cell_offset = get_dest_cell_offset_row_col(
           dim_num,
           subarray,
           tile_subarray,
           cell_slab.coords_.data(),
           iter.range_coords(),
-          range_offsets,
-          &cell_offset));
+          range_offsets);
     }
 
     // Get the source cell offset.
-    uint64_t src_cell = 0;
-    RETURN_NOT_OK(get_cell_pos_in_tile(
+    uint64_t src_cell = get_cell_pos_in_tile(
         cell_order,
         dim_num,
         domain,
         result_space_tile,
-        cell_slab.coords_.data(),
-        &src_cell));
+        cell_slab.coords_.data());
 
     // Iterate through all fragment domains and copy data.
     for (int32_t fd = (int32_t)frag_domains.size() - 1; fd >= 0; --fd) {
       // If the cell slab overlaps this fragment domain range, copy data.
-      uint64_t start = 0;
-      uint64_t end = std::numeric_limits<uint64_t>::max();
-      if (cell_slab_overlaps_range(
-              dim_num,
-              frag_domains[fd].second,
-              cell_slab.coords_.data(),
-              cell_slab.length_,
-              &start,
-              &end)) {
-        for (uint64_t n = 0; n < names->size(); n++) {
+      auto&& [overlaps, start, end] = cell_slab_overlaps_range(
+          dim_num,
+          frag_domains[fd].second,
+          cell_slab.coords_.data(),
+          cell_slab.length_);
+      if (overlaps) {
+        for (uint64_t n = 0; n < names.size(); n++) {
           // Calculate the destination pointers.
-          const auto cell_size = cell_sizes->at(n);
-          auto dest_ptr = dst_bufs->at(n) + cell_offset * cell_size;
-          auto dest_validity_ptr = dst_val_bufs->at(n) + cell_offset;
+          const auto cell_size = cell_sizes[n];
+          auto dest_ptr = dst_bufs[n] + cell_offset * cell_size;
+          auto dest_validity_ptr = dst_val_bufs[n] + cell_offset;
 
           // Get the tile buffers.
           const auto tile_tuple =
-              result_space_tile->result_tile(frag_domains[fd].first)
-                  ->tile_tuple(names->at(n));
+              result_space_tile.result_tile(frag_domains[fd].first)
+                  ->tile_tuple(names[n]);
           assert(tile_tuple != nullptr);
           const Tile* const tile = &std::get<0>(*tile_tuple);
           const Tile* const tile_nullable = &std::get<2>(*tile_tuple);
 
-          auto src_offset = (src_cell + start);
+          auto src_offset = src_cell + start * stride;
 
           // If the subarray and tile are in the same order, copy the whole
           // slab.
-          if (stride == UINT64_MAX) {
-            RETURN_NOT_OK(tile->buffer()->read(
+          if (stride == 1) {
+            std::memcpy(
                 dest_ptr + cell_size * start,
-                cell_size * src_offset,
-                cell_size * (end - start + 1)));
+                (char*)tile->buffer()->data() + cell_size * src_offset,
+                cell_size * (end - start + 1));
 
-            if (attributes->at(n)->nullable()) {
-              RETURN_NOT_OK(tile_nullable->buffer()->read(
-                  dest_validity_ptr + start, src_offset, (end - start + 1)));
+            if (attributes[n]->nullable()) {
+              std::memcpy(
+                  dest_validity_ptr + start,
+                  (char*)tile_nullable->buffer()->data() + src_offset,
+                  (end - start + 1));
             }
           } else {
             // Go cell by cell.
+            const auto nullable = attributes[n]->nullable();
+            auto src = (char*)tile->buffer()->data() + cell_size * src_offset;
+            auto src_validity =
+                nullable ? (char*)tile_nullable->buffer()->data() + src_offset :
+                           nullptr;
             auto dest = dest_ptr + cell_size * start;
             auto dest_validity = dest_validity_ptr + start;
             for (uint64_t i = 0; i < end - start + 1; ++i) {
-              RETURN_NOT_OK(tile->buffer()->read(
-                  dest, cell_size * src_offset, cell_size));
+              std::memcpy(dest, src, cell_size);
+              src += cell_size * stride;
               dest += cell_size;
 
-              if (attributes->at(n)->nullable()) {
-                RETURN_NOT_OK(tile_nullable->buffer()->read(
-                    dest_validity, src_offset, 1));
+              if (nullable) {
+                memcpy(dest_validity, src_validity, 1);
+                src_validity += stride;
                 dest_validity++;
               }
-
-              src_offset += stride;
             }
           }
         }
+
+        end = end + 1;
       }
 
       // Fill the non written cells for the first fragment domain with the fill
       // value.
-      end = end == std::numeric_limits<uint64_t>::max() ? 0 : end + 1;
-      for (uint64_t n = 0; n < names->size(); n++) {
+      for (uint64_t n = 0; n < names.size(); n++) {
         // Calculate the destination pointers.
-        const auto cell_size = cell_sizes->at(n);
-        auto dest_ptr = dst_bufs->at(n) + cell_offset * cell_size;
-        auto dest_validity_ptr = dst_val_bufs->at(n) + cell_offset;
-        const auto& fill_value = attributes->at(n)->fill_value();
-        const auto& fill_value_nullable =
-            attributes->at(n)->fill_value_validity();
+        const auto cell_size = cell_sizes[n];
+        auto dest_ptr = dst_bufs[n] + cell_offset * cell_size;
+        auto dest_validity_ptr = dst_val_bufs[n] + cell_offset;
+        const auto& fill_value = attributes[n]->fill_value();
+        const auto& fill_value_nullable = attributes[n]->fill_value_validity();
 
         // Do the filling.
         if (fd == (int32_t)frag_domains.size() - 1) {
@@ -1065,7 +1049,7 @@ Status DenseReader::copy_fixed_tiles(
             buff += fill_value.size();
           }
 
-          if (attributes->at(n)->nullable()) {
+          if (attributes[n]->nullable()) {
             std::memset(dest_validity_ptr, fill_value_nullable, start);
             std::memset(
                 dest_validity_ptr + end,
@@ -1077,14 +1061,13 @@ Status DenseReader::copy_fixed_tiles(
     }
 
     // Check if we need to fill the whole slab or apply query condition.
-    for (uint64_t n = 0; n < names->size(); n++) {
+    for (uint64_t n = 0; n < names.size(); n++) {
       // Calculate the destination pointers.
-      const auto cell_size = cell_sizes->at(n);
-      auto dest_ptr = dst_bufs->at(n) + cell_offset * cell_size;
-      auto dest_validity_ptr = dst_val_bufs->at(n) + cell_offset;
-      const auto& fill_value = attributes->at(n)->fill_value();
-      const auto& fill_value_nullable =
-          attributes->at(n)->fill_value_validity();
+      const auto cell_size = cell_sizes[n];
+      auto dest_ptr = dst_bufs[n] + cell_offset * cell_size;
+      auto dest_validity_ptr = dst_val_bufs[n] + cell_offset;
+      const auto& fill_value = attributes[n]->fill_value();
+      const auto& fill_value_nullable = attributes[n]->fill_value_validity();
 
       // Need to fill the whole slab.
       if (frag_domains.size() == 0) {
@@ -1094,7 +1077,7 @@ Status DenseReader::copy_fixed_tiles(
           buff += fill_value.size();
         }
 
-        if (attributes->at(n)->nullable()) {
+        if (attributes[n]->nullable()) {
           std::memset(
               dest_validity_ptr, fill_value_nullable, cell_slab.length_);
         }
@@ -1103,11 +1086,11 @@ Status DenseReader::copy_fixed_tiles(
       // Apply query condition results to this slab.
       if (!condition_.empty()) {
         for (uint64_t c = 0; c < cell_slab.length_; c++) {
-          if (!(qc_result->at(c + cell_offset) & 0x1)) {
+          if (!(qc_result[c + cell_offset] & 0x1)) {
             memcpy(
                 dest_ptr + c * cell_size, fill_value.data(), fill_value.size());
 
-            if (attributes->at(n)->nullable()) {
+            if (attributes[n]->nullable()) {
               std::memset(dest_validity_ptr + c, fill_value_nullable, 1);
             }
           }
@@ -1128,25 +1111,25 @@ Status DenseReader::copy_fixed_tiles(
 
 template <class DimType, class OffType>
 Status DenseReader::copy_offset_tiles(
-    const std::vector<std::string>* names,
-    const std::vector<uint8_t*>* const dst_bufs,
-    const std::vector<uint8_t*>* const dst_val_bufs,
-    const std::vector<const Attribute*>* const attributes,
-    const std::vector<uint64_t>* const data_type_sizes,
-    ResultSpaceTile<DimType>* result_space_tile,
-    const Subarray* const subarray,
-    const Subarray* const tile_subarray,
+    const std::vector<std::string>& names,
+    const std::vector<uint8_t*>& dst_bufs,
+    const std::vector<uint8_t*>& dst_val_bufs,
+    const std::vector<const Attribute*>& attributes,
+    const std::vector<uint64_t>& data_type_sizes,
+    ResultSpaceTile<DimType>& result_space_tile,
+    const Subarray& subarray,
+    const Subarray& tile_subarray,
     const uint64_t global_cell_offset,
-    std::vector<std::vector<void*>>* var_data,
-    const std::vector<uint64_t>* const range_offsets,
-    const std::vector<uint8_t>* const qc_result) {
+    std::vector<std::vector<void*>>& var_data,
+    const std::vector<uint64_t>& range_offsets,
+    const std::vector<uint8_t>& qc_result) {
   // For easy reference
   const auto domain = array_schema_->domain();
   const auto dim_num = array_schema_->dim_num();
   const auto cell_order = array_schema_->cell_order();
   const auto cell_num_per_tile = array_schema_->domain()->cell_num_per_tile();
   auto stride = array_schema_->domain()->stride<DimType>(layout_);
-  const auto& frag_domains = result_space_tile->frag_domains();
+  const auto& frag_domains = result_space_tile.frag_domains();
 
   if (stride == UINT64_MAX) {
     stride = 1;
@@ -1156,67 +1139,61 @@ Status DenseReader::copy_offset_tiles(
   uint64_t cell_offset = global_cell_offset;
 
   // Iterate over all coordinates, retrieved in cell slabs
-  CellSlabIter<DimType> iter(tile_subarray);
+  CellSlabIter<DimType> iter(&tile_subarray);
   RETURN_CANCEL_OR_ERROR(iter.begin());
   while (!iter.end()) {
     auto cell_slab = iter.cell_slab();
 
     // Compute cell offset for row/col major orders.
     if (layout_ != Layout::GLOBAL_ORDER) {
-      RETURN_NOT_OK(get_dest_cell_offset_row_col(
+      cell_offset = get_dest_cell_offset_row_col(
           dim_num,
           subarray,
           tile_subarray,
           cell_slab.coords_.data(),
           iter.range_coords(),
-          range_offsets,
-          &cell_offset));
+          range_offsets);
     }
 
     // Get the source cell offset.
-    uint64_t src_cell = 0;
-    RETURN_NOT_OK(get_cell_pos_in_tile(
+    uint64_t src_cell = get_cell_pos_in_tile(
         cell_order,
         dim_num,
         domain,
         result_space_tile,
-        cell_slab.coords_.data(),
-        &src_cell));
+        cell_slab.coords_.data());
 
     // Iterate through all fragment domains and copy data.
     for (int32_t fd = (int32_t)frag_domains.size() - 1; fd >= 0; --fd) {
       // If the cell slab overlaps this fragment domain range, copy data.
-      uint64_t start = 0;
-      uint64_t end = std::numeric_limits<uint64_t>::max();
-      if (cell_slab_overlaps_range(
-              dim_num,
-              frag_domains[fd].second,
-              cell_slab.coords_.data(),
-              cell_slab.length_,
-              &start,
-              &end)) {
-        for (uint64_t n = 0; n < names->size(); n++) {
+      auto&& [overlaps, start, end] = cell_slab_overlaps_range(
+          dim_num,
+          frag_domains[fd].second,
+          cell_slab.coords_.data(),
+          cell_slab.length_);
+      if (overlaps) {
+        for (uint64_t n = 0; n < names.size(); n++) {
           // Calculate the destination pointers.
-          auto dest_ptr = dst_bufs->at(n) + cell_offset * sizeof(OffType);
-          auto var_data_buff = var_data->at(n).data() + cell_offset;
-          auto dest_validity_ptr = dst_val_bufs->at(n) + cell_offset;
+          auto dest_ptr = dst_bufs[n] + cell_offset * sizeof(OffType);
+          auto var_data_buff = var_data[n].data() + cell_offset;
+          auto dest_validity_ptr = dst_val_bufs[n] + cell_offset;
 
           // Get the tile buffers.
           const auto tile_tuple =
-              result_space_tile->result_tile(frag_domains[fd].first)
-                  ->tile_tuple(names->at(n));
+              result_space_tile.result_tile(frag_domains[fd].first)
+                  ->tile_tuple(names[n]);
           assert(tile_tuple != nullptr);
           const Tile* const t_var = &std::get<1>(*tile_tuple);
 
           // Setup variables for the copy.
           auto src_buff = (uint64_t*)std::get<0>(*tile_tuple).buffer()->data() +
-                          start + src_cell;
+                          start * stride + src_cell;
           auto src_buff_validity =
-              attributes->at(n)->nullable() ?
+              attributes[n]->nullable() ?
                   (uint8_t*)std::get<2>(*tile_tuple).buffer()->data() + start +
                       src_cell :
                   nullptr;
-          auto div = elements_mode_ ? data_type_sizes->at(n) : 1;
+          auto div = elements_mode_ ? data_type_sizes[n] : 1;
           auto dest = (OffType*)dest_ptr + start;
 
           // Copy the data cell by cell, last copy was taken out to take
@@ -1229,7 +1206,7 @@ Status DenseReader::copy_offset_tiles(
                 (char*)t_var->buffer()->data() + src_buff[i_src];
           }
 
-          if (attributes->at(n)->nullable()) {
+          if (attributes[n]->nullable()) {
             i = 0;
             for (; i < end - start; ++i) {
               dest_validity_ptr[start + i] = src_buff_validity[i * stride];
@@ -1247,20 +1224,20 @@ Status DenseReader::copy_offset_tiles(
           var_data_buff[i + start] =
               (char*)t_var->buffer()->data() + src_buff[i * stride];
 
-          if (attributes->at(n)->nullable())
+          if (attributes[n]->nullable())
             dest_validity_ptr[start + i] = src_buff_validity[i * stride];
         }
+
+        end = end + 1;
       }
 
       // Fill the non written cells for the first fragment domain with max
       // value.
-      end = end == std::numeric_limits<uint64_t>::max() ? 0 : end + 1;
-      for (uint64_t n = 0; n < names->size(); n++) {
+      for (uint64_t n = 0; n < names.size(); n++) {
         // Calculate the destination pointers.
-        auto dest_ptr = dst_bufs->at(n) + cell_offset * sizeof(OffType);
-        auto dest_validity_ptr = dst_val_bufs->at(n) + cell_offset;
-        const auto& fill_value_nullable =
-            attributes->at(n)->fill_value_validity();
+        auto dest_ptr = dst_bufs[n] + cell_offset * sizeof(OffType);
+        auto dest_validity_ptr = dst_val_bufs[n] + cell_offset;
+        const auto& fill_value_nullable = attributes[n]->fill_value_validity();
 
         // Do the filling.
         if (fd == (int32_t)frag_domains.size() - 1) {
@@ -1270,7 +1247,7 @@ Status DenseReader::copy_offset_tiles(
               0xFF,
               (cell_slab.length_ - end) * sizeof(OffType));
 
-          if (attributes->at(n)->nullable()) {
+          if (attributes[n]->nullable()) {
             std::memset(dest_validity_ptr, fill_value_nullable, start);
             std::memset(
                 dest_validity_ptr + end,
@@ -1282,18 +1259,17 @@ Status DenseReader::copy_offset_tiles(
     }
 
     // Check if we need to fill the whole slab or apply query condition.
-    for (uint64_t n = 0; n < names->size(); n++) {
+    for (uint64_t n = 0; n < names.size(); n++) {
       // Calculate the destination pointers.
-      auto dest_ptr = dst_bufs->at(n) + cell_offset * sizeof(OffType);
-      auto dest_validity_ptr = dst_val_bufs->at(n) + cell_offset;
-      const auto& fill_value_nullable =
-          attributes->at(n)->fill_value_validity();
+      auto dest_ptr = dst_bufs[n] + cell_offset * sizeof(OffType);
+      auto dest_validity_ptr = dst_val_bufs[n] + cell_offset;
+      const auto& fill_value_nullable = attributes[n]->fill_value_validity();
 
       // Need to fill the whole slab.
       if (frag_domains.size() == 0) {
         memset(dest_ptr, 0xFF, cell_slab.length_ * sizeof(OffType));
 
-        if (attributes->at(n)->nullable()) {
+        if (attributes[n]->nullable()) {
           std::memset(
               dest_validity_ptr, fill_value_nullable, cell_slab.length_);
         }
@@ -1302,11 +1278,11 @@ Status DenseReader::copy_offset_tiles(
       if (!condition_.empty()) {
         // Apply query condition results to this slab.
         for (uint64_t c = 0; c < cell_slab.length_; c++) {
-          if (!(qc_result->at(c + cell_offset) & 0x1)) {
+          if (!(qc_result[c + cell_offset] & 0x1)) {
             memset(dest_ptr + c * sizeof(OffType), 0xFF, sizeof(OffType));
           }
 
-          if (attributes->at(n)->nullable()) {
+          if (attributes[n]->nullable()) {
             std::memset(dest_validity_ptr + c, fill_value_nullable, 1);
           }
         }
@@ -1326,17 +1302,17 @@ Status DenseReader::copy_offset_tiles(
 
 template <class DimType, class OffType>
 Status DenseReader::copy_var_tiles(
-    const std::vector<std::string>* names,
-    const std::vector<uint8_t*>* const dst_bufs,
-    const std::vector<uint8_t*>* const offsets_bufs,
-    const std::vector<uint64_t>* const data_type_sizes,
-    const Subarray* const subarray,
-    const Subarray* const tile_subarray,
+    const std::vector<std::string>& names,
+    const std::vector<uint8_t*>& dst_bufs,
+    const std::vector<uint8_t*>& offsets_bufs,
+    const std::vector<uint64_t>& data_type_sizes,
+    const Subarray& subarray,
+    const Subarray& tile_subarray,
     const uint64_t global_cell_offset,
-    std::vector<std::vector<void*>>* var_data,
-    const std::vector<uint64_t>* const range_offsets,
+    std::vector<std::vector<void*>>& var_data,
+    const std::vector<uint64_t>& range_offsets,
     bool last_tile,
-    std::vector<uint64_t>* var_buffer_sizes) {
+    std::vector<uint64_t>& var_buffer_sizes) {
   // For easy reference
   auto dim_num = array_schema_->dim_num();
 
@@ -1344,7 +1320,7 @@ Status DenseReader::copy_var_tiles(
   uint64_t cell_offset = global_cell_offset;
 
   // Iterate over all coordinates, retrieved in cell slabs
-  CellSlabIter<DimType> iter(tile_subarray);
+  CellSlabIter<DimType> iter(&tile_subarray);
   RETURN_CANCEL_OR_ERROR(iter.begin());
   while (!iter.end()) {
     auto cell_slab = iter.cell_slab();
@@ -1352,19 +1328,18 @@ Status DenseReader::copy_var_tiles(
 
     // Compute cell offset for row/col major orders.
     if (layout_ != Layout::GLOBAL_ORDER) {
-      RETURN_NOT_OK(get_dest_cell_offset_row_col(
+      cell_offset = get_dest_cell_offset_row_col(
           dim_num,
           subarray,
           tile_subarray,
           cell_slab.coords_.data(),
           iter.range_coords(),
-          range_offsets,
-          &cell_offset));
+          range_offsets);
     }
 
-    for (uint64_t n = 0; n < names->size(); n++) {
+    for (uint64_t n = 0; n < names.size(); n++) {
       // Setup variables for the copy.
-      auto mult = elements_mode_ ? data_type_sizes->at(n) : 1;
+      auto mult = elements_mode_ ? data_type_sizes[n] : 1;
       uint64_t size = 0;
       uint64_t offset = 0;
       uint64_t i = 0;
@@ -1372,23 +1347,19 @@ Status DenseReader::copy_var_tiles(
       // Copy the data cell by cell, last copy was taken out to take advantage
       // of vectorization.
       for (; i < cell_slab.length_ - 1; i++) {
-        offset = ((OffType*)offsets_bufs->at(n))[cell_offset + i] * mult;
-        size = ((OffType*)offsets_bufs->at(n))[cell_offset + i + 1] * mult -
-               offset;
-        std::memcpy(
-            dst_bufs->at(n) + offset, var_data->at(n)[cell_offset + i], size);
+        offset = ((OffType*)offsets_bufs[n])[cell_offset + i] * mult;
+        size = ((OffType*)offsets_bufs[n])[cell_offset + i + 1] * mult - offset;
+        std::memcpy(dst_bufs[n] + offset, var_data[n][cell_offset + i], size);
       }
 
       // Do the last copy.
-      offset = ((OffType*)offsets_bufs->at(n))[cell_offset + i] * mult;
+      offset = ((OffType*)offsets_bufs[n])[cell_offset + i] * mult;
       if (last_tile && iter.end() && i == cell_slab.length_ - 1) {
-        size = var_buffer_sizes->at(n) * mult - offset;
+        size = var_buffer_sizes[n] * mult - offset;
       } else {
-        size = ((OffType*)offsets_bufs->at(n))[cell_offset + i + 1] * mult -
-               offset;
+        size = ((OffType*)offsets_bufs[n])[cell_offset + i + 1] * mult - offset;
       }
-      std::memcpy(
-          dst_bufs->at(n) + offset, var_data->at(n)[cell_offset + i], size);
+      std::memcpy(dst_bufs[n] + offset, var_data[n][cell_offset + i], size);
     }
 
     // Adjust cell offset for global order.

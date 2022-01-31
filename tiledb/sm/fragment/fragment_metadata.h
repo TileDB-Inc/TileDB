@@ -52,7 +52,7 @@ namespace sm {
 class ArraySchema;
 class Buffer;
 class EncryptionKey;
-class OpenArrayMemoryTracker;
+class MemoryTracker;
 class StorageManager;
 
 /** Stores the metadata structures of a fragment. */
@@ -71,6 +71,8 @@ class FragmentMetadata {
    * Constructor.
    *
    * @param storage_manager A storage manager instance.
+   * @param memory_tracker The memory tracker of the array this fragment
+   *     metadata corresponds to.
    * @param array_schema The schema of the array the fragment belongs to.
    * @param fragment_uri The fragment URI.
    * @param timestamp_range The timestamp range of the fragment.
@@ -80,6 +82,7 @@ class FragmentMetadata {
    */
   FragmentMetadata(
       StorageManager* storage_manager,
+      MemoryTracker* memory_tracker,
       const ArraySchema* array_schema,
       const URI& fragment_uri,
       const std::pair<uint64_t, uint64_t>& timestamp_range,
@@ -102,6 +105,12 @@ class FragmentMetadata {
 
   /** Returns the number of cells in the tile at the input position. */
   uint64_t cell_num(uint64_t tile_pos) const;
+
+  /**
+   * Returns the dimensions types from the array schema asssociated
+   * with this fragment metadata.
+   */
+  std::vector<Datatype> dim_types() const;
 
   /**
    * Computes an upper bound on the buffer sizes needed when reading a subarray
@@ -253,6 +262,20 @@ class FragmentMetadata {
   /** Stores all the metadata to storage. */
   Status store(const EncryptionKey& encryption_key);
 
+  /**
+   * Stores all the metadata to storage.
+   *
+   * Applicable to format versions 7 to 10.
+   */
+  Status store_v7_v10(const EncryptionKey& encryption_key);
+
+  /**
+   * Stores all the metadata to storage.
+   *
+   * Applicable to format versions 11 or higher.
+   */
+  Status store_v11_or_higher(const EncryptionKey& encryption_key);
+
   /** Returns the non-empty domain in which the fragment is constrained. */
   const NDRange& non_empty_domain();
 
@@ -341,6 +364,101 @@ class FragmentMetadata {
       const std::string& name, uint64_t tid, uint64_t step);
 
   /**
+   * Sets a tile min for the fixed input attribute.
+   *
+   * @param name The attribute for which the min is set.
+   * @param tid The index of the tile for which the min is set.
+   * @param min The minimum.
+   * @param size The size.
+   * @return void
+   */
+  void set_tile_min(
+      const std::string& name, uint64_t tid, const void* min, uint64_t size);
+
+  /**
+   * Sets a tile min size for the var input attribute.
+   *
+   * @param name The attribute for which the min size is set.
+   * @param tid The index of the tile for which the min is set.
+   * @param size The size.
+   * @return void
+   */
+  void set_tile_min_var_size(
+      const std::string& name, uint64_t tid, uint64_t size);
+
+  /**
+   * Sets a tile min for the var input attribute.
+   *
+   * @param name The attribute for which the min is set.
+   * @param tid The index of the tile for which the min is set.
+   * @param min The minimum.
+   * @return void
+   */
+  void set_tile_min_var(const std::string& name, uint64_t tid, const void* min);
+
+  /**
+   * Sets a tile max for the input attribute.
+   *
+   * @param name The attribute for which the max is set.
+   * @param tid The index of the tile for which the max is set.
+   * @param max The maximum.
+   * @param size The size.
+   * @return void
+   */
+  void set_tile_max(
+      const std::string& name, uint64_t tid, const void* max, uint64_t size);
+
+  /**
+   * Sets a tile max for the var input attribute.
+   *
+   * @param name The attribute for which the min size is set.
+   * @param tid The index of the tile for which the min is set.
+   * @param size The size.
+   * @return void
+   */
+  void set_tile_max_var_size(
+      const std::string& name, uint64_t tid, uint64_t size);
+
+  /**
+   * Sets a tile max for the var input attribute.
+   *
+   * @param name The attribute for which the min is set.
+   * @param tid The index of the tile for which the min is set.
+   * @param max The maximum.
+   * @return void
+   */
+  void set_tile_max_var(const std::string& name, uint64_t tid, const void* max);
+
+  /**
+   * Converts min/max sizes to offsets.
+   *
+   * @param name The attribute for which the offsets are converted
+   * @return void
+   */
+  void convert_tile_min_max_var_sizes_to_offsets(const std::string& name);
+
+  /**
+   * Sets a tile sum for the input attribute.
+   *
+   * @param name The attribute for which the sum is set.
+   * @param tid The index of the tile for which the sum is set.
+   * @param sum The sum.
+   * @return void
+   */
+  void set_tile_sum(const std::string& name, uint64_t tid, const ByteVec* sum);
+
+  /**
+   * Sets a tile null count for the input attribute.
+   *
+   * @param name The attribute for which the null count is set.
+   * @param tid The index of the tile for which the null count is set.
+   * @param sum The null count.
+   * @return void
+   */
+  void set_tile_null_count(
+      const std::string& name, uint64_t tid, uint64_t null_count);
+
+  /**
    * Sets array schema pointer.
    *
    * @param array_schema The schema pointer.
@@ -425,11 +543,10 @@ class FragmentMetadata {
    *
    * @param name The input attribute/dimension.
    * @param tile_idx The index of the tile in the metadata.
-   * @param tile_size The tile size to be retrieved.
-   * @return Status
+   * @return Status, size
    */
-  Status persisted_tile_size(
-      const std::string& name, uint64_t tile_idx, uint64_t* tile_size);
+  std::tuple<Status, std::optional<uint64_t>> persisted_tile_size(
+      const std::string& name, uint64_t tile_idx);
 
   /**
    * Retrieves the size of the tile when it is persisted (e.g. the size of the
@@ -438,11 +555,10 @@ class FragmentMetadata {
    *
    * @param name The input attribute/dimension.
    * @param tile_idx The index of the tile in the metadata.
-   * @param tile_size The tile size to be retrieved.
-   * @return Status
+   * @return Status, size
    */
-  Status persisted_tile_var_size(
-      const std::string& name, uint64_t tile_idx, uint64_t* tile_size);
+  std::tuple<Status, std::optional<uint64_t>> persisted_tile_var_size(
+      const std::string& name, uint64_t tile_idx);
 
   /**
    * Retrieves the size of the validity tile when it is persisted (e.g. the size
@@ -450,11 +566,10 @@ class FragmentMetadata {
    *
    * @param name The input attribute.
    * @param tile_idx The index of the tile in the metadata.
-   * @param tile_size The tile size to be retrieved.
-   * @return Status
+   * @return Status, size
    */
-  Status persisted_tile_validity_size(
-      const std::string& name, uint64_t tile_idx, uint64_t* tile_size);
+  std::tuple<Status, std::optional<uint64_t>> persisted_tile_validity_size(
+      const std::string& name, uint64_t tile_idx);
 
   /**
    * Returns the (uncompressed) tile size for a given attribute or dimension
@@ -473,11 +588,54 @@ class FragmentMetadata {
    *
    * @param name The input attribute/dimension.
    * @param tile_idx The index of the tile in the metadata.
-   * @param tile_size The tile size to be retrieved.
-   * @return Status
+   * @return Status, size.
    */
-  Status tile_var_size(
-      const std::string& name, uint64_t tile_idx, uint64_t* tile_size);
+  std::tuple<Status, std::optional<uint64_t>> tile_var_size(
+      const std::string& name, uint64_t tile_idx);
+
+  /**
+   * Retrieves the tile min value for a given attribute or dimension and tile
+   * index.
+   *
+   * @param name The input attribute/dimension.
+   * @param tile_idx The index of the tile in the metadata.
+   * @return Status, value, size.
+   */
+  std::tuple<Status, std::optional<void*>, std::optional<uint64_t>>
+  get_tile_min(const std::string& name, uint64_t tile_idx);
+
+  /**
+   * Retrieves the tile max value for a given attribute or dimension and tile
+   * index.
+   *
+   * @param name The input attribute/dimension.
+   * @param tile_idx The index of the tile in the metadata.
+   * @return Status, value, size.
+   */
+  std::tuple<Status, std::optional<void*>, std::optional<uint64_t>>
+  get_tile_max(const std::string& name, uint64_t tile_idx);
+
+  /**
+   * Retrieves the tile sum value for a given attribute or dimension and tile
+   * index.
+   *
+   * @param name The input attribute/dimension.
+   * @param tile_idx The index of the tile in the metadata.
+   * @return Status, sum.
+   */
+  std::tuple<Status, std::optional<void*>> get_tile_sum(
+      const std::string& name, uint64_t tile_idx);
+
+  /**
+   * Retrieves the tile null count value for a given attribute or dimension
+   * and tile index.
+   *
+   * @param name The input attribute/dimension.
+   * @param tile_idx The index of the tile in the metadata.
+   * @return Status, count.
+   */
+  std::tuple<Status, std::optional<uint64_t>> get_tile_null_count(
+      const std::string& name, uint64_t tile_idx);
 
   /** Returns the first timestamp of the fragment timestamp range. */
   uint64_t first_timestamp() const;
@@ -518,13 +676,43 @@ class FragmentMetadata {
       const EncryptionKey& encryption_key, std::vector<std::string>&& names);
 
   /**
-   * Loads validity tile offsets for the attribute names.
+   * Loads min values for the attribute names.
    *
    * @param encryption_key The key the array got opened with.
    * @param names The attribute names.
    * @return Status
    */
-  Status load_tile_validity_offsets(
+  Status load_tile_min_values(
+      const EncryptionKey& encryption_key, std::vector<std::string>&& names);
+
+  /**
+   * Loads max values for the attribute names.
+   *
+   * @param encryption_key The key the array got opened with.
+   * @param names The attribute names.
+   * @return Status
+   */
+  Status load_tile_max_values(
+      const EncryptionKey& encryption_key, std::vector<std::string>&& names);
+
+  /**
+   * Loads sum values for the attribute names.
+   *
+   * @param encryption_key The key the array got opened with.
+   * @param names The attribute names.
+   * @return Status
+   */
+  Status load_tile_sum_values(
+      const EncryptionKey& encryption_key, std::vector<std::string>&& names);
+
+  /**
+   * Loads null count values for the attribute names.
+   *
+   * @param encryption_key The key the array got opened with.
+   * @param names The attribute names.
+   * @return Status
+   */
+  Status load_tile_null_count_values(
       const EncryptionKey& encryption_key, std::vector<std::string>&& names);
 
   /**
@@ -550,6 +738,10 @@ class FragmentMetadata {
     std::vector<uint64_t> tile_var_offsets_;
     std::vector<uint64_t> tile_var_sizes_;
     std::vector<uint64_t> tile_validity_offsets_;
+    std::vector<uint64_t> tile_min_offsets_;
+    std::vector<uint64_t> tile_max_offsets_;
+    std::vector<uint64_t> tile_sum_offsets_;
+    std::vector<uint64_t> tile_null_count_offsets_;
   };
 
   /** Keeps track of which metadata is loaded. */
@@ -560,6 +752,10 @@ class FragmentMetadata {
     std::vector<bool> tile_var_offsets_;
     std::vector<bool> tile_var_sizes_;
     std::vector<bool> tile_validity_offsets_;
+    std::vector<bool> tile_min_;
+    std::vector<bool> tile_max_;
+    std::vector<bool> tile_sum_;
+    std::vector<bool> tile_null_count_;
   };
 
   /* ********************************* */
@@ -568,6 +764,11 @@ class FragmentMetadata {
 
   /** The storage manager. */
   StorageManager* storage_manager_;
+
+  /**
+   * The memory tracker of the array this fragment metadata corresponds to.
+   */
+  MemoryTracker* memory_tracker_;
 
   /** The array schema */
   const ArraySchema* array_schema_;
@@ -674,6 +875,39 @@ class FragmentMetadata {
    */
   std::vector<std::vector<uint64_t>> tile_validity_offsets_;
 
+  /**
+   * The tile min buffers, for variable attributes/dimensions, this will store
+   * offsets.
+   */
+  std::vector<std::vector<uint8_t>> tile_min_buffer_;
+
+  /**
+   * The tile min buffers variable length data.
+   */
+  std::vector<std::vector<uint8_t>> tile_min_var_buffer_;
+
+  /**
+   * The tile max buffers, for variable attributes/dimensions, this will store
+   * offsets.
+   */
+  std::vector<std::vector<uint8_t>> tile_max_buffer_;
+
+  /**
+   * The tile max buffers variable length data.
+   */
+  std::vector<std::vector<uint8_t>> tile_max_var_buffer_;
+
+  /**
+   * The tile sum values, ignored for var sized attributes/dimensions.
+   */
+  std::vector<std::vector<uint8_t>> tile_sums_;
+
+  /**
+   * The tile null count values ignored for non nullable attributes or
+   * dimensions.
+   */
+  std::vector<std::vector<uint64_t>> tile_null_counts_;
+
   /** The format version of this metadata. */
   uint32_t version_;
 
@@ -716,9 +950,17 @@ class FragmentMetadata {
    * Returns the size of the fragment metadata footer
    * (which contains the generic tile offsets) along with its size.
    *
-   * Applicable to format version 7 or higher.
+   * Applicable to format version 7 to 10.
    */
-  uint64_t footer_size_v7_or_higher() const;
+  uint64_t footer_size_v7_v10() const;
+
+  /**
+   * Returns the size of the fragment metadata footer
+   * (which contains the generic tile offsets) along with its size.
+   *
+   * Applicable to format version 11 or higher.
+   */
+  uint64_t footer_size_v11_or_higher() const;
 
   /**
    * Returns the ids (positions) of the tiles overlapping `subarray`.
@@ -764,10 +1006,33 @@ class FragmentMetadata {
   Status load_tile_var_sizes(const EncryptionKey& encryption_key, unsigned idx);
 
   /**
-   * Loads the validity tile offsets for the input attribute idx
-   * from storage.
+   * Loads the validity tile offsets for the input attribute idx from storage.
    */
   Status load_tile_validity_offsets(
+      const EncryptionKey& encryption_key, unsigned idx);
+
+  /**
+   * Loads the min values for the input attribute idx from storage.
+   */
+  Status load_tile_min_values(
+      const EncryptionKey& encryption_key, unsigned idx);
+
+  /**
+   * Loads the max values for the input attribute idx from storage.
+   */
+  Status load_tile_max_values(
+      const EncryptionKey& encryption_key, unsigned idx);
+
+  /**
+   * Loads the sum values for the input attribute idx from storage.
+   */
+  Status load_tile_sum_values(
+      const EncryptionKey& encryption_key, unsigned idx);
+
+  /**
+   * Loads the null count values for the input attribute idx from storage.
+   */
+  Status load_tile_null_count_values(
       const EncryptionKey& encryption_key, unsigned idx);
 
   /** Loads the generic tile offsets from the buffer. */
@@ -775,7 +1040,7 @@ class FragmentMetadata {
 
   /**
    * Loads the generic tile offsets from the buffer. Applicable to
-   * versions 4 and 5.
+   * versions 3 and 4.
    */
   Status load_generic_tile_offsets_v3_v4(ConstBuffer* buff);
 
@@ -787,9 +1052,15 @@ class FragmentMetadata {
 
   /**
    * Loads the generic tile offsets from the buffer. Applicable to
-   * versions 7 or higher.
+   * versions 7 to 10.
    */
-  Status load_generic_tile_offsets_v7_or_higher(ConstBuffer* buff);
+  Status load_generic_tile_offsets_v7_v10(ConstBuffer* buff);
+
+  /**
+   * Loads the generic tile offsets from the buffer. Applicable to
+   * versions 11 or higher.
+   */
+  Status load_generic_tile_offsets_v11_or_higher(ConstBuffer* buff);
 
   /**
    * Loads the array schema name.
@@ -915,6 +1186,27 @@ class FragmentMetadata {
    * input buffer.
    */
   Status load_tile_validity_offsets(unsigned idx, ConstBuffer* buff);
+
+  /**
+   * Loads the min values for the input attribute from the input buffer.
+   */
+  Status load_tile_min_values(unsigned idx, ConstBuffer* buff);
+
+  /**
+   * Loads the max values for the input attribute from the input buffer.
+   */
+  Status load_tile_max_values(unsigned idx, ConstBuffer* buff);
+
+  /**
+   * Loads the sum values for the input attribute from the input buffer.
+   */
+  Status load_tile_sum_values(unsigned idx, ConstBuffer* buff);
+
+  /**
+   * Loads the null count values for the input attribute from the input
+   * buffer.
+   */
+  Status load_tile_null_count_values(unsigned idx, ConstBuffer* buff);
 
   /** Loads the format version from the buffer. */
   Status load_version(ConstBuffer* buff);
@@ -1063,6 +1355,70 @@ class FragmentMetadata {
    * input buffer.
    */
   Status write_tile_validity_offsets(unsigned idx, Buffer* buff);
+
+  /**
+   * Writes the mins of the input attribute to storage.
+   *
+   * @param idx The index of the attribute.
+   * @param encryption_key The encryption key.
+   * @param nbytes The total number of bytes written for the mins.
+   * @return Status
+   */
+  Status store_tile_mins(
+      unsigned idx, const EncryptionKey& encryption_key, uint64_t* nbytes);
+
+  /**
+   * Writes the mins of the input attribute idx to the input buffer.
+   */
+  Status write_tile_mins(unsigned idx, Buffer* buff);
+
+  /**
+   * Writes the maxs of the input attribute to storage.
+   *
+   * @param idx The index of the attribute.
+   * @param encryption_key The encryption key.
+   * @param nbytes The total number of bytes written for the maxs.
+   * @return Status
+   */
+  Status store_tile_maxs(
+      unsigned idx, const EncryptionKey& encryption_key, uint64_t* nbytes);
+
+  /**
+   * Writes the maxs of the input attribute idx to the input buffer.
+   */
+  Status write_tile_maxs(unsigned idx, Buffer* buff);
+
+  /**
+   * Writes the sums of the input attribute to storage.
+   *
+   * @param idx The index of the attribute.
+   * @param encryption_key The encryption key.
+   * @param nbytes The total number of bytes written for the sums.
+   * @return Status
+   */
+  Status store_tile_sums(
+      unsigned idx, const EncryptionKey& encryption_key, uint64_t* nbytes);
+
+  /**
+   * Writes the sums of the input attribute idx to the input buffer.
+   */
+  Status write_tile_sums(unsigned idx, Buffer* buff);
+
+  /**
+   * Writes the null counts of the input attribute to storage.
+   *
+   * @param idx The index of the attribute.
+   * @param encryption_key The encryption key.
+   * @param nbytes The total number of bytes written for the null counts.
+   * @return Status
+   */
+  Status store_tile_null_counts(
+      unsigned idx, const EncryptionKey& encryption_key, uint64_t* nbytes);
+
+  /**
+   * Writes the null counts of the input attribute idx to the input buffer.
+   */
+  Status write_tile_null_counts(unsigned idx, Buffer* buff);
 
   /** Writes the format version to the buffer. */
   Status write_version(Buffer* buff) const;

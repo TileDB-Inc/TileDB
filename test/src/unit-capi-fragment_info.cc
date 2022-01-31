@@ -92,8 +92,12 @@ TEST_CASE(
   REQUIRE(err == nullptr);
   tiledb_ctx_t* ctx_array_not_encrypted;
   REQUIRE(tiledb_ctx_alloc(cfg, &ctx_array_not_encrypted) == TILEDB_OK);
+  rc = tiledb_fragment_info_set_config(ctx, fragment_info, cfg);
+  CHECK(rc == TILEDB_OK);
   rc = tiledb_fragment_info_load(ctx_array_not_encrypted, fragment_info);
   CHECK(rc == TILEDB_ERR);
+  tiledb_fragment_info_free(&fragment_info);
+
   tiledb_config_free(&cfg);
   tiledb_ctx_free(&ctx_array_not_encrypted);
 
@@ -106,6 +110,10 @@ TEST_CASE(
   write_array(ctx, array_name, 1, subarray, TILEDB_ROW_MAJOR, buffers);
 
   // Load again
+  // We need to allocate the fragment info again with `ctx`, which does not
+  // contain a key.
+  rc = tiledb_fragment_info_alloc(ctx, array_name.c_str(), &fragment_info);
+  CHECK(rc == TILEDB_OK);
   rc = tiledb_fragment_info_load(ctx, fragment_info);
   CHECK(rc == TILEDB_OK);
 
@@ -264,7 +272,7 @@ TEST_CASE(
   uint64_t size;
   rc = tiledb_fragment_info_get_fragment_size(ctx, fragment_info, 1, &size);
   CHECK(rc == TILEDB_OK);
-  CHECK(size == 1662);
+  CHECK(size == 2960);
 
   // Get dense / sparse
   int32_t dense;
@@ -402,6 +410,8 @@ TEST_CASE(
   REQUIRE(err == nullptr);
   tiledb_ctx_t* ctx_correct_key;
   REQUIRE(tiledb_ctx_alloc(cfg, &ctx_correct_key) == TILEDB_OK);
+  rc = tiledb_fragment_info_set_config(ctx, fragment_info, cfg);
+  CHECK(rc == TILEDB_OK);
   rc = tiledb_fragment_info_load(ctx_correct_key, fragment_info);
   CHECK(rc == TILEDB_OK);
   tiledb_config_free(&cfg);
@@ -494,7 +504,7 @@ TEST_CASE(
   uint64_t size;
   rc = tiledb_fragment_info_get_fragment_size(ctx, fragment_info, 1, &size);
   CHECK(rc == TILEDB_OK);
-  CHECK(size == 2855);
+  CHECK(size == 5173);
 
   // Get dense / sparse
   int32_t dense;
@@ -706,6 +716,8 @@ TEST_CASE("C API: Test MBR fragment info", "[capi][fragment_info][mbr]") {
   REQUIRE(rc == TILEDB_OK);
   REQUIRE(err == nullptr);
   REQUIRE(tiledb_ctx_alloc(cfg, &ctx) == TILEDB_OK);
+  rc = tiledb_fragment_info_set_config(ctx, fragment_info, cfg);
+  CHECK(rc == TILEDB_OK);
   rc = tiledb_fragment_info_load(ctx, fragment_info);
   CHECK(rc == TILEDB_OK);
   tiledb_config_free(&cfg);
@@ -1321,22 +1333,24 @@ TEST_CASE("C API: Test fragment info, dump", "[capi][fragment_info][dump]") {
   CHECK(tiledb_vfs_remove_file(ctx, vfs, "frag3_schema.txt") == TILEDB_OK);
 
   // Check dump
+  const auto ver = std::to_string(tiledb::sm::constants::format_version);
   std::string dump_str =
       std::string("- Fragment num: 3\n") +
       "- Unconsolidated metadata num: 3\n" + "- To vacuum num: 0\n" +
       "- Fragment #1:\n" + "  > URI: " + written_frag_uri_1 + "\n" +
       "  > Type: dense\n" + "  > Non-empty domain: [1, 6]\n" +
-      "  > Size: 1662\n" + "  > Cell num: 10\n" +
-      "  > Timestamp range: [1, 1]\n" + "  > Format version: 10\n" +
+      "  > Size: 2960\n" + "  > Cell num: 10\n" +
+      "  > Timestamp range: [1, 1]\n" + "  > Format version: " + ver + "\n" +
       "  > Has consolidated metadata: no\n" + "- Fragment #2:\n" +
       "  > URI: " + written_frag_uri_2 + "\n" + "  > Type: dense\n" +
-      "  > Non-empty domain: [1, 4]\n" + "  > Size: 1619\n" +
+      "  > Non-empty domain: [1, 4]\n" + "  > Size: 2909\n" +
       "  > Cell num: 5\n" + "  > Timestamp range: [2, 2]\n" +
-      "  > Format version: 10\n" + "  > Has consolidated metadata: no\n" +
-      "- Fragment #3:\n" + "  > URI: " + written_frag_uri_3 + "\n" +
-      "  > Type: dense\n" + "  > Non-empty domain: [5, 6]\n" +
-      "  > Size: 1662\n" + "  > Cell num: 10\n" +
-      "  > Timestamp range: [3, 3]\n" + "  > Format version: 10\n" +
+      "  > Format version: " + ver + "\n" +
+      "  > Has consolidated metadata: no\n" + "- Fragment #3:\n" +
+      "  > URI: " + written_frag_uri_3 + "\n" + "  > Type: dense\n" +
+      "  > Non-empty domain: [5, 6]\n" + "  > Size: 2957\n" +
+      "  > Cell num: 10\n" + "  > Timestamp range: [3, 3]\n" +
+      "  > Format version: " + ver + "\n" +
       "  > Has consolidated metadata: no\n";
   FILE* gold_fout = fopen("gold_fout.txt", "w");
   const char* dump = dump_str.c_str();
@@ -1458,15 +1472,17 @@ TEST_CASE(
   CHECK(rc == TILEDB_OK);
 
   // Check dump
+  const auto ver = std::to_string(tiledb::sm::constants::format_version);
   std::string dump_str =
       std::string("- Fragment num: 1\n") +
       "- Unconsolidated metadata num: 1\n" + "- To vacuum num: 3\n" +
       "- To vacuum URIs:\n" + "  > " + written_frag_uri_1 + "\n  > " +
       written_frag_uri_2 + "\n  > " + written_frag_uri_3 + "\n" +
       "- Fragment #1:\n" + "  > URI: " + uri + "\n" + "  > Type: dense\n" +
-      "  > Non-empty domain: [1, 10]\n" + "  > Size: 1662\n" +
+      "  > Non-empty domain: [1, 10]\n" + "  > Size: 2966\n" +
       "  > Cell num: 10\n" + "  > Timestamp range: [1, 3]\n" +
-      "  > Format version: 10\n" + "  > Has consolidated metadata: no\n";
+      "  > Format version: " + ver + "\n" +
+      "  > Has consolidated metadata: no\n";
   FILE* gold_fout = fopen("gold_fout.txt", "w");
   const char* dump = dump_str.c_str();
   fwrite(dump, sizeof(char), strlen(dump), gold_fout);
@@ -1541,13 +1557,14 @@ TEST_CASE(
   CHECK(rc == TILEDB_OK);
 
   // Check dump
+  const auto ver = std::to_string(tiledb::sm::constants::format_version);
   std::string dump_str =
       std::string("- Fragment num: 1\n") +
       "- Unconsolidated metadata num: 1\n" + "- To vacuum num: 0\n" +
       "- Fragment #1:\n" + "  > URI: " + written_frag_uri + "\n" +
       "  > Type: sparse\n" + "  > Non-empty domain: [a, ddd]\n" +
-      "  > Size: 1903\n" + "  > Cell num: 4\n" +
-      "  > Timestamp range: [1, 1]\n" + "  > Format version: 10\n" +
+      "  > Size: 3204\n" + "  > Cell num: 4\n" +
+      "  > Timestamp range: [1, 1]\n" + "  > Format version: " + ver + "\n" +
       "  > Has consolidated metadata: no\n";
   FILE* gold_fout = fopen("gold_fout.txt", "w");
   const char* dump = dump_str.c_str();

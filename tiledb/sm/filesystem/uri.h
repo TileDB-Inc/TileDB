@@ -280,7 +280,7 @@ class URI {
 };
 
 /**
- * Used to stores a fragment URI, materializing its timestamp range
+ * Used to store a fragment URI, materializing its timestamp range
  * for convenience.
  */
 struct TimestampedURI {

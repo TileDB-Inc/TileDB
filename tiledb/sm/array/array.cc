@@ -105,17 +105,14 @@ Array::Array(const Array& rhs)
 /* ********************************* */
 
 ArraySchema* Array::array_schema_latest() const {
-  std::unique_lock<std::mutex> lck(mtx_);
   return array_schema_latest_;
 }
 
 const URI& Array::array_uri() const {
-  std::unique_lock<std::mutex> lck(mtx_);
   return array_uri_;
 }
 
 const URI& Array::array_uri_serialized() const {
-  std::unique_lock<std::mutex> lck(mtx_);
   return array_uri_serialized_;
 }
 
@@ -128,15 +125,21 @@ Status Array::open_without_fragments(
     EncryptionType encryption_type,
     const void* encryption_key,
     uint32_t key_length) {
-  std::unique_lock<std::mutex> lck(mtx_);
-
+  // Checks
   if (is_open_)
     return LOG_STATUS(Status_ArrayError(
         "Cannot open array without fragments; Array already open"));
-
   if (remote_ && encryption_type != EncryptionType::NO_ENCRYPTION)
-    return LOG_STATUS(Status_ArrayError(
-        "Cannot open array; encrypted remote arrays are not supported."));
+    return LOG_STATUS(
+        Status_ArrayError("Cannot open array without fragments; encrypted "
+                          "remote arrays are not supported."));
+  if (!remote_) {
+    bool is_array = false;
+    RETURN_NOT_OK(storage_manager_->is_array(array_uri_, &is_array));
+    if (!is_array)
+      return LOG_STATUS(Status_ArrayError(
+          "Cannot open array without fragments; Array does not exist"));
+  }
 
   // Copy the key bytes.
   RETURN_NOT_OK(
@@ -155,10 +158,8 @@ Status Array::open_without_fragments(
         array_uri_, &array_schema_latest_));
   } else {
     auto&& [st, array_schema, array_schemas] =
-        storage_manager_->array_open_for_reads_without_fragments(
-            array_uri_, *encryption_key_);
-    if (!st.ok())
-      return st;
+        storage_manager_->array_open_for_reads_without_fragments(this);
+    RETURN_NOT_OK(st);
 
     array_schema_latest_ = array_schema.value();
     array_schemas_all_ = array_schemas.value();
@@ -172,11 +173,13 @@ Status Array::open_without_fragments(
 
 Status Array::load_fragments(
     const std::vector<TimestampedURI>& fragments_to_load) {
-  return storage_manager_->array_load_fragments(
-      array_uri_,
-      *encryption_key_.get(),
-      &fragment_metadata_,
-      fragments_to_load);
+  auto&& [st, fragment_metadata] =
+      storage_manager_->array_load_fragments(this, fragments_to_load);
+  RETURN_NOT_OK(st);
+
+  fragment_metadata_ = std::move(fragment_metadata.value());
+
+  return Status::Ok();
 }
 
 Status Array::open(
@@ -200,12 +203,19 @@ Status Array::open(
     EncryptionType encryption_type,
     const void* encryption_key,
     uint32_t key_length) {
-  std::unique_lock<std::mutex> lck(mtx_);
-
+  // Checks
   if (is_open_)
     return LOG_STATUS(
         Status_ArrayError("Cannot open array; Array already open"));
+  if (!remote_) {
+    bool is_array = false;
+    RETURN_NOT_OK(storage_manager_->is_array(array_uri_, &is_array));
+    if (!is_array)
+      return LOG_STATUS(
+          Status_ArrayError("Cannot open array; Array does not exist"));
+  }
 
+  // Get encryption key from config
   std::string encryption_key_from_cfg;
   if (!encryption_key) {
     bool found = false;
@@ -271,22 +281,16 @@ Status Array::open(
         array_uri_, &array_schema_latest_));
   } else if (query_type == QueryType::READ) {
     auto&& [st, array_schema, array_schemas, fragment_metadata] =
-        storage_manager_->array_open_for_reads(
-            array_uri_,
-            *encryption_key_,
-            timestamp_start_,
-            timestamp_end_opened_at_);
-    if (!st.ok())
-      return st;
+        storage_manager_->array_open_for_reads(this);
+    RETURN_NOT_OK(st);
     // Set schemas
     array_schema_latest_ = array_schema.value();
     array_schemas_all_ = array_schemas.value();
     fragment_metadata_ = fragment_metadata.value();
   } else {
     auto&& [st, array_schema, array_schemas] =
-        storage_manager_->array_open_for_writes(array_uri_, *encryption_key_);
-    if (!st.ok())
-      return st;
+        storage_manager_->array_open_for_writes(this);
+    RETURN_NOT_OK(st);
     // Set schemas
     array_schema_latest_ = array_schema.value();
     array_schemas_all_ = array_schemas.value();
@@ -301,12 +305,10 @@ Status Array::open(
 }
 
 Status Array::close() {
-  std::unique_lock<std::mutex> lck(mtx_);
-
+  // Check if arrray is open
   if (!is_open_)
-    return Status::Ok();
+    return LOG_STATUS(Status_ArrayError("Cannot close array; Array not open."));
 
-  is_open_ = false;
   non_empty_domain_.clear();
   non_empty_domain_computed_ = false;
   clear_last_max_buffer_sizes();
@@ -333,26 +335,24 @@ Status Array::close() {
   } else {
     array_schema_latest_ = nullptr;
     if (query_type_ == QueryType::READ) {
-      RETURN_NOT_OK(storage_manager_->array_close_for_reads(array_uri_));
+      RETURN_NOT_OK(storage_manager_->array_close_for_reads(this));
     } else {
-      RETURN_NOT_OK(storage_manager_->array_close_for_writes(
-          array_uri_, *encryption_key_, &metadata_));
+      RETURN_NOT_OK(storage_manager_->array_close_for_writes(this));
     }
   }
 
   metadata_.clear();
   metadata_loaded_ = false;
+  is_open_ = false;
 
   return Status::Ok();
 }
 
 bool Array::is_empty() const {
-  std::unique_lock<std::mutex> lck(mtx_);
   return fragment_metadata_.empty();
 }
 
 bool Array::is_open() const {
-  std::unique_lock<std::mutex> lck(mtx_);
   return is_open_;
 }
 
@@ -361,13 +361,10 @@ bool Array::is_remote() const {
 }
 
 std::vector<tdb_shared_ptr<FragmentMetadata>> Array::fragment_metadata() const {
-  std::unique_lock<std::mutex> lck(mtx_);
   return fragment_metadata_;
 }
 
 Status Array::get_array_schema(ArraySchema** array_schema) const {
-  std::unique_lock<std::mutex> lck(mtx_);
-
   // Error if the array is not open
   if (!is_open_)
     return LOG_STATUS(
@@ -379,8 +376,6 @@ Status Array::get_array_schema(ArraySchema** array_schema) const {
 }
 
 Status Array::get_query_type(QueryType* query_type) const {
-  std::unique_lock<std::mutex> lck(mtx_);
-
   // Error if the array is not open
   if (!is_open_)
     return LOG_STATUS(
@@ -393,7 +388,6 @@ Status Array::get_query_type(QueryType* query_type) const {
 
 Status Array::get_max_buffer_size(
     const char* name, const void* subarray, uint64_t* buffer_size) {
-  std::unique_lock<std::mutex> lck(mtx_);
   // Check if array is open
   if (!is_open_)
     return LOG_STATUS(
@@ -453,8 +447,6 @@ Status Array::get_max_buffer_size(
     const void* subarray,
     uint64_t* buffer_off_size,
     uint64_t* buffer_val_size) {
-  std::unique_lock<std::mutex> lck(mtx_);
-
   // Check if array is open
   if (!is_open_)
     return LOG_STATUS(
@@ -506,7 +498,6 @@ Status Array::get_max_buffer_size(
 }
 
 const EncryptionKey& Array::get_encryption_key() const {
-  std::unique_lock<std::mutex> lck(mtx_);
   return *encryption_key_;
 }
 
@@ -522,8 +513,6 @@ Status Array::reopen() {
 }
 
 Status Array::reopen(uint64_t timestamp_start, uint64_t timestamp_end) {
-  std::unique_lock<std::mutex> lck(mtx_);
-
   if (!is_open_)
     return LOG_STATUS(
         Status_ArrayError("Cannot reopen array; Array is not open"));
@@ -556,14 +545,8 @@ Status Array::reopen(uint64_t timestamp_start, uint64_t timestamp_end) {
   }
 
   auto&& [st, array_schema, array_schemas, fragment_metadata] =
-      storage_manager_->array_reopen(
-          array_uri_,
-          *encryption_key_,
-          timestamp_start_,
-          timestamp_end_opened_at_);
-
-  if (!st.ok())
-    return st;
+      storage_manager_->array_reopen(this);
+  RETURN_NOT_OK(st);
 
   array_schema_latest_ = array_schema.value();
   array_schemas_all_ = array_schemas.value();
@@ -573,29 +556,24 @@ Status Array::reopen(uint64_t timestamp_start, uint64_t timestamp_end) {
 }
 
 Status Array::set_timestamp_start(const uint64_t timestamp_start) {
-  std::unique_lock<std::mutex> lck(mtx_);
   timestamp_start_ = timestamp_start;
   return Status::Ok();
 }
 
 uint64_t Array::timestamp_start() const {
-  std::unique_lock<std::mutex> lck(mtx_);
   return timestamp_start_;
 }
 
 Status Array::set_timestamp_end(const uint64_t timestamp_end) {
-  std::unique_lock<std::mutex> lck(mtx_);
   timestamp_end_ = timestamp_end;
   return Status::Ok();
 }
 
 uint64_t Array::timestamp_end() const {
-  std::unique_lock<std::mutex> lck(mtx_);
   return timestamp_end_;
 }
 
 uint64_t Array::timestamp_end_opened_at() const {
-  std::unique_lock<std::mutex> lck(mtx_);
   return timestamp_end_opened_at_;
 }
 
@@ -609,7 +587,6 @@ Config Array::config() const {
 }
 
 Status Array::set_uri_serialized(const std::string& uri) {
-  std::unique_lock<std::mutex> lck(mtx_);
   array_uri_serialized_ = URI(uri);
   return Status::Ok();
 }
@@ -787,17 +764,20 @@ Status Array::metadata(Metadata** metadata) {
   return Status::Ok();
 }
 
-const NDRange& Array::non_empty_domain() {
+std::tuple<Status, std::optional<const NDRange>> Array::non_empty_domain() {
   if (!non_empty_domain_computed_) {
     // Compute non-empty domain
-    compute_non_empty_domain();
+    RETURN_NOT_OK_TUPLE(compute_non_empty_domain(), std::nullopt);
   }
-  return non_empty_domain_;
+  return {Status::Ok(), non_empty_domain_};
 }
 
 void Array::set_non_empty_domain(const NDRange& non_empty_domain) {
-  std::lock_guard<std::mutex> lock{mtx_};
   non_empty_domain_ = non_empty_domain;
+}
+
+MemoryTracker* Array::memory_tracker() {
+  return &memory_tracker_;
 }
 
 /* ********************************* */
@@ -932,7 +912,6 @@ Status Array::compute_max_buffer_sizes(
 }
 
 Status Array::load_metadata() {
-  std::lock_guard<std::mutex> lock{mtx_};
   if (remote_) {
     auto rest_client = storage_manager_->rest_client();
     if (rest_client == nullptr)
@@ -969,7 +948,6 @@ Status Array::compute_non_empty_domain() {
   if (remote_) {
     RETURN_NOT_OK(load_remote_non_empty_domain());
   } else if (!fragment_metadata_.empty()) {
-    std::lock_guard<std::mutex> lock{mtx_};
     const auto& frag0_dom = fragment_metadata_[0]->non_empty_domain();
     non_empty_domain_.assign(frag0_dom.begin(), frag0_dom.end());
 

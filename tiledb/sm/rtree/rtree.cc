@@ -397,6 +397,7 @@ Status RTree::deserialize_v1_v4(ConstBuffer* cbuff, const Domain* domain) {
 Status RTree::deserialize_v5(ConstBuffer* cbuff, const Domain* domain) {
   RETURN_NOT_OK(cbuff->read(&fanout_, sizeof(fanout_)));
   unsigned level_num;
+
   RETURN_NOT_OK(cbuff->read(&level_num, sizeof(level_num)));
 
   if (level_num == 0)
@@ -405,6 +406,7 @@ Status RTree::deserialize_v5(ConstBuffer* cbuff, const Domain* domain) {
   levels_.clear();
   levels_.resize(level_num);
   auto dim_num = domain->dim_num();
+
   uint64_t mbr_num;
   for (unsigned l = 0; l < level_num; ++l) {
     RETURN_NOT_OK(cbuff->read(&mbr_num, sizeof(uint64_t)));

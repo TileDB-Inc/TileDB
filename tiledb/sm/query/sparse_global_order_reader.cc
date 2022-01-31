@@ -32,6 +32,7 @@
 
 #include "tiledb/sm/query/sparse_global_order_reader.h"
 #include "tiledb/common/logger.h"
+#include "tiledb/common/memory_tracker.h"
 #include "tiledb/sm/array/array.h"
 #include "tiledb/sm/array_schema/array_schema.h"
 #include "tiledb/sm/array_schema/dimension.h"
@@ -45,7 +46,6 @@
 #include "tiledb/sm/query/query_macros.h"
 #include "tiledb/sm/query/result_tile.h"
 #include "tiledb/sm/stats/global_stats.h"
-#include "tiledb/sm/storage_manager/open_array_memory_tracker.h"
 #include "tiledb/sm/storage_manager/storage_manager.h"
 #include "tiledb/sm/subarray/subarray.h"
 
@@ -80,8 +80,7 @@ SparseGlobalOrderReader::SparseGlobalOrderReader(
           subarray,
           layout,
           condition) {
-  array_memory_tracker_ =
-      storage_manager_->array_memory_tracker(array->array_uri());
+  array_memory_tracker_ = array->memory_tracker();
 }
 
 /* ****************************** */
@@ -326,10 +325,10 @@ SparseGlobalOrderReader::create_result_tiles() {
     // Load as many tiles as the memory budget allows.
     auto status = parallel_for(
         storage_manager_->compute_tp(), 0, fragment_num, [&](uint64_t f) {
-          auto range_it = result_tile_ranges_[f].rbegin();
           uint64_t t = 0;
-          while (range_it != result_tile_ranges_[f].rend()) {
-            for (t = range_it->first; t <= range_it->second; t++) {
+          while (!result_tile_ranges_[f].empty()) {
+            auto& range = result_tile_ranges_[f].back();
+            for (t = range.first; t <= range.second; t++) {
               auto&& [st, budget_exceeded] = add_result_tile(
                   dim_num,
                   per_fragment_memory_,
@@ -354,10 +353,9 @@ SparseGlobalOrderReader::create_result_tiles() {
                 return Status::Ok();
               }
 
-              range_it->first++;
+              range.first++;
             }
 
-            range_it++;
             remove_result_tile_range(f);
           }
 
@@ -690,8 +688,6 @@ SparseGlobalOrderReader::merge_result_cell_slabs(uint64_t num_cells, T cmp) {
     result_tile_used[tile->frag_idx()] = true;
 
     // Find how many cells to process using the top of the queue.
-    auto& next_tile = tile_queue.top();
-
     // Temp result coord used to find the last position.
     ResultCoords temp_rc = to_process;
 
@@ -708,22 +704,25 @@ SparseGlobalOrderReader::merge_result_cell_slabs(uint64_t num_cells, T cmp) {
     // If there is more than one fragment and we can't add the whole tile,
     // find the last possible cell in this tile smaller than the top of the
     // queue. Otherwise we are adding everything.
-    if (!tile_queue.empty() && cmp(temp_rc, next_tile)) {
-      // Run a bisection seach on to find the last cell.
-      uint64_t left = to_process.pos_;
-      uint64_t right = temp_rc.pos_;
-      while (left != right - 1) {
-        // Check against mid.
-        temp_rc.pos_ = left + (right - left) / 2;
+    if (!tile_queue.empty()) {
+      auto& next_tile = tile_queue.top();
+      if (cmp(temp_rc, next_tile)) {
+        // Run a bisection seach on to find the last cell.
+        uint64_t left = to_process.pos_;
+        uint64_t right = temp_rc.pos_;
+        while (left != right - 1) {
+          // Check against mid.
+          temp_rc.pos_ = left + (right - left) / 2;
 
-        if (!cmp(temp_rc, next_tile))
-          left = temp_rc.pos_;
-        else
-          right = temp_rc.pos_;
+          if (!cmp(temp_rc, next_tile))
+            left = temp_rc.pos_;
+          else
+            right = temp_rc.pos_;
+        }
+
+        // Left is the last position smaller than the top of the queue.
+        temp_rc.pos_ = left;
       }
-
-      // Left is the last position smaller than the top of the queue.
-      temp_rc.pos_ = left;
     }
 
     // Generate the result cell slabs.

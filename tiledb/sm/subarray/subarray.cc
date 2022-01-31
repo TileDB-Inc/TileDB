@@ -630,21 +630,19 @@ Subarray Subarray::crop_to_tile(const T* tile_coords, Layout layout) const {
     auto r_size = 2 * array_schema->dimension(d)->coord_size();
     uint64_t i = 0;
     for (size_t r = 0; r < ranges_[d].size(); ++r) {
-      if (!is_default_[d]) {
-        const auto& range = ranges_[d][r];
-        utils::geometry::overlap(
-            (const T*)range.data(),
-            &tile_subarray[2 * d],
-            1,
-            new_range,
-            &overlaps);
+      const auto& range = ranges_[d][r];
+      utils::geometry::overlap(
+          (const T*)range.data(),
+          &tile_subarray[2 * d],
+          1,
+          new_range,
+          &overlaps);
 
-        if (overlaps) {
-          ret.add_range_unsafe(d, Range(new_range, r_size));
-          ret.original_range_idx_.resize(dim_num());
-          ret.original_range_idx_[d].resize(i + 1);
-          ret.original_range_idx_[d][i++] = r;
-        }
+      if (overlaps) {
+        ret.add_range_unsafe(d, Range(new_range, r_size));
+        ret.original_range_idx_.resize(dim_num());
+        ret.original_range_idx_[d].resize(i + 1);
+        ret.original_range_idx_[d][i++] = r;
       }
     }
   }
@@ -1743,7 +1741,6 @@ Status Subarray::compute_relevant_fragment_est_result_sizes(
     ms.resize(names.size(), {0, 0, 0});
   std::unordered_set<std::pair<unsigned, uint64_t>, utils::hash::pair_hash>
       all_frag_tiles;
-  uint64_t tile_size, tile_var_size;
   for (uint64_t r = 0; r < range_num; ++r) {
     auto& mem_vec = (*mem_sizes)[r];
     for (const auto& ft : frag_tiles[r]) {
@@ -1757,7 +1754,7 @@ Status Subarray::compute_relevant_fragment_est_result_sizes(
             continue;
           }
 
-          tile_size = meta->tile_size(names[i], ft.second);
+          auto tile_size = meta->tile_size(names[i], ft.second);
           auto cell_size = array_schema->cell_size(names[i]);
           if (!var_sizes[i]) {
             mem_vec[i].size_fixed_ += tile_size;
@@ -1765,13 +1762,14 @@ Status Subarray::compute_relevant_fragment_est_result_sizes(
               mem_vec[i].size_validity_ +=
                   tile_size / cell_size * constants::cell_validity_size;
           } else {
-            RETURN_NOT_OK(
-                meta->tile_var_size(names[i], ft.second, &tile_var_size));
+            auto&& [st, tile_var_size] =
+                meta->tile_var_size(names[i], ft.second);
+            RETURN_NOT_OK(st);
             mem_vec[i].size_fixed_ += tile_size;
-            mem_vec[i].size_var_ += tile_var_size;
+            mem_vec[i].size_var_ += *tile_var_size;
             if (nullable[i])
               mem_vec[i].size_validity_ +=
-                  tile_var_size / cell_size * constants::cell_validity_size;
+                  *tile_var_size / cell_size * constants::cell_validity_size;
           }
         }
       }
@@ -2231,7 +2229,6 @@ Status Subarray::compute_relevant_fragment_est_result_sizes(
     auto meta = fragment_meta[f];
 
     // Parse tile ranges
-    uint64_t tile_size = 0, tile_var_size = 0;
     for (const auto& tr : overlap->tile_ranges_) {
       for (uint64_t tid = tr.first; tid <= tr.second; ++tid) {
         for (size_t n = 0; n < names.size(); ++n) {
@@ -2246,7 +2243,7 @@ Status Subarray::compute_relevant_fragment_est_result_sizes(
           }
 
           frag_tiles->insert(std::pair<unsigned, uint64_t>(f, tid));
-          tile_size = meta->tile_size(names[n], tid);
+          auto tile_size = meta->tile_size(names[n], tid);
           auto attr_datatype_size = datatype_size(array_schema->type(names[n]));
           if (!var_sizes[n]) {
             (*result_sizes)[n].size_fixed_ += tile_size;
@@ -2256,11 +2253,12 @@ Status Subarray::compute_relevant_fragment_est_result_sizes(
                   constants::cell_validity_size;
           } else {
             (*result_sizes)[n].size_fixed_ += tile_size;
-            RETURN_NOT_OK(meta->tile_var_size(names[n], tid, &tile_var_size));
-            (*result_sizes)[n].size_var_ += tile_var_size;
+            auto&& [st, tile_var_size] = meta->tile_var_size(names[n], tid);
+            RETURN_NOT_OK(st);
+            (*result_sizes)[n].size_var_ += *tile_var_size;
             if (nullable[n])
               (*result_sizes)[n].size_validity_ +=
-                  tile_var_size / attr_datatype_size *
+                  *tile_var_size / attr_datatype_size *
                   constants::cell_validity_size;
           }
         }
@@ -2283,7 +2281,7 @@ Status Subarray::compute_relevant_fragment_est_result_sizes(
         }
 
         frag_tiles->insert(std::pair<unsigned, uint64_t>(f, tid));
-        tile_size = meta->tile_size(names[n], tid);
+        auto tile_size = meta->tile_size(names[n], tid);
         auto attr_datatype_size = datatype_size(array_schema->type(names[n]));
         if (!var_sizes[n]) {
           (*result_sizes)[n].size_fixed_ += tile_size * ratio;
@@ -2295,11 +2293,12 @@ Status Subarray::compute_relevant_fragment_est_result_sizes(
 
         } else {
           (*result_sizes)[n].size_fixed_ += tile_size * ratio;
-          RETURN_NOT_OK(meta->tile_var_size(names[n], tid, &tile_var_size));
-          (*result_sizes)[n].size_var_ += tile_var_size * ratio;
+          auto&& [st, tile_var_size] = meta->tile_var_size(names[n], tid);
+          RETURN_NOT_OK(st);
+          (*result_sizes)[n].size_var_ += *tile_var_size * ratio;
           if (nullable[n])
             (*result_sizes)[n].size_validity_ +=
-                (tile_var_size / attr_datatype_size *
+                (*tile_var_size / attr_datatype_size *
                  constants::cell_validity_size) *
                 ratio;
         }

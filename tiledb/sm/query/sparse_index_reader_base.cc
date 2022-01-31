@@ -32,6 +32,7 @@
 
 #include "tiledb/sm/query/sparse_index_reader_base.h"
 #include "tiledb/common/logger.h"
+#include "tiledb/common/memory_tracker.h"
 #include "tiledb/sm/array/array.h"
 #include "tiledb/sm/array_schema/array_schema.h"
 #include "tiledb/sm/filesystem/vfs.h"
@@ -41,7 +42,6 @@
 #include "tiledb/sm/query/iquery_strategy.h"
 #include "tiledb/sm/query/query_macros.h"
 #include "tiledb/sm/query/strategy_base.h"
-#include "tiledb/sm/storage_manager/open_array_memory_tracker.h"
 #include "tiledb/sm/subarray/subarray.h"
 
 #include <numeric>
@@ -170,11 +170,10 @@ SparseIndexReaderBase::get_coord_tiles_size(
       tiles_size += fragment_metadata_[f]->tile_size(dim_names_[d], t);
 
       if (is_dim_var_size_[d]) {
-        uint64_t temp = 0;
-        RETURN_NOT_OK_TUPLE(
-            fragment_metadata_[f]->tile_var_size(dim_names_[d], t, &temp),
-            std::nullopt);
-        tiles_size += temp;
+        auto&& [st, temp] =
+            fragment_metadata_[f]->tile_var_size(dim_names_[d], t);
+        RETURN_NOT_OK_TUPLE(st, std::nullopt);
+        tiles_size += *temp;
       }
     }
   }
@@ -267,7 +266,7 @@ Status SparseIndexReaderBase::load_initial_data() {
   std::vector<std::string> var_size_to_load;
   for (unsigned d = 0; d < dim_num; ++d) {
     dim_names_.emplace_back(array_schema_->dimension(d)->name());
-    is_dim_var_size_[d] = array_schema_->var_size(dim_names_[d]);
+    is_dim_var_size_.emplace_back(array_schema_->var_size(dim_names_[d]));
     if (is_dim_var_size_[d])
       var_size_to_load.emplace_back(dim_names_[d]);
   }
@@ -443,10 +442,9 @@ Status SparseIndexReaderBase::compute_tile_bitmaps(
           // there is no need to compute bitmaps.
           const bool is_uint8_t = std::is_same<BitmapType, uint8_t>::value;
           if (is_uint8_t) {
-            std::vector<bool> covered_bitmap;
-            covered_bitmap.reserve(relevant_ranges.size());
-            domain->dimension(dim_idx)->covered_vec(
-                ranges_for_dim, mbr[dim_idx], relevant_ranges, covered_bitmap);
+            std::vector<bool> covered_bitmap =
+                domain->dimension(dim_idx)->covered_vec(
+                    ranges_for_dim, mbr[dim_idx], relevant_ranges);
 
             // See if any range is covered.
             uint64_t count = std::accumulate(

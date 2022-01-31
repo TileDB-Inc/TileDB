@@ -43,6 +43,11 @@ namespace tiledb {
 namespace sm {
 
 /* ****************************** */
+/*           STATIC INIT          */
+/* ****************************** */
+uint64_t Tile::max_tile_chunk_size_ = constants::max_tile_chunk_size;
+
+/* ****************************** */
 /*           STATIC API           */
 /* ****************************** */
 
@@ -55,8 +60,7 @@ Status Tile::compute_chunk_size(
   const uint64_t dim_tile_size = tile_size / dim_num;
   const uint64_t dim_cell_size = tile_cell_size / dim_num;
 
-  uint64_t chunk_size64 =
-      std::min(constants::max_tile_chunk_size, dim_tile_size);
+  uint64_t chunk_size64 = std::min(max_tile_chunk_size_, dim_tile_size);
   chunk_size64 = chunk_size64 / dim_cell_size * dim_cell_size;
   chunk_size64 = std::max(chunk_size64, dim_cell_size);
   if (chunk_size64 > std::numeric_limits<uint32_t>::max()) {
@@ -65,6 +69,10 @@ Status Tile::compute_chunk_size(
 
   *chunk_size = chunk_size64;
   return Status::Ok();
+}
+
+void Tile::set_max_tile_chunk_size(uint64_t max_tile_chunk_size) {
+  max_tile_chunk_size_ = max_tile_chunk_size;
 }
 
 /* ****************************** */
@@ -76,7 +84,6 @@ Tile::Tile() {
   cell_size_ = 0;
   dim_num_ = 0;
   owns_buffer_ = true;
-  pre_filtered_size_ = 0;
   format_version_ = 0;
   type_ = Datatype::INT32;
 }
@@ -92,7 +99,6 @@ Tile::Tile(
     , dim_num_(dim_num)
     , format_version_(0)
     , owns_buffer_(owns_buff)
-    , pre_filtered_size_(0)
     , type_(type) {
   buffer->reset_offset();
 }
@@ -109,7 +115,6 @@ Tile::Tile(
     , dim_num_(dim_num)
     , format_version_(format_version)
     , owns_buffer_(owns_buff)
-    , pre_filtered_size_(0)
     , type_(type) {
 }
 
@@ -222,7 +227,6 @@ Tile Tile::clone(bool deep_copy) const {
   clone.cell_size_ = cell_size_;
   clone.dim_num_ = dim_num_;
   clone.format_version_ = format_version_;
-  clone.pre_filtered_size_ = pre_filtered_size_;
   clone.type_ = type_;
   clone.filtered_buffer_ = filtered_buffer_;
 
@@ -265,10 +269,6 @@ uint64_t Tile::offset() const {
   return buffer_->offset();
 }
 
-uint64_t Tile::pre_filtered_size() const {
-  return pre_filtered_size_;
-}
-
 Status Tile::read(void* buffer, uint64_t nbytes) {
   assert(!filtered());
   RETURN_NOT_OK(buffer_->read(buffer, nbytes));
@@ -298,10 +298,6 @@ void Tile::reset_size() {
 
 void Tile::set_offset(uint64_t offset) {
   buffer_->set_offset(offset);
-}
-
-void Tile::set_pre_filtered_size(uint64_t pre_filtered_size) {
-  pre_filtered_size_ = pre_filtered_size;
 }
 
 Status Tile::write(ConstBuffer* buf) {
@@ -376,7 +372,6 @@ void Tile::swap(Tile& tile) {
   std::swap(dim_num_, tile.dim_num_);
   std::swap(format_version_, tile.format_version_);
   std::swap(owns_buffer_, tile.owns_buffer_);
-  std::swap(pre_filtered_size_, tile.pre_filtered_size_);
   std::swap(type_, tile.type_);
 }
 

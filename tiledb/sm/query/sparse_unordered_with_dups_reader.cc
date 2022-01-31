@@ -31,6 +31,7 @@
  */
 #include "tiledb/sm/query/sparse_unordered_with_dups_reader.h"
 #include "tiledb/common/logger.h"
+#include "tiledb/common/memory_tracker.h"
 #include "tiledb/sm/array/array.h"
 #include "tiledb/sm/array_schema/array_schema.h"
 #include "tiledb/sm/array_schema/dimension.h"
@@ -42,7 +43,6 @@
 #include "tiledb/sm/query/query_macros.h"
 #include "tiledb/sm/query/result_tile.h"
 #include "tiledb/sm/stats/global_stats.h"
-#include "tiledb/sm/storage_manager/open_array_memory_tracker.h"
 #include "tiledb/sm/storage_manager/storage_manager.h"
 #include "tiledb/sm/subarray/subarray.h"
 
@@ -78,8 +78,7 @@ SparseUnorderedWithDupsReader<BitmapType>::SparseUnorderedWithDupsReader(
           subarray,
           layout,
           condition) {
-  array_memory_tracker_ =
-      storage_manager_->array_memory_tracker(array->array_uri());
+  array_memory_tracker_ = array->memory_tracker();
 }
 
 /* ****************************** */
@@ -94,6 +93,10 @@ bool SparseUnorderedWithDupsReader<BitmapType>::incomplete() const {
 template <class BitmapType>
 QueryStatusDetailsReason
 SparseUnorderedWithDupsReader<BitmapType>::status_incomplete_reason() const {
+  // Returning early for deserialized incomplete queries.
+  if (result_tiles_.empty())
+    return QueryStatusDetailsReason::REASON_USER_BUFFER_SIZE;
+
   if (!incomplete())
     return QueryStatusDetailsReason::REASON_NONE;
 
@@ -334,13 +337,13 @@ Status SparseUnorderedWithDupsReader<BitmapType>::create_result_tiles() {
     unsigned int f = 0;
     while (f < fragment_num && !budget_exceeded) {
       if (!all_tiles_loaded_[f]) {
-        auto range_it = result_tile_ranges_[f].rbegin();
-        all_tiles_loaded_[f] = range_it == result_tile_ranges_[f].rend();
-        while (range_it != result_tile_ranges_[f].rend()) {
+        all_tiles_loaded_[f] = result_tile_ranges_[f].empty();
+        while (!result_tile_ranges_[f].empty()) {
+          auto& range = result_tile_ranges_[f].back();
           const auto last_t = result_tile_ranges_[f].front().second;
 
           // Add all tiles for this range.
-          for (uint64_t t = range_it->first; t <= range_it->second; t++) {
+          for (uint64_t t = range.first; t <= range.second; t++) {
             auto&& [st, exceeded] = add_result_tile(
                 dim_num,
                 memory_budget_qc_tiles,
@@ -365,12 +368,11 @@ Status SparseUnorderedWithDupsReader<BitmapType>::create_result_tiles() {
               break;
             }
 
-            range_it->first++;
+            range.first++;
           }
 
           if (budget_exceeded)
             break;
-          range_it++;
           remove_result_tile_range(f);
         }
       }
@@ -657,13 +659,13 @@ Status SparseUnorderedWithDupsReader<BitmapType>::copy_offsets_tiles(
         if (i == result_tiles.size() - 1) {
           auto to_copy = cell_offsets[i + 1] - cell_offsets[i];
 
-          // No bitmap, just use the cell offsets. Otherwise, we need to count
-          // cells if the tile is not fully copied.
+          // No bitmap, just use the cell offsets. Otherwise, we need to check
+          // the bitmap to determine the max.
           if (rt->bitmap_result_num_ == std::numeric_limits<uint64_t>::max()) {
             max_pos_tile = min_pos_tile + to_copy;
-          } else if (rt->bitmap_result_num_ != min_pos_tile + to_copy) {
+          } else {
             max_pos_tile =
-                rt->pos_with_given_result_sum(0, min_pos_tile + to_copy) + 1;
+                rt->pos_with_given_result_sum(min_pos_tile, to_copy) + 1;
           }
         }
 
@@ -988,13 +990,13 @@ Status SparseUnorderedWithDupsReader<BitmapType>::copy_fixed_data_tiles(
         if (i == result_tiles.size() - 1) {
           auto to_copy = cell_offsets[i + 1] - cell_offsets[i];
 
-          // No bitmap, just use the cell offsets. Otherwise, we need to count
-          // cells if the tile is not fully copied.
+          // No bitmap, just use the cell offsets. Otherwise, we need to check
+          // the bitmap to determine the max.
           if (rt->bitmap_result_num_ == std::numeric_limits<uint64_t>::max()) {
             max_pos_tile = min_pos_tile + to_copy;
-          } else if (rt->bitmap_result_num_ != min_pos_tile + to_copy) {
+          } else {
             max_pos_tile =
-                rt->pos_with_given_result_sum(0, min_pos_tile + to_copy) + 1;
+                rt->pos_with_given_result_sum(min_pos_tile, to_copy) + 1;
           }
         }
 

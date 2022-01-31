@@ -46,7 +46,7 @@ namespace sm {
 
 class Array;
 class ArraySchema;
-class OpenArrayMemoryTracker;
+class MemoryTracker;
 class StorageManager;
 class Subarray;
 
@@ -102,7 +102,7 @@ class ResultTileWithBitmap : public ResultTile {
         bitmap_result_num_ != std::numeric_limits<uint64_t>::max() &&
         result_num != 0);
     if (bitmap_.size() == 0)
-      return result_num - 1;
+      return start_pos + result_num - 1;
 
     uint64_t sum = 0;
     for (uint64_t c = start_pos; c < bitmap_.size(); c++) {
@@ -241,7 +241,7 @@ class SparseIndexReaderBase : public ReaderBase {
   std::mutex mem_budget_mtx_;
 
   /** Memory tracker object for the array. */
-  OpenArrayMemoryTracker* array_memory_tracker_;
+  MemoryTracker* array_memory_tracker_;
 
   /** Memory used for coordinates tiles. */
   uint64_t memory_used_for_coords_total_;

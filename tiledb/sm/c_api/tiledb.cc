@@ -2430,7 +2430,7 @@ int32_t tiledb_array_schema_load(
 
     if (SAVE_ERROR_CATCH(
             ctx,
-            storage_manager->load_array_schema(
+            storage_manager->load_array_schema_latest(
                 uri, key, &((*array_schema)->array_schema_)))) {
       delete *array_schema;
       return TILEDB_ERR;
@@ -2509,7 +2509,7 @@ int32_t tiledb_array_schema_load_with_key(
 
     if (SAVE_ERROR_CATCH(
             ctx,
-            storage_manager->load_array_schema(
+            storage_manager->load_array_schema_latest(
                 uri, key, &((*array_schema)->array_schema_)))) {
       delete *array_schema;
       *array_schema = nullptr;
@@ -6627,23 +6627,39 @@ void tiledb_fragment_info_free(tiledb_fragment_info_t** fragment_info) {
   }
 }
 
+int32_t tiledb_fragment_info_set_config(
+    tiledb_ctx_t* ctx,
+    tiledb_fragment_info_t* fragment_info,
+    tiledb_config_t* config) {
+  // Sanity check
+  if (sanity_check(ctx) == TILEDB_ERR ||
+      sanity_check(ctx, fragment_info) == TILEDB_ERR ||
+      sanity_check(ctx, config) == TILEDB_ERR)
+    return TILEDB_ERR;
+
+  if (SAVE_ERROR_CATCH(
+          ctx, fragment_info->fragment_info_->set_config(*(config->config_))))
+    return TILEDB_ERR;
+
+  return TILEDB_OK;
+}
+
 int32_t tiledb_fragment_info_load(
     tiledb_ctx_t* ctx, tiledb_fragment_info_t* fragment_info) {
   if (sanity_check(ctx) == TILEDB_ERR ||
       sanity_check(ctx, fragment_info) == TILEDB_ERR)
     return TILEDB_ERR;
 
-  // Get config from ctx
-  tiledb::sm::Config config = ctx->ctx_->storage_manager()->config();
-
   // Load fragment info
+  bool set_timestamp_range_from_config = true;
+  bool set_enc_key_from_config = true;
+  bool compute_anterior = false;
   if (SAVE_ERROR_CATCH(
           ctx,
           fragment_info->fragment_info_->load(
-              config,
-              static_cast<tiledb::sm::EncryptionType>(TILEDB_NO_ENCRYPTION),
-              nullptr,
-              0)))
+              set_timestamp_range_from_config,
+              set_enc_key_from_config,
+              compute_anterior)))
     return TILEDB_ERR;
 
   return TILEDB_OK;
@@ -6659,14 +6675,10 @@ int32_t tiledb_fragment_info_load_with_key(
       sanity_check(ctx, fragment_info) == TILEDB_ERR)
     return TILEDB_ERR;
 
-  // Get config from ctx
-  tiledb::sm::Config config = ctx->ctx_->storage_manager()->config();
-
   // Load fragment info
   if (SAVE_ERROR_CATCH(
           ctx,
           fragment_info->fragment_info_->load(
-              config,
               static_cast<tiledb::sm::EncryptionType>(encryption_type),
               encryption_key,
               key_length)))
