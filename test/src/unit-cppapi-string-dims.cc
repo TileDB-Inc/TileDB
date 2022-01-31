@@ -101,8 +101,6 @@ void write_array_1(
 
   // Write data to the array.
   // one of the following provided by parameter.
-  //  std::vector<char> dim1 = {'a', 'b', 'b', 'c', 'a', 'b', 'b', 'c'};
-  //  std::vector<char> dim1 = {'a', 'b', 'b', 'c', 'd', 'e', 'e', 'f'};
   std::vector<uint64_t> dim1_offsets = {0, 1, 3, 4, 5, 7};
   std::vector<int32_t> dim2 = {1, 1, 1, 2, 2, 2};
   std::vector<char> dim3 = {'g', 'h', 'h', 'i', 'j', 'k', 'k', 'l'};
@@ -214,19 +212,19 @@ TEST_CASE(
   std::vector<int32_t> expected_a1_data, collect_results_a1;
 
   int which_option = -1;
-  SECTION("1") {  // ch7065 reported to have failed
+  SECTION("1") {
     which_option = 1;
   }
-  SECTION("2") {  // ch7065 reported to have succeeded
+  SECTION("2") {
     which_option = 2;
   }
-  SECTION("3") {  // ch7065 reported to have succeeded
+  SECTION("3") {
     which_option = 3;
   }
   SECTION("4") {
     which_option = 4;
   }
-  SECTION("5") {  // ch7065 reported to have failed
+  SECTION("5") {
     which_option = 5;
   }
   SECTION("6") {
@@ -263,27 +261,15 @@ TEST_CASE(
     // different between them a bit easier, at least with some colorizing
     // editors.
     switch (option) {
-      case 1:  // ch7065 reported to have failed
-        // query_read.add_range(
-        //     0, dim1_non_empty_domain.first, dim1_non_empty_domain.second);
-        // query_read.add_range(0,
-        //   std::string("c"), std::string("d"));
+      case 1:
         query_read.add_range(
             std::string("dim1"), std::string("az"), std::string("de"));
-        // query_read.add_range<int32_t>(1, dim2_non_empty_domain.first,
-        //   dim2_non_empty_domain.second);
-        // query_read.add_range(std::string("dim3"), std::string("i"),
-        //   std::string("kl"));
         expected_dim1 = {"bb", "c", "d"};
         expected_dim2 = {1, 1, 2};
         expected_dim3 = {"hh", "i", "j"};
         expected_a1_data = {2, 3, 4};
         break;
-      case 2:  // ch7065 reported to have succeeded
-        // query_read.add_range(0, dim1_non_empty_domain.first,
-        //   dim1_non_empty_domain.second);
-        // query_read.add_range(0, std::string("c"),
-        //   std::string("d"));
+      case 2:
         query_read.add_range(
             std::string("dim1"), std::string("az"), std::string("de"));
         query_read.add_range<int32_t>(
@@ -295,78 +281,45 @@ TEST_CASE(
         expected_dim3 = {"i", "j"};
         expected_a1_data = {3, 4};
         break;
-      case 3:  // ch7065 reported to have succeeded
+      case 3:
         query_read.add_range(
             0, dim1_non_empty_domain.first, dim1_non_empty_domain.second);
-        // query_read.add_range(0, std::string("c"),
-        //    std::string("d"));
-        // query_read.add_range(
-        //    std::string("dim1"), std::string("az"), std::string("de"));
         query_read.add_range<int32_t>(
             1, dim2_non_empty_domain.first, dim2_non_empty_domain.second);
-        // query_read.add_range(std::string("dim3"),
-        //   std::string("i"), std::string("kl"));
         expected_dim1 = {"a", "bb", "c", "d", "ee", "f"};
         expected_dim2 = {1, 1, 1, 2, 2, 2};
         expected_dim3 = {"g", "hh", "i", "j", "kk", "l"};
         expected_a1_data = {1, 2, 3, 4, 5, 6};
         break;
       case 4:
-        // reported to have failed - 'cept seems to be same as case 3 that
-        // succeeded
-        // query_read.add_range(
-        //     0, dim1_non_empty_domain.first, dim1_non_empty_domain.second);
         query_read.add_range(0, std::string("c"), std::string("d"));
-        // query_read.add_range(
-        //   std::string("dim1"), std::string("az"), std::string("de"));
-        // query_read.add_range<int32_t>(1, dim2_non_empty_domain.first,
-        //  dim2_non_empty_domain.second);
-        // query_read.add_range(std::string("dim3"),
-        //  std::string("i"), std::string("kl"));
         expected_dim1 = {"c", "d"};
         expected_dim2 = {1, 2};
         expected_dim3 = {"i", "j"};
         expected_a1_data = {3, 4};
         break;
-      case 5:  // ch7065 reported to have failed
-        // query_read.add_range(
-        //     0, dim1_non_empty_domain.first, dim1_non_empty_domain.second);
+      case 5:
         query_read.add_range(0, std::string("c"), std::string("d"));
-        // query_read.add_range(
-        //   std::string("dim1"), std::string("az"), std::string("de"));
         query_read.add_range<int32_t>(
             1, dim2_non_empty_domain.first, dim2_non_empty_domain.second);
-        // query_read.add_range(std::string("dim3"),
-        //    std::string("i"), std::string("kl"));
         expected_dim1 = {"c", "d"};
         expected_dim2 = {1, 2};
         expected_dim3 = {"i", "j"};
         expected_a1_data = {3, 4};
         break;
       case 6:
-        // query_read.add_range(
-        //    0, dim1_non_empty_domain.first, dim1_non_empty_domain.second);
-        // query_read.add_range(0, std::string("c"),
-        //  std::string("d"));
         query_read.add_range(
             std::string("dim1"), std::string("az"), std::string("de"));
         query_read.add_range<int32_t>(
             1, dim2_non_empty_domain.first, dim2_non_empty_domain.second);
-        // query_read.add_range(std::string("dim3"),
-        //  std::string("i"), std::string("kl"));
         expected_dim1 = {"bb", "c", "d"};
         expected_dim2 = {1, 1, 2};
         expected_dim3 = {"hh", "i", "j"};
         expected_a1_data = {2, 3, 4};
         break;
       case 7:
-        // query_read.add_range(
-        //    0, dim1_non_empty_domain.first, dim1_non_empty_domain.second);
-        // query_read.add_range(0, std::string("c"), std::string("d"));
         query_read.add_range(
             std::string("dim1"), std::string("az"), std::string("de"));
-        // query_read.add_range<int32_t>(
-        //    1, dim2_non_empty_domain.first, dim2_non_empty_domain.second);
         query_read.add_range(
             std::string("dim3"), std::string("i"), std::string("kl"));
         expected_dim1 = {"c", "d"};
@@ -375,14 +328,7 @@ TEST_CASE(
         expected_a1_data = {3, 4};
         break;
       case 8:
-        // query_read.add_range(
-        //    0, dim1_non_empty_domain.first,
-        //    dim1_non_empty_domain.second);
         query_read.add_range(0, std::string("c"), std::string("d"));
-        // query_read.add_range(
-        //    std::string("dim1"), std::string("az"), std::string("de"));
-        // query_read.add_range<int32_t>(
-        //    1, dim2_non_empty_domain.first, dim2_non_empty_domain.second);
         query_read.add_range(
             std::string("dim3"), std::string("i"), std::string("kl"));
         expected_dim1 = {"c", "d"};
@@ -393,11 +339,6 @@ TEST_CASE(
       case 9:
         query_read.add_range(
             0, dim1_non_empty_domain.first, dim1_non_empty_domain.second);
-        // query_read.add_range(0, std::string("c"), std::string("d"));
-        // query_read.add_range(
-        //    std::string("dim1"), std::string("az"), std::string("de"));
-        // query_read.add_range<int32_t>(
-        //    1, dim2_non_empty_domain.first, dim2_non_empty_domain.second);
         query_read.add_range(
             std::string("dim3"), std::string("i"), std::string("kl"));
         expected_dim1 = {"c", "d", "ee"};
@@ -405,15 +346,8 @@ TEST_CASE(
         expected_dim3 = {"i", "j", "kk"};
         expected_a1_data = {3, 4, 5};
         break;
-      case 10:  // maybe intended... reported to have failed
-        // query_read.add_range(
-        //     0, dim1_non_empty_domain.first, dim1_non_empty_domain.second);
-        // query_read.add_range(0, std::string("c"), std::string("d"));
+      case 10:
         query_read.add_range(0, std::string("c"), std::string("ee"));
-        // query_read.add_range(
-        //    std::string("dim1"), std::string("az"), std::string("de"));
-        // query_read.add_range<int32_t>(
-        //    1, dim2_non_empty_domain.first, dim2_non_empty_domain.second);
         query_read.add_range(
             std::string("dim3"), std::string("i"), std::string("kk"));
         expected_dim1 = {"c", "d", "ee"};
@@ -508,19 +442,19 @@ TEST_CASE(
   std::vector<int32_t> expected_a1_data, collect_results_a1;
 
   int which_option = -1;
-  SECTION("1") {  // ch7065 reported to have failed
+  SECTION("1") {
     which_option = 1;
   }
-  SECTION("2") {  // ch7065 reported to have succeeded
+  SECTION("2") {
     which_option = 2;
   }
-  SECTION("3") {  // ch7065 reported to have succeeded
+  SECTION("3") {
     which_option = 3;
   }
   SECTION("4") {
     which_option = 4;
   }
-  SECTION("5") {  // ch7065 reported to have failed
+  SECTION("5") {
     which_option = 5;
   }
   SECTION("6") {
@@ -558,31 +492,19 @@ TEST_CASE(
     // different between them a bit easier, at least with some colorizing
     // editors.
     switch (option) {
-      case 1:  // ch7065 reported to have failed
+      case 1:
         expected_result_num = 4;
         initial_expected_read_status = Query::Status::INCOMPLETE;
-        // query_read.add_range(0, dim1_non_empty_domain.first,
-        //   dim1_non_empty_domain.second);
-        // query_read.add_range(0,
-        //   std::string("c"), std::string("d"));
         query_read.add_range(
             std::string("dim1"), std::string("az"), std::string("de"));
-        // query_read.add_range<int32_t>(1, dim2_non_empty_domain.first,
-        //   dim2_non_empty_domain.second);
-        // query_read.add_range(std::string("dim3"), std::string("i"),
-        //   std::string("kl"));
         expected_dim1 = {"bb", "bb", "c", "c"};
         expected_dim2 = {1, 2, 1, 2};
         expected_dim3 = {"hh", "kk", "i", "l"};
         expected_a1_data = {2, 5, 3, 6};
         break;
-      case 2:  // ch7065 reported to have succeeded
+      case 2:
         expected_result_num = 2;
         initial_expected_read_status = Query::Status::COMPLETE;
-        // query_read.add_range(0, dim1_non_empty_domain.first,
-        //   dim1_non_empty_domain.second);
-        // query_read.add_range(0, std::string("c"),
-        //   std::string("d"));
         query_read.add_range(
             std::string("dim1"), std::string("az"), std::string("de"));
         query_read.add_range<int32_t>(
@@ -594,19 +516,13 @@ TEST_CASE(
         expected_dim3 = {"kk", "i"};
         expected_a1_data = {5, 3};
         break;
-      case 3:  // ch7065 reported to have succeeded
+      case 3:
         expected_result_num = 6;
         initial_expected_read_status = Query::Status::INCOMPLETE;
         query_read.add_range(
             0, dim1_non_empty_domain.first, dim1_non_empty_domain.second);
-        // query_read.add_range(0, std::string("c"),
-        //    std::string("d"));
-        // query_read.add_range(
-        //    std::string("dim1"), std::string("az"), std::string("de"));
         query_read.add_range<int32_t>(
             1, dim2_non_empty_domain.first, dim2_non_empty_domain.second);
-        // query_read.add_range(std::string("dim3"),
-        //   std::string("i"), std::string("kl"));
         expected_dim1 = {"a", "a", "bb", "bb", "c", "c"};
         expected_dim2 = {1, 2, 1, 2, 1, 2};
         expected_dim3 = {"g", "j", "hh", "kk", "i", "l"};
@@ -615,34 +531,18 @@ TEST_CASE(
       case 4:
         expected_result_num = 2;
         initial_expected_read_status = Query::Status::COMPLETE;
-        // reported to have failed - 'cept seems to be same as case 3 that
-        // succeeded
-        // query_read.add_range(0, dim1_non_empty_domain.first,
-        //  dim1_non_empty_domain.second);
         query_read.add_range(0, std::string("c"), std::string("d"));
-        // query_read.add_range(
-        //   std::string("dim1"), std::string("az"), std::string("de"));
-        // query_read.add_range<int32_t>(1, dim2_non_empty_domain.first,
-        //  dim2_non_empty_domain.second);
-        // query_read.add_range(std::string("dim3"),
-        //  std::string("i"), std::string("kl"));
         expected_dim1 = {"c", "c"};
         expected_dim2 = {1, 2};
         expected_dim3 = {"i", "l"};
         expected_a1_data = {3, 6};
         break;
-      case 5:  // ch7065 reported to have failed
+      case 5:
         expected_result_num = 2;
         initial_expected_read_status = Query::Status::COMPLETE;
-        // query_read.add_range(
-        //     0, dim1_non_empty_domain.first, dim1_non_empty_domain.second);
         query_read.add_range(0, std::string("c"), std::string("d"));
-        // query_read.add_range(
-        //   std::string("dim1"), std::string("az"), std::string("de"));
         query_read.add_range<int32_t>(
             1, dim2_non_empty_domain.first, dim2_non_empty_domain.second);
-        // query_read.add_range(std::string("dim3"),
-        //    std::string("i"), std::string("kl"));
         expected_dim1 = {"c", "c"};
         expected_dim2 = {1, 2};
         expected_dim3 = {"i", "l"};
@@ -651,17 +551,10 @@ TEST_CASE(
       case 6:
         expected_result_num = 4;
         initial_expected_read_status = Query::Status::INCOMPLETE;
-        // query_read.add_range(
-        //    0, dim1_non_empty_domain.first,
-        //    dim1_non_empty_domain.second);
-        // query_read.add_range(0, std::string("c"),
-        //   std::string("d"));
         query_read.add_range(
             std::string("dim1"), std::string("az"), std::string("de"));
         query_read.add_range<int32_t>(
             1, dim2_non_empty_domain.first, dim2_non_empty_domain.second);
-        // query_read.add_range(std::string("dim3"),
-        //   std::string("i"), std::string("kl"));
         expected_dim1 = {"bb", "bb", "c", "c"};
         expected_dim2 = {1, 2, 1, 2};
         expected_dim3 = {"hh", "kk", "i", "l"};
@@ -670,13 +563,8 @@ TEST_CASE(
       case 7:
         expected_result_num = 2;
         initial_expected_read_status = Query::Status::COMPLETE;
-        // query_read.add_range(
-        //    0, dim1_non_empty_domain.first, dim1_non_empty_domain.second);
-        // query_read.add_range(0, std::string("c"), std::string("d"));
         query_read.add_range(
             std::string("dim1"), std::string("az"), std::string("de"));
-        // query_read.add_range<int32_t>(
-        //    1, dim2_non_empty_domain.first, dim2_non_empty_domain.second);
         query_read.add_range(
             std::string("dim3"), std::string("i"), std::string("kl"));
         expected_dim1 = {"bb", "c"};
@@ -688,14 +576,7 @@ TEST_CASE(
         expected_result_num = 1;
         initial_result_num = 1;
         initial_expected_read_status = Query::Status::COMPLETE;
-        // query_read.add_range(
-        //    0, dim1_non_empty_domain.first,
-        //    dim1_non_empty_domain.second);
         query_read.add_range(0, std::string("c"), std::string("d"));
-        // query_read.add_range(
-        //    std::string("dim1"), std::string("az"), std::string("de"));
-        // query_read.add_range<int32_t>(
-        //    1, dim2_non_empty_domain.first, dim2_non_empty_domain.second);
         query_read.add_range(
             std::string("dim3"), std::string("i"), std::string("kl"));
         expected_dim1 = {"c"};
@@ -709,11 +590,6 @@ TEST_CASE(
         initial_expected_read_status = Query::Status::COMPLETE;
         query_read.add_range(
             0, dim1_non_empty_domain.first, dim1_non_empty_domain.second);
-        // query_read.add_range(0, std::string("c"), std::string("d"));
-        // query_read.add_range(
-        //    std::string("dim1"), std::string("az"), std::string("de"));
-        // query_read.add_range<int32_t>(
-        //    1, dim2_non_empty_domain.first, dim2_non_empty_domain.second);
         query_read.add_range(
             std::string("dim3"), std::string("i"), std::string("kl"));
         expected_dim1 = {"a", "bb", "c"};
@@ -839,6 +715,7 @@ TEST_CASE(
   collect_results_dim2.clear();
   collect_results_dim3.clear();
   collect_results_a1.clear();
+
   // Prepare a read query. Do not set a range for the last string dimension.
   Array array_read(ctx, array_name, TILEDB_READ);
   Query query_read(ctx, array_read, TILEDB_READ);
@@ -855,33 +732,21 @@ TEST_CASE(
   // some active some inactive, to make visual comparison of what's
   // different between them a bit easier, at least with some colorizing
   // editors.
-  SECTION("1") {  // ch7065 reported to have failed
+  SECTION("1") {
     which_option = 1;
     expected_result_num = 4;
     initial_expected_read_status = Query::Status::INCOMPLETE;
-    // query_read.add_range(0, dim1_non_empty_domain.first,
-    //   dim1_non_empty_domain.second);
-    // query_read.add_range(0,
-    //   std::string("c"), std::string("d"));
     query_read.add_range(
         std::string("dim1"), std::string("az"), std::string("de"));
-    // query_read.add_range<int32_t>(1, dim2_non_empty_domain.first,
-    //   dim2_non_empty_domain.second);
-    // query_read.add_range(std::string("dim3"), std::string("i"),
-    //   std::string("kl"));
     expected_dim1 = {"bb", "bb", "c", "c"};
     expected_dim2 = {1, 2, 1, 2};
     expected_dim3 = {"hh", "kk", "i", "l"};
     expected_a1_data = {2, 5, 3, 6};
   }
-  SECTION("2") {  // ch7065 reported to have succeeded
+  SECTION("2") {
     which_option = 2;
     expected_result_num = 2;
     initial_expected_read_status = Query::Status::COMPLETE;
-    // query_read.add_range(0, dim1_non_empty_domain.first,
-    //   dim1_non_empty_domain.second);
-    // query_read.add_range(0, std::string("c"),
-    //   std::string("d"));
     query_read.add_range(
         std::string("dim1"), std::string("az"), std::string("de"));
     query_read.add_range<int32_t>(
@@ -893,20 +758,14 @@ TEST_CASE(
     expected_dim3 = {"kk", "i"};
     expected_a1_data = {5, 3};
   }
-  SECTION("3") {  // ch7065 reported to have succeeded
+  SECTION("3") {
     which_option = 3;
     expected_result_num = 6;
     initial_expected_read_status = Query::Status::INCOMPLETE;
     query_read.add_range(
         0, dim1_non_empty_domain.first, dim1_non_empty_domain.second);
-    // query_read.add_range(0, std::string("c"),
-    //    std::string("d"));
-    // query_read.add_range(
-    //    std::string("dim1"), std::string("az"), std::string("de"));
     query_read.add_range<int32_t>(
         1, dim2_non_empty_domain.first, dim2_non_empty_domain.second);
-    // query_read.add_range(std::string("dim3"),
-    //   std::string("i"), std::string("kl"));
     expected_dim1 = {"a", "a", "bb", "bb", "c", "c"};
     expected_dim2 = {1, 2, 1, 2, 1, 2};
     expected_dim3 = {"g", "j", "hh", "kk", "i", "l"};
@@ -916,35 +775,19 @@ TEST_CASE(
     which_option = 4;
     expected_result_num = 2;
     initial_expected_read_status = Query::Status::COMPLETE;
-    // reported to have failed - 'cept seems to be same as case 3 that
-    // succeeded
-    // query_read.add_range(0, dim1_non_empty_domain.first,
-    //  dim1_non_empty_domain.second);
     query_read.add_range(0, std::string("c"), std::string("d"));
-    // query_read.add_range(
-    //   std::string("dim1"), std::string("az"), std::string("de"));
-    // query_read.add_range<int32_t>(1, dim2_non_empty_domain.first,
-    //  dim2_non_empty_domain.second);
-    // query_read.add_range(std::string("dim3"),
-    //  std::string("i"), std::string("kl"));
     expected_dim1 = {"c", "c"};
     expected_dim2 = {1, 2};
     expected_dim3 = {"i", "l"};
     expected_a1_data = {3, 6};
   }
-  SECTION("5") {  // ch7065 reported to have failed
+  SECTION("5") {
     which_option = 5;
     expected_result_num = 2;
     initial_expected_read_status = Query::Status::COMPLETE;
-    // query_read.add_range(
-    //     0, dim1_non_empty_domain.first, dim1_non_empty_domain.second);
     query_read.add_range(0, std::string("c"), std::string("d"));
-    // query_read.add_range(
-    //   std::string("dim1"), std::string("az"), std::string("de"));
     query_read.add_range<int32_t>(
         1, dim2_non_empty_domain.first, dim2_non_empty_domain.second);
-    // query_read.add_range(std::string("dim3"),
-    //    std::string("i"), std::string("kl"));
     expected_dim1 = {"c", "c"};
     expected_dim2 = {1, 2};
     expected_dim3 = {"i", "l"};
@@ -954,17 +797,10 @@ TEST_CASE(
     which_option = 6;
     expected_result_num = 4;
     initial_expected_read_status = Query::Status::INCOMPLETE;
-    // query_read.add_range(
-    //    0, dim1_non_empty_domain.first,
-    //    dim1_non_empty_domain.second);
-    // query_read.add_range(0, std::string("c"),
-    //   std::string("d"));
     query_read.add_range(
         std::string("dim1"), std::string("az"), std::string("de"));
     query_read.add_range<int32_t>(
         1, dim2_non_empty_domain.first, dim2_non_empty_domain.second);
-    // query_read.add_range(std::string("dim3"),
-    //   std::string("i"), std::string("kl"));
     expected_dim1 = {"bb", "bb", "c", "c"};
     expected_dim2 = {1, 2, 1, 2};
     expected_dim3 = {"hh", "kk", "i", "l"};
@@ -974,13 +810,8 @@ TEST_CASE(
     which_option = 7;
     expected_result_num = 2;
     initial_expected_read_status = Query::Status::COMPLETE;
-    // query_read.add_range(
-    //    0, dim1_non_empty_domain.first, dim1_non_empty_domain.second);
-    // query_read.add_range(0, std::string("c"), std::string("d"));
     query_read.add_range(
         std::string("dim1"), std::string("az"), std::string("de"));
-    // query_read.add_range<int32_t>(
-    //    1, dim2_non_empty_domain.first, dim2_non_empty_domain.second);
     query_read.add_range(
         std::string("dim3"), std::string("i"), std::string("kl"));
     expected_dim1 = {"bb", "c"};
@@ -993,14 +824,7 @@ TEST_CASE(
     expected_result_num = 1;
     initial_result_num = 1;
     initial_expected_read_status = Query::Status::COMPLETE;
-    // query_read.add_range(
-    //    0, dim1_non_empty_domain.first,
-    //    dim1_non_empty_domain.second);
     query_read.add_range(0, std::string("c"), std::string("d"));
-    // query_read.add_range(
-    //    std::string("dim1"), std::string("az"), std::string("de"));
-    // query_read.add_range<int32_t>(
-    //    1, dim2_non_empty_domain.first, dim2_non_empty_domain.second);
     query_read.add_range(
         std::string("dim3"), std::string("i"), std::string("kl"));
     expected_dim1 = {"c"};
@@ -1015,11 +839,6 @@ TEST_CASE(
     initial_expected_read_status = Query::Status::COMPLETE;
     query_read.add_range(
         0, dim1_non_empty_domain.first, dim1_non_empty_domain.second);
-    // query_read.add_range(0, std::string("c"), std::string("d"));
-    // query_read.add_range(
-    //    std::string("dim1"), std::string("az"), std::string("de"));
-    // query_read.add_range<int32_t>(
-    //    1, dim2_non_empty_domain.first, dim2_non_empty_domain.second);
     query_read.add_range(
         std::string("dim3"), std::string("i"), std::string("kl"));
     expected_dim1 = {"a", "bb", "c"};
@@ -1137,19 +956,19 @@ TEST_CASE(
   std::vector<int32_t> expected_a1_data, collect_results_a1;
 
   int which_option = -1;
-  SECTION("1") {  // ch7065 reported to have failed
+  SECTION("1") {
     which_option = 1;
   }
-  SECTION("2") {  // ch7065 reported to have succeeded
+  SECTION("2") {
     which_option = 2;
   }
-  SECTION("3") {  // ch7065 reported to have succeeded
+  SECTION("3") {
     which_option = 3;
   }
   SECTION("4") {
     which_option = 4;
   }
-  SECTION("5") {  // ch7065 reported to have failed
+  SECTION("5") {
     which_option = 5;
   }
   SECTION("6") {
@@ -1184,30 +1003,18 @@ TEST_CASE(
     // different between them a bit easier, at least with some colorizing
     // editors.
     switch (option) {
-      case 1:  // ch7065 reported to have failed
+      case 1:
         expected_result_num = 4;
-        // query_read.add_range(0, dim1_non_empty_domain.first,
-        //   dim1_non_empty_domain.second);
-        // query_read.add_range(0,
-        //   std::string("c"), std::string("d"));
         query_read.add_range(
             std::string("dim1"), std::string("az"), std::string("de"));
-        // query_read.add_range<int32_t>(1, dim2_non_empty_domain.first,
-        //   dim2_non_empty_domain.second);
-        // query_read.add_range(std::string("dim3"), std::string("i"),
-        //   std::string("kl"));
         expected_dim1 = {"bb", "bb", "c", "c"};
         expected_dim2 = {1, 2, 1, 2};
         expected_dim3 = {"hh", "kk", "i", "l"};
         expected_a1_data = {2, 5, 3, 6};
 
         break;
-      case 2:  // ch7065 reported to have succeeded
+      case 2:
         expected_result_num = 2;
-        // query_read.add_range(0, dim1_non_empty_domain.first,
-        //   dim1_non_empty_domain.second);
-        // query_read.add_range(0, std::string("c"),
-        //   std::string("d"));
         query_read.add_range(
             std::string("dim1"), std::string("az"), std::string("de"));
         query_read.add_range<int32_t>(
@@ -1219,18 +1026,12 @@ TEST_CASE(
         expected_dim3 = {"kk", "i"};
         expected_a1_data = {5, 3};
         break;
-      case 3:  // ch7065 reported to have succeeded
+      case 3:
         expected_result_num = 6;
         query_read.add_range(
             0, dim1_non_empty_domain.first, dim1_non_empty_domain.second);
-        // query_read.add_range(0, std::string("c"),
-        //    std::string("d"));
-        // query_read.add_range(
-        //    std::string("dim1"), std::string("az"), std::string("de"));
         query_read.add_range<int32_t>(
             1, dim2_non_empty_domain.first, dim2_non_empty_domain.second);
-        // query_read.add_range(std::string("dim3"),
-        //   std::string("i"), std::string("kl"));
         expected_dim1 = {"a", "a", "bb", "bb", "c", "c"};
         expected_dim2 = {1, 2, 1, 2, 1, 2};
         expected_dim3 = {"g", "j", "hh", "kk", "i", "l"};
@@ -1238,33 +1039,17 @@ TEST_CASE(
         break;
       case 4:
         expected_result_num = 2;
-        // reported to have failed - 'cept seems to be same as case 3 that
-        // succeeded
-        // query_read.add_range(0, dim1_non_empty_domain.first,
-        //   dim1_non_empty_domain.second);
         query_read.add_range(0, std::string("c"), std::string("d"));
-        // query_read.add_range(
-        //   std::string("dim1"), std::string("az"), std::string("de"));
-        // query_read.add_range<int32_t>(1, dim2_non_empty_domain.first,
-        //   dim2_non_empty_domain.second);
-        // query_read.add_range(std::string("dim3"),
-        //   std::string("i"), std::string("kl"));
         expected_dim1 = {"c", "c"};
         expected_dim2 = {1, 2};
         expected_dim3 = {"i", "l"};
         expected_a1_data = {3, 6};
         break;
-      case 5:  // ch7065 reported to have failed
+      case 5:
         expected_result_num = 2;
-        // query_read.add_range(
-        //     0, dim1_non_empty_domain.first, dim1_non_empty_domain.second);
         query_read.add_range(0, std::string("c"), std::string("d"));
-        // query_read.add_range(
-        //   std::string("dim1"), std::string("az"), std::string("de"));
         query_read.add_range<int32_t>(
             1, dim2_non_empty_domain.first, dim2_non_empty_domain.second);
-        // query_read.add_range(std::string("dim3"),
-        //    std::string("i"), std::string("kl"));
         expected_dim1 = {"c", "c"};
         expected_dim2 = {1, 2};
         expected_dim3 = {"i", "l"};
@@ -1272,17 +1057,10 @@ TEST_CASE(
         break;
       case 6:
         expected_result_num = 4;
-        // query_read.add_range(
-        //    0, dim1_non_empty_domain.first,
-        //    dim1_non_empty_domain.second);
-        // query_read.add_range(0, std::string("c"),
-        //  std::string("d"));
         query_read.add_range(
             std::string("dim1"), std::string("az"), std::string("de"));
         query_read.add_range<int32_t>(
             1, dim2_non_empty_domain.first, dim2_non_empty_domain.second);
-        // query_read.add_range(std::string("dim3"),
-        //  std::string("i"), std::string("kl"));
         expected_dim1 = {"bb", "bb", "c", "c"};
         expected_dim2 = {1, 2, 1, 2};
         expected_dim3 = {"hh", "kk", "i", "l"};
@@ -1290,13 +1068,8 @@ TEST_CASE(
         break;
       case 7:
         expected_result_num = 2;
-        // query_read.add_range(
-        //    0, dim1_non_empty_domain.first, dim1_non_empty_domain.second);
-        // query_read.add_range(0, std::string("c"), std::string("d"));
         query_read.add_range(
             std::string("dim1"), std::string("az"), std::string("de"));
-        // query_read.add_range<int32_t>(
-        //    1, dim2_non_empty_domain.first, dim2_non_empty_domain.second);
         query_read.add_range(
             std::string("dim3"), std::string("i"), std::string("kl"));
         expected_dim1 = {"bb", "c"};
@@ -1306,14 +1079,7 @@ TEST_CASE(
         break;
       case 8:
         expected_result_num = 1;
-        // query_read.add_range(
-        //    0, dim1_non_empty_domain.first,
-        //    dim1_non_empty_domain.second);
         query_read.add_range(0, std::string("c"), std::string("d"));
-        // query_read.add_range(
-        //    std::string("dim1"), std::string("az"), std::string("de"));
-        // query_read.add_range<int32_t>(
-        //    1, dim2_non_empty_domain.first, dim2_non_empty_domain.second);
         query_read.add_range(
             std::string("dim3"), std::string("i"), std::string("kl"));
         expected_dim1 = {"c"};
@@ -1325,11 +1091,6 @@ TEST_CASE(
         expected_result_num = 3;
         query_read.add_range(
             0, dim1_non_empty_domain.first, dim1_non_empty_domain.second);
-        // query_read.add_range(0, std::string("c"), std::string("d"));
-        // query_read.add_range(
-        //    std::string("dim1"), std::string("az"), std::string("de"));
-        // query_read.add_range<int32_t>(
-        //    1, dim2_non_empty_domain.first, dim2_non_empty_domain.second);
         query_read.add_range(
             std::string("dim3"), std::string("i"), std::string("kl"));
         expected_dim1 = {"a", "bb", "c"};
@@ -1376,25 +1137,6 @@ TEST_CASE(
       LOG_TRACE(msg.str());
     }
 
-    // ch9473
-    // what_status expectation based on bufcnt vs expected result count is
-    // failing on option 2 with bufcnt 2 (possibly others as well)...
-    // ideally, the expectation of COMPLETE vs INCOMPLETE should be
-    // computable, for option 2 with bufcnt 2, the actual data to be returned
-    // will fit within a1_data with 2 elements. However, in SubarrayPartitioner
-    // compute_current_start_end(), *estimates* of (potential) result size are
-    // used as a max memory size for some audits, and in this case it concludes
-    // the data will not fit, presumably leading to only one item being returned
-    // from the initial read.
-    // This raises the question of how/where it eventually
-    // determines the single item could be returned, apparently it is not
-    // restricted by that estimate elsewhere...? Or maybe it always allows an
-    // attempt of at least one item?
-    // decltype(query_read.query_status()) what_status =
-    //    bufcnt < expected_result_num ? Query::Status::INCOMPLETE :
-    //                                   Query::Status::COMPLETE;
-    // REQUIRE(query_read.query_status() == what_status);
-
     auto collect_data = [&]() {
       std::string dim1s(&dim1[0], dim1.size());
       std::string dim3s(&dim3[0], dim3.size());
@@ -1416,14 +1158,6 @@ TEST_CASE(
       }
     };
     collect_data();
-
-    // ch9473
-    // int expect_what = bufcnt < expected_result_num ? bufcnt :
-    // expected_result_num;
-    // failing on option 2, bufcnt 2 (others unknown)...
-    // (see comment above where status checking was failing before reaching
-    // here.)
-    //    REQUIRE(result_num == expect_what);
 
     unsigned tot_result_num = 0;
     while (query_read.query_status() == Query::Status::INCOMPLETE) {
@@ -1470,19 +1204,19 @@ TEST_CASE(
   write_array_1(ctx, array_name, dim1, true);
 
   int which_option = -1;
-  SECTION("1") {  // ch7065 reported to have failed
+  SECTION("1") {
     which_option = 1;
   }
-  SECTION("2") {  // ch7065 reported to have succeeded
+  SECTION("2") {
     which_option = 2;
   }
-  SECTION("3") {  // ch7065 reported to have succeeded
+  SECTION("3") {
     which_option = 3;
   }
   SECTION("4") {
     which_option = 4;
   }
-  SECTION("5") {  // ch7065 reported to have failed
+  SECTION("5") {
     which_option = 5;
   }
   SECTION("6") {
@@ -1521,30 +1255,18 @@ TEST_CASE(
     // different between them a bit easier, at least with some colorizing
     // editors.
     switch (option) {
-      case 1:  // ch7065 reported to have failed
+      case 1:
         expected_result_num = 4;
-        // query_read.add_range(0, dim1_non_empty_domain.first,
-        //   dim1_non_empty_domain.second);
-        // query_read.add_range(0,
-        //   std::string("c"), std::string("d"));
         query_read.add_range(
             std::string("dim1"), std::string("az"), std::string("de"));
-        // query_read.add_range<int32_t>(1, dim2_non_empty_domain.first,
-        //   dim2_non_empty_domain.second);
-        // query_read.add_range(std::string("dim3"), std::string("i"),
-        //   std::string("kl"));
         expected_dim1 = {"bb", "bb", "c", "c"};
         expected_dim2 = {1, 2, 1, 2};
         expected_dim3 = {"hh", "kk", "i", "l"};
         expected_a1_data = {2, 5, 3, 6};
 
         break;
-      case 2:  // ch7065 reported to have succeeded
+      case 2:
         expected_result_num = 2;
-        // query_read.add_range(0, dim1_non_empty_domain.first,
-        //   dim1_non_empty_domain.second);
-        // query_read.add_range(0, std::string("c"),
-        //   std::string("d"));
         query_read.add_range(
             std::string("dim1"), std::string("az"), std::string("de"));
         query_read.add_range<int32_t>(
@@ -1556,18 +1278,12 @@ TEST_CASE(
         expected_dim3 = {"kk", "i"};
         expected_a1_data = {5, 3};
         break;
-      case 3:  // ch7065 reported to have succeeded
+      case 3:
         expected_result_num = 6;
         query_read.add_range(
             0, dim1_non_empty_domain.first, dim1_non_empty_domain.second);
-        // query_read.add_range(0, std::string("c"),
-        //    std::string("d"));
-        // query_read.add_range(
-        //    std::string("dim1"), std::string("az"), std::string("de"));
         query_read.add_range<int32_t>(
             1, dim2_non_empty_domain.first, dim2_non_empty_domain.second);
-        // query_read.add_range(std::string("dim3"),
-        //   std::string("i"), std::string("kl"));
         expected_dim1 = {"a", "a", "bb", "bb", "c", "c"};
         expected_dim2 = {1, 2, 1, 2, 1, 2};
         expected_dim3 = {"g", "j", "hh", "kk", "i", "l"};
@@ -1575,33 +1291,17 @@ TEST_CASE(
         break;
       case 4:
         expected_result_num = 2;
-        // reported to have failed - 'cept seems to be same as case 3 that
-        // succeeded
-        // query_read.add_range(0, dim1_non_empty_domain.first,
-        //   dim1_non_empty_domain.second);
         query_read.add_range(0, std::string("c"), std::string("d"));
-        // query_read.add_range(
-        //   std::string("dim1"), std::string("az"), std::string("de"));
-        // query_read.add_range<int32_t>(1, dim2_non_empty_domain.first,
-        //   dim2_non_empty_domain.second);
-        // query_read.add_range(std::string("dim3"),
-        //   std::string("i"), std::string("kl"));
         expected_dim1 = {"c", "c"};
         expected_dim2 = {1, 2};
         expected_dim3 = {"i", "l"};
         expected_a1_data = {3, 6};
         break;
-      case 5:  // ch7065 reported to have failed
+      case 5:
         expected_result_num = 2;
-        // query_read.add_range(
-        //     0, dim1_non_empty_domain.first, dim1_non_empty_domain.second);
         query_read.add_range(0, std::string("c"), std::string("d"));
-        // query_read.add_range(
-        //   std::string("dim1"), std::string("az"), std::string("de"));
         query_read.add_range<int32_t>(
             1, dim2_non_empty_domain.first, dim2_non_empty_domain.second);
-        // query_read.add_range(std::string("dim3"),
-        //    std::string("i"), std::string("kl"));
         expected_dim1 = {"c", "c"};
         expected_dim2 = {1, 2};
         expected_dim3 = {"i", "l"};
@@ -1609,17 +1309,10 @@ TEST_CASE(
         break;
       case 6:
         expected_result_num = 4;
-        // query_read.add_range(
-        //    0, dim1_non_empty_domain.first,
-        //    dim1_non_empty_domain.second);
-        // query_read.add_range(0, std::string("c"),
-        //  std::string("d"));
         query_read.add_range(
             std::string("dim1"), std::string("az"), std::string("de"));
         query_read.add_range<int32_t>(
             1, dim2_non_empty_domain.first, dim2_non_empty_domain.second);
-        // query_read.add_range(std::string("dim3"),
-        //  std::string("i"), std::string("kl"));
         expected_dim1 = {"bb", "bb", "c", "c"};
         expected_dim2 = {1, 2, 1, 2};
         expected_dim3 = {"hh", "kk", "i", "l"};
@@ -1627,13 +1320,8 @@ TEST_CASE(
         break;
       case 7:
         expected_result_num = 2;
-        // query_read.add_range(
-        //    0, dim1_non_empty_domain.first, dim1_non_empty_domain.second);
-        // query_read.add_range(0, std::string("c"), std::string("d"));
         query_read.add_range(
             std::string("dim1"), std::string("az"), std::string("de"));
-        // query_read.add_range<int32_t>(
-        //    1, dim2_non_empty_domain.first, dim2_non_empty_domain.second);
         query_read.add_range(
             std::string("dim3"), std::string("i"), std::string("kl"));
         expected_dim1 = {"bb", "c"};
@@ -1643,14 +1331,7 @@ TEST_CASE(
         break;
       case 8:
         expected_result_num = 1;
-        // query_read.add_range(
-        //    0, dim1_non_empty_domain.first,
-        //    dim1_non_empty_domain.second);
         query_read.add_range(0, std::string("c"), std::string("d"));
-        // query_read.add_range(
-        //    std::string("dim1"), std::string("az"), std::string("de"));
-        // query_read.add_range<int32_t>(
-        //    1, dim2_non_empty_domain.first, dim2_non_empty_domain.second);
         query_read.add_range(
             std::string("dim3"), std::string("i"), std::string("kl"));
         expected_dim1 = {"c"};
@@ -1662,11 +1343,6 @@ TEST_CASE(
         expected_result_num = 3;
         query_read.add_range(
             0, dim1_non_empty_domain.first, dim1_non_empty_domain.second);
-        // query_read.add_range(0, std::string("c"), std::string("d"));
-        // query_read.add_range(
-        //    std::string("dim1"), std::string("az"), std::string("de"));
-        // query_read.add_range<int32_t>(
-        //    1, dim2_non_empty_domain.first, dim2_non_empty_domain.second);
         query_read.add_range(
             std::string("dim3"), std::string("i"), std::string("kl"));
         expected_dim1 = {"a", "bb", "c"};
@@ -1713,25 +1389,6 @@ TEST_CASE(
       LOG_TRACE(msg.str());
     }
 
-    // ch9473
-    // what_status expectation based on bufcnt vs expected result count is
-    // failing on option 2 with bufcnt 2 (possibly others as well)...
-    // ideally, the expectation of COMPLETE vs INCOMPLETE should be
-    // computable, for option 2 with bufcnt 2, the actual data to be returned
-    // will fit within a1_data with 2 elements. However, in SubarrayPartitioner
-    // compute_current_start_end(), *estimates* of (potential) result size are
-    // used as a max memory size for some audits, and in this case it concludes
-    // the data will not fit, presumably leading to only one item being returned
-    // from the initial read.
-    // This raises the question of how/where it eventually
-    // determines the single item could be returned, apparently it is not
-    // restricted by that estimate elsewhere...? Or maybe it always allows an
-    // attempt of at least one item?
-    // decltype(query_read.query_status()) what_status =
-    //    bufcnt < expected_result_num ? Query::Status::INCOMPLETE :
-    //                                   Query::Status::COMPLETE;
-    // REQUIRE(query_read.query_status() == what_status);
-
     auto collect_data = [&]() {
       std::string dim1s(&dim1[0], dim1.size());
       std::string dim3s(&dim3[0], dim3.size());
@@ -1753,14 +1410,6 @@ TEST_CASE(
       }
     };
     collect_data();
-
-    // ch9473
-    // int expect_what = bufcnt < expected_result_num ? bufcnt :
-    // expected_result_num;
-    // failing on option 2, bufcnt 2 (others unknown)...
-    // (see comment above where status checking was failing before reaching
-    // here.)
-    //    REQUIRE(result_num == expect_what);
 
     unsigned tot_result_num = 0;
     while (query_read.query_status() == Query::Status::INCOMPLETE) {
