@@ -35,6 +35,8 @@
 
 #include "tiledb/common/status.h"
 
+#include "span.hpp"
+
 using namespace tiledb::common;
 
 namespace tiledb {
@@ -73,6 +75,12 @@ class RLE {
 
   /** Returns the compression overhead for the given input. */
   static uint64_t overhead(uint64_t nbytes, uint64_t value_size);
+
+  static std::vector<std::string> compress(
+      nonstd::span<std::string_view> input);
+
+  static std::vector<std::string> decompress(
+      nonstd::span<std::string_view> input);
 };
 
 }  // namespace sm

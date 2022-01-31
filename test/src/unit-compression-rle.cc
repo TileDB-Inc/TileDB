@@ -291,3 +291,33 @@ TEST_CASE(
   delete compressed;
   delete decompressed;
 }
+
+TEST_CASE(
+    "Compression-RLE: Test compression of strings",
+    "[compression][rle][rle-strings]") {
+  std::string_view input[] = {
+      "HG543232", "HG543232", "HG543232", "A", "TGC", "HG54", "HG54"};
+  std::string expected_output[] = {
+      "3", "HG543232", "1", "A", "1", "TGC", "2", "HG54"};
+  auto output = tiledb::sm::RLE::compress(input);
+  CHECK(equal(
+      begin(output),
+      end(output),
+      begin(expected_output),
+      end(expected_output)));
+}
+
+TEST_CASE(
+    "Compression-RLE: Test decompression of strings",
+    "[compression][rle][rle-strings]") {
+  std::string_view input[] = {
+      "3", "HG543232", "1", "A", "1", "TGC", "2", "HG54"};
+  std::string expected_output[] = {
+      "HG543232", "HG543232", "HG543232", "A", "TGC", "HG54", "HG54"};
+  auto output = tiledb::sm::RLE::decompress(input);
+  CHECK(equal(
+      begin(output),
+      end(output),
+      begin(expected_output),
+      end(expected_output)));
+}
