@@ -77,6 +77,7 @@ struct CPPFixedTileMetadataFx {
   }
 
   void write_fragment(
+      uint64_t f,
       tiledb_layout_t layout,
       bool nullable,
       bool all_null,
@@ -84,26 +85,36 @@ struct CPPFixedTileMetadataFx {
     std::default_random_engine random_engine;
 
     // Generate random, sorted strings for the string ascii type.
-    string_ascii_.clear();
-    string_ascii_.reserve(256);
-    if constexpr (std::is_same<TestType, char>::value) {
-      for (uint64_t i = 0; i < 256; i++) {
-        string_ascii_.emplace_back(tiledb::test::random_string(10));
+    if (f == 0) {
+      string_ascii_.clear();
+      string_ascii_.reserve(256);
+      if constexpr (std::is_same<TestType, char>::value) {
+        for (uint64_t i = 0; i < 256; i++) {
+          string_ascii_.emplace_back(tiledb::test::random_string(10));
+        }
+        std::sort(string_ascii_.begin(), string_ascii_.end());
       }
-      std::sort(string_ascii_.begin(), string_ascii_.end());
     }
 
+    // Ensure correct vectors are big enough for this fragment.
+    correct_mins_.resize(f + 1);
+    correct_maxs_.resize(f + 1);
+    correct_sums_int_.resize(f + 1);
+    correct_sums_double_.resize(f + 1);
+    correct_null_counts_.resize(f + 1);
+
     // Compute correct values as the tile is filled with data.
-    correct_mins_.clear();
-    correct_maxs_.clear();
-    correct_sums_int_.clear();
-    correct_sums_double_.clear();
-    correct_null_counts_.clear();
-    correct_mins_.resize(num_tiles_, std::numeric_limits<TestType>::max());
-    correct_maxs_.resize(num_tiles_, std::numeric_limits<TestType>::lowest());
-    correct_sums_int_.resize(num_tiles_, 0);
-    correct_sums_double_.resize(num_tiles_, 0);
-    correct_null_counts_.resize(num_tiles_, 0);
+    correct_mins_[f].clear();
+    correct_maxs_[f].clear();
+    correct_sums_int_[f].clear();
+    correct_sums_double_[f].clear();
+    correct_null_counts_[f].clear();
+    correct_mins_[f].resize(num_tiles_, std::numeric_limits<TestType>::max());
+    correct_maxs_[f].resize(
+        num_tiles_, std::numeric_limits<TestType>::lowest());
+    correct_sums_int_[f].resize(num_tiles_, 0);
+    correct_sums_double_[f].resize(num_tiles_, 0);
+    correct_null_counts_[f].resize(num_tiles_, 0);
 
     // Fill the tiles with data.
     std::vector<uint32_t> d(num_cells_);
@@ -146,25 +157,25 @@ struct CPPFixedTileMetadataFx {
 
         if constexpr (!std::is_same<TestType, char>::value) {
           if (a_val[i] == 1) {
-            correct_sums_int_[tile_idx] += (int64_t)val;
+            correct_sums_int_[f][tile_idx] += (int64_t)val;
           }
         }
       } else {
         std::uniform_real_distribution<TestType> dist(-10000, 10000);
         val = dist(random_engine);
         if (a_val[i] == 1) {
-          correct_sums_double_[tile_idx] += (double)val;
+          correct_sums_double_[f][tile_idx] += (double)val;
         }
       }
 
       // Compute correct min/max.
       if (a_val[i] == 1) {
-        correct_mins_[tile_idx] = std::min(correct_mins_[tile_idx], val);
-        correct_maxs_[tile_idx] = std::max(correct_maxs_[tile_idx], val);
+        correct_mins_[f][tile_idx] = std::min(correct_mins_[f][tile_idx], val);
+        correct_maxs_[f][tile_idx] = std::max(correct_maxs_[f][tile_idx], val);
       }
 
       // Compute correct null count.
-      correct_null_counts_[tile_idx] += uint64_t(a_val[i] == 0);
+      correct_null_counts_[f][tile_idx] += uint64_t(a_val[i] == 0);
 
       // Set the value.
       if constexpr (std::is_same<TestType, char>::value) {
@@ -203,6 +214,7 @@ struct CPPFixedTileMetadataFx {
   }
 
   void check_metadata(
+      uint64_t f,
       tiledb_layout_t layout,
       bool nullable,
       bool all_null,
@@ -223,19 +235,19 @@ struct CPPFixedTileMetadataFx {
     if (has_coords) {
       std::vector<std::string> names_min{"d"};
       auto st =
-          frag_meta[0]->load_tile_min_values(enc_key, std::move(names_min));
+          frag_meta[f]->load_tile_min_values(enc_key, std::move(names_min));
       CHECK(st.ok());
 
       std::vector<std::string> names_max{"d"};
-      st = frag_meta[0]->load_tile_max_values(enc_key, std::move(names_max));
+      st = frag_meta[f]->load_tile_max_values(enc_key, std::move(names_max));
       CHECK(st.ok());
 
       std::vector<std::string> names_sum{"d"};
-      st = frag_meta[0]->load_tile_sum_values(enc_key, std::move(names_sum));
+      st = frag_meta[f]->load_tile_sum_values(enc_key, std::move(names_sum));
       CHECK(st.ok());
 
       std::vector<std::string> names_null_count{"d"};
-      st = frag_meta[0]->load_tile_null_count_values(
+      st = frag_meta[f]->load_tile_null_count_values(
           enc_key, std::move(names_null_count));
       CHECK(st.ok());
 
@@ -250,20 +262,20 @@ struct CPPFixedTileMetadataFx {
 
           // Validate min.
           auto&& [st_min, min, min_size] =
-              frag_meta[0]->get_tile_min("d", tile_idx);
+              frag_meta[f]->get_tile_min("d", tile_idx);
           CHECK(!st_min.ok());
           CHECK(!min.has_value());
           CHECK(!min_size.has_value());
 
           // Validate max.
           auto&& [st_max, max, max_size] =
-              frag_meta[0]->get_tile_max("d", tile_idx);
+              frag_meta[f]->get_tile_max("d", tile_idx);
           CHECK(!st_max.ok());
           CHECK(!max.has_value());
           CHECK(!max_size.has_value());
 
           // Validate sum.
-          auto&& [st_sum, sum] = frag_meta[0]->get_tile_sum("d", tile_idx);
+          auto&& [st_sum, sum] = frag_meta[f]->get_tile_sum("d", tile_idx);
           CHECK(st_sum.ok());
           if (st_sum.ok()) {
             CHECK(*(int64_t*)*sum == correct_sum);
@@ -274,19 +286,19 @@ struct CPPFixedTileMetadataFx {
 
     // Load attribute metadata.
     std::vector<std::string> names_min{"a"};
-    auto st = frag_meta[0]->load_tile_min_values(enc_key, std::move(names_min));
+    auto st = frag_meta[f]->load_tile_min_values(enc_key, std::move(names_min));
     CHECK(st.ok());
 
     std::vector<std::string> names_max{"a"};
-    st = frag_meta[0]->load_tile_max_values(enc_key, std::move(names_max));
+    st = frag_meta[f]->load_tile_max_values(enc_key, std::move(names_max));
     CHECK(st.ok());
 
     std::vector<std::string> names_sum{"a"};
-    st = frag_meta[0]->load_tile_sum_values(enc_key, std::move(names_sum));
+    st = frag_meta[f]->load_tile_sum_values(enc_key, std::move(names_sum));
     CHECK(st.ok());
 
     std::vector<std::string> names_null_count{"a"};
-    st = frag_meta[0]->load_tile_null_count_values(
+    st = frag_meta[f]->load_tile_null_count_values(
         enc_key, std::move(names_null_count));
     CHECK(st.ok());
 
@@ -297,14 +309,14 @@ struct CPPFixedTileMetadataFx {
         for (uint64_t tile_idx = 0; tile_idx < num_tiles_; tile_idx++) {
           // Validate min.
           auto&& [st_min, min, min_size] =
-              frag_meta[0]->get_tile_min("a", tile_idx);
+              frag_meta[f]->get_tile_min("a", tile_idx);
           CHECK(st_min.ok());
           if (st_min.ok()) {
             CHECK(*min_size == cell_val_num);
 
             // For strings, the index is stored in a signed value, switch to
             // the index to unsigned.
-            int64_t idx = (int64_t)correct_mins_[tile_idx] -
+            int64_t idx = (int64_t)correct_mins_[f][tile_idx] -
                           (int64_t)std::numeric_limits<char>::min();
             CHECK(
                 0 == strncmp(
@@ -315,14 +327,14 @@ struct CPPFixedTileMetadataFx {
 
           // Validate max.
           auto&& [st_max, max, max_size] =
-              frag_meta[0]->get_tile_max("a", tile_idx);
+              frag_meta[f]->get_tile_max("a", tile_idx);
           CHECK(st_max.ok());
           if (st_max.ok()) {
             CHECK(*max_size == cell_val_num);
 
             // For strings, the index is stored in a signed value, switch to
             // the index to unsigned.
-            int64_t idx = (int64_t)correct_maxs_[tile_idx] -
+            int64_t idx = (int64_t)correct_maxs_[f][tile_idx] -
                           (int64_t)std::numeric_limits<char>::min();
             CHECK(
                 0 == strncmp(
@@ -332,7 +344,7 @@ struct CPPFixedTileMetadataFx {
           }
 
           // Validate no sum.
-          auto&& [st_sum, sum] = frag_meta[0]->get_tile_sum("a", tile_idx);
+          auto&& [st_sum, sum] = frag_meta[f]->get_tile_sum("a", tile_idx);
           CHECK(!st_sum.ok());
         }
       } else {
@@ -340,30 +352,30 @@ struct CPPFixedTileMetadataFx {
         for (uint64_t tile_idx = 0; tile_idx < num_tiles_; tile_idx++) {
           // Validate min.
           auto&& [st_min, min, min_size] =
-              frag_meta[0]->get_tile_min("a", tile_idx);
+              frag_meta[f]->get_tile_min("a", tile_idx);
           CHECK(st_min.ok());
           if (st_min.ok()) {
             CHECK(*min_size == sizeof(TestType));
-            CHECK(0 == memcmp(*min, &correct_mins_[tile_idx], *min_size));
+            CHECK(0 == memcmp(*min, &correct_mins_[f][tile_idx], *min_size));
           }
 
           // Validate max.
           auto&& [st_max, max, max_size] =
-              frag_meta[0]->get_tile_max("a", tile_idx);
+              frag_meta[f]->get_tile_max("a", tile_idx);
           CHECK(st_max.ok());
           if (st_max.ok()) {
             CHECK(*max_size == sizeof(TestType));
-            CHECK(0 == memcmp(*max, &correct_maxs_[tile_idx], *max_size));
+            CHECK(0 == memcmp(*max, &correct_maxs_[f][tile_idx], *max_size));
           }
 
           // Validate sum.
-          auto&& [st_sum, sum] = frag_meta[0]->get_tile_sum("a", tile_idx);
+          auto&& [st_sum, sum] = frag_meta[f]->get_tile_sum("a", tile_idx);
           CHECK(st_sum.ok());
           if (st_sum.ok()) {
             if constexpr (std::is_integral_v<TestType>) {
-              CHECK(*(int64_t*)*sum == correct_sums_int_[tile_idx]);
+              CHECK(*(int64_t*)*sum == correct_sums_int_[f][tile_idx]);
             } else {
-              CHECK(*(double*)*sum == correct_sums_double_[tile_idx]);
+              CHECK(*(double*)*sum == correct_sums_double_[f][tile_idx]);
             }
           }
         }
@@ -373,10 +385,10 @@ struct CPPFixedTileMetadataFx {
     // Check null count.
     for (uint64_t tile_idx = 0; tile_idx < num_tiles_; tile_idx++) {
       // Null count.
-      auto&& [st_nc, nc] = frag_meta[0]->get_tile_null_count("a", tile_idx);
+      auto&& [st_nc, nc] = frag_meta[f]->get_tile_null_count("a", tile_idx);
       CHECK(st_nc.ok() == nullable);
       if (st_nc.ok()) {
-        CHECK(*nc == correct_null_counts_[tile_idx]);
+        CHECK(*nc == correct_null_counts_[f][tile_idx]);
       }
     }
 
@@ -389,11 +401,11 @@ struct CPPFixedTileMetadataFx {
     tiledb_ctx_free(&ctx);
   }
 
-  std::vector<TestType> correct_mins_;
-  std::vector<TestType> correct_maxs_;
-  std::vector<int64_t> correct_sums_int_;
-  std::vector<double> correct_sums_double_;
-  std::vector<uint64_t> correct_null_counts_;
+  std::vector<std::vector<TestType>> correct_mins_;
+  std::vector<std::vector<TestType>> correct_maxs_;
+  std::vector<std::vector<int64_t>> correct_sums_int_;
+  std::vector<std::vector<double>> correct_sums_double_;
+  std::vector<std::vector<uint64_t>> correct_null_counts_;
   std::vector<std::string> string_ascii_;
 
   const char* ARRAY_NAME = "tile_metadata_unit_array";
@@ -428,6 +440,8 @@ TEMPLATE_LIST_TEST_CASE_METHOD(
   tiledb_layout_t layout =
       GENERATE(TILEDB_UNORDERED, TILEDB_GLOBAL_ORDER, TILEDB_ROW_MAJOR);
 
+  uint64_t num_frag = GENERATE(1, 2);
+
   bool nullable = test == "nullable" || test == "all null";
   bool all_null = test == "all null";
 
@@ -436,13 +450,17 @@ TEMPLATE_LIST_TEST_CASE_METHOD(
   // Create the array.
   CPPFixedTileMetadataFx<T>::create_array(layout, nullable, cell_val_num);
 
-  // Write a fragment.
-  CPPFixedTileMetadataFx<T>::write_fragment(
-      layout, nullable, all_null, cell_val_num);
+  for (uint64_t f = 0; f < num_frag; f++) {
+    // Write a fragment.
+    CPPFixedTileMetadataFx<T>::write_fragment(
+        f, layout, nullable, all_null, cell_val_num);
+  }
 
-  // Check metadata.
-  CPPFixedTileMetadataFx<T>::check_metadata(
-      layout, nullable, all_null, cell_val_num);
+  for (uint64_t f = 0; f < num_frag; f++) {
+    // Check metadata.
+    CPPFixedTileMetadataFx<T>::check_metadata(
+        f, layout, nullable, all_null, cell_val_num);
+  }
 }
 
 struct CPPVarTileMetadataFx {
@@ -478,19 +496,22 @@ struct CPPVarTileMetadataFx {
     Array::create(ARRAY_NAME, schema);
   }
 
-  void write_fragment(tiledb_layout_t layout, bool nullable, bool all_null) {
+  void write_fragment(
+      uint64_t f, tiledb_layout_t layout, bool nullable, bool all_null) {
     std::default_random_engine random_engine;
 
     uint64_t max_string_size = 100;
     uint64_t num_strings = 2000;
 
-    // Generate random, sorted strings for the string ascii type.
-    strings_.reserve(num_strings);
-    for (uint64_t i = 0; i < num_strings; i++) {
-      strings_.emplace_back(
-          tiledb::test::random_string(rand() % max_string_size));
+    if (f == 0) {
+      // Generate random, sorted strings for the string ascii type.
+      strings_.reserve(num_strings);
+      for (uint64_t i = 0; i < num_strings; i++) {
+        strings_.emplace_back(
+            tiledb::test::random_string(rand() % max_string_size));
+      }
+      std::sort(strings_.begin(), strings_.end());
     }
-    std::sort(strings_.begin(), strings_.end());
 
     // Choose strings randomly.
     std::vector<int> values;
@@ -501,13 +522,18 @@ struct CPPVarTileMetadataFx {
       var_size += strings_[values.back()].size();
     }
 
+    // Ensure correct vectors are big enough for this fragment.
+    correct_mins_.resize(f + 1);
+    correct_maxs_.resize(f + 1);
+    correct_null_counts_.resize(f + 1);
+
     // Compute correct values as the tile is filled with data.
-    correct_mins_.clear();
-    correct_maxs_.clear();
-    correct_null_counts_.clear();
-    correct_mins_.resize(num_tiles_, std::numeric_limits<int>::max());
-    correct_maxs_.resize(num_tiles_, std::numeric_limits<int>::lowest());
-    correct_null_counts_.resize(num_tiles_, 0);
+    correct_mins_[f].clear();
+    correct_maxs_[f].clear();
+    correct_null_counts_[f].clear();
+    correct_mins_[f].resize(num_tiles_, std::numeric_limits<int>::max());
+    correct_maxs_[f].resize(num_tiles_, std::numeric_limits<int>::lowest());
+    correct_null_counts_[f].resize(num_tiles_, 0);
 
     // Fill the tiles with data.
     uint64_t offset = 0;
@@ -523,12 +549,14 @@ struct CPPVarTileMetadataFx {
 
       // Compute correct min/max.
       if (a_val[i] == 1) {
-        correct_mins_[tile_idx] = std::min(correct_mins_[tile_idx], values[i]);
-        correct_maxs_[tile_idx] = std::max(correct_maxs_[tile_idx], values[i]);
+        correct_mins_[f][tile_idx] =
+            std::min(correct_mins_[f][tile_idx], values[i]);
+        correct_maxs_[f][tile_idx] =
+            std::max(correct_maxs_[f][tile_idx], values[i]);
       }
 
       // Compute correct null count.
-      correct_null_counts_[tile_idx] += uint64_t(a_val[i] == 0);
+      correct_null_counts_[f][tile_idx] += uint64_t(a_val[i] == 0);
 
       // Copy the string.
       a_offsets[i] = offset;
@@ -561,7 +589,8 @@ struct CPPVarTileMetadataFx {
     array.close();
   }
 
-  void check_metadata(tiledb_layout_t layout, bool nullable, bool all_null) {
+  void check_metadata(
+      uint64_t f, tiledb_layout_t layout, bool nullable, bool all_null) {
     // Open array.
     tiledb_ctx_t* ctx;
     tiledb_ctx_alloc(NULL, &ctx);
@@ -578,19 +607,19 @@ struct CPPVarTileMetadataFx {
     if (has_coords) {
       std::vector<std::string> names_min{"d"};
       auto st =
-          frag_meta[0]->load_tile_min_values(enc_key, std::move(names_min));
+          frag_meta[f]->load_tile_min_values(enc_key, std::move(names_min));
       CHECK(st.ok());
 
       std::vector<std::string> names_max{"d"};
-      st = frag_meta[0]->load_tile_max_values(enc_key, std::move(names_max));
+      st = frag_meta[f]->load_tile_max_values(enc_key, std::move(names_max));
       CHECK(st.ok());
 
       std::vector<std::string> names_sum{"d"};
-      st = frag_meta[0]->load_tile_sum_values(enc_key, std::move(names_sum));
+      st = frag_meta[f]->load_tile_sum_values(enc_key, std::move(names_sum));
       CHECK(st.ok());
 
       std::vector<std::string> names_null_count{"d"};
-      st = frag_meta[0]->load_tile_null_count_values(
+      st = frag_meta[f]->load_tile_null_count_values(
           enc_key, std::move(names_null_count));
       CHECK(st.ok());
 
@@ -605,19 +634,19 @@ struct CPPVarTileMetadataFx {
 
           // Validate no min.
           auto&& [st_min, min, min_size] =
-              frag_meta[0]->get_tile_min("d", tile_idx);
+              frag_meta[f]->get_tile_min("d", tile_idx);
           CHECK(!min.has_value());
           CHECK(!min_size.has_value());
 
           // Validate no max.
           auto&& [st_max, max, max_size] =
-              frag_meta[0]->get_tile_max("d", tile_idx);
+              frag_meta[f]->get_tile_max("d", tile_idx);
           CHECK(!st_max.ok());
           CHECK(!max.has_value());
           CHECK(!max_size.has_value());
 
           // Validate sum.
-          auto&& [st_sum, sum] = frag_meta[0]->get_tile_sum("d", tile_idx);
+          auto&& [st_sum, sum] = frag_meta[f]->get_tile_sum("d", tile_idx);
           CHECK(st_sum.ok());
           if (st_sum.ok()) {
             CHECK(*(int64_t*)*sum == correct_sum);
@@ -628,19 +657,19 @@ struct CPPVarTileMetadataFx {
 
     // Load attribute metadata.
     std::vector<std::string> names_min{"a"};
-    auto st = frag_meta[0]->load_tile_min_values(enc_key, std::move(names_min));
+    auto st = frag_meta[f]->load_tile_min_values(enc_key, std::move(names_min));
     CHECK(st.ok());
 
     std::vector<std::string> names_max{"a"};
-    st = frag_meta[0]->load_tile_max_values(enc_key, std::move(names_max));
+    st = frag_meta[f]->load_tile_max_values(enc_key, std::move(names_max));
     CHECK(st.ok());
 
     std::vector<std::string> names_sum{"a"};
-    st = frag_meta[0]->load_tile_sum_values(enc_key, std::move(names_sum));
+    st = frag_meta[f]->load_tile_sum_values(enc_key, std::move(names_sum));
     CHECK(st.ok());
 
     std::vector<std::string> names_null_count{"a"};
-    st = frag_meta[0]->load_tile_null_count_values(
+    st = frag_meta[f]->load_tile_null_count_values(
         enc_key, std::move(names_null_count));
     CHECK(st.ok());
 
@@ -650,10 +679,10 @@ struct CPPVarTileMetadataFx {
       for (uint64_t tile_idx = 0; tile_idx < num_tiles_; tile_idx++) {
         // Validate min.
         auto&& [st_min, min, min_size] =
-            frag_meta[0]->get_tile_min("a", tile_idx);
+            frag_meta[f]->get_tile_min("a", tile_idx);
         CHECK(st_min.ok());
         if (st_min.ok()) {
-          int idx = correct_mins_[tile_idx];
+          int idx = correct_mins_[f][tile_idx];
           CHECK(*min_size == strings_[idx].size());
           CHECK(
               0 == strncmp(
@@ -664,10 +693,10 @@ struct CPPVarTileMetadataFx {
 
         // Validate max.
         auto&& [st_max, max, max_size] =
-            frag_meta[0]->get_tile_max("a", tile_idx);
+            frag_meta[f]->get_tile_max("a", tile_idx);
         CHECK(st_max.ok());
         if (st_max.ok()) {
-          int idx = correct_maxs_[tile_idx];
+          int idx = correct_maxs_[f][tile_idx];
           CHECK(*max_size == strings_[idx].size());
           CHECK(
               0 == strncmp(
@@ -677,7 +706,7 @@ struct CPPVarTileMetadataFx {
         }
 
         // Validate no sum.
-        auto&& [st_sum, sum] = frag_meta[0]->get_tile_sum("a", tile_idx);
+        auto&& [st_sum, sum] = frag_meta[f]->get_tile_sum("a", tile_idx);
         CHECK(!st_sum.ok());
       }
     }
@@ -685,10 +714,10 @@ struct CPPVarTileMetadataFx {
     // Check null count.
     for (uint64_t tile_idx = 0; tile_idx < num_tiles_; tile_idx++) {
       // Null count.
-      auto&& [st_nc, nc] = frag_meta[0]->get_tile_null_count("a", tile_idx);
+      auto&& [st_nc, nc] = frag_meta[f]->get_tile_null_count("a", tile_idx);
       CHECK(st_nc.ok() == nullable);
       if (st_nc.ok()) {
-        CHECK(*nc == correct_null_counts_[tile_idx]);
+        CHECK(*nc == correct_null_counts_[f][tile_idx]);
       }
     }
 
@@ -701,9 +730,9 @@ struct CPPVarTileMetadataFx {
     tiledb_ctx_free(&ctx);
   }
 
-  std::vector<int> correct_mins_;
-  std::vector<int> correct_maxs_;
-  std::vector<uint64_t> correct_null_counts_;
+  std::vector<std::vector<int>> correct_mins_;
+  std::vector<std::vector<int>> correct_maxs_;
+  std::vector<std::vector<uint64_t>> correct_null_counts_;
   std::vector<std::string> strings_;
 
   const char* ARRAY_NAME = "tile_metadata_unit_array";
@@ -723,15 +752,21 @@ TEST_CASE_METHOD(
   tiledb_layout_t layout =
       GENERATE(TILEDB_UNORDERED, TILEDB_GLOBAL_ORDER, TILEDB_ROW_MAJOR);
 
+  uint64_t num_frag = GENERATE(1, 2);
+
   bool nullable = test == "nullable" || test == "all null";
   bool all_null = test == "all null";
 
   // Create the array.
   CPPVarTileMetadataFx::create_array(layout, nullable);
 
-  // Write a fragment.
-  CPPVarTileMetadataFx::write_fragment(layout, nullable, all_null);
+  for (uint64_t f = 0; f < num_frag; f++) {
+    // Write a fragment.
+    CPPVarTileMetadataFx::write_fragment(f, layout, nullable, all_null);
+  }
 
-  // Check metadata.
-  CPPVarTileMetadataFx::check_metadata(layout, nullable, all_null);
+  for (uint64_t f = 0; f < num_frag; f++) {
+    // Check metadata.
+    CPPVarTileMetadataFx::check_metadata(f, layout, nullable, all_null);
+  }
 }
