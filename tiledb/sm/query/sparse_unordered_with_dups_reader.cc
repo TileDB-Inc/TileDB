@@ -337,13 +337,13 @@ Status SparseUnorderedWithDupsReader<BitmapType>::create_result_tiles() {
     unsigned int f = 0;
     while (f < fragment_num && !budget_exceeded) {
       if (!all_tiles_loaded_[f]) {
-        auto range_it = result_tile_ranges_[f].rbegin();
-        all_tiles_loaded_[f] = range_it == result_tile_ranges_[f].rend();
-        while (range_it != result_tile_ranges_[f].rend()) {
+        all_tiles_loaded_[f] = result_tile_ranges_[f].empty();
+        while (!result_tile_ranges_[f].empty()) {
+          auto& range = result_tile_ranges_[f].back();
           const auto last_t = result_tile_ranges_[f].front().second;
 
           // Add all tiles for this range.
-          for (uint64_t t = range_it->first; t <= range_it->second; t++) {
+          for (uint64_t t = range.first; t <= range.second; t++) {
             auto&& [st, exceeded] = add_result_tile(
                 dim_num,
                 memory_budget_qc_tiles,
@@ -368,12 +368,11 @@ Status SparseUnorderedWithDupsReader<BitmapType>::create_result_tiles() {
               break;
             }
 
-            range_it->first++;
+            range.first++;
           }
 
           if (budget_exceeded)
             break;
-          range_it++;
           remove_result_tile_range(f);
         }
       }
