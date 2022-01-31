@@ -295,29 +295,169 @@ TEST_CASE(
 TEST_CASE(
     "Compression-RLE: Test compression of strings",
     "[compression][rle][rle-strings]") {
-  std::string_view input[] = {
-      "HG543232", "HG543232", "HG543232", "A", "TGC", "HG54", "HG54"};
-  std::string expected_output[] = {
-      "3", "HG543232", "1", "A", "1", "TGC", "2", "HG54"};
-  auto output = tiledb::sm::RLE::compress(input);
-  CHECK(equal(
-      begin(output),
-      end(output),
-      begin(expected_output),
-      end(expected_output)));
+  SECTION("Compress") {
+    std::string_view uncompressed[] = {
+        "HG543232", "HG543232", "HG543232", "A", "TGC", "HG54", "HG54", "A"};
+    std::string ref_compressed[] = {
+        "3", "HG543232", "1", "A", "1", "TGC", "2", "HG54", "1", "A"};
+    auto compressed = tiledb::sm::RLE::compress(uncompressed);
+    CHECK(equal(
+        begin(compressed),
+        end(compressed),
+        begin(ref_compressed),
+        end(ref_compressed)));
+  }
+
+  SECTION("Decompress") {
+    std::string_view compressed[] = {
+        "3", "HG543232", "1", "A", "1", "TGC", "2", "HG54", "1", "A"};
+    std::string ref_uncompressed[] = {
+        "HG543232", "HG543232", "HG543232", "A", "TGC", "HG54", "HG54", "A"};
+    auto uncompressed = tiledb::sm::RLE::decompress(compressed);
+    CHECK(equal(
+        begin(uncompressed),
+        end(uncompressed),
+        begin(ref_uncompressed),
+        end(ref_uncompressed)));
+  }
 }
 
 TEST_CASE(
-    "Compression-RLE: Test decompression of strings",
+    "Compression-RLE: Test too long runs", "[compression][rle][rle-strings]") {
+  tiledb::sm::RLE::set_max_run_length(2);
+
+  SECTION("Compress/Uncompress single duplicate run") {
+    // compress
+    std::string_view input[] = {
+        "HG543232", "HG543232", "HG543232", "A", "TGC", "HG54", "HG54"};
+    std::string expected_output[] = {
+        "2", "HG543232", "1", "HG543232", "1", "A", "1", "TGC", "2", "HG54"};
+    auto output = tiledb::sm::RLE::compress(input);
+    CHECK(equal(
+        begin(output),
+        end(output),
+        begin(expected_output),
+        end(expected_output)));
+
+    // decompress
+    std::string_view compressed[] = {
+        "2", "HG543232", "1", "HG543232", "1", "A", "1", "TGC", "2", "HG54"};
+    std::string ref_uncompressed[] = {
+        "HG543232", "HG543232", "HG543232", "A", "TGC", "HG54", "HG54"};
+    auto uncompressed = tiledb::sm::RLE::decompress(compressed);
+    CHECK(equal(
+        begin(uncompressed),
+        end(uncompressed),
+        begin(ref_uncompressed),
+        end(ref_uncompressed)));
+  }
+
+  SECTION("Compress/Uncompress double duplicate run") {
+    // compress
+    std::string_view input[] = {
+        "HG543232", "HG543232", "A", "A", "A", "A", "A", "TGC", "HG54", "HG54"};
+    std::string expected_output[] = {
+        "2", "HG543232", "2", "A", "2", "A", "1", "A", "1", "TGC", "2", "HG54"};
+    auto output = tiledb::sm::RLE::compress(nonstd::span{input});
+    CHECK(equal(
+        begin(output),
+        end(output),
+        begin(expected_output),
+        end(expected_output)));
+
+    // decompress
+    std::string_view compressed[] = {
+        "2", "HG543232", "2", "A", "2", "A", "1", "A", "1", "TGC", "2", "HG54"};
+    std::string ref_uncompressed[] = {
+        "HG543232", "HG543232", "A", "A", "A", "A", "A", "TGC", "HG54", "HG54"};
+    auto uncompressed = tiledb::sm::RLE::decompress(nonstd::span{compressed});
+    CHECK(equal(
+        begin(uncompressed),
+        end(uncompressed),
+        begin(ref_uncompressed),
+        end(ref_uncompressed)));
+  }
+}
+
+TEST_CASE(
+    "Compression-RLE: Test empty input", "[compression][rle][rle-strings]") {
+  SECTION("Compress") {
+    std::vector<std::string_view> uncompressed;
+    std::vector<std::string_view> ref_compressed;
+    auto compressed = tiledb::sm::RLE::compress(nonstd::span{uncompressed});
+    CHECK(equal(
+        begin(compressed),
+        end(compressed),
+        begin(ref_compressed),
+        end(ref_compressed)));
+  }
+
+  SECTION("Decompress") {
+    std::vector<std::string_view> compressed;
+    std::vector<std::string_view> ref_uncompressed;
+    auto uncompressed = tiledb::sm::RLE::decompress(compressed);
+    CHECK(equal(
+        begin(uncompressed),
+        end(uncompressed),
+        begin(ref_uncompressed),
+        end(ref_uncompressed)));
+  }
+}
+
+TEST_CASE(
+    "Compression-RLE: Test input of unique elements (worst case)",
     "[compression][rle][rle-strings]") {
-  std::string_view input[] = {
-      "3", "HG543232", "1", "A", "1", "TGC", "2", "HG54"};
-  std::string expected_output[] = {
-      "HG543232", "HG543232", "HG543232", "A", "TGC", "HG54", "HG54"};
-  auto output = tiledb::sm::RLE::decompress(input);
-  CHECK(equal(
-      begin(output),
-      end(output),
-      begin(expected_output),
-      end(expected_output)));
+  unsigned long unique_elem_len = 7;
+
+  SECTION("Compress") {
+    std::string_view uncompressed[] = {
+        "HG543232", "ATG", "AT", "A", "TGC", "HG54", "HG5"};
+    std::string ref_compressed[] = {"1",
+                                    "HG543232",
+                                    "1",
+                                    "ATG",
+                                    "1",
+                                    "AT",
+                                    "1",
+                                    "A",
+                                    "1",
+                                    "TGC",
+                                    "1",
+                                    "HG54",
+                                    "1",
+                                    "HG5"};
+    auto compressed = tiledb::sm::RLE::compress(uncompressed);
+    CHECK(compressed.size() == 2 * unique_elem_len);
+    CHECK(equal(
+        begin(compressed),
+        end(compressed),
+        begin(ref_compressed),
+        end(ref_compressed)));
+  }
+
+  SECTION("Decompress") {
+    std::string_view compressed[] = {"1",
+                                     "HG543232",
+                                     "1",
+                                     "ATG",
+                                     "1",
+                                     "AT",
+                                     "1",
+                                     "A",
+                                     "1",
+                                     "TGC",
+                                     "1",
+                                     "HG54",
+                                     "1",
+                                     "HG5"};
+    std::string ref_uncompressed[] = {
+        "HG543232", "ATG", "AT", "A", "TGC", "HG54", "HG5"};
+    auto uncompressed = tiledb::sm::RLE::decompress(compressed);
+    CHECK(uncompressed.size() == unique_elem_len);
+    CHECK(equal(
+        begin(uncompressed),
+        end(uncompressed),
+        begin(ref_uncompressed),
+        end(ref_uncompressed)));
+  }
 }

@@ -37,6 +37,8 @@
 
 #include "span.hpp"
 
+#include <vector>
+
 using namespace tiledb::common;
 
 namespace tiledb {
@@ -76,11 +78,40 @@ class RLE {
   /** Returns the compression overhead for the given input. */
   static uint64_t overhead(uint64_t nbytes, uint64_t value_size);
 
+  /**
+   * Override max_run_length_. Used in tests only.
+   *
+   * @param max_run_length The maximum length of a run in strings RLE
+   */
+  static void set_max_run_length(const uint64_t max_tile_chunk_size);
+
+  /**
+   * Collection of strings compression function.
+   *
+   * @param input_buffer Input in form of a contiguous sequence of buffers to
+   * compress
+   * @return RLE encoded output as a vector of strings
+   */
   static std::vector<std::string> compress(
       nonstd::span<std::string_view> input);
 
+  /**
+   * Collection of strings decompression function.
+   *
+   * @param input_buffer Input in form of a contiguous sequence of buffers in
+   * RLE format to decompress
+   * @return RLE decoded output as a vector of strings
+   */
   static std::vector<std::string> decompress(
       nonstd::span<std::string_view> input);
+
+ private:
+  /* ********************************* */
+  /*         PRIVATE ATTRIBUTES        */
+  /* ********************************* */
+
+  /* The maximum length of a run in strings RLE */
+  static inline uint64_t max_run_length_ = UINT64_MAX;
 };
 
 }  // namespace sm
