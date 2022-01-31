@@ -672,19 +672,17 @@ class Dimension {
       std::vector<uint64_t>& relevant_ranges);
 
   /** Compute covered on a set of relevant ranges. */
-  void covered_vec(
+  std::vector<bool> covered_vec(
       const NDRange& ranges,
       const Range& mbr,
-      const std::vector<uint64_t>& relevant_ranges,
-      std::vector<bool>& covered) const;
+      const std::vector<uint64_t>& relevant_ranges) const;
 
   /** Compute covered on a set of relevant ranges. */
   template <class T>
-  static void covered_vec(
+  static std::vector<bool> covered_vec(
       const NDRange& ranges,
       const Range& mbr,
-      const std::vector<uint64_t>& relevant_ranges,
-      std::vector<bool>& covered);
+      const std::vector<uint64_t>& relevant_ranges);
 
   /** Splits `r` at point `v`, producing 1D ranges `r1` and `r2`. */
   void split_range(
@@ -955,11 +953,8 @@ class Dimension {
    * Stores the appropriate templated covered_vec() function based on the
    * dimension datatype.
    */
-  std::function<void(
-      const NDRange&,
-      const Range&,
-      const std::vector<uint64_t>&,
-      std::vector<bool>&)>
+  std::function<std::vector<bool>(
+      const NDRange&, const Range&, const std::vector<uint64_t>&)>
       covered_vec_func_;
 
   /**

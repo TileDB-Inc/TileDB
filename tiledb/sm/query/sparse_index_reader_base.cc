@@ -266,7 +266,7 @@ Status SparseIndexReaderBase::load_initial_data() {
   std::vector<std::string> var_size_to_load;
   for (unsigned d = 0; d < dim_num; ++d) {
     dim_names_.emplace_back(array_schema_->dimension(d)->name());
-    is_dim_var_size_[d] = array_schema_->var_size(dim_names_[d]);
+    is_dim_var_size_.emplace_back(array_schema_->var_size(dim_names_[d]));
     if (is_dim_var_size_[d])
       var_size_to_load.emplace_back(dim_names_[d]);
   }
@@ -442,10 +442,9 @@ Status SparseIndexReaderBase::compute_tile_bitmaps(
           // there is no need to compute bitmaps.
           const bool is_uint8_t = std::is_same<BitmapType, uint8_t>::value;
           if (is_uint8_t) {
-            std::vector<bool> covered_bitmap;
-            covered_bitmap.reserve(relevant_ranges.size());
-            domain->dimension(dim_idx)->covered_vec(
-                ranges_for_dim, mbr[dim_idx], relevant_ranges, covered_bitmap);
+            std::vector<bool> covered_bitmap =
+                domain->dimension(dim_idx)->covered_vec(
+                    ranges_for_dim, mbr[dim_idx], relevant_ranges);
 
             // See if any range is covered.
             uint64_t count = std::accumulate(
