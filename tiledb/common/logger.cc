@@ -47,8 +47,10 @@ namespace tiledb::common {
 /*     CONSTRUCTORS & DESTRUCTORS    */
 /* ********************************* */
 
-Logger::Logger(const std::string& name, const Logger::Format format, const bool root)
-    : name_(name), root_(root) {
+Logger::Logger(
+    const std::string& name, const Logger::Format format, const bool root)
+    : name_(name)
+    , root_(root) {
   logger_ = spdlog::get(name_);
   if (logger_ == nullptr) {
 #ifdef _WIN32
@@ -73,7 +75,8 @@ Logger::Logger(tdb_shared_ptr<spdlog::logger> logger) {
 
 Logger::~Logger() {
   if (root_ && fmt_ == Logger::Format::JSON) {
-    // If this is the root/global logger being destroyed, then we output "Logging finished"
+    // If this is the root/global logger being destroyed, then we output
+    // "Logging finished"
     std::string last_log_pattern = {
         "{\"severity\":\"%l\",\"timestamp\":\"%Y-%m-%dT%H:%M:%S.%f%z\","
         "\"process\":\"%P\",\"name\":{%n},\"message\":\"%v\"}"};

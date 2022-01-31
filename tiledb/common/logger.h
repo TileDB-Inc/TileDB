@@ -383,7 +383,8 @@ class Logger {
   /** The format of the logger  */
   static inline Logger::Format fmt_ = Logger::Format::DEFAULT;
 
-  /** A boolean flag that tells us whether the logger is the statically declared global_logger */
+  /** A boolean flag that tells us whether the logger is the statically declared
+   * global_logger */
   bool root_ = false;
 
   /* ********************************* */
