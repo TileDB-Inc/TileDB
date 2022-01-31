@@ -30,7 +30,6 @@
  * This file defines class Logger, declared in logger.h, and the public logging
  * functions, declared in logger_public.h.
  */
-#include <iostream>
 
 #include "tiledb/common/logger.h"
 
