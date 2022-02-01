@@ -347,27 +347,20 @@ Status DenseReader::dense_read() {
       result_space_tiles);
   RETURN_CANCEL_OR_ERROR(st);
 
-  // Process each attributes one at a time.
-  for (const auto& name : names) {
-    if (name == constants::coords || array_schema_->is_dim(name)) {
-      continue;
-    }
+  // Copy attribute data to users buffers.
+  status = read_attributes<DimType, OffType>(
+      fixed_names,
+      var_names,
+      subarray,
+      tile_subarrays,
+      tile_offsets,
+      range_offsets,
+      result_space_tiles,
+      *qc_result);
+  RETURN_CANCEL_OR_ERROR(status);
 
-    // Copy attribute data to users buffers.
-    auto status = read_attributes<DimType, OffType>(
-        fixed_names,
-        var_names,
-        subarray,
-        tile_subarrays,
-        tile_offsets,
-        range_offsets,
-        result_space_tiles,
-        *qc_result);
-    RETURN_CANCEL_OR_ERROR(status);
-
-    if (read_state_.overflowed_)
-      break;
-  }
+  if (read_state_.overflowed_)
+    Status::Ok();
 
   // Fill coordinates if the user requested them.
   if (!read_state_.overflowed_ && has_coords()) {
