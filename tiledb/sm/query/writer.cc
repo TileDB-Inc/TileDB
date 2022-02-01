@@ -1756,13 +1756,16 @@ Status Writer::ordered_write() {
   auto compute_tp = storage_manager_->compute_tp();
   auto thread_num = compute_tp->concurrency_level();
   std::unordered_map<std::string, std::vector<std::vector<WriterTile>>> tiles;
+  for (const auto& buff : buffers_) {
+    tiles.emplace(buff.first, std::vector<std::vector<WriterTile>>());
+  }
+
   if (attr_num > tile_num) {  // Parallelize over attributes
     auto st = parallel_for(compute_tp, 0, attr_num, [&](uint64_t i) {
       auto buff_it = buffers_.begin();
       std::advance(buff_it, i);
       const auto& attr = buff_it->first;
-      auto res = tiles.emplace(attr, std::vector<std::vector<WriterTile>>());
-      auto& attr_tile_batches = res.first->second;
+      auto& attr_tile_batches = tiles[attr];
       return prepare_filter_and_write_tiles<T>(
           attr, attr_tile_batches, frag_meta, &dense_tiler, 1);
     });
@@ -1770,8 +1773,7 @@ Status Writer::ordered_write() {
   } else {  // Parallelize over tiles
     for (const auto& buff : buffers_) {
       const auto& attr = buff.first;
-      auto&& res = tiles.emplace(attr, std::vector<std::vector<WriterTile>>());
-      auto& attr_tile_batches = res.first->second;
+      auto& attr_tile_batches = tiles[attr];
       RETURN_NOT_OK_ELSE(
           prepare_filter_and_write_tiles<T>(
               attr, attr_tile_batches, frag_meta, &dense_tiler, thread_num),
