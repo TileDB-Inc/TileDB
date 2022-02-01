@@ -114,6 +114,11 @@ Status Array::set_array_schemas_all(
     std::unordered_map<std::string, tdb_shared_ptr<ArraySchema>>& all_schemas) {
   array_schemas_all_ = all_schemas;
 
+  for (auto& md : fragment_metadata_) {
+    md->set_array_schema(array_schemas_all_[md->array_schema_name()].get());
+    md->set_rtree_domain(array_schemas_all_[md->array_schema_name()]->domain());
+  }
+
   return Status::Ok();
 }
 
