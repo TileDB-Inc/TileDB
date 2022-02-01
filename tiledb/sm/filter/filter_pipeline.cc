@@ -113,8 +113,9 @@ FilterPipeline::get_var_chunk_sizes(
         // Do we add this cell to this chunk?
         if (current_size <= min_size || new_size <= max_size) {
           if (new_size > std::numeric_limits<uint32_t>::max()) {
-            return {LOG_STATUS(Status_TileError("Chunk size exceeds uint32_t")),
-                    std::nullopt};
+            return {
+                LOG_STATUS(Status_FilterError("Chunk size exceeds uint32_t")),
+                std::nullopt};
           }
           chunk_offsets.emplace_back(offsets[c] + cell_size);
           current_size = 0;
@@ -125,7 +126,7 @@ FilterPipeline::get_var_chunk_sizes(
           if (cell_size > chunk_size) {
             if (cell_size > std::numeric_limits<uint32_t>::max()) {
               return {
-                  LOG_STATUS(Status_TileError("Chunk size exceeds uint32_t")),
+                  LOG_STATUS(Status_FilterError("Chunk size exceeds uint32_t")),
                   std::nullopt};
             }
 
