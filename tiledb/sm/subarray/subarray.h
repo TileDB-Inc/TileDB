@@ -44,6 +44,7 @@
 #include "tiledb/sm/misc/tile_overlap.h"
 #include "tiledb/sm/misc/types.h"
 #include "tiledb/sm/stats/stats.h"
+#include "tiledb/sm/subarray/range_subset.h"
 #include "tiledb/sm/subarray/subarray_tile_overlap.h"
 
 #include <cmath>
@@ -1046,12 +1047,16 @@ class Subarray {
    */
   Layout cell_order_;
 
-  /** Stores a vector of 1D ranges per dimension. */
-  std::vector<std::vector<Range>> ranges_;
+  /**
+   * Stores a vector of RangeSetAndSuperset objects, one per dimension, for
+   * handling operations on ranges.
+   */
+  std::vector<RangeSetAndSuperset> range_subset_;
 
   /**
-   * One value per dimension indicating whether the (single) range set in
-   * `ranges_` is the default range.
+   * Flag storing if each dimension is a default value or not.
+   *
+   * TODO: Remove this variable and store `is_default` directly with NDRange.
    */
   std::vector<bool> is_default_;
 
@@ -1080,16 +1085,6 @@ class Subarray {
    * ``True`` if ranges should attempt to be coalesced as they are added.
    */
   bool coalesce_ranges_;
-
-  /**
-   * Each element on the vector contains a template-bound variant of
-   * `add_or_coalesce_range()` for the respective dimension's data
-   * type. Dimensions with data types that we do not attempt to
-   * coalesce (e.g. floats and var-sized data types), this will be
-   * bound to `add_range_without_coalesce` as an optimization.
-   */
-  std::vector<std::function<void(Subarray*, uint32_t, const Range&)>>
-      add_or_coalesce_range_func_;
 
   /**
    * The tile coordinates that the subarray overlaps with. Note that
@@ -1253,30 +1248,6 @@ class Subarray {
    */
   Status load_relevant_fragment_tile_var_sizes(
       const std::vector<std::string>& names, ThreadPool* compute_tp) const;
-
-  /**
-   * Constructs `add_or_coalesce_range_func_` for all dimensions
-   * in `array_->array_schema_latest()`.
-   */
-  void set_add_or_coalesce_range_func();
-
-  /**
-   * Appends `range` onto `ranges_[dim_idx]` without attempting to
-   * coalesce `range` with any existing ranges.
-   */
-  void add_range_without_coalesce(uint32_t dim_idx, const Range& range);
-
-  /**
-   * Coalesces `range` with the last element on `ranges_[dim_idx]`
-   * if they are contiguous. Otherwise, `range` will be appended to
-   * `ranges_[dim_idx]`.
-   *
-   * @tparam T The range data type.
-   * @param dim_idx The dimension index into `ranges_`.
-   * @param range The range to add or coalesce.
-   */
-  template <class T>
-  void add_or_coalesce_range(uint32_t dim_idx, const Range& range);
 
   /**
    * Sort ranges for a particular dimension
