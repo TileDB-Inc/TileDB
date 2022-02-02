@@ -2237,6 +2237,27 @@ int32_t tiledb_array_schema_get_allows_dups(
   return TILEDB_OK;
 }
 
+
+int32_t tiledb_array_schema_set_version(
+    tiledb_ctx_t* ctx, tiledb_array_schema_t* array_schema, uint32_t version) {
+  if (sanity_check(ctx) == TILEDB_ERR ||
+      sanity_check(ctx, array_schema) == TILEDB_ERR)
+    return TILEDB_ERR;
+  if (SAVE_ERROR_CATCH(
+          ctx, array_schema->array_schema_->set_version(version)))
+    return TILEDB_ERR;
+  return TILEDB_OK;
+}
+
+int32_t tiledb_array_schema_get_version(
+    tiledb_ctx_t* ctx, tiledb_array_schema_t* array_schema, uint32_t* version) {
+  if (sanity_check(ctx) == TILEDB_ERR ||
+      sanity_check(ctx, array_schema) == TILEDB_ERR)
+    return TILEDB_ERR;
+  *version = (uint32_t)array_schema->array_schema_->version();
+  return TILEDB_OK;
+}
+
 int32_t tiledb_array_schema_set_domain(
     tiledb_ctx_t* ctx,
     tiledb_array_schema_t* array_schema,

@@ -728,8 +728,9 @@ Status ArraySchema::set_tile_order(Layout tile_order) {
   return Status::Ok();
 }
 
-void ArraySchema::set_version(uint32_t version) {
+Status ArraySchema::set_version(uint32_t version) {
   version_ = version;
+  return Status::Ok();
 }
 
 uint32_t ArraySchema::write_version() const {
