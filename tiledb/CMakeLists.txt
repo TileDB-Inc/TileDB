@@ -133,7 +133,9 @@ set(TILEDB_CORE_SOURCES
   ${TILEDB_CORE_INCLUDE_DIR}/tiledb/sm/array_schema/domain.cc
   ${TILEDB_CORE_INCLUDE_DIR}/tiledb/sm/buffer/buffer.cc
   ${TILEDB_CORE_INCLUDE_DIR}/tiledb/sm/buffer/buffer_list.cc
+  ${TILEDB_CORE_INCLUDE_DIR}/tiledb/sm/c_api/helpers.cc
   ${TILEDB_CORE_INCLUDE_DIR}/tiledb/sm/c_api/tiledb.cc
+  ${TILEDB_CORE_INCLUDE_DIR}/tiledb/sm/c_api/tiledb_group.cc
   ${TILEDB_CORE_INCLUDE_DIR}/tiledb/sm/cache/buffer_lru_cache.cc
   ${TILEDB_CORE_INCLUDE_DIR}/tiledb/sm/compressors/bzip_compressor.cc
   ${TILEDB_CORE_INCLUDE_DIR}/tiledb/sm/compressors/dd_compressor.cc
@@ -180,6 +182,11 @@ set(TILEDB_CORE_SOURCES
   ${TILEDB_CORE_INCLUDE_DIR}/tiledb/sm/global_state/libcurl_state.cc
   ${TILEDB_CORE_INCLUDE_DIR}/tiledb/sm/global_state/signal_handlers.cc
   ${TILEDB_CORE_INCLUDE_DIR}/tiledb/sm/global_state/watchdog.cc
+  ${TILEDB_CORE_INCLUDE_DIR}/tiledb/sm/group/group.cc
+  ${TILEDB_CORE_INCLUDE_DIR}/tiledb/sm/group/group_directory.cc
+  ${TILEDB_CORE_INCLUDE_DIR}/tiledb/sm/group/group_member.cc
+  ${TILEDB_CORE_INCLUDE_DIR}/tiledb/sm/group/group_member_v1.cc
+  ${TILEDB_CORE_INCLUDE_DIR}/tiledb/sm/group/group_v1.cc
   ${TILEDB_CORE_INCLUDE_DIR}/tiledb/sm/metadata/metadata.cc
   ${TILEDB_CORE_INCLUDE_DIR}/tiledb/sm/misc/cancelable_tasks.cc
   ${TILEDB_CORE_INCLUDE_DIR}/tiledb/sm/misc/constants.cc
@@ -214,6 +221,7 @@ set(TILEDB_CORE_SOURCES
   ${TILEDB_CORE_INCLUDE_DIR}/tiledb/sm/serialization/array_schema.cc
   ${TILEDB_CORE_INCLUDE_DIR}/tiledb/sm/serialization/array_schema_evolution.cc
   ${TILEDB_CORE_INCLUDE_DIR}/tiledb/sm/serialization/config.cc
+  ${TILEDB_CORE_INCLUDE_DIR}/tiledb/sm/serialization/group.cc
   ${TILEDB_CORE_INCLUDE_DIR}/tiledb/sm/serialization/query.cc
   ${TILEDB_CORE_INCLUDE_DIR}/tiledb/sm/stats/global_stats.cc
   ${TILEDB_CORE_INCLUDE_DIR}/tiledb/sm/stats/stats.cc

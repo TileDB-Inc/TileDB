@@ -1,11 +1,11 @@
 /**
- * @file   config.h
+ * @file   group.h
  *
  * @section LICENSE
  *
  * The MIT License
  *
- * @copyright Copyright (c) 2021 TileDB, Inc.
+ * @copyright Copyright (c) 2022 TileDB, Inc.
  *
  * Permission is hereby granted, free of charge, to any person obtaining a copy
  * of this software and associated documentation files (the "Software"), to deal
@@ -27,11 +27,11 @@
  *
  * @section DESCRIPTION
  *
- * This file declares serialization functions for Config.
+ * This file declares serialization for the Group class
  */
 
-#ifndef TILEDB_SERIALIZATION_CONFIG_H
-#define TILEDB_SERIALIZATION_CONFIG_H
+#ifndef TILEDB_SERIALIZATION_GROUP_H
+#define TILEDB_SERIALIZATION_GROUP_H
 
 #include <unordered_map>
 
@@ -42,42 +42,40 @@ using namespace tiledb::common;
 namespace tiledb {
 namespace sm {
 
-class Config;
+class Group;
 class Buffer;
 enum class SerializationType : uint8_t;
 
 namespace serialization {
 
 /**
- * Serialize a config via Cap'n Prto
+ * Serialize a group via Cap'n Prto
  *
- * @param Config config object to serialize
+ * @param Group group object to serialize
  * @param serialize_type format to serialize into Cap'n Proto or JSON
  * @param serialized_buffer buffer to store serialized bytes in
- * @param client_side indicate if client or server side. If server side we won't
  * serialize the array URI
  * @return
  */
-Status config_serialize(
-    const Config* config,
+Status group_serialize(
+    const Group* group,
     SerializationType serialize_type,
-    Buffer* serialized_buffer,
-    const bool client_side);
+    Buffer* serialized_buffer);
 
 /**
- * Deserialize a config via Cap'n proto
+ * Deserialize a group via Cap'n proto
  *
- * @param config to deserialize into
+ * @param group to deserialize into
  * @param serialize_type format the data is serialized in Cap'n Proto of JSON
  * @param serialized_buffer buffer to read serialized bytes from
  * @return Status
  */
-Status config_deserialize(
-    Config** config,
+Status group_deserialize(
+    Group* group,
     SerializationType serialize_type,
     const Buffer& serialized_buffer);
 }  // namespace serialization
 }  // namespace sm
 }  // namespace tiledb
 
-#endif  // TILEDB_SERIALIZATION_CONFIG_H
+#endif  // TILEDB_SERIALIZATION_GROUP_H

@@ -585,6 +585,9 @@ typedef struct tiledb_vfs_fh_t tiledb_vfs_fh_t;
 /** A fragment info object. */
 typedef struct tiledb_fragment_info_t tiledb_fragment_info_t;
 
+/** An group object. */
+typedef struct tiledb_group_t tiledb_group_t;
+
 /* ********************************* */
 /*              ERROR                */
 /* ********************************* */
@@ -1834,7 +1837,7 @@ tiledb_ctx_set_tag(tiledb_ctx_t* ctx, const char* key, const char* value);
  * @param group_uri The group URI.
  * @return `TILEDB_OK` for success and `TILEDB_ERR` for error.
  */
-TILEDB_EXPORT int32_t
+TILEDB_DEPRECATED_EXPORT int32_t
 tiledb_group_create(tiledb_ctx_t* ctx, const char* group_uri);
 
 /* ********************************* */
@@ -2346,7 +2349,7 @@ TILEDB_EXPORT int32_t tiledb_attribute_dump(
 /**
  * Sets the default fill value for the input attribute. This value will
  * be used for the input attribute whenever querying (1) an empty cell in
- * a dense array, or (2) a non-empty cell (in either dense or sparse array)
+ * a dense group, or (2) a non-empty cell (in either dense or sparse array)
  * when values on the input attribute are missing (e.g., if the user writes
  * a subset of the attributes in a write operation).
  *

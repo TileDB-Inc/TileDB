@@ -108,10 +108,12 @@ Status config_from_capnp(
 }
 
 Status config_serialize(
-    Config* config,
+    const Config* config,
     SerializationType serialize_type,
     Buffer* serialized_buffer,
     const bool client_side) {
+  // Currently client_side is unused
+  (void)client_side;
   try {
     ::capnp::MallocMessageBuilder message;
     capnp::Config::Builder configBuilder = message.initRoot<capnp::Config>();
@@ -215,7 +217,7 @@ Status config_deserialize(
 
 #else
 
-Status config_serialize(Config*, SerializationType, Buffer*, const bool) {
+Status config_serialize(const Config*, SerializationType, Buffer*, const bool) {
   return LOG_STATUS(Status_SerializationError(
       "Cannot serialize; serialization not enabled."));
 }
