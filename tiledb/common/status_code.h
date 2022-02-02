@@ -95,7 +95,10 @@ enum class StatusCode : char {
   FragmentInfoError,
   DenseTilerError,
   QueryConditionError,
-  ArrayDirectoryError
+  ArrayDirectoryError,
+  Group,
+  GroupDirectoryError,
+  GroupMemberError
 };
 
 std::string to_string(const StatusCode& sc);

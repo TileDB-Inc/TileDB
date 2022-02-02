@@ -334,6 +334,367 @@ TILEDB_EXPORT int32_t tiledb_query_get_status_details(
 TILEDB_EXPORT int32_t tiledb_ctx_alloc_with_error(
     tiledb_config_t* config, tiledb_ctx_t** ctx, tiledb_error_t** error);
 
+/* ********************************* */
+/*                GROUP              */
+/* ********************************* */
+
+/**
+ * Creates a new TileDB group.
+ *
+ * **Example:**
+ *
+ * @code{.c}
+ * tiledb_group_t* group;
+ * tiledb_group_alloc(ctx, "my_group", &group);
+ * @endcode
+ *
+ * @param ctx The TileDB context.
+ * @param group_uri The group URI.
+ * @param group The TileDB group to be allocated
+ * @return `TILEDB_OK` for success and `TILEDB_ERR` for error.
+ */
+TILEDB_EXPORT int32_t tiledb_group_alloc(
+    tiledb_ctx_t* ctx, const char* group_uri, tiledb_group_t** group);
+
+/**
+ * Opens a TileDB group. The group is opened using a query type as input.
+ * This is to indicate that queries created for this `tiledb_group_t`
+ * object will inherit the query type. In other words, `tiledb_group_t`
+ * objects are opened to receive only one type of queries.
+ * They can always be closed and be re-opened with another query type.
+ * Also there may be many different `tiledb_group_t`
+ * objects created and opened with different query types.
+ *
+ * **Example:**
+ *
+ * @code{.c}
+ * tiledb_group_t* group;
+ * tiledb_group_alloc(ctx, "hdfs:///tiledb_groups/my_group", &group);
+ * tiledb_group_open(ctx, group, TILEDB_READ);
+ * @endcode
+ *
+ * @param ctx The TileDB context.
+ * @param group The group object to be opened.
+ * @param query_type The type of queries the group object will be receiving.
+ * @return `TILEDB_OK` for success and `TILEDB_ERR` for error.
+ *
+ * @note If the same group object is opened again without being closed,
+ *     an error will be thrown.
+ * @note The config should be set before opening an group.
+ * @note If the group is to be opened at a specfic time interval, the
+ *      `timestamp{start, end}` values should be set to a config that's set to
+ *       the group object before opening the group.
+ */
+TILEDB_EXPORT int32_t tiledb_group_open(
+    tiledb_ctx_t* ctx, tiledb_group_t* group, tiledb_query_type_t query_type);
+
+/**
+ * Closes a TileDB group.
+ *
+ * **Example:**
+ *
+ * @code{.c}
+ * tiledb_group_t* group;
+ * tiledb_group_alloc(ctx, "hdfs:///tiledb_groups/my_group", &group);
+ * tiledb_group_open(ctx, group, TILEDB_READ);
+ * tiledb_group_close(ctx, group);
+ * @endcode
+ *
+ * @param ctx The TileDB context.
+ * @param group The group object to be closed.
+ * @return `TILEDB_OK` for success and `TILEDB_ERR` for error.
+ *
+ * @note If the group object has already been closed, the function has
+ *     no effect.
+ */
+TILEDB_EXPORT int32_t
+tiledb_group_close(tiledb_ctx_t* ctx, tiledb_group_t* group);
+
+/**
+ * Creates a new TileDB group.
+ *
+ * **Example:**
+ *
+ * @code{.c}
+ * tiledb_group_t* group;
+ * tiledb_group_alloc(ctx, "my_group", &group);
+ * tiledb_group_free(&group);
+ * @endcode
+ *
+ * @param group The TileDB group to be freed
+ */
+TILEDB_EXPORT void tiledb_group_free(tiledb_group_t** group);
+
+/**
+ * Sets the group config.
+ *
+ * **Example:**
+ *
+ * @code{.c}
+ * tiledb_group_t* group;
+ * tiledb_group_alloc(ctx, "s3://tiledb_bucket/my_group", &group);
+ * tiledb_group_open(ctx, group, TILEDB_READ);
+ * // Set the config for the given group.
+ * tiledb_config_t* config;
+ * tiledb_group_set_config(ctx, group, config);
+ * @endcode
+ *
+ * @param ctx The TileDB context.
+ * @param group The group to set the config for.
+ * @param config The config to be set.
+ * @return `TILEDB_OK` for success and `TILEDB_ERR` for error.
+ *
+ * @note The group does not need to be opened via `tiledb_group_open_at` to use
+ *      this function.
+ * @note The config should be set before opening an group.
+ */
+TILEDB_EXPORT int32_t tiledb_group_set_config(
+    tiledb_ctx_t* ctx, tiledb_group_t* group, tiledb_config_t* config);
+
+/**
+ * Gets the group config.
+ *
+ * **Example:**
+ *
+ * @code{.c}
+ * // Retrieve the config for the given group.
+ * tiledb_config_t* config;
+ * tiledb_group_get_config(ctx, group, config);
+ * @endcode
+ *
+ * @param ctx The TileDB context.
+ * @param group The group to set the config for.
+ * @param config Set to the retrieved config.
+ * @return `TILEDB_OK` for success and `TILEDB_ERR` for error.
+ */
+TILEDB_EXPORT int32_t tiledb_group_get_config(
+    tiledb_ctx_t* ctx, tiledb_group_t* group, tiledb_config_t** config);
+
+/**
+ * It puts a metadata key-value item to an open group. The group must
+ * be opened in WRITE mode, otherwise the function will error out.
+ *
+ * @param ctx The TileDB context.
+ * @param group An group opened in WRITE mode.
+ * @param key The key of the metadata item to be added. UTF-8 encodings
+ *     are acceptable.
+ * @param value_type The datatype of the value.
+ * @param value_num The value may consist of more than one items of the
+ *     same datatype. This argument indicates the number of items in the
+ *     value component of the metadata.
+ * @param value The metadata value in binary form.
+ * @return `TILEDB_OK` for success and `TILEDB_ERR` for error.
+ *
+ * @note The writes will take effect only upon closing the group.
+ */
+TILEDB_EXPORT int32_t tiledb_group_put_metadata(
+    tiledb_ctx_t* ctx,
+    tiledb_group_t* group,
+    const char* key,
+    tiledb_datatype_t value_type,
+    uint32_t value_num,
+    const void* value);
+
+/**
+ * It deletes a metadata key-value item from an open group. The group must
+ * be opened in WRITE mode, otherwise the function will error out.
+ *
+ * @param ctx The TileDB context.
+ * @param group An group opened in WRITE mode.
+ * @param key The key of the metadata item to be deleted.
+ * @return `TILEDB_OK` for success and `TILEDB_ERR` for error.
+ *
+ * @note The writes will take effect only upon closing the group.
+ *
+ * @note If the key does not exist, this will take no effect
+ *     (i.e., the function will not error out).
+ */
+TILEDB_EXPORT int32_t tiledb_group_delete_metadata(
+    tiledb_ctx_t* ctx, tiledb_group_t* group, const char* key);
+
+/**
+ * It gets a metadata key-value item from an open group. The group must
+ * be opened in READ mode, otherwise the function will error out.
+ *
+ * @param ctx The TileDB context.
+ * @param group An group opened in READ mode.
+ * @param key The key of the metadata item to be retrieved. UTF-8 encodings
+ *     are acceptable.
+ * @param value_type The datatype of the value.
+ * @param value_num The value may consist of more than one items of the
+ *     same datatype. This argument indicates the number of items in the
+ *     value component of the metadata. Keys with empty values are indicated
+ *     by value_num == 1 and value == NULL.
+ * @param value The metadata value in binary form.
+ * @return `TILEDB_OK` for success and `TILEDB_ERR` for error.
+ *
+ * @note If the key does not exist, then `value` will be NULL.
+ */
+TILEDB_EXPORT int32_t tiledb_group_get_metadata(
+    tiledb_ctx_t* ctx,
+    tiledb_group_t* group,
+    const char* key,
+    tiledb_datatype_t* value_type,
+    uint32_t* value_num,
+    const void** value);
+
+/**
+ * It gets then number of metadata items in an open group. The group must
+ * be opened in READ mode, otherwise the function will error out.
+ *
+ * @param ctx The TileDB context.
+ * @param group An group opened in READ mode.
+ * @param num The number of metadata items to be retrieved.
+ * @return `TILEDB_OK` for success and `TILEDB_ERR` for error.
+ */
+TILEDB_EXPORT int32_t tiledb_group_get_metadata_num(
+    tiledb_ctx_t* ctx, tiledb_group_t* group, uint64_t* num);
+
+/**
+ * It gets a metadata item from an open group using an index.
+ * The group must be opened in READ mode, otherwise the function will
+ * error out.
+ *
+ * @param ctx The TileDB context.
+ * @param group An group opened in READ mode.
+ * @param index The index used to get the metadata.
+ * @param key The metadata key.
+ * @param key_len The metadata key length.
+ * @param value_type The datatype of the value.
+ * @param value_num The value may consist of more than one items of the
+ *     same datatype. This argument indicates the number of items in the
+ *     value component of the metadata.
+ * @param value The metadata value in binary form.
+ * @return `TILEDB_OK` for success and `TILEDB_ERR` for error.
+ */
+TILEDB_EXPORT int32_t tiledb_group_get_metadata_from_index(
+    tiledb_ctx_t* ctx,
+    tiledb_group_t* group,
+    uint64_t index,
+    const char** key,
+    uint32_t* key_len,
+    tiledb_datatype_t* value_type,
+    uint32_t* value_num,
+    const void** value);
+
+/**
+ * Checks whether a key exists in metadata from an open group. The group must
+ * be opened in READ mode, otherwise the function will error out.
+ *
+ * @param ctx The TileDB context.
+ * @param group An group opened in READ mode.
+ * @param key The key to be checked. UTF-8 encoding are acceptable.
+ * @param value_type The datatype of the value, if any.
+ * @param has_key Set to `1` if the metadata with given key exists, else `0`.
+ * @return `TILEDB_OK` for success and `TILEDB_ERR` for error.
+ *
+ * @note If the key does not exist, then `value` will be NULL.
+ */
+TILEDB_EXPORT int32_t tiledb_group_has_metadata_key(
+    tiledb_ctx_t* ctx,
+    tiledb_group_t* group,
+    const char* key,
+    tiledb_datatype_t* value_type,
+    int32_t* has_key);
+
+/**
+ * Add a member to a group
+ *
+ * **Example:**
+ *
+ * @code{.c}
+ * tiledb_group_t* group;
+ * tiledb_group_alloc(ctx, "s3://tiledb_bucket/my_group", &group);
+ * tiledb_group_open(ctx, group, TILEDB_WRITE);
+ * tiledb_group_add_member(ctx, group, "s3://tiledb_bucket/my_array");
+ * tiledb_group_add_member(ctx, group, "s3://tiledb_bucket/my_group_2");
+ * @endcode
+ *
+ * @param ctx The TileDB context.
+ * @param group An group opened in WRITE mode.
+ * @param uri URI of member to add
+ * @return `TILEDB_OK` for success and `TILEDB_ERR` for error.
+ */
+TILEDB_EXPORT int32_t tiledb_group_add_member(
+    tiledb_ctx_t* ctx, tiledb_group_t* group, const char* uri);
+
+/**
+ * Remove a member from a group
+ *
+ * * @code{.c}
+ * tiledb_group_t* group;
+ * tiledb_group_alloc(ctx, "s3://tiledb_bucket/my_group", &group);
+ * tiledb_group_open(ctx, group, TILEDB_WRITE);
+ * tiledb_group_remove_member(ctx, group, "s3://tiledb_bucket/my_array");
+ * @endcode
+ *
+ * @param ctx The TileDB context.
+ * @param group An group opened in WRITE mode.
+ * @param uri URI of member to add
+ * @return `TILEDB_OK` for success and `TILEDB_ERR` for error.
+ */
+TILEDB_EXPORT int32_t tiledb_group_remove_member(
+    tiledb_ctx_t* ctx, tiledb_group_t* group, const char* uri);
+
+/**
+ * Get the count of members in a group
+ *
+ * * @code{.c}
+ * tiledb_group_t* group;
+ * tiledb_group_alloc(ctx, "s3://tiledb_bucket/my_group", &group);
+ * tiledb_group_open(ctx, group, TILEDB_WRITE);
+ * tiledb_group_add_member(ctx, group, "s3://tiledb_bucket/my_array");
+ * tiledb_group_add_member(ctx, group, "s3://tiledb_bucket/my_group_2");
+ *
+ * tiledb_group_close(ctx, group);
+ * tiledb_group_open(ctx, group, TILEDB_READ);
+ * uint64_t count = 0;
+ * tiledb_group_get_member_count(ctx, group, &count);
+ *
+ * @endcode
+ *
+ * @param ctx The TileDB context.
+ * @param group An group opened in READ mode.
+ * @param count number of members in group
+ * @return `TILEDB_OK` for success and `TILEDB_ERR` for error.
+ */
+TILEDB_EXPORT int32_t tiledb_group_get_member_count(
+    tiledb_ctx_t* ctx, tiledb_group_t* group, uint64_t* count);
+
+/**
+ * Get a member of a group by index and details of group
+ *
+ * **Example:**
+ *
+ * @code{.c}
+ * tiledb_group_t* group;
+ * tiledb_group_alloc(ctx, "s3://tiledb_bucket/my_group", &group);
+ * tiledb_group_open(ctx, group, TILEDB_WRITE);
+ * tiledb_group_add_member(ctx, group, "s3://tiledb_bucket/my_array");
+ * tiledb_group_add_member(ctx, group, "s3://tiledb_bucket/my_group_2");
+ *
+ * tiledb_group_close(ctx, group);
+ * tiledb_group_open(ctx, group, TILEDB_READ);
+ * const char *uri;
+ * tiledb_object_t type;
+ * tiledb_group_get_member_by_index(ctx, group, 0, &uri, &type);
+ *
+ * @endcode
+ *
+ * @param ctx The TileDB context.
+ * @param group An group opened in READ mode.
+ * @param index index of member to fetch
+ * @param uri URI of member
+ * @param type type of member
+ * @return `TILEDB_OK` for success and `TILEDB_ERR` for error.
+ */
+TILEDB_EXPORT int32_t tiledb_group_get_member_by_index(
+    tiledb_ctx_t* ctx,
+    tiledb_group_t* group,
+    uint64_t index,
+    const char** uri,
+    tiledb_object_t* type);
+
 #ifdef __cplusplus
 }
 #endif
