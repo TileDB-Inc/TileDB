@@ -3555,7 +3555,6 @@ TILEDB_EXPORT int32_t tiledb_array_schema_has_attribute(
 TILEDB_EXPORT int32_t tiledb_array_schema_dump(
     tiledb_ctx_t* ctx, const tiledb_array_schema_t* array_schema, FILE* out);
 
-
 /* ********************************* */
 /*               QUERY               */
 /* ********************************* */

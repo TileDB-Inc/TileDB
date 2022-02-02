@@ -50,6 +50,7 @@
 #include "tiledb/sm/c_api/tiledb_experimental.h"
 #include "tiledb/sm/c_api/tiledb_serialization.h"
 #include "tiledb/sm/enums/serialization_type.h"
+#include "tiledb/sm/misc/constants.h"
 #include "tiledb/sm/misc/utils.h"
 
 using namespace tiledb::test;
@@ -1626,21 +1627,10 @@ TEST_CASE_METHOD(
     serialize_array_schema_ = true;
   }
 
-  // --- Test dense (should error out on allowing duplicates) ---
-
-  // Create array schema
+  // Create and allocate array schema
   tiledb_array_schema_t* array_schema;
-  int rc = tiledb_array_schema_alloc(ctx_, TILEDB_DENSE, &array_schema);
-  REQUIRE(rc == TILEDB_OK);
   uint32_t version = 210;
-  rc = tiledb_array_schema_set_version(ctx_, array_schema, version);
-  CHECK(rc == TILEDB_OK);
-  tiledb_array_schema_free(&array_schema);
-
-  // --- Test sparse ---
-
-  // Allocate array schema
-  rc = tiledb_array_schema_alloc(ctx_, TILEDB_SPARSE, &array_schema);
+  int rc = tiledb_array_schema_alloc(ctx_, TILEDB_SPARSE, &array_schema);
   REQUIRE(rc == TILEDB_OK);
 
   // Create dimension
@@ -1665,7 +1655,7 @@ TEST_CASE_METHOD(
   rc = tiledb_array_schema_add_attribute(ctx_, array_schema, a);
   REQUIRE(rc == TILEDB_OK);
 
-  // Set allows dups
+  // Set version
   rc = tiledb_array_schema_set_version(ctx_, array_schema, version);
   CHECK(rc == TILEDB_OK);
 
@@ -1679,6 +1669,11 @@ TEST_CASE_METHOD(
   rc = array_create_wrapper(array_name, array_schema);
   REQUIRE(rc == TILEDB_OK);
 
+  uint32_t version_r = 0;
+  rc = tiledb_array_schema_get_version(ctx_, array_schema, &version_r);
+  CHECK(rc == TILEDB_OK);
+  CHECK(version_r == 210);
+
   // Clean up
   tiledb_attribute_free(&a);
   tiledb_dimension_free(&d);
@@ -1689,11 +1684,13 @@ TEST_CASE_METHOD(
   rc = array_schema_load_wrapper(array_name.c_str(), &array_schema);
   REQUIRE(rc == TILEDB_OK);
 
-  // Get allows dups
-  uint32_t version_r = 0;
+  // Get version.
+  // Version should be constants::format_version because of
+  // ArraySchema::serialize always resets it
+  version_r = 0;
   rc = tiledb_array_schema_get_version(ctx_, array_schema, &version_r);
   CHECK(rc == TILEDB_OK);
-  CHECK(version_r == 210);
+  CHECK(version_r == tiledb::sm::constants::format_version);
 
   // Clean up
   tiledb_array_schema_free(&array_schema);
