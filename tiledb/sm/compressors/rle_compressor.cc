@@ -35,7 +35,6 @@
 #include "tiledb/sm/buffer/buffer.h"
 
 #include <cassert>
-#include <charconv>
 
 using namespace tiledb::common;
 
@@ -146,60 +145,36 @@ uint64_t RLE::overhead(uint64_t nbytes, uint64_t value_size) {
   return value_num * 2;
 }
 
-void RLE::set_max_run_length(uint64_t max_run_length) {
-  max_run_length_ = max_run_length;
-}
+std::tuple<uint64_t, uint64_t, uint64_t, uint64_t>
+RLE::calculate_compression_params(nonstd::span<std::string_view> input) {
+  if (input.empty())
+    return {0, 0, 0, 0};
 
-std::vector<std::string> RLE::compress(nonstd::span<std::string_view> input) {
-  uint64_t input_elements = input.size();
-  if (input_elements == 0)
-    return {};
-
-  std::vector<std::string> output;
-  // TODO: is this useful?
-  output.reserve(input.size_bytes());
-
-  uint64_t run_length = 1;
+  uint64_t max_identicals = 1;
+  uint64_t identicals = 1;
+  uint64_t output_strings_size = 0;
+  uint64_t num_of_runs = 1;
+  uint64_t max_string_size = input[0].size();
   auto previous = input[0];
-  for (uint64_t i = 1; i < input_elements; i++) {
-    if (input[i] == previous && run_length < max_run_length_) {
-      run_length++;
+  for (uint64_t i = 1; i < input.size(); i++) {
+    if (input[i] == previous) {
+      identicals++;
     } else {
-      output.emplace_back(std::to_string(run_length));
-      output.emplace_back(previous);
+      max_identicals = std::max(identicals, max_identicals);
+      max_string_size =
+          std::max(max_string_size, static_cast<uint64_t>(previous.size()));
+      output_strings_size += previous.size();
+      num_of_runs++;
+      identicals = 1;
       previous = input[i];
-      run_length = 1;
-    }
-  }
-  output.emplace_back(std::to_string(run_length));
-  output.emplace_back(previous);
-
-  return output;
-}
-
-std::vector<std::string> RLE::decompress(nonstd::span<std::string_view> input) {
-  uint64_t input_elements = input.size();
-  assert(input_elements % 2 == 0);
-
-  if (input_elements == 0)
-    return {};
-
-  std::vector<std::string> output;
-  // TODO: is this useful?
-  output.reserve(input.size_bytes());
-
-  uint64_t run_length = 1;
-  // Iterate over every other element in input to get run lengths
-  for (uint64_t i = 0; i < input_elements; i = i + 2) {
-    [[maybe_unused]] const auto res = std::from_chars(
-        input[i].data(), input[i].data() + input[i].size(), run_length);
-    assert(res.ec == std::errc());
-    for (uint64_t j = 0; j < run_length; j++) {
-      output.emplace_back(input[i + 1]);
     }
   }
 
-  return output;
+  // take into account the last string
+  output_strings_size += previous.size();
+  max_identicals = std::max(identicals, max_identicals);
+
+  return {max_identicals, max_string_size, num_of_runs, output_strings_size};
 }
 
 }  // namespace sm
