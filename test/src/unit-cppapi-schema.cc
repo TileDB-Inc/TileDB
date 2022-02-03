@@ -33,6 +33,7 @@
 #include "catch.hpp"
 #include "tiledb/sm/cpp_api/tiledb"
 #include "tiledb/sm/cpp_api/tiledb_experimental"
+#include "tiledb/sm/misc/constants.h"
 
 #include <limits>
 
@@ -75,7 +76,6 @@ TEST_CASE("C++ API: Schema", "[cppapi][schema]") {
     schema.set_cell_order(TILEDB_ROW_MAJOR);
     schema.set_tile_order(TILEDB_COL_MAJOR);
     CHECK_THROWS(schema.set_allows_dups(1));
-    schema.set_version(210);
 
     // Offsets filter list set/get
     FilterList offsets_filters(ctx);
@@ -117,7 +117,7 @@ TEST_CASE("C++ API: Schema", "[cppapi][schema]") {
     CHECK(schema.attribute("a3").cell_val_num() == 2);
     CHECK(schema.attribute("a4").cell_val_num() == TILEDB_VAR_NUM);
     CHECK(schema.attribute("a4").type() == TILEDB_UINT32);
-    CHECK(schema.version() == 210);
+    CHECK(schema.version() == tiledb::sm::constants::format_version);
 
     auto dims = schema.domain().dimensions();
     REQUIRE(dims.size() == 2);
@@ -154,7 +154,6 @@ TEST_CASE("C++ API: Schema", "[cppapi][schema]") {
     schema.set_cell_order(TILEDB_ROW_MAJOR);
     schema.set_tile_order(TILEDB_COL_MAJOR);
     schema.set_allows_dups(true);
-    schema.set_version(210);
 
     FilterList offsets_filters(ctx);
     offsets_filters.add_filter({ctx, TILEDB_FILTER_DOUBLE_DELTA});
@@ -180,7 +179,7 @@ TEST_CASE("C++ API: Schema", "[cppapi][schema]") {
     CHECK(schema.attribute("a4").cell_val_num() == TILEDB_VAR_NUM);
     CHECK(schema.attribute("a4").type() == TILEDB_UINT32);
     CHECK(schema.allows_dups() == true);
-    CHECK(schema.version() == 210);
+    CHECK(schema.version() == tiledb::sm::constants::format_version);
 
     auto dims = schema.domain().dimensions();
     REQUIRE(dims.size() == 2);

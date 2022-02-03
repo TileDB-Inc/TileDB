@@ -291,16 +291,6 @@ class ArraySchema : public Schema {
     return version;
   }
 
-  /**
-   * Sets the version of the array schema. Only used for serialization.
-   */
-  ArraySchema& set_version(uint32_t version) {
-    auto& ctx = ctx_.get();
-    ctx.handle_error(tiledb_array_schema_set_version(
-        ctx.ptr().get(), schema_.get(), version));
-    return *this;
-  }
-
   /** Returns the tile order. */
   tiledb_layout_t tile_order() const {
     auto& ctx = ctx_.get();

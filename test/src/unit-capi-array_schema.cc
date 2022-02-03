@@ -1629,7 +1629,6 @@ TEST_CASE_METHOD(
 
   // Create and allocate array schema
   tiledb_array_schema_t* array_schema;
-  uint32_t version = 210;
   int rc = tiledb_array_schema_alloc(ctx_, TILEDB_SPARSE, &array_schema);
   REQUIRE(rc == TILEDB_OK);
 
@@ -1655,10 +1654,6 @@ TEST_CASE_METHOD(
   rc = tiledb_array_schema_add_attribute(ctx_, array_schema, a);
   REQUIRE(rc == TILEDB_OK);
 
-  // Set version
-  rc = tiledb_array_schema_set_version(ctx_, array_schema, version);
-  CHECK(rc == TILEDB_OK);
-
   // Instantiate local class
   SupportedFsLocal local_fs;
 
@@ -1668,11 +1663,6 @@ TEST_CASE_METHOD(
   create_temp_dir(local_fs.file_prefix() + local_fs.temp_dir());
   rc = array_create_wrapper(array_name, array_schema);
   REQUIRE(rc == TILEDB_OK);
-
-  uint32_t version_r = 0;
-  rc = tiledb_array_schema_get_version(ctx_, array_schema, &version_r);
-  CHECK(rc == TILEDB_OK);
-  CHECK(version_r == 210);
 
   // Clean up
   tiledb_attribute_free(&a);
@@ -1687,7 +1677,7 @@ TEST_CASE_METHOD(
   // Get version.
   // Version should be constants::format_version because of
   // ArraySchema::serialize always resets it
-  version_r = 0;
+  uint32_t version_r = 0;
   rc = tiledb_array_schema_get_version(ctx_, array_schema, &version_r);
   CHECK(rc == TILEDB_OK);
   CHECK(version_r == tiledb::sm::constants::format_version);
