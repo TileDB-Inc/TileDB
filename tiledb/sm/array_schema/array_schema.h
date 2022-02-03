@@ -302,7 +302,7 @@ class ArraySchema {
   Status set_tile_order(Layout tile_order);
 
   /** Set version of schema, only used for serialization */
-  Status set_version(uint32_t version);
+  void set_version(uint32_t version);
 
   /** Returns the version to write in. */
   uint32_t write_version() const;
