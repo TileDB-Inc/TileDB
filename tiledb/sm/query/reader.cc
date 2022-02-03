@@ -1829,7 +1829,7 @@ Status Reader::sort_result_coords(
           storage_manager_->compute_tp(),
           hilbert_values.begin(),
           hilbert_values.end(),
-          HilbertCmp(domain, iter_begin));
+          HilbertCmpRCI(domain, iter_begin));
       RETURN_NOT_OK(reorganize_result_coords(iter_begin, &hilbert_values));
     } else {
       parallel_sort(

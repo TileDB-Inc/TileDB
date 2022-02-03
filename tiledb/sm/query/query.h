@@ -58,6 +58,7 @@ namespace sm {
 
 class Array;
 class StorageManager;
+class QueryBuffer;
 
 enum class QueryStatus : uint8_t;
 enum class QueryType : uint8_t;

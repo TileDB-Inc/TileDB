@@ -34,6 +34,7 @@
 #ifndef TILEDB_FRAGMENT_METADATA_H
 #define TILEDB_FRAGMENT_METADATA_H
 
+#include <deque>
 #include <mutex>
 #include <unordered_map>
 #include <vector>

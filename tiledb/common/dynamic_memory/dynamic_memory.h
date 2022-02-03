@@ -148,6 +148,17 @@ using TiledbTracedAllocator = typename std::conditional<
 template <class T>
 using allocator = GovernedAllocator<T, TiledbTracedAllocator, Governor>;
 
+/**
+ * Predicate class for use with std::enable_if
+ *
+ * The required template is ignored. If weren't an argument, there couldn't be a
+ * substitution for an argument and SFINAE would never apply.
+ */
+template <class>
+struct is_tracing_enabled {
+  constexpr static bool value = detail::global_tracing<void>::enabled::value;
+};
+
 namespace /* anonymous */ {
 
 /**

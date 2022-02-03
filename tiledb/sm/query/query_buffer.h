@@ -257,8 +257,7 @@ class QueryBuffer {
    * retrieve the datum at sequence position `index`.
    *
    * @param index The index into a sequence of data of varying sizes.
-   * @return tuple<1> A pointer to the retrieved datum. tuple<2> The size of the
-   * retrieved datum.
+   * @return a view of the datum at the given index
    */
   tdb::UntypedDatumView varying_size_datum_at(size_t index) const {
     using buffer_type = uint64_t;

@@ -34,6 +34,7 @@
 #include <catch.hpp>
 #include "test/src/helpers.h"
 #include "tiledb/sm/filesystem/vfs.h"
+#include "tiledb/sm/tile/tile.h"
 
 using namespace tiledb::common;
 using namespace tiledb::sm;

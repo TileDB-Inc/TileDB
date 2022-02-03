@@ -71,6 +71,10 @@ class DynamicTypedDatumView {
   [[nodiscard]] inline tiledb::sm::Datatype type() const {
     return type_;
   }
+  template <class T>
+  [[nodiscard]] inline const T& value_as() const {
+    return *static_cast<const T*>(datum_.content());
+  }
 };
 }  // namespace tiledb::common
 

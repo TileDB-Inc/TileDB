@@ -1,11 +1,11 @@
 /**
- * @file untyped_datum.h
+ * @file tiledb/sm/array_schema/test/unit_domain_data.cc
  *
  * @section LICENSE
  *
  * The MIT License
  *
- * @copyright Copyright (c) 2021 TileDB, Inc.
+ * @copyright Copyright (c) 2022 TileDB, Inc.
  *
  * Permission is hereby granted, free of charge, to any person obtaining a copy
  * of this software and associated documentation files (the "Software"), to deal
@@ -24,37 +24,35 @@
  * LIABILITY, WHETHER IN AN ACTION OF CONTRACT, TORT OR OTHERWISE, ARISING FROM,
  * OUT OF OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN
  * THE SOFTWARE.
+ *
+ * @section DESCRIPTION
+ *
+ * This file defines a test `main()`
  */
 
-#ifndef TILEDB_COMMON_UNTYPED_DATUM_H
-#define TILEDB_COMMON_UNTYPED_DATUM_H
+#include <catch.hpp>
+#include "../domain_typed_data_view.h"
 
-#include <ostream>
+using namespace tiledb;
+using namespace tiledb::common;
+using namespace tiledb::sm;
 
-namespace tiledb::common {
+TEST_CASE("DynamicArrayStorage::DynamicArrayStorage") {
+  DynamicArrayStorage<int> x{HERE(), 3};
+}
 
-/**
- * A non-owning view of a datum of any type.
- */
-class UntypedDatumView {
-  const void* datum_content_;
-  size_t datum_size_;
-
+namespace tiledb::sm {
+class WhiteboxDomainTypedDataView : public DomainTypedDataView {
  public:
-  UntypedDatumView(const void* content, size_t size)
-      : datum_content_(content)
-      , datum_size_(size) {
-  }
-  [[nodiscard]] inline const void* content() const {
-    return datum_content_;
-  }
-  [[nodiscard]] inline size_t size() const {
-    return datum_size_;
-  }
-  template <class T>
-  [[nodiscard]] inline const T& value_as() const {
-    return *static_cast<const T*>(datum_content_);
+  WhiteboxDomainTypedDataView(
+      const std::string_view& origin, const Domain& domain, size_t n)
+      : DomainTypedDataView(origin, domain, n) {
   }
 };
-}  // namespace tiledb::common
-#endif  // TILEDB_COMMON_UNTYPED_DATUM_H
+}  // namespace tiledb::sm
+
+TEST_CASE("DomainTypedDataView::DomainTypedDataView") {
+  Domain d;
+  // Domain ignored when dimension given
+  WhiteboxDomainTypedDataView x{HERE(), d, 3};
+}

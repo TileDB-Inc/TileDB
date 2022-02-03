@@ -55,6 +55,7 @@
 #include "tiledb/sm/misc/endian.h"
 #include "tiledb/sm/misc/parse_argument.h"
 #include "tiledb/sm/query/query.h"
+#include "tiledb/sm/query/query_buffer.h"
 #include "tiledb/sm/rest/rest_client.h"
 #include "tiledb/sm/serialization/array_schema.h"
 
