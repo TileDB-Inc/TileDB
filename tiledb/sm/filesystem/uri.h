@@ -196,7 +196,6 @@ class URI {
    */
   bool is_gs() const;
 
-
   /**
    * Checks if the input path is mem.
    *
