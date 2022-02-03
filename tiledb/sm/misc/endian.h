@@ -34,6 +34,10 @@
 #ifndef TILEDB_MISC_ENDIAN_H
 #define TILEDB_MISC_ENDIAN_H
 
+#include <climits>
+#include <cstdint>
+#include <type_traits>
+
 /* ********************************* */
 /*          ENDIANNESS FUNCTIONS     */
 /* ********************************* */
@@ -57,6 +61,23 @@ inline bool is_big_endian() {
   return !is_little_endian();
 }
 
+/*
+ * Compile-time endianness swap based on
+ * https://en.cppreference.com/w/cpp/language/fold
+ */
+template <class T, std::size_t... N>
+constexpr T bswap_impl(T i, std::index_sequence<N...>) {
+  return (
+      ((i >> N * CHAR_BIT & std::uint8_t(-1))
+       << (sizeof(T) - 1 - N) * CHAR_BIT) |
+      ...);
+}
+
+template <class T, class U = std::make_unsigned_t<T>>
+constexpr U bswap(T i) {
+  return bswap_impl<U>(i, std::make_index_sequence<sizeof(T)>{});
+}
+
 /**
  * Decodes a little-endian ordered buffer 'data' into a native
  * primitive type, T.
@@ -68,13 +89,7 @@ inline T decode_le(const void* const data) {
     return *n;
   }
 
-  T le_n;
-  char* const p = reinterpret_cast<char*>(&le_n);
-  for (size_t i = 0; i < sizeof(T); ++i) {
-    p[i] = *n >> ((sizeof(T) - i - 1) * 8);
-  }
-
-  return le_n;
+  return bswap<T>(*n);
 }
 
 /**
@@ -88,13 +103,21 @@ inline T decode_be(const void* const data) {
     return *n;
   }
 
-  T be_n;
-  char* const p = reinterpret_cast<char*>(&be_n);
-  for (size_t i = 0; i < sizeof(T); ++i) {
-    p[i] = *n >> (i * 8);
+  return bswap<T>(*n);
+}
+
+/**
+ * Encodes a native primitive type T into a big-endian ordered buffer 'data'
+ */
+template <class T>
+inline void encode_be(const T value, void* const data) {
+  T* const n = reinterpret_cast<T* const>(data);
+  if (is_big_endian()) {
+    *n = value;
+    return;
   }
 
-  return be_n;
+  *n = bswap<T>(value);
 }
 
 }  // namespace tiledb::sm::utils::endianness
