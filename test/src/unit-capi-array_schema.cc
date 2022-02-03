@@ -1675,8 +1675,6 @@ TEST_CASE_METHOD(
   REQUIRE(rc == TILEDB_OK);
 
   // Get version.
-  // Version should be constants::format_version because of
-  // ArraySchema::serialize always resets it
   uint32_t version_r = 0;
   rc = tiledb_array_schema_get_version(ctx_, array_schema, &version_r);
   CHECK(rc == TILEDB_OK);
