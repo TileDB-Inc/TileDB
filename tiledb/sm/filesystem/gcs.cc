@@ -176,7 +176,7 @@ Status GCS::init_client() const {
 Status GCS::create_bucket(const URI& uri) const {
   RETURN_NOT_OK(init_client());
 
-  if (!uri.is_gcs()) {
+  if (!uri.is_gcs() && !uri.is_gs()) {
     return LOG_STATUS(Status_GCSError(
         std::string("URI is not a GCS URI: " + uri.to_string())));
   }
@@ -200,7 +200,7 @@ Status GCS::create_bucket(const URI& uri) const {
 Status GCS::empty_bucket(const URI& uri) const {
   RETURN_NOT_OK(init_client());
 
-  if (!uri.is_gcs()) {
+  if (!uri.is_gcs() && !uri.is_gs()) {
     return LOG_STATUS(Status_GCSError(
         std::string("URI is not a GCS URI: " + uri.to_string())));
   }
@@ -212,7 +212,7 @@ Status GCS::is_empty_bucket(const URI& uri, bool* is_empty) const {
   RETURN_NOT_OK(init_client());
   assert(is_empty);
 
-  if (!uri.is_gcs()) {
+  if (!uri.is_gcs() && !uri.is_gs()) {
     return LOG_STATUS(Status_GCSError(
         std::string("URI is not a GCS URI: " + uri.to_string())));
   }
@@ -243,7 +243,7 @@ Status GCS::is_bucket(const URI& uri, bool* const is_bucket) const {
   RETURN_NOT_OK(init_client());
   assert(is_bucket);
 
-  if (!uri.is_gcs()) {
+  if (!uri.is_gcs() && !uri.is_gs()) {
     return LOG_STATUS(Status_GCSError(
         std::string("URI is not a GCS URI: " + uri.to_string())));
   }
@@ -281,7 +281,7 @@ Status GCS::is_dir(const URI& uri, bool* const exists) const {
   RETURN_NOT_OK(init_client());
   assert(exists);
 
-  if (!uri.is_gcs()) {
+  if (!uri.is_gcs() && !uri.is_gs()) {
     return LOG_STATUS(Status_GCSError(
         std::string("URI is not a GCS URI: " + uri.to_string())));
   }
@@ -295,7 +295,7 @@ Status GCS::is_dir(const URI& uri, bool* const exists) const {
 Status GCS::remove_bucket(const URI& uri) const {
   RETURN_NOT_OK(init_client());
 
-  if (!uri.is_gcs()) {
+  if (!uri.is_gcs() && !uri.is_gs()) {
     return LOG_STATUS(Status_GCSError(
         std::string("URI is not a GCS URI: " + uri.to_string())));
   }
@@ -319,7 +319,7 @@ Status GCS::remove_bucket(const URI& uri) const {
 Status GCS::remove_object(const URI& uri) const {
   RETURN_NOT_OK(init_client());
 
-  if (!uri.is_gcs()) {
+  if (!uri.is_gcs() && !uri.is_gs()) {
     return LOG_STATUS(Status_GCSError(
         std::string("URI is not a GCS URI: " + uri.to_string())));
   }
@@ -342,7 +342,7 @@ Status GCS::remove_object(const URI& uri) const {
 Status GCS::remove_dir(const URI& uri) const {
   RETURN_NOT_OK(init_client());
 
-  if (!uri.is_gcs()) {
+  if (!uri.is_gcs() && !uri.is_gs()) {
     return LOG_STATUS(Status_GCSError(
         std::string("URI is not a GCS URI: " + uri.to_string())));
   }
@@ -390,7 +390,7 @@ Status GCS::ls(
 
   const URI uri_dir = uri.add_trailing_slash();
 
-  if (!uri_dir.is_gcs()) {
+  if (!uri_dir.is_gcs() && !uri_dir.is_gs()) {
     return LOG_STATUS(Status_GCSError(
         std::string("URI is not a GCS URI: " + uri_dir.to_string())));
   }
@@ -419,17 +419,18 @@ Status GCS::ls(
     }
 
     auto& results = object_metadata.value();
+    const static std::string gcs_prefix = uri_dir.is_gcs() ? "gcs://" : "gs://";
 
     if (absl::holds_alternative<google::cloud::storage::ObjectMetadata>(
             results)) {
       paths->emplace_back(
-          "gcs://" + bucket_name + "/" +
+          gcs_prefix + bucket_name + "/" +
           remove_front_slash(remove_trailing_slash(
               absl::get<google::cloud::storage::ObjectMetadata>(results)
                   .name())));
     } else if (absl::holds_alternative<std::string>(results)) {
       paths->emplace_back(
-          "gcs://" + bucket_name + "/" +
+          gcs_prefix + bucket_name + "/" +
           remove_front_slash(
               remove_trailing_slash(absl::get<std::string>(results))));
     }
@@ -449,12 +450,12 @@ Status GCS::move_object(const URI& old_uri, const URI& new_uri) {
 Status GCS::copy_object(const URI& old_uri, const URI& new_uri) {
   RETURN_NOT_OK(init_client());
 
-  if (!old_uri.is_gcs()) {
+  if (!old_uri.is_gcs() && !old_uri.is_gs()) {
     return LOG_STATUS(Status_GCSError(
         std::string("URI is not a GCS URI: " + old_uri.to_string())));
   }
 
-  if (!new_uri.is_gcs()) {
+  if (!new_uri.is_gcs() && !new_uri.is_gs()) {
     return LOG_STATUS(Status_GCSError(
         std::string("URI is not a GCS URI: " + new_uri.to_string())));
   }
@@ -576,7 +577,7 @@ Status GCS::move_dir(const URI& old_uri, const URI& new_uri) {
 Status GCS::touch(const URI& uri) const {
   RETURN_NOT_OK(init_client());
 
-  if (!uri.is_gcs()) {
+  if (!uri.is_gcs() && !uri.is_gs()) {
     return LOG_STATUS(Status_GCSError(
         std::string("URI is not a GCS URI: " + uri.to_string())));
   }
@@ -603,7 +604,7 @@ Status GCS::is_object(const URI& uri, bool* const is_object) const {
   RETURN_NOT_OK(init_client());
   assert(is_object);
 
-  if (!uri.is_gcs()) {
+  if (!uri.is_gcs() && !uri.is_gs()) {
     return LOG_STATUS(Status_GCSError(
         std::string("URI is not a GCS URI: " + uri.to_string())));
   }
@@ -645,7 +646,7 @@ Status GCS::is_object(
 
 Status GCS::write(
     const URI& uri, const void* const buffer, const uint64_t length) {
-  if (!uri.is_gcs()) {
+  if (!uri.is_gcs() && !uri.is_gs()) {
     return LOG_STATUS(Status_GCSError(
         std::string("URI is not a GCS URI: " + uri.to_string())));
   }
@@ -702,7 +703,7 @@ Status GCS::object_size(const URI& uri, uint64_t* const nbytes) const {
   RETURN_NOT_OK(init_client());
   assert(nbytes);
 
-  if (!uri.is_gcs()) {
+  if (!uri.is_gcs() && !uri.is_gs()) {
     return LOG_STATUS(Status_GCSError(
         std::string("URI is not a GCS URI: " + uri.to_string())));
   }
@@ -774,7 +775,7 @@ Status GCS::write_parts(
     const void* const buffer,
     const uint64_t length,
     const bool last_part) {
-  if (!uri.is_gcs()) {
+  if (!uri.is_gcs() && !uri.is_gs()) {
     return LOG_STATUS(Status_GCSError(
         std::string("URI is not an GCS URI: " + uri.to_string())));
   }
@@ -915,7 +916,7 @@ Status GCS::upload_part(
 Status GCS::flush_object(const URI& uri) {
   RETURN_NOT_OK(init_client());
 
-  if (!uri.is_gcs()) {
+  if (!uri.is_gcs() && !uri.is_gs()) {
     return LOG_STATUS(Status_GCSError(
         std::string("URI is not a GCS URI: " + uri.to_string())));
   }
@@ -1097,7 +1098,7 @@ Status GCS::read(
     uint64_t* const length_returned) const {
   RETURN_NOT_OK(init_client());
 
-  if (!uri.is_gcs()) {
+  if (!uri.is_gcs() && !uri.is_gs()) {
     return LOG_STATUS(Status_GCSError(
         std::string("URI is not an GCS URI: " + uri.to_string())));
   }
@@ -1135,10 +1136,10 @@ Status GCS::parse_gcs_uri(
     const URI& uri,
     std::string* const bucket_name,
     std::string* const object_path) const {
-  assert(uri.is_gcs());
+  assert(uri.is_gcs() || uri.is_gs());
   const std::string uri_str = uri.to_string();
 
-  const static std::string gcs_prefix = "gcs://";
+  const static std::string gcs_prefix = uri.is_gcs() ? "gcs://" : "gs://";
   assert(uri_str.rfind(gcs_prefix, 0) == 0);
 
   if (uri_str.size() == gcs_prefix.size()) {
