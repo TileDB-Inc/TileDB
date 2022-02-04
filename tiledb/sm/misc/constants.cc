@@ -677,6 +677,29 @@ const std::array<std::string, 6> cert_files_linux = {
 #endif
 
 const std::string config_delimiter = ",";
+
+/** Name of the single dimension used in tiledb_file_t objects. */
+const std::string blob_array_dimension_name = "position";
+
+/** Name of the single attribute used in tiledb_file_t objects. */
+const std::string blob_array_attribute_name = "contents";
+
+/** Name of the metadata key used in tiledb_file_t objects for current size. */
+const std::string blob_array_metadata_size_key = "file_size";
+
+/** Name of the metadata key used in tiledb_file_t objects for mime type. */
+const std::string blob_array_metadata_mime_type_key = "mime";
+
+/** Name of the metadata key used in tiledb_file_t objects for mime encoding. */
+const std::string blob_array_metadata_mime_encoding_key = "mime_encoding";
+
+/** Name of the metadata key used in tiledb_file_t objects for original file
+ * extension . */
+const std::string blob_array_metadata_ext_key = "file_extension";
+
+/** Name of the metadata key used in tiledb_file_t objects for original file
+ * name. */
+const std::string blob_array_metadata_original_file_name_key = "original_file_name";
 }  // namespace constants
 
 }  // namespace sm

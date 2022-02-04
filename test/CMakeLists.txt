@@ -116,6 +116,7 @@ set(TILEDB_UNIT_TEST_SOURCES
   src/unit-capi-array_schema.cc
   src/unit-capi-async.cc
   src/unit-capi-attributes.cc
+  src/unit-capi-blob_array.cc
   src/unit-capi-buffer.cc
   src/unit-capi-config.cc
   src/unit-capi-context.cc

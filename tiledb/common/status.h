@@ -63,6 +63,14 @@
 namespace tiledb {
 namespace common {
 
+#define THROW_NOT_OK(s)                       \
+  do {                                        \
+    Status _s = (s);                          \
+    if (!_s.ok()) {                           \
+      throw std::runtime_error(_s.message()); \
+    }                                         \
+  } while (false)
+
 #define RETURN_NOT_OK(s) \
   do {                   \
     Status _s = (s);     \
@@ -448,6 +456,11 @@ inline Status Status_ArrayDirectoryError(const std::string& msg) {
 inline Status Status_TaskError(const std::string& msg) {
   return {"[TileDB::Task] Error", msg};
 }
+/** Return a BlobArrayError error class Status with a given message **/
+inline Status Status_BlobArrayError(const std::string& msg) {
+  return Status(StatusCode::BlobArrayError, msg);
+}
+
 }  // namespace common
 }  // namespace tiledb
 

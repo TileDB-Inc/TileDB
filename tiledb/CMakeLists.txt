@@ -115,6 +115,8 @@ endif()
 
 # List of all core source files
 set(TILEDB_CORE_SOURCES
+  ${TILEDB_CORE_INCLUDE_DIR}/tiledb/appl/blob_array/blob_array.cc
+  ${TILEDB_CORE_INCLUDE_DIR}/tiledb/appl/blob_array/blob_array_schema.cc
   ${TILEDB_CORE_INCLUDE_DIR}/tiledb/common/heap_memory.cc
   ${TILEDB_CORE_INCLUDE_DIR}/tiledb/common/heap_profiler.cc
   ${TILEDB_CORE_INCLUDE_DIR}/tiledb/common/logger.cc
@@ -133,6 +135,7 @@ set(TILEDB_CORE_SOURCES
   ${TILEDB_CORE_INCLUDE_DIR}/tiledb/sm/buffer/buffer.cc
   ${TILEDB_CORE_INCLUDE_DIR}/tiledb/sm/buffer/buffer_list.cc
   ${TILEDB_CORE_INCLUDE_DIR}/tiledb/sm/c_api/tiledb.cc
+  ${TILEDB_CORE_INCLUDE_DIR}/tiledb/sm/c_api/tiledb_file.cc
   ${TILEDB_CORE_INCLUDE_DIR}/tiledb/sm/cache/buffer_lru_cache.cc
   ${TILEDB_CORE_INCLUDE_DIR}/tiledb/sm/compressors/bzip_compressor.cc
   ${TILEDB_CORE_INCLUDE_DIR}/tiledb/sm/compressors/dd_compressor.cc
@@ -516,6 +519,7 @@ find_package(LZ4_EP REQUIRED)
 find_package(Spdlog_EP REQUIRED)
 find_package(Zlib_EP REQUIRED)
 find_package(Zstd_EP REQUIRED)
+find_package(Magic_EP REQUIRED)
 target_link_libraries(TILEDB_CORE_OBJECTS_ILIB
   INTERFACE
     Bzip2::Bzip2
@@ -523,7 +527,13 @@ target_link_libraries(TILEDB_CORE_OBJECTS_ILIB
     spdlog::spdlog
     Zlib::Zlib
     Zstd::Zstd
+    libmagic
 )
+
+# GCC <9 need to link against libc++fs for c++17 filesystem library
+find_package(Filesystem REQUIRED)
+target_link_libraries(TILEDB_CORE_OBJECTS_ILIB INTERFACE std::filesystem)
+
 if (NOT WIN32)
   target_link_libraries(TILEDB_CORE_OBJECTS_ILIB
     INTERFACE
@@ -794,6 +804,7 @@ if (TILEDB_STATIC)
   append_dep_lib(GCSSDK::google_cloud_cpp_common)
   append_dep_lib(GCSSDK::crc32c)
   append_dep_lib(spdlog::spdlog)
+  append_dep_lib(libmagic)
 endif()
 
 ############################################################
