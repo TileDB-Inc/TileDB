@@ -107,7 +107,7 @@ std::string GSFx::random_bucket_name(const std::string& prefix) {
   return ss.str();
 }
 
-TEST_CASE_METHOD(GSFx, "Test GCS filesystem, file management", "[gcs]") {
+TEST_CASE_METHOD(GSFx, "Test GS filesystem, file management", "[gs]") {
   Config config;
   config.set("vfs.gcs.use_multi_part_upload", "true");
   init_gcs(std::move(config));
@@ -223,8 +223,8 @@ TEST_CASE_METHOD(GSFx, "Test GCS filesystem, file management", "[gcs]") {
 
 TEST_CASE_METHOD(
     GSFx,
-    "Test GCS filesystem I/O, multipart, serial",
-    "[gcs][multipart][serial]") {
+    "Test GS filesystem I/O, multipart, serial",
+    "[gs][multipart][serial]") {
   Config config;
   const uint64_t max_parallel_ops = 1;
   const uint64_t multi_part_size = 4 * 1024 * 1024;
@@ -308,8 +308,8 @@ TEST_CASE_METHOD(
 
 TEST_CASE_METHOD(
     GSFx,
-    "Test GCS filesystem I/O, non-multipart, serial",
-    "[gcs][non-multipart][serial]") {
+    "Test GS filesystem I/O, non-multipart, serial",
+    "[gs][non-multipart][serial]") {
   Config config;
   const uint64_t max_parallel_ops = 1;
   const uint64_t multi_part_size = 4 * 1024 * 1024;
@@ -386,8 +386,8 @@ TEST_CASE_METHOD(
 
 TEST_CASE_METHOD(
     GSFx,
-    "Test GCS filesystem I/O, multipart, concurrent",
-    "[gcs][multipart][concurrent]") {
+    "Test GS filesystem I/O, multipart, concurrent",
+    "[gs][multipart][concurrent]") {
   Config config;
   const uint64_t max_parallel_ops = 4;
   const uint64_t multi_part_size = 4 * 1024 * 1024;
@@ -471,8 +471,8 @@ TEST_CASE_METHOD(
 
 TEST_CASE_METHOD(
     GSFx,
-    "Test GCS filesystem I/O, non-multipart, concurrent",
-    "[gcs][non-multipart][concurrent]") {
+    "Test GS filesystem I/O, non-multipart, concurrent",
+    "[gs][non-multipart][concurrent]") {
   Config config;
   const uint64_t max_parallel_ops = 4;
   const uint64_t multi_part_size = 4 * 1024 * 1024;
@@ -549,8 +549,8 @@ TEST_CASE_METHOD(
 
 TEST_CASE_METHOD(
     GSFx,
-    "Test GCS filesystem I/O, multipart, composition",
-    "[gcs][multipart][composition]") {
+    "Test GS filesystem I/O, multipart, composition",
+    "[gs][multipart][composition]") {
   Config config;
   const uint64_t max_parallel_ops = 4;
   const uint64_t multi_part_size = 4 * 1024;
