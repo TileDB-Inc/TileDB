@@ -49,6 +49,7 @@
 #include "tiledb/sm/storage_manager/context.h"
 #include "tiledb/sm/subarray/subarray.h"
 #include "tiledb/sm/subarray/subarray_partitioner.h"
+#include "tiledb/appl/blob_array/blob_array.h"
 
 struct tiledb_array_t {
   tiledb::sm::Array* array_ = nullptr;
@@ -129,6 +130,10 @@ struct tiledb_vfs_fh_t {
 
 struct tiledb_fragment_info_t {
   tiledb::sm::FragmentInfo* fragment_info_ = nullptr;
+};
+
+struct tiledb_file_t {
+  tiledb::appl::BlobArray* file_ = nullptr;
 };
 
 #endif

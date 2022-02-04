@@ -71,7 +71,7 @@ class Array {
   Array(const Array& rhs);
 
   /** Destructor. */
-  ~Array() = default;
+  virtual ~Array() = default;
 
   /* ********************************* */
   /*                API                */
@@ -104,7 +104,7 @@ class Array {
    * @param key_length The length in bytes of the encryption key.
    * @return Status
    */
-  Status open(
+  virtual Status open(
       QueryType query_type,
       EncryptionType encryption_type,
       const void* encryption_key,
@@ -149,7 +149,7 @@ class Array {
    *
    * @note Applicable only to reads.
    */
-  Status open(
+  virtual Status open(
       QueryType query_type,
       uint64_t timestamp_start,
       uint64_t timestamp_end,
@@ -351,7 +351,7 @@ class Array {
   /** Returns the memory tracker. */
   MemoryTracker* memory_tracker();
 
- private:
+ protected:
   /* ********************************* */
   /*         PRIVATE ATTRIBUTES        */
   /* ********************************* */

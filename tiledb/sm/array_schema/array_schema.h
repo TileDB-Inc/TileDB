@@ -344,9 +344,9 @@ class ArraySchema {
   /** Generates a new array schema URI with specified timestamp range. */
   Status generate_uri(const std::pair<uint64_t, uint64_t>& timestamp_range);
 
- private:
+ protected:
   /* ********************************* */
-  /*         PRIVATE ATTRIBUTES        */
+  /*         PROTECTED ATTRIBUTES      */
   /* ********************************* */
 
   /**

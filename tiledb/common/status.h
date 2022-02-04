@@ -64,6 +64,14 @@ using std::tuple, std::optional, std::nullopt;
 namespace tiledb {
 namespace common {
 
+#define THROW_NOT_OK(s)                       \
+  do {                                        \
+    Status _s = (s);                          \
+    if (!_s.ok()) {                           \
+      throw std::runtime_error(_s.message()); \
+    }                                         \
+  } while (false)
+
 #define RETURN_NOT_OK(s) \
   do {                   \
     Status _s = (s);     \
@@ -406,6 +414,11 @@ inline Status Status_DenseTilerError(const std::string& msg) {
 inline Status Status_QueryConditionError(const std::string& msg) {
   return Status(StatusCode::QueryConditionError, msg);
 }
+/** Return a BlobArrayError error class Status with a given message **/
+inline Status Status_BlobArrayError(const std::string& msg) {
+  return Status(StatusCode::BlobArrayError, msg);
+}
+
 }  // namespace common
 }  // namespace tiledb
 
