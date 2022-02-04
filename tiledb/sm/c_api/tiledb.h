@@ -3018,6 +3018,24 @@ TILEDB_EXPORT int32_t tiledb_array_schema_get_allows_dups(
     tiledb_ctx_t* ctx, tiledb_array_schema_t* array_schema, int* allows_dups);
 
 /**
+ * Returns the array schema version.
+ *
+ * **Example:**
+ *
+ * @code{.c}
+ * uint32_t version;
+ * tiledb_array_schema_get_version(ctx, array_schema, &version);
+ * @endcode
+ *
+ * @param ctx The TileDB context.
+ * @param array_schema The array schema.
+ * @param version The version.
+ * @return `TILEDB_OK` for success and `TILEDB_ERR` for error.
+ */
+TILEDB_EXPORT int32_t tiledb_array_schema_get_version(
+    tiledb_ctx_t* ctx, tiledb_array_schema_t* array_schema, uint32_t* version);
+
+/**
  * Sets a domain for the array schema.
  *
  * **Example:**
