@@ -46,7 +46,7 @@
 using namespace tiledb::common;
 using namespace tiledb::sm;
 
-struct GCSFx {
+struct GSFx {
   const std::string GCS_PREFIX = "gs://";
   const tiledb::sm::URI GCS_BUCKET =
       tiledb::sm::URI(GCS_PREFIX + random_bucket_name("tiledb") + "/");
@@ -55,15 +55,15 @@ struct GCSFx {
   tiledb::sm::GCS gcs_;
   ThreadPool thread_pool_;
 
-  GCSFx() = default;
-  ~GCSFx();
+  GSFx() = default;
+  ~GSFx();
 
   void init_gcs(Config&& config);
 
   static std::string random_bucket_name(const std::string& prefix);
 };
 
-GCSFx::~GCSFx() {
+GSFx::~GSFx() {
   // Empty bucket
   bool is_empty;
   REQUIRE(gcs_.is_empty_bucket(GCS_BUCKET, &is_empty).ok());
@@ -77,7 +77,7 @@ GCSFx::~GCSFx() {
   REQUIRE(gcs_.remove_bucket(GCS_BUCKET).ok());
 }
 
-void GCSFx::init_gcs(Config&& config) {
+void GSFx::init_gcs(Config&& config) {
   REQUIRE(config.set("vfs.gcs.project_id", "TODO").ok());
 
   REQUIRE(thread_pool_.init(2).ok());
@@ -100,14 +100,14 @@ void GCSFx::init_gcs(Config&& config) {
   REQUIRE(is_empty);
 }
 
-std::string GCSFx::random_bucket_name(const std::string& prefix) {
+std::string GSFx::random_bucket_name(const std::string& prefix) {
   std::stringstream ss;
   ss << prefix << "-" << std::this_thread::get_id() << "-"
      << tiledb::sm::utils::time::timestamp_now_ms();
   return ss.str();
 }
 
-TEST_CASE_METHOD(GCSFx, "Test GCS filesystem, file management", "[gcs]") {
+TEST_CASE_METHOD(GSFx, "Test GCS filesystem, file management", "[gcs]") {
   Config config;
   config.set("vfs.gcs.use_multi_part_upload", "true");
   init_gcs(std::move(config));
@@ -222,7 +222,7 @@ TEST_CASE_METHOD(GCSFx, "Test GCS filesystem, file management", "[gcs]") {
 }
 
 TEST_CASE_METHOD(
-    GCSFx,
+    GSFx,
     "Test GCS filesystem I/O, multipart, serial",
     "[gcs][multipart][serial]") {
   Config config;
@@ -307,7 +307,7 @@ TEST_CASE_METHOD(
 }
 
 TEST_CASE_METHOD(
-    GCSFx,
+    GSFx,
     "Test GCS filesystem I/O, non-multipart, serial",
     "[gcs][non-multipart][serial]") {
   Config config;
@@ -385,7 +385,7 @@ TEST_CASE_METHOD(
 }
 
 TEST_CASE_METHOD(
-    GCSFx,
+    GSFx,
     "Test GCS filesystem I/O, multipart, concurrent",
     "[gcs][multipart][concurrent]") {
   Config config;
@@ -470,7 +470,7 @@ TEST_CASE_METHOD(
 }
 
 TEST_CASE_METHOD(
-    GCSFx,
+    GSFx,
     "Test GCS filesystem I/O, non-multipart, concurrent",
     "[gcs][non-multipart][concurrent]") {
   Config config;
@@ -548,7 +548,7 @@ TEST_CASE_METHOD(
 }
 
 TEST_CASE_METHOD(
-    GCSFx,
+    GSFx,
     "Test GCS filesystem I/O, multipart, composition",
     "[gcs][multipart][composition]") {
   Config config;
