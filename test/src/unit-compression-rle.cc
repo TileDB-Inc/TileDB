@@ -309,7 +309,7 @@ TEST_CASE(
   // num_of_runs, output_strings_size}} pairs
   auto data = GENERATE_REF(table<
                            std::vector<std::string_view>,
-                           std::tuple<uint64_t, uint64_t, uint64_t, uint64_t>>(
+                           tuple<uint64_t, uint64_t, uint64_t, uint64_t>>(
       {{{s8, s8, s8, s8, s8, s1, s4, s4}, {5, 8, 3, 13}},
        {{s8, s8, s8, s8, s4, s4, s1}, {4, 8, 3, 13}},
        // s1 shows up in 2 different runs, so needs to be counted separately
@@ -346,7 +346,7 @@ TEST_CASE(
                         unique_values.size() * sizeof(uint8_t) + strings_size;
 
   // Compress the input array
-  std::vector<std::byte> compressed(exp_size);
+  std::vector<byte> compressed(exp_size);
   tiledb::sm::RLE::compress<uint8_t, uint8_t>(uncompressed, compressed);
   CHECK(compressed.size() == exp_size);
 
@@ -375,7 +375,7 @@ TEST_CASE(
       "HG54"
       "A";
   const auto exp_decomp_size = strlen(unc);
-  std::vector<std::byte> decompressed(exp_decomp_size);
+  std::vector<byte> decompressed(exp_decomp_size);
   tiledb::sm::RLE::decompress<uint8_t, uint8_t>(compressed, decompressed);
 
   // In decompressed array there are only chars, so compare using memcpy
@@ -396,7 +396,7 @@ TEST_CASE(
 
   const auto exp_size = sizeof(uint32_t) + sizeof(uint16_t) + string_16.size();
 
-  std::vector<std::byte> compressed(exp_size);
+  std::vector<byte> compressed(exp_size);
   tiledb::sm::RLE::compress<uint32_t, uint16_t>(uncompressed, compressed);
 
   auto data = reinterpret_cast<const char*>(compressed.data());
@@ -413,7 +413,7 @@ TEST_CASE(
   auto strout = repeated2.str();
   const char* unc = strout.data();
   const auto exp_decomp_size = strlen(unc);
-  std::vector<std::byte> decompressed(exp_decomp_size);
+  std::vector<byte> decompressed(exp_decomp_size);
   tiledb::sm::RLE::decompress<uint32_t, uint16_t>(compressed, decompressed);
 
   CHECK(
@@ -438,7 +438,7 @@ TEST_CASE(
                         uncompressed_bytesize;
 
   // Compress the input array
-  std::vector<std::byte> compressed(exp_size);
+  std::vector<byte> compressed(exp_size);
   tiledb::sm::RLE::compress<uint8_t, uint8_t>(uncompressed, compressed);
 
   // When all elements are unique the compressed output is always larger
@@ -468,7 +468,7 @@ TEST_CASE(
       "HG54"
       "HG5";
   const auto exp_decomp_size = strlen(unc);
-  std::vector<std::byte> decompressed(exp_decomp_size);
+  std::vector<byte> decompressed(exp_decomp_size);
   tiledb::sm::RLE::decompress<uint8_t, uint8_t>(compressed, decompressed);
 
   // In decompressed array there are only chars, so compare using memcpy
