@@ -33,10 +33,9 @@
 #ifndef TILEDB_RLE_COMPRESSOR_H
 #define TILEDB_RLE_COMPRESSOR_H
 
+#include "tiledb/common/common.h"
 #include "tiledb/common/status.h"
 #include "tiledb/sm/misc/endian.h"
-
-#include "span.hpp"
 
 #include <limits>
 #include <vector>
@@ -91,8 +90,7 @@ class RLE {
    * items. Memory is allocated and owned by the caller
    */
   template <class T, class P>
-  static void compress(
-      nonstd::span<std::string_view> input, nonstd::span<std::byte> output) {
+  static void compress(span<std::string_view> input, span<byte> output) {
     if (input.empty() || output.empty())
       return;
 
@@ -137,8 +135,7 @@ class RLE {
    * Memory is allocated and owned by the caller
    */
   template <class T, class P>
-  static void decompress(
-      nonstd::span<std::byte> input, nonstd::span<std::byte> output) {
+  static void decompress(span<byte> input, span<byte> output) {
     if (input.empty() || output.empty())
       return;
 
@@ -171,8 +168,8 @@ class RLE {
    * @param return {max_run_value, max_string_size, num_of_runs,
    * output_strings_size}
    */
-  static std::tuple<uint64_t, uint64_t, uint64_t, uint64_t>
-  calculate_compression_params(nonstd::span<std::string_view> input);
+  static tuple<uint64_t, uint64_t, uint64_t, uint64_t>
+  calculate_compression_params(span<std::string_view> input);
 };
 }  // namespace sm
 }  // namespace tiledb

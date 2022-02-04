@@ -62,6 +62,8 @@ using std::tuple;
 using std::nullopt;
 using std::optional;
 
+using std::byte;
+
 /**
  * @section Reference
  * Documentation on the preprocessor operators

@@ -56,4 +56,7 @@ using tiledb::common::allocator;
 using tiledb::common::make_shared;
 // using tiledb::common::make_unique;
 
+#include "external/include/span/span.hpp"
+using tcb::span;
+
 #endif  // TILEDB_COMMON_COMMON_H
