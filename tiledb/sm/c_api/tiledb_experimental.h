@@ -343,6 +343,17 @@ TILEDB_EXPORT int32_t tiledb_ctx_alloc_with_error(
 /* ********************************* */
 
 #if 01
+
+TILEDB_EXPORT int32_t tiledb_array_as_file_obtain(tiledb_ctx_t *ctx, tiledb_array_t **array, const char *array_uri, tiledb_config_t *config);
+TILEDB_EXPORT int32_t tiledb_array_as_file_import(tiledb_ctx_t *ctx, tiledb_array_t *array, const char *input_uri_filename);
+TILEDB_EXPORT int32_t tiledb_array_as_file_export(tiledb_ctx_t *ctx, tiledb_array_t *array, const char *output_uri_filename);
+
+TILEDB_EXPORT int32_t tiledb_array_schema_create_default_blob_array (
+    tiledb_ctx_t* ctx,
+    tiledb_array_schema_t** array_schema);
+
+#else
+//original story api
 TILEDB_EXPORT int32_t tiledb_array_as_file_create(
     tiledb_ctx_t* ctx,
     const char* array_uri,
@@ -357,10 +368,6 @@ TILEDB_EXPORT int32_t tiledb_array_as_file_export(
     const char* array_uri,
     const char* output_uri_filename,
     tiledb_config_t* config);
-//
-TILEDB_EXPORT int32_t tiledb_array_schema_create_default_file (
-    tiledb_ctx_t* ctx,
-    tiledb_array_schema_t** array_schema);
 #endif
 
 #if 0

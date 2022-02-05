@@ -61,7 +61,7 @@ BlobArray::BlobArray(const URI& array_uri, StorageManager* storage_manager)
   // timestamp
   timestamp_end_ = utils::time::timestamp_now_ms();
   timestamp_end_opened_at_ = timestamp_end_;
-};
+}
 
 /* ********************************* */
 /*                API                */
