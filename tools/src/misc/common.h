@@ -38,6 +38,10 @@
 namespace tiledb {
 namespace cli {
 
+#if 0
+// Current in conflict with same named item newly in core tiledb\common\status.h
+// TBD: if prefix "TileDB Error: " desired, this will need to be revisited
+// in tools. 
 /** Throws an exception if the given Status is not ok. */
 #define THROW_NOT_OK(s)                                          \
   do {                                                           \
@@ -45,6 +49,7 @@ namespace cli {
     if (!_s.ok())                                                \
       throw std::runtime_error("TileDB Error: " + _s.message()); \
   } while (0)
+#endif
 
 }  // namespace cli
 }  // namespace tiledb
