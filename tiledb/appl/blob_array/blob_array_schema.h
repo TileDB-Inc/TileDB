@@ -63,7 +63,7 @@ using Attribute = tiledb::sm::Attribute;
 
 /** Specifies the file array schema. */
 class BlobArraySchema : public tiledb::sm::ArraySchema {
-  static const uint64_t default_extent = 1024*1024;
+  static const uint64_t default_extent = 1024 * 1024;
 
   constexpr static const std::array<uint64_t, 2> default_domain = {
       0, std::numeric_limits<uint64_t>::max() - 1};
