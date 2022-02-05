@@ -2735,7 +2735,8 @@ Status FragmentMetadata::load_tile_max_values(unsigned idx, ConstBuffer* buff) {
     }
 
     // TBD: 'buffer_size' was checked to get in this branch, should
-    // 'var_buffer_size' be similarly checked to possibly avoid this section too?
+    // 'var_buffer_size' be similarly checked to possibly avoid this section
+    // too?
     tile_max_var_buffer_[idx].resize(var_buffer_size);
     // st = buff->read(&tile_max_var_buffer_[idx][0], var_buffer_size);
     st = buff->read(tile_max_var_buffer_[idx].data() + 0, var_buffer_size);

@@ -112,7 +112,7 @@ TILEDB_EXPORT int32_t tiledb_array_as_file_obtain(
   auto stg_mgr = ctx->ctx_->storage_manager();
   // release the 'default' allocated array, to be replaced afterwards
   delete (*array)->array_;
-  tiledb::appl::BlobArray *blob_array;
+  tiledb::appl::BlobArray* blob_array;
   (*array)->array_ = blob_array =
       new (std::nothrow) tiledb::appl::BlobArray(uri_array, stg_mgr);
   if ((*array)->array_ == nullptr) {
@@ -170,32 +170,33 @@ TILEDB_EXPORT int32_t tiledb_array_as_file_obtain(
                 static_cast<uint32_t>(strlen(encryption_key_str)) :
                 0) == TILEDB_ERR) {
 #elif 0
-    // While storage_manager->open() will apparently honor array config, 
+    // While storage_manager->open() will apparently honor array config,
     // seems storage_manager->create uses -storage_manager- cfg which
-    //we don't really want to be modifying...
+    // we don't really want to be modifying...
     if (tiledb_array_create(ctx, array_uri, blob_array_schema) == TILEDB_ERR) {
 #else
     auto cfg = config ? config->config_ : &stg_mgr->config();
     if (SAVE_ERROR_CATCH(ctx, blob_array->create(cfg))) {
 #endif
-      tiledb_array_free(array);
-      tiledb_array_schema_free(&blob_array_schema);
-      *array = nullptr;
-      return TILEDB_ERR;
-    }
-  } else {
-    if (tiledb_array_close(ctx, *array) == TILEDB_ERR) {
-      tiledb_array_free(array);
-      *array = nullptr;
-      tiledb_array_schema_free(&blob_array_schema);
-      return TILEDB_ERR;
-    }
+    tiledb_array_free(array);
+    tiledb_array_schema_free(&blob_array_schema);
+    *array = nullptr;
+    return TILEDB_ERR;
   }
+}
+else {
+  if (tiledb_array_close(ctx, *array) == TILEDB_ERR) {
+    tiledb_array_free(array);
+    *array = nullptr;
+    tiledb_array_schema_free(&blob_array_schema);
+    return TILEDB_ERR;
+  }
+}
 
-  // returning an allocated tiledb_array_t at '*array' having default blob_array
-  // schema;
+// returning an allocated tiledb_array_t at '*array' having default blob_array
+// schema;
 
-  return TILEDB_OK;
+return TILEDB_OK;
 }
 
 TILEDB_EXPORT int32_t tiledb_array_as_file_import(
