@@ -77,6 +77,7 @@ class BlobArray : public tiledb::sm::Array {
   /*                API                */
   /* ********************************* */
 
+  #if 0
   /**
    * Opens the BlobArray for reading at a timestamp retrieved from the config
    * or for writing.
@@ -144,6 +145,7 @@ class BlobArray : public tiledb::sm::Array {
    * @return Status
    */
   Status save_from_file_handle(FILE* in, const Config* config);
+  #endif
 
   /**
    * Read input file and store in BlobArray array
@@ -160,7 +162,6 @@ class BlobArray : public tiledb::sm::Array {
    * @return Status
    */
   Status save_from_vfs_fh(VFSFileHandle* file, const Config* config);
-
   /**
    * Read input file and store in BlobArray array
    * @param data void buffer of bytes to store
@@ -171,6 +172,7 @@ class BlobArray : public tiledb::sm::Array {
   Status save_from_buffer(
       void* data, uint64_t size, [[maybe_unused]] const Config* config);
 
+#if 0
   /**
    * Export BlobArray array to FILE handle
    * @param out FILE* handle to write to
@@ -179,6 +181,8 @@ class BlobArray : public tiledb::sm::Array {
    */
   Status export_to_file_handle(
       FILE* out, [[maybe_unused]] const Config* config);
+
+#endif
 
   /**
    * Export BlobArray array to URI.
@@ -198,6 +202,7 @@ class BlobArray : public tiledb::sm::Array {
   Status export_to_vfs_fh(
       VFSFileHandle* file, [[maybe_unused]] const Config* config);
 
+  #if 0
   /**
    * Export BlobArray array to buffer.
    * @param data buffer to write to.
@@ -211,13 +216,14 @@ class BlobArray : public tiledb::sm::Array {
       uint64_t* size,
       uint64_t file_offset,
       [[maybe_unused]] const Config* config);
-
+#endif
   /**
    * Get size based on current opened file
    * @return size
    */
   uint64_t size();
 
+  #if 0
   /**
    * Get size based on current opened file
    * @param size pointer to size
@@ -257,6 +263,8 @@ class BlobArray : public tiledb::sm::Array {
    */
   Status file_extension(const char** ext, uint32_t* size);
 
+#endif
+
   /* ********************************* */
   /*         PRIVATE ATTRIBUTES        */
   /* ********************************* */
@@ -268,10 +276,12 @@ class BlobArray : public tiledb::sm::Array {
   /* ********************************* */
 
  private:
+#if 0
   //  std::optional<EncryptionKey> get_encryption_key_from_config(const Config&
   //  config) const;
   tdb_unique_ptr<EncryptionKey> get_encryption_key_from_config(
       const Config& config) const;
+#endif
 
   /**
    * Get mime type from libmagic

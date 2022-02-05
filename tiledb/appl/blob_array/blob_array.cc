@@ -67,6 +67,7 @@ BlobArray::BlobArray(const URI& array_uri, StorageManager* storage_manager)
 /*                API                */
 /* ********************************* */
 
+#if 0
 Status BlobArray::open(
     QueryType query_type,
     EncryptionType encryption_type,
@@ -132,7 +133,6 @@ Status BlobArray::create_from_uri(const URI& file, const Config* config) {
   return Status::Ok();
 }
 
-#if 01
 Status BlobArray::create_from_vfs_fh(
     const VFSFileHandle* file, [[maybe_unused]] const Config* config) {
   try {
@@ -199,6 +199,7 @@ Status BlobArray::save_from_file_handle(FILE* in, const Config* config) {
 
   return Status::Ok();
 }
+#endif
 
 Status BlobArray::save_from_uri(const URI& file, const Config* config) {
   try {
@@ -311,8 +312,8 @@ Status BlobArray::save_from_buffer(
 
   return Status::Ok();
 }
-#endif
 
+#if 0
 Status BlobArray::export_to_file_handle(
     FILE* out, [[maybe_unused]] const Config* config) {
   try {
@@ -370,6 +371,7 @@ Status BlobArray::export_to_file_handle(
   }
   return Status::Ok();
 }
+#endif
 
 Status BlobArray::export_to_uri(const URI& file, const Config* config) {
   try {
@@ -459,6 +461,7 @@ Status BlobArray::export_to_vfs_fh(
   return Status::Ok();
 }
 
+#if 0
 Status BlobArray::export_to_buffer(
     void* data,
     uint64_t* size,
@@ -562,6 +565,7 @@ tdb_unique_ptr<EncryptionKey> BlobArray::get_encryption_key_from_config(
 
   return encryption_key;
 }
+#endif
 
 uint64_t BlobArray::size() {
   const uint64_t* size = nullptr;
@@ -579,6 +583,7 @@ uint64_t BlobArray::size() {
   return *size;
 }
 
+#if 0
 Status BlobArray::size(uint64_t* size) {
   Datatype datatype = Datatype::UINT64;
   uint32_t val_num = 1;
@@ -645,6 +650,7 @@ Status BlobArray::file_extension(const char** ext, uint32_t* size) {
 
   return Status::Ok();
 }
+#endif
 
 const char* BlobArray::libmagic_get_mime(void* data, uint64_t size) {
   magic_t magic = magic_open(MAGIC_MIME_TYPE);
