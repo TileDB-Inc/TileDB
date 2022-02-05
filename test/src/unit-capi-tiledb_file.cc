@@ -46,6 +46,12 @@ using namespace tiledb::test;
 static const std::string files_dir =
     std::string(TILEDB_TEST_INPUTS_DIR) + "/files";
 
+#ifdef _WIN32
+#include "tiledb/sm/filesystem/win.h"
+#else
+#include "tiledb/sm/filesystem/posix.h"
+#endif
+
 struct FileFx {
   // TileDB context
   tiledb_ctx_t* ctx_;
@@ -65,6 +71,8 @@ struct FileFx {
   void create_temp_dir(const std::string& path) const;
   void remove_temp_dir(const std::string& path) const;
   static std::string random_name(const std::string& prefix);
+
+  std::string localfs_temp_dir_;
 };
 
 FileFx::FileFx()
@@ -74,6 +82,17 @@ FileFx::FileFx()
   REQUIRE(error == nullptr);
   // Initialize vfs test
   REQUIRE(vfs_test_init(fs_vec_, &ctx_, &vfs_, config_).ok());
+
+// Create temporary directory based on the supported filesystem
+#ifdef _WIN32
+  SupportedFsLocal windows_fs;
+  localfs_temp_dir_ = windows_fs.file_prefix() + windows_fs.temp_dir();
+#else
+  SupportedFsLocal posix_fs;
+  localfs_temp_dir_ = posix_fs.file_prefix() + posix_fs.temp_dir();
+#endif
+
+  create_dir(localfs_temp_dir_, ctx_, vfs_);
 }
 
 FileFx::~FileFx() {
@@ -225,7 +244,7 @@ TEST_CASE_METHOD(
   std::string temp_dir = fs_vec_[0]->temp_dir();
 
   std::string array_name = temp_dir + "blob_array_test_create";
-  std::string output_path = temp_dir + "out";
+  std::string output_path = localfs_temp_dir_ + "out";
   SECTION("- without encryption") {
     encryption_type_ = TILEDB_NO_ENCRYPTION;
     encryption_key_ = nullptr;
