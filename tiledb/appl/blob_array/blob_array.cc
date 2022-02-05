@@ -300,8 +300,8 @@ uint64_t BlobArray::size() {
   return *size;
 }
 
-tdb_unique_ptr<EncryptionKey>
-BlobArray::get_encryption_key_from_config(const Config& config)const {
+tdb_unique_ptr<EncryptionKey> BlobArray::get_encryption_key_from_config(
+    const Config& config) const {
   std::string encryption_key_from_cfg;
   const char* encryption_key_cstr = nullptr;
   EncryptionType encryption_type = EncryptionType::NO_ENCRYPTION;
@@ -321,28 +321,23 @@ BlobArray::get_encryption_key_from_config(const Config& config)const {
     THROW_NOT_OK(st);
     encryption_type = et.value();
     if (EncryptionKey::is_valid_key_length(
-              encryption_type,
-              static_cast<uint32_t>(encryption_key_from_cfg.size()))) {
+            encryption_type,
+            static_cast<uint32_t>(encryption_key_from_cfg.size()))) {
       const UnitTestConfig& unit_test_cfg = UnitTestConfig::instance();
       if (unit_test_cfg.array_encryption_key_length.is_set()) {
         key_length = unit_test_cfg.array_encryption_key_length.get();
-      }
-      else {
+      } else {
         key_length = static_cast<uint32_t>(encryption_key_from_cfg.size());
       }
-    }
-    else {
+    } else {
       encryption_key_cstr = nullptr;
       key_length = 0;
-      
     }
-
   }
-   // Copy the key bytes.
+  // Copy the key bytes.
   THROW_NOT_OK(encryption_key->set_key(
-       encryption_type, encryption_key_cstr, key_length));
+      encryption_type, encryption_key_cstr, key_length));
   return encryption_key;
-
 }
 
 #if 0
