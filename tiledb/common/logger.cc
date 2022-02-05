@@ -46,8 +46,10 @@ namespace tiledb::common {
 /*     CONSTRUCTORS & DESTRUCTORS    */
 /* ********************************* */
 
-Logger::Logger(const std::string& name, const Logger::Format format)
-    : name_(name) {
+Logger::Logger(
+    const std::string& name, const Logger::Format format, const bool root)
+    : name_(name)
+    , root_(root) {
   logger_ = spdlog::get(name_);
   if (logger_ == nullptr) {
 #ifdef _WIN32
@@ -56,14 +58,14 @@ Logger::Logger(const std::string& name, const Logger::Format format)
     logger_ = spdlog::stdout_color_mt(name_);
 #endif
   }
-  set_format(format);
-  set_level(Logger::Level::ERR);
-  if (++instance_count == 1 && format == Logger::Format::JSON) {
+  if (root && format == Logger::Format::JSON) {
     // If this is the first logger created set up the opening brace and an
     // array named "log"
     logger_->set_pattern("{\n \"log\": [");
     logger_->critical("");
   }
+  set_level(Logger::Level::ERR);
+  set_format(format);
 }
 
 Logger::Logger(tdb_shared_ptr<spdlog::logger> logger) {
@@ -71,9 +73,9 @@ Logger::Logger(tdb_shared_ptr<spdlog::logger> logger) {
 }
 
 Logger::~Logger() {
-  if (--instance_count == 0 && fmt_ == Logger::Format::JSON) {
-    // If this is the last logger being destroyed, set the same log format,
-    // without the "," at the end
+  if (root_ && fmt_ == Logger::Format::JSON) {
+    // If this is the root/global logger being destroyed, then we output
+    // "Logging finished"
     std::string last_log_pattern = {
         "{\"severity\":\"%l\",\"timestamp\":\"%Y-%m-%dT%H:%M:%S.%f%z\","
         "\"process\":\"%P\",\"name\":{%n},\"message\":\"%v\"}"};
@@ -253,7 +255,6 @@ tdb_shared_ptr<Logger> Logger::clone(const std::string& tag, uint64_t id) {
   auto new_logger =
       tiledb::common::make_shared<Logger>(HERE(), logger_->clone(new_tags));
   new_logger->set_name(new_tags);
-  ++instance_count;
   return new_logger;
 }
 
@@ -280,7 +281,7 @@ Logger& global_logger(Logger::Format format) {
   static std::string name = (format == Logger::Format::JSON) ?
                                 Logger::global_logger_json_name :
                                 Logger::global_logger_default_name;
-  static Logger l(name, format);
+  static Logger l(name, format, true);
   return l;
 }
 
