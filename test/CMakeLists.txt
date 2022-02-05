@@ -109,7 +109,6 @@ set(TILEDB_TEST_SOURCES
   src/unit-capi-array_schema.cc
   src/unit-capi-async.cc
   src/unit-capi-attributes.cc
-  src/unit-capi-blob_array.cc
   src/unit-capi-buffer.cc
   src/unit-capi-config.cc
   src/unit-capi-consolidation.cc
@@ -138,6 +137,7 @@ set(TILEDB_TEST_SOURCES
   src/unit-capi-sparse_real_2.cc
   src/unit-capi-string.cc
   src/unit-capi-string_dims.cc
+  src/unit-capi-tiledb_file.cc
   src/unit-capi-uri.cc
   src/unit-capi-version.cc
   src/unit-capi-vfs.cc
