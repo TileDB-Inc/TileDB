@@ -111,7 +111,7 @@ std::string FileFx::random_name(const std::string& prefix) {
 }
 
 TEST_CASE_METHOD(
-    FileFx, "C API: Test blob_array create default", "[capi][blob_array][basic]") {
+    FileFx, "C API: Test blob_array create default", "[capi][tiledb_array_file][basic]") {
   std::string temp_dir = fs_vec_[0]->temp_dir();
 
   std::string array_name = temp_dir + "blob_array_test_create";
@@ -163,7 +163,7 @@ TEST_CASE_METHOD(
 }
 
 TEST_CASE_METHOD(
-    FileFx, "C API: Test blob_array create with import from uri", "[capi][blob_array][basic]") {
+    FileFx, "C API: Test blob_array create with import from uri", "[capi][tiledb_array_file][basic]") {
   std::string temp_dir = fs_vec_[0]->temp_dir();
 
   std::string array_name = temp_dir + "blob_array_test_create";
@@ -220,7 +220,7 @@ TEST_CASE_METHOD(
 TEST_CASE_METHOD(
     FileFx,
     "C API: Test blob_array save and export from uri",
-    "[capi][blob_array][basic]") {
+    "[capi][tiledb_array_file][basic]") {
   std::string temp_dir = fs_vec_[0]->temp_dir();
 
   std::string array_name = temp_dir + "blob_array_test_create";
