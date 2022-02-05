@@ -35,10 +35,10 @@
 
 #include <catch.hpp>
 
-#include "tiledb/common/common.h"
-#include "../blob_array_schema.h"
 #include "../blob_array.h"
+#include "../blob_array_schema.h"
+#include "tiledb/common/common.h"
 
-//using namespace tiledb::common;
+// using namespace tiledb::common;
 
-#endif //
+#endif  //

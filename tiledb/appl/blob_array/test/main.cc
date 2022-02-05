@@ -27,12 +27,12 @@
  *
  * @section DESCRIPTION
  *
- * This file defines a test `main()` for BlobArray/BlobArraySchema tests, for independent
- * compilation away from any larger test suite.
+ * This file defines a test `main()` for BlobArray/BlobArraySchema tests, for
+ * independent compilation away from any larger test suite.
  */
 
 #define CATCH_CONFIG_MAIN
-#include "unit_blob_array.h" // covers blob_array_schema as well
+#include "unit_blob_array.h"  // covers blob_array_schema as well
 
 TEST_CASE("") {
 }
@@ -91,4 +91,4 @@ TEMPLATE_LIST_TEST_CASE(
     CHECK(std::isnan(Tr::NaN));
   }
 }
-#endif // 0
+#endif  // 0

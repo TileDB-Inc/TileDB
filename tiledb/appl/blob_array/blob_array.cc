@@ -39,8 +39,8 @@
 #include "tiledb/sm/enums/vfs_mode.h"
 #include "tiledb/sm/filesystem/vfs.h"
 #include "tiledb/sm/global_state/unit_test_config.h"
-#include "tiledb/sm/query/query.h"
 #include "tiledb/sm/misc/time.h"
+#include "tiledb/sm/query/query.h"
 
 #include <filesystem>
 
@@ -66,6 +66,18 @@ BlobArray::BlobArray(const URI& array_uri, StorageManager* storage_manager)
 /* ********************************* */
 /*                API                */
 /* ********************************* */
+
+Status BlobArray::create([[maybe_unused]] const Config* config) {
+  try {
+    auto encryption_key = get_encryption_key_from_config(config_);
+    RETURN_NOT_OK(storage_manager_->array_create(
+        array_uri_, &blob_array_schema_, *encryption_key));
+
+  } catch (const std::exception& e) {
+    return Status_BlobArrayError(e.what());
+  }
+  return Status::Ok();
+}
 
 Status BlobArray::save_from_uri(const URI& file, const Config* config) {
   try {
@@ -133,8 +145,8 @@ Status BlobArray::save_from_vfs_fh(VFSFileHandle* file, const Config* config) {
         Datatype::STRING_ASCII,
         static_cast<uint32_t>(extension.size()),
         extension.c_str()));
-//    store_mime_type(file_metadata, metadata_read_size);
-//    store_mime_encoding(file_metadata, metadata_read_size);
+    //    store_mime_type(file_metadata, metadata_read_size);
+    //    store_mime_encoding(file_metadata, metadata_read_size);
   } catch (const std::exception& e) {
     return Status_BlobArrayError(e.what());
   }
@@ -153,16 +165,18 @@ Status BlobArray::save_from_buffer(
 
     // Set write buffer
     // (when attribute was fixed size byte and contents were spread across cells
-//    RETURN_NOT_OK(
-//        query.set_buffer(constants::blob_array_attribute_name, data, &size));
+    //    RETURN_NOT_OK(
+    //        query.set_buffer(constants::blob_array_attribute_name, data,
+    //        &size));
     // std::array<uint64_t, 2> subarray = {0, size - 1};
 
     // Set write buffer and aux items when data attr is variable length blob
-    RETURN_NOT_OK(
-        query.set_data_buffer(constants::blob_array_attribute_name, data, &size));
+    RETURN_NOT_OK(query.set_data_buffer(
+        constants::blob_array_attribute_name, data, &size));
     uint64_t ofs_buf[] = {0};
     uint64_t sizeof_ofs_buf = sizeof(ofs_buf);
-    RETURN_NOT_OK(query.set_offsets_buffer(constants::blob_array_attribute_name, ofs_buf, &sizeof_ofs_buf));
+    RETURN_NOT_OK(query.set_offsets_buffer(
+        constants::blob_array_attribute_name, ofs_buf, &sizeof_ofs_buf));
     std::array<uint64_t, 2> subarray = {0, 0};
 
     // Set subarray
@@ -170,7 +184,10 @@ Status BlobArray::save_from_buffer(
     RETURN_NOT_OK(query.submit());
 
     RETURN_NOT_OK(put_metadata(
-        constants::blob_array_metadata_size_key.c_str(), Datatype::UINT64, 1, &size));
+        constants::blob_array_metadata_size_key.c_str(),
+        Datatype::UINT64,
+        1,
+        &size));
 
   } catch (const std::exception& e) {
     return Status_BlobArrayError(e.what());
@@ -209,7 +226,7 @@ Status BlobArray::export_to_vfs_fh(
     VFSFileHandle* file, [[maybe_unused]] const Config* config) {
   try {
     // TODO: handle partial exports
-    //uint64_t offset = 0;
+    // uint64_t offset = 0;
     if (query_type_ != QueryType::READ)
       return Status_BlobArrayError(
           "Can not export file; File opened in write mode; Reopen in read "
@@ -234,9 +251,9 @@ Status BlobArray::export_to_vfs_fh(
     // TODO: Add config option to let the user control how much of the file we
     // we read
     // TODO: handle offset reading
-//    RETURN_NOT_OK(query.set_buffer(
-//        constants::blob_array_attribute_name, data.data(), &buffer_size));
-//    std::array<uint64_t, 2> subarray = {offset, offset + file_size - 1};
+    //    RETURN_NOT_OK(query.set_buffer(
+    //        constants::blob_array_attribute_name, data.data(), &buffer_size));
+    //    std::array<uint64_t, 2> subarray = {offset, offset + file_size - 1};
     // Set buffer and aux items when data attr is variable length blob
     RETURN_NOT_OK(query.set_data_buffer(
         constants::blob_array_attribute_name, data.data(), &buffer_size));
@@ -283,6 +300,51 @@ uint64_t BlobArray::size() {
   return *size;
 }
 
+tdb_unique_ptr<EncryptionKey>
+BlobArray::get_encryption_key_from_config(const Config& config)const {
+  std::string encryption_key_from_cfg;
+  const char* encryption_key_cstr = nullptr;
+  EncryptionType encryption_type = EncryptionType::NO_ENCRYPTION;
+  tdb_unique_ptr<EncryptionKey> encryption_key =
+      tdb_unique_ptr<EncryptionKey>(tdb_new(EncryptionKey));
+  uint64_t key_length = 0;
+  bool found = false;
+  encryption_key_from_cfg = config.get("sm.encryption_key", &found);
+  assert(found);
+  if (!encryption_key_from_cfg.empty()) {
+    encryption_key_cstr = encryption_key_from_cfg.c_str();
+    std::string encryption_type_from_cfg;
+    found = false;
+    encryption_type_from_cfg = config.get("sm.encryption_type", &found);
+    assert(found);
+    auto [st, et] = encryption_type_enum(encryption_type_from_cfg);
+    THROW_NOT_OK(st);
+    encryption_type = et.value();
+    if (EncryptionKey::is_valid_key_length(
+              encryption_type,
+              static_cast<uint32_t>(encryption_key_from_cfg.size()))) {
+      const UnitTestConfig& unit_test_cfg = UnitTestConfig::instance();
+      if (unit_test_cfg.array_encryption_key_length.is_set()) {
+        key_length = unit_test_cfg.array_encryption_key_length.get();
+      }
+      else {
+        key_length = static_cast<uint32_t>(encryption_key_from_cfg.size());
+      }
+    }
+    else {
+      encryption_key_cstr = nullptr;
+      key_length = 0;
+      
+    }
+
+  }
+   // Copy the key bytes.
+  THROW_NOT_OK(encryption_key->set_key(
+       encryption_type, encryption_key_cstr, key_length));
+  return encryption_key;
+
+}
+
 #if 0
 const char* BlobArray::libmagic_get_mime(void* data, uint64_t size) {
   magic_t magic = magic_open(MAGIC_MIME_TYPE);
@@ -311,7 +373,7 @@ const char* BlobArray::libmagic_get_mime_encoding(void* data, uint64_t size) {
   }
   return magic_buffer(magic, data, size);
 }
-
+  
 Status BlobArray::store_mime_type(
     const Buffer& file_metadata, uint64_t metadata_read_size) {
   const char* mime =
@@ -343,5 +405,5 @@ Status BlobArray::store_mime_encoding(
 }
 #endif
 
-}  // namespace sm
+}  // namespace appl
 }  // namespace tiledb

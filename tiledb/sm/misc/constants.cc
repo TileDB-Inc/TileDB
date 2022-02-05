@@ -681,7 +681,8 @@ const std::string blob_array_metadata_ext_key = "file_extension";
 
 /** Name of the metadata key used in tiledb_file_t objects for original file
  * name. */
-const std::string blob_array_metadata_original_file_name_key = "original_file_name";
+const std::string blob_array_metadata_original_file_name_key =
+    "original_file_name";
 }  // namespace constants
 
 }  // namespace sm

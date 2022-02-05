@@ -48,18 +48,18 @@ class CompressionFilter;
 class Domain;
 class Attribute;
 
-}  // sm
-}  // tiledb
+}  // namespace sm
+}  // namespace tiledb
 
 namespace tiledb {
 namespace appl {
-//namespace sm {
+// namespace sm {
 
 using namespace tiledb::sm;
 using Domain = tiledb::sm::Domain;
 using Attribute = tiledb::sm::Attribute;
 
-//enum class ArrayType : uint8_t; //TBD: ArrayType not defined elsewhere?
+// enum class ArrayType : uint8_t; //TBD: ArrayType not defined elsewhere?
 
 /** Specifies the file array schema. */
 class BlobArraySchema : public tiledb::sm::ArraySchema {
@@ -121,8 +121,7 @@ class BlobArraySchema : public tiledb::sm::ArraySchema {
    * @param fp
    * @return attribute
    */
-  static tdb_shared_ptr<Attribute> create_attribute(
-      const FilterPipeline& fp);
+  static tdb_shared_ptr<Attribute> create_attribute(const FilterPipeline& fp);
 
   /**
    * Compute tile extents based on the size of the file
@@ -137,6 +136,6 @@ class BlobArraySchema : public tiledb::sm::ArraySchema {
   /* ********************************* */
 };
 
-}  // appl
-}  // tiledb
-#endif //TILEDB_BLOB_ARRAY_SCHEMA.H
+}  // namespace appl
+}  // namespace tiledb
+#endif  // TILEDB_BLOB_ARRAY_SCHEMA.H
