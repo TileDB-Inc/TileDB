@@ -36,8 +36,8 @@
 #include "test/src/vfs_helpers.h"
 #include "tiledb/sm/c_api/tiledb_experimental.h"
 #include "tiledb/sm/enums/encryption_type.h"
-#include "tiledb/sm/global_state/unit_test_config.h"
 #include "tiledb/sm/filesystem/path_win.h"
+#include "tiledb/sm/global_state/unit_test_config.h"
 
 #include <iostream>
 
@@ -111,7 +111,9 @@ std::string FileFx::random_name(const std::string& prefix) {
 }
 
 TEST_CASE_METHOD(
-    FileFx, "C API: Test blob_array create default", "[capi][tiledb_array_file][basic]") {
+    FileFx,
+    "C API: Test blob_array create default",
+    "[capi][tiledb_array_file][basic]") {
   std::string temp_dir = fs_vec_[0]->temp_dir();
 
   std::string array_name = temp_dir + "blob_array_test_create";
@@ -127,7 +129,7 @@ TEST_CASE_METHOD(
   }
 
   create_temp_dir(temp_dir);
-  
+
   tiledb_config_t* cfg = nullptr;
   tiledb_error_t* err = nullptr;
   if (encryption_type_ != TILEDB_NO_ENCRYPTION) {
@@ -154,16 +156,17 @@ TEST_CASE_METHOD(
       TILEDB_OK);
 
   // Clean up
-  if(cfg){
+  if (cfg) {
     tiledb_config_free(&cfg);
   }
   remove_temp_dir(array_name);
-  //tiledb_file_free(&file);
-
+  // tiledb_file_free(&file);
 }
 
 TEST_CASE_METHOD(
-    FileFx, "C API: Test blob_array create with import from uri", "[capi][tiledb_array_file][basic]") {
+    FileFx,
+    "C API: Test blob_array create with import from uri",
+    "[capi][tiledb_array_file][basic]") {
   std::string temp_dir = fs_vec_[0]->temp_dir();
 
   std::string array_name = temp_dir + "blob_array_test_create";
@@ -206,12 +209,10 @@ TEST_CASE_METHOD(
       tiledb_array_as_file_obtain(ctx_, &array, array_name.c_str(), cfg) ==
       TILEDB_OK);
   CHECK(
-      tiledb_array_as_file_import(
-      ctx_, array, csv_path.c_str()) == TILEDB_OK);
-
+      tiledb_array_as_file_import(ctx_, array, csv_path.c_str()) == TILEDB_OK);
 
   // Clean up, ctx_/vfs_ are freed on test destructor
-  if(cfg) {
+  if (cfg) {
     tiledb_config_free(&cfg);
   }
   remove_temp_dir(array_name);
@@ -294,7 +295,6 @@ TEST_CASE_METHOD(
   cmpfilescmd << "diff " << csv_path << " " << output_path << " > nul";
   CHECK(!system(cmpfilescmd.str().c_str()));
 #endif
-
 
   remove_temp_dir(array_name);
   remove_temp_dir(output_path);

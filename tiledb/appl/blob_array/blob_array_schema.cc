@@ -31,8 +31,8 @@
  * This file implements the BlobArraySchema class.
  */
 
-#include "tiledb/common/common.h"
 #include "tiledb/appl/blob_array/blob_array_schema.h"
+#include "tiledb/common/common.h"
 #include "tiledb/sm/array_schema/dimension.h"
 #include "tiledb/sm/array_schema/domain.h"
 #include "tiledb/sm/enums/array_type.h"
@@ -45,9 +45,9 @@ using namespace tiledb::common;
 
 namespace tiledb {
 namespace appl {
-//namespace sm {
+// namespace sm {
 
-//using namespace tiledb::sm;
+// using namespace tiledb::sm;
 
 /* ****************************** */
 /*   CONSTRUCTORS & DESTRUCTORS   */
@@ -63,7 +63,7 @@ BlobArraySchema::BlobArraySchema()
   cell_order_ = Layout::ROW_MAJOR;
   tile_order_ = Layout::ROW_MAJOR;
 
-  // Set domain 
+  // Set domain
   tdb_delete(domain_);
   domain_ = tdb_new(Domain, create_domain());
 
@@ -153,12 +153,15 @@ Domain BlobArraySchema::create_domain(uint64_t tile_extent) {
 tdb_shared_ptr<Attribute> BlobArraySchema::create_attribute(
     const FilterPipeline& fp) {
   tdb_shared_ptr<Attribute> attribute = make_shared<
-      //Attribute>(constants::blob_array_attribute_name, Datatype::UINT8, false);
+      // Attribute>(constants::blob_array_attribute_name, Datatype::UINT8,
+      // false);
       Attribute>(constants::blob_array_attribute_name, Datatype::BLOB, false);
   attribute->set_filter_pipeline(&fp);
-  //TBD: Is there currently only one attribute to be concerned with?
-  attribute->set_cell_val_num(tiledb::sm::constants::var_num); // tiledb_var_num());  // TILEDB_VAR_NUM);
-                                                        // //1);
+  // TBD: Is there currently only one attribute to be concerned with?
+  attribute->set_cell_val_num(
+      tiledb::sm::constants::var_num);  // tiledb_var_num());  //
+                                        // TILEDB_VAR_NUM);
+                                        // //1);
   return attribute;
 }
 

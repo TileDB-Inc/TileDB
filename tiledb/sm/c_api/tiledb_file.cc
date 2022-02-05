@@ -33,16 +33,16 @@
 
 #include <sstream>
 
-#include "tiledb/appl/blob_array/blob_array_schema.h"
 #include "tiledb/appl/blob_array/blob_array.h"
+#include "tiledb/appl/blob_array/blob_array_schema.h"
 #include "tiledb/sm/c_api/tiledb_experimental.h"
 #include "tiledb/sm/c_api/tiledb_helpers.h"
 #include "tiledb/sm/c_api/tiledb_struct_def.h"
-#include "tiledb/sm/enums/query_type.h"
 #include "tiledb/sm/enums/encryption_type.h"
+#include "tiledb/sm/enums/query_type.h"
 #include "tiledb/sm/misc/constants.h"
 
-static int32_t is_blob_array(tiledb_ctx_t *ctx, tiledb_array_t* array) {
+static int32_t is_blob_array(tiledb_ctx_t* ctx, tiledb_array_t* array) {
   // ASSERT( array is_open );
   if (sanity_check(ctx, array) == TILEDB_ERR) {
     return TILEDB_ERR;
@@ -55,8 +55,10 @@ static int32_t is_blob_array(tiledb_ctx_t *ctx, tiledb_array_t* array) {
 
   tiledb_attribute_t* attr;
   if (tiledb_array_schema_get_attribute_from_name(
-          ctx, array_schema, tiledb::sm::constants::blob_array_attribute_name.c_str(), &attr) ==
-      TILEDB_ERR) {
+          ctx,
+          array_schema,
+          tiledb::sm::constants::blob_array_attribute_name.c_str(),
+          &attr) == TILEDB_ERR) {
     return TILEDB_ERR;
   }
 
@@ -77,7 +79,11 @@ static int32_t is_blob_array(tiledb_ctx_t *ctx, tiledb_array_t* array) {
 
 // 'array' parameter based 'file' api
 TILEDB_EXPORT int32_t tiledb_array_as_file_obtain(
-    tiledb_ctx_t* ctx, tiledb_array_t** array, const char* array_uri, tiledb_config_t *config) {
+    tiledb_ctx_t* ctx,
+    tiledb_array_t** array,
+    const char* array_uri,
+    tiledb_config_t* config) {
+  // on sanity_check on 'config' as it can be nullptr.
   if (sanity_check(ctx) == TILEDB_ERR) {
     return TILEDB_ERR;
   }
@@ -88,7 +94,7 @@ TILEDB_EXPORT int32_t tiledb_array_as_file_obtain(
   }
 
   if (tiledb_array_alloc(ctx, array_uri, array) == TILEDB_ERR) {
-    //expect tiledb_array_alloc() to have logged any necessary error.
+    // expect tiledb_array_alloc() to have logged any necessary error.
     tiledb_array_schema_free(&blob_array_schema);
     return TILEDB_ERR;
   }
@@ -105,15 +111,18 @@ TILEDB_EXPORT int32_t tiledb_array_as_file_obtain(
   }
   auto stg_mgr = ctx->ctx_->storage_manager();
   // release the 'default' allocated array, to be replaced afterwards
-  delete (*array)->array_; 
-  (*array)->array_ = new (std::nothrow) tiledb::appl::BlobArray(uri_array, stg_mgr);
+  delete (*array)->array_;
+  tiledb::appl::BlobArray *blob_array;
+  (*array)->array_ = blob_array =
+      new (std::nothrow) tiledb::appl::BlobArray(uri_array, stg_mgr);
   if ((*array)->array_ == nullptr) {
     std::ostringstream errmsg;
     errmsg << "Failed to allocate TileDB blob_array object";
     auto st = Status_Error(errmsg.str());
     LOG_STATUS(st);
     save_error(ctx, st);
-    tiledb_array_free(array); // already returning an error, ignore any error here.
+    tiledb_array_free(
+        array);  // already returning an error, ignore any error here.
     tiledb_array_schema_free(&blob_array_schema);
     *array = nullptr;
     return TILEDB_OOM;
@@ -128,6 +137,8 @@ TILEDB_EXPORT int32_t tiledb_array_as_file_obtain(
   }
 
   if (tiledb_array_open(ctx, *array, TILEDB_READ) == TILEDB_ERR) {
+#if 0
+    // (lead-ins needed for below with "This works, but is deprecated)
     const char* encryption_type_str = nullptr;
     const char* encryption_key_str = nullptr;
     tiledb_encryption_type_t encryption_type = TILEDB_NO_ENCRYPTION;
@@ -148,7 +159,7 @@ TILEDB_EXPORT int32_t tiledb_array_as_file_obtain(
         return TILEDB_ERR;
       }
     }
-
+   //Note: This works, but is deprecated
     if (tiledb_array_create_with_key(
           ctx,
           array_uri,
@@ -158,6 +169,15 @@ TILEDB_EXPORT int32_t tiledb_array_as_file_obtain(
             encryption_type_str ?
                 static_cast<uint32_t>(strlen(encryption_key_str)) :
                 0) == TILEDB_ERR) {
+#elif 0
+    // While storage_manager->open() will apparently honor array config, 
+    // seems storage_manager->create uses -storage_manager- cfg which
+    //we don't really want to be modifying...
+    if (tiledb_array_create(ctx, array_uri, blob_array_schema) == TILEDB_ERR) {
+#else
+    auto cfg = config ? config->config_ : &stg_mgr->config();
+    if (SAVE_ERROR_CATCH(ctx, blob_array->create(cfg))) {
+#endif
       tiledb_array_free(array);
       tiledb_array_schema_free(&blob_array_schema);
       *array = nullptr;
@@ -172,15 +192,14 @@ TILEDB_EXPORT int32_t tiledb_array_as_file_obtain(
     }
   }
 
-  // returning an allocated tiledb_array_t at '*array' having default blob_array schema;
+  // returning an allocated tiledb_array_t at '*array' having default blob_array
+  // schema;
 
   return TILEDB_OK;
 }
 
 TILEDB_EXPORT int32_t tiledb_array_as_file_import(
-    tiledb_ctx_t* ctx,
-    tiledb_array_t* array,
-    const char* input_uri_filename) {
+    tiledb_ctx_t* ctx, tiledb_array_t* array, const char* input_uri_filename) {
   if (sanity_check(ctx, array) == TILEDB_ERR) {
     return TILEDB_ERR;
   }
@@ -195,10 +214,7 @@ TILEDB_EXPORT int32_t tiledb_array_as_file_import(
 
   // tiledb_array_open() passes NO_ENCRYPTION but ->array_->open() in that
   // circumstance uses any encryption previously set on the array.
-  if (tiledb_array_open(
-          ctx,
-          array,
-          TILEDB_WRITE) == TILEDB_ERR) {
+  if (tiledb_array_open(ctx, array, TILEDB_WRITE) == TILEDB_ERR) {
     return TILEDB_ERR;
   }
 
@@ -237,9 +253,7 @@ TILEDB_EXPORT int32_t tiledb_array_as_file_import(
 }
 
 TILEDB_EXPORT int32_t tiledb_array_as_file_export(
-    tiledb_ctx_t* ctx,
-    tiledb_array_t* array,
-    const char* output_uri_filename) {
+    tiledb_ctx_t* ctx, tiledb_array_t* array, const char* output_uri_filename) {
   if (sanity_check(ctx, array) == TILEDB_ERR) {
     return TILEDB_ERR;
   }
@@ -285,7 +299,7 @@ TILEDB_EXPORT int32_t tiledb_array_as_file_export(
 
   tiledb_array_close(ctx, array);
 
-  return TILEDB_OK;
+  return ret_stat;
 }
 
 TILEDB_EXPORT int32_t tiledb_array_schema_create_default_blob_array(
@@ -317,4 +331,3 @@ TILEDB_EXPORT int32_t tiledb_array_schema_create_default_blob_array(
   // Success
   return TILEDB_OK;
 }
-

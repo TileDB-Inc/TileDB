@@ -33,21 +33,21 @@
 #ifndef TILEDB_BLOB_ARRAY_H
 #define TILEDB_BLOB_ARRAY_H
 
+#include "tiledb/appl/blob_array/blob_array_schema.h"
 #include "tiledb/common/common.h"
 #include "tiledb/common/status.h"
 #include "tiledb/sm/array/array.h"
-#include "tiledb/appl/blob_array/blob_array_schema.h"
-#include "tiledb/sm/filesystem/vfs_file_handle.h"
 #include "tiledb/sm/filesystem/uri.h"
+#include "tiledb/sm/filesystem/vfs_file_handle.h"
 #include "tiledb/sm/storage_manager/storage_manager.h"
 
 using namespace tiledb::common;
 
 namespace tiledb {
 namespace appl {
-//namespace sm {
+// namespace sm {
 
-//using namespace tiledb::sm;
+// using namespace tiledb::sm;
 using Config = tiledb::sm::Config;
 
 /**
@@ -55,7 +55,7 @@ using Config = tiledb::sm::Config;
  * is associated with the timestamp it is opened at.
  */
 class BlobArray : public tiledb::sm::Array {
-   public:
+ public:
   /* ********************************* */
   /*     CONSTRUCTORS & DESTRUCTORS    */
   /* ********************************* */
@@ -66,6 +66,13 @@ class BlobArray : public tiledb::sm::Array {
   /* ********************************* */
   /*                API                */
   /* ********************************* */
+
+  /**
+   * Create BlobArray array on disk using default settings
+   * @param config
+   * @return
+   */
+  Status create([[maybe_unused]] const Config* config);
 
   /**
    * Read input file and store in BlobArray array
@@ -127,8 +134,14 @@ class BlobArray : public tiledb::sm::Array {
   /* ********************************* */
 
  private:
+#if 01
+  //  std::optional<EncryptionKey> get_encryption_key_from_config(const Config&
+  //  config) const;
+  tdb_unique_ptr<EncryptionKey> get_encryption_key_from_config(
+      const Config& config) const;
+#endif
 
-   #if 0
+#if 0
   /**
    * Get mime type from libmagic
    * @param data void buffer with first part of file (up to 1kb) for magic
@@ -164,7 +177,7 @@ class BlobArray : public tiledb::sm::Array {
    */
   Status store_mime_encoding(
       const Buffer& file_metadata, uint64_t metadata_read_size);
-  #endif
+#endif
 };
 
 }  // namespace appl

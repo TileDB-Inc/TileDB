@@ -144,8 +144,7 @@ inline int32_t sanity_check(tiledb_ctx_t* ctx, const tiledb_config_t* config) {
 inline int32_t sanity_check(
     tiledb_config_iter_t* config_iter, tiledb_error_t** error) {
   if (config_iter == nullptr || config_iter->config_iter_ == nullptr) {
-    auto st =
-        Status_Error("Cannot set config; Invalid config iterator object");
+    auto st = Status_Error("Cannot set config; Invalid config iterator object");
     LOG_STATUS(st);
     create_error(error, st);
     return TILEDB_ERR;
@@ -342,7 +341,7 @@ inline int32_t check_filter_type(
     try {                                                                  \
       _s = (stmt);                                                         \
     } catch (const std::exception& e) {                                    \
-      auto st = Status_Error(                                             \
+      auto st = Status_Error(                                              \
           std::string("Internal TileDB uncaught exception; ") + e.what()); \
       LOG_STATUS(st);                                                      \
       save_error(ctx, st);                                                 \

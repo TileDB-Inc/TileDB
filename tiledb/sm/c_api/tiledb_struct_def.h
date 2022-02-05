@@ -34,6 +34,7 @@
 #ifndef TILEDB_C_API_STRUCT_DEF_H
 #define TILEDB_C_API_STRUCT_DEF_H
 
+#include "tiledb/appl/blob_array/blob_array.h"
 #include "tiledb/sm/array/array.h"
 #include "tiledb/sm/array_schema/array_schema.h"
 #include "tiledb/sm/array_schema/array_schema_evolution.h"
@@ -49,7 +50,6 @@
 #include "tiledb/sm/storage_manager/context.h"
 #include "tiledb/sm/subarray/subarray.h"
 #include "tiledb/sm/subarray/subarray_partitioner.h"
-#include "tiledb/appl/blob_array/blob_array.h"
 
 struct tiledb_array_t {
   tiledb::sm::Array* array_ = nullptr;

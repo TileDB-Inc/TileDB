@@ -179,10 +179,10 @@ class Range {
   /** Returns a pointer to the end of the range. */
   const void* end() const {
     auto end_pos = var_size_ ? range_start_size_ : range_.size() / 2;
-    //return range_.empty() ? nullptr : &range_[end_pos];
+    // return range_.empty() ? nullptr : &range_[end_pos];
     return range_.empty() ?
-        nullptr :
-        (end_pos < range_.size() ? &range_[end_pos] : nullptr);
+               nullptr :
+               (end_pos < range_.size() ? &range_[end_pos] : nullptr);
   }
 
   /** Copies 'end' into this range's end bytes for fixed-size ranges. */
@@ -226,11 +226,12 @@ class Range {
     bool same_size = !var_size_ || 2 * range_start_size_ == range_.size();
     return same_size &&
            !std::memcmp(
-//               range_.data(), &range_[range_.size() / 2], range_.size() / 2);
+               //               range_.data(), &range_[range_.size() / 2],
+               //               range_.size() / 2);
                //&range_[0], &range_[range_.size() / 2], range_.size() / 2);
                range_.data(),
                //&range_[range_.size() / 2],
-               range_.data()+(range_.size() / 2),
+               range_.data() + (range_.size() / 2),
                range_.size() / 2);
   }
 
