@@ -31,7 +31,7 @@
  */
 
 #include "tiledb/appl/blob_array/blob_array.h"
-//#include <magic.h>
+#include <magic.h>
 #include "tiledb/common/logger.h"
 #include "tiledb/sm/enums/encryption_type.h"
 #include "tiledb/sm/enums/query_status.h"
@@ -145,8 +145,8 @@ Status BlobArray::save_from_vfs_fh(VFSFileHandle* file, const Config* config) {
         Datatype::STRING_ASCII,
         static_cast<uint32_t>(extension.size()),
         extension.c_str()));
-    //    store_mime_type(file_metadata, metadata_read_size);
-    //    store_mime_encoding(file_metadata, metadata_read_size);
+    store_mime_type(file_metadata, metadata_read_size);
+    store_mime_encoding(file_metadata, metadata_read_size);
   } catch (const std::exception& e) {
     return Status_BlobArrayError(e.what());
   }
@@ -340,7 +340,6 @@ tdb_unique_ptr<EncryptionKey> BlobArray::get_encryption_key_from_config(
   return encryption_key;
 }
 
-#if 0
 const char* BlobArray::libmagic_get_mime(void* data, uint64_t size) {
   magic_t magic = magic_open(MAGIC_MIME_TYPE);
   //TBD: windows - contradiction in return values...
@@ -398,7 +397,6 @@ Status BlobArray::store_mime_encoding(
       mime_size,
       mime);
 }
-#endif
 
 }  // namespace appl
 }  // namespace tiledb

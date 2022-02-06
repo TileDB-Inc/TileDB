@@ -141,7 +141,7 @@ class BlobArray : public tiledb::sm::Array {
       const Config& config) const;
 #endif
 
-#if 0
+#if 01
   /**
    * Get mime type from libmagic
    * @param data void buffer with first part of file (up to 1kb) for magic
