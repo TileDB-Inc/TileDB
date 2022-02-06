@@ -573,28 +573,33 @@ extern const std::array<std::string, 6> cert_files_linux;
 /** Delimiter for lists passed as config parameter */
 extern const std::string config_delimiter;
 
-/** Name of the single dimension used in tiledb_file_t objects. */
+/** Name of the single dimension used in blob_array tiledb_array_t objects. */
 extern const std::string blob_array_dimension_name;
 
-/** Name of the single attribute used in tiledb_file_t objects. */
+/** Name of the single attribute used in blob_array tiledb_array_t objects. */
 extern const std::string blob_array_attribute_name;
 
-/** Name of the metadata key used in tiledb_file_t objects for current size. */
+/** Name of the metadata key used in blob_array tiledb_array_t objects for
+ * current size. */
 extern const std::string blob_array_metadata_size_key;
 
-/** Name of the metadata key used in tiledb_file_t objects for mime type. */
+#if 01
+/** Name of the metadata key used in blob_array tiledb_array_t objects for mime
+ * type. */
 extern const std::string blob_array_metadata_mime_type_key;
 
-/** Name of the metadata key used in tiledb_file_t objects for mime encoding. */
+/** Name of the metadata key used in blob_array tiledb_array_t objects for mime
+ * encoding. */
 extern const std::string blob_array_metadata_mime_encoding_key;
 
-/** Name of the metadata key used in tiledb_file_t objects for original file
- * extension . */
+/** Name of the metadata key used in blob_array tiledb_array_t objects for
+ * original file extension . */
 extern const std::string blob_array_metadata_ext_key;
 
-/** Name of the metadata key used in tiledb_file_t objects for original file
- * name. */
+/** Name of the metadata key used in blob_array tiledb_array_t objects for
+ * original file name. */
 extern const std::string blob_array_metadata_original_file_name_key;
+#endif
 }  // namespace constants
 
 }  // namespace sm

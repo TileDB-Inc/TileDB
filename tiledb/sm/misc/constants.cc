@@ -669,8 +669,9 @@ const std::string blob_array_attribute_name = "contents";
 /** Name of the metadata key used in tiledb_file_t objects for current size. */
 const std::string blob_array_metadata_size_key = "file_size";
 
+#if 01
 /** Name of the metadata key used in tiledb_file_t objects for mime type. */
-const std::string blob_array_metadata_mime_type_key = "mime";
+const std::string blob_array_metadata_mime_type_key = "mime_type";
 
 /** Name of the metadata key used in tiledb_file_t objects for mime encoding. */
 const std::string blob_array_metadata_mime_encoding_key = "mime_encoding";
@@ -683,6 +684,7 @@ const std::string blob_array_metadata_ext_key = "file_extension";
  * name. */
 const std::string blob_array_metadata_original_file_name_key =
     "original_file_name";
+#endif
 }  // namespace constants
 
 }  // namespace sm
