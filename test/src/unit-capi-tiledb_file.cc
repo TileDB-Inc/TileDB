@@ -37,6 +37,7 @@
 #include "tiledb/sm/c_api/tiledb_experimental.h"
 #include "tiledb/sm/enums/encryption_type.h"
 #include "tiledb/sm/filesystem/path_win.h"
+#include "tiledb/sm/filesystem/vfs.h"
 #include "tiledb/sm/global_state/unit_test_config.h"
 
 #include <iostream>
@@ -86,10 +87,12 @@ FileFx::FileFx()
 // Create temporary directory based on the supported filesystem
 #ifdef _WIN32
   SupportedFsLocal windows_fs;
-  localfs_temp_dir_ = windows_fs.file_prefix() + windows_fs.temp_dir();
+  //localfs_temp_dir_ = windows_fs.file_prefix() + windows_fs.temp_dir();
+  localfs_temp_dir_ = windows_fs.temp_dir();
 #else
   SupportedFsLocal posix_fs;
-  localfs_temp_dir_ = posix_fs.file_prefix() + posix_fs.temp_dir();
+//  localfs_temp_dir_ = posix_fs.file_prefix() + posix_fs.temp_dir();
+  localfs_temp_dir_ = posix_fs.temp_dir();
 #endif
 
   create_dir(localfs_temp_dir_, ctx_, vfs_);
@@ -290,6 +293,17 @@ TEST_CASE_METHOD(
       tiledb_array_as_file_export(ctx_, array, output_path.c_str()) ==
       TILEDB_OK);
 
+  if (01)
+  {
+    std::stringstream cmd;
+#if WIN32
+    cmd << "dir " << output_path;
+#else
+    cmd << "ls -l " << output_path;
+#endif
+    CHECK(!system(cmd.str().c_str()));
+  }
+
   uint64_t original_file_size = 0;
   CHECK(
       tiledb_vfs_file_size(ctx_, vfs_, csv_path.c_str(), &original_file_size) ==
@@ -305,13 +319,15 @@ TEST_CASE_METHOD(
   std::stringstream cmpfilescmd;
 #ifdef _WIN32
   // 'FC' does not like forward slashes
-  cmpfilescmd << "FC " << tiledb::sm::path_win::slashes_to_backslashes(csv_path)
+  cmpfilescmd << "FC " << tiledb::sm::path_win::slashes_to_backslashes(tiledb::sm::path_win::path_from_uri(csv_path))
               << " "
-              << tiledb::sm::path_win::slashes_to_backslashes(output_path)
+              << tiledb::sm::path_win::slashes_to_backslashes(tiledb::sm::path_win::path_from_uri(output_path))
               << " > nul";
   CHECK(!system(cmpfilescmd.str().c_str()));
 #else
-  cmpfilescmd << "diff " << csv_path << " " << output_path << " > nul";
+  //cmpfilescmd << "diff " << tiledb::sm::VFS::abs_path(csv_path) << " " << tiledb::sm::VFS::abs_path(output_path) << " > nul";
+  cmpfilescmd << "diff " << csv_path << " "
+              << output_path << " > nul";
   CHECK(!system(cmpfilescmd.str().c_str()));
 #endif
 
