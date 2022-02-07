@@ -344,7 +344,7 @@ const char* BlobArray::libmagic_get_mime(void* data, uint64_t size) {
   magic_t magic = magic_open(MAGIC_MIME_TYPE);
   //TBD: windows - contradiction in return values...
   //...have seen magic_load() return -1 indicating error, then magic_error() returning 0 indicating no error
-  //...apparent cause being that it could not find one of igs .mgc databases to load
+  //...apparent cause being that it could not find one of its .mgc databases to load
   //try set MAGIC=<path-of-build-tree-dir>/externals/install/bin/magic.mgc
   if (auto rval = magic_load(magic, nullptr); rval != 0) {
     auto str_rval = std::to_string(rval);

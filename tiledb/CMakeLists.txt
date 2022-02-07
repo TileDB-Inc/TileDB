@@ -509,8 +509,7 @@ target_link_libraries(TILEDB_CORE_OBJECTS_ILIB
 )
 
 # GCC <9 need to link against libc++fs for c++17 filesystem library
-set(Filesystem_FIND_COMPONENTS "Final" "Experimental")
-find_package(Filesystem REQUIRED)
+find_package(Filesystem REQUIRED COMPONENTS Final Experimental)
 target_link_libraries(TILEDB_CORE_OBJECTS_ILIB INTERFACE std::filesystem)
 
 if (NOT WIN32)
