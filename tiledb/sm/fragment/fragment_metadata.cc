@@ -914,6 +914,10 @@ Status FragmentMetadata::set_num_tiles(uint64_t num_tiles) {
   return Status::Ok();
 }
 
+void FragmentMetadata::set_rtree_domain(const Domain* domain) {
+  rtree_.set_domain(domain);
+}
+
 void FragmentMetadata::set_last_tile_cell_num(uint64_t cell_num) {
   last_tile_cell_num_ = cell_num;
 }

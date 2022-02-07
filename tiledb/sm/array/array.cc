@@ -104,6 +104,20 @@ Array::Array(const Array& rhs)
 /*                API                */
 /* ********************************* */
 
+void Array::set_array_schema_latest(ArraySchema* array_schema) {
+  array_schema_latest_ = array_schema;
+}
+
+void Array::set_array_schemas_all(
+    std::unordered_map<std::string, tdb_shared_ptr<ArraySchema>>& all_schemas) {
+  array_schemas_all_ = all_schemas;
+
+  for (auto& md : fragment_metadata_) {
+    md->set_array_schema(array_schemas_all_[md->array_schema_name()].get());
+    md->set_rtree_domain(array_schemas_all_[md->array_schema_name()]->domain());
+  }
+}
+
 ArraySchema* Array::array_schema_latest() const {
   return array_schema_latest_;
 }
@@ -313,6 +327,7 @@ Status Array::close() {
   non_empty_domain_computed_ = false;
   clear_last_max_buffer_sizes();
   fragment_metadata_.clear();
+  array_schemas_all_.clear();
 
   if (remote_) {
     // Update array metadata for write queries if metadata was written by the
