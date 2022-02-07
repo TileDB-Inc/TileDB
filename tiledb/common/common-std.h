@@ -64,6 +64,12 @@ using std::optional;
 
 using std::byte;
 
+/*
+ * Span implementation, similar to std::span of C++20
+ */
+#include "external/include/span/span.hpp"
+using tcb::span;
+
 /**
  * @section Reference
  * Documentation on the preprocessor operators
