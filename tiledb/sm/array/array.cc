@@ -104,13 +104,11 @@ Array::Array(const Array& rhs)
 /*                API                */
 /* ********************************* */
 
-Status Array::set_array_schema_latest(ArraySchema* array_schema) {
+void Array::set_array_schema_latest(ArraySchema* array_schema) {
   array_schema_latest_ = array_schema;
-
-  return Status::Ok();
 }
 
-Status Array::set_array_schemas_all(
+void Array::set_array_schemas_all(
     std::unordered_map<std::string, tdb_shared_ptr<ArraySchema>>& all_schemas) {
   array_schemas_all_ = all_schemas;
 
@@ -118,8 +116,6 @@ Status Array::set_array_schemas_all(
     md->set_array_schema(array_schemas_all_[md->array_schema_name()].get());
     md->set_rtree_domain(array_schemas_all_[md->array_schema_name()]->domain());
   }
-
-  return Status::Ok();
 }
 
 ArraySchema* Array::array_schema_latest() const {

@@ -187,20 +187,17 @@ Status array_from_capnp(
         schema->set_array_uri(array->array_uri());
         all_schemas[array_schema_build.getKey()] = std::move(schema);
       }
-        all_schemas[array_schema_build.getKey()] = std::move(schema);
     }
-    RETURN_NOT_OK(array->set_array_schemas_all(all_schemas));
+    array->set_array_schemas_all(all_schemas);
   }
 
   if (array_reader.hasArraySchemaLatest()) {
     tdb_unique_ptr<ArraySchema> array_schema_latest;
     auto array_schema_latest_reader = array_reader.getArraySchemaLatest();
-        array_schema_latest_reader, &array_schema_latest));
     RETURN_NOT_OK(array_schema_from_capnp(
         array_schema_latest_reader, &array_schema_latest));
     array_schema_latest->set_array_uri(array->array_uri());
-    RETURN_NOT_OK(
-        array->set_array_schema_latest(array_schema_latest.release()));
+    array->set_array_schema_latest(array_schema_latest.release());
   }
 
   if (array_reader.hasNonEmptyDomain()) {
