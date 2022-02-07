@@ -56,6 +56,7 @@ const std::string Config::CONFIG_LOGGING_LEVEL = "1";
 const std::string Config::CONFIG_LOGGING_LEVEL = "0";
 #endif
 const std::string Config::CONFIG_LOGGING_DEFAULT_FORMAT = "DEFAULT";
+const std::string Config::EXPERIMENTAL_REST_OPTIMIZED_ARRAY_OPEN = "false";
 const std::string Config::REST_SERVER_DEFAULT_ADDRESS =
     "https://api.tiledb.com";
 const std::string Config::REST_SERIALIZATION_DEFAULT_FORMAT = "CAPNP";
@@ -213,6 +214,8 @@ const std::set<std::string> Config::unserialized_params_ = {
 
 Config::Config() {
   // Set config values
+  param_values_["experimental.rest.optimized_array_open"] =
+      EXPERIMENTAL_REST_OPTIMIZED_ARRAY_OPEN;
   param_values_["rest.server_address"] = REST_SERVER_DEFAULT_ADDRESS;
   param_values_["rest.server_serialization_format"] =
       REST_SERIALIZATION_DEFAULT_FORMAT;
@@ -499,7 +502,10 @@ const std::set<std::string>& Config::set_params() const {
 
 Status Config::unset(const std::string& param) {
   // Set back to default
-  if (param == "rest.server_address") {
+  if (param == "experimental.rest.optimized_array_open") {
+    param_values_["experimental.rest.optimized_array_open"] =
+        EXPERIMENTAL_REST_OPTIMIZED_ARRAY_OPEN;
+  } else if (param == "rest.server_address") {
     param_values_["rest.server_address"] = REST_SERVER_DEFAULT_ADDRESS;
   } else if (param == "rest.server_serialization_format") {
     param_values_["rest.server_serialization_format"] =

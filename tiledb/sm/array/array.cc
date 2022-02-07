@@ -148,10 +148,23 @@ Status Array::open_without_fragments(
     if (rest_client == nullptr)
       return LOG_STATUS(Status_ArrayError(
           "Cannot open array; remote array with no REST client."));
-    auto&& [st, array_schema_latest] =
-        rest_client->get_array_schema_from_rest(array_uri_);
-    RETURN_NOT_OK(st);
-    array_schema_latest_ = array_schema_latest.value();
+
+    bool optimized_array_open = false;
+    bool found = false;
+    RETURN_NOT_OK(config_.get<bool>(
+        "experimental.rest.optimized_array_open",
+        &optimized_array_open,
+        &found));
+    assert(found);
+
+    if (optimized_array_open) {
+      RETURN_NOT_OK(rest_client->post_array_to_rest(array_uri_, this));
+    } else {
+      auto&& [st, array_schema_latest] =
+          rest_client->get_array_schema_from_rest(array_uri_);
+      RETURN_NOT_OK(st);
+      array_schema_latest_ = array_schema_latest.value();
+    }
   } else {
     try {
       array_dir_ = ArrayDirectory(
@@ -284,10 +297,23 @@ Status Array::open(
     if (rest_client == nullptr)
       return LOG_STATUS(Status_ArrayError(
           "Cannot open array; remote array with no REST client."));
-    auto&& [st, array_schema_latest] =
-        rest_client->get_array_schema_from_rest(array_uri_);
-    RETURN_NOT_OK(st);
-    array_schema_latest_ = array_schema_latest.value();
+
+    bool optimized_array_open = false;
+    bool found = false;
+    RETURN_NOT_OK(config_.get<bool>(
+        "experimental.rest.optimized_array_open",
+        &optimized_array_open,
+        &found));
+    assert(found);
+
+    if (optimized_array_open) {
+      RETURN_NOT_OK(rest_client->post_array_to_rest(array_uri_, this));
+    } else {
+      auto&& [st, array_schema_latest] =
+          rest_client->get_array_schema_from_rest(array_uri_);
+      RETURN_NOT_OK(st);
+      array_schema_latest_ = array_schema_latest.value();
+    }
   } else if (query_type == QueryType::READ) {
     try {
       array_dir_ = ArrayDirectory(

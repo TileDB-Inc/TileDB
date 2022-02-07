@@ -109,6 +109,15 @@ class RestClient {
       const URI& uri, const ArraySchema& array_schema);
 
   /**
+   * Post a data array to rest server
+   *
+   * @param uri of array being created
+   * @param array array to load into
+   * @return Status Ok() on success Error() on failures
+   */
+  Status post_array_to_rest(const URI& uri, Array* array);
+
+  /**
    * Deregisters an array at the given URI from the REST server.
    *
    * @param uri Array URI to deregister

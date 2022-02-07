@@ -1427,6 +1427,9 @@ TILEDB_EXPORT void tiledb_config_free(tiledb_config_t** config) TILEDB_NOEXCEPT;
  * - `config.logging_format` <br>
  *    The logging format configured (DEFAULT or JSON)
  *    **Default**: "DEFAULT"
+ * - `experimental.rest.optimized_array_open` <br>
+ *    Switch to open array with or without optimization. <br>
+ *    **Default**: "false"
  * - `rest.server_address` <br>
  *    URL for REST server to use for remote arrays. <br>
  *    **Default**: "https://api.tiledb.com"

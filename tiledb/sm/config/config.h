@@ -56,6 +56,9 @@ class Config {
   /*        CONFIG DEFAULTS         */
   /* ****************************** */
 
+  /** The default switch for opening an array with or without optimization. */
+  static const std::string EXPERIMENTAL_REST_OPTIMIZED_ARRAY_OPEN;
+
   /** The default address for rest server. */
   static const std::string REST_SERVER_DEFAULT_ADDRESS;
 
