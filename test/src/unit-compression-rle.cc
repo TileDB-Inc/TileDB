@@ -302,46 +302,61 @@ TEST_CASE(
   std::string s4 = tiledb::test::random_string(4);
   std::string s3 = tiledb::test::random_string(3);
   std::string s1 = tiledb::test::random_string(1);
-  std::vector<std::string_view> all_same(
+
+  std::vector<std::string_view> simple{s8, s8, s8, s8, s8, s1, s4, s4};
+  CHECK(
+      tiledb::sm::RLE::calculate_compression_params(simple) ==
+      std::tuple(5, 8, 3, 13));
+
+  std::vector<std::string_view> last_unique{s8, s8, s8, s8, s4, s4, s1};
+  CHECK(
+      tiledb::sm::RLE::calculate_compression_params(last_unique) ==
+      std::tuple(4, 8, 3, 13));
+
+  std::vector<std::string_view> first_unique{s1, s15, s15, s8, s8, s1, s4, s4};
+  CHECK(
+      tiledb::sm::RLE::calculate_compression_params(first_unique) ==
+      std::tuple(2, 15, 5, 29));
+
+  std::vector<std::string_view> all_unique{s8, s15, s1, s3, s4};
+  CHECK(
+      tiledb::sm::RLE::calculate_compression_params(all_unique) ==
+      std::tuple(1, 15, 5, 31));
+
+  std::vector<std::string_view> single_item{s4};
+  CHECK(
+      tiledb::sm::RLE::calculate_compression_params(single_item) ==
+      std::tuple(1, 4, 1, 4));
+
+  std::vector<std::string_view> empty_in{};
+  CHECK(
+      tiledb::sm::RLE::calculate_compression_params(empty_in) ==
+      std::tuple(0, 0, 0, 0));
+
+  std::vector<std::string> all_same_v(
       300000, tiledb::test::random_string(5000));
-
-  // Generate {input, expected_output = {max_run_value, max_string_size,
-  // num_of_runs, output_strings_size}} pairs
-  auto data = GENERATE_REF(table<
-                           std::vector<std::string_view>,
-                           tuple<uint64_t, uint64_t, uint64_t, uint64_t>>(
-      {{{s8, s8, s8, s8, s8, s1, s4, s4}, {5, 8, 3, 13}},
-       {{s8, s8, s8, s8, s4, s4, s1}, {4, 8, 3, 13}},
-       // s1 shows up in 2 different runs, so needs to be counted separately
-       {{s1, s15, s15, s8, s8, s1, s4, s4}, {2, 15, 5, 29}},
-       {{s8, s15, s1, s3, s4}, {1, 15, 5, 31}},
-       {all_same, {300000, 5000, 1, 5000}},
-       {{s4}, {1, 4, 1, 4}},
-       {{}, {0, 0, 0, 0}}}));
-
-  REQUIRE(
-      tiledb::sm::RLE::calculate_compression_params(std::get<0>(data)) ==
-      std::get<1>(data));
+  std::vector<std::string_view> all_same;
+  // the reference here is crucial, otherwise a temp string is created and
+  // therefore string_view will outlive it
+  for (const std::string& str : all_same_v) {
+    all_same.emplace_back(str);
+  }
+  CHECK(
+      tiledb::sm::RLE::calculate_compression_params(all_same) ==
+      std::tuple(300000, 5000, 1, 5000));
 }
 
 TEST_CASE(
     "Compression-RLE: Test compression of strings, small run lengths and "
     "string sizes",
     "[compression][rle][rle-strings]") {
-  std::string_view uncompressed[] = {"HG543232",
-                                     "HG543232",
-                                     "HG543232",
-                                     "HG543232",
-                                     "HG543232",
-                                     "HG54",
-                                     "HG54",
-                                     "A"};
-  std::vector<std::string> unique_values = {"HG543232", "HG54", "A"};
-  const auto strings_size = accumulate(
-      unique_values.begin(),
-      unique_values.end(),
-      0,
-      [](size_t sum, const std::string& str) { return sum + str.size(); });
+  std::string str1 = "HG543232";
+  std::string str2 = "HG54";
+  std::string str3 = "A";
+  std::string_view uncompressed[] = {
+      str1, str1, str1, str1, str1, str2, str2, str3};
+  std::vector<std::string> unique_values = {str1, str2, str3};
+  const auto strings_size = str1.size() + str2.size() + str3.size();
   const auto exp_size = unique_values.size() * sizeof(uint8_t) +
                         unique_values.size() * sizeof(uint8_t) + strings_size;
 
@@ -392,7 +407,14 @@ TEST_CASE(
   uint32_t num_strings_32 = std::numeric_limits<uint16_t>::max() + 1;
   uint16_t string_16_len = std::numeric_limits<uint8_t>::max() + 1;
   auto string_16 = tiledb::test::random_string(string_16_len);
-  std::vector<std::string_view> uncompressed(num_strings_32, string_16);
+  std::vector<std::string> uncompressed_v(num_strings_32, string_16);
+  std::vector<std::string_view> uncompressed;
+  // the reference here is crucial, otherwise a temp string is created and
+  // therefore string_view will outlive it
+  for (const std::string& str : uncompressed_v) {
+    std::string_view strview(str);
+    uncompressed.emplace_back(strview);
+  }
 
   const auto exp_size = sizeof(uint32_t) + sizeof(uint16_t) + string_16.size();
 
@@ -426,23 +448,26 @@ TEST_CASE(
 TEST_CASE(
     "Compression-RLE: Test input of unique strings (worst case)",
     "[compression][rle][rle-strings]") {
-  std::vector<std::string_view> uncompressed = {
+  std::vector<std::string> uncompressed_v = {
       "HG543232", "ATG", "AT", "A", "TGC", "HG54", "HG5"};
-  const uint64_t uncompressed_bytesize = accumulate(
-      uncompressed.begin(),
-      uncompressed.end(),
-      0,
-      [](size_t sum, const std::string_view& str) { return sum + str.size(); });
+  std::vector<std::string_view> uncompressed;
+  uint64_t strings_size = 0;
+  // the reference here is crucial, otherwise a temp string is created and
+  // therefore string_view will outlive it
+  for (const std::string& str : uncompressed_v) {
+    uncompressed.emplace_back(str);
+    strings_size += str.size();
+  }
+
   const auto exp_size = uncompressed.size() * sizeof(uint8_t) +
-                        uncompressed.size() * sizeof(uint8_t) +
-                        uncompressed_bytesize;
+                        uncompressed.size() * sizeof(uint8_t) + strings_size;
 
   // Compress the input array
   std::vector<byte> compressed(exp_size);
   tiledb::sm::RLE::compress<uint8_t, uint8_t>(uncompressed, compressed);
 
   // When all elements are unique the compressed output is always larger
-  CHECK(compressed.size() > uncompressed_bytesize);
+  CHECK(compressed.size() > strings_size);
 
   // All values here are 1 byte long, so endianness is not an issue and we can
   // just read using memcpy
