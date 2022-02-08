@@ -1,18 +1,19 @@
-diff --git a/c++/src/kj/windows-sanity.h b/c++/src/kj/windows-sanity.h
-index 894ec1d7..f18b39e6 100644
---- a/c++/src/kj/windows-sanity.h
-+++ b/c++/src/kj/windows-sanity.h
-@@ -49,9 +49,13 @@
- #pragma once
- 
- namespace win32 {
-+#ifdef ERROR  // This could be absent if e.g. NOGDI was used.
-   const auto ERROR_ = ERROR;
- #undef ERROR
-   const auto ERROR = ERROR_;
-+#else //if macro def missing, we still need to define the symbol.
-+  const int ERROR = 0;
-+#endif
- 
-   typedef VOID VOID_;
- #undef VOID
+diff-- git a / c++ / src / kj / windows -
+    sanity.h b / c++ / src / kj / windows -
+    sanity.h index 894ec1d7..f18b39e6 100644 ---a / c++ / src / kj / windows -
+    sanity.h++ + b / c++ / src / kj / windows - sanity.h @ @-49,
+    9 + 49,
+    13 @ @
+#pragma once
+
+    namespace win32 {
+  +#ifdef ERROR  // This could be absent if e.g. NOGDI was used.
+      const auto ERROR_ = ERROR;
+#undef ERROR
+  const auto ERROR = ERROR_;
+  +#else  // if macro def missing, we still need to define the symbol.
+      + const auto ERROR = 0;
+  +#endif
+
+      typedef VOID VOID_;
+#undef VOID
