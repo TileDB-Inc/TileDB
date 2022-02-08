@@ -5,7 +5,7 @@
  *
  * The MIT License
  *
- * @copyright Copyright (c) 2017-2021 TileDB, Inc.
+ * @copyright Copyright (c) 2017-2022 TileDB, Inc.
  *
  * Permission is hereby granted, free of charge, to any person obtaining a copy
  * of this software and associated documentation files (the "Software"), to deal
@@ -82,8 +82,10 @@ class RLE {
   /**
    * Compress variable sized strings in contiguous memory to RLE format
    *
-   * @tparam T Type of integer to store run legths
-   * @tparam P Type of integer to store string sizes
+   * @tparam T Type of integer to store run legths, must fit max num of
+   * repetitions in input
+   * @tparam P Type of integer to store string sizes, must fit max length input
+   * string
    * @param input_buffer Input in form of a memory contiguous sequence of
    * strings
    * @param RLE-encoded output as a series of [run length|string size|string]
@@ -109,7 +111,8 @@ class RLE {
         // End of a run, write [run length|string size|string] to output
         utils::endianness::encode_be<T>(run_length, out_offset);
         out_offset += run_size;
-        utils::endianness::encode_be<P>(previous.size(), out_offset);
+        utils::endianness::encode_be<P>(
+            static_cast<P>(previous.size()), out_offset);
         out_offset += str_len_size;
         memcpy(out_offset, previous.data(), previous.size());
         out_offset += previous.size();
@@ -120,7 +123,8 @@ class RLE {
 
     // encode the runs of the last string
     utils::endianness::encode_be<T>(run_length, out_offset);
-    utils::endianness::encode_be<P>(previous.size(), out_offset + run_size);
+    utils::endianness::encode_be<P>(
+        static_cast<P>(previous.size()), out_offset + run_size);
     memcpy(
         out_offset + run_size + str_len_size, previous.data(), previous.size());
   }
@@ -128,8 +132,10 @@ class RLE {
   /**
    * Decompress strings encoded in RLE format
    *
-   * @tparam T Type of integer to store run legths
-   * @tparam P Type of integer to store string sizes
+   * @tparam T Type of integer to store run legths, must be the same used for
+   * encoding
+   * @tparam P Type of integer to store string sizes, must be the same used for
+   * encoding
    * @param input_buffer Input in [run length|string size|string] RLE format to
    * decompress
    * @param RLE Decoded output as a series of strings in contiguous memory.
