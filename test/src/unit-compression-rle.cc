@@ -401,42 +401,45 @@ TEST_CASE(
           decompressed.size()) == 0);
 }
 
-TEST_CASE(
+typedef tuple<uint16_t, uint32_t, uint64_t> FixedTypesUnderTest;
+TEMPLATE_LIST_TEST_CASE(
     "Compression-RLE: Test compression of single large run length/long string",
-    "[compression][rle][rle-strings]") {
-  uint32_t num_strings_32 = std::numeric_limits<uint16_t>::max() + 1;
-  uint16_t string_16_len = std::numeric_limits<uint8_t>::max() + 1;
-  auto string_16 = tiledb::test::random_string(string_16_len);
-  std::vector<std::string> uncompressed_v(num_strings_32, string_16);
+    "[compression][rle][rle-strings]",
+    FixedTypesUnderTest) {
+  typedef TestType T;
+  // pick values of at least 2 bytes
+  uint64_t num_strings = std::numeric_limits<uint8_t>::max() + 1;
+  uint64_t string_len = std::numeric_limits<uint8_t>::max() + 1;
+  auto string_rand = tiledb::test::random_string(string_len);
+  std::vector<std::string> uncompressed_v(num_strings, string_rand);
   std::vector<std::string_view> uncompressed;
   // the reference here is crucial, otherwise a temp string is created and
   // therefore string_view will outlive it
   for (const std::string& str : uncompressed_v) {
-    std::string_view strview(str);
-    uncompressed.emplace_back(strview);
+    uncompressed.emplace_back(str);
   }
 
-  const auto exp_size = sizeof(uint32_t) + sizeof(uint16_t) + string_16.size();
+  const auto exp_size = sizeof(T) + sizeof(T) + string_rand.size();
 
   std::vector<std::byte> compressed(exp_size);
-  tiledb::sm::RLE::compress<uint32_t, uint16_t>(uncompressed, compressed);
+  tiledb::sm::RLE::compress<T, T>(uncompressed, compressed);
 
   auto data = reinterpret_cast<const char*>(compressed.data());
-  CHECK(num_strings_32 == utils::endianness::decode_be<uint32_t>(data));
-  data += sizeof(uint32_t);
-  CHECK(string_16_len == utils::endianness::decode_be<uint16_t>(data));
-  data += sizeof(uint16_t);
-  CHECK(strncmp(string_16.c_str(), data, string_16_len * sizeof(char)) == 0);
+  CHECK(num_strings == utils::endianness::decode_be<T>(data));
+  data += sizeof(T);
+  CHECK(string_len == utils::endianness::decode_be<T>(data));
+  data += sizeof(T);
+  CHECK(strncmp(string_rand.c_str(), data, string_len * sizeof(char)) == 0);
 
   // Decompress
   std::ostringstream repeated2;
   std::fill_n(
-      std::ostream_iterator<std::string>(repeated2), num_strings_32, string_16);
+      std::ostream_iterator<std::string>(repeated2), num_strings, string_rand);
   auto strout = repeated2.str();
   const char* unc = strout.data();
   const auto exp_decomp_size = strlen(unc);
   std::vector<std::byte> decompressed(exp_decomp_size);
-  tiledb::sm::RLE::decompress<uint32_t, uint16_t>(compressed, decompressed);
+  tiledb::sm::RLE::decompress<T, T>(compressed, decompressed);
 
   CHECK(
       memcmp(

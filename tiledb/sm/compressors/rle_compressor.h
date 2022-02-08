@@ -90,13 +90,14 @@ class RLE {
    * items. Memory is allocated and owned by the caller
    */
   template <class T, class P>
-  static void compress(span<std::string_view> input, span<std::byte> output) {
+  static void compress(
+      const span<std::string_view> input, span<std::byte> output) {
     if (input.empty() || output.empty())
       return;
 
-    const auto run_size = sizeof(T);
-    const auto str_len_size = sizeof(P);
-    auto max_run_length = std::numeric_limits<T>::max();
+    const uint64_t run_size = sizeof(T);
+    const uint64_t str_len_size = sizeof(P);
+    const uint64_t max_run_length = std::numeric_limits<T>::max();
 
     T run_length = 1;
     auto out_offset = &output[0];
@@ -135,16 +136,16 @@ class RLE {
    * Memory is allocated and owned by the caller
    */
   template <class T, class P>
-  static void decompress(span<std::byte> input, span<std::byte> output) {
+  static void decompress(const span<std::byte> input, span<std::byte> output) {
     if (input.empty() || output.empty())
       return;
 
-    const auto run_size = sizeof(T);
-    const auto str_len_size = sizeof(P);
+    const uint64_t run_size = sizeof(T);
+    const uint64_t str_len_size = sizeof(P);
 
     T run_length = 0;
     P string_length = 0;
-    auto out_offset = 0;
+    uint64_t out_offset = 0;
     // Iterate input to read [run length|string size|string] items
     uint64_t in_index = 0;
     while (in_index < input.size()) {
@@ -169,7 +170,7 @@ class RLE {
    * output_strings_size}
    */
   static tuple<uint64_t, uint64_t, uint64_t, uint64_t>
-  calculate_compression_params(span<std::string_view> input);
+  calculate_compression_params(const span<std::string_view> input);
 };
 }  // namespace sm
 }  // namespace tiledb
