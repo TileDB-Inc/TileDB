@@ -146,7 +146,7 @@ uint64_t RLE::overhead(uint64_t nbytes, uint64_t value_size) {
 }
 
 tuple<uint64_t, uint64_t, uint64_t, uint64_t> RLE::calculate_compression_params(
-    span<std::string_view> input) {
+    const span<std::string_view> input) {
   if (input.empty())
     return {0, 0, 0, 0};
 
