@@ -833,10 +833,6 @@ bool Subarray::is_unary(uint64_t range_idx) const {
   return true;
 }
 
-void Subarray::set_is_default(uint32_t dim_index, bool is_default) {
-  is_default_[dim_index] = is_default;
-}
-
 void Subarray::set_layout(Layout layout) {
   layout_ = layout;
 }
@@ -1527,6 +1523,16 @@ const std::vector<Range>& Subarray::ranges_for_dim(uint32_t dim_idx) const {
   return ranges_[dim_idx];
 }
 
+Status Subarray::set_default_range(uint32_t dim_idx, const Range& range) {
+  // Set range value.
+  ranges_.resize(dim_idx + 1, std::vector<Range>());
+  ranges_[dim_idx].clear();
+  ranges_[dim_idx].emplace_back(range);
+  // Set the range as default.
+  is_default_[dim_idx] = true;
+  return Status::Ok();
+}
+
 Status Subarray::set_ranges_for_dim(
     uint32_t dim_idx, const std::vector<Range>& ranges) {
   ranges_.resize(dim_idx + 1, std::vector<Range>());
@@ -1537,6 +1543,8 @@ Status Subarray::set_ranges_for_dim(
   for (const auto& range : ranges)
     add_or_coalesce_range_func_[dim_idx](this, dim_idx, range);
 
+  // Set the range as not default.
+  is_default_[dim_idx] = false;
   return Status::Ok();
 }
 

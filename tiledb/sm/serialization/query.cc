@@ -209,16 +209,24 @@ Status subarray_from_capnp(
         }
         offset += range_size;
       }
-
-      RETURN_NOT_OK(subarray->set_ranges_for_dim(i, ranges));
-
-      // Set default indicator
-      subarray->set_is_default(i, range_reader.getHasDefaultRange());
+      if (range_reader.getHasDefaultRange()) {
+        if (ranges.size() != 1)
+          return LOG_STATUS(
+              Status_SerializationError("Cannot deserialize; range marked "
+                                        "default has more than one range."));
+        RETURN_NOT_OK(subarray->set_default_range(i, ranges[0]));
+      } else {
+        // Set ranges for the dimension.
+        RETURN_NOT_OK(subarray->set_ranges_for_dim(i, ranges));
+      }
     } else {
       // Handle 1.7 style ranges where there is a single range with no sizes
       Range range(data_ptr.begin(), data.size());
-      RETURN_NOT_OK(subarray->set_ranges_for_dim(i, {range}));
-      subarray->set_is_default(i, range_reader.getHasDefaultRange());
+      if (range_reader.getHasDefaultRange()) {
+        RETURN_NOT_OK(subarray->set_default_range(i, range));
+      } else {
+        RETURN_NOT_OK(subarray->set_ranges_for_dim(i, {range}));
+      }
     }
   }
 

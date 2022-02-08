@@ -716,13 +716,6 @@ class Subarray {
    */
   Subarray get_subarray(uint64_t start, uint64_t end) const;
 
-  /**
-   * Set default indicator for dimension subarray. Used by serialization only
-   * @param dim_index
-   * @param is_default
-   */
-  void set_is_default(uint32_t dim_index, bool is_default);
-
   /** Sets the subarray layout. */
   void set_layout(Layout layout);
 
@@ -771,6 +764,18 @@ class Subarray {
    * @note Intended for serialization only
    */
   const std::vector<Range>& ranges_for_dim(uint32_t dim_idx) const;
+
+  /**
+   * Directly sets the `Range` vector for the given dimension index, making a
+   * deep copy, and marking it as default.
+   *
+   * @param dim_idx Index of dimension to set
+   * @param ranges `Range` vector that will be copied and set
+   * @return Status
+   *
+   * @note Intended for serialization only
+   */
+  Status set_default_range(uint32_t dim_idx, const Range& range);
 
   /**
    * Directly sets the `Range` vector for the given dimension index, making
