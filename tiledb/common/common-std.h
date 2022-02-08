@@ -62,8 +62,6 @@ using std::tuple;
 using std::nullopt;
 using std::optional;
 
-using std::byte;
-
 /*
  * Span implementation, similar to std::span of C++20
  */

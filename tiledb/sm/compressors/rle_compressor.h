@@ -90,7 +90,7 @@ class RLE {
    * items. Memory is allocated and owned by the caller
    */
   template <class T, class P>
-  static void compress(span<std::string_view> input, span<byte> output) {
+  static void compress(span<std::string_view> input, span<std::byte> output) {
     if (input.empty() || output.empty())
       return;
 
@@ -135,7 +135,7 @@ class RLE {
    * Memory is allocated and owned by the caller
    */
   template <class T, class P>
-  static void decompress(span<byte> input, span<byte> output) {
+  static void decompress(span<std::byte> input, span<std::byte> output) {
     if (input.empty() || output.empty())
       return;
 
