@@ -510,7 +510,9 @@ target_link_libraries(TILEDB_CORE_OBJECTS_ILIB
 
 # GCC <9 need to link against libc++fs for c++17 filesystem library
 find_package(Filesystem REQUIRED COMPONENTS Final Experimental)
+if (NOT WIN32)
 target_link_libraries(TILEDB_CORE_OBJECTS_ILIB INTERFACE std::filesystem)
+endif()
 
 if (NOT WIN32)
   target_link_libraries(TILEDB_CORE_OBJECTS_ILIB
@@ -779,6 +781,7 @@ if (TILEDB_STATIC)
   append_dep_lib(GCSSDK::crc32c)
   append_dep_lib(spdlog::spdlog)
   append_dep_lib(libmagic)
+#  append_dep_lib(std::filesystem)
 endif()
 
 ############################################################
