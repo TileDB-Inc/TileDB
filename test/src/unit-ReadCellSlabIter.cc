@@ -164,6 +164,26 @@ void ReadCellSlabIterFx::create_result_space_tiles(
       result_space_tiles);
 }
 
+void set_result_tile_dim(
+    ResultTile& result_tile,
+    std::string dim,
+    uint64_t dim_idx,
+    std::vector<uint64_t> v) {
+  result_tile.init_coord_tile(dim, dim_idx);
+
+  uint64_t* data =
+      static_cast<uint64_t*>(tdb_malloc(v.size() * sizeof(uint64_t)));
+  for (uint64_t i = 0; i < v.size(); i++) {
+    data[i] = v[i];
+  }
+
+  Tile tile(
+      Datatype::UINT64, sizeof(uint64_t), 0, data, v.size() * sizeof(uint64_t));
+  auto tile_tuple = result_tile.tile_tuple(dim);
+  REQUIRE(tile_tuple != nullptr);
+  std::get<0>(*tile_tuple) = std::move(tile);
+}
+
 /* ********************************* */
 /*                TESTS              */
 /* ********************************* */
@@ -484,43 +504,9 @@ TEST_CASE_METHOD(
   ResultTile result_tile_3_0(2, 0, array_->array_->array_schema_latest());
   ResultTile result_tile_3_1(2, 1, array_->array_->array_schema_latest());
 
-  result_tile_2_0.init_coord_tile("d", 0);
-  result_tile_3_0.init_coord_tile("d", 0);
-  result_tile_3_1.init_coord_tile("d", 0);
-
-  uint64_t* data =
-      reinterpret_cast<uint64_t*>(tdb_malloc(4 * sizeof(uint64_t)));
-  data[0] = 1000;
-  data[1] = 3;
-  data[2] = 1000;
-  data[3] = 5;
-  Tile tile_2_0(
-      Datatype::UINT64, sizeof(uint64_t), 0, data, 4 * sizeof(uint64_t));
-  auto tile_tuple = result_tile_2_0.tile_tuple("d");
-  REQUIRE(tile_tuple != nullptr);
-  std::get<0>(*tile_tuple) = tile_2_0;
-
-  data = reinterpret_cast<uint64_t*>(tdb_malloc(4 * sizeof(uint64_t)));
-  data[0] = 1000;
-  data[1] = 1000;
-  data[2] = 8;
-  data[3] = 9;
-  Tile tile_3_0(
-      Datatype::UINT64, sizeof(uint64_t), 0, data, 4 * sizeof(uint64_t));
-  tile_tuple = result_tile_3_0.tile_tuple("d");
-  REQUIRE(tile_tuple != nullptr);
-  std::get<0>(*tile_tuple) = tile_3_0;
-
-  data = reinterpret_cast<uint64_t*>(tdb_malloc(4 * sizeof(uint64_t)));
-  data[0] = 1000;
-  data[1] = 12;
-  data[2] = 19;
-  data[3] = 1000;
-  Tile tile_3_1(
-      Datatype::UINT64, sizeof(uint64_t), 0, data, 4 * sizeof(uint64_t));
-  tile_tuple = result_tile_3_1.tile_tuple("d");
-  REQUIRE(tile_tuple != nullptr);
-  std::get<0>(*tile_tuple) = tile_3_1;
+  set_result_tile_dim(result_tile_2_0, "d", 0, {{1000, 3, 1000, 5}});
+  set_result_tile_dim(result_tile_3_0, "d", 0, {{1000, 1000, 8, 9}});
+  set_result_tile_dim(result_tile_3_1, "d", 0, {{1000, 12, 19, 1000}});
 
   result_coords.emplace_back(&result_tile_2_0, 1);
   result_coords.emplace_back(&result_tile_2_0, 3);
@@ -1365,55 +1351,10 @@ TEST_CASE_METHOD(
   ResultTile result_tile_3_0(2, 0, array_->array_->array_schema_latest());
   ResultTile result_tile_3_1(2, 1, array_->array_->array_schema_latest());
 
-  result_tile_3_0.init_coord_tile("d1", 0);
-  result_tile_3_0.init_coord_tile("d2", 1);
-  result_tile_3_1.init_coord_tile("d1", 0);
-  result_tile_3_1.init_coord_tile("d2", 1);
-
-  uint64_t* data =
-      reinterpret_cast<uint64_t*>(tdb_malloc(4 * sizeof(uint64_t)));
-  data[0] = 1000;
-  data[1] = 3;
-  data[2] = 1000;
-  data[3] = 1000;
-  Tile tile_3_0_d1(
-      Datatype::UINT64, sizeof(uint64_t), 0, data, 4 * sizeof(uint64_t));
-  auto tile_tuple = result_tile_3_0.tile_tuple("d1");
-  REQUIRE(tile_tuple != nullptr);
-  std::get<0>(*tile_tuple) = tile_3_0_d1;
-
-  data = reinterpret_cast<uint64_t*>(tdb_malloc(4 * sizeof(uint64_t)));
-  data[0] = 1000;
-  data[1] = 3;
-  data[2] = 1000;
-  data[3] = 1000;
-  Tile tile_3_0_d2(
-      Datatype::UINT64, sizeof(uint64_t), 0, data, 4 * sizeof(uint64_t));
-  tile_tuple = result_tile_3_0.tile_tuple("d2");
-  REQUIRE(tile_tuple != nullptr);
-  std::get<0>(*tile_tuple) = tile_3_0_d2;
-
-  data = reinterpret_cast<uint64_t*>(tdb_malloc(4 * sizeof(uint64_t)));
-  data[0] = 5;
-  data[1] = 1000;
-  data[2] = 5;
-  data[3] = 1000;
-  Tile tile_3_1_d1(
-      Datatype::UINT64, sizeof(uint64_t), 0, data, 4 * sizeof(uint64_t));
-  tile_tuple = result_tile_3_1.tile_tuple("d1");
-  REQUIRE(tile_tuple != nullptr);
-  std::get<0>(*tile_tuple) = tile_3_1_d1;
-
-  data = reinterpret_cast<uint64_t*>(tdb_malloc(4 * sizeof(uint64_t)));
-  data[0] = 5;
-  data[1] = 1000;
-  data[2] = 6;
-  data[3] = 1000;
-  Tile tile_3_1_d2(
-      Datatype::UINT64, sizeof(uint64_t), 0, data, 4 * sizeof(uint64_t));
-  tile_tuple = result_tile_3_1.tile_tuple("d2");
-  REQUIRE(tile_tuple != nullptr);
-  std::get<0>(*tile_tuple) = tile_3_1_d2;
+  set_result_tile_dim(result_tile_3_0, "d1", 0, {{1000, 3, 1000, 1000}});
+  set_result_tile_dim(result_tile_3_0, "d2", 1, {{1000, 3, 1000, 1000}});
+  set_result_tile_dim(result_tile_3_1, "d1", 0, {{5, 1000, 5, 1000}});
+  set_result_tile_dim(result_tile_3_1, "d2", 1, {{5, 1000, 6, 1000}});
 
   result_coords.emplace_back(&result_tile_3_0, 1);
   result_coords.emplace_back(&result_tile_3_1, 0);

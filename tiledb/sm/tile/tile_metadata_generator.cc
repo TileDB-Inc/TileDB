@@ -49,8 +49,8 @@ ByteVec Sum<T, int64_t>::sum(Tile* tile) {
   ByteVec ret(8, 0);
 
   // Get pointers to the data and cell num.
-  auto values = static_cast<T*>(tile->data());
-  auto cell_num = tile->size() / sizeof(T);
+  auto values = tile->data_as<T>();
+  auto cell_num = tile->size_as<T>();
   auto sum_data = reinterpret_cast<int64_t*>(ret.data());
 
   // Process cell by cell, swallowing overflow exception.
@@ -82,8 +82,8 @@ ByteVec Sum<T, uint64_t>::sum(Tile* tile) {
   ByteVec ret(8, 0);
 
   // Get pointers to the data and cell num.
-  auto values = static_cast<T*>(tile->data());
-  auto cell_num = tile->size() / sizeof(T);
+  auto values = tile->data_as<T>();
+  auto cell_num = tile->size_as<T>();
   auto sum_data = reinterpret_cast<uint64_t*>(ret.data());
 
   // Process cell by cell, swallowing overflow exception.
@@ -108,8 +108,8 @@ ByteVec Sum<T, double>::sum(Tile* tile) {
   ByteVec ret(8, 0);
 
   // Get pointers to the data and cell num.
-  auto values = static_cast<T*>(tile->data());
-  auto cell_num = tile->size() / sizeof(T);
+  auto values = tile->data_as<T>();
+  auto cell_num = tile->size_as<T>();
   auto sum_data = reinterpret_cast<double*>(ret.data());
 
   // Process cell by cell, swallowing overflow exception.
@@ -137,9 +137,9 @@ ByteVec Sum<T, int64_t>::sum_nullable(Tile* tile, Tile* tile_validity) {
   ByteVec ret(8, 0);
 
   // Get pointers to the data and cell num.
-  auto values = static_cast<T*>(tile->data());
+  auto values = tile->data_as<T>();
   auto validity_values = static_cast<uint8_t*>(tile_validity->data());
-  auto cell_num = tile->size() / sizeof(T);
+  auto cell_num = tile->size_as<T>();
   auto sum_data = reinterpret_cast<int64_t*>(ret.data());
 
   // Process cell by cell, swallowing overflow exception.
@@ -173,9 +173,9 @@ ByteVec Sum<T, uint64_t>::sum_nullable(Tile* tile, Tile* tile_validity) {
   ByteVec ret(8, 0);
 
   // Get pointers to the data and cell num.
-  auto values = static_cast<T*>(tile->data());
+  auto values = tile->data_as<T>();
   auto validity_values = static_cast<uint8_t*>(tile_validity->data());
-  auto cell_num = tile->size() / sizeof(T);
+  auto cell_num = tile->size_as<T>();
   auto sum_data = reinterpret_cast<uint64_t*>(ret.data());
 
   // Process cell by cell, swallowing overflow exception.
@@ -202,9 +202,9 @@ ByteVec Sum<T, double>::sum_nullable(Tile* tile, Tile* tile_validity) {
   ByteVec ret(8, 0);
 
   // Get pointers to the data and cell num.
-  auto values = static_cast<T*>(tile->data());
+  auto values = tile->data_as<T>();
   auto validity_values = static_cast<uint8_t*>(tile_validity->data());
-  auto cell_num = tile->size() / sizeof(T);
+  auto cell_num = tile->size_as<T>();
   auto sum_data = reinterpret_cast<double*>(ret.data());
 
   // Process cell by cell, swallowing overflow exception.
@@ -300,7 +300,7 @@ const std::tuple<void*, void*> TileMetadataGenerator::min_max(
   void* max = (void*)&metadata_generator_type_data<T>::max;
 
   // Get pointer to the data and cell num.
-  auto values = static_cast<T*>(tile->data());
+  auto values = tile->data_as<T>();
   auto cell_num = tile->size() / cell_size;
 
   // Process cell by cell.
@@ -351,7 +351,7 @@ TileMetadataGenerator::min_max_nullable(
   uint64_t null_count = 0;
 
   // Get pointers to the data and cell num.
-  auto values = static_cast<T*>(tile->data());
+  auto values = tile->data_as<T>();
   auto validity_values = static_cast<uint8_t*>(tile_validity->data());
   auto cell_num = tile->size() / cell_size;
 

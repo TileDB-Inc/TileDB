@@ -1166,7 +1166,9 @@ TEST_CASE(
     "Sparse unordered with dups reader: test compute_var_size_offsets",
     "[sparse-unordered-with-dups][compute_var_size_offsets]") {
   // Make a vector of tiles.
-  std::vector<ResultTileWithBitmap<uint64_t>> rt = {make_tile(5)};
+  auto tile = make_tile(5);
+  std::vector<ResultTileWithBitmap<uint64_t>> rt;
+  rt.push_back(std::move(tile));
 
   SECTION("- No bitmap") {
   }
@@ -1223,7 +1225,9 @@ TEST_CASE(
     "bitmap",
     "[sparse-unordered-with-dups][compute_var_size_offsets][count-bitmap]") {
   // Make a vector of tiles.
-  std::vector<ResultTileWithBitmap<uint64_t>> rt = {make_tile(5)};
+  auto tile = make_tile(5);
+  std::vector<ResultTileWithBitmap<uint64_t>> rt;
+  rt.push_back(std::move(tile));
   rt[0].bitmap_.resize(5);
   rt[0].bitmap_ = {0, 1, 2, 0, 2};
 
@@ -1274,7 +1278,9 @@ TEST_CASE(
     "continuation",
     "[sparse-unordered-with-dups][compute_var_size_offsets][continuation]") {
   // Make a vector of tiles.
-  std::vector<ResultTileWithBitmap<uint64_t>> rt = {make_tile(5)};
+  auto tile = make_tile(5);
+  std::vector<ResultTileWithBitmap<uint64_t>> rt;
+  rt.push_back(std::move(tile));
 
   SECTION("- No bitmap") {
   }

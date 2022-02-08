@@ -86,7 +86,7 @@ Status GenericTileIO::read_generic(
       header.version_number, (Datatype)header.datatype, header.cell_size, 0));
 
   // Read the tile.
-  ret->filtered_buffer().resize(header.persisted_size);
+  ret->filtered_buffer().expand(header.persisted_size);
   RETURN_NOT_OK(ret->alloc_data(header.tile_size));
   RETURN_NOT_OK(storage_manager_->read(
       uri_,

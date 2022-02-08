@@ -69,6 +69,20 @@ ResultTile::ResultTile(
   coord_func_ = &ResultTile::zipped_coord;
 }
 
+/** Move constructor. */
+ResultTile::ResultTile(ResultTile&& other) {
+  // Swap with the argument
+  swap(other);
+}
+
+/** Move-assign operator. */
+ResultTile& ResultTile::operator=(ResultTile&& other) {
+  // Swap with the argument
+  swap(other);
+
+  return *this;
+}
+
 /* ****************************** */
 /*               API              */
 /* ****************************** */
@@ -277,7 +291,7 @@ Status ResultTile::read(
     auto buff_offset = 0;
     for (uint64_t c = 0; c < len; ++c) {
       for (unsigned d = 0; d < dim_num; ++d) {
-        auto coord_tile = std::get<0>(coord_tiles_[d].second);
+        auto& coord_tile = std::get<0>(coord_tiles_[d].second);
         auto cell_size = coord_tile.cell_size();
         auto tile_offset = (pos + c) * cell_size;
         RETURN_NOT_OK(
@@ -1018,6 +1032,24 @@ Status ResultTile::compute_results_count_sparse<uint64_t>(
       min_cell,
       max_cell);
   return Status::Ok();
+}
+
+void ResultTile::swap(ResultTile& tile) {
+  std::swap(domain_, tile.domain_);
+  std::swap(frag_idx_, tile.frag_idx_);
+  std::swap(tile_idx_, tile.tile_idx_);
+  std::swap(attr_tiles_, tile.attr_tiles_);
+  std::swap(coords_tile_, tile.coords_tile_);
+  std::swap(coord_tiles_, tile.coord_tiles_);
+  std::swap(compute_results_dense_func_, tile.compute_results_dense_func_);
+  std::swap(coord_func_, tile.coord_func_);
+  std::swap(compute_results_sparse_func_, tile.compute_results_sparse_func_);
+  std::swap(
+      compute_results_count_sparse_uint64_t_func_,
+      tile.compute_results_count_sparse_uint64_t_func_);
+  std::swap(
+      compute_results_count_sparse_uint8_t_func_,
+      tile.compute_results_count_sparse_uint8_t_func_);
 }
 
 /* ****************************** */

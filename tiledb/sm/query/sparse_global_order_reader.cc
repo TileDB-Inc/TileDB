@@ -79,8 +79,10 @@ SparseGlobalOrderReader::SparseGlobalOrderReader(
           buffers,
           subarray,
           layout,
-          condition) {
-  array_memory_tracker_ = array->memory_tracker();
+          condition)
+    , result_tiles_(array->fragment_metadata().size())
+    , memory_used_for_coords_(array->fragment_metadata().size())
+    , memory_used_for_qc_tiles_(array->fragment_metadata().size()) {
 }
 
 /* ****************************** */
@@ -155,11 +157,6 @@ Status SparseGlobalOrderReader::dowork() {
     read_state_.done_adding_result_tiles_ = true;
     return Status::Ok();
   }
-
-  // Make sure we have enough space for tiles data.
-  memory_used_for_coords_.resize(fragment_num);
-  memory_used_for_qc_tiles_.resize(fragment_num);
-  result_tiles_.resize(fragment_num);
 
   // Load initial data, if not loaded already.
   RETURN_NOT_OK(load_initial_data());

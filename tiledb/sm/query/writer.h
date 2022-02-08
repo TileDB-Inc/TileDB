@@ -70,13 +70,21 @@ class Writer : public StrategyBase, public IQueryStrategy {
   struct GlobalWriteState {
     /**
      * Stores the last tile of each attribute/dimension for each write
-     * operation. For fixed-sized attributes/dimensions, the second tile is
-     * ignored. For var-sized attributes/dimensions, the first tile is the
-     * offsets tile, whereas the second tile is the values tile. In both cases,
-     * the third tile stores a validity tile for nullable attributes.
+     * operation. The key is the attribute/dimension name. For fixed-sized
+     * attributes/dimensions, the second tile is ignored. For var-sized
+     * attributes/dimensions, the first tile is the offsets tile, whereas the
+     * second tile is the values tile. In both cases, the third tile stores a
+     * validity tile for nullable attributes.
      */
     std::unordered_map<std::string, std::vector<WriterTile>> last_tiles_;
 
+    /**
+     * Stores the last offset into the var size tile buffer for var size
+     * dimensions/attributes. The key is the attribute/dimension name.
+     *
+     * Note: Once tiles are created with the correct size from the beginning,
+     * this variable can go awaty.
+     */
     std::unordered_map<std::string, uint64_t> last_var_offsets_;
 
     /**

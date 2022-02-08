@@ -79,13 +79,14 @@ void Tile::set_max_tile_chunk_size(uint64_t max_tile_chunk_size) {
 /*   CONSTRUCTORS & DESTRUCTORS   */
 /* ****************************** */
 
-Tile::Tile() {
-  data_ = nullptr;
-  size_ = 0;
-  cell_size_ = 0;
-  dim_num_ = 0;
-  format_version_ = 0;
-  type_ = Datatype::INT32;
+Tile::Tile()
+    : data_(nullptr, tiledb_free)
+    , size_(0)
+    , cell_size_(0)
+    , dim_num_(0)
+    , format_version_(0)
+    , type_(Datatype::INT32)
+    , filtered_buffer_(0) {
 }
 
 Tile::Tile(
@@ -94,47 +95,19 @@ Tile::Tile(
     const unsigned int dim_num,
     void* const buffer,
     uint64_t size)
-    : data_(static_cast<char*>(buffer))
+    : data_(static_cast<char*>(buffer), tiledb_free)
     , size_(size)
     , cell_size_(cell_size)
     , dim_num_(dim_num)
     , format_version_(0)
-    , type_(type) {
-}
-
-Tile::Tile(const Tile& tile)
-    : Tile() {
-  // Make a deep-copy clone
-  auto clone = tile.clone();
-  // Swap with the clone
-  swap(clone);
+    , type_(type)
+    , filtered_buffer_(0) {
 }
 
 Tile::Tile(Tile&& tile)
     : Tile() {
   // Swap with the argument
   swap(tile);
-}
-
-Tile::~Tile() {
-  if (data_ != nullptr) {
-    tiledb_free(data_);
-  }
-}
-
-Tile& Tile::operator=(const Tile& tile) {
-  // Free existing buffer.
-  if (data_) {
-    tiledb_free(data_);
-    data_ = nullptr;
-  }
-
-  // Make a deep-copy clone
-  auto clone = tile.clone();
-  // Swap with the clone
-  swap(clone);
-
-  return *this;
 }
 
 Tile& Tile::operator=(Tile&& tile) {
@@ -165,7 +138,7 @@ Status Tile::init_unfiltered(
   format_version_ = format_version;
 
   if (tile_size > 0) {
-    data_ = static_cast<char*>(tdb_malloc(tile_size));
+    data_.reset(static_cast<char*>(tdb_malloc(tile_size)));
     if (data_ == nullptr)
       return LOG_STATUS(
           Status_TileError("Cannot initialize tile; Buffer allocation failed"));
@@ -174,7 +147,7 @@ Status Tile::init_unfiltered(
   }
 
   if (fill_with_zeros && tile_size > 0) {
-    memset(data_, 0, tile_size);
+    memset(data_.get(), 0, tile_size);
   }
   size_ = tile_size;
 
@@ -196,16 +169,13 @@ Status Tile::init_filtered(
 }
 
 void Tile::clear_data() {
-  if (data_ != nullptr)
-    tdb_free(data_);
-
   data_ = nullptr;
   size_ = 0;
 }
 
 Status Tile::alloc_data(uint64_t size) {
   assert(data_ == nullptr);
-  data_ = static_cast<char*>(tdb_malloc(size));
+  data_.reset(static_cast<char*>(tdb_malloc(size)));
   if (data_ == nullptr) {
     return LOG_STATUS(
         Status_TileError("Cannot allocate buffer; Memory allocation failed"));
@@ -213,25 +183,6 @@ Status Tile::alloc_data(uint64_t size) {
   size_ = size;
 
   return Status::Ok();
-}
-
-Tile Tile::clone() const {
-  Tile clone;
-  clone.cell_size_ = cell_size_;
-  clone.dim_num_ = dim_num_;
-  clone.format_version_ = format_version_;
-  clone.type_ = type_;
-  clone.filtered_buffer_ = filtered_buffer_;
-
-  if (data_ != nullptr) {
-    clone.data_ = static_cast<char*>(tdb_malloc(size_));
-    memcpy(clone.data_, data_, size_);
-  } else {
-    clone.data_ = data_;
-  }
-  clone.size_ = size_;
-
-  return clone;
 }
 
 bool Tile::empty() const {
@@ -246,7 +197,7 @@ Status Tile::read(
     return LOG_STATUS(Status_TileError(
         "Read tile overflow; may not read beyond buffer size"));
   }
-  std::memcpy(buffer, data_ + offset, nbytes);
+  std::memcpy(buffer, data_.get() + offset, nbytes);
   return Status::Ok();
 }
 
@@ -257,7 +208,7 @@ Status Tile::write(const void* data, uint64_t offset, uint64_t nbytes) {
         Status_TileError("Write tile overflow; would write out of bounds"));
   }
 
-  std::memcpy(data_ + offset, data, nbytes);
+  std::memcpy(data_.get() + offset, data, nbytes);
   size_ = std::max(offset + nbytes, size_);
 
   return Status::Ok();
@@ -274,14 +225,14 @@ Status Tile::zip_coordinates() {
   // Create a tile clone
   char* const tile_tmp = static_cast<char*>(tdb_malloc(tile_size));
   assert(tile_tmp);
-  std::memcpy(tile_tmp, data_, tile_size);
+  std::memcpy(tile_tmp, data_.get(), tile_size);
 
   // Zip coordinates
   uint64_t ptr_tmp = 0;
   for (unsigned int j = 0; j < dim_num_; ++j) {
     uint64_t ptr = j * coord_size;
     for (uint64_t i = 0; i < cell_num; ++i) {
-      std::memcpy(data_ + ptr, tile_tmp + ptr_tmp, coord_size);
+      std::memcpy(data_.get() + ptr, tile_tmp + ptr_tmp, coord_size);
       ptr += cell_size_;
       ptr_tmp += coord_size;
     }
@@ -292,10 +243,6 @@ Status Tile::zip_coordinates() {
 
   return Status::Ok();
 }
-
-/* ****************************** */
-/*          PRIVATE METHODS       */
-/* ****************************** */
 
 void Tile::swap(Tile& tile) {
   // Note swapping buffer pointers here.

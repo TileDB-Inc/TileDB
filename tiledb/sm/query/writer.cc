@@ -1439,7 +1439,8 @@ Status Writer::init_global_write_state() {
     uint64_t num = 1 + var_size + nullable;
     auto last_tile_vector = std::pair<std::string, std::vector<WriterTile>>(
         name, std::vector<WriterTile>(num));
-    auto it_ret = global_write_state_->last_tiles_.emplace(last_tile_vector);
+    auto it_ret =
+        global_write_state_->last_tiles_.emplace(std::move(last_tile_vector));
 
     if (!var_size) {
       auto& last_tile = it_ret.first->second[0];
@@ -1955,9 +1956,9 @@ Status Writer::prepare_full_tiles_fixed(
 
     // Handle last tile (it must be either full or empty)
     if (last_tile_cell_idx == cell_num_per_tile) {
-      (*tiles)[0] = last_tile;
+      (*tiles)[0].swap(last_tile);
       if (nullable) {
-        (*tiles)[1] = last_tile_validity;
+        (*tiles)[1].swap(last_tile_validity);
       }
     } else {
       assert(last_tile_cell_idx == 0);
@@ -2164,10 +2165,10 @@ Status Writer::prepare_full_tiles_var(
     // Handle last tile (it must be either full or empty)
     if (last_tile_cell_idx == cell_num_per_tile) {
       last_var_offset = 0;
-      (*tiles)[0] = last_tile;
-      (*tiles)[1] = last_tile_var;
+      (*tiles)[0].swap(last_tile);
+      (*tiles)[1].swap(last_tile_var);
       if (nullable) {
-        (*tiles)[2] = last_tile_validity;
+        (*tiles)[2].swap(last_tile_validity);
       }
     } else {
       assert(last_tile_cell_idx == 0);

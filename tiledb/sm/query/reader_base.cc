@@ -510,7 +510,7 @@ Status ReaderBase::read_tiles(
         all_regions[tile_attr_uri].emplace_back(
             tile_attr_offset, t, *tile_persisted_size);
 
-        t->filtered_buffer().resize(*tile_persisted_size);
+        t->filtered_buffer().expand(*tile_persisted_size);
       }
 
       // Pre-allocate the unfiltered buffer.
@@ -541,7 +541,7 @@ Status ReaderBase::read_tiles(
           all_regions[tile_attr_var_uri].emplace_back(
               tile_attr_var_offset, t_var, *tile_var_persisted_size);
 
-          t_var->filtered_buffer().resize(*tile_var_persisted_size);
+          t_var->filtered_buffer().expand(*tile_var_persisted_size);
         }
 
         // Pre-allocate the unfiltered buffer.
@@ -575,7 +575,7 @@ Status ReaderBase::read_tiles(
               t_validity,
               *tile_validity_persisted_size);
 
-          t_validity->filtered_buffer().resize(*tile_validity_persisted_size);
+          t_validity->filtered_buffer().expand(*tile_validity_persisted_size);
         }
 
         // Pre-allocate the unfiltered buffer.
@@ -614,7 +614,6 @@ std::tuple<Status, std::optional<uint64_t>> ReaderBase::load_chunk_data(
   assert(tile);
   assert(unfiltered_tile);
   assert(tile->filtered());
-  assert(tile->data());
 
   Status st = Status::Ok();
   auto filtered_buffer_data = tile->filtered_buffer().data();

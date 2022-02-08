@@ -126,62 +126,6 @@ TEST_CASE("Tile: Test basic IO", "[Tile][basic_io]") {
   free(write_buffer_copy);
 }
 
-TEST_CASE("Tile: Test copy constructor", "[Tile][copy_constructor]") {
-  // Instantiate and initialize the first test Tile.
-  Tile tile1;
-  const uint32_t format_version = 0;
-  const Datatype data_type = Datatype::UINT32;
-  const uint64_t tile_size = 1024 * 1024;
-  const uint64_t cell_size = sizeof(uint32_t);
-  const unsigned int dim_num = 1;
-  CHECK(tile1
-            .init_unfiltered(
-                format_version, data_type, tile_size, cell_size, dim_num)
-            .ok());
-
-  // Create a buffer to write to the first test Tile.
-  const uint32_t buffer_len = tile_size / sizeof(uint32_t);
-  uint32_t* const buffer = static_cast<uint32_t*>(malloc(tile_size));
-  for (uint32_t i = 0; i < buffer_len; ++i) {
-    buffer[i] = i;
-  }
-
-  // Write the buffer to the first test Tile.
-  CHECK(tile1.write(buffer, 0, tile_size).ok());
-
-  // Instantiate a second test tile with the copy constructor.
-  Tile tile2(tile1);
-
-  // Verify all public attributes are identical.
-  CHECK(tile2.cell_size() == tile1.cell_size());
-  CHECK(tile2.cell_num() == tile1.cell_num());
-  CHECK(tile2.dim_num() == tile1.dim_num());
-  CHECK(tile2.empty() == tile1.empty());
-  CHECK(tile2.filtered() == tile1.filtered());
-  CHECK(tile2.format_version() == tile1.format_version());
-  CHECK(tile2.size() == tile1.size());
-  CHECK(tile2.stores_coords() == tile1.stores_coords());
-  CHECK(tile2.type() == tile1.type());
-
-  // Read the second test tile to verify it contains the data
-  // written to the first test tile.
-  uint32_t* const read_buffer = static_cast<uint32_t*>(malloc(tile_size));
-  memset(read_buffer, 0, tile_size);
-  uint64_t read_offset = 0;
-  CHECK(tile2.read(read_buffer, read_offset, tile_size).ok());
-  CHECK(memcmp(read_buffer, buffer, tile_size) == 0);
-
-  // Ensure the internal data was deep-copied:
-  CHECK(tile1.data());
-  CHECK(tile2.data());
-  void* tile1_chunk_0 = tile1.data();
-  void* tile2_chunk_0 = tile2.data();
-  CHECK(tile1_chunk_0 != tile2_chunk_0);
-
-  free(buffer);
-  free(read_buffer);
-}
-
 TEST_CASE("Tile: Test move constructor", "[Tile][move_constructor]") {
   // Instantiate and initialize the first test Tile.
   Tile tile1;
@@ -205,22 +149,19 @@ TEST_CASE("Tile: Test move constructor", "[Tile][move_constructor]") {
   // Write the buffer to the first test Tile.
   CHECK(tile1.write(buffer, 0, tile_size).ok());
 
-  // Instantiate a second test tile with the copy constructor.
-  Tile tile2(tile1);
-
-  // Instantiate a third test tile with the move constructor.
-  Tile tile3(std::move(tile1));
+  // Instantiate a second test tile with the move constructor.
+  Tile tile2(std::move(tile1));
 
   // Verify all public attributes are identical.
-  CHECK(tile3.cell_size() == tile2.cell_size());
-  CHECK(tile3.cell_num() == tile2.cell_num());
-  CHECK(tile3.dim_num() == tile2.dim_num());
-  CHECK(tile3.empty() == tile2.empty());
-  CHECK(tile3.filtered() == tile2.filtered());
-  CHECK(tile3.format_version() == tile2.format_version());
-  CHECK(tile3.size() == tile2.size());
-  CHECK(tile3.stores_coords() == tile2.stores_coords());
-  CHECK(tile3.type() == tile2.type());
+  CHECK(tile2.cell_size() == cell_size);
+  CHECK(tile2.cell_num() == buffer_len);
+  CHECK(tile2.dim_num() == dim_num);
+  CHECK(tile2.empty() == false);
+  CHECK(tile2.filtered() == false);
+  CHECK(tile2.format_version() == format_version);
+  CHECK(tile2.size() == tile_size);
+  CHECK(tile2.stores_coords() == true);
+  CHECK(tile2.type() == Datatype::UINT32);
 
   // Read the second test tile to verify it contains the data
   // written to the first test tile.
@@ -229,62 +170,6 @@ TEST_CASE("Tile: Test move constructor", "[Tile][move_constructor]") {
   uint64_t read_offset = 0;
   CHECK(tile2.read(read_buffer, read_offset, tile_size).ok());
   CHECK(memcmp(read_buffer, buffer, tile_size) == 0);
-
-  free(buffer);
-  free(read_buffer);
-}
-
-TEST_CASE("Tile: Test assignment", "[Tile][assignment]") {
-  // Instantiate and initialize the first test Tile.
-  Tile tile1;
-  const uint32_t format_version = 0;
-  const Datatype data_type = Datatype::UINT32;
-  const uint64_t tile_size = 1024 * 1024;
-  const uint64_t cell_size = sizeof(uint32_t);
-  const unsigned int dim_num = 1;
-  CHECK(tile1
-            .init_unfiltered(
-                format_version, data_type, tile_size, cell_size, dim_num)
-            .ok());
-
-  // Create a buffer to write to the first test Tile.
-  const uint32_t buffer_len = tile_size / sizeof(uint32_t);
-  uint32_t* const buffer = static_cast<uint32_t*>(malloc(tile_size));
-  for (uint32_t i = 0; i < buffer_len; ++i) {
-    buffer[i] = i;
-  }
-
-  // Write the buffer to the first test Tile.
-  CHECK(tile1.write(buffer, 0, tile_size).ok());
-
-  // Assign the first test Tile to a second test Tile.
-  Tile tile2 = tile1;
-
-  // Verify all public attributes are identical.
-  CHECK(tile2.cell_size() == tile1.cell_size());
-  CHECK(tile2.cell_num() == tile1.cell_num());
-  CHECK(tile2.dim_num() == tile1.dim_num());
-  CHECK(tile2.empty() == tile1.empty());
-  CHECK(tile2.filtered() == tile1.filtered());
-  CHECK(tile2.format_version() == tile1.format_version());
-  CHECK(tile2.size() == tile1.size());
-  CHECK(tile2.stores_coords() == tile1.stores_coords());
-  CHECK(tile2.type() == tile1.type());
-
-  // Read the second test tile to verify it contains the data
-  // written to the first test tile.
-  uint32_t* const read_buffer = static_cast<uint32_t*>(malloc(tile_size));
-  memset(read_buffer, 0, tile_size);
-  uint64_t read_offset = 0;
-  CHECK(tile2.read(read_buffer, read_offset, tile_size).ok());
-  CHECK(memcmp(read_buffer, buffer, tile_size) == 0);
-
-  // Ensure the internal data was deep-copied:
-  CHECK(tile1.data());
-  CHECK(tile2.data());
-  void* tile1_chunk_0 = tile1.data();
-  void* tile2_chunk_0 = tile2.data();
-  CHECK(tile1_chunk_0 != tile2_chunk_0);
 
   free(buffer);
   free(read_buffer);
@@ -313,22 +198,19 @@ TEST_CASE("Tile: Test move-assignment", "[Tile][move_assignment]") {
   // Write the buffer to the first test Tile.
   CHECK(tile1.write(buffer, 0, tile_size).ok());
 
-  // Instantiate a second test tile with the copy constructor.
-  Tile tile2(tile1);
-
   // Instantiate a third test tile with the move constructor.
-  Tile tile3 = std::move(tile1);
+  Tile tile2 = std::move(tile1);
 
   // Verify all public attributes are identical.
-  CHECK(tile3.cell_size() == tile2.cell_size());
-  CHECK(tile3.cell_num() == tile2.cell_num());
-  CHECK(tile3.dim_num() == tile2.dim_num());
-  CHECK(tile3.empty() == tile2.empty());
-  CHECK(tile3.filtered() == tile2.filtered());
-  CHECK(tile3.format_version() == tile2.format_version());
-  CHECK(tile3.size() == tile2.size());
-  CHECK(tile3.stores_coords() == tile2.stores_coords());
-  CHECK(tile3.type() == tile2.type());
+  CHECK(tile2.cell_size() == cell_size);
+  CHECK(tile2.cell_num() == buffer_len);
+  CHECK(tile2.dim_num() == dim_num);
+  CHECK(tile2.empty() == false);
+  CHECK(tile2.filtered() == false);
+  CHECK(tile2.format_version() == format_version);
+  CHECK(tile2.size() == tile_size);
+  CHECK(tile2.stores_coords() == true);
+  CHECK(tile2.type() == Datatype::UINT32);
 
   // Read the second test tile to verify it contains the data
   // written to the first test tile.

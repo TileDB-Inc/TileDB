@@ -65,24 +65,19 @@ struct BufferLRUCacheFx {
 TEST_CASE_METHOD(
     BufferLRUCacheFx, "Unit-test class BufferLRUCache", "[lru_cache]") {
   // Insert an object larger than CACHE_SIZE
-  FilteredBuffer v;
-  v.resize(CACHE_SIZE + 1);
+  FilteredBuffer v(CACHE_SIZE + 1);
   bool success;
   Status st = lru_cache_->insert("key", std::move(v));
   CHECK(st.ok());
-  FilteredBuffer v_buf;
-  v_buf.resize(3 * sizeof(int));
+  FilteredBuffer v_buf(3 * sizeof(int));
   st = lru_cache_->read("key", v_buf, 0, sizeof(int), &success);
   CHECK(st.ok());
   CHECK(!success);
 
   // Prepare some vectors
-  FilteredBuffer v1;
-  FilteredBuffer v2;
-  FilteredBuffer v3;
-  v1.resize(sizeof(int) * 3);
-  v2.resize(sizeof(int) * 3);
-  v3.resize(sizeof(int) * 3);
+  FilteredBuffer v1(sizeof(int) * 3);
+  FilteredBuffer v2(sizeof(int) * 3);
+  FilteredBuffer v3(sizeof(int) * 3);
 
   for (int i = 0; i < 3; ++i) {
     reinterpret_cast<int*>(v1.data())[i] = i;
@@ -134,8 +129,7 @@ TEST_CASE_METHOD(
   CHECK(!st.ok());
 
   // Test eviction
-  FilteredBuffer v4;
-  v4.resize(sizeof(int) * 5);
+  FilteredBuffer v4(sizeof(int) * 5);
   st = lru_cache_->insert("v4", std::move(v4));
   CHECK(st.ok());
 
@@ -151,14 +145,10 @@ TEST_CASE_METHOD(
 
 TEST_CASE_METHOD(
     BufferLRUCacheFx, "BufferLRUCache item invalidation", "[lru_cache]") {
-  FilteredBuffer v1;
-  FilteredBuffer v2;
-  FilteredBuffer v3;
-  FilteredBuffer v4;
-  v1.resize(sizeof(int) * 3);
-  v2.resize(sizeof(int) * 3);
-  v3.resize(sizeof(int) * 3);
-  v4.resize(sizeof(int) * 4);
+  FilteredBuffer v1(sizeof(int) * 3);
+  FilteredBuffer v2(sizeof(int) * 3);
+  FilteredBuffer v3(sizeof(int) * 3);
+  FilteredBuffer v4(sizeof(int) * 4);
   for (int i = 0; i < 3; ++i) {
     reinterpret_cast<int*>(v1.data())[i] = i + 1;
     reinterpret_cast<int*>(v2.data())[i] = 3 + i + 1;
@@ -227,13 +217,12 @@ TEST_CASE("BufferLRUCache of 0 capacity", "[lru_cache]") {
   CHECK(it == it_end);
 
   // Test insert
-  FilteredBuffer v;
-  v.resize(CACHE_ZERO_SIZE + 1);
+  FilteredBuffer v(CACHE_ZERO_SIZE + 1);
   Status st = lru_cache->insert("key", std::move(v));
   CHECK(st.ok());
 
   // Test read
-  FilteredBuffer v_buf;
+  FilteredBuffer v_buf(0);
   bool success;
   st = lru_cache->read("key", v_buf, 0, sizeof(int), &success);
   CHECK(st.ok());

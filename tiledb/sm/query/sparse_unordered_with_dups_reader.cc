@@ -77,8 +77,8 @@ SparseUnorderedWithDupsReader<BitmapType>::SparseUnorderedWithDupsReader(
           buffers,
           subarray,
           layout,
-          condition) {
-  array_memory_tracker_ = array->memory_tracker();
+          condition)
+    , result_tiles_(1) {
 }
 
 /* ****************************** */
@@ -157,9 +157,6 @@ Status SparseUnorderedWithDupsReader<BitmapType>::dowork() {
   RETURN_NOT_OK(condition_.check(array_schema_));
 
   get_dim_attr_stats();
-
-  // This reader only has one result tile list.
-  result_tiles_.resize(1);
 
   // This reader assumes ranges are sorted.
   assert(subarray_.ranges_sorted());
@@ -1464,7 +1461,7 @@ Status SparseUnorderedWithDupsReader<BitmapType>::remove_result_tile(
   const auto tile_idx = rt->tile_idx();
   auto&& [st, tiles_sizes] = get_coord_tiles_size<BitmapType>(
       subarray_.is_set(), array_schema_->dim_num(), frag_idx, tile_idx);
-  (void)st;
+  RETURN_NOT_OK(st);
   auto tiles_size = tiles_sizes->first;
   auto tiles_size_qc = tiles_sizes->second;
 
@@ -1488,6 +1485,7 @@ Status SparseUnorderedWithDupsReader<BitmapType>::end_iteration() {
              read_state_.frag_tile_idx_[result_tiles_[0].front().frag_idx()]
                  .first) {
     const auto f = result_tiles_[0].front().frag_idx();
+
     RETURN_NOT_OK(remove_result_tile(f, result_tiles_[0].begin()));
   }
 

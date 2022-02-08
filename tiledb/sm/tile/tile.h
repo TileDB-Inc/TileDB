@@ -99,30 +99,29 @@ class Tile {
       void* buffer,
       uint64_t size);
 
-  /**
-   * Copy constructor. This performs a deep copy (including potential memcpy of
-   * underlying buffers).
-   */
-  Tile(const Tile& tile);
-
   /** Move constructor. */
   Tile(Tile&& tile);
-
-  /** Destructor. */
-  ~Tile();
-
-  /**
-   * Copy-assign operator. This performs a deep copy (including potential memcpy
-   * of underlying buffers).
-   */
-  Tile& operator=(const Tile& tile);
 
   /** Move-assign operator. */
   Tile& operator=(Tile&& tile);
 
+  DISABLE_COPY_AND_COPY_ASSIGN(Tile);
+
   /* ********************************* */
   /*                API                */
   /* ********************************* */
+
+  /** Converts the data pointer to a specific type. */
+  template <class T>
+  inline T* data_as() const {
+    return static_cast<T*>(data());
+  }
+
+  /** Gets the size, considering the data as a specific type. */
+  template <class T>
+  inline size_t size_as() const {
+    return size() / sizeof(T);
+  }
 
   /** Returns the number of cells stored in the tile. */
   uint64_t cell_num() const;
@@ -169,7 +168,7 @@ class Tile {
 
   /** Returns the internal buffer. */
   inline void* data() const {
-    return data_;
+    return data_.get();
   }
 
   /** Clears the internal buffer. */
@@ -187,13 +186,6 @@ class Tile {
   inline uint64_t cell_size() const {
     return cell_size_;
   }
-
-  /**
-   * Returns a deep copy of this Tile.
-   *
-   * @return New Tile
-   */
-  Tile clone() const;
 
   /** Returns the number of dimensions (0 if this is an attribute tile). */
   inline unsigned int dim_num() const {
@@ -259,13 +251,21 @@ class Tile {
    */
   Status zip_coordinates();
 
+  /** Swaps the contents (all field values) of this tile with the given tile. */
+  void swap(Tile& tile);
+
  protected:
   /* ********************************* */
   /*        PROTECTED ATTRIBUTES       */
   /* ********************************* */
 
-  /** The buffer backing the tile data. */
-  char* data_;
+  /**
+   * The buffer backing the tile data.
+   *
+   * TODO: Convert to regular allocations once tdb_realloc is not used for var
+   * size data anymore and remove custom deleter.
+   */
+  std::unique_ptr<char, void (*)(void*)> data_;
 
   /** Size of the data. */
   uint64_t size_;
@@ -298,13 +298,6 @@ class Tile {
    * to override the value in tests.
    */
   static uint64_t max_tile_chunk_size_;
-
-  /* ********************************* */
-  /*          PRIVATE METHODS          */
-  /* ********************************* */
-
-  /** Swaps the contents (all field values) of this tile with the given tile. */
-  void swap(Tile& tile);
 };
 
 }  // namespace sm

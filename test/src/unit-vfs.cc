@@ -67,7 +67,7 @@ TEST_CASE("VFS: Test read batching", "[vfs]") {
 
   Tile tile[nelts];
   for (uint64_t i = 0; i < nelts; i++) {
-    tile[i].filtered_buffer().resize(nelts * sizeof(uint32_t));
+    tile[i].filtered_buffer().expand(nelts * sizeof(uint32_t));
   }
 
   std::vector<std::tuple<uint64_t, Tile*, uint64_t>> batches;

@@ -258,7 +258,7 @@ Status FilterPipeline::filter_chunks_forward(
 
   // Allocate enough space in 'output' to store the leading uint64_t
   // prefix containing the number of chunks and the 'total_processed_size'.
-  output.resize(sizeof(uint64_t) + total_processed_size);
+  output.expand(sizeof(uint64_t) + total_processed_size);
 
   // Write the leading prefix that contains the number of chunks.
   memcpy(output.data(), &nchunks, sizeof(uint64_t));
@@ -455,8 +455,6 @@ Status FilterPipeline::run_reverse_chunk_range(
     const uint64_t max_chunk_index,
     uint64_t concurrency_level,
     const Config& config) const {
-  assert(tile->data());
-
   // Run each chunk through the entire pipeline.
   for (size_t i = min_chunk_index; i < max_chunk_index; i++) {
     auto& chunk = chunk_data.filtered_chunks_[i];

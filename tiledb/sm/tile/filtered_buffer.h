@@ -51,7 +51,37 @@ class FilteredBuffer {
   /*     CONSTRUCTORS & DESTRUCTORS    */
   /* ********************************* */
 
-  FilteredBuffer() = default;
+  FilteredBuffer(uint64_t size) {
+    if (size != 0) {
+      filtered_buffer_.resize(size);
+    }
+  }
+
+  /**
+   * Copy constructor.
+   *
+   * Only used in the tile cache. Should be removed when the tile cache is
+   * removed.
+   */
+  FilteredBuffer(const FilteredBuffer& other) {
+    filtered_buffer_ = other.filtered_buffer_;
+  }
+
+  /** Move constructor. */
+  FilteredBuffer(FilteredBuffer&& other) {
+    // Swap with the argument
+    swap(other);
+  }
+
+  /** Move-assign operator. */
+  FilteredBuffer& operator=(FilteredBuffer&& other) {
+    // Swap with the argument
+    swap(other);
+
+    return *this;
+  }
+
+  DISABLE_COPY_ASSIGN(FilteredBuffer);
 
   /* ********************************* */
   /*                API                */
@@ -72,14 +102,23 @@ class FilteredBuffer {
     return filtered_buffer_.data();
   }
 
-  /** Resizes the underlying container. */
-  inline void resize(size_t size) {
+  /** Expands the size of the underlying container. */
+  inline void expand(size_t size) {
+    assert(size >= filtered_buffer_.size());
     filtered_buffer_.resize(size);
   }
 
   /** Clears the data. */
   inline void clear() {
     filtered_buffer_.clear();
+  }
+
+  /**
+   * Swaps the contents (all field values) of this filtered buffer with the
+   * given filtered buffer.
+   */
+  void swap(FilteredBuffer& other) {
+    std::swap(filtered_buffer_, other.filtered_buffer_);
   }
 
  private:
