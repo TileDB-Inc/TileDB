@@ -545,10 +545,15 @@ if(APPLE)
   endif()
 endif()
 
-# On Linux, must explicitly link -lpthread -ldl in order for static linking
-# to libzstd.
+# Enable threading library for systems where it is not automatically enable.
+find_package(Threads REQUIRED)
+if (CMAKE_THREAD_LIBS_INIT)
+  target_link_libraries(TILEDB_CORE_OBJECTS_ILIB INTERFACE Threads::Threads)
+endif()
+
+# On Linux, must explicitly link -ldl for static linking to libzstd.
 if (NOT WIN32)
-  target_link_libraries(TILEDB_CORE_OBJECTS_ILIB INTERFACE pthread dl)
+  target_link_libraries(TILEDB_CORE_OBJECTS_ILIB INTERFACE dl)
 endif()
 
 # Copy over dependency info (e.g. include directories) to the core objects.
