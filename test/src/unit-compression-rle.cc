@@ -34,6 +34,7 @@
 #include "catch.hpp"
 #include "helpers.h"
 #include "tiledb/sm/buffer/buffer.h"
+#include "tiledb/sm/compressors/dict_compressor.h"
 #include "tiledb/sm/compressors/rle_compressor.h"
 
 #include <cstring>
@@ -498,6 +499,56 @@ TEST_CASE(
   const auto exp_decomp_size = strlen(unc);
   std::vector<std::byte> decompressed(exp_decomp_size);
   tiledb::sm::RLE::decompress<uint8_t, uint8_t>(compressed, decompressed);
+
+  // In decompressed array there are only chars, so compare using memcpy
+  CHECK(
+      memcmp(
+          unc,
+          reinterpret_cast<const char*>(decompressed.data()),
+          decompressed.size()) == 0);
+}
+
+TEST_CASE(
+    "Compression-Dictionary: Test compression with repetitive words in input",
+    "[compression][compression-dict][dict]") {
+  std::string str1 = "HG543232";
+  std::string str2 = "HG54";
+  std::string str3 = "A";
+  uint8_t num_of_strings = 8;
+  std::string_view uncompressed[] = {
+      str1, str1, str1, str2, str2, str3, str1, str2};
+
+  std::vector<std::string> exp_dict{str1, str2, str3};
+
+  // Compress the input array
+  std::vector<uint8_t> compressed(num_of_strings);
+  auto dict =
+      tiledb::sm::DictEncoding::compress<uint8_t>(uncompressed, compressed);
+  CHECK(dict.size() == exp_dict.size());
+  CHECK(dict == exp_dict);
+
+  // All the values here are 1 byte long, so endianness is not an issue and we
+  // can just read using memcpy
+  auto data = reinterpret_cast<const char*>(compressed.data());
+  uint8_t exp_output[] = {0, 0, 0, 1, 1, 2, 0, 1};
+  for (uint8_t i = 0; i < num_of_strings; i++) {
+    CHECK(memcmp(&exp_output[i], data, sizeof(uint8_t)) == 0);
+    data += sizeof(uint8_t);
+  }
+
+  // Decompress the previously compressed array
+  const char* unc =
+      "HG543232"
+      "HG543232"
+      "HG543232"
+      "HG54"
+      "HG54"
+      "A"
+      "HG543232"
+      "HG54";
+  const auto exp_decomp_size = strlen(unc);
+  std::vector<std::byte> decompressed(exp_decomp_size);
+  tiledb::sm::DictEncoding::decompress<uint8_t>(compressed, dict, decompressed);
 
   // In decompressed array there are only chars, so compare using memcpy
   CHECK(

@@ -4,7 +4,7 @@
 #
 # The MIT License
 #
-# Copyright (c) 2021 TileDB, Inc.
+# Copyright (c) 2022 TileDB, Inc.
 #
 # Permission is hereby granted, free of charge, to any person obtaining a copy
 # of this software and associated documentation files (the "Software"), to deal
@@ -29,7 +29,7 @@ include(common NO_POLICY_SCOPE)
 #
 # `compressors` object library
 #
-add_library(compressors OBJECT bzip_compressor.cc dd_compressor.cc gzip_compressor.cc lz4_compressor.cc rle_compressor.cc zstd_compressor.cc)
+add_library(compressors OBJECT bzip_compressor.cc dd_compressor.cc dict_compressor.cc gzip_compressor.cc lz4_compressor.cc rle_compressor.cc zstd_compressor.cc)
 target_link_libraries(compressors PUBLIC baseline $<TARGET_OBJECTS:baseline>)
 target_link_libraries(compressors PUBLIC buffer $<TARGET_OBJECTS:buffer>)
 find_package(Bzip2_EP REQUIRED)
