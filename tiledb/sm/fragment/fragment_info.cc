@@ -805,8 +805,10 @@ Status FragmentInfo::load(
   }
 
   if (array_uri_.is_tiledb()) {
-    auto msg = std::string("FragmentInfo not supported by TileDB Cloud Arrays; Array '") +
-               array_uri_.to_string() + "' cannot be loaded";
+    auto msg =
+        std::string(
+            "FragmentInfo not supported by TileDB Cloud Arrays; Array '") +
+        array_uri_.to_string() + "' cannot be loaded";
     return LOG_STATUS(Status_FragmentInfoError(msg));
   }
 
@@ -963,7 +965,6 @@ Status FragmentInfo::set_timestamp_range_from_config() {
 
 std::tuple<Status, std::optional<SingleFragmentInfo>> FragmentInfo::load(
     const URI& new_fragment_uri) const {
-
   // Do I need to add something here too?
 
   SingleFragmentInfo ret;
