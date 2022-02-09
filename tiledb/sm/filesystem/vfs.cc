@@ -106,8 +106,6 @@ std::string VFS::abs_path(const std::string& path) {
     return path_copy;
   if (URI::is_gcs(path))
     return path_copy;
-  if (URI::is_gs(path))
-    return path_copy;
   if (URI::is_memfs(path))
     return path_copy;
   // Certainly starts with "<resource>://" other than "file://"
@@ -123,7 +121,7 @@ Status VFS::create_dir(const URI& uri) const {
     return LOG_STATUS(
         Status_VFSError("Cannot create directory; VFS not initialized"));
 
-  if (!uri.is_s3() && !uri.is_azure() && !uri.is_gcs() && !uri.is_gs()) {
+  if (!uri.is_s3() && !uri.is_azure() && !uri.is_gcs()) {
     bool is_dir;
     RETURN_NOT_OK(this->is_dir(uri, &is_dir));
     if (is_dir)
@@ -161,7 +159,7 @@ Status VFS::create_dir(const URI& uri) const {
         Status_VFSError("TileDB was built without Azure support"));
 #endif
   }
-  if (uri.is_gcs() || uri.is_gs()) {
+  if (uri.is_gcs()) {
 #ifdef HAVE_GCS
     // It is a noop for GCS
     return Status::Ok();
@@ -248,7 +246,7 @@ Status VFS::touch(const URI& uri) const {
         Status_VFSError("TileDB was built without Azure support"));
 #endif
   }
-  if (uri.is_gcs() || uri.is_gs()) {
+  if (uri.is_gcs()) {
 #ifdef HAVE_GCS
     return gcs_.touch(uri);
 #else
@@ -292,7 +290,7 @@ Status VFS::create_bucket(const URI& uri) const {
     return LOG_STATUS(Status_VFSError(std::string("Azure is not supported")));
 #endif
   }
-  if (uri.is_gcs() || uri.is_gs()) {
+  if (uri.is_gcs()) {
 #ifdef HAVE_GCS
     return gcs_.create_bucket(uri);
 #else
@@ -326,7 +324,7 @@ Status VFS::remove_bucket(const URI& uri) const {
     return LOG_STATUS(Status_VFSError(std::string("Azure is not supported")));
 #endif
   }
-  if (uri.is_gcs() || uri.is_gs()) {
+  if (uri.is_gcs()) {
 #ifdef HAVE_GCS
     return gcs_.remove_bucket(uri);
 #else
@@ -361,7 +359,7 @@ Status VFS::empty_bucket(const URI& uri) const {
     return LOG_STATUS(Status_VFSError(std::string("Azure is not supported")));
 #endif
   }
-  if (uri.is_gcs() || uri.is_gs()) {
+  if (uri.is_gcs()) {
 #ifdef HAVE_GCS
     return gcs_.empty_bucket(uri);
 #else
@@ -398,7 +396,7 @@ Status VFS::is_empty_bucket(const URI& uri, bool* is_empty) const {
     return LOG_STATUS(Status_VFSError(std::string("Azure is not supported")));
 #endif
   }
-  if (uri.is_gcs() || uri.is_gs()) {
+  if (uri.is_gcs()) {
 #ifdef HAVE_GCS
     return gcs_.is_empty_bucket(uri, is_empty);
 #else
@@ -443,7 +441,7 @@ Status VFS::remove_dir(const URI& uri) const {
     return LOG_STATUS(
         Status_VFSError("TileDB was built without Azure support"));
 #endif
-  } else if (uri.is_gcs() || uri.is_gs()) {
+  } else if (uri.is_gcs()) {
 #ifdef HAVE_GCS
     return gcs_.remove_dir(uri);
 #else
@@ -491,7 +489,7 @@ Status VFS::remove_file(const URI& uri) const {
         Status_VFSError("TileDB was built without Azure support"));
 #endif
   }
-  if (uri.is_gcs() || uri.is_gs()) {
+  if (uri.is_gcs()) {
 #ifdef HAVE_GCS
     return gcs_.remove_object(uri);
 #else
@@ -528,7 +526,7 @@ Status VFS::max_parallel_ops(const URI& uri, uint64_t* ops) const {
     RETURN_NOT_OK(
         config_.get<uint64_t>("vfs.azure.max_parallel_ops", ops, &found));
     assert(found);
-  } else if (uri.is_gcs() || uri.is_gs()) {
+  } else if (uri.is_gcs()) {
     RETURN_NOT_OK(
         config_.get<uint64_t>("vfs.gcs.max_parallel_ops", ops, &found));
     assert(found);
@@ -573,7 +571,7 @@ Status VFS::file_size(const URI& uri, uint64_t* size) const {
         Status_VFSError("TileDB was built without Azure support"));
 #endif
   }
-  if (uri.is_gcs() || uri.is_gs()) {
+  if (uri.is_gcs()) {
 #ifdef HAVE_GCS
     return gcs_.object_size(uri, size);
 #else
@@ -625,7 +623,7 @@ Status VFS::is_dir(const URI& uri, bool* is_dir) const {
         Status_VFSError("TileDB was built without Azure support"));
 #endif
   }
-  if (uri.is_gcs() || uri.is_gs()) {
+  if (uri.is_gcs()) {
 #ifdef HAVE_GCS
     return gcs_.is_dir(uri, is_dir);
 #else
@@ -680,7 +678,7 @@ Status VFS::is_file(const URI& uri, bool* is_file) const {
         Status_VFSError("TileDB was built without Azure support"));
 #endif
   }
-  if (uri.is_gcs() || uri.is_gs()) {
+  if (uri.is_gcs()) {
 #ifdef HAVE_GCS
     return gcs_.is_object(uri, is_file);
 #else
@@ -720,7 +718,7 @@ Status VFS::is_bucket(const URI& uri, bool* is_bucket) const {
         Status_VFSError("TileDB was built without Azure support"));
 #endif
   }
-  if (uri.is_gcs() || uri.is_gs()) {
+  if (uri.is_gcs()) {
 #ifdef HAVE_GCS
     RETURN_NOT_OK(gcs_.is_bucket(uri, is_bucket));
     return Status::Ok();
@@ -842,7 +840,7 @@ Status VFS::ls(const URI& parent, std::vector<URI>* uris) const {
     return LOG_STATUS(
         Status_VFSError("TileDB was built without Azure support"));
 #endif
-  } else if (parent.is_gcs() || parent.is_gs()) {
+  } else if (parent.is_gcs()) {
 #ifdef HAVE_GCS
     RETURN_NOT_OK(gcs_.ls(parent, &paths));
 #else
@@ -939,18 +937,6 @@ Status VFS::move_file(const URI& old_uri, const URI& new_uri) {
         "Moving files across filesystems is not supported yet"));
   }
 
-  if (old_uri.is_gs()) {
-    if (new_uri.is_gs())
-#ifdef HAVE_GCS
-      return gcs_.move_object(old_uri, new_uri);
-#else
-      return LOG_STATUS(
-          Status_VFSError("TileDB was built without GCS support"));
-#endif
-    return LOG_STATUS(Status_VFSError(
-        "Moving files across filesystems is not supported yet"));
-  }
-
   // In-memory filesystem
   if (old_uri.is_memfs()) {
     if (new_uri.is_memfs()) {
@@ -1025,18 +1011,6 @@ Status VFS::move_dir(const URI& old_uri, const URI& new_uri) {
   // GCS
   if (old_uri.is_gcs()) {
     if (new_uri.is_gcs())
-#ifdef HAVE_GCS
-      return gcs_.move_dir(old_uri, new_uri);
-#else
-      return LOG_STATUS(
-          Status_VFSError("TileDB was built without GCS support"));
-#endif
-    return LOG_STATUS(Status_VFSError(
-        "Moving files across filesystems is not supported yet"));
-  }
-
-  if (old_uri.is_gs()) {
-    if (new_uri.is_gs())
 #ifdef HAVE_GCS
       return gcs_.move_dir(old_uri, new_uri);
 #else
@@ -1140,19 +1114,6 @@ Status VFS::copy_file(const URI& old_uri, const URI& new_uri) {
         "Copying files across filesystems is not supported yet"));
   }
 
-  if (old_uri.is_gs()) {
-    if (new_uri.is_gs())
-#ifdef HAVE_GCS
-      return LOG_STATUS(Status_IOError(
-          std::string("Copying files on GCS is not yet supported.")));
-#else
-      return LOG_STATUS(
-          Status_VFSError("TileDB was built without GCS support"));
-#endif
-    return LOG_STATUS(Status_VFSError(
-        "Copying files across filesystems is not supported yet"));
-  }
-
   // Unsupported filesystem
   return LOG_STATUS(Status_VFSError(
       "Unsupported URI schemes: " + old_uri.to_string() + ", " +
@@ -1221,19 +1182,6 @@ Status VFS::copy_dir(const URI& old_uri, const URI& new_uri) {
   // GCS
   if (old_uri.is_gcs()) {
     if (new_uri.is_gcs())
-#ifdef HAVE_GCS
-      return LOG_STATUS(Status_IOError(
-          std::string("Copying directories on GCS is not yet supported.")));
-#else
-      return LOG_STATUS(
-          Status_VFSError("TileDB was built without GCS support"));
-#endif
-    return LOG_STATUS(Status_VFSError(
-        "Copying directories across filesystems is not supported yet"));
-  }
-
-  if (old_uri.is_gs()) {
-    if (new_uri.is_gs())
 #ifdef HAVE_GCS
       return LOG_STATUS(Status_IOError(
           std::string("Copying directories on GCS is not yet supported.")));
@@ -1381,7 +1329,7 @@ Status VFS::read_impl(
         Status_VFSError("TileDB was built without Azure support"));
 #endif
   }
-  if (uri.is_gcs() || uri.is_gs()) {
+  if (uri.is_gcs()) {
 #ifdef HAVE_GCS
     const auto read_fn = std::bind(
         &GCS::read,
@@ -1582,7 +1530,7 @@ bool VFS::supports_uri_scheme(const URI& uri) const {
     return supports_fs(Filesystem::S3);
   } else if (uri.is_azure()) {
     return supports_fs(Filesystem::AZURE);
-  } else if (uri.is_gcs() || uri.is_gs()) {
+  } else if (uri.is_gcs()) {
     return supports_fs(Filesystem::GCS);
   } else if (uri.is_hdfs()) {
     return supports_fs(Filesystem::HDFS);
@@ -1624,7 +1572,7 @@ Status VFS::sync(const URI& uri) {
         Status_VFSError("TileDB was built without Azure support"));
 #endif
   }
-  if (uri.is_gcs() || uri.is_gs()) {
+  if (uri.is_gcs()) {
 #ifdef HAVE_GCS
     return Status::Ok();
 #else
@@ -1677,7 +1625,7 @@ Status VFS::open_file(const URI& uri, VFSMode mode) {
             "Cannot open file; TileDB was built without Azure support"));
 #endif
       }
-      if (uri.is_gcs() || uri.is_gs()) {
+      if (uri.is_gcs()) {
 #ifdef HAVE_GCS
         return LOG_STATUS(Status_VFSError(
             std::string("Cannot open file '") + uri.c_str() +
@@ -1727,7 +1675,7 @@ Status VFS::close_file(const URI& uri) {
         Status_VFSError("TileDB was built without Azure support"));
 #endif
   }
-  if (uri.is_gcs() || uri.is_gs()) {
+  if (uri.is_gcs()) {
 #ifdef HAVE_GCS
     return gcs_.flush_object(uri);
 #else
@@ -1777,7 +1725,7 @@ Status VFS::write(const URI& uri, const void* buffer, uint64_t buffer_size) {
         Status_VFSError("TileDB was built without Azure support"));
 #endif
   }
-  if (uri.is_gcs() || uri.is_gs()) {
+  if (uri.is_gcs()) {
 #ifdef HAVE_GCS
     return gcs_.write(uri, buffer, buffer_size);
 #else

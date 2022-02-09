@@ -1790,7 +1790,7 @@ Status StorageManager::load_array_metadata(
 
 Status StorageManager::object_type(const URI& uri, ObjectType* type) const {
   URI dir_uri = uri;
-  if (uri.is_s3() || uri.is_azure() || uri.is_gcs() || uri.is_gs()) {
+  if (uri.is_s3() || uri.is_azure() || uri.is_gcs()) {
     // Always add a trailing '/' in the S3/Azure/GCS case so that listing the
     // URI as a directory will work as expected. Listing a non-directory object
     // is not an error for S3/Azure/GCS.

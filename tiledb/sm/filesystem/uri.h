@@ -182,21 +182,6 @@ class URI {
   bool is_gcs() const;
 
   /**
-   * Checks if the input path is gs.
-   *
-   * @param path The path to be checked.
-   * @return The result of the check.
-   */
-  static bool is_gs(const std::string& path);
-
-  /**
-   * Checks if the URI is gs.
-   *
-   * @return The result of the check.
-   */
-  bool is_gs() const;
-
-  /**
    * Checks if the input path is mem.
    *
    * @param path The path to be checked.
