@@ -67,7 +67,7 @@ class DomainBuffersView {
    */
   DomainBuffersView(
       const ArraySchema& schema,
-      const std::unordered_map<std::string, QueryBuffer>& buffers) {
+      const std::unordered_map<std::string, QueryBuffer>& buffers) : qb_(schema.dim_num()) {
     auto n_dimensions{schema.dim_num()};
     for (decltype(n_dimensions) i = 0; i < n_dimensions; ++i) {
       const auto& name = schema.dimension(i)->name();
