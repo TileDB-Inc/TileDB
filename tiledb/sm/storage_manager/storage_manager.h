@@ -45,6 +45,7 @@
 #include <string>
 #include <thread>
 
+#include "tiledb/common/common.h"
 #include "tiledb/common/heap_memory.h"
 #include "tiledb/common/logger_public.h"
 #include "tiledb/common/status.h"
@@ -118,7 +119,7 @@ class StorageManager {
       ThreadPool* compute_tp,
       ThreadPool* io_tp,
       stats::Stats* parent_stats,
-      tdb_shared_ptr<Logger> logger);
+      shared_ptr<Logger> logger);
 
   /** Destructor. */
   ~StorageManager();
@@ -168,8 +169,8 @@ class StorageManager {
   tuple<
       Status,
       optional<ArraySchema*>,
-      optional<std::unordered_map<std::string, tdb_shared_ptr<ArraySchema>>>,
-      optional<std::vector<tdb_shared_ptr<FragmentMetadata>>>>
+      optional<std::unordered_map<std::string, shared_ptr<ArraySchema>>>,
+      optional<std::vector<shared_ptr<FragmentMetadata>>>>
   load_array_schemas_and_fragment_metadata(
       const ArrayDirectory& array_dir,
       MemoryTracker* memory_tracker,
@@ -195,8 +196,8 @@ class StorageManager {
   tuple<
       Status,
       optional<ArraySchema*>,
-      optional<std::unordered_map<std::string, tdb_shared_ptr<ArraySchema>>>,
-      optional<std::vector<tdb_shared_ptr<FragmentMetadata>>>>
+      optional<std::unordered_map<std::string, shared_ptr<ArraySchema>>>,
+      optional<std::vector<shared_ptr<FragmentMetadata>>>>
   array_open_for_reads(Array* array);
 
   /**
@@ -212,7 +213,7 @@ class StorageManager {
   tuple<
       Status,
       optional<ArraySchema*>,
-      optional<std::unordered_map<std::string, tdb_shared_ptr<ArraySchema>>>>
+      optional<std::unordered_map<std::string, shared_ptr<ArraySchema>>>>
   array_open_for_reads_without_fragments(Array* array);
 
   /** Opens an array for writes.
@@ -227,7 +228,7 @@ class StorageManager {
   tuple<
       Status,
       optional<ArraySchema*>,
-      optional<std::unordered_map<std::string, tdb_shared_ptr<ArraySchema>>>>
+      optional<std::unordered_map<std::string, shared_ptr<ArraySchema>>>>
   array_open_for_writes(Array* array);
 
   /**
@@ -237,7 +238,7 @@ class StorageManager {
    * @param fragment_info The list of fragment info.
    * @return Status, the fragment metadata to be loaded.
    */
-  tuple<Status, optional<std::vector<tdb_shared_ptr<FragmentMetadata>>>>
+  tuple<Status, optional<std::vector<shared_ptr<FragmentMetadata>>>>
   array_load_fragments(
       Array* array, const std::vector<TimestampedURI>& fragment_info);
 
@@ -257,8 +258,8 @@ class StorageManager {
   tuple<
       Status,
       optional<ArraySchema*>,
-      optional<std::unordered_map<std::string, tdb_shared_ptr<ArraySchema>>>,
-      optional<std::vector<tdb_shared_ptr<FragmentMetadata>>>>
+      optional<std::unordered_map<std::string, shared_ptr<ArraySchema>>>,
+      optional<std::vector<shared_ptr<FragmentMetadata>>>>
   array_reopen(Array* array);
 
   /**
@@ -657,7 +658,7 @@ class StorageManager {
   tuple<
       Status,
       optional<ArraySchema*>,
-      optional<std::unordered_map<std::string, tdb_shared_ptr<ArraySchema>>>>
+      optional<std::unordered_map<std::string, shared_ptr<ArraySchema>>>>
   load_array_schemas(
       const ArrayDirectory& array_dir, const EncryptionKey& encryption_key);
 
@@ -674,7 +675,7 @@ class StorageManager {
    */
   tuple<
       Status,
-      optional<std::unordered_map<std::string, tdb_shared_ptr<ArraySchema>>>>
+      optional<std::unordered_map<std::string, shared_ptr<ArraySchema>>>>
   load_all_array_schemas(
       const ArrayDirectory& array_dir, const EncryptionKey& encryption_key);
 
@@ -918,7 +919,7 @@ class StorageManager {
   stats::Stats* stats();
 
   /** Returns the internal logger object. */
-  tdb_shared_ptr<Logger> logger() const;
+  shared_ptr<Logger> logger() const;
 
  private:
   /* ********************************* */
@@ -956,7 +957,7 @@ class StorageManager {
   stats::Stats* stats_;
 
   /** The class logger. */
-  tdb_shared_ptr<Logger> logger_;
+  shared_ptr<Logger> logger_;
 
   /** Set to true when tasks are being cancelled. */
   bool cancellation_in_progress_;
@@ -1057,11 +1058,11 @@ class StorageManager {
    *        Status Ok on success, else error
    *        Vector of FragmentMetadata is the fragment metadata to be retrieved.
    */
-  tuple<Status, optional<std::vector<tdb_shared_ptr<FragmentMetadata>>>>
+  tuple<Status, optional<std::vector<shared_ptr<FragmentMetadata>>>>
   load_fragment_metadata(
       MemoryTracker* memory_tracker,
       ArraySchema* array_schema_latest,
-      const std::unordered_map<std::string, tdb_shared_ptr<ArraySchema>>&
+      const std::unordered_map<std::string, shared_ptr<ArraySchema>>&
           array_schemas_all,
       const EncryptionKey& encryption_key,
       const std::vector<TimestampedURI>& fragments_to_load,

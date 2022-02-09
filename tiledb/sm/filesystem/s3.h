@@ -578,10 +578,10 @@ class S3 {
    * The lazily-initialized S3 client. This is mutable so that nominally const
    * functions can call init_client().
    */
-  mutable tdb_shared_ptr<Aws::S3::S3Client> client_;
+  mutable shared_ptr<Aws::S3::S3Client> client_;
 
   /** The AWS credetial provider. */
-  mutable tdb_shared_ptr<Aws::Auth::AWSCredentialsProvider>
+  mutable shared_ptr<Aws::Auth::AWSCredentialsProvider>
       credentials_provider_;
 
   /**

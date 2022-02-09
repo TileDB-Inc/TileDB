@@ -403,7 +403,7 @@ Status Consolidator::consolidate_fragment_meta(
   // Include only fragments with footers / separate basic metadata
   Buffer buff;
   const auto& tmp_meta = array.fragment_metadata();
-  std::vector<tdb_shared_ptr<FragmentMetadata>> meta;
+  std::vector<shared_ptr<FragmentMetadata>> meta;
   for (auto m : tmp_meta) {
     if (m->format_version() > 2)
       meta.emplace_back(m);
