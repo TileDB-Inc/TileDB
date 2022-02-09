@@ -69,8 +69,6 @@ def find_prs(gh: Github, head: str, base: Optional[str] = None) -> Dict[int, str
             assert comparison.behind_by == 0, comparison.behind_by
         else:
             sys.exit(f"Aborting: head is {comparison.behind_by} commits behind base")
-    if comparison.ahead_by == 0:
-        raise ValueError("Head is not ahead of base")
     logging.info(f"Head is {comparison.ahead_by} commits ahead of base")
 
     prs = {}
