@@ -11,7 +11,7 @@ index 894ec1d7..f18b39e6 100644
  #undef ERROR
    const auto ERROR = ERROR_;
 +#else //if macro def missing, we still need to define the symbol.
-+  const int ERROR = 0;
++  const auto ERROR = 0;
 +#endif
  
    typedef VOID VOID_;
