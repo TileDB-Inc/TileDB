@@ -36,6 +36,8 @@
 #include <capnp/compat/json.h>
 #include <capnp/message.h>
 #include <capnp/serialize.h>
+#include "tiledb/sm/serialization/array.h"
+#include "tiledb/sm/serialization/array_schema.h"
 #include "tiledb/sm/serialization/capnp_utils.h"
 #endif
 // clang-format on
@@ -124,36 +126,6 @@ Status stats_from_capnp(
       (*timers)[std::string(entry.getKey().cStr())] = entry.getValue();
     }
   }
-
-  return Status::Ok();
-}
-
-Status array_to_capnp(
-    const Array& array, capnp::Array::Builder* array_builder) {
-  // The serialized URI is set if it exists
-  // this is used for backwards compatibility with pre TileDB 2.5 clients that
-  // want to serialized a query object TileDB >= 2.5 no longer needs to send the
-  // array URI
-  if (!array.array_uri_serialized().to_string().empty()) {
-    array_builder->setUri(array.array_uri_serialized());
-  }
-  array_builder->setStartTimestamp(array.timestamp_start());
-  array_builder->setEndTimestamp(array.timestamp_end());
-
-  return Status::Ok();
-}
-
-Status array_from_capnp(
-    const capnp::Array::Reader& array_reader, Array* array) {
-  // The serialized URI is set if it exists
-  // this is used for backwards compatibility with pre TileDB 2.5 clients that
-  // want to serialized a query object TileDB >= 2.5 no longer needs to receive
-  // the array URI
-  if (array_reader.hasUri()) {
-    RETURN_NOT_OK(array->set_uri_serialized(array_reader.getUri().cStr()));
-  }
-  RETURN_NOT_OK(array->set_timestamp_start(array_reader.getStartTimestamp()));
-  RETURN_NOT_OK(array->set_timestamp_end(array_reader.getEndTimestamp()));
 
   return Status::Ok();
 }
@@ -997,7 +969,10 @@ Status writer_from_capnp(
   return Status::Ok();
 }
 
-Status query_to_capnp(Query& query, capnp::Query::Builder* query_builder) {
+Status query_to_capnp(
+    Query& query,
+    capnp::Query::Builder* query_builder,
+    const bool client_side) {
   // For easy reference
   auto layout = query.layout();
   auto type = query.type();
@@ -1030,7 +1005,7 @@ Status query_to_capnp(Query& query, capnp::Query::Builder* query_builder) {
   // Serialize array
   if (query.array() != nullptr) {
     auto builder = query_builder->initArray();
-    RETURN_NOT_OK(array_to_capnp(*array, &builder));
+    RETURN_NOT_OK(array_to_capnp(array, &builder, client_side));
   }
 
   // Serialize attribute buffer metadata
@@ -1857,7 +1832,7 @@ Status query_serialize(
   try {
     ::capnp::MallocMessageBuilder message;
     capnp::Query::Builder query_builder = message.initRoot<capnp::Query>();
-    RETURN_NOT_OK(query_to_capnp(*query, &query_builder));
+    RETURN_NOT_OK(query_to_capnp(*query, &query_builder, clientside));
 
     // Determine whether we should be serializing the buffer data.
     const bool serialize_buffers =

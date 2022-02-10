@@ -514,9 +514,6 @@ Status array_schema_from_capnp(
   if (schema_reader.hasUri())
     (*array_schema)->set_array_uri(URI(schema_reader.getUri().cStr()));
 
-  if (schema_reader.hasName())
-    (*array_schema)->set_name(schema_reader.getName().cStr());
-
   (*array_schema)->set_cell_order(layout);
   (*array_schema)->set_capacity(schema_reader.getCapacity());
   (*array_schema)->set_allows_dups(schema_reader.getAllowsDuplicates());
@@ -574,6 +571,9 @@ Status array_schema_from_capnp(
         ->set_timestamp_range(
             std::make_pair(timestamp_range[0], timestamp_range[1]));
   }
+
+  if (schema_reader.hasName())
+    (*array_schema)->set_name(schema_reader.getName().cStr());
 
   // Initialize
   RETURN_NOT_OK((*array_schema)->init());
@@ -1270,186 +1270,6 @@ Status max_buffer_sizes_deserialize(
   return Status::Ok();
 }
 
-Status array_metadata_serialize(
-    Array* array, SerializationType serialize_type, Buffer* serialized_buffer) {
-  if (array == nullptr)
-    return LOG_STATUS(Status_SerializationError(
-        "Error serializing array metadata; array instance is null"));
-
-  Metadata* metadata;
-
-  RETURN_NOT_OK(array->metadata(&metadata));
-
-  if (metadata == nullptr)
-    return LOG_STATUS(Status_SerializationError(
-        "Error serializing array metadata; array metadata instance is null"));
-
-  try {
-    // Serialize
-    ::capnp::MallocMessageBuilder message;
-    auto builder = message.initRoot<capnp::ArrayMetadata>();
-    auto entries_builder = builder.initEntries(metadata->num());
-    size_t i = 0;
-    for (auto it = metadata->begin(); it != metadata->end(); ++it) {
-      auto entry_builder = entries_builder[i++];
-      const auto& entry = it->second;
-      auto datatype = static_cast<Datatype>(entry.type_);
-      entry_builder.setKey(it->first);
-      entry_builder.setType(datatype_str(datatype));
-      entry_builder.setValueNum(entry.num_);
-      entry_builder.setValue(kj::arrayPtr(
-          static_cast<const uint8_t*>(entry.value_.data()),
-          entry.value_.size()));
-      entry_builder.setDel(entry.del_ == 1);
-    }
-
-    // Copy to buffer
-    serialized_buffer->reset_size();
-    serialized_buffer->reset_offset();
-
-    switch (serialize_type) {
-      case SerializationType::JSON: {
-        ::capnp::JsonCodec json;
-        kj::String capnp_json = json.encode(builder);
-        const auto json_len = capnp_json.size();
-        const char nul = '\0';
-        // size does not include needed null terminator, so add +1
-        RETURN_NOT_OK(serialized_buffer->realloc(json_len + 1));
-        RETURN_NOT_OK(serialized_buffer->write(capnp_json.cStr(), json_len));
-        RETURN_NOT_OK(serialized_buffer->write(&nul, 1));
-        break;
-      }
-      case SerializationType::CAPNP: {
-        kj::Array<::capnp::word> protomessage = messageToFlatArray(message);
-        kj::ArrayPtr<const char> message_chars = protomessage.asChars();
-        const auto nbytes = message_chars.size();
-        RETURN_NOT_OK(serialized_buffer->realloc(nbytes));
-        RETURN_NOT_OK(serialized_buffer->write(message_chars.begin(), nbytes));
-        break;
-      }
-      default: {
-        return LOG_STATUS(Status_SerializationError(
-            "Error serializing array metadata; Unknown serialization type "
-            "passed"));
-      }
-    }
-
-  } catch (kj::Exception& e) {
-    return LOG_STATUS(Status_SerializationError(
-        "Error serializing array metadata; kj::Exception: " +
-        std::string(e.getDescription().cStr())));
-  } catch (std::exception& e) {
-    return LOG_STATUS(Status_SerializationError(
-        "Error serializing array metadata; exception " +
-        std::string(e.what())));
-  }
-
-  return Status::Ok();
-}
-
-Status array_metadata_deserialize(
-    Array* array,
-    SerializationType serialize_type,
-    const Buffer& serialized_buffer) {
-  if (array == nullptr)
-    return LOG_STATUS(Status_SerializationError(
-        "Error deserializing array metadata; null array instance given."));
-  if (array->metadata() == nullptr)
-    return LOG_STATUS(Status_SerializationError(
-        "Error deserializing array metadata; null metadata instance."));
-
-  Metadata* metadata = array->metadata();
-
-  try {
-    switch (serialize_type) {
-      case SerializationType::JSON: {
-        ::capnp::JsonCodec json;
-        ::capnp::MallocMessageBuilder message_builder;
-        auto builder = message_builder.initRoot<capnp::ArrayMetadata>();
-        json.decode(
-            kj::StringPtr(static_cast<const char*>(serialized_buffer.data())),
-            builder);
-        auto reader = builder.asReader();
-
-        // Deserialize
-        auto entries_reader = reader.getEntries();
-        const size_t num_entries = entries_reader.size();
-        for (size_t i = 0; i < num_entries; i++) {
-          auto entry_reader = entries_reader[i];
-          std::string key = entry_reader.getKey();
-          Datatype type = Datatype::UINT8;
-          RETURN_NOT_OK(datatype_enum(entry_reader.getType(), &type));
-          uint32_t value_num = entry_reader.getValueNum();
-
-          auto value_ptr = entry_reader.getValue();
-          const void* value = (void*)value_ptr.begin();
-          if (value_ptr.size() != datatype_size(type) * value_num)
-            return LOG_STATUS(Status_SerializationError(
-                "Error deserializing array metadata; value size sanity check "
-                "failed."));
-
-          if (entry_reader.getDel()) {
-            RETURN_NOT_OK(metadata->del(key.c_str()));
-          } else {
-            RETURN_NOT_OK(metadata->put(key.c_str(), type, value_num, value));
-          }
-        }
-
-        break;
-      }
-      case SerializationType::CAPNP: {
-        const auto mBytes =
-            reinterpret_cast<const kj::byte*>(serialized_buffer.data());
-        ::capnp::FlatArrayMessageReader msg_reader(kj::arrayPtr(
-            reinterpret_cast<const ::capnp::word*>(mBytes),
-            serialized_buffer.size() / sizeof(::capnp::word)));
-        auto reader = msg_reader.getRoot<capnp::ArrayMetadata>();
-
-        // Deserialize
-        auto entries_reader = reader.getEntries();
-        const size_t num_entries = entries_reader.size();
-        for (size_t i = 0; i < num_entries; i++) {
-          auto entry_reader = entries_reader[i];
-          std::string key = entry_reader.getKey();
-          Datatype type = Datatype::UINT8;
-          RETURN_NOT_OK(datatype_enum(entry_reader.getType(), &type));
-          uint32_t value_num = entry_reader.getValueNum();
-
-          auto value_ptr = entry_reader.getValue();
-          const void* value = (void*)value_ptr.begin();
-          if (value_ptr.size() != datatype_size(type) * value_num)
-            return LOG_STATUS(Status_SerializationError(
-                "Error deserializing array metadata; value size sanity check "
-                "failed."));
-
-          if (entry_reader.getDel()) {
-            RETURN_NOT_OK(metadata->del(key.c_str()));
-          } else {
-            RETURN_NOT_OK(metadata->put(key.c_str(), type, value_num, value));
-          }
-        }
-
-        break;
-      }
-      default: {
-        return LOG_STATUS(Status_SerializationError(
-            "Error deserializing array metadata; Unknown serialization type "
-            "passed"));
-      }
-    }
-  } catch (kj::Exception& e) {
-    return LOG_STATUS(Status_SerializationError(
-        "Error deserializing array metadata; kj::Exception: " +
-        std::string(e.getDescription().cStr())));
-  } catch (std::exception& e) {
-    return LOG_STATUS(Status_SerializationError(
-        "Error deserializing array metadata; exception " +
-        std::string(e.what())));
-  }
-
-  return Status::Ok();
-}
-
 #else
 
 Status array_schema_serialize(
@@ -1497,16 +1317,6 @@ Status max_buffer_sizes_deserialize(
     const Buffer&,
     SerializationType,
     std::unordered_map<std::string, std::pair<uint64_t, uint64_t>>*) {
-  return LOG_STATUS(Status_SerializationError(
-      "Cannot serialize; serialization not enabled."));
-}
-
-Status array_metadata_serialize(Array*, SerializationType, Buffer*) {
-  return LOG_STATUS(Status_SerializationError(
-      "Cannot serialize; serialization not enabled."));
-}
-
-Status array_metadata_deserialize(Array*, SerializationType, const Buffer&) {
   return LOG_STATUS(Status_SerializationError(
       "Cannot serialize; serialization not enabled."));
 }

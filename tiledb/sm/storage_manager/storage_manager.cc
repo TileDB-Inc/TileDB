@@ -1549,7 +1549,7 @@ Status StorageManager::get_array_schema_uris(
   // Check if schema_uris is empty
   if (schema_uris->empty()) {
     return logger_->status(Status_StorageManagerError(
-        "Can not get the array schemas; No array schemas found."));
+        "Cannot get the array schemas; No array schemas found."));
   }
 
   return Status::Ok();
@@ -1563,7 +1563,7 @@ Status StorageManager::get_latest_array_schema_uri(
   RETURN_NOT_OK(get_array_schema_uris(array_uri, &schema_uris));
   if (schema_uris.size() == 0) {
     return logger_->status(Status_StorageManagerError(
-        "Can not get the latest array schema; No array schemas found."));
+        "Cannot get the latest array schema; No array schemas found."));
   }
   *uri = schema_uris.back();
   if (uri->is_invalid()) {
@@ -1697,10 +1697,9 @@ StorageManager::load_all_array_schemas(
   RETURN_NOT_OK_TUPLE(
       get_array_schema_uris(array_uri, &schema_uris), std::nullopt);
   if (schema_uris.empty()) {
-    return {
-        logger_->status(Status_StorageManagerError(
-            "Can not get the array schema vector; No array schemas found.")),
-        std::nullopt};
+    return {logger_->status(Status_StorageManagerError(
+                "Cannot get the array schema vector; No array schemas found.")),
+            std::nullopt};
   }
 
   std::vector<ArraySchema*> schema_vector;

@@ -62,6 +62,7 @@
 #include "tiledb/sm/query/query.h"
 #include "tiledb/sm/query/query_condition.h"
 #include "tiledb/sm/rest/rest_client.h"
+#include "tiledb/sm/serialization/array.h"
 #include "tiledb/sm/serialization/array_schema.h"
 #include "tiledb/sm/serialization/array_schema_evolution.h"
 #include "tiledb/sm/serialization/config.h"
@@ -2234,6 +2235,15 @@ int32_t tiledb_array_schema_get_allows_dups(
       sanity_check(ctx, array_schema) == TILEDB_ERR)
     return TILEDB_ERR;
   *allows_dups = (int)array_schema->array_schema_->allows_dups();
+  return TILEDB_OK;
+}
+
+int32_t tiledb_array_schema_get_version(
+    tiledb_ctx_t* ctx, tiledb_array_schema_t* array_schema, uint32_t* version) {
+  if (sanity_check(ctx) == TILEDB_ERR ||
+      sanity_check(ctx, array_schema) == TILEDB_ERR)
+    return TILEDB_ERR;
+  *version = (uint32_t)array_schema->array_schema_->version();
   return TILEDB_OK;
 }
 
@@ -6024,6 +6034,97 @@ int32_t tiledb_heap_profiler_enable(
 /* ****************************** */
 /*          Serialization         */
 /* ****************************** */
+
+int32_t tiledb_serialize_array(
+    tiledb_ctx_t* ctx,
+    const tiledb_array_t* array,
+    tiledb_serialization_type_t serialize_type,
+    int32_t client_side,
+    tiledb_buffer_t** buffer) {
+  // Sanity check
+  if (sanity_check(ctx) == TILEDB_ERR || sanity_check(ctx, array) == TILEDB_ERR)
+    return TILEDB_ERR;
+
+  // Create buffer
+  if (tiledb_buffer_alloc(ctx, buffer) != TILEDB_OK ||
+      sanity_check(ctx, *buffer) == TILEDB_ERR)
+    return TILEDB_ERR;
+
+  if (SAVE_ERROR_CATCH(
+          ctx,
+          tiledb::sm::serialization::array_serialize(
+              array->array_,
+              (tiledb::sm::SerializationType)serialize_type,
+              (*buffer)->buffer_,
+              client_side))) {
+    tiledb_buffer_free(buffer);
+    return TILEDB_ERR;
+  }
+
+  return TILEDB_OK;
+}
+
+int32_t tiledb_deserialize_array(
+    tiledb_ctx_t* ctx,
+    const tiledb_buffer_t* buffer,
+    tiledb_serialization_type_t serialize_type,
+    int32_t client_side,
+    tiledb_array_t** array) {
+  // Currently unused:
+  (void)client_side;
+
+  // Sanity check
+  if (sanity_check(ctx) == TILEDB_ERR ||
+      sanity_check(ctx, buffer) == TILEDB_ERR)
+    return TILEDB_ERR;
+
+  // Create array struct
+  *array = new (std::nothrow) tiledb_array_t;
+  if (*array == nullptr) {
+    auto st = Status_Error("Failed to allocate TileDB array object");
+    LOG_STATUS(st);
+    save_error(ctx, st);
+    return TILEDB_OOM;
+  }
+
+  // Check array URI
+  auto uri = tiledb::sm::URI("deserialized_array");
+  if (uri.is_invalid()) {
+    auto st = Status_Error("Failed to create TileDB array object; Invalid URI");
+    delete *array;
+    *array = nullptr;
+    LOG_STATUS(st);
+    save_error(ctx, st);
+    return TILEDB_ERR;
+  }
+
+  // Allocate an array object
+  (*array)->array_ =
+      new (std::nothrow) tiledb::sm::Array(uri, ctx->ctx_->storage_manager());
+  if ((*array)->array_ == nullptr) {
+    delete *array;
+    *array = nullptr;
+    auto st = Status_Error(
+        "Failed to create TileDB array object; Memory allocation "
+        "error");
+    LOG_STATUS(st);
+    save_error(ctx, st);
+    return TILEDB_OOM;
+  }
+
+  if (SAVE_ERROR_CATCH(
+          ctx,
+          tiledb::sm::serialization::array_deserialize(
+              (*array)->array_,
+              (tiledb::sm::SerializationType)serialize_type,
+              *buffer->buffer_))) {
+    delete *array;
+    *array = nullptr;
+    return TILEDB_ERR;
+  }
+
+  return TILEDB_OK;
+}
 
 int32_t tiledb_serialize_array_schema(
     tiledb_ctx_t* ctx,
