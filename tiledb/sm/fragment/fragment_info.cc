@@ -965,8 +965,6 @@ Status FragmentInfo::set_timestamp_range_from_config() {
 
 std::tuple<Status, std::optional<SingleFragmentInfo>> FragmentInfo::load(
     const URI& new_fragment_uri) const {
-  // Do I need to add something here too?
-
   SingleFragmentInfo ret;
   auto vfs = storage_manager_->vfs();
   auto array_schema_latest =
