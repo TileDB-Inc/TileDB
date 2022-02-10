@@ -1,3 +1,104 @@
+# TileDB v2.7.0 Release Notes
+
+## Disk Format
+
+* Removed file `__lock.tdb` from the array folder and updated the format spec. Also removed config `vfs.file.enable_filelocks`. [#2692](https://github.com/TileDB-Inc/TileDB/pull/2692)
+
+## New features
+
+* Publish Subarray access/functionality for use outside of core. [#2214](https://github.com/TileDB-Inc/TileDB/pull/2214)
+* Add TILEDB_BYTE datatype [#2721](https://github.com/TileDB-Inc/TileDB/pull/2721)
+* Expose array schema libtiledb version information [#2863](https://github.com/TileDB-Inc/TileDB/pull/2863)
+
+## Improvements
+
+* Convert loose files `thread_pool.*` into a unit [#2520](https://github.com/TileDB-Inc/TileDB/pull/2520)
+* Bump cmake_minimum_required to 3.21 [#2532](https://github.com/TileDB-Inc/TileDB/pull/2532)
+* dynamic_memory unit, including allocator [#2542](https://github.com/TileDB-Inc/TileDB/pull/2542)
+* implement windows CI functionality with github actions [#2498](https://github.com/TileDB-Inc/TileDB/pull/2498)
+* implement windows crash dump file processing for windows [#2657](https://github.com/TileDB-Inc/TileDB/pull/2657)
+* Added object libraries: baseline, buffer, thread_pool [#2629](https://github.com/TileDB-Inc/TileDB/pull/2629)
+* ubuntu core dump processing (GA) CI [#2642](https://github.com/TileDB-Inc/TileDB/pull/2642)
+* Avoid copy and set of config in `tiledb_query_add_range` as a performance optimization from the new subarray APIs [#2740](https://github.com/TileDB-Inc/TileDB/pull/2740)
+* core file stack backtracing and artifact uploading for mac CI builds [#2632](https://github.com/TileDB-Inc/TileDB/pull/2632)
+* Move `Status::*Error` to `Status_*Error` [#2610](https://github.com/TileDB-Inc/TileDB/pull/2610)
+* ZStd Compressor: allocate one context per thread and re-use. [#2701](https://github.com/TileDB-Inc/TileDB/pull/2701)
+* Include offset index in oversize error message [#2757](https://github.com/TileDB-Inc/TileDB/pull/2757)
+* Print resource pool contained type on error [#2757](https://github.com/TileDB-Inc/TileDB/pull/2757)
+* Using RETURN_NOT_OK_TUPLE in attribute.cc. [#2787](https://github.com/TileDB-Inc/TileDB/pull/2787)
+* Add timestamp range to schema evolution to avoid race conditions based on schema timestamp [#2776](https://github.com/TileDB-Inc/TileDB/pull/2776)
+* Convert dimension deserialize to factory [#2763](https://github.com/TileDB-Inc/TileDB/pull/2763)
+* Improve object type detection performance [#2792](https://github.com/TileDB-Inc/TileDB/pull/2792)
+* Query condition: differentiate between nullptr and empty string. [#2802](https://github.com/TileDB-Inc/TileDB/pull/2802)
+* patch git+git: to git+https: to avoid GH access failure [#2805](https://github.com/TileDB-Inc/TileDB/pull/2805)
+* Remove examples writing sparse fragments to dense arrays. [#2804](https://github.com/TileDB-Inc/TileDB/pull/2804)
+* Change the ZStd filter compression level range and add defined compression level default values [#2623](https://github.com/TileDB-Inc/TileDB/pull/2623)
+* Change the ZStd filter compression level range and add defined compression level default values [#2811](https://github.com/TileDB-Inc/TileDB/pull/2811)
+* changes to augment dbg output on build failures [#2801](https://github.com/TileDB-Inc/TileDB/pull/2801)
+* Sparse unordered w/ dups reader: process queries until full user buffers [#2816](https://github.com/TileDB-Inc/TileDB/pull/2816)
+* Support var-length CHAR QueryConditions [#2814](https://github.com/TileDB-Inc/TileDB/pull/2814)
+* Sparse global order reader: merge smaller cell slabs. [#2818](https://github.com/TileDB-Inc/TileDB/pull/2818)
+* Fixing build errors in query condition. [#2820](https://github.com/TileDB-Inc/TileDB/pull/2820)
+* Enabling refactored dense reader by default. [#2808](https://github.com/TileDB-Inc/TileDB/pull/2808)
+* Switching TUPLE macros to be variadic. [#2822](https://github.com/TileDB-Inc/TileDB/pull/2822)
+* Read tiles: no buffer pre-allocation for no-opt filter. [#2819](https://github.com/TileDB-Inc/TileDB/pull/2819)
+* Refactored dense reader: resetting the unsplittable flag on completion. [#2832](https://github.com/TileDB-Inc/TileDB/pull/2832)
+* Refactored dense reader: code cleanup. [#2833](https://github.com/TileDB-Inc/TileDB/pull/2833)
+* Fixing Subarray::crop_to_tile to crop default dimensions. [#2831](https://github.com/TileDB-Inc/TileDB/pull/2831)
+* Dense reader: fixing src cell offset for different cell order. [#2835](https://github.com/TileDB-Inc/TileDB/pull/2835)
+* Support storing integral cells in a chunk. [#2821](https://github.com/TileDB-Inc/TileDB/pull/2821)
+* Improve error handling for Array non empty domain calls. [#2845](https://github.com/TileDB-Inc/TileDB/pull/2845)
+* Remove OpenArray and refactor StorageManager and FragmentInfo [#2839](https://github.com/TileDB-Inc/TileDB/pull/2839)
+* Adding min/max/sum/null count to fragment info. [#2830](https://github.com/TileDB-Inc/TileDB/pull/2830)
+* Fine-tune unfiltering parallelization [#2842](https://github.com/TileDB-Inc/TileDB/pull/2842)
+* Removing ch9473 comments in unit-cppapi-string-dims.cc. [#2837](https://github.com/TileDB-Inc/TileDB/pull/2837)
+* Global writes: writting bad validity values when coordinates are dups. [#2848](https://github.com/TileDB-Inc/TileDB/pull/2848)
+* Fixing issues in VS2019. [#2853](https://github.com/TileDB-Inc/TileDB/pull/2853)
+* Writer: processing var tiles before offset tiles. [#2854](https://github.com/TileDB-Inc/TileDB/pull/2854)
+* Writer: moving unordered_map::emplace outside of parallel_for. [#2860](https://github.com/TileDB-Inc/TileDB/pull/2860)
+* Dense reader: removing unnecessary loop around read_attributes. [#2859](https://github.com/TileDB-Inc/TileDB/pull/2859)
+* Convert deserialize function of Attribute to factory function [#2566](https://github.com/TileDB-Inc/TileDB/pull/2566)
+* Convert Filter class deserialize and create to factory functions [#2655](https://github.com/TileDB-Inc/TileDB/pull/2655)
+
+## Deprecations
+
+* Deprecate `TILEDB_CHAR` in favor of users using `TILEDB_BYTE` or `TILEDB_STRING_ASCII` for attribute datatypes. [#2742](https://github.com/TileDB-Inc/TileDB/pull/2742) [#2797](https://github.com/TileDB-Inc/TileDB/pull/2797)
+* Deprecate `TILEDB_ANY` datatype [#2807](https://github.com/TileDB-Inc/TileDB/pull/2807)
+* Deprecate `TILEDB_STRING_USC2` and `TILEDB_STRING_USC4` datatypes. [#2812](https://github.com/TileDB-Inc/TileDB/pull/2812)
+* Drop support for Visual Studio 2017 compiler [#2847](https://github.com/TileDB-Inc/TileDB/pull/2847)
+
+## Bug fixes
+
+* Better windows relative path support with '/' [#2607](https://github.com/TileDB-Inc/TileDB/pull/2607)
+* Fixed dangling links in README. [#2712](https://github.com/TileDB-Inc/TileDB/pull/2712)
+* Handle multiple core files for stack traces and archiving [#2723](https://github.com/TileDB-Inc/TileDB/pull/2723)
+* restore lost cmake code necessary for clean build on windows with -EnableAzure [#2656](https://github.com/TileDB-Inc/TileDB/pull/2656)
+* Return error for nonempty_domain access regardless of local/remote status [#2766](https://github.com/TileDB-Inc/TileDB/pull/2766)
+* Fix segfault in new sparse null `QueryCondition` code [#2794](https://github.com/TileDB-Inc/TileDB/pull/2794)
+* ReaderBase needs to load var sizes [#2809](https://github.com/TileDB-Inc/TileDB/pull/2809)
+* Only initialize REST query strategies once [#2836](https://github.com/TileDB-Inc/TileDB/pull/2836)
+* Logger json format output is not valid [#2850](https://github.com/TileDB-Inc/TileDB/pull/2850)
+
+## API additions
+
+### C API
+
+* Add `tiledb_array_schema_evolution_set_timestamp_range` to avoid race conditions based on schema timestamp [#2776](https://github.com/TileDB-Inc/TileDB/pull/2776)
+* Deprecate `TILEDB_CHAR` in favor of users using `TILEDB_BYTE` or `TILEDB_STRING_ASCII` for attribute datatypes. [#2742](https://github.com/TileDB-Inc/TileDB/pull/2742) [#2797](https://github.com/TileDB-Inc/TileDB/pull/2797)
+* Add {set,get}_validity_filter_list [#2798](https://github.com/TileDB-Inc/TileDB/pull/2798)
+* Deprecate `TILEDB_ANY` datatype [#2807](https://github.com/TileDB-Inc/TileDB/pull/2807)
+* Deprecate `TILEDB_STRING_USC2` and `TILEDB_STRING_USC4` datatypes. [#2812](https://github.com/TileDB-Inc/TileDB/pull/2812)
+* Add `tiledb_array_schema_get_version` for fetching array schema version [#2863](https://github.com/TileDB-Inc/TileDB/pull/2863)
+
+### C++ API
+
+* Add `ArraySchemaEvolution::set_timestamp_range` to avoid race conditions based on schema timestamp [#2776](https://github.com/TileDB-Inc/TileDB/pull/2776)
+* Deprecate `TILEDB_CHAR` in favor of users using `TILEDB_BYTE` or `TILEDB_STRING_ASCII` for attribute datatypes. [#2742](https://github.com/TileDB-Inc/TileDB/pull/2742) [#2797](https://github.com/TileDB-Inc/TileDB/pull/2797)
+* Add validity_filter_list set/get and missing get tests [#2798](https://github.com/TileDB-Inc/TileDB/pull/2798)
+* Deprecate `TILEDB_ANY` datatype [#2807](https://github.com/TileDB-Inc/TileDB/pull/2807)
+* Deprecate `TILEDB_STRING_USC2` and `TILEDB_STRING_USC4` datatypes. [#2812](https://github.com/TileDB-Inc/TileDB/pull/2812)
+* Add `ArraySchema::version()` for fetching array schema version [#2863](https://github.com/TileDB-Inc/TileDB/pull/2863)
+
 # TileDB v2.6.2 Release Notes
 
 ## Bug fixes
