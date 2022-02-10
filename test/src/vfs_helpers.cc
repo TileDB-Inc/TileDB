@@ -63,6 +63,8 @@ std::vector<std::unique_ptr<SupportedFs>> vfs_test_get_fs_vec() {
   if (supports_gcs) {
     SupportedFsGCS* gcs_fs = new SupportedFsGCS();
     fs_vec.emplace_back(gcs_fs);
+    SupportedFsGCS* gs_fs = new SupportedFsGCS("gs://");
+    fs_vec.emplace_back(gs_fs);
   }
 
   SupportedFsLocal* local_fs = new SupportedFsLocal();

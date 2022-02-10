@@ -333,8 +333,8 @@ class SupportedFsAzure : public SupportedFs {
  */
 class SupportedFsGCS : public SupportedFs {
  public:
-  SupportedFsGCS()
-      : prefix_("gcs://")
+  SupportedFsGCS(std::string prefix = "gcs://")
+      : prefix_(prefix)
       , bucket_(prefix_ + random_name("tiledb") + "/")
       , temp_dir_(bucket_ + "tiledb_test/") {
   }
