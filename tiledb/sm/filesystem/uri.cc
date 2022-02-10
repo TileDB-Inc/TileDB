@@ -160,11 +160,13 @@ bool URI::is_azure() const {
 }
 
 bool URI::is_gcs(const std::string& path) {
-  return utils::parse::starts_with(path, "gcs://");
+  return utils::parse::starts_with(path, "gcs://") ||
+         utils::parse::starts_with(path, "gs://");
 }
 
 bool URI::is_gcs() const {
-  return utils::parse::starts_with(uri_, "gcs://");
+  return utils::parse::starts_with(uri_, "gcs://") ||
+         utils::parse::starts_with(uri_, "gs://");
 }
 
 bool URI::is_memfs(const std::string& path) {
