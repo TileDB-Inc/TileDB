@@ -37,6 +37,7 @@
 #include "tiledb/sm/misc/endian.h"
 
 #include <map>
+#include <unordered_map>
 #include <vector>
 
 using namespace tiledb::common;
@@ -59,30 +60,29 @@ class DictEncoding {
    * the word_ids of each word
    */
   template <class T>
-  static std::vector<std::string> compress(
+  static std::vector<std::string_view> compress(
       const span<std::string_view> input, span<T> output) {
     if (input.empty() || output.empty()) {
       return {};
     }
 
-    std::vector<std::string> dict;
+    // we use string_views in the dictionary, which point to input strings. This
+    // means that input should not be freed before dictionary data is consumed
+    std::vector<std::string_view> dict;
     dict.reserve(input.size());
     T word_id = 0;
-    // TODO: I can't use unordered_map with string_view before C++20 (I think),
-    // more details here:
-    // https://stackoverflow.com/questions/34596768/stdunordered-mapfind-using-a-type-different-than-the-key-type/53530846#53530846
-    std::map<std::string_view, T, std::less<>> word_ids;
+    std::unordered_map<std::string_view, T> word_ids;
     for (uint64_t i = 0; i < input.size(); i++) {
       // if we haven't seen that string before, add it to the dictionary
       if (word_ids.find(input[i]) == word_ids.end()) {
-        dict.emplace_back(std::string(input[i]));
+        dict.emplace_back(input[i]);
         word_ids[input[i]] = word_id++;
       }
 
       utils::endianness::encode_be<T>(word_ids[input[i]], &output[i]);
     }
 
-    // TODO: copy happens here: improve? take it as input?
+    // copy happens here, but it's a copy of string_views
     return dict;
   }
 
@@ -100,7 +100,7 @@ class DictEncoding {
   template <class T>
   static void decompress(
       const span<T> input,
-      const std::vector<std::string>& dict,
+      const std::vector<std::string_view>& dict,
       span<std::byte> output) {
     if (input.empty() || output.empty() || dict.size() == 0) {
       return;
@@ -111,7 +111,7 @@ class DictEncoding {
     while (in_index < input.size()) {
       word_id = utils::endianness::decode_be<T>(&input[in_index++]);
       assert(word_id < dict.size());
-      auto word = std::string_view(dict[word_id]);
+      auto word = dict[word_id];
       memcpy(&output[out_index], word.data(), word.size());
       out_index += word.size();
     }

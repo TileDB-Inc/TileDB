@@ -65,7 +65,7 @@ TEST_CASE(
   std::string_view uncompressed[] = {
       str1, str1, str1, str2, str2, str3, str1, str2};
 
-  std::vector<std::string> exp_dict{str1, str2, str3};
+  std::vector<std::string_view> exp_dict{str1, str2, str3};
 
   // Compress the input array
   std::vector<uint8_t> compressed(num_of_strings);
@@ -126,7 +126,7 @@ TEMPLATE_LIST_TEST_CASE(
   }
 
   std::vector<T> compressed(num_strings);
-  std::vector<std::string> exp_dict{string_rand};
+  std::vector<std::string_view> exp_dict{string_rand};
   // Compress the input array
   auto dict = tiledb::sm::DictEncoding::compress<T>(uncompressed, compressed);
   CHECK(dict == exp_dict);
@@ -174,11 +174,11 @@ TEST_CASE(
   }
 
   std::vector<uint8_t> compressed(uncompressed.size());
-  std::vector<std::string> exp_dict = uncompressed_v;
   // Compress the input array
   auto dict =
       tiledb::sm::DictEncoding::compress<uint8_t>(uncompressed, compressed);
-  CHECK(dict == exp_dict);
+  // All values were unique, so they all go in order to the dictionary
+  CHECK(dict == uncompressed);
 
   // All the values here are 1 byte long, so endianness is not an issue and we
   // can just read using memcpy
