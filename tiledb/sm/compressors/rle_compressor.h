@@ -177,6 +177,8 @@ class RLE {
   static tuple<uint64_t, uint64_t, uint64_t, uint64_t>
   calculate_compression_params(const span<std::string_view> input);
 
+  // TODO Add UTs for the new compress/decompress functions
+
   /**
    * Compress numbers in contiguous memory to RLE format
    *

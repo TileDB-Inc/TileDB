@@ -53,10 +53,12 @@ class DictEncoding {
    * Compress variable sized strings into dictionary encoded format
    *
    * @tparam T Type of integer that can fit the word ids
-   * @param input_buffer Input in form of a memory contiguous sequence of
+   * @param input Input in form of a memory contiguous sequence of
    * strings
-   * @param Dictionary-encoded output in ids of type T. Memory is allocated and
-   * owned by the caller
+   * @param output Dictionary-encoded output in ids of type T. Memory is
+   * allocated and owned by the caller
+   * @param uses_rle True for adding additional RLE compression to the
+   * compressed output. Default is false.
    * @return A dictionary in the form of a vector of strings, where indices are
    * the word_ids of each word
    */
@@ -103,7 +105,7 @@ class DictEncoding {
     }
 
     // copy happens here, but it's a copy of string_views
-    // FIXME: do we want the caller to allocate dict as well?
+    // TBD: do we want the caller to allocate dict as well?
     return dict;
   }
 
@@ -111,12 +113,14 @@ class DictEncoding {
    * Decompress strings that are encoded in dictionary format
    *
    * @tparam T Type of integer that can fit the word ids
-   * @param input_buffer Input dictionary-encoded format of ids of type T
-   * @param The dictionary to be used for decoding a word id into a string.
+   * @param input Input dictionary-encoded format of ids of type T
+   * @param dict The dictionary to be used for decoding a word id into a string.
    * Expected type is a vector of strings, where indices are the ids of
    * each word
-   * @param Dictionary-encoded output as a series of ids of size T. Memory is
-   * allocated and owned by the caller
+   * @param output Dictionary-encoded output as a series of ids of size T.
+   * Memory is allocated and owned by the caller
+   * @param uses_rle True if additional RLE compression was used on the
+   * compressed buffer. Default is false.
    */
   template <class T>
   static void decompress(
