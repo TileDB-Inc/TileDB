@@ -33,6 +33,7 @@
 #ifndef TILEDB_DICT_COMPRESSOR_H
 #define TILEDB_DICT_COMPRESSOR_H
 
+#include "rle_compressor.h"
 #include "tiledb/common/common.h"
 #include "tiledb/sm/misc/endian.h"
 
@@ -61,28 +62,48 @@ class DictEncoding {
    */
   template <class T>
   static std::vector<std::string_view> compress(
-      const span<std::string_view> input, span<T> output) {
+      const span<std::string_view> input,
+      span<T> output,
+      bool uses_rle = false) {
     if (input.empty() || output.empty()) {
       return {};
     }
 
-    // we use string_views in the dictionary, which point to input strings. This
+    // We use string_views in the dictionary, which point to input strings. This
     // means that input should not be freed before dictionary data is consumed
     std::vector<std::string_view> dict;
     dict.reserve(input.size());
     T word_id = 0;
     std::unordered_map<std::string_view, T> word_ids;
-    for (uint64_t i = 0; i < input.size(); i++) {
-      // if we haven't seen that string before, add it to the dictionary
-      if (word_ids.find(input[i]) == word_ids.end()) {
-        dict.emplace_back(input[i]);
-        word_ids[input[i]] = word_id++;
+
+    if (uses_rle == false) {
+      for (uint64_t i = 0; i < input.size(); i++) {
+        // If we haven't seen that string before, add it to the dictionary
+        if (word_ids.find(input[i]) == word_ids.end()) {
+          dict.emplace_back(input[i]);
+          word_ids[input[i]] = word_id++;
+        }
+
+        output[i] = word_ids[input[i]];
+      }
+    } else {
+      std::vector<T> temp_output;
+      temp_output.reserve(input.size());
+      for (uint64_t i = 0; i < input.size(); i++) {
+        // If we haven't seen that string before, add it to the dictionary
+        if (word_ids.find(input[i]) == word_ids.end()) {
+          dict.emplace_back(input[i]);
+          word_ids[input[i]] = word_id++;
+        }
+
+        temp_output.emplace_back(word_ids[input[i]]);
       }
 
-      utils::endianness::encode_be<T>(word_ids[input[i]], &output[i]);
+      tiledb::sm::RLE::compress<T>(temp_output, output);
     }
 
     // copy happens here, but it's a copy of string_views
+    // FIXME: do we want the caller to allocate dict as well?
     return dict;
   }
 
@@ -101,19 +122,35 @@ class DictEncoding {
   static void decompress(
       const span<T> input,
       const std::vector<std::string_view>& dict,
-      span<std::byte> output) {
+      span<std::byte> output,
+      bool uses_rle = false) {
     if (input.empty() || output.empty() || dict.size() == 0) {
       return;
     }
 
     T word_id = 0;
     uint64_t in_index = 0, out_index = 0;
-    while (in_index < input.size()) {
-      word_id = utils::endianness::decode_be<T>(&input[in_index++]);
-      assert(word_id < dict.size());
-      auto word = dict[word_id];
-      memcpy(&output[out_index], word.data(), word.size());
-      out_index += word.size();
+
+    if (uses_rle == false) {
+      while (in_index < input.size()) {
+        word_id = input[in_index++];
+        assert(word_id < dict.size());
+        auto word = dict[word_id];
+        memcpy(&output[out_index], word.data(), word.size());
+        out_index += word.size();
+      }
+    } else {
+      while (in_index < input.size()) {
+        auto run_length = input[in_index++];
+        word_id = input[in_index++];
+        assert(word_id < dict.size());
+        auto word = dict[word_id];
+        for (uint64_t j = 0; j < run_length; j++) {
+          // TODO: see if more efficient to copy it N times at once
+          memcpy(&output[out_index], word.data(), word.size());
+          out_index += word.size();
+        }
+      }
     }
   }
 };
