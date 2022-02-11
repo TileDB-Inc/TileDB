@@ -1371,7 +1371,7 @@ Status SparseUnorderedWithDupsReader<BitmapType>::process_tiles(
                 first_tile_min_pos,
                 cell_offsets,
                 query_buffer);
-        if (new_var_buffer_size == 0) {
+        if (new_result_tiles_size == 1 && cell_offsets[1] == 0) {
           return Status_SparseUnorderedWithDupsReaderError(
               "Var size buffer cannot fit a single cell for var attribute");
         }
