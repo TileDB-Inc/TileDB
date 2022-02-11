@@ -848,8 +848,8 @@ Status SparseGlobalOrderReader::copy_offsets_tiles(
         const auto tile_tuple = rt->tile_tuple(name);
         const auto t = &std::get<0>(*tile_tuple);
         const auto t_var = &std::get<1>(*tile_tuple);
-        const auto src_buff = (uint64_t*)t->data();
-        const auto src_var_buff = (char*)t_var->data();
+        const auto src_buff = t->data_as<uint64_t>();
+        const auto src_var_buff = t_var->data_as<char>();
         const auto t_val = &std::get<2>(*tile_tuple);
         const auto cell_num =
             fragment_metadata_[rt->frag_idx()]->cell_num(rt->tile_idx());
@@ -890,7 +890,7 @@ Status SparseGlobalOrderReader::copy_offsets_tiles(
 
         // Copy nullable values.
         if (nullable) {
-          const auto src_val_buff = (uint8_t*)t_val->data();
+          const auto src_val_buff = t_val->data_as<uint8_t>();
           for (uint64_t c = min_pos; c < max_pos; c++) {
             *val_buffer = src_val_buff[c];
             val_buffer++;
@@ -1007,7 +1007,7 @@ Status SparseGlobalOrderReader::copy_fixed_data_tiles(
         const auto stores_zipped_coords = is_dim && rt->stores_zipped_coords();
         const auto tile_tuple = rt->tile_tuple(name);
         const auto t = &std::get<0>(*tile_tuple);
-        const auto src_buff = (uint8_t*)t->data();
+        const auto src_buff = t->data_as<uint8_t>();
         const auto t_val = &std::get<2>(*tile_tuple);
 
         // Compute parallelization parameters.
@@ -1044,7 +1044,7 @@ Status SparseGlobalOrderReader::copy_fixed_data_tiles(
         }
 
         if (nullable) {
-          const auto src_val_buff = (uint8_t*)t_val->data();
+          const auto src_val_buff = t_val->data_as<uint8_t>();
           memcpy(val_buffer, src_val_buff + min_pos, max_pos - min_pos);
         }
 

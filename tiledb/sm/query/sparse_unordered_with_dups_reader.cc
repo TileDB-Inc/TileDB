@@ -490,8 +490,8 @@ Status SparseUnorderedWithDupsReader<uint64_t>::copy_offsets_tile(
   const auto tile_tuple = rt->tile_tuple(name);
   const auto t = &std::get<0>(*tile_tuple);
   const auto t_var = &std::get<1>(*tile_tuple);
-  const auto src_buff = (uint64_t*)t->data();
-  const auto src_var_buff = (char*)t_var->data();
+  const auto src_buff = t->data_as<uint64_t>();
+  const auto src_var_buff = t_var->data_as<char>();
   const auto t_val = &std::get<2>(*tile_tuple);
   const auto cell_num =
       fragment_metadata_[rt->frag_idx()]->cell_num(rt->tile_idx());
@@ -520,7 +520,7 @@ Status SparseUnorderedWithDupsReader<uint64_t>::copy_offsets_tile(
 
   // Copy nullable values.
   if (nullable) {
-    const auto src_val_buff = (uint8_t*)t_val->data();
+    const auto src_val_buff = t_val->data_as<uint8_t>();
     for (uint64_t c = src_min_pos; c < src_max_pos; c++) {
       for (uint64_t i = 0; i < rt->bitmap_[c]; i++) {
         *val_buffer = src_val_buff[c];
@@ -549,8 +549,8 @@ Status SparseUnorderedWithDupsReader<uint8_t>::copy_offsets_tile(
   const auto tile_tuple = rt->tile_tuple(name);
   const auto t = &std::get<0>(*tile_tuple);
   const auto t_var = &std::get<1>(*tile_tuple);
-  const auto src_buff = (uint64_t*)t->data();
-  const auto src_var_buff = (char*)t_var->data();
+  const auto src_buff = t->data_as<uint64_t>();
+  const auto src_var_buff = t_var->data_as<char>();
   const auto t_val = &std::get<2>(*tile_tuple);
   const auto cell_num =
       fragment_metadata_[rt->frag_idx()]->cell_num(rt->tile_idx());
@@ -577,7 +577,7 @@ Status SparseUnorderedWithDupsReader<uint8_t>::copy_offsets_tile(
 
     // Copy nullable values.
     if (nullable) {
-      const auto src_val_buff = (uint8_t*)t_val->data();
+      const auto src_val_buff = t_val->data_as<uint8_t>();
       for (uint64_t c = src_min_pos; c < src_max_pos; c++) {
         if (rt->bitmap_[c]) {
           *val_buffer = src_val_buff[c];
@@ -604,7 +604,7 @@ Status SparseUnorderedWithDupsReader<uint8_t>::copy_offsets_tile(
 
     // Copy nullable values.
     if (nullable) {
-      const auto src_val_buff = (uint8_t*)t_val->data();
+      const auto src_val_buff = t_val->data_as<uint8_t>();
       for (uint64_t c = src_min_pos; c < src_max_pos; c++) {
         *val_buffer = src_val_buff[c];
         val_buffer++;
@@ -810,7 +810,7 @@ Status SparseUnorderedWithDupsReader<uint64_t>::copy_fixed_data_tile(
   const auto stores_zipped_coords = is_dim && rt->stores_zipped_coords();
   const auto tile_tuple = rt->tile_tuple(name);
   const auto t = &std::get<0>(*tile_tuple);
-  const auto src_buff = (uint8_t*)t->data();
+  const auto src_buff = t->data_as<uint8_t>();
 
   // Copy values.
   if (!stores_zipped_coords) {
@@ -834,7 +834,7 @@ Status SparseUnorderedWithDupsReader<uint64_t>::copy_fixed_data_tile(
   // Copy nullable values.
   if (nullable) {
     const auto t_val = &std::get<2>(*tile_tuple);
-    const auto src_val_buff = (uint8_t*)t_val->data();
+    const auto src_val_buff = t_val->data_as<uint8_t>();
     for (uint64_t c = src_min_pos; c < src_max_pos; c++) {
       for (uint64_t i = 0; i < rt->bitmap_[c]; i++) {
         *val_buffer = src_val_buff[c];
@@ -863,7 +863,7 @@ Status SparseUnorderedWithDupsReader<uint8_t>::copy_fixed_data_tile(
   const auto stores_zipped_coords = is_dim && rt->stores_zipped_coords();
   const auto tile_tuple = rt->tile_tuple(name);
   const auto t = &std::get<0>(*tile_tuple);
-  const auto src_buff = (uint8_t*)t->data();
+  const auto src_buff = t->data_as<uint8_t>();
   const auto t_val = &std::get<2>(*tile_tuple);
 
   // 0 sized bitmap means full tile, full tile copy done below.
@@ -910,7 +910,7 @@ Status SparseUnorderedWithDupsReader<uint8_t>::copy_fixed_data_tile(
       // memcpy.
       uint64_t length = 0;
       uint64_t start = src_min_pos;
-      const auto src_val_buff = (uint8_t*)t_val->data();
+      const auto src_val_buff = t_val->data_as<uint8_t>();
       for (uint64_t c = src_min_pos; c < src_max_pos; c++) {
         if (rt->bitmap_[c]) {
           length++;
@@ -938,7 +938,7 @@ Status SparseUnorderedWithDupsReader<uint8_t>::copy_fixed_data_tile(
         (src_max_pos - src_min_pos) * cell_size);
 
     if (nullable) {
-      const auto src_val_buff = (uint8_t*)t_val->data();
+      const auto src_val_buff = t_val->data_as<uint8_t>();
       memcpy(val_buffer, src_val_buff + src_min_pos, src_max_pos - src_min_pos);
     }
   }

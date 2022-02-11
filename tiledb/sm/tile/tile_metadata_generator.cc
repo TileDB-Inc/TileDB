@@ -138,7 +138,7 @@ ByteVec Sum<T, int64_t>::sum_nullable(Tile* tile, Tile* tile_validity) {
 
   // Get pointers to the data and cell num.
   auto values = tile->data_as<T>();
-  auto validity_values = static_cast<uint8_t*>(tile_validity->data());
+  auto validity_values = tile_validity->data_as<uint8_t>();
   auto cell_num = tile->size_as<T>();
   auto sum_data = reinterpret_cast<int64_t*>(ret.data());
 
@@ -174,7 +174,7 @@ ByteVec Sum<T, uint64_t>::sum_nullable(Tile* tile, Tile* tile_validity) {
 
   // Get pointers to the data and cell num.
   auto values = tile->data_as<T>();
-  auto validity_values = static_cast<uint8_t*>(tile_validity->data());
+  auto validity_values = tile_validity->data_as<uint8_t>();
   auto cell_num = tile->size_as<T>();
   auto sum_data = reinterpret_cast<uint64_t*>(ret.data());
 
@@ -203,7 +203,7 @@ ByteVec Sum<T, double>::sum_nullable(Tile* tile, Tile* tile_validity) {
 
   // Get pointers to the data and cell num.
   auto values = tile->data_as<T>();
-  auto validity_values = static_cast<uint8_t*>(tile_validity->data());
+  auto validity_values = tile_validity->data_as<uint8_t>();
   auto cell_num = tile->size_as<T>();
   auto sum_data = reinterpret_cast<double*>(ret.data());
 
@@ -323,7 +323,7 @@ const std::tuple<void*, void*> TileMetadataGenerator::min_max<char>(
     return {nullptr, nullptr};
 
   // Get pointer to the data, set the min max to the first value.
-  auto data = (char*)tile->data();
+  auto data = tile->data_as<char>();
   void* min = data;
   void* max = data;
 
@@ -352,7 +352,7 @@ TileMetadataGenerator::min_max_nullable(
 
   // Get pointers to the data and cell num.
   auto values = tile->data_as<T>();
-  auto validity_values = static_cast<uint8_t*>(tile_validity->data());
+  auto validity_values = tile_validity->data_as<uint8_t>();
   auto cell_num = tile->size() / cell_size;
 
   // Process cell by cell.
@@ -378,8 +378,8 @@ TileMetadataGenerator::min_max_nullable<char>(
   uint64_t null_count = 0;
 
   // Get pointers to the data and cell num.
-  auto value = (char*)tile->data();
-  auto validity_values = static_cast<uint8_t*>(tile_validity->data());
+  auto value = tile->data_as<char>();
+  auto validity_values = tile_validity->data_as<uint8_t>();
   auto cell_num = tile->size() / cell_size;
 
   // Process cell by cell.
@@ -540,7 +540,7 @@ void TileMetadataGenerator::process_tile(Tile* tile, Tile* tile_validity) {
           Sum<T, typename metadata_generator_type_data<T>::sum_type>::sum(tile);
     }
   } else {  // Fixed size attribute, nullable.
-    auto validity_value = static_cast<uint8_t*>(tile_validity->data());
+    auto validity_value = tile_validity->data_as<uint8_t>();
     if (has_min_max_) {
       auto&& [min, max, nc] =
           min_max_nullable<T>(tile, tile_validity, cell_size_);
@@ -574,8 +574,8 @@ void TileMetadataGenerator::process_tile_var(
   }
 
   // Get pointers to the data and cell num.
-  auto offset_value = static_cast<uint64_t*>(tile->data());
-  auto var_data = static_cast<char*>(tile_var->data());
+  auto offset_value = tile->data_as<uint64_t>();
+  auto var_data = tile_var->data_as<char>();
   auto cell_num = tile->size() / constants::cell_var_offset_size;
 
   // Var size attribute, non nullable.
@@ -593,7 +593,7 @@ void TileMetadataGenerator::process_tile_var(
       offset_value++;
     }
   } else {  // Var size attribute, nullable.
-    auto validity_value = static_cast<uint8_t*>(tile_validity->data());
+    auto validity_value = tile_validity->data_as<uint8_t>();
 
     for (uint64_t c = 0; c < cell_num; c++) {
       auto is_null = *validity_value == 0;

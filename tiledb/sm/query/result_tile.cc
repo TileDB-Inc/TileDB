@@ -83,6 +83,24 @@ ResultTile& ResultTile::operator=(ResultTile&& other) {
   return *this;
 }
 
+void ResultTile::swap(ResultTile& tile) {
+  std::swap(domain_, tile.domain_);
+  std::swap(frag_idx_, tile.frag_idx_);
+  std::swap(tile_idx_, tile.tile_idx_);
+  std::swap(attr_tiles_, tile.attr_tiles_);
+  std::swap(coords_tile_, tile.coords_tile_);
+  std::swap(coord_tiles_, tile.coord_tiles_);
+  std::swap(compute_results_dense_func_, tile.compute_results_dense_func_);
+  std::swap(coord_func_, tile.coord_func_);
+  std::swap(compute_results_sparse_func_, tile.compute_results_sparse_func_);
+  std::swap(
+      compute_results_count_sparse_uint64_t_func_,
+      tile.compute_results_count_sparse_uint64_t_func_);
+  std::swap(
+      compute_results_count_sparse_uint8_t_func_,
+      tile.compute_results_count_sparse_uint8_t_func_);
+}
+
 /* ****************************** */
 /*               API              */
 /* ****************************** */
@@ -1032,24 +1050,6 @@ Status ResultTile::compute_results_count_sparse<uint64_t>(
       min_cell,
       max_cell);
   return Status::Ok();
-}
-
-void ResultTile::swap(ResultTile& tile) {
-  std::swap(domain_, tile.domain_);
-  std::swap(frag_idx_, tile.frag_idx_);
-  std::swap(tile_idx_, tile.tile_idx_);
-  std::swap(attr_tiles_, tile.attr_tiles_);
-  std::swap(coords_tile_, tile.coords_tile_);
-  std::swap(coord_tiles_, tile.coord_tiles_);
-  std::swap(compute_results_dense_func_, tile.compute_results_dense_func_);
-  std::swap(coord_func_, tile.coord_func_);
-  std::swap(compute_results_sparse_func_, tile.compute_results_sparse_func_);
-  std::swap(
-      compute_results_count_sparse_uint64_t_func_,
-      tile.compute_results_count_sparse_uint64_t_func_);
-  std::swap(
-      compute_results_count_sparse_uint8_t_func_,
-      tile.compute_results_count_sparse_uint8_t_func_);
 }
 
 /* ****************************** */

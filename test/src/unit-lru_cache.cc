@@ -80,9 +80,9 @@ TEST_CASE_METHOD(
   FilteredBuffer v3(sizeof(int) * 3);
 
   for (int i = 0; i < 3; ++i) {
-    reinterpret_cast<int*>(v1.data())[i] = i;
-    reinterpret_cast<int*>(v2.data())[i] = 3 + i;
-    reinterpret_cast<int*>(v3.data())[i] = 6 + i;
+    v1.data_as<int>()[i] = i;
+    v1.data_as<int>()[i] = 3 + i;
+    v1.data_as<int>()[i] = 6 + i;
   }
 
   // Insert 3 items in the cache

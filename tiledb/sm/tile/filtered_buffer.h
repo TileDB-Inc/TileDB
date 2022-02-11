@@ -93,13 +93,19 @@ class FilteredBuffer {
   }
 
   /** Returns the data. */
-  inline uint8_t* data() {
+  inline char* data() {
     return filtered_buffer_.data();
   }
 
   /** Returns the data. */
-  inline const uint8_t* data() const {
+  inline const char* data() const {
     return filtered_buffer_.data();
+  }
+
+  /** Returns the data casted as a type. */
+  template <class T>
+  inline T* data_as() {
+    return static_cast<T*>(static_cast<void*>(filtered_buffer_.data()));
   }
 
   /** Expands the size of the underlying container. */
@@ -127,7 +133,7 @@ class FilteredBuffer {
   /* ********************************* */
 
   /** Storing container for the filtered buffer. */
-  std::vector<uint8_t> filtered_buffer_;
+  std::vector<char> filtered_buffer_;
 };
 
 }  // namespace sm

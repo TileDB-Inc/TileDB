@@ -83,9 +83,7 @@ TEST_CASE("VFS: Test read batching", "[vfs]") {
     REQUIRE(io_tp.wait_all(tasks).ok());
     tasks.clear();
     for (unsigned i = 0; i < nelts; i++)
-      REQUIRE(
-          reinterpret_cast<uint32_t*>(tile[0].filtered_buffer().data())[i] ==
-          i);
+      REQUIRE(tile[0].filtered_buffer().data_as<uint32_t>()[i] == i);
 
     // Check reading first and last element: 1 reads due to the default
     // batch size.
@@ -98,11 +96,8 @@ TEST_CASE("VFS: Test read batching", "[vfs]") {
     REQUIRE(vfs->read_all(testfile, batches, &io_tp, &tasks).ok());
     REQUIRE(io_tp.wait_all(tasks).ok());
     tasks.clear();
-    REQUIRE(
-        reinterpret_cast<uint32_t*>(tile[0].filtered_buffer().data())[0] == 0);
-    REQUIRE(
-        reinterpret_cast<uint32_t*>(tile[1].filtered_buffer().data())[0] ==
-        nelts - 1);
+    REQUIRE(tile[0].filtered_buffer().data_as<uint32_t>()[0] == 0);
+    REQUIRE(tile[1].filtered_buffer().data_as<uint32_t>()[0] == nelts - 1);
 
     // Check each element as a different region: single read because there is no
     // amplification required (all work is useful).
@@ -116,9 +111,7 @@ TEST_CASE("VFS: Test read batching", "[vfs]") {
     REQUIRE(io_tp.wait_all(tasks).ok());
     tasks.clear();
     for (unsigned i = 0; i < nelts; i++) {
-      REQUIRE(
-          reinterpret_cast<uint32_t*>(tile[i].filtered_buffer().data())[0] ==
-          i);
+      REQUIRE(tile[i].filtered_buffer().data_as<uint32_t>()[0] == i);
     }
     REQUIRE(vfs->terminate().ok());
   }
@@ -143,9 +136,7 @@ TEST_CASE("VFS: Test read batching", "[vfs]") {
     REQUIRE(io_tp.wait_all(tasks).ok());
     tasks.clear();
     for (unsigned i = 0; i < nelts; i++) {
-      REQUIRE(
-          reinterpret_cast<uint32_t*>(tile[0].filtered_buffer().data())[i] ==
-          i);
+      REQUIRE(tile[0].filtered_buffer().data_as<uint32_t>()[i] == i);
     }
 
     // Check each element as a different region (results in several read
@@ -161,9 +152,7 @@ TEST_CASE("VFS: Test read batching", "[vfs]") {
     REQUIRE(io_tp.wait_all(tasks).ok());
     tasks.clear();
     for (unsigned i = 0; i < nelts / 2; i++) {
-      REQUIRE(
-          reinterpret_cast<uint32_t*>(tile[i].filtered_buffer().data())[0] ==
-          2 * i);
+      REQUIRE(tile[i].filtered_buffer().data_as<uint32_t>()[0] == 2 * i);
     }
 
     // Check reading first and last element (results in 2 reads because the
@@ -177,11 +166,8 @@ TEST_CASE("VFS: Test read batching", "[vfs]") {
     REQUIRE(vfs->read_all(testfile, batches, &io_tp, &tasks).ok());
     REQUIRE(io_tp.wait_all(tasks).ok());
     tasks.clear();
-    REQUIRE(
-        reinterpret_cast<uint32_t*>(tile[0].filtered_buffer().data())[0] == 0);
-    REQUIRE(
-        reinterpret_cast<uint32_t*>(tile[1].filtered_buffer().data())[0] ==
-        nelts - 1);
+    REQUIRE(tile[0].filtered_buffer().data_as<uint32_t>()[0] == 0);
+    REQUIRE(tile[1].filtered_buffer().data_as<uint32_t>()[0] == nelts - 1);
     REQUIRE(vfs->terminate().ok());
   }
 
@@ -208,9 +194,7 @@ TEST_CASE("VFS: Test read batching", "[vfs]") {
     REQUIRE(io_tp.wait_all(tasks).ok());
     tasks.clear();
     for (unsigned i = 0; i < nelts; i++) {
-      REQUIRE(
-          reinterpret_cast<uint32_t*>(tile[i].filtered_buffer().data())[0] ==
-          i);
+      REQUIRE(tile[i].filtered_buffer().data_as<uint32_t>()[0] == i);
     }
     REQUIRE(vfs->terminate().ok());
   }
@@ -238,9 +222,7 @@ TEST_CASE("VFS: Test read batching", "[vfs]") {
     REQUIRE(io_tp.wait_all(tasks).ok());
     tasks.clear();
     for (unsigned i = 0; i < nelts; i++) {
-      REQUIRE(
-          reinterpret_cast<uint32_t*>(tile[i].filtered_buffer().data())[0] ==
-          i);
+      REQUIRE(tile[i].filtered_buffer().data_as<uint32_t>()[0] == i);
     }
     REQUIRE(vfs->terminate().ok());
   }
