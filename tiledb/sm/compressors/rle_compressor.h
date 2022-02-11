@@ -86,10 +86,10 @@ class RLE {
    * repetitions in input
    * @tparam P Type of integer to store string sizes, must fit max length input
    * string
-   * @param input_buffer Input in form of a memory contiguous sequence of
-   * strings
-   * @param RLE-encoded output as a series of [run length|string size|string]
-   * items. Memory is allocated and owned by the caller
+   * @param input Input in form of a memory contiguous sequence of strings
+   * @param output RLE-encoded output as a series of [run
+   * length|string_size|string] items. Memory is allocated and owned by the
+   * caller
    */
   template <class T, class P>
   static void compress(
@@ -108,7 +108,7 @@ class RLE {
       if (input[in_index] == previous && run_length < max_run_length) {
         run_length++;
       } else {
-        // End of a run, write [run length|string size|string] to output
+        // End of a run, write [run length|string_size|string] to output
         utils::endianness::encode_be<T>(run_length, out_offset);
         out_offset += run_size;
         utils::endianness::encode_be<P>(
@@ -136,9 +136,9 @@ class RLE {
    * encoding
    * @tparam P Type of integer to store string sizes, must be the same used for
    * encoding
-   * @param input_buffer Input in [run length|string size|string] RLE format to
+   * @param input Input in [run length|string_size|string] RLE format to
    * decompress
-   * @param RLE Decoded output as a series of strings in contiguous memory.
+   * @param output Decoded output as a series of strings in contiguous memory.
    * Memory is allocated and owned by the caller
    */
   template <class T, class P>
@@ -170,10 +170,8 @@ class RLE {
   /**
    * Calculate RLE parameters prior to compressing a series of var-sized strings
    *
-   * @param input_buffer Input in form of a memory contiguous sequence of
-   * strings
-   * @param return {max_run_value, max_string_size, num_of_runs,
-   * output_strings_size}
+   * @param input Input in form of a memory contiguous sequence of strings
+   * @return {max_run_value, max_string_size, num_of_runs, output_strings_size}
    */
   static tuple<uint64_t, uint64_t, uint64_t, uint64_t>
   calculate_compression_params(const span<std::string_view> input);
