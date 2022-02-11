@@ -46,3 +46,19 @@ target_link_libraries(compile_compressors PRIVATE compressors)
 target_sources(compile_compressors PRIVATE
         test/compile_compressors_main.cc $<TARGET_OBJECTS:compressors>
 )
+
+if (TILEDB_TESTS)
+    add_executable(unit_compressors EXCLUDE_FROM_ALL)
+    target_link_libraries(unit_compressors PRIVATE compressors)
+    find_package(Catch_EP REQUIRED)
+    target_link_libraries(unit_compressors PUBLIC Catch2::Catch2)
+
+    # Sources for tests
+    target_sources(unit_compressors PUBLIC test/main.cc test/unit_dict_compressor.cc)
+
+    add_test(
+        NAME "unit_compressors"
+        COMMAND $<TARGET_FILE:unit_compressors>
+        WORKING_DIRECTORY ${CMAKE_CURRENT_SOURCE_DIR}
+    )
+endif()
