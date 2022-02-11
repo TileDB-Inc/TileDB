@@ -79,7 +79,7 @@ Status BlobArray::create([[maybe_unused]] const Config* config) {
   return Status::Ok();
 }
 
-Status BlobArray::save_from_uri(const URI& file, const Config* config) {
+Status BlobArray::to_array_from_uri(const URI& file, const Config* config) {
   try {
     if (query_type_ != QueryType::WRITE)
       return Status_BlobArrayError(
@@ -96,7 +96,7 @@ Status BlobArray::save_from_uri(const URI& file, const Config* config) {
 
     VFSFileHandle vfsfh(file, &vfs, VFSMode::VFS_READ);
 
-    RETURN_NOT_OK(save_from_vfs_fh(&vfsfh, config));
+    RETURN_NOT_OK(to_array_from_vfs_fh(&vfsfh, config));
     RETURN_NOT_OK(vfsfh.close());
     RETURN_NOT_OK(vfs.terminate());
   } catch (const std::exception& e) {
@@ -106,7 +106,7 @@ Status BlobArray::save_from_uri(const URI& file, const Config* config) {
   return Status::Ok();
 }
 
-Status BlobArray::save_from_vfs_fh(VFSFileHandle* file, const Config* config) {
+Status BlobArray::to_array_from_vfs_fh(VFSFileHandle* file, const Config* config) {
   try {
     if (query_type_ != QueryType::WRITE)
       return Status_BlobArrayError(
@@ -123,7 +123,7 @@ Status BlobArray::save_from_vfs_fh(VFSFileHandle* file, const Config* config) {
     Buffer buffer;
     buffer.realloc(size);
     RETURN_NOT_OK(file->read(0, buffer.data(), size));
-    RETURN_NOT_OK(save_from_buffer(buffer.data(), size, config));
+    RETURN_NOT_OK(to_array_from_buffer(buffer.data(), size, config));
 
     std::string uri_basename = file->uri().last_path_part();
     RETURN_NOT_OK(put_metadata(
@@ -154,7 +154,7 @@ Status BlobArray::save_from_vfs_fh(VFSFileHandle* file, const Config* config) {
   return Status::Ok();
 }
 
-Status BlobArray::save_from_buffer(
+Status BlobArray::to_array_from_buffer(
     void* data, uint64_t size, [[maybe_unused]] const Config* config) {
   try {
     if (query_type_ != QueryType::WRITE)
@@ -342,15 +342,17 @@ tdb_unique_ptr<EncryptionKey> BlobArray::get_encryption_key_from_config(
 
 const char* BlobArray::libmagic_get_mime(void* data, uint64_t size) {
   magic_t magic = magic_open(MAGIC_MIME_TYPE);
-  //TBD: windows - contradiction in return values...
-  //...have seen magic_load() return -1 indicating error, then magic_error() returning 0 indicating no error
-  //...apparent cause being that it could not find one of its .mgc databases to load
-  //try set MAGIC=<path-of-build-tree-dir>/externals/install/bin/magic.mgc
+  // NOTE: windows - contradiction in return values...
+  //...have seen magic_load() return -1 indicating error, then magic_error()
+  // returning 0 indicating no error
+  //...apparent cause being that it could not find one of its .mgc databases to
+  // load try set MAGIC=<path-of-build-tree-dir>/externals/install/bin/magic.mgc
   if (auto rval = magic_load(magic, nullptr); rval != 0) {
     auto str_rval = std::to_string(rval);
     auto err = magic_error(magic);
     LOG_STATUS(Status_BlobArrayError(
-        std::string("cannot load magic database - ") + str_rval + err)); //magic_error(magic)));
+        std::string("cannot load magic database - ") + str_rval +
+        err));
     magic_close(magic);
     return nullptr;
   }
@@ -367,7 +369,7 @@ const char* BlobArray::libmagic_get_mime_encoding(void* data, uint64_t size) {
   }
   return magic_buffer(magic, data, size);
 }
-  
+
 Status BlobArray::store_mime_type(
     const Buffer& file_metadata, uint64_t metadata_read_size) {
   const char* mime =

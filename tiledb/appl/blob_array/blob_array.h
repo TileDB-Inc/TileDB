@@ -80,7 +80,7 @@ class BlobArray : public tiledb::sm::Array {
    * @param config TileDB Config object for settings.
    * @return Status
    */
-  Status save_from_uri(const URI& file, const Config* config);
+  Status to_array_from_uri(const URI& file, const Config* config);
 
   /**
    * Read input file and store in BlobArray array
@@ -88,7 +88,7 @@ class BlobArray : public tiledb::sm::Array {
    * @param config TileDB Config object for settings.
    * @return Status
    */
-  Status save_from_vfs_fh(VFSFileHandle* file, const Config* config);
+  Status to_array_from_vfs_fh(VFSFileHandle* file, const Config* config);
   /**
    * Read input file and store in BlobArray array
    * @param data void buffer of bytes to store
@@ -96,7 +96,7 @@ class BlobArray : public tiledb::sm::Array {
    * @param config TileDB Config object for settings.
    * @return Status
    */
-  Status save_from_buffer(
+  Status to_array_from_buffer(
       void* data, uint64_t size, [[maybe_unused]] const Config* config);
 
   /**
