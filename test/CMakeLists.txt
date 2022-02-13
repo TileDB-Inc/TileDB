@@ -177,6 +177,7 @@ set(TILEDB_TEST_SOURCES
   src/unit-Tile.cc
   src/unit-TileDomain.cc
   src/unit-uri.cc
+  src/unit-ArrayDirectory.cc
   src/unit-utils.cc
   src/unit-uuid.cc
   src/unit-ValidityVector.cc

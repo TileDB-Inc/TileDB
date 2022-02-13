@@ -62,11 +62,11 @@ extern const unsigned rtree_fanout;
 /** The array schema file name. */
 extern const std::string array_schema_filename;
 
-/** The array schema folder name. */
-extern const std::string array_schema_folder_name;
+/** The array schema directory name. */
+extern const std::string array_schema_dir_name;
 
-/** The array metadata folder name. */
-extern const std::string array_metadata_folder_name;
+/** The array metadata directory name. */
+extern const std::string array_metadata_dir_name;
 
 /** The default tile capacity. */
 extern const uint64_t capacity;

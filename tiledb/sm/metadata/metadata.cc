@@ -92,7 +92,7 @@ Status Metadata::generate_uri(const URI& array_uri) {
   std::stringstream ss;
   ss << "__" << timestamp_range_.first << "_" << timestamp_range_.second << "_"
      << uuid;
-  uri_ = array_uri.join_path(constants::array_metadata_folder_name)
+  uri_ = array_uri.join_path(constants::array_metadata_dir_name)
              .join_path(ss.str());
 
   return Status::Ok();

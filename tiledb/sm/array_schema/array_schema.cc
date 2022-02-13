@@ -872,8 +872,8 @@ Status ArraySchema::generate_uri() {
   ss << "__" << timestamp_range_.first << "_" << timestamp_range_.second << "_"
      << uuid;
   name_ = ss.str();
-  uri_ = array_uri_.join_path(constants::array_schema_folder_name)
-             .join_path(name_);
+  uri_ =
+      array_uri_.join_path(constants::array_schema_dir_name).join_path(name_);
 
   return Status::Ok();
 }
@@ -888,8 +888,8 @@ Status ArraySchema::generate_uri(
   ss << "__" << timestamp_range_.first << "_" << timestamp_range_.second << "_"
      << uuid;
   name_ = ss.str();
-  uri_ = array_uri_.join_path(constants::array_schema_folder_name)
-             .join_path(name_);
+  uri_ =
+      array_uri_.join_path(constants::array_schema_dir_name).join_path(name_);
 
   return Status::Ok();
 }
