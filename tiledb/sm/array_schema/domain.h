@@ -162,7 +162,8 @@ class Domain {
    *    -  0 if the two coordinates have the same cell order
    *    - +1 if the left coordinates succeeds the right on the cell order
    */
-  int cell_order_cmp(DomainTypedDataView left, DomainTypedDataView right) const;
+  int cell_order_cmp(
+      const DomainTypedDataView& left, const DomainTypedDataView& right) const;
 
   /**
    * Populates the object members from the data in the input binary buffer.
@@ -420,7 +421,8 @@ class Domain {
    *    -  0 if the two coordinates have the same tile order
    *    - +1 if the first coordinates succeed the second on the tile order
    */
-  int tile_order_cmp(DomainTypedDataView left, DomainTypedDataView right) const;
+  int tile_order_cmp(
+      const DomainTypedDataView& left, const DomainTypedDataView& right) const;
 
   /**
    * Checks the tile order of the input coordinates for a given dimension.

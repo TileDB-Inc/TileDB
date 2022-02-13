@@ -248,7 +248,7 @@ int Domain::cell_order_cmp_2(const void* coord_a, const void* coord_b) {
 }
 
 int Domain::cell_order_cmp(
-    const DomainTypedDataView left, const DomainTypedDataView right) const {
+    const DomainTypedDataView& left, const DomainTypedDataView& right) const {
   if (cell_order_ == Layout::ROW_MAJOR) {
     for (unsigned d = 0; d < dim_num_; ++d) {
       auto dim = dimension(d);
@@ -690,7 +690,7 @@ int Domain::tile_order_cmp_impl(
 }
 
 int Domain::tile_order_cmp(
-    const DomainTypedDataView left, const DomainTypedDataView right) const {
+    const DomainTypedDataView& left, const DomainTypedDataView& right) const {
   if (tile_order_ == Layout::ROW_MAJOR) {
     for (unsigned d = 0; d < dim_num_; ++d) {
       auto dim = dimension(d);

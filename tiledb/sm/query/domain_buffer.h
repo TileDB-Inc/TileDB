@@ -91,23 +91,25 @@ class DomainBuffersView {
     return qb_.at(k);
   }
 
+  template<class X=void>
+  class InitializerQB {
+   public:
+    inline static void initialize(UntypedDatumView* item, unsigned int i, const Domain& domain, const storage_type& qb, size_t k){
+      // Construct datum in place with placement-new
+      new (item) UntypedDatumView{
+          qb[i]->dimension_datum_at(*domain.dimension(i), k).datum()};
+    }
+  };
+
   /**
    * Factory method for DomainTypedDataView. Extracts data at the index from
    * the QueryBuffer for each dimension.
    *
    * @param k Dimension index within the domain
    */
-  [[nodiscard]] inline DomainTypedDataView domain_data_at(
+  [[nodiscard]] DomainTypedDataView domain_data_at(
       const Domain& domain, size_t k) const {
-    auto n_dimensions{domain.dim_num()};
-    // DomainTypedDataView constructor allocates storage but does not initialize
-    DomainTypedDataView x{HERE(), domain, n_dimensions};
-    for (decltype(n_dimensions) i = 0; i < n_dimensions; ++i) {
-      // Construct datum in place with placement-new
-      new (&x[i]) UntypedDatumView{
-          qb_[i]->dimension_datum_at(*domain.dimension(i), k).datum()};
-    }
-    return x;
+    return DomainTypedDataView{domain, Tag<InitializerQB<int>>{}, qb_, k};
   }
 };
 
