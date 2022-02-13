@@ -2435,13 +2435,22 @@ int32_t tiledb_array_schema_load(
                 0)))
       return TILEDB_ERR;
 
-    // Load array schema
+    // For easy reference
     auto storage_manager = ctx->ctx_->storage_manager();
 
+    // Load URIs via the URI manager
+    tiledb::sm::URIManager uri_manager(
+        storage_manager, uri, 0, UINT64_MAX, true);
+    if (SAVE_ERROR_CATCH(ctx, uri_manager.load())) {
+      delete *array_schema;
+      return TILEDB_ERR;
+    }
+
+    // Load latest array schema
     if (SAVE_ERROR_CATCH(
             ctx,
             storage_manager->load_array_schema_latest(
-                uri, key, &((*array_schema)->array_schema_)))) {
+                uri_manager, key, &((*array_schema)->array_schema_)))) {
       delete *array_schema;
       return TILEDB_ERR;
     }
@@ -2514,13 +2523,22 @@ int32_t tiledb_array_schema_load_with_key(
       return TILEDB_ERR;
     }
 
-    // Load array schema
+    // For easy reference
     auto storage_manager = ctx->ctx_->storage_manager();
 
+    // Load URIs via the URI manager
+    tiledb::sm::URIManager uri_manager(
+        storage_manager, uri, 0, UINT64_MAX, true);
+    if (SAVE_ERROR_CATCH(ctx, uri_manager.load())) {
+      delete *array_schema;
+      return TILEDB_ERR;
+    }
+
+    // Load latest array schema
     if (SAVE_ERROR_CATCH(
             ctx,
             storage_manager->load_array_schema_latest(
-                uri, key, &((*array_schema)->array_schema_)))) {
+                uri_manager, key, &((*array_schema)->array_schema_)))) {
       delete *array_schema;
       *array_schema = nullptr;
       return TILEDB_ERR;
@@ -5070,10 +5088,22 @@ int32_t tiledb_array_encryption_type(
       encryption_type == nullptr)
     return TILEDB_ERR;
 
+  // For easy reference
+  auto storage_manager = ctx->ctx_->storage_manager();
+
+  // Load URIs via the URI manager
+  tiledb::sm::URIManager uri_manager(
+      storage_manager, tiledb::sm::URI(array_uri), 0, UINT64_MAX, true);
+  if (SAVE_ERROR_CATCH(ctx, uri_manager.load())) {
+    return TILEDB_ERR;
+  }
+
+  // Get encryption type
   tiledb::sm::EncryptionType enc;
   if (SAVE_ERROR_CATCH(
           ctx,
-          ctx->ctx_->storage_manager()->array_get_encryption(array_uri, &enc)))
+          ctx->ctx_->storage_manager()->array_get_encryption(
+              uri_manager, &enc)))
     return TILEDB_ERR;
 
   *encryption_type = static_cast<tiledb_encryption_type_t>(enc);
@@ -5270,10 +5300,22 @@ int32_t tiledb_array_evolve(
               0)))
     return TILEDB_ERR;
 
+  // For easy reference
+  auto storage_manager = ctx->ctx_->storage_manager();
+
+  // Load URIs via the URI manager
+  tiledb::sm::URIManager uri_manager(storage_manager, uri, 0, UINT64_MAX, true);
+  if (SAVE_ERROR_CATCH(ctx, uri_manager.load())) {
+    return TILEDB_ERR;
+  }
+
+  // Evolve schema
   if (SAVE_ERROR_CATCH(
           ctx,
           ctx->ctx_->storage_manager()->array_evolve_schema(
-              uri, array_schema_evolution->array_schema_evolution_, key)))
+              uri_manager,
+              array_schema_evolution->array_schema_evolution_,
+              key)))
     return TILEDB_ERR;
 
   // Success
@@ -5295,10 +5337,20 @@ int32_t tiledb_array_upgrade_version(
     return TILEDB_ERR;
   }
 
+  // For easy reference
+  auto storage_manager = ctx->ctx_->storage_manager();
+
+  // Load URIs via the URI manager
+  tiledb::sm::URIManager uri_manager(storage_manager, uri, 0, UINT64_MAX, true);
+  if (SAVE_ERROR_CATCH(ctx, uri_manager.load())) {
+    return TILEDB_ERR;
+  }
+
+  // Upgrade version
   if (SAVE_ERROR_CATCH(
           ctx,
           ctx->ctx_->storage_manager()->array_upgrade_version(
-              uri,
+              uri_manager,
               (config == nullptr) ? &ctx->ctx_->storage_manager()->config() :
                                     config->config_)))
     return TILEDB_ERR;

@@ -33,6 +33,7 @@
 #include "tiledb/sm/fragment/fragment_info.h"
 #include "tiledb/common/logger.h"
 #include "tiledb/sm/array/array.h"
+#include "tiledb/sm/array/uri_manager.h"
 #include "tiledb/sm/enums/encryption_type.h"
 #include "tiledb/sm/filesystem/vfs.h"
 #include "tiledb/sm/misc/parallel_functions.h"
@@ -714,7 +715,7 @@ Status FragmentInfo::get_array_schema(
   uint32_t version = single_fragment_info_vec_[fid].format_version();
   if (version >= 10) {
     schema_uri =
-        array_uri_.join_path(constants::array_schema_folder_name)
+        array_uri_.join_path(constants::array_schema_dir_name)
             .join_path(single_fragment_info_vec_[fid].array_schema_name());
   } else {
     schema_uri = array_uri_.join_path(constants::array_schema_filename);
@@ -805,10 +806,10 @@ Status FragmentInfo::load(
   }
 
   if (array_uri_.is_tiledb()) {
-    auto msg =
-        std::string(
-            "FragmentInfo not supported by TileDB Cloud Arrays; Array '") +
-        array_uri_.to_string() + "' cannot be loaded";
+    auto msg = std::string(
+                   "FragmentInfo not supported in TileDB Cloud arrays; "
+                   "FragmentInfo for array '") +
+               array_uri_.to_string() + "' cannot be loaded";
     return LOG_STATUS(Status_FragmentInfoError(msg));
   }
 
@@ -822,11 +823,16 @@ Status FragmentInfo::load(
     RETURN_NOT_OK(this->set_enc_key_from_config());
   }
 
-  // Get the array schemas and fragment metadata.
+  // Create a URIManager object and load
   auto timestamp_start = compute_anterior ? 0 : timestamp_start_;
+  URIManager uri_manager(
+      storage_manager_, array_uri_, timestamp_start, timestamp_end_);
+  RETURN_NOT_OK(uri_manager.load());
+
+  // Get the array schemas and fragment metadata.
   auto&& [st_schemas, array_schema_latest, array_schemas_all, fragment_metadata] =
       storage_manager_->load_array_schemas_and_fragment_metadata(
-          array_uri_, nullptr, enc_key_, timestamp_start, timestamp_end_);
+          uri_manager, nullptr, enc_key_);
   RETURN_NOT_OK(st_schemas);
   (void)array_schema_latest;  // Not needed here
   array_schemas_all_ = std::move(array_schemas_all.value());
@@ -885,19 +891,8 @@ Status FragmentInfo::load(
     }
   }
 
-  // TODO: don't get the fragment URIs twice, get them from
-  // get_array_schemas_and_fragment_metadata
-
-  // Clear to vacuum
-  to_vacuum_.clear();
-
   // Get the URIs to vacuum
-  std::vector<URI> vac_uris, fragment_uris;
-  URI meta_uri;
-  RETURN_NOT_OK(storage_manager_->get_fragment_uris(
-      array_uri_, &fragment_uris, &meta_uri));
-  RETURN_NOT_OK(storage_manager_->get_uris_to_vacuum(
-      fragment_uris, timestamp_start_, timestamp_end_, &to_vacuum_, &vac_uris));
+  to_vacuum_ = uri_manager.fragment_uris_to_vacuum();
 
   // Get number of unconsolidated fragment metadata
   unconsolidated_metadata_num_ = 0;

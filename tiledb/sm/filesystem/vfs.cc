@@ -814,6 +814,16 @@ Status VFS::ls(const URI& parent, std::vector<URI>* uris) const {
   if (!init_)
     return LOG_STATUS(Status_VFSError("Cannot list; VFS not initialized"));
 
+  // Noop if `parent` is not a directory, do not error out.
+  // For S3, GCS and Azure, `ls` on a non-directory will just
+  // return an empty `uris` vector.
+  if (!(parent.is_s3() || parent.is_gcs() || parent.is_azure())) {
+    bool flag = false;
+    RETURN_NOT_OK(is_dir(parent, &flag));
+    if (!flag)
+      return Status::Ok();
+  }
+
   std::vector<std::string> paths;
   if (parent.is_file()) {
 #ifdef _WIN32

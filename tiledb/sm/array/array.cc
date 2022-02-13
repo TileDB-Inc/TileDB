@@ -67,6 +67,7 @@ namespace sm {
 Array::Array(const URI& array_uri, StorageManager* storage_manager)
     : array_schema_latest_(nullptr)
     , array_uri_(array_uri)
+    , uri_manager_(storage_manager, array_uri, 0, 0)
     , array_uri_serialized_(array_uri)
     , encryption_key_(tdb::make_shared<EncryptionKey>(HERE()))
     , is_open_(false)
@@ -77,11 +78,13 @@ Array::Array(const URI& array_uri, StorageManager* storage_manager)
     , config_(storage_manager_->config())
     , remote_(array_uri.is_tiledb())
     , metadata_loaded_(false)
-    , non_empty_domain_computed_(false){};
+    , non_empty_domain_computed_(false) {
+}
 
 Array::Array(const Array& rhs)
     : array_schema_latest_(rhs.array_schema_latest_)
     , array_uri_(rhs.array_uri_)
+    , uri_manager_(rhs.uri_manager_)
     , array_uri_serialized_(rhs.array_uri_serialized_)
     , encryption_key_(rhs.encryption_key_)
     , fragment_metadata_(rhs.fragment_metadata_)
@@ -124,6 +127,10 @@ ArraySchema* Array::array_schema_latest() const {
 
 const URI& Array::array_uri() const {
   return array_uri_;
+}
+
+const URIManager& Array::uri_manager() const {
+  return uri_manager_;
 }
 
 const URI& Array::array_uri_serialized() const {
@@ -171,6 +178,9 @@ Status Array::open_without_fragments(
     RETURN_NOT_OK(rest_client->get_array_schema_from_rest(
         array_uri_, &array_schema_latest_));
   } else {
+    uri_manager_ =
+        URIManager(storage_manager_, array_uri_, 0, UINT64_MAX, true);
+    RETURN_NOT_OK(uri_manager_.load());
     auto&& [st, array_schema, array_schemas] =
         storage_manager_->array_open_for_reads_without_fragments(this);
     RETURN_NOT_OK(st);
@@ -294,6 +304,12 @@ Status Array::open(
     RETURN_NOT_OK(rest_client->get_array_schema_from_rest(
         array_uri_, &array_schema_latest_));
   } else if (query_type == QueryType::READ) {
+    uri_manager_ = std::move(URIManager(
+        storage_manager_,
+        array_uri_,
+        timestamp_start_,
+        timestamp_end_opened_at_));
+    RETURN_NOT_OK(uri_manager_.load());
     auto&& [st, array_schema, array_schemas, fragment_metadata] =
         storage_manager_->array_open_for_reads(this);
     RETURN_NOT_OK(st);
@@ -302,6 +318,12 @@ Status Array::open(
     array_schemas_all_ = array_schemas.value();
     fragment_metadata_ = fragment_metadata.value();
   } else {
+    uri_manager_ = std::move(URIManager(
+        storage_manager_,
+        array_uri_,
+        timestamp_start_,
+        timestamp_end_opened_at_));
+    RETURN_NOT_OK(uri_manager_.load());
     auto&& [st, array_schema, array_schemas] =
         storage_manager_->array_open_for_writes(this);
     RETURN_NOT_OK(st);
@@ -562,6 +584,13 @@ Status Array::reopen(uint64_t timestamp_start, uint64_t timestamp_end) {
         encryption_key_->key().size());
   }
 
+  uri_manager_ = std::move(URIManager(
+      storage_manager_,
+      array_uri_,
+      timestamp_start_,
+      timestamp_end_opened_at_));
+  RETURN_NOT_OK(uri_manager_.load());
+
   auto&& [st, array_schema, array_schemas, fragment_metadata] =
       storage_manager_->array_reopen(this);
   RETURN_NOT_OK(st);
@@ -773,8 +802,8 @@ Metadata* Array::metadata() {
 }
 
 Status Array::metadata(Metadata** metadata) {
-  // Load array metadata, if not loaded yet
-  if (!metadata_loaded_)
+  // Load array metadata for array opened for reads, if not loaded yet
+  if (query_type_ == QueryType::READ && !metadata_loaded_)
     RETURN_NOT_OK(load_metadata());
 
   *metadata = &metadata_;
@@ -938,12 +967,9 @@ Status Array::load_metadata() {
     RETURN_NOT_OK(rest_client->get_array_metadata_from_rest(
         array_uri_, timestamp_start_, timestamp_end_opened_at_, this));
   } else {
+    assert(uri_manager_.loaded());
     RETURN_NOT_OK(storage_manager_->load_array_metadata(
-        array_uri_,
-        *encryption_key_,
-        timestamp_start_,
-        timestamp_end_opened_at_,
-        &metadata_));
+        uri_manager_, *encryption_key_, &metadata_));
   }
   metadata_loaded_ = true;
   return Status::Ok();

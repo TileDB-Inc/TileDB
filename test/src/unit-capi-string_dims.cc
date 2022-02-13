@@ -207,12 +207,12 @@ int StringDimsFx::get_dir_num(const char* path, void* data) {
   int rc = tiledb_vfs_is_dir(ctx, vfs, path, &is_dir);
   CHECK(rc == TILEDB_OK);
   auto meta_dir =
-      std::string("/") + tiledb::sm::constants::array_metadata_folder_name;
+      std::string("/") + tiledb::sm::constants::array_metadata_dir_name;
   auto schema_dir =
-      std::string("/") + tiledb::sm::constants::array_schema_folder_name;
+      std::string("/") + tiledb::sm::constants::array_schema_dir_name;
   if (!tiledb::sm::utils::parse::ends_with(path, meta_dir) &&
       !tiledb::sm::utils::parse::ends_with(path, schema_dir)) {
-    // Ignoring the meta folder and the schema folder
+    // Ignoring the meta directory and the schema directory
     data_struct->num += is_dir;
   }
 

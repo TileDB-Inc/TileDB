@@ -4080,12 +4080,12 @@ int ConsolidationFx::get_dir_num(const char* path, void* data) {
   int rc = tiledb_vfs_is_dir(ctx, vfs, path, &is_dir);
   CHECK(rc == TILEDB_OK);
   auto meta_dir =
-      std::string("/") + tiledb::sm::constants::array_metadata_folder_name;
+      std::string("/") + tiledb::sm::constants::array_metadata_dir_name;
   auto schema_dir =
-      std::string("/") + tiledb::sm::constants::array_schema_folder_name;
+      std::string("/") + tiledb::sm::constants::array_schema_dir_name;
   if (!tiledb::sm::utils::parse::ends_with(path, meta_dir) &&
       !tiledb::sm::utils::parse::ends_with(path, schema_dir)) {
-    // Ignoring the meta folder and the schema folder
+    // Ignoring the meta directory and the schema directory
     data_struct->num += is_dir;
   }
 
@@ -4152,7 +4152,7 @@ void ConsolidationFx::get_array_meta_files_dense(
       ctx_,
       vfs_,
       dense_array_uri.add_trailing_slash()
-          .join_path(tiledb::sm::constants::array_metadata_folder_name)
+          .join_path(tiledb::sm::constants::array_metadata_dir_name)
           .c_str(),
       &get_array_meta_files_callback,
       &files);
@@ -4167,7 +4167,7 @@ void ConsolidationFx::get_array_meta_vac_files_dense(
       ctx_,
       vfs_,
       dense_array_uri.add_trailing_slash()
-          .join_path(tiledb::sm::constants::array_metadata_folder_name)
+          .join_path(tiledb::sm::constants::array_metadata_dir_name)
           .c_str(),
       &get_array_meta_vac_files_callback,
       &files);
@@ -5869,68 +5869,6 @@ TEST_CASE_METHOD(
     get_array_meta_files_dense(array_meta_files);
     CHECK(array_meta_files.size() == 3);
   }
-
-  // Clean up
-  remove_dense_array();
-}
-
-TEST_CASE_METHOD(
-    ConsolidationFx,
-    "C API: Test partial vacuuming and timestamps",
-    "[capi][partial][vacuuming][timestamps]") {
-  remove_dense_array();
-  create_dense_array();
-
-  write_dense_subarray();
-  std::this_thread::sleep_for(std::chrono::milliseconds(1));
-  write_dense_subarray(1, 2, 3, 4);
-  std::this_thread::sleep_for(std::chrono::milliseconds(1));
-  write_dense_subarray(1, 2, 1, 2);
-  std::this_thread::sleep_for(std::chrono::milliseconds(1));
-  write_dense_subarray(1, 2, 1, 2);
-
-  std::vector<uint64_t> fragment_timestamps;
-  auto rc = tiledb_vfs_ls(
-      ctx_,
-      vfs_,
-      DENSE_ARRAY_NAME,
-      &get_fragment_timestamps,
-      &fragment_timestamps);
-  CHECK(rc == TILEDB_OK);
-
-  consolidate_dense(
-      "fragments", fragment_timestamps[1], fragment_timestamps[3]);
-
-  std::vector<std::string> vac_files;
-  get_vac_files_dense(vac_files);
-  CHECK(vac_files.size() == 1);
-
-  vacuum_dense("fragments", fragment_timestamps[0], fragment_timestamps[0]);
-
-  get_num_struct data = {ctx_, vfs_, 0};
-  rc = tiledb_vfs_ls(ctx_, vfs_, DENSE_ARRAY_NAME, &get_dir_num, &data);
-  CHECK(rc == TILEDB_OK);
-  CHECK(data.num == 5);
-
-  vacuum_dense("fragments", fragment_timestamps[1], fragment_timestamps[1]);
-
-  data.num = 0;
-  rc = tiledb_vfs_ls(ctx_, vfs_, DENSE_ARRAY_NAME, &get_dir_num, &data);
-  CHECK(rc == TILEDB_OK);
-  CHECK(data.num == 4);
-
-  get_vac_files_dense(vac_files);
-  CHECK(vac_files.size() == 1);
-
-  vacuum_dense("fragments", fragment_timestamps[2], fragment_timestamps[3]);
-
-  data.num = 0;
-  rc = tiledb_vfs_ls(ctx_, vfs_, DENSE_ARRAY_NAME, &get_dir_num, &data);
-  CHECK(rc == TILEDB_OK);
-  CHECK(data.num == 2);
-
-  get_vac_files_dense(vac_files);
-  CHECK(vac_files.size() == 0);
 
   // Clean up
   remove_dense_array();
