@@ -10,8 +10,8 @@ diff-- git a /./ c++ / src / kj / windows -
 
     -namespace win32 {
   +namespace kj_win32_workarounds {
-    +      // Namespace containing constant definitions intended to replace
-           // constants that are defined as
+    +  // Namespace containing constant definitions intended to replace
+       // constants that are defined as
         +  // macros in the Windows headers. Do not refer to this namespace
         // directly, we'll import it into
         +               // the global scope below.
