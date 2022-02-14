@@ -65,7 +65,11 @@ if (NOT CAPNP_FOUND)
 
     if (WIN32)
       find_package(Git REQUIRED)
-      set(CONDITIONAL_PATCH cd ${CMAKE_SOURCE_DIR} && ${GIT_EXECUTABLE} apply --ignore-whitespace -p1 --unsafe-paths --verbose --directory=${TILEDB_EP_SOURCE_DIR}/ep_capnp < ${TILEDB_CMAKE_INPUTS_DIR}/patches/ep_capnp/capnp_CMakeLists.txt.patch && c:/msys64/usr/bin/cat ${TILEDB_CMAKE_INPUTS_DIR}/patches/ep_capnp/windows-sanity.h.patch && ${GIT_EXECUTABLE} apply --ignore-whitespace -p1 --unsafe-paths --verbose --directory=${TILEDB_EP_SOURCE_DIR}/ep_capnp < ${TILEDB_CMAKE_INPUTS_DIR}/patches/ep_capnp/windows-sanity.h.patch)
+      set(CONDITIONAL_PATCH 
+           cd ${CMAKE_SOURCE_DIR} && 
+           ${GIT_EXECUTABLE} apply --ignore-whitespace -p1 --unsafe-paths --verbose --directory=${TILEDB_EP_SOURCE_DIR}/ep_capnp < ${TILEDB_CMAKE_INPUTS_DIR}/patches/ep_capnp/capnp_CMakeLists.txt.patch &&
+           c:/msys64/usr/bin/cat ${TILEDB_CMAKE_INPUTS_DIR}/patches/ep_capnp/windows-sanity.h.patch && 
+           ${GIT_EXECUTABLE} apply --ignore-whitespace -p1 --unsafe-paths --verbose --directory=${TILEDB_EP_SOURCE_DIR}/ep_capnp < ${TILEDB_CMAKE_INPUTS_DIR}/patches/ep_capnp/windows-sanity.h.patch)
     else()
       set(CONDITIONAL_PATCH "")
     endif()
