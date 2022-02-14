@@ -192,7 +192,7 @@ class RLE {
     if (input.empty() || output.empty())
       return;
 
-    const uint64_t max_run_length = std::numeric_limits<T>::max();
+    const T max_run_length = std::numeric_limits<T>::max();
     uint64_t run_length = 1;
     auto out_index = 0;
     auto previous = input[0];

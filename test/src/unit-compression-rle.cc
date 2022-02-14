@@ -602,9 +602,9 @@ TEMPLATE_LIST_TEST_CASE(
     "[compression][rle][rle-num]",
     FloatingPointTypes) {
   typedef TestType T;
-  std::vector<T> uncompressed = {-1.2,
-                                 -1.2,
-                                 -1.2,
+  std::vector<T> uncompressed = {(T)-1.2,
+                                 (T)-1.2,
+                                 (T)-1.2,
                                  0,
                                  0,
                                  0,
@@ -614,10 +614,10 @@ TEMPLATE_LIST_TEST_CASE(
                                  0,
                                  0,
                                  2,
-                                 1.8,
-                                 1.8,
+                                 (T)1.8,
+                                 (T)1.8,
                                  std::numeric_limits<T>::max(),
-                                 127};
+                                 (T)127};
 
   // Compress the input array
   const auto num_of_unique_runs = 6;
@@ -626,17 +626,17 @@ TEMPLATE_LIST_TEST_CASE(
   tiledb::sm::RLE::compress<T>(uncompressed, compressed);
   CHECK(
       compressed == std::vector<T>{3,
-                                   -1.2,
+                                   (T)-1.2,
                                    8,
                                    0,
                                    1,
                                    2,
                                    2,
-                                   1.8,
+                                   (T)1.8,
                                    1,
                                    std::numeric_limits<T>::max(),
                                    1,
-                                   127});
+                                   (T)127});
 
   // Decompress the previously compressed array
   std::vector<T> decompressed(uncompressed.size());
