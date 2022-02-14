@@ -47,6 +47,7 @@
 #include "tiledb/sm/enums/query_status_details.h"
 #include "tiledb/sm/fragment/written_fragment_info.h"
 #include "tiledb/sm/query/iquery_strategy.h"
+#include "tiledb/sm/query/query_buffer.h"
 #include "tiledb/sm/query/query_condition.h"
 #include "tiledb/sm/query/validity_vector.h"
 #include "tiledb/sm/subarray/subarray.h"
@@ -58,7 +59,6 @@ namespace sm {
 
 class Array;
 class StorageManager;
-class QueryBuffer;
 
 enum class QueryStatus : uint8_t;
 enum class QueryType : uint8_t;
