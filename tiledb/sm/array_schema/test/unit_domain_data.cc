@@ -37,22 +37,82 @@ using namespace tiledb;
 using namespace tiledb::common;
 using namespace tiledb::sm;
 
+/**
+ * Null initializer takes any argument, so it's suitable for both
+ * DynamicArrayStorage and for DomainTypedDataView.
+ */
+struct NullInitializer {
+  template <class... Args>
+  inline static void initialize(Args&&...) {
+  }
+};
+
 TEST_CASE("DynamicArrayStorage::DynamicArrayStorage") {
-  DynamicArrayStorage<int> x{HERE(), 3};
+  DynamicArrayStorage<int> x{3, std::allocator<int>{}, Tag<NullInitializer>{}};
 }
 
 namespace tiledb::sm {
 class WhiteboxDomainTypedDataView : public DomainTypedDataView {
  public:
-  WhiteboxDomainTypedDataView(
-      const std::string_view& origin, const Domain& domain, size_t n)
-      : DomainTypedDataView(origin, domain, n) {
+  template <class I, class... Args>
+  WhiteboxDomainTypedDataView(const Domain& domain, Tag<I>, Args&&... args)
+      : DomainTypedDataView(domain, Tag<I>{}, std::forward<Args>(args)...) {
   }
 };
-}  // namespace tiledb::sm
 
-TEST_CASE("DomainTypedDataView::DomainTypedDataView") {
-  Domain d;
-  // Domain ignored when dimension given
-  WhiteboxDomainTypedDataView x{HERE(), d, 3};
+//-------------
+/*
+ * Substitute definitions. Some definition of Domain needs to be present to
+ * test DomainTypedDataView, or else these tests won't link.
+ */
+Status Domain::add_dimension(const Dimension*) {
+  ++dim_num_;
+  return Status::Ok();
 }
+Domain::Domain()
+    : dim_num_(0) {
+}
+unsigned int Domain::dim_num() const {
+  return dim_num_;
+}
+class Dimension {};
+//-------------
+
+TEST_CASE("DomainTypedDataView::DomainTypedDataView, null initializer") {
+  struct Initializer {
+    static inline void initialize(
+        UntypedDatumView*, unsigned int, const Domain&) {
+    }
+  };
+
+  Domain d{};
+  d.add_dimension(nullptr);
+  d.add_dimension(nullptr);
+  d.add_dimension(nullptr);
+  WhiteboxDomainTypedDataView x{d, Tag<Initializer>{}};
+  CHECK(x.size() == 3);
+}
+
+TEST_CASE("DomainTypedDataView::DomainTypedDataView, simple initializer") {
+  /*
+   * To verify that the initializer runs, we use only the size element.
+   */
+  struct Initializer {
+    static inline void initialize(
+        UntypedDatumView* item, unsigned int i, const Domain&) {
+      new (item) UntypedDatumView{nullptr, i};
+    }
+  };
+
+  Domain d{};
+  d.add_dimension(nullptr);
+  d.add_dimension(nullptr);
+  d.add_dimension(nullptr);
+  WhiteboxDomainTypedDataView x{d, Tag<Initializer>{}};
+  CHECK(x.size() == 3);
+  CHECK(x[0].size() == 0);
+  CHECK(x[1].size() == 1);
+  CHECK(x[2].size() == 2);
+}
+
+}  // namespace tiledb::sm

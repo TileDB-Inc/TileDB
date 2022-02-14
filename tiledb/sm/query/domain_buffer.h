@@ -67,7 +67,8 @@ class DomainBuffersView {
    */
   DomainBuffersView(
       const ArraySchema& schema,
-      const std::unordered_map<std::string, QueryBuffer>& buffers) : qb_(schema.dim_num()) {
+      const std::unordered_map<std::string, QueryBuffer>& buffers)
+      : qb_(schema.dim_num()) {
     auto n_dimensions{schema.dim_num()};
     for (decltype(n_dimensions) i = 0; i < n_dimensions; ++i) {
       const auto& name = schema.dimension(i)->name();
@@ -91,10 +92,14 @@ class DomainBuffersView {
     return qb_.at(k);
   }
 
-  template<class X=void>
   class InitializerQB {
    public:
-    inline static void initialize(UntypedDatumView* item, unsigned int i, const Domain& domain, const storage_type& qb, size_t k){
+    inline static void initialize(
+        UntypedDatumView* item,
+        unsigned int i,
+        const Domain& domain,
+        const storage_type& qb,
+        size_t k) {
       // Construct datum in place with placement-new
       new (item) UntypedDatumView{
           qb[i]->dimension_datum_at(*domain.dimension(i), k).datum()};
@@ -109,7 +114,7 @@ class DomainBuffersView {
    */
   [[nodiscard]] DomainTypedDataView domain_data_at(
       const Domain& domain, size_t k) const {
-    return DomainTypedDataView{domain, Tag<InitializerQB<int>>{}, qb_, k};
+    return DomainTypedDataView{domain, Tag<InitializerQB>{}, qb_, k};
   }
 };
 

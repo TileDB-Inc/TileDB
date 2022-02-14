@@ -159,6 +159,9 @@ struct is_tracing_enabled {
   constexpr static bool value = detail::global_tracing<void>::enabled::value;
 };
 
+template <class T = void>
+constexpr bool is_tracing_enabled_v = is_tracing_enabled<T>::value;
+
 namespace /* anonymous */ {
 
 /**

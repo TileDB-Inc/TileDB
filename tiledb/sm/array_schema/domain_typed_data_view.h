@@ -33,10 +33,10 @@
 #ifndef TILEDB_ARRAYSCHEMA_DOMAIN_TYPED_DATUM_VIEW_H
 #define TILEDB_ARRAYSCHEMA_DOMAIN_TYPED_DATUM_VIEW_H
 
+#include <utility>
 #include "tiledb/common/common.h"
 #include "tiledb/common/types/untyped_datum.h"
 #include "tiledb/sm/array_schema/domain.h"
-#include <utility>
 
 namespace tiledb::sm {
 /**
@@ -44,7 +44,7 @@ namespace tiledb::sm {
  *
  * @tparam T The type carried by the tag
  */
-template<class T>
+template <class T>
 struct Tag {
   using type = T;
   Tag() = default;
@@ -86,7 +86,7 @@ static_assert(!std::is_move_assignable_v<Tag<void>>);
  */
 template <class T, class Alloc = tdb::allocator<T>>
 class DynamicArrayStorage {
-  using self_type = DynamicArrayStorage<T,Alloc>;
+  using self_type = DynamicArrayStorage<T, Alloc>;
 
   /**
    * Allocator instance for type T
@@ -111,8 +111,7 @@ class DynamicArrayStorage {
   T* data_;
 
  public:
-  template<class C>
-  class NullInitializer{
+  class NullInitializer {
    public:
     inline static void initialize(T*, size_t){};
   };
@@ -128,13 +127,13 @@ class DynamicArrayStorage {
    *
    * Postcondition: data_ is non-null.
    */
-  template <class SizeT, template<class> class I, class X, class... Args>
-  DynamicArrayStorage(SizeT n, const Alloc& a, Tag<I<X>>, Args&&... args)
+  template <class SizeT, class I, class... Args>
+  DynamicArrayStorage(SizeT n, const Alloc& a, Tag<I>, Args&&... args)
       : a_(a)
       , size_(n)
       , data_(a_.allocate(size_)) {
     for (SizeT i = 0; i < n; ++i) {
-      I<self_type>::initialize(&data_[i], i, std::forward<Args>(args)...);
+      I::initialize(&data_[i], i, std::forward<Args>(args)...);
     }
   }
 
@@ -169,7 +168,9 @@ class DynamicArrayStorage {
    * Move construction has transfer semantics.
    */
   DynamicArrayStorage(DynamicArrayStorage&& x) noexcept
-    : a_(x.a_), size_(x.size_), data_(x.data_) {
+      : a_(x.a_)
+      , size_(x.size_)
+      , data_(x.data_) {
     x.data_ = nullptr;
   }
 
@@ -216,7 +217,7 @@ class DynamicArrayStorage {
  * Non-member swap function for std::swap to use.
  */
 template <class T, class A>
-inline void swap(DynamicArrayStorage<T,A>& a, DynamicArrayStorage<T,A>& b) {
+inline void swap(DynamicArrayStorage<T, A>& a, DynamicArrayStorage<T, A>& b) {
   a.swap(b);
 }
 
@@ -231,8 +232,10 @@ inline void swap(DynamicArrayStorage<T,A>& a, DynamicArrayStorage<T,A>& b) {
  * [Note: See https://github.com/doxygen/doxygen/issues/6926 for why the
  * unnamed argument cannot yet have documentation.]
  */
-//template<class T, template<class> class I = DynamicArrayStorageNullInitializer, class X, std::enable_if_t<!, int> = 0>
-//inline DynamicArrayStorage<T, tdb::allocator<T>> MakeDynamicArrayStorage(X, size_t n) {
+// template<class T, template<class> class I =
+// DynamicArrayStorageNullInitializer, class X, std::enable_if_t<!, int> = 0>
+// inline DynamicArrayStorage<T, tdb::allocator<T>> MakeDynamicArrayStorage(X,
+// size_t n) {
 //  return DynamicArrayStorage<T,tdb::allocator<T>, I>(n, tdb::allocator<T>());
 //}
 
@@ -244,9 +247,11 @@ inline void swap(DynamicArrayStorage<T,A>& a, DynamicArrayStorage<T,A>& b) {
  * @tparam
  * @param n The number of elements in the array
  */
-//template<class T, std::enable_if_t<tdb::is_tracing_enabled<T>::value, int> = 0>
-//inline DynamicArrayStorage<T, tdb::allocator<T>> MakeDynamicArrayStorage(TracingLabel origin, size_t n) {
-//  return DynamicArrayStorage<T,tdb::allocator<T>>(n, tdb::allocator<T>(origin));
+// template<class T, std::enable_if_t<tdb::is_tracing_enabled<T>::value, int> =
+// 0> inline DynamicArrayStorage<T, tdb::allocator<T>>
+// MakeDynamicArrayStorage(TracingLabel origin, size_t n) {
+//  return DynamicArrayStorage<T,tdb::allocator<T>>(n,
+//  tdb::allocator<T>(origin));
 //}
 
 /**
@@ -257,9 +262,11 @@ inline void swap(DynamicArrayStorage<T,A>& a, DynamicArrayStorage<T,A>& b) {
  * @tparam
  * @param n The number of elements in the array
  */
-//template<class T, std::enable_if_t<tdb::is_tracing_enabled<T>::value, int> = 0>
-//inline DynamicArrayStorage<T, tdb::allocator<T>> MakeDynamicArrayStorage(const std::string_view& origin, size_t n) {
-//  return DynamicArrayStorage<T,tdb::allocator<T>>(n, tdb::allocator<T>(TracingLabel(origin)));
+// template<class T, std::enable_if_t<tdb::is_tracing_enabled<T>::value, int> =
+// 0> inline DynamicArrayStorage<T, tdb::allocator<T>>
+// MakeDynamicArrayStorage(const std::string_view& origin, size_t n) {
+//  return DynamicArrayStorage<T,tdb::allocator<T>>(n,
+//  tdb::allocator<T>(TracingLabel(origin)));
 //}
 
 /**
@@ -270,13 +277,18 @@ inline void swap(DynamicArrayStorage<T,A>& a, DynamicArrayStorage<T,A>& b) {
  * @tparam
  * @param n The number of elements in the array
  */
-template<class T, template<class> class I, class... Args, int m>
-inline DynamicArrayStorage<T, tdb::allocator<T>> MakeDynamicArrayStorage([[maybe_unused]] const char (&origin)[m], unsigned int n, Tag<I<int>>, Args&&... args) {
-  if constexpr (tdb::is_tracing_enabled<T>::value) {
+template <class T, class I, class... Args, int m>
+inline DynamicArrayStorage<T, tdb::allocator<T>> MakeDynamicArrayStorage(
+    [[maybe_unused]] const char (&origin)[m],
+    unsigned int n,
+    Tag<I>,
+    Args&&... args) {
+  if constexpr (tdb::is_tracing_enabled_v<>) {
     return DynamicArrayStorage<T, tdb::allocator<T>>(n),
            tdb::allocator<T>(std::string_view(origin, m - 1));
   } else {
-    return DynamicArrayStorage<T, tdb::allocator<T>>{n, tdb::allocator<T>(), Tag<I<void>>{}, std::forward<Args>(args)...};
+    return DynamicArrayStorage<T, tdb::allocator<T>>{
+        n, tdb::allocator<T>(), Tag<I>{}, std::forward<Args>(args)...};
   }
 }
 
@@ -354,18 +366,14 @@ class DomainTypedDataView {
    * @param origin Source code origin of a call to this function
    * @param n The number of dimensions in the associated Domain
    */
-  template<template<class> class I, class... Args>
-  DomainTypedDataView(const Domain& domain, Tag<I<int>>, Args&&... args)
-      : array_(MakeDynamicArrayStorage<view_type, I>(HERE(), static_cast<size_t>(domain.dim_num()), Tag<I<int>>{}, domain, std::forward<Args>(args)...)) {
-  }
-
-  /**
-   * Non-constant index operator only available to factory friend functions.
-   * @param k Index
-   * @return
-   */
-  [[nodiscard]] inline view_type& operator[](size_t k) {
-    return array_.data()[k];
+  template <class I, class... Args>
+  DomainTypedDataView(const Domain& domain, Tag<I>, Args&&... args)
+      : array_(MakeDynamicArrayStorage<view_type, I>(
+            HERE(),
+            static_cast<size_t>(domain.dim_num()),
+            Tag<I>{},
+            domain,
+            std::forward<Args>(args)...)) {
   }
 
  public:
@@ -379,24 +387,24 @@ class DomainTypedDataView {
    */
   DomainTypedDataView() = delete;
 
-  ~DomainTypedDataView() {
-      (void) 1;
-  }
+  /**
+   * Default destructor does not call destructors on its contents.
+   */
+  ~DomainTypedDataView() = default;
 
   /**
    * Move construction has transfer semantics.
    */
   DomainTypedDataView(DomainTypedDataView&& x) noexcept
-  : array_(move(x.array_))
-  {}
+      : array_(move(x.array_)) {
+  }
 
   /**
    * Move assignment has exchange semantics.
    * @param x
    * @return
    */
-  DomainTypedDataView& operator=(DomainTypedDataView&& x) noexcept
-  {
+  DomainTypedDataView& operator=(DomainTypedDataView&& x) noexcept {
     swap(x);
     return *this;
   }
@@ -411,6 +419,10 @@ class DomainTypedDataView {
 
   [[nodiscard]] inline const view_type* data() const noexcept {
     return array_.data();
+  }
+
+  [[nodiscard]] inline view_type& operator[](size_t k) noexcept {
+    return array_.data()[k];
   }
 
   [[nodiscard]] inline const view_type& operator[](size_t k) const noexcept {
