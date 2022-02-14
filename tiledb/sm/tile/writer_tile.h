@@ -52,6 +52,14 @@ class WriterTile : public Tile {
 
   WriterTile();
 
+  /** Move constructor. */
+  WriterTile(WriterTile&& tile);
+
+  /** Move-assign operator. */
+  WriterTile& operator=(WriterTile&& tile);
+
+  DISABLE_COPY_AND_COPY_ASSIGN(WriterTile);
+
   /* ********************************* */
   /*                API                */
   /* ********************************* */
@@ -110,16 +118,27 @@ class WriterTile : public Tile {
                     uint64_t,
                     const ByteVec*,
                     uint64_t>& md);
+  /**
+   * Write method used for var data. Resizes the internal buffer if needed.
+   *
+   * @param data Pointer to the data to write.
+   * @param offset Offset to write into the tile buffer.
+   * @param nbytes Number of bytes to write.
+   * @return Status.
+   */
+  Status write_var(const void* data, uint64_t offset, uint64_t nbytes);
 
   /**
-   * Returns a shallow or deep copy of this WriterTile.
+   * Sets the final size of a written tile.
    *
-   * @param deep_copy If true, a deep copy is performed, including potentially
-   *    memcpying the underlying Buffer. If false, a shallow copy is performed,
-   *    which sets the clone's Buffer equal to WriterTile's buffer pointer.
-   * @return New WriterTile
+   * @param size Final size.
    */
-  WriterTile clone(bool deep_copy) const;
+  inline void final_size(uint64_t size) {
+    size_ = size;
+  }
+
+  /** Swaps the contents (all field values) of this tile with the given tile. */
+  void swap(WriterTile& tile);
 
  private:
   /* ********************************* */

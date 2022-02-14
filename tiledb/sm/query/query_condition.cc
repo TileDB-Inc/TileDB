@@ -455,7 +455,7 @@ std::vector<ResultCellSlab> QueryCondition::apply_clause(
 
       if (nullable) {
         const auto& tile_validity = std::get<2>(*tile_tuple);
-        buffer_validity = static_cast<uint8_t*>(tile_validity.buffer()->data());
+        buffer_validity = static_cast<uint8_t*>(tile_validity.data());
       }
 
       // Start the pending result cell slab at the start position
@@ -465,12 +465,12 @@ std::vector<ResultCellSlab> QueryCondition::apply_clause(
 
       if (var_size) {
         const auto& tile = std::get<1>(*tile_tuple);
-        const char* buffer = static_cast<char*>(tile.buffer()->data());
+        const char* buffer = static_cast<char*>(tile.data());
         const uint64_t buffer_size = tile.size();
 
         const auto& tile_offsets = std::get<0>(*tile_tuple);
         const uint64_t* buffer_offsets =
-            static_cast<uint64_t*>(tile_offsets.buffer()->data());
+            static_cast<uint64_t*>(tile_offsets.data());
         const uint64_t buffer_offsets_el =
             tile_offsets.size() / constants::cell_var_offset_size;
 
@@ -505,7 +505,7 @@ std::vector<ResultCellSlab> QueryCondition::apply_clause(
         }
       } else {
         const auto& tile = std::get<0>(*tile_tuple);
-        const char* buffer = static_cast<char*>(tile.buffer()->data());
+        const char* buffer = static_cast<char*>(tile.data());
         const uint64_t cell_size = tile.cell_size();
         uint64_t buffer_offset = start * cell_size;
         const uint64_t buffer_offset_inc = stride * cell_size;
@@ -719,12 +719,12 @@ void QueryCondition::apply_clause_dense(
   if (var_size) {
     // Get var data buffer and tile offsets buffer.
     const auto& tile = std::get<1>(*tile_tuple);
-    const char* buffer = static_cast<char*>(tile.buffer()->data());
+    const char* buffer = static_cast<char*>(tile.data());
     const uint64_t buffer_size = tile.size();
 
     const auto& tile_offsets = std::get<0>(*tile_tuple);
     const uint64_t* buffer_offsets =
-        static_cast<uint64_t*>(tile_offsets.buffer()->data()) + src_cell;
+        static_cast<uint64_t*>(tile_offsets.data()) + src_cell;
     const uint64_t buffer_offsets_el =
         tile_offsets.size() / constants::cell_var_offset_size;
 
@@ -758,7 +758,7 @@ void QueryCondition::apply_clause_dense(
   } else {
     // Get the fixed size data buffers.
     const auto& tile = std::get<0>(*tile_tuple);
-    const char* buffer = static_cast<char*>(tile.buffer()->data());
+    const char* buffer = static_cast<char*>(tile.data());
     const uint64_t cell_size = tile.cell_size();
     uint64_t buffer_offset = (start + src_cell) * cell_size;
     const uint64_t buffer_offset_inc = stride * cell_size;
@@ -892,7 +892,7 @@ Status QueryCondition::apply_clause_dense(
     const auto tile_tuple = result_tile->tile_tuple(clause.field_name_);
     const auto& tile_validity = std::get<2>(*tile_tuple);
     const auto buffer_validity =
-        static_cast<uint8_t*>(tile_validity.buffer()->data()) + src_cell;
+        static_cast<uint8_t*>(tile_validity.data()) + src_cell;
     ;
 
     // Null values can only be specified for equality operators.
@@ -1266,12 +1266,12 @@ void QueryCondition::apply_clause_sparse(
   if (var_size) {
     // Get var data buffer and tile offsets buffer.
     const auto& tile = std::get<1>(*tile_tuple);
-    const char* buffer = static_cast<char*>(tile.buffer()->data());
+    const char* buffer = static_cast<char*>(tile.data());
     const uint64_t buffer_size = tile.size();
 
     const auto& tile_offsets = std::get<0>(*tile_tuple);
     const uint64_t* buffer_offsets =
-        static_cast<uint64_t*>(tile_offsets.buffer()->data());
+        static_cast<uint64_t*>(tile_offsets.data());
     const uint64_t buffer_offsets_el =
         tile_offsets.size() / constants::cell_var_offset_size;
 
@@ -1303,7 +1303,7 @@ void QueryCondition::apply_clause_sparse(
   } else {
     // Get the fixed size data buffers.
     const auto& tile = std::get<0>(*tile_tuple);
-    const char* buffer = static_cast<char*>(tile.buffer()->data());
+    const char* buffer = static_cast<char*>(tile.data());
     const uint64_t cell_size = tile.cell_size();
     const uint64_t buffer_el = tile.size() / cell_size;
 
@@ -1387,8 +1387,7 @@ Status QueryCondition::apply_clause_sparse(
   if (nullable) {
     const auto tile_tuple = result_tile.tile_tuple(clause.field_name_);
     const auto& tile_validity = std::get<2>(*tile_tuple);
-    const auto buffer_validity =
-        static_cast<uint8_t*>(tile_validity.buffer()->data());
+    const auto buffer_validity = static_cast<uint8_t*>(tile_validity.data());
 
     // Null values can only be specified for equality operators.
     if (clause.condition_value_ == nullptr) {

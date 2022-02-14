@@ -43,6 +43,7 @@
 #include "tiledb/sm/query/query_buffer.h"
 #include "tiledb/sm/stats/stats.h"
 #include "tiledb/sm/subarray/subarray.h"
+#include "tiledb/sm/tile/writer_tile.h"
 
 using namespace tiledb::common;
 
@@ -172,7 +173,7 @@ class DenseTiler {
    *     be preallocated and initialized before passed to the function.
    * @return Status
    */
-  Status get_tile(uint64_t id, const std::string& name, Tile* tile);
+  Status get_tile(uint64_t id, const std::string& name, WriterTile* tile);
 
   /**
    * Retrieves the validity tile with the input id and for the input
@@ -185,7 +186,8 @@ class DenseTiler {
    *     be preallocated and initialized before passed to the function.
    * @return Status
    */
-  Status get_tile_null(uint64_t id, const std::string& name, Tile* tile) const;
+  Status get_tile_null(
+      uint64_t id, const std::string& name, WriterTile* tile) const;
 
   /**
    * Retrieves the var-sized tile with the input id and for the input
@@ -203,8 +205,8 @@ class DenseTiler {
   Status get_tile_var(
       uint64_t id,
       const std::string& name,
-      Tile* tile_off,
-      Tile* tile_var) const;
+      WriterTile* tile_off,
+      WriterTile* tile_var) const;
 
   /**
    * Returns the number of tiles to be created. This is equal
@@ -349,7 +351,7 @@ class DenseTiler {
    * @return Status
    */
   Status copy_tile(
-      uint64_t id, uint64_t cell_size, uint8_t* buff, Tile* tile) const;
+      uint64_t id, uint64_t cell_size, uint8_t* buff, WriterTile* tile) const;
 };
 
 }  // namespace sm

@@ -83,24 +83,23 @@ class ResultTile {
    */
   ResultTile(unsigned frag_idx, uint64_t tile_idx, const ArraySchema* schema);
 
+  DISABLE_COPY_AND_COPY_ASSIGN(ResultTile);
+
   /** Default destructor. */
   ~ResultTile() = default;
 
-  /** Default copy constructor. */
-  ResultTile(const ResultTile&) = default;
+  /** Move constructor. */
+  ResultTile(ResultTile&& tile);
 
-  /** Default move constructor. */
-  ResultTile(ResultTile&&) = default;
+  /** Move-assign operator. */
+  ResultTile& operator=(ResultTile&& tile);
+
+  /** Swaps the contents (all field values) of this tile with the given tile. */
+  void swap(ResultTile& tile);
 
   /* ********************************* */
   /*                API                */
   /* ********************************* */
-
-  /** Default copy-assign operator. */
-  ResultTile& operator=(const ResultTile&) = default;
-
-  /** Default move-assign operator. */
-  ResultTile& operator=(ResultTile&&) = default;
 
   /** Equality operator (mainly for debugging purposes). */
   bool operator==(const ResultTile& rt) const;

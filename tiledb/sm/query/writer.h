@@ -70,15 +70,22 @@ class Writer : public StrategyBase, public IQueryStrategy {
   struct GlobalWriteState {
     /**
      * Stores the last tile of each attribute/dimension for each write
-     * operation. For fixed-sized attributes/dimensions, the second tile is
-     * ignored. For var-sized attributes/dimensions, the first tile is the
-     * offsets tile, whereas the second tile is the values tile. In both cases,
-     * the third tile stores a validity tile for nullable attributes.
+     * operation. The key is the attribute/dimension name. For fixed-sized
+     * attributes/dimensions, the second tile is ignored. For var-sized
+     * attributes/dimensions, the first tile is the offsets tile, whereas the
+     * second tile is the values tile. In both cases, the third tile stores a
+     * validity tile for nullable attributes.
      */
-    std::unordered_map<
-        std::string,
-        std::tuple<WriterTile, WriterTile, WriterTile>>
-        last_tiles_;
+    std::unordered_map<std::string, std::vector<WriterTile>> last_tiles_;
+
+    /**
+     * Stores the last offset into the var size tile buffer for var size
+     * dimensions/attributes. The key is the attribute/dimension name.
+     *
+     * Note: Once tiles are created with the correct size from the beginning,
+     * this variable can go awaty.
+     */
+    std::unordered_map<std::string, uint64_t> last_var_offsets_;
 
     /**
      * Stores the number of cells written for each attribute/dimension across
@@ -380,8 +387,7 @@ class Writer : public StrategyBase, public IQueryStrategy {
    * Applicable only to global writes. Filters the last attribute and
    * coordinate tiles.
    */
-  Status filter_last_tiles(
-      std::unordered_map<std::string, std::vector<WriterTile>>* tiles);
+  Status filter_last_tiles(uint64_t cell_num);
 
   /**
    * Runs the input tiles for the input attribute through the filter pipeline.
@@ -743,145 +749,6 @@ class Writer : public StrategyBase, public IQueryStrategy {
   Status unordered_write();
 
   /**
-   * Writes an empty cell range to the input tile.
-   * Applicable to **fixed-sized** attributes.
-   *
-   * @param cell_num Number of empty cells to write.
-   * @param cell_val_num Number of values per cell.
-   * @param tile The tile to write to.
-   * @return Status
-   */
-  Status write_empty_cell_range_to_tile(
-      uint64_t num, uint32_t cell_val_num, WriterTile* tile) const;
-
-  /**
-   * Writes an empty cell range to the input tile.
-   * Applicable to **fixed-sized** attributes.
-   *
-   * @param cell_num Number of empty cells to write.
-   * @param cell_val_num Number of values per cell.
-   * @param tile The tile to write to.
-   * @param tile_validity The tile with the validity cells to write to.
-   * @return Status
-   */
-  Status write_empty_cell_range_to_tile_nullable(
-      uint64_t num,
-      uint32_t cell_val_num,
-      WriterTile* tile,
-      WriterTile* tile_validity) const;
-
-  /**
-   * Writes an empty cell range to the input tile.
-   * Applicable to **variable-sized** attributes.
-   *
-   * @param num Number of empty values to write.
-   * @param tile The tile offsets to write to.
-   * @param tile_var The tile with the var-sized cells to write to.
-   * @return Status
-   */
-  Status write_empty_cell_range_to_tile_var(
-      uint64_t num, WriterTile* tile, WriterTile* tile_var) const;
-
-  /**
-   * Writes an empty cell range to the input tile.
-   * Applicable to **variable-sized** attributes.
-   *
-   * @param num Number of empty values to write.
-   * @param tile The tile offsets to write to.
-   * @param tile_var The tile with the var-sized cells to write to.
-   * @param tile_validity The tile with the validity cells to write to.
-   * @return Status
-   */
-  Status write_empty_cell_range_to_tile_var_nullable(
-      uint64_t num,
-      WriterTile* tile,
-      WriterTile* tile_var,
-      WriterTile* tile_validity) const;
-
-  /**
-   * Writes the input cell range to the input tile, for a particular
-   * buffer. Applicable to **fixed-sized** attributes.
-   *
-   * @param buff The write buffer where the cells will be copied from.
-   * @param start The start element in the write buffer.
-   * @param end The end element in the write buffer.
-   * @param tile The tile to write to.
-   * @return Status
-   */
-  Status write_cell_range_to_tile(
-      ConstBuffer* buff, uint64_t start, uint64_t end, WriterTile* tile) const;
-
-  /**
-   * Writes the input cell range to the input tile, for a particular
-   * buffer. Applicable to **fixed-sized** attributes.
-   *
-   * @param buff The write buffer where the cells will be copied from.
-   * @param buff_validity The write buffer where the validity cell values will
-   * be copied from.
-   * @param start The start element in the write buffer.
-   * @param end The end element in the write buffer.
-   * @param tile The tile to write to.
-   * @param tile_validity The validity tile to be initialized.
-   * @return Status
-   */
-  Status write_cell_range_to_tile_nullable(
-      ConstBuffer* buff,
-      ConstBuffer* buff_validity,
-      uint64_t start,
-      uint64_t end,
-      WriterTile* tile,
-      WriterTile* tile_validity) const;
-
-  /**
-   * Writes the input cell range to the input tile, for a particular
-   * buffer. Applicable to **variable-sized** attributes.
-   *
-   * @param buff The write buffer where the cell offsets will be copied from.
-   * @param buff_var The write buffer where the cell values will be copied from.
-   * @param start The start element in the write buffer.
-   * @param end The end element in the write buffer.
-   * @param attr_datatype_size The size of each attribute value in `buff_var`.
-   * @param tile The tile offsets to write to.
-   * @param tile_var The tile with the var-sized cells to write to.
-   * @return Status
-   */
-  Status write_cell_range_to_tile_var(
-      ConstBuffer* buff,
-      ConstBuffer* buff_var,
-      uint64_t start,
-      uint64_t end,
-      uint64_t attr_datatype_size,
-      WriterTile* tile,
-      WriterTile* tile_var) const;
-
-  /**
-   * Writes the input cell range to the input tile, for a particular
-   * buffer. Applicable to **variable-sized**, nullable attributes.
-   *
-   * @param buff The write buffer where the cell offsets will be copied from.
-   * @param buff_var The write buffer where the cell values will be copied from.
-   * @param buff_validity The write buffer where the validity cell values will
-   * be copied from.
-   * @param start The start element in the write buffer.
-   * @param end The end element in the write buffer.
-   * @param attr_datatype_size The size of each attribute value in `buff_var`.
-   * @param tile The tile offsets to write to.
-   * @param tile_var The tile with the var-sized cells to write to.
-   * @param tile_validity The validity tile to be initialized.
-   * @return Status
-   */
-  Status write_cell_range_to_tile_var_nullable(
-      ConstBuffer* buff,
-      ConstBuffer* buff_var,
-      ConstBuffer* buff_validity,
-      uint64_t start,
-      uint64_t end,
-      uint64_t attr_datatype_size,
-      WriterTile* tile,
-      WriterTile* tile_var,
-      WriterTile* tile_validity) const;
-
-  /**
    * Writes all the input tiles to storage.
    *
    * @param tiles Attribute/Coordinate tiles to be written, one element per
@@ -941,12 +808,6 @@ class Writer : public StrategyBase, public IQueryStrategy {
    * resets the global write state.
    */
   void clean_up(const URI& uri);
-
-  /**
-   * Applicable only to global writes. Returns true if all last tiles stored
-   * in the global write state are empty.
-   */
-  bool all_last_tiles_empty() const;
 
   /** Calculates the hilbert values of the input coordinate buffers. */
   Status calculate_hilbert_values(

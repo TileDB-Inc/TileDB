@@ -64,6 +64,23 @@ class ResultTileWithBitmap : public ResultTile {
       , coords_loaded_(false) {
   }
 
+  /** Move constructor. */
+  ResultTileWithBitmap(ResultTileWithBitmap<BitmapType>&& other) noexcept {
+    // Swap with the argument
+    swap(other);
+  }
+
+  /** Move-assign operator. */
+  ResultTileWithBitmap<BitmapType>& operator=(
+      ResultTileWithBitmap<BitmapType>&& other) {
+    // Swap with the argument
+    swap(other);
+
+    return *this;
+  }
+
+  DISABLE_COPY_AND_COPY_ASSIGN(ResultTileWithBitmap);
+
   /* ********************************* */
   /*          PUBLIC METHODS           */
   /* ********************************* */
@@ -113,6 +130,15 @@ class ResultTileWithBitmap : public ResultTile {
     }
 
     return bitmap_.size() - 1;
+  }
+
+  /** Swaps the contents (all field values) of this tile with the given tile. */
+  void swap(ResultTileWithBitmap<BitmapType>& tile) {
+    ResultTile::swap(tile);
+    std::swap(bitmap_, tile.bitmap_);
+    std::swap(bitmap_result_num_, tile.bitmap_result_num_);
+    std::swap(coords_loaded_, tile.coords_loaded_);
+    std::swap(hilbert_values_, tile.hilbert_values_);
   }
 
   /* ********************************* */

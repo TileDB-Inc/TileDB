@@ -480,13 +480,12 @@ Status Consolidator::consolidate_fragment_meta(
   // Write to file
   EncryptionKey enc_key;
   RETURN_NOT_OK(enc_key.set_key(encryption_type, encryption_key, key_length));
-  buff.reset_offset();
   Tile tile(
       constants::generic_tile_datatype,
       constants::generic_tile_cell_size,
       0,
-      &buff,
-      false);
+      buff.data(),
+      buff.size());
   buff.disown_data();
   GenericTileIO tile_io(storage_manager_, uri);
   uint64_t nbytes = 0;
