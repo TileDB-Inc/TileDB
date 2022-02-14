@@ -33,9 +33,13 @@
 #ifndef TILEDB_SERIALIZATION_ARRAY_H
 #define TILEDB_SERIALIZATION_ARRAY_H
 
+// clang-format off
 #ifdef TILEDB_SERIALIZATION
+#include <capnp/message.h>
+#include <capnp/serialize.h>
 #include "tiledb/sm/serialization/capnp_utils.h"
 #endif
+// clang-format on
 
 #include "tiledb/sm/array/array.h"
 #include "tiledb/sm/buffer/buffer.h"
