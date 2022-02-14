@@ -35,6 +35,7 @@
 #include "../dict_compressor.h"
 
 #include <cstring>
+#include <iterator>
 #include <sstream>
 
 using namespace tiledb::common;
