@@ -177,12 +177,11 @@ class RLE {
   static tuple<uint64_t, uint64_t, uint64_t, uint64_t>
   calculate_compression_params(const span<std::string_view> input);
 
-  // TODO Add UTs for the new compress/decompress functions
-
   /**
    * Compress numbers in contiguous memory to RLE format
    *
-   * @tparam T Type of integer to store run legths, must fit max num of
+   * @tparam T Type of integer in input
+   * @tparam P Type of integer to store run legths, must fit max num of
    * repetitions in input
    * @param input Input in form of a memory contiguous sequence of numbers
    * @param output RLE-encoded as a series of [run length|value] items. Memory
@@ -194,7 +193,7 @@ class RLE {
       return;
 
     const uint64_t max_run_length = std::numeric_limits<T>::max();
-    T run_length = 1;
+    uint64_t run_length = 1;
     auto out_index = 0;
     auto previous = input[0];
     for (uint64_t in_index = 1; in_index < input.size(); in_index++) {
@@ -217,7 +216,8 @@ class RLE {
   /**
    * Decompress strings encoded in RLE format
    *
-   * @tparam T Type of integer to store run legths, must be the same used for
+   * @tparam T Type of integer in input
+   * @tparam P Type of integer to store run legths, must be the same used for
    * encoding
    * @param input Input in [run length|value] RLE format to decompress
    * @param output Decoded output as a series of values in contiguous memory.
@@ -228,7 +228,7 @@ class RLE {
     if (input.empty() || output.empty())
       return;
 
-    T run_length = 0;
+    uint64_t run_length = 0;
     uint64_t out_index = 0;
     // Iterate input to read [run length|string size|string] items
     uint64_t in_index = 0;

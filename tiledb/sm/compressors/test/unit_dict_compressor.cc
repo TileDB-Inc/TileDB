@@ -57,7 +57,7 @@ std::string random_string(const uint64_t l) {
 
 TEST_CASE(
     "Compression-Dictionary: Test compression with repetitive words in input",
-    "[compression][compression-dict][dict]") {
+    "[compression][dict]") {
   std::string str1 = "HG543232";
   std::string str2 = "HG54";
   std::string str3 = "A";
@@ -66,48 +66,16 @@ TEST_CASE(
       str1, str1, str1, str2, str2, str3, str1, str2};
 
   std::vector<std::string_view> exp_dict{str1, str2, str3};
-  // the default mode
-  bool use_rle = false;
-  std::vector<std::string_view> dict;
-  std::vector<uint8_t> compressed;
 
-  SECTION("Default case (RLE disabled)") {
-    // Allocate the compressed array - we know the size will be equal to input
-    compressed.resize(num_of_strings);
-    dict =
-        tiledb::sm::DictEncoding::compress<uint8_t>(uncompressed, compressed);
-    CHECK(dict.size() == exp_dict.size());
-    CHECK(dict == exp_dict);
+  // Allocate the compressed array - we know the size will be equal to input
+  std::vector<uint8_t> compressed(num_of_strings);
+  auto dict =
+      tiledb::sm::DictEncoding::compress<uint8_t>(uncompressed, compressed);
+  CHECK(dict.size() == exp_dict.size());
+  CHECK(dict == exp_dict);
 
-    std::vector<uint8_t> exp_compressed{0, 0, 0, 1, 1, 2, 0, 1};
-    CHECK(exp_compressed == compressed);
-  }
-
-  SECTION("RLE on output enabled") {
-    use_rle = true;
-
-    // Allocate the compressed array
-    // TBD: we are allocating for the worst case, then resizing. Can we do
-    // better?
-    compressed.resize(num_of_strings * 2);
-
-    dict = tiledb::sm::DictEncoding::compress<uint8_t>(
-        uncompressed, compressed, use_rle);
-    CHECK(dict.size() == exp_dict.size());
-    CHECK(dict == exp_dict);
-
-    // TBD: we need to resize to the actual part that was used
-    uint64_t i = 0, compressed_size = 0;
-    while (compressed[i] != 0) {
-      compressed_size += 2;
-      i += 2;
-    }
-    compressed.resize(compressed_size);
-
-    std::vector<uint8_t> exp_compressed{3, 0, 2, 1, 1, 2, 1, 0, 1, 1};
-    CHECK(exp_compressed == compressed);
-  }
-
+  std::vector<uint8_t> exp_compressed{0, 0, 0, 1, 1, 2, 0, 1};
+  CHECK(exp_compressed == compressed);
   // Decompress the previously compressed array
   const char* exp_decompressed =
       "HG543232"
@@ -120,8 +88,7 @@ TEST_CASE(
       "HG54";
   const auto exp_decomp_size = strlen(exp_decompressed);
   std::vector<std::byte> decompressed(exp_decomp_size);
-  tiledb::sm::DictEncoding::decompress<uint8_t>(
-      compressed, dict, decompressed, use_rle);
+  tiledb::sm::DictEncoding::decompress<uint8_t>(compressed, dict, decompressed);
 
   // In decompressed array there are only chars, so compare using memcpy
   CHECK(
@@ -135,7 +102,7 @@ typedef tuple<uint16_t, uint32_t, uint64_t> FixedTypesUnderTest;
 TEMPLATE_LIST_TEST_CASE(
     "Compression-Dictionary: Test compression of single string repeated many "
     "times",
-    "[compression][compression-dict][dict]",
+    "[compression][dict]",
     FixedTypesUnderTest) {
   typedef TestType T;
   // pick values of at least 2 bytes
@@ -151,45 +118,15 @@ TEMPLATE_LIST_TEST_CASE(
     uncompressed.emplace_back(str);
   }
 
-  bool use_rle = false;
-  std::vector<std::string_view> dict;
-  std::vector<T> compressed;
+  // Allocate the compressed array - we know the size will be equal to input
+  std::vector<T> compressed(num_strings);
+  std::vector<std::string_view> exp_dict{string_rand};
+  // Compress the input array
+  auto dict = tiledb::sm::DictEncoding::compress<T>(uncompressed, compressed);
+  CHECK(dict == exp_dict);
 
-  SECTION("Default case (RLE disabled)") {
-    // Allocate the compressed array - we know the size will be equal to input
-    compressed.resize(num_strings);
-    std::vector<std::string_view> exp_dict{string_rand};
-    // Compress the input array
-    dict = tiledb::sm::DictEncoding::compress<T>(uncompressed, compressed);
-    CHECK(dict == exp_dict);
-
-    std::vector<T> exp_compressed(num_strings, 0);
-    CHECK(exp_compressed == compressed);
-  }
-
-  SECTION("RLE on output enabled") {
-    use_rle = true;
-
-    // Allocate the compressed array
-    // TBD: we are allocating for the worst case, then resizing. Can we do
-    // better?
-    compressed.resize(num_strings * 2);
-    std::vector<std::string_view> exp_dict{string_rand};
-    // Compress the input array
-    dict = tiledb::sm::DictEncoding::compress<T>(
-        uncompressed, compressed, use_rle);
-    CHECK(dict == exp_dict);
-
-    // TBD: we need to resize to the actual part that was used
-    std::vector<T> exp_compressed{static_cast<T>(num_strings), 0};
-    uint64_t i = 0, compressed_size = 0;
-    while (compressed[i] != 0) {
-      compressed_size += 2;
-      i += 2;
-    }
-    compressed.resize(compressed_size);
-    CHECK(exp_compressed == compressed);
-  }
+  std::vector<T> exp_compressed(num_strings, 0);
+  CHECK(exp_compressed == compressed);
 
   // Decompress the previously compressed array
   std::ostringstream repeated2;
@@ -199,8 +136,7 @@ TEMPLATE_LIST_TEST_CASE(
   const char* exp_decompressed = strout.data();
   const auto exp_decomp_size = strout.size();
   std::vector<std::byte> decompressed(exp_decomp_size);
-  tiledb::sm::DictEncoding::decompress<T>(
-      compressed, dict, decompressed, use_rle);
+  tiledb::sm::DictEncoding::decompress<T>(compressed, dict, decompressed);
 
   // In decompressed array there are only chars, so compare using memcpy
   CHECK(
@@ -212,7 +148,7 @@ TEMPLATE_LIST_TEST_CASE(
 
 TEST_CASE(
     "Compression-Dictionary: Test compression of unique strings (worst case)",
-    "[compression][compression-dict][dict]") {
+    "[compression][dict]") {
   std::vector<std::string> uncompressed_v = {
       "HG543232", "ATG", "AT", "A", "TGC", "HG54", "HG5"};
   std::vector<std::string_view> uncompressed;
@@ -222,45 +158,14 @@ TEST_CASE(
     uncompressed.emplace_back(str);
   }
 
-  // the default mode
-  bool use_rle = false;
-  std::vector<std::string_view> dict;
-  std::vector<uint8_t> compressed;
+  // Allocate the compressed array - we know the size will be equal to input
+  std::vector<uint8_t> compressed(uncompressed.size());
+  auto dict =
+      tiledb::sm::DictEncoding::compress<uint8_t>(uncompressed, compressed);
+  CHECK(dict == uncompressed);
 
-  SECTION("Default case (RLE disabled)") {
-    // Allocate the compressed array - we know the size will be equal to input
-    compressed.resize(uncompressed.size());
-    dict = tiledb::sm::DictEncoding::compress<uint8_t>(
-        uncompressed, compressed, use_rle);
-    CHECK(dict == uncompressed);
-
-    std::vector<uint8_t> exp_compressed{0, 1, 2, 3, 4, 5, 6};
-    CHECK(exp_compressed == compressed);
-  }
-
-  SECTION("RLE on output enabled") {
-    use_rle = true;
-
-    // Allocate the compressed array
-    // TBD: we are allocating for the worst case, then resizing. Can we do
-    // better?
-    compressed.resize(uncompressed.size() * 2);
-    // Compress the input array
-    dict = tiledb::sm::DictEncoding::compress<uint8_t>(
-        uncompressed, compressed, use_rle);
-    // All values were unique, so they all go in order to the dictionary
-    CHECK(dict == uncompressed);
-
-    std::vector<uint8_t> exp_compressed{
-        1, 0, 1, 1, 1, 2, 1, 3, 1, 4, 1, 5, 1, 6};
-    uint64_t i = 0, compressed_size = 0;
-    while (compressed[i] != 0) {
-      compressed_size += 2;
-      i += 2;
-    }
-    compressed.resize(compressed_size);
-    CHECK(exp_compressed == compressed);
-  }
+  std::vector<uint8_t> exp_compressed{0, 1, 2, 3, 4, 5, 6};
+  CHECK(exp_compressed == compressed);
 
   // Decompress the previously compressed array
   const char* exp_decompressed =
@@ -273,8 +178,7 @@ TEST_CASE(
       "HG5";
   const auto exp_decomp_size = strlen(exp_decompressed);
   std::vector<std::byte> decompressed(exp_decomp_size);
-  tiledb::sm::DictEncoding::decompress<uint8_t>(
-      compressed, dict, decompressed, use_rle);
+  tiledb::sm::DictEncoding::decompress<uint8_t>(compressed, dict, decompressed);
 
   // In decompressed array there are only chars, so compare using memcpy
   CHECK(

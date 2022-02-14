@@ -33,7 +33,6 @@
 #ifndef TILEDB_DICT_COMPRESSOR_H
 #define TILEDB_DICT_COMPRESSOR_H
 
-#include "rle_compressor.h"
 #include "tiledb/common/common.h"
 #include "tiledb/sm/misc/endian.h"
 
@@ -57,51 +56,33 @@ class DictEncoding {
    * strings
    * @param output Dictionary-encoded output in ids of type T. Memory is
    * allocated and owned by the caller
-   * @param uses_rle True for adding additional RLE compression to the
-   * compressed output. Default is false.
    * @return A dictionary in the form of a vector of strings, where indices are
    * the word_ids of each word
    */
   template <class T>
   static std::vector<std::string_view> compress(
-      const span<std::string_view> input,
-      span<T> output,
-      bool uses_rle = false) {
+      const span<std::string_view> input, span<T> output) {
     if (input.empty() || output.empty()) {
       return {};
     }
 
     // We use string_views in the dictionary, which point to input strings. This
     // means that input should not be freed before dictionary data is consumed
+    // TBD: Is this acceptable, or do we use dict of strings - more expensive to
+    // create & copy on return
     std::vector<std::string_view> dict;
     dict.reserve(input.size());
     T word_id = 0;
     std::unordered_map<std::string_view, T> word_ids;
 
-    if (uses_rle == false) {
-      for (uint64_t i = 0; i < input.size(); i++) {
-        // If we haven't seen that string before, add it to the dictionary
-        if (word_ids.find(input[i]) == word_ids.end()) {
-          dict.emplace_back(input[i]);
-          word_ids[input[i]] = word_id++;
-        }
-
-        output[i] = word_ids[input[i]];
-      }
-    } else {
-      std::vector<T> temp_output;
-      temp_output.reserve(input.size());
-      for (uint64_t i = 0; i < input.size(); i++) {
-        // If we haven't seen that string before, add it to the dictionary
-        if (word_ids.find(input[i]) == word_ids.end()) {
-          dict.emplace_back(input[i]);
-          word_ids[input[i]] = word_id++;
-        }
-
-        temp_output.emplace_back(word_ids[input[i]]);
+    for (uint64_t i = 0; i < input.size(); i++) {
+      // If we haven't seen that string before, add it to the dictionary
+      if (word_ids.find(input[i]) == word_ids.end()) {
+        dict.emplace_back(input[i]);
+        word_ids[input[i]] = word_id++;
       }
 
-      tiledb::sm::RLE::compress<T>(temp_output, output);
+      output[i] = word_ids[input[i]];
     }
 
     // copy happens here, but it's a copy of string_views
@@ -119,15 +100,12 @@ class DictEncoding {
    * each word
    * @param output Dictionary-encoded output as a series of ids of size T.
    * Memory is allocated and owned by the caller
-   * @param uses_rle True if additional RLE compression was used on the
-   * compressed buffer. Default is false.
    */
   template <class T>
   static void decompress(
       const span<T> input,
       const std::vector<std::string_view>& dict,
-      span<std::byte> output,
-      bool uses_rle = false) {
+      span<std::byte> output) {
     if (input.empty() || output.empty() || dict.size() == 0) {
       return;
     }
@@ -135,26 +113,12 @@ class DictEncoding {
     T word_id = 0;
     uint64_t in_index = 0, out_index = 0;
 
-    if (uses_rle == false) {
-      while (in_index < input.size()) {
-        word_id = input[in_index++];
-        assert(word_id < dict.size());
-        auto word = dict[word_id];
-        memcpy(&output[out_index], word.data(), word.size());
-        out_index += word.size();
-      }
-    } else {
-      while (in_index < input.size()) {
-        auto run_length = input[in_index++];
-        word_id = input[in_index++];
-        assert(word_id < dict.size());
-        auto word = dict[word_id];
-        for (uint64_t j = 0; j < run_length; j++) {
-          // TODO: see if more efficient to copy it N times at once
-          memcpy(&output[out_index], word.data(), word.size());
-          out_index += word.size();
-        }
-      }
+    while (in_index < input.size()) {
+      word_id = input[in_index++];
+      assert(word_id < dict.size());
+      auto word = dict[word_id];
+      memcpy(&output[out_index], word.data(), word.size());
+      out_index += word.size();
     }
   }
 };
