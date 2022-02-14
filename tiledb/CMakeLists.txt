@@ -178,7 +178,9 @@ set(TILEDB_CORE_SOURCES
   ${TILEDB_CORE_INCLUDE_DIR}/tiledb/sm/misc/work_arounds.cc
   ${TILEDB_CORE_INCLUDE_DIR}/tiledb/sm/query/dense_reader.cc
   ${TILEDB_CORE_INCLUDE_DIR}/tiledb/sm/query/dense_tiler.cc
+  ${TILEDB_CORE_INCLUDE_DIR}/tiledb/sm/query/global_order_writer.cc
   ${TILEDB_CORE_INCLUDE_DIR}/tiledb/sm/query/hilbert_order.cc
+  ${TILEDB_CORE_INCLUDE_DIR}/tiledb/sm/query/ordered_writer.cc
   ${TILEDB_CORE_INCLUDE_DIR}/tiledb/sm/query/query.cc
   ${TILEDB_CORE_INCLUDE_DIR}/tiledb/sm/query/query_condition.cc
   ${TILEDB_CORE_INCLUDE_DIR}/tiledb/sm/query/reader.cc
@@ -189,7 +191,8 @@ set(TILEDB_CORE_SOURCES
   ${TILEDB_CORE_INCLUDE_DIR}/tiledb/sm/query/sparse_index_reader_base.cc
   ${TILEDB_CORE_INCLUDE_DIR}/tiledb/sm/query/sparse_unordered_with_dups_reader.cc
   ${TILEDB_CORE_INCLUDE_DIR}/tiledb/sm/query/strategy_base.cc
-  ${TILEDB_CORE_INCLUDE_DIR}/tiledb/sm/query/writer.cc
+  ${TILEDB_CORE_INCLUDE_DIR}/tiledb/sm/query/unordered_writer.cc
+  ${TILEDB_CORE_INCLUDE_DIR}/tiledb/sm/query/writer_base.cc
   ${TILEDB_CORE_INCLUDE_DIR}/tiledb/sm/rest/rest_client.cc
   ${TILEDB_CORE_INCLUDE_DIR}/tiledb/sm/rtree/rtree.cc
   ${TILEDB_CORE_INCLUDE_DIR}/tiledb/sm/serialization/array.cc
