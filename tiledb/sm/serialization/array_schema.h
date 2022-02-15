@@ -37,13 +37,9 @@
 
 #include "tiledb/common/status.h"
 
-// clang-format off
 #ifdef TILEDB_SERIALIZATION
-#include <capnp/message.h>
-#include <capnp/serialize.h>
 #include "tiledb/sm/serialization/capnp_utils.h"
 #endif
-// clang-format on
 
 using namespace tiledb::common;
 
