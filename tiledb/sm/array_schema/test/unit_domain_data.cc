@@ -32,8 +32,8 @@
 
 #include <catch.hpp>
 #include "../domain_typed_data_view.h"
+#include "../dynamic_array.h"
 
-using namespace tiledb;
 using namespace tiledb::common;
 using namespace tiledb::sm;
 
@@ -48,7 +48,7 @@ struct NullInitializer {
 };
 
 TEST_CASE("DynamicArrayStorage::DynamicArrayStorage") {
-  DynamicArrayStorage<int> x{3, std::allocator<int>{}, Tag<NullInitializer>{}};
+  DynamicArray<int> x{3, std::allocator<int>{}, Tag<NullInitializer>{}};
 }
 
 namespace tiledb::sm {

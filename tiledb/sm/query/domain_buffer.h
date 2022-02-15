@@ -114,7 +114,7 @@ class DomainBuffersView {
    */
   [[nodiscard]] DomainTypedDataView domain_data_at(
       const Domain& domain, size_t k) const {
-    return DomainTypedDataView{domain, Tag<InitializerQB>{}, qb_, k};
+    return DomainTypedDataView{domain, tdb::Tag<InitializerQB>{}, qb_, k};
   }
 };
 
