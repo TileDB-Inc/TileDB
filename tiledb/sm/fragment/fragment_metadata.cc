@@ -498,7 +498,8 @@ Status FragmentMetadata::add_max_buffer_sizes_sparse(
   RETURN_NOT_OK(load_rtree(encryption_key));
 
   // Get tile overlap
-  auto tile_overlap = rtree_.get_tile_overlap(subarray);
+  std::vector<bool> is_default(subarray.size(), false);
+  auto tile_overlap = rtree_.get_tile_overlap(subarray, is_default);
 
   // Handle tile ranges
   for (const auto& tr : tile_overlap.tile_ranges_) {
@@ -585,14 +586,12 @@ bool FragmentMetadata::has_consolidated_footer() const {
   return has_consolidated_footer_;
 }
 
-bool FragmentMetadata::overlaps_non_empty_domain(const NDRange& range) const {
-  return array_schema_->domain()->overlap(range, non_empty_domain_);
-}
-
 Status FragmentMetadata::get_tile_overlap(
-    const NDRange& range, TileOverlap* tile_overlap) {
+    const NDRange& range,
+    std::vector<bool>& is_default,
+    TileOverlap* tile_overlap) {
   assert(version_ <= 2 || loaded_metadata_.rtree_);
-  *tile_overlap = rtree_.get_tile_overlap(range);
+  *tile_overlap = rtree_.get_tile_overlap(range, is_default);
   return Status::Ok();
 }
 

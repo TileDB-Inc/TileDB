@@ -219,16 +219,12 @@ class FragmentMetadata {
   bool has_consolidated_footer() const;
 
   /**
-   * Returns true if the input range overlaps the non-empty
-   * domain of the fragment.
+   * Retrieves the overlap of all MBRs with the input ND range.
    */
-  bool overlaps_non_empty_domain(const NDRange& range) const;
-
-  /**
-   * Retrieves the overlap of all MBRs with the input ND range. The encryption
-   * key is needed because certain metadata may have to be loaded on-the-fly.
-   */
-  Status get_tile_overlap(const NDRange& range, TileOverlap* tile_overlap);
+  Status get_tile_overlap(
+      const NDRange& range,
+      std::vector<bool>& is_default,
+      TileOverlap* tile_overlap);
 
   /**
    * Compute tile bitmap for the curent fragment/range/dimension.
