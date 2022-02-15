@@ -1,7 +1,7 @@
 diff-- git a /./ c++ / src / kj / windows -
     sanity.h b /./ c++ / src / kj / windows -
     sanity.h index 894ec1d7..b2c93678 100644 ---a /./ c++ / src / kj / windows -
-    sanity.h++ +++b /./ c++ / src / kj / windows - sanity.h @ @-48,
+    sanity.h++ + b /./ c++ / src / kj / windows - sanity.h @ @-48,
     17 + 48,
     24 @ @
 // now, we use `#pragma once` to tell the compiler never to include this file
@@ -10,13 +10,13 @@ diff-- git a /./ c++ / src / kj / windows -
 
     -namespace win32 {
   +namespace kj_win32_workarounds {
-    +  // Namespace containing constant definitions intended to replace
-       // constants that are defined as
+    +      // Namespace containing constant definitions intended to replace
+           // constants that are defined as
         +  // macros in the Windows headers. Do not refer to this namespace
-        // directly, we'll import it into
-        +               // the global scope below.
+           // directly, we'll import it into
+        +  // the global scope below.
         ++#ifdef ERROR  // This could be absent if e.g. NOGDI was used.
-        const auto ERROR_ = ERROR;
+         const auto ERROR_ = ERROR;
 #undef ERROR
     const auto ERROR = ERROR_;
     +#endif
