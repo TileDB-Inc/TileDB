@@ -214,7 +214,7 @@ class RLE {
   }
 
   /**
-   * Decompress strings encoded in RLE format
+   * Decompress numbers in contiguous memory encoded in RLE format
    *
    * @tparam T Type of integer in input
    * @tparam P Type of integer to store run legths, must be the same used for
@@ -230,7 +230,7 @@ class RLE {
 
     uint64_t run_length = 0;
     uint64_t out_index = 0;
-    // Iterate input to read [run length|string size|string] items
+    // Iterate input to read [run length|value] items
     uint64_t in_index = 0;
     while (in_index < input.size()) {
       run_length = input[in_index++];

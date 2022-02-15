@@ -668,27 +668,6 @@ TEST_CASE(
 }
 
 TEST_CASE(
-    "Compression-RLE: Test all unique runs (worst case)",
-    "[compression][rle][rle-num]") {
-  std::vector<uint64_t> uncompressed = {1, 5, 12, 123, 1, 2, 5, 12, 8};
-
-  // Compress the input array
-  const auto num_of_unique_runs = 9;
-  const auto exp_size = num_of_unique_runs * 2;
-  std::vector<uint64_t> compressed(exp_size);
-  tiledb::sm::RLE::compress<uint64_t>(uncompressed, compressed);
-  CHECK(
-      compressed ==
-      std::vector<uint64_t>{
-          1, 1, 1, 5, 1, 12, 1, 123, 1, 1, 1, 2, 1, 5, 1, 12, 1, 8});
-
-  // Decompress the previously compressed array
-  std::vector<uint64_t> decompressed(uncompressed.size());
-  tiledb::sm::RLE::decompress<uint64_t>(compressed, decompressed);
-  CHECK(decompressed == uncompressed);
-}
-
-TEST_CASE(
     "Compression-RLE: Test all numeric unique runs (worst case)",
     "[compression][rle][rle-num]") {
   std::vector<uint64_t> uncompressed = {1, 5, 12, 123, 1, 2, 5, 12, 8};

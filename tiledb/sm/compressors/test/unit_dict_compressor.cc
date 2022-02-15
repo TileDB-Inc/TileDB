@@ -1,5 +1,5 @@
 /**
- * @file   unit-compression-dict.cc
+ * @file   unit_dict_compressor.cc
  *
  * @section LICENSE
  *
