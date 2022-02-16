@@ -545,8 +545,16 @@ if(APPLE)
   endif()
 endif()
 
-# Enable threading library for systems where it is not automatically enable.
+# Require support for thread functions. FindThreads defines the following:
+#  * Threads_FOUND - If a supported thread library was found.
+#  * CMAKE_THREAD_LIBS_INIT - The thread library to use. This is empty if the thread
+#    functions are provided by the system libraries and no special flags are needed to
+#    use them.
+#  * CMAKE_USE_WIN32_THREADS_INIT - If the found thread library is the win32 one.
+#  * CMAKE_USE_PTHREADS_INIT - If the found thread library is pthread compatible.
+#  * CMAKE_HP_PTHREADS_INIT - If the found thread library is the HP thread library.
 find_package(Threads REQUIRED)
+# Link to Threads::Threads if library or flag needed to enable threading.
 if (CMAKE_THREAD_LIBS_INIT)
   target_link_libraries(TILEDB_CORE_OBJECTS_ILIB INTERFACE Threads::Threads)
 endif()
