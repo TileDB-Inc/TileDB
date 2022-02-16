@@ -831,10 +831,7 @@ void Dimension::relevant_ranges<char>(
     const auto& r1_start = ranges[r].start_str();
     const auto& r1_end = ranges[r].end_str();
 
-    const auto r1_after_r2 = r1_start > mbr_end;
-    const auto mbr_after_r1 = mbr_start > r1_end;
-
-    if (!r1_after_r2 && !mbr_after_r1)
+    if (r1_start <= mbr_end && mbr_start <= r1_end)
       relevant_ranges.emplace_back(r);
   }
 }
