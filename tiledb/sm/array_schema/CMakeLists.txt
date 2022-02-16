@@ -72,7 +72,7 @@ target_sources(compile_domain PRIVATE test/compile_domain_main.cc)
 
 if (TILEDB_TESTS)
     add_executable(unit_array_schema EXCLUDE_FROM_ALL)
-    target_link_libraries(unit_array_schema PRIVATE attribute dimension)
+    target_link_libraries(unit_array_schema PRIVATE attribute domain)
     find_package(Catch_EP REQUIRED)
     target_link_libraries(unit_array_schema PUBLIC Catch2::Catch2)
 

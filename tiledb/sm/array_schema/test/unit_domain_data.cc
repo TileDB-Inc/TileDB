@@ -33,6 +33,12 @@
 #include <catch.hpp>
 #include "../domain_typed_data_view.h"
 #include "../dynamic_array.h"
+/*
+ * Instantiating the class `Domain` requires a full definition of `Dimension` so
+ * that its destructor is visible. The need to include this header indicates
+ * some kind of trouble with definition order that needs to be fixed.
+ */
+#include "tiledb/sm/array_schema/dimension.h"
 
 using namespace tiledb::common;
 using namespace tiledb::sm;
@@ -97,21 +103,6 @@ class WhiteboxDomainTypedDataView : public DomainTypedDataView {
   }
 };
 
-//-------------
-/*
- * Substitute definitions. Some definition of Domain needs to be present to
- * test DomainTypedDataView, or else these tests won't link.
- */
-Status Domain::add_dimension(const Dimension*) {
-  ++dim_num_;
-  return Status::Ok();
-}
-Domain::Domain()
-    : dim_num_(0) {
-}
-class Dimension {};
-//-------------
-
 struct TestNullInitializer {
   inline static void initialize(
       UntypedDatumView*, unsigned int, const Domain&) {
@@ -120,9 +111,10 @@ struct TestNullInitializer {
 
 TEST_CASE("DomainTypedDataView::DomainTypedDataView, null initializer") {
   Domain d{};
-  d.add_dimension(nullptr);
-  d.add_dimension(nullptr);
-  d.add_dimension(nullptr);
+  tiledb::sm::Dimension dim{"", tiledb::sm::Datatype::INT32};
+  d.add_dimension(&dim);
+  d.add_dimension(&dim);
+  d.add_dimension(&dim);
   WhiteboxDomainTypedDataView x{d, Tag<TestNullInitializer>{}};
   CHECK(x.size() == 3);
 }
@@ -139,9 +131,10 @@ TEST_CASE("DomainTypedDataView::DomainTypedDataView, simple initializer") {
   };
 
   Domain d{};
-  d.add_dimension(nullptr);
-  d.add_dimension(nullptr);
-  d.add_dimension(nullptr);
+  tiledb::sm::Dimension dim{"", tiledb::sm::Datatype::INT32};
+  d.add_dimension(&dim);
+  d.add_dimension(&dim);
+  d.add_dimension(&dim);
   WhiteboxDomainTypedDataView x{d, Tag<Initializer>{}};
   CHECK(x.size() == 3);
   CHECK(x[0].size() == 0);
