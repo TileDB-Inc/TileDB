@@ -110,6 +110,8 @@ class DynamicArray {
 
   /**
    * Default initializer policy.
+   *
+   * @param item Address at which to construct an object.
    */
   class DefaultInitializer {
    public:
@@ -121,10 +123,11 @@ class DynamicArray {
   /**
    * Constructor with no initialization of contained elements.
    *
+   * The allocator is not called if the size is not positive.
+   *
    * @tparam SizeT Type of number-of-elements argument.
-   * @tparam I Initialization policy
-   * @param
    * @param n The number of elements in the sequence to allocate
+   * @param a Allocates memory for the array
    *
    * Postcondition: data_ is non-null.
    */
@@ -140,14 +143,14 @@ class DynamicArray {
    *
    * @tparam SizeT Type of number-of-elements argument.
    * @tparam I Initialization policy
-   * @param
    * @param n The number of elements in the sequence to allocate
+   * @param a Allocates memory for the array
    *
    * Postcondition: data_ is non-null.
    */
   template <class SizeT, class I, class... Args>
   DynamicArray(SizeT n, const Alloc& a, tiledb::common::Tag<I>, Args&&... args)
-      : DynamicArray(a, n) {
+      : DynamicArray(n, a) {
     for (SizeT i = 0; i < n; ++i) {
       I::initialize(&data_[i], i, std::forward<Args>(args)...);
     }
@@ -161,9 +164,8 @@ class DynamicArray {
    * void specialization on the Tag introduces no new symbols.
    *
    * @tparam SizeT Type of number-of-elements argument.
-   * @tparam I Initialization policy
-   * @param
    * @param n The number of elements in the sequence to allocate
+   * @param a Allocates memory for the array
    *
    * Postcondition: data_ is non-null.
    */
@@ -186,6 +188,9 @@ class DynamicArray {
    *
    * The size of the container is fixed at construction time. Without the
    * user specifying what the size is, default construction makes no sense.
+   *
+   * To get an object of size 0, simply construct one. An allocator is still
+   * required, even though it won't be called.
    */
   DynamicArray() = delete;
 
@@ -261,6 +266,7 @@ class DynamicArray {
     return data_[pos];
   }
 };
+
 /**
  * Non-member swap function for std::swap to use.
  */
@@ -268,18 +274,19 @@ template <class T, class A>
 inline void swap(DynamicArray<T, A>& a, DynamicArray<T, A>& b) {
   a.swap(b);
 }
+
 /**
- * Tracing factory for DynamicArrayStorage, tracing label
+ * Factory for DynamicArrayStorage, tracing label
  *
  * @tparam T The type of object to allocate
- * @tparam X The type of the origin label, which is ignored
- * @tparam
+ * @tparam I Initialization policy
+ * @param origin Label for tracing provenance of allocations
  * @param n The number of elements in the array
  */
-template <class T, class I, class... Args>
+template <class T, class I, class SizeT, class... Args>
 inline DynamicArray<T, tiledb::common::allocator<T>> MakeDynamicArray(
     tiledb::common::TracingLabel origin,
-    size_t n,
+    SizeT n,
     tiledb::common::Tag<I>,
     Args&&... args) {
   if constexpr (tiledb::common::is_tracing_enabled_v<>) {
@@ -296,18 +303,19 @@ inline DynamicArray<T, tiledb::common::allocator<T>> MakeDynamicArray(
         std::forward<Args>(args)...};
   }
 }
+
 /**
  * Factory for DynamicArray, string constant
  *
  * @tparam T The type of object to allocate
- * @tparam X The type of the origin label, which is ignored
- * @tparam
+ * @tparam I Initialization policy
+ * @param origin Label for tracing provenance of allocations
  * @param n The number of elements in the array
  */
-template <class T, class I, class... Args, int m>
+template <class T, class I, class SizeT, int m, class... Args>
 inline DynamicArray<T, tiledb::common::allocator<T>> MakeDynamicArray(
     [[maybe_unused]] const char (&origin)[m],
-    unsigned int n,
+    SizeT n,
     tiledb::common::Tag<I>,
     Args&&... args) {
   if constexpr (tiledb::common::is_tracing_enabled_v<>) {
@@ -325,6 +333,7 @@ inline DynamicArray<T, tiledb::common::allocator<T>> MakeDynamicArray(
         std::forward<Args>(args)...};
   }
 }
+
 }  // namespace tiledb::sm
 
 #endif  // TILEDB_DYNAMIC_ARRAY_H

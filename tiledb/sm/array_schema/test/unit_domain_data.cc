@@ -47,9 +47,46 @@ struct NullInitializer {
   }
 };
 
-TEST_CASE("DynamicArrayStorage::DynamicArrayStorage") {
-  DynamicArray<int> x{3, std::allocator<int>{}, Tag<NullInitializer>{}};
+TEST_CASE("DynamicArray::DynamicArray, no initializer") {
+  DynamicArray<int> x{3, tdb::allocator<int>{}};
 }
+
+TEST_CASE("DynamicArray::DynamicArray, null initializer") {
+  DynamicArray<int> x{3, tdb::allocator<int>{}, Tag<NullInitializer>{}};
+}
+
+struct X1 {
+  static int counter;
+  X1() {
+    ++counter;
+  }
+};
+int X1::counter{0};
+TEST_CASE("DynamicArray::DynamicArray, default initializer") {
+  X1::counter = 0;
+  DynamicArray<X1> x{3, tdb::allocator<X1>{}, Tag<void>{}};
+  CHECK(X1::counter == 3);
+}
+
+TEST_CASE("DynamicArray::DynamicArray, simple initializer") {
+  struct X {
+    int x_;
+    X() = delete;
+    X( int x ) : x_(x) {}
+  };
+  struct Initializer {
+    static inline void initialize(
+        X* item, int i) {
+      new (item) X{i};
+    }
+  };
+  DynamicArray<X> x{3, tdb::allocator<X>{}, Tag<Initializer>{}};
+  CHECK(x[0].x_==0);
+  CHECK(x[1].x_==1);
+  CHECK(x[2].x_==2);
+}
+
+
 
 namespace tiledb::sm {
 class WhiteboxDomainTypedDataView : public DomainTypedDataView {
@@ -72,24 +109,21 @@ Status Domain::add_dimension(const Dimension*) {
 Domain::Domain()
     : dim_num_(0) {
 }
-unsigned int Domain::dim_num() const {
-  return dim_num_;
-}
 class Dimension {};
 //-------------
 
-TEST_CASE("DomainTypedDataView::DomainTypedDataView, null initializer") {
-  struct Initializer {
-    static inline void initialize(
-        UntypedDatumView*, unsigned int, const Domain&) {
-    }
-  };
+struct TestNullInitializer {
+  inline static void initialize(
+      UntypedDatumView*, unsigned int, const Domain&) {
+  }
+};
 
+TEST_CASE("DomainTypedDataView::DomainTypedDataView, null initializer") {
   Domain d{};
   d.add_dimension(nullptr);
   d.add_dimension(nullptr);
   d.add_dimension(nullptr);
-  WhiteboxDomainTypedDataView x{d, Tag<Initializer>{}};
+  WhiteboxDomainTypedDataView x{d, Tag<TestNullInitializer>{}};
   CHECK(x.size() == 3);
 }
 

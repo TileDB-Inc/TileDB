@@ -186,7 +186,9 @@ class Domain {
   Layout tile_order() const;
 
   /** Returns the number of dimensions. */
-  unsigned int dim_num() const;
+  inline unsigned int dim_num() const {
+    return dim_num_;
+  }
 
   /** Returns the domain along the i-th dimension. */
   const Range& domain(unsigned i) const;

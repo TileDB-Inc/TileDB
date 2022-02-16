@@ -36,7 +36,6 @@
 #include <utility>
 #include "dynamic_array.h"
 #include "tiledb/common/common.h"
-#include "tiledb/common/tag.h"
 #include "tiledb/common/types/untyped_datum.h"
 #include "tiledb/sm/array_schema/domain.h"
 
@@ -62,10 +61,12 @@ namespace tiledb::sm {
  * C.41, but the combination of it with its factory friends is compliant.
  */
 class DomainTypedDataView {
-  /// Friends with whitebox testing class
+  /**
+   * Friends with its whitebox testing class
+   */
   friend class WhiteboxDomainTypedDataView;
   /**
-   * Friends with the factory method in DomainBuffersView.
+   * Friends with DomainBuffersView for its factory.
    */
   friend class DomainBuffersView;
 
@@ -105,22 +106,21 @@ class DomainTypedDataView {
   DynamicArray<view_type> array_;
 
   /**
-   * Constructor with an additional number-of-dimensions argument.
+   * Constructor for use with factory functions.
    *
-   * The Domain argument is ignored, but still required to designate what Domain
-   * this value is associated with. Consider it a form of compiler-enforced
-   * documentation.
+   * Each factory function must supply its own initialization policy class and
+   * additional arguments for the initialize function. `DynamicArray` supplies
+   * its arguments (an address and an index). This constructor supplies a
+   * `Domain` argument.
    *
-   * @pre The number of dimensions in the associated domain must be
-   * equal to `n`
-   * @param origin Source code origin of a call to this function
-   * @param n The number of dimensions in the associated Domain
+   * @tparam I Initialization policy class for DynamicArray
+   * @param domain Domain with which to associate values
    */
   template <class I, class... Args>
   DomainTypedDataView(const Domain& domain, Tag<I>, Args&&... args)
       : array_(MakeDynamicArray<view_type, I>(
             HERE(),
-            static_cast<size_t>(domain.dim_num()),
+            domain.dim_num(),
             Tag<I>{},
             domain,
             std::forward<Args>(args)...)) {

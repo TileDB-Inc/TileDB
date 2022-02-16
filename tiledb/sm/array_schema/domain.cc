@@ -304,10 +304,6 @@ Status Domain::deserialize(ConstBuffer* buff, uint32_t version) {
   return Status::Ok();
 }
 
-unsigned int Domain::dim_num() const {
-  return dim_num_;
-}
-
 const Range& Domain::domain(unsigned i) const {
   assert(i < dim_num_);
   return dimensions_[i]->domain();
