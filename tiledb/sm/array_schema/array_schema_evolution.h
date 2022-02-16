@@ -123,7 +123,7 @@ class ArraySchemaEvolution {
 
   /** The array attributes to be added. */
   /** It maps each attribute name to the corresponding attribute object. */
-  std::unordered_map<std::string, tdb_unique_ptr<Attribute>>
+  std::unordered_map<std::string, tdb_shared_ptr<Attribute>>
       attributes_to_add_map_;
 
   /** The names of array attributes to be dropped. */

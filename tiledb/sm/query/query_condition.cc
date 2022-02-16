@@ -97,7 +97,8 @@ Status QueryCondition::check(const ArraySchema* const array_schema) const {
     const std::string field_name = clause.field_name_;
     const uint64_t condition_value_size = clause.condition_value_data_.size();
 
-    const Attribute* const attribute = array_schema->attribute(field_name);
+    tdb_shared_ptr<const Attribute> const attribute =
+        array_schema->attribute(field_name);
     if (!attribute) {
       return Status_QueryConditionError(
           "Clause field name is not an attribute " + field_name);
@@ -594,7 +595,7 @@ QueryCondition::apply_clause(
     const ArraySchema* const array_schema,
     const uint64_t stride,
     const std::vector<ResultCellSlab>& result_cell_slabs) const {
-  const Attribute* const attribute =
+  tdb_shared_ptr<const Attribute> const attribute =
       array_schema->attribute(clause.field_name_);
   if (!attribute) {
     return {
@@ -877,7 +878,7 @@ Status QueryCondition::apply_clause_dense(
     const uint64_t src_cell,
     const uint64_t stride,
     uint8_t* result_buffer) const {
-  const Attribute* const attribute =
+  tdb_shared_ptr<const Attribute> const attribute =
       array_schema->attribute(clause.field_name_);
   if (!attribute) {
     return Status_QueryConditionError(
@@ -1372,7 +1373,7 @@ Status QueryCondition::apply_clause_sparse(
     const ArraySchema* const array_schema,
     ResultTile& result_tile,
     std::vector<BitmapType>& result_bitmap) const {
-  const Attribute* const attribute =
+  tdb_shared_ptr<const Attribute> const attribute =
       array_schema->attribute(clause.field_name_);
   if (!attribute) {
     return Status_QueryConditionError(

@@ -486,8 +486,8 @@ Status array_schema_to_capnp(
   auto attributes_buidler = array_schema_builder->initAttributes(num_attrs);
   for (size_t i = 0; i < num_attrs; i++) {
     auto attribute_builder = attributes_buidler[i];
-    RETURN_NOT_OK(
-        attribute_to_capnp(array_schema->attribute(i), &attribute_builder));
+    RETURN_NOT_OK(attribute_to_capnp(
+        (array_schema->attribute(i)).get(), &attribute_builder));
   }
 
   // Set timestamp range
@@ -560,7 +560,7 @@ Status array_schema_from_capnp(
   for (auto attr_reader : attributes_reader) {
     tdb_unique_ptr<Attribute> attribute;
     RETURN_NOT_OK(attribute_from_capnp(attr_reader, &attribute));
-    RETURN_NOT_OK((*array_schema)->add_attribute(attribute.get(), false));
+    RETURN_NOT_OK((*array_schema)->add_attribute(std::move(attribute), false));
   }
 
   // Set the range if we have two values
@@ -1113,7 +1113,7 @@ Status max_buffer_sizes_serialize(
     const auto& attrs = schema->attributes();
     std::set<std::string> attr_names;
     attr_names.insert(constants::coords);
-    for (const auto* a : attrs)
+    for (const auto& a : attrs)
       attr_names.insert(a->name());
 
     // Get max buffer size for each attribute from the given Array instance

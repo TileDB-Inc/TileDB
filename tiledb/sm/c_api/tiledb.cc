@@ -2213,7 +2213,9 @@ int32_t tiledb_array_schema_add_attribute(
       sanity_check(ctx, attr) == TILEDB_ERR)
     return TILEDB_ERR;
   if (SAVE_ERROR_CATCH(
-          ctx, array_schema->array_schema_->add_attribute(attr->attr_)))
+          ctx,
+          array_schema->array_schema_->add_attribute(
+              tdb::make_shared<tiledb::sm::Attribute>(HERE(), attr->attr_))))
     return TILEDB_ERR;
   return TILEDB_OK;
 }
@@ -2760,7 +2762,7 @@ int32_t tiledb_array_schema_get_attribute_from_index(
   }
 
   // Create an attribute object
-  (*attr)->attr_ = new (std::nothrow) tiledb::sm::Attribute(found_attr);
+  (*attr)->attr_ = new (std::nothrow) tiledb::sm::Attribute(found_attr.get());
 
   // Check for allocation error
   if ((*attr)->attr_ == nullptr) {
@@ -2808,7 +2810,7 @@ int32_t tiledb_array_schema_get_attribute_from_name(
     return TILEDB_OOM;
   }
   // Create an attribute object
-  (*attr)->attr_ = new (std::nothrow) tiledb::sm::Attribute(found_attr);
+  (*attr)->attr_ = new (std::nothrow) tiledb::sm::Attribute(found_attr.get());
   // Check for allocation error
   if ((*attr)->attr_ == nullptr) {
     delete *attr;

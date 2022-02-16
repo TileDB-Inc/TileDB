@@ -84,7 +84,7 @@ Status ArraySchemaEvolution::evolve_schema(
 
   // Add attributes.
   for (auto& attr : attributes_to_add_map_) {
-    RETURN_NOT_OK(schema->add_attribute(attr.second.get(), false));
+    RETURN_NOT_OK(schema->add_attribute(attr.second, false));
   }
 
   // Drop attributes.
@@ -156,7 +156,7 @@ Status ArraySchemaEvolution::drop_attribute(const std::string& attribute_name) {
   if (attributes_to_add_map_.find(attribute_name) !=
       attributes_to_add_map_.end()) {
     // Reset the pointer and erase it
-    attributes_to_add_map_[attribute_name].reset(nullptr);
+    attributes_to_add_map_[attribute_name].reset();
     attributes_to_add_map_.erase(attribute_name);
   }
   return Status::Ok();
@@ -190,7 +190,7 @@ std::pair<uint64_t, uint64_t> ArraySchemaEvolution::timestamp_range() const {
 
 void ArraySchemaEvolution::clear() {
   for (auto& attr : attributes_to_add_map_) {
-    attr.second.reset(nullptr);
+    attr.second.reset();
   }
   attributes_to_add_map_.clear();
 

@@ -138,13 +138,14 @@ const URI& ArraySchema::array_uri() const {
   return array_uri_;
 }
 
-const Attribute* ArraySchema::attribute(unsigned int id) const {
+tdb_shared_ptr<const Attribute> ArraySchema::attribute(unsigned int id) const {
   if (id < attributes_.size())
     return attributes_[id];
   return nullptr;
 }
 
-const Attribute* ArraySchema::attribute(const std::string& name) const {
+tdb_shared_ptr<const Attribute> ArraySchema::attribute(
+    const std::string& name) const {
   auto it = attribute_map_.find(name);
   return it == attribute_map_.end() ? nullptr : it->second;
 }
@@ -153,7 +154,7 @@ unsigned int ArraySchema::attribute_num() const {
   return (unsigned)attributes_.size();
 }
 
-const std::vector<Attribute*>& ArraySchema::attributes() const {
+const std::vector<tdb_shared_ptr<Attribute>>& ArraySchema::attributes() const {
   return attributes_;
 }
 
@@ -388,7 +389,7 @@ bool ArraySchema::is_field(const std::string& name) const {
 }
 
 bool ArraySchema::is_nullable(const std::string& name) const {
-  const Attribute* const attr = this->attribute(name);
+  tdb_shared_ptr<const Attribute> const attr = this->attribute(name);
   if (attr == nullptr)
     return false;
   return attr->nullable();
@@ -493,7 +494,8 @@ bool ArraySchema::var_size(const std::string& name) const {
   return false;
 }
 
-Status ArraySchema::add_attribute(const Attribute* attr, bool check_special) {
+Status ArraySchema::add_attribute(
+    tdb_shared_ptr<const Attribute> attr, bool check_special) {
   // Sanity check
   if (attr == nullptr)
     return LOG_STATUS(Status_ArraySchemaError(
@@ -507,9 +509,10 @@ Status ArraySchema::add_attribute(const Attribute* attr, bool check_special) {
   }
 
   // Create new attribute and potentially set a default name
-  auto new_attr = tdb_new(Attribute, attr);
-  attributes_.emplace_back(new_attr);
-  attribute_map_[new_attr->name()] = new_attr;
+  Attribute* attr_ptr = tdb_new(Attribute, std::move(attr.get()));
+  attributes_.emplace_back(attr_ptr);
+  attribute_map_[attr_ptr->name()] =
+      tdb::make_shared<Attribute>(HERE(), attr_ptr);
 
   RETURN_NOT_OK(generate_uri());
   return Status::Ok();
@@ -531,11 +534,11 @@ Status ArraySchema::drop_attribute(const std::string& attr_name) {
 
   // Iterate backwards and remove the attribute pointer, it should be slightly
   // faster than iterating forward.
-  std::vector<Attribute*>::iterator it;
+  std::vector<tdb_shared_ptr<Attribute>>::iterator it;
   for (it = attributes_.end(); it != attributes_.begin();) {
     --it;
     if ((*it)->name() == attr_name) {
-      tdb_delete(*it);
+      it->reset();
       it = attributes_.erase(it);
     }
   }
@@ -594,7 +597,8 @@ Status ArraySchema::deserialize(ConstBuffer* buff) {
 
     Attribute* attr_ptr = tdb_new(Attribute, std::move(attr.value()));
     attributes_.emplace_back(attr_ptr);
-    attribute_map_[attr_ptr->name()] = attr_ptr;
+    attribute_map_[attr_ptr->name()] =
+        tdb::make_shared<Attribute>(HERE(), attr_ptr);
   }
 
   // Create dimension map
@@ -854,7 +858,7 @@ void ArraySchema::clear() {
   tile_order_ = Layout::ROW_MAJOR;
 
   for (auto& attr : attributes_)
-    tdb_delete(attr);
+    attr.reset();
   attributes_.clear();
 
   tdb_delete(domain_);
