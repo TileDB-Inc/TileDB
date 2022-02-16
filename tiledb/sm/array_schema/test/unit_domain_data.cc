@@ -78,21 +78,20 @@ TEST_CASE("DynamicArray::DynamicArray, simple initializer") {
   struct X {
     int x_;
     X() = delete;
-    X( int x ) : x_(x) {}
+    X(int x)
+        : x_(x) {
+    }
   };
   struct Initializer {
-    static inline void initialize(
-        X* item, int i) {
+    static inline void initialize(X* item, int i) {
       new (item) X{i};
     }
   };
   DynamicArray<X> x{3, tdb::allocator<X>{}, Tag<Initializer>{}};
-  CHECK(x[0].x_==0);
-  CHECK(x[1].x_==1);
-  CHECK(x[2].x_==2);
+  CHECK(x[0].x_ == 0);
+  CHECK(x[1].x_ == 1);
+  CHECK(x[2].x_ == 2);
 }
-
-
 
 namespace tiledb::sm {
 class WhiteboxDomainTypedDataView : public DomainTypedDataView {
