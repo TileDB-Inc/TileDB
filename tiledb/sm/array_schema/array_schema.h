@@ -36,6 +36,7 @@
 
 #include <unordered_map>
 
+#include "tiledb/common/common.h"
 #include "tiledb/common/status.h"
 #include "tiledb/sm/filesystem/uri.h"
 #include "tiledb/sm/filter/filter_pipeline.h"
@@ -102,19 +103,31 @@ class ArraySchema {
    * Returns a constant pointer to the selected attribute (nullptr if it
    * does not exist).
    */
-  tdb_shared_ptr<const Attribute> attribute(unsigned int id) const;
+  shared_ptr<const Attribute> attribute(unsigned int id) const;
 
   /**
    * Returns a constant pointer to the selected attribute (nullptr if it
    * does not exist).
    */
-  tdb_shared_ptr<const Attribute> attribute(const std::string& name) const;
+  Attribute* attribute(const std::string& name) const;
+
+  /**
+   * Returns a non-constant pointer to the selected attribute (nullptr if it
+   * does not exist).
+   */
+  Attribute* attribute(shared_ptr<const Attribute>) const;
+
+  /**
+   * Returns a non-constant pointer to the selected attribute (nullptr if it
+   * does not exist).
+   */
+  Attribute* attribute(const Attribute*) const;
 
   /** Returns the number of attributes. */
   unsigned int attribute_num() const;
 
   /** Returns the attributes. */
-  const std::vector<tdb_shared_ptr<Attribute>>& attributes() const;
+  const std::vector<shared_ptr<const Attribute>>& attributes() const;
 
   /** Returns the capacity. */
   uint64_t capacity() const;
@@ -240,7 +253,7 @@ class ArraySchema {
    * @return Status
    */
   Status add_attribute(
-      tdb_shared_ptr<const Attribute> attr, bool check_special = true);
+      shared_ptr<const Attribute> attr, bool check_special = true);
 
   /**
    * Drops an attribute.
@@ -363,10 +376,10 @@ class ArraySchema {
   ArrayType array_type_;
 
   /** It maps each attribute name to the corresponding attribute object. */
-  std::unordered_map<std::string, tdb_shared_ptr<Attribute>> attribute_map_;
+  std::unordered_map<std::string, const Attribute*> attribute_map_;
 
   /** The array attributes. */
-  std::vector<tdb_shared_ptr<Attribute>> attributes_;
+  std::vector<shared_ptr<const Attribute>> attributes_;
   /**
    * The tile capacity for the case of sparse fragments.
    */

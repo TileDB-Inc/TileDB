@@ -37,6 +37,7 @@
 #include <unordered_map>
 #include <unordered_set>
 
+#include "tiledb/common/common.h"
 #include "tiledb/common/status.h"
 #include "tiledb/sm/filesystem/uri.h"
 #include "tiledb/sm/filter/filter_pipeline.h"
@@ -123,8 +124,7 @@ class ArraySchemaEvolution {
 
   /** The array attributes to be added. */
   /** It maps each attribute name to the corresponding attribute object. */
-  std::unordered_map<std::string, tdb_shared_ptr<Attribute>>
-      attributes_to_add_map_;
+  std::unordered_map<std::string, shared_ptr<Attribute>> attributes_to_add_map_;
 
   /** The names of array attributes to be dropped. */
   std::unordered_set<std::string> attributes_to_drop_;

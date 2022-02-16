@@ -2810,7 +2810,7 @@ int32_t tiledb_array_schema_get_attribute_from_name(
     return TILEDB_OOM;
   }
   // Create an attribute object
-  (*attr)->attr_ = new (std::nothrow) tiledb::sm::Attribute(found_attr.get());
+  (*attr)->attr_ = new (std::nothrow) tiledb::sm::Attribute(found_attr);
   // Check for allocation error
   if ((*attr)->attr_ == nullptr) {
     delete *attr;

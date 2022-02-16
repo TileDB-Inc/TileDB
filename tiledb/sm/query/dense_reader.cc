@@ -656,7 +656,8 @@ Status DenseReader::read_attributes(
       dst_off_bufs.push_back((uint8_t*)buffers_[name].buffer_);
       dst_var_bufs.push_back((uint8_t*)buffers_[name].buffer_var_);
       dst_val_bufs.push_back(buffers_[name].validity_vector_.buffer());
-      attributes.push_back(array_schema_->attribute(name));
+      attributes.push_back(
+          tdb::make_shared<Attribute>(HERE(), array_schema_->attribute(name)));
       data_type_sizes.push_back(datatype_size(array_schema_->type(name)));
     }
 
@@ -759,7 +760,8 @@ Status DenseReader::read_attributes(
     for (auto& name : fixed_names) {
       dst_bufs.push_back((uint8_t*)buffers_[name].buffer_);
       dst_val_bufs.push_back(buffers_[name].validity_vector_.buffer());
-      attributes.push_back(array_schema_->attribute(name));
+      attributes.push_back(
+          tdb::make_shared<Attribute>(HERE(), array_schema_->attribute(name)));
       cell_sizes.push_back(array_schema_->cell_size(name));
     }
 
