@@ -486,8 +486,8 @@ Status array_schema_to_capnp(
   auto attributes_buidler = array_schema_builder->initAttributes(num_attrs);
   for (size_t i = 0; i < num_attrs; i++) {
     auto attribute_builder = attributes_buidler[i];
-    RETURN_NOT_OK(attribute_to_capnp(
-        (array_schema->attribute(i)).get(), &attribute_builder));
+    RETURN_NOT_OK(
+        attribute_to_capnp(array_schema->attribute(i), &attribute_builder));
   }
 
   // Set timestamp range

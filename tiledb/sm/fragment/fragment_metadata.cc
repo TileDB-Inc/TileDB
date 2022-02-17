@@ -983,8 +983,7 @@ std::string FragmentMetadata::encode_name(const std::string& name) const {
     LOG_FATAL("Name " + name + " not in idx_map_");
   const unsigned idx = iter->second;
 
-  const std::vector<tdb_shared_ptr<const tiledb::sm::Attribute>> attributes =
-      array_schema_->attributes();
+  auto attributes = array_schema_->attributes();
   for (unsigned i = 0; i < attributes.size(); ++i) {
     const std::string attr_name = attributes[i]->name();
     if (attr_name == name) {

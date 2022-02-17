@@ -58,6 +58,16 @@ using namespace tiledb::common;
 namespace tiledb {
 namespace sm {
 
+/** Returns the non-cast representation of the input const Attribute pointer. */
+inline Attribute* nonconst_attribute(shared_ptr<const Attribute> attr) {
+  return const_cast<Attribute*>(attr.get());
+}
+
+/** Returns the non-cast representation of the input const Attribute pointer. */
+inline Attribute* nonconst_attribute(const Attribute* attr) {
+  return const_cast<Attribute*>(attr);
+}
+
 /* ****************************** */
 /*   CONSTRUCTORS & DESTRUCTORS   */
 /* ****************************** */
@@ -138,23 +148,15 @@ const URI& ArraySchema::array_uri() const {
   return array_uri_;
 }
 
-shared_ptr<const Attribute> ArraySchema::attribute(unsigned int id) const {
+const Attribute* ArraySchema::attribute(unsigned int id) const {
   if (id < attributes_.size())
-    return attributes_[id];
+    return nonconst_attribute(attributes_[id]);
   return nullptr;
 }
 
-Attribute* ArraySchema::attribute(const std::string& name) const {
+const Attribute* ArraySchema::attribute(const std::string& name) const {
   auto it = attribute_map_.find(name);
-  return it == attribute_map_.end() ? nullptr : attribute(it->second);
-}
-
-Attribute* ArraySchema::attribute(shared_ptr<const Attribute> attr) const {
-  return const_cast<Attribute*>(attr.get());
-}
-
-Attribute* ArraySchema::attribute(const Attribute* attr) const {
-  return const_cast<Attribute*>(attr);
+  return it == attribute_map_.end() ? nullptr : nonconst_attribute(it->second);
 }
 
 unsigned int ArraySchema::attribute_num() const {
@@ -397,7 +399,7 @@ bool ArraySchema::is_field(const std::string& name) const {
 }
 
 bool ArraySchema::is_nullable(const std::string& name) const {
-  Attribute* attr = this->attribute(name);
+  auto attr = this->attribute(name);
   if (attr == nullptr)
     return false;
   return attr->nullable();
@@ -457,7 +459,7 @@ Status ArraySchema::serialize(Buffer* buff) const {
   auto attribute_num = (uint32_t)attributes_.size();
   RETURN_NOT_OK(buff->write(&attribute_num, sizeof(uint32_t)));
   for (auto& attr : attributes_)
-    RETURN_NOT_OK(attribute(attr)->serialize(buff, version));
+    RETURN_NOT_OK(attr->serialize(buff, version));
 
   return Status::Ok();
 }
@@ -517,9 +519,10 @@ Status ArraySchema::add_attribute(
   }
 
   // Create new attribute and potentially set a default name
-  assert(attr);
-  attributes_.emplace_back(attr);
-  attribute_map_[attr->name()] = attr.get();
+  auto new_attr = attr;
+  assert(new_attr);
+  attributes_.emplace_back(new_attr);
+  attribute_map_[new_attr->name()] = new_attr.get();
 
   RETURN_NOT_OK(generate_uri());
   return Status::Ok();
@@ -541,7 +544,7 @@ Status ArraySchema::drop_attribute(const std::string& attr_name) {
 
   // Iterate backwards and remove the attribute pointer, it should be slightly
   // faster than iterating forward.
-  std::vector<shared_ptr<const Attribute>>::iterator it;
+  decltype(attributes_)::iterator it;
   for (it = attributes_.end(); it != attributes_.begin();) {
     --it;
     if ((*it)->name() == attr_name) {
@@ -602,7 +605,8 @@ Status ArraySchema::deserialize(ConstBuffer* buff) {
     }
 
     Attribute* attr_ptr = tdb_new(Attribute, std::move(attr.value()));
-    attributes_.emplace_back(tdb::make_shared<Attribute>(HERE(), attr_ptr));
+    attributes_.emplace_back(
+        tdb::make_shared<Attribute>(HERE(), move(attr_ptr)));
     attribute_map_[attr_ptr->name()] = attr_ptr;
   }
 

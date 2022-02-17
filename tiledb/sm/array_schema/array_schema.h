@@ -103,25 +103,13 @@ class ArraySchema {
    * Returns a constant pointer to the selected attribute (nullptr if it
    * does not exist).
    */
-  shared_ptr<const Attribute> attribute(unsigned int id) const;
+  const Attribute* attribute(unsigned int id) const;
 
   /**
    * Returns a constant pointer to the selected attribute (nullptr if it
    * does not exist).
    */
-  Attribute* attribute(const std::string& name) const;
-
-  /**
-   * Returns a non-constant pointer to the selected attribute (nullptr if it
-   * does not exist).
-   */
-  Attribute* attribute(shared_ptr<const Attribute>) const;
-
-  /**
-   * Returns a non-constant pointer to the selected attribute (nullptr if it
-   * does not exist).
-   */
-  Attribute* attribute(const Attribute*) const;
+  const Attribute* attribute(const std::string& name) const;
 
   /** Returns the number of attributes. */
   unsigned int attribute_num() const;

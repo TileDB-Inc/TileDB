@@ -644,7 +644,7 @@ Status DenseReader::read_attributes(
     std::vector<uint8_t*> dst_off_bufs;
     std::vector<uint8_t*> dst_var_bufs;
     std::vector<uint8_t*> dst_val_bufs;
-    std::vector<tdb_shared_ptr<const Attribute>> attributes;
+    std::vector<const Attribute*> attributes;
     std::vector<uint64_t> data_type_sizes;
     dst_off_bufs.reserve(var_names.size());
     dst_var_bufs.reserve(var_names.size());
@@ -656,8 +656,7 @@ Status DenseReader::read_attributes(
       dst_off_bufs.push_back((uint8_t*)buffers_[name].buffer_);
       dst_var_bufs.push_back((uint8_t*)buffers_[name].buffer_var_);
       dst_val_bufs.push_back(buffers_[name].validity_vector_.buffer());
-      attributes.push_back(
-          tdb::make_shared<Attribute>(HERE(), array_schema_->attribute(name)));
+      attributes.push_back(array_schema_->attribute(name));
       data_type_sizes.push_back(datatype_size(array_schema_->type(name)));
     }
 
@@ -750,7 +749,7 @@ Status DenseReader::read_attributes(
     // Make some vectors to prevent map lookups.
     std::vector<uint8_t*> dst_bufs;
     std::vector<uint8_t*> dst_val_bufs;
-    std::vector<tdb_shared_ptr<const Attribute>> attributes;
+    std::vector<const Attribute*> attributes;
     std::vector<uint64_t> cell_sizes;
     dst_bufs.reserve(fixed_names.size());
     dst_val_bufs.reserve(fixed_names.size());
@@ -760,8 +759,7 @@ Status DenseReader::read_attributes(
     for (auto& name : fixed_names) {
       dst_bufs.push_back((uint8_t*)buffers_[name].buffer_);
       dst_val_bufs.push_back(buffers_[name].validity_vector_.buffer());
-      attributes.push_back(
-          tdb::make_shared<Attribute>(HERE(), array_schema_->attribute(name)));
+      attributes.push_back(array_schema_->attribute(name));
       cell_sizes.push_back(array_schema_->cell_size(name));
     }
 
@@ -908,7 +906,7 @@ Status DenseReader::copy_fixed_tiles(
     const std::vector<std::string>& names,
     const std::vector<uint8_t*>& dst_bufs,
     const std::vector<uint8_t*>& dst_val_bufs,
-    const std::vector<tdb_shared_ptr<const Attribute>>& attributes,
+    const std::vector<const Attribute*>& attributes,
     const std::vector<uint64_t>& cell_sizes,
     ResultSpaceTile<DimType>& result_space_tile,
     const Subarray& subarray,
@@ -1109,7 +1107,7 @@ Status DenseReader::copy_offset_tiles(
     const std::vector<std::string>& names,
     const std::vector<uint8_t*>& dst_bufs,
     const std::vector<uint8_t*>& dst_val_bufs,
-    const std::vector<tdb_shared_ptr<const Attribute>>& attributes,
+    const std::vector<const Attribute*>& attributes,
     const std::vector<uint64_t>& data_type_sizes,
     ResultSpaceTile<DimType>& result_space_tile,
     const Subarray& subarray,

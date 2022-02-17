@@ -594,7 +594,7 @@ QueryCondition::apply_clause(
     const ArraySchema* const array_schema,
     const uint64_t stride,
     const std::vector<ResultCellSlab>& result_cell_slabs) const {
-  const Attribute* attribute = array_schema->attribute(clause.field_name_);
+  auto attribute = array_schema->attribute(clause.field_name_);
   if (!attribute) {
     return {
         Status_QueryConditionError("Unknown attribute " + clause.field_name_),
