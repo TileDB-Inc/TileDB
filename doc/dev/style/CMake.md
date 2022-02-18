@@ -8,13 +8,14 @@ The `TILEDB_*` options are used primarily for enabling/disabling extra component
 
 If it is decided a new option is needed, the following must be updated in addition to the root `CMakeLists.txt` file:
 
-1. the bootstrap script
-1. the installation documentation contained in our [online docs](https://docs.tiledb.com)
+1. the bootstrap scripts (`bootstrap`, `bootstrap.ps1`)
+2. continuous integration coverage to ensure the option is exercised in a CI build (edit github actions workflows under `.github/workflows`)
+3. the build documentation contained in our [online docs](https://docs.tiledb.com)
 
 
 ## TileDB Object Libraries
 
-The main TileDB library is in the process of being broken into discrete object libraries. 
+The main TileDB library is in the process of being broken into discrete [object libraries](https://cmake.org/cmake/help/latest/manual/cmake-buildsystem.7.html#object-libraries). 
 
 _TODO About the object libraries and best practices_
 
