@@ -1297,8 +1297,8 @@ FragmentMetadata::get_tile_min(const std::string& name, uint64_t tile_idx) {
   const auto cell_val_num = array_schema_->cell_val_num(name);
   if (!TileMetadataGenerator::has_min_max_metadata(
           type, is_dim, var_size, cell_val_num))
-    return {LOG_STATUS(Status_FragmentMetadataError(
-                "Trying to access metadata that's not present")),
+    return {Status_FragmentMetadataError(
+                "Trying to access metadata that's not present"),
             std::nullopt,
             std::nullopt};
 
@@ -1335,8 +1335,8 @@ FragmentMetadata::get_tile_max(const std::string& name, uint64_t tile_idx) {
   const auto cell_val_num = array_schema_->cell_val_num(name);
   if (!TileMetadataGenerator::has_min_max_metadata(
           type, is_dim, var_size, cell_val_num))
-    return {LOG_STATUS(Status_FragmentMetadataError(
-                "Trying to access metadata that's not present")),
+    return {Status_FragmentMetadataError(
+                "Trying to access metadata that's not present"),
             std::nullopt,
             std::nullopt};
 
@@ -1370,8 +1370,8 @@ std::tuple<Status, std::optional<void*>> FragmentMetadata::get_tile_sum(
   auto var_size = array_schema_->var_size(name);
   auto cell_val_num = array_schema_->cell_val_num(name);
   if (!TileMetadataGenerator::has_sum_metadata(type, var_size, cell_val_num))
-    return {LOG_STATUS(Status_FragmentMetadataError(
-                "Trying to access metadata that's not present")),
+    return {Status_FragmentMetadataError(
+                "Trying to access metadata that's not present"),
             std::nullopt};
 
   void* sum = &tile_sums_[idx][tile_idx * sizeof(uint64_t)];
@@ -1390,8 +1390,8 @@ FragmentMetadata::get_tile_null_count(
             std::nullopt};
 
   if (!array_schema_->is_nullable(name)) {
-    return {LOG_STATUS(Status_FragmentMetadataError(
-                "Trying to access metadata that's not present")),
+    return {Status_FragmentMetadataError(
+                "Trying to access metadata that's not present"),
             std::nullopt};
   }
 

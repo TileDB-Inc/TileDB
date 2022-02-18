@@ -260,14 +260,14 @@ struct CPPFixedTileMetadataFx {
           int64_t correct_sum =
               (tile_extent_) * (correct_min + correct_max) / 2;
 
-          // Validate min.
+          // Validate no min.
           auto&& [st_min, min, min_size] =
               frag_meta[f]->get_tile_min("d", tile_idx);
           CHECK(!st_min.ok());
           CHECK(!min.has_value());
           CHECK(!min_size.has_value());
 
-          // Validate max.
+          // Validate no max.
           auto&& [st_max, max, max_size] =
               frag_meta[f]->get_tile_max("d", tile_idx);
           CHECK(!st_max.ok());
@@ -635,6 +635,7 @@ struct CPPVarTileMetadataFx {
           // Validate no min.
           auto&& [st_min, min, min_size] =
               frag_meta[f]->get_tile_min("d", tile_idx);
+          CHECK(!st_min.ok());
           CHECK(!min.has_value());
           CHECK(!min_size.has_value());
 
