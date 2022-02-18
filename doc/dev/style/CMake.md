@@ -4,7 +4,13 @@ TileDB uses CMake for its configuration, build system, and package management.
 
 ## Build Options
 
-_TODO Describe the `TILEDB_*` options and how/when to add new options._
+The `TILEDB_*` options are used primarily for enabling/disabling extra components (e.g. S3 support, test suite) and setting build or compilation settings (e.g. error on warn, superbuild). The options are defined in a single code block in the TileDB root `CMakeLists.txt` file.
+
+If it is decided a new option is needed, the following must be updated in addition to the root `CMakeLists.txt` file:
+
+1. the bootstrap script
+1. the installation documentation contained in our [online docs](https://docs.tiledb.com)
+
 
 ## TileDB Object Libraries
 
