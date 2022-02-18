@@ -68,6 +68,8 @@ using std::optional;
 #include "external/include/span/span.hpp"
 using tcb::span;
 
+using std::size_t;
+
 /**
  * @section Reference
  * Documentation on the preprocessor operators

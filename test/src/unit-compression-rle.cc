@@ -297,6 +297,8 @@ TEST_CASE(
 TEST_CASE(
     "Compression-RLE: Test compression parameter calculation of strings",
     "[compression][rle][rle-strings]") {
+  // initialize the seed for generating pseudorandom strings
+  std::srand(10);
   std::string s15 = tiledb::test::random_string(15);
   std::string s8 = tiledb::test::random_string(8);
   std::string s4 = tiledb::test::random_string(4);
@@ -410,6 +412,9 @@ TEMPLATE_LIST_TEST_CASE(
   // pick values of at least 2 bytes
   uint64_t num_strings = std::numeric_limits<uint8_t>::max() + 1;
   uint64_t string_len = std::numeric_limits<uint8_t>::max() + 1;
+
+  // initialize the seed for generating pseudorandom string
+  std::srand(10);
   auto string_rand = tiledb::test::random_string(string_len);
   std::vector<std::string> uncompressed_v(num_strings, string_rand);
   std::vector<std::string_view> uncompressed;

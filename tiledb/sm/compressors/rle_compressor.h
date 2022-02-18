@@ -104,7 +104,8 @@ class RLE {
     T run_length = 1;
     auto out_offset = &output[0];
     auto previous = input[0];
-    for (uint64_t in_index = 1; in_index < input.size(); in_index++) {
+    for (decltype(input.size()) in_index = 1; in_index < input.size();
+         in_index++) {
       if (input[in_index] == previous && run_length < max_run_length) {
         run_length++;
       } else {

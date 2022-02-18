@@ -65,7 +65,7 @@ inline bool is_big_endian() {
  * Compile-time endianness swap based on
  * https://en.cppreference.com/w/cpp/language/fold
  */
-template <class T, std::size_t... N>
+template <class T, size_t... N>
 constexpr T bswap_impl(T i, std::index_sequence<N...>) {
   return (
       ((i >> N * CHAR_BIT & std::uint8_t(-1))
