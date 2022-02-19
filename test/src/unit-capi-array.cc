@@ -636,7 +636,8 @@ TEST_CASE_METHOD(
 
     // Close arrays
     rc = tiledb_array_close(ctx_, array2);
-    REQUIRE(rc == TILEDB_ERR);  // Array not opened successfully
+    REQUIRE(
+        rc == TILEDB_OK);  // Array not opened successfully, closing is a noop
     rc = tiledb_array_close(ctx_, array);
     REQUIRE(rc == TILEDB_OK);
 
