@@ -57,7 +57,7 @@ class FilterCreate {
    * @param encryption_key.
    * @return Status and Filter
    */
-  static std::tuple<Status, optional<std::shared_ptr<Filter>>> deserialize(
+  static tuple<Status, optional<std::shared_ptr<Filter>>> deserialize(
       ConstBuffer* buff, const EncryptionKey& encryption_key);
 
   /**
@@ -66,7 +66,7 @@ class FilterCreate {
    * @param buff The buffer to deserialize from.
    * @return Status and Filter
    */
-  static std::tuple<Status, optional<std::shared_ptr<Filter>>> deserialize(
+  static tuple<Status, optional<std::shared_ptr<Filter>>> deserialize(
       ConstBuffer* buff);
 };
 

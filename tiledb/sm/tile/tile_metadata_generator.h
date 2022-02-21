@@ -168,7 +168,7 @@ class TileMetadataGenerator {
    * @return minimum, maximum.
    */
   template <class T>
-  static const std::tuple<void*, void*> min_max(
+  static const tuple<void*, void*> min_max(
       const Tile* tile, const uint64_t cell_size);
 
   /**
@@ -182,7 +182,7 @@ class TileMetadataGenerator {
    * @return minimum, maximum, null count.
    */
   template <class T>
-  static const std::tuple<void*, void*, uint64_t> min_max_nullable(
+  static const tuple<void*, void*, uint64_t> min_max_nullable(
       const Tile* tile, const Tile* tile_validity, const uint64_t cell_size);
 
   /* ********************************* */
@@ -212,13 +212,7 @@ class TileMetadataGenerator {
    *
    * @return min, min_size, max, max_size, sum, null count.
    */
-  std::tuple<
-      const void*,
-      uint64_t,
-      const void*,
-      uint64_t,
-      const ByteVec*,
-      uint64_t>
+  tuple<const void*, uint64_t, const void*, uint64_t, const ByteVec*, uint64_t>
   metadata() const;
 
   /**

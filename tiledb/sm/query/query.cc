@@ -2122,7 +2122,7 @@ bool Query::use_refactored_sparse_unordered_with_dups_reader() {
   return val == "refactored";
 }
 
-std::tuple<Status, std::optional<bool>> Query::non_overlapping_ranges() {
+tuple<Status, optional<bool>> Query::non_overlapping_ranges() {
   return subarray_.non_overlapping_ranges(storage_manager_->compute_tp());
 }
 

@@ -82,18 +82,12 @@ void* WriterTile::max() const {
   return (void*)max_.data();
 }
 
-std::tuple<
-    const void*,
-    uint64_t,
-    const void*,
-    uint64_t,
-    const ByteVec*,
-    uint64_t>
+tuple<const void*, uint64_t, const void*, uint64_t, const ByteVec*, uint64_t>
 WriterTile::metadata() const {
   return {min_.data(), min_size_, max_.data(), max_size_, &sum_, null_count_};
 }
 
-void WriterTile::set_metadata(const std::tuple<
+void WriterTile::set_metadata(const tuple<
                               const void*,
                               uint64_t,
                               const void*,

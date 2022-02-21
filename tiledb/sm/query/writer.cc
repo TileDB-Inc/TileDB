@@ -1122,8 +1122,8 @@ Status Writer::filter_tiles(
 
   // Reserve a vector for offsets tiles, they need to be processed after var
   // data tiles as the processing of var data tiles depends on offset tiles.
-  std::vector<std::tuple<WriterTile*, WriterTile*, bool, bool>> args;
-  std::vector<std::tuple<WriterTile*, WriterTile*, bool, bool>> args_offsets;
+  std::vector<tuple<WriterTile*, WriterTile*, bool, bool>> args;
+  std::vector<tuple<WriterTile*, WriterTile*, bool, bool>> args_offsets;
   if (var_size) {
     args_offsets.reserve(tile_num / tile_step);
     args.reserve(tile_num - tile_num / tile_step);

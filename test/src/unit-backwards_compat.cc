@@ -32,6 +32,7 @@
  */
 
 #include "catch.hpp"
+#include "tiledb/common/common.h"
 #include "tiledb/sm/cpp_api/tiledb"
 #include "tiledb/sm/misc/constants.h"
 
@@ -152,7 +153,7 @@ void set_buffer_wrapper(
     uint8_t* const validity,
     std::unordered_map<
         std::string,
-        std::tuple<uint64_t*, void*, uint8_t*>>* const buffers) {
+        tuple<uint64_t*, void*, uint8_t*>>* const buffers) {
   if (var_sized) {
     if (!nullable) {
       query->set_data_buffer(attribute_name, static_cast<T*>(values), 1);
@@ -262,7 +263,7 @@ TEST_CASE(
 
       auto query = new Query(encrypted ? ctx_cfg : ctx, *array);
 
-      std::unordered_map<std::string, std::tuple<uint64_t*, void*, uint8_t*>>
+      std::unordered_map<std::string, tuple<uint64_t*, void*, uint8_t*>>
           buffers;
       for (auto attr : array->schema().attributes()) {
         std::string attribute_name = attr.first;
@@ -567,7 +568,7 @@ TEST_CASE(
 
       // Check the results to make sure all values are set to 1
       for (auto buff : buffers) {
-        std::tuple<uint64_t*, void*, uint8_t*> buffer = buff.second;
+        tuple<uint64_t*, void*, uint8_t*> buffer = buff.second;
         if (std::get<0>(buffer) != nullptr) {
           REQUIRE(std::get<0>(buffer)[0] == 0);
         }
@@ -756,7 +757,7 @@ TEST_CASE(
 
       auto query = new Query(encrypted ? ctx_cfg : ctx, *array);
 
-      std::unordered_map<std::string, std::tuple<uint64_t*, void*, uint8_t*>>
+      std::unordered_map<std::string, tuple<uint64_t*, void*, uint8_t*>>
           buffers;
       for (auto attr : array->schema().attributes()) {
         std::string attribute_name = attr.first;
@@ -1095,7 +1096,7 @@ TEST_CASE(
 
       // Check the results to make sure all values are set to 1
       for (auto buff : buffers) {
-        std::tuple<uint64_t*, void*, uint8_t*> buffer = buff.second;
+        tuple<uint64_t*, void*, uint8_t*> buffer = buff.second;
         if (std::get<0>(buffer) != nullptr) {
           REQUIRE(std::get<0>(buffer)[0] == 0);
         }

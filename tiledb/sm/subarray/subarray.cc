@@ -2022,9 +2022,9 @@ Status Subarray::sort_ranges(ThreadPool* const compute_tp) {
   return Status::Ok();
 }
 
-std::tuple<Status, std::optional<bool>> Subarray::non_overlapping_ranges(
+tuple<Status, optional<bool>> Subarray::non_overlapping_ranges(
     ThreadPool* const compute_tp) {
-  RETURN_NOT_OK_TUPLE(sort_ranges(compute_tp), std::nullopt);
+  RETURN_NOT_OK_TUPLE(sort_ranges(compute_tp), nullopt);
 
   std::atomic<bool> non_overlapping_ranges = true;
   auto st = parallel_for(
@@ -2037,7 +2037,7 @@ std::tuple<Status, std::optional<bool>> Subarray::non_overlapping_ranges(
 
         return status;
       });
-  RETURN_NOT_OK_TUPLE(st, std::nullopt);
+  RETURN_NOT_OK_TUPLE(st, nullopt);
 
   return {Status::Ok(), non_overlapping_ranges};
 }
@@ -3242,8 +3242,8 @@ Status Subarray::sort_ranges_for_dim(
 }
 
 template <typename T>
-std::tuple<Status, std::optional<bool>>
-Subarray::non_overlapping_ranges_for_dim(const uint64_t dim_idx) {
+tuple<Status, std::optional<bool>> Subarray::non_overlapping_ranges_for_dim(
+    const uint64_t dim_idx) {
   const auto& ranges = ranges_[dim_idx];
   const Dimension* const dim =
       array_->array_schema_latest()->dimension(dim_idx);
@@ -3258,8 +3258,8 @@ Subarray::non_overlapping_ranges_for_dim(const uint64_t dim_idx) {
   return {Status::Ok(), true};
 }
 
-std::tuple<Status, std::optional<bool>>
-Subarray::non_overlapping_ranges_for_dim(const uint64_t dim_idx) {
+tuple<Status, std::optional<bool>> Subarray::non_overlapping_ranges_for_dim(
+    const uint64_t dim_idx) {
   const Datatype& datatype =
       array_->array_schema_latest()->dimension(dim_idx)->type();
   switch (datatype) {

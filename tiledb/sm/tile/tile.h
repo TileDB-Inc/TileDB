@@ -33,6 +33,7 @@
 #ifndef TILEDB_TILE_H
 #define TILEDB_TILE_H
 
+#include "tiledb/common/common.h"
 #include "tiledb/common/status.h"
 #include "tiledb/sm/array_schema/attribute.h"
 #include "tiledb/sm/tile/filtered_buffer.h"

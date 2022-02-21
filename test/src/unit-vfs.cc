@@ -70,7 +70,7 @@ TEST_CASE("VFS: Test read batching", "[vfs]") {
     tile[i].filtered_buffer().expand(nelts * sizeof(uint32_t));
   }
 
-  std::vector<std::tuple<uint64_t, Tile*, uint64_t>> batches;
+  std::vector<tuple<uint64_t, Tile*, uint64_t>> batches;
   std::vector<ThreadPool::Task> tasks;
 
   SECTION("- Default config") {

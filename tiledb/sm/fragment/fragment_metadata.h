@@ -553,7 +553,7 @@ class FragmentMetadata {
    * @param tile_idx The index of the tile in the metadata.
    * @return Status, size
    */
-  std::tuple<Status, std::optional<uint64_t>> persisted_tile_size(
+  tuple<Status, optional<uint64_t>> persisted_tile_size(
       const std::string& name, uint64_t tile_idx);
 
   /**
@@ -565,7 +565,7 @@ class FragmentMetadata {
    * @param tile_idx The index of the tile in the metadata.
    * @return Status, size
    */
-  std::tuple<Status, std::optional<uint64_t>> persisted_tile_var_size(
+  tuple<Status, optional<uint64_t>> persisted_tile_var_size(
       const std::string& name, uint64_t tile_idx);
 
   /**
@@ -576,7 +576,7 @@ class FragmentMetadata {
    * @param tile_idx The index of the tile in the metadata.
    * @return Status, size
    */
-  std::tuple<Status, std::optional<uint64_t>> persisted_tile_validity_size(
+  tuple<Status, optional<uint64_t>> persisted_tile_validity_size(
       const std::string& name, uint64_t tile_idx);
 
   /**
@@ -598,7 +598,7 @@ class FragmentMetadata {
    * @param tile_idx The index of the tile in the metadata.
    * @return Status, size.
    */
-  std::tuple<Status, std::optional<uint64_t>> tile_var_size(
+  tuple<Status, optional<uint64_t>> tile_var_size(
       const std::string& name, uint64_t tile_idx);
 
   /**
@@ -609,8 +609,8 @@ class FragmentMetadata {
    * @param tile_idx The index of the tile in the metadata.
    * @return Status, value, size.
    */
-  std::tuple<Status, std::optional<void*>, std::optional<uint64_t>>
-  get_tile_min(const std::string& name, uint64_t tile_idx);
+  tuple<Status, optional<void*>, optional<uint64_t>> get_tile_min(
+      const std::string& name, uint64_t tile_idx);
 
   /**
    * Retrieves the tile max value for a given attribute or dimension and tile
@@ -620,8 +620,8 @@ class FragmentMetadata {
    * @param tile_idx The index of the tile in the metadata.
    * @return Status, value, size.
    */
-  std::tuple<Status, std::optional<void*>, std::optional<uint64_t>>
-  get_tile_max(const std::string& name, uint64_t tile_idx);
+  tuple<Status, optional<void*>, optional<uint64_t>> get_tile_max(
+      const std::string& name, uint64_t tile_idx);
 
   /**
    * Retrieves the tile sum value for a given attribute or dimension and tile
@@ -631,7 +631,7 @@ class FragmentMetadata {
    * @param tile_idx The index of the tile in the metadata.
    * @return Status, sum.
    */
-  std::tuple<Status, std::optional<void*>> get_tile_sum(
+  tuple<Status, optional<void*>> get_tile_sum(
       const std::string& name, uint64_t tile_idx);
 
   /**
@@ -642,7 +642,7 @@ class FragmentMetadata {
    * @param tile_idx The index of the tile in the metadata.
    * @return Status, count.
    */
-  std::tuple<Status, std::optional<uint64_t>> get_tile_null_count(
+  tuple<Status, optional<uint64_t>> get_tile_null_count(
       const std::string& name, uint64_t tile_idx);
 
   /** Returns the first timestamp of the fragment timestamp range. */

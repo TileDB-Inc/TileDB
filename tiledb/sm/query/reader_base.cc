@@ -420,7 +420,7 @@ Status ReaderBase::read_tiles(
   // Populate the list of regions per file to be read.
   std::unordered_map<
       URI,
-      std::vector<std::tuple<uint64_t, Tile*, uint64_t>>,
+      std::vector<tuple<uint64_t, Tile*, uint64_t>>,
       URIHasher>
       all_regions;
 
@@ -609,7 +609,7 @@ Status ReaderBase::read_tiles(
   return Status::Ok();
 }
 
-std::tuple<Status, std::optional<uint64_t>> ReaderBase::load_chunk_data(
+tuple<Status, optional<uint64_t>> ReaderBase::load_chunk_data(
     Tile* const tile, ChunkData* unfiltered_tile) const {
   assert(tile);
   assert(unfiltered_tile);
@@ -619,7 +619,7 @@ std::tuple<Status, std::optional<uint64_t>> ReaderBase::load_chunk_data(
   auto filtered_buffer_data = tile->filtered_buffer().data();
   if (filtered_buffer_data == nullptr) {
     st = logger_->status(Status_ReaderError("Tile has null buffer."));
-    return {st, std::nullopt};
+    return {st, nullopt};
   }
 
   // Make a pass over the tile to get the chunk information.
@@ -662,17 +662,13 @@ std::tuple<Status, std::optional<uint64_t>> ReaderBase::load_chunk_data(
   if (total_orig_size != tile->size()) {
     return {LOG_STATUS(Status_ReaderError(
                 "Error incorrect unfiltered tile size allocated.")),
-            std::nullopt};
+            nullopt};
   }
 
   return {Status::Ok(), total_orig_size};
 }
 
-std::tuple<
-    Status,
-    std::optional<uint64_t>,
-    std::optional<uint64_t>,
-    std::optional<uint64_t>>
+tuple<Status, optional<uint64_t>, optional<uint64_t>, optional<uint64_t>>
 ReaderBase::load_tile_chunk_data(
     const std::string& name,
     ResultTile* const tile,
@@ -702,24 +698,24 @@ ReaderBase::load_tile_chunk_data(
     // dense case).
     if (tile_tuple == nullptr ||
         std::get<0>(*tile_tuple).filtered_buffer().size() == 0)
-      return {Status::Ok(), std::nullopt, std::nullopt, std::nullopt};
+      return {Status::Ok(), nullopt, nullopt, nullopt};
 
     const auto t = &std::get<0>(*tile_tuple);
     const auto t_var = &std::get<1>(*tile_tuple);
     const auto t_validity = &std::get<2>(*tile_tuple);
 
     auto&& [st, tile_size] = load_chunk_data(t, tile_chunk_data);
-    RETURN_NOT_OK_TUPLE(st, std::nullopt, std::nullopt, std::nullopt);
+    RETURN_NOT_OK_TUPLE(st, nullopt, nullopt, nullopt);
     unfiltered_tile_size = tile_size.value();
     if (var_size) {
       auto&& [st, tile_var_size] = load_chunk_data(t_var, tile_chunk_var_data);
-      RETURN_NOT_OK_TUPLE(st, std::nullopt, std::nullopt, std::nullopt);
+      RETURN_NOT_OK_TUPLE(st, nullopt, nullopt, nullopt);
       unfiltered_tile_var_size = tile_var_size.value();
     }
     if (nullable) {
       auto&& [st, tile_validity_size] =
           load_chunk_data(t_validity, tile_chunk_validity_data);
-      RETURN_NOT_OK_TUPLE(st, std::nullopt, std::nullopt, std::nullopt);
+      RETURN_NOT_OK_TUPLE(st, nullopt, nullopt, nullopt);
       unfiltered_tile_validity_size = tile_validity_size.value();
     }
   }
@@ -948,7 +944,7 @@ Status ReaderBase::unfilter_tiles_chunk_range(
   return Status::Ok();
 }
 
-std::tuple<uint64_t, uint64_t> ReaderBase::compute_chunk_min_max(
+tuple<uint64_t, uint64_t> ReaderBase::compute_chunk_min_max(
     const uint64_t num_chunks,
     const uint64_t num_range_threads,
     const uint64_t thread_idx) const {
@@ -1379,14 +1375,14 @@ Status ReaderBase::unfilter_tile_nullable(
   return Status::Ok();
 }
 
-std::tuple<Status, std::optional<uint64_t>> ReaderBase::get_attribute_tile_size(
+tuple<Status, optional<uint64_t>> ReaderBase::get_attribute_tile_size(
     const std::string& name, unsigned f, uint64_t t) {
   uint64_t tile_size = 0;
   tile_size += fragment_metadata_[f]->tile_size(name, t);
 
   if (array_schema_->var_size(name)) {
     auto&& [st, temp] = fragment_metadata_[f]->tile_var_size(name, t);
-    RETURN_NOT_OK_TUPLE(st, std::nullopt);
+    RETURN_NOT_OK_TUPLE(st, nullopt);
     tile_size += *temp;
   }
 
@@ -1464,7 +1460,7 @@ bool ReaderBase::has_coords() const {
 }
 
 template <class T>
-std::tuple<Status, std::optional<bool>> ReaderBase::fill_dense_coords(
+tuple<Status, optional<bool>> ReaderBase::fill_dense_coords(
     const Subarray& subarray) {
   auto timer_se = stats_->start_timer("fill_dense_coords");
 
@@ -1476,7 +1472,7 @@ std::tuple<Status, std::optional<bool>> ReaderBase::fill_dense_coords(
     return {logger_->status(Status_ReaderError(
                 "Cannot read dense coordinates; dense coordinate "
                 "reads are unsupported with a query condition")),
-            std::nullopt};
+            nullopt};
   }
 
   // Prepare buffers
@@ -1521,7 +1517,7 @@ std::tuple<Status, std::optional<bool>> ReaderBase::fill_dense_coords(
 }
 
 template <class T>
-std::tuple<Status, std::optional<bool>> ReaderBase::fill_dense_coords_global(
+tuple<Status, optional<bool>> ReaderBase::fill_dense_coords_global(
     const Subarray& subarray,
     const std::vector<unsigned>& dim_idx,
     const std::vector<QueryBuffer*>& buffers,
@@ -1542,7 +1538,7 @@ std::tuple<Status, std::optional<bool>> ReaderBase::fill_dense_coords_global(
 }
 
 template <class T>
-std::tuple<Status, std::optional<bool>> ReaderBase::fill_dense_coords_row_col(
+tuple<Status, optional<bool>> ReaderBase::fill_dense_coords_row_col(
     const Subarray& subarray,
     const std::vector<unsigned>& dim_idx,
     const std::vector<QueryBuffer*>& buffers,
@@ -1718,22 +1714,22 @@ template void ReaderBase::compute_result_space_tiles<uint64_t>(
     const Subarray&,
     std::map<const uint64_t*, ResultSpaceTile<uint64_t>>&) const;
 
-template std::tuple<Status, std::optional<bool>>
-ReaderBase::fill_dense_coords<int8_t>(const Subarray&);
-template std::tuple<Status, std::optional<bool>>
-ReaderBase::fill_dense_coords<uint8_t>(const Subarray&);
-template std::tuple<Status, std::optional<bool>>
-ReaderBase::fill_dense_coords<int16_t>(const Subarray&);
-template std::tuple<Status, std::optional<bool>>
-ReaderBase::fill_dense_coords<uint16_t>(const Subarray&);
-template std::tuple<Status, std::optional<bool>>
-ReaderBase::fill_dense_coords<int32_t>(const Subarray&);
-template std::tuple<Status, std::optional<bool>>
-ReaderBase::fill_dense_coords<uint32_t>(const Subarray&);
-template std::tuple<Status, std::optional<bool>>
-ReaderBase::fill_dense_coords<int64_t>(const Subarray&);
-template std::tuple<Status, std::optional<bool>>
-ReaderBase::fill_dense_coords<uint64_t>(const Subarray&);
+template tuple<Status, optional<bool>> ReaderBase::fill_dense_coords<int8_t>(
+    const Subarray&);
+template tuple<Status, optional<bool>> ReaderBase::fill_dense_coords<uint8_t>(
+    const Subarray&);
+template tuple<Status, optional<bool>> ReaderBase::fill_dense_coords<int16_t>(
+    const Subarray&);
+template tuple<Status, optional<bool>> ReaderBase::fill_dense_coords<uint16_t>(
+    const Subarray&);
+template tuple<Status, optional<bool>> ReaderBase::fill_dense_coords<int32_t>(
+    const Subarray&);
+template tuple<Status, optional<bool>> ReaderBase::fill_dense_coords<uint32_t>(
+    const Subarray&);
+template tuple<Status, optional<bool>> ReaderBase::fill_dense_coords<int64_t>(
+    const Subarray&);
+template tuple<Status, optional<bool>> ReaderBase::fill_dense_coords<uint64_t>(
+    const Subarray&);
 
 }  // namespace sm
 }  // namespace tiledb
