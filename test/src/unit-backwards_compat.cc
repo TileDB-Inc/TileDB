@@ -151,9 +151,8 @@ void set_buffer_wrapper(
     uint64_t* const offsets,
     void* const values,
     uint8_t* const validity,
-    std::unordered_map<
-        std::string,
-        tuple<uint64_t*, void*, uint8_t*>>* const buffers) {
+    std::unordered_map<std::string, tuple<uint64_t*, void*, uint8_t*>>* const
+        buffers) {
   if (var_sized) {
     if (!nullable) {
       query->set_data_buffer(attribute_name, static_cast<T*>(values), 1);
