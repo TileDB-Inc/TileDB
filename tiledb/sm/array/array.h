@@ -37,6 +37,7 @@
 #include <unordered_map>
 #include <vector>
 
+#include "tiledb/common/memory_tracker.h"
 #include "tiledb/common/status.h"
 #include "tiledb/sm/crypto/encryption_key.h"
 #include "tiledb/sm/fragment/fragment_info.h"
@@ -76,11 +77,33 @@ class Array {
   /*                API                */
   /* ********************************* */
 
-  /** Returns the array schema. */
-  ArraySchema* array_schema() const;
+  /** Sets the latest array schema.
+   * @param array_schema The array schema to set.
+   */
+  void set_array_schema_latest(ArraySchema* array_schema);
+
+  /** Sets all array schemas.
+   * @param all_schemas The array schemas to set.
+   */
+  void set_array_schemas_all(
+      std::unordered_map<std::string, tdb_shared_ptr<ArraySchema>>&
+          all_schemas);
+
+  /** Returns the latest array schema. */
+  ArraySchema* array_schema_latest() const;
+
+  /** Returns array schemas map. */
+  inline const std::unordered_map<std::string, tdb_shared_ptr<ArraySchema>>&
+  array_schemas_all() const {
+    return array_schemas_all_;
+  }
 
   /** Returns the array URI. */
   const URI& array_uri() const;
+
+  /** Returns the serialized array URI, this is for backwards compatibility with
+   * serialization in pre TileDB 2.4 */
+  const URI& array_uri_serialized() const;
 
   /**
    * Opens the array for reading at a timestamp retrieved from the config
@@ -237,8 +260,9 @@ class Array {
   /** Retrieves a reference to the array config. */
   Config config() const;
 
-  /** Directly set the array URI. */
-  Status set_uri(const std::string& uri);
+  /** Directly set the array URI for serialized compatibility with pre
+   * TileDB 2.5 clients */
+  Status set_uri_serialized(const std::string& uri);
 
   /**
    * Deletes metadata from an array opened in WRITE mode.
@@ -321,9 +345,9 @@ class Array {
    * @note This is potentially an unsafe operation
    * it could have contention with locks from lazy loading of metadata.
    * This should only be used by the serialization class
-   * (tiledb/sm/serialization/array_schema.cc). In that class we need to fetch
-   * the underlying Metadata object to set the values we are loading from REST.
-   * A lock should already by taken before load_metadata is called.
+   * (tiledb/sm/serialization/array_schema_latest.cc). In that class we need to
+   * fetch the underlying Metadata object to set the values we are loading from
+   * REST. A lock should already by taken before load_metadata is called.
    */
   Metadata* metadata();
 
@@ -331,28 +355,45 @@ class Array {
    *  If the non_empty_domain has not been computed or loaded
    *  it will be loaded first
    * */
-  const NDRange& non_empty_domain();
+  std::tuple<Status, std::optional<const NDRange>> non_empty_domain();
 
   /** Returns the non-empty domain of the opened array. */
   void set_non_empty_domain(const NDRange& non_empty_domain);
+
+  /** Returns the memory tracker. */
+  MemoryTracker* memory_tracker();
 
  private:
   /* ********************************* */
   /*         PRIVATE ATTRIBUTES        */
   /* ********************************* */
 
-  /** The array schema. */
-  ArraySchema* array_schema_;
+  /** The latest array schema. */
+  ArraySchema* array_schema_latest_;
+
+  /**
+   * A map of all array_schemas_all
+   */
+  std::unordered_map<std::string, tdb_shared_ptr<ArraySchema>>
+      array_schemas_all_;
 
   /** The array URI. */
   URI array_uri_;
 
+  /** This is a backwards compatible URI from serialization
+   *  In TileDB 2.5 we removed sending the URI but 2.4 and older were
+   * unconditionally setting the URI, so things got set to an empty stirng Now
+   * we store the serialized URI so we avoid the empty string with older
+   * clients.
+   */
+  URI array_uri_serialized_;
+
   /**
    * The private encryption key used to encrypt the array.
    *
-   * Note: This is the only place in TileDB where the user's private key bytes
-   * should be stored. Whenever a key is needed, a pointer to this memory region
-   * should be passed instead of a copy of the bytes.
+   * Note: This is the only place in TileDB where the user's private key
+   * bytes should be stored. Whenever a key is needed, a pointer to this
+   * memory region should be passed instead of a copy of the bytes.
    */
   tdb_shared_ptr<EncryptionKey> encryption_key_;
 
@@ -405,9 +446,6 @@ class Array {
    */
   std::vector<uint8_t> last_max_buffer_sizes_subarray_;
 
-  /** Mutex for thread-safety. */
-  mutable std::mutex mtx_;
-
   /** True if the array is remote (has `tiledb://` URI scheme). */
   bool remote_;
 
@@ -422,6 +460,9 @@ class Array {
 
   /** The non-empty domain of the array. */
   NDRange non_empty_domain_;
+
+  /** Memory tracker for the array. */
+  MemoryTracker memory_tracker_;
 
   /* ********************************* */
   /*          PRIVATE METHODS          */

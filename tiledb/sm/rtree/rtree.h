@@ -135,6 +135,11 @@ class RTree {
   Status serialize(Buffer* buff) const;
 
   /**
+   * Sets the RTree domain.
+   */
+  Status set_domain(const Domain* domain);
+
+  /**
    * Sets an MBR as a leaf in the tree. The function will error out
    * if the number of levels in the tree is different from exactly
    * 1 (the leaf level), and if `leaf_id` is out of bounds / invalid.

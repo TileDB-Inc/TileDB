@@ -49,8 +49,24 @@ namespace sm {
     if (!_s.ok()) {                                            \
       return _s;                                               \
     } else if (storage_manager_->cancellation_in_progress()) { \
-      return Status::QueryError("Query cancelled.");           \
+      return Status_QueryError("Query cancelled.");            \
     }                                                          \
+  } while (false)
+#endif
+
+#ifndef RETURN_CANCEL_OR_ERROR_TUPLE
+/**
+ * Returns an error status if the given Status is not Status::Ok, or
+ * if the StorageManager that owns this Query has requested cancellation.
+ */
+#define RETURN_CANCEL_OR_ERROR_TUPLE(s)                             \
+  do {                                                              \
+    Status _s = (s);                                                \
+    if (!_s.ok()) {                                                 \
+      return {_s, std::nullopt};                                    \
+    } else if (storage_manager_->cancellation_in_progress()) {      \
+      return {Status_QueryError("Query cancelled."), std::nullopt}; \
+    }                                                               \
   } while (false)
 #endif
 
@@ -68,7 +84,7 @@ namespace sm {
       return _s;                                               \
     } else if (storage_manager_->cancellation_in_progress()) { \
       _else;                                                   \
-      return Status::QueryError("Query cancelled.");           \
+      return Status_QueryError("Query cancelled.");            \
     }                                                          \
   } while (false)
 #endif
@@ -85,7 +101,7 @@ namespace sm {
       outer_st = _s;                                           \
       break;                                                   \
     } else if (storage_manager_->cancellation_in_progress()) { \
-      outer_st = Status::QueryError("Query cancelled.");       \
+      outer_st = Status_QueryError("Query cancelled.");        \
       break;                                                   \
     }                                                          \
   } while (false)

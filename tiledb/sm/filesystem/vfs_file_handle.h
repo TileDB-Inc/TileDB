@@ -36,7 +36,7 @@
 #include <atomic>
 
 #include "tiledb/common/status.h"
-#include "tiledb/sm/misc/uri.h"
+#include "uri.h"
 
 using namespace tiledb::common;
 

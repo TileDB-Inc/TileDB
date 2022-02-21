@@ -34,10 +34,25 @@
 cmake_policy(SET CMP0063 NEW)
 
 ############################################################
+# Find packages needed for object libraries
+############################################################
+
+# FindThreads defines the following:
+#  * Threads_FOUND - If a supported thread library was found.
+#  * CMAKE_THREAD_LIBS_INIT - The thread library to use. This is empty if the thread
+#    functions are provided by the system libraries and no special flags are needed to
+#    use them.
+#  * CMAKE_USE_WIN32_THREADS_INIT - If the found thread library is the win32 one.
+#  * CMAKE_USE_PTHREADS_INIT - If the found thread library is pthread compatible.
+#  * CMAKE_HP_PTHREADS_INIT - If the found thread library is the HP thread library.
+find_package(Threads REQUIRED)
+
+############################################################
 # Subdirectories
 ############################################################
 
 add_subdirectory(common)
+add_subdirectory(sm)
 
 ############################################################
 # Source files
@@ -86,6 +101,7 @@ if (TILEDB_CPP_API)
     ${TILEDB_CORE_INCLUDE_DIR}/tiledb/sm/cpp_api/query_condition.h
     ${TILEDB_CORE_INCLUDE_DIR}/tiledb/sm/cpp_api/schema_base.h
     ${TILEDB_CORE_INCLUDE_DIR}/tiledb/sm/cpp_api/stats.h
+    ${TILEDB_CORE_INCLUDE_DIR}/tiledb/sm/cpp_api/subarray.h
     ${TILEDB_CORE_INCLUDE_DIR}/tiledb/sm/cpp_api/type.h
     ${TILEDB_CORE_INCLUDE_DIR}/tiledb/sm/cpp_api/utils.h
     ${TILEDB_CORE_INCLUDE_DIR}/tiledb/sm/cpp_api/version.h
@@ -104,7 +120,10 @@ set(TILEDB_CORE_SOURCES
   ${TILEDB_CORE_INCLUDE_DIR}/tiledb/common/logger.cc
   ${TILEDB_CORE_INCLUDE_DIR}/tiledb/common/memory.cc
   ${TILEDB_CORE_INCLUDE_DIR}/tiledb/common/status.cc
+  ${TILEDB_CORE_INCLUDE_DIR}/tiledb/common/status_code.cc
+  ${TILEDB_CORE_INCLUDE_DIR}/tiledb/common/stdx_string.cc
   ${TILEDB_CORE_INCLUDE_DIR}/tiledb/common/interval/interval.cc
+  ${TILEDB_CORE_INCLUDE_DIR}/tiledb/common/types/dynamic_typed_datum.cc
   ${TILEDB_CORE_INCLUDE_DIR}/tiledb/sm/array/array.cc
   ${TILEDB_CORE_INCLUDE_DIR}/tiledb/sm/array_schema/array_schema.cc
   ${TILEDB_CORE_INCLUDE_DIR}/tiledb/sm/array_schema/array_schema_evolution.cc
@@ -132,9 +151,11 @@ set(TILEDB_CORE_SOURCES
   ${TILEDB_CORE_INCLUDE_DIR}/tiledb/sm/filesystem/gcs.cc
   ${TILEDB_CORE_INCLUDE_DIR}/tiledb/sm/filesystem/mem_filesystem.cc
   ${TILEDB_CORE_INCLUDE_DIR}/tiledb/sm/filesystem/hdfs_filesystem.cc
+  ${TILEDB_CORE_INCLUDE_DIR}/tiledb/sm/filesystem/path_win.cc
   ${TILEDB_CORE_INCLUDE_DIR}/tiledb/sm/filesystem/posix.cc
   ${TILEDB_CORE_INCLUDE_DIR}/tiledb/sm/filesystem/s3.cc
   ${TILEDB_CORE_INCLUDE_DIR}/tiledb/sm/filesystem/s3_thread_pool_executor.cc
+  ${TILEDB_CORE_INCLUDE_DIR}/tiledb/sm/filesystem/uri.cc
   ${TILEDB_CORE_INCLUDE_DIR}/tiledb/sm/filesystem/vfs.cc
   ${TILEDB_CORE_INCLUDE_DIR}/tiledb/sm/filesystem/vfs_file_handle.cc
   ${TILEDB_CORE_INCLUDE_DIR}/tiledb/sm/filesystem/win.cc
@@ -147,6 +168,7 @@ set(TILEDB_CORE_SOURCES
   ${TILEDB_CORE_INCLUDE_DIR}/tiledb/sm/filter/encryption_aes256gcm_filter.cc
   ${TILEDB_CORE_INCLUDE_DIR}/tiledb/sm/filter/filter.cc
   ${TILEDB_CORE_INCLUDE_DIR}/tiledb/sm/filter/filter_buffer.cc
+  ${TILEDB_CORE_INCLUDE_DIR}/tiledb/sm/filter/filter_create.cc
   ${TILEDB_CORE_INCLUDE_DIR}/tiledb/sm/filter/filter_pipeline.cc
   ${TILEDB_CORE_INCLUDE_DIR}/tiledb/sm/filter/filter_storage.cc
   ${TILEDB_CORE_INCLUDE_DIR}/tiledb/sm/filter/noop_filter.cc
@@ -155,20 +177,22 @@ set(TILEDB_CORE_SOURCES
   ${TILEDB_CORE_INCLUDE_DIR}/tiledb/sm/fragment/fragment_metadata.cc
   ${TILEDB_CORE_INCLUDE_DIR}/tiledb/sm/global_state/global_state.cc
   ${TILEDB_CORE_INCLUDE_DIR}/tiledb/sm/global_state/libcurl_state.cc
-  ${TILEDB_CORE_INCLUDE_DIR}/tiledb/sm/global_state/openssl_state.cc
   ${TILEDB_CORE_INCLUDE_DIR}/tiledb/sm/global_state/signal_handlers.cc
   ${TILEDB_CORE_INCLUDE_DIR}/tiledb/sm/global_state/watchdog.cc
   ${TILEDB_CORE_INCLUDE_DIR}/tiledb/sm/metadata/metadata.cc
   ${TILEDB_CORE_INCLUDE_DIR}/tiledb/sm/misc/cancelable_tasks.cc
   ${TILEDB_CORE_INCLUDE_DIR}/tiledb/sm/misc/constants.cc
+  ${TILEDB_CORE_INCLUDE_DIR}/tiledb/sm/misc/math.cc
+  ${TILEDB_CORE_INCLUDE_DIR}/tiledb/sm/misc/parse_argument.cc
+  ${TILEDB_CORE_INCLUDE_DIR}/tiledb/sm/misc/time.cc
   ${TILEDB_CORE_INCLUDE_DIR}/tiledb/sm/misc/types.cc
-  ${TILEDB_CORE_INCLUDE_DIR}/tiledb/sm/misc/uri.cc
   ${TILEDB_CORE_INCLUDE_DIR}/tiledb/sm/misc/utils.cc
   ${TILEDB_CORE_INCLUDE_DIR}/tiledb/sm/misc/uuid.cc
   ${TILEDB_CORE_INCLUDE_DIR}/tiledb/sm/misc/win_constants.cc
   ${TILEDB_CORE_INCLUDE_DIR}/tiledb/sm/misc/work_arounds.cc
   ${TILEDB_CORE_INCLUDE_DIR}/tiledb/sm/query/dense_reader.cc
   ${TILEDB_CORE_INCLUDE_DIR}/tiledb/sm/query/dense_tiler.cc
+  ${TILEDB_CORE_INCLUDE_DIR}/tiledb/sm/query/hilbert_order.cc
   ${TILEDB_CORE_INCLUDE_DIR}/tiledb/sm/query/query.cc
   ${TILEDB_CORE_INCLUDE_DIR}/tiledb/sm/query/query_condition.cc
   ${TILEDB_CORE_INCLUDE_DIR}/tiledb/sm/query/reader.cc
@@ -182,6 +206,7 @@ set(TILEDB_CORE_SOURCES
   ${TILEDB_CORE_INCLUDE_DIR}/tiledb/sm/query/writer.cc
   ${TILEDB_CORE_INCLUDE_DIR}/tiledb/sm/rest/rest_client.cc
   ${TILEDB_CORE_INCLUDE_DIR}/tiledb/sm/rtree/rtree.cc
+  ${TILEDB_CORE_INCLUDE_DIR}/tiledb/sm/serialization/array.cc
   ${TILEDB_CORE_INCLUDE_DIR}/tiledb/sm/serialization/array_schema.cc
   ${TILEDB_CORE_INCLUDE_DIR}/tiledb/sm/serialization/array_schema_evolution.cc
   ${TILEDB_CORE_INCLUDE_DIR}/tiledb/sm/serialization/config.cc
@@ -191,7 +216,6 @@ set(TILEDB_CORE_SOURCES
   ${TILEDB_CORE_INCLUDE_DIR}/tiledb/sm/stats/timer_stat.cc
   ${TILEDB_CORE_INCLUDE_DIR}/tiledb/sm/storage_manager/context.cc
   ${TILEDB_CORE_INCLUDE_DIR}/tiledb/sm/storage_manager/consolidator.cc
-  ${TILEDB_CORE_INCLUDE_DIR}/tiledb/sm/storage_manager/open_array.cc
   ${TILEDB_CORE_INCLUDE_DIR}/tiledb/sm/storage_manager/storage_manager.cc
   ${TILEDB_CORE_INCLUDE_DIR}/tiledb/sm/subarray/cell_slab_iter.cc
   ${TILEDB_CORE_INCLUDE_DIR}/tiledb/sm/subarray/subarray.cc
@@ -199,8 +223,17 @@ set(TILEDB_CORE_SOURCES
   ${TILEDB_CORE_INCLUDE_DIR}/tiledb/sm/subarray/subarray_tile_overlap.cc
   ${TILEDB_CORE_INCLUDE_DIR}/tiledb/sm/tile/tile.cc
   ${TILEDB_CORE_INCLUDE_DIR}/tiledb/sm/tile/generic_tile_io.cc
+  ${TILEDB_CORE_INCLUDE_DIR}/tiledb/sm/tile/tile_metadata_generator.cc
+  ${TILEDB_CORE_INCLUDE_DIR}/tiledb/sm/tile/writer_tile.cc
 )
 list(APPEND TILEDB_CORE_SOURCES ${TILEDB_COMMON_SOURCES})
+
+#openssl3 md5 deprecation mitigation
+if(MSVC)
+  set_source_files_properties(${TILEDB_CORE_INCLUDE_DIR}/tiledb/sm/crypto/crypto_openssl.cc PROPERTIES COMPILE_OPTIONS "/wd4996")
+else()
+  set_source_files_properties(${TILEDB_CORE_INCLUDE_DIR}/tiledb/sm/crypto/crypto_openssl.cc PROPERTIES COMPILE_OPTIONS "-Wno-deprecated-declarations")
+endif()
 
 if (TILEDB_SERIALIZATION)
   list(APPEND TILEDB_CORE_SOURCES
@@ -210,6 +243,7 @@ if (TILEDB_SERIALIZATION)
   if(NOT WIN32)
     set_source_files_properties(
       ${TILEDB_CORE_INCLUDE_DIR}/tiledb/sm/rest/rest_client.cc
+      ${TILEDB_CORE_INCLUDE_DIR}/tiledb/sm/serialization/array.cc
       ${TILEDB_CORE_INCLUDE_DIR}/tiledb/sm/serialization/array_schema.cc
       ${TILEDB_CORE_INCLUDE_DIR}/tiledb/sm/serialization/array_schema_evolution.cc
       ${TILEDB_CORE_INCLUDE_DIR}/tiledb/sm/serialization/config.cc
@@ -222,6 +256,7 @@ if (TILEDB_SERIALIZATION)
   if(MSVC)
     set_source_files_properties(
       ${TILEDB_CORE_INCLUDE_DIR}/tiledb/sm/rest/rest_client.cc
+      ${TILEDB_CORE_INCLUDE_DIR}/tiledb/sm/serialization/array.cc
       ${TILEDB_CORE_INCLUDE_DIR}/tiledb/sm/serialization/array_schema.cc
       ${TILEDB_CORE_INCLUDE_DIR}/tiledb/sm/serialization/array_schema_evolution.cc
       ${TILEDB_CORE_INCLUDE_DIR}/tiledb/sm/serialization/config.cc
@@ -524,10 +559,14 @@ if(APPLE)
   endif()
 endif()
 
-# On Linux, must explicitly link -lpthread -ldl in order for static linking
-# to libzstd.
+# Link to Threads::Threads if library or flag needed to enable threading.
+if (CMAKE_THREAD_LIBS_INIT)
+  target_link_libraries(TILEDB_CORE_OBJECTS_ILIB INTERFACE Threads::Threads)
+endif()
+
+# On Linux, must explicitly link -ldl for static linking to libzstd.
 if (NOT WIN32)
-  target_link_libraries(TILEDB_CORE_OBJECTS_ILIB INTERFACE pthread dl)
+  target_link_libraries(TILEDB_CORE_OBJECTS_ILIB INTERFACE dl)
 endif()
 
 # Copy over dependency info (e.g. include directories) to the core objects.
@@ -709,13 +748,14 @@ if (TILEDB_STATIC)
   macro(append_dep_lib APPEND_LIB)
     if (TARGET ${APPEND_LIB})
       get_installed_location(TARGET_LOC ${APPEND_LIB})
+      cmake_path(GET TARGET_LOC FILENAME TARGET_LOC_FILENAME)
       get_target_property(TARGET_LIBS ${APPEND_LIB} INTERFACE_LINK_LIBRARIES)
 
       string(CONCAT TILEDB_STATIC_DEP_STRING
         "${TILEDB_STATIC_DEP_STRING}"
         "if (NOT TARGET ${APPEND_LIB})\n"
         "  add_library(${APPEND_LIB} UNKNOWN IMPORTED)\n"
-        "  set_target_properties(${APPEND_LIB} PROPERTIES IMPORTED_LOCATION ${TARGET_LOC})\n"
+        "  set_target_properties(${APPEND_LIB} PROPERTIES IMPORTED_LOCATION \${PACKAGE_PREFIX_DIR}/lib/${TARGET_LOC_FILENAME})\n"
       )
 
       string(CONCAT TILEDB_STATIC_DEP_STRING

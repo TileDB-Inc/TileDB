@@ -55,6 +55,8 @@ const uint64_t DoubleDelta::OVERHEAD = 17;
 Status DoubleDelta::compress(
     Datatype type, ConstBuffer* input_buffer, Buffer* output_buffer) {
   switch (type) {
+    case Datatype::BLOB:
+      return DoubleDelta::compress<std::byte>(input_buffer, output_buffer);
     case Datatype::INT8:
       return DoubleDelta::compress<int8_t>(input_buffer, output_buffer);
     case Datatype::UINT8:
@@ -106,13 +108,13 @@ Status DoubleDelta::compress(
       return DoubleDelta::compress<uint8_t>(input_buffer, output_buffer);
     case Datatype::FLOAT32:
     case Datatype::FLOAT64:
-      return LOG_STATUS(Status::CompressionError(
+      return LOG_STATUS(Status_CompressionError(
           "Cannot compress tile with DoubleDelta; Float "
           "datatypes are not supported"));
   }
 
   assert(false);
-  return LOG_STATUS(Status::CompressionError(
+  return LOG_STATUS(Status_CompressionError(
       "Cannot compress tile with DoubleDelta; Not supported datatype"));
 }
 
@@ -121,6 +123,8 @@ Status DoubleDelta::decompress(
     ConstBuffer* input_buffer,
     PreallocatedBuffer* output_buffer) {
   switch (type) {
+    case Datatype::BLOB:
+      return DoubleDelta::decompress<std::byte>(input_buffer, output_buffer);
     case Datatype::INT8:
       return DoubleDelta::decompress<int8_t>(input_buffer, output_buffer);
     case Datatype::UINT8:
@@ -172,13 +176,13 @@ Status DoubleDelta::decompress(
       return DoubleDelta::decompress<uint8_t>(input_buffer, output_buffer);
     case Datatype::FLOAT32:
     case Datatype::FLOAT64:
-      return LOG_STATUS(Status::CompressionError(
+      return LOG_STATUS(Status_CompressionError(
           "Cannot decompress tile with DoubleDelta; Float "
           "datatypes are not supported"));
   }
 
   assert(false);
-  return LOG_STATUS(Status::CompressionError(
+  return LOG_STATUS(Status_CompressionError(
       "Cannot decompress tile with DoubleDelta; Not supported datatype"));
 }
 
@@ -268,8 +272,8 @@ Status DoubleDelta::compute_bitsize(
   // Handle error
   if (delta_out_of_bounds) {
     return LOG_STATUS(
-        Status::CompressionError("Cannot compress with DoubleDelta; Some "
-                                 "negative double delta is out of bounds"));
+        Status_CompressionError("Cannot compress with DoubleDelta; Some "
+                                "negative double delta is out of bounds"));
   }
   // Calculate bitsize of the maximum absolute double delta
   do {

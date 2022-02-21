@@ -149,12 +149,15 @@ set(TILEDB_TEST_SOURCES
   src/unit-dimension.cc
   src/unit-duplicates.cc
   src/unit-empty-var-length.cc
-  src/unit-filter-buffer.cc
+  src/unit-filter-buffer.cc 
   src/unit-filter-pipeline.cc
   src/unit-gcs.cc
+  src/unit-gs.cc
   src/unit-hdfs-filesystem.cc
   src/unit-hilbert.cc
   src/unit-lru_cache.cc
+  src/unit-tile-metadata.cc
+  src/unit-tile-metadata-generator.cc
   src/unit-QueryCondition.cc
   src/unit-ReadCellSlabIter.cc
   src/unit-Reader.cc
@@ -162,6 +165,8 @@ set(TILEDB_TEST_SOURCES
   src/unit-rtree.cc
   src/unit-s3-no-multipart.cc
   src/unit-s3.cc
+  src/unit-sparse-index-reader-base.cc
+  src/unit-sparse-global-order-reader.cc
   src/unit-sparse-unordered-with-dups-reader.cc
   src/unit-status.cc
   src/unit-Subarray.cc
@@ -210,6 +215,7 @@ endif()
 if (TILEDB_SERIALIZATION)
   list(APPEND TILEDB_TEST_SOURCES
     src/unit-capi-serialized_queries.cc
+    src/unit-capi-serialized_queries_using_subarray.cc
     src/unit-curl.cc
   )
 endif()

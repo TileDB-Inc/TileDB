@@ -340,6 +340,7 @@ class Array {
     tiledb_array_schema_t* array_schema;
     ctx.handle_error(tiledb_array_get_schema(c_ctx, carray, &array_schema));
     schema_ = ArraySchema(ctx, array_schema);
+    owns_c_ptr_ = own;
 
     array_ = std::shared_ptr<tiledb_array_t>(carray, [own](tiledb_array_t* p) {
       if (own) {
@@ -355,7 +356,9 @@ class Array {
 
   /** Destructor; calls `close()`. */
   ~Array() {
-    close();
+    if (owns_c_ptr_ && is_open()) {
+      close();
+    }
   }
 
   /** Checks if the array is open. */
@@ -701,7 +704,8 @@ class Array {
   }
 
   /**
-   * Closes the array. The destructor calls this automatically.
+   * Closes the array. The destructor calls this automatically
+   * if the underlying pointer is owned.
    *
    * **Example:**
    * @code{.cpp}
@@ -1511,6 +1515,9 @@ class Array {
 
   /** Pointer to the TileDB C array object. */
   std::shared_ptr<tiledb_array_t> array_;
+
+  /** Flag indicating ownership of the TileDB C array object */
+  bool owns_c_ptr_ = true;
 
   /** The array schema. */
   ArraySchema schema_;

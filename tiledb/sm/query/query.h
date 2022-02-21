@@ -44,8 +44,8 @@
 #include "tiledb/sm/array_schema/array_schema.h"
 #include "tiledb/sm/array_schema/dimension.h"
 #include "tiledb/sm/array_schema/domain.h"
+#include "tiledb/sm/enums/query_status_details.h"
 #include "tiledb/sm/fragment/written_fragment_info.h"
-#include "tiledb/sm/misc/utils.h"
 #include "tiledb/sm/query/iquery_strategy.h"
 #include "tiledb/sm/query/query_condition.h"
 #include "tiledb/sm/query/validity_vector.h"
@@ -828,6 +828,17 @@ class Query {
   /** Returns the query subarray. */
   const Subarray* subarray() const;
 
+  /**
+   * Sets the query subarray.
+   *
+   * @param subarray The subarray to be set.
+   * @return Status
+   *
+   * @note Calling set_subarray for sparse arrays, or for dense arrays
+   *     when performing unordered (sparse) writes, has no effect.
+   */
+  Status set_subarray(const tiledb::sm::Subarray& subarray);
+
   /** Sets the query subarray, without performing any checks. */
   Status set_subarray_unsafe(const Subarray& subarray);
 
@@ -848,6 +859,9 @@ class Query {
   /** Returns the query status. */
   QueryStatus status() const;
 
+  /** Returns the query status incomplete reason. */
+  QueryStatusDetailsReason status_incomplete_reason() const;
+
   /** Returns the query type. */
   QueryType type() const;
 
@@ -865,6 +879,9 @@ class Query {
 
   /** Use the refactored sparse unordered with dups reader or not. */
   bool use_refactored_sparse_unordered_with_dups_reader();
+
+  /** Returns if all ranges for this query are non overlapping. */
+  std::tuple<Status, std::optional<bool>> non_overlapping_ranges();
 
  private:
   /* ********************************* */

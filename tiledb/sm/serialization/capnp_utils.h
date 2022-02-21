@@ -133,6 +133,7 @@ Status set_capnp_array_ptr(
       break;
     case tiledb::sm::Datatype::STRING_ASCII:
     case tiledb::sm::Datatype::STRING_UTF8:
+    case tiledb::sm::Datatype::BLOB:
     case tiledb::sm::Datatype::UINT8:
       builder.setUint8(kj::arrayPtr(static_cast<const uint8_t*>(ptr), size));
       break;
@@ -187,7 +188,7 @@ Status set_capnp_array_ptr(
       builder.setFloat64(kj::arrayPtr(static_cast<const double*>(ptr), size));
       break;
     default:
-      return Status::SerializationError(
+      return Status_SerializationError(
           "Cannot set capnp array pointer; unknown TileDB datatype.");
   }
 
@@ -212,6 +213,7 @@ Status set_capnp_scalar(
     case tiledb::sm::Datatype::INT8:
       builder.setInt8(*static_cast<const int8_t*>(value));
       break;
+    case tiledb::sm::Datatype::BLOB:
     case tiledb::sm::Datatype::UINT8:
       builder.setUint8(*static_cast<const uint8_t*>(value));
       break;
@@ -262,7 +264,7 @@ Status set_capnp_scalar(
       builder.setFloat64(*static_cast<const double*>(value));
       break;
     default:
-      return Status::SerializationError(
+      return Status_SerializationError(
           "Cannot set capnp scalar; unknown TileDB datatype.");
   }
 
@@ -319,6 +321,7 @@ Status copy_capnp_list(
       if (reader.hasInt8())
         RETURN_NOT_OK(copy_capnp_list<int8_t>(reader.getInt8(), buffer));
       break;
+    case tiledb::sm::Datatype::BLOB:
     case tiledb::sm::Datatype::UINT8:
       if (reader.hasUint8())
         RETURN_NOT_OK(copy_capnp_list<uint8_t>(reader.getUint8(), buffer));
@@ -378,7 +381,7 @@ Status copy_capnp_list(
         RETURN_NOT_OK(copy_capnp_list<double>(reader.getFloat64(), buffer));
       break;
     default:
-      return Status::SerializationError(
+      return Status_SerializationError(
           "Cannot copy capnp list; unhandled TileDB datatype.");
   }
 
@@ -394,29 +397,34 @@ Status copy_capnp_list(
  */
 template <typename CapnpT>
 Status serialize_non_empty_domain(CapnpT& builder, tiledb::sm::Array* array) {
-  const auto& nonEmptyDomain = array->non_empty_domain();
+  auto&& [st, nonEmptyDomain_opt] = array->non_empty_domain();
 
-  if (!nonEmptyDomain.empty()) {
-    auto nonEmptyDomainListBuilder =
-        builder.initNonEmptyDomains(array->array_schema()->dim_num());
+  RETURN_NOT_OK(st);
 
-    for (uint64_t dimIdx = 0; dimIdx < nonEmptyDomain.size(); ++dimIdx) {
-      const auto& dimNonEmptyDomain = nonEmptyDomain[dimIdx];
+  if (nonEmptyDomain_opt.has_value()) {
+    const auto& nonEmptyDomain = nonEmptyDomain_opt.value();
+    if (!nonEmptyDomain.empty()) {
+      auto nonEmptyDomainListBuilder =
+          builder.initNonEmptyDomains(array->array_schema_latest()->dim_num());
 
-      auto dim_builder = nonEmptyDomainListBuilder[dimIdx];
-      dim_builder.setIsEmpty(dimNonEmptyDomain.empty());
-      auto range_start_sizes = dim_builder.initSizes(1);
+      for (uint64_t dimIdx = 0; dimIdx < nonEmptyDomain.size(); ++dimIdx) {
+        const auto& dimNonEmptyDomain = nonEmptyDomain[dimIdx];
 
-      if (!dimNonEmptyDomain.empty()) {
-        auto subarray_builder = dim_builder.initNonEmptyDomain();
-        RETURN_NOT_OK(utils::set_capnp_array_ptr(
-            subarray_builder,
-            tiledb::sm::Datatype::UINT8,
-            dimNonEmptyDomain.data(),
-            dimNonEmptyDomain.size()));
+        auto dim_builder = nonEmptyDomainListBuilder[dimIdx];
+        dim_builder.setIsEmpty(dimNonEmptyDomain.empty());
+        auto range_start_sizes = dim_builder.initSizes(1);
 
-        if (dimNonEmptyDomain.start_size() != 0) {
-          range_start_sizes.set(0, dimNonEmptyDomain.start_size());
+        if (!dimNonEmptyDomain.empty()) {
+          auto subarray_builder = dim_builder.initNonEmptyDomain();
+          RETURN_NOT_OK(utils::set_capnp_array_ptr(
+              subarray_builder,
+              tiledb::sm::Datatype::UINT8,
+              dimNonEmptyDomain.data(),
+              dimNonEmptyDomain.size()));
+
+          if (dimNonEmptyDomain.start_size() != 0) {
+            range_start_sizes.set(0, dimNonEmptyDomain.start_size());
+          }
         }
       }
     }
@@ -492,7 +500,7 @@ Status serialize_subarray(
     const auto coords_type = dimension->type();
 
     if (coords_type != first_dimension_datatype) {
-      return Status::SerializationError(
+      return Status_SerializationError(
           "Subarray dimension datatypes must be homogeneous");
     }
 
@@ -506,7 +514,7 @@ Status serialize_subarray(
       case tiledb::sm::Datatype::STRING_UCS4:
       case tiledb::sm::Datatype::ANY:
         // String dimensions not yet supported
-        return LOG_STATUS(Status::SerializationError(
+        return LOG_STATUS(Status_SerializationError(
             "Cannot serialize subarray; unsupported domain type."));
       default:
         break;
@@ -537,7 +545,7 @@ Status deserialize_subarray(
     const auto coords_type = dimension->type();
 
     if (coords_type != first_dimension_datatype) {
-      return Status::SerializationError(
+      return Status_SerializationError(
           "Subarray dimension datatypes must be homogeneous");
     }
 
@@ -551,7 +559,7 @@ Status deserialize_subarray(
       case tiledb::sm::Datatype::STRING_UCS4:
       case tiledb::sm::Datatype::ANY:
         // String dimensions not yet supported
-        return LOG_STATUS(Status::SerializationError(
+        return LOG_STATUS(Status_SerializationError(
             "Cannot deserialize subarray; unsupported domain type."));
       default:
         break;

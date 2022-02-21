@@ -44,7 +44,7 @@ namespace sm {
 class Buffer;
 class ConstBuffer;
 class FilterBuffer;
-class FilterPipeline;
+class Tile;
 
 enum class FilterOption : uint8_t;
 enum class FilterType : uint8_t;
@@ -74,23 +74,6 @@ class Filter {
   virtual void dump(FILE* out) const = 0;
 
   /**
-   * Factory method to create a new Filter instance of the given type.
-   *
-   * @param type Filter type to create
-   * @return New Filter instance or nullptr on error.
-   */
-  static Filter* create(FilterType type);
-
-  /**
-   * Deserializes a new Filter instance from the data in the given buffer.
-   *
-   * @param buff The buffer to deserialize from.
-   * @param filter New filter instance (caller's responsibility to free).
-   * @return Status
-   */
-  static Status deserialize(ConstBuffer* buff, Filter** filter);
-
-  /**
    * Gets an option from this filter.
    *
    * @param option Option whose value to get
@@ -115,6 +98,7 @@ class Filter {
    * @return
    */
   virtual Status run_forward(
+      const Tile& tile,
       FilterBuffer* input_metadata,
       FilterBuffer* input,
       FilterBuffer* output_metadata,
@@ -129,6 +113,7 @@ class Filter {
    *
    * Implemented by filter subclass.
    *
+   * @param tile Current tile on which the filter is being run
    * @param input_metadata Buffer with metadata for `input`
    * @param input Buffer with data to be filtered.
    * @param output_metadata Buffer with metadata for filtered data
@@ -136,11 +121,28 @@ class Filter {
    * @return
    */
   virtual Status run_reverse(
+      const Tile& tile,
       FilterBuffer* input_metadata,
       FilterBuffer* input,
       FilterBuffer* output_metadata,
       FilterBuffer* output,
       const Config& config) const = 0;
+
+  /**
+   * Initializes the filter compression resource pool if any
+   *
+   * @param size the size of the resource pool to initiliaze
+   *
+   * */
+  virtual void init_compression_resource_pool(uint64_t size);
+
+  /**
+   * Initializes the filter decompression resource pool if any
+   *
+   * @param size the size of the resource pool to initiliaze
+   *
+   * */
+  virtual void init_decompression_resource_pool(uint64_t size);
 
   /**
    * Sets an option on this filter.
@@ -159,16 +161,10 @@ class Filter {
    */
   Status serialize(Buffer* buff) const;
 
-  /** Sets the pipeline instance that executes this filter. */
-  void set_pipeline(const FilterPipeline* pipeline);
-
   /** Returns the filter type. */
   FilterType type() const;
 
  protected:
-  /** Pointer to the pipeline instance that executes this filter. */
-  const FilterPipeline* pipeline_;
-
   /** The filter type. */
   FilterType type_;
 
@@ -178,18 +174,6 @@ class Filter {
    * to be cloned without knowing their derived types.
    */
   virtual Filter* clone_impl() const = 0;
-
-  /**
-   * Deserialization function that can be implemented by a specific Filter
-   * subclass for filter-specific metadata.
-   *
-   * If a filter subclass has no specific metadata, it's not necessary to
-   * implement this method.
-   *
-   * @param buff The buffer to deserialize from
-   * @return Status
-   */
-  virtual Status deserialize_impl(ConstBuffer* buff);
 
   /** Optional subclass specific get_option method. */
   virtual Status get_option_impl(FilterOption option, void* value) const;

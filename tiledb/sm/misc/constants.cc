@@ -122,9 +122,6 @@ Compressor real_coords_compression = Compressor::ZSTD;
 /** The default compression level for the coordinates. */
 int coords_compression_level = -1;
 
-/** The filelock name. */
-const std::string filelock_name = "__lock.tdb";
-
 /** The special value for an empty int32. */
 const int empty_int32 = std::numeric_limits<int32_t>::min();
 
@@ -139,6 +136,9 @@ const double empty_float64 = std::numeric_limits<double>::quiet_NaN();
 
 /** The special value for an empty char. */
 const char empty_char = std::numeric_limits<char>::min();
+
+/** The special value for an empty blob. */
+constexpr std::byte empty_blob{0};
 
 /** The special value for an empty int8. */
 const int8_t empty_int8 = std::numeric_limits<int8_t>::min();
@@ -352,6 +352,9 @@ const std::string float64_str = "FLOAT64";
 /** The string representation for type char. */
 const std::string char_str = "CHAR";
 
+/** The string representation for type blob. */
+const std::string blob_str = "BLOB";
+
 /** The string representation for type int8. */
 const std::string int8_str = "INT8";
 
@@ -525,7 +528,7 @@ const int32_t library_version[3] = {
     TILEDB_VERSION_MAJOR, TILEDB_VERSION_MINOR, TILEDB_VERSION_PATCH};
 
 /** The TileDB serialization format version number. */
-const uint32_t format_version = 10;
+const uint32_t format_version = 11;
 
 /** The lowest version supported for back compat writes. */
 const uint32_t back_compat_writes_min_format_version = 7;
@@ -574,6 +577,8 @@ extern const std::string redirection_header_key = "location";
 
 const void* fill_value(Datatype type) {
   switch (type) {
+    case Datatype::BLOB:
+      return &constants::empty_blob;
     case Datatype::INT8:
       return &constants::empty_int8;
     case Datatype::UINT8:

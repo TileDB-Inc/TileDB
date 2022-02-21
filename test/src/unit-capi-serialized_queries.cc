@@ -392,6 +392,7 @@ struct SerializationFx {
       bool clientside) {
     // Serialize
     tiledb_buffer_list_t* buff_list;
+
     ctx.handle_error(tiledb_serialize_query(
         ctx.ptr().get(),
         query.ptr().get(),
@@ -663,14 +664,13 @@ TEST_CASE_METHOD(
       REQUIRE(std::get<1>(result_el["a3"]) == 110);
 
       auto null_val = std::numeric_limits<uint32_t>::max();
-      auto null_val_char = std::numeric_limits<int8_t>::min();
       for (uint64_t i = 5; i < 100; i++) {
         REQUIRE(a1[i] == null_val);
         REQUIRE(a2[i * 2] == null_val);
         REQUIRE(a2[i * 2 + 1] == null_val);
         REQUIRE(a2_nullable[i] == 0);
         REQUIRE(a3_offsets[i] == 10 + i);
-        REQUIRE(a3_data[10 + i] == null_val_char);
+        REQUIRE(a3_data[10 + i] == 0);
       }
     } else {
       REQUIRE(std::get<1>(result_el["a1"]) == 5);

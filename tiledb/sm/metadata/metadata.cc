@@ -34,7 +34,7 @@
 #include "tiledb/common/logger.h"
 #include "tiledb/sm/buffer/buffer.h"
 #include "tiledb/sm/enums/datatype.h"
-#include "tiledb/sm/misc/utils.h"
+#include "tiledb/sm/misc/time.h"
 #include "tiledb/sm/misc/uuid.h"
 
 #include <iostream>
@@ -253,7 +253,7 @@ Status Metadata::get(
 
   if (index >= metadata_index_.size())
     return LOG_STATUS(
-        Status::MetadataError("Cannot get metadata; index out of bounds"));
+        Status_MetadataError("Cannot get metadata; index out of bounds"));
 
   // Get key
   auto& key_str = *(metadata_index_[index].first);

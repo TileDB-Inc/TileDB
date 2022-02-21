@@ -326,10 +326,10 @@ class SubarrayPartitioner {
   State* state();
 
   /** Returns the subarray. */
-  const Subarray* subarray() const;
+  const Subarray& subarray() const;
 
   /** Returns the subarray. */
-  Subarray* subarray();
+  Subarray& subarray();
 
   /** Returns `stats_`. */
   stats::Stats* stats() const;

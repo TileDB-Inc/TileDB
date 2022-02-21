@@ -17,7 +17,7 @@ jobs:
     runs-on: ${{ matrix.os }}
     strategy:
       matrix:
-        os: [macos-latest, ubuntu-latest, ubuntu-latest]
+        os: [macos-latest, ubuntu-latest]
       fail-fast: false
     name: Build - ${{ matrix.os }}
     steps:
@@ -41,7 +41,7 @@ jobs:
         shell: bash
         if: ${{ runner.os == 'macOS' && env.imageName == 'macOS-10.14' }}
 
-      - name: 'Build and run interval unit test'
+      - name: 'Build and run standalone unit tests'
         id: test
         run: |
 

@@ -34,21 +34,13 @@
 #include "tiledb/sm/misc/utils.h"
 #include "tiledb/common/logger.h"
 #include "tiledb/sm/enums/datatype.h"
-#include "tiledb/sm/enums/serialization_type.h"
+#include "tiledb/sm/filesystem/uri.h"
 #include "tiledb/sm/misc/constants.h"
-#include "tiledb/sm/misc/uri.h"
 
 #include <algorithm>
 #include <iostream>
 #include <set>
 #include <sstream>
-
-#ifdef _WIN32
-#include <sys/timeb.h>
-#include <sys/types.h>
-#else
-#include <sys/time.h>
-#endif
 
 #ifdef __linux__
 #include "tiledb/sm/filesystem/posix.h"
@@ -82,157 +74,6 @@ namespace parse {
 /* ********************************* */
 /*          PARSING FUNCTIONS        */
 /* ********************************* */
-
-Status convert(const std::string& str, int* value) {
-  if (!is_int(str)) {
-    auto errmsg = std::string("Failed to convert string '") + str +
-                  "' to int; Invalid argument";
-    return LOG_STATUS(Status::UtilsError(errmsg));
-  }
-
-  try {
-    *value = std::stoi(str);
-  } catch (std::invalid_argument& e) {
-    auto errmsg = std::string("Failed to convert string '") + str +
-                  "' to int; Invalid argument";
-    return LOG_STATUS(Status::UtilsError(errmsg));
-  } catch (std::out_of_range& e) {
-    auto errmsg = std::string("Failed to convert string '") + str +
-                  "' to int; Value out of range";
-    return LOG_STATUS(Status::UtilsError(errmsg));
-  }
-
-  return Status::Ok();
-}
-
-Status convert(const std::string& str, uint32_t* value) {
-  if (!is_uint(str)) {
-    auto errmsg = std::string("Failed to convert string '") + str +
-                  "' to uint32_t; Invalid argument";
-    return LOG_STATUS(Status::UtilsError(errmsg));
-  }
-
-  try {
-    auto v = std::stoul(str);
-    if (v > UINT32_MAX)
-      throw std::out_of_range("Cannot convert long to unsigned int");
-    *value = (uint32_t)v;
-  } catch (std::invalid_argument& e) {
-    auto errmsg = std::string("Failed to convert string '") + str +
-                  "' to uint32_t; Invalid argument";
-    return LOG_STATUS(Status::UtilsError(errmsg));
-  } catch (std::out_of_range& e) {
-    auto errmsg = std::string("Failed to convert string '") + str +
-                  "' to uint32_t; Value out of range";
-    return LOG_STATUS(Status::UtilsError(errmsg));
-  }
-
-  return Status::Ok();
-}
-
-Status convert(const std::string& str, uint64_t* value) {
-  if (!is_uint(str)) {
-    auto errmsg = std::string("Failed to convert string '") + str +
-                  "' to uint64_t; Invalid argument";
-    return LOG_STATUS(Status::UtilsError(errmsg));
-  }
-
-  try {
-    *value = std::stoull(str);
-  } catch (std::invalid_argument& e) {
-    auto errmsg = std::string("Failed to convert string '") + str +
-                  "' to uint64_t; Invalid argument";
-    return LOG_STATUS(Status::UtilsError(errmsg));
-  } catch (std::out_of_range& e) {
-    auto errmsg = std::string("Failed to convert string '") + str +
-                  "' to uint64_t; Value out of range";
-    return LOG_STATUS(Status::UtilsError(errmsg));
-  }
-
-  return Status::Ok();
-}
-
-Status convert(const std::string& str, int64_t* value) {
-  if (!is_int(str)) {
-    auto errmsg = std::string("Failed to convert string '") + str +
-                  "' to int64_t; Invalid argument";
-    return LOG_STATUS(Status::UtilsError(errmsg));
-  }
-
-  try {
-    *value = std::stoll(str);
-  } catch (std::invalid_argument& e) {
-    auto errmsg = std::string("Failed to convert string '") + str +
-                  "' to int64_t; Invalid argument";
-    return LOG_STATUS(Status::UtilsError(errmsg));
-  } catch (std::out_of_range& e) {
-    auto errmsg = std::string("Failed to convert string '") + str +
-                  "' to int64_t; Value out of range";
-    return LOG_STATUS(Status::UtilsError(errmsg));
-  }
-
-  return Status::Ok();
-}
-
-Status convert(const std::string& str, float* value) {
-  try {
-    *value = std::stof(str);
-  } catch (std::invalid_argument& e) {
-    return LOG_STATUS(Status::UtilsError(
-        "Failed to convert string to float32_t; Invalid argument"));
-  } catch (std::out_of_range& e) {
-    return LOG_STATUS(Status::UtilsError(
-        "Failed to convert string to float32_t; Value out of range"));
-  }
-
-  return Status::Ok();
-}
-
-Status convert(const std::string& str, double* value) {
-  try {
-    *value = std::stod(str);
-  } catch (std::invalid_argument& e) {
-    return LOG_STATUS(Status::UtilsError(
-        "Failed to convert string to float64_t; Invalid argument"));
-  } catch (std::out_of_range& e) {
-    return LOG_STATUS(Status::UtilsError(
-        "Failed to convert string to float64_t; Value out of range"));
-  }
-
-  return Status::Ok();
-}
-
-Status convert(const std::string& str, bool* value) {
-  std::string lvalue = str;
-  std::transform(lvalue.begin(), lvalue.end(), lvalue.begin(), ::tolower);
-  if (lvalue == "true") {
-    *value = true;
-  } else if (lvalue == "false") {
-    *value = false;
-  } else {
-    return LOG_STATUS(Status::UtilsError(
-        "Failed to convert string to bool; Value not 'true' or 'false'"));
-  }
-
-  return Status::Ok();
-}
-
-Status convert(const std::string& str, SerializationType* value) {
-  std::string lvalue = str;
-  std::transform(lvalue.begin(), lvalue.end(), lvalue.begin(), ::tolower);
-  if (lvalue == "json") {
-    *value = SerializationType::JSON;
-  } else if (lvalue == "capnp") {
-    *value = SerializationType::CAPNP;
-  } else {
-    return LOG_STATUS(
-        Status::UtilsError("Failed to convert string to SerializationType; "
-                           "Value not 'json' or 'capnp'"));
-  }
-
-  return Status::Ok();
-}
-
 Status get_timestamp_range(
     const URI& uri, std::pair<uint64_t, uint64_t>* timestamp_range) {
   // Initializations
@@ -310,158 +151,6 @@ Status get_fragment_version(const std::string& name, uint32_t* version) {
   return Status::Ok();
 }
 
-bool is_int(const std::string& str) {
-  // Check if empty
-  if (str.empty())
-    return false;
-
-  // Check first character
-  if (str[0] != '+' && str[0] != '-' && !(bool)isdigit(str[0]))
-    return false;
-
-  // Check rest of characters
-  for (size_t i = 1; i < str.size(); ++i)
-    if (!(bool)isdigit(str[i]))
-      return false;
-
-  return true;
-}
-
-bool is_uint(const std::string& str) {
-  // Check if empty
-  if (str.empty())
-    return false;
-
-  // Check first character
-  if (str[0] != '+' && !isdigit(str[0]))
-    return false;
-
-  // Check characters
-  for (size_t i = 1; i < str.size(); ++i)
-    if (!(bool)isdigit(str[i]))
-      return false;
-
-  return true;
-}
-
-bool starts_with(const std::string& value, const std::string& prefix) {
-  if (prefix.size() > value.size())
-    return false;
-  return std::equal(prefix.begin(), prefix.end(), value.begin());
-}
-
-bool ends_with(const std::string& value, const std::string& suffix) {
-  if (suffix.size() > value.size())
-    return false;
-  return value.compare(value.size() - suffix.size(), suffix.size(), suffix) ==
-         0;
-}
-
-template <class T>
-std::string to_str(const T& value) {
-  std::stringstream ss;
-  ss << value;
-  return ss.str();
-}
-
-std::string to_str(const void* value, Datatype type) {
-  std::stringstream ss;
-  switch (type) {
-    case Datatype::INT8:
-      ss << *(const int8_t*)value;
-      break;
-    case Datatype::UINT8:
-      ss << *(const uint8_t*)value;
-      break;
-    case Datatype::INT16:
-      ss << *(const int16_t*)value;
-      break;
-    case Datatype::UINT16:
-      ss << *(const uint16_t*)value;
-      break;
-    case Datatype::INT32:
-      ss << *(const int32_t*)value;
-      break;
-    case Datatype::UINT32:
-      ss << *(const uint32_t*)value;
-      break;
-    case Datatype::INT64:
-      ss << *(const int64_t*)value;
-      break;
-    case Datatype::UINT64:
-      ss << *(const uint64_t*)value;
-      break;
-    case Datatype::FLOAT32:
-      ss << *(const float*)value;
-      break;
-    case Datatype::FLOAT64:
-      ss << *(const double*)value;
-      break;
-    case Datatype::CHAR:
-      ss << *(const char*)value;
-      break;
-    case Datatype::ANY:
-      ss << *(const uint8_t*)value;
-      break;
-    case Datatype::STRING_ASCII:
-      ss << *(const uint8_t*)value;
-      break;
-    case Datatype::STRING_UTF8:
-      ss << *(const uint8_t*)value;
-      break;
-    case Datatype::STRING_UTF16:
-      ss << *(const uint16_t*)value;
-      break;
-    case Datatype::STRING_UTF32:
-      ss << *(const uint32_t*)value;
-      break;
-    case Datatype::STRING_UCS2:
-      ss << *(const uint16_t*)value;
-      break;
-    case Datatype::STRING_UCS4:
-      ss << *(const uint32_t*)value;
-      break;
-    case Datatype::DATETIME_YEAR:
-    case Datatype::DATETIME_MONTH:
-    case Datatype::DATETIME_WEEK:
-    case Datatype::DATETIME_DAY:
-    case Datatype::DATETIME_HR:
-    case Datatype::DATETIME_MIN:
-    case Datatype::DATETIME_SEC:
-    case Datatype::DATETIME_MS:
-    case Datatype::DATETIME_US:
-    case Datatype::DATETIME_NS:
-    case Datatype::DATETIME_PS:
-    case Datatype::DATETIME_FS:
-    case Datatype::DATETIME_AS:
-    case Datatype::TIME_HR:
-    case Datatype::TIME_MIN:
-    case Datatype::TIME_SEC:
-    case Datatype::TIME_MS:
-    case Datatype::TIME_US:
-    case Datatype::TIME_NS:
-    case Datatype::TIME_PS:
-    case Datatype::TIME_FS:
-    case Datatype::TIME_AS:
-      ss << *(const int64_t*)value;
-      break;
-    default:
-      assert(false);
-  }
-
-  return ss.str();
-}
-
-uint64_t common_prefix_size(const std::string& a, const std::string& b) {
-  auto size = std::min(a.size(), b.size());
-  for (size_t i = 0; i < size; ++i) {
-    if (a[i] != b[i])
-      return i;
-  }
-
-  return size;
-}
-
 }  // namespace parse
 
 /* ****************************** */
@@ -474,7 +163,7 @@ template <>
 Status check_template_type_to_datatype<int8_t>(Datatype datatype) {
   if (datatype == Datatype::INT8)
     return Status::Ok();
-  return Status::Error(
+  return Status_Error(
       "Template of type int8_t but datatype is not Datatype::INT8");
 }
 template <>
@@ -486,7 +175,7 @@ Status check_template_type_to_datatype<uint8_t>(Datatype datatype) {
   else if (datatype == Datatype::STRING_UTF8)
     return Status::Ok();
 
-  return Status::Error(
+  return Status_Error(
       "Template of type uint8_t but datatype is not Datatype::UINT8 nor "
       "Datatype::STRING_ASCII nor atatype::STRING_UTF8");
 }
@@ -494,7 +183,7 @@ template <>
 Status check_template_type_to_datatype<int16_t>(Datatype datatype) {
   if (datatype == Datatype::INT16)
     return Status::Ok();
-  return Status::Error(
+  return Status_Error(
       "Template of type int16_t but datatype is not Datatype::INT16");
 }
 template <>
@@ -505,7 +194,7 @@ Status check_template_type_to_datatype<uint16_t>(Datatype datatype) {
     return Status::Ok();
   else if (datatype == Datatype::STRING_UCS2)
     return Status::Ok();
-  return Status::Error(
+  return Status_Error(
       "Template of type uint16_t but datatype is not Datatype::UINT16 nor "
       "Datatype::STRING_UTF16 nor Datatype::STRING_UCS2");
 }
@@ -513,7 +202,7 @@ template <>
 Status check_template_type_to_datatype<int32_t>(Datatype datatype) {
   if (datatype == Datatype::INT32)
     return Status::Ok();
-  return Status::Error(
+  return Status_Error(
       "Template of type int32_t but datatype is not Datatype::INT32");
 }
 template <>
@@ -524,7 +213,7 @@ Status check_template_type_to_datatype<uint32_t>(Datatype datatype) {
     return Status::Ok();
   else if (datatype == Datatype::STRING_UCS4)
     return Status::Ok();
-  return Status::Error(
+  return Status_Error(
       "Template of type uint32_t but datatype is not Datatype::UINT32 nor "
       "Datatype::STRING_UTF32 nor Datatype::STRING_UCS4");
 }
@@ -532,35 +221,35 @@ template <>
 Status check_template_type_to_datatype<int64_t>(Datatype datatype) {
   if (datatype == Datatype::INT64)
     return Status::Ok();
-  return Status::Error(
+  return Status_Error(
       "Template of type int64_t but datatype is not Datatype::INT64");
 }
 template <>
 Status check_template_type_to_datatype<uint64_t>(Datatype datatype) {
   if (datatype == Datatype::UINT64)
     return Status::Ok();
-  return Status::Error(
+  return Status_Error(
       "Template of type uint64_t but datatype is not Datatype::UINT64");
 }
 template <>
 Status check_template_type_to_datatype<float>(Datatype datatype) {
   if (datatype == Datatype::FLOAT32)
     return Status::Ok();
-  return Status::Error(
+  return Status_Error(
       "Template of type float but datatype is not Datatype::FLOAT32");
 }
 template <>
 Status check_template_type_to_datatype<double>(Datatype datatype) {
   if (datatype == Datatype::FLOAT64)
     return Status::Ok();
-  return Status::Error(
+  return Status_Error(
       "Template of type double but datatype is not Datatype::FLOAT64");
 }
 template <>
 Status check_template_type_to_datatype<char>(Datatype datatype) {
   if (datatype == Datatype::CHAR)
     return Status::Ok();
-  return Status::Error(
+  return Status_Error(
       "Template of type char but datatype is not Datatype::CHAR");
 }
 
@@ -657,86 +346,6 @@ std::vector<std::array<T, 2>> intersection(
 }
 
 }  // namespace geometry
-
-/* ********************************* */
-/*          TIME FUNCTIONS           */
-/* ********************************* */
-
-namespace time {
-
-uint64_t timestamp_now_ms() {
-#ifdef _WIN32
-  struct _timeb tb;
-  memset(&tb, 0, sizeof(struct _timeb));
-  _ftime_s(&tb);
-  return static_cast<uint64_t>(tb.time * 1000L + tb.millitm);
-#else
-  struct timeval tp;
-  memset(&tp, 0, sizeof(struct timeval));
-  gettimeofday(&tp, nullptr);
-  return static_cast<uint64_t>(tp.tv_sec * 1000L + tp.tv_usec / 1000);
-#endif
-}
-
-}  // namespace time
-
-/* ********************************* */
-/*          MATH FUNCTIONS           */
-/* ********************************* */
-
-namespace math {
-
-uint64_t ceil(uint64_t x, uint64_t y) {
-  if (y == 0)
-    return 0;
-
-  return x / y + (x % y != 0);
-}
-
-double log(double b, double x) {
-  return ::log(x) / ::log(b);
-}
-
-template <class T>
-T safe_mul(T a, T b) {
-  T prod = a * b;
-
-  // Check for overflow only for integers
-  if (std::is_integral<T>::value) {
-    if (prod / a != b)  // Overflow
-      return std::numeric_limits<T>::max();
-  }
-
-  return prod;
-}
-
-uint64_t left_p2_m1(uint64_t value) {
-  // Edge case
-  if (value == UINT64_MAX)
-    return value;
-
-  uint64_t ret = 0;  // Min power of 2 minus 1
-  while (ret <= value) {
-    ret = (ret << 1) | 1;  // Next larger power of 2 minus 1
-  }
-
-  return ret >> 1;
-}
-
-uint64_t right_p2_m1(uint64_t value) {
-  // Edge case
-  if (value == 0)
-    return value;
-
-  uint64_t ret = UINT64_MAX;  // Max power of 2 minus 1
-  while (ret >= value) {
-    ret >>= 1;  // Next smaller power of 2 minus 1
-  }
-
-  return (ret << 1) | 1;
-}
-
-}  // namespace math
 
 // Explicit template instantiations
 
@@ -922,30 +531,6 @@ template std::vector<std::array<uint64_t, 2>> intersection<uint64_t>(
     const std::vector<std::array<uint64_t, 2>>& r2);
 
 }  // namespace geometry
-
-namespace math {
-
-template int8_t safe_mul<int8_t>(int8_t a, int8_t b);
-template uint8_t safe_mul<uint8_t>(uint8_t a, uint8_t b);
-template int16_t safe_mul<int16_t>(int16_t a, int16_t b);
-template uint16_t safe_mul<uint16_t>(uint16_t a, uint16_t b);
-template int32_t safe_mul<int32_t>(int32_t a, int32_t b);
-template uint32_t safe_mul<uint32_t>(uint32_t a, uint32_t b);
-template int64_t safe_mul<int64_t>(int64_t a, int64_t b);
-template uint64_t safe_mul<uint64_t>(uint64_t a, uint64_t b);
-template float safe_mul<float>(float a, float b);
-template double safe_mul<double>(double a, double b);
-
-}  // namespace math
-
-namespace parse {
-
-template std::string to_str<int32_t>(const int32_t& value);
-template std::string to_str<uint32_t>(const uint32_t& value);
-
-}  // namespace parse
-
 }  // namespace utils
-
 }  // namespace sm
 }  // namespace tiledb

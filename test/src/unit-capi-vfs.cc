@@ -35,6 +35,7 @@
 #include "tiledb/sm/c_api/tiledb.h"
 #include "tiledb/sm/misc/utils.h"
 #ifdef _WIN32
+#include "tiledb/sm/filesystem/path_win.h"
 #include "tiledb/sm/filesystem/win.h"
 #else
 #include "tiledb/sm/filesystem/posix.h"
@@ -73,7 +74,6 @@ struct VFSFx {
   bool supports_s3_;
   bool supports_hdfs_;
   bool supports_azure_;
-  bool supports_memfs_;
 
   // Functions
   VFSFx();
@@ -880,10 +880,10 @@ void VFSFx::check_ls(const std::string& path) {
 
 #ifdef _WIN32
   // Normalization only for Windows
-  file = tiledb::sm::Win::uri_from_path(file);
-  file2 = tiledb::sm::Win::uri_from_path(file2);
-  subdir = tiledb::sm::Win::uri_from_path(subdir);
-  subdir2 = tiledb::sm::Win::uri_from_path(subdir2);
+  file = tiledb::sm::path_win::uri_from_path(file);
+  file2 = tiledb::sm::path_win::uri_from_path(file2);
+  subdir = tiledb::sm::path_win::uri_from_path(subdir);
+  subdir2 = tiledb::sm::path_win::uri_from_path(subdir2);
 #endif
 
   // Check results
@@ -912,9 +912,7 @@ TEST_CASE_METHOD(VFSFx, "C API: Test virtual filesystem", "[capi][vfs]") {
     check_vfs(HDFS_TEMP_DIR);
   else {
     check_vfs(FILE_TEMP_DIR);
-    if (supports_memfs_) {
-      check_vfs(MEMFS_TEMP_DIR);
-    }
+    check_vfs(MEMFS_TEMP_DIR);
   }
 }
 
@@ -978,8 +976,6 @@ TEST_CASE_METHOD(VFSFx, "C API: Test VFS parallel I/O", "[capi][vfs]") {
     check_vfs(HDFS_TEMP_DIR);
   } else {
     check_vfs(FILE_TEMP_DIR);
-    if (supports_memfs_) {
-      check_vfs(MEMFS_TEMP_DIR);
-    }
+    check_vfs(MEMFS_TEMP_DIR);
   }
 }

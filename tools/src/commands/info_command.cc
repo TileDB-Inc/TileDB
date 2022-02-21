@@ -132,7 +132,7 @@ void InfoCommand::print_tile_sizes() const {
   EncryptionKey enc_key;
 
   // Compute and report mean persisted tile sizes over all attributes.
-  const auto* schema = array.array_schema();
+  const auto* schema = array.array_schema_latest();
   auto fragment_metadata = array.fragment_metadata();
   auto attributes = schema->attributes();
   uint64_t total_persisted_size = 0, total_in_memory_size = 0;
@@ -148,16 +148,19 @@ void InfoCommand::print_tile_sizes() const {
       THROW_NOT_OK(f->load_tile_offsets(enc_key, std::move(names)));
       THROW_NOT_OK(f->load_tile_var_sizes(enc_key, name));
       for (uint64_t tile_idx = 0; tile_idx < tile_num; tile_idx++) {
-        uint64_t tile_size = 0;
-        THROW_NOT_OK(f->persisted_tile_size(name, tile_idx, &tile_size));
-        persisted_tile_size += tile_size;
+        auto&& [st, tile_size] = f->persisted_tile_size(name, tile_idx);
+        THROW_NOT_OK(st);
+        persisted_tile_size += *tile_size;
         in_memory_tile_size += f->tile_size(name, tile_idx);
         num_tiles++;
         if (var_size) {
-          THROW_NOT_OK(f->persisted_tile_var_size(name, tile_idx, &tile_size));
-          persisted_tile_size += tile_size;
-          THROW_NOT_OK(f->tile_var_size(name, tile_idx, &tile_size));
-          in_memory_tile_size += tile_size;
+          auto&& [st_var_persisted, tile_size_var_persisted] =
+              f->persisted_tile_var_size(name, tile_idx);
+          THROW_NOT_OK(st_var_persisted);
+          persisted_tile_size += *tile_size_var_persisted;
+          auto&& [st_var, tile_size_var] = f->tile_var_size(name, tile_idx);
+          THROW_NOT_OK(st_var);
+          in_memory_tile_size += *tile_size_var;
           num_tiles++;
         }
       }
@@ -205,7 +208,7 @@ void InfoCommand::print_schema_info() const {
   THROW_NOT_OK(
       array.open(QueryType::READ, EncryptionType::NO_ENCRYPTION, nullptr, 0));
 
-  array.array_schema()->dump(stdout);
+  array.array_schema_latest()->dump(stdout);
 
   // Close the array.
   THROW_NOT_OK(array.close());
@@ -223,7 +226,7 @@ void InfoCommand::write_svg_mbrs() const {
   THROW_NOT_OK(
       array.open(QueryType::READ, EncryptionType::NO_ENCRYPTION, nullptr, 0));
 
-  const auto* schema = array.array_schema();
+  const auto* schema = array.array_schema_latest();
   auto dim_num = schema->dim_num();
   if (dim_num < 2) {
     THROW_NOT_OK(array.close());
@@ -300,7 +303,7 @@ void InfoCommand::write_text_mbrs() const {
       array.open(QueryType::READ, EncryptionType::NO_ENCRYPTION, nullptr, 0));
 
   auto encryption_key = array.encryption_key();
-  const auto* schema = array.array_schema();
+  const auto* schema = array.array_schema_latest();
   auto dim_num = schema->dim_num();
   auto fragment_metadata = array.fragment_metadata();
   std::stringstream text;
@@ -502,8 +505,8 @@ std::vector<std::string> InfoCommand::mbr_to_string(
     auto type = domain->dimension(d)->type();
     switch (type) {
       case sm::Datatype::STRING_ASCII:
-        result.push_back(mbr[d].start_str());
-        result.push_back(mbr[d].end_str());
+        result.push_back(std::string(mbr[d].start_str()));
+        result.push_back(std::string(mbr[d].end_str()));
         break;
       case Datatype::INT8:
         r8 = (const int8_t*)mbr[d].data();

@@ -59,11 +59,12 @@ void BitshuffleFilter::dump(FILE* out) const {
 }
 
 Status BitshuffleFilter::run_forward(
+    const Tile& tile,
     FilterBuffer* input_metadata,
     FilterBuffer* input,
     FilterBuffer* output_metadata,
     FilterBuffer* output) const {
-  auto tile_type = pipeline_->current_tile()->type();
+  auto tile_type = tile.type();
   auto tile_type_size = static_cast<uint8_t>(datatype_size(tile_type));
 
   // Output size does not change with this filter.
@@ -91,7 +92,7 @@ Status BitshuffleFilter::run_forward(
       // Can't shuffle: just copy.
       std::memcpy(output_buf->cur_data(), part.data(), part_size);
     } else {
-      RETURN_NOT_OK(shuffle_part(&part, output_buf));
+      RETURN_NOT_OK(shuffle_part(tile, &part, output_buf));
     }
 
     if (output_buf->owns_data())
@@ -124,8 +125,8 @@ Status BitshuffleFilter::compute_parts(
 }
 
 Status BitshuffleFilter::shuffle_part(
-    const ConstBuffer* part, Buffer* output) const {
-  auto tile_type = pipeline_->current_tile()->type();
+    const Tile& tile, const ConstBuffer* part, Buffer* output) const {
+  auto tile_type = tile.type();
   auto tile_type_size = static_cast<uint8_t>(datatype_size(tile_type));
   auto part_nelts = part->size() / tile_type_size;
   auto bytes_processed = bshuf_bitshuffle(
@@ -134,24 +135,24 @@ Status BitshuffleFilter::shuffle_part(
   switch (bytes_processed) {
     case -1:
       return LOG_STATUS(
-          Status::FilterError("Bitshuffle error; Failed to allocate memory."));
+          Status_FilterError("Bitshuffle error; Failed to allocate memory."));
     case -11:
-      return LOG_STATUS(Status::FilterError("Bitshuffle error; Missing SSE."));
+      return LOG_STATUS(Status_FilterError("Bitshuffle error; Missing SSE."));
     case -12:
-      return LOG_STATUS(Status::FilterError("Bitshuffle error; Missing AVX."));
+      return LOG_STATUS(Status_FilterError("Bitshuffle error; Missing AVX."));
     case -80:
-      return LOG_STATUS(Status::FilterError(
+      return LOG_STATUS(Status_FilterError(
           "Bitshuffle error; Input size not a multiple of 8."));
     case -81:
-      return LOG_STATUS(Status::FilterError(
+      return LOG_STATUS(Status_FilterError(
           "Bitshuffle error; Block size not a multiple of 8."));
     case -91:
       return LOG_STATUS(
-          Status::FilterError("Bitshuffle error; Decompression error, wrong "
-                              "number of bytes processed."));
+          Status_FilterError("Bitshuffle error; Decompression error, wrong "
+                             "number of bytes processed."));
     default: {
       if (bytes_processed != (int64_t)part->size())
-        return LOG_STATUS(Status::FilterError(
+        return LOG_STATUS(Status_FilterError(
             "Bitshuffle error; Unhandled internal error code " +
             std::to_string(bytes_processed)));
       break;
@@ -162,6 +163,7 @@ Status BitshuffleFilter::shuffle_part(
 }
 
 Status BitshuffleFilter::run_reverse(
+    const Tile& tile,
     FilterBuffer* input_metadata,
     FilterBuffer* input,
     FilterBuffer* output_metadata,
@@ -169,7 +171,7 @@ Status BitshuffleFilter::run_reverse(
     const Config& config) const {
   (void)config;
 
-  auto tile_type = pipeline_->current_tile()->type();
+  auto tile_type = tile.type();
   auto tile_type_size = static_cast<uint8_t>(datatype_size(tile_type));
 
   // Get number of parts
@@ -190,7 +192,7 @@ Status BitshuffleFilter::run_reverse(
       // Part was not shuffled; just copy.
       std::memcpy(output_buf->cur_data(), part.data(), part_size);
     } else {
-      RETURN_NOT_OK(unshuffle_part(&part, output_buf));
+      RETURN_NOT_OK(unshuffle_part(tile, &part, output_buf));
     }
 
     if (output_buf->owns_data())
@@ -209,8 +211,8 @@ Status BitshuffleFilter::run_reverse(
 }
 
 Status BitshuffleFilter::unshuffle_part(
-    const ConstBuffer* part, Buffer* output) const {
-  auto tile_type = pipeline_->current_tile()->type();
+    const Tile& tile, const ConstBuffer* part, Buffer* output) const {
+  auto tile_type = tile.type();
   auto tile_type_size = static_cast<uint8_t>(datatype_size(tile_type));
   auto part_nelts = part->size() / tile_type_size;
   auto bytes_processed = bshuf_bitunshuffle(
@@ -219,24 +221,24 @@ Status BitshuffleFilter::unshuffle_part(
   switch (bytes_processed) {
     case -1:
       return LOG_STATUS(
-          Status::FilterError("Bitshuffle error; Failed to allocate memory."));
+          Status_FilterError("Bitshuffle error; Failed to allocate memory."));
     case -11:
-      return LOG_STATUS(Status::FilterError("Bitshuffle error; Missing SSE."));
+      return LOG_STATUS(Status_FilterError("Bitshuffle error; Missing SSE."));
     case -12:
-      return LOG_STATUS(Status::FilterError("Bitshuffle error; Missing AVX."));
+      return LOG_STATUS(Status_FilterError("Bitshuffle error; Missing AVX."));
     case -80:
-      return LOG_STATUS(Status::FilterError(
+      return LOG_STATUS(Status_FilterError(
           "Bitshuffle error; Input size not a multiple of 8."));
     case -81:
-      return LOG_STATUS(Status::FilterError(
+      return LOG_STATUS(Status_FilterError(
           "Bitshuffle error; Block size not a multiple of 8."));
     case -91:
       return LOG_STATUS(
-          Status::FilterError("Bitshuffle error; Decompression error, wrong "
-                              "number of bytes processed."));
+          Status_FilterError("Bitshuffle error; Decompression error, wrong "
+                             "number of bytes processed."));
     default: {
       if (bytes_processed != (int64_t)part->size())
-        return LOG_STATUS(Status::FilterError(
+        return LOG_STATUS(Status_FilterError(
             "Bitshuffle error; Unhandled internal error code " +
             std::to_string(bytes_processed)));
       break;

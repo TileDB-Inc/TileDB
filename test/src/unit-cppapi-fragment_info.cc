@@ -220,7 +220,7 @@ TEST_CASE(
 
     // Get fragment size
     auto size = fragment_info.fragment_size(1);
-    CHECK(size == 1662);
+    CHECK(size == 2960);
 
     // Get dense / sparse
     auto dense = fragment_info.dense(0);
@@ -394,6 +394,7 @@ TEST_CASE("C++ API: Test MBR fragment info", "[cppapi][fragment_info][mbr]") {
     fragment_info.get_mbr(1, 1, "d1", &mbr[0]);
     CHECK(mbr == std::vector<uint64_t>{7, 8});
   }
+
   // Clean up
   remove_dir(array_name, ctx.ptr().get(), vfs.ptr().get());
 }
@@ -834,22 +835,24 @@ TEST_CASE(
     CHECK(frag1_schema_str == frag3_schema_str);
 
     // Check dump
+    const auto ver = std::to_string(tiledb::sm::constants::format_version);
     std::string dump_str =
         std::string("- Fragment num: 3\n") +
         "- Unconsolidated metadata num: 3\n" + "- To vacuum num: 0\n" +
         "- Fragment #1:\n" + "  > URI: " + written_frag_uri_1 + "\n" +
         "  > Type: dense\n" + "  > Non-empty domain: [1, 6]\n" +
-        "  > Size: 1662\n" + "  > Cell num: 10\n" +
-        "  > Timestamp range: [1, 1]\n" + "  > Format version: 10\n" +
+        "  > Size: 2960\n" + "  > Cell num: 10\n" +
+        "  > Timestamp range: [1, 1]\n" + "  > Format version: " + ver + "\n" +
         "  > Has consolidated metadata: no\n" + "- Fragment #2:\n" +
         "  > URI: " + written_frag_uri_2 + "\n" + "  > Type: dense\n" +
-        "  > Non-empty domain: [1, 4]\n" + "  > Size: 1619\n" +
+        "  > Non-empty domain: [1, 4]\n" + "  > Size: 2909\n" +
         "  > Cell num: 5\n" + "  > Timestamp range: [2, 2]\n" +
-        "  > Format version: 10\n" + "  > Has consolidated metadata: no\n" +
-        "- Fragment #3:\n" + "  > URI: " + written_frag_uri_3 + "\n" +
-        "  > Type: dense\n" + "  > Non-empty domain: [5, 6]\n" +
-        "  > Size: 1662\n" + "  > Cell num: 10\n" +
-        "  > Timestamp range: [3, 3]\n" + "  > Format version: 10\n" +
+        "  > Format version: " + ver + "\n" +
+        "  > Has consolidated metadata: no\n" + "- Fragment #3:\n" +
+        "  > URI: " + written_frag_uri_3 + "\n" + "  > Type: dense\n" +
+        "  > Non-empty domain: [5, 6]\n" + "  > Size: 2957\n" +
+        "  > Cell num: 10\n" + "  > Timestamp range: [3, 3]\n" +
+        "  > Format version: " + ver + "\n" +
         "  > Has consolidated metadata: no\n";
     FILE* gold_fout = fopen("gold_fout.txt", "w");
     const char* dump = dump_str.c_str();

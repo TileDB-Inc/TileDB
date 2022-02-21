@@ -94,6 +94,10 @@ if (NOT AZURESDK_FOUND)
     endif()
 
     if (WIN32)
+      if(MSVC)
+        set(CXXFLAGS_DEF " -I${TILEDB_EP_INSTALL_PREFIX}/include /Dazure_storage_lite_EXPORTS /DCURL_STATICLIB=1 ${CMAKE_CXX_FLAGS}")
+        set(CFLAGS_DEF " -I${TILEDB_EP_INSTALL_PREFIX}/include /Dazure_storage_lite_EXPORTS                  ${CMAKE_C_FLAGS}")
+      endif()
         # needed for applying patches on windows
         find_package(Git REQUIRED)
         #see comment on this answer - https://stackoverflow.com/a/45698220
@@ -122,10 +126,15 @@ if (NOT AZURESDK_FOUND)
           -DCURL_NO_CURL_CMAKE=ON
           -DCMAKE_PREFIX_PATH=${TILEDB_EP_INSTALL_PREFIX}
           -DCMAKE_INSTALL_PREFIX=${TILEDB_EP_AZURE_INSTALL_PREFIX}
-          -DCMAKE_OSX_ARCHITECTURES=${CMAKE_OSX_ARCHITECTURES}
+          -DCMAKE_CXX_FLAGS=${CXXFLAGS_DEF}
+          -DCMAKE_C_FLAGS=${CFLAGS_DEF}
         PATCH_COMMAND
+          echo starting patching for azure &&
           cd ${CMAKE_SOURCE_DIR} &&
-          ${GIT_EXECUTABLE} apply --ignore-whitespace -p1 --unsafe-paths --verbose --directory=${TILEDB_EP_SOURCE_DIR}/ep_azuresdk < ${TILEDB_CMAKE_INPUTS_DIR}/patches/ep_azuresdk/v0.3.0-patchset.patch
+          ${GIT_EXECUTABLE} apply --ignore-whitespace -p1 --unsafe-paths --verbose --directory=${TILEDB_EP_SOURCE_DIR}/ep_azuresdk < ${TILEDB_CMAKE_INPUTS_DIR}/patches/ep_azuresdk/v0.3.0-patchset.patch &&
+          ${GIT_EXECUTABLE} apply --ignore-whitespace -p1 --unsafe-paths --verbose --directory=${TILEDB_EP_SOURCE_DIR}/ep_azuresdk < ${TILEDB_CMAKE_INPUTS_DIR}/patches/ep_azuresdk/base64.cpp.patch &&
+          ${CMAKE_COMMAND} -E copy ${TILEDB_CMAKE_INPUTS_DIR}/patches/ep_azuresdk/v0.3.0.CMakeLists.txt.md5mitigation ${TILEDB_EP_SOURCE_DIR}/ep_azuresdk/CMakeLists.txt &&
+          echo done patches for azure
         LOG_DOWNLOAD TRUE
         LOG_CONFIGURE TRUE
         LOG_BUILD TRUE
@@ -152,6 +161,8 @@ if (NOT AZURESDK_FOUND)
         PATCH_COMMAND
           echo starting patching for azure &&
           ${PATCH} < ${TILEDB_CMAKE_INPUTS_DIR}/patches/ep_azuresdk/v0.3.0-patchset.patch &&
+          ${PATCH} < ${TILEDB_CMAKE_INPUTS_DIR}/patches/ep_azuresdk/base64.cpp.patch &&
+          ${CMAKE_COMMAND} -E copy ${TILEDB_CMAKE_INPUTS_DIR}/patches/ep_azuresdk/v0.3.0.CMakeLists.txt.md5mitigation ${TILEDB_EP_SOURCE_DIR}/ep_azuresdk/CMakeLists.txt &&
           echo done patches for azure
         LOG_DOWNLOAD TRUE
         LOG_CONFIGURE TRUE

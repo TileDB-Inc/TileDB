@@ -31,10 +31,29 @@ steps:
   displayName: 'Install system headers (OSX 10.14 only)'
 
 - bash: |
+    #https://stackoverflow.com/questions/65278351/no-core-dump-file-generated-after-segmentation-fault-in-macos-big-sur
+    sysctl -a | grep core
+    
+    #https://developer.apple.com/forums/thread/53023?answerId=158378022#158378022
+    #sudo chmod 1775 /cores
+    #https://developer.apple.com/forums/thread/127503?answerId=401103022#401103022
+    #so seems after change to 1777, the 'runner' attempt did core dump, while the sudo version did not...
+    sudo chmod 1777 /cores
+    sudo chown $(whoami) /cores
+
+    sudo ls -l /
+    
+    ps -A
+    ls -l /cores
+  condition: and(eq(variables['Agent.OS'], 'Darwin'), startsWith(variables['imageName'], 'macOS-'))
+  displayName: 'prep macOS for "runner" core dumps'
+
+- bash: |
     # enable core dumps
     ulimit -c               # should output 0 if disabled
     ulimit -c unlimited     # Enable core dumps to be captured (must be in same run block)
     ulimit -c               # should output 'unlimited' now
+    
     # Azure sets "SYSTEM=build" for unknown reasons, which breaks the OpenSSL configure script
     #   - openssl configure uses ENV{SYSTEM} if available:
     #     https://github.com/openssl/openssl/blob/6d745d740d37d680ff696486218b650512bbbbc6/config#L56
@@ -50,7 +69,7 @@ steps:
     git config --global user.email 'no-reply@tiledb.io'
 
     if [[ "$BACKWARDS_COMPATIBILITY_ARRAYS" == "ON" ]]; then
-      git clone https://github.com/TileDB-Inc/TileDB-Unit-Test-Arrays.git --branch 2.3.0 test/inputs/arrays/read_compatibility_test
+      git clone https://github.com/TileDB-Inc/TileDB-Unit-Test-Arrays.git --branch 2.5.0 test/inputs/arrays/read_compatibility_test
     fi
     #   displayName: 'Clone Unit-Test-Arrays'
 
@@ -129,7 +148,10 @@ steps:
     if [[ "$AGENT_OS" == "Darwin" ]]; then
       # We want to be able to print a stack trace when a core dump occurs
       sudo chmod 1777 /cores
-      bootstrap_args="${bootstrap_args} --enable-debug";
+      # release symbols closer to 'release' than debug, and will hopefully have 'enough'
+      # context for reasonable stack.  'debug' (lack of) optimization less likely to
+      # to produce problems that might be encountered by actual 'release' build.
+      bootstrap_args="${bootstrap_args} --enable-release-symbols";
     fi
 
     # displayName: 'Install dependencies'
@@ -188,15 +210,26 @@ steps:
       kill -9 $GCS_PID
     fi
 
-    #  displayName: 'Build examples, PNG test, and benchmarks (build-only)'
   displayName: 'Build and test libtiledb'
 
 - bash: |
+    set -x
     ls -la /cores
-    mkdir $BUILD_REPOSITORY_LOCALPATH/build/core
-    mv /cores/core.* $BUILD_REPOSITORY_LOCALPATH/build/core/core.1
+    cntfiles=0
+    for f in $(find /cores -name 'core.*');
+      do
+        echo "stack trace for $f"
+        lldb -c $f --batch -o 'bt all' -o 'image list' -o 're r -a' -o 'di -F intel -f -m' -o 'quit'
+        (( cntfiles = cntfiles + 1 ))
+      done;
+    #mv whatever we can, possible we won't get all due to permissions
+    #and archiving may have chance of failing due to size constraints in runner VM
+    mkdir -p $BUILD_REPOSITORY_LOCALPATH/build/core
+    mv -v /cores/core.* $BUILD_REPOSITORY_LOCALPATH/build/core/
     ls -la $BUILD_REPOSITORY_LOCALPATH/build/core
-    lldb -c $BUILD_REPOSITORY_LOCALPATH/build/core/core.1 --batch -o 'bt all' -o 'quit'
+    if [[ cntfiles -ne 0 ]] ; then
+      export TDB_COREFILE_CNT=$cntfiles
+    fi
   condition: and(failed(), eq(variables['Agent.OS'], 'Darwin')) # only run this job if the build step failed
   displayName: 'Print stack trace'
 

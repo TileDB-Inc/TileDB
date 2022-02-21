@@ -142,6 +142,18 @@ The footer is a simple blob \(i.e., _not a generic tile_\) with the following in
 | Tile validity offset for attribute/dimension 1 | `uint64_t` | The offset to the generic tile storing the tile validity offsets for attribute/dimension 1. |
 | … | … | … |
 | Tile validity offset for attribute/dimension N | `uint64_t` | The offset to the generic tile storing the tile validity offsets for attribute/dimension N |
+| Tile mins offset for attribute/dimension 1 | `uint64_t` | The offset to the generic tile storing the tile mins for attribute/dimension 1. |
+| … | … | … |
+| Tile mins offset for attribute/dimension N | `uint64_t` | The offset to the generic tile storing the tile mins for attribute/dimension N |
+| Tile maxs offset for attribute/dimension 1 | `uint64_t` | The offset to the generic tile storing the tile maxs for attribute/dimension 1. |
+| … | … | … |
+| Tile maxs offset for attribute/dimension N | `uint64_t` | The offset to the generic tile storing the tile maxs for attribute/dimension N |
+| Tile sums offset for attribute/dimension 1 | `uint64_t` | The offset to the generic tile storing the tile sums for attribute/dimension 1. |
+| … | … | … |
+| Tile sums offset for attribute/dimension N | `uint64_t` | The offset to the generic tile storing the tile sums for attribute/dimension N |
+| Tile null counts offset for attribute/dimension 1 | `uint64_t` | The offset to the generic tile storing the tile null counts for attribute/dimension 1. |
+| … | … | … |
+| Tile null counts offset for attribute/dimension N | `uint64_t` | The offset to the generic tile storing the tile null counts for attribute/dimension N |
 | Array schema name size | `uint64_t` | The total number of characters of the array schema name. |
 | Array schema name character 1 | `char` | The first character of the array schema name. |
 | … | … | … |

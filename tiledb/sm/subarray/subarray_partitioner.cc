@@ -39,6 +39,7 @@
 #include "tiledb/sm/array_schema/domain.h"
 #include "tiledb/sm/enums/layout.h"
 #include "tiledb/sm/misc/hilbert.h"
+#include "tiledb/sm/misc/math.h"
 #include "tiledb/sm/misc/utils.h"
 #include "tiledb/sm/stats/global_stats.h"
 
@@ -150,41 +151,41 @@ Status SubarrayPartitioner::get_result_budget(
     const char* name, uint64_t* budget) const {
   // Check attribute/dimension name
   if (name == nullptr)
-    return logger_->status(Status::SubarrayPartitionerError(
+    return logger_->status(Status_SubarrayPartitionerError(
         "Cannot get result budget; Attribute/Dimension name cannot be null"));
 
   // Check budget pointer
   if (budget == nullptr)
-    return logger_->status(Status::SubarrayPartitionerError(
+    return logger_->status(Status_SubarrayPartitionerError(
         "Cannot get result budget; Invalid budget input"));
 
   // For easy reference
-  auto array_schema = subarray_.array()->array_schema();
+  auto array_schema = subarray_.array()->array_schema_latest();
   bool is_dim = array_schema->is_dim(name);
   bool is_attr = array_schema->is_attr(name);
 
   // Check if attribute/dimension exists
   if (name != constants::coords && !is_dim && !is_attr)
-    return logger_->status(Status::SubarrayPartitionerError(
+    return logger_->status(Status_SubarrayPartitionerError(
         std::string("Cannot get result budget; Invalid attribute/dimension '") +
         name + "'"));
 
   // Check if the attribute/dimension is fixed-sized
   if (array_schema->var_size(name))
-    return logger_->status(Status::SubarrayPartitionerError(
+    return logger_->status(Status_SubarrayPartitionerError(
         std::string("Cannot get result budget; Input attribute/dimension '") +
         name + "' is var-sized"));
 
   // Check if the attribute is nullable
   if (array_schema->is_nullable(name))
-    return logger_->status(Status::SubarrayPartitionerError(
+    return logger_->status(Status_SubarrayPartitionerError(
         std::string("Cannot get result budget; Input attribute/dimension '") +
         name + "' is nullable"));
 
   // Check if budget has been set
   auto b_it = budget_.find(name);
   if (b_it == budget_.end())
-    return logger_->status(Status::SubarrayPartitionerError(
+    return logger_->status(Status_SubarrayPartitionerError(
         std::string("Cannot get result budget; Budget not set for "
                     "attribute/dimension '") +
         name + "'"));
@@ -199,47 +200,47 @@ Status SubarrayPartitioner::get_result_budget(
     const char* name, uint64_t* budget_off, uint64_t* budget_val) const {
   // Check attribute/dimension name
   if (name == nullptr)
-    return logger_->status(Status::SubarrayPartitionerError(
+    return logger_->status(Status_SubarrayPartitionerError(
         "Cannot get result budget; Attribute/Dimension name cannot be null"));
 
   // Check budget pointers
   if (budget_off == nullptr || budget_val == nullptr)
-    return logger_->status(Status::SubarrayPartitionerError(
+    return logger_->status(Status_SubarrayPartitionerError(
         "Cannot get result budget; Invalid budget input"));
 
   // Check zipped coordinates
   if (name == constants::coords)
-    return logger_->status(Status::SubarrayPartitionerError(
+    return logger_->status(Status_SubarrayPartitionerError(
         "Cannot get result budget for zipped coordinates; Attribute/Dimension "
         "must be var-sized"));
 
   // For easy reference
-  auto array_schema = subarray_.array()->array_schema();
+  auto array_schema = subarray_.array()->array_schema_latest();
   bool is_dim = array_schema->is_dim(name);
   bool is_attr = array_schema->is_attr(name);
 
   // Check if attribute/dimension exists
   if (!is_dim && !is_attr)
-    return logger_->status(Status::SubarrayPartitionerError(
+    return logger_->status(Status_SubarrayPartitionerError(
         std::string("Cannot get result budget; Invalid attribute/dimension '") +
         name + "'"));
 
   // Check if the attribute/dimension is var-sized
   if (!array_schema->var_size(name))
-    return logger_->status(Status::SubarrayPartitionerError(
+    return logger_->status(Status_SubarrayPartitionerError(
         std::string("Cannot get result budget; Input attribute/dimension '") +
         name + "' is fixed-sized"));
 
   // Check if the attribute is nullable
   if (array_schema->is_nullable(name))
-    return logger_->status(Status::SubarrayPartitionerError(
+    return logger_->status(Status_SubarrayPartitionerError(
         std::string("Cannot get result budget; Input attribute/dimension '") +
         name + "' is nullable"));
 
   // Check if budget has been set
   auto b_it = budget_.find(name);
   if (b_it == budget_.end())
-    return logger_->status(Status::SubarrayPartitionerError(
+    return logger_->status(Status_SubarrayPartitionerError(
         std::string("Cannot get result budget; Budget not set for "
                     "attribute/dimension '") +
         name + "'"));
@@ -255,40 +256,40 @@ Status SubarrayPartitioner::get_result_budget_nullable(
     const char* name, uint64_t* budget, uint64_t* budget_validity) const {
   // Check attribute name
   if (name == nullptr)
-    return logger_->status(Status::SubarrayPartitionerError(
+    return logger_->status(Status_SubarrayPartitionerError(
         "Cannot get result budget; Attribute name cannot be null"));
 
   // Check budget pointers
   if (budget == nullptr || budget_validity == nullptr)
-    return logger_->status(Status::SubarrayPartitionerError(
+    return logger_->status(Status_SubarrayPartitionerError(
         "Cannot get result budget; Invalid budget input"));
 
   // For easy reference
-  auto array_schema = subarray_.array()->array_schema();
+  auto array_schema = subarray_.array()->array_schema_latest();
   bool is_attr = array_schema->is_attr(name);
 
   // Check if attribute exists
   if (!is_attr)
-    return logger_->status(Status::SubarrayPartitionerError(
+    return logger_->status(Status_SubarrayPartitionerError(
         std::string("Cannot get result budget; Invalid attribute '") + name +
         "'"));
 
   // Check if the attribute is fixed-sized
   if (array_schema->var_size(name))
-    return logger_->status(Status::SubarrayPartitionerError(
+    return logger_->status(Status_SubarrayPartitionerError(
         std::string("Cannot get result budget; Input attribute '") + name +
         "' is var-sized"));
 
   // Check if the attribute is nullable
   if (!array_schema->is_nullable(name))
-    return logger_->status(Status::SubarrayPartitionerError(
+    return logger_->status(Status_SubarrayPartitionerError(
         std::string("Cannot get result budget; Input attribute '") + name +
         "' is not nullable"));
 
   // Check if budget has been set
   auto b_it = budget_.find(name);
   if (b_it == budget_.end())
-    return logger_->status(Status::SubarrayPartitionerError(
+    return logger_->status(Status_SubarrayPartitionerError(
         std::string("Cannot get result budget; Budget not set for "
                     "attribute '") +
         name + "'"));
@@ -307,41 +308,41 @@ Status SubarrayPartitioner::get_result_budget_nullable(
     uint64_t* budget_validity) const {
   // Check attribute/dimension name
   if (name == nullptr)
-    return logger_->status(Status::SubarrayPartitionerError(
+    return logger_->status(Status_SubarrayPartitionerError(
         "Cannot get result budget; Attribute/Dimension name cannot be null"));
 
   // Check budget pointers
   if (budget_off == nullptr || budget_val == nullptr ||
       budget_validity == nullptr)
-    return logger_->status(Status::SubarrayPartitionerError(
+    return logger_->status(Status_SubarrayPartitionerError(
         "Cannot get result budget; Invalid budget input"));
 
   // For easy reference
-  auto array_schema = subarray_.array()->array_schema();
+  auto array_schema = subarray_.array()->array_schema_latest();
   bool is_attr = array_schema->is_attr(name);
 
   // Check if attribute exists
   if (!is_attr)
-    return logger_->status(Status::SubarrayPartitionerError(
+    return logger_->status(Status_SubarrayPartitionerError(
         std::string("Cannot get result budget; Invalid attribute '") + name +
         "'"));
 
   // Check if the attribute is var-sized
   if (!array_schema->var_size(name))
-    return logger_->status(Status::SubarrayPartitionerError(
+    return logger_->status(Status_SubarrayPartitionerError(
         std::string("Cannot get result budget; Input attribute '") + name +
         "' is fixed-sized"));
 
   // Check if the attribute is nullable
   if (!array_schema->is_nullable(name))
-    return logger_->status(Status::SubarrayPartitionerError(
+    return logger_->status(Status_SubarrayPartitionerError(
         std::string("Cannot get result budget; Input attribute '") + name +
         "' is not nullable"));
 
   // Check if budget has been set
   auto b_it = budget_.find(name);
   if (b_it == budget_.end())
-    return logger_->status(Status::SubarrayPartitionerError(
+    return logger_->status(Status_SubarrayPartitionerError(
         std::string("Cannot get result budget; Budget not set for "
                     "attribute '") +
         name + "'"));
@@ -415,31 +416,31 @@ Status SubarrayPartitioner::set_result_budget(
     const char* name, uint64_t budget) {
   // Check attribute/dimension name
   if (name == nullptr)
-    return logger_->status(Status::SubarrayPartitionerError(
+    return logger_->status(Status_SubarrayPartitionerError(
         "Cannot set result budget; Attribute/Dimension name cannot be null"));
 
   // For easy reference
-  auto array_schema = subarray_.array()->array_schema();
+  auto array_schema = subarray_.array()->array_schema_latest();
   bool is_dim = array_schema->is_dim(name);
   bool is_attr = array_schema->is_attr(name);
 
   // Check if attribute/dimension exists
   if (name != constants::coords && !is_dim && !is_attr)
-    return logger_->status(Status::SubarrayPartitionerError(
+    return logger_->status(Status_SubarrayPartitionerError(
         std::string("Cannot set result budget; Invalid attribute/dimension '") +
         name + "'"));
 
   // Check if the attribute/dimension is fixed-sized
   bool var_size = (name != constants::coords && array_schema->var_size(name));
   if (var_size)
-    return logger_->status(Status::SubarrayPartitionerError(
+    return logger_->status(Status_SubarrayPartitionerError(
         std::string("Cannot set result budget; Input attribute/dimension '") +
         name + "' is var-sized"));
 
   // Check if the attribute/dimension is nullable
   bool nullable = array_schema->is_nullable(name);
   if (nullable)
-    return logger_->status(Status::SubarrayPartitionerError(
+    return logger_->status(Status_SubarrayPartitionerError(
         std::string("Cannot set result budget; Input attribute/dimension '") +
         name + "' is nullable"));
 
@@ -452,35 +453,35 @@ Status SubarrayPartitioner::set_result_budget(
     const char* name, uint64_t budget_off, uint64_t budget_val) {
   // Check attribute/dimension name
   if (name == nullptr)
-    return logger_->status(Status::SubarrayPartitionerError(
+    return logger_->status(Status_SubarrayPartitionerError(
         "Cannot set result budget; Attribute/Dimension name cannot be null"));
 
   if (name == constants::coords)
-    return logger_->status(Status::SubarrayPartitionerError(
+    return logger_->status(Status_SubarrayPartitionerError(
         "Cannot set result budget for zipped coordinates; Attribute/Dimension "
         "must be var-sized"));
 
   // For easy reference
-  auto array_schema = subarray_.array()->array_schema();
+  auto array_schema = subarray_.array()->array_schema_latest();
   bool is_dim = array_schema->is_dim(name);
   bool is_attr = array_schema->is_attr(name);
 
   // Check if attribute/dimension exists
   if (!is_dim && !is_attr)
-    return logger_->status(Status::SubarrayPartitionerError(
+    return logger_->status(Status_SubarrayPartitionerError(
         std::string("Cannot set result budget; Invalid attribute/dimension '") +
         name + "'"));
 
   // Check if the attribute/dimension is var-sized
   if (!array_schema->var_size(name))
-    return logger_->status(Status::SubarrayPartitionerError(
+    return logger_->status(Status_SubarrayPartitionerError(
         std::string("Cannot set result budget; Input attribute/dimension '") +
         name + "' is fixed-sized"));
 
   // Check if the attribute/dimension is nullable
   bool nullable = array_schema->is_nullable(name);
   if (nullable)
-    return logger_->status(Status::SubarrayPartitionerError(
+    return logger_->status(Status_SubarrayPartitionerError(
         std::string("Cannot set result budget; Input attribute/dimension '") +
         name + "' is nullable"));
 
@@ -493,30 +494,30 @@ Status SubarrayPartitioner::set_result_budget_nullable(
     const char* name, uint64_t budget, uint64_t budget_validity) {
   // Check attribute/dimension name
   if (name == nullptr)
-    return logger_->status(Status::SubarrayPartitionerError(
+    return logger_->status(Status_SubarrayPartitionerError(
         "Cannot set result budget; Attribute name cannot be null"));
 
   // For easy reference
-  auto array_schema = subarray_.array()->array_schema();
+  auto array_schema = subarray_.array()->array_schema_latest();
   bool is_attr = array_schema->is_attr(name);
 
   // Check if attribute exists
   if (!is_attr)
-    return logger_->status(Status::SubarrayPartitionerError(
+    return logger_->status(Status_SubarrayPartitionerError(
         std::string("Cannot set result budget; Invalid attribute '") + name +
         "'"));
 
   // Check if the attribute is fixed-sized
   bool var_size = array_schema->var_size(name);
   if (var_size)
-    return logger_->status(Status::SubarrayPartitionerError(
+    return logger_->status(Status_SubarrayPartitionerError(
         std::string("Cannot set result budget; Input attribute '") + name +
         "' is var-sized"));
 
   // Check if the attribute is nullable
   bool nullable = array_schema->is_nullable(name);
   if (!nullable)
-    return logger_->status(Status::SubarrayPartitionerError(
+    return logger_->status(Status_SubarrayPartitionerError(
         std::string("Cannot set result budget; Input attribute '") + name +
         "' is not nullable"));
 
@@ -532,29 +533,29 @@ Status SubarrayPartitioner::set_result_budget_nullable(
     uint64_t budget_validity) {
   // Check attribute/dimension name
   if (name == nullptr)
-    return logger_->status(Status::SubarrayPartitionerError(
+    return logger_->status(Status_SubarrayPartitionerError(
         "Cannot set result budget; Attribute name cannot be null"));
 
   // For easy reference
-  auto array_schema = subarray_.array()->array_schema();
+  auto array_schema = subarray_.array()->array_schema_latest();
   bool is_attr = array_schema->is_attr(name);
 
   // Check if attribute exists
   if (!is_attr)
-    return logger_->status(Status::SubarrayPartitionerError(
+    return logger_->status(Status_SubarrayPartitionerError(
         std::string("Cannot set result budget; Invalid attribute '") + name +
         "'"));
 
   // Check if the attribute is var-sized
   if (!array_schema->var_size(name))
-    return logger_->status(Status::SubarrayPartitionerError(
+    return logger_->status(Status_SubarrayPartitionerError(
         std::string("Cannot set result budget; Input attribute '") + name +
         "' is fixed-sized"));
 
   // Check if the attribute is nullable
   bool nullable = array_schema->is_nullable(name);
   if (!nullable)
-    return logger_->status(Status::SubarrayPartitionerError(
+    return logger_->status(Status_SubarrayPartitionerError(
         std::string("Cannot set result budget; Input attribute '") + name +
         "' is not nullable"));
 
@@ -634,12 +635,12 @@ SubarrayPartitioner::State* SubarrayPartitioner::state() {
   return &state_;
 }
 
-const Subarray* SubarrayPartitioner::subarray() const {
-  return &subarray_;
+const Subarray& SubarrayPartitioner::subarray() const {
+  return subarray_;
 }
 
-Subarray* SubarrayPartitioner::subarray() {
-  return &subarray_;
+Subarray& SubarrayPartitioner::subarray() {
+  return subarray_;
 }
 
 stats::Stats* SubarrayPartitioner::stats() const {
@@ -672,7 +673,7 @@ Status SubarrayPartitioner::calibrate_current_start_end(bool* must_split_slab) {
   }
 
   auto layout = subarray_.layout();
-  auto cell_order = subarray_.array()->array_schema()->cell_order();
+  auto cell_order = subarray_.array()->array_schema_latest()->cell_order();
   cell_order = (cell_order == Layout::HILBERT) ? Layout::ROW_MAJOR : cell_order;
   layout = (layout == Layout::UNORDERED) ? cell_order : layout;
   assert(layout == Layout::ROW_MAJOR || layout == Layout::COL_MAJOR);
@@ -880,13 +881,13 @@ void SubarrayPartitioner::compute_splitting_value_on_tiles(
   *unsplittable = true;
 
   // Inapplicable to Hilbert cell order
-  if (subarray_.array()->array_schema()->cell_order() == Layout::HILBERT)
+  if (subarray_.array()->array_schema_latest()->cell_order() == Layout::HILBERT)
     return;
 
   // For easy reference
-  auto array_schema = subarray_.array()->array_schema();
-  auto dim_num = subarray_.array()->array_schema()->dim_num();
-  auto layout = subarray_.array()->array_schema()->tile_order();
+  auto array_schema = subarray_.array()->array_schema_latest();
+  auto dim_num = subarray_.array()->array_schema_latest()->dim_num();
+  auto layout = subarray_.array()->array_schema_latest()->tile_order();
   *splitting_dim = UINT32_MAX;
 
   std::vector<unsigned> dims;
@@ -938,7 +939,7 @@ void SubarrayPartitioner::compute_splitting_value_single_range(
   }
 
   // For easy reference
-  auto array_schema = subarray_.array()->array_schema();
+  auto array_schema = subarray_.array()->array_schema_latest();
   auto dim_num = array_schema->dim_num();
   auto cell_order = array_schema->cell_order();
   assert(!range.is_unary());
@@ -998,7 +999,7 @@ void SubarrayPartitioner::compute_splitting_value_single_range_hilbert(
     bool* normal_order,
     bool* unsplittable) {
   // For easy reference
-  auto array_schema = subarray_.array()->array_schema();
+  auto array_schema = subarray_.array()->array_schema_latest();
   auto dim_num = array_schema->dim_num();
   Hilbert h(dim_num);
 
@@ -1059,7 +1060,7 @@ Status SubarrayPartitioner::compute_splitting_value_multi_range(
 
   // Multi-range partition
   auto layout = subarray_.layout();
-  auto array_schema = subarray_.array()->array_schema();
+  auto array_schema = subarray_.array()->array_schema_latest();
   auto dim_num = array_schema->dim_num();
   auto cell_order = (array_schema->cell_order() == Layout::HILBERT) ?
                         Layout::ROW_MAJOR :
@@ -1105,7 +1106,7 @@ Status SubarrayPartitioner::compute_splitting_value_multi_range(
 }
 
 bool SubarrayPartitioner::must_split(Subarray* partition) {
-  auto array_schema = subarray_.array()->array_schema();
+  auto array_schema = subarray_.array()->array_schema_latest();
   bool must_split = false;
 
   uint64_t size_fixed;
@@ -1150,6 +1151,8 @@ bool SubarrayPartitioner::must_split(Subarray* partition) {
         partition->get_max_memory_size(
             b.first.c_str(), &mem_size_fixed, config_, compute_tp_);
       } else {
+        partition->get_est_result_size_nullable(
+            b.first.c_str(), &size_fixed, &size_validity, config_, compute_tp_);
         partition->get_max_memory_size_nullable(
             b.first.c_str(),
             &mem_size_fixed,
@@ -1176,7 +1179,7 @@ bool SubarrayPartitioner::must_split(Subarray* partition) {
         }
       } else {
         if (!nullable) {
-          partition->get_est_result_size(
+          partition->get_est_result_size_internal(
               b.first.c_str(), &size_fixed, config_, compute_tp_);
         } else {
           partition->get_est_result_size_nullable(
@@ -1362,7 +1365,7 @@ void SubarrayPartitioner::compute_range_uint64(
     std::vector<std::array<uint64_t, 2>>* range_uint64,
     bool* unsplittable) const {
   // Initializations
-  auto array_schema = subarray_.array()->array_schema();
+  auto array_schema = subarray_.array()->array_schema_latest();
   auto dim_num = array_schema->dim_num();
   const Range* r;
   *unsplittable = true;
@@ -1407,7 +1410,7 @@ void SubarrayPartitioner::compute_splitting_dim_hilbert(
     const std::vector<std::array<uint64_t, 2>>& range_uint64,
     uint32_t* splitting_dim) const {
   // For easy reference
-  auto array_schema = subarray_.array()->array_schema();
+  auto array_schema = subarray_.array()->array_schema_latest();
   auto dim_num = array_schema->dim_num();
 
   // Prepare candidate splitting dimensions
@@ -1481,7 +1484,7 @@ void SubarrayPartitioner::compute_splitting_value_hilbert(
     const std::array<uint64_t, 2>& range_uint64,
     uint32_t splitting_dim,
     ByteVecValue* splitting_value) const {
-  auto array_schema = subarray_.array()->array_schema();
+  auto array_schema = subarray_.array()->array_schema_latest();
   auto dim_num = array_schema->dim_num();
   uint64_t splitting_value_uint64 = range_uint64[0];  // Splitting value
   if (range_uint64[0] + 1 != range_uint64[1]) {

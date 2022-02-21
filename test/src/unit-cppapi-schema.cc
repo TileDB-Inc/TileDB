@@ -33,6 +33,7 @@
 #include "catch.hpp"
 #include "tiledb/sm/cpp_api/tiledb"
 #include "tiledb/sm/cpp_api/tiledb_experimental"
+#include "tiledb/sm/misc/constants.h"
 
 #include <limits>
 
@@ -76,9 +77,26 @@ TEST_CASE("C++ API: Schema", "[cppapi][schema]") {
     schema.set_tile_order(TILEDB_COL_MAJOR);
     CHECK_THROWS(schema.set_allows_dups(1));
 
+    // Offsets filter list set/get
     FilterList offsets_filters(ctx);
     offsets_filters.add_filter({ctx, TILEDB_FILTER_DOUBLE_DELTA});
     schema.set_offsets_filter_list(offsets_filters);
+
+    FilterList offsets_filters_back = schema.offsets_filter_list();
+    CHECK(offsets_filters_back.nfilters() == 1);
+    CHECK(
+        offsets_filters_back.filter(0).filter_type() ==
+        TILEDB_FILTER_DOUBLE_DELTA);
+
+    // Validity filter list set/get
+    FilterList validity_filters(ctx);
+    validity_filters.add_filter({ctx, TILEDB_FILTER_BZIP2});
+    schema.set_validity_filter_list(validity_filters);
+
+    FilterList validity_filters_back = schema.validity_filter_list();
+    CHECK(validity_filters_back.nfilters() == 1);
+    auto validity_filter_back = validity_filters_back.filter(0);
+    CHECK(validity_filter_back.filter_type() == TILEDB_FILTER_BZIP2);
 
     FilterList coords_filters(ctx);
     coords_filters.add_filter({ctx, TILEDB_FILTER_ZSTD});
@@ -99,6 +117,7 @@ TEST_CASE("C++ API: Schema", "[cppapi][schema]") {
     CHECK(schema.attribute("a3").cell_val_num() == 2);
     CHECK(schema.attribute("a4").cell_val_num() == TILEDB_VAR_NUM);
     CHECK(schema.attribute("a4").type() == TILEDB_UINT32);
+    CHECK(schema.version() == tiledb::sm::constants::format_version);
 
     auto dims = schema.domain().dimensions();
     REQUIRE(dims.size() == 2);
@@ -160,6 +179,7 @@ TEST_CASE("C++ API: Schema", "[cppapi][schema]") {
     CHECK(schema.attribute("a4").cell_val_num() == TILEDB_VAR_NUM);
     CHECK(schema.attribute("a4").type() == TILEDB_UINT32);
     CHECK(schema.allows_dups() == true);
+    CHECK(schema.version() == tiledb::sm::constants::format_version);
 
     auto dims = schema.domain().dimensions();
     REQUIRE(dims.size() == 2);
@@ -385,6 +405,10 @@ TEST_CASE(
   // drop attribute a1
   evolution.drop_attribute("a1");
 
+  uint64_t now = tiledb_timestamp_now_ms();
+  now = now + 1;
+  evolution.set_timestamp_range({now, now});
+
   // evolve array
   evolution.array_evolve(array_uri);
 
@@ -488,7 +512,9 @@ TEST_CASE(
 
   // Evolve
   {
+    uint64_t now = tiledb_timestamp_now_ms() + 1;
     ArraySchemaEvolution schemaEvolution = ArraySchemaEvolution(ctx);
+    schemaEvolution.set_timestamp_range(std::make_pair(now, now));
 
     // Add attribute b
     Attribute b = Attribute::create<uint32_t>(ctx, "b");

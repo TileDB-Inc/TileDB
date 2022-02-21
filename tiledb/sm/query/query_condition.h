@@ -65,9 +65,14 @@ class QueryCondition {
         : field_name_(std::move(field_name))
         , op_(op) {
       condition_value_data_.resize(condition_value_size);
-      condition_value_ =
-          condition_value == nullptr ? nullptr : condition_value_data_.data();
+      condition_value_ = nullptr;
+
       if (condition_value != nullptr) {
+        // Using an empty string litteral for empty string as vector::resize(0)
+        // doesn't guarantee an allocation.
+        condition_value_ = condition_value_size == 0 ?
+                               (void*)"" :
+                               condition_value_data_.data();
         memcpy(
             condition_value_data_.data(),
             condition_value,
@@ -209,7 +214,7 @@ class QueryCondition {
   /**
    * Returns a set of all unique field names among the conditional clauses.
    */
-  std::unordered_set<std::string> field_names() const;
+  std::unordered_set<std::string>& field_names() const;
 
   /**
    * Applies this query condition to `result_cell_slabs`.
@@ -218,14 +223,12 @@ class QueryCondition {
    * @param result_cell_slabs The cell slabs to filter. Mutated to remove cell
    *   slabs that do not meet the criteria in this query condition.
    * @param stride The stride between cells.
-   * @param memory_budget The memory_budget.
    * @return Status
    */
   Status apply(
       const ArraySchema* array_schema,
-      std::vector<ResultCellSlab>* result_cell_slabs,
-      uint64_t stride,
-      uint64_t memory_budget = UINT64_MAX) const;
+      std::vector<ResultCellSlab>& result_cell_slabs,
+      uint64_t stride) const;
 
   /**
    * Applies this query condition to a set of cells.
@@ -239,7 +242,6 @@ class QueryCondition {
    * @param result_buffer The buffer to use for results.
    * @return Status
    */
-  template <typename T>
   Status apply_dense(
       const ArraySchema* const array_schema,
       ResultTile* result_tile,
@@ -248,6 +250,22 @@ class QueryCondition {
       const uint64_t src_cell,
       const uint64_t stride,
       uint8_t* result_buffer);
+
+  /**
+   * Applies this query condition to a set of cells.
+   *
+   * @param array_schema The array schema.
+   * @param result_tile The result tile to get the cells from.
+   * @param result_bitmap The bitmap to use for results.
+   * @param cell_count The cell count after condition is applied.
+   * @return Status
+   */
+  template <typename BitmapType>
+  Status apply_sparse(
+      const ArraySchema* const array_schema,
+      ResultTile& result_tile,
+      std::vector<BitmapType>& result_bitmap,
+      uint64_t* cell_count);
 
   /**
    * Sets the clauses. This is internal state to only be used in
@@ -278,6 +296,17 @@ class QueryCondition {
   /* ********************************* */
   /*         PRIVATE DATATYPES         */
   /* ********************************* */
+
+  /**
+   * Performs a binary comparison between two primitive types.
+   * We use a `struct` here because it can support partial
+   * template specialization while a standard function does not.
+   *
+   * Note that this comparator includes if statements that will
+   * prevent vectorization.
+   */
+  template <typename T, QueryConditionOp Cmp>
+  struct BinaryCmpNullChecks;
 
   /**
    * Performs a binary comparison between two primitive types.
@@ -318,17 +347,16 @@ class QueryCondition {
    * @param nullable The attribute is nullable or not.
    * @param fill_value The fill value for the cells.
    * @param result_cell_slabs The input cell slabs.
-   * @param out_result_cell_slabs The filtered cell slabs.
+   * @return The filtered cell slabs.
    */
   template <typename T, QueryConditionOp Op>
-  void apply_clause(
+  std::vector<ResultCellSlab> apply_clause(
       const Clause& clause,
       uint64_t stride,
       const bool var_size,
       const bool nullable,
       const ByteVecValue& fill_value,
-      const std::vector<ResultCellSlab>& result_cell_slabs,
-      std::vector<ResultCellSlab>* out_result_cell_slabs) const;
+      const std::vector<ResultCellSlab>& result_cell_slabs) const;
 
   /**
    * Applies a clause on primitive-typed result cell slabs.
@@ -339,17 +367,16 @@ class QueryCondition {
    * @param nullable The attribute is nullable or not.
    * @param fill_value The fill value for the cells.
    * @param result_cell_slabs The input cell slabs.
-   * @param out_result_cell_slabs The filtered cell slabs.
+   * @return Status, filtered cell slabs.
    */
   template <typename T>
-  Status apply_clause(
+  std::tuple<Status, std::optional<std::vector<ResultCellSlab>>> apply_clause(
       const Clause& clause,
       uint64_t stride,
       const bool var_size,
       const bool nullable,
       const ByteVecValue& fill_value,
-      const std::vector<ResultCellSlab>& result_cell_slabs,
-      std::vector<ResultCellSlab>* out_result_cell_slabs) const;
+      const std::vector<ResultCellSlab>& result_cell_slabs) const;
 
   /**
    * Applies a clause to filter result cells from the input
@@ -359,14 +386,13 @@ class QueryCondition {
    * @param array_schema The current array schema.
    * @param stride The stride between cells.
    * @param result_cell_slabs The input cell slabs.
-   * @param out_result_cell_slabs The filtered cell slabs.
+   * @return Status, filtered cell slabs.
    */
-  Status apply_clause(
+  std::tuple<Status, std::optional<std::vector<ResultCellSlab>>> apply_clause(
       const QueryCondition::Clause& clause,
       const ArraySchema* const array_schema,
       uint64_t stride,
-      const std::vector<ResultCellSlab>& result_cell_slabs,
-      std::vector<ResultCellSlab>* out_result_cell_slabs) const;
+      const std::vector<ResultCellSlab>& result_cell_slabs) const;
 
   /**
    * Applies a clause on a dense result tile,
@@ -379,9 +405,6 @@ class QueryCondition {
    * @param src_cell The cell offset in the source tile.
    * @param stride The stride between cells.
    * @param var_size The attribute is var sized or not.
-   * @param nullable The attribute is nullable or not.
-   * @param previous_result_bitmask The bitmask to get the previous result.
-   * @param current_result_bitmask The bitmask to set the current result.
    * @param result_buffer The result buffer.
    */
   template <typename T, QueryConditionOp Op>
@@ -393,9 +416,6 @@ class QueryCondition {
       const uint64_t src_cell,
       const uint64_t stride,
       const bool var_size,
-      const bool nullable,
-      const uint8_t previous_result_bitmask,
-      const uint8_t current_result_bitmask,
       uint8_t* result_buffer) const;
 
   /**
@@ -408,10 +428,8 @@ class QueryCondition {
    * @param src_cell The cell offset in the source tile.
    * @param stride The stride between cells.
    * @param var_size The attribute is var sized or not.
-   * @param nullable The attribute is nullable or not.
-   * @param previous_result_bitmask The bitmask to get the previous result.
-   * @param current_result_bitmask The bitmask to set the current result.
    * @param result_buffer The result buffer.
+   * @return Status.
    */
   template <typename T>
   Status apply_clause_dense(
@@ -422,9 +440,6 @@ class QueryCondition {
       const uint64_t src_cell,
       const uint64_t stride,
       const bool var_size,
-      const bool nullable,
-      const uint8_t previous_result_bitmask,
-      const uint8_t current_result_bitmask,
       uint8_t* result_buffer) const;
 
   /**
@@ -438,9 +453,8 @@ class QueryCondition {
    * @param length The number of cells to process.
    * @param src_cell The cell offset in the source tile.
    * @param stride The stride between cells.
-   * @param previous_result_bitmask The bitmask to get the previous result.
-   * @param current_result_bitmask The bitmask to set the current result.
    * @param result_buffer The result buffer.
+   * @return Status.
    */
   Status apply_clause_dense(
       const QueryCondition::Clause& clause,
@@ -450,9 +464,56 @@ class QueryCondition {
       const uint64_t length,
       const uint64_t src_cell,
       const uint64_t stride,
-      const uint8_t previous_result_bitmask,
-      const uint8_t current_result_bitmask,
       uint8_t* result_buffer) const;
+
+  /**
+   * Applies a clause on a sparse result tile,
+   * templated for a query condition operator.
+   *
+   * @param clause The clause to apply.
+   * @param result_tile The result tile to get the cells from.
+   * @param var_size The attribute is var sized or not.
+   * @param result_bitmap The result bitmap.
+   */
+  template <typename T, QueryConditionOp Op, typename BitmapType>
+  void apply_clause_sparse(
+      const QueryCondition::Clause& clause,
+      ResultTile& result_tile,
+      const bool var_size,
+      std::vector<BitmapType>& result_bitmap) const;
+
+  /**
+   * Applies a clause on a sparse result tile.
+   *
+   * @param clause The clause to apply.
+   * @param result_tile The result tile to get the cells from.
+   * @param var_size The attribute is var sized or not.
+   * @param result_bitmap The result bitmap.
+   * @return Status.
+   */
+  template <typename T, typename BitmapType>
+  Status apply_clause_sparse(
+      const Clause& clause,
+      ResultTile& result_tile,
+      const bool var_size,
+      std::vector<BitmapType>& result_bitmap) const;
+
+  /**
+   * Applies a clause to filter result cells from the input
+   * result tile.
+   *
+   * @param clause The clause to apply.
+   * @param array_schema The current array schema.
+   * @param result_tile The result tile to get the cells from.
+   * @param result_bitmap The result bitmap.
+   * @return Status.
+   */
+  template <typename BitmapType>
+  Status apply_clause_sparse(
+      const QueryCondition::Clause& clause,
+      const ArraySchema* const array_schema,
+      ResultTile& result_tile,
+      std::vector<BitmapType>& result_bitmap) const;
 };
 
 }  // namespace sm

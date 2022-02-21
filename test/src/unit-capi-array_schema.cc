@@ -50,6 +50,7 @@
 #include "tiledb/sm/c_api/tiledb_experimental.h"
 #include "tiledb/sm/c_api/tiledb_serialization.h"
 #include "tiledb/sm/enums/serialization_type.h"
+#include "tiledb/sm/misc/constants.h"
 #include "tiledb/sm/misc/utils.h"
 
 using namespace tiledb::test;
@@ -1276,6 +1277,9 @@ TEST_CASE_METHOD(
   rc = tiledb_array_schema_set_offsets_filter_list(
       ctx_, array_schema, filter_list);
   REQUIRE(rc == TILEDB_OK);
+  rc = tiledb_array_schema_set_validity_filter_list(
+      ctx_, array_schema, filter_list);
+  REQUIRE(rc == TILEDB_OK);
 
   // Check for invalid array schema
   rc = tiledb_array_schema_check(ctx_, array_schema);
@@ -1310,12 +1314,15 @@ TEST_CASE_METHOD(
   REQUIRE(rc == TILEDB_OK);
 
   // Get filter lists
-  tiledb_filter_list_t *coords_flist, *offsets_flist;
+  tiledb_filter_list_t *coords_flist, *offsets_flist, *validity_flist;
   rc = tiledb_array_schema_get_coords_filter_list(
       ctx_, read_schema, &coords_flist);
   REQUIRE(rc == TILEDB_OK);
   rc = tiledb_array_schema_get_offsets_filter_list(
       ctx_, read_schema, &offsets_flist);
+  REQUIRE(rc == TILEDB_OK);
+  rc = tiledb_array_schema_get_validity_filter_list(
+      ctx_, read_schema, &validity_flist);
   REQUIRE(rc == TILEDB_OK);
 
   unsigned nfilters;
@@ -1323,6 +1330,9 @@ TEST_CASE_METHOD(
   REQUIRE(rc == TILEDB_OK);
   REQUIRE(nfilters == 1);
   rc = tiledb_filter_list_get_nfilters(ctx_, offsets_flist, &nfilters);
+  REQUIRE(rc == TILEDB_OK);
+  REQUIRE(nfilters == 1);
+  rc = tiledb_filter_list_get_nfilters(ctx_, validity_flist, &nfilters);
   REQUIRE(rc == TILEDB_OK);
   REQUIRE(nfilters == 1);
 
@@ -1349,6 +1359,7 @@ TEST_CASE_METHOD(
   tiledb_filter_free(&read_filter);
   tiledb_filter_list_free(&coords_flist);
   tiledb_filter_list_free(&offsets_flist);
+  tiledb_filter_list_free(&validity_flist);
   tiledb_array_schema_free(&read_schema);
   tiledb_array_free(&array);
   delete_array(array_name);
@@ -1598,6 +1609,76 @@ TEST_CASE_METHOD(
   rc = tiledb_array_schema_get_allows_dups(ctx_, array_schema, &allows_dups_r);
   CHECK(rc == TILEDB_OK);
   CHECK(allows_dups_r == 1);
+
+  // Clean up
+  tiledb_array_schema_free(&array_schema);
+  delete_array(array_name);
+  remove_temp_dir(local_fs.file_prefix() + local_fs.temp_dir());
+}
+
+TEST_CASE_METHOD(
+    ArraySchemaFx,
+    "C API: Test array schema setter/getter for version",
+    "[capi][array-schema][version]") {
+  SECTION("- No serialization") {
+    serialize_array_schema_ = false;
+  }
+  SECTION("- Serialization") {
+    serialize_array_schema_ = true;
+  }
+
+  // Create and allocate array schema
+  tiledb_array_schema_t* array_schema;
+  int rc = tiledb_array_schema_alloc(ctx_, TILEDB_SPARSE, &array_schema);
+  REQUIRE(rc == TILEDB_OK);
+
+  // Create dimension
+  tiledb_dimension_t* d;
+  rc = tiledb_dimension_alloc(
+      ctx_, "d", TILEDB_INT64, &DIM_DOMAIN[0], &TILE_EXTENTS[0], &d);
+  REQUIRE(rc == TILEDB_OK);
+
+  // Set domain
+  tiledb_domain_t* domain;
+  rc = tiledb_domain_alloc(ctx_, &domain);
+  REQUIRE(rc == TILEDB_OK);
+  rc = tiledb_domain_add_dimension(ctx_, domain, d);
+  REQUIRE(rc == TILEDB_OK);
+  rc = tiledb_array_schema_set_domain(ctx_, array_schema, domain);
+  REQUIRE(rc == TILEDB_OK);
+
+  // Set attribute
+  tiledb_attribute_t* a;
+  rc = tiledb_attribute_alloc(ctx_, "a", ATTR_TYPE, &a);
+  REQUIRE(rc == TILEDB_OK);
+  rc = tiledb_array_schema_add_attribute(ctx_, array_schema, a);
+  REQUIRE(rc == TILEDB_OK);
+
+  // Instantiate local class
+  SupportedFsLocal local_fs;
+
+  // Create array
+  std::string array_name =
+      local_fs.file_prefix() + local_fs.temp_dir() + "duplicates";
+  create_temp_dir(local_fs.file_prefix() + local_fs.temp_dir());
+  rc = array_create_wrapper(array_name, array_schema);
+  REQUIRE(rc == TILEDB_OK);
+
+  // Clean up
+  tiledb_attribute_free(&a);
+  tiledb_dimension_free(&d);
+  tiledb_domain_free(&domain);
+  tiledb_array_schema_free(&array_schema);
+
+  // Load array schema
+  rc = array_schema_load_wrapper(array_name.c_str(), &array_schema);
+  REQUIRE(rc == TILEDB_OK);
+
+  // Get version.
+  uint32_t version_r = 0;
+  rc = tiledb_array_schema_get_version(ctx_, array_schema, &version_r);
+  CHECK(rc == TILEDB_OK);
+  CHECK(version_r == tiledb::sm::constants::format_version);
 
   // Clean up
   tiledb_array_schema_free(&array_schema);
@@ -2029,6 +2110,12 @@ TEST_CASE_METHOD(
       ctx_, array_schema_evolution, "a3");
   REQUIRE(rc == TILEDB_OK);
 
+  // Set timestamp to avoid race condition
+  uint64_t now = tiledb_timestamp_now_ms();
+  now = now + 1;
+  rc = tiledb_array_schema_evolution_set_timestamp_range(
+      ctx_, array_schema_evolution, now, now);
+
   // Evolve schema
   rc = tiledb_array_evolve_wrapper(
       ctx_, array_name.c_str(), array_schema_evolution);
@@ -2165,6 +2252,12 @@ TEST_CASE_METHOD(
       ctx_, array_schema_evolution, "a1");
   REQUIRE(rc == TILEDB_OK);
 
+  // Set timestamp to avoid race condition
+  uint64_t now = tiledb_timestamp_now_ms();
+  now = now + 1;
+  rc = tiledb_array_schema_evolution_set_timestamp_range(
+      ctx_, array_schema_evolution, now, now);
+
   // Evolve schema
   rc = tiledb_array_evolve_wrapper(
       ctx_, array_name.c_str(), array_schema_evolution);
@@ -2250,6 +2343,12 @@ TEST_CASE_METHOD(
   rc = tiledb_array_schema_evolution_drop_attribute(
       ctx_, array_schema_evolution, "a");
   REQUIRE(rc == TILEDB_OK);
+
+  // Set timestamp to avoid race condition
+  uint64_t now = tiledb_timestamp_now_ms();
+  now = now + 1;
+  rc = tiledb_array_schema_evolution_set_timestamp_range(
+      ctx_, array_schema_evolution, now, now);
 
   // Evolve schema
   rc = tiledb_array_evolve_wrapper(

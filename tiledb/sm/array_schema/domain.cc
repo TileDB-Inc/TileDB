@@ -37,6 +37,7 @@
 #include "tiledb/sm/array_schema/dimension.h"
 #include "tiledb/sm/enums/datatype.h"
 #include "tiledb/sm/enums/layout.h"
+#include "tiledb/sm/misc/math.h"
 #include "tiledb/sm/misc/utils.h"
 
 #include <cassert>
@@ -308,9 +309,11 @@ Status Domain::deserialize(ConstBuffer* buff, uint32_t version) {
   // Load dimensions
   RETURN_NOT_OK(buff->read(&dim_num_, sizeof(uint32_t)));
   for (uint32_t i = 0; i < dim_num_; ++i) {
-    auto dim = tdb_new(tiledb::common::blank<Dimension>);
-    dim->deserialize(buff, version, type);
-    dimensions_.emplace_back(dim);
+    auto&& [st_dim, dim]{Dimension::deserialize(buff, version, type)};
+    if (!st_dim.ok()) {
+      return Status_DomainError("Cannot deserialize dimension.");
+    }
+    dimensions_.emplace_back(tdb_new(Dimension, dim.value().get()));
   }
 
   set_tile_cell_order_cmp_funcs();
@@ -520,7 +523,7 @@ Status Domain::get_dimension_index(
     }
   }
 
-  return Status::DomainError(
+  return Status_DomainError(
       "Cannot get dimension index; Invalid dimension name");
 }
 
@@ -919,6 +922,7 @@ void Domain::set_tile_cell_order_cmp_funcs() {
         cell_order_cmp_func_[d] = cell_order_cmp<char>;
         cell_order_cmp_func_2_[d] = nullptr;
         break;
+      case Datatype::BLOB:
       case Datatype::CHAR:
       case Datatype::STRING_UTF8:
       case Datatype::STRING_UTF16:

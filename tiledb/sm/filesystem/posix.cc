@@ -34,8 +34,10 @@
 
 #include "tiledb/sm/filesystem/posix.h"
 #include "tiledb/common/logger.h"
+#include "tiledb/common/stdx_string.h"
 #include "tiledb/common/thread_pool.h"
 #include "tiledb/sm/misc/constants.h"
+#include "tiledb/sm/misc/math.h"
 #include "tiledb/sm/misc/utils.h"
 
 #include <dirent.h>
@@ -72,7 +74,7 @@ uint64_t Posix::read_all(
         ::pread(fd, bytes + nread, nbytes - nread, offset + nread);
     if (actual_read == -1) {
       LOG_STATUS(
-          Status::Error(std::string("POSIX pread error: ") + strerror(errno)));
+          Status_Error(std::string("POSIX pread error: ") + strerror(errno)));
       return nread;
     } else {
       nread += actual_read;
@@ -91,7 +93,7 @@ uint64_t Posix::pwrite_all(
         ::pwrite(fd, bytes + written, nbytes - written, file_offset + written);
     if (actual_written == -1) {
       LOG_STATUS(
-          Status::Error(std::string("POSIX write error: ") + strerror(errno)));
+          Status_Error(std::string("POSIX write error: ") + strerror(errno)));
       return written;
     } else {
       written += actual_written;
@@ -166,7 +168,7 @@ std::string Posix::abs_path_internal(const std::string& path) {
 Status Posix::create_dir(const std::string& path) const {
   // If the directory does not exist, create it
   if (is_dir(path)) {
-    return LOG_STATUS(Status::IOError(
+    return LOG_STATUS(Status_IOError(
         std::string("Cannot create directory '") + path +
         "'; Directory already exists"));
   }
@@ -175,7 +177,7 @@ Status Posix::create_dir(const std::string& path) const {
   RETURN_NOT_OK(get_posix_directory_permissions(&permissions));
 
   if (mkdir(path.c_str(), permissions) != 0) {
-    return LOG_STATUS(Status::IOError(
+    return LOG_STATUS(Status_IOError(
         std::string("Cannot create directory '") + path + "'; " +
         strerror(errno)));
   }
@@ -188,7 +190,7 @@ Status Posix::touch(const std::string& filename) const {
 
   int fd = ::open(filename.c_str(), O_WRONLY | O_CREAT | O_SYNC, permissions);
   if (fd == -1 || ::close(fd) != 0) {
-    return LOG_STATUS(Status::IOError(
+    return LOG_STATUS(Status_IOError(
         std::string("Failed to create file '") + filename + "'; " +
         strerror(errno)));
   }
@@ -225,7 +227,7 @@ int Posix::unlink_cb(
 Status Posix::remove_dir(const std::string& path) const {
   int rc = nftw(path.c_str(), unlink_cb, 64, FTW_DEPTH | FTW_PHYS);
   if (rc)
-    return LOG_STATUS(Status::IOError(
+    return LOG_STATUS(Status_IOError(
         std::string("Failed to delete path '") + path + "';  " +
         strerror(errno)));
   return Status::Ok();
@@ -233,7 +235,7 @@ Status Posix::remove_dir(const std::string& path) const {
 
 Status Posix::remove_file(const std::string& path) const {
   if (remove(path.c_str()) != 0) {
-    return LOG_STATUS(Status::IOError(
+    return LOG_STATUS(Status_IOError(
         std::string("Cannot delete file '") + path + "'; " + strerror(errno)));
   }
   return Status::Ok();
@@ -242,7 +244,7 @@ Status Posix::remove_file(const std::string& path) const {
 Status Posix::file_size(const std::string& path, uint64_t* size) const {
   int fd = open(path.c_str(), O_RDONLY);
   if (fd == -1) {
-    return LOG_STATUS(Status::IOError(
+    return LOG_STATUS(Status_IOError(
         "Cannot get file size of '" + path + "'; " + strerror(errno)));
   }
 
@@ -254,45 +256,10 @@ Status Posix::file_size(const std::string& path, uint64_t* size) const {
   return Status::Ok();
 }
 
-Status Posix::filelock_lock(
-    const std::string& filename, filelock_t* fd, bool shared) const {
-  // Prepare the flock struct
-  struct flock fl;
-  memset(&fl, 0, sizeof(struct flock));
-  if (shared)
-    fl.l_type = F_RDLCK;
-  else
-    fl.l_type = F_WRLCK;
-  fl.l_whence = SEEK_SET;
-  fl.l_start = 0;
-  fl.l_len = 0;
-  fl.l_pid = getpid();
-
-  // Open the file
-  *fd = ::open(filename.c_str(), shared ? O_RDONLY : O_WRONLY);
-  if (*fd == -1) {
-    return LOG_STATUS(Status::IOError(
-        "Cannot open filelock '" + filename + "'; " + strerror(errno)));
-  }
-  // Acquire the lock
-  if (fcntl(*fd, F_SETLKW, &fl) == -1) {
-    return LOG_STATUS(Status::IOError(
-        "Cannot lock filelock '" + filename + "'; " + strerror(errno)));
-  }
-  return Status::Ok();
-}
-
-Status Posix::filelock_unlock(filelock_t fd) const {
-  if (::close(fd) == -1)
-    return LOG_STATUS(Status::IOError(
-        std::string("Cannot unlock filelock: ") + strerror(errno)));
-  return Status::Ok();
-}
-
 Status Posix::init(const Config& config, ThreadPool* vfs_thread_pool) {
   if (vfs_thread_pool == nullptr) {
     return LOG_STATUS(
-        Status::VFSError("Cannot initialize with null thread pool"));
+        Status_VFSError("Cannot initialize with null thread pool"));
   }
 
   config_ = config;
@@ -328,7 +295,7 @@ Status Posix::ls(
   }
   // close parent directory
   if (closedir(dir) != 0) {
-    return LOG_STATUS(Status::IOError(
+    return LOG_STATUS(Status_IOError(
         std::string("Cannot close parent directory; ") + strerror(errno)));
   }
   return Status::Ok();
@@ -338,7 +305,7 @@ Status Posix::move_path(
     const std::string& old_path, const std::string& new_path) {
   if (rename(old_path.c_str(), new_path.c_str()) != 0) {
     return LOG_STATUS(
-        Status::IOError(std::string("Cannot move path: ") + strerror(errno)));
+        Status_IOError(std::string("Cannot move path: ") + strerror(errno)));
   }
   return Status::Ok();
 }
@@ -446,33 +413,33 @@ Status Posix::read(
   RETURN_NOT_OK(this->file_size(path, &file_size));
   if (offset + nbytes > file_size)
     return LOG_STATUS(
-        Status::IOError("Cannot read from file; Read exceeds file size"));
+        Status_IOError("Cannot read from file; Read exceeds file size"));
 
   // Open file
   int fd = open(path.c_str(), O_RDONLY);
   if (fd == -1) {
-    return LOG_STATUS(Status::IOError(
+    return LOG_STATUS(Status_IOError(
         std::string("Cannot read from file; ") + strerror(errno)));
   }
   if (offset > static_cast<uint64_t>(std::numeric_limits<off_t>::max())) {
-    return LOG_STATUS(Status::IOError(
+    return LOG_STATUS(Status_IOError(
         std::string("Cannot read from file ' ") + path.c_str() +
         "'; offset > typemax(off_t)"));
   }
   if (nbytes > SSIZE_MAX) {
-    return LOG_STATUS(Status::IOError(
+    return LOG_STATUS(Status_IOError(
         std::string("Cannot read from file ' ") + path.c_str() +
         "'; nbytes > SSIZE_MAX"));
   }
   uint64_t bytes_read = read_all(fd, buffer, nbytes, offset);
   if (bytes_read != nbytes) {
-    return LOG_STATUS(Status::IOError(
+    return LOG_STATUS(Status_IOError(
         std::string("Cannot read from file '") + path.c_str() +
         "'; File reading error"));
   }
   // Close file
   if (close(fd)) {
-    return LOG_STATUS(Status::IOError(
+    return LOG_STATUS(Status_IOError(
         std::string("Cannot read from file; ") + strerror(errno)));
   }
   return Status::Ok();
@@ -490,24 +457,24 @@ Status Posix::sync(const std::string& path) {
     RETURN_NOT_OK(get_posix_file_permissions(&permissions));
     fd = open(path.c_str(), O_WRONLY | O_APPEND | O_CREAT, permissions);
   } else
-    return Status::Ok();  // If file does not exist, exit
+    return Status_Ok();  // If file does not exist, exit
 
   // Handle error
   if (fd == -1) {
-    return LOG_STATUS(Status::IOError(
+    return LOG_STATUS(Status_IOError(
         std::string("Cannot open file '") + path + "' for syncing; " +
         strerror(errno)));
   }
 
   // Sync
   if (fsync(fd) != 0) {
-    return LOG_STATUS(Status::IOError(
+    return LOG_STATUS(Status_IOError(
         std::string("Cannot sync file '") + path + "'; " + strerror(errno)));
   }
 
   // Close file
   if (close(fd) != 0) {
-    return LOG_STATUS(Status::IOError(
+    return LOG_STATUS(Status_IOError(
         std::string("Cannot close synced file '") + path + "'; " +
         strerror(errno)));
   }
@@ -540,14 +507,14 @@ Status Posix::write(
     if (!st.ok()) {
       std::stringstream errmsg;
       errmsg << "Cannot write to file '" << path << "'; " << st.message();
-      return LOG_STATUS(Status::IOError(errmsg.str()));
+      return LOG_STATUS(Status_IOError(errmsg.str()));
     }
   }
 
   // Open or create file.
   int fd = open(path.c_str(), O_WRONLY | O_CREAT, permissions);
   if (fd == -1) {
-    return LOG_STATUS(Status::IOError(
+    return LOG_STATUS(Status_IOError(
         std::string("Cannot open file '") + path + "'; " + strerror(errno)));
   }
 
@@ -561,7 +528,7 @@ Status Posix::write(
       close(fd);
       std::stringstream errmsg;
       errmsg << "Cannot write to file '" << path << "'; " << st.message();
-      return LOG_STATUS(Status::IOError(errmsg.str()));
+      return LOG_STATUS(Status_IOError(errmsg.str()));
     }
   } else {
     std::vector<ThreadPool::Task> results;
@@ -584,11 +551,11 @@ Status Posix::write(
       close(fd);
       std::stringstream errmsg;
       errmsg << "Cannot write to file '" << path << "'; " << st.message();
-      return LOG_STATUS(Status::IOError(errmsg.str()));
+      return LOG_STATUS(Status_IOError(errmsg.str()));
     }
   }
   if (close(fd) != 0) {
-    return LOG_STATUS(Status::IOError(
+    return LOG_STATUS(Status_IOError(
         std::string("Cannot close file '") + path + "'; " + strerror(errno)));
   }
   return st;
@@ -607,7 +574,7 @@ Status Posix::write_at(
         buffer_bytes_ptr + buffer_bytes_written,
         constants::max_write_bytes);
     if (bytes_written != constants::max_write_bytes) {
-      return LOG_STATUS(Status::IOError(
+      return LOG_STATUS(Status_IOError(
           std::string("Cannot write to file; File writing error")));
     }
     buffer_bytes_written += bytes_written;
@@ -619,7 +586,7 @@ Status Posix::write_at(
       buffer_bytes_ptr + buffer_bytes_written,
       buffer_size);
   if (bytes_written != buffer_size) {
-    return LOG_STATUS(Status::IOError(
+    return LOG_STATUS(Status_IOError(
         std::string("Cannot write to file; File writing error")));
   }
   return Status::Ok();

@@ -81,7 +81,7 @@ struct DenseTilerFx {
   void add_ranges(
       const std::vector<const void*>& ranges,
       uint64_t range_size,
-      Subarray* subarray);
+      tiledb::sm::Subarray* subarray);
   template <class T>
   bool check_tile(Tile* tile, const std::vector<T>& data);
 };
@@ -144,7 +144,7 @@ void DenseTilerFx::create_array(
 void DenseTilerFx::add_ranges(
     const std::vector<const void*>& ranges,
     uint64_t range_size,
-    Subarray* subarray) {
+    tiledb::sm::Subarray* subarray) {
   for (size_t i = 0; i < ranges.size(); ++i)
     CHECK(subarray->add_range((uint32_t)i, Range(ranges[i], range_size)).ok());
 }
@@ -174,7 +174,7 @@ template <class T>
 bool DenseTilerFx::check_tile(Tile* tile, const std::vector<T>& data) {
   std::vector<T> tile_data(data.size());
   CHECK(tile->size() == data.size() * sizeof(T));
-  CHECK(tile->read(&tile_data[0], data.size() * sizeof(T)).ok());
+  CHECK(tile->read(&tile_data[0], 0, data.size() * sizeof(T)).ok());
   CHECK(tile_data == data);
   return tile_data == data;
 }
@@ -203,7 +203,7 @@ TEST_CASE_METHOD(
   // Create subarray
   open_array(array_name, TILEDB_READ);
   int32_t sub1[] = {3, 6};
-  Subarray subarray1(
+  tiledb::sm::Subarray subarray1(
       array_->array_,
       Layout::ROW_MAJOR,
       &test::g_helper_stats,
@@ -224,7 +224,7 @@ TEST_CASE_METHOD(
   close_array();
   open_array(array_name, TILEDB_READ);
   int32_t sub2[] = {6, 9};
-  Subarray subarray2(
+  tiledb::sm::Subarray subarray2(
       array_->array_,
       Layout::ROW_MAJOR,
       &test::g_helper_stats,
@@ -270,7 +270,7 @@ TEST_CASE_METHOD(
   // Create subarray
   open_array(array_name, TILEDB_READ);
   int32_t sub1[] = {3, 6};
-  Subarray subarray1(
+  tiledb::sm::Subarray subarray1(
       array_->array_,
       Layout::ROW_MAJOR,
       &test::g_helper_stats,
@@ -306,7 +306,7 @@ TEST_CASE_METHOD(
   close_array();
   open_array(array_name, TILEDB_READ);
   int32_t sub2[] = {7, 8};
-  Subarray subarray2(
+  tiledb::sm::Subarray subarray2(
       array_->array_,
       Layout::ROW_MAJOR,
       &test::g_helper_stats,
@@ -330,7 +330,7 @@ TEST_CASE_METHOD(
   close_array();
   open_array(array_name, TILEDB_READ);
   int32_t sub3[] = {7, 8};
-  Subarray subarray3(
+  tiledb::sm::Subarray subarray3(
       array_->array_,
       Layout::COL_MAJOR,
       &test::g_helper_stats,
@@ -379,7 +379,7 @@ TEST_CASE_METHOD(
   // Create subarray
   open_array(array_name, TILEDB_READ);
   int32_t sub1[] = {3, 6};
-  Subarray subarray1(
+  tiledb::sm::Subarray subarray1(
       array_->array_,
       Layout::ROW_MAJOR,
       &test::g_helper_stats,
@@ -390,7 +390,7 @@ TEST_CASE_METHOD(
   DenseTiler<int32_t> tiler1(&buffers, &subarray1, &test::g_helper_stats);
 
   // Test get tile 0
-  Tile tile1_0;
+  WriterTile tile1_0;
   CHECK(!tiler1.get_tile(0, "foo", &tile1_0).ok());
   CHECK(!tiler1.get_tile(10, "a", &tile1_0).ok());
   CHECK(tiler1.get_tile(0, "a", &tile1_0).ok());
@@ -398,7 +398,7 @@ TEST_CASE_METHOD(
   CHECK(check_tile<int32_t>(&tile1_0, c_data1_0));
 
   // Test get tile 1
-  Tile tile1_1;
+  WriterTile tile1_1;
   CHECK(tiler1.get_tile(1, "a", &tile1_1).ok());
   std::vector<int32_t> c_data1_1 = {
       4, fill_value, fill_value, fill_value, fill_value};
@@ -408,7 +408,7 @@ TEST_CASE_METHOD(
   close_array();
   open_array(array_name, TILEDB_READ);
   int32_t sub2[] = {7, 10};
-  Subarray subarray2(
+  tiledb::sm::Subarray subarray2(
       array_->array_,
       Layout::ROW_MAJOR,
       &test::g_helper_stats,
@@ -419,7 +419,7 @@ TEST_CASE_METHOD(
   DenseTiler<int32_t> tiler2(&buffers, &subarray2, &test::g_helper_stats);
 
   // Test get tile 0
-  Tile tile2;
+  WriterTile tile2;
   CHECK(tiler2.get_tile(0, "a", &tile2).ok());
   std::vector<int32_t> c_data2 = {fill_value, 1, 2, 3, 4};
   CHECK(check_tile<int32_t>(&tile2, c_data2));
@@ -428,7 +428,7 @@ TEST_CASE_METHOD(
   close_array();
   open_array(array_name, TILEDB_READ);
   int32_t sub3[] = {7, 10};
-  Subarray subarray3(
+  tiledb::sm::Subarray subarray3(
       array_->array_,
       Layout::COL_MAJOR,
       &test::g_helper_stats,
@@ -439,7 +439,7 @@ TEST_CASE_METHOD(
   DenseTiler<int32_t> tiler3(&buffers, &subarray3, &test::g_helper_stats);
 
   // Test get tile 0
-  Tile tile3;
+  WriterTile tile3;
   CHECK(tiler3.get_tile(0, "a", &tile3).ok());
   std::vector<int32_t> c_data3 = {fill_value, 1, 2, 3, 4};
   CHECK(check_tile<int32_t>(&tile3, c_data3));
@@ -473,7 +473,7 @@ TEST_CASE_METHOD(
   // Create subarray
   open_array(array_name, TILEDB_READ);
   int32_t sub1[] = {3, 6};
-  Subarray subarray1(
+  tiledb::sm::Subarray subarray1(
       array_->array_,
       Layout::ROW_MAJOR,
       &test::g_helper_stats,
@@ -484,7 +484,7 @@ TEST_CASE_METHOD(
   DenseTiler<int32_t> tiler1(&buffers, &subarray1, &test::g_helper_stats);
 
   // Test get tile 0
-  Tile tile1_0;
+  WriterTile tile1_0;
   CHECK(!tiler1.get_tile(0, "foo", &tile1_0).ok());
   CHECK(!tiler1.get_tile(10, "a", &tile1_0).ok());
   CHECK(tiler1.get_tile(0, "a", &tile1_0).ok());
@@ -492,7 +492,7 @@ TEST_CASE_METHOD(
   CHECK(check_tile<int32_t>(&tile1_0, c_data1_0));
 
   // Test get tile 1
-  Tile tile1_1;
+  WriterTile tile1_1;
   CHECK(tiler1.get_tile(1, "a", &tile1_1).ok());
   std::vector<int32_t> c_data1_1 = {
       4, fill_value, fill_value, fill_value, fill_value};
@@ -527,7 +527,7 @@ TEST_CASE_METHOD(
   // Create subarray
   open_array(array_name, TILEDB_READ);
   int32_t sub1[] = {-2, 1};
-  Subarray subarray1(
+  tiledb::sm::Subarray subarray1(
       array_->array_,
       Layout::ROW_MAJOR,
       &test::g_helper_stats,
@@ -538,7 +538,7 @@ TEST_CASE_METHOD(
   DenseTiler<int32_t> tiler1(&buffers, &subarray1, &test::g_helper_stats);
 
   // Test get tile 0
-  Tile tile1_0;
+  WriterTile tile1_0;
   CHECK(!tiler1.get_tile(0, "foo", &tile1_0).ok());
   CHECK(!tiler1.get_tile(10, "a", &tile1_0).ok());
   CHECK(tiler1.get_tile(0, "a", &tile1_0).ok());
@@ -546,7 +546,7 @@ TEST_CASE_METHOD(
   CHECK(check_tile<int32_t>(&tile1_0, c_data1_0));
 
   // Test get tile 1
-  Tile tile1_1;
+  WriterTile tile1_1;
   CHECK(tiler1.get_tile(1, "a", &tile1_1).ok());
   std::vector<int32_t> c_data1_1 = {
       4, fill_value, fill_value, fill_value, fill_value};
@@ -585,7 +585,7 @@ TEST_CASE_METHOD(
   open_array(array_name, TILEDB_READ);
   int32_t sub1_0[] = {4, 6};
   int32_t sub1_1[] = {18, 22};
-  Subarray subarray1(
+  tiledb::sm::Subarray subarray1(
       array_->array_,
       Layout::ROW_MAJOR,
       &test::g_helper_stats,
@@ -607,7 +607,7 @@ TEST_CASE_METHOD(
   open_array(array_name, TILEDB_READ);
   int32_t sub2_0[] = {7, 9};
   int32_t sub2_1[] = {23, 27};
-  Subarray subarray2(
+  tiledb::sm::Subarray subarray2(
       array_->array_,
       Layout::ROW_MAJOR,
       &test::g_helper_stats,
@@ -629,7 +629,7 @@ TEST_CASE_METHOD(
   open_array(array_name, TILEDB_READ);
   int32_t sub3_0[] = {4, 6};
   int32_t sub3_1[] = {18, 22};
-  Subarray subarray3(
+  tiledb::sm::Subarray subarray3(
       array_->array_,
       Layout::COL_MAJOR,
       &test::g_helper_stats,
@@ -651,7 +651,7 @@ TEST_CASE_METHOD(
   open_array(array_name, TILEDB_READ);
   int32_t sub4_0[] = {7, 10};
   int32_t sub4_1[] = {23, 27};
-  Subarray subarray4(
+  tiledb::sm::Subarray subarray4(
       array_->array_,
       Layout::COL_MAJOR,
       &test::g_helper_stats,
@@ -701,7 +701,7 @@ TEST_CASE_METHOD(
   open_array(array_name, TILEDB_READ);
   int32_t sub1_0[] = {4, 6};
   int32_t sub1_1[] = {18, 22};
-  Subarray subarray1(
+  tiledb::sm::Subarray subarray1(
       array_->array_,
       Layout::ROW_MAJOR,
       &test::g_helper_stats,
@@ -723,7 +723,7 @@ TEST_CASE_METHOD(
   open_array(array_name, TILEDB_READ);
   int32_t sub2_0[] = {7, 9};
   int32_t sub2_1[] = {23, 27};
-  Subarray subarray2(
+  tiledb::sm::Subarray subarray2(
       array_->array_,
       Layout::ROW_MAJOR,
       &test::g_helper_stats,
@@ -745,7 +745,7 @@ TEST_CASE_METHOD(
   open_array(array_name, TILEDB_READ);
   int32_t sub3_0[] = {4, 6};
   int32_t sub3_1[] = {18, 22};
-  Subarray subarray3(
+  tiledb::sm::Subarray subarray3(
       array_->array_,
       Layout::COL_MAJOR,
       &test::g_helper_stats,
@@ -767,7 +767,7 @@ TEST_CASE_METHOD(
   open_array(array_name, TILEDB_READ);
   int32_t sub4_0[] = {7, 10};
   int32_t sub4_1[] = {23, 27};
-  Subarray subarray4(
+  tiledb::sm::Subarray subarray4(
       array_->array_,
       Layout::COL_MAJOR,
       &test::g_helper_stats,
@@ -817,7 +817,7 @@ TEST_CASE_METHOD(
   open_array(array_name, TILEDB_READ);
   int32_t sub1_0[] = {4, 6};
   int32_t sub1_1[] = {18, 22};
-  Subarray subarray1(
+  tiledb::sm::Subarray subarray1(
       array_->array_,
       Layout::ROW_MAJOR,
       &test::g_helper_stats,
@@ -876,7 +876,7 @@ TEST_CASE_METHOD(
   open_array(array_name, TILEDB_READ);
   int32_t sub2_0[] = {3, 5};
   int32_t sub2_1[] = {13, 18};
-  Subarray subarray2(
+  tiledb::sm::Subarray subarray2(
       array_->array_,
       Layout::ROW_MAJOR,
       &test::g_helper_stats,
@@ -902,7 +902,7 @@ TEST_CASE_METHOD(
   open_array(array_name, TILEDB_READ);
   int32_t sub3_0[] = {4, 6};
   int32_t sub3_1[] = {18, 22};
-  Subarray subarray3(
+  tiledb::sm::Subarray subarray3(
       array_->array_,
       Layout::COL_MAJOR,
       &test::g_helper_stats,
@@ -965,7 +965,7 @@ TEST_CASE_METHOD(
   open_array(array_name, TILEDB_READ);
   int32_t sub4_0[] = {3, 5};
   int32_t sub4_1[] = {13, 18};
-  Subarray subarray4(
+  tiledb::sm::Subarray subarray4(
       array_->array_,
       Layout::COL_MAJOR,
       &test::g_helper_stats,
@@ -1020,7 +1020,7 @@ TEST_CASE_METHOD(
   open_array(array_name, TILEDB_READ);
   int32_t sub1_0[] = {4, 6};
   int32_t sub1_1[] = {18, 22};
-  Subarray subarray1(
+  tiledb::sm::Subarray subarray1(
       array_->array_,
       Layout::ROW_MAJOR,
       &test::g_helper_stats,
@@ -1083,7 +1083,7 @@ TEST_CASE_METHOD(
   open_array(array_name, TILEDB_READ);
   int32_t sub2_0[] = {3, 5};
   int32_t sub2_1[] = {13, 18};
-  Subarray subarray2(
+  tiledb::sm::Subarray subarray2(
       array_->array_,
       Layout::ROW_MAJOR,
       &test::g_helper_stats,
@@ -1110,7 +1110,7 @@ TEST_CASE_METHOD(
   open_array(array_name, TILEDB_READ);
   int32_t sub3_0[] = {4, 6};
   int32_t sub3_1[] = {18, 22};
-  Subarray subarray3(
+  tiledb::sm::Subarray subarray3(
       array_->array_,
       Layout::COL_MAJOR,
       &test::g_helper_stats,
@@ -1169,7 +1169,7 @@ TEST_CASE_METHOD(
   open_array(array_name, TILEDB_READ);
   int32_t sub4_0[] = {3, 5};
   int32_t sub4_1[] = {13, 18};
-  Subarray subarray4(
+  tiledb::sm::Subarray subarray4(
       array_->array_,
       Layout::COL_MAJOR,
       &test::g_helper_stats,
@@ -1223,7 +1223,7 @@ TEST_CASE_METHOD(
   open_array(array_name, TILEDB_READ);
   int32_t sub1_0[] = {4, 9};
   int32_t sub1_1[] = {11, 20};
-  Subarray subarray1(
+  tiledb::sm::Subarray subarray1(
       array_->array_,
       Layout::ROW_MAJOR,
       &test::g_helper_stats,
@@ -1288,7 +1288,7 @@ TEST_CASE_METHOD(
   open_array(array_name, TILEDB_READ);
   int32_t sub1_0[] = {1, 5};
   int32_t sub1_1[] = {8, 12};
-  Subarray subarray1(
+  tiledb::sm::Subarray subarray1(
       array_->array_,
       Layout::COL_MAJOR,
       &test::g_helper_stats,
@@ -1354,7 +1354,7 @@ TEST_CASE_METHOD(
   open_array(array_name, TILEDB_READ);
   int32_t sub1_0[] = {4, 6};
   int32_t sub1_1[] = {18, 22};
-  Subarray subarray1(
+  tiledb::sm::Subarray subarray1(
       array_->array_,
       Layout::ROW_MAJOR,
       &test::g_helper_stats,
@@ -1365,7 +1365,7 @@ TEST_CASE_METHOD(
   DenseTiler<int32_t> tiler1(&buffers, &subarray1, &test::g_helper_stats);
 
   // Test get tile 0
-  Tile tile1_0;
+  WriterTile tile1_0;
   CHECK(tiler1.get_tile(0, "a", &tile1_0).ok());
   std::vector<int32_t> c_data1_0(50);
   for (int i = 0; i <= 36; ++i)
@@ -1379,7 +1379,7 @@ TEST_CASE_METHOD(
   CHECK(check_tile<int32_t>(&tile1_0, c_data1_0));
 
   // Test get tile 1
-  Tile tile1_1;
+  WriterTile tile1_1;
   CHECK(tiler1.get_tile(1, "a", &tile1_1).ok());
   std::vector<int32_t> c_data1_1(50);
   for (int i = 0; i <= 29; ++i)
@@ -1395,7 +1395,7 @@ TEST_CASE_METHOD(
   CHECK(check_tile<int32_t>(&tile1_1, c_data1_1));
 
   // Test get tile 2
-  Tile tile1_2;
+  WriterTile tile1_2;
   CHECK(tiler1.get_tile(2, "a", &tile1_2).ok());
   std::vector<int32_t> c_data1_2(50);
   for (int i = 0; i <= 6; ++i)
@@ -1407,7 +1407,7 @@ TEST_CASE_METHOD(
   CHECK(check_tile<int32_t>(&tile1_2, c_data1_2));
 
   // Test get tile 3
-  Tile tile1_3;
+  WriterTile tile1_3;
   CHECK(tiler1.get_tile(3, "a", &tile1_3).ok());
   std::vector<int32_t> c_data1_3(50);
   for (int i = 0; i <= 1; ++i)
@@ -1421,7 +1421,7 @@ TEST_CASE_METHOD(
   open_array(array_name, TILEDB_READ);
   int32_t sub2_0[] = {3, 5};
   int32_t sub2_1[] = {13, 18};
-  Subarray subarray2(
+  tiledb::sm::Subarray subarray2(
       array_->array_,
       Layout::ROW_MAJOR,
       &test::g_helper_stats,
@@ -1435,7 +1435,7 @@ TEST_CASE_METHOD(
   DenseTiler<int32_t> tiler2(&buffers, &subarray2, &test::g_helper_stats);
 
   // Test get tile 0
-  Tile tile2_0;
+  WriterTile tile2_0;
   CHECK(tiler2.get_tile(0, "a", &tile2_0).ok());
   std::vector<int32_t> c_data2_0(50);
   for (int i = 0; i <= 21; ++i)
@@ -1459,7 +1459,7 @@ TEST_CASE_METHOD(
   open_array(array_name, TILEDB_READ);
   int32_t sub3_0[] = {4, 6};
   int32_t sub3_1[] = {18, 22};
-  Subarray subarray3(
+  tiledb::sm::Subarray subarray3(
       array_->array_,
       Layout::COL_MAJOR,
       &test::g_helper_stats,
@@ -1473,7 +1473,7 @@ TEST_CASE_METHOD(
   DenseTiler<int32_t> tiler3(&buffers, &subarray3, &test::g_helper_stats);
 
   // Test get tile 0
-  Tile tile3_0;
+  WriterTile tile3_0;
   CHECK(tiler3.get_tile(0, "a", &tile3_0).ok());
   std::vector<int32_t> c_data3_0(50);
   for (int i = 0; i <= 36; ++i)
@@ -1487,7 +1487,7 @@ TEST_CASE_METHOD(
   CHECK(check_tile<int32_t>(&tile3_0, c_data3_0));
 
   // Test get tile 1
-  Tile tile3_1;
+  WriterTile tile3_1;
   CHECK(tiler3.get_tile(1, "a", &tile3_1).ok());
   std::vector<int32_t> c_data3_1(50);
   for (int i = 0; i <= 29; ++i)
@@ -1503,7 +1503,7 @@ TEST_CASE_METHOD(
   CHECK(check_tile<int32_t>(&tile3_1, c_data3_1));
 
   // Test get tile 2
-  Tile tile3_2;
+  WriterTile tile3_2;
   CHECK(tiler3.get_tile(2, "a", &tile3_2).ok());
   std::vector<int32_t> c_data3_2(50);
   for (int i = 0; i <= 6; ++i)
@@ -1515,7 +1515,7 @@ TEST_CASE_METHOD(
   CHECK(check_tile<int32_t>(&tile3_2, c_data3_2));
 
   // Test get tile 3
-  Tile tile3_3;
+  WriterTile tile3_3;
   CHECK(tiler3.get_tile(3, "a", &tile3_3).ok());
   std::vector<int32_t> c_data3_3(50);
   for (int i = 0; i <= 1; ++i)
@@ -1529,7 +1529,7 @@ TEST_CASE_METHOD(
   open_array(array_name, TILEDB_READ);
   int32_t sub4_0[] = {3, 5};
   int32_t sub4_1[] = {13, 18};
-  Subarray subarray4(
+  tiledb::sm::Subarray subarray4(
       array_->array_,
       Layout::COL_MAJOR,
       &test::g_helper_stats,
@@ -1543,7 +1543,7 @@ TEST_CASE_METHOD(
   DenseTiler<int32_t> tiler4(&buffers, &subarray4, &test::g_helper_stats);
 
   // Test get tile 0
-  Tile tile4_0;
+  WriterTile tile4_0;
   CHECK(tiler4.get_tile(0, "a", &tile4_0).ok());
   std::vector<int32_t> c_data4_0(50);
   for (int i = 0; i <= 21; ++i)
@@ -1596,7 +1596,7 @@ TEST_CASE_METHOD(
   open_array(array_name, TILEDB_READ);
   int32_t sub1_0[] = {4, 6};
   int32_t sub1_1[] = {18, 22};
-  Subarray subarray1(
+  tiledb::sm::Subarray subarray1(
       array_->array_,
       Layout::ROW_MAJOR,
       &test::g_helper_stats,
@@ -1607,7 +1607,7 @@ TEST_CASE_METHOD(
   DenseTiler<int32_t> tiler1(&buffers, &subarray1, &test::g_helper_stats);
 
   // Test get tile 0
-  Tile tile1_0;
+  WriterTile tile1_0;
   CHECK(tiler1.get_tile(0, "a", &tile1_0).ok());
   std::vector<int32_t> c_data1_0(50);
   for (int i = 0; i <= 37; ++i)
@@ -1625,7 +1625,7 @@ TEST_CASE_METHOD(
   CHECK(check_tile<int32_t>(&tile1_0, c_data1_0));
 
   // Test get tile 1
-  Tile tile1_1;
+  WriterTile tile1_1;
   CHECK(tiler1.get_tile(1, "a", &tile1_1).ok());
   std::vector<int32_t> c_data1_1(50);
   for (int i = 0; i <= 34; ++i)
@@ -1642,7 +1642,7 @@ TEST_CASE_METHOD(
   CHECK(check_tile<int32_t>(&tile1_1, c_data1_1));
 
   // Test get tile 2
-  Tile tile1_2;
+  WriterTile tile1_2;
   CHECK(tiler1.get_tile(2, "a", &tile1_2).ok());
   std::vector<int32_t> c_data1_2(50);
   for (int i = 0; i <= 2; ++i)
@@ -1658,7 +1658,7 @@ TEST_CASE_METHOD(
   CHECK(check_tile<int32_t>(&tile1_2, c_data1_2));
 
   // Test get tile 3
-  Tile tile1_3;
+  WriterTile tile1_3;
   CHECK(tiler1.get_tile(3, "a", &tile1_3).ok());
   std::vector<int32_t> c_data1_3(50);
   c_data1_3[0] = 14;
@@ -1674,7 +1674,7 @@ TEST_CASE_METHOD(
   open_array(array_name, TILEDB_READ);
   int32_t sub2_0[] = {3, 5};
   int32_t sub2_1[] = {13, 18};
-  Subarray subarray2(
+  tiledb::sm::Subarray subarray2(
       array_->array_,
       Layout::ROW_MAJOR,
       &test::g_helper_stats,
@@ -1688,7 +1688,7 @@ TEST_CASE_METHOD(
   DenseTiler<int32_t> tiler2(&buffers, &subarray2, &test::g_helper_stats);
 
   // Test get tile 0
-  Tile tile2_0;
+  WriterTile tile2_0;
   CHECK(tiler2.get_tile(0, "a", &tile2_0).ok());
   std::vector<int32_t> c_data2_0(50);
   for (int i = 0; i <= 11; ++i)
@@ -1730,7 +1730,7 @@ TEST_CASE_METHOD(
   open_array(array_name, TILEDB_READ);
   int32_t sub3_0[] = {4, 6};
   int32_t sub3_1[] = {18, 22};
-  Subarray subarray3(
+  tiledb::sm::Subarray subarray3(
       array_->array_,
       Layout::COL_MAJOR,
       &test::g_helper_stats,
@@ -1744,7 +1744,7 @@ TEST_CASE_METHOD(
   DenseTiler<int32_t> tiler3(&buffers, &subarray3, &test::g_helper_stats);
 
   // Test get tile 0
-  Tile tile3_0;
+  WriterTile tile3_0;
   CHECK(tiler3.get_tile(0, "a", &tile3_0).ok());
   std::vector<int32_t> c_data3_0(50);
   for (int i = 0; i <= 37; ++i)
@@ -1762,7 +1762,7 @@ TEST_CASE_METHOD(
   CHECK(check_tile<int32_t>(&tile3_0, c_data3_0));
 
   // Test get tile 1
-  Tile tile3_1;
+  WriterTile tile3_1;
   CHECK(tiler3.get_tile(1, "a", &tile3_1).ok());
   std::vector<int32_t> c_data3_1(50);
   for (int i = 0; i <= 34; ++i)
@@ -1779,7 +1779,7 @@ TEST_CASE_METHOD(
   CHECK(check_tile<int32_t>(&tile3_1, c_data3_1));
 
   // Test get tile 2
-  Tile tile3_2;
+  WriterTile tile3_2;
   CHECK(tiler3.get_tile(2, "a", &tile3_2).ok());
   std::vector<int32_t> c_data3_2(50);
   for (int i = 0; i <= 2; ++i)
@@ -1795,7 +1795,7 @@ TEST_CASE_METHOD(
   CHECK(check_tile<int32_t>(&tile3_2, c_data3_2));
 
   // Test get tile 3
-  Tile tile3_3;
+  WriterTile tile3_3;
   CHECK(tiler3.get_tile(3, "a", &tile3_3).ok());
   std::vector<int32_t> c_data3_3(50);
   c_data3_3[0] = 14;
@@ -1811,7 +1811,7 @@ TEST_CASE_METHOD(
   open_array(array_name, TILEDB_READ);
   int32_t sub4_0[] = {3, 5};
   int32_t sub4_1[] = {13, 18};
-  Subarray subarray4(
+  tiledb::sm::Subarray subarray4(
       array_->array_,
       Layout::COL_MAJOR,
       &test::g_helper_stats,
@@ -1825,7 +1825,7 @@ TEST_CASE_METHOD(
   DenseTiler<int32_t> tiler4(&buffers, &subarray4, &test::g_helper_stats);
 
   // Test get tile 0
-  Tile tile4_0;
+  WriterTile tile4_0;
   CHECK(tiler4.get_tile(0, "a", &tile4_0).ok());
   std::vector<int32_t> c_data4_0(50);
   for (int i = 0; i <= 11; ++i)
@@ -1899,7 +1899,7 @@ TEST_CASE_METHOD(
   open_array(array_name, TILEDB_READ);
   int32_t sub1_0[] = {4, 9};
   int32_t sub1_1[] = {11, 20};
-  Subarray subarray1(
+  tiledb::sm::Subarray subarray1(
       array_->array_,
       Layout::ROW_MAJOR,
       &test::g_helper_stats,
@@ -1910,7 +1910,7 @@ TEST_CASE_METHOD(
   DenseTiler<int32_t> tiler1(&buffers, &subarray1, &test::g_helper_stats);
 
   // Test get tile 0
-  Tile tile1_0;
+  WriterTile tile1_0;
   CHECK(tiler1.get_tile(0, "a", &tile1_0).ok());
   std::vector<int32_t> c_data1_0(50);
   for (int i = 0; i <= 29; ++i)
@@ -1920,7 +1920,7 @@ TEST_CASE_METHOD(
   CHECK(check_tile<int32_t>(&tile1_0, c_data1_0));
 
   // Test get tile 1
-  Tile tile1_1;
+  WriterTile tile1_1;
   CHECK(tiler1.get_tile(1, "a", &tile1_1).ok());
   std::vector<int32_t> c_data1_1(50);
   for (int i = 0; i <= 39; ++i)
@@ -1964,7 +1964,7 @@ TEST_CASE_METHOD(
   open_array(array_name, TILEDB_READ);
   int32_t sub1_0[] = {1, 5};
   int32_t sub1_1[] = {8, 12};
-  Subarray subarray1(
+  tiledb::sm::Subarray subarray1(
       array_->array_,
       Layout::COL_MAJOR,
       &test::g_helper_stats,
@@ -1975,7 +1975,7 @@ TEST_CASE_METHOD(
   DenseTiler<int32_t> tiler1(&buffers, &subarray1, &test::g_helper_stats);
 
   // Test get tile 0
-  Tile tile1_0;
+  WriterTile tile1_0;
   CHECK(tiler1.get_tile(0, "a", &tile1_0).ok());
   std::vector<int32_t> c_data1_0(50);
   for (int i = 0; i <= 34; ++i)
@@ -1985,7 +1985,7 @@ TEST_CASE_METHOD(
   CHECK(check_tile<int32_t>(&tile1_0, c_data1_0));
 
   // Test get tile 1
-  Tile tile1_1;
+  WriterTile tile1_1;
   CHECK(tiler1.get_tile(1, "a", &tile1_1).ok());
   std::vector<int32_t> c_data1_1(50);
   for (int i = 0; i <= 9; ++i)
@@ -2023,7 +2023,7 @@ TEST_CASE_METHOD(
   // Create subarray
   open_array(array_name, TILEDB_READ);
   int32_t sub1[] = {3, 6};
-  Subarray subarray1(
+  tiledb::sm::Subarray subarray1(
       array_->array_,
       Layout::ROW_MAJOR,
       &test::g_helper_stats,
@@ -2034,14 +2034,14 @@ TEST_CASE_METHOD(
   DenseTiler<int32_t> tiler1(&buffers, &subarray1, &test::g_helper_stats);
 
   // Test get tile 0
-  Tile tile1_0;
+  WriterTile tile1_0;
   CHECK(tiler1.get_tile(0, "a", &tile1_0).ok());
   std::vector<int32_t> c_data1_0 = {
       fill_value, fill_value, fill_value, fill_value, 1, 11, 2, 22, 3, 33};
   CHECK(check_tile<int32_t>(&tile1_0, c_data1_0));
 
   // Test get tile 1
-  Tile tile1_1;
+  WriterTile tile1_1;
   CHECK(tiler1.get_tile(1, "a", &tile1_1).ok());
   std::vector<int32_t> c_data1_1 = {4,
                                     44,
@@ -2059,7 +2059,7 @@ TEST_CASE_METHOD(
   close_array();
   open_array(array_name, TILEDB_READ);
   int32_t sub2[] = {7, 10};
-  Subarray subarray2(
+  tiledb::sm::Subarray subarray2(
       array_->array_,
       Layout::ROW_MAJOR,
       &test::g_helper_stats,
@@ -2070,7 +2070,7 @@ TEST_CASE_METHOD(
   DenseTiler<int32_t> tiler2(&buffers, &subarray2, &test::g_helper_stats);
 
   // Test get tile 0
-  Tile tile2;
+  WriterTile tile2;
   CHECK(tiler2.get_tile(0, "a", &tile2).ok());
   std::vector<int32_t> c_data2 = {
       fill_value, fill_value, 1, 11, 2, 22, 3, 33, 4, 44};
@@ -2080,7 +2080,7 @@ TEST_CASE_METHOD(
   close_array();
   open_array(array_name, TILEDB_READ);
   int32_t sub3[] = {7, 10};
-  Subarray subarray3(
+  tiledb::sm::Subarray subarray3(
       array_->array_,
       Layout::COL_MAJOR,
       &test::g_helper_stats,
@@ -2091,7 +2091,7 @@ TEST_CASE_METHOD(
   DenseTiler<int32_t> tiler3(&buffers, &subarray3, &test::g_helper_stats);
 
   // Test get tile 0
-  Tile tile3;
+  WriterTile tile3;
   CHECK(tiler3.get_tile(0, "a", &tile3).ok());
   std::vector<int32_t> c_data3 = {
       fill_value, fill_value, 1, 11, 2, 22, 3, 33, 4, 44};
@@ -2129,7 +2129,7 @@ TEST_CASE_METHOD(
   // Create subarray
   open_array(array_name, TILEDB_READ);
   int32_t sub1[] = {3, 6};
-  Subarray subarray1(
+  tiledb::sm::Subarray subarray1(
       array_->array_,
       Layout::ROW_MAJOR,
       &test::g_helper_stats,
@@ -2140,23 +2140,23 @@ TEST_CASE_METHOD(
   DenseTiler<int32_t> tiler1(&buffers, &subarray1, &test::g_helper_stats);
 
   // Test get tile 0
-  Tile tile1_0_a1;
+  WriterTile tile1_0_a1;
   CHECK(tiler1.get_tile(0, "a1", &tile1_0_a1).ok());
   std::vector<int32_t> c_data1_0_a1 = {fill_value, fill_value, 1, 2, 3};
   CHECK(check_tile<int32_t>(&tile1_0_a1, c_data1_0_a1));
-  Tile tile1_0_a2;
+  WriterTile tile1_0_a2;
   CHECK(tiler1.get_tile(0, "a2", &tile1_0_a2).ok());
   std::vector<double> c_data1_0_a2 = {
       double(fill_value), double(fill_value), 1.1, 2.2, 3.3};
   CHECK(check_tile<double>(&tile1_0_a2, c_data1_0_a2));
 
   // Test get tile 1
-  Tile tile1_1_a1;
+  WriterTile tile1_1_a1;
   CHECK(tiler1.get_tile(1, "a1", &tile1_1_a1).ok());
   std::vector<int32_t> c_data1_1_a1 = {
       4, fill_value, fill_value, fill_value, fill_value};
   CHECK(check_tile<int32_t>(&tile1_1_a1, c_data1_1_a1));
-  Tile tile1_1_a2;
+  WriterTile tile1_1_a2;
   CHECK(tiler1.get_tile(1, "a2", &tile1_1_a2).ok());
   std::vector<double> c_data1_1_a2 = {4.4,
                                       double(fill_value),
@@ -2169,7 +2169,7 @@ TEST_CASE_METHOD(
   close_array();
   open_array(array_name, TILEDB_READ);
   int32_t sub2[] = {7, 10};
-  Subarray subarray2(
+  tiledb::sm::Subarray subarray2(
       array_->array_,
       Layout::ROW_MAJOR,
       &test::g_helper_stats,
@@ -2180,11 +2180,11 @@ TEST_CASE_METHOD(
   DenseTiler<int32_t> tiler2(&buffers, &subarray2, &test::g_helper_stats);
 
   // Test get tile 0
-  Tile tile2_a1;
+  WriterTile tile2_a1;
   CHECK(tiler2.get_tile(0, "a1", &tile2_a1).ok());
   std::vector<int32_t> c_data2_a1 = {fill_value, 1, 2, 3, 4};
   CHECK(check_tile<int32_t>(&tile2_a1, c_data2_a1));
-  Tile tile2_a2;
+  WriterTile tile2_a2;
   CHECK(tiler2.get_tile(0, "a2", &tile2_a2).ok());
   std::vector<double> c_data2_a2 = {double(fill_value), 1.1, 2.2, 3.3, 4.4};
   CHECK(check_tile<double>(&tile2_a2, c_data2_a2));
@@ -2193,7 +2193,7 @@ TEST_CASE_METHOD(
   close_array();
   open_array(array_name, TILEDB_READ);
   int32_t sub3[] = {7, 10};
-  Subarray subarray3(
+  tiledb::sm::Subarray subarray3(
       array_->array_,
       Layout::COL_MAJOR,
       &test::g_helper_stats,
@@ -2204,11 +2204,11 @@ TEST_CASE_METHOD(
   DenseTiler<int32_t> tiler3(&buffers, &subarray3, &test::g_helper_stats);
 
   // Test get tile 0
-  Tile tile3_a1;
+  WriterTile tile3_a1;
   CHECK(tiler3.get_tile(0, "a1", &tile3_a1).ok());
   std::vector<int32_t> c_data3_a1 = {fill_value, 1, 2, 3, 4};
   CHECK(check_tile<int32_t>(&tile3_a1, c_data3_a1));
-  Tile tile3_a2;
+  WriterTile tile3_a2;
   CHECK(tiler3.get_tile(0, "a2", &tile3_a2).ok());
   std::vector<double> c_data3_a2 = {double(fill_value), 1.1, 2.2, 3.3, 4.4};
   CHECK(check_tile<double>(&tile3_a2, c_data3_a2));
@@ -2254,7 +2254,7 @@ TEST_CASE_METHOD(
   open_array(array_name, TILEDB_READ);
   int32_t sub1_0[] = {4, 6};
   int32_t sub1_1[] = {18, 22};
-  Subarray subarray1(
+  tiledb::sm::Subarray subarray1(
       array_->array_,
       Layout::ROW_MAJOR,
       &test::g_helper_stats,
@@ -2265,7 +2265,7 @@ TEST_CASE_METHOD(
   DenseTiler<int32_t> tiler1(&buffers, &subarray1, &test::g_helper_stats);
 
   // Test get tile 0
-  Tile tile1_0;
+  WriterTile tile1_0;
   CHECK(tiler1.get_tile_null(0, "a", &tile1_0).ok());
   std::vector<uint8_t> c_data1_0(50);
   for (int i = 0; i <= 36; ++i)
@@ -2281,7 +2281,7 @@ TEST_CASE_METHOD(
   CHECK(check_tile<uint8_t>(&tile1_0, c_data1_0));
 
   // Test get tile 1
-  Tile tile1_1;
+  WriterTile tile1_1;
   CHECK(tiler1.get_tile_null(1, "a", &tile1_1).ok());
   std::vector<uint8_t> c_data1_1(50);
   for (int i = 0; i <= 29; ++i)
@@ -2297,7 +2297,7 @@ TEST_CASE_METHOD(
   CHECK(check_tile<uint8_t>(&tile1_1, c_data1_1));
 
   // Test get tile 2
-  Tile tile1_2;
+  WriterTile tile1_2;
   CHECK(tiler1.get_tile_null(2, "a", &tile1_2).ok());
   std::vector<uint8_t> c_data1_2(50);
   for (int i = 0; i <= 6; ++i)
@@ -2310,7 +2310,7 @@ TEST_CASE_METHOD(
   CHECK(check_tile<uint8_t>(&tile1_2, c_data1_2));
 
   // Test get tile 3
-  Tile tile1_3;
+  WriterTile tile1_3;
   CHECK(tiler1.get_tile_null(3, "a", &tile1_3).ok());
   std::vector<uint8_t> c_data1_3(50);
   c_data1_3[0] = 0;
@@ -2324,7 +2324,7 @@ TEST_CASE_METHOD(
   open_array(array_name, TILEDB_READ);
   int32_t sub2_0[] = {3, 5};
   int32_t sub2_1[] = {13, 18};
-  Subarray subarray2(
+  tiledb::sm::Subarray subarray2(
       array_->array_,
       Layout::ROW_MAJOR,
       &test::g_helper_stats,
@@ -2345,7 +2345,7 @@ TEST_CASE_METHOD(
   DenseTiler<int32_t> tiler2(&buffers, &subarray2, &test::g_helper_stats);
 
   // Test get tile 0
-  Tile tile2_0;
+  WriterTile tile2_0;
   CHECK(tiler2.get_tile_null(0, "a", &tile2_0).ok());
   std::vector<uint8_t> c_data2_0(50);
   for (int i = 0; i <= 21; ++i)
@@ -2381,7 +2381,7 @@ TEST_CASE_METHOD(
   open_array(array_name, TILEDB_READ);
   int32_t sub3_0[] = {4, 6};
   int32_t sub3_1[] = {18, 22};
-  Subarray subarray3(
+  tiledb::sm::Subarray subarray3(
       array_->array_,
       Layout::COL_MAJOR,
       &test::g_helper_stats,
@@ -2402,7 +2402,7 @@ TEST_CASE_METHOD(
   DenseTiler<int32_t> tiler3(&buffers, &subarray3, &test::g_helper_stats);
 
   // Test get tile 0
-  Tile tile3_0;
+  WriterTile tile3_0;
   CHECK(tiler3.get_tile_null(0, "a", &tile3_0).ok());
   std::vector<uint8_t> c_data3_0(50);
   for (int i = 0; i <= 36; ++i)
@@ -2418,7 +2418,7 @@ TEST_CASE_METHOD(
   CHECK(check_tile<uint8_t>(&tile3_0, c_data3_0));
 
   // Test get tile 1
-  Tile tile3_1;
+  WriterTile tile3_1;
   CHECK(tiler3.get_tile_null(1, "a", &tile3_1).ok());
   std::vector<uint8_t> c_data3_1(50);
   for (int i = 0; i <= 29; ++i)
@@ -2434,7 +2434,7 @@ TEST_CASE_METHOD(
   CHECK(check_tile<uint8_t>(&tile3_1, c_data3_1));
 
   // Test get tile 2
-  Tile tile3_2;
+  WriterTile tile3_2;
   CHECK(tiler3.get_tile_null(2, "a", &tile3_2).ok());
   std::vector<uint8_t> c_data3_2(50);
   for (int i = 0; i <= 6; ++i)
@@ -2447,7 +2447,7 @@ TEST_CASE_METHOD(
   CHECK(check_tile<uint8_t>(&tile3_2, c_data3_2));
 
   // Test get tile 3
-  Tile tile3_3;
+  WriterTile tile3_3;
   CHECK(tiler3.get_tile_null(3, "a", &tile3_3).ok());
   std::vector<uint8_t> c_data3_3(50);
   c_data3_3[0] = 1;
@@ -2461,7 +2461,7 @@ TEST_CASE_METHOD(
   open_array(array_name, TILEDB_READ);
   int32_t sub4_0[] = {3, 5};
   int32_t sub4_1[] = {13, 18};
-  Subarray subarray4(
+  tiledb::sm::Subarray subarray4(
       array_->array_,
       Layout::COL_MAJOR,
       &test::g_helper_stats,
@@ -2482,7 +2482,7 @@ TEST_CASE_METHOD(
   DenseTiler<int32_t> tiler4(&buffers, &subarray4, &test::g_helper_stats);
 
   // Test get tile 0
-  Tile tile4_0;
+  WriterTile tile4_0;
   CHECK(tiler4.get_tile_null(0, "a", &tile4_0).ok());
   std::vector<uint8_t> c_data4_0(50);
   for (int i = 0; i <= 21; ++i)
@@ -2553,7 +2553,7 @@ TEST_CASE_METHOD(
   open_array(array_name, TILEDB_READ);
   int32_t sub1_0[] = {4, 6};
   int32_t sub1_1[] = {18, 22};
-  Subarray subarray1(
+  tiledb::sm::Subarray subarray1(
       array_->array_,
       Layout::ROW_MAJOR,
       &test::g_helper_stats,
@@ -2564,7 +2564,7 @@ TEST_CASE_METHOD(
   DenseTiler<int32_t> tiler1(&buffers, &subarray1, &test::g_helper_stats);
 
   // Test get tile 0
-  Tile tile1_0_off, tile1_0_val;
+  WriterTile tile1_0_off, tile1_0_val;
   CHECK(tiler1.get_tile_var(0, "a", &tile1_0_off, &tile1_0_val).ok());
   std::vector<uint64_t> c_data1_0_off(50);
   for (int i = 0; i <= 37; ++i)
@@ -2598,7 +2598,7 @@ TEST_CASE_METHOD(
   CHECK(check_tile<uint8_t>(&tile1_0_val, c_data1_0_val));
 
   // Test get tile 1
-  Tile tile1_1_off, tile1_1_val;
+  WriterTile tile1_1_off, tile1_1_val;
   CHECK(tiler1.get_tile_var(1, "a", &tile1_1_off, &tile1_1_val).ok());
   std::vector<uint64_t> c_data1_1_off(50);
   for (int i = 0; i <= 30; ++i)
@@ -2640,7 +2640,7 @@ TEST_CASE_METHOD(
   CHECK(check_tile<uint8_t>(&tile1_1_val, c_data1_1_val));
 
   // Test get tile 2
-  Tile tile1_2_off, tile1_2_val;
+  WriterTile tile1_2_off, tile1_2_val;
   CHECK(tiler1.get_tile_var(2, "a", &tile1_2_off, &tile1_2_val).ok());
   std::vector<uint64_t> c_data1_2_off(50);
   for (int i = 0; i <= 7; ++i)
@@ -2665,7 +2665,7 @@ TEST_CASE_METHOD(
   CHECK(check_tile<uint8_t>(&tile1_2_val, c_data1_2_val));
 
   // Test get tile 3
-  Tile tile1_3_off, tile1_3_val;
+  WriterTile tile1_3_off, tile1_3_val;
   CHECK(tiler1.get_tile_var(3, "a", &tile1_3_off, &tile1_3_val).ok());
   std::vector<uint64_t> c_data1_3_off(50);
   c_data1_3_off[0] = 0;
@@ -2693,7 +2693,7 @@ TEST_CASE_METHOD(
   open_array(array_name, TILEDB_READ);
   int32_t sub2_0[] = {3, 5};
   int32_t sub2_1[] = {13, 18};
-  Subarray subarray2(
+  tiledb::sm::Subarray subarray2(
       array_->array_,
       Layout::ROW_MAJOR,
       &test::g_helper_stats,
@@ -2712,7 +2712,7 @@ TEST_CASE_METHOD(
   DenseTiler<int32_t> tiler2(&buffers, &subarray2, &test::g_helper_stats);
 
   // Test get tile 0
-  Tile tile2_0_off, tile2_0_val;
+  WriterTile tile2_0_off, tile2_0_val;
   CHECK(tiler2.get_tile_var(0, "a", &tile2_0_off, &tile2_0_val).ok());
   std::vector<uint64_t> c_data2_0_off(50);
   for (int i = 0; i <= 22; ++i)
@@ -2857,7 +2857,7 @@ TEST_CASE_METHOD(
   open_array(array_name, TILEDB_READ);
   int32_t sub1_0[] = {4, 6};
   int32_t sub1_1[] = {18, 22};
-  Subarray subarray1(
+  tiledb::sm::Subarray subarray1(
       array_->array_,
       Layout::ROW_MAJOR,
       &test::g_helper_stats,
@@ -2868,7 +2868,7 @@ TEST_CASE_METHOD(
   DenseTiler<int32_t> tiler1(&buffers, &subarray1, &test::g_helper_stats);
 
   // Test get tile 0
-  Tile tile1_0_off, tile1_0_val;
+  WriterTile tile1_0_off, tile1_0_val;
   CHECK(tiler1.get_tile_var(0, "a", &tile1_0_off, &tile1_0_val).ok());
   std::vector<uint64_t> c_data1_0_off(50);
   for (int i = 0; i <= 37; ++i)
@@ -2902,7 +2902,7 @@ TEST_CASE_METHOD(
   CHECK(check_tile<int32_t>(&tile1_0_val, c_data1_0_val));
 
   // Test get tile 1
-  Tile tile1_1_off, tile1_1_val;
+  WriterTile tile1_1_off, tile1_1_val;
   CHECK(tiler1.get_tile_var(1, "a", &tile1_1_off, &tile1_1_val).ok());
   std::vector<uint64_t> c_data1_1_off(50);
   for (int i = 0; i <= 30; ++i)
@@ -2944,7 +2944,7 @@ TEST_CASE_METHOD(
   CHECK(check_tile<int32_t>(&tile1_1_val, c_data1_1_val));
 
   // Test get tile 2
-  Tile tile1_2_off, tile1_2_val;
+  WriterTile tile1_2_off, tile1_2_val;
   CHECK(tiler1.get_tile_var(2, "a", &tile1_2_off, &tile1_2_val).ok());
   std::vector<uint64_t> c_data1_2_off(50);
   for (int i = 0; i <= 7; ++i)
@@ -2969,7 +2969,7 @@ TEST_CASE_METHOD(
   CHECK(check_tile<int32_t>(&tile1_2_val, c_data1_2_val));
 
   // Test get tile 3
-  Tile tile1_3_off, tile1_3_val;
+  WriterTile tile1_3_off, tile1_3_val;
   CHECK(tiler1.get_tile_var(3, "a", &tile1_3_off, &tile1_3_val).ok());
   std::vector<uint64_t> c_data1_3_off(50);
   c_data1_3_off[0] = 0;
@@ -2997,7 +2997,7 @@ TEST_CASE_METHOD(
   open_array(array_name, TILEDB_READ);
   int32_t sub2_0[] = {3, 5};
   int32_t sub2_1[] = {13, 18};
-  Subarray subarray2(
+  tiledb::sm::Subarray subarray2(
       array_->array_,
       Layout::ROW_MAJOR,
       &test::g_helper_stats,
@@ -3035,7 +3035,7 @@ TEST_CASE_METHOD(
   DenseTiler<int32_t> tiler2(&buffers, &subarray2, &test::g_helper_stats);
 
   // Test get tile 0
-  Tile tile2_0_off, tile2_0_val;
+  WriterTile tile2_0_off, tile2_0_val;
   CHECK(tiler2.get_tile_var(0, "a", &tile2_0_off, &tile2_0_val).ok());
   std::vector<uint64_t> c_data2_0_off(50);
   for (int i = 0; i <= 22; ++i)
@@ -3181,7 +3181,7 @@ TEST_CASE_METHOD(
   open_array(array_name, TILEDB_READ);
   int32_t sub1_0[] = {4, 6};
   int32_t sub1_1[] = {18, 22};
-  Subarray subarray1(
+  tiledb::sm::Subarray subarray1(
       array_->array_,
       Layout::ROW_MAJOR,
       &test::g_helper_stats,
@@ -3193,7 +3193,7 @@ TEST_CASE_METHOD(
       &buffers, &subarray1, &test::g_helper_stats, "bytes", 64, true);
 
   // Test get tile 0
-  Tile tile1_0_off, tile1_0_val;
+  WriterTile tile1_0_off, tile1_0_val;
   CHECK(tiler1.get_tile_var(0, "a", &tile1_0_off, &tile1_0_val).ok());
   std::vector<uint64_t> c_data1_0_off(50);
   for (int i = 0; i <= 37; ++i)
@@ -3227,7 +3227,7 @@ TEST_CASE_METHOD(
   CHECK(check_tile<int32_t>(&tile1_0_val, c_data1_0_val));
 
   // Test get tile 1
-  Tile tile1_1_off, tile1_1_val;
+  WriterTile tile1_1_off, tile1_1_val;
   CHECK(tiler1.get_tile_var(1, "a", &tile1_1_off, &tile1_1_val).ok());
   std::vector<uint64_t> c_data1_1_off(50);
   for (int i = 0; i <= 30; ++i)
@@ -3269,7 +3269,7 @@ TEST_CASE_METHOD(
   CHECK(check_tile<int32_t>(&tile1_1_val, c_data1_1_val));
 
   // Test get tile 2
-  Tile tile1_2_off, tile1_2_val;
+  WriterTile tile1_2_off, tile1_2_val;
   CHECK(tiler1.get_tile_var(2, "a", &tile1_2_off, &tile1_2_val).ok());
   std::vector<uint64_t> c_data1_2_off(50);
   for (int i = 0; i <= 7; ++i)
@@ -3294,7 +3294,7 @@ TEST_CASE_METHOD(
   CHECK(check_tile<int32_t>(&tile1_2_val, c_data1_2_val));
 
   // Test get tile 3
-  Tile tile1_3_off, tile1_3_val;
+  WriterTile tile1_3_off, tile1_3_val;
   CHECK(tiler1.get_tile_var(3, "a", &tile1_3_off, &tile1_3_val).ok());
   std::vector<uint64_t> c_data1_3_off(50);
   c_data1_3_off[0] = 0;
@@ -3322,7 +3322,7 @@ TEST_CASE_METHOD(
   open_array(array_name, TILEDB_READ);
   int32_t sub2_0[] = {3, 5};
   int32_t sub2_1[] = {13, 18};
-  Subarray subarray2(
+  tiledb::sm::Subarray subarray2(
       array_->array_,
       Layout::ROW_MAJOR,
       &test::g_helper_stats,
@@ -3362,7 +3362,7 @@ TEST_CASE_METHOD(
       &buffers, &subarray2, &test::g_helper_stats, "bytes", 64, true);
 
   // Test get tile 0
-  Tile tile2_0_off, tile2_0_val;
+  WriterTile tile2_0_off, tile2_0_val;
   CHECK(tiler2.get_tile_var(0, "a", &tile2_0_off, &tile2_0_val).ok());
   std::vector<uint64_t> c_data2_0_off(50);
   for (int i = 0; i <= 22; ++i)
@@ -3494,7 +3494,7 @@ TEST_CASE_METHOD(
   open_array(array_name, TILEDB_READ);
   int32_t sub1_0[] = {4, 6};
   int32_t sub1_1[] = {18, 22};
-  Subarray subarray1(
+  tiledb::sm::Subarray subarray1(
       array_->array_,
       Layout::ROW_MAJOR,
       &test::g_helper_stats,
@@ -3506,7 +3506,7 @@ TEST_CASE_METHOD(
       &buffers, &subarray1, &test::g_helper_stats, "elements", 64, false);
 
   // Test get tile 0
-  Tile tile1_0_off, tile1_0_val;
+  WriterTile tile1_0_off, tile1_0_val;
   CHECK(tiler1.get_tile_var(0, "a", &tile1_0_off, &tile1_0_val).ok());
   std::vector<uint64_t> c_data1_0_off(50);
   for (int i = 0; i <= 37; ++i)
@@ -3540,7 +3540,7 @@ TEST_CASE_METHOD(
   CHECK(check_tile<int32_t>(&tile1_0_val, c_data1_0_val));
 
   // Test get tile 1
-  Tile tile1_1_off, tile1_1_val;
+  WriterTile tile1_1_off, tile1_1_val;
   CHECK(tiler1.get_tile_var(1, "a", &tile1_1_off, &tile1_1_val).ok());
   std::vector<uint64_t> c_data1_1_off(50);
   for (int i = 0; i <= 30; ++i)
@@ -3582,7 +3582,7 @@ TEST_CASE_METHOD(
   CHECK(check_tile<int32_t>(&tile1_1_val, c_data1_1_val));
 
   // Test get tile 2
-  Tile tile1_2_off, tile1_2_val;
+  WriterTile tile1_2_off, tile1_2_val;
   CHECK(tiler1.get_tile_var(2, "a", &tile1_2_off, &tile1_2_val).ok());
   std::vector<uint64_t> c_data1_2_off(50);
   for (int i = 0; i <= 7; ++i)
@@ -3607,7 +3607,7 @@ TEST_CASE_METHOD(
   CHECK(check_tile<int32_t>(&tile1_2_val, c_data1_2_val));
 
   // Test get tile 3
-  Tile tile1_3_off, tile1_3_val;
+  WriterTile tile1_3_off, tile1_3_val;
   CHECK(tiler1.get_tile_var(3, "a", &tile1_3_off, &tile1_3_val).ok());
   std::vector<uint64_t> c_data1_3_off(50);
   c_data1_3_off[0] = 0;
@@ -3635,7 +3635,7 @@ TEST_CASE_METHOD(
   open_array(array_name, TILEDB_READ);
   int32_t sub2_0[] = {3, 5};
   int32_t sub2_1[] = {13, 18};
-  Subarray subarray2(
+  tiledb::sm::Subarray subarray2(
       array_->array_,
       Layout::ROW_MAJOR,
       &test::g_helper_stats,
@@ -3658,7 +3658,7 @@ TEST_CASE_METHOD(
       &buffers, &subarray2, &test::g_helper_stats, "elements", 64, false);
 
   // Test get tile 0
-  Tile tile2_0_off, tile2_0_val;
+  WriterTile tile2_0_off, tile2_0_val;
   CHECK(tiler2.get_tile_var(0, "a", &tile2_0_off, &tile2_0_val).ok());
   std::vector<uint64_t> c_data2_0_off(50);
   for (int i = 0; i <= 22; ++i)
@@ -3790,7 +3790,7 @@ TEST_CASE_METHOD(
   open_array(array_name, TILEDB_READ);
   int32_t sub1_0[] = {4, 6};
   int32_t sub1_1[] = {18, 22};
-  Subarray subarray1(
+  tiledb::sm::Subarray subarray1(
       array_->array_,
       Layout::ROW_MAJOR,
       &test::g_helper_stats,
@@ -3802,7 +3802,7 @@ TEST_CASE_METHOD(
       &buffers, &subarray1, &test::g_helper_stats, "elements", 32, false);
 
   // Test get tile 0
-  Tile tile1_0_off, tile1_0_val;
+  WriterTile tile1_0_off, tile1_0_val;
   CHECK(tiler1.get_tile_var(0, "a", &tile1_0_off, &tile1_0_val).ok());
   std::vector<uint64_t> c_data1_0_off(50);
   for (int i = 0; i <= 37; ++i)
@@ -3836,7 +3836,7 @@ TEST_CASE_METHOD(
   CHECK(check_tile<int32_t>(&tile1_0_val, c_data1_0_val));
 
   // Test get tile 1
-  Tile tile1_1_off, tile1_1_val;
+  WriterTile tile1_1_off, tile1_1_val;
   CHECK(tiler1.get_tile_var(1, "a", &tile1_1_off, &tile1_1_val).ok());
   std::vector<uint64_t> c_data1_1_off(50);
   for (int i = 0; i <= 30; ++i)
@@ -3878,7 +3878,7 @@ TEST_CASE_METHOD(
   CHECK(check_tile<int32_t>(&tile1_1_val, c_data1_1_val));
 
   // Test get tile 2
-  Tile tile1_2_off, tile1_2_val;
+  WriterTile tile1_2_off, tile1_2_val;
   CHECK(tiler1.get_tile_var(2, "a", &tile1_2_off, &tile1_2_val).ok());
   std::vector<uint64_t> c_data1_2_off(50);
   for (int i = 0; i <= 7; ++i)
@@ -3903,7 +3903,7 @@ TEST_CASE_METHOD(
   CHECK(check_tile<int32_t>(&tile1_2_val, c_data1_2_val));
 
   // Test get tile 3
-  Tile tile1_3_off, tile1_3_val;
+  WriterTile tile1_3_off, tile1_3_val;
   CHECK(tiler1.get_tile_var(3, "a", &tile1_3_off, &tile1_3_val).ok());
   std::vector<uint64_t> c_data1_3_off(50);
   c_data1_3_off[0] = 0;
@@ -3931,7 +3931,7 @@ TEST_CASE_METHOD(
   open_array(array_name, TILEDB_READ);
   int32_t sub2_0[] = {3, 5};
   int32_t sub2_1[] = {13, 18};
-  Subarray subarray2(
+  tiledb::sm::Subarray subarray2(
       array_->array_,
       Layout::ROW_MAJOR,
       &test::g_helper_stats,
@@ -3954,7 +3954,7 @@ TEST_CASE_METHOD(
       &buffers, &subarray2, &test::g_helper_stats, "elements", 32, false);
 
   // Test get tile 0
-  Tile tile2_0_off, tile2_0_val;
+  WriterTile tile2_0_off, tile2_0_val;
   CHECK(tiler2.get_tile_var(0, "a", &tile2_0_off, &tile2_0_val).ok());
   std::vector<uint64_t> c_data2_0_off(50);
   for (int i = 0; i <= 22; ++i)

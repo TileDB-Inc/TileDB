@@ -31,6 +31,7 @@
  */
 
 #include "tiledb/sm/filter/compression_filter.h"
+#include "tiledb/common/common.h"
 #include "tiledb/common/heap_memory.h"
 #include "tiledb/common/logger.h"
 #include "tiledb/sm/buffer/buffer.h"
@@ -53,16 +54,19 @@ namespace tiledb {
 namespace sm {
 
 CompressionFilter::CompressionFilter(FilterType compressor, int level)
-    : Filter(compressor) {
-  compressor_ = filter_to_compressor(compressor);
-  level_ = level;
+    : Filter(compressor)
+    , compressor_(filter_to_compressor(compressor))
+    , level_(level)
+    , zstd_compress_ctx_pool_(nullptr)
+    , zstd_decompress_ctx_pool_(nullptr) {
 }
 
 CompressionFilter::CompressionFilter(Compressor compressor, int level)
-    : Filter(FilterType::FILTER_NONE) {
-  compressor_ = compressor;
-  level_ = level;
-  type_ = compressor_to_filter(compressor);
+    : Filter(compressor_to_filter(compressor))
+    , compressor_(compressor)
+    , level_(level)
+    , zstd_compress_ctx_pool_(nullptr)
+    , zstd_decompress_ctx_pool_(nullptr) {
 }
 
 Compressor CompressionFilter::compressor() const {
@@ -168,7 +172,7 @@ Status CompressionFilter::set_option_impl(
     FilterOption option, const void* value) {
   if (value == nullptr)
     return LOG_STATUS(
-        Status::FilterError("Compression filter error; invalid option value"));
+        Status_FilterError("Compression filter error; invalid option value"));
 
   switch (option) {
     case FilterOption::COMPRESSION_LEVEL:
@@ -176,7 +180,7 @@ Status CompressionFilter::set_option_impl(
       return Status::Ok();
     default:
       return LOG_STATUS(
-          Status::FilterError("Compression filter error; unknown option"));
+          Status_FilterError("Compression filter error; unknown option"));
   }
 }
 
@@ -188,11 +192,12 @@ Status CompressionFilter::get_option_impl(
       return Status::Ok();
     default:
       return LOG_STATUS(
-          Status::FilterError("Compression filter error; unknown option"));
+          Status_FilterError("Compression filter error; unknown option"));
   }
 }
 
 Status CompressionFilter::run_forward(
+    const Tile& tile,
     FilterBuffer* input_metadata,
     FilterBuffer* input,
     FilterBuffer* output_metadata,
@@ -206,7 +211,7 @@ Status CompressionFilter::run_forward(
 
   if (input->size() > std::numeric_limits<uint32_t>::max())
     return LOG_STATUS(
-        Status::FilterError("Input is too large to be compressed."));
+        Status_FilterError("Input is too large to be compressed."));
 
   // Compute the upper bound on the size of the output.
   std::vector<ConstBuffer> data_parts = input->buffers(),
@@ -216,9 +221,9 @@ Status CompressionFilter::run_forward(
        total_num_parts = num_data_parts + num_metadata_parts;
   uint64_t output_size_ub = 0;
   for (const auto& part : metadata_parts)
-    output_size_ub += part.size() + overhead(part.size());
+    output_size_ub += part.size() + overhead(tile, part.size());
   for (const auto& part : data_parts)
-    output_size_ub += part.size() + overhead(part.size());
+    output_size_ub += part.size() + overhead(tile, part.size());
 
   // Ensure space in output buffer for worst case.
   RETURN_NOT_OK(output->prepend_buffer(output_size_ub));
@@ -235,14 +240,15 @@ Status CompressionFilter::run_forward(
 
   // Compress all parts.
   for (auto& part : metadata_parts)
-    RETURN_NOT_OK(compress_part(&part, buffer_ptr, output_metadata));
+    RETURN_NOT_OK(compress_part(tile, &part, buffer_ptr, output_metadata));
   for (auto& part : data_parts)
-    RETURN_NOT_OK(compress_part(&part, buffer_ptr, output_metadata));
+    RETURN_NOT_OK(compress_part(tile, &part, buffer_ptr, output_metadata));
 
   return Status::Ok();
 }
 
 Status CompressionFilter::run_reverse(
+    const Tile& tile,
     FilterBuffer* input_metadata,
     FilterBuffer* input,
     FilterBuffer* output_metadata,
@@ -271,21 +277,24 @@ Status CompressionFilter::run_reverse(
   assert(metadata_buffer != nullptr);
 
   for (uint32_t i = 0; i < num_metadata_parts; i++)
-    RETURN_NOT_OK(decompress_part(input, metadata_buffer, input_metadata));
+    RETURN_NOT_OK(
+        decompress_part(tile, input, metadata_buffer, input_metadata));
   for (uint32_t i = 0; i < num_data_parts; i++)
-    RETURN_NOT_OK(decompress_part(input, data_buffer, input_metadata));
+    RETURN_NOT_OK(decompress_part(tile, input, data_buffer, input_metadata));
 
   return Status::Ok();
 }
 
 Status CompressionFilter::compress_part(
-    ConstBuffer* part, Buffer* output, FilterBuffer* output_metadata) const {
+    const Tile& tile,
+    ConstBuffer* part,
+    Buffer* output,
+    FilterBuffer* output_metadata) const {
   // Create const buffer
   ConstBuffer input_buffer(part->data(), part->size());
 
-  auto tile = pipeline_->current_tile();
-  auto cell_size = tile->cell_size();
-  auto type = tile->type();
+  auto cell_size = tile.cell_size();
+  auto type = tile.type();
 
   // Invoke the proper compressor
   uint32_t orig_size = (uint32_t)output->size();
@@ -294,7 +303,8 @@ Status CompressionFilter::compress_part(
       RETURN_NOT_OK(GZip::compress(level_, &input_buffer, output));
       break;
     case Compressor::ZSTD:
-      RETURN_NOT_OK(ZStd::compress(level_, &input_buffer, output));
+      RETURN_NOT_OK(ZStd::compress(
+          level_, zstd_compress_ctx_pool_, &input_buffer, output));
       break;
     case Compressor::LZ4:
       RETURN_NOT_OK(LZ4::compress(level_, &input_buffer, output));
@@ -314,7 +324,7 @@ Status CompressionFilter::compress_part(
 
   if (output->size() > std::numeric_limits<uint32_t>::max())
     return LOG_STATUS(
-        Status::FilterError("Compressed output exceeds uint32 max."));
+        Status_FilterError("Compressed output exceeds uint32 max."));
 
   // Write part original and compressed size to metadata
   uint32_t input_size = (uint32_t)part->size(),
@@ -326,10 +336,12 @@ Status CompressionFilter::compress_part(
 }
 
 Status CompressionFilter::decompress_part(
-    FilterBuffer* input, Buffer* output, FilterBuffer* input_metadata) const {
-  auto tile = pipeline_->current_tile();
-  auto cell_size = tile->cell_size();
-  auto type = tile->type();
+    const Tile& tile,
+    FilterBuffer* input,
+    Buffer* output,
+    FilterBuffer* input_metadata) const {
+  auto cell_size = tile.cell_size();
+  auto type = tile.type();
 
   // Read the part metadata
   uint32_t compressed_size, uncompressed_size;
@@ -340,7 +352,7 @@ Status CompressionFilter::decompress_part(
   if (output->owns_data()) {
     RETURN_NOT_OK(output->realloc(output->alloced_size() + uncompressed_size));
   } else if (output->offset() + uncompressed_size > output->size()) {
-    return LOG_STATUS(Status::FilterError(
+    return LOG_STATUS(Status_FilterError(
         "CompressionFilter error; output buffer too small."));
   }
 
@@ -359,7 +371,8 @@ Status CompressionFilter::decompress_part(
       st = GZip::decompress(&input_buffer, &output_buffer);
       break;
     case Compressor::ZSTD:
-      st = ZStd::decompress(&input_buffer, &output_buffer);
+      st = ZStd::decompress(
+          zstd_decompress_ctx_pool_, &input_buffer, &output_buffer);
       break;
     case Compressor::LZ4:
       st = LZ4::decompress(&input_buffer, &output_buffer);
@@ -383,9 +396,8 @@ Status CompressionFilter::decompress_part(
   return st;
 }
 
-uint64_t CompressionFilter::overhead(uint64_t nbytes) const {
-  auto tile = pipeline_->current_tile();
-  auto cell_size = tile->cell_size();
+uint64_t CompressionFilter::overhead(const Tile& tile, uint64_t nbytes) const {
+  auto cell_size = tile.cell_size();
 
   switch (compressor_) {
     case Compressor::GZIP:
@@ -407,6 +419,9 @@ uint64_t CompressionFilter::overhead(uint64_t nbytes) const {
 }
 
 Status CompressionFilter::serialize_impl(Buffer* buff) const {
+  if (compressor_ == Compressor::NO_COMPRESSION) {
+    return Status::Ok();
+  }
   auto compressor_char = static_cast<uint8_t>(compressor_);
   RETURN_NOT_OK(buff->write(&compressor_char, sizeof(uint8_t)));
   RETURN_NOT_OK(buff->write(&level_, sizeof(int32_t)));
@@ -414,13 +429,22 @@ Status CompressionFilter::serialize_impl(Buffer* buff) const {
   return Status::Ok();
 }
 
-Status CompressionFilter::deserialize_impl(ConstBuffer* buff) {
-  uint8_t compressor_char;
-  RETURN_NOT_OK(buff->read(&compressor_char, sizeof(uint8_t)));
-  compressor_ = static_cast<Compressor>(compressor_char);
-  RETURN_NOT_OK(buff->read(&level_, sizeof(int32_t)));
+void CompressionFilter::init_compression_resource_pool(uint64_t size) {
+  std::lock_guard g(zstd_compress_ctx_pool_mtx_);
+  if (zstd_compress_ctx_pool_ == nullptr) {
+    zstd_compress_ctx_pool_ =
+        tdb::make_shared<BlockingResourcePool<ZStd::ZSTD_Compress_Context>>(
+            HERE(), size);
+  }
+}
 
-  return Status::Ok();
+void CompressionFilter::init_decompression_resource_pool(uint64_t size) {
+  std::lock_guard g(zstd_decompress_ctx_pool_mtx_);
+  if (zstd_decompress_ctx_pool_ == nullptr) {
+    zstd_decompress_ctx_pool_ =
+        tdb::make_shared<BlockingResourcePool<ZStd::ZSTD_Decompress_Context>>(
+            HERE(), size);
+  }
 }
 
 }  // namespace sm

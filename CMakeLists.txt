@@ -112,7 +112,6 @@ option(TILEDB_S3 "Enables S3/minio support using aws-cpp-sdk" OFF)
 option(TILEDB_AZURE "Enables Azure Storage support using azure-storage-cpp" OFF)
 option(TILEDB_GCS "Enables GCS Storage support using google-cloud-cpp" OFF)
 option(TILEDB_HDFS "Enables HDFS support using the official Hadoop JNI bindings" OFF)
-option(TILEDB_MEMFS "Enables support of an in-memory filesystem." OFF)
 option(TILEDB_WERROR "Enables the -Werror flag during compilation." ON)
 option(TILEDB_CPP_API "Enables building of the TileDB C++ API." ON)
 option(TILEDB_CMAKE_IDE "(Used for CLion builds). Disables superbuild and sets the EP install dir." OFF)
@@ -268,7 +267,8 @@ if (TILEDB_TESTS)
   # Add cmake target for "tests" to build all unit tests executables
   add_custom_target(tests)
   add_dependencies(tests tiledb_unit)
-  add_dependencies(tests unit_interval unit_dynamic_memory unit_thread_pool)
+  add_dependencies(tests unit_interval unit_datum unit_dynamic_memory unit_thread_pool)
+  add_dependencies(tests unit_filter_create unit_array_schema)
 endif()
 
 # Build tools

@@ -59,9 +59,6 @@ extern const double est_result_size_amplification;
 /** Default fanout for RTrees. */
 extern const unsigned rtree_fanout;
 
-/** The object filelock name. */
-extern const std::string filelock_name;
-
 /** The array schema file name. */
 extern const std::string array_schema_filename;
 
@@ -338,6 +335,9 @@ extern const std::string float64_str;
 
 /** The string representation for type char. */
 extern const std::string char_str;
+
+/** The string representation for type blob. */
+extern const std::string blob_str;
 
 /** The string representation for type int8. */
 extern const std::string int8_str;

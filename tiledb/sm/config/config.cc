@@ -30,11 +30,11 @@
  * This file implements class Config.
  */
 
-#include "tiledb/sm/config/config.h"
+#include "config.h"
 #include "tiledb/common/logger.h"
 #include "tiledb/sm/enums/serialization_type.h"
 #include "tiledb/sm/misc/constants.h"
-#include "tiledb/sm/misc/utils.h"
+#include "tiledb/sm/misc/parse_argument.h"
 
 #include <fstream>
 #include <iostream>
@@ -64,7 +64,7 @@ const std::string Config::REST_RETRY_HTTP_CODES = "503";
 const std::string Config::REST_RETRY_COUNT = "25";
 const std::string Config::REST_RETRY_INITIAL_DELAY_MS = "500";
 const std::string Config::REST_RETRY_DELAY_FACTOR = "1.25";
-const std::string Config::SM_ENCRYPTION_KEY = "0";
+const std::string Config::SM_ENCRYPTION_KEY = "";
 const std::string Config::SM_ENCRYPTION_TYPE = "NO_ENCRYPTION";
 const std::string Config::SM_DEDUP_COORDS = "false";
 const std::string Config::SM_CHECK_COORD_DUPS = "true";
@@ -75,7 +75,7 @@ const std::string Config::SM_TILE_CACHE_SIZE = "10000000";
 const std::string Config::SM_SKIP_EST_SIZE_PARTITIONING = "false";
 const std::string Config::SM_MEMORY_BUDGET = "5368709120";       // 5GB
 const std::string Config::SM_MEMORY_BUDGET_VAR = "10737418240";  // 10GB;
-const std::string Config::SM_QUERY_DENSE_READER = "legacy";
+const std::string Config::SM_QUERY_DENSE_READER = "refactored";
 const std::string Config::SM_QUERY_SPARSE_GLOBAL_ORDER_READER = "legacy";
 const std::string Config::SM_QUERY_SPARSE_UNORDERED_WITH_DUPS_READER =
     "refactored";
@@ -86,9 +86,6 @@ const std::string Config::SM_MEM_SPARSE_GLOBAL_ORDER_RATIO_QUERY_CONDITION =
     "0.25";
 const std::string Config::SM_MEM_SPARSE_GLOBAL_ORDER_RATIO_TILE_RANGES = "0.1";
 const std::string Config::SM_MEM_SPARSE_GLOBAL_ORDER_RATIO_ARRAY_DATA = "0.1";
-const std::string Config::SM_MEM_SPARSE_GLOBAL_ORDER_RATIO_RESULT_TILES =
-    "0.05";
-const std::string Config::SM_MEM_SPARSE_GLOBAL_ORDER_RATIO_RCS = "0.05";
 const std::string Config::SM_MEM_SPARSE_UNORDERED_WITH_DUPS_RATIO_COORDS =
     "0.5";
 const std::string
@@ -97,9 +94,6 @@ const std::string Config::SM_MEM_SPARSE_UNORDERED_WITH_DUPS_RATIO_TILE_RANGES =
     "0.1";
 const std::string Config::SM_MEM_SPARSE_UNORDERED_WITH_DUPS_RATIO_ARRAY_DATA =
     "0.1";
-const std::string Config::SM_MEM_SPARSE_UNORDERED_WITH_DUPS_RATIO_RESULT_TILES =
-    "0.05";
-const std::string Config::SM_MEM_SPARSE_UNORDERED_WITH_DUPS_RATIO_RCS = "0.05";
 const std::string Config::SM_ENABLE_SIGNAL_HANDLERS = "true";
 const std::string Config::SM_COMPUTE_CONCURRENCY_LEVEL =
     utils::parse::to_str(std::thread::hardware_concurrency());
@@ -130,7 +124,6 @@ const std::string Config::VFS_FILE_POSIX_FILE_PERMISSIONS = "644";
 const std::string Config::VFS_FILE_POSIX_DIRECTORY_PERMISSIONS = "755";
 const std::string Config::VFS_FILE_MAX_PARALLEL_OPS =
     Config::SM_IO_CONCURRENCY_LEVEL;
-const std::string Config::VFS_FILE_ENABLE_FILELOCKS = "true";
 const std::string Config::VFS_READ_AHEAD_SIZE = "102400";          // 100KiB
 const std::string Config::VFS_READ_AHEAD_CACHE_SIZE = "10485760";  // 10MiB;
 const std::string Config::VFS_AZURE_STORAGE_ACCOUNT_NAME = "";
@@ -253,10 +246,6 @@ Config::Config() {
       SM_MEM_SPARSE_GLOBAL_ORDER_RATIO_TILE_RANGES;
   param_values_["sm.mem.reader.sparse_global_order.ratio_array_data"] =
       SM_MEM_SPARSE_GLOBAL_ORDER_RATIO_ARRAY_DATA;
-  param_values_["sm.mem.reader.sparse_global_order.ratio_result_tiles"] =
-      SM_MEM_SPARSE_GLOBAL_ORDER_RATIO_RESULT_TILES;
-  param_values_["sm.mem.reader.sparse_global_order.ratio_rcs"] =
-      SM_MEM_SPARSE_GLOBAL_ORDER_RATIO_RCS;
   param_values_["sm.mem.reader.sparse_unordered_with_dups.ratio_coords"] =
       SM_MEM_SPARSE_UNORDERED_WITH_DUPS_RATIO_COORDS;
   param_values_
@@ -266,10 +255,6 @@ Config::Config() {
       SM_MEM_SPARSE_UNORDERED_WITH_DUPS_RATIO_TILE_RANGES;
   param_values_["sm.mem.reader.sparse_unordered_with_dups.ratio_array_data"] =
       SM_MEM_SPARSE_UNORDERED_WITH_DUPS_RATIO_ARRAY_DATA;
-  param_values_["sm.mem.reader.sparse_unordered_with_dups.ratio_result_tiles"] =
-      SM_MEM_SPARSE_UNORDERED_WITH_DUPS_RATIO_RESULT_TILES;
-  param_values_["sm.mem.reader.sparse_unordered_with_dups.ratio_rcs"] =
-      SM_MEM_SPARSE_UNORDERED_WITH_DUPS_RATIO_RCS;
   param_values_["sm.enable_signal_handlers"] = SM_ENABLE_SIGNAL_HANDLERS;
   param_values_["sm.compute_concurrency_level"] = SM_COMPUTE_CONCURRENCY_LEVEL;
   param_values_["sm.io_concurrency_level"] = SM_IO_CONCURRENCY_LEVEL;
@@ -306,7 +291,6 @@ Config::Config() {
   param_values_["vfs.file.posix_directory_permissions"] =
       VFS_FILE_POSIX_DIRECTORY_PERMISSIONS;
   param_values_["vfs.file.max_parallel_ops"] = VFS_FILE_MAX_PARALLEL_OPS;
-  param_values_["vfs.file.enable_filelocks"] = VFS_FILE_ENABLE_FILELOCKS;
   param_values_["vfs.azure.storage_account_name"] =
       VFS_AZURE_STORAGE_ACCOUNT_NAME;
   param_values_["vfs.azure.storage_account_key"] =
@@ -375,13 +359,13 @@ Status Config::load_from_file(const std::string& filename) {
   // Do nothing if filename is empty
   if (filename.empty())
     return LOG_STATUS(
-        Status::ConfigError("Cannot load from file; Invalid filename"));
+        Status_ConfigError("Cannot load from file; Invalid filename"));
 
   std::ifstream ifs(filename);
   if (!ifs.is_open()) {
     std::stringstream msg;
     msg << "Failed to open config file '" << filename << "'";
-    return LOG_STATUS(Status::ConfigError(msg.str()));
+    return LOG_STATUS(Status_ConfigError(msg.str()));
   }
 
   size_t linenum = 0;
@@ -402,7 +386,7 @@ Status Config::load_from_file(const std::string& filename) {
       std::stringstream msg;
       msg << "Failed to parse config file '" << filename << "'; ";
       msg << "Missing parameter value (line: " << linenum << ")";
-      return LOG_STATUS(Status::ConfigError(msg.str()));
+      return LOG_STATUS(Status_ConfigError(msg.str()));
     }
 
     // Parse extra
@@ -411,7 +395,7 @@ Status Config::load_from_file(const std::string& filename) {
       std::stringstream msg;
       msg << "Failed to parse config file '" << filename << "'; ";
       msg << "Invalid line format (line: " << linenum << ")";
-      return LOG_STATUS(Status::ConfigError(msg.str()));
+      return LOG_STATUS(Status_ConfigError(msg.str()));
     }
 
     // Set param-value pair
@@ -426,13 +410,13 @@ Status Config::save_to_file(const std::string& filename) {
   // Do nothing if filename is empty
   if (filename.empty())
     return LOG_STATUS(
-        Status::ConfigError("Cannot save to file; Invalid filename"));
+        Status_ConfigError("Cannot save to file; Invalid filename"));
 
   std::ofstream ofs(filename);
   if (!ofs.is_open()) {
     std::stringstream msg;
     msg << "Failed to open config file '" << filename << "' for writing";
-    return LOG_STATUS(Status::ConfigError(msg.str()));
+    return LOG_STATUS(Status_ConfigError(msg.str()));
   }
   for (auto& pv : param_values_) {
     if (unserialized_params_.count(pv.first) != 0)
@@ -472,7 +456,29 @@ Status Config::get(const std::string& param, T* value, bool* found) const {
     return Status::Ok();
 
   // Parameter found, retrieve value
-  return utils::parse::convert(val, value);
+  auto status = utils::parse::convert(val, value);
+  if (!status.ok()) {
+    return Status_ConfigError(
+        std::string("Failed to parse config value '") + std::string(val) +
+        std::string("' for key '") + param + "' due to: " + status.to_string());
+  }
+  return Status::Ok();
+}
+
+/*
+ * Template definition not in header; explicitly instantiated below. It's here
+ * to deal with legacy difficulties with header dependencies.
+ */
+template <class T>
+Status Config::get_vector(
+    const std::string& param, std::vector<T>* value, bool* found) const {
+  // Check if parameter exists
+  const char* val = get_from_config_or_env(param, found);
+  if (!*found)
+    return Status::Ok();
+
+  // Parameter found, retrieve value
+  return utils::parse::convert<T>(val, value);
 }
 
 const std::map<std::string, std::string>& Config::param_values() const {
@@ -551,12 +557,6 @@ Status Config::unset(const std::string& param) {
   } else if (param == "sm.mem.reader.sparse_global_order.ratio_array_data") {
     param_values_["sm.mem.reader.sparse_global_order.ratio_array_data"] =
         SM_MEM_SPARSE_GLOBAL_ORDER_RATIO_ARRAY_DATA;
-  } else if (param == "sm.mem.reader.sparse_global_order.ratio_result_tiles") {
-    param_values_["sm.mem.reader.sparse_global_order.ratio_result_tiles"] =
-        SM_MEM_SPARSE_GLOBAL_ORDER_RATIO_RESULT_TILES;
-  } else if (param == "sm.mem.reader.sparse_global_order.ratio_rcs") {
-    param_values_["sm.mem.reader.sparse_global_order.ratio_rcs"] =
-        SM_MEM_SPARSE_GLOBAL_ORDER_RATIO_RCS;
   } else if (param == "sm.mem.reader.sparse_unordered_with_dups.ratio_coords") {
     param_values_["sm.mem.reader.sparse_unordered_with_dups.ratio_coords"] =
         SM_MEM_SPARSE_UNORDERED_WITH_DUPS_RATIO_COORDS;
@@ -575,14 +575,6 @@ Status Config::unset(const std::string& param) {
       param == "sm.mem.reader.sparse_unordered_with_dups.ratio_array_data") {
     param_values_["sm.mem.reader.sparse_unordered_with_dups.ratio_array_data"] =
         SM_MEM_SPARSE_UNORDERED_WITH_DUPS_RATIO_ARRAY_DATA;
-  } else if (
-      param == "sm.mem.reader.sparse_unordered_with_dups.ratio_result_tiles") {
-    param_values_
-        ["sm.mem.reader.sparse_unordered_with_dups.ratio_result_tiles"] =
-            SM_MEM_SPARSE_UNORDERED_WITH_DUPS_RATIO_RESULT_TILES;
-  } else if (param == "sm.mem.reader.sparse_unordered_with_dups.ratio_rcs") {
-    param_values_["sm.mem.reader.sparse_unordered_with_dups.ratio_rcs"] =
-        SM_MEM_SPARSE_UNORDERED_WITH_DUPS_RATIO_RCS;
   } else if (param == "sm.enable_signal_handlers") {
     param_values_["sm.enable_signal_handlers"] = SM_ENABLE_SIGNAL_HANDLERS;
   } else if (param == "sm.compute_concurrency_level") {
@@ -647,8 +639,6 @@ Status Config::unset(const std::string& param) {
         VFS_FILE_POSIX_DIRECTORY_PERMISSIONS;
   } else if (param == "vfs.file.max_parallel_ops") {
     param_values_["vfs.file.max_parallel_ops"] = VFS_FILE_MAX_PARALLEL_OPS;
-  } else if (param == "vfs.file.enable_filelocks") {
-    param_values_["vfs.file.enable_filelocks"] = VFS_FILE_ENABLE_FILELOCKS;
   } else if (param == "vfs.azure.storage_account_name") {
     param_values_["vfs.azure.storage_account_name"] =
         VFS_AZURE_STORAGE_ACCOUNT_NAME;
@@ -807,7 +797,7 @@ Status Config::sanity_check(
   } else if (param == "config.logging_format") {
     if (value != "DEFAULT" && value != "JSON")
       return LOG_STATUS(
-          Status::ConfigError("Invalid logging format parameter value"));
+          Status_ConfigError("Invalid logging format parameter value"));
   } else if (param == "sm.dedup_coords") {
     RETURN_NOT_OK(utils::parse::convert(value, &v));
   } else if (param == "sm.check_coord_dups") {
@@ -847,7 +837,7 @@ Status Config::sanity_check(
   } else if (param == "sm.var_offsets.mode") {
     if (value != "bytes" && value != "elements")
       return LOG_STATUS(
-          Status::ConfigError("Invalid offsets format parameter value"));
+          Status_ConfigError("Invalid offsets format parameter value"));
   } else if (param == "vfs.min_parallel_size") {
     RETURN_NOT_OK(utils::parse::convert(value, &vuint64));
   } else if (param == "vfs.min_batch_gap") {
@@ -864,12 +854,10 @@ Status Config::sanity_check(
     RETURN_NOT_OK(utils::parse::convert(value, &v32));
   } else if (param == "vfs.file.max_parallel_ops") {
     RETURN_NOT_OK(utils::parse::convert(value, &vuint64));
-  } else if (param == "vfs.file.enable_filelocks") {
-    RETURN_NOT_OK(utils::parse::convert(value, &v));
   } else if (param == "vfs.s3.scheme") {
     if (value != "http" && value != "https")
       return LOG_STATUS(
-          Status::ConfigError("Invalid S3 scheme parameter value"));
+          Status_ConfigError("Invalid S3 scheme parameter value"));
   } else if (param == "vfs.s3.use_virtual_addressing") {
     RETURN_NOT_OK(utils::parse::convert(value, &v));
   } else if (param == "vfs.s3.skit_init") {
@@ -907,7 +895,7 @@ Status Config::sanity_check(
             (value == "bucket_owner_full_control"))))) {
       std::stringstream msg;
       msg << "value " << param << " invalid canned acl for " << param;
-      return Status::Error(msg.str());
+      return Status_Error(msg.str());
     }
   }
 
@@ -984,7 +972,9 @@ const char* Config::get_from_config_or_env(
   return *found ? value_config : "";
 }
 
-// Explicit template instantiations
+/*
+ * Explicit instantiations
+ */
 template Status Config::get<bool>(
     const std::string& param, bool* value, bool* found) const;
 template Status Config::get<int>(
@@ -999,6 +989,8 @@ template Status Config::get<float>(
     const std::string& param, float* value, bool* found) const;
 template Status Config::get<double>(
     const std::string& param, double* value, bool* found) const;
+template Status Config::get_vector<uint32_t>(
+    const std::string& param, std::vector<uint32_t>* value, bool* found) const;
 
 }  // namespace sm
 }  // namespace tiledb

@@ -76,6 +76,12 @@ class PositiveDeltaFilter : public Filter {
   /** Constructor. */
   PositiveDeltaFilter();
 
+  /** Constructor.
+   *
+   * @param max_window_size
+   */
+  PositiveDeltaFilter(uint32_t max_window_size);
+
   /** Return the max window size used by the filter. */
   uint32_t max_window_size() const;
 
@@ -86,6 +92,7 @@ class PositiveDeltaFilter : public Filter {
    * Perform positive-delta encoding of the given input into the given output.
    */
   Status run_forward(
+      const Tile& tile,
       FilterBuffer* input_metadata,
       FilterBuffer* input,
       FilterBuffer* output_metadata,
@@ -95,6 +102,7 @@ class PositiveDeltaFilter : public Filter {
    * Perform positive-delta decoding of the given input into the given output.
    */
   Status run_reverse(
+      const Tile& tile,
       FilterBuffer* input_metadata,
       FilterBuffer* input,
       FilterBuffer* output_metadata,
@@ -126,15 +134,13 @@ class PositiveDeltaFilter : public Filter {
       FilterBuffer* output,
       FilterBuffer* output_metadata) const;
 
-  /** Deserializes this filter's metadata from the given buffer. */
-  Status deserialize_impl(ConstBuffer* buff) override;
-
   /** Gets an option from this filter. */
   Status get_option_impl(FilterOption option, void* value) const override;
 
   /** Run_forward method templated on the tile cell datatype. */
   template <typename T>
   Status run_forward(
+      const Tile& tile,
       FilterBuffer* input_metadata,
       FilterBuffer* input,
       FilterBuffer* output_metadata,
@@ -143,6 +149,7 @@ class PositiveDeltaFilter : public Filter {
   /** Run_reverse method templated on the tile cell datatype. */
   template <typename T>
   Status run_reverse(
+      const Tile& tile,
       FilterBuffer* input_metadata,
       FilterBuffer* input,
       FilterBuffer* output_metadata,

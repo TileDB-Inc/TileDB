@@ -62,8 +62,8 @@ namespace serialization {
 Status config_to_capnp(
     const Config* config, capnp::Config::Builder* config_builder) {
   if (config == nullptr)
-    return LOG_STATUS(Status::SerializationError(
-        "Error serializing config; config is null."));
+    return LOG_STATUS(
+        Status_SerializationError("Error serializing config; config is null."));
 
   auto entries = config_builder->initEntries(config->param_values().size());
   uint64_t i = 0;
@@ -83,8 +83,25 @@ Status config_from_capnp(
 
   if (config_reader.hasEntries()) {
     auto entries = config_reader.getEntries();
+    bool found_refactored_reader_config = false;
     for (const auto kv : entries) {
       RETURN_NOT_OK((*config)->set(kv.getKey().cStr(), kv.getValue().cStr()));
+      if (kv.getKey() == "sm.use_refactored_readers" ||
+          kv.getKey() == "sm.query.dense.reader" ||
+          kv.getKey() == "sm.query.sparse_global_order.reader" ||
+          kv.getKey() == "sm.query.sparse_unordered_with_dups.reader")
+        found_refactored_reader_config = true;
+    }
+
+    // If we are on a pre TileDB 2.4 client, they will not have the reader
+    // options set. For those cases we need to set the reader to the legacy
+    // option
+    if (!found_refactored_reader_config) {
+      RETURN_NOT_OK((*config)->set("sm.query.dense.reader", "legacy"));
+      RETURN_NOT_OK(
+          (*config)->set("sm.query.sparse_global_order.reader", "legacy"));
+      RETURN_NOT_OK((*config)->set(
+          "sm.query.sparse_unordered_with_dups.reader", "legacy"));
     }
   }
   return Status::Ok();
@@ -124,18 +141,18 @@ Status config_serialize(
         break;
       }
       default: {
-        return LOG_STATUS(Status::SerializationError(
+        return LOG_STATUS(Status_SerializationError(
             "Error serializing config; Unknown serialization type "
             "passed"));
       }
     }
 
   } catch (kj::Exception& e) {
-    return LOG_STATUS(Status::SerializationError(
+    return LOG_STATUS(Status_SerializationError(
         "Error serializing config; kj::Exception: " +
         std::string(e.getDescription().cStr())));
   } catch (std::exception& e) {
-    return LOG_STATUS(Status::SerializationError(
+    return LOG_STATUS(Status_SerializationError(
         "Error serializing config; exception " + std::string(e.what())));
   }
 
@@ -173,23 +190,23 @@ Status config_deserialize(
         break;
       }
       default: {
-        return LOG_STATUS(Status::SerializationError(
+        return LOG_STATUS(Status_SerializationError(
             "Error deserializing config; Unknown serialization type "
             "passed"));
       }
     }
 
     if (decoded_config == nullptr)
-      return LOG_STATUS(Status::SerializationError(
+      return LOG_STATUS(Status_SerializationError(
           "Error serializing config; deserialized config is null"));
 
     *config = decoded_config.release();
   } catch (kj::Exception& e) {
-    return LOG_STATUS(Status::SerializationError(
+    return LOG_STATUS(Status_SerializationError(
         "Error deserializing config; kj::Exception: " +
         std::string(e.getDescription().cStr())));
   } catch (std::exception& e) {
-    return LOG_STATUS(Status::SerializationError(
+    return LOG_STATUS(Status_SerializationError(
         "Error deserializing config; exception " + std::string(e.what())));
   }
 
@@ -199,12 +216,12 @@ Status config_deserialize(
 #else
 
 Status config_serialize(Config*, SerializationType, Buffer*, const bool) {
-  return LOG_STATUS(Status::SerializationError(
+  return LOG_STATUS(Status_SerializationError(
       "Cannot serialize; serialization not enabled."));
 }
 
 Status config_deserialize(Config**, SerializationType, const Buffer&) {
-  return LOG_STATUS(Status::SerializationError(
+  return LOG_STATUS(Status_SerializationError(
       "Cannot deserialize; serialization not enabled."));
 }
 

@@ -39,10 +39,22 @@ struct Array {
 
   startTimestamp @3 :UInt64;
   # starting timestamp array was opened
+
+  arraySchemaLatest @4 :ArraySchema;
+  # latest array schema
+
+  arraySchemasAll @5 :Map(Text, ArraySchema);
+  # map of all Array Schemas
+
+  nonEmptyDomain @6 :NonEmptyDomainList;
+  # non empty domain
+
+  arrayMetadata @7 :ArrayMetadata;
+  # array metadata
 }
 
 struct ArraySchema {
-# ArraySchema during creation or retrevial
+# ArraySchema during creation or retrieval
     arrayType @0 :Text;
     # Type of array
 
@@ -79,6 +91,12 @@ struct ArraySchema {
 
     validityFilterPipeline @11 :FilterPipeline;
     # Type of compression for validity buffers (enum)
+
+    name @12 :Text;
+    # name of array schema
+
+    timestampRange @13 :List(UInt64);
+    # Timestamp range of array schema
 }
 
 struct ArraySchemaEvolution {
@@ -89,6 +107,8 @@ struct ArraySchemaEvolution {
     attributesToAdd @1 :List(Attribute);
     # Attributes to be added    
 
+    timestampRange @2 :List(UInt64);
+    # Timestamp range of array schema
 }
 
 struct Attribute {

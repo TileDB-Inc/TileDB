@@ -34,7 +34,9 @@
 #define TILEDB_COMPRESSION_FILTER_H
 
 #include "tiledb/common/status.h"
+#include "tiledb/sm/compressors/zstd_compressor.h"
 #include "tiledb/sm/filter/filter.h"
+#include "tiledb/sm/misc/resource_pool.h"
 
 using namespace tiledb::common;
 
@@ -104,6 +106,7 @@ class CompressionFilter : public Filter {
    * Compress the given input into the given output.
    */
   Status run_forward(
+      const Tile& tile,
       FilterBuffer* input_metadata,
       FilterBuffer* input,
       FilterBuffer* output_metadata,
@@ -113,6 +116,7 @@ class CompressionFilter : public Filter {
    * Decompress the given input into the given output.
    */
   Status run_reverse(
+      const Tile& tile,
       FilterBuffer* input_metadata,
       FilterBuffer* input,
       FilterBuffer* output_metadata,
@@ -132,12 +136,33 @@ class CompressionFilter : public Filter {
   /** The compression level. */
   int level_;
 
+  /** The default filter compression level. */
+  static constexpr int default_level_ = -30000;
+
+  /** Mutex guarding zstd_compress_ctx_pool */
+  std::mutex zstd_compress_ctx_pool_mtx_;
+
+  /** Mutex guarding zstd_decompress_ctx_pool */
+  std::mutex zstd_decompress_ctx_pool_mtx_;
+
+  /** A resource pool to be used in ZStd compressor for improved performance */
+  std::shared_ptr<BlockingResourcePool<ZStd::ZSTD_Compress_Context>>
+      zstd_compress_ctx_pool_;
+
+  /** A resource pool to be used in ZStd decompressor for improved performance
+   */
+  shared_ptr<BlockingResourcePool<ZStd::ZSTD_Decompress_Context>>
+      zstd_decompress_ctx_pool_;
+
   /** Returns a new clone of this filter. */
   CompressionFilter* clone_impl() const override;
 
   /** Helper function to compress a single contiguous buffer (part). */
   Status compress_part(
-      ConstBuffer* part, Buffer* output, FilterBuffer* output_metadata) const;
+      const Tile& tile,
+      ConstBuffer* part,
+      Buffer* output,
+      FilterBuffer* output_metadata) const;
 
   /** Return the FilterType corresponding to the given Compressor. */
   static FilterType compressor_to_filter(Compressor compressor);
@@ -147,10 +172,10 @@ class CompressionFilter : public Filter {
    * onto the single output buffer.
    */
   Status decompress_part(
-      FilterBuffer* input, Buffer* output, FilterBuffer* input_metadata) const;
-
-  /** Deserializes this filter's metadata from the given buffer. */
-  Status deserialize_impl(ConstBuffer* buff) override;
+      const Tile& tile,
+      FilterBuffer* input,
+      Buffer* output,
+      FilterBuffer* input_metadata) const;
 
   /** Gets an option from this filter. */
   Status get_option_impl(FilterOption option, void* value) const override;
@@ -159,13 +184,19 @@ class CompressionFilter : public Filter {
   static Compressor filter_to_compressor(FilterType type);
 
   /** Computes the compression overhead on nbytes of the input data. */
-  uint64_t overhead(uint64_t nbytes) const;
+  uint64_t overhead(const Tile& tile, uint64_t nbytes) const;
 
   /** Sets an option on this filter. */
   Status set_option_impl(FilterOption option, const void* value) override;
 
   /** Serializes this filter's metadata to the given buffer. */
   Status serialize_impl(Buffer* buff) const override;
+
+  /** Initializes the compression resource pool */
+  void init_compression_resource_pool(uint64_t size) override;
+
+  /** Initializes the decompression resource pool */
+  void init_decompression_resource_pool(uint64_t size) override;
 };
 
 }  // namespace sm

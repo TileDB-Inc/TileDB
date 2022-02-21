@@ -41,9 +41,9 @@
 #include "tiledb/sm/config/config.h"
 #include "tiledb/sm/filesystem/s3_thread_pool_executor.h"
 #include "tiledb/sm/misc/constants.h"
-#include "tiledb/sm/misc/uri.h"
 #include "tiledb/sm/stats/global_stats.h"
 #include "tiledb/sm/stats/stats.h"
+#include "uri.h"
 
 #include <aws/core/Aws.h>
 #include <aws/core/auth/AWSCredentialsProviderChain.h>
@@ -436,20 +436,36 @@ class S3 {
    */
   struct MakeUploadPartCtx {
     /** Constructor. */
+    MakeUploadPartCtx()
+        : upload_part_num(0){};
     MakeUploadPartCtx(
-        Aws::S3::Model::UploadPartOutcomeCallable&&
-            in_upload_part_outcome_callable,
+        Aws::S3::Model::UploadPartOutcome&& in_upload_part_outcome,
         const int in_upload_part_num)
-        : upload_part_outcome_callable(
-              std::move(in_upload_part_outcome_callable))
+        : upload_part_outcome(std::move(in_upload_part_outcome))
         , upload_part_num(in_upload_part_num) {
     }
 
+    /** Move Constructor */
+    MakeUploadPartCtx(MakeUploadPartCtx&& other) noexcept {
+      this->upload_part_outcome = std::move(other.upload_part_outcome);
+      this->upload_part_num = other.upload_part_num;
+    }
+
+    /** Move assignment operator */
+    MakeUploadPartCtx& operator=(MakeUploadPartCtx&& other) {
+      this->upload_part_outcome = std::move(other.upload_part_outcome);
+      this->upload_part_num = other.upload_part_num;
+      return *this;
+    }
+
+    /** Copy Constructor **/
+    MakeUploadPartCtx(const MakeUploadPartCtx& other) = delete;
+
     /** The AWS future to wait on for a pending upload part request. */
-    Aws::S3::Model::UploadPartOutcomeCallable upload_part_outcome_callable;
+    Aws::S3::Model::UploadPartOutcome upload_part_outcome;
 
     /** The part number of the pending upload part request. */
-    const int upload_part_num;
+    int upload_part_num;
   };
 
   /** Contains all state associated with a multipart upload transaction. */

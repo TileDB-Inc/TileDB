@@ -38,6 +38,7 @@
 #include "tiledb/common/status.h"
 #include "tiledb/common/thread_pool.h"
 #include "tiledb/sm/config/config.h"
+#include "tiledb/sm/filesystem/path_win.h"
 #include "tiledb/sm/filesystem/win.h"
 
 using namespace tiledb::common;
@@ -83,6 +84,7 @@ struct WinFx {
 };
 
 TEST_CASE_METHOD(WinFx, "Test Windows filesystem", "[windows]") {
+  using tiledb::sm::path_win::is_win_path;
   const std::string test_dir_path = win_.current_dir() + "/tiledb_test_dir";
   const std::string test_file_path =
       win_.current_dir() + "/tiledb_test_dir/tiledb_test_file";
@@ -90,17 +92,39 @@ TEST_CASE_METHOD(WinFx, "Test Windows filesystem", "[windows]") {
   URI test_file(test_file_path);
   Status st;
 
-  CHECK(Win::is_win_path("C:\\path"));
-  CHECK(Win::is_win_path("C:path"));
-  CHECK(Win::is_win_path("..\\path"));
-  CHECK(Win::is_win_path("\\path"));
-  CHECK(Win::is_win_path("path\\"));
-  CHECK(Win::is_win_path("\\\\path1\\path2"));
-  CHECK(Win::is_win_path("path1\\path2"));
-  CHECK(Win::is_win_path("path"));
-  CHECK(!Win::is_win_path("path1/path2"));
-  CHECK(!Win::is_win_path("file:///path1/path2"));
-  CHECK(!Win::is_win_path("hdfs:///path1/path2"));
+  CHECK(is_win_path("C:\\path"));
+  CHECK(is_win_path("C:path"));
+  CHECK(is_win_path("c:path1\\path2"));
+  CHECK(is_win_path("..\\path"));
+  CHECK(is_win_path("\\path"));
+  CHECK(is_win_path("path\\"));
+  CHECK(is_win_path("\\\\path1\\path2"));
+  CHECK(is_win_path("path1\\path2"));
+  CHECK(is_win_path("path"));
+  CHECK(
+      is_win_path("path1/path2"));  // Change - formerly rejected, now accepted.
+  CHECK(is_win_path("../path"));
+  CHECK(is_win_path("/path"));
+  CHECK(is_win_path("path/"));
+  CHECK(is_win_path("//path1/path2"));
+  CHECK(is_win_path("path1/path2"));
+  CHECK(is_win_path("c:/path"));
+  CHECK(is_win_path("c:path1/path2"));
+  CHECK(is_win_path("c://path1/path2"));
+  CHECK(is_win_path("c://path1//path2"));
+  CHECK(is_win_path("c:\\\\path1\\\\path2"));
+  CHECK(is_win_path("\\"));
+  CHECK(is_win_path("\\\\"));
+  CHECK(is_win_path("/"));
+  CHECK(is_win_path("//"));
+  // (Even file:) 'URL's are not being considered as windows paths by
+  // is_win_path.
+  CHECK(!is_win_path("file:///c:path"));
+  CHECK(!is_win_path("file:///c:path1\\path2"));
+  CHECK(!is_win_path("file:\\\\\\c:path"));
+  CHECK(!is_win_path("file:\\\\\\c:path1\\path2"));
+  CHECK(!is_win_path("file:///path1/path2"));
+  CHECK(!is_win_path("hdfs:///path1/path2"));
 
   CHECK(Win::abs_path(test_dir_path) == test_dir_path);
   CHECK(Win::abs_path(test_file_path) == test_file_path);

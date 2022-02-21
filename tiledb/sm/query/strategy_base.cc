@@ -64,7 +64,7 @@ StrategyBase::StrategyBase(
     , offsets_extra_element_(false)
     , offsets_bitsize_(constants::cell_var_offset_size * 8) {
   if (array != nullptr) {
-    array_schema_ = array->array_schema();
+    array_schema_ = array->array_schema_latest();
   }
 }
 
@@ -131,7 +131,7 @@ uint32_t StrategyBase::offsets_bitsize() const {
 
 Status StrategyBase::set_offsets_bitsize(const uint32_t bitsize) {
   if (bitsize != 32 && bitsize != 64) {
-    return logger_->status(Status::ReaderError(
+    return logger_->status(Status_ReaderError(
         "Cannot set offset bitsize to " + std::to_string(bitsize) +
         "; Only 32 and 64 are acceptable bitsize values"));
   }

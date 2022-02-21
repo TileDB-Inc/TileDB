@@ -46,7 +46,7 @@ Status BZip::compress(
     int level, ConstBuffer* input_buffer, Buffer* output_buffer) {
   // Sanity check
   if (input_buffer->data() == nullptr || output_buffer->data() == nullptr)
-    return LOG_STATUS(Status::CompressionError(
+    return LOG_STATUS(Status_CompressionError(
         "Failed compressing with BZip; invalid buffer format"));
 
   // Compress
@@ -57,29 +57,29 @@ Status BZip::compress(
       &out_size,
       (char*)input_buffer->data(),
       in_size,
-      level < 1 ? BZip::default_level() : level,  // block size 100k
-      0,                                          // verbosity
-      0);                                         // work factor
+      level < level_limit_ ? BZip::default_level() : level,  // block size 100k
+      0,                                                     // verbosity
+      0);                                                    // work factor
 
   // Handle error
   if (rc != BZ_OK) {
     switch (rc) {
       case BZ_CONFIG_ERROR:
-        return Status::CompressionError(
+        return Status_CompressionError(
             "BZip compression error: library has been miscompiled");
       case BZ_PARAM_ERROR:
-        return Status::CompressionError(
+        return Status_CompressionError(
             "BZip compression error: 'output_buffer' or 'output_buffer_size' "
             "is NULL");
       case BZ_MEM_ERROR:
-        return Status::CompressionError(
+        return Status_CompressionError(
             "BZip compression error: insufficient memory");
       case BZ_OUTBUFF_FULL:
-        return Status::CompressionError(
+        return Status_CompressionError(
             "BZip compression error: compressed size exceeds limits for "
             "'output_buffer_size'");
       default:
-        return Status::CompressionError(
+        return Status_CompressionError(
             "BZip compression error: unknown error code");
     }
   }
@@ -91,11 +91,15 @@ Status BZip::compress(
   return Status::Ok();
 }
 
+Status BZip::compress(ConstBuffer* input_buffer, Buffer* output_buffer) {
+  return BZip::compress(BZip::default_level(), input_buffer, output_buffer);
+}
+
 Status BZip::decompress(
     ConstBuffer* input_buffer, PreallocatedBuffer* output_buffer) {
   // Sanity check
   if (input_buffer->data() == nullptr || output_buffer->data() == nullptr)
-    return LOG_STATUS(Status::CompressionError(
+    return LOG_STATUS(Status_CompressionError(
         "Failed decompressing with BZip; invalid buffer format"));
 
   // Decompress
@@ -112,22 +116,22 @@ Status BZip::decompress(
   if (rc != BZ_OK) {
     switch (rc) {
       case BZ_CONFIG_ERROR:
-        return Status::CompressionError(
+        return Status_CompressionError(
             "BZip decompression error: library has been miscompiled");
       case BZ_PARAM_ERROR:
-        return Status::CompressionError(
+        return Status_CompressionError(
             "BZip decompression error: 'output_buffer' or 'output_buffer_size' "
             "is NULL");
       case BZ_MEM_ERROR:
-        return Status::CompressionError(
+        return Status_CompressionError(
             "BZip decompression error: insufficient memory");
       case BZ_DATA_ERROR:
       case BZ_DATA_ERROR_MAGIC:
       case BZ_UNEXPECTED_EOF:
-        return Status::CompressionError(
+        return Status_CompressionError(
             "BZip decompression error: compressed data is corrupted");
       default:
-        return Status::CompressionError(
+        return Status_CompressionError(
             "BZip decompression error: unknown error code ");
     }
   }

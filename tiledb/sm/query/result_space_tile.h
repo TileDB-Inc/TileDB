@@ -100,9 +100,9 @@ class ResultSpaceTile {
   }
 
   /** Sets the input result tile for the given fragment. */
-  void set_result_tile(unsigned frag_idx, const ResultTile& result_tile) {
+  void set_result_tile(unsigned frag_idx, ResultTile& result_tile) {
     assert(result_tiles_.count(frag_idx) == 0);
-    result_tiles_[frag_idx] = result_tile;
+    result_tiles_[frag_idx] = std::move(result_tile);
   }
 
   /** Returns the result tile for the input fragment. */

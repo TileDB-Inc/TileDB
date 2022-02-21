@@ -92,7 +92,7 @@ Status Consolidator::consolidate(
     return consolidate_array_meta(
         array_name, encryption_type, encryption_key, key_length);
 
-  return logger_->status(Status::ConsolidatorError(
+  return logger_->status(Status_ConsolidatorError(
       "Cannot consolidate; Invalid consolidation mode"));
 }
 
@@ -201,12 +201,19 @@ Status Consolidator::consolidate_fragments(
       QueryType::WRITE, encryption_type, encryption_key, key_length));
 
   // Get fragment info
-  FragmentInfo fragment_info;
-  auto st = storage_manager_->get_fragment_info(
-      array_for_reads,
+  // For dense arrays, we need to pass the last parameter to the
+  // `load` function to indicate that all fragment metadata
+  // must be fetched (even before `config_.timestamp_start_`),
+  // to compute the anterior ND range that can help determine
+  // which dense fragments are consolidatable.
+  FragmentInfo fragment_info(URI(array_name), storage_manager_);
+  auto st = fragment_info.load(
       config_.timestamp_start_,
       config_.timestamp_end_,
-      &fragment_info);
+      encryption_type,
+      encryption_key,
+      key_length,
+      array_for_reads.array_schema_latest()->dense());
   if (!st.ok()) {
     array_for_reads.close();
     array_for_writes.close();
@@ -223,7 +230,7 @@ Status Consolidator::consolidate_fragments(
     // Find the next fragments to be consolidated
     NDRange union_non_empty_domains;
     st = compute_next_to_consolidate(
-        array_for_reads.array_schema(),
+        array_for_reads.array_schema_latest(),
         fragment_info,
         &to_consolidate,
         &union_non_empty_domains);
@@ -251,18 +258,15 @@ Status Consolidator::consolidate_fragments(
       return st;
     }
 
-    // Get fragment info of the consolidated fragment
-    SingleFragmentInfo new_fragment_info;
-    st = storage_manager_->get_fragment_info(
-        array_for_reads, new_fragment_uri, &new_fragment_info);
+    // Load info of the consolidated fragment and add it
+    // to the fragment info, replacing the fragments that it
+    // consolidated.
+    st = fragment_info.load_and_replace(new_fragment_uri, to_consolidate);
     if (!st.ok()) {
       array_for_reads.close();
       array_for_writes.close();
       return st;
     }
-
-    // Update fragment info
-    update_fragment_info(to_consolidate, new_fragment_info, &fragment_info);
 
     // Advance number of steps
     ++step;
@@ -289,7 +293,7 @@ bool Consolidator::are_consolidatable(
     return false;
 
   // Check overlap of union with earlier fragments
-  const auto& fragments = fragment_info.fragments();
+  const auto& fragments = fragment_info.single_fragment_info_vec();
   for (size_t i = 0; i < start; ++i) {
     if (domain->overlap(
             union_non_empty_domains, fragments[i].non_empty_domain()))
@@ -321,7 +325,7 @@ Status Consolidator::consolidate(
   }
 
   // Get schema
-  auto array_schema = array_for_reads.array_schema();
+  auto array_schema = array_for_reads.array_schema_latest();
 
   // Prepare buffers
   std::vector<ByteVec> buffers;
@@ -418,7 +422,7 @@ Status Consolidator::consolidate_fragment_meta(
   auto first = meta.front()->fragment_uri();
   auto last = meta.back()->fragment_uri();
   RETURN_NOT_OK(compute_new_fragment_uri(
-      first, last, array.array_schema()->write_version(), &uri));
+      first, last, array.array_schema_latest()->write_version(), &uri));
   uri = URI(uri.to_string() + constants::meta_file_suffix);
 
   // Get the consolidated fragment metadata version
@@ -476,13 +480,12 @@ Status Consolidator::consolidate_fragment_meta(
   // Write to file
   EncryptionKey enc_key;
   RETURN_NOT_OK(enc_key.set_key(encryption_type, encryption_key, key_length));
-  buff.reset_offset();
   Tile tile(
       constants::generic_tile_datatype,
       constants::generic_tile_cell_size,
       0,
-      &buff,
-      false);
+      buff.data(),
+      buff.size());
   buff.disown_data();
   GenericTileIO tile_io(storage_manager_, uri);
   uint64_t nbytes = 0;
@@ -580,7 +583,7 @@ Status Consolidator::create_queries(
 
   // Refactored reader optimizes for no subarray.
   if (!config_.use_refactored_reader_ ||
-      array_for_reads->array_schema()->dense())
+      array_for_reads->array_schema_latest()->dense())
     RETURN_NOT_OK((*query_r)->set_subarray_unsafe(subarray));
 
   // Get last fragment URI, which will be the URI of the consolidated fragment
@@ -590,7 +593,7 @@ Status Consolidator::create_queries(
   RETURN_NOT_OK(compute_new_fragment_uri(
       first,
       last,
-      array_for_reads->array_schema()->write_version(),
+      array_for_reads->array_schema_latest()->write_version(),
       new_fragment_uri));
 
   // Create write query
@@ -598,7 +601,7 @@ Status Consolidator::create_queries(
       tdb_new(Query, storage_manager_, array_for_writes, *new_fragment_uri);
   RETURN_NOT_OK((*query_w)->set_layout(Layout::GLOBAL_ORDER));
   RETURN_NOT_OK((*query_w)->disable_check_global_order());
-  if (array_for_reads->array_schema()->dense())
+  if (array_for_reads->array_schema_latest()->dense())
     RETURN_NOT_OK((*query_w)->set_subarray_unsafe(subarray));
 
   return Status::Ok();
@@ -613,7 +616,7 @@ Status Consolidator::compute_next_to_consolidate(
 
   // Preparation
   auto sparse = !array_schema->dense();
-  const auto& fragments = fragment_info.fragments();
+  const auto& fragments = fragment_info.single_fragment_info_vec();
   auto domain = array_schema->domain();
   to_consolidate->clear();
   auto min = config_.min_frags_;
@@ -818,40 +821,8 @@ Status Consolidator::set_query_buffers(
   return Status::Ok();
 }
 
-void Consolidator::update_fragment_info(
-    const std::vector<TimestampedURI>& to_consolidate,
-    const SingleFragmentInfo& new_fragment_info,
-    FragmentInfo* fragment_info) const {
-  auto to_consolidate_it = to_consolidate.begin();
-  auto fragment_it = fragment_info->fragments().begin();
-  FragmentInfo updated_fragment_info;
-  bool new_fragment_added = false;
-
-  while (fragment_it != fragment_info->fragments().end()) {
-    // No match - add the fragment info and advance `fragment_it`
-    if (to_consolidate_it == to_consolidate.end() ||
-        fragment_it->uri().to_string() != to_consolidate_it->uri_.to_string()) {
-      updated_fragment_info.append(*fragment_it);
-      ++fragment_it;
-    } else {  // Match - add new fragment only once and advance both iterators
-      if (!new_fragment_added) {
-        updated_fragment_info.append(new_fragment_info);
-        new_fragment_added = true;
-      }
-      ++fragment_it;
-      ++to_consolidate_it;
-    }
-  }
-
-  assert(
-      updated_fragment_info.fragment_num() ==
-      fragment_info->fragment_num() - to_consolidate.size() + 1);
-
-  *fragment_info = std::move(updated_fragment_info);
-}
-
 Status Consolidator::set_config(const Config* config) {
-  // Set the config
+  // Set the consolidation config for ease of use
   Config merged_config = storage_manager_->config();
   if (config)
     merged_config.inherit(*config);
@@ -882,7 +853,7 @@ Status Consolidator::set_config(const Config* config) {
   assert(found);
   const std::string mode = merged_config.get("sm.consolidation.mode", &found);
   if (!found)
-    return logger_->status(Status::ConsolidatorError(
+    return logger_->status(Status_ConsolidatorError(
         "Cannot consolidate; Consolidation mode cannot be null"));
   config_.mode_ = mode;
   RETURN_NOT_OK(merged_config.get<uint64_t>(
@@ -894,21 +865,21 @@ Status Consolidator::set_config(const Config* config) {
   std::string reader =
       merged_config.get("sm.query.sparse_global_order.reader", &found);
   assert(found);
-  config_.use_refactored_reader_ = reader.compare("reafctored") == 0;
+  config_.use_refactored_reader_ = reader.compare("refactored") == 0;
 
   // Sanity checks
   if (config_.min_frags_ > config_.max_frags_)
-    return logger_->status(Status::ConsolidatorError(
+    return logger_->status(Status_ConsolidatorError(
         "Invalid configuration; Minimum fragments config parameter is larger "
         "than the maximum"));
   if (config_.size_ratio_ > 1.0f || config_.size_ratio_ < 0.0f)
-    return logger_->status(Status::ConsolidatorError(
+    return logger_->status(Status_ConsolidatorError(
         "Invalid configuration; Step size ratio config parameter must be in "
         "[0.0, 1.0]"));
   if (config_.amplification_ < 0)
     return logger_->status(
-        Status::ConsolidatorError("Invalid configuration; Amplification config "
-                                  "parameter must be non-negative"));
+        Status_ConsolidatorError("Invalid configuration; Amplification config "
+                                 "parameter must be non-negative"));
 
   return Status::Ok();
 }

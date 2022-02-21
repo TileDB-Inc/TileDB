@@ -33,6 +33,16 @@ die() {
 install_gcs(){
     curl -L  https://github.com/googleapis/google-cloud-cpp/archive/v1.23.0.tar.gz > /tmp/google-cloud-cpp.tar.gz
     tar -xf /tmp/google-cloud-cpp.tar.gz -C /tmp
+    #on pip3 install, github error, "The unauthenticated git protocol on port 9418 is no longer supported."
+    #checked later versions, latest at check was v1.35.0, but found starting
+    #at v1.32.0 directory structure had changed and there is no longer an 'emulator' directory.
+    #v1.31.1 is last version that had same structure, and its requirements.txt still using now bad git+git:,
+    #so, staying with our current version and patching to different protocol,
+    #since there's currently only one instance in v1.23.0 emulator/requirements.txt,
+    #patch git+git:// ==> git+https://
+    #sed -i fails on GA CI macos...
+    sed 's/git+git:/git+https:/' /tmp/google-cloud-cpp-1.23.0/google/cloud/storage/emulator/requirements.txt > /tmp/tdbpatchedrequirements.txt
+    cp -f /tmp/tdbpatchedrequirements.txt /tmp/google-cloud-cpp-1.23.0/google/cloud/storage/emulator/requirements.txt
     pip3 install -r /tmp/google-cloud-cpp-1.23.0/google/cloud/storage/emulator/requirements.txt
 }
 

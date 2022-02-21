@@ -33,8 +33,6 @@
 #ifndef TILEDB_COMMON_H
 #define TILEDB_COMMON_H
 
-#include "tiledb/common/logger.h"
-
 namespace tiledb {
 namespace common {
 void tdb_malloc_trim();

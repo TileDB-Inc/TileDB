@@ -35,6 +35,7 @@
 #include "tiledb/sm/array_schema/dimension.h"
 #include "tiledb/sm/buffer/buffer.h"
 #include "tiledb/sm/enums/datatype.h"
+#include "tiledb/sm/misc/math.h"
 #include "tiledb/sm/misc/utils.h"
 
 #include <cassert>
@@ -290,14 +291,18 @@ Status RTree::serialize(Buffer* buff) const {
   return Status::Ok();
 }
 
+Status RTree::set_domain(const Domain* domain) {
+  domain_ = domain;
+  return Status::Ok();
+}
+
 Status RTree::set_leaf(uint64_t leaf_id, const NDRange& mbr) {
   if (levels_.size() != 1)
-    return LOG_STATUS(Status::RTreeError(
+    return LOG_STATUS(Status_RTreeError(
         "Cannot set leaf; There are more than one levels in the tree"));
 
   if (leaf_id >= levels_[0].size())
-    return LOG_STATUS(
-        Status::RTreeError("Cannot set leaf; Invalid lead index"));
+    return LOG_STATUS(Status_RTreeError("Cannot set leaf; Invalid lead index"));
 
   levels_[0][leaf_id] = mbr;
 
@@ -318,8 +323,8 @@ Status RTree::set_leaf_num(uint64_t num) {
 
   if (num < levels_[0].size())
     return LOG_STATUS(
-        Status::RTreeError("Cannot set number of leaves; provided number "
-                           "cannot be smaller than the current leaf number"));
+        Status_RTreeError("Cannot set number of leaves; provided number "
+                          "cannot be smaller than the current leaf number"));
 
   levels_[0].resize(num);
   return Status::Ok();
@@ -397,6 +402,7 @@ Status RTree::deserialize_v1_v4(ConstBuffer* cbuff, const Domain* domain) {
 Status RTree::deserialize_v5(ConstBuffer* cbuff, const Domain* domain) {
   RETURN_NOT_OK(cbuff->read(&fanout_, sizeof(fanout_)));
   unsigned level_num;
+
   RETURN_NOT_OK(cbuff->read(&level_num, sizeof(level_num)));
 
   if (level_num == 0)
@@ -405,6 +411,7 @@ Status RTree::deserialize_v5(ConstBuffer* cbuff, const Domain* domain) {
   levels_.clear();
   levels_.resize(level_num);
   auto dim_num = domain->dim_num();
+
   uint64_t mbr_num;
   for (unsigned l = 0; l < level_num; ++l) {
     RETURN_NOT_OK(cbuff->read(&mbr_num, sizeof(uint64_t)));

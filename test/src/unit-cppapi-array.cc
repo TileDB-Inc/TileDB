@@ -33,8 +33,8 @@
 #include "catch.hpp"
 #include "helpers.h"
 #include "tiledb/sm/cpp_api/tiledb"
+#include "tiledb/sm/filesystem/uri.h"
 #include "tiledb/sm/misc/constants.h"
-#include "tiledb/sm/misc/uri.h"
 #include "tiledb/sm/misc/utils.h"
 
 using namespace tiledb;
@@ -112,6 +112,7 @@ TEST_CASE_METHOD(CPPArrayFx, "C++ API: Arrays", "[cppapi][basic]") {
     CHECK(schema.domain().dimensions()[1].tile_extent<int>() == 5);
     CHECK(schema.domain().cell_num() == 20301);
   }
+
   SECTION("Make Buffer") {
     Array array(ctx, "cpp_unit_array", TILEDB_WRITE);
     Query query(ctx, array, TILEDB_WRITE);
@@ -191,7 +192,6 @@ TEST_CASE_METHOD(CPPArrayFx, "C++ API: Arrays", "[cppapi][basic]") {
       query.set_offsets_buffer("a4", a4buf.first);
       query.set_data_buffer("a5", a5);
       query.set_layout(TILEDB_ROW_MAJOR);
-
       REQUIRE(query.submit() == Query::Status::COMPLETE);
 
       // check a1 buffers
@@ -210,7 +210,6 @@ TEST_CASE_METHOD(CPPArrayFx, "C++ API: Arrays", "[cppapi][basic]") {
       REQUIRE(buf_back_elem_size == sizeof(char));
       REQUIRE(offsets_back == a2buf.first.data());
       REQUIRE(offsets_back_nelem == 2);
-
       CHECK(!query.has_results());
 
       query.finalize();

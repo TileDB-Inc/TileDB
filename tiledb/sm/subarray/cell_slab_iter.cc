@@ -62,7 +62,7 @@ CellSlabIter<T>::CellSlabIter(const Subarray* subarray)
     : subarray_(subarray) {
   end_ = true;
   if (subarray != nullptr) {
-    auto array_schema = subarray->array()->array_schema();
+    auto array_schema = subarray->array()->array_schema_latest();
     auto dim_num = array_schema->dim_num();
     auto coord_size = array_schema->dimension(0)->coord_size();
     aux_tile_coords_.resize(dim_num);
@@ -245,7 +245,7 @@ template <class T>
 Status CellSlabIter<T>::init_ranges() {
   // For easy reference
   auto dim_num = subarray_->dim_num();
-  auto array_schema = subarray_->array()->array_schema();
+  auto array_schema = subarray_->array()->array_schema_latest();
   auto array_domain = array_schema->domain()->domain();
   uint64_t range_num;
   T tile_extent, dim_domain_start;
@@ -275,13 +275,13 @@ Status CellSlabIter<T>::sanity_check() const {
   // Check layout
   auto layout = subarray_->layout();
   if (layout != Layout::ROW_MAJOR && layout != Layout::COL_MAJOR)
-    return LOG_STATUS(Status::CellSlabIterError(
+    return LOG_STATUS(Status_CellSlabIterError(
         "Unsupported subarray layout; the iterator supports only row-major and "
         "column-major layouts"));
 
   // Check type
   bool error;
-  auto array_schema = subarray_->array()->array_schema();
+  auto array_schema = subarray_->array()->array_schema_latest();
   auto type = array_schema->domain()->dimension(0)->type();
   switch (type) {
     case Datatype::INT8:
@@ -338,7 +338,7 @@ Status CellSlabIter<T>::sanity_check() const {
   }
 
   if (error)
-    return LOG_STATUS(Status::CellSlabIterError(
+    return LOG_STATUS(Status_CellSlabIterError(
         "Datatype mismatch between cell slab iterator and subarray"));
 
   return Status::Ok();

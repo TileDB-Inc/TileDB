@@ -35,9 +35,9 @@
 #define TILEDB_SINGLE_FRAGMENT_INFO_H
 
 #include "tiledb/sm/enums/datatype.h"
+#include "tiledb/sm/filesystem/uri.h"
 #include "tiledb/sm/fragment/fragment_metadata.h"
 #include "tiledb/sm/misc/types.h"
-#include "tiledb/sm/misc/uri.h"
 
 #include <cinttypes>
 #include <sstream>
@@ -252,8 +252,8 @@ class SingleFragmentInfo {
              << ((int64_t*)non_empty_domain_[d].data())[1] << "]";
           break;
         case Datatype::STRING_ASCII:
-          ss << "[" << non_empty_domain_[d].start_str() << ", "
-             << non_empty_domain_[d].end_str() << "]";
+          ss << "[" << std::string(non_empty_domain_[d].start_str()) << ", "
+             << std::string(non_empty_domain_[d].end_str()) << "]";
           break;
         default:
           assert(false);

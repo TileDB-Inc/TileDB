@@ -61,7 +61,7 @@ ReadCellSlabIter<T>::ReadCellSlabIter(
     , result_coords_pos_(result_coords_pos)
     , init_result_coords_pos_(result_coords_pos) {
   domain_ = (subarray != nullptr) ?
-                subarray->array()->array_schema()->domain() :
+                subarray->array()->array_schema_latest()->domain() :
                 nullptr;
   layout_ = (subarray != nullptr) ? subarray->layout() : Layout::ROW_MAJOR;
   cell_slab_iter_ = CellSlabIter<T>(subarray);
@@ -331,7 +331,7 @@ void ReadCellSlabIter<T>::compute_result_cell_slabs_dense(
 
   // Append temporary results for empty cell slabs
   compute_result_cell_slabs_empty(
-      *result_space_tile, to_process, &result_cell_slabs);
+      *result_space_tile, to_process, result_cell_slabs);
 
   // Sort the temporary result cell slabs on starting position
   std::sort(result_cell_slabs.begin(), result_cell_slabs.end());
@@ -347,7 +347,7 @@ template <class T>
 void ReadCellSlabIter<T>::compute_result_cell_slabs_empty(
     const ResultSpaceTile<T>& result_space_tile,
     const std::list<CellSlab<T>>& to_process,
-    std::vector<ResultCellSlab>* result_cell_slabs) {
+    std::vector<ResultCellSlab>& result_cell_slabs) {
   // Nothing to process
   if (to_process.empty())
     return;
@@ -357,7 +357,7 @@ void ReadCellSlabIter<T>::compute_result_cell_slabs_empty(
   for (auto pit = to_process.begin(); pit != to_process.end(); ++pit) {
     compute_cell_slab_start(
         &pit->coords_[0], result_space_tile.start_coords(), &start);
-    result_cell_slabs->emplace_back(nullptr, start, pit->length_);
+    result_cell_slabs.emplace_back(nullptr, start, pit->length_);
   }
 }
 

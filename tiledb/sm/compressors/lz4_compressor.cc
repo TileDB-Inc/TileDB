@@ -47,7 +47,7 @@ Status LZ4::compress(
     int level, ConstBuffer* input_buffer, Buffer* output_buffer) {
   // Sanity check
   if (input_buffer->data() == nullptr || output_buffer->data() == nullptr)
-    return LOG_STATUS(Status::CompressionError(
+    return LOG_STATUS(Status_CompressionError(
         "Failed compressing with LZ4; invalid buffer format"));
 
   // TODO: level is ignored using the simple api interface
@@ -69,7 +69,7 @@ Status LZ4::compress(
 
   // Check error
   if (ret < 0)
-    return Status::CompressionError("LZ4 compression failed");
+    return Status_CompressionError("LZ4 compression failed");
 
   // Set size of compressed data
   output_buffer->advance_size(static_cast<uint64_t>(ret));
@@ -78,11 +78,15 @@ Status LZ4::compress(
   return Status::Ok();
 }
 
+Status LZ4::compress(ConstBuffer* input_buffer, Buffer* output_buffer) {
+  return LZ4::compress(LZ4::default_level(), input_buffer, output_buffer);
+}
+
 Status LZ4::decompress(
     ConstBuffer* input_buffer, PreallocatedBuffer* output_buffer) {
   // Sanity check
   if (input_buffer->data() == nullptr || output_buffer->data() == nullptr)
-    return LOG_STATUS(Status::CompressionError(
+    return LOG_STATUS(Status_CompressionError(
         "Failed decompressing with LZ4; invalid buffer format"));
 
   // Decompress
@@ -94,7 +98,7 @@ Status LZ4::decompress(
 
   // Check error
   if (ret < 0)
-    return Status::CompressionError("LZ4 decompression failed");
+    return Status_CompressionError("LZ4 decompression failed");
 
   // Set size of decompressed data
   output_buffer->advance_offset(static_cast<uint64_t>(ret));

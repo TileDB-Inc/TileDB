@@ -45,8 +45,8 @@ using namespace tiledb::common;
 namespace tiledb {
 namespace sm {
 
-class OpenArrayMemoryTracker;
 class StorageManager;
+class URI;
 
 namespace global_state {
 
@@ -87,15 +87,6 @@ class GlobalState {
    * Returns a copy of the set of registered StorageManager instances.
    */
   std::set<StorageManager*> storage_managers();
-
-  /**
-   * Find the open array memory tracker amongst all the storage managers.
-   * @param array_uri The array URI.
-   * @param caller The storage manager that iniciated the call.
-   * @return the memory tracker object for the array.
-   */
-  OpenArrayMemoryTracker* array_memory_tracker(
-      const URI& array_uri, StorageManager* caller);
 
   /**
    * Getter for cert file

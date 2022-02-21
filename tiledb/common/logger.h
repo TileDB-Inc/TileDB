@@ -74,7 +74,8 @@ class Logger {
   /** Constructors */
   Logger(
       const std::string& name,
-      const Logger::Format format = Logger::Format::DEFAULT);
+      const Logger::Format format = Logger::Format::DEFAULT,
+      const bool root = false);
 
   Logger(tdb_shared_ptr<spdlog::logger> logger);
 
@@ -382,8 +383,9 @@ class Logger {
   /** The format of the logger  */
   static inline Logger::Format fmt_ = Logger::Format::DEFAULT;
 
-  /** A counter of logger class instances */
-  static inline std::atomic<uint64_t> instance_count = 0;
+  /** A boolean flag that tells us whether the logger is the statically declared
+   * global_logger */
+  bool root_ = false;
 
   /* ********************************* */
   /*          PRIVATE METHODS          */
@@ -433,7 +435,7 @@ inline Status logger_format_from_string(
   else if (format_type_str == "JSON")
     *format_type = Logger::Format::JSON;
   else {
-    return Status::Error("Unsupported logging format: " + format_type_str);
+    return Status_Error("Unsupported logging format: " + format_type_str);
   }
   return Status::Ok();
 }

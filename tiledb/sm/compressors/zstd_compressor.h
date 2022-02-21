@@ -33,7 +33,12 @@
 #ifndef TILEDB_ZSTD_H
 #define TILEDB_ZSTD_H
 
+#include "tiledb/common/common.h"
 #include "tiledb/common/status.h"
+
+#include "tiledb/sm/misc/resource_pool.h"
+
+#include <zstd.h>
 
 using namespace tiledb::common;
 
@@ -47,34 +52,91 @@ class PreallocatedBuffer;
 /** Handles compression/decompression with the zstd library. */
 class ZStd {
  public:
+  /** wrapper around the decompress ZSTD context so that it can be used in a
+   * resource pool */
+  class ZSTD_Decompress_Context {
+   public:
+    ZSTD_Decompress_Context()
+        : ctx_(ZSTD_createDCtx(), ZSTD_freeDCtx) {
+    }
+
+    ZSTD_DCtx* ptr() {
+      return ctx_.get();
+    }
+
+   private:
+    std::unique_ptr<ZSTD_DCtx, decltype(&ZSTD_freeDCtx)> ctx_;
+  };
+
+  /** wrapper around the compress ZSTD context so that it can be used in a
+   * resource pool */
+  class ZSTD_Compress_Context {
+   public:
+    ZSTD_Compress_Context()
+        : ctx_(ZSTD_createCCtx(), ZSTD_freeCCtx) {
+    }
+
+    ZSTD_CCtx* ptr() {
+      return ctx_.get();
+    }
+
+   private:
+    std::unique_ptr<ZSTD_CCtx, decltype(&ZSTD_freeCCtx)> ctx_;
+  };
+
   /**
    * Compression function.
    *
    * @param level Compression level.
+   * @param compress_ctx_pool Resource pool to manage compression context reuse
    * @param input_buffer Input buffer to read from.
    * @param output_buffer Output buffer to write to the compressed data.
    * @return Status
    */
   static Status compress(
-      int level, ConstBuffer* input_buffer, Buffer* output_buffer);
+      int level,
+      shared_ptr<BlockingResourcePool<ZSTD_Compress_Context>> compress_ctx_pool,
+      ConstBuffer* input_buffer,
+      Buffer* output_buffer);
+
+  /**
+   * Overloaded compression function with default compression level.
+   *
+   * @param input_buffer Input buffer to read from.
+   * @param output_buffer Output buffer to write to the compressed data.
+   * @return Status
+   */
+  static Status compress(ConstBuffer* input_buffer, Buffer* output_buffer);
 
   /**
    * Decompression function.
    *
+   * @param decompress_ctx_pool Resource pool to manage decompression context
+   * reuse
    * @param input_buffer Input buffer to read from.
    * @param output_buffer Output buffer to write the decompressed data to.
    * @return Status
    */
   static Status decompress(
-      ConstBuffer* input_buffer, PreallocatedBuffer* output_buffer);
+      shared_ptr<BlockingResourcePool<ZSTD_Decompress_Context>>
+          decompress_ctx_pool,
+      ConstBuffer* input_buffer,
+      PreallocatedBuffer* output_buffer);
 
   /** Returns the default compression level. */
   static int default_level() {
-    return 5;
+    return default_level_;
   }
 
   /** Returns the compression overhead for the given input. */
   static uint64_t overhead(uint64_t nbytes);
+
+ private:
+  /** The compression level lower limit for legal values. */
+  static const int level_limit_ = -7;
+
+  /** The default filter compression level. */
+  static constexpr int default_level_ = 3;
 };
 
 }  // namespace sm

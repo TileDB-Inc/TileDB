@@ -145,27 +145,13 @@ class ReaderBase : public StrategyBase {
    */
   template <class T>
   static void compute_result_space_tiles(
-      const Domain* domain,
+      const std::vector<tdb_shared_ptr<FragmentMetadata>>& fragment_metadata,
       const std::vector<std::vector<uint8_t>>& tile_coords,
       const TileDomain<T>& array_tile_domain,
       const std::vector<TileDomain<T>>& frag_tile_domains,
-      std::map<const T*, ResultSpaceTile<T>>* result_space_tiles);
+      std::map<const T*, ResultSpaceTile<T>>& result_space_tiles);
 
  protected:
-  /* ********************************* */
-  /*        PROTECTED DATATYPES        */
-  /* ********************************* */
-
-  /** Bitflags for individual dimension/attributes in `process_tiles()`. */
-  typedef uint8_t ProcessTileFlags;
-
-  /** Bitflag values applicable to `ProcessTileFlags`. */
-  enum ProcessTileFlag { READ = 1, COPY = 2 };
-
-  typedef std::
-      unordered_map<ResultTile*, std::vector<std::pair<uint64_t, uint64_t>>>
-          ResultCellSlabsIndex;
-
   /* ********************************* */
   /*       PROTECTED ATTRIBUTES        */
   /* ********************************* */
@@ -175,25 +161,6 @@ class ReaderBase : public StrategyBase {
 
   /** The fragment metadata that the reader will focus on. */
   std::vector<tdb_shared_ptr<FragmentMetadata>> fragment_metadata_;
-
-  /** Protects result tiles. */
-  mutable std::mutex result_tiles_mutex_;
-
-  /** Try to fix overflows on var sized copies. */
-  bool fix_var_sized_overflows_;
-
-  /** Clear the coordinates tiles after copies. */
-  bool clear_coords_tiles_on_copy_;
-
-  /** Was there an overflow during copying tiles. */
-  bool copy_overflowed_;
-
-  /**
-   * Used to specify where in the result cell slabs to end the copy
-   * operations. First is the size of the result cell slabs, second is
-   * the length of the last result cell slab.
-   */
-  std::pair<uint64_t, uint64_t> copy_end_;
 
   /* ********************************* */
   /*         PROTECTED METHODS         */
@@ -208,7 +175,7 @@ class ReaderBase : public StrategyBase {
    */
   void clear_tiles(
       const std::string& name,
-      const std::vector<ResultTile*>* result_tiles) const;
+      const std::vector<ResultTile*>& result_tiles) const;
 
   /**
    * Resets the buffer sizes to the original buffer sizes. This is because
@@ -235,7 +202,7 @@ class ReaderBase : public StrategyBase {
    * @return Status
    */
   Status load_tile_offsets(
-      Subarray* subarray, const std::vector<std::string>* names);
+      Subarray& subarray, const std::vector<std::string>& names);
 
   /**
    * Loads tile var sizes for each attribute/dimension name into
@@ -246,7 +213,7 @@ class ReaderBase : public StrategyBase {
    * @return Status
    */
   Status load_tile_var_sizes(
-      Subarray* subarray, const std::vector<std::string>* names);
+      Subarray& subarray, const std::vector<std::string>& names);
 
   /**
    * Initializes a fixed-sized tile.
@@ -307,75 +274,167 @@ class ReaderBase : public StrategyBase {
       Tile* tile_validity) const;
 
   /**
-   * Concurrently executes `read_tiles` for each name in `names`. This
-   * must be the entry point for reading attribute tiles because it
+   * Concurrently executes across each name in `names` and each result tile
+   * in 'result_tiles'.
+   *
+   * This must be the entry point for reading attribute tiles because it
    * generates stats for reading attributes.
    *
    * @param names The attribute names.
    * @param result_tiles The retrieved tiles will be stored inside the
    *     `ResultTile` instances in this vector.
+   * @param disable_cache Disable the tile cache or not.
    * @return Status
    */
   Status read_attribute_tiles(
-      const std::vector<std::string>* names,
-      const std::vector<ResultTile*>* result_tiles) const;
+      const std::vector<std::string>& names,
+      const std::vector<ResultTile*>& result_tiles,
+      const bool disable_cache = false) const;
 
   /**
-   * Concurrently executes `read_tiles` for each name in `names`. This
-   * must be the entry point for reading coordinate tiles because it
+   * Concurrently executes across each name in `names` and each result tile
+   * in 'result_tiles'.
+   *
+   * This must be the entry point for reading coordinate tiles because it
    * generates stats for reading coordinates.
    *
    * @param names The coordinate/dimension names.
    * @param result_tiles The retrieved tiles will be stored inside the
    *     `ResultTile` instances in this vector.
+   * @param disable_cache Disable the tile cache or not.
    * @return Status
    */
   Status read_coordinate_tiles(
-      const std::vector<std::string>* names,
-      const std::vector<ResultTile*>* result_tiles) const;
+      const std::vector<std::string>& names,
+      const std::vector<ResultTile*>& result_tiles,
+      const bool disable_cache = false) const;
 
   /**
-   * Concurrently executes `read_tiles` for each name in `names`.
+   * Retrieves the tiles on a list of attribute or dimension and stores it
+   * in the appropriate result tile.
+   *
+   * Concurrently executes across each name in `names` and each result tile
+   * in 'result_tiles'.
    *
    * @param names The attribute/dimension names.
    * @param result_tiles The retrieved tiles will be stored inside the
    *     `ResultTile` instances in this vector.
+   * @param disable_cache Disable the tile cache or not.
    * @return Status
    */
   Status read_tiles(
-      const std::vector<std::string>* names,
-      const std::vector<ResultTile*>* result_tiles) const;
+      const std::vector<std::string>& names,
+      const std::vector<ResultTile*>& result_tiles,
+      const bool disable_cache = false) const;
 
   /**
-   * Retrieves the tiles on a particular attribute or dimension and stores it
-   * in the appropriate result tile.
+   * Filters the tiles on a particular attribute/dimension from all input
+   * fragments based on the tile info in `result_tiles`. Used only by new
+   * readers that parallelize on chunk ranges.
    *
-   * @param name The attribute/dimension name.
-   * @param result_tiles The retrieved tiles will be stored inside the
-   *     `ResultTile` instances in this vector.
+   * @param name Attribute/dimension whose tiles will be unfiltered.
+   * @param result_tiles Vector containing the tiles to be unfiltered.
    * @return Status
    */
-  Status read_tiles(
+  Status unfilter_tiles_chunk_range(
       const std::string& name,
-      const std::vector<ResultTile*>* result_tiles) const;
+      const std::vector<ResultTile*>& result_tiles) const;
 
   /**
-   * Retrieves the tiles on a particular attribute or dimension and stores it
-   * in the appropriate result tile.
+   * Runs the input fixed-sized tile for the input attribute or dimension
+   * through the filter pipeline. The tile buffer is modified to contain the
+   * output of the pipeline. Used only by new readers that parallelize on chunk
+   * ranges.
    *
-   * The reads are done asynchronously, and futures for each read operation are
-   * added to the output parameter.
-   *
-   * @param name The attribute/dimension name.
-   * @param result_tiles The retrieved tiles will be stored inside the
-   *     `ResultTile` instances in this vector.
-   * @param tasks Vector to hold futures for the read tasks.
+   * @param num_range_threads Total number of range threads.
+   * @param range_thread_idx Current range thread index.
+   * @param name Attribute/dimension the tile belong to.
+   * @param tile Tile to be unfiltered.
+   * @param tile_chunk_data Tile chunk info, buffers and offsets
    * @return Status
    */
-  Status read_tiles(
+  Status unfilter_tile_chunk_range(
+      uint64_t num_range_threads,
+      uint64_t thread_idx,
       const std::string& name,
-      const std::vector<ResultTile*>* result_tiles,
-      std::vector<ThreadPool::Task>* tasks) const;
+      Tile* tile,
+      const ChunkData& tile_chunk_data) const;
+
+  /**
+   * Runs the input var-sized tile for the input attribute or dimension through
+   * the filter pipeline. The tile buffer is modified to contain the output of
+   * the pipeline. Used only by new readers that parallelize on chunk ranges.
+   *
+   * @param num_range_threads Total number of range threads.
+   * @param range_thread_idx Current range thread index.
+   * @param name Attribute/dimension the tile belong to.
+   * @param tile Offsets tile to be unfiltered.
+   * @param tile_chunk_data Offsets tile chunk info, buffers and offsets
+   * @param tile_var Value tile to be unfiltered.
+   * @param tile_var_chunk_data Value tile chunk info, buffers and offsets
+   * @return Status
+   */
+  Status unfilter_tile_chunk_range(
+      uint64_t num_range_threads,
+      uint64_t thread_idx,
+      const std::string& name,
+      Tile* tile,
+      const ChunkData& tile_chunk_data,
+      Tile* tile_var,
+      const ChunkData& tile_var_chunk_data) const;
+
+  /**
+   * Runs the input fixed-sized tile for the input nullable attribute
+   * through the filter pipeline. The tile buffer is modified to contain the
+   * output of the pipeline. Used only by new readers that parallelize on chunk
+   * ranges.
+   *
+   * @param num_range_threads Total number of range threads.
+   * @param range_thread_idx Current range thread index.
+   * @param name Attribute/dimension the tile belong to.
+   * @param tile Tile to be unfiltered.
+   * @param tile_chunk_data Tile chunk info, buffers and offsets
+   * @param tile_validity Validity tile to be unfiltered.
+   * @param tile_validity_chunk_data Validity tile chunk info, buffers and
+   * offsets
+   * @return Status
+   */
+  Status unfilter_tile_chunk_range_nullable(
+      uint64_t num_range_threads,
+      uint64_t thread_idx,
+      const std::string& name,
+      Tile* tile,
+      const ChunkData& tile_chunk_data,
+      Tile* tile_validity,
+      const ChunkData& tile_validity_chunk_data) const;
+
+  /**
+   * Runs the input var-sized tile for the input nullable attribute through
+   * the filter pipeline. The tile buffer is modified to contain the output of
+   * the pipeline. Used only by new readers that parallelize on chunk ranges.
+   *
+   * @param num_range_threads Total number of range threads.
+   * @param range_thread_idx Current range thread index.
+   * @param name Attribute/dimension the tile belong to.
+   * @param tile Offsets tile to be unfiltered.
+   * @param tile_chunk_data Offsets tile chunk info, buffers and offsets
+   * @param tile_var Value tile to be unfiltered.
+   * @param tile_var_chunk_data Value tile chunk info, buffers and offsets
+   * @param tile_validity Validity tile to be unfiltered.
+   * @param tile_validity_chunk_data Validity tile chunk info, buffers and
+   * offsets
+   * @return Status
+   */
+  Status unfilter_tile_chunk_range_nullable(
+      uint64_t num_range_threads,
+      uint64_t thread_idx,
+      const std::string& name,
+      Tile* tile,
+      const ChunkData& tile_chunk_data,
+      Tile* tile_var,
+      const ChunkData& tile_var_chunk_data,
+      Tile* tile_validity,
+      const ChunkData& tile_validity_chunk_data) const;
 
   /**
    * Filters the tiles on a particular attribute/dimension from all input
@@ -383,11 +442,13 @@ class ReaderBase : public StrategyBase {
    *
    * @param name Attribute/dimension whose tiles will be unfiltered.
    * @param result_tiles Vector containing the tiles to be unfiltered.
+   * @param disable_cache Disable the filtered buffers cache or not.
    * @return Status
    */
   Status unfilter_tiles(
       const std::string& name,
-      const std::vector<ResultTile*>* result_tiles) const;
+      const std::vector<ResultTile*>& result_tiles,
+      const bool disable_cache = false) const;
 
   /**
    * Runs the input fixed-sized tile for the input attribute or dimension
@@ -444,230 +505,9 @@ class ReaderBase : public StrategyBase {
       Tile* tile_validity) const;
 
   /**
-   * Copies the result coordinates to the user buffers.
-   * It also appropriately cleans up the used result tiles.
-   */
-  Status copy_coordinates(
-      const std::vector<ResultTile*>* result_tiles,
-      std::vector<ResultCellSlab>* result_cell_slabs);
-
-  /**
-   * Copies the result attribute values to the user buffers.
-   * It also appropriately cleans up the used result tiles.
-   */
-  Status copy_attribute_values(
-      uint64_t stride,
-      std::vector<ResultTile*>* result_tiles,
-      std::vector<ResultCellSlab>* result_cell_slabs,
-      Subarray& subarray,
-      uint64_t memory_budget = UINT64_MAX,
-      bool include_dim = false);
-
-  /**
-   * Copies the cells for the input **fixed-sized** attribute/dimension and
-   * result cell slabs into the corresponding result buffers.
-   *
-   * @param name The targeted attribute/dimension.
-   * @param stride If it is `UINT64_MAX`, then the cells in the result
-   *     cell slabs are all contiguous. Otherwise, each cell in the
-   *     result cell slabs are `stride` cells apart from each other.
-   * @param result_cell_slabs The result cell slabs to copy cells for.
-   * @param fixed_cs_partitions The cell slab partitions.
-   * @return Status
-   */
-  Status copy_fixed_cells(
-      const std::string& name,
-      uint64_t stride,
-      const std::vector<ResultCellSlab>* result_cell_slabs,
-      std::vector<size_t>* fixed_cs_partitions);
-
-  /**
-   * Compute cs partitions for fixed-sized cell copying.
-   *
-   * @param result_cell_slabs The result cell slabs to copy cells for.
-   * @param fixed_cs_partitions The output partitions.
-   */
-  void compute_fixed_cs_partitions(
-      const std::vector<ResultCellSlab>* result_cell_slabs,
-      std::vector<size_t>* fixed_cs_partitions);
-
-  /**
    * Returns the configured bytesize for var-sized attribute offsets
    */
   uint64_t offsets_bytesize() const;
-
-  /**
-   * Copies the cells for the input **fixed-sized** attribute/dimension and
-   * result cell slabs into the corresponding result buffers for the
-   * partition in `ctx_cache` at index `partition_idx`.
-   *
-   * @param name The partition index.
-   * @param name The targeted attribute/dimension.
-   * @param stride If it is `UINT64_MAX`, then the cells in the result
-   *     cell slabs are all contiguous. Otherwise, each cell in the
-   *     result cell slabs are `stride` cells apart from each other.
-   * @param result_cell_slabs The result cell slabs to copy cells for.
-   * @param cs_offsets The cell slab offsets.
-   * @param cs_partitions The cell slab partitions to operate on.
-   * @return Status
-   */
-  Status copy_partitioned_fixed_cells(
-      size_t partition_idx,
-      const std::string* name,
-      uint64_t stride,
-      const std::vector<ResultCellSlab>* result_cell_slabs,
-      const std::vector<uint64_t>* cs_offsets,
-      const std::vector<size_t>* cs_partitions);
-
-  /**
-   * Copies the cells for the input **var-sized** attribute/dimension and result
-   * cell slabs into the corresponding result buffers.
-   *
-   * @param name The targeted attribute/dimension.
-   * @param stride If it is `UINT64_MAX`, then the cells in the result
-   *     cell slabs are all contiguous. Otherwise, each cell in the
-   *     result cell slabs are `stride` cells apart from each other.
-   * @param result_cell_slabs The result cell slabs to copy cells for.
-   * @param var_cs_partitions The cell slab partitions.
-   * @param total_cs_length The total cell slab length.
-   * @return Status
-   */
-  Status copy_var_cells(
-      const std::string& name,
-      uint64_t stride,
-      std::vector<ResultCellSlab>* result_cell_slabs,
-      std::vector<std::pair<size_t, size_t>>* var_cs_partitions,
-      size_t total_var_cs_length);
-
-  /**
-   * Compute cs partitions for var-sized cell copying.
-   *
-   * @param result_cell_slabs The result cell slabs to copy cells for.
-   * @param var_cs_partitions The output partitions.
-   * @param total_var_cs_length The total cell slab length.
-   */
-  void compute_var_cs_partitions(
-      const std::vector<ResultCellSlab>* result_cell_slabs,
-      std::vector<std::pair<size_t, size_t>>* var_cs_partitions,
-      size_t* total_var_cs_length);
-
-  /**
-   * Computes offsets into destination buffers for the given
-   * attribute/dimensions's offset and variable-length data, for the given list
-   * of result cell slabs.
-   *
-   * @param name The variable-length attribute/dimension.
-   * @param stride If it is `UINT64_MAX`, then the cells in the result
-   *     cell slabs are all contiguous. Otherwise, each cell in the
-   *     result cell slabs are `stride` cells apart from each other.
-   * @param result_cell_slabs The result cell slabs to compute destinations for.
-   * @param offset_offsets_per_cs Output to hold one vector per result cell
-   *    slab, and one element per cell in the slab. The elements are the
-   *    destination offsets for the attribute's offsets.
-   * @param var_offsets_per_cs Output to hold one vector per result cell slab,
-   *    and one element per cell in the slab. The elements are the destination
-   *    offsets for the attribute's variable-length data.
-   * @param total_offset_size Output set to the total size in bytes of the
-   *    offsets in the given list of result cell slabs.
-   * @param total_var_size Output set to the total size in bytes of the
-   *    attribute's variable-length in the given list of result cell slabs.
-   * @param total_validity_size Output set to the total size in bytes of the
-   *    attribute's validity vector in the given list of result cell slabs.
-   * @return Status
-   */
-  Status compute_var_cell_destinations(
-      const std::string& name,
-      uint64_t stride,
-      std::vector<ResultCellSlab>* result_cell_slabs,
-      std::vector<uint64_t>* offset_offsets_per_cs,
-      std::vector<uint64_t>* var_offsets_per_cs,
-      uint64_t* total_offset_size,
-      uint64_t* total_var_size,
-      uint64_t* total_validity_size);
-
-  /**
-   * Copies the cells for the input **var-sized** attribute/dimension and result
-   * cell slabs into the corresponding result buffers for the
-   * partition in `cs_partitions` at index `partition_idx`.
-   *
-   * @param name The partition index.
-   * @param name The targeted attribute/dimension.
-   * @param stride If it is `UINT64_MAX`, then the cells in the result
-   *     cell slabs are all contiguous. Otherwise, each cell in the
-   *     result cell slabs are `stride` cells apart from each other.
-   * @param result_cell_slabs The result cell slabs to copy cells for.
-   * @param offset_offsets_per_cs Maps each cell slab to its offset
-   *     for its attribute offsets.
-   * @param var_offsets_per_cs Maps each cell slab to its offset
-   *     for its variable-length data.
-   * @param cs_partitions The cell slab partitions to operate on.
-   * @return Status
-   */
-  Status copy_partitioned_var_cells(
-      size_t partition_idx,
-      const std::string* name,
-      uint64_t stride,
-      const std::vector<ResultCellSlab>* result_cell_slabs,
-      const std::vector<uint64_t>* offset_offsets_per_cs,
-      const std::vector<uint64_t>* var_offsets_per_cs,
-      const std::vector<std::pair<size_t, size_t>>* cs_partitions);
-
-  /**
-   * For each dimension/attribute in `names`, performs the actions
-   * defined in the `ProcessTileFlags`.
-   *
-   * @param names The dimension/attribute names to process.
-   * @param result_tiles The retrieved tiles will be stored inside the
-   *   `ResultTile` instances in this vector.
-   * @param result_cell_slabs The cell slabs to process.
-   * @param subarray Specifies the current subarray.
-   * @param stride The stride between cells, UINT64_MAX for contiguous.
-   * @param memory_budget The memory budget, UINT64_MAX for unlimited.
-   * @param memory_used_for_tiles The memory used for tiles that will not be
-   * unloaded.
-   */
-  Status process_tiles(
-      const std::unordered_map<std::string, ProcessTileFlags>* names,
-      std::vector<ResultTile*>* result_tiles,
-      std::vector<ResultCellSlab>* result_cell_slabs,
-      Subarray* subarray,
-      uint64_t stride,
-      uint64_t memory_budget,
-      uint64_t* memory_used_for_tiles);
-
-  /**
-   * Builds and returns an association from each tile in `result_cell_slabs`
-   * to the cell slabs it contains.
-   */
-  tdb_unique_ptr<ResultCellSlabsIndex> compute_rcs_index(
-      const std::vector<ResultCellSlab>* result_cell_slabs) const;
-
-  /**
-   * Applies the query condition, `condition_`, to filter cell indexes
-   * within `result_cell_slabs`. This mutates `result_cell_slabs`.
-   *
-   * @param result_cell_slabs The unfiltered cell slabs.
-   * @param result_tiles The result tiles that must contain values for
-   *   attributes within `condition_`.
-   * @param subarray Specifies the current subarray.
-   * @param stride The stride between cells, defaulting to UINT64_MAX
-   *   for contiguous cells.
-   * @param memory_budget_rcs The memory budget for tiles, defaulting
-   *   to UINT64_MAX for unlimited budget.
-   * @param memory_budget_tiles The memory budget for result cell slabs,
-   *   defaulting to UINT64_MAX for unlimited budget.
-   * @param memory_used_for_tiles The memory used for tiles that will
-   *   not be unloaded.
-   * @return Status
-   */
-  Status apply_query_condition(
-      std::vector<ResultCellSlab>* result_cell_slabs,
-      std::vector<ResultTile*>* result_tiles,
-      Subarray* subarray,
-      uint64_t stride = UINT64_MAX,
-      uint64_t memory_budget_rcs = UINT64_MAX,
-      uint64_t memory_budget_tiles = UINT64_MAX,
-      uint64_t* memory_used_for_tiles = nullptr);
 
   /**
    * Get the size of an attribute tile.
@@ -675,11 +515,10 @@ class ReaderBase : public StrategyBase {
    * @param name The attribute name.
    * @param f The fragment idx.
    * @param t The tile idx.
-   * @param tile_size The return tile size.
-   * @return Status
+   * @return Status, tile size.
    */
-  Status get_attribute_tile_size(
-      const std::string& name, unsigned f, uint64_t t, uint64_t* tile_size);
+  std::tuple<Status, std::optional<uint64_t>> get_attribute_tile_size(
+      const std::string& name, unsigned f, uint64_t t);
 
   /**
    * Computes the result space tiles based on the current partition.
@@ -691,9 +530,9 @@ class ReaderBase : public StrategyBase {
    */
   template <class T>
   void compute_result_space_tiles(
-      const Subarray* subarray,
-      const Subarray* partitioner_subarray,
-      std::map<const T*, ResultSpaceTile<T>>* result_space_tiles) const;
+      const Subarray& subarray,
+      const Subarray& partitioner_subarray,
+      std::map<const T*, ResultSpaceTile<T>>& result_space_tiles) const;
 
   /** Returns `true` if the coordinates are included in the attributes. */
   bool has_coords() const;
@@ -705,10 +544,12 @@ class ReaderBase : public StrategyBase {
    *
    * @tparam T The domain type.
    * @param subarray The input subarray.
-   * @return Status
+   * @param overflowed Returns true if the method overflowed.
+   * @return Status, overflowed
    */
   template <class T>
-  Status fill_dense_coords(const Subarray& subarray);
+  std::tuple<Status, std::optional<bool>> fill_dense_coords(
+      const Subarray& subarray);
 
   /**
    * Fills the coordinate buffers with coordinates. Applicable only to dense
@@ -726,14 +567,14 @@ class ReaderBase : public StrategyBase {
    * @param offsets The offsets that will be used eventually to update
    *     the buffer sizes, determining the useful results written in
    *     the buffers.
-   * @return Status
+   * @return Status, overflowed.
    */
   template <class T>
-  Status fill_dense_coords_global(
+  std::tuple<Status, std::optional<bool>> fill_dense_coords_global(
       const Subarray& subarray,
       const std::vector<unsigned>& dim_idx,
       const std::vector<QueryBuffer*>& buffers,
-      std::vector<uint64_t>* offsets);
+      std::vector<uint64_t>& offsets);
 
   /**
    * Fills the coordinate buffers with coordinates. Applicable only to dense
@@ -751,14 +592,14 @@ class ReaderBase : public StrategyBase {
    * @param offsets The offsets that will be used eventually to update
    *     the buffer sizes, determining the useful results written in
    *     the buffers.
-   * @return Status
+   * @return Status, overflowed.
    */
   template <class T>
-  Status fill_dense_coords_row_col(
+  std::tuple<Status, std::optional<bool>> fill_dense_coords_row_col(
       const Subarray& subarray,
       const std::vector<unsigned>& dim_idx,
       const std::vector<QueryBuffer*>& buffers,
-      std::vector<uint64_t>* offsets);
+      std::vector<uint64_t>& offsets);
 
   /**
    * Fills coordinates in the input buffers for a particular cell slab,
@@ -786,7 +627,7 @@ class ReaderBase : public StrategyBase {
       uint64_t num,
       const std::vector<unsigned>& dim_idx,
       const std::vector<QueryBuffer*>& buffers,
-      std::vector<uint64_t>* offsets) const;
+      std::vector<uint64_t>& offsets) const;
 
   /**
    * Fills coordinates in the input buffers for a particular cell slab,
@@ -814,7 +655,124 @@ class ReaderBase : public StrategyBase {
       uint64_t num,
       const std::vector<unsigned>& dim_idx,
       const std::vector<QueryBuffer*>& buffers,
-      std::vector<uint64_t>* offsets) const;
+      std::vector<uint64_t>& offsets) const;
+
+  /**
+   * If the tile stores coordinates, zip them. Note that format version < 2 only
+   * split the coordinates when compression was used. See
+   * https://github.com/TileDB-Inc/TileDB/issues/1053. For format version > 4,
+   * a tile never stores coordinates
+   *
+   * @param name Attribute/dimension the tile belongs to.
+   * @param tile Tile to zip the coordinates if needed.
+   * @return Status
+   */
+  Status zip_tile_coordinates(const std::string& name, Tile* tile) const;
+
+  /**
+   * Computes the minimum and maximum indexes of tile chunks to process based on
+   * the available threads.
+   *
+   * @param num_chunks Total number of chunks in a tile
+   * @param num_range_threads Total number of range threads.
+   * @param range_thread_idx Current range thread index.
+   * @return {min, max}
+   */
+  std::tuple<uint64_t, uint64_t> compute_chunk_min_max(
+      const uint64_t num_chunks,
+      const uint64_t num_range_threads,
+      const uint64_t thread_idx) const;
+
+  /**
+   * Reads the chunk data of all tile buffers and stores them in a data
+   * structure together with the offsets between them
+   *
+   * @param name Attribute/dimension the tile belong to.
+   * @param tile Offsets tile to be unfiltered.
+   * @param var_size True if the attribute/dimension is var-sized, false
+   * otherwise
+   * @param nullable True if the attribute/dimension is nullable, false
+   * otherwise
+   * @param tile_chunk_data Tile/offsets tile chunk info, buffers and
+   * offsets
+   * @param tile_var_chunk_data Value tile chunk info, buffers and offsets
+   * @param tile_validity_chunk_data Validity tile chunk info, buffers and
+   * offsets
+   * @return {Status, size of the unfiltered tile buffer, size of the unfiltered
+   * tile_var buffer, size of the unfiltered tile validity buffer}
+   */
+  std::tuple<
+      Status,
+      std::optional<uint64_t>,
+      std::optional<uint64_t>,
+      std::optional<uint64_t>>
+  load_tile_chunk_data(
+      const std::string& name,
+      ResultTile* const tile,
+      const bool var_size,
+      const bool nullable,
+      ChunkData* const tile_chunk_data,
+      ChunkData* const tile_chunk_var_data,
+      ChunkData* const tile_chunk_validity_data) const;
+
+  /**
+   * Reads the chunk data of a tile buffer and populates a chunk data structure
+   *
+   * @param tile Offsets tile to be unfiltered.
+   * @param tile_chunk_data Tile chunk info, buffers and offsets
+   * @return Status
+   */
+  std::tuple<Status, std::optional<uint64_t>> load_chunk_data(
+      Tile* const tile, ChunkData* chunk_data) const;
+
+  /**
+   * Unfilter a specific range of chunks in tile
+   *
+   * @param name Attribute/dimension the tile belong to.
+   * @param tile Offsets tile to be unfiltered.
+   * @param var_size True if the attribute/dimension is var-sized, false
+   * otherwise
+   * @param nullable True if the attribute/dimension is nullable, false
+   * otherwise
+   * @param range_thread_idx Current range thread index.
+   * @param num_range_threads Total number of range threads.
+   * @param tile_chunk_data Tile chunk info, buffers and offsets
+   * @param tile_var_chunk_data Value tile chunk info, buffers and offsets
+   * @param tile_validity_chunk_data Validity tile chunk info, buffers and
+   * offsets
+   * @return Status
+   */
+  Status unfilter_tile_chunk_range(
+      const std::string& name,
+      ResultTile* const tile,
+      const bool var_size,
+      const bool nullable,
+      uint64_t range_thread_idx,
+      uint64_t num_range_threads,
+      const ChunkData& tile_chunk_data,
+      const ChunkData& tile_chunk_var_data,
+      const ChunkData& tile_chunk_validity_data) const;
+
+  /**
+   * Perform some necessary post-processing on a tile that was just unfiiltered
+   *
+   * @param name Attribute/dimension the tile belong to.
+   * @param tile Offsets tile that was just unfiltered.
+   * @param var_size True if the attribute/dimension is var-sized, false
+   * otherwise
+   * @param nullable True if the attribute/dimension is nullable, false
+   * otherwise
+   * @param unfiltered_tile_size Size of the unfiltered tile buffer
+   * @param unfiltered_tile_var_size Size of the unfiltered tile_var buffer
+   * @param unfiltered_tile_validity_size Size of the unfiltered tile
+   * validity buffer
+   * @return Status
+   */
+  Status post_process_unfiltered_tile(
+      const std::string& name,
+      ResultTile* const tile,
+      const bool var_size,
+      const bool nullable) const;
 };
 
 }  // namespace sm

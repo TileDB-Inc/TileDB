@@ -31,27 +31,26 @@ list(APPEND SOURCES
 )
 gather_sources(${SOURCES})
 
-list(APPEND DEPENDENT_SOURCES
-    ../heap_memory.cc
-    ../heap_profiler.cc
-    ../logger.cc
-    ../status.cc
-    ../governor/governor.cc
+#
+# Object library for other units to depend upon
+#
+add_library(thread_pool OBJECT ${SOURCES})
+target_link_libraries(thread_pool PUBLIC baseline $<TARGET_OBJECTS:baseline>)
+
+#
+# Test-compile of object library ensures link-completeness
+#
+add_executable(compile_thread_pool EXCLUDE_FROM_ALL)
+target_link_libraries(compile_thread_pool PRIVATE thread_pool)
+target_sources(compile_thread_pool PRIVATE
+    test/compile_thread_pool_main.cc $<TARGET_OBJECTS:thread_pool>
 )
 
 if (TILEDB_TESTS)
-    find_package(Catch_EP REQUIRED)
-    find_package(Spdlog_EP REQUIRED)
-
     add_executable(unit_thread_pool EXCLUDE_FROM_ALL)
+    target_link_libraries(unit_thread_pool PUBLIC thread_pool)
+    find_package(Catch_EP REQUIRED)
     target_link_libraries(unit_thread_pool PUBLIC Catch2::Catch2)
-    target_link_libraries(unit_thread_pool PUBLIC spdlog::spdlog)
-
-    # Sources for code under test
-    target_sources(unit_thread_pool PUBLIC ${SOURCES})
-
-    # Sources for code elsewhere required for tests
-    target_sources(unit_thread_pool PUBLIC ${DEPENDENT_SOURCES})
 
     # Sources for tests
     target_sources(unit_thread_pool PUBLIC
