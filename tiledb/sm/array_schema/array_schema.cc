@@ -150,13 +150,13 @@ const URI& ArraySchema::array_uri() const {
 
 const Attribute* ArraySchema::attribute(unsigned int id) const {
   if (id < attributes_.size())
-    return nonconst_attribute(attributes_[id]);
+    return attributes_[id].get();
   return nullptr;
 }
 
 const Attribute* ArraySchema::attribute(const std::string& name) const {
   auto it = attribute_map_.find(name);
-  return it == attribute_map_.end() ? nullptr : nonconst_attribute(it->second);
+  return it == attribute_map_.end() ? nullptr : it->second;
 }
 
 unsigned int ArraySchema::attribute_num() const {
@@ -519,10 +519,8 @@ Status ArraySchema::add_attribute(
   }
 
   // Create new attribute and potentially set a default name
-  auto new_attr = attr;
-  assert(new_attr);
-  attributes_.emplace_back(new_attr);
-  attribute_map_[new_attr->name()] = new_attr.get();
+  attributes_.emplace_back(attr);
+  attribute_map_[attr->name()] = attr.get();
 
   RETURN_NOT_OK(generate_uri());
   return Status::Ok();
@@ -604,10 +602,9 @@ Status ArraySchema::deserialize(ConstBuffer* buff) {
       return st_attr;
     }
 
-    Attribute* attr_ptr = tdb_new(Attribute, std::move(attr.value()));
     attributes_.emplace_back(
-        tdb::make_shared<Attribute>(HERE(), move(attr_ptr)));
-    attribute_map_[attr_ptr->name()] = attr_ptr;
+        tdb::make_shared<Attribute>(HERE(), move(attr.value())));
+    attribute_map_[attributes_.back().get()->name()] = attributes_.back().get();
   }
 
   // Create dimension map
