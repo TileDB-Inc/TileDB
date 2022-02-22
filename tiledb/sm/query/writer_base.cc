@@ -448,11 +448,22 @@ Status WriterBase::close_files(tdb_shared_ptr<FragmentMetadata> meta) const {
   file_uris.reserve(buffer_name.size() * 3);
 
   for (const auto& name : buffer_name) {
-    file_uris.emplace_back(meta->uri(name));
-    if (array_schema_->var_size(name))
-      file_uris.emplace_back(meta->var_uri(name));
-    if (array_schema_->is_nullable(name))
-      file_uris.emplace_back(meta->validity_uri(name));
+    auto&& [status, uri] = meta->uri(name);
+    RETURN_NOT_OK(status);
+
+    file_uris.emplace_back(*uri);
+    if (array_schema_->var_size(name)) {
+      auto&& [status, var_uri] = meta->var_uri(name);
+      RETURN_NOT_OK(status);
+
+      file_uris.emplace_back(*var_uri);
+    }
+    if (array_schema_->is_nullable(name)) {
+      auto&& [status, validity_uri] = meta->validity_uri(name);
+      RETURN_NOT_OK(status);
+
+      file_uris.emplace_back(*validity_uri);
+    }
   }
 
   auto status = parallel_for(
@@ -1056,9 +1067,25 @@ Status WriterBase::write_tiles(
   // For easy reference
   const bool var_size = array_schema_->var_size(name);
   const bool nullable = array_schema_->is_nullable(name);
-  const auto& uri = frag_meta->uri(name);
-  const auto& var_uri = var_size ? frag_meta->var_uri(name) : URI("");
-  const auto& validity_uri = nullable ? frag_meta->validity_uri(name) : URI("");
+  auto&& [status, uri] = frag_meta->uri(name);
+  RETURN_NOT_OK(status);
+
+  Status st;
+  optional<URI> var_uri;
+  if (!var_size)
+    var_uri = URI("");
+  else {
+    tie(st, var_uri) = frag_meta->var_uri(name);
+    RETURN_NOT_OK(st);
+  }
+
+  optional<URI> validity_uri;
+  if (!nullable)
+    validity_uri = URI("");
+  else {
+    tie(st, validity_uri) = frag_meta->validity_uri(name);
+    RETURN_NOT_OK(st);
+  }
 
   // Compute and set var buffer sizes for the min/max metadata
   const auto has_min_max_md = has_min_max_metadata(name, var_size);
@@ -1069,7 +1096,7 @@ Status WriterBase::write_tiles(
   for (size_t i = 0, tile_id = start_tile_id; i < tile_num; ++i, ++tile_id) {
     WriterTile* tile = &(*tiles)[i];
     RETURN_NOT_OK(storage_manager_->write(
-        uri, tile->filtered_buffer().data(), tile->filtered_buffer().size()));
+        *uri, tile->filtered_buffer().data(), tile->filtered_buffer().size()));
     frag_meta->set_tile_offset(name, tile_id, tile->filtered_buffer().size());
 
     auto&& [min, min_size, max, max_size, sum, null_count] = tile->metadata();
@@ -1078,7 +1105,7 @@ Status WriterBase::write_tiles(
 
       tile = &(*tiles)[i];
       RETURN_NOT_OK(storage_manager_->write(
-          var_uri,
+          *var_uri,
           tile->filtered_buffer().data(),
           tile->filtered_buffer().size()));
       frag_meta->set_tile_var_offset(
@@ -1104,7 +1131,7 @@ Status WriterBase::write_tiles(
 
       tile = &(*tiles)[i];
       RETURN_NOT_OK(storage_manager_->write(
-          validity_uri,
+          *validity_uri,
           tile->filtered_buffer().data(),
           tile->filtered_buffer().size()));
       frag_meta->set_tile_validity_offset(
@@ -1115,12 +1142,20 @@ Status WriterBase::write_tiles(
 
   // Close files, except in the case of global order
   if (close_files && layout_ != Layout::GLOBAL_ORDER) {
-    RETURN_NOT_OK(storage_manager_->close_file(frag_meta->uri(name)));
-    if (var_size)
-      RETURN_NOT_OK(storage_manager_->close_file(frag_meta->var_uri(name)));
-    if (nullable)
-      RETURN_NOT_OK(
-          storage_manager_->close_file(frag_meta->validity_uri(name)));
+    auto&& [st1, uri] = frag_meta->uri(name);
+    RETURN_NOT_OK(st1);
+
+    RETURN_NOT_OK(storage_manager_->close_file(*uri));
+    if (var_size) {
+      auto&& [st2, var_uri] = frag_meta->var_uri(name);
+      RETURN_NOT_OK(st2);
+      RETURN_NOT_OK(storage_manager_->close_file(*var_uri));
+    }
+    if (nullable) {
+      auto&& [st2, validity_uri] = frag_meta->validity_uri(name);
+      RETURN_NOT_OK(st2);
+      RETURN_NOT_OK(storage_manager_->close_file(*validity_uri));
+    }
   }
 
   return Status::Ok();
