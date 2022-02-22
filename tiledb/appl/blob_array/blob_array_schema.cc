@@ -71,7 +71,7 @@ BlobArraySchema::BlobArraySchema()
   FilterPipeline attribute_filters;
   attribute_filters.add_filter(CompressionFilter(FilterType::FILTER_ZSTD, -1));
   tdb_shared_ptr<Attribute> attribute = create_attribute(attribute_filters);
-  add_attribute(attribute.get());
+  add_attribute(attribute);
 
   // Create dimension map
   dim_map_.clear();
@@ -95,7 +95,7 @@ BlobArraySchema::BlobArraySchema()
 }
 
 BlobArraySchema::BlobArraySchema(const BlobArraySchema* blob_array_schema)
-    : ArraySchema(blob_array_schema) {
+    : ArraySchema(*blob_array_schema) {
 }
 
 BlobArraySchema::~BlobArraySchema() {
@@ -124,7 +124,7 @@ void BlobArraySchema::set_schema_based_on_file_details(
   if (is_attr(constants::blob_array_attribute_name))
     drop_attribute(constants::blob_array_attribute_name);
 
-  add_attribute(attribute.get());
+  add_attribute(attribute);
 }
 
 /* ****************************** */

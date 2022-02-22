@@ -458,7 +458,8 @@ inline Status Status_TaskError(const std::string& msg) {
 }
 /** Return a BlobArrayError error class Status with a given message **/
 inline Status Status_BlobArrayError(const std::string& msg) {
-  return Status(StatusCode::BlobArrayError, msg);
+  //return Status(StatusCode::BlobArrayError, msg);
+  return {"[TileDB::BlobArray] Error", msg};
 }
 
 }  // namespace common

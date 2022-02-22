@@ -5,7 +5,7 @@
  *
  * The MIT License
  *
- * @copyright Copyright (c) 2021 TileDB, Inc.
+ * @copyright Copyright (c) 2022 TileDB, Inc.
  *
  * Permission is hereby granted, free of charge, to any person obtaining a copy
  * of this software and associated documentation files (the "Software"), to deal
@@ -40,5 +40,56 @@
 #include "tiledb/common/common.h"
 
 // using namespace tiledb::common;
+
+namespace tiledb {
+namespace appl {
+
+class WhiteboxBlobArray : public BlobArray {
+  typedef BlobArray Base;
+
+ public:
+  WhiteboxBlobArray(const BlobArray& src)
+      : BlobArray(src) {
+  }
+
+  Status get_file_ext(
+      // const char* key,
+      Datatype* value_type,
+      uint32_t* value_size,
+      const void** value) /* const */ {
+    return this->Base::get_metadata(
+        constants::blob_array_metadata_ext_key.c_str(),
+        // key,     // constants::blob_array_metadata_mime_type_key.c_str(),
+        value_type,  //&datatype, //Datatype::STRING_ASCII,
+        value_size,  //&mime_size,
+        value);      //&mime);
+  }
+  Status get_mime_type(
+      // const char* key,
+      Datatype* value_type,
+      uint32_t* value_size,
+      const void** value) /* const */ {
+    return this->Base::get_metadata(
+        constants::blob_array_metadata_mime_type_key.c_str(),
+        // key,     // constants::blob_array_metadata_mime_type_key.c_str(),
+        value_type,  //&datatype, //Datatype::STRING_ASCII,
+        value_size,  //&mime_size,
+        value);      //&mime);
+  }
+  Status get_mime_encoding(
+      Datatype* value_type,
+      uint32_t* value_size,
+      const void** value) /* const */ {
+    return this->Base::get_metadata(
+        constants::blob_array_metadata_mime_encoding_key.c_str(),
+        // key,     // constants::blob_array_metadata_mime_type_key.c_str(),
+        value_type,  //&datatype, //Datatype::STRING_ASCII,
+        value_size,  //&mime_size,
+        value);      //&mime);
+  }
+};
+
+}  // namespace appl
+}  // namespace tiledb
 
 #endif  //

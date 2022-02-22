@@ -87,15 +87,18 @@ TILEDB_EXPORT int32_t tiledb_array_as_file_obtain(
   if (sanity_check(ctx) == TILEDB_ERR) {
     return TILEDB_ERR;
   }
+
+  #if 0
   tiledb_array_schema_t* blob_array_schema = nullptr;
   if (tiledb_array_schema_create_default_blob_array(ctx, &blob_array_schema) ==
       TILEDB_ERR) {
     return TILEDB_ERR;
   }
+  #endif
 
   if (tiledb_array_alloc(ctx, array_uri, array) == TILEDB_ERR) {
     // expect tiledb_array_alloc() to have logged any necessary error.
-    tiledb_array_schema_free(&blob_array_schema);
+    // tiledb_array_schema_free(&blob_array_schema);
     return TILEDB_ERR;
   }
   // Check array URI
@@ -123,7 +126,7 @@ TILEDB_EXPORT int32_t tiledb_array_as_file_obtain(
     save_error(ctx, st);
     tiledb_array_free(
         array);  // already returning an error, ignore any error here.
-    tiledb_array_schema_free(&blob_array_schema);
+    // tiledb_array_schema_free(&blob_array_schema);
     *array = nullptr;
     return TILEDB_OOM;
   }
@@ -179,7 +182,7 @@ TILEDB_EXPORT int32_t tiledb_array_as_file_obtain(
     if (SAVE_ERROR_CATCH(ctx, blob_array->create(cfg))) {
 #endif
     tiledb_array_free(array);
-    tiledb_array_schema_free(&blob_array_schema);
+    // tiledb_array_schema_free(&blob_array_schema);
     *array = nullptr;
     return TILEDB_ERR;
   }
@@ -188,7 +191,7 @@ else {
   if (tiledb_array_close(ctx, *array) == TILEDB_ERR) {
     tiledb_array_free(array);
     *array = nullptr;
-    tiledb_array_schema_free(&blob_array_schema);
+    // tiledb_array_schema_free(&blob_array_schema);
     return TILEDB_ERR;
   }
 }
@@ -319,7 +322,8 @@ TILEDB_EXPORT int32_t tiledb_array_schema_create_default_blob_array(
 
   // Create a new ArraySchema object
   (*array_schema)->array_schema_ =
-      new (std::nothrow) tiledb::appl::BlobArraySchema();
+      tiledb::common::make_shared<tiledb::appl::BlobArraySchema>(
+          HERE(), tiledb::appl::BlobArraySchema());
   if ((*array_schema)->array_schema_ == nullptr) {
     delete *array_schema;
     *array_schema = nullptr;

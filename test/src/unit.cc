@@ -15,6 +15,7 @@ int store_g_vfs(std::string&& vfs, std::vector<std::string> vfs_fs);
 }  // namespace test
 }  // namespace tiledb
 
+
 int main(const int argc, char** const argv) {
   Catch::Session session;
 
