@@ -980,11 +980,9 @@ tuple<Status, optional<std::string>> FragmentMetadata::encode_name(
 
   assert(version_ > 8);
   const auto iter = idx_map_.find(name);
-  if (iter == idx_map_.end()) {
-    auto err = "Name " + name + " not in idx_map_";
-    LOG_ERROR(err);
-    return {Status_FragmentMetadataError(err), std::nullopt};
-  }
+  if (iter == idx_map_.end())
+    return {Status_FragmentMetadataError("Name " + name + " not in idx_map_"),
+            std::nullopt};
 
   const unsigned idx = iter->second;
 
@@ -1010,7 +1008,6 @@ tuple<Status, optional<std::string>> FragmentMetadata::encode_name(
   }
 
   auto err = "Unable to locate dimension/attribute " + name;
-  LOG_ERROR(err);
   return {Status_FragmentMetadataError(err), std::nullopt};
 }
 
