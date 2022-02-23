@@ -160,6 +160,7 @@ set(TILEDB_UNIT_TEST_SOURCES
   src/unit-filter-buffer.cc 
   src/unit-filter-pipeline.cc
   src/unit-gcs.cc
+  src/unit-gs.cc
   src/unit-hdfs-filesystem.cc
   src/unit-hilbert.cc
   src/unit-lru_cache.cc

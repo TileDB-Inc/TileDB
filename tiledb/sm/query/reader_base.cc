@@ -412,7 +412,6 @@ Status ReaderBase::read_tiles(
     const std::vector<ResultTile*>& result_tiles,
     const bool disable_cache) const {
   auto timer_se = stats_->start_timer("read_tiles");
-  auto enc_type = array_->get_encryption_key().encryption_type();
 
   // Shortcut for empty tile vec
   if (result_tiles.empty())
@@ -486,7 +485,9 @@ Status ReaderBase::read_tiles(
       }
 
       // Get information about the tile in its fragment
-      auto tile_attr_uri = fragment->uri(name);
+      auto&& [status, tile_attr_uri] = fragment->uri(name);
+      RETURN_NOT_OK(status);
+
       auto tile_idx = tile->tile_idx();
       uint64_t tile_attr_offset;
       RETURN_NOT_OK(fragment->file_offset(name, tile_idx, &tile_attr_offset));
@@ -499,7 +500,7 @@ Status ReaderBase::read_tiles(
       bool cache_hit = false;
       if (!disable_cache) {
         RETURN_NOT_OK(storage_manager_->read_from_cache(
-            tile_attr_uri,
+            *tile_attr_uri,
             tile_attr_offset,
             t->filtered_buffer(),
             *tile_persisted_size,
@@ -508,28 +509,19 @@ Status ReaderBase::read_tiles(
 
       if (!cache_hit) {
         // Add the region of the fragment to be read.
-        all_regions[tile_attr_uri].emplace_back(
+        all_regions[*tile_attr_uri].emplace_back(
             tile_attr_offset, t, *tile_persisted_size);
 
-        RETURN_NOT_OK(t->filtered_buffer()->realloc(*tile_persisted_size));
-        t->filtered_buffer()->set_size(*tile_persisted_size);
-        t->filtered_buffer()->reset_offset();
-
-        // Pre-allocate the unfiltered buffer unless we are using the no-op
-        // filter with no encryption as the no-op filter will reuse the
-        // filtered buffer.
-        const auto& filters =
-            var_size ? fragment->array_schema()->cell_var_offsets_filters() :
-                       fragment->array_schema()->filters(name);
-        if (filters.size() != 1 ||
-            filters.get_filter(0)->type() != FilterType::FILTER_NONE ||
-            enc_type != EncryptionType::NO_ENCRYPTION) {
-          RETURN_NOT_OK(t->buffer()->realloc(tile_size));
-        }
+        t->filtered_buffer().expand(*tile_persisted_size);
       }
 
+      // Pre-allocate the unfiltered buffer.
+      RETURN_NOT_OK(t->alloc_data(tile_size));
+
       if (var_size) {
-        auto tile_attr_var_uri = fragment->var_uri(name);
+        auto&& [status, tile_attr_var_uri] = fragment->var_uri(name);
+        RETURN_NOT_OK(status);
+
         uint64_t tile_attr_var_offset;
         RETURN_NOT_OK(
             fragment->file_var_offset(name, tile_idx, &tile_attr_var_offset));
@@ -541,7 +533,7 @@ Status ReaderBase::read_tiles(
 
         if (!disable_cache) {
           RETURN_NOT_OK(storage_manager_->read_from_cache(
-              tile_attr_var_uri,
+              *tile_attr_var_uri,
               tile_attr_var_offset,
               t_var->filtered_buffer(),
               *tile_var_persisted_size,
@@ -550,28 +542,20 @@ Status ReaderBase::read_tiles(
 
         if (!cache_hit) {
           // Add the region of the fragment to be read.
-          all_regions[tile_attr_var_uri].emplace_back(
+          all_regions[*tile_attr_var_uri].emplace_back(
               tile_attr_var_offset, t_var, *tile_var_persisted_size);
 
-          RETURN_NOT_OK(
-              t_var->filtered_buffer()->realloc(*tile_var_persisted_size));
-          t_var->filtered_buffer()->set_size(*tile_var_persisted_size);
-          t_var->filtered_buffer()->reset_offset();
-
-          // Pre-allocate the unfiltered buffer unless we are using the no-op
-          // filter with no encryption as the no-op filter will reuse the
-          // filtered buffer.
-          const auto& filters = fragment->array_schema()->filters(name);
-          if (filters.size() != 1 ||
-              filters.get_filter(0)->type() != FilterType::FILTER_NONE ||
-              enc_type != EncryptionType::NO_ENCRYPTION) {
-            RETURN_NOT_OK(t_var->buffer()->realloc(*tile_var_size));
-          }
+          t_var->filtered_buffer().expand(*tile_var_persisted_size);
         }
+
+        // Pre-allocate the unfiltered buffer.
+        RETURN_NOT_OK(t_var->alloc_data(*tile_var_size));
       }
 
       if (nullable) {
-        auto tile_validity_attr_uri = fragment->validity_uri(name);
+        auto&& [status, tile_validity_attr_uri] = fragment->validity_uri(name);
+        RETURN_NOT_OK(status);
+
         uint64_t tile_attr_validity_offset;
         RETURN_NOT_OK(fragment->file_validity_offset(
             name, tile_idx, &tile_attr_validity_offset));
@@ -583,7 +567,7 @@ Status ReaderBase::read_tiles(
 
         if (!disable_cache) {
           RETURN_NOT_OK(storage_manager_->read_from_cache(
-              tile_validity_attr_uri,
+              *tile_validity_attr_uri,
               tile_attr_validity_offset,
               t_validity->filtered_buffer(),
               *tile_validity_persisted_size,
@@ -592,28 +576,16 @@ Status ReaderBase::read_tiles(
 
         if (!cache_hit) {
           // Add the region of the fragment to be read.
-          all_regions[tile_validity_attr_uri].emplace_back(
+          all_regions[*tile_validity_attr_uri].emplace_back(
               tile_attr_validity_offset,
               t_validity,
               *tile_validity_persisted_size);
 
-          RETURN_NOT_OK(t_validity->filtered_buffer()->realloc(
-              *tile_validity_persisted_size));
-          t_validity->filtered_buffer()->set_size(
-              *tile_validity_persisted_size);
-          t_validity->filtered_buffer()->reset_offset();
-
-          // Pre-allocate the unfiltered buffer unless we are using the no-op
-          // filter with no encryption as the no-op filter will reuse the
-          // filtered buffer.
-          const auto& filters =
-              fragment->array_schema()->cell_validity_filters();
-          if (filters.size() != 1 ||
-              filters.get_filter(0)->type() != FilterType::FILTER_NONE ||
-              enc_type != EncryptionType::NO_ENCRYPTION) {
-            RETURN_NOT_OK(t_validity->buffer()->realloc(tile_validity_size));
-          }
+          t_validity->filtered_buffer().expand(*tile_validity_persisted_size);
         }
+
+        // Pre-allocate the unfiltered buffer.
+        RETURN_NOT_OK(t_validity->alloc_data(tile_validity_size));
       }
     }
   }
@@ -648,27 +620,18 @@ std::tuple<Status, std::optional<uint64_t>> ReaderBase::load_chunk_data(
   assert(tile);
   assert(unfiltered_tile);
   assert(tile->filtered());
-  assert(tile->buffer());
-  assert(tile->buffer()->size() == 0);
 
   Status st = Status::Ok();
-  if (tile->buffer()->size() > 0) {
-    st = logger_->status(
-        Status_ReaderError("Tile has allocated uncompressed chunk buffers."));
-    return {st, std::nullopt};
-  }
-
-  Buffer* const filtered_buffer = tile->filtered_buffer();
-  if (filtered_buffer == nullptr) {
+  auto filtered_buffer_data = tile->filtered_buffer().data();
+  if (filtered_buffer_data == nullptr) {
     st = logger_->status(Status_ReaderError("Tile has null buffer."));
     return {st, std::nullopt};
   }
 
   // Make a pass over the tile to get the chunk information.
-  filtered_buffer->reset_offset();
   uint64_t num_chunks;
-  st = filtered_buffer->read(&num_chunks, sizeof(uint64_t));
-  RETURN_NOT_OK_TUPLE(st, std::nullopt);
+  memcpy(&num_chunks, filtered_buffer_data, sizeof(uint64_t));
+  filtered_buffer_data += sizeof(uint64_t);
 
   auto& filtered_chunks = unfiltered_tile->filtered_chunks_;
   auto& chunk_offsets = unfiltered_tile->chunk_offsets_;
@@ -677,33 +640,35 @@ std::tuple<Status, std::optional<uint64_t>> ReaderBase::load_chunk_data(
   uint64_t total_orig_size = 0;
   for (uint64_t i = 0; i < num_chunks; i++) {
     auto& chunk = filtered_chunks[i];
-    st =
-        filtered_buffer->read(&(chunk.unfiltered_data_size_), sizeof(uint32_t));
-    RETURN_NOT_OK_TUPLE(st, std::nullopt);
+    memcpy(
+        &(chunk.unfiltered_data_size_), filtered_buffer_data, sizeof(uint32_t));
+    filtered_buffer_data += sizeof(uint32_t);
 
-    st = filtered_buffer->read(&(chunk.filtered_data_size_), sizeof(uint32_t));
-    RETURN_NOT_OK_TUPLE(st, std::nullopt);
+    memcpy(
+        &(chunk.filtered_data_size_), filtered_buffer_data, sizeof(uint32_t));
+    filtered_buffer_data += sizeof(uint32_t);
 
-    st = filtered_buffer->read(
-        &(chunk.filtered_metadata_size_), sizeof(uint32_t));
-    RETURN_NOT_OK_TUPLE(st, std::nullopt);
+    memcpy(
+        &(chunk.filtered_metadata_size_),
+        filtered_buffer_data,
+        sizeof(uint32_t));
+    filtered_buffer_data += sizeof(uint32_t);
 
-    chunk.filtered_metadata_ = filtered_buffer->cur_data();
+    chunk.filtered_metadata_ = filtered_buffer_data;
     chunk.filtered_data_ = static_cast<char*>(chunk.filtered_metadata_) +
                            chunk.filtered_metadata_size_;
 
     chunk_offsets[i] = total_orig_size;
     total_orig_size += chunk.unfiltered_data_size_;
 
-    filtered_buffer->advance_offset(
-        chunk.filtered_metadata_size_ + chunk.filtered_data_size_);
+    filtered_buffer_data +=
+        chunk.filtered_metadata_size_ + chunk.filtered_data_size_;
   }
 
-  assert(filtered_buffer->offset() == filtered_buffer->size());
-
-  if (total_orig_size != tile->buffer()->alloced_size()) {
-    st = tile->buffer()->realloc(total_orig_size);
-    RETURN_NOT_OK_TUPLE(st, std::nullopt);
+  if (total_orig_size != tile->size()) {
+    return {LOG_STATUS(Status_ReaderError(
+                "Error incorrect unfiltered tile size allocated.")),
+            std::nullopt};
   }
 
   return {Status::Ok(), total_orig_size};
@@ -742,7 +707,7 @@ ReaderBase::load_tile_chunk_data(
     // Skip non-existent attributes/dimensions (e.g. coords in the
     // dense case).
     if (tile_tuple == nullptr ||
-        std::get<0>(*tile_tuple).filtered_buffer()->size() == 0)
+        std::get<0>(*tile_tuple).filtered_buffer().size() == 0)
       return {Status::Ok(), std::nullopt, std::nullopt, std::nullopt};
 
     const auto t = &std::get<0>(*tile_tuple);
@@ -800,7 +765,7 @@ Status ReaderBase::unfilter_tile_chunk_range(
     // Skip non-existent attributes/dimensions (e.g. coords in the
     // dense case).
     if (tile_tuple == nullptr ||
-        std::get<0>(*tile_tuple).filtered_buffer()->size() == 0)
+        std::get<0>(*tile_tuple).filtered_buffer().size() == 0)
       return Status::Ok();
 
     auto t = &std::get<0>(*tile_tuple);
@@ -867,10 +832,7 @@ Status ReaderBase::post_process_unfiltered_tile(
     const std::string& name,
     ResultTile* const tile,
     const bool var_size,
-    const bool nullable,
-    const uint64_t unfiltered_tile_size,
-    const uint64_t unfiltered_tile_var_size,
-    const uint64_t unfiltered_tile_validity_size) const {
+    const bool nullable) const {
   assert(tile);
 
   auto& fragment = fragment_metadata_[tile->frag_idx()];
@@ -886,27 +848,24 @@ Status ReaderBase::post_process_unfiltered_tile(
     // Skip non-existent attributes/dimensions (e.g. coords in the
     // dense case).
     if (tile_tuple == nullptr ||
-        std::get<0>(*tile_tuple).filtered_buffer()->size() == 0)
+        std::get<0>(*tile_tuple).filtered_buffer().size() == 0)
       return Status::Ok();
 
     auto t = &std::get<0>(*tile_tuple);
     auto t_var = &std::get<1>(*tile_tuple);
     auto t_validity = &std::get<2>(*tile_tuple);
 
-    t->buffer()->set_size(unfiltered_tile_size);
-    t->filtered_buffer()->clear();
+    t->filtered_buffer().clear();
 
     zip_tile_coordinates(name, t);
 
     if (var_size) {
-      t_var->buffer()->set_size(unfiltered_tile_var_size);
-      t_var->filtered_buffer()->clear();
+      t_var->filtered_buffer().clear();
       zip_tile_coordinates(name, t_var);
     }
 
     if (nullable) {
-      t_validity->buffer()->set_size(unfiltered_tile_validity_size);
-      t_validity->filtered_buffer()->clear();
+      t_validity->filtered_buffer().clear();
       zip_tile_coordinates(name, t_validity);
     }
   }
@@ -989,13 +948,7 @@ Status ReaderBase::unfilter_tiles_chunk_range(
   // Perform required post-processing of unfiltered tiles
   for (size_t i = 0; i < num_tiles; i++) {
     RETURN_NOT_OK(post_process_unfiltered_tile(
-        name,
-        result_tiles[i],
-        var_size,
-        nullable,
-        unfiltered_tile_size[i],
-        unfiltered_tile_var_size[i],
-        unfiltered_tile_validity_size[i]));
+        name, result_tiles[i], var_size, nullable));
   }
 
   return Status::Ok();
@@ -1254,7 +1207,7 @@ Status ReaderBase::unfilter_tiles(
           // Skip non-existent attributes/dimensions (e.g. coords in the
           // dense case).
           if (tile_tuple == nullptr ||
-              std::get<0>(*tile_tuple).filtered_buffer()->size() == 0)
+              std::get<0>(*tile_tuple).filtered_buffer().size() == 0)
             return Status::Ok();
 
           auto& t = std::get<0>(*tile_tuple);
@@ -1263,7 +1216,9 @@ Status ReaderBase::unfilter_tiles(
 
           logger_->info("using cache");
           // Get information about the tile in its fragment.
-          auto tile_attr_uri = fragment->uri(name);
+          auto&& [status, tile_attr_uri] = fragment->uri(name);
+          RETURN_NOT_OK(status);
+
           auto tile_idx = tile->tile_idx();
           uint64_t tile_attr_offset;
           RETURN_NOT_OK(
@@ -1273,33 +1228,38 @@ Status ReaderBase::unfilter_tiles(
           if (t.filtered()) {
             // Store the filtered buffer in the tile cache.
             RETURN_NOT_OK(storage_manager_->write_to_cache(
-                tile_attr_uri, tile_attr_offset, t.filtered_buffer()));
+                *tile_attr_uri, tile_attr_offset, t.filtered_buffer()));
           }
 
           // Cache 't_var'.
           if (var_size && t_var.filtered()) {
-            auto tile_attr_var_uri = fragment->var_uri(name);
+            auto&& [status, tile_attr_var_uri] = fragment->var_uri(name);
+            RETURN_NOT_OK(status);
+
             uint64_t tile_attr_var_offset;
             RETURN_NOT_OK(fragment->file_var_offset(
                 name, tile_idx, &tile_attr_var_offset));
 
             // Store the filtered buffer in the tile cache.
             RETURN_NOT_OK(storage_manager_->write_to_cache(
-                tile_attr_var_uri,
+                *tile_attr_var_uri,
                 tile_attr_var_offset,
                 t_var.filtered_buffer()));
           }
 
           // Cache 't_validity'.
           if (nullable && t_validity.filtered()) {
-            auto tile_attr_validity_uri = fragment->validity_uri(name);
+            auto&& [status, tile_attr_validity_uri] =
+                fragment->validity_uri(name);
+            RETURN_NOT_OK(status);
+
             uint64_t tile_attr_validity_offset;
             RETURN_NOT_OK(fragment->file_validity_offset(
                 name, tile_idx, &tile_attr_validity_offset));
 
             // Store the filtered buffer in the tile cache.
             RETURN_NOT_OK(storage_manager_->write_to_cache(
-                tile_attr_validity_uri,
+                *tile_attr_validity_uri,
                 tile_attr_validity_offset,
                 t_validity.filtered_buffer()));
           }

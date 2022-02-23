@@ -75,7 +75,7 @@ SparseIndexReaderBase::SparseIndexReaderBase(
           condition)
     , initial_data_loaded_(false)
     , memory_budget_(0)
-    , array_memory_tracker_(nullptr)
+    , array_memory_tracker_(array->memory_tracker())
     , memory_used_for_coords_total_(0)
     , memory_used_qc_tiles_total_(0)
     , memory_used_result_tile_ranges_(0)

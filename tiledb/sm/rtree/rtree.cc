@@ -291,6 +291,11 @@ Status RTree::serialize(Buffer* buff) const {
   return Status::Ok();
 }
 
+Status RTree::set_domain(const Domain* domain) {
+  domain_ = domain;
+  return Status::Ok();
+}
+
 Status RTree::set_leaf(uint64_t leaf_id, const NDRange& mbr) {
   if (levels_.size() != 1)
     return LOG_STATUS(Status_RTreeError(

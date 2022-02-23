@@ -138,8 +138,11 @@ class Range {
 
   /** Copies 'start' into this range's start bytes for fixed-size ranges. */
   void set_start(const void* const start) {
-    if (var_size_)
-      LOG_FATAL("Unexpected var-sized range; cannot set end range.");
+    if (var_size_) {
+      LOG_ERROR("Unexpected var-sized range; cannot set start range.");
+      return;
+    }
+
     const size_t fixed_size = range_.size() / 2;
     std::memcpy(range_.data(), start, fixed_size);
   }
@@ -183,8 +186,10 @@ class Range {
 
   /** Copies 'end' into this range's end bytes for fixed-size ranges. */
   void set_end(const void* const end) {
-    if (var_size_)
-      LOG_FATAL("Unexpected var-sized range; cannot set end range.");
+    if (var_size_) {
+      LOG_ERROR("Unexpected var-sized range; cannot set end range.");
+      return;
+    }
     const size_t fixed_size = range_.size() / 2;
     std::memcpy(&range_[fixed_size], end, fixed_size);
   }

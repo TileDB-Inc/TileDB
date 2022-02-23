@@ -59,9 +59,16 @@ def find_prs(gh: Github, head: str, base: Optional[str] = None) -> Dict[int, str
 
     comparison = repo.compare(base_sha, head_sha)
     if comparison.behind_by != 0:
-        raise ValueError(f"Head is {comparison.behind_by} commits behind base")
-    if comparison.ahead_by == 0:
-        raise ValueError("Head is not ahead of base")
+        find_common_ancestor = input(
+            f"Head is {comparison.behind_by} commits behind base: do you want to use the "
+            f"latest common ancestor of {base} and {head} as base? [y/n] "
+        )
+        if find_common_ancestor.lower() == "y":
+            base_sha = comparison.merge_base_commit.sha
+            comparison = repo.compare(base_sha, head_sha)
+            assert comparison.behind_by == 0, comparison.behind_by
+        else:
+            sys.exit(f"Aborting: head is {comparison.behind_by} commits behind base")
     logging.info(f"Head is {comparison.ahead_by} commits ahead of base")
 
     prs = {}

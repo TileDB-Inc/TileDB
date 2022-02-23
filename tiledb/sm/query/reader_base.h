@@ -772,10 +772,7 @@ class ReaderBase : public StrategyBase {
       const std::string& name,
       ResultTile* const tile,
       const bool var_size,
-      const bool nullable,
-      const uint64_t unfiltered_tile_size,
-      const uint64_t unfiltered_tile_var_size,
-      const uint64_t unfiltered_tile_validity_size) const;
+      const bool nullable) const;
 };
 
 }  // namespace sm

@@ -49,6 +49,19 @@ WriterTile::WriterTile()
     , null_count_(0) {
 }
 
+WriterTile::WriterTile(WriterTile&& tile)
+    : WriterTile() {
+  // Swap with the argument
+  swap(tile);
+}
+
+WriterTile& WriterTile::operator=(WriterTile&& tile) {
+  // Swap with the argument
+  swap(tile);
+
+  return *this;
+}
+
 /* ****************************** */
 /*               API              */
 /* ****************************** */
@@ -106,34 +119,35 @@ void WriterTile::set_metadata(const std::tuple<
   null_count_ = null_count;
 }
 
-WriterTile WriterTile::clone(bool deep_copy) const {
-  WriterTile clone;
-  clone.pre_filtered_size_ = pre_filtered_size_;
-  clone.min_ = min_;
-  clone.max_ = max_;
-  clone.sum_ = sum_;
-  clone.null_count_ = null_count_;
-  clone.cell_size_ = cell_size_;
-  clone.dim_num_ = dim_num_;
-  clone.format_version_ = format_version_;
-  clone.type_ = type_;
-  clone.filtered_buffer_ = filtered_buffer_;
+Status WriterTile::write_var(
+    const void* data, uint64_t offset, uint64_t nbytes) {
+  if (size_ - offset < nbytes) {
+    auto new_alloc_size = size_ == 0 ? offset + nbytes : size_;
+    while (new_alloc_size < offset + nbytes)
+      new_alloc_size *= 2;
 
-  if (deep_copy) {
-    clone.owns_buffer_ = owns_buffer_;
-    if (owns_buffer_ && buffer_ != nullptr) {
-      clone.buffer_ = tdb_new(Buffer);
-      // Calls Buffer copy-assign, which performs a deep copy.
-      *clone.buffer_ = *buffer_;
-    } else {
-      clone.buffer_ = buffer_;
+    auto new_data =
+        static_cast<char*>(tdb_realloc(data_.release(), new_alloc_size));
+    if (new_data == nullptr) {
+      return LOG_STATUS(Status_TileError(
+          "Cannot reallocate buffer; Memory allocation failed"));
     }
-  } else {
-    clone.owns_buffer_ = false;
-    clone.buffer_ = buffer_;
+    data_.reset(new_data);
+    size_ = new_alloc_size;
   }
 
-  return clone;
+  return write(data, offset, nbytes);
+}
+
+void WriterTile::swap(WriterTile& tile) {
+  Tile::swap(tile);
+  std::swap(pre_filtered_size_, tile.pre_filtered_size_);
+  std::swap(min_, tile.min_);
+  std::swap(min_size_, tile.min_size_);
+  std::swap(max_, tile.max_);
+  std::swap(max_size_, tile.max_size_);
+  std::swap(sum_, tile.sum_);
+  std::swap(null_count_, tile.null_count_);
 }
 
 }  // namespace sm

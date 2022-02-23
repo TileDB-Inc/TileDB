@@ -55,6 +55,7 @@
 #include "tiledb/sm/misc/cancelable_tasks.h"
 #include "tiledb/sm/misc/types.h"
 #include "tiledb/sm/stats/global_stats.h"
+#include "tiledb/sm/tile/filtered_buffer.h"
 
 using namespace tiledb::common;
 
@@ -895,7 +896,7 @@ class StorageManager {
   Status read_from_cache(
       const URI& uri,
       uint64_t offset,
-      Buffer* buffer,
+      FilteredBuffer& buffer,
       uint64_t nbytes,
       bool* in_cache) const;
 
@@ -979,7 +980,8 @@ class StorageManager {
    * @param buffer The buffer whose contents will be cached.
    * @return Status.
    */
-  Status write_to_cache(const URI& uri, uint64_t offset, Buffer* buffer) const;
+  Status write_to_cache(
+      const URI& uri, uint64_t offset, const FilteredBuffer& buffer) const;
 
   /**
    * Writes the contents of a buffer into a URI file.

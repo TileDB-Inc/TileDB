@@ -1549,7 +1549,7 @@ Status StorageManager::get_array_schema_uris(
   // Check if schema_uris is empty
   if (schema_uris->empty()) {
     return logger_->status(Status_StorageManagerError(
-        "Can not get the array schemas; No array schemas found."));
+        "Cannot get the array schemas; No array schemas found."));
   }
 
   return Status::Ok();
@@ -1563,7 +1563,7 @@ Status StorageManager::get_latest_array_schema_uri(
   RETURN_NOT_OK(get_array_schema_uris(array_uri, &schema_uris));
   if (schema_uris.size() == 0) {
     return logger_->status(Status_StorageManagerError(
-        "Can not get the latest array schema; No array schemas found."));
+        "Cannot get the latest array schema; No array schemas found."));
   }
   *uri = schema_uris.back();
   if (uri->is_invalid()) {
@@ -1622,11 +1622,10 @@ Status StorageManager::load_array_schema_from_uri(
     RETURN_NOT_OK(tile_io.read_generic(&tile, 0, encryption_key, config_));
   }
 
-  auto buffer = tile->buffer();
   Buffer buff;
-  buff.realloc(buffer->size());
-  buff.set_size(buffer->size());
-  RETURN_NOT_OK_ELSE(buffer->read(buff.data(), buff.size()), tdb_delete(tile));
+  buff.realloc(tile->size());
+  buff.set_size(tile->size());
+  RETURN_NOT_OK_ELSE(tile->read(buff.data(), 0, buff.size()), tdb_delete(tile));
   tdb_delete(tile);
 
   stats_->add_counter("read_array_schema_size", buff.size());
@@ -1697,10 +1696,9 @@ StorageManager::load_all_array_schemas(
   RETURN_NOT_OK_TUPLE(
       get_array_schema_uris(array_uri, &schema_uris), std::nullopt);
   if (schema_uris.empty()) {
-    return {
-        logger_->status(Status_StorageManagerError(
-            "Can not get the array schema vector; No array schemas found.")),
-        std::nullopt};
+    return {logger_->status(Status_StorageManagerError(
+                "Cannot get the array schema vector; No array schemas found.")),
+            std::nullopt};
   }
 
   std::vector<ArraySchema*> schema_vector;
@@ -1757,13 +1755,11 @@ Status StorageManager::load_array_metadata(
     GenericTileIO tile_io(this, uri);
     auto tile = (Tile*)nullptr;
     RETURN_NOT_OK(tile_io.read_generic(&tile, 0, encryption_key, config_));
-    auto buffer = tile->buffer();
     auto metadata_buff = tdb::make_shared<Buffer>(HERE());
-    RETURN_NOT_OK(metadata_buff->realloc(buffer->size()));
-    metadata_buff->set_size(buffer->size());
-    buffer->reset_offset();
+    RETURN_NOT_OK(metadata_buff->realloc(tile->size()));
+    metadata_buff->set_size(tile->size());
     RETURN_NOT_OK_ELSE(
-        buffer->read(metadata_buff->data(), metadata_buff->size()),
+        tile->read(metadata_buff->data(), 0, metadata_buff->size()),
         tdb_delete(tile));
     tdb_delete(tile);
 
@@ -2004,14 +2000,13 @@ Status StorageManager::query_submit_async(Query* query) {
 Status StorageManager::read_from_cache(
     const URI& uri,
     uint64_t offset,
-    Buffer* buffer,
+    FilteredBuffer& buffer,
     uint64_t nbytes,
     bool* in_cache) const {
   std::stringstream key;
   key << uri.to_string() << "+" << offset;
+  buffer.expand(nbytes);
   RETURN_NOT_OK(tile_cache_->read(key.str(), buffer, 0, nbytes, in_cache));
-  buffer->set_size(nbytes);
-  buffer->reset_offset();
 
   return Status::Ok();
 }
@@ -2073,8 +2068,9 @@ Status StorageManager::store_array_schema(
       constants::generic_tile_datatype,
       constants::generic_tile_cell_size,
       0,
-      &buff,
-      false);
+      buff.data(),
+      buff.size());
+  buff.disown_data();
 
   GenericTileIO tile_io(this, schema_uri);
   uint64_t nbytes;
@@ -2082,8 +2078,6 @@ Status StorageManager::store_array_schema(
   (void)nbytes;
   if (st.ok())
     st = close_file(schema_uri);
-
-  buff.clear();
 
   return st;
 }
@@ -2116,8 +2110,9 @@ Status StorageManager::store_array_metadata(
       constants::generic_tile_datatype,
       constants::generic_tile_cell_size,
       0,
-      &metadata_buff,
-      false);
+      metadata_buff.data(),
+      metadata_buff.size());
+  metadata_buff.disown_data();
 
   GenericTileIO tile_io(this, array_metadata_uri);
   uint64_t nbytes;
@@ -2163,7 +2158,7 @@ Status StorageManager::init_rest_client() {
 }
 
 Status StorageManager::write_to_cache(
-    const URI& uri, uint64_t offset, Buffer* buffer) const {
+    const URI& uri, uint64_t offset, const FilteredBuffer& buffer) const {
   // Do not write metadata or array schema to cache
   std::string filename = uri.last_path_part();
   std::string uri_str = uri.to_string();
@@ -2179,8 +2174,7 @@ Status StorageManager::write_to_cache(
   key << uri.to_string() << "+" << offset;
 
   // Insert to cache
-  Buffer cached_buffer;
-  RETURN_NOT_OK(cached_buffer.write(buffer->data(), buffer->size()));
+  FilteredBuffer cached_buffer(buffer);
   RETURN_NOT_OK(
       tile_cache_->insert(key.str(), std::move(cached_buffer), false));
 
@@ -2328,12 +2322,10 @@ Status StorageManager::load_consolidated_fragment_meta(
   Tile* tile = nullptr;
   RETURN_NOT_OK(tile_io.read_generic(&tile, 0, enc_key, config_));
 
-  auto buffer = tile->buffer();
-  f_buff->realloc(buffer->size());
-  f_buff->set_size(buffer->size());
-  buffer->reset_offset();
+  f_buff->realloc(tile->size());
+  f_buff->set_size(tile->size());
   RETURN_NOT_OK_ELSE(
-      buffer->read(f_buff->data(), f_buff->size()), tdb_delete(tile));
+      tile->read(f_buff->data(), 0, f_buff->size()), tdb_delete(tile));
   tdb_delete(tile);
 
   stats_->add_counter("consolidated_frag_meta_size", f_buff->size());

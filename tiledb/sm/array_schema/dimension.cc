@@ -371,7 +371,7 @@ Status Dimension::compute_mbr(const Tile& tile, Range* mbr) {
   auto cell_num = tile.cell_num();
   assert(cell_num > 0);
 
-  void* tile_buffer = tile.buffer()->data();
+  void* tile_buffer = tile.data();
   assert(tile_buffer != nullptr);
 
   // Initialize MBR with the first tile values
@@ -399,10 +399,10 @@ Status Dimension::compute_mbr_var<char>(
   auto cell_num = tile_off.cell_num();
   assert(cell_num > 0);
 
-  void* tile_buffer_off = tile_off.buffer()->data();
+  void* tile_buffer_off = tile_off.data();
   assert(tile_buffer_off != nullptr);
 
-  void* tile_buffer_val = tile_val.buffer()->data();
+  void* tile_buffer_val = tile_val.data();
   assert(tile_buffer_val != nullptr);
 
   uint64_t* const d_off = static_cast<uint64_t*>(tile_buffer_off);

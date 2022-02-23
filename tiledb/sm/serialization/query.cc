@@ -36,10 +36,13 @@
 #include <capnp/compat/json.h>
 #include <capnp/message.h>
 #include <capnp/serialize.h>
+#include "tiledb/sm/serialization/array.h"
+#include "tiledb/sm/serialization/array_schema.h"
 #include "tiledb/sm/serialization/capnp_utils.h"
 #endif
 // clang-format on
 
+#include "tiledb/sm/query/query.h"
 #include "tiledb/common/heap_memory.h"
 #include "tiledb/common/logger.h"
 #include "tiledb/sm/array/array.h"
@@ -53,12 +56,11 @@
 #include "tiledb/sm/fragment/fragment_metadata.h"
 #include "tiledb/sm/misc/hash.h"
 #include "tiledb/sm/misc/parse_argument.h"
-#include "tiledb/sm/query/query.h"
-#include "tiledb/sm/query/reader.h"
 #include "tiledb/sm/query/dense_reader.h"
+#include "tiledb/sm/query/reader.h"
 #include "tiledb/sm/query/sparse_global_order_reader.h"
 #include "tiledb/sm/query/sparse_unordered_with_dups_reader.h"
-#include "tiledb/sm/query/writer.h"
+#include "tiledb/sm/query/writer_base.h"
 #include "tiledb/sm/serialization/config.h"
 #include "tiledb/sm/serialization/query.h"
 #include "tiledb/sm/subarray/subarray.h"
@@ -124,36 +126,6 @@ Status stats_from_capnp(
       (*timers)[std::string(entry.getKey().cStr())] = entry.getValue();
     }
   }
-
-  return Status::Ok();
-}
-
-Status array_to_capnp(
-    const Array& array, capnp::Array::Builder* array_builder) {
-  // The serialized URI is set if it exists
-  // this is used for backwards compatibility with pre TileDB 2.5 clients that
-  // want to serialized a query object TileDB >= 2.5 no longer needs to send the
-  // array URI
-  if (!array.array_uri_serialized().to_string().empty()) {
-    array_builder->setUri(array.array_uri_serialized());
-  }
-  array_builder->setStartTimestamp(array.timestamp_start());
-  array_builder->setEndTimestamp(array.timestamp_end());
-
-  return Status::Ok();
-}
-
-Status array_from_capnp(
-    const capnp::Array::Reader& array_reader, Array* array) {
-  // The serialized URI is set if it exists
-  // this is used for backwards compatibility with pre TileDB 2.5 clients that
-  // want to serialized a query object TileDB >= 2.5 no longer needs to receive
-  // the array URI
-  if (array_reader.hasUri()) {
-    RETURN_NOT_OK(array->set_uri_serialized(array_reader.getUri().cStr()));
-  }
-  RETURN_NOT_OK(array->set_timestamp_start(array_reader.getStartTimestamp()));
-  RETURN_NOT_OK(array->set_timestamp_end(array_reader.getEndTimestamp()));
 
   return Status::Ok();
 }
@@ -945,7 +917,7 @@ Status dense_reader_from_capnp(
 
 Status writer_to_capnp(
     const Query& query,
-    Writer& writer,
+    WriterBase& writer,
     capnp::Writer::Builder* writer_builder) {
   writer_builder->setCheckCoordDups(writer.get_check_coord_dups());
   writer_builder->setCheckCoordOOB(writer.get_check_coord_oob());
@@ -980,7 +952,7 @@ Status writer_to_capnp(
 }
 
 Status writer_from_capnp(
-    const capnp::Writer::Reader& writer_reader, Writer* writer) {
+    const capnp::Writer::Reader& writer_reader, WriterBase* writer) {
   writer->set_check_coord_dups(writer_reader.getCheckCoordDups());
   writer->set_check_coord_oob(writer_reader.getCheckCoordOOB());
   writer->set_dedup_coords(writer_reader.getDedupCoords());
@@ -997,7 +969,10 @@ Status writer_from_capnp(
   return Status::Ok();
 }
 
-Status query_to_capnp(Query& query, capnp::Query::Builder* query_builder) {
+Status query_to_capnp(
+    Query& query,
+    capnp::Query::Builder* query_builder,
+    const bool client_side) {
   // For easy reference
   auto layout = query.layout();
   auto type = query.type();
@@ -1030,7 +1005,7 @@ Status query_to_capnp(Query& query, capnp::Query::Builder* query_builder) {
   // Serialize array
   if (query.array() != nullptr) {
     auto builder = query_builder->initArray();
-    RETURN_NOT_OK(array_to_capnp(*array, &builder));
+    RETURN_NOT_OK(array_to_capnp(array, &builder, client_side));
   }
 
   // Serialize attribute buffer metadata
@@ -1150,7 +1125,7 @@ Status query_to_capnp(Query& query, capnp::Query::Builder* query_builder) {
     }
   } else {
     auto builder = query_builder->initWriter();
-    auto writer = (Writer*)query.strategy();
+    auto writer = (WriterBase*)query.strategy();
 
     query_builder->setVarOffsetsMode(writer->offsets_mode());
     query_builder->setVarOffsetsAddExtraElement(
@@ -1782,7 +1757,7 @@ Status query_from_capnp(
     }
   } else {
     auto writer_reader = query_reader.getWriter();
-    auto writer = (Writer*)query->strategy();
+    auto writer = (WriterBase*)query->strategy();
 
     if (query_reader.hasVarOffsetsMode()) {
       RETURN_NOT_OK(writer->set_offsets_mode(query_reader.getVarOffsetsMode()));
@@ -1857,7 +1832,7 @@ Status query_serialize(
   try {
     ::capnp::MallocMessageBuilder message;
     capnp::Query::Builder query_builder = message.initRoot<capnp::Query>();
-    RETURN_NOT_OK(query_to_capnp(*query, &query_builder));
+    RETURN_NOT_OK(query_to_capnp(*query, &query_builder, clientside));
 
     // Determine whether we should be serializing the buffer data.
     const bool serialize_buffers =
@@ -2060,7 +2035,8 @@ Status query_deserialize(
         query,
         compute_tp);
     if (!st2.ok()) {
-      LOG_FATAL(st2.message());
+      LOG_ERROR(st2.message());
+      return st2;
     }
   }
 

@@ -43,6 +43,7 @@
 #include "tiledb/sm/filter/filter_buffer.h"
 #include "tiledb/sm/misc/types.h"
 #include "tiledb/sm/stats/stats.h"
+#include "tiledb/sm/tile/filtered_buffer.h"
 
 using namespace tiledb::common;
 
@@ -317,10 +318,9 @@ class FilterPipeline {
    */
   Status filter_chunks_forward(
       const Tile& tile,
-      const Buffer& input,
       uint32_t chunk_size,
       std::vector<uint64_t>& chunk_offsets,
-      Buffer* const output,
+      FilteredBuffer& output,
       ThreadPool* const compute_tp) const;
 
   /**
@@ -335,9 +335,8 @@ class FilterPipeline {
    * @return Status
    */
   Status filter_chunks_reverse(
-      const Tile& tile,
+      Tile& tile,
       const std::vector<std::tuple<void*, uint32_t, uint32_t, uint32_t>>& input,
-      Buffer* const output,
       ThreadPool* const compute_tp,
       const Config& config) const;
 

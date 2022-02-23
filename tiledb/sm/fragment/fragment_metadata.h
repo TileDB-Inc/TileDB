@@ -307,6 +307,14 @@ class FragmentMetadata {
   Status set_num_tiles(uint64_t num_tiles);
 
   /**
+   * Sets the domain of the RTree during deserialization.
+   *
+   * @param domain The domain to be set.
+   * @return Status
+   */
+  void set_rtree_domain(const Domain* domain);
+
+  /**
    * Sets the tile "index base" which is added to the tile index in the set_*()
    * functions. Only used during global order writes/appends.
    *
@@ -473,13 +481,13 @@ class FragmentMetadata {
   uint64_t tile_num() const;
 
   /** Returns the URI of the input attribute/dimension. */
-  URI uri(const std::string& name) const;
+  tuple<Status, optional<URI>> uri(const std::string& name) const;
 
   /** Returns the URI of the input variable-sized attribute/dimension. */
-  URI var_uri(const std::string& name) const;
+  tuple<Status, optional<URI>> var_uri(const std::string& name) const;
 
   /** Returns the validity URI of the input nullable attribute. */
-  URI validity_uri(const std::string& name) const;
+  tuple<Status, optional<URI>> validity_uri(const std::string& name) const;
 
   /** Return the array schema name. */
   const std::string& array_schema_name();
@@ -1454,7 +1462,7 @@ class FragmentMetadata {
    */
   Status write_generic_tile_to_file(
       const EncryptionKey& encryption_key,
-      Buffer&& buff,
+      Buffer& buff,
       uint64_t* nbytes) const;
 
   /**
@@ -1476,9 +1484,10 @@ class FragmentMetadata {
    * motiviation is to encode illegal/reserved file name characters.
    *
    * @param name The dimension/attribute name.
-   * return std::string The encoded dimension/attribute name.
+   * return Status, the encoded dimension/attribute name.
    */
-  std::string encode_name(const std::string& name) const;
+  tuple<Status, optional<std::string>> encode_name(
+      const std::string& name) const;
 
   /**
    * This builds the index mapping for attribute/dimension name to id.

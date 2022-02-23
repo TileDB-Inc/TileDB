@@ -1618,19 +1618,20 @@ Status S3::write_multipart(
     return get_make_upload_part_req(uri, uri_path, ctx);
   } else {
     std::vector<MakeUploadPartCtx> ctx_vec;
-    ctx_vec.reserve(num_ops);
+    ctx_vec.resize(num_ops);
     const uint64_t bytes_per_op = multipart_part_size_;
     const int part_num_base = state->part_number;
-    for (uint64_t i = 0; i < num_ops; i++) {
+    auto status = parallel_for(vfs_thread_pool_, 0, num_ops, [&](uint64_t i) {
       uint64_t begin = i * bytes_per_op,
                end = std::min((i + 1) * bytes_per_op - 1, length - 1);
       uint64_t thread_nbytes = end - begin + 1;
       auto thread_buffer = reinterpret_cast<const char*>(buffer) + begin;
       int part_num = static_cast<int>(part_num_base + i);
-      auto ctx = make_upload_part_req(
+      ctx_vec[i] = make_upload_part_req(
           aws_uri, thread_buffer, thread_nbytes, upload_id, part_num);
-      ctx_vec.emplace_back(std::move(ctx));
-    }
+
+      return Status::Ok();
+    });
     state->part_number += num_ops;
     state_lck.unlock();
 
@@ -1672,11 +1673,9 @@ S3::MakeUploadPartCtx S3::make_upload_part_req(
   if (request_payer_ != Aws::S3::Model::RequestPayer::NOT_SET)
     upload_part_request.SetRequestPayer(request_payer_);
 
-  auto upload_part_outcome_callable =
-      client_->UploadPartCallable(upload_part_request);
+  auto upload_part_outcome = client_->UploadPart(upload_part_request);
 
-  MakeUploadPartCtx ctx(
-      std::move(upload_part_outcome_callable), upload_part_num);
+  MakeUploadPartCtx ctx(std::move(upload_part_outcome), upload_part_num);
   return ctx;
 }
 
@@ -1684,7 +1683,7 @@ Status S3::get_make_upload_part_req(
     const URI& uri, const std::string& uri_path, MakeUploadPartCtx& ctx) {
   RETURN_NOT_OK(init_client());
 
-  auto upload_part_outcome = ctx.upload_part_outcome_callable.get();
+  const auto& upload_part_outcome = ctx.upload_part_outcome;
   bool success = upload_part_outcome.IsSuccess();
 
   static const UnitTestConfig& unit_test_cfg = UnitTestConfig::instance();

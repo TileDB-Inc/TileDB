@@ -4066,7 +4066,7 @@ TEST_CASE_METHOD(
   CHECK(is_open == 0);
 
   rc = tiledb_array_close(ctx_, array);
-  CHECK(rc == TILEDB_ERR);  // Array is not open
+  CHECK(rc == TILEDB_OK);  // Array is not open, noop
   tiledb_array_free(&array);
 
   remove_temp_dir(temp_dir);
@@ -4720,7 +4720,7 @@ TEST_CASE_METHOD(
   rc = tiledb_array_close(ctx_, array);
   CHECK(rc == TILEDB_OK);
   rc = tiledb_array_close(ctx_, array);
-  CHECK(rc == TILEDB_ERR);  // Closing twice should error out
+  CHECK(rc == TILEDB_OK);  // Closing twice should be a noop
   tiledb_query_free(&query);
 
   // Read whole tile
