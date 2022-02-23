@@ -5,7 +5,7 @@
  *
  * The MIT License
  *
- * @copyright Copyright (c) 2017-2021 TileDB, Inc.
+ * @copyright Copyright (c) 2021-2022 TileDB, Inc.
  *
  * Permission is hereby granted, free of charge, to any person obtaining a copy
  * of this software and associated documentation files (the "Software"), to deal
@@ -27,7 +27,7 @@
  *
  * @section DESCRIPTION
  *
- This file defines class Array.
+ This file defines class BlobArray.
  */
 
 #ifndef TILEDB_BLOB_ARRAY_H
@@ -45,9 +45,7 @@ using namespace tiledb::common;
 
 namespace tiledb {
 namespace appl {
-// namespace sm {
 
-// using namespace tiledb::sm;
 using Config = tiledb::sm::Config;
 
 /**
@@ -62,6 +60,8 @@ class BlobArray : public tiledb::sm::Array {
 
   /** Constructor. */
   BlobArray(const URI& array_uri, StorageManager* storage_manager);
+
+  BlobArray(const BlobArray& rhs);
 
   /* ********************************* */
   /*                API                */
@@ -121,7 +121,7 @@ class BlobArray : public tiledb::sm::Array {
    * Get size based on current opened file
    * @return size
    */
-  uint64_t size();
+  Status size(const uint64_t *&size);
 
   /* ********************************* */
   /*         PRIVATE ATTRIBUTES        */
@@ -134,14 +134,11 @@ class BlobArray : public tiledb::sm::Array {
   /* ********************************* */
 
  private:
-#if 01
   //  std::optional<EncryptionKey> get_encryption_key_from_config(const Config&
   //  config) const;
   tdb_unique_ptr<EncryptionKey> get_encryption_key_from_config(
       const Config& config) const;
-#endif
 
-#if 01
   /**
    * Get mime type from libmagic
    * @param data void buffer with first part of file (up to 1kb) for magic
@@ -149,7 +146,9 @@ class BlobArray : public tiledb::sm::Array {
    * @param size size of buffer
    * @return mime type or nullptr if none detected
    */
-  static const char* libmagic_get_mime(void* data, uint64_t size);
+  // static const char*
+  Status libmagic_get_mime_type(
+      const char** mime_type, void* data, uint64_t size);
 
   /**
    * Get mime encoding from libmagic
@@ -158,7 +157,9 @@ class BlobArray : public tiledb::sm::Array {
    * @param size size of buffer
    * @return mime encoding or nullptr if none detected
    */
-  static const char* libmagic_get_mime_encoding(void* data, uint64_t size);
+  // static const char*
+  Status libmagic_get_mime_encoding(
+      const char** mime_encoding, void* data, uint64_t size);
 
   /**
    * Store mime type in array metadata
@@ -177,7 +178,6 @@ class BlobArray : public tiledb::sm::Array {
    */
   Status store_mime_encoding(
       const Buffer& file_metadata, uint64_t metadata_read_size);
-#endif
 };
 
 }  // namespace appl

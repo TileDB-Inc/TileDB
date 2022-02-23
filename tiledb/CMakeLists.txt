@@ -39,6 +39,7 @@ cmake_policy(SET CMP0063 NEW)
 
 add_subdirectory(common)
 add_subdirectory(sm)
+add_subdirectory(appl) # unit testing appl/blob_array -depends- on tiledb
 
 ############################################################
 # Source files

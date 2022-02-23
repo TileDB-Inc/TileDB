@@ -78,6 +78,9 @@ DenseReader::DenseReader(
           layout,
           condition) {
   elements_mode_ = false;
+  if (read_state_.initialized_ || read_state_.overflowed_ ||
+      read_state_.unsplittable_)
+    __debugbreak();
 }
 
 /* ****************************** */
@@ -706,6 +709,8 @@ Status DenseReader::read_attributes(
             return Status::Ok();
           }
 
+          // TBD: dlh: maybe remove me?
+          if (required_var_size > *buffers_[name].buffer_var_size_)
           *buffers_[name].buffer_var_size_ = required_var_size;
           return Status::Ok();
         });

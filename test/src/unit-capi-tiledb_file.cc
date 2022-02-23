@@ -287,8 +287,12 @@ TEST_CASE_METHOD(
   CHECK(
       tiledb_array_as_file_import(ctx_, array, csv_path.c_str()) == TILEDB_OK);
 
+  tiledb_array_t* array2;
   CHECK(
-      tiledb_array_as_file_export(ctx_, array, output_path.c_str()) ==
+      tiledb_array_as_file_obtain(ctx_, &array2, array_name.c_str(), cfg) ==
+      TILEDB_OK);
+  CHECK(
+      tiledb_array_as_file_export(ctx_, array2, output_path.c_str()) ==
       TILEDB_OK);
 
   uint64_t original_file_size = 0;

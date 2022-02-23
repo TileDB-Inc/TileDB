@@ -87,15 +87,17 @@ TILEDB_EXPORT int32_t tiledb_array_as_file_obtain(
   if (sanity_check(ctx) == TILEDB_ERR) {
     return TILEDB_ERR;
   }
+#if 0
   tiledb_array_schema_t* blob_array_schema = nullptr;
   if (tiledb_array_schema_create_default_blob_array(ctx, &blob_array_schema) ==
       TILEDB_ERR) {
     return TILEDB_ERR;
   }
+#endif
 
   if (tiledb_array_alloc(ctx, array_uri, array) == TILEDB_ERR) {
     // expect tiledb_array_alloc() to have logged any necessary error.
-    tiledb_array_schema_free(&blob_array_schema);
+    //    tiledb_array_schema_free(&blob_array_schema);
     return TILEDB_ERR;
   }
   // Check array URI
@@ -123,7 +125,7 @@ TILEDB_EXPORT int32_t tiledb_array_as_file_obtain(
     save_error(ctx, st);
     tiledb_array_free(
         array);  // already returning an error, ignore any error here.
-    tiledb_array_schema_free(&blob_array_schema);
+                 //    tiledb_array_schema_free(&blob_array_schema);
     *array = nullptr;
     return TILEDB_OOM;
   }
@@ -137,66 +139,26 @@ TILEDB_EXPORT int32_t tiledb_array_as_file_obtain(
   }
 
   if (tiledb_array_open(ctx, *array, TILEDB_READ) == TILEDB_ERR) {
-#if 0
-    // (lead-ins needed for below with "This works, but is deprecated)
-    const char* encryption_type_str = nullptr;
-    const char* encryption_key_str = nullptr;
-    tiledb_encryption_type_t encryption_type = TILEDB_NO_ENCRYPTION;
-    if (config) {
-      if (SAVE_ERROR_CATCH(
-              ctx, config->config_->get("sm.encryption_type", &encryption_type_str))) {
-        return TILEDB_ERR;
-      }
-      auto [st, et] = tiledb::sm::encryption_type_enum(encryption_type_str);
-      if (!st.ok()) {
-        return TILEDB_ERR;
-      }
-      encryption_type = static_cast<tiledb_encryption_type_t>(et.value());
-      if (SAVE_ERROR_CATCH(
-              ctx,
-              config->config_->get(
-                  "sm.encryption_key", &encryption_key_str))) {
-        return TILEDB_ERR;
-      }
-    }
-   //Note: This works, but is deprecated
-    if (tiledb_array_create_with_key(
-          ctx,
-          array_uri,
-          blob_array_schema,
-          encryption_type,
-          encryption_key_str,
-            encryption_type_str ?
-                static_cast<uint32_t>(strlen(encryption_key_str)) :
-                0) == TILEDB_ERR) {
-#elif 0
     // While storage_manager->open() will apparently honor array config,
     // seems storage_manager->create uses -storage_manager- cfg which
     // we don't really want to be modifying...
-    if (tiledb_array_create(ctx, array_uri, blob_array_schema) == TILEDB_ERR) {
-#else
     auto cfg = config ? config->config_ : &stg_mgr->config();
     if (SAVE_ERROR_CATCH(ctx, blob_array->create(cfg))) {
-#endif
-    tiledb_array_free(array);
-    tiledb_array_schema_free(&blob_array_schema);
-    *array = nullptr;
-    return TILEDB_ERR;
+      tiledb_array_free(array);
+      *array = nullptr;
+      return TILEDB_ERR;
+    }
+  } else {
+    if (tiledb_array_close(ctx, *array) == TILEDB_ERR) {
+      tiledb_array_free(array);
+      *array = nullptr;
+      return TILEDB_ERR;
+    }
   }
-}
-else {
-  if (tiledb_array_close(ctx, *array) == TILEDB_ERR) {
-    tiledb_array_free(array);
-    *array = nullptr;
-    tiledb_array_schema_free(&blob_array_schema);
-    return TILEDB_ERR;
-  }
-}
 
-// returning an allocated tiledb_array_t at '*array' having default blob_array
-// schema;
-
-return TILEDB_OK;
+  // returning an allocated tiledb_array_t at '*array' having default blob_array
+  // schema;
+  return TILEDB_OK;
 }
 
 TILEDB_EXPORT int32_t tiledb_array_as_file_import(
@@ -244,7 +206,8 @@ TILEDB_EXPORT int32_t tiledb_array_as_file_import(
   auto blob_array = static_cast<tiledb::appl::BlobArray*>(array->array_);
 
   int32_t ret_stat = TILEDB_OK;
-  if (SAVE_ERROR_CATCH(ctx, blob_array->to_array_from_uri(uri_filename, nullptr))) {
+  if (SAVE_ERROR_CATCH(
+          ctx, blob_array->to_array_from_uri(uri_filename, nullptr))) {
     ret_stat = TILEDB_ERR;
   }
 
