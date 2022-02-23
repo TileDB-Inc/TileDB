@@ -427,11 +427,14 @@ class LoggerImpl {
  *
  * @param format The output format of the logger
  */
-#ifdef TILEDB_TESTS
+//#ifdef TILEDB_TESTS
+// template <class P = NullLoggerPolicy>
+//#else
+// template <class P = test::LoggerTestPolicy>
+//#endif
+
+// testing to see if this passes CI
 template <class P = NullLoggerPolicy>
-#else
-template <class P = test::LoggerTestPolicy>
-#endif
 LoggerImpl<P>& global_logger(
     typename LoggerImpl<P>::Format format = LoggerImpl<P>::Format::DEFAULT);
 
