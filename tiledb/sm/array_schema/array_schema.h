@@ -363,10 +363,12 @@ class ArraySchema {
   /** The array type. */
   ArrayType array_type_;
 
-  /** It maps each attribute name to the corresponding attribute object. */
+  /** It maps each attribute name to the corresponding attribute object.
+   * Lifespan is maintained by the shared_ptr in attributes_. */
   std::unordered_map<std::string, const Attribute*> attribute_map_;
 
-  /** The array attributes. */
+  /** The array attributes.
+   * Maintains lifespan for elements in both attributes_ and attribute_map_. */
   std::vector<shared_ptr<const Attribute>> attributes_;
   /**
    * The tile capacity for the case of sparse fragments.

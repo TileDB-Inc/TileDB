@@ -189,9 +189,7 @@ std::pair<uint64_t, uint64_t> ArraySchemaEvolution::timestamp_range() const {
 
 void ArraySchemaEvolution::clear() {
   attributes_to_add_map_.clear();
-
   attributes_to_drop_.clear();
-
   timestamp_range_ = {0, 0};
 }
 

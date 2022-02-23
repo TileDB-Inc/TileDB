@@ -58,16 +58,6 @@ using namespace tiledb::common;
 namespace tiledb {
 namespace sm {
 
-/** Returns the non-cast representation of the input const Attribute pointer. */
-inline Attribute* nonconst_attribute(shared_ptr<const Attribute> attr) {
-  return const_cast<Attribute*>(attr.get());
-}
-
-/** Returns the non-cast representation of the input const Attribute pointer. */
-inline Attribute* nonconst_attribute(const Attribute* attr) {
-  return const_cast<Attribute*>(attr);
-}
-
 /* ****************************** */
 /*   CONSTRUCTORS & DESTRUCTORS   */
 /* ****************************** */
@@ -604,7 +594,8 @@ Status ArraySchema::deserialize(ConstBuffer* buff) {
 
     attributes_.emplace_back(
         tdb::make_shared<Attribute>(HERE(), move(attr.value())));
-    attribute_map_[attributes_.back().get()->name()] = attributes_.back().get();
+    auto a = attributes_.back().get();
+    attribute_map_[a->name()] = a;
   }
 
   // Create dimension map
