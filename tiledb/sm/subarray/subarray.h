@@ -304,10 +304,12 @@ class Subarray {
    * Precomputes the tile overlap with all subarray ranges for all fragments.
    *
    * @param compute_tp The compute thread pool.
+   * @param frag_tile_idx The current tile index, per fragment.
    * @param result_tile_ranges The resulting tile ranges.
    */
   Status precompute_all_ranges_tile_overlap(
       ThreadPool* const compute_tp,
+      std::vector<std::pair<uint64_t, uint64_t>>& frag_tile_idx,
       std::vector<std::vector<std::pair<uint64_t, uint64_t>>>*
           result_tile_ranges);
 
