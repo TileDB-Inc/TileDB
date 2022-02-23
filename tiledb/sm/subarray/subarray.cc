@@ -1965,7 +1965,7 @@ void Subarray::set_add_or_coalesce_range_func() {
             std::placeholders::_3);
         break;
       default:
-        LOG_FATAL("Unexpected datatype " + datatype_str(type));
+        LOG_ERROR("Unexpected datatype " + datatype_str(type));
     }
   }
 }

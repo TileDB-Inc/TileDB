@@ -351,12 +351,6 @@ Status LOG_STATUS(const Status& st) {
   return st;
 }
 
-/** Logs an error and exits with a non-zero status. */
-void LOG_FATAL(const std::string& msg) {
-  global_logger().error(msg);
-  exit(1);
-}
-
 /** Logs a trace. */
 void LOG_TRACE(const std::stringstream& msg) {
   global_logger().trace(msg);
@@ -380,12 +374,6 @@ void LOG_WARN(const std::stringstream& msg) {
 /** Logs an error. */
 void LOG_ERROR(const std::stringstream& msg) {
   global_logger().error(msg);
-}
-
-/** Logs an error and exits with a non-zero status. */
-void LOG_FATAL(const std::stringstream& msg) {
-  global_logger().error(msg);
-  exit(1);
 }
 
 }  // namespace tiledb::common

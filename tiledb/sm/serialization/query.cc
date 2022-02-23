@@ -42,6 +42,7 @@
 #endif
 // clang-format on
 
+#include "tiledb/sm/query/query.h"
 #include "tiledb/common/heap_memory.h"
 #include "tiledb/common/logger.h"
 #include "tiledb/sm/array/array.h"
@@ -55,9 +56,8 @@
 #include "tiledb/sm/fragment/fragment_metadata.h"
 #include "tiledb/sm/misc/hash.h"
 #include "tiledb/sm/misc/parse_argument.h"
-#include "tiledb/sm/query/query.h"
-#include "tiledb/sm/query/reader.h"
 #include "tiledb/sm/query/dense_reader.h"
+#include "tiledb/sm/query/reader.h"
 #include "tiledb/sm/query/sparse_global_order_reader.h"
 #include "tiledb/sm/query/sparse_unordered_with_dups_reader.h"
 #include "tiledb/sm/query/writer_base.h"
@@ -2035,7 +2035,8 @@ Status query_deserialize(
         query,
         compute_tp);
     if (!st2.ok()) {
-      LOG_FATAL(st2.message());
+      LOG_ERROR(st2.message());
+      return st2;
     }
   }
 
