@@ -100,6 +100,7 @@ set(TILEDB_TEST_SOURCES
   src/helpers.h
   src/helpers.cc
   src/helpers-dimension.h
+  src/logger_validation.h
   src/unit-azure.cc
   src/unit-backwards_compat.cc
   src/unit-buffer.cc

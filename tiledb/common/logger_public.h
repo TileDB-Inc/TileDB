@@ -36,12 +36,16 @@
 #ifndef TILEDB_LOGGER_PUBLIC_H
 #define TILEDB_LOGGER_PUBLIC_H
 
+#include "tiledb/common/logger_null_policy.h"
 #include "tiledb/common/status.h"
 
 namespace tiledb {
 namespace common {
 
-class Logger;
+template <class P= NullLoggerPolicy>
+class LoggerImpl;
+
+using Logger = LoggerImpl<>;
 
 /** Logs a trace. */
 void LOG_TRACE(const std::string& msg);

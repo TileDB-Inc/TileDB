@@ -55,6 +55,8 @@
 #include <atomic>
 #include <sstream>
 
+#include "test/src/logger_validation.h"
+#include "logger_null_policy.h"
 #include "tiledb/common/heap_memory.h"
 #include "tiledb/common/status.h"
 
@@ -62,7 +64,8 @@ namespace tiledb {
 namespace common {
 
 /** Definition of class Logger. */
-class Logger {
+template<class P>
+class LoggerImpl {
  public:
   enum class Format : char;
   enum class Level : char;
@@ -72,15 +75,15 @@ class Logger {
   /* ********************************* */
 
   /** Constructors */
-  Logger(
+  LoggerImpl(
       const std::string& name,
-      const Logger::Format format = Logger::Format::DEFAULT,
+      const LoggerImpl::Format format = LoggerImpl::Format::DEFAULT,
       const bool root = false);
 
-  Logger(tdb_shared_ptr<spdlog::logger> logger);
+  LoggerImpl(tdb_shared_ptr<spdlog::logger> logger);
 
   /** Destructor. */
-  ~Logger();
+  ~LoggerImpl();
 
   /* ********************************* */
   /*                API                */
@@ -93,7 +96,7 @@ class Logger {
    * @param name The name of the new logger
    * @param id An id to use as suffix for the name of the new logger
    */
-  tdb_shared_ptr<Logger> clone(const std::string& name, uint64_t id);
+  tdb_shared_ptr<LoggerImpl> clone(const std::string& name, uint64_t id);
 
   /**
    * Log a trace statement with no message formatting.
@@ -330,18 +333,18 @@ class Logger {
   /**
    * Set the logger level.
    *
-   * @param lvl Logger::Level VERBOSE logs debug statements, ERR only logs
+   * @param lvl LoggerImpl::Level VERBOSE logs debug statements, ERR only logs
    *    Status Error's.
    */
-  void set_level(Logger::Level lvl);
+  void set_level(LoggerImpl::Level lvl);
 
   /**
    * Set the logger output format.
    *
-   * @param fmt Logger::Format JSON logs in json format, DEFAULT
+   * @param fmt LoggerImpl:Format JSON logs in json format, DEFAULT
    * logs in the default tiledb format
    */
-  void set_format(Logger::Format fmt);
+  void set_format(LoggerImpl::Format fmt);
 
   /* ********************************* */
   /*          PUBLIC ATTRIBUTES        */
@@ -381,11 +384,14 @@ class Logger {
   std::string name_;
 
   /** The format of the logger  */
-  static inline Logger::Format fmt_ = Logger::Format::DEFAULT;
+  static inline LoggerImpl::Format fmt_ = LoggerImpl::Format::DEFAULT;
 
   /** A boolean flag that tells us whether the logger is the statically declared
    * global_logger */
   bool root_ = false;
+
+  /** Policy argument **/
+  typename P::TestPolicy tp;
 
   /* ********************************* */
   /*          PRIVATE METHODS          */
@@ -420,7 +426,12 @@ class Logger {
  *
  * @param format The output format of the logger
  */
-Logger& global_logger(Logger::Format format = Logger::Format::DEFAULT);
+#ifdef TILEDB_TESTS
+template<class P = NullLoggerPolicy>
+#else
+template<class P = test::LoggerTestPolicy>
+#endif
+LoggerImpl<P>& global_logger(typename LoggerImpl<P>::Format format=LoggerImpl<P>::Format::DEFAULT);
 
 /**
  * Returns the logger format type given a string representation.
@@ -429,11 +440,11 @@ Logger& global_logger(Logger::Format format = Logger::Format::DEFAULT);
  *  @param[out] format_type The logger format type
  */
 inline Status logger_format_from_string(
-    const std::string& format_type_str, Logger::Format* format_type) {
+    const std::string& format_type_str, LoggerImpl<NullLoggerPolicy>::Format* format_type) {
   if (format_type_str == "DEFAULT")
-    *format_type = Logger::Format::DEFAULT;
+    *format_type = LoggerImpl<NullLoggerPolicy>::Format::DEFAULT;
   else if (format_type_str == "JSON")
-    *format_type = Logger::Format::JSON;
+    *format_type = LoggerImpl<NullLoggerPolicy>::Format::JSON;
   else {
     return Status_Error("Unsupported logging format: " + format_type_str);
   }

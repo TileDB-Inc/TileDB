@@ -46,8 +46,9 @@ namespace tiledb::common {
 /*     CONSTRUCTORS & DESTRUCTORS    */
 /* ********************************* */
 
-Logger::Logger(
-    const std::string& name, const Logger::Format format, const bool root)
+template <class P>
+LoggerImpl<P>::LoggerImpl(
+    const std::string& name, const LoggerImpl<P>::Format format, const bool root)
     : name_(name)
     , root_(root) {
   logger_ = spdlog::get(name_);
@@ -58,22 +59,24 @@ Logger::Logger(
     logger_ = spdlog::stdout_color_mt(name_);
 #endif
   }
-  if (root && format == Logger::Format::JSON) {
+  if (root && format == LoggerImpl<P>::Format::JSON) {
     // If this is the first logger created set up the opening brace and an
     // array named "log"
     logger_->set_pattern("{\n \"log\": [");
     logger_->critical("");
   }
-  set_level(Logger::Level::ERR);
+  set_level(LoggerImpl<P>::Level::ERR);
   set_format(format);
 }
 
-Logger::Logger(tdb_shared_ptr<spdlog::logger> logger) {
+template <class P>
+LoggerImpl<P>::LoggerImpl(tdb_shared_ptr<spdlog::logger> logger) {
   logger_ = std::move(logger);
 }
 
-Logger::~Logger() {
-  if (root_ && fmt_ == Logger::Format::JSON) {
+template <class P>
+LoggerImpl<P>::~LoggerImpl() {
+  if (root_ && fmt_ == LoggerImpl<P>::Format::JSON) {
     // If this is the root/global logger being destroyed, then we output
     // "Logging finished"
     std::string last_log_pattern = {
@@ -90,124 +93,148 @@ Logger::~Logger() {
   spdlog::drop(name_);
 }
 
-void Logger::trace(const char* msg) {
+template <class P>
+void LoggerImpl<P>::trace(const char* msg) {
   logger_->trace(msg);
 }
 
-void Logger::debug(const char* msg) {
+template <class P>
+void LoggerImpl<P>::debug(const char* msg) {
   logger_->debug(msg);
 }
 
-void Logger::info(const char* msg) {
+template <class P>
+void LoggerImpl<P>::info(const char* msg) {
   logger_->info(msg);
 }
 
-void Logger::warn(const char* msg) {
+template <class P>
+void LoggerImpl<P>::warn(const char* msg) {
   logger_->warn(msg);
 }
 
-void Logger::error(const char* msg) {
+template <class P>
+void LoggerImpl<P>::error(const char* msg) {
   logger_->error(msg);
 }
 
-void Logger::critical(const char* msg) {
+template <class P>
+void LoggerImpl<P>::critical(const char* msg) {
   logger_->critical(msg);
 }
 
-void Logger::fatal(const char* msg) {
+template <class P>
+void LoggerImpl<P>::fatal(const char* msg) {
   logger_->error(msg);
   exit(1);
 }
 
-Status Logger::status(const Status& st) {
+template <class P>
+Status LoggerImpl<P>::status(const Status& st) {
   logger_->error(st.message());
   return st;
 }
 
-void Logger::trace(const std::string& msg) {
+template <class P>
+void LoggerImpl<P>::trace(const std::string& msg) {
   logger_->trace(msg);
 }
 
-void Logger::debug(const std::string& msg) {
+template <class P>
+void LoggerImpl<P>::debug(const std::string& msg) {
   logger_->debug(msg);
 }
 
-void Logger::info(const std::string& msg) {
+template <class P>
+void LoggerImpl<P>::info(const std::string& msg) {
   logger_->info(msg);
 }
 
-void Logger::warn(const std::string& msg) {
+template <class P>
+void LoggerImpl<P>::warn(const std::string& msg) {
   logger_->warn(msg);
 }
 
-void Logger::error(const std::string& msg) {
+template <class P>
+void LoggerImpl<P>::error(const std::string& msg) {
   logger_->error(msg);
 }
 
-void Logger::critical(const std::string& msg) {
+template <class P>
+void LoggerImpl<P>::critical(const std::string& msg) {
   logger_->critical(msg);
 }
 
-void Logger::fatal(const std::string& msg) {
+template <class P>
+void LoggerImpl<P>::fatal(const std::string& msg) {
   logger_->error(msg);
   exit(1);
 }
 
-void Logger::trace(const std::stringstream& msg) {
+template <class P>
+void LoggerImpl<P>::trace(const std::stringstream& msg) {
   logger_->trace(msg.str());
 }
 
-void Logger::debug(const std::stringstream& msg) {
+template <class P>
+void LoggerImpl<P>::debug(const std::stringstream& msg) {
   logger_->debug(msg.str());
 }
 
-void Logger::info(const std::stringstream& msg) {
+template <class P>
+void LoggerImpl<P>::info(const std::stringstream& msg) {
   logger_->info(msg.str());
 }
 
-void Logger::warn(const std::stringstream& msg) {
+template <class P>
+void LoggerImpl<P>::warn(const std::stringstream& msg) {
   logger_->warn(msg.str());
 }
 
-void Logger::error(const std::stringstream& msg) {
+template <class P>
+void LoggerImpl<P>::error(const std::stringstream& msg) {
   logger_->error(msg.str());
 }
 
-void Logger::critical(const std::stringstream& msg) {
+template <class P>
+void LoggerImpl<P>::critical(const std::stringstream& msg) {
   logger_->critical(msg.str());
 }
 
-void Logger::fatal(const std::stringstream& msg) {
+template <class P>
+void LoggerImpl<P>::fatal(const std::stringstream& msg) {
   logger_->error(msg.str());
   exit(1);
 }
 
-void Logger::set_level(Logger::Level lvl) {
+template <class P>
+void LoggerImpl<P>::set_level(LoggerImpl<P>::Level lvl) {
   switch (lvl) {
-    case Logger::Level::FATAL:
+    case LoggerImpl<P>::Level::FATAL:
       logger_->set_level(spdlog::level::critical);
       break;
-    case Logger::Level::ERR:
+    case LoggerImpl<P>::Level::ERR:
       logger_->set_level(spdlog::level::err);
       break;
-    case Logger::Level::WARN:
+    case LoggerImpl<P>::Level::WARN:
       logger_->set_level(spdlog::level::warn);
       break;
-    case Logger::Level::INFO:
+    case LoggerImpl<P>::Level::INFO:
       logger_->set_level(spdlog::level::info);
       break;
-    case Logger::Level::DBG:
+    case LoggerImpl<P>::Level::DBG:
       logger_->set_level(spdlog::level::debug);
       break;
-    case Logger::Level::TRACE:
+    case LoggerImpl<P>::Level::TRACE:
       logger_->set_level(spdlog::level::trace);
       break;
   }
 }
 
-void Logger::set_format(Logger::Format fmt) {
+template <class P>
+void LoggerImpl<P>::set_format(LoggerImpl<P>::Format fmt) {
   switch (fmt) {
-    case Logger::Format::JSON: {
+    case LoggerImpl<P>::Format::JSON: {
       /*
        * Set up the JSON format
        * {
@@ -246,22 +273,25 @@ void Logger::set_format(Logger::Format fmt) {
   fmt_ = fmt;
 }
 
-void Logger::set_name(const std::string& tags) {
+template <class P>
+void LoggerImpl<P>::set_name(const std::string& tags) {
   name_ = tags;
 }
 
-tdb_shared_ptr<Logger> Logger::clone(const std::string& tag, uint64_t id) {
+template <class P>
+tdb_shared_ptr<LoggerImpl<P>> LoggerImpl<P>::clone(const std::string& tag, uint64_t id) {
   std::string new_tags = add_tag(tag, id);
   auto new_logger =
-      tiledb::common::make_shared<Logger>(HERE(), logger_->clone(new_tags));
+      tiledb::common::make_shared<LoggerImpl<P>>(HERE(), logger_->clone(new_tags));
   new_logger->set_name(new_tags);
   return new_logger;
 }
 
-std::string Logger::add_tag(const std::string& tag, uint64_t id) {
+template <class P>
+std::string LoggerImpl<P>::add_tag(const std::string& tag, uint64_t id) {
   std::string tags;
   switch (fmt_) {
-    case Logger::Format::JSON: {
+    case LoggerImpl<P>::Format::JSON: {
       tags = name_.empty() ? fmt::format("\"{}\":\"{}\"", tag, id) :
                              fmt::format("{},\"{}\":\"{}\"", name_, tag, id);
       break;
@@ -277,13 +307,18 @@ std::string Logger::add_tag(const std::string& tag, uint64_t id) {
 /*              GLOBAL               */
 /* ********************************* */
 
-Logger& global_logger(Logger::Format format) {
-  static std::string name = (format == Logger::Format::JSON) ?
-                                Logger::global_logger_json_name :
-                                Logger::global_logger_default_name;
-  static Logger l(name, format, true);
+template<class P>
+LoggerImpl<P>& global_logger(
+    typename LoggerImpl<P>::Format format) {
+    static std::string name = (format == LoggerImpl<P>::Format::JSON) ?
+                                LoggerImpl<P>::global_logger_json_name :
+                                LoggerImpl<P>::global_logger_default_name;
+  static LoggerImpl<P> l(name, format, true);
   return l;
 }
+
+template class LoggerImpl<NullLoggerPolicy>;
+template class LoggerImpl<test::LoggerTestPolicy>;
 
 /** Logs a trace. */
 void LOG_TRACE(const std::string& msg) {
