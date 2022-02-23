@@ -332,7 +332,7 @@ TEST_CASE_METHOD(BlobArrayFx, "blob_array basic functionality", "") {
 
   auto basic_export = [&](bool expected_result) -> void {
     //CHECK(blob_array->export_to_uri(out_uri, config_->config_).ok() == expected_result);
-    #if 0
+#if 0
     std::cout << "b4 export_to_uri" << std::endl;
     //CHECK(
     //    blob_array->export_to_uri(out_uri, config).ok() ==
@@ -445,7 +445,12 @@ TEST_CASE_METHOD(BlobArrayFx, "blob_array basic functionality", "") {
   //since empty, nothing to export
   basic_export(false);
 
-  #if 01
+  #if 0 
+  //'extra' diagnostic section added to see what might happen if the two writes had 
+  // file closed in between them... failures do still seem to potentially occur (on
+  // the subsequent reads) tho maybe not quite as often as when both are written 
+  // within same open as done further below...
+  // 
   //(already) opened for write ...
   basic_uri_to_array(true); //quickstart_dense.csv 115 bytes
 
