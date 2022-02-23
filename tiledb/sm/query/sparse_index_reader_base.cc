@@ -209,8 +209,6 @@ Status SparseIndexReaderBase::load_initial_data() {
   auto fragment_num = fragment_metadata_.size();
 
   // Make sure there is enough space for tiles data.
-  read_state_.frag_tile_idx_.clear();
-  all_tiles_loaded_.clear();
   read_state_.frag_tile_idx_.resize(fragment_num);
   all_tiles_loaded_.resize(fragment_num);
 
@@ -226,7 +224,9 @@ Status SparseIndexReaderBase::load_initial_data() {
     // This is ok as it is a soft limit and will be taken into consideration
     // later.
     RETURN_NOT_OK(subarray_.precompute_all_ranges_tile_overlap(
-        storage_manager_->compute_tp(), &result_tile_ranges_));
+        storage_manager_->compute_tp(),
+        read_state_.frag_tile_idx_,
+        &result_tile_ranges_));
 
     for (auto frag_result_tile_ranges : result_tile_ranges_) {
       memory_used_result_tile_ranges_ += frag_result_tile_ranges.size() *
