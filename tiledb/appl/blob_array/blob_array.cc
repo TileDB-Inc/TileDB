@@ -279,13 +279,13 @@ Status BlobArray::export_to_vfs_fh(
     uint64_t sizeof_ofs_buf = sizeof(ofs_buf);
     RETURN_NOT_OK(query.set_offsets_buffer(
         constants::blob_array_attribute_name, ofs_buf, &sizeof_ofs_buf));
-    //std::array<uint64_t, 2> subarray = {0, 0};
-    std::array<uint64_t, 1> subarray = {0};
+    std::array<uint64_t, 2> subarray = {0, 0};
+    //std::array<uint64_t, 1> subarray = {0};
 
     // Set subarray
     RETURN_NOT_OK(query.set_subarray(&subarray));
-    //uint32_t delay_ms = 100;
-    //uint32_t retry_cnt = 4;
+    uint32_t delay_ms = 100;
+    uint32_t retry_cnt = 1;
     do {
       RETURN_NOT_OK(query.submit());
 
@@ -299,8 +299,9 @@ Status BlobArray::export_to_vfs_fh(
           //LOG_STATUS(msg.str());
           LOG_STATUS(Status_BlobArrayError(
               msg.str()));
-          #if 0
+          #if 01
           if (qstat == QueryStatus::INCOMPLETE) {
+            __debugbreak();
             std::this_thread::sleep_for(std::chrono::milliseconds(delay_ms));
             if (retry_cnt--) {
               delay_ms *= 2;

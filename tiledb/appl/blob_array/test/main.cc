@@ -116,6 +116,7 @@ BlobArrayFx::BlobArrayFx() {
   posix.create_dir(localfs_temp_dir_);
 #endif
 
+  remove_temp_dir(localfs_temp_dir_); // remove any pre-existing instance
   create_dir(localfs_temp_dir_, ctx_, vfs_);
 }
 
@@ -188,15 +189,18 @@ TEST_CASE_METHOD(BlobArrayFx, "blob_array basic functionality", "") {
   const char* encryption_key = nullptr;
 
   bool repeating = true;
-
+#if 01
   SECTION("- without encryption") {
     encryption_type = tiledb::sm::EncryptionType::NO_ENCRYPTION;
     encryption_key = "";
   }
+#endif
+  #if 0
   SECTION("- with encryption") {
     encryption_type = tiledb::sm::EncryptionType::AES_256_GCM;
     encryption_key = "0123456789abcdeF0123456789abcdeF";
   }
+  #endif
   #if 01
   tiledb_config_t* cfg = nullptr;
   tiledb_error_t* err = nullptr;
@@ -237,6 +241,31 @@ TEST_CASE_METHOD(BlobArrayFx, "blob_array basic functionality", "") {
   REQUIRE(blob_array->create(config).ok() == true);
   REQUIRE(blob_array->is_open() == false);
 
+  auto open_for_write = [&]() -> void { 
+    if (blob_array->is_open())
+      REQUIRE(blob_array->close().ok() == true);
+    auto open_res = blob_array->open(
+        tiledb::sm::QueryType::WRITE,
+        encryption_type,  // tiledb::sm::EncryptionType::NO_ENCRYPTION,
+        encryption_key,   //"",
+        static_cast<uint32_t>(
+            strlen(encryption_key)));  // inherited from parent
+    REQUIRE(blob_array->is_open() == true);
+  };
+  auto open_for_read = [&]() -> void {
+    if (blob_array->is_open())
+      REQUIRE(blob_array->close().ok() == true);
+    auto open_res = blob_array->open(
+        tiledb::sm::QueryType::READ,
+        encryption_type,  // tiledb::sm::EncryptionType::NO_ENCRYPTION,
+        encryption_key,   //"",
+        static_cast<uint32_t>(
+            strlen(encryption_key)));  // inherited from parent
+    REQUIRE(blob_array->is_open() == true);
+  };
+#if 1
+  open_for_write();
+#else
   auto open_res = blob_array->open(
       tiledb::sm::QueryType::WRITE,
       encryption_type, //tiledb::sm::EncryptionType::NO_ENCRYPTION,
@@ -244,9 +273,13 @@ TEST_CASE_METHOD(BlobArrayFx, "blob_array basic functionality", "") {
       static_cast<uint32_t>(strlen(encryption_key)));  // inherited from parent
   REQUIRE(open_res.ok() == true);
   REQUIRE(blob_array->is_open() == true);
+#endif
   REQUIRE(blob_array->close().ok() == true);
   REQUIRE(blob_array->is_open() == false);
 
+  #if 1
+  open_for_read();
+  #else
   open_res = blob_array->open(
       tiledb::sm::QueryType::READ,
       encryption_type, //tiledb::sm::EncryptionType::NO_ENCRYPTION,
@@ -254,6 +287,7 @@ TEST_CASE_METHOD(BlobArrayFx, "blob_array basic functionality", "") {
       static_cast<uint32_t>(strlen(encryption_key)));  // inherited from parent
   REQUIRE(open_res.ok() == true);
   REQUIRE(blob_array->is_open() == true);
+  #endif
   REQUIRE(blob_array->close().ok() == true);
   REQUIRE(blob_array->is_open() == false);
 
@@ -274,18 +308,25 @@ TEST_CASE_METHOD(BlobArrayFx, "blob_array basic functionality", "") {
   tiledb::sm::URI out1_uri(output_path1);
   tiledb::sm::URI out2_uri(output_path2);
 
-  auto basic_to_array = [&](bool expected_result = false) {
+  auto basic_uri_to_array = [&](bool expected_result = false) {
     CHECK(
-        //blob_array->to_array_from_uri(inp_uri, config_->config_).ok() == expected_result);
+        // blob_array->to_array_from_uri(inp_uri, config_->config_).ok() ==
+        // expected_result);
         blob_array->to_array_from_uri(inp_uri, config).ok() == expected_result);
+  };
+  auto basic_buf_to_array = [&](bool expected_result = false) {
     CHECK(
         blob_array
             ->to_array_from_buffer(
                 bufdata.data(),
                 bufdata.size() * sizeof(bufdata[0]),
-                //config_->config_)
+                // config_->config_)
                 config)
             .ok() == expected_result);
+  };
+  auto basic_to_array = [&](bool expected_result = false) {
+    basic_uri_to_array(expected_result);
+    basic_buf_to_array(expected_result);
   };
   basic_to_array(false);
 
@@ -342,12 +383,16 @@ TEST_CASE_METHOD(BlobArrayFx, "blob_array basic functionality", "") {
   };
   basic_export(false);
 
+  #if 1
+  open_for_read();
+  #else
   open_res = blob_array->open(
       tiledb::sm::QueryType::READ,
       encryption_type, //tiledb::sm::EncryptionType::NO_ENCRYPTION,
       encryption_key, //"",
       static_cast<uint32_t>(strlen(encryption_key)));  // inherited from parent
   REQUIRE(open_res.ok() == true);
+  #endif
 
   // array open in READ mode, 
   // but array is EMPTY as the write's
@@ -383,6 +428,9 @@ TEST_CASE_METHOD(BlobArrayFx, "blob_array basic functionality", "") {
 
   REQUIRE(blob_array->close().ok() == true);
 
+  #if 1
+  open_for_write();
+#else
   open_res = blob_array->open(
       tiledb::sm::QueryType::WRITE,
       encryption_type,  // tiledb::sm::EncryptionType::NO_ENCRYPTION,
@@ -390,17 +438,42 @@ TEST_CASE_METHOD(BlobArrayFx, "blob_array basic functionality", "") {
       static_cast<uint32_t>(strlen(encryption_key)));  // inherited from parent
   REQUIRE(open_res.ok() == true);
   REQUIRE(blob_array->is_open() == true);
+  #endif
   //REQUIRE(blob_array->close().ok() == true);
   //REQUIRE(blob_array->is_open() == false);
 
   //since empty, nothing to export
   basic_export(false);
 
-  // array open WRITE but empty
+  #if 01
+  //(already) opened for write ...
+  basic_uri_to_array(true); //quickstart_dense.csv 115 bytes
+
+  open_for_read();
+  stat = blob_array->export_to_uri(out1_uri, config);
+  CHECK(stat.ok() == true);
+
+  open_for_write();
+  basic_buf_to_array(true); //buf 3 ints, 12 bytes
+
+
+  open_for_read();
+  stat = blob_array->export_to_uri(out2_uri, config);
+  CHECK(stat.ok() == true);
+
+  // leave open state as we found, open WRITE, ALTHO NOT EMPTY
+  open_for_write();
+
+#endif
+
+  // array open WRITE but empty (unless #ifdef code above active)
   basic_to_array(true);
 
   REQUIRE(blob_array->close().ok() == true);
 
+  #if 1
+  open_for_read();
+#else
   open_res = blob_array->open(
       tiledb::sm::QueryType::READ,
       encryption_type,  // tiledb::sm::EncryptionType::NO_ENCRYPTION,
@@ -408,6 +481,7 @@ TEST_CASE_METHOD(BlobArrayFx, "blob_array basic functionality", "") {
       static_cast<uint32_t>(strlen(encryption_key)));  // inherited from parent
   REQUIRE(open_res.ok() == true);
   REQUIRE(blob_array->is_open() == true);
+  #endif
 
   // array open for read, has something in it
   basic_to_array(false); // open read, unable to add

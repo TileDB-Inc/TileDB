@@ -370,6 +370,9 @@ Status DenseReader::dense_read() {
     auto&& [st, overflowed] = fill_dense_coords<DimType>(subarray);
     RETURN_CANCEL_OR_ERROR(st);
     read_state_.overflowed_ = *overflowed;
+    // TBD: dlh
+    if (read_state_.overflowed_)
+      __debugbreak();
   }
 
   return Status::Ok();
@@ -633,6 +636,8 @@ Status DenseReader::read_attributes(
           (cell_num + offsets_extra_element_) * sizeof(OffType);
       if (required_size > *buffers_[name].buffer_size_) {
         read_state_.overflowed_ = true;
+        // TBD: dlh
+        __debugbreak();
         return Status::Ok();
       }
     }
@@ -706,11 +711,18 @@ Status DenseReader::read_attributes(
           if (read_state_.overflowed_ ||
               required_var_size > *buffers_[name].buffer_var_size_) {
             read_state_.overflowed_ = true;
+            // TBD: dlh
+            __debugbreak();
             return Status::Ok();
           }
 
           // TBD: dlh: maybe remove me?
+          // vvvvvvvvvv
+          //if (required_var_size > *buffers_[name].buffer_var_size_)
+          if (required_var_size < *buffers_[name].buffer_var_size_)
+            __debugbreak();
           if (required_var_size > *buffers_[name].buffer_var_size_)
+          // ^^^^^^^^^^
           *buffers_[name].buffer_var_size_ = required_var_size;
           return Status::Ok();
         });
@@ -747,6 +759,8 @@ Status DenseReader::read_attributes(
       const auto required_size = cell_num * array_schema_->cell_size(name);
       if (required_size > *buffers_[name].buffer_size_) {
         read_state_.overflowed_ = true;
+        // TBD: dlh
+        __debugbreak();
         return Status::Ok();
       }
     }
