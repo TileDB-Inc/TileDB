@@ -55,8 +55,8 @@
 #include <atomic>
 #include <sstream>
 
-#include "test/src/logger_validation.h"
 #include "logger_null_policy.h"
+#include "test/src/logger_validation.h"
 #include "tiledb/common/heap_memory.h"
 #include "tiledb/common/status.h"
 
@@ -64,7 +64,7 @@ namespace tiledb {
 namespace common {
 
 /** Definition of class Logger. */
-template<class P>
+template <class P>
 class LoggerImpl {
  public:
   using logger_type = LoggerImpl<P>;
@@ -428,11 +428,12 @@ class LoggerImpl {
  * @param format The output format of the logger
  */
 #ifdef TILEDB_TESTS
-template<class P = NullLoggerPolicy>
+template <class P = NullLoggerPolicy>
 #else
-template<class P = test::LoggerTestPolicy>
+template <class P = test::LoggerTestPolicy>
 #endif
-LoggerImpl<P>& global_logger(typename LoggerImpl<P>::Format format=LoggerImpl<P>::Format::DEFAULT);
+LoggerImpl<P>& global_logger(
+    typename LoggerImpl<P>::Format format = LoggerImpl<P>::Format::DEFAULT);
 
 /**
  * Returns the logger format type given a string representation.
@@ -441,7 +442,8 @@ LoggerImpl<P>& global_logger(typename LoggerImpl<P>::Format format=LoggerImpl<P>
  *  @param[out] format_type The logger format type
  */
 inline Status logger_format_from_string(
-    const std::string& format_type_str, LoggerImpl<NullLoggerPolicy>::Format* format_type) {
+    const std::string& format_type_str,
+    LoggerImpl<NullLoggerPolicy>::Format* format_type) {
   if (format_type_str == "DEFAULT")
     *format_type = LoggerImpl<NullLoggerPolicy>::Format::DEFAULT;
   else if (format_type_str == "JSON")

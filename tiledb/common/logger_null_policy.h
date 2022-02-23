@@ -27,13 +27,12 @@
  *
  * @section DESCRIPTION
  *
- * This file defines class NullLoggerPolicy. Since this class needs to be included
- * as a header to logger_public.h, we need to have it in a separate file, so that 
- * the internal Logger dependency spdlog does not get exposed.
- * 
+ * This file defines class NullLoggerPolicy. Since this class needs to be
+ * included as a header to logger_public.h, we need to have it in a separate
+ * file, so that the internal Logger dependency spdlog does not get exposed.
+ *
  * See logger.h documentation for discussion of C++ template limitations.
  */
-
 
 #ifndef TILEDB_LOGGER_NULL_POLICY_H
 #define TILEDB_LOGGER_NULL_POLICY_H
@@ -42,14 +41,16 @@
 
 namespace tiledb {
 namespace common {
-    class NullLoggerPolicy {
-        class Null { };
-        public:
-            static void at_release() { /* Do nothing */ }
-            using TestPolicy = Null;
-            using testing_enabled = std::false_type;
-    };
-}
-}
+class NullLoggerPolicy {
+  class Null {};
 
-#endif // TILEDB_LOGGER_NULL_POLICY_H
+ public:
+  static void at_release() { /* Do nothing */
+  }
+  using TestPolicy = Null;
+  using testing_enabled = std::false_type;
+};
+}  // namespace common
+}  // namespace tiledb
+
+#endif  // TILEDB_LOGGER_NULL_POLICY_H

@@ -48,7 +48,9 @@ namespace tiledb::common {
 
 template <class P>
 LoggerImpl<P>::LoggerImpl(
-    const std::string& name, const LoggerImpl<P>::Format format, const bool root)
+    const std::string& name,
+    const LoggerImpl<P>::Format format,
+    const bool root)
     : name_(name)
     , root_(root) {
   logger_ = spdlog::get(name_);
@@ -279,10 +281,11 @@ void LoggerImpl<P>::set_name(const std::string& tags) {
 }
 
 template <class P>
-tdb_shared_ptr<LoggerImpl<P>> LoggerImpl<P>::clone(const std::string& tag, uint64_t id) {
+tdb_shared_ptr<LoggerImpl<P>> LoggerImpl<P>::clone(
+    const std::string& tag, uint64_t id) {
   std::string new_tags = add_tag(tag, id);
-  auto new_logger =
-      tiledb::common::make_shared<LoggerImpl<P>>(HERE(), logger_->clone(new_tags));
+  auto new_logger = tiledb::common::make_shared<LoggerImpl<P>>(
+      HERE(), logger_->clone(new_tags));
   new_logger->set_name(new_tags);
   return new_logger;
 }
@@ -307,10 +310,9 @@ std::string LoggerImpl<P>::add_tag(const std::string& tag, uint64_t id) {
 /*              GLOBAL               */
 /* ********************************* */
 
-template<class P>
-LoggerImpl<P>& global_logger(
-    typename LoggerImpl<P>::Format format) {
-    static std::string name = (format == LoggerImpl<P>::Format::JSON) ?
+template <class P>
+LoggerImpl<P>& global_logger(typename LoggerImpl<P>::Format format) {
+  static std::string name = (format == LoggerImpl<P>::Format::JSON) ?
                                 LoggerImpl<P>::global_logger_json_name :
                                 LoggerImpl<P>::global_logger_default_name;
   static LoggerImpl<P> l(name, format, true);

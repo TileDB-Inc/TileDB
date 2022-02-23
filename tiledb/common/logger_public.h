@@ -42,7 +42,7 @@
 namespace tiledb {
 namespace common {
 
-template <class P= NullLoggerPolicy>
+template <class P = NullLoggerPolicy>
 class LoggerImpl;
 
 using Logger = LoggerImpl<>;
