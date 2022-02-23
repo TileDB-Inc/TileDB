@@ -349,10 +349,6 @@ endif()
 # Compile options/definitions
 ############################################################
 
-if (TILEDB_TESTS)
-  target_compile_definitions(TILEDB_CORE_OBJECTS PRIVATE -DTILEDB_TESTS)
-endif()
-
 if (SANITIZER)
   if (NOT CMAKE_BUILD_TYPE MATCHES "Debug")
     message(FATAL_ERROR "Sanitizers only enabled for Debug build")

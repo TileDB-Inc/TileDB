@@ -43,7 +43,7 @@
 namespace tiledb {
 namespace common {
     class NullLoggerPolicy {
-        class Null { /* nothing here! */ };
+        class Null { };
         public:
             static void at_release() { /* Do nothing */ }
             using TestPolicy = Null;

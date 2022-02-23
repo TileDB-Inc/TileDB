@@ -234,6 +234,8 @@ if (TILEDB_ARROW_TESTS)
   )
 endif()
 
+add_definitions(-DTILEDB_TESTS)
+
 if (TILEDB_VERBOSE)
   add_definitions(-DTILEDB_VERBOSE)
 endif()

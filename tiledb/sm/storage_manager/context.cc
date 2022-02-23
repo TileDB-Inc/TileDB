@@ -233,7 +233,10 @@ Status Context::init_loggers(Config* const config) {
   Logger::Format format = Logger::Format::DEFAULT;
   RETURN_NOT_OK(logger_format_from_string(format_conf, &format));
 
-  global_logger(format);
+  using global_logger_ref_type = decltype(global_logger());
+  using global_logger_no_ref = std::remove_reference<global_logger_ref_type>::type;
+
+  global_logger(static_cast<global_logger_no_ref::Format>(static_cast<uint32_t>(format)));
   logger_->set_format(static_cast<Logger::Format>(format));
 
   // set logging level from config
@@ -248,7 +251,7 @@ Status Context::init_loggers(Config* const config) {
         "set in configuration"));
   }
 
-  global_logger().set_level(static_cast<Logger::Level>(level));
+  global_logger().set_level(static_cast<global_logger_no_ref::Level>(level));
   logger_->set_level(static_cast<Logger::Level>(level));
 
   return Status::Ok();

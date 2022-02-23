@@ -542,7 +542,7 @@ Status Curl::make_curl_request_common(
         return LOG_STATUS(Status_RestError(
             "Error checking curl error; could not get HTTP code."));
 
-      global_logger().debug(
+      global_logger<>().debug(
           "Request to {} failed with http response code {}, will sleep {}ms, "
           "retry count {}",
           url,

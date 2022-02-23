@@ -67,6 +67,7 @@ namespace common {
 template<class P>
 class LoggerImpl {
  public:
+  using logger_type = LoggerImpl<P>;
   enum class Format : char;
   enum class Level : char;
 

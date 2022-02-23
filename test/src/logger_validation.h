@@ -42,10 +42,10 @@ namespace test {
 class LoggerTestPolicy {
   class LoggerTest {
    public:
-    LoggerTest() { }
-    ~LoggerTest() {
-      std::cout << "This should print out after the global logger destructor.\n";
-    }
+        LoggerTest() { }
+        ~LoggerTest() {
+            std::cout << "This should print out after the global logger destructor.\n";
+        }
   };
 
  public:
