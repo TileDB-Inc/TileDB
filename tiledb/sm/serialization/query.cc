@@ -2248,6 +2248,11 @@ Status query_est_result_size_deserialize(
       "Cannot deserialize; serialization not enabled."));
 }
 
+Status test_fn(Query*, SerializationType, bool, const Buffer&) {
+  return LOG_STATUS(Status_SerializationError(
+      "testtesttesttestCannot deserialize; serialization not enabled."));
+}
+
 #endif  // TILEDB_SERIALIZATION
 
 }  // namespace serialization
