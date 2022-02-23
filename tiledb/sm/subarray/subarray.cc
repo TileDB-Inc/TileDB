@@ -2562,6 +2562,7 @@ Status Subarray::precompute_tile_overlap(
 
 Status Subarray::precompute_all_ranges_tile_overlap(
     ThreadPool* const compute_tp,
+    std::vector<std::pair<uint64_t, uint64_t>>& frag_tile_idx,
     std::vector<std::vector<std::pair<uint64_t, uint64_t>>>*
         result_tile_ranges) {
   auto timer_se = stats_->start_timer("read_compute_simple_tile_overlap");
@@ -2639,7 +2640,8 @@ Status Subarray::precompute_all_ranges_tile_overlap(
         // contiguity, push a new result tile range.
         uint64_t end = tile_bitmaps[0].size() - 1;
         uint64_t length = 0;
-        for (int64_t t = tile_bitmaps[0].size() - 1; t >= 0; t--) {
+        int64_t min = static_cast<int64_t>(frag_tile_idx[f].first);
+        for (int64_t t = tile_bitmaps[0].size() - 1; t >= min; t--) {
           bool comb = true;
           for (unsigned d = 0; d < dim_num; d++) {
             comb &= (bool)tile_bitmaps[d][t];
