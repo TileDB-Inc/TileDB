@@ -219,16 +219,12 @@ class FragmentMetadata {
   bool has_consolidated_footer() const;
 
   /**
-   * Returns true if the input range overlaps the non-empty
-   * domain of the fragment.
+   * Retrieves the overlap of all MBRs with the input ND range.
    */
-  bool overlaps_non_empty_domain(const NDRange& range) const;
-
-  /**
-   * Retrieves the overlap of all MBRs with the input ND range. The encryption
-   * key is needed because certain metadata may have to be loaded on-the-fly.
-   */
-  Status get_tile_overlap(const NDRange& range, TileOverlap* tile_overlap);
+  Status get_tile_overlap(
+      const NDRange& range,
+      std::vector<bool>& is_default,
+      TileOverlap* tile_overlap);
 
   /**
    * Compute tile bitmap for the curent fragment/range/dimension.
@@ -481,13 +477,13 @@ class FragmentMetadata {
   uint64_t tile_num() const;
 
   /** Returns the URI of the input attribute/dimension. */
-  URI uri(const std::string& name) const;
+  tuple<Status, optional<URI>> uri(const std::string& name) const;
 
   /** Returns the URI of the input variable-sized attribute/dimension. */
-  URI var_uri(const std::string& name) const;
+  tuple<Status, optional<URI>> var_uri(const std::string& name) const;
 
   /** Returns the validity URI of the input nullable attribute. */
-  URI validity_uri(const std::string& name) const;
+  tuple<Status, optional<URI>> validity_uri(const std::string& name) const;
 
   /** Return the array schema name. */
   const std::string& array_schema_name();
@@ -1484,9 +1480,10 @@ class FragmentMetadata {
    * motiviation is to encode illegal/reserved file name characters.
    *
    * @param name The dimension/attribute name.
-   * return std::string The encoded dimension/attribute name.
+   * return Status, the encoded dimension/attribute name.
    */
-  std::string encode_name(const std::string& name) const;
+  tuple<Status, optional<std::string>> encode_name(
+      const std::string& name) const;
 
   /**
    * This builds the index mapping for attribute/dimension name to id.

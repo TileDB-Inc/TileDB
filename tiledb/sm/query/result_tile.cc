@@ -632,7 +632,15 @@ void ResultTile::compute_results_sparse<char>(
         (i < coords_num - zeroed_size) ? zeroed_size : coords_num - i;
 
     // Check if all `r_bitmap` values are zero between `i` and
-    // `partition_size`.
+    // `partition_size`. To do so, first make sure the first byte is 0, then
+    // using memcmp(addr, addr + 1, size - 1), to validate the rest. This works
+    // as memcmp will validate that the current byte is equal to the next for
+    // all values of the memory buffer in order, and we start by knowing that
+    // the first byte is equal to 0. Through profiling, this has proven to be
+    // much faster than a solution using std::all_of for example, so even
+    // though this solution is less readable, it is still the best. Note that
+    // for this to work, we must make sure that the second address is exactly
+    // one byte after the first one.
     if (r_bitmap[i] == 0 &&
         memcmp(&r_bitmap[i], &r_bitmap[i + 1], partition_size - 1) == 0)
       continue;
@@ -846,13 +854,21 @@ void ResultTile::compute_results_count_sparse_string(
     const uint64_t partition_size =
         (i < cell_num - zeroed_size) ? zeroed_size : cell_num - i;
 
-    // Check if all `r_count` values are zero between `i` and
-    // `partition_size`.
+    // Check if all `r_bitmap` values are zero between `i` and
+    // `partition_size`. To do so, first make sure the first byte is 0, then
+    // using memcmp(addr, addr + 1, size - 1), to validate the rest. This works
+    // as memcmp will validate that the current byte is equal to the next for
+    // all values of the memory buffer in order, and we start by knowing that
+    // the first byte is equal to 0. Through profiling, this has proven to be
+    // much faster than a solution using std::all_of for example, so even
+    // though this solution is less readable, it is still the best. Note that
+    // for this to work, we must make sure that the second address is exactly
+    // one byte after the first one.
     if (result_count[i] == 0 &&
         memcmp(
             &result_count[i],
-            &result_count[i + 1],
-            (partition_size - 1) * sizeof(uint64_t)) == 0)
+            reinterpret_cast<uint8_t*>(&result_count[i]) + 1,
+            partition_size * sizeof(BitmapType) - 1) == 0)
       continue;
 
     {

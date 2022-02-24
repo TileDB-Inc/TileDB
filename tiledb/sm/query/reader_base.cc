@@ -485,7 +485,9 @@ Status ReaderBase::read_tiles(
       }
 
       // Get information about the tile in its fragment
-      auto tile_attr_uri = fragment->uri(name);
+      auto&& [status, tile_attr_uri] = fragment->uri(name);
+      RETURN_NOT_OK(status);
+
       auto tile_idx = tile->tile_idx();
       uint64_t tile_attr_offset;
       RETURN_NOT_OK(fragment->file_offset(name, tile_idx, &tile_attr_offset));
@@ -498,7 +500,7 @@ Status ReaderBase::read_tiles(
       bool cache_hit = false;
       if (!disable_cache) {
         RETURN_NOT_OK(storage_manager_->read_from_cache(
-            tile_attr_uri,
+            *tile_attr_uri,
             tile_attr_offset,
             t->filtered_buffer(),
             *tile_persisted_size,
@@ -507,7 +509,7 @@ Status ReaderBase::read_tiles(
 
       if (!cache_hit) {
         // Add the region of the fragment to be read.
-        all_regions[tile_attr_uri].emplace_back(
+        all_regions[*tile_attr_uri].emplace_back(
             tile_attr_offset, t, *tile_persisted_size);
 
         t->filtered_buffer().expand(*tile_persisted_size);
@@ -517,7 +519,9 @@ Status ReaderBase::read_tiles(
       RETURN_NOT_OK(t->alloc_data(tile_size));
 
       if (var_size) {
-        auto tile_attr_var_uri = fragment->var_uri(name);
+        auto&& [status, tile_attr_var_uri] = fragment->var_uri(name);
+        RETURN_NOT_OK(status);
+
         uint64_t tile_attr_var_offset;
         RETURN_NOT_OK(
             fragment->file_var_offset(name, tile_idx, &tile_attr_var_offset));
@@ -529,7 +533,7 @@ Status ReaderBase::read_tiles(
 
         if (!disable_cache) {
           RETURN_NOT_OK(storage_manager_->read_from_cache(
-              tile_attr_var_uri,
+              *tile_attr_var_uri,
               tile_attr_var_offset,
               t_var->filtered_buffer(),
               *tile_var_persisted_size,
@@ -538,7 +542,7 @@ Status ReaderBase::read_tiles(
 
         if (!cache_hit) {
           // Add the region of the fragment to be read.
-          all_regions[tile_attr_var_uri].emplace_back(
+          all_regions[*tile_attr_var_uri].emplace_back(
               tile_attr_var_offset, t_var, *tile_var_persisted_size);
 
           t_var->filtered_buffer().expand(*tile_var_persisted_size);
@@ -549,7 +553,9 @@ Status ReaderBase::read_tiles(
       }
 
       if (nullable) {
-        auto tile_validity_attr_uri = fragment->validity_uri(name);
+        auto&& [status, tile_validity_attr_uri] = fragment->validity_uri(name);
+        RETURN_NOT_OK(status);
+
         uint64_t tile_attr_validity_offset;
         RETURN_NOT_OK(fragment->file_validity_offset(
             name, tile_idx, &tile_attr_validity_offset));
@@ -561,7 +567,7 @@ Status ReaderBase::read_tiles(
 
         if (!disable_cache) {
           RETURN_NOT_OK(storage_manager_->read_from_cache(
-              tile_validity_attr_uri,
+              *tile_validity_attr_uri,
               tile_attr_validity_offset,
               t_validity->filtered_buffer(),
               *tile_validity_persisted_size,
@@ -570,7 +576,7 @@ Status ReaderBase::read_tiles(
 
         if (!cache_hit) {
           // Add the region of the fragment to be read.
-          all_regions[tile_validity_attr_uri].emplace_back(
+          all_regions[*tile_validity_attr_uri].emplace_back(
               tile_attr_validity_offset,
               t_validity,
               *tile_validity_persisted_size);
@@ -1206,7 +1212,9 @@ Status ReaderBase::unfilter_tiles(
 
           logger_->info("using cache");
           // Get information about the tile in its fragment.
-          auto tile_attr_uri = fragment->uri(name);
+          auto&& [status, tile_attr_uri] = fragment->uri(name);
+          RETURN_NOT_OK(status);
+
           auto tile_idx = tile->tile_idx();
           uint64_t tile_attr_offset;
           RETURN_NOT_OK(
@@ -1216,33 +1224,38 @@ Status ReaderBase::unfilter_tiles(
           if (t.filtered()) {
             // Store the filtered buffer in the tile cache.
             RETURN_NOT_OK(storage_manager_->write_to_cache(
-                tile_attr_uri, tile_attr_offset, t.filtered_buffer()));
+                *tile_attr_uri, tile_attr_offset, t.filtered_buffer()));
           }
 
           // Cache 't_var'.
           if (var_size && t_var.filtered()) {
-            auto tile_attr_var_uri = fragment->var_uri(name);
+            auto&& [status, tile_attr_var_uri] = fragment->var_uri(name);
+            RETURN_NOT_OK(status);
+
             uint64_t tile_attr_var_offset;
             RETURN_NOT_OK(fragment->file_var_offset(
                 name, tile_idx, &tile_attr_var_offset));
 
             // Store the filtered buffer in the tile cache.
             RETURN_NOT_OK(storage_manager_->write_to_cache(
-                tile_attr_var_uri,
+                *tile_attr_var_uri,
                 tile_attr_var_offset,
                 t_var.filtered_buffer()));
           }
 
           // Cache 't_validity'.
           if (nullable && t_validity.filtered()) {
-            auto tile_attr_validity_uri = fragment->validity_uri(name);
+            auto&& [status, tile_attr_validity_uri] =
+                fragment->validity_uri(name);
+            RETURN_NOT_OK(status);
+
             uint64_t tile_attr_validity_offset;
             RETURN_NOT_OK(fragment->file_validity_offset(
                 name, tile_idx, &tile_attr_validity_offset));
 
             // Store the filtered buffer in the tile cache.
             RETURN_NOT_OK(storage_manager_->write_to_cache(
-                tile_attr_validity_uri,
+                *tile_attr_validity_uri,
                 tile_attr_validity_offset,
                 t_validity.filtered_buffer()));
           }

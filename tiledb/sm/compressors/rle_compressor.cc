@@ -5,7 +5,7 @@
  *
  * The MIT License
  *
- * @copyright Copyright (c) 2017-2021 TileDB, Inc.
+ * @copyright Copyright (c) 2017-2022 TileDB, Inc.
  *
  * Permission is hereby granted, free of charge, to any person obtaining a copy
  * of this software and associated documentation files (the "Software"), to deal
@@ -35,7 +35,6 @@
 #include "tiledb/sm/buffer/buffer.h"
 
 #include <cassert>
-#include <iostream>
 
 using namespace tiledb::common;
 
@@ -144,6 +143,38 @@ uint64_t RLE::overhead(uint64_t nbytes, uint64_t value_size) {
   // In the worst case, RLE adds two bytes per every value in the buffer.
   uint64_t value_num = nbytes / value_size;
   return value_num * 2;
+}
+
+tuple<uint64_t, uint64_t, uint64_t, uint64_t> RLE::calculate_compression_params(
+    const span<std::string_view> input) {
+  if (input.empty())
+    return {0, 0, 0, 0};
+
+  uint64_t max_identicals = 1;
+  uint64_t identicals = 1;
+  uint64_t output_strings_size = 0;
+  uint64_t num_of_runs = 1;
+  uint64_t max_string_size = input[0].size();
+  auto previous = input[0];
+  for (uint64_t i = 1; i < input.size(); i++) {
+    if (input[i] == previous) {
+      identicals++;
+    } else {
+      max_identicals = std::max(identicals, max_identicals);
+      max_string_size =
+          std::max(max_string_size, static_cast<uint64_t>(previous.size()));
+      output_strings_size += previous.size();
+      num_of_runs++;
+      identicals = 1;
+      previous = input[i];
+    }
+  }
+
+  // take into account the last string
+  output_strings_size += previous.size();
+  max_identicals = std::max(identicals, max_identicals);
+
+  return {max_identicals, max_string_size, num_of_runs, output_strings_size};
 }
 
 }  // namespace sm

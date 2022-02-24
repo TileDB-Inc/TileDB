@@ -498,7 +498,8 @@ Status FragmentMetadata::add_max_buffer_sizes_sparse(
   RETURN_NOT_OK(load_rtree(encryption_key));
 
   // Get tile overlap
-  auto tile_overlap = rtree_.get_tile_overlap(subarray);
+  std::vector<bool> is_default(subarray.size(), false);
+  auto tile_overlap = rtree_.get_tile_overlap(subarray, is_default);
 
   // Handle tile ranges
   for (const auto& tr : tile_overlap.tile_ranges_) {
@@ -585,14 +586,12 @@ bool FragmentMetadata::has_consolidated_footer() const {
   return has_consolidated_footer_;
 }
 
-bool FragmentMetadata::overlaps_non_empty_domain(const NDRange& range) const {
-  return array_schema_->domain()->overlap(range, non_empty_domain_);
-}
-
 Status FragmentMetadata::get_tile_overlap(
-    const NDRange& range, TileOverlap* tile_overlap) {
+    const NDRange& range,
+    std::vector<bool>& is_default,
+    TileOverlap* tile_overlap) {
   assert(version_ <= 2 || loaded_metadata_.rtree_);
-  *tile_overlap = rtree_.get_tile_overlap(range);
+  *tile_overlap = rtree_.get_tile_overlap(range, is_default);
   return Status::Ok();
 }
 
@@ -933,9 +932,10 @@ uint64_t FragmentMetadata::tile_num() const {
   return sparse_tile_num_;
 }
 
-std::string FragmentMetadata::encode_name(const std::string& name) const {
+tuple<Status, optional<std::string>> FragmentMetadata::encode_name(
+    const std::string& name) const {
   if (version_ <= 7)
-    return name;
+    return {Status::Ok(), name};
 
   if (version_ == 8) {
     static const std::unordered_map<char, std::string> percent_encoding{
@@ -974,13 +974,15 @@ std::string FragmentMetadata::encode_name(const std::string& name) const {
         percent_encoded_name << percent_encoding.at(c);
     }
 
-    return percent_encoded_name.str();
+    return {Status::Ok(), percent_encoded_name.str()};
   }
 
   assert(version_ > 8);
   const auto iter = idx_map_.find(name);
   if (iter == idx_map_.end())
-    LOG_FATAL("Name " + name + " not in idx_map_");
+    return {Status_FragmentMetadataError("Name " + name + " not in idx_map_"),
+            std::nullopt};
+
   const unsigned idx = iter->second;
 
   const std::vector<tiledb::sm::Attribute*> attributes =
@@ -988,7 +990,7 @@ std::string FragmentMetadata::encode_name(const std::string& name) const {
   for (unsigned i = 0; i < attributes.size(); ++i) {
     const std::string attr_name = attributes[i]->name();
     if (attr_name == name) {
-      return "a" + std::to_string(idx);
+      return {Status::Ok(), "a" + std::to_string(idx)};
     }
   }
 
@@ -996,30 +998,47 @@ std::string FragmentMetadata::encode_name(const std::string& name) const {
     const std::string dim_name = array_schema_->dimension(i)->name();
     if (dim_name == name) {
       const unsigned dim_idx = idx - array_schema_->attribute_num() - 1;
-      return "d" + std::to_string(dim_idx);
+      return {Status::Ok(), "d" + std::to_string(dim_idx)};
     }
   }
 
   if (name == constants::coords) {
-    return name;
+    return {Status::Ok(), name};
   }
 
-  LOG_FATAL("Unable to locate dimension/attribute " + name);
-  return "";
+  auto err = "Unable to locate dimension/attribute " + name;
+  return {Status_FragmentMetadataError(err), std::nullopt};
 }
 
-URI FragmentMetadata::uri(const std::string& name) const {
-  return fragment_uri_.join_path(encode_name(name) + constants::file_suffix);
+tuple<Status, optional<URI>> FragmentMetadata::uri(
+    const std::string& name) const {
+  auto&& [st, encoded_name] = encode_name(name);
+  if (!st.ok())
+    return {st, std::nullopt};
+
+  return {st, fragment_uri_.join_path(*encoded_name + constants::file_suffix)};
 }
 
-URI FragmentMetadata::var_uri(const std::string& name) const {
-  return fragment_uri_.join_path(
-      encode_name(name) + "_var" + constants::file_suffix);
+tuple<Status, optional<URI>> FragmentMetadata::var_uri(
+    const std::string& name) const {
+  auto&& [st, encoded_name] = encode_name(name);
+  if (!st.ok())
+    return {st, std::nullopt};
+
+  return {
+      st,
+      fragment_uri_.join_path(*encoded_name + "_var" + constants::file_suffix)};
 }
 
-URI FragmentMetadata::validity_uri(const std::string& name) const {
-  return fragment_uri_.join_path(
-      encode_name(name) + "_validity" + constants::file_suffix);
+tuple<Status, optional<URI>> FragmentMetadata::validity_uri(
+    const std::string& name) const {
+  auto&& [st, encoded_name] = encode_name(name);
+  if (!st.ok())
+    return {st, std::nullopt};
+
+  return {st,
+          fragment_uri_.join_path(
+              *encoded_name + "_validity" + constants::file_suffix)};
 }
 
 const std::string& FragmentMetadata::array_schema_name() {

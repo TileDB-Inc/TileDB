@@ -105,7 +105,8 @@ class RTree {
    * Returns the tile overlap of the input range with the MBRs stored
    * in the RTree.
    */
-  TileOverlap get_tile_overlap(const NDRange& range) const;
+  TileOverlap get_tile_overlap(
+      const NDRange& range, std::vector<bool>& is_default) const;
 
   /**
    * Compute tile bitmap for the curent range.

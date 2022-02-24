@@ -42,6 +42,7 @@
 #endif
 // clang-format on
 
+#include "tiledb/sm/query/query.h"
 #include "tiledb/common/heap_memory.h"
 #include "tiledb/common/logger.h"
 #include "tiledb/sm/array/array.h"
@@ -55,12 +56,11 @@
 #include "tiledb/sm/fragment/fragment_metadata.h"
 #include "tiledb/sm/misc/hash.h"
 #include "tiledb/sm/misc/parse_argument.h"
-#include "tiledb/sm/query/query.h"
-#include "tiledb/sm/query/reader.h"
 #include "tiledb/sm/query/dense_reader.h"
+#include "tiledb/sm/query/reader.h"
 #include "tiledb/sm/query/sparse_global_order_reader.h"
 #include "tiledb/sm/query/sparse_unordered_with_dups_reader.h"
-#include "tiledb/sm/query/writer.h"
+#include "tiledb/sm/query/writer_base.h"
 #include "tiledb/sm/serialization/config.h"
 #include "tiledb/sm/serialization/query.h"
 #include "tiledb/sm/subarray/subarray.h"
@@ -917,7 +917,7 @@ Status dense_reader_from_capnp(
 
 Status writer_to_capnp(
     const Query& query,
-    Writer& writer,
+    WriterBase& writer,
     capnp::Writer::Builder* writer_builder) {
   writer_builder->setCheckCoordDups(writer.get_check_coord_dups());
   writer_builder->setCheckCoordOOB(writer.get_check_coord_oob());
@@ -952,7 +952,7 @@ Status writer_to_capnp(
 }
 
 Status writer_from_capnp(
-    const capnp::Writer::Reader& writer_reader, Writer* writer) {
+    const capnp::Writer::Reader& writer_reader, WriterBase* writer) {
   writer->set_check_coord_dups(writer_reader.getCheckCoordDups());
   writer->set_check_coord_oob(writer_reader.getCheckCoordOOB());
   writer->set_dedup_coords(writer_reader.getDedupCoords());
@@ -1125,7 +1125,7 @@ Status query_to_capnp(
     }
   } else {
     auto builder = query_builder->initWriter();
-    auto writer = (Writer*)query.strategy();
+    auto writer = (WriterBase*)query.strategy();
 
     query_builder->setVarOffsetsMode(writer->offsets_mode());
     query_builder->setVarOffsetsAddExtraElement(
@@ -1757,7 +1757,7 @@ Status query_from_capnp(
     }
   } else {
     auto writer_reader = query_reader.getWriter();
-    auto writer = (Writer*)query->strategy();
+    auto writer = (WriterBase*)query->strategy();
 
     if (query_reader.hasVarOffsetsMode()) {
       RETURN_NOT_OK(writer->set_offsets_mode(query_reader.getVarOffsetsMode()));
@@ -2035,7 +2035,8 @@ Status query_deserialize(
         query,
         compute_tp);
     if (!st2.ok()) {
-      LOG_FATAL(st2.message());
+      LOG_ERROR(st2.message());
+      return st2;
     }
   }
 

@@ -1965,7 +1965,7 @@ void Subarray::set_add_or_coalesce_range_func() {
             std::placeholders::_3);
         break;
       default:
-        LOG_FATAL("Unexpected datatype " + datatype_str(type));
+        LOG_ERROR("Unexpected datatype " + datatype_str(type));
     }
   }
 }
@@ -2562,6 +2562,7 @@ Status Subarray::precompute_tile_overlap(
 
 Status Subarray::precompute_all_ranges_tile_overlap(
     ThreadPool* const compute_tp,
+    std::vector<std::pair<uint64_t, uint64_t>>& frag_tile_idx,
     std::vector<std::vector<std::pair<uint64_t, uint64_t>>>*
         result_tile_ranges) {
   auto timer_se = stats_->start_timer("read_compute_simple_tile_overlap");
@@ -2639,7 +2640,8 @@ Status Subarray::precompute_all_ranges_tile_overlap(
         // contiguity, push a new result tile range.
         uint64_t end = tile_bitmaps[0].size() - 1;
         uint64_t length = 0;
-        for (int64_t t = tile_bitmaps[0].size() - 1; t >= 0; t--) {
+        int64_t min = static_cast<int64_t>(frag_tile_idx[f].first);
+        for (int64_t t = tile_bitmaps[0].size() - 1; t >= min; t--) {
           bool comb = true;
           for (unsigned d = 0; d < dim_num; d++) {
             comb &= (bool)tile_bitmaps[d][t];
@@ -2873,7 +2875,7 @@ Status Subarray::compute_relevant_fragments(
     // and at least one range in the corresponding dimension.
     fn_ctx->frag_bytemaps_.resize(dim_num);
     for (uint32_t d = 0; d < dim_num; ++d) {
-      fn_ctx->frag_bytemaps_[d].resize(fragment_num, 0);
+      fn_ctx->frag_bytemaps_[d].resize(fragment_num, is_default(d) ? 1 : 0);
     }
   }
 
@@ -2883,6 +2885,9 @@ Status Subarray::compute_relevant_fragments(
 
   // Populate the fragment bytemap for each dimension in parallel.
   RETURN_NOT_OK(parallel_for(compute_tp, 0, dim_num, [&](const uint32_t d) {
+    if (is_default(d))
+      return Status::Ok();
+
     return compute_relevant_fragments_for_dim(
         compute_tp,
         d,
@@ -3082,8 +3087,8 @@ Status Subarray::compute_relevant_fragment_tile_overlap(
             compute_tile_overlap(r + tile_overlap->range_idx_start(), frag_idx);
       } else {  // Sparse fragment
         const auto& range = this->ndrange(r + tile_overlap->range_idx_start());
-        RETURN_NOT_OK(
-            meta->get_tile_overlap(range, tile_overlap->at(frag_idx, r)));
+        RETURN_NOT_OK(meta->get_tile_overlap(
+            range, is_default_, tile_overlap->at(frag_idx, r)));
       }
     }
 

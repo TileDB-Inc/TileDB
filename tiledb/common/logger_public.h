@@ -61,9 +61,6 @@ void LOG_ERROR(const std::string& msg);
 /** Logs a status. */
 Status LOG_STATUS(const Status& st);
 
-/** Logs an error and exits with a non-zero status. */
-void LOG_FATAL(const std::string& msg);
-
 /** Logs trace. */
 void LOG_TRACE(const std::stringstream& msg);
 
@@ -79,9 +76,6 @@ void LOG_WARN(const std::stringstream& msg);
 /** Logs an error. */
 void LOG_ERROR(const std::stringstream& msg);
 
-/** Logs an error and exits with a non-zero status. */
-void LOG_FATAL(const std::stringstream& msg);
-
 }  // namespace common
 
 /*
@@ -89,7 +83,6 @@ void LOG_FATAL(const std::stringstream& msg);
  */
 using common::LOG_DEBUG;
 using common::LOG_ERROR;
-using common::LOG_FATAL;
 using common::LOG_INFO;
 using common::LOG_STATUS;
 using common::LOG_TRACE;

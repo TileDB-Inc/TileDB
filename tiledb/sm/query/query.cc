@@ -40,11 +40,13 @@
 #include "tiledb/sm/fragment/fragment_metadata.h"
 #include "tiledb/sm/misc/parse_argument.h"
 #include "tiledb/sm/query/dense_reader.h"
+#include "tiledb/sm/query/global_order_writer.h"
+#include "tiledb/sm/query/ordered_writer.h"
 #include "tiledb/sm/query/query_condition.h"
 #include "tiledb/sm/query/reader.h"
 #include "tiledb/sm/query/sparse_global_order_reader.h"
 #include "tiledb/sm/query/sparse_unordered_with_dups_reader.h"
-#include "tiledb/sm/query/writer.h"
+#include "tiledb/sm/query/unordered_writer.h"
 #include "tiledb/sm/rest/rest_client.h"
 #include "tiledb/sm/storage_manager/storage_manager.h"
 #include "tiledb/sm/tile/writer_tile.h"
@@ -1002,20 +1004,54 @@ Status Query::process() {
 
 Status Query::create_strategy() {
   if (type_ == QueryType::WRITE) {
-    strategy_ = tdb_unique_ptr<IQueryStrategy>(tdb_new(
-        Writer,
-        stats_->create_child("Writer"),
-        logger_,
-        storage_manager_,
-        array_,
-        config_,
-        buffers_,
-        subarray_,
-        layout_,
-        written_fragment_info_,
-        disable_check_global_order_,
-        coords_info_,
-        fragment_uri_));
+    if (layout_ == Layout::COL_MAJOR || layout_ == Layout::ROW_MAJOR) {
+      strategy_ = tdb_unique_ptr<IQueryStrategy>(tdb_new(
+          OrderedWriter,
+          stats_->create_child("Writer"),
+          logger_,
+          storage_manager_,
+          array_,
+          config_,
+          buffers_,
+          subarray_,
+          layout_,
+          written_fragment_info_,
+          disable_check_global_order_,
+          coords_info_,
+          fragment_uri_));
+    } else if (layout_ == Layout::UNORDERED) {
+      strategy_ = tdb_unique_ptr<IQueryStrategy>(tdb_new(
+          UnorderedWriter,
+          stats_->create_child("Writer"),
+          logger_,
+          storage_manager_,
+          array_,
+          config_,
+          buffers_,
+          subarray_,
+          layout_,
+          written_fragment_info_,
+          disable_check_global_order_,
+          coords_info_,
+          fragment_uri_));
+    } else if (layout_ == Layout::GLOBAL_ORDER) {
+      strategy_ = tdb_unique_ptr<IQueryStrategy>(tdb_new(
+          GlobalOrderWriter,
+          stats_->create_child("Writer"),
+          logger_,
+          storage_manager_,
+          array_,
+          config_,
+          buffers_,
+          subarray_,
+          layout_,
+          written_fragment_info_,
+          disable_check_global_order_,
+          coords_info_,
+          fragment_uri_));
+    } else {
+      assert(false);
+    }
   } else {
     bool use_default = true;
     if (use_refactored_sparse_unordered_with_dups_reader() &&
