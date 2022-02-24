@@ -782,10 +782,10 @@ Status Array::metadata(Metadata** metadata) {
   return Status::Ok();
 }
 
-std::tuple<Status, std::optional<const NDRange>> Array::non_empty_domain() {
+tuple<Status, optional<const NDRange>> Array::non_empty_domain() {
   if (!non_empty_domain_computed_) {
     // Compute non-empty domain
-    RETURN_NOT_OK_TUPLE(compute_non_empty_domain(), std::nullopt);
+    RETURN_NOT_OK_TUPLE(compute_non_empty_domain(), nullopt);
   }
   return {Status::Ok(), non_empty_domain_};
 }

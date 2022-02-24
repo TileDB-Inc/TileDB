@@ -517,7 +517,7 @@ class ReaderBase : public StrategyBase {
    * @param t The tile idx.
    * @return Status, tile size.
    */
-  std::tuple<Status, std::optional<uint64_t>> get_attribute_tile_size(
+  tuple<Status, optional<uint64_t>> get_attribute_tile_size(
       const std::string& name, unsigned f, uint64_t t);
 
   /**
@@ -548,8 +548,7 @@ class ReaderBase : public StrategyBase {
    * @return Status, overflowed
    */
   template <class T>
-  std::tuple<Status, std::optional<bool>> fill_dense_coords(
-      const Subarray& subarray);
+  tuple<Status, optional<bool>> fill_dense_coords(const Subarray& subarray);
 
   /**
    * Fills the coordinate buffers with coordinates. Applicable only to dense
@@ -570,7 +569,7 @@ class ReaderBase : public StrategyBase {
    * @return Status, overflowed.
    */
   template <class T>
-  std::tuple<Status, std::optional<bool>> fill_dense_coords_global(
+  tuple<Status, optional<bool>> fill_dense_coords_global(
       const Subarray& subarray,
       const std::vector<unsigned>& dim_idx,
       const std::vector<QueryBuffer*>& buffers,
@@ -595,7 +594,7 @@ class ReaderBase : public StrategyBase {
    * @return Status, overflowed.
    */
   template <class T>
-  std::tuple<Status, std::optional<bool>> fill_dense_coords_row_col(
+  tuple<Status, optional<bool>> fill_dense_coords_row_col(
       const Subarray& subarray,
       const std::vector<unsigned>& dim_idx,
       const std::vector<QueryBuffer*>& buffers,
@@ -678,7 +677,7 @@ class ReaderBase : public StrategyBase {
    * @param range_thread_idx Current range thread index.
    * @return {min, max}
    */
-  std::tuple<uint64_t, uint64_t> compute_chunk_min_max(
+  tuple<uint64_t, uint64_t> compute_chunk_min_max(
       const uint64_t num_chunks,
       const uint64_t num_range_threads,
       const uint64_t thread_idx) const;
@@ -701,11 +700,7 @@ class ReaderBase : public StrategyBase {
    * @return {Status, size of the unfiltered tile buffer, size of the unfiltered
    * tile_var buffer, size of the unfiltered tile validity buffer}
    */
-  std::tuple<
-      Status,
-      std::optional<uint64_t>,
-      std::optional<uint64_t>,
-      std::optional<uint64_t>>
+  tuple<Status, optional<uint64_t>, optional<uint64_t>, optional<uint64_t>>
   load_tile_chunk_data(
       const std::string& name,
       ResultTile* const tile,
@@ -722,7 +717,7 @@ class ReaderBase : public StrategyBase {
    * @param tile_chunk_data Tile chunk info, buffers and offsets
    * @return Status
    */
-  std::tuple<Status, std::optional<uint64_t>> load_chunk_data(
+  tuple<Status, optional<uint64_t>> load_chunk_data(
       Tile* const tile, ChunkData* chunk_data) const;
 
   /**

@@ -544,7 +544,7 @@ std::vector<ResultCellSlab> QueryCondition::apply_clause(
 }
 
 template <typename T>
-std::tuple<Status, std::optional<std::vector<ResultCellSlab>>>
+tuple<Status, optional<std::vector<ResultCellSlab>>>
 QueryCondition::apply_clause(
     const Clause& clause,
     const uint64_t stride,
@@ -582,13 +582,13 @@ QueryCondition::apply_clause(
       return {Status_QueryConditionError(
                   "Cannot perform query comparison; Unknown query "
                   "condition operator"),
-              std::nullopt};
+              nullopt};
   }
 
   return {Status::Ok(), std::move(ret)};
 }
 
-std::tuple<Status, std::optional<std::vector<ResultCellSlab>>>
+tuple<Status, optional<std::vector<ResultCellSlab>>>
 QueryCondition::apply_clause(
     const QueryCondition::Clause& clause,
     const ArraySchema* const array_schema,
@@ -599,7 +599,7 @@ QueryCondition::apply_clause(
   if (!attribute) {
     return {
         Status_QueryConditionError("Unknown attribute " + clause.field_name_),
-        std::nullopt};
+        nullopt};
   }
 
   const ByteVecValue fill_value = attribute->fill_value();
@@ -673,10 +673,10 @@ QueryCondition::apply_clause(
                   "Cannot perform query comparison; Unsupported query "
                   "conditional type on " +
                   clause.field_name_),
-              std::nullopt};
+              nullopt};
   }
 
-  return {Status::Ok(), std::nullopt};
+  return {Status::Ok(), nullopt};
 }
 
 Status QueryCondition::apply(

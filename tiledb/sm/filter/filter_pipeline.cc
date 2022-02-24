@@ -89,7 +89,7 @@ void FilterPipeline::clear() {
   filters_.clear();
 }
 
-std::tuple<Status, std::optional<std::vector<uint64_t>>>
+tuple<Status, optional<std::vector<uint64_t>>>
 FilterPipeline::get_var_chunk_sizes(
     uint32_t chunk_size, Tile* const tile, Tile* const offsets_tile) const {
   std::vector<uint64_t> chunk_offsets;
@@ -114,7 +114,7 @@ FilterPipeline::get_var_chunk_sizes(
           if (new_size > std::numeric_limits<uint32_t>::max()) {
             return {
                 LOG_STATUS(Status_FilterError("Chunk size exceeds uint32_t")),
-                std::nullopt};
+                nullopt};
           }
           chunk_offsets.emplace_back(offsets[c] + cell_size);
           current_size = 0;
@@ -126,7 +126,7 @@ FilterPipeline::get_var_chunk_sizes(
             if (cell_size > std::numeric_limits<uint32_t>::max()) {
               return {
                   LOG_STATUS(Status_FilterError("Chunk size exceeds uint32_t")),
-                  std::nullopt};
+                  nullopt};
             }
 
             if (c != num_offsets - 1)
@@ -301,7 +301,7 @@ Status FilterPipeline::filter_chunks_forward(
 
 Status FilterPipeline::filter_chunks_reverse(
     Tile& tile,
-    const std::vector<std::tuple<void*, uint32_t, uint32_t, uint32_t>>& input,
+    const std::vector<tuple<void*, uint32_t, uint32_t, uint32_t>>& input,
     ThreadPool* const compute_tp,
     const Config& config) const {
   if (input.empty()) {
@@ -546,7 +546,7 @@ Status FilterPipeline::run_reverse_internal(
   uint64_t num_chunks;
   memcpy(&num_chunks, filtered_buffer_data, sizeof(uint64_t));
   filtered_buffer_data += sizeof(uint64_t);
-  std::vector<std::tuple<void*, uint32_t, uint32_t, uint32_t>> filtered_chunks(
+  std::vector<tuple<void*, uint32_t, uint32_t, uint32_t>> filtered_chunks(
       num_chunks);
   uint64_t total_orig_size = 0;
   for (uint64_t i = 0; i < num_chunks; i++) {

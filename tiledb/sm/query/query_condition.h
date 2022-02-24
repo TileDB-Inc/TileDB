@@ -370,7 +370,7 @@ class QueryCondition {
    * @return Status, filtered cell slabs.
    */
   template <typename T>
-  std::tuple<Status, std::optional<std::vector<ResultCellSlab>>> apply_clause(
+  tuple<Status, optional<std::vector<ResultCellSlab>>> apply_clause(
       const Clause& clause,
       uint64_t stride,
       const bool var_size,
@@ -388,7 +388,7 @@ class QueryCondition {
    * @param result_cell_slabs The input cell slabs.
    * @return Status, filtered cell slabs.
    */
-  std::tuple<Status, std::optional<std::vector<ResultCellSlab>>> apply_clause(
+  tuple<Status, optional<std::vector<ResultCellSlab>>> apply_clause(
       const QueryCondition::Clause& clause,
       const ArraySchema* const array_schema,
       uint64_t stride,

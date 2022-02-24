@@ -41,6 +41,7 @@
 #include <string>
 
 #include "tiledb/common/blank.h"
+#include "tiledb/common/common.h"
 #include "tiledb/common/logger_public.h"
 #include "tiledb/common/status.h"
 #include "tiledb/sm/enums/datatype.h"
@@ -141,7 +142,7 @@ class Dimension {
    * @param version The array schema version.
    * @return Status and Dimension
    */
-  static std::tuple<Status, optional<std::shared_ptr<Dimension>>> deserialize(
+  static tuple<Status, optional<shared_ptr<Dimension>>> deserialize(
       ConstBuffer* buff, uint32_t version, Datatype type);
 
   /** Returns the domain. */

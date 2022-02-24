@@ -472,7 +472,7 @@ Status DenseReader::init_read_state() {
 
 /** Apply the query condition. */
 template <class DimType, class OffType>
-std::tuple<Status, std::optional<std::vector<uint8_t>>>
+tuple<Status, optional<std::vector<uint8_t>>>
 DenseReader::apply_query_condition(
     Subarray& subarray,
     std::vector<Subarray>& tile_subarrays,
@@ -565,7 +565,7 @@ DenseReader::apply_query_condition(
 
           return Status::Ok();
         });
-    RETURN_NOT_OK_TUPLE(status, std::nullopt);
+    RETURN_NOT_OK_TUPLE(status, nullopt);
   }
 
   return {Status::Ok(), qc_result};
@@ -831,7 +831,7 @@ uint64_t DenseReader::get_cell_pos_in_tile(
 }
 
 template <class DimType>
-std::tuple<bool, uint64_t, uint64_t> DenseReader::cell_slab_overlaps_range(
+tuple<bool, uint64_t, uint64_t> DenseReader::cell_slab_overlaps_range(
     const unsigned dim_num,
     const NDRange& ndrange,
     const DimType* coords,

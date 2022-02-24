@@ -32,6 +32,7 @@
 
 #include "catch.hpp"
 #include "test/src/helpers.h"
+#include "tiledb/common/common.h"
 #include "tiledb/sm/c_api/tiledb.h"
 #include "tiledb/sm/c_api/tiledb_serialization.h"
 #include "tiledb/sm/c_api/tiledb_struct_def.h"
@@ -78,8 +79,8 @@ template <class TResult, class TExpected>
 bool check_result(
     const TResult a,
     const TExpected b,
-    std::optional<size_t> start = nullopt,
-    std::optional<size_t> end = nullopt) {
+    optional<size_t> start = nullopt,
+    optional<size_t> end = nullopt) {
   TResult b_typed;
   if constexpr (std::is_same<TExpected, std::any>::value) {
     b_typed = std::any_cast<TResult>(b);

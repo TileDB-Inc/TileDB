@@ -35,6 +35,7 @@
 
 #include <atomic>
 
+#include "tiledb/common/common.h"
 #include "tiledb/common/logger_public.h"
 #include "tiledb/common/thread_pool.h"
 #include "tiledb/sm/buffer/buffer.h"
@@ -946,7 +947,7 @@ class Subarray {
   Status sort_ranges(ThreadPool* const compute_tp);
 
   /** Returns if all ranges for this subarray are non overlapping. */
-  std::tuple<Status, std::optional<bool>> non_overlapping_ranges(
+  tuple<Status, std::optional<bool>> non_overlapping_ranges(
       ThreadPool* const compute_tp);
 
  private:
@@ -1306,7 +1307,7 @@ class Subarray {
    * @return true if the ranges are non overlapping, false otherwise.
    */
   template <typename T>
-  std::tuple<Status, std::optional<bool>> non_overlapping_ranges_for_dim(
+  tuple<Status, std::optional<bool>> non_overlapping_ranges_for_dim(
       const uint64_t dim_idx);
 
   /**
@@ -1315,7 +1316,7 @@ class Subarray {
    * @param dim_idx dimension index.
    * @return true if the ranges are non overlapping, false otherwise.
    */
-  std::tuple<Status, std::optional<bool>> non_overlapping_ranges_for_dim(
+  tuple<Status, std::optional<bool>> non_overlapping_ranges_for_dim(
       const uint64_t dim_idx);
 };
 

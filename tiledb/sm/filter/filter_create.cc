@@ -78,7 +78,7 @@ tiledb::sm::Filter* tiledb::sm::FilterCreate::make(FilterType type) {
   }
 }
 
-std::tuple<Status, optional<std::shared_ptr<tiledb::sm::Filter>>>
+tuple<Status, optional<std::shared_ptr<tiledb::sm::Filter>>>
 tiledb::sm::FilterCreate::deserialize(
     ConstBuffer* buff, const EncryptionKey& encryption_key) {
   Status st;
@@ -175,7 +175,7 @@ tiledb::sm::FilterCreate::deserialize(
   }
 }
 
-std::tuple<Status, optional<std::shared_ptr<tiledb::sm::Filter>>>
+tuple<Status, optional<std::shared_ptr<tiledb::sm::Filter>>>
 tiledb::sm::FilterCreate::deserialize(ConstBuffer* buff) {
   EncryptionKey encryption_key;
   return tiledb::sm::FilterCreate::deserialize(buff, encryption_key);

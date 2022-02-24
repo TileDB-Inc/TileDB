@@ -179,7 +179,7 @@ Status Dimension::set_cell_val_num(unsigned int cell_val_num) {
   return Status::Ok();
 }
 
-std::tuple<Status, optional<std::shared_ptr<Dimension>>> Dimension::deserialize(
+tuple<Status, optional<shared_ptr<Dimension>>> Dimension::deserialize(
     ConstBuffer* buff, uint32_t version, Datatype type) {
   Status st;
   // Load dimension name

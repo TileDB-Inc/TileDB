@@ -963,7 +963,7 @@ Status FragmentInfo::set_timestamp_range_from_config() {
   return Status::Ok();
 }
 
-std::tuple<Status, std::optional<SingleFragmentInfo>> FragmentInfo::load(
+tuple<Status, optional<SingleFragmentInfo>> FragmentInfo::load(
     const URI& new_fragment_uri) const {
   SingleFragmentInfo ret;
   auto vfs = storage_manager_->vfs();
@@ -974,18 +974,18 @@ std::tuple<Status, std::optional<SingleFragmentInfo>> FragmentInfo::load(
   std::pair<uint64_t, uint64_t> timestamp_range;
   RETURN_NOT_OK_TUPLE(
       utils::parse::get_timestamp_range(new_fragment_uri, &timestamp_range),
-      std::nullopt);
+      nullopt);
   uint32_t version;
   auto name = new_fragment_uri.remove_trailing_slash().last_path_part();
   RETURN_NOT_OK_TUPLE(
-      utils::parse::get_fragment_name_version(name, &version), std::nullopt);
+      utils::parse::get_fragment_name_version(name, &version), nullopt);
 
   // Check if fragment is sparse
   bool sparse = false;
   if (version == 1) {  // This corresponds to format version <=2
     URI coords_uri =
         new_fragment_uri.join_path(constants::coords + constants::file_suffix);
-    RETURN_NOT_OK_TUPLE(vfs->is_file(coords_uri, &sparse), std::nullopt);
+    RETURN_NOT_OK_TUPLE(vfs->is_file(coords_uri, &sparse), nullopt);
   } else {
     // Do nothing. It does not matter what the `sparse` value
     // is, since the FragmentMetadata object will load the correct
@@ -1004,14 +1004,14 @@ std::tuple<Status, std::optional<SingleFragmentInfo>> FragmentInfo::load(
       timestamp_range,
       !sparse);
   RETURN_NOT_OK_TUPLE(
-      meta->load(enc_key_, nullptr, 0, array_schemas_all_), std::nullopt);
+      meta->load(enc_key_, nullptr, 0, array_schemas_all_), nullopt);
 
   // This is important for format version > 2
   sparse = !meta->dense();
 
   // Get fragment size
   uint64_t size;
-  RETURN_NOT_OK_TUPLE(meta->fragment_size(&size), std::nullopt);
+  RETURN_NOT_OK_TUPLE(meta->fragment_size(&size), nullopt);
 
   // Compute expanded non-empty domain only for dense fragments
   // Get non-empty domain, and compute expanded non-empty domain

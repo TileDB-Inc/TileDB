@@ -291,7 +291,7 @@ bool TileMetadataGenerator::has_sum_metadata(
 }
 
 template <class T>
-const std::tuple<void*, void*> TileMetadataGenerator::min_max(
+const tuple<void*, void*> TileMetadataGenerator::min_max(
     const Tile* tile, const uint64_t cell_size) {
   assert(tile != nullptr);
 
@@ -313,7 +313,7 @@ const std::tuple<void*, void*> TileMetadataGenerator::min_max(
 }
 
 template <>
-const std::tuple<void*, void*> TileMetadataGenerator::min_max<char>(
+const tuple<void*, void*> TileMetadataGenerator::min_max<char>(
     const Tile* tile, const uint64_t cell_size) {
   assert(tile != nullptr);
 
@@ -340,8 +340,7 @@ const std::tuple<void*, void*> TileMetadataGenerator::min_max<char>(
 }
 
 template <class T>
-const std::tuple<void*, void*, uint64_t>
-TileMetadataGenerator::min_max_nullable(
+const tuple<void*, void*, uint64_t> TileMetadataGenerator::min_max_nullable(
     const Tile* tile, const Tile* tile_validity, const uint64_t cell_size) {
   assert(tile != nullptr);
 
@@ -367,7 +366,7 @@ TileMetadataGenerator::min_max_nullable(
 }
 
 template <>
-const std::tuple<void*, void*, uint64_t>
+const tuple<void*, void*, uint64_t>
 TileMetadataGenerator::min_max_nullable<char>(
     const Tile* tile, const Tile* tile_validity, const uint64_t cell_size) {
   assert(tile != nullptr);
@@ -431,13 +430,7 @@ TileMetadataGenerator::TileMetadataGenerator(
 /*               API              */
 /* ****************************** */
 
-std::tuple<
-    const void*,
-    uint64_t,
-    const void*,
-    uint64_t,
-    const ByteVec*,
-    uint64_t>
+tuple<const void*, uint64_t, const void*, uint64_t, const ByteVec*, uint64_t>
 TileMetadataGenerator::metadata() const {
   return {min_, min_size_, max_, max_size_, &sum_, null_count_};
 }

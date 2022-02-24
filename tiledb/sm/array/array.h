@@ -37,6 +37,7 @@
 #include <unordered_map>
 #include <vector>
 
+#include "tiledb/common/common.h"
 #include "tiledb/common/memory_tracker.h"
 #include "tiledb/common/status.h"
 #include "tiledb/sm/crypto/encryption_key.h"
@@ -355,7 +356,7 @@ class Array {
    *  If the non_empty_domain has not been computed or loaded
    *  it will be loaded first
    * */
-  std::tuple<Status, std::optional<const NDRange>> non_empty_domain();
+  tuple<Status, optional<const NDRange>> non_empty_domain();
 
   /** Returns the non-empty domain of the opened array. */
   void set_non_empty_domain(const NDRange& non_empty_domain);

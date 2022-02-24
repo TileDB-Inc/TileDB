@@ -177,7 +177,7 @@ Status SparseUnorderedWithDupsReader<BitmapType>::dowork() {
   std::vector<std::string> names;
   names.reserve(buffers_.size());
 
-  std::vector<std::tuple<>> buffers;
+  std::vector<tuple<>> buffers;
   for (auto& buffer : buffers_) {
     names.emplace_back(buffer.first);
   }
@@ -278,7 +278,7 @@ void SparseUnorderedWithDupsReader<BitmapType>::reset() {
 }
 
 template <class BitmapType>
-std::tuple<Status, std::optional<bool>>
+tuple<Status, optional<bool>>
 SparseUnorderedWithDupsReader<BitmapType>::add_result_tile(
     const unsigned dim_num,
     const uint64_t memory_budget_qc_tiles,
@@ -290,7 +290,7 @@ SparseUnorderedWithDupsReader<BitmapType>::add_result_tile(
   // Calculate memory consumption for this tile.
   auto&& [st, tiles_sizes] =
       get_coord_tiles_size<BitmapType>(subarray_.is_set(), dim_num, f, t);
-  RETURN_NOT_OK_TUPLE(st, std::nullopt);
+  RETURN_NOT_OK_TUPLE(st, nullopt);
   auto tiles_size = tiles_sizes->first;
   auto tiles_size_qc = tiles_sizes->second;
 
@@ -439,7 +439,7 @@ Status SparseUnorderedWithDupsReader<BitmapType>::create_result_tiles() {
 }
 
 template <class BitmapType>
-std::tuple<bool, uint64_t, uint64_t, uint64_t>
+tuple<bool, uint64_t, uint64_t, uint64_t>
 SparseUnorderedWithDupsReader<BitmapType>::compute_parallelization_parameters(
     const uint64_t range_thread_idx,
     const uint64_t num_range_threads,
@@ -1120,7 +1120,7 @@ SparseUnorderedWithDupsReader<BitmapType>::compute_fixed_results_to_copy(
 }
 
 template <class BitmapType>
-std::tuple<Status, std::optional<std::vector<uint64_t>>>
+tuple<Status, optional<std::vector<uint64_t>>>
 SparseUnorderedWithDupsReader<BitmapType>::respect_copy_memory_budget(
     const std::vector<std::string>& names,
     const uint64_t memory_budget,
@@ -1179,12 +1179,12 @@ SparseUnorderedWithDupsReader<BitmapType>::respect_copy_memory_budget(
 
         return Status::Ok();
       });
-  RETURN_NOT_OK_ELSE_TUPLE(status, logger_->status(status), std::nullopt);
+  RETURN_NOT_OK_ELSE_TUPLE(status, logger_->status(status), nullopt);
 
   if (max_rt_idx == 0)
     return {Status_SparseUnorderedWithDupsReaderError(
                 "Unable to copy one tile with current budget/buffers"),
-            std::nullopt};
+            nullopt};
 
   // Resize the result tiles vector.
   buffers_full_ &= max_rt_idx == result_tiles.size();
@@ -1195,7 +1195,7 @@ SparseUnorderedWithDupsReader<BitmapType>::respect_copy_memory_budget(
 
 template <class BitmapType>
 template <class OffType>
-std::tuple<bool, uint64_t, uint64_t>
+tuple<bool, uint64_t, uint64_t>
 SparseUnorderedWithDupsReader<BitmapType>::compute_var_size_offsets(
     stats::Stats* stats,
     const std::vector<ResultTile*>& result_tiles,

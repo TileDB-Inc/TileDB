@@ -97,13 +97,7 @@ class WriterTile : public Tile {
    *
    * @return minimum, minimum size, maximum, maximum size, sum, null count.
    */
-  std::tuple<
-      const void*,
-      uint64_t,
-      const void*,
-      uint64_t,
-      const ByteVec*,
-      uint64_t>
+  tuple<const void*, uint64_t, const void*, uint64_t, const ByteVec*, uint64_t>
   metadata() const;
 
   /**
@@ -111,7 +105,7 @@ class WriterTile : public Tile {
    *
    * @param md minimum, minimum size, maximum, maximum size, sum, null count.
    */
-  void set_metadata(const std::tuple<
+  void set_metadata(const tuple<
                     const void*,
                     uint64_t,
                     const void*,

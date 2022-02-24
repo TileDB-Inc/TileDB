@@ -60,7 +60,7 @@ ResultTile::ResultTile(
   attr_tiles_.resize(array_schema->attribute_num());
   for (uint64_t i = 0; i < array_schema->attribute_num(); i++) {
     const Attribute* attribute = array_schema->attribute(i);
-    attr_tiles_[i] = std::make_pair(attribute->name(), std::nullopt);
+    attr_tiles_[i] = std::make_pair(attribute->name(), nullopt);
   }
   set_compute_results_func();
 
@@ -162,7 +162,7 @@ void ResultTile::init_attr_tile(const std::string& name) {
 
   // Handle attributes
   for (auto& at : attr_tiles_) {
-    if (at.first == name && at.second == std::nullopt) {
+    if (at.first == name && at.second == nullopt) {
       at.second = TileTuple(Tile(), Tile(), Tile());
       return;
     }

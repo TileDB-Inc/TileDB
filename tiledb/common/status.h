@@ -56,8 +56,8 @@
 #include <optional>
 #include <string>
 #include <tuple>
-using std::tuple, std::optional, std::nullopt;
 
+#include "common-std.h"
 #include "status_code.h"
 #include "tiledb/common/heap_memory.h"
 

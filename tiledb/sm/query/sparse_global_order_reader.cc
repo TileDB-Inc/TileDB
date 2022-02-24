@@ -165,7 +165,7 @@ Status SparseGlobalOrderReader::dowork() {
   std::vector<std::string> names;
   names.reserve(buffers_.size());
 
-  std::vector<std::tuple<>> buffers;
+  std::vector<tuple<>> buffers;
   for (auto& buffer : buffers_) {
     names.emplace_back(buffer.first);
   }
@@ -255,8 +255,7 @@ Status SparseGlobalOrderReader::dowork() {
 void SparseGlobalOrderReader::reset() {
 }
 
-std::tuple<Status, std::optional<bool>>
-SparseGlobalOrderReader::add_result_tile(
+tuple<Status, optional<bool>> SparseGlobalOrderReader::add_result_tile(
     const unsigned dim_num,
     const uint64_t memory_budget_coords_tiles,
     const uint64_t memory_budget_qc_tiles,
@@ -265,7 +264,7 @@ SparseGlobalOrderReader::add_result_tile(
     const ArraySchema* const array_schema) {
   // Calculate memory consumption for this tile.
   auto&& [st, tiles_sizes] = get_coord_tiles_size<uint8_t>(true, dim_num, f, t);
-  RETURN_NOT_OK_TUPLE(st, std::nullopt);
+  RETURN_NOT_OK_TUPLE(st, nullopt);
   auto tiles_size = tiles_sizes->first;
   auto tiles_size_qc = tiles_sizes->second;
 
@@ -297,8 +296,7 @@ SparseGlobalOrderReader::add_result_tile(
   return {Status::Ok(), false};
 }
 
-std::tuple<Status, std::optional<bool>>
-SparseGlobalOrderReader::create_result_tiles() {
+tuple<Status, optional<bool>> SparseGlobalOrderReader::create_result_tiles() {
   auto timer_se = stats_->start_timer("create_result_tiles");
 
   // For easy reference.
@@ -359,7 +357,7 @@ SparseGlobalOrderReader::create_result_tiles() {
           all_tiles_loaded_[f] = true;
           return Status::Ok();
         });
-    RETURN_NOT_OK_ELSE_TUPLE(status, logger_->status(status), std::nullopt);
+    RETURN_NOT_OK_ELSE_TUPLE(status, logger_->status(status), nullopt);
   } else {
     // Load as many tiles as the memory budget allows.
     auto status = parallel_for(
@@ -401,7 +399,7 @@ SparseGlobalOrderReader::create_result_tiles() {
           all_tiles_loaded_[f] = true;
           return Status::Ok();
         });
-    RETURN_NOT_OK_ELSE_TUPLE(status, logger_->status(status), std::nullopt);
+    RETURN_NOT_OK_ELSE_TUPLE(status, logger_->status(status), nullopt);
   }
 
   bool done_adding_result_tiles = true;
@@ -421,7 +419,7 @@ SparseGlobalOrderReader::create_result_tiles() {
   return {Status::Ok(), tiles_found};
 }
 
-std::tuple<Status, std::optional<std::vector<ResultCellSlab>>>
+tuple<Status, optional<std::vector<ResultCellSlab>>>
 SparseGlobalOrderReader::compute_result_cell_slab() {
   auto timer_se = stats_->start_timer("compute_result_cell_slab");
 
@@ -449,7 +447,7 @@ SparseGlobalOrderReader::compute_result_cell_slab() {
   // User gave us some empty buffers, exit.
   if (num_cells == 0) {
     buffers_full_ = true;
-    return {Status::Ok(), std::nullopt};
+    return {Status::Ok(), nullopt};
   }
 
   if (array_schema_->cell_order() == Layout::HILBERT) {
@@ -462,8 +460,7 @@ SparseGlobalOrderReader::compute_result_cell_slab() {
 }
 
 template <class T>
-std::tuple<Status, std::optional<bool>>
-SparseGlobalOrderReader::add_next_tile_to_queue(
+tuple<Status, optional<bool>> SparseGlobalOrderReader::add_next_tile_to_queue(
     unsigned int frag_idx,
     uint64_t cell_idx,
     std::vector<std::list<ResultTileWithBitmap<uint8_t>>::iterator>&
@@ -577,7 +574,7 @@ Status SparseGlobalOrderReader::compute_hilbert_values(
 }
 
 template <class T>
-std::tuple<Status, std::optional<std::vector<ResultCellSlab>>>
+tuple<Status, optional<std::vector<ResultCellSlab>>>
 SparseGlobalOrderReader::merge_result_cell_slabs(uint64_t num_cells, T cmp) {
   auto timer_se = stats_->start_timer("merge_result_cell_slabs");
   std::vector<ResultCellSlab> result_cell_slabs;
@@ -629,7 +626,7 @@ SparseGlobalOrderReader::merge_result_cell_slabs(uint64_t num_cells, T cmp) {
 
         return Status::Ok();
       });
-  RETURN_NOT_OK_ELSE_TUPLE(status, logger_->status(status), std::nullopt);
+  RETURN_NOT_OK_ELSE_TUPLE(status, logger_->status(status), nullopt);
 
   // Process all elements.
   while (!tile_queue.empty() && !need_more_tiles && num_cells > 0) {
@@ -668,7 +665,7 @@ SparseGlobalOrderReader::merge_result_cell_slabs(uint64_t num_cells, T cmp) {
             result_tile_used,
             tile_queue,
             tile_queue_mutex);
-        RETURN_NOT_OK_TUPLE(st, std::nullopt);
+        RETURN_NOT_OK_TUPLE(st, nullopt);
         need_more_tiles = *more_tiles;
       } else {
         tile_queue.emplace(std::move(next_tile));
@@ -776,7 +773,7 @@ SparseGlobalOrderReader::merge_result_cell_slabs(uint64_t num_cells, T cmp) {
           result_tile_used,
           tile_queue,
           tile_queue_mutex);
-      RETURN_NOT_OK_TUPLE(st, std::nullopt);
+      RETURN_NOT_OK_TUPLE(st, nullopt);
       need_more_tiles = *more_tiles;
     } else {
       // Put the next cell on the queue to be resorted.
@@ -796,7 +793,7 @@ SparseGlobalOrderReader::merge_result_cell_slabs(uint64_t num_cells, T cmp) {
   return {Status::Ok(), std::move(result_cell_slabs)};
 };
 
-std::tuple<uint64_t, uint64_t, uint64_t, bool>
+tuple<uint64_t, uint64_t, uint64_t, bool>
 SparseGlobalOrderReader::compute_parallelization_parameters(
     const uint64_t range_thread_idx,
     const uint64_t num_range_threads,
@@ -1055,7 +1052,7 @@ Status SparseGlobalOrderReader::copy_fixed_data_tiles(
   return Status::Ok();
 }
 
-std::tuple<Status, std::optional<std::vector<uint64_t>>>
+tuple<Status, optional<std::vector<uint64_t>>>
 SparseGlobalOrderReader::respect_copy_memory_budget(
     const std::vector<std::string>& names,
     const uint64_t memory_budget,
@@ -1126,12 +1123,12 @@ SparseGlobalOrderReader::respect_copy_memory_budget(
 
         return Status::Ok();
       });
-  RETURN_NOT_OK_ELSE_TUPLE(status, logger_->status(status), std::nullopt);
+  RETURN_NOT_OK_ELSE_TUPLE(status, logger_->status(status), nullopt);
 
   if (max_cs_idx == 0)
     return {Status_SparseUnorderedWithDupsReaderError(
                 "Unable to copy one slab with current budget/buffers"),
-            std::nullopt};
+            nullopt};
 
   // Resize the result tiles vector.
   buffers_full_ &= max_cs_idx == result_cell_slabs.size();

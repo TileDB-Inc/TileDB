@@ -68,7 +68,7 @@ class ResultTile {
    * tile is the var-sized values tile. If the attribute is nullable, the third
    * tile contains the validity vector.
    */
-  typedef std::tuple<Tile, Tile, Tile> TileTuple;
+  typedef tuple<Tile, Tile, Tile> TileTuple;
 
   /* ********************************* */
   /*     CONSTRUCTORS & DESTRUCTORS    */
@@ -339,7 +339,7 @@ class ResultTile {
   uint64_t tile_idx_ = UINT64_MAX;
 
   /** Attribute names to tiles based on attribute ordering from array schema. */
-  std::vector<std::pair<std::string, std::optional<TileTuple>>> attr_tiles_;
+  std::vector<std::pair<std::string, optional<TileTuple>>> attr_tiles_;
 
   /** The zipped coordinates tile. */
   TileTuple coords_tile_;
