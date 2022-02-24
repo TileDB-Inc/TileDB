@@ -56,8 +56,10 @@ class DictEncoding {
    * strings
    * @param output Dictionary-encoded output in ids of type T. Memory is
    * allocated and owned by the caller
-   * @return A dictionary in the form of a vector of strings, where indices are
-   * the word_ids of each word
+   * @return A dictionary in the form of a vector of string_views, where indices
+   * are the word_ids of each word. Those string_views point to strings in
+   * input, so input memory should not be freed before dictionary data is
+   * consumed
    */
   template <class T>
   static std::vector<std::string_view> compress(
@@ -68,8 +70,6 @@ class DictEncoding {
 
     // We use string_views in the dictionary, which point to input strings. This
     // means that input should not be freed before dictionary data is consumed
-    // TBD: Is this acceptable, or do we use dict of strings - more expensive to
-    // create & copy on return
     std::vector<std::string_view> dict;
     dict.reserve(input.size());
     T word_id = 0;
@@ -85,8 +85,6 @@ class DictEncoding {
       output[i] = word_ids[input[i]];
     }
 
-    // copy happens here, but it's a copy of string_views
-    // TBD: do we want the caller to allocate dict as well?
     return dict;
   }
 
