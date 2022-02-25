@@ -259,8 +259,11 @@ TILEDB_EXPORT int32_t tiledb_array_as_file_export(
     return TILEDB_ERR;
   }
 
-  int32_t is_open;
+  int32_t is_open = 0;
   if (tiledb_array_is_open(ctx, array, &is_open) == TILEDB_ERR) {
+    return TILEDB_ERR;
+  }
+  if (is_open) {
     tiledb_array_close(ctx, array);
   }
 
