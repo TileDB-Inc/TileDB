@@ -33,8 +33,6 @@
 #ifndef TILEDB_ARROW_H
 #define TILEDB_ARROW_H
 
-#include "tiledb/common/common.h"
-
 /* ************************************************************************ */
 /*
  * Arrow C Data Interface
@@ -375,7 +373,7 @@ struct CPPArrowSchema {
   CPPArrowSchema(
       std::string name,
       std::string format,
-      optional<std::string> metadata,
+      std::optional<std::string> metadata,
       int64_t flags,
       std::vector<ArrowSchema*> children,
       std::shared_ptr<CPPArrowSchema> dictionary)
@@ -478,7 +476,7 @@ struct CPPArrowSchema {
   ArrowSchema* schema_;
   std::string format_;
   std::string name_;
-  optional<std::string> metadata_;
+  std::optional<std::string> metadata_;
   int64_t flags_;
   int64_t n_children_;
   std::vector<ArrowSchema*> children_;
