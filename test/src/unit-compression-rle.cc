@@ -32,11 +32,14 @@
  */
 
 #include "catch.hpp"
+#include "helpers.h"
 #include "tiledb/sm/buffer/buffer.h"
 #include "tiledb/sm/compressors/rle_compressor.h"
 
 #include <cstring>
 #include <iostream>
+#include <iterator>
+#include <sstream>
 
 using namespace tiledb::common;
 using namespace tiledb::sm;
@@ -290,4 +293,411 @@ TEST_CASE(
   delete input;
   delete compressed;
   delete decompressed;
+}
+
+TEST_CASE(
+    "Compression-RLE: Test compression parameter calculation of strings",
+    "[compression][rle][rle-strings]") {
+  // initialize the seed for generating pseudorandom strings
+  std::srand(10);
+  std::string s15 = tiledb::test::random_string(15);
+  std::string s8 = tiledb::test::random_string(8);
+  std::string s4 = tiledb::test::random_string(4);
+  std::string s3 = tiledb::test::random_string(3);
+  std::string s1 = tiledb::test::random_string(1);
+
+  std::vector<std::string_view> simple{s8, s8, s8, s8, s8, s1, s4, s4};
+  CHECK(
+      tiledb::sm::RLE::calculate_compression_params(simple) ==
+      std::tuple(5, 8, 3, 13));
+
+  std::vector<std::string_view> last_unique{s8, s8, s8, s8, s4, s4, s1};
+  CHECK(
+      tiledb::sm::RLE::calculate_compression_params(last_unique) ==
+      std::tuple(4, 8, 3, 13));
+
+  std::vector<std::string_view> first_unique{s1, s15, s15, s8, s8, s1, s4, s4};
+  CHECK(
+      tiledb::sm::RLE::calculate_compression_params(first_unique) ==
+      std::tuple(2, 15, 5, 29));
+
+  std::vector<std::string_view> all_unique{s8, s15, s1, s3, s4};
+  CHECK(
+      tiledb::sm::RLE::calculate_compression_params(all_unique) ==
+      std::tuple(1, 15, 5, 31));
+
+  std::vector<std::string_view> single_item{s4};
+  CHECK(
+      tiledb::sm::RLE::calculate_compression_params(single_item) ==
+      std::tuple(1, 4, 1, 4));
+
+  std::vector<std::string_view> empty_in{};
+  CHECK(
+      tiledb::sm::RLE::calculate_compression_params(empty_in) ==
+      std::tuple(0, 0, 0, 0));
+
+  std::vector<std::string> all_same_v(
+      300000, tiledb::test::random_string(5000));
+  std::vector<std::string_view> all_same;
+  // the reference here is crucial, otherwise a temp string is created and
+  // therefore string_view will outlive it
+  for (const std::string& str : all_same_v) {
+    all_same.emplace_back(str);
+  }
+  CHECK(
+      tiledb::sm::RLE::calculate_compression_params(all_same) ==
+      std::tuple(300000, 5000, 1, 5000));
+}
+
+TEST_CASE(
+    "Compression-RLE: Test compression of strings, small run lengths and "
+    "string sizes",
+    "[compression][rle][rle-strings]") {
+  std::string str1 = "HG543232";
+  std::string str2 = "HG54";
+  std::string str3 = "A";
+  std::string_view uncompressed[] = {
+      str1, str1, str1, str1, str1, str2, str2, str3};
+  std::vector<std::string> unique_values = {str1, str2, str3};
+  const auto strings_size = str1.size() + str2.size() + str3.size();
+  const auto exp_size = unique_values.size() * sizeof(uint8_t) +
+                        unique_values.size() * sizeof(uint8_t) + strings_size;
+
+  // Compress the input array
+  std::vector<std::byte> compressed(exp_size);
+  tiledb::sm::RLE::compress<uint8_t, uint8_t>(uncompressed, compressed);
+  CHECK(compressed.size() == exp_size);
+
+  // All values here are 1 byte long, so endianness is not an issue and we can
+  // just read using memcpy
+  uint32_t run_length[] = {5, 2, 1};
+  uint16_t size[] = {8, 4, 1};
+  auto data = reinterpret_cast<const char*>(compressed.data());
+  for (uint32_t i = 0; i < unique_values.size(); i++) {
+    CHECK(memcmp(&run_length[i], data, sizeof(uint8_t)) == 0);
+    data += sizeof(uint8_t);
+    CHECK(memcmp(&size[i], data, sizeof(uint8_t)) == 0);
+    data += sizeof(uint8_t);
+    CHECK(strncmp(unique_values[i].c_str(), data, size[i] * sizeof(char)) == 0);
+    data += size[i];
+  }
+
+  // Decompress the previously compressed array
+  const char* unc =
+      "HG543232"
+      "HG543232"
+      "HG543232"
+      "HG543232"
+      "HG543232"
+      "HG54"
+      "HG54"
+      "A";
+  const auto exp_decomp_size = strlen(unc);
+  std::vector<std::byte> decompressed(exp_decomp_size);
+  tiledb::sm::RLE::decompress<uint8_t, uint8_t>(compressed, decompressed);
+
+  // In decompressed array there are only chars, so compare using memcpy
+  CHECK(
+      memcmp(
+          unc,
+          reinterpret_cast<const char*>(decompressed.data()),
+          decompressed.size()) == 0);
+}
+
+typedef tuple<uint16_t, uint32_t, uint64_t> FixedTypesUnderTest;
+TEMPLATE_LIST_TEST_CASE(
+    "Compression-RLE: Test compression of single large run length/long string",
+    "[compression][rle][rle-strings]",
+    FixedTypesUnderTest) {
+  typedef TestType T;
+  // pick values of at least 2 bytes
+  uint64_t num_strings = std::numeric_limits<uint8_t>::max() + 1;
+  uint64_t string_len = std::numeric_limits<uint8_t>::max() + 1;
+
+  // initialize the seed for generating pseudorandom string
+  std::srand(10);
+  auto string_rand = tiledb::test::random_string(string_len);
+  std::vector<std::string> uncompressed_v(num_strings, string_rand);
+  std::vector<std::string_view> uncompressed;
+  // the reference here is crucial, otherwise a temp string is created and
+  // therefore string_view will outlive it
+  for (const std::string& str : uncompressed_v) {
+    uncompressed.emplace_back(str);
+  }
+
+  const auto exp_size = sizeof(T) + sizeof(T) + string_rand.size();
+
+  std::vector<std::byte> compressed(exp_size);
+  tiledb::sm::RLE::compress<T, T>(uncompressed, compressed);
+
+  auto data = reinterpret_cast<const char*>(compressed.data());
+  CHECK(num_strings == utils::endianness::decode_be<T>(data));
+  data += sizeof(T);
+  CHECK(string_len == utils::endianness::decode_be<T>(data));
+  data += sizeof(T);
+  CHECK(strncmp(string_rand.c_str(), data, string_len * sizeof(char)) == 0);
+
+  // Decompress
+  std::ostringstream repeated2;
+  std::fill_n(
+      std::ostream_iterator<std::string>(repeated2), num_strings, string_rand);
+  auto strout = repeated2.str();
+  const char* unc = strout.data();
+  const auto exp_decomp_size = strlen(unc);
+  std::vector<std::byte> decompressed(exp_decomp_size);
+  tiledb::sm::RLE::decompress<T, T>(compressed, decompressed);
+
+  CHECK(
+      memcmp(
+          unc,
+          reinterpret_cast<const char*>(decompressed.data()),
+          decompressed.size()) == 0);
+}
+
+TEST_CASE(
+    "Compression-RLE: Test input of unique strings (worst case)",
+    "[compression][rle][rle-strings]") {
+  std::vector<std::string> uncompressed_v = {
+      "HG543232", "ATG", "AT", "A", "TGC", "HG54", "HG5"};
+  std::vector<std::string_view> uncompressed;
+  uint64_t strings_size = 0;
+  // the reference here is crucial, otherwise a temp string is created and
+  // therefore string_view will outlive it
+  for (const std::string& str : uncompressed_v) {
+    uncompressed.emplace_back(str);
+    strings_size += str.size();
+  }
+
+  const auto exp_size = uncompressed.size() * sizeof(uint8_t) +
+                        uncompressed.size() * sizeof(uint8_t) + strings_size;
+
+  // Compress the input array
+  std::vector<std::byte> compressed(exp_size);
+  tiledb::sm::RLE::compress<uint8_t, uint8_t>(uncompressed, compressed);
+
+  // When all elements are unique the compressed output is always larger
+  CHECK(compressed.size() > strings_size);
+
+  // All values here are 1 byte long, so endianness is not an issue and we can
+  // just read using memcpy
+  uint32_t run_length[] = {1, 1, 1, 1, 1, 1, 1};
+  uint16_t size[] = {8, 3, 2, 1, 3, 4, 3};
+  auto data = reinterpret_cast<const char*>(compressed.data());
+  for (uint32_t i = 0; i < uncompressed.size(); i++) {
+    CHECK(memcmp(&run_length[i], data, sizeof(uint8_t)) == 0);
+    data += sizeof(uint8_t);
+    CHECK(memcmp(&size[i], data, sizeof(uint8_t)) == 0);
+    data += sizeof(uint8_t);
+    CHECK(strncmp(uncompressed[i].data(), data, size[i] * sizeof(char)) == 0);
+    data += size[i];
+  }
+
+  // Decompress the previously compressed array
+  const char* unc =
+      "HG543232"
+      "ATG"
+      "AT"
+      "A"
+      "TGC"
+      "HG54"
+      "HG5";
+  const auto exp_decomp_size = strlen(unc);
+  std::vector<std::byte> decompressed(exp_decomp_size);
+  tiledb::sm::RLE::decompress<uint8_t, uint8_t>(compressed, decompressed);
+
+  // In decompressed array there are only chars, so compare using memcpy
+  CHECK(
+      memcmp(
+          unc,
+          reinterpret_cast<const char*>(decompressed.data()),
+          decompressed.size()) == 0);
+}
+
+typedef tuple<uint8_t, uint16_t, uint32_t, uint64_t> UnsignedIntegerTypes;
+TEMPLATE_LIST_TEST_CASE(
+    "Compression-RLE: Test input of multiple runs of unsigned integers",
+    "[compression][rle][rle-num]",
+    UnsignedIntegerTypes) {
+  typedef TestType T;
+  std::vector<T> uncompressed = {1,
+                                 1,
+                                 1,
+                                 0,
+                                 0,
+                                 0,
+                                 0,
+                                 0,
+                                 0,
+                                 0,
+                                 0,
+                                 2,
+                                 1,
+                                 1,
+                                 std::numeric_limits<T>::max(),
+                                 127,
+                                 127};
+
+  // Compress the input array
+  // TBD: how to caclulate exp_size, maybe an overhead function?
+  const auto num_of_unique_runs = 6;
+  const auto exp_size = num_of_unique_runs * 2;
+  std::vector<T> compressed(exp_size);
+  tiledb::sm::RLE::compress<T>(uncompressed, compressed);
+  CHECK(
+      compressed ==
+      std::vector<T>{
+          3, 1, 8, 0, 1, 2, 2, 1, 1, std::numeric_limits<T>::max(), 2, 127});
+
+  // Decompress the previously compressed array
+  std::vector<T> decompressed(uncompressed.size());
+  tiledb::sm::RLE::decompress<T>(compressed, decompressed);
+  CHECK(decompressed == uncompressed);
+}
+
+typedef tuple<int8_t, int16_t, int32_t, int64_t> SignedIntegerTypes;
+TEMPLATE_LIST_TEST_CASE(
+    "Compression-RLE: Test input of multiple runs of signed integers",
+    "[compression][rle][rle-num]",
+    SignedIntegerTypes) {
+  typedef TestType T;
+  std::vector<T> uncompressed = {-1,
+                                 -1,
+                                 -1,
+                                 0,
+                                 0,
+                                 0,
+                                 0,
+                                 0,
+                                 0,
+                                 0,
+                                 0,
+                                 2,
+                                 1,
+                                 1,
+                                 std::numeric_limits<T>::min(),
+                                 127,
+                                 127};
+  std::vector<T> unique_runs = {
+      -1, 0, 2, 1, 127, std::numeric_limits<T>::min()};
+
+  // Compress the input array
+  const auto num_of_unique_runs = 6;
+  const auto exp_size = num_of_unique_runs * 2;
+  std::vector<T> compressed(exp_size);
+  tiledb::sm::RLE::compress<T>(uncompressed, compressed);
+  CHECK(
+      compressed ==
+      std::vector<T>{
+          3, -1, 8, 0, 1, 2, 2, 1, 1, std::numeric_limits<T>::min(), 2, 127});
+
+  // Decompress the previously compressed array
+  std::vector<T> decompressed(uncompressed.size());
+  tiledb::sm::RLE::decompress<T>(compressed, decompressed);
+  CHECK(decompressed == uncompressed);
+}
+
+typedef tuple<float, double> FloatingPointTypes;
+TEMPLATE_LIST_TEST_CASE(
+    "Compression-RLE: Test input of multiple runs of floating point numbers",
+    "[compression][rle][rle-num]",
+    FloatingPointTypes) {
+  typedef TestType T;
+  std::vector<T> uncompressed = {(T)-1.2,
+                                 (T)-1.2,
+                                 (T)-1.2,
+                                 0,
+                                 0,
+                                 0,
+                                 0,
+                                 0,
+                                 0,
+                                 0,
+                                 0,
+                                 2,
+                                 (T)1.8,
+                                 (T)1.8,
+                                 std::numeric_limits<T>::max(),
+                                 (T)127};
+
+  // Compress the input array
+  const auto num_of_unique_runs = 6;
+  const auto exp_size = num_of_unique_runs * 2;
+  std::vector<T> compressed(exp_size);
+  tiledb::sm::RLE::compress<T>(uncompressed, compressed);
+  CHECK(
+      compressed == std::vector<T>{3,
+                                   (T)-1.2,
+                                   8,
+                                   0,
+                                   1,
+                                   2,
+                                   2,
+                                   (T)1.8,
+                                   1,
+                                   std::numeric_limits<T>::max(),
+                                   1,
+                                   (T)127});
+
+  // Decompress the previously compressed array
+  std::vector<T> decompressed(uncompressed.size());
+  tiledb::sm::RLE::decompress<T>(compressed, decompressed);
+  CHECK(decompressed == uncompressed);
+}
+
+TEST_CASE(
+    "Compression-RLE: Test runs that exceed max size of input type",
+    "[compression][rle][rle-num]") {
+  uint64_t num_values = std::numeric_limits<uint8_t>::max() + 1;
+  std::vector<uint8_t> uncompressed(num_values, 10);
+
+  // Compress the input array
+  // the repetitions are too many to fit in one run, so we expect an additional
+  // pair of [run|value]
+  const auto num_of_unique_runs = 1;
+  const auto exp_size = (num_of_unique_runs + 1) * 2;
+  std::vector<uint8_t> compressed(exp_size);
+  tiledb::sm::RLE::compress<uint8_t>(uncompressed, compressed);
+  CHECK(
+      compressed ==
+      std::vector<uint8_t>{std::numeric_limits<uint8_t>::max(), 10, 1, 10});
+
+  // Decompress the previously compressed array
+  std::vector<uint8_t> decompressed(uncompressed.size());
+  tiledb::sm::RLE::decompress<uint8_t>(compressed, decompressed);
+  CHECK(decompressed == uncompressed);
+}
+
+TEST_CASE(
+    "Compression-RLE: Test all numeric unique runs (worst case)",
+    "[compression][rle][rle-num]") {
+  std::vector<uint64_t> uncompressed = {1, 5, 12, 123, 1, 2, 5, 12, 8};
+
+  // Compress the input array
+  const auto num_of_unique_runs = 9;
+  const auto exp_size = num_of_unique_runs * 2;
+  std::vector<uint64_t> compressed(exp_size);
+  tiledb::sm::RLE::compress<uint64_t>(uncompressed, compressed);
+  CHECK(
+      compressed ==
+      std::vector<uint64_t>{
+          1, 1, 1, 5, 1, 12, 1, 123, 1, 1, 1, 2, 1, 5, 1, 12, 1, 8});
+
+  // Decompress the previously compressed array
+  std::vector<uint64_t> decompressed(uncompressed.size());
+  tiledb::sm::RLE::decompress<uint64_t>(compressed, decompressed);
+  CHECK(decompressed == uncompressed);
+}
+
+TEST_CASE("Compression-RLE: Test empty input", "[compression][rle][rle-num]") {
+  std::vector<uint64_t> uncompressed = {};
+
+  // Compress the input array
+  std::vector<uint64_t> compressed;
+  tiledb::sm::RLE::compress<uint64_t>(uncompressed, compressed);
+  CHECK(compressed == std::vector<uint64_t>{});
+
+  // Decompress the previously compressed array
+  std::vector<uint64_t> decompressed(uncompressed.size());
+  tiledb::sm::RLE::decompress<uint64_t>(compressed, decompressed);
+  CHECK(decompressed == uncompressed);
 }

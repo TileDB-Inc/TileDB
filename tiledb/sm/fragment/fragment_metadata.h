@@ -219,16 +219,12 @@ class FragmentMetadata {
   bool has_consolidated_footer() const;
 
   /**
-   * Returns true if the input range overlaps the non-empty
-   * domain of the fragment.
+   * Retrieves the overlap of all MBRs with the input ND range.
    */
-  bool overlaps_non_empty_domain(const NDRange& range) const;
-
-  /**
-   * Retrieves the overlap of all MBRs with the input ND range. The encryption
-   * key is needed because certain metadata may have to be loaded on-the-fly.
-   */
-  Status get_tile_overlap(const NDRange& range, TileOverlap* tile_overlap);
+  Status get_tile_overlap(
+      const NDRange& range,
+      std::vector<bool>& is_default,
+      TileOverlap* tile_overlap);
 
   /**
    * Compute tile bitmap for the curent fragment/range/dimension.
@@ -481,13 +477,13 @@ class FragmentMetadata {
   uint64_t tile_num() const;
 
   /** Returns the URI of the input attribute/dimension. */
-  URI uri(const std::string& name) const;
+  tuple<Status, optional<URI>> uri(const std::string& name) const;
 
   /** Returns the URI of the input variable-sized attribute/dimension. */
-  URI var_uri(const std::string& name) const;
+  tuple<Status, optional<URI>> var_uri(const std::string& name) const;
 
   /** Returns the validity URI of the input nullable attribute. */
-  URI validity_uri(const std::string& name) const;
+  tuple<Status, optional<URI>> validity_uri(const std::string& name) const;
 
   /** Return the array schema name. */
   const std::string& array_schema_name();
@@ -553,7 +549,7 @@ class FragmentMetadata {
    * @param tile_idx The index of the tile in the metadata.
    * @return Status, size
    */
-  std::tuple<Status, std::optional<uint64_t>> persisted_tile_size(
+  tuple<Status, optional<uint64_t>> persisted_tile_size(
       const std::string& name, uint64_t tile_idx);
 
   /**
@@ -565,7 +561,7 @@ class FragmentMetadata {
    * @param tile_idx The index of the tile in the metadata.
    * @return Status, size
    */
-  std::tuple<Status, std::optional<uint64_t>> persisted_tile_var_size(
+  tuple<Status, optional<uint64_t>> persisted_tile_var_size(
       const std::string& name, uint64_t tile_idx);
 
   /**
@@ -576,7 +572,7 @@ class FragmentMetadata {
    * @param tile_idx The index of the tile in the metadata.
    * @return Status, size
    */
-  std::tuple<Status, std::optional<uint64_t>> persisted_tile_validity_size(
+  tuple<Status, optional<uint64_t>> persisted_tile_validity_size(
       const std::string& name, uint64_t tile_idx);
 
   /**
@@ -598,7 +594,7 @@ class FragmentMetadata {
    * @param tile_idx The index of the tile in the metadata.
    * @return Status, size.
    */
-  std::tuple<Status, std::optional<uint64_t>> tile_var_size(
+  tuple<Status, optional<uint64_t>> tile_var_size(
       const std::string& name, uint64_t tile_idx);
 
   /**
@@ -609,8 +605,8 @@ class FragmentMetadata {
    * @param tile_idx The index of the tile in the metadata.
    * @return Status, value, size.
    */
-  std::tuple<Status, std::optional<void*>, std::optional<uint64_t>>
-  get_tile_min(const std::string& name, uint64_t tile_idx);
+  tuple<Status, optional<void*>, optional<uint64_t>> get_tile_min(
+      const std::string& name, uint64_t tile_idx);
 
   /**
    * Retrieves the tile max value for a given attribute or dimension and tile
@@ -620,8 +616,8 @@ class FragmentMetadata {
    * @param tile_idx The index of the tile in the metadata.
    * @return Status, value, size.
    */
-  std::tuple<Status, std::optional<void*>, std::optional<uint64_t>>
-  get_tile_max(const std::string& name, uint64_t tile_idx);
+  tuple<Status, optional<void*>, optional<uint64_t>> get_tile_max(
+      const std::string& name, uint64_t tile_idx);
 
   /**
    * Retrieves the tile sum value for a given attribute or dimension and tile
@@ -631,7 +627,7 @@ class FragmentMetadata {
    * @param tile_idx The index of the tile in the metadata.
    * @return Status, sum.
    */
-  std::tuple<Status, std::optional<void*>> get_tile_sum(
+  tuple<Status, optional<void*>> get_tile_sum(
       const std::string& name, uint64_t tile_idx);
 
   /**
@@ -642,7 +638,7 @@ class FragmentMetadata {
    * @param tile_idx The index of the tile in the metadata.
    * @return Status, count.
    */
-  std::tuple<Status, std::optional<uint64_t>> get_tile_null_count(
+  tuple<Status, optional<uint64_t>> get_tile_null_count(
       const std::string& name, uint64_t tile_idx);
 
   /** Returns the first timestamp of the fragment timestamp range. */
@@ -1462,7 +1458,7 @@ class FragmentMetadata {
    */
   Status write_generic_tile_to_file(
       const EncryptionKey& encryption_key,
-      Buffer&& buff,
+      Buffer& buff,
       uint64_t* nbytes) const;
 
   /**
@@ -1484,9 +1480,10 @@ class FragmentMetadata {
    * motiviation is to encode illegal/reserved file name characters.
    *
    * @param name The dimension/attribute name.
-   * return std::string The encoded dimension/attribute name.
+   * return Status, the encoded dimension/attribute name.
    */
-  std::string encode_name(const std::string& name) const;
+  tuple<Status, optional<std::string>> encode_name(
+      const std::string& name) const;
 
   /**
    * This builds the index mapping for attribute/dimension name to id.

@@ -472,7 +472,7 @@ Status DenseReader::init_read_state() {
 
 /** Apply the query condition. */
 template <class DimType, class OffType>
-std::tuple<Status, std::optional<std::vector<uint8_t>>>
+tuple<Status, optional<std::vector<uint8_t>>>
 DenseReader::apply_query_condition(
     Subarray& subarray,
     std::vector<Subarray>& tile_subarrays,
@@ -565,7 +565,7 @@ DenseReader::apply_query_condition(
 
           return Status::Ok();
         });
-    RETURN_NOT_OK_TUPLE(status, std::nullopt);
+    RETURN_NOT_OK_TUPLE(status, nullopt);
   }
 
   return {Status::Ok(), qc_result};
@@ -831,7 +831,7 @@ uint64_t DenseReader::get_cell_pos_in_tile(
 }
 
 template <class DimType>
-std::tuple<bool, uint64_t, uint64_t> DenseReader::cell_slab_overlaps_range(
+tuple<bool, uint64_t, uint64_t> DenseReader::cell_slab_overlaps_range(
     const unsigned dim_num,
     const NDRange& ndrange,
     const DimType* coords,
@@ -983,21 +983,21 @@ Status DenseReader::copy_fixed_tiles(
           if (stride == 1) {
             std::memcpy(
                 dest_ptr + cell_size * start,
-                (char*)tile->buffer()->data() + cell_size * src_offset,
+                tile->data_as<char>() + cell_size * src_offset,
                 cell_size * (end - start + 1));
 
             if (attributes[n]->nullable()) {
               std::memcpy(
                   dest_validity_ptr + start,
-                  (char*)tile_nullable->buffer()->data() + src_offset,
+                  tile_nullable->data_as<char>() + src_offset,
                   (end - start + 1));
             }
           } else {
             // Go cell by cell.
             const auto nullable = attributes[n]->nullable();
-            auto src = (char*)tile->buffer()->data() + cell_size * src_offset;
+            auto src = tile->data_as<char>() + cell_size * src_offset;
             auto src_validity =
-                nullable ? (char*)tile_nullable->buffer()->data() + src_offset :
+                nullable ? tile_nullable->data_as<char>() + src_offset :
                            nullptr;
             auto dest = dest_ptr + cell_size * start;
             auto dest_validity = dest_validity_ptr + start;
@@ -1179,12 +1179,11 @@ Status DenseReader::copy_offset_tiles(
           const Tile* const t_var = &std::get<1>(*tile_tuple);
 
           // Setup variables for the copy.
-          auto src_buff = (uint64_t*)std::get<0>(*tile_tuple).buffer()->data() +
+          auto src_buff = (uint64_t*)std::get<0>(*tile_tuple).data() +
                           start * stride + src_cell;
           auto src_buff_validity =
               attributes[n]->nullable() ?
-                  (uint8_t*)std::get<2>(*tile_tuple).buffer()->data() + start +
-                      src_cell :
+                  (uint8_t*)std::get<2>(*tile_tuple).data() + start + src_cell :
                   nullptr;
           auto div = elements_mode_ ? data_type_sizes[n] : 1;
           auto dest = (OffType*)dest_ptr + start;
@@ -1195,8 +1194,7 @@ Status DenseReader::copy_offset_tiles(
           for (; i < end - start; ++i) {
             auto i_src = i * stride;
             dest[i] = (src_buff[i_src + 1] - src_buff[i_src]) / div;
-            var_data_buff[i + start] =
-                (char*)t_var->buffer()->data() + src_buff[i_src];
+            var_data_buff[i + start] = t_var->data_as<char>() + src_buff[i_src];
           }
 
           if (attributes[n]->nullable()) {
@@ -1209,13 +1207,13 @@ Status DenseReader::copy_offset_tiles(
           // Copy the last value.
           if (start + src_cell + (end - start) * stride >=
               cell_num_per_tile - 1) {
-            dest[i] = (t_var->buffer()->size() - src_buff[i * stride]) / div;
+            dest[i] = (t_var->size() - src_buff[i * stride]) / div;
           } else {
             auto i_src = i * stride;
             dest[i] = (src_buff[i_src + 1] - src_buff[i_src]) / div;
           }
           var_data_buff[i + start] =
-              (char*)t_var->buffer()->data() + src_buff[i * stride];
+              t_var->data_as<char>() + src_buff[i * stride];
 
           if (attributes[n]->nullable())
             dest_validity_ptr[start + i] = src_buff_validity[i * stride];

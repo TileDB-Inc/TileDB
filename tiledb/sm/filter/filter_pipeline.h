@@ -43,6 +43,7 @@
 #include "tiledb/sm/filter/filter_buffer.h"
 #include "tiledb/sm/misc/types.h"
 #include "tiledb/sm/stats/stats.h"
+#include "tiledb/sm/tile/filtered_buffer.h"
 
 using namespace tiledb::common;
 
@@ -300,7 +301,7 @@ class FilterPipeline {
    * @param offsets_tile Offsets tile.
    * @return Status, chunk offsets vector.
    */
-  std::tuple<Status, std::optional<std::vector<uint64_t>>> get_var_chunk_sizes(
+  tuple<Status, optional<std::vector<uint64_t>>> get_var_chunk_sizes(
       uint32_t chunk_size, Tile* const tile, Tile* const offsets_tile) const;
 
   /**
@@ -317,10 +318,9 @@ class FilterPipeline {
    */
   Status filter_chunks_forward(
       const Tile& tile,
-      const Buffer& input,
       uint32_t chunk_size,
       std::vector<uint64_t>& chunk_offsets,
-      Buffer* const output,
+      FilteredBuffer& output,
       ThreadPool* const compute_tp) const;
 
   /**
@@ -335,9 +335,8 @@ class FilterPipeline {
    * @return Status
    */
   Status filter_chunks_reverse(
-      const Tile& tile,
-      const std::vector<std::tuple<void*, uint32_t, uint32_t, uint32_t>>& input,
-      Buffer* const output,
+      Tile& tile,
+      const std::vector<tuple<void*, uint32_t, uint32_t, uint32_t>>& input,
       ThreadPool* const compute_tp,
       const Config& config) const;
 

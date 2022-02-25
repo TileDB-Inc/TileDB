@@ -319,9 +319,12 @@ Status Array::open(
 }
 
 Status Array::close() {
-  // Check if arrray is open
-  if (!is_open_)
-    return LOG_STATUS(Status_ArrayError("Cannot close array; Array not open."));
+  // Check if array is open
+  if (!is_open_) {
+    // If array is not open treat this as a no-op
+    // This keeps existing behavior from TileDB 2.6 and older
+    return Status::Ok();
+  }
 
   non_empty_domain_.clear();
   non_empty_domain_computed_ = false;
@@ -779,10 +782,10 @@ Status Array::metadata(Metadata** metadata) {
   return Status::Ok();
 }
 
-std::tuple<Status, std::optional<const NDRange>> Array::non_empty_domain() {
+tuple<Status, optional<const NDRange>> Array::non_empty_domain() {
   if (!non_empty_domain_computed_) {
     // Compute non-empty domain
-    RETURN_NOT_OK_TUPLE(compute_non_empty_domain(), std::nullopt);
+    RETURN_NOT_OK_TUPLE(compute_non_empty_domain(), nullopt);
   }
   return {Status::Ok(), non_empty_domain_};
 }

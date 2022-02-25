@@ -75,7 +75,7 @@ SparseIndexReaderBase::SparseIndexReaderBase(
           condition)
     , initial_data_loaded_(false)
     , memory_budget_(0)
-    , array_memory_tracker_(nullptr)
+    , array_memory_tracker_(array->memory_tracker())
     , memory_used_for_coords_total_(0)
     , memory_used_qc_tiles_total_(0)
     , memory_used_result_tile_ranges_(0)
@@ -159,7 +159,7 @@ uint64_t SparseIndexReaderBase::cells_copied(
 }
 
 template <class BitmapType>
-std::tuple<Status, std::optional<std::pair<uint64_t, uint64_t>>>
+tuple<Status, optional<std::pair<uint64_t, uint64_t>>>
 SparseIndexReaderBase::get_coord_tiles_size(
     bool include_coords, unsigned dim_num, unsigned f, uint64_t t) {
   uint64_t tiles_size = 0;
@@ -172,7 +172,7 @@ SparseIndexReaderBase::get_coord_tiles_size(
       if (is_dim_var_size_[d]) {
         auto&& [st, temp] =
             fragment_metadata_[f]->tile_var_size(dim_names_[d], t);
-        RETURN_NOT_OK_TUPLE(st, std::nullopt);
+        RETURN_NOT_OK_TUPLE(st, nullopt);
         tiles_size += *temp;
       }
     }
@@ -191,7 +191,7 @@ SparseIndexReaderBase::get_coord_tiles_size(
     for (auto& name : qc_loaded_names_) {
       // Calculate memory consumption for this tile.
       auto&& [st, tile_size] = get_attribute_tile_size(name, f, t);
-      RETURN_NOT_OK_TUPLE(st, std::nullopt);
+      RETURN_NOT_OK_TUPLE(st, nullopt);
       tiles_size_qc += *tile_size;
     }
   }
@@ -219,8 +219,6 @@ Status SparseIndexReaderBase::load_initial_data() {
   auto fragment_num = fragment_metadata_.size();
 
   // Make sure there is enough space for tiles data.
-  read_state_.frag_tile_idx_.clear();
-  all_tiles_loaded_.clear();
   read_state_.frag_tile_idx_.resize(fragment_num);
   all_tiles_loaded_.resize(fragment_num);
 
@@ -236,7 +234,9 @@ Status SparseIndexReaderBase::load_initial_data() {
     // This is ok as it is a soft limit and will be taken into consideration
     // later.
     RETURN_NOT_OK(subarray_.precompute_all_ranges_tile_overlap(
-        storage_manager_->compute_tp(), &result_tile_ranges_));
+        storage_manager_->compute_tp(),
+        read_state_.frag_tile_idx_,
+        &result_tile_ranges_));
 
     for (auto frag_result_tile_ranges : result_tile_ranges_) {
       memory_used_result_tile_ranges_ += frag_result_tile_ranges.size() *
@@ -574,7 +574,7 @@ Status SparseIndexReaderBase::apply_query_condition(
   return Status::Ok();
 }
 
-std::tuple<Status, std::optional<std::vector<uint64_t>>>
+tuple<Status, optional<std::vector<uint64_t>>>
 SparseIndexReaderBase::read_and_unfilter_attributes(
     const uint64_t memory_budget,
     const std::vector<std::string>& names,
@@ -605,10 +605,10 @@ SparseIndexReaderBase::read_and_unfilter_attributes(
 
   // Read and unfilter tiles.
   RETURN_NOT_OK_TUPLE(
-      read_attribute_tiles(names_to_read, result_tiles, true), std::nullopt);
+      read_attribute_tiles(names_to_read, result_tiles, true), nullopt);
 
   for (auto& name : names_to_read)
-    RETURN_NOT_OK_TUPLE(unfilter_tiles(name, result_tiles, true), std::nullopt);
+    RETURN_NOT_OK_TUPLE(unfilter_tiles(name, result_tiles, true), nullopt);
 
   return {Status::Ok(), std::move(index_to_copy)};
 }
@@ -703,10 +703,10 @@ void SparseIndexReaderBase::remove_result_tile_range(uint64_t f) {
 }
 
 // Explicit template instantiations
-template std::tuple<Status, std::optional<std::pair<uint64_t, uint64_t>>>
+template tuple<Status, optional<std::pair<uint64_t, uint64_t>>>
 SparseIndexReaderBase::get_coord_tiles_size<uint64_t>(
     bool, unsigned, unsigned, uint64_t);
-template std::tuple<Status, std::optional<std::pair<uint64_t, uint64_t>>>
+template tuple<Status, optional<std::pair<uint64_t, uint64_t>>>
 SparseIndexReaderBase::get_coord_tiles_size<uint8_t>(
     bool, unsigned, unsigned, uint64_t);
 template Status SparseIndexReaderBase::apply_query_condition<uint64_t>(

@@ -419,17 +419,18 @@ Status GCS::ls(
     }
 
     auto& results = object_metadata.value();
+    const static std::string gcs_prefix = uri_dir.is_gcs() ? "gcs://" : "gs://";
 
     if (absl::holds_alternative<google::cloud::storage::ObjectMetadata>(
             results)) {
       paths->emplace_back(
-          "gcs://" + bucket_name + "/" +
+          gcs_prefix + bucket_name + "/" +
           remove_front_slash(remove_trailing_slash(
               absl::get<google::cloud::storage::ObjectMetadata>(results)
                   .name())));
     } else if (absl::holds_alternative<std::string>(results)) {
       paths->emplace_back(
-          "gcs://" + bucket_name + "/" +
+          gcs_prefix + bucket_name + "/" +
           remove_front_slash(
               remove_trailing_slash(absl::get<std::string>(results))));
     }
@@ -1138,7 +1139,8 @@ Status GCS::parse_gcs_uri(
   assert(uri.is_gcs());
   const std::string uri_str = uri.to_string();
 
-  const static std::string gcs_prefix = "gcs://";
+  const static std::string gcs_prefix =
+      (uri_str.rfind("gcs://", 0) == 0) ? "gcs://" : "gs://";
   assert(uri_str.rfind(gcs_prefix, 0) == 0);
 
   if (uri_str.size() == gcs_prefix.size()) {

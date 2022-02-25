@@ -248,15 +248,11 @@ TEST_CASE_METHOD(
   ResultSpaceTile<int32_t> rst_3_2;
   rst_3_2.set_start_coords({7, 11});
 
-  // Prepare correct space tiles map
-  std::map<const int32_t*, ResultSpaceTile<int32_t>> c_result_space_tiles;
-  c_result_space_tiles[(const int32_t*)&(tile_coords[0][0])] = rst_1_0;
-  c_result_space_tiles[(const int32_t*)&(tile_coords[1][0])] = rst_1_2;
-  c_result_space_tiles[(const int32_t*)&(tile_coords[2][0])] = rst_2_0;
-  c_result_space_tiles[(const int32_t*)&(tile_coords[3][0])] = rst_2_2;
-  c_result_space_tiles[(const int32_t*)&(tile_coords[4][0])] = rst_3_0;
-  c_result_space_tiles[(const int32_t*)&(tile_coords[5][0])] = rst_3_2;
-
   // Check correctness
-  CHECK(result_space_tiles == c_result_space_tiles);
+  CHECK(result_space_tiles[(const int32_t*)&(tile_coords[0][0])] == rst_1_0);
+  CHECK(result_space_tiles[(const int32_t*)&(tile_coords[1][0])] == rst_1_2);
+  CHECK(result_space_tiles[(const int32_t*)&(tile_coords[2][0])] == rst_2_0);
+  CHECK(result_space_tiles[(const int32_t*)&(tile_coords[3][0])] == rst_2_2);
+  CHECK(result_space_tiles[(const int32_t*)&(tile_coords[4][0])] == rst_3_0);
+  CHECK(result_space_tiles[(const int32_t*)&(tile_coords[5][0])] == rst_3_2);
 }

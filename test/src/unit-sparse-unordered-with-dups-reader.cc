@@ -66,8 +66,10 @@ struct CSparseUnorderedWithDupsFx {
   std::string ratio_query_condition_;
 
   void create_default_array_1d();
+  void create_default_array_1d_string();
   void write_1d_fragment(
       int* coords, uint64_t* coords_size, int* data, uint64_t* data_size);
+  void write_1d_fragment_empty_strings(int* coords, uint64_t* coords_size);
   int32_t read(
       bool set_subarray,
       bool set_qc,
@@ -77,6 +79,13 @@ struct CSparseUnorderedWithDupsFx {
       uint64_t* data_size,
       tiledb_query_t** query = nullptr,
       tiledb_array_t** array_ret = nullptr);
+  int32_t read_strings(
+      int* coords,
+      uint64_t* coords_size,
+      char* data,
+      uint64_t* data_size,
+      uint64_t* data_offsets,
+      uint64_t* data_offsets_size);
   void reset_config();
   void update_config();
 
@@ -198,6 +207,27 @@ void CSparseUnorderedWithDupsFx::create_default_array_1d() {
       true);  // allows dups.
 }
 
+void CSparseUnorderedWithDupsFx::create_default_array_1d_string() {
+  int domain[] = {1, 20};
+  int tile_extent = 2;
+  create_array(
+      ctx_,
+      array_name_,
+      TILEDB_SPARSE,
+      {"d"},
+      {TILEDB_INT32},
+      {domain},
+      {&tile_extent},
+      {"a"},
+      {TILEDB_STRING_ASCII},
+      {TILEDB_VAR_NUM},
+      {tiledb::test::Compressor(TILEDB_FILTER_NONE, -1)},
+      TILEDB_ROW_MAJOR,
+      TILEDB_ROW_MAJOR,
+      2,
+      true);  // allows dups.
+}
+
 void CSparseUnorderedWithDupsFx::write_1d_fragment(
     int* coords, uint64_t* coords_size, int* data, uint64_t* data_size) {
   // Open array for writing.
@@ -214,6 +244,49 @@ void CSparseUnorderedWithDupsFx::write_1d_fragment(
   rc = tiledb_query_set_layout(ctx_, query, TILEDB_UNORDERED);
   REQUIRE(rc == TILEDB_OK);
   rc = tiledb_query_set_data_buffer(ctx_, query, "a", data, data_size);
+  REQUIRE(rc == TILEDB_OK);
+  rc = tiledb_query_set_data_buffer(ctx_, query, "d", coords, coords_size);
+  REQUIRE(rc == TILEDB_OK);
+
+  // Submit query.
+  rc = tiledb_query_submit(ctx_, query);
+  REQUIRE(rc == TILEDB_OK);
+
+  // Close array.
+  rc = tiledb_array_close(ctx_, array);
+  REQUIRE(rc == TILEDB_OK);
+
+  // Clean up.
+  tiledb_array_free(&array);
+  tiledb_query_free(&query);
+}
+
+void CSparseUnorderedWithDupsFx::write_1d_fragment_empty_strings(
+    int* coords, uint64_t* coords_size) {
+  const uint64_t num_cells = *coords_size / sizeof(TILEDB_INT32);
+
+  // Open array for writing.
+  tiledb_array_t* array;
+  auto rc = tiledb_array_alloc(ctx_, array_name_.c_str(), &array);
+  REQUIRE(rc == TILEDB_OK);
+  rc = tiledb_array_open(ctx_, array, TILEDB_WRITE);
+  REQUIRE(rc == TILEDB_OK);
+
+  char data[1];
+  uint64_t data_size = 0;
+  std::vector<uint64_t> data_offsets(num_cells, 0);
+  uint64_t data_offsets_size = num_cells * sizeof(uint64_t);
+
+  // Create the query.
+  tiledb_query_t* query;
+  rc = tiledb_query_alloc(ctx_, array, TILEDB_WRITE, &query);
+  REQUIRE(rc == TILEDB_OK);
+  rc = tiledb_query_set_layout(ctx_, query, TILEDB_UNORDERED);
+  REQUIRE(rc == TILEDB_OK);
+  rc = tiledb_query_set_data_buffer(ctx_, query, "a", data, &data_size);
+  REQUIRE(rc == TILEDB_OK);
+  rc = tiledb_query_set_offsets_buffer(
+      ctx_, query, "a", data_offsets.data(), &data_offsets_size);
   REQUIRE(rc == TILEDB_OK);
   rc = tiledb_query_set_data_buffer(ctx_, query, "d", coords, coords_size);
   REQUIRE(rc == TILEDB_OK);
@@ -295,6 +368,46 @@ int32_t CSparseUnorderedWithDupsFx::read(
     *array_ret = array;
   }
 
+  return ret;
+}
+
+int32_t CSparseUnorderedWithDupsFx::read_strings(
+    int* coords,
+    uint64_t* coords_size,
+    char* data,
+    uint64_t* data_size,
+    uint64_t* data_offsets,
+    uint64_t* data_offsets_size) {
+  // Open array for reading.
+  tiledb_array_t* array;
+  auto rc = tiledb_array_alloc(ctx_, array_name_.c_str(), &array);
+  CHECK(rc == TILEDB_OK);
+  rc = tiledb_array_open(ctx_, array, TILEDB_READ);
+  CHECK(rc == TILEDB_OK);
+
+  // Create query.
+  tiledb_query_t* query;
+  rc = tiledb_query_alloc(ctx_, array, TILEDB_READ, &query);
+  CHECK(rc == TILEDB_OK);
+
+  rc = tiledb_query_set_layout(ctx_, query, TILEDB_UNORDERED);
+  CHECK(rc == TILEDB_OK);
+  rc = tiledb_query_set_data_buffer(ctx_, query, "a", data, data_size);
+  CHECK(rc == TILEDB_OK);
+  rc = tiledb_query_set_offsets_buffer(
+      ctx_, query, "a", data_offsets, data_offsets_size);
+  CHECK(rc == TILEDB_OK);
+  rc = tiledb_query_set_data_buffer(ctx_, query, "d", coords, coords_size);
+  CHECK(rc == TILEDB_OK);
+
+  // Submit query.
+  auto ret = tiledb_query_submit(ctx_, query);
+
+  // Clean up.
+  rc = tiledb_array_close(ctx_, array);
+  CHECK(rc == TILEDB_OK);
+  tiledb_array_free(&array);
+  tiledb_query_free(&query);
   return ret;
 }
 
@@ -1166,7 +1279,9 @@ TEST_CASE(
     "Sparse unordered with dups reader: test compute_var_size_offsets",
     "[sparse-unordered-with-dups][compute_var_size_offsets]") {
   // Make a vector of tiles.
-  std::vector<ResultTileWithBitmap<uint64_t>> rt = {make_tile(5)};
+  auto tile = make_tile(5);
+  std::vector<ResultTileWithBitmap<uint64_t>> rt;
+  rt.push_back(std::move(tile));
 
   SECTION("- No bitmap") {
   }
@@ -1223,7 +1338,9 @@ TEST_CASE(
     "bitmap",
     "[sparse-unordered-with-dups][compute_var_size_offsets][count-bitmap]") {
   // Make a vector of tiles.
-  std::vector<ResultTileWithBitmap<uint64_t>> rt = {make_tile(5)};
+  auto tile = make_tile(5);
+  std::vector<ResultTileWithBitmap<uint64_t>> rt;
+  rt.push_back(std::move(tile));
   rt[0].bitmap_.resize(5);
   rt[0].bitmap_ = {0, 1, 2, 0, 2};
 
@@ -1274,7 +1391,9 @@ TEST_CASE(
     "continuation",
     "[sparse-unordered-with-dups][compute_var_size_offsets][continuation]") {
   // Make a vector of tiles.
-  std::vector<ResultTileWithBitmap<uint64_t>> rt = {make_tile(5)};
+  auto tile = make_tile(5);
+  std::vector<ResultTileWithBitmap<uint64_t>> rt;
+  rt.push_back(std::move(tile));
 
   SECTION("- No bitmap") {
   }
@@ -1323,4 +1442,34 @@ TEST_CASE(
   CHECK(cell_offsets[1] == 2);
   CHECK(result_tiles_size == 1);
   CHECK(var_buffer_size == 4);
+}
+
+TEST_CASE_METHOD(
+    CSparseUnorderedWithDupsFx,
+    "Sparse unordered with dups reader: empty strings",
+    "[sparse-unordered-with-dups][empty-strings]") {
+  // Create default array.
+  reset_config();
+  create_default_array_1d_string();
+
+  // Write a fragment.
+  int coords[] = {1, 2};
+  uint64_t coords_size = sizeof(coords);
+  write_1d_fragment_empty_strings(coords, &coords_size);
+
+  // Try to read.
+  int coords_r[5];
+  char data_r[5];
+  uint64_t data_offsets_r[5];
+  uint64_t coords_r_size = sizeof(coords_r);
+  uint64_t data_r_size = sizeof(data_r);
+  uint64_t data_offsets_r_size = sizeof(data_offsets_r);
+  auto rc = read_strings(
+      coords_r,
+      &coords_r_size,
+      data_r,
+      &data_r_size,
+      data_offsets_r,
+      &data_offsets_r_size);
+  CHECK(rc == TILEDB_OK);
 }

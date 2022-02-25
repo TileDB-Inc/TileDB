@@ -79,83 +79,35 @@ void Tile::set_max_tile_chunk_size(uint64_t max_tile_chunk_size) {
 /*   CONSTRUCTORS & DESTRUCTORS   */
 /* ****************************** */
 
-Tile::Tile() {
-  buffer_ = nullptr;
-  cell_size_ = 0;
-  dim_num_ = 0;
-  owns_buffer_ = true;
-  format_version_ = 0;
-  type_ = Datatype::INT32;
+Tile::Tile()
+    : data_(nullptr, tiledb_free)
+    , size_(0)
+    , cell_size_(0)
+    , dim_num_(0)
+    , format_version_(0)
+    , type_(Datatype::INT32)
+    , filtered_buffer_(0) {
 }
 
 Tile::Tile(
     const Datatype type,
     const uint64_t cell_size,
     const unsigned int dim_num,
-    Buffer* const buffer,
-    const bool owns_buff)
-    : buffer_(buffer)
+    void* const buffer,
+    uint64_t size)
+    : data_(static_cast<char*>(buffer), tiledb_free)
+    , size_(size)
     , cell_size_(cell_size)
     , dim_num_(dim_num)
     , format_version_(0)
-    , owns_buffer_(owns_buff)
-    , type_(type) {
-  buffer->reset_offset();
-}
-
-Tile::Tile(
-    const uint32_t format_version,
-    const Datatype type,
-    const uint64_t cell_size,
-    const unsigned int dim_num,
-    Buffer* const buffer,
-    const bool owns_buff)
-    : buffer_(buffer)
-    , cell_size_(cell_size)
-    , dim_num_(dim_num)
-    , format_version_(format_version)
-    , owns_buffer_(owns_buff)
-    , type_(type) {
-}
-
-Tile::Tile(const Tile& tile)
-    : Tile() {
-  // Make a deep-copy clone
-  auto clone = tile.clone(true);
-  // Swap with the clone
-  swap(clone);
+    , type_(type)
+    , filtered_buffer_(0) {
 }
 
 Tile::Tile(Tile&& tile)
     : Tile() {
   // Swap with the argument
   swap(tile);
-}
-
-Tile::~Tile() {
-  if (owns_buffer_ && buffer_ != nullptr) {
-    buffer_->clear();
-    tdb_delete(buffer_);
-  }
-}
-
-Tile& Tile::operator=(const Tile& tile) {
-  // Free existing buffer if owned.
-  if (owns_buffer_) {
-    if (buffer_) {
-      buffer_->clear();
-      tdb_delete(buffer_);
-      buffer_ = nullptr;
-    }
-    owns_buffer_ = false;
-  }
-
-  // Make a deep-copy clone
-  auto clone = tile.clone(true);
-  // Swap with the clone
-  swap(clone);
-
-  return *this;
 }
 
 Tile& Tile::operator=(Tile&& tile) {
@@ -185,17 +137,19 @@ Status Tile::init_unfiltered(
   type_ = type;
   format_version_ = format_version;
 
-  buffer_ = tdb_new(Buffer);
-  if (buffer_ == nullptr)
-    return LOG_STATUS(
-        Status_TileError("Cannot initialize tile; Buffer allocation failed"));
-
-  RETURN_NOT_OK(buffer_->realloc(tile_size));
+  if (tile_size > 0) {
+    data_.reset(static_cast<char*>(tdb_malloc(tile_size)));
+    if (data_ == nullptr)
+      return LOG_STATUS(
+          Status_TileError("Cannot initialize tile; Buffer allocation failed"));
+  } else {
+    data_ = nullptr;
+  }
 
   if (fill_with_zeros && tile_size > 0) {
-    memset(buffer_->data(), 0, tile_size);
-    buffer_->set_size(tile_size);
+    memset(data_.get(), 0, tile_size);
   }
+  size_ = tile_size;
 
   return Status::Ok();
 }
@@ -209,121 +163,53 @@ Status Tile::init_filtered(
   dim_num_ = dim_num;
   type_ = type;
   format_version_ = format_version;
-
-  buffer_ = tdb_new(Buffer);
-  if (buffer_ == nullptr)
-    return LOG_STATUS(
-        Status_TileError("Cannot initialize tile; Buffer allocation failed"));
+  size_ = 0;
 
   return Status::Ok();
 }
 
-void Tile::advance_offset(uint64_t nbytes) {
-  buffer_->advance_offset(nbytes);
+void Tile::clear_data() {
+  data_ = nullptr;
+  size_ = 0;
 }
 
-Tile Tile::clone(bool deep_copy) const {
-  Tile clone;
-  clone.cell_size_ = cell_size_;
-  clone.dim_num_ = dim_num_;
-  clone.format_version_ = format_version_;
-  clone.type_ = type_;
-  clone.filtered_buffer_ = filtered_buffer_;
-
-  if (deep_copy) {
-    clone.owns_buffer_ = owns_buffer_;
-    if (owns_buffer_ && buffer_ != nullptr) {
-      clone.buffer_ = tdb_new(Buffer);
-      // Calls Buffer copy-assign, which performs a deep copy.
-      *clone.buffer_ = *buffer_;
-    } else {
-      clone.buffer_ = buffer_;
-    }
-  } else {
-    clone.owns_buffer_ = false;
-    clone.buffer_ = buffer_;
+Status Tile::alloc_data(uint64_t size) {
+  assert(data_ == nullptr);
+  data_.reset(static_cast<char*>(tdb_malloc(size)));
+  if (data_ == nullptr) {
+    return LOG_STATUS(
+        Status_TileError("Cannot allocate buffer; Memory allocation failed"));
   }
+  size_ = size;
 
-  return clone;
-}
-
-void Tile::disown_buff() {
-  owns_buffer_ = false;
-}
-
-bool Tile::owns_buff() const {
-  return owns_buffer_;
+  return Status::Ok();
 }
 
 bool Tile::empty() const {
   assert(!filtered());
-  return (buffer_ == nullptr) || (buffer_->size() == 0);
-}
-
-bool Tile::full() const {
-  assert(!filtered());
-  return !empty() && buffer_->offset() >= buffer_->alloced_size();
-}
-
-uint64_t Tile::offset() const {
-  return buffer_->offset();
-}
-
-Status Tile::read(void* buffer, uint64_t nbytes) {
-  assert(!filtered());
-  RETURN_NOT_OK(buffer_->read(buffer, nbytes));
-
-  return Status::Ok();
+  return data_ == nullptr;
 }
 
 Status Tile::read(
-    void* const buffer, const uint64_t nbytes, const uint64_t offset) const {
+    void* const buffer, const uint64_t offset, const uint64_t nbytes) const {
   assert(!filtered());
-  return buffer_->read(buffer, offset, nbytes);
-}
-
-void Tile::reset() {
-  reset_offset();
-  reset_size();
-}
-
-void Tile::reset_offset() {
-  buffer_->reset_offset();
-}
-
-void Tile::reset_size() {
-  assert(!filtered());
-  buffer_->set_size(0);
-}
-
-void Tile::set_offset(uint64_t offset) {
-  buffer_->set_offset(offset);
-}
-
-Status Tile::write(ConstBuffer* buf) {
-  assert(!filtered());
-  RETURN_NOT_OK(buffer_->write(buf->cur_data(), buf->size()));
-
-  return Status::Ok();
-}
-
-Status Tile::write(ConstBuffer* buf, uint64_t nbytes) {
-  assert(!filtered());
-  RETURN_NOT_OK(buffer_->write(buf->cur_data(), nbytes));
-
-  return Status::Ok();
-}
-
-Status Tile::write(const void* data, uint64_t nbytes) {
-  assert(!filtered());
-  RETURN_NOT_OK(buffer_->write(data, nbytes));
-
+  if (nbytes > size_ - offset) {
+    return LOG_STATUS(Status_TileError(
+        "Read tile overflow; may not read beyond buffer size"));
+  }
+  std::memcpy(buffer, data_.get() + offset, nbytes);
   return Status::Ok();
 }
 
 Status Tile::write(const void* data, uint64_t offset, uint64_t nbytes) {
   assert(!filtered());
-  RETURN_NOT_OK(buffer_->write(data, offset, nbytes));
+  if (nbytes > size_ - offset) {
+    return LOG_STATUS(
+        Status_TileError("Write tile overflow; would write out of bounds"));
+  }
+
+  std::memcpy(data_.get() + offset, data, nbytes);
+  size_ = std::max(offset + nbytes, size_);
 
   return Status::Ok();
 }
@@ -332,23 +218,21 @@ Status Tile::zip_coordinates() {
   assert(dim_num_ > 0);
 
   // For easy reference
-  const uint64_t tile_size = buffer_->size();
+  const uint64_t tile_size = size_;
   const uint64_t coord_size = cell_size_ / dim_num_;
   const uint64_t cell_num = tile_size / cell_size_;
-
-  char* const data = static_cast<char*>(buffer_->data());
 
   // Create a tile clone
   char* const tile_tmp = static_cast<char*>(tdb_malloc(tile_size));
   assert(tile_tmp);
-  std::memcpy(tile_tmp, data, tile_size);
+  std::memcpy(tile_tmp, data_.get(), tile_size);
 
   // Zip coordinates
   uint64_t ptr_tmp = 0;
   for (unsigned int j = 0; j < dim_num_; ++j) {
     uint64_t ptr = j * coord_size;
     for (uint64_t i = 0; i < cell_num; ++i) {
-      std::memcpy(data + ptr, tile_tmp + ptr_tmp, coord_size);
+      std::memcpy(data_.get() + ptr, tile_tmp + ptr_tmp, coord_size);
       ptr += cell_size_;
       ptr_tmp += coord_size;
     }
@@ -360,18 +244,14 @@ Status Tile::zip_coordinates() {
   return Status::Ok();
 }
 
-/* ****************************** */
-/*          PRIVATE METHODS       */
-/* ****************************** */
-
 void Tile::swap(Tile& tile) {
   // Note swapping buffer pointers here.
   std::swap(filtered_buffer_, tile.filtered_buffer_);
-  std::swap(buffer_, tile.buffer_);
+  std::swap(size_, tile.size_);
+  std::swap(data_, tile.data_);
   std::swap(cell_size_, tile.cell_size_);
   std::swap(dim_num_, tile.dim_num_);
   std::swap(format_version_, tile.format_version_);
-  std::swap(owns_buffer_, tile.owns_buffer_);
   std::swap(type_, tile.type_);
 }
 

@@ -5,7 +5,7 @@
  *
  * The MIT License
  *
- * @copyright Copyright (c) 2021 TileDB, Inc.
+ * @copyright Copyright (c) 2021-2022 TileDB, Inc.
  *
  * Permission is hereby granted, free of charge, to any person obtaining a copy
  * of this software and associated documentation files (the "Software"), to deal
@@ -28,6 +28,7 @@
 
 #include "../bzip_compressor.h"
 #include "../dd_compressor.h"
+#include "../dict_compressor.h"
 #include "../gzip_compressor.h"
 #include "../lz4_compressor.h"
 #include "../rle_compressor.h"
@@ -36,6 +37,7 @@
 int main() {
   (void)sizeof(tiledb::sm::BZip);
   (void)sizeof(tiledb::sm::DoubleDelta);
+  (void)sizeof(tiledb::sm::DictEncoding);
   (void)sizeof(tiledb::sm::GZip);
   (void)sizeof(tiledb::sm::LZ4);
   (void)sizeof(tiledb::sm::RLE);

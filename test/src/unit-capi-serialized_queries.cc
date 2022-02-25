@@ -32,12 +32,13 @@
 
 #include "catch.hpp"
 #include "test/src/helpers.h"
+#include "tiledb/common/common.h"
 #include "tiledb/sm/c_api/tiledb.h"
 #include "tiledb/sm/c_api/tiledb_serialization.h"
 #include "tiledb/sm/c_api/tiledb_struct_def.h"
 #include "tiledb/sm/cpp_api/tiledb"
 #include "tiledb/sm/query/reader.h"
-#include "tiledb/sm/query/writer.h"
+#include "tiledb/sm/query/writer_base.h"
 #include "tiledb/sm/serialization/query.h"
 
 #ifdef _WIN32
@@ -78,8 +79,8 @@ template <class TResult, class TExpected>
 bool check_result(
     const TResult a,
     const TExpected b,
-    std::optional<size_t> start = nullopt,
-    std::optional<size_t> end = nullopt) {
+    optional<size_t> start = nullopt,
+    optional<size_t> end = nullopt) {
   TResult b_typed;
   if constexpr (std::is_same<TExpected, std::any>::value) {
     b_typed = std::any_cast<TResult>(b);
@@ -119,7 +120,7 @@ struct SerializationFx {
   }
 
   static void check_read_stats(const Query& query) {
-    auto stats = ((sm::Writer*)query.ptr()->query_->strategy())->stats();
+    auto stats = ((sm::WriterBase*)query.ptr()->query_->strategy())->stats();
     REQUIRE(stats != nullptr);
     auto counters = stats->counters();
     REQUIRE(counters != nullptr);

@@ -34,6 +34,20 @@
 cmake_policy(SET CMP0063 NEW)
 
 ############################################################
+# Find packages needed for object libraries
+############################################################
+
+# FindThreads defines the following:
+#  * Threads_FOUND - If a supported thread library was found.
+#  * CMAKE_THREAD_LIBS_INIT - The thread library to use. This is empty if the thread
+#    functions are provided by the system libraries and no special flags are needed to
+#    use them.
+#  * CMAKE_USE_WIN32_THREADS_INIT - If the found thread library is the win32 one.
+#  * CMAKE_USE_PTHREADS_INIT - If the found thread library is pthread compatible.
+#  * CMAKE_HP_PTHREADS_INIT - If the found thread library is the HP thread library.
+find_package(Threads REQUIRED)
+
+############################################################
 # Subdirectories
 ############################################################
 
@@ -178,7 +192,9 @@ set(TILEDB_CORE_SOURCES
   ${TILEDB_CORE_INCLUDE_DIR}/tiledb/sm/misc/work_arounds.cc
   ${TILEDB_CORE_INCLUDE_DIR}/tiledb/sm/query/dense_reader.cc
   ${TILEDB_CORE_INCLUDE_DIR}/tiledb/sm/query/dense_tiler.cc
+  ${TILEDB_CORE_INCLUDE_DIR}/tiledb/sm/query/global_order_writer.cc
   ${TILEDB_CORE_INCLUDE_DIR}/tiledb/sm/query/hilbert_order.cc
+  ${TILEDB_CORE_INCLUDE_DIR}/tiledb/sm/query/ordered_writer.cc
   ${TILEDB_CORE_INCLUDE_DIR}/tiledb/sm/query/query.cc
   ${TILEDB_CORE_INCLUDE_DIR}/tiledb/sm/query/query_condition.cc
   ${TILEDB_CORE_INCLUDE_DIR}/tiledb/sm/query/reader.cc
@@ -189,7 +205,8 @@ set(TILEDB_CORE_SOURCES
   ${TILEDB_CORE_INCLUDE_DIR}/tiledb/sm/query/sparse_index_reader_base.cc
   ${TILEDB_CORE_INCLUDE_DIR}/tiledb/sm/query/sparse_unordered_with_dups_reader.cc
   ${TILEDB_CORE_INCLUDE_DIR}/tiledb/sm/query/strategy_base.cc
-  ${TILEDB_CORE_INCLUDE_DIR}/tiledb/sm/query/writer.cc
+  ${TILEDB_CORE_INCLUDE_DIR}/tiledb/sm/query/unordered_writer.cc
+  ${TILEDB_CORE_INCLUDE_DIR}/tiledb/sm/query/writer_base.cc
   ${TILEDB_CORE_INCLUDE_DIR}/tiledb/sm/rest/rest_client.cc
   ${TILEDB_CORE_INCLUDE_DIR}/tiledb/sm/rtree/rtree.cc
   ${TILEDB_CORE_INCLUDE_DIR}/tiledb/sm/serialization/array.cc
@@ -545,10 +562,14 @@ if(APPLE)
   endif()
 endif()
 
-# On Linux, must explicitly link -lpthread -ldl in order for static linking
-# to libzstd.
+# Link to Threads::Threads if library or flag needed to enable threading.
+if (CMAKE_THREAD_LIBS_INIT)
+  target_link_libraries(TILEDB_CORE_OBJECTS_ILIB INTERFACE Threads::Threads)
+endif()
+
+# On Linux, must explicitly link -ldl for static linking to libzstd.
 if (NOT WIN32)
-  target_link_libraries(TILEDB_CORE_OBJECTS_ILIB INTERFACE pthread dl)
+  target_link_libraries(TILEDB_CORE_OBJECTS_ILIB INTERFACE dl)
 endif()
 
 # Copy over dependency info (e.g. include directories) to the core objects.

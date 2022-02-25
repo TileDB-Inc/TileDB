@@ -39,7 +39,7 @@
 #include "tiledb/sm/c_api/tiledb_struct_def.h"
 #include "tiledb/sm/cpp_api/tiledb"
 #include "tiledb/sm/query/reader.h"
-#include "tiledb/sm/query/writer.h"
+#include "tiledb/sm/query/writer_base.h"
 #include "tiledb/sm/serialization/query.h"
 
 #ifdef _WIN32
@@ -121,7 +121,7 @@ struct SerializationFx {
   }
 
   static void check_read_stats(const Query& query) {
-    auto stats = ((sm::Writer*)query.ptr()->query_->strategy())->stats();
+    auto stats = ((sm::WriterBase*)query.ptr()->query_->strategy())->stats();
     REQUIRE(stats != nullptr);
     auto counters = stats->counters();
     REQUIRE(counters != nullptr);

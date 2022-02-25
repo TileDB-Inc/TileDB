@@ -55,6 +55,7 @@
 #include "tiledb/sm/misc/cancelable_tasks.h"
 #include "tiledb/sm/misc/types.h"
 #include "tiledb/sm/stats/global_stats.h"
+#include "tiledb/sm/tile/filtered_buffer.h"
 
 using namespace tiledb::common;
 
@@ -166,12 +167,11 @@ class StorageManager {
    *        fragment_metadata The fragment metadata to be retrieved
    *           after the array is opened.
    */
-  std::tuple<
+  tuple<
       Status,
-      std::optional<ArraySchema*>,
-      std::optional<
-          std::unordered_map<std::string, tdb_shared_ptr<ArraySchema>>>,
-      std::optional<std::vector<tdb_shared_ptr<FragmentMetadata>>>>
+      optional<ArraySchema*>,
+      optional<std::unordered_map<std::string, tdb_shared_ptr<ArraySchema>>>,
+      optional<std::vector<tdb_shared_ptr<FragmentMetadata>>>>
   load_array_schemas_and_fragment_metadata(
       const URI& array_uri,
       MemoryTracker* memory_tracker,
@@ -196,12 +196,11 @@ class StorageManager {
    *        fragment_metadata The fragment metadata to be retrieved
    *           after the array is opened.
    */
-  std::tuple<
+  tuple<
       Status,
-      std::optional<ArraySchema*>,
-      std::optional<
-          std::unordered_map<std::string, tdb_shared_ptr<ArraySchema>>>,
-      std::optional<std::vector<tdb_shared_ptr<FragmentMetadata>>>>
+      optional<ArraySchema*>,
+      optional<std::unordered_map<std::string, tdb_shared_ptr<ArraySchema>>>,
+      optional<std::vector<tdb_shared_ptr<FragmentMetadata>>>>
   array_open_for_reads(Array* array);
 
   /**
@@ -214,11 +213,10 @@ class StorageManager {
    *          array is opened.
    *        ArraySchemaMap Map of all array schemas found keyed by name
    */
-  std::tuple<
+  tuple<
       Status,
-      std::optional<ArraySchema*>,
-      std::optional<
-          std::unordered_map<std::string, tdb_shared_ptr<ArraySchema>>>>
+      optional<ArraySchema*>,
+      optional<std::unordered_map<std::string, tdb_shared_ptr<ArraySchema>>>>
   array_open_for_reads_without_fragments(Array* array);
 
   /** Opens an array for writes.
@@ -230,11 +228,10 @@ class StorageManager {
    *          array is opened.
    *        ArraySchemaMap Map of all array schemas found keyed by name
    */
-  std::tuple<
+  tuple<
       Status,
-      std::optional<ArraySchema*>,
-      std::optional<
-          std::unordered_map<std::string, tdb_shared_ptr<ArraySchema>>>>
+      optional<ArraySchema*>,
+      optional<std::unordered_map<std::string, tdb_shared_ptr<ArraySchema>>>>
   array_open_for_writes(Array* array);
 
   /**
@@ -244,9 +241,7 @@ class StorageManager {
    * @param fragment_info The list of fragment info.
    * @return Status, the fragment metadata to be loaded.
    */
-  std::tuple<
-      Status,
-      std::optional<std::vector<tdb_shared_ptr<FragmentMetadata>>>>
+  tuple<Status, optional<std::vector<tdb_shared_ptr<FragmentMetadata>>>>
   array_load_fragments(
       Array* array, const std::vector<TimestampedURI>& fragment_info);
 
@@ -263,12 +258,11 @@ class StorageManager {
    *        FragmentMetadata The fragment metadata to be retrieved
    *          after the array is opened.
    */
-  std::tuple<
+  tuple<
       Status,
-      std::optional<ArraySchema*>,
-      std::optional<
-          std::unordered_map<std::string, tdb_shared_ptr<ArraySchema>>>,
-      std::optional<std::vector<tdb_shared_ptr<FragmentMetadata>>>>
+      optional<ArraySchema*>,
+      optional<std::unordered_map<std::string, tdb_shared_ptr<ArraySchema>>>,
+      optional<std::vector<tdb_shared_ptr<FragmentMetadata>>>>
   array_reopen(Array* array);
 
   /**
@@ -739,9 +733,9 @@ class StorageManager {
    *   ArraySchema The latest array schema.
    *   ArraySchemaMap Map of all array schemas loaded, keyed by name
    */
-  std::tuple<
+  tuple<
       Status,
-      std::optional<ArraySchema*>,
+      optional<ArraySchema*>,
       std::optional<
           std::unordered_map<std::string, tdb_shared_ptr<ArraySchema>>>>
   load_array_schemas(const URI& array_uri, const EncryptionKey& encryption_key);
@@ -756,7 +750,7 @@ class StorageManager {
    *        Status Ok on success, else error
    *        ArraySchemaMap Map of all array schemas found keyed by name
    */
-  std::tuple<
+  tuple<
       Status,
       std::optional<
           std::unordered_map<std::string, tdb_shared_ptr<ArraySchema>>>>
@@ -895,7 +889,7 @@ class StorageManager {
   Status read_from_cache(
       const URI& uri,
       uint64_t offset,
-      Buffer* buffer,
+      FilteredBuffer& buffer,
       uint64_t nbytes,
       bool* in_cache) const;
 
@@ -979,7 +973,8 @@ class StorageManager {
    * @param buffer The buffer whose contents will be cached.
    * @return Status.
    */
-  Status write_to_cache(const URI& uri, uint64_t offset, Buffer* buffer) const;
+  Status write_to_cache(
+      const URI& uri, uint64_t offset, const FilteredBuffer& buffer) const;
 
   /**
    * Writes the contents of a buffer into a URI file.
@@ -1147,9 +1142,7 @@ class StorageManager {
    *        Status Ok on success, else error
    *        Vector of FragmentMetadata is the fragment metadata to be retrieved.
    */
-  std::tuple<
-      Status,
-      std::optional<std::vector<tdb_shared_ptr<FragmentMetadata>>>>
+  tuple<Status, std::optional<std::vector<tdb_shared_ptr<FragmentMetadata>>>>
   load_fragment_metadata(
       MemoryTracker* memory_tracker,
       ArraySchema* array_schema_latest,

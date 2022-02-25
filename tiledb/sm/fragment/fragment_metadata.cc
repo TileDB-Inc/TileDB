@@ -498,7 +498,8 @@ Status FragmentMetadata::add_max_buffer_sizes_sparse(
   RETURN_NOT_OK(load_rtree(encryption_key));
 
   // Get tile overlap
-  auto tile_overlap = rtree_.get_tile_overlap(subarray);
+  std::vector<bool> is_default(subarray.size(), false);
+  auto tile_overlap = rtree_.get_tile_overlap(subarray, is_default);
 
   // Handle tile ranges
   for (const auto& tr : tile_overlap.tile_ranges_) {
@@ -585,14 +586,12 @@ bool FragmentMetadata::has_consolidated_footer() const {
   return has_consolidated_footer_;
 }
 
-bool FragmentMetadata::overlaps_non_empty_domain(const NDRange& range) const {
-  return array_schema_->domain()->overlap(range, non_empty_domain_);
-}
-
 Status FragmentMetadata::get_tile_overlap(
-    const NDRange& range, TileOverlap* tile_overlap) {
+    const NDRange& range,
+    std::vector<bool>& is_default,
+    TileOverlap* tile_overlap) {
   assert(version_ <= 2 || loaded_metadata_.rtree_);
-  *tile_overlap = rtree_.get_tile_overlap(range);
+  *tile_overlap = rtree_.get_tile_overlap(range, is_default);
   return Status::Ok();
 }
 
@@ -933,9 +932,10 @@ uint64_t FragmentMetadata::tile_num() const {
   return sparse_tile_num_;
 }
 
-std::string FragmentMetadata::encode_name(const std::string& name) const {
+tuple<Status, optional<std::string>> FragmentMetadata::encode_name(
+    const std::string& name) const {
   if (version_ <= 7)
-    return name;
+    return {Status::Ok(), name};
 
   if (version_ == 8) {
     static const std::unordered_map<char, std::string> percent_encoding{
@@ -974,20 +974,22 @@ std::string FragmentMetadata::encode_name(const std::string& name) const {
         percent_encoded_name << percent_encoding.at(c);
     }
 
-    return percent_encoded_name.str();
+    return {Status::Ok(), percent_encoded_name.str()};
   }
 
   assert(version_ > 8);
   const auto iter = idx_map_.find(name);
   if (iter == idx_map_.end())
-    LOG_FATAL("Name " + name + " not in idx_map_");
+    return {Status_FragmentMetadataError("Name " + name + " not in idx_map_"),
+            std::nullopt};
+
   const unsigned idx = iter->second;
 
   auto attributes = array_schema_->attributes();
   for (unsigned i = 0; i < attributes.size(); ++i) {
     const std::string attr_name = attributes[i]->name();
     if (attr_name == name) {
-      return "a" + std::to_string(idx);
+      return {Status::Ok(), "a" + std::to_string(idx)};
     }
   }
 
@@ -995,30 +997,47 @@ std::string FragmentMetadata::encode_name(const std::string& name) const {
     const std::string dim_name = array_schema_->dimension(i)->name();
     if (dim_name == name) {
       const unsigned dim_idx = idx - array_schema_->attribute_num() - 1;
-      return "d" + std::to_string(dim_idx);
+      return {Status::Ok(), "d" + std::to_string(dim_idx)};
     }
   }
 
   if (name == constants::coords) {
-    return name;
+    return {Status::Ok(), name};
   }
 
-  LOG_FATAL("Unable to locate dimension/attribute " + name);
-  return "";
+  auto err = "Unable to locate dimension/attribute " + name;
+  return {Status_FragmentMetadataError(err), std::nullopt};
 }
 
-URI FragmentMetadata::uri(const std::string& name) const {
-  return fragment_uri_.join_path(encode_name(name) + constants::file_suffix);
+tuple<Status, optional<URI>> FragmentMetadata::uri(
+    const std::string& name) const {
+  auto&& [st, encoded_name] = encode_name(name);
+  if (!st.ok())
+    return {st, std::nullopt};
+
+  return {st, fragment_uri_.join_path(*encoded_name + constants::file_suffix)};
 }
 
-URI FragmentMetadata::var_uri(const std::string& name) const {
-  return fragment_uri_.join_path(
-      encode_name(name) + "_var" + constants::file_suffix);
+tuple<Status, optional<URI>> FragmentMetadata::var_uri(
+    const std::string& name) const {
+  auto&& [st, encoded_name] = encode_name(name);
+  if (!st.ok())
+    return {st, std::nullopt};
+
+  return {
+      st,
+      fragment_uri_.join_path(*encoded_name + "_var" + constants::file_suffix)};
 }
 
-URI FragmentMetadata::validity_uri(const std::string& name) const {
-  return fragment_uri_.join_path(
-      encode_name(name) + "_validity" + constants::file_suffix);
+tuple<Status, optional<URI>> FragmentMetadata::validity_uri(
+    const std::string& name) const {
+  auto&& [st, encoded_name] = encode_name(name);
+  if (!st.ok())
+    return {st, std::nullopt};
+
+  return {st,
+          fragment_uri_.join_path(
+              *encoded_name + "_validity" + constants::file_suffix)};
 }
 
 const std::string& FragmentMetadata::array_schema_name() {
@@ -1196,8 +1215,7 @@ const std::vector<NDRange>& FragmentMetadata::mbrs() const {
   return rtree_.leaves();
 }
 
-std::tuple<Status, std::optional<uint64_t>>
-FragmentMetadata::persisted_tile_size(
+tuple<Status, optional<uint64_t>> FragmentMetadata::persisted_tile_size(
     const std::string& name, uint64_t tile_idx) {
   auto it = idx_map_.find(name);
   assert(it != idx_map_.end());
@@ -1205,7 +1223,7 @@ FragmentMetadata::persisted_tile_size(
   if (!loaded_metadata_.tile_offsets_[idx])
     return {LOG_STATUS(Status_FragmentMetadataError(
                 "Trying to access metadata that's not loaded")),
-            std::nullopt};
+            nullopt};
 
   auto tile_num = this->tile_num();
 
@@ -1217,8 +1235,7 @@ FragmentMetadata::persisted_tile_size(
   return {Status::Ok(), tile_size};
 }
 
-std::tuple<Status, std::optional<uint64_t>>
-FragmentMetadata::persisted_tile_var_size(
+tuple<Status, optional<uint64_t>> FragmentMetadata::persisted_tile_var_size(
     const std::string& name, uint64_t tile_idx) {
   auto it = idx_map_.find(name);
   assert(it != idx_map_.end());
@@ -1227,7 +1244,7 @@ FragmentMetadata::persisted_tile_var_size(
   if (!loaded_metadata_.tile_var_offsets_[idx])
     return {LOG_STATUS(Status_FragmentMetadataError(
                 "Trying to access metadata that's not loaded")),
-            std::nullopt};
+            nullopt};
 
   auto tile_num = this->tile_num();
 
@@ -1239,7 +1256,7 @@ FragmentMetadata::persisted_tile_var_size(
   return {Status::Ok(), tile_size};
 }
 
-std::tuple<Status, std::optional<uint64_t>>
+tuple<Status, optional<uint64_t>>
 FragmentMetadata::persisted_tile_validity_size(
     const std::string& name, uint64_t tile_idx) {
   auto it = idx_map_.find(name);
@@ -1248,7 +1265,7 @@ FragmentMetadata::persisted_tile_validity_size(
   if (!loaded_metadata_.tile_validity_offsets_[idx])
     return {LOG_STATUS(Status_FragmentMetadataError(
                 "Trying to access metadata that's not loaded")),
-            std::nullopt};
+            nullopt};
 
   auto tile_num = this->tile_num();
 
@@ -1269,7 +1286,7 @@ uint64_t FragmentMetadata::tile_size(
                       cell_num * array_schema_->cell_size(name);
 }
 
-std::tuple<Status, std::optional<uint64_t>> FragmentMetadata::tile_var_size(
+tuple<Status, optional<uint64_t>> FragmentMetadata::tile_var_size(
     const std::string& name, uint64_t tile_idx) {
   auto it = idx_map_.find(name);
   assert(it != idx_map_.end());
@@ -1277,13 +1294,13 @@ std::tuple<Status, std::optional<uint64_t>> FragmentMetadata::tile_var_size(
   if (!loaded_metadata_.tile_var_sizes_[idx])
     return {LOG_STATUS(Status_FragmentMetadataError(
                 "Trying to access metadata that's not loaded")),
-            std::nullopt};
+            nullopt};
   auto tile_size = tile_var_sizes_[idx][tile_idx];
 
   return {Status::Ok(), tile_size};
 }
 
-std::tuple<Status, std::optional<void*>, std::optional<uint64_t>>
+tuple<Status, optional<void*>, std::optional<uint64_t>>
 FragmentMetadata::get_tile_min(const std::string& name, uint64_t tile_idx) {
   auto it = idx_map_.find(name);
   assert(it != idx_map_.end());
@@ -1291,8 +1308,8 @@ FragmentMetadata::get_tile_min(const std::string& name, uint64_t tile_idx) {
   if (!loaded_metadata_.tile_min_[idx])
     return {LOG_STATUS(Status_FragmentMetadataError(
                 "Trying to access metadata that's not loaded")),
-            std::nullopt,
-            std::nullopt};
+            nullopt,
+            nullopt};
 
   const auto type = array_schema_->type(name);
   const auto is_dim = array_schema_->is_dim(name);
@@ -1300,10 +1317,10 @@ FragmentMetadata::get_tile_min(const std::string& name, uint64_t tile_idx) {
   const auto cell_val_num = array_schema_->cell_val_num(name);
   if (!TileMetadataGenerator::has_min_max_metadata(
           type, is_dim, var_size, cell_val_num))
-    return {LOG_STATUS(Status_FragmentMetadataError(
-                "Trying to access metadata that's not present")),
-            std::nullopt,
-            std::nullopt};
+    return {Status_FragmentMetadataError(
+                "Trying to access metadata that's not present"),
+            nullopt,
+            nullopt};
 
   if (var_size) {
     auto tile_num = this->tile_num();
@@ -1321,7 +1338,7 @@ FragmentMetadata::get_tile_min(const std::string& name, uint64_t tile_idx) {
   }
 }
 
-std::tuple<Status, std::optional<void*>, std::optional<uint64_t>>
+tuple<Status, std::optional<void*>, std::optional<uint64_t>>
 FragmentMetadata::get_tile_max(const std::string& name, uint64_t tile_idx) {
   auto it = idx_map_.find(name);
   assert(it != idx_map_.end());
@@ -1329,8 +1346,8 @@ FragmentMetadata::get_tile_max(const std::string& name, uint64_t tile_idx) {
   if (!loaded_metadata_.tile_max_[idx])
     return {LOG_STATUS(Status_FragmentMetadataError(
                 "Trying to access metadata that's not loaded")),
-            std::nullopt,
-            std::nullopt};
+            nullopt,
+            nullopt};
 
   const auto type = array_schema_->type(name);
   const auto is_dim = array_schema_->is_dim(name);
@@ -1338,10 +1355,10 @@ FragmentMetadata::get_tile_max(const std::string& name, uint64_t tile_idx) {
   const auto cell_val_num = array_schema_->cell_val_num(name);
   if (!TileMetadataGenerator::has_min_max_metadata(
           type, is_dim, var_size, cell_val_num))
-    return {LOG_STATUS(Status_FragmentMetadataError(
-                "Trying to access metadata that's not present")),
-            std::nullopt,
-            std::nullopt};
+    return {Status_FragmentMetadataError(
+                "Trying to access metadata that's not present"),
+            nullopt,
+            nullopt};
 
   if (var_size) {
     auto tile_num = this->tile_num();
@@ -1359,7 +1376,7 @@ FragmentMetadata::get_tile_max(const std::string& name, uint64_t tile_idx) {
   }
 }
 
-std::tuple<Status, std::optional<void*>> FragmentMetadata::get_tile_sum(
+tuple<Status, std::optional<void*>> FragmentMetadata::get_tile_sum(
     const std::string& name, uint64_t tile_idx) {
   auto it = idx_map_.find(name);
   assert(it != idx_map_.end());
@@ -1367,22 +1384,21 @@ std::tuple<Status, std::optional<void*>> FragmentMetadata::get_tile_sum(
   if (!loaded_metadata_.tile_sum_[idx])
     return {LOG_STATUS(Status_FragmentMetadataError(
                 "Trying to access metadata that's not loaded")),
-            std::nullopt};
+            nullopt};
 
   auto type = array_schema_->type(name);
   auto var_size = array_schema_->var_size(name);
   auto cell_val_num = array_schema_->cell_val_num(name);
   if (!TileMetadataGenerator::has_sum_metadata(type, var_size, cell_val_num))
-    return {LOG_STATUS(Status_FragmentMetadataError(
-                "Trying to access metadata that's not present")),
-            std::nullopt};
+    return {Status_FragmentMetadataError(
+                "Trying to access metadata that's not present"),
+            nullopt};
 
   void* sum = &tile_sums_[idx][tile_idx * sizeof(uint64_t)];
   return {Status::Ok(), sum};
 }
 
-std::tuple<Status, std::optional<uint64_t>>
-FragmentMetadata::get_tile_null_count(
+tuple<Status, std::optional<uint64_t>> FragmentMetadata::get_tile_null_count(
     const std::string& name, uint64_t tile_idx) {
   auto it = idx_map_.find(name);
   assert(it != idx_map_.end());
@@ -1390,12 +1406,12 @@ FragmentMetadata::get_tile_null_count(
   if (!loaded_metadata_.tile_null_count_[idx])
     return {LOG_STATUS(Status_FragmentMetadataError(
                 "Trying to access metadata that's not loaded")),
-            std::nullopt};
+            nullopt};
 
   if (!array_schema_->is_nullable(name)) {
-    return {LOG_STATUS(Status_FragmentMetadataError(
-                "Trying to access metadata that's not present")),
-            std::nullopt};
+    return {Status_FragmentMetadataError(
+                "Trying to access metadata that's not present"),
+            nullopt};
   }
 
   uint64_t null_count = tile_null_counts_[idx][tile_idx];
@@ -3038,12 +3054,10 @@ Status FragmentMetadata::load_v1_v2(
   RETURN_NOT_OK(tile_io.read_generic(
       &tile, 0, encryption_key, storage_manager_->config()));
 
-  auto buffer = tile->buffer();
   Buffer buff;
-  RETURN_NOT_OK_ELSE(buff.realloc(buffer->size()), tdb_delete(tile));
-  buff.set_size(buffer->size());
-  buffer->reset_offset();
-  RETURN_NOT_OK_ELSE(buffer->read(buff.data(), buff.size()), tdb_delete(tile));
+  RETURN_NOT_OK_ELSE(buff.realloc(tile->size()), tdb_delete(tile));
+  buff.set_size(tile->size());
+  RETURN_NOT_OK_ELSE(tile->read(buff.data(), 0, buff.size()), tdb_delete(tile));
   tdb_delete(tile);
 
   storage_manager_->stats()->add_counter("read_frag_meta_size", buff.size());
@@ -3378,8 +3392,7 @@ Status FragmentMetadata::store_rtree(
   Buffer buff;
   RETURN_NOT_OK(write_rtree(&buff));
 
-  RETURN_NOT_OK(
-      write_generic_tile_to_file(encryption_key, std::move(buff), nbytes));
+  RETURN_NOT_OK(write_generic_tile_to_file(encryption_key, buff, nbytes));
   storage_manager_->stats()->add_counter("write_rtree_size", *nbytes);
 
   return Status::Ok();
@@ -3445,12 +3458,10 @@ Status FragmentMetadata::read_generic_tile_from_file(
   RETURN_NOT_OK(tile_io.read_generic(
       &tile, offset, encryption_key, storage_manager_->config()));
 
-  const auto buffer = tile->buffer();
-  buff->realloc(buffer->size());
-  buff->set_size(buffer->size());
-  buffer->reset_offset();
+  buff->realloc(tile->size());
+  buff->set_size(tile->size());
   RETURN_NOT_OK_ELSE(
-      buffer->read(buff->data(), buff->size()), tdb_delete(tile));
+      tile->read(buff->data(), 0, buff->size()), tdb_delete(tile));
   tdb_delete(tile);
 
   return Status::Ok();
@@ -3482,21 +3493,17 @@ Status FragmentMetadata::read_file_footer(
 }
 
 Status FragmentMetadata::write_generic_tile_to_file(
-    const EncryptionKey& encryption_key,
-    Buffer&& buff,
-    uint64_t* nbytes) const {
+    const EncryptionKey& encryption_key, Buffer& buff, uint64_t* nbytes) const {
   URI fragment_metadata_uri = fragment_uri_.join_path(
       std::string(constants::fragment_metadata_filename));
-
-  Buffer* const buffer = tdb_new(Buffer);
-  buffer->swap(buff);
 
   Tile tile(
       constants::generic_tile_datatype,
       constants::generic_tile_cell_size,
       0,
-      buffer,
-      true);
+      buff.data(),
+      buff.size());
+  buff.disown_data();
 
   GenericTileIO tile_io(storage_manager_, fragment_metadata_uri);
   RETURN_NOT_OK(tile_io.write_generic(&tile, encryption_key, nbytes));
@@ -3522,8 +3529,7 @@ Status FragmentMetadata::store_tile_offsets(
     unsigned idx, const EncryptionKey& encryption_key, uint64_t* nbytes) {
   Buffer buff;
   RETURN_NOT_OK(write_tile_offsets(idx, &buff));
-  RETURN_NOT_OK(
-      write_generic_tile_to_file(encryption_key, std::move(buff), nbytes));
+  RETURN_NOT_OK(write_generic_tile_to_file(encryption_key, buff, nbytes));
 
   storage_manager_->stats()->add_counter("write_tile_offsets_size", *nbytes);
 
@@ -3559,8 +3565,7 @@ Status FragmentMetadata::store_tile_var_offsets(
     unsigned idx, const EncryptionKey& encryption_key, uint64_t* nbytes) {
   Buffer buff;
   RETURN_NOT_OK(write_tile_var_offsets(idx, &buff));
-  RETURN_NOT_OK(
-      write_generic_tile_to_file(encryption_key, std::move(buff), nbytes));
+  RETURN_NOT_OK(write_generic_tile_to_file(encryption_key, buff, nbytes));
 
   storage_manager_->stats()->add_counter(
       "write_tile_var_offsets_size", *nbytes);
@@ -3599,8 +3604,7 @@ Status FragmentMetadata::store_tile_var_sizes(
     unsigned idx, const EncryptionKey& encryption_key, uint64_t* nbytes) {
   Buffer buff;
   RETURN_NOT_OK(write_tile_var_sizes(idx, &buff));
-  RETURN_NOT_OK(
-      write_generic_tile_to_file(encryption_key, std::move(buff), nbytes));
+  RETURN_NOT_OK(write_generic_tile_to_file(encryption_key, buff, nbytes));
 
   storage_manager_->stats()->add_counter("write_tile_var_sizes_size", *nbytes);
 
@@ -3636,8 +3640,7 @@ Status FragmentMetadata::store_tile_validity_offsets(
     unsigned idx, const EncryptionKey& encryption_key, uint64_t* nbytes) {
   Buffer buff;
   RETURN_NOT_OK(write_tile_validity_offsets(idx, &buff));
-  RETURN_NOT_OK(
-      write_generic_tile_to_file(encryption_key, std::move(buff), nbytes));
+  RETURN_NOT_OK(write_generic_tile_to_file(encryption_key, buff, nbytes));
 
   storage_manager_->stats()->add_counter(
       "write_tile_validity_offsets_size", *nbytes);
@@ -3677,8 +3680,7 @@ Status FragmentMetadata::store_tile_mins(
     unsigned idx, const EncryptionKey& encryption_key, uint64_t* nbytes) {
   Buffer buff;
   RETURN_NOT_OK(write_tile_mins(idx, &buff));
-  RETURN_NOT_OK(
-      write_generic_tile_to_file(encryption_key, std::move(buff), nbytes));
+  RETURN_NOT_OK(write_generic_tile_to_file(encryption_key, buff, nbytes));
 
   storage_manager_->stats()->add_counter("write_mins_size", *nbytes);
 
@@ -3735,8 +3737,7 @@ Status FragmentMetadata::store_tile_maxs(
     unsigned idx, const EncryptionKey& encryption_key, uint64_t* nbytes) {
   Buffer buff;
   RETURN_NOT_OK(write_tile_maxs(idx, &buff));
-  RETURN_NOT_OK(
-      write_generic_tile_to_file(encryption_key, std::move(buff), nbytes));
+  RETURN_NOT_OK(write_generic_tile_to_file(encryption_key, buff, nbytes));
 
   storage_manager_->stats()->add_counter("write_maxs_size", *nbytes);
 
@@ -3793,8 +3794,7 @@ Status FragmentMetadata::store_tile_sums(
     unsigned idx, const EncryptionKey& encryption_key, uint64_t* nbytes) {
   Buffer buff;
   RETURN_NOT_OK(write_tile_sums(idx, &buff));
-  RETURN_NOT_OK(
-      write_generic_tile_to_file(encryption_key, std::move(buff), nbytes));
+  RETURN_NOT_OK(write_generic_tile_to_file(encryption_key, buff, nbytes));
 
   storage_manager_->stats()->add_counter("write_sums_size", *nbytes);
 
@@ -3829,8 +3829,7 @@ Status FragmentMetadata::store_tile_null_counts(
     unsigned idx, const EncryptionKey& encryption_key, uint64_t* nbytes) {
   Buffer buff;
   RETURN_NOT_OK(write_tile_null_counts(idx, &buff));
-  RETURN_NOT_OK(
-      write_generic_tile_to_file(encryption_key, std::move(buff), nbytes));
+  RETURN_NOT_OK(write_generic_tile_to_file(encryption_key, buff, nbytes));
 
   storage_manager_->stats()->add_counter("write_null_counts_size", *nbytes);
 
