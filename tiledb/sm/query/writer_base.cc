@@ -759,8 +759,7 @@ Status WriterBase::filter_tile(
   RETURN_NOT_OK(FilterPipeline::append_encryption_filter(
       &filters, array_->get_encryption_key()));
 
-  // TBD: do I need to do anything for zipped coordinates / some condition on
-  // format_version? (e.g. >=5)
+  // Check if chunk or tile level filtering/unfiltering is appropriate
   bool use_chunking = filters.use_tile_chunking(
       array_schema_->is_dim(name), array_schema_->var_size(name), tile->type());
 
