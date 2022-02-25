@@ -91,7 +91,10 @@ void FilterPipeline::clear() {
 
 tuple<Status, optional<std::vector<uint64_t>>>
 FilterPipeline::get_var_chunk_sizes(
-    uint32_t chunk_size, Tile* const tile, Tile* const offsets_tile) const {
+    uint32_t chunk_size,
+    Tile* const tile,
+    Tile* const offsets_tile,
+    bool chunking) const {
   std::vector<uint64_t> chunk_offsets;
   if (offsets_tile != nullptr) {
     uint64_t num_offsets =
@@ -108,7 +111,7 @@ FilterPipeline::get_var_chunk_sizes(
 
       // Time for a new chunk?
       auto new_size = current_size + cell_size;
-      if (new_size > chunk_size) {
+      if (new_size > chunk_size || !chunking) {
         // Do we add this cell to this chunk?
         if (current_size <= min_size || new_size <= max_size) {
           if (new_size > std::numeric_limits<uint32_t>::max()) {
@@ -414,19 +417,24 @@ Status FilterPipeline::run_forward(
     stats::Stats* const writer_stats,
     Tile* const tile,
     Tile* const offsets_tile,
-    ThreadPool* const compute_tp) const {
+    ThreadPool* const compute_tp,
+    bool use_chunking) const {
   RETURN_NOT_OK(
       tile ? Status::Ok() : Status_Error("invalid argument: null Tile*"));
 
   writer_stats->add_counter("write_filtered_byte_num", tile->size());
 
   uint32_t chunk_size = 0;
-  RETURN_NOT_OK(Tile::compute_chunk_size(
-      tile->size(), tile->dim_num(), tile->cell_size(), &chunk_size));
+  if (use_chunking) {
+    RETURN_NOT_OK(Tile::compute_chunk_size(
+        tile->size(), tile->dim_num(), tile->cell_size(), &chunk_size));
+  } else {
+    chunk_size = tile->size();
+  }
 
   // Get the chunk sizes for var size attributes.
   auto&& [st, chunk_offsets] =
-      get_var_chunk_sizes(chunk_size, tile, offsets_tile);
+      get_var_chunk_sizes(chunk_size, tile, offsets_tile, use_chunking);
   RETURN_NOT_OK_ELSE(st, tile->filtered_buffer().clear());
 
   // Run the filters over all the chunks and store the result in
@@ -649,6 +657,14 @@ void FilterPipeline::dump(FILE* out) const {
   }
 }
 
+bool FilterPipeline::has_filter(const Filter& filter) const {
+  for (auto& f : filters_) {
+    if (f->type() == filter.type())
+      return true;
+  }
+  return false;
+}
+
 void FilterPipeline::set_max_chunk_size(uint32_t max_chunk_size) {
   max_chunk_size_ = max_chunk_size;
 }
@@ -677,6 +693,17 @@ Status FilterPipeline::append_encryption_filter(
       return LOG_STATUS(Status_FilterError(
           "Error appending encryption filter; unknown type."));
   }
+}
+
+bool FilterPipeline::use_tile_chunking(
+    bool is_dim, bool is_var, Datatype type) const {
+  if (is_dim && is_var && datatype_is_string(type)) {
+    if (has_filter(CompressionFilter(Compressor::RLE, 0))) {
+      return false;
+    }
+  }
+
+  return true;
 }
 
 }  // namespace sm

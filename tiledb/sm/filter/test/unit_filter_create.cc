@@ -26,6 +26,9 @@
  * THE SOFTWARE.
  *
  * @section DESCRIPTION
+ *
+ * This file tests FilterCreate class
+ *
  */
 
 #include <catch.hpp>
