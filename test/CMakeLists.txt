@@ -111,6 +111,7 @@ set(TILEDB_TEST_SOURCES
   src/unit-capi-attributes.cc
   src/unit-capi-buffer.cc
   src/unit-capi-config.cc
+  src/unit-capi-context.cc
   src/unit-capi-consolidation.cc
   src/unit-capi-dense_array.cc
   src/unit-capi-dense_array_2.cc
