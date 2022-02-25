@@ -5,7 +5,7 @@
  *
  * The MIT License
  *
- * @copyright Copyright (c) 2017-2021 TileDB, Inc.
+ * @copyright Copyright (c) 2021-2022 TileDB, Inc.
  *
  * Permission is hereby granted, free of charge, to any person obtaining a copy
  * of this software and associated documentation files (the "Software"), to deal
@@ -27,7 +27,7 @@
  *
  * @section DESCRIPTION
  *
- * This file implements class File.
+ * This file implements class BlobArray.
  */
 
 #include "tiledb/appl/blob_array/blob_array.h"
@@ -59,8 +59,20 @@ BlobArray::BlobArray(const URI& array_uri, StorageManager* storage_manager)
   // We want to default these incase the user doesn't set it.
   // This is required for writes to the query and the metadata get the same
   // timestamp
+  // TBD: what to do about fragment timestamp collisions it also causes
+  // with same timestamp being re-used for each open of same
+  // array (object instance), leading timestamp collision issues if/when
+  // there are re-uses of this array, which can manifest as bad data
+  // (stored size in metadata does not match 'contents' attribute
+  // data being retrieved from fragment)...
+  // at least I think that's what's happening...
   timestamp_end_ = utils::time::timestamp_now_ms();
   timestamp_end_opened_at_ = timestamp_end_;
+}
+
+BlobArray::BlobArray(const BlobArray& rhs)
+    : Array(rhs)
+    , blob_array_schema_(&rhs.blob_array_schema_) {
 }
 
 /* ********************************* */
@@ -69,7 +81,8 @@ BlobArray::BlobArray(const URI& array_uri, StorageManager* storage_manager)
 
 Status BlobArray::create([[maybe_unused]] const Config* config) {
   try {
-    auto encryption_key = get_encryption_key_from_config(config_);
+    auto cfg = config ? config : &config_;
+    auto encryption_key = get_encryption_key_from_config(*cfg);
     RETURN_NOT_OK(storage_manager_->array_create(
         array_uri_, &blob_array_schema_, *encryption_key));
 
@@ -106,7 +119,8 @@ Status BlobArray::to_array_from_uri(const URI& file, const Config* config) {
   return Status::Ok();
 }
 
-Status BlobArray::to_array_from_vfs_fh(VFSFileHandle* file, const Config* config) {
+Status BlobArray::to_array_from_vfs_fh(
+    VFSFileHandle* file, const Config* config) {
   try {
     if (query_type_ != QueryType::WRITE)
       return Status_BlobArrayError(
@@ -145,8 +159,8 @@ Status BlobArray::to_array_from_vfs_fh(VFSFileHandle* file, const Config* config
         Datatype::STRING_ASCII,
         static_cast<uint32_t>(extension.size()),
         extension.c_str()));
-    store_mime_type(file_metadata, metadata_read_size);
-    store_mime_encoding(file_metadata, metadata_read_size);
+    RETURN_NOT_OK(store_mime_type(file_metadata, metadata_read_size));
+    RETURN_NOT_OK(store_mime_encoding(file_metadata, metadata_read_size));
   } catch (const std::exception& e) {
     return Status_BlobArrayError(e.what());
   }
@@ -160,6 +174,11 @@ Status BlobArray::to_array_from_buffer(
     if (query_type_ != QueryType::WRITE)
       return Status_BlobArrayError(
           "Can not save file; File opened in read mode; Reopen in write mode");
+
+    // TBD: remove debug...
+    // if (size != 115) //turns out, also writing 12-byte buffer...
+    //  __debugbreak();
+    //^^^^^^^^^^^^^^^^
 
     Query query(storage_manager_, this);
 
@@ -236,12 +255,18 @@ Status BlobArray::export_to_vfs_fh(
         file->mode() != VFSMode::VFS_APPEND)
       return Status_BlobArrayError("File must be open in WRITE OR APPEND mode");
 
-    uint64_t file_size = size();
+    const uint64_t* ptr_file_size;
+    RETURN_NOT_OK(size(ptr_file_size));
+    if (ptr_file_size == nullptr) {
+      return Status_BlobArrayError(
+          "Unable to export file, file size metadata not found.");
+    }
     // Handle empty file
-    if (file_size == 0) {
+    if (*ptr_file_size == 0) {
       return Status::Ok();
     }
-    uint64_t buffer_size = file_size;
+    uint64_t buffer_size = *ptr_file_size;
+    std::cout << "***buffer_size returned " << buffer_size << std::endl;
     Buffer data;
     data.realloc(buffer_size);
 
@@ -265,14 +290,38 @@ Status BlobArray::export_to_vfs_fh(
 
     // Set subarray
     RETURN_NOT_OK(query.set_subarray(&subarray));
+    uint32_t delay_ms = 100;
+    uint32_t retry_cnt = 1;
     do {
       RETURN_NOT_OK(query.submit());
 
       // Check if query could not be completed
-      if (buffer_size == 0)
+      // TBD: -Why- does this check 'buffer_size == 0' rather than checking the
+      // query status?
+      if (buffer_size == 0) {
+        // TBD: REMOVEME: dlh 'retry' addition when diagnosing...
+        if (auto qstat = query.status(); qstat != QueryStatus::COMPLETED) {
+          std::stringstream msg;
+          msg << "export_to_vfs_fh, query.status() == "
+              << query_status_str(qstat);
+          //<< " retry_cnt " << retry_cnt;
+          // LOG_STATUS(msg.str());
+          LOG_STATUS(Status_BlobArrayError(msg.str()));
+#if 01
+          if (qstat == QueryStatus::INCOMPLETE) {
+            __debugbreak();
+            std::this_thread::sleep_for(std::chrono::milliseconds(delay_ms));
+            if (retry_cnt--) {
+              delay_ms *= 2;
+              continue;
+            }
+          }
+#endif
+        }
         return Status_BlobArrayError(
             "Unable to export entire file; Query not able to complete with "
             "records");
+      }
 
       file->write(data.data(), buffer_size);
 
@@ -284,8 +333,7 @@ Status BlobArray::export_to_vfs_fh(
   return Status::Ok();
 }
 
-uint64_t BlobArray::size() {
-  const uint64_t* size = nullptr;
+Status BlobArray::size(const uint64_t*& size) {
   Datatype datatype = Datatype::UINT64;
   uint32_t val_num = 1;
   THROW_NOT_OK(get_metadata(
@@ -294,11 +342,16 @@ uint64_t BlobArray::size() {
       &val_num,
       reinterpret_cast<const void**>(&size)));
 
-  if (size == nullptr)
-    return 0;
+  if (size == nullptr) {
+    return Status_BlobArrayError("file size metadata not found");
+  }
 
-  return *size;
+  return Status::Ok();
 }
+
+/* ********************************* */
+/*          PRIVATE METHODS          */
+/* ********************************* */
 
 tdb_unique_ptr<EncryptionKey> BlobArray::get_encryption_key_from_config(
     const Config& config) const {
@@ -340,7 +393,9 @@ tdb_unique_ptr<EncryptionKey> BlobArray::get_encryption_key_from_config(
   return encryption_key;
 }
 
-const char* BlobArray::libmagic_get_mime(void* data, uint64_t size) {
+// const char*
+Status BlobArray::libmagic_get_mime_type(
+    const char** mime_type, void* data, uint64_t size) {
   magic_t magic = magic_open(MAGIC_MIME_TYPE);
   // NOTE: windows - contradiction in return values...
   //...have seen magic_load() return -1 indicating error, then magic_error()
@@ -350,54 +405,81 @@ const char* BlobArray::libmagic_get_mime(void* data, uint64_t size) {
   if (auto rval = magic_load(magic, nullptr); rval != 0) {
     auto str_rval = std::to_string(rval);
     auto err = magic_error(magic);
-    LOG_STATUS(Status_BlobArrayError(
-        std::string("cannot load magic database - ") + str_rval +
-        err));
+    if (!err) {
+      err =
+          "(magic_error() returned 0, try setting env var 'MAGIC' to location "
+          "of magic.mgc or "
+          "alternate!)";
+    }
     magic_close(magic);
-    return nullptr;
+    return LOG_STATUS(Status_BlobArrayError(
+        std::string("cannot load magic database - ") + str_rval + err));
+    // return nullptr;
   }
-  return magic_buffer(magic, data, size);
+  // return magic_buffer(magic, data, size);
+  *mime_type = magic_buffer(magic, data, size);
+  return Status::Ok();
 }
 
-const char* BlobArray::libmagic_get_mime_encoding(void* data, uint64_t size) {
+// const char*
+Status BlobArray::libmagic_get_mime_encoding(
+    const char** mime_encoding, void* data, uint64_t size) {
   magic_t magic = magic_open(MAGIC_MIME_ENCODING);
-  if (magic_load(magic, nullptr) != 0) {
-    LOG_STATUS(Status_BlobArrayError(
-        std::string("cannot load magic database - ") + magic_error(magic)));
+  if (auto rval = magic_load(magic, nullptr); rval != 0) {
+    auto str_rval = std::to_string(rval);
+    auto err = magic_error(magic);
+    if (!err) {
+      err =
+          "(magic_error() returned 0, try setting env var 'MAGIC' to location "
+          "of magic.mgc or "
+          "alternate!)";
+    }
     magic_close(magic);
-    return nullptr;
+    return LOG_STATUS(Status_BlobArrayError(
+        std::string("cannot load magic database - ") + str_rval + err));
+    // return nullptr;
   }
-  return magic_buffer(magic, data, size);
+  // return magic_buffer(magic, data, size);
+  *mime_encoding = magic_buffer(magic, data, size);
+  return Status::Ok();
 }
 
 Status BlobArray::store_mime_type(
     const Buffer& file_metadata, uint64_t metadata_read_size) {
-  const char* mime =
-      libmagic_get_mime(file_metadata.data(), metadata_read_size);
+  // TBD: should query_type be checked for 'WRITE'?
+  // ...method is private, maybe not...
+  const char* mime_type = nullptr;
+  auto status = libmagic_get_mime_type(
+      &mime_type, file_metadata.data(), metadata_read_size);
+  RETURN_NOT_OK(status);
   uint64_t mime_size = 0;
-  if (mime != nullptr) {
-    mime_size = strlen(mime);
+  if (mime_type != nullptr) {
+    mime_size = strlen(mime_type);
   }
   return put_metadata(
       constants::blob_array_metadata_mime_type_key.c_str(),
       Datatype::STRING_ASCII,
       mime_size,
-      mime);
+      mime_type);
 }
 
 Status BlobArray::store_mime_encoding(
     const Buffer& file_metadata, uint64_t metadata_read_size) {
-  const char* mime =
-      libmagic_get_mime_encoding(file_metadata.data(), metadata_read_size);
+  // TBD: should query_type be checked for 'WRITE'?
+  // ...method is private, maybe not...
+  const char* mime_encoding = nullptr;
+  auto status = libmagic_get_mime_encoding(
+      &mime_encoding, file_metadata.data(), metadata_read_size);
+  RETURN_NOT_OK(status);
   uint64_t mime_size = 0;
-  if (mime != nullptr) {
-    mime_size = strlen(mime);
+  if (mime_encoding != nullptr) {
+    mime_size = strlen(mime_encoding);
   }
   return put_metadata(
       constants::blob_array_metadata_mime_encoding_key.c_str(),
       Datatype::STRING_ASCII,
       mime_size,
-      mime);
+      mime_encoding);
 }
 
 }  // namespace appl
