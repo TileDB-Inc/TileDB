@@ -188,8 +188,12 @@ StorageManager::load_array_schemas_and_fragment_metadata(
       fragments_to_load,
       &f_buff,
       offsets);
-  RETURN_NOT_OK_TUPLE(
-      st_fragment_meta, std::nullopt, std::nullopt, std::nullopt);
+  RETURN_NOT_OK_ELSE_TUPLE(
+      st_fragment_meta,
+      delete array_schema_latest.value(),
+      std::nullopt,
+      std::nullopt,
+      std::nullopt);
 
   return {
       Status::Ok(), array_schema_latest, array_schemas_all, fragment_metadata};
@@ -1676,7 +1680,7 @@ StorageManager::load_array_schemas(
       std::nullopt);
 
   auto&& [st, schemas] = load_all_array_schemas(array_uri, encryption_key);
-  RETURN_NOT_OK_TUPLE(st, std::nullopt, std::nullopt);
+  RETURN_NOT_OK_ELSE_TUPLE(st, delete array_schema, std::nullopt, std::nullopt);
 
   return {Status::Ok(), array_schema, schemas};
 }
