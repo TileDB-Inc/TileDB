@@ -148,6 +148,7 @@ TEST_CASE_METHOD(
     encryption_key_ = "0123456789abcdeF0123456789abcdeF";
   }
 
+  remove_temp_dir(array_name);
   create_temp_dir(temp_dir);
 
   tiledb_config_t* cfg = nullptr;
@@ -201,6 +202,7 @@ TEST_CASE_METHOD(
     encryption_key_ = "0123456789abcdeF0123456789abcdeF";
   }
 
+  remove_temp_dir(array_name);
   create_temp_dir(temp_dir);
 
   tiledb_config_t* cfg = nullptr;
@@ -256,6 +258,7 @@ TEST_CASE_METHOD(
     encryption_key_ = "0123456789abcdeF0123456789abcdeF";
   }
 
+  remove_temp_dir(array_name);
   create_temp_dir(temp_dir);
 
   tiledb_config_t* cfg = nullptr;
@@ -303,22 +306,110 @@ TEST_CASE_METHOD(
   REQUIRE(exported_file_size == original_file_size);
 
   // compare actual contents for equality
-  std::stringstream cmpfilescmd;
-#ifdef _WIN32
-  // 'FC' does not like forward slashes
-  cmpfilescmd << "FC "
-              << tiledb::sm::path_win::slashes_to_backslashes(
-                     tiledb::sm::path_win::path_from_uri(csv_path))
-              << " "
-              << tiledb::sm::path_win::slashes_to_backslashes(
-                     tiledb::sm::path_win::path_from_uri(output_path))
-              << " > nul";
-  CHECK(!system(cmpfilescmd.str().c_str()));
-#else
-  // tiledb::sm::VFS::abs_path(output_path) << " > nul";
-  cmpfilescmd << "diff " << csv_path << " " << output_path << " > nul";
-  CHECK(!system(cmpfilescmd.str().c_str()));
-#endif
+  auto cmp_files_check = [&](const std::string &file1, const std::string &file2) {
+    std::stringstream cmpfilescmd;
+  #ifdef _WIN32
+    // 'FC' does not like forward slashes
+    cmpfilescmd << "FC "
+                << tiledb::sm::path_win::slashes_to_backslashes(
+                       //tiledb::sm::path_win::path_from_uri(csv_path))
+                       tiledb::sm::path_win::path_from_uri(file1))
+                << " "
+                << tiledb::sm::path_win::slashes_to_backslashes(
+                       tiledb::sm::path_win::path_from_uri(file2))
+                << " > nul";
+  #else
+    // tiledb::sm::VFS::abs_path(output_path) << " > nul";
+    cmpfilescmd << "diff " << file1 << " " << file2 << " > nul";
+  #endif
+    CHECK(!system(cmpfilescmd.str().c_str()));
+  };
+  cmp_files_check(csv_path, output_path);
+
+  // try multiple store rapidly
+  std::string infiles[] = {
+    files_dir + "/" + "fileapi0.csv",
+    files_dir + "/" + "fileapi1.csv",
+    files_dir + "/" + "fileapi2.csv",
+    files_dir + "/" + "fileapi3.csv",
+    files_dir + "/" + "fileapi4.csv",
+    files_dir + "/" + "fileapi5.csv",
+    files_dir + "/" + "fileapi6.csv",
+    files_dir + "/" + "fileapi7.csv",
+    files_dir + "/" + "fileapi8.csv",
+    files_dir + "/" + "fileapi9.csv",
+  };
+  auto n_infiles = sizeof(infiles) / sizeof(infiles[0]);
+  std::string outfiles[] = {
+    temp_dir + "out0",
+    temp_dir + "out1",
+    temp_dir + "out2",
+    temp_dir + "out3",
+    temp_dir + "out4",
+    temp_dir + "out5",
+    temp_dir + "out6",
+    temp_dir + "out7",
+    temp_dir + "out8",
+    temp_dir + "out9",
+  };
+  auto n_outfiles = sizeof(outfiles) / sizeof(outfiles[0]);
+
+  assert(n_infiles == n_outfiles);
+
+  // also verifying array closed state after the activities
+
+  int32_t is_array_open, is_array2_open;
+  CHECK(tiledb_array_is_open(ctx_, array, &is_array_open) == TILEDB_OK);
+  CHECK(is_array_open == 0);
+  CHECK(tiledb_array_is_open(ctx_, array2, &is_array2_open) == TILEDB_OK);
+  CHECK(is_array2_open == 0);
+
+  // be sure output_path not present (to avoid confusion with following use)
+  tiledb_vfs_remove_file(ctx_, vfs_, output_path.c_str());
+
+  // stores only, then export (last)
+  for (auto i = 0; i < n_infiles; ++i) {
+    CHECK(
+        tiledb_array_as_file_import(ctx_, array, infiles[i].c_str()) == TILEDB_OK);
+    CHECK(tiledb_array_is_open(ctx_, array, &is_array_open) == TILEDB_OK);
+    CHECK(is_array_open == 0);
+  }
+  CHECK(tiledb_array_is_open(ctx_, array2, &is_array2_open) == TILEDB_OK);
+  CHECK(is_array2_open == 0);
+  CHECK(
+      tiledb_array_as_file_export(ctx_, array2, output_path.c_str()) ==
+      TILEDB_OK);
+  cmp_files_check(infiles[n_infiles-1], output_path);
+
+  CHECK(tiledb_array_is_open(ctx_, array, &is_array_open) == TILEDB_OK);
+  CHECK(is_array_open == 0);
+  CHECK(tiledb_array_is_open(ctx_, array2, &is_array2_open) == TILEDB_OK);
+  CHECK(is_array2_open == 0);
+
+  // stores intermixed with exports
+  for (auto i = 0; i < n_infiles; ++i) {
+    CHECK(tiledb_array_is_open(ctx_, array, &is_array_open) == TILEDB_OK);
+    CHECK(is_array_open == 0);
+    CHECK(
+        tiledb_array_as_file_import(ctx_, array, infiles[i].c_str()) == TILEDB_OK);
+    CHECK(tiledb_array_is_open(ctx_, array, &is_array_open) == TILEDB_OK);
+    CHECK(is_array_open == 0);
+    CHECK(tiledb_array_is_open(ctx_, array2, &is_array2_open) == TILEDB_OK);
+    CHECK(is_array2_open == 0);
+    CHECK(
+        tiledb_array_as_file_export(ctx_, array2, outfiles[i].c_str()) ==
+        TILEDB_OK);
+    CHECK(tiledb_array_is_open(ctx_, array2, &is_array2_open) == TILEDB_OK);
+    CHECK(is_array2_open == 0);
+  }
+
+  // compare all exports above to original source files
+  for(auto i = 0; i < n_infiles; ++i) {
+    cmp_files_check(infiles[i], outfiles[i]);
+  }
+
+  tiledb_array_free(&array);
+  tiledb_array_free(&array2);
 
   remove_temp_dir(array_name);
   remove_temp_dir(output_path);
