@@ -593,9 +593,9 @@ TEST_CASE_METHOD(
 
   // Check number of metadata files
   get_num_struct data = {0};
-  auto meta_folder =
-      array_name_ + "/" + tiledb::sm::constants::array_metadata_folder_name;
-  rc = tiledb_vfs_ls(ctx_, vfs_, meta_folder.c_str(), &get_meta_num, &data);
+  auto meta_dir =
+      array_name_ + "/" + tiledb::sm::constants::array_metadata_dir_name;
+  rc = tiledb_vfs_ls(ctx_, vfs_, meta_dir.c_str(), &get_meta_num, &data);
   CHECK(rc == TILEDB_OK);
   CHECK(data.num == 4);
 
@@ -629,7 +629,7 @@ TEST_CASE_METHOD(
 
   // Check number of metadata files
   data = {0};
-  rc = tiledb_vfs_ls(ctx_, vfs_, meta_folder.c_str(), &get_meta_num, &data);
+  rc = tiledb_vfs_ls(ctx_, vfs_, meta_dir.c_str(), &get_meta_num, &data);
   CHECK(rc == TILEDB_OK);
   CHECK(data.num == 1);
 

@@ -1436,7 +1436,7 @@ TEST_CASE_METHOD(
 
   // Corrupt the array schema
   std::string schema_path =
-      array_name + "/" + tiledb::sm::constants::array_schema_folder_name;
+      array_name + "/" + tiledb::sm::constants::array_schema_dir_name;
   std::string to_write = "garbage";
   tiledb_vfs_fh_t* fh;
   schema_file_struct data_struct = {ctx_, vfs_, ""};
@@ -2324,7 +2324,7 @@ TEST_CASE_METHOD(
   std::string array_uri(arrays_dir + "/non_split_coords_v1_4_0");
   // Remove any failed tests
   remove_temp_dir(
-      array_uri + "/" + tiledb::sm::constants::array_schema_folder_name);
+      array_uri + "/" + tiledb::sm::constants::array_schema_dir_name);
 
   // Create an array schema evolution
   tiledb_array_schema_evolution_t* array_schema_evolution;
@@ -2393,5 +2393,5 @@ TEST_CASE_METHOD(
   tiledb_array_free(&array);
   remove_temp_dir(local_fs.file_prefix() + local_fs.temp_dir());
   remove_temp_dir(
-      array_uri + "/" + tiledb::sm::constants::array_schema_folder_name);
+      array_uri + "/" + tiledb::sm::constants::array_schema_dir_name);
 }

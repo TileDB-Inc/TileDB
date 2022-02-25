@@ -40,6 +40,7 @@
 #include "tiledb/common/common.h"
 #include "tiledb/common/memory_tracker.h"
 #include "tiledb/common/status.h"
+#include "tiledb/sm/array/array_directory.h"
 #include "tiledb/sm/crypto/encryption_key.h"
 #include "tiledb/sm/fragment/fragment_info.h"
 #include "tiledb/sm/metadata/metadata.h"
@@ -77,6 +78,9 @@ class Array {
   /* ********************************* */
   /*                API                */
   /* ********************************* */
+
+  /** Returns the array directory object. */
+  const ArrayDirectory& array_directory() const;
 
   /** Sets the latest array schema.
    * @param array_schema The array schema to set.
@@ -380,6 +384,9 @@ class Array {
 
   /** The array URI. */
   URI array_uri_;
+
+  /** The array directory object for listing URIs. */
+  ArrayDirectory array_dir_;
 
   /** This is a backwards compatible URI from serialization
    *  In TileDB 2.5 we removed sending the URI but 2.4 and older were

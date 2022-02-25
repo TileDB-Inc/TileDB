@@ -1223,12 +1223,12 @@ int32_t num_fragments(const std::string& array_name) {
   // Get all URIs in the array directory
   auto uris = vfs.ls(array_name);
 
-  // Exclude '__meta' folder and any file with a suffix
+  // Exclude '__meta' directory and any file with a suffix
   int ret = 0;
   for (const auto& uri : uris) {
     auto name = tiledb::sm::URI(uri).remove_trailing_slash().last_path_part();
-    if (name != tiledb::sm::constants::array_metadata_folder_name &&
-        name != tiledb::sm::constants::array_schema_folder_name &&
+    if (name != tiledb::sm::constants::array_metadata_dir_name &&
+        name != tiledb::sm::constants::array_schema_dir_name &&
         name.find_first_of('.') == std::string::npos)
       ++ret;
   }
