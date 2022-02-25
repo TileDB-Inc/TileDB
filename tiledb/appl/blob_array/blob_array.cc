@@ -307,6 +307,7 @@ Status BlobArray::export_to_vfs_fh(
           //<< " retry_cnt " << retry_cnt;
           // LOG_STATUS(msg.str());
           LOG_STATUS(Status_BlobArrayError(msg.str()));
+#if _WIN32
 #if 01
           if (qstat == QueryStatus::INCOMPLETE) {
             __debugbreak();
@@ -316,6 +317,7 @@ Status BlobArray::export_to_vfs_fh(
               continue;
             }
           }
+#endif
 #endif
         }
         return Status_BlobArrayError(
