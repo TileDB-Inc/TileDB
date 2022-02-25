@@ -68,6 +68,15 @@ extern const std::string array_schema_dir_name;
 /** The array metadata directory name. */
 extern const std::string array_metadata_dir_name;
 
+/** The array fragment metadata directory name. */
+extern const std::string array_fragment_metadata_dir_name;
+
+/** The array fragments directory name. */
+extern const std::string array_fragments_dir_name;
+
+/** The array commit directory name. */
+extern const std::string array_commit_dir_name;
+
 /** The default tile capacity. */
 extern const uint64_t capacity;
 
@@ -172,6 +181,9 @@ extern const std::string vacuum_file_suffix;
 
 /** Suffix for the special ok files used in TileDB. */
 extern const std::string ok_file_suffix;
+
+/** Suffix for the special write files used in TileDB. */
+extern const std::string write_file_suffix;
 
 /** Suffix for the special metadata files used in TileDB. */
 extern const std::string meta_file_suffix;

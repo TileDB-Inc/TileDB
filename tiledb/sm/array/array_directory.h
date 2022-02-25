@@ -5,7 +5,7 @@
  *
  * The MIT License
  *
- * @copyright Copyright (c) 2017-2021 TileDB, Inc.
+ * @copyright Copyright (c) 2017-2022 TileDB, Inc.
  *
  * Permission is hereby granted, free of charge, to any person obtaining a copy
  * of this software and associated documentation files (the "Software"), to deal
@@ -63,7 +63,7 @@ class ArrayDirectory {
    *
    * @param vfs A pointer to a VFS object for all IO.
    * @param tp A thread pool used for parallelism.
-   * @param array_uri The URI of the array directory.
+   * @param uri The URI of the array directory.
    * @param timestamp_start Only array fragments, metadata, etc. that
    *     were created within timestamp range
    *    [`timestamp_start`, `timestamp_end`] will be considered when
@@ -78,7 +78,7 @@ class ArrayDirectory {
   ArrayDirectory(
       VFS* vfs,
       ThreadPool* tp,
-      const URI& array_uri,
+      const URI& uri,
       uint64_t timestamp_start,
       uint64_t timestamp_end,
       bool only_schemas = false);
@@ -91,7 +91,7 @@ class ArrayDirectory {
   /* ********************************* */
 
   /** Returns the array URI. */
-  const URI& array_uri() const;
+  const URI& uri() const;
 
   /** Returns the URIs of the array schema files. */
   const std::vector<URI>& array_schema_uris() const;
@@ -123,6 +123,21 @@ class ArrayDirectory {
   /** Returns the latest consolidated fragment metadata URI. */
   const URI& latest_fragment_meta_uri() const;
 
+  /** Returns the URI to store fragments. */
+  URI get_fragments_uri(uint32_t write_version) const;
+
+  /** Returns the URI to store fragment metadata. */
+  URI get_fragment_metadata_uri(uint32_t write_version) const;
+
+  /** Returns the URI to store commit files. */
+  URI get_commits_uri(uint32_t write_version) const;
+
+  /** Returns the URI for either an ok file or wrt file. */
+  tuple<Status, optional<URI>> get_commit_uri(const URI& fragment_uri) const;
+
+  /** Returns the URI for a vacuum file. */
+  tuple<Status, optional<URI>> get_vaccum_uri(const URI& fragment_uri) const;
+
   /** Returns `true` if `load` has been run. */
   bool loaded() const;
 
@@ -132,7 +147,7 @@ class ArrayDirectory {
   /* ********************************* */
 
   /** The array URI. */
-  URI array_uri_;
+  URI uri_;
 
   /** The storage manager. */
   VFS* vfs_;
@@ -209,8 +224,26 @@ class ArrayDirectory {
   /** Loads the URIs from the various array subdirectories. */
   Status load();
 
-  /** Loads the fragment URIs. */
-  Status load_fragment_uris();
+  /**
+   * Loads the root directory data for v1 to v11.
+   *
+   * @return Status, vector of fragment URIs, latest fragment metadata.
+   */
+  tuple<Status, optional<std::vector<URI>>, optional<URI>> load_root_dir_data();
+
+  /**
+   * Loads the commit directory data for v12 or higher.
+   *
+   * @return Status, vector of fragment URIs.
+   */
+  tuple<Status, optional<std::vector<URI>>> load_commit_dir_data();
+
+  /**
+   * Loads the fragment metadata directory data for v12 or higher.
+   *
+   * @return Status, latest fragment metadata.
+   */
+  tuple<Status, optional<URI>> load_fragment_metadata_dir_data();
 
   /** Loads the array metadata URIs. */
   Status load_array_meta_uris();
@@ -219,9 +252,16 @@ class ArrayDirectory {
   Status load_array_schema_uris();
 
   /**
-   * Computes the fragment URIs from the input array directory URIs.
+   * Computes the fragment URIs from the input array directory URIs, for
+   * versions 1 to 11.
    */
-  tuple<Status, optional<std::vector<URI>>> compute_fragment_uris(
+  tuple<Status, optional<std::vector<URI>>> compute_fragment_uris_v1_v11(
+      const std::vector<URI>& array_dir_uris);
+
+  /**
+   * Computes the latest fragment meta URI from the input array directory.
+   */
+  tuple<Status, optional<URI>> compute_latest_fragment_meta_uri(
       const std::vector<URI>& array_dir_uris);
 
   /**

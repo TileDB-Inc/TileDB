@@ -490,9 +490,10 @@ Status GlobalOrderWriter::finalize_global_write_state() {
   RETURN_NOT_OK_ELSE(add_written_fragment_info(uri), clean_up(uri));
 
   // The following will make the fragment visible
-  auto ok_uri =
-      URI(uri.remove_trailing_slash().to_string() + constants::ok_file_suffix);
-  RETURN_NOT_OK_ELSE(storage_manager_->vfs()->touch(ok_uri), clean_up(uri));
+  auto&& [st1, commit_uri] = array_->array_directory().get_commit_uri(uri);
+  RETURN_NOT_OK_ELSE(st1, storage_manager_->vfs()->remove_dir(uri));
+  RETURN_NOT_OK_ELSE(
+      storage_manager_->vfs()->touch(commit_uri.value()), clean_up(uri));
 
   // Delete global write state
   global_write_state_.reset(nullptr);

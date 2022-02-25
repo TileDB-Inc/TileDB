@@ -100,6 +100,11 @@ class URI {
    */
   URI remove_trailing_slash() const;
 
+  /**
+   * Returns if the URI is empty or not.
+   */
+  bool empty() const;
+
   /** Returns a C-style pointer to the URI string. */
   const char* c_str() const;
 
@@ -231,9 +236,6 @@ class URI {
 
   /** Returns the last part of the URI (i.e., excluding the parent). */
   std::string last_path_part() const;
-
-  /** Returns the parent of the URI. */
-  URI parent() const;
 
   /**
    * Returns the URI path for the current platform, stripping the resource. For
