@@ -1,3 +1,10 @@
+# TileDB v2.6.3 Release Notes
+
+## Bug fixes
+
+* compute_results_count_sparse_string: fixing incorect memcmp. [#2892](https://github.com/TileDB-Inc/TileDB/pull/2892)
+* Sparse rindex readers: fixing query resume on TileDB cloud. [#2900](https://github.com/TileDB-Inc/TileDB/pull/2900)
+
 # TileDB v2.6.2 Release Notes
 
 ## Bug fixes
