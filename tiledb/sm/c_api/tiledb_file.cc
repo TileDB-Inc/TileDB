@@ -244,7 +244,8 @@ TILEDB_EXPORT int32_t tiledb_array_as_file_import(
   auto blob_array = static_cast<tiledb::appl::BlobArray*>(array->array_);
 
   int32_t ret_stat = TILEDB_OK;
-  if (SAVE_ERROR_CATCH(ctx, blob_array->to_array_from_uri(uri_filename, nullptr))) {
+  if (SAVE_ERROR_CATCH(
+          ctx, blob_array->to_array_from_uri(uri_filename, nullptr))) {
     ret_stat = TILEDB_ERR;
   }
 
