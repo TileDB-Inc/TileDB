@@ -258,9 +258,6 @@ TEST_CASE_METHOD(
     encryption_key_ = "0123456789abcdeF0123456789abcdeF";
   }
 
-  remove_temp_dir(array_name);
-  create_temp_dir(temp_dir);
-
   tiledb_config_t* cfg = nullptr;
   tiledb_error_t* err = nullptr;
   if (encryption_type_ != TILEDB_NO_ENCRYPTION) {
@@ -281,17 +278,46 @@ TEST_CASE_METHOD(
         key_len);
   }
 
+
+  tiledb_array_t* array = nullptr;
+  tiledb_array_t* array2 = nullptr;
+  int32_t is_array_open, is_array2_open;
+
+  auto prep_clean_data = [&]() -> void {
+
+    if (array) {
+      CHECK(tiledb_array_is_open(ctx_, array, &is_array_open) == TILEDB_OK);
+      CHECK(is_array_open == 0);
+      tiledb_array_free(&array);
+    }
+    if (array2) {
+      CHECK(tiledb_array_is_open(ctx_, array2, &is_array2_open) == TILEDB_OK);
+      CHECK(is_array2_open == 0);
+      tiledb_array_free(&array2);
+    }
+
+    remove_temp_dir(array_name);
+    remove_temp_dir(temp_dir);
+    create_temp_dir(temp_dir);
+
+    REQUIRE(
+        tiledb_array_as_file_obtain(ctx_, &array, array_name.c_str(), cfg) ==
+        TILEDB_OK);
+
+    REQUIRE(
+        tiledb_array_as_file_obtain(ctx_, &array2, array_name.c_str(), cfg) ==
+        TILEDB_OK);
+  };
+
+  prep_clean_data();
+
   const std::string csv_name = "quickstart_dense.csv";
   const std::string csv_path = files_dir + "/" + csv_name;
-  tiledb_array_t* array;
-  CHECK(
-      tiledb_array_as_file_obtain(ctx_, &array, array_name.c_str(), cfg) ==
-      TILEDB_OK);
   CHECK(
       tiledb_array_as_file_import(ctx_, array, csv_path.c_str()) == TILEDB_OK);
 
   CHECK(
-      tiledb_array_as_file_export(ctx_, array, output_path.c_str()) ==
+      tiledb_array_as_file_export(ctx_, array2, output_path.c_str()) ==
       TILEDB_OK);
 
   uint64_t original_file_size = 0;
@@ -328,6 +354,7 @@ TEST_CASE_METHOD(
 
   // try multiple store rapidly
   std::string infiles[] = {
+    // file sizes - each file is slightly larger than previous file
     files_dir + "/" + "fileapi0.csv",
     files_dir + "/" + "fileapi1.csv",
     files_dir + "/" + "fileapi2.csv",
@@ -356,56 +383,108 @@ TEST_CASE_METHOD(
 
   assert(n_infiles == n_outfiles);
 
-  // also verifying array closed state after the activities
 
-  int32_t is_array_open, is_array2_open;
-  CHECK(tiledb_array_is_open(ctx_, array, &is_array_open) == TILEDB_OK);
-  CHECK(is_array_open == 0);
-  CHECK(tiledb_array_is_open(ctx_, array2, &is_array2_open) == TILEDB_OK);
-  CHECK(is_array2_open == 0);
+  {
+    // process files in order of increasing size
+    prep_clean_data();
 
-  // be sure output_path not present (to avoid confusion with following use)
-  tiledb_vfs_remove_file(ctx_, vfs_, output_path.c_str());
+    // be sure output_path not present
+    tiledb_vfs_remove_file(ctx_, vfs_, output_path.c_str());
 
-  // stores only, then export (last)
-  for (auto i = 0; i < n_infiles; ++i) {
-    CHECK(
-        tiledb_array_as_file_import(ctx_, array, infiles[i].c_str()) == TILEDB_OK);
-    CHECK(tiledb_array_is_open(ctx_, array, &is_array_open) == TILEDB_OK);
-    CHECK(is_array_open == 0);
-  }
-  CHECK(tiledb_array_is_open(ctx_, array2, &is_array2_open) == TILEDB_OK);
-  CHECK(is_array2_open == 0);
-  CHECK(
-      tiledb_array_as_file_export(ctx_, array2, output_path.c_str()) ==
-      TILEDB_OK);
-  cmp_files_check(infiles[n_infiles-1], output_path);
-
-  CHECK(tiledb_array_is_open(ctx_, array, &is_array_open) == TILEDB_OK);
-  CHECK(is_array_open == 0);
-  CHECK(tiledb_array_is_open(ctx_, array2, &is_array2_open) == TILEDB_OK);
-  CHECK(is_array2_open == 0);
-
-  // stores intermixed with exports
-  for (auto i = 0; i < n_infiles; ++i) {
-    CHECK(tiledb_array_is_open(ctx_, array, &is_array_open) == TILEDB_OK);
-    CHECK(is_array_open == 0);
-    CHECK(
-        tiledb_array_as_file_import(ctx_, array, infiles[i].c_str()) == TILEDB_OK);
-    CHECK(tiledb_array_is_open(ctx_, array, &is_array_open) == TILEDB_OK);
-    CHECK(is_array_open == 0);
+    // stores only, then export (last)
+    for (auto i = 0; i < n_infiles; ++i) {
+      CHECK(
+          tiledb_array_as_file_import(ctx_, array, infiles[i].c_str()) ==
+          TILEDB_OK);
+      CHECK(tiledb_array_is_open(ctx_, array, &is_array_open) == TILEDB_OK);
+      CHECK(is_array_open == 0);
+    }
     CHECK(tiledb_array_is_open(ctx_, array2, &is_array2_open) == TILEDB_OK);
     CHECK(is_array2_open == 0);
     CHECK(
-        tiledb_array_as_file_export(ctx_, array2, outfiles[i].c_str()) ==
+        tiledb_array_as_file_export(ctx_, array2, output_path.c_str()) ==
         TILEDB_OK);
+    cmp_files_check(infiles[n_infiles - 1], output_path);
+
+    CHECK(tiledb_array_is_open(ctx_, array, &is_array_open) == TILEDB_OK);
+    CHECK(is_array_open == 0);
     CHECK(tiledb_array_is_open(ctx_, array2, &is_array2_open) == TILEDB_OK);
     CHECK(is_array2_open == 0);
+
+    // stores intermixed with exports
+    for (auto i = 0; i < n_infiles; ++i) {
+      CHECK(tiledb_array_is_open(ctx_, array, &is_array_open) == TILEDB_OK);
+      CHECK(is_array_open == 0);
+      CHECK(
+          tiledb_array_as_file_import(ctx_, array, infiles[i].c_str()) ==
+          TILEDB_OK);
+      CHECK(tiledb_array_is_open(ctx_, array, &is_array_open) == TILEDB_OK);
+      CHECK(is_array_open == 0);
+      CHECK(tiledb_array_is_open(ctx_, array2, &is_array2_open) == TILEDB_OK);
+      CHECK(is_array2_open == 0);
+      CHECK(
+          tiledb_array_as_file_export(ctx_, array2, outfiles[i].c_str()) ==
+          TILEDB_OK);
+      CHECK(tiledb_array_is_open(ctx_, array2, &is_array2_open) == TILEDB_OK);
+      CHECK(is_array2_open == 0);
+    }
+
+    // compare all exports above to original source files
+    for (auto i = 0; i < n_infiles; ++i) {
+      cmp_files_check(infiles[i], outfiles[i]);
+    }
   }
 
-  // compare all exports above to original source files
-  for(auto i = 0; i < n_infiles; ++i) {
-    cmp_files_check(infiles[i], outfiles[i]);
+  {
+    // process files in order of decreasing size
+    prep_clean_data();
+
+    // be sure output_path not present
+    tiledb_vfs_remove_file(ctx_, vfs_, output_path.c_str());
+
+    // stores only, then export (last)
+    for (auto i = n_infiles-1; i >= 0; --i) {
+      CHECK(
+          tiledb_array_as_file_import(ctx_, array, infiles[i].c_str()) ==
+          TILEDB_OK);
+      CHECK(tiledb_array_is_open(ctx_, array, &is_array_open) == TILEDB_OK);
+      CHECK(is_array_open == 0);
+    }
+    CHECK(tiledb_array_is_open(ctx_, array2, &is_array2_open) == TILEDB_OK);
+    CHECK(is_array2_open == 0);
+    CHECK(
+        tiledb_array_as_file_export(ctx_, array2, output_path.c_str()) ==
+        TILEDB_OK);
+    cmp_files_check(infiles[0], output_path);
+
+    CHECK(tiledb_array_is_open(ctx_, array, &is_array_open) == TILEDB_OK);
+    CHECK(is_array_open == 0);
+    CHECK(tiledb_array_is_open(ctx_, array2, &is_array2_open) == TILEDB_OK);
+    CHECK(is_array2_open == 0);
+
+    // stores intermixed with exports
+    for (auto i = n_infiles - 1; i >= 0 ; ++i) {
+      CHECK(tiledb_array_is_open(ctx_, array, &is_array_open) == TILEDB_OK);
+      CHECK(is_array_open == 0);
+      CHECK(
+          tiledb_array_as_file_import(ctx_, array, infiles[i].c_str()) ==
+          TILEDB_OK);
+      CHECK(tiledb_array_is_open(ctx_, array, &is_array_open) == TILEDB_OK);
+      CHECK(is_array_open == 0);
+      CHECK(tiledb_array_is_open(ctx_, array2, &is_array2_open) == TILEDB_OK);
+      CHECK(is_array2_open == 0);
+      CHECK(
+          tiledb_array_as_file_export(ctx_, array2, outfiles[i].c_str()) ==
+          TILEDB_OK);
+      CHECK(tiledb_array_is_open(ctx_, array2, &is_array2_open) == TILEDB_OK);
+      CHECK(is_array2_open == 0);
+    }
+
+    // compare all exports above to original source files
+    // (direction irrelevant for this)
+    for (auto i = 0; i < n_infiles; ++i) {
+      cmp_files_check(infiles[i], outfiles[i]);
+    }
   }
 
   tiledb_array_free(&array);
