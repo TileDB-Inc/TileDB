@@ -158,9 +158,9 @@ class Domain {
    * @param left Left operand
    * @param right Right operand
    * @return One of the following:
-   *    - -1 if the left coordinates precedes the right on the cell order
+   *    - -1 if the left coordinates precede the right on the cell order
    *    -  0 if the two coordinates have the same cell order
-   *    - +1 if the left coordinates succeeds the right on the cell order
+   *    - +1 if the left coordinates succeed the right on the cell order
    */
   int cell_order_cmp(
       const DomainTypedDataView& left, const DomainTypedDataView& right) const;

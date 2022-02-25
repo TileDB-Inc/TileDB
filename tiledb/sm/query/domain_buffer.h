@@ -49,21 +49,42 @@ namespace tiledb::sm {
  * wrapper around its storage type.
  */
 class DomainBuffersView {
+  /**
+   * Buffer type for an individual dimension.
+   *
+   * The pointer declaration here is central to the "view" aspect of this class.
+   * The lifespan of the `QueryBuffer` objects is determined externally to this
+   * class.
+   */
   using per_dimension_type = const QueryBuffer*;
+
+  /**
+   * The storage type for the list of buffers.
+   *
+   * TODO: Convert this to use `DynamicArray`
+   */
   using storage_type = std::vector<per_dimension_type>;
 
+  /**
+   * The list of buffers, one for each dimension for some domain.
+   */
   storage_type qb_;
 
  public:
-  /// Default constructor is prohibited.
+  /**
+   * Default constructor is prohibited. An object in a view class is senseless
+   * if there's nothing to view.
+   */
   DomainBuffersView() = delete;
 
   /**
    * Constructor
    *
+   * TODO: Change argument from `ArraySchema` to `Domain`. The current type is
+   * the result of code refactoring.
+   *
    * @param schema the schema of an open array
-   * @param buffers a buffer map for each element of the domain and codomain of
-   * the array
+   * @param buffers a buffer map for each dimension of the domain
    */
   DomainBuffersView(
       const ArraySchema& schema,
@@ -92,8 +113,24 @@ class DomainBuffersView {
     return qb_.at(k);
   }
 
+  /**
+   * Initializer (Initializer) policy class for DynamicArray for values drawn
+   * from a list of QueryBuffer (QB) pointers.
+   */
   class InitializerQB {
    public:
+    /**
+     * Constructs a dimension value drawn from a QueryBuffer that's associated
+     * with a domain.
+     *
+     * Argument `qb` is initialized with member variable `qb_`.
+     *
+     * @param item Location in which to place a new value as UntypedDatumView
+     * @param i Index of item in container; same as dimension index
+     * @param domain Domain associated with the value
+     * @param qb Container of pointers to query buffers, one per dimension
+     * @param k Dimension index with the domain
+     */
     inline static void initialize(
         UntypedDatumView* item,
         unsigned int i,
@@ -111,6 +148,8 @@ class DomainBuffersView {
    * the QueryBuffer for each dimension.
    *
    * @param k Dimension index within the domain
+   * @return Domain value at index `k` drawn from the QueryBuffer map given at
+   * construction
    */
   [[nodiscard]] DomainTypedDataView domain_data_at(
       const Domain& domain, size_t k) const {

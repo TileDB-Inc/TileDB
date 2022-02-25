@@ -52,6 +52,7 @@ class CellCmpBase {
  protected:
   /** The domain. */
   const Domain* domain_;
+
   /** The number of dimensions. */
   unsigned dim_num_;
 
@@ -205,7 +206,8 @@ class HilbertCmpReverse {
 };
 
 /**
- * Hilbert comparison with `ResultCoords` interator.
+ * (Hilbert) comparison (Cmp) function class on domain values retrieved with a
+ * `ResultCoords` iterator (RCI).
  */
 class HilbertCmpRCI : protected CellCmpBase {
   /**
@@ -387,8 +389,8 @@ class GlobalCmpReverse {
 };
 
 /**
- * Base class for comparison function objects on domain values derived from
- * query buffers.
+ * Base class for comparison function classes whose operands are domain values
+ * residing in QueryBuffer objects.
  */
 class DomainValueCmpBaseQB {
  protected:
@@ -418,6 +420,10 @@ class DomainValueCmpBaseQB {
   }
 };
 
+/**
+ * (Global) Comparsion (Cmp) function class that operates on values that
+ * reside in QueryBuffers (QB) for a domain.
+ */
 class GlobalCmpQB : protected DomainValueCmpBaseQB {
  public:
   /// Default constructor is prohibited.
@@ -459,7 +465,8 @@ class GlobalCmpQB : protected DomainValueCmpBaseQB {
 };
 
 /**
- * HilbertCmpQB
+ * (Hilbert) Comparsion (Cmp) function class that operates on values that
+ * reside in QueryBuffers (QB) for a domain.
  */
 class HilbertCmpQB : protected DomainValueCmpBaseQB {
   /**

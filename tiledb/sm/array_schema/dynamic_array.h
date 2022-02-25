@@ -79,7 +79,7 @@ class DynamicArray {
    *
    * The allocated size in bytes is `size_*sizeof(T)`.
    */
-  size_t size_{};
+  size_t size_;
 
   /**
    * `data_` is an allocated pointer to hold a sequence of `T` whose length is
@@ -93,6 +93,11 @@ class DynamicArray {
   T* data_;
 
  public:
+  /**
+   * Size type [container.requirements.general]
+   */
+  using size_type = size_t;
+
   /**
    * The null initializer does no initialization, but does compile as a tagged
    * template argument for the constructor.
@@ -145,6 +150,8 @@ class DynamicArray {
    * @tparam I Initialization policy
    * @param n The number of elements in the sequence to allocate
    * @param a Allocates memory for the array
+   * @param
+   * @param args Arguments forwarded to the initialization function
    *
    * Postcondition: data_ is non-null.
    */
@@ -190,7 +197,7 @@ class DynamicArray {
    * user specifying what the size is, default construction makes no sense.
    *
    * To get an object of size 0, simply construct one. An allocator is still
-   * required, even though it won't be called.
+   * required, even though it won't be called.r
    */
   DynamicArray() = delete;
 
@@ -240,27 +247,42 @@ class DynamicArray {
     }
   }
 
+  /**
+   * Size [container.requirements.general]
+   *
+   * @return Size of the array in bytes.
+   */
   [[nodiscard]] inline size_t size() const {
     return size_;
   }
 
+  /**
+   * Accessor to the start of the contiguous container, non-constant.
+   *
+   * @return Pointer to the first element of the container.
+   */
   [[nodiscard]] inline T* data() {
     return data_;
   }
 
+  /**
+   * Accessor to the start of the contiguous container, constant.
+   *
+   * @return Pointer to the first element of the container.
+   */
   [[nodiscard]] inline const T* data() const {
     return data_;
   }
 
   /**
-   * Non-constant unchecked-index accessor
+   * Non-constant unchecked-index accessor [sequence.reqmts]
    */
   inline T& operator[](size_t pos) {
     return data_[pos];
   }
 
   /**
-   * Constant unchecked-index accessor
+   * Constant unchecked-index accessor [sequence.reqmts]
    */
   inline const T& operator[](size_t pos) const {
     return data_[pos];
@@ -268,7 +290,7 @@ class DynamicArray {
 };
 
 /**
- * Non-member swap function for std::swap to use.
+ * Non-member swap.
  */
 template <class T, class A>
 inline void swap(DynamicArray<T, A>& a, DynamicArray<T, A>& b) {

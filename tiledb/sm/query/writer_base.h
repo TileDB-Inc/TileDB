@@ -493,6 +493,64 @@ class WriterBase : public StrategyBase, public IQueryStrategy {
       uint64_t start_tile_id,
       std::vector<WriterTile>* tiles,
       bool close_files = true);
+
+  /**
+   * Determines if an attribute has min max metadata.
+   *
+   * @param name Attribute/dimension name.
+   * @param var_size Is the attribute/dimension var size.
+   * @return true if the atribute has min max metadata.
+   */
+  bool has_min_max_metadata(const std::string& name, const bool var_size);
+
+  /**
+   * Determines if an attribute has sum metadata.
+   *
+   * @param name Attribute/dimension name.
+   * @param var_size Is the attribute/dimension var size.
+   * @return true if the atribute has sum metadata.
+   */
+  bool has_sum_metadata(const std::string& name, const bool var_size);
+
+  /**
+   * Returns the i-th coordinates in the coordinate buffers in string
+   * format.
+   */
+  std::string coords_to_str(uint64_t i) const;
+
+  /**
+   * Invoked on error. It removes the directory of the input URI and
+   * resets the global write state.
+   */
+  void clean_up(const URI& uri);
+
+  /** Calculates the hilbert values of the input coordinate buffers.
+   *
+   * @param[in] domain_buffers QueryBuffers for which to calculate values
+   * @param[out] hilbert_values Output values written into caller-defined vector
+   */
+  Status calculate_hilbert_values(
+      const DomainBuffersView& domain_buffers,
+      std::vector<uint64_t>& hilbert_values) const;
+
+  /**
+   * Prepares, filters and writes dense tiles for the given attribute.
+   *
+   * @tparam T The array domain datatype.
+   * @param name The attribute name.
+   * @param tile_batches The attribute tile batches.
+   * @param frag_meta The metadata of the new fragment.
+   * @param dense_tiler The dense tiler that will prepare the tiles.
+   * @param thread_num The number of threads to be used for the function.
+   * @param stats Statistics to gather in the function.
+   */
+  template <class T>
+  Status prepare_filter_and_write_tiles(
+      const std::string& name,
+      std::vector<std::vector<WriterTile>>& tile_batches,
+      tdb_shared_ptr<FragmentMetadata> frag_meta,
+      DenseTiler<T>* dense_tiler,
+      uint64_t thread_num);
 };
 
 }  // namespace sm

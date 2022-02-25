@@ -75,6 +75,7 @@ class DomainTypedDataView {
    * The type of the element for each dimension
    */
   using view_type = tdb::UntypedDatumView;
+
   /*
    * The destructor of this class does not call destructors of the data view
    * objects it holds. This is acceptable only if the data view class is
@@ -151,35 +152,60 @@ class DomainTypedDataView {
 
   /**
    * Move assignment has exchange semantics.
-   * @param x
-   * @return
    */
   DomainTypedDataView& operator=(DomainTypedDataView&& x) noexcept {
     swap(x);
     return *this;
   }
 
+  /// Swap
   inline void swap(DomainTypedDataView& x) noexcept {
     std::swap(array_, x.array_);
   }
 
+  /**
+   * Size of this object as a container. Same as the number of dimensions in the
+   * associated domain.
+   *
+   * @return The number of data objects in this container.
+   */
   [[nodiscard]] inline size_t size() const noexcept {
     return array_.size();
   }
 
+  /**
+   * Pointer to the internal container as an array of view objects.
+   *
+   * @return Pointer to the first element in the container
+   */
   [[nodiscard]] inline const view_type* data() const noexcept {
     return array_.data();
   }
 
+  /**
+   * Indexed accessor, non-constant version.
+   *
+   * @param k Index into this container
+   * @return A datum
+   */
   [[nodiscard]] inline view_type& operator[](size_t k) noexcept {
     return array_.data()[k];
   }
 
+  /**
+   * Indexed accessor, constant version.
+   *
+   * @param k Index into this container
+   * @return A datum
+   */
   [[nodiscard]] inline const view_type& operator[](size_t k) const noexcept {
     return array_.data()[k];
   }
 };
 
+/**
+ * Non-member swap.
+ */
 inline void swap(DomainTypedDataView& a, DomainTypedDataView& b) {
   a.swap(b);
 }
