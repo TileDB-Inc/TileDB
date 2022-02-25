@@ -27,7 +27,7 @@
 # Starts a GCS Emulator Server and exports credentials to the environment
 # ('source' this script instead of executing).
 # This script should be sourced from tiledb/build folder
-
+set -xe
 
 DIR="$( cd "$( dirname "${BASH_SOURCE[0]}" )" >/dev/null 2>&1 && pwd )"
 
