@@ -115,12 +115,7 @@ endif()
 
 # List of all core source files
 set(TILEDB_CORE_SOURCES
-  ${TILEDB_CORE_INCLUDE_DIR}/tiledb/common/heap_memory.cc
-  ${TILEDB_CORE_INCLUDE_DIR}/tiledb/common/heap_profiler.cc
-  ${TILEDB_CORE_INCLUDE_DIR}/tiledb/common/logger.cc
   ${TILEDB_CORE_INCLUDE_DIR}/tiledb/common/memory.cc
-  ${TILEDB_CORE_INCLUDE_DIR}/tiledb/common/status.cc
-  ${TILEDB_CORE_INCLUDE_DIR}/tiledb/common/status_code.cc
   ${TILEDB_CORE_INCLUDE_DIR}/tiledb/common/stdx_string.cc
   ${TILEDB_CORE_INCLUDE_DIR}/tiledb/common/interval/interval.cc
   ${TILEDB_CORE_INCLUDE_DIR}/tiledb/common/types/dynamic_typed_datum.cc
@@ -397,6 +392,9 @@ endif()
 # on TILEDB_CORE_OBJECTS. This workaround uses an interface library
 # so we can use the targets created by the calls to find_package().
 add_library(TILEDB_CORE_OBJECTS_ILIB INTERFACE)
+
+# Link baseline library
+target_link_libraries(TILEDB_CORE_OBJECTS_ILIB INTERFACE baseline)
 
 # blosc link dependencies
 target_link_libraries(TILEDB_CORE_OBJECTS_ILIB INTERFACE ${TileDB_blosc_LINK_OPTIONS})
