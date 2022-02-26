@@ -3247,7 +3247,7 @@ Status Subarray::sort_ranges_for_dim(
 }
 
 template <typename T>
-tuple<Status, std::optional<bool>> Subarray::non_overlapping_ranges_for_dim(
+tuple<Status, optional<bool>> Subarray::non_overlapping_ranges_for_dim(
     const uint64_t dim_idx) {
   const auto& ranges = ranges_[dim_idx];
   const Dimension* const dim =
@@ -3263,7 +3263,7 @@ tuple<Status, std::optional<bool>> Subarray::non_overlapping_ranges_for_dim(
   return {Status::Ok(), true};
 }
 
-tuple<Status, std::optional<bool>> Subarray::non_overlapping_ranges_for_dim(
+tuple<Status, optional<bool>> Subarray::non_overlapping_ranges_for_dim(
     const uint64_t dim_idx) {
   const Datatype& datatype =
       array_->array_schema_latest()->dimension(dim_idx)->type();

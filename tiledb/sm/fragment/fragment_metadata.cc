@@ -1301,7 +1301,7 @@ tuple<Status, optional<uint64_t>> FragmentMetadata::tile_var_size(
   return {Status::Ok(), tile_size};
 }
 
-tuple<Status, optional<void*>, std::optional<uint64_t>>
+tuple<Status, optional<void*>, optional<uint64_t>>
 FragmentMetadata::get_tile_min(const std::string& name, uint64_t tile_idx) {
   auto it = idx_map_.find(name);
   assert(it != idx_map_.end());
@@ -1339,7 +1339,7 @@ FragmentMetadata::get_tile_min(const std::string& name, uint64_t tile_idx) {
   }
 }
 
-tuple<Status, std::optional<void*>, std::optional<uint64_t>>
+tuple<Status, optional<void*>, optional<uint64_t>>
 FragmentMetadata::get_tile_max(const std::string& name, uint64_t tile_idx) {
   auto it = idx_map_.find(name);
   assert(it != idx_map_.end());
@@ -1377,7 +1377,7 @@ FragmentMetadata::get_tile_max(const std::string& name, uint64_t tile_idx) {
   }
 }
 
-tuple<Status, std::optional<void*>> FragmentMetadata::get_tile_sum(
+tuple<Status, optional<void*>> FragmentMetadata::get_tile_sum(
     const std::string& name, uint64_t tile_idx) {
   auto it = idx_map_.find(name);
   assert(it != idx_map_.end());
@@ -1399,7 +1399,7 @@ tuple<Status, std::optional<void*>> FragmentMetadata::get_tile_sum(
   return {Status::Ok(), sum};
 }
 
-tuple<Status, std::optional<uint64_t>> FragmentMetadata::get_tile_null_count(
+tuple<Status, optional<uint64_t>> FragmentMetadata::get_tile_null_count(
     const std::string& name, uint64_t tile_idx) {
   auto it = idx_map_.find(name);
   assert(it != idx_map_.end());
