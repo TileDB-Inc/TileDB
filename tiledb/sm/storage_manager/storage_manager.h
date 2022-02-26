@@ -657,8 +657,7 @@ class StorageManager {
   tuple<
       Status,
       optional<ArraySchema*>,
-      std::optional<
-          std::unordered_map<std::string, tdb_shared_ptr<ArraySchema>>>>
+      optional<std::unordered_map<std::string, tdb_shared_ptr<ArraySchema>>>>
   load_array_schemas(
       const ArrayDirectory& array_dir, const EncryptionKey& encryption_key);
 
@@ -675,8 +674,7 @@ class StorageManager {
    */
   tuple<
       Status,
-      std::optional<
-          std::unordered_map<std::string, tdb_shared_ptr<ArraySchema>>>>
+      optional<std::unordered_map<std::string, tdb_shared_ptr<ArraySchema>>>>
   load_all_array_schemas(
       const ArrayDirectory& array_dir, const EncryptionKey& encryption_key);
 
@@ -1059,7 +1057,7 @@ class StorageManager {
    *        Status Ok on success, else error
    *        Vector of FragmentMetadata is the fragment metadata to be retrieved.
    */
-  tuple<Status, std::optional<std::vector<tdb_shared_ptr<FragmentMetadata>>>>
+  tuple<Status, optional<std::vector<tdb_shared_ptr<FragmentMetadata>>>>
   load_fragment_metadata(
       MemoryTracker* memory_tracker,
       ArraySchema* array_schema_latest,
