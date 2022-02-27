@@ -5,7 +5,7 @@
  *
  * The MIT License
  *
- * @copyright Copyright (c) 2017-2021 TileDB, Inc.
+ * @copyright Copyright (c) 2017-2022 TileDB, Inc.
  *
  * Permission is hereby granted, free of charge, to any person obtaining a copy
  * of this software and associated documentation files (the "Software"), to deal
@@ -55,7 +55,7 @@ ByteVec Sum<T, int64_t>::sum(Tile* tile) {
 
   // Process cell by cell, swallowing overflow exception.
   for (uint64_t c = 0; c < cell_num; c++) {
-    auto value = static_cast<int64_t>(*static_cast<T*>(&values[c]));
+    auto value = static_cast<int64_t>(values[c]);
     if (*sum_data > 0 && value > 0 &&
         (*sum_data > std::numeric_limits<int64_t>::max() - value)) {
       *sum_data = std::numeric_limits<int64_t>::max();
@@ -88,7 +88,7 @@ ByteVec Sum<T, uint64_t>::sum(Tile* tile) {
 
   // Process cell by cell, swallowing overflow exception.
   for (uint64_t c = 0; c < cell_num; c++) {
-    auto value = static_cast<uint64_t>(*static_cast<T*>(&values[c]));
+    auto value = static_cast<uint64_t>(values[c]);
     if (*sum_data > std::numeric_limits<uint64_t>::max() - value) {
       *sum_data = std::numeric_limits<uint64_t>::max();
       break;
@@ -114,7 +114,7 @@ ByteVec Sum<T, double>::sum(Tile* tile) {
 
   // Process cell by cell, swallowing overflow exception.
   for (uint64_t c = 0; c < cell_num; c++) {
-    auto value = static_cast<double>(*static_cast<T*>(&values[c]));
+    auto value = static_cast<double>(values[c]);
     if ((*sum_data < 0.0) == (value < 0.0) &&
         std::abs(*sum_data) >
             std::numeric_limits<double>::max() - std::abs(value)) {
@@ -145,7 +145,7 @@ ByteVec Sum<T, int64_t>::sum_nullable(Tile* tile, Tile* tile_validity) {
   // Process cell by cell, swallowing overflow exception.
   for (uint64_t c = 0; c < cell_num; c++) {
     if (validity_values[c] != 0) {
-      auto value = static_cast<int64_t>(*static_cast<T*>(&values[c]));
+      auto value = static_cast<int64_t>(values[c]);
       if (*sum_data > 0 && value > 0 &&
           (*sum_data > std::numeric_limits<int64_t>::max() - value)) {
         *sum_data = std::numeric_limits<int64_t>::max();
@@ -181,7 +181,7 @@ ByteVec Sum<T, uint64_t>::sum_nullable(Tile* tile, Tile* tile_validity) {
   // Process cell by cell, swallowing overflow exception.
   for (uint64_t c = 0; c < cell_num; c++) {
     if (validity_values[c] != 0) {
-      auto value = static_cast<uint64_t>(*static_cast<T*>(&values[c]));
+      auto value = static_cast<uint64_t>(values[c]);
       if (*sum_data > std::numeric_limits<uint64_t>::max() - value) {
         *sum_data = std::numeric_limits<uint64_t>::max();
         break;
@@ -210,7 +210,7 @@ ByteVec Sum<T, double>::sum_nullable(Tile* tile, Tile* tile_validity) {
   // Process cell by cell, swallowing overflow exception.
   for (uint64_t c = 0; c < cell_num; c++) {
     if (validity_values[c] != 0) {
-      auto value = static_cast<double>(*static_cast<T*>(&values[c]));
+      auto value = static_cast<double>(values[c]);
       if ((*sum_data < 0.0) == (value < 0.0) &&
           std::abs(*sum_data) >
               std::numeric_limits<double>::max() - std::abs(value)) {
