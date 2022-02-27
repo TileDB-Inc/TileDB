@@ -5,7 +5,7 @@
  *
  * The MIT License
  *
- * @copyright Copyright (c) 2017-2021 TileDB, Inc.
+ * @copyright Copyright (c) 2017-2022 TileDB, Inc.
  *
  * Permission is hereby granted, free of charge, to any person obtaining a copy
  * of this software and associated documentation files (the "Software"), to deal
@@ -64,9 +64,6 @@ struct Sum {
    * @param tile_validity Validity tile.
    */
   static ByteVec sum_nullable(Tile* tile, Tile* tile_validity);
-
-  constexpr static T min = std::numeric_limits<T>::max();
-  constexpr static T max = std::numeric_limits<T>::lowest();
 };
 
 /**
