@@ -130,7 +130,7 @@ int ArrayFx::get_fragment_timestamps(const char* path, void* data) {
   auto data_vec = (std::vector<uint64_t>*)data;
   std::pair<uint64_t, uint64_t> timestamp_range;
   if (tiledb::sm::utils::parse::ends_with(
-          path, tiledb::sm::constants::ok_file_suffix)) {
+          path, tiledb::sm::constants::write_file_suffix)) {
     auto uri = tiledb::sm::URI(path);
     if (tiledb::sm::utils::parse::get_timestamp_range(uri, &timestamp_range)
             .ok())
@@ -985,7 +985,7 @@ TEST_CASE_METHOD(
   rc = tiledb_vfs_ls(
       ctx_,
       vfs_,
-      array_name.c_str(),
+      get_commit_dir(array_name).c_str(),
       &get_fragment_timestamps,
       &fragment_timestamps);
   CHECK(rc == TILEDB_OK);

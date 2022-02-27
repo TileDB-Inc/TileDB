@@ -348,6 +348,15 @@ Status Consolidator::consolidate(
     return st;
   }
 
+  // Get the vacuum URI
+  auto&& [st_vac_uri, vac_uri] =
+      array_for_reads.array_directory().get_vaccum_uri(*new_fragment_uri);
+  if (!st_vac_uri.ok()) {
+    tdb_delete(query_r);
+    tdb_delete(query_w);
+    return st_vac_uri;
+  }
+
   // Read from one array and write to the other
   st = copy_array(query_r, query_w, &buffers, &buffer_sizes);
   if (!st.ok()) {
@@ -370,7 +379,7 @@ Status Consolidator::consolidate(
   }
 
   // Write vacuum file
-  st = write_vacuum_file(*new_fragment_uri, to_consolidate);
+  st = write_vacuum_file(vac_uri.value(), to_consolidate);
   if (!st.ok()) {
     tdb_delete(query_r);
     tdb_delete(query_w);
@@ -421,9 +430,15 @@ Status Consolidator::consolidate_fragment_meta(
   URI uri;
   auto first = meta.front()->fragment_uri();
   auto last = meta.back()->fragment_uri();
-  RETURN_NOT_OK(compute_new_fragment_uri(
-      first, last, array.array_schema_latest()->write_version(), &uri));
-  uri = URI(uri.to_string() + constants::meta_file_suffix);
+  auto write_version = array.array_schema_latest()->write_version();
+  auto&& [st, name] = compute_new_fragment_name(first, last, write_version);
+  RETURN_NOT_OK(st);
+
+  auto& array_dir = array.array_directory();
+  auto frag_md_uri = array_dir.get_fragment_metadata_dir(write_version);
+  RETURN_NOT_OK(storage_manager_->vfs()->create_dir(frag_md_uri));
+  uri =
+      URI(frag_md_uri.to_string() + name.value() + constants::meta_file_suffix);
 
   // Get the consolidated fragment metadata version
   auto meta_name = uri.remove_trailing_slash().last_path_part();
@@ -487,6 +502,7 @@ Status Consolidator::consolidate_fragment_meta(
       buff.data(),
       buff.size());
   buff.disown_data();
+
   GenericTileIO tile_io(storage_manager_, uri);
   uint64_t nbytes = 0;
   RETURN_NOT_OK_ELSE(
@@ -590,11 +606,12 @@ Status Consolidator::create_queries(
   auto first = (*query_r)->first_fragment_uri();
   auto last = (*query_r)->last_fragment_uri();
 
-  RETURN_NOT_OK(compute_new_fragment_uri(
-      first,
-      last,
-      array_for_reads->array_schema_latest()->write_version(),
-      new_fragment_uri));
+  auto write_version = array_for_reads->array_schema_latest()->write_version();
+  auto&& [st, name] = compute_new_fragment_name(first, last, write_version);
+  RETURN_NOT_OK(st);
+  auto frag_uri =
+      array_for_reads->array_directory().get_fragments_dir(write_version);
+  *new_fragment_uri = frag_uri.join_path(name.value());
 
   // Create write query
   *query_w =
@@ -724,30 +741,27 @@ Status Consolidator::compute_next_to_consolidate(
   return Status::Ok();
 }
 
-Status Consolidator::compute_new_fragment_uri(
-    const URI& first,
-    const URI& last,
-    uint32_t format_version,
-    URI* new_uri) const {
+tuple<Status, optional<std::string>> Consolidator::compute_new_fragment_name(
+    const URI& first, const URI& last, uint32_t format_version) const {
   // Get uuid
   std::string uuid;
-  RETURN_NOT_OK(uuid::generate_uuid(&uuid, false));
+  RETURN_NOT_OK_TUPLE(uuid::generate_uuid(&uuid, false), nullopt);
 
   // For creating the new fragment URI
 
   // Get timestamp ranges
   std::pair<uint64_t, uint64_t> t_first, t_last;
-  RETURN_NOT_OK(utils::parse::get_timestamp_range(first, &t_first));
-  RETURN_NOT_OK(utils::parse::get_timestamp_range(last, &t_last));
+  RETURN_NOT_OK_TUPLE(
+      utils::parse::get_timestamp_range(first, &t_first), nullopt);
+  RETURN_NOT_OK_TUPLE(
+      utils::parse::get_timestamp_range(last, &t_last), nullopt);
 
   // Create new URI
   std::stringstream ss;
-  ss << first.parent().to_string() << "/__" << t_first.first << "_"
-     << t_last.second << "_" << uuid << "_" << format_version;
+  ss << "/__" << t_first.first << "_" << t_last.second << "_" << uuid << "_"
+     << format_version;
 
-  *new_uri = URI(ss.str());
-
-  return Status::Ok();
+  return {Status::Ok(), ss.str()};
 }
 
 Status Consolidator::set_query_buffers(
@@ -885,10 +899,8 @@ Status Consolidator::set_config(const Config* config) {
 }
 
 Status Consolidator::write_vacuum_file(
-    const URI& new_uri,
+    const URI& vac_uri,
     const std::vector<TimestampedURI>& to_consolidate) const {
-  URI vac_uri = URI(new_uri.to_string() + constants::vacuum_file_suffix);
-
   std::stringstream ss;
   for (const auto& timestampedURI : to_consolidate)
     ss << timestampedURI.uri_.to_string() << "\n";

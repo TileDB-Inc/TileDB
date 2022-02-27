@@ -435,12 +435,13 @@ Status StorageManager::array_vacuum_fragments(
   const auto& fragment_uris_to_vacuum = array_dir.fragment_uris_to_vacuum();
   const auto& vac_uris_to_vacuum = array_dir.fragment_vac_uris_to_vacuum();
 
-  // Delete the ok files
+  // Delete the commit files
   auto status = parallel_for(
       compute_tp_, 0, fragment_uris_to_vacuum.size(), [&, this](size_t i) {
-        auto uri = URI(
-            fragment_uris_to_vacuum[i].to_string() + constants::ok_file_suffix);
-        RETURN_NOT_OK(vfs_->remove_file(uri));
+        auto&& [st, commit_uri] =
+            array_dir.get_commit_uri(fragment_uris_to_vacuum[i]);
+        RETURN_NOT_OK(st);
+        RETURN_NOT_OK(vfs_->remove_file(commit_uri.value()));
 
         return Status::Ok();
       });
@@ -631,13 +632,27 @@ Status StorageManager::array_create(
       array_uri.join_path(constants::array_schema_dir_name);
   RETURN_NOT_OK(vfs_->create_dir(array_schema_dir_uri));
 
+  // Create commit directory
+  URI array_commit_uri = array_uri.join_path(constants::array_commit_dir_name);
+  RETURN_NOT_OK(vfs_->create_dir(array_commit_uri));
+
+  // Create fragments directory
+  URI array_fragments_uri =
+      array_uri.join_path(constants::array_fragments_dir_name);
+  RETURN_NOT_OK(vfs_->create_dir(array_fragments_uri));
+
   // Create array metadata directory
   URI array_metadata_uri =
       array_uri.join_path(constants::array_metadata_dir_name);
   RETURN_NOT_OK(vfs_->create_dir(array_metadata_uri));
-  Status st;
+
+  // Create fragment metadata directory
+  URI array_fragment_metadata_uri =
+      array_uri.join_path(constants::array_fragment_meta_dir_name);
+  RETURN_NOT_OK(vfs_->create_dir(array_fragment_metadata_uri));
 
   // Get encryption key from config
+  Status st;
   if (encryption_key.encryption_type() == EncryptionType::NO_ENCRYPTION) {
     bool found = false;
     std::string encryption_key_from_cfg =
@@ -689,7 +704,7 @@ Status StorageManager::array_evolve_schema(
     const ArrayDirectory& array_dir,
     ArraySchemaEvolution* schema_evolution,
     const EncryptionKey& encryption_key) {
-  const URI& array_uri = array_dir.array_uri();
+  const URI& array_uri = array_dir.uri();
 
   // Check array schema
   if (schema_evolution == nullptr) {
@@ -737,7 +752,7 @@ Status StorageManager::array_evolve_schema(
 
 Status StorageManager::array_upgrade_version(
     const ArrayDirectory& array_dir, const Config* config) {
-  const URI& array_uri = array_dir.array_uri();
+  const URI& array_uri = array_dir.uri();
 
   // Check if array exists
   bool exists = false;
@@ -786,42 +801,43 @@ Status StorageManager::array_upgrade_version(
         key_length));
   }
 
-  ArraySchema* array_schema = (ArraySchema*)nullptr;
-  RETURN_NOT_OK(
-      load_array_schema_latest(array_dir, encryption_key_cfg, &array_schema));
+  ArraySchema* array_schema_ptr = (ArraySchema*)nullptr;
+  RETURN_NOT_OK(load_array_schema_latest(
+      array_dir, encryption_key_cfg, &array_schema_ptr));
+  tdb_unique_ptr<ArraySchema> array_schema(array_schema_ptr);
 
   if (array_schema->version() < constants::format_version) {
-    Status st = array_schema->generate_uri();
-    if (!st.ok()) {
-      logger_->status(st);
-      // Clean up
-      tdb_delete(array_schema);
-      return st;
-    }
+    RETURN_NOT_OK_ELSE(array_schema->generate_uri(), logger_->status(st));
+
     array_schema->set_version(constants::format_version);
 
     // Create array schema directory if necessary
     URI array_schema_dir_uri =
         array_uri.join_path(constants::array_schema_dir_name);
-    st = vfs_->create_dir(array_schema_dir_uri);
-    if (!st.ok()) {
-      logger_->status(st);
-      // Clean up
-      tdb_delete(array_schema);
-      return st;
-    }
+    RETURN_NOT_OK_ELSE(
+        vfs_->create_dir(array_schema_dir_uri), logger_->status(st));
 
-    st = store_array_schema(array_schema, encryption_key_cfg);
-    if (!st.ok()) {
-      logger_->status(st);
-      // Clean up
-      tdb_delete(array_schema);
-      return st;
-    }
+    RETURN_NOT_OK_ELSE(
+        store_array_schema(array_schema.get(), encryption_key_cfg),
+        logger_->status(st));
+
+    // Create commit directory if necessary
+    URI array_commit_uri =
+        array_uri.join_path(constants::array_commit_dir_name);
+    RETURN_NOT_OK_ELSE(vfs_->create_dir(array_commit_uri), logger_->status(st));
+
+    // Create fragments directory if necessary
+    URI array_fragments_uri =
+        array_uri.join_path(constants::array_fragments_dir_name);
+    RETURN_NOT_OK_ELSE(
+        vfs_->create_dir(array_fragments_uri), logger_->status(st));
+
+    // Create fragment metadata directory if necessary
+    URI array_fragment_metadata_uri =
+        array_uri.join_path(constants::array_fragment_meta_dir_name);
+    RETURN_NOT_OK_ELSE(
+        vfs_->create_dir(array_fragment_metadata_uri), logger_->status(st));
   }
-
-  // Clean up
-  tdb_delete(array_schema);
 
   return Status::Ok();
 }
@@ -1096,7 +1112,7 @@ Status StorageManager::array_get_non_empty_domain_var_from_name(
 
 Status StorageManager::array_get_encryption(
     const ArrayDirectory& array_dir, EncryptionType* encryption_type) {
-  const URI& uri = array_dir.array_uri();
+  const URI& uri = array_dir.uri();
 
   if (uri.is_invalid())
     return logger_->status(Status_StorageManagerError(
@@ -1417,7 +1433,7 @@ Status StorageManager::load_array_schema_latest(
     ArraySchema** array_schema) {
   auto timer_se = stats_->start_timer("sm_load_array_schema");
 
-  const URI& array_uri = array_dir.array_uri();
+  const URI& array_uri = array_dir.uri();
   if (array_uri.is_invalid())
     return logger_->status(Status_StorageManagerError(
         "Cannot load array schema; Invalid array URI"));
@@ -1455,7 +1471,7 @@ StorageManager::load_all_array_schemas(
     const ArrayDirectory& array_dir, const EncryptionKey& encryption_key) {
   auto timer_se = stats_->start_timer("sm_load_all_array_schemas");
 
-  const URI& array_uri = array_dir.array_uri();
+  const URI& array_uri = array_dir.uri();
   if (array_uri.is_invalid())
     return {logger_->status(Status_StorageManagerError(
                 "Cannot load all array schemas; Invalid array URI")),

@@ -32,6 +32,7 @@
  */
 
 #include "catch.hpp"
+#include "test/src/helpers.h"
 #include "tiledb/common/common.h"
 #include "tiledb/sm/cpp_api/tiledb"
 #include "tiledb/sm/misc/constants.h"
@@ -42,6 +43,7 @@
 #include <thread>
 
 using namespace tiledb;
+using namespace tiledb::test;
 
 namespace {
 
@@ -694,7 +696,6 @@ TEST_CASE(
         .set_data_buffer("a", a_write)
         .set_coordinates(coords_write);
     query_w.submit();
-    fragment_uri = query_w.fragment_uri(0);
     old_array.close();
 
     // Read
@@ -713,8 +714,8 @@ TEST_CASE(
 
     // Remove created fragment and ok file
     VFS vfs(ctx);
-    vfs.remove_dir(fragment_uri);
-    vfs.remove_file(fragment_uri + ".ok");
+    vfs.remove_dir(get_fragment_dir(old_array_name));
+    vfs.remove_dir(get_commit_dir(old_array_name));
 
     REQUIRE(a_read[0] == 100);
     for (int i = 1; i < 4; i++) {
@@ -1306,7 +1307,7 @@ TEST_CASE(
   schema_folder = array_read2.uri() + "/__schema";
 
   VFS vfs(ctx);
-  vfs.remove_dir(fragment_uri);
-  vfs.remove_file(fragment_uri + ".ok");
+  vfs.remove_dir(get_fragment_dir(array_read2.uri()));
+  vfs.remove_dir(get_commit_dir(array_read2.uri()));
   vfs.remove_dir(schema_folder);
 }

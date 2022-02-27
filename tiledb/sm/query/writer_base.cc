@@ -621,11 +621,17 @@ Status WriterBase::create_fragment(
     uri = fragment_uri_;
   } else {
     std::string new_fragment_str;
-    RETURN_NOT_OK(new_fragment_name(
-        timestamp,
-        array_->array_schema_latest()->write_version(),
-        &new_fragment_str));
-    uri = array_schema_->array_uri().join_path(new_fragment_str);
+    auto write_version = array_->array_schema_latest()->write_version();
+    RETURN_NOT_OK(
+        new_fragment_name(timestamp, write_version, &new_fragment_str));
+
+    auto& array_dir = array_->array_directory();
+    auto frag_uri = array_dir.get_fragments_dir(write_version);
+    RETURN_NOT_OK(storage_manager_->vfs()->create_dir(frag_uri));
+    auto commit_uri = array_dir.get_commits_dir(write_version);
+    RETURN_NOT_OK(storage_manager_->vfs()->create_dir(commit_uri));
+
+    uri = frag_uri.join_path(new_fragment_str);
   }
   auto timestamp_range = std::pair<uint64_t, uint64_t>(timestamp, timestamp);
   frag_meta = tdb::make_shared<FragmentMetadata>(
