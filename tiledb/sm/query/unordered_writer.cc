@@ -674,6 +674,10 @@ Status UnorderedWriter::unordered_write() {
   RETURN_CANCEL_OR_ERROR_ELSE(
       write_all_tiles(frag_meta, &tiles), clean_up(uri));
 
+  // Compute fragment min/max/sum/null count
+  RETURN_NOT_OK_ELSE(
+      frag_meta->compute_fragment_min_max_sum_null_count(), clean_up(uri));
+
   // Write the fragment metadata
   RETURN_CANCEL_OR_ERROR_ELSE(
       frag_meta->store(array_->get_encryption_key()), clean_up(uri));

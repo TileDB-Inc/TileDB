@@ -265,9 +265,16 @@ class FragmentMetadata {
   /**
    * Stores all the metadata to storage.
    *
-   * Applicable to format versions 11 or higher.
+   * Applicable to format versions 11.
    */
-  Status store_v11_or_higher(const EncryptionKey& encryption_key);
+  Status store_v11(const EncryptionKey& encryption_key);
+
+  /**
+   * Stores all the metadata to storage.
+   *
+   * Applicable to format versions 12 or higher.
+   */
+  Status store_v12_or_higher(const EncryptionKey& encryption_key);
 
   /** Returns the non-empty domain in which the fragment is constrained. */
   const NDRange& non_empty_domain();
@@ -460,6 +467,13 @@ class FragmentMetadata {
       const std::string& name, uint64_t tid, uint64_t null_count);
 
   /**
+   * Compute fragment min, max, sum, null count for all dimensions/attributes.
+   *
+   * @return Status.
+   */
+  Status compute_fragment_min_max_sum_null_count();
+
+  /**
    * Sets array schema pointer.
    *
    * @param array_schema The schema pointer.
@@ -638,6 +652,40 @@ class FragmentMetadata {
   tuple<Status, optional<uint64_t>> get_tile_null_count(
       const std::string& name, uint64_t tile_idx);
 
+  /**
+   * Retrieves the min value for a given attribute or dimension.
+   *
+   * @param name The input attribute/dimension.
+   * @return Status, value.
+   */
+  tuple<Status, optional<std::vector<uint8_t>>> get_min(
+      const std::string& name);
+
+  /**
+   * Retrieves the max value for a given attribute or dimension.
+   *
+   * @param name The input attribute/dimension.
+   * @return Status, value.
+   */
+  tuple<Status, optional<std::vector<uint8_t>>> get_max(
+      const std::string& name);
+
+  /**
+   * Retrieves the sum value for a given attribute or dimension.
+   *
+   * @param name The input attribute/dimension.
+   * @return Status, sum.
+   */
+  tuple<Status, optional<void*>> get_sum(const std::string& name);
+
+  /**
+   * Retrieves the null count value for a given attribute or dimension.
+   *
+   * @param name The input attribute/dimension.
+   * @return Status, count.
+   */
+  tuple<Status, optional<uint64_t>> get_null_count(const std::string& name);
+
   /** Returns the first timestamp of the fragment timestamp range. */
   uint64_t first_timestamp() const;
 
@@ -717,6 +765,15 @@ class FragmentMetadata {
       const EncryptionKey& encryption_key, std::vector<std::string>&& names);
 
   /**
+   * Loads the min max sum null count values for the fragment.
+   *
+   * @param encryption_key The key the array got opened with.
+   * @return Status
+   */
+  Status load_fragment_min_max_sum_null_count(
+      const EncryptionKey& encryption_key);
+
+  /**
    * Returns ArraySchema
    *
    * @return
@@ -743,6 +800,7 @@ class FragmentMetadata {
     std::vector<uint64_t> tile_max_offsets_;
     std::vector<uint64_t> tile_sum_offsets_;
     std::vector<uint64_t> tile_null_count_offsets_;
+    uint64_t tile_min_max_sum_null_count_offset_;
   };
 
   /** Keeps track of which metadata is loaded. */
@@ -757,6 +815,7 @@ class FragmentMetadata {
     std::vector<bool> tile_max_;
     std::vector<bool> tile_sum_;
     std::vector<bool> tile_null_count_;
+    bool fragment_min_max_sum_null_count_ = false;
   };
 
   /* ********************************* */
@@ -885,7 +944,7 @@ class FragmentMetadata {
   /**
    * The tile min buffers variable length data.
    */
-  std::vector<std::vector<uint8_t>> tile_min_var_buffer_;
+  std::vector<std::vector<char>> tile_min_var_buffer_;
 
   /**
    * The tile max buffers, for variable attributes/dimensions, this will store
@@ -896,7 +955,7 @@ class FragmentMetadata {
   /**
    * The tile max buffers variable length data.
    */
-  std::vector<std::vector<uint8_t>> tile_max_var_buffer_;
+  std::vector<std::vector<char>> tile_max_var_buffer_;
 
   /**
    * The tile sum values, ignored for var sized attributes/dimensions.
@@ -904,10 +963,29 @@ class FragmentMetadata {
   std::vector<std::vector<uint8_t>> tile_sums_;
 
   /**
-   * The tile null count values ignored for non nullable attributes or
-   * dimensions.
+   * The tile null count values for attributes/dimensions.
    */
   std::vector<std::vector<uint64_t>> tile_null_counts_;
+
+  /**
+   * Fragment min values.
+   */
+  std::vector<std::vector<uint8_t>> fragment_mins_;
+
+  /**
+   * Fragment max values.
+   */
+  std::vector<std::vector<uint8_t>> fragment_maxs_;
+
+  /**
+   * Fragment sum values, ignored for var sized attributes/dimensions.
+   */
+  std::vector<uint64_t> fragment_sums_;
+
+  /**
+   * Null count for fragment for attributes/dimensions.
+   */
+  std::vector<uint64_t> fragment_null_counts_;
 
   /** The format version of this metadata. */
   uint32_t version_;
@@ -1059,9 +1137,15 @@ class FragmentMetadata {
 
   /**
    * Loads the generic tile offsets from the buffer. Applicable to
-   * versions 11 or higher.
+   * versions 11.
    */
-  Status load_generic_tile_offsets_v11_or_higher(ConstBuffer* buff);
+  Status load_generic_tile_offsets_v11(ConstBuffer* buff);
+
+  /**
+   * Loads the generic tile offsets from the buffer. Applicable to
+   * versions 12 or higher.
+   */
+  Status load_generic_tile_offsets_v12_or_higher(ConstBuffer* buff);
 
   /**
    * Loads the array schema name.
@@ -1208,6 +1292,11 @@ class FragmentMetadata {
    * buffer.
    */
   Status load_tile_null_count_values(unsigned idx, ConstBuffer* buff);
+
+  /**
+   * Loads the min max sum null count values for the fragment.
+   */
+  Status load_fragment_min_max_sum_null_count(ConstBuffer* buff);
 
   /** Loads the format version from the buffer. */
   Status load_version(ConstBuffer* buff);
@@ -1418,6 +1507,41 @@ class FragmentMetadata {
    * Writes the null counts of the input attribute idx to the input buffer.
    */
   Status write_tile_null_counts(unsigned idx, Buffer* buff);
+
+  /**
+   * Writes the fragment min, max, sum and null count to storage.
+   *
+   * @param num The number of attributes.
+   * @param encryption_key The encryption key.
+   * @param nbytes The total number of bytes written.
+   * @return Status
+   */
+  Status store_fragment_min_max_sum_null_count(
+      uint64_t num, const EncryptionKey& encryption_key, uint64_t* nbytes);
+
+  /**
+   * Compute the fragment min, max and sum values.
+   *
+   * @param name The attribute/dimension name.
+   */
+  template <class T>
+  void compute_fragment_min_max_sum(const std::string& name);
+
+  /**
+   * Compute the fragment sum value.
+   *
+   * @param idx The attribute/dimension index.
+   * @param nullable Is the attribute/dimension nullable.
+   */
+  template <class SumT>
+  void compute_fragment_sum(const uint64_t idx, const bool nullable);
+
+  /**
+   * Compute the fragment min and max values for var sized attributes.
+   *
+   * @param name The attribute/dimension name.
+   */
+  void min_max_var(const std::string& name);
 
   /** Writes the format version to the buffer. */
   Status write_version(Buffer* buff) const;
