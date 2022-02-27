@@ -124,13 +124,13 @@ class ArrayDirectory {
   const URI& latest_fragment_meta_uri() const;
 
   /** Returns the URI to store fragments. */
-  URI get_fragments_uri(uint32_t write_version) const;
+  URI get_fragments_dir(uint32_t write_version) const;
 
   /** Returns the URI to store fragment metadata. */
-  URI get_fragment_metadata_uri(uint32_t write_version) const;
+  URI get_fragment_metadata_dir(uint32_t write_version) const;
 
   /** Returns the URI to store commit files. */
-  URI get_commits_uri(uint32_t write_version) const;
+  URI get_commits_dir(uint32_t write_version) const;
 
   /** Returns the URI for either an ok file or wrt file. */
   tuple<Status, optional<URI>> get_commit_uri(const URI& fragment_uri) const;
@@ -225,25 +225,25 @@ class ArrayDirectory {
   Status load();
 
   /**
-   * Loads the root directory data for v1 to v11.
+   * Loads the root directory uris for v1 to v11.
    *
    * @return Status, vector of fragment URIs, latest fragment metadata.
    */
-  tuple<Status, optional<std::vector<URI>>, optional<URI>> load_root_dir_data();
+  tuple<Status, optional<std::vector<URI>>, optional<URI>> load_root_dir_uris();
 
   /**
-   * Loads the commit directory data for v12 or higher.
+   * Loads the commit directory uris for v12 or higher.
    *
    * @return Status, vector of fragment URIs.
    */
-  tuple<Status, optional<std::vector<URI>>> load_commit_dir_data();
+  tuple<Status, optional<std::vector<URI>>> load_commit_dir_uris();
 
   /**
-   * Loads the fragment metadata directory data for v12 or higher.
+   * Loads the fragment metadata directory uris for v12 or higher.
    *
    * @return Status, latest fragment metadata.
    */
-  tuple<Status, optional<URI>> load_fragment_metadata_dir_data();
+  tuple<Status, optional<URI>> load_fragment_metadata_dir_uris();
 
   /** Loads the array metadata URIs. */
   Status load_array_meta_uris();

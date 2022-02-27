@@ -648,7 +648,7 @@ Status StorageManager::array_create(
 
   // Create fragment metadata directory
   URI array_fragment_metadata_uri =
-      array_uri.join_path(constants::array_fragment_metadata_dir_name);
+      array_uri.join_path(constants::array_fragment_meta_dir_name);
   RETURN_NOT_OK(vfs_->create_dir(array_fragment_metadata_uri));
 
   // Get encryption key from config
@@ -834,7 +834,7 @@ Status StorageManager::array_upgrade_version(
 
     // Create fragment metadata directory if necessary
     URI array_fragment_metadata_uri =
-        array_uri.join_path(constants::array_fragment_metadata_dir_name);
+        array_uri.join_path(constants::array_fragment_meta_dir_name);
     RETURN_NOT_OK_ELSE(
         vfs_->create_dir(array_fragment_metadata_uri), logger_->status(st));
   }

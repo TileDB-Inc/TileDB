@@ -107,7 +107,7 @@ Status ArrayDirectory::load() {
   if (!only_schemas_)
     tasks.emplace_back(tp_->execute([&]() {
       auto&& [st, fragment_uris, latest_fragment_meta_uri] =
-          load_root_dir_data();
+          load_root_dir_uris();
       RETURN_NOT_OK(st);
       fragment_uris_v1_v11 = std::move(fragment_uris.value());
       latest_fragment_meta_uri_v1_v11 =
@@ -119,7 +119,7 @@ Status ArrayDirectory::load() {
   // Load (in parallel) the commit directory data
   if (!only_schemas_)
     tasks.emplace_back(tp_->execute([&]() {
-      auto&& [st, fragment_uris] = load_commit_dir_data();
+      auto&& [st, fragment_uris] = load_commit_dir_uris();
       RETURN_NOT_OK(st);
       fragment_uris_v12_or_higher = std::move(fragment_uris.value());
 
@@ -129,7 +129,7 @@ Status ArrayDirectory::load() {
   // Load (in parallel) the fragment metadata directory data
   if (!only_schemas_)
     tasks.emplace_back(tp_->execute([&]() {
-      auto&& [st, latest_fragment_meta_uri] = load_fragment_metadata_dir_data();
+      auto&& [st, latest_fragment_meta_uri] = load_fragment_metadata_dir_uris();
       RETURN_NOT_OK(st);
       latest_fragment_meta_uri_v12_or_higher =
           std::move(latest_fragment_meta_uri.value());
@@ -199,7 +199,7 @@ const URI& ArrayDirectory::latest_fragment_meta_uri() const {
   return latest_fragment_meta_uri_;
 }
 
-URI ArrayDirectory::get_fragments_uri(uint32_t write_version) const {
+URI ArrayDirectory::get_fragments_dir(uint32_t write_version) const {
   if (write_version < 12) {
     return uri_;
   }
@@ -207,15 +207,15 @@ URI ArrayDirectory::get_fragments_uri(uint32_t write_version) const {
   return uri_.join_path(constants::array_fragments_dir_name);
 }
 
-URI ArrayDirectory::get_fragment_metadata_uri(uint32_t write_version) const {
+URI ArrayDirectory::get_fragment_metadata_dir(uint32_t write_version) const {
   if (write_version < 12) {
     return uri_;
   }
 
-  return uri_.join_path(constants::array_fragment_metadata_dir_name);
+  return uri_.join_path(constants::array_fragment_meta_dir_name);
 }
 
-URI ArrayDirectory::get_commits_uri(uint32_t write_version) const {
+URI ArrayDirectory::get_commits_dir(uint32_t write_version) const {
   if (write_version < 12) {
     return uri_;
   }
@@ -268,7 +268,7 @@ bool ArrayDirectory::loaded() const {
 /* ********************************* */
 
 tuple<Status, optional<std::vector<URI>>, optional<URI>>
-ArrayDirectory::load_root_dir_data() {
+ArrayDirectory::load_root_dir_uris() {
   // List the array directory URIs
   std::vector<URI> array_dir_uris;
   RETURN_NOT_OK_TUPLE(vfs_->ls(uri_, &array_dir_uris), nullopt, nullopt);
@@ -285,7 +285,7 @@ ArrayDirectory::load_root_dir_data() {
 }
 
 tuple<Status, optional<std::vector<URI>>>
-ArrayDirectory::load_commit_dir_data() {
+ArrayDirectory::load_commit_dir_uris() {
   std::vector<URI> fragment_uris;
 
   // List the commit folder array directory URIs
@@ -309,10 +309,10 @@ ArrayDirectory::load_commit_dir_data() {
   return {Status::Ok(), fragment_uris};
 }
 
-tuple<Status, optional<URI>> ArrayDirectory::load_fragment_metadata_dir_data() {
+tuple<Status, optional<URI>> ArrayDirectory::load_fragment_metadata_dir_uris() {
   // List the commit folder array directory URIs
   auto fragment_metadata_uri =
-      uri_.join_path(constants::array_fragment_metadata_dir_name);
+      uri_.join_path(constants::array_fragment_meta_dir_name);
   std::vector<URI> fragment_metadata_dir_uris;
   RETURN_NOT_OK_TUPLE(
       vfs_->ls(fragment_metadata_uri, &fragment_metadata_dir_uris), nullopt);

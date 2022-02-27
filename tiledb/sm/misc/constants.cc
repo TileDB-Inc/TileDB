@@ -78,7 +78,7 @@ const std::string array_schema_dir_name = "__schema";
 const std::string array_metadata_dir_name = "__meta";
 
 /** The array fragment metadata directory name. */
-const std::string array_fragment_metadata_dir_name = "__fragment_meta";
+const std::string array_fragment_meta_dir_name = "__fragment_meta";
 
 /** The array fragments directory name. */
 const std::string array_fragments_dir_name = "__fragments";

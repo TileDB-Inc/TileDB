@@ -69,7 +69,7 @@ extern const std::string array_schema_dir_name;
 extern const std::string array_metadata_dir_name;
 
 /** The array fragment metadata directory name. */
-extern const std::string array_fragment_metadata_dir_name;
+extern const std::string array_fragment_meta_dir_name;
 
 /** The array fragments directory name. */
 extern const std::string array_fragments_dir_name;

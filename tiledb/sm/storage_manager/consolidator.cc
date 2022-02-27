@@ -435,7 +435,7 @@ Status Consolidator::consolidate_fragment_meta(
   RETURN_NOT_OK(st);
 
   auto& array_dir = array.array_directory();
-  auto frag_md_uri = array_dir.get_fragment_metadata_uri(write_version);
+  auto frag_md_uri = array_dir.get_fragment_metadata_dir(write_version);
   RETURN_NOT_OK(storage_manager_->vfs()->create_dir(frag_md_uri));
   uri =
       URI(frag_md_uri.to_string() + name.value() + constants::meta_file_suffix);
@@ -610,7 +610,7 @@ Status Consolidator::create_queries(
   auto&& [st, name] = compute_new_fragment_name(first, last, write_version);
   RETURN_NOT_OK(st);
   auto frag_uri =
-      array_for_reads->array_directory().get_fragments_uri(write_version);
+      array_for_reads->array_directory().get_fragments_dir(write_version);
   *new_fragment_uri = frag_uri.join_path(name.value());
 
   // Create write query

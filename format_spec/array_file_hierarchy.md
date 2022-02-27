@@ -8,11 +8,11 @@ my_array                                # array folder
     |_ __fragments                      # array fragments folder
           |_ <timestamped_name>         # fragment folder
           |_ ...
-    |_ commits                          # array commits folder
-          |_ <timestamped_name>.ok      # fragment ok file
+    |_ __commits                        # array commits folder
+          |_ <timestamped_name>.wrt     # fragment write file
           |_ ...
           |_ <timestamped_name>.vac     # fragment vacuum file
-    |_ fragment_meta                  
+    |_ __fragment_meta                  
           |_ <timestamped_name>.meta    # consol. fragment meta file
           |_ ...                  
     |_ __meta                           # array metadata folder

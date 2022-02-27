@@ -5,7 +5,7 @@ A vacuum file has name `__t1_t2_uuid_v.vac` and can be located either in the arr
 ```
 my_array                        # array folder
    |_ ....
-   |_ __meta                    # array commit folder
+   |_ __commits                 # array commit folder
          |___t1_t2_uuid_v.vac   # vacuum file
 ```
 
