@@ -109,27 +109,26 @@ unsigned int Attribute::cell_val_num() const {
   return cell_val_num_;
 }
 
-std::tuple<Status, std::optional<Attribute>> Attribute::deserialize(
+tuple<Status, optional<Attribute>> Attribute::deserialize(
     ConstBuffer* buff, const uint32_t version) {
   // Load attribute name
   uint32_t attribute_name_size;
   RETURN_NOT_OK_TUPLE(
-      buff->read(&attribute_name_size, sizeof(uint32_t)), std::nullopt);
+      buff->read(&attribute_name_size, sizeof(uint32_t)), nullopt);
 
   std::string name;
   name.resize(attribute_name_size);
-  RETURN_NOT_OK_TUPLE(buff->read(&name[0], attribute_name_size), std::nullopt);
+  RETURN_NOT_OK_TUPLE(buff->read(&name[0], attribute_name_size), nullopt);
 
   // Load type
   uint8_t type;
-  RETURN_NOT_OK_TUPLE(buff->read(&type, sizeof(uint8_t)), std::nullopt);
+  RETURN_NOT_OK_TUPLE(buff->read(&type, sizeof(uint8_t)), nullopt);
 
   Datatype datatype = static_cast<Datatype>(type);
 
   // Load cell_val_num
   uint32_t cell_val_num;
-  RETURN_NOT_OK_TUPLE(
-      buff->read(&cell_val_num, sizeof(uint32_t)), std::nullopt);
+  RETURN_NOT_OK_TUPLE(buff->read(&cell_val_num, sizeof(uint32_t)), nullopt);
 
   // Load filter pipeline
   FilterPipeline filter_pipeline;
@@ -140,12 +139,12 @@ std::tuple<Status, std::optional<Attribute>> Attribute::deserialize(
   ByteVecValue fill_value;
   if (version >= 6) {
     RETURN_NOT_OK_TUPLE(
-        buff->read(&fill_value_size, sizeof(uint64_t)), std::nullopt);
+        buff->read(&fill_value_size, sizeof(uint64_t)), nullopt);
     assert(fill_value_size > 0);
     fill_value.resize(fill_value_size);
     fill_value.shrink_to_fit();
     RETURN_NOT_OK_TUPLE(
-        buff->read(fill_value.data(), fill_value_size), std::nullopt);
+        buff->read(fill_value.data(), fill_value_size), nullopt);
   } else {
     fill_value = default_fill_value(datatype, cell_val_num);
   }
@@ -153,18 +152,18 @@ std::tuple<Status, std::optional<Attribute>> Attribute::deserialize(
   // Load nullable flag
   bool nullable = false;
   if (version >= 7) {
-    RETURN_NOT_OK_TUPLE(buff->read(&nullable, sizeof(bool)), std::nullopt);
+    RETURN_NOT_OK_TUPLE(buff->read(&nullable, sizeof(bool)), nullopt);
   }
 
   // Load validity fill value
   uint8_t fill_value_validity = 0;
   if (version >= 7) {
     RETURN_NOT_OK_TUPLE(
-        buff->read(&fill_value_validity, sizeof(uint8_t)), std::nullopt);
+        buff->read(&fill_value_validity, sizeof(uint8_t)), nullopt);
   }
 
   return {Status::Ok(),
-          std::optional<Attribute>(
+          optional<Attribute>(
               std::in_place,
               name,
               datatype,
@@ -215,7 +214,7 @@ const std::string& Attribute::name() const {
 // fill_value (uint8_t[])
 // nullable (bool)
 // fill_value_validity (uint8_t)
-Status Attribute::serialize(Buffer* buff, const uint32_t version) {
+const Status Attribute::serialize(Buffer* buff, const uint32_t version) const {
   // Write attribute name
   auto attribute_name_size = (uint32_t)name_.size();
   RETURN_NOT_OK(buff->write(&attribute_name_size, sizeof(uint32_t)));

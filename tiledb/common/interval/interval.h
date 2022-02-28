@@ -237,8 +237,9 @@
 #include <stdexcept>
 #include <tuple>
 
-using std::tuple, std::optional, std::nullopt, std::isnan, std::isinf,
-    std::isfinite;
+#include "tiledb/common/common-std.h"
+
+using std::isnan, std::isinf, std::isfinite;
 
 namespace tiledb::common {
 namespace detail {
@@ -434,9 +435,9 @@ class WhiteboxInterval;
  * by manipulating its innards in any other way.
  *
  * The implementation uses as direct a representation as is possible, with as
- * few encoding tricks as possible. Lower and upper bounds use std::optional for
- * storage, with no meaning assigned to a null. The value of a bound is absent
- * when logically consistent, as is the case with the empty set and with
+ * few encoding tricks as possible. Lower and upper bounds use `std::optional`
+ * for storage, with no meaning assigned to a null. The value of a bound is
+ * absent when logically consistent, as is the case with the empty set and with
  * infinite bounds. Other aspects of the interval are encoded directly with
  * boolean values. There are eight of them, which fortuitously fit into a single
  * byte as bit fields.

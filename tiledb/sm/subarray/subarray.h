@@ -35,6 +35,7 @@
 
 #include <atomic>
 
+#include "tiledb/common/common.h"
 #include "tiledb/common/logger_public.h"
 #include "tiledb/common/thread_pool.h"
 #include "tiledb/sm/buffer/buffer.h"
@@ -427,10 +428,12 @@ class Subarray {
    * Precomputes the tile overlap with all subarray ranges for all fragments.
    *
    * @param compute_tp The compute thread pool.
+   * @param frag_tile_idx The current tile index, per fragment.
    * @param result_tile_ranges The resulting tile ranges.
    */
   Status precompute_all_ranges_tile_overlap(
       ThreadPool* const compute_tp,
+      std::vector<std::pair<uint64_t, uint64_t>>& frag_tile_idx,
       std::vector<std::vector<std::pair<uint64_t, uint64_t>>>*
           result_tile_ranges);
 
@@ -944,7 +947,7 @@ class Subarray {
   Status sort_ranges(ThreadPool* const compute_tp);
 
   /** Returns if all ranges for this subarray are non overlapping. */
-  std::tuple<Status, std::optional<bool>> non_overlapping_ranges(
+  tuple<Status, optional<bool>> non_overlapping_ranges(
       ThreadPool* const compute_tp);
 
  private:
@@ -1304,7 +1307,7 @@ class Subarray {
    * @return true if the ranges are non overlapping, false otherwise.
    */
   template <typename T>
-  std::tuple<Status, std::optional<bool>> non_overlapping_ranges_for_dim(
+  tuple<Status, optional<bool>> non_overlapping_ranges_for_dim(
       const uint64_t dim_idx);
 
   /**
@@ -1313,7 +1316,7 @@ class Subarray {
    * @param dim_idx dimension index.
    * @return true if the ranges are non overlapping, false otherwise.
    */
-  std::tuple<Status, std::optional<bool>> non_overlapping_ranges_for_dim(
+  tuple<Status, optional<bool>> non_overlapping_ranges_for_dim(
       const uint64_t dim_idx);
 };
 

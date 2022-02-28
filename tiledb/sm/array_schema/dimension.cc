@@ -179,7 +179,7 @@ Status Dimension::set_cell_val_num(unsigned int cell_val_num) {
   return Status::Ok();
 }
 
-std::tuple<Status, optional<std::shared_ptr<Dimension>>> Dimension::deserialize(
+tuple<Status, optional<shared_ptr<Dimension>>> Dimension::deserialize(
     ConstBuffer* buff, uint32_t version, Datatype type) {
   Status st;
   // Load dimension name
@@ -371,7 +371,7 @@ Status Dimension::compute_mbr(const Tile& tile, Range* mbr) {
   auto cell_num = tile.cell_num();
   assert(cell_num > 0);
 
-  void* tile_buffer = tile.buffer()->data();
+  void* tile_buffer = tile.data();
   assert(tile_buffer != nullptr);
 
   // Initialize MBR with the first tile values
@@ -399,10 +399,10 @@ Status Dimension::compute_mbr_var<char>(
   auto cell_num = tile_off.cell_num();
   assert(cell_num > 0);
 
-  void* tile_buffer_off = tile_off.buffer()->data();
+  void* tile_buffer_off = tile_off.data();
   assert(tile_buffer_off != nullptr);
 
-  void* tile_buffer_val = tile_val.buffer()->data();
+  void* tile_buffer_val = tile_val.data();
   assert(tile_buffer_val != nullptr);
 
   uint64_t* const d_off = static_cast<uint64_t*>(tile_buffer_off);
@@ -586,11 +586,7 @@ bool Dimension::covered<char>(const Range& r1, const Range& r2) {
   auto r2_start = r2.start_str();
   auto r2_end = r2.end_str();
 
-  auto r1_after_r2 =
-      !r1_start.empty() && !r2_start.empty() && r1_start >= r2_start;
-  auto r2_after_r1 = !r1_end.empty() && !r2_end.empty() && r1_end <= r2_end;
-
-  return r1_after_r2 && r2_after_r1;
+  return r1_start >= r2_start && r1_end <= r2_end;
 }
 
 template <class T>
@@ -618,8 +614,8 @@ bool Dimension::overlap<char>(const Range& r1, const Range& r2) {
   auto r2_start = r2.start_str();
   auto r2_end = r2.end_str();
 
-  auto r1_after_r2 = !r1_start.empty() && !r2_end.empty() && r1_start > r2_end;
-  auto r2_after_r1 = !r2_start.empty() && !r1_end.empty() && r2_start > r1_end;
+  auto r1_after_r2 = r1_start > r2_end;
+  auto r2_after_r1 = r2_start > r1_end;
 
   return !r1_after_r2 && !r2_after_r1;
 }
@@ -641,10 +637,6 @@ bool Dimension::overlap(const Range& r1, const Range& r2) const {
 
 template <>
 double Dimension::overlap_ratio<char>(const Range& r1, const Range& r2) {
-  // An empty range spans the whole domain
-  if (r1.empty() || r2.empty())
-    return 1.0;
-
   if (!overlap<char>(r1, r2))
     return 0.0;
 
@@ -652,8 +644,6 @@ double Dimension::overlap_ratio<char>(const Range& r1, const Range& r2) {
   auto r1_end = r1.end_str();
   auto r2_start = r2.start_str();
   auto r2_end = r2.end_str();
-  assert(!r2_start.empty());
-  assert(!r2_end.empty());
 
   // Calculate the range of r2
   uint64_t r2_range, pref_size = 0;
@@ -668,9 +658,8 @@ double Dimension::overlap_ratio<char>(const Range& r1, const Range& r2) {
 
   // Calculate the overlap and its range
   uint64_t o_range;
-  auto o_start =
-      (!r1_start.empty() && r1_start > r2_start) ? r1_start : r2_start;
-  auto o_end = (!r1_end.empty() && r1_end < r2_end) ? r1_end : r2_end;
+  auto o_start = (r1_start > r2_start) ? r1_start : r2_start;
+  auto o_end = (r1_end < r2_end) ? r1_end : r2_end;
   if (o_start == o_end) {
     o_range = 1;
   } else {
@@ -842,12 +831,7 @@ void Dimension::relevant_ranges<char>(
     const auto& r1_start = ranges[r].start_str();
     const auto& r1_end = ranges[r].end_str();
 
-    const auto r1_after_r2 =
-        !r1_start.empty() && !mbr_end.empty() && r1_start > mbr_end;
-    const auto mbr_after_r1 =
-        !mbr_start.empty() && !r1_end.empty() && mbr_start > r1_end;
-
-    if (!r1_after_r2 && !mbr_after_r1)
+    if (r1_start <= mbr_end && mbr_start <= r1_end)
       relevant_ranges.emplace_back(r);
   }
 }
@@ -920,12 +904,7 @@ std::vector<bool> Dimension::covered_vec<char>(
     auto r2_start = ranges[r].start_str();
     auto r2_end = ranges[r].end_str();
 
-    auto range_after_r2 =
-        !range_start.empty() && !r2_start.empty() && range_start >= r2_start;
-    auto mbr_after_range_start =
-        !range_end.empty() && !r2_end.empty() && range_end <= r2_end;
-
-    covered[i] = range_after_r2 && mbr_after_range_start;
+    covered[i] = range_start >= r2_start && range_end <= r2_end;
   }
 
   return covered;

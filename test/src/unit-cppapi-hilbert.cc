@@ -35,6 +35,7 @@
 #include "tiledb/sm/cpp_api/tiledb"
 
 using namespace tiledb;
+using namespace tiledb::test;
 
 void create_int32_array(const std::string& array_name) {
   Context ctx;
@@ -758,8 +759,8 @@ TEST_CASE(
   config["sm.vacuum.mode"] = "fragments";
   CHECK_NOTHROW(Array::consolidate(ctx, array_name, &config));
   CHECK_NOTHROW(Array::vacuum(ctx, array_name, &config));
-  auto contents = vfs.ls(array_name);
-  CHECK(contents.size() == 4);
+  auto contents = vfs.ls(get_fragment_dir(array_name));
+  CHECK(contents.size() == 1);
 
   Array array_r(ctx, array_name, TILEDB_READ);
   Query query_r(ctx, array_r, TILEDB_READ);
@@ -1137,8 +1138,8 @@ TEST_CASE(
   config["sm.vacuum.mode"] = "fragments";
   CHECK_NOTHROW(Array::consolidate(ctx, array_name, &config));
   CHECK_NOTHROW(Array::vacuum(ctx, array_name, &config));
-  auto contents = vfs.ls(array_name);
-  CHECK(contents.size() == 4);
+  auto contents = vfs.ls(get_fragment_dir(array_name));
+  CHECK(contents.size() == 1);
 
   Array array_r(ctx, array_name, TILEDB_READ);
   Query query_r(ctx, array_r, TILEDB_READ);
@@ -1578,8 +1579,8 @@ TEST_CASE(
   config["sm.vacuum.mode"] = "fragments";
   CHECK_NOTHROW(Array::consolidate(ctx, array_name, &config));
   CHECK_NOTHROW(Array::vacuum(ctx, array_name, &config));
-  auto contents = vfs.ls(array_name);
-  CHECK(contents.size() == 4);
+  auto contents = vfs.ls(get_fragment_dir(array_name));
+  CHECK(contents.size() == 1);
 
   Array array_r(ctx, array_name, TILEDB_READ);
   Query query_r(ctx, array_r, TILEDB_READ);
@@ -1863,8 +1864,8 @@ TEST_CASE(
   config["sm.vacuum.mode"] = "fragments";
   CHECK_NOTHROW(Array::consolidate(ctx, array_name, &config));
   CHECK_NOTHROW(Array::vacuum(ctx, array_name, &config));
-  auto contents = vfs.ls(array_name);
-  CHECK(contents.size() == 4);
+  auto contents = vfs.ls(get_fragment_dir(array_name));
+  CHECK(contents.size() == 1);
 
   // Read
   Array array_r(ctx, array_name, TILEDB_READ);

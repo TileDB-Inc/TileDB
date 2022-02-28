@@ -12,11 +12,16 @@ steps:
     mkdir $env:AGENT_BUILDDIRECTORY\build
     cd $env:AGENT_BUILDDIRECTORY\build
 
-    if ($env:imageName -eq "vs2017-win2016") {
-      $env:Path += ";C:\Program Files (x86)\Microsoft Visual Studio\2017\Community\Common7\IDE\CommonExtensions\Microsoft\CMake\CMake\bin"
+    if ($env:imageName -eq "windows-2019") {
+      $VSCategory = "Enterprise" # alternate 'Community'
+      if (!(Test-Path "C:\Program Files (x86)\Microsoft Visual Studio\2019\${VSCategory}\Common7\IDE\CommonExtensions\Microsoft\CMake\CMake\bin")) {
+        Write-Host "ERROR***: Missing C:\Program Files (x86)\Microsoft Visual Studio\2019\${VSCategory}\Common7\IDE\CommonExtensions\Microsoft\CMake\CMake\bin"
+        $host.SetShouldExit(2)
+      }
+      $env:Path += ";C:\Program Files (x86)\Microsoft Visual Studio\2019\${VSCategory}\Common7\IDE\CommonExtensions\Microsoft\CMake\CMake\bin"
     } else {
       Write-Host "Unknown image name: '$($env:imageName)'"
-      $host.SetShouldExit(1)
+      $host.SetShouldExit(3)
     }
 
     $bootstrapOptions = "-EnableVerbose -EnableStaticTileDB -EnableBuildDeps"

@@ -136,7 +136,8 @@ unsigned RTree::fanout() const {
   return fanout_;
 }
 
-TileOverlap RTree::get_tile_overlap(const NDRange& range) const {
+TileOverlap RTree::get_tile_overlap(
+    const NDRange& range, std::vector<bool>& is_default) const {
   TileOverlap overlap;
 
   // Empty tree
@@ -156,7 +157,7 @@ TileOverlap RTree::get_tile_overlap(const NDRange& range) const {
     const auto& mbr = levels_[entry.level_][entry.mbr_idx_];
 
     // Get overlap ratio
-    auto ratio = domain_->overlap_ratio(range, mbr);
+    auto ratio = domain_->overlap_ratio(range, is_default, mbr);
 
     // If there is overlap
     if (ratio != 0.0) {
@@ -288,6 +289,11 @@ Status RTree::serialize(Buffer* buff) const {
     }
   }
 
+  return Status::Ok();
+}
+
+Status RTree::set_domain(const Domain* domain) {
+  domain_ = domain;
   return Status::Ok();
 }
 

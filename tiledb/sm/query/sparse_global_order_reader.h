@@ -171,7 +171,7 @@ class SparseGlobalOrderReader : public SparseIndexReaderBase,
    *
    * @return buffers_full, new_var_buffer_size, new_result_tiles_size.
    */
-  std::tuple<Status, std::optional<bool>> add_result_tile(
+  tuple<Status, optional<bool>> add_result_tile(
       const unsigned dim_num,
       const uint64_t memory_budget_coords_tiles,
       const uint64_t memory_budget_qc_tiles,
@@ -184,14 +184,14 @@ class SparseGlobalOrderReader : public SparseIndexReaderBase,
    *
    * @return Status, tiles_found.
    */
-  std::tuple<Status, std::optional<bool>> create_result_tiles();
+  tuple<Status, optional<bool>> create_result_tiles();
 
   /**
    * Populate a result cell slab to process.
    *
    * @return Status, result_cell_slab.
    */
-  std::tuple<Status, std::optional<std::vector<ResultCellSlab>>>
+  tuple<Status, optional<std::vector<ResultCellSlab>>>
   compute_result_cell_slab();
 
   /**
@@ -208,7 +208,7 @@ class SparseGlobalOrderReader : public SparseIndexReaderBase,
    * @return Status, more_tiles.
    */
   template <class T>
-  std::tuple<Status, std::optional<bool>> add_next_tile_to_queue(
+  tuple<Status, optional<bool>> add_next_tile_to_queue(
       unsigned int frag_idx,
       uint64_t cell_idx,
       std::vector<std::list<ResultTileWithBitmap<uint8_t>>::iterator>&
@@ -236,8 +236,8 @@ class SparseGlobalOrderReader : public SparseIndexReaderBase,
    * @return Status, result_cell_slabs.
    */
   template <class T>
-  std::tuple<Status, std::optional<std::vector<ResultCellSlab>>>
-  merge_result_cell_slabs(uint64_t num_cells, T cmp);
+  tuple<Status, optional<std::vector<ResultCellSlab>>> merge_result_cell_slabs(
+      uint64_t num_cells, T cmp);
 
   /**
    * Compute parallelization parameters for a tile copy operation.
@@ -250,8 +250,7 @@ class SparseGlobalOrderReader : public SparseIndexReaderBase,
    *
    * @return min_pos, max_pos, dest_cell_offset, skip_copy.
    */
-  std::tuple<uint64_t, uint64_t, uint64_t, bool>
-  compute_parallelization_parameters(
+  tuple<uint64_t, uint64_t, uint64_t, bool> compute_parallelization_parameters(
       const uint64_t range_thread_idx,
       const uint64_t num_range_threads,
       const uint64_t start,
@@ -343,8 +342,7 @@ class SparseGlobalOrderReader : public SparseIndexReaderBase,
    *
    * @return Status, total_mem_usage_per_attr.
    */
-  std::tuple<Status, std::optional<std::vector<uint64_t>>>
-  respect_copy_memory_budget(
+  tuple<Status, optional<std::vector<uint64_t>>> respect_copy_memory_budget(
       const std::vector<std::string>& names,
       const uint64_t memory_budget,
       std::vector<ResultCellSlab>& result_cell_slabs);

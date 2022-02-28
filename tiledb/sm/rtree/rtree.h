@@ -105,7 +105,8 @@ class RTree {
    * Returns the tile overlap of the input range with the MBRs stored
    * in the RTree.
    */
-  TileOverlap get_tile_overlap(const NDRange& range) const;
+  TileOverlap get_tile_overlap(
+      const NDRange& range, std::vector<bool>& is_default) const;
 
   /**
    * Compute tile bitmap for the curent range.
@@ -133,6 +134,11 @@ class RTree {
    * Note that `domain_` is not serialized in the buffer.
    */
   Status serialize(Buffer* buff) const;
+
+  /**
+   * Sets the RTree domain.
+   */
+  Status set_domain(const Domain* domain);
 
   /**
    * Sets an MBR as a leaf in the tree. The function will error out

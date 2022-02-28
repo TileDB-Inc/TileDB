@@ -282,6 +282,15 @@ class ArraySchema : public Schema {
     return *this;
   }
 
+  /** Returns the version of the array schema object. */
+  uint32_t version() const {
+    auto& ctx = ctx_.get();
+    uint32_t version;
+    ctx.handle_error(tiledb_array_schema_get_version(
+        ctx.ptr().get(), schema_.get(), &version));
+    return version;
+  }
+
   /** Returns the tile order. */
   tiledb_layout_t tile_order() const {
     auto& ctx = ctx_.get();

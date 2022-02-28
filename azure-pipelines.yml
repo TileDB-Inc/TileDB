@@ -116,8 +116,8 @@ stages:
      - job: Windows
        strategy:
          matrix:
-           VS2017:
-             imageName: 'vs2017-win2016'
+           VS2019:
+             imageName: 'windows-2019'
              # Only S3 variable is currently supported in boostrap powershell
              TILEDB_GCS: OFF
              TILEDB_HDFS: OFF

@@ -33,6 +33,7 @@
 #ifndef TILEDB_FRAGMENT_INFO_H
 #define TILEDB_FRAGMENT_INFO_H
 
+#include "tiledb/common/common.h"
 #include "tiledb/common/status.h"
 #include "tiledb/sm/array_schema/domain.h"
 #include "tiledb/sm/crypto/encryption_key.h"
@@ -382,7 +383,7 @@ class FragmentInfo {
    *     will be loaded into the returned `SingleFragmentInfo` object.
    * @return Status, a `SingleFragmentInfo` object
    */
-  std::tuple<Status, std::optional<SingleFragmentInfo>> load(
+  tuple<Status, optional<SingleFragmentInfo>> load(
       const URI& fragment_uri) const;
 
   /**

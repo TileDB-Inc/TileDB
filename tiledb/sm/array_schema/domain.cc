@@ -692,12 +692,18 @@ bool Domain::overlap(const NDRange& r1, const NDRange& r2) const {
   return true;
 }
 
-double Domain::overlap_ratio(const NDRange& r1, const NDRange& r2) const {
+double Domain::overlap_ratio(
+    const NDRange& r1,
+    const std::vector<bool>& r1_default,
+    const NDRange& r2) const {
   double ratio = 1.0;
   assert(dim_num_ == r1.size());
   assert(dim_num_ == r2.size());
 
   for (unsigned d = 0; d < dim_num_; ++d) {
+    if (r1_default[d])
+      continue;
+
     if (!dimensions_[d]->overlap(r1[d], r2[d]))
       return 0.0;
 

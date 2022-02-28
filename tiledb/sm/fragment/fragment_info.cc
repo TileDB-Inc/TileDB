@@ -33,6 +33,7 @@
 #include "tiledb/sm/fragment/fragment_info.h"
 #include "tiledb/common/logger.h"
 #include "tiledb/sm/array/array.h"
+#include "tiledb/sm/array/array_directory.h"
 #include "tiledb/sm/enums/encryption_type.h"
 #include "tiledb/sm/filesystem/vfs.h"
 #include "tiledb/sm/misc/parallel_functions.h"
@@ -714,7 +715,7 @@ Status FragmentInfo::get_array_schema(
   uint32_t version = single_fragment_info_vec_[fid].format_version();
   if (version >= 10) {
     schema_uri =
-        array_uri_.join_path(constants::array_schema_folder_name)
+        array_uri_.join_path(constants::array_schema_dir_name)
             .join_path(single_fragment_info_vec_[fid].array_schema_name());
   } else {
     schema_uri = array_uri_.join_path(constants::array_schema_filename);
@@ -804,6 +805,14 @@ Status FragmentInfo::load(
     return LOG_STATUS(Status_FragmentInfoError(msg));
   }
 
+  if (array_uri_.is_tiledb()) {
+    auto msg = std::string(
+                   "FragmentInfo not supported in TileDB Cloud arrays; "
+                   "FragmentInfo for array '") +
+               array_uri_.to_string() + "' cannot be loaded";
+    return LOG_STATUS(Status_FragmentInfoError(msg));
+  }
+
   // Set the timestamp range
   if (set_timestamp_range_from_config) {
     RETURN_NOT_OK(this->set_timestamp_range_from_config());
@@ -814,11 +823,24 @@ Status FragmentInfo::load(
     RETURN_NOT_OK(this->set_enc_key_from_config());
   }
 
-  // Get the array schemas and fragment metadata.
+  // Create an ArrayDirectory object and load
   auto timestamp_start = compute_anterior ? 0 : timestamp_start_;
+  ArrayDirectory array_dir;
+  try {
+    array_dir = ArrayDirectory(
+        storage_manager_->vfs(),
+        storage_manager_->compute_tp(),
+        array_uri_,
+        timestamp_start,
+        timestamp_end_);
+  } catch (const std::logic_error& le) {
+    return LOG_STATUS(Status_ArrayDirectoryError(le.what()));
+  }
+
+  // Get the array schemas and fragment metadata.
   auto&& [st_schemas, array_schema_latest, array_schemas_all, fragment_metadata] =
       storage_manager_->load_array_schemas_and_fragment_metadata(
-          array_uri_, nullptr, enc_key_, timestamp_start, timestamp_end_);
+          array_dir, nullptr, enc_key_);
   RETURN_NOT_OK(st_schemas);
   (void)array_schema_latest;  // Not needed here
   array_schemas_all_ = std::move(array_schemas_all.value());
@@ -877,19 +899,8 @@ Status FragmentInfo::load(
     }
   }
 
-  // TODO: don't get the fragment URIs twice, get them from
-  // get_array_schemas_and_fragment_metadata
-
-  // Clear to vacuum
-  to_vacuum_.clear();
-
   // Get the URIs to vacuum
-  std::vector<URI> vac_uris, fragment_uris;
-  URI meta_uri;
-  RETURN_NOT_OK(storage_manager_->get_fragment_uris(
-      array_uri_, &fragment_uris, &meta_uri));
-  RETURN_NOT_OK(storage_manager_->get_uris_to_vacuum(
-      fragment_uris, timestamp_start_, timestamp_end_, &to_vacuum_, &vac_uris));
+  to_vacuum_ = array_dir.fragment_uris_to_vacuum();
 
   // Get number of unconsolidated fragment metadata
   unconsolidated_metadata_num_ = 0;
@@ -955,7 +966,7 @@ Status FragmentInfo::set_timestamp_range_from_config() {
   return Status::Ok();
 }
 
-std::tuple<Status, std::optional<SingleFragmentInfo>> FragmentInfo::load(
+tuple<Status, optional<SingleFragmentInfo>> FragmentInfo::load(
     const URI& new_fragment_uri) const {
   SingleFragmentInfo ret;
   auto vfs = storage_manager_->vfs();
@@ -966,18 +977,18 @@ std::tuple<Status, std::optional<SingleFragmentInfo>> FragmentInfo::load(
   std::pair<uint64_t, uint64_t> timestamp_range;
   RETURN_NOT_OK_TUPLE(
       utils::parse::get_timestamp_range(new_fragment_uri, &timestamp_range),
-      std::nullopt);
+      nullopt);
   uint32_t version;
   auto name = new_fragment_uri.remove_trailing_slash().last_path_part();
   RETURN_NOT_OK_TUPLE(
-      utils::parse::get_fragment_name_version(name, &version), std::nullopt);
+      utils::parse::get_fragment_name_version(name, &version), nullopt);
 
   // Check if fragment is sparse
   bool sparse = false;
   if (version == 1) {  // This corresponds to format version <=2
     URI coords_uri =
         new_fragment_uri.join_path(constants::coords + constants::file_suffix);
-    RETURN_NOT_OK_TUPLE(vfs->is_file(coords_uri, &sparse), std::nullopt);
+    RETURN_NOT_OK_TUPLE(vfs->is_file(coords_uri, &sparse), nullopt);
   } else {
     // Do nothing. It does not matter what the `sparse` value
     // is, since the FragmentMetadata object will load the correct
@@ -996,14 +1007,14 @@ std::tuple<Status, std::optional<SingleFragmentInfo>> FragmentInfo::load(
       timestamp_range,
       !sparse);
   RETURN_NOT_OK_TUPLE(
-      meta->load(enc_key_, nullptr, 0, array_schemas_all_), std::nullopt);
+      meta->load(enc_key_, nullptr, 0, array_schemas_all_), nullopt);
 
   // This is important for format version > 2
   sparse = !meta->dense();
 
   // Get fragment size
   uint64_t size;
-  RETURN_NOT_OK_TUPLE(meta->fragment_size(&size), std::nullopt);
+  RETURN_NOT_OK_TUPLE(meta->fragment_size(&size), nullopt);
 
   // Compute expanded non-empty domain only for dense fragments
   // Get non-empty domain, and compute expanded non-empty domain

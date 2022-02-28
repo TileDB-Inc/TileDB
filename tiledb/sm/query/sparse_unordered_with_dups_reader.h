@@ -99,7 +99,7 @@ class SparseUnorderedWithDupsReader : public SparseIndexReaderBase,
    * @return buffers_full, new_var_buffer_size, new_result_tiles_size.
    */
   template <class OffType>
-  static std::tuple<bool, uint64_t, uint64_t> compute_var_size_offsets(
+  static tuple<bool, uint64_t, uint64_t> compute_var_size_offsets(
       stats::Stats* stats,
       const std::vector<ResultTile*>& result_tiles,
       const uint64_t first_tile_min_pos,
@@ -185,7 +185,7 @@ class SparseUnorderedWithDupsReader : public SparseIndexReaderBase,
    *
    * @return buffers_full, new_var_buffer_size, new_result_tiles_size.
    */
-  std::tuple<Status, std::optional<bool>> add_result_tile(
+  tuple<Status, optional<bool>> add_result_tile(
       const unsigned dim_num,
       const uint64_t memory_budget_qc_tiles,
       const uint64_t memory_budget_coords_tiles,
@@ -213,8 +213,7 @@ class SparseUnorderedWithDupsReader : public SparseIndexReaderBase,
    *
    * @return min_pos, max_pos, dest_cell_offset, skip_copy.
    */
-  std::tuple<bool, uint64_t, uint64_t, uint64_t>
-  compute_parallelization_parameters(
+  tuple<bool, uint64_t, uint64_t, uint64_t> compute_parallelization_parameters(
       const uint64_t range_thread_idx,
       const uint64_t num_range_threads,
       const uint64_t min_pos_tile,
@@ -404,8 +403,7 @@ class SparseUnorderedWithDupsReader : public SparseIndexReaderBase,
    *
    * @return Status, total_mem_usage_per_attr.
    */
-  std::tuple<Status, std::optional<std::vector<uint64_t>>>
-  respect_copy_memory_budget(
+  tuple<Status, optional<std::vector<uint64_t>>> respect_copy_memory_budget(
       const std::vector<std::string>& names,
       const uint64_t memory_budget,
       std::vector<ResultTile*>& result_tiles);

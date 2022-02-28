@@ -67,6 +67,7 @@ namespace sm {
 Array::Array(const URI& array_uri, StorageManager* storage_manager)
     : array_schema_latest_(nullptr)
     , array_uri_(array_uri)
+    , array_dir_()
     , array_uri_serialized_(array_uri)
     , encryption_key_(tdb::make_shared<EncryptionKey>(HERE()))
     , is_open_(false)
@@ -77,11 +78,13 @@ Array::Array(const URI& array_uri, StorageManager* storage_manager)
     , config_(storage_manager_->config())
     , remote_(array_uri.is_tiledb())
     , metadata_loaded_(false)
-    , non_empty_domain_computed_(false){};
+    , non_empty_domain_computed_(false) {
+}
 
 Array::Array(const Array& rhs)
     : array_schema_latest_(rhs.array_schema_latest_)
     , array_uri_(rhs.array_uri_)
+    , array_dir_(rhs.array_dir_)
     , array_uri_serialized_(rhs.array_uri_serialized_)
     , encryption_key_(rhs.encryption_key_)
     , fragment_metadata_(rhs.fragment_metadata_)
@@ -104,12 +107,30 @@ Array::Array(const Array& rhs)
 /*                API                */
 /* ********************************* */
 
+void Array::set_array_schema_latest(ArraySchema* array_schema) {
+  array_schema_latest_ = array_schema;
+}
+
+void Array::set_array_schemas_all(
+    std::unordered_map<std::string, tdb_shared_ptr<ArraySchema>>& all_schemas) {
+  array_schemas_all_ = all_schemas;
+
+  for (auto& md : fragment_metadata_) {
+    md->set_array_schema(array_schemas_all_[md->array_schema_name()].get());
+    md->set_rtree_domain(array_schemas_all_[md->array_schema_name()]->domain());
+  }
+}
+
 ArraySchema* Array::array_schema_latest() const {
   return array_schema_latest_;
 }
 
 const URI& Array::array_uri() const {
   return array_uri_;
+}
+
+const ArrayDirectory& Array::array_directory() const {
+  return array_dir_;
 }
 
 const URI& Array::array_uri_serialized() const {
@@ -157,6 +178,18 @@ Status Array::open_without_fragments(
     RETURN_NOT_OK(rest_client->get_array_schema_from_rest(
         array_uri_, &array_schema_latest_));
   } else {
+    try {
+      array_dir_ = ArrayDirectory(
+          storage_manager_->vfs(),
+          storage_manager_->compute_tp(),
+          array_uri_,
+          0,
+          UINT64_MAX,
+          true);
+    } catch (const std::logic_error& le) {
+      return LOG_STATUS(Status_ArrayDirectoryError(le.what()));
+    }
+
     auto&& [st, array_schema, array_schemas] =
         storage_manager_->array_open_for_reads_without_fragments(this);
     RETURN_NOT_OK(st);
@@ -280,6 +313,17 @@ Status Array::open(
     RETURN_NOT_OK(rest_client->get_array_schema_from_rest(
         array_uri_, &array_schema_latest_));
   } else if (query_type == QueryType::READ) {
+    try {
+      array_dir_ = ArrayDirectory(
+          storage_manager_->vfs(),
+          storage_manager_->compute_tp(),
+          array_uri_,
+          timestamp_start_,
+          timestamp_end_opened_at_);
+    } catch (const std::logic_error& le) {
+      return LOG_STATUS(Status_ArrayDirectoryError(le.what()));
+    }
+
     auto&& [st, array_schema, array_schemas, fragment_metadata] =
         storage_manager_->array_open_for_reads(this);
     RETURN_NOT_OK(st);
@@ -288,6 +332,17 @@ Status Array::open(
     array_schemas_all_ = array_schemas.value();
     fragment_metadata_ = fragment_metadata.value();
   } else {
+    try {
+      array_dir_ = ArrayDirectory(
+          storage_manager_->vfs(),
+          storage_manager_->compute_tp(),
+          array_uri_,
+          timestamp_start_,
+          timestamp_end_opened_at_);
+    } catch (const std::logic_error& le) {
+      return LOG_STATUS(Status_ArrayDirectoryError(le.what()));
+    }
+
     auto&& [st, array_schema, array_schemas] =
         storage_manager_->array_open_for_writes(this);
     RETURN_NOT_OK(st);
@@ -305,14 +360,18 @@ Status Array::open(
 }
 
 Status Array::close() {
-  // Check if arrray is open
-  if (!is_open_)
-    return LOG_STATUS(Status_ArrayError("Cannot close array; Array not open."));
+  // Check if array is open
+  if (!is_open_) {
+    // If array is not open treat this as a no-op
+    // This keeps existing behavior from TileDB 2.6 and older
+    return Status::Ok();
+  }
 
   non_empty_domain_.clear();
   non_empty_domain_computed_ = false;
   clear_last_max_buffer_sizes();
   fragment_metadata_.clear();
+  array_schemas_all_.clear();
 
   if (remote_) {
     // Update array metadata for write queries if metadata was written by the
@@ -544,6 +603,17 @@ Status Array::reopen(uint64_t timestamp_start, uint64_t timestamp_end) {
         encryption_key_->key().size());
   }
 
+  try {
+    array_dir_ = ArrayDirectory(
+        storage_manager_->vfs(),
+        storage_manager_->compute_tp(),
+        array_uri_,
+        timestamp_start_,
+        timestamp_end_opened_at_);
+  } catch (const std::logic_error& le) {
+    return LOG_STATUS(Status_ArrayDirectoryError(le.what()));
+  }
+
   auto&& [st, array_schema, array_schemas, fragment_metadata] =
       storage_manager_->array_reopen(this);
   RETURN_NOT_OK(st);
@@ -755,8 +825,8 @@ Metadata* Array::metadata() {
 }
 
 Status Array::metadata(Metadata** metadata) {
-  // Load array metadata, if not loaded yet
-  if (!metadata_loaded_)
+  // Load array metadata for array opened for reads, if not loaded yet
+  if (query_type_ == QueryType::READ && !metadata_loaded_)
     RETURN_NOT_OK(load_metadata());
 
   *metadata = &metadata_;
@@ -764,10 +834,10 @@ Status Array::metadata(Metadata** metadata) {
   return Status::Ok();
 }
 
-std::tuple<Status, std::optional<const NDRange>> Array::non_empty_domain() {
+tuple<Status, optional<const NDRange>> Array::non_empty_domain() {
   if (!non_empty_domain_computed_) {
     // Compute non-empty domain
-    RETURN_NOT_OK_TUPLE(compute_non_empty_domain(), std::nullopt);
+    RETURN_NOT_OK_TUPLE(compute_non_empty_domain(), nullopt);
   }
   return {Status::Ok(), non_empty_domain_};
 }
@@ -920,12 +990,9 @@ Status Array::load_metadata() {
     RETURN_NOT_OK(rest_client->get_array_metadata_from_rest(
         array_uri_, timestamp_start_, timestamp_end_opened_at_, this));
   } else {
+    assert(array_dir_.loaded());
     RETURN_NOT_OK(storage_manager_->load_array_metadata(
-        array_uri_,
-        *encryption_key_,
-        timestamp_start_,
-        timestamp_end_opened_at_,
-        &metadata_));
+        array_dir_, *encryption_key_, &metadata_));
   }
   metadata_loaded_ = true;
   return Status::Ok();

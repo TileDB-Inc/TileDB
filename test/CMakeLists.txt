@@ -111,6 +111,7 @@ set(TILEDB_TEST_SOURCES
   src/unit-capi-attributes.cc
   src/unit-capi-buffer.cc
   src/unit-capi-config.cc
+  src/unit-capi-context.cc
   src/unit-capi-consolidation.cc
   src/unit-capi-dense_array.cc
   src/unit-capi-dense_array_2.cc
@@ -153,6 +154,7 @@ set(TILEDB_TEST_SOURCES
   src/unit-filter-buffer.cc 
   src/unit-filter-pipeline.cc
   src/unit-gcs.cc
+  src/unit-gs.cc
   src/unit-hdfs-filesystem.cc
   src/unit-hilbert.cc
   src/unit-lru_cache.cc
@@ -177,6 +179,7 @@ set(TILEDB_TEST_SOURCES
   src/unit-Tile.cc
   src/unit-TileDomain.cc
   src/unit-uri.cc
+  src/unit-ArrayDirectory.cc
   src/unit-utils.cc
   src/unit-uuid.cc
   src/unit-ValidityVector.cc

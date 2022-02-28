@@ -603,7 +603,7 @@ void test_apply_tile<char*>(
     values[i * 2] = 'a';
     values[(i * 2) + 1] = 'a' + static_cast<char>(i);
   }
-  REQUIRE(tile->write(values, 2 * cells * sizeof(char)).ok());
+  REQUIRE(tile->write(values, 0, 2 * cells * sizeof(char)).ok());
 
   if (var_size) {
     Tile* const tile_offsets = &std::get<0>(*tile_tuple);
@@ -623,7 +623,7 @@ void test_apply_tile<char*>(
       offsets[i] = offset;
       offset += 2;
     }
-    REQUIRE(tile_offsets->write(offsets, cells * sizeof(uint64_t)).ok());
+    REQUIRE(tile_offsets->write(offsets, 0, cells * sizeof(uint64_t)).ok());
   }
 
   if (nullable) {
@@ -641,7 +641,7 @@ void test_apply_tile<char*>(
     for (uint64_t i = 0; i < cells; ++i) {
       validity[i] = i % 2;
     }
-    REQUIRE(tile_validity->write(validity, cells * sizeof(uint8_t)).ok());
+    REQUIRE(tile_validity->write(validity, 0, cells * sizeof(uint8_t)).ok());
   }
 
   test_apply_operators<char*>(
@@ -671,7 +671,7 @@ void test_apply_tile(
   for (uint64_t i = 0; i < cells; ++i) {
     values[i] = static_cast<T>(i);
   }
-  REQUIRE(tile->write(values, cells * sizeof(T)).ok());
+  REQUIRE(tile->write(values, 0, cells * sizeof(T)).ok());
 
   test_apply_operators<T>(field_name, cells, array_schema, result_tile, values);
 
@@ -711,7 +711,8 @@ void test_apply<char*>(const Datatype type, bool var_size, bool nullable) {
     REQUIRE(attr.set_fill_value(fill_value, 2 * sizeof(char)).ok());
   }
 
-  REQUIRE(array_schema.add_attribute(&attr).ok());
+  REQUIRE(array_schema.add_attribute(tdb::make_shared<Attribute>(HERE(), &attr))
+              .ok());
   Domain domain;
   Dimension dim("dim1", Datatype::UINT32);
   uint32_t bounds[2] = {1, cells};
@@ -743,7 +744,8 @@ void test_apply(const Datatype type, bool var_size, bool nullable) {
   Attribute attr(field_name, type);
   REQUIRE(attr.set_cell_val_num(1).ok());
   REQUIRE(attr.set_fill_value(&fill_value, sizeof(T)).ok());
-  REQUIRE(array_schema.add_attribute(&attr).ok());
+  REQUIRE(array_schema.add_attribute(tdb::make_shared<Attribute>(HERE(), &attr))
+              .ok());
   Domain domain;
   Dimension dim("dim1", Datatype::UINT32);
   uint32_t bounds[2] = {1, cells};
@@ -798,7 +800,8 @@ TEST_CASE(
   // Initialize the array schema.
   ArraySchema array_schema;
   Attribute attr(field_name, type);
-  REQUIRE(array_schema.add_attribute(&attr).ok());
+  REQUIRE(array_schema.add_attribute(tdb::make_shared<Attribute>(HERE(), &attr))
+              .ok());
   Domain domain;
   Dimension dim("dim1", Datatype::UINT32);
   uint32_t bounds[2] = {1, cells};
@@ -825,7 +828,7 @@ TEST_CASE(
   for (uint64_t i = 0; i < cells; ++i) {
     values[i] = i;
   }
-  REQUIRE(tile->write(values, cells * sizeof(uint64_t)).ok());
+  REQUIRE(tile->write(values, 0, cells * sizeof(uint64_t)).ok());
 
   // Build a combined query for `> 3 AND <= 6`.
   uint64_t cmp_value_1 = 3;
@@ -897,7 +900,8 @@ TEST_CASE(
     REQUIRE(attr.set_fill_value(fill_value, 2 * sizeof(char)).ok());
   }
 
-  REQUIRE(array_schema.add_attribute(&attr).ok());
+  REQUIRE(array_schema.add_attribute(tdb::make_shared<Attribute>(HERE(), &attr))
+              .ok());
   Domain domain;
   Dimension dim("dim1", Datatype::UINT32);
   uint32_t bounds[2] = {1, cells};
@@ -935,7 +939,7 @@ TEST_CASE(
     values[(i * 2) + 1] = 'a' + static_cast<char>(i);
   }
 
-  REQUIRE(tile->write(values, 2 * (cells - 2) * sizeof(char)).ok());
+  REQUIRE(tile->write(values, 0, 2 * (cells - 2) * sizeof(char)).ok());
 
   if (var_size) {
     Tile* const tile_offsets = &std::get<0>(*tile_tuple);
@@ -957,7 +961,7 @@ TEST_CASE(
     }
     offsets[cells - 2] = offset;
     offsets[cells - 1] = offset;
-    REQUIRE(tile_offsets->write(offsets, cells * sizeof(uint64_t)).ok());
+    REQUIRE(tile_offsets->write(offsets, 0, cells * sizeof(uint64_t)).ok());
 
     free(offsets);
   }
@@ -977,7 +981,7 @@ TEST_CASE(
     for (uint64_t i = 0; i < cells; ++i) {
       validity[i] = i % 2;
     }
-    REQUIRE(tile_validity->write(validity, cells * sizeof(uint8_t)).ok());
+    REQUIRE(tile_validity->write(validity, 0, cells * sizeof(uint8_t)).ok());
 
     free(validity);
   }
@@ -1351,7 +1355,7 @@ void test_apply_tile_dense<char*>(
     values[i * 2] = 'a';
     values[(i * 2) + 1] = 'a' + static_cast<char>(i);
   }
-  REQUIRE(tile->write(values, 2 * cells * sizeof(char)).ok());
+  REQUIRE(tile->write(values, 0, 2 * cells * sizeof(char)).ok());
 
   if (var_size) {
     Tile* const tile_offsets = &std::get<0>(*tile_tuple);
@@ -1371,7 +1375,7 @@ void test_apply_tile_dense<char*>(
       offsets[i] = offset;
       offset += 2;
     }
-    REQUIRE(tile_offsets->write(offsets, cells * sizeof(uint64_t)).ok());
+    REQUIRE(tile_offsets->write(offsets, 0, cells * sizeof(uint64_t)).ok());
   }
 
   if (nullable) {
@@ -1389,7 +1393,7 @@ void test_apply_tile_dense<char*>(
     for (uint64_t i = 0; i < cells; ++i) {
       validity[i] = i % 2;
     }
-    REQUIRE(tile_validity->write(validity, cells * sizeof(uint8_t)).ok());
+    REQUIRE(tile_validity->write(validity, 0, cells * sizeof(uint8_t)).ok());
   }
 
   test_apply_operators_dense<char*>(
@@ -1419,7 +1423,7 @@ void test_apply_tile_dense(
   for (uint64_t i = 0; i < cells; ++i) {
     values[i] = static_cast<T>(i);
   }
-  REQUIRE(tile->write(values, cells * sizeof(T)).ok());
+  REQUIRE(tile->write(values, 0, cells * sizeof(T)).ok());
 
   test_apply_operators_dense<T>(
       field_name, cells, array_schema, result_tile, values);
@@ -1461,7 +1465,8 @@ void test_apply_dense<char*>(
     REQUIRE(attr.set_fill_value(fill_value, 2 * sizeof(char)).ok());
   }
 
-  REQUIRE(array_schema.add_attribute(&attr).ok());
+  REQUIRE(array_schema.add_attribute(tdb::make_shared<Attribute>(HERE(), &attr))
+              .ok());
   Domain domain;
   Dimension dim("dim1", Datatype::UINT32);
   uint32_t bounds[2] = {1, cells};
@@ -1494,7 +1499,8 @@ void test_apply_dense(const Datatype type, bool var_size, bool nullable) {
   Attribute attr(field_name, type);
   REQUIRE(attr.set_cell_val_num(1).ok());
   REQUIRE(attr.set_fill_value(&fill_value, sizeof(T)).ok());
-  REQUIRE(array_schema.add_attribute(&attr).ok());
+  REQUIRE(array_schema.add_attribute(tdb::make_shared<Attribute>(HERE(), &attr))
+              .ok());
   Domain domain;
   Dimension dim("dim1", Datatype::UINT32);
   uint32_t bounds[2] = {1, cells};
@@ -1552,7 +1558,8 @@ TEST_CASE(
   // Initialize the array schema.
   ArraySchema array_schema;
   Attribute attr(field_name, type);
-  REQUIRE(array_schema.add_attribute(&attr).ok());
+  REQUIRE(array_schema.add_attribute(tdb::make_shared<Attribute>(HERE(), &attr))
+              .ok());
   Domain domain;
   Dimension dim("dim1", Datatype::UINT32);
   uint32_t bounds[2] = {1, cells};
@@ -1579,7 +1586,7 @@ TEST_CASE(
   for (uint64_t i = 0; i < cells; ++i) {
     values[i] = i;
   }
-  REQUIRE(tile->write(values, cells * sizeof(uint64_t)).ok());
+  REQUIRE(tile->write(values, 0, cells * sizeof(uint64_t)).ok());
 
   // Build a combined query for `> 3 AND <= 6`.
   uint64_t cmp_value_1 = 3;
@@ -1654,7 +1661,8 @@ TEST_CASE(
     REQUIRE(attr.set_fill_value(fill_value, 2 * sizeof(char)).ok());
   }
 
-  REQUIRE(array_schema.add_attribute(&attr).ok());
+  REQUIRE(array_schema.add_attribute(tdb::make_shared<Attribute>(HERE(), &attr))
+              .ok());
   Domain domain;
   Dimension dim("dim1", Datatype::UINT32);
   uint32_t bounds[2] = {1, cells};
@@ -1692,7 +1700,7 @@ TEST_CASE(
     values[(i * 2) + 1] = 'a' + static_cast<char>(i);
   }
 
-  REQUIRE(tile->write(values, 2 * (cells - 2) * sizeof(char)).ok());
+  REQUIRE(tile->write(values, 0, 2 * (cells - 2) * sizeof(char)).ok());
 
   if (var_size) {
     Tile* const tile_offsets = &std::get<0>(*tile_tuple);
@@ -1714,7 +1722,7 @@ TEST_CASE(
     }
     offsets[cells - 2] = offset;
     offsets[cells - 1] = offset;
-    REQUIRE(tile_offsets->write(offsets, cells * sizeof(uint64_t)).ok());
+    REQUIRE(tile_offsets->write(offsets, 0, cells * sizeof(uint64_t)).ok());
 
     free(offsets);
   }
@@ -1734,7 +1742,7 @@ TEST_CASE(
     for (uint64_t i = 0; i < cells; ++i) {
       validity[i] = i % 2;
     }
-    REQUIRE(tile_validity->write(validity, cells * sizeof(uint8_t)).ok());
+    REQUIRE(tile_validity->write(validity, 0, cells * sizeof(uint8_t)).ok());
 
     free(validity);
   }
@@ -2111,7 +2119,7 @@ void test_apply_tile_sparse<char*>(
     values[i * 2] = 'a';
     values[(i * 2) + 1] = 'a' + static_cast<char>(i);
   }
-  REQUIRE(tile->write(values, 2 * cells * sizeof(char)).ok());
+  REQUIRE(tile->write(values, 0, 2 * cells * sizeof(char)).ok());
 
   if (var_size) {
     Tile* const tile_offsets = &std::get<0>(*tile_tuple);
@@ -2131,7 +2139,7 @@ void test_apply_tile_sparse<char*>(
       offsets[i] = offset;
       offset += 2;
     }
-    REQUIRE(tile_offsets->write(offsets, cells * sizeof(uint64_t)).ok());
+    REQUIRE(tile_offsets->write(offsets, 0, cells * sizeof(uint64_t)).ok());
   }
 
   if (nullable) {
@@ -2149,7 +2157,7 @@ void test_apply_tile_sparse<char*>(
     for (uint64_t i = 0; i < cells; ++i) {
       validity[i] = i % 2;
     }
-    REQUIRE(tile_validity->write(validity, cells * sizeof(uint8_t)).ok());
+    REQUIRE(tile_validity->write(validity, 0, cells * sizeof(uint8_t)).ok());
   }
 
   test_apply_operators_sparse<char*>(
@@ -2179,7 +2187,7 @@ void test_apply_tile_sparse(
   for (uint64_t i = 0; i < cells; ++i) {
     values[i] = static_cast<T>(i);
   }
-  REQUIRE(tile->write(values, cells * sizeof(T)).ok());
+  REQUIRE(tile->write(values, 0, cells * sizeof(T)).ok());
 
   test_apply_operators_sparse<T>(
       field_name, cells, array_schema, result_tile, values);
@@ -2221,7 +2229,8 @@ void test_apply_sparse<char*>(
     REQUIRE(attr.set_fill_value(fill_value, 2 * sizeof(char)).ok());
   }
 
-  REQUIRE(array_schema.add_attribute(&attr).ok());
+  REQUIRE(array_schema.add_attribute(tdb::make_shared<Attribute>(HERE(), &attr))
+              .ok());
   Domain domain;
   Dimension dim("dim1", Datatype::UINT32);
   uint32_t bounds[2] = {1, cells};
@@ -2254,7 +2263,8 @@ void test_apply_sparse(const Datatype type, bool var_size, bool nullable) {
   Attribute attr(field_name, type);
   REQUIRE(attr.set_cell_val_num(1).ok());
   REQUIRE(attr.set_fill_value(&fill_value, sizeof(T)).ok());
-  REQUIRE(array_schema.add_attribute(&attr).ok());
+  REQUIRE(array_schema.add_attribute(tdb::make_shared<Attribute>(HERE(), &attr))
+              .ok());
   Domain domain;
   Dimension dim("dim1", Datatype::UINT32);
   uint32_t bounds[2] = {1, cells};
@@ -2312,7 +2322,8 @@ TEST_CASE(
   // Initialize the array schema.
   ArraySchema array_schema;
   Attribute attr(field_name, type);
-  REQUIRE(array_schema.add_attribute(&attr).ok());
+  REQUIRE(array_schema.add_attribute(tdb::make_shared<Attribute>(HERE(), &attr))
+              .ok());
   Domain domain;
   Dimension dim("dim1", Datatype::UINT32);
   uint32_t bounds[2] = {1, cells};
@@ -2339,7 +2350,7 @@ TEST_CASE(
   for (uint64_t i = 0; i < cells; ++i) {
     values[i] = i;
   }
-  REQUIRE(tile->write(values, cells * sizeof(uint64_t)).ok());
+  REQUIRE(tile->write(values, 0, cells * sizeof(uint64_t)).ok());
 
   // Build a combined query for `> 3 AND <= 6`.
   uint64_t cmp_value_1 = 3;
@@ -2415,7 +2426,8 @@ TEST_CASE(
     REQUIRE(attr.set_fill_value(fill_value, 2 * sizeof(char)).ok());
   }
 
-  REQUIRE(array_schema.add_attribute(&attr).ok());
+  REQUIRE(array_schema.add_attribute(tdb::make_shared<Attribute>(HERE(), &attr))
+              .ok());
   Domain domain;
   Dimension dim("dim1", Datatype::UINT32);
   uint32_t bounds[2] = {1, cells};
@@ -2453,7 +2465,7 @@ TEST_CASE(
     values[(i * 2) + 1] = 'a' + static_cast<char>(i);
   }
 
-  REQUIRE(tile->write(values, 2 * (cells - 2) * sizeof(char)).ok());
+  REQUIRE(tile->write(values, 0, 2 * (cells - 2) * sizeof(char)).ok());
 
   if (var_size) {
     Tile* const tile_offsets = &std::get<0>(*tile_tuple);
@@ -2475,7 +2487,7 @@ TEST_CASE(
     }
     offsets[cells - 2] = offset;
     offsets[cells - 1] = offset;
-    REQUIRE(tile_offsets->write(offsets, cells * sizeof(uint64_t)).ok());
+    REQUIRE(tile_offsets->write(offsets, 0, cells * sizeof(uint64_t)).ok());
 
     free(offsets);
   }
@@ -2495,7 +2507,7 @@ TEST_CASE(
     for (uint64_t i = 0; i < cells; ++i) {
       validity[i] = i % 2;
     }
-    REQUIRE(tile_validity->write(validity, cells * sizeof(uint8_t)).ok());
+    REQUIRE(tile_validity->write(validity, 0, cells * sizeof(uint8_t)).ok());
 
     free(validity);
   }

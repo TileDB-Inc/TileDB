@@ -5,19 +5,20 @@
 A fragment metadata folder is called `<timestamped_name>` and located here:
 
 ```
-my_array                              # array folder
+my_array                                    # array folder
    |  ...
-   |_ <timestamped_name>              # fragment folder
-   |      |_ __fragment_metadata.tdb  # fragment metadata
-   |      |_ a0.tdb                   # fixed-sized attribute 
-   |      |_ a1.tdb                   # var-sized attribute (offsets) 
-   |      |_ a1_var.tdb               # var-sized attribute (values)
-   |      |_ ...      
-   |      |_ d0.tdb                   # fixed-sized dimension 
-   |      |_ d1.tdb                   # var-sized dimension (offsets) 
-   |      |_ d1_var.tdb               # var-sized dimension (values)
-   |      |_ ...      
-   |_ ...  
+   |_ __fragments                           # array fragments folder
+         |_ <timestamped_name>              # fragment folder
+         |      |_ __fragment_metadata.tdb  # fragment metadata
+         |      |_ a0.tdb                   # fixed-sized attribute 
+         |      |_ a1.tdb                   # var-sized attribute (offsets) 
+         |      |_ a1_var.tdb               # var-sized attribute (values)
+         |      |_ ...      
+         |      |_ d0.tdb                   # fixed-sized dimension 
+         |      |_ d1.tdb                   # var-sized dimension (offsets) 
+         |      |_ d1_var.tdb               # var-sized dimension (values)
+         |      |_ ...      
+        |_ ...  
 ```
 
 `<timestamped_name>` has format `__t1_t2_uuid_v`, where:

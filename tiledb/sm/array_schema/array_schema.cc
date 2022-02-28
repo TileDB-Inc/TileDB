@@ -140,7 +140,7 @@ const URI& ArraySchema::array_uri() const {
 
 const Attribute* ArraySchema::attribute(unsigned int id) const {
   if (id < attributes_.size())
-    return attributes_[id];
+    return attributes_[id].get();
   return nullptr;
 }
 
@@ -153,7 +153,8 @@ unsigned int ArraySchema::attribute_num() const {
   return (unsigned)attributes_.size();
 }
 
-const std::vector<Attribute*>& ArraySchema::attributes() const {
+const std::vector<shared_ptr<const Attribute>>& ArraySchema::attributes()
+    const {
   return attributes_;
 }
 
@@ -388,7 +389,7 @@ bool ArraySchema::is_field(const std::string& name) const {
 }
 
 bool ArraySchema::is_nullable(const std::string& name) const {
-  const Attribute* const attr = this->attribute(name);
+  auto attr = this->attribute(name);
   if (attr == nullptr)
     return false;
   return attr->nullable();
@@ -493,7 +494,8 @@ bool ArraySchema::var_size(const std::string& name) const {
   return false;
 }
 
-Status ArraySchema::add_attribute(const Attribute* attr, bool check_special) {
+Status ArraySchema::add_attribute(
+    shared_ptr<const Attribute> attr, bool check_special) {
   // Sanity check
   if (attr == nullptr)
     return LOG_STATUS(Status_ArraySchemaError(
@@ -507,9 +509,8 @@ Status ArraySchema::add_attribute(const Attribute* attr, bool check_special) {
   }
 
   // Create new attribute and potentially set a default name
-  auto new_attr = tdb_new(Attribute, attr);
-  attributes_.emplace_back(new_attr);
-  attribute_map_[new_attr->name()] = new_attr;
+  attributes_.emplace_back(attr);
+  attribute_map_[attr->name()] = attr.get();
 
   RETURN_NOT_OK(generate_uri());
   return Status::Ok();
@@ -531,11 +532,10 @@ Status ArraySchema::drop_attribute(const std::string& attr_name) {
 
   // Iterate backwards and remove the attribute pointer, it should be slightly
   // faster than iterating forward.
-  std::vector<Attribute*>::iterator it;
+  decltype(attributes_)::iterator it;
   for (it = attributes_.end(); it != attributes_.begin();) {
     --it;
     if ((*it)->name() == attr_name) {
-      tdb_delete(*it);
       it = attributes_.erase(it);
     }
   }
@@ -597,9 +597,10 @@ Status ArraySchema::deserialize(ConstBuffer* buff) {
       return st_attr;
     }
 
-    Attribute* attr_ptr = tdb_new(Attribute, std::move(attr.value()));
-    attributes_.emplace_back(attr_ptr);
-    attribute_map_[attr_ptr->name()] = attr_ptr;
+    attributes_.emplace_back(
+        tdb::make_shared<Attribute>(HERE(), move(attr.value())));
+    auto a = attributes_.back().get();
+    attribute_map_[a->name()] = a;
   }
 
   // Create dimension map
@@ -857,9 +858,6 @@ void ArraySchema::clear() {
   capacity_ = constants::capacity;
   cell_order_ = Layout::ROW_MAJOR;
   tile_order_ = Layout::ROW_MAJOR;
-
-  for (auto& attr : attributes_)
-    tdb_delete(attr);
   attributes_.clear();
 
   tdb_delete(domain_);
@@ -877,8 +875,8 @@ Status ArraySchema::generate_uri() {
   ss << "__" << timestamp_range_.first << "_" << timestamp_range_.second << "_"
      << uuid;
   name_ = ss.str();
-  uri_ = array_uri_.join_path(constants::array_schema_folder_name)
-             .join_path(name_);
+  uri_ =
+      array_uri_.join_path(constants::array_schema_dir_name).join_path(name_);
 
   return Status::Ok();
 }
@@ -893,8 +891,8 @@ Status ArraySchema::generate_uri(
   ss << "__" << timestamp_range_.first << "_" << timestamp_range_.second << "_"
      << uuid;
   name_ = ss.str();
-  uri_ = array_uri_.join_path(constants::array_schema_folder_name)
-             .join_path(name_);
+  uri_ =
+      array_uri_.join_path(constants::array_schema_dir_name).join_path(name_);
 
   return Status::Ok();
 }

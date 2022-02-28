@@ -1444,3 +1444,53 @@ TEST_CASE(
   if (vfs.is_dir(array_name))
     vfs.remove_dir(array_name);
 }
+
+TEST_CASE(
+    "C++ API: Test filtering of string dimension",
+    "[cppapi][string-dim][rle-strings][sparse]") {
+  std::string array_name = "test_rle_string_dim";
+
+  /*
+   * Write an array with string dimension and add RLE filter. This will result
+   * in tile filtering instead of chunk filtering. For now make sure we don't
+   * fail. In the future check filtering/unfiltering is done correclty
+   */
+
+  // Create data buffer to use
+  std::string data = "aabbbcdddd";
+  std::vector<uint64_t> data_elem_offsets = {0, 2, 5, 6};
+
+  Context ctx;
+  Domain domain(ctx);
+  auto dim =
+      Dimension::create(ctx, "dim1", TILEDB_STRING_ASCII, nullptr, nullptr);
+
+  // Create compressor as a filter
+  Filter filter(ctx, TILEDB_FILTER_RLE);
+  // Create filter list
+  FilterList filter_list(ctx);
+  // Add compressor to filter list
+  filter_list.add_filter(filter);
+  dim.set_filter_list(filter_list);
+  domain.add_dimension(dim);
+
+  ArraySchema schema(ctx, TILEDB_SPARSE);
+  schema.set_domain(domain);
+
+  tiledb::Array::create(array_name, schema);
+
+  auto array = tiledb::Array(ctx, array_name, TILEDB_WRITE);
+  Query query(ctx, array, TILEDB_WRITE);
+  query.set_data_buffer("dim1", (char*)data.data(), data.size());
+  query.set_offsets_buffer(
+      "dim1", data_elem_offsets.data(), data_elem_offsets.size());
+
+  query.set_layout(TILEDB_UNORDERED);
+  query.submit();
+  query.finalize();
+  array.close();
+
+  VFS vfs(ctx);
+  if (vfs.is_dir(array_name))
+    vfs.remove_dir(array_name);
+}

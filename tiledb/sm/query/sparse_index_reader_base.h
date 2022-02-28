@@ -64,6 +64,23 @@ class ResultTileWithBitmap : public ResultTile {
       , coords_loaded_(false) {
   }
 
+  /** Move constructor. */
+  ResultTileWithBitmap(ResultTileWithBitmap<BitmapType>&& other) noexcept {
+    // Swap with the argument
+    swap(other);
+  }
+
+  /** Move-assign operator. */
+  ResultTileWithBitmap<BitmapType>& operator=(
+      ResultTileWithBitmap<BitmapType>&& other) {
+    // Swap with the argument
+    swap(other);
+
+    return *this;
+  }
+
+  DISABLE_COPY_AND_COPY_ASSIGN(ResultTileWithBitmap);
+
   /* ********************************* */
   /*          PUBLIC METHODS           */
   /* ********************************* */
@@ -113,6 +130,15 @@ class ResultTileWithBitmap : public ResultTile {
     }
 
     return bitmap_.size() - 1;
+  }
+
+  /** Swaps the contents (all field values) of this tile with the given tile. */
+  void swap(ResultTileWithBitmap<BitmapType>& tile) {
+    ResultTile::swap(tile);
+    std::swap(bitmap_, tile.bitmap_);
+    std::swap(bitmap_result_num_, tile.bitmap_result_num_);
+    std::swap(coords_loaded_, tile.coords_loaded_);
+    std::swap(hilbert_values_, tile.hilbert_values_);
   }
 
   /* ********************************* */
@@ -297,8 +323,7 @@ class SparseIndexReaderBase : public ReaderBase {
    * @return Status, tiles_size, tiles_size_qc.
    */
   template <class BitmapType>
-  std::tuple<Status, std::optional<std::pair<uint64_t, uint64_t>>>
-  get_coord_tiles_size(
+  tuple<Status, optional<std::pair<uint64_t, uint64_t>>> get_coord_tiles_size(
       bool include_coords, unsigned dim_num, unsigned f, uint64_t t);
 
   /**
@@ -372,8 +397,7 @@ class SparseIndexReaderBase : public ReaderBase {
    *
    * @return Status, index_to_copy.
    */
-  std::tuple<Status, std::optional<std::vector<uint64_t>>>
-  read_and_unfilter_attributes(
+  tuple<Status, optional<std::vector<uint64_t>>> read_and_unfilter_attributes(
       const uint64_t memory_budget,
       const std::vector<std::string>& names,
       const std::vector<uint64_t>& mem_usage_per_attr,

@@ -37,8 +37,10 @@
 #include <unordered_map>
 #include <vector>
 
+#include "tiledb/common/common.h"
 #include "tiledb/common/memory_tracker.h"
 #include "tiledb/common/status.h"
+#include "tiledb/sm/array/array_directory.h"
 #include "tiledb/sm/crypto/encryption_key.h"
 #include "tiledb/sm/fragment/fragment_info.h"
 #include "tiledb/sm/metadata/metadata.h"
@@ -76,6 +78,21 @@ class Array {
   /* ********************************* */
   /*                API                */
   /* ********************************* */
+
+  /** Returns the array directory object. */
+  const ArrayDirectory& array_directory() const;
+
+  /** Sets the latest array schema.
+   * @param array_schema The array schema to set.
+   */
+  void set_array_schema_latest(ArraySchema* array_schema);
+
+  /** Sets all array schemas.
+   * @param all_schemas The array schemas to set.
+   */
+  void set_array_schemas_all(
+      std::unordered_map<std::string, tdb_shared_ptr<ArraySchema>>&
+          all_schemas);
 
   /** Returns the latest array schema. */
   ArraySchema* array_schema_latest() const;
@@ -343,7 +360,7 @@ class Array {
    *  If the non_empty_domain has not been computed or loaded
    *  it will be loaded first
    * */
-  std::tuple<Status, std::optional<const NDRange>> non_empty_domain();
+  tuple<Status, optional<const NDRange>> non_empty_domain();
 
   /** Returns the non-empty domain of the opened array. */
   void set_non_empty_domain(const NDRange& non_empty_domain);
@@ -367,6 +384,9 @@ class Array {
 
   /** The array URI. */
   URI array_uri_;
+
+  /** The array directory object for listing URIs. */
+  ArrayDirectory array_dir_;
 
   /** This is a backwards compatible URI from serialization
    *  In TileDB 2.5 we removed sending the URI but 2.4 and older were
