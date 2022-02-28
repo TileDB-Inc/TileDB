@@ -152,6 +152,8 @@ Context
     :project: TileDB-C
 .. doxygenfunction:: tiledb_ctx_free
     :project: TileDB-C
+.. doxygenfunction:: tiledb_ctx_get_stats
+    :project: TileDB-C
 .. doxygenfunction:: tiledb_ctx_get_config
     :project: TileDB-C
 .. doxygenfunction:: tiledb_ctx_get_last_error
