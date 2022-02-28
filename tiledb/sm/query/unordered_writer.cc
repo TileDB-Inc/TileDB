@@ -574,41 +574,32 @@ Status UnorderedWriter::prepare_tiles_var(
   return Status::Ok();
 }
 
-Status UnorderedWriter::sort_coords(std::vector<uint64_t>* cell_pos) const {
+Status UnorderedWriter::sort_coords(std::vector<uint64_t>& cell_pos) const {
   auto timer_se = stats_->start_timer("sort_coords");
 
-  // For easy reference
-  auto domain = array_schema_->domain();
-  auto cell_order = array_schema_->cell_order();
-
-  // Prepare auxiliary vector for better performance
-  auto dim_num = array_schema_->dim_num();
-  std::vector<const QueryBuffer*> buffs(dim_num);
-  for (unsigned d = 0; d < dim_num; ++d) {
-    const auto& dim_name = array_schema_->dimension(d)->name();
-    buffs[d] = &(buffers_.find(dim_name)->second);
-  }
-
   // Populate cell_pos
-  cell_pos->resize(coords_info_.coords_num_);
+  cell_pos.resize(coords_info_.coords_num_);
   for (uint64_t i = 0; i < coords_info_.coords_num_; ++i)
-    (*cell_pos)[i] = i;
+    cell_pos[i] = i;
 
   // Sort the coordinates in global order
+  auto cell_order = array_schema_->cell_order();
+  const Domain& domain = *array_schema_->domain();
+  DomainBuffersView domain_buffs{*array_schema_, buffers_};
   if (cell_order != Layout::HILBERT) {  // Row- or col-major
     parallel_sort(
         storage_manager_->compute_tp(),
-        cell_pos->begin(),
-        cell_pos->end(),
-        GlobalCmp(domain, &buffs));
+        cell_pos.begin(),
+        cell_pos.end(),
+        GlobalCmpQB(domain, domain_buffs));
   } else {  // Hilbert order
     std::vector<uint64_t> hilbert_values(coords_info_.coords_num_);
-    RETURN_NOT_OK(calculate_hilbert_values(buffs, &hilbert_values));
+    RETURN_NOT_OK(calculate_hilbert_values(domain_buffs, hilbert_values));
     parallel_sort(
         storage_manager_->compute_tp(),
-        cell_pos->begin(),
-        cell_pos->end(),
-        HilbertCmp(domain, &buffs, &hilbert_values));
+        cell_pos.begin(),
+        cell_pos.end(),
+        HilbertCmpQB(domain, domain_buffs, hilbert_values));
   }
 
   return Status::Ok();
@@ -621,7 +612,7 @@ Status UnorderedWriter::unordered_write() {
 
   // Sort coordinates first
   std::vector<uint64_t> cell_pos;
-  RETURN_CANCEL_OR_ERROR(sort_coords(&cell_pos));
+  RETURN_CANCEL_OR_ERROR(sort_coords(cell_pos));
 
   // Check for coordinate duplicates
   RETURN_CANCEL_OR_ERROR(check_coord_dups(cell_pos));

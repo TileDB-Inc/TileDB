@@ -52,6 +52,7 @@ namespace tiledb {
 namespace sm {
 
 class Array;
+class DomainBuffersView;
 class FragmentMetadata;
 class TileMetadataGenerator;
 class StorageManager;
@@ -196,11 +197,6 @@ class WriterBase : public StrategyBase, public IQueryStrategy {
 
   /** Adss a fragment to `written_fragment_info_`. */
   Status add_written_fragment_info(const URI& uri);
-
-  /** Calculates the hilbert values of the input coordinate buffers. */
-  Status calculate_hilbert_values(
-      const std::vector<const QueryBuffer*>& buffs,
-      std::vector<uint64_t>* hilbert_values) const;
 
   /** Correctness checks for buffer sizes. */
   Status check_buffer_sizes() const;
@@ -493,30 +489,6 @@ class WriterBase : public StrategyBase, public IQueryStrategy {
       uint64_t start_tile_id,
       std::vector<WriterTile>* tiles,
       bool close_files = true);
-
-  /**
-   * Determines if an attribute has min max metadata.
-   *
-   * @param name Attribute/dimension name.
-   * @param var_size Is the attribute/dimension var size.
-   * @return true if the atribute has min max metadata.
-   */
-  bool has_min_max_metadata(const std::string& name, const bool var_size);
-
-  /**
-   * Determines if an attribute has sum metadata.
-   *
-   * @param name Attribute/dimension name.
-   * @param var_size Is the attribute/dimension var size.
-   * @return true if the atribute has sum metadata.
-   */
-  bool has_sum_metadata(const std::string& name, const bool var_size);
-
-  /**
-   * Returns the i-th coordinates in the coordinate buffers in string
-   * format.
-   */
-  std::string coords_to_str(uint64_t i) const;
 
   /**
    * Invoked on error. It removes the directory of the input URI and
