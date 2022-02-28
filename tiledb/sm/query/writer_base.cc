@@ -37,7 +37,9 @@
 #include "tiledb/sm/array/array.h"
 #include "tiledb/sm/array_schema/array_schema.h"
 #include "tiledb/sm/array_schema/dimension.h"
+#include "tiledb/sm/enums/compressor.h"
 #include "tiledb/sm/filesystem/vfs.h"
+#include "tiledb/sm/filter/compression_filter.h"
 #include "tiledb/sm/fragment/fragment_metadata.h"
 #include "tiledb/sm/misc/comparators.h"
 #include "tiledb/sm/misc/hilbert.h"
@@ -763,9 +765,17 @@ Status WriterBase::filter_tile(
   RETURN_NOT_OK(FilterPipeline::append_encryption_filter(
       &filters, array_->get_encryption_key()));
 
+  // Check if chunk or tile level filtering/unfiltering is appropriate
+  bool use_chunking = filters.use_tile_chunking(
+      array_schema_->is_dim(name), array_schema_->var_size(name), tile->type());
+
   assert(!tile->filtered());
   RETURN_NOT_OK(filters.run_forward(
-      stats_, tile, offsets_tile, storage_manager_->compute_tp()));
+      stats_,
+      tile,
+      offsets_tile,
+      storage_manager_->compute_tp(),
+      use_chunking));
   assert(tile->filtered());
 
   tile->set_pre_filtered_size(orig_size);
