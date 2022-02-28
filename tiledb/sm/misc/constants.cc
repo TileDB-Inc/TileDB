@@ -355,6 +355,9 @@ const std::string filter_option_bit_width_max_window_str =
 const std::string filter_option_positive_delta_max_window_str =
     "POSITIVE_DELTA_MAX_WINDOW";
 
+/** String describing TILEDB_LABEL_UNIFORM. */
+const std::string dimension_label_uniform_str = "LABEL_UNIFORM";
+
 /** The string representation for type int32. */
 const std::string int32_str = "INT32";
 

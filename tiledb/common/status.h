@@ -297,6 +297,10 @@ inline Status Status_VFSError(const std::string& msg) {
 inline Status Status_DimensionError(const std::string& msg) {
   return {"[TileDB::Dimension] Error", msg};
 }
+/** Return a Dimension error class Status with a given message **/
+inline Status Status_DimensionLabelError(const std::string& msg) {
+  return {"[TileDB::DimensionLabel] Error", msg};
+}
 /** Return a Domain error class Status with a given message **/
 inline Status Status_DomainError(const std::string& msg) {
   return {"[TileDB::Domain] Error", msg};

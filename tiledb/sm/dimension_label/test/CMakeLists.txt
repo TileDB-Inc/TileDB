@@ -1,9 +1,9 @@
 #
-# tiledb/sm/CMakeLists.txt
+# tiledb/sm/dimension_label/test/CMakeLists.txt
 #
 # The MIT License
 #
-# Copyright (c) 2021 TileDB, Inc.
+# Copyright (c) 2022 TileDB, Inc.
 #
 # Permission is hereby granted, free of charge, to any person obtaining a copy
 # of this software and associated documentation files (the "Software"), to deal
@@ -24,19 +24,29 @@
 # THE SOFTWARE.
 #
 
-include(common-root)
+find_package(Catch_EP REQUIRED)
 
-add_subdirectory(array_schema)
-add_subdirectory(buffer)
-add_subdirectory(compressors)
-add_subdirectory(config)
-add_subdirectory(crypto)
-add_subdirectory(dimension_label)
-add_subdirectory(filesystem)
-add_subdirectory(filter)
-add_subdirectory(metadata)
-add_subdirectory(misc)
-add_subdirectory(query)
-add_subdirectory(stats)
-add_subdirectory(subarray)
-add_subdirectory(tile)
+add_executable(unit_dimension_label EXCLUDE_FROM_ALL)
+target_link_libraries(unit_dimension_label
+    PRIVATE dimension_label
+    PUBLIC Catch2::Catch2
+    )
+target_sources(unit_dimension_label PUBLIC main.cc unit_dimension_label.cc)
+add_test(
+    NAME "unit_dimension_label"
+    COMMAND $<TARGET_FILE:unit_dimension_label>
+    WORKING_DIRECTORY ${CMAKE_CURRENT_SOURCE_DIR}
+)
+
+
+add_executable(unit_uniform_mapping EXCLUDE_FROM_ALL)
+target_link_libraries(unit_uniform_mapping
+    PRIVATE uniform_mapping
+    PUBLIC Catch2::Catch2
+    )
+target_sources(unit_uniform_mapping PUBLIC main.cc unit_uniform_mapping.cc)
+add_test(
+    NAME "unit_uniform_mapping"
+    COMMAND $<TARGET_FILE:unit_uniform_mapping>
+    WORKING_DIRECTORY ${CMAKE_CURRENT_SOURCE_DIR}
+)

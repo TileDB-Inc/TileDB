@@ -1,9 +1,9 @@
 #
-# tiledb/sm/CMakeLists.txt
+# tiledb/sm/dimension_label/CMakeLists.txt
 #
 # The MIT License
 #
-# Copyright (c) 2021 TileDB, Inc.
+# Copyright (c) 2022 TileDB, Inc.
 #
 # Permission is hereby granted, free of charge, to any person obtaining a copy
 # of this software and associated documentation files (the "Software"), to deal
@@ -24,19 +24,22 @@
 # THE SOFTWARE.
 #
 
-include(common-root)
+include(common NO_POLICY_SCOPE)
 
-add_subdirectory(array_schema)
-add_subdirectory(buffer)
-add_subdirectory(compressors)
-add_subdirectory(config)
-add_subdirectory(crypto)
-add_subdirectory(dimension_label)
-add_subdirectory(filesystem)
-add_subdirectory(filter)
-add_subdirectory(metadata)
-add_subdirectory(misc)
-add_subdirectory(query)
-add_subdirectory(stats)
-add_subdirectory(subarray)
-add_subdirectory(tile)
+add_library(uniform_mapping OBJECT uniform_mapping.cc)
+target_link_libraries(uniform_mapping PUBLIC baseline $<TARGET_OBJECTS:baseline>)
+target_link_libraries(uniform_mapping PUBLIC misc_types $<TARGET_OBJECTS:misc_types>)
+target_link_libraries(uniform_mapping PUBLIC constants $<TARGET_OBJECTS:constants>)
+
+add_library(dimension_label OBJECT dimension_label.cc )
+target_link_libraries(dimension_label PUBLIC baseline $<TARGET_OBJECTS:baseline>)
+target_link_libraries(dimension_label PUBLIC misc_types $<TARGET_OBJECTS:misc_types>)
+target_link_libraries(dimension_label PUBLIC uniform_mapping $<TARGET_OBJECTS:uniform_mapping>)
+
+add_executable(compile_dimension_label EXCLUDE_FROM_ALL)
+target_link_libraries(compile_dimension_label PRIVATE dimension_label)
+target_sources(compile_dimension_label PRIVATE test/compile_dimension_label_main.cc)
+
+if (TILEDB_TESTS)
+    add_subdirectory(test)
+endif()
