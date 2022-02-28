@@ -59,6 +59,9 @@
 * Dense reader: removing unnecessary loop around read_attributes. [#2859](https://github.com/TileDB-Inc/TileDB/pull/2859)
 * Convert deserialize function of Attribute to factory function [#2566](https://github.com/TileDB-Inc/TileDB/pull/2566)
 * Convert Filter class deserialize and create to factory functions [#2655](https://github.com/TileDB-Inc/TileDB/pull/2655)
+* Tile metadata test: reducing amount of spew in verbose mode. [#2882](https://github.com/TileDB-Inc/TileDB/pull/2882)
+* compute_results_count_sparse_string: fixing incorect memcmp. [#2892](https://github.com/TileDB-Inc/TileDB/pull/2892)
+* Sparse rindex readers: fixing query resume on TileDB cloud. [#2900](https://github.com/TileDB-Inc/TileDB/pull/2900)
 
 ## Deprecations
 
@@ -78,6 +81,9 @@
 * ReaderBase needs to load var sizes [#2809](https://github.com/TileDB-Inc/TileDB/pull/2809)
 * Only initialize REST query strategies once [#2836](https://github.com/TileDB-Inc/TileDB/pull/2836)
 * Logger json format output is not valid [#2850](https://github.com/TileDB-Inc/TileDB/pull/2850)
+* Closing a non-opened array should be a no-op instead of error. [#2889](https://github.com/TileDB-Inc/TileDB/pull/2889)
+* patch (unsupported) 3rd party azure cpp lite sdk used by TileDB to avoid memory faults [#2881](https://github.com/TileDB-Inc/TileDB/pull/2881)
+* Free allocated latest array schema when on error of loading all array schemas [#2907](https://github.com/TileDB-Inc/TileDB/pull/2907)
 
 ## API additions
 
@@ -89,6 +95,7 @@
 * Deprecate `TILEDB_ANY` datatype [#2807](https://github.com/TileDB-Inc/TileDB/pull/2807)
 * Deprecate `TILEDB_STRING_USC2` and `TILEDB_STRING_USC4` datatypes. [#2812](https://github.com/TileDB-Inc/TileDB/pull/2812)
 * Add `tiledb_array_schema_get_version` for fetching array schema version [#2863](https://github.com/TileDB-Inc/TileDB/pull/2863)
+* Introduce experimental `tiledb_ctx_alloc_with_error` to return error when context alloc fails [#2905](https://github.com/TileDB-Inc/TileDB/pull/2905)
 
 ### C++ API
 
@@ -98,6 +105,7 @@
 * Deprecate `TILEDB_ANY` datatype [#2807](https://github.com/TileDB-Inc/TileDB/pull/2807)
 * Deprecate `TILEDB_STRING_USC2` and `TILEDB_STRING_USC4` datatypes. [#2812](https://github.com/TileDB-Inc/TileDB/pull/2812)
 * Add `ArraySchema::version()` for fetching array schema version [#2863](https://github.com/TileDB-Inc/TileDB/pull/2863)
+* Add missing cstddef include to fix compile w/ GCC 7 [#2885](https://github.com/TileDB-Inc/TileDB/pull/2885)
 
 # TileDB v2.6.2 Release Notes
 
