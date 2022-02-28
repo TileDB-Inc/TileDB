@@ -59,7 +59,7 @@ ResultTile::ResultTile(
   coord_tiles_.resize(domain_->dim_num());
   attr_tiles_.resize(array_schema->attribute_num());
   for (uint64_t i = 0; i < array_schema->attribute_num(); i++) {
-    const Attribute* attribute = array_schema->attribute(i);
+    auto attribute = array_schema->attribute(i);
     attr_tiles_[i] = std::make_pair(attribute->name(), nullopt);
   }
   set_compute_results_func();

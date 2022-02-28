@@ -152,7 +152,7 @@ class Attribute {
    * @param version The format spec version.
    * @return Status
    */
-  Status serialize(Buffer* buff, uint32_t version);
+  const Status serialize(Buffer* buff, uint32_t version) const;
 
   /**
    * Sets the attribute number of values per cell. Note that if the attribute

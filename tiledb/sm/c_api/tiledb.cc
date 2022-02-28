@@ -2267,8 +2267,14 @@ int32_t tiledb_array_schema_add_attribute(
       sanity_check(ctx, array_schema) == TILEDB_ERR ||
       sanity_check(ctx, attr) == TILEDB_ERR)
     return TILEDB_ERR;
+  /** Note: The call to make_shared creates a copy of the attribute and
+   * the user-visible handle to the attr no longer refers to the same object
+   * that's in the array_schema.
+   **/
   if (SAVE_ERROR_CATCH(
-          ctx, array_schema->array_schema_->add_attribute(attr->attr_)))
+          ctx,
+          array_schema->array_schema_->add_attribute(
+              tdb::make_shared<tiledb::sm::Attribute>(HERE(), attr->attr_))))
     return TILEDB_ERR;
   return TILEDB_OK;
 }

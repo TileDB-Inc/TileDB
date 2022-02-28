@@ -184,7 +184,7 @@ void InfoCommand::print_tile_sizes() const {
     process_attr(constants::coords, false);
 
   // Dump info about the rest of the attributes
-  for (const auto* attr : attributes)
+  for (const auto& attr : attributes)
     process_attr(attr->name(), attr->var_size());
 
   std::cout << "Sum of attribute persisted size: " << total_persisted_size

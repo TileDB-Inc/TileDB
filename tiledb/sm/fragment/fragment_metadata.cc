@@ -985,8 +985,7 @@ tuple<Status, optional<std::string>> FragmentMetadata::encode_name(
 
   const unsigned idx = iter->second;
 
-  const std::vector<tiledb::sm::Attribute*> attributes =
-      array_schema_->attributes();
+  auto attributes = array_schema_->attributes();
   for (unsigned i = 0; i < attributes.size(); ++i) {
     const std::string attr_name = attributes[i]->name();
     if (attr_name == name) {
